@@ -179,7 +179,13 @@
       var conflicts=hooks.conflictsForMapping(mappingId);
       if(conflicts.length){
         var c=conflicts[0];
-        checks.push({state:'warn',title:t('testCheckConflict'),detail:t('testCheckConflictWarn').replace('{key}',hooks.mappingTargetKey(hooks.otherIdInConflict(c,mappingId)))});
+        // ConflictReport.kind: "canonical" (trigger dup) / "physical" (trigger
+        // physical-key dup) / "targetPhysical" (target action chord dup,
+        // added 2026-09).  Each kind gets a different warning so the user
+        // knows whether the collision is on the trigger or the target side.
+        var isTarget=(c&&c.kind==='targetPhysical');
+        var keyI18n=isTarget?'testCheckConflictTargetWarn':'testCheckConflictWarn';
+        checks.push({state:'warn',title:t('testCheckConflict'),detail:t(keyI18n).replace('{key}',hooks.mappingTargetKey(hooks.otherIdInConflict(c,mappingId)))});
       }else{
         checks.push({state:'ok',title:t('testCheckConflict'),detail:t('testCheckConflictOk')});
       }

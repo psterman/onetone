@@ -200,7 +200,38 @@
     var targetDisp = document.getElementById('targetDisplay');
     if (targetEl) targetEl.textContent = label;
     if (targetDisp) targetDisp.classList.toggle('empty', !chord);
+    // Multi-step action sequence (added 2026-09).  When the mapping carries
+    // a `target_actions` list with >1 step, render a compact numbered list
+    // right after the keycap so the user sees the full flow at a glance.
     var cm = m || activeCodexMapping();
+    if (global.OneToneKeyLabels && global.OneToneKeyLabels.paintTargetActionsList) {
+      global.OneToneKeyLabels.paintTargetActionsList(cm, { targetDisplayId: 'targetDisplay' });
+    }
+    // Keys「自定义键」序列主卡：用 variant=keys（大空态 + 四类添加钮）。
+    var keysPanelActions = document.getElementById('keysCaptureTargetActions');
+    var actionsHost = document.getElementById('keysCaptureTargetActionsHost');
+    var onCustomKey = actionsHost && !actionsHost.hidden && actionsHost.classList.contains('is-primary');
+    if (onCustomKey && global.OneToneKeysChannelCommandPicker && global.OneToneKeysChannelCommandPicker.refreshKeysTargetActions) {
+      try {
+        global.OneToneKeysChannelCommandPicker.refreshKeysTargetActions();
+      } catch (_) {}
+    } else if (keysPanelActions && global.OneToneHomeTargetActions && global.OneToneHomeTargetActions.render) {
+      var renderTarget = (cm && cm.id) ? cm : null;
+      if (!renderTarget && global.OneToneMappingCore && global.OneToneMappingCore.selected) {
+        renderTarget = global.OneToneMappingCore.selected();
+      }
+      if (renderTarget && onCustomKey) {
+        global.OneToneHomeTargetActions.render(keysPanelActions, renderTarget, {
+          mode: 'picker',
+          variant: 'keys'
+        });
+      } else if (renderTarget && !onCustomKey) {
+        // 非自定义键频道：不在此画序列卡（由频道 chrome 隐藏）
+      } else if (keysPanelActions && !onCustomKey) {
+        keysPanelActions.hidden = true;
+        keysPanelActions.innerHTML = '';
+      }
+    }
     if (global.OneToneKeysPageNav && global.OneToneKeysPageNav.renderStepHints) {
       global.OneToneKeysPageNav.renderStepHints(cm);
     }

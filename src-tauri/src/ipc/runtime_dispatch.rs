@@ -392,6 +392,27 @@ fn run_overlay_tap_action(
         }
     }
 
+    // Soft Pad / overlay: run the mapping's configured targetActions sequence.
+    if route.slot_id.trim() == "runTargetSequence"
+        || route.action_id.trim() == "runTargetSequence"
+    {
+        let mid = route.mapping_id.trim();
+        let mid = if mid.is_empty() {
+            state.cfg.lock().active_scene_id.clone()
+        } else {
+            mid.to_string()
+        };
+        let duration_ms = state.cfg.lock().key_press_duration_ms;
+        let app = exec_window.app_handle();
+        return crate::voice_end_runtime::run_mapping_target_sequence(
+            state,
+            &app,
+            &mid,
+            duration_ms,
+        )
+        .is_ok();
+    }
+
     let duration_ms = state.cfg.lock().key_press_duration_ms;
     let target_id = soft_pad_inject_target_id(state, &route.mapping_id);
     let mut chord = route.trigger_binding.trim().to_string();

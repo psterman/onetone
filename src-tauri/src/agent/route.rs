@@ -220,6 +220,55 @@ fn route_semantic_action_inner(
         );
     };
 
+    // Shared runner for SoftPad / camera / voice: run this mapping's targetActions.
+    let action_trim = req.action_id.trim();
+    let slot_trim = req.slot_id.as_deref().map(str::trim).unwrap_or("");
+    if action_trim == "runTargetSequence" || slot_trim == "runTargetSequence" {
+        let mid = mapping_id.clone().unwrap_or_else(|| {
+            state.cfg.lock().active_scene_id.clone()
+        });
+        if mid.trim().is_empty() {
+            return SemanticRouteResult::base(
+                RouteStatus::Failed,
+                "runTargetSequence",
+                source_raw,
+                None,
+                provider_id,
+            )
+            .with_reason("no_mapping", None);
+        }
+        let duration_ms = state.cfg.lock().key_press_duration_ms;
+        let app = window.app_handle();
+        return match voice_end_runtime::run_mapping_target_sequence(
+            state,
+            &app,
+            mid.trim(),
+            duration_ms,
+        ) {
+            Ok(label) => {
+                let mut r = SemanticRouteResult::base(
+                    RouteStatus::Executed,
+                    "runTargetSequence",
+                    source_raw,
+                    Some(mid),
+                    provider_id,
+                );
+                r.ok = Some(true);
+                r.detail = Some(label);
+                let _ = channel;
+                r
+            }
+            Err(reason) => SemanticRouteResult::base(
+                RouteStatus::Failed,
+                "runTargetSequence",
+                source_raw,
+                Some(mid),
+                provider_id,
+            )
+            .with_reason(&reason, None),
+        };
+    }
+
     // Explicit confirmationId: actionId must match; mismatch does not refresh TTL.
     if let Some(cid) = req
         .confirmation_id

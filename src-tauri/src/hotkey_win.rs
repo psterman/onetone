@@ -1,8 +1,9 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc;
 use std::sync::{Mutex, OnceLock};
 use std::thread;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 macro_rules! w {
     ($s:expr) => {{
@@ -56,6 +57,12 @@ static RECORDING_SENDER: OnceLock<Mutex<Option<mpsc::Sender<String>>>> = OnceLoc
 /// True for the whole StartRecording→StopRecording window, even when
 /// `recording_sender` is momentarily cleared during hook transitions.
 static RECORDING_SESSION: AtomicBool = AtomicBool::new(false);
+
+/// Dongles often emit Ctrl+Shift+Space right after Volume_*. That chord is Cursor's
+/// native Voice Mode — swallow it briefly after we own a volume trigger press.
+/// Deadline = unix ms; 0 = inactive.
+static GHOST_MEDIA_SUPPRESS_UNTIL_MS: AtomicU64 = AtomicU64::new(0);
+const GHOST_MEDIA_SUPPRESS_MS: u64 = 400;
 
 /// Arm before the hotkey thread finishes StartRecording so side buttons bound to
 /// voice/IME cannot fire through `resolve_active_binding` during IPC/hook setup.
@@ -819,6 +826,7 @@ fn dispatch_physical_payload(payload: &str, source: &str, report_hex: &str) -> b
 
     if let Some(binding) = resolve_active_binding(&ev.key, ev.device.as_deref()) {
         if hook_handles_binding(&binding) {
+            note_volume_for_ghost_suppress(&ev.key, ev.is_keyup);
             if let Some(sender) = active_sender().lock().unwrap().as_ref() {
                 sender.send(wire).ok();
             }
@@ -1053,6 +1061,73 @@ fn bridge_injected_ralt_to_volume(injected: bool, name: &str) -> &str {
     }
 }
 
+fn unix_now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+fn arm_ghost_media_suppress() {
+    GHOST_MEDIA_SUPPRESS_UNTIL_MS.store(
+        unix_now_ms().saturating_add(GHOST_MEDIA_SUPPRESS_MS),
+        Ordering::SeqCst,
+    );
+}
+
+fn note_volume_for_ghost_suppress(key: &str, is_keyup: bool) {
+    if !is_keyup && is_volume_hotkey(key) {
+        arm_ghost_media_suppress();
+    }
+}
+
+fn is_ghost_media_key_token(name: &str) -> bool {
+    matches!(
+        name,
+        "LCtrl"
+            | "RCtrl"
+            | "Ctrl"
+            | "Control"
+            | "LShift"
+            | "RShift"
+            | "Shift"
+            | "Space"
+    )
+}
+
+fn volume_trigger_bound() -> bool {
+    let bindings = active_bindings().lock().unwrap();
+    bindings.iter().any(|b| {
+        b.split('+')
+            .any(|part| is_volume_hotkey(part.trim()) || part.trim() == "AutoTrigger")
+    })
+}
+
+fn ctrl_and_shift_down() -> bool {
+    use winapi::um::winuser::GetAsyncKeyState;
+    let ctrl = unsafe { GetAsyncKeyState(0x11) } as u16 & 0x8000 != 0;
+    let shift = unsafe { GetAsyncKeyState(0x10) } as u16 & 0x8000 != 0;
+    ctrl && shift
+}
+
+/// Runtime swallow for dongle ghost Ctrl+Shift+Space (recording already drops it).
+fn should_swallow_ghost_media_key(name: &str) -> bool {
+    if !is_ghost_media_key_token(name) {
+        return false;
+    }
+    let now = unix_now_ms();
+    if now < GHOST_MEDIA_SUPPRESS_UNTIL_MS.load(Ordering::SeqCst) {
+        return true;
+    }
+    // Some dongles emit the ghost *before* Volume_* — if volume is our trigger and
+    // Space arrives with Ctrl+Shift held, eat it and arm for the modifier keyups.
+    if name == "Space" && volume_trigger_bound() && ctrl_and_shift_down() {
+        arm_ghost_media_suppress();
+        return true;
+    }
+    false
+}
+
 unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     let recording = RECORDING_SESSION.load(Ordering::SeqCst) || is_recording();
     let is_key_down = wparam == WM_KEYDOWN as usize || wparam == WM_SYSKEYDOWN as usize;
@@ -1074,6 +1149,19 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
             // channel as a hardware volume key; the handler bridges it into the
             // Volume_Up fast-path and tags the source device accordingly so the
             // user can see what happened.
+            //
+            // Runtime: injected Ctrl+Shift+Space ghosts must still be swallowed —
+            // they used to CallNextHookEx and fire Cursor Voice Mode.
+            if let Some(inj_name) = vk_to_name(kb.vkCode as u32) {
+                if should_swallow_ghost_media_key(&inj_name) {
+                    return 1;
+                }
+                if is_volume_hotkey(&inj_name)
+                    && resolve_active_binding(&inj_name, None).is_some()
+                {
+                    note_volume_for_ghost_suppress(&inj_name, is_key_up);
+                }
+            }
             let injected_capture_token = recording
                 && vk_to_name(kb.vkCode as u32)
                     .as_deref()
@@ -1105,6 +1193,9 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
             }
         }
         if let Some(name) = vk_to_name(kb.vkCode as u32) {
+            if should_swallow_ghost_media_key(&name) {
+                return 1;
+            }
             // Dedicated arrows only (LLKHF_EXTENDED). NumLock-off numpad 2/4/6/8 share VK
             // names but are non-extended and belong to the Soft Pad numpad route above.
             if extended {
@@ -1147,6 +1238,7 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                     || name == "Browser_Back"
                     || name == "Browser_Forward"
                 {
+                    note_volume_for_ghost_suppress(&bridged, is_key_up);
                     return 1;
                 }
                 return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
@@ -1174,6 +1266,7 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                 if !hook_handles_binding(&dispatch) {
                     return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
                 }
+                note_volume_for_ghost_suppress(&name, is_key_up);
                 let payload = if is_key_down {
                     dispatch.clone()
                 } else if is_key_up {
@@ -1617,8 +1710,10 @@ fn appcommand_to_name(cmd: i32) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        bridge_injected_ralt_to_volume, drain_pending_recording_mouse, scan_consumer_bytes,
-        xbutton_name_from_mouse_data, RECORDING_SESSION,
+        active_bindings, bridge_injected_ralt_to_volume, drain_pending_recording_mouse,
+        is_ghost_media_key_token, note_volume_for_ghost_suppress, scan_consumer_bytes,
+        should_swallow_ghost_media_key, xbutton_name_from_mouse_data, GHOST_MEDIA_SUPPRESS_UNTIL_MS,
+        RECORDING_SESSION,
     };
     use crate::config::is_volume_hotkey;
     use std::sync::atomic::Ordering;
@@ -1690,5 +1785,30 @@ mod tests {
         RECORDING_SESSION.store(false, Ordering::SeqCst);
         assert_eq!(bridge_injected_ralt_to_volume(false, "RAlt"), "RAlt");
         assert_eq!(bridge_injected_ralt_to_volume(true, "Volume_Up"), "Volume_Up");
+    }
+
+    #[test]
+    fn ghost_media_tokens_and_volume_arm() {
+        assert!(is_ghost_media_key_token("Space"));
+        assert!(is_ghost_media_key_token("LCtrl"));
+        assert!(is_ghost_media_key_token("RShift"));
+        assert!(!is_ghost_media_key_token("Volume_Up"));
+        assert!(!is_ghost_media_key_token("A"));
+
+        active_bindings().lock().unwrap().clear();
+        GHOST_MEDIA_SUPPRESS_UNTIL_MS.store(0, Ordering::SeqCst);
+        assert!(!should_swallow_ghost_media_key("LCtrl"));
+
+        note_volume_for_ghost_suppress("Volume_Down", false);
+        assert!(should_swallow_ghost_media_key("Space"));
+        assert!(should_swallow_ghost_media_key("LCtrl"));
+        assert!(should_swallow_ghost_media_key("RShift"));
+        assert!(!should_swallow_ghost_media_key("A"));
+
+        note_volume_for_ghost_suppress("Volume_Up", true); // keyup must not extend forever
+        assert!(should_swallow_ghost_media_key("Space")); // still inside window
+
+        GHOST_MEDIA_SUPPRESS_UNTIL_MS.store(0, Ordering::SeqCst);
+        assert!(!should_swallow_ghost_media_key("LCtrl"));
     }
 }

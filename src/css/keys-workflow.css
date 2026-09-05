@@ -540,8 +540,8 @@
   align-self: stretch;
   min-height: 0;
   min-width: 0;
-  padding: 12px 14px 14px;
-  gap: 14px;
+  padding: 8px 12px 10px;
+  gap: 8px;
   background: transparent;
   overflow: auto;
 }
@@ -564,6 +564,14 @@
 
 #settingsPanelKeys .keys-detail-card--options {
   background: var(--surface-high, #f7f9fb);
+}
+
+/* IME: options panel only hosts finish — don't double-wrap with a second surface */
+#settingsPanelKeys .keys-capture-key-panel:not(.is-custom-key-seq) {
+  padding: 0;
+  border: none;
+  background: transparent;
+  gap: 0;
 }
 
 #settingsPanelKeys .keys-detail-card[hidden],
@@ -624,7 +632,20 @@
 #settingsPanelKeys .keys-capture-keycap-zone.is-recording-active,
 .keys-capture-popover .keys-capture-keycap-zone.is-recording-active {
   border-color: var(--primary-strong);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-strong) 28%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-strong) 28%, transparent);
+  animation: keys-capture-recording-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes keys-capture-recording-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-strong) 28%, transparent); }
+  50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-strong) 16%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #settingsPanelKeys .keys-capture-keycap-zone.is-recording-active,
+  .keys-capture-popover .keys-capture-keycap-zone.is-recording-active {
+    animation: none;
+  }
 }
 
 #settingsPanelKeys .keys-capture-recording-feedback-host:empty,
@@ -1026,6 +1047,355 @@
   display: none !important;
 }
 
+#settingsPanelKeys .keys-capture-target-actions-host,
+.keys-capture-popover .keys-capture-target-actions-host {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#settingsPanelKeys .keys-capture-target-actions-host[hidden],
+.keys-capture-popover .keys-capture-target-actions-host[hidden] {
+  display: none !important;
+}
+
+#settingsPanelKeys .keys-capture-target-actions-host.is-primary,
+.keys-capture-popover .keys-capture-target-actions-host.is-primary {
+  padding: 12px 12px 14px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  background: var(--surface-high);
+}
+
+#settingsPanelKeys .keys-capture-target-actions-host.is-primary .keys-channel-group-label,
+.keys-capture-popover .keys-capture-target-actions-host.is-primary .keys-channel-group-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+#settingsPanelKeys .keys-capture-target-actions-hint,
+.keys-capture-popover .keys-capture-target-actions-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
+/* IME step hierarchy: flat stack — no card-in-card */
+#settingsPanelKeys .keys-ime-step,
+.keys-capture-popover .keys-ime-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start {
+  border: none !important;
+  border-bottom: none !important;
+  border-radius: 0;
+  background: transparent !important;
+  padding: 0 0 6px;
+  margin: 0;
+  gap: 4px;
+}
+
+/* Later .keys-capture-keycap-zone / .is-hero-mapped rules re-box the zone — keep IME flat */
+#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone,
+#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone.is-hero-mapped {
+  border: none !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0;
+  gap: 4px;
+}
+
+#settingsPanelKeys .keys-ime-step--finish,
+.keys-capture-popover .keys-ime-step--finish {
+  margin-top: 0;
+  padding: 6px 0 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+#settingsPanelKeys .keys-ime-step--finish[hidden],
+.keys-capture-popover .keys-ime-step--finish[hidden] {
+  display: none !important;
+}
+
+#settingsPanelKeys .keys-ime-step-head,
+.keys-capture-popover .keys-ime-step-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 2px;
+}
+
+#settingsPanelKeys .keys-ime-step-num,
+.keys-capture-popover .keys-ime-step-num {
+  flex-shrink: 0;
+  width: auto;
+  height: auto;
+  min-width: 1.4em;
+  border-radius: 0;
+  display: inline;
+  place-items: unset;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: ui-monospace, monospace;
+  color: var(--on-surface-muted, #5a7086);
+  background: transparent;
+  border: none;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+#settingsPanelKeys .keys-ime-step-head-text,
+.keys-capture-popover .keys-ime-step-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-ime-step-head-text .keys-channel-group-label,
+.keys-capture-popover .keys-ime-step-head-text .keys-channel-group-label {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--on-surface, #152238);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+#settingsPanelKeys .keys-ime-step-hint,
+.keys-capture-popover .keys-ime-step-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-ime-step-hint[hidden],
+.keys-capture-popover .keys-ime-step-hint[hidden] {
+  display: none !important;
+}
+
+#settingsPanelKeys .keys-finish-more-advanced {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+#settingsPanelKeys .keys-finish-more-advanced > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--type-caption);
+  font-weight: 700;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-finish-more-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+#settingsPanelKeys .keys-custom-key-split,
+.keys-capture-popover .keys-custom-key-split {
+  display: grid;
+  grid-template-columns: minmax(148px, 38%) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  min-height: 0;
+}
+
+@media (max-width: 720px) {
+  #settingsPanelKeys .keys-custom-key-split,
+  .keys-capture-popover .keys-custom-key-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+#settingsPanelKeys .keys-custom-key-match,
+.keys-capture-popover .keys-custom-key-match {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+#settingsPanelKeys .keys-custom-key-match-head,
+.keys-capture-popover .keys-custom-key-match-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#settingsPanelKeys .keys-custom-key-match-head .keys-channel-group-label,
+.keys-capture-popover .keys-custom-key-match-head .keys-channel-group-label {
+  flex: 1;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-custom-key-match-add,
+.keys-capture-popover .keys-custom-key-match-add {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--on-surface);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-family: inherit;
+}
+
+#settingsPanelKeys .keys-custom-key-match-add:hover,
+.keys-capture-popover .keys-custom-key-match-add:hover {
+  border-color: rgba(42, 156, 196, 0.45);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+#settingsPanelKeys .keys-custom-key-match-list,
+.keys-capture-popover .keys-custom-key-match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow: auto;
+  min-height: 72px;
+}
+
+#settingsPanelKeys .keys-custom-key-match-item,
+.keys-capture-popover .keys-custom-key-match-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: stretch;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--surface-soft);
+  color: var(--on-surface);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+#settingsPanelKeys .keys-custom-key-match-item:hover,
+.keys-capture-popover .keys-custom-key-match-item:hover {
+  border-color: rgba(42, 156, 196, 0.28);
+  background: var(--primary-soft);
+}
+
+#settingsPanelKeys .keys-custom-key-match-item.is-active,
+.keys-capture-popover .keys-custom-key-match-item.is-active {
+  border-color: rgba(42, 156, 196, 0.45);
+  background: var(--primary-soft);
+}
+
+#settingsPanelKeys .keys-custom-key-match-trig,
+.keys-capture-popover .keys-custom-key-match-trig {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+}
+
+#settingsPanelKeys .keys-custom-key-match-sum,
+.keys-capture-popover .keys-custom-key-match-sum {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--on-surface-muted);
+  overflow-wrap: anywhere;
+}
+
+#settingsPanelKeys .keys-custom-key-match-empty,
+.keys-capture-popover .keys-custom-key-match-empty {
+  padding: 16px 10px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .keys-custom-key-detail,
+.keys-capture-popover .keys-custom-key-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+#settingsPanelKeys .keys-custom-key-launch,
+.keys-capture-popover .keys-custom-key-launch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+#settingsPanelKeys .keys-custom-key-launch-lab,
+.keys-capture-popover .keys-custom-key-launch-lab {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+#settingsPanelKeys .keys-custom-key-launch-val,
+.keys-capture-popover .keys-custom-key-launch-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+#settingsPanelKeys .keys-custom-key-launch-val.is-empty,
+.keys-capture-popover .keys-custom-key-launch-val.is-empty {
+  font-weight: 500;
+  color: var(--on-surface-variant);
+}
+
+#settingsPanelKeys .keys-custom-key-launch-rec,
+.keys-capture-popover .keys-custom-key-launch-rec {
+  margin-left: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  background: var(--surface-high);
+  color: var(--on-surface);
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+#settingsPanelKeys .keys-custom-key-launch-rec:hover,
+.keys-capture-popover .keys-custom-key-launch-rec:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+#settingsPanelKeys .keys-capture-key-panel.is-custom-key-seq,
+.keys-capture-popover .keys-capture-key-panel.is-custom-key-seq {
+  gap: 10px;
+}
+
 #settingsPanelKeys .keys-capture-keycap-zone, .keys-capture-popover .keys-capture-keycap-zone {
   display: flex;
   flex-direction: column;
@@ -1064,7 +1434,7 @@
 .keys-capture-popover .keys-capture-keycap-zone .keys-step-record-act .record-btn {
   width: 100%;
   height: 100%;
-  min-height: 48px;
+  min-height: 40px;
   border: 0;
   padding: 0;
   margin: 0;
@@ -1108,23 +1478,23 @@
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: stretch;
-  gap: 0;
+  gap: 8px;
   width: 100%;
-  padding: 4px;
-  border-radius: 12px;
-  border: 1px solid var(--outline-variant);
-  background: var(--surface-soft);
+  padding: 0;
+  border-radius: 0;
+  border: none;
+  background: transparent;
 }
 
 #settingsPanelKeys .keys-finish-segment,
 .keys-capture-popover .keys-finish-segment {
   flex: 1 1 0;
   min-width: 0;
-  min-height: 48px;
-  padding: 8px 6px;
+  min-height: 34px;
+  padding: 6px 8px;
   border-radius: 8px;
-  border: none;
-  background: transparent;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface, #fff);
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -1134,16 +1504,25 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 0;
   box-shadow: none;
 }
 
 #settingsPanelKeys .keys-finish-segment.is-active,
 .keys-capture-popover .keys-finish-segment.is-active {
-  background: var(--surface);
-  color: var(--on-surface);
-  font-weight: 700;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  background: var(--surface, #fff);
+  color: var(--primary-strong, #1f8fb8);
+  font-weight: 800;
+  border-color: var(--primary, #2a9cc4);
+  box-shadow: none;
+}
+
+/* IME finish lives inside options card — drop the second frame */
+#settingsPanelKeys .keys-detail-card--options.keys-capture-key-panel:not(.is-custom-key-seq) {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 #settingsPanelKeys .keys-finish-segment-label,
@@ -1151,23 +1530,26 @@
   font-size: 12px;
   line-height: 1.2;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 #settingsPanelKeys .keys-finish-mode-hint,
 .keys-capture-popover .keys-finish-mode-hint {
-  margin: 8px 0 0;
-  padding: 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--on-surface-muted);
-  text-align: center;
+  display: none !important;
 }
 
 #settingsPanelKeys .keys-capture-keycap-zone.is-hero-mapped,
 .keys-capture-popover .keys-capture-keycap-zone.is-hero-mapped {
   border-color: var(--primary-strong);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-strong) 25%, transparent);
+}
+
+/* IME start: never re-box after .is-hero-mapped */
+#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone,
+#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone.is-hero-mapped {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 #settingsPanelKeys .keys-action-key-pick, .keys-capture-popover .keys-action-key-pick {
@@ -1246,6 +1628,196 @@
   min-height: 36px;
 }
 
+/* Voice pick: select-first hierarchy; one-line note card (not a 3-field wall) */
+#settingsPanelKeys .keys-voice-pick,
+.keys-capture-popover .keys-voice-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px 8px;
+}
+#settingsPanelKeys .keys-voice-pick.is-select-first .keys-voice-pick-label,
+.keys-capture-popover .keys-voice-pick.is-select-first .keys-voice-pick-label {
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--on-surface, #152238);
+}
+#settingsPanelKeys .keys-voice-pick-head,
+.keys-capture-popover .keys-voice-pick-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#settingsPanelKeys .keys-voice-pick-title,
+.keys-capture-popover .keys-voice-pick-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--on-surface-muted, #5a7086);
+}
+#settingsPanelKeys .keys-voice-pick-pill,
+.keys-capture-popover .keys-voice-pick-pill {
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--primary-strong, #1f8fb8);
+  background: var(--primary-soft, #e6f7fc);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+#settingsPanelKeys .keys-voice-pick-lead,
+.keys-capture-popover .keys-voice-pick-lead {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--on-surface-muted, #5a7086);
+}
+#settingsPanelKeys .keys-voice-pick-label,
+.keys-capture-popover .keys-voice-pick-label {
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--on-surface-muted, #5a7086);
+}
+#settingsPanelKeys .keys-voice-pick-select,
+.keys-capture-popover .keys-voice-pick-select {
+  width: 100%;
+  min-height: 44px;
+  border: 2px solid rgba(42, 156, 196, 0.45);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 750;
+  color: var(--on-surface, #152238);
+  background: #fff;
+}
+#settingsPanelKeys .keys-voice-pick-select:focus,
+.keys-capture-popover .keys-voice-pick-select:focus {
+  outline: 2px solid rgba(42, 156, 196, 0.35);
+  outline-offset: 1px;
+}
+#settingsPanelKeys .keys-voice-pick-card,
+.keys-capture-popover .keys-voice-pick-card {
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+#settingsPanelKeys .keys-voice-pick-card--one,
+.keys-capture-popover .keys-voice-pick-card--one {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  font-weight: 550;
+  color: var(--on-surface-muted, #5a7086);
+}
+#settingsPanelKeys .keys-voice-pick-card-title,
+.keys-capture-popover .keys-voice-pick-card-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary-strong, #1f8fb8);
+}
+#settingsPanelKeys .keys-voice-pick-field,
+.keys-capture-popover .keys-voice-pick-field {
+  display: grid;
+  grid-template-columns: 3.2em 1fr;
+  gap: 4px 10px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+#settingsPanelKeys .keys-voice-pick-field:last-child,
+.keys-capture-popover .keys-voice-pick-field:last-child {
+  margin-bottom: 0;
+}
+#settingsPanelKeys .keys-voice-pick-lab,
+.keys-capture-popover .keys-voice-pick-lab {
+  font-weight: 750;
+  color: var(--on-surface-muted, #5a7086);
+  font-size: 12px;
+}
+#settingsPanelKeys .keys-voice-pick-val,
+.keys-capture-popover .keys-voice-pick-val {
+  color: var(--on-surface, #152238);
+  font-weight: 650;
+}
+#settingsPanelKeys .keys-voice-pick-actions,
+.keys-capture-popover .keys-voice-pick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+#settingsPanelKeys .keys-voice-pick-primary,
+.keys-capture-popover .keys-voice-pick-primary {
+  border: 0;
+  border-radius: 9px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  background: var(--primary, #2a9cc4);
+  color: #fff;
+}
+#settingsPanelKeys .keys-voice-pick-primary:disabled,
+.keys-capture-popover .keys-voice-pick-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+#settingsPanelKeys .keys-voice-pick-escape,
+.keys-capture-popover .keys-voice-pick-escape {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--on-surface-muted, #5a7086);
+}
+#settingsPanelKeys .keys-voice-pick-how,
+.keys-capture-popover .keys-voice-pick-how {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--outline-variant, rgba(26, 45, 74, 0.12));
+  font-size: 12.5px;
+  color: var(--on-surface-muted, #5a7086);
+  line-height: 1.4;
+}
+#settingsPanelKeys .keys-voice-pick-how strong,
+.keys-capture-popover .keys-voice-pick-how strong {
+  color: var(--on-surface, #152238);
+  font-weight: 700;
+}
+#settingsPanelKeys .keys-voice-pick-how-chip,
+.keys-capture-popover .keys-voice-pick-how-chip {
+  display: inline-block;
+  margin: 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-container, #e6f7fc);
+  color: var(--primary, #1f8fb8);
+}
+#settingsPanelKeys .keys-voice-pick-how-chip.is-key,
+.keys-capture-popover .keys-voice-pick-how-chip.is-key {
+  background: var(--primary-container, #e6f7fc);
+  color: var(--primary, #1f8fb8);
+}
+#settingsPanelKeys .keys-voice-pick-how-chip.is-warn,
+.keys-capture-popover .keys-voice-pick-how-chip.is-warn {
+  background: #fff3e6;
+  color: #9a5b10;
+}
+#settingsPanelKeys .keys-voice-pick-how-chip.is-mute,
+.keys-capture-popover .keys-voice-pick-how-chip.is-mute {
+  background: #eef2f6;
+  color: var(--on-surface-muted, #5a7086);
+}
+#settingsPanelKeys .keys-voice-pick-how-text,
+.keys-capture-popover .keys-voice-pick-how-text {
+  color: var(--on-surface-muted, #5a7086);
+}
+
 /* 识别配置弹层：列表要用掉可用高度，不再沿用内联按键页的 148px 预算 */
 .keys-capture-popover .keys-channel-panel {
   display: flex;
@@ -1287,9 +1859,9 @@
 }
 
 #settingsPanelKeys .keys-channel-panel.is-softpad-pick {
-  max-height: min(70vh, 640px);
-  min-height: 280px;
-  overflow: auto;
+  max-height: none;
+  min-height: 0;
+  overflow: visible;
 }
 
 .keys-capture-popover .keys-channel-panel.is-softpad-pick {
@@ -1376,14 +1948,16 @@
   gap: 12px;
   align-items: start;
   width: 100%;
+  overflow: visible;
 }
 
 #settingsPanelKeys .keys-softpad-pick-host {
   display: flex;
   justify-content: center;
   width: 100%;
-  padding: 4px 0 2px;
+  padding: 4px 0 8px;
   min-width: 0;
+  overflow: visible;
 }
 
 #settingsPanelKeys .keys-softpad-pick-host.is-preview-only {
@@ -1391,8 +1965,65 @@
   pointer-events: none;
 }
 
-#settingsPanelKeys .keys-softpad-pick-host .micro-hw-wrap {
-  max-width: 100%;
+#settingsPanelKeys .keys-softpad-pick-host .micro-hw-wrap,
+#settingsPanelKeys .keys-softpad-pick-host .micro-hw-shell {
+  width: min(100%, 320px);
+  max-width: min(100%, 320px);
+  overflow: visible;
+}
+
+/* Title + agent bar need taller chassis than 1:1 or the 5×5 grid is clipped. */
+#settingsPanelKeys .keys-softpad-pick-host .micro-hw {
+  width: 100%;
+  max-width: min(100%, 320px);
+  aspect-ratio: 10 / 11;
+  height: auto;
+}
+
+#settingsPanelKeys .keys-softpad-pick-host .micro-hw__face {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#settingsPanelKeys .keys-softpad-pick-host .micro-hw__face-top {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  flex: 0 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#settingsPanelKeys .keys-softpad-pick-host .micro-hw__face-title {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  color: rgba(26, 45, 74, 0.78);
+}
+
+#settingsPanelKeys .keys-softpad-pick-host .soft-pad-agent-bar--face {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  pointer-events: none;
+}
+
+#settingsPanelKeys .keys-softpad-pick-host .micro-hw__grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  width: 100%;
 }
 
 #settingsPanelKeys .keys-softpad-pick-host .micro-hw__key.is-disabled {
@@ -1946,13 +2577,142 @@
 #settingsPanelKeys .keys-capture-ime-block .ime-preset-strip {
   justify-content: flex-start;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   padding: 4px 2px;
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+#settingsPanelKeys .keys-capture-ime-block .ime-preset-strip--labeled {
+  flex-direction: row;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+#settingsPanelKeys .ime-preset-item--labeled {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: auto;
+  min-width: 52px;
+  height: auto;
+  min-height: 52px;
+  padding: 6px 8px 5px;
+  flex: 0 0 auto;
+}
+
+#settingsPanelKeys .ime-preset-item--labeled .ime-preset-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+
+#settingsPanelKeys .ime-preset-name {
+  display: block;
+  max-width: 4.5em;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--on-surface-muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#settingsPanelKeys .ime-preset-item--labeled.is-selected .ime-preset-name {
+  color: var(--primary-strong);
+}
+
+#settingsPanelKeys .ime-preset-confirm,
+#settingsPanelKeys .ime-preset-verify-hint {
+  margin: 0;
+  font-size: var(--type-caption);
+  line-height: 1.4;
+  color: var(--on-surface-muted);
+}
+
+#settingsPanelKeys .ime-preset-confirm[hidden],
+#settingsPanelKeys .ime-preset-verify-hint[hidden] {
+  display: none !important;
+}
+
+#settingsPanelKeys .ime-preset-verify-hint {
+  color: #9c6300;
+}
+
+#settingsPanelKeys .keys-finish-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+#settingsPanelKeys .keys-finish-delay-host[hidden] {
+  display: none !important;
+}
+
+#settingsPanelKeys .keys-finish-delay-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+#settingsPanelKeys .keys-finish-delay-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+#settingsPanelKeys .keys-finish-delay-chip {
+  flex: 1 1 0;
+  min-width: 48px;
+  min-height: 28px;
+  padding: 4px 6px;
+  border-radius: 7px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+
+#settingsPanelKeys .keys-finish-delay-chip.is-active {
+  border-color: var(--primary);
+  background: var(--surface);
+  color: var(--primary-strong);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+#settingsPanelKeys .keys-finish-delay-chip--custom {
+  flex: 1.2 1 0;
+}
+
+#settingsPanelKeys .keys-finish-delay-controls.is-collapsed,
+#settingsPanelKeys .keys-finish-delay-controls[hidden] {
+  display: none !important;
 }
 
 #settingsPanelKeys .keys-channel-pane-right > .keys-ime-strip-wrap + .keys-detail-card {
-  margin-top: 4px;
+  margin-top: 0;
+}
+
+/* Compact IME keycap — no oversized hero padding */
+#settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-key-hero .habit-basic-key-display.display,
+#settingsPanelKeys #keysCaptureKeycapHost .habit-basic-key-display.display,
+#settingsPanelKeys #keysCaptureKeycapHost.habit-basic-key-display.display {
+  min-height: 40px;
+  min-width: 88px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 14px;
 }
 
 #settingsPanelKeys .ime-preset-item--custom,
@@ -1966,6 +2726,17 @@
   padding: 0;
   background: var(--surface-high);
   color: var(--primary-strong);
+  flex: 0 0 auto;
+}
+
+#settingsPanelKeys .ime-preset-item--custom.ime-preset-item--labeled {
+  width: auto;
+  min-width: 52px;
+  height: auto;
+  min-height: 52px;
+  padding: 6px 8px 5px;
+  flex-direction: column;
+  gap: 4px;
 }
 
 #settingsPanelKeys .ime-preset-item--picker {
@@ -2731,10 +3502,45 @@
   display: none;
 }
 
+/* Master enable sits apart from habit/config action cluster */
+#settingsPanelKeys.has-settings-context-bar .keys-page-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+#settingsPanelKeys.has-settings-context-bar .keys-page-status-bar > .settings-context-chrome {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: calc(100% - 72px);
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+  order: 1;
+}
+
 #settingsPanelKeys.has-settings-context-bar .keys-page-status-bar .page-status-bar-actions {
-  flex: 1 1 100%;
+  order: 2;
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  align-self: center;
   justify-content: flex-end;
-  padding-top: 2px;
+}
+
+#settingsPanelKeys.has-settings-context-bar .settings-context-chrome__actions {
+  justify-content: flex-start;
+  margin-left: 0;
+}
+
+#settingsPanelKeys.has-settings-context-bar .settings-context-chrome__actions .settings-context-hub-btn,
+#settingsPanelKeys.has-settings-context-bar .settings-context-chrome__actions .settings-context-follow-btn {
+  font-weight: 650;
+  color: var(--on-surface-muted);
+  background: transparent;
 }
 
 #settingsPanelKeys .keys-scheme-status-main {
@@ -3077,7 +3883,7 @@
   color: var(--primary-strong);
 }
 
-#settingsPanelKeys .keys-capture-ime-block .ime-preset-item {
+#settingsPanelKeys .keys-capture-ime-block .ime-preset-item:not(.ime-preset-item--labeled) {
   width: 32px;
   height: 32px;
 }
@@ -3218,7 +4024,7 @@
   padding-top: 0;
 }
 
-#settingsPanelKeys .keys-capture-ime-block .ime-preset-item {
+#settingsPanelKeys .keys-capture-ime-block .ime-preset-item:not(.ime-preset-item--labeled) {
   width: 28px;
   height: 28px;
 }

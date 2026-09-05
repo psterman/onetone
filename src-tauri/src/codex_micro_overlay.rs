@@ -5254,6 +5254,7 @@ mod tests {
             agent_bindings: vec![],
             time_machine_workspace: String::new(),
         capture_hero_ref: None,
+        target_actions: vec![],
         }
     }
 

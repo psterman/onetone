@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Keys 语音补键 · 按场景选（非展示快捷键）</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,650;0,9..40,800&family=JetBrains+Mono:wght@500&display=swap");
+
+    :root {
+      --ink: #152238;
+      --muted: #5a7086;
+      --line: rgba(26, 45, 74, 0.10);
+      --cyan: #2a9cc4;
+      --cyan-deep: #1f8fb8;
+      --cyan-soft: #e6f7fc;
+      --ok: #2e7d4f;
+      --ok-soft: #e8f6ee;
+      --bg: #e8f0f5;
+      --card: #fff;
+      --font: "DM Sans", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background: radial-gradient(700px 320px at 15% -8%, #d5ebf4, transparent 55%), var(--bg);
+      line-height: 1.45;
+    }
+
+    .top {
+      position: sticky; top: 0; z-index: 10;
+      padding: 12px 18px;
+      background: rgba(255,255,255,0.94);
+      border-bottom: 1px solid var(--line);
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    }
+    .tag {
+      font-size: 11px; font-weight: 800; color: #fff;
+      background: var(--cyan); padding: 3px 10px; border-radius: 999px;
+    }
+    .top h1 { margin: 0; font-size: 15px; font-weight: 800; }
+    .top p { margin: 0; font-size: 12.5px; color: var(--muted); max-width: 54ch; }
+
+    .wrap { max-width: 720px; margin: 0 auto; padding: 18px 14px 48px; }
+
+    .app {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 12px 28px rgba(26,45,74,0.07);
+      overflow: hidden;
+    }
+    .app-h {
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
+      background: #fafcfd;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .app-h h2 { margin: 0; font-size: 14px; font-weight: 800; }
+    .pill {
+      font-size: 11px; font-weight: 750; color: var(--cyan-deep);
+      background: var(--cyan-soft); padding: 3px 8px; border-radius: 999px;
+    }
+
+    .main { padding: 16px 18px 20px; }
+
+    .lead {
+      margin: 0 0 14px; font-size: 13px; color: var(--muted);
+    }
+    .lead strong { color: var(--ink); font-weight: 750; }
+
+    .pick-label {
+      font-size: 11px; font-weight: 750; color: var(--muted);
+      margin-bottom: 6px; letter-spacing: 0.03em;
+    }
+    .pick {
+      width: 100%;
+      appearance: none;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 40px 12px 14px;
+      font: inherit;
+      font-size: 15px;
+      font-weight: 750;
+      color: var(--ink);
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%215a7086' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 14px center;
+      cursor: pointer;
+      margin-bottom: 14px;
+    }
+    .pick:focus {
+      outline: none;
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(42,156,196,0.2);
+    }
+
+    .card-info {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px;
+      background: linear-gradient(180deg, #f7fbfd 0%, #fff 48%);
+      margin-bottom: 14px;
+    }
+    .card-info h3 {
+      margin: 0 0 12px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--cyan-deep);
+    }
+    .field {
+      display: grid;
+      grid-template-columns: 3.2em 1fr;
+      gap: 6px 10px;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .field:last-child { margin-bottom: 0; }
+    .field .lab {
+      font-weight: 750; color: var(--muted); font-size: 12px;
+      padding-top: 1px;
+    }
+    .field .val { color: var(--ink); font-weight: 650; }
+
+    .actions {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    }
+    .actions button {
+      border: 0; border-radius: 9px; padding: 10px 14px;
+      font: inherit; font-size: 13px; font-weight: 750; cursor: pointer;
+    }
+    .primary { background: var(--cyan); color: #fff; }
+    .primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .ghost { background: var(--cyan-soft); color: var(--cyan-deep); }
+
+    .note {
+      margin-top: 12px; font-size: 12px; color: var(--muted);
+    }
+    .note a { color: var(--cyan-deep); font-weight: 750; text-decoration: none; }
+
+    .anti {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fff8f0;
+      border: 1px solid rgba(185,83,10,0.2);
+      font-size: 12.5px;
+      color: #8a4a10;
+    }
+    .anti strong { color: #6b3808; }
+
+    .foot { text-align: center; font-size: 12px; color: var(--muted); margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <span class="tag">原型</span>
+    <div>
+      <h1>选动作看场景 / 效果 / 功能</h1>
+      <p>不把「当前快捷键」当主信息。先帮用户理解何时用、会怎样，再决定要不要补键。</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="app">
+      <div class="app-h">
+        <h2>语音补键</h2>
+        <span class="pill">当前习惯 · Cursor</span>
+      </div>
+      <div class="main">
+        <p class="lead">选一个<strong>你想用快捷键触发</strong>的语音动作。先看它解决什么问题。</p>
+
+        <div class="pick-label">选一个动作</div>
+        <select class="pick" id="pick" aria-label="选一个动作">
+          <option value="start">开始听写</option>
+          <option value="cancel">取消本轮</option>
+          <option value="end">结束并发送</option>
+          <option value="continue">继续</option>
+          <option value="open">打开 Cursor</option>
+          <option value="new">新会话</option>
+        </select>
+
+        <div class="card-info" id="info" aria-live="polite">
+          <h3 id="title">开始听写</h3>
+          <div class="field">
+            <div class="lab">场景</div>
+            <div class="val" id="scene">要对着 Composer / 输入框灌长 prompt、改需求说明时。</div>
+          </div>
+          <div class="field">
+            <div class="lab">效果</div>
+            <div class="val" id="effect">打开语音输入，字直接打进当前输入框。</div>
+          </div>
+          <div class="field">
+            <div class="lab">功能</div>
+            <div class="val" id="func">启动听写会话（也可用迷你栏麦或唤醒词）。</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="primary" id="btn">为这个动作补快捷键</button>
+          <button type="button" class="ghost" id="btnAlt" hidden>改用输入法识别键</button>
+        </div>
+
+        <p class="note">要改口令或加新命令？ <a href="#">去 Soft Pad 设计 →</a></p>
+
+        <div class="anti">
+          <strong>刻意不展示：</strong>当前是 Ctrl+Shift+Space 这类键帽主文案。
+          键是配置结果，不是选择依据；选的时候比的是场景和效果。
+        </div>
+      </div>
+    </div>
+
+    <p class="foot">docs/mockups/keys-voice-list-redesign.html · 切换下拉看文案变化</p>
+  </main>
+
+  <script>
+    (function () {
+      var data = {
+        start: {
+          title: "开始听写",
+          scene: "要对着 Composer / 输入框灌长 prompt、改需求说明时。",
+          effect: "打开语音输入，字直接打进当前输入框。",
+          func: "启动听写会话（也可用迷你栏麦或唤醒词）。",
+          alt: true,
+          canKey: true
+        },
+        cancel: {
+          title: "取消本轮",
+          scene: "听写说到一半说错了、或这轮不想要了。",
+          effect: "立刻停掉本轮听写，不把内容当真发送。",
+          func: "结束听写会话并撤销本轮输入意图。",
+          alt: false,
+          canKey: true
+        },
+        end: {
+          title: "结束并发送",
+          scene: "长 prompt 说完了，要交给 Agent 开跑。",
+          effect: "结束听写并把内容发送出去（或提交输入）。",
+          func: "听写收尾。推荐用按键，避免嘴里说「发送」误触。",
+          alt: false,
+          canKey: true,
+          finish: true
+        },
+        continue: {
+          title: "继续",
+          scene: "Agent 停住等你、或你要它接着干下一步。",
+          effect: "向当前 Agent 发出「继续」类动作（与 Soft Pad 同能力）。",
+          func: "短命令。Cursor 前台时常可直接说；键可选。",
+          alt: false,
+          canKey: true
+        },
+        open: {
+          title: "打开 Cursor",
+          scene: "人在浏览器 / 别的窗口，要回到 Cursor 开战。",
+          effect: "打开或聚焦 Cursor，并切到对应习惯。",
+          func: "应用召唤。口令已有；键方便手不离键。",
+          alt: false,
+          canKey: true
+        },
+        new: {
+          title: "新会话",
+          scene: "当前对话太乱，想开一条干净上下文。",
+          effect: "新建 Agent / Composer 会话（视绑定而定）。",
+          func: "短命令。默认仅语音即可，不必强行配键。",
+          alt: false,
+          canKey: false
+        }
+      };
+
+      var pick = document.getElementById("pick");
+      var title = document.getElementById("title");
+      var scene = document.getElementById("scene");
+      var effect = document.getElementById("effect");
+      var func = document.getElementById("func");
+      var btn = document.getElementById("btn");
+      var btnAlt = document.getElementById("btnAlt");
+
+      function sync() {
+        var row = data[pick.value] || data.start;
+        title.textContent = row.title;
+        scene.textContent = row.scene;
+        effect.textContent = row.effect;
+        func.textContent = row.func;
+        btnAlt.hidden = !row.alt;
+        btn.disabled = !row.canKey;
+        btn.textContent = row.finish
+          ? "去快捷键设收尾"
+          : row.canKey
+            ? "为这个动作补快捷键"
+            : "此动作默认仅语音";
+      }
+      pick.addEventListener("change", sync);
+      sync();
+    })();
+  </script>
+</body>
+</html>

@@ -385,12 +385,19 @@
     if(!ref||typeof ref!=='object') return defaultCaptureHeroRef();
     var ch=String(ref.channel||'key').trim();
     if(['key','voice','cursor','softPad','camera','ime'].indexOf(ch)<0) ch='key';
+    var kind=String(ref.kind||'').trim();
+    if(!kind){
+      if(ch==='key'&&!ref.actionId){
+        var br=String(ref.bindingRef||'').trim();
+        kind=(br&&br!=='ime')?'customKey':'ime';
+      }else kind='action';
+    }
     return {
       channel:ch,
       bindingRef:String(ref.bindingRef||'').trim(),
       actionId:String(ref.actionId||'').trim(),
       actionInstanceId:String(ref.actionInstanceId||'').trim(),
-      kind:String(ref.kind||((ch==='key'&&!ref.actionId)?'ime':'action')).trim()
+      kind:kind
     };
   }
 

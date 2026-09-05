@@ -820,7 +820,8 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       k='AutoTrigger';
     }
     if(hooks().shouldIgnoreTriggerLeftClickCapture(rawKey||k,rawSourceKey||rawKey||k,source)) return false;
-    const m=OneToneMappingCore.recording()||OneToneMappingCore.byId(rec.mappingId)||OneToneMappingCore.selected();
+    // let: may retarget to an existing/forked mapping below (same-app trigger switch).
+    let m=OneToneMappingCore.recording()||OneToneMappingCore.byId(rec.mappingId)||OneToneMappingCore.selected();
     if(m){
       const tgt=hooks().normalizeTriggerKey(OneToneMappingCore.editorTarget(m)||m.targetKey||'');
       if(tgt&&k&&tgt===k){

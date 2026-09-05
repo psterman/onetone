@@ -255,8 +255,43 @@
       tgtEl.textContent=tgt?hooks().friendlyKeyName(tgt):emptyLbl;
       tgtEl.className='home-key-map-key'+(tgt?' is-set':' is-empty');
     }
-    if(trigHint) trigHint.hidden=!!trig;
-    if(tgtHint) tgtHint.hidden=!!tgt;
+    // ── target action sequence (added 2026-09) ──
+    // When `mapping.targetActions` is non-empty and has >1 step, show a stacked
+    // list instead of the single keycap. Single Key / empty still uses the
+    // original keycap so the rest of the home layout stays unchanged.
+    // Home is now an editable surface: ▲▼ reorder, × remove, + add (3 types).
+    // Each click calls `cmd_mapping_set_target_actions` to persist.
+    var actsEl=$('homeKeyMapTargetActions');
+    var acts=effectiveTargetActions(m);
+    var canEdit=!!m && !loading && !busy;
+    if(actsEl){
+      if(acts.length>=1){
+        actsEl.hidden=false;
+        if(tgtEl) tgtEl.hidden=true;
+        var rows=acts.map(function(a,i){ return buildActionRowHtml(a, i, acts.length, canEdit); }).join('');
+        var addRow=canEdit
+          ? '<div class="home-key-map-action-addrow">'
+            + '<button type="button" class="home-key-map-action-add" data-add="key">'+escHtml(t('homeKeyMapActionTypeKey'))+' +</button>'
+            + '<button type="button" class="home-key-map-action-add" data-add="record">⏺ '+escHtml(t('homeKeyMapActionRecord'))+' +</button>'
+            + '<button type="button" class="home-key-map-action-add" data-add="text">'+escHtml(t('homeKeyMapActionTypeText'))+' +</button>'
+            + '<button type="button" class="home-key-map-action-add" data-add="delay">'+escHtml(t('homeKeyMapActionTypeDelay'))+' +</button>'
+            + '</div>'
+          : '';
+        var moreRow=acts.length>1
+          ? '<div class="home-key-map-action-more">'+escHtml(t('homeKeyMapActionMore').replace('{n}',acts.length))+'</div>'
+          : '';
+        actsEl.innerHTML=rows+addRow+moreRow;
+        if(canEdit) wireTargetActionsHandlers(actsEl, m);
+      } else {
+        actsEl.hidden=true;
+        actsEl.innerHTML='';
+        if(tgtEl) tgtEl.hidden=false;
+      }
+    }
+    if(trigHint) trigHint.hidden=!!tgt || acts.length>0;
+    if(tgtHint){
+      tgtHint.hidden=!!tgt || acts.length>0;
+    }
     [triggerStep,targetStep,finishStep,finishArrow].forEach(function(el){
       if(el) el.classList.toggle('is-clickable',!loading&&!busy);
     });
@@ -372,6 +407,344 @@
       finishHint.hidden=true;
     }
   }
+  // ── target action sequence helpers (added 2026-09) ──
+  function effectiveTargetActions(m){
+    if(!m) return [];
+    if(Array.isArray(m.targetActions)&&m.targetActions.length){
+      return m.targetActions.map(function(a){
+        return {type:a.type||'key',value:a.value,ms:a.ms};
+      });
+    }
+    var tk=String(m.targetKey||'').trim();
+    return tk?[{type:'key',value:tk}]:[];
+  }
+  function escHtml(s){
+    if(typeof s!=='string') return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function syncTargetKeyFromActions(m, next){
+    if(!m) return;
+    m.targetActions = Array.isArray(next) ? next.slice() : [];
+    var firstKey = null;
+    for(var i=0;i<m.targetActions.length;i++){
+      var a=m.targetActions[i];
+      if(a&&a.type==='key'&&String(a.value||'').trim()){ firstKey=String(a.value).trim(); break; }
+    }
+    m.targetKey = firstKey || '';
+  }
+  // Numbered action row: type badge + readable body + always-visible ▲▼×.
+  function buildActionRowHtml(a, i, total, canEdit){
+    var typ = a&&a.type ? String(a.type) : '';
+    var badge = '·';
+    var typeLbl = '';
+    var body = '';
+    var editHint = '';
+    if(typ==='key'){
+      badge='⌨'; typeLbl=t('homeKeyMapActionTypeKey');
+      body=escHtml(hooks().friendlyKeyName(a.value||''));
+      editHint=' data-edit="key"';
+    } else if(typ==='text'){
+      badge='A'; typeLbl=t('homeKeyMapActionTypeText');
+      body=escHtml(a.value||'');
+      editHint=' data-edit="text"';
+    } else if(typ==='delay'){
+      badge='⏱'; typeLbl=t('homeKeyMapActionTypeDelay');
+      body=escHtml(String(a.ms||0)+' ms');
+      editHint=' data-edit="delay"';
+    } else {
+      typeLbl=escHtml(typ||'?');
+      body='';
+    }
+    var upDis = !canEdit || i<=0;
+    var downDis = !canEdit || i>=total-1;
+    var moveUp = canEdit
+      ? '<button type="button" class="home-key-map-action-btn" data-act="up" data-idx="'+i+'"'
+        +(upDis?' disabled':'')
+        +' title="'+escHtml(t('homeKeyMapActionUp'))+'" aria-label="'+escHtml(t('homeKeyMapActionUp'))+'">▲</button>'
+      : '';
+    var moveDown = canEdit
+      ? '<button type="button" class="home-key-map-action-btn" data-act="down" data-idx="'+i+'"'
+        +(downDis?' disabled':'')
+        +' title="'+escHtml(t('homeKeyMapActionDown'))+'" aria-label="'+escHtml(t('homeKeyMapActionDown'))+'">▼</button>'
+      : '';
+    var del = canEdit
+      ? '<button type="button" class="home-key-map-action-btn is-del" data-act="del" data-idx="'+i+'" title="'+escHtml(t('homeKeyMapActionDelete'))+'" aria-label="'+escHtml(t('homeKeyMapActionDelete'))+'">×</button>'
+      : '';
+    return '<div class="home-key-map-action-row is-'+escHtml(typ||'unknown')+'" data-idx="'+i+'">'
+      +'<span class="home-key-map-action-idx">'+(i+1)+'</span>'
+      +'<span class="home-key-map-action-type" aria-hidden="true"><span class="home-key-map-action-badge is-'+escHtml(typ||'unknown')+'">'+badge+'</span></span>'
+      +'<span class="home-key-map-action-body">'
+      +'<span class="home-key-map-action-kind">'+escHtml(typeLbl)+'</span>'
+      +'<span class="home-key-map-action-lbl"'+editHint+(editHint?' title="'+escHtml(t('homeKeyMapActionEditHint'))+'"':'')+'>'+body+'</span>'
+      +'</span>'
+      +'<span class="home-key-map-action-acts">'+moveUp+moveDown+del+'</span>'
+      +'</div>';
+  }
+
+  // Persist via dedicated IPC; on ACL / missing-cmd failure fall back to cmd_save
+  // so the list still sticks before a rebuild picks up the new permission.
+  function commitTargetActions(mappingId, actions){
+    var invoke = global.OneToneIpc&&global.OneToneIpc.invoke
+      ? global.OneToneIpc.invoke('cmd_mapping_set_target_actions', { id: mappingId, targetActions: actions })
+      : Promise.reject(new Error('ipc unavailable'));
+    return invoke.catch(function(err){
+      var msg = String(err&&err.message||err||'');
+      if(/ACL|not allowed|not found|unknown/i.test(msg)){
+        var persist = global.OneToneConfigPersist;
+        if(persist&&typeof persist.save==='function'){
+          return persist.save({ source:'mapping' });
+        }
+      }
+      return Promise.reject(err);
+    });
+  }
+
+  // Optimistic UI first, then persist — ACL failures must not blank the list.
+  function applyAndRefresh(m, next){
+    if(!m||!m.id) return Promise.resolve(null);
+    syncTargetKeyFromActions(m, next);
+    if(global.OneToneState&&global.OneToneState.state&&typeof global.OneToneState.state.render==='function'){
+      try{ global.OneToneState.state.render(); }catch(_){ }
+    }
+    var keysEl=document.getElementById('keysCaptureTargetActions');
+    if(keysEl && keysEl.classList.contains('is-keys-variant')){
+      try{ renderTargetActionsInto(keysEl, m, { mode:'picker', variant:'keys' }); }catch(_){ }
+    }
+    var picker=global.OneToneKeysChannelCommandPicker;
+    if(picker&&picker.refreshKeysCustomKeyMatchList){
+      try{ picker.refreshKeysCustomKeyMatchList(); }catch(_){ }
+    }
+    // Keep 02 recognition preview in sync with the edited match sequence.
+    if(picker&&picker.applyHero){
+      try{ picker.applyHero(); }catch(_){ }
+    }
+    if(global.OneToneKeysPageNav&&global.OneToneKeysPageNav.renderStepHints){
+      try{ global.OneToneKeysPageNav.renderStepHints(); }catch(_){ }
+    }
+    return commitTargetActions(m.id, next).catch(function(err){
+      try{ console.error('targetActions persist failed', err); }catch(_){ }
+      return null;
+    });
+  }
+
+  // Ask the user for a chord string.  Prefers the targetKeyPicker (with the
+  // searchable chord catalog + manual record) when available; falls back to
+  // a plain `prompt()` so dev / headless / pickers-missing environments still
+  // work.
+  function pickKeyChord(onPicked){
+    var picker=global.OneToneTargetKeyPicker;
+    if(picker&&picker.openWithCallback){
+      picker.openWithCallback(function(chord){
+        onPicked(String(chord||'').trim());
+      });
+      return;
+    }
+    var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptKey'),'Enter')||'';
+    onPicked(v.trim());
+  }
+
+  // Lightweight inline key recorder for the home page.  Pops a translucent
+  // modal, listens for the next non-modifier keydown, joins modifiers + key
+  // into a `Ctrl+Shift+D` style chord, then fires the callback.  Esc cancels.
+  // Independent from the picker so non-settings callers can record without
+  // touching the settings recording state machine.
+  function recordChordInline(onRecorded){
+    var doc=document;
+    var overlay=doc.createElement('div');
+    overlay.className='home-record-overlay';
+    overlay.setAttribute('role','dialog');
+    overlay.setAttribute('aria-modal','true');
+    overlay.innerHTML='<div class="home-record-card">'
+      +'<div class="home-record-card-h">'+(global.OneToneI18n&&global.OneToneI18n.t?t('homeKeyMapActionRecordTitle'):'Record a key combo')+'</div>'
+      +'<div class="home-record-card-p">'+(global.OneToneI18n&&global.OneToneI18n.t?t('homeKeyMapActionRecordHint'):'Press the key combo you want — Esc to cancel')+'</div>'
+      +'<div class="home-record-card-kbd" id="homeRecordCardKbd">—</div>'
+      +'</div>';
+    doc.body.appendChild(overlay);
+    var kbdEl=overlay.querySelector('#homeRecordCardKbd');
+    var cleanup=function(){
+      doc.removeEventListener('keydown',onKey,true);
+      doc.removeEventListener('keyup',onKeyUp,true);
+      if(overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    };
+    var renderChord=function(parts){
+      if(kbdEl) kbdEl.textContent=parts.length?parts.join('+'):'—';
+    };
+    var isMod=function(k){ return k==='Control'||k==='Shift'||k==='Alt'||k==='Meta'; };
+    var modName=function(k){
+      if(k==='Control') return 'Ctrl';
+      if(k==='Meta') return 'Win';
+      return k.charAt(0).toUpperCase()+k.slice(1);
+    };
+    var onKeyUp=function(ev){
+      // Live preview: show modifier-only state when no main key yet.
+      if(isMod(ev.key)) return;
+    };
+    var onKey=function(ev){
+      if(ev.key==='Escape'){ ev.preventDefault(); cleanup(); onRecorded(''); return; }
+      if(isMod(ev.key)){
+        ev.preventDefault();
+        var p=[];
+        if(ev.ctrlKey) p.push('Ctrl');
+        if(ev.altKey) p.push('Alt');
+        if(ev.shiftKey) p.push('Shift');
+        if(ev.metaKey) p.push('Win');
+        renderChord(p);
+        return;
+      }
+      ev.preventDefault();
+      ev.stopPropagation();
+      var p=[];
+      if(ev.ctrlKey) p.push('Ctrl');
+      if(ev.altKey) p.push('Alt');
+      if(ev.shiftKey) p.push('Shift');
+      if(ev.metaKey) p.push('Win');
+      var main=ev.key;
+      if(main===' ') main='Space';
+      // Normalize single character keys to upper case so they match
+      // voice-pilot's canonical `Ctrl+Enter` style chord names.
+      if(main.length===1) main=main.toUpperCase();
+      p.push(main);
+      var chord=p.join('+');
+      cleanup();
+      onRecorded(chord);
+    };
+    doc.addEventListener('keydown',onKey,true);
+    doc.addEventListener('keyup',onKeyUp,true);
+  }
+
+  function pickKeyChordViaRecord(onPicked){
+    recordChordInline(function(chord){
+      onPicked(String(chord||'').trim());
+    });
+  }
+
+  // Wire click handlers for ▲/▼/×/+/+Key/+/Text/+/Delay buttons.  Re-renders
+  // the home view on success.
+  // `options.mode`:
+  //   'picker' (default) — + key opens the chord catalog picker, + key
+  //     dblclick edits via picker, + record opens picker+mini recorder.
+  //   'prompt' — all chord input is via `prompt()` (no picker, no auto-
+  //     recording).  Used by the keys panel "custom key" tab where the
+  //     product wants the user to type the chord string explicitly.
+  function wireTargetActionsHandlers(actsEl, m, options){
+    options = options || {};
+    var mode = options.mode || 'picker';
+    if(!m||!m.id) return;
+    var btns=actsEl.querySelectorAll('.home-key-map-action-btn, .home-key-map-action-add');
+    btns.forEach(function(btn){
+      if(btn.__wired) return;
+      btn.__wired=true;
+      btn.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        ev.preventDefault();
+        if(btn.disabled) return;
+        var act=btn.getAttribute('data-act');
+        var add=btn.getAttribute('data-add');
+        var idx=parseInt(btn.getAttribute('data-idx')||'-1',10);
+        var cur=effectiveTargetActions(m).slice();
+        if(act==='up'&&idx>0){ var tmp=cur[idx-1]; cur[idx-1]=cur[idx]; cur[idx]=tmp; }
+        else if(act==='down'&&idx>=0&&idx<cur.length-1){ var tmp=cur[idx+1]; cur[idx+1]=cur[idx]; cur[idx]=tmp; }
+        else if(act==='del'&&idx>=0){ cur.splice(idx,1); }
+        else if(add==='key'){
+          if(mode==='prompt'){
+            var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptKey'),'Ctrl+Enter')||'';
+            v=v.trim(); if(v) cur.push({type:'key',value:v});
+            applyAndRefresh(m, cur);
+          } else {
+            // Reuse the targetKeyPicker when available so the user gets
+            // the searchable chord catalog + manual record.  Empty /
+            // cancelled picks drop the operation entirely.
+            pickKeyChord(function(chord){
+              if(!chord) return;
+              cur.push({type:'key',value:chord});
+              applyAndRefresh(m, cur);
+            });
+          }
+          return;
+        }
+        else if(add==='record'){
+          if(mode==='prompt'){
+            // Recording-style button is hidden in 'prompt' mode but the
+            // defensive guard below prevents accidental click.
+            return;
+          }
+          // Open the picker with a record-callback.  The user can either
+          // tap a chord from the catalog (callback fires with the chord) or
+          // tap the picker's "manual record" button which routes through
+          // the home-page mini recorder.
+          var picker=global.OneToneTargetKeyPicker;
+          if(picker&&picker.openWithRecordCallback){
+            picker.openWithRecordCallback(function(chord){
+              if(!chord) return;
+              cur.push({type:'key',value:chord});
+              applyAndRefresh(m, cur);
+            });
+          } else {
+            pickKeyChordViaRecord(function(chord){
+              if(!chord) return;
+              cur.push({type:'key',value:chord});
+              applyAndRefresh(m, cur);
+            });
+          }
+          return;
+        }
+        else if(add==='text'){ var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptText'),'')||''; v=v.trim(); if(v) cur.push({type:'text',value:v}); }
+        else if(add==='delay'){ var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptDelay'),'200')||''; v=v.trim(); var n=parseInt(v,10); if(n>0) cur.push({type:'delay',ms:n}); }
+        else { return; }
+        applyAndRefresh(m, cur);
+      });
+    });
+    // Double-click on row labels to edit that one step in place.
+    var lbls=actsEl.querySelectorAll('.home-key-map-action-lbl[data-edit]');
+    lbls.forEach(function(lbl){
+      if(lbl.__wired) return;
+      lbl.__wired=true;
+      lbl.addEventListener('dblclick', function(ev){
+        ev.stopPropagation();
+        ev.preventDefault();
+        var editKind=lbl.getAttribute('data-edit');
+        var row=lbl.closest ? lbl.closest('.home-key-map-action-row') : lbl.parentElement;
+        var idx=parseInt((row&&row.getAttribute('data-idx'))||'-1',10);
+        if(idx<0) return;
+        var cur=effectiveTargetActions(m).slice();
+        var cur2=cur[idx];
+        if(!cur2) return;
+        var commitEdit=function(value){
+          if(!value) return;
+          if(editKind==='text'){ cur[idx]={type:'text',value:value}; }
+          else if(editKind==='delay'){ cur[idx]={type:'delay',ms:value}; }
+          applyAndRefresh(m, cur);
+        };
+        if(editKind==='text'){
+          var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptTextEdit'), cur2.value||'')||'';
+          v=v.trim();
+          if(!v) return;
+          commitEdit(v);
+        } else if(editKind==='delay'){
+          var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptDelayEdit'), String(cur2.ms||0))||'';
+          v=v.trim();
+          var n=parseInt(v,10);
+          if(!n||n<=0) return;
+          commitEdit(n);
+        } else if(editKind==='key'){
+          if(mode==='prompt'){
+            var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptKeyEdit'), cur2.value||'')||'';
+            v=v.trim();
+            if(!v) return;
+            cur[idx]={type:'key',value:v};
+            applyAndRefresh(m, cur);
+          } else {
+            pickKeyChord(function(chord){
+              if(!chord) return;
+              cur[idx]={type:'key',value:chord};
+              applyAndRefresh(m, cur);
+            });
+          }
+        } else { return; }
+      });
+    });
+  }
+
   function homeMicStatusLabel(){
     if(!hooks().configLoadedFromBackend()) return t('homeLiveLoading');
     const micDevices=hooks().micDevices;
@@ -680,5 +1053,90 @@
     renderZone:renderHomeLiveZone,
     scheduleRenderZone:scheduleRenderHomeLiveZone,
     renderVoiceModeSwitchUi:renderHomeVoiceModeSwitchUi
+  };
+
+  // Expose the inline key recorder globally so non-settings callers (e.g. the
+  // target-key-picker "manual record" button in callback mode) can reuse it
+  // without going through the settings recording state machine.
+  global.OneToneHomeRecordChord=recordChordInline;
+
+  // Full target-actions editor exposed for non-home callers (e.g. the keys
+  // panel "custom key" tab).  Renders a full A-list with ▲▼× buttons,
+  // 4 add buttons (key / record / text / delay), double-click inline edit,
+  // and IPC persistence — all into `container`.  Re-renders on every call.
+  // Reuses the same pickers (targetKeyPicker.openWithCallback /
+  // .openWithRecordCallback) and the home mini recorder via
+  // `OneToneHomeRecordChord`.
+  //
+  // Options:
+  //   readOnly: render read-only, no buttons
+  //   mode: 'picker' (default) | 'prompt' — picker reuses targetKeyPicker +
+  //         mini recorder; prompt reuses plain `prompt()` so the user types
+  //         chord / text / ms themselves without any recording.
+  //   variant: 'keys' — larger empty state + add tiles for Keys「自定义键」tab.
+  function renderTargetActionsInto(container, mapping, options){
+    options = options || {};
+    if(!container) return;
+    var m = mapping;
+    var acts = effectiveTargetActions(m);
+    var canEdit = !!m && !!m.id && !options.readOnly;
+    var mode = options.mode || 'picker';
+    var isKeys = options.variant === 'keys';
+    var showRecordBtn = (mode === 'picker');
+    container.classList.toggle('is-keys-variant', isKeys);
+    var buildAddRow = function(){
+      if(!canEdit) return '';
+      var cls = isKeys ? 'home-key-map-action-add is-tile' : 'home-key-map-action-add';
+      var parts = '';
+      if(showRecordBtn){
+        parts += '<button type="button" class="'+cls+'" data-add="record">'
+          + (isKeys
+            ? '<span class="home-key-map-action-add-ico" aria-hidden="true">⏺</span><span class="home-key-map-action-add-lbl">'+escHtml(t('keysCaptureSeqAddRecord','录制快捷键'))+'</span>'
+            : '⏺ '+escHtml(t('homeKeyMapActionRecord'))+' +')
+          + '</button>';
+      }
+      parts += '<button type="button" class="'+cls+'" data-add="key">'
+        + (isKeys
+          ? '<span class="home-key-map-action-add-ico" aria-hidden="true">⌨</span><span class="home-key-map-action-add-lbl">'+escHtml(t('keysCaptureSeqAddKey','选择按键'))+'</span>'
+          : escHtml(t('homeKeyMapActionTypeKey'))+' +')
+        + '</button>';
+      parts += '<button type="button" class="'+cls+'" data-add="text">'
+        + (isKeys
+          ? '<span class="home-key-map-action-add-ico" aria-hidden="true">A</span><span class="home-key-map-action-add-lbl">'+escHtml(t('keysCaptureSeqAddText','填入文本'))+'</span>'
+          : escHtml(t('homeKeyMapActionTypeText'))+' +')
+        + '</button>';
+      parts += '<button type="button" class="'+cls+'" data-add="delay">'
+        + (isKeys
+          ? '<span class="home-key-map-action-add-ico" aria-hidden="true">⏱</span><span class="home-key-map-action-add-lbl">'+escHtml(t('keysCaptureSeqAddDelay','延迟'))+'</span>'
+          : escHtml(t('homeKeyMapActionTypeDelay'))+' +')
+        + '</button>';
+      return '<div class="home-key-map-action-addrow'+(isKeys?' is-tiles':'')+'">'+parts+'</div>';
+    };
+    if(acts.length >= 1){
+      container.hidden = false;
+      var rows = acts.map(function(a, i){ return buildActionRowHtml(a, i, acts.length, canEdit); }).join('');
+      var moreRow = acts.length>1
+        ? '<div class="home-key-map-action-more">'+escHtml(t('homeKeyMapActionMore').replace('{n}',acts.length))+'</div>'
+        : '';
+      container.innerHTML = '<div class="home-key-map-action-list">'+rows+'</div>'+buildAddRow()+moreRow;
+      if(canEdit) wireTargetActionsHandlers(container, m, { mode: mode });
+    } else {
+      container.hidden = false;
+      var emptyHtml = isKeys
+        ? ('<div class="home-key-map-action-empty is-keys">'
+          + '<b>'+escHtml(t('keysCaptureSeqEmptyTitle','还没有动作'))+'</b>'
+          + '<span>'+escHtml(t('keysCaptureSeqEmptyBody','添加录制快捷键、文本或延迟；按一次启动键会依次执行。'))+'</span>'
+          + '</div>')
+        : ('<div class="home-key-map-action-empty">'
+          + escHtml(t('homeKeyMapActionEmpty', '还没添加动作 — 下方选一个开始'))
+          + '</div>');
+      container.innerHTML = emptyHtml + buildAddRow();
+      if(canEdit) wireTargetActionsHandlers(container, m, { mode: mode });
+    }
+  }
+
+  global.OneToneHomeTargetActions = {
+    render: renderTargetActionsInto,
+    effective: effectiveTargetActions
   };
 })((typeof window!=='undefined')?window:globalThis);

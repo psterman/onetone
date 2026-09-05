@@ -137,6 +137,7 @@ pub const AGENT_ACTION_IDS: &[&str] = &[
     "focusComposer",
     "startDictation",
     "stopOrSendDictation",
+    "runTargetSequence",
     "cancel",
     "newThread",
     "undo",
@@ -250,6 +251,27 @@ const ACTIONS: &[AgentActionDef] = &[
         transport: Transport::Hotkey,
         codex_support: ProviderSupport::Hotkey,
         default_activation_scope: ActivationScope::ForegroundApp,
+    },
+    AgentActionDef {
+        id: "runTargetSequence",
+        label: LocalizedText {
+            zh: "执行动作序列",
+            en: "Run action sequence",
+        },
+        description: LocalizedText {
+            zh: "打开 Agent（若已配置）并按顺序执行该习惯的文本 / 延迟 / 快捷键",
+            en: "Open the Agent if configured, then run this habit's text / delay / key sequence",
+        },
+        risk_level: RiskLevel::Confirm,
+        allowed_triggers: &["key", "voice", "camera", "softPad"],
+        default_execution_mode: ExecutionMode::Execute,
+        default_voice_phrases: LocalizedText {
+            zh: "执行动作",
+            en: "run actions",
+        },
+        transport: Transport::Workflow,
+        codex_support: ProviderSupport::Workflow,
+        default_activation_scope: ActivationScope::Global,
     },
     AgentActionDef {
         id: "cancel",

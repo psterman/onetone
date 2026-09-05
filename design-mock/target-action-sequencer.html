@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>目标动作序列 · 2 布局对比</title>
+  <style>
+    :root {
+      --bg: #0f141b;
+      --surface: #1a212c;
+      --surface-2: #232b38;
+      --line: #2d3848;
+      --line-soft: #232b38;
+      --on: #e6edf5;
+      --on-mute: #8b9bb0;
+      --primary: #4aa3ff;
+      --primary-soft: rgba(74,163,255,.14);
+      --warn: #f59e0b;
+      --err: #ef4444;
+      --ok: #22c55e;
+      --key-bg: #2a3340;
+      --key-bd: #3a4554;
+      --font: "Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+      --mono: ui-monospace, "JetBrains Mono", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px 16px 48px;
+      font-family: var(--font); background: var(--bg); color: var(--on);
+      font-size: 13px; line-height: 1.5;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; }
+    h1 { margin: 0 0 4px; font-size: 16px; font-weight: 800; }
+    .lede { margin: 0 0 18px; font-size: 12px; color: var(--on-mute); max-width: 64rem; }
+    .lede code { font-family: var(--mono); background: var(--surface); padding: 1px 6px; border-radius: 4px; }
+
+    .tab-row { display: flex; gap: 6px; margin-bottom: 16px; }
+    .tab {
+      padding: 7px 14px; border-radius: 8px; background: var(--surface);
+      border: 1px solid var(--line); color: var(--on-mute);
+      font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .tab.is-on { background: var(--primary-soft); color: var(--primary); border-color: rgba(74,163,255,.4); }
+    .tab-meta { margin-left: auto; font-size: 11px; color: var(--on-mute); align-self: center; }
+
+    .panel { display: none; }
+    .panel.is-on { display: block; }
+
+    /* ── shared: target card ── */
+    .target-card {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 14px; overflow: hidden;
+    }
+    .target-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 14px; border-bottom: 1px solid var(--line-soft);
+      font-size: 12px; font-weight: 800;
+    }
+    .target-head .head-actions { margin-left: auto; display: flex; gap: 4px; }
+    .icon-btn {
+      width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line);
+      background: var(--surface-2); color: var(--on-mute);
+      display: grid; place-items: center; cursor: pointer; font-size: 12px;
+    }
+    .icon-btn:hover { color: var(--on); }
+
+    /* ── shared: keycap ── */
+    .kc {
+      display: inline-flex; align-items: center; gap: 2px;
+      padding: 3px 7px; min-height: 22px;
+      background: var(--key-bg); border: 1px solid var(--key-bd);
+      border-bottom-width: 2px; border-radius: 5px;
+      font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--on);
+      white-space: nowrap;
+    }
+    .kc-sep { color: var(--on-mute); font-size: 10px; margin: 0 1px; }
+    .kc-mod { background: #344052; color: #cdd6e0; }
+
+    /* ── shared: type badge ── */
+    .type-badge {
+      width: 22px; height: 22px; border-radius: 6px;
+      display: grid; place-items: center; flex-shrink: 0;
+      font-size: 11px; font-weight: 800;
+    }
+    .type-badge.t-key { background: rgba(74,163,255,.16); color: var(--primary); }
+    .type-badge.t-text { background: rgba(34,197,94,.14); color: var(--ok); }
+    .type-badge.t-delay { background: rgba(245,158,11,.14); color: var(--warn); }
+
+    /* ── shared: empty state ── */
+    .empty {
+      padding: 28px 16px; text-align: center; color: var(--on-mute);
+      font-size: 12px; line-height: 1.6;
+    }
+    .empty b { display: block; color: var(--on); font-size: 13px; margin-bottom: 4px; }
+
+    /* ── A: list ── */
+    .list { padding: 6px; }
+    .list-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 10px;
+      transition: background .12s;
+    }
+    .list-row:hover { background: var(--surface-2); }
+    .list-row.is-drag { background: var(--primary-soft); border: 1px dashed rgba(74,163,255,.4); }
+    .row-idx {
+      width: 22px; flex-shrink: 0; font-family: var(--mono);
+      font-size: 10px; color: var(--on-mute); text-align: center;
+    }
+    .row-type { display: flex; align-items: center; gap: 7px; flex-shrink: 0; min-width: 70px; }
+    .row-type .type-lbl { font-size: 10px; font-weight: 800; color: var(--on-mute); text-transform: uppercase; letter-spacing: .04em; }
+    .row-body { flex: 1; min-width: 0; }
+    .row-body.key-body { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .row-body.text-body { display: flex; align-items: center; gap: 6px; }
+    .text-input {
+      flex: 1; min-width: 0; max-width: 360px;
+      padding: 4px 8px; border-radius: 6px;
+      background: var(--bg); border: 1px solid var(--line);
+      color: var(--on); font: inherit; font-family: var(--mono); font-size: 11px;
+    }
+    .text-input:focus { outline: none; border-color: var(--primary); }
+    .row-body.delay-body { display: flex; align-items: center; gap: 8px; }
+    .delay-num {
+      width: 60px; padding: 4px 6px; border-radius: 6px; text-align: right;
+      background: var(--bg); border: 1px solid var(--line);
+      color: var(--on); font: inherit; font-family: var(--mono); font-size: 11px;
+    }
+    .delay-num:focus { outline: none; border-color: var(--primary); }
+    .delay-unit { color: var(--on-mute); font-size: 11px; font-family: var(--mono); }
+
+    .row-act { display: flex; gap: 2px; flex-shrink: 0; }
+    .row-act .icon-btn { width: 22px; height: 22px; font-size: 11px; }
+    .row-act .icon-btn:disabled { opacity: .25; cursor: not-allowed; }
+
+    .add-row {
+      border-top: 1px solid var(--line-soft);
+      padding: 8px; display: flex; gap: 6px; align-items: center; justify-content: center;
+      flex-wrap: wrap;
+    }
+    .add-btn {
+      padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line);
+      background: var(--surface-2); color: var(--on); font: inherit; font-size: 11px;
+      font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .add-btn:hover { background: var(--primary-soft); border-color: rgba(74,163,255,.4); color: var(--primary); }
+    .add-btn .type-badge { width: 16px; height: 16px; font-size: 9px; }
+
+    .summary {
+      padding: 8px 14px; border-top: 1px solid var(--line-soft);
+      font-size: 10px; color: var(--on-mute); display: flex; gap: 12px; align-items: center;
+    }
+    .summary code { font-family: var(--mono); background: var(--surface-2); padding: 1px 5px; border-radius: 3px; color: var(--on); }
+
+    /* ── B: stepper ── */
+    .stepper-wrap { padding: 14px 14px 6px; overflow-x: auto; }
+    .stepper {
+      display: flex; align-items: center; gap: 0;
+      min-width: max-content; padding-bottom: 6px;
+    }
+    .step {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      position: relative; flex-shrink: 0; min-width: 84px;
+    }
+    .step-idx {
+      position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+      font-family: var(--mono); font-size: 9px; color: var(--on-mute);
+      background: var(--surface); padding: 0 4px;
+    }
+    .step-body {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 10px; border-radius: 10px;
+      background: var(--surface-2); border: 1px solid var(--line);
+      min-width: 84px; min-height: 38px; justify-content: center;
+    }
+    .step-body.key-body { flex-wrap: wrap; max-width: 160px; }
+    .step-body.text-body { background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.2); }
+    .step-body.delay-body { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.2); }
+    .step-body .text-input { width: 100%; max-width: 140px; }
+    .step-body .delay-num { width: 50px; }
+    .step-lbl {
+      font-size: 9px; color: var(--on-mute); font-weight: 700;
+      text-transform: uppercase; letter-spacing: .05em;
+    }
+    .step-remove {
+      position: absolute; top: -6px; right: -6px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--err); color: #fff; font-size: 11px; line-height: 1;
+      display: none; place-items: center; cursor: pointer; border: 0;
+      font-family: inherit;
+    }
+    .step:hover .step-remove { display: grid; }
+    .step-arrow {
+      color: var(--on-mute); font-size: 14px; padding: 0 2px; flex-shrink: 0;
+      user-select: none;
+    }
+    .step-add {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--surface-2); border: 1px dashed var(--line);
+      color: var(--on-mute); font-size: 18px; cursor: pointer;
+      display: grid; place-items: center; font-family: inherit;
+      flex-shrink: 0; margin-left: 4px;
+    }
+    .step-add:hover { color: var(--primary); border-color: var(--primary); }
+    .add-pop {
+      position: absolute; bottom: -8px; left: 50%; transform: translate(-50%, 100%);
+      display: none; gap: 4px; padding: 6px; border-radius: 8px;
+      background: var(--surface); border: 1px solid var(--line);
+      box-shadow: 0 6px 18px rgba(0,0,0,.4); z-index: 5;
+    }
+    .step-add:hover + .add-pop { display: flex; }
+    .add-pop .add-btn { padding: 4px 8px; }
+
+    /* ── shared: scenario block (3 用例对比) ── */
+    .scenarios { margin-top: 28px; }
+    .scenarios h2 { margin: 0 0 12px; font-size: 13px; font-weight: 800; color: var(--on-mute); text-transform: uppercase; letter-spacing: .04em; }
+    .scn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 900px) { .scn-grid { grid-template-columns: 1fr; } }
+    .scn { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+    .scn h3 { margin: 0 0 8px; font-size: 12px; font-weight: 800; }
+    .scn p { margin: 0 0 10px; font-size: 10px; color: var(--on-mute); line-height: 1.5; }
+    .scn .target-card { background: transparent; }
+    .scn .summary { padding: 6px 0 0; border-top: 1px solid var(--line-soft); }
+
+    /* ── comparison note ── */
+    .compare {
+      margin-top: 28px; padding: 14px 16px;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+      font-size: 11px; color: var(--on-mute); line-height: 1.7;
+    }
+    .compare b { color: var(--on); }
+    .compare table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .compare th, .compare td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line-soft); font-weight: 500; }
+    .compare th { color: var(--on); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>目标动作序列 · 2 布局对比</h1>
+    <p class="lede">
+      替换 <code>habitKeyMapCellTarget</code> 单 keycap。3 种 action：<code>键</code> / <code>文本</code> / <code>延迟</code>（无鼠标坐标）。<br/>
+      上方 tab 切换看具体效果，下方用 3 个真实场景对照。
+    </p>
+
+    <!-- tab -->
+    <div class="tab-row">
+      <button class="tab is-on" data-tab="list">A · 紧凑列表（推荐）</button>
+      <button class="tab" data-tab="stepper">B · 横向 Stepper</button>
+      <span class="tab-meta">点击 tab 切换布局</span>
+    </div>
+
+    <!-- ─────────────── A: 紧凑列表 ─────────────── -->
+    <div class="panel is-on" data-panel="list">
+      <div class="target-card">
+        <div class="target-head">
+          <span>执行动作</span>
+          <span style="color: var(--on-mute); font-weight: 600; font-size: 11px;">完成后按顺序执行</span>
+          <div class="head-actions">
+            <button class="icon-btn" title="撤销">↶</button>
+            <button class="icon-btn" title="重做">↷</button>
+          </div>
+        </div>
+
+        <div class="list">
+          <!-- row 1: 键 -->
+          <div class="list-row">
+            <div class="row-idx">1</div>
+            <div class="row-type">
+              <div class="type-badge t-key">⌨</div>
+              <span class="type-lbl">按键</span>
+            </div>
+            <div class="row-body key-body">
+              <span class="kc"><span class="kc-mod">CTRL</span><span class="kc-sep">+</span><span>SHIFT</span><span class="kc-sep">+</span><span>D</span></span>
+            </div>
+            <div class="row-act">
+              <button class="icon-btn" disabled title="已在最上">▲</button>
+              <button class="icon-btn" title="下移">▼</button>
+              <button class="icon-btn" title="删除">×</button>
+            </div>
+          </div>
+
+          <!-- row 2: 文本 -->
+          <div class="list-row">
+            <div class="row-idx">2</div>
+            <div class="row-type">
+              <div class="type-badge t-text">A</div>
+              <span class="type-lbl">文本</span>
+            </div>
+            <div class="row-body text-body">
+              <input class="text-input" value="继续" />
+            </div>
+            <div class="row-act">
+              <button class="icon-btn" title="上移">▲</button>
+              <button class="icon-btn" title="下移">▼</button>
+              <button class="icon-btn" title="删除">×</button>
+            </div>
+          </div>
+
+          <!-- row 3: 延迟 -->
+          <div class="list-row">
+            <div class="row-idx">3</div>
+            <div class="row-type">
+              <div class="type-badge t-delay">⏱</div>
+              <span class="type-lbl">延迟</span>
+            </div>
+            <div class="row-body delay-body">
+              <input class="delay-num" type="number" value="200" min="0" max="60000" />
+              <span class="delay-unit">ms</span>
+            </div>
+            <div class="row-act">
+              <button class="icon-btn" title="上移">▲</button>
+              <button class="icon-btn" title="下移">▼</button>
+              <button class="icon-btn" title="删除">×</button>
+            </div>
+          </div>
+
+          <!-- row 4: 键 -->
+          <div class="list-row">
+            <div class="row-idx">4</div>
+            <div class="row-type">
+              <div class="type-badge t-key">⌨</div>
+              <span class="type-lbl">按键</span>
+            </div>
+            <div class="row-body key-body">
+              <span class="kc"><span>ENTER</span></span>
+            </div>
+            <div class="row-act">
+              <button class="icon-btn" title="上移">▲</button>
+              <button class="icon-btn" disabled title="已在最下">▼</button>
+              <button class="icon-btn" title="删除">×</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="add-row">
+          <button class="add-btn">
+            <span class="type-badge t-key">⌨</span> 按键
+          </button>
+          <button class="add-btn">
+            <span class="type-badge t-text">A</span> 文本
+          </button>
+          <button class="add-btn">
+            <span class="type-badge t-delay">⏱</span> 延迟
+          </button>
+        </div>
+
+        <div class="summary">
+          <span>4 个动作 · 总耗时约 <code>200 ms</code></span>
+          <span style="margin-left: auto;">点击类型徽标切换 · 拖动左侧 <code>·</code> 重新排序</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────── B: 横向 stepper ─────────────── -->
+    <div class="panel" data-panel="stepper">
+      <div class="target-card">
+        <div class="target-head">
+          <span>执行流程</span>
+          <span style="color: var(--on-mute); font-weight: 600; font-size: 11px;">按 → 顺序触发</span>
+          <div class="head-actions">
+            <button class="icon-btn" title="撤销">↶</button>
+            <button class="icon-btn" title="重做">↷</button>
+          </div>
+        </div>
+
+        <div class="stepper-wrap">
+          <div class="stepper">
+            <div class="step">
+              <div class="step-idx">1</div>
+              <div class="step-body key-body">
+                <span class="kc"><span class="kc-mod">CTRL</span><span class="kc-sep">+</span><span>SHIFT</span><span class="kc-sep">+</span><span>D</span></span>
+              </div>
+              <div class="step-lbl">按键</div>
+              <button class="step-remove" title="删除">×</button>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step">
+              <div class="step-idx">2</div>
+              <div class="step-body text-body">
+                <input class="text-input" value="继续" />
+              </div>
+              <div class="step-lbl">文本</div>
+              <button class="step-remove" title="删除">×</button>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step">
+              <div class="step-idx">3</div>
+              <div class="step-body delay-body">
+                <input class="delay-num" type="number" value="200" min="0" max="60000" />
+                <span class="delay-unit">ms</span>
+              </div>
+              <div class="step-lbl">延迟</div>
+              <button class="step-remove" title="删除">×</button>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step">
+              <div class="step-idx">4</div>
+              <div class="step-body key-body">
+                <span class="kc"><span>ENTER</span></span>
+              </div>
+              <div class="step-lbl">按键</div>
+              <button class="step-remove" title="删除">×</button>
+            </div>
+            <div class="step-arrow">→</div>
+            <div style="position: relative;">
+              <button class="step-add" title="添加动作">+</button>
+              <div class="add-pop">
+                <button class="add-btn"><span class="type-badge t-key">⌨</span> 按键</button>
+                <button class="add-btn"><span class="type-badge t-text">A</span> 文本</button>
+                <button class="add-btn"><span class="type-badge t-delay">⏱</span> 延迟</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary">
+          <span>4 个动作 · 总耗时约 <code>200 ms</code></span>
+          <span style="margin-left: auto;">超过 6 个动作会换行 · 拖动顺序暂未实现</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────── 场景对照 ─────────────── -->
+    <div class="scenarios">
+      <h2>3 个真实场景</h2>
+      <div class="scn-grid">
+
+        <!-- 场景 1: 极简（单键） -->
+        <div class="scn">
+          <h3>① 单键（最常见 · 占 70%）</h3>
+          <p>按 trigger 一次后只按一个 target，最常见的"按一下发个回车"场景。</p>
+          <div class="target-card">
+            <div class="target-head">
+              <span>执行动作</span>
+              <span style="color: var(--on-mute); font-weight: 600; font-size: 11px;">完成后按顺序执行</span>
+            </div>
+            <div class="list">
+              <div class="list-row">
+                <div class="row-idx">1</div>
+                <div class="row-type">
+                  <div class="type-badge t-key">⌨</div>
+                  <span class="type-lbl">按键</span>
+                </div>
+                <div class="row-body key-body">
+                  <span class="kc"><span>ENTER</span></span>
+                </div>
+                <div class="row-act">
+                  <button class="icon-btn" disabled>▲</button>
+                  <button class="icon-btn" disabled>▼</button>
+                  <button class="icon-btn" title="删除">×</button>
+                </div>
+              </div>
+            </div>
+            <div class="add-row">
+              <button class="add-btn"><span class="type-badge t-key">⌨</span> 按键</button>
+              <button class="add-btn"><span class="type-badge t-text">A</span> 文本</button>
+              <button class="add-btn"><span class="type-badge t-delay">⏱</span> 延迟</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 场景 2: 空态 -->
+        <div class="scn">
+          <h3>② 空态（未设置）</h3>
+          <p>新 habit 或被用户清空后的状态。点下方按钮加第一个动作。</p>
+          <div class="target-card">
+            <div class="target-head">
+              <span>执行动作</span>
+              <span style="color: var(--on-mute); font-weight: 600; font-size: 11px;">完成后按顺序执行</span>
+            </div>
+            <div class="empty">
+              <b>还没添加任何动作</b>
+              下方选择第一个动作类型
+            </div>
+            <div class="add-row">
+              <button class="add-btn"><span class="type-badge t-key">⌨</span> 按键</button>
+              <button class="add-btn"><span class="type-badge t-text">A</span> 文本</button>
+              <button class="add-btn"><span class="type-badge t-delay">⏱</span> 延迟</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 场景 3: 复杂 -->
+        <div class="scn">
+          <h3>③ 复杂（多动作链 · 5+ 步）</h3>
+          <p>例如：开 VSCode → 切文件 → 选中行 → 复制 → 等待 300ms → 粘贴到对话。</p>
+          <div class="target-card">
+            <div class="target-head">
+              <span>执行动作</span>
+              <span style="color: var(--on-mute); font-weight: 600; font-size: 11px;">完成后按顺序执行</span>
+            </div>
+            <div class="list">
+              <div class="list-row">
+                <div class="row-idx">1</div>
+                <div class="row-type"><div class="type-badge t-key">⌨</div><span class="type-lbl">按键</span></div>
+                <div class="row-body key-body"><span class="kc"><span class="kc-mod">CTRL</span><span class="kc-sep">+</span><span>P</span></span></div>
+                <div class="row-act"><button class="icon-btn" disabled>▲</button><button class="icon-btn">▼</button><button class="icon-btn">×</button></div>
+              </div>
+              <div class="list-row">
+                <div class="row-idx">2</div>
+                <div class="row-type"><div class="type-badge t-text">A</div><span class="type-lbl">文本</span></div>
+                <div class="row-body text-body"><input class="text-input" value="main.rs" /></div>
+                <div class="row-act"><button class="icon-btn">▲</button><button class="icon-btn">▼</button><button class="icon-btn">×</button></div>
+              </div>
+              <div class="list-row">
+                <div class="row-idx">3</div>
+                <div class="row-type"><div class="type-badge t-delay">⏱</div><span class="type-lbl">延迟</span></div>
+                <div class="row-body delay-body"><input class="delay-num" type="number" value="200" /><span class="delay-unit">ms</span></div>
+                <div class="row-act"><button class="icon-btn">▲</button><button class="icon-btn">▼</button><button class="icon-btn">×</button></div>
+              </div>
+              <div class="list-row">
+                <div class="row-idx">4</div>
+                <div class="row-type"><div class="type-badge t-key">⌨</div><span class="type-lbl">按键</span></div>
+                <div class="row-body key-body"><span class="kc"><span>ENTER</span></span></div>
+                <div class="row-act"><button class="icon-btn">▲</button><button class="icon-btn">▼</button><button class="icon-btn">×</button></div>
+              </div>
+              <div class="list-row">
+                <div class="row-idx">5</div>
+                <div class="row-type"><div class="type-badge t-key">⌨</div><span class="type-lbl">按键</span></div>
+                <div class="row-body key-body"><span class="kc"><span class="kc-mod">CTRL</span><span class="kc-sep">+</span><span>A</span></span></div>
+                <div class="row-act"><button class="icon-btn">▲</button><button class="icon-btn">▼</button><button class="icon-btn">×</button></div>
+              </div>
+            </div>
+            <div class="add-row">
+              <button class="add-btn"><span class="type-badge t-key">⌨</span> 按键</button>
+              <button class="add-btn"><span class="type-badge t-text">A</span> 文本</button>
+              <button class="add-btn"><span class="type-badge t-delay">⏱</span> 延迟</button>
+            </div>
+            <div class="summary">
+              <span>5 个动作 · 总耗时约 <code>200 ms</code></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─────────────── 对比说明 ─────────────── -->
+    <div class="compare">
+      <b>两布局对比</b>
+      <table>
+        <tr><th>维度</th><th>A · 紧凑列表（推荐）</th><th>B · 横向 Stepper</th></tr>
+        <tr><td>信息密度</td><td>高，4-5 步都不撑</td><td>中等，&gt;6 步要换行</td></tr>
+        <tr><td>顺序感</td><td>数字标号 + 上下箭头</td><td>箭头 → 串起来</td></tr>
+        <tr><td>重排操作</td><td>上下箭头（更易触达）</td><td>拖拽（更好看但需拖拽框架）</td></tr>
+        <tr><td>类型切换</td><td>独立行，点击类型徽标</td><td>删除重建</td></tr>
+        <tr><td>空态/错误态</td><td>友好</td><td>占位较窄</td></tr>
+        <tr><td>深色背景观感</td><td>★★★★ 信息层级清晰</td><td>★★★ step 太密，间隔难做</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // tab 切换
+    document.querySelectorAll('.tab').forEach(function(t){
+      t.addEventListener('click', function(){
+        var key = t.dataset.tab;
+        document.querySelectorAll('.tab').forEach(function(x){ x.classList.toggle('is-on', x === t); });
+        document.querySelectorAll('.panel').forEach(function(p){ p.classList.toggle('is-on', p.dataset.panel === key); });
+      });
+    });
+  </script>
+</body>
+</html>

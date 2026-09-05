@@ -97,6 +97,17 @@
     return finishModeOptionMeta(mode,gesture||'tap').hint;
   }
 
+  function finishModeHintText(mode,gesture,m){
+    var key=finishModeHintKey(mode,gesture||'tap');
+    var text=t(key);
+    if(mode==='confirm'&&m){
+      hooks().ensureMappingTiming(m);
+      var sec=((Number(m.enterDelayMs)||2000)/1000).toFixed(1);
+      text=text.replace('{n}',sec);
+    }
+    return text;
+  }
+
   function buildKeysFinishChromeModel(m,finishMode){
     if(arguments.length===0){
       m=hooks().selectedMapping();
@@ -110,10 +121,11 @@
     if(m&&finishMode){
       var allowed=allowedFinishModes(m);
       if(allowed.indexOf(finishMode)<0) finishMode=allowed[0]||'manual';
-      hintText=t(finishModeHintKey(finishMode,gesture));
+      hintText=finishModeHintText(finishMode,gesture,m);
       hintHidden=false;
     }
-    var moreHidden=!(m&&finishMode==='confirm');
+    // Cancel strategies (key / phrase / camera) stay visible for any finish mode; key channel self-gates.
+    var moreHidden=!m;
     var previewText='—';
     var previewSaved=false;
     if(m&&global.OneToneSceneFlowSummary&&global.OneToneSceneFlowSummary.finishStrategyPreviewText){
@@ -127,7 +139,8 @@
     }
     var previewClass='keys-finish-strategy-preview'+(previewSaved?' is-set':' is-empty');
     var mappingId=m&&m.id?String(m.id):'';
-    var sig=[mappingId,finishMode||'',hintText,moreHidden?'1':'0',previewText,previewSaved?'1':'0'].join('\0');
+    var delayMs=m?String(m.enterDelayMs||0):'0';
+    var sig=[mappingId,finishMode||'',hintText,moreHidden?'1':'0',previewText,previewSaved?'1':'0',delayMs].join('\0');
     return {
       hintText:hintText,
       hintHidden:hintHidden,
@@ -155,7 +168,7 @@
     var more=$('habitFlowFinishMore');
     if(more){
       more.hidden=!!model.moreHidden;
-      if(model.moreHidden) more.open=false;
+      more.open=true;
     }
     var el=$('keysFinishStrategyPreview');
     if(el){
@@ -181,7 +194,6 @@
       var active=current===mode;
       html+='<button type="button" class="keys-finish-segment'+(active?' is-active':'')+'" data-finish-mode="'+mode+'" role="radio" aria-checked="'+(active?'true':'false')+'">';
       html+='<span class="keys-finish-segment-label">'+t(meta.title)+'</span>';
-      if(meta.recommended) html+='<span class="keys-finish-segment-badge">'+t('habitFinishModeRecommended')+'</span>';
       html+='</button>';
     });
     html+='</div>';
@@ -190,14 +202,28 @@
 
   function renderKeysFinishDelayOnly(m,id){
     hooks().ensureMappingTiming(m);
-    var seconds=((m.enterDelayMs||1200)/1000).toFixed(1);
-    var html='<div class="keys-finish-delay-card">';
-    html+='<div class="keys-finish-delay-head"><span class="keys-finish-delay-label">'+t('sendTimingTitle')+'</span>';
-    html+='<span class="keys-finish-delay-value">'+t('sendTimingDesc').replace('{n}',seconds)+'</span></div>';
-    html+='<div class="voice-end-inline-range keys-finish-delay-range keys-finish-delay-controls">';
-    html+='<input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="enterDelayMs" min="1000" max="15000" step="500" value="'+(m.enterDelayMs||1200)+'">';
+    var ms=Number(m.enterDelayMs||2000);
+    if(!(ms>=1000)) ms=2000;
+    var seconds=(ms/1000).toFixed(1);
+    var presets=[1000,2000,3000];
+    var matched=null;
+    for(var i=0;i<presets.length;i++){
+      if(Math.abs(ms-presets[i])<50){ matched=presets[i]; break; }
+    }
+    var customOpen=!matched;
+    var html='<div class="keys-finish-delay-inline">';
+    html+='<div class="keys-finish-delay-chips" role="group" aria-label="'+t('sendTimingTitle')+'">';
+    presets.forEach(function(p){
+      var sec=String(p/1000);
+      var active=matched===p;
+      html+='<button type="button" class="keys-finish-delay-chip'+(active?' is-active':'')+'" data-delay-ms="'+p+'" data-timing-id="'+id+'" aria-pressed="'+(active?'true':'false')+'">'+sec+'s</button>';
+    });
+    html+='<button type="button" class="keys-finish-delay-chip keys-finish-delay-chip--custom'+(customOpen?' is-active':'')+'" data-delay-custom="1" data-timing-id="'+id+'" aria-pressed="'+(customOpen?'true':'false')+'">'+t('sendTimingCustom')+'</button>';
+    html+='</div>';
+    html+='<div class="voice-end-inline-range keys-finish-delay-range keys-finish-delay-controls'+(customOpen?'':' is-collapsed')+'"'+(customOpen?'':' hidden')+'>';
+    html+='<input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="enterDelayMs" min="1000" max="15000" step="500" value="'+ms+'">';
     html+='<input type="number" class="keys-finish-delay-input" data-timing-range="'+id+'" data-field="enterDelayMs" min="1" max="15" step="0.5" value="'+seconds+'">';
-  html+='</div></div>';
+    html+='</div></div>';
     return html;
   }
 
@@ -238,8 +264,244 @@
     renderKeysFinishStrategyPreview(m);
   }
 
+  var CANCEL_GESTURE_KEYS=['shakeHead','openPalm','deliberateBlink','wave','fist','okHand'];
+  var CANCEL_GESTURE_I18N={
+    shakeHead:'keysCancelGestureShakeHead',
+    openPalm:'keysCancelGestureOpenPalm',
+    deliberateBlink:'keysCancelGestureBlink',
+    wave:'keysCancelGestureWave',
+    fist:'keysCancelGestureFist',
+    okHand:'keysCancelGestureOk'
+  };
+  var CANCEL_GESTURE_FALLBACK={
+    shakeHead:'摇头',
+    openPalm:'五指张开',
+    deliberateBlink:'故意闭眼',
+    wave:'挥手',
+    fist:'握拳',
+    okHand:'OK'
+  };
+
+  function escHtmlLocal(s){
+    if(hooks().escHtml) return hooks().escHtml(s);
+    return String(s==null?'':s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  }
+
+  function isEscCancelAction(action){
+    var s=String(action||'').trim().toLowerCase();
+    if(!s||s==='none') return false;
+    if(s==='pressesc') return true;
+    if(s==='input.cancel'||s==='agent:input.cancel') return true;
+    if(s==='cancel'||s==='agent:cancel') return true;
+    return false;
+  }
+
+  function presenceActionsForCancelUi(){
+    var cfg=appState().config||{};
+    var cp=cfg.cameraPrefs||{};
+    var base=cp.presenceActions&&typeof cp.presenceActions==='object'?cp.presenceActions:{};
+    var m=hooks().selectedMapping();
+    var ov=m&&m.cameraOverride&&typeof m.cameraOverride==='object'?m.cameraOverride:null;
+    if(!ov) return base;
+    var out=Object.assign({},base);
+    CANCEL_GESTURE_KEYS.forEach(function(k){
+      if(ov[k]!=null) out[k]=ov[k];
+    });
+    return out;
+  }
+
+  function listCameraCancelGestures(){
+    var pa=presenceActionsForCancelUi();
+    return CANCEL_GESTURE_KEYS.filter(function(k){ return isEscCancelAction(pa[k]); });
+  }
+
+  function cameraCancelChannelOn(){
+    return listCameraCancelGestures().length>0;
+  }
+
+  function readCancelPhraseLists(){
+    var cfg=appState().config||{};
+    var end=cfg.voiceEnd||cfg.voice_end||{};
+    var zh=end.cancelPhrasesZh||end.cancel_phrases_zh||[];
+    var en=end.cancelPhrasesEn||end.cancel_phrases_en||[];
+    if(!Array.isArray(zh)) zh=[];
+    if(!Array.isArray(en)) en=[];
+    return {zh:zh,en:en,enabled:!!(end.enabled||end.Enabled)};
+  }
+
+  function cancelPhraseChannelOn(){
+    var lists=readCancelPhraseLists();
+    return !!(lists.enabled&&(lists.zh.length||lists.en.length));
+  }
+
+  function setCameraCancelGesture(bindKey,wantOn){
+    var key=String(bindKey||'').trim();
+    if(CANCEL_GESTURE_KEYS.indexOf(key)<0) return Promise.resolve(false);
+    var cam=global.OneToneCameraPresenceActions;
+    var m=hooks().selectedMapping();
+    var mid=m&&m.id?String(m.id):'';
+    var token=wantOn?'pressEsc':'none';
+    function afterBind(){
+      if(wantOn&&cam&&typeof cam.persistBindAction==='function'){
+        // ensure master presence is on so gestures actually fire
+        try{
+          var cfg=appState().config||{};
+          var pa=cfg.cameraPrefs&&cfg.cameraPrefs.presenceActions;
+          if(pa&&!pa.enabled){
+            // persist via bind path side effect: patch enabled through prefs if API allows
+            if(cam.applyRecommendedPresencePrefs){ /* no — don't overwrite all */ }
+          }
+        }catch(_){}
+      }
+      return true;
+    }
+    if(cam&&typeof cam.persistBindAction==='function'){
+      return cam.persistBindAction(mid,key,token).then(function(){
+        if(wantOn){
+          try{
+            var cfg=appState().config||{};
+            if(cfg.cameraPrefs&&cfg.cameraPrefs.presenceActions&&!cfg.cameraPrefs.presenceActions.enabled){
+              cfg.cameraPrefs.presenceActions.enabled=true;
+              cfg.cameraPrefs.enabled=true;
+              var p=global.OneToneConfigPersist;
+              if(p&&p.saveCameraPrefsQuiet) p.saveCameraPrefsQuiet();
+              else if(p&&p.saveAsync) p.saveAsync();
+            }
+          }catch(_){}
+        }
+        return afterBind();
+      });
+    }
+    // Fallback: write prefs directly
+    try{
+      var cfg2=appState().config||{};
+      if(!cfg2.cameraPrefs) cfg2.cameraPrefs={};
+      if(!cfg2.cameraPrefs.presenceActions) cfg2.cameraPrefs.presenceActions={};
+      var pa2=cfg2.cameraPrefs.presenceActions;
+      pa2[key]=token;
+      if(wantOn){ pa2.enabled=true; cfg2.cameraPrefs.enabled=true; }
+      if(!pa2.triggers) pa2.triggers={};
+      if(wantOn){
+        if(key==='shakeHead') pa2.triggers.shake=true;
+        else if(key==='deliberateBlink') pa2.triggers.blink=true;
+        else if(key==='openPalm') pa2.triggers.openPalm=true;
+        else if(key==='okHand') pa2.triggers.okHand=true;
+        else if(key==='fist') pa2.triggers.fist=true;
+        else if(key==='wave') pa2.triggers.wave=true;
+      }
+      var pers=global.OneToneConfigPersist;
+      if(pers&&pers.saveCameraPrefsQuiet) pers.saveCameraPrefsQuiet();
+      else if(pers&&pers.saveAsync) pers.saveAsync();
+    }catch(_){}
+    return Promise.resolve(afterBind());
+  }
+
+  function clearAllCameraCancelGestures(){
+    var active=listCameraCancelGestures();
+    var chain=Promise.resolve(true);
+    active.forEach(function(k){
+      chain=chain.then(function(){ return setCameraCancelGesture(k,false); });
+    });
+    return chain;
+  }
+
   function renderKeysFinishCancelOnly(m,id){
-    return '<div class="keys-finish-cancel-card keys-finish-cancel-card--compact">'+renderKeyTimingCard(m,id,'cancel',{compact:true})+'</div>';
+    hooks().ensureMappingTiming(m);
+    var finishMode=resolveDisplayedFinishMode(m);
+    var keyOk=finishMode==='confirm';
+    var keyOn=!!(keyOk&&m.cancelEnabled!==false);
+    var phraseLists=readCancelPhraseLists();
+    var phraseOn=cancelPhraseChannelOn();
+    var camGestures=listCameraCancelGestures();
+    var camOn=camGestures.length>0;
+    var ms=Number(m.intervalMs||1200);
+    if(!(ms>=200)) ms=1200;
+    var winPresets=[500,1200,2000];
+    var winMatched=null;
+    for(var i=0;i<winPresets.length;i++){
+      if(Math.abs(ms-winPresets[i])<50){ winMatched=winPresets[i]; break; }
+    }
+
+    var activePills=[];
+    if(keyOn) activePills.push(t('keysCancelSummaryKey'));
+    if(phraseOn) activePills.push(t('keysCancelSummaryPhrase'));
+    if(camOn&&camGestures.length) activePills.push(t('keysCancelSummaryCamera'));
+
+    var html='<div class="keys-cancel-strategy'+(keyOk?'':' is-key-gated')+'" data-keys-cancel-strategy="1">';
+    html+='<div class="keys-cancel-head">';
+    html+='<div class="keys-cancel-head-main">';
+    html+='<p class="keys-cancel-title">'+escHtmlLocal(t('habitFlowFinishMoreSummary'))+'</p>';
+    if(activePills.length){
+      html+='<div class="keys-cancel-active" aria-label="'+escHtmlLocal(t('keysCancelOrShort'))+'">';
+      activePills.forEach(function(label){
+        html+='<span class="keys-cancel-dot"><i aria-hidden="true"></i>'+escHtmlLocal(label)+'</span>';
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+    html+='<p class="keys-cancel-or">'+escHtmlLocal(t('keysCancelOrShort'))+'</p>';
+    html+='</div>';
+    if(!keyOk){
+      html+='<p class="keys-cancel-gate-note">'+escHtmlLocal(t('keysCancelKeyGated'))+'</p>';
+    }
+
+    html+='<div class="keys-cancel-list">';
+
+    // Key — name is the switch; chips are config only when on
+    html+='<div class="keys-cancel-row'+(keyOn?' is-on':'')+'" data-cancel-row="key">';
+    html+='<button type="button" class="keys-cancel-name-btn'+(keyOn?' is-on':'')+'" data-timing-toggle="'+escHtmlLocal(id)+'" data-field="cancelEnabled"'+(keyOk?'':' disabled')+' aria-pressed="'+(keyOn?'true':'false')+'">'+escHtmlLocal(t('keysCancelSummaryKey'))+'</button>';
+    html+='<div class="keys-cancel-ctrl">';
+    if(keyOn){
+      winPresets.forEach(function(p){
+        var sec=p===1200?'1.2':String(p/1000);
+        html+='<button type="button" class="keys-cancel-chip'+(winMatched===p?' is-active':'')+'" data-cancel-win="'+p+'" data-timing-id="'+escHtmlLocal(id)+'" aria-pressed="'+(winMatched===p?'true':'false')+'">'+sec+'s</button>';
+      });
+      html+='<button type="button" class="keys-cancel-chip'+(winMatched?'':' is-active')+'" data-cancel-win="custom" data-timing-id="'+escHtmlLocal(id)+'">'+escHtmlLocal(t('sendTimingCustom'))+'</button>';
+      if(!winMatched){
+        html+='<input type="range" class="map-timing-range keys-cancel-range" data-timing-range="'+escHtmlLocal(id)+'" data-field="intervalMs" min="200" max="5000" step="100" value="'+ms+'">';
+      }
+    }else{
+      html+='<span class="keys-cancel-off">'+escHtmlLocal(t('keyFinishFlowStatusOff'))+'</span>';
+    }
+    html+='</div></div>';
+
+    // Phrase
+    html+='<div class="keys-cancel-row'+(phraseOn?' is-on':'')+'" data-cancel-row="phrase">';
+    html+='<button type="button" class="keys-cancel-name-btn'+(phraseOn?' is-on':'')+'" data-cancel-channel="phrase" aria-pressed="'+(phraseOn?'true':'false')+'">'+escHtmlLocal(t('keysCancelSummaryPhrase'))+'</button>';
+    html+='<div class="keys-cancel-ctrl">';
+    if(phraseOn){
+      var showPhrases=(phraseLists.zh.length?phraseLists.zh:phraseLists.en).slice(0,3);
+      if(!showPhrases.length) showPhrases=[t('keysCancelPhraseEmpty')];
+      showPhrases.forEach(function(ph){
+        html+='<span class="keys-cancel-chip is-readonly">'+escHtmlLocal(ph)+'</span>';
+      });
+      html+='<button type="button" class="keys-cancel-chip is-link" data-cancel-phrase-edit="1">'+escHtmlLocal(t('keysCancelPhraseEdit'))+'</button>';
+    }else{
+      html+='<span class="keys-cancel-off">'+escHtmlLocal(t('keyFinishFlowStatusOff'))+'</span>';
+    }
+    html+='</div></div>';
+
+    // Camera
+    html+='<div class="keys-cancel-row'+(camOn?' is-on':'')+'" data-cancel-row="camera">';
+    html+='<button type="button" class="keys-cancel-name-btn'+(camOn?' is-on':'')+'" data-cancel-channel="camera" aria-pressed="'+(camOn?'true':'false')+'">'+escHtmlLocal(t('keysCancelSummaryCamera'))+'</button>';
+    html+='<div class="keys-cancel-ctrl">';
+    if(camOn){
+      CANCEL_GESTURE_KEYS.forEach(function(gk){
+        var active=camGestures.indexOf(gk)>=0;
+        var label=t(CANCEL_GESTURE_I18N[gk])||CANCEL_GESTURE_FALLBACK[gk];
+        html+='<button type="button" class="keys-cancel-chip'+(active?' is-active':'')+'" data-cancel-gesture="'+gk+'" aria-pressed="'+(active?'true':'false')+'">'+escHtmlLocal(label)+'</button>';
+      });
+      if(!camGestures.length){
+        html+='<span class="keys-cancel-gesture-warn">'+escHtmlLocal(t('keysCancelGestureNeedOne'))+'</span>';
+      }
+    }else{
+      html+='<span class="keys-cancel-off">'+escHtmlLocal(t('keyFinishFlowStatusOff'))+'</span>';
+    }
+    html+='</div></div>';
+
+    html+='</div></div>';
+    return html;
   }
 
   function useKeysFinishSegmented(){
@@ -464,28 +726,32 @@
       return Object.assign({},empty,{sig:'unsaved'});
     }
     var finishMode=resolveDisplayedFinishMode(m);
-    var show=!!(keysPanel&&finishMode==='confirm');
+    var showDelay=!!(keysPanel&&finishMode==='confirm');
+    var showCancel=!!keysPanel;
     var delayHtml='';
     var cancelHtml='';
-    if(show){
-      delayHtml=renderKeysFinishDelayOnly(m,m.id);
-      cancelHtml=renderKeysFinishCancelOnly(m,m.id);
-    }
+    if(showDelay) delayHtml=renderKeysFinishDelayOnly(m,m.id);
+    if(showCancel) cancelHtml=renderKeysFinishCancelOnly(m,m.id);
     hooks().ensureMappingTiming(m);
+    var camGest=listCameraCancelGestures().join(',');
+    var phraseOn=cancelPhraseChannelOn()?'1':'0';
     var sig=[
       m.id,
       finishMode,
-      show?'1':'0',
+      showDelay?'1':'0',
+      showCancel?'1':'0',
       String(m.enterDelayMs||0),
       String(m.intervalMs||0),
       m.cancelEnabled?'1':'0',
-      m.autoEnterEnabled?'1':'0'
+      m.autoEnterEnabled?'1':'0',
+      camGest,
+      phraseOn
     ].join('\0');
     return {
       delayHtml:delayHtml,
       cancelHtml:cancelHtml,
-      delayHidden:!show,
-      cancelHidden:!show,
+      delayHidden:!showDelay,
+      cancelHidden:!showCancel,
       mappingId:m.id,
       finishMode:finishMode,
       sig:sig
@@ -498,6 +764,8 @@
     var islandOn=!!global.__otKeysFinishTimingMounted;
     if(islandOn){
       if(typeof global.__otKeysFinishTimingSync==='function') global.__otKeysFinishTimingSync();
+      if(delayHost) delayHost.hidden=!!(model&&model.delayHidden);
+      if(cancelHost) cancelHost.hidden=!!(model&&model.cancelHidden);
       return;
     }
     if(delayHost){
@@ -623,6 +891,37 @@
 
   function handleKeyFinishFlowClick(e){
     var el=e.target;
+    var delayChip=el.closest&&el.closest('[data-delay-ms]');
+    if(delayChip){
+      var ms=Number(delayChip.getAttribute('data-delay-ms'));
+      var m=hooks().selectedMapping();
+      if(!m||!(ms>=1000)) return false;
+      e.stopPropagation();
+      m.enterDelayMs=ms;
+      scheduleTimingSave();
+      applyKeysFinishTimingHosts(buildKeysFinishTimingModel());
+      syncKeysFinishModeChrome(m,resolveDisplayedFinishMode(m));
+      renderKeysFinishStrategyPreview(m);
+      return true;
+    }
+    var delayCustom=el.closest&&el.closest('[data-delay-custom]');
+    if(delayCustom){
+      var m2=hooks().selectedMapping();
+      if(!m2) return false;
+      e.stopPropagation();
+      var card=delayCustom.closest('.keys-finish-delay-inline')||delayCustom.closest('.keys-finish-delay-card');
+      var controls=card&&card.querySelector('.keys-finish-delay-controls');
+      if(controls){
+        controls.hidden=false;
+        controls.classList.remove('is-collapsed');
+      }
+      card&&card.querySelectorAll('.keys-finish-delay-chip').forEach(function(btn){
+        var isCustom=btn.hasAttribute('data-delay-custom');
+        btn.classList.toggle('is-active',isCustom);
+        btn.setAttribute('aria-pressed',isCustom?'true':'false');
+      });
+      return true;
+    }
     var finishBtn=el.closest&&el.closest('[data-finish-mode]');
     if(finishBtn){
       if(finishBtn.closest('[data-app-rule-pill]')) return false;
@@ -711,6 +1010,7 @@
     }
     var timingToggle=el.closest&&el.closest('[data-timing-toggle]');
     if(timingToggle){
+      if(timingToggle.disabled) return true;
       var field=timingToggle.dataset.field;
       var m=hooks().selectedMapping();
       if(!m||!field) return false;
@@ -720,11 +1020,101 @@
         if(g==='hold') m.triggerMode='tap';
         // Preserve double-click start; do not force tap.
       }
-      m[field]=!m[field];
+      // Name-btn / toggle: flip state. Checkbox (legacy) mirrors checked.
+      if(timingToggle.type==='checkbox') m[field]=!!timingToggle.checked;
+      else m[field]=!m[field];
       scheduleTimingSave();
       refreshAfterGestureChange();
       if(global.OneToneHabitKeyMappingTable){
         setTimeout(function(){ global.OneToneHabitKeyMappingTable.syncRowStatus(); },0);
+      }
+      return true;
+    }
+    var cancelWin=el.closest&&el.closest('[data-cancel-win]');
+    if(cancelWin){
+      var mWin=hooks().selectedMapping();
+      if(!mWin) return false;
+      e.stopPropagation();
+      var winRaw=cancelWin.getAttribute('data-cancel-win');
+      if(winRaw==='custom'){
+        // Force non-preset so custom slider appears on next render
+        var cur=Number(mWin.intervalMs||1200);
+        if(Math.abs(cur-500)<50||Math.abs(cur-1200)<50||Math.abs(cur-2000)<50){
+          mWin.intervalMs=1500;
+        }
+        scheduleTimingSave();
+        refreshAfterGestureChange();
+        return true;
+      }
+      var winMs=Number(winRaw);
+      if(winMs>=200){
+        mWin.intervalMs=winMs;
+        if(mWin.cancelEnabled===false) mWin.cancelEnabled=true;
+        scheduleTimingSave();
+        refreshAfterGestureChange();
+      }
+      return true;
+    }
+    var cancelCh=el.closest&&el.closest('[data-cancel-channel]');
+    if(cancelCh){
+      e.stopPropagation();
+      var ch=cancelCh.getAttribute('data-cancel-channel');
+      if(ch==='phrase'){
+        var lists=readCancelPhraseLists();
+        var cfg=appState().config||{};
+        if(!cfg.voiceEnd||typeof cfg.voiceEnd!=='object') cfg.voiceEnd={};
+        if(!cancelPhraseChannelOn()){
+          cfg.voiceEnd.enabled=true;
+          var zh=lists.zh.length?lists.zh.slice():['取消输入','不要了','撤掉'];
+          var en=lists.en.length?lists.en.slice():['cancel input'];
+          cfg.voiceEnd.cancelPhrasesZh=zh;
+          cfg.voiceEnd.cancelPhrasesEn=en;
+          scheduleTimingSave();
+          try{
+            var ve=global.OneToneVoiceEnd;
+            if(ve&&ve.persistCancelPhrases) ve.persistCancelPhrases(zh,en);
+            else if(global.OneToneIpc&&global.OneToneIpc.invoke){
+              global.OneToneIpc.invoke('cmd_voice_end_set_cancel_phrases',{phrasesZh:zh,phrasesEn:en}).catch(function(){});
+            }
+          }catch(_){}
+          refreshAfterGestureChange();
+        }else{
+          // No separate cancelPhrasesEnabled flag — send user to voice page to edit/disable.
+          if(global.OneToneApp&&global.OneToneApp.toast){
+            global.OneToneApp.toast(t('keysCancelPhraseEditHint','请在语音页编辑或关闭取消词'),'info');
+          }
+          var drawer=global.OneToneSettingsDrawer;
+          if(drawer&&drawer.openDrawer) drawer.openDrawer({panel:'voiceWake',voiceSubpage:'recognize'});
+          else if(drawer&&drawer.open) drawer.open({panel:'voiceWake'});
+        }
+        return true;
+      }
+      if(ch==='camera'){
+        if(cameraCancelChannelOn()){
+          clearAllCameraCancelGestures().then(function(){ refreshAfterGestureChange(); });
+        }else{
+          setCameraCancelGesture('shakeHead',true).then(function(){ refreshAfterGestureChange(); });
+        }
+        return true;
+      }
+      return true;
+    }
+    var cancelGest=el.closest&&el.closest('[data-cancel-gesture]');
+    if(cancelGest){
+      e.stopPropagation();
+      var gk=cancelGest.getAttribute('data-cancel-gesture');
+      var on=listCameraCancelGestures().indexOf(gk)<0;
+      setCameraCancelGesture(gk,on).then(function(){ refreshAfterGestureChange(); });
+      return true;
+    }
+    var phraseEdit=el.closest&&el.closest('[data-cancel-phrase-edit]');
+    if(phraseEdit){
+      e.stopPropagation();
+      var drawer=global.OneToneSettingsDrawer;
+      if(drawer&&drawer.openDrawer){
+        drawer.openDrawer({panel:'voiceWake',voiceSubpage:'recognize'});
+      }else if(drawer&&drawer.open){
+        drawer.open({panel:'voiceWake'});
       }
       return true;
     }
@@ -784,7 +1174,7 @@
     m[field]=val;
     scheduleTimingSave();
     syncTimingRangeFill(range);
-    var block=range.closest('.map-timing-block')||range.closest('.keys-finish-delay-card');
+    var block=range.closest('.map-timing-block')||range.closest('.keys-finish-delay-inline')||range.closest('.keys-finish-delay-card');
     var desc=block&&block.querySelector('.map-timing-desc,.keys-finish-delay-desc,.keys-finish-delay-value');
     if(desc&&desc.classList.contains('keys-finish-delay-value')){
       desc.textContent=t('sendTimingDesc').replace('{n}',formatTimingSec(val));
@@ -799,6 +1189,31 @@
       if(range.type==='range') numInput.value=formatTimingSec(val);
       else rangeInput.value=String(val);
       syncTimingRangeFill(rangeInput);
+    }
+    if(field==='enterDelayMs'&&block){
+      var presets=[1000,2000,3000];
+      var matched=null;
+      for(var i=0;i<presets.length;i++){
+        if(Math.abs(val-presets[i])<50){ matched=presets[i]; break; }
+      }
+      var controls=block.querySelector('.keys-finish-delay-controls');
+      if(controls){
+        if(matched){
+          controls.hidden=true;
+          controls.classList.add('is-collapsed');
+        }else{
+          controls.hidden=false;
+          controls.classList.remove('is-collapsed');
+        }
+      }
+      block.querySelectorAll('.keys-finish-delay-chip').forEach(function(btn){
+        var isCustom=btn.hasAttribute('data-delay-custom');
+        var chipMs=Number(btn.getAttribute('data-delay-ms')||0);
+        var active=isCustom?(!matched):(matched===chipMs);
+        btn.classList.toggle('is-active',active);
+        btn.setAttribute('aria-pressed',active?'true':'false');
+      });
+      syncKeysFinishModeChrome(m,resolveDisplayedFinishMode(m));
     }
     renderKeysFinishStrategyPreview(m);
   }
@@ -823,6 +1238,20 @@
     // P12b-5：收尾模式分段宿主模型（单一来源）
     buildKeysFinishModeModel:buildKeysFinishModeModel,
     // P12b-7：hint / strategy preview / finish-more 显隐
-    buildKeysFinishChromeModel:buildKeysFinishChromeModel
+    buildKeysFinishChromeModel:buildKeysFinishChromeModel,
+    // Cancel strategy helpers (camera gesture linkage)
+    listCameraCancelGestures:listCameraCancelGestures,
+    isEscCancelAction:isEscCancelAction,
+    setCameraCancelGesture:setCameraCancelGesture,
+    cameraCancelChannelOn:cameraCancelChannelOn,
+    cancelPhraseChannelOn:cancelPhraseChannelOn
   };
+
+  // ponytail: assert-based self-check for Esc-cancel token classification
+  try{
+    if(typeof global.__ONETONE_E2E__!=='undefined'||(global.location&&/^[?&]otCancelCheck=1/.test(global.location.search||''))){
+      var ok=isEscCancelAction('pressEsc')&&isEscCancelAction('input.cancel')&&isEscCancelAction('agent:cancel')&&!isEscCancelAction('none')&&!isEscCancelAction('pressCtrlI');
+      if(!ok&&global.console&&console.warn) console.warn('[keys-cancel] isEscCancelAction self-check failed');
+    }
+  }catch(_){}
 })((typeof window!=='undefined')?window:globalThis);

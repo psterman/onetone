@@ -6,8 +6,9 @@ use std::sync::Mutex;
 use std::sync::OnceLock;
 use winapi::um::winuser::{
     SendInput, INPUT, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
-    KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP,
-    MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP,
+    KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, MOUSEEVENTF_LEFTDOWN,
+    MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN,
+    MOUSEEVENTF_RIGHTUP,
     MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, MOUSEINPUT, VK_ESCAPE, VK_RETURN, VK_RMENU, XBUTTON1,
     XBUTTON2,
 };
@@ -520,6 +521,111 @@ pub fn send_chord(combo: &str, duration_ms: u32) -> bool {
         }
         Err(_) => false,
     }
+}
+
+/// Inject literal text via `SendInput` unicode events.  Each code unit is sent
+/// as a down+up pair, paced by `KEY_GAP_MS` so the target app's input buffer
+/// never drops characters.  CJK + ASCII both work; surrogate pairs handle
+/// non-BMP characters (emoji, historic CJK extensions).  Returns true if the
+/// text was non-empty (caller can treat empty as a no-op success).
+pub fn send_text(text: &str) -> bool {
+    if text.is_empty() {
+        return true;
+    }
+    let char_count = text.chars().count() as u64;
+    let guard_ms = char_count * KEY_GAP_MS + 200;
+    send_guard::arm_keys(&[]);
+    send_guard::run_guarded(guard_ms, || {
+        for ch in text.chars() {
+            send_unicode_char(ch);
+            std::thread::sleep(std::time::Duration::from_millis(KEY_GAP_MS));
+        }
+    });
+    true
+}
+
+fn send_unicode_char(ch: char) {
+    // BMP chars fit one u16; non-BMP need a UTF-16 surrogate pair.
+    let mut buf = [0u16; 2];
+    let units: &[u16] = if (ch as u32) < 0x10000 {
+        buf[0] = ch as u16;
+        &buf[..1]
+    } else {
+        let v = (ch as u32) - 0x10000;
+        buf[0] = 0xD800 + ((v >> 10) as u16);
+        buf[1] = 0xDC00 + ((v & 0x3FF) as u16);
+        &buf[..2]
+    };
+    let mut inputs: Vec<INPUT> = Vec::with_capacity(units.len() * 2);
+    for &u in units {
+        let mut input_down = INPUT {
+            type_: INPUT_KEYBOARD,
+            u: unsafe { std::mem::zeroed() },
+        };
+        unsafe {
+            *input_down.u.ki_mut() = KEYBDINPUT {
+                wVk: 0,
+                wScan: u,
+                dwFlags: KEYEVENTF_UNICODE,
+                time: 0,
+                dwExtraInfo: 0,
+            };
+        }
+        let mut input_up = INPUT {
+            type_: INPUT_KEYBOARD,
+            u: unsafe { std::mem::zeroed() },
+        };
+        unsafe {
+            *input_up.u.ki_mut() = KEYBDINPUT {
+                wVk: 0,
+                wScan: u,
+                dwFlags: KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                time: 0,
+                dwExtraInfo: 0,
+            };
+        }
+        inputs.push(input_down);
+        inputs.push(input_up);
+    }
+    unsafe {
+        SendInput(
+            inputs.len() as u32,
+            inputs.as_mut_ptr(),
+            std::mem::size_of::<INPUT>() as i32,
+        );
+    }
+}
+
+/// Per-character pacing for `send_text`.  Long enough that buffered IME / TSF
+/// pipelines don't drop characters, short enough to feel instant for short
+/// phrases (12ms × 8 chars ≈ 100ms tail).
+const KEY_GAP_MS: u64 = 12;
+
+/// Execute an ordered action sequence.  `Key` reuses `send_chord` with the
+/// caller's `key_press_duration_ms`; `Text` calls `send_text`; `Delay` does a
+/// blocking `thread::sleep`.  Because Delay blocks, callers MUST invoke this
+/// from a worker thread (voice_end_runtime already wraps the whole end-of-
+/// session body in `std::thread::spawn`).  Returns false on the first failing
+/// step and stops.
+pub fn run_action_sequence(actions: &[crate::config::Action], key_press_duration_ms: u32) -> bool {
+    for act in actions {
+        match act {
+            crate::config::Action::Key { value } => {
+                if !send_chord(value, key_press_duration_ms) {
+                    return false;
+                }
+            }
+            crate::config::Action::Text { value } => {
+                if !send_text(value) {
+                    return false;
+                }
+            }
+            crate::config::Action::Delay { ms } => {
+                std::thread::sleep(std::time::Duration::from_millis(*ms as u64));
+            }
+        }
+    }
+    true
 }
 
 pub fn send_escape() {

@@ -40,9 +40,6 @@
       ?global.OneToneKeysPageState.getStep():'';
     var onTarget=step==='target'||(picker&&picker.isCapturePopoverOpen&&picker.isCapturePopoverOpen());
     if(!onTarget) return false;
-    if(picker&&picker.isChannelOpen){
-      if(!picker.isChannelOpen('key')) return false;
-    }else if(picker&&picker.getActiveTab&&picker.getActiveTab()!=='key') return false;
     var rec=global.OneToneMappingRecording;
     var mode=rec&&rec.mode?String(rec.mode()):'none';
     return mode==='target'||mode==='agentBinding';
@@ -301,8 +298,10 @@
     return !!el.closest([
       '.voice-end-key-mode-panel','.keys-finish-mode-host','.keys-finish-delay-host',
       '.keys-finish-cancel-host','[data-finish-mode]','[data-timing-toggle]','[data-timing-range]',
+      '[data-cancel-win]','[data-cancel-channel]','[data-cancel-gesture]','[data-cancel-phrase-edit]',
       '.toggle-switch','.keys-finish-segment','.keys-capture-voice-summary','.keys-capture-voice-link',
       '.habit-flow-finish-more','.map-timing-range','details','.ime-preset-strip','.ime-preset-item','.habit-flow-ime-block','.keys-capture-ime-block',
+      '.keys-cancel-strategy','.keys-cancel-chip',
       '.keys-capture-popover','.keys-capture-popover-backdrop','.keys-channel-picker','.keys-channel-subtabs','.keys-channel-source-tabs','.keys-channel-panel',
       '.habit-flow-device-link','.keys-app-context-strip','.habit-flow-device-diagnostic',
       '.keys-app-chip','.keys-ime-pill','.btn-cancel-record',

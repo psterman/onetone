@@ -35,6 +35,7 @@ permissions = [
   "allow-cmd-mapping-reorder",
   "allow-cmd-mapping-set-group",
   "allow-cmd-mapping-set-source-key",
+  "allow-cmd-mapping-set-target-actions",
   "allow-cmd-mapping-conflicts",
   "allow-cmd-reload-latest",
   "allow-cmd-update-check",

@@ -2,15 +2,15 @@
   'use strict';
 
   var PRESETS = [
-    { id:'xunfei', nameKey:'imePresetXunfei', icon:'icons/ime/xunfei.png', targetKey:'F2', verified:true, tier:'primary' },
-    { id:'wechat', nameKey:'imePresetWechat', icon:'icons/ime/weixin.png', targetKey:'Ctrl+Shift+Win', verified:true, tier:'primary' },
-    { id:'typeless', nameKey:'imePresetTypeless', icon:'icons/ime/typeless.png', targetKey:'RAlt', verified:true, tier:'primary' },
-    { id:'microsoft', nameKey:'imePresetMicrosoft', icon:'icons/ime/microsoft.svg', targetKey:'Win+H', verified:true, tier:'primary' },
-    { id:'zhipu', nameKey:'imePresetZhipu', icon:'icons/ime/zhipu.png', targetKey:'RAlt', verified:true, tier:'more' },
-    { id:'qianwen', nameKey:'imePresetQianwen', icon:'icons/ime/qianwen.png', targetKey:'RAlt', verified:true, tier:'more' },
-    { id:'shandianshuo', nameKey:'imePresetShandianshuo', icon:'icons/ime/shandianshuo.jpg', targetKey:'RAlt', verified:true, tier:'more' },
-    { id:'sogou', nameKey:'imePresetSogou', icon:'icons/ime/sougou.png', targetKey:'Ctrl+Shift+Z', verified:false, tier:'more' },
-    { id:'baidu', nameKey:'imePresetBaidu', icon:'icons/ime/baidu.svg', targetKey:'Alt+`', verified:false, tier:'more' }
+    { id:'xunfei', nameKey:'imePresetXunfei', shortKey:'imePresetShortXunfei', icon:'icons/ime/xunfei.png', targetKey:'F2', verified:true, tier:'primary' },
+    { id:'wechat', nameKey:'imePresetWechat', shortKey:'imePresetShortWechat', icon:'icons/ime/weixin.png', targetKey:'Ctrl+Shift+Win', verified:true, tier:'primary' },
+    { id:'typeless', nameKey:'imePresetTypeless', shortKey:'imePresetShortTypeless', icon:'icons/ime/typeless.png', targetKey:'RAlt', verified:true, tier:'primary' },
+    { id:'microsoft', nameKey:'imePresetMicrosoft', shortKey:'imePresetShortMicrosoft', icon:'icons/ime/microsoft.svg', targetKey:'Win+H', verified:true, tier:'primary' },
+    { id:'zhipu', nameKey:'imePresetZhipu', shortKey:'imePresetShortZhipu', icon:'icons/ime/zhipu.png', targetKey:'RAlt', verified:true, tier:'more' },
+    { id:'qianwen', nameKey:'imePresetQianwen', shortKey:'imePresetShortQianwen', icon:'icons/ime/qianwen.png', targetKey:'RAlt', verified:true, tier:'more' },
+    { id:'shandianshuo', nameKey:'imePresetShandianshuo', shortKey:'imePresetShortShandianshuo', icon:'icons/ime/shandianshuo.jpg', targetKey:'RAlt', verified:true, tier:'more' },
+    { id:'sogou', nameKey:'imePresetSogou', shortKey:'imePresetShortSogou', icon:'icons/ime/sougou.png', targetKey:'Ctrl+Shift+Z', verified:false, tier:'more' },
+    { id:'baidu', nameKey:'imePresetBaidu', shortKey:'imePresetShortBaidu', icon:'icons/ime/baidu.svg', targetKey:'Alt+`', verified:false, tier:'more' }
   ];
 
   var MOUNTS = {
@@ -247,6 +247,11 @@
       setSelectedId('mapping', presetId || '');
       if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
       refresh('mapping');
+      if(global.OneToneKeysPanelUi){
+        try{
+          if(global.OneToneKeysPanelUi.syncImeStepCopy) global.OneToneKeysPanelUi.syncImeStepCopy();
+        }catch(_){}
+      }
       var pickerFast = global.OneToneKeysChannelCommandPicker;
       if(pickerFast){
         try{
@@ -289,6 +294,11 @@
     if(global.OneToneApp && global.OneToneApp.toast) global.OneToneApp.toast(t('imePresetApplied'));
     if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
     refresh('mapping');
+    if(global.OneToneKeysPanelUi){
+      try{
+        if(global.OneToneKeysPanelUi.syncImeStepCopy) global.OneToneKeysPanelUi.syncImeStepCopy();
+      }catch(_){}
+    }
     var picker = global.OneToneKeysChannelCommandPicker;
     if(picker){
       try{
@@ -384,6 +394,63 @@
     else if(ctx === 'voice') applyVoiceTarget(preset.targetKey, preset.id);
   }
 
+  function friendlyChord(combo){
+    if(global.OneToneKeyLabels){
+      return global.OneToneKeyLabels.friendlyKeyName(
+        combo,
+        global.OneToneApp && global.OneToneApp.getLang ? global.OneToneApp.getLang() : 'zh'
+      ) || combo;
+    }
+    return combo;
+  }
+
+  function renderPresetButton(ctx, p, opts){
+    opts = opts || {};
+    var selected = opts.selectedId === p.id;
+    var label = t(p.nameKey);
+    var shortLabel = p.shortKey ? t(p.shortKey) : label;
+    var keyLabel = friendlyChord(p.targetKey);
+    var icon = String(p.icon || '').trim();
+    var iconHtml = icon
+      ? '<img class="ime-preset-icon" src="'+esc(icon)+'" alt="" decoding="async" />'
+      : '<span class="ime-preset-icon ime-preset-icon--empty" aria-hidden="true"></span>';
+    var labeled = !!opts.labeled;
+    var cls = 'ime-preset-item'+(labeled?' ime-preset-item--labeled':'')+(selected?' is-selected':'')+(!p.verified?' is-unverified':'');
+    var html = '<button type="button" class="'+cls+'" data-ime-context="'+esc(ctx)+'" data-ime-id="'+esc(p.id)+'"'
+      +(opts.disabled?' disabled':'')
+      +' title="'+esc(label+' · '+keyLabel)+'" aria-label="'+esc(label)+'" aria-pressed="'+(selected?'true':'false')+'">'
+      +iconHtml;
+    if(labeled) html += '<span class="ime-preset-name">'+esc(shortLabel)+'</span>';
+    html += '</button>';
+    return html;
+  }
+
+  function syncMappingConfirmLine(selectedId, key){
+    var confirmEl = $('imePresetConfirmMapping');
+    var verifyEl = $('imePresetVerifyHint');
+    var preset = presetById(selectedId);
+    if(confirmEl){
+      if(preset){
+        var chord = friendlyChord(preset.targetKey || key || '');
+        confirmEl.hidden = false;
+        confirmEl.textContent = t('imePresetConfirmDefault')
+          .replace('{ime}', t(preset.shortKey || preset.nameKey))
+          .replace('{chord}', chord);
+      }else if(key){
+        confirmEl.hidden = false;
+        confirmEl.textContent = t('imePresetConfirmCustom').replace('{chord}', friendlyChord(key));
+      }else{
+        confirmEl.hidden = true;
+        confirmEl.textContent = '';
+      }
+    }
+    if(verifyEl){
+      var showVerify = !!(preset && !preset.verified);
+      verifyEl.hidden = !showVerify;
+      verifyEl.textContent = showVerify ? t('imePresetUnverifiedHint') : '';
+    }
+  }
+
   function renderStrip(ctx){
     var hostId = MOUNTS[ctx];
     var host = hostId ? $(hostId) : null;
@@ -395,11 +462,24 @@
     var customSelected = !selectedId && !!key;
     var html = '';
     if(ctx === 'mapping'){
-      // Scheme D: hand-record lives under left catalog「自定义键」— no pencil twin here.
       html += '<button type="button" class="ime-preset-item ime-preset-item--picker"'+(disabled?' disabled':'')+' data-ime-context="'+esc(ctx)+'" data-ime-picker="1" title="'+esc(t('keysTargetKeycapPickLink'))+'" aria-label="'+esc(t('keysTargetKeycapPickLink'))+'">'
         +PICKER_ICON_SVG
         +'</button>';
-    } else if(ctx === 'onboarding'){
+      html += '<button type="button" class="ime-preset-item ime-preset-item--custom ime-preset-item--labeled'+(customSelected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'" aria-pressed="'+(customSelected?'true':'false')+'">'
+        +CUSTOM_ICON_SVG
+        +'<span class="ime-preset-name">'+esc(t('imePresetCustom'))+'</span>'
+        +'</button>';
+      html += PRESETS.map(function(p){
+        return renderPresetButton(ctx, p, { selectedId:selectedId, disabled:disabled, labeled:true });
+      }).join('');
+      host.classList.add('ime-preset-strip--labeled');
+      host.innerHTML = html;
+      syncMappingConfirmLine(selectedId, key);
+      renderCardBadge(ctx);
+      return;
+    }
+    host.classList.remove('ime-preset-strip--labeled');
+    if(ctx === 'onboarding'){
       html += '<button type="button" class="ime-preset-item ime-preset-item--picker"'+(disabled?' disabled':'')+' data-ime-context="'+esc(ctx)+'" data-ime-picker="1" title="'+esc(t('keysTargetKeycapPickLink'))+'" aria-label="'+esc(t('keysTargetKeycapPickLink'))+'">'
         +PICKER_ICON_SVG
         +'</button>';
@@ -412,18 +492,7 @@
         +'</button>';
     }
     html += PRESETS.map(function(p){
-      var selected = selectedId === p.id;
-      var label = t(p.nameKey);
-      var keyLabel = global.OneToneKeyLabels
-        ? global.OneToneKeyLabels.friendlyKeyName(p.targetKey, global.OneToneApp && global.OneToneApp.getLang ? global.OneToneApp.getLang() : 'zh')
-        : p.targetKey;
-      var icon = String(p.icon || '').trim();
-      var iconHtml = icon
-        ? '<img class="ime-preset-icon" src="'+esc(icon)+'" alt="" decoding="async" />'
-        : '<span class="ime-preset-icon ime-preset-icon--empty" aria-hidden="true"></span>';
-      return '<button type="button" class="ime-preset-item'+(selected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-id="'+esc(p.id)+'"'+(disabled?' disabled':'')+' title="'+esc(label+' · '+keyLabel)+'" aria-label="'+esc(label)+'" aria-pressed="'+(selected?'true':'false')+'">'
-        +iconHtml
-        +'</button>';
+      return renderPresetButton(ctx, p, { selectedId:selectedId, disabled:disabled, labeled:false });
     }).join('');
     host.innerHTML = html;
     renderCardBadge(ctx);
@@ -456,8 +525,12 @@
           var customCtx = customBtn.getAttribute('data-ime-context') || ctx;
           if(customCtx === 'mapping') prepareMappingImeApply();
           clearSelectedForManualRecord(customCtx);
+          // mapping: clear preset then start keycap record (no quick-combo strip)
           if(customCtx === 'mapping' || customCtx === 'onboarding'){
             startCustomRecordForContext(customCtx);
+          }
+          if(customCtx === 'mapping' && global.OneToneKeysPanelUi && global.OneToneKeysPanelUi.syncImeStepCopy){
+            try{ global.OneToneKeysPanelUi.syncImeStepCopy(); }catch(_){}
           }
           customBtn.blur();
           return;

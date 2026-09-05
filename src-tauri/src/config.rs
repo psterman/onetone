@@ -1284,6 +1284,69 @@ pub struct MappingEntry {
     /// Which capture-tab item is shown on Keys step-02 hero keycap.
     #[serde(rename = "captureHeroRef", default, skip_serializing_if = "Option::is_none")]
     pub capture_hero_ref: Option<CaptureHeroRef>,
+    /// Ordered action sequence executed when the trigger fires.  Empty ⇒ falls
+    /// back to the legacy single `target_key` string via `effective_target_actions`.
+    /// Serde tag = "type"; payload key is `value` (Key / Text) or `ms` (Delay).
+    #[serde(rename = "targetActions", default)]
+    pub target_actions: Vec<Action>,
+}
+
+/// One step in a habit's target action sequence.
+///
+/// `serde(tag = "type")` → on-disk shape is `{"type":"key","value":"Ctrl+Enter"}`,
+/// `{"type":"text","value":"继续"}`, or `{"type":"delay","ms":200}`.
+/// The legacy single-string `targetKey` field is still read and folded back in
+/// through [`MappingEntry::effective_target_actions`] so old configs need no
+/// migration.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum Action {
+    /// Send a chord (e.g. "Ctrl+Enter").  Delegates to `crate::keyboard::send_chord`.
+    Key { value: String },
+    /// Inject literal text via `SendInput` unicode events.  CJK + ASCII.
+    Text { value: String },
+    /// Pause for `ms` milliseconds before the next step.
+    Delay { ms: u32 },
+}
+
+impl Action {
+    /// Compact log / pill label (e.g. `Key(Ctrl+Enter)`, `Text(继续…)`, `Delay(200ms)`).
+    pub fn display(&self) -> String {
+        match self {
+            Action::Key { value } => format!("Key({value})"),
+            Action::Text { value } => format!("Text({})", truncate_for_display(value, 32)),
+            Action::Delay { ms } => format!("Delay({ms}ms)"),
+        }
+    }
+}
+
+impl MappingEntry {
+    /// Returns the action sequence the runtime should execute.  Prefers the
+    /// explicit `target_actions` list; falls back to a single
+    /// [`Action::Key`] wrapping the legacy `target_key` string so old
+    /// configs behave identically with zero migration.
+    pub fn effective_target_actions(&self) -> Vec<Action> {
+        if !self.target_actions.is_empty() {
+            return self.target_actions.clone();
+        }
+        let key = self.target_key.trim();
+        if key.is_empty() {
+            return Vec::new();
+        }
+        vec![Action::Key {
+            value: key.to_string(),
+        }]
+    }
+}
+
+fn truncate_for_display(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        s.to_string()
+    } else {
+        let mut out: String = s.chars().take(max).collect();
+        out.push('…');
+        out
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
@@ -3634,6 +3697,53 @@ pub fn agent_voice_phrases_for_cfg(cfg: &VoiceConfig) -> Vec<String> {
     out
 }
 
+/// Split a chord like `"Ctrl+Shift+D"` into its physical-key components
+/// (`["Ctrl", "Shift", "D"]`).  Used by target-conflict detection to spot
+/// two mappings sharing at least one of the same physical keys.
+fn expand_physical_components(combo: &str) -> Vec<String> {
+    combo
+        .split('+')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+/// Physical keys emitted by `m`'s target action sequence.  Walks
+/// `target_actions` and pulls each `Key` chord, falling back to the legacy
+/// `target_key` field when no actions list is set.  Returns deduped values
+/// in declaration order.  Used by `conflicts_on_enable` to flag two
+/// mappings that would race for the same target chord.
+pub fn mapping_target_physical_bindings(m: &MappingEntry) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for act in &m.target_actions {
+        if let Action::Key { value } = act {
+            let v = value.trim();
+            if v.is_empty() {
+                continue;
+            }
+            let parts = expand_physical_components(v);
+            for p in parts {
+                if seen.insert(p.clone()) {
+                    out.push(p);
+                }
+            }
+        }
+    }
+    // Legacy `target_key` fallback when no explicit `target_actions` are set.
+    if m.target_actions.is_empty() {
+        let v = m.target_key.trim();
+        if !v.is_empty() {
+            for p in expand_physical_components(v) {
+                if seen.insert(p.clone()) {
+                    out.push(p);
+                }
+            }
+        }
+    }
+    out
+}
+
 pub fn mapping_physical_bindings(m: &MappingEntry) -> Vec<String> {
     let mut tk = canonical_trigger(&m.trigger_key);
     if tk.is_empty() {
@@ -3833,6 +3943,7 @@ impl Default for VoiceConfig {
                 codex_micro_pad: None,
                 time_machine_workspace: String::new(),
                 capture_hero_ref: None,
+                target_actions: vec![],
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -3895,6 +4006,11 @@ impl MappingEntry {
 pub enum ConflictKind {
     CanonicalTrigger,
     PhysicalKey,
+    /// Two mappings whose `target_actions` (or legacy `target_key`) emit the
+    /// same physical key.  Pre-2026-09 this was not surfaced; with action
+    /// sequences it became possible for the same chord to appear in step 1 of
+    /// one habit and step 3 of another without any existing check firing.
+    TargetPhysicalKey,
 }
 
 #[derive(Debug, Clone)]
@@ -3918,12 +4034,13 @@ impl ConflictKind {
         match self {
             ConflictKind::CanonicalTrigger => "canonical",
             ConflictKind::PhysicalKey => "physical",
+            ConflictKind::TargetPhysicalKey => "targetPhysical",
         }
     }
 }
 
 fn is_mapping_complete(m: &MappingEntry) -> bool {
-    !m.trigger_key.trim().is_empty() && !m.target_key.trim().is_empty()
+    !m.trigger_key.trim().is_empty() && !m.effective_target_actions().is_empty()
 }
 
 pub fn mapping_is_complete(m: &MappingEntry) -> bool {
@@ -4384,6 +4501,7 @@ impl VoiceConfig {
                 codex_micro_pad: None,
                 time_machine_workspace: String::new(),
                 capture_hero_ref: None,
+                target_actions: vec![],
             });
         }
 
@@ -4928,6 +5046,8 @@ impl VoiceConfig {
         };
         let canonical = canonical_trigger(&entry.trigger_key);
         let physical: HashSet<String> = mapping_physical_bindings(entry).into_iter().collect();
+        let target_physical: HashSet<String> =
+            mapping_target_physical_bindings(entry).into_iter().collect();
         let mut conflicts = Vec::new();
 
         for other in self.mappings.iter().filter(|m| m.enabled && m.id != id) {
@@ -4956,6 +5076,23 @@ impl VoiceConfig {
                         ),
                     });
                     break;
+                }
+            }
+            // Cross-mapping target chord collision: two habits that emit any
+            // of the same physical keys as part of their target action
+            // sequence will race the focused app.  Flag every shared
+            // physical key, not just the first, so the UI can surface all
+            // affected steps.
+            for pb in mapping_target_physical_bindings(other) {
+                if target_physical.contains(&pb) {
+                    conflicts.push(Conflict {
+                        kind: ConflictKind::TargetPhysicalKey,
+                        other_id: other.id.clone(),
+                        detail: format!(
+                            "target key contains {pb}, also used by {}",
+                            other.display_label()
+                        ),
+                    });
                 }
             }
         }
@@ -5135,6 +5272,19 @@ pub fn config_path() -> PathBuf {
 
 /// Apply a frontend mapping save. Voice sections always stay from `existing` because
 /// toggles are persisted only via voice IPC commands (`cmd_voice_vosk_set_enabled`, etc.).
+/// True when the FE JSON row explicitly includes `targetActions` / `target_actions`
+/// (even if the array is empty). Used so merge can distinguish "omit → preserve"
+/// from "send [] → clear".
+fn mapping_json_has_target_actions(raw: &serde_json::Value, arr_key: &str, id: &str) -> bool {
+    let Some(arr) = raw.get(arr_key).and_then(|v| v.as_array()) else {
+        return false;
+    };
+    arr.iter().any(|row| {
+        row.get("id").and_then(|v| v.as_str()) == Some(id)
+            && (row.get("targetActions").is_some() || row.get("target_actions").is_some())
+    })
+}
+
 /// Drop `navKeysEnabled` when `showNavigationPad` is also present (same serde field via alias).
 fn strip_codex_micro_pad_nav_alias_dupes(raw: &mut serde_json::Value) {
     let Some(mappings) = raw.get_mut("mappings").and_then(|v| v.as_array_mut()) else {
@@ -5211,6 +5361,14 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
             if m.agent_bindings.is_empty() && !prev.agent_bindings.is_empty() {
                 m.agent_bindings = prev.agent_bindings.clone();
             }
+            // Preserve only when FE omitted the field (partial save). Explicit
+            // `targetActions: []` must clear — otherwise delete-all can't stick.
+            if m.target_actions.is_empty()
+                && !prev.target_actions.is_empty()
+                && !mapping_json_has_target_actions(&raw, "mappings", &m.id)
+            {
+                m.target_actions = prev.target_actions.clone();
+            }
         }
     }
     for m in &mut cfg.trash {
@@ -5230,6 +5388,12 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
             }
             if m.agent_bindings.is_empty() && !prev.agent_bindings.is_empty() {
                 m.agent_bindings = prev.agent_bindings.clone();
+            }
+            if m.target_actions.is_empty()
+                && !prev.target_actions.is_empty()
+                && !mapping_json_has_target_actions(&raw, "trash", &m.id)
+            {
+                m.target_actions = prev.target_actions.clone();
             }
         }
     }
@@ -6518,6 +6682,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
@@ -6564,6 +6729,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
@@ -6612,6 +6778,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             });
         cfg.normalize();
         let m = cfg
@@ -6819,6 +6986,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
@@ -6868,6 +7036,7 @@ mod tests {
             codex_micro_pad: None,
             time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
         });
         cfg.ensure_active_scene_id();
         let peek = cfg.peek_next_scheme_same_trigger();
@@ -6928,6 +7097,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             };
         let bindings = mapping_physical_bindings(&m);
         assert_eq!(bindings, vec!["F1".to_string()]);
@@ -6971,6 +7141,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
@@ -7145,6 +7316,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
@@ -7193,6 +7365,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             });
         cfg.enable_mapping("b");
         assert_eq!(cfg.active_scene_id, active_id);
@@ -7237,6 +7410,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());
@@ -7436,6 +7610,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             };
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.contains(&"Gamepad_A".to_string()));
@@ -7483,6 +7658,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
             is_keyup: false,
@@ -7673,6 +7849,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         cfg.follow_foreground_app_scenario = true;
@@ -7751,6 +7928,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         cfg.follow_foreground_app_scenario = true;
@@ -7805,6 +7983,7 @@ mod tests {
             codex_micro_pad: None,
             time_machine_workspace: String::new(),
         capture_hero_ref: None,
+            target_actions: vec![],
         });
         let hit = find_preferred_workflow_scenario_for_dispatch(&cfg).expect("cursor scene");
         assert_eq!(hit.id, "cursor-scene");
@@ -8327,6 +8506,7 @@ mod tests {
             codex_micro_pad: None,
             time_machine_workspace: r"C:\work\demo".into(),
             capture_hero_ref: None,
+            target_actions: vec![],
             };
         let json = serde_json::to_string(&mapping).expect("serialize");
         assert!(json.contains("timeMachineWorkspace"));
@@ -8481,4 +8661,228 @@ mod tests {
         let json = serde_json::to_value(&edited).expect("serialize mapping");
         assert_eq!(json["keyModeEnabled"], false);
         assert_eq!(json["voiceModeEnabled"], false);
+    }
+
+    // ────────── target action sequence (added 2026-09) ──────────
+
+    fn fixture_mapping(target_key: &str, target_actions: Vec<Action>) -> MappingEntry {
+        let mut m = MappingEntry {
+            id: "test".into(),
+            label: String::new(),
+            group: default_group(),
+            trigger_key: "Ctrl+Shift+D".into(),
+            target_key: target_key.into(),
+            enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: default_interval_ms(),
+            enter_delay_ms: default_enter_delay_ms(),
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: default_long_press_ms(),
+            double_click_ms: default_double_click_ms(),
+            ime_preset_id: String::new(),
+            app_target_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
+            codex_micro_pad: None,
+            time_machine_workspace: String::new(),
+            capture_hero_ref: None,
+            target_actions,
+        };
+        m
+    }
+
+    #[test]
+    fn effective_target_actions_legacy_target_key_folds_to_single_key() {
+        let m = fixture_mapping("Ctrl+Enter", vec![]);
+        let acts = m.effective_target_actions();
+        assert_eq!(acts.len(), 1, "legacy single key should fold");
+        match &acts[0] {
+            Action::Key { value } => assert_eq!(value, "Ctrl+Enter"),
+            _ => panic!("expected Key, got {:?}", acts[0]),
+        }
+    }
+
+    #[test]
+    fn effective_target_actions_explicit_list_wins_over_legacy() {
+        let m = fixture_mapping(
+            "Ctrl+Enter",
+            vec![
+                Action::Key { value: "Ctrl+Shift+D".into() },
+                Action::Text { value: "继续".into() },
+                Action::Delay { ms: 200 },
+                Action::Key { value: "Enter".into() },
+            ],
+        );
+        let acts = m.effective_target_actions();
+        assert_eq!(acts.len(), 4);
+        assert_eq!(acts[0].display(), "Key(Ctrl+Shift+D)");
+        assert_eq!(acts[1].display(), "Text(继续)");
+        assert_eq!(acts[2].display(), "Delay(200ms)");
+        assert_eq!(acts[3].display(), "Key(Enter)");
+    }
+
+    #[test]
+    fn effective_target_actions_empty_when_nothing_set() {
+        let m = fixture_mapping("", vec![]);
+        assert!(m.effective_target_actions().is_empty());
+    }
+
+    #[test]
+    fn effective_target_actions_trims_whitespace_target_key() {
+        let m = fixture_mapping("   Ctrl+Enter   ", vec![]);
+        let acts = m.effective_target_actions();
+        assert_eq!(acts.len(), 1);
+        match &acts[0] {
+            Action::Key { value } => assert_eq!(value, "Ctrl+Enter"),
+            _ => panic!("expected Key"),
+        }
+    }
+
+    #[test]
+    fn action_serde_roundtrip_text_and_delay() {
+        let original = vec![
+            Action::Key { value: "Ctrl+Enter".into() },
+            Action::Text { value: "继续 + more".into() },
+            Action::Delay { ms: 1500 },
+        ];
+        let json = serde_json::to_string(&original).expect("serialize");
+        // Tagged form: each entry has a "type" discriminator.
+        assert!(json.contains(r#""type":"key""#));
+        assert!(json.contains(r#""type":"text""#));
+        assert!(json.contains(r#""type":"delay""#));
+        let back: Vec<Action> = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, original);
+    }
+
+    #[test]
+    fn mapping_legacy_json_without_target_actions_loads_cleanly() {
+        // Pre-2026-09 config shape: only `targetKey`, no `targetActions` field.
+        let json = r#"{
+            "id":"legacy",
+            "triggerKey":"Ctrl+Shift+D",
+            "targetKey":"Ctrl+Enter"
+        }"#;
+        let m: MappingEntry = serde_json::from_str(json).expect("legacy json");
+        assert_eq!(m.target_key, "Ctrl+Enter");
+        assert!(m.target_actions.is_empty(), "new field defaults to empty");
+        let acts = m.effective_target_actions();
+        assert_eq!(acts.len(), 1);
+        assert_eq!(acts[0].display(), "Key(Ctrl+Enter)");
+    }
+
+    #[test]
+    fn mapping_new_json_with_target_actions_survives_roundtrip() {
+        let mut m = fixture_mapping("", vec![
+            Action::Key { value: "Ctrl+Enter".into() },
+            Action::Delay { ms: 200 },
+        ]);
+        m.label = "roundtrip".into();
+        let json = serde_json::to_string(&m).expect("serialize mapping");
+        let back: MappingEntry = serde_json::from_str(&json).expect("deserialize mapping");
+        assert_eq!(back.target_actions.len(), 2);
+        assert_eq!(back.effective_target_actions(), m.effective_target_actions());
+    }
+
+    #[test]
+    fn is_mapping_complete_accepts_text_only_sequence() {
+        let mut m = fixture_mapping("", vec![Action::Text {
+            value: "继续".into(),
+        }]);
+        m.trigger_key = "F13".into();
+        m.target_key.clear();
+        assert!(is_mapping_complete(&m));
+        m.target_actions.clear();
+        assert!(!is_mapping_complete(&m));
+    }
+
+    #[test]
+    fn target_physical_bindings_expands_actions_and_skips_text_delay() {
+        let m = fixture_mapping("", vec![
+            Action::Key { value: "Ctrl+Enter".into() },
+            Action::Text { value: "继续".into() },
+            Action::Delay { ms: 200 },
+            Action::Key { value: "Ctrl+Enter".into() }, // dedupe within mapping
+        ]);
+        let pbs = mapping_target_physical_bindings(&m);
+        assert_eq!(pbs, vec!["Ctrl".to_string(), "Enter".to_string()]);
+    }
+
+    #[test]
+    fn target_physical_bindings_falls_back_to_legacy_target_key() {
+        let m = fixture_mapping("Ctrl+Shift+D", vec![]);
+        let pbs = mapping_target_physical_bindings(&m);
+        assert_eq!(
+            pbs,
+            vec!["Ctrl".to_string(), "Shift".to_string(), "D".to_string()]
+        );
+    }
+
+    #[test]
+    fn conflicts_on_enable_detects_cross_mapping_target_chord_collision() {
+        let mut cfg = VoiceConfig::default();
+        // Mapping A: trigger RAlt, target Ctrl+Enter (single legacy form)
+        cfg.mappings[0].id = "a".into();
+        cfg.mappings[0].trigger_key = "RAlt".into();
+        cfg.mappings[0].target_key = "Ctrl+Enter".into();
+        cfg.mappings[0].enabled = true;
+        // Mapping B: trigger RCtrl, target_actions contains Ctrl+Enter at step 2
+        let mut b = cfg.mappings[0].clone();
+        b.id = "b".into();
+        b.trigger_key = "RCtrl".into();
+        b.target_key.clear();
+        b.target_actions = vec![
+            Action::Key { value: "F1".into() },
+            Action::Key { value: "Ctrl+Enter".into() },
+            Action::Text { value: "x".into() },
+        ];
+        cfg.mappings.push(b);
+        let conflicts = cfg.conflicts_on_enable("a");
+        let kinds: Vec<&str> = conflicts.iter().map(|c| c.kind.as_str()).collect();
+        assert!(
+            kinds.contains(&"targetPhysical"),
+            "expected targetPhysical conflict, got {:?}",
+            kinds
+        );
+    }
+
+    #[test]
+    fn conflicts_on_enable_no_target_conflict_for_disjoint_actions() {
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings[0].id = "a".into();
+        cfg.mappings[0].trigger_key = "RAlt".into();
+        cfg.mappings[0].target_key = "Ctrl+Enter".into();
+        cfg.mappings[0].enabled = true;
+        let mut b = cfg.mappings[0].clone();
+        b.id = "b".into();
+        b.trigger_key = "RCtrl".into();
+        b.target_key.clear();
+        b.target_actions = vec![
+            Action::Key { value: "F1".into() },
+            Action::Text { value: "继续".into() },
+            Action::Key { value: "Enter".into() },
+        ];
+        cfg.mappings.push(b);
+        let conflicts = cfg.conflicts_on_enable("a");
+        let kinds: Vec<&str> = conflicts.iter().map(|c| c.kind.as_str()).collect();
+        assert!(
+            !kinds.contains(&"targetPhysical"),
+            "Ctrl+Enter vs F1/Enter must not collide (Enter ≠ Ctrl+Enter in this rule); got {:?}",
+            kinds
+        );
     }

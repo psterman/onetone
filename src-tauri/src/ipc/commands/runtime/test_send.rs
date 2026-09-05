@@ -90,13 +90,24 @@ pub fn perform_test_send(
         }
     }
 
-    let (key, duration_ms, mapping_label) = {
+    let (key, duration_ms, mapping_label, use_sequence) = {
         let cfg = state.cfg.lock();
         let duration_ms = cfg.key_press_duration_ms;
         let mut mapping_label = String::new();
+        let mut use_sequence = false;
         if let Some(ref id) = mapping_id {
             if let Some(m) = cfg.find_mapping_by_id(id) {
                 mapping_label = m.display_label();
+                // Prefer the mapping's action sequence when caller did not force a single key.
+                if target_key
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|k| !k.is_empty())
+                    .is_none()
+                    && !m.effective_target_actions().is_empty()
+                {
+                    use_sequence = true;
+                }
             }
         }
         let mut key = target_key
@@ -114,8 +125,31 @@ pub fn perform_test_send(
                 }
             }
         }
-        (key, duration_ms, mapping_label)
+        (key, duration_ms, mapping_label, use_sequence)
     };
+
+    if use_sequence {
+        let mid = mapping_id.as_deref().unwrap_or("").trim();
+        match crate::voice_end_runtime::run_mapping_target_sequence(state, app, mid, duration_ms) {
+            Ok(label) => {
+                return serde_json::json!({
+                    "type": "mvp_test_sent",
+                    "ok": true,
+                    "reason": "sent",
+                    "key": label,
+                    "mappingLabel": mapping_label,
+                });
+            }
+            Err(reason) => {
+                return serde_json::json!({
+                    "type": "mvp_test_sent",
+                    "ok": false,
+                    "reason": reason,
+                    "mappingLabel": mapping_label,
+                });
+            }
+        }
+    }
 
     if key.trim().is_empty() {
         return serde_json::json!({

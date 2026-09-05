@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 小白心智：状态流 + 设置页原型</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,650;0,9..40,800;1,9..40,500&family=JetBrains+Mono:wght@500&display=swap");
+
+    :root {
+      --ink: #132033;
+      --muted: #5b6f86;
+      --line: rgba(19, 32, 51, 0.10);
+      --paper: #f4f8fb;
+      --card: #ffffff;
+      --cyan: #1f8fb8;
+      --cyan-deep: #157498;
+      --cyan-soft: #dff3fa;
+      --ok: #1f7a4c;
+      --ok-soft: #e3f6ec;
+      --warn: #9a5b10;
+      --warn-soft: #fff1dd;
+      --off: #6b7c90;
+      --off-soft: #eef2f6;
+      --dict: #2a5ea8;
+      --dict-soft: #e7f0ff;
+      --shadow: 0 12px 28px rgba(19, 32, 51, 0.07);
+      --radius: 14px;
+      --font: "DM Sans", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(900px 420px at 12% -10%, #d7eef7 0%, transparent 55%),
+        radial-gradient(700px 380px at 90% 0%, #e8f2f8 0%, transparent 50%),
+        var(--paper);
+      line-height: 1.45;
+    }
+
+    .top {
+      position: sticky; top: 0; z-index: 20;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      padding: 12px 22px;
+      background: rgba(255,255,255,0.92);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+    }
+    .tag {
+      font-size: 11px; font-weight: 800; letter-spacing: 0.04em;
+      text-transform: uppercase; color: #fff;
+      background: var(--cyan); padding: 4px 10px; border-radius: 999px;
+    }
+    .top h1 { margin: 0; font-size: 15px; font-weight: 800; }
+    .top p { margin: 0; color: var(--muted); font-size: 12.5px; max-width: 52ch; }
+    .principle {
+      margin-left: auto; font-size: 12px; color: var(--muted);
+      background: var(--cyan-soft); color: var(--cyan-deep);
+      padding: 6px 12px; border-radius: 999px; font-weight: 650;
+    }
+
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 22px 22px 64px; }
+
+    .sec { margin-bottom: 28px; }
+    .sec-head {
+      display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px;
+    }
+    .sec-num {
+      font-family: var(--mono); font-size: 11px; font-weight: 500;
+      color: var(--cyan-deep); background: var(--cyan-soft);
+      padding: 2px 8px; border-radius: 6px;
+    }
+    .sec-head h2 { margin: 0; font-size: 18px; font-weight: 800; }
+    .sec-head span { color: var(--muted); font-size: 13px; }
+
+    /* —— Mental model strip —— */
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      position: relative;
+    }
+    @media (max-width: 900px) { .flow { grid-template-columns: 1fr 1fr; } }
+    .flow-card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 14px 14px 12px;
+      box-shadow: var(--shadow); cursor: pointer;
+      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+      outline: none;
+    }
+    .flow-card:hover, .flow-card:focus-visible {
+      transform: translateY(-2px);
+      border-color: rgba(31, 143, 184, 0.35);
+    }
+    .flow-card.is-active {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(31, 143, 184, 0.18), var(--shadow);
+    }
+    .flow-card .state {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 750; padding: 3px 8px; border-radius: 999px;
+      margin-bottom: 8px;
+    }
+    .s-off { background: var(--off-soft); color: var(--off); }
+    .s-wait { background: var(--warn-soft); color: var(--warn); }
+    .s-listen { background: var(--ok-soft); color: var(--ok); }
+    .s-dict { background: var(--dict-soft); color: var(--dict); }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+    }
+    .flow-card h3 { margin: 0 0 4px; font-size: 14px; font-weight: 800; }
+    .flow-card p { margin: 0; font-size: 12.5px; color: var(--muted); }
+    .flow-card .say {
+      margin-top: 10px; font-family: var(--mono); font-size: 11px;
+      color: var(--ink); background: #f7fafc; border: 1px dashed var(--line);
+      border-radius: 8px; padding: 7px 8px;
+    }
+    .arrow-row {
+      display: none;
+    }
+
+    .callout {
+      margin-top: 12px;
+      display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;
+    }
+    @media (max-width: 800px) { .callout { grid-template-columns: 1fr; } }
+    .note {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
+    }
+    .note h4 { margin: 0 0 6px; font-size: 13px; font-weight: 800; }
+    .note p, .note li { margin: 0; font-size: 12.5px; color: var(--muted); }
+    .note ul { margin: 6px 0 0; padding-left: 1.1em; }
+    .note strong { color: var(--ink); font-weight: 700; }
+    .bad { border-left: 3px solid #c45c5c; }
+    .good { border-left: 3px solid var(--ok); }
+
+    /* —— Live preview: mini bar + home —— */
+    .stage {
+      display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 14px;
+    }
+    @media (max-width: 900px) { .stage { grid-template-columns: 1fr; } }
+
+    .device {
+      background: #1a2433; color: #e8eef5; border-radius: 18px;
+      padding: 16px; box-shadow: var(--shadow); min-height: 280px;
+      position: relative; overflow: hidden;
+    }
+    .device::before {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(160deg, rgba(31,143,184,0.18), transparent 40%);
+      pointer-events: none;
+    }
+    .ide-chrome {
+      position: relative; z-index: 1;
+      font-size: 11px; color: rgba(232,238,245,0.55);
+      margin-bottom: 18px; display: flex; gap: 8px; align-items: center;
+    }
+    .ide-dot { width: 8px; height: 8px; border-radius: 50%; background: #3d4f66; }
+    .composer {
+      position: relative; z-index: 1;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; padding: 14px; min-height: 120px;
+      font-size: 13px; color: rgba(232,238,245,0.85);
+    }
+    .composer .placeholder { color: rgba(232,238,245,0.35); }
+    .composer .typed { color: #c8e9f5; }
+
+    .mini {
+      position: relative; z-index: 2;
+      margin-top: 16px;
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(12, 18, 28, 0.92);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px; padding: 6px 8px 6px 10px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+    }
+    .mini .chip {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: grid; place-items: center;
+      background: rgba(255,255,255,0.08); font-size: 11px; font-weight: 700;
+      color: rgba(232,238,245,0.75);
+    }
+    .mini .chip.hot {
+      background: var(--cyan); color: #fff;
+      box-shadow: 0 0 0 3px rgba(31,143,184,0.35);
+    }
+    .mini .chip.live {
+      background: #2e9b5e; color: #fff;
+      animation: pulse 1.4s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(46,155,94,0.45); }
+      50% { box-shadow: 0 0 0 6px rgba(46,155,94,0); }
+    }
+    .hint-pill {
+      position: relative; z-index: 2; margin-top: 10px;
+      display: inline-block;
+      font-size: 12px; font-weight: 650;
+      padding: 6px 12px; border-radius: 999px;
+      background: rgba(46,155,94,0.2); color: #9ee0b8;
+      border: 1px solid rgba(46,155,94,0.35);
+      max-width: 100%;
+    }
+    .hint-pill.is-off { background: rgba(255,255,255,0.06); color: rgba(232,238,245,0.45); border-color: rgba(255,255,255,0.1); }
+    .hint-pill.is-dict { background: rgba(42,94,168,0.25); color: #b7d0ff; border-color: rgba(90,140,220,0.4); }
+    .hint-pill.is-wait { background: rgba(180,120,40,0.22); color: #f0d09a; border-color: rgba(200,140,50,0.35); }
+
+    .legend {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow);
+    }
+    .legend h3 { margin: 0 0 8px; font-size: 14px; font-weight: 800; }
+    .legend .row {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 8px 0; border-top: 1px solid var(--line); font-size: 12.5px;
+    }
+    .legend .row:first-of-type { border-top: 0; }
+    .legend .k { font-weight: 750; min-width: 4.5em; color: var(--ink); }
+    .legend .v { color: var(--muted); }
+    .tabs {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
+    }
+    .tabs button {
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+      border-radius: 999px; padding: 5px 11px; font: inherit; font-size: 12px;
+      font-weight: 650; cursor: pointer;
+    }
+    .tabs button.is-on {
+      background: var(--cyan-soft); color: var(--cyan-deep); border-color: transparent;
+    }
+
+    /* —— Settings mock —— */
+    .settings-shell {
+      display: grid; grid-template-columns: 200px 1fr; gap: 0;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 16px; overflow: hidden; box-shadow: var(--shadow);
+      min-height: 420px;
+    }
+    @media (max-width: 800px) {
+      .settings-shell { grid-template-columns: 1fr; }
+      .aside { display: none; }
+    }
+    .aside {
+      background: #f7fafc; border-right: 1px solid var(--line); padding: 14px 10px;
+    }
+    .aside .nav {
+      display: block; width: 100%; text-align: left;
+      border: 0; background: transparent; font: inherit;
+      padding: 8px 12px; border-radius: 8px; color: var(--muted);
+      font-size: 13px; font-weight: 650; cursor: pointer; margin-bottom: 2px;
+    }
+    .aside .nav.is-on { background: var(--cyan-soft); color: var(--cyan-deep); }
+
+    .panel { padding: 18px 20px 22px; }
+    .panel h3 { margin: 0 0 4px; font-size: 16px; font-weight: 800; }
+    .panel .lead { margin: 0 0 16px; font-size: 13px; color: var(--muted); }
+
+    .hero-status {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 12px 14px; border-radius: 12px;
+      background: var(--ok-soft); border: 1px solid rgba(31,122,76,0.15);
+      margin-bottom: 16px;
+    }
+    .hero-status.is-off { background: var(--off-soft); border-color: var(--line); }
+    .hero-status .big {
+      font-size: 14px; font-weight: 800; color: var(--ink);
+    }
+    .hero-status .sub { font-size: 12px; color: var(--muted); width: 100%; margin-top: -4px; }
+
+    .simple-steps {
+      display: grid; gap: 8px; margin-bottom: 18px;
+    }
+    .step {
+      display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center;
+      padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px;
+      background: #fff;
+    }
+    .step .n {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: grid; place-items: center;
+      background: var(--cyan-soft); color: var(--cyan-deep);
+      font-family: var(--mono); font-size: 12px; font-weight: 500;
+    }
+    .step .t { font-size: 13px; font-weight: 750; }
+    .step .d { font-size: 12px; color: var(--muted); }
+    .step .act {
+      font-size: 12px; font-weight: 700; color: var(--cyan-deep);
+      background: var(--cyan-soft); border: 0; border-radius: 8px;
+      padding: 6px 10px; cursor: pointer; font-family: inherit;
+    }
+
+    .phrases {
+      display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0;
+    }
+    .phrase {
+      font-family: var(--mono); font-size: 11px;
+      padding: 4px 8px; border-radius: 6px;
+      background: #f3f6f9; border: 1px solid var(--line); color: var(--ink);
+    }
+
+    details.advanced {
+      border: 1px dashed rgba(31,143,184,0.35);
+      border-radius: 12px; padding: 0; background: #f9fcfe;
+    }
+    details.advanced summary {
+      cursor: pointer; list-style: none; padding: 12px 14px;
+      font-size: 13px; font-weight: 750; color: var(--cyan-deep);
+      display: flex; align-items: center; gap: 8px;
+    }
+    details.advanced summary::-webkit-details-marker { display: none; }
+    details.advanced summary::before {
+      content: "▸"; font-size: 11px;
+    }
+    details.advanced[open] summary::before { content: "▾"; }
+    .adv-body { padding: 0 14px 14px; }
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 12px; background: #fff; border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+    .toggle-row .lbl { font-size: 13px; font-weight: 750; }
+    .toggle-row .hint { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .switch {
+      width: 42px; height: 24px; border-radius: 999px;
+      background: #c5d0db; position: relative; border: 0; cursor: pointer; flex-shrink: 0;
+    }
+    .switch::after {
+      content: ""; position: absolute; top: 3px; left: 3px;
+      width: 18px; height: 18px; border-radius: 50%; background: #fff;
+      transition: transform .15s ease;
+    }
+    .switch.is-on { background: var(--cyan); }
+    .switch.is-on::after { transform: translateX(18px); }
+
+    .anti {
+      margin-top: 14px; padding: 12px 14px; border-radius: 12px;
+      background: #fff5f5; border: 1px solid rgba(180,70,70,0.2);
+      font-size: 12.5px; color: #7a3030;
+    }
+    .anti strong { color: #5c1f1f; }
+
+    .foot {
+      margin-top: 8px; font-size: 12px; color: var(--muted);
+      text-align: center; padding: 8px;
+    }
+
+    .toc {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px;
+    }
+    .toc a {
+      font-size: 12px; font-weight: 650; text-decoration: none;
+      color: var(--muted); background: #fff; border: 1px solid var(--line);
+      padding: 5px 10px; border-radius: 999px;
+    }
+    .toc a:hover { color: var(--cyan-deep); border-color: rgba(31,143,184,0.35); }
+
+    /* onboard overlay */
+    .onboard {
+      position: relative; background: #1a2433; border-radius: 18px;
+      padding: 20px 18px 22px; min-height: 220px; color: #e8eef5;
+      overflow: hidden; box-shadow: var(--shadow);
+    }
+    .onboard-dim {
+      position: absolute; inset: 0;
+      background: rgba(8,12,20,0.55);
+      pointer-events: none;
+    }
+    .onboard-bar {
+      position: absolute; left: 18px; bottom: 56px; z-index: 2;
+      display: inline-flex; gap: 6px; padding: 6px 8px;
+      background: rgba(12,18,28,0.95); border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+    }
+    .onboard-bar span {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: grid; place-items: center; font-size: 11px; font-weight: 700;
+      background: rgba(255,255,255,0.08);
+    }
+    .onboard-bar span.spot {
+      background: var(--cyan); color: #fff;
+      box-shadow: 0 0 0 4px rgba(31,143,184,0.45), 0 0 0 10px rgba(31,143,184,0.15);
+      animation: pulse 1.4s ease infinite;
+    }
+    .onboard-tip {
+      position: absolute; left: 18px; bottom: 100px; z-index: 3;
+      max-width: 260px; background: #fff; color: var(--ink);
+      border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow);
+    }
+    .onboard-tip strong { display: block; font-size: 13px; margin-bottom: 4px; }
+    .onboard-tip p { margin: 0; font-size: 12px; color: var(--muted); }
+    .onboard-tip .next {
+      margin-top: 10px; display: flex; gap: 8px; align-items: center;
+    }
+    .onboard-tip button {
+      border: 0; border-radius: 8px; padding: 6px 12px; font: inherit;
+      font-size: 12px; font-weight: 750; cursor: pointer;
+      background: var(--cyan); color: #fff;
+    }
+    .onboard-tip .skip { background: transparent; color: var(--muted); padding: 6px 4px; }
+    .onboard-steps {
+      display: flex; gap: 6px; margin-bottom: 8px;
+    }
+    .onboard-steps i {
+      width: 18px; height: 4px; border-radius: 999px; background: #d5dee8;
+      font-style: normal;
+    }
+    .onboard-steps i.on { background: var(--cyan); }
+
+    /* keys voice bridge */
+    .keys-shell {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 16px; box-shadow: var(--shadow); overflow: hidden;
+    }
+    .keys-tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--line);
+      background: #f7fafc; padding: 0 8px; overflow-x: auto;
+    }
+    .keys-tabs button {
+      border: 0; background: transparent; font: inherit; font-size: 12.5px;
+      font-weight: 650; color: var(--muted); padding: 12px 12px;
+      border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap;
+    }
+    .keys-tabs button.is-on {
+      color: var(--cyan-deep); border-bottom-color: var(--cyan);
+    }
+    .keys-body { padding: 14px 16px 16px; }
+    .keys-banner {
+      font-size: 12.5px; color: var(--cyan-deep); background: var(--cyan-soft);
+      border: 1px dashed rgba(31,143,184,0.4); border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 12px;
+    }
+    .bridge-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      padding: 11px 4px; border-bottom: 1px solid var(--line);
+    }
+    .bridge-row:last-child { border-bottom: 0; }
+    .bridge-row .title { font-size: 13px; font-weight: 750; }
+    .bridge-row .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .bridge-row .badge {
+      font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 999px;
+      white-space: nowrap;
+    }
+    .badge-key { background: var(--ok-soft); color: var(--ok); font-family: var(--mono); }
+    .badge-todo { background: var(--warn-soft); color: var(--warn); }
+    .badge-voice { background: var(--dict-soft); color: var(--dict); }
+
+    /* budget */
+    .budget-grid {
+      display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 12px;
+    }
+    @media (max-width: 800px) { .budget-grid { grid-template-columns: 1fr; } }
+    .pool {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+    }
+    .pool-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .pool-head h4 { margin: 0; font-size: 13px; font-weight: 800; }
+    .pool-head .cap {
+      font-family: var(--mono); font-size: 11px; color: var(--muted);
+    }
+    .pool-head .cap.warn { color: var(--warn); font-weight: 700; }
+    .bar {
+      height: 6px; border-radius: 999px; background: #e8eef3; overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .bar > i {
+      display: block; height: 100%; background: var(--cyan); border-radius: 999px;
+      font-style: normal;
+    }
+    .bar.warn > i { background: var(--warn); }
+    .conflict {
+      margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+      background: var(--warn-soft); color: var(--warn); font-size: 12px;
+    }
+    .add-disabled {
+      margin-top: 8px; font-size: 12px; color: var(--muted);
+    }
+    .add-disabled button {
+      border: 1px dashed var(--line); background: #f7fafc; color: var(--muted);
+      border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 12px;
+      font-weight: 650; cursor: not-allowed; opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <span class="tag">原型</span>
+    <div>
+      <h1>小白心智：状态流 · 日常 · 设置 · Keys 桥接 · 词表定额</h1>
+      <p>机制分两层（控制聆听 / 内容听写），界面只卖「现在能不能说」。点状态卡可预览场景。</p>
+    </div>
+    <div class="principle">主界面：状态，不模式</div>
+  </header>
+
+  <main class="wrap">
+    <nav class="toc" aria-label="章节">
+      <a href="#s1">01 心智流</a>
+      <a href="#s2">02 日常面</a>
+      <a href="#s3">03 设置</a>
+      <a href="#s4">04 首装遮罩</a>
+      <a href="#s5">05 Keys 桥接</a>
+      <a href="#s6">06 词表定额</a>
+      <a href="#s7">07 vibecoding 一日</a>
+    </nav>
+
+    <!-- 1. Mental model -->
+    <section class="sec" id="s1">
+      <div class="sec-head">
+        <span class="sec-num">01</span>
+        <h2>一条心智流</h2>
+        <span>不要教「无差别监听 vs 激活监听」二选一</span>
+      </div>
+      <div class="flow" id="flow">
+        <button type="button" class="flow-card is-active" data-state="off" aria-pressed="true">
+          <span class="state s-off"><span class="dot"></span>未开语音</span>
+          <h3>安静</h3>
+          <p>不听命令、不听写。省心、省电。</p>
+          <div class="say">可说：—</div>
+        </button>
+        <button type="button" class="flow-card" data-state="wait" aria-pressed="false">
+          <span class="state s-wait"><span class="dot"></span>等你开始</span>
+          <h3>准备好了</span>
+          <p>回到 Cursor，或点一下麦 / 侧键。</p>
+          <div class="say">可说：唤醒词（若已开后台听）</div>
+        </button>
+        <button type="button" class="flow-card" data-state="listen" aria-pressed="false">
+          <span class="state s-listen"><span class="dot"></span>聆听中</span>
+          <h3>短命令窗口</h3>
+          <p>Cursor 前台常自动进入。只听闭集短词。</p>
+          <div class="say">可说：继续 · 发送 · 新建 · 取消</div>
+        </button>
+        <button type="button" class="flow-card" data-state="dict" aria-pressed="false">
+          <span class="state s-dict"><span class="dot"></span>听写中</span>
+          <h3>往输入框出字</h3>
+          <p>长 prompt 用说的。命令词尽量闭嘴。</p>
+          <div class="say">可说：取消 / 收尾（优先用按键）</div>
+        </button>
+      </div>
+      <div class="callout">
+        <div class="note good">
+          <h4>小白只记三句话</h4>
+          <ul>
+            <li><strong>在 Cursor 里</strong> → 可以说「继续、发送」</li>
+            <li><strong>要写很长</strong> → 点麦开始听写</li>
+            <li><strong>说完了</strong> → 用按键收尾，或说取消</li>
+          </ul>
+        </div>
+        <div class="note bad">
+          <h4>设置页不要这样写</h4>
+          <ul>
+            <li>❌ 模式 A：无差别监听执行命令</li>
+            <li>❌ 模式 B：激活后再执行</li>
+            <li>❌ 让用户二选一「哪种监听」</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Day-to-day surface -->
+    <section class="sec" id="s2">
+      <div class="sec-head">
+        <span class="sec-num">02</span>
+        <h2>日常使用面（零设置也能懂）</h2>
+        <span>迷你栏 + 一句状态；不讲架构</span>
+      </div>
+      <div class="stage">
+        <div class="device" id="device">
+          <div class="ide-chrome">
+            <span class="ide-dot"></span><span class="ide-dot"></span><span class="ide-dot"></span>
+            Cursor · Composer
+          </div>
+          <div class="composer" id="composer">
+            <span class="placeholder" id="composerText">点下方状态卡，预览「现在发生什么」…</span>
+          </div>
+          <div class="mini" id="mini" aria-label="迷你栏">
+            <span class="chip" id="chipAgent">Cu</span>
+            <span class="chip" id="chipMic">麦</span>
+            <span class="chip" id="chipSend">发</span>
+            <span class="chip" id="chipCont">续</span>
+            <span class="chip" id="chipNew">新</span>
+            <span class="chip">···</span>
+          </div>
+          <div class="hint-pill is-off" id="hint">未开语音</div>
+        </div>
+        <div class="legend">
+          <div class="tabs" id="quickTabs" role="tablist">
+            <button type="button" class="is-on" data-state="off">未开</button>
+            <button type="button" data-state="wait">等你开始</button>
+            <button type="button" data-state="listen">聆听中</button>
+            <button type="button" data-state="dict">听写中</button>
+          </div>
+          <h3 id="legendTitle">未开语音</h3>
+          <div class="row"><span class="k">你看到</span><span class="v" id="legSee">迷你栏安静，没有「可说…」提示。</span></div>
+          <div class="row"><span class="k">你怎么做</span><span class="v" id="legDo">打开 Cursor，或点麦开始。</span></div>
+          <div class="row"><span class="k">系统在干嘛</span><span class="v" id="legSys">麦与口令监听默认关（省电）。</span></div>
+          <div class="row"><span class="k">别担心</span><span class="v" id="legOk">日常说话不会触发「继续」。</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Settings -->
+    <section class="sec" id="s3">
+      <div class="sec-head">
+        <span class="sec-num">03</span>
+        <h2>设置页：主路径简单，高级收起来</h2>
+        <span>一个开关管「后台听唤醒」，不并列两种模式</span>
+      </div>
+      <div class="settings-shell">
+        <aside class="aside" aria-label="侧栏">
+          <button type="button" class="nav">输入法</button>
+          <button type="button" class="nav">自定义键</button>
+          <button type="button" class="nav is-on">语音</button>
+          <button type="button" class="nav">Cursor 命令</button>
+          <button type="button" class="nav">虚拟键盘</button>
+        </aside>
+        <div class="panel">
+          <h3>语音 · 怎么开始</h3>
+          <p class="lead">先让听写和好用；短命令在 Cursor 里自动可用。不必先学「监听模式」。</p>
+
+          <div class="hero-status" id="setHero">
+            <span class="state s-listen" style="margin:0"><span class="dot"></span>推荐默认</span>
+            <span class="big">在 Cursor 前台 → 自动聆听短命令</span>
+            <span class="sub">离开 Cursor 即停止。要灌长文时，点迷你栏「麦」开始听写。</span>
+          </div>
+
+          <div class="simple-steps">
+            <div class="step">
+              <span class="n">1</span>
+              <div>
+                <div class="t">确认麦克风</div>
+                <div class="d">电平会跟着声音跳；无信号就换设备。</div>
+              </div>
+              <button type="button" class="act">检查</button>
+            </div>
+            <div class="step">
+              <span class="n">2</span>
+              <div>
+                <div class="t">开始听写的词（可选）</div>
+                <div class="d">不想记词？用侧键 / 迷你栏麦即可。</div>
+                <div class="phrases">
+                  <span class="phrase">开始听写</span>
+                  <span class="phrase">小飞一声</span>
+                </div>
+              </div>
+              <button type="button" class="act">改词</button>
+            </div>
+            <div class="step">
+              <span class="n">3</span>
+              <div>
+                <div class="t">练一次</div>
+                <div class="d">点麦 → 对着 Composer 说一句话 → 用按键收尾。</div>
+              </div>
+              <button type="button" class="act">开始练习</button>
+            </div>
+          </div>
+
+          <details class="advanced">
+            <summary>高级 · 后台听唤醒词（更耗电，默认关）</summary>
+            <div class="adv-body">
+              <div class="toggle-row">
+                <div>
+                  <div class="lbl">开启口令唤醒</div>
+                  <div class="hint">打开后，即使不在 Cursor 前台，也会听「开始听写」等唤醒词。随时可关。</div>
+                </div>
+                <button type="button" class="switch" id="optIn" aria-pressed="false" aria-label="开启口令唤醒"></button>
+              </div>
+              <p style="margin:10px 0 0;font-size:12px;color:var(--muted)">
+                这才是「更接近无差别听唤醒」的入口——藏在高级里，不跟小白主路径抢注意力。
+              </p>
+            </div>
+          </details>
+
+          <div class="anti">
+            <strong>刻意不做：</strong>
+            不在本页并排「无差别监听执行命令 / 激活后再执行」两个模式。内部仍是两层机制，对外只暴露状态与一个 opt-in。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. First-run visual -->
+    <section class="sec" id="s4">
+      <div class="sec-head">
+        <span class="sec-num">04</span>
+        <h2>首装遮罩（钉在真实迷你栏）</h2>
+        <span>只讲动作；点「下一步」看三步</span>
+      </div>
+      <div class="onboard" id="onboard">
+        <div class="onboard-dim" aria-hidden="true"></div>
+        <div class="onboard-tip" id="onboardTip">
+          <div class="onboard-steps" id="onboardSteps" aria-hidden="true">
+            <i class="on"></i><i></i><i></i>
+          </div>
+          <strong id="obTitle">① 点麦</strong>
+          <p id="obBody">点迷你栏麦克风。会打开听写，字进 Composer。</p>
+          <div class="next">
+            <button type="button" id="obNext">下一步</button>
+            <button type="button" class="skip" id="obSkip">懂了，跳过</button>
+          </div>
+        </div>
+        <div class="onboard-bar" id="onboardBar" aria-hidden="true">
+          <span>Cu</span>
+          <span class="spot" data-spot="mic">麦</span>
+          <span data-spot="send">发</span>
+          <span data-spot="cont">续</span>
+          <span data-spot="new">新</span>
+          <span>···</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Keys voice bridge -->
+    <section class="sec" id="s5">
+      <div class="sec-head">
+        <span class="sec-num">05</span>
+        <h2>Keys「语音命令」列表怎么改</h2>
+        <span>左：现状问题 · 右：目标分组</span>
+      </div>
+      <div class="budget-grid">
+        <div class="note bad">
+          <h4>现状问题（你截图里的）</h4>
+          <ul>
+            <li>一条平铺列表：听写生命周期 + Agent 口令混在一起</li>
+            <li>顶栏「套用当前习惯方案」像第二种模式 / 方案切换</li>
+            <li>副文案塞语义 ID（input.cancel）和小字逻辑，小白读不动</li>
+            <li>「待设置 / 仅语音 / 去收尾」三种状态，没有解释「这一页在干什么」</li>
+            <li>不回答：什么时候能说、什么该配键</li>
+          </ul>
+        </div>
+        <div class="note good">
+          <h4>改法原则</h4>
+          <ul>
+            <li>这一页只做一件事：<strong>给已有语音意图补按键</strong></li>
+            <li>对外叫「写字 / 下令」，不叫 A/B；用户不用背分类</li>
+            <li>人话副标题；技术 ID 进 tooltip / 高级</li>
+            <li>写字 3 行置顶；下令可选；更少用的折叠</li>
+            <li>状态右侧只保留：已有键 / 建议补键 / 仅语音 / 去设收尾</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="keys-shell" style="margin-top:12px">
+        <div class="keys-tabs" role="tablist">
+          <button type="button">输入法</button>
+          <button type="button">自定义键</button>
+          <button type="button" class="is-on">语音命令</button>
+          <button type="button">Cursor 命令</button>
+          <button type="button">虚拟键盘</button>
+        </div>
+        <div class="keys-body">
+          <div class="keys-banner">
+            语音已经会触发这些动作。本页只问：<strong>要不要再配一个键</strong>（手不离键时用）。不改口令、不是监听模式开关。
+          </div>
+
+          <p class="keys-channel-group-label" style="margin:12px 0 6px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)">写字 · 开始 / 停下听写</p>
+          <div class="bridge-row">
+            <div>
+              <div class="title">开始听写</div>
+              <div class="sub">点麦或说唤醒词 → 字进输入框。可再补启动键。</div>
+            </div>
+            <span class="badge badge-key">Ctrl+Shift+Space</span>
+          </div>
+          <div class="bridge-row">
+            <div>
+              <div class="title">取消本轮</div>
+              <div class="sub">说错了就撤掉这一轮听写。</div>
+            </div>
+            <span class="badge badge-key">Ctrl+Shift+Backspace</span>
+          </div>
+          <div class="bridge-row">
+            <div>
+              <div class="title">结束并发送</div>
+              <div class="sub">写完用按键收尾更稳，避免嘴里说「发送」撞车。</div>
+            </div>
+            <span class="badge badge-todo">去快捷键设收尾 →</span>
+          </div>
+
+          <p style="margin:14px 0 6px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)">下令 · Agent / 应用动作</p>
+          <div class="bridge-row">
+            <div>
+              <div class="title">继续</div>
+              <div class="sub">和 Soft Pad「继续」同一动作。没键也能说。</div>
+            </div>
+            <span class="badge badge-todo">可选 · 待设快捷键</span>
+          </div>
+          <div class="bridge-row">
+            <div>
+              <div class="title">打开应用 · Cursor</div>
+              <div class="sub">召唤 / 打开。口令已有，键可选。</div>
+            </div>
+            <span class="badge badge-todo">可选 · 待设快捷键</span>
+          </div>
+          <div class="bridge-row">
+            <div>
+              <div class="title">回到当前 Agent</div>
+              <div class="sub">例如口令「打开 Codex」。</div>
+            </div>
+            <span class="badge badge-todo">可选 · 待设快捷键</span>
+          </div>
+
+          <details class="advanced" style="margin-top:12px" open>
+            <summary>更少用的下令（默认可不配键）</summary>
+            <div class="adv-body" style="padding-top:4px">
+              <div class="bridge-row">
+                <div>
+                  <div class="title">新会话 / 上下文</div>
+                  <div class="sub">口令「新建」· 低频，默认仅语音。</div>
+                </div>
+                <span class="badge badge-voice">仅语音</span>
+              </div>
+              <div class="bridge-row">
+                <div>
+                  <div class="title">命令菜单</div>
+                  <div class="sub">口令「打开命令菜单」</div>
+                </div>
+                <span class="badge badge-voice">仅语音</span>
+              </div>
+              <div class="bridge-row">
+                <div>
+                  <div class="title">查看状态</div>
+                  <div class="sub">口令「查看状态」</div>
+                </div>
+                <span class="badge badge-voice">仅语音</span>
+              </div>
+            </div>
+          </details>
+
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="act" style="font-size:12px;font-weight:700;color:var(--cyan-deep);background:var(--cyan-soft);border:0;border-radius:8px;padding:8px 12px;cursor:pointer;font-family:inherit">一键补全推荐键（听写 3 项）</button>
+            <span style="font-size:12px;color:var(--muted);align-self:center">代替「套用当前习惯方案」——只补听写相关键，不碰短命令词表。</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Phrase budget -->
+    <section class="sec" id="s6">
+      <div class="sec-head">
+        <span class="sec-num">06</span>
+        <h2>词表定额（防无限膨胀）</h2>
+        <span>满了只能替换；撞车黄灯</span>
+      </div>
+      <div class="budget-grid">
+        <div>
+          <div class="pool">
+            <div class="pool-head">
+              <h4>唤醒词（开始听写）</h4>
+              <span class="cap">2 / 3</span>
+            </div>
+            <div class="bar"><i style="width:66%"></i></div>
+            <div class="phrases">
+              <span class="phrase">开始听写</span>
+              <span class="phrase">小飞一声</span>
+            </div>
+          </div>
+          <div class="pool">
+            <div class="pool-head">
+              <h4>聆听中 · 短命令（当前习惯）</h4>
+              <span class="cap warn">4 / 4 · 已满</span>
+            </div>
+            <div class="bar warn"><i style="width:100%"></i></div>
+            <div class="phrases">
+              <span class="phrase">继续</span>
+              <span class="phrase">发送</span>
+              <span class="phrase">新建</span>
+              <span class="phrase">取消</span>
+            </div>
+            <div class="add-disabled">
+              <button type="button" disabled>＋ 添加口令</button>
+              <span style="margin-left:8px">满额。先删一条或改成更怪的词再加。</span>
+            </div>
+            <div class="conflict">冲突提示：若新增「发」——会与「发送」子串撞车，建议改用「确认发送」或改走按键。</div>
+          </div>
+          <div class="pool">
+            <div class="pool-head">
+              <h4>后台听唤醒（高级 opt-in）</h4>
+              <span class="cap">默认关</span>
+            </div>
+            <div class="bar"><i style="width:0%"></i></div>
+            <p style="margin:0;font-size:12px;color:var(--muted)">未打开时不占「常驻听」预算。打开后仍只听唤醒闭集，不是全文 STT。</p>
+          </div>
+        </div>
+        <div class="note">
+          <h4>小白压力怎么降</h4>
+          <ul>
+            <li>默认<strong>不用填词表</strong>：Cursor 前台自动有 4 个短命令。</li>
+            <li>想加第五个 → 界面说「已满」，引导改键或替换，而不是无限加。</li>
+            <li>黄灯讲人话：「会和听写正文撞车」，不讲 contains / grammar。</li>
+          </ul>
+          <h4 style="margin-top:12px">和「24h 监听」的关系</h4>
+          <p>没有 24h 语音监控。常驻感只来自「口令唤醒开着」。定额 + 默认关 + 空闲停听，一起管住。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Day in the life -->
+    <section class="sec" id="s7">
+      <div class="sec-head">
+        <span class="sec-num">07</span>
+        <h2>Vibecoding 一日（用户自己怎么用）</h2>
+        <span>零配置默认路径</span>
+      </div>
+      <div class="note good" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div>
+          <h4>开战</h4>
+          <p>打开 Cursor → 自动「聆听中」→ 说「继续」或点 chip。</p>
+        </div>
+        <div>
+          <h4>灌 prompt</h4>
+          <p>点麦 → 「听写中」→ 说完按收尾键。</p>
+        </div>
+        <div>
+          <h4>换场</h4>
+          <p>离开 Cursor → 聆听自动停。去浏览器聊天不误触。</p>
+        </div>
+        <div>
+          <h4>可选加速</h4>
+          <p>设置高级里开「口令唤醒」；或 Keys 页给「继续」补一个键。</p>
+        </div>
+      </div>
+    </section>
+
+    <p class="foot">文件：docs/mockups/voice-beginner-mental-model.html · 刷新浏览器查看更新</p>
+  </main>
+
+  <script>
+    (function () {
+      var copy = {
+        off: {
+          title: "未开语音",
+          hint: "未开语音",
+          hintClass: "is-off",
+          composer: '<span class="placeholder">安静。日常聊天不会触发命令。</span>',
+          see: "迷你栏安静，没有「可说…」提示。",
+          do: "打开 Cursor，或点迷你栏「麦」。",
+          sys: "麦与口令监听默认关（省电）。",
+          ok: "日常说话不会触发「继续」。",
+          mic: "", send: "", cont: "", agent: ""
+        },
+        wait: {
+          title: "等你开始",
+          hint: "准备好了 · 点麦或回到 Cursor",
+          hintClass: "is-wait",
+          composer: '<span class="placeholder">等你点一下麦，或把 Cursor 放到前台…</span>',
+          see: "状态提示「准备好了」，还没有「可说短命令」。",
+          do: "点麦开始听写；或进入 Cursor 自动进入聆听。",
+          sys: "引擎待命；未武装时不执行「继续」。",
+          ok: "还没进入命令窗口，误触面很小。",
+          mic: "hot", send: "", cont: "", agent: ""
+        },
+        listen: {
+          title: "聆听中",
+          hint: "聆听中 · 可说：发送、继续、新建、取消",
+          hintClass: "",
+          composer: '<span class="placeholder">短命令窗口已开。可以说「继续」——不必先喊唤醒词。</span>',
+          see: "绿色「聆听中」+ 可说清单；迷你栏 chip 可用。",
+          do: "直接说「继续 / 发送 / 新建」，或点对应 chip。",
+          sys: "只听闭集短词（控制层）。不是无差别听全文。",
+          ok: "离开 Cursor 会自动退出聆听。",
+          mic: "", send: "hot", cont: "hot", agent: "live"
+        },
+        dict: {
+          title: "听写中",
+          hint: "听写中 · 长内容进输入框 · 收尾用按键更稳",
+          hintClass: "is-dict",
+          composer: '<span class="typed">请把登录页改成支持深色模式，并补上无障碍标签……</span>',
+          see: "Composer 在出字；状态变成听写中。",
+          do: "继续说内容；说完用快捷键收尾。说错了就「取消」。",
+          sys: "IME 负责出字；Agent 命令词应静音，避免撞车。",
+          ok: "prompt 里的「继续」不会当命令（理想态）。",
+          mic: "live", send: "", cont: "", agent: ""
+        }
+      };
+
+      function apply(state) {
+        var c = copy[state] || copy.off;
+        document.querySelectorAll(".flow-card").forEach(function (el) {
+          var on = el.getAttribute("data-state") === state;
+          el.classList.toggle("is-active", on);
+          el.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+        document.querySelectorAll("#quickTabs button").forEach(function (el) {
+          el.classList.toggle("is-on", el.getAttribute("data-state") === state);
+        });
+        var hint = document.getElementById("hint");
+        hint.textContent = c.hint;
+        hint.className = "hint-pill " + (c.hintClass || "");
+        document.getElementById("composer").innerHTML = c.composer;
+        document.getElementById("legendTitle").textContent = c.title;
+        document.getElementById("legSee").textContent = c.see;
+        document.getElementById("legDo").textContent = c.do;
+        document.getElementById("legSys").textContent = c.sys;
+        document.getElementById("legOk").textContent = c.ok;
+        ["Mic", "Send", "Cont", "Agent"].forEach(function (id) {
+          var key = id.toLowerCase();
+          var el = document.getElementById("chip" + id);
+          el.className = "chip";
+          if (c[key]) el.classList.add(c[key]);
+        });
+      }
+
+      document.getElementById("flow").addEventListener("click", function (e) {
+        var card = e.target.closest(".flow-card");
+        if (!card) return;
+        apply(card.getAttribute("data-state"));
+      });
+      document.getElementById("quickTabs").addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-state]");
+        if (!btn) return;
+        apply(btn.getAttribute("data-state"));
+      });
+
+      var opt = document.getElementById("optIn");
+      opt.addEventListener("click", function () {
+        var on = !opt.classList.contains("is-on");
+        opt.classList.toggle("is-on", on);
+        opt.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+
+      var obSteps = [
+        {
+          title: "① 点麦",
+          body: "点迷你栏麦克风。会打开听写，字进 Composer。",
+          spot: "mic"
+        },
+        {
+          title: "② 说一句",
+          body: "随便说几个字。看见出字 → 这就是听写。",
+          spot: "mic"
+        },
+        {
+          title: "③ 点「继续」或说「继续」",
+          body: "短命令和听写是两回事。说完就懂了。",
+          spot: "cont"
+        }
+      ];
+      var obIdx = 0;
+      function renderOnboard() {
+        var s = obSteps[obIdx];
+        document.getElementById("obTitle").textContent = s.title;
+        document.getElementById("obBody").textContent = s.body;
+        document.querySelectorAll("#onboardSteps i").forEach(function (el, i) {
+          el.classList.toggle("on", i <= obIdx);
+        });
+        document.querySelectorAll("#onboardBar span[data-spot]").forEach(function (el) {
+          el.classList.toggle("spot", el.getAttribute("data-spot") === s.spot);
+        });
+        document.getElementById("obNext").textContent =
+          obIdx >= obSteps.length - 1 ? "完成" : "下一步";
+      }
+      document.getElementById("obNext").addEventListener("click", function () {
+        if (obIdx >= obSteps.length - 1) {
+          obIdx = 0;
+        } else {
+          obIdx += 1;
+        }
+        renderOnboard();
+      });
+      document.getElementById("obSkip").addEventListener("click", function () {
+        obIdx = 0;
+        renderOnboard();
+      });
+      renderOnboard();
+
+      apply("off");
+    })();
+  </script>
+</body>
+</html>

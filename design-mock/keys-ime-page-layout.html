@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>按键设置 · 输入法页 · 1:1 规划原型</title>
+<style>
+:root{
+  --bg:#edf2f8;
+  --primary:#2a9cc4;
+  --primary-strong:#1f8fb8;
+  --primary-deep:#1e87ad;
+  --primary-soft:#e6f7fc;
+  --surface:#fff;
+  --surface-high:#f7f9fb;
+  --surface-soft:#f0f7fb;
+  --on:#152238;
+  --on-mute:#5a7086;
+  --outline:rgba(42,156,196,.24);
+  --line:rgba(26,45,74,.10);
+  --key:#1a2d4a;
+  --warn:#9c6300;
+  --ok:#2e7d4f;
+  --zone-a:#2a9cc4;
+  --zone-b:#7c3aed;
+  --zone-c:#ea580c;
+  --zone-d:#059669;
+  --zone-e:#db2777;
+  --zone-f:#2563eb;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:var(--font);font-size:13px;line-height:1.45;
+  background:var(--bg);color:var(--on);
+}
+.page{max-width:1180px;margin:0 auto;padding:20px 16px 64px}
+.doc-head{margin-bottom:16px}
+.doc-head h1{margin:0 0 4px;font-size:18px;font-weight:800}
+.doc-head h1 em{font-style:normal;color:var(--primary-strong)}
+.doc-lede{margin:0;color:var(--on-mute);font-size:12px;max-width:52rem}
+.doc-lede code{font-family:var(--mono);font-size:11px;background:var(--surface);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
+
+.toolbar{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  margin:14px 0 16px;padding:10px 12px;border-radius:12px;
+  background:var(--surface);border:1px solid var(--line);
+}
+.toolbar .lbl{font-size:11px;font-weight:800;color:var(--on-mute);text-transform:uppercase;letter-spacing:.04em;margin-right:4px}
+.seg{display:inline-flex;padding:3px;border-radius:10px;background:var(--surface-soft);border:1px solid var(--line)}
+.seg button{
+  appearance:none;border:none;background:transparent;color:var(--on-mute);
+  padding:6px 12px;border-radius:8px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+}
+.seg button.is-on{background:var(--surface);color:var(--on);box-shadow:0 1px 2px rgba(15,23,42,.06)}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--on-mute);cursor:pointer;user-select:none}
+.chk input{accent-color:var(--primary)}
+.toolbar-meta{margin-left:auto;font-size:11px;color:var(--on-mute);font-family:var(--mono)}
+
+.layout{
+  display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;
+}
+@media(max-width:980px){.layout{grid-template-columns:1fr}}
+
+/* ── mock chrome ── */
+.mock-shell{
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  overflow:hidden;box-shadow:0 8px 28px rgba(26,45,74,.06);
+}
+.mock-chrome{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fbfdff,#f3f7fb);
+}
+.mock-dots{display:flex;gap:5px}
+.mock-dots i{width:9px;height:9px;border-radius:50%;background:#d5dde8;display:block}
+.mock-chrome-title{font-size:12px;font-weight:800;color:var(--on)}
+.mock-chrome-sub{font-size:11px;color:var(--on-mute)}
+
+.mock-body{padding:14px;background:#f4f7fb}
+.keys-page{
+  display:flex;flex-direction:column;gap:12px;min-height:640px;
+}
+.keys-page.is-step-trigger .desk-panel{width:min(100%,520px);margin:0 auto;padding:20px 24px 24px}
+.keys-page.is-step-target .desk-panel{min-height:min(58vh,560px);display:flex;flex-direction:column}
+
+/* flow nodes */
+.flow-nodes{
+  padding:14px 16px 12px;border:1px solid var(--line);border-radius:14px;background:var(--surface);
+  position:relative;
+}
+.flow-track{
+  position:absolute;left:25%;right:25%;top:42px;height:8px;pointer-events:none;
+}
+.flow-track svg{width:100%;height:8px;display:block}
+.flow-grid{display:grid;grid-template-columns:1fr 1fr;max-width:520px;margin:0 auto;gap:8px;position:relative;z-index:1}
+.flow-node{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.flow-tag{
+  font-family:var(--mono);font-size:10px;font-weight:700;color:var(--primary-strong);
+  background:rgba(42,156,196,.08);border:1px solid rgba(42,156,196,.22);
+  padding:2px 8px;border-radius:999px;
+}
+.flow-btn{
+  width:48px;height:48px;border-radius:14px;border:1px solid var(--line);
+  background:var(--surface-high);color:var(--on-mute);display:grid;place-items:center;cursor:pointer;
+}
+.flow-btn.is-active{
+  background:var(--primary-soft);color:var(--primary-strong);
+  border-color:rgba(42,156,196,.35);box-shadow:0 0 0 3px rgba(42,156,196,.12);
+}
+.flow-title{margin:0;font-size:13px;font-weight:800}
+.flow-hint{margin:0;font-size:11px;color:var(--on-mute);min-height:1.2em}
+
+.desk-panel{
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:12px 14px 14px;flex:1;min-height:0;
+}
+.step-card{display:none;flex-direction:column;min-height:0;height:100%}
+.step-card.is-on{display:flex}
+.step-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.step-tag{
+  font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--primary-strong);background:var(--primary-soft);
+  padding:3px 8px;border-radius:6px;
+}
+.step-sub{display:flex;flex-direction:column;gap:1px;min-width:0}
+.step-label{font-size:13px;font-weight:800}
+.step-status{font-size:11px;color:var(--ok);font-weight:700}
+
+/* trigger body */
+.trigger-body{display:flex;flex-direction:column;gap:16px;max-width:480px;margin:0 auto;width:100%}
+.keycap-zone{display:flex;flex-direction:column;align-items:center;gap:8px}
+.keycap{
+  min-width:160px;min-height:72px;padding:14px 28px;border-radius:14px;
+  border:1px solid rgba(42,156,196,.28);background:linear-gradient(180deg,#fff,#f3f9fc);
+  display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 0 rgba(26,45,74,.08);
+}
+.keycap .val{font-size:28px;font-weight:800;letter-spacing:-.03em;color:var(--key);font-family:var(--mono)}
+.keycap.is-empty .val{font-size:15px;font-weight:500;color:var(--on-mute);opacity:.65}
+.keycap-hint{margin:0;font-size:12px;color:var(--on-mute)}
+.trigger-modes{display:flex;flex-direction:column;gap:8px}
+.sub-title{margin:0;font-size:11px;font-weight:700;color:var(--on-mute)}
+.mode-segs{display:flex;gap:0;padding:4px;border-radius:12px;border:1px solid var(--line);background:var(--surface-soft)}
+.mode-seg{
+  flex:1;min-height:40px;border:none;background:transparent;border-radius:8px;
+  font:inherit;font-size:12px;font-weight:600;color:var(--on-mute);cursor:pointer;
+}
+.mode-seg.is-active{background:var(--surface);color:var(--on);font-weight:700;box-shadow:0 1px 2px rgba(15,23,42,.06)}
+
+/* target / IME channel split */
+.channel-split{
+  display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);
+  flex:1;min-height:420px;border-radius:12px;overflow:hidden;
+  box-shadow:inset 0 0 0 1px var(--line);background:var(--surface);
+}
+@media(max-width:720px){
+  .channel-split{grid-template-columns:1fr}
+  .pane-left{border-right:none!important;border-bottom:1px solid var(--line);max-height:200px}
+}
+.pane-left{
+  display:flex;flex-direction:column;border-right:1px solid var(--line);
+  background:var(--surface-high);min-height:0;
+}
+.channel-search{
+  margin:12px 12px 8px;padding:10px 12px;border:1px solid var(--line);
+  border-radius:10px;background:var(--surface);display:flex;
+}
+.channel-search input{
+  border:none;outline:none;width:100%;font:inherit;font-size:14px;background:transparent;color:var(--on);
+}
+.channel-tree{display:flex;flex-direction:column;gap:4px;padding:4px 10px 14px;overflow:auto;flex:1}
+.channel-tab{
+  appearance:none;border:none;background:transparent;color:var(--on);
+  height:44px;padding:0 12px;border-radius:10px;font:inherit;font-size:15px;font-weight:750;
+  text-align:left;cursor:pointer;width:100%;
+}
+.channel-tab:hover{background:color-mix(in srgb,var(--primary) 6%,transparent)}
+.channel-tab.is-active{background:color-mix(in srgb,var(--primary) 10%,transparent);color:var(--primary-deep);font-weight:800}
+
+.pane-right{
+  display:flex;flex-direction:column;gap:14px;padding:12px 14px 14px;
+  min-width:0;overflow:auto;
+}
+
+/* IME strip */
+.ime-strip-wrap{display:flex;flex-direction:column;gap:6px;padding:4px 2px 10px}
+.ime-strip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px;flex-wrap:nowrap}
+.ime-item{
+  appearance:none;border:1px solid var(--line);background:var(--surface);
+  border-radius:10px;padding:6px 8px 5px;min-width:52px;min-height:52px;
+  display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  cursor:pointer;flex:0 0 auto;color:var(--on-mute);
+}
+.ime-item img{width:28px;height:28px;border-radius:7px;object-fit:contain}
+.ime-item .name{font-size:10px;font-weight:700;max-width:4.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ime-item.is-selected{border-color:rgba(42,156,196,.45);background:var(--primary-soft);color:var(--primary-strong);box-shadow:0 0 0 2px rgba(42,156,196,.12)}
+.ime-item--icon{
+  width:32px;height:32px;min-width:32px;min-height:32px;padding:0;
+  background:var(--surface-high);color:var(--primary-strong);font-size:16px;font-weight:800;
+}
+.ime-confirm{margin:0;font-size:11px;color:var(--on-mute)}
+
+/* hero + finish steps */
+.detail-hero{
+  display:flex;flex-direction:column;gap:10px;padding:12px 14px;
+  border:1px solid color-mix(in srgb,var(--primary) 28%,transparent);
+  border-radius:12px;background:color-mix(in srgb,var(--primary) 4%,#fff);
+}
+.ime-step{display:flex;flex-direction:column;gap:10px}
+.ime-step-head{display:flex;align-items:flex-start;gap:10px}
+.ime-num{
+  width:22px;height:22px;border-radius:7px;display:grid;place-items:center;
+  font-size:11px;font-weight:800;font-family:var(--mono);color:var(--primary);
+  background:var(--primary-soft);border:1px solid rgba(42,156,196,.28);flex-shrink:0;margin-top:1px;
+}
+.ime-step-title{margin:0;font-size:13px;font-weight:800}
+.ime-step-hint{margin:0;font-size:12px;color:var(--on-mute)}
+.hero-keyrow{display:flex;align-items:center;justify-content:center;gap:10px}
+.hero-keycap{
+  min-width:140px;min-height:64px;padding:12px 24px;border-radius:14px;
+  border:1px solid rgba(42,156,196,.28);background:linear-gradient(180deg,#fff,#f3f9fc);
+  display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 0 rgba(26,45,74,.08);
+}
+.hero-keycap .val{font-size:26px;font-weight:800;font-family:var(--mono);color:var(--key);letter-spacing:-.03em}
+.record-link{
+  appearance:none;border:none;background:transparent;color:var(--primary-strong);
+  font:inherit;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:4px;
+}
+
+.finish-step{
+  margin-top:0;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface);
+}
+.finish-segs{
+  display:flex;gap:0;padding:4px;border-radius:12px;border:1px solid var(--line);background:var(--surface-soft);
+}
+.finish-seg{
+  flex:1;min-width:0;min-height:48px;padding:8px 6px;border:none;border-radius:8px;
+  background:transparent;font:inherit;font-size:12px;font-weight:600;color:var(--on-mute);
+  cursor:pointer;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+}
+.finish-seg.is-active{background:var(--surface);color:var(--on);font-weight:700;box-shadow:0 1px 2px rgba(15,23,42,.06)}
+.finish-badge{font-size:9px;color:var(--primary-strong);font-weight:800}
+.finish-hint{margin:8px 0 0;font-size:12px;color:var(--on-mute)}
+.delay-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.delay-chip{
+  flex:1 1 0;min-width:52px;min-height:34px;padding:6px 8px;border-radius:8px;
+  border:1px solid var(--line);background:var(--surface-soft);font:inherit;font-size:12px;font-weight:700;
+  color:var(--on-mute);cursor:pointer;
+}
+.delay-chip.is-active{border-color:var(--primary);background:var(--surface);color:var(--primary-strong);box-shadow:0 1px 2px rgba(15,23,42,.06)}
+/* cancel strategy (OR) */
+.cancel-block{
+  margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;
+  background:var(--surface-high);display:flex;flex-direction:column;gap:10px;
+}
+.cancel-block.is-key-gated .cancel-row[data-cancel="key"]{opacity:.48;pointer-events:none}
+.cancel-head{display:flex;flex-direction:column;gap:2px}
+.cancel-title{margin:0;font-size:12px;font-weight:800;color:var(--on)}
+.cancel-lede{margin:0;font-size:11px;color:var(--on-mute);line-height:1.4}
+.cancel-rows{display:flex;flex-direction:column;gap:8px}
+.cancel-row{
+  display:flex;flex-direction:column;gap:8px;padding:10px;
+  border:1px solid var(--line);border-radius:10px;background:var(--surface);
+}
+.cancel-row.is-on{border-color:color-mix(in srgb,var(--primary) 35%,transparent)}
+.cancel-row-main{display:flex;align-items:flex-start;gap:10px}
+.cancel-check{
+  flex-shrink:0;width:18px;height:18px;margin-top:1px;accent-color:var(--primary);cursor:pointer;
+}
+.cancel-row-copy{flex:1;min-width:0}
+.cancel-row-label{margin:0;font-size:12px;font-weight:800;color:var(--on)}
+.cancel-row-hint{margin:2px 0 0;font-size:11px;color:var(--on-mute);line-height:1.35}
+.cancel-row-detail{display:none;padding-left:28px}
+.cancel-row.is-on .cancel-row-detail{display:block}
+.cancel-gate-note{
+  margin:0;padding:6px 8px;border-radius:8px;background:#fff8eb;border:1px solid #f1dfb8;
+  font-size:11px;color:#7a5a18;display:none;
+}
+.cancel-block.is-key-gated .cancel-gate-note{display:block}
+.cancel-win-chips,.cancel-phrase-chips,.cancel-gesture-chips{
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+}
+.cancel-chip{
+  appearance:none;border:1px solid var(--line);background:var(--surface-soft);
+  border-radius:8px;padding:5px 9px;min-height:28px;font:inherit;font-size:11px;font-weight:700;
+  color:var(--on-mute);cursor:pointer;
+}
+.cancel-chip.is-active{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-strong)}
+.cancel-chip.is-readonly{cursor:default;font-weight:600}
+.cancel-chip.is-link{color:var(--primary-strong);border-style:dashed;background:transparent}
+.cancel-gesture-warn{margin:6px 0 0;font-size:11px;color:#b45309;display:none}
+.cancel-gesture-warn.is-show{display:block}
+.cancel-summary{
+  margin:0;padding:8px 10px;border-radius:8px;background:var(--surface-soft);
+  font-size:11px;font-weight:700;color:var(--on-mute);line-height:1.4;
+}
+.cancel-summary strong{color:var(--on);font-weight:800}
+
+.channel-placeholder{
+  padding:28px 16px;text-align:center;color:var(--on-mute);font-size:12px;
+  border:1px dashed var(--line);border-radius:12px;background:var(--surface-high);
+}
+.channel-placeholder b{display:block;color:var(--on);font-size:13px;margin-bottom:4px}
+
+.page-foot{
+  display:flex;justify-content:flex-end;padding-top:4px;
+}
+.btn-test{
+  appearance:none;border:none;border-radius:12px;padding:12px 18px;min-height:48px;
+  background:var(--primary);color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;
+}
+.btn-test:disabled{opacity:.45;cursor:not-allowed}
+
+/* ── zone annotations ── */
+.zone{position:relative}
+body.show-zones .zone::before{
+  content:attr(data-zone);
+  position:absolute;z-index:20;top:6px;right:6px;
+  font-family:var(--mono);font-size:10px;font-weight:800;
+  padding:2px 7px;border-radius:6px;color:#fff;pointer-events:none;
+  box-shadow:0 1px 4px rgba(0,0,0,.18);
+}
+body.show-zones .zone[data-zone^="A"]::before{background:var(--zone-a)}
+body.show-zones .zone[data-zone^="B"]::before{background:var(--zone-b)}
+body.show-zones .zone[data-zone^="C"]::before{background:var(--zone-c)}
+body.show-zones .zone[data-zone^="D"]::before{background:var(--zone-d)}
+body.show-zones .zone[data-zone^="E"]::before{background:var(--zone-e)}
+body.show-zones .zone[data-zone^="F"]::before{background:var(--zone-f)}
+body.show-zones .zone[data-zone="E2"]::before{background:#be185d}
+body.show-zones .zone{
+  outline:2px dashed transparent;outline-offset:-2px;border-radius:inherit;
+}
+body.show-zones .zone[data-zone^="A"]{outline-color:color-mix(in srgb,var(--zone-a) 55%,transparent)}
+body.show-zones .zone[data-zone^="B"]{outline-color:color-mix(in srgb,var(--zone-b) 55%,transparent)}
+body.show-zones .zone[data-zone^="C"]{outline-color:color-mix(in srgb,var(--zone-c) 55%,transparent)}
+body.show-zones .zone[data-zone^="D"]{outline-color:color-mix(in srgb,var(--zone-d) 55%,transparent)}
+body.show-zones .zone[data-zone^="E"]{outline-color:color-mix(in srgb,var(--zone-e) 55%,transparent)}
+body.show-zones .zone[data-zone="E2"]{outline-color:color-mix(in srgb,#be185d 55%,transparent)}
+body.show-zones .zone[data-zone^="F"]{outline-color:color-mix(in srgb,var(--zone-f) 55%,transparent)}
+
+/* side logic map */
+.logic-panel{
+  position:sticky;top:12px;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:14px;max-height:calc(100vh - 24px);overflow:auto;
+}
+.logic-panel h2{margin:0 0 4px;font-size:14px;font-weight:800}
+.logic-panel .sub{margin:0 0 12px;font-size:11px;color:var(--on-mute)}
+.logic-item{
+  display:grid;grid-template-columns:28px 1fr;gap:8px;padding:10px 0;
+  border-top:1px solid var(--line);
+}
+.logic-item:first-of-type{border-top:none;padding-top:0}
+.logic-badge{
+  width:28px;height:28px;border-radius:8px;display:grid;place-items:center;
+  color:#fff;font-family:var(--mono);font-size:11px;font-weight:800;
+}
+.logic-badge.a{background:var(--zone-a)}.logic-badge.b{background:var(--zone-b)}
+.logic-badge.c{background:var(--zone-c)}.logic-badge.d{background:var(--zone-d)}
+.logic-badge.e{background:var(--zone-e)}.logic-badge.f{background:var(--zone-f)}
+.logic-title{font-size:12px;font-weight:800;margin:0 0 2px}
+.logic-body{margin:0;font-size:11px;color:var(--on-mute);line-height:1.45}
+.logic-body code{font-family:var(--mono);font-size:10px;background:var(--surface-soft);padding:0 4px;border-radius:3px}
+.logic-src{margin:4px 0 0;font-size:10px;color:var(--on-mute);font-family:var(--mono)}
+
+.stack-note{
+  margin-top:14px;padding:10px 12px;border-radius:10px;background:#fff8eb;border:1px solid #f1dfb8;
+  font-size:11px;color:#7a5a18;line-height:1.5;
+}
+.stack-note b{display:block;margin-bottom:4px;color:#6b4508}
+.stack-note ul{margin:4px 0 0;padding-left:1.1em}
+</style>
+</head>
+<body class="show-zones">
+<div class="page">
+  <header class="doc-head">
+    <h1>按键设置 · <em>输入法</em>页 · 1:1 规划原型</h1>
+    <p class="doc-lede">
+      对齐现网 desk 模式：<code>settingsPanelKeys.keys-page-desk</code> → 识别步 → channel=<code>ime</code>。
+      右侧是当前逻辑归属，方便你拆/并。图标走 <code>../src/icons/ime/</code>。
+    </p>
+  </header>
+
+  <div class="toolbar">
+    <span class="lbl">步骤</span>
+    <div class="seg" id="stepSeg" role="tablist">
+      <button type="button" data-step="trigger">01 触发</button>
+      <button type="button" class="is-on" data-step="target">02 识别 · 输入法</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="toggleZones" checked/> 逻辑分区标注</label>
+    <span class="toolbar-meta" id="stateMeta">step=target · channel=ime · preset=xunfei · finish=confirm</span>
+  </div>
+
+  <div class="layout">
+    <div class="mock-shell">
+      <div class="mock-chrome">
+        <div class="mock-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div>
+          <div class="mock-chrome-title">按键</div>
+          <div class="mock-chrome-sub">配置一条从按键触发到文本发送的语音输入流程</div>
+        </div>
+      </div>
+      <div class="mock-body">
+        <div class="keys-page is-step-target" id="keysPage">
+
+          <!-- A: flow nodes -->
+          <section class="flow-nodes zone" data-zone="A" aria-label="触发流程导航">
+            <div class="flow-track" aria-hidden="true">
+              <svg viewBox="0 0 500 8" fill="none" preserveAspectRatio="none">
+                <path d="M 0,4 Q 125,-5 250,4 T 500,4" stroke="rgba(42,156,196,.35)" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="flow-grid">
+              <div class="flow-node">
+                <span class="flow-tag">01 / 触发</span>
+                <button type="button" class="flow-btn" id="nodeTrigger" data-step="trigger" aria-label="触发">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/></svg>
+                </button>
+                <h3 class="flow-title">触发</h3>
+                <p class="flow-hint" id="hintTrigger">F13 · 点按</p>
+              </div>
+              <div class="flow-node">
+                <span class="flow-tag">02 / 识别</span>
+                <button type="button" class="flow-btn is-active" id="nodeTarget" data-step="target" aria-label="识别">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </button>
+                <h3 class="flow-title">识别</h3>
+                <p class="flow-hint" id="hintTarget">讯飞 · F2</p>
+              </div>
+            </div>
+          </section>
+
+          <div class="desk-panel" id="deskPanel">
+
+            <!-- TRIGGER STEP -->
+            <div class="step-card" id="cardTrigger" data-edit-step="trigger">
+              <div class="step-head">
+                <span class="step-tag">触发</span>
+                <div class="step-sub">
+                  <span class="step-label">你按的键</span>
+                  <span class="step-status">已设置</span>
+                </div>
+              </div>
+              <div class="trigger-body">
+                <div class="keycap-zone zone" data-zone="F">
+                  <div class="keycap" id="triggerKeycap" title="点击修改快捷键"><span class="val">F13</span></div>
+                  <p class="keycap-hint">点击修改快捷键</p>
+                </div>
+                <div class="trigger-modes zone" data-zone="F">
+                  <p class="sub-title">触发方式</p>
+                  <div class="mode-segs" role="radiogroup">
+                    <button type="button" class="mode-seg is-active" data-tm="tap">点按</button>
+                    <button type="button" class="mode-seg" data-tm="double">双击</button>
+                    <button type="button" class="mode-seg" data-tm="hold">按住</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TARGET / IME STEP -->
+            <div class="step-card is-on" id="cardTarget" data-edit-step="target">
+              <div class="step-head">
+                <span class="step-tag">识别</span>
+                <div class="step-sub">
+                  <span class="step-label">识别与收尾配置</span>
+                  <span class="step-status" id="targetStatus">讯飞 · F2</span>
+                </div>
+              </div>
+
+              <div class="channel-split">
+                <!-- B: left nav -->
+                <aside class="pane-left zone" data-zone="B">
+                  <label class="channel-search">
+                    <input type="search" placeholder="搜索功能…" autocomplete="off" spellcheck="false"/>
+                  </label>
+                  <nav class="channel-tree" id="channelTree" aria-label="识别分类">
+                    <button type="button" class="channel-tab is-active" data-ch="ime">输入法</button>
+                    <button type="button" class="channel-tab" data-ch="key">自定义键</button>
+                    <button type="button" class="channel-tab" data-ch="voice">语音命令</button>
+                    <button type="button" class="channel-tab" data-ch="cursor">Cursor 命令</button>
+                    <button type="button" class="channel-tab" data-ch="softPad">虚拟键盘</button>
+                    <button type="button" class="channel-tab" data-ch="camera">摄像头操作</button>
+                  </nav>
+                </aside>
+
+                <div class="pane-right" id="paneRight">
+                  <!-- C: IME presets -->
+                  <div class="ime-strip-wrap zone" data-zone="C" id="imeBlock">
+                    <div class="ime-strip" id="imeStrip"></div>
+                    <p class="ime-confirm" id="imeConfirm">已选讯飞输入法 · 听写键 F2</p>
+                  </div>
+
+                  <!-- D: dictation key -->
+                  <div class="detail-hero zone" data-zone="D" id="heroCard">
+                    <div class="ime-step">
+                      <div class="ime-step-head">
+                        <span class="ime-num">1</span>
+                        <div>
+                          <p class="ime-step-title">听写键</p>
+                          <p class="ime-step-hint">点键帽，按下你的听写快捷键。</p>
+                        </div>
+                      </div>
+                      <div class="hero-keyrow">
+                        <div class="hero-keycap" id="targetKeycap"><span class="val" id="targetKeyVal">F2</span></div>
+                        <button type="button" class="record-link" title="重新录制">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                          录制
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- E: finish -->
+                  <section class="finish-step zone" data-zone="E" id="finishStep">
+                    <div class="ime-step">
+                      <div class="ime-step-head">
+                        <span class="ime-num">2</span>
+                        <div>
+                          <p class="ime-step-title">说完后</p>
+                        </div>
+                      </div>
+                      <div class="finish-segs" role="radiogroup" id="finishSegs">
+                        <button type="button" class="finish-seg is-active" data-fm="confirm">
+                          <span>结束后自动发送</span>
+                          <span class="finish-badge">推荐</span>
+                        </button>
+                        <button type="button" class="finish-seg" data-fm="manual">
+                          <span>只结束不发送</span>
+                        </button>
+                      </div>
+                      <p class="finish-hint" id="finishHint">再说一次听写键 → 结束 → 等 2.0 秒 → 自动 Enter</p>
+                      <div class="delay-chips" id="delayChips">
+                        <button type="button" class="delay-chip" data-ms="1000">1s</button>
+                        <button type="button" class="delay-chip is-active" data-ms="2000">2s</button>
+                        <button type="button" class="delay-chip" data-ms="3000">3s</button>
+                        <button type="button" class="delay-chip" data-ms="custom">自定义</button>
+                      </div>
+
+                      <!-- E2: cancel strategies (multi-select OR) -->
+                      <div class="cancel-block zone" data-zone="E2" id="cancelBlock">
+                        <div class="cancel-head">
+                          <p class="cancel-title">取消听写</p>
+                          <p class="cancel-lede">听写中任一开启的方式触发 → Esc 丢弃。可多选，OR 生效。</p>
+                        </div>
+                        <p class="cancel-gate-note" id="cancelGateNote">当前不是「结束后自动发送」：再按启动键取消窗口不可用；取消词 / 摄像头仍可开。</p>
+                        <div class="cancel-rows">
+                          <div class="cancel-row is-on" data-cancel="key" id="cancelRowKey">
+                            <div class="cancel-row-main">
+                              <input type="checkbox" class="cancel-check" id="cancelKeyOn" checked aria-label="再按启动键取消"/>
+                              <div class="cancel-row-copy">
+                                <p class="cancel-row-label">再按启动键（默认 Esc）</p>
+                                <p class="cancel-row-hint">听写开始后的窗口内再按启动键 → Esc</p>
+                              </div>
+                            </div>
+                            <div class="cancel-row-detail">
+                              <div class="cancel-win-chips" id="cancelWinChips" role="group" aria-label="取消窗口时长">
+                                <button type="button" class="cancel-chip" data-win="500">0.5s</button>
+                                <button type="button" class="cancel-chip is-active" data-win="1200">1.2s</button>
+                                <button type="button" class="cancel-chip" data-win="2000">2s</button>
+                                <button type="button" class="cancel-chip" data-win="custom">自定义</button>
+                              </div>
+                              <p class="cancel-row-hint" id="cancelWinHint" style="margin-top:6px">1.2 秒内再按启动键 → Esc 取消听写</p>
+                            </div>
+                          </div>
+
+                          <div class="cancel-row is-on" data-cancel="phrase" id="cancelRowPhrase">
+                            <div class="cancel-row-main">
+                              <input type="checkbox" class="cancel-check" id="cancelPhraseOn" checked aria-label="文字取消词"/>
+                              <div class="cancel-row-copy">
+                                <p class="cancel-row-label">文字取消词</p>
+                                <p class="cancel-row-hint">听写中说取消词 → Esc（全程有效，无时间窗）</p>
+                              </div>
+                            </div>
+                            <div class="cancel-row-detail">
+                              <div class="cancel-phrase-chips" id="cancelPhraseChips">
+                                <span class="cancel-chip is-readonly">取消输入</span>
+                                <span class="cancel-chip is-readonly">不要了</span>
+                                <span class="cancel-chip is-readonly">撤掉</span>
+                                <button type="button" class="cancel-chip is-link" id="btnEditCancelPhrases">编辑…</button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="cancel-row" data-cancel="camera" id="cancelRowCamera">
+                            <div class="cancel-row-main">
+                              <input type="checkbox" class="cancel-check" id="cancelCameraOn" aria-label="摄像头手势取消"/>
+                              <div class="cancel-row-copy">
+                                <p class="cancel-row-label">摄像头手势</p>
+                                <p class="cancel-row-hint">识别到手势 → Esc（可多选手势）</p>
+                              </div>
+                            </div>
+                            <div class="cancel-row-detail">
+                              <div class="cancel-gesture-chips" id="cancelGestureChips" role="group" aria-label="取消手势">
+                                <button type="button" class="cancel-chip is-active" data-gesture="shakeHead">摇头</button>
+                                <button type="button" class="cancel-chip" data-gesture="openPalm">五指张开</button>
+                                <button type="button" class="cancel-chip" data-gesture="deliberateBlink">故意闭眼</button>
+                                <button type="button" class="cancel-chip" data-gesture="wave">挥手</button>
+                                <button type="button" class="cancel-chip" data-gesture="fist">握拳</button>
+                                <button type="button" class="cancel-chip" data-gesture="okHand">OK</button>
+                              </div>
+                              <p class="cancel-gesture-warn" id="cancelGestureWarn">请至少选择一个手势</p>
+                            </div>
+                          </div>
+                        </div>
+                        <p class="cancel-summary" id="cancelSummary">已开「启动键 · 取消词」</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <div class="channel-placeholder" id="otherChannel" hidden>
+                    <b id="otherTitle">自定义键</b>
+                    非输入法通道内容（序列 / 命令列表）不在本原型展开。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="page-foot">
+            <button type="button" class="btn-test" id="btnTest">测试发送</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="logic-panel">
+      <h2>逻辑分区（现状）</h2>
+      <p class="sub">按 DOM 宿主拆，不是建议方案。整理时从这些边界下手。</p>
+
+      <div class="logic-item">
+        <span class="logic-badge a">A</span>
+        <div>
+          <p class="logic-title">流程节点 · desk step</p>
+          <p class="logic-body">切换 <code>is-step-trigger</code> / <code>is-step-target</code>，一次只显示一列。触发↔识别是同一 mapping 的两段编辑面。</p>
+          <p class="logic-src">keys-panel-ui · keysFlowNodes</p>
+        </div>
+      </div>
+      <div class="logic-item">
+        <span class="logic-badge b">B</span>
+        <div>
+          <p class="logic-title">识别分类树</p>
+          <p class="logic-body">channel = ime | key | voice | cursor | softPad | camera。决定右侧挂哪套面板；输入法选中时才露 C/D/E。</p>
+          <p class="logic-src">keys-channel-command-picker</p>
+        </div>
+      </div>
+      <div class="logic-item">
+        <span class="logic-badge c">C</span>
+        <div>
+          <p class="logic-title">输入法预设条</p>
+          <p class="logic-body">写 <code>imePresetId</code>，顺带填默认 <code>targetKey</code>。自定义 / 点选器旁路预设。</p>
+          <p class="logic-src">ime-presets.js · mapping</p>
+        </div>
+      </div>
+      <div class="logic-item">
+        <span class="logic-badge d">D</span>
+        <div>
+          <p class="logic-title">① 听写键</p>
+          <p class="logic-body">实质就是 target 录制。预设可预填，用户可覆盖。测试发送依赖此键。</p>
+          <p class="logic-src">targetKey · mapping-recording</p>
+        </div>
+      </div>
+      <div class="logic-item">
+        <span class="logic-badge e">E</span>
+        <div>
+          <p class="logic-title">② 说完后</p>
+          <p class="logic-body"><code>finishMode</code>（confirm/manual/perpress）+ <code>enterDelayMs</code>。选项集由触发手势门控。</p>
+          <p class="logic-src">key-finish-flow-render</p>
+        </div>
+      </div>
+      <div class="logic-item">
+        <span class="logic-badge e">E2</span>
+        <div>
+          <p class="logic-title">取消策略（OR）</p>
+          <p class="logic-body">多选任一触发即 Esc：① 再按启动键窗 <code>cancelEnabled</code>+<code>intervalMs</code>；② 取消词 <code>voiceEnd.cancelPhrases*</code>；③ 摄像头手势 → <code>pressEsc</code>。现网入口分散在 Keys / 语音页 / 摄像头偏好。</p>
+          <p class="logic-src">voice_end_runtime · camera-presence-actions</p>
+        </div>
+      </div>
+      <div class="logic-item">
+        <span class="logic-badge f">F</span>
+        <div>
+          <p class="logic-title">触发键 + 触发方式</p>
+          <p class="logic-body"><code>triggerKey</code> + <code>triggerMode</code>(tap/double/hold)。hold → finish 只剩 perpress；与 E 耦合。</p>
+          <p class="logic-src">keys-panel-ui · trigger</p>
+        </div>
+      </div>
+
+      <div class="stack-note">
+        <b>整理时常见纠缠点</b>
+        <ul>
+          <li>C 写 targetKey 与 D 录制互相覆盖，谁是 source of truth？</li>
+          <li>E 的可选模式依赖 F 的 gesture，但 UI 分属两步</li>
+          <li>B 的「输入法」把「选 IME」和「配 finish」捆在同一右栏</li>
+          <li>自定义键时 E 仍挂在 <code>keysCaptureKeyPanel</code>，与 IME 共用宿主</li>
+          <li>取消三通道现网分散；产品落地时需在 Keys「取消听写」收口，勿再只藏 details</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+  var ICON = '../src/icons/ime/';
+  var PRESETS = [
+    {id:'xunfei', name:'讯飞', key:'F2', icon:'xunfei.png'},
+    {id:'wechat', name:'微信', key:'Ctrl+Shift+Win', icon:'weixin.png'},
+    {id:'typeless', name:'Typeless', key:'RAlt', icon:'typeless.png'},
+    {id:'microsoft', name:'微软', key:'Win+H', icon:'microsoft.svg'},
+    {id:'zhipu', name:'智谱', key:'RAlt', icon:'zhipu.png'},
+    {id:'qianwen', name:'千问', key:'RAlt', icon:'qianwen.png'},
+    {id:'shandianshuo', name:'闪电说', key:'RAlt', icon:'shandianshuo.jpg'},
+    {id:'sogou', name:'搜狗', key:'Ctrl+Shift+Z', icon:'sougou.png'},
+    {id:'baidu', name:'百度', key:'Alt+`', icon:'baidu.svg'}
+  ];
+  var GESTURE_LABELS = {
+    shakeHead:'摇头', openPalm:'五指张开', deliberateBlink:'故意闭眼',
+    wave:'挥手', fist:'握拳', okHand:'OK'
+  };
+  var st = {
+    step:'target', channel:'ime', preset:'xunfei', finish:'confirm', delay:2000, triggerMode:'tap',
+    cancel:{
+      key:true,
+      phrase:true,
+      camera:false,
+      intervalMs:1200,
+      gestures:['shakeHead']
+    }
+  };
+
+  var strip = document.getElementById('imeStrip');
+  function renderStrip(){
+    var html = '';
+    PRESETS.forEach(function(p){
+      html += '<button type="button" class="ime-item'+(st.preset===p.id?' is-selected':'')+'" data-preset="'+p.id+'">'
+        +'<img src="'+ICON+p.icon+'" alt="" decoding="async"/>'
+        +'<span class="name">'+p.name+'</span></button>';
+    });
+    html += '<button type="button" class="ime-item ime-item--icon" data-preset="picker" title="点选按键">☰</button>';
+    html += '<button type="button" class="ime-item'+(st.preset==='custom'?' is-selected':'')+'" data-preset="custom">'
+      +'<img src="'+ICON+'custom.svg" alt=""/><span class="name">自定义</span></button>';
+    strip.innerHTML = html;
+  }
+
+  function presetById(id){
+    for(var i=0;i<PRESETS.length;i++) if(PRESETS[i].id===id) return PRESETS[i];
+    return null;
+  }
+
+  function cancelActiveParts(){
+    var parts = [];
+    var keyOk = st.cancel.key && st.finish==='confirm';
+    if(keyOk) parts.push('启动键');
+    if(st.cancel.phrase) parts.push('取消词');
+    if(st.cancel.camera && st.cancel.gestures.length) parts.push('摄像头');
+    return parts;
+  }
+
+  function syncCancelUi(){
+    var block = document.getElementById('cancelBlock');
+    var keyGated = st.finish!=='confirm';
+    block.classList.toggle('is-key-gated', keyGated);
+
+    var rows = {
+      key: document.getElementById('cancelRowKey'),
+      phrase: document.getElementById('cancelRowPhrase'),
+      camera: document.getElementById('cancelRowCamera')
+    };
+    document.getElementById('cancelKeyOn').checked = st.cancel.key;
+    document.getElementById('cancelPhraseOn').checked = st.cancel.phrase;
+    document.getElementById('cancelCameraOn').checked = st.cancel.camera;
+    rows.key.classList.toggle('is-on', st.cancel.key);
+    rows.phrase.classList.toggle('is-on', st.cancel.phrase);
+    rows.camera.classList.toggle('is-on', st.cancel.camera);
+
+    document.querySelectorAll('#cancelWinChips .cancel-chip').forEach(function(b){
+      var v = b.getAttribute('data-win');
+      var active = v!=='custom' && Number(v)===st.cancel.intervalMs;
+      b.classList.toggle('is-active', active);
+    });
+    var winSec = (st.cancel.intervalMs/1000).toFixed(st.cancel.intervalMs%1000?1:0);
+    if(st.cancel.intervalMs===1200) winSec = '1.2';
+    document.getElementById('cancelWinHint').textContent =
+      winSec+' 秒内再按启动键 → Esc 取消听写';
+
+    document.querySelectorAll('#cancelGestureChips .cancel-chip').forEach(function(b){
+      var g = b.getAttribute('data-gesture');
+      b.classList.toggle('is-active', st.cancel.gestures.indexOf(g)>=0);
+    });
+    var warn = document.getElementById('cancelGestureWarn');
+    warn.classList.toggle('is-show', st.cancel.camera && st.cancel.gestures.length===0);
+
+    var parts = cancelActiveParts();
+    var sum = document.getElementById('cancelSummary');
+    if(!parts.length){
+      sum.innerHTML = '未开启任何取消通道 — 听写中无法一键 Esc 丢弃';
+    } else {
+      var extra = '';
+      if(st.cancel.camera && st.cancel.gestures.length){
+        extra = '（手势：'+st.cancel.gestures.map(function(g){ return GESTURE_LABELS[g]||g; }).join('、')+'）';
+      }
+      sum.innerHTML = '已开「<strong>'+parts.join(' · ')+'</strong>」'+extra+' — 任一触发即取消';
+    }
+  }
+
+  function syncMeta(){
+    var parts = cancelActiveParts();
+    document.getElementById('stateMeta').textContent =
+      'step='+st.step+' · channel='+st.channel+' · preset='+st.preset
+      +' · finish='+st.finish+' · tm='+st.triggerMode
+      +' · cancel=['+(parts.join(',')||'none')+']';
+    syncCancelUi();
+  }
+
+  function setStep(step){
+    st.step = step;
+    var page = document.getElementById('keysPage');
+    page.classList.toggle('is-step-trigger', step==='trigger');
+    page.classList.toggle('is-step-target', step==='target');
+    document.getElementById('cardTrigger').classList.toggle('is-on', step==='trigger');
+    document.getElementById('cardTarget').classList.toggle('is-on', step==='target');
+    document.getElementById('nodeTrigger').classList.toggle('is-active', step==='trigger');
+    document.getElementById('nodeTarget').classList.toggle('is-active', step==='target');
+    document.querySelectorAll('#stepSeg [data-step]').forEach(function(b){
+      b.classList.toggle('is-on', b.getAttribute('data-step')===step);
+    });
+    syncMeta();
+  }
+
+  function setChannel(ch){
+    st.channel = ch;
+    document.querySelectorAll('#channelTree .channel-tab').forEach(function(b){
+      b.classList.toggle('is-active', b.getAttribute('data-ch')===ch);
+    });
+    var ime = ch==='ime';
+    document.getElementById('imeBlock').hidden = !ime;
+    document.getElementById('heroCard').hidden = !ime;
+    document.getElementById('finishStep').hidden = !ime;
+    document.getElementById('otherChannel').hidden = ime;
+    if(!ime){
+      var labels = {key:'自定义键',voice:'语音命令',cursor:'Cursor 命令',softPad:'虚拟键盘',camera:'摄像头操作'};
+      document.getElementById('otherTitle').textContent = labels[ch]||ch;
+    }
+    syncMeta();
+  }
+
+  function applyPreset(id){
+    if(id==='picker'){ alert('原型：打开 target key picker（现网 target-key-picker）'); return; }
+    st.preset = id;
+    var p = presetById(id);
+    var key = p ? p.key : (id==='custom' ? '—' : 'F2');
+    document.getElementById('targetKeyVal').textContent = key;
+    document.getElementById('targetStatus').textContent = (p?p.name:'自定义')+' · '+key;
+    document.getElementById('hintTarget').textContent = (p?p.name:'自定义')+' · '+key;
+    document.getElementById('imeConfirm').textContent = p
+      ? ('已选'+p.name+'输入法 · 听写键 '+p.key)
+      : '自定义听写键 · 请录制或点选';
+    renderStrip();
+    syncMeta();
+  }
+
+  function setFinish(mode){
+    st.finish = mode;
+    document.querySelectorAll('#finishSegs .finish-seg').forEach(function(b){
+      b.classList.toggle('is-active', b.getAttribute('data-fm')===mode);
+    });
+    var delay = document.getElementById('delayChips');
+    if(mode==='confirm'){
+      delay.hidden = false;
+      var sec = (st.delay/1000).toFixed(1);
+      document.getElementById('finishHint').textContent = '再说一次听写键 → 结束 → 等 '+sec+' 秒 → 自动 Enter';
+    } else if(mode==='perpress'){
+      delay.hidden = true;
+      document.getElementById('finishHint').textContent = '按住触发键说话，松手结束并发送。';
+    } else {
+      delay.hidden = true;
+      document.getElementById('finishHint').textContent = '再说一次听写键 → 只结束；发送键自己按。';
+    }
+    // cancel block always visible on IME finish; key channel gated when not confirm
+    syncMeta();
+  }
+
+  function setTriggerMode(tm){
+    st.triggerMode = tm;
+    document.querySelectorAll('.mode-seg').forEach(function(b){
+      b.classList.toggle('is-active', b.getAttribute('data-tm')===tm);
+    });
+    var labels = {tap:'点按',double:'双击',hold:'按住'};
+    document.getElementById('hintTrigger').textContent = 'F13 · '+(labels[tm]||tm);
+    var segs = document.getElementById('finishSegs');
+    if(tm==='hold'){
+      segs.innerHTML = '<button type="button" class="finish-seg is-active" data-fm="perpress"><span>松手结束并发送</span></button>';
+      st.finish = 'perpress';
+      document.getElementById('delayChips').hidden = true;
+      document.getElementById('finishHint').textContent = '按住触发键说话，松手结束并发送。';
+      segs.querySelector('[data-fm]').addEventListener('click', function(){ setFinish('perpress'); });
+      syncMeta();
+    } else {
+      segs.innerHTML =
+        '<button type="button" class="finish-seg" data-fm="confirm"><span>结束后自动发送</span><span class="finish-badge">推荐</span></button>'
+        +'<button type="button" class="finish-seg" data-fm="manual"><span>只结束不发送</span></button>';
+      segs.querySelectorAll('[data-fm]').forEach(function(b){
+        b.addEventListener('click', function(){ setFinish(b.getAttribute('data-fm')); });
+      });
+      setFinish(st.finish==='perpress'?'confirm':st.finish);
+    }
+  }
+
+  // wire
+  document.getElementById('toggleZones').addEventListener('change', function(e){
+    document.body.classList.toggle('show-zones', e.target.checked);
+  });
+  document.querySelectorAll('#stepSeg [data-step], #nodeTrigger, #nodeTarget').forEach(function(b){
+    b.addEventListener('click', function(){ setStep(b.getAttribute('data-step')); });
+  });
+  document.getElementById('channelTree').addEventListener('click', function(e){
+    var t = e.target.closest('[data-ch]'); if(t) setChannel(t.getAttribute('data-ch'));
+  });
+  strip.addEventListener('click', function(e){
+    var t = e.target.closest('[data-preset]'); if(t) applyPreset(t.getAttribute('data-preset'));
+  });
+  document.getElementById('finishSegs').addEventListener('click', function(e){
+    var t = e.target.closest('[data-fm]'); if(t) setFinish(t.getAttribute('data-fm'));
+  });
+  document.getElementById('delayChips').addEventListener('click', function(e){
+    var t = e.target.closest('[data-ms]'); if(!t) return;
+    var v = t.getAttribute('data-ms');
+    if(v==='custom'){ alert('原型：展开自定义 delay range'); return; }
+    st.delay = Number(v);
+    document.querySelectorAll('#delayChips .delay-chip').forEach(function(b){
+      b.classList.toggle('is-active', b===t);
+    });
+    setFinish('confirm');
+  });
+  document.querySelectorAll('.mode-seg').forEach(function(b){
+    b.addEventListener('click', function(){ setTriggerMode(b.getAttribute('data-tm')); });
+  });
+
+  document.getElementById('cancelKeyOn').addEventListener('change', function(e){
+    st.cancel.key = !!e.target.checked; syncMeta();
+  });
+  document.getElementById('cancelPhraseOn').addEventListener('change', function(e){
+    st.cancel.phrase = !!e.target.checked; syncMeta();
+  });
+  document.getElementById('cancelCameraOn').addEventListener('change', function(e){
+    st.cancel.camera = !!e.target.checked; syncMeta();
+  });
+  document.getElementById('cancelWinChips').addEventListener('click', function(e){
+    var t = e.target.closest('[data-win]'); if(!t) return;
+    var v = t.getAttribute('data-win');
+    if(v==='custom'){ alert('原型：自定义 intervalMs（现网 200–5000）'); return; }
+    st.cancel.intervalMs = Number(v); syncMeta();
+  });
+  document.getElementById('cancelGestureChips').addEventListener('click', function(e){
+    var t = e.target.closest('[data-gesture]'); if(!t) return;
+    var g = t.getAttribute('data-gesture');
+    var i = st.cancel.gestures.indexOf(g);
+    if(i>=0) st.cancel.gestures.splice(i,1);
+    else st.cancel.gestures.push(g);
+    if(!st.cancel.camera && st.cancel.gestures.length) st.cancel.camera = true;
+    syncMeta();
+  });
+  document.getElementById('btnEditCancelPhrases').addEventListener('click', function(){
+    alert('原型：跳转语音页「取消词」编辑（voiceEnd.cancelPhrasesZh）');
+  });
+
+  renderStrip();
+  setFinish('confirm');
+  syncMeta();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cursor 命令 · 单选场景原型</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,650;0,9..40,800&display=swap");
+
+    :root {
+      --ink: #152238;
+      --muted: #5a7086;
+      --line: rgba(26, 45, 74, 0.10);
+      --cyan: #2a9cc4;
+      --cyan-deep: #1f8fb8;
+      --cyan-soft: #e6f7fc;
+      --ok: #2e7d4f;
+      --ok-soft: #e8f6ee;
+      --warn: #9a5b10;
+      --warn-soft: #fff3e6;
+      --bg: #e8f0f5;
+      --font: "DM Sans", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background: radial-gradient(700px 320px at 20% -8%, #d5ebf4, transparent 55%), var(--bg);
+      line-height: 1.45;
+    }
+
+    .top {
+      position: sticky; top: 0; z-index: 10;
+      padding: 12px 18px;
+      background: rgba(255,255,255,0.94);
+      border-bottom: 1px solid var(--line);
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    }
+    .tag {
+      font-size: 11px; font-weight: 800; color: #fff;
+      background: var(--cyan); padding: 3px 10px; border-radius: 999px;
+    }
+    .top h1 { margin: 0; font-size: 15px; font-weight: 800; }
+    .top p { margin: 0; font-size: 12.5px; color: var(--muted); max-width: 56ch; }
+    .toggle {
+      margin-left: auto; display: flex; padding: 3px;
+      background: #eef3f7; border-radius: 999px; gap: 2px;
+    }
+    .toggle button {
+      border: 0; background: transparent; font: inherit;
+      font-size: 12px; font-weight: 750; color: var(--muted);
+      padding: 6px 12px; border-radius: 999px; cursor: pointer;
+    }
+    .toggle button.is-on {
+      background: #fff; color: var(--cyan-deep);
+      box-shadow: 0 1px 4px rgba(26,45,74,0.08);
+    }
+
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 16px 14px 40px; }
+
+    .compare {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    @media (max-width: 900px) { .compare { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 26px rgba(26,45,74,0.06);
+    }
+    .panel-h {
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+      background: #fafcfd; display: flex; align-items: center; gap: 8px;
+    }
+    .badge {
+      font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px;
+    }
+    .badge.bad { background: #fde8e8; color: #a33; }
+    .badge.ok { background: var(--ok-soft); color: var(--ok); }
+    .panel-h h2 { margin: 0; font-size: 13px; font-weight: 800; }
+
+    .shell { display: grid; grid-template-columns: 128px 1fr; min-height: 420px; }
+    @media (max-width: 560px) {
+      .shell { grid-template-columns: 1fr; }
+      .side { display: none; }
+    }
+    .side {
+      border-right: 1px solid var(--line); background: #f7fafc; padding: 8px;
+    }
+    .nav {
+      display: block; width: 100%; text-align: left; border: 0;
+      background: transparent; font: inherit; font-size: 11.5px; font-weight: 650;
+      color: var(--muted); padding: 7px 8px; border-radius: 7px;
+    }
+    .nav.on { background: var(--cyan-soft); color: var(--cyan-deep); }
+
+    .main { padding: 12px 14px 16px; }
+
+    /* before noise */
+    .noise .dash {
+      margin-bottom: 8px; padding: 8px 10px;
+      border: 1px dashed rgba(42,156,196,0.45);
+      border-radius: 8px; color: var(--cyan-deep);
+      font-size: 12px; font-weight: 750;
+    }
+    .noise .row {
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 2px 8px; padding: 8px 2px;
+      border-bottom: 1px solid var(--line); font-size: 12px;
+    }
+    .noise .n { font-weight: 750; }
+    .noise .s { grid-column: 1; font-size: 10.5px; color: var(--muted); }
+    .noise .r { font-size: 11px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+    .noise .g {
+      margin: 10px 0 4px; font-size: 11px; font-weight: 800;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;
+    }
+
+    /* after pick */
+    .lead { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+    .lead strong { color: var(--ink); }
+    .pick-label {
+      font-size: 11px; font-weight: 750; color: var(--muted); margin-bottom: 6px;
+    }
+    .pick {
+      width: 100%; appearance: none;
+      border: 1.5px solid var(--line); border-radius: 12px;
+      padding: 12px 40px 12px 14px; font: inherit; font-size: 15px; font-weight: 750;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%215a7086' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 14px center;
+      margin-bottom: 12px; cursor: pointer;
+    }
+    .pick:focus {
+      outline: none; border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(42,156,196,0.2);
+    }
+    .card-info {
+      border: 1px solid var(--line); border-radius: 14px;
+      padding: 14px 16px; margin-bottom: 12px;
+      background: linear-gradient(180deg, #f7fbfd 0%, #fff 48%);
+    }
+    .card-info h3 {
+      margin: 0 0 12px; font-size: 13px; font-weight: 800; color: var(--cyan-deep);
+    }
+    .field {
+      display: grid; grid-template-columns: 3.5em 1fr;
+      gap: 6px 10px; margin-bottom: 10px; font-size: 13px;
+    }
+    .field:last-of-type { margin-bottom: 0; }
+    .lab { font-weight: 750; color: var(--muted); font-size: 12px; }
+    .val { font-weight: 650; }
+
+    .how {
+      margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line);
+      font-size: 12.5px; color: var(--muted);
+    }
+    .how strong { color: var(--ink); }
+    .chip {
+      display: inline-block; margin-left: 4px;
+      font-size: 11px; font-weight: 750; padding: 2px 8px; border-radius: 999px;
+      background: var(--cyan-soft); color: var(--cyan-deep);
+    }
+    .chip.warn { background: var(--warn-soft); color: var(--warn); }
+    .chip.mute { background: #eef2f6; color: var(--muted); }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .actions button {
+      border: 0; border-radius: 9px; padding: 10px 14px;
+      font: inherit; font-size: 13px; font-weight: 750; cursor: pointer;
+    }
+    .primary { background: var(--cyan); color: #fff; }
+    .primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .ghost { background: var(--cyan-soft); color: var(--cyan-deep); }
+
+    .note { margin-top: 12px; font-size: 12px; color: var(--muted); }
+    .note a { color: var(--cyan-deep); font-weight: 750; text-decoration: none; }
+
+    .foot { text-align: center; font-size: 12px; color: var(--muted); margin-top: 14px; }
+
+    body.show-before .after-only { display: none; }
+    body.show-after .before-only { display: none; }
+  </style>
+</head>
+<body class="show-after">
+  <header class="top">
+    <span class="tag">原型</span>
+    <div>
+      <h1>Cursor 命令 · 和「给语音加按键」同一框架</h1>
+      <p>不把快捷键当主信息。先选事 → 看何时/会怎样/干什么 → 再决定加不加按键。布局键去虚拟键盘。</p>
+    </div>
+    <div class="toggle">
+      <button type="button" data-mode="before">改前</button>
+      <button type="button" class="is-on" data-mode="after">改后</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="compare">
+      <!-- BEFORE -->
+      <section class="panel before-only">
+        <div class="panel-h">
+          <span class="badge bad">改前</span>
+          <h2>长列表 · 口令 + 键/状态混排</h2>
+        </div>
+        <div class="shell noise">
+          <aside class="side">
+            <button type="button" class="nav">给语音加按键</button>
+            <button type="button" class="nav on">Cursor 命令</button>
+            <button type="button" class="nav">虚拟键盘</button>
+          </aside>
+          <div class="main">
+            <div class="dash">按方案补全 Cursor 快捷键</div>
+            <div class="row">
+              <div class="n">说话</div><div class="r">Ctrl+Shift+Space</div>
+              <div class="s">口令·说话·PTT → 第三方输入法，非 Cursor 自带麦</div>
+            </div>
+            <div class="row">
+              <div class="n">继续</div><div class="r">模板句</div>
+              <div class="s">口令·继续·注入固定文案，无 Cursor 原生键</div>
+            </div>
+            <div class="row">
+              <div class="n">总结改动</div><div class="r">模板句</div>
+              <div class="s">口令·总结改动·注入固定总结提示</div>
+            </div>
+            <div class="g">回合收尾</div>
+            <div class="row">
+              <div class="n">回 Cursor</div><div class="r">焦点</div>
+              <div class="s">口令·回 Cursor·从其他 App 切回并聚焦 Composer</div>
+            </div>
+            <div class="row">
+              <div class="n">接受</div><div class="r">gate 关闭</div>
+              <div class="s">口令·接受·gate 默认关…</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AFTER -->
+      <section class="panel after-only" style="grid-column: 1 / -1; max-width: 640px; margin: 0 auto; width: 100%;">
+        <div class="panel-h">
+          <span class="badge ok">改后</span>
+          <h2>选一件 Cursor 里的事</h2>
+        </div>
+        <div class="shell">
+          <aside class="side">
+            <button type="button" class="nav">给语音加按键</button>
+            <button type="button" class="nav on">Cursor 里的事</button>
+            <button type="button" class="nav">屏幕按键</button>
+          </aside>
+          <div class="main">
+            <p class="lead">选一件<strong>在 Cursor 里常做的事</strong>。先看帮你干什么，再决定要不要加按键。</p>
+
+            <div class="pick-label">选一件事</div>
+            <select class="pick" id="pick">
+              <optgroup label="常用">
+                <option value="speak">开始用嘴打字</option>
+                <option value="continue">让 AI 继续</option>
+                <option value="send">发出去</option>
+                <option value="focus">回到 Cursor 输入框</option>
+                <option value="new">新开一局对话</option>
+                <option value="paste">粘贴进来</option>
+                <option value="chat">打开侧边聊天</option>
+                <option value="palette">打开命令菜单</option>
+                <option value="summary">总结这次改了什么</option>
+                <option value="test">提醒去跑测试</option>
+              </optgroup>
+              <optgroup label="更多">
+                <option value="plan">切到「先定计划」</option>
+                <option value="agent">切到「直接干活」</option>
+                <option value="cancel">叫停生成</option>
+                <option value="search">快速打开文件</option>
+                <option value="inline">就地改选中代码</option>
+                <option value="tab">接受灰色补全</option>
+                <option value="mode">切换聊天模式</option>
+                <option value="next">看下一处改动</option>
+                <option value="prev">看上一处改动</option>
+                <option value="accept">接受当前建议</option>
+                <option value="acceptAll">接受全部建议</option>
+              </optgroup>
+            </select>
+
+            <div class="card-info">
+              <h3 id="title">开始用嘴打字</h3>
+              <div class="field">
+                <div class="lab">何时</div>
+                <div class="val" id="when">要对着 Cursor 输入框说一大段需求时。</div>
+              </div>
+              <div class="field">
+                <div class="lab">会怎样</div>
+                <div class="val" id="effect">打开语音输入，字进当前输入框（用你的输入法，不是 Cursor 自带麦）。</div>
+              </div>
+              <div class="field">
+                <div class="lab">干什么</div>
+                <div class="val" id="func">开始说话打字。也可以点小工具条麦克风。</div>
+              </div>
+              <div class="how" id="how">
+                <strong>怎么触发：</strong>
+                <span class="chip" id="howChip">可加按键</span>
+                <span id="howText"> 适合配一个键；和「给语音加按键」里听写是一类事。</span>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button type="button" class="primary" id="btn">给这件事加按键</button>
+              <button type="button" class="ghost" id="btnPad">去屏幕按键看布局</button>
+            </div>
+
+            <p class="note">键帽布局（几键对应什么）在<strong>屏幕按键</strong>里改，不在本页。</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="foot">docs/mockups/keys-cursor-commands-redesign.html · 右上角切改前/改后 · 下拉可点</p>
+  </main>
+
+  <script>
+    (function () {
+      var data = {
+        speak: {
+          title: "开始用嘴打字",
+          when: "要对着 Cursor 输入框说一大段需求时。",
+          effect: "打开语音输入，字进当前输入框（用你的输入法，不是 Cursor 自带麦）。",
+          func: "开始说话打字。也可以点小工具条麦克风。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "适合配一个键；和「给语音加按键」里听写是一类事。",
+          canKey: true
+        },
+        continue: {
+          title: "让 AI 继续",
+          when: "AI 停住等你，或你要它接着干下一步。",
+          effect: "往对话里送一句「继续」（没有固定系统键时用句子）。",
+          func: "催 AI 往下做。",
+          how: "说话 / 句子",
+          howKind: "phrase",
+          howText: "常靠说话或固定句子；按键可选。",
+          canKey: true
+        },
+        send: {
+          title: "发出去",
+          when: "输入框里写好了，要交给 AI。",
+          effect: "在输入框里发送（一般是回车）。",
+          func: "把当前内容发出去。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "常用回车；也可绑到识别键。",
+          canKey: true
+        },
+        focus: {
+          title: "回到 Cursor 输入框",
+          when: "人在别的软件里，要回到 Cursor 继续写。",
+          effect: "切回 Cursor，并尽量点到输入框。",
+          func: "先回到战场，再说话或打字。",
+          how: "切窗口",
+          howKind: "focus",
+          howText: "主要是切过去，不一定是某个字母键。",
+          canKey: true
+        },
+        new: {
+          title: "新开一局对话",
+          when: "当前对话太乱，想重新开一局。",
+          effect: "新开一条对话。",
+          func: "干净上下文再开工。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "常有系统新建快捷键。",
+          canKey: true
+        },
+        paste: {
+          title: "粘贴进来",
+          when: "剪贴板或截图要贴进 Cursor。",
+          effect: "聚焦后粘贴。",
+          func: "把外面的内容贴进来。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "一般对应粘贴键。",
+          canKey: true
+        },
+        chat: {
+          title: "打开侧边聊天",
+          when: "想拉开 Cursor 侧边 Chat / Agent。",
+          effect: "打开侧边聊天面板。",
+          func: "快速进聊天，不用鼠标翻菜单。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "常见有编辑器快捷键。",
+          canKey: true
+        },
+        palette: {
+          title: "打开命令菜单",
+          when: "想搜 Cursor / VS Code 里的任意命令。",
+          effect: "打开命令面板，可搜索执行。",
+          func: "万能入口：记不住键时用它。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "常见 Ctrl+Shift+P。",
+          canKey: true
+        },
+        summary: {
+          title: "总结这次改了什么",
+          when: "改了一堆文件，想让 AI 帮你概括。",
+          effect: "塞入总结用的提示句（不自动替你跑命令）。",
+          func: "要一句「总结改动」的提示。",
+          how: "说话 / 句子",
+          howKind: "phrase",
+          howText: "靠固定提示句，不是系统快捷键。",
+          canKey: true
+        },
+        test: {
+          title: "提醒去跑测试",
+          when: "改完代码，想让 AI 提醒 lint / 测试。",
+          effect: "塞入跑测试相关提示（不会自己开终端猛跑）。",
+          func: "要一句「去跑测试」的提示。",
+          how: "说话 / 句子",
+          howKind: "phrase",
+          howText: "提示句，不是一键跑终端。",
+          canKey: true
+        },
+        plan: {
+          title: "切到「先定计划」",
+          when: "想先让 AI 写计划，再动手改。",
+          effect: "切到计划模式（若 Cursor 支持该快捷键）。",
+          func: "先想清楚再改代码。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "有专用快捷键时可绑定。",
+          canKey: true
+        },
+        agent: {
+          title: "切到「直接干活」",
+          when: "计划够了，要 AI 直接改。",
+          effect: "切到 Agent 模式。",
+          func: "进入动手改代码的模式。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "有专用快捷键时可绑定。",
+          canKey: true
+        },
+        cancel: {
+          title: "叫停生成",
+          when: "AI 跑偏了，或你想中断。",
+          effect: "尽量停掉当前生成。",
+          func: "紧急刹车。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "适合配一个好按的键。",
+          canKey: true
+        },
+        search: {
+          title: "快速打开文件",
+          when: "知道文件名，想马上跳过去。",
+          effect: "打开快速打开/搜索文件。",
+          func: "少翻侧栏。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "常见 Ctrl+P。",
+          canKey: true
+        },
+        inline: {
+          title: "就地改选中代码",
+          when: "选中一段代码，想让 AI 就地改。",
+          effect: "打开行内编辑。",
+          func: "对着选区改，不整文件重来。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "常见 Ctrl+K。",
+          canKey: true
+        },
+        tab: {
+          title: "接受灰色补全",
+          when: "Cursor 给出灰色补全，你想收下。",
+          effect: "接受当前补全建议。",
+          func: "Tab 一下确认。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "一般是 Tab。",
+          canKey: true
+        },
+        mode: {
+          title: "切换聊天模式",
+          when: "要在 Ask / Agent 等模式间切换。",
+          effect: "打开或轮换模式菜单。",
+          func: "换工作方式。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "输入框里有时也能 Shift+Tab 轮换。",
+          canKey: true
+        },
+        next: {
+          title: "看下一处改动",
+          when: "在看建议/对比，想跳到下一处。",
+          effect: "跳到下一处（在 Cursor 上不一定每次都稳）。",
+          func: "浏览改动。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "有键可绑；不稳时别强依赖。",
+          canKey: true
+        },
+        prev: {
+          title: "看上一处改动",
+          when: "想回到上一处建议/对比。",
+          effect: "跳到上一处。",
+          func: "浏览改动。",
+          how: "可加按键",
+          howKind: "key",
+          howText: "同上。",
+          canKey: true
+        },
+        accept: {
+          title: "接受当前建议",
+          when: "AI 给出一条可接受的修改。",
+          effect: "接受当前这一处。",
+          func: "确认单条建议。",
+          how: "需先打开开关",
+          howKind: "warn",
+          howText: "默认关着，避免误触。",
+          canKey: false
+        },
+        acceptAll: {
+          title: "接受全部建议",
+          when: "多处建议都 OK，想一次收下。",
+          effect: "接受当前这一批。",
+          func: "批量确认。",
+          how: "需先打开开关",
+          howKind: "warn",
+          howText: "默认关着。打开后再用。",
+          canKey: false
+        }
+      };
+
+      var pick = document.getElementById("pick");
+      var title = document.getElementById("title");
+      var when = document.getElementById("when");
+      var effect = document.getElementById("effect");
+      var func = document.getElementById("func");
+      var howChip = document.getElementById("howChip");
+      var howText = document.getElementById("howText");
+      var btn = document.getElementById("btn");
+
+      function sync() {
+        var row = data[pick.value] || data.speak;
+        title.textContent = row.title;
+        when.textContent = row.when;
+        effect.textContent = row.effect;
+        func.textContent = row.func;
+        howChip.textContent = row.how;
+        howChip.className =
+          "chip" +
+          (row.howKind === "warn" ? " warn" : row.howKind === "key" ? "" : " mute");
+        howText.textContent = " " + row.howText;
+        btn.disabled = !row.canKey;
+        btn.textContent = row.canKey ? "给这件事加按键" : "先打开功能开关";
+      }
+      pick.addEventListener("change", sync);
+      sync();
+
+      document.querySelectorAll(".toggle button").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var mode = b.getAttribute("data-mode");
+          document.body.classList.toggle("show-before", mode === "before");
+          document.body.classList.toggle("show-after", mode === "after");
+          document.querySelectorAll(".toggle button").forEach(function (x) {
+            x.classList.toggle("is-on", x === b);
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

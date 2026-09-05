@@ -79,6 +79,7 @@ pub fn default_cursor_key_for_slot(slot_id: &str) -> &'static str {
         "switchAgent" => "Ctrl+Alt+.",
         // Soft Pad workflow (focus → Ctrl+V → Enter), not a Cursor hotkey.
         "pasteAndSend" => "",
+        "runTargetSequence" => "",
         _ => default_vscode_key_for_slot(slot_id),
     }
 }

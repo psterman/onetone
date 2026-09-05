@@ -120,6 +120,31 @@
 
   function targetDisplayLabel(mapping, lang){
     if(!mapping) return '';
+    // Multi-step action sequence (added 2026-09).  When `target_actions` is
+    // non-empty, render each step inline so the user sees the full flow
+    // without expanding the keys panel.  The single-keycap display area
+    // truncates with ellipsis automatically if the joined string is too
+    // long; users click the keycap to open the picker for the full editor.
+    if(Array.isArray(mapping.targetActions)&&mapping.targetActions.length){
+      var parts = [];
+      for(var i=0;i<mapping.targetActions.length;i++){
+        var a = mapping.targetActions[i];
+        if(!a) continue;
+        if(a.type==='key'){
+          var v = String(a.value||'').trim();
+          if(v) parts.push(friendlyKeyName(v, lang));
+        } else if(a.type==='text'){
+          var v = String(a.value||'');
+          if(v) parts.push('"'+v+'"');
+        } else if(a.type==='delay'){
+          var n = parseInt(a.ms,10);
+          if(n>0) parts.push(n+'ms');
+        }
+      }
+      if(parts.length) return parts.join(' → ');
+      // Non-empty actions list but no parseable steps → fall through to
+      // legacy display so we never render an empty keycap.
+    }
     var tgt = String(mapping.targetKey || '').trim();
     return tgt ? friendlyKeyName(tgt, lang) : '';
   }
@@ -133,12 +158,73 @@
     };
   }
 
+  // Render a compact action-sequence preview next to the `targetDisplay`
+  // keycap so the user can see the full target flow without opening the
+  // keys panel.  Idempotent: clears and re-paints on every call; auto-creates
+  // a sibling container `<id>-actions` on first invocation.  Hidden when the
+  // mapping has zero or one steps (single-key uses the keycap directly).
+  function paintTargetActionsList(mapping, options){
+    options = options || {};
+    var id = options.targetDisplayId || 'targetDisplay';
+    var disp = document.getElementById(id);
+    if(!disp) return;
+    var actions = (mapping && Array.isArray(mapping.targetActions) && mapping.targetActions.length) || 0;
+    var siblingId = id + '-actions';
+    var sibling = document.getElementById(siblingId);
+    if(actions < 2){
+      // Hide / remove the sibling if it was rendered for a previous mapping.
+      if(sibling){ sibling.hidden = true; if(sibling.__list)sibling.__list.innerHTML=''; }
+      disp.hidden = false;
+      return;
+    }
+    if(!sibling){
+      sibling = document.createElement('div');
+      sibling.id = siblingId;
+      sibling.className = 'keys-target-actions-list';
+      var list = document.createElement('ol');
+      list.className = 'keys-target-actions-list-items';
+      sibling.appendChild(list);
+      sibling.__list = list;
+      // Insert as next sibling of `disp` so layout follows the keycap.
+      if(disp.parentNode) disp.parentNode.insertBefore(sibling, disp.nextSibling);
+    }
+    sibling.hidden = false;
+    disp.hidden = false;
+    var list = sibling.__list;
+    var html = '';
+    for(var i=0;i<mapping.targetActions.length;i++){
+      var a = mapping.targetActions[i];
+      if(!a) continue;
+      var lbl = '';
+      if(a.type==='key'){
+        lbl = friendlyKeyName(String(a.value||'').trim());
+      } else if(a.type==='text'){
+        lbl = '"' + String(a.value||'') + '"';
+      } else if(a.type==='delay'){
+        lbl = String(parseInt(a.ms,10)||0) + 'ms';
+      } else {
+        lbl = String(a.type||'');
+      }
+      html += '<li class="keys-target-actions-item" data-idx="'+i+'">'
+        + '<span class="keys-target-actions-idx">'+(i+1)+'</span>'
+        + '<span class="keys-target-actions-lbl">'+escHtml(lbl)+'</span>'
+        + '</li>';
+    }
+    list.innerHTML = html;
+  }
+
+  function escHtml(s){
+    if(typeof s!=='string') return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   global.OneToneKeyLabels = {
     friendlyKeyName: friendlyKeyName,
     triggerDisplayLabel: triggerDisplayLabel,
     targetDisplayLabel: targetDisplayLabel,
     labelsForMapping: labelsForMapping,
     autoTriggerDisplay: autoTriggerDisplay,
-    karabinerAlias: karabinerAlias
+    karabinerAlias: karabinerAlias,
+    paintTargetActionsList: paintTargetActionsList
   };
 })(typeof window !== 'undefined' ? window : globalThis);

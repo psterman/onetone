@@ -976,6 +976,7 @@ pub fn run() {
             ipc::cmd_mapping_reorder,
             ipc::cmd_mapping_set_group,
             ipc::cmd_mapping_set_source_key,
+            ipc::cmd_mapping_set_target_actions,
             ipc::cmd_mapping_conflicts,
             ipc::cmd_reload_latest,
             ipc::cmd_window_minimize,

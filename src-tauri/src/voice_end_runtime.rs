@@ -306,25 +306,45 @@ pub fn send_wake_to_target(
     target_key: &str,
     duration_ms: u32,
 ) -> bool {
+    let actions = [crate::config::Action::Key {
+        value: target_key.to_string(),
+    }];
+    send_actions_to_target(state, app, &actions, duration_ms)
+}
+
+/// Inject an ordered action sequence into the external foreground window.
+/// Same focus / self-fg guards as [`send_wake_to_target`]. Delay steps block
+/// the calling thread — keep invocations off the UI event loop when possible.
+pub fn send_actions_to_target(
+    state: Option<&AppState>,
+    app: Option<&AppHandle>,
+    actions: &[crate::config::Action],
+    duration_ms: u32,
+) -> bool {
     use std::sync::atomic::Ordering;
 
-    // Practice stage only: keep OneTone foreground and let FE show ASR in the box.
-    // Do not block voice wake elsewhere (dual-panel / normal use).
+    if actions.is_empty() {
+        return false;
+    }
+
+    let label = actions
+        .iter()
+        .map(|a| a.display())
+        .collect::<Vec<_>>()
+        .join(" → ");
+
     if let Some(s) = state {
         if s.voice_practice_hold_fg.load(Ordering::SeqCst) {
             crate::app_log::log_line(
                 s,
                 "send",
-                &format!("send_wake skipped practice_hold_fg key={target_key}"),
+                &format!("send_actions skipped practice_hold_fg acts={label}"),
             );
             let _ = app;
             return false;
         }
     }
 
-    // Prefer last tracked external window. Never hide the main window as a
-    // fallback — hide/show during Quick Start / settings freezes WebView2 and
-    // can leave a blank chrome (seen as「未响应」when verifying RAlt etc.).
     let mut restored = crate::keyboard::restore_external_foreground();
     if !restored {
         restored = crate::keyboard::focus_any_external_top_level();
@@ -333,27 +353,118 @@ pub fn send_wake_to_target(
         std::thread::sleep(Duration::from_millis(50));
     }
 
-    // Sending Alt/Win chords into OneTone itself freezes the overlay (menu-key /
-    // find-in-page storms). Skip inject when we still own foreground.
     if crate::app_identity::foreground_is_self() {
         if let Some(s) = state {
             crate::app_log::log_line(
                 s,
                 "send",
-                &format!("send_wake skipped self-fg key={target_key}"),
+                &format!("send_actions skipped self-fg acts={label}"),
             );
         }
-        let _ = app; // keep signature; callers may still show the window
+        let _ = app;
         return false;
     }
 
-    let sent = crate::keyboard::send_chord(target_key, duration_ms);
+    let sent = crate::keyboard::run_action_sequence(actions, duration_ms);
     if sent {
         if let Some(s) = state {
             mark_voice_wake_key_sent(s);
+            crate::app_log::log_line(s, "send", &format!("send_actions ok acts={label}"));
         }
     }
     sent
+}
+
+/// Run a mapping's `effective_target_actions`. When the mapping has an Agent
+/// `appTargetId` and an explicit `targetActions` list, focus that app's
+/// composer first, then inject the sequence (no voice / dictation).
+pub fn run_mapping_target_sequence(
+    state: &std::sync::Arc<AppState>,
+    app: &AppHandle,
+    mapping_id: &str,
+    duration_ms: u32,
+) -> Result<String, String> {
+    let (actions, app_target, explicit) = {
+        let cfg = state.cfg.lock();
+        let m = cfg
+            .find_mapping_by_id(mapping_id)
+            .ok_or_else(|| "no_mapping".to_string())?;
+        (
+            m.effective_target_actions(),
+            m.app_target_id.trim().to_string(),
+            !m.target_actions.is_empty(),
+        )
+    };
+    if actions.is_empty() {
+        return Err("no_target".to_string());
+    }
+    let label = actions
+        .iter()
+        .map(|a| a.display())
+        .collect::<Vec<_>>()
+        .join(" → ");
+
+    if explicit
+        && !app_target.is_empty()
+        && crate::app_chat_workflow::profile_for(&app_target).is_some()
+    {
+        #[cfg(windows)]
+        {
+            if let Err(err) =
+                crate::app_chat_workflow::focus_composer_for_send(app, &app_target, duration_ms)
+            {
+                let prefix = crate::app_chat_workflow::profile_for(&app_target)
+                    .map(|p| p.error_prefix)
+                    .unwrap_or("app");
+                let reason = format!("focus_failed:{}", err.reason(prefix));
+                crate::app_log::log_line(
+                    state.as_ref(),
+                    "send",
+                    &format!("run_mapping_sequence {reason} mid={mapping_id}"),
+                );
+                return Err(reason);
+            }
+            let sent = crate::keyboard::run_action_sequence(&actions, duration_ms);
+            if !sent {
+                return Err("send_failed".to_string());
+            }
+            mark_voice_wake_key_sent(state.as_ref());
+            crate::app_log::log_line(
+                state.as_ref(),
+                "send",
+                &format!("run_mapping_sequence ok mid={mapping_id} acts={label}"),
+            );
+            return Ok(label);
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = app;
+            return Err("unsupported_platform".to_string());
+        }
+    }
+
+    if send_actions_to_target(Some(state.as_ref()), Some(app), &actions, duration_ms) {
+        Ok(label)
+    } else if crate::app_identity::foreground_is_self() {
+        Err("self_foreground".to_string())
+    } else {
+        Err("send_failed".to_string())
+    }
+}
+
+/// True when the sequence is a single Key step (legacy IME wake → may enter dictating).
+pub fn sequence_is_single_key(actions: &[crate::config::Action]) -> Option<&str> {
+    match actions {
+        [crate::config::Action::Key { value }] => {
+            let v = value.trim();
+            if v.is_empty() {
+                None
+            } else {
+                Some(v)
+            }
+        }
+        _ => None,
+    }
 }
 
 /// Practice stage only: send configured IME chord into OneTone itself.
@@ -365,7 +476,10 @@ pub fn send_wake_to_practice(
     duration_ms: u32,
 ) -> bool {
     let _ = app;
-    let sent = crate::keyboard::send_chord(target_key, duration_ms);
+    let actions = [crate::config::Action::Key {
+        value: target_key.to_string(),
+    }];
+    let sent = crate::keyboard::run_action_sequence(&actions, duration_ms);
     if let Some(s) = state {
         crate::app_log::log_line(
             s,
@@ -1410,7 +1524,10 @@ fn finish_dictation_session(
     let phrase2 = phrase.to_string();
     std::thread::spawn(move || {
         if !target_key_already_sent {
-            let sent = crate::keyboard::send_chord(&target_key, duration_ms);
+            let actions = [crate::config::Action::Key {
+                value: target_key.to_string(),
+            }];
+            let sent = crate::keyboard::run_action_sequence(&actions, duration_ms);
             if !sent {
                 *state2.voice_session_state.lock() = "error".into();
                 *state2.voice_session_last_action.lock() =
@@ -1542,7 +1659,10 @@ pub fn test_stop_dictation(state: &Arc<AppState>, _window: &WebviewWindow) -> se
             cfg.key_press_duration_ms,
         )
     };
-    let ok = crate::keyboard::send_chord(&target_key, duration_ms);
+    let actions = [crate::config::Action::Key {
+        value: target_key.to_string(),
+    }];
+    let ok = crate::keyboard::run_action_sequence(&actions, duration_ms);
     serde_json::json!({
         "ok": ok,
         "targetKey": target_key,
@@ -1933,6 +2053,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             }];
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());
     }
@@ -1987,6 +2108,7 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            target_actions: vec![],
             }];
         assert_eq!(
             resolve_voice_input_target_key(&cfg).as_deref(),

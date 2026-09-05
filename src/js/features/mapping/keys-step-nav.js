@@ -78,7 +78,14 @@
     var tgt='';
     if(m&&core()){
       trig=triggerHintLabel(m);
-      tgt=friendlyKey(codexTargetHintKey(m));
+      // resolveHeroCapture already returns display copy — do not re-friendly it.
+      var picker=global.OneToneKeysChannelCommandPicker;
+      var cap=picker&&typeof picker.resolveHeroCapture==='function'?picker.resolveHeroCapture(m):null;
+      if(cap&&(cap.primaryLabel||cap.targetLabel)){
+        tgt=String(cap.primaryLabel||cap.targetLabel||'');
+      }else{
+        tgt=friendlyKey(codexTargetHintKey(m));
+      }
       if(mode==='trigger'&&tgt) tgt=t('keysHeroModeIme','输入法识别键')+' · '+tgt;
     }
     if(!tgt&&m&&global.OneToneSceneFlowSummary){

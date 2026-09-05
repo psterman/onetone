@@ -258,11 +258,15 @@ pub(super) fn dispatch_send_key(
                 m.trigger_key.clone(),
                 m.target_key.clone(),
                 m.app_target_id.clone(),
+                !m.target_actions.is_empty(),
+                m.effective_target_actions(),
             )
         })
     };
 
-    let Some((trigger_key, target_key, app_target_id)) = mapping_snapshot else {
+    let Some((trigger_key, target_key, app_target_id, has_explicit_actions, actions)) =
+        mapping_snapshot
+    else {
         finish_send_key_dispatch(
             state,
             window,
@@ -420,6 +424,51 @@ pub(super) fn dispatch_send_key(
     }
 
     if app_chat_workflow::profile_for(&app_target_id).is_some() {
+        // Explicit targetActions → open/focus Agent then run the linear sequence
+        // (no voice). Empty sequence keeps the existing summon + voice workflow.
+        if has_explicit_actions {
+            let app = window.app_handle();
+            match crate::voice_end_runtime::run_mapping_target_sequence(
+                state,
+                &app,
+                mapping_id,
+                duration_ms,
+            ) {
+                Ok(label) => {
+                    push_soft_pad_success(
+                        &window.app_handle(),
+                        state.as_ref(),
+                        mapping_id,
+                        &app_target_id,
+                    );
+                    finish_send_key_dispatch(
+                        state,
+                        window,
+                        mapping_id,
+                        &trigger_key,
+                        &target_key,
+                        source_key,
+                        true,
+                        "sent",
+                        &label,
+                    );
+                }
+                Err(reason) => {
+                    finish_send_key_dispatch(
+                        state,
+                        window,
+                        mapping_id,
+                        &trigger_key,
+                        &target_key,
+                        source_key,
+                        false,
+                        &reason,
+                        &reason,
+                    );
+                }
+            }
+            return;
+        }
         match app_chat_workflow::run_for_target_id(
             state,
             window,
@@ -459,20 +508,37 @@ pub(super) fn dispatch_send_key(
         return;
     }
 
-    let sent = crate::voice_end_runtime::send_wake_to_target(
-        Some(state.as_ref()),
-        Some(&window.app_handle()),
-        key,
-        duration_ms,
-    );
+    let app = window.app_handle();
+    let sent = if !actions.is_empty() {
+        crate::voice_end_runtime::send_actions_to_target(
+            Some(state.as_ref()),
+            Some(&app),
+            &actions,
+            duration_ms,
+        )
+    } else {
+        crate::voice_end_runtime::send_wake_to_target(
+            Some(state.as_ref()),
+            Some(&app),
+            key,
+            duration_ms,
+        )
+    };
     if sent {
-        let app = window.app_handle();
         let should_enter = {
             let cfg = state.cfg.lock();
             if !crate::voice_end_runtime::can_enter_dictating(&cfg) {
                 false
             } else if let Some(m) = cfg.find_mapping_by_id(mapping_id) {
-                !m.native_key_restore && !m.target_key.trim().is_empty() && key == m.target_key
+                if m.native_key_restore {
+                    false
+                } else if let Some(single) =
+                    crate::voice_end_runtime::sequence_is_single_key(&actions)
+                {
+                    single == m.target_key || single == key
+                } else {
+                    false
+                }
             } else {
                 false
             }
@@ -487,7 +553,19 @@ pub(super) fn dispatch_send_key(
         }
     }
     let reason = if sent { "sent" } else { "send_failed" };
-    let label = if sent { key } else { "send_failed" };
+    let label = if sent {
+        if !actions.is_empty() {
+            actions
+                .iter()
+                .map(|a| a.display())
+                .collect::<Vec<_>>()
+                .join(" → ")
+        } else {
+            key.to_string()
+        }
+    } else {
+        "send_failed".to_string()
+    };
     finish_send_key_dispatch(
         state,
         window,
@@ -497,6 +575,6 @@ pub(super) fn dispatch_send_key(
         source_key,
         sent,
         reason,
-        label,
+        &label,
     );
 }

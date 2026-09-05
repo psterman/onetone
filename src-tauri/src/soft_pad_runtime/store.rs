@@ -704,6 +704,7 @@ mod attention_feed_tests {
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
         capture_hero_ref: None,
+        target_actions: vec![],
         }
     }
 

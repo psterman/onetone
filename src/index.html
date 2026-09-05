@@ -468,6 +468,7 @@
                   </div>
                   <div class="home-key-map-step" id="homeKeyMapTarget">
                     <span class="home-key-map-step-label" id="homeKeyMapTargetLbl">会帮你按下</span>
+                    <div class="home-key-map-actions" id="homeKeyMapTargetActions" hidden></div>
                     <div class="home-key-map-key is-empty" id="homeKeyMapTargetKey">未设置</div>
                     <span class="home-key-map-step-hint" id="homeKeyMapTargetHint">输入法的语音输入快捷键</span>
                   </div>
@@ -946,49 +947,83 @@
                               <nav class="keys-channel-tree" id="keysChannelSubtabs" role="tree" aria-label="识别分类">
                                 <button type="button" class="keys-channel-subtab keys-channel-tree-cat is-active" role="treeitem" id="keysChannelTabIme" data-channel="ime" aria-selected="true" data-i18n="keysChannelTabIme">输入法</button>
                                 <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabKey" data-channel="key" aria-selected="false" data-i18n="keysChannelTabKey">自定义键</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabVoice" data-channel="voice" aria-selected="false" data-i18n="keysChannelTabVoice">语音命令</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabCursor" data-channel="cursor" aria-selected="false" data-i18n="keysChannelTabCursor">Cursor 命令</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabSoftPad" data-channel="softPad" aria-selected="false" data-i18n="keysChannelTabSoftPad">虚拟键盘</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabCamera" data-channel="camera" aria-selected="false" data-i18n="keysChannelTabCamera">摄像头操作</button>
+                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabVoice" data-channel="voice" aria-selected="false" data-i18n="keysChannelTabVoice">给语音加按键</button>
+                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabCursor" data-channel="cursor" aria-selected="false" data-i18n="keysChannelTabCursor">给 Cursor 加按键</button>
+                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabSoftPad" data-channel="softPad" aria-selected="false" data-i18n="keysChannelTabSoftPad">屏幕按键</button>
+                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabCamera" data-channel="camera" aria-selected="false" data-i18n="keysChannelTabCamera">给手势加按键</button>
                               </nav>
                             </div>
                             <div class="keys-channel-pane-right" id="keysChannelPaneRight">
                               <div class="keys-ime-strip-wrap" id="keysImeStripWrap">
                                 <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
+                                <p class="ime-preset-confirm" id="imePresetConfirmMapping" hidden></p>
+                                <p class="ime-preset-verify-hint" id="imePresetVerifyHint" hidden></p>
                               </div>
-                              <div class="keys-detail-card keys-detail-card--hero" id="keysCaptureHeroCard">
+                              <div class="keys-detail-card keys-detail-card--hero keys-ime-step keys-ime-step--start" id="keysCaptureHeroCard">
                                 <div class="keys-capture-keycap-zone keys-workflow-keycap-zone" id="keysCaptureKeycapZone">
-                                  <p class="keys-channel-group-label" id="keysCaptureKeycapTitle" data-i18n="keysCaptureImeRecordTitle">听写启动键</p>
+                                  <div class="keys-ime-step-head">
+                                    <span class="keys-ime-step-num" aria-hidden="true">1</span>
+                                    <div class="keys-ime-step-head-text">
+                                      <p class="keys-channel-group-label" id="keysCaptureKeycapTitle" data-i18n="keysCaptureImeRecordTitle">听写键</p>
+                                      <p class="keys-ime-step-hint" id="keysImeStepStartHint" data-i18n="keysImeStepStartHint" hidden></p>
+                                    </div>
+                                  </div>
                                   <div class="keys-step-row keys-step-row--hero">
                                     <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="keysCaptureKeycapHost"></div>
                                     <div class="habit-flow-step-act keys-step-record-act" id="keysCaptureKeycapRecordAct"></div>
                                   </div>
-                                  <p class="keys-keycap-mode" id="keysCaptureKeycapBadge" data-i18n="keysHeroModeIme" hidden aria-hidden="true">启动听写的按键</p>
-                                  <p class="keys-keycap-hint" id="keysCaptureRecordHint" data-i18n="keysCaptureRecordHint">先点上方大按钮，再按下你要设的快捷键</p>
+                                  <p class="keys-keycap-mode" id="keysCaptureKeycapBadge" data-i18n="keysHeroModeIme" hidden aria-hidden="true">听写键</p>
+                                  <p class="keys-keycap-hint" id="keysCaptureRecordHint" data-i18n="keysCaptureRecordHint">点键帽，按下你的听写快捷键。</p>
                                   <p class="keys-ime-stay" id="keysImeStay" hidden></p>
                                 </div>
                                 <div class="keys-capture-recording-feedback-host" id="keysCaptureRecordingFeedbackHost"></div>
                                 <div class="keys-capture-record-probe-host" id="keysCaptureRecordProbeHost"></div>
                               </div>
                               <div class="keys-detail-card keys-detail-card--options keys-capture-key-panel" id="keysCaptureKeyPanel" data-capture-panel="key">
-                                <p class="keys-channel-group-label" id="keysCaptureKeyFinishLbl" data-i18n="keysCaptureKeyFinishTitle">按键收尾</p>
-                                <div class="keys-finish-mode-host" id="keysFinishModeHost">
-                                  <div class="voice-end-key-mode-panel keys-finish-segments" id="voiceEndKeyModePanel"></div>
-                                </div>
-                                <p class="keys-finish-mode-hint" id="keysFinishModeHint" hidden></p>
-                                <div class="keys-finish-delay-host" id="keysFinishDelayHost"></div>
-                                <p class="keys-finish-strategy-preview is-empty sr-only" id="keysFinishStrategyPreview" aria-live="polite" hidden>—</p>
-                                <details class="habit-flow-finish-more keys-finish-more-advanced" id="habitFlowFinishMore" hidden>
-                                  <summary class="habit-flow-finish-more-summary" id="habitFlowFinishMoreLbl">取消窗口</summary>
-                                  <p class="keys-finish-more-hint" id="keysFinishMoreHint">听写刚开始时再按启动键 → Esc 取消（仅「单击发送」）</p>
-                                  <div class="habit-flow-cancel-block" id="habitKeyMapRowCancel" data-edit-step="cancel">
-                                    <span class="habit-flow-cancel-label sr-only" id="habitFlowFinishMoreCancelLbl">取消窗口</span>
-                                    <div class="habit-flow-step-slot" id="habitKeyMapCellCancel">
-                                      <div class="keys-finish-cancel-host" id="keysFinishCancelHost" hidden></div>
+                                <div class="keys-capture-target-actions-host" id="keysCaptureTargetActionsHost" hidden>
+                                  <div class="keys-custom-key-split">
+                                    <aside class="keys-custom-key-match" id="keysCustomKeyMatchPane" aria-label="按键匹配">
+                                      <div class="keys-custom-key-match-head">
+                                        <p class="keys-channel-group-label" id="keysCustomKeyMatchLbl" data-i18n="keysCustomKeyMatchTitle">按键匹配</p>
+                                        <button type="button" class="keys-custom-key-match-add" id="btnKeysCustomKeyMatchAdd" title="新建" aria-label="新建" data-i18n-aria="keysCustomKeyMatchAdd">+</button>
+                                      </div>
+                                      <div class="keys-custom-key-match-list" id="keysCustomKeyMatchList" role="list"></div>
+                                    </aside>
+                                    <div class="keys-custom-key-detail">
+                                      <p class="keys-channel-group-label" id="keysCaptureTargetActionsLbl" data-i18n="keysCaptureSeqTitle">按顺序执行的动作</p>
+                                      <p class="keys-capture-target-actions-hint" id="keysCaptureTargetActionsHint" data-i18n="keysCaptureSeqHint">按一次启动键后，下面的步骤会依次执行。</p>
+                                      <div class="home-key-map-actions" id="keysCaptureTargetActions"></div>
                                     </div>
-                                    <span class="habit-flow-step-status sr-only" id="habitKeyMapStCancel" aria-hidden="true">—</span>
                                   </div>
-                                </details>
+                                </div>
+                                <section class="keys-ime-step keys-ime-step--finish" id="keysImeFinishStep">
+                                  <div class="keys-ime-step-head">
+                                    <span class="keys-ime-step-num" aria-hidden="true">2</span>
+                                    <div class="keys-ime-step-head-text">
+                                      <p class="keys-channel-group-label" id="keysCaptureKeyFinishLbl" data-i18n="keysCaptureKeyFinishTitle">说完后</p>
+                                      <p class="keys-ime-step-hint" id="keysImeStepFinishHint" data-i18n="keysImeStepFinishHint" hidden></p>
+                                    </div>
+                                  </div>
+                                  <div class="keys-finish-body" id="keysFinishBody">
+                                    <div class="keys-finish-mode-host" id="keysFinishModeHost">
+                                      <div class="voice-end-key-mode-panel keys-finish-segments" id="voiceEndKeyModePanel"></div>
+                                    </div>
+                                    <div class="keys-finish-delay-host" id="keysFinishDelayHost"></div>
+                                    <p class="keys-finish-mode-hint" id="keysFinishModeHint" hidden></p>
+                                    <p class="keys-finish-strategy-preview is-empty sr-only" id="keysFinishStrategyPreview" aria-live="polite" hidden>—</p>
+                                    <details class="habit-flow-finish-more keys-finish-more-advanced" id="habitFlowFinishMore" open hidden>
+                                      <summary class="habit-flow-finish-more-summary sr-only" id="habitFlowFinishMoreLbl">取消听写</summary>
+                                      <p class="keys-finish-more-hint" id="keysFinishMoreHint" hidden>听写中任一开启的方式触发 → Esc 丢弃（可多选）</p>
+                                      <div class="habit-flow-cancel-block" id="habitKeyMapRowCancel" data-edit-step="cancel">
+                                        <span class="habit-flow-cancel-label sr-only" id="habitFlowFinishMoreCancelLbl">取消听写</span>
+                                        <div class="habit-flow-step-slot" id="habitKeyMapCellCancel">
+                                          <div class="keys-finish-cancel-host" id="keysFinishCancelHost" hidden></div>
+                                        </div>
+                                        <span class="habit-flow-step-status sr-only" id="habitKeyMapStCancel" aria-hidden="true">—</span>
+                                      </div>
+                                    </details>
+                                  </div>
+                                </section>
                               </div>
                               <div class="keys-channel-panel" id="keysChannelPanel"></div>
                             </div>

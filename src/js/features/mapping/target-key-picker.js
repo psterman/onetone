@@ -76,6 +76,9 @@
     overlay.setAttribute('aria-hidden','true');
     hoverKey='';
     searchQuery='';
+    // Cancel any in-flight openWithCallback promise — caller will simply not
+    // receive a chord.  We do NOT fire onCancel so callers can no-op cleanly.
+    _commitCallback=null;
     var search=$('targetKeyPickerSearch');
     if(search) search.value='';
     if(docKeyHandler){
@@ -84,9 +87,73 @@
     }
   }
 
+  // External commit callback: when set, `applyKey` invokes it instead of
+  // routing through `OneToneTargetKeyApply.applyCustomMappingTarget`.  Cleared
+  // on every close (including cancel).  Lets non-settings callers (home page
+  // action editor) reuse the picker without depending on `core().selected()`.
+  var _commitCallback=null;
+
+  // External "manual record" callback: when set, the picker's "manual record"
+  // button (and any other entry into `handleManualRecord`) routes the next
+  // recorded chord to `onRecord(chord)` via the home-page mini recorder
+  // (independent of the settings recording state machine).  Cleared on every
+  // close so subsequent default opens fall back to the settings flow.
+  var _recordCallback=null;
+
+  function openWithCallback(onCommit){
+    if(typeof onCommit!=='function'){ open(); return; }
+    if(!canOpen()) return;
+    _commitCallback=onCommit;
+    // Skip the `core().selected()` check in `open()` — callback mode is
+    // for non-settings callers (home page) that may not have a selected
+    // mapping.  We still drive the same UI: tabs, search, key grid.
+    var overlay=$('targetKeyPickerOverlay');
+    if(!overlay) return;
+    activeTab='modifiers';
+    searchQuery='';
+    hoverKey='';
+    applyStaticLabels();
+    render();
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden','false');
+    var search=$('targetKeyPickerSearch');
+    if(search) setTimeout(function(){ search.focus(); },0);
+    if(!docKeyHandler){
+      docKeyHandler=function(e){
+        if(e.key==='Escape'&&isOpen()){
+          e.preventDefault();
+          close();
+        }
+      };
+      document.addEventListener('keydown',docKeyHandler);
+    }
+  }
+
+  function openWithRecordCallback(onRecord, onCommit){
+    if(typeof onRecord!=='function'){
+      openWithCallback(onCommit);
+      return;
+    }
+    if(!canOpen()) return;
+    _recordCallback=onRecord;
+    openWithCallback(onCommit);
+  }
+
+  function clearCommitCallback(){
+    _commitCallback=null;
+    _recordCallback=null;
+  }
+
   function applyKey(key){
     key=String(key||'').trim();
     if(!key) return;
+    if(_commitCallback){
+      var cb=_commitCallback;
+      _commitCallback=null;
+      close();
+      try{ cb(key); }catch(_){ }
+      return;
+    }
     if(global.OneToneTargetKeyApply&&global.OneToneTargetKeyApply.applyCustomMappingTarget){
       global.OneToneTargetKeyApply.applyCustomMappingTarget(key,{source:'picker'});
     }
@@ -94,6 +161,25 @@
   }
 
   function handleManualRecord(){
+    // Callback mode: route the next recorded chord through the home-page
+    // mini recorder (independent of the settings recording state machine)
+    // and fire the registered callback.  Close the picker first so its
+    // keydown handler does not swallow the recorded key.
+    if(_recordCallback){
+      var cb=_recordCallback;
+      _recordCallback=null;
+      _commitCallback=null;
+      close();
+      if(global.OneToneHomeRecordChord){
+        global.OneToneHomeRecordChord(function(chord){
+          if(chord) cb(chord);
+        });
+      } else {
+        // Fallback: no recorder available — fire empty so the caller knows.
+        cb('');
+      }
+      return;
+    }
     close();
     var rec=global.OneToneMappingRecording;
     if(rec&&rec.isPending&&rec.isPending()){
@@ -310,6 +396,9 @@
   global.OneToneTargetKeyPicker={
     open:open,
     openFromKeysPanel:openFromKeysPanel,
+    openWithCallback:openWithCallback,
+    openWithRecordCallback:openWithRecordCallback,
+    clearCommitCallback:clearCommitCallback,
     close:close,
     render:render,
     applyKey:applyKey,

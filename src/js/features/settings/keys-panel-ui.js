@@ -1006,26 +1006,85 @@
     };
   }
 
+  function friendlyChord(combo){
+    if(hooks().friendlyKeyName) return hooks().friendlyKeyName(combo)||combo;
+    if(global.OneToneKeyLabels){
+      return global.OneToneKeyLabels.friendlyKeyName(combo, global.OneToneApp&&global.OneToneApp.getLang?global.OneToneApp.getLang():'zh')||combo;
+    }
+    return combo;
+  }
+
+  function syncImeStepCopy(){
+    var m=core()&&core().selected?core().selected():null;
+    var imeId=m&&String(m.imePresetId||'').trim();
+    var preset=imeId&&global.OneToneImePresets&&global.OneToneImePresets.presetById
+      ?global.OneToneImePresets.presetById(imeId):null;
+    var title=$('keysCaptureKeycapTitle');
+    var startHint=$('keysImeStepStartHint');
+    var hint=$('keysCaptureRecordHint');
+    var rec=global.OneToneMappingRecording;
+    var recording=rec&&rec.mode&&(rec.mode()==='target'||rec.mode()==='agentBinding');
+    var picker=global.OneToneKeysChannelCommandPicker;
+    var tab=picker&&picker.getActiveTab?picker.getActiveTab():'ime';
+    var onIme=tab==='ime';
+    var onPick=tab==='voice'||tab==='cursor'||tab==='camera';
+    if(startHint){
+      startHint.textContent='';
+      startHint.hidden=true;
+    }
+    if(title){
+      title.textContent=onPick
+        ?t('keysCaptureActionPreviewTitle','识别键预览')
+        :t('keysCaptureImeRecordTitle');
+    }
+    if(!hint) return;
+    if(recording){
+      hint.textContent=t('keysCaptureRecordHintWaiting','正在等待按键…');
+      return;
+    }
+    if(onPick){
+      hint.textContent=t('keysCaptureActionPreviewHint','点键帽录制或更新该动作的快捷键。');
+      return;
+    }
+    if(!onIme) return;
+    if(preset){
+      var chord=friendlyChord(preset.targetKey||(m&&m.targetKey)||'');
+      hint.textContent=t('keysCaptureRecordHintPreset')
+        .replace('{ime}',t(preset.shortKey||preset.nameKey))
+        .replace('{chord}',chord);
+    }else{
+      hint.textContent=t('keysCaptureRecordHint');
+    }
+  }
+
   function applyRecordingHighlightHosts(model){
     if(!model) model=buildKeysRecordingFeedbackModel();
     var table=global.OneToneHabitKeyMappingTable;
     var captureOwns=table&&table.captureOwnsLiveRecording&&table.captureOwnsLiveRecording();
+    var picker=global.OneToneKeysChannelCommandPicker;
+    var onIme=!(picker&&picker.getActiveTab)||picker.getActiveTab()==='ime';
+    var targetRecording=model.mode==='target'||model.mode==='agentBinding';
+    var imeOwns=onIme&&targetRecording&&model.recording;
     var trigRow=$('habitKeyMapRowTrigger');
     var tgtRow=$('habitKeyMapRowTarget');
     var zone=$('keysCaptureKeycapZone');
     var hint=$('keysCaptureRecordHint');
-    if(trigRow) trigRow.classList.toggle('is-recording-active',!captureOwns&&model.mode==='trigger');
-    if(tgtRow) tgtRow.classList.toggle('is-recording-active',!captureOwns&&(model.mode==='target'||model.mode==='agentBinding'));
+    if(trigRow) trigRow.classList.toggle('is-recording-active',!captureOwns&&!imeOwns&&model.mode==='trigger');
+    if(tgtRow) tgtRow.classList.toggle('is-recording-active',!captureOwns&&!imeOwns&&targetRecording);
     if(zone){
       zone.classList.toggle(
         'is-recording-active',
-        !!(captureOwns&&(model.mode==='target'||model.mode==='agentBinding'))
+        !!(imeOwns||(captureOwns&&targetRecording))
       );
     }
     if(hint){
-      hint.textContent=captureOwns&&model.recording
-        ?t('keysCaptureRecordHintWaiting','正在等待按键…')
-        :t('keysCaptureRecordHint','先点上方大按钮，再按下你要设的快捷键');
+      if((imeOwns||captureOwns)&&model.recording){
+        hint.textContent=t('keysCaptureRecordHintWaiting','正在等待按键…');
+      }else{
+        syncImeStepCopy();
+      }
+    }else{
+      syncImeStepCopy();
     }
     syncInlineCancelForCapture();
   }
@@ -1140,13 +1199,15 @@
       ['keysCapturePopoverTitle','keysCaptureSheetTitle'],
       ['keysCaptureImeRecordTitle','keysCaptureImeRecordTitle'],
       ['keysCaptureKeycapTitle','keysCaptureImeRecordTitle'],
-      ['keysCaptureRecordHint','keysCaptureRecordHint'],
       ['keysCaptureKeyFinishLbl','keysCaptureKeyFinishTitle'],
     ];
     colLbls.forEach(function(pair){
       var el=$(pair[0]);
       if(el) el.textContent=t(pair[1]);
     });
+    syncImeStepCopy();
+    var finishStepHint=$('keysImeStepFinishHint');
+    if(finishStepHint){ finishStepHint.textContent=''; finishStepHint.hidden=true; }
     var tip=$('habitKeyMappingTip');
     if(tip) tip.textContent=t('keysPanelFootTip');
     var finishMoreHint=$('keysFinishMoreHint');
@@ -1222,6 +1283,7 @@
     renderRecordingFeedback:renderRecordingFeedback,
     syncCancelButtonHost:syncCancelButtonHost,
     applyRecordingHighlightHosts:applyRecordingHighlightHosts,
+    syncImeStepCopy:syncImeStepCopy,
     renderAppContext:renderAppContext,
     renderTriggerContextBadge:renderTriggerContextBadge,
     renderImePill:renderImePill,

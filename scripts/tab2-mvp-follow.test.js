@@ -182,6 +182,11 @@ assert.ok(/Pulse peripherals/.test(handlerRs), 'peripheral immediate keydown fin
 assert.ok(/is_ghost_media_keyboard_combo/.test(handlerRs), 'ghost media combo blocked');
 assert.ok(/Dongle ghost Ctrl\+Shift\+Space/.test(handlerRs), 'ghost combo skipped before keyboard TAP');
 
+var hotkeyWinRs = read('src-tauri/src/hotkey_win.rs');
+assert.ok(/should_swallow_ghost_media_key/.test(hotkeyWinRs), 'runtime swallows dongle ghost chord');
+assert.ok(/note_volume_for_ghost_suppress/.test(hotkeyWinRs), 'volume press arms ghost suppress');
+assert.ok(/GHOST_MEDIA_SUPPRESS/.test(hotkeyWinRs), 'ghost suppress window defined');
+
 assert.ok(/agent_workflow/.test(testSendRs), 'rust test_send agent_workflow branch');
 assert.ok(/run_for_target_id/.test(testSendRs), 'rust uses app chat workflow');
 

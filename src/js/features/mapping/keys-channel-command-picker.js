@@ -258,6 +258,337 @@
   var openPanels = { ime: true, key: false, voice: false, cursor: false, softPad: false, camera: false };
   var imeTabHidden = false;
   var searchQuery = '';
+  /** Common Cursor vibecoding picks first (slotId order). */
+  var CURSOR_COMMON_SLOTS = [
+    'pushToTalk',
+    'continue',
+    'stopOrSend',
+    'focusComposer',
+    'newThread',
+    'paste',
+    'quickChat',
+    'commandPalette',
+    'summarizeDiff',
+    'runChecks'
+  ];
+  /** Plain-language card copy for Cursor pick UI (何时 / 会怎样 / 干什么). */
+  var CURSOR_PICK_COPY = {
+    pushToTalk: {
+      titleZh: '开始用嘴打字',
+      titleEn: 'Start speaking to type',
+      whenZh: '要对着 Cursor 输入框说一大段需求时。',
+      whenEn: 'When you need to speak a long request into Cursor.',
+      effectZh: '打开语音输入，字进当前输入框（用你的输入法，不是 Cursor 自带麦）。',
+      effectEn: 'Starts voice typing into the input (your IME, not Cursor mic).',
+      funcZh: '开始说话打字。也可以点小工具条麦克风。',
+      funcEn: 'Speak to type. Mini-bar mic works too.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '适合配一个键。',
+      howTextEn: 'Good candidate for a key.'
+    },
+    continue: {
+      titleZh: '让 AI 继续',
+      titleEn: 'Tell AI to continue',
+      whenZh: 'AI 停住等你，或你要它接着干下一步。',
+      whenEn: 'When AI is waiting, or you want the next step.',
+      effectZh: '往对话里送一句「继续」（没有固定系统键时用句子）。',
+      effectEn: 'Sends a “continue” line when there is no stable native key.',
+      funcZh: '催 AI 往下做。',
+      funcEn: 'Nudge the AI forward.',
+      howZh: '说话 / 句子',
+      howEn: 'Speak / phrase',
+      howKind: 'phrase',
+      howTextZh: '常靠说话或固定句子；按键可选。',
+      howTextEn: 'Usually speak or inject a phrase; key optional.'
+    },
+    stopOrSend: {
+      titleZh: '发出去',
+      titleEn: 'Send',
+      whenZh: '输入框里写好了，要交给 AI。',
+      whenEn: 'When the message is ready to send to AI.',
+      effectZh: '在输入框里发送（一般是回车）。',
+      effectEn: 'Sends in the composer (usually Enter).',
+      funcZh: '把当前内容发出去。',
+      funcEn: 'Submit the current message.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '常用回车；也可绑到识别键。',
+      howTextEn: 'Often Enter; can bind to a recognition key.'
+    },
+    focusComposer: {
+      titleZh: '回到 Cursor 输入框',
+      titleEn: 'Back to Cursor input',
+      whenZh: '人在别的软件里，要回到 Cursor 继续写。',
+      whenEn: 'When you are in another app and need Cursor again.',
+      effectZh: '切回 Cursor，并尽量点到输入框。',
+      effectEn: 'Focuses Cursor and the input when possible.',
+      funcZh: '先回到战场，再说话或打字。',
+      funcEn: 'Return to Cursor first, then type or speak.',
+      howZh: '切窗口',
+      howEn: 'Focus app',
+      howKind: 'focus',
+      howTextZh: '主要是切过去，不一定是某个字母键。',
+      howTextEn: 'Mostly focuses the app, not a letter key.'
+    },
+    newThread: {
+      titleZh: '新开一局对话',
+      titleEn: 'New chat',
+      whenZh: '当前对话太乱，想重新开一局。',
+      whenEn: 'When the chat is messy and you want a clean start.',
+      effectZh: '新开一条对话。',
+      effectEn: 'Starts a new chat.',
+      funcZh: '干净上下文再开工。',
+      funcEn: 'Fresh context to start again.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '常有系统新建快捷键。',
+      howTextEn: 'Often has a native new-chat shortcut.'
+    },
+    paste: {
+      titleZh: '粘贴进来',
+      titleEn: 'Paste',
+      whenZh: '剪贴板或截图要贴进 Cursor。',
+      whenEn: 'When clipboard or a screenshot should go into Cursor.',
+      effectZh: '聚焦后粘贴。',
+      effectEn: 'Focuses then pastes.',
+      funcZh: '把外面的内容贴进来。',
+      funcEn: 'Paste outside content in.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '一般对应粘贴键。',
+      howTextEn: 'Usually the paste shortcut.'
+    },
+    quickChat: {
+      titleZh: '打开侧边聊天',
+      titleEn: 'Open side chat',
+      whenZh: '想拉开 Cursor 侧边 Chat / Agent。',
+      whenEn: 'When you want the Cursor side Chat / Agent.',
+      effectZh: '打开侧边聊天面板。',
+      effectEn: 'Opens the side chat panel.',
+      funcZh: '快速进聊天，不用鼠标翻菜单。',
+      funcEn: 'Jump into chat without hunting menus.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '常见有编辑器快捷键。',
+      howTextEn: 'Usually a native editor shortcut.'
+    },
+    commandPalette: {
+      titleZh: '打开命令菜单',
+      titleEn: 'Command palette',
+      whenZh: '想搜 Cursor / VS Code 里的任意命令。',
+      whenEn: 'When you need any Cursor / VS Code command.',
+      effectZh: '打开命令面板，可搜索执行。',
+      effectEn: 'Opens the command palette to search and run.',
+      funcZh: '万能入口：记不住键时用它。',
+      funcEn: 'Catch-all when you forget a shortcut.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '常见 Ctrl+Shift+P。',
+      howTextEn: 'Often Ctrl+Shift+P.'
+    },
+    summarizeDiff: {
+      titleZh: '总结这次改了什么',
+      titleEn: 'Summarize changes',
+      whenZh: '改了一堆文件，想让 AI 帮你概括。',
+      whenEn: 'When many files changed and you want a summary.',
+      effectZh: '塞入总结用的提示句（不自动替你跑命令）。',
+      effectEn: 'Injects a summarize prompt (does not run commands for you).',
+      funcZh: '要一句「总结改动」的提示。',
+      funcEn: 'Ask for a change summary prompt.',
+      howZh: '说话 / 句子',
+      howEn: 'Speak / phrase',
+      howKind: 'phrase',
+      howTextZh: '靠固定提示句，不是系统快捷键。',
+      howTextEn: 'Phrase inject, not a system shortcut.'
+    },
+    runChecks: {
+      titleZh: '提醒去跑测试',
+      titleEn: 'Remind to run checks',
+      whenZh: '改完代码，想让 AI 提醒 lint / 测试。',
+      whenEn: 'When you want AI to remind lint / tests.',
+      effectZh: '塞入跑测试相关提示（不会自己开终端猛跑）。',
+      effectEn: 'Injects a checks prompt (does not run the terminal itself).',
+      funcZh: '要一句「去跑测试」的提示。',
+      funcEn: 'Ask for a run-checks prompt.',
+      howZh: '说话 / 句子',
+      howEn: 'Speak / phrase',
+      howKind: 'phrase',
+      howTextZh: '提示句，不是一键跑终端。',
+      howTextEn: 'A prompt, not a one-key terminal run.'
+    },
+    plan: {
+      titleZh: '切到「先定计划」',
+      titleEn: 'Switch to Plan mode',
+      whenZh: '想先让 AI 写计划，再动手改。',
+      whenEn: 'When you want a plan before edits.',
+      effectZh: '切到计划模式（若 Cursor 支持该快捷键）。',
+      effectEn: 'Switches to plan mode when supported.',
+      funcZh: '先想清楚再改代码。',
+      funcEn: 'Plan first, then code.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '有专用快捷键时可绑定。',
+      howTextEn: 'Bind when the seeded shortcut exists.'
+    },
+    switchAgent: {
+      titleZh: '切到「直接干活」',
+      titleEn: 'Switch to Agent mode',
+      whenZh: '计划够了，要 AI 直接改。',
+      whenEn: 'When you are ready for AI to edit.',
+      effectZh: '切到 Agent 模式。',
+      effectEn: 'Switches to Agent mode.',
+      funcZh: '进入动手改代码的模式。',
+      funcEn: 'Enter hands-on edit mode.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '有专用快捷键时可绑定。',
+      howTextEn: 'Bind when the seeded shortcut exists.'
+    },
+    cancel: {
+      titleZh: '叫停生成',
+      titleEn: 'Stop generation',
+      whenZh: 'AI 跑偏了，或你想中断。',
+      whenEn: 'When AI went wrong or you want to stop.',
+      effectZh: '尽量停掉当前生成。',
+      effectEn: 'Tries to stop the current generation.',
+      funcZh: '紧急刹车。',
+      funcEn: 'Emergency stop.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '适合配一个好按的键。',
+      howTextEn: 'Worth a easy-to-hit key.'
+    },
+    quickSearch: {
+      titleZh: '快速打开文件',
+      titleEn: 'Quick open file',
+      whenZh: '知道文件名，想马上跳过去。',
+      whenEn: 'When you know the file name and want to jump.',
+      effectZh: '打开快速打开/搜索文件。',
+      effectEn: 'Opens Quick Open.',
+      funcZh: '少翻侧栏。',
+      funcEn: 'Skip sidebar hunting.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '常见 Ctrl+P。',
+      howTextEn: 'Often Ctrl+P.'
+    },
+    inlineEdit: {
+      titleZh: '就地改选中代码',
+      titleEn: 'Inline edit selection',
+      whenZh: '选中一段代码，想让 AI 就地改。',
+      whenEn: 'When a selection should be edited in place.',
+      effectZh: '打开行内编辑。',
+      effectEn: 'Opens inline edit.',
+      funcZh: '对着选区改，不整文件重来。',
+      funcEn: 'Edit the selection, not the whole file.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '常见 Ctrl+K。',
+      howTextEn: 'Often Ctrl+K.'
+    },
+    acceptTab: {
+      titleZh: '接受灰色补全',
+      titleEn: 'Accept Tab suggestion',
+      whenZh: 'Cursor 给出灰色补全，你想收下。',
+      whenEn: 'When a ghost Tab suggestion looks good.',
+      effectZh: '接受当前补全建议。',
+      effectEn: 'Accepts the current Tab suggestion.',
+      funcZh: 'Tab 一下确认。',
+      funcEn: 'Confirm with Tab.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '一般是 Tab。',
+      howTextEn: 'Usually Tab.'
+    },
+    modeMenu: {
+      titleZh: '切换聊天模式',
+      titleEn: 'Cycle chat mode',
+      whenZh: '要在 Ask / Agent 等模式间切换。',
+      whenEn: 'When switching Ask / Agent modes.',
+      effectZh: '打开或轮换模式菜单。',
+      effectEn: 'Opens or cycles the mode menu.',
+      funcZh: '换工作方式。',
+      funcEn: 'Change how chat works.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '输入框里有时也能 Shift+Tab 轮换。',
+      howTextEn: 'Shift+Tab may cycle in the input.'
+    },
+    nextChange: {
+      titleZh: '看下一处改动',
+      titleEn: 'Next change',
+      whenZh: '在看建议/对比，想跳到下一处。',
+      whenEn: 'When browsing diffs / suggestions.',
+      effectZh: '跳到下一处（在 Cursor 上不一定每次都稳）。',
+      effectEn: 'Jumps to the next hunk (may be flaky in Cursor).',
+      funcZh: '浏览改动。',
+      funcEn: 'Browse changes.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '有键可绑；不稳时别强依赖。',
+      howTextEn: 'Bind if useful; do not rely if flaky.'
+    },
+    prevChange: {
+      titleZh: '看上一处改动',
+      titleEn: 'Previous change',
+      whenZh: '想回到上一处建议/对比。',
+      whenEn: 'When you want the previous hunk.',
+      effectZh: '跳到上一处。',
+      effectEn: 'Jumps to the previous hunk.',
+      funcZh: '浏览改动。',
+      funcEn: 'Browse changes.',
+      howZh: '可加按键',
+      howEn: 'Can add a key',
+      howKind: 'key',
+      howTextZh: '同上。',
+      howTextEn: 'Same as next change.',
+    },
+    acceptChanges: {
+      titleZh: '接受当前建议',
+      titleEn: 'Accept current suggestion',
+      whenZh: 'AI 给出一条可接受的修改。',
+      whenEn: 'When one suggestion looks good.',
+      effectZh: '接受当前这一处。',
+      effectEn: 'Accepts the current suggestion.',
+      funcZh: '确认单条建议。',
+      funcEn: 'Confirm one suggestion.',
+      howZh: '需先打开开关',
+      howEn: 'Turn on first',
+      howKind: 'warn',
+      howTextZh: '默认关着，避免误触。',
+      howTextEn: 'Off by default to avoid accidents.'
+    },
+    acceptAllChanges: {
+      titleZh: '接受全部建议',
+      titleEn: 'Accept all suggestions',
+      whenZh: '多处建议都 OK，想一次收下。',
+      whenEn: 'When you want to accept the whole batch.',
+      effectZh: '接受当前这一批。',
+      effectEn: 'Accepts the current batch.',
+      funcZh: '批量确认。',
+      funcEn: 'Confirm many at once.',
+      howZh: '需先打开开关',
+      howEn: 'Turn on first',
+      howKind: 'warn',
+      howTextZh: '默认关着。打开后再用。',
+      howTextEn: 'Off by default; enable before use.'
+    }
+  };
   /** @type {{mappingId:string,sourceChannel:string,sourceBindingRef:string,actionId:string,keyBindingRef:string,actionInstanceId?:string,actionArgs?:*,iconHtml?:string}|null} */
   var selection = null;
   var viewsCache = [];
@@ -272,6 +603,17 @@
   var softPadScopeAppId = '';
   /** Explicit mapping pick when multiple scenarios share appTargetId. */
   var softPadScopeMappingIdOverride = '';
+  /** Voice pick UI: remember selected option across re-render. */
+  var voicePickSelectedId = '';
+  /** Cursor pick UI: remember selected slot across re-render. */
+  var cursorPickSelectedId = '';
+  /** Camera pick UI: remember selected gesture across re-render. */
+  var cameraPickSelectedId = '';
+  /**
+   * Custom-key match being edited in the sequence card / 02 preview.
+   * Must NOT replace selectedMappingId — that anchors 01 trigger for the habit.
+   */
+  var customKeyMatchEditId = '';
   /** 'none' | 'manual' | 'record' — session lock for SoftPad app scope. */
   var scopeLock = 'none';
   var autoPreselectDone = false;
@@ -282,6 +624,8 @@
   var capturePopoverOpen = false;
   var captureReturnPanel = '';
   var capturePopoverEscapeBound = false;
+  /** Debounce ConfigPersist.save after captureHeroRef writes. */
+  var persistHeroSaveTimer = null;
 
   var SOFTPAD_SCOPE_PRIMARY = [
     { appTargetId: 'codex-chat', kind: 'codex', titleKey: 'softPadHubKindCodex', titleFb: 'Codex' },
@@ -809,6 +1153,18 @@
     return raw;
   }
 
+  /** Native <option> label: bound chord vs unset — visual ● / ○. */
+  function pickOptionLabel(name, actionId, actionInstanceId) {
+    var title = String(name || '').trim() || String(actionId || '').trim() || '?';
+    var m = mappingById(selectedMappingId());
+    var keyB = findKeyBinding(m, actionId, actionInstanceId || '');
+    var chord = keyB ? String(keyB.triggerBinding || '').trim() : '';
+    if (chord) {
+      return '● ' + title + ' · ' + (friendlyChord(chord) || chord);
+    }
+    return '○ ' + title + ' · ' + t('keysPickOptionUnset', '未设键');
+  }
+
   function normalizeChord(chord) {
     return String(chord || '')
       .trim()
@@ -860,8 +1216,8 @@
       channel === 'voice'
         ? t('keysChannelTabVoice', '语音命令')
         : channel === 'softPad'
-          ? t('keysChannelTabSoftPad', '虚拟键盘')
-          : t('keysChannelTabCamera', '摄像头操作');
+          ? t('keysChannelTabSoftPad', '屏幕按键')
+          : t('keysChannelTabCamera', '给手势加按键');
     return t('keysChannelKeyOnly', '仅{channel}可用').replace('{channel}', name);
   }
 
@@ -1123,6 +1479,7 @@
     }
     if (had && !(opts && opts.skipHero)) applyHero();
     if (had && !(opts && opts.skipRender)) renderPanelOnly();
+    if (had && !(opts && opts.skipHero)) syncRecognitionEditorPreview();
     if (had && global.OneToneCodexMicroPadUi && global.OneToneCodexMicroPadUi.notifySelection) {
       try {
         global.OneToneCodexMicroPadUi.notifySelection('');
@@ -1148,6 +1505,7 @@
     }
     if (!(opts && opts.skipHero)) applyHero();
     if (!(opts && opts.skipRender)) renderPanelOnly();
+    if (!(opts && opts.skipHero)) syncRecognitionEditorPreview();
   }
 
   /** Codex chip bridge: sourceBindingRef is microKeyId only; keyBindingRef from key binding. */
@@ -1288,15 +1646,388 @@
     if (imeTab) imeTab.classList.toggle('is-codex-hidden', imeTabHidden);
     var imeStrip = document.getElementById('keysImeStripWrap');
     if (imeStrip) imeStrip.hidden = activeTab !== 'ime' || imeTabHidden;
-    var onImeOrKey = activeTab === 'ime' || activeTab === 'key';
+    var onIme = activeTab === 'ime';
+    var onKey = activeTab === 'key';
+    var onImeOrKey = onIme || onKey;
+    if (global.OneToneKeysPanelUi) {
+      try {
+        if (global.OneToneKeysPanelUi.syncImeStepCopy) global.OneToneKeysPanelUi.syncImeStepCopy();
+      } catch (_) {}
+    }
     var keyPanel = document.getElementById('keysCaptureKeyPanel');
-    if (keyPanel) keyPanel.hidden = !onImeOrKey;
+    if (keyPanel) {
+      keyPanel.hidden = !onImeOrKey;
+      keyPanel.classList.toggle('is-custom-key-seq', onKey);
+    }
+    // 自定义键：隐藏键帽（用序列主卡）；仅输入法显示大识别键帽。
+    // voice/cursor/camera/softPad 只靠顶部 02 短文案实时预览，降低压力。
+    var showHero = onIme;
     var heroCard = document.getElementById('keysCaptureHeroCard');
-    if (heroCard) heroCard.hidden = !onImeOrKey;
+    if (heroCard) heroCard.hidden = !showHero;
     var zone = document.getElementById('keysCaptureKeycapZone');
-    if (zone) zone.hidden = !onImeOrKey;
+    if (zone) zone.hidden = !showHero;
+    // 序列主卡：自定义键显示；输入法隐藏（避免和听写混）
+    var actionsHost = document.getElementById('keysCaptureTargetActionsHost');
+    if (actionsHost) {
+      actionsHost.hidden = !onKey;
+      actionsHost.classList.toggle('is-primary', onKey);
+    }
+    // 说完后整步：仅输入法；自定义键整块藏起
+    var finishStep = document.getElementById('keysImeFinishStep');
+    if (finishStep) finishStep.hidden = !onIme;
+    var finishLbl = document.getElementById('keysCaptureKeyFinishLbl');
+    if (finishLbl) finishLbl.hidden = !onIme;
+    var finishMode = document.getElementById('keysFinishModeHost');
+    if (finishMode) finishMode.hidden = !onIme;
+    var finishHint = document.getElementById('keysFinishModeHint');
+    if (finishHint && onKey) finishHint.hidden = true;
+    var finishMore = document.getElementById('habitFlowFinishMore');
+    // 自定义键强制藏收尾；输入法由 KeyFinishFlowRender 决定 moreHidden
+    if (finishMore && onKey) finishMore.hidden = true;
     var panel = document.getElementById('keysChannelPanel');
     if (panel) panel.hidden = false;
+  }
+
+  function refreshKeysCustomKeyMatchLaunch(match) {
+    var detail = document.querySelector('.keys-custom-key-detail');
+    if (!detail) return;
+    var host = document.getElementById('keysCustomKeyMatchLaunch');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'keysCustomKeyMatchLaunch';
+      host.className = 'keys-custom-key-launch';
+      detail.insertBefore(host, detail.firstChild);
+    }
+    if (!match || !match.id) {
+      host.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    host.hidden = false;
+    var trig = friendlyTriggerLabel(match.triggerKey);
+    var empty = !String(match.triggerKey || '').trim();
+    host.innerHTML =
+      '<span class="keys-custom-key-launch-lab">' +
+      esc(t('keysCustomKeyMatchLaunch', '匹配启动键')) +
+      '</span>' +
+      '<span class="keys-custom-key-launch-val' +
+      (empty ? ' is-empty' : '') +
+      '">' +
+      esc(trig) +
+      '</span>' +
+      '<button type="button" class="keys-custom-key-launch-rec" data-match-launch-record="1">' +
+      esc(
+        empty
+          ? t('keysCustomKeyMatchLaunchRecord', '录制启动键')
+          : t('keysCustomKeyMatchLaunchRerecord', '重录启动键')
+      ) +
+      '</button>';
+    if (!host.__wiredLaunchRec) {
+      host.__wiredLaunchRec = true;
+      host.addEventListener('click', function (ev) {
+        var btn =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-match-launch-record]')
+            : null;
+        if (!btn || !host.contains(btn)) return;
+        ev.preventDefault();
+        recordCustomKeyMatchLaunch();
+      });
+    }
+  }
+
+  function recordCustomKeyMatchLaunch() {
+    var mid = String(customKeyMatchEditId || '').trim();
+    var m = mid ? mappingById(mid) : null;
+    if (!m) {
+      toast(t('keysCustomKeyMatchNeedSelect', '请先选一条按键匹配'));
+      return;
+    }
+    var rec = global.OneToneHomeRecordChord;
+    if (typeof rec !== 'function') {
+      toast(t('keysCustomKeyMatchLaunchUnavailable', '当前无法录制，请稍后重试'));
+      return;
+    }
+    rec(function (chord) {
+      var k = String(chord || '').trim();
+      if (!k) return;
+      m.triggerKey = k;
+      m.enabled = true;
+      refreshKeysCustomKeyMatchLaunch(m);
+      refreshKeysCustomKeyMatchList();
+      applyHero();
+      syncRecognitionEditorPreview();
+      var persist = global.OneToneConfigPersist;
+      if (persist && typeof persist.save === 'function') {
+        try {
+          persist.save({ source: 'mapping' });
+        } catch (_) {}
+      }
+      toast(t('keysCustomKeyMatchLaunchSaved', '已保存匹配启动键') + ' · ' + friendlyTriggerLabel(k));
+    });
+  }
+
+  function refreshKeysTargetActionsEditor() {
+    var container = document.getElementById('keysCaptureTargetActions');
+    if (!container || !global.OneToneHomeTargetActions || !global.OneToneHomeTargetActions.render) {
+      refreshKeysCustomKeyMatchList();
+      return;
+    }
+    // Edit the selected match row; fall back to habit only if none picked.
+    var editId = String(customKeyMatchEditId || '').trim();
+    var m = editId ? mappingById(editId) : null;
+    if (!m) m = mappingById(selectedMappingId());
+    if (!m && global.OneToneMappingCore && global.OneToneMappingCore.selected) {
+      try {
+        m = global.OneToneMappingCore.selected();
+      } catch (_) {
+        m = null;
+      }
+    }
+    var title = document.getElementById('keysCaptureTargetActionsLbl');
+    if (title) {
+      title.textContent = t(
+        'keysCaptureSeqTitle',
+        '按顺序执行的动作'
+      );
+    }
+    var hint = document.getElementById('keysCaptureTargetActionsHint');
+    if (hint) {
+      hint.textContent = t(
+        'keysCaptureSeqHint',
+        '按一次启动键后，下面的步骤会依次执行。'
+      );
+    }
+    // Match launch key belongs to the row under edit (never the habit 01 key).
+    refreshKeysCustomKeyMatchLaunch(editId ? mappingById(editId) : null);
+    if (m) {
+      global.OneToneHomeTargetActions.render(container, m, {
+        mode: 'picker',
+        variant: 'keys'
+      });
+    } else {
+      container.hidden = false;
+      container.className = 'home-key-map-actions is-keys-variant';
+      container.innerHTML =
+        '<div class="home-key-map-action-empty is-keys">' +
+        '<b>' +
+        esc(t('keysCaptureSeqEmptyTitle', '还没有动作')) +
+        '</b>' +
+        '<span>' +
+        esc(
+          t(
+            'keysCaptureSeqEmptyBody',
+            '添加录制快捷键、文本或延迟；按一次启动键会依次执行。'
+          )
+        ) +
+        '</span></div>';
+    }
+    refreshKeysCustomKeyMatchList();
+  }
+
+  function friendlyTriggerLabel(key) {
+    var raw = String(key || '').trim();
+    if (!raw) return t('keysCustomKeyMatchNoTrigger', '未录制启动键');
+    try {
+      if (global.OneToneKeyLabels && global.OneToneKeyLabels.friendlyKeyName) {
+        return global.OneToneKeyLabels.friendlyKeyName(raw) || raw;
+      }
+    } catch (_) {}
+    return raw;
+  }
+
+  function targetActionsSummary(m) {
+    var acts = null;
+    if (global.OneToneHomeTargetActions && typeof global.OneToneHomeTargetActions.effective === 'function') {
+      try {
+        acts = global.OneToneHomeTargetActions.effective(m);
+      } catch (_) {
+        acts = null;
+      }
+    }
+    if (!Array.isArray(acts) || !acts.length) {
+      if (Array.isArray(m && m.targetActions) && m.targetActions.length) acts = m.targetActions;
+      else return t('keysCustomKeyMatchNoActions', '尚无动作');
+    }
+    var parts = [];
+    for (var i = 0; i < acts.length; i++) {
+      var a = acts[i];
+      if (!a) continue;
+      if (a.type === 'key') {
+        parts.push(t('homeKeyMapActionTypeKey', '按键') + ' ' + friendlyTriggerLabel(a.value || ''));
+      } else if (a.type === 'text') {
+        parts.push(t('homeKeyMapActionTypeText', '输入文本') + ' ' + String(a.value || ''));
+      } else if (a.type === 'delay') {
+        parts.push(t('homeKeyMapActionTypeDelay', '等待') + ' ' + String(a.ms || 0) + 'ms');
+      }
+    }
+    return parts.length ? parts.join(' · ') : t('keysCustomKeyMatchNoActions', '尚无动作');
+  }
+
+  function listCustomKeyMappingsForCurrentApp() {
+    // Always key off the habit under edit (01 trigger), never a focused match row.
+    var anchor = mappingById(selectedMappingId());
+    var appId = anchor ? String(anchor.appTargetId || '').trim() : '';
+    var editId = String(customKeyMatchEditId || '').trim();
+    var mappings = Array.isArray(config().mappings) ? config().mappings : [];
+    var out = [];
+    for (var i = 0; i < mappings.length; i++) {
+      var m = mappings[i];
+      if (!m || !m.id) continue;
+      if (String(m.appTargetId || '').trim() !== appId) continue;
+      var hasActs = Array.isArray(m.targetActions) && m.targetActions.length > 0;
+      var hasTriggerKey = !!String(m.triggerKey || '').trim();
+      var isEditing = editId && String(m.id) === editId;
+      // Skip bare habit row (no launch key, no sequence).
+      if (anchor && String(m.id) === String(anchor.id) && !hasActs && !hasTriggerKey) {
+        continue;
+      }
+      if (!hasActs && !hasTriggerKey && !isEditing) continue;
+      out.push(m);
+    }
+    out.sort(function (a, b) {
+      var oa = Number(a.order);
+      var ob = Number(b.order);
+      if (!isFinite(oa)) oa = 0;
+      if (!isFinite(ob)) ob = 0;
+      if (oa !== ob) return oa - ob;
+      return String(a.triggerKey || '').localeCompare(String(b.triggerKey || ''));
+    });
+    return out;
+  }
+
+  function refreshKeysCustomKeyMatchList() {
+    var listEl = document.getElementById('keysCustomKeyMatchList');
+    var title = document.getElementById('keysCustomKeyMatchLbl');
+    var addBtn = document.getElementById('btnKeysCustomKeyMatchAdd');
+    if (title) title.textContent = t('keysCustomKeyMatchTitle', '按键匹配');
+    if (addBtn) {
+      var addLbl = t('keysCustomKeyMatchAdd', '新建按键匹配');
+      addBtn.setAttribute('title', addLbl);
+      addBtn.setAttribute('aria-label', addLbl);
+    }
+    if (!listEl) return;
+    if (activeTab !== 'key') {
+      listEl.innerHTML = '';
+      return;
+    }
+    var rows = listCustomKeyMappingsForCurrentApp();
+    var editId = String(customKeyMatchEditId || '').trim();
+    if (!rows.length) {
+      listEl.innerHTML =
+        '<div class="keys-custom-key-match-empty">' +
+        esc(t('keysCustomKeyMatchEmpty', '当前应用还没有自定义键。点 + 新建一条。')) +
+        '</div>';
+      return;
+    }
+    listEl.innerHTML = rows
+      .map(function (m) {
+        var id = String(m.id || '');
+        var active = editId && id === editId ? ' is-active' : '';
+        return (
+          '<button type="button" class="keys-custom-key-match-item' +
+          active +
+          '" role="listitem" data-match-id="' +
+          esc(id) +
+          '">' +
+          '<span class="keys-custom-key-match-trig">' +
+          esc(friendlyTriggerLabel(m.triggerKey)) +
+          '</span>' +
+          '<span class="keys-custom-key-match-sum">' +
+          esc(targetActionsSummary(m)) +
+          '</span>' +
+          '</button>'
+        );
+      })
+      .join('');
+  }
+
+  function createCustomKeyMatchMapping() {
+    var core = global.OneToneMappingCore;
+    var source = mappingById(selectedMappingId()) || (core && core.selected ? core.selected() : null);
+    if (!source || !core || typeof core.newMappingId !== 'function') {
+      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      return null;
+    }
+    try {
+      if (global.OneToneConfigPersist && global.OneToneConfigPersist.ensureConfig) {
+        global.OneToneConfigPersist.ensureConfig();
+      }
+    } catch (_) {}
+    var cfg = config();
+    var copy;
+    try {
+      copy = JSON.parse(JSON.stringify(source));
+    } catch (_) {
+      return null;
+    }
+    var newId = core.newMappingId();
+    copy.id = newId;
+    copy.triggerKey = '';
+    copy.triggerSource = null;
+    copy.sourceKey = '';
+    copy.sourceTime = '';
+    copy.targetKey = '';
+    copy.targetActions = [];
+    copy.enabled = false;
+    copy.order = Array.isArray(cfg.mappings) ? cfg.mappings.length : 0;
+    copy.label = t('keysCustomKeyMatchTitle', '按键匹配');
+    copy.updatedAt = Date.now();
+    copy.lastUsedAt = 0;
+    copy.useCount = 0;
+    if (core.ensureMappingExtras) {
+      try {
+        core.ensureMappingExtras(copy);
+      } catch (_) {}
+    }
+    if (
+      global.OneToneConfigPersist &&
+      global.OneToneConfigPersist.rekeyVoiceCommandsForMapping
+    ) {
+      try {
+        copy.voiceCommands = global.OneToneConfigPersist.rekeyVoiceCommandsForMapping(
+          copy.voiceCommands,
+          newId
+        );
+      } catch (_) {}
+    }
+    cfg.mappings = Array.isArray(cfg.mappings) ? cfg.mappings : [];
+    cfg.mappings.push(copy);
+    // Keep habit focused so 01 trigger stays; edit the new match in-place.
+    customKeyMatchEditId = newId;
+    var persist = global.OneToneConfigPersist;
+    if (persist && typeof persist.save === 'function') {
+      try {
+        persist.save({ source: 'mapping' });
+      } catch (_) {}
+    }
+    toast(t('keysCustomKeyMatchCreated', '已新建按键匹配，可在右侧添加动作'));
+    previewCustomKeyMatch(newId);
+    return copy;
+  }
+
+  function wireKeysCustomKeyMatchList() {
+    var listEl = document.getElementById('keysCustomKeyMatchList');
+    var addBtn = document.getElementById('btnKeysCustomKeyMatchAdd');
+    if (listEl && !listEl.__wiredMatchList) {
+      listEl.__wiredMatchList = true;
+      listEl.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('[data-match-id]') : null;
+        if (!btn) return;
+        var id = String(btn.getAttribute('data-match-id') || '').trim();
+        if (!id) return;
+        ev.preventDefault();
+        // Do not core.focus(match) — that swaps 01 trigger onto the match row.
+        previewCustomKeyMatch(id);
+      });
+    }
+    if (addBtn && !addBtn.__wiredMatchAdd) {
+      addBtn.__wiredMatchAdd = true;
+      addBtn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        createCustomKeyMatchMapping();
+      });
+    }
   }
 
   function channelTabLabel(ch) {
@@ -1308,18 +2039,31 @@
       camera: 'keysChannelTabCamera',
       ime: 'keysChannelTabIme'
     };
-    return t(map[ch] || ch, ch);
+    var fb = {
+      key: '自定义键',
+      voice: '给语音加按键',
+      cursor: '给 Cursor 加按键',
+      softPad: '屏幕按键',
+      camera: '给手势加按键',
+      ime: '输入法'
+    };
+    return t(map[ch] || ch, fb[ch] || ch);
   }
 
   function selectionToHeroRef(sel) {
     if (!sel) return defaultCaptureHeroRef();
     var kind = 'action';
-    if (sel.sourceChannel === 'camera') kind = 'gesture';
-    else if (sel.sourceChannel === 'ime') kind = 'imePreset';
-    else if (sel.sourceChannel === 'key' && !sel.actionId) kind = 'ime';
+    var ch = String(sel.sourceChannel || '');
+    var ref = String(sel.sourceBindingRef || '');
+    if (ch === 'camera') kind = 'gesture';
+    else if (ch === 'ime') kind = 'imePreset';
+    else if (ch === 'key' && !sel.actionId) {
+      // Mapping-id binding → custom key match; bare ime → default dictation hero.
+      kind = ref && ref !== 'ime' ? 'customKey' : 'ime';
+    }
     return {
-      channel: String(sel.sourceChannel || 'voice'),
-      bindingRef: String(sel.sourceBindingRef || ''),
+      channel: ch || 'voice',
+      bindingRef: ref,
       actionId: String(sel.actionId || ''),
       actionInstanceId: String(sel.actionInstanceId || ''),
       kind: kind
@@ -1329,7 +2073,7 @@
   function heroRefMatches(ref, opts) {
     ref = normalizeCaptureHeroRef(ref);
     opts = opts || {};
-    if (opts.kind === 'ime' || (opts.channel === 'key' && !opts.actionId)) {
+    if (opts.kind === 'ime' || (opts.channel === 'key' && !opts.actionId && opts.kind !== 'customKey')) {
       return isDefaultCaptureHeroRef(ref);
     }
     return (
@@ -1338,6 +2082,22 @@
       ref.actionId === opts.actionId &&
       String(ref.actionInstanceId || '') === String(opts.actionInstanceId || '')
     );
+  }
+
+  function schedulePersistHeroSave() {
+    if (persistHeroSaveTimer) {
+      try {
+        clearTimeout(persistHeroSaveTimer);
+      } catch (_) {}
+    }
+    persistHeroSaveTimer = setTimeout(function () {
+      persistHeroSaveTimer = null;
+      try {
+        if (global.OneToneConfigPersist && global.OneToneConfigPersist.save) {
+          global.OneToneConfigPersist.save({ source: 'captureHero' });
+        }
+      } catch (_) {}
+    }, 250);
   }
 
   function persistHeroCapture(ref, mid) {
@@ -1349,6 +2109,85 @@
     if (coreApi && coreApi.setCaptureHeroRef) coreApi.setCaptureHeroRef(m, norm);
     else if (isDefaultCaptureHeroRef(norm)) m.captureHeroRef = null;
     else m.captureHeroRef = norm;
+    schedulePersistHeroSave();
+  }
+
+  function syncRecognitionEditorPreview() {
+    try {
+      if (global.__otMappingEditorDisplayMounted && typeof global.__otMappingEditorDisplaySync === 'function') {
+        global.__otMappingEditorDisplaySync();
+      }
+    } catch (_) {}
+    // Top 01/02 flow-node hints — same source as keycap (resolveHeroCapture).
+    try {
+      if (global.OneToneKeysPageNav && global.OneToneKeysPageNav.renderStepHints) {
+        global.OneToneKeysPageNav.renderStepHints();
+      }
+    } catch (_) {}
+    // Avoid MappingList.renderEditor → picker.refresh recursion; targetView already updated in applyHero.
+  }
+
+  /**
+   * Custom-key match row → 02 recognition preview + sequence editor.
+   * Leaves selectedMappingId alone so 01 trigger stays on the habit.
+   */
+  function previewCustomKeyMatch(mappingId) {
+    var matchId = String(mappingId || '').trim();
+    if (!matchId || !mappingById(matchId)) return false;
+    var anchorId = String(selectedMappingId() || '').trim();
+    if (!anchorId || !mappingById(anchorId)) return false;
+    customKeyMatchEditId = matchId;
+    setSelection(
+      {
+        mappingId: anchorId,
+        sourceChannel: 'key',
+        sourceBindingRef: matchId,
+        actionId: '',
+        keyBindingRef: '',
+        actionInstanceId: '',
+        actionArgs: null
+      },
+      { skipRender: true }
+    );
+    refreshKeysTargetActionsEditor();
+    return true;
+  }
+
+  function resolveCustomKeyHeroCap(m, friendly) {
+    // Compact 02: "N步" — full sequence lives in the match detail card.
+    var acts = null;
+    if (global.OneToneHomeTargetActions && typeof global.OneToneHomeTargetActions.effective === 'function') {
+      try {
+        acts = global.OneToneHomeTargetActions.effective(m);
+      } catch (_) {
+        acts = null;
+      }
+    }
+    if (!Array.isArray(acts) || !acts.length) {
+      if (Array.isArray(m && m.targetActions) && m.targetActions.length) acts = m.targetActions;
+      else acts = [];
+    }
+    var n = acts.length;
+    var empty = n === 0;
+    var primary = empty
+      ? t('keysCustomKeyMatchNoActions', '尚无动作')
+      : String(n) + t('keysCustomKeyMatchSteps', '步');
+    return {
+      kind: 'customKey',
+      active: true,
+      primaryLabel: primary,
+      secondaryLabel: friendlyTriggerLabel(m && m.triggerKey),
+      badge: t('keysChannelTabKey', '自定义键'),
+      chord: '',
+      empty: empty,
+      channel: 'key',
+      channelLabel: t('keysChannelTabKey', '自定义键'),
+      targetLabel: primary,
+      targetEmpty: empty,
+      actionId: '',
+      sourceChannel: 'key',
+      iconHtml: ''
+    };
   }
 
   function captureRefToSelection(ref, mid) {
@@ -1371,12 +2210,22 @@
     m = m || mappingById(selectedMappingId());
     if (!m) {
       selection = null;
+      customKeyMatchEditId = '';
       return;
     }
     selection = captureRefToSelection(captureHeroRefForMapping(m), m.id);
     if (selection) {
       var keyB = findKeyBinding(m, selection.actionId, selection.actionInstanceId);
       if (keyB) selection.keyBindingRef = String(keyB.slotId || '');
+      // Restore match-edit cursor from persisted customKey hero.
+      if (
+        selection.sourceChannel === 'key' &&
+        !selection.actionId &&
+        selection.sourceBindingRef &&
+        selection.sourceBindingRef !== 'ime'
+      ) {
+        customKeyMatchEditId = selection.sourceBindingRef;
+      }
     }
   }
 
@@ -1405,6 +2254,15 @@
     var friendly = bootHooks.friendlyKeyName || function (k) {
       return k;
     };
+    if (ref.kind === 'customKey') {
+      var cm = mappingById(ref.bindingRef) || mappingById(customKeyMatchEditId) || m;
+      return resolveCustomKeyHeroCap(cm, friendly);
+    }
+    // On 自定义键 tab, never preview global dictation key for default hero.
+    if (isDefaultCaptureHeroRef(ref) && activeTab === 'key') {
+      var editM = mappingById(customKeyMatchEditId);
+      return resolveCustomKeyHeroCap(editM || m, friendly);
+    }
     if (isDefaultCaptureHeroRef(ref)) {
       var coreApi = global.OneToneMappingCore;
       var tgt =
@@ -1443,10 +2301,15 @@
     var ctx = resolveSoftPadScope();
     var scopeTitle =
       ref.channel === 'softPad' && ctx && ctx.title ? String(ctx.title) : '';
-    if (scopeTitle) label = scopeTitle + ' · ' + label;
     var keyB = findKeyBinding(m, ref.actionId, ref.actionInstanceId);
     var chord = keyB ? String(keyB.triggerBinding || '').trim() : '';
-    var primary = chord ? (friendly(chord) || chord) + ' · ' + label : label;
+    // Compact 02: chord alone, or "待设置 · 短名" — no long "chord · full label".
+    var shortName = String(label || '').trim();
+    if (shortName.length > 14) shortName = shortName.slice(0, 14) + '…';
+    var primary = chord
+      ? friendly(chord) || chord
+      : t('keysHeroActionNeedsKey', '待设置') + (shortName ? ' · ' + shortName : '');
+    if (scopeTitle && !chord) primary = scopeTitle + (shortName ? ' · ' + shortName : '');
     var badge = channelTabLabel(ref.channel);
     if (chord || ref.kind === 'action') {
       badge = badge + ' · ' + t('keysHeroModeAction', '动作快捷键');
@@ -1486,9 +2349,9 @@
 
   function syncCaptureRecordChrome() {
     var table = global.OneToneHabitKeyMappingTable;
-    // Hero card stays mounted for both 输入法 and 自定义键 so selecting an IME
-    // never blanks the key + finish options.
-    if (keysStep() === 'target' && (activeTab === 'key' || activeTab === 'ime')) {
+    // Live capture keycap host is IME-only; other catalogs use top-02 short hint.
+    var showHeroOnTarget = keysStep() === 'target' && activeTab === 'ime';
+    if (showHeroOnTarget) {
       if (table && table.mountTargetRecordToCapture) table.mountTargetRecordToCapture();
     } else if (table && table.restoreTargetRecordFromStash) {
       table.restoreTargetRecordFromStash();
@@ -1883,40 +2746,452 @@
   }
 
   function voiceLifecycleBridges() {
-    var rows = [
+    // Plain-language pick cards; open-app lives in voicePickCatalog, not here.
+    return [
       {
         kind: 'bind',
         actionId: VOICE_LIFECYCLE_IDS.start,
         bindingRef: 'voice-lifecycle:start',
-        name: t('keysVoiceBridgeStart', '开始听写'),
-        sub:
-          t('keysVoiceBridgeStartSub', '语音口令') +
-          ' · ' +
-          primaryWakePhrase() +
-          ' · ' +
-          t('keysVoiceBridgeStartOrIme', '可补按键，或改用输入法识别键'),
+        pickId: 'voice-start',
+        name: t('keysVoicePickStart', '开始用嘴打字'),
+        scene: t(
+          'keysVoicePickStartScene',
+          '要对着输入框说一大段需求、改说明时。'
+        ),
+        effect: t(
+          'keysVoicePickStartEffect',
+          '打开语音输入，字直接出现在当前输入框里。'
+        ),
+        func: t(
+          'keysVoicePickStartFunc',
+          '开始说话打字。也可以点小工具条上的麦克风，或说一句开始的话。'
+        ),
         offerIme: true
       },
       {
         kind: 'bind',
         actionId: VOICE_LIFECYCLE_IDS.cancel,
         bindingRef: 'voice-lifecycle:cancel',
-        name: t('keysVoiceBridgeCancel', '取消'),
-        sub: t('keysVoiceBridgeCancelSub', '对应语义 input.cancel · 可补动作快捷键'),
+        pickId: 'voice-cancel',
+        name: t('keysVoicePickCancel', '说错了，取消'),
+        scene: t('keysVoicePickCancelScene', '说到一半说错了，或这轮不想要了。'),
+        effect: t('keysVoicePickCancelEffect', '马上停掉，这轮内容不当真发出去。'),
+        func: t('keysVoicePickCancelFunc', '停掉正在说的这一轮。'),
         offerIme: false
       },
       {
         kind: 'guide-finish',
         actionId: VOICE_LIFECYCLE_IDS.endCommit,
         bindingRef: 'voice-lifecycle:end',
-        name: finishSendModeLabel(),
-        sub: t('keysVoiceBridgeEndSub', '在「快捷键」标签配置按键收尾，不在识别区重复建键'),
+        pickId: 'voice-end',
+        name: t('keysVoicePickEnd', '说完了，发出去'),
+        scene: t('keysVoicePickEndScene', '长需求说完了，要交给 AI 去干。'),
+        effect: t('keysVoicePickEndEffect', '结束说话，并把内容发出去。'),
+        func: t(
+          'keysVoicePickEndFunc',
+          '收尾。更适合用按键，少在嘴里说「发送」免得误触。'
+        ),
         offerIme: false
       }
     ];
+  }
+
+  function voicePickCopyForAction(actionId, name) {
+    var id = canonicalActionId(actionId);
+    var nm = String(name || '');
+    if (id === 'app.open' || id.indexOf('app.open') === 0) {
+      return {
+        scene: t('keysVoicePickOpenScene', '人在其他软件里，要回到正用的应用继续干。'),
+        effect: t('keysVoicePickOpenEffect', '打开或切到该应用。'),
+        func: t('keysVoicePickOpenFunc', '快速回去。可以说，也可以再配一个按键。')
+      };
+    }
+    if (/continue/i.test(id) || /继续/.test(nm)) {
+      return {
+        scene: t('keysVoicePickContinueScene', 'AI 停住等你，或你要它接着干下一步。'),
+        effect: t('keysVoicePickContinueEffect', '告诉当前 AI：继续。'),
+        func: t(
+          'keysVoicePickContinueFunc',
+          '和屏幕按键上的「继续」是同一件事。在应用里时常直接说也行。'
+        )
+      };
+    }
+    if (/newThread|new.?chat|新会话|新建/i.test(id + ' ' + nm)) {
+      return {
+        scene: t('keysVoicePickNewScene', '当前对话太乱，想重新开一局干净的。'),
+        effect: t('keysVoicePickNewEffect', '新开一条对话。'),
+        func: t('keysVoicePickNewFunc', '用说话就能做。一般不用再配按键。')
+      };
+    }
+    return {
+      scene: t('keysVoicePickGenericScene', '想用说话触发这件事，并可再配一个按键时。'),
+      effect: t('keysVoicePickGenericEffect', '执行「{name}」。').replace(
+        '{name}',
+        nm || t('keysVoicePickGenericName', '该动作')
+      ),
+      func: t(
+        'keysVoicePickGenericFunc',
+        '来自当前用法里已开语音的动作。改说法请去屏幕按键。'
+      )
+    };
+  }
+
+  function voicePickCatalog() {
+    var mid = selectedMappingId();
+    var m = mappingById(mid);
+    var out = [];
+    var bridges = voiceLifecycleBridges();
+    var bi;
+    for (bi = 0; bi < bridges.length; bi++) {
+      var br = bridges[bi];
+      out.push({
+        pickId: br.pickId || br.bindingRef,
+        kind: br.kind || 'bind',
+        actionId: br.actionId,
+        bindingRef: br.bindingRef,
+        actionInstanceId: br.actionInstanceId || '',
+        name: br.name,
+        scene: br.scene || '',
+        effect: br.effect || '',
+        func: br.func || '',
+        offerIme: !!br.offerIme,
+        bindable: br.kind !== 'guide-finish'
+      });
+    }
     var openProj = openAppAcousticProjection();
-    if (openProj) rows.unshift(openProj);
-    return rows;
+    if (openProj) {
+      var openCopy = voicePickCopyForAction(openProj.actionId, openProj.name);
+      var appName = appDisplayName((m && m.appTargetId) || '');
+      out.push({
+        pickId: 'voice-open-app',
+        kind: 'bind',
+        actionId: openProj.actionId,
+        bindingRef: openProj.bindingRef,
+        actionInstanceId: openProj.actionInstanceId || '',
+        name:
+          t('keysVoicePickOpen', '回到应用') + (appName ? ' · ' + appName : ''),
+        scene: openCopy.scene,
+        effect: openCopy.effect,
+        func: openCopy.func,
+        offerIme: false,
+        bindable: true
+      });
+    }
+    var views = filteredViews('voice');
+    var vi;
+    for (vi = 0; vi < views.length; vi++) {
+      var v = views[vi];
+      var aid = viewActionId(v);
+      var ref = viewRef(v);
+      var rowName = actionLabel(aid);
+      if (!matchesSearch(rowName + ' ' + aid + ' ' + ref)) continue;
+      var bindable = bindableByAction[aid];
+      if (bindable === undefined) bindable = true;
+      var copy = voicePickCopyForAction(aid, rowName);
+      out.push({
+        pickId: 'voice-view:' + ref,
+        kind: 'bind',
+        actionId: aid,
+        bindingRef: ref,
+        actionInstanceId: '',
+        name: rowName,
+        scene: copy.scene,
+        effect: copy.effect,
+        func: copy.func,
+        offerIme: false,
+        bindable: !!bindable
+      });
+    }
+    return out;
+  }
+
+  function voicePickHabitPill() {
+    var m = activeMapping() || mappingById(selectedMappingId());
+    var appId = m && String(m.appTargetId || '').trim();
+    if (appId && appId !== 'custom') {
+      return t('keysVoicePickPillUsing', '正在用') + ' · ' + appDisplayName(appId);
+    }
+    return t('keysVoicePickPillGeneral', '正在用 · 通用');
+  }
+
+  function findVoicePick(pickId) {
+    var catalog = voicePickCatalog();
+    var id = String(pickId || '').trim();
+    var i;
+    for (i = 0; i < catalog.length; i++) {
+      if (catalog[i].pickId === id) return catalog[i];
+    }
+    return catalog[0] || null;
+  }
+
+  function renderVoicePickHtml() {
+    var catalog = voicePickCatalog();
+    if (!catalog.length) {
+      return (
+        '<div class="keys-voice-pick">' +
+        '<p class="keys-channel-empty">' +
+        esc(emptyCopy('voice')) +
+        '</p>' +
+        '<p class="keys-voice-pick-escape">' +
+        esc(t('keysVoicePickDesignHint', '想加新动作？')) +
+        ' <button type="button" class="keys-channel-item-link" data-go-softpad="1">' +
+        esc(t('keysVoicePickGoSoftPad', '去屏幕按键里设置')) +
+        '</button></p></div>'
+      );
+    }
+    syncVoicePickIdFromSelection();
+    if (!voicePickSelectedId || !findVoicePick(voicePickSelectedId)) {
+      voicePickSelectedId = catalog[0].pickId;
+    }
+    var sel = findVoicePick(voicePickSelectedId);
+    var opts = '';
+    var oi;
+    for (oi = 0; oi < catalog.length; oi++) {
+      var c = catalog[oi];
+      var optLabel =
+        c.kind === 'guide-finish'
+          ? c.name
+          : pickOptionLabel(c.name, c.actionId, c.actionInstanceId || '');
+      opts +=
+        '<option value="' +
+        esc(c.pickId) +
+        '"' +
+        (c.pickId === sel.pickId ? ' selected' : '') +
+        '>' +
+        esc(optLabel) +
+        '</option>';
+    }
+    var primaryLabel =
+      sel.kind === 'guide-finish'
+        ? t('keysVoicePickBtnFinish', '去按键设置里收尾')
+        : !sel.bindable
+          ? t('keysVoicePickBtnVoiceOnly', '用说话就行，不必加按键')
+          : t('keysVoicePickBtnBind', '给这件事加按键');
+    var oneLine = String(sel.effect || sel.func || sel.scene || '').trim();
+    var html =
+      '<div class="keys-voice-pick is-select-first" data-voice-pick="1">' +
+      '<div class="keys-voice-pick-head">' +
+      '<span class="keys-voice-pick-title">' +
+      esc(t('keysVoicePickTitle', '给语音加按键')) +
+      '</span>' +
+      '<span class="keys-voice-pick-pill">' +
+      esc(voicePickHabitPill()) +
+      '</span></div>' +
+      '<label class="keys-voice-pick-label" for="keysVoicePickSelect">' +
+      esc(t('keysVoicePickLabel', '选一件事')) +
+      '</label>' +
+      '<select id="keysVoicePickSelect" class="keys-voice-pick-select" data-voice-pick-select="1">' +
+      opts +
+      '</select>' +
+      (oneLine
+        ? '<p class="keys-voice-pick-card keys-voice-pick-card--one" aria-live="polite">' +
+          esc(oneLine) +
+          '</p>'
+        : '') +
+      '<div class="keys-voice-pick-actions">' +
+      '<button type="button" class="keys-voice-pick-primary" data-voice-pick-bind="1"' +
+      (!sel.bindable && sel.kind !== 'guide-finish' ? ' disabled' : '') +
+      '>' +
+      esc(primaryLabel) +
+      '</button>';
+    if (sel.offerIme) {
+      html +=
+        '<button type="button" class="keys-channel-item-link" data-bridge-ime="1">' +
+        esc(t('keysVoicePickGoIme', '改用输入法自带快捷键')) +
+        '</button>';
+    }
+    html +=
+      '</div>' +
+      '<p class="keys-voice-pick-escape">' +
+      esc(t('keysVoicePickDesignHint', '想改可以说的话或加新动作？')) +
+      ' <button type="button" class="keys-channel-item-link" data-go-softpad="1">' +
+      esc(t('keysVoicePickGoSoftPad', '去屏幕按键里设置')) +
+      '</button></p></div>';
+    return html;
+  }
+
+  function selectionMatchesPick(channel, bindingRef) {
+    return !!(
+      selection &&
+      selection.sourceChannel === channel &&
+      String(selection.sourceBindingRef || '') === String(bindingRef || '')
+    );
+  }
+
+  /**
+   * Unique recognition pick → selection + keycap preview.
+   * No recording, no toast. Returns true if selection was written.
+   */
+  function previewPickSelection(channel) {
+    var mid = selectedMappingId();
+    if (!mid) return false;
+    var m = mappingById(mid);
+    if (channel === 'voice') {
+      var vRow = findVoicePick(voicePickSelectedId);
+      // Preview any concrete pick (incl. voice-only); guide-finish has no action.
+      if (!vRow || vRow.kind === 'guide-finish' || !vRow.actionId) {
+        return false;
+      }
+      var vKey = findKeyBinding(m, vRow.actionId, vRow.actionInstanceId || '');
+      setSelection(
+        {
+          mappingId: mid,
+          sourceChannel: 'voice',
+          sourceBindingRef: vRow.bindingRef,
+          actionId: vRow.actionId,
+          keyBindingRef: vKey ? String(vKey.slotId || '') : '',
+          actionInstanceId: vRow.actionInstanceId || (vKey && vKey.actionInstanceId) || '',
+          actionArgs: vKey && vKey.actionArgs ? vKey.actionArgs : null
+        },
+        { skipRender: true }
+      );
+      return true;
+    }
+    if (channel === 'cursor') {
+      var cRow = findCursorPick(cursorPickSelectedId);
+      // Preview gated rows too — bind button still blocks record.
+      if (!cRow || !cRow.item || !cRow.actionId) return false;
+      var cKey = findKeyBinding(m, cRow.actionId, '');
+      setSelection(
+        {
+          mappingId: mid,
+          sourceChannel: 'cursor',
+          sourceBindingRef: cRow.slotId,
+          actionId: cRow.actionId,
+          keyBindingRef: cKey ? String(cKey.slotId || '') : '',
+          actionInstanceId: (cKey && cKey.actionInstanceId) || '',
+          actionArgs: cKey && cKey.actionArgs ? cKey.actionArgs : null
+        },
+        { skipRender: true }
+      );
+      return true;
+    }
+    if (channel === 'camera') {
+      var aRow = findCameraPick(cameraPickSelectedId);
+      if (!aRow || !aRow.view || !aRow.actionId) return false;
+      var aKey = findKeyBinding(m, aRow.actionId, '');
+      setSelection(
+        {
+          mappingId: mid,
+          sourceChannel: 'camera',
+          sourceBindingRef: aRow.gesture,
+          actionId: aRow.actionId,
+          keyBindingRef: aKey ? String(aKey.slotId || '') : '',
+          actionInstanceId: (aKey && aKey.actionInstanceId) || '',
+          actionArgs: aKey && aKey.actionArgs ? aKey.actionArgs : null
+        },
+        { skipRender: true }
+      );
+      return true;
+    }
+    return false;
+  }
+
+  function syncVoicePickIdFromSelection() {
+    if (!selection || selection.sourceChannel !== 'voice') return;
+    var catalog = voicePickCatalog();
+    var i;
+    for (i = 0; i < catalog.length; i++) {
+      var c = catalog[i];
+      if (
+        c.pickId === selection.sourceBindingRef ||
+        c.bindingRef === selection.sourceBindingRef
+      ) {
+        voicePickSelectedId = c.pickId;
+        return;
+      }
+    }
+  }
+
+  function syncCursorPickIdFromSelection() {
+    if (!selection || selection.sourceChannel !== 'cursor') return;
+    if (findCursorPick(selection.sourceBindingRef)) {
+      cursorPickSelectedId = selection.sourceBindingRef;
+    }
+  }
+
+  function syncCameraPickIdFromSelection() {
+    if (!selection || selection.sourceChannel !== 'camera') return;
+    if (findCameraPick(selection.sourceBindingRef)) {
+      cameraPickSelectedId = selection.sourceBindingRef;
+    }
+  }
+
+  function applyVoicePickBind() {
+    var row = findVoicePick(voicePickSelectedId);
+    if (!row) return;
+    if (row.kind === 'guide-finish') {
+      guideToFinish();
+      return;
+    }
+    if (!row.bindable) {
+      toast(t('keysVoicePickBtnVoiceOnly', '用说话就行，不必加按键'));
+      return;
+    }
+    var mid = selectedMappingId();
+    if (!mid) {
+      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      return;
+    }
+    var already = selectionMatchesPick('voice', row.bindingRef);
+    if (!already) {
+      voicePickSelectedId = row.pickId;
+      previewPickSelection('voice');
+      renderPanelOnly();
+    }
+    var m = mappingById(mid);
+    var keyB = findKeyBinding(m, row.actionId, row.actionInstanceId || '');
+    var chord = keyB ? String(keyB.triggerBinding || '').trim() : '';
+    selectionToast(row.name, !!chord);
+    recordSelected();
+  }
+
+  function applyCursorPickBind() {
+    var row = findCursorPick(cursorPickSelectedId);
+    if (!row || !row.item) return;
+    if (row.gated) {
+      toast(t('keysChannelCursorGatedToast', '接受类需先打开开关后才能加按键'));
+      return;
+    }
+    var mid = selectedMappingId();
+    if (!mid) {
+      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      return;
+    }
+    var already = selectionMatchesPick('cursor', row.slotId);
+    if (!already) {
+      cursorPickSelectedId = row.slotId;
+      previewPickSelection('cursor');
+      renderPanelOnly();
+    }
+    var mapCur = mappingById(mid);
+    var keyBCur = findKeyBinding(mapCur, row.actionId, '');
+    selectionToast(row.title, !!(keyBCur && keyBCur.triggerBinding));
+    recordSelected();
+  }
+
+  function applyCameraPickBind() {
+    var row = findCameraPick(cameraPickSelectedId);
+    if (!row) return;
+    if (!row.bindable || !row.view) {
+      guideToCameraSettings();
+      return;
+    }
+    var mid = selectedMappingId();
+    if (!mid) {
+      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      return;
+    }
+    var already = selectionMatchesPick('camera', row.gesture);
+    if (!already) {
+      cameraPickSelectedId = row.pickId;
+      previewPickSelection('camera');
+      renderPanelOnly();
+    }
+    var m = mappingById(mid);
+    var keyB = findKeyBinding(m, row.actionId, '');
+    selectionToast(row.title, !!(keyB && keyB.triggerBinding));
+    recordSelected();
   }
 
   function existingAppShortcutRows(m) {
@@ -1983,13 +3258,13 @@
       return t('keysChannelEmptyVoice', '当前习惯暂无可适配为快捷键的语音命令');
     }
     if (channel === 'cursor') {
-      return t('keysChannelEmptyCursor', '暂无 Cursor 命令');
+      return t('keysChannelEmptyCursor', '暂无 Cursor 里的事');
     }
     if (channel === 'softPad') {
-      return t('keysChannelEmptySoftPad', '当前习惯暂无可适配为快捷键的虚拟键盘命令');
+      return t('keysChannelEmptySoftPad', '当前习惯暂无可适配为快捷键的屏幕按键命令');
     }
     if (channel === 'camera') {
-      return t('keysChannelEmptyCamera', '当前习惯暂无可适配为快捷键的摄像头动作');
+      return t('keysChannelEmptyCamera', '当前习惯暂无可适配为快捷键的手势');
     }
     return t('keysChannelEmpty', '当前习惯暂无可适配为快捷键的命令');
   }
@@ -2042,90 +3317,463 @@
     return 'cursor.' + sid;
   }
 
+  function cursorPickLangEn() {
+    return ((global.OneToneI18n && global.OneToneI18n.lang) || 'zh') === 'en';
+  }
+
+  function cursorPickField(copy, zhKey, enKey) {
+    if (!copy) return '';
+    return cursorPickLangEn() ? copy[enKey] || copy[zhKey] || '' : copy[zhKey] || copy[enKey] || '';
+  }
+
+  function cursorFlatItems() {
+    var out = [];
+    var gi;
+    for (gi = 0; gi < CURSOR_COMMAND_GROUPS.length; gi++) {
+      var items = CURSOR_COMMAND_GROUPS[gi].items || [];
+      var ii;
+      for (ii = 0; ii < items.length; ii++) {
+        if (items[ii] && items[ii].slotId) out.push(items[ii]);
+      }
+    }
+    return out;
+  }
+
+  function cursorPickCatalog() {
+    var bySlot = {};
+    cursorFlatItems().forEach(function (item) {
+      bySlot[String(item.slotId)] = item;
+    });
+    var ordered = [];
+    var seen = {};
+    function pushSlot(slotId) {
+      var id = String(slotId || '').trim();
+      if (!id || seen[id] || !bySlot[id]) return;
+      seen[id] = true;
+      var item = bySlot[id];
+      var copy = CURSOR_PICK_COPY[id] || {};
+      var title =
+        cursorPickField(copy, 'titleZh', 'titleEn') || cursorItemLabel(item);
+      var when = cursorPickField(copy, 'whenZh', 'whenEn');
+      var effect = cursorPickField(copy, 'effectZh', 'effectEn');
+      var func = cursorPickField(copy, 'funcZh', 'funcEn');
+      var how = cursorPickField(copy, 'howZh', 'howEn');
+      var howText = cursorPickField(copy, 'howTextZh', 'howTextEn');
+      var howKind = copy.howKind || (item.gated ? 'warn' : item.chordHint ? 'key' : 'phrase');
+      if (
+        !matchesSearch(
+          title + ' ' + when + ' ' + effect + ' ' + func + ' ' + id + ' ' + cursorItemLabel(item)
+        )
+      ) {
+        return;
+      }
+      ordered.push({
+        slotId: id,
+        item: item,
+        actionId: cursorItemActionId(item),
+        title: title,
+        when: when || cursorItemNote(item),
+        effect: effect || '',
+        func: func || '',
+        how: how || (item.gated ? t('keysCursorPickHowWarn', '需先打开开关') : t('keysCursorPickHowKey', '可加按键')),
+        howKind: howKind,
+        howText: howText || '',
+        gated: !!item.gated,
+        common: CURSOR_COMMON_SLOTS.indexOf(id) >= 0
+      });
+    }
+    var ci;
+    for (ci = 0; ci < CURSOR_COMMON_SLOTS.length; ci++) pushSlot(CURSOR_COMMON_SLOTS[ci]);
+    cursorFlatItems().forEach(function (item) {
+      pushSlot(item.slotId);
+    });
+    return ordered;
+  }
+
+  function findCursorPick(slotId) {
+    var catalog = cursorPickCatalog();
+    var id = String(slotId || '').trim();
+    var i;
+    for (i = 0; i < catalog.length; i++) {
+      if (catalog[i].slotId === id) return catalog[i];
+    }
+    return catalog[0] || null;
+  }
+
+  function renderCursorPickHtml() {
+    var catalog = cursorPickCatalog();
+    if (!catalog.length) {
+      return (
+        '<div class="keys-voice-pick">' +
+        '<p class="keys-channel-empty">' +
+        esc(emptyCopy('cursor')) +
+        '</p></div>'
+      );
+    }
+    syncCursorPickIdFromSelection();
+    if (!cursorPickSelectedId || !findCursorPick(cursorPickSelectedId)) {
+      cursorPickSelectedId = catalog[0].slotId;
+    }
+    var sel = findCursorPick(cursorPickSelectedId);
+    var commonOpts = '';
+    var moreOpts = '';
+    var oi;
+    for (oi = 0; oi < catalog.length; oi++) {
+      var c = catalog[oi];
+      var opt =
+        '<option value="' +
+        esc(c.slotId) +
+        '"' +
+        (c.slotId === sel.slotId ? ' selected' : '') +
+        '>' +
+        esc(pickOptionLabel(c.title, c.actionId, '')) +
+        '</option>';
+      if (c.common) commonOpts += opt;
+      else moreOpts += opt;
+    }
+    var optsHtml =
+      '<optgroup label="' +
+      esc(t('keysCursorPickGroupCommon', '常用')) +
+      '">' +
+      commonOpts +
+      '</optgroup>';
+    if (moreOpts) {
+      optsHtml +=
+        '<optgroup label="' +
+        esc(t('keysCursorPickGroupMore', '更多')) +
+        '">' +
+        moreOpts +
+        '</optgroup>';
+    }
+    var primaryLabel = sel.gated
+      ? t('keysCursorPickBtnGated', '先打开功能开关')
+      : t('keysCursorPickBtnBind', '给这件事加按键');
+    var oneLine = String(sel.effect || sel.func || sel.when || '').trim();
+    return (
+      '<div class="keys-voice-pick is-select-first" data-cursor-pick="1">' +
+      '<div class="keys-voice-pick-head">' +
+      '<span class="keys-voice-pick-title">' +
+      esc(t('keysCursorPickTitle', 'Cursor 里的事')) +
+      '</span>' +
+      '<span class="keys-voice-pick-pill">' +
+      esc(t('keysCursorPickPill', '正在用 · Cursor')) +
+      '</span></div>' +
+      '<label class="keys-voice-pick-label" for="keysCursorPickSelect">' +
+      esc(t('keysCursorPickLabel', '选一件事')) +
+      '</label>' +
+      '<select id="keysCursorPickSelect" class="keys-voice-pick-select" data-cursor-pick-select="1">' +
+      optsHtml +
+      '</select>' +
+      (oneLine
+        ? '<p class="keys-voice-pick-card keys-voice-pick-card--one" aria-live="polite">' +
+          esc(oneLine) +
+          '</p>'
+        : '') +
+      '<div class="keys-voice-pick-actions">' +
+      '<button type="button" class="keys-voice-pick-primary" data-cursor-pick-bind="1"' +
+      (sel.gated ? ' disabled' : '') +
+      '>' +
+      esc(primaryLabel) +
+      '</button>' +
+      '<button type="button" class="keys-channel-item-link" data-go-softpad="1">' +
+      esc(t('keysCursorPickGoPad', '去屏幕按键看布局')) +
+      '</button></div>' +
+      '<p class="keys-voice-pick-escape">' +
+      esc(t('keysCursorPickLayoutHint', '键帽布局（几键对应什么）在屏幕按键里改，不在本页。')) +
+      '</p></div>'
+    );
+  }
+
   function renderCursorCommandsPanel(panel) {
     if (panel.classList) panel.classList.remove('is-softpad-pick');
     syncSoftPadTargetChrome(false);
+    panel.innerHTML = renderCursorPickHtml();
+  }
+
+  /** Common camera gestures first (binding_ref / gesture id). */
+  var CAMERA_COMMON_REFS = [
+    'deliberateBlink',
+    'shakeHead',
+    'openPalm',
+    'wave',
+    'onAway',
+    'onReturn',
+    'okHand',
+    'fist'
+  ];
+  var CAMERA_PICK_COPY = {
+    deliberateBlink: {
+      titleZh: '故意眨眼确认',
+      titleEn: 'Deliberate blink',
+      whenZh: '要无声确认一件事（开始听写、点头同意之类）。',
+      whenEn: 'When you want a silent confirm (start dictation, approve).',
+      effectZh: '认出故意闭眼后再睁开，执行你给这个手势绑的动作。',
+      effectEn: 'Recognizes a deliberate blink, then runs the bound action.',
+      funcZh: '常见：眨眼开始听写，再眨一次结束。',
+      funcEn: 'Often: blink to start dictation, blink again to end.',
+      howZh: '手势',
+      howEn: 'Gesture',
+      howKind: 'phrase'
+    },
+    shakeHead: {
+      titleZh: '摇头取消',
+      titleEn: 'Shake head to cancel',
+      whenZh: '说错了或不想要了，想无声叫停。',
+      whenEn: 'When you misspoke or want to stop silently.',
+      effectZh: '认出摇头后，执行取消类动作。',
+      effectEn: 'Recognizes a head shake, then runs cancel-like action.',
+      funcZh: '常绑取消 / Esc。',
+      funcEn: 'Often bound to cancel / Esc.',
+      howZh: '手势',
+      howEn: 'Gesture',
+      howKind: 'phrase'
+    },
+    openPalm: {
+      titleZh: '五指张开',
+      titleEn: 'Open palm',
+      whenZh: '想用手势开一轮或确认开始。',
+      whenEn: 'When a palm gesture should start or confirm.',
+      effectZh: '认出张开五指后执行绑定动作。',
+      effectEn: 'Runs the bound action after an open palm.',
+      funcZh: '刻意手势，避免误触。',
+      funcEn: 'Deliberate gesture to avoid accidents.',
+      howZh: '手势',
+      howEn: 'Gesture',
+      howKind: 'phrase'
+    },
+    wave: {
+      titleZh: '挥手打招呼',
+      titleEn: 'Wave',
+      whenZh: '想用挥手触发一件事。',
+      whenEn: 'When a wave should trigger something.',
+      effectZh: '认出挥手后执行绑定动作。',
+      effectEn: 'Runs the bound action after a wave.',
+      funcZh: '幅度要大一点才稳。',
+      funcEn: 'Needs a clear wave to stay reliable.',
+      howZh: '手势',
+      howEn: 'Gesture',
+      howKind: 'phrase'
+    },
+    onAway: {
+      titleZh: '人离开座位',
+      titleEn: 'Away from seat',
+      whenZh: '人脸离开画面一段时间。',
+      whenEn: 'When your face leaves the frame for a while.',
+      effectZh: '判定离席，执行你设的离席动作（如暂停、遮罩）。',
+      effectEn: 'Treats you as away and runs the away action.',
+      funcZh: '人走了自动收一下。',
+      funcEn: 'Auto wrap-up when you leave.',
+      howZh: '在场检测',
+      howEn: 'Presence',
+      howKind: 'phrase'
+    },
+    onReturn: {
+      titleZh: '人回到座位',
+      titleEn: 'Back to seat',
+      whenZh: '人脸重新出现一段时间。',
+      whenEn: 'When your face returns for a while.',
+      effectZh: '判定回席，执行回席动作。',
+      effectEn: 'Treats you as back and runs the return action.',
+      funcZh: '回来后自动接上。',
+      funcEn: 'Resume when you return.',
+      howZh: '在场检测',
+      howEn: 'Presence',
+      howKind: 'phrase'
+    },
+    okHand: {
+      titleZh: 'OK 手势',
+      titleEn: 'OK hand',
+      whenZh: '想用手势表示「可以 / 确认」。',
+      whenEn: 'When an OK hand means confirm.',
+      effectZh: '认出 OK 手势后执行绑定动作。',
+      effectEn: 'Runs the bound action after OK hand.',
+      funcZh: '确认类。',
+      funcEn: 'Confirm-style.',
+      howZh: '手势',
+      howEn: 'Gesture',
+      howKind: 'phrase'
+    },
+    fist: {
+      titleZh: '握拳',
+      titleEn: 'Fist',
+      whenZh: '想用握拳触发一件事。',
+      whenEn: 'When a fist should trigger something.',
+      effectZh: '认出握拳后执行绑定动作。',
+      effectEn: 'Runs the bound action after a fist.',
+      funcZh: '刻意动作。',
+      funcEn: 'Deliberate gesture.',
+      howZh: '手势',
+      howEn: 'Gesture',
+      howKind: 'phrase'
+    }
+  };
+
+  function cameraPickField(copy, zhKey, enKey) {
+    if (!copy) return '';
+    var en = ((global.OneToneI18n && global.OneToneI18n.lang) || 'zh') === 'en';
+    return en ? copy[enKey] || copy[zhKey] || '' : copy[zhKey] || copy[enKey] || '';
+  }
+
+  function cameraPickCatalog() {
+    var byRef = {};
+    filteredViews('camera').forEach(function (v) {
+      var ref = viewRef(v);
+      if (ref) byRef[ref] = v;
+    });
+    var ordered = [];
+    var seen = {};
+    function pushRef(ref) {
+      var id = String(ref || '').trim();
+      if (!id || seen[id]) return;
+      var copy = CAMERA_PICK_COPY[id] || {};
+      var view = byRef[id];
+      // Always list common gestures; other refs only if a view exists.
+      if (!view && CAMERA_COMMON_REFS.indexOf(id) < 0) return;
+      var title =
+        cameraPickField(copy, 'titleZh', 'titleEn') || gestureLabel(id) || id;
+      var when = cameraPickField(copy, 'whenZh', 'whenEn');
+      var effect = cameraPickField(copy, 'effectZh', 'effectEn');
+      var func = cameraPickField(copy, 'funcZh', 'funcEn');
+      var how = cameraPickField(copy, 'howZh', 'howEn') || t('keysChannelGesture', '手势');
+      var howKind = copy.howKind || 'phrase';
+      if (
+        !matchesSearch(
+          title + ' ' + when + ' ' + effect + ' ' + func + ' ' + id + ' ' + (view ? viewActionId(view) : '')
+        )
+      ) {
+        return;
+      }
+      seen[id] = true;
+      var actionId = view ? viewActionId(view) : '';
+      var bindable = !!(view && actionId && bindableByAction[actionId] !== false);
+      ordered.push({
+        pickId: id,
+        gesture: id,
+        view: view || null,
+        actionId: actionId,
+        title: title,
+        when: when || t('keysCameraPickGenericWhen', '摄像头认出这个动作时。'),
+        effect: effect || (actionId ? t('keysCameraPickGenericEffect', '执行已绑动作。') : t('keysCameraPickNeedSetupEffect', '还没在摄像头里设好动作。')),
+        func: func || (actionId ? actionLabel(actionId) : t('keysCameraPickNeedSetupFunc', '先去摄像头页选好这个手势要干什么。')),
+        how: how,
+        howKind: howKind,
+        bindable: bindable,
+        common: CAMERA_COMMON_REFS.indexOf(id) >= 0
+      });
+    }
+    var ci;
+    for (ci = 0; ci < CAMERA_COMMON_REFS.length; ci++) pushRef(CAMERA_COMMON_REFS[ci]);
+    Object.keys(byRef).forEach(function (ref) {
+      pushRef(ref);
+    });
+    return ordered;
+  }
+
+  function findCameraPick(pickId) {
+    var catalog = cameraPickCatalog();
+    var id = String(pickId || '').trim();
+    var i;
+    for (i = 0; i < catalog.length; i++) {
+      if (catalog[i].pickId === id) return catalog[i];
+    }
+    return catalog[0] || null;
+  }
+
+  function renderCameraPickHtml() {
+    var catalog = cameraPickCatalog();
+    if (!catalog.length) {
+      return (
+        '<div class="keys-voice-pick">' +
+        '<p class="keys-channel-empty">' +
+        esc(emptyCopy('camera')) +
+        '</p>' +
+        '<p class="keys-voice-pick-escape">' +
+        esc(t('keysCameraPickDesignHint', '想先把手势设好？')) +
+        ' <button type="button" class="keys-channel-item-link" data-go-camera="1">' +
+        esc(t('keysCameraPickGoCamera', '去摄像头设置')) +
+        '</button></p></div>'
+      );
+    }
+    syncCameraPickIdFromSelection();
+    if (!cameraPickSelectedId || !findCameraPick(cameraPickSelectedId)) {
+      cameraPickSelectedId = catalog[0].pickId;
+    }
+    var sel = findCameraPick(cameraPickSelectedId);
+    var commonOpts = '';
+    var moreOpts = '';
+    var oi;
+    for (oi = 0; oi < catalog.length; oi++) {
+      var c = catalog[oi];
+      var opt =
+        '<option value="' +
+        esc(c.pickId) +
+        '"' +
+        (c.pickId === sel.pickId ? ' selected' : '') +
+        '>' +
+        esc(pickOptionLabel(c.title, c.actionId, '')) +
+        '</option>';
+      if (c.common) commonOpts += opt;
+      else moreOpts += opt;
+    }
+    var optsHtml =
+      '<optgroup label="' +
+      esc(t('keysCameraPickGroupCommon', '常用')) +
+      '">' +
+      commonOpts +
+      '</optgroup>';
+    if (moreOpts) {
+      optsHtml +=
+        '<optgroup label="' +
+        esc(t('keysCameraPickGroupMore', '更多')) +
+        '">' +
+        moreOpts +
+        '</optgroup>';
+    }
+    var primaryLabel = sel.bindable
+      ? t('keysCameraPickBtnBind', '给这件事加按键')
+      : t('keysCameraPickBtnSetup', '先去摄像头里设好');
+    var oneLine = String(sel.effect || sel.func || sel.when || '').trim();
+    return (
+      '<div class="keys-voice-pick is-select-first" data-camera-pick="1">' +
+      '<div class="keys-voice-pick-head">' +
+      '<span class="keys-voice-pick-title">' +
+      esc(t('keysCameraPickTitle', '给手势加按键')) +
+      '</span>' +
+      '<span class="keys-voice-pick-pill">' +
+      esc(t('keysCameraPickPill', '摄像头')) +
+      '</span></div>' +
+      '<label class="keys-voice-pick-label" for="keysCameraPickSelect">' +
+      esc(t('keysCameraPickLabel', '选一件事')) +
+      '</label>' +
+      '<select id="keysCameraPickSelect" class="keys-voice-pick-select" data-camera-pick-select="1">' +
+      optsHtml +
+      '</select>' +
+      (oneLine
+        ? '<p class="keys-voice-pick-card keys-voice-pick-card--one" aria-live="polite">' +
+          esc(oneLine) +
+          '</p>'
+        : '') +
+      '<div class="keys-voice-pick-actions">' +
+      '<button type="button" class="keys-voice-pick-primary" data-camera-pick-bind="1">' +
+      esc(primaryLabel) +
+      '</button>' +
+      '<button type="button" class="keys-channel-item-link" data-go-camera="1">' +
+      esc(t('keysCameraPickGoCamera', '去摄像头设置')) +
+      '</button></div></div>'
+    );
+  }
+
+  function guideToCameraSettings() {
     var mid = selectedMappingId();
-    var m = mappingById(mid);
-    var html = '';
-    var gi;
-    for (gi = 0; gi < CURSOR_COMMAND_GROUPS.length; gi++) {
-      var group = CURSOR_COMMAND_GROUPS[gi];
-      if (group.titleKey || group.titleFb) {
-        html +=
-          '<p class="keys-channel-group-label">' +
-          esc(t(group.titleKey, group.titleFb)) +
-          '</p>';
-      }
-      var items = group.items || [];
-      var ii;
-      for (ii = 0; ii < items.length; ii++) {
-        var item = items[ii];
-        var slotId = String(item.slotId || '').trim();
-        var actionId = cursorItemActionId(item);
-        var gated = !!item.gated;
-        if (
-          !matchesSearch(
-            cursorItemLabel(item) + ' ' + cursorItemSub(item) + ' ' + actionId + ' ' + slotId
-          )
-        ) {
-          continue;
-        }
-        var keyB = mid ? findKeyBinding(m, actionId, '') : null;
-        var boundChord = keyB ? String(keyB.triggerBinding || '').trim() : '';
-        var selected =
-          selection &&
-          selection.sourceChannel === 'cursor' &&
-          selection.sourceBindingRef === slotId &&
-          (!mid || selection.mappingId === mid);
-        var heroRef = captureHeroRefForMapping(m);
-        var heroMapped = heroRefMatches(heroRef, {
-          channel: 'cursor',
-          bindingRef: slotId,
-          actionId: actionId,
-          actionInstanceId: ''
-        });
-        html +=
-          '<button type="button" class="keys-channel-item' +
-          (selected ? ' is-selected' : '') +
-          (heroMapped ? ' is-hero-mapped' : '') +
-          (gated ? ' is-disabled' : '') +
-          '" data-channel-item="1" data-channel="cursor" data-binding-ref="' +
-          esc(slotId) +
-          '" data-action-id="' +
-          esc(actionId) +
-          '" data-cursor-slot="' +
-          esc(slotId) +
-          '"' +
-          (gated ? ' data-gated="1" disabled aria-disabled="true"' : '') +
-          '>' +
-          '<span class="keys-channel-item-name">' +
-          esc(cursorItemLabel(item)) +
-          '</span>' +
-          '<span class="keys-channel-item-key">' +
-          esc(
-            gated
-              ? t('keysChannelCursorGated', 'gate 关闭')
-              : boundChord
-                ? friendlyChord(boundChord)
-                : cursorItemRightLabel(item)
-          ) +
-          '</span>' +
-          '<span class="keys-channel-item-sub">' +
-          esc(cursorItemSub(item)) +
-          '</span>' +
-          (heroMapped
-            ? '<span class="keys-channel-item-hero-tag">' +
-              esc(t('keysCaptureHeroMapped', '已映射到识别按钮')) +
-              '</span>'
-            : '') +
-          '</button>';
-      }
+    var drawer = global.OneToneSettingsDrawer;
+    if (drawer && drawer.setPanel) {
+      try {
+        if (mid) drawer.setPanel('camera', { mappingId: mid });
+        else drawer.setPanel('camera');
+        return;
+      } catch (_) {}
     }
-    if (!html) {
-      html = '<p class="keys-channel-empty">' + esc(emptyCopy('cursor')) + '</p>';
-    }
-    panel.innerHTML = html;
+    toast(t('keysCameraPickGoCameraToast', '请打开摄像头设置'));
   }
 
   function guideToSoftPadSettings() {
@@ -2142,7 +3790,7 @@
         return;
       } catch (_) {}
     }
-    toast(t('keysChannelGoSoftPad', '去虚拟键盘配置'));
+    toast(t('keysChannelGoSoftPad', '去屏幕按键配置'));
   }
 
   function persistSoftPadMapping(m) {
@@ -2856,6 +4504,9 @@
 
   function renderListChannelHtml(ch, opts) {
     opts = opts || {};
+    if (ch === 'voice') {
+      return renderVoicePickHtml();
+    }
     var mid = selectedMappingId();
     var m = mappingById(mid);
     var pack = rowsForTab(ch);
@@ -2970,9 +4621,8 @@
 
   function autoCreateBarHtml() {
     var label = '';
-    if (activeTab === 'cursor') label = t('keysAutoCreateCursor', '按方案补全 Cursor 快捷键');
-    else if (activeTab === 'softPad') label = t('keysAutoCreateSoftPad', '自动准备本习惯虚拟键盘');
-    else if (activeTab === 'voice') label = t('keysAutoCreateVoice', '套用当前习惯方案');
+    // cursor / voice: single-pick UI owns CTAs — no "按方案补全" bar
+    if (activeTab === 'softPad') label = t('keysAutoCreateSoftPad', '自动准备本习惯屏幕按键');
     if (!label) return '';
     return (
       '<button type="button" class="keys-channel-add-shortcut" data-auto-create="' +
@@ -2993,13 +4643,32 @@
 
   function autoCreateForTab(ch) {
     if (ch === 'voice') {
-      var tplApi = global.OneToneKeysWorkflowTemplates;
-      if (tplApi && tplApi.applyTemplate) {
-        return Promise.resolve(tplApi.applyTemplate(suggestedSchemeId())).then(function () {
-          refresh();
-        });
+      var mid = selectedMappingId();
+      var m = mappingById(mid);
+      var Ad = global.OneToneActionBindingAdapters;
+      if (!Ad || !Ad.key || !Ad.key.upsert || !mid || !m) {
+        toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+        return Promise.resolve();
       }
-      return Promise.resolve();
+      var jobs = [];
+      var defaults = [
+        { actionId: VOICE_LIFECYCLE_IDS.start, chord: 'Ctrl+Shift+Space' },
+        { actionId: VOICE_LIFECYCLE_IDS.cancel, chord: 'Ctrl+Shift+Backspace' }
+      ];
+      var di;
+      for (di = 0; di < defaults.length; di++) {
+        var d = defaults[di];
+        if (findKeyBinding(m, d.actionId, '')) continue;
+        jobs.push(Ad.key.upsert(mid, d.actionId, d.chord, null));
+      }
+      return Promise.all(jobs).then(function () {
+        toast(
+          jobs.length
+            ? t('keysVoicePickAutoDone', '已给听写加上常用按键')
+            : t('keysVoicePickAutoNone', '听写按键已就绪')
+        );
+        refresh();
+      });
     }
     if (ch === 'softPad') {
       prepareSoftPadScopeScenario();
@@ -3042,9 +4711,13 @@
     var panel = document.getElementById('keysChannelPanel');
     if (!panel) return;
     syncOpenChrome();
-    if (activeTab === 'ime' || activeTab === 'key') {
+    if (activeTab === 'ime') {
       renderKeyFinishHosts();
       syncCaptureRecordChrome();
+    }
+    if (activeTab === 'key') {
+      // 自定义键不挂听写录制键帽；只刷新序列主卡
+      refreshKeysTargetActionsEditor();
     }
     if (activeTab === 'ime' && global.OneToneImePresets && global.OneToneImePresets.refresh) {
       try {
@@ -3071,6 +4744,15 @@
       renderCursorCommandsPanel(wrap);
       return;
     }
+    if (activeTab === 'camera') {
+      if (panel.classList) panel.classList.remove('is-softpad-pick');
+      syncSoftPadTargetChrome(false);
+      var camWrap = document.createElement('div');
+      camWrap.className = 'keys-channel-section';
+      camWrap.innerHTML = renderCameraPickHtml();
+      panel.appendChild(camWrap);
+      return;
+    }
     if (activeTab === 'softPad') {
       var padWrap = document.createElement('div');
       padWrap.className = 'keys-channel-section';
@@ -3082,7 +4764,7 @@
     syncSoftPadTargetChrome(false);
     var listWrap = document.createElement('div');
     listWrap.className = 'keys-channel-section';
-    listWrap.innerHTML = renderListChannelHtml(activeTab === 'camera' ? 'camera' : 'voice');
+    listWrap.innerHTML = renderListChannelHtml('voice');
     panel.appendChild(listWrap);
   }
 
@@ -3110,6 +4792,18 @@
     var prev = activeTab;
     activeTab = ch;
     openPanels[ch] = true;
+    if (ch === 'key') {
+      // Rehydrate match-edit cursor from habit hero without stealing 01 focus.
+      var habit = mappingById(selectedMappingId());
+      var href = habit ? captureHeroRefForMapping(habit) : null;
+      if (href && href.kind === 'customKey' && href.bindingRef) {
+        customKeyMatchEditId = String(href.bindingRef);
+      }
+      if (!customKeyMatchEditId || !mappingById(customKeyMatchEditId)) {
+        var seedRows = listCustomKeyMappingsForCurrentApp();
+        if (seedRows.length) customKeyMatchEditId = String(seedRows[0].id || '');
+      }
+    }
     if (ch === 'ime' && selection) {
       clearSelection({ skipRender: true, skipHero: !!(opts && opts.skipHeroClear) });
       if (!(opts && opts.skipHeroClear) && global.OneToneMappingList && global.OneToneMappingList.renderEditor) {
@@ -3135,6 +4829,10 @@
         return refresh();
       }
       renderPanelOnly();
+    }
+    if (prev !== ch && !(opts && opts.skipHeroClear)) {
+      applyHero();
+      syncRecognitionEditorPreview();
     }
     syncCaptureRecordChrome();
   }
@@ -3776,6 +5474,7 @@
   function bindOnce() {
     if (bound) return;
     bound = true;
+    wireKeysCustomKeyMatchList();
     var panel = document.getElementById('keysChannelPanel');
     var closeBtn = document.getElementById('btnKeysCaptureClose');
     var backdrop = document.getElementById('keysCapturePopoverBackdrop');
@@ -3857,6 +5556,34 @@
         if (autoBtn && panel.contains(autoBtn)) {
           ev.preventDefault();
           autoCreateForTab(autoBtn.getAttribute('data-auto-create') || activeTab);
+          return;
+        }
+        var voiceBind =
+          ev.target && ev.target.closest ? ev.target.closest('[data-voice-pick-bind]') : null;
+        if (voiceBind && panel.contains(voiceBind)) {
+          ev.preventDefault();
+          applyVoicePickBind();
+          return;
+        }
+        var cursorBind =
+          ev.target && ev.target.closest ? ev.target.closest('[data-cursor-pick-bind]') : null;
+        if (cursorBind && panel.contains(cursorBind)) {
+          ev.preventDefault();
+          applyCursorPickBind();
+          return;
+        }
+        var cameraBind =
+          ev.target && ev.target.closest ? ev.target.closest('[data-camera-pick-bind]') : null;
+        if (cameraBind && panel.contains(cameraBind)) {
+          ev.preventDefault();
+          applyCameraPickBind();
+          return;
+        }
+        var goCamera =
+          ev.target && ev.target.closest ? ev.target.closest('[data-go-camera]') : null;
+        if (goCamera && panel.contains(goCamera)) {
+          ev.preventDefault();
+          guideToCameraSettings();
           return;
         }
         var imeBtn =
@@ -3945,6 +5672,37 @@
         if (!btn || !panel.contains(btn)) return;
         onItemClick(btn, ev);
       });
+      panel.addEventListener('change', function (ev) {
+        var voiceSel =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-voice-pick-select]')
+            : null;
+        if (voiceSel && panel.contains(voiceSel)) {
+          voicePickSelectedId = String(voiceSel.value || '');
+          previewPickSelection('voice');
+          renderPanelOnly();
+          return;
+        }
+        var cursorSel =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-cursor-pick-select]')
+            : null;
+        if (cursorSel && panel.contains(cursorSel)) {
+          cursorPickSelectedId = String(cursorSel.value || '');
+          previewPickSelection('cursor');
+          renderPanelOnly();
+          return;
+        }
+        var cameraSel =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-camera-pick-select]')
+            : null;
+        if (cameraSel && panel.contains(cameraSel)) {
+          cameraPickSelectedId = String(cameraSel.value || '');
+          previewPickSelection('camera');
+          renderPanelOnly();
+        }
+      });
     }
   }
 
@@ -3979,12 +5737,15 @@
   global.OneToneKeysChannelCommandPicker = {
     init: init,
     refresh: refresh,
+    refreshKeysTargetActions: refreshKeysTargetActionsEditor,
+    refreshKeysCustomKeyMatchList: refreshKeysCustomKeyMatchList,
     getSelection: getSelection,
     hasSelection: hasSelection,
     clearSelection: clearSelection,
     setSelection: setSelection,
     selectFromSlotId: selectFromSlotId,
     selectedSlotId: selectedSlotId,
+    previewCustomKeyMatch: previewCustomKeyMatch,
     applyHero: applyHero,
     heroModel: heroModel,
     resolveHeroCapture: resolveHeroCapture,
