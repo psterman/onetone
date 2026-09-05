@@ -1865,8 +1865,8 @@
 }
 
 .keys-capture-popover .keys-channel-panel.is-softpad-pick {
-  max-height: min(78vh, 740px);
-  min-height: 420px;
+  max-height: min(78vh, 560px);
+  min-height: 0;
   overflow: auto;
 }
 
@@ -1960,6 +1960,10 @@
   overflow: visible;
 }
 
+#settingsPanelKeys .keys-softpad-pick.keys-voice-pick {
+  gap: 8px;
+}
+
 #settingsPanelKeys .keys-softpad-pick-host.is-preview-only {
   opacity: 0.72;
   pointer-events: none;
@@ -1978,6 +1982,22 @@
   max-width: min(100%, 320px);
   aspect-ratio: 10 / 11;
   height: auto;
+}
+
+/* Recognition pick: compact visual anchor — must win over the 320px host rules. */
+#settingsPanelKeys .keys-softpad-pick-host--mini {
+  padding: 2px 0 4px;
+}
+
+#settingsPanelKeys .keys-softpad-pick-host--mini .micro-hw-wrap,
+#settingsPanelKeys .keys-softpad-pick-host--mini .micro-hw-shell,
+#settingsPanelKeys .keys-softpad-pick-host--mini .micro-hw {
+  width: min(100%, 200px);
+  max-width: min(100%, 200px);
+}
+
+#settingsPanelKeys .keys-softpad-pick-host--mini .micro-hw__face-title {
+  font-size: 10px;
 }
 
 #settingsPanelKeys .keys-softpad-pick-host .micro-hw__face {
@@ -2185,6 +2205,12 @@
   /* Face chrome (title + agent bar) needs extra chassis height so the 5×5
      grid is not crushed / clipped out of the green face. */
   aspect-ratio: 10 / 11;
+}
+.keys-capture-popover .keys-softpad-pick-host--mini .micro-hw-wrap,
+.keys-capture-popover .keys-softpad-pick-host--mini .micro-hw-shell,
+.keys-capture-popover .keys-softpad-pick-host--mini .micro-hw {
+  width: min(100%, 220px);
+  max-width: min(100%, 220px);
 }
 .keys-capture-popover .keys-softpad-pick-host .micro-hw__face {
   display: flex;

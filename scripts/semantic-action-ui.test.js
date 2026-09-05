@@ -807,6 +807,10 @@ return Promise.resolve()
     assert.ok(pickerSrc.indexOf('keysPickOptionUnset') >= 0 || pickerSrc.indexOf('未设键') >= 0);
     assert.ok(pickerSrc.indexOf('keys-voice-pick-card--one') >= 0);
     assert.ok(pickerSrc.indexOf('is-select-first') >= 0);
+    assert.ok(pickerSrc.indexOf('data-softpad-pick-select') >= 0);
+    assert.ok(pickerSrc.indexOf('function softPadPickCatalog') >= 0);
+    assert.ok(pickerSrc.indexOf('keysSoftPadPickHost') >= 0);
+    assert.ok(pickerSrc.indexOf('keys-softpad-pick-host--mini') >= 0);
     assert.ok(pickerSrc.indexOf('var showHero = onIme') >= 0 || pickerSrc.indexOf('var showHero=onIme') >= 0);
     assert.ok(pickerSrc.indexOf('keysCustomKeyMatchSteps') >= 0 || pickerSrc.indexOf("'步'") >= 0);
     var persistSrc = read('src/js/core/config-persist.js');
@@ -952,7 +956,10 @@ return Promise.resolve()
     var pickerSrc = read('src/js/features/mapping/keys-channel-command-picker.js');
     assert.ok(pickerSrc.indexOf('resolveMigratableAction') >= 0);
     assert.ok(pickerSrc.indexOf('previewPadClone') >= 0);
+    assert.ok(pickerSrc.indexOf('data-softpad-pick-select') >= 0);
+    assert.ok(pickerSrc.indexOf('function softPadPickCatalog') >= 0);
     assert.ok(pickerSrc.indexOf('keysSoftPadPickHost') >= 0);
+    assert.ok(pickerSrc.indexOf('keysSoftPadPickBenefitLab') >= 0 || pickerSrc.indexOf('keysSoftPadPickTip') >= 0);
     assert.ok(pickerSrc.indexOf('heroModel') >= 0);
     assert.ok(
       pickerSrc.indexOf('global.OneToneState && global.OneToneState.state') >= 0,
@@ -1327,8 +1334,8 @@ return Promise.resolve()
 
     return P2.refresh().then(function () {
       P2.setActiveTab('softPad');
-      assert.ok(panelHtml.indexOf('keysSoftPadPickHost') >= 0, 'softPad keyboard host');
-      assert.ok(panelHtml.indexOf('data-go-softpad') >= 0 || panelHtml.indexOf('data-add-app-shortcut') >= 0);
+      assert.ok(panelHtml.indexOf('data-softpad-pick-select') >= 0 || panelHtml.indexOf('data-softpad-prepare') >= 0 || panelHtml.indexOf('data-softpad-pick') >= 0, 'softPad pick UI');
+      assert.ok(panelHtml.indexOf('data-go-softpad') >= 0 || panelHtml.indexOf('data-add-app-shortcut') >= 0 || panelHtml.indexOf('data-softpad-prepare') >= 0);
 
       // bindingRef === microKeyId (projection)
       var rProj = P2.resolveMigratableAction(mapping, 'AG04');
@@ -1590,13 +1597,12 @@ return Promise.resolve()
               P2.setActiveTab('softPad');
               assert.ok(P2.getSoftPadScopeAppId(), 'default app scope on SoftPad enter');
               assert.ok(
-                panelHtml.indexOf('keysSoftPadPickHost') >= 0,
-                'keyboard loads after default scope'
+                panelHtml.indexOf('data-softpad-pick') >= 0 || panelHtml.indexOf('data-softpad-pick-select') >= 0,
+                'softPad pick UI loads after default scope'
               );
-              assert.ok(panelHtml.indexOf('keys-softpad-cap') >= 0, 'capability panel present');
               assert.ok(
-                panelHtml.indexOf('keys-softpad-stage') >= 0,
-                'pad+cap stage layout'
+                panelHtml.indexOf('keys-softpad-stage') < 0,
+                'no oversized pad+cap stage layout'
               );
 
               // P0: first frame shows real pad, but async authority gates clicks by targetMappingId
@@ -1648,8 +1654,8 @@ return Promise.resolve()
               });
               var codexPendingRefresh = P2.refresh();
               assert.ok(
-                panelHtml.indexOf('keysSoftPadPickHost') >= 0,
-                'first frame renders real pad before authority data'
+                panelHtml.indexOf('data-softpad-pick') >= 0,
+                'first frame renders softPad pick UI before authority data'
               );
               assert.ok(panelHtml.indexOf('is-preview-only') < 0, 'first frame is not preview shell');
               assert.strictEqual(
@@ -1721,15 +1727,11 @@ return Promise.resolve()
                 assert.ok(scope);
                 assert.strictEqual(scope.globalProxy, true);
                 assert.strictEqual(scope.targetMappingId, 'm-codex-scene');
-                assert.ok(panelHtml.indexOf('keysSoftPadPickHost') >= 0, 'scoped keyboard shown');
-                assert.ok(panelHtml.indexOf('is-preview-only') < 0, 'real pad not preview-only');
                 assert.ok(
-                  panelHtml.indexOf('点击左侧键帽') >= 0 ||
-                    panelHtml.indexOf('keysSoftPadCapEmpty') >= 0 ||
-                    panelHtml.indexOf('Key capability') >= 0 ||
-                    panelHtml.indexOf('键帽能力') >= 0,
-                  'empty capability hint when no key selected'
+                  panelHtml.indexOf('data-softpad-pick-select') >= 0 || panelHtml.indexOf('data-softpad-pick') >= 0,
+                  'scoped softPad pick shown'
                 );
+                assert.ok(panelHtml.indexOf('is-preview-only') < 0, 'not preview-only shell');
 
                 var rScope = P2.resolveMigratableAction(codexMap, 'AG00');
                 assert.ok(rScope);
@@ -1743,10 +1745,9 @@ return Promise.resolve()
                   actionArgs: rScope.actionArgs,
                   iconHtml: '<svg data-cap="1"></svg>'
                 });
-                assert.ok(panelHtml.indexOf('keys-softpad-cap') >= 0);
                 assert.ok(
-                  panelHtml.indexOf('data-softpad-record') >= 0,
-                  'selected key shows record CTA in cap'
+                  panelHtml.indexOf('data-softpad-pick-bind') >= 0 || panelHtml.indexOf('data-softpad-pick-select') >= 0,
+                  'selected key shows bind CTA in pick UI'
                 );
                 var hmScope = P2.heroModel();
                 assert.ok(hmScope.active);
@@ -1951,15 +1952,14 @@ return Promise.resolve()
                       assert.ok(miss && miss.missingScenario);
                       assert.strictEqual(miss.targetMappingId, '');
                       assert.ok(
-                        panelHtml.indexOf('keysSoftPadPickHost') >= 0,
-                        'missing scenario still shows SoftPad preview'
+                        panelHtml.indexOf('data-softpad-pick') >= 0 || panelHtml.indexOf('data-softpad-pick-select') >= 0 || panelHtml.indexOf('data-softpad-prepare') >= 0,
+                        'missing scenario still shows SoftPad prepare pick'
                       );
-                      assert.ok(panelHtml.indexOf('is-preview-only') >= 0, 'preview marked read-only');
+                      assert.ok(panelHtml.indexOf('is-preview-only') < 0, 'no oversized read-only pad shell');
                       assert.ok(
                         panelHtml.indexOf('data-softpad-prepare') >= 0,
-                        'prepare CTA present in cap'
+                        'prepare CTA present'
                       );
-                      assert.ok(panelHtml.indexOf('keys-softpad-cap') >= 0);
 
                       // Hub scheme with pad → load that mapping's keyboard
                       var claudeHub = {
@@ -2008,7 +2008,7 @@ return Promise.resolve()
                       assert.ok(hubScope);
                       assert.strictEqual(hubScope.targetMappingId, 'm-claude-hub');
                       assert.strictEqual(hubScope.missingScenario, false);
-                      assert.ok(panelHtml.indexOf('keysSoftPadPickHost') >= 0);
+                      assert.ok(panelHtml.indexOf('data-softpad-pick') >= 0 || panelHtml.indexOf('data-softpad-pick-select') >= 0 || panelHtml.indexOf('data-softpad-prepare') >= 0);
                       assert.ok(panelHtml.indexOf('is-preview-only') < 0);
 
                       // P1: fresh fg auto-preselect once
@@ -2110,7 +2110,7 @@ return Promise.resolve()
                         assert.ok(sel, 'click selects migratable key');
                         assert.strictEqual(sel.sourceBindingRef, 'AG00');
                         assert.strictEqual(sel.mappingId, 'm-codex-scene');
-                        assert.ok(panelHtml.indexOf('data-softpad-record') >= 0);
+                        assert.ok(panelHtml.indexOf('data-softpad-pick-bind') >= 0 || panelHtml.indexOf('data-softpad-record') >= 0);
                         assert.ok(P2.heroModel().active);
                         fireSoftPadKeyClick('AG00');
                         assert.strictEqual(
@@ -2160,7 +2160,7 @@ return Promise.resolve()
                             panelHtml.indexOf('is-preview-only') < 0,
                             'no default preview shell when pad exists'
                           );
-                          assert.ok(panelHtml.indexOf('keysSoftPadPickHost') >= 0);
+                          assert.ok(panelHtml.indexOf('data-softpad-pick') >= 0 || panelHtml.indexOf('data-softpad-pick-select') >= 0 || panelHtml.indexOf('data-softpad-prepare') >= 0);
 
                           // P0: direct scenario edit — no app chips, not globalProxy
                           var cursorDirect = {
@@ -2277,7 +2277,7 @@ return Promise.resolve()
                                   iconHtml: '<span class="micro-hw__icon"><svg></svg></span>'
                                 });
                                 assert.ok(
-                                  panelHtml.indexOf('data-softpad-record') >= 0,
+                                  panelHtml.indexOf('data-softpad-pick-bind') >= 0 || panelHtml.indexOf('data-softpad-record') >= 0,
                                   'record button shown when authority ready and bindable===true'
                                 );
 

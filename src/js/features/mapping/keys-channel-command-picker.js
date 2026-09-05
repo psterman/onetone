@@ -609,6 +609,8 @@
   var cursorPickSelectedId = '';
   /** Camera pick UI: remember selected gesture across re-render. */
   var cameraPickSelectedId = '';
+  /** Soft Pad pick UI: remember selected microKeyId across re-render. */
+  var softPadPickSelectedId = '';
   /**
    * Custom-key match being edited in the sequence card / 02 preview.
    * Must NOT replace selectedMappingId — that anchors 01 trigger for the habit.
@@ -3022,7 +3024,8 @@
    * Unique recognition pick → selection + keycap preview.
    * No recording, no toast. Returns true if selection was written.
    */
-  function previewPickSelection(channel) {
+  function previewPickSelection(channel, opts) {
+    opts = opts || {};
     var mid = selectedMappingId();
     if (!mid) return false;
     var m = mappingById(mid);
@@ -3081,6 +3084,29 @@
           actionArgs: aKey && aKey.actionArgs ? aKey.actionArgs : null
         },
         { skipRender: true }
+      );
+      return true;
+    }
+    if (channel === 'softPad') {
+      var sRow = findSoftPadPick(softPadPickSelectedId);
+      if (!sRow || !sRow.actionId) return false;
+      var ctxSp = resolveSoftPadScope();
+      var workMid = ctxSp && ctxSp.targetMappingId ? String(ctxSp.targetMappingId) : '';
+      if (!workMid) return false;
+      setSelection(
+        {
+          mappingId: workMid,
+          sourceChannel: 'softPad',
+          sourceBindingRef: sRow.microKeyId,
+          actionId: sRow.actionId,
+          keyBindingRef: sRow.keyBindingRef || '',
+          actionInstanceId: sRow.actionInstanceId || '',
+          actionArgs: sRow.actionArgs
+        },
+        {
+          skipRender: true,
+          skipPersist: !!(opts && opts.skipPersist)
+        }
       );
       return true;
     }
@@ -3943,6 +3969,286 @@
     return html;
   }
 
+
+  function softPadKeycapName(microId) {
+    var id = String(microId || '').trim();
+    if (!id) return '';
+    var PadUi = global.OneToneCodexMicroPadUi;
+    if (PadUi && typeof PadUi.cellByMicroId === 'function') {
+      var cell = PadUi.cellByMicroId(id);
+      if (cell) {
+        var en = ((global.OneToneI18n && global.OneToneI18n.lang) || 'zh') === 'en';
+        var lab = en
+          ? cell.uiLabelEn || cell.uiLabelZh
+          : cell.uiLabelZh || cell.uiLabelEn;
+        if (lab) return String(lab);
+      }
+    }
+    if (PadUi && typeof PadUi.humanMicroKeyLabel === 'function') {
+      var hl = String(PadUi.humanMicroKeyLabel(id) || '').trim();
+      if (hl) return hl;
+    }
+    return id;
+  }
+
+  function softPadPickCatalog(workM) {
+    var out = [];
+    var seen = {};
+    function pushMicro(microId) {
+      var id = String(microId || '').trim();
+      if (!id || seen[id]) return;
+      var resolved = resolveMigratableAction(workM, id);
+      if (!resolved || !resolved.actionId) return;
+      seen[id] = true;
+      var keyName = softPadKeycapName(id);
+      var name = actionLabel(resolved.actionId) || keyName || id;
+      var route = routeOnPad(workM && workM.codexMicroPad, id);
+      var slotId = route && route.enabled !== false ? String(route.slotId || '').trim() : '';
+      var PadUi = global.OneToneCodexMicroPadUi;
+      var copy =
+        PadUi && typeof PadUi.capabilityCardCopy === 'function' && slotId
+          ? PadUi.capabilityCardCopy(slotId, workM)
+          : null;
+      var effect =
+        (copy && String(copy.result || '').trim()) ||
+        (PadUi && typeof PadUi.slotEffectTip === 'function' && slotId
+          ? String(PadUi.slotEffectTip(slotId, name, workM) || '').trim()
+          : '') ||
+        t('keysSoftPadPickBenefit', '不用点屏幕也能触发已配置的「{name}」').replace(
+          '{name}',
+          name
+        );
+      var tip = t(
+        'keysSoftPadPickTip',
+        '点「给这件事加按键」录制识别键；之后按该键 = Soft Pad「{key}」'
+      ).replace('{key}', keyName || name);
+      if (
+        !matchesSearch(
+          name + ' ' + keyName + ' ' + effect + ' ' + tip + ' ' + id + ' ' + resolved.actionId
+        )
+      ) {
+        return;
+      }
+      out.push({
+        pickId: id,
+        microKeyId: id,
+        actionId: resolved.actionId,
+        actionInstanceId: resolved.actionInstanceId || '',
+        actionArgs: resolved.actionArgs,
+        keyBindingRef: resolved.keyBindingRef || '',
+        name: name,
+        keyName: keyName,
+        tip: tip,
+        effect: effect
+      });
+    }
+    var pad = workM && workM.codexMicroPad;
+    var keys = pad && Array.isArray(pad.keys) ? pad.keys : [];
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      if (keys[i] && keys[i].enabled !== false) pushMicro(keys[i].microKeyId);
+    }
+    softPadViewsForResolve(workM && workM.id).forEach(function (v) {
+      pushMicro(viewRef(v));
+      pushMicro(viewTrigger(v));
+    });
+    return out;
+  }
+
+  function findSoftPadPick(pickId) {
+    var workM = softPadWorkMapping();
+    var catalog = softPadPickCatalog(workM);
+    var id = String(pickId || '').trim();
+    var i;
+    for (i = 0; i < catalog.length; i++) {
+      if (catalog[i].pickId === id) return catalog[i];
+    }
+    return catalog[0] || null;
+  }
+
+  function syncSoftPadPickIdFromSelection() {
+    if (!selection || selection.sourceChannel !== 'softPad') return;
+    if (findSoftPadPick(selection.sourceBindingRef)) {
+      softPadPickSelectedId = selection.sourceBindingRef;
+    }
+  }
+
+  function applySoftPadPickBind() {
+    var row = findSoftPadPick(softPadPickSelectedId);
+    if (!row) return;
+    var ctx = resolveSoftPadScope();
+    if (!ctx || !ctx.targetMappingId) {
+      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      return;
+    }
+    var already = selectionMatchesPick('softPad', row.microKeyId);
+    if (!already) {
+      softPadPickSelectedId = row.pickId;
+      previewPickSelection('softPad');
+      renderPanelOnly();
+    }
+    if (!canRecordSoftPadSelection(ctx)) {
+      toast(t('keysSoftPadCapLoading', '正在加载此场景的可绑定键位…'));
+      return;
+    }
+    var m = softPadWorkMapping();
+    var keyB = findKeyBinding(m, row.actionId, row.actionInstanceId || '');
+    var chord = keyB ? String(keyB.triggerBinding || '').trim() : '';
+    selectionToast(row.name, !!chord);
+    recordSelected();
+  }
+
+  function softPadPreviewFrameHtml(workM, opts) {
+    opts = opts || {};
+    var PadUi = global.OneToneCodexMicroPadUi;
+    if (!PadUi || typeof PadUi.renderHardwarePad !== 'function') return '';
+    var pad = opts.stub
+      ? softPadDefaultPreviewPad()
+      : previewPadClone(workM);
+    var map = opts.stub
+      ? softPadPreviewStubMapping((workM && workM.appTargetId) || softPadScopeAppId)
+      : workM;
+    return (
+      '<div id="keysSoftPadPickHost" class="keys-softpad-pick-host keys-softpad-pick-host--mini' +
+      (opts.stub ? ' is-preview-only' : '') +
+      '"' +
+      (opts.stub ? ' aria-hidden="true"' : '') +
+      '>' +
+      PadUi.renderHardwarePad(map, pad, {
+        mode: 'softPad',
+        compact: true,
+        omitFaceTopbar: true
+      }) +
+      '</div>'
+    );
+  }
+
+  function renderSoftPadNeedPrepareHtml(ctx) {
+    var appTitle = (ctx && ctx.title) || softPadAppTitle(softPadScopeAppId) || '';
+    var stubMap = softPadPreviewStubMapping(ctx && ctx.appTargetId);
+    return (
+      '<div class="keys-voice-pick is-select-first keys-softpad-pick" data-softpad-pick="1">' +
+      '<div class="keys-voice-pick-head">' +
+      '<span class="keys-voice-pick-title">' +
+      esc(t('keysSoftPadPickTitle', '选 Soft Pad 已配置键')) +
+      '</span>' +
+      (appTitle
+        ? '<span class="keys-voice-pick-pill">' +
+          esc(t('keysSoftPadPickPill', '正在用 · {app}').replace('{app}', appTitle)) +
+          '</span>'
+        : '') +
+      '</div>' +
+      softPadPreviewFrameHtml(stubMap, { stub: true }) +
+      '<p class="keys-channel-empty">' +
+      esc(
+        t(
+          'keysSoftPadCapNeedPrepareBody',
+          '先准备 {app} 虚拟键盘，再选择已配置键绑定识别键。'
+        ).replace('{app}', appTitle)
+      ) +
+      '</p>' +
+      '<div class="keys-voice-pick-actions">' +
+      '<button type="button" class="keys-voice-pick-primary" data-softpad-prepare="1">' +
+      esc(
+        t('keysSoftPadScopePrepare', '准备 {app} 虚拟键盘').replace('{app}', appTitle)
+      ) +
+      '</button></div></div>'
+    );
+  }
+
+  function renderSoftPadPickHtml(ctx, workM) {
+    var workMid = workM ? String(workM.id || '') : '';
+    var appTitle = (ctx && ctx.title) || softPadAppTitle(workM && workM.appTargetId) || '';
+    if (softPadAuthorityPending(workMid)) {
+      return (
+        '<div class="keys-voice-pick is-select-first keys-softpad-pick" data-softpad-pick="1">' +
+        softPadPreviewFrameHtml(workM, {}) +
+        '<p class="keys-channel-empty">' +
+        esc(t('keysSoftPadCapLoading', '正在加载此场景的可绑定键位…')) +
+        '</p></div>'
+      );
+    }
+    var catalog = softPadPickCatalog(workM);
+    if (!catalog.length) {
+      return (
+        '<div class="keys-voice-pick is-select-first keys-softpad-pick" data-softpad-pick="1">' +
+        '<div class="keys-voice-pick-head">' +
+        '<span class="keys-voice-pick-title">' +
+        esc(t('keysSoftPadPickTitle', '选 Soft Pad 已配置键')) +
+        '</span>' +
+        (appTitle
+          ? '<span class="keys-voice-pick-pill">' +
+            esc(t('keysSoftPadPickPill', '正在用 · {app}').replace('{app}', appTitle)) +
+            '</span>'
+          : '') +
+        '</div>' +
+        softPadPreviewFrameHtml(workM, {}) +
+        '<p class="keys-channel-empty">' +
+        esc(emptyCopy('softPad')) +
+        '</p>' +
+        '<p class="keys-voice-pick-escape">' +
+        '<button type="button" class="keys-channel-item-link" data-go-softpad="1">' +
+        esc(t('keysSoftPadPickGoPad', '去屏幕按键看布局')) +
+        '</button></p></div>'
+      );
+    }
+    syncSoftPadPickIdFromSelection();
+    if (!softPadPickSelectedId || !findSoftPadPick(softPadPickSelectedId)) {
+      softPadPickSelectedId = catalog[0].pickId;
+    }
+    var sel = findSoftPadPick(softPadPickSelectedId);
+    var opts = '';
+    var oi;
+    for (oi = 0; oi < catalog.length; oi++) {
+      var c = catalog[oi];
+      opts +=
+        '<option value="' +
+        esc(c.pickId) +
+        '"' +
+        (c.pickId === sel.pickId ? ' selected' : '') +
+        '>' +
+        esc(pickOptionLabel(c.name, c.actionId, c.actionInstanceId || '')) +
+        '</option>';
+    }
+    var canRecord =
+      softPadAuthorityReady(workMid) && bindableByAction[sel.actionId] === true;
+    var oneLine = String(sel.effect || sel.tip || '').trim();
+    return (
+      '<div class="keys-voice-pick is-select-first keys-softpad-pick" data-softpad-pick="1">' +
+      '<div class="keys-voice-pick-head">' +
+      '<span class="keys-voice-pick-title">' +
+      esc(t('keysSoftPadPickTitle', '选 Soft Pad 已配置键')) +
+      '</span>' +
+      (appTitle
+        ? '<span class="keys-voice-pick-pill">' +
+          esc(t('keysSoftPadPickPill', '正在用 · {app}').replace('{app}', appTitle)) +
+          '</span>'
+        : '') +
+      '</div>' +
+      softPadPreviewFrameHtml(workM, {}) +
+      '<label class="keys-voice-pick-label" for="keysSoftPadPickSelect">' +
+      esc(t('keysSoftPadPickLabel', '选一个已配置键')) +
+      '</label>' +
+      '<select id="keysSoftPadPickSelect" class="keys-voice-pick-select" data-softpad-pick-select="1">' +
+      opts +
+      '</select>' +
+      (oneLine
+        ? '<p class="keys-voice-pick-card keys-voice-pick-card--one" aria-live="polite">' +
+          esc(oneLine) +
+          '</p>'
+        : '') +
+      '<div class="keys-voice-pick-actions">' +
+      '<button type="button" class="keys-voice-pick-primary" data-softpad-pick-bind="1"' +
+      (!canRecord ? ' disabled' : '') +
+      '>' +
+      esc(t('keysSoftPadPickBtnBind', '给这件事加按键')) +
+      '</button>' +
+      '<button type="button" class="keys-channel-item-link" data-go-softpad="1">' +
+      esc(t('keysSoftPadPickGoPad', '去屏幕按键看布局')) +
+      '</button></div></div>'
+    );
+  }
+
   function renderSoftPadCapHtml(ctx, opts) {
     opts = opts || {};
     var missing = !!(opts.missing || (ctx && ctx.missingScenario));
@@ -4313,9 +4619,8 @@
         }
         ctx = afterCtx || ctx;
       }
-      html += renderSoftPadPreviewOnlyHtml(ctx);
+      html += renderSoftPadNeedPrepareHtml(ctx);
       panel.innerHTML = html;
-      disableAllSoftPadPickKeys(panel);
       syncSoftPadTargetChrome(true);
       return;
     }
@@ -4363,35 +4668,13 @@
       return;
     }
 
-    var pack = {
-      bridges: existingAppShortcutRows(workM),
-      footer: {
-        kind: 'add-app-shortcut',
-        label: t('keysAddAppShortcut', '＋ 添加应用快捷键')
-      }
-    };
-    var PadUi = global.OneToneCodexMicroPadUi;
-    var previewPad = previewPadClone(workM);
-    html += '<div class="keys-softpad-stage">';
-    html += '<div id="keysSoftPadPickHost" class="keys-softpad-pick-host">';
-    if (PadUi && typeof PadUi.renderHardwarePad === 'function') {
-      html += PadUi.renderHardwarePad(workM, previewPad, {
-        mode: 'softPad',
-        compact: false
-      });
-    }
-    html += '</div>';
-    html += renderSoftPadCapHtml(ctx);
-    html += '</div>';
-    html += renderSoftPadSecondaryHtml(
-      workMid,
-      workM,
-      pack.bridges || [],
-      pack.footer,
-      ctx
-    );
+    html += renderSoftPadPickHtml(ctx, workM);
     panel.innerHTML = html;
     retargetSoftPadPickKeys(panel, workM);
+    // Keep 02 preview in sync with the default / restored pick (no re-persist spam).
+    if (softPadPickCatalog(workM).length) {
+      previewPickSelection('softPad', { skipPersist: true });
+    }
     syncSoftPadTargetChrome(true);
   }
 
@@ -4620,17 +4903,8 @@
   }
 
   function autoCreateBarHtml() {
-    var label = '';
-    // cursor / voice: single-pick UI owns CTAs — no "按方案补全" bar
-    if (activeTab === 'softPad') label = t('keysAutoCreateSoftPad', '自动准备本习惯屏幕按键');
-    if (!label) return '';
-    return (
-      '<button type="button" class="keys-channel-add-shortcut" data-auto-create="' +
-      esc(activeTab) +
-      '">' +
-      esc(label) +
-      '</button>'
-    );
+    // voice / cursor / softPad: single-pick UI owns CTAs — no top "自动准备" bar
+    return '';
   }
 
   function suggestedSchemeId() {
@@ -4872,6 +5146,7 @@
     var iconEl = keyEl.querySelector && keyEl.querySelector('.micro-hw__icon');
     var iconHtml = iconEl ? String(iconEl.outerHTML || '') : '';
     var forceRecord = !!(ev && (ev.altKey || ev.shiftKey));
+    softPadPickSelectedId = microId;
     setSelection({
       mappingId: mid,
       sourceChannel: 'softPad',
@@ -4894,7 +5169,8 @@
         label +
         (chord ? ' · ' + friendlyChord(chord) : ' · ' + t('keysHeroActionNeedsKey', '待设置快捷键'))
     );
-    if (forceRecord || !chord) {
+    // Pick UI: pad click only selects; record via primary button (Alt/Shift still forces).
+    if (forceRecord) {
       recordSelected();
     }
   }
@@ -5579,6 +5855,13 @@
           applyCameraPickBind();
           return;
         }
+        var softPadBind =
+          ev.target && ev.target.closest ? ev.target.closest('[data-softpad-pick-bind]') : null;
+        if (softPadBind && panel.contains(softPadBind)) {
+          ev.preventDefault();
+          applySoftPadPickBind();
+          return;
+        }
         var goCamera =
           ev.target && ev.target.closest ? ev.target.closest('[data-go-camera]') : null;
         if (goCamera && panel.contains(goCamera)) {
@@ -5700,6 +5983,16 @@
         if (cameraSel && panel.contains(cameraSel)) {
           cameraPickSelectedId = String(cameraSel.value || '');
           previewPickSelection('camera');
+          renderPanelOnly();
+          return;
+        }
+        var softPadSel =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-softpad-pick-select]')
+            : null;
+        if (softPadSel && panel.contains(softPadSel)) {
+          softPadPickSelectedId = String(softPadSel.value || '');
+          previewPickSelection('softPad');
           renderPanelOnly();
         }
       });
