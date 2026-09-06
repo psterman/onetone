@@ -237,7 +237,7 @@
 
   function applyMappingTarget(combo, presetId){
     if(global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.clearSelection){
-      global.OneToneKeysChannelCommandPicker.clearSelection({skipRender:true,skipHero:true});
+      global.OneToneKeysChannelCommandPicker.clearSelection({skipRender:true,skipHero:true,skipPersist:true});
     }
     if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.clearSelection){
       global.OneToneAgentCapabilityUi.clearSelection();
@@ -257,6 +257,8 @@
         try{
           if(pickerFast.setActiveTab) pickerFast.setActiveTab('ime', { skipHeroClear: true });
           else if(pickerFast.refresh) pickerFast.refresh();
+          if(pickerFast.applyHero) pickerFast.applyHero();
+          if(pickerFast.syncRecognitionEditorPreview) pickerFast.syncRecognitionEditorPreview();
         }catch(_){}
       }
       return;

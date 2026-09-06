@@ -5440,6 +5440,16 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
             || !prev.agent_template_id.trim().is_empty()
             || prev.agent_provider_id.trim().eq_ignore_ascii_case("codex")
         {
+            // FE already kept another row for this preset app — do not resurrect a sibling.
+            let preset = prev.app_target_id.trim();
+            if !preset.is_empty() && preset != "custom" {
+                let same_app_on_incoming = cfg.mappings.iter().any(|m| {
+                    m.app_target_id.trim() == preset
+                });
+                if same_app_on_incoming {
+                    continue;
+                }
+            }
             preserved.push(prev.clone());
         }
     }

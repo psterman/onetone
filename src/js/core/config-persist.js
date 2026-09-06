@@ -658,7 +658,28 @@
       out.targetActions=out.target_actions;
     }
     out.targetActions=normalizeTargetActions(out.targetActions);
+    if(out.captureHeroRef==null&&out.capture_hero_ref!=null){
+      out.captureHeroRef=out.capture_hero_ref;
+    }
+    out.captureHeroRef=normalizeInboundCaptureHeroRef(out.captureHeroRef);
     return out;
+  }
+
+  function normalizeInboundCaptureHeroRef(ref){
+    if(ref==null||ref===false) return null;
+    if(typeof ref!=='object') return null;
+    var core=global.OneToneMappingCore;
+    var raw={
+      channel:String(ref.channel!=null?ref.channel:''),
+      bindingRef:String(ref.bindingRef!=null?ref.bindingRef:(ref.binding_ref||'')),
+      actionId:String(ref.actionId!=null?ref.actionId:(ref.action_id||'')),
+      actionInstanceId:String(ref.actionInstanceId!=null?ref.actionInstanceId:(ref.action_instance_id||'')),
+      kind:String(ref.kind!=null?ref.kind:'')
+    };
+    if(core&&core.normalizeCaptureHeroRef) raw=core.normalizeCaptureHeroRef(raw);
+    if(core&&core.isDefaultCaptureHeroRef&&core.isDefaultCaptureHeroRef(raw)) return null;
+    if(!raw.channel&&!raw.bindingRef&&!raw.actionId&&!raw.kind) return null;
+    return raw;
   }
 
   function normalizeTargetActions(list){
@@ -2040,6 +2061,13 @@
     localMaps.forEach(function(m){
       if(!m||!m.id||inboundIds[String(m.id)]||trashIds[String(m.id)]) return;
       if(!isAppScopedMapping(m)) return;
+      var preset=presetAppTargetId(m);
+      // Preset apps: one scenario — never re-add a second Cursor/Codex under another id.
+      if(preset&&preset!=='custom'){
+        for(var pi=0;pi<inboundMaps.length;pi++){
+          if(presetAppTargetId(inboundMaps[pi])===preset) return;
+        }
+      }
       inboundMaps.push(m);
       inboundIds[String(m.id)]=true;
       added=true;

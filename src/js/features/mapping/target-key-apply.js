@@ -61,9 +61,18 @@
     }
     var m=opts.mapping||c.selected();
     if(!m) return false;
+    var keepApp=String(m.appTargetId||'').trim();
     if(source==='record'&&global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.applyRecordedVoiceShortcut){
       global.OneToneAppTargetPresets.applyRecordedVoiceShortcut(m,combo);
       if(!presetId) syncImeSelection('');
+    }else if(source==='ime'){
+      // IME strip: set recognition key + preset; never strip app scenario into 通用设置.
+      m.imePresetId=presetId;
+      m.targetKey=combo;
+      if(keepApp&&global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.applyVoiceShortcutKeys){
+        global.OneToneAppTargetPresets.applyVoiceShortcutKeys(combo,{skipConfirm:true});
+      }
+      syncImeSelection(presetId);
     }else{
       m.imePresetId=presetId;
       m.targetKey=combo;

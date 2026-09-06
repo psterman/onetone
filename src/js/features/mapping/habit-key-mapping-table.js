@@ -248,6 +248,14 @@
   }
 
   function startTargetRecordForKeysPanel(){
+    var picker=global.OneToneKeysChannelCommandPicker;
+    if(picker&&picker.hasSelection&&picker.hasSelection()&&picker.recordSelected){
+      var sel=picker.getSelection?picker.getSelection():null;
+      if(sel&&sel.sourceChannel&&sel.sourceChannel!=='key'&&sel.actionId){
+        picker.recordSelected();
+        return;
+      }
+    }
     var cap=global.OneToneAgentCapabilityUi;
     if(cap&&cap.activeCodexMapping&&cap.activeCodexMapping()){
       if(cap.recordSelectedSlot) cap.recordSelectedSlot();
@@ -382,6 +390,22 @@
         if(key!=='Enter'&&key!==' '&&key!=='Spacebar'&&key!=='Space') return;
         handleKeycapFromEvent(e);
       });
+      // Right-click 02 recognition keycap → record key for current selection (persist via adapters/save).
+      flow.addEventListener('contextmenu',function(e){
+        var captureZone=e.target.closest&&e.target.closest('.keys-workflow-keycap-zone,#habitKeyMapCellTarget,#keysCaptureKeycapHost,#keysCaptureKeycapZone');
+        var stepEl=e.target.closest&&e.target.closest('[data-edit-step]');
+        var step=stepEl&&stepEl.dataset.editStep;
+        if(!step&&captureZone){
+          var zoneStepEl=captureZone.closest&&captureZone.closest('[data-edit-step]');
+          step=zoneStepEl&&zoneStepEl.dataset.editStep;
+        }
+        if(step!=='target'&&!(captureZone&&(!step||step==='target'))) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setDetailStep('target',{skipScroll:true});
+        startTargetRecordForKeysPanel();
+        highlightRow('target');
+      });
     }
   }
 
@@ -399,6 +423,7 @@
     bindEvents:bindEvents,
     openTargetKeyPicker:openTargetKeyPicker,
     startTargetRecordForKeysPanel:startTargetRecordForKeysPanel,
+    startTriggerRecord:startTriggerRecord,
     // P12c-2：状态 pills sync-push 模型
     buildKeysStatusPillsModel:buildKeysStatusPillsModel
   };

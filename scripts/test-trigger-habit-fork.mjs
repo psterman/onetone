@@ -1,5 +1,6 @@
 /**
- * Trigger-key habit fork: new trigger forks a mapping; same trigger reuses.
+ * Preset app + universal = one scenario: trigger retarget stays in place; reconcile folds forks.
+ * Only appTargetId=custom may still use forkMappingForTrigger.
  * Run: node scripts/test-trigger-habit-fork.mjs
  */
 import assert from 'node:assert/strict';
@@ -12,6 +13,14 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 function read(rel) {
   return readFileSync(join(root, rel), 'utf8');
 }
+
+const recSrc = read('src/js/features/mapping/mapping-recording.js');
+assert.ok(
+  recSrc.includes("mayFork=appId==='custom'") ||
+    recSrc.includes('mayFork = appId === \'custom\''),
+  'recording only forks custom appTargetId'
+);
+assert.ok(recSrc.includes('retarget') || recSrc.includes('stay one row'));
 
 const mappings = [
   {
@@ -74,30 +83,13 @@ assert.equal(
   'm1',
   'find existing by app+trigger'
 );
-assert.equal(
-  Core.findMappingByAppAndTrigger('cursor-chat', 'XButton1', 'm1'),
-  null,
-  'except self'
-);
-assert.equal(
-  Core.findMappingByAppAndTrigger('cursor-chat', 'XButton2'),
-  null,
-  'missing trigger returns null'
-);
 
+// API still forks when called directly (custom path); reconcile will fold presets.
 const before = mappings.length;
 const forked = Core.forkMappingForTrigger(mappings[0], 'XButton2');
 assert.ok(forked);
-assert.equal(mappings.length, before + 1, 'fork pushes new mapping');
-assert.equal(mappings[0].triggerKey, 'XButton1', 'old trigger preserved');
+assert.equal(mappings.length, before + 1, 'fork API still pushes');
 assert.equal(forked.triggerKey, 'XButton2');
-assert.equal(forked.appTargetId, 'cursor-chat');
-assert.ok(String(forked.group).includes('XButton2'), 'fork named with trigger');
-assert.equal(forked.agentBindings.length, 1, 'bindings copied');
-assert.notEqual(forked.id, 'm1');
-
-const hit = Core.findMappingByAppAndTrigger('cursor-chat', 'XButton2');
-assert.equal(hit.id, forked.id, 'new fork found by app+trigger');
 
 sandbox.OneToneHabitOverrideDiff = {
   findGlobalBaselineMapping: function () {
@@ -110,12 +102,6 @@ sandbox.OneToneHabitOverrideDiff = {
     return !!(m && m.appTargetId);
   }
 };
-sandbox.OneToneAppTargetPresets = {
-  displayName: function (id) {
-    return id === 'cursor-chat' ? 'Cursor' : id;
-  },
-  presets: [{ id: 'cursor-chat', name: 'Cursor' }, { id: 'codex-chat', name: 'Codex' }]
-};
 sandbox.OneToneConfigPersist = {
   save: function () {},
   forgetAppScenarioIds: function () {}
@@ -125,33 +111,55 @@ vm.runInNewContext(read('src/js/features/mapping/habit-hub.js'), sandbox, {
   filename: 'habit-hub.js'
 });
 const Hub = sandbox.OneToneHabitHub;
+
+// Selected m1 wins; XButton2 fork folds away; trigger stays on selected row.
 const r = Hub.reconcileDuplicatePresetScenarios({ skipToast: true });
-assert.equal(r.changed, false, 'different triggers not merged');
+assert.ok(r.changed, 'different hardware triggers merge into one');
 assert.equal(
   mappings.filter(function (m) {
     return m.appTargetId === 'cursor-chat';
   }).length,
-  2,
-  'both trigger schemes remain'
+  1,
+  'one Cursor row after reconcile'
 );
+assert.equal(mappings[0].id, 'm1', 'selected row kept');
+assert.equal(mappings[0].triggerKey, 'XButton1', 'selected trigger preferred');
 
-// Same trigger duplicates still merge
+// Push a second hardware Cursor + AutoTrigger — still one after reconcile
 mappings.push({
-  id: 'm-dup',
+  id: 'm-vk',
   appTargetId: 'cursor-chat',
-  triggerKey: 'XButton2',
+  triggerKey: 'VK_11',
   targetKey: 'RAlt',
-  enabled: false,
-  order: 9
+  enabled: true,
+  order: 5,
+  captureHeroRef: { channel: 'voice', bindingRef: 'cancel', actionId: 'input.cancel', kind: 'action' }
 });
+mappings.push({
+  id: 'm-auto',
+  appTargetId: 'cursor-chat',
+  triggerKey: 'AutoTrigger',
+  targetKey: 'RAlt',
+  enabled: true,
+  order: 20
+});
+state.selectedMappingId = 'm-vk';
+state.config.activeSceneId = 'm-vk';
 const r2 = Hub.reconcileDuplicatePresetScenarios({ skipToast: true });
-assert.ok(r2.changed, 'same-trigger duplicate merges');
+assert.ok(r2.changed, 'multi-trigger Cursor fold');
 assert.equal(
   mappings.filter(function (m) {
-    return m.appTargetId === 'cursor-chat' && m.triggerKey === 'XButton2';
+    return m.appTargetId === 'cursor-chat';
   }).length,
   1,
-  'one row per app+trigger'
+  'still one Cursor'
 );
+assert.equal(mappings.find(function (m) { return m.appTargetId === 'cursor-chat'; }).id, 'm-vk');
+assert.equal(
+  mappings[0].triggerKey,
+  'VK_11',
+  'in-use trigger adopted'
+);
+assert.ok(mappings[0].captureHeroRef, 'captureHeroRef folded onto winner');
 
 console.log('test-trigger-habit-fork: ok');

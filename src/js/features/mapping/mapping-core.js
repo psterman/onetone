@@ -189,6 +189,10 @@
 
   function editorTargetForMapping(m){
     if(!m) return '';
+    // Mapping's own recognition key wins — do not let global voiceVosk/Sapi
+    // (e.g. Ctrl+Shift+Space) mask Typeless RAlt on the 02 keycap.
+    const saved=(m.targetKey||'').trim();
+    if(saved) return saved;
     const appTargetId=String(m.appTargetId||'').trim();
     if(appTargetId){
       const cfg=state().config||{};
@@ -197,8 +201,6 @@
       const voiceKey=String(vosk.targetKey||sapi.targetKey||'').trim();
       if(voiceKey) return voiceKey;
     }
-    const saved=(m.targetKey||'').trim();
-    if(saved) return saved;
     if(isSelectedMapping(m.id)) return (hooks().getEditorTargetKey()||'').trim();
     return '';
   }

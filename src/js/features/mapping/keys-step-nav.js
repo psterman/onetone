@@ -196,6 +196,32 @@
       e.preventDefault();
       goToStep(node.getAttribute('data-keys-node')||'');
     });
+    // Right-click 02 / 识别 → record recognition key and persist.
+    nodes.addEventListener('contextmenu',function(e){
+      var btn=e.target.closest&&e.target.closest('.flow-node-btn');
+      if(!btn) return;
+      var node=btn.closest('[data-keys-node]');
+      if(!node) return;
+      var step=node.getAttribute('data-keys-node')||'';
+      if(step==='trigger'){
+        e.preventDefault();
+        goToStep('trigger');
+        var table=global.OneToneHabitKeyMappingTable;
+        if(table&&table.startTriggerRecord) table.startTriggerRecord();
+        else{
+          var boot=global.__vp_bootstrap_hooks__||{};
+          if(boot.startTriggerRecord) boot.startTriggerRecord();
+        }
+        return;
+      }
+      if(step!=='target') return;
+      e.preventDefault();
+      goToStep('target');
+      var tableT=global.OneToneHabitKeyMappingTable;
+      if(tableT&&tableT.startTargetRecordForKeysPanel){
+        tableT.startTargetRecordForKeysPanel();
+      }
+    });
   }
 
   function bind(){

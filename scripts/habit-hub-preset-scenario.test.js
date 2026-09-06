@@ -24,6 +24,7 @@ assert.ok(hubSrc.includes('function listAppScenarios'));
 assert.ok(hubSrc.includes('function pickCanonicalAppScenario'));
 assert.ok(hubSrc.includes('function reconcileDuplicatePresetScenarios'));
 assert.ok(hubSrc.includes('function disableSiblingPresetScenarios'));
+assert.ok(hubSrc.includes('isWeakTriggerMapping') || hubSrc.includes('function isWeakTriggerMapping'));
 assert.ok(hubSrc.indexOf('except Codex, which allows multiple') < 0);
 
 // Mirror scenarioBetter for rank regression
@@ -105,10 +106,10 @@ var mappings = [
 ];
 
 var st = {
-  selectedMappingId: 'm-codex-loser',
+  selectedMappingId: null,
   config: {
     mappings: mappings,
-    activeSceneId: 'm-codex-loser'
+    activeSceneId: ''
   }
 };
 
@@ -192,16 +193,19 @@ assert.strictEqual(
   'findAppScenarioByAppId uses canonical not array order'
 );
 
+st.selectedMappingId = 'm-codex-loser';
+st.config.activeSceneId = 'm-codex-loser';
 var r1 = H.reconcileDuplicatePresetScenarios({ skipToast: true });
 assert.ok(r1.changed, 'reconcile changes duplicate preset scenarios');
 assert.strictEqual(mappings.filter(function (m) {
   return m.appTargetId === 'codex-chat';
 }).length, 1, 'duplicate preset rows removed');
+// Prefer in-use selection over pad-rich sibling
 assert.strictEqual(mappings.find(function (m) {
   return m.appTargetId === 'codex-chat';
-}).id, 'm-codex-winner', 'canonical row kept');
-assert.strictEqual(st.selectedMappingId, 'm-codex-winner', 'selectedMappingId redirected');
-assert.strictEqual(st.config.activeSceneId, 'm-codex-winner', 'activeSceneId redirected');
+}).id, 'm-codex-loser', 'selected row kept as winner');
+assert.strictEqual(st.selectedMappingId, 'm-codex-loser', 'selectedMappingId stays on winner');
+assert.strictEqual(st.config.activeSceneId, 'm-codex-loser', 'activeSceneId stays on winner');
 assert.strictEqual(saveCalls, 1, 'reconcile persists once');
 
 saveCalls = 0;
@@ -239,20 +243,21 @@ assert.ok(rBase.changed, 'reconcile folds extra universal baselines');
 assert.strictEqual(mappings.filter(function (m) {
   return m && !m.appTargetId && m.id !== 'soft-pad-global';
 }).length, 1, 'one universal baseline remains');
-assert.strictEqual(st.selectedMappingId, 'm-base-a', 'baseline selection redirected');
-assert.strictEqual(st.config.activeSceneId, 'm-base-a', 'baseline in-use redirected');
-assert.ok(forgottenIds.indexOf('m-base-b') >= 0, 'dropped baseline forgotten from backup');
+assert.strictEqual(st.selectedMappingId, 'm-base-b', 'selected universal wins');
+assert.strictEqual(st.config.activeSceneId, 'm-base-b', 'active universal stays');
+assert.strictEqual(mappings[0] && mappings.find(function (m) { return !m.appTargetId; }).id, 'm-base-b', 'winner is selected baseline');
+assert.ok(forgottenIds.indexOf('m-base-a') >= 0, 'dropped baseline forgotten from backup');
 
 var created = H.createAppScenario('codex-chat');
-assert.strictEqual(created.id, 'm-codex-winner', 'second create returns existing');
+assert.strictEqual(created.id, 'm-codex-loser', 'second create returns existing');
 assert.strictEqual(mappings.filter(function (m) {
   return m.appTargetId === 'codex-chat';
 }).length, 1, 'no extra codex mapping added');
 
-var winnerRow = mappings.find(function (m) { return m.id === 'm-codex-winner'; });
+var winnerRow = mappings.find(function (m) { return m.id === 'm-codex-loser'; });
 winnerRow.enabled = false;
 var revived = H.createAppScenario('codex-chat');
-assert.strictEqual(revived.id, 'm-codex-winner', 'create returns disabled canonical');
+assert.strictEqual(revived.id, 'm-codex-loser', 'create returns disabled canonical');
 assert.strictEqual(revived.enabled, true, 'create re-enables disabled preset scenario');
 assert.strictEqual(mappings.filter(function (m) {
   return m.appTargetId === 'codex-chat';
@@ -269,6 +274,31 @@ assert.strictEqual(mappings[0].enabled, false, 'sibling disabled');
 assert.strictEqual(mappings[1].enabled, true, 'except mapping stays enabled');
 mappings.length = 0;
 savedMappings.forEach(function (m) { mappings.push(m); });
+
+// Different hardware triggers for same preset → one row (selected keeps trigger)
+mappings.push(
+  { id: 'm-c-vk', appTargetId: 'cursor-chat', triggerKey: 'VK_11', enabled: true, order: 1 },
+  { id: 'm-c-chord', appTargetId: 'cursor-chat', triggerKey: 'Ctrl+Shift+D', enabled: true, order: 2,
+    captureHeroRef: { channel: 'key', bindingRef: 'ime', kind: 'ime' } }
+);
+st.selectedMappingId = 'm-c-chord';
+st.config.activeSceneId = 'm-c-chord';
+saveCalls = 0;
+var rHw = H.reconcileDuplicatePresetScenarios({ skipToast: true });
+assert.ok(rHw.changed, 'hardware-trigger Cursor siblings merge');
+assert.strictEqual(mappings.filter(function (m) {
+  return m.appTargetId === 'cursor-chat';
+}).length, 1, 'one Cursor after hardware merge');
+assert.strictEqual(
+  mappings.find(function (m) { return m.appTargetId === 'cursor-chat'; }).id,
+  'm-c-chord',
+  'selected Cursor kept'
+);
+assert.strictEqual(
+  mappings.find(function (m) { return m.appTargetId === 'cursor-chat'; }).triggerKey,
+  'Ctrl+Shift+D',
+  'selected trigger kept'
+);
 
 // --- manual scene pin (foreground must not override pinned 通用) ---
 var pinMappings = [
@@ -329,5 +359,24 @@ assert.strictEqual(
   2,
   'custom multi-scenario data unchanged'
 );
+
+// --- one 通用设置: different-trigger baselines fold into one ---
+mappings.length = 0;
+mappings.push(
+  { id: 'u-auto', appTargetId: '', triggerKey: 'AutoTrigger', targetKey: 'RAlt', enabled: true, order: 0, group: '通用设置' },
+  { id: 'u-vk', appTargetId: '', triggerKey: 'VK_11', targetKey: 'Ctrl+Shift+Space', enabled: true, order: 1, group: '通用设置' },
+  { id: 'u-empty', appTargetId: '', triggerKey: '', targetKey: '', enabled: false, order: 2, group: '旧习惯' }
+);
+st.selectedMappingId = 'u-vk';
+st.config.activeSceneId = 'u-vk';
+var uniRec = H.reconcileDuplicatePresetScenarios({ skipPersist: true, skipToast: true });
+assert.ok(uniRec.changed, 'universal baselines reconcile');
+assert.strictEqual(
+  mappings.filter(function (m) { return m && !m.appTargetId; }).length,
+  1,
+  'one 通用设置 after reconcile'
+);
+assert.strictEqual(mappings[0].id, 'u-vk', 'selected universal wins');
+assert.strictEqual(mappings[0].triggerKey, 'VK_11', 'kept selected trigger');
 
 console.log('habit-hub-preset-scenario.test.js: ok');

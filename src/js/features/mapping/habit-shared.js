@@ -406,13 +406,30 @@
     return raw.replace(/\s*·\s*(tap|hold|\d+ms)/gi,'').trim()||raw||c('none');
   }
 
+  function recognitionDisplayLabel(m){
+    try{
+      var picker=global.OneToneKeysChannelCommandPicker;
+      var core=global.OneToneMappingCore;
+      if(!m||!picker||!picker.resolveHeroCapture) return '';
+      if(core&&core.captureHeroRefForMapping&&core.isDefaultCaptureHeroRef){
+        var ref=core.captureHeroRefForMapping(m);
+        if(!ref||core.isDefaultCaptureHeroRef(ref)) return '';
+      }
+      var cap=picker.resolveHeroCapture(m);
+      return cap?String(cap.primaryLabel||cap.targetLabel||'').trim():'';
+    }catch(_){
+      return '';
+    }
+  }
+
   function humanizeWhat(card,detail){
     detail=detail||{};
     card=card||{};
     var what=String(detail.what||'').trim();
     if(card.channel==='key'&&card.itemId==='key-main'){
       var k=effectiveKey(card.mapping||{});
-      var target=friendlyKey(k.targetKey);
+      var hero=recognitionDisplayLabel(card.mapping||{});
+      var target=hero||friendlyKey(k.targetKey);
       return lang()==='en'?('Start input to '+target):('开始输入到 '+target);
     }
     return what||c('none');

@@ -860,20 +860,24 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       }
       m=existingOther;
     }else if(prevTrig&&prevTrig!==k){
-      // Different trigger → fork a new habit; keep the old one with its trigger.
-      var forked=
-        OneToneMappingCore.forkMappingForTrigger
-          ?OneToneMappingCore.forkMappingForTrigger(m,k)
-          :null;
-      if(forked&&forked.id){
-        if(OneToneMappingCore.focus) OneToneMappingCore.focus(forked.id);
-        else{
-          if(global.OneToneState&&global.OneToneState.state){
-            global.OneToneState.state.selectedMappingId=forked.id;
+      // Preset apps + universal baseline stay one row — retarget in place.
+      // Only appTargetId=custom may fork (multi user-defined app habits).
+      var mayFork=appId==='custom';
+      if(mayFork){
+        var forked=
+          OneToneMappingCore.forkMappingForTrigger
+            ?OneToneMappingCore.forkMappingForTrigger(m,k)
+            :null;
+        if(forked&&forked.id){
+          if(OneToneMappingCore.focus) OneToneMappingCore.focus(forked.id);
+          else{
+            if(global.OneToneState&&global.OneToneState.state){
+              global.OneToneState.state.selectedMappingId=forked.id;
+            }
+            hooks().syncEditorFromSelection&&hooks().syncEditorFromSelection();
           }
-          hooks().syncEditorFromSelection&&hooks().syncEditorFromSelection();
+          m=forked;
         }
-        m=forked;
       }
     }
     m.triggerKey=k;
@@ -909,6 +913,11 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     setRecording('none');
     if(!backendCommitted) hooks().save();
     hooks().render();
+    try{
+      if(global.OneToneHabitHub&&global.OneToneHabitHub.scheduleHubPaint){
+        global.OneToneHabitHub.scheduleHubPaint();
+      }
+    }catch(_){}
     if(global.OneToneVoiceTab2Mvp&&global.OneToneVoiceTab2Mvp.renderHero){
       global.OneToneVoiceTab2Mvp.renderHero();
     }
@@ -1040,6 +1049,11 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     hooks().resetTargetCapture();
     hooks().save();
     hooks().render();
+    try{
+      if(global.OneToneHabitHub&&global.OneToneHabitHub.scheduleHubPaint){
+        global.OneToneHabitHub.scheduleHubPaint();
+      }
+    }catch(_){}
     try{
       var Motion=global.OneToneMotion;
       var tgtBtn=$('btnRecordTarget');

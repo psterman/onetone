@@ -1048,7 +1048,10 @@
     }
     if(!onIme) return;
     if(preset){
-      var chord=friendlyChord(preset.targetKey||(m&&m.targetKey)||'');
+      var actual=m
+        ?(core().editorTarget?String(core().editorTarget(m)||'').trim():String(m.targetKey||'').trim())
+        :'';
+      var chord=friendlyChord(actual||preset.targetKey||'');
       hint.textContent=t('keysCaptureRecordHintPreset')
         .replace('{ime}',t(preset.shortKey||preset.nameKey))
         .replace('{chord}',chord);

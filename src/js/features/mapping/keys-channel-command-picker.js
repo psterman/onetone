@@ -988,7 +988,9 @@
       autoPreselectHint = false;
       autoPreselectDone = true;
     }
-    if (!(opts && opts.skipClear)) clearSelection({ skipRender: true, skipHero: true });
+    if (!(opts && opts.skipClear)) {
+      clearSelection({ skipRender: true, skipHero: true, skipPersist: true });
+    }
     if (!(opts && opts.skipRender)) {
       if (opts && opts.refresh) refresh();
       else renderPanelOnly();
@@ -1006,9 +1008,11 @@
     scopeLock = 'manual';
     autoPreselectHint = false;
     autoPreselectDone = true;
-    if (!(opts && opts.skipClear)) clearSelection({ skipRender: true, skipHero: true });
+    if (!(opts && opts.skipClear)) {
+      clearSelection({ skipRender: true, skipHero: true, skipPersist: true });
+    }
     if (!(opts && opts.skipRender)) {
-      if (opts.refresh) refresh();
+      if (opts && opts.refresh) refresh();
       else renderPanelOnly();
     }
     if (!(opts && opts.skipHero)) applyHero();
@@ -1156,9 +1160,9 @@
   }
 
   /** Native <option> label: bound chord vs unset — visual ● / ○. */
-  function pickOptionLabel(name, actionId, actionInstanceId) {
+  function pickOptionLabel(name, actionId, actionInstanceId, bindMapping) {
     var title = String(name || '').trim() || String(actionId || '').trim() || '?';
-    var m = mappingById(selectedMappingId());
+    var m = bindMapping || mappingById(selectedMappingId());
     var keyB = findKeyBinding(m, actionId, actionInstanceId || '');
     var chord = keyB ? String(keyB.triggerBinding || '').trim() : '';
     if (chord) {
@@ -1476,7 +1480,8 @@
   function clearSelection(opts) {
     var had = !!selection;
     selection = null;
-    if (had && !(opts && opts.skipPersist)) {
+    // skipHero ⇒ temporary UI clear (e.g. Soft Pad scope) — do not wipe persisted 02 hero to IME.
+    if (had && !(opts && opts.skipPersist) && !(opts && opts.skipHero)) {
       persistHeroCapture(defaultCaptureHeroRef());
     }
     if (had && !(opts && opts.skipHero)) applyHero();
@@ -1572,7 +1577,11 @@
 
   function syncSelectionToMapping(mid) {
     mid = String(mid || selectedMappingId() || '').trim();
-    if (!selection) return;
+    if (!selection) {
+      // Restart / cleared UI — restore last saved recognition capability.
+      loadHeroCaptureFromMapping(mappingById(mid));
+      return;
+    }
     if (selection.mappingId === mid) return;
     var ctx = resolveSoftPadScope();
     if (ctx && ctx.targetMappingId && selection.mappingId === ctx.targetMappingId) {
@@ -2112,6 +2121,10 @@
     else if (isDefaultCaptureHeroRef(norm)) m.captureHeroRef = null;
     else m.captureHeroRef = norm;
     schedulePersistHeroSave();
+    try {
+      var hub = global.OneToneHabitHub;
+      if (hub && hub.scheduleHubPaint) hub.scheduleHubPaint();
+    } catch (_) {}
   }
 
   function syncRecognitionEditorPreview() {
@@ -2208,6 +2221,19 @@
     };
   }
 
+  function heroBindMappingForRef(ref, habitM) {
+    ref = normalizeCaptureHeroRef(ref);
+    if (ref.channel === 'softPad') {
+      var work = softPadWorkMapping();
+      if (work) return work;
+      if (selection && selection.sourceChannel === 'softPad' && selection.mappingId) {
+        var bySel = mappingById(selection.mappingId);
+        if (bySel) return bySel;
+      }
+    }
+    return habitM;
+  }
+
   function loadHeroCaptureFromMapping(m) {
     m = m || mappingById(selectedMappingId());
     if (!m) {
@@ -2217,7 +2243,12 @@
     }
     selection = captureRefToSelection(captureHeroRefForMapping(m), m.id);
     if (selection) {
-      var keyB = findKeyBinding(m, selection.actionId, selection.actionInstanceId);
+      if (selection.sourceChannel === 'softPad') {
+        var work = softPadWorkMapping();
+        if (work && work.id) selection.mappingId = String(work.id);
+      }
+      var bindM = heroBindMappingForRef(selectionToHeroRef(selection), m);
+      var keyB = findKeyBinding(bindM, selection.actionId, selection.actionInstanceId);
       if (keyB) selection.keyBindingRef = String(keyB.slotId || '');
       // Restore match-edit cursor from persisted customKey hero.
       if (
@@ -2251,11 +2282,37 @@
         iconHtml: ''
       };
     }
-    var ref = captureHeroRefForMapping(m);
     var bootHooks = global.__vp_mapping_core_hooks__ || {};
     var friendly = bootHooks.friendlyKeyName || function (k) {
       return k;
     };
+    // Persisted / live recognition capability — never force IME by activeTab
+    // (that made restart always show 右 Alt and wiped Cursor/voice hero from 02 + habits).
+    var ref;
+    var liveForHabit = false;
+    if (
+      selection &&
+      (selection.actionId ||
+        (selection.sourceChannel === 'key' &&
+          selection.sourceBindingRef &&
+          selection.sourceBindingRef !== 'ime'))
+    ) {
+      var selMid = String(selection.mappingId || '');
+      var habitId = String(m.id || '');
+      if (selMid && selMid === habitId) liveForHabit = true;
+      else if (selection.sourceChannel === 'softPad' && selMid) {
+        var workLive = softPadWorkMapping();
+        if (
+          workLive &&
+          String(workLive.id) === selMid &&
+          String(selectedMappingId() || '') === habitId
+        ) {
+          liveForHabit = true;
+        }
+      }
+    }
+    if (liveForHabit) ref = selectionToHeroRef(selection);
+    else ref = captureHeroRefForMapping(m);
     if (ref.kind === 'customKey') {
       var cm = mappingById(ref.bindingRef) || mappingById(customKeyMatchEditId) || m;
       return resolveCustomKeyHeroCap(cm, friendly);
@@ -2303,7 +2360,8 @@
     var ctx = resolveSoftPadScope();
     var scopeTitle =
       ref.channel === 'softPad' && ctx && ctx.title ? String(ctx.title) : '';
-    var keyB = findKeyBinding(m, ref.actionId, ref.actionInstanceId);
+    var bindM = heroBindMappingForRef(ref, m);
+    var keyB = findKeyBinding(bindM, ref.actionId, ref.actionInstanceId);
     var chord = keyB ? String(keyB.triggerBinding || '').trim() : '';
     // Compact 02: chord alone, or "待设置 · 短名" — no long "chord · full label".
     var shortName = String(label || '').trim();
@@ -2572,6 +2630,38 @@
     toast(tip + ' · ' + displayName);
   }
 
+  function resolveImeDictationCap(m, friendly) {
+    m = m || mappingById(selectedMappingId());
+    friendly =
+      friendly ||
+      (global.__vp_mapping_core_hooks__ || {}).friendlyKeyName ||
+      function (k) {
+        return k;
+      };
+    var coreApi = global.OneToneMappingCore;
+    var tgt =
+      coreApi && coreApi.editorTarget
+        ? String(coreApi.editorTarget(m) || '').trim()
+        : String((m && m.targetKey) || '').trim();
+    var fl = tgt ? friendly(tgt) || tgt : t('badgeNotRecorded', '未设置');
+    return {
+      kind: 'ime',
+      active: false,
+      primaryLabel: fl,
+      secondaryLabel: '',
+      badge: t('keysHeroModeIme', '输入法识别键'),
+      chord: tgt,
+      empty: !tgt,
+      channel: 'key',
+      channelLabel: channelTabLabel('key'),
+      targetLabel: fl,
+      targetEmpty: !tgt,
+      actionId: '',
+      sourceChannel: 'key',
+      iconHtml: ''
+    };
+  }
+
   function applyHero() {
     var badge = document.getElementById('keysTargetModeBadge');
     var targetEl = document.getElementById('targetView');
@@ -2580,12 +2670,25 @@
     var imeIcon = document.getElementById('targetImeIconMapping');
     var appBadge = document.getElementById('targetAppBadgeMapping');
     var m = mappingById(selectedMappingId());
+    // Top-02 / habit / restart: always the saved recognition capability.
     var cap = resolveHeroCapture(m);
     var hm = heroModel();
+    // IME strip "听写键" keycap alone: show dictation key while browsing IME (no action pick).
+    var paintCap = cap;
+    if (
+      activeTab === 'ime' &&
+      !(selection && (selection.actionId || (selection.sourceChannel === 'key' && selection.sourceBindingRef && selection.sourceBindingRef !== 'ime')))
+    ) {
+      paintCap = resolveImeDictationCap(m);
+    }
 
     if (cap.active) {
       if (selection && m) {
-        var keyB = findKeyBinding(m, selection.actionId, selection.actionInstanceId);
+        var keyB = findKeyBinding(
+          heroBindMappingForRef(selectionToHeroRef(selection), m),
+          selection.actionId,
+          selection.actionInstanceId
+        );
         if (selection) {
           selection.keyBindingRef = keyB ? String(keyB.slotId || '') : '';
           if (keyB && keyB.actionInstanceId && !selection.actionInstanceId) {
@@ -2597,42 +2700,52 @@
         }
       }
       if (badge) {
-        badge.textContent = cap.badge || t('keysHeroModeAction', '动作快捷键');
-        badge.classList.add('is-action');
+        badge.textContent = (paintCap === cap ? cap.badge : paintCap.badge) || t('keysHeroModeAction', '动作快捷键');
+        if (paintCap === cap) badge.classList.add('is-action');
+        else badge.classList.remove('is-action');
       }
-      if (imeIcon) imeIcon.hidden = true;
+      if (imeIcon) imeIcon.hidden = paintCap !== cap ? false : true;
       if (appBadge) {
         appBadge.hidden = true;
         appBadge.setAttribute('aria-hidden', 'true');
       }
-      syncActionIconHost(hm.iconHtml);
+      syncActionIconHost(paintCap === cap ? hm.iconHtml : '');
+      var paintLabel = paintCap.primaryLabel || paintCap.targetLabel || '';
       if (global.__otMappingEditorDisplayMounted && typeof global.__otMappingEditorDisplaySync === 'function') {
         global.__otMappingEditorDisplaySync();
+        // Island paints captureHero; re-assert IME dictation on the 听写键 keycap when browsing IME.
+        if (paintCap !== cap && targetEl) targetEl.textContent = paintLabel;
       } else if (targetEl) {
-        targetEl.textContent = cap.primaryLabel || cap.targetLabel || '';
+        targetEl.textContent = paintLabel;
       }
       if (targetDisp) {
-        targetDisp.classList.toggle('empty', !!cap.empty);
-        targetDisp.classList.add('is-codex-cap-edit');
+        targetDisp.classList.toggle('empty', !!paintCap.empty);
+        if (paintCap === cap) targetDisp.classList.add('is-codex-cap-edit');
+        else targetDisp.classList.remove('is-codex-cap-edit');
       }
-      if (host) host.classList.add('is-codex-cap-edit');
+      if (host) {
+        if (paintCap === cap) host.classList.add('is-codex-cap-edit');
+        else host.classList.remove('is-codex-cap-edit');
+      }
       syncImeStay();
       syncCaptureRecordChrome();
-      return true;
+      return paintCap === cap;
     }
 
     if (badge) {
-      badge.textContent = cap.badge || t('keysHeroModeIme', '输入法识别键');
+      badge.textContent = paintCap.badge || t('keysHeroModeIme', '输入法识别键');
       badge.classList.remove('is-action');
     }
     syncActionIconHost('');
+    var imeLabel = paintCap.primaryLabel || '';
     if (global.__otMappingEditorDisplayMounted && typeof global.__otMappingEditorDisplaySync === 'function') {
       global.__otMappingEditorDisplaySync();
+      if (activeTab === 'ime' && targetEl && paintCap.kind === 'ime') targetEl.textContent = imeLabel;
     } else if (targetEl) {
-      targetEl.textContent = cap.primaryLabel || '';
+      targetEl.textContent = imeLabel;
     }
     if (targetDisp) {
-      targetDisp.classList.toggle('empty', !!cap.empty);
+      targetDisp.classList.toggle('empty', !!paintCap.empty);
       targetDisp.classList.remove('is-codex-cap-edit');
     }
     if (host) host.classList.remove('is-codex-cap-edit');
@@ -3024,6 +3137,41 @@
    * Unique recognition pick → selection + keycap preview.
    * No recording, no toast. Returns true if selection was written.
    */
+  /**
+   * Keep 02 keycap / top recognition hint in sync with the channel catalog pick.
+   * Persist only when the pick differs from current selection (browse must not clobber).
+   */
+  function syncCatalogHeroToPick(channel) {
+    if (channel === 'voice') {
+      var vRow = findVoicePick(voicePickSelectedId);
+      if (!vRow || !vRow.actionId || vRow.kind === 'guide-finish') return false;
+      var vAlready =
+        selectionMatchesPick('voice', vRow.bindingRef) &&
+        selection &&
+        selection.actionId === vRow.actionId;
+      return previewPickSelection('voice', { skipPersist: !!vAlready });
+    }
+    if (channel === 'cursor') {
+      var cRow = findCursorPick(cursorPickSelectedId);
+      if (!cRow || !cRow.actionId) return false;
+      var cAlready =
+        selectionMatchesPick('cursor', cRow.slotId || cRow.bindingRef) &&
+        selection &&
+        selection.actionId === cRow.actionId;
+      return previewPickSelection('cursor', { skipPersist: !!cAlready });
+    }
+    if (channel === 'camera') {
+      var aRow = findCameraPick(cameraPickSelectedId);
+      if (!aRow || !aRow.actionId) return false;
+      var aAlready =
+        selectionMatchesPick('camera', aRow.gesture || aRow.bindingRef) &&
+        selection &&
+        selection.actionId === aRow.actionId;
+      return previewPickSelection('camera', { skipPersist: !!aAlready });
+    }
+    return false;
+  }
+
   function previewPickSelection(channel, opts) {
     opts = opts || {};
     var mid = selectedMappingId();
@@ -3046,7 +3194,10 @@
           actionInstanceId: vRow.actionInstanceId || (vKey && vKey.actionInstanceId) || '',
           actionArgs: vKey && vKey.actionArgs ? vKey.actionArgs : null
         },
-        { skipRender: true }
+        {
+          skipRender: true,
+          skipPersist: !!(opts && opts.skipPersist)
+        }
       );
       return true;
     }
@@ -3065,7 +3216,10 @@
           actionInstanceId: (cKey && cKey.actionInstanceId) || '',
           actionArgs: cKey && cKey.actionArgs ? cKey.actionArgs : null
         },
-        { skipRender: true }
+        {
+          skipRender: true,
+          skipPersist: !!(opts && opts.skipPersist)
+        }
       );
       return true;
     }
@@ -3083,7 +3237,10 @@
           actionInstanceId: (aKey && aKey.actionInstanceId) || '',
           actionArgs: aKey && aKey.actionArgs ? aKey.actionArgs : null
         },
-        { skipRender: true }
+        {
+          skipRender: true,
+          skipPersist: !!(opts && opts.skipPersist)
+        }
       );
       return true;
     }
@@ -4207,7 +4364,7 @@
         '"' +
         (c.pickId === sel.pickId ? ' selected' : '') +
         '>' +
-        esc(pickOptionLabel(c.name, c.actionId, c.actionInstanceId || '')) +
+        esc(pickOptionLabel(c.name, c.actionId, c.actionInstanceId || '', workM)) +
         '</option>';
     }
     var canRecord =
@@ -4671,7 +4828,7 @@
     html += renderSoftPadPickHtml(ctx, workM);
     panel.innerHTML = html;
     retargetSoftPadPickKeys(panel, workM);
-    // Keep 02 preview in sync with the default / restored pick (no re-persist spam).
+    // Sync 02 preview only — browsing Soft Pad must not overwrite another channel's hero.
     if (softPadPickCatalog(workM).length) {
       previewPickSelection('softPad', { skipPersist: true });
     }
@@ -5016,6 +5173,7 @@
       wrap.className = 'keys-channel-section';
       panel.appendChild(wrap);
       renderCursorCommandsPanel(wrap);
+      syncCatalogHeroToPick('cursor');
       return;
     }
     if (activeTab === 'camera') {
@@ -5025,6 +5183,7 @@
       camWrap.className = 'keys-channel-section';
       camWrap.innerHTML = renderCameraPickHtml();
       panel.appendChild(camWrap);
+      syncCatalogHeroToPick('camera');
       return;
     }
     if (activeTab === 'softPad') {
@@ -5040,6 +5199,7 @@
     listWrap.className = 'keys-channel-section';
     listWrap.innerHTML = renderListChannelHtml('voice');
     panel.appendChild(listWrap);
+    syncCatalogHeroToPick('voice');
   }
 
   function guideToFinish() {
@@ -5050,8 +5210,9 @@
   }
 
   function guideToIme() {
-    clearSelection({ skipRender: true });
-    setActiveTab('ime');
+    // Tab browse only — do not persist default IME over Soft Pad / voice / cursor hero.
+    clearSelection({ skipRender: true, skipHero: true, skipPersist: true });
+    setActiveTab('ime', { skipHeroClear: true });
     if (global.OneToneMappingList && global.OneToneMappingList.renderEditor) {
       try {
         global.OneToneMappingList.renderEditor();
@@ -5079,8 +5240,15 @@
       }
     }
     if (ch === 'ime' && selection) {
-      clearSelection({ skipRender: true, skipHero: !!(opts && opts.skipHeroClear) });
-      if (!(opts && opts.skipHeroClear) && global.OneToneMappingList && global.OneToneMappingList.renderEditor) {
+      // Leaving Soft Pad / voice / cursor for IME must not wipe captureHeroRef to default
+      // (that used to save 右 Alt and survive restart).
+      var keepHero = !!(opts && opts.skipHeroClear);
+      clearSelection({
+        skipRender: true,
+        skipHero: keepHero,
+        skipPersist: true
+      });
+      if (!keepHero && global.OneToneMappingList && global.OneToneMappingList.renderEditor) {
         try {
           global.OneToneMappingList.renderEditor();
         } catch (_) {}
@@ -5104,7 +5272,8 @@
       }
       renderPanelOnly();
     }
-    if (prev !== ch && !(opts && opts.skipHeroClear)) {
+    // Always refresh keycap/hints on tab change — skipHeroClear only means "don't wipe captureHeroRef".
+    if (prev !== ch) {
       applyHero();
       syncRecognitionEditorPreview();
     }
@@ -5780,6 +5949,20 @@
           table.startTargetRecordForKeysPanel();
         }
       });
+      keyZone.addEventListener('contextmenu', function (ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('button,a,input,label')) return;
+        var rec = global.OneToneMappingRecording;
+        if (rec && rec.mode && rec.mode() !== 'none') return;
+        ev.preventDefault();
+        if (hasSelection() && selection.sourceChannel && selection.sourceChannel !== 'key' && selection.actionId) {
+          recordSelected();
+          return;
+        }
+        var table = global.OneToneHabitKeyMappingTable;
+        if (table && table.startTargetRecordForKeysPanel) {
+          table.startTargetRecordForKeysPanel();
+        }
+      });
     }
     var tabs = document.getElementById('keysChannelSubtabs');
     if (tabs) {
@@ -6040,6 +6223,7 @@
     selectedSlotId: selectedSlotId,
     previewCustomKeyMatch: previewCustomKeyMatch,
     applyHero: applyHero,
+    syncRecognitionEditorPreview: syncRecognitionEditorPreview,
     heroModel: heroModel,
     resolveHeroCapture: resolveHeroCapture,
     loadHeroCaptureFromMapping: loadHeroCaptureFromMapping,

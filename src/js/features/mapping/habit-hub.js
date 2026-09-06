@@ -645,13 +645,32 @@
   }
 
   function hubPairLine(m){
+    var base='—';
     if(global.OneToneHomeScheme&&global.OneToneHomeScheme.pairLine){
-      return global.OneToneHomeScheme.pairLine(m);
+      base=global.OneToneHomeScheme.pairLine(m);
+    }else if(m){
+      var trig=String(m.triggerKey||'').trim()||'—';
+      var tgt=String(m.targetKey||'').trim()||'—';
+      base=trig+' → '+tgt;
     }
-    if(!m) return '—';
-    var trig=String(m.triggerKey||'').trim()||'—';
-    var tgt=String(m.targetKey||'').trim()||'—';
-    return trig+' → '+tgt;
+    if(!m) return base;
+    try{
+      var core=global.OneToneMappingCore;
+      var picker=global.OneToneKeysChannelCommandPicker;
+      if(!core||!core.captureHeroRefForMapping||!core.isDefaultCaptureHeroRef) return base;
+      if(!picker||!picker.resolveHeroCapture) return base;
+      var ref=core.captureHeroRefForMapping(m);
+      if(!ref||core.isDefaultCaptureHeroRef(ref)) return base;
+      // Resolve against this mapping's persisted hero (ignore live selection for other habits).
+      var cap=picker.resolveHeroCapture(m);
+      var heroTgt=cap?String(cap.primaryLabel||cap.targetLabel||'').trim():'';
+      if(!heroTgt||cap.kind==='ime') return base;
+      var arrow=base.indexOf(' → ');
+      var trigLbl=arrow>=0?base.slice(0,arrow):String(m.triggerKey||'').trim()||'—';
+      return trigLbl+' → '+heroTgt;
+    }catch(_){
+      return base;
+    }
   }
 
   function camWaveTheme(){
@@ -2134,14 +2153,27 @@
 
   function foldLoserOverlayIntoWinner(winner,loser){
     if(!winner||!loser) return;
-    ['triggerKey','targetKey','sourceKey'].forEach(function(k){
-      if(!String(winner[k]||'').trim()&&String(loser[k]||'').trim()) winner[k]=loser[k];
-    });
+    var wWeak=isWeakTriggerMapping(winner);
+    var lStrong=!isWeakTriggerMapping(loser);
+    if(wWeak&&lStrong){
+      ['triggerKey','sourceKey','sourceTime','triggerMode','triggerSource'].forEach(function(k){
+        if(loser[k]!=null&&String(loser[k]).trim()!=='') winner[k]=loser[k];
+      });
+      if(String(loser.targetKey||'').trim()) winner.targetKey=loser.targetKey;
+    }else{
+      ['triggerKey','targetKey','sourceKey'].forEach(function(k){
+        if(!String(winner[k]||'').trim()&&String(loser[k]||'').trim()) winner[k]=loser[k];
+      });
+    }
     if(!winner.voiceOverride&&loser.voiceOverride) winner.voiceOverride=loser.voiceOverride;
     if(!winner.cameraOverride&&loser.cameraOverride) winner.cameraOverride=loser.cameraOverride;
     if(!(winner.agentBindings&&winner.agentBindings.length)&&loser.agentBindings&&loser.agentBindings.length){
       winner.agentBindings=loser.agentBindings;
     }
+    if(!(winner.targetActions&&winner.targetActions.length)&&loser.targetActions&&loser.targetActions.length){
+      winner.targetActions=loser.targetActions;
+    }
+    if(!winner.captureHeroRef&&loser.captureHeroRef) winner.captureHeroRef=loser.captureHeroRef;
     var wPad=winner.codexMicroPad;
     var lPad=loser.codexMicroPad;
     var wKeys=wPad&&Array.isArray(wPad.keys)?wPad.keys.length:0;
@@ -2164,7 +2196,12 @@
     return raw;
   }
 
-  /** Merge only within same app + same trigger; different triggers stay as separate habits. */
+  function isWeakTriggerMapping(m){
+    var bucket=normalizedTriggerBucket(m);
+    return bucket==='__empty__'||bucket==='AutoTrigger';
+  }
+
+  /** Merge all same-appTargetId preset rows into one (Cursor/Codex/… = one habit). */
   function reconcileDuplicatePresetScenarios(opts){
     opts=opts||{};
     if(!core()) return { changed:false };
@@ -2174,39 +2211,68 @@
     var changed=false;
     var mergedApps=[];
     var drop={};
+    var selId=String(state().selectedMappingId||'');
+    var activeId=String(cfg.activeSceneId||'');
     var presetIds=presetAppTargetIds();
+
+    function pickWinner(group){
+      if(!group||!group.length) return null;
+      for(var i=0;i<group.length;i++){
+        if(String(group[i].id)===selId) return group[i];
+      }
+      for(var j=0;j<group.length;j++){
+        if(String(group[j].id)===activeId) return group[j];
+      }
+      return pickCanonicalAppScenario(group);
+    }
+
+    function adoptPreferredTrigger(winner,group){
+      if(!winner||!group) return;
+      var preferred=null;
+      for(var i=0;i<group.length;i++){
+        if(String(group[i].id)===selId||String(group[i].id)===activeId){
+          preferred=group[i];
+          break;
+        }
+      }
+      if(preferred&&preferred.id!==winner.id&&!isWeakTriggerMapping(preferred)){
+        ['triggerKey','sourceKey','sourceTime','triggerMode','triggerSource'].forEach(function(k){
+          if(preferred[k]!=null&&String(preferred[k]).trim()!=='') winner[k]=preferred[k];
+        });
+        return;
+      }
+      if(isWeakTriggerMapping(winner)){
+        for(var j=0;j<group.length;j++){
+          if(group[j].id===winner.id) continue;
+          if(!isWeakTriggerMapping(group[j])){
+            foldLoserOverlayIntoWinner(winner,group[j]);
+            break;
+          }
+        }
+      }
+    }
+
     for(var pi=0;pi<presetIds.length;pi++){
       var appId=presetIds[pi];
       var candidates=listAppScenarios(appId);
       if(candidates.length<=1) continue;
-      var byTrig={};
-      for(var ci=0;ci<candidates.length;ci++){
-        var cand=candidates[ci];
-        var bucket=normalizedTriggerBucket(cand);
-        if(!byTrig[bucket]) byTrig[bucket]=[];
-        byTrig[bucket].push(cand);
-      }
-      var trigKeys=Object.keys(byTrig);
-      for(var ti=0;ti<trigKeys.length;ti++){
-        var group=byTrig[trigKeys[ti]];
-        if(group.length<=1) continue;
-        var winner=pickCanonicalAppScenario(group);
-        if(!winner) continue;
-        var appLabel=appDisplayName(appId)||appId;
-        if(mergedApps.indexOf(appLabel)<0) mergedApps.push(appLabel);
-        for(var li=0;li<group.length;li++){
-          var m=group[li];
-          if(m.id===winner.id) continue;
-          foldLoserOverlayIntoWinner(winner,m);
-          drop[m.id]=true;
-          if(String(state().selectedMappingId||'')===String(m.id)){
-            state().selectedMappingId=winner.id;
-          }
-          if(String(cfg.activeSceneId||'')===String(m.id)){
-            cfg.activeSceneId=winner.id;
-          }
-          changed=true;
+      var winner=pickWinner(candidates);
+      if(!winner) continue;
+      adoptPreferredTrigger(winner,candidates);
+      var appLabel=appDisplayName(appId)||appId;
+      if(mergedApps.indexOf(appLabel)<0) mergedApps.push(appLabel);
+      for(var li=0;li<candidates.length;li++){
+        var m=candidates[li];
+        if(m.id===winner.id) continue;
+        foldLoserOverlayIntoWinner(winner,m);
+        drop[m.id]=true;
+        if(String(state().selectedMappingId||'')===String(m.id)){
+          state().selectedMappingId=winner.id;
         }
+        if(String(cfg.activeSceneId||'')===String(m.id)){
+          cfg.activeSceneId=winner.id;
+        }
+        changed=true;
       }
     }
     var baselines=[];
@@ -2216,29 +2282,22 @@
       if(isAppScenario(baseCand)) continue;
       baselines.push(baseCand);
     }
+    // One 通用设置 / baseline — fold every non-app row (not only same-trigger twins).
     if(baselines.length>1){
-      var baseByTrig={};
-      for(var bbi=0;bbi<baselines.length;bbi++){
-        var bb=baselines[bbi];
-        var bBucket=normalizedTriggerBucket(bb);
-        if(!baseByTrig[bBucket]) baseByTrig[bBucket]=[];
-        baseByTrig[bBucket].push(bb);
-      }
-      var baseKeys=Object.keys(baseByTrig);
-      for(var bki=0;bki<baseKeys.length;bki++){
-        var bGroup=baseByTrig[baseKeys[bki]];
-        if(bGroup.length<=1) continue;
-        var winnerBase=null;
-        if(diff()&&diff().findGlobalBaselineMapping){
-          var preferred=diff().findGlobalBaselineMapping(cfg,core());
-          if(preferred&&bGroup.some(function(x){ return x.id===preferred.id; })){
-            winnerBase=preferred;
-          }
+      var winnerBase=pickWinner(baselines);
+      if(!winnerBase&&diff()&&diff().findGlobalBaselineMapping){
+        var preferred=diff().findGlobalBaselineMapping(cfg,core());
+        if(preferred&&baselines.some(function(x){ return x.id===preferred.id; })){
+          winnerBase=preferred;
         }
-        if(!winnerBase) winnerBase=pickCanonicalAppScenario(bGroup)||bGroup[0];
-        for(var bi=0;bi<bGroup.length;bi++){
-          var baseRow=bGroup[bi];
+      }
+      if(!winnerBase) winnerBase=pickCanonicalAppScenario(baselines)||baselines[0];
+      if(winnerBase){
+        adoptPreferredTrigger(winnerBase,baselines);
+        for(var bi=0;bi<baselines.length;bi++){
+          var baseRow=baselines[bi];
           if(baseRow.id===winnerBase.id) continue;
+          foldLoserOverlayIntoWinner(winnerBase,baseRow);
           drop[baseRow.id]=true;
           if(String(state().selectedMappingId||'')===String(baseRow.id)){
             state().selectedMappingId=winnerBase.id;
@@ -2247,6 +2306,9 @@
             cfg.activeSceneId=winnerBase.id;
           }
           changed=true;
+        }
+        if(mergedApps.indexOf(t('habitHubUniversalName','通用设置'))<0){
+          mergedApps.push(t('habitHubUniversalName','通用设置'));
         }
       }
     }
@@ -2277,18 +2339,16 @@
     return { changed:changed, mergedApps:mergedApps };
   }
 
-  /** Disable only siblings that share the same trigger key (true duplicates). */
+  /** Disable every other preset sibling (one enabled Cursor/Codex/…). */
   function disableSiblingPresetScenarios(exceptM){
     if(!exceptM) return false;
     var appId=String(exceptM.appTargetId||'').trim();
     if(!appId||appId==='custom') return false;
     var siblings=listAppScenarios(appId);
-    var exceptTrig=normalizedTriggerBucket(exceptM);
     var disabledOthers=false;
     for(var i=0;i<siblings.length;i++){
       var sib=siblings[i];
       if(sib.id===exceptM.id) continue;
-      if(normalizedTriggerBucket(sib)!==exceptTrig) continue;
       if(sib.enabled!==false){
         sib.enabled=false;
         disabledOthers=true;

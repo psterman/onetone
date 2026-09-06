@@ -106,9 +106,87 @@ var adaptersSrc = read('src/js/features/agent/action-binding-adapters.js');
 assert.ok(adaptersSrc.indexOf("triggerType: 'softPad'") >= 0 || adaptersSrc.indexOf('triggerType:"softPad"') >= 0);
 assert.ok(adaptersSrc.indexOf('duplicate_primary_binding') >= 0);
 
+// Recognition keycap save + habit hub live sync (source contracts; sync so later async fails cannot skip).
+(function () {
+  var pickerSrc = read('src/js/features/mapping/keys-channel-command-picker.js');
+  var recordingSrc = read('src/js/features/mapping/mapping-recording.js');
+  var hubSrc = read('src/js/features/mapping/habit-hub.js');
+  var coreSrc = read('src/js/features/mapping/mapping-core.js');
+  var applySrc = read('src/js/features/mapping/target-key-apply.js');
+  assert.ok(
+    /previewPickSelection\(\s*['"]softPad['"]\s*,\s*\{\s*skipPersist:\s*true\s*\}/.test(pickerSrc),
+    'Soft Pad panel sync must skipPersist (browse must not clobber hero)'
+  );
+  assert.ok(
+    /function persistHeroCapture[\s\S]*?scheduleHubPaint/.test(pickerSrc),
+    'persistHeroCapture must scheduleHubPaint so 我的习惯 tracks recognition pick'
+  );
+  assert.ok(pickerSrc.indexOf('liveForHabit') >= 0, 'resolveHeroCapture must scope live selection to the habit');
+  assert.ok(
+    pickerSrc.indexOf('function resolveImeDictationCap') >= 0 &&
+      pickerSrc.indexOf('never force IME by activeTab') >= 0,
+    'IME dictation keycap is separate from persisted recognition hero'
+  );
+  assert.ok(
+    !/activeTab === 'ime'[\s\S]{0,80}defaultCaptureHeroRef\(\)/.test(pickerSrc),
+    'resolveHeroCapture must not force IME by tab (breaks restart restore)'
+  );
+  assert.ok(
+    /function syncSelectionToMapping[\s\S]*?if \(!selection\)[\s\S]*?loadHeroCaptureFromMapping/.test(
+      pickerSrc
+    ),
+    'empty selection must reload captureHeroRef (restart restore)'
+  );
+  assert.ok(
+    (recordingSrc.match(/OneToneHabitHub\.scheduleHubPaint/g) || []).length >= 2,
+    'trigger/target record must scheduleHubPaint'
+  );
+  assert.ok(
+    /function finishTriggerCapture[\s\S]*?OneToneHabitHub\.scheduleHubPaint[\s\S]*?function commitTargetCapture[\s\S]*?OneToneHabitHub\.scheduleHubPaint/.test(
+      recordingSrc
+    ),
+    'finishTriggerCapture and commitTargetCapture both scheduleHubPaint'
+  );
+  assert.ok(
+    /function hubPairLine[\s\S]*?resolveHeroCapture[\s\S]*?primaryLabel/.test(hubSrc),
+    'hubPairLine must show recognition hero target when captureHeroRef is non-default'
+  );
+  // Typeless keycap: mapping targetKey must win over global voice shortcut.
+  assert.ok(
+    /function editorTargetForMapping[\s\S]*?const saved=\(m\.targetKey\|\|''\)\.trim\(\);[\s\S]*?if\(saved\) return saved;[\s\S]*?appTargetId/.test(
+      coreSrc
+    ) ||
+      /function editorTargetForMapping[\s\S]*?var saved=\(m\.targetKey\|\|''\)\.trim\(\);[\s\S]*?if\(saved\) return saved;/.test(
+        coreSrc
+      ),
+    'editorTarget prefers m.targetKey over voice inherit'
+  );
+  assert.ok(
+    /source==='ime'[\s\S]*?never strip app scenario|source==='ime'[\s\S]*?keepApp/.test(applySrc) ||
+      (applySrc.indexOf("source==='ime'") >= 0 && applySrc.indexOf('keepApp') >= 0),
+    'IME apply must keep appTargetId'
+  );
+  assert.ok(
+    recordingSrc.indexOf("mayFork=appId==='custom'") >= 0 ||
+      recordingSrc.indexOf("mayFork = appId === 'custom'") >= 0,
+    'universal must not fork on trigger change'
+  );
+  assert.ok(
+    hubSrc.indexOf('One 通用设置') >= 0 || hubSrc.indexOf('fold every non-app row') >= 0,
+    'reconcile merges all universal baselines'
+  );
+})();
+
 var detail = read('src/js/features/mapping/habit-actions-detail.js');
 assert.ok(detail.indexOf('OneToneActionNav') >= 0);
 assert.ok(detail.indexOf('hadPickChannel') >= 0 || detail.indexOf('选择入口') >= 0);
+
+var habitShared = read('src/js/features/mapping/habit-shared.js');
+assert.ok(
+  habitShared.indexOf('function recognitionDisplayLabel') >= 0 &&
+    habitShared.indexOf('开始输入到') >= 0,
+  'usage-scenario copy must prefer captureHero recognition label'
+);
 
 var homeUi = read('src/js/features/home/home-context-actions-ui.js');
 assert.ok(homeUi.indexOf('silent: true') >= 0 || homeUi.indexOf('silent:true') >= 0);
@@ -354,7 +432,7 @@ return Promise.resolve()
   .then(function () {
     // --- ActionNav handoff ---
     var navBox = {
-      window: { OneToneState: {} },
+      window: { OneToneState: { state: {}, ui: {} } },
       console: console
     };
     loadScript('src/js/features/agent/action-nav.js', navBox);
@@ -371,7 +449,7 @@ return Promise.resolve()
       actionId: 'input.cancel',
       bindingRef: 'shakeHead'
     });
-    assert.strictEqual(navBox.window.OneToneState.selectedMappingId, 'm9');
+    assert.strictEqual(navBox.window.OneToneState.state.selectedMappingId, 'm9');
     assert.ok(opened && opened.panel === 'camera');
     var peeked = Nav.peekPendingNav();
     assert.strictEqual(peeked.actionId, 'input.cancel');
@@ -816,6 +894,12 @@ return Promise.resolve()
     var persistSrc = read('src/js/core/config-persist.js');
     assert.ok(persistSrc.indexOf('serializeCaptureHeroRef') >= 0);
     assert.ok(persistSrc.indexOf('captureHeroRef:serializeCaptureHeroRef') >= 0);
+    assert.ok(persistSrc.indexOf('normalizeInboundCaptureHeroRef') >= 0);
+    assert.ok(persistSrc.indexOf('out.captureHeroRef=normalizeInboundCaptureHeroRef') >= 0);
+    assert.ok(
+      pickerSrc.indexOf("skipPersist: true") >= 0 || pickerSrc.indexOf('skipPersist:true') >= 0,
+      'IME tab switch must not persist default hero wipe'
+    );
     assert.ok(pickerSrc.indexOf('activeTab === \'voice\'') >= 0 || pickerSrc.indexOf('activeTab === "voice"') >= 0);
     assert.ok(html.indexOf('给 Cursor 加按键') >= 0 || html.indexOf('keysChannelTabCursor') >= 0);
     assert.ok(html.indexOf('给手势加按键') >= 0 || html.indexOf('keysChannelTabCamera') >= 0);
