@@ -2753,6 +2753,8 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         };
         let (claude_hosts, agent_lights_overflow, agent_lights_overflow_items) =

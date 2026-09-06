@@ -88,6 +88,8 @@ pub fn cmd_codex_micro_pad_set_layout(
     software_enhance_enabled: bool,
     keys: Vec<config::CodexMicroPadKeyRoute>,
     agent_bindings: Option<Vec<config::AgentBinding>>,
+    common_slot_ids: Option<Vec<String>>,
+    custom_shortcuts: Option<Vec<config::CodexMicroPadCustomShortcut>>,
 ) -> Result<CodexMicroPadSetLayoutResult, String> {
     let mapping_id = mapping_id.trim().to_string();
     if mapping_id.is_empty() {
@@ -123,6 +125,33 @@ pub fn cmd_codex_micro_pad_set_layout(
                 .get_or_insert_with(codex_numpad_layer::default_codex_micro_pad);
             pad.layout_profile = profile;
             pad.software_enhance_enabled = enhance;
+            if let Some(ids) = common_slot_ids {
+                pad.common_slot_ids = Some(
+                    ids.into_iter()
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect(),
+                );
+            }
+            if let Some(list) = custom_shortcuts {
+                pad.custom_shortcuts = list
+                    .into_iter()
+                    .filter(|c| {
+                        let id = c.id.trim();
+                        id.starts_with("custom_") && id.len() > 7
+                    })
+                    .map(|mut c| {
+                        c.id = c.id.trim().to_string();
+                        c.name = c.name.trim().to_string();
+                        c.chord = c.chord.trim().to_string();
+                        c.phrases = c.phrases.trim().to_string();
+                        if c.activation_scope.trim().is_empty() {
+                            c.activation_scope = "foregroundApp".into();
+                        }
+                        c
+                    })
+                    .collect();
+            }
             // Upsert keys by microKeyId — never wipe routes missing from a partial FE list.
             for incoming in keys {
                 let mid = incoming.micro_key_id.trim().to_string();

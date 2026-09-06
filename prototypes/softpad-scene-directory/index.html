@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SoftPad · 场景目录样式原型</title>
+  <style>
+    :root {
+      --ink: #1a2d4a;
+      --muted: #64748b;
+      --line: rgba(42, 156, 196, 0.14);
+      --line-strong: rgba(42, 156, 196, 0.28);
+      --primary: #2a9cc4;
+      --primary-soft: rgba(42, 156, 196, 0.12);
+      --primary-strong: #1a7a9c;
+      --panel: #fff;
+      --shell: rgba(248, 250, 252, 0.92);
+      --pad-glow: rgba(72, 180, 140, 0.28);
+      --font: "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(800px 360px at 8% -10%, rgba(42,156,196,.12), transparent 55%),
+        #e8edf2;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+    }
+    .page h1 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .page .lead {
+      margin: 0 0 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+      max-width: 40rem;
+    }
+    .rules {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .rules span {
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+    }
+    .rules .ok { color: #2a9a6a; border-color: rgba(42,154,106,.35); }
+
+    .frame {
+      display: grid;
+      grid-template-columns: 168px 1fr;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--panel);
+      box-shadow: 0 10px 28px rgba(26,45,74,.06);
+      min-height: 620px;
+    }
+    .pad-pane {
+      padding: 14px 12px;
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, #f7fafc, #eef4f8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .pad-head {
+      align-self: stretch;
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+    .pad-head strong { font-size: 13px; }
+    .pad-head span { color: var(--muted); }
+    .pad {
+      width: 132px;
+      padding: 8px;
+      border-radius: 16px;
+      background: #f0f4f7;
+      box-shadow: 0 0 0 2px rgba(72,180,140,.22), 0 0 22px var(--pad-glow);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+    .key {
+      aspect-ratio: 1;
+      border-radius: 7px;
+      background: #fff;
+      border: 1px solid #e2e8ee;
+      display: grid;
+      place-items: center;
+      color: #4a5563;
+    }
+    .key svg { width: 14px; height: 14px; }
+    .key.sel {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-soft);
+      color: var(--primary-strong);
+    }
+    .pad-foot { font-size: 10px; color: var(--muted); text-align: center; }
+
+    .cmd-pane {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 12px;
+      gap: 8px;
+      background: var(--shell);
+    }
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding-bottom: 2px;
+      border-bottom: 1px solid var(--line);
+    }
+    .tabs span {
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      border-radius: 10px 10px 0 0;
+    }
+    .tabs span.on {
+      background: #fff;
+      color: var(--ink);
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .title-row .badge {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--primary-strong);
+      background: var(--primary-soft);
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+    .layers {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4px;
+      padding: 3px;
+      border-radius: 12px;
+      background: rgba(42, 156, 196, 0.08);
+    }
+    .layers button {
+      border: 0;
+      background: transparent;
+      border-radius: 9px;
+      padding: 7px 4px 6px;
+      cursor: pointer;
+      color: var(--muted);
+      font: inherit;
+      line-height: 1.15;
+      text-align: center;
+    }
+    .layers button strong { display: block; font-size: 12px; font-weight: 700; }
+    .layers button em {
+      display: block;
+      margin-top: 1px;
+      font-size: 9px;
+      font-style: normal;
+      font-weight: 500;
+      opacity: .85;
+    }
+    .layers button.on {
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(26,45,74,.08);
+    }
+
+    .lib {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(248, 250, 252, 0.92);
+    }
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(42,156,196,.2);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #fff;
+    }
+    .search input {
+      border: 0;
+      outline: 0;
+      width: 100%;
+      font: inherit;
+      font-size: 12px;
+      background: transparent;
+    }
+
+    /* —— 专属目录样式（≠ 命令选项） —— */
+    .dir-kicker {
+      margin: 0;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .dir-list {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-height: 0;
+    }
+    .dir-row {
+      display: grid;
+      grid-template-columns: 34px 1fr auto auto;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      text-align: left;
+      padding: 11px 10px;
+      border: 0;
+      border-bottom: 1px solid rgba(26, 45, 74, 0.06);
+      border-radius: 0;
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+      color: var(--ink);
+    }
+    .dir-row:last-child { border-bottom: 0; }
+    .dir-row:hover { background: rgba(42, 156, 196, 0.06); }
+    .dir-row:focus-visible {
+      outline: 2px solid rgba(42,156,196,.45);
+      outline-offset: -2px;
+    }
+    .dir-ico {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      background: #eef3f7;
+      color: #5b6b7c;
+      border: 1px solid rgba(26,45,74,.08);
+    }
+    .dir-ico svg { width: 18px; height: 18px; }
+    .dir-text b {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    .dir-text span {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .dir-n {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      background: rgba(42,156,196,.1);
+      padding: 3px 8px;
+      border-radius: 999px;
+      min-width: 28px;
+      text-align: center;
+    }
+    .dir-chev {
+      color: #94a3b8;
+      display: grid;
+      place-items: center;
+    }
+    .dir-chev svg { width: 16px; height: 16px; }
+
+    /* —— 命令选项（钻入后） —— */
+    .crumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .crumb button {
+      border: 1px solid rgba(42,156,196,.2);
+      background: #fff;
+      color: var(--primary-strong);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 9px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .crumb .meta {
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .crumb .meta small {
+      display: block;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .cmd-list {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 0;
+    }
+    .cmd-row {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 9px 10px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: rgba(255,255,255,.72);
+      cursor: pointer;
+      font: inherit;
+      text-align: left;
+      color: var(--ink);
+      width: 100%;
+    }
+    .cmd-row:hover {
+      border-color: rgba(42,156,196,.22);
+      background: rgba(62,184,220,.08);
+    }
+    .cmd-row.on {
+      border-color: rgba(42,156,196,.45);
+      background: var(--primary-soft);
+    }
+    .cmd-ico {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #fff;
+      border: 1px solid rgba(26,45,74,.1);
+      color: var(--primary-strong);
+    }
+    .cmd-ico svg { width: 18px; height: 18px; }
+    .cmd-row.on .cmd-ico {
+      border-color: rgba(42,156,196,.35);
+      background: rgba(42,156,196,.08);
+    }
+    .cmd-text b {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    .cmd-text span {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .pin {
+      border: 1px solid rgba(42,156,196,.2);
+      background: #fff;
+      font: inherit;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      padding: 5px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .pin.on {
+      background: #fff6e0;
+      border-color: rgba(212,160,23,.4);
+      color: #9a6b00;
+    }
+
+    .accordion {
+      margin-top: 2px;
+      border-radius: 12px;
+      border: 1px solid rgba(42,156,196,.22);
+      background: #fff;
+      padding: 10px 12px;
+    }
+    .accordion strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .accordion p {
+      margin: 4px 0 0;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .hint {
+      margin: 0;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .compare-note {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 800px) {
+      .frame { grid-template-columns: 1fr; }
+      .compare-note { grid-template-columns: 1fr; }
+    }
+    .note {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .note b { color: var(--ink); }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>按场景找 · 专属目录样式</h1>
+    <p class="lead">
+      目录 = 导航进门（文件夹 + 数量 + ›）；命令 = 选用绑定（能力图标 + 加入常见）。
+      点场景进入短名单，点「‹ 场景目录」返回。可搜意图。
+    </p>
+    <div class="rules">
+      <span class="ok">目录行不绑键</span>
+      <span class="ok">命令行才选中/绑键</span>
+      <span class="ok">字号目录 12 / 命令 13</span>
+      <span class="ok">对齐 SoftPad 青蓝主题</span>
+    </div>
+
+    <div class="frame">
+      <aside class="pad-pane">
+        <div class="pad-head"><strong>Cursor</strong><span>13 键</span></div>
+        <div class="pad" id="pad"></div>
+        <div class="pad-foot">正在改选中键</div>
+      </aside>
+
+      <section class="cmd-pane">
+        <div class="tabs"><span>显示</span><span class="on">键位</span><span>用途</span></div>
+        <div class="title-row">
+          <span>‹ 改按键</span>
+          <span class="badge" id="bindBadge">将绑：—</span>
+        </div>
+        <div class="layers">
+          <button type="button"><strong>我的常见</strong><em>优先点这里</em></button>
+          <button type="button" class="on"><strong>按场景找</strong><em>搜 / 分类完善</em></button>
+          <button type="button"><strong>自己录</strong><em>补全缺口</em></button>
+        </div>
+
+        <div class="lib">
+          <div class="search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
+            <input id="q" type="search" placeholder="搜意图，如：说话、Plan、终端…" />
+          </div>
+
+          <div id="dirView">
+            <p class="dir-kicker">场景目录</p>
+            <div class="dir-list" id="dirList"></div>
+            <p class="hint">点进场景后才出现具体命令 · 目录本身不绑定</p>
+          </div>
+
+          <div id="cmdView" class="hidden">
+            <div class="crumb">
+              <button type="button" id="back">‹ 场景目录</button>
+              <div class="meta" id="crumbMeta"></div>
+            </div>
+            <div class="cmd-list" id="cmdList"></div>
+            <div class="accordion" id="accordion" hidden>
+              <strong id="accTitle">这个键怎么用</strong>
+              <p>选中命令后，参数贴在当前选择下方（手风琴）。此处为示意。</p>
+            </div>
+            <p class="hint">命令行：点选绑定 · 可 ★ 加入常见</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="compare-note">
+      <div class="note">
+        <b>目录样式要点</b><br />
+        左：文件夹图标（不是麦/发送）<br />
+        中：场景白话 + 一句说明<br />
+        右：数量 pill + chevron ›<br />
+        行：底部分割线，像文件管理器，不像选项卡
+      </div>
+      <div class="note">
+        <b>UI 逻辑</b><br />
+        1. 默认只渲染目录<br />
+        2. 点目录 → 面包屑 + 命令短名单<br />
+        3. 搜索有字 → 跨场景摊平为命令结果<br />
+        4. 点命令 → 选中 + 展开手风琴示意
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var ICO = {
+      folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+      chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>',
+      mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v3"/></svg>',
+      send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>',
+      paste: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2h-6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+      x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+      chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>',
+      spark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5z"/></svg>',
+      focus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+      plan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+      agent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h7l-1 8 10-14h-7z"/></svg>',
+      search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>',
+      cmd: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6H6a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h3a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM19 6h-3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h3a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zM9 14H6a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h3a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2zM19 14h-3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h3a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2z"/></svg>',
+      term: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>'
+    };
+
+    var SCENES = [
+      {
+        id: 'talk',
+        title: '说话、发出去、叫停',
+        desc: '输入这一轮：开麦、发送、粘贴发、取消',
+        items: [
+          { id: 'pushToTalk', name: '语音输入', when: '要对着输入框说一大段', ico: 'mic' },
+          { id: 'stopOrSend', name: '结束或发送', when: '说完了，发给 AI', ico: 'send' },
+          { id: 'pasteAndSend', name: '粘贴发送', when: '剪贴板内容直接发出', ico: 'paste' },
+          { id: 'cancel', name: '取消生成', when: 'AI 跑偏，想停下', ico: 'x' }
+        ]
+      },
+      {
+        id: 'open',
+        title: '开聊天、回到 Cursor',
+        desc: '新开对话、拉开 Chat、从别的软件切回来',
+        items: [
+          { id: 'newThread', name: '新建对话', when: '当前对话太乱，开新局', ico: 'chat' },
+          { id: 'quickChat', name: '快速聊天', when: '拉开侧边 Chat', ico: 'spark' },
+          { id: 'summonCodex', name: '聚焦 Cursor', when: '人在别的软件，要切回来', ico: 'focus' }
+        ]
+      },
+      {
+        id: 'mode',
+        title: '换 AI 怎么干活',
+        desc: 'Plan 先想清楚，或 Agent 直接改代码',
+        items: [
+          { id: 'plan', name: 'Plan 模式', when: '先写计划，再动手改', ico: 'plan' },
+          { id: 'switchAgent', name: 'Agent 模式', when: '直接让 AI 动手干活', ico: 'agent' }
+        ]
+      },
+      {
+        id: 'find',
+        title: '找文件或命令',
+        desc: '搜文件名，或打开命令面板',
+        items: [
+          { id: 'quickSearch', name: '快速搜索', when: '知道文件名，马上跳', ico: 'search' },
+          { id: 'commandPalette', name: '命令菜单', when: '搜 Cursor 里任意命令', ico: 'cmd' }
+        ]
+      },
+      {
+        id: 'nav',
+        title: '在窗口里走动',
+        desc: '前进后退、显示或隐藏侧栏',
+        items: [
+          { id: 'navBack', name: '返回', when: '回到上一处位置', ico: 'chev' },
+          { id: 'navForward', name: '前进', when: '再往前一处', ico: 'chev' },
+          { id: 'toggleSidebar', name: '切换边栏', when: '显示或藏起侧栏', ico: 'folder' }
+        ]
+      },
+      {
+        id: 'tools',
+        title: '打开其它工具',
+        desc: '终端、浏览器、设置、撤销',
+        items: [
+          { id: 'openTerminal', name: '打开终端', when: '要跑命令行', ico: 'term' },
+          { id: 'openSettings', name: '打开设置', when: '改 Cursor 设置', ico: 'cmd' },
+          { id: 'undo', name: '撤销', when: '上一步做错了', ico: 'x' }
+        ]
+      }
+    ];
+
+    var sceneId = '';
+    var selected = '';
+    var pinned = {};
+
+    document.getElementById('pad').innerHTML = Array.from({ length: 16 }, function (_, i) {
+      return '<div class="key' + (i === 0 ? ' sel' : '') + '">' + ICO.cmd + '</div>';
+    }).join('');
+
+    function showDir(yes) {
+      document.getElementById('dirView').classList.toggle('hidden', !yes);
+      document.getElementById('cmdView').classList.toggle('hidden', yes);
+    }
+
+    function renderDir(filterQ) {
+      var q = (filterQ || '').trim().toLowerCase();
+      if (q) {
+        showDir(false);
+        document.getElementById('crumbMeta').innerHTML =
+          '搜索结果<small>匹配名称 / 何时 / 场景</small>';
+        var hits = [];
+        SCENES.forEach(function (s) {
+          s.items.forEach(function (it) {
+            var hay = (it.name + ' ' + it.when + ' ' + s.title + ' ' + s.desc).toLowerCase();
+            if (hay.indexOf(q) >= 0) hits.push(it);
+          });
+        });
+        renderCmds(hits);
+        return;
+      }
+      showDir(true);
+      document.getElementById('dirList').innerHTML = SCENES.map(function (s) {
+        return (
+          '<button type="button" class="dir-row" data-scene="' + s.id + '">' +
+          '<span class="dir-ico" aria-hidden="true">' + ICO.folder + '</span>' +
+          '<span class="dir-text"><b>' + s.title + '</b><span>' + s.desc + '</span></span>' +
+          '<span class="dir-n">' + s.items.length + '</span>' +
+          '<span class="dir-chev" aria-hidden="true">' + ICO.chev + '</span>' +
+          '</button>'
+        );
+      }).join('');
+      document.querySelectorAll('[data-scene]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          sceneId = btn.getAttribute('data-scene');
+          var s = SCENES.filter(function (x) { return x.id === sceneId; })[0];
+          document.getElementById('q').value = '';
+          showDir(false);
+          document.getElementById('crumbMeta').innerHTML =
+            s.title + '<small>' + s.desc + '</small>';
+          renderCmds(s.items);
+        });
+      });
+    }
+
+    function renderCmds(items) {
+      document.getElementById('cmdList').innerHTML = items.map(function (it) {
+        var on = selected === it.id;
+        var pinOn = !!pinned[it.id];
+        return (
+          '<button type="button" class="cmd-row' + (on ? ' on' : '') + '" data-cmd="' + it.id + '">' +
+          '<span class="cmd-ico" aria-hidden="true">' + (ICO[it.ico] || ICO.cmd) + '</span>' +
+          '<span class="cmd-text"><b>' + it.name + '</b><span>' + it.when + '</span></span>' +
+          '<span class="pin' + (pinOn ? ' on' : '') + '" data-pin="' + it.id + '">' +
+          (pinOn ? '已在常见' : '加入常见') +
+          '</span></button>'
+        );
+      }).join('') || '<p class="hint">没有匹配的命令</p>';
+
+      document.querySelectorAll('[data-cmd]').forEach(function (row) {
+        row.addEventListener('click', function (e) {
+          if (e.target.closest('[data-pin]')) return;
+          selected = row.getAttribute('data-cmd');
+          var name = row.querySelector('b').textContent;
+          document.getElementById('bindBadge').textContent = '将绑：' + name;
+          document.getElementById('accTitle').textContent = 'Cursor · [数字 7] 这个键怎么用 · ' + name;
+          document.getElementById('accordion').hidden = false;
+          renderCmds(items);
+        });
+      });
+      document.querySelectorAll('[data-pin]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var id = btn.getAttribute('data-pin');
+          pinned[id] = !pinned[id];
+          renderCmds(items);
+        });
+      });
+    }
+
+    document.getElementById('back').addEventListener('click', function () {
+      sceneId = '';
+      document.getElementById('q').value = '';
+      document.getElementById('accordion').hidden = true;
+      renderDir('');
+    });
+    document.getElementById('q').addEventListener('input', function () {
+      sceneId = '';
+      document.getElementById('accordion').hidden = true;
+      renderDir(this.value);
+    });
+
+    renderDir('');
+  </script>
+</body>
+</html>

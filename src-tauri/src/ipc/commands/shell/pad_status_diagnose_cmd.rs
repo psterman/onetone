@@ -162,6 +162,8 @@ fn pad_for_diagnose(cfg: &crate::config::VoiceConfig) -> CodexMicroPadConfig {
         skin: "default".into(),
         pinned_lane_preferences: Vec::new(),
         navigation_layout_migrated: false,
+        common_slot_ids: None,
+        custom_shortcuts: Vec::new(),
         keys: vec![],
     }
 }

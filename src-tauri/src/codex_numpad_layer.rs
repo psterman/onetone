@@ -788,9 +788,14 @@ pub(crate) fn heal_cursor_plan_chord_if_legacy(m: &mut MappingEntry) -> bool {
 }
 
 /// Align with FE `CURSOR_SOFT_PAD_SLOT_IDS` — Codex slash insertOnly never on Cursor Soft Pad.
+/// Also allows user-created `custom_*` shortcuts.
 pub(crate) fn cursor_soft_pad_slot_allowed(slot_id: &str) -> bool {
+    let slot = slot_id.trim();
+    if slot.starts_with("custom_") {
+        return !slot[7..].is_empty();
+    }
     matches!(
-        slot_id.trim(),
+        slot,
         "summonCodex"
             | "commandPalette"
             | "newThread"
@@ -1561,6 +1566,8 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         presentation: "full".into(),
         skin: "default".into(),
         keys: default_codex_micro_pad_routes(),
+        common_slot_ids: None,
+        custom_shortcuts: Vec::new(),
         pinned_lane_preferences: Vec::new(),
         navigation_layout_migrated: false,
     }

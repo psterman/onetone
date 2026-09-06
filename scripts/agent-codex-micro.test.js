@@ -17,7 +17,7 @@ assert.ok(A && T);
 // scenarioAllKeys: all catalog slots on for keys; voice essentials only
 var allKeys = A.buildCodexMicro13Bindings({ enableProfile: 'scenarioAllKeys' });
 var keyBindings = allKeys.filter(function (b) { return b.triggerType === 'key'; });
-assert.equal(keyBindings.length, 28);
+assert.equal(keyBindings.length, 29);
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'claudeModel'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'switchModel'; }));
 assert.ok(keyBindings.some(function (b) { return b.slotId === 'undo'; }));
@@ -45,7 +45,7 @@ assert.equal(A.defaultKeyForSlot('focusBrowserAddressBar'), 'Ctrl+L');
 assert.equal(A.insertTextForSlot('openReviewTab'), '');
 assert.equal(A.insertTextForSlot('review'), '/review');
 keyBindings.forEach(function (b) {
-  if (b.slotId === 'summonCodex' || b.slotId === 'claudeModel' || b.slotId === 'pasteAndSend') {
+  if (b.slotId === 'summonCodex' || b.slotId === 'claudeModel' || b.slotId === 'pasteAndSend' || b.slotId === 'runTargetSequence') {
     assert.equal(b.triggerBinding, '', b.slotId + ' uses focus workflow, no chord');
     return;
   }
@@ -140,7 +140,7 @@ assert.ok(T.hasCodexPack(empty));
 assert.equal(empty.triggerKey, 'VolUp');
 assert.equal(empty.targetKey, 'Ctrl+Win');
 empty.agentBindings.filter(function (x) { return x.triggerType === 'key'; }).forEach(function (x) {
-  if (x.slotId === 'summonCodex' || x.slotId === 'claudeModel' || x.slotId === 'pasteAndSend') {
+  if (x.slotId === 'summonCodex' || x.slotId === 'claudeModel' || x.slotId === 'pasteAndSend' || x.slotId === 'runTargetSequence') {
     assert.equal(x.triggerBinding, '', x.slotId + ' seeded empty (focus workflow)');
     return;
   }
@@ -843,6 +843,7 @@ var flagsCmdRs = fs.readFileSync(
 assert.ok(flagsCmdRs.indexOf('cmd_codex_micro_pad_set_layout') >= 0);
 assert.ok(flagsCmdRs.indexOf('skip mvp_init/voice') >= 0);
 assert.ok(flagsCmdRs.indexOf('agent_bindings') >= 0, 'set_layout accepts agent_bindings');
+assert.ok(flagsCmdRs.indexOf('common_slot_ids') >= 0, 'set_layout accepts common_slot_ids');
 assert.ok(flagsCmdRs.indexOf('Upsert only') >= 0, 'set_layout merges agent_bindings');
 var overlayRs = fs.readFileSync(
   path.join(__dirname, '../src-tauri/src/codex_micro_overlay.rs'),

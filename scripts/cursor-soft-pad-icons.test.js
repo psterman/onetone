@@ -58,6 +58,7 @@ var seen = {};
 var groupSlots = [];
 Pad.CURSOR_SLOT_GROUPS.forEach(function (g) {
   assert.ok(g.id && (g.labelZh || g.labelEn), 'group needs id+label');
+  assert.ok(g.descZh || g.descEn, 'scene needs desc: ' + g.id);
   (g.slots || []).forEach(function (sid) {
     assert.ok(Pad.CURSOR_SOFT_PAD_SLOT_IDS[sid], 'group slot not in allowlist: ' + sid);
     assert.ok(!seen[sid], 'duplicate group slot: ' + sid);
@@ -70,6 +71,26 @@ slotIds.forEach(function (sid) {
   assert.ok(seen[sid], 'allowlist slot missing from CURSOR_SLOT_GROUPS: ' + sid);
 });
 
+assert.ok(Pad.CURSOR_COMMON_DEFAULT_SLOTS, 'CURSOR_COMMON_DEFAULT_SLOTS');
+Pad.CURSOR_COMMON_DEFAULT_SLOTS.forEach(function (sid) {
+  assert.ok(Pad.CURSOR_SOFT_PAD_SLOT_IDS[sid], 'common default not in allowlist: ' + sid);
+});
+assert.ok(padSrc.indexOf('soft-pad-action-layers') >= 0, 'cursor action library layers');
+assert.ok(padSrc.indexOf('data-layout-layer') >= 0, 'layer tabs');
+assert.ok(padSrc.indexOf('data-layout-pin') >= 0, 'pin to commons');
+assert.ok(padSrc.indexOf('iconIdForCapabilitySlot') >= 0 && padSrc.indexOf('iconSvg(iconId)') >= 0, 'list uses Lucide iconSvg');
+assert.ok(padSrc.indexOf('soft-pad-action-item__icon micro-hw__icon') >= 0, 'list icon uses micro-hw__icon');
+assert.ok(padSrc.indexOf('commonSlotIds') >= 0, 'persist commonSlotIds');
+assert.ok(padSrc.indexOf('soft-pad-action-scene-split') >= 0, 'Directory D scene split');
+assert.ok(padSrc.indexOf('soft-pad-action-scene-rail') >= 0, 'Directory D scene rail');
+assert.ok(padSrc.indexOf('cursorSlotGroupRailLabel') >= 0, 'rail short labels');
+assert.ok(padSrc.indexOf('data-layout-scene-back') < 0, 'no drill-back (D is always split)');
+assert.ok(Pad.isCursorCustomSlotId('custom_abc'), 'custom_ id helper');
+assert.ok(!Pad.isCursorCustomSlotId('pushToTalk'), 'builtin not custom');
+assert.ok(padSrc.indexOf('function createCustomShortcut') >= 0, 'create custom shortcut');
+assert.ok(padSrc.indexOf('data-layout-custom-record') >= 0, 'custom record CTA');
+assert.ok(padSrc.indexOf('maybeAutoStartCustomRecord') < 0, 'no auto overwrite record');
+
 assert.ok(padSrc.indexOf('optgroup') >= 0, 'fillLayoutKeySlotSelect uses optgroup');
 assert.ok(padSrc.indexOf('micro-hw-modal__cap-group') >= 0, 'capability list has group headers');
 assert.ok(padSrc.indexOf('SLOT_WEAK_LEGACY_ICON') >= 0, 'weak legacy migrate map');
@@ -80,5 +101,7 @@ console.log(
   'slots,',
   groupSlots.length,
   'grouped,',
+  Pad.CURSOR_COMMON_DEFAULT_SLOTS.length,
+  'commons,',
   'icons synced with overlay'
 );

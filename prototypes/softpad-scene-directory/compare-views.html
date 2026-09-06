@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>目录 vs 选项 · 视图组件比较</title>
+  <style>
+    :root {
+      --ink: #1a2d4a;
+      --muted: #64748b;
+      --line: rgba(42, 156, 196, 0.16);
+      --primary: #2a9cc4;
+      --primary-soft: rgba(42, 156, 196, 0.12);
+      --primary-strong: #1a7a9c;
+      --ok: #2a9a6a;
+      --warn: #b45309;
+      --font: "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(900px 420px at 10% -15%, rgba(42,156,196,.12), transparent 55%),
+        #e8edf2;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 56px; }
+    h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.02em; }
+    .lead { margin: 0 0 18px; font-size: 13px; color: var(--muted); line-height: 1.55; max-width: 46rem; }
+
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+    }
+    .legend span {
+      font-size: 11px; padding: 5px 10px; border-radius: 999px;
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+    }
+    .legend .dir { color: var(--primary-strong); border-color: rgba(42,156,196,.35); }
+    .legend .opt { color: var(--ok); border-color: rgba(42,154,106,.35); }
+    .legend .rec { background: #e6f6ef; color: var(--ok); border-color: rgba(42,154,106,.35); font-weight: 700; }
+
+    .sec-title {
+      margin: 28px 0 12px;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex; align-items: baseline; gap: 10px;
+    }
+    .sec-title em { font-style: normal; font-size: 12px; font-weight: 500; color: var(--muted); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 340px;
+      box-shadow: 0 8px 24px rgba(26,45,74,.05);
+    }
+    .card.is-rec { border-color: rgba(42,154,106,.45); box-shadow: 0 0 0 1px rgba(42,154,106,.2); }
+    .card-head {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--line);
+      background: #f8fafc;
+    }
+    .card-head .tag {
+      display: inline-block;
+      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      padding: 2px 7px; border-radius: 6px; margin-bottom: 6px;
+    }
+    .tag.dir { background: var(--primary-soft); color: var(--primary-strong); }
+    .tag.opt { background: rgba(42,154,106,.12); color: #1f7a52; }
+    .card-head h3 { margin: 0 0 4px; font-size: 14px; font-weight: 700; }
+    .card-head p { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.45; }
+    .card-body { padding: 10px 12px 14px; flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+    .card-foot {
+      padding: 8px 12px 12px;
+      font-size: 11px; color: var(--muted); line-height: 1.45;
+      border-top: 1px dashed var(--line);
+    }
+    .card-foot b { color: var(--ink); }
+
+    /* shared chrome */
+    .mini-search {
+      display: flex; align-items: center; gap: 6px;
+      border: 1px solid rgba(42,156,196,.2); border-radius: 8px;
+      padding: 6px 8px; background: #fff; font-size: 11px; color: var(--muted);
+    }
+    .kicker {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--muted); margin: 0;
+    }
+
+    /* D1 folder list */
+    .d1-row {
+      display: grid; grid-template-columns: 30px 1fr auto 14px; gap: 8px; align-items: center;
+      width: 100%; border: 0; border-bottom: 1px solid rgba(26,45,74,.06);
+      background: transparent; padding: 9px 4px; cursor: pointer; font: inherit; text-align: left; color: var(--ink);
+    }
+    .d1-row:hover { background: rgba(42,156,196,.06); }
+    .d1-ico {
+      width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+      background: #eef3f7; color: #5b6b7c; border: 1px solid rgba(26,45,74,.08);
+    }
+    .d1-ico svg, .ico svg { width: 16px; height: 16px; }
+    .d1-row b { display: block; font-size: 12px; font-weight: 600; }
+    .d1-row span { display: block; font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .d1-n { font-size: 10px; font-weight: 700; color: var(--muted); background: var(--primary-soft); padding: 2px 7px; border-radius: 999px; }
+    .chev { color: #94a3b8; }
+
+    /* D2 tree */
+    .d2-node { font-size: 12px; }
+    .d2-branch {
+      display: flex; align-items: center; gap: 6px; width: 100%;
+      border: 0; background: transparent; padding: 7px 4px; cursor: pointer; font: inherit; text-align: left; color: var(--ink);
+      border-radius: 8px;
+    }
+    .d2-branch:hover, .d2-branch.open { background: var(--primary-soft); }
+    .d2-twisty { width: 14px; color: var(--muted); font-size: 10px; }
+    .d2-kids { margin-left: 20px; border-left: 1px solid rgba(26,45,74,.08); padding-left: 8px; }
+    .d2-leaf {
+      display: block; width: 100%; border: 0; background: transparent;
+      padding: 6px 8px; border-radius: 6px; text-align: left; font: inherit; font-size: 12px; cursor: pointer; color: var(--ink);
+    }
+    .d2-leaf:hover { background: rgba(42,154,106,.1); }
+    .d2-leaf.on { background: rgba(42,154,106,.16); font-weight: 600; color: #1f7a52; }
+
+    /* D3 cards */
+    .d3-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .d3-card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: #fff;
+      cursor: pointer; text-align: left; font: inherit; color: var(--ink);
+    }
+    .d3-card:hover { border-color: rgba(42,156,196,.4); background: rgba(42,156,196,.05); }
+    .d3-card .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .d3-card b { font-size: 12px; font-weight: 700; display: block; }
+    .d3-card span { font-size: 10px; color: var(--muted); line-height: 1.35; }
+
+    /* D4 rail */
+    .d4 {
+      display: grid; grid-template-columns: 96px 1fr; gap: 8px; flex: 1; min-height: 180px;
+    }
+    .d4-rail { display: flex; flex-direction: column; gap: 4px; }
+    .d4-rail button {
+      border: 1px solid transparent; background: transparent; border-radius: 8px;
+      padding: 8px 6px; font: inherit; font-size: 11px; font-weight: 600; color: var(--muted);
+      text-align: left; cursor: pointer; line-height: 1.25;
+    }
+    .d4-rail button.on { background: var(--primary-soft); color: var(--primary-strong); border-color: rgba(42,156,196,.3); }
+    .d4-rail button small { display: block; font-size: 9px; font-weight: 500; opacity: .8; }
+    .d4-pane {
+      border: 1px solid var(--line); border-radius: 10px; background: #f8fafc; padding: 8px;
+      overflow: auto;
+    }
+
+    /* O1 list */
+    .o1-row {
+      display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: center;
+      width: 100%; border: 1px solid transparent; border-radius: 10px; background: rgba(255,255,255,.85);
+      padding: 8px; cursor: pointer; font: inherit; text-align: left; color: var(--ink);
+    }
+    .o1-row:hover { border-color: rgba(42,156,196,.25); background: rgba(62,184,220,.08); }
+    .o1-row.on { border-color: rgba(42,156,196,.45); background: var(--primary-soft); }
+    .o1-ico {
+      width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+      background: #fff; border: 1px solid rgba(26,45,74,.1); color: var(--primary-strong);
+    }
+    .o1-row b { display: block; font-size: 12px; font-weight: 600; }
+    .o1-row span { display: block; font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .pin {
+      border: 1px solid rgba(42,156,196,.2); background: #fff; font: inherit; font-size: 10px; font-weight: 700;
+      color: var(--muted); padding: 4px 7px; border-radius: 8px; cursor: pointer;
+    }
+
+    /* O2 radio compact */
+    .o2-row {
+      display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px;
+      cursor: pointer; font-size: 12px;
+    }
+    .o2-row:hover { background: rgba(42,156,196,.06); }
+    .o2-dot {
+      width: 14px; height: 14px; border-radius: 50%; border: 2px solid #94a3b8; flex: 0 0 auto;
+    }
+    .o2-row.on .o2-dot { border-color: var(--primary); box-shadow: inset 0 0 0 3px var(--primary); }
+
+    /* O3 chips */
+    .o3-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+    .o3-chip {
+      border: 1px solid var(--line); background: #fff; border-radius: 999px;
+      padding: 6px 10px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--ink);
+    }
+    .o3-chip.on { background: var(--primary-soft); border-color: rgba(42,156,196,.45); color: var(--primary-strong); }
+
+    /* O4 table */
+    .o4 { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .o4 th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+    .o4 td { padding: 7px 6px; border-bottom: 1px solid rgba(26,45,74,.05); }
+    .o4 tr { cursor: pointer; }
+    .o4 tr:hover td { background: rgba(42,156,196,.05); }
+    .o4 tr.on td { background: var(--primary-soft); }
+
+    .score {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;
+    }
+    .score i {
+      font-style: normal; font-size: 10px; padding: 2px 6px; border-radius: 999px; background: #f1f5f9; color: var(--muted);
+    }
+    .score i.good { background: #e6f6ef; color: var(--ok); }
+    .score i.mid { background: #fff7ed; color: var(--warn); }
+    .score i.bad { background: #fef2f2; color: #b91c1c; }
+
+    .verdict {
+      margin-top: 28px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(42,154,106,.35);
+      background: #f0fdf7;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--ink);
+    }
+    .verdict b { color: #166534; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>目录 vs 选项 · 视图组件比较</h1>
+    <p class="lead">
+      「按场景找」要拆成两层表达：<b>目录</b>（进门导航，不绑键）和 <b>选项</b>（选用命令，可绑键）。
+      下面各列 3～4 种常见组件，点一下看交互差异。推荐组合标绿框。
+    </p>
+    <div class="legend">
+      <span class="dir">蓝 = 目录表达</span>
+      <span class="opt">绿 = 选项表达</span>
+      <span class="rec">推荐组合</span>
+    </div>
+
+    <!-- ========== DIRECTORY ========== -->
+    <div class="sec-title">一、目录怎么表达 <em>只负责「进哪一类」，不负责绑键</em></div>
+    <div class="grid">
+      <!-- D1 -->
+      <article class="card is-rec">
+        <div class="card-head">
+          <span class="tag dir">目录 A · 推荐</span>
+          <h3>文件夹列表</h3>
+          <p>文件管理器隐喻：文件夹图标 + 数量 + ›。和选项列表一眼能分开。</p>
+        </div>
+        <div class="card-body">
+          <p class="kicker">场景目录</p>
+          <div class="mini-search">⌕ 搜意图…</div>
+          <div id="d1"></div>
+        </div>
+        <div class="card-foot">
+          <b>适合</b> SoftPad 改键右侧窄栏<br />
+          <span class="score"><i class="good">小白清晰</i><i class="good">与选项区分强</i><i class="good">实现成本低</i></span>
+        </div>
+      </article>
+
+      <!-- D2 -->
+      <article class="card">
+        <div class="card-head">
+          <span class="tag dir">目录 B</span>
+          <h3>树形展开</h3>
+          <p>同一屏展开场景叶子。密度高，但目录与选项又挤回一列。</p>
+        </div>
+        <div class="card-body" id="d2"></div>
+        <div class="card-foot">
+          <b>风险</b> 又变回「目录+选项混合」<br />
+          <span class="score"><i class="mid">少点一次</i><i class="bad">易混</i><i class="mid">适合专家</i></span>
+        </div>
+      </article>
+
+      <!-- D3 -->
+      <article class="card">
+        <div class="card-head">
+          <span class="tag dir">目录 C</span>
+          <h3>场景卡片宫格</h3>
+          <p>2 列大卡，扫读友好，但窄栏里占高、场景多时滚动长。</p>
+        </div>
+        <div class="card-body">
+          <div class="d3-grid" id="d3"></div>
+        </div>
+        <div class="card-foot">
+          <b>适合</b> 宽屏 / 首次引导<br />
+          <span class="score"><i class="good">视觉呼吸</i><i class="mid">窄栏吃高度</i><i class="mid">成本中</i></span>
+        </div>
+      </article>
+    </div>
+
+    <div class="grid" style="margin-top:14px">
+      <article class="card is-rec">
+        <div class="card-head">
+          <span class="tag dir">目录 D · 选用</span>
+          <h3>左侧分类轨</h3>
+          <p>左窄轨点场景，右出命令。目录/选项物理分栏，最清楚，但吃宽度。</p>
+        </div>
+        <div class="card-body">
+          <div class="d4">
+            <div class="d4-rail" id="d4rail"></div>
+            <div class="d4-pane" id="d4pane"></div>
+          </div>
+        </div>
+        <div class="card-foot">
+          <b>适合</b> 右侧面板 ≥420px<br />
+          <span class="score"><i class="good">分栏最清</i><i class="bad">窄栏挤</i><i class="mid">实现中</i></span>
+        </div>
+      </article>
+
+      <article class="card" style="grid-column: span 2;">
+        <div class="card-head">
+          <span class="tag dir">目录怎么选</span>
+          <h3>对照结论</h3>
+          <p>在 SoftPad「左盘 | 右命令列」骨架下，右栏通常偏窄。</p>
+        </div>
+        <div class="card-body" style="font-size:12px;line-height:1.6;color:var(--muted)">
+          <b style="color:var(--ink)">优先 A 文件夹列表</b>：专用目录样式、一步钻入、和命令选项视觉差最大、改动小。<br />
+          <b style="color:var(--ink)">备选 D 侧轨</b>：若后续右栏加宽，可升级为常驻分栏，少一次返回。<br />
+          <b style="color:var(--ink)">慎用 B 树</b>：会再次把目录和选项混在一列——正是你现在嫌的问题。<br />
+          <b style="color:var(--ink)">C 宫格</b>：适合空状态/引导页，不适合日常窄栏浏览。
+        </div>
+      </article>
+    </div>
+
+    <!-- ========== OPTIONS ========== -->
+    <div class="sec-title">二、选项怎么表达 <em>进场景后的命令短名单：可点选绑定</em></div>
+    <div class="grid">
+      <article class="card is-rec">
+        <div class="card-head">
+          <span class="tag opt">选项 1 · 推荐</span>
+          <h3>能力图标列表</h3>
+          <p>Lucide 能力图标 + 何时说明 + 加入常见。和目录文件夹明显不同。</p>
+        </div>
+        <div class="card-body" id="o1"></div>
+        <div class="card-foot">
+          <span class="score"><i class="good">与目录差大</i><i class="good">可钉常见</i><i class="good">已有组件可复用</i></span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <span class="tag opt">选项 2</span>
+          <h3>单选紧凑行</h3>
+          <p>左侧圆点 radio，信息密度高，但缺图标辨识。</p>
+        </div>
+        <div class="card-body" id="o2"></div>
+        <div class="card-foot">
+          <span class="score"><i class="good">紧凑</i><i class="mid">辨识弱</i><i class="mid">难放「加入常见」</i></span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <span class="tag opt">选项 3</span>
+          <h3>胶囊标签</h3>
+          <p>一屏扫很多命令；「何时」说明塞不下，小白负担回升。</p>
+        </div>
+        <div class="card-body">
+          <div class="o3-wrap" id="o3"></div>
+        </div>
+        <div class="card-foot">
+          <span class="score"><i class="mid">扫读快</i><i class="bad">缺说明</i><i class="bad">不像「绑键」</i></span>
+        </div>
+      </article>
+    </div>
+
+    <div class="grid" style="margin-top:14px">
+      <article class="card">
+        <div class="card-head">
+          <span class="tag opt">选项 4</span>
+          <h3>表格式</h3>
+          <p>命令 | 何时 | 操作。信息全，但在 SoftPad 右栏显得重。</p>
+        </div>
+        <div class="card-body">
+          <table class="o4" id="o4">
+            <thead><tr><th>命令</th><th>何时</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="card-foot">
+          <span class="score"><i class="good">信息全</i><i class="bad">视觉重</i><i class="mid">专家向</i></span>
+        </div>
+      </article>
+
+      <article class="card" style="grid-column: span 2;">
+        <div class="card-head">
+          <span class="tag opt">选项怎么选</span>
+          <h3>对照结论</h3>
+          <p>选项层要一眼看出「这是可绑的动作」，并承接手风琴参数。</p>
+        </div>
+        <div class="card-body" style="font-size:12px;line-height:1.6;color:var(--muted)">
+          <b style="color:var(--ink)">优先 能力图标列表</b>：与文件夹目录差最大，且能挂「何时」+「加入常见」+ 下方手风琴。<br />
+          单选行适合极简二次确认；胶囊适合过滤芯片，不适合主命令列表；表格留给高级「全部」页即可。
+        </div>
+      </article>
+    </div>
+
+    <div class="verdict">
+      <b>选用组合：目录 D（左侧分类轨） + 选项 1（能力图标列表）</b><br />
+      逻辑：左轨只导航场景 → 右栏始终是能力图标选项 → 选中后手风琴贴在该选项下方。无返回钻入。
+    </div>
+  </div>
+
+  <script>
+    var SVG = {
+      folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+      chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>',
+      mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v3"/></svg>',
+      send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>',
+      x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+      chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>'
+    };
+
+    var SCENES = [
+      { id: 'talk', title: '说话、发出去、叫停', desc: '开麦 / 发送 / 取消', n: 4,
+        items: [
+          { id: 'a', name: '语音输入', when: '要对着输入框说一大段', ico: 'mic' },
+          { id: 'b', name: '结束或发送', when: '说完了，发给 AI', ico: 'send' },
+          { id: 'c', name: '取消生成', when: 'AI 跑偏，想停下', ico: 'x' }
+        ]},
+      { id: 'open', title: '开聊天、回到 Cursor', desc: '新建 / Chat / 聚焦', n: 3,
+        items: [
+          { id: 'd', name: '新建对话', when: '开一局干净上下文', ico: 'chat' },
+          { id: 'e', name: '快速聊天', when: '拉开侧边 Chat', ico: 'chat' }
+        ]},
+      { id: 'mode', title: '换 AI 怎么干活', desc: 'Plan / Agent', n: 2,
+        items: [
+          { id: 'f', name: 'Plan 模式', when: '先写计划再改', ico: 'send' },
+          { id: 'g', name: 'Agent 模式', when: '直接让 AI 干活', ico: 'send' }
+        ]}
+    ];
+
+    /* D1 */
+    document.getElementById('d1').innerHTML = SCENES.map(function (s) {
+      return '<button type="button" class="d1-row"><span class="d1-ico">' + SVG.folder + '</span><span><b>' + s.title + '</b><span>' + s.desc + '</span></span><span class="d1-n">' + s.n + '</span><span class="chev">' + SVG.chev + '</span></button>';
+    }).join('');
+
+    /* D2 tree */
+    var d2 = document.getElementById('d2');
+    d2.innerHTML = SCENES.map(function (s, i) {
+      return '<div class="d2-node"><button type="button" class="d2-branch' + (i === 0 ? ' open' : '') + '" data-b="' + s.id + '"><span class="d2-twisty">' + (i === 0 ? '▼' : '▶') + '</span><span class="d1-ico" style="width:22px;height:22px">' + SVG.folder + '</span><b style="font-size:12px">' + s.title + '</b></button><div class="d2-kids" id="kids-' + s.id + '" ' + (i === 0 ? '' : 'hidden') + '>' +
+        s.items.map(function (it) {
+          return '<button type="button" class="d2-leaf" data-leaf="' + it.id + '">' + it.name + '</button>';
+        }).join('') + '</div></div>';
+    }).join('');
+    d2.querySelectorAll('.d2-branch').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-b');
+        var kids = document.getElementById('kids-' + id);
+        var open = kids.hidden;
+        kids.hidden = !open;
+        btn.classList.toggle('open', open);
+        btn.querySelector('.d2-twisty').textContent = open ? '▼' : '▶';
+      });
+    });
+    d2.querySelectorAll('.d2-leaf').forEach(function (leaf) {
+      leaf.addEventListener('click', function () {
+        d2.querySelectorAll('.d2-leaf').forEach(function (x) { x.classList.remove('on'); });
+        leaf.classList.add('on');
+      });
+    });
+
+    /* D3 */
+    document.getElementById('d3').innerHTML = SCENES.map(function (s) {
+      return '<button type="button" class="d3-card"><div class="top"><span class="d1-ico">' + SVG.folder + '</span><span class="d1-n">' + s.n + '</span></div><b>' + s.title + '</b><span>' + s.desc + '</span></button>';
+    }).join('');
+
+    /* D4 rail */
+    var rail = document.getElementById('d4rail');
+    var pane = document.getElementById('d4pane');
+    function paintD4(id) {
+      rail.innerHTML = SCENES.map(function (s) {
+        return '<button type="button" class="' + (s.id === id ? 'on' : '') + '" data-r="' + s.id + '">' + s.title.split('、')[0] + '<small>' + s.n + ' 项</small></button>';
+      }).join('');
+      var s = SCENES.filter(function (x) { return x.id === id; })[0];
+      pane.innerHTML = s.items.map(function (it) {
+        return '<button type="button" class="o1-row" style="margin-bottom:4px"><span class="o1-ico">' + SVG[it.ico] + '</span><span><b>' + it.name + '</b><span>' + it.when + '</span></span></button>';
+      }).join('');
+      rail.querySelectorAll('[data-r]').forEach(function (b) {
+        b.addEventListener('click', function () { paintD4(b.getAttribute('data-r')); });
+      });
+    }
+    paintD4('talk');
+
+    /* O1 */
+    var o1sel = 'a';
+    function paintO1() {
+      var items = SCENES[0].items;
+      document.getElementById('o1').innerHTML = items.map(function (it) {
+        return '<button type="button" class="o1-row' + (o1sel === it.id ? ' on' : '') + '" data-o1="' + it.id + '"><span class="o1-ico">' + SVG[it.ico] + '</span><span><b>' + it.name + '</b><span>' + it.when + '</span></span><span class="pin">加入常见</span></button>';
+      }).join('');
+      document.querySelectorAll('[data-o1]').forEach(function (b) {
+        b.addEventListener('click', function () { o1sel = b.getAttribute('data-o1'); paintO1(); });
+      });
+    }
+    paintO1();
+
+    /* O2 */
+    var o2sel = 'a';
+    function paintO2() {
+      document.getElementById('o2').innerHTML = SCENES[0].items.map(function (it) {
+        return '<div class="o2-row' + (o2sel === it.id ? ' on' : '') + '" data-o2="' + it.id + '"><span class="o2-dot"></span>' + it.name + '</div>';
+      }).join('');
+      document.querySelectorAll('[data-o2]').forEach(function (b) {
+        b.addEventListener('click', function () { o2sel = b.getAttribute('data-o2'); paintO2(); });
+      });
+    }
+    paintO2();
+
+    /* O3 */
+    var o3sel = 'a';
+    function paintO3() {
+      document.getElementById('o3').innerHTML = SCENES[0].items.map(function (it) {
+        return '<button type="button" class="o3-chip' + (o3sel === it.id ? ' on' : '') + '" data-o3="' + it.id + '">' + it.name + '</button>';
+      }).join('');
+      document.querySelectorAll('[data-o3]').forEach(function (b) {
+        b.addEventListener('click', function () { o3sel = b.getAttribute('data-o3'); paintO3(); });
+      });
+    }
+    paintO3();
+
+    /* O4 */
+    var o4sel = 'a';
+    function paintO4() {
+      var tb = document.querySelector('#o4 tbody');
+      tb.innerHTML = SCENES[0].items.map(function (it) {
+        return '<tr class="' + (o4sel === it.id ? 'on' : '') + '" data-o4="' + it.id + '"><td><b>' + it.name + '</b></td><td>' + it.when + '</td><td><span class="pin">钉</span></td></tr>';
+      }).join('');
+      tb.querySelectorAll('[data-o4]').forEach(function (tr) {
+        tr.addEventListener('click', function () { o4sel = tr.getAttribute('data-o4'); paintO4(); });
+      });
+    }
+    paintO4();
+  </script>
+</body>
+</html>

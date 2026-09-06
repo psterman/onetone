@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SoftPad · 自己录 = 新建自定义快捷键</title>
+  <style>
+    :root {
+      --ink: #1a2d4a;
+      --muted: #64748b;
+      --line: rgba(42, 156, 196, 0.16);
+      --primary: #2a9cc4;
+      --primary-soft: rgba(42, 156, 196, 0.12);
+      --primary-strong: #1a7a9c;
+      --ok: #2a9a6a;
+      --warn: #b45309;
+      --font: "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(900px 420px at 12% -12%, rgba(42,156,196,.12), transparent 55%),
+        #e8edf2;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 56px; }
+    h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.02em; }
+    .lead { margin: 0 0 18px; font-size: 13px; color: var(--muted); line-height: 1.55; max-width: 42rem; }
+    .lead b { color: var(--ink); }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 860px) { .compare { grid-template-columns: 1fr; } }
+    .note {
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+    .note.bad { border-color: rgba(185,28,28,.25); background: #fef2f2; }
+    .note.good { border-color: rgba(42,154,106,.35); background: #f0fdf7; }
+    .note strong { display: block; margin-bottom: 4px; color: var(--ink); font-size: 13px; }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    @media (max-width: 860px) { .stage { grid-template-columns: 1fr; } }
+
+    .pad {
+      background: #1a2d4a;
+      border-radius: 16px;
+      padding: 14px;
+      color: #e2e8f0;
+      box-shadow: 0 12px 28px rgba(26,45,74,.18);
+    }
+    .pad h2 { margin: 0 0 4px; font-size: 12px; font-weight: 700; color: #7dd3fc; }
+    .pad p { margin: 0 0 10px; font-size: 10px; color: #94a3b8; line-height: 1.4; }
+    .pad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .pkey {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      border: 1px solid rgba(125,211,252,.2);
+      background: rgba(15,23,42,.55);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+    .pkey.on {
+      border-color: rgba(125,211,252,.65);
+      background: rgba(42,156,196,.28);
+      box-shadow: inset 0 0 0 1px rgba(125,211,252,.35);
+    }
+    .pkey small { font-size: 8px; font-weight: 500; color: #94a3b8; }
+    .pad-lock {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(42,154,106,.15);
+      border: 1px solid rgba(42,154,106,.35);
+      font-size: 10px;
+      color: #86efac;
+      line-height: 1.4;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      min-height: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 8px 24px rgba(26,45,74,.05);
+    }
+    .layers {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4px;
+      padding: 3px;
+      border-radius: 12px;
+      background: rgba(42,156,196,.08);
+    }
+    .layers button {
+      border: 0;
+      background: transparent;
+      border-radius: 9px;
+      padding: 8px 4px 7px;
+      cursor: pointer;
+      font: inherit;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.15;
+    }
+    .layers button strong { display: block; font-size: 12px; font-weight: 700; color: inherit; }
+    .layers button em { display: block; margin-top: 1px; font-size: 9px; font-style: normal; opacity: .85; }
+    .layers button.on {
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(26,45,74,.08);
+    }
+
+    .body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+    .hint { margin: 0; font-size: 11px; color: var(--muted); }
+
+    .custom-card {
+      border: 1px dashed rgba(42,156,196,.4);
+      border-radius: 12px;
+      padding: 14px;
+      background: rgba(247,251,253,.95);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .custom-card h3 { margin: 0; font-size: 14px; font-weight: 700; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 11px; font-weight: 600; color: var(--muted); }
+    .field input {
+      border: 1px solid rgba(42,156,196,.25);
+      border-radius: 10px;
+      padding: 9px 10px;
+      font: inherit;
+      font-size: 13px;
+      color: var(--ink);
+      background: #fff;
+    }
+    .chord-row { display: flex; gap: 8px; align-items: center; }
+    .chord-display {
+      flex: 1;
+      min-height: 40px;
+      border: 1px dashed rgba(42,156,196,.35);
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      background: rgba(248,250,252,.95);
+      display: flex;
+      align-items: center;
+    }
+    .chord-display.is-empty {
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .btn {
+      border: 1px solid rgba(42,156,196,.3);
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 9px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn:hover { border-color: rgba(42,156,196,.55); background: rgba(42,156,196,.06); }
+    .btn.primary {
+      width: 100%;
+      min-height: 44px;
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      font-size: 13px;
+    }
+    .btn.primary:hover { background: var(--primary-strong); }
+    .btn.primary:disabled { opacity: .45; cursor: default; }
+    .btn.listening {
+      background: rgba(42,156,196,.14);
+      border-color: rgba(42,156,196,.5);
+      color: var(--primary-strong);
+    }
+
+    .common-list { display: flex; flex-direction: column; gap: 6px; }
+    .crow {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 9px 10px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: rgba(255,255,255,.9);
+      border-color: rgba(42,156,196,.12);
+    }
+    .crow.new {
+      border-color: rgba(42,154,106,.45);
+      background: rgba(240,253,247,.95);
+      animation: pop .45s ease;
+    }
+    @keyframes pop {
+      from { transform: translateY(4px); opacity: 0; }
+      to { transform: none; opacity: 1; }
+    }
+    .crow .ico {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: grid; place-items: center;
+      background: #fff; border: 1px solid rgba(26,45,74,.1); color: var(--primary-strong);
+      font-size: 14px;
+    }
+    .crow b { display: block; font-size: 12px; font-weight: 600; }
+    .crow span { display: block; font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .tag {
+      font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 999px;
+      background: rgba(212,160,23,.14); color: #9a6b00;
+    }
+    .tag.def { background: rgba(42,156,196,.1); color: #1a7a9c; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+      background: #1a2d4a; color: #fff; font-size: 12px; font-weight: 600;
+      padding: 10px 16px; border-radius: 999px; opacity: 0; pointer-events: none;
+      transition: .25s ease; z-index: 20;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .flow {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(42,154,106,.3);
+      background: #f0fdf7;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .flow ol { margin: 8px 0 0; padding-left: 1.2rem; color: var(--muted); }
+    .flow li { margin: 4px 0; }
+
+    /* —— 二级录制页 —— */
+    .sheet-mask {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(2px);
+      z-index: 40;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+    }
+    .sheet-mask.open { opacity: 1; pointer-events: auto; }
+    .sheet {
+      width: min(420px, 100%);
+      background: #fff;
+      border-radius: 18px 18px 14px 14px;
+      border: 1px solid var(--line);
+      box-shadow: 0 20px 48px rgba(15,23,42,.28);
+      padding: 16px 16px 18px;
+      transform: translateY(24px);
+      transition: transform .22s ease;
+    }
+    .sheet-mask.open .sheet { transform: translateY(0); }
+    .sheet-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 12px;
+    }
+    .sheet-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
+    .sheet-back {
+      border: 0; background: transparent; color: var(--primary-strong);
+      font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 0;
+    }
+    .sheet-pulse {
+      margin: 8px auto 14px;
+      width: 88px; height: 88px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: radial-gradient(circle at 50% 40%, rgba(42,156,196,.22), rgba(42,156,196,.06));
+      border: 2px solid rgba(42,156,196,.35);
+      color: var(--primary-strong);
+      font-size: 13px; font-weight: 700;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .sheet-pulse.done {
+      animation: none;
+      border-color: rgba(42,154,106,.45);
+      background: rgba(42,154,106,.12);
+      color: #166534;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(42,156,196,.25); }
+      50% { transform: scale(1.04); box-shadow: 0 0 0 12px rgba(42,156,196,0); }
+    }
+    .sheet-copy { margin: 0 0 14px; text-align: center; font-size: 13px; font-weight: 600; }
+    .sheet-chord {
+      text-align: center; font-size: 20px; font-weight: 700; letter-spacing: .02em;
+      color: var(--ink); min-height: 1.4em; margin-bottom: 14px;
+    }
+    .sheet-actions { display: flex; gap: 8px; }
+    .sheet-actions .btn { flex: 1; }
+    .sheet-actions .btn.ghost { background: #f8fafc; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>自己录 · 原型：新建自定义快捷键</h1>
+    <p class="lead">
+      不是「改左侧当前键的动作」，而是<strong>收录一条新的可命名快捷键</strong>（名称 + 组合键 + 口令），保存后进「我的常见」。
+      左侧 SoftPad 键方案在录制过程中保持不变。
+    </p>
+
+    <div class="compare">
+      <div class="note bad">
+        <strong>旧理解（不要）</strong>
+        选中数字 7 → 自己录 → 重录当前「新建对话」的 chord → 改了当前键方案。
+      </div>
+      <div class="note good">
+        <strong>新理解（要）</strong>
+        自己录 → 填名称（可选口令）→ 点「录制按键」弹出听键页 → 确认后<strong>自动进常见</strong>。左侧键不动。
+      </div>
+    </div>
+
+    <div class="stage">
+      <aside class="pad" aria-label="左侧 SoftPad 预览">
+        <h2>左侧 SoftPad（只读示意）</h2>
+        <p>录制自定义时不改这里。数字 7 仍是「新建对话」。</p>
+        <div class="pad-grid">
+          <div class="pkey on">7<small>新建对话</small></div>
+          <div class="pkey">8<small>快速聊天</small></div>
+          <div class="pkey">9<small>命令</small></div>
+          <div class="pkey">4<small>搜索</small></div>
+          <div class="pkey">5<small>发送</small></div>
+          <div class="pkey">6<small>取消</small></div>
+        </div>
+        <div class="pad-lock" id="padLock">键方案未变 · 仍是「新建对话」</div>
+      </aside>
+
+      <section class="panel">
+        <div class="layers" role="tablist">
+          <button type="button" data-tab="common"><strong>我的常见</strong><em>优先点这里</em></button>
+          <button type="button" data-tab="scenes"><strong>按场景找</strong><em>搜 / 分类</em></button>
+          <button type="button" class="on" data-tab="custom"><strong>自己录</strong><em>新建收录</em></button>
+        </div>
+        <div class="body" id="body"></div>
+        <p class="hint" id="hint"></p>
+      </section>
+    </div>
+
+    <div class="flow">
+      <b style="color:#166534">推荐路径</b>
+      <ol>
+        <li>填名称（可选口令）→ 点「录制按键」→ <b>二级听键页</b> → 按下组合键 → 点「用这个键」</li>
+        <li>自动写入「我的常见」（标签：自定义），无需再点保存</li>
+        <li>要绑到 SoftPad 键时：先点左侧键，再在常见里点这条</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="sheet-mask" id="recSheet" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="recSheetTitle">
+      <div class="sheet-head">
+        <button type="button" class="sheet-back" id="recBack">‹ 返回</button>
+        <h3 id="recSheetTitle">录制快捷键</h3>
+        <span style="width:2.5rem"></span>
+      </div>
+      <div class="sheet-pulse" id="recPulse">听键</div>
+      <p class="sheet-copy" id="recCopy">请按下 Cursor 里要用的组合键</p>
+      <div class="sheet-chord" id="recChord">—</div>
+      <div class="sheet-actions">
+        <button type="button" class="btn ghost" id="recCancel">取消</button>
+        <button type="button" class="btn primary" id="recOk" disabled>确认并加入常见</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    var tab = 'custom';
+    var draft = { name: '', chord: '', phrases: '' };
+    var sheetOpen = false;
+    var captured = '';
+    var listenTimer = null;
+    var commons = [
+      { id: 'pushToTalk', name: '按住说话', when: '开麦口述', tag: '预设', custom: false },
+      { id: 'stopOrSend', name: '发送 / 停止', when: '发这一轮或叫停', tag: '预设', custom: false },
+      { id: 'cancel', name: '取消', when: '不要了', tag: '预设', custom: false },
+      { id: 'plan', name: '切到 Plan', when: '先想清楚再改', tag: '预设', custom: false },
+      { id: 'newThread', name: '新建对话', when: '开新聊天', tag: '预设', custom: false }
+    ];
+    var justAdded = '';
+
+    function toast(msg) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(el._t);
+      el._t = setTimeout(function () { el.classList.remove('show'); }, 2200);
+    }
+
+    function paint() {
+      document.querySelectorAll('.layers [data-tab]').forEach(function (b) {
+        b.classList.toggle('on', b.getAttribute('data-tab') === tab);
+      });
+      var body = document.getElementById('body');
+      var hint = document.getElementById('hint');
+
+      if (tab === 'custom') {
+        hint.textContent = '';
+        body.innerHTML =
+          '<div class="custom-card">' +
+          '<h3>新建自定义快捷键</h3>' +
+          '<div class="field"><label>名称</label>' +
+          '<input id="fName" type="text" placeholder="例如：打开终端分屏" value="' + esc(draft.name) + '" /></div>' +
+          '<div class="field"><label>文本口令（可选）</label>' +
+          '<input id="fPhrase" type="text" placeholder="例如：终端分屏" value="' + esc(draft.phrases) + '" /></div>' +
+          '<button type="button" class="btn primary" id="btnRec">录制按键</button></div>';
+
+        var nameEl = document.getElementById('fName');
+        var phraseEl = document.getElementById('fPhrase');
+        nameEl.oninput = function () { draft.name = nameEl.value; };
+        phraseEl.oninput = function () { draft.phrases = phraseEl.value; };
+        document.getElementById('btnRec').onclick = openRecSheet;
+        return;
+      }
+
+      if (tab === 'scenes') {
+        hint.textContent = '场景目录（本原型不展开）。';
+        body.innerHTML = '<p class="hint" style="padding:24px;text-align:center">按场景找 · 目录 D + 能力列表（已有实现，此处省略）</p>';
+        return;
+      }
+
+      hint.textContent = '可移出、排序；自定义项带「自定义」标签。点选才绑到左侧键（另一步）。';
+      var html = '<div class="common-list">';
+      commons.forEach(function (c) {
+        html +=
+          '<div class="crow' + (c.id === justAdded ? ' new' : '') + '">' +
+          '<span class="ico" aria-hidden="true">' + (c.custom ? '✦' : '⌘') + '</span>' +
+          '<span><b>' + esc(c.name) + '</b><span>' +
+          esc(c.when) + (c.chord ? ' · ' + esc(c.chord) : '') +
+          '</span></span>' +
+          '<span class="tag' + (c.custom ? '' : ' def') + '">' + esc(c.tag) + '</span></div>';
+      });
+      html += '</div>';
+      body.innerHTML = html;
+      justAdded = '';
+    }
+
+    function esc(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function openRecSheet() {
+      // 同步一下当前输入（避免未 blur）
+      var nameEl = document.getElementById('fName');
+      var phraseEl = document.getElementById('fPhrase');
+      if (nameEl) draft.name = nameEl.value;
+      if (phraseEl) draft.phrases = phraseEl.value;
+      if (!String(draft.name || '').trim()) {
+        toast('请先填写名称');
+        if (nameEl) nameEl.focus();
+        return;
+      }
+      sheetOpen = true;
+      captured = '';
+      var mask = document.getElementById('recSheet');
+      mask.classList.add('open');
+      mask.setAttribute('aria-hidden', 'false');
+      document.getElementById('recPulse').className = 'sheet-pulse';
+      document.getElementById('recPulse').textContent = '听键';
+      document.getElementById('recCopy').textContent = '请按下 Cursor 里要用的组合键';
+      document.getElementById('recChord').textContent = '—';
+      document.getElementById('recOk').disabled = true;
+      clearTimeout(listenTimer);
+      listenTimer = setTimeout(function () {
+        if (!sheetOpen) return;
+        captured = 'Ctrl+`';
+        document.getElementById('recPulse').className = 'sheet-pulse done';
+        document.getElementById('recPulse').textContent = '已收到';
+        document.getElementById('recCopy').textContent = '确认后将自动加入常见';
+        document.getElementById('recChord').textContent = captured;
+        document.getElementById('recOk').disabled = false;
+      }, 1000);
+    }
+
+    function closeRecSheet(apply) {
+      sheetOpen = false;
+      clearTimeout(listenTimer);
+      var mask = document.getElementById('recSheet');
+      mask.classList.remove('open');
+      mask.setAttribute('aria-hidden', 'true');
+      if (apply && captured) {
+        draft.chord = captured;
+        saveCustom();
+      }
+    }
+
+    document.getElementById('recBack').onclick = function () { closeRecSheet(false); };
+    document.getElementById('recCancel').onclick = function () { closeRecSheet(false); };
+    document.getElementById('recOk').onclick = function () { closeRecSheet(true); };
+    document.getElementById('recSheet').addEventListener('click', function (ev) {
+      if (ev.target === document.getElementById('recSheet')) closeRecSheet(false);
+    });
+
+    function saveCustom() {
+      if (!draft.name.trim() || !draft.chord.trim()) return;
+      var id = 'custom_' + Date.now().toString(36);
+      commons.unshift({
+        id: id,
+        name: draft.name.trim(),
+        when: draft.phrases.trim() || '自定义快捷键',
+        chord: draft.chord.trim(),
+        tag: '自定义',
+        custom: true
+      });
+      justAdded = id;
+      draft = { name: '', chord: '', phrases: '' };
+      document.getElementById('padLock').textContent =
+        '键方案未变 · 仍是「新建对话」· 已自动进常见';
+      toast('已加入常见');
+      tab = 'common';
+      paint();
+    }
+
+    document.querySelectorAll('.layers [data-tab]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        tab = b.getAttribute('data-tab');
+        paint();
+      });
+    });
+
+    paint();
+  </script>
+</body>
+</html>

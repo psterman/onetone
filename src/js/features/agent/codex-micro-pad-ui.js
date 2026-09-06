@@ -169,35 +169,78 @@
   };
 
   /**
-   * Cursor Soft Pad capability picker groups (allowlist only).
-   * Labels via lang(); slot ids must stay inside CURSOR_SOFT_PAD_SLOT_IDS.
+   * Cursor Soft Pad scenes (allowlist only). Plain-language titles for beginners.
+   * slot ids must stay inside CURSOR_SOFT_PAD_SLOT_IDS.
    */
   var CURSOR_SLOT_GROUPS = [
     {
-      id: 'chat',
-      labelZh: '对话与生成',
-      labelEn: 'Chat & generate',
-      slots: ['pushToTalk', 'stopOrSend', 'pasteAndSend', 'cancel', 'newThread', 'quickChat']
+      id: 'talk',
+      labelZh: '说话、发出去、叫停',
+      labelEn: 'Talk, send, stop',
+      descZh: '输入这一轮：开麦、发送、粘贴发、取消',
+      descEn: 'This turn: mic, send, paste-send, cancel',
+      slots: ['pushToTalk', 'stopOrSend', 'pasteAndSend', 'cancel']
+    },
+    {
+      id: 'open',
+      labelZh: '开聊天、回到 Cursor',
+      labelEn: 'Open chat / focus Cursor',
+      descZh: '新开对话、拉开 Chat、从别的软件切回来',
+      descEn: 'New chat, side chat, or focus Cursor',
+      slots: ['newThread', 'quickChat', 'summonCodex']
     },
     {
       id: 'mode',
-      labelZh: '模式',
-      labelEn: 'Modes',
+      labelZh: '换 AI 怎么干活',
+      labelEn: 'How AI works',
+      descZh: 'Plan 先想清楚，或 Agent 直接改代码',
+      descEn: 'Plan first, or Agent edits directly',
       slots: ['plan', 'switchAgent']
     },
     {
-      id: 'nav',
-      labelZh: '导航与界面',
-      labelEn: 'Navigation & UI',
-      slots: ['navBack', 'navForward', 'toggleSidebar', 'commandPalette', 'quickSearch']
+      id: 'find',
+      labelZh: '找文件或命令',
+      labelEn: 'Find files or commands',
+      descZh: '搜文件名，或打开命令面板',
+      descEn: 'Quick Open or Command Palette',
+      slots: ['quickSearch', 'commandPalette']
     },
     {
-      id: 'app',
-      labelZh: '应用',
-      labelEn: 'App',
-      slots: ['summonCodex', 'openSettings', 'openTerminal', 'newBrowserTab', 'undo']
+      id: 'nav',
+      labelZh: '在窗口里走动',
+      labelEn: 'Move around the UI',
+      descZh: '前进后退、显示或隐藏侧栏',
+      descEn: 'Back, forward, toggle sidebar',
+      slots: ['navBack', 'navForward', 'toggleSidebar']
+    },
+    {
+      id: 'tools',
+      labelZh: '打开其它工具',
+      labelEn: 'Other tools',
+      descZh: '终端、浏览器、设置、撤销',
+      descEn: 'Terminal, browser, settings, undo',
+      slots: ['openTerminal', 'newBrowserTab', 'openSettings', 'undo']
     }
   ];
+
+  /** Default「我的常见」pack (Cursor Soft Pad). Overridden by pad.commonSlotIds when set. */
+  var CURSOR_COMMON_DEFAULT_SLOTS = [
+    'pushToTalk',
+    'stopOrSend',
+    'cancel',
+    'plan',
+    'newThread'
+  ];
+
+  /** Right command library layer: common | scenes | custom */
+  var layoutActionLayer = 'common';
+  var layoutActionSceneId = '';
+  /** Draft for「自己录」new custom shortcut (never touches editDraft / pad key). */
+  var layoutCustomDraft = { name: '', phrases: '' };
+  var layoutCustomRecChord = '';
+  var layoutCustomRecListening = false;
+  /** Rec sheet mode: custom (new shortcut) | layoutKey (write chord to current Soft Pad key). */
+  var layoutRecSheetMode = 'custom';
 
   /** Human physical key names for edit subtitle (not capability labels, not AG ids). */
   var PHYSICAL_KEY_LABELS = {
@@ -648,7 +691,19 @@
             activationScope: String(b.activationScope || 'foregroundApp')
           };
         })
-        : undefined
+        : undefined,
+      commonSlotIds: Array.isArray(pad.commonSlotIds) ? pad.commonSlotIds.slice() : undefined,
+      customShortcuts: Array.isArray(pad.customShortcuts)
+        ? pad.customShortcuts.map(function (c) {
+          return {
+            id: String(c.id || ''),
+            name: String(c.name || ''),
+            chord: String(c.chord || ''),
+            phrases: String(c.phrases || ''),
+            activationScope: String(c.activationScope || 'foregroundApp')
+          };
+        })
+        : []
     };
   }
 
@@ -820,6 +875,11 @@
   }
 
   function slotLabel(slotId, m) {
+    if (isCursorCustomSlotId(slotId)) {
+      var cs = findCustomShortcut(m && m.codexMicroPad, slotId);
+      if (cs && cs.name) return cs.name;
+      return slotId;
+    }
     var A = agent();
     if (A && A.labelForSlotForMapping && m) {
       var mapped = A.labelForSlotForMapping(m, slotId);
@@ -2238,6 +2298,7 @@
   function iconIdForCapabilitySlot(slotId) {
     var id = String(slotId || '').trim();
     if (!id) return 'empty';
+    if (isCursorCustomSlotId(id)) return 'command';
     return SLOT_DEFAULT_ICON[id] || 'empty';
   }
 
@@ -7192,20 +7253,409 @@
     return slotLabel(slotId, m) || slotId;
   }
 
+  function cursorSlotGroupLabel(g) {
+    if (!g) return '';
+    return lang().indexOf('en') === 0 ? (g.labelEn || g.labelZh) : (g.labelZh || g.labelEn);
+  }
+
+  function cursorSlotGroupDesc(g) {
+    if (!g) return '';
+    return lang().indexOf('en') === 0 ? (g.descEn || g.descZh || '') : (g.descZh || g.descEn || '');
+  }
+
+  /** Short rail label for Directory D (first phrase before顿号/comma). */
+  function cursorSlotGroupRailLabel(g) {
+    var full = cursorSlotGroupLabel(g);
+    var cut = String(full || '').split(/[、，,/]/)[0].trim();
+    return cut || full;
+  }
+
+  function defaultCursorCommonSlots() {
+    return CURSOR_COMMON_DEFAULT_SLOTS.slice();
+  }
+
+  function isCursorCommonDefaultSlot(slotId) {
+    return CURSOR_COMMON_DEFAULT_SLOTS.indexOf(String(slotId || '')) >= 0;
+  }
+
+  function isCursorCustomSlotId(slotId) {
+    var id = String(slotId || '').trim();
+    return id.indexOf('custom_') === 0 && id.length > 7;
+  }
+
+  function getCustomShortcuts(pad) {
+    if (!pad || !Array.isArray(pad.customShortcuts)) return [];
+    return pad.customShortcuts.filter(function (c) {
+      return c && isCursorCustomSlotId(c.id);
+    });
+  }
+
+  function findCustomShortcut(pad, slotId) {
+    var id = String(slotId || '').trim();
+    var list = getCustomShortcuts(pad);
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i].id || '') === id) return list[i];
+    }
+    return null;
+  }
+
+  function isAllowedCommonSlotId(pad, slotId) {
+    var id = String(slotId || '').trim();
+    if (!id) return false;
+    if (CURSOR_SOFT_PAD_SLOT_IDS[id]) return true;
+    return isCursorCustomSlotId(id) && !!findCustomShortcut(pad, id);
+  }
+
+  function getCursorCommonSlotIds(pad) {
+    if (pad && Array.isArray(pad.commonSlotIds)) {
+      var out = [];
+      var seen = {};
+      pad.commonSlotIds.forEach(function (raw) {
+        var id = String(raw || '').trim();
+        if (!id || seen[id] || !isAllowedCommonSlotId(pad, id)) return;
+        seen[id] = 1;
+        out.push(id);
+      });
+      return out;
+    }
+    return defaultCursorCommonSlots().filter(function (id) {
+      return !!CURSOR_SOFT_PAD_SLOT_IDS[id];
+    });
+  }
+
+  function setCursorCommonSlotIds(m, ids) {
+    if (!m) return;
+    if (!m.codexMicroPad) ensurePad(m, { persist: false });
+    if (!m.codexMicroPad) return;
+    var pad = m.codexMicroPad;
+    var next = [];
+    var seen = {};
+    (ids || []).forEach(function (raw) {
+      var id = String(raw || '').trim();
+      if (!id || seen[id] || !isAllowedCommonSlotId(pad, id)) return;
+      seen[id] = 1;
+      next.push(id);
+    });
+    pad.commonSlotIds = next;
+    persistLayout(m, { quiet: true });
+  }
+
+  function pinCursorCommonSlot(m, slotId) {
+    var id = String(slotId || '').trim();
+    if (!m || !isAllowedCommonSlotId(m.codexMicroPad, id)) return false;
+    var cur = getCursorCommonSlotIds(m.codexMicroPad);
+    if (cur.indexOf(id) >= 0) return false;
+    cur.unshift(id);
+    setCursorCommonSlotIds(m, cur);
+    return true;
+  }
+
+  function unpinCursorCommonSlot(m, slotId) {
+    var id = String(slotId || '').trim();
+    var cur = getCursorCommonSlotIds(m && m.codexMicroPad).filter(function (x) {
+      return x !== id;
+    });
+    setCursorCommonSlotIds(m, cur);
+    return true;
+  }
+
+  function moveCursorCommonSlot(m, slotId, dir) {
+    var id = String(slotId || '').trim();
+    var cur = getCursorCommonSlotIds(m && m.codexMicroPad).slice();
+    var i = cur.indexOf(id);
+    if (i < 0) return false;
+    var j = dir === 'up' ? i - 1 : i + 1;
+    if (j < 0 || j >= cur.length) return false;
+    var tmp = cur[i];
+    cur[i] = cur[j];
+    cur[j] = tmp;
+    setCursorCommonSlotIds(m, cur);
+    return true;
+  }
+
+  function resetCursorCommonSlots(m) {
+    setCursorCommonSlotIds(m, defaultCursorCommonSlots());
+    return true;
+  }
+
+  function upsertCustomShortcutBindings(m, entry) {
+    if (!m || !entry || !isCursorCustomSlotId(entry.id)) return;
+    if (!Array.isArray(m.agentBindings)) m.agentBindings = [];
+    var id = String(entry.id);
+    var chord = String(entry.chord || '').trim();
+    var phrases = String(entry.phrases || '').trim();
+    var scope = normalizeActivationScope(entry.activationScope);
+    var keyB = agentBindingFor(m, id, 'key');
+    if (!keyB) {
+      keyB = {
+        slotId: id,
+        actionId: 'app.shortcut',
+        actionInstanceId: id,
+        actionArgs: { chord: chord },
+        triggerType: 'key',
+        triggerBinding: chord,
+        enabled: true,
+        executionMode: 'execute',
+        activationScope: scope
+      };
+      m.agentBindings.push(keyB);
+    } else {
+      keyB.actionId = 'app.shortcut';
+      keyB.actionInstanceId = id;
+      keyB.actionArgs = { chord: chord };
+      keyB.triggerBinding = chord;
+      keyB.enabled = true;
+      keyB.executionMode = 'execute';
+      keyB.activationScope = scope;
+    }
+    var voiceB = agentBindingFor(m, id, 'voice');
+    if (phrases) {
+      if (!voiceB) {
+        m.agentBindings.push({
+          slotId: id,
+          actionId: 'app.shortcut',
+          actionInstanceId: id,
+          actionArgs: { chord: chord },
+          triggerType: 'voice',
+          triggerBinding: phrases,
+          enabled: true,
+          executionMode: 'execute',
+          activationScope: scope
+        });
+      } else {
+        voiceB.actionId = 'app.shortcut';
+        voiceB.actionInstanceId = id;
+        voiceB.actionArgs = { chord: chord };
+        voiceB.triggerBinding = phrases;
+        voiceB.enabled = true;
+        voiceB.activationScope = scope;
+      }
+    } else if (voiceB) {
+      voiceB.enabled = false;
+      voiceB.triggerBinding = '';
+    }
+  }
+
+  function createCustomShortcut(m, draft) {
+    if (!m) return null;
+    if (!m.codexMicroPad) ensurePad(m, { persist: false });
+    if (!m.codexMicroPad) return null;
+    var name = String((draft && draft.name) || '').trim();
+    var chord = String((draft && draft.chord) || '').trim();
+    var phrases = String((draft && draft.phrases) || '').trim();
+    if (!name || !chord) return null;
+    var id = 'custom_' + Date.now().toString(36);
+    var entry = {
+      id: id,
+      name: name,
+      chord: chord,
+      phrases: phrases,
+      activationScope: 'foregroundApp'
+    };
+    if (!Array.isArray(m.codexMicroPad.customShortcuts)) m.codexMicroPad.customShortcuts = [];
+    m.codexMicroPad.customShortcuts.unshift(entry);
+    upsertCustomShortcutBindings(m, entry);
+    pinCursorCommonSlot(m, id);
+    persistLayout(m, { quiet: true, immediate: true });
+    return entry;
+  }
+
+  function deleteCustomShortcut(m, slotId) {
+    var id = String(slotId || '').trim();
+    if (!m || !m.codexMicroPad || !isCursorCustomSlotId(id)) return false;
+    m.codexMicroPad.customShortcuts = getCustomShortcuts(m.codexMicroPad).filter(function (c) {
+      return String(c.id) !== id;
+    });
+    if (Array.isArray(m.agentBindings)) {
+      m.agentBindings = m.agentBindings.filter(function (b) {
+        return !(b && String(b.slotId || '') === id);
+      });
+    }
+    unpinCursorCommonSlot(m, id);
+    // Clear Soft Pad routes that pointed at this custom id (do not leave dead binds).
+    if (Array.isArray(m.codexMicroPad.keys)) {
+      m.codexMicroPad.keys.forEach(function (k) {
+        if (k && String(k.slotId || '') === id) {
+          k.slotId = '';
+          k.enabled = false;
+        }
+      });
+    }
+    persistLayout(m, { quiet: true, immediate: true });
+    return true;
+  }
+
+  function layoutActionWhenText(slotId, m) {
+    if (isCursorCustomSlotId(slotId)) {
+      var cs = findCustomShortcut(m && m.codexMicroPad, slotId);
+      if (!cs) return '';
+      var parts = [];
+      if (cs.chord) parts.push(friendlyChord(cs.chord));
+      if (cs.phrases) parts.push(cs.phrases);
+      return parts.join(' · ');
+    }
+    var copy = capabilityCardCopy(slotId, m);
+    var tip = slotEffectTip(slotId, copy && copy.title, m);
+    return String((copy && copy.result) || tip || '').trim();
+  }
+
+  function softPadTrailIcon(kind) {
+    // Compact Material-style glyphs for list trailing actions.
+    if (kind === 'up') {
+      return '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>';
+    }
+    if (kind === 'down') {
+      return '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>';
+    }
+    if (kind === 'close') {
+      return '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+    }
+    return '';
+  }
+
+  function layoutActionRowHtml(slotId, m, selectedSlot, opts) {
+    opts = opts || {};
+    var id = String(slotId || '');
+    var copy = capabilityCardCopy(id, m);
+    var title = (copy && copy.title) || slotLabel(id, m) || id;
+    var when = layoutActionWhenText(id, m);
+    var iconId = iconIdForCapabilitySlot(id);
+    var on = selectedSlot === id;
+    var pinned = opts.showPin ? getCursorCommonSlotIds(m && m.codexMicroPad).indexOf(id) >= 0 : false;
+    var tag = '';
+    if (opts.commonTag) {
+      // Default commons need no badge; only mark custom / user-added.
+      if (isCursorCustomSlotId(id)) {
+        tag = '<span class="soft-pad-action-item__tag is-user">' +
+          esc(t('softPadLayoutCommonTagCustom', '自定义')) + '</span>';
+      } else if (!isCursorCommonDefaultSlot(id)) {
+        tag = '<span class="soft-pad-action-item__tag is-user">' +
+          esc(t('softPadLayoutCommonTagUser', '已添加')) + '</span>';
+      }
+    }
+    var pinBtn = opts.showPin
+      ? ('<button type="button" class="soft-pad-action-pin' + (pinned ? ' is-pinned' : '') +
+        '" data-layout-pin="' + esc(id) + '" title="' +
+        esc(pinned
+          ? t('softPadLayoutUnpinCommon', '移出常见')
+          : t('softPadLayoutPinCommon', '加入常见')) +
+        '">' +
+        (pinned
+          ? esc(t('softPadLayoutPinnedShort', '已在常见'))
+          : esc(t('softPadLayoutPinShort', '加入常见'))) +
+        '</button>')
+      : '';
+    var unpinBtn = opts.showUnpin
+      ? ('<button type="button" class="soft-pad-action-icon-btn soft-pad-action-unpin" data-layout-unpin="' +
+        esc(id) +
+        '" title="' + esc(t('softPadLayoutUnpinCommon', '移出常见')) + '" aria-label="' +
+        esc(t('softPadLayoutUnpinCommon', '移出常见')) + '">' +
+        softPadTrailIcon('close') + '</button>')
+      : '';
+    var delBtn = opts.showCustomDelete
+      ? ('<button type="button" class="soft-pad-action-icon-btn soft-pad-action-custom-del" data-layout-custom-delete="' +
+        esc(id) +
+        '" title="' +
+        esc(t('softPadLayoutCustomDelete', '删除自定义')) +
+        '" aria-label="' +
+        esc(t('softPadLayoutCustomDelete', '删除自定义')) +
+        '">' +
+        softPadTrailIcon('close') +
+        '</button>')
+      : '';
+    var moveBtns = '';
+    if (opts.showCommonManage) {
+      var idx = Number(opts.commonIndex) || 0;
+      var count = Number(opts.commonCount) || 0;
+      moveBtns =
+        '<span class="soft-pad-action-common-moves" role="group" aria-label="' +
+        esc(t('softPadLayoutCommonReorder', '排序')) +
+        '">' +
+        '<button type="button" class="soft-pad-action-icon-btn soft-pad-action-common-move" data-layout-common-move="up" data-layout-common-id="' +
+        esc(id) +
+        '"' +
+        (idx <= 0 ? ' disabled' : '') +
+        ' title="' +
+        esc(t('softPadLayoutCommonMoveUp', '上移')) +
+        '" aria-label="' +
+        esc(t('softPadLayoutCommonMoveUp', '上移')) +
+        '">' + softPadTrailIcon('up') + '</button>' +
+        '<button type="button" class="soft-pad-action-icon-btn soft-pad-action-common-move" data-layout-common-move="down" data-layout-common-id="' +
+        esc(id) +
+        '"' +
+        (idx >= count - 1 ? ' disabled' : '') +
+        ' title="' +
+        esc(t('softPadLayoutCommonMoveDown', '下移')) +
+        '" aria-label="' +
+        esc(t('softPadLayoutCommonMoveDown', '下移')) +
+        '">' + softPadTrailIcon('down') + '</button></span>';
+    }
+    // Custom delete supersedes unpin (same remove affordance).
+    var removeBtn = delBtn || unpinBtn;
+    return (
+      '<div class="soft-pad-action-item' + (on ? ' is-selected' : '') +
+      (opts.commonTag ? ' soft-pad-action-item--card' : '') +
+      '" data-layout-slot="' + esc(id) + '" role="option" aria-selected="' + (on ? 'true' : 'false') + '">' +
+      '<span class="soft-pad-action-item__icon micro-hw__icon" aria-hidden="true">' +
+      iconSvg(iconId) +
+      '</span>' +
+      '<span class="soft-pad-action-item__text">' +
+      '<span class="soft-pad-action-item__title">' + esc(title) + '</span>' +
+      (when ? '<span class="soft-pad-action-item__when">' + esc(when) + '</span>' : '') +
+      '</span>' +
+      '<span class="soft-pad-action-item__trail">' +
+      tag + moveBtns + pinBtn + removeBtn +
+      '</span></div>'
+    );
+  }
+
   function filterLayoutActionGroups(groups, query) {
     query = String(query || '').trim().toLowerCase();
     if (!query) return groups;
     return groups.map(function (g) {
       var list = (g.options || []).filter(function (o) {
-        var hay = (String(o.label || '') + ' ' + String(o.tip || '') + ' ' + String(o.id || '')).toLowerCase();
+        var hay = (String(o.label || '') + ' ' + String(o.tip || '') + ' ' + String(o.id || '') +
+          ' ' + String(g.label || '') + ' ' + String(g.desc || '')).toLowerCase();
         return hay.indexOf(query) >= 0;
       });
       if (!list.length) return null;
-      return { id: g.id, label: g.label, options: list };
+      return { id: g.id, label: g.label, desc: g.desc, options: list };
     }).filter(Boolean);
   }
 
-  function buildSoftPadLayoutActionLibraryHtml() {
+  function buildSoftPadLayoutActionLibraryHtml(m) {
+    if (isCursorSoftPadMapping(m)) {
+      return (
+        '<div class="soft-pad-action-library soft-pad-action-library--cursor" data-soft-pad-action-library="1">' +
+        '<div class="soft-pad-action-library__head">' +
+        '<p class="codex-pad-mgr__label">' +
+        esc(t('softPadLayoutActionListLbl', '命令列表')) + '</p>' +
+        '<div class="soft-pad-action-layers" role="tablist" aria-label="' +
+        esc(t('softPadLayoutLayersAria', '命令分层')) + '">' +
+        '<button type="button" class="soft-pad-action-layer' +
+        (layoutActionLayer === 'common' ? ' is-active' : '') +
+        '" data-layout-layer="common" role="tab" aria-selected="' +
+        (layoutActionLayer === 'common' ? 'true' : 'false') + '">' +
+        '<strong>' + esc(t('softPadLayoutLayerCommon', '我的常见')) + '</strong>' +
+        '<em>' + esc(t('softPadLayoutLayerCommonSub', '优先点这里')) + '</em></button>' +
+        '<button type="button" class="soft-pad-action-layer' +
+        (layoutActionLayer === 'scenes' ? ' is-active' : '') +
+        '" data-layout-layer="scenes" role="tab" aria-selected="' +
+        (layoutActionLayer === 'scenes' ? 'true' : 'false') + '">' +
+        '<strong>' + esc(t('softPadLayoutLayerScenes', '按场景找')) + '</strong>' +
+        '<em>' + esc(t('softPadLayoutLayerScenesSub', '搜 / 分类完善')) + '</em></button>' +
+        '<button type="button" class="soft-pad-action-layer' +
+        (layoutActionLayer === 'custom' ? ' is-active' : '') +
+        '" data-layout-layer="custom" role="tab" aria-selected="' +
+        (layoutActionLayer === 'custom' ? 'true' : 'false') + '">' +
+        '<strong>' + esc(t('softPadLayoutLayerCustom', '自己录')) + '</strong>' +
+        '<em>' + esc(t('softPadLayoutLayerCustomSub', '补全缺口')) + '</em></button>' +
+        '</div></div>' +
+        '<div class="soft-pad-action-list" data-soft-pad-action-list="1" role="listbox"></div>' +
+        '<p class="codex-pad-mgr__hint soft-pad-action-library__hint" data-soft-pad-action-hint="1"></p>' +
+        '</div>'
+      );
+    }
     return (
       '<div class="soft-pad-action-library" data-soft-pad-action-library="1">' +
       '<div class="soft-pad-action-library__head">' +
@@ -7223,10 +7673,482 @@
     );
   }
 
+  function renderCursorLayoutActionList(listHost, host, m) {
+    var selectedSlot = editDraft && editDraft.mapping && String(editDraft.mapping.id) === String(m.id)
+      ? String(editDraft.slotId || '')
+      : '';
+    var hint = host.querySelector('[data-soft-pad-action-hint]');
+    var html = '';
+
+    if (layoutActionLayer === 'common') {
+      if (hint) {
+        hint.textContent = t(
+          'softPadLayoutCommonHint',
+          '可移出、排序；录制成功会自动加进来。点一条绑到左侧选中键。'
+        );
+      }
+      var commons = getCursorCommonSlotIds(m.codexMicroPad);
+      if (!commons.length) {
+        html =
+          '<p class="soft-pad-action-empty">' +
+          esc(t('softPadLayoutCommonEmpty', '常见还是空的。去「按场景找」或「自己录」加入。')) +
+          '</p>';
+      } else {
+        commons.forEach(function (id, idx) {
+          html += layoutActionRowHtml(id, m, selectedSlot, {
+            commonTag: true,
+            showUnpin: true,
+            showCommonManage: true,
+            showCustomDelete: isCursorCustomSlotId(id),
+            commonIndex: idx,
+            commonCount: commons.length
+          });
+        });
+      }
+      html +=
+        '<button type="button" class="soft-pad-action-common-reset" data-layout-common-reset="1">' +
+        esc(t('softPadLayoutCommonReset', '恢复默认常见')) +
+        '</button>';
+      html +=
+        '<button type="button" class="soft-pad-action-item is-unbind' +
+        (!selectedSlot ? ' is-selected' : '') +
+        '" data-layout-slot="" role="option" aria-selected="' +
+        (!selectedSlot ? 'true' : 'false') +
+        '"><span class="soft-pad-action-item__title">' +
+        esc(t('codexMicroPadUnbound', '未绑定')) +
+        '</span></button>';
+      listHost.innerHTML = html;
+      return;
+    }
+
+    if (layoutActionLayer === 'custom') {
+      if (hint) hint.textContent = '';
+      html =
+        '<div class="soft-pad-action-custom">' +
+        '<p class="soft-pad-action-custom__title">' +
+        esc(t('softPadLayoutCustomRecordTitle', '新建自定义快捷键')) +
+        '</p>' +
+        '<label class="soft-pad-action-custom__field">' +
+        '<span>' +
+        esc(t('softPadLayoutCustomNameLbl', '名称')) +
+        '</span>' +
+        '<input type="text" data-layout-custom-name="1" autocomplete="off" spellcheck="false" placeholder="' +
+        esc(t('softPadLayoutCustomNamePh', '例如：打开终端分屏')) +
+        '" value="' +
+        esc(layoutCustomDraft.name || '') +
+        '" />' +
+        '</label>' +
+        '<label class="soft-pad-action-custom__field">' +
+        '<span>' +
+        esc(t('softPadLayoutFieldPhrases', '文本口令')) +
+        '（' +
+        esc(t('softPadLayoutOptional', '可选')) +
+        '）</span>' +
+        '<input type="text" data-layout-custom-phrases="1" autocomplete="off" spellcheck="false" placeholder="' +
+        esc(t('softPadLayoutCustomPhrasesPh', '例如：终端分屏')) +
+        '" value="' +
+        esc(layoutCustomDraft.phrases || '') +
+        '" />' +
+        '</label>' +
+        '<button type="button" class="codex-micro-pad__btn soft-pad-action-custom__record" data-layout-custom-record="1">' +
+        esc(t('softPadLayoutCustomRecordBtn', '录制按键')) +
+        '</button></div>';
+      listHost.innerHTML = html;
+      return;
+    }
+
+    // scenes — Directory D (left rail) + Option 1 (capability icon list)
+    if (hint) {
+      hint.textContent = t(
+        'softPadLayoutScenesHint',
+        '左侧点场景，右侧选动作；也可直接搜索。'
+      );
+    }
+    var prevSearch = host.querySelector('[data-soft-pad-action-search]');
+    var searchVal = prevSearch ? String(prevSearch.value || '') : '';
+    var byId = {};
+    allSlotOptions(m).forEach(function (o) {
+      byId[String(o.id || '')] = o;
+    });
+    var sceneGroups = CURSOR_SLOT_GROUPS.map(function (g) {
+      var options = [];
+      (g.slots || []).forEach(function (sid) {
+        if (byId[sid]) options.push(byId[sid]);
+      });
+      return {
+        id: g.id,
+        label: cursorSlotGroupLabel(g),
+        rail: cursorSlotGroupRailLabel(g),
+        desc: cursorSlotGroupDesc(g),
+        options: options
+      };
+    }).filter(function (g) {
+      return g.options.length;
+    });
+
+    if (
+      !searchVal &&
+      (!layoutActionSceneId ||
+        !sceneGroups.some(function (g) {
+          return g.id === layoutActionSceneId;
+        }))
+    ) {
+      layoutActionSceneId = sceneGroups.length ? sceneGroups[0].id : '';
+    }
+
+    var html =
+      '<input type="search" class="soft-pad-action-library__search" data-soft-pad-action-search="1" ' +
+      'autocomplete="off" spellcheck="false" placeholder="' +
+      esc(t('softPadLayoutActionSearchIntent', '搜意图，如：说话、Plan、终端…')) +
+      '" />';
+
+    html += '<div class="soft-pad-action-scene-split">';
+    html +=
+      '<div class="soft-pad-action-scene-rail" role="tablist" aria-label="' +
+      esc(t('softPadLayoutScenesRailAria', '场景目录')) +
+      '">';
+    sceneGroups.forEach(function (g) {
+      var on = !searchVal && g.id === layoutActionSceneId;
+      html +=
+        '<button type="button" class="soft-pad-action-scene-rail__btn' +
+        (on ? ' is-active' : '') +
+        '" data-layout-scene="' +
+        esc(g.id) +
+        '" role="tab" aria-selected="' +
+        (on ? 'true' : 'false') +
+        '" title="' +
+        esc(g.label) +
+        '">' +
+        '<span class="soft-pad-action-scene-rail__title">' +
+        esc(g.rail) +
+        '</span>' +
+        '<small>' +
+        (g.options || []).length +
+        esc(t('softPadLayoutSceneItemCount', ' 项')) +
+        '</small></button>';
+    });
+    html += '</div><div class="soft-pad-action-scene-pane" role="tabpanel">';
+
+    if (searchVal) {
+      var q = searchVal.toLowerCase();
+      var hits = [];
+      sceneGroups.forEach(function (g) {
+        (g.options || []).forEach(function (o) {
+          var id = String(o.id || '');
+          var when = layoutActionWhenText(id, m);
+          var hay = (o.label + ' ' + id + ' ' + g.label + ' ' + g.desc + ' ' + when).toLowerCase();
+          if (hay.indexOf(q) >= 0) hits.push(id);
+        });
+      });
+      html +=
+        '<div class="soft-pad-action-scene-meta">' +
+        '<strong>' +
+        esc(t('softPadLayoutSceneSearchMeta', '搜索结果')) +
+        '</strong>' +
+        '<span>' +
+        hits.length +
+        esc(t('softPadLayoutSceneHitCount', ' 条匹配')) +
+        '</span></div>';
+      if (!hits.length) {
+        html +=
+          '<p class="soft-pad-action-empty">' +
+          esc(t('softPadLayoutActionEmpty', '没有匹配的命令')) +
+          '</p>';
+      } else {
+        hits.forEach(function (id) {
+          html += layoutActionRowHtml(id, m, selectedSlot, { showPin: true });
+        });
+      }
+    } else {
+      var scene = sceneGroups.filter(function (g) {
+        return g.id === layoutActionSceneId;
+      })[0];
+      if (scene) {
+        html +=
+          '<div class="soft-pad-action-scene-meta">' +
+          '<strong>' +
+          esc(scene.label) +
+          '</strong>' +
+          (scene.desc ? '<span>' + esc(scene.desc) + '</span>' : '') +
+          '</div>';
+        (scene.options || []).forEach(function (o) {
+          html += layoutActionRowHtml(String(o.id || ''), m, selectedSlot, { showPin: true });
+        });
+      } else {
+        html +=
+          '<p class="soft-pad-action-empty">' +
+          esc(t('softPadLayoutActionEmpty', '没有匹配的命令')) +
+          '</p>';
+      }
+    }
+
+    html += '</div></div>';
+    listHost.innerHTML = html;
+    var sEl = listHost.querySelector('[data-soft-pad-action-search]');
+    if (sEl) {
+      sEl.value = searchVal;
+      if (searchVal) {
+        sEl.focus();
+        try {
+          var len = sEl.value.length;
+          sEl.setSelectionRange(len, len);
+        } catch (_) {}
+      }
+    }
+  }
+
+  function parkLayoutEditorOutsideList(listHost) {
+    var ed = document.querySelector('[data-soft-pad-layout-editor="1"]');
+    if (!ed || !listHost || !listHost.contains(ed)) return ed;
+    var stack = listHost.closest('.soft-pad-layout-stack');
+    if (stack) stack.appendChild(ed);
+    return ed;
+  }
+
+  function placeLayoutEditorUnderSelection(host) {
+    var ed = document.querySelector('[data-soft-pad-layout-editor="1"]');
+    if (!ed || !host) return;
+    var listHost = host.querySelector('[data-soft-pad-action-list]');
+    if (!listHost) return;
+    ed.classList.add('soft-pad-layout-editor--accordion');
+    // 「自己录」新建自定义：藏下手风琴，避免改当前键。
+    if (layoutActionLayer === 'custom') {
+      var stackCustom = listHost.closest('.soft-pad-layout-stack');
+      if (stackCustom && ed.parentNode !== stackCustom) stackCustom.appendChild(ed);
+      ed.hidden = true;
+      return;
+    }
+    var withSlot = listHost.querySelector(
+      '.soft-pad-action-item.is-selected[data-layout-slot]:not([data-layout-slot=""])'
+    );
+    var unbound = listHost.querySelector('.soft-pad-action-item.is-selected.is-unbind');
+    var anchor = withSlot || unbound;
+    if (anchor) {
+      if (anchor.nextElementSibling !== ed) {
+        anchor.insertAdjacentElement('afterend', ed);
+      }
+      ed.hidden = false;
+      try {
+        ed.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } catch (_) {}
+      return;
+    }
+    var stack = listHost.closest('.soft-pad-layout-stack');
+    if (stack && ed.parentNode !== stack) stack.appendChild(ed);
+    ed.hidden = !(editDraft && editDraft.microKeyId);
+  }
+
+  function ensureCustomRecSheet() {
+    var el = document.getElementById('softPadCustomRecSheet');
+    // Drop stale sheet markup from older builds (extra copy / 关闭).
+    if (el && el.querySelector('.soft-pad-custom-rec-sheet__sub')) {
+      try { el.remove(); } catch (_) {}
+      el = null;
+    }
+    if (el) {
+      var cancelBtn = el.querySelector('.soft-pad-custom-rec-sheet__actions [data-custom-rec-cancel]');
+      if (cancelBtn) cancelBtn.textContent = t('softPadLayoutCustomRecCancel', '取消');
+      return el;
+    }
+    el = document.createElement('div');
+    el.id = 'softPadCustomRecSheet';
+    el.className = 'soft-pad-custom-rec-sheet';
+    el.hidden = true;
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML =
+      '<div class="soft-pad-custom-rec-sheet__panel" role="dialog" aria-modal="true">' +
+      '<div class="soft-pad-custom-rec-sheet__head">' +
+      '<button type="button" class="soft-pad-custom-rec-sheet__back" data-custom-rec-cancel="1">‹ ' +
+      esc(t('softPadLayoutCustomRecBack', '返回')) +
+      '</button>' +
+      '<strong>' +
+      esc(t('softPadLayoutCustomRecTitle', '录制快捷键')) +
+      '</strong><span></span></div>' +
+      '<div class="soft-pad-custom-rec-sheet__pulse" data-custom-rec-pulse="1">' +
+      esc(t('softPadLayoutRecordingBtn', '正在听键…')) +
+      '</div>' +
+      '<p class="soft-pad-custom-rec-sheet__copy" data-custom-rec-copy="1"></p>' +
+      '<div class="soft-pad-custom-rec-sheet__chord" data-custom-rec-chord="1">—</div>' +
+      '<div class="soft-pad-custom-rec-sheet__actions">' +
+      '<button type="button" class="codex-micro-pad__btn" data-custom-rec-cancel="1">' +
+      esc(t('softPadLayoutCustomRecCancel', '取消')) +
+      '</button>' +
+      '<button type="button" class="codex-micro-pad__btn soft-pad-custom-rec-sheet__ok" data-custom-rec-ok="1" disabled>' +
+      esc(t('softPadLayoutCustomRecOk', '确认并加入常见')) +
+      '</button></div></div>';
+    document.body.appendChild(el);
+    el.addEventListener('click', function (ev) {
+      if (ev.target === el) closeCustomRecSheet(false);
+      var cancel = ev.target.closest && ev.target.closest('[data-custom-rec-cancel]');
+      if (cancel) {
+        ev.preventDefault();
+        closeCustomRecSheet(false);
+        return;
+      }
+      var ok = ev.target.closest && ev.target.closest('[data-custom-rec-ok]');
+      if (ok && !ok.disabled) {
+        ev.preventDefault();
+        closeCustomRecSheet(true);
+      }
+    });
+    return el;
+  }
+
+  function paintCustomRecSheet() {
+    var el = ensureCustomRecSheet();
+    var pulse = el.querySelector('[data-custom-rec-pulse]');
+    var copy = el.querySelector('[data-custom-rec-copy]');
+    var chordEl = el.querySelector('[data-custom-rec-chord]');
+    var ok = el.querySelector('[data-custom-rec-ok]');
+    var isKey = layoutRecSheetMode === 'layoutKey';
+    if (ok) {
+      ok.textContent = isKey
+        ? t('softPadLayoutCustomRecOkKey', '确认')
+        : t('softPadLayoutCustomRecOk', '确认并加入常见');
+    }
+    if (layoutCustomRecChord) {
+      if (pulse) {
+        pulse.classList.add('is-done');
+        pulse.textContent = t('softPadLayoutCustomRecGot', '已收到');
+      }
+      if (copy) {
+        copy.textContent = isKey
+          ? t('softPadLayoutCustomRecConfirmKey', '确认后写入这个键')
+          : t('softPadLayoutCustomRecConfirm', '确认后将自动加入常见');
+      }
+      if (chordEl) chordEl.textContent = friendlyChord(layoutCustomRecChord) || layoutCustomRecChord;
+      if (ok) ok.disabled = false;
+    } else {
+      if (pulse) {
+        pulse.classList.remove('is-done');
+        pulse.textContent = t('softPadLayoutRecordingBtn', '正在听键…');
+      }
+      if (copy) copy.textContent = t('softPadLayoutCustomRecListen', '请按下 Cursor 里要用的组合键');
+      if (chordEl) chordEl.textContent = '—';
+      if (ok) ok.disabled = true;
+    }
+  }
+
+  function closeCustomRecSheet(apply) {
+    var el = document.getElementById('softPadCustomRecSheet');
+    var rec = global.OneToneMappingRecording;
+    if (rec && rec.mode && rec.mode() !== 'none' && rec.cancel) {
+      try { rec.cancel(); } catch (_) {}
+    }
+    layoutCustomRecListening = false;
+    if (el) {
+      el.hidden = true;
+      el.setAttribute('aria-hidden', 'true');
+    }
+    var mode = layoutRecSheetMode;
+    layoutRecSheetMode = 'custom';
+    if (!apply || !layoutCustomRecChord) {
+      layoutCustomRecChord = '';
+      return;
+    }
+    var chord = layoutCustomRecChord;
+    layoutCustomRecChord = '';
+    if (mode === 'layoutKey') {
+      if (!editDraft) return;
+      editDraft.chord = String(chord || '').trim();
+      syncLayoutKeyFormFields();
+      commitEditKeycapDraft({ keepOpen: true, quiet: true });
+      toast(t('softPadLayoutRecordUpdatedToast', '快捷键已更新'));
+      return;
+    }
+    var Cap = global.OneToneAgentCapabilityUi;
+    var m =
+      (editDraft && editDraft.mapping) ||
+      (Cap && Cap.activeCodexMapping && Cap.activeCodexMapping());
+    var entry = createCustomShortcut(m, {
+      name: layoutCustomDraft.name,
+      phrases: layoutCustomDraft.phrases,
+      chord: chord
+    });
+    if (!entry) {
+      toast(t('softPadLayoutCustomSaveFail', '没能保存，请检查名称后重试'));
+      return;
+    }
+    layoutCustomDraft = { name: '', phrases: '' };
+    layoutActionLayer = 'common';
+    toast(t('softPadLayoutCustomSavedToast', '已加入常见'));
+    if (m) refreshLayoutActionLibrary(m);
+  }
+
+  function beginRecSheetListen(m) {
+    var rec = global.OneToneMappingRecording;
+    if (!rec || !rec.startAgentBinding) {
+      toast(t('codexMicroPadRecordBusy', '请先结束按键录制'));
+      return false;
+    }
+    if (rec.mode && rec.mode() !== 'none') {
+      toast(t('codexMicroPadRecordBusy', '请先结束按键录制'));
+      return false;
+    }
+    if (!m || !m.id) {
+      toast(t('softPadLayoutPickKey', '点左侧键盘选一个键开始改'));
+      return false;
+    }
+    layoutCustomRecChord = '';
+    layoutCustomRecListening = true;
+    var el = ensureCustomRecSheet();
+    el.hidden = false;
+    el.setAttribute('aria-hidden', 'false');
+    paintCustomRecSheet();
+    var started = rec.startAgentBinding(m.id, {
+      onDone: function (chord) {
+        layoutCustomRecListening = false;
+        layoutCustomRecChord = String(chord || '').trim();
+        paintCustomRecSheet();
+      },
+      onCancel: function () {
+        layoutCustomRecListening = false;
+        if (!layoutCustomRecChord) closeCustomRecSheet(false);
+      }
+    });
+    if (started && typeof started.then === 'function') {
+      started.then(function (ok) {
+        if (ok) return;
+        layoutCustomRecListening = false;
+        closeCustomRecSheet(false);
+        toast(t('softPadLayoutRecordFailed', '没能开始录制，请再试一次'));
+      });
+    }
+    return true;
+  }
+
+  function openCustomRecSheet(m) {
+    var nameEl = document.querySelector('[data-layout-custom-name]');
+    var phrasesEl = document.querySelector('[data-layout-custom-phrases]');
+    if (nameEl) layoutCustomDraft.name = String(nameEl.value || '');
+    if (phrasesEl) layoutCustomDraft.phrases = String(phrasesEl.value || '');
+    if (!String(layoutCustomDraft.name || '').trim()) {
+      toast(t('softPadLayoutCustomNeedName', '请先填写名称'));
+      if (nameEl) nameEl.focus();
+      return;
+    }
+    layoutRecSheetMode = 'custom';
+    beginRecSheetListen(m);
+  }
+
   function renderLayoutActionList(host, m) {
     if (!host || !m) return;
     var listHost = host.querySelector('[data-soft-pad-action-list]');
     if (!listHost) return;
+
+    parkLayoutEditorOutsideList(listHost);
+
+    if (isCursorSoftPadMapping(m)) {
+      host.querySelectorAll('[data-layout-layer]').forEach(function (btn) {
+        var on = btn.getAttribute('data-layout-layer') === layoutActionLayer;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      renderCursorLayoutActionList(listHost, host, m);
+      placeLayoutEditorUnderSelection(host);
+      return;
+    }
+
     var searchEl = host.querySelector('[data-soft-pad-action-search]');
     var query = searchEl ? String(searchEl.value || '') : '';
     var groups = filterLayoutActionGroups(slotOptionsGrouped(m), query);
@@ -7241,18 +8163,14 @@
       esc(t('codexMicroPadUnbound', '未绑定')) + '</span></button>';
     var itemCount = 0;
     groups.forEach(function (g) {
-      if (g.label && isCursorSoftPadMapping(m)) {
+      if (g.label) {
         html += '<p class="soft-pad-action-group" role="presentation">' + esc(g.label) + '</p>';
       }
       (g.options || []).forEach(function (o) {
         var id = String(o.id || '');
         if (!id) return;
         itemCount++;
-        var on = selectedSlot === id;
-        html += '<button type="button" class="soft-pad-action-item' + (on ? ' is-selected' : '') +
-          '" data-layout-slot="' + esc(id) + '" role="option" aria-selected="' + (on ? 'true' : 'false') + '"' +
-          (o.tip ? ' title="' + esc(o.tip) + '"' : '') + '>' +
-          '<span class="soft-pad-action-item__title">' + esc(o.label || id) + '</span></button>';
+        html += layoutActionRowHtml(id, m, selectedSlot, {});
       });
     });
     if (query && !itemCount) {
@@ -7260,23 +8178,89 @@
         esc(t('softPadLayoutActionEmpty', '没有匹配的命令')) + '</p>';
     }
     listHost.innerHTML = html;
+    placeLayoutEditorUnderSelection(host);
   }
 
   function bindLayoutActionLibrary(host, m) {
     if (!host || !m) return;
-    var search = host.querySelector('[data-soft-pad-action-search]');
-    if (search) {
-      search.placeholder = t('softPadLayoutActionSearch', '搜索命令…');
-      if (!search.__softPadActionSearchBound) {
-        search.__softPadActionSearchBound = true;
-        search.addEventListener('input', function () {
-          renderLayoutActionList(host, m);
-        });
-      }
-    }
     if (!host.__softPadActionClickBound) {
       host.__softPadActionClickBound = true;
       host.addEventListener('click', function (ev) {
+        var layerBtn = ev.target.closest && ev.target.closest('[data-layout-layer]');
+        if (layerBtn && host.contains(layerBtn)) {
+          layoutActionLayer = layerBtn.getAttribute('data-layout-layer') || 'common';
+          layoutActionSceneId = '';
+          renderLayoutActionList(host, m);
+          return;
+        }
+        var sceneBtn = ev.target.closest && ev.target.closest('[data-layout-scene]');
+        if (sceneBtn && host.contains(sceneBtn)) {
+          layoutActionSceneId = sceneBtn.getAttribute('data-layout-scene') || '';
+          var sClear = host.querySelector('[data-soft-pad-action-search]');
+          if (sClear) sClear.value = '';
+          renderLayoutActionList(host, m);
+          return;
+        }
+        var pinBtn = ev.target.closest && ev.target.closest('[data-layout-pin]');
+        if (pinBtn && host.contains(pinBtn)) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          var pinId = pinBtn.getAttribute('data-layout-pin') || '';
+          if (getCursorCommonSlotIds(m.codexMicroPad).indexOf(pinId) >= 0) {
+            unpinCursorCommonSlot(m, pinId);
+            toast(t('softPadLayoutUnpinnedToast', '已移出常见'));
+          } else if (pinCursorCommonSlot(m, pinId)) {
+            toast(t('softPadLayoutPinnedToast', '已加入「我的常见」'));
+          }
+          renderLayoutActionList(host, m);
+          return;
+        }
+        var unpinBtn = ev.target.closest && ev.target.closest('[data-layout-unpin]');
+        if (unpinBtn && host.contains(unpinBtn)) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          unpinCursorCommonSlot(m, unpinBtn.getAttribute('data-layout-unpin') || '');
+          toast(t('softPadLayoutUnpinnedToast', '已移出常见'));
+          renderLayoutActionList(host, m);
+          return;
+        }
+        var moveBtn = ev.target.closest && ev.target.closest('[data-layout-common-move]');
+        if (moveBtn && host.contains(moveBtn)) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (moveBtn.disabled) return;
+          moveCursorCommonSlot(
+            m,
+            moveBtn.getAttribute('data-layout-common-id') || '',
+            moveBtn.getAttribute('data-layout-common-move') || ''
+          );
+          renderLayoutActionList(host, m);
+          return;
+        }
+        var resetBtn = ev.target.closest && ev.target.closest('[data-layout-common-reset]');
+        if (resetBtn && host.contains(resetBtn)) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          resetCursorCommonSlots(m);
+          toast(t('softPadLayoutCommonResetToast', '已恢复默认常见'));
+          renderLayoutActionList(host, m);
+          return;
+        }
+        var delCustom = ev.target.closest && ev.target.closest('[data-layout-custom-delete]');
+        if (delCustom && host.contains(delCustom)) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          deleteCustomShortcut(m, delCustom.getAttribute('data-layout-custom-delete') || '');
+          toast(t('softPadLayoutCustomDeletedToast', '已删除自定义快捷键'));
+          renderLayoutActionList(host, m);
+          return;
+        }
+        var customRec = ev.target.closest && ev.target.closest('[data-layout-custom-record]');
+        if (customRec && host.contains(customRec)) {
+          ev.preventDefault();
+          openCustomRecSheet(m);
+          return;
+        }
         var btn = ev.target.closest && ev.target.closest('[data-layout-slot]');
         if (!btn || !host.contains(btn)) return;
         if (!editDraft) {
@@ -7286,6 +8270,25 @@
         ev.preventDefault();
         onLayoutActionPick(btn.getAttribute('data-layout-slot') || '');
       });
+      host.addEventListener('input', function (ev) {
+        var tEl = ev.target;
+        if (!tEl || !tEl.getAttribute) return;
+        if (tEl.getAttribute('data-layout-custom-name') === '1') {
+          layoutCustomDraft.name = String(tEl.value || '');
+          return;
+        }
+        if (tEl.getAttribute('data-layout-custom-phrases') === '1') {
+          layoutCustomDraft.phrases = String(tEl.value || '');
+          return;
+        }
+        if (tEl.getAttribute('data-soft-pad-action-search') !== '1') return;
+        layoutActionSceneId = '';
+        renderLayoutActionList(host, m);
+      });
+    }
+    var search = host.querySelector('[data-soft-pad-action-search]');
+    if (search && !isCursorSoftPadMapping(m)) {
+      search.placeholder = t('softPadLayoutActionSearch', '搜索命令…');
     }
     renderLayoutActionList(host, m);
   }
@@ -7338,30 +8341,9 @@
       softPadExperienceChrome('layout', m) +
       '<div class="soft-pad-layout-shell">' +
       '<div class="soft-pad-layout-stack">' +
-      buildSoftPadLayoutActionLibraryHtml() +
+      buildSoftPadLayoutActionLibraryHtml(m) +
       '<div class="soft-pad-layout-editor" data-soft-pad-layout-editor="1" hidden></div>' +
       '</div>' +
-      '<p class="codex-pad-mgr__hint soft-pad-action-drag-hint">' +
-      esc(t('softPadLayoutActionDragHint', '可拖拽到左侧键位（即将支持）')) + '</p>' +
-      '<details class="soft-pad-layout-actions" data-soft-pad-layout-tools="1">' +
-      '<summary class="soft-pad-layout-actions-label">' +
-      esc(t('softPadLayoutActionsLbl', '批量操作')) +
-      '</summary>' +
-      '<div class="codex-pad-mgr__foot soft-pad-layout-foot">' +
-      '<button type="button" class="codex-micro-pad__btn" data-act="restore">' +
-      esc(t('codexMicroPadRestore', '恢复默认')) + '</button>' +
-      '<button type="button" class="codex-micro-pad__btn" data-act="export">' +
-      esc(t('codexMicroPadExport', '导出')) + '</button>' +
-      '<button type="button" class="codex-micro-pad__btn" data-act="import">' +
-      esc(t('codexMicroPadImport', '导入')) + '</button>' +
-      '<button type="button" class="codex-micro-pad__btn is-danger" data-act="clear">' +
-      esc(t('codexMicroPadClear', '清空所有映射')) + '</button>' +
-      '<input type="file" accept="application/json,.json" data-act="importFile" hidden />' +
-      '</div>' +
-      '<p class="codex-pad-mgr__hint soft-pad-layout-clear-hint">' +
-      esc(t('softPadLayoutClearHint', '清空只去掉按键能力绑定，不会关闭滚轮/摇杆基础增强。')) +
-      '</p>' +
-      '</details>' +
       '</div>';
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
     container.setAttribute('data-soft-pad-panel', 'layout');
@@ -10731,6 +11713,18 @@
     var id = String(slotId || '').trim();
     if (!m || !id || !draft) return;
     if (!Array.isArray(m.agentBindings)) m.agentBindings = [];
+    if (isCursorCustomSlotId(id)) {
+      var cs = findCustomShortcut(m.codexMicroPad, id);
+      if (!cs) return;
+      var chordC = String(draft.chord != null ? draft.chord : cs.chord || '').trim();
+      var phrasesC = String(draft.phrases != null ? draft.phrases : cs.phrases || '').trim();
+      var scopeC = normalizeActivationScope(draft.activationScope || cs.activationScope);
+      cs.chord = chordC;
+      cs.phrases = phrasesC;
+      cs.activationScope = scopeC;
+      upsertCustomShortcutBindings(m, cs);
+      return;
+    }
     ensureAgentKeyBinding(m, id);
     var scope = normalizeActivationScope(draft.activationScope);
     var chord = String(draft.chord != null ? draft.chord : '').trim();
@@ -10742,7 +11736,6 @@
     if (keyB) {
       keyB.activationScope = scope;
       keyB.enabled = true;
-      // Keep ensureAgentKeyBinding's default chord when user didn't record.
       if (chord) keyB.triggerBinding = chord;
     }
     var voiceB = agentBindingFor(m, id, 'voice');
@@ -10774,11 +11767,6 @@
     draft.activationScope = fields.activationScope;
   }
 
-  function cursorSlotGroupLabel(g) {
-    if (!g) return '';
-    return lang().indexOf('en') === 0 ? (g.labelEn || g.labelZh) : (g.labelZh || g.labelEn);
-  }
-
   /** Grouped Cursor Soft Pad options; flat list for other Soft Pads. */
   function slotOptionsGrouped(m) {
     var opts = allSlotOptions(m);
@@ -10800,7 +11788,12 @@
         list.push(o);
       });
       if (list.length) {
-        groups.push({ id: g.id, label: cursorSlotGroupLabel(g), options: list });
+        groups.push({
+          id: g.id,
+          label: cursorSlotGroupLabel(g),
+          desc: cursorSlotGroupDesc(g),
+          options: list
+        });
       }
     });
     var orphan = [];
@@ -10846,6 +11839,17 @@
     sel.value = String(currentId || '');
   }
 
+  function syncLayoutFocusSegments(scope) {
+    var host = document.querySelector('.soft-pad-layout-form__segment');
+    if (!host) return;
+    var val = normalizeActivationScope(scope);
+    host.querySelectorAll('[data-layout-focus]').forEach(function (btn) {
+      var on = btn.getAttribute('data-layout-focus') === val;
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
   function syncLayoutKeyFormFields() {
     if (!editDraft) return;
     var chordEl = document.getElementById('layoutKeyChord');
@@ -10853,54 +11857,49 @@
     var focusEl = document.getElementById('layoutKeyFocus');
     var recBtn = document.getElementById('layoutKeyRecord');
     var bound = !!String(editDraft.slotId || '').trim();
+    var scope = normalizeActivationScope(editDraft.activationScope);
     if (chordEl) {
-      chordEl.value = bound ? friendlyChord(editDraft.chord || '') : '';
-      chordEl.disabled = !bound;
+      var chordTxt = bound ? (friendlyChord(editDraft.chord || '') || '—') : '—';
+      if ('value' in chordEl && chordEl.tagName === 'INPUT') chordEl.value = bound ? friendlyChord(editDraft.chord || '') : '';
+      else chordEl.textContent = chordTxt;
+      chordEl.classList.toggle('is-empty', !bound || !String(editDraft.chord || '').trim());
     }
     if (phrasesEl) {
       phrasesEl.value = bound ? String(editDraft.phrases || '') : '';
       phrasesEl.disabled = !bound;
     }
     if (focusEl) {
-      focusEl.value = normalizeActivationScope(editDraft.activationScope);
+      focusEl.value = scope;
       focusEl.disabled = !bound;
     }
+    syncLayoutFocusSegments(scope);
+    var seg = document.querySelector('.soft-pad-layout-form__segment');
+    if (seg) {
+      seg.querySelectorAll('[data-layout-focus]').forEach(function (btn) {
+        btn.disabled = !bound;
+      });
+    }
     if (recBtn) recBtn.disabled = !bound;
+    var actionLbl = bound
+      ? layoutSlotLabel(editDraft.mapping, editDraft.slotId)
+      : t('codexMicroPadUnbound', '未绑定');
     var curEl = document.getElementById('layoutKeyCurrentAction');
-    if (curEl) {
-      curEl.textContent = bound
-        ? layoutSlotLabel(editDraft.mapping, editDraft.slotId)
-        : t('codexMicroPadUnbound', '未绑定');
-    }
-    var badge = document.getElementById('microHwEditBadge');
-    if (badge) {
-      badge.textContent = bound
-        ? t('softPadLayoutFormLive', '生效中')
-        : t('codexMicroPadUnbound', '未绑定');
-    }
+    if (curEl) curEl.textContent = actionLbl;
+    var subEl = document.getElementById('microHwEditSub');
+    if (subEl && editDraft.mode === 'inline') subEl.textContent = actionLbl;
   }
 
-  function startRecordLayoutChord(btn) {
-    if (!editDraft || !String(editDraft.slotId || '').trim()) return;
-    var rec = global.OneToneMappingRecording;
-    if (!rec || !rec.startAgentBinding) {
-      toast(t('codexMicroPadRecordBusy', '请先结束按键录制'));
+  function startRecordLayoutChord() {
+    if (!editDraft) {
+      toast(t('softPadLayoutPickKey', '点左侧键盘选一个键开始改'));
       return;
     }
-    if (rec.mode && rec.mode() !== 'none') return;
-    if (btn) btn.classList.add('is-recording');
-    rec.startAgentBinding(editDraft.mapping && editDraft.mapping.id, {
-      onDone: function (chord) {
-        if (btn) btn.classList.remove('is-recording');
-        if (!editDraft) return;
-        editDraft.chord = String(chord || '').trim();
-        syncLayoutKeyFormFields();
-        commitEditKeycapDraft({ keepOpen: true, quiet: true });
-      },
-      onCancel: function () {
-        if (btn) btn.classList.remove('is-recording');
-      }
-    });
+    if (!String(editDraft.slotId || '').trim()) {
+      toast(t('softPadLayoutCustomNeedSlot', '请先在「我的常见」或「按场景找」选一个动作。'));
+      return;
+    }
+    layoutRecSheetMode = 'layoutKey';
+    if (!beginRecSheetListen(editDraft.mapping)) layoutRecSheetMode = 'custom';
   }
 
   function bindLayoutKeyForm(host, m) {
@@ -10916,7 +11915,19 @@
       };
     }
     var focusEl = document.getElementById('layoutKeyFocus');
-    if (focusEl) {
+    var seg = document.querySelector('.soft-pad-layout-form__segment');
+    if (seg) {
+      seg.querySelectorAll('[data-layout-focus]').forEach(function (btn) {
+        btn.onclick = function () {
+          if (!editDraft || btn.disabled) return;
+          var val = normalizeActivationScope(btn.getAttribute('data-layout-focus'));
+          editDraft.activationScope = val;
+          if (focusEl) focusEl.value = val;
+          syncLayoutFocusSegments(val);
+          commitEditKeycapDraft({ keepOpen: true, quiet: true });
+        };
+      });
+    } else if (focusEl) {
       focusEl.onchange = function () {
         if (!editDraft) return;
         editDraft.activationScope = normalizeActivationScope(focusEl.value);
@@ -10925,8 +11936,8 @@
     }
     var recBtn = document.getElementById('layoutKeyRecord');
     if (recBtn) {
-      recBtn.textContent = t('softPadLayoutRecordChord', '录制键位');
-      recBtn.onclick = function () { startRecordLayoutChord(recBtn); };
+      recBtn.textContent = t('softPadLayoutRecordChord', '录制');
+      recBtn.onclick = function () { startRecordLayoutChord(); };
     }
   }
 
@@ -10937,37 +11948,44 @@
       '<div>' +
       '<p class="soft-pad-layout-form-title" id="microHwEditTitle"></p>' +
       '<p class="soft-pad-layout-form-sub" id="microHwEditSub"></p>' +
+      '<span id="layoutKeyCurrentAction" hidden></span>' +
       '</div>' +
-      '<span class="soft-pad-layout-form-badge" id="microHwEditBadge"></span>' +
       editKeycapCloseBtnHtml() +
       '</div>' +
-      '<p class="soft-pad-layout-form-hint" id="microHwEditHint"></p>' +
       '<div class="soft-pad-layout-form">' +
-      '<div class="soft-pad-layout-form__field soft-pad-layout-form__current">' +
-      '<span>' + esc(t('softPadLayoutFieldCurrent', '当前动作')) + '</span>' +
-      '<span class="soft-pad-layout-form__current-badge" id="layoutKeyCurrentAction">' +
-      esc(t('codexMicroPadUnbound', '未绑定')) + '</span>' +
-      '</div>' +
-      '<label class="soft-pad-layout-form__field">' +
-      '<span>' + esc(t('softPadLayoutFieldChord', '快捷键配置')) + '</span>' +
-      '<span class="soft-pad-layout-form__chord-row">' +
-      '<input id="layoutKeyChord" type="text" readonly autocomplete="off" />' +
-      '<button type="button" class="codex-micro-pad__btn" id="layoutKeyRecord"></button>' +
+      '<div class="soft-pad-layout-form__field soft-pad-layout-form__chord">' +
+      '<span class="soft-pad-layout-form__lbl">' +
+      esc(t('softPadLayoutFieldChord', '快捷键')) +
       '</span>' +
-      '</label>' +
+      '<div class="soft-pad-layout-form__chord-row">' +
+      '<div class="soft-pad-layout-form__chord-value is-empty" id="layoutKeyChord">—</div>' +
+      '<button type="button" class="codex-micro-pad__btn soft-pad-layout-form__record" id="layoutKeyRecord">' +
+      esc(t('softPadLayoutRecordChord', '录制')) +
+      '</button>' +
+      '</div></div>' +
       '<label class="soft-pad-layout-form__field">' +
-      '<span>' + esc(t('softPadLayoutFieldPhrases', '文本口令')) + '</span>' +
+      '<span class="soft-pad-layout-form__lbl">' +
+      esc(t('softPadLayoutFieldPhrases', '文本口令')) +
+      '（' +
+      esc(t('softPadLayoutOptional', '可选')) +
+      '）</span>' +
       '<input id="layoutKeyPhrases" type="text" autocomplete="off" />' +
       '</label>' +
-      '<label class="soft-pad-layout-form__field">' +
-      '<span>' + esc(t('softPadLayoutFieldFocus', '窗口聚焦')) + '</span>' +
-      '<select id="layoutKeyFocus">' +
-      '<option value="foregroundApp">' +
-      esc(t('softPadLayoutFocusEditor', '送到当前正在用的编辑器')) + '</option>' +
-      '<option value="global">' +
-      esc(t('softPadLayoutFocusGlobal', '不抢焦点（全局）')) + '</option>' +
-      '</select>' +
-      '</label>' +
+      '<div class="soft-pad-layout-form__field soft-pad-layout-form__focus">' +
+      '<span class="soft-pad-layout-form__lbl">' +
+      esc(t('softPadLayoutFieldFocus', '送到哪里')) +
+      '</span>' +
+      '<input id="layoutKeyFocus" type="hidden" value="foregroundApp" />' +
+      '<div class="soft-pad-layout-form__segment" role="group" aria-label="' +
+      esc(t('softPadLayoutFieldFocus', '送到哪里')) +
+      '">' +
+      '<button type="button" class="soft-pad-layout-form__seg is-active" data-layout-focus="foregroundApp" aria-pressed="true">' +
+      esc(t('softPadLayoutFocusEditor', '正在用的编辑器')) +
+      '</button>' +
+      '<button type="button" class="soft-pad-layout-form__seg" data-layout-focus="global" aria-pressed="false">' +
+      esc(t('softPadLayoutFocusGlobal', '不抢焦点')) +
+      '</button>' +
+      '</div></div>' +
       '</div>' +
       '<select id="microHwEditSlot" class="micro-hw-modal__slot-hidden" aria-hidden="true" tabindex="-1" hidden></select>' +
       '</div>'
@@ -11316,24 +12334,19 @@
     var keyLabel = humanMicroKeyLabel(microKeyId);
     var titleEl = document.getElementById('microHwEditTitle');
     var subEl = document.getElementById('microHwEditSub');
-    var badgeEl = document.getElementById('microHwEditBadge');
     if (mode === 'inline') {
-      var appName = String((m && (m.name || m.appTargetId)) || 'Soft Pad');
       if (titleEl) {
-        titleEl.textContent = t('softPadLayoutFormTitle', '{app} · [{key}] 映射参数')
-          .replace('{app}', appName)
-          .replace('{key}', keyLabel);
+        titleEl.textContent = t('softPadLayoutFormTitle', '{key}').replace('{key}', keyLabel);
       }
-      if (subEl) subEl.textContent = '';
-      var hintEl = document.getElementById('microHwEditHint');
-      if (hintEl) {
-        hintEl.textContent = t(
-          'softPadLayoutFormHint',
-          '设置敲击此键时分发的快捷键、口令与窗口聚焦。'
-        );
+      if (subEl) {
+        subEl.textContent = String(editDraft.slotId || '').trim()
+          ? layoutSlotLabel(m, editDraft.slotId)
+          : t('codexMicroPadUnbound', '未绑定');
       }
       bindLayoutKeyForm(host, m);
       refreshLayoutActionLibrary(m);
+      var libHost = document.querySelector('[data-soft-pad-action-library="1"]');
+      if (libHost) placeLayoutEditorUnderSelection(libHost);
       host.querySelectorAll('[data-act="close"]').forEach(function (btn) {
         if (btn.__softPadCloseBound) return;
         btn.__softPadCloseBound = true;
@@ -11347,6 +12360,7 @@
       } catch (_) {}
       return;
     }
+    var badgeEl = document.getElementById('microHwEditBadge');
     if (badgeEl) {
       badgeEl.textContent = t('softPadLayoutEditingBadge', '正在编辑');
     }
@@ -11695,9 +12709,15 @@
 
   /** Ensure Soft Pad can fire: pad routes need a matching agentBindings key row. */
   function ensureAgentKeyBinding(m, slotId) {
-    var A = agent();
     var id = String(slotId || '').trim();
-    if (!m || !id || !A || !A.slotById) return;
+    if (!m || !id) return;
+    if (isCursorCustomSlotId(id)) {
+      var cs = findCustomShortcut(m.codexMicroPad, id);
+      if (cs) upsertCustomShortcutBindings(m, cs);
+      return;
+    }
+    var A = agent();
+    if (!A || !A.slotById) return;
     var slot = A.slotById(id);
     if (!slot) return;
     if (!Array.isArray(m.agentBindings)) m.agentBindings = [];
@@ -11718,11 +12738,9 @@
       if (!String(found.triggerBinding || '').trim() && chord) {
         found.triggerBinding = chord;
       }
-      // Cursor Soft Pad keys are hotkeys, never Codex slash insertOnly.
       if (isCursorSoftPadMapping(m)) {
         found.executionMode = 'execute';
       }
-      // Migrate legacy Cursor Plan chord off Ctrl+Alt+P (screenshot conflict).
       if (
         isCursorSoftPadMapping(m) &&
         id === 'plan' &&
@@ -12222,6 +13240,9 @@
     CURSOR_SOFT_PAD_SLOT_IDS: CURSOR_SOFT_PAD_SLOT_IDS,
     VSCODE_SOFT_PAD_SLOT_IDS: VSCODE_SOFT_PAD_SLOT_IDS,
     CURSOR_SLOT_GROUPS: CURSOR_SLOT_GROUPS,
+    CURSOR_COMMON_DEFAULT_SLOTS: CURSOR_COMMON_DEFAULT_SLOTS,
+    isCursorCustomSlotId: isCursorCustomSlotId,
+    createCustomShortcut: createCustomShortcut,
     SLOT_DEFAULT_ICON: SLOT_DEFAULT_ICON,
     SLOT_WEAK_LEGACY_ICON: SLOT_WEAK_LEGACY_ICON,
     ICON_SVG: ICON_SVG,

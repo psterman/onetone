@@ -1571,6 +1571,12 @@ pub struct CodexMicroPadConfig {
     pub skin: String,
     #[serde(default)]
     pub keys: Vec<CodexMicroPadKeyRoute>,
+    /// Cursor Soft Pad「我的常见」slot ids. `None` = use FE defaults; `Some([])` = user cleared.
+    #[serde(default, rename = "commonSlotIds", skip_serializing_if = "Option::is_none")]
+    pub common_slot_ids: Option<Vec<String>>,
+    /// User-created Soft Pad shortcuts (`custom_*`), shown in「我的常见」; not Soft Pad key routes by themselves.
+    #[serde(default, rename = "customShortcuts", skip_serializing_if = "Vec::is_empty")]
+    pub custom_shortcuts: Vec<CodexMicroPadCustomShortcut>,
     /// User-pinned lane preferences (not runtime slot assignments).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pinned_lane_preferences: Vec<crate::soft_pad_purpose::LaneSlotPreference>,
@@ -1618,10 +1624,29 @@ impl Default for CodexMicroPadConfig {
             presentation: default_codex_micro_presentation(),
             skin: default_codex_micro_skin(),
             keys: Vec::new(),
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
         }
     }
+}
+
+/// Soft Pad user-recorded shortcut (name + chord + optional voice phrase).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexMicroPadCustomShortcut {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub chord: String,
+    #[serde(default)]
+    pub phrases: String,
+    /// "global" | "foregroundApp"
+    #[serde(default)]
+    pub activation_scope: String,
 }
 
 fn default_codex_micro_presentation() -> String {
