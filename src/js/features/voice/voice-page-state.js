@@ -1,7 +1,7 @@
 (function(global){
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
-  var STEPS=['wake','recognize','send'];
+  var STEPS=['wake','finish'];
   var activeStep='wake';
   var stepChangeHook=null;
 
@@ -9,11 +9,17 @@
     return $('settingsPanelVoiceWake');
   }
 
+  function normalizeStep(step){
+    step=String(step||'').trim();
+    if(step==='recognize'||step==='send') return 'finish';
+    if(STEPS.indexOf(step)<0) return 'wake';
+    return step;
+  }
+
   function expandStepDetails(step){
     var map={
       wake:[],
-      recognize:[],
-      send:[]
+      finish:[]
     };
     (map[step]||[]).forEach(function(id){
       var el=$(id);
@@ -26,22 +32,22 @@
     if(!p) return;
     p.classList.add('voice-page-v2','voice-page-desk');
     p.classList.remove('voice-page-parallel');
-    STEPS.forEach(function(s){
-      p.classList.toggle('is-step-'+s,s===activeStep);
+    ['wake','finish','recognize','send'].forEach(function(s){
+      p.classList.toggle('is-step-'+s,s===activeStep||(activeStep==='finish'&&(s==='recognize'||s==='send')));
     });
     p.querySelectorAll('[data-voice-step]').forEach(function(el){
       el.classList.toggle('is-active-step',el.getAttribute('data-voice-step')===activeStep);
     });
-    p.querySelectorAll('[data-voice-subpage="wake"],[data-voice-subpage="recognize"],[data-voice-subpage="send"]').forEach(function(el){
+    p.querySelectorAll('[data-voice-subpage="wake"],[data-voice-subpage="finish"],[data-voice-subpage="recognize"],[data-voice-subpage="send"]').forEach(function(el){
       if(!el.classList.contains('voice-flow-step')) return;
-      el.classList.toggle('is-active-step',el.getAttribute('data-voice-subpage')===activeStep);
+      var sub=el.getAttribute('data-voice-subpage');
+      var on=sub===activeStep||(activeStep==='finish'&&(sub==='recognize'||sub==='send'||sub==='finish'));
+      el.classList.toggle('is-active-step',on);
     });
     expandStepDetails(activeStep);
     var adv=$('voiceCoreAdvanced');
-    if(adv){
-      if(activeStep==='send') adv.open=true;
-      else if(activeStep==='wake') adv.open=false;
-    }
+    /* Q42 finish = outcomes only; keep engine advanced closed (wake already CSS-hides it). */
+    if(adv) adv.open=false;
     if(global.OneToneVoicePageNav&&global.OneToneVoicePageNav.syncActive){
       global.OneToneVoicePageNav.syncActive(activeStep);
     }
@@ -67,8 +73,7 @@
   }
 
   function setStep(step,opts){
-    step=String(step||'').trim();
-    if(STEPS.indexOf(step)<0) step='wake';
+    step=normalizeStep(step);
     var changed=activeStep!==step;
     activeStep=step;
     applyStepToDom();
@@ -80,19 +85,19 @@
     }
   }
 
-  function registerStepHook(fn){
-    stepChangeHook=fn;
-  }
+  function getStep(){ return activeStep; }
 
-  function init(){
-    applyStepToDom();
-  }
+  function registerStepHook(fn){ stepChangeHook=typeof fn==='function'?fn:null; }
+
+  function init(){ applyStepToDom(); }
 
   global.OneToneVoicePageState={
+    STEPS:STEPS,
     setStep:setStep,
-    getStep:function(){ return activeStep; },
+    getStep:getStep,
+    applyStepToDom:applyStepToDom,
     registerStepHook:registerStepHook,
     init:init,
-    STEPS:STEPS
+    normalizeStep:normalizeStep
   };
 })((typeof window!=='undefined')?window:globalThis);

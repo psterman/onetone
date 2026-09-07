@@ -474,6 +474,7 @@ mod tests {
             label: String::new(),
             group: "默认".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
+            voice_allow_bring_up_target: false,
             codex_micro_pad: Some(default_codex_micro_pad()),
             trigger_key: "F1".into(),
             target_key: "RAlt".into(),

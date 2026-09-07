@@ -14,6 +14,9 @@ pub fn can_enter_dictating(cfg: &VoiceConfig) -> bool {
         && (cfg.voice_vosk.enabled || cfg.voice_sapi.enabled || cfg.voice_kws.enabled)
 }
 
+/// R7 / Q15: global (empty appTargetId) never refuses; app scene refuses when allow is off and FG ≠ target.
+pub use onetone_logic::voice_wake_gate::should_refuse_wake_wrong_fg;
+
 pub fn session_state(state: &AppState) -> String {
     state.voice_session_state.lock().clone()
 }
@@ -767,6 +770,69 @@ pub fn handle_voice_wake_detected(
                         runtime_label: label,
                     };
                 }
+            }
+        }
+    }
+
+    // R7: empty appTargetId = global dictation — never wrong-FG gate.
+    // App scene + allowBringUp off + FG ≠ target → refuse (Q15 toast via FE).
+    // App scene + allowBringUp on → focus/launch target then dictate (no auto-send).
+    {
+        let app_tid = mapping_snapshot
+            .as_ref()
+            .map(|m| m.app_target_id.trim().to_string())
+            .unwrap_or_default();
+        let allow_bring_up = mapping_snapshot
+            .as_ref()
+            .map(|m| m.voice_allow_bring_up_target)
+            .unwrap_or(false);
+        let target_name = mapping_snapshot
+            .as_ref()
+            .map(|m| {
+                let label = m.label.trim();
+                if !label.is_empty() {
+                    label.to_string()
+                } else {
+                    app_tid.clone()
+                }
+            })
+            .unwrap_or_else(|| app_tid.clone());
+        let fg = crate::app_identity::foreground_effective_app_target_id();
+        if should_refuse_wake_wrong_fg(&app_tid, allow_bring_up, fg.as_deref()) {
+            crate::runtime_event::publish_runtime_event(
+                Some(app),
+                state.as_ref(),
+                "voice",
+                crate::runtime_event::kind::VOICE_WAKE_REFUSED_WRONG_FG,
+                &format!(
+                    "{engine} wake refused wrong_fg want={app_tid} fg={:?}",
+                    fg.as_deref().unwrap_or("")
+                ),
+                Some(serde_json::json!({
+                    "engine": engine,
+                    "phrase": matched_phrase,
+                    "appTargetId": app_tid,
+                    "targetName": target_name,
+                    "fgAppTargetId": fg,
+                    "reason": "wrong_fg"
+                })),
+            );
+            return VoiceWakeDispatchResult {
+                ok: false,
+                target_key: target_key.clone(),
+                mapping_id,
+                used_summon_workflow: false,
+                runtime_label: format!("voice_{engine}_wrong_fg"),
+            };
+        }
+        if !app_tid.is_empty() && allow_bring_up {
+            let focused = crate::app_chat_workflow::quick_focus_app_target_for_hold(&app_tid);
+            if !focused {
+                crate::app_log::log_line(
+                    state.as_ref(),
+                    "voice",
+                    &format!("wake bring_up focus miss app={app_tid}"),
+                );
             }
         }
     }
@@ -2037,6 +2103,7 @@ mod tests {
             double_click_ms: 400,
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+           voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: Some(VoiceOverride {
                 target_key: Some("Win+H".into()),
@@ -2090,6 +2157,7 @@ mod tests {
             double_click_ms: 400,
             ime_preset_id: String::new(),
             app_target_id: "cursor-chat".into(),
+           voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,

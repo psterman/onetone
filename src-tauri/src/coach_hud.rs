@@ -426,6 +426,7 @@ mod tests {
             double_click_ms: 400,
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+           voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: ov,
             camera_override: None,

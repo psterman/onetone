@@ -22,9 +22,11 @@
       ['voiceAppScopeTitle','voiceAppScopeTitle'],
       ['voiceAppScopeDesc','voiceAppScopeDesc'],
       ['voiceFlowNodeWakeTag','voiceFlowNodeWakeTag'],
+      ['voiceFlowNodeFinishTag','voiceFlowNodeFinishTag'],
       ['voiceFlowNodeRecognizeTag','voiceFlowNodeRecognizeTag'],
       ['voiceFlowNodeSendTag','voiceFlowNodeSendTag'],
-      ['voiceFlowNodeWakeTitle','voiceSubtabWakeLbl'],
+      ['voiceFlowNodeWakeTitle','voiceFlowNodeWakeTitle'],
+      ['voiceFlowNodeFinishTitle','voiceFlowNodeFinishTitle'],
       ['voiceFlowNodeRecognizeTitle','voiceSubtabRecognizeLbl'],
       ['voiceFlowNodeSendTitle','voiceSubtabSendLbl'],
       ['voiceRecognizeSourceLbl','voiceRecognizeSourceLbl'],
@@ -377,17 +379,25 @@
 
   function resolveScopeMapping(vm){
     var core=global.OneToneMappingCore;
+    var st=global.OneToneState&&global.OneToneState.state?global.OneToneState.state:{};
     var ui=global.OneToneState&&global.OneToneState.ui?global.OneToneState.ui:{};
-    var scenarioId=String(ui.habitScenarioReturnId||'').trim();
-    if(scenarioId&&core&&core.byId){
-      var scenarioM=core.byId(scenarioId);
-      if(scenarioM) return scenarioM;
+    function byId(id){
+      id=String(id||'').trim();
+      return id&&core&&core.byId?core.byId(id)||null:null;
     }
+    /* Habit being edited → selected → voiceEditScheme → in-use activeScene */
+    var m=byId(ui.habitScenarioReturnId);
+    if(m) return m;
     if(vm&&vm.habitMapping) return vm.habitMapping;
-    var cfg=global.OneToneState&&global.OneToneState.state?global.OneToneState.state.config:{};
-    var activeId=cfg&&cfg.activeSceneId?String(cfg.activeSceneId).trim():'';
-    if(core&&core.byId&&activeId) return core.byId(activeId)||null;
-    return null;
+    m=byId(st.selectedMappingId);
+    if(m) return m;
+    var edit=ui.voiceEditSchemeId;
+    if(edit&&edit!=='__global__'){
+      m=byId(edit);
+      if(m) return m;
+    }
+    var cfg=st.config||{};
+    return byId(cfg.activeSceneId);
   }
 
   function isScenarioVoiceEditContext(){

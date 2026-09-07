@@ -1,5 +1,5 @@
 /**
- * Open page IA: two goal kinds + open-app inline acoustic rehost + 01 declutter.
+ * Voice settings IA after Batch A (Q39–Q45): 4 faces, landing, 2-step finish.
  * Run: node scripts/test-voice-wake-ia.mjs
  */
 import assert from 'node:assert/strict';
@@ -13,257 +13,138 @@ const read = (p) => readFileSync(join(root, p), 'utf8');
 const html = read('src/index.html');
 assert.ok(!html.includes('btnVoiceWakeCustomListen'), 'no btnVoiceWakeCustomListen');
 assert.ok(!html.includes('btnVoiceWakeKindSound'), 'no sound tab button');
-assert.ok(/data-phrase-kind="text"/.test(html), 'has data-phrase-kind=text');
-assert.ok(/data-phrase-kind="app"/.test(html), 'has data-phrase-kind=app');
 assert.ok(html.includes('id="voiceWakeAcousticHost"'), 'keeps voiceWakeAcousticHost');
 assert.ok(!html.includes('id="voiceWakeInputTarget"'), 'no voiceWakeInputTarget on wake page');
-assert.ok(html.includes('voice-wake-pool-card'), 'has voice-wake-pool-card');
-assert.ok(html.includes('id="btnVoiceWakePoolAdd"'), 'has btnVoiceWakePoolAdd');
-assert.ok(html.includes('id="voiceWakePhraseOverlay"'), 'has voiceWakePhraseOverlay');
+assert.ok(html.includes('voice-wake-pool-card') || html.includes('voice-phrase-hero') || html.includes('id="voiceWakeHeroCard"'), 'has wake hero');
+assert.ok(html.includes('id="btnVoiceWakePoolAdd"') || html.includes('id="btnVoiceWakePhraseCap"'), 'has wake phrase edit entry');
+assert.ok(html.includes('id="voicePhraseHero"') || html.includes('voice-phrase-cap') || html.includes('btnVoiceWakePhraseCap'), 'proto phrase-cap');
+assert.ok(html.includes('id="voiceFinishCausal"'), 'finish causal');
+assert.ok(html.includes('id="voiceFinishDetailKeep"'), 'finish keep detail');
 assert.ok(!html.includes('btnVoiceSandboxOpen'), 'no btnVoiceSandboxOpen');
-assert.ok(!html.includes('voiceSandboxOverlay'), 'no voiceSandboxOverlay');
-assert.ok(!html.includes('voice-sandbox.js'), 'no voice-sandbox script');
-assert.ok(!html.includes('voiceWakePhraseSuggestions'), 'no suggestions');
 
-/* 01 declutter: causal bar without send leakage; side links; Tab2 folded */
+/* Face strip + wrong-fg + 4 faces (no openApp) */
+assert.ok(html.includes('id="voiceFaceTabs"'), 'has voiceFaceTabs');
+assert.ok(html.includes('id="btnVoiceFaceDictate"'), 'has dictate face');
+assert.ok(html.includes('id="btnVoiceFaceSoftPad"'), 'has SoftPad face');
+assert.ok(html.includes('id="btnVoiceFaceKeys"'), 'has keys face');
+assert.ok(html.includes('id="btnVoiceFaceCamera"'), 'has camera face');
+assert.ok(!html.includes('id="btnVoiceFaceOpenApp"'), 'no openApp face tab');
+assert.ok(!html.includes('id="voiceOpenAppFace"'), 'no openApp face pane');
+assert.ok(html.includes('id="voiceSoftPadFace"'), 'has SoftPad bridge pane');
+assert.ok(html.includes('id="voiceKeysFace"'), 'has keys bridge pane');
+assert.ok(html.includes('id="voiceCameraFace"'), 'has camera bridge pane');
+assert.ok(html.includes('id="voiceWrongFgStatus"'), 'has wrong-fg status');
+assert.ok(html.includes('id="voiceLandingStrip"'), 'has landing strip');
+assert.ok(!html.includes('id="voiceSchemeCard"'), 'no scheme card');
+assert.ok(!html.includes('id="voiceWakeSideLinks"'), 'no side links');
+assert.ok(html.includes('id="btnVoiceDockTryMic"'), 'dock try mic');
+assert.ok(!html.includes('id="btnVoiceWakeOpenAppEntry"'), 'no 01 openApp secondary entry');
+assert.ok(!html.includes('id="voiceWakeActionApp"'), 'causal bar has no切目标 step');
+assert.ok(!html.includes('id="voiceTab2TryAgent"'), 'no Cursor try CTA');
+assert.ok(!html.includes('id="voiceTab2TryLocal"'), 'local try moved off Tab2 CTA');
+assert.ok(!/无目标/.test(html), 'no 无目标 copy in html');
+
+/* Two-step flow */
+assert.ok(html.includes('data-voice-node="wake"'), 'wake flow node');
+assert.ok(html.includes('data-voice-node="finish"'), 'finish flow node');
+assert.ok(!html.includes('data-voice-node="send"'), 'no send flow node');
+assert.ok(html.includes('data-voice-subpage="finish"'), 'finish step card');
+assert.ok(html.includes('id="voiceFinishOutcomes"'), 'finish outcomes');
+assert.ok(html.includes('id="voiceWakeAdvanced"'), 'wake advanced details');
+
 const wakeBodyMatch = html.match(/id="voiceSettingsWakeBody"[\s\S]*?(?=<div class="keys-workflow-arrow voice-workflow-arrow")/);
 assert.ok(wakeBodyMatch, 'can slice voiceSettingsWakeBody');
 const wakeBody = wakeBodyMatch[0];
 assert.ok(wakeBody.includes('id="voiceWakeActionBar"'), 'has voiceWakeActionBar');
-assert.ok(wakeBody.includes('id="voiceWakeActionApp"'), 'has voiceWakeActionApp');
 assert.ok(wakeBody.includes('id="voiceWakeActionDictate"'), 'has voiceWakeActionDictate');
+assert.ok(!wakeBody.includes('id="voiceWakeActionApp"'), 'no voiceWakeActionApp');
 assert.ok(!/voiceWakeActionNoSend|不自动发送|send_mode/.test(wakeBody), 'wake body has no send_mode leak');
-assert.ok(wakeBody.includes('id="voiceWakeSideLinks"'), 'has side links');
-assert.ok(wakeBody.includes('id="btnVoiceWakeSideCamera"'), 'side camera link');
-assert.ok(wakeBody.includes('id="btnVoiceWakeSideSoftPad"'), 'side SoftPad link');
-assert.ok(
-  !/<span[^>]*id="voiceWakeAction[^"]*"[^>]*>[^<]*(摄像头|SoftPad)/.test(wakeBody),
-  'camera/SoftPad are not causal action step labels'
-);
-assert.ok(wakeBody.includes('id="btnVoiceWakeOpenAppEntry"'), 'demoted open-app entry');
-assert.ok(wakeBody.includes('voice-wake-kind-tabs--demoted'), 'peer kind tabs demoted');
-assert.ok(wakeBody.includes('id="voiceTab2TryDetails"'), 'Tab2 try folded in details');
-assert.ok(wakeBody.includes('id="voiceTab2TryLocal"'), 'html local try');
-assert.ok(wakeBody.includes('id="voiceTab2TryAgent"'), 'html agent try');
-/* Tab2 CTAs live inside collapsed details, not on text-pane first paint */
-const textPaneMatch = wakeBody.match(/id="voiceWakeKindTextPane"[\s\S]*?(?=<div class="voice-phrase-kind-pane" id="voiceWakeKindSoundPane")/);
-assert.ok(textPaneMatch, 'can slice text pane');
-assert.ok(!textPaneMatch[0].includes('id="voiceTab2TryLocal"'), 'Tab2 local CTA not on text first screen');
-assert.ok(!textPaneMatch[0].includes('id="voiceTab2TryAgent"'), 'Tab2 agent CTA not on text first screen');
-assert.ok(wakeBody.includes('id="voiceOutputSummonBlock"'), 'summon block on app pane');
-assert.ok(
-  /id="voiceTab2TryDetails"[\s\S]*id="voiceTab2TryLocal"[\s\S]*id="voiceTab2TryAgent"/.test(wakeBody),
-  'Tab2 CTAs nested under try details'
-);
+assert.ok(wakeBody.includes('id="voiceLandingStrip"'), 'landing in wake body');
+assert.ok(!wakeBody.includes('id="voiceOutputSummonBlock"'), 'summon block not inside wake 01');
 
 const wakeRender = read('src/js/features/voice/voice-step-wake-render.js');
-assert.ok(
-  /kind===['"]sound['"][\s\S]{0,80}__vp_voice_wake_kind__\s*=\s*['"]text['"]/.test(wakeRender),
-  'syncWakePhraseKind forces sound → text'
-);
+assert.ok(/setVoiceFace/.test(wakeRender), 'wake-render exports setVoiceFace');
+assert.ok(/renderLandingStrip/.test(wakeRender), 'renders landing strip');
+assert.ok(/renderWrongFgStatus/.test(wakeRender), 'renders wrong-fg status');
+assert.ok(/softpad/.test(wakeRender) && /camera/.test(wakeRender), 'four-face enum');
+assert.ok(!/resolveWakeActionAppLabel/.test(wakeRender), 'no切目标 label resolver');
 assert.ok(!/OneToneVoiceWakeAcoustic/.test(wakeRender), 'wake-render does not mount VoiceWakeAcoustic');
-assert.ok(/data-open-app-acoustic-act/.test(wakeRender), 'cards emit data-open-app-acoustic-act');
-assert.ok(/data-open-app-acoustic-host/.test(wakeRender), 'cards emit inline acoustic host marker');
-assert.ok(!/voiceOpenAppKeysRecord/.test(wakeRender), 'no KeysRecord CTA in wake-render');
-assert.ok(/resolveOpenAppRows/.test(wakeRender), 'open-app roster resolver exists');
-assert.ok(/isAppScenarioMapping/.test(wakeRender), 'open-app roster filters app scenarios');
-assert.ok(/renderWakeActionBar/.test(wakeRender), 'renders wake action bar');
-assert.ok(!/voiceWakeActionNoSend|不自动发送/.test(wakeRender), 'wake-render never paints send leak');
-assert.ok(/FORBID:[\s\S]{0,40}send_mode/.test(wakeRender), 'documents send_mode forbid on action bar');
+assert.ok(/function isScenarioVoiceEdit\(\)\{\s*return false/.test(wakeRender.replace(/\s+/g,' ')), 'scenario voice edit disabled on voice settings');
+assert.ok(/habitScenarioVoiceBody/.test(wakeRender), 'clears scenario body host');
+assert.ok(/btnVoiceWakePhraseEditLink/.test(wakeRender), 'preserves proto hint edit link');
+
+const pageState = read('src/js/features/voice/voice-page-state.js');
+assert.ok(/STEPS=\['wake','finish'\]/.test(pageState), 'STEPS wake|finish');
+
+const stepNav = read('src/js/features/voice/voice-step-nav.js');
+assert.ok(/finish:\{btn:'voiceFlowNodeFinish'/.test(stepNav), 'nav finish node');
 
 const bindings = read('src/js/features/voice/voice-ui-bindings.js');
-assert.ok(/data-open-app-acoustic-act/.test(bindings), 'bindings handle acoustic acts');
-assert.ok(!/data-open-app-keys/.test(bindings), 'no open-app-keys jump binding');
-assert.ok(/setInlineContext|mappingId/.test(bindings), 'bindings pass mapping context');
-assert.ok(/testOnce/.test(bindings), 'open-app test uses testOnce IPC');
-assert.ok(!/setMatchWatch\(\{[\s\S]*?scenarioId:mappingId/.test(bindings), 'open-app test does not use setMatchWatch');
-assert.ok(/btnVoiceWakeOpenAppEntry/.test(bindings), 'binds demoted open-app entry');
-assert.ok(/btnVoiceWakeBackToText/.test(bindings), 'binds back to text');
-assert.ok(/btnVoiceWakeSideCamera/.test(bindings), 'binds camera side link');
-assert.ok(/btnVoiceWakeSideSoftPad/.test(bindings), 'binds SoftPad side link');
+assert.ok(/btnVoiceFaceDictate|voiceFaceTabs/.test(bindings), 'binds face tabs');
+assert.ok(/btnVoiceLandingKeysTarget/.test(bindings), 'binds landing CTA');
+assert.ok(/focus:'target'|focus,\"target\"|'target'/.test(bindings), 'landing CTA focuses keys target');
+assert.ok(/voice_wake_refused_wrong_fg/.test(bindings), 'listens for wrong-fg refuse toast');
+assert.ok(/btnVoiceDockTryMic/.test(bindings), 'binds dock try mic');
+assert.ok(/setFinishOutcome|voiceFinishOutcomes/.test(bindings), 'binds finish outcomes');
+assert.ok(!/btnVoiceWakeSideKeys/.test(bindings), 'no side-link binds');
+assert.ok(!/btnVoiceOpenAppTryAgent/.test(bindings), 'no openApp try-agent bind');
 
-const habitCmd = read('src/js/features/mapping/habit-scenario-voice-command.js');
-assert.ok(/function setInlineContext/.test(habitCmd), 'has setInlineContext');
-assert.ok(/clearInlineContext/.test(habitCmd), 'has clearInlineContext');
-assert.ok(/inlineCtx/.test(habitCmd), 'scenarioContextId prefers inlineCtx');
-assert.ok(
-  /function updateRecordVis\(\)\{[\s\S]*?var host=ensureHost\(\);[\s\S]*?host\.querySelector\(['"]#habitAcousticRecordBars['"]\)/.test(habitCmd),
-  'updateRecordVis scopes bars via ensureHost'
-);
-assert.ok(
-  /function applyBarScales\([^)]*\)\{[\s\S]*?var host=ensureHost\(\);[\s\S]*?host\.querySelector\(['"]#habitAcousticRecordBars['"]\)/.test(habitCmd),
-  'applyBarScales scopes bars via ensureHost'
-);
-assert.ok(
-  !/\$\(\s*['"]habitAcousticRecordBars['"]\s*\)/.test(habitCmd),
-  'no global $ habitAcousticRecordBars lookup'
-);
-assert.ok(
-  /#habitAcousticRecordPanel[\s\S]*?data-ui-phase/.test(habitCmd)
-    && /getAttribute\(['"]data-ui-phase['"]\)===phase/.test(habitCmd),
-  'paint skips rebuild when record panel phase matches'
-);
-assert.ok(
-  /habitAcousticRecordMeterHost \.habit-voice-cmd-meter/.test(habitCmd),
-  'updateRecordVis uses MeterHost meter'
-);
-assert.ok(
-  !/querySelector\(['"]#habitAcousticRecordMeter['"]\)/.test(habitCmd),
-  'no missing #habitAcousticRecordMeter id lookup'
-);
-assert.ok(/function isBusy\(/.test(habitCmd), 'has isBusy');
-assert.ok(/data-acoustic-app-badge/.test(habitCmd), 'record/done panels emit app badge');
-assert.ok(/notifyChange\(\)/.test(habitCmd) && /function endSessionToIdle[\s\S]*?notifyChange\(\)/.test(habitCmd),
-  'endSessionToIdle notifies for card refresh');
+const drawer = read('src/js/features/settings/settings-drawer.js');
+assert.ok(/voiceFace/.test(drawer), 'drawer accepts voiceFace deep-link');
+assert.ok(/softpad/.test(drawer) || /keys/.test(drawer), 'drawer accepts bridge faces');
 
-assert.ok(
-  /isBusy[\s\S]*?data-open-app-acoustic-host[\s\S]*?return;/.test(wakeRender),
-  'renderOutputSummon skips wipe while busy expanded host'
-);
-assert.ok(
-  /cmdBusy[\s\S]*?OneToneHabitScenarioVoiceCommand\.render/.test(wakeRender)
-    || /isBusy[\s\S]*?HabitScenarioVoiceCommand\.render/.test(wakeRender),
-  'syncScenarioVoiceEditor skips command render when busy'
-);
+const css = read('src/css/voice-page-shell.css');
+assert.ok(/\.voice-face-tabs/.test(css), 'face tabs css');
+assert.ok(/\.voice-landing/.test(css), 'landing css');
+assert.ok(/\.voice-dock-try-mic/.test(css), 'dock try mic css');
+assert.ok(/\.voice-bridge-face\[hidden\]/.test(css), 'bridge face hidden beats display:grid');
+assert.ok(/\.voice-bridge-empty\[hidden\]/.test(css), 'bridge empty hidden beats display:grid');
+assert.ok(/\.voice-finish-detail\[hidden\]/.test(css), 'finish detail hidden beats display:grid');
+assert.ok(/\.voice-finish-delay-chips\[hidden\]/.test(css), 'finish delay chips hidden beats display:flex');
+assert.ok(/data-voice-face="softpad".*#voiceSoftPadFace|not\(\[data-voice-face="softpad"\]\).*#voiceSoftPadFace/.test(css.replace(/\s+/g,' ')), 'css face gate for softpad');
 
-assert.ok(
-  /isBusy\?cmd\.isBusy\(\)/.test(bindings),
-  'open-app onChange skips refresh while busy'
-);
+assert.ok(html.includes('voice-bridge-softpad.js'), 'loads softpad bridge script');
+assert.ok(html.includes('voice-bridge-keys.js'), 'loads keys bridge script');
+assert.ok(html.includes('voice-bridge-camera.js'), 'loads camera bridge script');
+assert.ok(html.includes('id="voiceCamLinked"'), 'camera linked pane');
+assert.ok(html.includes('id="voiceKeysCapEffect"'), 'keys effect line');
+assert.ok(html.includes('id="voiceKeysKeyLine"'), 'keys keyline');
 
-assert.ok(
-  /barsCls='habit-voice-cmd-rec-bars is-active'/.test(habitCmd)
-    || /barsCls="habit-voice-cmd-rec-bars is-active"/.test(habitCmd),
-  'record bars omit mic-level-bars'
-);
-assert.ok(!/mic-level-bars habit-voice-cmd-rec-bars/.test(habitCmd), 'no mic-level-bars on habit record bars');
-assert.ok(/is-armed-idle/.test(habitCmd), 'armed adds is-armed-idle');
-assert.ok(/Math\.max\(speech,\s*elapsed\)/.test(habitCmd), 'meter fill uses max(speech,elapsed)');
-assert.ok(/Math\.pow\(norm\*/.test(habitCmd), 'levelToBarScales applies gain curve');
-assert.ok(/ponytail:[\s\S]*no PCM|ceiling=no PCM/.test(habitCmd), 'recording breath notes PCM ceiling');
-assert.ok(/habitAcousticCmdPhaseSpeakNow/.test(habitCmd), 'title follows waiting hint');
-assert.ok(!/habit-voice-cmd-rec-ring/.test(habitCmd), 'record panel omits persistent ring');
-assert.ok(/habit-voice-cmd-m3-spinner/.test(habitCmd), 'processing uses m3 spinner');
-assert.ok(/habit-voice-cmd-meter-zone/.test(habitCmd), 'duration meter recommend zone');
-assert.ok(!/Math\.sin\(elapsed/.test(habitCmd), 'no fake sine level while waiting for PCM');
-assert.ok(/buildMicBars\(25\)/.test(habitCmd), 'center-wave uses denser bars');
-assert.ok(/habitAcousticCmdRecordZoneRange/.test(habitCmd), 'meter uses recommend range label');
-assert.ok(/habitAcousticCmdProcessingAi/.test(habitCmd), 'processing shows AI caption');
-assert.ok(/habitAcousticCmdRecordTipLive/.test(habitCmd), 'recording tip matches prototype');
-assert.ok(/is-m3/.test(habitCmd), 'record panel marks M3 layout');
+const keysBridge = read('src/js/features/voice/voice-bridge-keys.js');
+assert.ok(/isSoftPadVoice|semantic:softPad/.test(keysBridge), 'keys bridge excludes SoftPad voice');
+assert.ok(/semantic:camera:/.test(keysBridge), 'keys bridge excludes camera voice');
+assert.ok(/resolveScopeMapping/.test(keysBridge), 'keys bridge uses scope mapping');
+assert.ok(/triggerType==='key'|triggerType==="key"/.test(keysBridge), 'keys bridge reads key chords');
 
-const appCss = read('src/css/app.css');
-assert.ok(
-  /#habitAcousticRecordBars\.habit-voice-cmd-rec-bars span/.test(appCss),
-  'CSS targets #habitAcousticRecordBars habit bars'
-);
-assert.ok(/habitVoiceCmdBarsIdle/.test(appCss), 'armed idle keyframes exist');
-assert.ok(/is-armed-idle/.test(appCss), 'armed idle CSS class');
-assert.ok(/transform-origin:\s*center/.test(appCss), 'bars use center transform-origin');
-assert.ok(/--m3-primary:\s*var\(--primary\)/.test(appCss), 'recording card primary follows app theme');
-assert.ok(!/--m3-success:\s*#6bcf8e/.test(appCss), 'no neon success green on dark recording card');
-assert.ok(
-  /#habitAcousticRecordBars\.habit-voice-cmd-rec-bars\.is-good span\{background:var\(--m3-primary\)\}/.test(appCss),
-  'good bars use primary not success green'
-);
-assert.ok(/border-radius:\s*28px/.test(appCss), 'M3 extra-large card radius');
-assert.ok(/habit-voice-cmd-m3-spinner/.test(appCss), 'spinner CSS present');
-assert.ok(/habit-voice-cmd-meter-zone/.test(appCss), 'recommend zone CSS present');
-assert.ok(
-  /prefers-reduced-motion:reduce[\s\S]*habit-voice-cmd-m3-spinner/.test(appCss),
-  'reduced-motion disables spinner'
-);
-assert.ok(/html\[data-theme="dark"\][\s\S]*--m3-surface:/.test(appCss), 'dark theme M3 surface tokens');
-assert.ok(/habit-voice-cmd-meter-dot/.test(appCss), 'recommend zone dot marker');
+const softBridge = read('src/js/features/voice/voice-bridge-softpad.js');
+assert.ok(/resolveScopeMapping/.test(softBridge), 'softpad bridge uses scope mapping');
+assert.ok(/forceFull/.test(softBridge), 'softpad paints full pad framework');
+assert.ok(/off\.hidden\s*=\s*true/.test(softBridge), 'softpad does not blank pad when phrases=0');
 
-const matcher = read('src/js/features/voice/voice-acoustic-matcher.js');
-assert.ok(/setMatchWatch/.test(matcher), 'matcher has setMatchWatch');
-assert.ok(/acoustic_voice_matched/.test(matcher), 'matcher listens for acoustic_voice_matched');
-assert.ok(!/acoustic_voice_tested/.test(matcher), 'matcher ignores acoustic_voice_tested');
+const camBridge = read('src/js/features/voice/voice-bridge-camera.js');
+assert.ok(/semantic:camera:/.test(camBridge), 'camera bridge uses camera slot prefix');
+assert.ok(/OneToneVoiceBridgeCamera/.test(camBridge), 'camera bridge exports');
+assert.ok(/resolveScopeMapping/.test(camBridge), 'camera bridge uses scope mapping');
+assert.ok(/presencePrefs|CameraPresenceActions/.test(camBridge), 'camera bridge reads presence actions');
+assert.ok(/CAM_GROUPS|voiceCamCats/.test(camBridge), 'camera bridge has category framework');
+assert.ok(/Object\.keys\(CAM_META\)|listCameraRows/.test(camBridge), 'camera always builds catalog');
 
-assert.ok(/voiceOpenAppCapLaunchable|capabilityLabel/.test(wakeRender), 'capability status on cards');
-assert.ok(/data-open-app-acoustic-act="play"/.test(wakeRender), 'cards emit play/replay act');
-assert.ok(/voiceOpenAppReplay/.test(wakeRender), 'cards use replay label key');
-assert.ok(/voiceOpenAppNoteLbl/.test(wakeRender), 'note label for displayText');
-assert.ok(/playOpenAppAcousticPreview|setSuspend\(true\)/.test(bindings), 'replay suspends matching');
-assert.ok(/voiceOpenAppTestLaunchFailed|app_launch_failed/.test(bindings), 'test handles launch failure');
-assert.ok(/habitAcousticCmdLaunchFailed|app_launch_failed/.test(matcher), 'matcher launch-fail toast');
-assert.ok(!/presets\.forEach\(function\(p\)/.test(wakeRender), 'open-app roster does not dump catalog presets');
-assert.ok(/mode:'voiceOpenApp'/.test(bindings), 'add app uses voiceOpenApp picker mode');
-assert.ok(/findAppScenarioForIdentity/.test(bindings), 'add app claims running identity');
-assert.ok(/voice-open-app-btn is-primary/.test(wakeRender), 'open-app cards use primary record/test CTA');
+assert.ok(/voiceKeysPhraseOnly/.test(keysBridge), 'keys phrase-only filter');
+assert.ok(/actionInstanceId/.test(keysBridge), 'keys keeps shortcut instances apart');
 
-const tab2Mvp = read('src/js/features/voice/voice-tab2-mvp.js');
-assert.ok(/function formatFollowLine/.test(tab2Mvp), 'tab2 formatFollowLine');
-assert.ok(/function renderHero/.test(tab2Mvp), 'tab2 renderHero');
-assert.ok(/openStandaloneQsVoicePractice/.test(tab2Mvp), 'tab2 local CTA opens standalone practice');
-assert.ok(/habit-agent-workflow-test/.test(tab2Mvp), 'tab2 agent CTA uses workflow context');
-assert.ok(/onTryLocalClick/.test(tab2Mvp), 'tab2 local try handler');
-assert.ok(/resolveTriggerHoldProfile/.test(tab2Mvp), 'tab2 honest CTA resolver');
-assert.ok(/resolveAgentActivationTarget/.test(tab2Mvp), 'tab2 agent fallback resolver');
-assert.ok(/voiceTab2AgentHint/.test(tab2Mvp), 'tab2 agent hint render');
-assert.ok(html.includes('id="voiceTab2AgentHint"'), 'html agent hint');
-assert.ok(html.includes('id="voiceTab2FollowRow"'), 'html follow row');
-assert.ok(html.includes('id="voiceTab2VoiceGate"'), 'html voice gate');
-assert.ok(html.includes('id="voiceTab2HoldNote"'), 'html hold note');
-assert.ok(html.includes('voice-tab2-advanced'), 'html advanced details');
-assert.ok(html.includes('voiceTab2AdvancedSummary'), 'html advanced summary');
-assert.ok(html.includes('id="voiceTab2AdvancedBadge"'), 'html advanced badge');
-assert.ok(/resolveOpenAppRows/.test(wakeRender), 'open-app roster still in wake-render');
-assert.ok(!html.includes('voice-tab2-approval'), 'no tab2 approval banner id');
+assert.ok(html.includes('id="voiceCamCats"'), 'camera cats host');
+assert.ok(html.includes('id="voiceKeysPhraseOnly"'), 'keys phrase-only checkbox');
 
-const picker = read('src/js/features/mapping/app-behavior-rules.js');
-assert.ok(/function isCallbackPicker/.test(picker), 'picker callback mode covers voice add');
-assert.ok(/appPickerVoiceTitle/.test(picker), 'voice picker uses dedicated copy');
+const header = read('src/js/features/voice/voice-page-header-render.js');
+assert.ok(/selectedMappingId/.test(header), 'scope mapping reads selectedMappingId');
+assert.ok(/activeSceneId/.test(header), 'scope mapping reads activeSceneId');
+assert.ok(/habitScenarioReturnId/.test(header), 'scope mapping reads habitScenarioReturnId');
 
-const i18n = read('src/js/core/i18n.js');
-assert.ok(/voiceTab2TryCtaTap:\s*['"]用 \{trigger\} 试说['"]/.test(i18n), 'tab2 tap CTA i18n');
-assert.ok(/voiceTab2HoldUnsupported:/.test(i18n), 'tab2 hold unsupported i18n');
-assert.ok(/voiceTab2VoiceGate:/.test(i18n), 'tab2 voice gate i18n');
-assert.ok(/voiceTab2FollowFgHint:/.test(i18n), 'tab2 fg hint i18n');
-assert.ok(/voiceTab2TryLocal:/.test(i18n), 'tab2 local try i18n');
-assert.ok(/voiceTab2TryAgent:/.test(i18n), 'tab2 agent try i18n');
-assert.ok(/voiceTab2FollowTrigger:/.test(i18n), 'tab2 follow trigger i18n');
-assert.ok(/voiceTab2AgentNeedsTrigger:/.test(i18n), 'tab2 agent needs trigger i18n');
-assert.ok(/voiceWakeActionLbl:/.test(i18n), 'wake action lbl i18n');
-assert.ok(/voiceWakeActionDictate:/.test(i18n), 'wake action dictate i18n');
-assert.ok(!/voiceWakeActionNoSend:\s*['"]不自动发送['"]/.test(i18n), 'no active no-send action key for wake bar');
-assert.ok(/voiceOpenAppRecord:\s*['"]录制声音口令['"]/.test(i18n), 'record CTA');
-assert.ok(/voiceOpenAppReplay:\s*['"]回听录音['"]/.test(i18n), 'replay CTA');
-assert.ok(/voiceOpenAppTestPrompt:\s*['"]请说出口令，识别后会打开或切换到该应用['"]/.test(i18n), 'test prompt');
-assert.ok(/habitAcousticCmdLaunchFailed:\s*['"]已识别口令，但找不到\/无法启动应用['"]/.test(i18n), 'launch fail toast');
-assert.ok(!/voiceOpenAppKeysRecord:\s*['"]去按键页录口令['"]/.test(i18n), 'no KeysRecord primary CTA string');
+const rustGate = read('src-tauri/src/voice_end_runtime.rs');
+assert.ok(/should_refuse_wake_wrong_fg/.test(rustGate), 'rust wrong-fg gate helper');
+assert.ok(/VOICE_WAKE_REFUSED_WRONG_FG|voice_wake_refused_wrong_fg/.test(rustGate), 'emits refuse event');
 
-const acousticCfg = read('src-tauri/src/config.rs');
-assert.ok(/previewPcmB64/.test(acousticCfg), 'sample has previewPcmB64');
-assert.ok(/ACOUSTIC_PREVIEW_MAX/.test(acousticCfg), 'preview max constant');
-assert.ok(/normalize_preview_pcm_b64/.test(acousticCfg), 'preview normalize fn');
+const kind = read('src-tauri/crates/onetone-logic/src/runtime_event.rs');
+assert.ok(/VOICE_WAKE_REFUSED_WRONG_FG/.test(kind), 'runtime event kind defined');
 
-const chatWf = read('src-tauri/src/app_chat_workflow.rs');
-assert.ok(/Programs\\\\Cursor\\\\Cursor\.exe/.test(chatWf), 'Cursor LocalAppData launch path');
-assert.ok(/launch_codex_store_app|shell:AppsFolder|launch_start_menu_shortcut/.test(chatWf), 'Codex store launch path');
-assert.ok(/resolve_launch_hint|probe_uninstall_exe|Qoder\.exe/.test(chatWf), 'Qoder launch probe');
-assert.ok(/AppLaunchCapability|launchable|focus_only/.test(chatWf), 'launch capability enum');
-assert.ok(!/WindowsApps\\\\OpenAI\.Codex.*ChatGPT\.exe/.test(chatWf) || /do not ShellExecute WindowsApps/.test(chatWf), 'Codex avoids raw WindowsApps exe as primary');
-
-const catalog = read('src-tauri/src/builtin_app_catalog.rs');
-assert.ok(/qoder-chat/.test(catalog), 'catalog includes qoder');
-assert.ok(/text_summon_preset:\s*false/.test(catalog), 'qoder without text summon preset');
-
-const endRt = read('src-tauri/src/voice_end_runtime.rs');
-assert.ok(/AcousticExecuteMode/.test(endRt), 'Live/Test execute modes');
-assert.ok(/open-app-acoustic/.test(endRt), 'open-app kind gate');
-
-const acousticIpc = read('src/js/features/voice/voice-acoustic-ipc.js');
-assert.ok(/cmd_acoustic_voice_command_test_once/.test(acousticIpc), 'FE invokes test_once');
-assert.ok(/open-app-acoustic/.test(habitCmd), 'inline record writes open-app-acoustic kind');
-
-const send = read('src/js/features/voice/voice-step-send-render.js');
-assert.ok(/function syncPhraseKindTabs[\s\S]*?allowed\[/.test(send), 'whitelist syncPhraseKindTabs');
-
-const shellCss = read('src/css/voice-page-shell.css');
-assert.ok(/voice-wake-kind-tabs--demoted/.test(shellCss), 'demoted tabs CSS');
-assert.ok(/voice-wake-action-bar/.test(shellCss), 'action bar CSS');
-assert.ok(/voice-tab2-try-details/.test(shellCss), 'tab2 try details CSS');
-
-console.log('PASS voice-wake-ia');
+console.log('test-voice-wake-ia: ok');

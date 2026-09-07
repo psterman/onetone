@@ -2,13 +2,12 @@
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
-  var STEPS=['wake','recognize','send'];
+  var STEPS=['wake','finish'];
   var lastFlowVm=null;
 
   var FLOW_NODE_IDS={
     wake:{btn:'voiceFlowNodeWake',hint:'voiceFlowNodeWakeHint',head:'voiceSettingsWakeHead',body:'voiceSettingsWakeBody'},
-    recognize:{btn:'voiceFlowNodeRecognize',hint:'voiceFlowNodeRecognizeHint',head:'voiceSettingsRecognizeHead',body:'voiceSettingsRecognizeBody'},
-    send:{btn:'voiceFlowNodeSend',hint:'voiceFlowNodeSendHint',head:'voiceSettingsSendHead',body:'voiceSettingsSendBody'}
+    finish:{btn:'voiceFlowNodeFinish',hint:'voiceFlowNodeFinishHint',head:'voiceSettingsRecognizeHead',body:'voiceSettingsRecognizeBody'}
   };
 
   /** @type {WeakMap<Element, { step: string, bodies: Element[] }>} */
@@ -81,29 +80,9 @@
 
   function resolveStepHints(vm){
     var V=global.OneToneVoiceSettingsViewModel;
-    if(!V||!vm) return {wake:'',recognize:'',send:''};
-    var wakeHint='';
-    if(!vm.loading){
-      wakeHint=V.resolveScopeSummary(vm)||'';
-    }else{
-      wakeHint=t('homeLiveLoading');
-    }
-    var wake=global.OneToneVoiceStepWake;
-    if(!vm.loading&&wake&&wake.isScenarioVoiceEdit&&wake.isScenarioVoiceEdit()){
-      var cmd=global.OneToneHabitScenarioVoiceCommand;
-      if(cmd&&cmd.feedbackInfo){
-        var info=cmd.feedbackInfo();
-        if(info&&info.wakeHint) wakeHint=info.wakeHint;
-      }
-    }
-    var recHint=vm.loading?t('homeLiveLoading'):vm.modeLabel;
-    if(!vm.loading&&vm.mode==='vosk'&&global.OneToneVoiceWake&&global.OneToneVoiceWake.currentVoskPreset){
-      var preset=global.OneToneVoiceWake.currentVoskPreset();
-      var labelApi=global.OneToneVoiceModelLabels;
-      if(labelApi&&labelApi.presetLabel) recHint+=' · '+labelApi.presetLabel(preset);
-    }
-    var sendHint=vm.loading?t('homeLiveLoading'):V.resolveOutputSummaryLabel(vm);
-    return {wake:wakeHint,recognize:recHint,send:sendHint};
+    if(!V||!vm) return {wake:'',finish:''};
+    // Proto flow nodes stay label-only (01 开启 / 02 说完了); long hints clutter the strip.
+    return {wake:'',finish:''};
   }
 
   function buildVoiceFlowChromeModel(vm){
@@ -112,13 +91,15 @@
     var step=global.OneToneVoicePageState&&global.OneToneVoicePageState.getStep
       ?global.OneToneVoicePageState.getStep()
       :'wake';
+    if(step==='recognize'||step==='send') step='finish';
     var hints=resolveStepHints(vm);
-    var sig=[step,hints.wake||'',hints.recognize||'',hints.send||''].join('\0');
+    var sig=[step,hints.wake||'',hints.finish||''].join('\0');
     return {
       activeStep:step,
       wakeHint:hints.wake||'',
-      recognizeHint:hints.recognize||'',
-      sendHint:hints.send||'',
+      finishHint:hints.finish||'',
+      recognizeHint:hints.finish||'',
+      sendHint:hints.finish||'',
       sig:sig
     };
   }
@@ -146,10 +127,8 @@
     });
     var wake=$('voiceSubtabWakeHint');
     var rec=$('voiceSubtabRecognizeHint');
-    var send=$('voiceSubtabSendHint');
     if(wake) wake.textContent=model.wakeHint||'';
-    if(rec) rec.textContent=model.recognizeHint||'';
-    if(send) send.textContent=model.sendHint||'';
+    if(rec) rec.textContent=model.finishHint||model.recognizeHint||'';
   }
 
   function syncFlowNodes(step){

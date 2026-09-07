@@ -112,6 +112,8 @@ pub fn handle_detection(
         return result;
     }
 
+    // R2: idle → only wake/summon; dictating → only end/send/cancel (grammar mutual exclusion).
+    // R3: summon/agent preference is inside handle_voice_wake_detected (preferSummon before IME wake).
     match detection.kind {
         VoiceDetectionKind::Wake | VoiceDetectionKind::Summon => {
             if !idle {

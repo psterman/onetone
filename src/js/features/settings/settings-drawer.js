@@ -77,7 +77,7 @@
 
     if(panel==='keyWake') return 'keys';
 
-    // scenes 死壳：导航已迁 habits；兜底映射避免落到 settingsPanelScenes
+    // scenes ????????habits??????????settingsPanelScenes
     if(panel==='scenes') return 'habits';
 
     return panel;
@@ -112,7 +112,7 @@
     const el=$('voiceRecognizeEngineDetails');
     if(el&&el.tagName==='DETAILS') el.open=true;
     if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
-      global.OneToneVoicePageState.setStep('recognize');
+      global.OneToneVoicePageState.setStep('finish');
     }
   }
 
@@ -223,7 +223,7 @@
     if(focus==='recordingAudio'){
       if(ui.settingsPanel!=='voiceWake') setSettingsPanel('voiceWake');
       if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
-        global.OneToneVoicePageState.setStep('recognize');
+        global.OneToneVoicePageState.setStep('finish');
       }
       scrollSettingsToTarget(['recordingAudioCard']);
       return;
@@ -246,7 +246,7 @@
 
     if(focus==='endPhrases'){
       if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
-        global.OneToneVoicePageState.setStep('recognize');
+        global.OneToneVoicePageState.setStep('finish');
       }
     }
 
@@ -365,8 +365,8 @@
 
     }
 
-    // Light slot/toggle sync only — full renderSoundSettingsPanel builds pickers + i18n
-    // and used to 假死 when opening keys / habits refresh.
+    // Light slot/toggle sync only ??full renderSoundSettingsPanel builds pickers + i18n
+    // and used to ?? when opening keys / habits refresh.
     try{
       if(global.OneToneAppThemePrefs&&typeof global.OneToneAppThemePrefs.syncSoundsSettingsUi==='function'){
         global.OneToneAppThemePrefs.syncSoundsSettingsUi();
@@ -427,7 +427,7 @@
       }
     }
 
-    // Paint drawer chrome first — sync hub HTML used to 假死 the UI thread on open.
+    // Paint drawer chrome first ??sync hub HTML used to ?? the UI thread on open.
     if(view==='hub'&&global.OneToneHabitHub&&global.OneToneHabitHub.applyShellVisibility){
       try{ global.OneToneHabitHub.applyShellVisibility(); }catch(_){}
     }
@@ -437,7 +437,7 @@
       setTimeout(finishHeavy,0);
     }
 
-    // Keys chrome is for keys panel — skip on habits hub (was remounting scheme/voice UI).
+    // Keys chrome is for keys panel ??skip on habits hub (was remounting scheme/voice UI).
     if(view!=='hub'){
       requestAnimationFrame(function(){
         if(!ui.drawerOpen||!isHabitsPanel()) return;
@@ -485,14 +485,14 @@
     if(!ui.drawerOpen) return;
 
     if(panel==='voiceWake'){
-      // Events drive levels while Vosk listens; poll dual-path idle 假死'd (~14min).
+      // Events drive levels while Vosk listens; poll dual-path idle ??'d (~14min).
       if(hooks().stopMicLevelPoll) hooks().stopMicLevelPoll();
       hooks().stopMicMonitor();
       return;
     }
 
     if(panel==='debug'){
-      // Debug keeps Vosk live — poll shared MicLevelState for level bars while drawer open.
+      // Debug keeps Vosk live ??poll shared MicLevelState for level bars while drawer open.
       if(hooks().voiceCaptureActive()&&hooks().startMicLevelPoll){
         hooks().startMicLevelPoll();
       }else{
@@ -635,7 +635,7 @@
 
     const panelChanged=panel!==lastPanel;
 
-    // Leave camera / open non-camera: pause infer before heavy paint (same-turn MediaPipe 假死).
+    // Leave camera / open non-camera: pause infer before heavy paint (same-turn MediaPipe ??).
     if(ui.drawerOpen&&panel!=='camera'&&(panelChanged||lastPanel==='camera')){
       try{
         var paLeave=global.OneToneCameraPresenceActions;
@@ -658,7 +658,7 @@
       }
     }
 
-    // Leaving keys: stop pad readiness remount/poll so「我的习惯」open is not stacked under it.
+    // Leaving keys: stop pad readiness remount/poll so??????open is not stacked under it.
     if(panelChanged&&lastPanel==='keys'&&panel!=='keys'){
       stopKeysPanelBackgroundWork();
     }
@@ -702,8 +702,8 @@
       setSettingsDrawerGate(true,{panel:panel});
     }
 
-    // Flush deferred mvp_init only after leaving Soft Pad / keys / camera — never while still on one
-    // (softPad→camera used to flush remount + MediaPipe open in the same turn → 假死).
+    // Flush deferred mvp_init only after leaving Soft Pad / keys / camera ??never while still on one
+    // (softPad?camera used to flush remount + MediaPipe open in the same turn ????).
     if(panelChanged&&global.OneToneConfigPersist){
       var blocked=global.OneToneConfigPersist.mvpInitHeavyRemountBlocked;
       if(typeof blocked==='function'&&!blocked()&&
@@ -762,9 +762,9 @@
 
     if(panel==='keys'){
 
-      // Two-phase defer (edit-habit 假死 fix):
+      // Two-phase defer (edit-habit ?? fix):
       // 1) mount islands after chrome paints
-      // 2) refresh / afterHeavy on a later tick — never stack ~14 mounts + syncEditor/render
+      // 2) refresh / afterHeavy on a later tick ??never stack ~14 mounts + syncEditor/render
       var keysDeferHeavy=!!opts.deferHeavy;
       var keysAfterHeavy=opts.afterHeavy;
       function runKeysAfterMount(){
@@ -814,7 +814,7 @@
 
     }else if(panel==='softPad'){
 
-      // Defer heavy Soft Pad paint — sync render on open used to 假死 the drawer.
+      // Defer heavy Soft Pad paint ??sync render on open used to ?? the drawer.
       var softOpts={
         mappingId:opts.mappingId||'',
         skipHookRefresh:!!opts.skipHookRefresh
@@ -875,7 +875,7 @@
       var habitView=ui.habitView||'hub';
       if(habitView!=='wizard') ui.habitView='hub';
 
-      // Defer habit island mount so drawer chrome paints before hub HTML (同 keys).
+      // Defer habit island mount so drawer chrome paints before hub HTML (??keys).
       requestAnimationFrame(function(){
         setTimeout(function(){
           if(!isHabitsPanel()) return;
@@ -889,8 +889,8 @@
 
     }else if(panel==='sounds'){
 
-      // Defer like Soft Pad — sync renderSoundSettingsPanel builds every picker and
-      // used to 假死 when switching softPad/sounds/voiceWake in the same second.
+      // Defer like Soft Pad ??sync renderSoundSettingsPanel builds every picker and
+      // used to ?? when switching softPad/sounds/voiceWake in the same second.
       requestAnimationFrame(function(){
         setTimeout(function(){
           if(normalizePanel(ui.settingsPanel)!=='sounds') return;
@@ -900,21 +900,29 @@
 
     }else if(panel==='voiceWake'){
 
-      // Two-phase defer (同 keys)：先让 drawer chrome 上屏，再跑 mode switch / 整页 flow /
-      // island mounts。同步 renderVoiceModeSwitch 曾与 MediaPipe + howto 幽灵点击叠在
-      // 同一帧 → WebView2 假死。
-      // voiceOpenGen + phased heartbeat tags: stale defer abort + 假死定位 (tag=voiceOpen:…).
+      // Two-phase defer (??keys)????drawer chrome ??????mode switch / ?? flow /
+      // island mounts????renderVoiceModeSwitch ?? MediaPipe + howto ??????
+      // ??????WebView2 ????      // voiceOpenGen + phased heartbeat tags: stale defer abort + ???? (tag=voiceOpen:??.
       var voiceDeferHeavy=!!opts.deferHeavy;
       var voiceAfterHeavy=opts.afterHeavy;
       var voiceScrollTarget=opts.scrollTarget;
       var voiceSubpage=opts.voiceSubpage||'wake';
+      var voiceFace=(['softpad','keys','camera'].indexOf(opts.voiceFace)>=0?opts.voiceFace:'dictate');
+      // Q26: entering voice defaults to dictate; deep-link may pass softpad|keys|camera; never persist last face.
+      if(enteringVoice||opts.voiceFace){
+        if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.setVoiceFace){
+          try{ global.OneToneVoiceStepWake.setVoiceFace(voiceFace); }catch(_){}
+        }else{
+          global.__vp_voice_face__=voiceFace;
+        }
+      }
       var voiceOpenGen=0;
       if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.bumpOpenGen==='function'){
         try{ voiceOpenGen=global.OneToneVoiceWake.bumpOpenGen(); }catch(_){ voiceOpenGen=0; }
       }
       if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.armOpenClickGuard==='function'){
-        // Ghost strategy-tab / presence clicks after open were flipping enhanced→auto→resourceSaver
-        // and each flip re-activated the engine (假死). Cover the deferred heavy RAF window.
+        // Ghost strategy-tab / presence clicks after open were flipping enhanced?auto?resourceSaver
+        // and each flip re-activated the engine (??). Cover the deferred heavy RAF window.
         try{ global.OneToneVoiceWake.armOpenClickGuard(2500); }catch(_){}
       }
       function voiceHbSet(tag){
@@ -939,14 +947,14 @@
         return false;
       }
       voiceHbSet('voiceOpen:enter');
-      // Collapse hang live panel — open poll on this page → idle UI_HB_STALL_5S.
+      // Collapse hang live panel ??open poll on this page ??idle UI_HB_STALL_5S.
       try{
         if(global.OneToneVoiceDiag&&typeof global.OneToneVoiceDiag.setHangLiveOpen==='function'){
           global.OneToneVoiceDiag.setHangLiveOpen(false);
         }
       }catch(_){}
       try{ document.documentElement.classList.add('ot-voice-wake-park'); }catch(_){}
-      // Process usage poll is for debug panel — stop on voiceWake idle.
+      // Process usage poll is for debug panel ??stop on voiceWake idle.
       try{
         if(hooks().clearProcessUsagePollTimer) hooks().clearProcessUsagePollTimer();
         else if(global.OneToneAppProcessUsage&&global.OneToneAppProcessUsage.clearPollTimer){
@@ -976,13 +984,13 @@
               hooks().setVoiceWakeExpandedMode(active==='vosk'?'vosk':active==='sapi'?'sapi':((global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi())?'vosk':(global.OneToneVoiceWake.getExpandedMode()||'vosk')));
               global.OneToneVoiceWake.clearLiveFingerprints();
               const w=hooks().voiceUiSnapshot().wake||{};
-              // liveOnly on enter — full status remount stacked with islands → 假死.
+              // liveOnly on enter ??full status remount stacked with islands ????.
               if(w.sapi) hooks().renderVoiceSapiStatus(w.sapi,{liveOnly:true});
               if(w.vosk) hooks().renderVoiceVoskStatus(w.vosk,{liveOnly:true});
             }
-            // Skip sync React chrome islands on open — mount+idle coincided with ~70s UI_HB_STALL
+            // Skip sync React chrome islands on open ??mount+idle coincided with ~70s UI_HB_STALL
             // after settings_park. Strategy lives in voiceConfig (boot-mounted).
-            // Delayed mount (P6b/c/d) after park settles — required drawer wire for island tests.
+            // Delayed mount (P6b/c/d) after park settles ??required drawer wire for island tests.
             setTimeout(function () {
               if (voiceOpenStale()) return;
               try {
@@ -1048,7 +1056,7 @@
                     global.OneToneIpc.invoke('cmd_app_log',{line:'fe voiceWake heavy begin gen='+voiceOpenGen}).catch(function(){});
                   }
                 }catch(_){}
-                // Acoustic islands: delay past heavy open path (sync mount ~46s stall on 增强页).
+                // Acoustic islands: delay past heavy open path (sync mount ~46s stall on ????.
                 setTimeout(function () {
                   if (voiceOpenStale()) return;
                   try {
@@ -1110,7 +1118,7 @@
         ui.cameraEditMode='appScenario';
         if(ui.habitScenarioReturnId) state().selectedMappingId=String(ui.habitScenarioReturnId);
       }
-      // Defer preview/reconcile/MediaPipe — sync onPanelVisible used to 假死 the drawer on open.
+      // Defer preview/reconcile/MediaPipe ??sync onPanelVisible used to ?? the drawer on open.
       requestAnimationFrame(function(){
         setTimeout(function(){
           if(normalizePanel(ui.settingsPanel)!=='camera') return;
@@ -1257,7 +1265,7 @@
 
   function settingsShouldParkVoice(panel){
     panel=normalizePanel(panel||ui.settingsPanel||'basic');
-    // Only voiceWake parks capture (cpal + status poll 假死). Debug/home must keep Vosk running.
+    // Only voiceWake parks capture (cpal + status poll ??). Debug/home must keep Vosk running.
     return panel==='voiceWake';
   }
 
@@ -1325,7 +1333,7 @@
     ui.drawerOpen=true;
     setSettingsDrawerGate(true,{panel:opts.panel||'basic'});
 
-    // Pause MediaPipe before any panel remount — presence createImageBitmap + habit/softPad
+    // Pause MediaPipe before any panel remount ??presence createImageBitmap + habit/softPad
     // remount on the same turn wedges WebView2 (Responding=false).
     try{
       var openPanel=normalizePanel(opts.panel||'basic');
@@ -1374,7 +1382,7 @@
 
       if(hooks().loadCoachHudState) hooks().loadCoachHudState();
 
-      // voiceWake: skip — parks engines; status IPC raced stop and UI_HB_STALL.
+      // voiceWake: skip ??parks engines; status IPC raced stop and UI_HB_STALL.
       if(hooks().settingsPanelNeedsVoicePoll()&&ui.settingsPanel!=='voiceWake') hooks().voiceStatusPollTick();
 
     },200);
@@ -1445,8 +1453,8 @@
 
     hooks().stopMicMonitor();
 
-    // Camera resume + mvp flush + pullBackend used to run sync on close — stacking with a
-    // immediate hero orb re-open (unpark+park+MediaPipe) → UI_HB_STALL empty tag.
+    // Camera resume + mvp flush + pullBackend used to run sync on close ??stacking with a
+    // immediate hero orb re-open (unpark+park+MediaPipe) ??UI_HB_STALL empty tag.
     var closeGen=(global.__otDrawerCloseGen=(global.__otDrawerCloseGen||0)+1);
     setTimeout(function(){
       if(closeGen!==global.__otDrawerCloseGen||ui.drawerOpen) return;

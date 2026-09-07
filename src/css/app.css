@@ -3647,6 +3647,9 @@
     #habitScenarioVoiceBody.habit-scenario-voice-body{
       margin:0;padding:0;min-width:0;display:block;
     }
+    #habitScenarioVoiceBody.habit-scenario-voice-body[hidden]{
+      display:none!important;
+    }
     #habitScenarioVoiceBody .habit-scenario-voice-fields{display:grid;gap:10px;margin-top:4px}
     .habit-scenario-voice-fields.is-disabled{opacity:.55;pointer-events:none}
     .habit-scenario-voice-field{display:grid;gap:8px;padding:10px;border-radius:10px;background:var(--surface-high);border:1px solid var(--outline-variant)}

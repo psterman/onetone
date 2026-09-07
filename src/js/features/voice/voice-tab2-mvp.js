@@ -419,6 +419,8 @@
       followText.textContent=formatFollowLine({ triggerLabel:trig, agentTarget:agentTarget, identity:fg });
     }
     var profile=resolveTriggerHoldProfile();
+    var dockTry=$('btnVoiceDockTryMic');
+    if(dockTry) dockTry.textContent=t('voiceDockTryMic','试麦克风');
     if(localBtn){
       var localTpl=profile.ctaStyle==='hold'
         ?t('voiceTab2TryLocalHold','按住 {trigger} 本地试说')
@@ -559,6 +561,7 @@
     renderHero:renderHero,
     flashCoachSuccess:flashCoachSuccess,
     bindOnce:bindOnce,
+    tryLocalMic:onTryLocalClick,
     triggerLabel:triggerLabel,
     resolveTriggerHoldProfile:resolveTriggerHoldProfile,
     isVoiceEnabled:isVoiceEnabled,

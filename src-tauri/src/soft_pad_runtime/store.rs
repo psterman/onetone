@@ -673,6 +673,7 @@ mod attention_feed_tests {
             label: String::new(),
             group: "默认".into(),
             app_target_id: app.into(),
+            voice_allow_bring_up_target: false,
             trigger_key: "F1".into(),
             target_key: "RAlt".into(),
             enabled: true,

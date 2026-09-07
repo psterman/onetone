@@ -1,6 +1,7 @@
 # 语音设置页 · 现网核对 + 实现 plan
 
-> **架构/UI/页面策略定稿**：[voice-settings-page-proto-spec.md](voice-settings-page-proto-spec.md)（Q1–Q38）  
+> **过期提示（2026-09-07 晚）：** 定稿已按三区终态重锁（四面 face · 落点旁注 · 废除 openApp / 方案卡 / 相关三链 · Q39–Q45）。下文 §10–§12 仍描述旧锁，**实现以 [voice-settings-page-proto-spec.md](voice-settings-page-proto-spec.md) 为准**；本审计表未整篇重写。  
+> **架构/UI/页面策略定稿**：[voice-settings-page-proto-spec.md](voice-settings-page-proto-spec.md)（Q39–Q45 取代冲突的 Q12–Q36）  
 > 本文只保留对照与 Batch plan；实现以定稿为准。  
 > 审计：2026-09-07 · 复审补洞：侧链按键 / toast / §A≠§B  
 > 终态三区：[../../design-mock/voice-ui-3hero-switch-final.html](../../design-mock/voice-ui-3hero-switch-final.html)

@@ -272,6 +272,11 @@
       }
       if(msg.type==='mvp_runtime_event'){
         appendRuntimeEvent(msg.event);
+        try{
+          if(typeof global.dispatchEvent==='function'){
+            global.dispatchEvent(new CustomEvent('ot:runtime-event',{detail:msg.event}));
+          }
+        }catch(_){}
         if(global.OneToneActivationHub&&global.OneToneActivationHub.onRuntimeEvent){
           try{ global.OneToneActivationHub.onRuntimeEvent(msg.event); }catch(_){}
         }

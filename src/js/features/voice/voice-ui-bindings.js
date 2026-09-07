@@ -965,54 +965,212 @@
     bindPhraseKindTabs('voiceWakeKindTabs','__vp_voice_wake_kind__');
     bindPhraseKindTabs('voiceEndKindTabs','__vp_voice_end_kind__');
     bindPhraseKindTabs('voiceCancelKindTabs','__vp_voice_cancel_kind__');
-    function setWakePhraseKind(kind){
-      kind=kind==='app'?'app':'text';
-      global.__vp_voice_wake_kind__=kind;
-      if(global.OneToneVoiceStepSend&&global.OneToneVoiceStepSend.syncPhraseKindTabs){
-        global.OneToneVoiceStepSend.syncPhraseKindTabs('voiceWakeKindTabs',kind);
+    function setVoiceFace(face){
+      if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.setVoiceFace){
+        global.OneToneVoiceStepWake.setVoiceFace(face);
+      }else{
+        var ok=['dictate','softpad','keys','camera'];
+        face=String(face||'dictate');
+        global.__vp_voice_face__=ok.indexOf(face)>=0?face:'dictate';
       }
     }
-    var btnWakeOpenAppEntry=$('btnVoiceWakeOpenAppEntry');
-    if(btnWakeOpenAppEntry&&!btnWakeOpenAppEntry._wakeKindBound){
-      btnWakeOpenAppEntry._wakeKindBound=true;
-      btnWakeOpenAppEntry.addEventListener('click',function(e){
+    function openDrawerPanel(panel,focus){
+      var opts={panel:panel};
+      if(focus) opts.focus=focus;
+      if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
+        global.OneToneSettingsDrawer.open(opts);
+      }else if(hooks.setSettingsPanel){
+        hooks.setSettingsPanel(panel);
+      }
+    }
+    var faceTabs=$('voiceFaceTabs');
+    if(faceTabs&&!faceTabs._voiceFaceBound){
+      faceTabs._voiceFaceBound=true;
+      faceTabs.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-voice-face]');
+        if(!btn) return;
         e.preventDefault();
-        setWakePhraseKind('app');
+        setVoiceFace(btn.getAttribute('data-voice-face')||'dictate');
       });
     }
-    var btnWakeBackToText=$('btnVoiceWakeBackToText');
-    if(btnWakeBackToText&&!btnWakeBackToText._wakeKindBound){
-      btnWakeBackToText._wakeKindBound=true;
-      btnWakeBackToText.addEventListener('click',function(e){
+    var btnLandingKeys=$('btnVoiceLandingKeysTarget');
+    if(btnLandingKeys&&!btnLandingKeys._landingBound){
+      btnLandingKeys._landingBound=true;
+      btnLandingKeys.addEventListener('click',function(e){
         e.preventDefault();
-        setWakePhraseKind('text');
+        openDrawerPanel('keys','target');
       });
     }
-    var btnWakeSideCamera=$('btnVoiceWakeSideCamera');
-    if(btnWakeSideCamera&&!btnWakeSideCamera._sideBound){
-      btnWakeSideCamera._sideBound=true;
-      btnWakeSideCamera.addEventListener('click',function(e){
+    var bringToggle=$('voiceAllowBringUpTargetToggle');
+    if(bringToggle&&!bringToggle._bringBound){
+      bringToggle._bringBound=true;
+      bringToggle.addEventListener('click',function(e){
         e.preventDefault();
-        if(hooks.setSettingsPanel) hooks.setSettingsPanel('camera');
-        else if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
-          global.OneToneSettingsDrawer.open({panel:'camera'});
+        var hdr=global.OneToneVoicePageHeaderRender;
+        var m=hdr&&hdr.resolveScopeMapping?hdr.resolveScopeMapping(null):null;
+        if(!m||!String(m.appTargetId||'').trim()) return;
+        m.voiceAllowBringUpTarget=!m.voiceAllowBringUpTarget;
+        bringToggle.setAttribute('aria-checked',m.voiceAllowBringUpTarget?'true':'false');
+        bringToggle.classList.toggle('is-on',!!m.voiceAllowBringUpTarget);
+        if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
+          global.OneToneConfigPersist.save({source:'voice'});
+        }
+        if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.renderWrongFgStatus){
+          global.OneToneVoiceStepWake.renderWrongFgStatus();
         }
       });
     }
-    var btnWakeSideSoftPad=$('btnVoiceWakeSideSoftPad');
-    if(btnWakeSideSoftPad&&!btnWakeSideSoftPad._sideBound){
-      btnWakeSideSoftPad._sideBound=true;
-      btnWakeSideSoftPad.addEventListener('click',function(e){
+    function setFinishOutcome(outcome){
+      outcome=outcome==='send'||outcome==='discard'?outcome:'keep';
+      global.__vp_voice_finish_outcome__=outcome;
+      document.querySelectorAll('#voiceFinishOutcomes [data-voice-outcome]').forEach(function(el){
+        var on=el.getAttribute('data-voice-outcome')===outcome;
+        el.classList.toggle('is-on',on);
+        el.setAttribute('aria-checked',on?'true':'false');
+      });
+      var detailKeep=$('voiceFinishDetailKeep');
+      var detailSend=$('voiceFinishDetailSend');
+      var detailDiscard=$('voiceFinishDetailDiscard');
+      if(detailKeep) detailKeep.hidden=outcome!=='keep';
+      if(detailSend) detailSend.hidden=outcome!=='send';
+      if(detailDiscard) detailDiscard.hidden=outcome!=='discard';
+      var cancelPane=$('voiceCancelPhrasePanel');
+      var endPane=$('voiceEndPhrasePanel');
+      var sendPane=$('voiceFinishSendPane');
+      if(cancelPane) cancelPane.hidden=outcome!=='discard';
+      if(endPane) endPane.hidden=outcome!=='keep';
+      if(sendPane) sendPane.hidden=outcome!=='send';
+      var causal={
+        keep:{lead:'停一会儿',mid:'字留下',tail:'不发'},
+        send:{lead:'停',mid:'说「发送」',tail:'回车'},
+        discard:{lead:'不要了',mid:'字丢掉',tail:'结束'}
+      };
+      var c=causal[outcome]||causal.keep;
+      var lead=$('voiceFinishCausalLead');
+      var mid=$('voiceFinishCausalMid');
+      var tail=$('voiceFinishCausalTail');
+      if(lead) lead.textContent=c.lead;
+      if(mid) mid.textContent=c.mid;
+      if(tail) tail.textContent=c.tail;
+      /* Sync primary phrase caps from tag pools when present */
+      function firstTagPhrase(hostId,fallback){
+        var host=$(hostId);
+        if(!host) return fallback;
+        var chip=host.querySelector('.voice-phrase-tag,.voice-wake-alias-chip,[data-phrase],button');
+        var txt=chip?(chip.getAttribute('data-phrase')||chip.textContent||''):'';
+        txt=String(txt).replace(/[×x✖]/g,'').trim();
+        return txt||fallback;
+      }
+      var keepCap=$('btnVoiceFinishKeepCap');
+      if(keepCap) keepCap.textContent='「'+firstTagPhrase('voiceEndPhraseTags','停一会儿')+'」';
+      var sendCap=$('btnVoiceFinishSendCap');
+      if(sendCap) sendCap.textContent='「'+firstTagPhrase('voiceSendPhraseTags','发送')+'」';
+      var discardCap=$('btnVoiceFinishDiscardCap');
+      if(discardCap) discardCap.textContent='「'+firstTagPhrase('voiceCancelPhraseTags','不要了')+'」';
+    }
+    var finishOutcomes=$('voiceFinishOutcomes');
+    if(finishOutcomes&&!finishOutcomes._outcomeBound){
+      finishOutcomes._outcomeBound=true;
+      finishOutcomes.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-voice-outcome]');
+        if(!btn) return;
         e.preventDefault();
-        if(hooks.setSettingsPanel) hooks.setSettingsPanel('softPad');
-        else if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
-          global.OneToneSettingsDrawer.open({panel:'softPad'});
+        setFinishOutcome(btn.getAttribute('data-voice-outcome')||'keep');
+      });
+      setFinishOutcome(global.__vp_voice_finish_outcome__||'keep');
+    }
+    function openFinishMore(){
+      var d=$('voiceFinishMoreDetails');
+      if(d) d.open=true;
+    }
+    function bindOpenOverlay(id,fn){
+      var el=$(id);
+      if(!el||el._protoEditBound) return;
+      el._protoEditBound=true;
+      el.addEventListener('click',function(e){
+        e.preventDefault();
+        if(typeof fn==='function') fn();
+      });
+    }
+    bindOpenOverlay('btnVoiceWakePhraseCap',function(){ openWakePhrasePopover(); });
+    bindOpenOverlay('btnVoiceWakePhraseEditLink',function(){
+      var alias=$('voiceWakeAliasBlock');
+      if(alias) alias.hidden=!alias.hidden;
+      if(alias&&!alias.hidden) openWakePhrasePopover();
+    });
+    bindOpenOverlay('btnVoiceFinishKeepEdit',function(){ openFinishMore(); setFinishOutcome('keep'); });
+    bindOpenOverlay('btnVoiceFinishKeepCap',function(){ openFinishMore(); setFinishOutcome('keep'); });
+    bindOpenOverlay('btnVoiceFinishSendEdit',function(){ openFinishMore(); setFinishOutcome('send'); });
+    bindOpenOverlay('btnVoiceFinishSendCap',function(){ openFinishMore(); setFinishOutcome('send'); });
+    bindOpenOverlay('btnVoiceFinishDiscardEdit',function(){ openFinishMore(); setFinishOutcome('discard'); });
+    bindOpenOverlay('btnVoiceFinishDiscardCap',function(){ openFinishMore(); setFinishOutcome('discard'); });
+    bindOpenOverlay('btnVoiceFinishNeedScene',function(){ openDrawerPanel('keys','target'); });
+    var autoToggle=$('voiceFinishAutoToggle');
+    if(autoToggle&&!autoToggle._autoBound){
+      autoToggle._autoBound=true;
+      autoToggle.addEventListener('change',function(){
+        var autoBtn=$('voiceOutputModeAuto');
+        var phraseBtn=$('voiceOutputModePhrase');
+        if(autoToggle.checked&&autoBtn) autoBtn.click();
+        else if(phraseBtn) phraseBtn.click();
+        var chips=$('voiceFinishDelayChips');
+        if(chips) chips.hidden=!autoToggle.checked;
+        var hint=$('voiceFinishAutoHint');
+        if(hint) hint.textContent=autoToggle.checked?'已开 · 仅匹配前台时':'未开 · 你说了才发';
+      });
+    }
+    function bindBridgeGo(id,panel,focus){
+      var el=$(id);
+      if(!el||el._bridgeGoBound) return;
+      el._bridgeGoBound=true;
+      el.addEventListener('click',function(e){
+        e.preventDefault();
+        openDrawerPanel(panel,focus);
+      });
+    }
+    bindBridgeGo('btnVoiceSpGoPad','softPad','softPadLayout');
+    bindBridgeGo('btnVoiceSpChangeApp','keys','target');
+    bindBridgeGo('btnVoiceSpPrepare','softPad','softPadLayout');
+    bindBridgeGo('btnVoiceSpGoPadEmpty','softPad','softPadLayout');
+    bindBridgeGo('btnVoiceSpAddPhrase','softPad','softPadLayout');
+    bindBridgeGo('btnVoiceSpAddMore','softPad','softPadLayout');
+    bindBridgeGo('btnVoiceKeysGoPage','keys');
+    bindBridgeGo('btnVoiceKeysGoEmpty','keys');
+    bindBridgeGo('btnVoiceKeysAddPhrase','keys');
+    bindBridgeGo('btnVoiceKeysAddMore','keys');
+    bindBridgeGo('btnVoiceCamGoPage','camera','cameraPresence');
+    bindBridgeGo('btnVoiceCamGoEmpty','camera','cameraPresence');
+    bindBridgeGo('btnVoiceCamAddMore','camera','cameraPresence');
+    var btnDockTryMic=$('btnVoiceDockTryMic');
+    if(btnDockTryMic&&!btnDockTryMic._tryBound){
+      btnDockTryMic._tryBound=true;
+      btnDockTryMic.addEventListener('click',function(e){
+        e.preventDefault();
+        if(global.OneToneVoiceTab2Mvp&&global.OneToneVoiceTab2Mvp.tryLocalMic){
+          global.OneToneVoiceTab2Mvp.tryLocalMic();
         }
       });
     }
     global.__vp_voice_send_kind__='text';
     if(global.OneToneVoiceStepSend&&global.OneToneVoiceStepSend.forceTextPhraseKinds){
       global.OneToneVoiceStepSend.forceTextPhraseKinds();
+    }
+    setVoiceFace('dictate');
+    if(typeof global.addEventListener==='function'&&!global.__vp_voice_wrong_fg_toast__){
+      global.__vp_voice_wrong_fg_toast__=true;
+      global.addEventListener('ot:runtime-event',function(e){
+        var ev=e&&e.detail;
+        if(!ev||String(ev.kind||'')!=='voice_wake_refused_wrong_fg') return;
+        var payload=ev.payload||{};
+        var target=String(payload.targetName||payload.appTargetId||'').trim()||'目标应用';
+        var msg=String((typeof t==='function'&&t('voiceWrongFgToast'))||'当前窗口不是「{target}」。请先切换，或到听写「高级」里打开自动拉起。')
+          .replace('{target}',target);
+        if(global.OneToneAppToast&&global.OneToneAppToast.show) global.OneToneAppToast.show(msg,'lite');
+        else if(global.OneToneApp&&global.OneToneApp.toast) global.OneToneApp.toast(msg);
+        if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.renderWrongFgStatus){
+          global.OneToneVoiceStepWake.renderWrongFgStatus();
+        }
+      });
     }
     function bindControlAcousticTabs(hostId,storageKey,role){
       var host=$(hostId);
@@ -1123,7 +1281,7 @@
           global.OneToneSettingsDrawer.setSettingsPanel('voiceWake');
         }
         if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
-          global.OneToneVoicePageState.setStep('recognize');
+          global.OneToneVoicePageState.setStep('finish');
         }else if(global.OneToneVoiceStepNav&&global.OneToneVoiceStepNav.goToStep){
           global.OneToneVoiceStepNav.goToStep('recognize');
         }

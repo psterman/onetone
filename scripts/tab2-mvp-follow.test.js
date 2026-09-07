@@ -138,9 +138,7 @@ assert.ok(agentTab2.canAgentTry(), 'RAlt + cursor scenario enables agent try');
 var tab2Src = read('src/js/features/voice/voice-tab2-mvp.js');
 assert.ok(/habit-agent-workflow-test/.test(tab2Src), 'agent CTA uses workflow context');
 assert.ok(/onTryLocalClick/.test(tab2Src), 'local CTA handler');
-assert.ok(/voiceTab2TryLocal/.test(tab2Src), 'local button id');
-
-assert.ok(/voiceTab2TryAgent/.test(tab2Src), 'agent button uses route template');
+assert.ok(/tryLocalMic/.test(tab2Src), 'exports tryLocalMic for dock');
 assert.ok(/replace\('\{route\}'/.test(tab2Src), 'agent CTA substitutes route name');
 
 var sendSrc = read('src/js/features/mapping/mapping-test-send.js');
@@ -267,8 +265,9 @@ assert.ok(/RECORDING_SESSION/.test(hotkeyRs), 'recording session flag for pendin
 assert.ok(/mouseData was empty\/unrecognized/.test(hotkeyRs), 'swallow unnamed XButton so WebView cannot go Forward');
 
 var html = read('src/index.html');
-assert.ok(html.includes('id="voiceTab2TryLocal"'), 'local try button');
-assert.ok(html.includes('id="voiceTab2TryAgent"'), 'agent try button');
+assert.ok(html.includes('id="btnVoiceDockTryMic"'), 'dock try mic button');
+assert.ok(!html.includes('id="voiceTab2TryLocal"'), 'local try CTA removed from page');
+assert.ok(!html.includes('id="voiceTab2TryAgent"'), 'agent try CTA removed from voice page');
 assert.ok(!html.includes('id="voiceTab2TryCta"'), 'old single CTA removed');
 assert.ok(html.includes('id="recordProbePanel"'), 'record probe panel in keys UI');
 assert.ok(/mapping-record-probe\.js/.test(html), 'record probe script loaded');
