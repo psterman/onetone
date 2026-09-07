@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneTone · 语音方案枢纽</title>
+<link rel="stylesheet" href="../src/css/codex-micro-hw-tokens.css" />
+<link rel="stylesheet" href="../src/css/codex-micro-pad.css" />
+<link rel="stylesheet" href="../src/css/soft-pad-hub.css" />
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#fff; --soft:#F0F0F2;
+  --border:#E5E5E5; --border-strong:#C4C4C4;
+  --primary:#00658F; --primary-soft:#E0F1FA;
+  --text:#1A1A1A; --muted:#666; --faint:#999;
+  --ok:#15803D; --ok-soft:#DCFCE7;
+  --warn:#92400E; --warn-soft:#FEF3C7;
+  --h2:#B45309; --h3:#15803D;
+  --r:14px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Outfit','Segoe UI','PingFang SC','Microsoft YaHei UI',sans-serif;
+  line-height:1.5;-webkit-font-smoothing:antialiased;}
+header{background:#fff;border-bottom:1px solid var(--border);padding:16px 24px;}
+header h1{margin:0 0 4px;font:700 18px/24px Outfit,sans-serif;letter-spacing:-.02em;}
+header .sub{margin:0;font-size:13px;color:var(--muted);max-width:920px;}
+.wrap{padding:18px 24px 48px;max-width:980px;margin:0 auto;}
+.note{background:var(--primary-soft);border:1px solid rgba(0,101,143,.25);border-radius:10px;
+  padding:10px 14px;font-size:12.5px;color:var(--primary);margin-bottom:12px;}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center;}
+.tools label{font-size:11px;font-weight:700;color:var(--muted);}
+.tools button{border:1px solid var(--border-strong);background:#fff;padding:6px 11px;border-radius:8px;
+  font:600 12px Outfit,sans-serif;color:var(--muted);cursor:pointer;}
+.tools button.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+.mock{border:1px solid var(--border);border-radius:var(--r);background:var(--surface);
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 14px rgba(0,0,0,.05);overflow:hidden;}
+.chrome{background:var(--soft);padding:8px 10px;font-size:11px;color:var(--muted);
+  display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);}
+.dot{width:8px;height:8px;border-radius:50%;}
+.dot.r{background:#E57373;}.dot.y{background:#F0C674;}.dot.g{background:#9BC97E;}
+.body{padding:12px;display:grid;gap:10px;min-height:580px;}
+.psb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;
+  border:1px solid var(--border);border-radius:8px;background:#fafafa;font-size:12px;}
+.brand{font-weight:800;}
+.pill{font-size:10px;padding:2px 7px;border-radius:999px;background:var(--ok-soft);color:var(--ok);font-weight:700;}
+.spacer{flex:1;}
+.btn{font:600 11px/14px Outfit,sans-serif;padding:5px 10px;border-radius:7px;border:1px solid var(--primary);
+  background:var(--primary);color:#fff;cursor:pointer;}
+.btn.ghost{background:#fff;color:var(--primary);}
+.face{display:flex;flex-wrap:wrap;gap:3px;padding:3px;width:100%;max-width:100%;background:var(--soft);
+  border:1px solid var(--border);border-radius:9px;}
+.face .f{border:0;background:transparent;padding:7px 10px;border-radius:7px;flex:1;min-width:64px;
+  font:700 12px/14px Outfit,sans-serif;color:var(--muted);cursor:pointer;text-align:center;}
+.face .f.on{background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+.status{font-size:11px;padding:7px 10px;border-radius:8px;background:var(--warn-soft);
+  border:1px solid #FCD34D;color:var(--warn);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.status .sim{margin-left:auto;font:650 10.5px Outfit,sans-serif;border:1px solid #FCD34D;
+  background:#fff;color:var(--warn);padding:3px 8px;border-radius:6px;cursor:pointer;}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:50;
+  background:#1A1A1A;color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;
+  max-width:min(420px,92vw);box-shadow:0 8px 24px rgba(0,0,0,.2);opacity:0;pointer-events:none;
+  transition:opacity .2s;}
+.toast.show{opacity:1;}
+.flow{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;position:relative;padding:4px 0;max-width:280px;margin:0 auto;}
+.flow::before{content:"";position:absolute;left:18%;right:18%;top:26px;height:2px;
+  background:linear-gradient(90deg,rgba(79,172,254,.55),rgba(245,158,11,.75));}
+.node{position:relative;z-index:1;text-align:center;cursor:pointer;background:transparent;border:0;padding:0;font:inherit;color:inherit;}
+.node .t{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.04em;}
+.node .c{width:36px;height:36px;border-radius:50%;margin:4px auto 0;display:grid;place-items:center;
+  border:2px solid var(--border);background:#fff;font-size:12px;color:var(--muted);transition:.15s;}
+.node .ttl{margin:4px 0 0;font-size:10.5px;font-weight:700;}
+.node.on .c{color:#fff;box-shadow:0 0 0 3px var(--primary-soft);}
+.node[data-step="wake"].on .c{background:var(--primary);border-color:var(--primary);}
+.node[data-step="finish"].on .c{background:var(--h2);border-color:var(--h2);box-shadow:0 0 0 3px var(--warn-soft);}
+.causal-finish{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;
+  font-size:12px;padding:8px 10px;border-radius:8px;background:#fafafa;border:1px solid var(--border);color:var(--muted);}
+.causal-finish .arr{color:var(--primary);font-weight:800;}
+.causal-finish strong{color:var(--text);}
+.card{border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:12px;}
+.card h3{margin:0;font:800 14px/20px Outfit,sans-serif;}
+.card .sub{margin:0;font-size:12px;color:var(--muted);}
+.phrase-hero{display:grid;justify-items:center;gap:8px;padding:18px 14px 14px;
+  border-radius:12px;background:linear-gradient(180deg,#fff,#F7FBFE);
+  border:1.5px solid rgba(0,101,143,.28);}
+.phrase-cap{display:inline-flex;align-items:center;justify-content:center;min-width:160px;
+  padding:14px 22px;border-radius:14px;background:var(--primary);color:#fff;
+  font:800 18px/22px Outfit,sans-serif;letter-spacing:.02em;
+  box-shadow:0 4px 14px rgba(0,101,143,.25);cursor:pointer;border:0;}
+.phrase-hint{font-size:12.5px;color:var(--muted);text-align:center;max-width:340px;}
+.phrase-hint a{color:var(--primary);font-weight:650;text-decoration:underline;text-underline-offset:2px;}
+.causal{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
+  font-size:12.5px;padding:8px 10px;border-radius:8px;background:#fafafa;border:1px solid var(--border);}
+.causal .arr{color:var(--primary);font-weight:800;}
+.landing{padding:10px 12px;border-radius:10px;background:var(--soft);border:1px solid var(--border);
+  font-size:12.5px;line-height:1.45;display:grid;gap:4px;}
+.landing .line{color:var(--text);}
+.landing .fix{color:var(--muted);font-size:12px;}
+.landing a{color:var(--primary);font-weight:650;text-decoration:underline;text-underline-offset:2px;}
+.more{border:1px dashed var(--border);border-radius:10px;padding:8px 10px;background:#fafafa;font-size:12px;color:var(--muted);}
+.more summary{list-style:none;font-weight:700;cursor:pointer;color:var(--text);}
+.more summary::-webkit-details-marker{display:none;}
+.more summary::before{content:"▸ ";color:var(--faint);}
+.more[open] summary::before{content:"▾ ";}
+.more .inner{margin-top:10px;display:grid;gap:8px;}
+.more .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.more .chip{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--border);background:#fff;}
+.need-list{display:grid;gap:6px;}
+.need-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#fff;}
+.need-row .need-copy{display:grid;gap:2px;min-width:0;flex:1;}
+.need-row .need-title{font:700 12.5px/16px Outfit,sans-serif;color:var(--text);}
+.need-row .need-sub{font-size:11.5px;color:var(--muted);line-height:1.35;}
+.need-row label.need-act{display:flex;align-items:center;gap:6px;font:650 12px Outfit,sans-serif;color:var(--text);cursor:pointer;white-space:nowrap;}
+.need-row a.need-act,.need-row button.need-act{
+  border:0;background:transparent;color:var(--primary);font:650 12.5px Outfit,sans-serif;
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer;padding:0;white-space:nowrap;}
+.outcome{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+@media (max-width:560px){.outcome{grid-template-columns:1fr;}}
+.outcome button{border:1.5px solid var(--border);background:#fff;border-radius:12px;padding:12px 8px;
+  cursor:pointer;font:inherit;color:inherit;display:grid;gap:2px;text-align:center;}
+.outcome button .t{font:800 13px/16px Outfit,sans-serif;}
+.outcome button .d{font-size:11px;color:var(--muted);}
+.outcome button.on{border-color:var(--primary);background:var(--primary-soft);box-shadow:0 0 0 3px rgba(0,101,143,.08);}
+.outcome button[data-outcome="discard"].on{border-color:#B91C1C;background:#FEF2F2;box-shadow:0 0 0 3px rgba(185,28,28,.08);}
+.outcome button[data-outcome="discard"].on .t{color:#B91C1C;}
+.finish-detail{display:grid;gap:10px;}
+.finish-detail .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;}
+.finish-detail .chip{font-size:11.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:#fff;font-weight:650;}
+.finish-detail .chip.em{border-color:rgba(0,101,143,.35);color:var(--primary);background:var(--primary-soft);}
+.finish-detail .chip.bad{border-color:rgba(185,28,28,.3);color:#B91C1C;background:#FEF2F2;}
+.finish-detail .chip.on,#sendDelay .chip.on{border-color:rgba(22,163,74,.4);color:var(--h3);background:var(--ok-soft);}
+.finish-detail a{font-size:12px;color:var(--primary);font-weight:650;text-decoration:underline;text-underline-offset:2px;}
+#sendDelay .chip{font-size:11.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:#fff;font-weight:650;cursor:pointer;}
+.auto-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:8px;
+  background:var(--soft);border:1px solid var(--border);font-size:12px;color:var(--muted);}
+.auto-row label{display:flex;align-items:center;gap:6px;font-weight:700;color:var(--text);cursor:pointer;}
+.auto-row a{color:var(--primary);font-weight:650;}
+/* Bridge faces */
+.bridge-hero{padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,#fff,#F7FBFE);
+  border:1px solid rgba(0,101,143,.22);font-size:12.5px;display:grid;gap:4px;}
+.bridge-hero strong{font-size:13px;}
+.bridge-hero .eq{color:var(--muted);}
+.bridge-hero .eq .arr{color:var(--primary);font-weight:800;margin:0 4px;}
+.call-list{display:grid;gap:8px;}
+.call-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;
+  padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;}
+.call-row .name{font:700 13px/16px Outfit,sans-serif;}
+.call-row .meta{font-size:11.5px;color:var(--muted);margin-top:2px;}
+.call-row .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;align-items:center;}
+.call-row .chip{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--border);background:var(--soft);font-weight:650;}
+.call-row .chip.em{border-color:rgba(0,101,143,.35);color:var(--primary);background:var(--primary-soft);}
+.call-row .chip.off{opacity:.45;text-decoration:line-through;}
+.call-row .side{display:grid;gap:6px;justify-items:end;}
+.call-row .tog{font-size:11px;font-weight:700;color:var(--ok);display:flex;align-items:center;gap:4px;}
+.call-row .tog.off{color:var(--faint);}
+.call-row a{font-size:11.5px;color:var(--primary);font-weight:650;text-decoration:underline;text-underline-offset:2px;}
+.bridge-cta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.bridge-cta a{font-size:12.5px;color:var(--primary);font-weight:650;text-decoration:none;}
+.keys-cats{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 8px;}
+.keys-cats button{border:1px solid var(--border);background:#fff;padding:5px 10px;border-radius:999px;
+  font:650 11.5px Outfit,sans-serif;color:var(--muted);cursor:pointer;}
+.keys-cats button.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+.keys-cmd-list{display:grid;gap:4px;max-height:420px;overflow:auto;padding-right:2px;}
+.keys-cmd{border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 10px;
+  text-align:left;cursor:pointer;font:inherit;color:inherit;display:grid;gap:2px;width:100%;}
+.keys-cmd:hover{border-color:var(--border-strong);}
+.keys-cmd.on{border-color:var(--primary);background:var(--primary-soft);box-shadow:0 0 0 2px rgba(0,101,143,.12);}
+.keys-cmd .kn{font:700 13px/16px Outfit,sans-serif;}
+.keys-cmd .km{font-size:11px;color:var(--muted);}
+.keys-cmd .km .kcap{font-weight:700;color:var(--text);}
+.keys-cmd.is-off{opacity:.55;}
+.keys-cmd.is-off .kn{text-decoration:line-through;}
+.keys-when{margin:0;font-size:12.5px;color:var(--muted);line-height:1.45;}
+.keys-effect{margin:0;font-size:12.5px;color:var(--text);padding:8px 10px;border-radius:8px;background:var(--soft);border:1px solid var(--border);}
+.keys-keyline{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.keys-keyline .kcap{font:700 12px Outfit,sans-serif;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text);}
+.cam-scene-list{display:grid;gap:6px;}
+.cam-scene{border:1px solid var(--border);background:#fff;border-radius:12px;padding:12px 12px;
+  text-align:left;cursor:pointer;font:inherit;color:inherit;display:grid;gap:4px;width:100%;}
+.cam-scene:hover{border-color:var(--border-strong);}
+.cam-scene.on{border-color:var(--primary);background:var(--primary-soft);box-shadow:0 0 0 2px rgba(0,101,143,.12);}
+.cam-scene .cs-title{font:800 14px/18px Outfit,sans-serif;}
+.cam-scene .cs-when{font-size:12px;color:var(--muted);line-height:1.4;}
+.cam-scene .cs-gest{font-size:11.5px;color:var(--text);font-weight:650;}
+.cam-scene.is-secondary{opacity:.9;border-style:dashed;}
+.cam-scene .cs-badge{font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;
+  background:var(--soft);color:var(--muted);margin-left:4px;vertical-align:middle;}
+.cam-scene .cs-badge.is-rec{background:var(--ok-soft);color:var(--ok);}
+.cam-scene .cs-badge.is-exp{background:var(--warn-soft);color:var(--warn);}
+.cam-scene.is-off{opacity:.55;}
+.cam-scene.is-off .cs-title{text-decoration:line-through;}
+.cam-gest-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;
+  background:#fff;border:1px solid var(--border);font:700 12.5px Outfit,sans-serif;}
+.cam-gest-pill .g{font-size:16px;line-height:1;}
+.cam-safe{font-size:12px;padding:8px 10px;border-radius:8px;background:var(--warn-soft);border:1px solid #FCD34D;
+  color:var(--warn);line-height:1.4;}
+.cam-safe strong{color:var(--text);}
+.sec-soft{margin-top:4px;padding-top:12px;border-top:1px dashed var(--border);display:grid;gap:8px;}
+.sec-soft .lab{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);}
+.open-mini{padding:10px 12px;border:1px dashed var(--border);border-radius:10px;background:#fafafa;
+  font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;}
+/* SoftPad face — 左右：左键盘 · 右口令（对齐 Soft Pad 设置页） */
+.sp-scope{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;
+  background:var(--soft);border:1px solid var(--border);font-size:12px;}
+.sp-scope .pill-app{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;
+  background:var(--primary-soft);color:var(--primary);border:1px solid rgba(0,101,143,.25);}
+.sp-scope .hint{color:var(--muted);flex:1;min-width:140px;}
+.sp-scope button.link{border:0;background:transparent;color:var(--primary);font:650 12px Outfit,sans-serif;
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer;padding:0;}
+.sp-split{
+  display:grid;
+  grid-template-columns:minmax(280px,1fr) minmax(260px,0.95fr);
+  gap:14px;
+  align-items:start;
+}
+@media (max-width:720px){
+  .sp-split{grid-template-columns:1fr;}
+}
+.sp-col{display:grid;gap:8px;min-width:0;}
+.sp-col-label{font:800 11px/14px Outfit,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);
+  display:flex;align-items:center;gap:6px;}
+.sp-col-label .n{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;
+  background:var(--primary);color:#fff;font-size:10px;}
+.sp-eq{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
+  font-size:13px;padding:8px 10px;border-radius:8px;background:#fafafa;border:1px solid var(--border);color:var(--muted);}
+.sp-eq .arr{color:var(--primary);font-weight:800;}
+.sp-eq strong{color:var(--text);}
+#voiceSpPreviewHost.soft-pad-preview-host{
+  min-height:360px;margin:0;width:100%;max-width:none;
+  position:sticky;top:8px;
+}
+#voiceSpPreviewHost .sp-voice-ph{
+  display:block;font-size:9px;color:#0A84FF;margin-top:2px;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#voiceSpPreviewHost .micro-hw__key.is-voice-off .sp-voice-ph{opacity:.35;text-decoration:line-through;}
+#voiceSpPreviewHost .micro-hw__key.is-live{
+  box-shadow:0 0 0 3px rgba(48,209,88,.45),0 0 16px rgba(48,209,88,.3)!important;
+}
+.sp-right{display:grid;gap:10px;align-content:start;}
+.sp-pick-name{margin:0;font:800 20px/24px Outfit,sans-serif;letter-spacing:-.02em;}
+.sp-pick-do{margin:0;font-size:13px;color:var(--muted);}
+.sp-result{font-size:13px;padding:10px 12px;border-radius:10px;background:var(--soft);border:1px solid var(--border);
+  color:var(--muted);min-height:1.4em;}
+.sp-result.ok{background:var(--ok-soft);border-color:rgba(22,163,74,.35);color:var(--ok);font-weight:700;}
+.sp-result.miss{background:#FEF2F2;border-color:rgba(185,28,28,.25);color:#B91C1C;font-weight:650;}
+.sp-try-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.sp-try-row input{flex:1;min-width:120px;border:1.5px solid var(--border-strong);border-radius:10px;
+  padding:10px 12px;font:650 14px Outfit,sans-serif;}
+.sp-try-row input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);}
+.sp-phrase-edit{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.sp-phrase-edit .chip{font-size:11.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+  background:var(--primary-soft);color:var(--primary);font-weight:650;cursor:pointer;}
+.sp-phrase-edit input{flex:1;min-width:100px;border:1px solid var(--border-strong);border-radius:8px;
+  padding:7px 10px;font:650 12.5px Outfit,sans-serif;}
+.bridge-add{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px;}
+.bridge-add .btn{font-size:12px;}
+.bridge-note{font-size:11.5px;color:var(--muted);margin:0;}
+.face .f .opt{display:block;font:650 9px/11px Outfit,sans-serif;color:var(--faint);font-weight:650;margin-top:1px;}
+.face .f.on .opt{color:var(--primary);opacity:.75;}
+.sp-empty{padding:28px 16px;text-align:center;display:grid;gap:10px;justify-items:center;}
+.sp-empty p{margin:0;font-size:12.5px;color:var(--muted);max-width:340px;}
+.sp-empty .actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+.open-mini{padding:10px 12px;border:1px dashed var(--border);border-radius:10px;background:#fafafa;
+  font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;}
+.dock{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--border);
+  border-radius:8px;background:var(--soft);font-size:11px;color:var(--muted);margin-top:auto;}
+.dock .chip{padding:3px 8px;border-radius:999px;border:1px solid var(--border);background:#fff;font-weight:650;color:var(--text);}
+.dock .ghost{border:0;background:transparent;color:var(--primary);font:650 11px Outfit,sans-serif;
+  padding:2px 4px;text-decoration:underline;text-underline-offset:2px;cursor:pointer;}
+.legend{margin-top:14px;font-size:11.5px;color:var(--muted);padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;}
+[hidden]{display:none!important;}
+footer{padding:16px;text-align:center;font-size:11px;color:var(--faint);}
+</style>
+</head>
+<body>
+<header>
+  <h1>语音方案枢纽</h1>
+  <p class="sub">听写是语音主场。SoftPad、按键、摄像头：有口令才在这里改说法；没有就空着，各自页面照常配置。</p>
+</header>
+<div class="wrap">
+  <div class="note">列表来自 Soft Pad / 按键 / 摄像头里已有的动作。这里加口令会同步回去；还没有口令时，这一面空着。</div>
+
+  <div class="tools">
+    <label>Face</label>
+    <button type="button" class="on" data-face="dictate">听写</button>
+    <button type="button" data-face="softpad">SoftPad</button>
+    <button type="button" data-face="keys">按键</button>
+    <button type="button" data-face="camera">摄像头</button>
+    <label>听写步</label>
+    <button type="button" class="on" data-step="wake">01 开启</button>
+    <button type="button" data-step="finish">02 说完了</button>
+    <label>落点</label>
+    <button type="button" data-scheme="global">跟光标</button>
+    <button type="button" class="on" data-scheme="app">进 Cursor</button>
+    <label>错前台</label>
+    <button type="button" class="on" data-fg="1">开</button>
+    <button type="button" data-fg="0">关</button>
+    <label>SoftPad</label>
+    <button type="button" data-sp-scope="empty">未准备</button>
+    <button type="button" data-sp-scope="ready">有键盘·无口令</button>
+    <button type="button" class="on" data-sp-scope="linked">有口令</button>
+    <label>按键口令</label>
+    <button type="button" data-keys-bridge="off">无口令</button>
+    <button type="button" class="on" data-keys-bridge="on">有口令</button>
+    <label>摄像头口令</label>
+    <button type="button" data-cam-bridge="off">无口令</button>
+    <button type="button" class="on" data-cam-bridge="on">有口令</button>
+  </div>
+
+  <div class="mock">
+    <div class="chrome">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span id="chromeLabel">face=dictate · step=wake</span>
+    </div>
+    <div class="body">
+      <div class="psb">
+        <span class="brand">语音方案</span>
+        <span class="pill">习惯 · Cursor</span>
+        <span class="spacer"></span>
+        <button class="btn" type="button">保存到正在编辑的习惯</button>
+      </div>
+
+      <div class="face" role="tablist" aria-label="语音方案分面">
+        <button type="button" class="f on" data-face-tab="dictate">听写</button>
+        <button type="button" class="f" data-face-tab="softpad">SoftPad</button>
+        <button type="button" class="f" data-face-tab="keys">按键</button>
+        <button type="button" class="f" data-face-tab="camera">摄像头</button>
+      </div>
+
+      <div class="status" id="fgStatus">
+        <span>现在在浏览器里 · 习惯绑的是 Cursor · 先切过去再说</span>
+        <button type="button" class="sim" id="btnSimReject">模拟说了被拒 → toast</button>
+      </div>
+      <div class="toast" id="fgToast" role="status">当前窗口不是「Cursor」。请先切换，或到听写「高级」里打开自动拉起。</div>
+
+      <!-- 听写 -->
+      <div id="faceDictate">
+        <div class="flow" role="tablist" aria-label="听写两步">
+          <button type="button" class="node on" data-step="wake"><div class="t">01</div><div class="c">开</div><div class="ttl">开启</div></button>
+          <button type="button" class="node" data-step="finish"><div class="t">02</div><div class="c">完</div><div class="ttl">说完了</div></button>
+        </div>
+
+        <div class="card" id="panelWake">
+          <h3>怎么开启打字？</h3>
+          <p class="sub">先会用这一句就行 · 别的等要用再打开</p>
+          <div class="phrase-hero">
+            <button type="button" class="phrase-cap" title="点击改口令">「开始输入」</button>
+            <div class="phrase-hint">默认用这句开始听写。<a href="#">不对就改</a></div>
+          </div>
+          <div class="causal"><span>说出这句</span><span class="arr">→</span><span>开始听写</span></div>
+          <div class="landing">
+            <div class="line" id="landingLine">字会打进 <strong>Cursor</strong>。</div>
+            <div class="fix" id="landingFix"><a href="#">不对就去按键面改目标 →</a></div>
+          </div>
+          <details class="more">
+            <summary>高级</summary>
+            <div class="inner need-list">
+              <div class="need-row">
+                <div class="need-copy">
+                  <span class="need-title">口令唤醒</span>
+                  <span class="need-sub">关掉后只用麦 / 侧键开听写</span>
+                </div>
+                <label class="need-act"><input type="checkbox" checked disabled> 开</label>
+              </div>
+              <div class="need-row" id="moreAdv">
+                <div class="need-copy">
+                  <span class="need-title">错前台时自动打开 Cursor</span>
+                  <span class="need-sub">默认关 · 防误拉起</span>
+                </div>
+                <label class="need-act"><input type="checkbox" disabled> 开</label>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="card" id="panelFinish" hidden>
+          <h3>说完了字要怎样？</h3>
+          <p class="sub">选一个结果就够 · 点大字改说法</p>
+          <div class="outcome" role="radiogroup" aria-label="说完了的结果">
+            <button type="button" data-outcome="send" role="radio" aria-checked="false">
+              <span class="t">发出去</span><span class="d">停完再发</span>
+            </button>
+            <button type="button" class="on" data-outcome="keep" role="radio" aria-checked="true">
+              <span class="t">先留着</span><span class="d">只出字</span>
+            </button>
+            <button type="button" data-outcome="discard" role="radio" aria-checked="false">
+              <span class="t">不要了</span><span class="d">字丢掉</span>
+            </button>
+          </div>
+          <div class="causal-finish" id="finishCausal">
+            <strong>停一会儿</strong><span class="arr">→</span><span>字留下</span><span class="arr">→</span><span>不发</span>
+          </div>
+          <div class="finish-detail" id="detailKeep">
+            <div class="phrase-hero">
+              <button type="button" class="phrase-cap">「停一会儿」</button>
+              <div class="phrase-hint">停下来 · 字留下不发。<a href="#">不对就改</a></div>
+            </div>
+          </div>
+          <div class="finish-detail" id="detailSend" hidden>
+            <div class="phrase-hero">
+              <button type="button" class="phrase-cap">「发送」</button>
+              <div class="phrase-hint">停住后说这句才回车。<a href="#">不对就改</a></div>
+            </div>
+            <div class="auto-row">
+              <label><input type="checkbox" id="sendAutoToggle"> 在 Cursor 里自动发</label>
+              <span id="sendAutoHint">未开 · 你说了才发</span>
+              <a href="#" id="sendAutoNeedScene" hidden>先去按键设应用 →</a>
+            </div>
+            <div class="chips" id="sendDelay" hidden style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
+              <span class="chip on" data-delay="1">等 1s</span>
+              <span class="chip" data-delay="2">2s</span>
+              <span class="chip" data-delay="3">3s</span>
+            </div>
+          </div>
+          <div class="finish-detail" id="detailDiscard" hidden>
+            <div class="phrase-hero">
+              <button type="button" class="phrase-cap" style="background:#B91C1C;box-shadow:0 4px 14px rgba(185,28,28,.25)">「不要了」</button>
+              <div class="phrase-hint">说这句 · 字丢掉，不发。<a href="#">不对就改</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SoftPad：口令面 -->
+      <div id="faceSoftpad" hidden>
+        <div class="card">
+          <h3>Soft Pad 口令</h3>
+          <p class="sub">改说法；键位仍在 Soft Pad 页配置</p>
+
+          <div class="sp-scope" id="spScopeBar">
+            <span class="pill-app" id="spScopePill">Cursor</span>
+            <span class="hint" id="spScopeHint">来自 Soft Pad 里已有的键</span>
+            <button type="button" class="link" id="spScopeChange">换应用</button>
+          </div>
+
+          <div id="spNeedPrepare" class="sp-empty" hidden>
+            <p><strong style="color:var(--text)">还没有 Soft Pad</strong></p>
+            <p>先到 Soft Pad 准备键盘。按键/摄像头优先的习惯可以不来这里。</p>
+            <div class="actions">
+              <button type="button" class="btn" id="spPrepareBtn">去准备 Soft Pad</button>
+            </div>
+          </div>
+
+          <div id="spBridgeOff" class="sp-empty" hidden>
+            <p><strong style="color:var(--text)">还没有 Soft Pad 口令</strong></p>
+            <p>键盘已在 Soft Pad 里。给某颗键加一句口令后，两边都会看到。</p>
+            <div class="actions">
+              <button type="button" class="btn" id="spLinkAdd">加一句口令</button>
+              <button type="button" class="btn ghost" id="spGoPad">去 Soft Pad 配置 →</button>
+            </div>
+          </div>
+
+          <div id="spPrepared" hidden>
+            <p class="bridge-note">只显示<strong>已有口令</strong>的键 · 没有的去 Soft Pad 加，或点「加口令」</p>
+            <div class="sp-split">
+              <div class="sp-col">
+                <div class="sp-col-label"><span class="n">1</span> 选一颗键</div>
+                <div id="voiceSpPreviewHost" class="soft-pad-preview-host" data-preview-label="Soft Pad"></div>
+                <button type="button" class="btn ghost" id="spLinkAddMore" style="justify-self:start">加口令</button>
+              </div>
+              <div class="sp-col sp-right" id="spCap">
+                <div class="sp-col-label"><span class="n">2</span> 记住这句话</div>
+                <p class="sp-pick-name" id="spCapTitle">发送</p>
+                <p class="sp-pick-do" id="spCapWhen">说出来 = 点左边的「发送」</p>
+
+                <div class="phrase-hero">
+                  <button type="button" class="phrase-cap" id="spPhraseCap" title="点击改口令">「发送」</button>
+                  <div class="phrase-hint">点大字改说法。<a href="#" id="spPhraseEditLink">不对就改</a></div>
+                </div>
+
+                <div class="sp-eq" style="margin:0">
+                  <span>说出这句</span><span class="arr">→</span><span>左边键亮起</span>
+                </div>
+
+                <div class="sp-try-row">
+                  <input type="text" id="spHearInput" placeholder="在这打字试一下…" autocomplete="off" aria-label="试听">
+                  <button type="button" class="btn" id="spTrySay">试说</button>
+                </div>
+                <div class="sp-result" id="spHearStatus">点左边键，或在上边试说</div>
+
+                <details class="more">
+                  <summary>高级</summary>
+                  <div class="inner need-list">
+                    <div class="need-row">
+                      <div class="need-copy">
+                        <span class="need-title">这颗键的口令</span>
+                        <span class="need-sub">关掉后仍可点 Soft Pad，只是不认说法</span>
+                      </div>
+                      <label class="need-act" id="spSayableLab"><input type="checkbox" id="spSayable" checked> 开</label>
+                    </div>
+                  </div>
+                </details>
+                <button type="button" class="btn ghost" id="spClearHear" hidden>清空试听</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 按键口令 -->
+      <div id="faceKeys" hidden>
+        <div class="card">
+          <h3>按键口令</h3>
+          <p class="sub">改说法；快捷键仍在按键页配置</p>
+
+          <div class="sp-scope">
+            <span class="pill-app">Cursor</span>
+            <span class="hint" id="keysScopeHint">来自按键页已配好的动作</span>
+            <button type="button" class="link" id="keysGoKeysPage">去按键页 →</button>
+          </div>
+
+          <div id="keysBridgeOff" class="sp-empty" hidden>
+            <p><strong style="color:var(--text)">还没有按键口令</strong></p>
+            <p>可以只用按键。需要口令时再加，会同步到按键设置。</p>
+            <div class="actions">
+              <button type="button" class="btn" id="keysLinkAdd">加一句口令</button>
+              <button type="button" class="btn ghost" id="keysGoKeysEmpty">去按键页绑键 →</button>
+            </div>
+          </div>
+
+          <div id="keysLinked" hidden>
+            <p class="bridge-note">只列出<strong>已有口令</strong>的动作 · 没有的点「加口令」</p>
+            <div class="sp-split">
+              <div class="sp-col">
+                <div class="sp-col-label"><span class="n">1</span> 选一件事</div>
+                <div class="keys-cats" id="keysCats" role="tablist" aria-label="Cursor 命令分类"></div>
+                <div class="keys-cmd-list" id="keysCmdList" role="listbox" aria-label="命令列表"></div>
+                <button type="button" class="btn ghost" id="keysLinkAddMore" style="justify-self:start">加口令</button>
+              </div>
+              <div class="sp-col sp-right">
+                <div class="sp-col-label"><span class="n">2</span> 记住这句话</div>
+                <p class="sp-pick-name" id="keysCapTitle">发出去</p>
+                <p class="keys-when" id="keysCapWhen">输入框里写好了，要交给 AI。</p>
+                <p class="keys-effect" id="keysCapEffect">在输入框里发送（一般是回车）。</p>
+                <div class="keys-keyline" id="keysKeyLine">
+                  <span>按键</span><span class="kcap" id="keysChord">Enter</span>
+                  <span>· 键位只在按键页改</span>
+                </div>
+
+                <div class="phrase-hero">
+                  <button type="button" class="phrase-cap" id="keysPhraseCap" title="点击改口令">「发送」</button>
+                  <div class="phrase-hint">点大字改说法。<a href="#" id="keysPhraseEditLink">不对就改</a></div>
+                </div>
+
+                <div class="sp-eq" style="margin:0">
+                  <span>说出这句</span><span class="arr">→</span><span>等于按了键</span>
+                </div>
+
+                <div class="sp-try-row">
+                  <input type="text" id="keysHearInput" placeholder="在这打字试一下…" autocomplete="off" aria-label="试听">
+                  <button type="button" class="btn" id="keysTrySay">试说</button>
+                </div>
+                <div class="sp-result" id="keysHearStatus">左边选一件事，或在上边试说</div>
+
+                <details class="more">
+                  <summary>高级</summary>
+                  <div class="inner need-list">
+                    <div class="need-row">
+                      <div class="need-copy">
+                        <span class="need-title">这件事的口令</span>
+                        <span class="need-sub">关掉后仍可按键，只是不认说法</span>
+                      </div>
+                      <label class="need-act" id="keysSayableLab"><input type="checkbox" id="keysSayable" checked> 开</label>
+                    </div>
+                    <div class="need-row" id="keysGatedRow" hidden>
+                      <div class="need-copy">
+                        <span class="need-title">接受类需先开闸</span>
+                        <span class="need-sub">默认关 · 避免误接受改动</span>
+                      </div>
+                      <a class="need-act" href="#">去按键页开闸 →</a>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 摄像头口令 -->
+      <div id="faceCamera" hidden>
+        <div class="card">
+          <h3>摄像头口令</h3>
+          <p class="sub">改说法；识别与标定仍在摄像头页</p>
+
+          <div class="sp-scope">
+            <span class="pill-app">Cursor · 视觉</span>
+            <span class="hint" id="camScopeHint">来自摄像头页已开的动作</span>
+            <button type="button" class="link" id="camGoCameraPage">去摄像头页 →</button>
+          </div>
+
+          <div class="cam-safe" id="camSafeStrip">
+            <strong>手势不能单独发出去。</strong> 发送须二次确认（看区 / OK / 长眨 + 说或按）。
+          </div>
+
+          <div id="camBridgeOff" class="sp-empty" hidden>
+            <p><strong style="color:var(--text)">还没有摄像头口令</strong></p>
+            <p>可以只靠手势或离席。需要口令时再加，会同步到摄像头设置。</p>
+            <div class="actions">
+              <button type="button" class="btn" id="camLinkAdd">加一句口令</button>
+              <button type="button" class="btn ghost" id="camGoCamEmpty">去摄像头页开触发 →</button>
+            </div>
+          </div>
+
+          <div id="camLinked" hidden>
+            <p class="bridge-note">只列出<strong>已有口令</strong>的动作 · 没有的点「加口令」</p>
+            <div class="sp-split">
+              <div class="sp-col">
+                <div class="sp-col-label"><span class="n">1</span> 选一个动作</div>
+                <div class="keys-cats" id="camCats" role="tablist" aria-label="摄像头动作分类"></div>
+                <div class="cam-scene-list" id="camSceneList" role="listbox" aria-label="摄像头动作"></div>
+                <button type="button" class="btn ghost" id="camLinkAddMore" style="justify-self:start">加口令</button>
+              </div>
+              <div class="sp-col sp-right">
+                <div class="sp-col-label"><span class="n">2</span> 记住这句话</div>
+                <p class="sp-pick-name" id="camCapTitle">摇头取消</p>
+                <p class="keys-when" id="camCapWhen">听写或确认时想否定。</p>
+                <p class="keys-effect" id="camCapEffect">常绑：Esc / 语音取消。</p>
+
+                <div class="keys-keyline">
+                  <span>摄像头看到</span>
+                  <span class="cam-gest-pill"><span class="g" id="camGestIcon">🙅</span><span id="camGestName">摇头</span></span>
+                  <span id="camGestNote"></span>
+                </div>
+
+                <div class="phrase-hero" id="camPhraseHero">
+                  <button type="button" class="phrase-cap" id="camPhraseCap" title="点击改口令">「不要了」</button>
+                  <div class="phrase-hint">点大字改说法。<a href="#" id="camPhraseEditLink">不对就改</a></div>
+                </div>
+                <p class="keys-when" id="camNoPhrase" hidden>这动作还没有口令 · 点「加口令」或去摄像头页。</p>
+
+                <div class="sp-eq" style="margin:0" id="camEq">
+                  <span>说出这句</span><span class="arr">→</span><span>等于做了动作</span>
+                </div>
+
+                <div class="sp-try-row" id="camTryRow">
+                  <input type="text" id="camHearInput" placeholder="在这打字试一下…" autocomplete="off" aria-label="试听">
+                  <button type="button" class="btn" id="camTrySay">试说</button>
+                </div>
+                <div class="sp-result" id="camHearStatus">左边选动作，或在上边试说</div>
+
+                <details class="more">
+                  <summary>高级</summary>
+                  <div class="inner need-list">
+                    <div class="need-row">
+                      <div class="need-copy">
+                        <span class="need-title">这个动作的口令</span>
+                        <span class="need-sub">关掉后手势仍可用，只是不认说法</span>
+                      </div>
+                      <label class="need-act" id="camSayableLab"><input type="checkbox" id="camSayable" checked> 开</label>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dock">
+        <span class="chip">麦 开</span>
+        <span class="chip">引擎</span>
+        <button class="ghost" type="button">试麦克风</button>
+        <span>听到…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <strong>高级</strong>只放真开关（唤醒 / 错前台拉起 / 关某条口令 / 接受类开闸）。换词点大字；去通道页用顶栏链接；加口令用列表旁按钮。
+  </div>
+</div>
+<footer>voice-ui-3hero-switch-final.html · 口令面 · 高级开关</footer>
+<script src="voice-softpad-real-pad.js"></script>
+<script src="voice-keys-cursor-catalog.js"></script>
+<script src="voice-camera-catalog.js"></script>
+<script>
+(function () {
+  var Pad = window.VoiceSoftPadRealPad;
+  var KeysCat = window.VoiceKeysCursorCatalog;
+  var CamCat = window.VoiceCameraCatalog;
+  if (!Pad) {
+    console.error('VoiceSoftPadRealPad missing — load voice-softpad-real-pad.js first');
+  }
+  if (!KeysCat) {
+    console.error('VoiceKeysCursorCatalog missing — load voice-keys-cursor-catalog.js first');
+  }
+  if (!CamCat) {
+    console.error('VoiceCameraCatalog missing — load voice-camera-catalog.js first');
+  }
+  var state = {
+    face: 'dictate', step: 'wake', scheme: 'app', fg: true,
+    outcome: 'keep', delay: '1', autoSend: false,
+    spScope: 'linked', spPick: 'AG04', spHeard: '',
+    keysBridge: 'on', keysCat: 'common', keysPick: 'stopOrSend', keysHeard: '',
+    camBridge: 'on', camCat: 'common', camPick: 'shakeHead', camHeard: ''
+  };
+  var toastTimer = null;
+  var spHearBound = false;
+  var keysHearBound = false;
+  var camHearBound = false;
+  function $(id) { return document.getElementById(id); }
+  function setOn(sel, pred) {
+    document.querySelectorAll(sel).forEach(function (el) {
+      el.classList.toggle('on', !!pred(el));
+    });
+  }
+  function showToast() {
+    var t = $('fgToast');
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3000);
+  }
+  function findSp(id) {
+    var list = Pad.enabledCatalog();
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return list[0];
+  }
+  function renderLanding() {
+    var app = state.scheme === 'app';
+    if (app) {
+      $('landingLine').innerHTML = '字会打进 <strong>Cursor</strong>。';
+      $('landingFix').innerHTML = '<a href="#">不对就去按键面改目标 →</a>';
+      $('moreAdv').hidden = false;
+    } else {
+      $('landingLine').innerHTML = '字会打进<strong>你正在点的地方</strong>（跟光标走）。';
+      $('landingFix').innerHTML = '要限定到某个应用更稳？<a href="#">去按键面设一下 →</a>';
+      $('moreAdv').hidden = true;
+    }
+  }
+  function renderFinish() {
+    var o = state.outcome;
+    var app = state.scheme === 'app';
+    $('detailKeep').hidden = o !== 'keep';
+    $('detailSend').hidden = o !== 'send';
+    $('detailDiscard').hidden = o !== 'discard';
+    setOn('.outcome [data-outcome]', function (el) { return el.getAttribute('data-outcome') === o; });
+    document.querySelectorAll('.outcome [data-outcome]').forEach(function (el) {
+      el.setAttribute('aria-checked', el.getAttribute('data-outcome') === o ? 'true' : 'false');
+    });
+    var causal = {
+      keep: '<strong>停一会儿</strong><span class="arr">→</span><span>字留下</span><span class="arr">→</span><span>不发</span>',
+      send: '<strong>停</strong><span class="arr">→</span><span>说「发送」</span><span class="arr">→</span><span>回车</span>',
+      discard: '<strong>不要了</strong><span class="arr">→</span><span>字丢掉</span><span class="arr">→</span><span>结束</span>'
+    };
+    if (o === 'send' && state.autoSend && app) {
+      causal.send = '<strong>停</strong><span class="arr">→</span><span>Cursor 匹配</span><span class="arr">→</span><span>自动回车</span>';
+    }
+    $('finishCausal').innerHTML = causal[o];
+    if (o === 'send') {
+      var toggle = $('sendAutoToggle');
+      var need = $('sendAutoNeedScene');
+      var hint = $('sendAutoHint');
+      var delay = $('sendDelay');
+      if (!app) {
+        state.autoSend = false;
+        toggle.checked = false;
+        toggle.disabled = true;
+        need.hidden = false;
+        hint.textContent = '跟光标不能自动发';
+        delay.hidden = true;
+      } else {
+        toggle.disabled = false;
+        toggle.checked = state.autoSend;
+        need.hidden = true;
+        hint.textContent = state.autoSend ? '已开 · 仅匹配前台时' : '未开 · 你说了才发';
+        delay.hidden = !state.autoSend;
+      }
+      document.querySelectorAll('#sendDelay .chip').forEach(function (el) {
+        el.classList.toggle('on', el.getAttribute('data-delay') === state.delay);
+      });
+    }
+  }
+  function bindPadClicks(host) {
+    host.querySelectorAll('.micro-hw__key[data-micro-key]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var id = el.getAttribute('data-micro-key');
+        if (!Pad.FIXTURE_ROUTES[id]) return;
+        state.spPick = id;
+        renderSoftPadCap();
+        var m = Pad.matchHeard(state.spHeard);
+        Pad.paintHardwarePad(host, { selId: id, hitId: m ? m.row.id : '' });
+        bindPadClicks(host);
+      });
+    });
+  }
+  function updateLiveMatch() {
+    var host = $('voiceSpPreviewHost');
+    var heard = state.spHeard;
+    var inp = $('spHearInput');
+    if (inp && document.activeElement !== inp) inp.value = heard;
+    var st = $('spHearStatus');
+    var hit = Pad.matchHeard(heard);
+    if (!Pad.normalize(heard)) {
+      st.className = 'sp-result';
+      st.textContent = '点左边键，或在上边试说';
+      Pad.paintHardwarePad(host, { selId: state.spPick, hitId: '' });
+      bindPadClicks(host);
+      return;
+    }
+    if (hit) {
+      st.className = 'sp-result ok';
+      st.textContent = '对了 · 等于点了「' + hit.row.name + '」';
+      state.spPick = hit.row.id;
+      Pad.paintHardwarePad(host, { selId: hit.row.id, hitId: hit.row.id });
+      bindPadClicks(host);
+      renderSoftPadCap();
+    } else {
+      st.className = 'sp-result miss';
+      st.textContent = '没对上 · 试试大字那句，或点左边换一颗键';
+      Pad.paintHardwarePad(host, { selId: state.spPick, hitId: '' });
+      bindPadClicks(host);
+    }
+  }
+  function renderSoftPadCap() {
+    var row = findSp(state.spPick);
+    var route = Pad.FIXTURE_ROUTES[row.id];
+    var main = row.phrases[0] || row.name;
+    $('spCapTitle').textContent = row.name;
+    $('spCapWhen').textContent = '说出来 = 点左边的「' + row.name + '」';
+    var cap = $('spPhraseCap');
+    if (cap) cap.textContent = '「' + main + '」';
+    var say = $('spSayable');
+    say.checked = !!row.sayable;
+    say.onchange = function () {
+      if (route) route.sayable = say.checked;
+      renderSoftPad();
+    };
+    $('spSayableLab').style.color = row.sayable ? 'var(--text)' : 'var(--faint)';
+  }
+  function spLinkAddWriteThrough() {
+    var routes = Pad.FIXTURE_ROUTES;
+    var id = Object.keys(routes).find(function (k) { return !routes[k].sayable; }) || 'AG04';
+    var phrase = prompt('加哪句口令？（同步到 Soft Pad）', (routes[id].phrases && routes[id].phrases[0]) || routes[id].label || '发送');
+    if (!phrase || !phrase.trim()) return;
+    routes[id].sayable = true;
+    routes[id].phrases = routes[id].phrases || [];
+    routes[id].phrases[0] = phrase.trim();
+    state.spPick = id;
+    state.spScope = 'linked';
+    state.face = 'softpad';
+    alert('已同步到 Soft Pad · 「' + phrase.trim() + '」→ ' + (routes[id].label || id));
+    render();
+  }
+  function keysLinkAddWriteThrough() {
+    var ids = Object.keys(KeysCat.ITEMS);
+    var id = ids.find(function (k) { return !KeysCat.ITEMS[k].sayable && !KeysCat.ITEMS[k].gated; }) || 'stopOrSend';
+    var row = KeysCat.ITEMS[id];
+    var phrase = prompt('加哪句口令？（同步到按键）', row.phrase || row.title);
+    if (!phrase || !phrase.trim()) return;
+    row.sayable = true;
+    row.phrase = phrase.trim();
+    row.phrases = row.phrases || [];
+    row.phrases[0] = phrase.trim();
+    state.keysPick = id;
+    state.keysBridge = 'on';
+    state.face = 'keys';
+    alert('已同步到按键 · 「' + phrase.trim() + '」→ ' + row.title);
+    render();
+  }
+  function camLinkAddWriteThrough() {
+    var ids = Object.keys(CamCat.ITEMS);
+    var id = ids.find(function (k) {
+      var r = CamCat.ITEMS[k];
+      return !r.sayable && !r.placeholder;
+    }) || 'shakeHead';
+    var row = CamCat.ITEMS[id];
+    var phrase = prompt('加哪句口令？（同步到摄像头）', row.phrase || row.title);
+    if (!phrase || !phrase.trim()) return;
+    row.sayable = true;
+    row.phrase = phrase.trim();
+    row.phrases = row.phrases || [];
+    row.phrases[0] = phrase.trim();
+    state.camPick = id;
+    state.camBridge = 'on';
+    state.face = 'camera';
+    alert('已同步到摄像头 · 「' + phrase.trim() + '」→ ' + row.title);
+    render();
+  }
+  function renderSoftPad() {
+    var empty = state.spScope === 'empty';
+    var ready = state.spScope === 'ready';
+    var linked = state.spScope === 'linked';
+    $('spNeedPrepare').hidden = !empty;
+    $('spBridgeOff').hidden = !ready;
+    $('spPrepared').hidden = !linked;
+    $('spScopePill').textContent = empty ? '未准备' : 'Cursor';
+    $('spScopeHint').textContent = empty
+      ? '先准备 Soft Pad'
+      : (ready ? '键盘在 Soft Pad · 还没有口令' : '改口令 · 与 Soft Pad 同一习惯');
+    if (!linked) return;
+    Pad.tryLivePaint($('voiceSpPreviewHost'), null);
+    renderSoftPadCap();
+    updateLiveMatch();
+    if (!spHearBound) {
+      spHearBound = true;
+      $('spHearInput').addEventListener('input', function () {
+        state.spHeard = this.value;
+        updateLiveMatch();
+      });
+      var capBtn = $('spPhraseCap');
+      if (capBtn) {
+        capBtn.addEventListener('click', function () {
+          var row = findSp(state.spPick);
+          var v = prompt('改成你想说的话', row.phrases[0] || '');
+          if (v && v.trim() && Pad.FIXTURE_ROUTES[row.id]) {
+            Pad.FIXTURE_ROUTES[row.id].phrases[0] = v.trim();
+            renderSoftPad();
+          }
+        });
+      }
+      var editLink = $('spPhraseEditLink');
+      if (editLink) {
+        editLink.addEventListener('click', function (e) {
+          e.preventDefault();
+          if ($('spPhraseCap')) $('spPhraseCap').click();
+        });
+      }
+    }
+  }
+  function findKeys(id) {
+    return KeysCat && KeysCat.get(id);
+  }
+  function updateKeysMatch() {
+    var heard = state.keysHeard;
+    var inp = $('keysHearInput');
+    if (inp && document.activeElement !== inp) inp.value = heard;
+    var st = $('keysHearStatus');
+    var hit = KeysCat.matchHeard(heard);
+    if (!KeysCat.normalize(heard)) {
+      st.className = 'sp-result';
+      st.textContent = '左边选一件事，或在上边试说';
+      return;
+    }
+    if (hit) {
+      st.className = 'sp-result ok';
+      st.textContent = '对了 · 等于做了「' + hit.title + '」';
+      state.keysPick = hit.id;
+      renderKeysCap();
+      renderKeysList();
+    } else {
+      st.className = 'sp-result miss';
+      st.textContent = '没对上 · 试试大字那句，或点左边换一件事';
+    }
+  }
+  function renderKeysCap() {
+    var row = findKeys(state.keysPick);
+    if (!row) return;
+    $('keysCapTitle').textContent = row.title;
+    $('keysCapWhen').textContent = row.when || '';
+    $('keysCapEffect').textContent = row.effect || '';
+    $('keysChord').textContent = KeysCat.chordLabel(row);
+    var cap = $('keysPhraseCap');
+    if (cap) cap.textContent = '「' + (row.phrase || row.title) + '」';
+    var gated = $('keysGatedRow');
+    if (gated) gated.hidden = !row.gated;
+    var say = $('keysSayable');
+    say.checked = !!row.sayable;
+    say.disabled = !!row.gated;
+    say.onchange = function () {
+      if (KeysCat.ITEMS[row.id]) KeysCat.ITEMS[row.id].sayable = say.checked;
+      renderKeys();
+    };
+    $('keysSayableLab').style.color = row.sayable ? 'var(--text)' : 'var(--faint)';
+  }
+  function renderKeysCats() {
+    var host = $('keysCats');
+    host.innerHTML = '';
+    KeysCat.GROUPS.forEach(function (g) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = g.title;
+      b.className = g.id === state.keysCat ? 'on' : '';
+      b.setAttribute('data-keys-cat', g.id);
+      b.addEventListener('click', function () {
+        state.keysCat = g.id;
+        var list = KeysCat.listGroup(g.id);
+        if (list.length && !list.some(function (r) { return r.id === state.keysPick; })) {
+          state.keysPick = list[0].id;
+        }
+        renderKeys();
+      });
+      host.appendChild(b);
+    });
+  }
+  function renderKeysList() {
+    var host = $('keysCmdList');
+    host.innerHTML = '';
+    var list = KeysCat.listGroup(state.keysCat).filter(function (r) { return r.sayable; });
+    if (!list.length) {
+      host.innerHTML = '<p class="bridge-note" style="padding:8px">这一类还没有口令 · 点「加口令」</p>';
+      return;
+    }
+    list.forEach(function (row) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'keys-cmd' + (row.id === state.keysPick ? ' on' : '');
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', row.id === state.keysPick ? 'true' : 'false');
+      var chord = KeysCat.chordLabel(row);
+      b.innerHTML = '<span class="kn">' + row.title + '</span>' +
+        '<span class="km">说「' + row.phrase + '」 · <span class="kcap">' + chord + '</span></span>';
+      b.addEventListener('click', function () {
+        state.keysPick = row.id;
+        state.keysHeard = '';
+        renderKeys();
+      });
+      host.appendChild(b);
+    });
+  }
+  function renderKeys() {
+    if (!KeysCat) return;
+    var on = state.keysBridge === 'on';
+    $('keysBridgeOff').hidden = on;
+    $('keysLinked').hidden = !on;
+    if (!on) return;
+    var pick = findKeys(state.keysPick);
+    if (!pick || !pick.sayable) {
+      var first = null;
+      KeysCat.GROUPS.forEach(function (g) {
+        if (first) return;
+        var hit = KeysCat.listGroup(g.id).find(function (r) { return r.sayable; });
+        if (hit) first = hit;
+      });
+      if (first) {
+        state.keysPick = first.id;
+        var g0 = KeysCat.GROUPS.find(function (g) {
+          return g.slots.indexOf(first.id) >= 0;
+        });
+        if (g0) state.keysCat = g0.id;
+      }
+    }
+    renderKeysCats();
+    renderKeysList();
+    renderKeysCap();
+    updateKeysMatch();
+    if (!keysHearBound) {
+      keysHearBound = true;
+      $('keysHearInput').addEventListener('input', function () {
+        state.keysHeard = this.value;
+        updateKeysMatch();
+      });
+      var capBtn = $('keysPhraseCap');
+      if (capBtn) {
+        capBtn.addEventListener('click', function () {
+          var row = findKeys(state.keysPick);
+          var v = prompt('改成你想说的话', (row && row.phrase) || '');
+          if (v && v.trim() && KeysCat.ITEMS[row.id]) {
+            KeysCat.ITEMS[row.id].phrase = v.trim();
+            KeysCat.ITEMS[row.id].phrases[0] = v.trim();
+            renderKeys();
+          }
+        });
+      }
+      var editLink = $('keysPhraseEditLink');
+      if (editLink) {
+        editLink.addEventListener('click', function (e) {
+          e.preventDefault();
+          if ($('keysPhraseCap')) $('keysPhraseCap').click();
+        });
+      }
+      var go = $('keysGoKeysPage');
+      if (go) {
+        go.addEventListener('click', function () {
+          alert('原型：跳转到按键页 · Cursor 命令');
+        });
+      }
+    }
+  }
+  function findCam(id) {
+    return CamCat && CamCat.get(id);
+  }
+  function updateCamMatch() {
+    var heard = state.camHeard;
+    var inp = $('camHearInput');
+    if (inp && document.activeElement !== inp) inp.value = heard;
+    var st = $('camHearStatus');
+    var hit = CamCat.matchHeard(heard);
+    if (!CamCat.normalize(heard)) {
+      st.className = 'sp-result';
+      st.textContent = '左边选动作，或在上边试说';
+      return;
+    }
+    if (hit) {
+      st.className = 'sp-result ok';
+      st.textContent = '对了 · 等于做了「' + hit.title + '」';
+      state.camPick = hit.id;
+      renderCamCap();
+      renderCamList();
+    } else {
+      st.className = 'sp-result miss';
+      st.textContent = '没对上 · 试试大字那句，或点左边换动作';
+    }
+  }
+  function renderCamCap() {
+    var row = findCam(state.camPick);
+    if (!row) return;
+    $('camCapTitle').textContent = row.title;
+    $('camCapWhen').textContent = row.when || '';
+    $('camCapEffect').textContent = row.effect || '';
+    $('camGestIcon').textContent = row.gestIcon || '';
+    $('camGestName').textContent = row.gestName || '';
+    var badge = CamCat.badge(row);
+    $('camGestNote').textContent = badge ? '· ' + badge : '';
+    var hero = $('camPhraseHero');
+    var noPh = $('camNoPhrase');
+    var tryRow = $('camTryRow');
+    var eq = $('camEq');
+    if (!row.sayable) {
+      hero.hidden = true;
+      noPh.hidden = false;
+      tryRow.hidden = true;
+      eq.hidden = true;
+    } else {
+      hero.hidden = false;
+      noPh.hidden = true;
+      tryRow.hidden = false;
+      eq.hidden = false;
+    }
+    var cap = $('camPhraseCap');
+    if (cap) cap.textContent = '「' + (row.phrase || row.title) + '」';
+    var say = $('camSayable');
+    say.checked = !!row.sayable;
+    say.disabled = !!row.placeholder;
+    say.onchange = function () {
+      if (CamCat.ITEMS[row.id]) CamCat.ITEMS[row.id].sayable = say.checked;
+      renderCamera();
+    };
+    $('camSayableLab').style.color = row.sayable ? 'var(--text)' : 'var(--faint)';
+  }
+  function renderCamCats() {
+    var host = $('camCats');
+    host.innerHTML = '';
+    CamCat.GROUPS.forEach(function (g) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = g.title;
+      b.className = g.id === state.camCat ? 'on' : '';
+      b.addEventListener('click', function () {
+        state.camCat = g.id;
+        var list = CamCat.listGroup(g.id);
+        if (list.length && !list.some(function (r) { return r.id === state.camPick; })) {
+          state.camPick = list[0].id;
+        }
+        renderCamera();
+      });
+      host.appendChild(b);
+    });
+  }
+  function renderCamList() {
+    var host = $('camSceneList');
+    host.innerHTML = '';
+    var list = CamCat.listGroup(state.camCat).filter(function (r) { return r.sayable; });
+    if (!list.length) {
+      host.innerHTML = '<p class="bridge-note" style="padding:8px">这一类还没有口令 · 点「加口令」</p>';
+      return;
+    }
+    list.forEach(function (row) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      var badge = CamCat.badge(row);
+      var badgeCls = row.defaultOn ? ' is-rec' : (row.experimental || row.placeholder ? ' is-exp' : '');
+      b.className = 'cam-scene' + (row.id === state.camPick ? ' on' : '');
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', row.id === state.camPick ? 'true' : 'false');
+      b.innerHTML =
+        '<span class="cs-title">' + row.title +
+        (badge ? '<span class="cs-badge' + badgeCls + '">' + badge + '</span>' : '') +
+        '</span>' +
+        '<span class="cs-when">' + row.when + '</span>' +
+        '<span class="cs-gest">' + row.gestIcon + ' ' + row.gestName +
+        ' · 「' + row.phrase + '」</span>';
+      b.addEventListener('click', function () {
+        state.camPick = row.id;
+        state.camHeard = '';
+        renderCamera();
+      });
+      host.appendChild(b);
+    });
+  }
+  function renderCamera() {
+    if (!CamCat) return;
+    var on = state.camBridge === 'on';
+    $('camBridgeOff').hidden = on;
+    $('camLinked').hidden = !on;
+    $('camSafeStrip').hidden = !on;
+    if (!on) return;
+    var pick = findCam(state.camPick);
+    if (!pick || !pick.sayable) {
+      var first = null;
+      CamCat.GROUPS.forEach(function (g) {
+        if (first) return;
+        var hit = CamCat.listGroup(g.id).find(function (r) { return r.sayable; });
+        if (hit) first = hit;
+      });
+      if (first) {
+        state.camPick = first.id;
+        var g0 = CamCat.GROUPS.find(function (g) { return g.slots.indexOf(first.id) >= 0; });
+        if (g0) state.camCat = g0.id;
+      }
+    }
+    renderCamCats();
+    renderCamList();
+    renderCamCap();
+    updateCamMatch();
+    if (!camHearBound) {
+      camHearBound = true;
+      $('camHearInput').addEventListener('input', function () {
+        state.camHeard = this.value;
+        updateCamMatch();
+      });
+      var capBtn = $('camPhraseCap');
+      if (capBtn) {
+        capBtn.addEventListener('click', function () {
+          var row = findCam(state.camPick);
+          var v = prompt('改成你想说的话', (row && row.phrase) || '');
+          if (v && v.trim() && CamCat.ITEMS[row.id]) {
+            CamCat.ITEMS[row.id].phrase = v.trim();
+            CamCat.ITEMS[row.id].phrases[0] = v.trim();
+            CamCat.ITEMS[row.id].sayable = true;
+            renderCamera();
+          }
+        });
+      }
+      var editLink = $('camPhraseEditLink');
+      if (editLink) {
+        editLink.addEventListener('click', function (e) {
+          e.preventDefault();
+          if ($('camPhraseCap')) $('camPhraseCap').click();
+        });
+      }
+      var go = $('camGoCameraPage');
+      if (go) {
+        go.addEventListener('click', function () {
+          alert('原型：跳转到摄像头页 · 视觉触发标定');
+        });
+      }
+    }
+  }
+  function render() {
+    var dictate = state.face === 'dictate';
+    var app = state.scheme === 'app';
+    var showFg = dictate && app && state.fg;
+    $('faceDictate').hidden = !dictate;
+    $('faceSoftpad').hidden = state.face !== 'softpad';
+    $('faceKeys').hidden = state.face !== 'keys';
+    $('faceCamera').hidden = state.face !== 'camera';
+    $('fgStatus').hidden = !showFg;
+    $('panelWake').hidden = !dictate || state.step !== 'wake';
+    $('panelFinish').hidden = !dictate || state.step !== 'finish';
+    if (dictate) { renderLanding(); renderFinish(); }
+    if (state.face === 'softpad') renderSoftPad();
+    if (state.face === 'keys') renderKeys();
+    if (state.face === 'camera') renderCamera();
+    setOn('.tools [data-step]', function (el) { return el.getAttribute('data-step') === state.step; });
+    setOn('.flow .node', function (el) { return el.getAttribute('data-step') === state.step; });
+    setOn('[data-face]', function (el) { return el.getAttribute('data-face') === state.face; });
+    setOn('[data-face-tab]', function (el) { return el.getAttribute('data-face-tab') === state.face; });
+    setOn('[data-scheme]', function (el) { return el.getAttribute('data-scheme') === state.scheme; });
+    setOn('[data-fg]', function (el) { return (el.getAttribute('data-fg') === '1') === state.fg; });
+    setOn('[data-sp-scope]', function (el) { return el.getAttribute('data-sp-scope') === state.spScope; });
+    setOn('[data-keys-bridge]', function (el) { return el.getAttribute('data-keys-bridge') === state.keysBridge; });
+    setOn('[data-cam-bridge]', function (el) { return el.getAttribute('data-cam-bridge') === state.camBridge; });
+    var extra = dictate
+      ? ' · step=' + state.step + ' · outcome=' + state.outcome
+      : state.face === 'softpad'
+        ? ' · softpad=' + state.spScope + ' · pick=' + state.spPick
+        : state.face === 'keys'
+          ? ' · keysBridge=' + state.keysBridge + ' · pick=' + state.keysPick
+          : state.face === 'camera'
+            ? ' · camBridge=' + state.camBridge + ' · pick=' + state.camPick
+            : '';
+    $('chromeLabel').textContent = 'face=' + state.face + extra + (showFg ? ' · fgMismatch' : '');
+  }
+  document.querySelectorAll('[data-step]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      state.step = el.getAttribute('data-step');
+      state.face = 'dictate';
+      render();
+    });
+  });
+  document.querySelectorAll('[data-face], [data-face-tab]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      state.face = el.getAttribute('data-face') || el.getAttribute('data-face-tab');
+      render();
+    });
+  });
+  document.querySelectorAll('[data-scheme]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      state.scheme = el.getAttribute('data-scheme');
+      render();
+    });
+  });
+  document.querySelectorAll('[data-fg]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      state.fg = el.getAttribute('data-fg') === '1';
+      render();
+    });
+  });
+  document.querySelectorAll('[data-sp-scope]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      state.spScope = el.getAttribute('data-sp-scope');
+      state.face = 'softpad';
+      render();
+    });
+  });
+  document.querySelectorAll('[data-keys-bridge]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      state.keysBridge = el.getAttribute('data-keys-bridge');
+      state.face = 'keys';
+      render();
+    });
+  });
+  document.querySelectorAll('[data-cam-bridge]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      state.camBridge = el.getAttribute('data-cam-bridge');
+      state.face = 'camera';
+      render();
+    });
+  });
+  document.querySelectorAll('.outcome [data-outcome]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      state.outcome = el.getAttribute('data-outcome');
+      renderFinish();
+      render();
+    });
+  });
+  document.querySelectorAll('#sendDelay .chip').forEach(function (el) {
+    el.addEventListener('click', function () {
+      state.delay = el.getAttribute('data-delay');
+      renderFinish();
+    });
+  });
+  $('sendAutoToggle').addEventListener('change', function () {
+    if (state.scheme !== 'app') { this.checked = false; return; }
+    state.autoSend = this.checked;
+    renderFinish();
+  });
+  $('btnSimReject').addEventListener('click', showToast);
+  $('spPrepareBtn').addEventListener('click', function () {
+    state.spScope = 'ready';
+    render();
+  });
+  $('spScopeChange').addEventListener('click', function () {
+    var order = ['empty', 'ready', 'linked'];
+    var i = order.indexOf(state.spScope);
+    state.spScope = order[(i + 1) % order.length];
+    render();
+  });
+  function bindLink(id, fn) {
+    var el = $(id);
+    if (el) el.addEventListener('click', fn);
+  }
+  bindLink('spLinkAdd', spLinkAddWriteThrough);
+  bindLink('spLinkAddMore', spLinkAddWriteThrough);
+  bindLink('spGoPad', function () { alert('原型：跳转 Soft Pad'); });
+  bindLink('keysLinkAdd', keysLinkAddWriteThrough);
+  bindLink('keysLinkAddMore', keysLinkAddWriteThrough);
+  bindLink('keysGoKeysEmpty', function () { alert('原型：跳转按键页'); });
+  bindLink('camLinkAdd', camLinkAddWriteThrough);
+  bindLink('camLinkAddMore', camLinkAddWriteThrough);
+  bindLink('camGoCamEmpty', function () { alert('原型：跳转摄像头页'); });
+  $('spTrySay').addEventListener('click', function () {
+    var row = findSp(state.spPick);
+    state.spHeard = row.phrases[0] || '';
+    $('spHearInput').value = state.spHeard;
+    updateLiveMatch();
+  });
+  $('spClearHear').addEventListener('click', function () {
+    state.spHeard = '';
+    $('spHearInput').value = '';
+    updateLiveMatch();
+  });
+  $('keysTrySay').addEventListener('click', function () {
+    var row = findKeys(state.keysPick);
+    state.keysHeard = (row && row.phrase) || '';
+    $('keysHearInput').value = state.keysHeard;
+    updateKeysMatch();
+  });
+  $('camTrySay').addEventListener('click', function () {
+    var row = findCam(state.camPick);
+    state.camHeard = (row && row.phrase) || '';
+    $('camHearInput').value = state.camHeard;
+    updateCamMatch();
+  });
+  render();
+})();
+</script>
+</body>
+</html>

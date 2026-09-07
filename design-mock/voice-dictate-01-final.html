@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneTone · 听写 01 · 小白语气</title>
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#fff; --soft:#F0F0F2;
+  --border:#E5E5E5; --border-strong:#C4C4C4;
+  --primary:#00658F; --primary-soft:#E0F1FA;
+  --text:#1A1A1A; --muted:#666; --faint:#999;
+  --ok:#15803D; --ok-soft:#DCFCE7;
+  --warn:#92400E; --warn-soft:#FEF3C7;
+  --r:14px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Outfit','Segoe UI','PingFang SC','Microsoft YaHei UI',sans-serif;
+  line-height:1.5;-webkit-font-smoothing:antialiased;}
+header{background:#fff;border-bottom:1px solid var(--border);padding:18px 28px;}
+header h1{margin:0 0 4px;font:700 18px/24px Outfit,sans-serif;letter-spacing:-.02em;}
+header .sub{margin:0;font-size:13px;color:var(--muted);max-width:820px;}
+.wrap{padding:22px 28px 48px;max-width:720px;margin:0 auto;}
+.note{background:var(--primary-soft);border:1px solid rgba(0,101,143,.25);border-radius:10px;
+  padding:10px 14px;font-size:12.5px;color:var(--primary);margin-bottom:14px;}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;}
+.controls label{font-size:11px;font-weight:700;color:var(--muted);margin-right:2px;}
+.controls button{border:1px solid var(--border-strong);background:#fff;padding:6px 11px;border-radius:8px;
+  font:600 12px Outfit,sans-serif;color:var(--muted);cursor:pointer;}
+.controls button.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+.mock{border:1px solid var(--border);border-radius:var(--r);background:var(--surface);
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 12px rgba(0,0,0,.04);overflow:hidden;}
+.chrome{background:var(--soft);padding:8px 10px;font-size:11px;color:var(--muted);
+  display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);}
+.dot{width:8px;height:8px;border-radius:50%;}
+.dot.r{background:#E57373;}.dot.y{background:#F0C674;}.dot.g{background:#9BC97E;}
+.body{padding:12px;display:grid;gap:10px;min-height:520px;}
+.psb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;
+  border:1px solid var(--border);border-radius:8px;background:#fafafa;font-size:12px;}
+.brand{font-weight:800;}
+.pill{font-size:10px;padding:2px 7px;border-radius:999px;background:var(--ok-soft);color:var(--ok);font-weight:700;}
+.spacer{flex:1;}
+.btn{font:600 11px/14px Outfit,sans-serif;padding:5px 10px;border-radius:7px;border:1px solid var(--primary);
+  background:var(--primary);color:#fff;}
+.face{display:flex;gap:4px;padding:3px;width:fit-content;background:var(--soft);
+  border:1px solid var(--border);border-radius:9px;}
+.face .f{border:0;background:transparent;padding:5px 12px;border-radius:7px;
+  font:700 12px/14px Outfit,sans-serif;color:var(--muted);cursor:pointer;}
+.face .f.on{background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+.status{font-size:11px;padding:7px 10px;border-radius:8px;background:var(--warn-soft);
+  border:1px solid #FCD34D;color:var(--warn);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.status .sim{margin-left:auto;font:650 10.5px Outfit,sans-serif;border:1px solid #FCD34D;
+  background:#fff;color:var(--warn);padding:3px 8px;border-radius:6px;cursor:pointer;}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:50;
+  background:#1A1A1A;color:#fff;padding:10px 16px;border-radius:10px;font-size:12.5px;
+  max-width:min(420px,92vw);box-shadow:0 8px 24px rgba(0,0,0,.2);opacity:0;pointer-events:none;
+  transition:opacity .2s;}
+.toast.show{opacity:1;}
+.flow{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;position:relative;padding:4px 0;max-width:280px;margin:0 auto;}
+.flow::before{content:"";position:absolute;left:18%;right:18%;top:26px;height:2px;
+  background:linear-gradient(90deg,rgba(79,172,254,.55),rgba(245,158,11,.75));}
+.node{position:relative;z-index:1;text-align:center;}
+.node .t{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.04em;}
+.node .c{width:36px;height:36px;border-radius:50%;margin:4px auto 0;display:grid;place-items:center;
+  border:2px solid var(--border);background:#fff;font-size:12px;color:var(--muted);}
+.node.on .c{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 0 0 3px var(--primary-soft);}
+.node .ttl{margin:4px 0 0;font-size:10.5px;font-weight:700;}
+.card{border:1px solid var(--border);border-radius:12px;padding:14px;display:grid;gap:12px;}
+.card h3{margin:0;font:800 14px/20px Outfit,sans-serif;}
+.card .sub{margin:0;font-size:12px;color:var(--muted);}
+.phrase-hero{display:grid;justify-items:center;gap:8px;padding:18px 14px 14px;
+  border-radius:12px;background:linear-gradient(180deg,#fff,#F7FBFE);
+  border:1.5px solid rgba(0,101,143,.28);}
+.phrase-cap{display:inline-flex;align-items:center;justify-content:center;min-width:160px;
+  padding:14px 22px;border-radius:14px;background:var(--primary);color:#fff;
+  font:800 18px/22px Outfit,sans-serif;border:0;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,101,143,.25);}
+.phrase-hint{font-size:12.5px;color:var(--muted);text-align:center;}
+.phrase-hint a{color:var(--primary);font-weight:650;text-decoration:underline;text-underline-offset:2px;}
+.causal{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
+  font-size:12.5px;padding:8px 10px;border-radius:8px;background:#fafafa;border:1px solid var(--border);}
+.causal .arr{color:var(--primary);font-weight:800;}
+.landing{padding:10px 12px;border-radius:10px;background:var(--soft);border:1px solid var(--border);
+  font-size:12.5px;line-height:1.45;display:grid;gap:4px;}
+.landing a{color:var(--primary);font-weight:650;text-decoration:underline;text-underline-offset:2px;}
+.landing .fix{color:var(--muted);font-size:12px;}
+.more{border:1px dashed var(--border);border-radius:10px;padding:8px 10px;background:#fafafa;font-size:12px;color:var(--muted);}
+.more summary{list-style:none;font-weight:700;cursor:pointer;color:var(--text);}
+.more summary::-webkit-details-marker{display:none;}
+.more summary::before{content:"▸ ";color:var(--faint);}
+.more[open] summary::before{content:"▾ ";}
+.more .inner{margin-top:10px;display:grid;gap:8px;}
+.more .chip{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--border);background:#fff;margin-right:4px;}
+.more .rel a{color:var(--primary);font-weight:650;text-decoration:none;margin-right:8px;}
+.more .adv{font-size:11.5px;padding-top:6px;border-top:1px dashed var(--border);}
+.open{border:1px solid var(--border);border-radius:12px;padding:16px;display:grid;gap:12px;}
+.open h3{margin:0;font:800 14px/18px Outfit,sans-serif;}
+.open .empty{text-align:center;padding:18px 12px;border:1px dashed var(--border);border-radius:10px;background:#fafafa;}
+.open .empty p{margin:0 0 10px;font-size:12.5px;color:var(--muted);}
+.open a{color:var(--primary);font-weight:650;text-decoration:none;font-size:12px;}
+.dock{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--border);
+  border-radius:8px;background:var(--soft);font-size:11px;color:var(--muted);}
+.dock .chip{padding:3px 8px;border-radius:999px;border:1px solid var(--border);background:#fff;font-weight:650;color:var(--text);}
+.dock .ghost{border:0;background:transparent;color:var(--primary);font:650 11px Outfit,sans-serif;
+  padding:2px 4px;text-decoration:underline;text-underline-offset:2px;cursor:pointer;}
+.locks{margin-top:16px;padding:12px 14px;background:#fff;border:1px solid var(--border);border-radius:12px;font-size:11.5px;color:var(--muted);}
+[hidden]{display:none!important;}
+footer{padding:16px;text-align:center;font-size:11px;color:var(--faint);}
+</style>
+</head>
+<body>
+<header>
+  <h1>听写 01 · 小白语气</h1>
+  <p class="sub">对齐按键页：默认口令像键帽；落点只读旁注；不对就去改。无「全局 / 应用情景」双卡竞选。</p>
+</header>
+<div class="wrap">
+  <div class="note">预览条可切「跟光标 / 进 Cursor」看旁注文案变化——页内始终只有<strong>一句后果</strong>，不是两套方案可选。</div>
+
+  <div class="controls" role="group">
+    <label>Face</label>
+    <button type="button" class="on" data-face="dictate">听写</button>
+    <button type="button" data-face="openApp">打开应用</button>
+    <label>落点</label>
+    <button type="button" data-scheme="global">跟光标</button>
+    <button type="button" class="on" data-scheme="app">进 Cursor</button>
+    <label>错前台</label>
+    <button type="button" class="on" data-fg="1">开</button>
+    <button type="button" data-fg="0">关</button>
+  </div>
+
+  <div class="mock">
+    <div class="chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span id="chromeLabel">face=dictate · landing=app</span>
+    </div>
+    <div class="body">
+      <div class="psb">
+        <span class="brand">语音听写</span>
+        <span class="pill">默认</span>
+        <span class="spacer"></span>
+        <button class="btn" type="button">保存到正在编辑的习惯</button>
+      </div>
+
+      <div class="face">
+        <button type="button" class="f on" data-face-tab="dictate">听写</button>
+        <button type="button" class="f" data-face-tab="openApp">打开应用</button>
+      </div>
+
+      <div class="status" id="fgStatus">
+        <span>现在在浏览器里 · 习惯绑的是 Cursor · 先切过去再说</span>
+        <button type="button" class="sim" id="btnSimReject">模拟说了被拒 → toast</button>
+      </div>
+      <div class="toast" id="fgToast" role="status">当前窗口不是「Cursor」。请先切换，或到「更多」里允许自动打开。</div>
+
+      <div id="dictateBlock">
+        <div class="flow">
+          <div class="node on"><div class="t">01</div><div class="c">开</div><div class="ttl">开启</div></div>
+          <div class="node"><div class="t">02</div><div class="c">完</div><div class="ttl">说完了</div></div>
+        </div>
+        <div class="card">
+          <h3>怎么开启打字？</h3>
+          <p class="sub">先会用这一句就行 · 别的等要用再打开</p>
+          <div class="phrase-hero">
+            <button type="button" class="phrase-cap">「开始输入」</button>
+            <div class="phrase-hint">默认用这句开始听写。<a href="#">不对就改口令</a></div>
+          </div>
+          <div class="causal"><span>说出这句</span><span class="arr">→</span><span>开始听写</span></div>
+          <div class="landing">
+            <div id="landingLine">字会打进 <strong>Cursor</strong>。</div>
+            <div class="fix" id="landingFix"><a href="#">不对就去按键改 →</a></div>
+          </div>
+          <details class="more">
+            <summary>更多开启方式</summary>
+            <div class="inner">
+              <div><span class="chip">嗨打字</span><span class="chip">hey</span> <a href="#" style="color:var(--primary);font-weight:650;">添加别名</a></div>
+              <div><label><input type="checkbox" checked disabled> 用口令唤醒（已开）</label></div>
+              <div class="adv" id="moreAdv">
+                <label><input type="checkbox" disabled> 前台不对时，允许自动打开 Cursor 再听写</label>
+              </div>
+              <div class="rel">相关：<a href="#">按键</a><a href="#">摄像头</a><a href="#">SoftPad</a></div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div id="openAppBlock" hidden>
+        <div class="open">
+          <h3>用语音打开应用</h3>
+          <div class="empty">
+            <p>想用嘴打开某个应用时，再来加一条口令。</p>
+            <button class="btn" type="button">添加应用口令</button>
+          </div>
+          <a href="#">在按键页管理 →</a>
+          <a href="#">去 SoftPad 试 Agent →</a>
+        </div>
+      </div>
+
+      <div class="dock">
+        <span class="chip">麦 开</span>
+        <span class="chip">引擎</span>
+        <button class="ghost" type="button">试麦克风</button>
+        <span>听到…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="locks">
+    对齐按键：键帽式默认口令 · 落点旁注（非方案竞选）· 「不对就改」修理链 · 更多里折叠高级/相关。
+  </div>
+</div>
+<footer>voice-dictate-01-final.html · beginner copy</footer>
+<script>
+(function () {
+  var state = { face: 'dictate', scheme: 'app', fg: true };
+  var toastTimer = null;
+  function $(id) { return document.getElementById(id); }
+  function setOn(sel, on) {
+    document.querySelectorAll(sel).forEach(function (el) {
+      el.classList.toggle('on', !!on(el));
+    });
+  }
+  function showToast() {
+    var t = $('fgToast');
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3000);
+  }
+  function render() {
+    var dictate = state.face === 'dictate';
+    var app = state.scheme === 'app';
+    var showFg = dictate && app && state.fg;
+    $('dictateBlock').hidden = !dictate;
+    $('openAppBlock').hidden = dictate;
+    $('fgStatus').hidden = !showFg;
+    $('moreAdv').hidden = !app;
+    if (app) {
+      $('landingLine').innerHTML = '字会打进 <strong>Cursor</strong>。';
+      $('landingFix').innerHTML = '<a href="#">不对就去按键改 →</a>';
+    } else {
+      $('landingLine').innerHTML = '字会打进<strong>你正在点的地方</strong>（跟光标走）。';
+      $('landingFix').innerHTML = '要限定到某个应用更稳？<a href="#">去按键设一下 →</a>';
+    }
+    setOn('[data-face]', function (el) { return el.getAttribute('data-face') === state.face; });
+    setOn('[data-face-tab]', function (el) { return el.getAttribute('data-face-tab') === state.face; });
+    setOn('[data-scheme]', function (el) { return el.getAttribute('data-scheme') === state.scheme; });
+    setOn('[data-fg]', function (el) { return (el.getAttribute('data-fg') === '1') === state.fg; });
+    $('chromeLabel').textContent =
+      'face=' + state.face + (dictate ? ' · landing=' + state.scheme : '') + (showFg ? ' · fgMismatch' : '');
+  }
+  document.querySelectorAll('[data-face], [data-face-tab]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      state.face = btn.getAttribute('data-face') || btn.getAttribute('data-face-tab');
+      render();
+    });
+  });
+  document.querySelectorAll('[data-scheme]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      state.scheme = btn.getAttribute('data-scheme');
+      render();
+    });
+  });
+  document.querySelectorAll('[data-fg]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      state.fg = btn.getAttribute('data-fg') === '1';
+      render();
+    });
+  });
+  $('btnSimReject').addEventListener('click', showToast);
+  render();
+})();
+</script>
+</body>
+</html>

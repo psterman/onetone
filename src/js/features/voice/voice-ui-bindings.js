@@ -965,6 +965,51 @@
     bindPhraseKindTabs('voiceWakeKindTabs','__vp_voice_wake_kind__');
     bindPhraseKindTabs('voiceEndKindTabs','__vp_voice_end_kind__');
     bindPhraseKindTabs('voiceCancelKindTabs','__vp_voice_cancel_kind__');
+    function setWakePhraseKind(kind){
+      kind=kind==='app'?'app':'text';
+      global.__vp_voice_wake_kind__=kind;
+      if(global.OneToneVoiceStepSend&&global.OneToneVoiceStepSend.syncPhraseKindTabs){
+        global.OneToneVoiceStepSend.syncPhraseKindTabs('voiceWakeKindTabs',kind);
+      }
+    }
+    var btnWakeOpenAppEntry=$('btnVoiceWakeOpenAppEntry');
+    if(btnWakeOpenAppEntry&&!btnWakeOpenAppEntry._wakeKindBound){
+      btnWakeOpenAppEntry._wakeKindBound=true;
+      btnWakeOpenAppEntry.addEventListener('click',function(e){
+        e.preventDefault();
+        setWakePhraseKind('app');
+      });
+    }
+    var btnWakeBackToText=$('btnVoiceWakeBackToText');
+    if(btnWakeBackToText&&!btnWakeBackToText._wakeKindBound){
+      btnWakeBackToText._wakeKindBound=true;
+      btnWakeBackToText.addEventListener('click',function(e){
+        e.preventDefault();
+        setWakePhraseKind('text');
+      });
+    }
+    var btnWakeSideCamera=$('btnVoiceWakeSideCamera');
+    if(btnWakeSideCamera&&!btnWakeSideCamera._sideBound){
+      btnWakeSideCamera._sideBound=true;
+      btnWakeSideCamera.addEventListener('click',function(e){
+        e.preventDefault();
+        if(hooks.setSettingsPanel) hooks.setSettingsPanel('camera');
+        else if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
+          global.OneToneSettingsDrawer.open({panel:'camera'});
+        }
+      });
+    }
+    var btnWakeSideSoftPad=$('btnVoiceWakeSideSoftPad');
+    if(btnWakeSideSoftPad&&!btnWakeSideSoftPad._sideBound){
+      btnWakeSideSoftPad._sideBound=true;
+      btnWakeSideSoftPad.addEventListener('click',function(e){
+        e.preventDefault();
+        if(hooks.setSettingsPanel) hooks.setSettingsPanel('softPad');
+        else if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
+          global.OneToneSettingsDrawer.open({panel:'softPad'});
+        }
+      });
+    }
     global.__vp_voice_send_kind__='text';
     if(global.OneToneVoiceStepSend&&global.OneToneVoiceStepSend.forceTextPhraseKinds){
       global.OneToneVoiceStepSend.forceTextPhraseKinds();

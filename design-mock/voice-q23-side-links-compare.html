@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q23 · 侧链形态 · 三方案对照</title>
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#fff; --soft:#F0F0F2;
+  --border:#E5E5E5; --border-strong:#C4C4C4;
+  --primary:#00658F; --primary-soft:#E0F1FA;
+  --text:#1A1A1A; --muted:#666; --faint:#999;
+  --ok:#15803D; --ok-soft:#DCFCE7;
+  --warn:#92400E; --warn-soft:#FEF3C7;
+  --bad:#B91C1C; --bad-soft:#FEE2E2;
+  --r:14px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Outfit','Segoe UI','PingFang SC','Microsoft YaHei UI',sans-serif;
+  line-height:1.5;-webkit-font-smoothing:antialiased;}
+header{background:#fff;border-bottom:1px solid var(--border);padding:18px 28px;}
+header h1{margin:0 0 4px;font:700 18px/24px Outfit,sans-serif;letter-spacing:-.02em;}
+header .sub{margin:0;font-size:13px;color:var(--muted);max-width:920px;}
+.wrap{padding:22px 28px 56px;max-width:1400px;margin:0 auto;}
+.note{background:var(--primary-soft);border:1px solid rgba(0,101,143,.25);border-radius:10px;
+  padding:10px 14px;font-size:12.5px;color:var(--primary);margin-bottom:18px;}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
+@media (max-width:1100px){.grid{grid-template-columns:1fr;}}
+.col h2{margin:0 0 8px;font:700 13px/18px Outfit,sans-serif;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.tag{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  padding:2px 8px;border-radius:999px;}
+.tag.a{background:var(--ok-soft);color:var(--ok);}
+.tag.b{background:var(--warn-soft);color:var(--warn);}
+.tag.c{background:var(--bad-soft);color:var(--bad);}
+.rec{font-size:11px;font-weight:700;color:var(--ok);margin-left:auto;}
+.mock{border:1px solid var(--border);border-radius:var(--r);background:var(--surface);
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 12px rgba(0,0,0,.04);overflow:hidden;}
+.bar{background:var(--soft);padding:8px 10px;font-size:11px;color:var(--muted);
+  display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);}
+.dot{width:8px;height:8px;border-radius:50%;}
+.dot.r{background:#E57373;}.dot.y{background:#F0C674;}.dot.g{background:#9BC97E;}
+.body{padding:12px;display:grid;gap:10px;}
+.psb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;
+  border:1px solid var(--border);border-radius:8px;background:#fafafa;font-size:12px;}
+.brand{font-weight:800;}
+.pill{font-size:10px;padding:2px 7px;border-radius:999px;background:var(--ok-soft);color:var(--ok);font-weight:700;}
+.spacer{flex:1;}
+.btn{font:600 11px/14px Outfit,sans-serif;padding:5px 10px;border-radius:7px;border:1px solid var(--primary);
+  background:var(--primary);color:#fff;}
+.face{display:flex;gap:4px;padding:3px;width:fit-content;background:var(--soft);
+  border:1px solid var(--border);border-radius:9px;}
+.face .f{border:0;background:transparent;padding:5px 10px;border-radius:7px;
+  font:700 11.5px/14px Outfit,sans-serif;color:var(--muted);}
+.face .f.on{background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;position:relative;padding:4px 0;}
+.flow::before{content:"";position:absolute;left:10%;right:10%;top:26px;height:2px;
+  background:linear-gradient(90deg,rgba(79,172,254,.55),rgba(42,156,196,.8),rgba(245,158,11,.55));}
+.node{position:relative;z-index:1;text-align:center;}
+.node .t{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.04em;}
+.node .c{width:36px;height:36px;border-radius:50%;margin:4px auto 0;display:grid;place-items:center;
+  border:2px solid var(--border);background:#fff;font-size:12px;color:var(--muted);}
+.node.on .c{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 0 0 3px var(--primary-soft);}
+.node .ttl{margin:4px 0 0;font-size:10.5px;font-weight:700;}
+.card{border:1px solid var(--border);border-radius:12px;padding:12px;display:grid;gap:8px;}
+.card h3{margin:0;font:800 13px/18px Outfit,sans-serif;}
+.hero{padding:10px;border-radius:9px;background:var(--primary-soft);border:1px solid rgba(0,101,143,.2);}
+.hero .ph{font:800 16px/20px Outfit,sans-serif;color:var(--primary);}
+.hero .al{margin-top:4px;font-size:11px;color:var(--muted);}
+.causal{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;padding:7px 9px;
+  border-radius:8px;background:#fafafa;border:1px solid var(--border);}
+.causal .arr{color:var(--primary);font-weight:800;}
+.target{padding:8px 10px;border-radius:8px;background:var(--soft);border:1px solid var(--border);
+  font-size:11.5px;display:grid;gap:4px;}
+.target .row{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;}
+.target .lab{color:var(--muted);}
+.target .name{font-weight:700;}
+.target a,.side a,.rel a{color:var(--primary);font-weight:650;text-decoration:none;}
+.target a:hover,.side a:hover,.rel a:hover{text-decoration:underline;}
+.side{font-size:11.5px;color:var(--muted);padding:2px 2px;}
+.side .dotsep{margin:0 4px;color:var(--faint);}
+.chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{font:650 11px/14px Outfit,sans-serif;padding:5px 10px;border-radius:999px;
+  border:1px solid var(--border-strong);background:#fff;color:var(--text);}
+.rel{font-size:11.5px;color:var(--muted);padding:6px 2px 0;border-top:1px dashed var(--border);}
+.rel .lab{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--faint);margin-right:6px;}
+.adv{font-size:11px;color:var(--muted);padding:6px 8px;border:1px dashed var(--border);
+  border-radius:8px;background:#fafafa;}
+.adv summary{cursor:default;font-weight:650;list-style:none;}
+.adv summary::-webkit-details-marker{display:none;}
+.adv summary::before{content:"▸ ";color:var(--faint);}
+.dock{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--border);
+  border-radius:8px;background:var(--soft);font-size:11px;color:var(--muted);}
+.dock .chip{padding:3px 8px;border-radius:999px;border:1px solid var(--border);background:#fff;font-weight:650;color:var(--text);}
+.dock .ghost{border:0;background:transparent;color:var(--primary);font:650 11px Outfit,sans-serif;
+  padding:2px 4px;text-decoration:underline;text-underline-offset:2px;}
+.hl{outline:2px solid rgba(0,101,143,.45);outline-offset:2px;border-radius:8px;position:relative;}
+.hl::after{content:attr(data-hl);position:absolute;top:-9px;right:8px;font-size:9px;font-weight:800;
+  letter-spacing:.04em;text-transform:uppercase;background:var(--primary);color:#fff;
+  padding:1px 6px;border-radius:999px;}
+.verdict{margin-top:8px;padding:10px 12px;border-radius:10px;font-size:12px;display:grid;gap:4px;}
+.verdict.good{background:var(--ok-soft);border:1px solid rgba(22,163,74,.3);color:#166534;}
+.verdict.mid{background:var(--warn-soft);border:1px solid #FCD34D;color:var(--warn);}
+.verdict.alt{background:var(--primary-soft);border:1px solid rgba(0,101,143,.25);color:var(--primary);}
+.verdict strong{font-weight:800;}
+.pick{margin-top:20px;padding:14px 16px;background:#fff;border:1px solid var(--border);border-radius:12px;}
+.pick h3{margin:0 0 8px;font:700 14px/20px Outfit,sans-serif;}
+.pick ol{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted);}
+footer{padding:20px;text-align:center;font-size:11px;color:var(--faint);}
+</style>
+</head>
+<body>
+<header>
+  <h1>Q23 · 侧链「按键 · 摄像头 · SoftPad」怎么画？</h1>
+  <p class="sub">听写面 01 首屏 · 三方案静态对照。已锁定上下文：Q20 face 在轨上、Q21 试麦克风=ghost、Q22 高级折叠贴目标旁注。本问只比<strong>侧链形态</strong>（蓝框高亮）。</p>
+</header>
+<div class="wrap">
+  <div class="note">推荐倾向 <strong>C</strong>：「在按键页改」贴目标旁注；摄像头 / SoftPad 另起「相关」文字链。A 最轻但改目标被稀释；B 最好点但像工具栏。</div>
+
+  <div class="grid">
+    <!-- A -->
+    <div class="col">
+      <h2><span class="tag a">A</span> 一行文字链</h2>
+      <div class="mock">
+        <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> 三链等权 · 页脚感</div>
+        <div class="body">
+          <div class="psb"><span class="brand">语音听写</span><span class="pill">默认</span><span class="spacer"></span><button class="btn" type="button">保存</button></div>
+          <div class="face"><span class="f on">听写</span><span class="f">打开应用</span></div>
+          <div class="flow">
+            <div class="node on"><div class="t">01</div><div class="c">开</div><div class="ttl">开启</div></div>
+            <div class="node"><div class="t">02</div><div class="c">结</div><div class="ttl">结束</div></div>
+            <div class="node"><div class="t">03</div><div class="c">发</div><div class="ttl">发送</div></div>
+          </div>
+          <div class="card">
+            <h3>怎么开启打字？</h3>
+            <div class="hero"><div class="ph">「开始输入」</div><div class="al">别名 · 添加</div></div>
+            <div class="causal"><span>唤醒后</span><span class="arr">→</span><span>进入听写</span></div>
+            <div class="target">
+              <div class="row"><span class="lab">目标应用</span><span class="name">Cursor</span></div>
+            </div>
+            <div class="adv"><summary>高级 · 允许拉起目标再听写</summary></div>
+            <div class="side hl" data-hl="侧链">
+              <a href="#">按键</a><span class="dotsep">·</span>
+              <a href="#">摄像头</a><span class="dotsep">·</span>
+              <a href="#">SoftPad</a>
+            </div>
+          </div>
+          <div class="dock"><span class="chip">麦 开</span><span class="chip">引擎</span><button class="ghost" type="button">试麦克风</button><span>听到…</span></div>
+        </div>
+      </div>
+      <div class="verdict mid">
+        <strong>轻 · 改目标弱</strong>
+        三出口等权；「改目标」没有贴旁注，用户要猜按键=改目标。
+      </div>
+    </div>
+
+    <!-- B -->
+    <div class="col">
+      <h2><span class="tag b">B</span> 三枚 ghost chip</h2>
+      <div class="mock">
+        <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> 可点性高 · 工具栏感</div>
+        <div class="body">
+          <div class="psb"><span class="brand">语音听写</span><span class="pill">默认</span><span class="spacer"></span><button class="btn" type="button">保存</button></div>
+          <div class="face"><span class="f on">听写</span><span class="f">打开应用</span></div>
+          <div class="flow">
+            <div class="node on"><div class="t">01</div><div class="c">开</div><div class="ttl">开启</div></div>
+            <div class="node"><div class="t">02</div><div class="c">结</div><div class="ttl">结束</div></div>
+            <div class="node"><div class="t">03</div><div class="c">发</div><div class="ttl">发送</div></div>
+          </div>
+          <div class="card">
+            <h3>怎么开启打字？</h3>
+            <div class="hero"><div class="ph">「开始输入」</div><div class="al">别名 · 添加</div></div>
+            <div class="causal"><span>唤醒后</span><span class="arr">→</span><span>进入听写</span></div>
+            <div class="target">
+              <div class="row"><span class="lab">目标应用</span><span class="name">Cursor</span></div>
+            </div>
+            <div class="adv"><summary>高级 · 允许拉起目标再听写</summary></div>
+            <div class="chips hl" data-hl="侧链">
+              <span class="chip">按键</span>
+              <span class="chip">摄像头</span>
+              <span class="chip">SoftPad</span>
+            </div>
+          </div>
+          <div class="dock"><span class="chip">麦 开</span><span class="chip">引擎</span><button class="ghost" type="button">试麦克风</button><span>听到…</span></div>
+        </div>
+      </div>
+      <div class="verdict mid">
+        <strong>好点 · 像工具栏</strong>
+        可发现性最好；与「听写主职」抢视线，且仍未把「改目标」从跨通道出口里拆开。
+      </div>
+    </div>
+
+    <!-- C -->
+    <div class="col">
+      <h2><span class="tag c">C</span> 旁注改目标 + 相关链 <span class="rec">推荐</span></h2>
+      <div class="mock">
+        <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> 改目标贴旁注 · 相关另起</div>
+        <div class="body">
+          <div class="psb"><span class="brand">语音听写</span><span class="pill">默认</span><span class="spacer"></span><button class="btn" type="button">保存</button></div>
+          <div class="face"><span class="f on">听写</span><span class="f">打开应用</span></div>
+          <div class="flow">
+            <div class="node on"><div class="t">01</div><div class="c">开</div><div class="ttl">开启</div></div>
+            <div class="node"><div class="t">02</div><div class="c">结</div><div class="ttl">结束</div></div>
+            <div class="node"><div class="t">03</div><div class="c">发</div><div class="ttl">发送</div></div>
+          </div>
+          <div class="card">
+            <h3>怎么开启打字？</h3>
+            <div class="hero"><div class="ph">「开始输入」</div><div class="al">别名 · 添加</div></div>
+            <div class="causal"><span>唤醒后</span><span class="arr">→</span><span>进入听写</span></div>
+            <div class="target hl" data-hl="改目标">
+              <div class="row">
+                <span class="lab">目标应用</span>
+                <span class="name">Cursor</span>
+                <a href="#">在按键页改 →</a>
+              </div>
+            </div>
+            <div class="adv"><summary>高级 · 允许拉起目标再听写</summary></div>
+            <div class="rel hl" data-hl="相关">
+              <span class="lab">相关</span>
+              <a href="#">摄像头</a><span class="dotsep" style="margin:0 4px;color:var(--faint)">·</span>
+              <a href="#">SoftPad</a>
+            </div>
+          </div>
+          <div class="dock"><span class="chip">麦 开</span><span class="chip">引擎</span><button class="ghost" type="button">试麦克风</button><span>听到…</span></div>
+        </div>
+      </div>
+      <div class="verdict good">
+        <strong>职责拆开</strong>
+        「改目标」= 旁注动作；摄像头 / SoftPad = 跨通道出口。按键不再与另两链等权抢眼。
+      </div>
+    </div>
+  </div>
+
+  <div class="pick">
+    <h3>怎么选</h3>
+    <ol>
+      <li><strong>A</strong> — 要最轻、接受「改目标」靠用户从「按键」推断。</li>
+      <li><strong>B</strong> — 要可点性优先，接受 01 底像一排工具。</li>
+      <li><strong>C</strong> — 要「改目标」语义贴旁注，跨通道另起一行（推荐）。</li>
+    </ol>
+  </div>
+</div>
+<footer>Q23 compare · locks Q20–Q22 already applied · voice-pilot design-mock</footer>
+</body>
+</html>

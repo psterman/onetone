@@ -1879,7 +1879,8 @@
                     <header class="voice-wake-toolbar">
                       <p class="voice-phrase-panel-title sr-only" id="voiceEditSectionPresets">开启</p>
                       <p class="voice-wake-card-sub sr-only" id="voiceWakeGlobalSub"></p>
-                      <div class="voice-phrase-kind-tabs voice-wake-kind-tabs" id="voiceWakeKindTabs" role="tablist" aria-label="说完话要做什么">
+                      <!-- Peer tabs kept for kind sync; demoted visually — App entered via secondary CTA -->
+                      <div class="voice-phrase-kind-tabs voice-wake-kind-tabs voice-wake-kind-tabs--demoted" id="voiceWakeKindTabs" role="tablist" aria-label="说完话要做什么">
                         <button type="button" class="voice-phrase-kind-tab is-active is-on" data-phrase-kind="text" id="btnVoiceWakeKindText" role="tab" aria-selected="true" aria-controls="voiceWakeKindTextPane">开始输入</button>
                         <button type="button" class="voice-phrase-kind-tab" data-phrase-kind="app" id="btnVoiceWakeKindApp" role="tab" aria-selected="false" aria-controls="voiceWakeKindAppPane">打开应用</button>
                       </div>
@@ -1929,42 +1930,64 @@
                         </div>
                         <button type="button" class="toggle-switch" id="voiceWakeListeningOptInToggle" role="switch" aria-checked="false" aria-labelledby="voiceWakeListeningOptInLabel"></button>
                       </div>
+                      <div class="voice-wake-action-bar" id="voiceWakeActionBar" aria-label="唤醒后因果">
+                        <strong class="voice-wake-action-lbl" id="voiceWakeActionLbl">唤醒后</strong>
+                        <div class="voice-wake-action-steps">
+                          <span id="voiceWakeActionApp">切到目标应用</span>
+                          <span class="voice-wake-action-arr" aria-hidden="true">→</span>
+                          <span id="voiceWakeActionDictate">进入听写</span>
+                        </div>
+                      </div>
+                      <div class="voice-wake-sidelinks" id="voiceWakeSideLinks">
+                        <span class="voice-wake-sidelinks-lbl" id="voiceWakeSideLinksLbl">相关能力（并列通道）</span>
+                        <button type="button" class="voice-wake-sidelink" id="btnVoiceWakeSideCamera">摄像头</button>
+                        <button type="button" class="voice-wake-sidelink" id="btnVoiceWakeSideSoftPad">SoftPad</button>
+                        <span class="voice-wake-sidelinks-note" id="voiceWakeSideLinksNote">入口跳到对应通道；不串进开启因果链</span>
+                      </div>
+                      <button type="button" class="voice-wake-secondary-entry" id="btnVoiceWakeOpenAppEntry">打开应用 · 语音唤起 →</button>
                     </section>
                     </div>
                     <div class="voice-phrase-kind-pane" id="voiceWakeKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" hidden aria-hidden="true">
                       <div id="voiceWakeAcousticHost" class="habit-scenario-voice-command-host voice-wake-acoustic-host"></div>
                     </div>
                     <div class="voice-phrase-kind-pane" id="voiceWakeKindAppPane" data-phrase-kind-pane="app" role="tabpanel" aria-labelledby="btnVoiceWakeKindApp" hidden>
-                      <div class="voice-tab2-mvp" id="voiceTab2Mvp">
-                        <p class="voice-tab2-voice-gate" id="voiceTab2VoiceGate" hidden role="status"></p>
-                        <p class="voice-tab2-follow-row" id="voiceTab2FollowRow">
-                          <span class="voice-tab2-follow-k" id="voiceTab2FollowLbl">联动</span>
-                          <span class="voice-tab2-follow-v" id="voiceTab2FollowText">—</span>
-                        </p>
-                        <p class="voice-tab2-hold-note" id="voiceTab2HoldNote" hidden role="note"></p>
-                        <div class="voice-tab2-try-row" id="voiceTab2TryRow">
-                          <button type="button" class="voice-tab2-try-cta page-status-btn" id="voiceTab2TryLocal">本地试说</button>
-                          <button type="button" class="voice-tab2-try-cta page-status-btn is-primary" id="voiceTab2TryAgent">在 Cursor 试说</button>
-                        </div>
-                        <p class="voice-tab2-agent-hint" id="voiceTab2AgentHint" hidden role="note"></p>
-                        <p class="voice-tab2-scenario-note" id="voiceTab2ScenarioNote" hidden role="note"></p>
-                        <p class="voice-tab2-fail-hint" id="voiceTab2FailHint" hidden role="status" aria-live="polite"></p>
-                        <details class="voice-tab2-advanced" id="voiceTab2Advanced">
-                          <summary class="voice-tab2-advanced-summary" id="voiceTab2AdvancedSummary">高级 · 能跟哪些 Agent<span class="voice-tab2-advanced-badge" id="voiceTab2AdvancedBadge" hidden></span></summary>
-                          <section class="voice-output-summon-block voice-wake-summon-block voice-wake-flat" id="voiceOutputSummonBlock">
-                            <div class="voice-wake-card-titles">
-                              <p class="voice-phrase-panel-title" id="voiceOutputSummonLbl">打开应用</p>
-                              <p class="voice-wake-card-sub" id="voiceOutputSummonHint">说出已录的口令即可打开或切到该应用</p>
-                            </div>
-                            <p class="voice-output-summon-empty" id="voiceOutputSummonEmpty">还没有可语音打开的应用。点「添加应用」选一个，再录制口令。</p>
-                            <div class="voice-output-summon-rows" id="voiceOutputSummonChips"></div>
-                            <div class="voice-open-app-actions">
-                              <button type="button" class="page-status-btn is-primary" id="btnVoiceOpenAppAdd">添加应用</button>
-                              <button type="button" class="voice-mode-meta-link" id="btnVoiceOutputSummonManage">在按键页管理</button>
-                            </div>
-                          </section>
-                        </details>
+                      <div class="voice-wake-app-head">
+                        <button type="button" class="voice-wake-back-to-text" id="btnVoiceWakeBackToText">← 开始输入</button>
                       </div>
+                      <section class="voice-output-summon-block voice-wake-summon-block voice-wake-flat" id="voiceOutputSummonBlock">
+                        <div class="voice-wake-card-titles">
+                          <p class="voice-phrase-panel-title" id="voiceOutputSummonLbl">打开应用</p>
+                          <p class="voice-wake-card-sub" id="voiceOutputSummonHint">说出已录的口令即可打开或切到该应用</p>
+                        </div>
+                        <p class="voice-output-summon-empty" id="voiceOutputSummonEmpty">还没有可语音打开的应用。点「添加应用」选一个，再录制口令。</p>
+                        <div class="voice-output-summon-rows" id="voiceOutputSummonChips"></div>
+                        <div class="voice-open-app-actions">
+                          <button type="button" class="page-status-btn is-primary" id="btnVoiceOpenAppAdd">添加应用</button>
+                          <button type="button" class="voice-mode-meta-link" id="btnVoiceOutputSummonManage">在按键页管理</button>
+                        </div>
+                      </section>
+                      <details class="voice-tab2-try-details" id="voiceTab2TryDetails">
+                        <summary class="voice-tab2-try-summary" id="voiceTab2TrySummary">试说与 Agent 联动</summary>
+                        <div class="voice-tab2-mvp" id="voiceTab2Mvp">
+                          <p class="voice-tab2-voice-gate" id="voiceTab2VoiceGate" hidden role="status"></p>
+                          <p class="voice-tab2-follow-row" id="voiceTab2FollowRow">
+                            <span class="voice-tab2-follow-k" id="voiceTab2FollowLbl">联动</span>
+                            <span class="voice-tab2-follow-v" id="voiceTab2FollowText">—</span>
+                          </p>
+                          <p class="voice-tab2-hold-note" id="voiceTab2HoldNote" hidden role="note"></p>
+                          <div class="voice-tab2-try-row" id="voiceTab2TryRow">
+                            <button type="button" class="voice-tab2-try-cta page-status-btn" id="voiceTab2TryLocal">本地试说</button>
+                            <button type="button" class="voice-tab2-try-cta page-status-btn is-primary" id="voiceTab2TryAgent">在 Cursor 试说</button>
+                          </div>
+                          <p class="voice-tab2-agent-hint" id="voiceTab2AgentHint" hidden role="note"></p>
+                          <p class="voice-tab2-scenario-note" id="voiceTab2ScenarioNote" hidden role="note"></p>
+                          <p class="voice-tab2-fail-hint" id="voiceTab2FailHint" hidden role="status" aria-live="polite"></p>
+                          <details class="voice-tab2-advanced" id="voiceTab2Advanced">
+                            <summary class="voice-tab2-advanced-summary" id="voiceTab2AdvancedSummary">高级 · 能跟哪些 Agent<span class="voice-tab2-advanced-badge" id="voiceTab2AdvancedBadge" hidden></span></summary>
+                            <p class="voice-tab2-advanced-hint" id="voiceTab2AdvancedHint">在上方添加应用并录制口令；Agent 场景可在按键页配置。</p>
+                          </details>
+                        </div>
+                      </details>
                     </div>
                     <p class="voice-phrase-custom-lbl sr-only" id="voiceWakeCustomLbl">自定义唤醒词</p>
                     <p class="voice-phrase-custom-lbl sr-only" id="voiceWakeCustomSummary">自定义唤醒词</p>

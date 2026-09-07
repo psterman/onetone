@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q19 · 打开应用面 × 01/02/03 流程轨 · 三方案对照</title>
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#fff; --soft:#F0F0F2;
+  --border:#E5E5E5; --border-strong:#C4C4C4;
+  --primary:#00658F; --primary-soft:#E0F1FA;
+  --text:#1A1A1A; --muted:#666; --faint:#999;
+  --ok:#15803D; --ok-soft:#DCFCE7;
+  --warn:#92400E; --warn-soft:#FEF3C7;
+  --bad:#B91C1C; --bad-soft:#FEE2E2;
+  --r:14px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Outfit','Inter',system-ui,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  line-height:1.5;-webkit-font-smoothing:antialiased;}
+header{background:#fff;border-bottom:1px solid var(--border);padding:18px 28px;}
+header h1{margin:0 0 4px;font:700 18px/24px Outfit;letter-spacing:-.02em;}
+header .sub{margin:0;font-size:13px;color:var(--muted);max-width:900px;}
+.wrap{padding:22px 28px 56px;max-width:1400px;margin:0 auto;}
+.note{background:var(--primary-soft);border:1px solid rgba(0,101,143,.25);border-radius:10px;
+  padding:10px 14px;font-size:12.5px;color:var(--primary);margin-bottom:18px;}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
+@media (max-width:1100px){.grid{grid-template-columns:1fr;}}
+.col h2{margin:0 0 8px;font:700 13px/18px Outfit;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.tag{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  padding:2px 8px;border-radius:999px;}
+.tag.a{background:var(--ok-soft);color:var(--ok);}
+.tag.b{background:var(--warn-soft);color:var(--warn);}
+.tag.c{background:var(--bad-soft);color:var(--bad);}
+.rec{font-size:11px;font-weight:700;color:var(--ok);margin-left:auto;}
+.mock{border:1px solid var(--border);border-radius:var(--r);background:var(--surface);
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 12px rgba(0,0,0,.04);overflow:hidden;}
+.bar{background:var(--soft);padding:8px 10px;font-size:11px;color:var(--muted);
+  display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);}
+.dot{width:8px;height:8px;border-radius:50%;}
+.dot.r{background:#E57373;}.dot.y{background:#F0C674;}.dot.g{background:#9BC97E;}
+.body{padding:12px;display:grid;gap:10px;min-height:420px;}
+.psb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;
+  border:1px solid var(--border);border-radius:8px;background:#fafafa;font-size:12px;}
+.brand{font-weight:800;}
+.pill{font-size:10px;padding:2px 7px;border-radius:999px;background:var(--ok-soft);color:var(--ok);font-weight:700;}
+.spacer{flex:1;}
+.btn{font:600 11px/14px Outfit;padding:5px 10px;border-radius:7px;border:1px solid var(--primary);
+  background:var(--primary);color:#fff;}
+.face{display:flex;gap:4px;padding:3px;width:fit-content;background:var(--soft);
+  border:1px solid var(--border);border-radius:9px;}
+.face .f{border:0;background:transparent;padding:5px 10px;border-radius:7px;
+  font:700 11.5px/14px Outfit;color:var(--muted);cursor:pointer;}
+.face .f.on{background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;position:relative;padding:4px 0;}
+.flow::before{content:"";position:absolute;left:10%;right:10%;top:26px;height:2px;
+  background:linear-gradient(90deg,rgba(79,172,254,.55),rgba(42,156,196,.8),rgba(245,158,11,.55));}
+.node{position:relative;z-index:1;text-align:center;}
+.node .t{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.04em;}
+.node .c{width:36px;height:36px;border-radius:50%;margin:4px auto 0;display:grid;place-items:center;
+  border:2px solid var(--border);background:#fff;font-size:12px;color:var(--muted);}
+.node.on .c{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 0 0 3px var(--primary-soft);}
+.node .ttl{margin:4px 0 0;font-size:10.5px;font-weight:700;}
+.node.disabled{opacity:.38;filter:grayscale(.4);}
+.node.disabled .c{cursor:not-allowed;}
+.ghost{border:1px dashed var(--border);border-radius:10px;padding:14px;text-align:center;
+  color:var(--faint);font-size:11.5px;background:repeating-linear-gradient(-45deg,#fff,#fff 6px,var(--soft) 6px,var(--soft) 12px);}
+.app{border:1px solid var(--border);border-radius:12px;padding:12px;display:grid;gap:8px;}
+.app h3{margin:0;font:800 14px/18px Outfit;}
+.app p{margin:0;font-size:11.5px;color:var(--muted);}
+.row{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:9px;}
+.ico{width:32px;height:32px;border-radius:7px;background:var(--primary-soft);color:var(--primary);
+  display:grid;place-items:center;font-weight:800;font-size:12px;}
+.row .n{font-weight:700;font-size:12px;}
+.row .m{font-size:10.5px;color:var(--muted);}
+.row .cta{margin-left:auto;font-size:10.5px;font-weight:700;padding:4px 8px;border-radius:6px;
+  border:1px solid var(--primary);background:var(--primary);color:#fff;}
+.dock{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--border);
+  border-radius:8px;background:var(--soft);font-size:11px;color:var(--muted);margin-top:auto;}
+.dock .chip{padding:3px 8px;border-radius:999px;border:1px solid var(--border);background:#fff;font-weight:650;color:var(--text);}
+.dock .chip.em{border-color:rgba(0,101,143,.35);color:var(--primary);}
+.verdict{margin-top:8px;padding:10px 12px;border-radius:10px;font-size:12px;display:grid;gap:4px;}
+.verdict.good{background:var(--ok-soft);border:1px solid rgba(22,163,74,.3);color:#166534;}
+.verdict.mid{background:var(--warn-soft);border:1px solid #FCD34D;color:var(--warn);}
+.verdict.bad{background:var(--bad-soft);border:1px solid #FECACA;color:#991B1B;}
+.verdict strong{font-weight:800;}
+.pick{margin-top:20px;padding:14px 16px;background:#fff;border:1px solid var(--border);border-radius:12px;}
+.pick h3{margin:0 0 8px;font:700 14px/20px Outfit;}
+.pick ol{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted);}
+footer{padding:20px;text-align:center;font-size:11px;color:var(--faint);}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.tabs button{border:1px solid var(--border-strong);background:#fff;padding:6px 12px;border-radius:8px;
+  font:600 12px Outfit;color:var(--muted);cursor:pointer;}
+.tabs button.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+.live[hidden]{display:none!important;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Q19 · 打开应用面时，01/02/03 流程轨怎么处理？</h1>
+  <p class="sub">三方案静态对照 + 可点「实时预览」。问题：用户切到「打开应用」后，听写三步节点还在不在、能不能点。</p>
+</header>
+<div class="wrap">
+  <div class="note">推荐倾向 <strong>A · 整轨隐藏</strong>：打开应用已是独立第二面，再露听写时间轴会像「还在配听写」。下面三列看完可在「实时预览」里点 face 切换体感。</div>
+
+  <div class="tabs" role="tablist">
+    <button type="button" class="on" data-view="static" id="tabStatic">三列对照</button>
+    <button type="button" data-view="live" id="tabLive">实时预览（点 face）</button>
+  </div>
+
+  <section class="live" id="viewStatic">
+    <div class="grid">
+      <!-- A -->
+      <div class="col">
+        <h2><span class="tag a">A</span> 整轨隐藏 <span class="rec">推荐</span></h2>
+        <div class="mock">
+          <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> face=openApp · flow 不渲染</div>
+          <div class="body">
+            <div class="psb"><span class="brand">语音听写</span><span class="pill">默认</span><span class="spacer"></span><button class="btn" type="button">保存</button></div>
+            <div class="face"><button type="button" class="f">听写</button><button type="button" class="f on">打开应用</button></div>
+            <div class="ghost">01 / 02 / 03 流程轨已隐藏<br>听写时间轴不掺和</div>
+            <div class="app">
+              <h3>用口令打开应用</h3>
+              <p>声学 roster · 与听写三步无关</p>
+              <div class="row"><div class="ico">C</div><div><div class="n">Cursor</div><div class="m">已录口令</div></div><button class="cta" type="button">试听</button></div>
+              <div class="row"><div class="ico">+</div><div><div class="n">添加应用</div><div class="m">再录口令</div></div></div>
+            </div>
+            <div class="dock"><span>dock</span><span class="chip">麦</span><span class="chip">引擎</span><span class="chip em">试麦克风</span></div>
+          </div>
+        </div>
+        <div class="verdict good">
+          <strong>适合</strong>「打开应用 = 第二面」定稿
+          <span>心智干净；face 切换即导航</span>
+        </div>
+      </div>
+
+      <!-- B -->
+      <div class="col">
+        <h2><span class="tag b">B</span> 轨在但禁用</h2>
+        <div class="mock">
+          <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> face=openApp · flow 灰显</div>
+          <div class="body">
+            <div class="psb"><span class="brand">语音听写</span><span class="pill">默认</span><span class="spacer"></span><button class="btn" type="button">保存</button></div>
+            <div class="face"><button type="button" class="f">听写</button><button type="button" class="f on">打开应用</button></div>
+            <div class="flow">
+              <div class="node disabled"><div class="t">01</div><div class="c">🎤</div><div class="ttl">开启</div></div>
+              <div class="node disabled"><div class="t">02</div><div class="c">〰️</div><div class="ttl">结束</div></div>
+              <div class="node disabled"><div class="t">03</div><div class="c">➤</div><div class="ttl">发送</div></div>
+            </div>
+            <div class="app">
+              <h3>用口令打开应用</h3>
+              <p>下方灰轨提醒「语音还有三步」但点不动</p>
+              <div class="row"><div class="ico">C</div><div><div class="n">Cursor</div><div class="m">已录</div></div><button class="cta" type="button">试听</button></div>
+            </div>
+            <div class="dock"><span>dock</span><span class="chip">麦</span><span class="chip em">试麦克风</span></div>
+          </div>
+        </div>
+        <div class="verdict mid">
+          <strong>代价</strong>占垂直空间 + 灰态噪音
+          <span>小白可能以为坏了 / 还要配听写</span>
+        </div>
+      </div>
+
+      <!-- C -->
+      <div class="col">
+        <h2><span class="tag c">C</span> 轨保留且可点</h2>
+        <div class="mock">
+          <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> face=openApp · 点节点→回听写</div>
+          <div class="body">
+            <div class="psb"><span class="brand">语音听写</span><span class="pill">默认</span><span class="spacer"></span><button class="btn" type="button">保存</button></div>
+            <div class="face"><button type="button" class="f">听写</button><button type="button" class="f on">打开应用</button></div>
+            <div class="flow">
+              <div class="node on"><div class="t">01</div><div class="c">🎤</div><div class="ttl">开启</div></div>
+              <div class="node"><div class="t">02</div><div class="c">〰️</div><div class="ttl">结束</div></div>
+              <div class="node"><div class="t">03</div><div class="c">➤</div><div class="ttl">发送</div></div>
+            </div>
+            <div class="app">
+              <h3>用口令打开应用</h3>
+              <p>点「02 结束」→ 自动切回听写面并跳步</p>
+              <div class="row"><div class="ico">C</div><div><div class="n">Cursor</div><div class="m">已录</div></div><button class="cta" type="button">试听</button></div>
+            </div>
+            <div class="dock"><span>dock</span><span class="chip">麦</span><span class="chip em">试麦克风</span></div>
+          </div>
+        </div>
+        <div class="verdict bad">
+          <strong>风险</strong>打开应用像听写的子页
+          <span>双导航（face + 三步）易迷路；与「更隔离」目标相反</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="live" id="viewLive" hidden>
+    <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;">选方案后，点顶上「听写 | 打开应用」看流程轨反应。</p>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <label style="font-size:12px;"><input type="radio" name="scheme" value="A" checked> A 隐藏</label>
+      <label style="font-size:12px;"><input type="radio" name="scheme" value="B"> B 禁用</label>
+      <label style="font-size:12px;"><input type="radio" name="scheme" value="C"> C 可点回听写</label>
+    </div>
+    <div class="mock" style="max-width:420px;">
+      <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> 实时 · <span id="livePath">face=dictate</span></div>
+      <div class="body" id="liveBody">
+        <div class="psb"><span class="brand">语音听写</span><span class="pill">默认</span><span class="spacer"></span><button class="btn" type="button">保存</button></div>
+        <div class="face" id="liveFace">
+          <button type="button" class="f on" data-face="dictate">听写</button>
+          <button type="button" class="f" data-face="openApp">打开应用</button>
+        </div>
+        <div class="flow" id="liveFlow">
+          <div class="node on" data-step="wake"><div class="t">01</div><div class="c">🎤</div><div class="ttl">开启</div></div>
+          <div class="node" data-step="end"><div class="t">02</div><div class="c">〰️</div><div class="ttl">结束</div></div>
+          <div class="node" data-step="send"><div class="t">03</div><div class="c">➤</div><div class="ttl">发送</div></div>
+        </div>
+        <div id="liveDictate" class="app">
+          <h3>开启口令 · 开始输入</h3>
+          <p>听写主路径（示意）</p>
+        </div>
+        <div id="liveOpen" class="app" hidden>
+          <h3>用口令打开应用</h3>
+          <p>roster 示意</p>
+          <div class="row"><div class="ico">C</div><div><div class="n">Cursor</div><div class="m">已录</div></div><button class="cta" type="button">试听</button></div>
+        </div>
+        <div class="dock"><span class="chip">麦</span><span class="chip">引擎</span><span class="chip em">试麦克风</span></div>
+        <p id="liveMsg" style="margin:0;font-size:11.5px;color:var(--muted);"></p>
+      </div>
+    </div>
+  </section>
+
+  <div class="pick">
+    <h3>怎么选（给 grill 答题用）</h3>
+    <ol>
+      <li><strong>A</strong>：第二面真正独立，垂直空间给 roster；与「打开应用更隔离」一致。</li>
+      <li><strong>B</strong>：想保留「语音=三步」品牌记忆，但灰态容易被当成故障。</li>
+      <li><strong>C</strong>：熟手捷径；和 Q12「不要像听写子功能」冲突，一般不取。</li>
+    </ol>
+  </div>
+</div>
+<footer>design-mock/voice-q19-flow-face-compare.html · Grill Q19</footer>
+<script>
+(function(){
+  var face='dictate';
+  var scheme='A';
+  function $(id){ return document.getElementById(id); }
+  document.querySelectorAll('.tabs button').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.tabs button').forEach(function(x){ x.classList.toggle('on',x===b); });
+      var v=b.getAttribute('data-view');
+      $('viewStatic').hidden=v!=='static';
+      $('viewLive').hidden=v!=='live';
+    });
+  });
+  document.querySelectorAll('input[name=scheme]').forEach(function(r){
+    r.addEventListener('change',function(){ scheme=r.value; paint(); });
+  });
+  $('liveFace').addEventListener('click',function(e){
+    var btn=e.target.closest('[data-face]');
+    if(!btn) return;
+    face=btn.getAttribute('data-face');
+    paint();
+  });
+  $('liveFlow').addEventListener('click',function(e){
+    var node=e.target.closest('[data-step]');
+    if(!node||node.classList.contains('disabled')) return;
+    if(face==='openApp'&&scheme==='C'){
+      face='dictate';
+      $('liveMsg').textContent='C：点流程节点 → 已切回听写面 · step='+node.getAttribute('data-step');
+      paint();
+      return;
+    }
+    if(face==='dictate'){
+      $('liveFlow').querySelectorAll('.node').forEach(function(n){ n.classList.toggle('on',n===node); });
+      $('liveMsg').textContent='听写面 · 当前步 '+node.getAttribute('data-step');
+    }
+  });
+  function paint(){
+    var open=face==='openApp';
+    $('livePath').textContent='face='+face+' · scheme='+scheme;
+    $('liveFace').querySelectorAll('.f').forEach(function(f){
+      f.classList.toggle('on',f.getAttribute('data-face')===face);
+    });
+    $('liveDictate').hidden=open;
+    $('liveOpen').hidden=!open;
+    var flow=$('liveFlow');
+    if(scheme==='A'){
+      flow.hidden=open;
+      flow.querySelectorAll('.node').forEach(function(n){ n.classList.remove('disabled'); });
+      $('liveMsg').textContent=open?'A：流程轨已隐藏':'A：听写面显示流程轨';
+    }else if(scheme==='B'){
+      flow.hidden=false;
+      flow.querySelectorAll('.node').forEach(function(n){ n.classList.toggle('disabled',open); });
+      $('liveMsg').textContent=open?'B：流程轨灰显，点击无效':'B：听写面可点步骤';
+    }else{
+      flow.hidden=false;
+      flow.querySelectorAll('.node').forEach(function(n){ n.classList.remove('disabled'); });
+      $('liveMsg').textContent=open?'C：点 01/02/03 可跳回听写面':'C：听写面正常';
+    }
+  }
+  paint();
+})();
+</script>
+</body>
+</html>

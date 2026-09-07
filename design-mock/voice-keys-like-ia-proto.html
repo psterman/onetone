@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OneTone · 语音设置 · 对齐按键页 IA 原型</title>
+<style>
+:root{
+  --bg:#F5F5F7; --surface:#FFFFFF; --surface-soft:#F0F0F2;
+  --border:#E5E5E5; --border-strong:#C4C4C4;
+  --primary:#00658F; --primary-strong:#004C6C; --primary-soft:#E0F1FA;
+  --text:#1A1A1A; --text-muted:#666; --text-faint:#999;
+  --success:#16A34A; --success-soft:#DCFCE7;
+  --warn:#F59E0B; --warn-soft:#FEF3C7;
+  --error:#BA1A1A; --error-soft:#FEE2E2;
+  --r-card:16px; --r-row:10px; --r-pill:999px;
+  --shadow:0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:'Outfit','Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei UI',sans-serif;
+  line-height:1.55;-webkit-font-smoothing:antialiased;}
+header{background:#fff;border-bottom:1px solid var(--border);padding:20px 32px;}
+header h1{margin:0 0 4px;font:700 20px/28px 'Outfit';letter-spacing:-.02em;}
+header .sub{color:var(--text-muted);font-size:13px;max-width:820px;}
+.container{padding:24px 32px 64px;max-width:1320px;margin:0 auto;}
+
+.matrix{
+  background:#fff;border:1px solid var(--border);border-radius:var(--r-card);
+  padding:16px 18px;margin-bottom:28px;box-shadow:var(--shadow);
+}
+.matrix h2{margin:0 0 10px;font:700 14px/20px 'Outfit';}
+.matrix table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.matrix th,.matrix td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top;}
+.matrix th{font:600 11px/14px 'Outfit';text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);background:var(--surface-soft);}
+.matrix tr:last-child td{border-bottom:none;}
+.keep{color:#15803D;font-weight:700;}
+.side{color:var(--primary);font-weight:700;}
+.out{color:#B91C1C;font-weight:700;}
+
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.tabs button{
+  border:1px solid var(--border-strong);background:#fff;color:var(--text-muted);
+  padding:8px 14px;border-radius:10px;font:600 12.5px/16px 'Outfit';cursor:pointer;
+}
+.tabs button.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+.stage{display:none;}
+.stage.on{display:block;}
+
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;}
+@media (max-width:1100px){.compare{grid-template-columns:1fr;}}
+.col h3{margin:0 0 10px;font:700 13px/18px 'Outfit';display:flex;align-items:center;gap:8px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:var(--r-pill);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+.tag.before{background:#FEE2E2;color:#B91C1C;}
+.tag.after{background:#DCFCE7;color:#15803D;}
+.tag.info{background:var(--primary-soft);color:var(--primary);}
+
+.mock{border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;background:var(--surface);box-shadow:var(--shadow);}
+.mock-bar{background:var(--surface-soft);padding:8px 12px;font-size:11px;color:var(--text-muted);
+  display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);}
+.dot{width:9px;height:9px;border-radius:50%;}
+.dot.r{background:#E57373;}.dot.y{background:#F0C674;}.dot.g{background:#9BC97E;}
+.path{font:500 10.5px/14px ui-monospace,monospace;background:#fff;padding:2px 7px;border-radius:4px;border:1px solid var(--border);}
+.mock-body{padding:14px;display:grid;gap:12px;}
+
+.psb{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:8px;background:#fafafa;border:1px solid var(--border);}
+.brand{font-weight:800;}
+.pill{font-size:10.5px;padding:2px 8px;border-radius:var(--r-pill);background:var(--success-soft);color:#15803D;font-weight:700;}
+.psb .spacer{flex:1;}
+.psb .btn{font:600 12px/16px 'Outfit';padding:5px 12px;border-radius:7px;border:1px solid var(--primary);background:var(--primary);color:#fff;}
+
+.face{display:flex;gap:6px;padding:4px;background:var(--surface-soft);border-radius:10px;border:1px solid var(--border);width:fit-content;}
+.face .f{padding:6px 12px;border-radius:8px;font:700 12px/16px 'Outfit';color:var(--text-muted);border:0;background:transparent;cursor:pointer;}
+.face .f.on{background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;position:relative;padding:6px 0 2px;}
+.flow::before{content:"";position:absolute;left:8%;right:8%;top:28px;height:2px;
+  background:linear-gradient(90deg,rgba(79,172,254,.7),rgba(42,156,196,.9),rgba(245,158,11,.7));}
+.node{position:relative;z-index:1;text-align:center;}
+.node .t{display:block;font-size:10px;color:var(--text-muted);font-weight:700;letter-spacing:.04em;margin-bottom:4px;}
+.node .c{width:42px;height:42px;border-radius:50%;margin:0 auto;display:grid;place-items:center;
+  background:#fff;border:2px solid var(--border);color:var(--text-muted);font-size:14px;}
+.node.on .c{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 0 0 4px var(--primary-soft);}
+.node .title{margin:6px 0 0;font-size:11.5px;font-weight:700;}
+
+.hero{border:1px solid var(--border);border-radius:14px;padding:14px;background:linear-gradient(180deg,#fff,#FAFCFE);}
+.hero-meta{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.badge{font-size:11px;padding:3px 8px;border-radius:var(--r-pill);background:var(--success-soft);color:#15803D;font-weight:700;border:0;}
+.fast{font-size:10px;padding:2px 7px;border-radius:var(--r-pill);background:var(--primary-soft);color:var(--primary);font-weight:700;}
+.kicker{font-size:11px;color:var(--text-muted);margin:0 0 2px;text-transform:uppercase;letter-spacing:.04em;}
+.phrase{margin:0;font:800 22px/28px 'Outfit';letter-spacing:-.02em;}
+.desc{margin:4px 0 0;font-size:12.5px;color:var(--text-muted);}
+.alias{margin-top:12px;padding:10px;border-radius:10px;background:#fff;border:1px solid var(--border);}
+.alias .lbl{font-size:11px;color:var(--text-muted);margin:0 0 6px;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{font-size:11.5px;padding:3px 9px;border-radius:var(--r-pill);background:var(--surface-soft);border:1px solid var(--border);color:var(--text-muted);}
+.add{margin-top:8px;font-size:12px;font-weight:700;color:var(--primary);background:transparent;border:0;cursor:pointer;padding:0;}
+
+.optin{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-soft);}
+.optin .l{font-size:13px;font-weight:650;}
+.optin .h{font-size:11px;color:var(--text-muted);}
+.sw{width:40px;height:22px;border-radius:999px;background:var(--primary);position:relative;border:0;flex-shrink:0;}
+.sw::after{content:"";position:absolute;right:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;}
+
+.action{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:#fafaf6;font-size:12px;}
+.action strong{font-weight:800;}
+.action .arr{color:var(--text-faint);}
+.action .leak{color:#B91C1C;background:#FEE2E2;padding:1px 6px;border-radius:4px;}
+.action.clean{background:var(--success-soft);border-color:rgba(22,163,74,.25);}
+
+.note{font-size:11.5px;color:var(--text-muted);padding:8px 10px;border-radius:8px;background:rgba(0,101,143,.05);border:1px solid rgba(0,101,143,.15);}
+.note a{color:var(--primary);font-weight:700;text-decoration:none;}
+
+.sides{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:10px;border:1px dashed var(--border);background:var(--surface-soft);}
+.sides .lbl{font-size:11px;font-weight:700;color:var(--text-muted);}
+.sides .link{font-size:11.5px;font-weight:700;color:var(--primary);padding:4px 10px;border-radius:var(--r-pill);background:#fff;border:1px solid rgba(0,101,143,.25);cursor:pointer;}
+.sides .note2{flex:1 1 100%;font-size:10.5px;color:var(--text-faint);}
+
+.sec-entry{width:100%;text-align:left;padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font:650 12.5px/16px 'Outfit';cursor:pointer;}
+.warnbox{background:var(--warn-soft);border:1px solid #FCD34D;color:#92400E;padding:8px 10px;border-radius:8px;font-size:11.5px;}
+
+.app-card{border:1px solid var(--border);border-radius:12px;padding:12px;display:grid;gap:8px;}
+.app-row{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:10px;background:#fff;}
+.app-ico{width:36px;height:36px;border-radius:8px;background:var(--primary-soft);display:grid;place-items:center;font-weight:800;color:var(--primary);}
+.app-row .name{font-weight:700;font-size:13px;}
+.app-row .meta{font-size:11px;color:var(--text-muted);}
+.app-row .cta{margin-left:auto;font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid var(--primary);background:var(--primary);color:#fff;}
+.softlink{font-size:12px;color:var(--primary);font-weight:700;}
+
+.legend{margin-top:18px;display:grid;gap:8px;font-size:12px;color:var(--text-muted);}
+.legend strong{color:var(--text);}
+footer{padding:24px;text-align:center;color:var(--text-faint);font-size:11px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>语音设置 · 对齐按键页 IA 原型</h1>
+  <p class="sub">主职只做「语音听写」；「打开应用」升为页级次面；按键 / 摄像头 / SoftPad / Agent 试说只做侧链，不串进听写因果。点下方切换可预览两面。</p>
+</header>
+
+<div class="container">
+
+  <div class="matrix">
+    <h2>能力归属（对齐按键）</h2>
+    <table>
+      <thead>
+        <tr><th>能力</th><th>按键页</th><th>语音页（改后）</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>触发键 / 听写键</td><td class="keep">KEEP</td><td class="side">侧链 → 按键</td></tr>
+        <tr><td>唤醒口令 / 结束 / 发送</td><td class="side">投影「给语音加按键」</td><td class="keep">KEEP 听写 01–03</td></tr>
+        <tr><td>语音打开应用</td><td class="side">投影 / 可绑键</td><td class="keep">KEEP 打开应用面（非 01 子 Tab）</td></tr>
+        <tr><td>SoftPad / Agent 试说</td><td class="side">侧链 SoftPad</td><td class="out">移出语音主路径 · 侧链 SoftPad</td></tr>
+        <tr><td>摄像头手势</td><td class="side">侧链摄像头</td><td class="side">侧链摄像头</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button type="button" class="on" data-stage="compare" id="tabCompare">现状 vs 目标</button>
+    <button type="button" data-stage="dictate" id="tabDictate">目标 · 听写面</button>
+    <button type="button" data-stage="openapp" id="tabOpenApp">目标 · 打开应用面</button>
+  </div>
+
+  <!-- ===== COMPARE ===== -->
+  <section class="stage on" id="stage-compare">
+    <div class="compare">
+      <div class="col">
+        <h3><span class="name">现状（仍混）</span><span class="tag before">听写+打开应用+Agent</span></h3>
+        <div class="mock">
+          <div class="mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="path">#settingsPanelVoiceWake · 01 里塞次入口</span></div>
+          <div class="mock-body">
+            <div class="psb"><span class="brand">语音听写</span><span class="pill">默认 · 已激活</span><span class="spacer"></span><button class="btn" type="button">保存到习惯</button></div>
+            <div class="flow">
+              <div class="node on"><span class="t">01 / 开启</span><div class="c">🎤</div><div class="title">怎么开启打字？</div></div>
+              <div class="node"><span class="t">02 / 结束</span><div class="c">〰️</div><div class="title">说错了想结束？</div></div>
+              <div class="node"><span class="t">03 / 发送</span><div class="c">➤</div><div class="title">说完怎么发出去？</div></div>
+            </div>
+            <div class="hero">
+              <div class="hero-meta"><span class="badge">语音已就绪</span><span class="fast">响应最快</span></div>
+              <p class="kicker">默认口令</p>
+              <h2 class="phrase">开始输入</h2>
+              <p class="desc">说出即可开始听写</p>
+              <div class="alias"><p class="lbl">这些说法同样有效</p><div class="chips"><span class="chip">开始听写</span><span class="chip">打开听写</span></div><button class="add" type="button">+ 添加口令</button></div>
+            </div>
+            <div class="optin"><div><div class="l">开启口令唤醒</div><div class="h">后台听唤醒词</div></div><button class="sw" type="button" aria-label="on"></button></div>
+            <div class="action">
+              <strong>唤醒后</strong>
+              <span>切到目标应用</span><span class="arr">→</span><span>进入听写</span>
+            </div>
+            <div class="warnbox">⚠ 「切到目标」像在语音页配应用；目标实际归属按键页</div>
+            <div class="sides">
+              <span class="lbl">旁链</span>
+              <span class="link">摄像头</span>
+              <span class="link">SoftPad</span>
+              <span class="note2">缺「按键」· 与 open-app 内「在按键页管理」不对称</span>
+            </div>
+            <button class="sec-entry" type="button">打开应用 · 语音唤起 →</button>
+            <div class="warnbox">⚠ Agent / Cursor 试说仍挂在打开应用折叠里 · 听写页叙事被拖走</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <h3><span class="name">目标（对齐按键）</span><span class="tag after">页级两面 + 侧链</span></h3>
+        <div class="mock">
+          <div class="mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="path">听写面默认 · 打开应用为次面</span></div>
+          <div class="mock-body">
+            <div class="psb"><span class="brand">语音听写</span><span class="pill">默认 · 已激活</span><span class="spacer"></span><button class="btn" type="button">保存到习惯</button></div>
+            <div class="face" aria-label="页级面">
+              <button type="button" class="f on">听写</button>
+              <button type="button" class="f">打开应用</button>
+            </div>
+            <div class="flow">
+              <div class="node on"><span class="t">01 / 开启</span><div class="c">🎤</div><div class="title">怎么开启打字？</div></div>
+              <div class="node"><span class="t">02 / 结束</span><div class="c">〰️</div><div class="title">说错了想结束？</div></div>
+              <div class="node"><span class="t">03 / 发送</span><div class="c">➤</div><div class="title">说完怎么发出去？</div></div>
+            </div>
+            <div class="hero">
+              <div class="hero-meta"><span class="badge">语音已就绪 · 后台守护中</span><span class="fast">响应最快</span></div>
+              <p class="kicker">默认口令</p>
+              <h2 class="phrase">开始输入</h2>
+              <p class="desc">说出即可开始听写</p>
+              <div class="alias"><p class="lbl">这些说法同样有效</p><div class="chips"><span class="chip">开始听写</span><span class="chip">打开听写</span></div><button class="add" type="button">+ 添加口令</button></div>
+            </div>
+            <div class="optin"><div><div class="l">开启口令唤醒</div><div class="h">后台听唤醒词，更耗资源</div></div><button class="sw" type="button" aria-label="on"></button></div>
+            <div class="action clean">
+              <strong>唤醒后</strong>
+              <span>进入听写</span>
+            </div>
+            <div class="note">目标应用：Cursor（只读）· <a href="#">在按键页改 →</a></div>
+            <div class="sides">
+              <span class="lbl">并列通道</span>
+              <span class="link">按键</span>
+              <span class="link">摄像头</span>
+              <span class="link">SoftPad</span>
+              <span class="note2">不串进开启因果 · Agent 试说去 SoftPad</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== DICTATE FACE ===== -->
+  <section class="stage" id="stage-dictate">
+    <div class="mock" style="max-width:560px;margin:0 auto;">
+      <div class="mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="path">目标原型 · 听写面（可点「打开应用」切换）</span></div>
+      <div class="mock-body">
+        <div class="psb"><span class="brand">语音听写</span><span class="pill">默认 · 已激活</span><span class="spacer"></span><button class="btn" type="button">保存到习惯</button></div>
+        <div class="face" id="faceDictate">
+          <button type="button" class="f on" data-goto="dictate">听写</button>
+          <button type="button" class="f" data-goto="openapp">打开应用</button>
+        </div>
+        <div class="flow">
+          <div class="node on"><span class="t">01 / 开启</span><div class="c">🎤</div><div class="title">怎么开启打字？</div></div>
+          <div class="node"><span class="t">02 / 结束</span><div class="c">〰️</div><div class="title">说错了想结束？</div></div>
+          <div class="node"><span class="t">03 / 发送</span><div class="c">➤</div><div class="title">说完怎么发出去？</div></div>
+        </div>
+        <div class="hero">
+          <div class="hero-meta"><span class="badge">语音已就绪 · 后台守护中</span><span class="fast">响应最快</span></div>
+          <p class="kicker">默认口令</p>
+          <h2 class="phrase">开始输入</h2>
+          <p class="desc">说出即可开始听写</p>
+          <div class="alias">
+            <p class="lbl">这些说法同样有效</p>
+            <div class="chips"><span class="chip">开始听写</span><span class="chip">打开听写</span><span class="chip">语音输入</span></div>
+            <button class="add" type="button">+ 添加口令</button>
+          </div>
+        </div>
+        <div class="optin"><div><div class="l">开启口令唤醒</div><div class="h">后台听唤醒词，更耗资源；可随时关掉</div></div><button class="sw" type="button"></button></div>
+        <div class="action clean"><strong>唤醒后</strong><span>进入听写</span></div>
+        <div class="note">目标应用：Cursor（只读）· <a href="#">在按键页改 →</a></div>
+        <div class="sides">
+          <span class="lbl">并列通道</span>
+          <span class="link">按键</span>
+          <span class="link">摄像头</span>
+          <span class="link">SoftPad</span>
+          <span class="note2">入口跳到对应通道；不串进「开始打字」因果链</span>
+        </div>
+      </div>
+    </div>
+    <div class="legend" style="max-width:560px;margin:16px auto 0;">
+      <div><strong>5 秒原则：</strong>只看到「设口令 → 开监听 → 进入听写」+ 三侧链。</div>
+      <div><strong>禁止：</strong>01 内「打开应用」次入口、Agent/Cursor 试说、把摄像头/SoftPad 画进因果箭头。</div>
+    </div>
+  </section>
+
+  <!-- ===== OPEN APP FACE ===== -->
+  <section class="stage" id="stage-openapp">
+    <div class="mock" style="max-width:560px;margin:0 auto;">
+      <div class="mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="path">目标原型 · 打开应用面（页级次面）</span></div>
+      <div class="mock-body">
+        <div class="psb"><span class="brand">语音听写</span><span class="pill">默认 · 已激活</span><span class="spacer"></span><button class="btn" type="button">保存到习惯</button></div>
+        <div class="face" id="faceOpenApp">
+          <button type="button" class="f" data-goto="dictate">听写</button>
+          <button type="button" class="f on" data-goto="openapp">打开应用</button>
+        </div>
+        <div class="app-card">
+          <div>
+            <div style="font:800 15px/20px 'Outfit';">用口令打开应用</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">说出已录口令即可打开或切到该应用 · 声学配置归语音通道</div>
+          </div>
+          <div class="app-row">
+            <div class="app-ico">C</div>
+            <div><div class="name">Cursor</div><div class="meta">已录口令 · 可启动</div></div>
+            <button class="cta" type="button">试听 / 重录</button>
+          </div>
+          <div class="app-row">
+            <div class="app-ico">N</div>
+            <div><div class="name">记事本</div><div class="meta">未录口令</div></div>
+            <button class="cta" type="button">录制口令</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="btn" type="button" style="font:600 12px/16px 'Outfit';padding:6px 12px;border-radius:7px;border:1px solid var(--primary);background:var(--primary);color:#fff;">+ 添加应用</button>
+            <a class="softlink" href="#">在按键页管理 →</a>
+          </div>
+        </div>
+        <div class="sides">
+          <span class="lbl">Agent 工作流</span>
+          <span class="link">去 SoftPad 试 Agent →</span>
+          <span class="note2">试说 / Cursor 联动不在语音页 · 与按键「给 SoftPad 加按键」同理</span>
+        </div>
+      </div>
+    </div>
+    <div class="legend" style="max-width:560px;margin:16px auto 0;">
+      <div><strong>本面主职：</strong>应用 roster + 录/测口令。</div>
+      <div><strong>无：</strong>本地试说 / 在 Cursor 试说主按钮（已迁 SoftPad 侧链）。</div>
+    </div>
+  </section>
+
+</div>
+<footer>design-mock/voice-keys-like-ia-proto.html · 对照 plan Voice Keys-like IA · 不改产品 DOM</footer>
+<script>
+(function(){
+  function show(id){
+    document.querySelectorAll('.stage').forEach(function(s){ s.classList.toggle('on', s.id==='stage-'+id); });
+    document.querySelectorAll('.tabs button').forEach(function(b){
+      b.classList.toggle('on', b.getAttribute('data-stage')===id);
+    });
+  }
+  document.querySelectorAll('.tabs button').forEach(function(b){
+    b.addEventListener('click', function(){ show(b.getAttribute('data-stage')); });
+  });
+  document.querySelectorAll('[data-goto]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var g=b.getAttribute('data-goto');
+      show(g);
+      document.querySelectorAll('.face .f').forEach(function(f){
+        f.classList.toggle('on', f.getAttribute('data-goto')===g);
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

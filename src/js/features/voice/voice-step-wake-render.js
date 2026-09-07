@@ -166,6 +166,15 @@
     if(collapse){ collapse.hidden=true; collapse.setAttribute('aria-hidden','true'); }
     var optInRow=$('voiceWakeListeningOptInRow');
     if(optInRow) optInRow.hidden=hideGlobal;
+    var actionBar=$('voiceWakeActionBar');
+    if(actionBar) actionBar.hidden=hideGlobal;
+    var sideLinks=$('voiceWakeSideLinks');
+    if(sideLinks) sideLinks.hidden=hideGlobal;
+    var openAppEntry=$('btnVoiceWakeOpenAppEntry');
+    if(openAppEntry){
+      openAppEntry.hidden=hideGlobal;
+      openAppEntry.setAttribute('aria-hidden',hideGlobal?'true':'false');
+    }
     var appTab=$('btnVoiceWakeKindApp');
     var appPane=$('voiceWakeKindAppPane');
     var summonBlock=$('voiceOutputSummonBlock');
@@ -177,7 +186,7 @@
       appPane.hidden=hideGlobal||(global.__vp_voice_wake_kind__||'text')!=='app';
       if(hideGlobal) appPane.setAttribute('aria-hidden','true');
     }
-    if(summonBlock&&hideGlobal) summonBlock.hidden=true;
+    if(summonBlock) summonBlock.hidden=hideGlobal;
     if(hideGlobal&&(global.__vp_voice_wake_kind__||'')==='app'){
       global.__vp_voice_wake_kind__='text';
       if(global.OneToneVoiceStepSend&&global.OneToneVoiceStepSend.syncPhraseKindTabs){
@@ -490,6 +499,41 @@
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   }
 
+  function resolveWakeActionAppLabel(){
+    var core=global.OneToneMappingCore;
+    var ui=global.OneToneState&&global.OneToneState.ui?global.OneToneState.ui:{};
+    var id=String(ui.selectedMappingId||ui.activeSceneId||'').trim();
+    var m=id&&core&&core.byId?core.byId(id):null;
+    var name=m&&(m.appName||m.name||m.label)?String(m.appName||m.name||m.label).trim():'';
+    if(name) return String(t('voiceWakeActionAppNamed')||'切到 {app}').replace('{app}',name);
+    return t('voiceWakeActionApp')||'切到目标应用';
+  }
+
+  function renderWakeActionBar(){
+    var bar=$('voiceWakeActionBar');
+    if(!bar||bar.hidden) return;
+    var lbl=$('voiceWakeActionLbl');
+    if(lbl) lbl.textContent=t('voiceWakeActionLbl')||'唤醒后';
+    var app=$('voiceWakeActionApp');
+    if(app) app.textContent=resolveWakeActionAppLabel();
+    var dictate=$('voiceWakeActionDictate');
+    if(dictate) dictate.textContent=t('voiceWakeActionDictate')||'进入听写';
+    /* FORBID: never paint send_mode copy on the wake action bar */
+  }
+
+  function renderWakeSideLinks(){
+    var host=$('voiceWakeSideLinks');
+    if(!host||host.hidden) return;
+    var lbl=$('voiceWakeSideLinksLbl');
+    if(lbl) lbl.textContent=t('voiceWakeSideLinksLbl')||'相关能力（并列通道）';
+    var cam=$('btnVoiceWakeSideCamera');
+    if(cam) cam.textContent=t('voiceWakeSideCamera')||'摄像头';
+    var pad=$('btnVoiceWakeSideSoftPad');
+    if(pad) pad.textContent=t('voiceWakeSideSoftPad')||'SoftPad';
+    var note=$('voiceWakeSideLinksNote');
+    if(note) note.textContent=t('voiceWakeSideLinksNote')||'入口跳到对应通道；不串进开启因果链';
+  }
+
   function renderWakeSectionLabels(){
     var unified=$('voiceWakeCurrentSectionLbl');
     if(unified) unified.textContent=t('voiceWakeSectionUnified');
@@ -512,6 +556,16 @@
       popClose.title=t('confirmCancel');
       popClose.setAttribute('aria-label',t('confirmCancel'));
     }
+    var openAppEntry=$('btnVoiceWakeOpenAppEntry');
+    if(openAppEntry) openAppEntry.textContent=t('voiceWakeOpenAppEntry')||'打开应用 · 语音唤起 →';
+    var backToText=$('btnVoiceWakeBackToText');
+    if(backToText) backToText.textContent=t('voiceWakeBackToText')||'← 开始输入';
+    var trySummary=$('voiceTab2TrySummary');
+    if(trySummary) trySummary.textContent=t('voiceTab2TrySummary')||'试说与 Agent 联动';
+    var advHint=$('voiceTab2AdvancedHint');
+    if(advHint) advHint.textContent=t('voiceTab2AdvancedHint')||'在上方添加应用并录制口令；Agent 场景可在按键页配置。';
+    renderWakeActionBar();
+    renderWakeSideLinks();
   }
 
   function renderInputTarget(){

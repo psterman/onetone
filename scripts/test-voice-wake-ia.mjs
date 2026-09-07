@@ -1,5 +1,5 @@
 /**
- * Open page IA: two goal tabs + open-app inline acoustic rehost.
+ * Open page IA: two goal kinds + open-app inline acoustic rehost + 01 declutter.
  * Run: node scripts/test-voice-wake-ia.mjs
  */
 import assert from 'node:assert/strict';
@@ -25,6 +25,37 @@ assert.ok(!html.includes('voiceSandboxOverlay'), 'no voiceSandboxOverlay');
 assert.ok(!html.includes('voice-sandbox.js'), 'no voice-sandbox script');
 assert.ok(!html.includes('voiceWakePhraseSuggestions'), 'no suggestions');
 
+/* 01 declutter: causal bar without send leakage; side links; Tab2 folded */
+const wakeBodyMatch = html.match(/id="voiceSettingsWakeBody"[\s\S]*?(?=<div class="keys-workflow-arrow voice-workflow-arrow")/);
+assert.ok(wakeBodyMatch, 'can slice voiceSettingsWakeBody');
+const wakeBody = wakeBodyMatch[0];
+assert.ok(wakeBody.includes('id="voiceWakeActionBar"'), 'has voiceWakeActionBar');
+assert.ok(wakeBody.includes('id="voiceWakeActionApp"'), 'has voiceWakeActionApp');
+assert.ok(wakeBody.includes('id="voiceWakeActionDictate"'), 'has voiceWakeActionDictate');
+assert.ok(!/voiceWakeActionNoSend|不自动发送|send_mode/.test(wakeBody), 'wake body has no send_mode leak');
+assert.ok(wakeBody.includes('id="voiceWakeSideLinks"'), 'has side links');
+assert.ok(wakeBody.includes('id="btnVoiceWakeSideCamera"'), 'side camera link');
+assert.ok(wakeBody.includes('id="btnVoiceWakeSideSoftPad"'), 'side SoftPad link');
+assert.ok(
+  !/<span[^>]*id="voiceWakeAction[^"]*"[^>]*>[^<]*(摄像头|SoftPad)/.test(wakeBody),
+  'camera/SoftPad are not causal action step labels'
+);
+assert.ok(wakeBody.includes('id="btnVoiceWakeOpenAppEntry"'), 'demoted open-app entry');
+assert.ok(wakeBody.includes('voice-wake-kind-tabs--demoted'), 'peer kind tabs demoted');
+assert.ok(wakeBody.includes('id="voiceTab2TryDetails"'), 'Tab2 try folded in details');
+assert.ok(wakeBody.includes('id="voiceTab2TryLocal"'), 'html local try');
+assert.ok(wakeBody.includes('id="voiceTab2TryAgent"'), 'html agent try');
+/* Tab2 CTAs live inside collapsed details, not on text-pane first paint */
+const textPaneMatch = wakeBody.match(/id="voiceWakeKindTextPane"[\s\S]*?(?=<div class="voice-phrase-kind-pane" id="voiceWakeKindSoundPane")/);
+assert.ok(textPaneMatch, 'can slice text pane');
+assert.ok(!textPaneMatch[0].includes('id="voiceTab2TryLocal"'), 'Tab2 local CTA not on text first screen');
+assert.ok(!textPaneMatch[0].includes('id="voiceTab2TryAgent"'), 'Tab2 agent CTA not on text first screen');
+assert.ok(wakeBody.includes('id="voiceOutputSummonBlock"'), 'summon block on app pane');
+assert.ok(
+  /id="voiceTab2TryDetails"[\s\S]*id="voiceTab2TryLocal"[\s\S]*id="voiceTab2TryAgent"/.test(wakeBody),
+  'Tab2 CTAs nested under try details'
+);
+
 const wakeRender = read('src/js/features/voice/voice-step-wake-render.js');
 assert.ok(
   /kind===['"]sound['"][\s\S]{0,80}__vp_voice_wake_kind__\s*=\s*['"]text['"]/.test(wakeRender),
@@ -36,6 +67,9 @@ assert.ok(/data-open-app-acoustic-host/.test(wakeRender), 'cards emit inline aco
 assert.ok(!/voiceOpenAppKeysRecord/.test(wakeRender), 'no KeysRecord CTA in wake-render');
 assert.ok(/resolveOpenAppRows/.test(wakeRender), 'open-app roster resolver exists');
 assert.ok(/isAppScenarioMapping/.test(wakeRender), 'open-app roster filters app scenarios');
+assert.ok(/renderWakeActionBar/.test(wakeRender), 'renders wake action bar');
+assert.ok(!/voiceWakeActionNoSend|不自动发送/.test(wakeRender), 'wake-render never paints send leak');
+assert.ok(/FORBID:[\s\S]{0,40}send_mode/.test(wakeRender), 'documents send_mode forbid on action bar');
 
 const bindings = read('src/js/features/voice/voice-ui-bindings.js');
 assert.ok(/data-open-app-acoustic-act/.test(bindings), 'bindings handle acoustic acts');
@@ -43,6 +77,10 @@ assert.ok(!/data-open-app-keys/.test(bindings), 'no open-app-keys jump binding')
 assert.ok(/setInlineContext|mappingId/.test(bindings), 'bindings pass mapping context');
 assert.ok(/testOnce/.test(bindings), 'open-app test uses testOnce IPC');
 assert.ok(!/setMatchWatch\(\{[\s\S]*?scenarioId:mappingId/.test(bindings), 'open-app test does not use setMatchWatch');
+assert.ok(/btnVoiceWakeOpenAppEntry/.test(bindings), 'binds demoted open-app entry');
+assert.ok(/btnVoiceWakeBackToText/.test(bindings), 'binds back to text');
+assert.ok(/btnVoiceWakeSideCamera/.test(bindings), 'binds camera side link');
+assert.ok(/btnVoiceWakeSideSoftPad/.test(bindings), 'binds SoftPad side link');
 
 const habitCmd = read('src/js/features/mapping/habit-scenario-voice-command.js');
 assert.ok(/function setInlineContext/.test(habitCmd), 'has setInlineContext');
@@ -166,8 +204,6 @@ assert.ok(/resolveAgentActivationTarget/.test(tab2Mvp), 'tab2 agent fallback res
 assert.ok(/voiceTab2AgentHint/.test(tab2Mvp), 'tab2 agent hint render');
 assert.ok(html.includes('id="voiceTab2AgentHint"'), 'html agent hint');
 assert.ok(html.includes('id="voiceTab2FollowRow"'), 'html follow row');
-assert.ok(html.includes('id="voiceTab2TryLocal"'), 'html local try');
-assert.ok(html.includes('id="voiceTab2TryAgent"'), 'html agent try');
 assert.ok(html.includes('id="voiceTab2VoiceGate"'), 'html voice gate');
 assert.ok(html.includes('id="voiceTab2HoldNote"'), 'html hold note');
 assert.ok(html.includes('voice-tab2-advanced'), 'html advanced details');
@@ -189,6 +225,9 @@ assert.ok(/voiceTab2TryLocal:/.test(i18n), 'tab2 local try i18n');
 assert.ok(/voiceTab2TryAgent:/.test(i18n), 'tab2 agent try i18n');
 assert.ok(/voiceTab2FollowTrigger:/.test(i18n), 'tab2 follow trigger i18n');
 assert.ok(/voiceTab2AgentNeedsTrigger:/.test(i18n), 'tab2 agent needs trigger i18n');
+assert.ok(/voiceWakeActionLbl:/.test(i18n), 'wake action lbl i18n');
+assert.ok(/voiceWakeActionDictate:/.test(i18n), 'wake action dictate i18n');
+assert.ok(!/voiceWakeActionNoSend:\s*['"]不自动发送['"]/.test(i18n), 'no active no-send action key for wake bar');
 assert.ok(/voiceOpenAppRecord:\s*['"]录制声音口令['"]/.test(i18n), 'record CTA');
 assert.ok(/voiceOpenAppReplay:\s*['"]回听录音['"]/.test(i18n), 'replay CTA');
 assert.ok(/voiceOpenAppTestPrompt:\s*['"]请说出口令，识别后会打开或切换到该应用['"]/.test(i18n), 'test prompt');
@@ -221,5 +260,10 @@ assert.ok(/open-app-acoustic/.test(habitCmd), 'inline record writes open-app-aco
 
 const send = read('src/js/features/voice/voice-step-send-render.js');
 assert.ok(/function syncPhraseKindTabs[\s\S]*?allowed\[/.test(send), 'whitelist syncPhraseKindTabs');
+
+const shellCss = read('src/css/voice-page-shell.css');
+assert.ok(/voice-wake-kind-tabs--demoted/.test(shellCss), 'demoted tabs CSS');
+assert.ok(/voice-wake-action-bar/.test(shellCss), 'action bar CSS');
+assert.ok(/voice-tab2-try-details/.test(shellCss), 'tab2 try details CSS');
 
 console.log('PASS voice-wake-ia');
