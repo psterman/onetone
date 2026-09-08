@@ -1156,7 +1156,7 @@
               <span class="sr-only" id="softPadSummaryName">—</span>
               <div class="keys-scheme-summary-meta">
                 <span class="keys-scheme-summary-item">
-                  <span class="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">状态灯</span>
+                  <span class="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">灯效与浮窗</span>
                   <span class="keys-scheme-summary-val" id="softPadSummaryAgent">—</span>
                 </span>
                 <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
@@ -1212,16 +1212,16 @@
                 <button type="button" class="flow-node-btn is-active" id="softPadFlowNodePad" role="tab" aria-selected="true" aria-labelledby="softPadFlowNodePadTitle" aria-controls="softPadFacePad">
                   <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><rect x="6.2" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="14.4" width="7.5" height="3.4" rx=".7"/><rect x="14.4" y="14.4" width="3.4" height="3.4" rx=".7"/></svg>
                 </button>
-                <h3 class="flow-node-title" id="softPadFlowNodePadTitle">Soft Pad</h3>
-                <p class="flow-node-hint" id="softPadFlowNodePadHint">改键位 · 何时显示</p>
+                <h3 class="flow-node-title" id="softPadFlowNodePadTitle">虚拟键盘</h3>
+                <p class="flow-node-hint" id="softPadFlowNodePadHint">按应用改键位 · 何时显示</p>
               </div>
               <div class="flow-node" data-soft-pad-node="agent">
-                <span class="flow-node-tag" id="softPadFlowNodeAgentTag">状态灯</span>
+                <span class="flow-node-tag" id="softPadFlowNodeAgentTag">灯效</span>
                 <button type="button" class="flow-node-btn" id="softPadFlowNodeAgent" role="tab" aria-selected="false" aria-labelledby="softPadFlowNodeAgentTitle" aria-controls="softPadFaceAgent">
                   <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="15" rx="3"/><circle cx="12" cy="6.5" r="1.35" fill="currentColor" stroke="none"/><circle cx="12" cy="10" r="1.35" fill="currentColor" stroke="none" opacity=".7"/><circle cx="12" cy="13.5" r="1.35" fill="currentColor" stroke="none" opacity=".4"/><path d="M10.5 19.5h3M11 21.5h2"/></svg>
                 </button>
-                <h3 class="flow-node-title" id="softPadFlowNodeAgentTitle">状态灯</h3>
-                <p class="flow-node-hint" id="softPadFlowNodeAgentHint">看 AI 忙不忙</p>
+                <h3 class="flow-node-title" id="softPadFlowNodeAgentTitle">灯效与浮窗</h3>
+                <p class="flow-node-hint" id="softPadFlowNodeAgentHint">按应用配灯 · 迷你栏 · 用量</p>
               </div>
               <div class="flow-node is-hidden" data-soft-pad-node="timeline" hidden aria-hidden="true">
                 <span class="flow-node-tag" id="softPadFlowNodeTimelineTag">项目胶囊</span>
@@ -1239,7 +1239,7 @@
             </span>
             <div class="soft-pad-settings-preview-banner__text">
               <p class="soft-pad-settings-preview-banner__title" id="softPadSettingsPreviewBannerTitle">设置中预览</p>
-              <p class="soft-pad-settings-preview-banner__body" id="softPadSettingsPreviewBannerBody">悬浮 Soft Pad 在设置时会自动隐藏，避免挡住界面。右侧改动会同步到左侧预览；关闭设置并在 Agent 前台可看到真实浮窗。</p>
+              <p class="soft-pad-settings-preview-banner__body" id="softPadSettingsPreviewBannerBody">悬浮 Soft Pad 在设置时会自动隐藏，避免挡住界面。当前预览 = 上方所选应用；右侧改动会同步到左侧预览。关闭设置并在 Agent 前台可看到真实浮窗。</p>
           </div>
           </div>
           <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用"></div>
@@ -2476,6 +2476,7 @@
                 <div class="voice-bridge-split">
                   <div class="voice-bridge-col">
                     <div class="voice-bridge-col-label"><span class="n">1</span> 选一件事</div>
+                    <div class="voice-bridge-cats" id="voiceKeysCats" role="tablist" aria-label="动作分类"></div>
                     <div class="voice-bridge-cmd-list" id="voiceKeysCmdList" role="listbox" aria-label="命令列表"></div>
                     <button type="button" class="voice-mode-meta-link" id="btnVoiceKeysAddMore">加口令</button>
                   </div>

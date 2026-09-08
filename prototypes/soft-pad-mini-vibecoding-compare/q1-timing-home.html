@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Q1 · 显示时机放哪 · 三方案对照</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8eef3;
+      --surface: #fff;
+      --surface-2: #f5f8fb;
+      --line: #d5dee8;
+      --line-strong: #b8c5d4;
+      --text: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --primary: #00658f;
+      --primary-soft: #e4f2f9;
+      --primary-bd: #9bc6da;
+      --ok: #15803d;
+      --ok-soft: #ecfdf5;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+    button { font-family: inherit; cursor: pointer; }
+
+    .top {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+      padding: 12px 16px; background: #13202c; color: #c9d7e4;
+    }
+    .top h1 { margin: 0; font-size: 14px; font-weight: 800; color: #7dd3fc; }
+    .top p { margin: 0; font-size: 12px; color: #8fa3b5; flex: 1; min-width: 200px; }
+    .top a { color: #7dd3fc; }
+    .lock {
+      font: 700 11px/1 var(--font); color: #86efac; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid rgba(134, 239, 172, .35); background: rgba(22, 163, 74, .15);
+    }
+
+    .page { max-width: 1180px; margin: 0 auto; padding: 14px 14px 40px; }
+
+    .variant-bar {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;
+    }
+    .vbtn {
+      text-align: left; border: 1px solid var(--line-strong); border-radius: 12px;
+      background: var(--surface); padding: 12px 12px 11px; color: inherit;
+      transition: border-color .15s, box-shadow .15s, background .15s;
+    }
+    .vbtn:hover { border-color: var(--primary-bd); }
+    .vbtn.is-on {
+      border-color: var(--primary); background: var(--primary-soft);
+      box-shadow: 0 0 0 1px var(--primary-bd);
+    }
+    .vbtn .tag {
+      display: inline-block; font: 800 10px/1 var(--mono); letter-spacing: .04em;
+      color: var(--primary); margin-bottom: 6px;
+    }
+    .vbtn.is-on .tag { color: var(--primary); }
+    .vbtn b { display: block; font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+    .vbtn span { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+
+    .verdict {
+      display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
+      padding: 11px 13px; border-radius: 10px; margin-bottom: 12px;
+      background: var(--warn-soft); border: 1px solid #fed7aa; font-size: 12.5px; line-height: 1.5; color: var(--muted);
+    }
+    .verdict[data-tone="ok"] { background: var(--ok-soft); border-color: #bbf7d0; }
+    .verdict[data-tone="info"] { background: var(--primary-soft); border-color: var(--primary-bd); }
+    .verdict .k {
+      font: 800 11px/1 var(--mono); color: var(--warn); padding-top: 3px;
+    }
+    .verdict[data-tone="ok"] .k { color: var(--ok); }
+    .verdict[data-tone="info"] .k { color: var(--primary); }
+    .verdict b { color: var(--text); }
+
+    .mock {
+      border: 1px solid var(--line-strong); border-radius: 16px; background: var(--surface);
+      overflow-x: auto; box-shadow: 0 10px 28px rgba(19, 32, 44, .07);
+    }
+
+    /* HARD: left | right never stack */
+    .split {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.38fr) minmax(420px, 1fr);
+      min-width: 760px; min-height: 620px;
+    }
+    .left {
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, #eef6fa 0%, #fff 45%);
+      padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .right { display: flex; flex-direction: column; min-width: 0; }
+
+    .left-h { display: flex; justify-content: space-between; align-items: baseline; }
+    .left-h h2 { margin: 0; font-size: 13px; font-weight: 800; }
+    .left-h em { font-style: normal; font-size: 11px; color: var(--faint); font-weight: 650; }
+
+    .stage {
+      flex: 1; min-height: 280px; border-radius: 14px; border: 1px dashed var(--line-strong);
+      background: #f7fafc; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 14px; padding: 18px 12px;
+    }
+    .mini {
+      display: flex; align-items: center; gap: 7px; width: min(100%, 280px);
+      padding: 8px 11px; border-radius: 999px; border: 1px solid var(--line-strong);
+      background: #fff; box-shadow: 0 6px 16px rgba(19, 32, 44, .08);
+    }
+    .dot {
+      width: 22px; height: 22px; border-radius: 7px; background: #eef2f6; border: 1px solid var(--line);
+      position: relative; flex-shrink: 0;
+    }
+    .dot::after {
+      content: ""; position: absolute; right: -1px; bottom: -1px; width: 7px; height: 7px;
+      border-radius: 50%; border: 1.5px solid #fff; background: var(--c, #94a3b8);
+    }
+    .dot.busy::after { background: #2563eb; }
+    .dot.wait::after { background: #d97706; }
+    .dot.done::after { background: #16a34a; }
+    .pill {
+      margin-left: auto; font: 750 11px/1 var(--font); color: var(--primary);
+      padding: 4px 8px; border-radius: 999px; background: var(--primary-soft); border: 1px solid var(--primary-bd);
+      white-space: nowrap;
+    }
+    .cap { font-size: 11px; color: var(--faint); text-align: center; max-width: 240px; line-height: 1.4; }
+
+    .pad-note {
+      width: 100%; max-width: 280px; font-size: 11.5px; line-height: 1.45; color: var(--muted);
+      padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff;
+    }
+    .pad-note b { color: var(--primary); display: block; margin-bottom: 2px; font-size: 12px; }
+    .pad-note[hidden] { display: none !important; }
+
+    .right-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 12px 14px 0;
+    }
+    .right-head h3 { margin: 0; font-size: 15px; font-weight: 800; }
+    .face-chip {
+      font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+    }
+
+    .scope { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px 0; }
+    .chip {
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+      font: 650 12px/1 var(--font); padding: 6px 10px; border-radius: 8px;
+    }
+    .chip.is-on { border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary); }
+
+    .l3 { display: flex; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .l3tab {
+      flex: 1; padding: 9px 6px; border: 1px solid var(--line); border-radius: 10px;
+      background: var(--surface-2); color: var(--muted); font: 750 12px/1 var(--font);
+    }
+    .l3tab.is-on { color: var(--primary); border-color: var(--primary-bd); background: var(--primary-soft); }
+
+    .panel { flex: 1; padding: 12px 14px 16px; overflow: auto; }
+    .lead { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+    .card {
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2);
+      padding: 12px; margin-bottom: 10px;
+    }
+    .card h4 { margin: 0 0 6px; font-size: 13px; font-weight: 800; }
+    .card .hint { margin: 0 0 10px; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .modes.cols4 { grid-template-columns: 1fr 1fr; }
+    .mode {
+      text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px;
+      background: #fff; color: inherit;
+    }
+    .mode.is-on { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 1px var(--primary-bd); }
+    .mode b { display: block; font-size: 12.5px; margin-bottom: 3px; }
+    .mode span { font-size: 11px; color: var(--muted); line-height: 1.35; }
+    .row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 12.5px;
+    }
+    .row:last-child { border-bottom: 0; }
+    .sw {
+      width: 38px; height: 22px; border-radius: 999px; border: 0; background: var(--primary); position: relative; flex-shrink: 0;
+    }
+    .sw::after {
+      content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff; transform: translateX(16px);
+    }
+    .roster {
+      display: grid; gap: 8px;
+    }
+    .ri {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
+    }
+    .ri .n { font-weight: 750; font-size: 13px; }
+    .ri .s { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .badge {
+      font: 700 10.5px/1 var(--font); padding: 4px 7px; border-radius: 999px;
+      background: var(--ok-soft); color: var(--ok); border: 1px solid #bbf7d0;
+    }
+    .linkbtn {
+      display: block; width: 100%; text-align: left; margin-top: 4px;
+      border: 1px solid var(--primary-bd); background: #fff; color: var(--primary);
+      font: 750 12px/1.3 var(--font); padding: 10px 12px; border-radius: 8px;
+    }
+    .ghost-card {
+      border: 1px dashed var(--primary-bd); border-radius: 12px; padding: 11px 12px;
+      background: color-mix(in srgb, var(--primary-soft) 55%, #fff); margin-bottom: 10px;
+    }
+    .ghost-card h4 { margin: 0 0 4px; font-size: 12.5px; color: var(--primary); }
+    .ghost-card p { margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+    .dim { opacity: .55; }
+    .map {
+      margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #13202c; color: #b8c9d8;
+      font: 500 11.5px/1.55 var(--mono); white-space: pre-wrap;
+    }
+    .map strong { color: #7dd3fc; font-weight: 700; }
+
+    @media (max-width: 900px) {
+      .variant-bar { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1>Q1 · 显示时机放哪</h1>
+    <p>三方案只改「时机」归属；名单 / pill / 形态仍在迷你栏。对照 <a href="./q2-scope-depth.html">Q2 深度</a> · <a href="../soft-pad-status-v16/lights-peer-workbench.html">v16 真源</a></p>
+    <span class="lock">左预览 | 右配置</span>
+  </header>
+
+  <div class="page">
+    <div class="variant-bar" role="tablist" aria-label="时机归属方案">
+      <button type="button" class="vbtn is-on" data-v="A" role="tab" aria-selected="true">
+        <span class="tag">A · MOVE</span>
+        <b>迁入迷你栏</b>
+        <span>迷你栏 = 时机 + 形态主配置；Pad「何时显示」改成摘要入口</span>
+      </button>
+      <button type="button" class="vbtn" data-v="B" role="tab" aria-selected="false">
+        <span class="tag">B · MIRROR</span>
+        <b>两边镜像</b>
+        <span>迷你栏放精简时机控件，与 Pad 同源；两边都能改</span>
+      </button>
+      <button type="button" class="vbtn" data-v="C" role="tab" aria-selected="false">
+        <span class="tag">C · LINK</span>
+        <b>仍只在 Pad</b>
+        <span>迷你栏只加深链；重点留内容 / 名单 / 数据呈现</span>
+      </button>
+    </div>
+
+    <div class="verdict" id="verdict" data-tone="ok">
+      <div class="k">TRADE</div>
+      <div id="verdictText"><b>A · 迁入：</b>vibecoding 用户在「灯效与浮窗 → 迷你栏」一次配完「何时出现 + 长什么样」。Pad 脸不再重复四态选择，只留「去迷你栏调时机」摘要，避免两处抢主控。</div>
+    </div>
+
+    <div class="mock">
+      <div class="split">
+        <aside class="left">
+          <div class="left-h">
+            <h2>设置中预览</h2>
+            <em id="leftTag">迷你栏 · A</em>
+          </div>
+          <div class="stage">
+            <div class="mini" aria-label="迷你栏预览">
+              <span class="dot busy" title="Cursor"></span>
+              <span class="dot wait" title="Codex"></span>
+              <span class="dot done" title="Claude"></span>
+              <span class="dot" title="MiniMax"></span>
+              <span class="pill">Cu · 44次</span>
+            </div>
+            <div class="cap" id="leftCap">精简态灯条 · 右侧改时机会同步这条何时出现</div>
+            <div class="pad-note" id="padNote">
+              <b>Pad「何时显示」在本方案</b>
+              <span id="padNoteBody">降级为摘要条：当前 = 迷你条 · 点此回迷你栏细调</span>
+            </div>
+          </div>
+        </aside>
+
+        <section class="right">
+          <div class="right-head">
+            <h3>灯效与浮窗</h3>
+            <span class="face-chip">当前应用 · Cursor</span>
+          </div>
+          <div class="scope">
+            <span class="chip is-on">Cursor</span>
+            <span class="chip">Codex</span>
+            <span class="chip">Claude</span>
+            <span class="chip">MiniMax</span>
+          </div>
+          <div class="l3">
+            <button type="button" class="l3tab" disabled>灯效匹配</button>
+            <button type="button" class="l3tab" disabled>显示数据</button>
+            <button type="button" class="l3tab is-on">迷你栏</button>
+          </div>
+          <div class="panel" id="panel"></div>
+        </section>
+      </div>
+    </div>
+
+    <pre class="map" id="map"></pre>
+  </div>
+
+  <script>
+    const VERDICTS = {
+      A: {
+        tone: "ok",
+        text: "<b>A · 迁入：</b>vibecoding 用户在「灯效与浮窗 → 迷你栏」一次配完「何时出现 + 长什么样」。Pad 脸不再重复四态选择，只留「去迷你栏调时机」摘要，避免两处抢主控。"
+      },
+      B: {
+        tone: "info",
+        text: "<b>B · 镜像：</b>Pad 仍保留完整「何时显示」场景图；迷你栏顶部加一排同源四态。改任意一边即时同步。适合不想拆 Pad 习惯、又要在迷你栏看见时机的人。"
+      },
+      C: {
+        tone: "warn",
+        text: "<b>C · 深链：</b>迷你栏不碰时机，只写「去 Soft Pad · 何时显示」。迷你栏专心名单与 pill。改动最小，但 vibecoding「少占屏却何时出现」仍要跳脸，路径最长。"
+      }
+    };
+
+    const MAPS = {
+      A: "归属\n  Soft Pad「何时显示」  →  摘要入口（只读当前态 + 跳迷你栏）\n  迷你栏               →  显示时机（主） + 展示方案 + pill + 名单\n\npersist\n  showMode / presentation / overlayEnabled 仍走现有 applySoftPadShowMode",
+      B: "归属\n  Soft Pad「何时显示」  →  完整四态 + 场景图（保留）\n  迷你栏               →  精简四态芯片（同源）+ 展示方案 + pill + 名单\n\npersist\n  两边调用同一 applySoftPadShowMode；禁止各存一份",
+      C: "归属\n  Soft Pad「何时显示」  →  唯一时机主配置（现状）\n  迷你栏               →  深链按钮 + 展示方案 + pill + 名单\n\npersist\n  迷你栏零新增字段；只改 copy / IA"
+    };
+
+    const LEFT = {
+      A: { tag: "迷你栏 · A 迁入", cap: "右侧「显示时机」= 主控；Pad 脸只剩摘要", note: true, noteTitle: "Pad「何时显示」在本方案", noteBody: "降级为摘要条：当前 = 迷你条 · 点此回迷你栏细调" },
+      B: { tag: "迷你栏 · B 镜像", cap: "右侧精简四态 ↔ Pad 完整场景图，同源", note: true, noteTitle: "Pad「何时显示」在本方案", noteBody: "保留完整四态 + 场景图；与迷你栏芯片双向同步" },
+      C: { tag: "迷你栏 · C 深链", cap: "时机不在此页；点深链去 Pad 脸", note: true, noteTitle: "Pad「何时显示」在本方案", noteBody: "仍是唯一主配置；迷你栏只放「去何时显示 →」" }
+    };
+
+    function timingCard(kind) {
+      if (kind === "link") {
+        return `
+          <div class="ghost-card">
+            <h4>显示时机 · 在 Soft Pad</h4>
+            <p>跟随 / 最前 / 迷你条 / 隐藏 —— 不在本页改，避免和 Pad 双主控。</p>
+          </div>
+          <button type="button" class="linkbtn">去 Soft Pad · 何时显示 →</button>`;
+      }
+      const compact = kind === "mirror";
+      return `
+        <div class="card">
+          <h4>${compact ? "显示时机（与 Pad 同源）" : "显示时机"}</h4>
+          <p class="hint">${compact
+            ? "精简芯片；完整场景图仍在 Soft Pad「何时显示」。"
+            : "浮窗何时出现。改这里即改运行时；Pad 脸只显示摘要。"}</p>
+          <div class="modes cols4">
+            <button type="button" class="mode"><b>跟随应用</b><span>目标在前台才显示</span></button>
+            <button type="button" class="mode"><b>保持最前</b><span>切窗仍可见</span></button>
+            <button type="button" class="mode is-on"><b>迷你条</b><span>精简灯条少占屏</span></button>
+            <button type="button" class="mode"><b>不显示</b><span>键位仍保留</span></button>
+          </div>
+        </div>`;
+    }
+
+    function formCard() {
+      return `
+        <div class="card">
+          <h4>展示方案</h4>
+          <p class="hint">完整体键盘 vs 精简灯条（presentation）。</p>
+          <div class="modes">
+            <button type="button" class="mode"><b>完整体</b><span>完整 Soft Pad 键盘</span></button>
+            <button type="button" class="mode is-on"><b>精简态</b><span>灯条，少占屏幕</span></button>
+          </div>
+        </div>`;
+    }
+
+    function pillCard() {
+      return `
+        <div class="card">
+          <h4>显示内容 · 用量 pill</h4>
+          <p class="hint">数字同源「显示数据」；此处只决定灯条露不露。</p>
+          <div class="row"><span>显示用量 pill</span><button type="button" class="sw" aria-checked="true"></button></div>
+          <div class="row"><span>无数据时隐藏</span><button type="button" class="sw" aria-checked="true"></button></div>
+        </div>`;
+    }
+
+    function rosterCard() {
+      return `
+        <div class="card">
+          <h4>管理策略 · 灯条上亮谁</h4>
+          <p class="hint">跨应用浮窗成员，不是键位，也不是额度数字。</p>
+          <div class="roster">
+            <div class="ri"><div><div class="n">Cursor</div><div class="s">灯条 · 本地活跃</div></div><span class="badge">亮着</span></div>
+            <div class="ri"><div><div class="n">Codex</div><div class="s">灯条 · 已接入</div></div><span class="badge">亮着</span></div>
+            <div class="ri"><div><div class="n">Claude</div><div class="s">灯条 · 已接入</div></div><span class="badge">亮着</span></div>
+          </div>
+          <button type="button" class="linkbtn" style="margin-top:10px">+ 添加 Agent</button>
+        </div>`;
+    }
+
+    function render(v) {
+      const lead = {
+        A: "主配置在此：何时出现、精简还是完整、亮谁、要不要 pill。",
+        B: "时机与 Pad 镜像；本页仍管形态、pill、名单。",
+        C: "时机去 Pad；本页只管形态、pill、名单（改动最小）。"
+      }[v];
+
+      let body = `<p class="lead">${lead}</p>`;
+      if (v === "A") body += timingCard("move") + formCard() + pillCard() + rosterCard();
+      if (v === "B") body += timingCard("mirror") + formCard() + pillCard() + rosterCard();
+      if (v === "C") body += timingCard("link") + formCard() + pillCard() + rosterCard() +
+        `<button type="button" class="linkbtn">去显示数据（设置页数字）→</button>`;
+
+      if (v === "A") {
+        body += `<button type="button" class="linkbtn">去显示数据（设置页数字）→</button>`;
+      }
+      if (v === "B") {
+        body += `<button type="button" class="linkbtn">去 Soft Pad 看完整「何时显示」场景 →</button>
+                 <button type="button" class="linkbtn">去显示数据（设置页数字）→</button>`;
+      }
+
+      document.getElementById("panel").innerHTML = body;
+
+      const vd = VERDICTS[v];
+      const verdict = document.getElementById("verdict");
+      verdict.dataset.tone = vd.tone;
+      document.getElementById("verdictText").innerHTML = vd.text;
+      document.getElementById("map").textContent = MAPS[v];
+
+      const L = LEFT[v];
+      document.getElementById("leftTag").textContent = L.tag;
+      document.getElementById("leftCap").textContent = L.cap;
+      document.getElementById("padNote").hidden = !L.note;
+      document.querySelector("#padNote b").textContent = L.noteTitle;
+      document.getElementById("padNoteBody").textContent = L.noteBody;
+    }
+
+    document.querySelectorAll(".vbtn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".vbtn").forEach((b) => {
+          b.classList.toggle("is-on", b === btn);
+          b.setAttribute("aria-selected", b === btn ? "true" : "false");
+        });
+        render(btn.dataset.v);
+      });
+    });
+
+    render("A");
+  </script>
+</body>
+</html>

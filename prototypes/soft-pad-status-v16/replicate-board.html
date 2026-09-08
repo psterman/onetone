@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soft Pad 灯效与浮窗 · 复刻对照板 v16.1</title>
+  <style>
+    :root {
+      --bg: #eef2f5; --text: #15202b; --muted: #5b6b7c; --primary: #00658f;
+      --line: #dde3ea; --ok: #15803d; --ok-soft: #ecfdf5;
+      --font: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--text); }
+    header {
+      padding: 18px 20px; background: #15202b; color: #d7e2ec;
+    }
+    header h1 { margin: 0 0 6px; font-size: 18px; color: #7dd3fc; }
+    header p { margin: 0; font-size: 13px; line-height: 1.5; color: #9fb3c4; }
+    header a { color: #7dd3fc; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 48px; }
+    .lock {
+      display: inline-block; margin: 12px 0 0; padding: 4px 10px; border-radius: 999px;
+      border: 1px solid rgba(134,239,172,.35); background: rgba(22,163,74,.15); color: #86efac;
+      font-size: 12px; font-weight: 700;
+    }
+    h2 { font-size: 15px; margin: 22px 0 10px; }
+    .grid { display: grid; gap: 14px; }
+    .frame {
+      background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+      box-shadow: 0 8px 22px rgba(21,32,43,.06);
+    }
+    .frame img { display: block; width: 100%; height: auto; }
+    .frame .cap {
+      padding: 10px 12px; font-size: 12.5px; color: var(--muted); line-height: 1.45;
+      border-top: 1px solid var(--line); background: #fafbfc;
+    }
+    .frame .cap b { color: var(--primary); }
+    .check {
+      background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+    }
+    .check h3 { margin: 0 0 10px; font-size: 14px; }
+    .check ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .check li {
+      display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start;
+      font-size: 13px; line-height: 1.45; color: var(--muted);
+    }
+    .check li::before {
+      content: "☐"; color: var(--ok); font-weight: 800; line-height: 1.3;
+    }
+    .arch {
+      display: grid; grid-template-columns: 0.42fr 1fr; gap: 0; min-width: 640px;
+      border: 1px dashed var(--primary); border-radius: 12px; background: #fff; overflow: auto;
+    }
+    .arch > div { padding: 14px; }
+    .arch .l { border-right: 1px dashed var(--line); background: #f3f9fc; }
+    .arch .r { background: #fff; }
+    .arch h4 { margin: 0 0 8px; font-size: 13px; color: var(--primary); }
+    .arch code {
+      display: block; font-size: 11.5px; color: var(--muted); line-height: 1.55;
+      white-space: pre-wrap; font-family: ui-monospace, Consolas, monospace;
+    }
+    .note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Soft Pad · 灯效与浮窗 · 复刻对照板 v16.1</h1>
+    <p>
+      交互真源：<a href="./lights-peer-workbench.html">lights-peer-workbench.html</a>
+      · 下列静帧 = 产品落地验收图（左预览 | 右配置锁定）
+    </p>
+    <span class="lock">HARD RULE：永不改成上下单列；窄屏横滚</span>
+  </header>
+
+  <div class="wrap">
+    <h2>信息架构（必须复刻）</h2>
+    <div class="arch">
+      <div class="l">
+        <h4>左 · 设置中预览</h4>
+        <code>match → 整盘 + 氛围光晕 + 键灯
+data  → 整盘 + 用量对照条
+mini  → 迷你栏灯条 + pill
+（随右侧 L3 实时切换）</code>
+      </div>
+      <div class="r">
+        <h4>右 · 按应用配置</h4>
+        <code>Agent chips（Cursor / Codex / …）
+L3：灯效匹配 | 显示数据 | 迷你栏
+  match：接入卡 + L4 氛围灯|按键灯
+  data ：设置页数字 + API 候补
+  mini ：形态 + pill + 灯条亮谁
+禁止：准备度 / 跨应用 独立 L3</code>
+      </div>
+    </div>
+    <p class="note">产品落点：<code>#softPadFaceAgent</code> · 运行时浮窗仍走 overlay，本页只配形态与亮谁。</p>
+
+    <h2>静帧 01 · 灯效匹配（氛围灯）</h2>
+    <div class="frame">
+      <img src="./frames/soft-pad-lights-v16-match-mock.png" alt="灯效匹配左右对照" />
+      <div class="cap"><b>验收：</b>L3=灯效匹配 · L4=氛围灯 · 左侧盘边光晕跟右侧色/透明度 · 接入卡在本页顶部（不另开准备度）。</div>
+    </div>
+
+    <h2>静帧 02 · 显示数据</h2>
+    <div class="frame">
+      <img src="./frames/soft-pad-lights-v16-data-mock.png" alt="显示数据左右对照" />
+      <div class="cap"><b>验收：</b>只管设置页数字（账号/额度/重置）+ API 候补 · 左侧用量条对照 · 不放监视名单。</div>
+    </div>
+
+    <h2>静帧 03 · 迷你栏（浮窗精简态）</h2>
+    <div class="frame">
+      <img src="./frames/soft-pad-lights-v16-mini-mock.png" alt="迷你栏左右对照" />
+      <div class="cap"><b>验收：</b>左侧切迷你灯条 · 右侧形态/ pill /「灯条上亮谁」· 关闭设置后前台看真实浮窗。</div>
+    </div>
+
+    <h2>复刻勾选</h2>
+    <div class="check">
+      <h3>产品落地前必须全勾</h3>
+      <ul>
+        <li>顶层 flow 仍是「虚拟键盘 | 灯效与浮窗」两节点并列</li>
+        <li>灯效面始终左预览 | 右配置（1100px 也不堆叠）</li>
+        <li>右 L3 仅三页：灯效匹配 / 显示数据 / 迷你栏</li>
+        <li>原「准备度」并入灯效匹配顶部接入卡</li>
+        <li>原「跨应用」额度 → 显示数据；亮谁 → 迷你栏</li>
+        <li>L4 氛围灯在前、按键灯在后</li>
+        <li>切 L3 时左侧预览形态同步（盘 / 数据条 / 迷你栏）</li>
+        <li>迷你栏配置写回现有 overlay 数据路径，不新开存储</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

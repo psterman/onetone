@@ -266,5 +266,21 @@
     }
   }
 
-  global.OneToneVoiceBridgeCamera={ render:render, listCameraVoice:listCameraRows };
+  function addPhrase(){
+    var list=listCameraRows();
+    if(!list.length) return false;
+    var r=list.find(function(x){ return x.bindKey===pickId; })||list.find(function(x){ return !x.phrase; })||list[0];
+    if(!r) return false;
+    pickId=r.bindKey;
+    var next=global.prompt('给这个动作写一句口令',String(r.phrase||r.suggest||r.title||''));
+    if(next==null) return true;
+    next=String(next).trim();
+    if(!next) return true;
+    ensureVoice(currentMapping(),r.bindKey,next);
+    persist();
+    render();
+    return true;
+  }
+
+  global.OneToneVoiceBridgeCamera={ render:render, listCameraVoice:listCameraRows, addPhrase:addPhrase };
 })((typeof window!=='undefined')?window:globalThis);

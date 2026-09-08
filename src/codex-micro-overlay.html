@@ -18,7 +18,8 @@
     <div class="wrap" id="wrap">
       <div class="overlay-mini-stack" id="overlayMiniStack">
       <div class="overlay-mini" id="overlayMini">
-        <div class="overlay-mini__agents" id="miniAgents" role="list" aria-label="Agent 状态">
+      <div class="overlay-mini__row">
+        <div class="overlay-mini__agents" id="miniAgents" role="list" aria-label="谁在忙">
           <span class="overlay-mini__agent" role="listitem" data-agent="codex" data-status="idle" aria-label="Codex：空闲">
             <img src="icons/app-target/codex.png" alt="" aria-hidden="true">
             <i class="overlay-mini__agent-dot" aria-hidden="true"></i>
@@ -85,11 +86,6 @@
           </span>
           <button type="button" class="overlay-mini__more" id="miniAgentMore" data-act="agent-more-mini" hidden title="展开查看更多 Agent" aria-label="更多 Agent">+0</button>
         </div>
-        <div class="overlay-mini__beginner-actions" id="miniBeginnerActions" hidden role="toolbar" aria-label="Cursor 快捷操作"></div>
-        <span class="overlay-mini__listen-chip" id="miniBeginnerListenChip" hidden aria-live="polite">
-          <span class="overlay-mini__listen-chip-dot" aria-hidden="true"></span>
-          <span class="overlay-mini__listen-chip-text" id="miniBeginnerListenChipText">聆听</span>
-        </span>
         <span class="overlay-mini__beginner-hint" id="miniBeginnerHint" hidden aria-live="polite"></span>
         <span class="overlay-mini__usage-cluster">
           <span class="overlay-mini__usage" id="miniUsagePill" hidden aria-live="polite"></span>
@@ -104,8 +100,26 @@
         </button>
         <button type="button" class="overlay-mini__btn" data-act="close" title="关闭" aria-label="关闭">×</button>
       </div>
+      <div class="overlay-mini__row overlay-mini__row--tools">
+        <div class="overlay-mini__beginner-actions" id="miniBeginnerActions" hidden role="toolbar" aria-label="快捷钮"></div>
+        <button type="button" class="overlay-mini__action overlay-mini__action--settings" data-act="mini-settings"
+          title="迷你栏设置" aria-label="迷你栏设置">
+          <span class="overlay-mini__action-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+          </span>
+        </button>
+      </div>
+      </div>
       <div class="overlay-mini-listen" id="miniBeginnerListenBanner" hidden aria-live="polite">
-        <span class="overlay-mini-listen__dot" aria-hidden="true"></span>
+        <span class="overlay-mini__listen-chip is-halo" id="miniBeginnerListenChip" hidden aria-live="polite" aria-label="正在听">
+          <svg class="overlay-mini__listen-chip-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+            <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/>
+            <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              d="M5 11a7 7 0 0014 0M12 18v3"/>
+          </svg>
+          <span class="overlay-mini__listen-chip-text" id="miniBeginnerListenChipText" hidden>听</span>
+        </span>
         <span class="overlay-mini-listen__body">
           <span class="overlay-mini-listen__text" id="miniBeginnerListenText"></span>
           <span class="overlay-mini-listen__flow" id="miniBeginnerListenFlow" hidden></span>
@@ -1611,31 +1625,12 @@
 
     function applyMiniUsagePill(s){
       if(!miniUsagePill) return;
-      var quotas=snapshotProviderQuotas(s);
-      applyMiniUsageFresh(s);
-      if(quotas.length && !hoverUsageKind){
-        var okCap=usageFmt.firstOkQuotaCaption?usageFmt.firstOkQuotaCaption(quotas):'';
-        var text=okCap||'用量 ▾';
-        miniUsagePill.hidden=false;
-        miniUsagePill.textContent=text;
-        miniUsagePill.removeAttribute('data-agent');
-        miniUsagePill.setAttribute('data-pill-action', 'quota_menu');
-        miniUsagePill.setAttribute('aria-haspopup', 'menu');
-        miniUsagePill.style.cursor='pointer';
-        renderMiniQuotaDropdown(quotas);
-        bindAgentTipHover(miniUsagePill, ['多 Provider 用量', '点击展开']);
-        return;
-      }
-      setMiniQuotaOpen(false);
-      if(miniQuotaDropdown) miniQuotaDropdown.innerHTML='';
-      miniUsagePill.removeAttribute('aria-haspopup');
-      miniUsagePill.removeAttribute('aria-expanded');
-      var kind=pickMiniUsageKind(s);
-      var rows=Array.isArray(s&&s.agents)?s.agents:[];
-      var row=rows.find(function(r){ return String(r&&r.kind||'')===kind; })||{};
-      var usage=row.usage||{};
-      var text=kind?miniUsageText(kind,usage):'';
-      if(!text){
+      var pillOn=s&&s.miniUsagePillEnabled!==false;
+      var hideEmpty=s&&s.miniUsagePillHideEmpty!==false;
+      if(!pillOn){
+        setMiniQuotaOpen(false);
+        if(miniQuotaDropdown) miniQuotaDropdown.innerHTML='';
+        if(miniUsageFresh) miniUsageFresh.hidden=true;
         miniUsagePill.hidden=true;
         miniUsagePill.textContent='';
         miniUsagePill.removeAttribute('title');
@@ -1644,14 +1639,57 @@
         miniUsagePill.style.cursor='default';
         return;
       }
+      var quotas=snapshotProviderQuotas(s);
+      applyMiniUsageFresh(s);
+      /* Mini: foreground-agent abbreviated only. Full multi-metric / multi-provider → 完整键盘 */
+      var kind=resolveUsageFocus(s)||pickMiniUsageKind(s);
+      var rows=Array.isArray(s&&s.agents)?s.agents:[];
+      var row=rows.find(function(r){ return String(r&&r.kind||'')===kind; })||{};
+      var usage=row.usage||{};
+      var text=kind?miniUsageText(kind,usage):'';
+      if(!text && quotas.length && !hoverUsageKind){
+        var okCap=usageFmt.firstOkQuotaCaption?usageFmt.firstOkQuotaCaption(quotas):'';
+        text=okCap||'';
+      }
+      if(!text){
+        if(hideEmpty){
+          setMiniQuotaOpen(false);
+          if(miniQuotaDropdown) miniQuotaDropdown.innerHTML='';
+          miniUsagePill.hidden=true;
+          miniUsagePill.textContent='';
+          miniUsagePill.removeAttribute('title');
+          miniUsagePill.removeAttribute('data-agent');
+          miniUsagePill.removeAttribute('data-pill-action');
+          miniUsagePill.style.cursor='default';
+          return;
+        }
+        text='--';
+      }
       miniUsagePill.hidden=false;
       miniUsagePill.textContent=text;
-      miniUsagePill.setAttribute('data-agent', kind);
+      if(kind) miniUsagePill.setAttribute('data-agent', kind);
+      else miniUsagePill.removeAttribute('data-agent');
       miniUsagePill.removeAttribute('title');
+      if(quotas.length){
+        miniUsagePill.setAttribute('data-pill-action', 'quota_menu');
+        miniUsagePill.setAttribute('aria-haspopup', 'menu');
+        miniUsagePill.style.cursor='pointer';
+        renderMiniQuotaDropdown(quotas);
+        bindAgentTipHover(miniUsagePill, [kind?('当前 · '+kind):'用量', '点击看更多 Provider']);
+        return;
+      }
+      setMiniQuotaOpen(false);
+      if(miniQuotaDropdown) miniQuotaDropdown.innerHTML='';
+      miniUsagePill.removeAttribute('aria-haspopup');
+      miniUsagePill.removeAttribute('aria-expanded');
+      if(text==='--'){
+        miniUsagePill.removeAttribute('data-pill-action');
+        miniUsagePill.style.cursor='default';
+        return;
+      }
       var tipLines;
       var wantsEnable=kind==='cursor'&&!isCursorActivityUsage(usage)&&(/未启用/.test(String(usage.message||''))||!String(usage.message||'').trim());
       var wantsMinimaxKey=kind==='minimax'&&captionWantsMinimaxKey(text);
-      // Chill tip: source honesty + action only (no focus / no duplicate status dump).
       if(kind==='cursor'){
         if(wantsEnable){
           tipLines=['本地活动 · 非官方额度','点击启用统计'];
@@ -1900,6 +1938,143 @@
       if(fg) touchAgentBarRecency(fg);
     }
 
+    function miniChromeOf(s){
+      var c=(s&&(s.miniChrome||s.mini_chrome))||{};
+      return {
+        voiceChipEnabled: c.voiceChipEnabled!==false&&c.voice_chip_enabled!==false,
+        voiceChipWhen: (c.voiceChipWhen||c.voice_chip_when)==='armed'?'armed':'listening',
+        agentsBarEnabled: c.agentsBarEnabled!==false&&c.agents_bar_enabled!==false,
+        textPreviewEnabled: c.textPreviewEnabled!==false&&c.text_preview_enabled!==false,
+        textPreviewWhen: (c.textPreviewWhen||c.text_preview_when)==='hasText'?'hasText':'listening',
+        toolsBarEnabled: c.toolsBarEnabled!==false&&c.tools_bar_enabled!==false,
+        toolIds: Array.isArray(c.toolIds)?c.toolIds:(Array.isArray(c.tool_ids)?c.tool_ids:[]),
+        expandBtnEnabled: c.expandBtnEnabled!==false&&c.expand_btn_enabled!==false,
+        closeBtnEnabled: c.closeBtnEnabled!==false&&c.close_btn_enabled!==false
+      };
+    }
+
+    function applyMiniChromeVoiceChip(s){
+      if(!miniBeginnerListenChip||!miniBeginnerListenChipText) return;
+      var chromeV=miniChromeOf(s);
+      if(!chromeV.voiceChipEnabled){
+        miniBeginnerListenChip.hidden=true;
+        return;
+      }
+      var mode=!!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode));
+      var probeOk=!!(s&&(s.cursorProbeOk||s.cursor_probe_ok));
+      var armed=!!(s&&(s.cursorBeginnerArmed||s.cursor_beginner_armed));
+      var hubOn=!!(s&&(s.activationHubActive||s.activation_hub_active));
+      var show=false;
+      if(chromeV.voiceChipWhen==='armed'){
+        show=hubOn||(mode&&probeOk&&armed);
+      } else {
+        show=hubOn||(mode&&probeOk&&armed);
+      }
+      if(show){
+        miniBeginnerListenChip.hidden=false;
+        /* 图标在 HTML；不写「听」字，避免盖住相邻元素 */
+      } else {
+        miniBeginnerListenChip.hidden=true;
+      }
+    }
+
+    function defaultMiniToolSlots(chrome){
+      var all=[
+        {slotId:'pushToTalk',iconId:'mic',labelZh:'麦克风',microKeyId:'ACT10',holdMs:0},
+        {slotId:'stopOrSend',iconId:'send',labelZh:'发送',microKeyId:'ACT12',holdMs:0},
+        {slotId:'continue',iconId:'sparkles',labelZh:'继续',microKeyId:'AG02',holdMs:0},
+        {slotId:'newThread',iconId:'messagePlus',labelZh:'新建',microKeyId:'AG01',holdMs:0},
+        {slotId:'cancelListen',iconId:'reject',labelZh:'取消',microKeyId:'ACT08',holdMs:0}
+      ];
+      var allow=Array.isArray(chrome&&chrome.toolIds)?chrome.toolIds:[];
+      if(!allow.length) return all;
+      return all.filter(function(row){ return allow.indexOf(row.slotId)>=0; });
+    }
+
+    function applyMiniToolsRow(s){
+      if(!miniBeginnerActions) return;
+      var chromeT=miniChromeOf(s);
+      if(!chromeT.toolsBarEnabled){
+        miniBeginnerActions.hidden=true;
+        miniBeginnerActions.innerHTML='';
+        miniBeginnerActions.__sig='';
+        return;
+      }
+      var mode=!!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode));
+      var probeOk=!!(s&&(s.cursorProbeOk||s.cursor_probe_ok));
+      var armed=!!(s&&(s.cursorBeginnerArmed||s.cursor_beginner_armed));
+      var slots=Array.isArray(s&&s.cursorBeginnerSlots)?s.cursorBeginnerSlots
+        :(Array.isArray(s&&s.cursor_beginner_slots)?s.cursor_beginner_slots:[]);
+      var useBeginner=mode&&probeOk&&slots.length>0;
+      var slotRows;
+      if(useBeginner){
+        slotRows=slots;
+        var allowIds=chromeT.toolIds||[];
+        if(allowIds.length){
+          slotRows=slots.filter(function(slot){
+            var sid=String(slot.slotId||slot.slot_id||'');
+            return allowIds.indexOf(sid)>=0;
+          });
+        }
+      } else {
+        slotRows=defaultMiniToolSlots(chromeT);
+      }
+      if(!slotRows.length){
+        miniBeginnerActions.hidden=true;
+        miniBeginnerActions.innerHTML='';
+        miniBeginnerActions.__sig='';
+        return;
+      }
+      miniBeginnerActions.hidden=false;
+      var sig=(useBeginner?'b:':'d:')+slotRows.map(function(x){
+        return String(x.slotId||x.slot_id||'')+':'+(Number(x.holdMs!=null?x.holdMs:x.hold_ms)||0)
+          +':'+(x.microKeyId||x.micro_key_id||'')+':'+(x.iconId||x.icon_id||'');
+      }).join('|')+':'+(armed?1:0);
+      if(miniBeginnerActions.__sig===sig) return;
+      miniBeginnerActions.__sig=sig;
+      miniBeginnerActions.innerHTML=slotRows.map(function(slot){
+        var iconId=slot.iconId||slot.icon_id||'';
+        var icon=ICON[iconId]||ICON.empty;
+        var hold=Number(slot.holdMs!=null?slot.holdMs:slot.hold_ms)||0;
+        var slotId=slot.slotId||slot.slot_id||'';
+        var microKey=slot.microKeyId||slot.micro_key_id||'';
+        var label=slot.labelZh||slot.label_zh||slotId;
+        if(!iconId){
+          var fallback={pushToTalk:'mic',stopOrSend:'send',continue:'sparkles',newThread:'messagePlus',cancelListen:'reject'};
+          icon=ICON[fallback[slotId]||'']||ICON.empty;
+        }
+        return '<button type="button" class="overlay-mini__action" data-beginner-slot="'+escHtml(slotId)+'"'
+          +(useBeginner?'':' data-pad-only="1"')
+          +' data-hold-ms="'+hold+'" data-micro-key="'+escHtml(microKey)+'"'
+          +' aria-label="'+escHtml(label)+'" title="'+escHtml(label)+'">'
+          +'<span class="overlay-mini__action-icon">'+icon+'</span></button>';
+      }).join('');
+      miniBeginnerActions.querySelectorAll('[data-beginner-slot]').forEach(function(btn){
+        bindBeginnerMiniAction(btn);
+      });
+      if(useBeginner&&window.OneToneCursorBeginnerOnboard){
+        window.OneToneCursorBeginnerOnboard.maybeShow(s);
+      }
+    }
+
+    function applyMiniChromeChrome(s){
+      var chrome=miniChromeOf(s);
+      if(miniAgents){
+        miniAgents.hidden=!chrome.agentsBarEnabled;
+        miniAgents.classList.toggle('is-chrome-off', !chrome.agentsBarEnabled);
+      }
+      if(miniAgentMore&&!chrome.agentsBarEnabled) miniAgentMore.hidden=true;
+      document.querySelectorAll('[data-act="expand"]').forEach(function(btn){
+        btn.hidden=!chrome.expandBtnEnabled;
+      });
+      document.querySelectorAll('.overlay-mini__btn:not(.overlay-mini__btn--expand)').forEach(function(btn){
+        if(btn.getAttribute('data-act')==='close') btn.hidden=!chrome.closeBtnEnabled;
+      });
+      wrap.classList.toggle('is-mini-tools-on', chrome.toolsBarEnabled);
+      wrap.classList.toggle('is-mini-agents-on', chrome.agentsBarEnabled);
+      applyMiniToolsRow(s);
+    }
+
     function applyCursorBeginnerMini(s){
       var mode=!!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode));
       var probeOk=!!(s&&(s.cursorProbeOk||s.cursor_probe_ok));
@@ -1907,17 +2082,17 @@
       wrap.classList.toggle('is-cursor-beginner', mode);
       wrap.classList.toggle('is-cursor-beginner-armed', mode&&armed);
       if(!mode){
-        if(miniBeginnerActions) miniBeginnerActions.hidden=true;
         if(miniBeginnerHint) miniBeginnerHint.hidden=true;
         if(miniBeginnerListenBanner) miniBeginnerListenBanner.hidden=true;
-        if(miniBeginnerListenChip) miniBeginnerListenChip.hidden=true;
+        // Voice chip may still show for activation hub — applyHubMini + applyMiniChromeVoiceChip
+        applyMiniChromeVoiceChip(s);
         if(window.OneToneCursorBeginnerOnboard) window.OneToneCursorBeginnerOnboard.hide();
         var capOff=document.getElementById('overlayKeyCaption');
         if(capOff) capOff.classList.remove('is-beginner-arm-caption');
         applyCursorBeginnerMini.__lastArmed=false;
+        applyMiniToolsRow(s);
         return;
       }
-      var slots=Array.isArray(s&&s.cursorBeginnerSlots)?s.cursorBeginnerSlots:(Array.isArray(s&&s.cursor_beginner_slots)?s.cursor_beginner_slots:[]);
       var msg=String((s&&s.cursorBeginnerProbeMessage)||(s&&s.cursor_beginner_probe_message)||'').trim();
       var armHint=String((s&&s.cursorBeginnerArmHint)||(s&&s.cursor_beginner_arm_hint)||'').trim();
       if(!armHint&&armed) armHint='聆听中 · 可说：发送、继续、新建、麦克风、取消';
@@ -1934,12 +2109,7 @@
       }
       // Listen / Hub 共用次行由 applyHubMini（status band）统一绘制。
       if(miniBeginnerListenChip&&miniBeginnerListenChipText){
-        if(armed&&probeOk){
-          miniBeginnerListenChip.hidden=false;
-          miniBeginnerListenChipText.textContent='聆听';
-        } else {
-          miniBeginnerListenChip.hidden=true;
-        }
+        applyMiniChromeVoiceChip(s);
       }
       if(armed&&probeOk){
         wrap.classList.add('is-cursor-beginner-listen');
@@ -1959,37 +2129,7 @@
         cap.classList.remove('is-beginner-arm-caption');
         if(!armed&&!keyHoverActive) applyUsageCaptionIdle(s);
       }
-      if(!miniBeginnerActions) return;
-      if(!probeOk||!slots.length){
-        miniBeginnerActions.hidden=true;
-        miniBeginnerActions.innerHTML='';
-        return;
-      }
-      miniBeginnerActions.hidden=false;
-      var sig=slots.map(function(x){
-        return String(x.slotId||x.slot_id||'')+':'+(Number(x.holdMs!=null?x.holdMs:x.hold_ms)||0);
-      }).join('|')+':'+armed;
-      if(miniBeginnerActions.__sig!==sig){
-        miniBeginnerActions.__sig=sig;
-        miniBeginnerActions.innerHTML=slots.map(function(slot){
-          var iconId=slot.iconId||slot.icon_id||'';
-          var icon=ICON[iconId]||ICON.empty;
-          var hold=Number(slot.holdMs!=null?slot.holdMs:slot.hold_ms)||0;
-          var slotId=slot.slotId||slot.slot_id||'';
-          var microKey=slot.microKeyId||slot.micro_key_id||'';
-          var label=slot.labelZh||slot.label_zh||slotId;
-          return '<button type="button" class="overlay-mini__action" data-beginner-slot="'+escHtml(slotId)+'"'
-            +' data-hold-ms="'+hold+'" data-micro-key="'+escHtml(microKey)+'"'
-            +' aria-label="'+escHtml(label)+'" title="'+escHtml(label)+'">'
-            +'<span class="overlay-mini__action-icon">'+icon+'</span></button>';
-        }).join('');
-        miniBeginnerActions.querySelectorAll('[data-beginner-slot]').forEach(function(btn){
-          bindBeginnerMiniAction(btn);
-        });
-        if(window.OneToneCursorBeginnerOnboard){
-          window.OneToneCursorBeginnerOnboard.maybeShow(s);
-        }
-      }
+      applyMiniToolsRow(s);
       flashBeginnerVoiceHit(s);
     }
 
@@ -2032,10 +2172,22 @@
       }
       wrap.setAttribute('data-hub-phase', hubOn?phase:'');
 
-      var showBand=hubOn||beginnerOn||(vMatched&&vFinal);
+      var showBand=hubOn||beginnerOn||(vMatched&&vFinal)||!!vHeard;
+      var chromeTx=miniChromeOf(s);
+      applyMiniChromeVoiceChip(s);
+      var chipOn=miniBeginnerListenChip&&!miniBeginnerListenChip.hidden;
+      /* 听音麦标并入条下预览卡：chip 亮或要显示转写时出同一条 */
+      if(chromeTx.textPreviewEnabled||chromeTx.voiceChipEnabled){
+        if(chromeTx.textPreviewWhen==='hasText'&&!vHeard&&!hubOn&&!beginnerOn&&!chipOn) showBand=false;
+        else if(!chromeTx.textPreviewEnabled&&!chipOn) showBand=false;
+        else if(chipOn) showBand=true;
+      } else {
+        showBand=false;
+      }
       if(!showBand){
         miniBeginnerListenBanner.hidden=true;
         miniBeginnerListenBanner.classList.remove('is-matched','is-miss','is-soft-close');
+        if(miniBeginnerListenChip) miniBeginnerListenChip.hidden=true;
         if(miniHubCountdown){ miniHubCountdown.hidden=true; miniHubCountdown.textContent=''; }
         if(miniHubCancel) miniHubCancel.hidden=true;
         if(miniBeginnerListenFlow){ miniBeginnerListenFlow.hidden=true; miniBeginnerListenFlow.textContent=''; }
@@ -2043,6 +2195,7 @@
       }
 
       miniBeginnerListenBanner.hidden=false;
+      if(chipOn&&miniBeginnerListenChip) miniBeginnerListenChip.hidden=false;
       miniBeginnerListenBanner.classList.toggle('is-matched',!!(vMatched&&vHeard));
       miniBeginnerListenBanner.classList.toggle('is-miss',!!(vHeard&&!vMatched&&vFinal&&beginnerOn));
       miniBeginnerListenBanner.classList.toggle('is-soft-close', softClose);
@@ -2225,9 +2378,16 @@
       if(btn.__beginnerBound) return;
       btn.__beginnerBound=true;
       var slotId=String(btn.getAttribute('data-beginner-slot')||'');
+      var padOnly=btn.getAttribute('data-pad-only')==='1';
       var holdMs=Number(btn.getAttribute('data-hold-ms'))||0;
       var holdTimer=0;
       var fired=false;
+      function fireSlot(hold){
+        if(padOnly){
+          return beginnerPadFire(beginnerMicroKey(slotId,btn.getAttribute('data-micro-key')),'tap',slotId);
+        }
+        return runBeginnerSlot(slotId,!!hold,btn.getAttribute('data-micro-key'));
+      }
       function clearHold(){
         if(holdTimer){ clearTimeout(holdTimer); holdTimer=0; }
         fired=false;
@@ -2245,7 +2405,7 @@
         if(holdMs>0){
           holdTimer=setTimeout(function(){
             fired=true;
-            runBeginnerSlot(slotId,true,btn.getAttribute('data-micro-key')).finally(clearHold);
+            fireSlot(true).finally(clearHold);
           }, holdMs);
         }
       });
@@ -2266,7 +2426,7 @@
           return;
         }
         clearHold();
-        runBeginnerSlot(slotId,true,btn.getAttribute('data-micro-key'));
+        fireSlot(false);
       }
       btn.addEventListener('pointerup',up);
       btn.addEventListener('pointerleave',function(e){
@@ -2293,17 +2453,20 @@
       layoutMiniAgentBar(s, byKind, focus);
       layoutPadAgentBar(s, byKind, focus);
       applyUsageCaptionIdle(s);
+      applyMiniChromeChrome(s);
       if(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode)){
         applyCursorBeginnerMini(s);
         applyHubMini(s);
         applySoftPadConfirmBar(s);
+        applyMiniChromeChrome(s);
         return;
       }
-      if(miniBeginnerActions) miniBeginnerActions.hidden=true;
       if(miniBeginnerHint) miniBeginnerHint.hidden=true;
       wrap.classList.remove('is-cursor-beginner','is-cursor-beginner-armed','is-cursor-beginner-listen');
+      applyMiniChromeVoiceChip(s);
       applyHubMini(s);
       applySoftPadConfirmBar(s);
+      applyMiniChromeChrome(s);
     }
 
     function touchAgentBarRecency(kind){
@@ -2374,7 +2537,8 @@
     function layoutMiniAgentBar(s, byKind, focus){
       if(!miniAgents) return;
       var Rank=window.OneToneSoftPadAgentBarRank;
-      var visibleMax=(Rank&&Rank.VISIBLE_PAD)||6;
+      /* Mini = foreground-focused abbreviated bar; full roster lives on 完整键盘 */
+      var visibleMax=(Rank&&Rank.VISIBLE_MINI)||1;
       var ranked=rankAgentBarKinds(s, byKind, focus, { visibleMax: visibleMax });
       if(Rank&&Rank.mergePlaceholderKinds){
         ranked=Rank.mergePlaceholderKinds(ranked, byKind, visibleMax);
@@ -2399,7 +2563,7 @@
           miniAgentMore.hidden=false;
           miniAgentMore.textContent='+'+n;
           miniAgentMore.setAttribute('aria-label', '还有 '+n+' 个 Agent');
-          miniAgentMore.title='展开查看更多 Agent（+'+n+'）';
+          miniAgentMore.title='展开 Soft Pad 查看全部（+'+n+'）';
         } else {
           miniAgentMore.hidden=true;
           miniAgentMore.textContent='+0';
@@ -3564,6 +3728,21 @@
         localMinimized=false;
         applyLocalStatusDom();
         invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).then(forcePadGridRefresh).catch(forcePadGridRefresh);
+      });
+    });
+
+    document.querySelectorAll('[data-act="mini-settings"]').forEach(function(btn){
+      btn.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
+      btn.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        hideAgentTip();
+        invoke('cmd_tray_action',{
+          action:'deep_link',
+          payload:{ href:'main:softPad?panel=softPad&focus=softPadMini' }
+        }).catch(function(){
+          toast('打不开设置');
+        });
       });
     });
 

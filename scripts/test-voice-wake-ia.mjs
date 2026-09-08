@@ -118,8 +118,14 @@ assert.ok(/triggerType==='key'|triggerType==="key"/.test(keysBridge), 'keys brid
 
 const softBridge = read('src/js/features/voice/voice-bridge-softpad.js');
 assert.ok(/resolveScopeMapping/.test(softBridge), 'softpad bridge uses scope mapping');
-assert.ok(/forceFull/.test(softBridge), 'softpad paints full pad framework');
-assert.ok(/off\.hidden\s*=\s*true/.test(softBridge), 'softpad does not blank pad when phrases=0');
+assert.ok(/ensurePad/.test(softBridge), 'softpad heals pad before paint');
+assert.ok(/applyVoiceOverlay|sp-voice-ph/.test(softBridge), 'softpad voice overlay on keys');
+assert.ok(/addPhrase/.test(softBridge), 'softpad addPhrase write-back');
+assert.ok(/addPhrase/.test(keysBridge), 'keys addPhrase write-back');
+assert.ok(/catalogSlotOf/.test(keysBridge)&&/agent\.continue/.test(keysBridge), 'keys maps actionId to catalog slot');
+assert.ok(/refreshActiveVoiceBridge/.test(read('src/js/features/voice/voice-step-wake-render.js')), 'wake refresh bridge');
+assert.ok(/bindBridgeAdd/.test(read('src/js/features/voice/voice-ui-bindings.js')), 'bindings wire addPhrase');
+assert.ok(/\.sp-voice-ph/.test(css), 'softpad phrase chip css');
 
 const camBridge = read('src/js/features/voice/voice-bridge-camera.js');
 assert.ok(/semantic:camera:/.test(camBridge), 'camera bridge uses camera slot prefix');
@@ -128,11 +134,16 @@ assert.ok(/resolveScopeMapping/.test(camBridge), 'camera bridge uses scope mappi
 assert.ok(/presencePrefs|CameraPresenceActions/.test(camBridge), 'camera bridge reads presence actions');
 assert.ok(/CAM_GROUPS|voiceCamCats/.test(camBridge), 'camera bridge has category framework');
 assert.ok(/Object\.keys\(CAM_META\)|listCameraRows/.test(camBridge), 'camera always builds catalog');
+assert.ok(/addPhrase/.test(camBridge), 'camera addPhrase write-back');
 
 assert.ok(/voiceKeysPhraseOnly/.test(keysBridge), 'keys phrase-only filter');
 assert.ok(/actionInstanceId/.test(keysBridge), 'keys keeps shortcut instances apart');
+assert.ok(/KEY_GROUPS|voiceKeysCats/.test(keysBridge), 'keys bridge has category framework');
+assert.ok(/KEY_META/.test(keysBridge), 'keys bridge has Chinese title map');
+assert.ok(/looksLikeId|labelForSlotForMapping/.test(keysBridge), 'keys prefers human titles over ids');
 
 assert.ok(html.includes('id="voiceCamCats"'), 'camera cats host');
+assert.ok(html.includes('id="voiceKeysCats"'), 'keys cats host');
 assert.ok(html.includes('id="voiceKeysPhraseOnly"'), 'keys phrase-only checkbox');
 
 const header = read('src/js/features/voice/voice-page-header-render.js');

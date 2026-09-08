@@ -1258,6 +1258,41 @@
   /** Session heal cache — avoid JSON.stringify+migrate on every Soft Pad scheme click (假死风暴). */
   var padHealDone = Object.create(null);
 
+  function defaultMiniChrome() {
+    return {
+      voiceChipEnabled: true,
+      voiceChipWhen: 'listening',
+      agentsBarEnabled: true,
+      textPreviewEnabled: true,
+      textPreviewWhen: 'listening',
+      toolsBarEnabled: true,
+      toolIds: [],
+      expandBtnEnabled: true,
+      closeBtnEnabled: true
+    };
+  }
+
+  function ensureMiniChrome(pad) {
+    if (!pad) return defaultMiniChrome();
+    var d = defaultMiniChrome();
+    var c = pad.miniChrome;
+    if (!c || typeof c !== 'object') {
+      pad.miniChrome = d;
+      return pad.miniChrome;
+    }
+    if (c.voiceChipEnabled == null) c.voiceChipEnabled = d.voiceChipEnabled;
+    if (c.voiceChipWhen !== 'armed') c.voiceChipWhen = 'listening';
+    if (c.agentsBarEnabled == null) c.agentsBarEnabled = d.agentsBarEnabled;
+    if (c.textPreviewEnabled == null) c.textPreviewEnabled = d.textPreviewEnabled;
+    if (c.textPreviewWhen !== 'hasText') c.textPreviewWhen = 'listening';
+    if (c.toolsBarEnabled == null) c.toolsBarEnabled = d.toolsBarEnabled;
+    if (!Array.isArray(c.toolIds)) c.toolIds = [];
+    if (c.expandBtnEnabled == null) c.expandBtnEnabled = d.expandBtnEnabled;
+    if (c.closeBtnEnabled == null) c.closeBtnEnabled = d.closeBtnEnabled;
+    pad.miniChrome = c;
+    return c;
+  }
+
   function invalidatePadHeal(m) {
     if (m && m.id) delete padHealDone[String(m.id)];
   }
@@ -1300,6 +1335,9 @@
         statusColors: {},
         topbarHabitIds: [],
         presentation: 'full',
+        miniUsagePillEnabled: true,
+        miniUsagePillHideEmpty: true,
+        miniChrome: defaultMiniChrome(),
         skin: 'default',
         keys: defaultSeedRoutes()
       };
@@ -1417,6 +1455,7 @@
         (m.codexMicroPad.presentation !== 'full' && m.codexMicroPad.presentation !== 'mini')) {
       m.codexMicroPad.presentation = 'full';
     }
+    ensureMiniChrome(m.codexMicroPad);
     m.codexMicroPad.skin = canonicalizePadSkin(m.codexMicroPad.skin);
     var before = JSON.stringify(m.codexMicroPad.keys);
     m.codexMicroPad.keys = migrateLegacyKeys(m.codexMicroPad.keys);
@@ -3426,7 +3465,8 @@
       return agentLightEnabledOnPad(pad, c.agent);
     });
     var habitIdsFull = topbarHabitIdsOnPad(pad);
-    return enabled.map(function (c) {
+    var maxChips = opts.maxChips > 0 ? opts.maxChips : 0;
+    var chipRows = enabled.map(function (c) {
       var focused = focus && c.agent === focus;
       return (
         '<button type="button" class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview' +
@@ -3446,7 +3486,9 @@
         '<img src="' + esc(habitIconForMappingId(hid)) + '" alt="" width="16" height="16" decoding="async" aria-hidden="true">' +
         '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
       );
-    })).join('');
+    }));
+    if (maxChips > 0 && chipRows.length > maxChips) chipRows = chipRows.slice(0, maxChips);
+    return chipRows.join('');
   }
 
   /** In-face chrome: scope title + optional status-light strip (matches live overlay). */
@@ -3471,7 +3513,7 @@
 
   function agentLightIconSrc(agent) {
     agent = String(agent || '').toLowerCase();
-    if (agent === 'copilotcli' || agent === 'copilot') {
+    if (agent === 'copilotcli' || agent === 'copilot' || agent === 'copilotvscode') {
       return 'icons/app-target/copilot.png';
     }
     if (agent === 'gemini') return 'icons/app-target/gemini.png';
@@ -3490,7 +3532,7 @@
       var appId = agent === 'codex' ? 'codex-chat'
         : agent === 'claude' ? 'claude-code'
           : agent === 'cursor' ? 'cursor-chat'
-            : agent === 'copilotcli' || agent === 'copilot' ? 'copilot-cli'
+            : agent === 'copilotcli' || agent === 'copilot' || agent === 'copilotvscode' ? 'copilot-cli'
               : agent === 'gemini' ? 'gemini-cli'
                 : agent === 'cline' ? 'cline-chat'
                   : agent === 'roo' ? 'roo-chat'
@@ -4324,28 +4366,36 @@
       '<button type="button" class="soft-pad-topbar-add__btn" data-act="topbar-add-open" ' +
       'aria-haspopup="dialog">' +
       esc(t('softPadTopbarAdd', '+ 添加')) + '</button></div>';
-    var connectHtml = opts.noConnect
+    var connectHtml = (opts.noConnect || opts.rosterOnly)
       ? ''
       : ('<div data-connect-host="1">' + renderConnectStatusSectionHtml(pad, {}, { mode: 'full' }) + '</div>');
-    var matrixHtml = opts.compact
+    var matrixHtml = (opts.compact || opts.rosterOnly)
       ? ''
       : ('<p class="codex-pad-mgr__hint soft-pad-agent-light-matrix">' +
         esc(t('softPadAgentLightsMatrix',
           '精度：Cursor/Claude/Codex 高（Hook/活动）；Trae Work 高（本地活跃度）；WorkBuddy/Trae Code/Qoder 高（仅 Hook，禁止进程假闪）；MiniMax 常亮额度灯（无运动）；Cline/OpenCode/Aider 中（仅 Hook）。')) +
         '</p>');
+    var headHtml = opts.rosterOnly
+      ? ''
+      : ('<p class="codex-pad-mgr__label">' + esc(t('softPadTopbarMonitorTitle', '顶栏监视')) + '</p>' +
+        '<p class="codex-pad-mgr__hint">' +
+        esc(t('softPadTopbarMonitorLead',
+          '跨应用显示忙闲；点条目可跳转习惯。只读观察，不是钉主控（主控始终 Auto）。切换「通用」习惯不会关掉 Soft Pad 键位。')) +
+        '</p>');
+    var quotaHtml = opts.rosterOnly
+      ? ''
+      : ('<p class="codex-pad-mgr__label" data-topbar-quota-lbl' +
+        (pendingQuotaKeyProvider ? '' : ' hidden') + '>' +
+        esc(t('softPadTopbarQuotaLbl', 'API 额度候补')) + '</p>' +
+        '<div class="soft-pad-topbar-light-active-list" data-topbar-quota-list role="list"></div>' +
+        renderQuotaKeyCardHtml());
     return (
-      '<article class="soft-pad-topbar-lights-card" data-topbar-lights-panel="1">' +
-      '<p class="codex-pad-mgr__label">' + esc(t('softPadTopbarMonitorTitle', '顶栏监视')) + '</p>' +
-      '<p class="codex-pad-mgr__hint">' +
-      esc(t('softPadTopbarMonitorLead',
-        '跨应用显示忙闲；点条目可跳转习惯。只读观察，不是钉主控（主控始终 Auto）。切换「通用」习惯不会关掉 Soft Pad 键位。')) +
-      '</p>' +
+      '<article class="soft-pad-topbar-lights-card' + (opts.rosterOnly ? ' is-roster-only' : '') +
+      '" data-topbar-lights-panel="1"' +
+      (opts.rosterOnly ? ' data-topbar-roster-only="1"' : '') + '>' +
+      headHtml +
       '<div class="soft-pad-topbar-light-active-list" role="list" aria-live="polite">' + activeHtml + '</div>' +
-      '<p class="codex-pad-mgr__label" data-topbar-quota-lbl' +
-      (pendingQuotaKeyProvider ? '' : ' hidden') + '>' +
-      esc(t('softPadTopbarQuotaLbl', 'API 额度候补')) + '</p>' +
-      '<div class="soft-pad-topbar-light-active-list" data-topbar-quota-list role="list"></div>' +
-      renderQuotaKeyCardHtml() +
+      quotaHtml +
       connectHtml +
       addHtml +
       '<p class="codex-pad-mgr__hint soft-pad-agent-light-legend">' +
@@ -4384,11 +4434,23 @@
   }
 
   function paintTopbarPreviewChipStatus(root, agent, status) {
-    if (!root) return;
-    var strip = root.querySelector('[data-lights-topbar-preview]');
-    if (!strip) return;
-    var chip = strip.querySelector('.soft-pad-agent-bar__chip[data-agent="' + agent + '"]');
-    if (chip) chip.setAttribute('data-status', status || 'idle');
+    if (!agent) return;
+    var hosts = [];
+    if (root) hosts.push(root);
+    try {
+      var Hub = global.OneToneSoftPadHub;
+      var ph = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
+      if (ph && hosts.indexOf(ph) < 0) hosts.push(ph);
+    } catch (_) {}
+    var sel =
+      '.soft-pad-agent-bar__chip[data-agent="' + agent + '"],' +
+      '.soft-pad-agent-bar__chip[data-agent="' + String(agent).toLowerCase() + '"]';
+    hosts.forEach(function (h) {
+      if (!h || !h.querySelectorAll) return;
+      h.querySelectorAll(sel).forEach(function (chip) {
+        chip.setAttribute('data-status', status || 'idle');
+      });
+    });
   }
 
   /** Soft Pad「更多」：横向标签 + 规整卡片（主题 segmented）。 */
@@ -6586,6 +6648,41 @@
 
   var presentationPersistTimer = 0;
   var presentationPersistPending = null;
+  var miniChromePersistTimer = 0;
+  var miniChromePersistPending = null;
+
+  function persistMiniChrome(m) {
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    var pad = m && m.codexMicroPad;
+    if (!invoke || !m || !m.id || !pad) return Promise.resolve();
+    var chrome = ensureMiniChrome(pad);
+    miniChromePersistPending = {
+      mappingId: String(m.id),
+      chrome: {
+        voiceChipEnabled: chrome.voiceChipEnabled !== false,
+        voiceChipWhen: chrome.voiceChipWhen === 'armed' ? 'armed' : 'listening',
+        agentsBarEnabled: chrome.agentsBarEnabled !== false,
+        textPreviewEnabled: chrome.textPreviewEnabled !== false,
+        textPreviewWhen: chrome.textPreviewWhen === 'hasText' ? 'hasText' : 'listening',
+        toolsBarEnabled: chrome.toolsBarEnabled !== false,
+        toolIds: Array.isArray(chrome.toolIds) ? chrome.toolIds.slice() : [],
+        expandBtnEnabled: chrome.expandBtnEnabled !== false,
+        closeBtnEnabled: chrome.closeBtnEnabled !== false
+      }
+    };
+    if (miniChromePersistTimer) clearTimeout(miniChromePersistTimer);
+    miniChromePersistTimer = setTimeout(function () {
+      miniChromePersistTimer = 0;
+      var args = miniChromePersistPending;
+      miniChromePersistPending = null;
+      if (!args) return;
+      invoke('cmd_codex_micro_pad_set_mini_chrome', args).catch(function (err) {
+        console.warn('[soft-pad] set_mini_chrome', err);
+      });
+    }, 120);
+    return Promise.resolve();
+  }
+
   function persistPresentation(m) {
     var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
     var pad = m && m.codexMicroPad;
@@ -6613,6 +6710,30 @@
         } catch (_) {}
         // Do NOT fall back to full persist()/cmd_save — quiet IPC is required.
       });
+    }, 120);
+    return Promise.resolve();
+  }
+
+  var miniPillPersistTimer = 0;
+  var miniPillPersistPending = null;
+  function persistMiniUsagePill(m) {
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    var pad = m && m.codexMicroPad;
+    if (!invoke || !m || !m.id || !pad) {
+      return Promise.resolve();
+    }
+    miniPillPersistPending = {
+      mappingId: String(m.id),
+      enabled: miniUsagePillOnPad(pad),
+      hideEmpty: miniUsagePillHideEmptyOnPad(pad)
+    };
+    if (miniPillPersistTimer) clearTimeout(miniPillPersistTimer);
+    miniPillPersistTimer = setTimeout(function () {
+      miniPillPersistTimer = 0;
+      var args = miniPillPersistPending;
+      miniPillPersistPending = null;
+      if (!args) return;
+      invoke('cmd_codex_micro_pad_set_mini_usage_pill', args).catch(function () {});
     }, 120);
     return Promise.resolve();
   }
@@ -9040,9 +9161,10 @@
     return t('softPadHubKindSoft', '我的应用');
   }
 
-  /** Agent subpage — v10/v12 lights config (center column). */
-  var softPadLightsSubtab = 'keys';
-  var softPadWorkbenchTab = 'readiness';
+  /** Agent subpage — v16.1 lights peer (match | data | mini). */
+  var softPadLightsSubtab = 'ambient';
+  var softPadWorkbenchTab = 'match';
+  var softPadMiniRail = 'agents';
 
   function getSoftPadLightsSubtab() {
     return softPadLightsSubtab;
@@ -9050,6 +9172,21 @@
 
   function getSoftPadWorkbenchTab() {
     return softPadWorkbenchTab;
+  }
+
+  function setSoftPadWorkbenchTab(tab) {
+    softPadWorkbenchTab = normalizeWorkbenchTab(tab);
+    return softPadWorkbenchTab;
+  }
+
+  function normalizeWorkbenchTab(tab) {
+    tab = String(tab || '');
+    /* Migrate v15c ids */
+    if (tab === 'readiness' || tab === 'lights') return 'match';
+    if (tab === 'cross') return 'mini';
+    if (tab === 'session') return 'match';
+    if (tab === 'match' || tab === 'data' || tab === 'mini') return tab;
+    return 'match';
   }
 
   function renderAmbientBezelCard(pad) {
@@ -9360,7 +9497,7 @@
       body =
         '<p class="codex-pad-mgr__hint" data-lights-keys-preset-lead="1">' +
         esc(t('softPadLightsKeysPresetLead',
-          '按键灯配色见下方；顶栏开关与接入请在「跨应用」Tab 管理。')) +
+          '按键灯配色见下方；顶栏开关与接入请在「迷你栏」管理。')) +
         '</p>';
     } else if (cap === 'customizable') {
       body =
@@ -9438,20 +9575,21 @@
   }
 
   function workbenchPreviewSubtab(tab) {
-    tab = tab || softPadWorkbenchTab;
-    if (tab === 'lights') {
-      return softPadLightsSubtab === 'ambient' ? 'ambient' : 'keys';
+    tab = normalizeWorkbenchTab(tab || softPadWorkbenchTab);
+    if (tab === 'match') {
+      return softPadLightsSubtab === 'keys' ? 'keys' : 'ambient';
     }
-    if (tab === 'session') return 'keys';
-    return 'topbar';
+    if (tab === 'mini') return 'topbar';
+    return 'ambient';
   }
 
   function workbenchPreviewOpts(tab) {
-    tab = tab || softPadWorkbenchTab;
+    tab = normalizeWorkbenchTab(tab || softPadWorkbenchTab);
     return {
       subtab: workbenchPreviewSubtab(tab),
       focusAgent: hubSelectedScopeKind(),
-      stripMode: tab === 'cross' ? 'full' : 'focus'
+      stripMode: 'focus',
+      previewFace: tab
     };
   }
 
@@ -9464,7 +9602,8 @@
     return { mode: mode, caps: caps };
   }
 
-  function renderAgentWorkbenchSubtabBar(activeTab, caps) {
+  function renderAgentWorkbenchSubtabBar(activeTab) {
+    activeTab = normalizeWorkbenchTab(activeTab);
     function btn(id, label) {
       var on = activeTab === id;
       return (
@@ -9474,16 +9613,13 @@
         '<span class="soft-pad-feature-subtab__lbl">' + esc(label) + '</span></button>'
       );
     }
-    var html =
-      btn('readiness', t('softPadWorkbenchTabReadiness', '准备度')) +
-      btn('lights', t('softPadWorkbenchTabLights', '灯效')) +
-      btn('cross', t('softPadWorkbenchTabCross', '跨应用'));
-    if (caps && caps.session) {
-      html += btn('session', t('softPadWorkbenchTabSession', '会话'));
-    }
     return (
       '<div class="soft-pad-agent-workbench__tabs" data-agent-workbench-tab-bar="1" role="tablist" aria-label="' +
-      esc(t('softPadWorkbenchTabsAria', 'Agent 工作台')) + '">' + html + '</div>'
+      esc(t('softPadWorkbenchTabsAria', '灯效与浮窗')) + '">' +
+      btn('match', t('softPadWorkbenchTabMatch', '灯效匹配')) +
+      btn('data', t('softPadWorkbenchTabData', '显示数据')) +
+      btn('mini', t('softPadWorkbenchTabMini', '迷你栏')) +
+      '</div>'
     );
   }
 
@@ -9497,11 +9633,12 @@
         '<span class="soft-pad-feature-subtab__lbl">' + esc(label) + '</span></button>'
       );
     }
+    /* v16: ambient first */
     return (
       '<div class="soft-pad-lights-subtabs soft-pad-agent-workbench__lights-tabs" data-lights-subtab-bar="1" role="tablist" aria-label="' +
       esc(t('softPadLightsSubtabsAria', '状态灯配置')) + '">' +
-      btn('keys', t('softPadLightsTabKeys', '按键灯')) +
       btn('ambient', t('softPadLightsTabAmbient', '氛围灯')) +
+      btn('keys', t('softPadLightsTabKeys', '按键灯')) +
       '</div>'
     );
   }
@@ -9513,7 +9650,13 @@
     var mid = m && m.id ? String(m.id) : '';
     var padOn = !!(pad && pad.enabled);
     return (
-      '<div class="soft-pad-agent-readiness" data-agent-readiness="1">' +
+      '<div class="soft-pad-agent-readiness soft-pad-agent-workbench__card" data-agent-readiness="1">' +
+      '<h4>' + esc(t('softPadMatchConnectTitle', '当前 Agent')) +
+      (scopeKind ? (' · ' + esc(String(scopeKind))) : '') + '</h4>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('softPadMatchConnectLead',
+        '灯要亮，先确认 Pad 开着、状态源接上。顶栏「亮谁」在迷你栏里调。')) +
+      '</p>' +
       '<div class="soft-pad-agent-readiness__row">' +
       '<span class="soft-pad-agent-readiness__lbl">' + esc(t('softPadReadinessPad', 'Pad')) + '</span>' +
       (mid
@@ -9525,10 +9668,10 @@
       '<span class="soft-pad-agent-readiness__hint">' +
       esc(padOn ? t('softPadHubStatusOn', '已启用') : t('softPadHubStatusOff', '未启用')) +
       '</span></div>' +
-      (caps.topbar
+      (caps && caps.topbar
         ? ('<p class="codex-pad-mgr__hint soft-pad-agent-readiness__topbar-hint">' +
           esc(t('softPadReadinessTopbarHint',
-            '顶栏状态灯在「跨应用」Tab 统一管理（添加/移除与接入）。')) + '</p>')
+            '顶栏状态灯在「迷你栏」统一管理（添加/移除与接入）。')) + '</p>')
         : '') +
       renderConnectStatusSectionHtml(pad, {}, { mode: 'scope', scopeAgent: scopeKind }) +
       '</div>'
@@ -9537,12 +9680,12 @@
 
   function renderAgentLightsPanel(m, pad, ctx) {
     ctx = ctx || {};
-    var caps = ctx.caps;
+    var caps = ctx.caps || {};
     var keysCap = caps.keys || keysLightsCapability(ctx.mode);
     var keysNa = keysCap === 'unsupported';
     var ambientNa = caps.ambient === false;
     var tab = softPadLightsSubtab;
-    if (tab !== 'keys' && tab !== 'ambient') tab = 'keys';
+    if (tab !== 'keys' && tab !== 'ambient') tab = 'ambient';
     var body = '';
     if (tab === 'ambient') {
       body = ambientNa
@@ -9563,16 +9706,582 @@
     );
   }
 
-  function renderAgentCrossPanel(pad) {
+  function previewMetaOnPad(pad) {
+    var meta = pad && pad.previewMeta && typeof pad.previewMeta === 'object' ? pad.previewMeta : null;
+    return {
+      account: !(meta && meta.account === false),
+      usage: !(meta && meta.usage === false),
+      reset: !(meta && meta.reset === false)
+    };
+  }
+
+  function scopeKindForDataPanel(m) {
+    var kind = '';
+    try { kind = String(hubSelectedScopeKind() || ''); } catch (_) {}
+    if (!kind) {
+      try {
+        var Hub = global.OneToneSoftPadHub;
+        if (Hub && Hub.kindForAppId && m) {
+          kind = String(Hub.kindForAppId(m.appTargetId) || '');
+        }
+      } catch (_) {}
+    }
+    return String(kind || '').toLowerCase();
+  }
+
+  function resolvePreviewUsageDetail(m) {
+    var kind = scopeKindForDataPanel(m);
+    try {
+      var Hub = global.OneToneSoftPadHub;
+      if (Hub && Hub.previewUsageDetailForScope) {
+        return Hub.previewUsageDetailForScope(kind) || { kind: kind };
+      }
+    } catch (_) {}
+    return { kind: kind };
+  }
+
+  function dataLiveMetric(key, label, value, opts) {
+    opts = opts || {};
+    var empty = value == null || value === '' || value === '—';
     return (
-      '<div class="soft-pad-agent-workbench__cross" data-agent-cross-panel="1">' +
-      '<p class="codex-pad-mgr__hint soft-pad-agent-cross-global-hint">' +
-      esc(t('softPadCrossGlobalHint',
-        '全局设置：影响 Soft Pad 顶栏显示哪些 Agent，与左侧「当前应用」无关。')) +
+      '<div class="soft-pad-agent-data-live__metric' + (empty ? ' is-empty' : '') +
+      (opts.wide ? ' is-wide' : '') + '" data-live-key="' + esc(key) + '">' +
+      '<span class="soft-pad-agent-data-live__k">' + esc(label) + '</span>' +
+      '<span class="soft-pad-agent-data-live__v">' + esc(empty ? '—' : String(value)) + '</span></div>'
+    );
+  }
+
+  function renderCursorDataLiveHtml(detail) {
+    detail = detail || {};
+    var metrics = '';
+    if (detail.ready) {
+      metrics += dataLiveMetric('turns', t('softPadDataCursorTurns', '今日对话'),
+        detail.turns != null ? (detail.turns + ' 次') : '—');
+      metrics += dataLiveMetric('sessions', t('softPadDataCursorSessions', 'Agent 会话'),
+        detail.sessions != null ? (detail.sessions + ' 个') : '—');
+      metrics += dataLiveMetric('active', t('softPadDataCursorActive', '今日活跃'),
+        detail.activeLabel || '—');
+      if (detail.deltaPct != null) {
+        var arrow = detail.deltaPct > 0 ? '↑' : (detail.deltaPct < 0 ? '↓' : '');
+        metrics += dataLiveMetric('delta', t('softPadDataCursorDelta', '较昨日对话'),
+          arrow + Math.abs(detail.deltaPct) + '%' +
+          (detail.yesterdayTurns != null ? ('（昨 ' + detail.yesterdayTurns + ' 次）') : ''));
+      } else if (detail.yesterdayTurns != null) {
+        metrics += dataLiveMetric('yest', t('softPadDataCursorYesterday', '昨日对话'),
+          detail.yesterdayTurns + ' 次');
+      }
+    } else {
+      metrics += dataLiveMetric('msg', t('softPadDataCursorStatus', '状态'),
+        detail.message || t('cursorActivityOff', '未启用 · 不会读取本机 Cursor 使用记录'),
+        { wide: true });
+    }
+    metrics += dataLiveMetric('state', t('softPadDataCursorReady', '数据状态'),
+      detail.ready
+        ? t('softPadDataCursorReadyOn', '已就绪 · 本地活动')
+        : t('softPadDataCursorReadyOff', '暂无读数'));
+    return (
+      '<div class="soft-pad-agent-data-live" data-agent-data-live="1" data-kind="cursor">' +
+      '<p class="soft-pad-agent-data-live__note">' +
+      esc(t('softPadDataCursorNote',
+        '以下为本机活动明细（非官方额度）。左侧用量条与顶栏第二行只摘录其中部分。')) +
       '</p>' +
-      renderCrossTopbarMergedPanel(pad, {}) +
+      '<div class="soft-pad-agent-data-live__grid">' + metrics + '</div></div>'
+    );
+  }
+
+  function renderGenericDataLiveHtml(detail, pad) {
+    detail = detail || {};
+    var meta = previewMetaOnPad(pad);
+    var metrics = '';
+    if (meta.account) {
+      var acct = String(detail.account || '').trim();
+      var plan = String(detail.plan || '').trim();
+      metrics += dataLiveMetric('account', t('softPadDataLiveAccount', '账号 / 套餐'),
+        acct && plan ? (acct + ' · ' + plan) : (acct || plan || '—'));
+    }
+    if (meta.usage) {
+      metrics += dataLiveMetric('usage', t('softPadDataLiveUsage', '用量摘要'),
+        String(detail.usageSummary || '').trim() || '—', { wide: true });
+    }
+    if (meta.reset) {
+      metrics += dataLiveMetric('reset', t('softPadDataLiveReset', '重置倒计时'),
+        String(detail.resetCountdown || '').trim() || '—');
+    }
+    if (!metrics) {
+      return (
+        '<p class="codex-pad-mgr__hint" data-agent-data-live="1">' +
+        esc(t('softPadDataPreviewOff', '第二行已关')) + '</p>'
+      );
+    }
+    if (detail.sourceLabel) {
+      metrics += dataLiveMetric('src', t('softPadDataLiveSource', '数据来源'), detail.sourceLabel);
+    }
+    return (
+      '<div class="soft-pad-agent-data-live" data-agent-data-live="1" data-kind="' +
+      esc(detail.kind || '') + '">' +
+      '<div class="soft-pad-agent-data-live__grid">' + metrics + '</div></div>'
+    );
+  }
+
+  function renderAgentDataLiveHtml(m, pad) {
+    var detail = resolvePreviewUsageDetail(m);
+    if (String(detail.kind || '') === 'cursor') {
+      return renderCursorDataLiveHtml(detail);
+    }
+    return renderGenericDataLiveHtml(detail, pad);
+  }
+
+  function patchAgentDataLive(body, m, pad) {
+    if (!body || !m || !pad) return;
+    var host = body.querySelector('[data-agent-data-live]');
+    if (!host) return;
+    var wrap = document.createElement('div');
+    wrap.innerHTML = renderAgentDataLiveHtml(m, pad);
+    var next = wrap.firstChild;
+    if (next) host.replaceWith(next);
+  }
+
+  function renderAgentDataQuotaBlock() {
+    var adds = TOPBAR_QUOTA_CANDIDATES.map(function (c) {
+      return (
+        '<button type="button" class="codex-micro-pad__btn" data-act="data-quota-open" data-provider="' +
+        esc(c.provider) + '">' + esc('+ ' + c.label) + '</button>'
+      );
+    }).join('');
+    return (
+      '<div class="soft-pad-agent-workbench__card" data-agent-data-quota="1">' +
+      '<h4>' + esc(t('softPadTopbarQuotaLbl', 'API 额度候补')) + '</h4>' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('softPadDataQuotaLead',
+        '填 key 后供迷你栏 pill 选用（不是登录 token）。')) +
+      '</p>' +
+      '<div class="soft-pad-topbar-light-active-list" data-topbar-quota-list role="list"></div>' +
+      '<div class="codex-pad-mgr__claude-act-actions soft-pad-agent-data-quota-adds">' + adds + '</div>' +
+      renderQuotaKeyCardHtml() +
       '</div>'
     );
+  }
+
+  function renderAgentDataPanel(m, pad) {
+    var meta = previewMetaOnPad(pad);
+    var kind = scopeKindForDataPanel(m);
+    var isCursor = kind === 'cursor';
+    function sw(key, on, label) {
+      return (
+        '<div class="soft-pad-agent-data-toggle">' +
+        '<span class="soft-pad-agent-data-toggle__lbl">' + esc(label) + '</span>' +
+        '<button type="button" class="toggle-switch' + (on ? ' is-on' : '') +
+        '" data-act="preview-meta" data-meta-key="' + esc(key) + '" role="switch" aria-checked="' +
+        (on ? 'true' : 'false') + '"></button></div>'
+      );
+    }
+    var sourceCard = isCursor
+      ? (
+        '<div class="soft-pad-agent-workbench__card" data-agent-data-cursor="1">' +
+        '<h4>' + esc(t('cursorActivityTitle', 'Cursor 本地活动统计')) + '</h4>' +
+        '<p class="codex-pad-mgr__hint">' +
+        esc(t('softPadDataCursorLead',
+          'Cursor 没有官方额度 API。数字来自本机活动统计（今日对话次数等）。顶栏「未接入」只影响灯效 Hook，不挡这里读数。')) +
+        '</p>' +
+        renderCursorActivityConsentCard() +
+        '</div>'
+      )
+      : renderAgentDataQuotaBlock();
+    return (
+      '<div class="soft-pad-agent-workbench__data" data-agent-data-panel="1">' +
+      '<p class="codex-pad-mgr__hint">' +
+      esc(t('softPadDataLead',
+        '盯左侧用量条比对。这里只管设置页看什么数，不管浮窗亮谁。')) +
+      '</p>' +
+      '<div class="soft-pad-agent-workbench__card">' +
+      '<h4>' + esc(t('softPadDataLiveTitle', '当前读数')) + '</h4>' +
+      renderAgentDataLiveHtml(m, pad) +
+      '</div>' +
+      '<div class="soft-pad-agent-workbench__card">' +
+      '<h4>' + esc(t('softPadDataMetaTitle', '设置页状态栏 · 第二行')) + '</h4>' +
+      sw('account', meta.account, t('softPadDataShowAccount', '显示账号')) +
+      sw('usage', meta.usage, t('softPadDataShowUsage', '显示额度')) +
+      sw('reset', meta.reset, t('softPadDataShowReset', '显示重置')) +
+      '</div>' +
+      sourceCard +
+      '<button type="button" class="codex-micro-pad__btn" data-act="goto-workbench" data-goto-tab="mini">' +
+      esc(t('softPadDataGotoMini', '去迷你栏调形态 / 亮谁 →')) +
+      '</button></div>'
+    );
+  }
+
+  function miniUsagePillOnPad(pad) {
+    return !pad || pad.miniUsagePillEnabled !== false;
+  }
+
+  function miniUsagePillHideEmptyOnPad(pad) {
+    return !pad || pad.miniUsagePillHideEmpty !== false;
+  }
+
+  function resolveMiniUsagePillCopy(m, pad) {
+    var kind = '';
+    try { kind = String(hubSelectedScopeKind() || ''); } catch (_) {}
+    if (!kind && m) {
+      try {
+        var Hub = global.OneToneSoftPadHub;
+        if (Hub && Hub.kindForAppId) kind = String(Hub.kindForAppId(m.appTargetId) || '');
+      } catch (_) {}
+    }
+    var abbr = ({
+      cursor: 'Cu', claude: 'Cl', codex: 'Cd', windsurf: 'Ws', trae: 'Tr',
+      traeCode: 'Tr', gemini: 'Ge', minimax: 'Mx', qoder: 'Qo'
+    })[kind] || (kind ? String(kind).slice(0, 2) : '');
+    try {
+      var HubD = global.OneToneSoftPadHub;
+      if (HubD && HubD.previewUsageDetailForScope) {
+        var d = HubD.previewUsageDetailForScope(kind || 'cursor') || {};
+        if (d.turns != null && isFinite(Number(d.turns))) {
+          return (abbr || 'Cu') + ' · ' + Math.round(Number(d.turns)) + '次';
+        }
+      }
+    } catch (_) {}
+    var props = resolvePreviewUsageProps(m);
+    var summary = String(props.usageSummary || '').trim();
+    if (summary && summary !== '—' && summary !== '--') {
+      /* Mini bar: first segment only — long “今日…会话…活跃…” belongs in 显示数据 */
+      var first = summary.split(/\s*[·/]\s*/)[0] || summary;
+      if (first.length > 14) first = first.slice(0, 12) + '…';
+      return abbr ? (abbr + ' · ' + first.replace(/^今日\s*/, '')) : first;
+    }
+    if (miniUsagePillHideEmptyOnPad(pad)) return '';
+    return '--';
+  }
+
+  function patchAgentMiniPillCopy(body, m, pad) {
+    if (!body || !pad) return;
+    var copyEl = body.querySelector('[data-mini-pill-copy]');
+    if (!copyEl) return;
+    var copy = resolveMiniUsagePillCopy(m, pad);
+    if (copy) {
+      copyEl.hidden = false;
+      copyEl.classList.remove('is-empty');
+      copyEl.textContent = copy;
+    } else {
+      copyEl.hidden = true;
+      copyEl.classList.add('is-empty');
+      copyEl.textContent = '';
+    }
+  }
+
+  function renderMiniChromeToggle(flag, on, label) {
+    return (
+      '<div class="soft-pad-agent-mini-pill-row soft-pad-agent-data-toggle soft-pad-agent-mini-toggle">' +
+      '<span class="soft-pad-agent-data-toggle__lbl">' + esc(label) + '</span>' +
+      '<button type="button" class="toggle-switch' + (on ? ' is-on' : '') +
+      '" data-act="mini-chrome" data-chrome-flag="' + esc(flag) +
+      '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '"></button></div>'
+    );
+  }
+
+  function renderMiniChromeSeg(key, cur, opts) {
+    return (
+      '<div class="soft-pad-agent-mini-seg" role="radiogroup" data-chrome-seg="' +
+      esc(key) + '">' +
+      opts.map(function (o) {
+        var on = cur === o.id;
+        return (
+          '<button type="button" class="soft-pad-agent-mini-seg__btn' + (on ? ' is-active' : '') +
+          '" data-chrome-seg-val="' + esc(o.id) + '" role="radio" aria-checked="' +
+          (on ? 'true' : 'false') + '">' +
+          (o.icon
+            ? ('<span class="soft-pad-agent-mini-seg__ico" aria-hidden="true">' + o.icon + '</span>')
+            : '') +
+          '<span class="soft-pad-agent-mini-seg__title">' + esc(o.title) + '</span>' +
+          (o.hint
+            ? ('<span class="soft-pad-agent-mini-seg__hint">' + esc(o.hint) + '</span>')
+            : '') +
+          '</button>'
+        );
+      }).join('') +
+      '</div>'
+    );
+  }
+
+  var MINI_TOOL_DEFS = [
+    { id: 'pushToTalk', label: '麦克风', slot: 'ACT10', ico: 'mic' },
+    { id: 'stopOrSend', label: '发送', slot: 'ACT12', ico: 'send' },
+    { id: 'continue', label: '继续', slot: 'AG02', ico: 'spark' },
+    { id: 'newThread', label: '新建', slot: 'AG01', ico: 'plus' },
+    { id: 'cancelListen', label: '取消', slot: 'ACT08', ico: 'x' }
+  ];
+  var MINI_TOOL_ICON = {
+    pushToTalk: '🎙',
+    stopOrSend: '⏎',
+    continue: '⚡',
+    newThread: '💬',
+    cancelListen: '⊘'
+  };
+  var MINI_TOOL_SVG = {
+    mic: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
+    send: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>',
+    spark: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3z"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 5v14M5 12h14"/><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+    x: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M7 7l10 10M17 7L7 17"/></svg>'
+  };
+
+  function renderAgentMiniPillCard(m, pad) {
+    var on = miniUsagePillOnPad(pad);
+    var hideEmpty = miniUsagePillHideEmptyOnPad(pad);
+    return (
+      '<div class="soft-pad-agent-mini-look-extras" data-agent-mini-pill-card="1">' +
+      '<span class="soft-pad-agent-mini-field__lbl">' +
+      esc(t('softPadMiniPillTitle', '条上用量')) + '</span>' +
+      renderMiniChromeToggle('__pillEnabled', on, t('softPadMiniPillShow', '显示当前前台用量')) +
+      renderMiniChromeToggle('__pillHideEmpty', hideEmpty, t('softPadMiniPillHideEmpty', '没数据时先藏着')) +
+      '</div>'
+    );
+  }
+
+  function ensureAutoTopbarLights(pad) {
+    if (!pad) return false;
+    var changed = false;
+    try {
+      var Hub = global.OneToneSoftPadHub;
+      var scopes = Hub && Hub.listAppScopes ? Hub.listAppScopes() : [];
+      scopes.forEach(function (scope) {
+        var kind = String((scope && (scope.kind || scope.id)) || '');
+        if (!kind || kind === 'universal' || kind.indexOf('softPad') === 0) return;
+        if (!(scope.installed || scope.connected || scope.padEnabled)) return;
+        if (!TOPBAR_LIGHT_CANDIDATES.some(function (c) { return c.agent === kind; })) return;
+        if (!agentLightEnabledOnPad(pad, kind)) {
+          setAgentLightFlagOnPad(pad, kind, true);
+          changed = true;
+        }
+      });
+    } catch (_) {}
+    if (changed) {
+      try {
+        var p = global.OneToneConfigPersist;
+        if (p && p.saveAsync) p.saveAsync();
+        else if (p && p.save) p.save();
+      } catch (_) {}
+    }
+    return changed;
+  }
+
+  function renderMiniAutoRoster(pad) {
+    ensureAutoTopbarLights(pad);
+    var Connect = global.OneToneSoftPadConnect;
+    var enabled = TOPBAR_LIGHT_CANDIDATES.filter(function (c) {
+      return agentLightEnabledOnPad(pad, c.agent);
+    });
+    var rows = enabled.map(function (c) {
+      var need = !!(Connect && Connect.isQuotaKind && Connect.isQuotaKind(c.agent));
+      return (
+        '<div class="soft-pad-mini-auto-row' + (need ? ' is-need' : '') +
+        '" data-mini-auto-agent="' + esc(c.agent) + '">' +
+        '<span class="soft-pad-agent-light-row__chip" data-agent="' + esc(c.agent) + '" data-status="idle">' +
+        '<img src="' + esc(agentLightIconSrc(c.agent)) + '" alt="" width="16" height="16" decoding="async" aria-hidden="true">' +
+        '<i class="soft-pad-agent-light-row__dot" aria-hidden="true"></i></span>' +
+        '<span class="soft-pad-mini-auto-row__name">' + esc(c.label) + '</span>' +
+        (need
+          ? ('<button type="button" class="codex-micro-pad__btn soft-pad-mini-auto-row__need" data-act="agent-light-connect" data-agent="' +
+            esc(c.agent) + '">' + esc(t('softPadMiniRosterSetup', '去配置')) + '</button>')
+          : '') +
+        '</div>'
+      );
+    }).join('');
+    if (!rows) {
+      rows = '<p class="codex-pad-mgr__hint">' +
+        esc(t('softPadMiniRosterEmptyAuto', '还没检测到已安装的 Agent。装好后会自动出现。')) +
+        '</p>';
+    }
+    return (
+      '<div class="soft-pad-mini-auto-roster" data-mini-auto-roster="1">' +
+      rows +
+      '</div>'
+    );
+  }
+
+  var MINI_RAIL_ICO = {
+    agents: '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><circle cx="7" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="17" cy="12" r="2.2" fill="currentColor"/></svg>',
+    speech: '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
+    tools: '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="3" y="7" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="10" y="7" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="17" y="7" width="4" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 16h16"/></svg>',
+    display: '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="3" y="8" width="18" height="8" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M7 12h4M14 12h3"/></svg>'
+  };
+
+  function miniRailCoach(rail) {
+    if (rail === 'speech') return t('softPadMiniCoachSpeech', '左边条下会亮：麦标 + 你说的话');
+    if (rail === 'tools') return t('softPadMiniCoachTools', '左边悬停第二行：点选的快捷钮会亮');
+    if (rail === 'display') return t('softPadMiniCoachDisplay', '左边对照细条 / 完整键盘；改完立刻换预览');
+    return t('softPadMiniCoachAgents', '左边第一行圆点 = 已装 Agent 的忙闲');
+  }
+
+  function renderMiniShowModeTabs(mode) {
+    mode = String(mode || 'follow');
+    var opts = [
+      ['follow', t('softPadMiniShowFollow', '跟前台'), t('softPadMiniShowFollowHint', 'Agent 在前才出')],
+      ['front', t('softPadMiniShowFront', '一直挂着'), t('softPadMiniShowFrontHint', '不跟前台藏起')],
+      ['mini', t('softPadMiniShowForceMini', '强制细条'), t('softPadMiniShowForceMiniHint', '固定迷你栏形态')],
+      ['hidden', t('softPadMiniShowHidden', '不浮出'), t('softPadMiniShowHiddenHint', '关掉悬浮窗')]
+    ];
+    return (
+      '<div class="soft-pad-show-mode-tabs soft-pad-agent-mini-show" role="tablist" aria-label="' +
+      esc(t('softPadMiniShowModeLbl', '何时浮出')) + '">' +
+      opts.map(function (o) {
+        var on = mode === o[0];
+        return (
+          '<button type="button" class="soft-pad-show-mode-tab' + (on ? ' is-active' : '') + '"' +
+          ' role="tab" data-act="showMode" data-show-mode="' + o[0] + '"' +
+          ' aria-selected="' + (on ? 'true' : 'false') + '">' +
+          '<span class="soft-pad-show-mode-tab__t">' + esc(o[1]) + '</span>' +
+          '<span class="soft-pad-show-mode-tab__h">' + esc(o[2]) + '</span></button>'
+        );
+      }).join('') +
+      '</div>'
+    );
+  }
+
+  function renderAgentMiniPanel(m, pad) {
+    var chrome = ensureMiniChrome(pad);
+    var cur = (pad && pad.presentation) === 'mini' ? 'mini' : 'full';
+    var showMode = resolveSoftPadShowMode(pad);
+    var toolIds = Array.isArray(chrome.toolIds) ? chrome.toolIds : [];
+    var toolsAll = !toolIds.length;
+    var rail = softPadMiniRail;
+    if (rail === 'voice' || rail === 'text') rail = 'speech';
+    if (['agents', 'speech', 'tools', 'display'].indexOf(rail) < 0) rail = 'agents';
+    softPadMiniRail = rail;
+    var railItems = [
+      ['agents', t('softPadMiniRosterTitle', '谁在忙')],
+      ['speech', t('softPadMiniSpeechTitle', '听你说话')],
+      ['tools', t('softPadMiniToolsTitle', '快捷钮')],
+      ['display', t('softPadMiniDisplayTitle', '浮窗形态')]
+    ];
+    var titles = {
+      agents: t('softPadMiniRosterTitle', '谁在忙'),
+      speech: t('softPadMiniSpeechTitle', '听你说话'),
+      tools: t('softPadMiniToolsTitle', '快捷钮'),
+      display: t('softPadMiniDisplayTitle', '浮窗形态')
+    };
+    var head = titles[rail] || titles.agents;
+    var detailBody = '';
+    if (rail === 'agents') {
+      detailBody =
+        renderMiniChromeToggle('agentsBarEnabled', chrome.agentsBarEnabled !== false,
+          t('softPadMiniAgentsShow', '条上显示忙闲圆点')) +
+        '<p class="soft-pad-agent-mini-note">' +
+        esc(t('softPadMiniRosterNote', '已安装的会自动进条；要额度的点「去配置」。')) +
+        '</p>' +
+        renderMiniAutoRoster(pad);
+    } else if (rail === 'speech') {
+      detailBody =
+        renderMiniChromeToggle('textPreviewEnabled', chrome.textPreviewEnabled !== false,
+          t('softPadMiniSpeechShow', '条下显示你说的话')) +
+        renderMiniChromeToggle('voiceChipEnabled', chrome.voiceChipEnabled !== false,
+          t('softPadMiniVoiceShow', '预览卡里带麦标')) +
+        '<div class="soft-pad-agent-mini-field">' +
+        '<span class="soft-pad-agent-mini-field__lbl">' +
+        esc(t('softPadMiniTextWhenLbl', '预览卡何时出现')) + '</span>' +
+        renderMiniChromeSeg('textPreviewWhen', chrome.textPreviewWhen === 'hasText' ? 'hasText' : 'listening', [
+          {
+            id: 'listening',
+            title: t('softPadMiniTextWhenListening', '说话时'),
+            hint: t('softPadMiniTextWhenListeningHint', '一开口就出'),
+            icon: MINI_TOOL_SVG.mic
+          },
+          {
+            id: 'hasText',
+            title: t('softPadMiniTextWhenHasText', '有字才出'),
+            hint: t('softPadMiniTextWhenHasTextHint', '有转写再显'),
+            icon: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 7h16M4 12h10M4 17h13"/></svg>'
+          }
+        ]) +
+        '</div>';
+    } else if (rail === 'tools') {
+      detailBody =
+        renderMiniChromeToggle('toolsBarEnabled', chrome.toolsBarEnabled !== false,
+          t('softPadMiniToolsShow', '悬停时出现快捷钮')) +
+        '<p class="soft-pad-agent-mini-note">' +
+        esc(t('softPadMiniToolsNote', '点亮的会出现在左边第二行；关掉的不显示。')) +
+        '</p>' +
+        '<div class="soft-pad-agent-mini-tools" data-mini-tools="1">' +
+        MINI_TOOL_DEFS.map(function (td) {
+          var on = toolsAll || toolIds.indexOf(td.id) >= 0;
+          var svg = MINI_TOOL_SVG[td.ico] || '';
+          return (
+            '<button type="button" class="soft-pad-agent-mini-tool' + (on ? ' is-active' : '') +
+            '" data-act="mini-tool-id" data-tool-id="' + esc(td.id) + '" aria-pressed="' +
+            (on ? 'true' : 'false') + '" title="' + esc(td.label + ' · ' + td.slot) + '">' +
+            '<span class="soft-pad-agent-mini-tool__ico" aria-hidden="true">' + svg + '</span>' +
+            '<span class="soft-pad-agent-mini-tool__lbl">' + esc(td.label) + '</span>' +
+            '<span class="soft-pad-agent-mini-tool__slot">' + esc(td.slot) + '</span></button>'
+          );
+        }).join('') +
+        '</div>';
+    } else {
+      detailBody =
+        '<div class="soft-pad-agent-mini-look-seg" role="radiogroup" aria-label="' +
+        esc(t('codexMicroPadPresentationLbl', '长什么样')) + '">' +
+        '<button type="button" class="soft-pad-agent-mini-look' + (cur === 'mini' ? ' is-active' : '') +
+        '" data-pad-presentation="mini" role="radio" aria-checked="' + (cur === 'mini' ? 'true' : 'false') + '">' +
+        '<span class="soft-pad-agent-mini-look__sketch soft-pad-agent-mini-look__sketch--mini" aria-hidden="true">' +
+        '<i></i><i></i><b></b></span>' +
+        '<span class="soft-pad-agent-mini-look__title">' +
+        esc(t('codexMicroPadPresentationMini', '细条')) + '</span>' +
+        '<span class="soft-pad-agent-mini-look__hint">' +
+        esc(t('softPadMiniBarHint', '当前前台 · 省略数据')) + '</span></button>' +
+        '<button type="button" class="soft-pad-agent-mini-look' + (cur === 'full' ? ' is-active' : '') +
+        '" data-pad-presentation="full" role="radio" aria-checked="' + (cur === 'full' ? 'true' : 'false') + '">' +
+        '<span class="soft-pad-agent-mini-look__sketch soft-pad-agent-mini-look__sketch--full" aria-hidden="true">' +
+        '<span></span><span></span><span></span><span></span></span>' +
+        '<span class="soft-pad-agent-mini-look__title">' +
+        esc(t('codexMicroPadPresentationFull', '完整键盘')) + '</span>' +
+        '<span class="soft-pad-agent-mini-look__hint">' +
+        esc(t('softPadMiniFullHint', '全名单 · 全量数据')) + '</span></button>' +
+        '</div>' +
+        '<div class="soft-pad-agent-mini-field">' +
+        '<span class="soft-pad-agent-mini-field__lbl">' +
+        esc(t('softPadMiniShowModeLbl', '何时浮出')) + '</span>' +
+        renderMiniShowModeTabs(showMode) +
+        '</div>' +
+        renderAgentMiniPillCard(m, pad) +
+        '<div class="soft-pad-agent-mini-look-extras soft-pad-agent-mini-look-win">' +
+        '<span class="soft-pad-agent-mini-field__lbl">' +
+        esc(t('softPadMiniWinLbl', '细条右侧按钮')) + '</span>' +
+        renderMiniChromeToggle('expandBtnEnabled', chrome.expandBtnEnabled !== false,
+          t('softPadMiniExpandShow', '显示「放大到完整键盘」')) +
+        renderMiniChromeToggle('closeBtnEnabled', chrome.closeBtnEnabled !== false,
+          t('softPadMiniCloseShow', '显示「关掉浮窗」')) +
+        '</div>';
+    }
+    return (
+      '<div class="soft-pad-agent-workbench__mini" data-agent-mini-panel="1" data-mini-five-chrome="1" data-mini-rail="' +
+      esc(rail) + '">' +
+      '<div class="soft-pad-agent-mini-rail-layout">' +
+      '<nav class="soft-pad-agent-mini-rail" aria-label="' +
+      esc(t('softPadMiniRailAria', '迷你栏分区')) + '">' +
+      railItems.map(function (it) {
+        return (
+          '<button type="button" class="soft-pad-agent-mini-rail__btn' +
+          (it[0] === rail ? ' is-on' : '') + '" data-act="mini-rail" data-mini-rail-id="' +
+          esc(it[0]) + '" aria-pressed="' + (it[0] === rail ? 'true' : 'false') + '">' +
+          '<span class="soft-pad-agent-mini-rail__ico" aria-hidden="true">' + (MINI_RAIL_ICO[it[0]] || '') +
+          '</span>' +
+          '<span class="soft-pad-agent-mini-rail__txt">' + esc(it[1]) + '</span></button>'
+        );
+      }).join('') +
+      '</nav>' +
+      '<div class="soft-pad-agent-workbench__card soft-pad-agent-mini-detail' +
+      (rail === 'display' ? ' is-look' : '') + '" data-mini-block="' + esc(rail) + '">' +
+      '<div class="soft-pad-agent-mini-detail__head"><h4>' + esc(head) + '</h4>' +
+      '<p class="soft-pad-agent-mini-detail__coach">' + esc(miniRailCoach(rail)) + '</p></div>' +
+      detailBody +
+      '</div></div>' +
+      '<button type="button" class="codex-micro-pad__btn" data-act="goto-workbench" data-goto-tab="data">' +
+      esc(t('softPadMiniGotoData', '用量来源 →')) +
+      '</button></div>'
+    );
+  }
+
+  function renderAgentCrossPanel(pad) {
+    /* Legacy alias — v16 mini hosts the roster */
+    return renderAgentMiniPanel(null, pad);
   }
 
   function renderAgentSessionPanel(m, pad) {
@@ -9583,11 +10292,20 @@
     );
   }
 
+  function renderAgentMatchPanel(m, pad, ctx) {
+    return (
+      '<div class="soft-pad-agent-workbench__match" data-agent-match-panel="1">' +
+      renderAgentReadinessPanel(m, pad, ctx) +
+      renderAgentLightsPanel(m, pad, ctx) +
+      '</div>'
+    );
+  }
+
   function renderAgentWorkbenchPanel(tab, m, pad, ctx) {
-    if (tab === 'lights') return renderAgentLightsPanel(m, pad, ctx);
-    if (tab === 'cross') return renderAgentCrossPanel(pad);
-    if (tab === 'session') return renderAgentSessionPanel(m, pad);
-    return renderAgentReadinessPanel(m, pad, ctx);
+    tab = normalizeWorkbenchTab(tab);
+    if (tab === 'data') return renderAgentDataPanel(m, pad);
+    if (tab === 'mini') return renderAgentMiniPanel(m, pad);
+    return renderAgentMatchPanel(m, pad, ctx);
   }
 
   function renderAgentWorkbench(m, pad) {
@@ -9608,9 +10326,7 @@
       }
     } catch (_) {}
     var isFg = fgLow && fgLow === String(scopeKind || '').toLowerCase();
-    var tab = softPadWorkbenchTab;
-    if (tab === 'session' && !caps.session) tab = 'readiness';
-    if (tab !== 'readiness' && tab !== 'lights' && tab !== 'cross' && tab !== 'session') tab = 'readiness';
+    var tab = normalizeWorkbenchTab(softPadWorkbenchTab);
     softPadWorkbenchTab = tab;
     var ctx = { mode: mode, caps: caps, agent: agent, scopeKind: scopeKind };
 
@@ -9624,7 +10340,7 @@
           esc(t('softPadConnectFgBadge', '当前前台')) + '</span>')
         : '') +
       '</header>' +
-      renderAgentWorkbenchSubtabBar(tab, caps) +
+      renderAgentWorkbenchSubtabBar(tab) +
       '<div class="soft-pad-agent-workbench__panel" data-agent-workbench-panel="1">' +
       renderAgentWorkbenchPanel(tab, m, pad, ctx) +
       '</div></div>'
@@ -9633,7 +10349,7 @@
 
   function applyAgentWorkbenchTab(body, m, pad, tab) {
     if (!body || !m || !pad) return;
-    if (tab !== 'readiness' && tab !== 'lights' && tab !== 'cross' && tab !== 'session') tab = 'readiness';
+    tab = normalizeWorkbenchTab(tab);
     softPadWorkbenchTab = tab;
     var root = body.querySelector('[data-agent-workbench]');
     if (root) root.setAttribute('data-agent-workbench-tab', tab);
@@ -9656,11 +10372,11 @@
         scopeKind: scopeKind
       });
     }
-    if (tab === 'lights') {
+    if (tab === 'match') {
       var lightsTab = softPadLightsSubtab;
-      if (lightsTab !== 'keys' && lightsTab !== 'ambient') softPadLightsSubtab = 'keys';
+      if (lightsTab !== 'keys' && lightsTab !== 'ambient') softPadLightsSubtab = 'ambient';
       var keysCap = keysLightsCapability(resolveLightsPanelMode(m));
-      if (keysCap === 'preset' || keysCap === 'customizable') {
+      if (softPadLightsSubtab === 'keys' && (keysCap === 'preset' || keysCap === 'customizable')) {
         var advHost = body.querySelector('.soft-pad-lights-advanced__body');
         if (advHost) advHost.setAttribute('data-filled', '0');
         fillStatusLightsAdvanced(body, m, pad);
@@ -9674,10 +10390,277 @@
     bindTopbarLightsPanelEvents(body, m, pad);
     bindAgentConnectEvents(body, m, pad);
     bindSoftPadLightsSubtabEvents(body, m, pad);
+    bindAgentWorkbenchPanelEvents(body, m, pad);
+    if (tab === 'data') {
+      try { refreshCursorActivityPrefDom(body); } catch (_) {}
+      try {
+        var HubData = global.OneToneSoftPadHub;
+        if (HubData && HubData.requestOverlayUsageForScope) {
+          HubData.requestOverlayUsageForScope(hubSelectedScopeKind());
+        }
+      } catch (_) {}
+      setTimeout(function () {
+        try { patchAgentDataLive(body, m, pad); } catch (_) {}
+        try {
+          var HubStrip = global.OneToneSoftPadHub;
+          if (HubStrip && HubStrip.syncAgentPreviewUsageStrip) HubStrip.syncAgentPreviewUsageStrip();
+        } catch (_) {}
+      }, 160);
+    }
+    if (tab === 'mini') {
+      try {
+        var HubMini = global.OneToneSoftPadHub;
+        if (HubMini && HubMini.requestOverlayUsageForScope) {
+          HubMini.requestOverlayUsageForScope(hubSelectedScopeKind());
+        }
+      } catch (_) {}
+      setTimeout(function () {
+        try {
+          patchAgentMiniPillCopy(body, m, pad);
+          var HubStripM = global.OneToneSoftPadHub;
+          if (HubStripM && HubStripM.syncAgentPreviewUsageStrip) HubStripM.syncAgentPreviewUsageStrip();
+        } catch (_) {}
+      }, 160);
+    }
     var Hub = global.OneToneSoftPadHub;
     var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
     syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts(tab));
     echoStatusPaletteOnSoftPads(pad);
+  }
+
+  function bindAgentWorkbenchPanelEvents(body, m, pad) {
+    if (!body || !m || !pad) return;
+    body.querySelectorAll('[data-pad-presentation]').forEach(function (btn) {
+      if (btn.__wbPresBound) return;
+      btn.__wbPresBound = true;
+      btn.addEventListener('click', function () {
+        var next = btn.getAttribute('data-pad-presentation');
+        if (!next || (next !== 'full' && next !== 'mini')) return;
+        if (pad.presentation === next) return;
+        pad.presentation = next;
+        body.querySelectorAll('[data-pad-presentation]').forEach(function (b) {
+          var on = b.getAttribute('data-pad-presentation') === next;
+          b.classList.toggle('is-active', on);
+          b.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+        persistPresentation(m);
+        softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
+        var Hub = global.OneToneSoftPadHub;
+        var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
+        syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts('mini'));
+      });
+    });
+    body.querySelectorAll('[data-act="mini-usage-pill"]').forEach(function (btn) {
+      if (btn.__wbMiniPillBound) return;
+      btn.__wbMiniPillBound = true;
+      btn.addEventListener('click', function () {
+        var flag = btn.getAttribute('data-pill-flag') || '';
+        if (flag === 'enabled') {
+          pad.miniUsagePillEnabled = !miniUsagePillOnPad(pad);
+        } else if (flag === 'hideEmpty') {
+          pad.miniUsagePillHideEmpty = !miniUsagePillHideEmptyOnPad(pad);
+        } else {
+          return;
+        }
+        var on = flag === 'enabled' ? miniUsagePillOnPad(pad) : miniUsagePillHideEmptyOnPad(pad);
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-checked', on ? 'true' : 'false');
+        persistMiniUsagePill(m);
+        patchAgentMiniPillCopy(body, m, pad);
+        var Hub = global.OneToneSoftPadHub;
+        var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
+        if (previewHost) patchAgentMiniBarPreviewPill(previewHost, m, pad);
+        softPadPanelChanged(m, { panel: 'agent', refreshPreview: false });
+      });
+    });
+    body.querySelectorAll('[data-act="mini-rail"]').forEach(function (btn) {
+      if (btn.__wbMiniRailBound) return;
+      btn.__wbMiniRailBound = true;
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-mini-rail-id') || 'agents';
+        if (['agents', 'speech', 'tools', 'display', 'voice', 'text'].indexOf(id) < 0) id = 'agents';
+        if (id === 'voice' || id === 'text') id = 'speech';
+        if (id === softPadMiniRail) return;
+        softPadMiniRail = id;
+        applyAgentWorkbenchTab(body, m, pad, 'mini');
+        softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
+      });
+    });
+    body.querySelectorAll('[data-act="mini-chrome"]').forEach(function (btn) {
+      if (btn.__wbMiniChromeBound) return;
+      btn.__wbMiniChromeBound = true;
+      btn.addEventListener('click', function () {
+        var flag = btn.getAttribute('data-chrome-flag') || '';
+        if (flag === '__pillEnabled') {
+          pad.miniUsagePillEnabled = !miniUsagePillOnPad(pad);
+          var pillOn = miniUsagePillOnPad(pad);
+          btn.classList.toggle('is-on', pillOn);
+          btn.setAttribute('aria-checked', pillOn ? 'true' : 'false');
+          persistMiniUsagePill(m);
+          patchAgentMiniPillCopy(body, m, pad);
+          var HubP = global.OneToneSoftPadHub;
+          var ph = HubP && HubP.previewHostForFace ? HubP.previewHostForFace('agent') : null;
+          if (ph) patchAgentMiniBarPreviewPill(ph, m, pad);
+          softPadPanelChanged(m, { panel: 'agent', refreshPreview: false });
+          return;
+        }
+        if (flag === '__pillHideEmpty') {
+          pad.miniUsagePillHideEmpty = !miniUsagePillHideEmptyOnPad(pad);
+          var hideOn = miniUsagePillHideEmptyOnPad(pad);
+          btn.classList.toggle('is-on', hideOn);
+          btn.setAttribute('aria-checked', hideOn ? 'true' : 'false');
+          persistMiniUsagePill(m);
+          patchAgentMiniPillCopy(body, m, pad);
+          var HubH = global.OneToneSoftPadHub;
+          var ph2 = HubH && HubH.previewHostForFace ? HubH.previewHostForFace('agent') : null;
+          if (ph2) patchAgentMiniBarPreviewPill(ph2, m, pad);
+          softPadPanelChanged(m, { panel: 'agent', refreshPreview: false });
+          return;
+        }
+        var chrome = ensureMiniChrome(pad);
+        if (!(flag in chrome) && flag !== 'voiceChipEnabled' && flag !== 'agentsBarEnabled' &&
+            flag !== 'textPreviewEnabled' && flag !== 'toolsBarEnabled' &&
+            flag !== 'expandBtnEnabled' && flag !== 'closeBtnEnabled') {
+          return;
+        }
+        chrome[flag] = !(chrome[flag] !== false);
+        var on = chrome[flag] !== false;
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-checked', on ? 'true' : 'false');
+        persistMiniChrome(m);
+        softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
+      });
+    });
+    body.querySelectorAll('[data-chrome-seg]').forEach(function (seg) {
+      if (seg.__wbChromeSegBound) return;
+      seg.__wbChromeSegBound = true;
+      seg.querySelectorAll('[data-chrome-seg-val]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var key = seg.getAttribute('data-chrome-seg') || '';
+          var val = btn.getAttribute('data-chrome-seg-val') || '';
+          var chrome = ensureMiniChrome(pad);
+          if (key === 'voiceChipWhen') chrome.voiceChipWhen = val === 'armed' ? 'armed' : 'listening';
+          else if (key === 'textPreviewWhen') chrome.textPreviewWhen = val === 'hasText' ? 'hasText' : 'listening';
+          else return;
+          seg.querySelectorAll('[data-chrome-seg-val]').forEach(function (b) {
+            var on = b.getAttribute('data-chrome-seg-val') === chrome[key];
+            b.classList.toggle('is-active', on);
+            b.setAttribute('aria-checked', on ? 'true' : 'false');
+          });
+          persistMiniChrome(m);
+          softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
+        });
+      });
+    });
+    body.querySelectorAll('[data-act="mini-tool-id"]').forEach(function (btn) {
+      if (btn.__wbMiniToolBound) return;
+      btn.__wbMiniToolBound = true;
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-tool-id') || '';
+        if (!id) return;
+        var chrome = ensureMiniChrome(pad);
+        var allIds = MINI_TOOL_DEFS.map(function (x) { return x.id; });
+        var cur = Array.isArray(chrome.toolIds) ? chrome.toolIds.slice() : [];
+        if (!cur.length) cur = allIds.slice();
+        var i = cur.indexOf(id);
+        if (i >= 0) cur.splice(i, 1);
+        else cur.push(id);
+        cur = allIds.filter(function (x) { return cur.indexOf(x) >= 0; });
+        chrome.toolIds = cur.length === allIds.length ? [] : cur;
+        var on = !chrome.toolIds.length || chrome.toolIds.indexOf(id) >= 0;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        persistMiniChrome(m);
+        softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
+      });
+    });
+    body.querySelectorAll('button[data-act="showMode"][data-show-mode]').forEach(function (btn) {
+      if (btn.__wbShowModeBound) return;
+      btn.__wbShowModeBound = true;
+      btn.addEventListener('click', function () {
+        var mode = btn.getAttribute('data-show-mode') || 'follow';
+        applySoftPadShowMode(m, mode);
+        syncSoftPadShowModeChrome(body, mode, pad);
+        softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
+      });
+    });
+    body.querySelectorAll('[data-act="preview-meta"]').forEach(function (btn) {
+      if (btn.__wbMetaBound) return;
+      btn.__wbMetaBound = true;
+      btn.addEventListener('click', function () {
+        var key = btn.getAttribute('data-meta-key') || '';
+        if (key !== 'account' && key !== 'usage' && key !== 'reset') return;
+        if (!pad.previewMeta || typeof pad.previewMeta !== 'object') pad.previewMeta = {};
+        var cur = previewMetaOnPad(pad);
+        var nextOn = !cur[key];
+        pad.previewMeta[key] = nextOn;
+        btn.classList.toggle('is-on', nextOn);
+        btn.setAttribute('aria-checked', nextOn ? 'true' : 'false');
+        try { persist(); } catch (_) {}
+        patchAgentDataLive(body, m, pad);
+        var Hub = global.OneToneSoftPadHub;
+        var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
+        syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts('data'));
+      });
+    });
+    body.querySelectorAll('[data-act="data-quota-open"]').forEach(function (btn) {
+      if (btn.__wbQuotaBound) return;
+      btn.__wbQuotaBound = true;
+      btn.addEventListener('click', function () {
+        var provider = btn.getAttribute('data-provider') || '';
+        if (!quotaCandidate(provider)) return;
+        pendingQuotaKeyProvider = provider;
+        var card = body.querySelector('[data-agent-data-quota]');
+        if (card) {
+          var tmp = document.createElement('div');
+          tmp.innerHTML = renderAgentDataQuotaBlock();
+          var next = tmp.firstChild;
+          if (next) {
+            card.replaceWith(next);
+            bindTopbarLightsPanelEvents(body, m, pad);
+            bindAgentWorkbenchPanelEvents(body, m, pad);
+          }
+        }
+      });
+    });
+    body.querySelectorAll('[data-act="cursor-activity-enable"]').forEach(function (btn) {
+      if (btn.__wbActBound) return;
+      btn.__wbActBound = true;
+      btn.addEventListener('click', function () {
+        setCursorActivityPref(true).then(function () {
+          patchAgentDataLive(body, m, pad);
+          try {
+            var Hub = global.OneToneSoftPadHub;
+            if (Hub && Hub.requestOverlayUsageForScope) {
+              Hub.requestOverlayUsageForScope('cursor');
+            }
+            if (Hub && Hub.syncAgentPreviewUsageStrip) Hub.syncAgentPreviewUsageStrip();
+          } catch (_) {}
+        });
+      });
+    });
+    body.querySelectorAll('[data-act="cursor-activity-disable"]').forEach(function (btn) {
+      if (btn.__wbActBound) return;
+      btn.__wbActBound = true;
+      btn.addEventListener('click', function () {
+        setCursorActivityPref(false).then(function () {
+          patchAgentDataLive(body, m, pad);
+          try {
+            var Hub = global.OneToneSoftPadHub;
+            if (Hub && Hub.syncAgentPreviewUsageStrip) Hub.syncAgentPreviewUsageStrip();
+          } catch (_) {}
+        });
+      });
+    });
+    body.querySelectorAll('[data-act="goto-workbench"]').forEach(function (btn) {
+      if (btn.__wbGotoBound) return;
+      btn.__wbGotoBound = true;
+      btn.addEventListener('click', function () {
+        var next = normalizeWorkbenchTab(btn.getAttribute('data-goto-tab'));
+        if (next === softPadWorkbenchTab) return;
+        applyAgentWorkbenchTab(body, m, pad, next);
+      });
+    });
   }
 
   function bindAgentWorkbenchSubtabEvents(body, m, pad) {
@@ -9686,7 +10669,7 @@
       if (btn.__workbenchTabBound) return;
       btn.__workbenchTabBound = true;
       btn.addEventListener('click', function () {
-        var next = btn.getAttribute('data-agent-workbench-tab') || 'readiness';
+        var next = normalizeWorkbenchTab(btn.getAttribute('data-agent-workbench-tab'));
         if (next === softPadWorkbenchTab) return;
         applyAgentWorkbenchTab(body, m, pad, next);
       });
@@ -9695,10 +10678,178 @@
 
   function patchAgentWorkbench(body, m, pad) {
     if (!body || !m || !pad) return;
-    var tab = softPadWorkbenchTab;
-    var resolved = resolveAgentWorkbenchCaps(m, hubSelectedScopeKind());
-    if (tab === 'session' && !resolved.caps.session) tab = 'readiness';
-    applyAgentWorkbenchTab(body, m, pad, tab);
+    applyAgentWorkbenchTab(body, m, pad, normalizeWorkbenchTab(softPadWorkbenchTab));
+  }
+
+  function resolvePreviewUsageProps(m) {
+    var kind = '';
+    try { kind = String(hubSelectedScopeKind() || ''); } catch (_) {}
+    if (!kind) {
+      try {
+        var HubKind = global.OneToneSoftPadHub;
+        if (HubKind && HubKind.kindForAppId && m) {
+          kind = String(HubKind.kindForAppId(m.appTargetId) || '');
+        }
+      } catch (_) {}
+    }
+    try {
+      var Hub = global.OneToneSoftPadHub;
+      if (Hub && Hub.previewUsagePropsForScope) {
+        return Hub.previewUsagePropsForScope(kind) || {};
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  function renderAgentLeftDataStrip(m, pad) {
+    var meta = previewMetaOnPad(pad);
+    var mode = resolveLightsPanelMode(m);
+    var name = appDisplayName(m, mode);
+    var props = resolvePreviewUsageProps(m);
+    var bits = [];
+    if (meta.account) {
+      var acct = String(props.account || '').trim();
+      var plan = String(props.plan || '').trim();
+      bits.push(acct && plan ? (acct + ' · ' + plan) : (acct || plan || String(name || '—')));
+    }
+    if (meta.usage) {
+      var usage = String(props.usageSummary || '').trim();
+      bits.push(usage || t('softPadDataPreviewUsage', '额度 —'));
+    }
+    if (meta.reset) {
+      var reset = String(props.resetCountdown || '').trim();
+      bits.push(reset && reset !== '—'
+        ? reset
+        : t('softPadDataPreviewReset', '重置 —'));
+    }
+    if (!bits.length) bits.push(t('softPadDataPreviewOff', '第二行已关'));
+    return (
+      '<div class="soft-pad-agent-left-data" data-agent-left-data="1">' +
+      esc(bits.join(' · ')) + '</div>'
+    );
+  }
+
+  function patchAgentLeftDataStrip(host, m, pad) {
+    if (!host || !m || !pad) return;
+    var el = host.querySelector('[data-agent-left-data]');
+    if (!el) return;
+    var wrap = document.createElement('div');
+    wrap.innerHTML = renderAgentLeftDataStrip(m, pad);
+    var next = wrap.firstChild;
+    if (next) el.replaceWith(next);
+  }
+
+  function renderAgentMiniBarPreview(pad, opts) {
+    opts = opts || {};
+    var chrome = ensureMiniChrome(pad);
+    var rail = softPadMiniRail;
+    if (rail === 'voice' || rail === 'text') rail = 'speech';
+    var chips = buildTopbarPreviewChipsHtml(pad, Object.assign({}, opts, { stripMode: 'focus' }));
+    var pillOn = miniUsagePillOnPad(pad);
+    var copy = '';
+    try {
+      var Hub = global.OneToneSoftPadHub;
+      var entry = Hub && Hub.resolveSoftPadEntry ? Hub.resolveSoftPadEntry() : null;
+      var m = entry && entry.mapping ? entry.mapping : null;
+      copy = resolveMiniUsagePillCopy(m, pad);
+    } catch (_) {}
+    var showPill = pillOn && (!!copy || !miniUsagePillHideEmptyOnPad(pad));
+    if (showPill && !copy) copy = '--';
+    var pillHtml = showPill
+      ? ('<span class="soft-pad-agent-mini-bar__pill" data-mini-usage-pill="1" data-mini-zone="pill">' + esc(copy) + '</span>')
+      : '<span class="soft-pad-agent-mini-bar__pill" data-mini-usage-pill="1" data-mini-zone="pill" hidden></span>';
+    var winOn = rail === 'display' || chrome.expandBtnEnabled !== false || chrome.closeBtnEnabled !== false;
+    var winHtml = winOn
+      ? ('<span class="soft-pad-agent-mini-bar__win" data-mini-zone="win">' +
+        (chrome.expandBtnEnabled !== false
+          ? ('<span class="soft-pad-agent-mini-bar__winbtn" title="' +
+            esc(t('softPadMiniExpandShow', '显示「放大到完整键盘」')) + '">⤢</span>')
+          : '') +
+        (chrome.closeBtnEnabled !== false
+          ? ('<span class="soft-pad-agent-mini-bar__winbtn" title="' +
+            esc(t('softPadMiniCloseShow', '显示「关掉浮窗」')) + '">×</span>')
+          : '') +
+        '</span>')
+      : '';
+    var listenHtml = chrome.voiceChipEnabled !== false
+      ? ('<span class="soft-pad-agent-mini-bar__listen" data-mini-listen-halo="1" aria-label="' +
+        esc(t('softPadMiniVoiceTitle', '听音提示')) + '">' +
+        '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">' +
+        '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/>' +
+        '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 11a7 7 0 0014 0M12 18v3"/>' +
+        '</svg></span>')
+      : '<span class="soft-pad-agent-mini-bar__listen" data-mini-listen-halo="1" hidden></span>';
+    var toolIds = Array.isArray(chrome.toolIds) ? chrome.toolIds : [];
+    var toolsAll = !toolIds.length;
+    var toolsOn = chrome.toolsBarEnabled !== false;
+    var toolsHtml = toolsOn
+      ? ('<div class="soft-pad-agent-mini-bar__tools" data-mini-preview-tools="1" data-mini-zone="tools">' +
+        MINI_TOOL_DEFS.filter(function (td) {
+          return toolsAll || toolIds.indexOf(td.id) >= 0;
+        }).map(function (td) {
+          var svg = MINI_TOOL_SVG[td.ico] || '';
+          return '<span class="soft-pad-agent-mini-bar__tool" title="' + esc(td.label) + '" aria-label="' +
+            esc(td.label) + '">' + (svg || (MINI_TOOL_ICON[td.id] || '·')) + '</span>';
+        }).join('') +
+        '<button type="button" class="soft-pad-agent-mini-bar__tool soft-pad-agent-mini-bar__tool--settings" title="' +
+        esc(t('softPadMiniSettingsBtn', '迷你栏设置')) + '" aria-label="' +
+        esc(t('softPadMiniSettingsBtn', '迷你栏设置')) + '">⚙</button></div>')
+      : '<div class="soft-pad-agent-mini-bar__tools" data-mini-preview-tools="1" data-mini-zone="tools" hidden></div>';
+    var speechForce = rail === 'speech';
+    var speechOn = speechForce;
+    var speechHtml = speechOn
+      ? ('<div class="soft-pad-agent-mini-bar__speech" data-mini-speech="1" data-mini-zone="speech">' +
+        listenHtml +
+        '<span class="soft-pad-agent-mini-bar__speech-text">' +
+        esc(t('softPadMiniSpeechSample', '你说的话…')) +
+        '</span></div>')
+      : '<div class="soft-pad-agent-mini-bar__speech" data-mini-speech="1" data-mini-zone="speech" hidden></div>';
+    var busyHtml = chrome.agentsBarEnabled === false
+      ? ''
+      : ('<div class="soft-pad-agent-mini-bar__busy" data-mini-zone="agents">' +
+        '<div class="soft-pad-agent-bar soft-pad-agent-bar--preview soft-pad-agent-mini-bar__chips">' +
+        (chips || '') +
+        '</div></div>');
+    return (
+      '<div class="soft-pad-agent-mini-bar-stage is-demo' +
+      (rail === 'tools' ? ' is-mini-rail-tools' : '') +
+      (rail === 'speech' ? ' is-mini-rail-speech' : '') +
+      (rail === 'agents' ? ' is-mini-rail-agents' : '') +
+      (rail === 'display' ? ' is-mini-rail-display' : '') +
+      '" data-agent-mini-bar="1" data-mini-rail-focus="' +
+      esc(rail) + '" aria-label="' +
+      esc(t('softPadMiniBarPreviewAria', '迷你栏预览')) + '">' +
+      '<div class="soft-pad-agent-mini-demo-banner">' +
+      '<b>' + esc(t('softPadMiniDemoEditing', '正在改')) + '</b> ' +
+      esc(miniRailCoach(rail)) +
+      '</div>' +
+      '<div class="soft-pad-agent-mini-bar' + (chrome.agentsBarEnabled === false ? ' is-agents-off' : '') + '">' +
+      '<div class="soft-pad-agent-mini-bar__row">' +
+      busyHtml +
+      '<div class="soft-pad-agent-mini-bar__data">' + pillHtml + winHtml + '</div>' +
+      '</div>' +
+      toolsHtml +
+      '</div>' +
+      speechHtml +
+      '</div>'
+    );
+  }
+
+  function patchAgentMiniBarPreviewPill(host, m, pad) {
+    if (!host || !pad) return;
+    var el = host.querySelector('[data-mini-usage-pill]');
+    if (!el) return;
+    var pillOn = miniUsagePillOnPad(pad);
+    var copy = resolveMiniUsagePillCopy(m, pad);
+    var showPill = pillOn && (!!copy || !miniUsagePillHideEmptyOnPad(pad));
+    if (showPill && !copy) copy = '--';
+    if (!showPill) {
+      el.hidden = true;
+      el.textContent = '';
+      return;
+    }
+    el.hidden = false;
+    el.textContent = copy;
   }
 
   function renderStatusLightsPreviewLegend() {
@@ -9725,30 +10876,48 @@
   function syncStatusLightsPreviewChrome(host, m, pad, opts) {
     opts = opts || {};
     if (!host) return;
-    var tab = opts.subtab || softPadLightsSubtab || 'keys';
-    if (tab !== 'topbar' && tab !== 'ambient' && tab !== 'keys') tab = 'keys';
-    host.querySelectorAll('[data-lights-topbar-preview], [data-lights-preview-legend]').forEach(function (el) {
+    var face = normalizeWorkbenchTab(opts.previewFace || softPadWorkbenchTab);
+    var tab = opts.subtab || workbenchPreviewSubtab(face);
+    if (tab !== 'topbar' && tab !== 'ambient' && tab !== 'keys') tab = 'ambient';
+    host.querySelectorAll(
+      '[data-lights-topbar-preview], [data-lights-preview-legend], [data-agent-left-data], [data-agent-mini-bar]'
+    ).forEach(function (el) {
       el.remove();
     });
     if (!m || !pad) return;
     var mode = resolveLightsPanelMode(m);
+    /* 细条 = FG abbrev mini bar; 完整键盘 / 显示数据 = full roster + full metrics */
+    var showMini = face === 'mini' && pad.presentation === 'mini';
     host.setAttribute('data-lights-preview-mode', mode);
     host.setAttribute('data-lights-subtab', tab);
     host.setAttribute('data-lights-preview-accent', tab);
+    host.setAttribute('data-agent-preview-face', face);
+    host.setAttribute('data-agent-preview-presentation', pad.presentation === 'mini' ? 'mini' : 'full');
+    host.classList.toggle('is-agent-preview-mini', showMini);
+    host.classList.toggle('is-agent-preview-data', face === 'data' || (face === 'mini' && !showMini));
     if (mode === 'custom') {
       host.setAttribute('data-light-template', String(pad.lightTemplate || 'bezel'));
     } else {
       host.removeAttribute('data-light-template');
     }
     applyStatusPaletteToPreview(host, pad);
-    host.insertAdjacentHTML('afterbegin', renderTopbarPreviewStrip(pad, {
+    var stripOpts = {
       focusAgent: opts.focusAgent || hubSelectedScopeKind(),
-      stripMode: opts.stripMode
-    }));
-    if (tab === 'keys') {
-      host.insertAdjacentHTML('beforeend', renderStatusLightsPreviewLegend());
+      stripMode: showMini ? 'focus'
+        : ((face === 'mini' || face === 'data') ? 'full'
+          : (opts.stripMode === 'full' ? 'full' : 'focus'))
+    };
+    if (showMini) {
+      host.insertAdjacentHTML('beforeend', renderAgentMiniBarPreview(pad, stripOpts));
+      patchAgentMiniBarPreviewPill(host, m, pad);
+    } else {
+      host.insertAdjacentHTML('afterbegin', renderTopbarPreviewStrip(pad, stripOpts));
+      host.insertAdjacentHTML('beforeend', renderAgentLeftDataStrip(m, pad));
+      if (tab === 'keys') {
+        host.insertAdjacentHTML('beforeend', renderStatusLightsPreviewLegend());
+      }
     }
-    paintKeysPaletteDemo(host, tab === 'keys');
+    paintKeysPaletteDemo(host, face === 'match' && tab === 'keys');
     host.querySelectorAll('[data-act="topbar-jump"]').forEach(function (btn) {
       if (btn.__topbarJumpBound) return;
       btn.__topbarJumpBound = true;
@@ -9756,13 +10925,18 @@
         jumpToTopbarTarget(btn.getAttribute('data-agent'), btn.getAttribute('data-habit-id'));
       });
     });
+    /* Chips insert as idle — refresh attention onto #softPadAgentPreviewHost too. */
+    try {
+      var body = document.querySelector('[data-soft-pad-panel="agent"]');
+      if (body) refreshAgentLightsPickerState(body, m, pad);
+    } catch (_) {}
   }
 
   function applySoftPadLightsSubtab(body, m, pad, tab) {
     if (!body || !m || !pad) return;
     var wbLights = body.querySelector('[data-agent-workbench-lights-body]');
     if (wbLights) {
-      if (tab !== 'keys' && tab !== 'ambient') tab = 'keys';
+      if (tab !== 'keys' && tab !== 'ambient') tab = 'ambient';
       softPadLightsSubtab = tab;
       wbLights.setAttribute('data-lights-subtab', tab);
       body.querySelectorAll('.soft-pad-lights-subtab[data-lights-subtab]').forEach(function (btn) {
@@ -9801,7 +10975,7 @@
       bindAgentConnectEvents(body, m, pad);
       var HubWb = global.OneToneSoftPadHub;
       var previewHostWb = HubWb && HubWb.previewHostForFace ? HubWb.previewHostForFace('agent') : null;
-      syncStatusLightsPreviewChrome(previewHostWb, m, pad, workbenchPreviewOpts('lights'));
+      syncStatusLightsPreviewChrome(previewHostWb, m, pad, workbenchPreviewOpts());
       echoStatusPaletteOnSoftPads(pad);
       return;
     }
@@ -9877,20 +11051,23 @@
       refreshAgentLightsPickerState(body, m, pad);
       var HubM = global.OneToneSoftPadHub;
       var previewHostM = HubM && HubM.previewHostForFace ? HubM.previewHostForFace('agent') : null;
-      syncStatusLightsPreviewChrome(previewHostM, m, pad, workbenchPreviewOpts('cross'));
+      syncStatusLightsPreviewChrome(previewHostM, m, pad, workbenchPreviewOpts('mini'));
       return;
     }
     var card = body.querySelector('[data-topbar-lights-panel]');
     if (!card) return;
+    var rosterOnly = card.getAttribute('data-topbar-roster-only') === '1';
     var wrap = document.createElement('div');
-    wrap.innerHTML = renderTopbarLightsPanel(pad);
+    wrap.innerHTML = renderTopbarLightsPanel(pad, rosterOnly
+      ? { noConnect: true, compact: true, rosterOnly: true }
+      : {});
     var next = wrap.firstElementChild;
     if (next) card.replaceWith(next);
     bindTopbarLightsPanelEvents(body, m, pad);
     refreshAgentLightsPickerState(body, m, pad);
     var Hub = global.OneToneSoftPadHub;
     var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
-    syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts());
+    syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts(rosterOnly ? 'mini' : undefined));
   }
 
   function bindTopbarLightsPanelEvents(body, m, pad) {
@@ -10041,16 +11218,10 @@
     ensurePad(m, { persist: false });
     var pad = m.codexMicroPad;
     var token = opts.agentLoadToken != null ? opts.agentLoadToken : opts.token;
-    if (softPadWorkbenchTab === 'session') {
-      var scopeKind = '';
-      try { scopeKind = String(hubSelectedScopeKind() || ''); } catch (_) {}
-      if (!resolveAgentWorkbenchCaps(m, scopeKind).caps.session) {
-        softPadWorkbenchTab = 'readiness';
-      }
-    }
-    if (softPadWorkbenchTab === 'lights' &&
+    softPadWorkbenchTab = normalizeWorkbenchTab(softPadWorkbenchTab);
+    if (softPadWorkbenchTab === 'match' &&
       softPadLightsSubtab !== 'keys' && softPadLightsSubtab !== 'ambient') {
-      softPadLightsSubtab = 'keys';
+      softPadLightsSubtab = 'ambient';
     }
     container.innerHTML = renderAgentWorkbench(m, pad);
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
@@ -10061,7 +11232,8 @@
     if (token != null) container.setAttribute('data-agent-load-token', String(token));
     var mode = resolveLightsPanelMode(m);
     var keysCap = keysLightsCapability(mode);
-    if (softPadWorkbenchTab === 'lights' && (keysCap === 'preset' || keysCap === 'customizable')) {
+    if (softPadWorkbenchTab === 'match' && softPadLightsSubtab === 'keys' &&
+      (keysCap === 'preset' || keysCap === 'customizable')) {
       fillStatusLightsAdvanced(container, m, pad, {
         agentLoadToken: token,
         requireSoftPad: true
@@ -10079,6 +11251,7 @@
     bindTopbarLightsPanelEvents(container, m, pad);
     bindAgentWorkbenchSubtabEvents(container, m, pad);
     bindSoftPadLightsSubtabEvents(container, m, pad);
+    bindAgentWorkbenchPanelEvents(container, m, pad);
     var Hub = global.OneToneSoftPadHub;
     var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
     syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts());
@@ -13200,6 +14373,7 @@
     renderSoftPadAgentPanel: renderSoftPadAgentPanel,
     renderAgentWorkbench: renderAgentWorkbench,
     getSoftPadWorkbenchTab: getSoftPadWorkbenchTab,
+    setSoftPadWorkbenchTab: setSoftPadWorkbenchTab,
     patchAgentWorkbench: patchAgentWorkbench,
     agentLightEnabledOnPad: agentLightEnabledOnPad,
     getSoftPadLightsSubtab: getSoftPadLightsSubtab,
@@ -13208,6 +14382,11 @@
     renderTopbarLightsPanel: renderTopbarLightsPanel,
     resolveLightsPanelMode: resolveLightsPanelMode,
     syncStatusLightsPreviewChrome: syncStatusLightsPreviewChrome,
+    workbenchPreviewOpts: workbenchPreviewOpts,
+    patchAgentLeftDataStrip: patchAgentLeftDataStrip,
+    patchAgentMiniBarPreviewPill: patchAgentMiniBarPreviewPill,
+    patchAgentMiniPillCopy: patchAgentMiniPillCopy,
+    patchAgentDataLive: patchAgentDataLive,
     TOPBAR_LIGHT_CANDIDATES: TOPBAR_LIGHT_CANDIDATES,
     TOPBAR_QUOTA_CANDIDATES: TOPBAR_QUOTA_CANDIDATES,
     resolveSoftPadSubpagePaintHost: resolveSoftPadSubpagePaintHost,

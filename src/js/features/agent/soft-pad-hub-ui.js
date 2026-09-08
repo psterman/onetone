@@ -1733,6 +1733,90 @@
     }
   }
 
+  function previewUsagePropsForScope(kind) {
+    kind = String(kind || selectedScopeId || '').trim();
+    if (!kind) return { account: '', plan: '', usageSummary: '', resetCountdown: '—' };
+    var snap = overlayUsageCache && overlayUsageCache.snap ? overlayUsageCache.snap : null;
+    var row = pickUsageAgentRow(snap, kind);
+    if (!row) {
+      // Kick a deferred fetch; caller may patch strip again when snap lands.
+      try { requestOverlayUsageForScope(kind); } catch (_) {}
+      return { account: '', plan: '', usageSummary: '', resetCountdown: '—' };
+    }
+    var usage = row.usage || row.usageStats || row.usage_stats || {};
+    return usagePropsFromAgent(kind, usage);
+  }
+
+  /** Structured usage for Soft Pad「显示数据」live card (not status-bar one-liner). */
+  function previewUsageDetailForScope(kind) {
+    kind = String(kind || selectedScopeId || '').trim().toLowerCase();
+    var props = previewUsagePropsForScope(kind);
+    var snap = overlayUsageCache && overlayUsageCache.snap ? overlayUsageCache.snap : null;
+    var row = pickUsageAgentRow(snap, kind);
+    var usage = row && (row.usage || row.usageStats || row.usage_stats) || {};
+    var status = String(usage.status || props.usageState || 'unavailable');
+    var conf = String(usage.confidence || usageVal(usage, 'confidence', 'confidence') || props.confidence || '');
+    var detail = {
+      kind: kind,
+      status: status,
+      confidence: conf,
+      source: String(usage.source || ''),
+      message: String(usage.message || '').trim(),
+      account: props.account || '',
+      plan: props.plan || '',
+      usageSummary: props.usageSummary || '',
+      resetCountdown: props.resetCountdown || '—',
+      sourceLabel: props.sourceLabel || '',
+      consoleUrl: props.consoleUrl || ''
+    };
+    if (kind === 'cursor') {
+      var turns = usageVal(usage, 'localTodayRequests', 'local_today_requests');
+      var sess = usageVal(usage, 'localTodaySessions', 'local_today_sessions');
+      var activeMs = usageVal(usage, 'localTodayActiveMs', 'local_today_active_ms');
+      var yest = usageVal(usage, 'localYesterdayRequests', 'local_yesterday_requests');
+      detail.turns = turns != null ? Math.round(Number(turns)) : null;
+      detail.sessions = sess != null ? Math.round(Number(sess)) : null;
+      detail.activeMs = activeMs != null ? Number(activeMs) : null;
+      detail.activeLabel = detail.activeMs != null && detail.activeMs > 0
+        ? formatActiveDuration(detail.activeMs)
+        : '';
+      detail.yesterdayTurns = yest != null ? Math.round(Number(yest)) : null;
+      detail.deltaPct = null;
+      if (detail.turns != null && detail.yesterdayTurns != null && detail.yesterdayTurns > 0) {
+        detail.deltaPct = Math.round(
+          ((detail.turns - detail.yesterdayTurns) / detail.yesterdayTurns) * 100
+        );
+      }
+      detail.ready = status === 'ready' && detail.turns != null &&
+        (detail.source === 'cursor_local_activity' || conf === 'local_only');
+    }
+    return detail;
+  }
+
+  function syncAgentPreviewUsageStrip() {
+    if (softPadFace !== 'agent') return;
+    try {
+      var Pad = global.OneToneCodexMicroPadUi;
+      var host = previewHostForFace('agent');
+      var entry = resolveSoftPadEntry();
+      if (!Pad || !host || !hasMapping(entry) || !entry.mapping.codexMicroPad) return;
+      if (Pad.patchAgentLeftDataStrip) {
+        Pad.patchAgentLeftDataStrip(host, entry.mapping, entry.mapping.codexMicroPad);
+      }
+      if (Pad.patchAgentMiniBarPreviewPill) {
+        Pad.patchAgentMiniBarPreviewPill(host, entry.mapping, entry.mapping.codexMicroPad);
+      }
+      var body = document.getElementById('softPadAgentBody') ||
+        document.querySelector('[data-soft-pad-panel="agent"]');
+      if (body && Pad.patchAgentMiniPillCopy) {
+        Pad.patchAgentMiniPillCopy(body, entry.mapping, entry.mapping.codexMicroPad);
+      }
+      if (Pad.patchAgentDataLive && body) {
+        Pad.patchAgentDataLive(body, entry.mapping, entry.mapping.codexMicroPad);
+      }
+    } catch (_) {}
+  }
+
   // Merge usage summary/reset info into status props for the hub tiles.
   function mergeUsageIntoStatusProps(props, preferredKind) {
     try {
@@ -1871,6 +1955,7 @@
       updateSoftPadFlowHints(entry);
       syncSoftPadFlowNodes(entry);
       syncSoftPadPadRing(entry);
+      syncAgentPreviewUsageStrip();
       return;
     }
     var e = els();
@@ -1914,6 +1999,7 @@
     syncBindAppControl(props);
     updateSoftPadFlowHints(entry);
     syncSoftPadPadRing(entry);
+    syncAgentPreviewUsageStrip();
   }
 
   function syncBindAppControl(props) {
@@ -2676,17 +2762,25 @@
 
   function updateSoftPadFlowHints(entry) {
     var hero = buildHeroMeta(entry);
+    var padTitle = document.getElementById('softPadFlowNodePadTitle');
+    var agentTitle = document.getElementById('softPadFlowNodeAgentTitle');
+    var padTag = document.getElementById('softPadFlowNodePadTag');
+    var agentTag = document.getElementById('softPadFlowNodeAgentTag');
     var agentHint = document.getElementById('softPadFlowNodeAgentHint');
     var padHint = document.getElementById('softPadFlowNodePadHint');
     var tmHint = document.getElementById('softPadFlowNodeTimelineHint');
-    // Status lights = glanceable busy/idle — not scheme/management copy.
+    var summaryAgentLbl = document.getElementById('softPadSummaryAgentLbl');
+    // Per-app virtual keyboard + lights/float — titles stay fixed; live status stays in the summary bar.
+    if (padTitle) padTitle.textContent = t('softPadFlowPadTitle', '虚拟键盘');
+    if (agentTitle) agentTitle.textContent = t('softPadFlowAgentTitle', '灯效与浮窗');
+    if (padTag) padTag.textContent = t('softPadFlowPadTag', 'Soft Pad');
+    if (agentTag) agentTag.textContent = t('softPadFlowAgentTag', '灯效');
+    if (summaryAgentLbl) summaryAgentLbl.textContent = t('softPadTileAgent', '灯效与浮窗');
     if (agentHint) {
-      agentHint.textContent = t('softPadFlowAgentHint', '看 AI 忙不忙');
+      agentHint.textContent = t('softPadFlowAgentHint', '按应用配灯 · 迷你栏 · 用量');
     }
     if (padHint) {
-      padHint.textContent = entry
-        ? (statusLabel(entry) + ' · ' + hero.keys)
-        : t('softPadFlowPadHint', '改键位 · 何时显示');
+      padHint.textContent = t('softPadFlowPadHint', '按应用改键位 · 何时显示');
     }
     if (tmHint) {
       tmHint.textContent = hero.restorePoint || t('softPadFlowTimelineHint', '只保护已接入项目');
@@ -4186,7 +4280,8 @@
       if (!canPaint) skipPaint = true;
       else if (light && paintedMappingId === mappingId) {
         var host = previewHostForFace();
-        if (host && host.querySelector('.codex-micro-pad.soft-pad-preview')) {
+        var paintEl = host && (host.querySelector('[data-soft-pad-preview-paint]') || host);
+        if (paintEl && paintEl.querySelector('.codex-micro-pad.soft-pad-preview')) {
           skipPaint = true;
         }
       }
@@ -4321,8 +4416,11 @@
           applyScreenOpacityToPreview(entry.mapping.codexMicroPad.screenOpacity);
         }
         if (softPadFace === 'agent' && Pad.syncStatusLightsPreviewChrome) {
-          var subtab = Pad.getSoftPadLightsSubtab ? Pad.getSoftPadLightsSubtab() : 'topbar';
-          Pad.syncStatusLightsPreviewChrome(host, entry.mapping, entry.mapping.codexMicroPad, { subtab: subtab });
+          var chromeOpts = Pad.workbenchPreviewOpts
+            ? Pad.workbenchPreviewOpts()
+            : { subtab: Pad.getSoftPadLightsSubtab ? Pad.getSoftPadLightsSubtab() : 'ambient' };
+          Pad.syncStatusLightsPreviewChrome(host, entry.mapping, entry.mapping.codexMicroPad, chromeOpts);
+          requestOverlayUsageForScope(selectedScopeId);
         }
       } finally {
         paintReentry--;
@@ -4623,6 +4721,7 @@
       if (softPadFace === 'agent') {
         patchAgentDirectorySelection();
       }
+      requestOverlayUsageForScope(selectedScopeId);
       return;
     }
 
@@ -5750,6 +5849,10 @@
     listAppScopes: listAppScopes,
     previewHostForFace: previewHostForFace,
     resolveSoftPadEntry: resolveSoftPadEntry,
+    previewUsagePropsForScope: previewUsagePropsForScope,
+    previewUsageDetailForScope: previewUsageDetailForScope,
+    syncAgentPreviewUsageStrip: syncAgentPreviewUsageStrip,
+    requestOverlayUsageForScope: requestOverlayUsageForScope,
     refreshSelected: refreshSelected,
     schedulePreviewPaint: schedulePreviewPaint,
     onPanelLeave: onPanelLeave,

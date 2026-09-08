@@ -1854,28 +1854,112 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
 
 .foot { display: none; }
 
-/* —— Minimized —— */
+/* —— Minimized —— (prototype C: white thin bar + hover glyph tools) */
 .overlay-mini {
   display: none;
   position: relative;
-  align-items: center;
-  gap: 5px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
   width: 100%;
   height: auto;
-  max-height: 44px;
+  max-height: none;
   flex: 0 0 auto;
   min-height: 0;
-  padding: 6px;
-  border-radius: 16px;
+  padding: 0;
+  border-radius: 14px;
+  border: 1.5px solid rgba(90, 157, 184, 0.55);
   box-sizing: border-box;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 12% 80%, rgba(0, 163, 255, 0.18), transparent 42%),
-    linear-gradient(145deg, rgba(236, 242, 250, 0.96), rgba(210, 222, 238, 0.9));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    0 8px 22px rgba(20, 30, 50, 0.16);
+  overflow: visible;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 14px rgba(0, 101, 143, 0.12);
   cursor: grab;
+  transition: box-shadow 0.18s ease;
+}
+
+.overlay-mini:hover,
+.overlay-mini.is-tools-open {
+  box-shadow: 0 8px 22px rgba(0, 101, 143, 0.18);
+}
+
+.overlay-mini__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  min-height: 36px;
+  box-sizing: border-box;
+}
+
+.overlay-mini__row--tools {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-height: 0;
+  padding: 4px 8px 6px;
+  border-top: 1px dashed rgba(90, 157, 184, 0.45);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent);
+  pointer-events: auto;
+}
+
+.overlay-mini:hover .overlay-mini__row--tools,
+.overlay-mini:focus-within .overlay-mini__row--tools,
+.overlay-mini.is-tools-open .overlay-mini__row--tools,
+.wrap.is-mini-tools-pinned .overlay-mini__row--tools {
+  display: flex;
+}
+
+.overlay-mini__row--tools .overlay-mini__beginner-actions {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+  width: auto;
+  flex: 1 1 auto;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.overlay-mini__row--tools .overlay-mini__action {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 8px;
+  border: 1px solid #9ec5d6;
+  background: #cfe6f2;
+  color: #1e5a75;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.overlay-mini__row--tools .overlay-mini__action:hover {
+  background: #b9dceb;
+  border-color: #5a9db8;
+}
+
+.overlay-mini__action-glyph {
+  display: block;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: 0;
+  user-select: none;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--settings {
+  margin-left: auto;
+  color: #475569;
+  background: #fff;
+  border-color: #9ec5d6;
+  flex: 0 0 auto;
+}
+
+.overlay-mini__row--tools .overlay-mini__action--settings:hover {
+  background: #e8f4fa;
+  border-color: #5a9db8;
+  color: #0369a1;
 }
 
 .overlay-mini:active { cursor: grabbing; }
@@ -1909,8 +1993,21 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   gap: 2px;
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 100%;
+  max-width: none;
   overflow: hidden;
+}
+
+.overlay-mini__agents[hidden],
+.overlay-mini__agents.is-chrome-off {
+  display: none !important;
+}
+
+.wrap.is-mini-agents-on.is-mini-tools-on .overlay-mini__agents {
+  flex: 1 1 auto;
+}
+
+.wrap:not(.is-mini-tools-on) .overlay-mini__row--tools {
+  display: none !important;
 }
 
 .overlay-mini__more {
@@ -2032,15 +2129,15 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
 .overlay-mini-listen {
   display: none;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
   box-sizing: border-box;
-  padding: 4px 8px;
+  padding: 6px 10px;
   border-radius: 12px;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.35;
   /* Panel A: always light plate — ignore SoftPad data-light / OS dark. */
   isolation: isolate;
   color: #0369a1 !important;
@@ -2141,37 +2238,64 @@ html[data-surface-agent="cursor"] .micro-hw__key--lane {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.2;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border-radius: 50%;
   color: #0369a1;
-  background: rgba(0, 163, 255, 0.12);
-  border: 1px solid rgba(0, 163, 255, 0.42);
-  white-space: nowrap;
+  background: #e8f4fa;
+  border: 1px solid #7eb4cc;
+  box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.12);
+  animation: mini-listen-halo 1.6s ease-in-out infinite;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+}
+
+.overlay-mini__listen-chip.is-halo::before {
+  display: none !important;
+}
+
+@keyframes mini-listen-halo {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.08); }
+  50% { box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2); }
+}
+
+@keyframes mini-listen-ring {
+  0% { opacity: 0; }
+  100% { opacity: 0; }
 }
 
 .overlay-mini__listen-chip[hidden] {
   display: none !important;
 }
 
-.overlay-mini__listen-chip-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #0ea5e9;
-  animation: beginner-listen-dot 1.4s ease-in-out infinite;
+.overlay-mini__listen-chip-icon {
+  display: block;
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+}
+
+.overlay-mini__listen-chip-dot,
+.overlay-mini__listen-chip-text {
+  display: none !important;
 }
 
 .overlay-mini-listen__dot {
+  display: none !important;
+}
+
+.overlay-mini-listen .overlay-mini__listen-chip {
   flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #0ea5e9;
-  animation: beginner-listen-dot 1.4s ease-in-out infinite;
+}
+
+.overlay-mini-listen .overlay-mini__listen-chip[hidden] {
+  display: none !important;
 }
 
 @keyframes beginner-listen-dot {
@@ -2367,29 +2491,35 @@ html[data-theme="dark"] .soft-pad-confirm-bar__label {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 6px;
   min-width: 0;
-  max-width: 112px;
+  max-width: none;
+  margin-left: auto;
+  padding: 2px 4px 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid #c5d8e4;
+  box-sizing: border-box;
 }
 
 .overlay-mini__usage {
-  /* Prefer readable usage over squeezing past "C." when 6 chips are on. */
-  flex: 1 1 auto;
-  min-width: 64px;
-  max-width: 96px;
-  padding: 2px 7px;
+  /* Grow with content so long 今日用量 is never clipped to "C." */
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: none;
+  padding: 2px 6px;
   border-radius: 999px;
-  border: 1px solid rgba(102, 119, 141, 0.22);
-  background: rgba(255, 255, 255, 0.82);
-  color: #334155;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.2;
+  border: 0;
+  background: transparent;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.25;
   letter-spacing: 0.01em;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: left;
   box-sizing: border-box;
 }
 
@@ -2580,30 +2710,31 @@ html[data-theme="dark"] .soft-pad-confirm-bar__label {
 }
 
 .overlay-mini__btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
-  color: #4a5568;
-  font-size: 13px;
-  line-height: 24px;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #c5d8e4;
+  border-radius: 6px;
+  background: #fff;
+  color: #475569;
+  font-size: 11px;
+  line-height: 1;
   padding: 0;
   margin: 0;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  box-shadow: none;
 }
 
 .overlay-mini__btn:hover {
-  background: rgba(255, 255, 255, 0.95);
-  color: #1a2436;
+  background: #e8f4fa;
+  color: #0369a1;
+  border-color: #9ec5d6;
 }
 
 .overlay-mini__btn--expand {
-  width: 30px;
+  width: 22px;
   padding: 0;
 }
 

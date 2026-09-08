@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>迷你浮窗五块 · 对照原型</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8eef3;
+      --surface: #fff;
+      --surface-2: #f5f8fb;
+      --line: #d5dee8;
+      --line-strong: #b8c5d4;
+      --text: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --primary: #00658f;
+      --primary-soft: #e4f2f9;
+      --primary-bd: #9bc6da;
+      --ok: #15803d;
+      --ok-soft: #ecfdf5;
+      --bar: #d7eaf5;
+      --bar-bd: #5a9db8;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+    button { font-family: inherit; cursor: pointer; }
+
+    .top {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+      padding: 12px 16px; background: #13202c; color: #c9d7e4;
+    }
+    .top h1 { margin: 0; font-size: 14px; font-weight: 800; color: #7dd3fc; }
+    .top p { margin: 0; font-size: 12px; color: #8fa3b5; flex: 1; min-width: 220px; line-height: 1.45; }
+    .top a { color: #7dd3fc; }
+    .lock {
+      font: 700 11px/1 var(--font); color: #86efac; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid rgba(134, 239, 172, .35); background: rgba(22, 163, 74, .15);
+    }
+
+    .page { max-width: 1200px; margin: 0 auto; padding: 14px 14px 40px; }
+
+    .banner {
+      margin-bottom: 12px; padding: 11px 13px; border-radius: 10px;
+      background: var(--primary-soft); border: 1px solid var(--primary-bd);
+      font-size: 12.5px; line-height: 1.5; color: var(--muted);
+    }
+    .banner b { color: var(--primary); }
+    .banner code {
+      font: 600 11px/1.3 var(--mono); color: var(--text);
+      background: #fff; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line);
+    }
+
+    .mock {
+      border: 1px solid var(--line-strong); border-radius: 16px; background: var(--surface);
+      overflow-x: auto; box-shadow: 0 10px 28px rgba(19, 32, 44, .07);
+    }
+
+    /* HARD: left | right never stack */
+    .split {
+      display: grid;
+      grid-template-columns: minmax(300px, 0.4fr) minmax(440px, 1fr);
+      min-width: 780px; min-height: 720px;
+    }
+    .left {
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, #eef6fa 0%, #fff 45%);
+      padding: 14px; display: flex; flex-direction: column; gap: 10px;
+      position: sticky; top: 0; align-self: start; max-height: 100vh; overflow: auto;
+    }
+    .right { display: flex; flex-direction: column; min-width: 0; }
+
+    .left-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .left-h h2 { margin: 0; font-size: 13px; font-weight: 800; }
+    .left-h em { font-style: normal; font-size: 11px; color: var(--faint); font-weight: 650; }
+
+    .stage {
+      flex: 1; min-height: 340px; border-radius: 14px; border: 1px dashed var(--line-strong);
+      background: #f7fafc; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px; padding: 20px 14px;
+    }
+    .stage.is-hidden-float {
+      background: #f1f5f9;
+    }
+
+    .chrome-stack {
+      width: min(100%, 340px); display: flex; flex-direction: column; gap: 8px; align-items: stretch;
+    }
+    .chrome-stack[hidden] { display: none !important; }
+
+    .mini-bar {
+      display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
+      padding: 7px 10px; border-radius: 14px;
+      background: var(--bar); border: 1.5px solid var(--bar-bd);
+      box-shadow: 0 4px 14px rgba(0, 101, 143, .12);
+      min-height: 44px;
+    }
+    .mini-bar.is-full-hint {
+      border-radius: 12px; background: #fff; border-style: dashed;
+    }
+
+    .agents {
+      display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+    }
+    .agents[hidden] { display: none !important; }
+    .dot {
+      width: 22px; height: 22px; border-radius: 7px; background: #e8f4fa; border: 1px solid #a8c9d8;
+      position: relative; flex-shrink: 0;
+    }
+    .dot::after {
+      content: ""; position: absolute; right: -1px; bottom: -1px; width: 7px; height: 7px;
+      border-radius: 50%; border: 1.5px solid #fff; background: #94a3b8;
+    }
+    .dot.busy::after { background: #2563eb; }
+    .dot.wait::after { background: #d97706; }
+    .dot.done::after { background: #16a34a; }
+    .dot[hidden] { display: none !important; }
+
+    .tools {
+      display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+    }
+    .tools[hidden] { display: none !important; }
+    .tool {
+      width: 26px; height: 26px; border-radius: 7px; border: 1px solid #9ec5d6;
+      background: #cfe6f2; color: #1e5a75; display: grid; place-items: center;
+      font-size: 12px; line-height: 1; padding: 0;
+    }
+    .tool[hidden] { display: none !important; }
+
+    .listen {
+      display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+      padding: 4px 10px; border-radius: 999px; border: 1px solid #7eb4cc;
+      background: #b9dceb; color: #0c4a6e; font: 750 11.5px/1 var(--font);
+    }
+    .listen[hidden] { display: none !important; }
+    .listen i {
+      width: 7px; height: 7px; border-radius: 50%; background: #0284c7; display: block;
+    }
+
+    .pill {
+      margin-left: auto; flex-shrink: 0;
+      font: 750 11px/1 var(--font); color: var(--primary);
+      padding: 5px 9px; border-radius: 999px; background: #fff;
+      border: 1px solid #c5d8e4; box-shadow: 0 1px 3px rgba(19, 32, 44, .06);
+      white-space: nowrap;
+    }
+    .pill[hidden] { display: none !important; }
+
+    .winbtns {
+      display: flex; gap: 4px; flex-shrink: 0;
+    }
+    .winbtns[hidden] { display: none !important; }
+    .winbtn {
+      width: 26px; height: 26px; border-radius: 7px; border: 1px solid #c5d8e4;
+      background: #fff; color: #475569; display: grid; place-items: center;
+      font-size: 13px; line-height: 1; padding: 0;
+    }
+
+    .preview-band {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 10px 12px; border-radius: 12px; background: #fff;
+      border: 1.5px solid var(--bar-bd); min-height: 44px;
+      box-shadow: 0 3px 10px rgba(0, 101, 143, .08);
+    }
+    .preview-band[hidden] { display: none !important; }
+    .preview-band .pd {
+      width: 8px; height: 8px; border-radius: 50%; background: #38bdf8;
+      margin-top: 5px; flex-shrink: 0;
+    }
+    .preview-band .pt {
+      font-size: 12.5px; line-height: 1.45; color: #0369a1; word-break: break-all;
+    }
+
+    .cap { font-size: 11px; color: var(--faint); text-align: center; max-width: 300px; line-height: 1.4; }
+    .empty-float {
+      font-size: 13px; color: var(--muted); text-align: center; line-height: 1.5; padding: 24px;
+    }
+    .empty-float[hidden] { display: none !important; }
+    .empty-float b { color: var(--text); display: block; margin-bottom: 4px; }
+
+    .sim {
+      width: 100%; max-width: 340px; padding: 9px 10px; border-radius: 8px;
+      border: 1px solid var(--line); background: #fff; font-size: 11.5px; color: var(--muted);
+    }
+    .sim b { color: var(--primary); display: block; margin-bottom: 6px; font-size: 12px; }
+    .sim-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sim-row button {
+      border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+      font: 650 11px/1 var(--font); padding: 6px 9px; border-radius: 7px;
+    }
+    .sim-row button.is-on {
+      border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary);
+    }
+
+    .right-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 12px 14px 0;
+    }
+    .right-head h3 { margin: 0; font-size: 15px; font-weight: 800; }
+    .face-chip {
+      font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+    }
+
+    .scope { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px 0; }
+    .chip {
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+      font: 650 12px/1 var(--font); padding: 6px 10px; border-radius: 8px;
+    }
+    .chip.is-on { border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary); }
+
+    .l3 { display: flex; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .l3tab {
+      flex: 1; padding: 9px 6px; border: 1px solid var(--line); border-radius: 10px;
+      background: var(--surface-2); color: var(--muted); font: 750 12px/1 var(--font);
+    }
+    .l3tab.is-on { color: var(--primary); border-color: var(--primary-bd); background: var(--primary-soft); }
+
+    .panel { flex: 1; padding: 12px 14px 18px; overflow: auto; }
+    .lead { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+
+    .sec {
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2);
+      padding: 12px; margin-bottom: 10px;
+    }
+    .sec-h {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+      margin-bottom: 6px;
+    }
+    .sec-h h4 { margin: 0; font-size: 13px; font-weight: 800; }
+    .dim {
+      display: inline-block; font: 700 10px/1 var(--mono); color: var(--faint);
+      letter-spacing: .03em; margin-bottom: 4px;
+    }
+    .hint { margin: 0 0 10px; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+
+    .row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 12.5px;
+    }
+    .row:last-child { border-bottom: 0; }
+    .row.sub { padding-left: 2px; font-size: 12px; color: var(--muted); }
+
+    .sw {
+      width: 38px; height: 22px; border-radius: 999px; border: 0; background: #cbd5e1;
+      position: relative; flex-shrink: 0;
+    }
+    .sw.on { background: var(--primary); }
+    .sw::after {
+      content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff; transition: transform .15s;
+    }
+    .sw.on::after { transform: translateX(16px); }
+
+    .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+    .seg button {
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+      font: 650 11.5px/1 var(--font); padding: 7px 10px; border-radius: 8px;
+    }
+    .seg button.is-on {
+      border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary);
+    }
+
+    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mode {
+      text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px;
+      background: #fff; color: inherit;
+    }
+    .mode.is-on {
+      border-color: var(--primary); background: var(--primary-soft);
+      box-shadow: 0 0 0 1px var(--primary-bd);
+    }
+    .mode b { display: block; font-size: 12.5px; margin-bottom: 3px; }
+    .mode span { font-size: 11px; color: var(--muted); line-height: 1.35; }
+
+    .roster { display: grid; gap: 7px; margin-top: 4px; }
+    .ri {
+      display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center;
+      padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
+    }
+    .ri .n { font-weight: 750; font-size: 12.5px; }
+    .ri .s { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .badge {
+      font: 700 10.5px/1 var(--font); padding: 4px 7px; border-radius: 999px;
+      background: var(--ok-soft); color: var(--ok); border: 1px solid #bbf7d0;
+    }
+    .xbtn {
+      width: 22px; height: 22px; border-radius: 6px; border: 1px solid #fecaca;
+      background: #fef2f2; color: #b91c1c; font-size: 12px; line-height: 1; padding: 0;
+    }
+    .addbtn {
+      display: block; width: 100%; margin-top: 8px; text-align: left;
+      border: 1px dashed var(--primary-bd); background: #fff; color: var(--primary);
+      font: 750 12px/1.3 var(--font); padding: 9px 12px; border-radius: 8px;
+    }
+
+    .ico-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ico {
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+      font: 650 11.5px/1 var(--font); padding: 7px 9px; border-radius: 8px;
+    }
+    .ico.is-on {
+      border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary);
+    }
+    .ico .g {
+      width: 18px; height: 18px; border-radius: 5px; background: #cfe6f2;
+      display: grid; place-items: center; font-size: 10px;
+    }
+
+    .map {
+      margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #13202c; color: #b8c9d8;
+      font: 500 11.5px/1.55 var(--mono); white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1>迷你浮窗 · 五块配置 IA</h1>
+    <p>
+      本页只定信息架构 · 无 persist / IPC。
+      工具栏与 Agent 灯 <b style="color:#86efac;font-weight:700">可并存</b>。
+      历史对照：<a href="./q1-timing-home.html">Q1</a> · <a href="./q2-scope-depth.html">Q2</a>
+    </p>
+    <span class="lock">左预览 | 右配置</span>
+  </header>
+
+  <div class="page">
+    <div class="banner">
+      <b>推翻旧三块</b>（形态 / pill / 亮谁）→ 按运行时 chrome 五块配置：
+      <code>语音控制栏</code>
+      <code>Agent 灯栏</code>
+      <code>文本预览窗</code>
+      <code>工具栏</code>
+      <code>显示选项</code>
+      。默认同时开 Agent 灯 + 工具栏，验证可并存。
+    </div>
+
+    <div class="mock">
+      <div class="split">
+        <aside class="left">
+          <div class="left-h">
+            <h2>设置中预览</h2>
+            <em>改右侧 → 左侧即时</em>
+          </div>
+          <div class="stage" id="stage">
+            <div class="chrome-stack" id="chromeStack">
+              <div class="mini-bar" id="miniBar" aria-label="迷你浮窗预览">
+                <div class="agents" id="pvAgents"></div>
+                <div class="tools" id="pvTools"></div>
+                <span class="listen" id="pvListen"><i></i><span>聆听</span></span>
+                <span class="pill" id="pvPill">Cu · 48次</span>
+                <div class="winbtns" id="pvWin">
+                  <button type="button" class="winbtn" title="展开" aria-label="展开">⧉</button>
+                  <button type="button" class="winbtn" title="关闭" aria-label="关闭">×</button>
+                </div>
+              </div>
+              <div class="preview-band" id="pvText">
+                <span class="pd" aria-hidden="true"></span>
+                <span class="pt" id="pvTextCopy">功效派也没准儿这晚上我之后就给我拍军委的装系统先选择一下你的气息开心</span>
+              </div>
+            </div>
+            <div class="empty-float" id="emptyFloat" hidden>
+              <b>浮窗已隐藏</b>
+              键位仍保留 · 改「显示选项 → 何时出现」可再开
+            </div>
+            <div class="cap" id="leftCap">Agent 灯 + 工具栏并排 · 贴近 vibecoding 运行时</div>
+          </div>
+          <div class="sim">
+            <b>预览情景（不写进配置）</b>
+            <div class="sim-row">
+              <button type="button" class="is-on" data-sim="listening">听写中</button>
+              <button type="button" data-sim="armed">已武装 · 未说</button>
+              <button type="button" data-sim="idle">空闲</button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="right">
+          <div class="right-head">
+            <h3>灯效与浮窗</h3>
+            <span class="face-chip">当前应用 · Cursor</span>
+          </div>
+          <div class="scope">
+            <span class="chip is-on">Cursor</span>
+            <span class="chip">Codex</span>
+            <span class="chip">Claude</span>
+            <span class="chip">MiniMax</span>
+          </div>
+          <div class="l3">
+            <button type="button" class="l3tab" disabled>灯效匹配</button>
+            <button type="button" class="l3tab" disabled>显示数据</button>
+            <button type="button" class="l3tab is-on">迷你栏</button>
+          </div>
+          <div class="panel" id="panel">
+            <p class="lead">按浮窗上看得见的五块配置。工具栏与 Agent 灯各自开关，可同时出现在条上。</p>
+
+            <!-- 1 语音控制栏 -->
+            <div class="sec" data-block="voice">
+              <div class="sec-h">
+                <div>
+                  <span class="dim">01 · 语音控制栏</span>
+                  <h4>聆听 chip</h4>
+                </div>
+                <button type="button" class="sw on" data-k="voiceEnabled" aria-label="语音控制栏总开关"></button>
+              </div>
+              <p class="hint">条上的「聆听」状态。不等于下方文本预览窗。</p>
+              <div class="row sub"><span>出现时机</span></div>
+              <div class="seg" data-seg="voiceWhen">
+                <button type="button" class="is-on" data-v="listening">仅听写中</button>
+                <button type="button" data-v="armed">常驻（武装也显示）</button>
+              </div>
+            </div>
+
+            <!-- 2 Agent 灯栏 -->
+            <div class="sec" data-block="agents">
+              <div class="sec-h">
+                <div>
+                  <span class="dim">02 · Agent 灯栏</span>
+                  <h4>灯条上亮谁</h4>
+                </div>
+                <button type="button" class="sw on" data-k="agentsEnabled" aria-label="Agent 灯栏总开关"></button>
+              </div>
+              <p class="hint">跨应用状态灯。与工具栏可并存，不抢槽。</p>
+              <div class="roster" id="roster"></div>
+              <button type="button" class="addbtn" id="addAgent">+ 添加 Agent</button>
+            </div>
+
+            <!-- 3 文本预览窗 -->
+            <div class="sec" data-block="text">
+              <div class="sec-h">
+                <div>
+                  <span class="dim">03 · 文本预览窗</span>
+                  <h4>转写 / 听写带</h4>
+                </div>
+                <button type="button" class="sw on" data-k="textEnabled" aria-label="文本预览窗总开关"></button>
+              </div>
+              <p class="hint">主条下方第二行。现网听写带的产品化配置面。</p>
+              <div class="row sub"><span>出现时机</span></div>
+              <div class="seg" data-seg="textWhen">
+                <button type="button" class="is-on" data-v="listening">听写中才出</button>
+                <button type="button" data-v="hasText">有字才出</button>
+              </div>
+            </div>
+
+            <!-- 4 工具栏 -->
+            <div class="sec" data-block="tools">
+              <div class="sec-h">
+                <div>
+                  <span class="dim">04 · 工具栏</span>
+                  <h4>快捷操作图标</h4>
+                </div>
+                <button type="button" class="sw on" data-k="toolsEnabled" aria-label="工具栏总开关"></button>
+              </div>
+              <p class="hint">与 Agent 灯并排。关总开关整组消失；下面勾选单个图标。</p>
+              <div class="ico-grid" id="toolIcons"></div>
+            </div>
+
+            <!-- 5 显示选项 -->
+            <div class="sec" data-block="display">
+              <span class="dim">05 · 显示选项</span>
+              <h4 style="margin:0 0 6px;font-size:13px;font-weight:800">何时出现 · 形态 · 旁路控件</h4>
+              <p class="hint">用量 pill / 展开 / 关闭归这里，不另开第六块。</p>
+
+              <div class="row sub"><span>何时出现</span></div>
+              <div class="modes" style="margin-bottom:10px" data-modes="showMode">
+                <button type="button" class="mode" data-v="follow"><b>跟随应用</b><span>目标在前台才显示</span></button>
+                <button type="button" class="mode" data-v="front"><b>保持最前</b><span>切窗仍可见</span></button>
+                <button type="button" class="mode is-on" data-v="mini"><b>迷你条</b><span>精简灯条少占屏</span></button>
+                <button type="button" class="mode" data-v="hidden"><b>不显示</b><span>键位仍保留</span></button>
+              </div>
+
+              <div class="row sub"><span>展示方案</span></div>
+              <div class="modes" style="margin-bottom:10px" data-modes="presentation">
+                <button type="button" class="mode" data-v="full"><b>完整体</b><span>完整 Soft Pad 键盘</span></button>
+                <button type="button" class="mode is-on" data-v="mini"><b>精简态</b><span>灯条，少占屏幕</span></button>
+              </div>
+
+              <div class="row"><span>显示用量 pill</span><button type="button" class="sw on" data-k="pillEnabled"></button></div>
+              <div class="row"><span>无数据时隐藏 pill</span><button type="button" class="sw on" data-k="pillHideEmpty"></button></div>
+              <div class="row"><span>显示展开按钮</span><button type="button" class="sw on" data-k="expandEnabled"></button></div>
+              <div class="row"><span>显示关闭按钮</span><button type="button" class="sw on" data-k="closeEnabled"></button></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <pre class="map" id="map"></pre>
+  </div>
+
+  <script>
+    const TOOL_DEFS = [
+      { id: "mic", label: "麦克风", glyph: "🎙" },
+      { id: "send", label: "发送", glyph: "⏎" },
+      { id: "boost", label: "闪电", glyph: "⚡" },
+      { id: "newChat", label: "新建", glyph: "💬" },
+      { id: "cancel", label: "取消", glyph: "⊘" }
+    ];
+
+    const AGENT_POOL = [
+      { id: "cursor", name: "Cursor", status: "busy", hint: "灯条 · 本地活跃" },
+      { id: "codex", name: "Codex", status: "wait", hint: "灯条 · 已接入" },
+      { id: "claude", name: "Claude", status: "done", hint: "灯条 · 已接入" },
+      { id: "minimax", name: "MiniMax", status: "idle", hint: "灯条 · 额度灯" },
+      { id: "traeCode", name: "Trae Code", status: "idle", hint: "灯条 · 候补" },
+      { id: "windsurf", name: "Windsurf", status: "idle", hint: "灯条 · 候补" }
+    ];
+
+    const state = {
+      voiceEnabled: true,
+      voiceWhen: "listening", // listening | armed
+      agentsEnabled: true,
+      agents: ["cursor", "codex", "claude"],
+      textEnabled: true,
+      textWhen: "listening", // listening | hasText
+      toolsEnabled: true,
+      tools: ["mic", "send", "boost", "newChat", "cancel"],
+      showMode: "mini", // follow | front | mini | hidden
+      presentation: "mini", // full | mini
+      pillEnabled: true,
+      pillHideEmpty: true,
+      expandEnabled: true,
+      closeEnabled: true,
+      sim: "listening" // listening | armed | idle
+    };
+
+    function $(sel, root) { return (root || document).querySelector(sel); }
+    function $all(sel, root) { return Array.from((root || document).querySelectorAll(sel)); }
+
+    function setSw(el, on) {
+      el.classList.toggle("on", !!on);
+      el.setAttribute("aria-checked", on ? "true" : "false");
+    }
+
+    function renderRoster() {
+      const box = $("#roster");
+      box.innerHTML = state.agents.map((id) => {
+        const a = AGENT_POOL.find((x) => x.id === id);
+        if (!a) return "";
+        return (
+          '<div class="ri" data-agent="' + a.id + '">' +
+          '<div><div class="n">' + a.name + '</div><div class="s">' + a.hint + '</div></div>' +
+          '<span class="badge">亮着</span>' +
+          '<button type="button" class="xbtn" data-rm="' + a.id + '" aria-label="移除">×</button>' +
+          "</div>"
+        );
+      }).join("");
+    }
+
+    function renderToolIcons() {
+      const box = $("#toolIcons");
+      box.innerHTML = TOOL_DEFS.map((t) => {
+        const on = state.tools.indexOf(t.id) >= 0;
+        return (
+          '<button type="button" class="ico' + (on ? " is-on" : "") + '" data-tool="' + t.id + '">' +
+          '<span class="g" aria-hidden="true">' + t.glyph + "</span>" + t.label +
+          "</button>"
+        );
+      }).join("");
+    }
+
+    function voiceVisible() {
+      if (!state.voiceEnabled) return false;
+      if (state.voiceWhen === "armed") return state.sim === "listening" || state.sim === "armed";
+      return state.sim === "listening";
+    }
+
+    function textVisible() {
+      if (!state.textEnabled) return false;
+      if (state.showMode === "hidden") return false;
+      if (state.textWhen === "hasText") {
+        return state.sim === "listening" || state.sim === "armed";
+      }
+      return state.sim === "listening";
+    }
+
+    function syncPreview() {
+      const hidden = state.showMode === "hidden";
+      $("#chromeStack").hidden = hidden;
+      $("#emptyFloat").hidden = !hidden;
+      $("#stage").classList.toggle("is-hidden-float", hidden);
+      if (hidden) {
+        $("#leftCap").textContent = "显示选项 = 不显示浮窗";
+        syncMap();
+        return;
+      }
+
+      const bar = $("#miniBar");
+      bar.classList.toggle("is-full-hint", state.presentation === "full");
+
+      // Agents
+      const agentsEl = $("#pvAgents");
+      const showAgents = state.agentsEnabled && state.agents.length > 0;
+      agentsEl.hidden = !showAgents;
+      if (showAgents) {
+        agentsEl.innerHTML = state.agents.map((id) => {
+          const a = AGENT_POOL.find((x) => x.id === id) || { status: "idle" };
+          const cls = a.status === "busy" ? "busy" : a.status === "wait" ? "wait" : a.status === "done" ? "done" : "";
+          return '<span class="dot ' + cls + '" title="' + (a.name || id) + '"></span>';
+        }).join("");
+      }
+
+      // Tools — coexist with agents
+      const toolsEl = $("#pvTools");
+      const showTools = state.toolsEnabled && state.tools.length > 0;
+      toolsEl.hidden = !showTools;
+      if (showTools) {
+        toolsEl.innerHTML = state.tools.map((id) => {
+          const t = TOOL_DEFS.find((x) => x.id === id);
+          return '<button type="button" class="tool" title="' + (t ? t.label : id) + '">' +
+            (t ? t.glyph : "?") + "</button>";
+        }).join("");
+      }
+
+      $("#pvListen").hidden = !voiceVisible();
+      $("#pvPill").hidden = !state.pillEnabled;
+
+      const win = $("#pvWin");
+      const showExpand = state.expandEnabled;
+      const showClose = state.closeEnabled;
+      win.hidden = !showExpand && !showClose;
+      const btns = win.querySelectorAll(".winbtn");
+      if (btns[0]) btns[0].hidden = !showExpand;
+      if (btns[1]) btns[1].hidden = !showClose;
+
+      $("#pvText").hidden = !textVisible();
+
+      const bits = [];
+      if (showAgents) bits.push("Agent灯");
+      if (showTools) bits.push("工具栏");
+      if (voiceVisible()) bits.push("聆听");
+      if (state.pillEnabled) bits.push("pill");
+      if (textVisible()) bits.push("预览窗");
+      $("#leftCap").textContent =
+        (bits.length ? bits.join(" + ") : "条上无模块") +
+        (showAgents && showTools ? " · 可并存✓" : "") +
+        (state.presentation === "full" ? " · 完整体示意" : "");
+
+      syncMap();
+    }
+
+    function syncMap() {
+      $("#map").textContent =
+        "local state (prototype only — no config.rs)\n" +
+        "  voiceEnabled=" + state.voiceEnabled + "  voiceWhen=" + state.voiceWhen + "\n" +
+        "  agentsEnabled=" + state.agentsEnabled + "  agents=[" + state.agents.join(",") + "]\n" +
+        "  textEnabled=" + state.textEnabled + "  textWhen=" + state.textWhen + "\n" +
+        "  toolsEnabled=" + state.toolsEnabled + "  tools=[" + state.tools.join(",") + "]\n" +
+        "  showMode=" + state.showMode + "  presentation=" + state.presentation + "\n" +
+        "  pill=" + state.pillEnabled + "/" + state.pillHideEmpty +
+        "  expand=" + state.expandEnabled + "  close=" + state.closeEnabled + "\n" +
+        "  sim=" + state.sim +
+        "\n\n并存规则: agents 与 tools 独立；二者都 on 时条上并排，不互斥。";
+    }
+
+    function bind() {
+      $all(".sw[data-k]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const k = btn.getAttribute("data-k");
+          state[k] = !state[k];
+          setSw(btn, state[k]);
+          syncPreview();
+        });
+      });
+
+      $all("[data-seg]").forEach((seg) => {
+        seg.querySelectorAll("button[data-v]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const key = seg.getAttribute("data-seg");
+            state[key] = btn.getAttribute("data-v");
+            seg.querySelectorAll("button").forEach((b) => b.classList.toggle("is-on", b === btn));
+            syncPreview();
+          });
+        });
+      });
+
+      $all("[data-modes]").forEach((modes) => {
+        modes.querySelectorAll(".mode[data-v]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const key = modes.getAttribute("data-modes");
+            state[key] = btn.getAttribute("data-v");
+            modes.querySelectorAll(".mode").forEach((b) => b.classList.toggle("is-on", b === btn));
+            if (key === "showMode" && state.showMode === "mini") {
+              state.presentation = "mini";
+              $all('[data-modes="presentation"] .mode').forEach((b) => {
+                b.classList.toggle("is-on", b.getAttribute("data-v") === "mini");
+              });
+            }
+            syncPreview();
+          });
+        });
+      });
+
+      $("#roster").addEventListener("click", (e) => {
+        const rm = e.target.closest("[data-rm]");
+        if (!rm) return;
+        const id = rm.getAttribute("data-rm");
+        state.agents = state.agents.filter((x) => x !== id);
+        renderRoster();
+        syncPreview();
+      });
+
+      $("#addAgent").addEventListener("click", () => {
+        const next = AGENT_POOL.find((a) => state.agents.indexOf(a.id) < 0);
+        if (!next) return;
+        state.agents.push(next.id);
+        renderRoster();
+        syncPreview();
+      });
+
+      $("#toolIcons").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-tool]");
+        if (!btn) return;
+        const id = btn.getAttribute("data-tool");
+        const i = state.tools.indexOf(id);
+        if (i >= 0) state.tools.splice(i, 1);
+        else state.tools.push(id);
+        // keep TOOL_DEFS order
+        state.tools = TOOL_DEFS.map((t) => t.id).filter((id2) => state.tools.indexOf(id2) >= 0);
+        renderToolIcons();
+        syncPreview();
+      });
+
+      $all("[data-sim]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.sim = btn.getAttribute("data-sim");
+          $all("[data-sim]").forEach((b) => b.classList.toggle("is-on", b === btn));
+          syncPreview();
+        });
+      });
+    }
+
+    renderRoster();
+    renderToolIcons();
+    bind();
+    syncPreview();
+  </script>
+</body>
+</html>

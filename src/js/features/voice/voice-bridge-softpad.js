@@ -157,6 +157,11 @@
 
   function render(){
     var m=currentMapping();
+    var PadUi=global.OneToneCodexMicroPadUi;
+    /* Heal existing pad layout in-memory; do not seed a brand-new pad (Q43 未准备). */
+    if(m&&m.codexMicroPad&&PadUi&&PadUi.ensurePad){
+      try{ PadUi.ensurePad(m,{persist:false}); }catch(_e){}
+    }
     var need=$('voiceSpNeedPrepare');
     var off=$('voiceSpBridgeOff');
     var on=$('voiceSpPrepared');
@@ -168,8 +173,9 @@
     setScope(m);
     if(empty) return;
     var host=$('voiceSpPreviewHost');
-    if(host&&global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.renderSoftPadPreview){
-      try{ global.OneToneCodexMicroPadUi.renderSoftPadPreview(host,m,{forceFull:true}); }catch(_e){}
+    if(host&&PadUi&&PadUi.renderSoftPadPreview){
+      try{ PadUi.renderSoftPadPreview(host,m,{forceFull:true}); }catch(_e2){}
+      applyVoiceOverlay(host,m);
       if(!host._spPickBound){
         host._spPickBound=true;
         host.addEventListener('click',function(e){
@@ -221,5 +227,48 @@
     }
   }
 
-  global.OneToneVoiceBridgeSoftPad={ render:render };
+  function applyVoiceOverlay(host,m){
+    if(!host) return;
+    host.querySelectorAll('.micro-hw__key[data-micro-key]').forEach(function(el){
+      var mid=String(el.getAttribute('data-micro-key')||'');
+      var pk=padKeys(m).find(function(k){ return String(k.microKeyId||'')===mid; });
+      var voice=pk?voiceForSlot(m,pk.slotId):null;
+      var focused=!!(pk&&String(pk.slotId||'')===pickSlotId);
+      el.classList.toggle('is-focused',focused);
+      el.classList.toggle('is-voice-off',!!(pk&&!voice));
+      var chip=el.querySelector('.sp-voice-ph');
+      if(voice&&String(voice.triggerBinding||'').trim()){
+        if(!chip){
+          chip=document.createElement('span');
+          chip.className='sp-voice-ph';
+          el.appendChild(chip);
+        }
+        chip.textContent='「'+String(voice.triggerBinding).trim()+'」';
+      }else if(chip){
+        chip.remove();
+      }
+    });
+  }
+
+  function addPhrase(){
+    var m=currentMapping();
+    if(!padReady(m)) return false;
+    var pk=padKeys(m).find(function(k){ return String(k.slotId||'')===pickSlotId; })
+      ||padKeys(m).find(function(k){ return !voiceForSlot(m,k.slotId); })
+      ||padKeys(m)[0];
+    if(!pk) return false;
+    pickSlotId=String(pk.slotId||'');
+    pickMicroKeyId=String(pk.microKeyId||'');
+    var cur=voiceForSlot(m,pickSlotId);
+    var next=global.prompt('给这颗键写一句口令',cur?String(cur.triggerBinding||''):(pk.label||''));
+    if(next==null) return true;
+    next=String(next).trim();
+    if(!next) return true;
+    ensureVoiceRow(m,pk,next);
+    persist('voice-bridge-softpad');
+    render();
+    return true;
+  }
+
+  global.OneToneVoiceBridgeSoftPad={ render:render, addPhrase:addPhrase };
 })((typeof window!=='undefined')?window:globalThis);

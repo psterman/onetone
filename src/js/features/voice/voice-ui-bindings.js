@@ -1128,19 +1128,32 @@
         openDrawerPanel(panel,focus);
       });
     }
+    function bindBridgeAdd(id,bridgeKey){
+      var el=$(id);
+      if(!el||el._bridgeAddBound) return;
+      el._bridgeAddBound=true;
+      el.addEventListener('click',function(e){
+        e.preventDefault();
+        var api=global[bridgeKey];
+        if(api&&api.addPhrase&&api.addPhrase()) return;
+        if(bridgeKey==='OneToneVoiceBridgeSoftPad') openDrawerPanel('softPad','softPadLayout');
+        else if(bridgeKey==='OneToneVoiceBridgeKeys') openDrawerPanel('keys');
+        else openDrawerPanel('camera','cameraPresence');
+      });
+    }
     bindBridgeGo('btnVoiceSpGoPad','softPad','softPadLayout');
     bindBridgeGo('btnVoiceSpChangeApp','keys','target');
     bindBridgeGo('btnVoiceSpPrepare','softPad','softPadLayout');
     bindBridgeGo('btnVoiceSpGoPadEmpty','softPad','softPadLayout');
-    bindBridgeGo('btnVoiceSpAddPhrase','softPad','softPadLayout');
-    bindBridgeGo('btnVoiceSpAddMore','softPad','softPadLayout');
+    bindBridgeAdd('btnVoiceSpAddPhrase','OneToneVoiceBridgeSoftPad');
+    bindBridgeAdd('btnVoiceSpAddMore','OneToneVoiceBridgeSoftPad');
     bindBridgeGo('btnVoiceKeysGoPage','keys');
     bindBridgeGo('btnVoiceKeysGoEmpty','keys');
-    bindBridgeGo('btnVoiceKeysAddPhrase','keys');
-    bindBridgeGo('btnVoiceKeysAddMore','keys');
+    bindBridgeAdd('btnVoiceKeysAddPhrase','OneToneVoiceBridgeKeys');
+    bindBridgeAdd('btnVoiceKeysAddMore','OneToneVoiceBridgeKeys');
     bindBridgeGo('btnVoiceCamGoPage','camera','cameraPresence');
     bindBridgeGo('btnVoiceCamGoEmpty','camera','cameraPresence');
-    bindBridgeGo('btnVoiceCamAddMore','camera','cameraPresence');
+    bindBridgeAdd('btnVoiceCamAddMore','OneToneVoiceBridgeCamera');
     var btnDockTryMic=$('btnVoiceDockTryMic');
     if(btnDockTryMic&&!btnDockTryMic._tryBound){
       btnDockTryMic._tryBound=true;

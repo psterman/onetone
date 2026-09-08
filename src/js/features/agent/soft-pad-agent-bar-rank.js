@@ -2,8 +2,8 @@
  * Soft Pad agent bar rank: stable order + foreground pin only.
  * Pure — no DOM.
  *
- * Pad + Mini: show VISIBLE_PAD chips; fold remainder with +N when rest nonempty.
- * Other chips keep sticky relative order — do not reshuffle on running/done/recency.
+ * Pad: show VISIBLE_PAD chips; fold remainder with +N.
+ * Mini overlay: callers pass visibleMax:1 (foreground only; full roster on 完整键盘).
  */
 (function (root) {
   'use strict';
@@ -28,8 +28,9 @@
   /** Grey placeholders until lights land (B/C). */
   var PLACEHOLDER_KINDS = ['workbuddy', 'traeCode', 'qoder'];
 
-  /** Mini visible chip cap; fold with +N when rest nonempty. */
+  /** Mini visible chip cap; fold with +N when rest nonempty. Overlay mini uses 1. */
   var VISIBLE_PAD = 6;
+  var VISIBLE_MINI = 1;
 
   /** Sticky relative order of eligible kinds (FG is pinned only in the display list). */
   var stickyOrder = [];
@@ -237,6 +238,7 @@
     CATALOG: CATALOG,
     PLACEHOLDER_KINDS: PLACEHOLDER_KINDS,
     VISIBLE_PAD: VISIBLE_PAD,
+    VISIBLE_MINI: VISIBLE_MINI,
     rankPadAgentBarKinds: rankPadAgentBarKinds,
     mergePlaceholderKinds: mergePlaceholderKinds,
     padLightFromRanked: padLightFromRanked,

@@ -1570,6 +1570,15 @@ pub struct CodexMicroPadConfig {
     /// Overlay chrome: `"full"` | `"mini"`. Drives runtime `minimized`; mini = LED strip (not ACT keys).
     #[serde(default = "default_codex_micro_presentation")]
     pub presentation: String,
+    /// Mini bar: show usage pill (`Cu · N次` / provider caption). Default on.
+    #[serde(default = "default_true")]
+    pub mini_usage_pill_enabled: bool,
+    /// Mini bar: hide usage pill when there is no renderable text (no `--`). Default on.
+    #[serde(default = "default_true")]
+    pub mini_usage_pill_hide_empty: bool,
+    /// Mini float chrome: voice chip / agents / text preview / tools / window buttons.
+    #[serde(default)]
+    pub mini_chrome: MiniChromeConfig,
     /// Soft Pad visual skin: `"default"` | `"glass-light"` | `"hybrid-pro"` | `"vibe-light"` | `"vibe-dark"`.
     #[serde(default = "default_codex_micro_skin")]
     pub skin: String,
@@ -1626,6 +1635,9 @@ impl Default for CodexMicroPadConfig {
             status_colors: SoftPadStatusColors::default(),
             claude_cli_inject_pref_enabled: false,
             presentation: default_codex_micro_presentation(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: MiniChromeConfig::default(),
             skin: default_codex_micro_skin(),
             keys: Vec::new(),
             common_slot_ids: None,
@@ -1634,6 +1646,61 @@ impl Default for CodexMicroPadConfig {
             navigation_layout_migrated: false,
         }
     }
+}
+
+/// Mini float five-block chrome flags (voice / agents / text / tools / window chrome).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MiniChromeConfig {
+    /// Show listen chip on the mini bar.
+    #[serde(default = "default_true")]
+    pub voice_chip_enabled: bool,
+    /// `listening` = only while dictating; `armed` = also when beginner armed.
+    #[serde(default = "default_mini_voice_when")]
+    pub voice_chip_when: String,
+    /// Master switch for agent status chips on the mini bar (coexists with tools).
+    #[serde(default = "default_true")]
+    pub agents_bar_enabled: bool,
+    /// Second-row transcription / listen band.
+    #[serde(default = "default_true")]
+    pub text_preview_enabled: bool,
+    /// `listening` | `hasText`.
+    #[serde(default = "default_mini_text_when")]
+    pub text_preview_when: String,
+    /// Beginner / vibe tool icon row (coexists with agents).
+    #[serde(default = "default_true")]
+    pub tools_bar_enabled: bool,
+    /// Subset of tool slot ids; empty = show all slots from runtime.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tool_ids: Vec<String>,
+    #[serde(default = "default_true")]
+    pub expand_btn_enabled: bool,
+    #[serde(default = "default_true")]
+    pub close_btn_enabled: bool,
+}
+
+impl Default for MiniChromeConfig {
+    fn default() -> Self {
+        Self {
+            voice_chip_enabled: true,
+            voice_chip_when: default_mini_voice_when(),
+            agents_bar_enabled: true,
+            text_preview_enabled: true,
+            text_preview_when: default_mini_text_when(),
+            tools_bar_enabled: true,
+            tool_ids: Vec::new(),
+            expand_btn_enabled: true,
+            close_btn_enabled: true,
+        }
+    }
+}
+
+fn default_mini_voice_when() -> String {
+    "listening".into()
+}
+
+fn default_mini_text_when() -> String {
+    "listening".into()
 }
 
 /// Soft Pad user-recorded shortcut (name + chord + optional voice phrase).

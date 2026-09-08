@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useSyncExternalStore } from 'react';
 import { useIslandRefresh } from '../island-runtime';
 import {
@@ -38,10 +38,6 @@ let currentModel: SoftPadPreviewModel = EMPTY;
 let currentSig = '';
 const listeners = new Set<() => void>();
 
-function emit(): void {
-  listeners.forEach((l) => l());
-}
-
 function applyHostAttrs(model: SoftPadPreviewModel): void {
   const host = document.getElementById('softPadPreviewHost');
   if (!host) return;
@@ -67,7 +63,11 @@ function applyPaint(model: SoftPadPreviewModel): void {
     return;
   }
   if (model.skipPaint) {
-    if (model.emptyHtml && model.emptyReason === 'unavailable' && !el.querySelector('.codex-micro-pad.soft-pad-preview')) {
+    if (
+      model.emptyHtml &&
+      model.emptyReason === 'unavailable' &&
+      !el.querySelector('.codex-micro-pad.soft-pad-preview')
+    ) {
       el.innerHTML = model.emptyHtml;
     }
     return;
@@ -89,7 +89,8 @@ function syncFromLegacy(): void {
   if (sig === currentSig) return;
   currentSig = sig;
   currentModel = next;
-  emit();
+  // Do NOT emit(): JSX is an empty paint host; a React re-render can wipe
+  // Pad.renderSoftPadPreview HTML (左侧 Soft Pad 预览空白).
 }
 
 function subscribe(listener: () => void): () => void {
@@ -125,6 +126,12 @@ function usePreviewModel(): SoftPadPreviewModel {
       syncFromLegacy();
     }
   }, []);
+
+  // refreshAll / root.render 会换掉空 paint 节点；commit 后立刻回填。
+  useLayoutEffect(() => {
+    ensureBridge();
+    syncFromLegacy();
+  });
 
   useIslandRefresh(syncFromLegacy);
 

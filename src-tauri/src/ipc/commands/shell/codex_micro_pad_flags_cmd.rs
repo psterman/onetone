@@ -286,6 +286,111 @@ pub fn cmd_codex_micro_pad_set_presentation(
     Ok(())
 }
 
+/// Quiet-save mini bar usage-pill flags and push overlay snapshot.
+#[tauri::command]
+pub fn cmd_codex_micro_pad_set_mini_usage_pill(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    mapping_id: String,
+    enabled: bool,
+    hide_empty: bool,
+) -> Result<(), String> {
+    let mapping_id = mapping_id.trim().to_string();
+    if mapping_id.is_empty() {
+        return Err("mapping_id_empty".into());
+    }
+
+    let cfg_to_save;
+    {
+        let mut cfg = state.cfg.lock();
+        let Some(mapping) = cfg.mappings.iter_mut().find(|m| m.id == mapping_id) else {
+            return Err("mapping_not_found".into());
+        };
+        let pad = mapping
+            .codex_micro_pad
+            .get_or_insert_with(codex_numpad_layer::default_codex_micro_pad);
+        pad.mini_usage_pill_enabled = enabled;
+        pad.mini_usage_pill_hide_empty = hide_empty;
+        codex_numpad_layer::sync_hook_cache(&cfg);
+        cfg_to_save = cfg.clone();
+    }
+
+    let state_bg = Arc::clone(state.inner());
+    let _ = std::thread::Builder::new()
+        .name("codex-micro-pad-mini-pill".into())
+        .spawn(move || {
+            config::save_config(&cfg_to_save);
+            codex_micro_overlay::push_state(&app, &state_bg);
+        });
+    Ok(())
+}
+
+fn normalize_mini_when(raw: &str, fallback: &str) -> String {
+    let s = raw.trim().to_ascii_lowercase();
+    if s == "listening" || s == "armed" || s == "hastext" {
+        if s == "hastext" {
+            "hasText".into()
+        } else {
+            s
+        }
+    } else {
+        fallback.into()
+    }
+}
+
+/// Quiet-save mini float five-block chrome flags and push overlay snapshot.
+#[tauri::command]
+pub fn cmd_codex_micro_pad_set_mini_chrome(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    mapping_id: String,
+    chrome: config::MiniChromeConfig,
+) -> Result<(), String> {
+    let mapping_id = mapping_id.trim().to_string();
+    if mapping_id.is_empty() {
+        return Err("mapping_id_empty".into());
+    }
+
+    let mut chrome = chrome;
+    chrome.voice_chip_when = normalize_mini_when(&chrome.voice_chip_when, "listening");
+    if chrome.voice_chip_when == "hasText" {
+        chrome.voice_chip_when = "listening".into();
+    }
+    chrome.text_preview_when = normalize_mini_when(&chrome.text_preview_when, "listening");
+    if chrome.text_preview_when == "armed" {
+        chrome.text_preview_when = "listening".into();
+    }
+    chrome.tool_ids = chrome
+        .tool_ids
+        .into_iter()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    let cfg_to_save;
+    {
+        let mut cfg = state.cfg.lock();
+        let Some(mapping) = cfg.mappings.iter_mut().find(|m| m.id == mapping_id) else {
+            return Err("mapping_not_found".into());
+        };
+        let pad = mapping
+            .codex_micro_pad
+            .get_or_insert_with(codex_numpad_layer::default_codex_micro_pad);
+        pad.mini_chrome = chrome;
+        codex_numpad_layer::sync_hook_cache(&cfg);
+        cfg_to_save = cfg.clone();
+    }
+
+    let state_bg = Arc::clone(state.inner());
+    let _ = std::thread::Builder::new()
+        .name("codex-micro-pad-mini-chrome".into())
+        .spawn(move || {
+            config::save_config(&cfg_to_save);
+            codex_micro_overlay::push_state(&app, &state_bg);
+        });
+    Ok(())
+}
+
 /// Quiet-save Soft Pad visual skin and push overlay snapshot.
 #[tauri::command]
 pub fn cmd_codex_micro_pad_set_skin(

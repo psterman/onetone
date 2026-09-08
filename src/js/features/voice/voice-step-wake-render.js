@@ -590,19 +590,22 @@
       global.OneToneVoiceStepSend.syncPhraseKindTabs('voiceWakeKindTabs','text');
     }
     renderWrongFgStatus();
-    if(face==='softpad'&&global.OneToneVoiceBridgeSoftPad&&global.OneToneVoiceBridgeSoftPad.render){
-      global.OneToneVoiceBridgeSoftPad.render();
-    }
-    if(face==='keys'&&global.OneToneVoiceBridgeKeys&&global.OneToneVoiceBridgeKeys.render){
-      global.OneToneVoiceBridgeKeys.render();
-    }
-    if(face==='camera'&&global.OneToneVoiceBridgeCamera&&global.OneToneVoiceBridgeCamera.render){
-      global.OneToneVoiceBridgeCamera.render();
-    }
+    refreshActiveVoiceBridge();
   }
 
   function getVoiceFace(){
     return global.__vp_voice_face__||'dictate';
+  }
+
+  function refreshActiveVoiceBridge(){
+    var face=getVoiceFace();
+    if(face==='softpad'&&global.OneToneVoiceBridgeSoftPad&&global.OneToneVoiceBridgeSoftPad.render){
+      global.OneToneVoiceBridgeSoftPad.render();
+    }else if(face==='keys'&&global.OneToneVoiceBridgeKeys&&global.OneToneVoiceBridgeKeys.render){
+      global.OneToneVoiceBridgeKeys.render();
+    }else if(face==='camera'&&global.OneToneVoiceBridgeCamera&&global.OneToneVoiceBridgeCamera.render){
+      global.OneToneVoiceBridgeCamera.render();
+    }
   }
 
   function renderWakeSectionLabels(){
@@ -774,6 +777,7 @@
     renderOutputSummon:renderOutputSummon,
     setVoiceFace:setVoiceFace,
     getVoiceFace:getVoiceFace,
+    refreshActiveVoiceBridge:refreshActiveVoiceBridge,
     renderLandingStrip:renderLandingStrip,
     renderSchemeCard:renderLandingStrip,
     renderWrongFgStatus:renderWrongFgStatus

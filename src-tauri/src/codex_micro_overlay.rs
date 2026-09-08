@@ -24,11 +24,14 @@ const OVERLAY_HEIGHT_FULL: f64 = 680.0;
 /// resizes/repositions the pad (CSS fades the rail in-place).
 /// Deprecated: JOY side-rail removed; NAV keys live on the 5-col main pad.
 #[allow(dead_code)]
-/// 6 agent chips + usage pill (`Cu · N次`) + expand/close; 240px crushed the pill to "C.".
-const OVERLAY_WIDTH_MINI: f64 = 320.0;
+/// 6 agent chips + full usage (`Cu · N次`) + expand/close; bar grows horizontally.
+const OVERLAY_WIDTH_MINI: f64 = 380.0;
 const OVERLAY_HEIGHT_MINI: f64 = 44.0;
+/// Compact hover tools row (~28px buttons + padding) under the main strip.
+const OVERLAY_HEIGHT_MINI_TOOLS: f64 = 76.0;
 /// Extra band for Cursor beginner listen hint under mini bar.
 const OVERLAY_HEIGHT_MINI_LISTEN: f64 = 68.0;
+const OVERLAY_HEIGHT_MINI_TOOLS_LISTEN: f64 = 100.0;
 const HIGHLIGHT_MS: u64 = 900;
 
 static ACTIVE_MICRO_KEY: OnceLock<Mutex<String>> = OnceLock::new();
@@ -568,6 +571,15 @@ pub struct CodexMicroOverlaySnapshot {
     pub status_light_micro_key_id: String,
     pub software_enhance_enabled: bool,
     pub minimized: bool,
+    /// Mini bar usage pill on/off (from pad.miniUsagePillEnabled).
+    #[serde(default = "default_true_snapshot")]
+    pub mini_usage_pill_enabled: bool,
+    /// Hide pill when empty; when false show `--` (from pad.miniUsagePillHideEmpty).
+    #[serde(default = "default_true_snapshot")]
+    pub mini_usage_pill_hide_empty: bool,
+    /// Five-block mini chrome flags (voice / agents / text / tools / window).
+    #[serde(default)]
+    pub mini_chrome: crate::config::MiniChromeConfig,
     /// Soft Pad visual skin (normalized): default | glass-light | hybrid-pro | vibe-light | vibe-dark.
     pub skin: String,
     /// shortcuts | sessions — stored user purpose for this Applied mapping.
@@ -2750,6 +2762,9 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -2815,6 +2830,9 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             status_light_micro_key_id,
             software_enhance_enabled: false,
             minimized,
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: normalize_skin("").to_string(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts.as_str().to_string(),
             mapping_id: String::new(),
@@ -3370,6 +3388,9 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         status_light_micro_key_id,
         software_enhance_enabled: pad.software_enhance_enabled,
         minimized,
+        mini_usage_pill_enabled: pad.mini_usage_pill_enabled,
+        mini_usage_pill_hide_empty: pad.mini_usage_pill_hide_empty,
+        mini_chrome: pad.mini_chrome.clone(),
         skin: normalize_skin(&pad.skin).to_string(),
         purpose: pad.purpose.as_str().to_string(),
         mapping_id: mapping.id.clone(),
@@ -4327,12 +4348,18 @@ fn apply_overlay_payload(
     }
 }
 
-fn overlay_logical_size(minimized: bool, _joy_open: bool, listen_band: bool) -> (f64, f64) {
+fn overlay_logical_size(
+    minimized: bool,
+    _joy_open: bool,
+    listen_band: bool,
+    tools_row: bool,
+) -> (f64, f64) {
     if minimized {
-        let h = if listen_band {
-            OVERLAY_HEIGHT_MINI_LISTEN
-        } else {
-            OVERLAY_HEIGHT_MINI
+        let h = match (tools_row, listen_band) {
+            (true, true) => OVERLAY_HEIGHT_MINI_TOOLS_LISTEN,
+            (true, false) => OVERLAY_HEIGHT_MINI_TOOLS,
+            (false, true) => OVERLAY_HEIGHT_MINI_LISTEN,
+            (false, false) => OVERLAY_HEIGHT_MINI,
         };
         (OVERLAY_WIDTH_MINI, h)
     } else {
@@ -4347,8 +4374,9 @@ fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnaps
     let listen_band = snapshot.minimized
         && ((snapshot.cursor_beginner_mode && snapshot.cursor_beginner_armed)
             || snapshot.activation_hub_active);
+    let tools_row = snapshot.minimized && snapshot.mini_chrome.tools_bar_enabled;
     let (logical_w, logical_h) =
-        overlay_logical_size(minimized, snapshot.joy_nav_panel_open, listen_band);
+        overlay_logical_size(minimized, snapshot.joy_nav_panel_open, listen_band, tools_row);
     let width_key = logical_w.round() as i32;
     let height_key = logical_h.round() as i32;
     let want = (minimized, width_key, height_key);
@@ -4446,7 +4474,7 @@ fn position_overlay(win: &WebviewWindow) {
     let minimized = *overlay_minimized().lock();
     let joy_open = crate::codex_numpad_layer::joy_nav_panel_open()
         && crate::codex_numpad_layer::pad_mapping_active();
-    let (logical_w, logical_h) = overlay_logical_size(minimized, joy_open, false);
+    let (logical_w, logical_h) = overlay_logical_size(minimized, joy_open, false, minimized);
     let scale = win.scale_factor().unwrap_or(1.0);
     let w = (logical_w * scale).round() as i32;
     let h = (logical_h * scale).round() as i32;
@@ -5020,6 +5048,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -5192,6 +5223,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -5300,6 +5334,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -5411,6 +5448,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -5465,6 +5505,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -5597,6 +5640,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -5718,6 +5764,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -5787,6 +5836,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -5853,6 +5905,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -5922,6 +5977,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -5985,6 +6043,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6059,6 +6120,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6127,6 +6191,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6231,6 +6298,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6345,6 +6415,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6455,6 +6528,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6504,6 +6580,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6589,6 +6668,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6659,6 +6741,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6742,6 +6827,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6820,6 +6908,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6862,6 +6953,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6933,6 +7027,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -6998,6 +7095,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -7062,6 +7162,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -7120,6 +7223,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -7187,6 +7293,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -7244,6 +7353,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -7307,6 +7419,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -7359,6 +7474,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -7446,6 +7564,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -7654,6 +7775,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -7713,6 +7837,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -7769,6 +7896,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
@@ -7823,6 +7953,9 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,

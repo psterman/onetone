@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Q2 · 做到哪一层 · IA vs IA+runtime</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8eef3;
+      --surface: #fff;
+      --surface-2: #f5f8fb;
+      --line: #d5dee8;
+      --line-strong: #b8c5d4;
+      --text: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --primary: #00658f;
+      --primary-soft: #e4f2f9;
+      --primary-bd: #9bc6da;
+      --ok: #15803d;
+      --ok-soft: #ecfdf5;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --new: #7c3aed;
+      --new-soft: #f5f3ff;
+      --new-bd: #ddd6fe;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+    button { font-family: inherit; cursor: pointer; }
+
+    .top {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+      padding: 12px 16px; background: #13202c; color: #c9d7e4;
+    }
+    .top h1 { margin: 0; font-size: 14px; font-weight: 800; color: #c4b5fd; }
+    .top p { margin: 0; font-size: 12px; color: #8fa3b5; flex: 1; min-width: 200px; }
+    .top a { color: #7dd3fc; }
+    .lock {
+      font: 700 11px/1 var(--font); color: #86efac; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid rgba(134, 239, 172, .35); background: rgba(22, 163, 74, .15);
+    }
+
+    .page { max-width: 1180px; margin: 0 auto; padding: 14px 14px 40px; }
+
+    .variant-bar {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;
+    }
+    .vbtn {
+      text-align: left; border: 1px solid var(--line-strong); border-radius: 12px;
+      background: var(--surface); padding: 12px; color: inherit;
+    }
+    .vbtn:hover { border-color: var(--primary-bd); }
+    .vbtn.is-on {
+      border-color: var(--primary); background: var(--primary-soft);
+      box-shadow: 0 0 0 1px var(--primary-bd);
+    }
+    .vbtn[data-v="B"].is-on {
+      border-color: var(--new); background: var(--new-soft);
+      box-shadow: 0 0 0 1px var(--new-bd);
+    }
+    .vbtn .tag {
+      display: inline-block; font: 800 10px/1 var(--mono); letter-spacing: .04em;
+      color: var(--primary); margin-bottom: 6px;
+    }
+    .vbtn[data-v="B"] .tag { color: var(--new); }
+    .vbtn b { display: block; font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+    .vbtn span { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+
+    .verdict {
+      display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
+      padding: 11px 13px; border-radius: 10px; margin-bottom: 12px;
+      background: var(--primary-soft); border: 1px solid var(--primary-bd);
+      font-size: 12.5px; line-height: 1.5; color: var(--muted);
+    }
+    .verdict[data-tone="new"] { background: var(--new-soft); border-color: var(--new-bd); }
+    .verdict .k { font: 800 11px/1 var(--mono); color: var(--primary); padding-top: 3px; }
+    .verdict[data-tone="new"] .k { color: var(--new); }
+    .verdict b { color: var(--text); }
+
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 10px;
+      font-size: 11.5px; color: var(--muted);
+    }
+    .legend i {
+      display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px;
+      vertical-align: -1px;
+    }
+    .legend .ex { background: var(--primary); }
+    .legend .nw { background: var(--new); }
+
+    .mock {
+      border: 1px solid var(--line-strong); border-radius: 16px; background: var(--surface);
+      overflow-x: auto; box-shadow: 0 10px 28px rgba(19, 32, 44, .07);
+    }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.38fr) minmax(420px, 1fr);
+      min-width: 760px; min-height: 680px;
+    }
+    .left {
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, #eef6fa 0%, #fff 45%);
+      padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .right { display: flex; flex-direction: column; min-width: 0; }
+
+    .left-h { display: flex; justify-content: space-between; align-items: baseline; }
+    .left-h h2 { margin: 0; font-size: 13px; font-weight: 800; }
+    .left-h em { font-style: normal; font-size: 11px; color: var(--faint); font-weight: 650; }
+
+    .stage {
+      flex: 1; min-height: 260px; border-radius: 14px; border: 1px dashed var(--line-strong);
+      background: #f7fafc; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px; padding: 18px 12px;
+    }
+    .mini {
+      display: flex; align-items: center; gap: 7px; width: min(100%, 280px);
+      padding: 8px 11px; border-radius: 999px; border: 1px solid var(--line-strong);
+      background: #fff; box-shadow: 0 6px 16px rgba(19, 32, 44, .08);
+    }
+    .dot {
+      width: 22px; height: 22px; border-radius: 7px; background: #eef2f6; border: 1px solid var(--line);
+      position: relative; flex-shrink: 0;
+    }
+    .dot::after {
+      content: ""; position: absolute; right: -1px; bottom: -1px; width: 7px; height: 7px;
+      border-radius: 50%; border: 1.5px solid #fff; background: var(--c, #94a3b8);
+    }
+    .dot.busy::after { background: #2563eb; }
+    .dot.wait::after { background: #d97706; }
+    .dot.done::after { background: #16a34a; }
+    .dot[hidden] { display: none !important; }
+    .pill {
+      margin-left: auto; font: 750 11px/1 var(--font); color: var(--primary);
+      padding: 4px 8px; border-radius: 999px; background: var(--primary-soft); border: 1px solid var(--primary-bd);
+      white-space: nowrap;
+    }
+    .cap { font-size: 11px; color: var(--faint); text-align: center; max-width: 250px; line-height: 1.4; }
+
+    .signal {
+      width: 100%; max-width: 280px; font-size: 11.5px; line-height: 1.45;
+      padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--muted);
+    }
+    .signal b { color: var(--text); }
+    .signal.newish { border-color: var(--new-bd); background: var(--new-soft); }
+    .signal.newish b { color: var(--new); }
+
+    .right-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 12px 14px 0;
+    }
+    .right-head h3 { margin: 0; font-size: 15px; font-weight: 800; }
+    .face-chip {
+      font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+    }
+
+    .scope { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px 0; }
+    .chip {
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+      font: 650 12px/1 var(--font); padding: 6px 10px; border-radius: 8px;
+    }
+    .chip.is-on { border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary); }
+
+    .l3 { display: flex; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .l3tab {
+      flex: 1; padding: 9px 6px; border: 1px solid var(--line); border-radius: 10px;
+      background: var(--surface-2); color: var(--muted); font: 750 12px/1 var(--font);
+    }
+    .l3tab.is-on { color: var(--primary); border-color: var(--primary-bd); background: var(--primary-soft); }
+
+    .panel { flex: 1; padding: 12px 14px 16px; overflow: auto; }
+    .lead { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+
+    .sec {
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2);
+      padding: 12px; margin-bottom: 10px; position: relative;
+    }
+    .sec.is-new {
+      border-color: var(--new-bd); background: color-mix(in srgb, var(--new-soft) 70%, #fff);
+    }
+    .sec .mark {
+      position: absolute; top: 10px; right: 10px;
+      font: 800 9px/1 var(--mono); letter-spacing: .06em;
+      padding: 3px 6px; border-radius: 4px;
+    }
+    .sec .mark.ex { background: var(--primary-soft); color: var(--primary); border: 1px solid var(--primary-bd); }
+    .sec .mark.nw { background: #ede9fe; color: var(--new); border: 1px solid var(--new-bd); }
+    .sec h4 { margin: 0 0 4px; font-size: 13px; font-weight: 800; padding-right: 52px; }
+    .sec .dim6 {
+      display: inline-block; font: 700 10px/1 var(--mono); color: var(--faint);
+      margin-bottom: 6px; letter-spacing: .02em;
+    }
+    .sec .hint { margin: 0 0 10px; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+
+    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mode {
+      text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px;
+      background: #fff; color: inherit;
+    }
+    .mode.is-on { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 1px var(--primary-bd); }
+    .mode b { display: block; font-size: 12.5px; margin-bottom: 3px; }
+    .mode span { font-size: 11px; color: var(--muted); line-height: 1.35; }
+
+    .row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 12.5px;
+    }
+    .row:last-child { border-bottom: 0; }
+    .sw {
+      width: 38px; height: 22px; border-radius: 999px; border: 0; background: var(--primary); position: relative; flex-shrink: 0;
+    }
+    .sw.off { background: #cbd5e1; }
+    .sw::after {
+      content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff; transform: translateX(16px);
+    }
+    .sw.off::after { transform: none; }
+
+    .seg {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .seg button {
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+      font: 650 11.5px/1 var(--font); padding: 7px 10px; border-radius: 8px;
+    }
+    .seg button.is-on {
+      border-color: var(--new-bd); background: #ede9fe; color: var(--new);
+    }
+
+    .roster { display: grid; gap: 8px; }
+    .ri {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
+    }
+    .ri .n { font-weight: 750; font-size: 13px; }
+    .ri .s { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .badge {
+      font: 700 10.5px/1 var(--font); padding: 4px 7px; border-radius: 999px;
+      background: var(--ok-soft); color: var(--ok); border: 1px solid #bbf7d0;
+    }
+    .linkbtn {
+      display: block; width: 100%; text-align: left; margin-top: 8px;
+      border: 1px solid var(--primary-bd); background: #fff; color: var(--primary);
+      font: 750 12px/1.3 var(--font); padding: 10px 12px; border-radius: 8px;
+    }
+    .fn-list {
+      margin: 0; padding: 0; list-style: none; display: grid; gap: 6px;
+      font-size: 12px; color: var(--muted);
+    }
+    .fn-list li {
+      padding: 8px 10px; border-radius: 8px; background: #fff; border: 1px solid var(--line);
+      line-height: 1.4;
+    }
+    .fn-list li strong { color: var(--text); font-weight: 700; }
+    .insight {
+      margin: 8px 0 0; padding: 9px 10px; border-radius: 8px; background: #fff;
+      border: 1px solid var(--line); font-size: 12px; color: var(--muted); line-height: 1.45;
+    }
+    .insight b { color: var(--text); }
+
+    .map {
+      margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #13202c; color: #b8c9d8;
+      font: 500 11.5px/1.55 var(--mono); white-space: pre-wrap;
+    }
+    .map strong { color: #c4b5fd; font-weight: 700; }
+
+    @media (max-width: 900px) {
+      .variant-bar { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1>Q2 · 做到哪一层</h1>
+    <p>同一套 vibecoding 六维分区；差别是「只换壳」还是「真加 runtime」。对照 <a href="./q1-timing-home.html">Q1 时机归属</a></p>
+    <span class="lock">紫标 = 新能力</span>
+  </header>
+
+  <div class="page">
+    <div class="variant-bar" role="tablist">
+      <button type="button" class="vbtn is-on" data-v="A" role="tab" aria-selected="true">
+        <span class="tag">A · IA ONLY</span>
+        <b>只重梳设置页</b>
+        <span>六维换标题/分区；控件仍是形态、pill 显隐、roster、（可选）时机。不改 overlay 行为。</span>
+      </button>
+      <button type="button" class="vbtn" data-v="B" role="tab" aria-selected="false">
+        <span class="tag">B · IA + RUNTIME</span>
+        <b>重梳 + 真缺能力</b>
+        <span>在 A 之上加：忙/等你过滤、空闲自动藏、pill 指标、点击行为说明可配。动 config / overlay。</span>
+      </button>
+    </div>
+
+    <div class="verdict" id="verdict" data-tone="info">
+      <div class="k">COST</div>
+      <div id="verdictText"><b>A · IA only：</b>最短路径。把现状三块改写成 vibecoding 六维话术（时机深链 / 展示 / 内容 / 功能说明 / 名单 / 数据跳转）。零新字段；测脚本只改 marker。</div>
+    </div>
+
+    <div class="legend">
+      <span><i class="ex"></i>已有能力（改 copy / 分区）</span>
+      <span><i class="nw"></i>新增 runtime（要写 config + overlay）</span>
+    </div>
+
+    <div class="mock">
+      <div class="split">
+        <aside class="left">
+          <div class="left-h">
+            <h2>设置中预览</h2>
+            <em id="leftTag">六维 · A</em>
+          </div>
+          <div class="stage">
+            <div class="mini" id="miniPreview" aria-label="迷你栏预览">
+              <span class="dot busy" data-agent="cursor"></span>
+              <span class="dot wait" data-agent="codex"></span>
+              <span class="dot done" data-agent="claude"></span>
+              <span class="dot" data-agent="minimax"></span>
+              <span class="pill" id="pillPreview">Cu · 44次</span>
+            </div>
+            <div class="cap" id="leftCap">与右侧分区对照 · 能力与现状一致</div>
+            <div class="signal" id="signalBox">
+              <b>预览反馈</b>
+              <div id="signalBody">空闲 Agent 仍亮着（现状 catalog 顺序，最多 6）。</div>
+            </div>
+          </div>
+        </aside>
+
+        <section class="right">
+          <div class="right-head">
+            <h3>灯效与浮窗</h3>
+            <span class="face-chip">当前应用 · Cursor</span>
+          </div>
+          <div class="scope">
+            <span class="chip is-on">Cursor</span>
+            <span class="chip">Codex</span>
+            <span class="chip">Claude</span>
+            <span class="chip">MiniMax</span>
+          </div>
+          <div class="l3">
+            <button type="button" class="l3tab" disabled>灯效匹配</button>
+            <button type="button" class="l3tab" disabled>显示数据</button>
+            <button type="button" class="l3tab is-on">迷你栏</button>
+          </div>
+          <div class="panel" id="panel"></div>
+        </section>
+      </div>
+    </div>
+
+    <pre class="map" id="map"></pre>
+  </div>
+
+  <script>
+    const VERDICTS = {
+      A: {
+        tone: "info",
+        text: "<b>A · IA only：</b>最短路径。把现状三块改写成 vibecoding 六维话术（时机深链 / 展示 / 内容 / 功能说明 / 名单 / 数据跳转）。零新字段；测脚本只改 marker。"
+      },
+      B: {
+        tone: "new",
+        text: "<b>B · +runtime：</b>紫标区块会进 config（如 busyOnly / autoHideIdle / pillMetric）。overlay snapshot 过滤 chip；pill 文案切指标。工期≈IA + Rust/FE persist + soft-pad-mini-agents 测例。"
+      }
+    };
+
+    const MAPS = {
+      A: "改动面\n  codex-micro-pad-ui.js  renderAgentMiniPanel  分区/文案\n  i18n.js                softPadMini*\n  soft-pad-hub.css       可选间距\n  test-soft-pad-face-routing.mjs  marker\n\n不动\n  config.rs / overlay 行为 / IPC",
+      B: "在 A 之上追加\n  config.rs              miniBusyOnly, miniAutoHideIdle, miniPillMetric\n  codex_micro_pad_flags  新 quiet IPC 或并入 set_mini_usage_pill\n  overlay snapshot       过滤 idle chip；pill 指标\n  soft-pad-mini-agents   过滤 / 指标断言\n\n功能说明区\n  默认只展示「点击行为」只读说明；可配项仅 B 打开（如 pill 点击=刷新）"
+    };
+
+    function mark(kind) {
+      return `<span class="mark ${kind}">${kind === "nw" ? "NEW" : "EXIST"}</span>`;
+    }
+
+    function renderA() {
+      return `
+        <p class="lead">六维话术套在现有开关上。紫标不会出现——没有新 runtime。</p>
+
+        <div class="sec">
+          ${mark("ex")}
+          <span class="dim6">01 · 显示时机</span>
+          <h4>何时出现</h4>
+          <p class="hint">主配置在 Soft Pad「何时显示」；此处深链（若 Q1 选 A/B 则换成控件，仍用现有 showMode）。</p>
+          <button type="button" class="linkbtn" style="margin:0">去 Soft Pad · 何时显示 →</button>
+        </div>
+
+        <div class="sec">
+          ${mark("ex")}
+          <span class="dim6">02 · 展示方案</span>
+          <h4>完整体 / 精简态</h4>
+          <p class="hint">即现有 presentation。</p>
+          <div class="modes">
+            <button type="button" class="mode"><b>完整体</b><span>完整键盘</span></button>
+            <button type="button" class="mode is-on"><b>精简态</b><span>灯条少占屏</span></button>
+          </div>
+        </div>
+
+        <div class="sec">
+          ${mark("ex")}
+          <span class="dim6">03 · 显示内容</span>
+          <h4>用量 pill</h4>
+          <p class="hint">只决定露不露；数字仍来自「显示数据」。</p>
+          <div class="row"><span>显示用量 pill</span><button type="button" class="sw"></button></div>
+          <div class="row"><span>无数据时隐藏</span><button type="button" class="sw"></button></div>
+        </div>
+
+        <div class="sec">
+          ${mark("ex")}
+          <span class="dim6">04 · 显示功能</span>
+          <h4>条上能做什么（只读说明）</h4>
+          <p class="hint">不新增开关；把写死行为说清楚，降低「点 pill 会不会跳 Agent」困惑。</p>
+          <ul class="fn-list">
+            <li><strong>点 Agent 灯</strong> → 跳到该 Agent 窗口</li>
+            <li><strong>点用量 pill</strong> → 刷新用量 / 去配 Key（不抢前台）</li>
+            <li><strong>展开</strong> → 回到完整体 Soft Pad</li>
+          </ul>
+        </div>
+
+        <div class="sec">
+          ${mark("ex")}
+          <span class="dim6">05 · 管理策略</span>
+          <h4>灯条上亮谁</h4>
+          <p class="hint">加删 roster；顺序仍 catalog 固定（现状）。</p>
+          <div class="roster">
+            <div class="ri"><div><div class="n">Cursor</div><div class="s">灯条 · 本地活跃</div></div><span class="badge">亮着</span></div>
+            <div class="ri"><div><div class="n">Codex</div><div class="s">灯条 · 已接入</div></div><span class="badge">亮着</span></div>
+            <div class="ri"><div><div class="n">Claude</div><div class="s">灯条 · 已接入</div></div><span class="badge">亮着</span></div>
+          </div>
+          <button type="button" class="linkbtn">+ 添加 Agent</button>
+        </div>
+
+        <div class="sec">
+          ${mark("ex")}
+          <span class="dim6">06 · 数据分析</span>
+          <h4>看数去「显示数据」</h4>
+          <p class="hint">本页不编辑额度口径；只预览 pill 文案 + 跳转。</p>
+          <div class="insight"><b>今日预览</b> · 44 次对话 · 与左侧 pill 同源</div>
+          <button type="button" class="linkbtn">去显示数据（设置页数字）→</button>
+        </div>`;
+    }
+
+    function renderB() {
+      return `
+        <p class="lead">在 A 的六维壳上，给 vibecoding 真正会拧的旋钮（紫 = 新 runtime）。</p>
+
+        <div class="sec">
+          ${mark("ex")}
+          <span class="dim6">01 · 显示时机</span>
+          <h4>何时出现</h4>
+          <p class="hint">同 A / 随 Q1 决定迁入或深链。本对照默认深链。</p>
+          <button type="button" class="linkbtn" style="margin:0">去 Soft Pad · 何时显示 →</button>
+        </div>
+
+        <div class="sec">
+          ${mark("ex")}
+          <span class="dim6">02 · 展示方案</span>
+          <h4>完整体 / 精简态</h4>
+          <div class="modes">
+            <button type="button" class="mode"><b>完整体</b><span>完整键盘</span></button>
+            <button type="button" class="mode is-on"><b>精简态</b><span>灯条少占屏</span></button>
+          </div>
+        </div>
+
+        <div class="sec is-new">
+          ${mark("nw")}
+          <span class="dim6">03 · 显示内容</span>
+          <h4>用量 pill · 露什么</h4>
+          <p class="hint">显隐仍 EXIST；指标选择是 NEW。</p>
+          <div class="row"><span>显示用量 pill</span><button type="button" class="sw"></button></div>
+          <div class="row"><span>无数据时隐藏</span><button type="button" class="sw"></button></div>
+          <div class="row" style="border:0;padding-top:10px;align-items:flex-start;flex-direction:column;gap:8px">
+            <span>pill 优先指标</span>
+            <div class="seg" id="metricSeg">
+              <button type="button" class="is-on" data-metric="turns">今日次数</button>
+              <button type="button" data-metric="sessions">会话数</button>
+              <button type="button" data-metric="active">活跃时长</button>
+              <button type="button" data-metric="quota">额度%</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec is-new">
+          ${mark("nw")}
+          <span class="dim6">04 · 显示功能</span>
+          <h4>条上行为</h4>
+          <p class="hint">只读说明保留；可配项仅打开安全的那些。</p>
+          <ul class="fn-list">
+            <li><strong>点 Agent 灯</strong> → 跳到该 Agent（固定）</li>
+            <li><strong>点用量 pill</strong> → 刷新用量（固定，不 focus）</li>
+          </ul>
+          <div class="row"><span>展开按钮显示</span><button type="button" class="sw"></button></div>
+          <div class="row"><span>关闭按钮显示</span><button type="button" class="sw"></button></div>
+        </div>
+
+        <div class="sec is-new">
+          ${mark("nw")}
+          <span class="dim6">05 · 管理策略</span>
+          <h4>亮谁 + 过滤</h4>
+          <p class="hint">名单仍 EXIST；过滤规则 NEW → 左侧预览会藏空闲灯。</p>
+          <div class="row"><span>只显示忙 / 等你</span><button type="button" class="sw" id="busyOnly"></button></div>
+          <div class="row"><span>空闲超过 10 分钟自动藏</span><button type="button" class="sw off" id="autoHide"></button></div>
+          <div class="roster" style="margin-top:8px">
+            <div class="ri"><div><div class="n">Cursor</div><div class="s">忙 · 会保留</div></div><span class="badge">亮着</span></div>
+            <div class="ri"><div><div class="n">Codex</div><div class="s">等你 · 会保留</div></div><span class="badge">亮着</span></div>
+            <div class="ri" style="opacity:.45"><div><div class="n">Claude</div><div class="s">空闲 · 过滤后隐藏</div></div><span class="badge">将藏</span></div>
+          </div>
+          <button type="button" class="linkbtn">+ 添加 Agent</button>
+        </div>
+
+        <div class="sec is-new">
+          ${mark("nw")}
+          <span class="dim6">06 · 数据分析</span>
+          <h4>条上洞察一行</h4>
+          <p class="hint">仍跳「显示数据」改口径；迷你栏可多一行环比（NEW，只读）。</p>
+          <div class="insight"><b>今日</b> 44 次 · 会话 13 · <b>较昨日对话 −48%</b></div>
+          <div class="row"><span>在 pill 旁显示环比角标</span><button type="button" class="sw off"></button></div>
+          <button type="button" class="linkbtn">去显示数据（设置页数字）→</button>
+        </div>`;
+    }
+
+    function syncPreview(v) {
+      const idle = document.querySelector('.dot[data-agent="claude"]');
+      const mm = document.querySelector('.dot[data-agent="minimax"]');
+      const box = document.getElementById("signalBox");
+      const body = document.getElementById("signalBody");
+      const cap = document.getElementById("leftCap");
+      const tag = document.getElementById("leftTag");
+      const pill = document.getElementById("pillPreview");
+
+      if (v === "A") {
+        tag.textContent = "六维 · A";
+        cap.textContent = "与右侧分区对照 · 能力与现状一致";
+        box.classList.remove("newish");
+        idle.hidden = false;
+        mm.hidden = false;
+        pill.textContent = "Cu · 44次";
+        body.textContent = "空闲 Agent 仍亮着（现状 catalog 顺序，最多 6）。";
+      } else {
+        tag.textContent = "六维 · B";
+        cap.textContent = "开「只显示忙/等你」后，左侧空闲灯会藏";
+        box.classList.add("newish");
+        idle.hidden = true;
+        mm.hidden = true;
+        pill.textContent = "Cu · 44次";
+        body.innerHTML = "<b>NEW 预览：</b>只留 Cursor(忙) + Codex(等你)；Claude/MiniMax 空闲已过滤。";
+      }
+    }
+
+    function bindB() {
+      const busy = document.getElementById("busyOnly");
+      if (!busy) return;
+      busy.addEventListener("click", () => {
+        const on = !busy.classList.contains("off");
+        /* currently on; toggle */
+        if (busy.classList.contains("off")) {
+          busy.classList.remove("off");
+          document.querySelector('.dot[data-agent="claude"]').hidden = true;
+          document.querySelector('.dot[data-agent="minimax"]').hidden = true;
+          document.getElementById("signalBody").innerHTML = "<b>NEW 预览：</b>只留忙/等你。";
+        } else {
+          busy.classList.add("off");
+          document.querySelector('.dot[data-agent="claude"]').hidden = false;
+          document.querySelector('.dot[data-agent="minimax"]').hidden = false;
+          document.getElementById("signalBody").textContent = "过滤关闭 · 名单全亮（仍受 max 6 限制）。";
+        }
+      });
+      document.querySelectorAll("#metricSeg button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("#metricSeg button").forEach((b) => b.classList.toggle("is-on", b === btn));
+          const map = { turns: "Cu · 44次", sessions: "Cu · 13会话", active: "Cu · 13h59m", quota: "Cu · 62%" };
+          document.getElementById("pillPreview").textContent = map[btn.dataset.metric] || "Cu · 44次";
+        });
+      });
+    }
+
+    function render(v) {
+      document.getElementById("panel").innerHTML = v === "A" ? renderA() : renderB();
+      const vd = VERDICTS[v];
+      document.getElementById("verdict").dataset.tone = vd.tone;
+      document.getElementById("verdictText").innerHTML = vd.text;
+      document.getElementById("map").textContent = MAPS[v];
+      syncPreview(v);
+      if (v === "B") bindB();
+    }
+
+    document.querySelectorAll(".vbtn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".vbtn").forEach((b) => {
+          b.classList.toggle("is-on", b === btn);
+          b.setAttribute("aria-selected", b === btn ? "true" : "false");
+        });
+        render(btn.dataset.v);
+      });
+    });
+
+    render("A");
+  </script>
+</body>
+</html>

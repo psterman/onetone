@@ -202,19 +202,40 @@
       return;
     }
 
-    if(focus==='softPadLayout'||focus==='softPadDisplay'||focus==='softPadStatus'){
+    if(focus==='softPadLayout'||focus==='softPadDisplay'||focus==='softPadStatus'||focus==='softPadMini'){
       setSettingsPanel('softPad');
       setTimeout(function(){
-        var flowId=focus==='softPadStatus'?'softPadFlowNodeAgent':'softPadFlowNodePad';
+        var flowId=(focus==='softPadStatus'||focus==='softPadMini')?'softPadFlowNodeAgent':'softPadFlowNodePad';
         var flowBtn=document.getElementById(flowId);
         if(flowBtn&&typeof flowBtn.click==='function') flowBtn.click();
-        if(focus!=='softPadStatus'){
+        if(focus==='softPadMini'){
+          try{
+            var Pad=global.OneToneCodexMicroPadUi||global.OneToneSoftPadPadUi;
+            if(Pad&&typeof Pad.setSoftPadWorkbenchTab==='function'){
+              Pad.setSoftPadWorkbenchTab('mini');
+            }
+          }catch(_){}
+          setTimeout(function(){
+            try{
+              var Hub=global.OneToneSoftPadHub;
+              var entry=Hub&&Hub.resolveSoftPadEntry?Hub.resolveSoftPadEntry():null;
+              var body=document.getElementById('softPadSubpageBody')||document.querySelector('[data-agent-workbench]');
+              var Pad2=global.OneToneCodexMicroPadUi;
+              if(Pad2&&Pad2.patchAgentWorkbench&&entry&&entry.mapping&&entry.pad){
+                Pad2.patchAgentWorkbench(body&&body.closest?body.closest('.soft-pad-face-agent')||document:document, entry.mapping, entry.pad);
+              }else if(Hub&&typeof Hub.render==='function'){
+                Hub.render({forceRemount:true});
+              }
+            }catch(_){}
+          },80);
+        }
+        if(focus!=='softPadStatus'&&focus!=='softPadMini'){
           var mode=focus==='softPadLayout'?'keys':'appear';
           var tab=document.querySelector('[data-pad-mode="'+mode+'"]');
           if(tab&&typeof tab.click==='function') tab.click();
         }
-        scrollSettingsToTarget(focus==='softPadStatus'
-          ?['softPadFaceAgent','softPadStatusBar']
+        scrollSettingsToTarget((focus==='softPadStatus'||focus==='softPadMini')
+          ?['softPadFaceAgent','softPadStatusBar','soft-pad-agent-workbench']
           :['softPadSubpageHost','softPadPreviewHost']);
       },0);
       return;
@@ -1565,7 +1586,17 @@
         if(m) panel=decodeURIComponent(m[1]);
       }
       if(panel){
-        openDrawer({panel:panel});
+        var focus=null;
+        var fm=/focus=([^&]+)/.exec(qs);
+        if(fm) focus=decodeURIComponent(fm[1]);
+        openDrawer(focus?{panel:panel,focus:focus}:{panel:panel});
+        return;
+      }
+      if(href.indexOf('main:softPad')===0||tab==='softPad'){
+        var spFocus='softPadStatus';
+        var spm=/focus=([^&]+)/.exec(href);
+        if(spm) spFocus=decodeURIComponent(spm[1]);
+        openDrawer({panel:'softPad',focus:spFocus});
         return;
       }
       if(href.indexOf('main:habits')===0||tab==='habits'){

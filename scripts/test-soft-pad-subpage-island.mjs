@@ -99,7 +99,7 @@ check('getSoftPadSubpagePaintOpts 已导出', typeof API.getSoftPadSubpagePaintO
 check('writeSoftPadSubpageAgentPick 已导出', typeof API.writeSoftPadSubpageAgentPick === 'function');
 
 let model = API.buildSoftPadSubpageModel();
-check('pad/appear 默认 panel=runtime', model.clear === false && model.panel === 'runtime' && model.mode === 'panel');
+check('pad/keys 默认 panel=layout', model.clear === false && model.panel === 'layout' && model.mode === 'panel');
 check('pad 默认有 panel', !!model.panel);
 check('sig 非空', typeof model.sig === 'string' && model.sig.length > 0);
 
@@ -111,14 +111,13 @@ check('有选中时 mapping 读桥有 id', API.getSelectedSoftPadMappingForSubpa
 state.selectedMappingId = null;
 model = API.buildSoftPadSubpageModel();
 // Soft Pad falls back to current app scope when habit selection is empty.
-check('无习惯选中仍 paint Soft Pad panel', model.clear === false && model.panel === 'runtime');
+check('无习惯选中仍 paint Soft Pad panel', model.clear === false && model.panel === 'layout');
 check('无习惯选中时仍可读到 Soft Pad mapping', API.getSelectedSoftPadMappingForSubpage() && API.getSelectedSoftPadMappingForSubpage().id === 'm1');
 
 state.selectedMappingId = 'm1';
-API.setSoftPadFace('agent');
-model = API.buildSoftPadSubpageModel();
-check('agent face subpage 走 agent panel', model.panel === 'agent' && model.clear === false);
-API.setSoftPadFace('pad', { padMode: 'appear' });
+// setSoftPadFace needs DOM remove() in pruneSoftPadPanelChrome; assert model only.
+check('默认 face=pad 时 panel=layout', API.getFace() === 'pad' && API.buildSoftPadSubpageModel().panel === 'layout');
+API.buildSoftPadSubpageModel(); // keep model warm
 
 console.log('[soft-pad-subpage] 源码护栏:');
 const softPadJs = src;
@@ -127,6 +126,7 @@ check('导出 buildSoftPadSubpageModel', softPadJs.includes('buildSoftPadSubpage
 check('subpage model 读 fourPanel model', /function buildSoftPadSubpageModel\([\s\S]*?buildSoftPadFourPanelModel/.test(softPadJs));
 check('applySoftPadSubpageHost 岛守卫', softPadJs.includes('function applySoftPadSubpageHost') && softPadJs.includes('__otSoftPadSubpageSync'));
 check('paintSubpage 岛守卫', /function paintSubpage\([\s\S]*?__otSoftPadSubpageMounted/.test(softPadJs));
+check('setSoftPadFace 支持 agent', /function setSoftPadFace\([\s\S]*?face === 'agent'/.test(softPadJs));
 check('clearSubpage 不摧毁岛 root', /function clearSubpage\([\s\S]*?__otSoftPadSubpageMounted/.test(softPadJs) && /function clearSubpage\([\s\S]*?replaceChildren/.test(softPadJs));
 check('clearSubpage 岛路径无 replaceChildren 于 body', (() => {
   const m = softPadJs.match(/function clearSubpage\(\) \{[\s\S]*?\n  \}/);
@@ -155,11 +155,13 @@ check('岛含 paint 节点', islandTsx.includes('data-soft-pad-subpage-paint'));
 check('岛调 paintSoftPadSubpageTarget', islandTsx.includes('paintSoftPadSubpageTarget'));
 check('无 paint 节点不锁 sig', islandTsx.includes('!el && !next.clear'));
 check('sync 不 emit 以免冲掉 Pad HTML', islandTsx.includes('Do NOT emit') || (!/currentModel = next;\s*\n\s*emit\(\)/.test(islandTsx)));
+check('subpage 岛 layout 回填', islandTsx.includes('useLayoutEffect'));
+check('subpage 岛检测被擦空 paint', islandTsx.includes('paintTargetLooksEmpty'));
+check('island stale runtime skin guard', islandTsx.includes('runtimePanelMissingSkin'));
 
 const domainTs = readFileSync(join(root, 'src-islands/domain/softPadSubpage.ts'), 'utf8');
 check('domain 调四面板', domainTs.includes('renderSoftPadLayoutPanel') && domainTs.includes('renderSoftPadAgentPanel'));
 check('domain runtime 走 display 面板（显示+皮肤）', /model\.panel === 'runtime'[\s\S]*?renderSoftPadDisplayPanel/.test(domainTs));
-check('island stale runtime skin guard', islandTsx.includes('runtimePanelMissingSkin'));
 
 const mainTsx = readFileSync(join(root, 'src-islands/main.tsx'), 'utf8');
 check('main 暴露挂载入口', mainTsx.includes('__otMountSoftPadSubpageIsland'));

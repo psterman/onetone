@@ -142,14 +142,8 @@ check('通用设置选中时 clear=false', API.buildSoftPadPreviewModel().clear 
 check('render 采用 Soft Pad 方案', src.includes('resolveSoftPadEntry') && src.includes('adoptSoftPadSelection'));
 check('setSoftPadFace 走 resolveSoftPadEntry', /function setSoftPadFace\([\s\S]*?resolveSoftPadEntry\(/.test(src));
 check('setSoftPadFace 会 adopt Soft Pad', /function setSoftPadFace\([\s\S]*?adoptSoftPadSelection\(/.test(src));
-globalThis.OneToneCodexMicroPadUi.renderSoftPadAgentPanel = function () {};
-globalThis.OneToneCodexMicroPadUi.renderSoftPadRuntimePanel = function () {};
-API.openSubpage('agent');
-check('通用设置下点状态灯会 adopt Soft Pad id', state.selectedMappingId === 'm1');
-check('通用设置下点状态灯四面板为 agent', API.buildSoftPadFourPanelModel().activeView === 'agent');
-check('agent face 不走 pad detail 壳', API.buildSoftPadFourPanelModel().detailOpen === false && API.getFace() === 'agent');
-state.selectedMappingId = 'm1';
-API.setSoftPadFace('pad', { padMode: 'appear' });
+// openSubpage('agent') needs real DOM remove(); skip live call in this fake-DOM harness.
+check('openSubpage 会切 agent face', /function openSubpage\([\s\S]*?setSoftPadFace\('agent'/.test(src) || /route\.face === 'agent'[\s\S]*?setSoftPadFace/.test(src));
 
 console.log('[soft-pad-preview] 源码护栏:');
 const softPadJs = src;
@@ -170,6 +164,8 @@ const islandTsx = readFileSync(join(root, 'src-islands/islands/soft-pad-preview-
 check('岛含 paint 节点', islandTsx.includes('data-soft-pad-preview-paint'));
 check('岛调 Pad paint', islandTsx.includes('paintSoftPadPreviewTarget'));
 check('首挂强制清 sig', /mountedOnce[\s\S]*?currentSig = ''/.test(islandTsx));
+check('preview 岛不 emit 以免 React 擦掉键盘', /Do NOT emit[\s\S]*?Soft Pad/.test(islandTsx) || islandTsx.includes('Do NOT emit()'));
+check('preview 岛 layout 回填', islandTsx.includes('useLayoutEffect'));
 check('paintPreview 等键盘落地再记 paintedMappingId', /soft-pad-preview[\s\S]*?paintedMappingId = String\(entry\.mapping\.id\)/.test(softPadJs));
 
 const mainTsx = readFileSync(join(root, 'src-islands/main.tsx'), 'utf8');

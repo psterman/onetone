@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>状态灯 v16.1 · 左右对照（左预览 | 右配置）</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eef2f5;
+      --surface: #fff;
+      --surface-2: #f6f8fa;
+      --line: #dde3ea;
+      --line-strong: #c5ced8;
+      --text: #15202b;
+      --muted: #5b6b7c;
+      --faint: #8a97a6;
+      --primary: #00658f;
+      --primary-soft: #e6f3f9;
+      --primary-bd: #9ec9dc;
+      --green: #15803d;
+      --green-soft: #ecfdf5;
+      --amber: #b45309;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --ambient: #a855f7;
+      --ambient-b: #84cc16;
+      --ambient-op: 1;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+    button, input, select { font-family: inherit; }
+    button { cursor: pointer; }
+
+    .proto-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 16px; background: #15202b; color: #d7e2ec; font-size: 12px;
+    }
+    .proto-bar strong { color: #7dd3fc; }
+    .proto-bar .lock {
+      font-weight: 700; color: #86efac; padding: 2px 8px; border-radius: 999px;
+      border: 1px solid rgba(134, 239, 172, .35); background: rgba(22, 163, 74, .15);
+    }
+    .page { max-width: 1120px; margin: 0 auto; padding: 16px 14px 36px; }
+
+    .mock {
+      border: 1px solid var(--line-strong); border-radius: 16px; background: var(--surface);
+      overflow-x: auto; overflow-y: hidden; box-shadow: 0 10px 28px rgba(21, 32, 43, .07);
+    }
+
+    /* flow: Soft Pad | 状态灯 — peer */
+    .flow {
+      display: flex; align-items: center; justify-content: center; gap: 0;
+      padding: 18px 16px 8px; background: #fff;
+    }
+    .flow-node {
+      display: grid; justify-items: center; gap: 6px; min-width: 120px;
+      border: 0; background: transparent; color: var(--muted); padding: 0;
+    }
+    .flow-node .ring {
+      width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--line-strong);
+      background: #fff; display: grid; place-items: center; font-size: 20px;
+    }
+    .flow-node.is-on .ring {
+      border-color: var(--primary); background: var(--primary-soft);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
+      color: var(--primary);
+    }
+    .flow-node .t { font: 800 12px/1.2 var(--font); color: var(--text); }
+    .flow-node .s { font-size: 11px; color: var(--faint); }
+    .flow-node.is-on .t { color: var(--primary); }
+    .flow-dash {
+      width: 72px; height: 0; border-top: 2px dashed var(--primary-bd); margin: 0 4px 22px;
+    }
+
+    .banner {
+      margin: 8px 16px 0; padding: 10px 12px; border-radius: 10px;
+      background: var(--primary-soft); border: 1px solid var(--primary-bd);
+      display: flex; gap: 10px; align-items: flex-start; font-size: 12px; color: var(--muted); line-height: 1.45;
+    }
+    .banner b { color: var(--primary); display: block; margin-bottom: 2px; font-size: 12.5px; }
+
+    /* HARD RULE: always left | right for compare — never stack into one column */
+    .split {
+      display: grid;
+      grid-template-columns: minmax(300px, 0.42fr) minmax(360px, 1fr);
+      gap: 0;
+      min-height: 560px;
+      margin-top: 12px;
+      border-top: 1px solid var(--line);
+      min-width: 720px; /* 窄屏横向滚动，禁止改成上下堆叠 */
+    }
+    .left {
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, #f3f9fc 0%, #fff 40%);
+      padding: 14px;
+      display: flex; flex-direction: column; gap: 10px;
+      position: sticky; top: 0; align-self: start; max-height: 100vh; overflow: auto;
+    }
+    .right { display: flex; flex-direction: column; min-width: 0; background: #fff; }
+    .left-data {
+      width: 100%; max-width: 240px; margin: 0 auto; font-size: 11px; color: var(--muted);
+      line-height: 1.5; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+      background: #fff;
+    }
+    .left-data b { color: var(--text); }
+    .left-data[hidden] { display: none !important; }
+
+    /* mini bar preview (left) — peer to 显示数据 */
+    .mini-bar-stage {
+      width: 100%; max-width: 260px; margin: 0 auto; display: none; flex-direction: column; gap: 10px; align-items: stretch;
+    }
+    .pad-stage.is-mini .soft-pad,
+    .pad-stage.is-mini .left-data,
+    .pad-stage.is-mini .left-links { display: none; }
+    .pad-stage.is-mini .mini-bar-stage { display: flex; }
+    .mini-bar {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px;
+      border: 1px solid var(--line-strong); background: #fff;
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--ambient) calc(var(--ambient-op) * 40%), transparent),
+        0 6px 16px rgba(21, 32, 43, .08);
+      font-size: 11px; color: var(--muted);
+    }
+    .mini-bar .dots { display: flex; gap: 5px; }
+    .mini-bar .pill-usage {
+      margin-left: auto; font-weight: 750; color: var(--primary);
+      padding: 3px 8px; border-radius: 999px; background: var(--primary-soft); border: 1px solid var(--primary-bd);
+      max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .mini-bar .pill-usage[hidden] { display: none !important; }
+    .mini-bar-caption { font-size: 11px; color: var(--faint); text-align: center; }
+
+    .left-h {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    }
+    .left-h h2 { margin: 0; font-size: 14px; font-weight: 800; }
+    .left-h span { font-size: 11px; color: var(--faint); font-weight: 650; }
+
+    .pad-stage {
+      flex: 1; min-height: 320px; border-radius: 14px; border: 1px dashed var(--line-strong);
+      background: #f8fafc; display: grid; place-items: center; padding: 20px 12px;
+    }
+    .pad-wrap { width: min(100%, 220px); display: grid; gap: 8px; justify-items: center; }
+    .pad-meta { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--muted); }
+    .pad-tag {
+      font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px;
+      background: var(--primary-soft); color: var(--primary); border: 1px solid var(--primary-bd);
+    }
+    .soft-pad {
+      width: 100%; aspect-ratio: 1; border-radius: 18px; background: #fff;
+      border: 1px solid var(--line); padding: 10px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+      position: relative; z-index: 1;
+      /* ambient bezel — mirrors right-side 氛围灯 */
+      box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--ambient) calc(var(--ambient-op) * 55%), transparent),
+        0 0 22px 4px color-mix(in srgb, var(--ambient) calc(var(--ambient-op) * 45%), transparent),
+        0 0 36px 8px color-mix(in srgb, var(--ambient-b) calc(var(--ambient-op) * 30%), transparent),
+        0 8px 20px rgba(21, 32, 43, .08);
+      transition: box-shadow .2s ease;
+    }
+    .soft-pad.is-off {
+      box-shadow: 0 0 0 1px var(--line), 0 8px 20px rgba(21, 32, 43, .06);
+    }
+    .k {
+      aspect-ratio: 1; border-radius: 10px; border: 1px solid var(--line);
+      background: var(--surface-2); display: grid; place-items: center;
+      font-size: 14px; color: var(--muted); position: relative;
+    }
+    .k.lit::after {
+      content: ""; position: absolute; inset: 3px; border-radius: 8px;
+      box-shadow: inset 0 0 0 2px var(--mk-light, #22c55e);
+      pointer-events: none;
+    }
+    .compare-hint {
+      font-size: 11.5px; line-height: 1.45; color: var(--muted);
+      padding: 9px 10px; border-radius: 8px; background: #fff; border: 1px solid var(--line);
+    }
+    .compare-hint b { color: var(--primary); }
+    .left-links { font-size: 11px; color: var(--faint); display: flex; flex-wrap: wrap; gap: 8px 12px; }
+    .left-links a { color: var(--primary); font-weight: 650; text-decoration: none; }
+
+    .right-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 12px 14px 0;
+    }
+    .right-head h3 { margin: 0; font-size: 16px; font-weight: 800; }
+    .chip-pill {
+      font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+    }
+
+    .scope {
+      display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px 0;
+    }
+    .scope-cfg {
+      margin: 4px 14px 0; font-size: 11.5px; font-weight: 650; color: var(--muted);
+    }
+    .chip {
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+      font: 650 12px/1 var(--font); padding: 6px 10px; border-radius: 8px;
+    }
+    .chip.is-on { border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary); }
+
+    .l3 {
+      display: flex; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--line);
+    }
+    .l3tab {
+      flex: 1; padding: 9px 8px; border: 1px solid var(--line); border-radius: 10px;
+      background: var(--surface-2); color: var(--muted); font: 750 12px/1 var(--font);
+    }
+    .l3tab.is-on {
+      color: var(--primary); border-color: var(--primary-bd); background: var(--primary-soft);
+    }
+
+    .l4 { display: flex; gap: 6px; padding: 10px 14px 0; }
+    .l4[hidden] { display: none !important; }
+    .l4tab {
+      padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line);
+      background: #fff; color: var(--muted); font: 650 12px/1 var(--font);
+    }
+    .l4tab.is-on { border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary); }
+
+    .panel { flex: 1; padding: 12px 14px 16px; overflow: auto; }
+    .panel[hidden] { display: none !important; }
+
+    .lead { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+    .card {
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2);
+      padding: 12px; margin-bottom: 10px;
+    }
+    .card h4 { margin: 0 0 8px; font-size: 13px; font-weight: 800; }
+    .check {
+      display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650;
+      margin-bottom: 10px; cursor: pointer;
+    }
+    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mode {
+      text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: 10px;
+      background: #fff; color: inherit;
+    }
+    .mode.is-on { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 1px var(--primary-bd); }
+    .mode b { display: block; font-size: 12.5px; margin-bottom: 3px; }
+    .mode span { font-size: 11px; color: var(--muted); line-height: 1.35; }
+    .field { display: grid; gap: 6px; margin-top: 12px; }
+    .field label { font-size: 11.5px; font-weight: 650; color: var(--muted); }
+    .color-row { display: flex; align-items: center; gap: 10px; }
+    .swatch {
+      width: 36px; height: 28px; border-radius: 8px; border: 1px solid var(--line-strong);
+      padding: 0; overflow: hidden; background: #fff;
+    }
+    .swatch input { width: 48px; height: 40px; border: 0; transform: translate(-6px, -6px); cursor: pointer; }
+    input[type="range"] { width: 100%; accent-color: var(--primary); }
+    .caps { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .cap {
+      font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--muted); background: #fff;
+    }
+    .cap.on { border-color: #bbf7d0; background: var(--green-soft); color: var(--green); }
+    .cap.off { opacity: .5; text-decoration: line-through; }
+    .row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 12.5px;
+    }
+    .row:last-child { border-bottom: 0; }
+    .sw {
+      width: 38px; height: 22px; border-radius: 999px; border: 0; background: #cbd5e1; position: relative;
+    }
+    .sw.on { background: var(--primary); }
+    .sw::after {
+      content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff; transition: transform .15s;
+    }
+    .sw.on::after { transform: translateX(16px); }
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+    .preset {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 7px 10px;
+      font: 650 11.5px/1 var(--font); color: var(--muted);
+    }
+    .preset.is-on { border-color: var(--primary-bd); color: var(--primary); background: var(--primary-soft); }
+    .tpls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tpl {
+      text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: #fff;
+    }
+    .tpl.is-on { border-color: var(--primary); background: var(--primary-soft); }
+    .tpl b { display: block; font-size: 12.5px; margin-bottom: 3px; }
+    .tpl span { font-size: 11px; color: var(--muted); }
+    .btn {
+      border: 1px solid var(--primary-bd); background: var(--primary); color: #fff;
+      font: 750 12px/1 var(--font); padding: 9px 12px; border-radius: 8px;
+    }
+    .btn.ghost { background: #fff; color: var(--primary); }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .roster-item {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; margin-bottom: 8px;
+    }
+    .roster-item .n { font-weight: 750; font-size: 13px; }
+    .roster-item .s { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .phase {
+      font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+      background: var(--green-soft); color: var(--green);
+    }
+    .phase.warn { background: #fff7ed; color: var(--amber); }
+    .quota-row {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 12.5px;
+    }
+    .quota-row code { font-size: 11px; color: var(--faint); }
+    .live {
+      font-size: 11px; color: var(--primary); font-weight: 700;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .live::before {
+      content: ""; width: 7px; height: 7px; border-radius: 50%; background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, .2);
+    }
+
+    /* face pad (对照) still left|right */
+    [data-face="pad"] .face-lights { display: none; }
+    [data-face="lights"] .face-pad { display: none; }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <strong>状态灯 v16.1</strong>
+    <span class="lock">锁定：左预览 | 右配置（左右比对）</span>
+    <span>右侧改动 → 左侧 Soft Pad 实时对照</span>
+  </div>
+
+  <div class="page">
+    <div class="mock" id="shell" data-face="lights">
+      <div class="flow" role="tablist" aria-label="并列能力">
+        <button type="button" class="flow-node" data-face-btn="pad" aria-selected="false">
+          <span class="ring" aria-hidden="true">▦</span>
+          <span class="t">虚拟键盘</span>
+          <span class="s">按应用改键位 · 何时显示</span>
+        </button>
+        <span class="flow-dash" aria-hidden="true"></span>
+        <button type="button" class="flow-node is-on" data-face-btn="lights" aria-selected="true">
+          <span class="ring" aria-hidden="true">◎</span>
+          <span class="t">灯效与浮窗</span>
+          <span class="s">按应用配灯 · 迷你栏 · 用量</span>
+        </button>
+      </div>
+
+      <div class="banner">
+        <span aria-hidden="true">👁</span>
+        <div>
+          <b>设置中预览</b>
+          悬浮 Soft Pad 在设置时会自动隐藏。当前预览 = 上方所选应用；右侧改灯效 / 数据时，请盯着<strong>左侧预览</strong>比对；关闭设置后在 Agent 前台看真实浮窗。
+        </div>
+      </div>
+
+      <!-- FACE: Soft Pad keys — still L|R -->
+      <div class="face-pad split">
+        <aside class="left">
+          <div class="left-h"><h2>设置中预览</h2><span class="live">左右对照</span></div>
+          <div class="pad-stage">
+            <div class="pad-wrap">
+              <div class="pad-meta"><span class="pad-tag">键位面</span><span>点键去改按键</span></div>
+              <div class="soft-pad is-off" id="padFacePreview"></div>
+            </div>
+          </div>
+          <p class="compare-hint">按键面也是左预览 | 右配置。状态灯页同结构，方便灯效与键盘长相对照。</p>
+        </aside>
+        <div class="right">
+          <div class="right-head"><h3>键位</h3><span class="chip-pill">出现 · 键位 · 用途</span></div>
+          <div class="panel">
+            <p class="lead">会话槽 / 快捷动作只在「用途」。点上方「灯效与浮窗」按应用配灯效、迷你栏与用量。</p>
+            <div class="card"><h4>键位表（示意）</h4><p class="lead" style="margin:0">真实产品在此编辑 AG/ACT 键。</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FACE: 状态灯 — L|R compare -->
+      <div class="face-lights split">
+        <aside class="left" aria-label="左侧预览，与右侧配置对照">
+          <div class="left-h">
+            <h2>设置中预览</h2>
+            <span class="live">随右侧更新</span>
+          </div>
+          <div class="pad-stage">
+            <div class="pad-wrap">
+              <div class="pad-meta">
+                <span class="pad-tag" id="padTag">Cursor</span>
+                <span id="padStatusLine">已开启 · 已绑定 12 个键</span>
+              </div>
+              <div class="soft-pad" id="softPadPreview" title="氛围光晕 = 右侧氛围灯"></div>
+              <div class="left-data" id="leftDataStrip">Cursor · 本地活动 54 次</div>
+              <div class="mini-bar-stage" id="miniBarStage" aria-label="迷你栏预览">
+                <div class="mini-bar" id="miniBarPreview">
+                  <span class="dots" aria-hidden="true"><i class="ld g"></i><i class="ld a"></i><i class="ld f"></i></span>
+                  <span id="miniBarAgent">Cursor</span>
+                  <span class="pill-usage" id="miniUsagePill">Cu · 54次</span>
+                </div>
+                <div class="mini-bar-caption">精简态灯条 · 与右侧「迷你栏」对照</div>
+              </div>
+              <div class="left-links">
+                <span>悬停可看键名</span>
+                <a href="#" onclick="document.querySelector('[data-face-btn=pad]').click();return false;">点按键可去 [改按键] 编辑</a>
+              </div>
+            </div>
+          </div>
+          <p class="compare-hint" id="compareHint">
+            <b>左右比对：</b>右侧改「氛围灯 / 按键灯 / 数据」时，左侧盘边光晕、键灯与用量条同步变化。
+          </p>
+        </aside>
+
+        <div class="right">
+          <div class="right-head">
+            <h3 id="agentTitle">Cursor</h3>
+            <span class="chip-pill">当前合集</span>
+          </div>
+
+          <div class="scope" id="scopeChips" role="tablist" aria-label="Agent"></div>
+          <p class="scope-cfg" id="scopeCfgLine">正在配置 · Cursor</p>
+
+          <div class="l3" role="tablist" aria-label="状态灯子页">
+            <button type="button" class="l3tab is-on" data-l3="match">灯效匹配</button>
+            <button type="button" class="l3tab" data-l3="data">显示数据</button>
+            <button type="button" class="l3tab" data-l3="mini">迷你栏</button>
+          </div>
+
+          <div class="l4" id="l4tabs">
+            <button type="button" class="l4tab is-on" data-l4="ambient">氛围灯</button>
+            <button type="button" class="l4tab" data-l4="keys">按键灯</button>
+          </div>
+
+          <!-- 灯效 · 氛围 / 按键；接入收在本页顶部（不另开「名单与接入」） -->
+          <div class="panel" id="panelMatch">
+            <div class="card" id="connectCard">
+              <h4>当前 Agent · <span id="rosterScope">Cursor</span></h4>
+              <p class="lead" style="margin-bottom:8px">灯要亮，先确认 Pad 开着、状态源接上。顶栏「亮谁」在<strong>迷你栏</strong>里调。</p>
+              <div class="row"><span>Pad 开关</span><button type="button" class="sw on"></button></div>
+              <div class="row"><span>状态源</span><span class="phase" id="hookPhase">本地活跃</span></div>
+            </div>
+            <p class="lead" id="matchLead">盘边 Soft RGB 可跟随 Cursor 主状态，也可固定一种颜色。各 agent 默认可分别调整并保存。</p>
+            <div class="caps" id="capsRow"></div>
+
+            <div id="ambientBlock">
+              <div class="card">
+                <label class="check"><input type="checkbox" id="ambientOn" checked /> 启用盘边氛围灯</label>
+                <div class="modes">
+                  <button type="button" class="mode" data-amode="status"><b>跟随状态</b><span>忙/等你/完成用系统色</span></button>
+                  <button type="button" class="mode is-on" data-amode="solid"><b>固定盘边色</b><span>自定义一种颜色常亮</span></button>
+                </div>
+                <div class="field" id="solidFields">
+                  <label>盘边颜色</label>
+                  <div class="color-row">
+                    <label class="swatch"><input type="color" id="ambientColor" value="#a855f7" /></label>
+                    <span id="ambientHex" style="font-size:12px;color:var(--muted)">#a855f7</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>氛围灯透明度 · <span id="opLbl">100%</span></label>
+                  <input type="range" id="ambientOp" min="0" max="100" value="100" />
+                </div>
+              </div>
+            </div>
+
+            <div id="keysBlock" hidden>
+              <div class="card">
+                <h4>按键灯 · 匹配 <span id="matchAgent">Cursor</span></h4>
+                <div class="tpls" id="tpls">
+                  <button type="button" class="tpl is-on" data-tpl="single"><b>单灯 · 像 Codex</b><span>一颗 status 宿主</span></button>
+                  <button type="button" class="tpl" data-tpl="multi"><b>多灯 · 像 Claude</b><span>AG 多槽</span></button>
+                </div>
+                <div class="field">
+                  <label>色板预设</label>
+                  <div class="presets" id="presets">
+                    <button type="button" class="preset is-on" data-preset="default">默认</button>
+                    <button type="button" class="preset" data-preset="cool">冷色</button>
+                    <button type="button" class="preset" data-preset="warm">暖色</button>
+                    <button type="button" class="preset" data-preset="highContrast">高对比</button>
+                  </div>
+                </div>
+                <div class="btn-row">
+                  <button type="button" class="btn" id="btnApplyPack">套用该 Agent 推荐包</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 显示数据：只管「数」——设置页 meta + 候补 key（不放监视名单） -->
+          <div class="panel" id="panelData" hidden>
+            <div class="card">
+              <h4>设置页状态栏 · 第二行</h4>
+              <p class="lead">盯左侧用量条比对。这里只管<strong>设置页看什么数</strong>，不管浮窗亮谁。</p>
+              <div class="row"><span>显示账号</span><button type="button" class="sw on" data-sw="account"></button></div>
+              <div class="row"><span>显示额度</span><button type="button" class="sw on" data-sw="usage"></button></div>
+              <div class="row"><span>显示重置</span><button type="button" class="sw on" data-sw="reset"></button></div>
+            </div>
+            <div class="card">
+              <h4>API 额度候补</h4>
+              <p class="lead">填 key 后供迷你栏 pill 选用（不是登录 token）。</p>
+              <div class="quota-row"><span>OpenRouter</span><code>未填</code><button type="button" class="btn ghost" style="padding:6px 8px">填写</button></div>
+              <div class="quota-row"><span>DeepSeek</span><code>sk-***4f</code><button type="button" class="btn ghost" style="padding:6px 8px">更换</button></div>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn ghost" data-goto="mini">去迷你栏调形态 / 亮谁 →</button>
+            </div>
+          </div>
+
+          <!-- 迷你栏：形态 + pill + 顶栏/灯条亮谁（原「名单」迁入，避免第四 tab） -->
+          <div class="panel" id="panelMini" hidden>
+            <p class="lead">浮窗精简态怎么显示、灯条上<strong>亮哪些 Agent</strong>。左侧切迷你条预览。</p>
+            <div class="card">
+              <h4>显示形态</h4>
+              <div class="modes" id="presModes">
+                <button type="button" class="mode" data-pres="full"><b>完整体</b><span>完整 Soft Pad 键盘</span></button>
+                <button type="button" class="mode is-on" data-pres="mini"><b>迷你栏</b><span>精简态灯条，少占屏幕</span></button>
+              </div>
+            </div>
+            <div class="card">
+              <h4>迷你栏上的用量 pill</h4>
+              <p class="lead">数字来自「显示数据」同源；此处只决定<strong>浮窗灯条</strong>要不要露出 pill。</p>
+              <div class="row"><span>显示用量 pill</span><button type="button" class="sw on" id="swMiniPill"></button></div>
+              <div class="row"><span>无数据时隐藏（不显示 --）</span><button type="button" class="sw on" id="swHideEmpty"></button></div>
+              <p class="lead" id="miniPillCopy" style="margin:8px 0 0">Cu · 54次 · Cursor 本地活动</p>
+            </div>
+            <div class="card">
+              <h4>灯条上亮谁</h4>
+              <p class="lead">浮窗灯条成员（跨应用），不是改键位；也不是「显示数据」里的账号额度数字。</p>
+              <div id="rosterList"></div>
+              <div class="btn-row"><button type="button" class="btn ghost">+ 添加 Agent</button></div>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn ghost" data-goto="data">去显示数据（设置页数字）→</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  var AGENTS = {
+    cursor: {
+      name: 'Cursor', keys: 'customizable', hook: '本地活跃',
+      usage: 'Cursor · 本地活动 54 次（非官方额度）',
+      pack: 'customizable · 单灯', bound: 12
+    },
+    codex: {
+      name: 'Codex', keys: 'preset', hook: '已接',
+      usage: 'Codex · Plus · 5h 余 63%',
+      pack: 'single + 默认色', bound: 18
+    },
+    claude: {
+      name: 'Claude', keys: 'preset', hook: '已接',
+      usage: 'Claude · 5h 余 76%',
+      pack: 'multi + 默认色', bound: 16
+    },
+    minimax: {
+      name: 'MiniMax', keys: 'unsupported', hook: '额度灯',
+      usage: 'MiniMax · Coding Plan',
+      pack: '额度灯 + 氛围', bound: 8
+    }
+  };
+
+  var scope = 'cursor';
+  var l3 = 'match';
+  var l4 = 'ambient';
+  var amode = 'solid';
+  var ambientOn = true;
+  var preset = 'default';
+  var template = 'single';
+  var presentation = 'mini';
+  var miniPillOn = true;
+  var show = { account: true, usage: true, reset: true };
+
+  var PRESET = {
+    default: ['#22c55e', '#f59e0b', '#00658f'],
+    cool: ['#0d9488', '#0284c7', '#6366f1'],
+    warm: ['#ea580c', '#ca8a04', '#b45309'],
+    highContrast: ['#16a34a', '#dc2626', '#2563eb']
+  };
+
+  var ICONS = ['⏻', '⌘', '✦', '⌕', '↵', '🎤', '←', '→', '⧉', '☰', '★', '✎', '⌁', '◎', '▢', '✓'];
+
+  function paintPadGrid(host, litMode) {
+    var colors = PRESET[preset];
+    var html = '';
+    for (var i = 0; i < 16; i++) {
+      var lit = false;
+      if (litMode === 'multi') lit = i < 4;
+      else if (litMode === 'single') lit = i === 0;
+      html += '<div class="k' + (lit ? ' lit' : '') + '"' +
+        (lit ? ' style="--mk-light:' + colors[i % colors.length] + '"' : '') +
+        '>' + ICONS[i] + '</div>';
+    }
+    host.innerHTML = html;
+  }
+
+  function applyAmbient() {
+    var root = document.documentElement;
+    var pad = document.getElementById('softPadPreview');
+    if (!ambientOn) {
+      pad.classList.add('is-off');
+      return;
+    }
+    pad.classList.remove('is-off');
+    var op = Number(document.getElementById('ambientOp').value) / 100;
+    root.style.setProperty('--ambient-op', String(op));
+    if (amode === 'solid') {
+      var c = document.getElementById('ambientColor').value;
+      root.style.setProperty('--ambient', c);
+      root.style.setProperty('--ambient-b', c);
+    } else {
+      root.style.setProperty('--ambient', '#84cc16');
+      root.style.setProperty('--ambient-b', '#a855f7');
+    }
+  }
+
+  function paintScope() {
+    var el = document.getElementById('scopeChips');
+    el.innerHTML = '';
+    Object.keys(AGENTS).forEach(function (id) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (id === scope ? ' is-on' : '');
+      b.textContent = AGENTS[id].name;
+      b.addEventListener('click', function () {
+        scope = id;
+        paint();
+      });
+      el.appendChild(b);
+    });
+  }
+
+  function paintPanels() {
+    document.getElementById('panelMatch').hidden = l3 !== 'match';
+    document.getElementById('panelData').hidden = l3 !== 'data';
+    document.getElementById('panelMini').hidden = l3 !== 'mini';
+    document.getElementById('l4tabs').hidden = l3 !== 'match';
+    document.getElementById('ambientBlock').hidden = !(l3 === 'match' && l4 === 'ambient');
+    document.getElementById('keysBlock').hidden = !(l3 === 'match' && l4 === 'keys');
+    syncLeftPreviewMode();
+  }
+
+  function syncLeftPreviewMode() {
+    var stage = document.querySelector('.face-lights .pad-stage');
+    if (!stage) return;
+    /* 迷你栏页：左侧强制迷你条；其它页恢复完整 Soft Pad */
+    stage.classList.toggle('is-mini', l3 === 'mini');
+    var pill = document.getElementById('miniUsagePill');
+    if (pill) pill.hidden = !miniPillOn;
+  }
+
+  function paint() {
+    var a = AGENTS[scope];
+    document.getElementById('agentTitle').textContent = a.name;
+    var scopeCfg = document.getElementById('scopeCfgLine');
+    if (scopeCfg) scopeCfg.textContent = '正在配置 · ' + a.name;
+    document.getElementById('padTag').textContent = a.name;
+    document.getElementById('padStatusLine').textContent = '已开启 · 已绑定 ' + a.bound + ' 个键';
+    document.getElementById('matchAgent').textContent = a.name;
+    document.getElementById('rosterScope').textContent = a.name;
+    document.getElementById('hookPhase').textContent = a.hook;
+    document.getElementById('matchLead').textContent =
+      '盘边 Soft RGB 可跟随 ' + a.name + ' 主状态，也可固定一种颜色。各 agent 默认可分别调整并保存。';
+    document.getElementById('capsRow').innerHTML =
+      '<span class="cap on">顶栏</span>' +
+      '<span class="cap ' + (a.keys !== 'unsupported' ? 'on' : 'off') + '">键灯 · ' + a.keys + '</span>' +
+      '<span class="cap on">氛围</span>';
+    document.getElementById('tpls').style.display = a.keys === 'customizable' ? 'grid' : 'none';
+    document.getElementById('miniBarAgent').textContent = a.name;
+    document.getElementById('miniPillCopy').textContent = miniPillLabel(a);
+    document.getElementById('miniUsagePill').textContent = miniPillShort(a);
+    updateDataStripVisibility();
+
+    document.querySelectorAll('#scopeChips .chip').forEach(function (c) {
+      c.classList.toggle('is-on', c.textContent === a.name);
+    });
+
+    paintPadGrid(document.getElementById('softPadPreview'), template === 'multi' ? 'multi' : 'single');
+    paintPadGrid(document.getElementById('padFacePreview'), 'single');
+    applyAmbient();
+
+    document.getElementById('rosterList').innerHTML = Object.keys(AGENTS).map(function (id) {
+      var x = AGENTS[id];
+      return '<div class="roster-item"><div><div class="n">' + x.name + '</div><div class="s">灯条 · ' + x.hook + '</div></div><span class="phase">亮着</span></div>';
+    }).join('');
+
+    document.getElementById('compareHint').innerHTML =
+      l3 === 'mini'
+        ? ('<b>左右比对：</b>正在调 <b>' + a.name + '</b> 迷你栏。右侧改形态 / pill / 亮谁 → 左侧灯条同步。')
+        : ('<b>左右比对：</b>正在编辑 <b>' + a.name + '</b>。右侧改氛围/键灯/数据 → 左侧盘边、键灯与用量条同步。');
+    paintPanels();
+  }
+
+  function miniPillShort(a) {
+    if (a.name === 'Codex') return 'C 63% · 2h';
+    if (a.name === 'Claude') return 'Cl 76%';
+    if (a.name === 'MiniMax') return 'MM · Key';
+    return 'Cu · 54次';
+  }
+  function miniPillLabel(a) {
+    if (a.name === 'Codex') return 'C 63% · 2h12m · Plus';
+    if (a.name === 'Claude') return 'Cl 76% · 5h 窗';
+    if (a.name === 'MiniMax') return 'MiniMax · 需 Key 看额度';
+    return 'Cu · 54次 · Cursor 本地活动';
+  }
+
+  function updateDataStripVisibility() {
+    var a = AGENTS[scope];
+    var strip = document.getElementById('leftDataStrip');
+    var on = show.account || show.usage || show.reset;
+    strip.hidden = !on;
+    strip.innerHTML = on ? ('<b>用量对照</b><br>' + a.usage) : '';
+  }
+
+  document.querySelectorAll('[data-face-btn]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var face = btn.getAttribute('data-face-btn');
+      document.getElementById('shell').setAttribute('data-face', face);
+      document.querySelectorAll('[data-face-btn]').forEach(function (b) {
+        var on = b === btn;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-l3]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      l3 = btn.getAttribute('data-l3');
+      document.querySelectorAll('[data-l3]').forEach(function (b) { b.classList.toggle('is-on', b === btn); });
+      paintPanels();
+    });
+  });
+
+  document.querySelectorAll('[data-l4]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      l4 = btn.getAttribute('data-l4');
+      document.querySelectorAll('[data-l4]').forEach(function (b) { b.classList.toggle('is-on', b === btn); });
+      paintPanels();
+    });
+  });
+
+  document.querySelectorAll('[data-amode]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      amode = btn.getAttribute('data-amode');
+      document.querySelectorAll('[data-amode]').forEach(function (b) { b.classList.toggle('is-on', b === btn); });
+      document.getElementById('solidFields').style.opacity = amode === 'solid' ? '1' : '.4';
+      applyAmbient();
+    });
+  });
+
+  document.getElementById('ambientOn').addEventListener('change', function () {
+    ambientOn = this.checked;
+    applyAmbient();
+  });
+  document.getElementById('ambientColor').addEventListener('input', function () {
+    document.getElementById('ambientHex').textContent = this.value;
+    applyAmbient();
+  });
+  document.getElementById('ambientOp').addEventListener('input', function () {
+    document.getElementById('opLbl').textContent = this.value + '%';
+    applyAmbient();
+  });
+
+  document.getElementById('presets').addEventListener('click', function (e) {
+    var p = e.target.closest('[data-preset]'); if (!p) return;
+    preset = p.getAttribute('data-preset');
+    document.querySelectorAll('[data-preset]').forEach(function (x) { x.classList.toggle('is-on', x === p); });
+    paintPadGrid(document.getElementById('softPadPreview'), template === 'multi' ? 'multi' : 'single');
+  });
+
+  document.getElementById('tpls').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-tpl]'); if (!t) return;
+    template = t.getAttribute('data-tpl');
+    document.querySelectorAll('[data-tpl]').forEach(function (x) { x.classList.toggle('is-on', x === t); });
+    paintPadGrid(document.getElementById('softPadPreview'), template === 'multi' ? 'multi' : 'single');
+  });
+
+  document.querySelectorAll('[data-sw]').forEach(function (sw) {
+    sw.addEventListener('click', function () {
+      sw.classList.toggle('on');
+      show[sw.getAttribute('data-sw')] = sw.classList.contains('on');
+      updateDataStripVisibility();
+    });
+  });
+
+  document.getElementById('swMiniPill').addEventListener('click', function () {
+    this.classList.toggle('on');
+    miniPillOn = this.classList.contains('on');
+    syncLeftPreviewMode();
+  });
+
+  document.getElementById('presModes').addEventListener('click', function (e) {
+    var m = e.target.closest('[data-pres]');
+    if (!m) return;
+    presentation = m.getAttribute('data-pres');
+    document.querySelectorAll('[data-pres]').forEach(function (x) {
+      x.classList.toggle('is-on', x === m);
+    });
+    syncLeftPreviewMode();
+  });
+
+  document.querySelectorAll('[data-goto]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var tab = document.querySelector('[data-l3="' + btn.getAttribute('data-goto') + '"]');
+      if (tab) tab.click();
+    });
+  });
+
+  document.getElementById('btnApplyPack').addEventListener('click', function () {
+    alert('已套用「' + AGENTS[scope].name + '」推荐包：' + AGENTS[scope].pack + '\n请看左侧预览是否对齐。');
+  });
+
+  /* ensure mini pill switch starts on */
+  document.getElementById('swMiniPill').classList.add('on');
+
+  paintScope();
+  paint();
+})();
+  </script>
+</body>
+</html>

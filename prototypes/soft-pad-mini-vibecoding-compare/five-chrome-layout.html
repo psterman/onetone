@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>迷你栏配置 · 布局升级方案对照</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8eef3;
+      --surface: #fff;
+      --surface-2: #f5f8fb;
+      --line: #d5dee8;
+      --line-strong: #b8c5d4;
+      --text: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --primary: #00658f;
+      --primary-soft: #e4f2f9;
+      --primary-bd: #9bc6da;
+      --ok: #15803d;
+      --ok-soft: #ecfdf5;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --bar: #ffffff;
+      --bar-bd: #9ec5d6;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+      --focus: #0ea5e9;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+    button { font-family: inherit; cursor: pointer; }
+
+    .top {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+      padding: 12px 16px; background: #13202c; color: #c9d7e4;
+    }
+    .top h1 { margin: 0; font-size: 14px; font-weight: 800; color: #7dd3fc; }
+    .top p { margin: 0; font-size: 12px; color: #8fa3b5; flex: 1; min-width: 200px; line-height: 1.45; }
+    .top a { color: #7dd3fc; }
+    .lock {
+      font: 700 11px/1 var(--font); color: #86efac; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid rgba(134, 239, 172, .35); background: rgba(22, 163, 74, .15);
+    }
+
+    .page { max-width: 1220px; margin: 0 auto; padding: 14px 14px 40px; }
+
+    .variant-bar {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
+    }
+    @media (max-width: 960px) {
+      .variant-bar { grid-template-columns: 1fr 1fr; }
+    }
+    .vbtn {
+      text-align: left; border: 1px solid var(--line-strong); border-radius: 12px;
+      background: var(--surface); padding: 11px 12px; color: inherit;
+    }
+    .vbtn:hover { border-color: var(--primary-bd); }
+    .vbtn.is-on {
+      border-color: var(--primary); background: var(--primary-soft);
+      box-shadow: 0 0 0 1px var(--primary-bd);
+    }
+    .vbtn .tag {
+      display: inline-block; font: 800 10px/1 var(--mono); letter-spacing: .04em;
+      color: var(--primary); margin-bottom: 5px;
+    }
+    .vbtn b { display: block; font-size: 12.5px; font-weight: 800; margin-bottom: 3px; }
+    .vbtn span { font-size: 11px; color: var(--muted); line-height: 1.35; }
+
+    .verdict {
+      display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
+      padding: 11px 13px; border-radius: 10px; margin-bottom: 12px;
+      background: var(--primary-soft); border: 1px solid var(--primary-bd);
+      font-size: 12.5px; line-height: 1.5; color: var(--muted);
+    }
+    .verdict[data-tone="warn"] { background: var(--warn-soft); border-color: #fed7aa; }
+    .verdict[data-tone="ok"] { background: var(--ok-soft); border-color: #bbf7d0; }
+    .verdict .k { font: 800 11px/1 var(--mono); color: var(--primary); padding-top: 3px; }
+    .verdict[data-tone="warn"] .k { color: var(--warn); }
+    .verdict[data-tone="ok"] .k { color: var(--ok); }
+    .verdict b { color: var(--text); }
+
+    .mock {
+      border: 1px solid var(--line-strong); border-radius: 16px; background: var(--surface);
+      overflow-x: auto; box-shadow: 0 10px 28px rgba(19, 32, 44, .07);
+    }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.38fr) minmax(460px, 1fr);
+      min-width: 780px; min-height: 680px;
+    }
+    .left {
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, #eef6fa 0%, #fff 45%);
+      padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .right { display: flex; flex-direction: column; min-width: 0; background: #fff; }
+
+    .left-h { display: flex; justify-content: space-between; align-items: baseline; }
+    .left-h h2 { margin: 0; font-size: 13px; font-weight: 800; }
+    .left-h em { font-style: normal; font-size: 11px; color: var(--faint); font-weight: 650; }
+
+    .stage {
+      flex: 1; min-height: 300px; border-radius: 14px; border: 1px dashed var(--line-strong);
+      background: #f7fafc; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px; padding: 20px 14px;
+    }
+    .chrome-stack { width: fit-content; max-width: 100%; min-width: 280px; display: flex; flex-direction: column; gap: 8px; }
+
+    /* 默认一行：忙区 + 听音图标 + 数据一体；悬停才出第二行快捷钮 */
+    .mini-shell {
+      border-radius: 14px; background: var(--bar); border: 1.5px solid var(--bar-bd);
+      box-shadow: 0 4px 14px rgba(0, 101, 143, .12); overflow: visible;
+      width: fit-content; max-width: 100%; min-width: 280px;
+      transition: box-shadow .18s ease;
+    }
+    .mini-shell:hover, .mini-shell.is-open {
+      box-shadow: 0 8px 22px rgba(0, 101, 143, .18);
+    }
+    .mini-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 10px; min-height: 36px;
+    }
+    .mini-row--tools {
+      display: none; align-items: center; gap: 6px; flex-wrap: nowrap;
+      min-height: 0; padding: 4px 8px 6px;
+      border-top: 1px dashed rgba(90, 157, 184, .45);
+      background: linear-gradient(180deg, rgba(255,255,255,.22), transparent);
+    }
+    .mini-shell:hover .mini-row--tools,
+    .mini-shell:focus-within .mini-row--tools,
+    .mini-shell.is-open .mini-row--tools,
+    .mini-shell.is-force-tools .mini-row--tools {
+      display: flex;
+    }
+    .zone {
+      display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 2px;
+      transition: box-shadow .15s, background .15s;
+      position: relative; z-index: 1;
+    }
+    .zone.is-focus {
+      background: rgba(14, 165, 233, .18);
+      box-shadow: 0 0 0 2px var(--focus);
+    }
+    .zone--agents { flex: 0 1 auto; min-width: 0; gap: 5px; }
+    .zone--voice {
+      flex: 0 0 auto; width: 22px; padding: 0; margin: 0; justify-content: center;
+    }
+    .zone--data {
+      margin-left: auto; gap: 6px; padding: 2px 4px 2px 8px;
+      border-radius: 999px; background: rgba(255,255,255,.72); border: 1px solid #c5d8e4;
+      flex: 0 0 auto; max-width: none;
+    }
+    .dot {
+      width: 22px; height: 22px; border-radius: 7px; background: #e8f4fa; border: 1px solid #a8c9d8;
+      position: relative; flex-shrink: 0;
+    }
+    .dot::after {
+      content: ""; position: absolute; right: -1px; bottom: -1px; width: 6px; height: 6px;
+      border-radius: 50%; border: 1.5px solid #fff; background: #2563eb;
+    }
+    .tool {
+      width: 28px; height: 28px; min-width: 28px; min-height: 28px;
+      border-radius: 8px; border: 1px solid #9ec5d6;
+      background: #cfe6f2; font-size: 12px; font-weight: 750; display: grid; place-items: center; color: #1e5a75;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .tool svg {
+      width: 14px; height: 14px; display: block;
+      stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .tool:hover { background: #b9dceb; border-color: #5a9db8; }
+    .tool--settings {
+      margin-left: auto; background: #fff; border-color: #9ec5d6; color: #475569;
+    }
+    .tool--settings:hover { background: #e8f4fa; color: #0369a1; }
+    .tools-hint { display: none; }
+    /* 小麦标：独立槽 + 弱光晕，不外扩遮挡 */
+    .listen-halo {
+      width: 20px; height: 20px; margin: 0; border-radius: 50%;
+      display: grid; place-items: center; position: relative; flex-shrink: 0;
+      color: #0369a1; background: #e8f4fa; border: 1px solid #7eb4cc;
+      box-shadow: 0 0 0 1px rgba(14, 165, 233, .12);
+      animation: listen-pulse 1.6s ease-in-out infinite;
+      pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .listen-halo svg { width: 11px; height: 11px; display: block; }
+    .listen-halo::before { display: none !important; content: none !important; }
+    @keyframes listen-pulse {
+      0%, 100% { box-shadow: 0 0 0 1px rgba(14, 165, 233, .1); }
+      50% { box-shadow: 0 0 0 2px rgba(14, 165, 233, .22); }
+    }
+    @keyframes listen-ring {
+      0%, 100% { opacity: 0; }
+    }
+    .pill-in {
+      font: 750 11px/1.2 var(--font); color: var(--primary);
+      white-space: nowrap; overflow: visible; max-width: none;
+    }
+    .pill-in small { display: block; font-size: 10px; color: var(--muted); font-weight: 650; margin-top: 1px; }
+    .winbtn {
+      width: 22px; height: 22px; border-radius: 6px; border: 1px solid #c5d8e4;
+      background: #fff; color: #475569; display: grid; place-items: center; font-size: 11px;
+    }
+    .hover-tip {
+      font-size: 10.5px; color: var(--faint); text-align: center; margin: -2px 0 0;
+    }
+    .preview-band {
+      display: flex; gap: 8px; align-items: flex-start; padding: 9px 11px; border-radius: 12px;
+      background: #fff; border: 1.5px solid var(--bar-bd); font-size: 12px; color: #0369a1; line-height: 1.4;
+    }
+    .preview-band.is-focus {
+      box-shadow: 0 0 0 2px var(--focus);
+      background: #f0f9ff;
+    }
+    .preview-band .listen-halo { margin-top: 1px; flex-shrink: 0; }
+    .preview-band .pd { display: none; }
+    .preview-band[data-zone="speech"] { /* 听音 + 你说的话 合并 */ }
+    .cap { font-size: 11px; color: var(--faint); text-align: center; max-width: 280px; line-height: 1.4; }
+
+    .right-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 12px 14px 0;
+    }
+    .right-head h3 { margin: 0; font-size: 15px; font-weight: 800; }
+    .face-chip {
+      font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+    }
+    .l3 { display: flex; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .l3tab {
+      flex: 1; padding: 9px 6px; border: 1px solid var(--line); border-radius: 10px;
+      background: var(--surface-2); color: var(--muted); font: 750 12px/1 var(--font);
+    }
+    .l3tab.is-on { color: var(--primary); border-color: var(--primary-bd); background: var(--primary-soft); }
+
+    .panel { flex: 1; padding: 12px 14px 18px; overflow: auto; min-height: 0; }
+    .lead { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+
+    /* A: stacked cards */
+    .card {
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2);
+      padding: 12px; margin-bottom: 10px;
+    }
+    .card h4 { margin: 0 0 4px; font-size: 13px; font-weight: 800; }
+    .hint { margin: 0 0 10px; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+    .row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 12.5px;
+    }
+    .row:last-child { border-bottom: 0; }
+    .sw {
+      width: 36px; height: 20px; border-radius: 999px; border: 0; background: var(--primary); position: relative; flex-shrink: 0;
+    }
+    .sw::after {
+      content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff; transform: translateX(16px);
+    }
+    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mode {
+      text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; background: #fff;
+    }
+    .mode.is-on { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 1px var(--primary-bd); }
+    .mode b { display: block; font-size: 12.5px; margin-bottom: 2px; }
+    .mode span { font-size: 11px; color: var(--muted); }
+    .ri {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; margin-bottom: 6px;
+      font-size: 12.5px; font-weight: 700;
+    }
+    .x { width: 22px; height: 22px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; border-radius: 6px; }
+
+    /* B: anatomy + groups */
+    .anatomy {
+      position: sticky; top: 0; z-index: 2; margin: -4px 0 12px; padding: 10px;
+      border-radius: 12px; border: 1px solid var(--primary-bd); background: #f8fcfe;
+      box-shadow: 0 4px 12px rgba(0, 101, 143, .06);
+    }
+    .anatomy .lab {
+      font: 800 10px/1 var(--mono); color: var(--primary); letter-spacing: .04em; margin-bottom: 8px;
+    }
+    .anat-bar {
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+      padding: 6px 8px; border-radius: 10px; background: var(--bar); border: 1px solid var(--bar-bd);
+    }
+    .anat-z {
+      border: 1px dashed transparent; background: rgba(255,255,255,.35); color: var(--text);
+      font: 700 10.5px/1 var(--font); padding: 6px 7px; border-radius: 7px;
+    }
+    .anat-z:hover, .anat-z.is-on {
+      border-color: var(--focus); background: #fff; color: var(--primary);
+    }
+    .anat-band {
+      margin-top: 6px; width: 100%; text-align: left;
+      border: 1px dashed transparent; background: #fff; color: var(--muted);
+      font: 650 11px/1.3 var(--font); padding: 8px 10px; border-radius: 8px;
+    }
+    .anat-band.is-on, .anat-band:hover {
+      border-color: var(--focus); color: var(--primary);
+    }
+
+    .group { margin-bottom: 14px; }
+    .group-h {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+      margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line);
+    }
+    .group-h h4 { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .02em; }
+    .group-h span { font-size: 11px; color: var(--faint); }
+    .mod {
+      display: grid; gap: 6px; padding: 9px 10px; margin-bottom: 6px;
+      border-radius: 10px; border: 1px solid var(--line); background: #fff;
+    }
+    .mod.is-focus { border-color: var(--focus); box-shadow: 0 0 0 1px rgba(14, 165, 233, .35); }
+    .mod-h {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      font-size: 12.5px; font-weight: 750;
+    }
+    .seg { display: inline-flex; gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .seg button {
+      border: 0; background: #fff; color: var(--muted); font: 650 11px/1 var(--font);
+      padding: 6px 9px;
+    }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button.is-on { background: var(--primary-soft); color: var(--primary); font-weight: 750; }
+    .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .chip {
+      border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+      font: 650 11px/1 var(--font); padding: 6px 8px; border-radius: 7px;
+    }
+    .chip.is-on { border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary); }
+
+    /* C: rail + detail (data-dense) */
+    .rail-layout {
+      display: grid; grid-template-columns: 132px 1fr; gap: 12px; min-height: 480px;
+    }
+    .rail {
+      display: flex; flex-direction: column; gap: 3px;
+      padding: 6px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line);
+      align-self: start; position: sticky; top: 0;
+    }
+    .rail button {
+      text-align: left; border: 0; background: transparent; color: var(--muted);
+      font: 700 11.5px/1.15 var(--font); padding: 8px 8px; border-radius: 8px;
+      display: grid; gap: 2px;
+    }
+    .rail button small {
+      font: 600 10px/1.2 var(--font); color: var(--faint); font-weight: 650;
+    }
+    .rail button.is-on { background: var(--primary-soft); color: var(--primary); }
+    .rail button.is-on small { color: var(--primary); opacity: .75; }
+    .detail {
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); padding: 12px;
+      min-height: 360px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .detail.is-look {
+      padding: 0; overflow: hidden; gap: 0; background: #fff;
+    }
+    .detail.is-look .detail-head {
+      padding: 14px 16px 12px; border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #f3f9fc 0%, #fff 100%);
+    }
+    .detail.is-look .look-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+    .detail-head {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+    }
+    .detail-head h4 { margin: 0; font-size: 14px; font-weight: 800; }
+    .detail-head p { margin: 4px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+
+    /* C · 小条外观：单列简表 */
+    .look-board { display: grid; gap: 12px; }
+    .look-pick, .look-when { display: grid; gap: 6px; }
+    .look-pick .lab, .look-when .lab {
+      font: 800 11px/1 var(--font); color: var(--primary); letter-spacing: .02em;
+    }
+    .look-cards, .when-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .look-card, .when-opt {
+      text-align: left; border: 1px solid var(--line); border-radius: 10px;
+      background: #fff; padding: 8px 10px; color: inherit; flex: 1 1 120px;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .look-card:hover, .when-opt:hover { border-color: var(--primary-bd); }
+    .look-card.is-on, .when-opt.is-on {
+      border-color: var(--primary); background: var(--primary-soft);
+      box-shadow: 0 0 0 1px var(--primary-bd);
+    }
+    .look-card b, .when-opt b { font-size: 12px; font-weight: 800; }
+    .look-card span, .when-opt span { font-size: 11px; color: var(--muted); line-height: 1.35; }
+    .look-mini, .look-fat { display: none; }
+    .look-extras { display: grid; gap: 0; }
+    .extra {
+      display: flex; flex-direction: row; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); min-height: 0;
+    }
+    .extra:last-child { border-bottom: 0; }
+    .extra .n { font-size: 12.5px; font-weight: 750; }
+    .extra .s { display: none; }
+    .look-foot {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 8px 0 0; font-size: 12px; color: var(--muted);
+    }
+    .look-foot button {
+      border: 0; background: transparent; color: var(--primary); font: 750 12px/1 var(--font); padding: 0;
+    }
+    .roster-auto { display: grid; gap: 6px; margin-top: 8px; }
+    .roster-auto .ri-auto {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      border-radius: 10px; border: 1px solid var(--line); background: #fff;
+    }
+    .roster-auto .ico {
+      width: 22px; height: 22px; border-radius: 6px; background: #e8f4fa;
+      display: grid; place-items: center; font: 800 9px/1 var(--font); color: #0369a1;
+    }
+    .roster-auto .n { font-size: 12.5px; font-weight: 750; }
+    .roster-auto .s { font-size: 11px; color: var(--muted); }
+    .roster-auto .need {
+      margin-left: auto; font: 700 11px/1 var(--font); color: #b45309;
+      border: 1px solid #fcd34d; background: #fffbeb; border-radius: 999px; padding: 4px 8px;
+    }
+    .look-foot b { color: var(--text); }
+    .look-foot button {
+      border: 1px solid var(--primary-bd); background: #fff; color: var(--primary);
+      font: 750 12px/1 var(--font); padding: 8px 12px; border-radius: 8px; white-space: nowrap;
+    }
+    .live-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+    }
+    .live {
+      border: 1px solid var(--line); border-radius: 9px; background: #fff; padding: 8px 9px;
+    }
+    .live .k { font: 700 10px/1 var(--mono); color: var(--faint); letter-spacing: .03em; margin-bottom: 4px; }
+    .live .v { font-size: 13px; font-weight: 800; color: var(--text); }
+    .live .s { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+    .ri-rich {
+      display: grid; grid-template-columns: 28px 1fr auto auto; gap: 8px; align-items: center;
+      padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; margin-bottom: 6px;
+    }
+    .ri-rich .ico {
+      width: 28px; height: 28px; border-radius: 8px; background: #e8f4fa; border: 1px solid #a8c9d8;
+      display: grid; place-items: center; font-size: 12px; font-weight: 800; color: var(--primary);
+    }
+    .ri-rich .n { font-weight: 750; font-size: 12.5px; }
+    .ri-rich .s { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .st {
+      font: 700 10px/1 var(--font); padding: 4px 7px; border-radius: 999px;
+      background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe;
+    }
+    .st.wait { background: #ffedd5; color: #c2410c; border-color: #fed7aa; }
+    .st.done { background: var(--ok-soft); color: var(--ok); border-color: #bbf7d0; }
+    .st.idle { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+    .tool-row {
+      display: grid; grid-template-columns: 32px 1fr auto; gap: 8px; align-items: center;
+      padding: 8px 9px; border: 1px solid var(--line); border-radius: 9px; background: #fff; margin-bottom: 5px;
+    }
+    .tool-row .g {
+      width: 32px; height: 32px; border-radius: 8px; background: #cfe6f2; border: 1px solid #9ec5d6;
+      display: grid; place-items: center; font-size: 14px;
+    }
+    .tool-row .n { font-weight: 750; font-size: 12.5px; }
+    .tool-row .s { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .sample {
+      margin: 0; padding: 9px 10px; border-radius: 9px; background: #fff; border: 1px solid var(--line);
+      font-size: 12px; color: #0369a1; line-height: 1.45;
+    }
+    .foot-link {
+      margin-top: auto; display: block; width: 100%; text-align: left;
+      border: 1px solid var(--primary-bd); background: #fff; color: var(--primary);
+      font: 750 12px/1.3 var(--font); padding: 9px 11px; border-radius: 8px;
+    }
+
+    /* C left: zone map */
+    .left.is-c .stage { justify-content: flex-start; padding-top: 14px; }
+    .edit-banner {
+      width: 100%; max-width: 340px; padding: 8px 10px; border-radius: 8px;
+      background: #fff; border: 1px solid var(--primary-bd); font-size: 11.5px; color: var(--muted);
+      line-height: 1.4;
+    }
+    .edit-banner b { color: var(--primary); }
+    .edit-banner[hidden] { display: none !important; }
+    .zone-map {
+      width: 100%; max-width: 340px; display: none; flex-direction: column; gap: 6px;
+    }
+    .left.is-c .zone-map { display: flex; }
+    .zone-map-row {
+      display: grid; grid-template-columns: 64px 1fr; gap: 8px; align-items: center;
+      font-size: 11px; color: var(--muted);
+    }
+    .zone-map-row .zk {
+      font: 700 10px/1 var(--mono); color: var(--faint); letter-spacing: .02em;
+    }
+    .zone-map-row.is-on .zk { color: var(--primary); }
+    .zone-map-row.is-on { color: var(--text); font-weight: 650; }
+    .stat-strip {
+      width: 100%; max-width: 340px; display: none; grid-template-columns: 1fr 1fr 1fr; gap: 5px;
+    }
+    .left.is-c .stat-strip { display: grid; }
+    .stat-strip .stc {
+      border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 7px 8px;
+    }
+    .stat-strip .stc b { display: block; font-size: 13px; font-weight: 800; color: var(--text); }
+    .stat-strip .stc span { font-size: 10px; color: var(--faint); }
+
+    /* D: accordion */
+    .acc {
+      border: 1px solid var(--line); border-radius: 12px; background: #fff; margin-bottom: 8px; overflow: hidden;
+    }
+    .acc-h {
+      width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      border: 0; background: var(--surface-2); padding: 11px 12px; text-align: left;
+      font: 750 12.5px/1 var(--font); color: var(--text);
+    }
+    .acc.is-open .acc-h { background: var(--primary-soft); color: var(--primary); }
+    .acc-b { display: none; padding: 10px 12px 12px; border-top: 1px solid var(--line); }
+    .acc.is-open .acc-b { display: block; }
+
+    .map {
+      margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #13202c; color: #b8c9d8;
+      font: 500 11.5px/1.55 var(--mono); white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1>迷你栏配置 · 布局升级对照</h1>
+    <p>只比右栏排版骨架。IA 五块不变。对照 <a href="./five-chrome-ia.html">五块 IA</a></p>
+    <span class="lock">左预览 | 右配置</span>
+  </header>
+
+  <div class="page">
+    <div class="variant-bar" role="tablist">
+      <button type="button" class="vbtn" data-v="A" role="tab">
+        <span class="tag">A · NOW</span>
+        <b>等权五卡竖堆</b>
+        <span>现网：01–05 大卡 + 双电台。对照基线。</span>
+      </button>
+      <button type="button" class="vbtn" data-v="B" role="tab">
+        <span class="tag">B · ANATOMY</span>
+        <b>解剖条 + 三区密排</b>
+        <span>条上/条下/浮窗；点区位高亮预览。</span>
+      </button>
+      <button type="button" class="vbtn is-on" data-v="C" role="tab" aria-selected="true">
+        <span class="tag">C · 好懂版</span>
+        <b>左边选一块 · 右边细调</b>
+        <span>忙区自动加载；听音并入条下预览卡；悬停出图标快捷钮。</span>
+      </button>
+      <button type="button" class="vbtn" data-v="D" role="tab">
+        <span class="tag">D · ACCORDION</span>
+        <b>手风琴折叠</b>
+        <span>列表仍全在；展开一块改，省滚动。</span>
+      </button>
+    </div>
+
+    <div class="verdict" id="verdict" data-tone="ok">
+      <div class="k">WHY</div>
+      <div id="verdictText"></div>
+    </div>
+
+    <div class="mock">
+      <div class="split">
+        <aside class="left" id="leftCol">
+          <div class="left-h">
+            <h2>设置中预览</h2>
+            <em id="leftTag">布局 · B</em>
+          </div>
+          <div class="stage">
+            <div class="edit-banner" id="editBanner" hidden>
+              <b id="editBannerTitle">正在改：谁在忙</b>
+              <div id="editBannerBody">右边勾选名单后，左边小圆点会跟着变。灰=没事 · 蓝=正在干 · 橙=等你回话</div>
+            </div>
+            <div class="chrome-stack">
+              <div class="mini-shell" id="miniBar" title="鼠标移上来才会出现快捷钮">
+                <div class="mini-row">
+                  <div class="zone zone--agents" data-zone="agents" title="谁在忙">
+                    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                  </div>
+                  <div class="zone zone--data">
+                    <div class="zone" data-zone="pill" title="今日用量 · 条内">
+                      <span class="pill-in">Cu · 48次</span>
+                    </div>
+                    <div class="zone" data-zone="win" title="展开/关掉" style="padding:0;gap:3px">
+                      <span class="winbtn">⧉</span><span class="winbtn">×</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="mini-row mini-row--tools" data-zone-row="tools">
+                  <div class="zone" data-zone="tools" title="快捷钮">
+                    <button type="button" class="tool" title="麦克风" aria-label="麦克风"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></button>
+                    <button type="button" class="tool" title="发送" aria-label="发送"><svg viewBox="0 0 24 24"><path d="M4 12h12"/><path d="M12 6l6 6-6 6"/></svg></button>
+                    <button type="button" class="tool" title="继续" aria-label="继续"><svg viewBox="0 0 24 24"><path d="M12 3l1.2 3.6L17 8l-3.8 1.4L12 13l-1.2-3.6L7 8l3.8-1.4z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9z"/></svg></button>
+                    <button type="button" class="tool" title="新建" aria-label="新建"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><path d="M12 7v6M9 10h6"/></svg></button>
+                    <button type="button" class="tool" title="取消" aria-label="取消"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg></button>
+                    <button type="button" class="tool tool--settings" title="迷你栏设置" aria-label="迷你栏设置"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg></button>
+                  </div>
+                </div>
+              </div>
+              <p class="hover-tip">默认一行忙区+用量；听音在下方预览卡；悬停出图标快捷钮</p>
+              <div class="preview-band" data-zone="speech" id="pvText" title="听你说话">
+                <span class="listen-halo" aria-label="正在听">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 11a7 7 0 0014 0M12 18v3"/></svg>
+                </span>
+                <span>功效派也没准儿这晚上…先选择一下你的气息开心</span>
+              </div>
+            </div>
+            <div class="zone-map" id="zoneMap" aria-label="左边条说明">
+              <div class="zone-map-row" data-map="agents"><span class="zk">谁在忙</span><span>第一行左边：自动加载的小圆点</span></div>
+              <div class="zone-map-row" data-map="pill"><span class="zk">今日用量</span><span>融在条内右侧</span></div>
+              <div class="zone-map-row" data-map="win"><span class="zk">展开/关掉</span><span>和用量挤在同一端</span></div>
+              <div class="zone-map-row" data-map="tools"><span class="zk">快捷钮</span><span>悬停第二行：图标；最右 ⚙</span></div>
+              <div class="zone-map-row" data-map="speech"><span class="zk">听你说话</span><span>条下预览卡：麦标 + 你说的话</span></div>
+            </div>
+            <div class="stat-strip" id="statStrip">
+              <div class="stc"><b>3</b><span>个在看着</span></div>
+              <div class="stc"><b>5</b><span>个快捷钮</span></div>
+              <div class="stc"><b>48</b><span>今天对话</span></div>
+            </div>
+            <div class="cap" id="leftCap">点解剖区位时，左侧对应高亮</div>
+          </div>
+        </aside>
+
+        <section class="right">
+          <div class="right-head">
+            <h3>灯效与浮窗 · 迷你栏</h3>
+            <span class="face-chip">Cursor</span>
+          </div>
+          <div class="l3">
+            <button type="button" class="l3tab" disabled>灯效匹配</button>
+            <button type="button" class="l3tab" disabled>显示数据</button>
+            <button type="button" class="l3tab is-on">迷你栏</button>
+          </div>
+          <div class="panel" id="panel"></div>
+        </section>
+      </div>
+    </div>
+
+    <pre class="map" id="map"></pre>
+  </div>
+
+  <script>
+    const VERDICTS = {
+      A: {
+        tone: "warn",
+        text: "<b>A · 现网基线：</b>五块等权大卡 + 装饰编号 + 二元时机双大卡。信息全，但首屏看不到「条上结构」，滚动像 settings dump。"
+      },
+      C: {
+        tone: "ok",
+        text: "<b>C · 好懂版：</b>第一行只留「谁在忙」+用量。听音麦标挪进条下「你说的话」预览卡。悬停出图标快捷钮。谁在忙自动加载，只有要填 API / 装 hooks 才手动。"
+      },
+      B: {
+        tone: "info",
+        text: "<b>B · 解剖条：</b>先看整条结构，再分组细调。并存关系一眼能看见，但名词仍偏产品内部。"
+      },
+      D: {
+        tone: "info",
+        text: "<b>D · 手风琴：</b>改动最小（仍是列表）。省纵向空间，但打开一块才见控件；解剖隐喻弱于 B。"
+      }
+    };
+
+    const MAPS = {
+      A: "框架\n  card × 5（voice / agents / text / tools / display）\n  标题带 01–05\n  时机 = 双大 mode 卡\n\n代价\n  首屏约 1.5 卡；并存关系靠脑补",
+      B: "框架\n  anatomy sticky\n  group onBar  → agents + tools + voice + pill/win\n  group under → text\n  group float → showMode + presentation\n\n交互\n  点 anatomy zone → scroll + 左预览 is-focus",
+      C: "白话对照\n  默认一行：谁在忙(自动) · 用量(条内)\n  悬停第二行：图标快捷钮\n  听你说话 = 条下预览卡（麦标+转写）\n  小条外观 = 单列简表（形态/时机/开关）\n\n左边\n  「正在改」+ 位置说明",
+      D: "框架\n  accordion × 5（默认开 agents）\n\n交互\n  同行只开一块；无解剖条"
+    };
+
+    function sw() {
+      return '<button type="button" class="sw" aria-checked="true"></button>';
+    }
+
+    function roster() {
+      return ["Cursor", "Trae Code", "Windsurf"].map(function (n) {
+        return '<div class="ri"><span>' + n + '</span><button type="button" class="x">×</button></div>';
+      }).join("") + '<button type="button" class="chip" style="margin-top:4px">+ 添加</button>';
+    }
+
+    function renderA() {
+      return (
+        '<p class="lead">浮窗精简态怎么显示、灯条上亮哪些 Agent。左侧切迷你条预览。</p>' +
+        card("01 · 语音控制栏", "条上的「聆听」chip。", "voice",
+          row("显示聆听 chip", sw()) +
+          '<div class="modes"><button type="button" class="mode is-on"><b>仅听写中</b><span>听写时出现</span></button>' +
+          '<button type="button" class="mode"><b>常驻</b><span>武装也显示</span></button></div>') +
+        card("灯条上亮谁", "跨应用成员，不是键位。", "agents",
+          row("显示 Agent 灯栏", sw()) + roster()) +
+        card("03 · 文本预览窗", "主条下方转写带。", "text",
+          row("显示文本预览窗", sw()) +
+          '<div class="modes"><button type="button" class="mode"><b>听写中才出</b></button>' +
+          '<button type="button" class="mode is-on"><b>有字才出</b></button></div>') +
+        card("04 · 工具栏", "与 Agent 灯并排。", "tools",
+          row("显示工具栏", sw()) +
+          '<div class="modes">' +
+          '<button type="button" class="mode is-on"><b>麦克风</b></button>' +
+          '<button type="button" class="mode is-on"><b>发送</b></button></div>') +
+        card("05 · 显示选项", "何时出现 · 形态 · 窗控。", "float",
+          '<div class="modes"><button type="button" class="mode is-on"><b>迷你条</b></button>' +
+          '<button type="button" class="mode"><b>完整体</b></button></div>' +
+          row("用量 pill", sw()) + row("展开 / 关闭", sw()))
+      );
+    }
+
+    function card(title, hint, zone, body) {
+      return (
+        '<div class="card" data-mod="' + zone + '"><h4>' + title + "</h4>" +
+        '<p class="hint">' + hint + "</p>" + body + "</div>"
+      );
+    }
+    function row(label, right) {
+      return '<div class="row"><span>' + label + "</span>" + right + "</div>";
+    }
+
+    function renderB() {
+      return (
+        '<p class="lead">点上方区位装配；左边预览同步高亮。工具栏与 Agent 灯可并存。</p>' +
+        '<div class="anatomy" data-anatomy="1">' +
+        '<div class="lab">FLOAT ANATOMY · 点区位</div>' +
+        '<div class="anat-bar">' +
+        zbtn("agents", "Agent 灯") + zbtn("tools", "工具") + zbtn("voice", "聆听") +
+        zbtn("pill", "用量") + zbtn("win", "窗控") +
+        "</div>" +
+        '<button type="button" class="anat-band" data-jump="text">文本预览带 · 主条下方</button>' +
+        "</div>" +
+
+        '<div class="group" data-group="onBar">' +
+        '<div class="group-h"><h4>条上</h4><span>可并存</span></div>' +
+        mod("agents", "Agent 灯", sw(), roster()) +
+        mod("tools", "工具栏", sw(),
+          '<div class="chips">' +
+          '<button type="button" class="chip is-on">麦克风</button>' +
+          '<button type="button" class="chip is-on">发送</button>' +
+          '<button type="button" class="chip is-on">继续</button>' +
+          '<button type="button" class="chip is-on">新建</button>' +
+          '<button type="button" class="chip">取消</button></div>') +
+        mod("voice", "聆听 chip", sw(),
+          '<div class="seg">' +
+          '<button type="button" class="is-on">仅听写中</button>' +
+          '<button type="button">常驻</button></div>') +
+        mod("pill", "用量 pill / 窗控", sw(),
+          row("无数据隐藏", sw()) + row("展开按钮", sw()) + row("关闭按钮", sw())) +
+        "</div>" +
+
+        '<div class="group" data-group="under">' +
+        '<div class="group-h"><h4>条下</h4><span>第二行</span></div>' +
+        mod("text", "文本预览", sw(),
+          '<div class="seg">' +
+          '<button type="button">听写中才出</button>' +
+          '<button type="button" class="is-on">有字才出</button></div>') +
+        "</div>" +
+
+        '<div class="group" data-group="float">' +
+        '<div class="group-h"><h4>浮窗</h4><span>何时 · 形态</span></div>' +
+        mod("float", "何时出现 / 展示方案", "",
+          '<div class="seg" style="margin-bottom:8px">' +
+          '<button type="button">跟随</button><button type="button">最前</button>' +
+          '<button type="button" class="is-on">迷你条</button><button type="button">隐藏</button></div>' +
+          '<div class="seg">' +
+          '<button type="button">完整体</button><button type="button" class="is-on">精简态</button></div>') +
+        "</div>"
+      );
+    }
+
+    function zbtn(id, label) {
+      return '<button type="button" class="anat-z" data-jump="' + id + '">' + label + "</button>";
+    }
+
+    function mod(id, title, toggle, body) {
+      return (
+        '<div class="mod" data-mod="' + id + '" id="mod-' + id + '">' +
+        '<div class="mod-h"><span>' + title + "</span>" + (toggle || "") + "</div>" +
+        (body || "") +
+        "</div>"
+      );
+    }
+
+    let railActive = "agents";
+
+    function liveGrid(items) {
+      return (
+        '<div class="live-grid">' +
+        items.map(function (it) {
+          return (
+            '<div class="live"><div class="k">' + it.k + '</div><div class="v">' + it.v +
+            '</div>' + (it.s ? '<div class="s">' + it.s + "</div>" : "") + "</div>"
+          );
+        }).join("") +
+        "</div>"
+      );
+    }
+
+    function rosterAuto() {
+      const rows = [
+        { ico: "Cu", n: "Cursor", s: "已接入 · 自动显示", need: false },
+        { ico: "Tr", n: "Trae Code", s: "已接入 · 自动显示", need: false },
+        { ico: "Wi", n: "Windsurf", s: "要填 API / 装 hooks", need: true }
+      ];
+      return (
+        '<div class="roster-auto">' +
+        rows.map(function (r) {
+          return (
+            '<div class="ri-auto">' +
+            '<span class="ico">' + r.ico + "</span>" +
+            '<div><div class="n">' + r.n + '</div><div class="s">' + r.s + "</div></div>" +
+            (r.need ? '<span class="need">去配置</span>' : "") +
+            "</div>"
+          );
+        }).join("") +
+        '</div>' +
+        '<p class="hint" style="margin-top:8px">已装好的 Agent 自动出现，不用手动添加。灰=没事 · 蓝=忙 · 橙=等你 · 绿=完成 · 红=失败</p>'
+      );
+    }
+
+    function toolIcon(kind) {
+      var paths = {
+        mic: '<path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>',
+        send: '<path d="M4 12h12"/><path d="M12 6l6 6-6 6"/>',
+        spark: '<path d="M12 3l1.2 3.6L17 8l-3.8 1.4L12 13l-1.2-3.6L7 8l3.8-1.4z"/>',
+        plus: '<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><path d="M12 7v6M9 10h6"/>',
+        x: '<circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/>'
+      };
+      return '<span class="g"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        (paths[kind] || paths.mic) + "</svg></span>";
+    }
+
+    function renderC() {
+      const items = [
+        ["agents", "谁在忙", "自动"],
+        ["speech", "听你说话", "条下"],
+        ["tools", "快捷钮", "图标"],
+        ["float", "小条外观", "简表"]
+      ];
+      const titles = {
+        agents: ["谁在忙", "第一行左边的小圆点。已接入的自动出现，不用手动添加。"],
+        speech: ["听你说话", "条下预览卡：麦克风光晕 + 你说的话。听音不再占第一行。"],
+        tools: ["快捷钮", "鼠标移上才出第二行；全部用图标，不写字。"],
+        float: ["小条外观", "形态、时机、条内开关——单列排开，不搞拼板。"]
+      };
+      const detailBody = {
+        agents:
+          liveGrid([
+            { k: "条上几个", v: "3", s: "自动加载" },
+            { k: "正在干", v: "1", s: "Cursor" },
+            { k: "要配置", v: "1", s: "Windsurf · API" },
+            { k: "状态", v: "正常", s: "能收到进度" }
+          ]) +
+          row("在左边显示这些小圆点", sw()) +
+          rosterAuto(),
+        speech:
+          liveGrid([
+            { k: "位置", v: "条下", s: "麦标进预览卡" },
+            { k: "出现", v: "有字/说话时", s: "可调" }
+          ]) +
+          row("显示「听你说话」预览卡", sw()) +
+          '<div class="seg"><button type="button">说话过程中就显示</button><button type="button" class="is-on">有字才显示</button></div>' +
+          '<p class="hint" style="margin:8px 0 4px">左边现在长这样</p>' +
+          '<div class="sample" style="display:flex;gap:8px;align-items:flex-start">' +
+          '<span class="listen-halo"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 11a7 7 0 0014 0M12 18v3"/></svg></span>' +
+          '<span>功效派也没准儿这晚上…先选择一下你的气息开心</span></div>',
+        tools:
+          liveGrid([
+            { k: "平时", v: "藏着", s: "第一行不占位" },
+            { k: "鼠标移上", v: "第二行", s: "图标按钮" }
+          ]) +
+          row("允许悬停时出现快捷钮", sw()) +
+          [
+            ["mic", "麦克风", "按住说话"],
+            ["send", "发送", "送进当前输入框"],
+            ["spark", "继续", "让它接着干"],
+            ["plus", "新建", "开新对话"],
+            ["x", "取消", "停听 / 取消"]
+          ].map(function (t) {
+            return (
+              '<div class="tool-row">' +
+              toolIcon(t[0]) +
+              '<div><div class="n">' + t[1] + '</div><div class="s">' + t[2] + "</div></div>" +
+              sw() +
+              "</div>"
+            );
+          }).join(""),
+        float:
+          '<div class="look-board">' +
+          '<div class="look-pick">' +
+          '<div class="lab">长什么样</div>' +
+          '<div class="look-cards">' +
+          '<button type="button" class="look-card is-on"><b>细条</b><span>少占地方</span></button>' +
+          '<button type="button" class="look-card"><b>完整键盘</b><span>要打字时用</span></button>' +
+          "</div></div>" +
+          '<div class="look-when">' +
+          '<div class="lab">什么时候出现</div>' +
+          '<div class="when-grid">' +
+          '<button type="button" class="when-opt"><b>跟着软件</b><span>打开才出</span></button>' +
+          '<button type="button" class="when-opt"><b>一直挂着</b><span>换窗也在</span></button>' +
+          '<button type="button" class="when-opt is-on"><b>用细条时</b><span>选了细条就显</span></button>' +
+          '<button type="button" class="when-opt"><b>先不显示</b><span>手动再开</span></button>' +
+          "</div></div>" +
+          '<div class="look-extras">' +
+          '<div class="extra"><div class="n">今日用量</div>' + sw() + "</div>" +
+          '<div class="extra"><div class="n">放大</div>' + sw() + "</div>" +
+          '<div class="extra"><div class="n">关掉</div>' + sw() + "</div>" +
+          "</div>" +
+          '<div class="look-foot"><span>悬停才出快捷钮</span>' +
+          '<button type="button">去改用量来源 →</button></div></div>'
+      };
+      const t = titles[railActive] || titles.agents;
+      const isLook = railActive === "float";
+      return (
+        '<p class="lead">左边点一项，右边细调。忙区自动加载；听音在条下预览卡；悬停出图标快捷钮。</p>' +
+        '<div class="rail-layout">' +
+        '<nav class="rail" data-rail="1">' +
+        items.map(function (it) {
+          return (
+            '<button type="button" data-rail-id="' + it[0] + '"' +
+            (it[0] === railActive ? ' class="is-on"' : "") + ">" +
+            it[1] + "<small>" + it[2] + "</small></button>"
+          );
+        }).join("") +
+        "</nav>" +
+        '<div class="detail' + (isLook ? " is-look" : "") + '" data-mod="' + railActive + '">' +
+        '<div class="detail-head"><div><h4>' + t[0] + "</h4><p>" + t[1] + "</p></div>" +
+        (isLook ? "" : sw()) +
+        "</div>" +
+        (isLook ? '<div class="look-body">' + detailBody.float + "</div>" : detailBody[railActive]) +
+        "</div></div>"
+      );
+    }
+
+    function renderD() {
+      const blocks = [
+        ["agents", "Agent 灯", true, row("显示", sw()) + roster()],
+        ["tools", "工具栏", false, row("显示", sw()) + '<div class="chips"><button type="button" class="chip is-on">麦克风</button><button type="button" class="chip is-on">发送</button></div>'],
+        ["voice", "聆听", false, row("显示", sw()) + '<div class="seg"><button type="button" class="is-on">仅听写中</button><button type="button">常驻</button></div>'],
+        ["text", "文本预览", false, row("显示", sw()) + '<div class="seg"><button type="button" class="is-on">有字才出</button><button type="button">听写中</button></div>'],
+        ["float", "浮窗 / 显示选项", false, '<div class="seg"><button type="button" class="is-on">迷你条</button><button type="button">完整体</button></div>' + row("pill / 窗控", sw())]
+      ];
+      return (
+        '<p class="lead">点击行展开一块；默认打开 Agent 灯。</p>' +
+        blocks.map(function (b) {
+          return (
+            '<div class="acc' + (b[2] ? " is-open" : "") + '" data-mod="' + b[0] + '">' +
+            '<button type="button" class="acc-h" data-acc="' + b[0] + '"><span>' + b[1] +
+            '</span><span style="color:var(--faint);font-weight:650">' + (b[2] ? "收起" : "展开") +
+            "</span></button>" +
+            '<div class="acc-b">' + b[3] + "</div></div>"
+          );
+        }).join("")
+      );
+    }
+
+    function clearFocus() {
+      document.querySelectorAll(".zone.is-focus, .preview-band.is-focus, .mod.is-focus, .anat-z.is-on, .anat-band.is-on")
+        .forEach(function (el) { el.classList.remove("is-focus", "is-on"); });
+    }
+
+    function focusZone(id) {
+      clearFocus();
+      document.querySelectorAll(".zone-map-row.is-on").forEach(function (el) {
+        el.classList.remove("is-on");
+      });
+      var shell = document.getElementById("miniBar");
+      if (shell) {
+        shell.classList.toggle("is-force-tools", id === "tools");
+        shell.classList.toggle("is-open", id === "tools" || id === "float");
+      }
+      document.querySelectorAll('.zone[data-zone="' + id + '"], .preview-band[data-zone="' + id + '"]')
+        .forEach(function (el) { el.classList.add("is-focus"); });
+      // float maps to pill+win on the bar
+      if (id === "float") {
+        document.querySelectorAll('.zone[data-zone="pill"], .zone[data-zone="win"]')
+          .forEach(function (el) { el.classList.add("is-focus"); });
+      }
+      document.querySelectorAll('.mod[data-mod="' + id + '"], .detail[data-mod="' + id + '"]')
+        .forEach(function (el) { el.classList.add("is-focus"); });
+      document.querySelectorAll('[data-jump="' + id + '"]').forEach(function (el) { el.classList.add("is-on"); });
+      var mapId = id === "float" ? "pill" : (id === "voice" || id === "text" ? "speech" : id);
+      document.querySelectorAll('.zone-map-row[data-map="' + mapId + '"], .zone-map-row[data-map="' + id + '"]')
+        .forEach(function (el) { el.classList.add("is-on"); });
+      if (id === "float") {
+        document.querySelectorAll('.zone-map-row[data-map="win"]').forEach(function (el) {
+          el.classList.add("is-on");
+        });
+      }
+      if (id === "speech" || id === "voice" || id === "text") {
+        document.querySelectorAll('.preview-band[data-zone="speech"]').forEach(function (el) {
+          el.classList.add("is-focus");
+        });
+      }
+
+      var banners = {
+        agents: ["正在改：谁在忙", "已接入的自动出现，不用手动添加。灰=没事 · 蓝=忙 · 橙=等你"],
+        tools: ["正在改：快捷钮", "鼠标移到迷你栏才出第二行图标按钮"],
+        speech: ["正在改：听你说话", "条下预览卡：麦克风光晕 + 你说的话"],
+        voice: ["正在改：听你说话", "条下预览卡：麦克风光晕 + 你说的话"],
+        text: ["正在改：听你说话", "条下预览卡：麦克风光晕 + 你说的话"],
+        pill: ["正在改：今日用量", "融在条内右侧"],
+        win: ["正在改：展开/关掉", "和用量挤在同一端"],
+        float: ["正在改：小条外观", "形态 / 时机 / 开关 · 单列简表"]
+      };
+      var b = banners[id] || banners.agents;
+      var banner = document.getElementById("editBanner");
+      if (banner && !banner.hidden) {
+        document.getElementById("editBannerTitle").textContent = b[0];
+        document.getElementById("editBannerBody").textContent = b[1];
+      }
+      var cap = {
+        agents: "左边高亮：谁在忙（自动）",
+        tools: "左边已展开第二行：图标快捷钮",
+        speech: "左边高亮：听你说话（麦标+转写）",
+        voice: "左边高亮：听你说话（麦标+转写）",
+        text: "左边高亮：听你说话（麦标+转写）",
+        pill: "左边高亮：条内今日用量",
+        win: "左边高亮：展开 / 关掉",
+        float: "左边高亮：条内用量与窗控"
+      };
+      document.getElementById("leftCap").textContent = cap[id] || "看左边对照";
+      var target = document.getElementById("mod-" + id) || document.querySelector('[data-mod="' + id + '"]');
+      if (target && target.scrollIntoView) {
+        target.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    }
+
+    function syncLeftMode(v) {
+      var left = document.getElementById("leftCol");
+      var banner = document.getElementById("editBanner");
+      left.classList.toggle("is-c", v === "C");
+      banner.hidden = v !== "C";
+    }
+
+    function bindPanel(v) {
+      const panel = document.getElementById("panel");
+      panel.querySelectorAll("[data-jump]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          focusZone(btn.getAttribute("data-jump"));
+        });
+      });
+      panel.querySelectorAll("[data-rail-id]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          railActive = btn.getAttribute("data-rail-id");
+          render("C");
+          focusZone(railActive);
+        });
+      });
+      panel.querySelectorAll("[data-acc]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const id = btn.getAttribute("data-acc");
+          panel.querySelectorAll(".acc").forEach(function (acc) {
+            const on = acc.getAttribute("data-mod") === id;
+            acc.classList.toggle("is-open", on);
+            const h = acc.querySelector(".acc-h span:last-child");
+            if (h) h.textContent = on ? "收起" : "展开";
+          });
+          focusZone(id);
+        });
+      });
+    }
+
+    function render(v) {
+      const panel = document.getElementById("panel");
+      panel.innerHTML = v === "A" ? renderA() : v === "B" ? renderB() : v === "C" ? renderC() : renderD();
+      const vd = VERDICTS[v];
+      document.getElementById("verdict").dataset.tone = vd.tone;
+      document.getElementById("verdictText").innerHTML = vd.text;
+      document.getElementById("map").textContent = MAPS[v];
+      document.getElementById("leftTag").textContent = "布局 · " + v;
+      clearFocus();
+      syncLeftMode(v);
+      document.getElementById("leftCap").textContent =
+        v === "B" ? "点上面结构时，左边对应一段会亮" :
+        v === "C" ? "移到小条上看悬停第二行；点左边一项会对上高亮" :
+        v === "D" ? "展开一项时，左边对应高亮" :
+        "现在这版：左边不会告诉你在改哪一段";
+      bindPanel(v);
+      if (v === "C") focusZone(railActive);
+    }
+
+    document.querySelectorAll(".vbtn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll(".vbtn").forEach(function (b) {
+          b.classList.toggle("is-on", b === btn);
+          b.setAttribute("aria-selected", b === btn ? "true" : "false");
+        });
+        render(btn.dataset.v);
+      });
+    });
+
+    render("C");
+  </script>
+</body>
+</html>
