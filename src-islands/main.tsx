@@ -250,11 +250,11 @@ function mountVoiceAcousticIslands(): void {
 
 // Camera flow chrome（不碰 MediaPipe）
 function mountCameraFlowChromeIsland(): void {
-  const host = document.getElementById('cameraFlowNodeTriggerHint');
-  if (!host || OneToneIslands.isMounted('cameraFlowNodeTriggerHint')) return;
+  const host = document.getElementById('cameraFlowNodeProHint');
+  if (!host || OneToneIslands.isMounted('cameraFlowNodeProHint')) return;
   host.textContent = '';
   registerCameraFlowChromeBridge();
-  OneToneIslands.mountIsland('cameraFlowNodeTriggerHint', CameraFlowChromeIsland, {}, {
+  OneToneIslands.mountIsland('cameraFlowNodeProHint', CameraFlowChromeIsland, {}, {
     onRefresh: () => ({}) as Record<string, unknown>,
   });
 }

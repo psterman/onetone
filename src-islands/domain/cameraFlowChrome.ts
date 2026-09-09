@@ -16,7 +16,7 @@ interface LegacyWorkflow {
 }
 
 const EMPTY: CameraFlowChromeModel = {
-  activeTab: 'trigger',
+  activeTab: 'pro',
   locked: false,
   triggerHint: '',
   actionHint: '',
@@ -24,7 +24,7 @@ const EMPTY: CameraFlowChromeModel = {
   sig: 'empty',
 };
 
-const TABS = ['trigger', 'action', 'pro'] as const;
+const TABS = ['pro', 'action'] as const;
 
 function legacy(): LegacyWorkflow {
   return (
@@ -63,14 +63,13 @@ export function applyCameraFlowChromeHosts(model: CameraFlowChromeModel): void {
     (btn as HTMLButtonElement).disabled = !!model.locked;
     btn.setAttribute('aria-disabled', model.locked ? 'true' : 'false');
     btn.classList.toggle('is-locked', !!model.locked);
-    // #cameraFlowNodeTriggerHint 由 React 渲染；其余 hint 仍由 apply 写
-    if (tab === 'trigger') return;
+    // #cameraFlowNodeProHint 由 React 渲染；其余 hint 仍由 apply 写
+    if (tab === 'pro') return;
     const hint = document.getElementById(
       'cameraFlowNode' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Hint',
     );
     if (hint) {
-      const key = `${tab}Hint` as 'actionHint' | 'proHint';
-      hint.textContent = model[key] || '';
+      hint.textContent = model.actionHint || '';
     }
   });
   const lockHint = document.getElementById('cameraCalibLockHint');

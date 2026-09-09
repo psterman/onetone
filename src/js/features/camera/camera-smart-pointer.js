@@ -364,8 +364,28 @@
     var needsCtrl=mode==='confirm'||settings.trigger==='ctrl'||settings.trigger==='ctrl_or_dwell';
     rt.moveInFlight=true;
 
+    var snap=global.OneToneCameraSnapWindow;
+    var snapOn=!!(snap&&snap.isWanted&&snap.isWanted());
+
+    // When Snap Window is on, never warp the cursor while LMB is down.
+    // Teleporting during title-bar hold makes Windows Aero-maximize the window
+    // in place ("原地放大") and breaks snap hit-testing.
+    var gate=snapOn
+      ? invokeIpc('cmd_gaze_drag_state',{}).then(function(st){
+          try{
+            if(snap.ingestDragState) snap.ingestDragState(st);
+          }catch(_){}
+          if(st&&st.lmbDown){
+            return {blocked:true,reason:'snap_lmb'};
+          }
+          return {blocked:false};
+        }).catch(function(){ return {blocked:false}; })
+      : Promise.resolve({blocked:false});
+
     var ctrlPromise=needsCtrl?getCtrlDownCached(now):Promise.resolve(false);
-    ctrlPromise.then(function(ctrlDown){
+    gate.then(function(g){
+      if(g&&g.blocked) return null;
+      return ctrlPromise.then(function(ctrlDown){
       if(!shouldAttemptMove(settings, result, rt.stability, now, ctrlDown)){
         return null;
       }
@@ -423,6 +443,7 @@
           return pos;
         });
       });
+    });
     }).catch(function(err){
       var msg=String(err&&err.message?err.message:err||'move_failed');
       if(msg==='no_ipc') return;
@@ -503,7 +524,13 @@
     rt.lastResult=result;
 
     // Preview never moves. Confirm (Ctrl) / auto handled in maybeMoveCursor.
+    // While Snap Window is mid title-bar hold, do not steal the cursor — that
+    // breaks caption hit-testing and prevents the held window from moving.
     if(settings.mode!=='preview'){
+      var snap=global.OneToneCameraSnapWindow;
+      if(snap&&((snap.isPointerFrozen&&snap.isPointerFrozen())||(snap.isTitleBarDragActive&&snap.isTitleBarDragActive()))){
+        return result;
+      }
       maybeMoveCursor(settings, result, now);
     }
     return result;

@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>摄像头 · 教学动画原型</title>
+  <style>
+    :root {
+      --primary: #2a9cc4;
+      --primary-strong: #1f8fb8;
+      --primary-soft: #e6f7fc;
+      --amber: #f59e0b;
+      --on-surface: #152238;
+      --muted: #5a7086;
+      --surface: #fff;
+      --surface-soft: #f0f7fb;
+      --line: rgba(26, 45, 74, 0.1);
+      --outline: rgba(42, 156, 196, 0.28);
+      --toggle-off: #c5d3de;
+      --ok: #15803d;
+      --ok-soft: rgba(46, 125, 79, 0.12);
+      --shadow: 0 14px 34px rgba(26, 45, 74, 0.07);
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+      --radius: 16px;
+      --ai-green: #10b981;
+      --ai-red: #ef4444;
+      --tech-blue: #38bdf8;
+      --bg-dark: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font); color: var(--on-surface);
+      background:
+        radial-gradient(circle at 14% 0%, rgba(94, 200, 232, 0.12), transparent 36%),
+        linear-gradient(180deg, #f9fbfd 0%, #edf2f8 100%);
+    }
+    button, select, input { font-family: inherit; }
+    button { cursor: pointer; }
+
+    .proto-bar {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 16px; background: #1a2d4a; color: #c5d0de; font-size: 12px;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar .grow { margin-left: auto; color: #8b97a8; }
+    .proto-bar .ghost {
+      border: 1px solid rgba(255,255,255,.18); background: transparent; color: #c5d0de;
+      border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 600;
+    }
+
+    .page { max-width: 1080px; margin: 0 auto; padding: 16px 16px 48px; }
+    .ia {
+      margin: 0 0 12px; padding: 10px 14px; border-radius: 12px;
+      background: var(--primary-soft); border: 1px solid var(--outline);
+      font-size: 13px; color: var(--primary-strong); font-weight: 600; line-height: 1.45;
+    }
+    .ia em { font-style: normal; color: var(--muted); font-weight: 500; }
+
+    .drawer {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 24px; box-shadow: var(--shadow); overflow: hidden;
+    }
+
+    .status {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      padding: 12px 18px; border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface-soft) 70%, white);
+    }
+    .status-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .status h1 { margin: 0; font-size: 13px; font-weight: 700; }
+    .status h1 .sub { color: var(--muted); font-weight: 500; }
+    .fg-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      border: 1px solid rgba(46,125,79,.28); background: var(--ok-soft);
+      border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; color: var(--ok);
+    }
+    .fg-chip .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
+      box-shadow: 0 0 0 3px rgba(46,125,79,.18);
+    }
+    .fg-chip.is-fallback {
+      color: var(--muted); border-color: var(--line); background: var(--surface-soft);
+    }
+    .fg-chip.is-fallback .dot { background: var(--muted); box-shadow: none; }
+    .fg-meta { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .ctx-btn {
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+      border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 600;
+    }
+    .status-right { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); font-weight: 600; }
+
+    .toggle {
+      width: 44px; height: 26px; border: 0; border-radius: 999px;
+      background: var(--toggle-off); position: relative; flex-shrink: 0;
+    }
+    .toggle::after {
+      content: ""; position: absolute; top: 3px; left: 3px;
+      width: 20px; height: 20px; border-radius: 50%; background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.15); transition: transform .16s ease;
+    }
+    .toggle.is-on { background: var(--primary); }
+    .toggle.is-on::after { transform: translateX(18px); }
+
+    .page-tabs {
+      display: flex; gap: 4px; padding: 10px 18px 0;
+      border-bottom: 1px solid var(--line); background: #fbfcfe;
+    }
+    .page-tabs button {
+      border: 0; background: transparent; color: var(--muted);
+      padding: 10px 14px 12px; font-size: 13px; font-weight: 700;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .page-tabs button.is-on {
+      color: var(--primary-strong); border-bottom-color: var(--primary);
+    }
+
+    .body { padding: 14px 16px 18px; }
+    .warn {
+      display: none; margin: 0 0 10px; padding: 8px 10px; border-radius: 10px;
+      background: #fff7ed; border: 1px solid rgba(245,158,11,.35);
+      color: #b45309; font-size: 12px; font-weight: 600;
+    }
+    .warn.is-show { display: block; }
+    .panel[hidden] { display: none !important; }
+
+    .one-liner {
+      margin: 0 0 12px; padding: 14px 16px; border-radius: 14px;
+      background: linear-gradient(135deg, #eef9fc, #f7fafc);
+      border: 1px solid var(--outline);
+    }
+    .one-liner .k { font-size: 11px; font-weight: 800; color: var(--primary-strong); margin: 0 0 4px; }
+    .one-liner .t { margin: 0; font-size: 16px; font-weight: 700; line-height: 1.4; }
+    .one-liner .t em { font-style: normal; color: var(--primary-strong); }
+
+    .pair {
+      display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 0;
+      border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #fff;
+      min-height: 440px;
+    }
+    @media (max-width: 720px) { .pair { grid-template-columns: 1fr; } }
+
+    .fn-dir {
+      border-right: 1px solid var(--line); background: #fafcfd;
+      padding: 10px; overflow: auto; max-height: 580px;
+    }
+    @media (max-width: 720px) { .fn-dir { border-right: 0; border-bottom: 1px solid var(--line); max-height: 220px; } }
+    .fn-search {
+      width: 100%; border: 1px solid var(--line); border-radius: 10px;
+      padding: 8px 10px; font-size: 12px; margin-bottom: 8px;
+    }
+    .fn-search:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(42,156,196,.16);
+    }
+    .fn-kicker {
+      margin: 8px 6px 4px; font-size: 10px; font-weight: 800; color: var(--muted); letter-spacing: .04em;
+    }
+    .fn-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+    .fn-item {
+      display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center;
+      width: 100%; text-align: left; border: 0; background: transparent;
+      color: var(--on-surface); border-radius: 10px; padding: 9px 10px;
+    }
+    .fn-item:hover { background: #fff; }
+    .fn-item.is-on {
+      background: var(--primary-soft); color: var(--primary-strong);
+      box-shadow: inset 3px 0 0 var(--primary);
+    }
+    .fn-item .name { font-size: 13px; font-weight: 700; }
+    .fn-item .map { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .fn-item.is-on .map { color: var(--primary-strong); }
+    .fn-item.is-off .name, .fn-item.is-off .map { opacity: .5; }
+    .mode-seg {
+      display: inline-flex; gap: 2px; margin: 0 0 10px;
+      border: 1px solid var(--outline); border-radius: 999px;
+      padding: 2px; background: #fff;
+    }
+    .mode-seg button {
+      border: 0; background: transparent; cursor: pointer;
+      border-radius: 999px; padding: 5px 12px;
+      font-size: 12px; font-weight: 700; color: var(--muted);
+    }
+    .mode-seg button.is-on {
+      background: var(--primary-soft); color: var(--primary-strong);
+    }
+    .fn-more {
+      margin-top: 8px; border: 1px dashed rgba(26,45,74,.14); border-radius: 10px;
+      background: #fff; padding: 6px 8px;
+    }
+    .fn-more summary {
+      cursor: pointer; font-size: 12px; font-weight: 700; color: var(--muted); padding: 4px;
+    }
+    .fn-dir.is-adv .fn-more {
+      margin-top: 0; border: 0; background: transparent; padding: 0;
+    }
+    .fn-dir.is-adv .fn-more summary { display: none; }
+    .fn-empty { display: none; margin: 8px 4px; font-size: 12px; color: var(--muted); }
+    .fn-empty.is-show { display: block; }
+
+    .detail {
+      padding: 14px 16px 16px; min-width: 0; display: flex; flex-direction: column; gap: 12px;
+    }
+    .detail-panel[hidden] { display: none !important; }
+    .detail-h {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+      padding-bottom: 10px; border-bottom: 1px solid var(--line);
+    }
+    .detail-h h2 {
+      margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .detail-h p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+    .type { font-size: 10px; font-weight: 800; border-radius: 999px; padding: 2px 7px; }
+    .type-react { background: #e0f2fe; color: #0369a1; }
+    .type-guard { background: #ecfdf5; color: #047857; }
+    .type-confirm { background: #fff7ed; color: #c2410c; }
+    .type-enhance { background: #faf5ff; color: #7e22ce; }
+
+    .pair-arrow {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; border-radius: 12px;
+      background: var(--primary-soft); border: 1px solid var(--outline);
+      font-size: 14px; font-weight: 700; color: var(--primary-strong);
+    }
+    .pair-arrow .from, .pair-arrow .to { color: var(--on-surface); }
+    .pair-arrow .sep { color: var(--primary); font-weight: 800; }
+
+    .fields { display: grid; gap: 10px; max-width: 460px; }
+    .field {
+      display: grid; grid-template-columns: 100px 1fr; gap: 10px; align-items: center;
+    }
+    @media (max-width: 560px) { .field { grid-template-columns: 1fr; gap: 4px; } }
+    .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .field select, .field input[type="range"] {
+      width: 100%; border: 1px solid var(--line); border-radius: 10px;
+      padding: 8px 10px; background: #fff; font-size: 12px;
+    }
+    .inline { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .inline input { accent-color: var(--primary); }
+    .note {
+      margin: 0; padding: 8px 10px; border-radius: 10px;
+      background: var(--surface-soft); border: 1px solid var(--line);
+      font-size: 12px; color: var(--muted); line-height: 1.4;
+    }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn {
+      border: 1px solid var(--line); background: #fff; color: var(--on-surface);
+      border-radius: 10px; padding: 7px 10px; font-size: 12px; font-weight: 600;
+    }
+    .btn.is-primary { background: var(--primary); border-color: transparent; color: #fff; }
+    .btn.on-dark {
+      border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.08); color: #e8f0f8;
+    }
+
+    .test-fold {
+      margin-top: 4px; border: 1px dashed rgba(26,45,74,.16); border-radius: 12px;
+      background: var(--surface-soft); padding: 8px 10px;
+    }
+    .test-fold > summary {
+      cursor: pointer; list-style: none; font-size: 12px; font-weight: 700; color: var(--muted);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .test-fold > summary::-webkit-details-marker { display: none; }
+    .test-fold[open] > summary { margin-bottom: 8px; color: var(--primary-strong); }
+    .test-fold .hint { font-weight: 500; font-size: 11px; }
+    .preview {
+      background: #0f1724; color: #dbe7f3; border-radius: 12px;
+      overflow: hidden; min-height: 180px; display: flex; flex-direction: column;
+    }
+    .preview-stage {
+      flex: 1; min-height: 120px; position: relative; display: grid; place-items: center;
+      background:
+        radial-gradient(circle at 50% 40%, rgba(94,200,232,.18), transparent 45%),
+        linear-gradient(180deg, #152033, #0f1724);
+    }
+    .preview-stage.is-beauty {
+      background:
+        radial-gradient(circle at 50% 40%, rgba(251,191,36,.2), transparent 42%),
+        linear-gradient(180deg, #1a2438, #0f1724);
+    }
+    .face {
+      width: 52px; height: 52px; border-radius: 50%;
+      border: 2px dashed rgba(94,200,232,.5);
+      display: grid; place-items: center; font-size: 10px; color: rgba(94,200,232,.9);
+    }
+    .chip {
+      position: absolute; left: 8px; bottom: 8px;
+      background: rgba(15,23,36,.75); border: 1px solid rgba(94,200,232,.28);
+      border-radius: 999px; padding: 3px 8px; font-size: 10px;
+    }
+    .pulse {
+      position: absolute; right: 8px; top: 8px;
+      background: rgba(42,156,196,.2); border: 1px solid rgba(42,156,196,.4);
+      border-radius: 10px; padding: 5px 8px; font-size: 10px; max-width: 60%;
+      opacity: 0; transition: .2s;
+    }
+    .pulse.is-show { opacity: 1; }
+    .preview-tools {
+      display: flex; flex-wrap: wrap; gap: 6px; padding: 8px;
+      border-top: 1px solid rgba(255,255,255,.06); background: rgba(255,255,255,.04);
+    }
+
+    .sim-row {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px;
+    }
+    .sim-row span { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .sim {
+      border: 1px solid var(--line); background: #fff; border-radius: 999px;
+      padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--muted);
+    }
+    .sim.is-on { border-color: rgba(46,125,79,.35); background: var(--ok-soft); color: var(--ok); }
+
+    .lab { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
+    @media (max-width: 860px) { .lab { grid-template-columns: 1fr; } }
+    .lab-card {
+      border: 1px solid var(--line); border-radius: var(--radius); background: #fff; padding: 14px;
+    }
+    .lab-card h2 { margin: 0 0 4px; font-size: 14px; }
+    .lab-card .lead { margin: 0 0 12px; font-size: 12px; color: var(--muted); }
+    .lab-preview {
+      border-radius: 14px; min-height: 160px; background: #0f1724; color: #dbe7f3;
+      display: grid; place-items: center; position: relative; margin-bottom: 10px;
+    }
+    .lab-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    /* —— 教学遮罩（自 bugfix，无 Tailwind） —— */
+    .teach {
+      position: fixed; inset: 0; z-index: 80;
+      display: none; align-items: center; justify-content: center;
+      padding: 16px; background: rgba(15, 23, 42, 0.55);
+    }
+    .teach.is-open { display: flex; }
+    .teach-card {
+      width: min(960px, 100%); max-height: calc(100vh - 32px);
+      overflow: auto; background: #fff; border-radius: 20px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.28); border: 1px solid var(--line);
+    }
+    .teach-head {
+      padding: 14px 16px 10px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    }
+    .teach-head h2 { margin: 0; font-size: 16px; }
+    .teach-head p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+    .teach-mode {
+      display: inline-flex; gap: 2px; margin-top: 8px;
+      border: 1px solid var(--outline); border-radius: 999px; padding: 2px;
+    }
+    .teach-mode button {
+      border: 0; background: transparent; border-radius: 999px;
+      padding: 4px 10px; font-size: 11px; font-weight: 700; color: var(--muted);
+    }
+    .teach-mode button.is-on { background: var(--primary-soft); color: var(--primary-strong); }
+    .teach-console {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+      padding: 10px 12px; background: #f8fafc; border-bottom: 1px solid var(--line);
+    }
+    .teach-console .lbl { font-size: 11px; font-weight: 700; color: #94a3b8; }
+    .teach-chip {
+      border: 2px solid #e2e8f0; background: #fff; color: #475569;
+      border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700;
+    }
+    .teach-chip.is-on {
+      border-color: #0ea5e9; background: #f0f9ff; color: #0284c7;
+      box-shadow: 0 4px 14px rgba(14,165,233,.2);
+    }
+    .teach-chip.is-extra { display: none; }
+    .teach.is-full .teach-chip.is-extra { display: inline-flex; }
+
+    .stage {
+      display: flex; flex-direction: row; height: 420px; width: 100%; overflow: hidden; position: relative;
+    }
+    @media (max-width: 760px) { .stage { flex-direction: column; height: auto; min-height: 520px; } }
+    .cam-zone {
+      width: 45%; flex-shrink: 0; position: relative;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+      border-right: 1px solid #1e293b; overflow: hidden;
+    }
+    @media (max-width: 760px) { .cam-zone { width: 100%; height: 240px; border-right: 0; border-bottom: 1px solid #1e293b; } }
+    .cam-grid {
+      position: absolute; inset: 0; opacity: .3; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(56,189,248,.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56,189,248,.05) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .cam-live {
+      position: absolute; top: 16px; left: 16px; z-index: 5;
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(15,23,42,.6); border: 1px solid rgba(51,65,85,.5);
+      border-radius: 999px; padding: 6px 10px; backdrop-filter: blur(8px);
+    }
+    .cam-live .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #34d399;
+      box-shadow: 0 0 8px rgba(16,185,129,.8); animation: live-pulse 1.4s ease infinite;
+    }
+    @keyframes live-pulse { 50% { opacity: .45; } }
+    .cam-live span { font-size: 11px; color: #cbd5e1; font-family: ui-monospace, monospace; letter-spacing: .04em; }
+
+    .avatar-wrap {
+      display: flex; flex-direction: column; align-items: center; z-index: 10;
+      margin-bottom: -20px; transform-origin: bottom center;
+      transition: all .6s cubic-bezier(.34,1.56,.64,1);
+    }
+    .avatar-head {
+      width: 72px; height: 90px; border-radius: 40px; position: relative;
+      background: linear-gradient(135deg, rgba(56,189,248,.8), rgba(59,130,246,.8));
+      box-shadow: 0 0 30px rgba(56,189,248,.4), inset 0 0 15px rgba(255,255,255,.4);
+      transition: all .3s ease;
+    }
+    .avatar-visor {
+      position: absolute; top: 35px; left: 50%; transform: translateX(-50%);
+      width: 36px; height: 10px; border-radius: 5px;
+      background: rgba(255,255,255,.9); box-shadow: 0 0 10px rgba(255,255,255,.8);
+      transition: all .3s ease;
+    }
+    .avatar-body {
+      width: 140px; height: 100px; border-radius: 70px 70px 20px 20px; margin-top: 15px;
+      background: linear-gradient(135deg, rgba(30,41,59,.9), rgba(15,23,42,.9));
+      border: 2px solid rgba(56,189,248,.3);
+      box-shadow: inset 0 15px 20px rgba(56,189,248,.1);
+      display: flex; justify-content: center; align-items: flex-start; padding-top: 16px;
+      position: relative; transition: all .4s ease;
+    }
+    .avatar-breath { width: 32px; height: 4px; border-radius: 999px; background: rgba(56,189,248,.3); }
+    .hud-tracker {
+      position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%);
+      width: 100px; height: 120px; border: 1.5px solid var(--ai-green);
+      background: rgba(16,185,129,.05); z-index: 20;
+      transition: all .4s cubic-bezier(.2,.8,.2,1);
+    }
+    .hud-tracker::before, .hud-tracker::after { content: ""; position: absolute; width: 12px; height: 12px; }
+    .hud-tracker::before { top: -2px; left: -2px; border-top: 3px solid var(--ai-green); border-left: 3px solid var(--ai-green); }
+    .hud-tracker::after { bottom: -2px; right: -2px; border-bottom: 3px solid var(--ai-green); border-right: 3px solid var(--ai-green); }
+    .hud-label {
+      position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%);
+      font-size: 10px; font-family: ui-monospace, monospace; font-weight: 700;
+      padding: 2px 8px; border-radius: 4px; white-space: nowrap; color: #fff;
+    }
+    .hud-ok { background: #10b981; }
+    .hud-bad { background: #ef4444; }
+    .hud-sky { background: #0ea5e9; }
+    .hud-purple { background: #a855f7; }
+
+    .play-away .avatar-wrap { transform: translateY(120px) scale(.6); opacity: 0; transition-duration: .8s; }
+    .play-away .hud-tracker {
+      border-color: var(--ai-red); width: 140px; height: 160px; opacity: 0; transition-delay: .2s;
+    }
+    .play-away .hud-tracker::before, .play-away .hud-tracker::after { border-color: var(--ai-red); }
+    .play-back .avatar-wrap { transform: translateY(0) scale(1); opacity: 1; transition-duration: .8s; }
+    .play-back .hud-tracker {
+      border-color: var(--ai-green); width: 100px; height: 120px; opacity: 1;
+      transition-delay: .4s; animation: pulse-green 1s .8s;
+    }
+    @keyframes shake-head {
+      0%,100% { transform: translateX(0) rotate(0); }
+      20%,60% { transform: translateX(-12px) rotate(-4deg); }
+      40%,80% { transform: translateX(12px) rotate(4deg); }
+    }
+    @keyframes shake-visor {
+      0%,100% { transform: translateX(-50%); }
+      20%,60% { transform: translateX(-80%); width: 20px; }
+      40%,80% { transform: translateX(-20%); width: 20px; }
+    }
+    @keyframes shake-tracker {
+      0%,100% { transform: translate(-50%, -50%); }
+      20%,60% { transform: translate(calc(-50% - 10px), -50%); }
+      40%,80% { transform: translate(calc(-50% + 10px), -50%); }
+    }
+    .play-shake .avatar-head { animation: shake-head 1.2s ease-in-out; }
+    .play-shake .avatar-visor { animation: shake-visor 1.2s ease-in-out; }
+    .play-shake .hud-tracker { animation: shake-tracker 1.2s ease-in-out; }
+
+    .avatar-arm-joint {
+      position: absolute; right: 10px; top: 40px;
+      width: 70px; height: 14px; border-radius: 8px; transform-origin: left center;
+      background: linear-gradient(90deg, rgba(30,41,59,.9), rgba(56,189,248,.8));
+      transform: rotate(80deg) scale(.5); opacity: 0;
+      transition: all .5s cubic-bezier(.34,1.56,.64,1);
+      box-shadow: 0 5px 15px rgba(0,0,0,.3); z-index: 15;
+    }
+    .play-ok .avatar-arm-joint, .play-fist .avatar-arm-joint { transform: rotate(-35deg) scale(1); opacity: 1; }
+    .avatar-hand-box {
+      position: absolute; right: -30px; top: -20px;
+      width: 48px; height: 48px; background: #0f172a; border: 2px solid var(--tech-blue);
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      font-size: 24px; transform: rotate(35deg);
+      box-shadow: inset 0 0 10px rgba(56,189,248,.3);
+    }
+    .hand-tracker {
+      position: absolute; inset: -5px; border: 1.5px solid var(--ai-green);
+      background: rgba(16,185,129,.1); opacity: 0; border-radius: 8px;
+    }
+    .hand-tracker::before, .hand-tracker::after { content: ""; position: absolute; width: 8px; height: 8px; }
+    .hand-tracker::before { top: -2px; left: -2px; border-top: 2px solid var(--ai-green); border-left: 2px solid var(--ai-green); }
+    .hand-tracker::after { bottom: -2px; right: -2px; border-bottom: 2px solid var(--ai-green); border-right: 2px solid var(--ai-green); }
+    @keyframes tracker-lock {
+      0%,18% { opacity: 0; transform: scale(1.5); }
+      22%,82% { opacity: 1; transform: scale(1); box-shadow: 0 0 15px rgba(16,185,129,.4); }
+      100% { opacity: 0; transform: scale(1); }
+    }
+    .play-ok .hand-tracker, .play-fist .hand-tracker { animation: tracker-lock 2.5s cubic-bezier(.34,1.56,.64,1); }
+    .play-fist .hand-tracker { border-color: #a855f7; background: rgba(168,85,247,.1); }
+    .play-fist .hand-tracker::before, .play-fist .hand-tracker::after { border-color: #a855f7; }
+    @keyframes wave-pop-wave {
+      0% { opacity: 0; transform: rotate(80deg) scale(.5); }
+      15% { opacity: 1; transform: rotate(-35deg) scale(1.1); }
+      35% { transform: rotate(-10deg) scale(1); }
+      55% { transform: rotate(-60deg) scale(1); }
+      75% { transform: rotate(-35deg) scale(1.1); }
+      100% { opacity: 0; transform: rotate(80deg) scale(.5); }
+    }
+    .play-wave .avatar-arm-joint { animation: wave-pop-wave 2.5s cubic-bezier(.34,1.56,.64,1); }
+    .play-wave .hand-tracker {
+      animation: tracker-lock 2.5s cubic-bezier(.34,1.56,.64,1);
+      border-color: #38bdf8; background: rgba(56,189,248,.1);
+    }
+    .play-wave .hand-tracker::before, .play-wave .hand-tracker::after { border-color: #38bdf8; }
+    .play-close .avatar-wrap { transform: scale(1.6) translateY(25px); transition-duration: .8s; }
+    .play-close .hud-tracker {
+      width: 160px; height: 180px; border-width: 2.5px; border-color: var(--ai-green);
+      background: rgba(16,185,129,.15); box-shadow: 0 0 30px rgba(16,185,129,.4); transition-duration: .8s;
+    }
+    .play-close .hud-tracker::before, .play-close .hud-tracker::after { border-color: var(--ai-green); border-width: 4px; }
+
+    .screen-zone {
+      width: 55%; flex-shrink: 0; background: #f1f5f9;
+      display: flex; align-items: center; justify-content: center; padding: 16px; position: relative;
+    }
+    @media (max-width: 760px) { .screen-zone { width: 100%; min-height: 280px; } }
+    .screen-frame {
+      width: 100%; height: 100%; background: #fff; border-radius: 12px;
+      border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+      position: relative; overflow: hidden;
+    }
+    .screen-ctx { display: none; width: 100%; height: 100%; position: absolute; inset: 0; }
+    .screen-ctx.is-show { display: flex; flex-direction: column; }
+    .screen-ctx.is-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; padding: 6px; background: #000; }
+    .desk {
+      background: linear-gradient(135deg, #eff6ff, #e0e7ff); position: relative;
+    }
+    .desk-bar {
+      height: 20px; background: rgba(255,255,255,.4); display: flex; justify-content: space-between;
+      align-items: center; padding: 0 12px; font-size: 9px; font-weight: 700; color: #64748b;
+      border-bottom: 1px solid rgba(255,255,255,.2);
+    }
+    .desk-win {
+      margin: auto; width: 80%; height: 62%; background: rgba(255,255,255,.8);
+      border-radius: 10px; border: 1px solid #fff; box-shadow: 0 12px 30px rgba(15,23,42,.12);
+      padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .desk-dots { display: flex; gap: 4px; margin-bottom: 4px; }
+    .desk-dots i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+    .desk-line { height: 10px; border-radius: 4px; background: #e2e8f0; }
+    .desk-dock {
+      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 8px; padding: 8px 12px; border-radius: 16px;
+      background: rgba(255,255,255,.7); border: 1px solid #fff; box-shadow: 0 8px 20px rgba(0,0,0,.08);
+    }
+    .desk-dock i { width: 28px; height: 28px; border-radius: 10px; display: block; }
+
+    .ide { background: #1e1e1e; color: #94a3b8; }
+    .ide-bar {
+      height: 32px; background: #2d2d2d; display: flex; align-items: center; gap: 8px;
+      padding: 0 14px; border-bottom: 1px solid #444; font-size: 11px; font-family: ui-monospace, monospace;
+    }
+    .ide-body { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+    .ide-line { height: 10px; border-radius: 4px; background: #333; }
+    .ctx-ide-dialog {
+      position: absolute; top: 50%; left: 50%; width: 240px;
+      transform: translate(-50%, -40%) scale(.9); opacity: 0; visibility: hidden;
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.25); overflow: hidden; z-index: 20;
+      transition: all .4s ease;
+    }
+    @keyframes dialog-reject {
+      0% { opacity: 1; transform: translate(-50%, -50%) scale(1); visibility: visible; }
+      20% { transform: translate(-55%, -50%) scale(1); border-color: #ef4444; }
+      40% { transform: translate(-45%, -50%) scale(1); }
+      60% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 20px rgba(239,68,68,.3); }
+      100% { opacity: 0; transform: translate(-50%, -40%) scale(.9); visibility: hidden; }
+    }
+    .play-shake-active .ctx-ide-dialog { animation: dialog-reject 1s .4s forwards; visibility: visible; }
+
+    .pr-body { flex: 1; display: flex; align-items: center; justify-content: center; background: #f8fafc; padding: 16px; }
+    .merge-box {
+      width: 100%; max-width: 320px; border: 1px solid #a7f3d0; background: #ecfdf5;
+      border-radius: 12px; padding: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      transition: all .5s cubic-bezier(.34,1.56,.64,1);
+    }
+    .merge-btn {
+      background: #10b981; color: #fff; border-radius: 8px; padding: 6px 10px;
+      font-size: 11px; font-weight: 700; white-space: nowrap; transition: all .4s;
+    }
+    .play-ok-active .merge-box {
+      border-color: #a855f7; background: #faf5ff; transform: scale(1.02);
+      box-shadow: 0 10px 25px -5px rgba(168,85,247,.2);
+    }
+    .play-ok-active .merge-btn { background: #a855f7; }
+
+    .media {
+      background: #0f172a; color: #fff; align-items: center; justify-content: center; gap: 14px;
+    }
+    .album-art {
+      width: 100px; height: 100px; border-radius: 50%; border: 6px solid #1e293b;
+      background: linear-gradient(135deg, #a855f7, #f43f5e);
+      animation: record-spin 4s linear infinite;
+    }
+    @keyframes record-spin { 100% { transform: rotate(360deg); } }
+    .pause-overlay {
+      position: absolute; inset: 0; background: rgba(15,23,42,.6);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      opacity: 0; transform: scale(.9); transition: all .3s; z-index: 10;
+    }
+    .play-fist-active .album-art { animation-play-state: paused; filter: grayscale(50%); }
+    .play-fist-active .pause-overlay { opacity: 1; transform: scale(1); }
+
+    .wave-wrap { background: #e2e8f0; align-items: center; justify-content: center; }
+    .wave-card {
+      width: 260px; background: #fff; border-radius: 16px; padding: 16px;
+      box-shadow: 0 15px 40px -10px rgba(0,0,0,.15); transition: all .3s ease;
+    }
+    @keyframes swipe-out {
+      0% { transform: translateX(0) rotate(0); opacity: 1; }
+      100% { transform: translateX(150%) rotate(15deg); opacity: 0; }
+    }
+    .play-wave-active .wave-card { animation: swipe-out .8s 2s cubic-bezier(.8,-.2,.2,1) forwards; }
+
+    .meeting-box {
+      background: #1e293b; border-radius: 8px; border: 2px solid transparent;
+      display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 28px;
+      position: relative; overflow: hidden; transition: all .3s;
+    }
+    .meeting-overlay {
+      position: absolute; inset: 0; background: rgba(6,78,59,.2); border: 6px solid #10b981;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity .3s; z-index: 20; pointer-events: none;
+    }
+    .play-close-active .meeting-overlay { opacity: 1; }
+    .play-close-active .meeting-box.user-box {
+      border-color: #10b981; box-shadow: inset 0 0 20px rgba(16,185,129,.4); z-index: 5;
+    }
+    .play-close-active .meeting-box:not(.user-box) { opacity: .4; filter: blur(1px); }
+
+    .welcome-toast {
+      position: absolute; top: 14px; right: 14px; z-index: 50;
+      background: rgba(30,41,59,.95); color: #fff; border: 1px solid #334155;
+      border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 600;
+      transform: translateX(20px); opacity: 0;
+      transition: all .6s cubic-bezier(.34,1.56,.64,1);
+    }
+    .play-back .welcome-toast { transform: translateX(0); opacity: 1; transition-delay: 1.6s; }
+    .screen-blur {
+      position: absolute; inset: 0; z-index: 40;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(0); background: transparent; opacity: 0; pointer-events: none;
+      transition: all 1s cubic-bezier(.4,0,.2,1); transform: scale(1.05);
+    }
+    .play-away .screen-blur {
+      backdrop-filter: blur(16px); background: rgba(15,23,36,.75); opacity: 1;
+      pointer-events: auto; transform: scale(1); transition-delay: .6s;
+    }
+    .play-back .screen-blur { transition-delay: .8s; }
+    @keyframes pulse-green {
+      0% { box-shadow: 0 0 0 0 rgba(16,185,129,.4); }
+      70% { box-shadow: 0 0 0 15px rgba(16,185,129,0); }
+      100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+    }
+    .snap-instant, .snap-instant * { transition: none !important; animation: none !important; }
+
+    .teach-foot {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 16px; border-top: 1px solid var(--line);
+    }
+    .teach-foot .nar { flex: 1; min-width: 200px; font-size: 13px; line-height: 1.45; color: #334155; }
+    .teach-foot .nar b { font-weight: 800; }
+    .teach-nav { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    #step-indicators { display: flex; gap: 6px; }
+    #step-indicators i {
+      display: block; height: 6px; width: 6px; border-radius: 999px; background: #e2e8f0;
+      transition: all .2s;
+    }
+    #step-indicators i.is-on { width: 14px; background: var(--primary); }
+    .teach-actions { display: flex; gap: 8px; }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <strong>摄像头 · 无流程 Hero + 教学动画</strong>
+    <span class="grow">首进自动短演示 · 可跳过 · 可重播</span>
+    <button type="button" class="ghost" id="btnResetTeach">重置教学</button>
+  </div>
+
+  <div class="page">
+    <p class="ia">
+      配置页是结果页：<em>状态条 + 一句匹配 + 弱 tab</em>；首次进入识别匹配自动播
+      <em>入席 → 离席 → 摇头</em>；「再看一遍」可重播，遮罩内可切「完整演示」。
+    </p>
+
+    <div class="drawer">
+      <div class="status">
+        <div class="status-left">
+          <h1><span class="sub">摄像头 · </span>前台自动</h1>
+          <span class="fg-chip" id="fgChip"><span class="dot"></span><span id="fgName">Cursor</span></span>
+          <span class="fg-meta" id="fgMeta">已匹配习惯</span>
+          <button type="button" class="ctx-btn" id="btnHabitHub">我的习惯</button>
+          <button type="button" class="ctx-btn" id="btnReplayTeach">再看一遍</button>
+        </div>
+        <div class="status-right">
+          <span id="masterLbl">识别已开</span>
+          <button type="button" class="toggle is-on" id="masterToggle" role="switch" aria-checked="true" aria-label="识别总开关"></button>
+        </div>
+      </div>
+
+      <nav class="page-tabs" aria-label="摄像头分区">
+        <button type="button" class="is-on" data-tab="pro" id="nodePro">识别匹配</button>
+        <button type="button" data-tab="lab" id="nodeLab">摄像头设置</button>
+      </nav>
+
+      <div class="body">
+        <p class="warn" id="inactiveWarn">已配置，但不会生效 · 请打开识别总开关</p>
+
+        <div class="one-liner" id="oneLiner">
+          <p class="k">当前前台在做什么</p>
+          <p class="t" id="oneLinerText">—</p>
+        </div>
+
+        <section class="panel" id="panelPro">
+          <div class="mode-seg" role="tablist" aria-label="目录模式">
+            <button type="button" class="is-on" data-mode="simple" role="tab" aria-selected="true">简易</button>
+            <button type="button" data-mode="adv" role="tab" aria-selected="false">高级</button>
+          </div>
+
+          <div class="pair">
+            <aside class="fn-dir" id="fnDir" aria-label="功能目录">
+              <input type="search" class="fn-search" id="fnSearch" placeholder="搜索功能…" autocomplete="off" />
+              <p class="fn-kicker" id="fnPrimaryKick">常用</p>
+              <ul class="fn-list" id="fnPrimary"></ul>
+              <details class="fn-more" id="fnMore">
+                <summary>高级 · 手势 / 守护 / 确认 / 美颜</summary>
+                <div id="fnExtra"></div>
+              </details>
+              <p class="fn-empty" id="fnEmpty">无匹配功能</p>
+            </aside>
+
+            <div class="detail">
+<div class="detail-panel" id="edit-away">
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-react">反应</span> 离席</h2>
+                    <p>人脸消失达时长 → 执行一次</p>
+                  </div>
+                  <button type="button" class="toggle is-on" data-en="away" role="switch" aria-checked="true"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">离席</span><span class="sep">→</span><span class="to" data-map-label="away">隐私屏</span></div>
+                <div class="fields">
+                  <div class="field"><label>判定时长</label>
+                    <select><option>1 秒</option><option>2 秒</option><option selected>3 秒</option><option>5 秒</option></select>
+                  </div>
+                  <div class="field"><label>执行结果</label>
+                    <select data-map-act="away"><option selected>隐私屏</option><option>暂停语音</option><option>不执行</option></select>
+                  </div>
+                </div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-back" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-react">反应</span> 回席</h2>
+                    <p>跟随离席识别 · 无独立开关</p>
+                  </div>
+                </div>
+                <div class="pair-arrow"><span class="from">回席</span><span class="sep">→</span><span class="to" data-map-label="back">恢复语音</span></div>
+                <div class="fields">
+                  <div class="field"><label>判定时长</label>
+                    <select><option>0.5 秒</option><option selected>1 秒</option><option>2 秒</option></select>
+                  </div>
+                  <div class="field"><label>执行结果</label>
+                    <select data-map-act="back"><option selected>恢复语音</option><option>关隐私屏</option><option>不执行</option></select>
+                  </div>
+                </div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-shake" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-react">反应</span> 摇头</h2>
+                    <p>左右三拍</p>
+                  </div>
+                  <button type="button" class="toggle is-on" data-en="shake" role="switch" aria-checked="true"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">摇头</span><span class="sep">→</span><span class="to" data-map-label="shake">Esc</span></div>
+                <div class="fields">
+                  <div class="field"><label>速度</label><select><option>慢</option><option selected>适中</option><option>快</option></select></div>
+                  <div class="field"><label>执行结果</label>
+                    <select data-map-act="shake"><option selected>Esc</option><option>取消语音</option><option>不执行</option></select>
+                  </div>
+                  <div class="field"><label>防误触</label><label class="inline"><input type="checkbox" checked /> 响声后点头确认</label></div>
+                </div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-blink" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-react">反应</span> 故意眨眼</h2>
+                    <p>普通眨眼不算</p>
+                  </div>
+                  <button type="button" class="toggle" data-en="blink" role="switch" aria-checked="false"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">长眨</span><span class="sep">→</span><span class="to" data-map-label="blink">确认</span></div>
+                <div class="fields">
+                  <div class="field"><label>闭眼多久</label>
+                    <select><option>0.4 秒</option><option selected>0.6 秒</option><option>0.8 秒</option><option>1.0 秒</option></select>
+                  </div>
+                  <div class="field"><label>执行结果</label>
+                    <select data-map-act="blink"><option selected>确认</option><option>激活语音</option><option>不执行</option></select>
+                  </div>
+                </div>
+                <div class="row-actions"><button type="button" class="btn" id="btnBlinkBase">采集眨眼基线</button></div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-palm" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-react">反应</span> 五指张开</h2>
+                    <p>建议 SoftPad 窗内</p>
+                  </div>
+                  <button type="button" class="toggle" data-en="palm" role="switch" aria-checked="false"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">五指</span><span class="sep">→</span><span class="to" data-map-label="palm">暂停</span></div>
+                <div class="fields">
+                  <div class="field"><label>执行结果</label>
+                    <select data-map-act="palm"><option selected>暂停</option><option>不执行</option></select>
+                  </div>
+                </div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-ok" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-react">反应</span> OK 手势</h2>
+                    <p>拇指食指成圈</p>
+                  </div>
+                  <button type="button" class="toggle" data-en="ok" role="switch" aria-checked="false"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">OK</span><span class="sep">→</span><span class="to" data-map-label="ok">确认</span></div>
+                <div class="fields">
+                  <div class="field"><label>执行结果</label>
+                    <select data-map-act="ok"><option selected>确认</option><option>不执行</option></select>
+                  </div>
+                </div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-fist" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-react">反应</span> 握拳</h2>
+                    <p>收拢五指</p>
+                  </div>
+                  <button type="button" class="toggle" data-en="fist" role="switch" aria-checked="false"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">握拳</span><span class="sep">→</span><span class="to" data-map-label="fist">取消</span></div>
+                <div class="fields">
+                  <div class="field"><label>执行结果</label>
+                    <select data-map-act="fist"><option selected>取消</option><option>不执行</option></select>
+                  </div>
+                </div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-wave" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-react">反应</span> 挥手</h2>
+                    <p>与五指可能互抢</p>
+                  </div>
+                  <button type="button" class="toggle" data-en="wave" role="switch" aria-checked="false"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">挥手</span><span class="sep">→</span><span class="to" data-map-label="wave">不执行</span></div>
+                <div class="fields">
+                  <div class="field"><label>执行结果</label>
+                    <select data-map-act="wave"><option selected>不执行</option><option>取消</option></select>
+                  </div>
+                </div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-peer" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-guard">守护</span> 旁人提醒</h2>
+                    <p>第二张脸出现时提醒</p>
+                  </div>
+                  <button type="button" class="toggle" data-en="peer" role="switch" aria-checked="false"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">旁人</span><span class="sep">→</span><span class="to" data-map-label="peer">提醒</span></div>
+                <div class="fields">
+                  <div class="field"><label>灵敏度</label><select><option>低</option><option selected>中</option><option>高</option></select></div>
+                </div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-shield" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-guard">守护</span> 隐私卫士</h2>
+                    <p>多人时遮罩</p>
+                  </div>
+                  <button type="button" class="toggle" data-en="shield" role="switch" aria-checked="false"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">多人</span><span class="sep">→</span><span class="to" data-map-label="shield">遮罩</span></div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-mute" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-guard">守护</span> 距离静音</h2>
+                    <p>按人脸远近</p>
+                  </div>
+                  <button type="button" class="toggle" data-en="mute" role="switch" aria-checked="false"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">靠近</span><span class="sep">→</span><span class="to" data-map-label="mute">静音</span></div>
+                <div class="fields">
+                  <div class="field"><label>策略</label>
+                    <select data-map-act="mute"><option selected>靠近 → 静音</option><option>远离 → 静音</option></select>
+                  </div>
+                </div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-gaze" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-confirm">确认</span> 看屏确认</h2>
+                    <p>发送前闸门 · 不能单靠视觉直送</p>
+                  </div>
+                  <button type="button" class="toggle" data-en="gaze" role="switch" aria-checked="false"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">看屏</span><span class="sep">→</span><span class="to" data-map-label="gaze">待确认</span></div>
+                <div class="fields">
+                  <div class="field"><label>区域</label><select><option selected>粗三区</option><option>说明九宫格</option></select></div>
+                  <div class="field"><label>高风险</label><label class="inline"><input type="checkbox" checked /> 须叠加 OK / 长眨</label></div>
+                </div>
+                <div class="row-actions"><button type="button" class="btn" data-goto="lab">去校准 →</button></div>
+                <p class="note" data-write-note></p>
+              </div>
+
+              <div class="detail-panel" id="edit-beauty" hidden>
+                <div class="detail-h">
+                  <div>
+                    <h2><span class="type type-enhance">增强</span> 美颜</h2>
+                    <p>只改预览 · 不影响识别</p>
+                  </div>
+                  <button type="button" class="toggle" id="beautyToggle" data-en="beauty" role="switch" aria-checked="false"></button>
+                </div>
+                <div class="pair-arrow"><span class="from">预览层</span><span class="sep">→</span><span class="to">好看（不改判定）</span></div>
+                <div class="fields">
+                  <div class="field"><label>Look</label><select id="beautyLook" disabled><option selected>自然</option><option>清晰</option><option>柔光</option></select></div>
+                  <div class="field"><label>强度 <span id="beautyVal">40</span></label>
+                    <input type="range" min="0" max="100" value="40" id="beautyRange" disabled />
+                  </div>
+                </div>
+                <p class="note">美颜属通用增强，不写入应用场景覆盖。</p>
+              </div>
+
+              
+              <details class="test-fold" id="testFold">
+                <summary>
+                  <span>测试画面（可选）</span>
+                  <span class="hint">改完再测 · 默认收起</span>
+                </summary>
+                <div class="preview">
+                  <div class="preview-stage" id="previewStage">
+                    <div class="face">预览</div>
+                    <span class="chip" id="previewChip">待命 · 展开后开启可测</span>
+                    <div class="pulse" id="pulse"></div>
+                  </div>
+                  <div class="preview-tools">
+                    <button type="button" class="btn is-primary on-dark" id="btnPreview">开启预览</button>
+                    <button type="button" class="btn on-dark" id="btnTestFn">测试：离席</button>
+                    <button type="button" class="btn on-dark" id="btnQuickCal">快校</button>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <div class="sim-row">
+            <span>原型演示 · 模拟前台：</span>
+            <button type="button" class="sim is-on" data-fg="cursor">Cursor</button>
+            <button type="button" class="sim" data-fg="word">Word</button>
+            <button type="button" class="sim" data-fg="chrome">Chrome</button>
+            <button type="button" class="sim" data-fg="other">其它 → 通用</button>
+          </div>
+        </section>
+
+        <section class="panel" id="panelLab" hidden>
+          <div class="lab">
+            <div class="lab-card">
+              <h2>预览画面</h2>
+              <p class="lead">设备级预览 · 与匹配页折叠测试同源。</p>
+              <div class="lab-preview">
+                <div class="face">设备预览</div>
+                <span class="chip" id="labChip">待命</span>
+              </div>
+              <div class="lab-actions">
+                <button type="button" class="btn is-primary" id="btnLabPreview">开启预览</button>
+                <button type="button" class="btn" data-goto="pro">回识别匹配 →</button>
+              </div>
+            </div>
+            <div class="lab-card">
+              <h2>设备 / 校准</h2>
+              <p class="lead">通用底座 · 不随前台切换。教学动画不在此页自动播放。</p>
+              <div class="fields">
+                <div class="field"><label>设备</label><select><option selected>默认摄像头</option></select></div>
+                <div class="field"><label>分辨率</label><select><option selected>720p · 30fps</option><option>1080p · 30fps</option></select></div>
+              </div>
+              <p class="note" id="calSummary">校准状态：未校准</p>
+              <div class="row-actions">
+                <button type="button" class="btn" id="btnCalQuick">快校</button>
+                <button type="button" class="btn" id="btnCalFine">精细校准</button>
+                <button type="button" class="btn" id="btnCalClear">清除</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="teach" id="teach" role="dialog" aria-modal="true" aria-labelledby="teachTitle" hidden>
+    <div class="teach-card">
+      <div class="teach-head">
+        <div>
+          <h2 id="teachTitle">看见 → 电脑会响应</h2>
+          <p>短演示只播最稳三项；完整演示含手势与靠近。</p>
+          <div class="teach-mode" role="tablist">
+            <button type="button" class="is-on" data-teach-mode="short">短演示</button>
+            <button type="button" data-teach-mode="full">完整演示</button>
+          </div>
+        </div>
+        <button type="button" class="btn" id="btnTeachClose">关闭</button>
+      </div>
+
+      <div class="teach-console">
+        <span class="lbl">点场景：</span>
+        <button type="button" class="teach-chip" data-scene="back">入席</button>
+        <button type="button" class="teach-chip" data-scene="away">离席</button>
+        <button type="button" class="teach-chip" data-scene="shake">摇头</button>
+        <button type="button" class="teach-chip is-extra" data-scene="ok">OK</button>
+        <button type="button" class="teach-chip is-extra" data-scene="fist">握拳</button>
+        <button type="button" class="teach-chip is-extra" data-scene="wave">挥手</button>
+        <button type="button" class="teach-chip is-extra" data-scene="close">靠近</button>
+      </div>
+
+      <div class="stage" id="stage">
+        <div class="cam-zone">
+          <div class="cam-grid"></div>
+          <div class="cam-live"><span class="dot"></span><span>AI 传感器</span></div>
+          <div class="avatar-wrap">
+            <div class="avatar-head"><div class="avatar-visor"></div></div>
+            <div class="avatar-body">
+              <div class="avatar-breath"></div>
+              <div class="avatar-arm-joint">
+                <div class="avatar-hand-box">
+                  <span id="avatar-hand-emoji">👌</span>
+                  <div class="hand-tracker">
+                    <div id="hand-status" class="hud-label hud-ok">OK 已识别</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="hud-tracker">
+            <div id="hud-status" class="hud-label hud-ok">人脸已锁定</div>
+          </div>
+        </div>
+
+        <div class="screen-zone">
+          <div class="screen-frame">
+            <div id="ctx-desktop" class="screen-ctx desk is-show">
+              <div class="desk-bar"><span>桌面</span><span>周二 10:24</span></div>
+              <div class="desk-win">
+                <div class="desk-dots"><i style="background:#fb7185"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i></div>
+                <div class="desk-line" style="width:33%"></div>
+                <div class="desk-line" style="width:100%"></div>
+                <div class="desk-line" style="width:66%"></div>
+              </div>
+              <div class="desk-dock"><i style="background:#3b82f6"></i><i style="background:#a855f7"></i><i style="background:#10b981"></i></div>
+            </div>
+
+            <div id="ctx-ide" class="screen-ctx ide">
+              <div class="ide-bar">
+                <i style="width:10px;height:10px;border-radius:50%;background:#ff5f56;display:block"></i>
+                <i style="width:10px;height:10px;border-radius:50%;background:#ffbd2e;display:block"></i>
+                <i style="width:10px;height:10px;border-radius:50%;background:#27c93f;display:block"></i>
+                <span style="margin-left:8px">处理器.ts</span>
+              </div>
+              <div class="ide-body">
+                <div class="ide-line" style="width:33%"></div>
+                <div class="ide-line" style="width:50%;background:#444"></div>
+                <div class="ide-line" style="width:75%"></div>
+                <div style="height:36px;width:66%;border-radius:8px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);margin-top:8px"></div>
+              </div>
+              <div class="ctx-ide-dialog">
+                <div style="background:#eff6ff;padding:10px 12px;border-bottom:1px solid #dbeafe;font-size:12px;font-weight:800;color:#1d4ed8">AI 智能重构</div>
+                <div style="padding:14px;text-align:center">
+                  <p style="margin:0 0 10px;font-size:12px;color:#475569">即将修改核心逻辑，是否应用？</p>
+                  <div style="display:flex;gap:8px;font-size:11px;font-weight:800">
+                    <div style="flex:1;padding:6px;border-radius:8px;background:#f1f5f9;color:#64748b">摇头 (Esc)</div>
+                    <div style="flex:1;padding:6px;border-radius:8px;background:#2563eb;color:#fff">确认</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="ctx-pr" class="screen-ctx">
+              <div style="padding:14px 16px;border-bottom:1px solid #e2e8f0">
+                <div style="font-size:13px;font-weight:800">更新交互物理引擎 #142</div>
+                <div style="margin-top:6px;font-size:10px;color:#64748b">开放 · 可合并</div>
+              </div>
+              <div class="pr-body">
+                <div class="merge-box">
+                  <div>
+                    <div style="font-size:12px;font-weight:800;color:#065f46">所有检查均已通过</div>
+                    <div style="font-size:10px;color:#059669;margin-top:2px">可合并至主分支</div>
+                  </div>
+                  <div class="merge-btn">合并请求</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="ctx-media" class="screen-ctx media">
+              <div class="album-art"></div>
+              <div style="font-size:13px;font-weight:700">写代码专用慢拍</div>
+              <div class="pause-overlay">
+                <div style="font-size:40px">⏸</div>
+                <div style="margin-top:8px;font-size:11px;font-weight:800;background:rgba(0,0,0,.5);padding:4px 10px;border-radius:999px">媒体已暂停</div>
+              </div>
+            </div>
+
+            <div id="ctx-wave" class="screen-ctx wave-wrap">
+              <div class="wave-card">
+                <div style="font-size:13px;font-weight:800">系统更新就绪</div>
+                <div style="font-size:11px;color:#64748b;margin-top:6px;line-height:1.4">新版本已下载，建议重启。</div>
+                <div style="display:flex;gap:8px;margin-top:12px;font-size:11px;font-weight:800">
+                  <div style="flex:1;text-align:center;padding:6px;background:#f1f5f9;border-radius:8px;color:#475569">挥手忽略</div>
+                  <div style="flex:1;text-align:center;padding:6px;background:#0ea5e9;border-radius:8px;color:#fff">立即重启</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="ctx-meeting" class="screen-ctx is-grid">
+              <div class="meeting-box">👤</div>
+              <div class="meeting-box">👤</div>
+              <div class="meeting-box">👤</div>
+              <div class="meeting-box user-box">
+                <span>🧑‍💻</span>
+                <div style="position:absolute;bottom:8px;left:8px;font-size:10px;background:rgba(0,0,0,.6);color:#fff;padding:2px 8px;border-radius:6px;font-weight:700">你</div>
+              </div>
+              <div class="meeting-overlay">
+                <div style="width:56px;height:56px;border-radius:50%;background:#10b981;display:grid;place-items:center;font-size:28px;color:#fff">🎙</div>
+                <div style="margin-top:10px;background:#10b981;color:#fff;padding:4px 12px;border-radius:999px;font-size:10px;font-weight:800">麦克风已开启</div>
+              </div>
+            </div>
+
+            <div class="welcome-toast">已识别面部，屏幕解锁</div>
+            <div class="screen-blur">
+              <div style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:18px 22px;text-align:center;color:#fff">
+                <div style="font-size:28px;margin-bottom:8px">🔒</div>
+                <div style="font-weight:800;font-size:13px">隐私保护中</div>
+                <div style="font-size:10px;opacity:.85;margin-top:4px">未检测到您的面部</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="teach-foot">
+        <div class="nar" id="narrative-text">—</div>
+        <div class="teach-nav">
+          <div id="step-indicators"></div>
+          <div class="teach-actions">
+            <button type="button" class="btn" id="btnTeachSkip">跳过</button>
+            <button type="button" class="btn is-primary" id="btnTeachNext">下一步</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TEACH_KEY = 'ot.camera.teach.v1';
+    const STEPS_SHORT = ['back', 'away', 'shake'];
+    const STEPS_FULL = ['back', 'away', 'shake', 'ok', 'fist', 'wave', 'close'];
+    const SCREEN_CONTEXTS = {
+      away: 'desktop', back: 'desktop', shake: 'ide',
+      ok: 'pr', fist: 'media', wave: 'wave', close: 'meeting',
+    };
+    const NARRATIVES = {
+      away: '<b style="color:#e11d48">物理：</b>身体离开视野。<br><b style="color:#0284c7">响应：</b>隐私屏保护敏感内容。',
+      back: '<b style="color:#059669">物理：</b>重新入座，锁定面部。<br><b style="color:#0284c7">响应：</b>解锁并恢复工作状态。',
+      shake: '<b style="color:#d97706">物理：</b>明确左右摇头。<br><b style="color:#0284c7">响应：</b>映射 Esc，拒绝当前弹窗。',
+      ok: '<b style="color:#059669">物理：</b>OK 手势。<br><b style="color:#0284c7">响应：</b>确认 / 回车。',
+      fist: '<b style="color:#7e22ce">物理：</b>握拳。<br><b style="color:#0284c7">响应：</b>暂停媒体。',
+      wave: '<b style="color:#0284c7">物理：</b>挥手扫过。<br><b style="color:#0284c7">响应：</b>忽略通知。',
+      close: '<b style="color:#059669">物理：</b>靠近屏幕。<br><b style="color:#0284c7">响应：</b>自动开麦。',
+    };
+
+    const PRIMARY = [
+      { id: 'away', label: '离席', keys: '离席' },
+      { id: 'back', label: '回席', keys: '回席' },
+      { id: 'shake', label: '摇头', keys: '摇头 Esc' },
+      { id: 'blink', label: '故意眨眼', keys: '眨眼' },
+    ];
+    const EXTRA_GROUPS = [
+      {
+        kicker: '手势',
+        items: [
+          { id: 'palm', label: '五指张开', keys: '五指' },
+          { id: 'ok', label: 'OK 手势', keys: 'OK' },
+          { id: 'fist', label: '握拳', keys: '握拳' },
+          { id: 'wave', label: '挥手', keys: '挥手' },
+        ],
+      },
+      {
+        kicker: '守护 / 确认 / 增强',
+        items: [
+          { id: 'peer', label: '旁人提醒', keys: '旁人' },
+          { id: 'shield', label: '隐私卫士', keys: '隐私' },
+          { id: 'mute', label: '距离静音', keys: '静音' },
+          { id: 'gaze', label: '看屏确认', keys: '看屏' },
+          { id: 'beauty', label: '美颜', keys: '美颜' },
+        ],
+      },
+    ];
+    const ALL_ITEMS = [...PRIMARY, ...EXTRA_GROUPS.flatMap((g) => g.items)];
+    const DEFAULT_MAP = {
+      away: '隐私屏', back: '恢复语音', shake: 'Esc', blink: '确认',
+      palm: '暂停', ok: '确认', fist: '取消', wave: '不执行',
+      peer: '提醒', shield: '遮罩', mute: '静音', gaze: '待确认', beauty: '预览',
+    };
+    const FG = {
+      cursor: {
+        app: 'Cursor', habit: 'Cursor 场景', meta: '已匹配 · 编码收尾', fallback: false,
+        line: '摇头 → Esc · 长眨 → 确认 · 五指 → 暂停',
+        on: { away: true, back: true, shake: true, blink: true, palm: true, ok: true, fist: true, wave: false, peer: false, shield: false, mute: false, gaze: false, beauty: false },
+        map: { shake: 'Esc', blink: '确认', palm: '暂停', ok: '确认', fist: '取消' },
+      },
+      word: {
+        app: 'Word', habit: 'Word 场景', meta: '已匹配 · 隐私向', fallback: false,
+        line: '离席 → 隐私屏 · 旁人 → 提醒 · 摇头 → Esc',
+        on: { away: true, back: true, shake: true, blink: false, palm: false, ok: false, fist: false, wave: false, peer: true, shield: false, mute: false, gaze: false, beauty: false },
+        map: { away: '隐私屏', peer: '提醒' },
+      },
+      chrome: {
+        app: 'Chrome', habit: 'Chrome 场景', meta: '已匹配 · 发送确认', fallback: false,
+        line: '看屏 → 待确认 · 长眨 → 确认 · 摇头 → 取消',
+        on: { away: true, back: true, shake: true, blink: true, palm: false, ok: true, fist: false, wave: false, peer: false, shield: false, mute: false, gaze: true, beauty: false },
+        map: { gaze: '待确认', blink: '确认', shake: '取消' },
+      },
+      other: {
+        app: '资源管理器', habit: '通用设置', meta: '无专属 · 沿用通用', fallback: true,
+        line: '离席 → 隐私屏 · 回席 → 恢复 · 摇头 → Esc',
+        on: { away: true, back: true, shake: true, blink: false, palm: false, ok: false, fist: false, wave: false, peer: false, shield: false, mute: false, gaze: false, beauty: false },
+        map: {},
+      },
+    };
+
+    let fgKey = 'cursor';
+    let activeFn = 'away';
+    let previewOn = false;
+    let dirMode = 'simple';
+    let maps = { ...DEFAULT_MAP, ...FG.cursor.map };
+    let enabled = { ...FG.cursor.on };
+
+    let teachMode = 'short';
+    let teachSteps = STEPS_SHORT;
+    let teachIndex = 0;
+    let teachOpen = false;
+
+    function mapOf(id) { return maps[id] || DEFAULT_MAP[id] || '—'; }
+
+    function showPulse(t) {
+      const p = document.getElementById('pulse');
+      if (!p) return;
+      p.textContent = t; p.classList.add('is-show');
+      clearTimeout(showPulse._t);
+      showPulse._t = setTimeout(() => p.classList.remove('is-show'), 1800);
+    }
+
+    function setTab(tab) {
+      const isPro = tab === 'pro';
+      document.getElementById('panelPro').hidden = !isPro;
+      document.getElementById('panelLab').hidden = isPro;
+      document.getElementById('nodePro').classList.toggle('is-on', isPro);
+      document.getElementById('nodeLab').classList.toggle('is-on', !isPro);
+      document.getElementById('oneLiner').hidden = !isPro;
+    }
+
+    function setDirMode(mode, { silent } = {}) {
+      dirMode = mode === 'adv' ? 'adv' : 'simple';
+      const isAdv = dirMode === 'adv';
+      document.getElementById('fnDir').classList.toggle('is-adv', isAdv);
+      document.getElementById('fnMore').open = isAdv;
+      document.getElementById('fnPrimaryKick').textContent = isAdv ? '常用（仍置顶）' : '常用';
+      document.querySelectorAll('[data-mode]').forEach((b) => {
+        const on = b.dataset.mode === dirMode;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      renderFnDir(document.getElementById('fnSearch').value);
+      if (!silent) showPulse(isAdv ? '高级 · 全部能力' : '简易 · 常用四项');
+    }
+
+    function fnBtn(it) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      const isOff = it.id === 'back' ? !enabled.away : (it.id !== 'beauty' && !enabled[it.id]);
+      btn.className = 'fn-item' + (activeFn === it.id ? ' is-on' : '') + (isOff && it.id !== 'beauty' ? ' is-off' : '');
+      btn.innerHTML = '<span class="name">' + it.label + '</span><span class="map">→ ' + mapOf(it.id) + '</span>';
+      btn.addEventListener('click', () => {
+        if (!PRIMARY.find((x) => x.id === it.id) && dirMode !== 'adv') {
+          document.getElementById('fnMore').open = true;
+        }
+        openFn(it.id);
+      });
+      return btn;
+    }
+
+    function renderFnDir(filter) {
+      const needle = (filter || '').trim().toLowerCase();
+      const pri = document.getElementById('fnPrimary');
+      const extra = document.getElementById('fnExtra');
+      const more = document.getElementById('fnMore');
+      pri.innerHTML = '';
+      extra.innerHTML = '';
+      let shown = 0;
+      PRIMARY.forEach((it) => {
+        const hay = (it.label + ' ' + it.keys + ' ' + mapOf(it.id)).toLowerCase();
+        if (needle && !hay.includes(needle)) return;
+        shown += 1;
+        const li = document.createElement('li');
+        li.appendChild(fnBtn(it));
+        pri.appendChild(li);
+      });
+      EXTRA_GROUPS.forEach((g) => {
+        const wrap = document.createElement('div');
+        const kick = document.createElement('p');
+        kick.className = 'fn-kicker';
+        kick.textContent = g.kicker;
+        const ul = document.createElement('ul');
+        ul.className = 'fn-list';
+        let n = 0;
+        g.items.forEach((it) => {
+          const hay = (it.label + ' ' + it.keys + ' ' + mapOf(it.id)).toLowerCase();
+          if (needle && !hay.includes(needle)) return;
+          n += 1; shown += 1;
+          const li = document.createElement('li');
+          li.appendChild(fnBtn(it));
+          ul.appendChild(li);
+        });
+        if (!n) return;
+        wrap.appendChild(kick);
+        wrap.appendChild(ul);
+        extra.appendChild(wrap);
+      });
+      document.getElementById('fnEmpty').classList.toggle('is-show', shown === 0);
+      if (dirMode === 'adv' || needle) more.open = true;
+    }
+
+    function syncFgChrome() {
+      const fg = FG[fgKey];
+      document.getElementById('fgName').textContent = fg.app;
+      document.getElementById('fgMeta').textContent = fg.meta;
+      document.getElementById('fgChip').classList.toggle('is-fallback', fg.fallback);
+      document.getElementById('oneLinerText').innerHTML = '<em>' + fg.app + '</em> 下：' + fg.line;
+      document.querySelectorAll('[data-write-note]').forEach((el) => {
+        el.textContent = '写入：' + fg.habit + '（前台 ' + fg.app + ' 自动匹配）';
+      });
+      document.querySelectorAll('.sim').forEach((b) => b.classList.toggle('is-on', b.dataset.fg === fgKey));
+    }
+
+    function openFn(id) {
+      activeFn = id;
+      document.querySelectorAll('.detail-panel').forEach((p) => {
+        p.hidden = p.id !== 'edit-' + id;
+      });
+      document.querySelectorAll('[data-en]').forEach((btn) => {
+        const on = !!enabled[btn.dataset.en];
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+      document.querySelectorAll('[data-map-label]').forEach((el) => {
+        el.textContent = mapOf(el.dataset.mapLabel);
+      });
+      document.querySelectorAll('[data-map-act]').forEach((sel) => {
+        const want = mapOf(sel.dataset.mapAct);
+        for (const o of sel.options) {
+          if (o.textContent === want) { sel.selectedIndex = o.index; break; }
+        }
+      });
+      const label = ALL_ITEMS.find((x) => x.id === id)?.label || id;
+      document.getElementById('btnTestFn').textContent = '测试：' + label;
+      renderFnDir(document.getElementById('fnSearch').value);
+    }
+
+    function applyFg(key, { silent } = {}) {
+      fgKey = key;
+      enabled = { ...FG[key].on };
+      maps = { ...DEFAULT_MAP, ...FG[key].map };
+      syncFgChrome();
+      openFn(document.getElementById('edit-' + activeFn) ? activeFn : 'away');
+      if (!silent) showPulse('前台 → ' + FG[key].app);
+    }
+
+    function syncPreviewChip() {
+      const t = previewOn ? '预览中 · 可测' : '待命 · 点开启后可测';
+      document.getElementById('previewChip').textContent = t;
+      document.getElementById('labChip').textContent = previewOn ? '预览中' : '待命';
+      document.getElementById('btnPreview').textContent = previewOn ? '停止预览' : '开启预览';
+      document.getElementById('btnLabPreview').textContent = previewOn ? '停止预览' : '开启预览';
+      const beautyOn = document.getElementById('beautyToggle').classList.contains('is-on');
+      document.getElementById('previewStage').classList.toggle('is-beauty', previewOn && beautyOn);
+    }
+
+    function needPreview() {
+      if (previewOn) return true;
+      document.getElementById('testFold').open = true;
+      showPulse('请先开启预览');
+      return false;
+    }
+
+    function markTeachDone() {
+      try { localStorage.setItem(TEACH_KEY, '1'); } catch (_) {}
+    }
+
+    function teachSeen() {
+      try { return localStorage.getItem(TEACH_KEY) === '1'; } catch (_) { return false; }
+    }
+
+    function updateTeachNav() {
+      const box = document.getElementById('step-indicators');
+      box.innerHTML = '';
+      teachSteps.forEach((_, i) => {
+        const d = document.createElement('i');
+        if (i === teachIndex) d.className = 'is-on';
+        box.appendChild(d);
+      });
+      const next = document.getElementById('btnTeachNext');
+      next.textContent = teachIndex >= teachSteps.length - 1 ? '完成' : '下一步';
+    }
+
+    function setTeachMode(mode, { replay } = {}) {
+      teachMode = mode === 'full' ? 'full' : 'short';
+      teachSteps = teachMode === 'full' ? STEPS_FULL : STEPS_SHORT;
+      document.getElementById('teach').classList.toggle('is-full', teachMode === 'full');
+      document.querySelectorAll('[data-teach-mode]').forEach((b) => {
+        b.classList.toggle('is-on', b.dataset.teachMode === teachMode);
+      });
+      teachIndex = 0;
+      triggerScenario(teachSteps[0]);
+      if (replay) { /* keep open */ }
+    }
+
+    function triggerScenario(scenario) {
+      const idx = teachSteps.indexOf(scenario);
+      if (idx >= 0) teachIndex = idx;
+      updateTeachNav();
+      document.getElementById('narrative-text').innerHTML = NARRATIVES[scenario] || '—';
+
+      document.querySelectorAll('.teach-chip').forEach((b) => {
+        b.classList.toggle('is-on', b.dataset.scene === scenario);
+      });
+
+      const stage = document.getElementById('stage');
+      const hud = document.getElementById('hud-status');
+      const handEmoji = document.getElementById('avatar-hand-emoji');
+      const handStatus = document.getElementById('hand-status');
+
+      stage.className = 'stage';
+      if (scenario === 'ok') {
+        handEmoji.textContent = '👌';
+        handStatus.className = 'hud-label hud-ok';
+        handStatus.textContent = 'OK 已识别';
+      } else if (scenario === 'fist') {
+        handEmoji.textContent = '✊';
+        handStatus.className = 'hud-label hud-purple';
+        handStatus.textContent = '拳头已识别';
+      } else if (scenario === 'wave') {
+        handEmoji.textContent = '👋';
+        handStatus.className = 'hud-label hud-sky';
+        handStatus.textContent = 'WAVE MATCH';
+      }
+
+      document.querySelectorAll('.screen-ctx').forEach((el) => {
+        el.classList.remove('is-show');
+        if (el.id === 'ctx-meeting') el.classList.add('is-grid');
+      });
+      const ctx = document.getElementById('ctx-' + SCREEN_CONTEXTS[scenario]);
+      if (ctx) {
+        ctx.classList.add('is-show');
+        if (ctx.id !== 'ctx-meeting') ctx.classList.remove('is-grid');
+      }
+
+      const ideDialog = document.querySelector('.ctx-ide-dialog');
+      if (scenario === 'shake') {
+        ideDialog.style.visibility = 'visible';
+        ideDialog.style.opacity = '1';
+        ideDialog.style.transform = 'translate(-50%, -50%) scale(1)';
+      } else {
+        ideDialog.style.opacity = '0';
+        ideDialog.style.visibility = 'hidden';
+      }
+      if (scenario === 'wave') {
+        const waveCard = document.querySelector('.wave-card');
+        if (waveCard) {
+          waveCard.style.opacity = '1';
+          waveCard.style.transform = 'translateX(0) rotate(0)';
+        }
+      }
+
+      if (scenario === 'back') {
+        stage.classList.add('snap-instant', 'play-away');
+        hud.className = 'hud-label hud-bad';
+        hud.textContent = '目标已丢失';
+      }
+      void stage.offsetWidth;
+      stage.classList.remove('snap-instant');
+
+      if (scenario === 'back') {
+        stage.classList.remove('play-away');
+        hud.className = 'hud-label hud-ok';
+        hud.textContent = '人脸已锁定';
+      } else if (scenario === 'away') {
+        hud.className = 'hud-label hud-bad';
+        hud.textContent = '目标已丢失';
+      } else if (scenario === 'close') {
+        hud.className = 'hud-label hud-ok';
+        hud.textContent = '近距已锁定';
+      } else if (scenario === 'wave') {
+        hud.className = 'hud-label hud-sky';
+        hud.textContent = '挥手已追踪';
+      } else {
+        hud.className = 'hud-label hud-ok';
+        hud.textContent = '人脸已锁定';
+      }
+
+      stage.classList.add('play-' + scenario);
+      if (['shake', 'ok', 'fist', 'wave', 'close'].includes(scenario)) {
+        stage.classList.add('play-' + scenario + '-active');
+      }
+    }
+
+    function openTeach(mode) {
+      teachOpen = true;
+      const el = document.getElementById('teach');
+      el.hidden = false;
+      el.classList.add('is-open');
+      setTeachMode(mode || 'short');
+    }
+
+    function closeTeach({ mark } = {}) {
+      teachOpen = false;
+      const el = document.getElementById('teach');
+      el.classList.remove('is-open');
+      el.hidden = true;
+      if (mark !== false) markTeachDone();
+    }
+
+    function nextTeachStep() {
+      if (teachIndex < teachSteps.length - 1) {
+        triggerScenario(teachSteps[teachIndex + 1]);
+      } else {
+        closeTeach({ mark: true });
+      }
+    }
+
+    document.getElementById('masterToggle').addEventListener('click', () => {
+      const btn = document.getElementById('masterToggle');
+      const on = btn.getAttribute('aria-checked') !== 'true';
+      btn.classList.toggle('is-on', on);
+      btn.setAttribute('aria-checked', on ? 'true' : 'false');
+      document.getElementById('masterLbl').textContent = on ? '识别已开' : '识别已关';
+      document.getElementById('inactiveWarn').classList.toggle('is-show', !on);
+    });
+
+    document.querySelectorAll('[data-tab]').forEach((n) => n.addEventListener('click', () => setTab(n.dataset.tab)));
+    document.querySelectorAll('[data-mode]').forEach((b) => {
+      b.addEventListener('click', () => setDirMode(b.dataset.mode));
+    });
+    document.getElementById('fnSearch').addEventListener('input', (e) => renderFnDir(e.target.value));
+    document.getElementById('btnHabitHub').addEventListener('click', () => showPulse('示意：我的习惯'));
+    document.querySelectorAll('.sim').forEach((b) => b.addEventListener('click', () => applyFg(b.dataset.fg)));
+    document.body.addEventListener('click', (e) => {
+      const goto = e.target.closest('[data-goto]');
+      if (goto) { e.preventDefault(); setTab(goto.dataset.goto); }
+    });
+
+    document.querySelectorAll('[data-en]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.en;
+        const on = !btn.classList.contains('is-on');
+        btn.classList.toggle('is-on', on);
+        btn.setAttribute('aria-checked', on ? 'true' : 'false');
+        enabled[id] = on;
+        FG[fgKey].on[id] = on;
+        if (id === 'beauty') {
+          document.getElementById('beautyRange').disabled = !on;
+          document.getElementById('beautyLook').disabled = !on;
+          syncPreviewChip();
+        }
+        renderFnDir(document.getElementById('fnSearch').value);
+        showPulse((on ? '已开' : '已关') + ' · ' + FG[fgKey].habit);
+      });
+    });
+
+    document.querySelectorAll('[data-map-act]').forEach((sel) => {
+      sel.addEventListener('change', () => {
+        const id = sel.dataset.mapAct;
+        const text = sel.options[sel.selectedIndex].textContent;
+        maps[id] = text;
+        FG[fgKey].map[id] = text;
+        const label = document.querySelector('[data-map-label="' + id + '"]');
+        if (label) label.textContent = text;
+        renderFnDir(document.getElementById('fnSearch').value);
+        syncFgChrome();
+        showPulse('已改 → ' + text);
+      });
+    });
+
+    document.getElementById('beautyRange').addEventListener('input', (e) => {
+      document.getElementById('beautyVal').textContent = e.target.value;
+    });
+
+    function togglePreview() {
+      previewOn = !previewOn;
+      syncPreviewChip();
+    }
+    document.getElementById('btnPreview').addEventListener('click', togglePreview);
+    document.getElementById('btnLabPreview').addEventListener('click', togglePreview);
+    document.getElementById('btnTestFn').addEventListener('click', () => {
+      if (document.getElementById('masterToggle').getAttribute('aria-checked') !== 'true') {
+        showPulse('识别已关'); return;
+      }
+      if (!needPreview()) return;
+      const label = ALL_ITEMS.find((x) => x.id === activeFn)?.label || activeFn;
+      if (activeFn === 'beauty') { showPulse('美颜仅预览'); return; }
+      if (enabled[activeFn] === false && activeFn !== 'back') {
+        showPulse(label + ' 已关'); return;
+      }
+      showPulse('测试 ' + label + ' → ' + mapOf(activeFn));
+    });
+    document.getElementById('btnQuickCal').addEventListener('click', () => {
+      if (!needPreview()) return;
+      setTab('lab');
+      document.getElementById('calSummary').textContent = '校准状态：快校中…';
+    });
+    document.getElementById('btnCalQuick').addEventListener('click', () => {
+      if (!needPreview()) return;
+      document.getElementById('calSummary').textContent = '校准状态：已快校';
+      showPulse('快校完成');
+    });
+    document.getElementById('btnCalFine').addEventListener('click', () => {
+      if (!needPreview()) return;
+      document.getElementById('calSummary').textContent = '校准状态：已精细校准';
+      showPulse('精细校准完成');
+    });
+    document.getElementById('btnCalClear').addEventListener('click', () => {
+      document.getElementById('calSummary').textContent = '校准状态：未校准';
+    });
+    const blinkBase = document.getElementById('btnBlinkBase');
+    if (blinkBase) {
+      blinkBase.addEventListener('click', () => {
+        document.getElementById('testFold').open = true;
+        if (!needPreview()) return;
+        showPulse('眨眼基线采集中…');
+      });
+    }
+
+    document.getElementById('btnReplayTeach').addEventListener('click', () => openTeach('short'));
+    document.getElementById('btnResetTeach').addEventListener('click', () => {
+      try { localStorage.removeItem(TEACH_KEY); } catch (_) {}
+      openTeach('short');
+    });
+    document.getElementById('btnTeachSkip').addEventListener('click', () => closeTeach({ mark: true }));
+    document.getElementById('btnTeachClose').addEventListener('click', () => closeTeach({ mark: true }));
+    document.getElementById('btnTeachNext').addEventListener('click', nextTeachStep);
+    document.querySelectorAll('[data-teach-mode]').forEach((b) => {
+      b.addEventListener('click', () => setTeachMode(b.dataset.teachMode));
+    });
+    document.querySelectorAll('.teach-chip').forEach((b) => {
+      b.addEventListener('click', () => {
+        const s = b.dataset.scene;
+        if (teachMode !== 'full' && !STEPS_SHORT.includes(s)) {
+          setTeachMode('full');
+        }
+        triggerScenario(s);
+      });
+    });
+    document.getElementById('teach').addEventListener('click', (e) => {
+      if (e.target.id === 'teach') closeTeach({ mark: true });
+    });
+
+    applyFg('cursor', { silent: true });
+    setDirMode('simple', { silent: true });
+    setTab('pro');
+    if (!teachSeen()) {
+      setTimeout(() => openTeach('short'), 400);
+    }
+  </script>
+</body>
+</html>

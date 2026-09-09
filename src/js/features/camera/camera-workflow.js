@@ -3,10 +3,9 @@
 
   /**
    * Camera settings hero workflow:
-   * - three flow-node tabs (trigger / action / pro) — user labels: 规则设计 / 执行方案 / Pro
-   * - Trigger: if-then rules + master toggle (no preview)
+   * - two flow-node tabs (pro / action) — Pro first (eye icon), camera settings last
+   * - Pro: vision rules (subtab) + privacy/beauty/gestures…
    * - Action: preview · device · calib · guardrails
-   * - Pro: live preview + local enhancement (preview DOM parked here while active)
    * - metrics via lightweight polling (sr-only ids stay unique)
    */
 
@@ -21,33 +20,41 @@
     return fallback!=null?fallback:key;
   };
 
-  var TABS=['trigger','action','pro'];
+  var TABS=['pro','action'];
   var POLL_MS=750;
-  var currentTab='trigger';
+  var currentTab='pro';
   var pollTimer=0;
   var bound=false;
   var wasCalibrating=false;
 
   var TAB_COPY={
-    trigger:{
-      kicker:['cameraWorkflowPreviewKicker','视觉识别'],
-      title:['cameraWorkflowPreviewTitleTrigger','看到动作 → 执行结果']
-    },
     action:{
       kicker:['cameraWorkflowPreviewKickerAction','摄像头设置'],
       title:['cameraWorkflowPreviewTitleAction','预览 · 设备 · 校准']
     },
     pro:{
-      kicker:['cameraWorkflowPreviewKickerPro','Pro 视觉能力'],
-      title:['cameraWorkflowPreviewTitlePro','预览 · 美颜 · 画面增强']
+      kicker:['cameraWorkflowPreviewKickerPro','Pro 确认与安全'],
+      title:['cameraWorkflowPreviewTitlePro','视觉识别 · 确认 · 安全']
     }
   };
 
   var BOARD_MOD={
-    trigger:'camera-hero-board--rules',
     action:'camera-hero-board--execution',
     pro:'camera-hero-board--pro'
   };
+
+  function resolveTab(name){
+    name=String(name||'');
+    if(name==='trigger') return 'pro';
+    if(TABS.indexOf(name)<0) return 'pro';
+    return name;
+  }
+
+  function openVisionRules(scrollId){
+    activateTab('pro');
+    activateProSubtab('vision');
+    scrollToEl($(scrollId)||$('cameraRulesBasic')||$('cameraProSubVision')||$('cameraPanelPro'));
+  }
 
   function presenceApi(){
     return global.OneToneCameraPresenceActions||null;
@@ -115,22 +122,22 @@
     }
     activateTab('pro');
     var sub='';
-    if(id==='cameraProSubSafety'||id==='cameraProSendGuardCard') sub='safety';
+    if(id==='cameraPanelTrigger'||id==='cameraProSubVision'||id==='cameraRulesBasic'||id==='cameraPresenceConfig'||id==='cameraProSubSafety'||id==='cameraProSendGuardCard') sub='vision';
     else if(id==='cameraProFilterSection'||id==='cameraProSubBeauty') sub='beauty';
     else if(id==='cameraProPrivacySection'||id==='cameraProSubPrivacy') sub='privacy';
     else if(id==='cameraProWellnessSection'||id==='cameraProSubWellness') sub='wellness';
     else if(id==='cameraProHandCard'||id==='cameraProSubGesture') sub='gesture';
     if(sub){
       activateProSubtab(sub);
-      scrollToEl($('cameraProSubtabs')||$('cameraPanelPro'));
+      scrollToEl($(id)||$('cameraProSubtabs')||$('cameraPanelPro'));
       return;
     }
-    activateProSubtab(currentProSubtab||'safety');
+    activateProSubtab(currentProSubtab||'vision');
     var el=$(id)||$('cameraPanelPro');
     scrollToEl(el);
   }
 
-  /** Compat: calib targets → action; fine-map/pro-stack → pro; else rules. */
+  /** Compat: calib targets → action; fine-map/pro-stack → pro; else vision rules. */
   function openTriggerTools(target){
     var id=target==null||target===true?'cameraCalibBlock':String(target||'cameraCalibBlock');
     if(id==='cameraTriggerTools'||id==='true') id='cameraCalibBlock';
@@ -143,8 +150,7 @@
       scrollToEl($(id)||$('cameraPanelPro'));
       return;
     }
-    activateTab('trigger');
-    scrollToEl($(id)||$('cameraPanelTrigger'));
+    openVisionRules(id==='cameraPanelTrigger'?'cameraRulesBasic':id);
   }
 
   /** Compat: scrollToCalib → execution calib; else Pro docs panel. */
@@ -164,15 +170,14 @@
   function buildCameraFlowChromeModel(){
     var running=isCalibrating();
     var hints={
-      trigger:t('cameraFlowNodeTriggerHint','看到动作 → 执行结果'),
       action:t('cameraFlowNodeActionHint','预览 · 设备 · 校准'),
-      pro:t('cameraFlowNodeProHint','美颜 · 手势 · 身份识别')
+      pro:t('cameraFlowNodeProHint','确认 · 安全 · 隐私')
     };
-    var sig=[currentTab,running?'1':'0',hints.trigger,hints.action,hints.pro].join('\0');
+    var sig=[currentTab,running?'1':'0',hints.action,hints.pro].join('\0');
     return {
       activeTab:currentTab,
       locked:!!running,
-      triggerHint:hints.trigger,
+      triggerHint:hints.pro,
       actionHint:hints.action,
       proHint:hints.pro,
       sig:sig
@@ -205,6 +210,7 @@
   }
 
   function showTabUi(name){
+    name=resolveTab(name);
     currentTab=name;
     TABS.forEach(function(tab){
       var panel=$('cameraPanel'+tab.charAt(0).toUpperCase()+tab.slice(1));
@@ -216,19 +222,22 @@
     });
     applyCameraFlowChromeHost(buildCameraFlowChromeModel());
     syncBoardMod(name);
-    var copy=TAB_COPY[name]||TAB_COPY.trigger;
+    var copy=TAB_COPY[name]||TAB_COPY.pro;
     setText('cameraWorkflowPreviewKicker',t(copy.kicker[0],copy.kicker[1]));
     setText('cameraWorkflowPreviewTitle',t(copy.title[0],copy.title[1]));
   }
 
   function activateTab(name){
-    if(TABS.indexOf(name)<0) name='trigger';
+    var wantVision=String(name||'')==='trigger';
+    name=resolveTab(name);
     if(isCalibrating()){
       toast(t('cameraCalibLockToast','校准进行中，请先完成或取消校准'));
       if(currentTab&&TABS.indexOf(currentTab)>=0) name=currentTab;
       else name='action';
+      wantVision=false;
     }
     showTabUi(name);
+    if(wantVision) activateProSubtab('vision');
     parkPreviewForTab(name);
     try{
       if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.syncUiFromPrefs){
@@ -821,8 +830,8 @@
     }
   }
 
-  var currentProSubtab='safety';
-  var PRO_SUBTABS=['safety','privacy','beauty','gesture','track','wellness','snap','layout','automute'];
+  var currentProSubtab='vision';
+  var PRO_SUBTABS=['vision','privacy','beauty','gesture','track','wellness','snap','layout','automute'];
 
   function notifyProFeatureSubtab(name, visible){
     try{
@@ -856,8 +865,8 @@
   }
 
   function activateProSubtab(name){
-    name=String(name||'safety');
-    if(PRO_SUBTABS.indexOf(name)<0) name='safety';
+    name=String(name||'vision');
+    if(PRO_SUBTABS.indexOf(name)<0) name='vision';
     var prev=currentProSubtab;
     if(prev!==name){
       if(prev==='track'||prev==='snap'||prev==='automute'){
@@ -913,36 +922,7 @@
       var btn=e.target&&e.target.closest?e.target.closest('[data-pro-subtab]'):null;
       if(!btn) return;
       e.preventDefault();
-      activateProSubtab(btn.getAttribute('data-pro-subtab')||'safety');
-    });
-  }
-
-  function bindProSafetyCtas(){
-    var root=$('cameraProSafetyCtas');
-    if(!root||root.dataset.bound==='1') return;
-    root.dataset.bound='1';
-    root.addEventListener('click',function(e){
-      var btn=e.target&&e.target.closest?e.target.closest('[data-camera-pro-safety-act]'):null;
-      if(!btn||btn.disabled) return;
-      var act=btn.getAttribute('data-camera-pro-safety-act')||'';
-      if(act==='rules'){
-        activateProSubtab('safety');
-        var card=$('cameraProSendGuardCard');
-        if(card){
-          try{ card.classList.add('is-highlight'); }catch(_){}
-          scrollToEl(card);
-          global.setTimeout(function(){
-            try{ card.classList.remove('is-highlight'); }catch(_){}
-          },1600);
-        }
-        return;
-      }
-      if(act==='preview'){
-        try{
-          var pv=global.OneToneCameraPreview;
-          if(pv&&pv.startPreview) pv.startPreview({reason:'pro_safety_cta'});
-        }catch(_){}
-      }
+      activateProSubtab(btn.getAttribute('data-pro-subtab')||'vision');
     });
   }
 
@@ -951,8 +931,7 @@
     bound=true;
     bindProEnhUi();
     bindProSubtabs();
-    bindProSafetyCtas();
-    activateProSubtab(currentProSubtab||'safety');
+    activateProSubtab(currentProSubtab||'vision');
     var nodes=$('cameraFlowNodes');
     if(nodes){
       nodes.addEventListener('click',function(e){
@@ -988,15 +967,15 @@
     if(backRules){
       backRules.addEventListener('click',function(e){
         e.preventDefault();
-        activateTab('trigger');
+        openVisionRules('cameraRulesBasic');
       });
     }
   }
 
   function onPanelVisible(){
     bindUi();
-    if(TABS.indexOf(currentTab)<0) currentTab='trigger';
-    activateTab(currentTab||'trigger');
+    if(TABS.indexOf(currentTab)<0) currentTab='pro';
+    activateTab(currentTab||'pro');
     startPoll();
     var pa=presenceApi();
     if(pa&&pa.syncUiFromPrefs){
@@ -1030,7 +1009,8 @@
 
   function init(){
     bindUi();
-    activateTab('trigger');
+    activateTab('pro');
+    activateProSubtab('vision');
     try{
       if(global.OneToneCameraProGlance&&global.OneToneCameraProGlance.init){
         global.OneToneCameraProGlance.init();

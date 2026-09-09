@@ -11,6 +11,17 @@
   padding:8px 4px 4px;
 }
 
+#settingsPanelCamera .flow-nodes-grid--two{
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  max-width:520px;
+  margin-inline:auto;
+}
+
+#settingsPanelCamera .flow-nodes:has(.flow-nodes-grid--two) .flow-nodes-track{
+  left:25%;
+  right:25%;
+}
+
 #settingsPanelCamera .flow-node.is-pro-optional{
   opacity:.92;
 }

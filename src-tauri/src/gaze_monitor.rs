@@ -479,12 +479,13 @@ fn point_to_lparam(x: i32, y: i32) -> isize {
     ((hi << 16) | lo) as isize
 }
 
-#[cfg(windows)]
+  #[cfg(windows)]
 pub fn get_drag_state(topology: &MonitorTopology) -> Result<DragState, String> {
     use winapi::shared::windef::{HWND, POINT, RECT};
     use winapi::um::winuser::{
-        GetAsyncKeyState, GetCursorPos, GetForegroundWindow, GetWindowRect, IsWindow,
-        SendMessageW, WindowFromPoint, HTCAPTION, VK_LBUTTON, WM_NCHITTEST,
+        GetAncestor, GetAsyncKeyState, GetCapture, GetCursorPos, GetForegroundWindow, GetWindowRect,
+        IsWindow, SendMessageW, WindowFromPoint, GA_ROOT, HTCAPTION, HTCLIENT, HTSYSMENU,
+        VK_LBUTTON, WM_NCHITTEST,
     };
 
     let lmb_down = unsafe { GetAsyncKeyState(VK_LBUTTON) as u16 & 0x8000 != 0 };
@@ -494,7 +495,7 @@ pub fn get_drag_state(topology: &MonitorTopology) -> Result<DragState, String> {
         return Err("cursor_failed".into());
     }
 
-    let monitor_id = find_monitor_for_point(&topology.monitors, pt.x, pt.y)
+    let cursor_monitor_id = find_monitor_for_point(&topology.monitors, pt.x, pt.y)
         .map(|m| m.id.clone())
         .unwrap_or_else(|| {
             topology
@@ -510,14 +511,19 @@ pub fn get_drag_state(topology: &MonitorTopology) -> Result<DragState, String> {
             lmb_down: false,
             is_title_bar: false,
             hwnd: None,
-            monitor_id,
+            monitor_id: cursor_monitor_id,
             rect: None,
         });
     }
 
+    // Title-bar drag keeps mouse capture even after the cursor leaves the caption
+    // (e.g. Smart Pointer warps the cursor to another monitor). Prefer that hwnd.
+    let capture = unsafe { GetCapture() };
     let hwnd_at = unsafe { WindowFromPoint(pt) };
     let fg = unsafe { GetForegroundWindow() };
-    let hwnd: HWND = if !hwnd_at.is_null() && unsafe { IsWindow(hwnd_at) } != 0 {
+    let mut hwnd: HWND = if !capture.is_null() && unsafe { IsWindow(capture) } != 0 {
+        capture
+    } else if !hwnd_at.is_null() && unsafe { IsWindow(hwnd_at) } != 0 {
         hwnd_at
     } else if !fg.is_null() {
         fg
@@ -526,15 +532,17 @@ pub fn get_drag_state(topology: &MonitorTopology) -> Result<DragState, String> {
             lmb_down: true,
             is_title_bar: false,
             hwnd: None,
-            monitor_id,
+            monitor_id: cursor_monitor_id,
             rect: None,
         });
     };
 
-    let hit = unsafe {
-        SendMessageW(hwnd, WM_NCHITTEST, 0, point_to_lparam(pt.x, pt.y))
-    };
-    let is_title_bar = hit == HTCAPTION as isize;
+    let root = unsafe { GetAncestor(hwnd, GA_ROOT) };
+    if !root.is_null() && unsafe { IsWindow(root) } != 0 {
+        hwnd = root;
+    }
+
+    let hit = unsafe { SendMessageW(hwnd, WM_NCHITTEST, 0, point_to_lparam(pt.x, pt.y)) };
 
     let mut rect = RECT {
         left: 0,
@@ -554,6 +562,25 @@ pub fn get_drag_state(topology: &MonitorTopology) -> Result<DragState, String> {
         None
     };
 
+    const TITLE_STRIP_PX: i32 = 48;
+    let in_top_strip = window_rect
+        .as_ref()
+        .map(|r| {
+            let h = r.height.max(1);
+            let strip = TITLE_STRIP_PX.min(h / 3).max(24);
+            pt.x >= r.x
+                && pt.x < r.x.saturating_add(r.width)
+                && pt.y >= r.y
+                && pt.y < r.y.saturating_add(strip)
+        })
+        .unwrap_or(false);
+    let hit_title = hit == HTCAPTION as isize
+        || hit == HTSYSMENU as isize
+        || (hit == HTCLIENT as isize && in_top_strip)
+        || (hit == 0 && in_top_strip);
+    // Capture while LMB down ⇒ OS is mid title-bar (or custom) drag.
+    let is_title_bar = hit_title || !capture.is_null();
+
     let win_monitor = window_rect
         .as_ref()
         .and_then(|r| {
@@ -564,7 +591,7 @@ pub fn get_drag_state(topology: &MonitorTopology) -> Result<DragState, String> {
             )
         })
         .map(|m| m.id.clone())
-        .unwrap_or(monitor_id);
+        .unwrap_or(cursor_monitor_id);
 
     Ok(DragState {
         lmb_down: true,
@@ -587,8 +614,8 @@ pub fn move_window_to_monitor(
 ) -> Result<PointXy, String> {
     use winapi::shared::windef::RECT;
     use winapi::um::winuser::{
-        GetWindowRect, IsIconic, IsWindow, IsZoomed, SetWindowPos, ShowWindow, SWP_NOACTIVATE,
-        SWP_NOSIZE, SWP_NOZORDER, SW_RESTORE,
+        GetAsyncKeyState, GetWindowRect, IsIconic, IsWindow, IsZoomed, ReleaseCapture, SetWindowPos,
+        ShowWindow, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, SW_RESTORE, VK_LBUTTON,
     };
 
     let m = find_monitor_by_id(&topology.monitors, &args.monitor_id)
@@ -618,6 +645,16 @@ pub fn move_window_to_monitor(
     let width = rect.right.saturating_sub(rect.left).max(1);
     let height = rect.bottom.saturating_sub(rect.top).max(1);
     let target = centered_window_origin(m, width, height);
+
+    // End OS title-bar drag first; otherwise Windows re-anchors the window to the
+    // cursor on the old monitor and the move looks like it "didn't work".
+    let lmb_down = unsafe { GetAsyncKeyState(VK_LBUTTON) as u16 & 0x8000 != 0 };
+    if lmb_down {
+        unsafe {
+            ReleaseCapture();
+        }
+    }
+
     let moved = unsafe {
         SetWindowPos(
             hwnd,
@@ -632,6 +669,24 @@ pub fn move_window_to_monitor(
     if moved == 0 {
         return Err("move_failed".into());
     }
+
+    crate::app_log::sync_emergency_line(
+        "gaze",
+        &format!(
+            "move_window hwnd={} -> {} at {},{} size {}x{} lmb={}",
+            args.hwnd, args.monitor_id, target.x, target.y, width, height, lmb_down
+        ),
+    );
+
+    // Place cursor on the new title strip so a still-held button doesn't yank back.
+    if lmb_down {
+        let cursor_x = target.x.saturating_add(width / 2);
+        let strip = 16i32.min(height / 4).max(8);
+        let cursor_y = target.y.saturating_add(strip);
+        let _ = set_cursor_pos(cursor_x, cursor_y);
+        ensure_cursor_visible();
+    }
+
     Ok(target)
 }
 

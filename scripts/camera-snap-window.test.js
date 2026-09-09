@@ -30,32 +30,34 @@ require('../src/js/features/camera/camera-snap-window.js');
 var Snap=global.OneToneCameraSnapWindow;
 assert.ok(Snap,'snap module exports');
 
-var norm=Snap.normalizeSnapWindow({enabled:true,dwellMs:100,cooldownMs:99999});
+var norm=Snap.normalizeSnapWindow({enabled:true,dwellMs:50,cooldownMs:99999});
 assert.strictEqual(norm.enabled,true);
-assert.strictEqual(norm.dwellMs,200,'dwell clamped min');
+assert.strictEqual(norm.dwellMs,100,'dwell clamped min');
 assert.strictEqual(norm.cooldownMs,5000,'cooldown clamped max');
 
 var drag={lmbDown:true,isTitleBar:true,hwnd:'0xABC',monitorId:'monitor-0'};
 var result={monitorId:'monitor-1',confidence:0.9};
-var stability={monitorId:'monitor-1',stableMs:600};
-assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:500,cooldownMs:1000,minConfidence:0.5},drag,result,stability,1000),true);
+var stability={monitorId:'monitor-1',stableMs:250};
+assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:200,cooldownMs:600,minConfidence:0.25},drag,result,stability,1000),true);
 
-assert.strictEqual(Snap.shouldSnap({enabled:false,dwellMs:500,cooldownMs:1000,minConfidence:0.5},drag,result,stability,1000),false,'disabled');
-assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:500,cooldownMs:1000,minConfidence:0.5},
+assert.strictEqual(Snap.shouldSnap({enabled:false,dwellMs:200,cooldownMs:600,minConfidence:0.25},drag,result,stability,1000),false,'disabled');
+assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:200,cooldownMs:600,minConfidence:0.25},
   Object.assign({},drag,{isTitleBar:false}),result,stability,1000),false,'not title bar');
-assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:500,cooldownMs:1000,minConfidence:0.5},
+assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:200,cooldownMs:600,minConfidence:0.25},
   Object.assign({},drag,{monitorId:'monitor-1'}),result,stability,1000),false,'same monitor');
-assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:500,cooldownMs:1000,minConfidence:0.5},
-  drag,result,{monitorId:'monitor-1',stableMs:100},1000),false,'dwell not met');
+assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:200,cooldownMs:600,minConfidence:0.25},
+  drag,Object.assign({},result,{stableMs:250}),null,1000),true,'stableMs on result');
+assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:200,cooldownMs:600,minConfidence:0.25},
+  drag,result,{monitorId:'monitor-1',stableMs:50},1000),false,'dwell not met');
 
 // Same hwnd+monitor after land should skip
 Snap._rt.lastMovedHwnd='0xABC';
 Snap._rt.lastMovedMonitorId='monitor-1';
-assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:500,cooldownMs:1000,minConfidence:0.5},drag,result,stability,1000),false,'already moved');
+assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:200,cooldownMs:600,minConfidence:0.25},drag,result,stability,1000),false,'already moved');
 Snap._rt.lastMovedHwnd=null;
 Snap._rt.lastMovedMonitorId=null;
 Snap._rt.lastMoveAt=900;
-assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:500,cooldownMs:1000,minConfidence:0.5},drag,result,stability,1000),false,'cooldown');
+assert.strictEqual(Snap.shouldSnap({enabled:true,dwellMs:200,cooldownMs:600,minConfidence:0.25},drag,result,stability,1000),false,'cooldown');
 Snap._rt.lastMoveAt=0;
 
 console.log('camera-snap-window.test.js OK');

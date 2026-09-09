@@ -633,7 +633,7 @@
 
   function onLandmarkerPoint(point){
     if(!previewLive) return;
-    // Smart Pointer first — must not be gated by gaze.mode / overlay.
+    // Smart Pointer classifies first; Snap reuses that target while title-bar is held.
     try{
       var sp=smartPointerApi();
       if(sp&&sp.onGazeFrame) sp.onGazeFrame(point);
@@ -1626,8 +1626,8 @@
       gaze.modelFailed=false;
       gaze.modelLoading=false;
       cancelCalibration();
-      // Do not stop landmarker if presence / Smart Pointer still needs it.
-      if(!presenceEnabled()&&!smartPointerWanted()) stopLandmarker();
+      // Do not stop landmarker if presence / Smart Pointer / Snap / AutoMute still needs it.
+      if(!presenceEnabled()&&!smartPointerWanted()&&!snapOrMuteWanted()) stopLandmarker();
     }
     syncPresenceDetectInterval();
     refreshGazeUi();

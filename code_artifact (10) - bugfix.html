@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>摄像头体感交互 · 极简科技版</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --primary: #0ea5e9;
+      --bg-dark: #0f172a;
+      --ai-green: #10b981;
+      --ai-red: #ef4444;
+      --tech-blue: #38bdf8;
+    }
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+
+    /* =========================================
+       左侧：AI 视觉空间 (Camera Zone) 动画
+       ========================================= */
+    .cam-zone {
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+      position: relative;
+    }
+    /* 扫描线背景 */
+    .cam-grid {
+      background-image: 
+        linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    /* 抽象人体轮廓 */
+    .avatar-wrap { transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: bottom center; }
+    
+    .avatar-head {
+      width: 72px; height: 90px; border-radius: 40px;
+      background: linear-gradient(135deg, rgba(56,189,248,0.8), rgba(59,130,246,0.8));
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.4), inset 0 0 15px rgba(255,255,255,0.4);
+      position: relative; transition: all 0.3s ease;
+    }
+    /* 面部指示器 (用于体现转头方向) */
+    .avatar-visor {
+      position: absolute; top: 35px; left: 50%; transform: translateX(-50%);
+      width: 36px; height: 10px; border-radius: 5px;
+      background: rgba(255,255,255,0.9); box-shadow: 0 0 10px rgba(255,255,255,0.8);
+      transition: all 0.3s ease;
+    }
+
+    .avatar-body {
+      width: 140px; height: 100px; border-radius: 70px 70px 20px 20px;
+      background: linear-gradient(135deg, rgba(30,41,59,0.9), rgba(15,23,42,0.9));
+      border: 2px solid rgba(56, 189, 248, 0.3);
+      box-shadow: inset 0 15px 20px rgba(56, 189, 248, 0.1);
+      margin-top: 15px; transition: all 0.4s ease;
+    }
+
+    /* AI 追踪框 (HUD 质感) */
+    .hud-tracker {
+      position: absolute; top: 50px; left: 50%; transform: translate(-50%, -50%);
+      width: 100px; height: 120px; border: 1.5px solid var(--ai-green);
+      background: rgba(16, 185, 129, 0.05);
+      transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    /* 四个角 */
+    .hud-tracker::before, .hud-tracker::after { content: ''; position: absolute; width: 12px; height: 12px; }
+    .hud-tracker::before { top: -2px; left: -2px; border-top: 3px solid var(--ai-green); border-left: 3px solid var(--ai-green); }
+    .hud-tracker::after { bottom: -2px; right: -2px; border-bottom: 3px solid var(--ai-green); border-right: 3px solid var(--ai-green); }
+    
+    .hud-label {
+      position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%);
+      font-size: 10px; font-family: monospace; font-weight: bold;
+      padding: 2px 8px; border-radius: 4px; transition: all 0.3s;
+    }
+
+    /* =========================================
+       场景态 Keyframes (物理动作)
+       ========================================= */
+    
+    /* 离席：人物缩小下降，追踪框变红扩大并消失 */
+    .play-away .avatar-wrap { transform: translateY(120px) scale(0.6); opacity: 0; transition-duration: 0.8s; }
+    .play-away .hud-tracker {
+      border-color: var(--ai-red); width: 140px; height: 160px; opacity: 0;
+      transition-delay: 0.2s;
+    }
+    .play-away .hud-tracker::before, .play-away .hud-tracker::after { border-color: var(--ai-red); }
+    
+    /* 入席：人物升起，追踪框重新捕获 */
+    .play-back .avatar-wrap { transform: translateY(0) scale(1); opacity: 1; transition-duration: 0.8s; }
+    .play-back .hud-tracker {
+      border-color: var(--ai-green); width: 100px; height: 120px; opacity: 1;
+      transition-delay: 0.4s; animation: pulse-green 1s 0.8s;
+    }
+    
+    /* 摇头：纯 CSS 视差效果模拟 3D 摇头 */
+    @keyframes shake-head {
+      0%, 100% { transform: translateX(0) rotate(0); }
+      20%, 60% { transform: translateX(-12px) rotate(-4deg); }
+      40%, 80% { transform: translateX(12px) rotate(4deg); }
+    }
+    @keyframes shake-visor {
+      0%, 100% { transform: translateX(-50%); }
+      20%, 60% { transform: translateX(-80%); width: 20px; } /* 往左看时，右侧变窄体现透视 */
+      40%, 80% { transform: translateX(-20%); width: 20px; }
+    }
+    @keyframes shake-tracker {
+      0%, 100% { transform: translate(-50%, -50%); }
+      20%, 60% { transform: translate(calc(-50% - 10px), -50%); }
+      40%, 80% { transform: translate(calc(-50% + 10px), -50%); }
+    }
+    
+    .play-shake .avatar-head { animation: shake-head 1.2s ease-in-out; }
+    .play-shake .avatar-visor { animation: shake-visor 1.2s ease-in-out; }
+    .play-shake .hud-tracker { animation: shake-tracker 1.2s ease-in-out; }
+
+    /* =========================================
+       新增：扩展动作 Keyframes (全新专属捕捉动画)
+       ========================================= */
+    /* 1. 手势动画 (OK & 握拳) 及手部专属追踪框 */
+    .avatar-hand {
+      position: absolute; right: -55px; top: -10px; font-size: 42px; 
+      opacity: 0; transform: translateY(40px) scale(0.5); 
+      filter: drop-shadow(0 10px 15px rgba(56,189,248,0.4));
+      display: flex; justify-content: center; align-items: center;
+    }
+    @keyframes hand-pop {
+      0%, 100% { opacity: 0; transform: translateY(40px) scale(0.5); }
+      15%, 85% { opacity: 1; transform: translateY(0) scale(1.1); }
+    }
+    .play-ok .avatar-hand, .play-fist .avatar-hand { animation: hand-pop 2.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    
+    /* 咔嗒一下锁定手势的追踪框 */
+    .hand-tracker {
+      position: absolute; inset: -5px; border: 1.5px solid var(--ai-green);
+      background: rgba(16, 185, 129, 0.1); opacity: 0; border-radius: 8px;
+    }
+    .hand-tracker::before, .hand-tracker::after { content: ''; position: absolute; width: 8px; height: 8px; }
+    .hand-tracker::before { top: -2px; left: -2px; border-top: 2px solid var(--ai-green); border-left: 2px solid var(--ai-green); }
+    .hand-tracker::after { bottom: -2px; right: -2px; border-bottom: 2px solid var(--ai-green); border-right: 2px solid var(--ai-green); }
+    
+    @keyframes tracker-lock {
+      0%, 18% { opacity: 0; transform: scale(1.5); }
+      22%, 82% { opacity: 1; transform: scale(1); box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+      100% { opacity: 0; transform: scale(1); }
+    }
+    .play-ok .hand-tracker, .play-fist .hand-tracker { animation: tracker-lock 2.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    
+    /* 握拳时，追踪框变为紫色 */
+    .play-fist .hand-tracker { border-color: #a855f7; background: rgba(168, 85, 247, 0.1); }
+    .play-fist .hand-tracker::before, .play-fist .hand-tracker::after { border-color: #a855f7; }
+
+    /* --- 新增：带有物理关节的手臂，替换漂浮的Emoji --- */
+    .avatar-arm-joint {
+      position: absolute; right: 10px; top: 40px; 
+      width: 70px; height: 14px; background: linear-gradient(90deg, rgba(30,41,59,0.9), rgba(56,189,248,0.8));
+      border-radius: 8px; transform-origin: left center;
+      transform: rotate(80deg) scale(0.5); opacity: 0; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 15;
+    }
+    .play-ok .avatar-arm-joint, .play-fist .avatar-arm-joint { transform: rotate(-35deg) scale(1); opacity: 1; }
+    
+    .avatar-hand-box {
+      position: absolute; right: -30px; top: -20px;
+      width: 48px; height: 48px; background: #0f172a; border: 2px solid var(--tech-blue);
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      font-size: 24px; transform: rotate(35deg); /* 反向抵消关节旋转 */
+      box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+    
+    /* 2. 挥手动画 (手部横向扫动，取代眨眼) */
+    @keyframes wave-pop-wave {
+      0% { opacity: 0; transform: rotate(80deg) scale(0.5); }
+      15% { opacity: 1; transform: rotate(-35deg) scale(1.1); }
+      35% { transform: rotate(-10deg) scale(1); }
+      55% { transform: rotate(-60deg) scale(1); }
+      75% { transform: rotate(-35deg) scale(1.1); }
+      100% { opacity: 0; transform: rotate(80deg) scale(0.5); }
+    }
+    .play-wave .avatar-arm-joint { animation: wave-pop-wave 2.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .play-wave .hand-tracker { animation: tracker-lock 2.5s cubic-bezier(0.34, 1.56, 0.64, 1); border-color: #38bdf8; background: rgba(56, 189, 248, 0.1); }
+    .play-wave .hand-tracker::before, .play-wave .hand-tracker::after { border-color: #38bdf8; }
+
+    /* 3. 靠近屏幕动画 (面部包围盒急剧放大) */
+    .play-close .avatar-wrap { transform: scale(1.6) translateY(25px); transition-duration: 0.8s; }
+    .play-close .hud-tracker { 
+      width: 160px; height: 180px; border-width: 2.5px;
+      border-color: var(--ai-green); background: rgba(16, 185, 129, 0.15);
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+      transition-duration: 0.8s; 
+    }
+    .play-close .hud-tracker::before, .play-close .hud-tracker::after { border-color: var(--ai-green); border-width: 4px; }
+
+    /* =========================================
+       右侧：数字空间 (Screen Zone) - 完全场景解耦
+       ========================================= */
+    .screen-blur { backdrop-filter: blur(0px); background: transparent; opacity: 0; pointer-events: none; transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); transform: scale(1.05); }
+    .play-away .screen-blur { backdrop-filter: blur(16px); background: rgba(15, 23, 36, 0.75); opacity: 1; pointer-events: auto; transform: scale(1); transition-delay: 0.6s; }
+    .play-back .screen-blur { transition-delay: 0.8s; } 
+    
+    /* 各种特定场景的动画定义 */
+    /* 摇头 - IDE 弹窗 */
+    .ctx-ide-dialog { opacity: 0; transform: translate(-50%, -40%) scale(0.9); transition: all 0.4s ease; }
+    @keyframes dialog-reject {
+      0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      20% { transform: translate(-55%, -50%) scale(1); border-color: #ef4444; }
+      40% { transform: translate(-45%, -50%) scale(1); }
+      60% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+      100% { opacity: 0; transform: translate(-50%, -40%) scale(0.9); visibility: hidden; }
+    }
+    .play-shake-active .ctx-ide-dialog { animation: dialog-reject 1s 0.4s forwards; visibility: visible; }
+    
+    /* OK - PR Merge */
+    .merge-box { transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .play-ok-active .merge-box { border-color: #a855f7; background-color: #faf5ff; transform: scale(1.02); box-shadow: 0 10px 25px -5px rgba(168, 85, 247, 0.2); }
+    .play-ok-active .merge-btn { background-color: #a855f7; width: 110px; }
+    .play-ok-active .merge-icon { animation: pr-launch 1s forwards; }
+    @keyframes pr-launch { 0% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(-20px); opacity: 0; } 51% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; content: "🎉"; } }
+    
+    /* 握拳 - 媒体暂停 */
+    .album-art { animation: record-spin 4s linear infinite; }
+    @keyframes record-spin { 100% { transform: rotate(360deg); } }
+    .play-fist-active .album-art { animation-play-state: paused; filter: grayscale(50%); border-color: #64748b; }
+    .play-fist-active .pause-overlay { opacity: 1; transform: scale(1); }
+    
+    /* 挥手 - 划走系统通知弹窗 */
+    @keyframes swipe-out {
+      0% { transform: translateX(0) rotate(0); opacity: 1; }
+      100% { transform: translateX(150%) rotate(15deg); opacity: 0; }
+    }
+    .wave-card { transition: all 0.3s ease; }
+    .play-wave-active .wave-card { animation: swipe-out 0.8s 2.0s cubic-bezier(0.8, -0.2, 0.2, 1) forwards; }
+    
+    /* 靠近 - 视频会议自动开麦 (远离恢复静音) */
+    .play-close-active .meeting-overlay { opacity: 1; }
+    .play-close-active .meeting-box.user-box { border-color: #10b981; box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.4); z-index: 5; }
+    .play-close-active .meeting-box:not(.user-box) { opacity: 0.4; filter: blur(1px); }
+    .mic-status::before { content: '🔇'; }
+    .play-close-active .mic-status { color: #10b981; }
+    .play-close-active .mic-status::before { content: '🎙️'; }
+
+    /* 入席 Toast */
+    .welcome-toast { 
+      position: absolute; top: 16px; right: 16px; 
+      transform: translateX(20px); opacity: 0; 
+      transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 50;
+    }
+    .play-back .welcome-toast { transform: translateX(0); opacity: 1; transition-delay: 1.6s; }
+
+    /* 辅助样式 */
+    .btn-active { background-color: #f0f9ff; border-color: #0ea5e9; color: #0284c7; box-shadow: 0 4px 14px 0 rgba(14, 165, 233, 0.2); }
+    @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+    
+    .snap-instant, .snap-instant * { transition: none !important; animation: none !important; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex flex-col items-center justify-center min-h-screen p-4 md:p-8">
+
+  <div class="max-w-5xl w-full flex flex-col gap-6">
+    
+    <!-- 头部说明 -->
+    <div class="text-center space-y-2">
+      <h1 class="text-3xl font-bold text-slate-900 tracking-tight">摄像头体感控制原理演示</h1>
+      <p class="text-slate-500 font-medium">将你的自然物理动作，零延迟映射为电脑的高效指令</p>
+    </div>
+
+    <!-- 演示舞台区域 -->
+    <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden flex flex-col">
+      
+      <!-- 控制台 -->
+      <div class="bg-slate-50 p-4 border-b border-slate-200 flex flex-wrap gap-3 justify-center items-center z-10">
+        <span class="text-sm font-bold text-slate-400 mr-2 tracking-wider">点击场景，查看联动：</span>
+        <button id="btn-back" onclick="triggerScenario('back')" class="px-5 py-2.5 rounded-full font-bold text-sm bg-white border-2 border-slate-200 hover:border-slate-300 transition-all text-slate-600">
+          👋 入席 (进入视野)
+        </button>
+        <button id="btn-away" onclick="triggerScenario('away')" class="px-5 py-2.5 rounded-full font-bold text-sm bg-white border-2 border-slate-200 hover:border-slate-300 transition-all text-slate-600">
+          🏃‍♂️ 离席 (离开视野)
+        </button>
+        <button id="btn-shake" onclick="triggerScenario('shake')" class="px-5 py-2.5 rounded-full font-bold text-sm bg-white border-2 border-slate-200 hover:border-slate-300 transition-all text-slate-600">
+          🙅‍♂️ 摇头 (左右摇摆)
+        </button>
+      </div>
+
+      <!-- 双重视角容器 -->
+      <div id="stage-container" class="flex flex-col md:flex-row h-[480px] relative w-full overflow-hidden">
+        
+        <!-- 左半边：AI 视觉捕捉空间 -->
+        <div class="w-full md:w-[45%] cam-zone flex flex-col items-center justify-end relative border-r border-slate-800 shrink-0">
+          <!-- 背景网格 -->
+          <div class="absolute inset-0 cam-grid opacity-30"></div>
+          
+          <!-- 状态指示灯 -->
+          <div class="absolute top-5 left-5 flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-full backdrop-blur-md border border-slate-700/50">
+            <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>
+            <span class="text-[11px] text-slate-300 font-mono tracking-wider">AI 传感器</span>
+          </div>
+
+          <!-- 抽象虚拟人体 -->
+          <div class="avatar-wrap flex flex-col items-center z-10 mb-[-20px]">
+            <!-- 头部 -->
+            <div class="avatar-head flex justify-center">
+              <div class="avatar-visor"></div>
+            </div>
+            <!-- 躯干 -->
+            <div class="avatar-body flex justify-center items-start pt-4 relative">
+              <!-- 胸口的极简心跳/呼吸光 -->
+              <div class="w-8 h-1 rounded-full bg-sky-400/30"></div>
+              
+              <!-- 升级：具有物理关节特征的动态捕捉机械臂 -->
+              <div class="avatar-arm-joint">
+                <div class="avatar-hand-box">
+                  <span id="avatar-hand-emoji">👌</span>
+                  <!-- 手势专属物理捕捉框 -->
+                  <div class="hand-tracker">
+                    <div id="hand-status" class="hud-label bg-emerald-500 text-white shadow-sm transition-colors duration-300">OK 已识别</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- HUD 追踪框 -->
+          <div class="hud-tracker z-20 top-[60%]">
+            <div id="hud-status" class="hud-label bg-emerald-500 text-white shadow-sm">人脸已锁定</div>
+          </div>
+        </div>
+
+        <!-- 右半边：数字空间，彻底解耦为 6 大独立 App 场景 -->
+        <div class="w-full md:w-[55%] bg-slate-100 relative overflow-hidden flex items-center justify-center p-4 md:p-6 shrink-0">
+          
+          <div class="w-full h-full bg-white rounded-xl shadow-sm flex flex-col overflow-hidden relative z-0 border border-slate-200">
+            
+            <!-- 场景 1：基础桌面 (用于离席 / 回席) -->
+            <div id="ctx-desktop" class="screen-ctx w-full h-full flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100 relative hidden">
+              <!-- 顶部状态栏 -->
+              <div class="h-5 bg-white/40 backdrop-blur-sm flex justify-between items-center px-3 text-[9px] text-slate-500 font-bold border-b border-white/20">
+                <span> 桌面</span>
+                <div class="flex gap-2"><span>100%</span><span>周二 10:24</span></div>
+              </div>
+              <!-- 桌面悬浮窗口 -->
+              <div class="m-auto w-4/5 h-2/3 bg-white/80 backdrop-blur rounded-lg shadow-xl border border-white p-4 flex flex-col gap-3">
+                <div class="flex gap-1 mb-2"><div class="w-2.5 h-2.5 bg-rose-400 rounded-full"></div><div class="w-2.5 h-2.5 bg-amber-400 rounded-full"></div><div class="w-2.5 h-2.5 bg-emerald-400 rounded-full"></div></div>
+                <div class="h-3 w-1/3 bg-slate-200 rounded"></div>
+                <div class="h-3 w-full bg-slate-100 rounded"></div>
+                <div class="h-3 w-2/3 bg-slate-100 rounded"></div>
+              </div>
+              <!-- 底部 Dock 栏 -->
+              <div class="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/70 backdrop-blur-md px-3 py-2 rounded-2xl border border-white shadow-lg flex gap-2">
+                <div class="w-8 h-8 bg-blue-500 rounded-xl"></div><div class="w-8 h-8 bg-purple-500 rounded-xl"></div><div class="w-8 h-8 bg-emerald-500 rounded-xl"></div>
+              </div>
+            </div>
+
+            <!-- 场景 2：代码 IDE (用于摇头拒接 Agent) -->
+            <div id="ctx-ide" class="screen-ctx w-full h-full bg-[#1e1e1e] flex flex-col hidden relative">
+              <div class="h-8 bg-[#2d2d2d] flex items-center px-4 gap-2 border-b border-[#444]">
+                 <div class="flex gap-1.5"><div class="w-3 h-3 rounded-full bg-[#ff5f56]"></div><div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div><div class="w-3 h-3 rounded-full bg-[#27c93f]"></div></div>
+                 <div class="ml-4 text-[11px] text-slate-400 font-mono">处理器.ts</div>
+              </div>
+              <div class="p-5 flex flex-col gap-4">
+                 <div class="h-3 w-1/3 bg-[#333] rounded"></div>
+                 <div class="h-3 w-1/2 bg-[#444] rounded"></div>
+                 <div class="h-3 w-3/4 bg-[#333] rounded"></div>
+                 <div class="h-10 w-2/3 bg-blue-500/10 border border-blue-500/30 rounded mt-2"></div>
+              </div>
+              <!-- 弹窗：Agent 操作确认 -->
+              <div class="ctx-ide-dialog absolute top-1/2 left-1/2 bg-white border border-slate-200 shadow-2xl rounded-xl w-64 flex flex-col overflow-hidden z-20">
+                <div class="bg-blue-50 px-3 py-2.5 border-b border-blue-100 flex items-center gap-2">
+                  <span class="text-base">🤖</span><span class="text-xs font-bold text-blue-700">AI 智能重构</span>
+                </div>
+                <div class="p-4 text-center">
+                  <p class="text-xs text-slate-600 font-medium mb-3">即将修改核心逻辑，是否应用此代码片段？</p>
+                  <div class="flex gap-2 text-[11px] font-bold">
+                    <div class="flex-1 py-1.5 rounded bg-slate-100 text-slate-500">摇头 (Esc)</div>
+                    <div class="flex-1 py-1.5 rounded bg-blue-600 text-white">确认 (Enter)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 场景 3：Pull Request 代码审查 (用于 OK 确认) -->
+            <div id="ctx-pr" class="screen-ctx w-full h-full bg-white flex flex-col hidden relative">
+              <div class="border-b border-slate-200 px-5 py-4">
+                <div class="text-sm font-bold text-slate-800">更新交互物理引擎 #142</div>
+                <div class="flex gap-2 mt-2">
+                   <div class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] rounded-full font-bold">开放</div>
+                   <div class="text-[10px] text-slate-500 pt-0.5">用户希望合并 1 次提交</div>
+                </div>
+              </div>
+              <div class="p-5 flex flex-col items-center justify-center flex-1 bg-slate-50">
+                 <div class="merge-box w-full max-w-sm border border-emerald-200 bg-emerald-50 rounded-xl p-4 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                       <div class="text-xl merge-icon">🚀</div>
+                       <div>
+                         <div class="text-xs font-bold text-emerald-800">所有检查均已通过</div>
+                         <div class="text-[10px] text-emerald-600 mt-0.5">可合并至主分支</div>
+                       </div>
+                    </div>
+                    <div class="merge-btn bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm text-center overflow-hidden whitespace-nowrap">
+                       <span class="play-ok-active:hidden">合并请求</span>
+                       <span class="hidden play-ok-active:inline-block">已合并 ✓</span>
+                    </div>
+                 </div>
+              </div>
+            </div>
+
+            <!-- 场景 4：音乐/媒体播放器 (用于举拳暂停) -->
+            <div id="ctx-media" class="screen-ctx w-full h-full bg-slate-900 flex flex-col items-center justify-center hidden relative">
+               <div class="w-28 h-28 rounded-full border-[6px] border-slate-800 bg-gradient-to-tr from-purple-500 to-rose-500 shadow-2xl album-art flex items-center justify-center transition-all duration-500">
+                  <div class="w-8 h-8 rounded-full bg-slate-900 border border-slate-700"></div>
+               </div>
+               <div class="mt-6 text-white font-bold text-sm tracking-wide">写代码专用慢拍节拍</div>
+               <div class="mt-4 w-48 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div class="w-1/2 h-full bg-white rounded-full"></div>
+               </div>
+               <div class="mt-5 flex gap-8 items-center text-lg">
+                  <div class="text-slate-500">⏮</div>
+                  <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-900 font-bold shadow-lg">▶</div>
+                  <div class="text-slate-500">⏭</div>
+               </div>
+               <!-- 硕大的悬浮暂停标志 -->
+               <div class="pause-overlay absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex flex-col items-center justify-center opacity-0 scale-90 transition-all duration-300 z-10">
+                  <div class="text-5xl text-white drop-shadow-2xl">⏸️</div>
+                  <div class="text-white font-bold tracking-widest mt-3 text-xs bg-black/50 px-3 py-1 rounded">媒体已暂停</div>
+               </div>
+            </div>
+
+            <!-- 场景 5：系统通知框 (用于挥手划走) -->
+            <div id="ctx-wave" class="screen-ctx w-full h-full bg-slate-200 flex items-center justify-center hidden relative overflow-hidden">
+               <div class="wave-card bg-white rounded-2xl shadow-[0_15px_40px_-10px_rgba(0,0,0,0.15)] w-72 p-5 flex flex-col relative">
+                  <div class="flex items-center gap-3">
+                     <div class="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center text-sky-500 text-xl shrink-0">🔔</div>
+                     <div>
+                        <div class="text-sm font-bold text-slate-800">系统更新就绪</div>
+                        <div class="text-xs text-slate-500 mt-0.5 leading-snug">新版本的 AI 驱动程序已下载完成，建议立即重启以应用更改。</div>
+                     </div>
+                  </div>
+                  <div class="mt-4 flex gap-2">
+                     <div class="flex-1 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold text-center rounded">挥手忽略</div>
+                     <div class="flex-1 py-1.5 bg-sky-500 text-white text-xs font-bold text-center rounded shadow-sm">立即重启</div>
+                  </div>
+               </div>
+            </div>
+
+            <!-- 场景 6：多人视频会议 (用于靠近屏幕自动开麦) -->
+            <div id="ctx-meeting" class="screen-ctx w-full h-full bg-black grid grid-cols-2 grid-rows-2 gap-1.5 p-1.5 hidden relative">
+               <div class="meeting-box bg-slate-800 rounded flex items-center justify-center text-slate-600 border-2 border-transparent transition-all"><span class="text-3xl">👤</span></div>
+               <div class="meeting-box bg-slate-800 rounded flex items-center justify-center text-slate-600 border-2 border-transparent transition-all"><span class="text-3xl">👤</span></div>
+               <div class="meeting-box bg-slate-800 rounded flex items-center justify-center text-slate-600 border-2 border-transparent transition-all"><span class="text-3xl">👤</span></div>
+               <div class="meeting-box user-box bg-slate-800 rounded flex items-center justify-center text-slate-600 border-2 border-slate-700 transition-all relative overflow-hidden">
+                  <span class="text-3xl">🧑‍💻</span>
+                  <div class="absolute bottom-2 left-2 text-[10px] bg-black/60 text-white px-2 py-0.5 rounded font-bold flex items-center gap-1">
+                     你 <span class="mic-status text-slate-300"></span>
+                  </div>
+               </div>
+               <!-- 麦克风状态全屏提示 -->
+               <div class="meeting-overlay absolute inset-0 bg-emerald-900/20 border-[6px] border-emerald-500 flex flex-col items-center justify-center opacity-0 transition-opacity duration-300 z-20 pointer-events-none">
+                  <div class="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center text-3xl text-white shadow-[0_0_30px_rgba(16,185,129,0.8)] animate-pulse">🎙️</div>
+                  <div class="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[10px] font-bold mt-4 tracking-wider shadow-lg">麦克风已开启</div>
+               </div>
+            </div>
+
+            <!-- 始终在最上层的入席 Toast -->
+            <div class="welcome-toast bg-slate-800/95 text-white px-4 py-2.5 rounded-xl text-xs font-medium shadow-xl border border-slate-700 flex items-center gap-2 z-50 backdrop-blur-md">
+              <span class="text-base">👋</span> 已识别面部，屏幕解锁
+            </div>
+            
+            <!-- 离席时的全局遮罩 -->
+            <div class="screen-blur absolute inset-0 z-40 flex items-center justify-center">
+              <div class="bg-white/10 px-6 py-5 rounded-3xl flex flex-col items-center gap-3 backdrop-blur-xl shadow-2xl border border-white/20">
+                <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-inner text-2xl">🔒</div>
+                <div class="text-center">
+                  <div class="text-white font-bold text-sm tracking-wide shadow-black drop-shadow-md">隐私保护中</div>
+                  <div class="text-slate-200 text-[10px] mt-1 drop-shadow-md">未检测到您的面部</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 原理解析与引导面板 (独立底栏) -->
+    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-start gap-4 flex-1">
+        <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mt-0.5 border border-blue-100">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div>
+          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">交互原理解析</h4>
+          <p id="narrative-text" class="text-sm font-medium text-slate-700 leading-relaxed min-h-[44px]">
+            <!-- 动态文案注入区 -->
+          </p>
+        </div>
+      </div>
+      
+      <!-- 引导流控件 -->
+      <div class="flex flex-col items-end gap-3 shrink-0 border-l border-slate-100 pl-4">
+        <div id="step-indicators" class="flex gap-1.5">
+          <!-- 动态指示点注入区 -->
+        </div>
+        <div class="flex gap-2">
+          <button onclick="skipTutorial()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors">跳过</button>
+          <button id="btn-next" onclick="nextTutorialStep()" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors">下一步</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 更多定制动作提示区 -->
+    <div id="custom-actions" class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm scroll-mt-6 relative">
+      <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+        <span>✨</span> 上述只是基础，您还可以自定义更多魔法般的动作映射（点击演示）：
+      </h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <button id="btn-ok" onclick="triggerScenario('ok')" class="text-left p-4 bg-slate-50 border-2 border-slate-100 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all group">
+          <div class="text-2xl mb-1 group-hover:scale-110 transition-transform origin-bottom-left">👌</div>
+          <div class="font-bold text-sm text-slate-700">OK 手势</div>
+          <div class="text-xs text-slate-500 mt-1">映射：回车键 / 确认</div>
+        </button>
+        <button id="btn-fist" onclick="triggerScenario('fist')" class="text-left p-4 bg-slate-50 border-2 border-slate-100 rounded-xl hover:border-purple-300 hover:bg-purple-50/50 transition-all group">
+          <div class="text-2xl mb-1 group-hover:scale-110 transition-transform origin-bottom-left">✊</div>
+          <div class="font-bold text-sm text-slate-700">举拳手势</div>
+          <div class="text-xs text-slate-500 mt-1">映射：空格键 / 暂停</div>
+        </button>
+        <button id="btn-wave" onclick="triggerScenario('wave')" class="text-left p-4 bg-slate-50 border-2 border-slate-100 rounded-xl hover:border-sky-300 hover:bg-sky-50/50 transition-all group">
+          <div class="text-2xl mb-1 group-hover:scale-110 transition-transform origin-bottom-left">👋</div>
+          <div class="font-bold text-sm text-slate-700">挥手</div>
+          <div class="text-xs text-slate-500 mt-1">映射：清除 / 划走弹窗</div>
+        </button>
+        <button id="btn-close" onclick="triggerScenario('close')" class="text-left p-4 bg-slate-50 border-2 border-slate-100 rounded-xl hover:border-emerald-300 hover:bg-emerald-50/50 transition-all group">
+          <div class="text-2xl mb-1 group-hover:scale-110 transition-transform origin-bottom-left">👤</div>
+          <div class="font-bold text-sm text-slate-700">靠近屏幕</div>
+          <div class="text-xs text-slate-500 mt-1">映射：自动开麦 (远离静音)</div>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const NARRATIVES = {
+      'away': `<span class="text-rose-500 font-bold">👀 物理感知：</span>检测到身体后退、脱离摄像头追踪区域。<br><span class="text-blue-600 mt-1 inline-block font-bold">⚡ 桌面响应：</span>立即触发全局【隐私屏保】，保护敏感数据。`,
+      'back': `<span class="text-emerald-500 font-bold">👀 物理感知：</span>人物重新回到座位，AI 重新锁定面部特征。<br><span class="text-blue-600 mt-1 inline-block font-bold">⚡ 桌面响应：</span>无感解锁，瞬间恢复到之前的工作状态。`,
+      'shake': `<span class="text-amber-500 font-bold">👀 物理感知：</span>识别到明确的左右转头动作（过滤普通晃动）。<br><span class="text-blue-600 mt-1 inline-block font-bold">⚡ 桌面响应：</span>映射为键盘【Esc】键，快捷拒绝或关闭当前弹窗。`,
+      'ok': `<span class="text-emerald-500 font-bold">👀 物理感知：</span>识别到手部结成“OK”特定骨骼拓扑。<br><span class="text-blue-600 mt-1 inline-block font-bold">⚡ 桌面响应：</span>映射为回车键，瞬间确认当前操作指令。`,
+      'fist': `<span class="text-purple-500 font-bold">👀 物理感知：</span>五指收拢握拳，触发高置信度手势。<br><span class="text-blue-600 mt-1 inline-block font-bold">⚡ 桌面响应：</span>映射为空格键，全局暂停正在播放的媒体/音乐。`,
+      'wave': `<span class="text-sky-500 font-bold">👀 物理感知：</span>识别到手部在面部前方横向扫动挥击。<br><span class="text-blue-600 mt-1 inline-block font-bold">⚡ 桌面响应：</span>映射为“忽略/清除”，瞬间划走当前的通知或干扰弹窗。`,
+      'close': `<span class="text-emerald-500 font-bold">👀 物理感知：</span>人脸包围盒快速放大，实体前倾靠近屏幕。<br><span class="text-blue-600 mt-1 inline-block font-bold">⚡ 桌面响应：</span>判断此时需要发言讨论，<span class="text-emerald-600 font-bold">瞬间打开麦克风</span>；退回正常坐姿即刻恢复静音。`
+    };
+
+    // 扩展引导流，将所有场景纳入自动播放和"下一步"队列
+    const STEPS = ['back', 'away', 'shake', 'ok', 'fist', 'wave', 'close'];
+    let currentStepIndex = 0;
+    let autoLoopTimer = null;
+    let autoLoopIndex = 0; 
+
+    // 新增：映射场景到独立屏幕 App UI
+    const SCREEN_CONTEXTS = {
+      'away': 'desktop', 'back': 'desktop',
+      'shake': 'ide',
+      'ok': 'pr',
+      'fist': 'media',
+      'wave': 'wave',
+      'close': 'meeting'
+    };
+
+    function triggerScenario(scenario, isAutoLoop = false) {
+      if (!isAutoLoop) {
+        clearInterval(autoLoopTimer); 
+      }
+
+      currentStepIndex = STEPS.indexOf(scenario);
+      updateNavigationUI();
+      
+      const narrativeEl = document.getElementById('narrative-text');
+      if (narrativeEl && NARRATIVES[scenario]) {
+        narrativeEl.innerHTML = NARRATIVES[scenario];
+      }
+        
+      if (isAutoLoop) {
+        clearInterval(autoLoopTimer);
+        autoLoopIndex = STEPS.indexOf(scenario);
+        autoLoopTimer = setInterval(() => {
+          autoLoopIndex = (autoLoopIndex + 1) % STEPS.length;
+          triggerScenario(STEPS[autoLoopIndex], true);
+        }, 4500);
+      }
+
+      const stage = document.getElementById('stage-container');
+      const hudStatus = document.getElementById('hud-status');
+      const handEmoji = document.getElementById('avatar-hand-emoji');
+      const handStatus = document.getElementById('hand-status');
+
+      // 【修复重点 1】每次切换场景前，必须彻底清理上一轮遗留的动画状态，防止 Class 冲突
+      stage.className = 'flex flex-col md:flex-row h-[480px] relative w-full overflow-hidden';
+      
+      STEPS.forEach(s => {
+        const btn = document.getElementById(`btn-${s}`);
+        if(btn) {
+          if (s === scenario) {
+            btn.classList.add('border-blue-400', 'bg-blue-50', 'shadow-md');
+            if(['back','away','shake'].includes(s)) btn.classList.add('btn-active');
+          } else {
+            btn.classList.remove('border-blue-400', 'bg-blue-50', 'shadow-md', 'btn-active');
+          }
+        }
+      });
+
+      // 配置手势挂件属性
+      if(scenario === 'ok') {
+        handEmoji.innerText = '👌';
+        handStatus.className = "hud-label bg-emerald-500 text-white shadow-sm";
+        handStatus.textContent = "OK 已识别";
+      }
+      if(scenario === 'fist') {
+        handEmoji.innerText = '✊';
+        handStatus.className = "hud-label bg-purple-500 text-white shadow-sm";
+        handStatus.textContent = "拳头已识别";
+      }
+      if(scenario === 'wave') {
+        handEmoji.innerText = '👋';
+        handStatus.className = "hud-label bg-sky-500 text-white shadow-sm";
+        handStatus.textContent = "WAVE MATCH";
+      }
+
+      // 切换右侧独立 App 场景 UI
+      document.querySelectorAll('.screen-ctx').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`ctx-${SCREEN_CONTEXTS[scenario]}`).classList.remove('hidden');
+
+      // 对于摇头/挥手的弹窗，重置状态以便动画重新触发
+      const ideDialog = document.querySelector('.ctx-ide-dialog');
+      if (scenario === 'shake') {
+        ideDialog.style.visibility = 'visible';
+        ideDialog.style.opacity = '1';
+        ideDialog.style.transform = 'translate(-50%, -50%) scale(1)';
+      } else {
+        ideDialog.style.opacity = '0';
+        ideDialog.style.visibility = 'hidden';
+      }
+      
+      if (scenario === 'wave') {
+        const waveCard = document.querySelector('.wave-card');
+        if(waveCard) {
+            waveCard.style.opacity = '1';
+            waveCard.style.transform = 'translateX(0) rotate(0)';
+        }
+      }
+
+      // 【修复重点 2】必须加上 snap-instant，让假人“瞬间”消失，才能顺利播放从下向上升起的“入席”动画
+      if (scenario === 'back') {
+        stage.classList.add('snap-instant', 'play-away');
+        hudStatus.className = "hud-label bg-red-500 text-white shadow-sm";
+        hudStatus.textContent = "目标已丢失";
+      }
+
+      void stage.offsetWidth; 
+      stage.classList.remove('snap-instant');
+
+      if (scenario === 'back') {
+        stage.classList.remove('play-away');
+        hudStatus.className = "hud-label bg-emerald-500 text-white shadow-sm transition-colors duration-300";
+        hudStatus.textContent = "人脸已锁定";
+      } else if (scenario === 'away') {
+        hudStatus.className = "hud-label bg-red-500 text-white shadow-sm";
+        hudStatus.textContent = "目标已丢失";
+      } else if (scenario === 'close') {
+        hudStatus.className = "hud-label bg-emerald-500 text-white shadow-sm";
+        hudStatus.textContent = "近距已锁定";
+      } else if (scenario === 'wave') {
+        hudStatus.className = "hud-label bg-sky-500 text-white shadow-sm";
+        hudStatus.textContent = "挥手已追踪";
+      } else {
+        hudStatus.className = "hud-label bg-emerald-500 text-white shadow-sm transition-colors duration-300";
+        hudStatus.textContent = "人脸已锁定";
+      }
+
+      stage.classList.add(`play-${scenario}`);
+      
+      if (['shake', 'ok', 'fist', 'wave', 'close'].includes(scenario)) {
+        stage.classList.add(`play-${scenario}-active`);
+      }
+    }
+
+    // 新增：更新底部进度指示点和按钮文案
+    function updateNavigationUI() {
+      const indicatorContainer = document.getElementById('step-indicators');
+      if (!indicatorContainer) return; // 增加容错保护
+      indicatorContainer.innerHTML = '';
+      
+      // 如果进度走到后面，指示点只显示前3个或特殊处理，这里采用自适应点数
+      const dotCount = Math.min(STEPS.length, 7); // 显示全部7个点
+      STEPS.forEach((_, idx) => {
+        const dot = document.createElement('div');
+        dot.className = `h-1.5 rounded-full transition-all duration-300 ${idx === currentStepIndex ? 'bg-blue-600 w-3' : 'bg-slate-200 w-1.5'}`;
+        indicatorContainer.appendChild(dot);
+      });
+
+      const btnNext = document.getElementById('btn-next');
+      if (btnNext) { // 增加容错保护
+        if (currentStepIndex === STEPS.length - 1) {
+          btnNext.textContent = "完成体验";
+        } else {
+          btnNext.textContent = "下一步";
+        }
+      }
+    }
+
+    // 新增：引导流“下一步”逻辑
+    function nextTutorialStep() {
+      if (currentStepIndex < STEPS.length - 1) {
+        triggerScenario(STEPS[currentStepIndex + 1]);
+      } else {
+        skipTutorial();
+      }
+    }
+
+    // 新增：跳过/结束教程，引导至扩展功能区
+    function skipTutorial() {
+      clearInterval(autoLoopTimer);
+      // 平滑滚动到底部
+      document.getElementById('custom-actions').scrollIntoView({ behavior: 'smooth' });
+      // 给出友好结束语
+      document.getElementById('narrative-text').innerHTML = `<span class="text-blue-600 font-bold">✨ 演示已完成。</span>您可以在下方查看或配置更多丰富的自定义动作。`;
+    }
+
+    // 页面加载完成后，优先演示入席场景 (Wow moment)
+    window.onload = () => {
+      // 以自动循环模式启动
+      setTimeout(() => triggerScenario('back', true), 800);
+    };
+  </script>
+</body>
+</html>

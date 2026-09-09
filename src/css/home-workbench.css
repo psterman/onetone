@@ -646,6 +646,14 @@ html[data-theme="dark"] .wb-hero-mic-heard.is-matched {
   display: none !important;
 }
 
+/* 摄像头页：左下脚改「再看一遍」，设置态也要露出 */
+.app.is-settings .wb-home-sidebar-foot.is-camera-teach {
+  display: grid !important;
+}
+.app.is-settings .wb-home-sidebar-foot.is-camera-teach .wb-home-quickstart {
+  display: block !important;
+}
+
 .home-center > .wb-status-overview,
 .home-center > .wb-home-alert,
 .home-center > .wb-command-search {

@@ -10,7 +10,7 @@ import {
 } from '../domain/cameraFlowChrome';
 
 const EMPTY: CameraFlowChromeModel = {
-  activeTab: 'trigger',
+  activeTab: 'pro',
   locked: false,
   triggerHint: '',
   actionHint: '',
@@ -79,7 +79,7 @@ function useModel(): CameraFlowChromeModel {
 
 export function CameraFlowChromeIsland(): JSX.Element {
   const model = useModel();
-  return <>{model.triggerHint}</>;
+  return <>{model.proHint}</>;
 }
 
 export function registerCameraFlowChromeBridge(): void {

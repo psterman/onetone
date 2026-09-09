@@ -18,7 +18,7 @@
 
     habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',
 
-    camera:'settingsPanelCamera',tray:'settingsPanelTray'
+    camera:'settingsPanelCamera',camera2:'settingsPanelCamera2',tray:'settingsPanelTray'
 
   };
 
@@ -195,10 +195,11 @@
     if(focus==='cameraActions'||focus==='cameraPresence'){
       setSettingsPanel('camera');
       try{
-        var triggerBtn=document.getElementById('cameraFlowNodeTrigger');
-        if(triggerBtn&&typeof triggerBtn.click==='function') triggerBtn.click();
+        var wf=global.OneToneCameraWorkflow;
+        if(wf&&wf.activateTab) wf.activateTab('pro');
+        if(wf&&wf.activateProSubtab) wf.activateProSubtab('vision');
       }catch(_){}
-      scrollSettingsToTarget(['cameraPresenceConfig','cameraRulesBasic','cameraBindRowAway','cameraPanelTrigger']);
+      scrollSettingsToTarget(['cameraPresenceConfig','cameraRulesBasic','cameraBindRowAway','cameraProSubVision']);
       return;
     }
 
@@ -642,6 +643,10 @@
     }
   }
 
+  function isCameraFamilyPanel(panel){
+    return panel==='camera'||panel==='camera2';
+  }
+
   function setSettingsPanel(panel,opts){
     opts=opts||{};
     var resolved=resolveSettingsPanelRequest(panel,opts);
@@ -656,8 +661,8 @@
 
     const panelChanged=panel!==lastPanel;
 
-    // Leave camera / open non-camera: pause infer before heavy paint (same-turn MediaPipe ??).
-    if(ui.drawerOpen&&panel!=='camera'&&(panelChanged||lastPanel==='camera')){
+    // Leave camera family / open non-camera: pause infer before heavy paint.
+    if(ui.drawerOpen&&!isCameraFamilyPanel(panel)&&(panelChanged||isCameraFamilyPanel(lastPanel))){
       try{
         var paLeave=global.OneToneCameraPresenceActions;
         if(paLeave&&typeof paLeave.setDrawerUiPaused==='function'){
@@ -1159,9 +1164,37 @@
         },0);
       });
 
+    }else if(panel==='camera2'){
+      // Same presence runtime as camera 1; edit scope stays global unless habit banner set appScenario.
+      if(String(ui.habitScenarioReturnPanel||'')!=='camera'||!String(ui.habitScenarioReturnId||'').trim()){
+        if(String(ui.cameraEditMode||'')!=='appScenario') ui.cameraEditMode='global';
+      }
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!=='camera2') return;
+          try{
+            var paEnter=global.OneToneCameraPresenceActions;
+            if(paEnter&&typeof paEnter.setDrawerUiPaused==='function') paEnter.setDrawerUiPaused(false);
+          }catch(_){}
+          if(global.OneToneCameraPreview&&global.OneToneCameraPreview.onPanelVisible){
+            try{ global.OneToneCameraPreview.onPanelVisible(); }catch(err){
+              console.error('camera2 preview onPanelVisible',err);
+            }
+          }
+          if(global.OneToneCamera2Workbench&&global.OneToneCamera2Workbench.mount){
+            try{ global.OneToneCamera2Workbench.mount(); }catch(err){
+              console.error('camera2 workbench mount',err);
+            }
+          }else if(global.OneToneCamera2Compare&&global.OneToneCamera2Compare.mount){
+            try{ global.OneToneCamera2Compare.mount(); }catch(err){
+              console.error('camera2 compare mount',err);
+            }
+          }
+        },0);
+      });
     }
 
-    if(panel!=='camera'){
+    if(!isCameraFamilyPanel(panel)){
       if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.onPanelHidden){
         global.OneToneCameraWorkflow.onPanelHidden();
       }
@@ -1358,7 +1391,7 @@
     // remount on the same turn wedges WebView2 (Responding=false).
     try{
       var openPanel=normalizePanel(opts.panel||'basic');
-      if(openPanel!=='camera'){
+      if(openPanel!=='camera'&&openPanel!=='camera2'){
         var paEarly=global.OneToneCameraPresenceActions;
         if(paEarly&&typeof paEarly.setDrawerUiPaused==='function'){
           paEarly.setDrawerUiPaused(true);

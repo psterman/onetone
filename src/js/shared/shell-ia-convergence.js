@@ -12,6 +12,7 @@
     softPad: { panel: 'softPad', home: false, deep: true, pro: false, note: 'mid' },
     voice: { panel: 'voiceWake', home: false, deep: true, pro: false, note: 'mid' },
     camera: { panel: 'camera', home: false, deep: true, pro: true, note: 'pro-no-home-cta' },
+    camera2: { panel: 'camera2', home: false, deep: true, pro: false, note: 'compare-proto' },
     tray: { panel: 'tray', home: false, deep: true, pro: false, note: 'mid' },
     sounds: { panel: 'sounds', home: false, deep: false, pro: false, note: 'shallow' },
     general: { panel: 'basic', home: false, deep: false, pro: false, note: 'shallow' },

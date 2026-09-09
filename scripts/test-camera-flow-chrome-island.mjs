@@ -16,20 +16,22 @@ check('导出 buildCameraFlowChromeModel', wfSrc.includes('buildCameraFlowChrome
 check('apply 岛守卫', wfSrc.includes('__otCameraFlowChromeMounted') && wfSrc.includes('__otCameraFlowChromeSync'));
 
 const domainSrc = readFileSync(join(root, 'src-islands/domain/cameraFlowChrome.ts'), 'utf8');
-check('domain 跳过 triggerHint 双写', domainSrc.includes("tab === 'trigger'") && domainSrc.includes('cameraFlowNodeTriggerHint'));
+check('domain 跳过 proHint 双写', domainSrc.includes("tab === 'pro'") && domainSrc.includes('cameraFlowNodeProHint'));
+check('domain tabs 为 pro/action', domainSrc.includes("['pro', 'action']"));
 
 const islandTsx = readFileSync(join(root, 'src-islands/islands/camera-flow-chrome-island.tsx'), 'utf8');
 check('岛含 sync bridge', islandTsx.includes('__otCameraFlowChromeSync'));
+check('岛渲染 proHint', islandTsx.includes('model.proHint'));
 
 const mainSrc = readFileSync(join(root, 'src-islands/main.tsx'), 'utf8');
 check('main 挂载入口', mainSrc.includes('__otMountCameraFlowChromeIsland'));
-check('挂载 cameraFlowNodeTriggerHint', mainSrc.includes("mountIsland('cameraFlowNodeTriggerHint'"));
+check('挂载 cameraFlowNodeProHint', mainSrc.includes("mountIsland('cameraFlowNodeProHint'"));
 
 const drawerSrc = readFileSync(join(root, 'src/js/features/settings/settings-drawer.js'), 'utf8');
 check('settings-drawer 接线', drawerSrc.includes('__otMountCameraFlowChromeIsland'));
 
 const html = readFileSync(join(root, 'src/index.html'), 'utf8');
-check('index 含 cameraFlowNodeTriggerHint', html.includes('id="cameraFlowNodeTriggerHint"'));
+check('index 含 cameraFlowNodeProHint', html.includes('id="cameraFlowNodeProHint"'));
 
 console.log(`[camera-flow-chrome] ${pass} 通过 / ${fail} 失败`);
 if (fail > 0) process.exit(1);

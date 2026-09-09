@@ -2973,12 +2973,42 @@
     voiceWake:'voice',
     models:'voice',
     camera:'camera',
+    camera2:'camera2',
     tray:'tray',
     sounds:'sounds',
     actionHistory:'schemes',
     basic:'general',
     scenes:'schemes'
   };
+
+  function syncSidebarFoot(activeNav){
+    var btn=$('wbBtnTestSend');
+    if(!btn) return;
+    var foot=btn.closest?btn.closest('.wb-home-sidebar-foot'):null;
+    var camera=activeNav==='camera'||activeNav==='camera2';
+    if(foot) foot.classList.toggle('is-camera-teach',!!camera);
+    if(camera){
+      btn.setAttribute('data-i18n','homeWbCameraReplayTeach');
+      btn.textContent=t('homeWbCameraReplayTeach','再看一遍');
+      btn.setAttribute('data-wb-foot','cameraTeach');
+      btn.title=t('homeWbCameraReplayTeachTitle','重看摄像头动作演示');
+      // 首次进摄像头页自动播一次；之后只靠「再看一遍」
+      try{
+        if(!localStorage.getItem('ot.camera.teach.v1')){
+          localStorage.setItem('ot.camera.teach.v1','1');
+          setTimeout(function(){
+            var teach=global.OneToneCameraTeach||global.OneToneCamera2Workbench;
+            if(teach&&(teach.open||teach.openTeach)) (teach.open||teach.openTeach)();
+          },450);
+        }
+      }catch(_){}
+    }else{
+      btn.setAttribute('data-i18n','homeWbQuickStart');
+      btn.textContent=t('homeWbQuickStart','快速入门');
+      btn.setAttribute('data-wb-foot','quickstart');
+      btn.removeAttribute('title');
+    }
+  }
 
   function syncNavActiveState(panel,opts){
     var nav=$('wbLeftNav');
@@ -2999,6 +3029,7 @@
     nav.querySelectorAll('[data-wb-nav]').forEach(function(btn){
       btn.classList.toggle('is-active',btn.getAttribute('data-wb-nav')===activeNav);
     });
+    syncSidebarFoot(activeNav);
   }
 
   function eventTs(evt){
@@ -3361,6 +3392,13 @@
     var testBtn=$('wbBtnTestSend');
     if(testBtn){
       testBtn.onclick=function(){
+        if(testBtn.getAttribute('data-wb-foot')==='cameraTeach'){
+          var teach=global.OneToneCameraTeach||global.OneToneCamera2Workbench;
+          if(teach&&(teach.open||teach.openTeach)){
+            (teach.open||teach.openTeach)();
+          }
+          return;
+        }
         if(global.OneToneQuickStart&&global.OneToneQuickStart.open){
           global.OneToneQuickStart.open({ entry:'intent' });
         }else if(global.OneToneHabitTriggerSetup&&global.OneToneHabitTriggerSetup.open){
@@ -3485,7 +3523,12 @@
     if(brandSub) brandSub.textContent=t('homeWbNavSubtitle');
     setText($('wbBtnEnd'),t('homeV9BtnEnd'));
     setText($('wbBtnCancel'),t('homeWbBtnCancel'));
-    setText($('wbBtnTestSend'),t('homeWbQuickStart'));
+    var footBtn=$('wbBtnTestSend');
+    if(footBtn&&footBtn.getAttribute('data-wb-foot')==='cameraTeach'){
+      setText(footBtn,t('homeWbCameraReplayTeach','再看一遍'));
+    }else{
+      setText(footBtn,t('homeWbQuickStart'));
+    }
     setText($('wbBtnListenToggleLabel'),
       (global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused)
         ?t('homeWbListenResume')
