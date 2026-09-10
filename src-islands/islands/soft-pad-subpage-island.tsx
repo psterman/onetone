@@ -53,6 +53,7 @@ function pullModel(): SoftPadSubpageModel {
 
 function runtimePanelMissingSkin(host: HTMLElement | null): boolean {
   if (!host) return false;
+  // Skin options live on the right controls again — stale if showMode exists without skins.
   return (
     !!host.querySelector('button[data-act="showMode"][data-show-mode]') &&
     !host.querySelector('[data-pad-skin-opt]')

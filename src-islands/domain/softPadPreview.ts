@@ -11,6 +11,7 @@ export interface SoftPadPreviewModel {
   view: string;
   epoch: number;
   sig: string;
+  padMode?: string;
   previewEmpty?: string;
   emptyReason?: string;
   emptyHtml?: string;
@@ -23,6 +24,7 @@ interface LegacySoftPadHub {
 
 interface LegacyPadUi {
   renderSoftPadPreview?: (host: HTMLElement, mapping: unknown, opts?: { forceFull?: boolean }) => void;
+  paintSoftPadPadModePreview?: (host: HTMLElement, mapping: unknown, padMode?: string) => void;
   resolveSoftPadPreviewPaintHost?: (preferred?: HTMLElement | null) => HTMLElement | null;
 }
 
@@ -94,6 +96,24 @@ export function paintSoftPadPreviewTarget(
   opts?: { forceFull?: boolean }
 ): void {
   const pad = legacyPad();
+  let padMode = '';
+  try {
+    padMode = String(buildSoftPadPreviewModel().padMode || '');
+  } catch (_) {
+    padMode = '';
+  }
+  if (
+    (padMode === 'appear' || padMode === 'purpose') &&
+    typeof pad.paintSoftPadPadModePreview === 'function' &&
+    mapping
+  ) {
+    try {
+      pad.paintSoftPadPadModePreview(paintEl, mapping, padMode);
+    } catch (err) {
+      console.error('[islands] paintSoftPadPadModePreview failed', err);
+    }
+    return;
+  }
   if (typeof pad.renderSoftPadPreview !== 'function') return;
   try {
     pad.renderSoftPadPreview(paintEl, mapping, opts);

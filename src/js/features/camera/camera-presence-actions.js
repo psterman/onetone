@@ -4020,7 +4020,9 @@
       var recalib=e.target&&e.target.closest?e.target.closest('#cameraBlinkRecalibrateBtn'):null;
       if(recalib){
         e.preventDefault();
-        if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.activateTab){
+        if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.openProPanel){
+          global.OneToneCameraWorkflow.openProPanel('cameraCalibBlock');
+        } else if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.activateTab){
           global.OneToneCameraWorkflow.activateTab('action');
         }
         var blinkHint=$('cameraBlinkBaselineHint');

@@ -242,7 +242,27 @@ assert(/function renderSoftPadRuntimePanel\([\s\S]*?renderSoftPadPurposePanel/.t
     padUi.slice(padUi.indexOf('function renderSoftPadRuntimePanel'), padUi.indexOf('function renderSoftPadPurposePanel'))
   ), 'runtime panel no longer hosts feature demos');
 assert(/function renderSoftPadPurposePanel\([\s\S]*?renderNumpadMapHtml\(pad\)/.test(padUi),
-  'purpose panel hosts feature demos');
+  'purpose panel hosts feature controls');
+assert(/function paintSoftPadPadModePreview\(/.test(padUi) &&
+  /function renderPurposeFeatureDemoHtml\(/.test(padUi) &&
+  /function buildSoftPadDisplayPreviewHtml\(/.test(padUi) &&
+  /function buildSoftPadAppearLivePadHtml\(/.test(padUi),
+  'appear/purpose demos paint into left preview');
+assert(/function buildSoftPadDisplayControlsHtml\([\s\S]*?renderShowModeTabsHtml/.test(padUi) &&
+  /function buildSoftPadDisplayControlsHtml\([\s\S]*?buildSoftPadPresentationSkinSectionHtml/.test(padUi) &&
+  !/function buildSoftPadDisplayControlsHtml\([\s\S]*?renderShowModeSceneHtml/.test(padUi),
+  'display controls host skins, omit scene');
+(function () {
+  var start = padUi.indexOf('function buildSoftPadDisplayPreviewHtml(');
+  var end = padUi.indexOf('function buildSoftPadCursorArmRowHtml(', start + 1);
+  var slice = start >= 0 && end > start ? padUi.slice(start, end) : '';
+  assert(/buildSoftPadAppearLivePadHtml/.test(slice) &&
+    !/buildSoftPadPresentationSkinSectionHtml/.test(slice),
+    'display preview has live Soft Pad, not skin cards');
+})();
+assert(/function renderNumpadMapHtml\([\s\S]*?soft-pad-feature-card__toggle/.test(padUi) &&
+  !/function renderNumpadMapHtml\([\s\S]*?soft-pad-demo-compare/.test(padUi),
+  'purpose controls omit inline demos');
 assert(/soft-pad-feature-subtab/.test(padUi) && /data-feature-tab/.test(padUi),
   'purpose feature demos use subtabs');
 assert(/function renderShowModeTabsHtml\(/.test(padUi) && /data-show-mode/.test(padUi),

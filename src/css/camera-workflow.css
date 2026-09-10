@@ -1,4 +1,4 @@
-/* Camera Hero Workflow (P1) — uses shared .flow-nodes from flow-desk.css */
+/* Camera face seg — peer tabs (not flow progress) */
 
 .camera-workflow-shell{
   display:flex;
@@ -6,32 +6,63 @@
   gap:16px;
 }
 
-#settingsPanelCamera .flow-nodes{
+#settingsPanelCamera .camera-face-seg{
   margin:0;
-  padding:8px 4px 4px;
+  max-width:560px;
 }
-
-#settingsPanelCamera .flow-nodes-grid--two{
-  grid-template-columns:repeat(2, minmax(0, 1fr));
-  max-width:520px;
-  margin-inline:auto;
+#settingsPanelCamera .camera-face-seg .ot-seg__btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+  min-height:52px;
+  padding:8px 12px;
+  white-space:normal;
+  text-align:left;
 }
-
-#settingsPanelCamera .flow-nodes:has(.flow-nodes-grid--two) .flow-nodes-track{
-  left:25%;
-  right:25%;
+#settingsPanelCamera .camera-face-seg__icon{
+  width:20px;
+  height:20px;
+  flex-shrink:0;
+  opacity:.72;
 }
-
-#settingsPanelCamera .flow-node.is-pro-optional{
-  opacity:.92;
-}
-
-#settingsPanelCamera .flow-node-btn.is-pro{
-  position:relative;
-}
-
-#settingsPanelCamera .flow-node-btn.is-pro.is-active{
+#settingsPanelCamera .camera-face-seg .ot-seg__btn.is-active .camera-face-seg__icon{
   opacity:1;
+}
+#settingsPanelCamera .camera-face-seg__lbl{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+}
+#settingsPanelCamera .camera-face-seg__title-row{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+}
+#settingsPanelCamera .camera-face-seg__title{
+  font-size:13px;
+  font-weight:750;
+  line-height:1.2;
+}
+#settingsPanelCamera .camera-face-seg__sub{
+  font-size:11px;
+  font-weight:600;
+  color:var(--on-surface-muted);
+  line-height:1.3;
+}
+#settingsPanelCamera .camera-face-seg .ot-seg__btn.is-active .camera-face-seg__sub{
+  color:inherit;
+  opacity:.78;
+}
+#settingsPanelCamera .camera-face-seg .ot-seg__btn[data-camera-node="pro"].is-active{
+  color:var(--primary-strong, #0f6f92);
+}
+#settingsPanelCamera .camera-face-seg .ot-seg__btn.is-locked,
+#settingsPanelCamera .camera-face-seg .ot-seg__btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
 }
 
 .camera-pro-badge{
@@ -49,13 +80,11 @@
   border:1px solid rgba(42,156,196,.28);
 }
 
-.camera-pro-badge--node{
-  position:absolute;
-  top:-6px;
-  right:-6px;
+.camera-pro-badge--seg{
   min-height:18px;
   padding:0 6px;
   font-size:10px;
+  flex-shrink:0;
 }
 
 .camera-hero-board{
@@ -82,18 +111,23 @@
 
 .camera-pro-preview-host{
   min-width:0;
+  display:grid;
+  gap:12px;
+  align-content:start;
 }
 
 .camera-pro-preview-host .camera-hero-preview{
-  height:100%;
-}
-
-.camera-pro-preview-host .camera-media-settings--below-preview{
-  display:none;
+  height:auto;
 }
 
 .camera-pro-preview-host .camera-preview-shell--compact{
   max-width:none;
+}
+
+.camera-pro-device-rail{
+  display:grid;
+  gap:12px;
+  min-width:0;
 }
 
 .camera-pro-look-grid{
@@ -1234,8 +1268,8 @@
   background:transparent;
 }
 
-#cameraFlowNodes .flow-node-btn.is-locked,
-#cameraFlowNodes .flow-node-btn:disabled{
+#cameraFlowNodes .ot-seg__btn.is-locked,
+#cameraFlowNodes .ot-seg__btn:disabled{
   opacity:.45;
   cursor:not-allowed;
   transform:none;

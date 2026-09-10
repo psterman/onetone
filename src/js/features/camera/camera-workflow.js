@@ -2,10 +2,10 @@
   'use strict';
 
   /**
-   * Camera settings hero workflow:
-   * - two flow-node tabs (pro / action) — Pro first (eye icon), camera settings last
-   * - Pro: vision rules (subtab) + privacy/beauty/gestures…
-   * - Action: preview · device · calib · guardrails
+   * Camera settings workflow:
+   * - single Pro panel; preview + device rail left, subtaps/cards right
+   * - subtaps: vision · calib · privacy/beauty/gestures…
+   * - legacy activateTab('action'|'trigger') → pro + calib/vision
    * - metrics via lightweight polling (sr-only ids stay unique)
    */
 
@@ -20,7 +20,7 @@
     return fallback!=null?fallback:key;
   };
 
-  var TABS=['pro','action'];
+  var TABS=['pro'];
   var POLL_MS=750;
   var currentTab='pro';
   var pollTimer=0;
@@ -28,24 +28,19 @@
   var wasCalibrating=false;
 
   var TAB_COPY={
-    action:{
-      kicker:['cameraWorkflowPreviewKickerAction','摄像头设置'],
-      title:['cameraWorkflowPreviewTitleAction','预览 · 设备 · 校准']
-    },
     pro:{
       kicker:['cameraWorkflowPreviewKickerPro','Pro 确认与安全'],
-      title:['cameraWorkflowPreviewTitlePro','视觉识别 · 确认 · 安全']
+      title:['cameraWorkflowPreviewTitlePro','视觉识别 · 设备 · 校准']
     }
   };
 
   var BOARD_MOD={
-    action:'camera-hero-board--execution',
     pro:'camera-hero-board--pro'
   };
 
   function resolveTab(name){
     name=String(name||'');
-    if(name==='trigger') return 'pro';
+    if(name==='trigger'||name==='action') return 'pro';
     if(TABS.indexOf(name)<0) return 'pro';
     return name;
   }
@@ -105,7 +100,7 @@
     }
   }
 
-  /** Open calib/execution or Pro docs. Calib targets → action; docs → pro. */
+  /** Open calib or Pro docs. Device targets scroll left rail; calib → calib subtab. */
   function openProPanel(target){
     var id=target==null?'cameraPanelPro'
       :(target===true?'cameraCalibBlock'
@@ -114,13 +109,18 @@
     if(id==='true') id='cameraCalibBlock';
     if(id==='false') id='cameraPanelPro';
     if(id==='cameraTriggerTools'||id==='cameraProAdvanced') id='cameraCalibBlock';
-    var calibTarget=id==='cameraCalibBlock'||id==='cameraPanelAction'||id==='cameraHeroPreview';
+    var calibTarget=id==='cameraCalibBlock'||id==='cameraPanelAction'||id==='cameraProSubCalib';
+    var deviceTarget=id==='cameraProSubDevice'||id==='cameraMediaSettings'||id==='cameraRuntimeStatus'||id==='cameraExecutionWorkbench'||id==='cameraProDeviceRail'||id==='cameraHeroPreview';
+    activateTab('pro');
     if(calibTarget){
-      activateTab('action');
-      scrollToEl($(id==='cameraPanelAction'?'cameraCalibBlock':id)||$('cameraCalibBlock')||$('cameraPanelAction'));
+      activateProSubtab('calib');
+      scrollToEl($(id==='cameraPanelAction'?'cameraCalibBlock':id)||$('cameraCalibBlock')||$('cameraProSubCalib'));
       return;
     }
-    activateTab('pro');
+    if(deviceTarget){
+      scrollToEl($(id)||$('cameraProDeviceRail')||$('cameraMediaSettings')||$('cameraHeroPreview'));
+      return;
+    }
     var sub='';
     if(id==='cameraPanelTrigger'||id==='cameraProSubVision'||id==='cameraRulesBasic'||id==='cameraPresenceConfig'||id==='cameraProSubSafety'||id==='cameraProSendGuardCard') sub='vision';
     else if(id==='cameraProFilterSection'||id==='cameraProSubBeauty') sub='beauty';
@@ -170,10 +170,10 @@
   function buildCameraFlowChromeModel(){
     var running=isCalibrating();
     var hints={
-      action:t('cameraFlowNodeActionHint','预览 · 设备 · 校准'),
+      action:t('cameraFlowNodeActionHint','设备 · 校准'),
       pro:t('cameraFlowNodeProHint','确认 · 安全 · 隐私')
     };
-    var sig=[currentTab,running?'1':'0',hints.action,hints.pro].join('\0');
+    var sig=[currentTab,currentProSubtab,running?'1':'0',hints.action,hints.pro].join('\0');
     return {
       activeTab:currentTab,
       locked:!!running,
@@ -186,25 +186,12 @@
 
   function applyCameraFlowChromeHost(model){
     if(!model) model=buildCameraFlowChromeModel();
+    var nodes=$('cameraFlowNodes');
+    if(nodes) nodes.setAttribute('aria-label',t('cameraFaceSegAria','摄像头分区'));
     if(global.__otCameraFlowChromeMounted&&typeof global.__otCameraFlowChromeSync==='function'){
       global.__otCameraFlowChromeSync();
       return;
     }
-    TABS.forEach(function(tab){
-      var btn=$('cameraFlowNode'+tab.charAt(0).toUpperCase()+tab.slice(1));
-      if(!btn) return;
-      var on=tab===model.activeTab;
-      btn.classList.toggle('is-active',on);
-      btn.setAttribute('aria-selected',on?'true':'false');
-      btn.disabled=!!model.locked;
-      btn.setAttribute('aria-disabled',model.locked?'true':'false');
-      btn.classList.toggle('is-locked',!!model.locked);
-      var hint=$('cameraFlowNode'+tab.charAt(0).toUpperCase()+tab.slice(1)+'Hint');
-      if(hint){
-        var key=tab+'Hint';
-        hint.textContent=model[key]||'';
-      }
-    });
     var lockHint=$('cameraCalibLockHint');
     if(lockHint) lockHint.hidden=!model.locked;
   }
@@ -212,32 +199,32 @@
   function showTabUi(name){
     name=resolveTab(name);
     currentTab=name;
-    TABS.forEach(function(tab){
-      var panel=$('cameraPanel'+tab.charAt(0).toUpperCase()+tab.slice(1));
-      var on=tab===name;
-      if(panel){
-        panel.classList.toggle('is-active',on);
-        panel.hidden=!on;
-      }
-    });
+    var panel=$('cameraPanelPro');
+    if(panel){
+      panel.classList.add('is-active');
+      panel.hidden=false;
+    }
     applyCameraFlowChromeHost(buildCameraFlowChromeModel());
     syncBoardMod(name);
-    var copy=TAB_COPY[name]||TAB_COPY.pro;
+    var copy=TAB_COPY.pro;
     setText('cameraWorkflowPreviewKicker',t(copy.kicker[0],copy.kicker[1]));
     setText('cameraWorkflowPreviewTitle',t(copy.title[0],copy.title[1]));
   }
 
   function activateTab(name){
-    var wantVision=String(name||'')==='trigger';
+    var raw=String(name||'');
+    var wantVision=raw==='trigger';
+    var wantCalib=raw==='action';
     name=resolveTab(name);
     if(isCalibrating()){
       toast(t('cameraCalibLockToast','校准进行中，请先完成或取消校准'));
-      if(currentTab&&TABS.indexOf(currentTab)>=0) name=currentTab;
-      else name='action';
+      name='pro';
       wantVision=false;
+      wantCalib=true;
     }
     showTabUi(name);
     if(wantVision) activateProSubtab('vision');
+    else if(wantCalib) activateProSubtab('calib');
     parkPreviewForTab(name);
     try{
       if(global.OneToneCameraPresenceActions&&global.OneToneCameraPresenceActions.syncUiFromPrefs){
@@ -272,9 +259,9 @@
 
     if(running&&!wasCalibrating){
       wasCalibrating=true;
-      // Calib UI lives on execution — stay there without re-entering activateTab lock path.
-      showTabUi('action');
-      scrollToEl($('cameraCalibBlock')||$('cameraPanelAction'));
+      showTabUi('pro');
+      activateProSubtab('calib');
+      scrollToEl($('cameraCalibBlock')||$('cameraProSubCalib'));
       return;
     }
     wasCalibrating=!!running;
@@ -309,22 +296,16 @@
     return global.OneToneCameraVideoEnhancer||null;
   }
 
-  /** Park the shared preview aside into Action or Pro host (single video element). */
-  function parkPreviewForTab(tab){
+  /** Park the shared preview aside into Pro host (single video element). */
+  function parkPreviewForTab(){
     var preview=$('cameraHeroPreview');
     if(!preview) return;
-    var actionHost=$('cameraExecutionWorkbench');
     var proHost=$('cameraProPreviewHost');
-    if(tab==='pro'&&proHost){
-      if(preview.parentNode!==proHost) proHost.appendChild(preview);
-      return;
-    }
-    // Default home: Action workbench (first column).
-    if(actionHost&&preview.parentNode!==actionHost){
-      var side=$('cameraExecutionSide');
-      if(side&&side.parentNode===actionHost) actionHost.insertBefore(preview,side);
-      else actionHost.insertBefore(preview,actionHost.firstChild);
-    }
+    if(!proHost) return;
+    if(preview.parentNode===proHost&&preview.previousElementSibling==null) return;
+    var rail=$('cameraProDeviceRail');
+    if(rail&&rail.parentNode===proHost) proHost.insertBefore(preview,rail);
+    else if(preview.parentNode!==proHost) proHost.insertBefore(preview,proHost.firstChild);
   }
 
   function isPreviewLive(){
@@ -335,9 +316,8 @@
   function syncProLiveHint(){
     var hint=$('cameraProLiveHint');
     if(!hint) return;
-    var onPro=currentTab==='pro';
     var live=isPreviewLive();
-    hint.hidden=!onPro||live;
+    hint.hidden=live;
   }
 
   var moodTimer=0;
@@ -831,7 +811,7 @@
   }
 
   var currentProSubtab='vision';
-  var PRO_SUBTABS=['vision','privacy','beauty','gesture','track','wellness','snap','layout','automute'];
+  var PRO_SUBTABS=['vision','calib','privacy','beauty','gesture','track','wellness','snap','layout','automute'];
 
   function notifyProFeatureSubtab(name, visible){
     try{
@@ -867,6 +847,10 @@
   function activateProSubtab(name){
     name=String(name||'vision');
     if(PRO_SUBTABS.indexOf(name)<0) name='vision';
+    if(isCalibrating()&&name!=='calib'){
+      toast(t('cameraCalibLockToast','校准进行中，请先完成或取消校准'));
+      name='calib';
+    }
     var prev=currentProSubtab;
     if(prev!==name){
       if(prev==='track'||prev==='snap'||prev==='automute'){
@@ -935,11 +919,10 @@
     var nodes=$('cameraFlowNodes');
     if(nodes){
       nodes.addEventListener('click',function(e){
-        var btn=e.target&&e.target.closest?e.target.closest('.flow-node-btn'):null;
+        var btn=e.target&&e.target.closest?e.target.closest('[data-camera-node]'):null;
         if(!btn||btn.disabled) return;
         e.preventDefault();
-        var node=btn.closest('[data-camera-node]');
-        var name=node?String(node.getAttribute('data-camera-node')||''):'';
+        var name=String(btn.getAttribute('data-camera-node')||'');
         if(!name) return;
         if(isCalibrating()){
           toast(t('cameraCalibLockToast','校准进行中，请先完成或取消校准'));

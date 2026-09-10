@@ -1272,7 +1272,30 @@ var agentPanelFn = softPadPanelRenderSlice(padUiAgentSrc, 'renderSoftPadAgentPan
   assert.ok(agentPanelFn.indexOf(banned) < 0, 'agent panel bans ' + banned);
 });
 assert.ok(runtimePanelFn.indexOf('renderNumpadMapHtml') < 0, 'runtime panel no feature demos');
-assert.ok(purposePanelFn.indexOf('renderNumpadMapHtml') >= 0, 'purpose panel hosts feature demos');
+assert.ok(purposePanelFn.indexOf('renderNumpadMapHtml') >= 0, 'purpose panel hosts feature controls');
+assert.ok(padUiAgentSrc.indexOf('function paintSoftPadPadModePreview') >= 0, 'pad mode preview painter');
+assert.ok(padUiAgentSrc.indexOf('function buildSoftPadDisplayPreviewHtml') >= 0, 'display preview html builder');
+assert.ok(padUiAgentSrc.indexOf('function renderPurposeFeatureDemoHtml') >= 0, 'purpose demo html builder');
+assert.ok(/function buildSoftPadDisplayControlsHtml\([\s\S]*?renderShowModeTabsHtml/.test(padUiAgentSrc) &&
+  /function buildSoftPadDisplayControlsHtml\([\s\S]*?buildSoftPadPresentationSkinSectionHtml/.test(padUiAgentSrc) &&
+  !/function buildSoftPadDisplayControlsHtml\([\s\S]*?renderShowModeSceneHtml/.test(padUiAgentSrc),
+  'display controls host skins, omit scene');
+(function () {
+  var start = padUiAgentSrc.indexOf('function buildSoftPadDisplayPreviewHtml(');
+  var end = padUiAgentSrc.indexOf('function buildSoftPadCursorArmRowHtml(', start + 1);
+  var slice = start >= 0 && end > start ? padUiAgentSrc.slice(start, end) : '';
+  assert.ok(/buildSoftPadAppearLivePadHtml/.test(slice) &&
+    !/buildSoftPadPresentationSkinSectionHtml/.test(slice),
+    'display preview live Soft Pad, not skin cards');
+})();
+assert.ok(padUiAgentSrc.indexOf('function buildSoftPadAppearLivePadHtml') >= 0, 'live Soft Pad builder');
+assert.ok(/function renderNumpadMapHtml\([\s\S]*?soft-pad-feature-card__toggle/.test(padUiAgentSrc) &&
+  !/function renderNumpadMapHtml\([\s\S]*?soft-pad-demo-compare/.test(padUiAgentSrc),
+  'purpose controls omit demos');
+assert.ok(softPadHubSrc.indexOf('paintSoftPadPadModePreview') >= 0, 'hub paints mode preview');
+assert.ok(softPadHubSrc.indexOf("softPadPadMode === 'appear' || softPadPadMode === 'purpose'") >= 0 ||
+  softPadHubSrc.indexOf("softPadPadMode === 'purpose'") >= 0,
+  'hub routes appear/purpose left preview');
 assert.ok(softPadHubSrc.indexOf('renderSoftPadPurposePanel') >= 0, 'hub routes purpose to Pad panel');
 assert.ok(softPadHubSrc.indexOf("softPadPadMode !== 'purpose'") >= 0 ||
   softPadHubSrc.indexOf("softPadPadMode === 'purpose'") >= 0,

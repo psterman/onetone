@@ -150,41 +150,59 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-status-bar .keys-scheme-
   background: var(--outline-variant);
 }
 
-/* Soft Pad flow nodes — shared .flow-nodes chrome; node accents like Keys/Voice */
-#settingsPanelSoftPad .soft-pad-flow-nodes {
+/* Soft Pad face seg — peer tabs (not flow progress) */
+#settingsPanelSoftPad .soft-pad-face-seg {
   margin: 0 0 10px;
-  padding: 4px 0 8px;
+  max-width: 560px;
 }
-#settingsPanelSoftPad .flow-node[data-soft-pad-node="pad"] .flow-node-tag {
-  --flow-node-tag-border: rgba(94, 200, 232, 0.28);
-  --flow-node-tag-bg: rgba(94, 200, 232, 0.1);
-  --flow-node-tag-color: var(--primary-strong, #3eb8dc);
+#settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 12px;
+  white-space: normal;
+  text-align: left;
 }
-#settingsPanelSoftPad .flow-node[data-soft-pad-node="timeline"],
-#settingsPanelSoftPad .flow-node[data-soft-pad-node="timeline"][hidden] {
-  display: none !important;
+#settingsPanelSoftPad .soft-pad-face-seg__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  opacity: 0.72;
 }
-#settingsPanelSoftPad .flow-node[data-soft-pad-node="timeline"] .flow-node-tag {
-  --flow-node-tag-border: rgba(245, 158, 11, 0.28);
-  --flow-node-tag-bg: rgba(245, 158, 11, 0.1);
-  --flow-node-tag-color: #d97706;
+#settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn.is-active .soft-pad-face-seg__icon {
+  opacity: 1;
 }
-html[data-theme="dark"] #settingsPanelSoftPad .flow-node[data-soft-pad-node="timeline"] .flow-node-tag {
-  --flow-node-tag-color: #fbbf24;
+#settingsPanelSoftPad .soft-pad-face-seg__lbl {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
-#settingsPanelSoftPad .flow-node[data-soft-pad-node="pad"] .flow-node-btn.is-active {
-  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+#settingsPanelSoftPad .soft-pad-face-seg__title {
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.2;
 }
-#settingsPanelSoftPad .flow-node[data-soft-pad-node="timeline"] .flow-node-btn.is-active {
-  border-color: rgba(245, 158, 11, 0.55);
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
-  color: #f59e0b;
+#settingsPanelSoftPad .soft-pad-face-seg__sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  line-height: 1.3;
 }
-html[data-theme="dark"] #settingsPanelSoftPad .flow-node-btn {
-  background: rgba(22, 30, 44, 0.92);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: var(--on-surface);
+#settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn.is-active .soft-pad-face-seg__sub {
+  color: inherit;
+  opacity: 0.78;
+}
+#settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn[data-soft-pad-node="pad"].is-active {
+  color: var(--primary-strong, #0f6f92);
+}
+#settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn[data-soft-pad-node="agent"].is-active {
+  color: #1a7a4c;
+}
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn[data-soft-pad-node="agent"].is-active {
+  color: #34d399;
 }
 .soft-pad-tm-desk {
   min-width: 0;
@@ -4212,6 +4230,507 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   padding-top: 4px;
   border-top: 1px solid rgba(42, 156, 196, 0.12);
 }
+
+/* —— Left column: appear scene + skins / purpose demos —— */
+.soft-pad-mode-preview {
+  --sp-preview-ink: #152536;
+  --sp-preview-muted: #5c6b7a;
+  --sp-preview-cyan: #1f8fb8;
+  --sp-preview-cyan-soft: rgba(31, 143, 184, 0.12);
+  --sp-preview-line: rgba(21, 37, 54, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: min(100%, 420px);
+  margin: 0 auto;
+  box-sizing: border-box;
+  color: var(--sp-preview-ink);
+}
+#softPadPreviewHost[data-pad-mode-preview],
+.soft-pad-face-pad__preview[data-pad-mode-preview] {
+  background:
+    radial-gradient(520px 220px at 12% -10%, rgba(31, 143, 184, 0.12), transparent 58%),
+    radial-gradient(420px 180px at 92% 8%, rgba(42, 156, 196, 0.08), transparent 55%),
+    rgba(241, 246, 250, 0.92);
+  border-color: rgba(31, 143, 184, 0.16);
+  padding: 12px 10px 14px;
+}
+/* Purpose: no stage frame — keyboards use the full left column */
+#softPadPreviewHost[data-pad-mode-preview="purpose"],
+.soft-pad-face-pad__preview[data-pad-mode-preview="purpose"] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  padding: 2px 0 6px;
+  min-height: 0;
+}
+#softPadPreviewHost[data-pad-mode-preview] .soft-pad-preview-paint,
+.soft-pad-face-pad__preview[data-pad-mode-preview] .soft-pad-preview-paint {
+  width: 100%;
+  max-width: none;
+  display: flex;
+  justify-content: center;
+}
+
+/* Appear: scene */
+.soft-pad-mode-preview--appear .soft-pad-show-scene {
+  width: 100%;
+  margin-top: 0;
+  padding: 8px 8px 6px;
+  border-radius: 14px;
+  border: 1px solid var(--sp-preview-line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(236, 244, 249, 0.95));
+  box-shadow: 0 8px 20px rgba(21, 37, 54, 0.06);
+}
+.soft-pad-mode-preview--appear .soft-pad-show-scene__desk {
+  height: 168px;
+  border-radius: 10px;
+  border-color: rgba(21, 37, 54, 0.12);
+}
+.soft-pad-mode-preview--appear .soft-pad-show-scene__wallpaper {
+  background:
+    radial-gradient(ellipse at 18% 28%, rgba(125, 211, 252, 0.5), transparent 52%),
+    radial-gradient(ellipse at 82% 18%, rgba(56, 189, 248, 0.28), transparent 48%),
+    linear-gradient(158deg, #4aa3c8 0%, #2f7fa8 44%, #1d5f86 100%);
+}
+.soft-pad-mode-preview--appear .soft-pad-show-scene__win-title {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: #0f2740;
+}
+.soft-pad-mode-preview--appear .soft-pad-show-scene__pad-tag {
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #0f2740;
+  background: rgba(255, 255, 255, 0.96);
+}
+.soft-pad-mode-preview--appear .soft-pad-show-scene__pad-tag--mini {
+  font-size: 9px;
+  background: #f5c84b;
+  color: #5b3d08;
+}
+.soft-pad-mode-preview--appear .soft-pad-show-scene__caption {
+  margin: 8px 2px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--sp-preview-muted);
+  text-align: center;
+}
+.soft-pad-mode-preview--appear .soft-pad-show-scene__saved {
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #5b3d08;
+  background: #f5c84b;
+  border: 1px solid rgba(120, 53, 15, 0.2);
+  box-shadow: 0 4px 12px rgba(21, 37, 54, 0.16);
+}
+.soft-pad-mode-preview--appear .soft-pad-show-scene__pad--full {
+  width: 108px;
+  bottom: 24px;
+}
+.soft-pad-mode-preview--appear .soft-pad-show-scene__pad--full .soft-pad-demo-hw.micro-hw {
+  padding: 7px;
+  border-radius: 11px;
+  box-shadow:
+    0 12px 24px rgba(15, 23, 42, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+.soft-pad-mode-preview--appear .soft-pad-show-scene__pad--full .soft-pad-demo-hw__grid {
+  grid-template-rows: repeat(5, 13px) !important;
+  gap: 2.5px !important;
+}
+
+/* Appear: skins moved to right controls; left shows live Soft Pad */
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__live {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 10px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--sp-preview-line);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 6px 16px rgba(21, 37, 54, 0.05);
+}
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__live-lbl {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  color: var(--sp-preview-cyan);
+}
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw {
+  width: 100%;
+  max-width: min(100%, 360px);
+  margin: 0 auto;
+  pointer-events: none;
+  user-select: none;
+}
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw {
+  width: 100%;
+  max-width: none;
+}
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .codex-micro-pad__head,
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .soft-pad-preview__hint,
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .soft-pad-key-caption {
+  display: none;
+}
+
+/* Purpose demos — no white card; keyboards use the full left stage */
+.soft-pad-mode-preview--purpose {
+  max-width: none;
+  width: 100%;
+  align-items: stretch;
+  justify-content: center;
+  min-height: 0;
+  padding: 4px 2px 8px;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare,
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch,
+.soft-pad-mode-preview--purpose [data-nav-demo-host] {
+  width: 100%;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare {
+  gap: 8px;
+  align-items: stretch;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare__col {
+  flex: 1 1 0;
+  min-width: 0;
+  gap: 8px;
+  justify-content: flex-start;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare__tag,
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__mode {
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+  padding: 5px 10px;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare__bridge {
+  flex: 0 0 40px;
+  align-self: center;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare__bridge-txt {
+  font-size: 11px;
+  font-weight: 750;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare__bridge-line {
+  height: 3px;
+  animation: soft-pad-numpad-flow 1.4s linear infinite;
+}
+/* Same seat footprint: fill column width (up to stage) */
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare .soft-pad-demo-chassis,
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare .soft-pad-purpose-live-hw {
+  width: 100%;
+  max-width: min(100%, 320px);
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-chassis {
+  padding: 12px;
+  border-radius: 16px;
+  box-shadow:
+    0 14px 28px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-chassis:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 18px 32px rgba(15, 23, 42, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-face {
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: auto;
+  gap: 5px;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-key {
+  border-radius: 7px;
+  transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-key b {
+  font-size: 14px;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-key.is-enc {
+  cursor: pointer;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-key.is-enc:hover {
+  transform: translateY(-1px) scale(1.03);
+  filter: brightness(1.06);
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-key.is-enc:active {
+  transform: translateY(1px) scale(0.97);
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-key__glyph {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-arrows-t {
+  min-height: 180px;
+  width: 100%;
+  max-width: min(100%, 320px);
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-arrows-t__grid {
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(2, 44px);
+  gap: 8px;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw {
+  width: 100%;
+  max-width: min(100%, 320px);
+  margin: 0 auto;
+  pointer-events: auto;
+  user-select: none;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw:hover {
+  transform: translateY(-2px);
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw-wrap,
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw-shell {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  flex: none !important;
+  overflow: hidden !important;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
+  flex: none !important;
+  margin: 0 !important;
+  padding: 10px !important;
+  border-radius: 16px !important;
+  box-sizing: border-box;
+  overflow: hidden !important;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .codex-micro-pad__head,
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .soft-pad-preview__hint,
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .soft-pad-key-caption,
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__face-top,
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .soft-pad-agent-bar--face {
+  display: none !important;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__face {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 8px !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+/* Keep Soft Pad grid as a contained square (same as keys preview) — never fixed px rows. */
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__grid {
+  display: grid !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  grid-template-rows: repeat(5, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw.is-seat-match .micro-hw__grid,
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__grid--no-nav {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__key {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: hidden !important;
+  cursor: default;
+  transition:
+    transform 0.14s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.14s ease,
+    filter 0.14s ease;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__key:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__key.is-demo-press,
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__key:active {
+  transform: translateY(1px) scale(0.96);
+  filter: brightness(0.96);
+  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.18);
+}
+/* Icon-first in demos: hide labels so keys fit the square grid cleanly */
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__meta {
+  display: none !important;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__icon,
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__icon svg {
+  width: 18px !important;
+  height: 18px !important;
+  max-width: 22px;
+  max-height: 22px;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__digit {
+  font-size: 14px !important;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__modes {
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__mode {
+  cursor: pointer;
+  border-radius: 10px;
+  border: 1px solid rgba(21, 37, 54, 0.1);
+  background: rgba(241, 245, 249, 0.92);
+  transition:
+    color 0.22s ease,
+    background 0.22s ease,
+    border-color 0.22s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__mode:hover {
+  transform: translateY(-1px);
+  border-color: rgba(31, 143, 184, 0.35);
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch[data-demo-mode="numpad"] .soft-pad-demo-switch__mode[data-mode="numpad"],
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch[data-demo-mode="soft"] .soft-pad-demo-switch__mode[data-mode="soft"] {
+  color: #0f6f92;
+  background: rgba(31, 143, 184, 0.14);
+  border-color: rgba(31, 143, 184, 0.42);
+  box-shadow: 0 0 0 2px rgba(31, 143, 184, 0.12);
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__stage {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 4px;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__stack {
+  position: relative;
+  width: min(100%, 320px);
+  min-height: 280px;
+  margin: 0 auto;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__layer {
+  transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__layer.soft-pad-demo-face--soft {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__layer.soft-pad-demo-face--numpad {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__layer .soft-pad-demo-chassis--numpad,
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__layer .soft-pad-purpose-live-hw {
+  width: 100%;
+  max-width: min(100%, 320px);
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch[data-demo-mode="numpad"] .soft-pad-demo-face--numpad {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 2;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch[data-demo-mode="numpad"] .soft-pad-demo-face--soft {
+  opacity: 0;
+  transform: scale(0.94) translateY(8px);
+  pointer-events: none;
+  z-index: 1;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch[data-demo-mode="soft"] .soft-pad-demo-face--soft {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 2;
+  pointer-events: auto;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch[data-demo-mode="soft"] .soft-pad-demo-face--numpad {
+  opacity: 0;
+  transform: scale(0.94) translateY(8px);
+  pointer-events: none;
+  z-index: 1;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-switch__hint {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--sp-preview-muted);
+  text-align: center;
+}
+.soft-pad-mode-preview--purpose .soft-pad-nav-demo[data-nav-on="1"] .soft-pad-purpose-live-hw {
+  animation: soft-pad-purpose-live-glow 2.2s ease-in-out infinite;
+}
+@keyframes soft-pad-purpose-live-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(31, 143, 184, 0)); }
+  50% { filter: drop-shadow(0 8px 18px rgba(31, 143, 184, 0.28)); }
+}
+
+/* Dark theme for left mode preview */
+html[data-theme="dark"] .soft-pad-mode-preview {
+  --sp-preview-ink: #e2e8f0;
+  --sp-preview-muted: #94a3b8;
+  --sp-preview-cyan: #7dd3fc;
+  --sp-preview-cyan-soft: rgba(56, 189, 248, 0.14);
+  --sp-preview-line: rgba(125, 211, 252, 0.16);
+}
+html[data-theme="dark"] #softPadPreviewHost[data-pad-mode-preview],
+html[data-theme="dark"] .soft-pad-face-pad__preview[data-pad-mode-preview] {
+  background:
+    radial-gradient(520px 220px at 12% -10%, rgba(56, 189, 248, 0.12), transparent 58%),
+    rgba(15, 23, 42, 0.72);
+  border-color: rgba(125, 211, 252, 0.18);
+}
+html[data-theme="dark"] #softPadPreviewHost[data-pad-mode-preview="purpose"],
+html[data-theme="dark"] .soft-pad-face-pad__preview[data-pad-mode-preview="purpose"] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+html[data-theme="dark"] .soft-pad-mode-preview--appear .soft-pad-show-scene,
+html[data-theme="dark"] .soft-pad-mode-preview--appear .soft-pad-mode-preview__live {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(125, 211, 252, 0.16);
+  box-shadow: none;
+}
+html[data-theme="dark"] .soft-pad-mode-preview--purpose {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+html[data-theme="dark"] .soft-pad-mode-preview--appear .soft-pad-show-scene__win-title {
+  color: #e2e8f0;
+}
 html[data-theme="dark"] .soft-pad-action-library {
   border-color: rgba(125, 211, 252, 0.16);
   background: rgba(15, 23, 42, 0.72);
@@ -5823,20 +6342,26 @@ html[data-theme="dark"] .soft-pad-feature-subtab.is-active { /* → ot-seg.css *
   text-align: center;
   font-size: 10px;
   font-weight: 700;
+  font-family: inherit;
   padding: 5px 6px;
   border-radius: 6px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   color: var(--on-surface-muted);
   background: rgba(241, 245, 249, 0.8);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
   transition: color 0.25s ease, background 0.25s ease, border-color 0.25s ease;
 }
 .soft-pad-demo-switch__stack {
   position: relative;
   min-height: 110px;
 }
+.soft-pad-demo-switch__layer,
 .soft-pad-demo-switch__stack .soft-pad-demo-face {
   transition: opacity 0.35s ease, transform 0.35s ease;
 }
+.soft-pad-demo-switch__layer.soft-pad-demo-face--soft,
 .soft-pad-demo-switch__stack .soft-pad-demo-face--soft {
   position: absolute;
   inset: 0;
@@ -6225,13 +6750,15 @@ html[data-theme="dark"] .soft-pad-feature-hint {
   .soft-pad-numpad-arrow-story__flow,
   .soft-pad-demo-compare__bridge-line,
   .soft-pad-demo-switch .soft-pad-demo-face,
+  .soft-pad-demo-switch .soft-pad-demo-switch__layer,
   .soft-pad-demo-switch .soft-pad-demo-key.is-enc,
   .soft-pad-numpad-arrow-story__from,
   .soft-pad-numpad-arrow-story__to,
   .soft-pad-arrow-soft__rail i,
   .soft-pad-arrow-t i,
   .soft-pad-nav-demo .is-nav-demo,
-  .soft-pad-nav-demo .soft-pad-demo-arrows-t__grid .soft-pad-demo-key {
+  .soft-pad-nav-demo .soft-pad-demo-arrows-t__grid .soft-pad-demo-key,
+  .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw {
     animation: none !important;
   }
 }

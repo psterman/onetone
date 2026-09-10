@@ -6561,7 +6561,7 @@
     if (!host) return;
     var root = host.querySelector('.codex-micro-pad.soft-pad-preview');
     if (root) root.setAttribute('data-pad-skin', skin);
-    host.querySelectorAll('.micro-hw').forEach(function (el) {
+    host.querySelectorAll('.micro-hw, .soft-pad-show-scene__pad--mini, .soft-pad-demo-hw').forEach(function (el) {
       el.setAttribute('data-pad-skin', skin);
     });
   }
@@ -6871,6 +6871,10 @@
     if (!host || host.getAttribute('data-soft-pad-preview-delegate') === '1') return;
     host.setAttribute('data-soft-pad-preview-delegate', '1');
     host.addEventListener('click', function (ev) {
+      var outerPrev = document.getElementById('softPadPreviewHost');
+      var modePrev = outerPrev && outerPrev.getAttribute('data-pad-mode-preview');
+      // appear/purpose left column is visual (scene / live skin / demos) — don't run keys edit path.
+      if (modePrev === 'appear' || modePrev === 'purpose') return;
       var m = softPadPreviewMapping;
       if (!m || !m.codexMicroPad) return;
       var modeSw = ev.target.closest && ev.target.closest('[data-act="pad-mode"]');
@@ -7179,6 +7183,8 @@
     softPadPreviewMapping = m;
     ensureSoftPadPreviewDelegate(host);
     if (!handoff) host.hidden = false;
+    var outerClear = document.getElementById('softPadPreviewHost');
+    if (outerClear) outerClear.removeAttribute('data-pad-mode-preview');
     if (!opts.forceFull && remountSoftPadPreviewShell(host, m)) {
       applySoftPadPendingNav(m);
       return;
@@ -9190,28 +9196,36 @@
     return t('softPadShowSceneFollowCap', '目标应用在前台才出现');
   }
 
-  function syncSoftPadShowModeChrome(body, mode, pad) {
-    if (!body) return;
+  function syncSoftPadShowModeChrome(root, mode, pad) {
     mode = String(mode || 'follow');
-    var hint = body.querySelector('[data-show-mode-hint]');
-    if (hint) hint.textContent = softPadShowModeHint(mode);
-    body.querySelectorAll('button[data-act="showMode"][data-show-mode]').forEach(function (btn) {
-      var on = btn.getAttribute('data-show-mode') === mode;
-      btn.classList.toggle('is-active', on);
-      btn.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
-    var scene = body.querySelector('[data-show-scene]');
-    if (scene) {
-      scene.setAttribute('data-show-scene', mode);
-      var cap = scene.querySelector('[data-show-scene-caption]');
-      if (cap) cap.textContent = softPadShowModeCaption(mode);
-      if (pad) {
-        var skin = canonicalizePadSkin(pad.skin);
-        scene.querySelectorAll('.soft-pad-show-scene__pad [data-pad-skin], .soft-pad-show-scene__pad--mini').forEach(function (el) {
-          el.setAttribute('data-pad-skin', skin);
-        });
+    var roots = [];
+    if (root) roots.push(root);
+    var preview = document.getElementById('softPadPreviewHost');
+    if (preview && roots.indexOf(preview) < 0) roots.push(preview);
+    var body = document.getElementById('softPadSubpageBody');
+    if (body && roots.indexOf(body) < 0) roots.push(body);
+    roots.forEach(function (scope) {
+      if (!scope) return;
+      var hint = scope.querySelector('[data-show-mode-hint]');
+      if (hint) hint.textContent = softPadShowModeHint(mode);
+      scope.querySelectorAll('button[data-act="showMode"][data-show-mode]').forEach(function (btn) {
+        var on = btn.getAttribute('data-show-mode') === mode;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      var scene = scope.querySelector('[data-show-scene]');
+      if (scene) {
+        scene.setAttribute('data-show-scene', mode);
+        var cap = scene.querySelector('[data-show-scene-caption]');
+        if (cap) cap.textContent = softPadShowModeCaption(mode);
+        if (pad) {
+          var skin = canonicalizePadSkin(pad.skin);
+          scene.querySelectorAll('.soft-pad-show-scene__pad [data-pad-skin], .soft-pad-show-scene__pad--mini').forEach(function (el) {
+            el.setAttribute('data-pad-skin', skin);
+          });
+        }
       }
-    }
+    });
   }
 
   function renderShowModeTabsHtml(mode) {
@@ -9390,12 +9404,11 @@
     );
   }
 
-  /** Card 3: inverted-T → Soft Pad (same compare chassis as card 1; Soft Pad uses user skin). */
-  function renderNavArrowDemoHtml(pad) {
+  /** Card 3: inverted-T → Soft Pad (Soft Pad uses real hardware + user skin). */
+  function renderNavArrowDemoHtml(pad, m) {
     pad = pad || {};
+    m = m || softPadPreviewMapping;
     var navOn = navKeysOn(pad);
-    var softCells = visibleSoftPadCells(pad);
-    var softCols = navOn ? 5 : 4;
     return (
       '<div class="soft-pad-demo-compare soft-pad-nav-demo" data-nav-on="' +
       (navOn ? '1' : '0') + '" data-nav-demo>' +
@@ -9414,7 +9427,7 @@
       '<div class="soft-pad-demo-compare__col">' +
       '<span class="soft-pad-demo-compare__tag is-soft">' +
       esc(t('softPadNumpadBadgeSoft', '临时 Soft Pad')) + '</span>' +
-      renderSoftPadDemoHw(pad, softCells, softCols, { chassis: true }) +
+      renderPurposeLiveSoftPadHtml(m, pad) +
       '</div>' +
       '</div>'
     );
@@ -9422,21 +9435,120 @@
 
   var softPadPurposeFeatureTab = 'mapping';
 
+  function resolveSoftPadPurposeFeatureTab(tab) {
+    return tab === 'occupy' || tab === 'nav' ? tab : 'mapping';
+  }
+
+  /** Real Soft Pad for purpose demos — same chrome/skin as keys preview. */
+  function renderPurposeLiveSoftPadHtml(m, pad, opts) {
+    opts = opts || {};
+    m = m || softPadPreviewMapping;
+    pad = pad || (m && m.codexMicroPad) || {};
+    // Seat-match demos (mapping/occupy): 4-col Soft Pad aligned to numpad seats.
+    var demoPad = pad;
+    if (opts.seatMatch && pad) {
+      demoPad = Object.assign({}, pad, {
+        showNavigationPad: false,
+        navKeysEnabled: false
+      });
+    }
+    if (!m || !demoPad) {
+      var softCells = visibleSoftPadCells(demoPad || pad);
+      var softCols = navKeysOn(demoPad || pad) ? 5 : 4;
+      return renderSoftPadDemoHw(demoPad || pad, softCells, softCols, { chassis: true });
+    }
+    var skin = canonicalizePadSkin(demoPad.skin);
+    return (
+      '<div class="codex-micro-pad soft-pad-preview soft-pad-purpose-live-hw' +
+      (opts.seatMatch ? ' is-seat-match' : '') +
+      '" data-pad-skin="' + esc(skin) + '" data-purpose-live-pad="1">' +
+      renderHardwarePad(m, demoPad, { mode: 'softPad', omitFaceTopbar: true }) +
+      '</div>'
+    );
+  }
+
+  /** Left-column purpose demos (one active feature at a time). */
+  function renderPurposeFeatureDemoHtml(pad, tab, m) {
+    pad = pad || {};
+    m = m || softPadPreviewMapping;
+    tab = resolveSoftPadPurposeFeatureTab(tab || softPadPurposeFeatureTab);
+    var occupied = !!pad.requireNumLockOff;
+    var on = occupied ? '1' : '0';
+    var demoMode = occupied ? 'soft' : 'numpad';
+    var numCells = LAYOUT.numpadCells || [];
+    if (tab === 'occupy') {
+      return (
+        '<div class="soft-pad-demo-switch" data-demo-mode="' + demoMode + '" data-numpad-on="' + on + '">' +
+        '<div class="soft-pad-demo-switch__modes" role="tablist" aria-label="' +
+        esc(t('softPadPurposeModeSwitchAria', '模式预览')) + '">' +
+        '<button type="button" class="soft-pad-demo-switch__mode" role="tab" data-mode="numpad"' +
+        ' aria-selected="' + (demoMode === 'numpad' ? 'true' : 'false') + '">' +
+        esc(t('codexMicroPadModeNumpad', '数字键模式')) + '</button>' +
+        '<button type="button" class="soft-pad-demo-switch__mode" role="tab" data-mode="soft"' +
+        ' aria-selected="' + (demoMode === 'soft' ? 'true' : 'false') + '">' +
+        esc(t('codexMicroPadModeCodex', 'Soft Pad 模式')) + '</button>' +
+        '</div>' +
+        '<div class="soft-pad-demo-switch__stage">' +
+        '<div class="soft-pad-demo-switch__stack">' +
+        '<div class="soft-pad-demo-switch__layer soft-pad-demo-face--numpad">' +
+        '<div class="soft-pad-demo-chassis soft-pad-demo-chassis--numpad">' +
+        renderNumpadDemoFace(numCells, 'numpad', 4) +
+        '</div></div>' +
+        '<div class="soft-pad-demo-switch__layer soft-pad-demo-face--soft">' +
+        renderPurposeLiveSoftPadHtml(m, pad, { seatMatch: true }) +
+        '</div>' +
+        '</div></div>' +
+        '<p class="soft-pad-demo-switch__hint">' +
+        esc(t('softPadNumpadStep2Hint', '点左上角 ⏻ 总开关：数字键盘 ⇄ Soft Pad')) +
+        '</p>' +
+        '</div>'
+      );
+    }
+    if (tab === 'nav') {
+      return '<div data-nav-demo-host>' + renderNavArrowDemoHtml(pad, m) + '</div>';
+    }
+    return (
+      '<div class="soft-pad-demo-compare">' +
+      '<div class="soft-pad-demo-compare__col">' +
+      '<span class="soft-pad-demo-compare__tag">' +
+      esc(t('softPadNumpadBadgeDigit', '日常数字键盘')) + '</span>' +
+      '<div class="soft-pad-demo-chassis soft-pad-demo-chassis--numpad">' +
+      renderNumpadDemoFace(numCells, 'numpad', 4) +
+      '</div>' +
+      '</div>' +
+      '<div class="soft-pad-demo-compare__bridge" aria-hidden="true">' +
+      '<span class="soft-pad-demo-compare__bridge-line"></span>' +
+      '<span class="soft-pad-demo-compare__bridge-txt">' +
+      esc(t('softPadNumpadSameSeat', '同一键位')) + '</span>' +
+      '</div>' +
+      '<div class="soft-pad-demo-compare__col">' +
+      '<span class="soft-pad-demo-compare__tag is-soft">' +
+      esc(t('softPadNumpadBadgeSoft', '临时 Soft Pad')) + '</span>' +
+      renderPurposeLiveSoftPadHtml(m, pad, { seatMatch: true }) +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  function buildSoftPadPurposePreviewHtml(pad, m) {
+    var tab = resolveSoftPadPurposeFeatureTab(softPadPurposeFeatureTab);
+    return (
+      '<div class="soft-pad-mode-preview soft-pad-mode-preview--purpose" data-soft-pad-mode-preview="purpose"' +
+      ' data-feature-tab="' + tab + '">' +
+      renderPurposeFeatureDemoHtml(pad, tab, m) +
+      '</div>'
+    );
+  }
+
+  /** Right-column purpose controls (toggles / captions; demos live in left preview). */
   function renderNumpadMapHtml(pad) {
     pad = pad || {};
     var occupied = !!pad.requireNumLockOff;
     var mappingOn = !!pad.enabled;
     var navOn = navKeysOn(pad);
-    var on = occupied ? '1' : '0';
-    var demoMode = occupied ? 'soft' : 'numpad';
     var mapDisabled = mappingOn ? '' : ' disabled';
     var mapDisabledAttr = mappingOn ? '' : ' aria-disabled="true"';
-    var numCells = LAYOUT.numpadCells || [];
-    var softCells = visibleSoftPadCells(pad);
-    var softCols = navOn ? 5 : 4;
-    var tab = softPadPurposeFeatureTab === 'occupy' || softPadPurposeFeatureTab === 'nav'
-      ? softPadPurposeFeatureTab
-      : 'mapping';
+    var tab = resolveSoftPadPurposeFeatureTab(softPadPurposeFeatureTab);
     softPadPurposeFeatureTab = tab;
     function featureTabBtn(id, n, label) {
       var active = tab === id;
@@ -9473,25 +9585,6 @@
       '<p class="soft-pad-feature-card__cap">' +
       esc(t('softPadFeatureMappingCap',
         '关闭后，实体数字键恢复普通数字键；悬浮键位配置保留。')) + '</p>' +
-      '<div class="soft-pad-demo-compare">' +
-      '<div class="soft-pad-demo-compare__col">' +
-      '<span class="soft-pad-demo-compare__tag">' +
-      esc(t('softPadNumpadBadgeDigit', '日常数字键盘')) + '</span>' +
-      '<div class="soft-pad-demo-chassis soft-pad-demo-chassis--numpad">' +
-      renderNumpadDemoFace(numCells, 'numpad', 4) +
-      '</div>' +
-      '</div>' +
-      '<div class="soft-pad-demo-compare__bridge" aria-hidden="true">' +
-      '<span class="soft-pad-demo-compare__bridge-line"></span>' +
-      '<span class="soft-pad-demo-compare__bridge-txt">' +
-      esc(t('softPadNumpadSameSeat', '同一键位')) + '</span>' +
-      '</div>' +
-      '<div class="soft-pad-demo-compare__col">' +
-      '<span class="soft-pad-demo-compare__tag is-soft">' +
-      esc(t('softPadNumpadBadgeSoft', '临时 Soft Pad')) + '</span>' +
-      renderSoftPadDemoHw(pad, softCells, softCols, { chassis: true }) +
-      '</div>' +
-      '</div>' +
       '</section>' +
       '<section class="soft-pad-feature-card soft-pad-numpad-step soft-pad-numpad-step--use' +
       (mappingOn ? '' : ' is-disabled') + (tab === 'occupy' ? ' is-active' : '') +
@@ -9505,23 +9598,6 @@
       esc(t('softPadFeatureOccupyCap',
         '关闭后数字键照常输入数字；你仍可点击悬浮 Soft Pad。')) + '</p>' +
       noPadTip +
-      '<div class="soft-pad-demo-switch" data-demo-mode="' + demoMode + '" data-numpad-on="' + on + '">' +
-      '<div class="soft-pad-demo-switch__modes">' +
-      '<span class="soft-pad-demo-switch__mode" data-mode="numpad">' +
-      esc(t('codexMicroPadModeNumpad', '数字键模式')) + '</span>' +
-      '<span class="soft-pad-demo-switch__mode" data-mode="soft">' +
-      esc(t('codexMicroPadModeCodex', 'Soft Pad 模式')) + '</span>' +
-      '</div>' +
-      '<div class="soft-pad-demo-chassis soft-pad-demo-chassis--switch">' +
-      '<div class="soft-pad-demo-switch__stack">' +
-      renderNumpadDemoFace(numCells, 'numpad', 4) +
-      renderSoftPadDemoHw(pad, softCells, softCols, { chassis: false }) +
-      '</div>' +
-      '</div>' +
-      '<p class="soft-pad-demo-switch__hint">' +
-      esc(t('softPadNumpadStep2Hint', '点左上角 ⏻ 总开关：数字键盘 ⇄ Soft Pad')) +
-      '</p>' +
-      '</div>' +
       '</section>' +
       '<section class="soft-pad-feature-card soft-pad-numpad-step soft-pad-numpad-step--arrows' +
       (mappingOn ? '' : ' is-disabled') + (tab === 'nav' ? ' is-active' : '') +
@@ -9537,9 +9613,6 @@
           '屏幕方向钮可注入 ↑↓←→；主键盘倒 T 保持系统原样（不劫持）。')
         : t('softPadFeatureNavCapOff',
           'Soft Pad 不显示左侧方向列；主键盘方向键始终系统原样。')) + '</p>' +
-      '<div data-nav-demo-host>' +
-      renderNavArrowDemoHtml(pad) +
-      '</div>' +
       '</section>' +
       '</div></div>'
     );
@@ -9556,71 +9629,126 @@
       '<p class="codex-pad-mgr__label">' + esc(t('softPadSkinLbl', '外观风格')) + '</p>' +
       renderSkinSeg(pad) +
       '<p class="codex-pad-mgr__hint">' +
-      esc(t('softPadSkinHint', '点预览图即可更换风格；左侧键盘会同步。深色模式自动套用对应深色外观。')) +
+      esc(t('softPadSkinHint', '点选右侧风格；左侧 Soft Pad 立即换成真实外观。深色模式自动套用对应深色外观。')) +
       '</p>' +
       '</div>'
     );
   }
 
-  /** Display tab — show mode + skin (merged appear + look). */
+  /** Real Soft Pad on the left — skin comes from pad.skin (not thumbnail cards). */
+  function buildSoftPadAppearLivePadHtml(m, pad) {
+    pad = pad || (m && m.codexMicroPad) || {};
+    var skin = canonicalizePadSkin(pad.skin);
+    return (
+      '<div class="soft-pad-mode-preview__live" data-soft-pad-live-skin>' +
+      '<p class="soft-pad-mode-preview__live-lbl">' +
+      esc(t('softPadSkinLiveLbl', '当前 Soft Pad')) + '</p>' +
+      '<div class="codex-micro-pad soft-pad-preview soft-pad-mode-preview__hw" data-pad-skin="' +
+      esc(skin) + '">' +
+      renderHardwarePad(m, pad, { mode: 'softPad', omitFaceTopbar: true }) +
+      '</div>' +
+      '</div>'
+    );
+  }
+
+  function buildSoftPadDisplayPreviewHtml(m, pad) {
+    pad = pad || (m && m.codexMicroPad) || {};
+    var mode = resolveSoftPadShowMode(pad);
+    return (
+      '<div class="soft-pad-mode-preview soft-pad-mode-preview--appear" data-soft-pad-mode-preview="appear">' +
+      renderShowModeSceneHtml(mode, pad) +
+      buildSoftPadAppearLivePadHtml(m, pad) +
+      '</div>'
+    );
+  }
+
+  function buildSoftPadCursorArmRowHtml(m) {
+    var isCursor = String(m && m.appTargetId || '').toLowerCase().indexOf('cursor') >= 0;
+    if (!isCursor) return '';
+    var armPhrase = '';
+    try {
+      var st = global.OneToneState && global.OneToneState.state;
+      armPhrase = String((st && st.config && st.config.cursorBeginnerArmPhrase) || '').trim() || '一声';
+    } catch (_) { armPhrase = '一声'; }
+    return (
+      '<article class="soft-pad-runtime-arm soft-pad-minimax-key" data-cursor-arm-card="1">' +
+      '<p class="codex-pad-mgr__label">' +
+      esc(t('softPadCursorArmSectionLbl', '聆听')) +
+      '</p>' +
+      '<p class="codex-pad-mgr__hint soft-pad-runtime-arm__lead">' +
+      esc(t('softPadCursorArmPhraseHint',
+        '未在 Cursor 前台时，说这句可手动进入聆听。默认「一声」。与语音页全局唤醒词无关。')) +
+      '</p>' +
+      '<p class="codex-pad-mgr__label soft-pad-runtime-arm__field-lbl">' +
+      esc(t('softPadCursorArmPhraseLbl', '聆听激活口令')) +
+      '</p>' +
+      '<div class="soft-pad-runtime-arm__row">' +
+      '<input type="text" class="soft-pad-runtime-arm__input" data-act="cursorArmPhrase" maxlength="12" value="' +
+      esc(armPhrase) + '" autocomplete="off" spellcheck="false" ' +
+      'aria-label="' + esc(t('softPadCursorArmPhraseLbl', '聆听激活口令')) + '">' +
+      '<button type="button" class="codex-micro-pad__btn is-primary" data-act="cursorArmPhraseSave">' +
+      esc(t('softPadCursorArmPhraseSave', '保存')) + '</button>' +
+      '</div></article>'
+    );
+  }
+
+  function buildSoftPadDisplayControlsHtml(m, pad) {
+    var mode = resolveSoftPadShowMode(pad);
+    return (
+      softPadExperienceChrome('runtime', m) +
+      '<div class="soft-pad-display-panel">' +
+      '<div class="soft-pad-runtime-show">' +
+      '<p class="codex-pad-mgr__label">' + esc(t('softPadShowModeLbl', '显示方式')) + '</p>' +
+      renderShowModeTabsHtml(mode) +
+      '<p class="codex-pad-mgr__hint soft-pad-runtime-show__hint" data-show-mode-hint>' +
+      esc(softPadShowModeHint(mode)) +
+      '</p>' +
+      '</div>' +
+      buildSoftPadCursorArmRowHtml(m) +
+      buildSoftPadPresentationSkinSectionHtml(pad) +
+      '</div>'
+    );
+  }
+
+  /** Left-column demo for appear / purpose pad modes. */
+  function paintSoftPadPadModePreview(host, m, padMode) {
+    host = resolveSoftPadPreviewPaintHost(host);
+    if (!host || !m) return;
+    ensurePad(m, { persist: false });
+    var pad = m.codexMicroPad;
+    if (!pad) return;
+    padMode = padMode === 'purpose' ? 'purpose' : 'appear';
+    softPadPreviewMapping = m;
+    host.innerHTML = padMode === 'purpose'
+      ? buildSoftPadPurposePreviewHtml(pad, m)
+      : buildSoftPadDisplayPreviewHtml(m, pad);
+    var outer = document.getElementById('softPadPreviewHost');
+    if (outer) {
+      outer.hidden = false;
+      outer.removeAttribute('hidden');
+      outer.classList.remove('is-collapsed');
+      outer.setAttribute('data-pad-mode-preview', padMode);
+    }
+  }
+
+  /** Display tab — show mode controls on right; scene + skin live in left preview. */
   function renderSoftPadDisplayPanel(container, m, opts) {
     opts = opts || {};
     container = resolveSoftPadSubpagePaintHost(container);
     if (!container || !m) return;
     ensurePad(m, { persist: false });
     var pad = m.codexMicroPad;
-    var mode = resolveSoftPadShowMode(pad);
-    var isCursor = String(m.appTargetId || '').toLowerCase().indexOf('cursor') >= 0;
-    var armPhrase = '';
-    try {
-      var st = global.OneToneState && global.OneToneState.state;
-      armPhrase = String((st && st.config && st.config.cursorBeginnerArmPhrase) || '').trim() || '一声';
-    } catch (_) { armPhrase = '一声'; }
-    var armRow = isCursor
-      ? (
-        '<article class="soft-pad-runtime-arm soft-pad-minimax-key" data-cursor-arm-card="1">' +
-        '<p class="codex-pad-mgr__label">' +
-        esc(t('softPadCursorArmSectionLbl', '聆听')) +
-        '</p>' +
-        '<p class="codex-pad-mgr__hint soft-pad-runtime-arm__lead">' +
-        esc(t('softPadCursorArmPhraseHint',
-          '未在 Cursor 前台时，说这句可手动进入聆听。默认「一声」。与语音页全局唤醒词无关。')) +
-        '</p>' +
-        '<p class="codex-pad-mgr__label soft-pad-runtime-arm__field-lbl">' +
-        esc(t('softPadCursorArmPhraseLbl', '聆听激活口令')) +
-        '</p>' +
-        '<div class="soft-pad-runtime-arm__row">' +
-        '<input type="text" class="soft-pad-runtime-arm__input" data-act="cursorArmPhrase" maxlength="12" value="' +
-        esc(armPhrase) + '" autocomplete="off" spellcheck="false" ' +
-        'aria-label="' + esc(t('softPadCursorArmPhraseLbl', '聆听激活口令')) + '">' +
-        '<button type="button" class="codex-micro-pad__btn is-primary" data-act="cursorArmPhraseSave">' +
-        esc(t('softPadCursorArmPhraseSave', '保存')) + '</button>' +
-        '</div></article>'
-      )
-      : '';
-    container.innerHTML =
-      softPadExperienceChrome('runtime', m) +
-      '<div class="soft-pad-display-panel">' +
-      '<div class="soft-pad-runtime-show">' +
-      '<p class="codex-pad-mgr__label">' + esc(t('softPadShowModeLbl', '显示方式')) + '</p>' +
-      renderShowModeTabsHtml(mode) +
-      renderShowModeSceneHtml(mode, pad) +
-      '<p class="codex-pad-mgr__hint soft-pad-runtime-show__hint" data-show-mode-hint>' +
-      esc(softPadShowModeHint(mode)) +
-      '</p>' +
-      '</div>' +
-      armRow +
-      buildSoftPadPresentationSkinSectionHtml(pad) +
-      '</div>';
+    container.innerHTML = buildSoftPadDisplayControlsHtml(m, pad);
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
     container.setAttribute('data-soft-pad-panel', 'runtime');
     container.classList.remove('is-editing-key');
     mirrorSoftPadSubpageChrome(container);
+    paintSoftPadPadModePreview(document.getElementById('softPadPreviewHost'), m, 'appear');
     bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'runtime' }));
     try { global.__otSoftPadRuntimeMounted = true; } catch (_) {}
   }
 
-  /** Purpose tab — AG role chips + three Soft Pad feature demos. */
+  /** Purpose tab — AG chips + toggles on right; demos in left preview. */
   function renderSoftPadPurposePanel(container, m, opts) {
     opts = opts || {};
     container = resolveSoftPadSubpagePaintHost(container);
@@ -9648,6 +9776,7 @@
     container.setAttribute('data-soft-pad-panel', 'purpose');
     container.classList.remove('is-editing-key');
     mirrorSoftPadSubpageChrome(container);
+    paintSoftPadPadModePreview(document.getElementById('softPadPreviewHost'), m, 'purpose');
     bindSoftPadLightPanelEvents(container, m, pad, Object.assign({}, opts, { panel: 'purpose' }));
   }
 
@@ -11843,8 +11972,8 @@
     }
   }
 
-  function applySoftPadPurposeFeatureTab(body, tab) {
-    tab = tab === 'occupy' || tab === 'nav' ? tab : 'mapping';
+  function applySoftPadPurposeFeatureTab(body, tab, m) {
+    tab = resolveSoftPadPurposeFeatureTab(tab);
     softPadPurposeFeatureTab = tab;
     if (!body) return;
     var cards = body.querySelector('.soft-pad-feature-cards');
@@ -11860,19 +11989,31 @@
       sec.classList.toggle('is-active', on);
       sec.hidden = !on;
     });
+    if (m && m.codexMicroPad) {
+      paintSoftPadPadModePreview(document.getElementById('softPadPreviewHost'), m, 'purpose');
+    }
+  }
+
+  function softPadLightPanelRoot(body, opts) {
+    if (opts && (opts.panel === 'runtime' || opts.panel === 'purpose')) {
+      var face = document.getElementById('softPadFacePad');
+      if (face) return face;
+    }
+    return body;
   }
 
   function bindSoftPadLightPanelEvents(body, m, pad, opts) {
     opts = opts || {};
     if (!body || !m || !pad) return;
+    var root = softPadLightPanelRoot(body, opts);
     var controlBusyUntil = 0;
 
     function markBusy(ms) {
       controlBusyUntil = Date.now() + (ms || 250);
-      setSoftPadControlsBusy(body, true);
+      setSoftPadControlsBusy(root, true);
       var until = controlBusyUntil;
       setTimeout(function () {
-        if (Date.now() >= until - 5) setSoftPadControlsBusy(body, false);
+        if (Date.now() >= until - 5) setSoftPadControlsBusy(root, false);
       }, ms || 250);
     }
 
@@ -11880,11 +12021,64 @@
       return Date.now() < controlBusyUntil;
     }
 
-    body.querySelectorAll('button[data-feature-tab]').forEach(function (btn) {
+    function bindPurposeDemoInteractions(scope) {
+      if (!scope) return;
+      scope.querySelectorAll('[data-demo-enc]').forEach(function (encBtn) {
+        if (encBtn.getAttribute('data-demo-enc-bound') === '1') return;
+        encBtn.setAttribute('data-demo-enc-bound', '1');
+        encBtn.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          var demo = encBtn.closest('[data-demo-mode]');
+          if (!demo) return;
+          demo.classList.add('is-user-driven');
+          var cur = demo.getAttribute('data-demo-mode') === 'soft' ? 'soft' : 'numpad';
+          var next = cur === 'soft' ? 'numpad' : 'soft';
+          demo.setAttribute('data-demo-mode', next);
+          demo.querySelectorAll('.soft-pad-demo-switch__mode[data-mode]').forEach(function (tab) {
+            var on = tab.getAttribute('data-mode') === next;
+            tab.classList.toggle('is-active', on);
+            tab.setAttribute('aria-selected', on ? 'true' : 'false');
+          });
+        });
+      });
+      scope.querySelectorAll('.soft-pad-demo-switch__mode[data-mode]').forEach(function (modeBtn) {
+        if (modeBtn.getAttribute('data-demo-mode-bound') === '1') return;
+        modeBtn.setAttribute('data-demo-mode-bound', '1');
+        modeBtn.addEventListener('click', function () {
+          var demo = modeBtn.closest('[data-demo-mode]');
+          if (!demo) return;
+          var next = modeBtn.getAttribute('data-mode') === 'soft' ? 'soft' : 'numpad';
+          demo.classList.add('is-user-driven');
+          demo.setAttribute('data-demo-mode', next);
+          demo.querySelectorAll('.soft-pad-demo-switch__mode[data-mode]').forEach(function (tab) {
+            var on = tab.getAttribute('data-mode') === next;
+            tab.classList.toggle('is-active', on);
+            tab.setAttribute('aria-selected', on ? 'true' : 'false');
+          });
+        });
+      });
+      scope.querySelectorAll('[data-purpose-live-pad] .micro-hw__key[data-micro-key]').forEach(function (keyEl) {
+        if (keyEl.getAttribute('data-demo-press-bound') === '1') return;
+        keyEl.setAttribute('data-demo-press-bound', '1');
+        keyEl.addEventListener('pointerdown', function () {
+          keyEl.classList.add('is-demo-press');
+        });
+        keyEl.addEventListener('pointerup', function () {
+          keyEl.classList.remove('is-demo-press');
+        });
+        keyEl.addEventListener('pointerleave', function () {
+          keyEl.classList.remove('is-demo-press');
+        });
+      });
+    }
+
+    root.querySelectorAll('button[data-feature-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var next = btn.getAttribute('data-feature-tab');
         if (!next || next === softPadPurposeFeatureTab) return;
-        applySoftPadPurposeFeatureTab(body, next);
+        applySoftPadPurposeFeatureTab(body, next, m);
+        bindPurposeDemoInteractions(root);
       });
     });
     if (body.getAttribute('data-soft-pad-layout-delegate') !== '1') {
@@ -11899,7 +12093,7 @@
       });
     }
 
-    body.querySelectorAll('[data-pad-presentation]').forEach(function (btn) {
+    root.querySelectorAll('[data-pad-presentation]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var next = btn.getAttribute('data-pad-presentation');
         if (!next || (next !== 'full' && next !== 'mini')) return;
@@ -11907,12 +12101,12 @@
         if (isBusy()) return;
         markBusy(250);
         pad.presentation = next;
-        body.querySelectorAll('[data-pad-presentation]').forEach(function (b) {
+        root.querySelectorAll('[data-pad-presentation]').forEach(function (b) {
           var on = b.getAttribute('data-pad-presentation') === next;
           b.classList.toggle('is-active', on);
           b.setAttribute('aria-checked', on ? 'true' : 'false');
         });
-        var hints = body.querySelectorAll('.codex-pad-mgr__hint');
+        var hints = root.querySelectorAll('.codex-pad-mgr__hint');
         if (hints[0]) {
           hints[0].textContent = next === 'mini'
             ? t('softPadPresMiniStatus', '小态栏：状态优先，操作能力有限（不是确认键条）')
@@ -11922,7 +12116,7 @@
         softPadPanelChanged(m, opts);
       });
     });
-    body.querySelectorAll('[data-pad-purpose]').forEach(function (btn) {
+    root.querySelectorAll('[data-pad-purpose]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var next = btn.getAttribute('data-pad-purpose');
         if (!next) return;
@@ -11936,20 +12130,21 @@
         softPadPanelChanged(m, Object.assign({}, opts, { refreshPreview: true }));
       });
     });
-    body.querySelectorAll('[data-pad-skin-opt]').forEach(function (btn) {
+    root.querySelectorAll('[data-pad-skin-opt]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var next = canonicalizePadSkin(btn.getAttribute('data-pad-skin-opt'));
         if (next === canonicalizePadSkin(pad.skin)) return;
         if (isBusy()) return;
         markBusy(220);
         pad.skin = next;
-        patchSkinSegActive(body, next);
+        patchSkinSegActive(root, next);
         patchSoftPadPreviewSkin(m);
+        syncSoftPadShowModeChrome(root, resolveSoftPadShowMode(pad), pad);
         persistPadSkin(m);
         softPadPanelChanged(m, Object.assign({}, opts, { panel: 'presentation' }));
       });
     });
-    body.querySelectorAll('[data-pad-profile]').forEach(function (btn) {
+    root.querySelectorAll('[data-pad-profile]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var next = btn.getAttribute('data-pad-profile');
         if (!next) return;
@@ -11971,7 +12166,7 @@
       });
     });
 
-    var enabledEl = body.querySelector('[data-act="enabled"]');
+    var enabledEl = root.querySelector('[data-act="enabled"]');
     if (enabledEl) {
       enabledEl.addEventListener('change', function () {
         if (isBusy()) {
@@ -11984,7 +12179,7 @@
         pad.enabled = next;
         previewPadMode = pad.enabled ? 'codex' : 'numpad';
         if (pad.enabled) pad.overlayEnabled = true;
-        var overlayElSync = body.querySelector('[data-act="overlay"]');
+        var overlayElSync = root.querySelector('[data-act="overlay"]');
         if (overlayElSync && pad.enabled) overlayElSync.checked = true;
         persistPadFlags(m);
         softPadPanelChanged(m, Object.assign({}, opts, {
@@ -11992,7 +12187,7 @@
         }));
       });
     }
-    var overlayEl = body.querySelector('[data-act="overlay"]');
+    var overlayEl = root.querySelector('[data-act="overlay"]');
     if (overlayEl) {
       overlayEl.addEventListener('change', function () {
         if (isBusy()) {
@@ -12007,7 +12202,7 @@
         softPadPanelChanged(m, opts);
       });
     }
-    var showModeEl = body.querySelector('select[data-act="showMode"]');
+    var showModeEl = root.querySelector('select[data-act="showMode"]');
     if (showModeEl) {
       showModeEl.addEventListener('change', function () {
         if (isBusy()) {
@@ -12018,11 +12213,11 @@
         if (next === resolveSoftPadShowMode(pad)) return;
         markBusy(280);
         applySoftPadShowMode(m, next);
-        syncSoftPadShowModeChrome(body, next, pad);
+        syncSoftPadShowModeChrome(root, next, pad);
         softPadPanelChanged(m, opts);
       });
     }
-    body.querySelectorAll('button[data-act="showMode"]').forEach(function (btn) {
+    root.querySelectorAll('button[data-act="showMode"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         if (isBusy()) return;
         var next = btn.getAttribute('data-show-mode');
@@ -12030,7 +12225,7 @@
           if (next === resolveSoftPadShowMode(pad)) return;
           markBusy(280);
           applySoftPadShowMode(m, next);
-          syncSoftPadShowModeChrome(body, next, pad);
+          syncSoftPadShowModeChrome(root, next, pad);
           softPadPanelChanged(m, opts);
           return;
         }
@@ -12039,27 +12234,27 @@
         if (cur === 'hidden') {
           markBusy(280);
           applySoftPadShowMode(m, 'follow');
-          syncSoftPadShowModeChrome(body, 'follow', pad);
+          syncSoftPadShowModeChrome(root, 'follow', pad);
           softPadPanelChanged(m, opts);
           return;
         }
-        var focusTab = body.querySelector('button[data-act="showMode"][data-show-mode]');
+        var focusTab = root.querySelector('button[data-act="showMode"][data-show-mode]');
         if (focusTab && typeof focusTab.focus === 'function') {
           try { focusTab.focus(); } catch (_) {}
         }
       });
     });
-    body.querySelectorAll('[data-act="focusLayoutKey"]').forEach(function (btn) {
+    root.querySelectorAll('[data-act="focusLayoutKey"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         if (isBusy()) return;
         var id = pickDefaultLayoutKey(m);
         softPadPreviewEditKey(m, id);
       });
     });
-    body.querySelectorAll('[data-act="focusSkin"]').forEach(function (btn) {
+    root.querySelectorAll('[data-act="focusSkin"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         if (isBusy()) return;
-        var skin = body.querySelector('[data-pad-skin-opt]');
+        var skin = root.querySelector('[data-pad-skin-opt]');
         if (skin && typeof skin.focus === 'function') {
           try { skin.focus(); } catch (_) {}
         }
@@ -12068,10 +12263,10 @@
         }
       });
     });
-    body.querySelectorAll('[data-act="focusAgent"]').forEach(function (btn) {
+    root.querySelectorAll('[data-act="focusAgent"]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         if (isBusy()) return;
-        var agentBody = body.querySelector('[data-lazy-agent-body]');
+        var agentBody = root.querySelector('[data-lazy-agent-body]');
         if (agentBody && typeof agentBody.scrollIntoView === 'function') {
           try { agentBody.scrollIntoView({ block: 'nearest' }); } catch (_) {}
         }
@@ -12083,7 +12278,7 @@
         }
       });
     });
-    var numLockEl = body.querySelector('[data-act="numlock"]');
+    var numLockEl = root.querySelector('[data-act="numlock"]');
     if (numLockEl) {
       numLockEl.addEventListener('change', function () {
         if (isBusy()) {
@@ -12094,14 +12289,14 @@
         if (next === !!pad.requireNumLockOff) return;
         markBusy(250);
         pad.requireNumLockOff = next;
-        var numpadMap = body.querySelector('[data-numpad-on]');
+        var numpadMap = root.querySelector('[data-numpad-on]');
         if (numpadMap) numpadMap.setAttribute('data-numpad-on', next ? '1' : '0');
-        var demo = body.querySelector('[data-demo-mode]');
+        var demo = root.querySelector('[data-demo-mode]');
         if (demo) {
           demo.classList.remove('is-user-driven');
           demo.setAttribute('data-demo-mode', next ? 'soft' : 'numpad');
         }
-        var hint = body.querySelector('[data-numpad-hint]');
+        var hint = root.querySelector('[data-numpad-hint]');
         if (hint) {
           if (softLikelyNoNumpad() === true && next) {
             hint.hidden = false;
@@ -12116,7 +12311,7 @@
         softPadPanelChanged(m, opts);
       });
     }
-    var navKeysEl = body.querySelector('[data-act="navKeys"]');
+    var navKeysEl = root.querySelector('[data-act="navKeys"]');
     if (navKeysEl) {
       navKeysEl.addEventListener('change', function () {
         if (isBusy()) {
@@ -12127,7 +12322,7 @@
         if (next === navKeysOn(pad)) return;
         markBusy(280);
         setNavColumnShown(pad, next);
-        var navCap = body.querySelector('[data-nav-cap]');
+        var navCap = root.querySelector('[data-nav-cap]');
         if (navCap) {
           navCap.textContent = next
             ? t('softPadFeatureNavCapOn',
@@ -12135,10 +12330,10 @@
             : t('softPadFeatureNavCapOff',
               'Soft Pad 不显示左侧方向列；主键盘方向键始终系统原样。');
         }
-        var arrowStory = body.querySelector('[data-nav-on]');
+        var arrowStory = root.querySelector('[data-nav-on]');
         if (arrowStory) arrowStory.setAttribute('data-nav-on', next ? '1' : '0');
-        var navHost = body.querySelector('[data-nav-demo-host]');
-        if (navHost) navHost.innerHTML = renderNavArrowDemoHtml(pad);
+        var navHost = root.querySelector('[data-nav-demo-host]');
+        if (navHost) navHost.innerHTML = renderNavArrowDemoHtml(pad, m);
         persistPadFlags(m);
         softPadPanelChanged(m, Object.assign({}, opts, {
           refreshPreview: true
@@ -12146,8 +12341,8 @@
       });
     }
 
-    var armSaveBtn = body.querySelector('[data-act="cursorArmPhraseSave"]');
-    var armInput = body.querySelector('[data-act="cursorArmPhrase"]');
+    var armSaveBtn = root.querySelector('[data-act="cursorArmPhraseSave"]');
+    var armInput = root.querySelector('[data-act="cursorArmPhrase"]');
     if (armSaveBtn && armInput) {
       function saveArmPhrase() {
         if (isBusy()) return;
@@ -12185,19 +12380,9 @@
       });
     }
 
-    body.querySelectorAll('[data-demo-enc]').forEach(function (encBtn) {
-      encBtn.addEventListener('click', function (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        var demo = encBtn.closest('[data-demo-mode]');
-        if (!demo) return;
-        demo.classList.add('is-user-driven');
-        var cur = demo.getAttribute('data-demo-mode') === 'soft' ? 'soft' : 'numpad';
-        demo.setAttribute('data-demo-mode', cur === 'soft' ? 'numpad' : 'soft');
-      });
-    });
+    bindPurposeDemoInteractions(root);
 
-    var enhanceEl = body.querySelector('[data-act="enhance"]');
+    var enhanceEl = root.querySelector('[data-act="enhance"]');
     if (enhanceEl) {
       enhanceEl.addEventListener('change', function () {
         if (isBusy()) {
@@ -12214,7 +12399,7 @@
       });
     }
 
-    var restoreBtn = body.querySelector('[data-act="restore"]');
+    var restoreBtn = root.querySelector('[data-act="restore"]');
     if (restoreBtn) {
       restoreBtn.addEventListener('click', function () {
         var confirmApi = global.OneToneConfirm;
@@ -12240,7 +12425,7 @@
         run();
       });
     }
-    var exportBtn = body.querySelector('[data-act="export"]');
+    var exportBtn = root.querySelector('[data-act="export"]');
     if (exportBtn) {
       exportBtn.addEventListener('click', function () {
         try {
@@ -12256,8 +12441,8 @@
         }
       });
     }
-    var fileEl = body.querySelector('[data-act="importFile"]');
-    var importBtn = body.querySelector('[data-act="import"]');
+    var fileEl = root.querySelector('[data-act="importFile"]');
+    var importBtn = root.querySelector('[data-act="import"]');
     if (importBtn && fileEl) {
       importBtn.addEventListener('click', function () { fileEl.click(); });
       fileEl.addEventListener('change', function () {
@@ -14908,6 +15093,7 @@
     openPadManager: openPadManager,
     renderCodexMicroPadManager: renderCodexMicroPadManager,
     renderSoftPadPreview: renderSoftPadPreview,
+    paintSoftPadPadModePreview: paintSoftPadPadModePreview,
     renderHeroPadPreviewGrid: renderHeroPadPreviewGrid,
     resolveSoftPadPreviewPaintHost: resolveSoftPadPreviewPaintHost,
     renderSoftPadLayoutPanel: renderSoftPadLayoutPanel,

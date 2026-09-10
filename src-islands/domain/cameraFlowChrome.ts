@@ -24,7 +24,7 @@ const EMPTY: CameraFlowChromeModel = {
   sig: 'empty',
 };
 
-const TABS = ['pro', 'action'] as const;
+const TABS = ['pro'] as const;
 
 function legacy(): LegacyWorkflow {
   return (
@@ -56,21 +56,13 @@ export function applyCameraFlowChromeHosts(model: CameraFlowChromeModel): void {
     const btn = document.getElementById(
       'cameraFlowNode' + tab.charAt(0).toUpperCase() + tab.slice(1),
     );
-    if (!btn) return;
+    if (!btn || btn.tagName === 'SPAN') return;
     const on = tab === model.activeTab;
     btn.classList.toggle('is-active', on);
     btn.setAttribute('aria-selected', on ? 'true' : 'false');
-    (btn as HTMLButtonElement).disabled = !!model.locked;
+    if ('disabled' in btn) (btn as HTMLButtonElement).disabled = !!model.locked;
     btn.setAttribute('aria-disabled', model.locked ? 'true' : 'false');
     btn.classList.toggle('is-locked', !!model.locked);
-    // #cameraFlowNodeProHint 由 React 渲染；其余 hint 仍由 apply 写
-    if (tab === 'pro') return;
-    const hint = document.getElementById(
-      'cameraFlowNode' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Hint',
-    );
-    if (hint) {
-      hint.textContent = model.actionHint || '';
-    }
   });
   const lockHint = document.getElementById('cameraCalibLockHint');
   if (lockHint) lockHint.hidden = !model.locked;

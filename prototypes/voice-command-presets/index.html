@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音口令预设 · 驱动其他通道</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #152536;
+      --muted: #5c6b7a;
+      --faint: #8a98a8;
+      --line: rgba(21, 37, 54, 0.1);
+      --line-strong: rgba(21, 37, 54, 0.16);
+      --paper: #fff;
+      --stage: #e8eef3;
+      --cyan: #1f8fb8;
+      --cyan-deep: #0f6f92;
+      --cyan-soft: rgba(31, 143, 184, 0.12);
+      --amber: #b45309;
+      --amber-soft: rgba(245, 158, 11, 0.14);
+      --violet: #6d4ab0;
+      --violet-soft: rgba(109, 74, 176, 0.12);
+      --green: #1a7a4c;
+      --green-soft: rgba(26, 122, 76, 0.1);
+      --pad: #1a2430;
+      --font: "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+      --shadow: 0 12px 32px rgba(21, 37, 54, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(720px 320px at 6% -10%, rgba(31,143,184,.14), transparent 55%),
+        radial-gradient(480px 240px at 100% 0%, rgba(109,74,176,.08), transparent 50%),
+        var(--stage);
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { width: min(1120px, 100%); margin: 0 auto; padding: 22px 14px 56px; }
+
+    .intro { max-width: 40rem; margin-bottom: 18px; }
+    .kicker {
+      margin: 0 0 4px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+      letter-spacing: 0.07em; text-transform: uppercase; color: var(--cyan-deep);
+    }
+    .intro h1 { margin: 0 0 8px; font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
+    .intro p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--muted); font-weight: 500; }
+    .thesis {
+      margin: 12px 0 0; padding: 10px 12px; border-radius: 12px;
+      border: 1px solid rgba(31,143,184,.28); background: rgba(255,255,255,.72);
+      font-size: 12px; line-height: 1.5; color: var(--ink);
+    }
+    .thesis b { color: var(--cyan-deep); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .chips span {
+      font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+    }
+    .chips .good { background: #f3fbf7; border-color: rgba(31,138,91,.3); color: #1a5c3a; }
+    .chips .bad { background: #fff6f3; border-color: rgba(185,70,40,.28); color: #9a3412; }
+
+    .scheme-nav {
+      display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px;
+      padding: 4px; border-radius: 12px; background: rgba(255,255,255,.55); border: 1px solid var(--line);
+      width: fit-content;
+    }
+    .scheme-nav button {
+      border: 0; background: transparent; font: inherit; font-size: 12px; font-weight: 700;
+      padding: 8px 12px; border-radius: 9px; color: var(--muted); cursor: pointer;
+    }
+    .scheme-nav button.is-on { background: #fff; color: var(--cyan-deep); box-shadow: 0 1px 3px rgba(21,37,54,.08); }
+
+    .panel[hidden] { display: none !important; }
+
+    /* —— Mock app chrome —— */
+    .app {
+      background: var(--paper); border: 1px solid var(--line); border-radius: 18px;
+      box-shadow: var(--shadow); overflow: hidden;
+    }
+    .status {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: #f8fafc;
+    }
+    .brand { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; }
+    .pill {
+      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      border: 1px solid rgba(26,122,76,.28); background: var(--green-soft); color: var(--green);
+    }
+    .bind {
+      margin-left: auto; font-size: 12px; font-weight: 600; padding: 5px 10px;
+      border-radius: 8px; border: 1px solid var(--line); background: #fff;
+    }
+
+    .face-seg {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin: 12px 14px 0;
+      padding: 3px; border-radius: 12px; border: 1px solid var(--line); background: #f1f5f9;
+    }
+    .face-seg button {
+      display: flex; align-items: flex-start; gap: 8px; min-height: 56px;
+      padding: 10px 12px; border: 1px solid transparent; border-radius: 10px;
+      background: transparent; color: var(--muted); font: inherit; text-align: left; cursor: pointer;
+    }
+    .face-seg button .ico {
+      width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; opacity: .7;
+    }
+    .face-seg button .t { font-size: 13px; font-weight: 750; display: block; color: inherit; }
+    .face-seg button .s { font-size: 11px; font-weight: 600; margin-top: 2px; display: block; opacity: .75; }
+    .face-seg button.is-on {
+      background: #fff; color: var(--cyan-deep); border-color: rgba(31,143,184,.28);
+      box-shadow: 0 1px 3px rgba(21,37,54,.08);
+    }
+    .face-seg button.is-on .ico { opacity: 1; }
+    .face-seg button[data-face="presets"].is-on { color: var(--violet); border-color: rgba(109,74,176,.3); }
+
+    .body { padding: 12px 14px 16px; }
+    .face-pane[hidden] { display: none !important; }
+
+    /* Dictate pipeline compact */
+    .pipe {
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: stretch;
+      margin-bottom: 12px;
+    }
+    .pipe-node {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+      background: #f8fafc; cursor: pointer;
+    }
+    .pipe-node.is-on {
+      border-color: rgba(31,143,184,.35); background: var(--cyan-soft);
+      box-shadow: inset 0 0 0 1px rgba(31,143,184,.12);
+    }
+    .pipe-node .n {
+      font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--faint);
+      letter-spacing: .04em;
+    }
+    .pipe-node h3 { margin: 4px 0 2px; font-size: 14px; font-weight: 750; }
+    .pipe-node p { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.4; }
+    .pipe-arrow {
+      align-self: center; color: var(--faint); font-size: 18px; font-weight: 700;
+    }
+    .dictate-card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: #fff;
+    }
+    .dictate-card h4 { margin: 0 0 6px; font-size: 13px; font-weight: 750; }
+    .dictate-card p { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+    .phrase-chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px;
+      border-radius: 10px; border: 1px dashed rgba(31,143,184,.35); background: var(--cyan-soft);
+      font-size: 13px; font-weight: 700; color: var(--cyan-deep);
+    }
+
+    /* Presets: Soft Pad keys pattern */
+    .preset-stage {
+      display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(240px, 0.95fr);
+      gap: 12px; min-height: 380px;
+    }
+    @media (max-width: 820px) {
+      .preset-stage { grid-template-columns: 1fr; }
+    }
+    .col {
+      border: 1px solid var(--line); border-radius: 14px; background: #f8fafc;
+      display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+    }
+    .col-h {
+      padding: 10px 12px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.8);
+    }
+    .col-h strong { display: block; font-size: 12px; font-weight: 750; }
+    .col-h span { font-size: 11px; color: var(--muted); font-weight: 500; }
+    .col-b { padding: 10px; overflow: auto; flex: 1; }
+
+    .filter {
+      display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px;
+    }
+    .filter button {
+      border: 1px solid var(--line); background: #fff; border-radius: 999px;
+      font: inherit; font-size: 11px; font-weight: 700; padding: 4px 10px;
+      color: var(--muted); cursor: pointer;
+    }
+    .filter button.is-on { color: var(--violet); border-color: rgba(109,74,176,.35); background: var(--violet-soft); }
+
+    .action {
+      width: 100%; text-align: left; border: 1px solid var(--line); background: #fff;
+      border-radius: 12px; padding: 10px; margin-bottom: 6px; cursor: pointer;
+      display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center;
+      font: inherit; color: inherit;
+    }
+    .action:hover { border-color: var(--line-strong); }
+    .action.is-on {
+      border-color: rgba(109,74,176,.4); background: var(--violet-soft);
+      box-shadow: inset 0 0 0 1px rgba(109,74,176,.12);
+    }
+    .action .ch {
+      font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+      padding: 3px 6px; border-radius: 6px; background: #f1f5f9; color: var(--muted);
+    }
+    .action .ch[data-ch="softpad"] { background: var(--violet-soft); color: var(--violet); }
+    .action .ch[data-ch="keys"] { background: rgba(46,125,79,.1); color: #2e7d4f; }
+    .action .ch[data-ch="camera"] { background: rgba(185,83,10,.1); color: #b9530a; }
+    .action .name { font-size: 13px; font-weight: 750; display: block; }
+    .action .meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .action .voice {
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      color: var(--cyan-deep); max-width: 7rem; text-align: right;
+    }
+    .action .voice.is-empty { color: var(--faint); }
+
+    .bind-empty {
+      padding: 28px 16px; text-align: center; color: var(--muted); font-size: 12px;
+    }
+    .bind-card h3 { margin: 0 0 4px; font-size: 15px; font-weight: 750; }
+    .bind-card .src {
+      margin: 0 0 14px; font-size: 12px; color: var(--muted);
+    }
+    .src-pill {
+      display: inline-flex; align-items: center; gap: 4px; margin-right: 6px;
+      padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 800;
+      background: var(--violet-soft); color: var(--violet);
+    }
+    .field { margin-bottom: 12px; }
+    .field label {
+      display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 5px;
+    }
+    .field input {
+      width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong);
+      font: inherit; font-size: 14px; font-weight: 650; background: #fff;
+    }
+    .field input:focus {
+      outline: 2px solid rgba(31,143,184,.35); outline-offset: 1px; border-color: rgba(31,143,184,.45);
+    }
+    .hint { margin: 0; font-size: 11px; color: var(--faint); line-height: 1.4; }
+    .btns { display: flex; gap: 8px; margin-top: 14px; }
+    .btns button {
+      border: 1px solid var(--line); background: #fff; border-radius: 10px;
+      padding: 8px 12px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .btns .primary {
+      background: var(--violet); border-color: var(--violet); color: #fff;
+    }
+    .live {
+      margin-top: 14px; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid rgba(31,143,184,.25); background: var(--cyan-soft);
+      font-size: 12px; line-height: 1.45;
+    }
+    .live b { color: var(--cyan-deep); }
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(12px);
+      background: var(--pad); color: #e8eef4; padding: 10px 16px; border-radius: 999px;
+      font-size: 12px; font-weight: 650; opacity: 0; pointer-events: none;
+      transition: opacity .2s, transform .2s; z-index: 20; box-shadow: var(--shadow);
+    }
+    .toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Soft Pad mirror */
+    .mirror {
+      display: grid; grid-template-columns: 180px 1fr; gap: 14px; align-items: start;
+    }
+    @media (max-width: 720px) { .mirror { grid-template-columns: 1fr; } }
+    .mini-pad {
+      background: var(--pad); border-radius: 14px; padding: 10px; color: #c9d5e0;
+    }
+    .mini-pad .lbl {
+      font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+      color: #7dd3fc; margin-bottom: 8px;
+    }
+    .pad-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;
+    }
+    .k {
+      aspect-ratio: 1; border-radius: 8px; border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.06); display: grid; place-items: center;
+      font-size: 9px; font-weight: 700; color: #a8b8c8; cursor: pointer; position: relative;
+    }
+    .k.is-on {
+      border-color: rgba(125,211,252,.5); background: rgba(31,143,184,.25); color: #e0f2fe;
+      box-shadow: 0 0 0 2px rgba(31,143,184,.25);
+    }
+    .k .mic {
+      position: absolute; top: 3px; right: 3px; width: 10px; height: 10px;
+      border-radius: 50%; background: #38bdf8; box-shadow: 0 0 6px rgba(56,189,248,.7);
+    }
+    .mirror-note h3 { margin: 0 0 6px; font-size: 14px; font-weight: 750; }
+    .mirror-note p { margin: 0 0 10px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .mirror-note .row {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff;
+      font-size: 12px;
+    }
+    .mirror-note .row code {
+      font-family: var(--mono); font-size: 11px; padding: 2px 6px; border-radius: 6px;
+      background: var(--cyan-soft); color: var(--cyan-deep);
+    }
+
+    /* Rejected */
+    .reject {
+      opacity: .72; position: relative;
+    }
+    .reject::after {
+      content: "不采用"; position: absolute; top: 10px; right: 12px;
+      font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+      color: #9a3412; background: #fff6f3; border: 1px solid rgba(185,70,40,.28);
+      padding: 3px 8px; border-radius: 999px;
+    }
+    .faces-bad {
+      display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid var(--line); background: #f1f5f9;
+    }
+    .faces-bad span {
+      flex: 1; text-align: center; font-size: 11px; font-weight: 700; padding: 8px;
+      border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--muted);
+    }
+    .faces-bad span.is-on { color: var(--cyan-deep); border-color: rgba(31,143,184,.35); background: var(--cyan-soft); }
+    .flow-bad {
+      display: flex; justify-content: center; gap: 40px; padding: 20px; opacity: .85;
+    }
+    .flow-bad .n {
+      width: 64px; height: 64px; border-radius: 999px; border: 2px solid var(--line);
+      display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--muted);
+    }
+    .flow-bad .n.is-on { border-color: rgba(31,143,184,.5); color: var(--cyan-deep); }
+
+    .compare-note {
+      margin-top: 14px; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.7);
+      font-size: 12px; line-height: 1.5; color: var(--muted);
+    }
+    .compare-note strong { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="intro">
+      <p class="kicker">Voice · command presets</p>
+      <h1>用口令驱动其他通道的动作</h1>
+      <p>像按键预设一样：先选已有动作（Soft Pad 键 / 按键绑定 / 摄像头动作），再绑一句说法。不在语音页切通道面。</p>
+      <p class="thesis"><b>模型：</b>按键 = 动作 ← 物理键；口令预设 = 同一动作 ← 说法。听写流水线（开启/说完了）只管听写，不管通道动作。</p>
+      <div class="chips">
+        <span class="good">语音页：听写 | 口令预设</span>
+        <span class="good">左选动作 · 右绑说法</span>
+        <span class="bad">不要顶栏切 SoftPad/按键/摄像头</span>
+      </div>
+    </header>
+
+    <nav class="scheme-nav" aria-label="方案切换">
+      <button type="button" class="is-on" data-scheme="rec">推荐方案</button>
+      <button type="button" data-scheme="mirror">Soft Pad 镜面</button>
+      <button type="button" data-scheme="reject">现况（不采用）</button>
+    </nav>
+
+    <!-- Recommended -->
+    <div class="panel" id="schemeRec">
+      <div class="app" aria-label="语音设置原型">
+        <div class="status">
+          <span class="brand">语音</span>
+          <span class="pill">已开启</span>
+          <span class="bind">绑定 · 通用</span>
+        </div>
+
+        <div class="face-seg" role="tablist" aria-label="语音分区">
+          <button type="button" data-face="dictate" class="is-on" id="tabDictate">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+            <span><span class="t">听写</span><span class="s">开启 · 说完了</span></span>
+          </button>
+          <button type="button" data-face="presets" id="tabPresets">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M5 16h10"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/><circle cx="15" cy="16" r="1.5" fill="currentColor"/></svg>
+            <span><span class="t">口令预设</span><span class="s">驱动 Soft Pad / 按键 / 摄像头</span></span>
+          </button>
+        </div>
+
+        <div class="body">
+          <div class="face-pane" data-face-pane="dictate" id="paneDictate">
+            <div class="pipe">
+              <button type="button" class="pipe-node is-on" data-pipe="wake">
+                <div class="n">听写 · 1</div>
+                <h3>开启</h3>
+                <p>唤醒口令 · 开始听写</p>
+              </button>
+              <div class="pipe-arrow" aria-hidden="true">→</div>
+              <button type="button" class="pipe-node" data-pipe="finish">
+                <div class="n">听写 · 2</div>
+                <h3>说完了</h3>
+                <p>结束 · 发送 · 取消</p>
+              </button>
+            </div>
+            <div class="dictate-card" id="dictateCard">
+              <h4 id="dictateTitle">开启听写</h4>
+              <p id="dictateDesc">只配置听写本身。驱动 Soft Pad / 按键 / 摄像头的口令，去「口令预设」。</p>
+              <span class="phrase-chip" id="dictatePhrase">「一声」</span>
+            </div>
+          </div>
+
+          <div class="face-pane" data-face-pane="presets" id="panePresets" hidden>
+            <div class="preset-stage">
+              <div class="col">
+                <div class="col-h">
+                  <strong>选动作</strong>
+                  <span>来自各通道已配置的动作（像按键预设里选命令）</span>
+                </div>
+                <div class="col-b">
+                  <div class="filter" role="tablist" aria-label="通道过滤">
+                    <button type="button" class="is-on" data-filter="all">全部</button>
+                    <button type="button" data-filter="softpad">Soft Pad</button>
+                    <button type="button" data-filter="keys">按键</button>
+                    <button type="button" data-filter="camera">摄像头</button>
+                  </div>
+                  <div id="actionList"></div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="col-h">
+                  <strong>绑说法</strong>
+                  <span>一句口令 = 触发左侧选中的动作</span>
+                </div>
+                <div class="col-b" id="bindPane">
+                  <div class="bind-empty">先在左侧点一个动作</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="compare-note">
+        <strong>和 Soft Pad 键位同构：</strong>左栏选目标（键帽 → 这里是通道动作），右栏绑触发器（命令 → 这里是说法）。
+        过滤芯片只是缩小列表，不是第二层 hero。
+      </p>
+    </div>
+
+    <!-- Soft Pad mirror -->
+    <div class="panel" id="schemeMirror" hidden>
+      <div class="app">
+        <div class="status">
+          <span class="brand">虚拟键盘 · 键位</span>
+          <span class="pill">Codex</span>
+        </div>
+        <div class="body">
+          <div class="mirror">
+            <div class="mini-pad">
+              <div class="lbl">键位 + 口令灯</div>
+              <div class="pad-grid" id="padGrid"></div>
+            </div>
+            <div class="mirror-note">
+              <h3>通道页可镜面改说法</h3>
+              <p>Soft Pad 键位仍是「绑命令」主场；有口令的键显示蓝点。点键可看到 / 改说法，与语音「口令预设」是同一数据。</p>
+              <div class="row" id="padDetail">点左侧键帽查看</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="compare-note">
+        <strong>可选增强：</strong>口令挂在动作上，语音页与 Soft Pad / 按键 / 摄像头页都能改，不复制两套配置。
+      </p>
+    </div>
+
+    <!-- Rejected current -->
+    <div class="panel" id="schemeReject" hidden>
+      <div class="app reject">
+        <div class="status">
+          <span class="brand">语音</span>
+          <span class="pill">现况</span>
+        </div>
+        <div class="faces-bad">
+          <span class="is-on">听写</span>
+          <span>SoftPad</span>
+          <span>按键</span>
+          <span>摄像头</span>
+        </div>
+        <div class="flow-bad">
+          <div class="n is-on">开启</div>
+          <div class="n">说完了</div>
+        </div>
+        <div class="body">
+          <p style="margin:0;font-size:12px;color:var(--muted);line-height:1.5;">
+            双 hero：先切通道面，再进流水线。用户以为 SoftPad/按键/摄像头是语音的子步骤，命令归属也散在桥接面里。
+          </p>
+        </div>
+      </div>
+      <p class="compare-note">
+        <strong>问题：</strong>通道选择 ≠ 听写流程。口令驱动动作应是「动作目录 + 说法」，不是「先选通道页再改桥接」。
+      </p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var actions = [
+        { id: "sp-continue", ch: "softpad", name: "继续", meta: "Soft Pad · 键 5", phrase: "继续" },
+        { id: "sp-interrupt", ch: "softpad", name: "中断生成", meta: "Soft Pad · 键 6", phrase: "" },
+        { id: "sp-approve", ch: "softpad", name: "批准", meta: "Soft Pad · 键 7", phrase: "批准" },
+        { id: "sp-new", ch: "softpad", name: "新建任务", meta: "Soft Pad · 键 9", phrase: "" },
+        { id: "k-dictate", ch: "keys", name: "开始听写", meta: "按键 · LAlt+R", phrase: "" },
+        { id: "k-send", ch: "keys", name: "完成并发送", meta: "按键 · Ctrl+Enter", phrase: "发送" },
+        { id: "k-focus", ch: "keys", name: "回到 Agent", meta: "按键 · HID R03", phrase: "回到 Codex" },
+        { id: "c-nod", ch: "camera", name: "点头确认", meta: "摄像头 · 点头", phrase: "" },
+        { id: "c-palm", ch: "camera", name: "张开手掌", meta: "摄像头 · 手势", phrase: "暂停" }
+      ];
+
+      var padKeys = [
+        { id: "1", label: "焦点", phrase: "" },
+        { id: "2", label: "听写", phrase: "" },
+        { id: "3", label: "发送", phrase: "发送" },
+        { id: "4", label: "取消", phrase: "" },
+        { id: "5", label: "继续", phrase: "继续" },
+        { id: "6", label: "中断", phrase: "" },
+        { id: "7", label: "批准", phrase: "批准" },
+        { id: "8", label: "拒绝", phrase: "" },
+        { id: "9", label: "新任务", phrase: "" }
+      ];
+
+      var filter = "all";
+      var selected = null;
+      var toastEl = document.getElementById("toast");
+      var toastTimer = null;
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("is-on");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("is-on"); }, 1600);
+      }
+
+      function chLabel(ch) {
+        return ch === "softpad" ? "Soft Pad" : ch === "keys" ? "按键" : "摄像头";
+      }
+
+      function renderList() {
+        var host = document.getElementById("actionList");
+        var rows = actions.filter(function (a) {
+          return filter === "all" || a.ch === filter;
+        });
+        host.innerHTML = rows.map(function (a) {
+          var on = selected && selected.id === a.id;
+          return (
+            '<button type="button" class="action' + (on ? " is-on" : "") + '" data-id="' + a.id + '">' +
+              '<span class="ch" data-ch="' + a.ch + '">' + chLabel(a.ch) + "</span>" +
+              '<span><span class="name">' + a.name + '</span><span class="meta">' + a.meta + "</span></span>" +
+              '<span class="voice' + (a.phrase ? "" : " is-empty") + '">' +
+                (a.phrase ? "「" + a.phrase + "」" : "未绑") +
+              "</span>" +
+            "</button>"
+          );
+        }).join("");
+      }
+
+      function renderBind() {
+        var host = document.getElementById("bindPane");
+        if (!selected) {
+          host.innerHTML = '<div class="bind-empty">先在左侧点一个动作</div>';
+          return;
+        }
+        host.innerHTML =
+          '<div class="bind-card">' +
+            "<h3>" + selected.name + "</h3>" +
+            '<p class="src"><span class="src-pill">' + chLabel(selected.ch) + "</span>" + selected.meta + "</p>" +
+            '<div class="field"><label for="phraseInput">说法</label>' +
+              '<input id="phraseInput" type="text" value="' + (selected.phrase || "") + '" placeholder="例如：继续生成" autocomplete="off" />' +
+            "</div>" +
+            '<p class="hint">说出这句话就会执行该动作，效果等同按下对应键 / 手势结果。</p>' +
+            '<div class="btns">' +
+              '<button type="button" class="primary" id="btnSave">保存口令</button>' +
+              '<button type="button" id="btnClear">清除</button>' +
+              '<button type="button" id="btnTest">试听触发</button>' +
+            "</div>" +
+            '<div class="live" id="liveLine">' +
+              (selected.phrase
+                ? '说 <b>「' + selected.phrase + "」</b> → 执行 <b>" + selected.name + "</b>"
+                : "保存后，这里会显示触发关系") +
+            "</div>" +
+          "</div>";
+
+        document.getElementById("btnSave").onclick = function () {
+          var v = String(document.getElementById("phraseInput").value || "").trim();
+          selected.phrase = v;
+          renderList();
+          renderBind();
+          toast(v ? "已绑定「" + v + "」→ " + selected.name : "已清空口令");
+        };
+        document.getElementById("btnClear").onclick = function () {
+          selected.phrase = "";
+          renderList();
+          renderBind();
+          toast("已清除口令");
+        };
+        document.getElementById("btnTest").onclick = function () {
+          if (!selected.phrase) {
+            toast("先保存一句说法");
+            return;
+          }
+          toast("听到「" + selected.phrase + "」→ 已触发 " + selected.name);
+        };
+      }
+
+      document.getElementById("actionList").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-id]");
+        if (!btn) return;
+        selected = actions.find(function (a) { return a.id === btn.getAttribute("data-id"); }) || null;
+        renderList();
+        renderBind();
+      });
+
+      document.querySelectorAll("[data-filter]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          filter = b.getAttribute("data-filter");
+          document.querySelectorAll("[data-filter]").forEach(function (x) {
+            x.classList.toggle("is-on", x === b);
+          });
+          renderList();
+        });
+      });
+
+      document.querySelectorAll(".face-seg [data-face]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var face = btn.getAttribute("data-face");
+          document.querySelectorAll(".face-seg [data-face]").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+          document.querySelectorAll("[data-face-pane]").forEach(function (pane) {
+            pane.hidden = pane.getAttribute("data-face-pane") !== face;
+          });
+        });
+      });
+
+      var pipeCopy = {
+        wake: { title: "开启听写", desc: "只配置听写本身。驱动 Soft Pad / 按键 / 摄像头的口令，去「口令预设」。", phrase: "「一声」" },
+        finish: { title: "说完了", desc: "结束听写、发送或取消。这些仍是听写收尾，不是通道动作预设。", phrase: "「发送」·「取消输入」" }
+      };
+      document.querySelectorAll("[data-pipe]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.getAttribute("data-pipe");
+          document.querySelectorAll("[data-pipe]").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+          var c = pipeCopy[id];
+          document.getElementById("dictateTitle").textContent = c.title;
+          document.getElementById("dictateDesc").textContent = c.desc;
+          document.getElementById("dictatePhrase").textContent = c.phrase;
+        });
+      });
+
+      /* Soft Pad mirror */
+      var padGrid = document.getElementById("padGrid");
+      var padDetail = document.getElementById("padDetail");
+      padGrid.innerHTML = padKeys.map(function (k) {
+        return '<button type="button" class="k" data-pad="' + k.id + '">' +
+          (k.phrase ? '<i class="mic" aria-hidden="true"></i>' : "") +
+          "<span>" + k.label + "</span></button>";
+      }).join("");
+      padGrid.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-pad]");
+        if (!btn) return;
+        var id = btn.getAttribute("data-pad");
+        var k = padKeys.find(function (x) { return x.id === id; });
+        padGrid.querySelectorAll(".k").forEach(function (el) {
+          el.classList.toggle("is-on", el === btn);
+        });
+        padDetail.innerHTML =
+          "<strong>" + k.label + "</strong> · 键 " + k.id +
+          (k.phrase
+            ? ' · 口令 <code>「' + k.phrase + "」</code>（与语音口令预设同步）"
+            : " · <span style='color:var(--faint)'>尚未绑口令 · 可在语音「口令预设」添加</span>");
+      });
+
+      /* Scheme nav */
+      var schemes = {
+        rec: document.getElementById("schemeRec"),
+        mirror: document.getElementById("schemeMirror"),
+        reject: document.getElementById("schemeReject")
+      };
+      document.querySelectorAll("[data-scheme]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.getAttribute("data-scheme");
+          document.querySelectorAll("[data-scheme]").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+          Object.keys(schemes).forEach(function (k) {
+            schemes[k].hidden = k !== id;
+          });
+        });
+      });
+
+      renderList();
+      renderBind();
+    })();
+  </script>
+</body>
+</html>

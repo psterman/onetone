@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hero 并列切换 · Soft Pad + 摄像头</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #152536;
+      --muted: #5c6b7a;
+      --line: rgba(21, 37, 54, 0.1);
+      --paper: #fff;
+      --stage: #eef2f6;
+      --cyan: #1f8fb8;
+      --cyan-deep: #0f6f92;
+      --cyan-soft: rgba(31, 143, 184, 0.1);
+      --green: #1a7a4c;
+      --green-soft: rgba(26, 122, 76, 0.1);
+      --green-bd: rgba(26, 122, 76, 0.28);
+      --font: "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+      --shadow: 0 10px 28px rgba(21, 37, 54, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(640px 280px at 8% -8%, rgba(31,143,184,.1), transparent 55%),
+        var(--stage);
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { width: min(1080px, 100%); margin: 0 auto; padding: 20px 14px 48px; }
+    .intro { margin-bottom: 18px; max-width: 42rem; }
+    .intro-kicker {
+      margin: 0 0 4px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--cyan-deep);
+    }
+    .intro h1 { margin: 0 0 6px; font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
+    .intro p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); font-weight: 500; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+    .chips span {
+      font-size: 11px; font-weight: 600; color: var(--muted); background: #fff;
+      border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
+    }
+    .chips .good { border-color: rgba(31,138,91,.3); background: #f3fbf7; color: #1a5c3a; }
+    .chips .keep { border-color: rgba(31,143,184,.28); background: var(--cyan-soft); color: var(--cyan-deep); }
+
+    .block { margin-top: 18px; }
+    .block > h2 {
+      margin: 0 0 10px; font-size: 14px; font-weight: 750;
+      display: flex; align-items: baseline; gap: 8px;
+    }
+    .block > h2 em {
+      font-style: normal; font-family: var(--mono); font-size: 10px; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted);
+    }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--paper); border: 1px solid var(--line); border-radius: 16px;
+      box-shadow: var(--shadow); overflow: hidden;
+    }
+    .card-head {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+      padding: 11px 14px 9px; border-bottom: 1px solid var(--line); background: rgba(248,250,252,.9);
+    }
+    .card-head h3 { margin: 0; font-size: 13px; font-weight: 700; }
+    .tag {
+      font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted);
+    }
+    .tag.is-bad { color: #9a3412; border-color: rgba(185,70,40,.28); background: #fff6f3; }
+    .tag.is-good { color: #1a5c3a; border-color: rgba(31,138,91,.3); background: #f3fbf7; }
+    .card-body { padding: 14px 12px 16px; }
+    .card-note { margin: 12px 2px 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+
+    /* Before flow */
+    .flow { position: relative; padding: 6px 4px 2px; }
+    .flow-track {
+      position: absolute; left: 18%; right: 18%; top: 54px; height: 0;
+      border-top: 3px dashed rgba(31,143,184,.45); pointer-events: none;
+    }
+    .flow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; position: relative; z-index: 1; }
+    .flow-node { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; opacity: .55; }
+    .flow-node.is-on { opacity: 1; }
+    .flow-tag {
+      font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(31,143,184,.28);
+      background: var(--cyan-soft); color: var(--cyan-deep);
+    }
+    .flow-node:not(.is-on) .flow-tag { border-color: var(--line); background: #f8fafc; color: var(--muted); }
+    .flow-btn {
+      width: 68px; height: 68px; border-radius: 999px; border: 2px solid var(--line);
+      background: #fff; display: grid; place-items: center; color: var(--muted); position: relative;
+    }
+    .flow-node.is-on .flow-btn {
+      border-color: rgba(31,143,184,.55); color: var(--cyan-deep);
+      box-shadow: 0 0 0 3px rgba(31,143,184,.16);
+    }
+    .flow-btn svg { width: 26px; height: 26px; }
+    .flow-title { margin: 0; font-size: 13px; font-weight: 700; }
+    .flow-hint { margin: 0; font-size: 11px; line-height: 1.35; color: var(--muted); max-width: 11rem; }
+    .pro-badge {
+      position: absolute; top: -6px; right: -6px; min-height: 18px; padding: 0 6px;
+      border-radius: 999px; font-size: 10px; font-weight: 800; color: var(--cyan-deep);
+      background: var(--cyan-soft); border: 1px solid rgba(31,143,184,.28);
+    }
+
+    /* After seg */
+    .face-seg {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px;
+      border-radius: 12px; border: 1px solid var(--line); background: #f1f5f9;
+    }
+    .face-seg button {
+      display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+      min-height: 52px; padding: 8px 10px; border: 1px solid transparent; border-radius: 10px;
+      background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 700;
+      cursor: pointer; text-align: left;
+    }
+    .face-seg button svg { width: 18px; height: 18px; flex-shrink: 0; opacity: .75; }
+    .face-seg button:hover { color: var(--ink); }
+    .face-seg button.is-on {
+      background: #fff; color: var(--cyan-deep); border-color: rgba(31,143,184,.28);
+      box-shadow: 0 1px 3px rgba(21,37,54,.08);
+    }
+    .face-seg button.is-on svg { opacity: 1; }
+    .face-seg button[data-face="agent"].is-on { color: var(--green); border-color: var(--green-bd); }
+    .lbl { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .lbl .title-row { display: inline-flex; align-items: center; gap: 6px; }
+    .lbl .sub { font-size: 10px; font-weight: 600; color: var(--muted); }
+    .face-seg button.is-on .sub { color: inherit; opacity: .72; }
+    .seg-pro {
+      min-height: 18px; padding: 0 6px; border-radius: 999px; font-size: 10px; font-weight: 800;
+      color: var(--cyan-deep); background: var(--cyan-soft); border: 1px solid rgba(31,143,184,.28);
+    }
+
+    .stage {
+      margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; background: #f8fafc;
+      min-height: 120px; padding: 12px 14px; display: grid; gap: 6px;
+    }
+    .stage[hidden] { display: none !important; }
+    .stage-kicker {
+      margin: 0; font-family: var(--mono); font-size: 10px; font-weight: 600;
+      letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
+    }
+    .stage h4 { margin: 0; font-size: 14px; font-weight: 750; }
+    .stage p { margin: 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+
+    .verdict {
+      margin-top: 18px; padding: 14px 16px; border-radius: 14px;
+      border: 1px solid rgba(31,138,91,.28); background: #f3fbf7;
+    }
+    .verdict strong { display: block; font-size: 13px; margin-bottom: 4px; color: #1a5c3a; }
+    .verdict p { margin: 0; font-size: 12px; line-height: 1.5; color: #2d5a45; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="intro">
+      <p class="intro-kicker">Settings · Hero IA</p>
+      <h1>Soft Pad + 摄像头：去进度感</h1>
+      <p>两项都是同级分区，不是步骤条。不合并工作面；去掉虚线与编号，改成并列分段。按键 / 语音流水线仍保留 flow-nodes。</p>
+      <div class="chips">
+        <span class="good">Soft Pad · peer seg</span>
+        <span class="good">摄像头 · peer seg</span>
+        <span class="keep">按键 / 语音 · 仍用流程节点</span>
+      </div>
+    </header>
+
+    <!-- Soft Pad -->
+    <section class="block">
+      <h2>Soft Pad <em>pad · agent</em></h2>
+      <div class="grid">
+        <article class="card">
+          <div class="card-head"><h3>现在</h3><span class="tag is-bad">进度轨</span></div>
+          <div class="card-body">
+            <div class="flow" aria-hidden="true">
+              <div class="flow-track"></div>
+              <div class="flow-grid">
+                <div class="flow-node is-on">
+                  <span class="flow-tag">Soft Pad</span>
+                  <div class="flow-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><rect x="6.2" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="14.4" width="7.5" height="3.4" rx=".7"/><rect x="14.4" y="14.4" width="3.4" height="3.4" rx=".7"/></svg></div>
+                  <h4 class="flow-title">虚拟键盘</h4>
+                  <p class="flow-hint">按应用改键位 · 何时显示</p>
+                </div>
+                <div class="flow-node">
+                  <span class="flow-tag">灯效</span>
+                  <div class="flow-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="9" y="2.5" width="6" height="15" rx="3"/><circle cx="12" cy="6.5" r="1.35" fill="currentColor" stroke="none"/><circle cx="12" cy="10" r="1.35" fill="currentColor" stroke="none" opacity=".7"/><circle cx="12" cy="13.5" r="1.35" fill="currentColor" stroke="none" opacity=".4"/><path d="M10.5 19.5h3M11 21.5h2"/></svg></div>
+                  <h4 class="flow-title">灯效与浮窗</h4>
+                  <p class="flow-hint">按应用配灯 · 迷你栏 · 用量</p>
+                </div>
+              </div>
+            </div>
+            <p class="card-note">虚线暗示必须先键盘后灯效。</p>
+          </div>
+        </article>
+        <article class="card">
+          <div class="card-head"><h3>改后</h3><span class="tag is-good">并列分段</span></div>
+          <div class="card-body">
+            <div class="face-seg" data-demo="softpad" role="tablist">
+              <button type="button" class="is-on" data-face="pad">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><rect x="6.2" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="14.4" width="7.5" height="3.4" rx=".7"/><rect x="14.4" y="14.4" width="3.4" height="3.4" rx=".7"/></svg>
+                <span class="lbl">虚拟键盘<span class="sub">键位 · 显示 · 用途</span></span>
+              </button>
+              <button type="button" data-face="agent">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="9" y="2.5" width="6" height="15" rx="3"/><circle cx="12" cy="6.5" r="1.35" fill="currentColor" stroke="none"/><circle cx="12" cy="10" r="1.35" fill="currentColor" stroke="none" opacity=".7"/><circle cx="12" cy="13.5" r="1.35" fill="currentColor" stroke="none" opacity=".4"/><path d="M10.5 19.5h3M11 21.5h2"/></svg>
+                <span class="lbl">灯效与浮窗<span class="sub">配灯 · 迷你栏 · 用量</span></span>
+              </button>
+            </div>
+            <div class="stage" data-demo-stage="softpad" data-face="pad">
+              <p class="stage-kicker">Face · pad</p>
+              <h4>键盘工作区</h4>
+              <p>显示 / 键位 / 用途。面不变，只换顶栏导航。</p>
+            </div>
+            <div class="stage" data-demo-stage="softpad" data-face="agent" hidden>
+              <p class="stage-kicker">Face · agent</p>
+              <h4>灯效与浮窗</h4>
+              <p>独立 face，不塞进键盘三个 tab。</p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Camera -->
+    <section class="block">
+      <h2>摄像头 <em>pro · action</em></h2>
+      <div class="grid">
+        <article class="card">
+          <div class="card-head"><h3>现在</h3><span class="tag is-bad">01 → 02</span></div>
+          <div class="card-body">
+            <div class="flow" aria-hidden="true">
+              <div class="flow-track"></div>
+              <div class="flow-grid">
+                <div class="flow-node is-on">
+                  <span class="flow-tag">01 / Pro</span>
+                  <div class="flow-btn">
+                    <span class="pro-badge">Pro</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </div>
+                  <h4 class="flow-title">Pro 确认与安全</h4>
+                  <p class="flow-hint">确认 · 安全 · 隐私</p>
+                </div>
+                <div class="flow-node">
+                  <span class="flow-tag">02 / 设置</span>
+                  <div class="flow-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div>
+                  <h4 class="flow-title">摄像头设置</h4>
+                  <p class="flow-hint">预览 · 设备 · 校准</p>
+                </div>
+              </div>
+            </div>
+            <p class="card-note">编号像向导；实际可随时切换，校准也常该先做。</p>
+          </div>
+        </article>
+        <article class="card">
+          <div class="card-head"><h3>改后</h3><span class="tag is-good">并列分段</span></div>
+          <div class="card-body">
+            <div class="face-seg" data-demo="camera" role="tablist">
+              <button type="button" class="is-on" data-face="pro">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span class="lbl">
+                  <span class="title-row">Pro 确认与安全<span class="seg-pro">Pro</span></span>
+                  <span class="sub">确认 · 安全 · 隐私</span>
+                </span>
+              </button>
+              <button type="button" data-face="action">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                <span class="lbl">摄像头设置<span class="sub">预览 · 设备 · 校准</span></span>
+              </button>
+            </div>
+            <div class="stage" data-demo-stage="camera" data-face="pro">
+              <p class="stage-kicker">Panel · pro</p>
+              <h4>Pro 确认与安全</h4>
+              <p>视觉识别与确认规则。不再叫「第一步」。</p>
+            </div>
+            <div class="stage" data-demo-stage="camera" data-face="action" hidden>
+              <p class="stage-kicker">Panel · action</p>
+              <h4>摄像头设置</h4>
+              <p>预览、设备、校准。与 Pro 同级。</p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <aside class="verdict">
+      <strong>产品页已同步</strong>
+      <p>Soft Pad / 摄像头 hero 改为 <code>ot-seg</code>；按键「触发→识别」、语音「开启→说完了」仍用 flow-nodes。</p>
+    </aside>
+  </div>
+  <script>
+    document.querySelectorAll("[data-demo]").forEach(function (seg) {
+      var id = seg.getAttribute("data-demo");
+      seg.querySelectorAll("[data-face]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var face = btn.getAttribute("data-face");
+          seg.querySelectorAll("[data-face]").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+          document.querySelectorAll('[data-demo-stage="' + id + '"]').forEach(function (stage) {
+            stage.hidden = stage.getAttribute("data-face") !== face;
+          });
+        });
+      });
+    });
+  </script>
+</body>
+</html>
