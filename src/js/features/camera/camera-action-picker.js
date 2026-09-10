@@ -158,6 +158,8 @@
   }
 
   function normalizeChannel(ch) {
+    var F = global.OneToneActionCatalogFilter;
+    if (F && F.normalizeChannel) return F.normalizeChannel(ch);
     var s = String(ch || '').trim();
     if (s === 'key' || s === 'keys') return 'key';
     if (s === 'voice' || s === 'voiceWake') return 'voice';
@@ -167,6 +169,8 @@
   }
 
   function channelLabel(ch) {
+    var F = global.OneToneActionCatalogFilter;
+    if (F && F.channelLabel) return F.channelLabel(ch);
     ch = normalizeChannel(ch);
     if (ch === 'key') return t('cameraPickerChKey', '按键');
     if (ch === 'voice') return t('cameraPickerChVoice', '语音');
@@ -224,6 +228,10 @@
   }
 
   function hintAliases(aid) {
+    var F = global.OneToneActionCatalogFilter;
+    if (F && F.canonicalActionId) {
+      /* keep local alias builder aligned with shared filter */
+    }
     var id = String(aid || '').trim();
     if (!id) return [];
     var out = [id];
@@ -237,117 +245,52 @@
     return out;
   }
 
+  function isMultiShortcutAction(token) {
+    var F = global.OneToneActionCatalogFilter;
+    if (F && F.isMultiShortcutAction) return F.isMultiShortcutAction(token);
+    return canonicalActionId(token) === 'app.shortcut';
+  }
+
+  /** Cap: one action with a pile of key chords is almost always a bad merge — hide in channel dirs. */
+  var MAX_CHANNEL_TRIGGERS_KEEP =
+    (global.OneToneActionCatalogFilter &&
+      global.OneToneActionCatalogFilter.MAX_CHANNEL_TRIGGERS_KEEP) ||
+    3;
+
   function buildCrossHintMap(views, mappingId) {
-    var map = {};
-    (views || []).forEach(function (v) {
-      if (!v) return;
-      if (v.enabled === false) return;
-      var raw = String(v.actionId || v.action_id || '').trim();
-      if (!raw) return;
-      var ch = normalizeChannel(v.channel);
-      if (!ch || ch === 'camera') return;
-      var trig = String(v.trigger || v.bindingRef || v.binding_ref || '').trim();
-      var rec = null;
-      var aliases = hintAliases(raw);
-      for (var a = 0; a < aliases.length; a++) {
-        if (map[aliases[a]]) {
-          rec = map[aliases[a]];
-          break;
-        }
-      }
-      if (!rec) rec = { current: [], other: [] };
-      aliases.forEach(function (k) {
-        map[k] = rec;
-      });
-      var onCurrent = String(v.mappingId || v.mapping_id || mappingId) === String(mappingId);
-      var bucket = onCurrent ? rec.current : rec.other;
-      var dup = false;
-      for (var i = 0; i < bucket.length; i++) {
-        if (bucket[i].channel === ch && bucket[i].trigger === trig) {
-          dup = true;
-          break;
-        }
-      }
-      if (dup) return;
-      if (onCurrent) bucket.push({ channel: ch, trigger: trig });
-      else
-        bucket.push({
-          mappingLabel: String(v.mappingLabel || v.mapping_label || ''),
-          channel: ch,
-          trigger: trig
-        });
-    });
-    return map;
+    var F = global.OneToneActionCatalogFilter;
+    if (F && F.buildCrossHintMap) return F.buildCrossHintMap(views, mappingId);
+    return {};
   }
 
   function lookupHint(token, hintMap) {
-    var id = canonicalActionId(token);
-    var hint = hintMap && hintMap[id];
-    if (hint && hint.current && hint.current.length) return hint;
-    var keys = Object.keys(hintMap || {});
-    for (var i = 0; i < keys.length; i++) {
-      if (tokensMatch(keys[i], token)) return hintMap[keys[i]];
-    }
+    var F = global.OneToneActionCatalogFilter;
+    if (F && F.lookupHint) return F.lookupHint(token, hintMap);
     return null;
   }
 
+  function channelTriggerRows(token, hintMap, channel) {
+    var F = global.OneToneActionCatalogFilter;
+    if (F && F.channelTriggerRows) return F.channelTriggerRows(token, hintMap, channel);
+    return [];
+  }
+
   function tokenBoundOnChannel(token, hintMap, channel) {
-    var hint = lookupHint(token, hintMap);
-    if (!hint || !hint.current) return false;
-    var want = normalizeChannel(channel);
-    for (var i = 0; i < hint.current.length; i++) {
-      if (normalizeChannel(hint.current[i].channel) === want) return true;
-    }
+    var F = global.OneToneActionCatalogFilter;
+    if (F && F.tokenBoundOnChannel) return F.tokenBoundOnChannel(token, hintMap, channel);
     return false;
   }
 
   function channelCounts(hintMap) {
-    var counts = { key: 0, voice: 0, softPad: 0 };
-    var seenRec = [];
-    Object.keys(hintMap || {}).forEach(function (aid) {
-      var rec = hintMap[aid];
-      if (!rec || seenRec.indexOf(rec) >= 0) return;
-      seenRec.push(rec);
-      var cur = rec.current || [];
-      var seenCh = {};
-      cur.forEach(function (e) {
-        var ch = normalizeChannel(e.channel);
-        if (counts[ch] == null || seenCh[ch]) return;
-        seenCh[ch] = true;
-        counts[ch] += 1;
-      });
-    });
-    return counts;
+    var F = global.OneToneActionCatalogFilter;
+    if (F && F.channelCounts) return F.channelCounts(hintMap);
+    return { key: 0, voice: 0, softPad: 0 };
   }
 
   function formatCrossHint(token, hintMap, channelTab) {
-    var hint = lookupHint(token, hintMap);
-    if (!hint || !hint.current || !hint.current.length) return '';
-    var want = normalizeChannel(channelTab);
-    var rows = hint.current.filter(function (e) {
-      return !want || normalizeChannel(e.channel) === want;
-    });
-    if (!rows.length) return '';
-    if (want) {
-      return rows
-        .map(function (e) {
-          return e.trigger || '—';
-        })
-        .join(' · ');
-    }
-    var seenCh = {};
-    var out = [];
-    rows.forEach(function (e) {
-      var ch = normalizeChannel(e.channel);
-      if (!ch || seenCh[ch]) return;
-      seenCh[ch] = true;
-      out.push(
-        t('cameraPickerHintFmt', '已在{ch} {trig}')
-          .replace('{ch}', channelLabel(ch))
-          .replace('{trig}', e.trigger || '—')
-      );
-    });
-    return out.join(' · ');
+    var F = global.OneToneActionCatalogFilter;
+    if (F && F.formatCrossHint) return F.formatCrossHint(token, hintMap, channelTab);
+    return '';
   }
 
   function requiresConfirm(token) {
@@ -835,7 +778,11 @@
     uiState.views = [];
     uiState.options = [];
     if (!store) return Promise.resolve();
-    var viewsP = store.bindingViews ? store.bindingViews(mappingId) : Promise.resolve([]);
+    var viewsP = store.bindingViewsForMappingCached
+      ? store.bindingViewsForMappingCached(mappingId, true)
+      : store.bindingViews
+        ? store.bindingViews(mappingId)
+        : Promise.resolve([]);
     var optsP = Promise.resolve()
       .then(function () {
         return store.ensureCatalog ? store.ensureCatalog() : null;

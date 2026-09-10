@@ -329,7 +329,49 @@ html[data-theme="dark"] .habit-hub-table-row:hover{background:rgba(255,255,255,.
 }
 .habit-usage-sheet-export:hover{border-color:color-mix(in srgb,var(--us-accent) 40%,var(--us-line));color:var(--us-accent-strong)}
 .habit-usage-sheet-export-hint{font-size:10px;color:var(--us-sub);white-space:nowrap}
-.habit-usage-sheet-body{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:12px 20px 18px}
+.habit-usage-sheet-body{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:12px 20px 8px}
+.habit-usage-sheet-foot{
+  flex-shrink:0;display:flex;justify-content:flex-end;align-items:center;
+  padding:8px 16px 14px;border-top:1px solid var(--us-line);background:var(--surface,#fff);
+}
+.habit-usage-sheet-all-btn{
+  height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--us-line);
+  background:var(--surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--us-sub);cursor:pointer;
+}
+.habit-usage-sheet-all-btn:hover{border-color:color-mix(in srgb,var(--us-accent) 40%,var(--us-line));color:var(--us-accent-strong)}
+.habit-usage-sheet-all-btn:focus-visible{outline:2px solid color-mix(in srgb,var(--us-accent) 45%,transparent);outline-offset:1px}
+.habit-usage-all-backdrop{
+  position:fixed;inset:0;background:rgba(15,23,42,.34);z-index:124;
+}
+.habit-usage-all-sheet{
+  --us-text:var(--on-surface,#0f172a);
+  --us-sub:var(--on-surface-muted,#64748b);
+  --us-line:var(--outline-variant,#e2e8f0);
+  --us-line2:var(--surface-high,#f8fafc);
+  --us-accent:var(--primary,#2a9cc4);
+  --us-accent-strong:var(--primary-strong,#1f8fb8);
+  position:fixed;left:50%;top:50%;z-index:125;
+  width:min(28rem,calc(100vw - 40px));max-height:min(70vh,520px);
+  background:var(--surface,#fff);border:1px solid color-mix(in srgb,var(--us-accent) 14%,var(--us-line));
+  border-radius:18px;
+  box-shadow:0 4px 12px color-mix(in srgb,var(--us-text) 8%,transparent),0 16px 40px color-mix(in srgb,var(--us-text) 10%,transparent);
+  transform:translate(-50%,-50%);
+  transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .16s ease;
+  display:flex;flex-direction:column;color:var(--us-text);overscroll-behavior:contain;
+}
+.habit-usage-all-sheet.is-closed{
+  transform:translate(-50%,calc(-50% + 14px));opacity:0;pointer-events:none;
+}
+.habit-usage-all-inner{display:flex;flex-direction:column;min-height:0;max-height:inherit}
+.habit-usage-all-head{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:14px 16px 10px;border-bottom:1px solid var(--us-line);flex-shrink:0;
+}
+.habit-usage-all-title{margin:0;font-size:15px;font-weight:700;color:var(--us-text)}
+.habit-usage-all-body{padding:10px 12px 14px;overflow:auto;min-height:0}
+.habit-usage-all-body .habit-usage-overview{margin:0;padding:0;border:0;background:transparent}
+.habit-usage-all-body .habit-usage-overview-head{margin-bottom:8px}
+.habit-usage-all-body .habit-usage-overview-title{display:none}
 .habit-usage-sheet-history{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 .habit-usage-sheet-history .ot-action-history{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:10px}
 .habit-usage-sheet-history .ot-action-history-filter{

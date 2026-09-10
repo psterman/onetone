@@ -55,6 +55,7 @@ global.OneToneSemanticActionStore = {
 };
 global.OneToneState = { state: { config: { mappings: [] } } };
 
+require('../src/js/features/agent/action-catalog-filter.js');
 require('../src/js/features/camera/camera-action-picker.js');
 
 var Picker = global.OneToneCameraActionPicker;
@@ -158,5 +159,44 @@ assert.ok(voiceToks.indexOf('agent:status') < 0, 'voice directory hides disabled
 var startRow = byVoice.candidates.filter(function (r) { return r.token === 'agent:input.start'; })[0];
 assert.ok(startRow && startRow.crossHint.indexOf('开始输入') >= 0, 'voice tab shows voice trigger only');
 assert.ok(startRow.crossHint.indexOf('F2') < 0, 'voice tab hides key trigger');
+
+var polluted = Picker.buildCameraActionPickerModel({
+  bindKey: 'openPalm',
+  mappingId: 'cursor',
+  sceneTab: 'general',
+  channelTab: 'key',
+  query: '',
+  currentToken: 'none',
+  views: [
+    { actionId: 'status', channel: 'key', trigger: 'Ctrl+Z', mappingId: 'cursor', enabled: true },
+    { actionId: 'status', channel: 'key', trigger: 'Ctrl+F', mappingId: 'cursor', enabled: true },
+    { actionId: 'status', channel: 'key', trigger: 'Ctrl+I', mappingId: 'cursor', enabled: true },
+    { actionId: 'status', channel: 'key', trigger: 'Ctrl+Shift+P', mappingId: 'cursor', enabled: true },
+    { actionId: 'commandPalette', channel: 'key', trigger: 'Ctrl+Shift+P', mappingId: 'cursor', enabled: true },
+    { actionId: 'input.start', channel: 'key', trigger: 'LAlt+R', mappingId: 'cursor', enabled: true },
+    { actionId: 'input.start', channel: 'key', trigger: 'F2', mappingId: 'cursor', enabled: true },
+    { actionId: 'app.shortcut', channel: 'key', trigger: 'Ctrl+1', mappingId: 'cursor', enabled: true, actionInstanceId: 'a' },
+    { actionId: 'app.shortcut', channel: 'key', trigger: 'Ctrl+2', mappingId: 'cursor', enabled: true, actionInstanceId: 'b' }
+  ],
+  options: options.concat([
+    { actionId: 'commandPalette', bindable: true },
+    { actionId: 'app.shortcut', bindable: true }
+  ]),
+  showAll: true
+});
+var pollutedToks = polluted.candidates.map(function (r) { return r.token; });
+assert.ok(pollutedToks.indexOf('agent:status') < 0, 'hides action with too many key chords (mismatched dump)');
+assert.ok(pollutedToks.indexOf('agent:app.shortcut') < 0, 'hides multi-instance app.shortcut from channel dir');
+assert.ok(pollutedToks.indexOf('agent:commandPalette') >= 0, 'keeps clean single-key action');
+var startPoll = polluted.candidates.filter(function (r) {
+  return String(r.token).indexOf('input.start') >= 0 || r.token === 'pressCtrlI';
+})[0];
+assert.ok(startPoll, 'keeps action with few keys');
+assert.ok(startPoll.crossHint.indexOf('LAlt+R') >= 0 || startPoll.crossHint.indexOf('F2') >= 0, 'shows primary key');
+assert.ok(startPoll.crossHint.indexOf('Ctrl+Z') < 0, 'does not dump unrelated chords onto start');
+assert.ok(
+  startPoll.crossHint.indexOf('+') >= 0 || startPoll.crossHint.split('·').length === 1,
+  'extra keys collapsed (primary or +N), not a full dump'
+);
 
 console.log('camera-action-picker.test.js: ok');

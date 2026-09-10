@@ -157,12 +157,50 @@
     });
   }
 
+  var _allViewsCache = null;
+  var _allViewsAt = 0;
+  var ALL_VIEWS_TTL_MS = 15_000;
+
+  function invalidateBindingViews() {
+    _allViewsCache = null;
+    _allViewsAt = 0;
+  }
+
+  function bindingViewsAll(force) {
+    var now = Date.now();
+    if (!force && _allViewsCache && now - _allViewsAt < ALL_VIEWS_TTL_MS) {
+      return Promise.resolve(_allViewsCache);
+    }
+    return invoke('cmd_action_binding_views_all', {})
+      .then(function (rows) {
+        _allViewsCache = Array.isArray(rows) ? rows : [];
+        _allViewsAt = Date.now();
+        return _allViewsCache;
+      })
+      .catch(function () {
+        _allViewsCache = [];
+        _allViewsAt = Date.now();
+        return _allViewsCache;
+      });
+  }
+
+  function bindingViewsForMappingCached(mappingId, force) {
+    var mid = String(mappingId || '').trim();
+    return bindingViewsAll(force).then(function (all) {
+      if (!mid) return all;
+      return all.filter(function (v) {
+        return String((v && (v.mappingId || v.mapping_id)) || '') === mid;
+      });
+    });
+  }
+
   function semanticSlotId(channel, actionId) {
     return 'semantic:' + channel + ':' + actionId;
   }
 
   function invalidateOptions() {
     _optionsCache = {};
+    invalidateBindingViews();
   }
 
   /**
@@ -233,6 +271,9 @@
     latestPending: latestPending,
     cancelPending: cancelPending,
     bindingViews: bindingViews,
+    bindingViewsAll: bindingViewsAll,
+    bindingViewsForMappingCached: bindingViewsForMappingCached,
+    invalidateBindingViews: invalidateBindingViews,
     semanticSlotId: semanticSlotId,
     invalidateOptions: invalidateOptions,
     onChange: onChange,

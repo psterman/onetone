@@ -1930,6 +1930,11 @@
     var saveAsync=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync;
     var save=global.OneToneConfigPersist&&global.OneToneConfigPersist.save;
     var done=function(){
+      if(global.OneToneIpc&&global.OneToneIpc.invoke){
+        global.OneToneIpc.invoke('cmd_action_history_forget_mappings',{mappingIds:ids}).catch(function(){});
+      }
+      var stats=global.OneToneHabitActionStats;
+      if(stats&&stats.invalidate) stats.invalidate();
       if(global.OneToneMappingTrashMenu&&global.OneToneMappingTrashMenu.renderTrashList){
         global.OneToneMappingTrashMenu.renderTrashList();
       }
@@ -2211,6 +2216,7 @@
     var changed=false;
     var mergedApps=[];
     var drop={};
+    var remapPairs=[];
     var selId=String(state().selectedMappingId||'');
     var activeId=String(cfg.activeSceneId||'');
     var presetIds=presetAppTargetIds();
@@ -2266,6 +2272,7 @@
         if(m.id===winner.id) continue;
         foldLoserOverlayIntoWinner(winner,m);
         drop[m.id]=true;
+        remapPairs.push({from:m.id,to:winner.id});
         if(String(state().selectedMappingId||'')===String(m.id)){
           state().selectedMappingId=winner.id;
         }
@@ -2299,6 +2306,7 @@
           if(baseRow.id===winnerBase.id) continue;
           foldLoserOverlayIntoWinner(winnerBase,baseRow);
           drop[baseRow.id]=true;
+          remapPairs.push({from:baseRow.id,to:winnerBase.id});
           if(String(state().selectedMappingId||'')===String(baseRow.id)){
             state().selectedMappingId=winnerBase.id;
           }
@@ -2321,6 +2329,12 @@
       cfg.mappings.forEach(function(row,idx){ if(row) row.order=idx; });
       if(global.OneToneConfigPersist&&global.OneToneConfigPersist.forgetAppScenarioIds){
         global.OneToneConfigPersist.forgetAppScenarioIds(droppedIds);
+      }
+      if(remapPairs.length&&global.OneToneIpc&&global.OneToneIpc.invoke){
+        global.OneToneIpc.invoke('cmd_action_history_remap_mappings',{pairs:remapPairs}).then(function(){
+          var stats=global.OneToneHabitActionStats;
+          if(stats&&stats.invalidate) stats.invalidate();
+        }).catch(function(){});
       }
       if(!opts.skipPersist){
         if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save) global.OneToneConfigPersist.save();

@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SoftPad · 二级页：同应用其它通道命令</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #152536;
+      --muted: #5c6b7a;
+      --line: rgba(21, 37, 54, 0.1);
+      --paper: #fff;
+      --stage: #eef2f6;
+      --cyan: #1f8fb8;
+      --cyan-deep: #0f6f92;
+      --cyan-soft: rgba(31, 143, 184, 0.1);
+      --pad: #152536;
+      --font: "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+      --shadow: 0 12px 32px rgba(21, 37, 54, 0.09);
+      --sheet-shadow: 0 24px 70px rgba(21, 37, 54, 0.28);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(700px 320px at 8% -8%, rgba(31,143,184,.12), transparent 55%),
+        var(--stage);
+      -webkit-font-smoothing: antialiased;
+    }
+    .page {
+      width: min(920px, 100%);
+      margin: 0 auto;
+      padding: 22px 14px 48px;
+    }
+    .hero { margin-bottom: 14px; max-width: 36rem; }
+    .hero-kicker {
+      margin: 0 0 5px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cyan-deep);
+    }
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+    .hero p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .rules {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 12px 0 16px;
+    }
+    .rules span {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 10px;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+    @media (max-width: 720px) { .stage { grid-template-columns: 1fr; } }
+
+    .pad {
+      background: var(--pad);
+      border-radius: 14px;
+      padding: 12px;
+      color: #d7e2ec;
+      box-shadow: var(--shadow);
+    }
+    .pad h2 { margin: 0 0 2px; font-size: 12px; font-weight: 700; color: #7dd3fc; }
+    .pad p { margin: 0 0 8px; font-size: 10px; color: #8fa3b5; line-height: 1.4; }
+    .pad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .pkey {
+      aspect-ratio: 1;
+      border-radius: 9px;
+      border: 1px solid rgba(125,211,252,.18);
+      background: rgba(8,16,28,.55);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #c5d4e0;
+    }
+    .pkey.on {
+      border-color: rgba(125,211,252,.7);
+      background: rgba(31,143,184,.32);
+    }
+    .pkey small { font-size: 8px; font-weight: 500; color: #8fa3b5; }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      min-height: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: var(--shadow);
+    }
+    .layers {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 3px;
+      padding: 3px;
+      border-radius: 11px;
+      background: var(--cyan-soft);
+    }
+    .layer {
+      border: 0;
+      background: transparent;
+      border-radius: 8px;
+      padding: 7px 4px;
+      cursor: pointer;
+      color: var(--muted);
+      font: inherit;
+      text-align: center;
+      line-height: 1.15;
+    }
+    .layer strong { display: block; font-size: 12px; font-weight: 700; }
+    .layer em {
+      display: block;
+      margin-top: 1px;
+      font-size: 9px;
+      font-style: normal;
+      font-weight: 500;
+      opacity: 0.9;
+    }
+    .layer.is-on {
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(21,37,54,.08);
+    }
+
+    .tab-body { flex: 1; display: none; flex-direction: column; min-height: 0; }
+    .tab-body.is-on { display: flex; }
+    .stub {
+      flex: 1;
+      border-radius: 10px;
+      border: 1px dashed rgba(21,37,54,.14);
+      background: #f7fafc;
+      padding: 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .entry {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 24px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(31,143,184,.18);
+      background: linear-gradient(180deg, #f4fbfe, #fff);
+      text-align: center;
+    }
+    .entry h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .entry p {
+      margin: 0;
+      max-width: 18rem;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .entry-btn {
+      border: 0;
+      border-radius: 11px;
+      padding: 11px 18px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      background: var(--cyan);
+      color: #fff;
+      cursor: pointer;
+    }
+    .entry-btn:hover { background: var(--cyan-deep); }
+    .entry-btn:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 3px;
+    }
+    .bound {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .bound b { color: var(--ink); }
+
+    /* 二级页 */
+    .scrim {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 24, 36, 0.42);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .16s ease;
+      z-index: 30;
+    }
+    .scrim.is-on {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .sheet {
+      width: min(400px, 100%);
+      max-height: min(560px, 90vh);
+      display: flex;
+      flex-direction: column;
+      background: var(--paper);
+      border-radius: 16px;
+      box-shadow: var(--sheet-shadow);
+      overflow: hidden;
+      transform: translateY(8px);
+      transition: transform .16s ease;
+    }
+    .scrim.is-on .sheet { transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .scrim, .sheet { transition: none; }
+    }
+
+    .sheet-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 14px 12px 10px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .sheet-head h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .sheet-head p {
+      margin: 3px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .sheet-close {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    .sheet-close:hover { background: #f1f5f9; color: var(--ink); }
+
+    .context {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .context i {
+      font-style: normal;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--cyan-deep);
+      background: var(--cyan-soft);
+      border-radius: 6px;
+      padding: 3px 7px;
+    }
+
+    .ch-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 10px 14px 8px;
+    }
+    .ch-tab {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+      padding: 8px 6px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+      text-align: center;
+    }
+    .ch-tab.is-on {
+      border-color: rgba(31,143,184,.45);
+      background: var(--cyan-soft);
+      color: var(--cyan-deep);
+    }
+    .ch-tab em {
+      display: block;
+      margin-top: 1px;
+      font-style: normal;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      opacity: 0.7;
+    }
+
+    .search {
+      margin: 0 14px 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+    }
+    .search:focus-within {
+      border-color: rgba(31,143,184,.5);
+      box-shadow: 0 0 0 3px rgba(31,143,184,.1);
+    }
+    .search span { color: var(--muted); font-size: 13px; }
+    .search input {
+      border: 0;
+      outline: 0;
+      width: 100%;
+      font: inherit;
+      font-size: 13px;
+      background: transparent;
+    }
+
+    .cmd-list {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 2px 10px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .cmd {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      padding: 10px 11px;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
+    .cmd:hover { background: #f4f8fb; }
+    .cmd.is-sel {
+      background: var(--cyan-soft);
+      border-color: rgba(31,143,184,.35);
+    }
+    .cmd-title {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .cmd-note {
+      display: block;
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+      line-height: 1.35;
+    }
+    /* 仅选中行：半句做什么 */
+    .cmd-blurb {
+      display: none;
+      margin-top: 5px;
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--cyan-deep);
+      font-weight: 500;
+    }
+    .cmd.is-sel .cmd-blurb { display: block; }
+
+    .empty {
+      padding: 32px 12px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .sheet-escape {
+      padding: 2px 14px 8px;
+      border-top: 1px solid transparent;
+    }
+    .sheet-escape button {
+      border: 0;
+      background: transparent;
+      padding: 0;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      text-decoration-color: rgba(92, 107, 122, 0.45);
+    }
+    .sheet-escape button:hover { color: var(--cyan-deep); text-decoration-color: var(--cyan); }
+    .sheet-escape button:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    .sheet-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px 12px 14px;
+      border-top: 1px solid var(--line);
+      background: #fafcfd;
+    }
+    .sheet-foot p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+      min-width: 0;
+    }
+    .sheet-foot b { color: var(--ink); }
+    .foot-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--cyan); color: #fff; }
+    .btn-primary:hover { background: var(--cyan-deep); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-ghost {
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    /* 录制逃逸：同壳内第二屏，不进命令列表 */
+    .sheet-view { display: none; flex-direction: column; flex: 1; min-height: 0; }
+    .sheet-view.is-on { display: flex; }
+    .record-body {
+      flex: 1;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .record-body label {
+      display: grid;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .record-body input {
+      border: 1px solid rgba(21,37,54,.14);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+      outline: none;
+    }
+    .record-body input:focus {
+      border-color: rgba(31,143,184,.55);
+      box-shadow: 0 0 0 3px rgba(31,143,184,.12);
+    }
+    .chord-box {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px dashed rgba(31,143,184,.35);
+      background: rgba(31,143,184,.04);
+    }
+    .chord-pill {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid rgba(21,37,54,.14);
+      min-width: 6.5rem;
+      text-align: center;
+      color: var(--ink);
+    }
+    .chord-pill.is-empty { color: var(--muted); font-weight: 500; }
+    .record-hint {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--muted);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <p class="hero-kicker">Prototype · Soft Pad · 二级选令页</p>
+      <h1>从其它通道挑一条已有命令</h1>
+      <p>第三标签只打开二级页。页内按通道切换选已有命令；目录不全时，底部弱入口「录制按键」补缺口。</p>
+    </header>
+
+    <div class="rules" aria-label="已定规则">
+      <span>无「全部」</span>
+      <span>无「屏幕按钮」（当前入口）</span>
+      <span>无分类标签</span>
+      <span>注解一行 · 说明仅选中</span>
+      <span>底部弱入口：录制按键</span>
+    </div>
+
+    <div class="stage">
+      <aside class="pad">
+        <h2>Soft Pad · Cursor</h2>
+        <p>选中键 2，从其它通道换绑。</p>
+        <div class="pad-grid">
+          <div class="pkey"><span>1</span><small>新建</small></div>
+          <div class="pkey on"><span>2</span><small>选中</small></div>
+          <div class="pkey"><span>3</span><small>模型</small></div>
+          <div class="pkey"><span>4</span><small>—</small></div>
+          <div class="pkey"><span>5</span><small>—</small></div>
+          <div class="pkey"><span>6</span><small>—</small></div>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <div class="layers" role="tablist">
+          <button type="button" class="layer" data-tab="common">
+            <strong>我的常见</strong><em>置顶</em>
+          </button>
+          <button type="button" class="layer" data-tab="scenes">
+            <strong>按场景找</strong><em>内置</em>
+          </button>
+          <button type="button" class="layer is-on" data-tab="browse">
+            <strong>本应用</strong><em>其它通道</em>
+          </button>
+        </div>
+
+        <div class="tab-body" data-pane="common">
+          <div class="stub">示意：我的常见。</div>
+        </div>
+        <div class="tab-body" data-pane="scenes">
+          <div class="stub">示意：按场景找内置能力。</div>
+        </div>
+        <div class="tab-body is-on" data-pane="browse">
+          <div class="entry">
+            <h3>Cursor · 其它通道</h3>
+            <p>查看按键、口头指令、手势里已经配好的命令，点选绑到左侧键。</p>
+            <button type="button" class="entry-btn" id="openSheet">打开命令页</button>
+            <p class="bound" id="boundHint">当前键尚未从二级页选过命令。</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="scrim" id="scrim" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <!-- 浏览已有命令 -->
+      <div class="sheet-view is-on" data-view="browse">
+        <div class="sheet-head">
+          <div>
+            <h2 id="sheetTitle">选择命令</h2>
+            <p>Cursor · 其它通道已有命令</p>
+          </div>
+          <button type="button" class="sheet-close" data-close aria-label="关闭">×</button>
+        </div>
+
+        <div class="context"><i>绑到</i> 屏幕按钮 · 键 2</div>
+
+        <div class="ch-tabs" role="tablist" aria-label="通道">
+          <button type="button" class="ch-tab is-on" data-ch="key">按键<em data-count="key">0</em></button>
+          <button type="button" class="ch-tab" data-ch="voice">口头<em data-count="voice">0</em></button>
+          <button type="button" class="ch-tab" data-ch="gesture">手势<em data-count="gesture">0</em></button>
+        </div>
+
+        <label class="search">
+          <span aria-hidden="true">⌕</span>
+          <input type="search" id="q" placeholder="搜索名称" autocomplete="off" />
+        </label>
+
+        <div class="cmd-list" id="list" role="listbox"></div>
+
+        <div class="sheet-escape">
+          <button type="button" id="openRecord">没有想要的？录制按键</button>
+        </div>
+
+        <div class="sheet-foot">
+          <p id="footNote">点一条选中</p>
+          <div class="foot-actions">
+            <button type="button" class="btn btn-ghost" data-close>取消</button>
+            <button type="button" class="btn btn-primary" id="confirm" disabled>用这个</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 录制逃逸（同壳第二屏） -->
+      <div class="sheet-view" data-view="record">
+        <div class="sheet-head">
+          <div>
+            <h2>录制按键</h2>
+            <p>补目录缺口 · 录完可绑到 Soft Pad</p>
+          </div>
+          <button type="button" class="sheet-close" data-close aria-label="关闭">×</button>
+        </div>
+
+        <div class="context"><i>绑到</i> 屏幕按钮 · 键 2</div>
+
+        <div class="record-body">
+          <label>
+            名称
+            <input type="text" id="recName" placeholder="例如：打开终端分屏" autocomplete="off" />
+          </label>
+          <div class="chord-box">
+            <span class="chord-pill is-empty" id="chordPill">尚未录制</span>
+            <button type="button" class="btn btn-primary" id="btnListen">开始听键</button>
+          </div>
+          <p class="record-hint">原型：点「开始听键」模拟得到 Ctrl+Alt+T。正式版进入听键页。保存后进「我的常见」，并可用于当前 Soft Pad 键。</p>
+        </div>
+
+        <div class="sheet-foot">
+          <p id="recFoot">填写名称并录制按键</p>
+          <div class="foot-actions">
+            <button type="button" class="btn btn-ghost" id="backBrowse">返回列表</button>
+            <button type="button" class="btn btn-primary" id="saveRecord" disabled>加入并使用</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // 同应用 Cursor；不含屏幕按钮通道（当前入口已藏）
+      var COMMANDS = [
+        { id: "new-chat", name: "新建对话", channel: "key", note: "Ctrl+N", blurb: "在 Cursor 开一个新对话。" },
+        { id: "split", name: "终端分屏", channel: "key", note: "Ctrl+Alt+T", blurb: "打开终端并分屏。" },
+        { id: "privacy", name: "隐私模式", channel: "key", note: "Alt+P", blurb: "隐藏敏感内容。" },
+        { id: "focus", name: "聚焦 Agent", channel: "voice", note: "口令「聚焦」", blurb: "把输入焦点交给 Agent。" },
+        { id: "pause", name: "暂停助手", channel: "voice", note: "口令「暂停」", blurb: "暂时停止助手响应。" },
+        { id: "split-v", name: "终端分屏", channel: "voice", note: "口令「分屏」", blurb: "与按键版同一效果。" },
+        { id: "away", name: "离席暂停", channel: "gesture", note: "离席", blurb: "检测离席后暂停助手。" },
+        { id: "privacy-g", name: "隐私模式", channel: "gesture", note: "遮脸手势", blurb: "与按键版同一效果。" }
+      ];
+
+      var filter = "key";
+      var selected = null;
+      var query = "";
+      var recChord = "";
+
+      var $ = function (s, r) { return (r || document).querySelector(s); };
+      var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+      function esc(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function showView(id) {
+        $$(".sheet-view").forEach(function (v) {
+          v.classList.toggle("is-on", v.getAttribute("data-view") === id);
+        });
+      }
+
+      function counts() {
+        var c = { key: 0, voice: 0, gesture: 0 };
+        COMMANDS.forEach(function (cmd) { c[cmd.channel]++; });
+        Object.keys(c).forEach(function (k) {
+          var el = $('[data-count="' + k + '"]');
+          if (el) el.textContent = String(c[k]);
+        });
+      }
+
+      function filtered() {
+        var q = query.trim().toLowerCase();
+        return COMMANDS.filter(function (cmd) {
+          if (cmd.channel !== filter) return false;
+          if (!q) return true;
+          return (cmd.name + " " + cmd.note).toLowerCase().indexOf(q) >= 0;
+        });
+      }
+
+      function renderList() {
+        var rows = filtered();
+        var host = $("#list");
+        if (!rows.length) {
+          host.innerHTML = '<div class="empty">这个通道还没有已定义命令</div>';
+          return;
+        }
+        host.innerHTML = rows.map(function (cmd) {
+          var on = selected && selected.id === cmd.id;
+          return (
+            '<button type="button" class="cmd' + (on ? " is-sel" : "") + '" data-id="' + cmd.id + '" role="option" aria-selected="' + (on ? "true" : "false") + '">' +
+            '<span class="cmd-title">' + esc(cmd.name) + "</span>" +
+            '<span class="cmd-note">' + esc(cmd.note) + "</span>" +
+            '<span class="cmd-blurb">' + esc(cmd.blurb) + "</span>" +
+            "</button>"
+          );
+        }).join("");
+
+        $$(".cmd", host).forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var id = btn.getAttribute("data-id");
+            selected = COMMANDS.filter(function (c) { return c.id === id; })[0] || null;
+            renderList();
+            syncFoot();
+          });
+        });
+      }
+
+      function syncFoot() {
+        var note = $("#footNote");
+        var confirm = $("#confirm");
+        if (!selected) {
+          note.textContent = "点一条选中";
+          confirm.disabled = true;
+        } else {
+          note.innerHTML = "已选 <b>" + esc(selected.name) + "</b>";
+          confirm.disabled = false;
+        }
+      }
+
+      function syncRecordFoot() {
+        var name = ($("#recName").value || "").trim();
+        var ok = !!(name && recChord);
+        $("#saveRecord").disabled = !ok;
+        $("#recFoot").innerHTML = ok
+          ? "将保存 <b>" + esc(name) + "</b>（" + esc(recChord) + "）"
+          : "填写名称并录制按键";
+      }
+
+      function resetRecord() {
+        recChord = "";
+        $("#recName").value = "";
+        var pill = $("#chordPill");
+        pill.textContent = "尚未录制";
+        pill.classList.add("is-empty");
+        syncRecordFoot();
+      }
+
+      function openSheet() {
+        selected = null;
+        filter = "key";
+        query = "";
+        $("#q").value = "";
+        $$(".ch-tab").forEach(function (t) {
+          t.classList.toggle("is-on", t.getAttribute("data-ch") === "key");
+        });
+        resetRecord();
+        showView("browse");
+        counts();
+        renderList();
+        syncFoot();
+        var scrim = $("#scrim");
+        scrim.classList.add("is-on");
+        scrim.setAttribute("aria-hidden", "false");
+      }
+
+      function closeSheet() {
+        var scrim = $("#scrim");
+        scrim.classList.remove("is-on");
+        scrim.setAttribute("aria-hidden", "true");
+        showView("browse");
+      }
+
+      $$(".layer").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.getAttribute("data-tab");
+          $$(".layer").forEach(function (b) { b.classList.toggle("is-on", b === btn); });
+          $$(".tab-body").forEach(function (p) {
+            p.classList.toggle("is-on", p.getAttribute("data-pane") === id);
+          });
+        });
+      });
+
+      $$(".ch-tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          filter = btn.getAttribute("data-ch");
+          selected = null;
+          $$(".ch-tab").forEach(function (t) { t.classList.toggle("is-on", t === btn); });
+          renderList();
+          syncFoot();
+        });
+      });
+
+      $("#q").addEventListener("input", function () {
+        query = $("#q").value || "";
+        renderList();
+      });
+
+      $("#openSheet").addEventListener("click", openSheet);
+      $$("[data-close]").forEach(function (btn) {
+        btn.addEventListener("click", closeSheet);
+      });
+      $("#scrim").addEventListener("click", function (e) {
+        if (e.target === $("#scrim")) closeSheet();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && $("#scrim").classList.contains("is-on")) closeSheet();
+      });
+
+      $("#confirm").addEventListener("click", function () {
+        if (!selected) return;
+        $("#boundHint").innerHTML =
+          "已选 <b>" + esc(selected.name) + "</b>（" + esc(selected.note) + "），可绑到键 2。";
+        closeSheet();
+      });
+
+      $("#openRecord").addEventListener("click", function () {
+        resetRecord();
+        showView("record");
+        $("#recName").focus();
+      });
+
+      $("#backBrowse").addEventListener("click", function () {
+        showView("browse");
+      });
+
+      $("#btnListen").addEventListener("click", function () {
+        recChord = "Ctrl+Alt+T";
+        var pill = $("#chordPill");
+        pill.textContent = recChord;
+        pill.classList.remove("is-empty");
+        syncRecordFoot();
+      });
+
+      $("#recName").addEventListener("input", syncRecordFoot);
+
+      $("#saveRecord").addEventListener("click", function () {
+        if ($("#saveRecord").disabled) return;
+        var name = ($("#recName").value || "").trim();
+        COMMANDS.unshift({
+          id: "custom-" + Date.now(),
+          name: name,
+          channel: "key",
+          note: recChord,
+          blurb: "自定义快捷键，已加入我的常见。"
+        });
+        $("#boundHint").innerHTML =
+          "已录制 <b>" + esc(name) + "</b>（" + esc(recChord) + "），加入「我的常见」并可用于键 2。";
+        closeSheet();
+      });
+
+      counts();
+    })();
+  </script>
+</body>
+</html>

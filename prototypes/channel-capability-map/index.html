@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>能力总览 · 应用 × 通道</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2332;
+      --muted: #5a6a7c;
+      --line: #cfd8e3;
+      --paper: #fbfcfe;
+      --wash: #eef2f7;
+      --steel: #3d5a80;
+      --steel-soft: #e8eef6;
+      --live: #b86e1c;
+      --live-soft: #fff4e5;
+      --live-ink: #8a4f0f;
+      --empty: #d5dde6;
+      --ok: #1f6b4a;
+      --shadow: 0 22px 50px rgba(26, 35, 50, 0.12);
+      --font: "Outfit", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(61, 90, 128, 0.04) 1px, transparent 1px) 0 0 / 28px 28px,
+        linear-gradient(rgba(61, 90, 128, 0.04) 1px, transparent 1px) 0 0 / 28px 28px,
+        linear-gradient(165deg, #f3f6fa 0%, #e7edf4 100%);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+    .page {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 28px 18px 56px;
+    }
+    .hero {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 20px;
+      max-width: 52rem;
+    }
+    .hero-kicker {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--steel);
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.1;
+    }
+    .hero p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      margin: 16px 0 18px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .legend i {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      margin-right: 6px;
+      vertical-align: -1px;
+    }
+    .legend .live { background: var(--live); }
+    .legend .sparse { background: color-mix(in srgb, var(--live) 35%, var(--empty)); }
+    .legend .none { background: var(--empty); }
+
+    .board {
+      display: grid;
+      gap: 14px;
+    }
+    @media (min-width: 900px) {
+      .board {
+        grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+        align-items: start;
+      }
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-head h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .panel-head span {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* —— matrix: the signature —— */
+    .matrix-wrap { padding: 12px 12px 16px; overflow-x: auto; }
+    .matrix {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 6px;
+      min-width: 520px;
+    }
+    .matrix th, .matrix td {
+      text-align: center;
+      font-weight: 600;
+    }
+    .matrix thead th {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 4px 6px 8px;
+      font-weight: 600;
+    }
+    .matrix thead th:first-child,
+    .matrix tbody th {
+      text-align: left;
+    }
+    .matrix tbody th {
+      padding: 0 8px 0 4px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .matrix tbody th button {
+      all: unset;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 8px;
+      padding: 6px 8px;
+    }
+    .matrix tbody th button:hover,
+    .matrix tbody th button:focus-visible {
+      background: var(--steel-soft);
+      outline: 2px solid color-mix(in srgb, var(--steel) 40%, transparent);
+      outline-offset: 1px;
+    }
+    .matrix tbody th button.is-on {
+      background: var(--steel-soft);
+      color: var(--steel);
+    }
+    .app-ico {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: var(--wash);
+      border: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--steel);
+    }
+    .cell {
+      all: unset;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      min-width: 52px;
+      height: 44px;
+      border-radius: 10px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      position: relative;
+    }
+    .cell:hover { transform: translateY(-1px); }
+    .cell:focus-visible {
+      outline: 2px solid var(--steel);
+      outline-offset: 2px;
+    }
+    .cell.is-empty {
+      background: var(--empty);
+      color: color-mix(in srgb, var(--ink) 35%, transparent);
+    }
+    .cell.is-sparse {
+      background: color-mix(in srgb, var(--live) 32%, #fff);
+      color: var(--live-ink);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--live) 25%, transparent);
+    }
+    .cell.is-live {
+      background: var(--live);
+      color: #fff;
+    }
+    .cell.is-on {
+      box-shadow: 0 0 0 2px var(--ink);
+      transform: scale(1.04);
+    }
+    .cell .dot {
+      position: absolute;
+      top: 5px;
+      right: 6px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.85);
+      opacity: 0;
+    }
+    .cell.is-live .dot { opacity: 1; }
+
+    .tips {
+      margin: 0 16px 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--wash);
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .tips strong { color: var(--ink); font-weight: 700; }
+
+    /* —— detail list —— */
+    .detail-head-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0 16px 12px;
+    }
+    .chip {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--live-soft);
+      color: var(--live-ink);
+      border: 1px solid color-mix(in srgb, var(--live) 25%, transparent);
+    }
+    .chip.quiet {
+      background: var(--wash);
+      color: var(--muted);
+      border-color: var(--line);
+    }
+    .list {
+      list-style: none;
+      margin: 0;
+      padding: 0 8px 12px;
+      max-height: min(520px, 62vh);
+      overflow: auto;
+    }
+    .list li {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px 12px;
+      align-items: start;
+      padding: 12px 10px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      animation: rise 0.35s ease both;
+    }
+    .list li:nth-child(1) { animation-delay: 0.02s; }
+    .list li:nth-child(2) { animation-delay: 0.05s; }
+    .list li:nth-child(3) { animation-delay: 0.08s; }
+    .list li:nth-child(4) { animation-delay: 0.11s; }
+    .list li:nth-child(5) { animation-delay: 0.14s; }
+    .list li:nth-child(6) { animation-delay: 0.17s; }
+    .list li:hover {
+      background: var(--wash);
+      border-color: var(--line);
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    .act-name {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .act-meta {
+      margin: 3px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+      line-height: 1.4;
+    }
+    .wires {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      justify-content: flex-end;
+      max-width: 160px;
+    }
+    .wire {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 6px;
+      border-radius: 6px;
+      background: var(--steel-soft);
+      color: var(--steel);
+    }
+    .wire.is-hit {
+      background: var(--live-soft);
+      color: var(--live-ink);
+    }
+    .empty-detail {
+      padding: 28px 18px 36px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+    .empty-detail b { display: block; color: var(--ink); margin-bottom: 6px; font-size: 14px; }
+
+    .rules {
+      margin-top: 18px;
+      display: grid;
+      gap: 10px;
+    }
+    @media (min-width: 720px) {
+      .rules { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    .rules article {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(251, 252, 254, 0.88);
+    }
+    .rules h3 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .rules p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .foot {
+      margin-top: 18px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .foot a { color: var(--steel); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-kicker">Capability map · prototype</div>
+      <h1>各应用 × 各通道：已有动作怎么总览</h1>
+      <p>
+        先看矩阵里「哪里已经接线」，再点进一格看具体能力。
+        数字 = 该应用在该通道上已配置、可触发的动作数；空格表示还没接到这条通道。
+      </p>
+    </header>
+
+    <div class="legend" aria-hidden="true">
+      <span><i class="live"></i>密（≥4）</span>
+      <span><i class="sparse"></i>有（1–3）</span>
+      <span><i class="none"></i>空</span>
+      <span>点单元格或应用名 → 右侧列出动作</span>
+    </div>
+
+    <div class="board">
+      <section class="panel" aria-labelledby="matrixTitle">
+        <div class="panel-head">
+          <h2 id="matrixTitle">接线矩阵</h2>
+          <span id="matrixHint">点击单元格钻取</span>
+        </div>
+        <div class="matrix-wrap">
+          <table class="matrix" id="matrix">
+            <thead>
+              <tr>
+                <th scope="col">应用</th>
+                <!-- channels injected -->
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="tips">
+          <strong>总结方式：</strong>一行 = 一个应用场景；一列 = 一条通道。
+          不在这里「选动作去绑定」，只回答「已经有什么」。
+          要加线，再进动作目录壳（bind）或识别页。
+        </p>
+      </section>
+
+      <section class="panel" aria-labelledby="detailTitle">
+        <div class="panel-head">
+          <h2 id="detailTitle">已接线清单</h2>
+          <span id="detailCount">—</span>
+        </div>
+        <div class="detail-head-meta" id="detailChips"></div>
+        <ul class="list" id="detailList" hidden></ul>
+        <div class="empty-detail" id="detailEmpty">
+          <b>点矩阵里的一格</b>
+          例如 Cursor × 口头指令，右侧只列出该格里的动作与触发方式。
+        </div>
+      </section>
+    </div>
+
+    <div class="rules">
+      <article>
+        <h3>1. 先矩阵后列表</h3>
+        <p>总览用占用热力，不把所有应用的动作摊成一张长表。密度一眼可见缺口。</p>
+      </article>
+      <article>
+        <h3>2. 通道用小白话</h3>
+        <p>列名与识别页一致：按键 / 口头指令 / 软件自带 / 屏幕按钮 / 手势——不写内部 channel id。</p>
+      </article>
+      <article>
+        <h3>3. 一行动作可多通道</h3>
+        <p>同一动作若在按键+口头指令都有，清单里用多个小徽章标出；矩阵计数按通道各算一次。</p>
+      </article>
+    </div>
+
+    <p class="foot">
+      原型路径：<code>prototypes/channel-capability-map/index.html</code>
+      · 姊妹壳：<a href="../universal-action-shell/index.html">动作目录壳</a>
+    </p>
+  </div>
+
+  <script>
+    (function () {
+      var CHANNELS = [
+        { id: "key", label: "按键" },
+        { id: "voice", label: "口头指令" },
+        { id: "cursor", label: "软件自带" },
+        { id: "softPad", label: "屏幕按钮" },
+        { id: "camera", label: "手势" }
+      ];
+
+      var APPS = [
+        { id: "universal", name: "通用", ico: "⌂" },
+        { id: "cursor", name: "Cursor", ico: "Cu" },
+        { id: "codex", name: "Codex", ico: "Cx" },
+        { id: "claude", name: "Claude Code", ico: "Cl" },
+        { id: "minimax", name: "MiniMax", ico: "MM" },
+        { id: "trae", name: "Trae", ico: "Tr" }
+      ];
+
+      /**
+       * Demo inventory: each action lists which channels already wire it for an app.
+       * Real product: aggregate BindingViews / Soft Pad / camera binds / cursor catalogue hits.
+       */
+      var ACTIONS = [
+        {
+          id: "dictation",
+          name: "开始听写",
+          effect: "打开语音输入，字进当前输入框",
+          byApp: {
+            cursor: { key: "LAlt+R", voice: "说话", softPad: "麦键" },
+            codex: { key: "LAlt+R", voice: "开始听写" },
+            universal: { key: "F2" }
+          }
+        },
+        {
+          id: "send",
+          name: "完成并发送",
+          effect: "听写收尾并交给 Agent",
+          byApp: {
+            cursor: { key: "Enter", voice: "发送", cursor: "Enter" },
+            claude: { softPad: "发送格" }
+          }
+        },
+        {
+          id: "summon",
+          name: "回到当前 Agent",
+          effect: "切回并聚焦对话",
+          byApp: {
+            cursor: { key: "summon", voice: "打开 Codex", softPad: "召回" },
+            codex: { softPad: "召回", camera: "五指张开" }
+          }
+        },
+        {
+          id: "palette",
+          name: "命令面板",
+          effect: "打开应用内命令菜单",
+          byApp: {
+            cursor: { cursor: "Ctrl+Shift+P", softPad: "命令" },
+            trae: { softPad: "命令" }
+          }
+        },
+        {
+          id: "newChat",
+          name: "新会话",
+          effect: "开一条干净对话",
+          byApp: {
+            cursor: { cursor: "Ctrl+N", voice: "新会话" },
+            claude: { voice: "新对话", softPad: "新会话" }
+          }
+        },
+        {
+          id: "continue",
+          name: "继续",
+          effect: "让 Agent 接着干",
+          byApp: {
+            cursor: { voice: "继续", softPad: "继续" },
+            codex: { softPad: "继续", camera: "点头" },
+            minimax: { softPad: "继续" }
+          }
+        },
+        {
+          id: "privacy",
+          name: "隐私屏",
+          effect: "离席时遮挡内容",
+          byApp: {
+            universal: { camera: "离席" },
+            cursor: { camera: "离席" }
+          }
+        },
+        {
+          id: "cancel",
+          name: "取消本轮",
+          effect: "停听写或停生成",
+          byApp: {
+            cursor: { key: "Esc", voice: "取消", cursor: "Ctrl+Shift+Backspace" },
+            codex: { key: "Esc" }
+          }
+        },
+        {
+          id: "search",
+          name: "快速打开",
+          effect: "Ctrl+P 搜文件",
+          byApp: {
+            cursor: { cursor: "Ctrl+P" },
+            trae: { cursor: "Ctrl+P", softPad: "搜索" }
+          }
+        },
+        {
+          id: "ok",
+          name: "确认 / OK",
+          effect: "手势确认当前建议",
+          byApp: {
+            cursor: { camera: "OK 手" },
+            claude: { camera: "OK 手", softPad: "确认" }
+          }
+        }
+      ];
+
+      var state = { app: "cursor", channel: "voice" };
+
+      var matrixEl = document.getElementById("matrix");
+      var theadRow = matrixEl.querySelector("thead tr");
+      var tbody = matrixEl.querySelector("tbody");
+      var detailList = document.getElementById("detailList");
+      var detailEmpty = document.getElementById("detailEmpty");
+      var detailChips = document.getElementById("detailChips");
+      var detailCount = document.getElementById("detailCount");
+      var matrixHint = document.getElementById("matrixHint");
+
+      function channelLabel(id) {
+        var c = CHANNELS.find(function (x) { return x.id === id; });
+        return c ? c.label : id;
+      }
+
+      function appMeta(id) {
+        return APPS.find(function (x) { return x.id === id; }) || { name: id, ico: "?" };
+      }
+
+      function countFor(appId, channelId) {
+        var n = 0;
+        ACTIONS.forEach(function (a) {
+          var wires = a.byApp[appId];
+          if (wires && wires[channelId]) n += 1;
+        });
+        return n;
+      }
+
+      function densityClass(n) {
+        if (n <= 0) return "is-empty";
+        if (n < 4) return "is-sparse";
+        return "is-live";
+      }
+
+      function buildHead() {
+        CHANNELS.forEach(function (ch) {
+          var th = document.createElement("th");
+          th.scope = "col";
+          th.textContent = ch.label;
+          theadRow.appendChild(th);
+        });
+      }
+
+      function buildMatrix() {
+        tbody.innerHTML = "";
+        APPS.forEach(function (app) {
+          var tr = document.createElement("tr");
+          var th = document.createElement("th");
+          th.scope = "row";
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = state.app === app.id && !state.channel ? "is-on" : "";
+          btn.innerHTML =
+            '<span class="app-ico">' +
+            app.ico +
+            "</span><span>" +
+            app.name +
+            "</span>";
+          btn.addEventListener("click", function () {
+            state.app = app.id;
+            state.channel = "";
+            render();
+          });
+          th.appendChild(btn);
+          tr.appendChild(th);
+
+          CHANNELS.forEach(function (ch) {
+            var td = document.createElement("td");
+            var n = countFor(app.id, ch.id);
+            var cell = document.createElement("button");
+            cell.type = "button";
+            cell.className = "cell " + densityClass(n);
+            if (state.app === app.id && state.channel === ch.id) cell.classList.add("is-on");
+            cell.setAttribute(
+              "aria-label",
+              app.name + " · " + ch.label + " · " + n + " 项"
+            );
+            cell.innerHTML = "<span class=\"dot\"></span>" + n;
+            cell.addEventListener("click", function () {
+              state.app = app.id;
+              state.channel = ch.id;
+              render();
+            });
+            td.appendChild(cell);
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+      }
+
+      function detailRows() {
+        var rows = [];
+        ACTIONS.forEach(function (a) {
+          var wires = a.byApp[state.app];
+          if (!wires) return;
+          if (state.channel) {
+            if (!wires[state.channel]) return;
+            rows.push({ action: a, focus: state.channel, wires: wires });
+          } else {
+            if (!Object.keys(wires).length) return;
+            rows.push({ action: a, focus: "", wires: wires });
+          }
+        });
+        return rows;
+      }
+
+      function renderDetail() {
+        var app = appMeta(state.app);
+        var rows = detailRows();
+        detailChips.innerHTML = "";
+        var chipApp = document.createElement("span");
+        chipApp.className = "chip";
+        chipApp.textContent = app.name;
+        detailChips.appendChild(chipApp);
+        if (state.channel) {
+          var chipCh = document.createElement("span");
+          chipCh.className = "chip";
+          chipCh.textContent = channelLabel(state.channel);
+          detailChips.appendChild(chipCh);
+        } else {
+          var chipAll = document.createElement("span");
+          chipAll.className = "chip quiet";
+          chipAll.textContent = "全部通道";
+          detailChips.appendChild(chipAll);
+        }
+
+        detailCount.textContent = rows.length + " 个动作";
+        matrixHint.textContent = state.channel
+          ? app.name + " × " + channelLabel(state.channel)
+          : app.name + " · 全通道";
+
+        if (!rows.length) {
+          detailList.hidden = true;
+          detailEmpty.hidden = false;
+          detailEmpty.innerHTML =
+            "<b>" +
+            app.name +
+            (state.channel ? " · " + channelLabel(state.channel) : "") +
+            " 还是空的</b>这条通道上还没有已接线的动作。去动作目录壳绑定，或去识别页补键。";
+          return;
+        }
+
+        detailEmpty.hidden = true;
+        detailList.hidden = false;
+        detailList.innerHTML = "";
+        rows.forEach(function (row) {
+          var li = document.createElement("li");
+          var left = document.createElement("div");
+          left.innerHTML =
+            '<p class="act-name"></p><p class="act-meta"></p>';
+          left.querySelector(".act-name").textContent = row.action.name;
+          left.querySelector(".act-meta").textContent = row.action.effect;
+          var wiresEl = document.createElement("div");
+          wiresEl.className = "wires";
+          CHANNELS.forEach(function (ch) {
+            var trig = row.wires[ch.id];
+            if (!trig) return;
+            var w = document.createElement("span");
+            w.className = "wire" + (ch.id === row.focus ? " is-hit" : "");
+            w.textContent = ch.label + " · " + trig;
+            wiresEl.appendChild(w);
+          });
+          li.appendChild(left);
+          li.appendChild(wiresEl);
+          detailList.appendChild(li);
+        });
+      }
+
+      function render() {
+        buildMatrix();
+        renderDetail();
+      }
+
+      buildHead();
+      render();
+    })();
+  </script>
+</body>
+</html>

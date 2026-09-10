@@ -261,15 +261,34 @@
   }
 
   function overviewHtml(limit) {
-    limit = limit > 0 ? limit : 5;
+    // limit null/undefined → top 5; <=0 → all apps with usage in window
+    if (limit == null) limit = 5;
+    var liveIds = {};
+    var mappings = (global.OneToneState && global.OneToneState.state && global.OneToneState.state.config &&
+      global.OneToneState.state.config.mappings) || [];
+    mappings.forEach(function (m) {
+      if (m && m.id) liveIds[String(m.id)] = true;
+    });
     var rows = Object.keys(CACHE.byId).map(function (id) { return CACHE.byId[id]; })
-      .filter(function (r) { return r && r.count > 0; })
+      .filter(function (r) {
+        if (!r || !(r.count > 0)) return false;
+        var mid = String(r.mappingId || '').trim();
+        if (!mid || mid === '_unmapped') return false;
+        return !!liveIds[mid];
+      })
       .sort(function (a, b) {
         return (b.count - a.count) || ((b.lastTsMs || 0) - (a.lastTsMs || 0));
-      })
-      .slice(0, limit);
+      });
+    if (limit > 0) rows = rows.slice(0, limit);
     var head = '<div class="habit-usage-overview-head">' +
-      '<p class="habit-usage-overview-title">' + esc(t('habitUsageOverviewTitle', '近 7 天用过')) + '</p>' +
+      '<p class="habit-usage-overview-title">' +
+      esc(
+        t('habitUsageOverviewTitleDyn', '{window}用过').replace(
+          '{window}',
+          windowSpoken(CACHE.hours)
+        )
+      ) +
+      '</p>' +
       '<button type="button" class="habit-usage-export-btn" data-habit-usage-export-all>' +
       esc(t('habitUsageExportAll', '导出全部')) + '</button></div>';
     if (!rows.length) {

@@ -11,10 +11,17 @@
   }
 
   function persist() {
-    if (global.OneToneConfigPersist && global.OneToneConfigPersist.saveAsync) {
-      return global.OneToneConfigPersist.saveAsync();
-    }
-    return Promise.resolve();
+    var p =
+      global.OneToneConfigPersist && global.OneToneConfigPersist.saveAsync
+        ? global.OneToneConfigPersist.saveAsync()
+        : Promise.resolve();
+    return Promise.resolve(p).then(function (ok) {
+      var store = global.OneToneSemanticActionStore;
+      if (store && store.invalidateBindingViews) store.invalidateBindingViews();
+      if (store && store.invalidateOptions) store.invalidateOptions();
+      if (store && store.notifyLocalChange) store.notifyLocalChange();
+      return ok;
+    });
   }
 
   function mappingById(id) {

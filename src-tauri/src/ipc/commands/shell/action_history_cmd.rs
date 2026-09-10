@@ -2,16 +2,24 @@
 
 use std::sync::Arc;
 
+use serde::Deserialize;
 use tauri::{AppHandle, State};
 
 use crate::action_history::{
-    analyze_chat, analyze_optimization, analyze_summary, clear, record, stats_by_mapping, tail,
-    ActionHistoryEntry,
+    analyze_chat, analyze_optimization, analyze_summary, clear, forget_mapping_ids, record,
+    remap_mapping_ids, stats_by_mapping, tail, ActionHistoryEntry,
 };
 use crate::AppState;
 
 fn opt_str(s: Option<String>) -> Option<String> {
     s.map(|v| v.trim().to_string()).filter(|v| !v.is_empty())
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActionHistoryRemapPair {
+    pub from: String,
+    pub to: String,
 }
 
 #[tauri::command]
@@ -72,6 +80,19 @@ pub fn cmd_action_history_record(
 pub fn cmd_action_history_clear() -> serde_json::Value {
     clear();
     serde_json::json!({ "ok": true })
+}
+
+#[tauri::command]
+pub fn cmd_action_history_remap_mappings(pairs: Vec<ActionHistoryRemapPair>) -> serde_json::Value {
+    let mapped: Vec<(String, String)> = pairs.into_iter().map(|p| (p.from, p.to)).collect();
+    let n = remap_mapping_ids(&mapped);
+    serde_json::json!({ "ok": true, "remapped": n })
+}
+
+#[tauri::command]
+pub fn cmd_action_history_forget_mappings(mapping_ids: Vec<String>) -> serde_json::Value {
+    let n = forget_mapping_ids(&mapping_ids);
+    serde_json::json!({ "ok": true, "removed": n })
 }
 
 #[tauri::command]

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tauri::{State, WebviewWindow};
 
 use crate::agent::binding_view::project_action_bindings_for_mapping;
+use crate::agent::binding_view::project_all_action_bindings;
 use crate::agent::route::{route_semantic_action, SemanticActionRequest};
 use crate::agent::semantic::public_catalog_dto;
 use crate::agent::{execute_agent_action, AgentExecuteRequest};
@@ -90,6 +91,14 @@ pub fn cmd_action_binding_views(
 ) -> serde_json::Value {
     let cfg = state.cfg.lock();
     let views = project_action_bindings_for_mapping(&cfg, mapping_id.trim());
+    serde_json::to_value(views).unwrap_or_else(|_| serde_json::json!([]))
+}
+
+/// All mappings' binding projection — menus/capability map; authority remains config.
+#[tauri::command]
+pub fn cmd_action_binding_views_all(state: State<'_, Arc<AppState>>) -> serde_json::Value {
+    let cfg = state.cfg.lock();
+    let views = project_all_action_bindings(&cfg);
     serde_json::to_value(views).unwrap_or_else(|_| serde_json::json!([]))
 }
 

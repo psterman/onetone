@@ -955,12 +955,12 @@
                                 <input type="search" id="keysChannelSearch" autocomplete="off" spellcheck="false" placeholder="搜索功能…" aria-labelledby="keysChannelSearchLbl" />
                               </label>
                               <nav class="keys-channel-tree" id="keysChannelSubtabs" role="tree" aria-label="识别分类">
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat is-active" role="treeitem" id="keysChannelTabIme" data-channel="ime" aria-selected="true" data-i18n="keysChannelTabIme">输入法</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabKey" data-channel="key" aria-selected="false" data-i18n="keysChannelTabKey">自定义键</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabVoice" data-channel="voice" aria-selected="false" data-i18n="keysChannelTabVoice">给语音加按键</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabCursor" data-channel="cursor" aria-selected="false" data-i18n="keysChannelTabCursor">给 Cursor 加按键</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabSoftPad" data-channel="softPad" aria-selected="false" data-i18n="keysChannelTabSoftPad">屏幕按键</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabCamera" data-channel="camera" aria-selected="false" data-i18n="keysChannelTabCamera">给手势加按键</button>
+                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat is-active" role="treeitem" id="keysChannelTabIme" data-channel="ime" aria-selected="true" data-i18n="keysChannelTabIme">听写方式</button>
+                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabKey" data-channel="key" aria-selected="false" data-i18n="keysChannelTabKey">我录的键</button>
+                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabVoice" data-channel="voice" aria-selected="false" data-i18n="keysChannelTabVoice">口头指令</button>
+                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabCursor" data-channel="cursor" aria-selected="false" data-i18n="keysChannelTabCursor">软件自带</button>
+                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabSoftPad" data-channel="softPad" aria-selected="false" data-i18n="keysChannelTabSoftPad">屏幕按钮</button>
+                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabCamera" data-channel="camera" aria-selected="false" data-i18n="keysChannelTabCamera">手势</button>
                               </nav>
                             </div>
                             <div class="keys-channel-pane-right" id="keysChannelPaneRight">
@@ -1494,6 +1494,23 @@
                 <div class="habit-usage-sheet-body">
                   <div id="habitUsageSheetHistory" class="ot-island habit-usage-sheet-history"></div>
                 </div>
+                <footer class="habit-usage-sheet-foot" id="habitUsageSheetFoot">
+                  <button type="button" class="habit-usage-sheet-all-btn" id="btnHabitUsageSheetAll" data-usage-sheet-all>
+                    全部记录
+                  </button>
+                </footer>
+              </div>
+            </section>
+            <div class="habit-usage-all-backdrop" id="habitUsageAllBackdrop" hidden></div>
+            <section class="habit-usage-all-sheet is-closed" id="habitUsageAllSheet" aria-hidden="true" aria-labelledby="habitUsageAllTitle">
+              <div class="habit-usage-all-inner">
+                <header class="habit-usage-all-head">
+                  <h4 class="habit-usage-all-title" id="habitUsageAllTitle">近 7 天用过</h4>
+                  <button type="button" class="habit-usage-sheet-close" id="btnHabitUsageAllClose" aria-label="关闭">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </header>
+                <div class="habit-usage-all-body" id="habitUsageAllBody"></div>
               </div>
             </section>
           </div>
@@ -5134,6 +5151,7 @@
   <script src="js/features/camera/gaze-karaoke-lines.js"></script>
   <script src="js/features/camera/camera-gaze-calibration.js"></script>
   <script src="js/features/camera/gaze-context-resolver.js"></script>
+  <script src="js/features/agent/action-catalog-filter.js"></script>
   <script src="js/features/camera/camera-action-picker.js?v=20260815-cap4"></script>
   <script src="js/features/activation/activation-hub.js"></script>
   <script src="js/features/camera/camera-presence-actions.js?v=20260815-cap3"></script>
@@ -5191,6 +5209,7 @@
   <script src="js/features/scene/habit-compatibility.js"></script>
   <script src="js/features/agent/agent-actions.js"></script>
   <script src="js/features/agent/semantic-action-store.js"></script>
+  <script src="js/features/agent/action-catalog-filter.js"></script>
   <script src="js/features/agent/action-binding-adapters.js"></script>
   <script src="js/features/mapping/keys-channel-command-picker.js"></script>
   <script src="js/features/agent/semantic-action-presets.js"></script>

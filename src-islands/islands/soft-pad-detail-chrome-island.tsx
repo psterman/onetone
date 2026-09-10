@@ -4,14 +4,12 @@ import { useIslandRefresh } from '../island-runtime';
 import {
   applySoftPadDetailShellAttrs,
   buildSoftPadDetailChromeModel,
-  closeSoftPadSubpage,
   softPadDetailChromeReady,
   softPadDetailChromeSignature,
   type SoftPadDetailChromeModel,
 } from '../domain/softPadDetailChrome';
 
-// P14g + P14i: #softPadSubpageBar 顶栏 + detailPanel/stage/subHost 显隐 sync。
-// React 拥有 bar 内容；panel/stage attrs 由 sync 副作用写入。
+// SoftPad detail shell sync (panel/stage). Top back/title bar retired — pad tabs navigate.
 
 const EMPTY: SoftPadDetailChromeModel = {
   view: 'hub',
@@ -84,25 +82,11 @@ function useDetailChromeModel(): SoftPadDetailChromeModel {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
-export function SoftPadDetailChromeIsland(): JSX.Element {
-  const model = useDetailChromeModel();
-
-  return (
-    <>
-      <button
-        type="button"
-        className="codex-micro-pad__btn soft-pad-subpage-back"
-        id="btnSoftPadSubBack"
-        hidden={!!model.backHidden}
-        onClick={() => closeSoftPadSubpage()}
-      >
-        {model.backLabel}
-      </button>
-      <h4 className="soft-pad-subpage-title" id="softPadSubpageTitle">
-        {model.title}
-      </h4>
-    </>
-  );
+export function SoftPadDetailChromeIsland(): JSX.Element | null {
+  // Keep sync for detail panel / stage shell attrs; top back+title bar is retired
+  // (pad tabs 显示/键位/用途 already navigate).
+  useDetailChromeModel();
+  return null;
 }
 
 export function registerSoftPadDetailChromeBridge(): void {

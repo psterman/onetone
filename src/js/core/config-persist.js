@@ -1462,6 +1462,11 @@
       }
       var waiters=saveWaiters.splice(0);
       saveInFlight=null;
+      try{
+        var store=global.OneToneSemanticActionStore;
+        if(store&&store.invalidateBindingViews) store.invalidateBindingViews();
+        if(store&&store.invalidateOptions) store.invalidateOptions();
+      }catch(_){}
       waiters.forEach(function(resolve){ resolve(ok); });
       return ok;
     });

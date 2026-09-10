@@ -5054,6 +5054,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![
                 CodexMicroPadKeyRoute {
                     micro_key_id: "AG00".into(),
@@ -5229,6 +5231,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         };
         let mut mapping = codex_mapping(pad.clone());
@@ -5340,6 +5344,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -5454,6 +5460,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -5511,6 +5519,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![
                 CodexMicroPadKeyRoute {
                     micro_key_id: "AG01".into(),
@@ -5646,6 +5656,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![CodexMicroPadKeyRoute {
                 micro_key_id: "AG05".into(),
                 source_scan: 0x4D,
@@ -5770,6 +5782,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![CodexMicroPadKeyRoute {
                 micro_key_id: "ENC".into(),
                 source_scan: 0,
@@ -5842,6 +5856,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -5911,6 +5927,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -5983,6 +6001,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -6049,6 +6069,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -6126,6 +6148,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -6197,6 +6221,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![status_route("AG04")],
         })];
         test_set_foreground_latch(true);
@@ -6304,6 +6330,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         };
         for i in 0..6 {
@@ -6421,6 +6449,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         };
         for id in ["AG00", "AG01", "AG02", "AG03"] {
@@ -6534,6 +6564,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -6586,6 +6618,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         };
         // status AG04 excluded; pool has 5 AG keys ? 6 lights overflow
@@ -6674,6 +6708,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         });
         mapping.id = "claude-map".into();
@@ -6747,6 +6783,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -6833,6 +6871,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![status_route("AG04"), claude_model_route("AG01")],
         })];
         test_set_foreground_latch(true);
@@ -6914,6 +6954,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![status_route("AG05")],
         };
         assert_eq!(resolve_status_light_micro_key_id(&with_status), "AG05");
@@ -6959,6 +7001,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         };
         assert_eq!(resolve_status_light_micro_key_id(&empty), "AG00");
@@ -7033,6 +7077,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![status_route("AG05")],
         })];
         test_set_foreground_latch(true);
@@ -7101,6 +7147,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![status_route("ACT09")],
         })];
         test_set_foreground_latch(true);
@@ -7168,6 +7216,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![status_route("AG05")],
         })];
         test_set_foreground_latch(true);
@@ -7229,6 +7279,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![status_route("AG04")],
         })];
         test_set_foreground_latch(true);
@@ -7299,6 +7351,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -7359,6 +7413,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         // Permission sheet stole FG ? latch false, but pad must remain as status beacon.
@@ -7425,6 +7481,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -7480,6 +7538,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         };
         cfg.mappings = vec![codex_mapping(pad.clone())];
@@ -7570,6 +7630,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: crate::codex_numpad_layer::default_codex_micro_pad_routes(),
         };
         // NAV routes live in data even when capture/UI column is off.
@@ -7781,6 +7843,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(false);
@@ -7843,6 +7907,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(false);
@@ -7902,6 +7968,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(false);
@@ -7959,6 +8027,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);
@@ -8018,9 +8088,14 @@ mod tests {
             topbar_habit_ids: Vec::new(),
             claude_cli_inject_pref_enabled: false,
             presentation: "full".into(),
+            mini_usage_pill_enabled: true,
+            mini_usage_pill_hide_empty: true,
+            mini_chrome: Default::default(),
             skin: "hybrid-pro".into(),
             pinned_lane_preferences: Vec::new(),
             navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         })];
         test_set_foreground_latch(true);

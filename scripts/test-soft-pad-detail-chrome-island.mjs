@@ -96,7 +96,7 @@ check('closeSubpage 已导出', typeof API.closeSubpage === 'function');
 let model = API.buildSoftPadDetailChromeModel();
 check('pad/appear 时 detailOpen=true', model.detailOpen === true);
 check('appear 时 backHidden=true', model.backHidden === true);
-check('appear 时有标题', typeof model.title === 'string' && model.title.length > 0);
+check('顶栏标题已退役为空', model.title === '');
 check('sig 非空', typeof model.sig === 'string' && model.sig.length > 0);
 check('backLabel 非空', typeof model.backLabel === 'string' && model.backLabel.length > 0);
 API.setSoftPadFace('agent');
@@ -150,9 +150,9 @@ const html = readFileSync(join(root, 'src/index.html'), 'utf8');
 check('index 含 softPadSubpageBar', html.includes('id="softPadSubpageBar"'));
 
 const islandTsx = readFileSync(join(root, 'src-islands/islands/soft-pad-detail-chrome-island.tsx'), 'utf8');
-check('岛含返回按钮', islandTsx.includes('btnSoftPadSubBack') || islandTsx.includes('soft-pad-subpage-back'));
-check('岛含标题', islandTsx.includes('softPadSubpageTitle') || islandTsx.includes('soft-pad-subpage-title'));
-check('岛 onClick → closeSoftPadSubpage', islandTsx.includes('closeSoftPadSubpage'));
+check('岛不再渲染返回/标题', islandTsx.includes('return null') && !islandTsx.includes('btnSoftPadSubBack'));
+check('岛仍同步 shell attrs', islandTsx.includes('applySoftPadDetailShellAttrs'));
+check('岛用 useDetailChromeModel 保活 sync', islandTsx.includes('useDetailChromeModel'));
 check('P14i 写 detail shell attrs', islandTsx.includes('applySoftPadDetailShellAttrs'));
 
 const domainTs = readFileSync(join(root, 'src-islands/domain/softPadDetailChrome.ts'), 'utf8');

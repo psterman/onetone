@@ -752,13 +752,20 @@
       }
       return '<button type="button" class="'+rowCls+'" data-habit-mapping="'+esc(m.id)+'" role="option" aria-selected="'+(selected?'true':'false')+'">'+inner+'</button>';
     }).join('');
-    return '<aside class="'+esc(asideClass)+'"><div class="habit-ws-sidebar-head"><label class="habit-ws-search"><span aria-hidden="true">\u2315</span><input type="search" data-habit-search value="'+esc(opts.searchQuery!=null?opts.searchQuery:ui().habitWorkspaceSearch||'')+'" placeholder="'+esc(c('search'))+'" aria-label="'+esc(c('search'))+'"></label>'+batchBtn+'</div>'+wsSelectionBar(list.length)+usageOverviewHtml()+'<div class="habit-ws-app-list" role="listbox">'+listHtml+'</div><button type="button" class="habit-ws-add" data-habit-add>'+esc(c('addApp'))+'</button></aside>';
+    return '<aside class="'+esc(asideClass)+'"><div class="habit-ws-sidebar-head"><label class="habit-ws-search"><span aria-hidden="true">\u2315</span><input type="search" data-habit-search value="'+esc(opts.searchQuery!=null?opts.searchQuery:ui().habitWorkspaceSearch||'')+'" placeholder="'+esc(c('search'))+'" aria-label="'+esc(c('search'))+'"></label>'+batchBtn+'</div>'+wsSelectionBar(list.length)+'<div class="habit-ws-app-list" role="listbox">'+listHtml+'</div><button type="button" class="habit-ws-add" data-habit-add>'+esc(c('addApp'))+'</button></aside>';
   }
 
-  function usageOverviewHtml(){
-    var api=global.OneToneHabitActionStats;
-    if(!api||!api.overviewHtml) return '';
-    return api.overviewHtml(5);
+  function forgetActionHistory(mappingIds){
+    var ids=(Array.isArray(mappingIds)?mappingIds:[]).map(function(x){ return String(x||'').trim(); }).filter(Boolean);
+    if(!ids.length) return Promise.resolve();
+    var ipc=global.OneToneIpc;
+    var p=ipc&&ipc.invoke
+      ?ipc.invoke('cmd_action_history_forget_mappings',{mappingIds:ids}).catch(function(){ return null; })
+      :Promise.resolve();
+    return Promise.resolve(p).then(function(){
+      var stats=global.OneToneHabitActionStats;
+      if(stats&&stats.invalidate) stats.invalidate();
+    });
   }
 
   function deleteMapping(id){
@@ -804,6 +811,7 @@
     var saveAsync=global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync;
     var save=global.OneToneConfigPersist&&global.OneToneConfigPersist.save;
     var done=function(){
+      forgetActionHistory(ids);
       if(global.OneToneMappingTrashMenu&&global.OneToneMappingTrashMenu.renderTrashList){
         global.OneToneMappingTrashMenu.renderTrashList();
       }

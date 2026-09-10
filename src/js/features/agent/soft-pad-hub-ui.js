@@ -3351,12 +3351,12 @@
     if (global.__otSoftPadDetailChromeMounted && typeof global.__otSoftPadDetailChromeSync === 'function') {
       global.__otSoftPadDetailChromeSync();
     } else {
-      var panel = softPadPanelId();
+      if (e.subBar) e.subBar.hidden = true;
       if (e.subBack) {
-        e.subBack.hidden = face === 'pad' && softPadPadMode === 'appear';
+        e.subBack.hidden = true;
         e.subBack.textContent = t('softPadSubBack', '← 返回');
       }
-      if (e.subTitle && detailOpen) e.subTitle.textContent = subpageTitle(panel);
+      if (e.subTitle) e.subTitle.textContent = '';
     }
     if (global.__otSoftPadEmptyIdleMounted && typeof global.__otSoftPadEmptyIdleSync === 'function') {
       global.__otSoftPadEmptyIdleSync();
@@ -3410,23 +3410,17 @@
     syncFaceChrome(entry);
   }
 
-  /** P14g：SoftPad detail 顶栏（返回 / 标题）模型。 */
+  /** SoftPad detail chrome model — shell attrs only; top back/title bar retired (pad tabs suffice). */
   function buildSoftPadDetailChromeModel() {
     var panelModel = buildSoftPadFourPanelModel(resolveSoftPadEntry());
     var view = panelModel.activeView || 'runtime';
     var detailOpen = !!panelModel.detailOpen;
-    var backHidden = !detailOpen || softPadPadMode === 'appear';
-    var title = detailOpen ? subpageTitle(view) : '';
-    var backLabel = t('softPadSubBack', '← 返回');
     var landingView = panelModel.landingView || 'runtime';
     var sig = [
       softPadFace,
       softPadPadMode,
       view,
       detailOpen ? '1' : '0',
-      backHidden ? '1' : '0',
-      title,
-      backLabel,
       landingView
     ].join('\0');
     return {
@@ -3434,9 +3428,9 @@
       face: softPadFace,
       padMode: softPadPadMode,
       detailOpen: detailOpen,
-      backHidden: backHidden,
-      backLabel: backLabel,
-      title: title,
+      backHidden: true,
+      backLabel: t('softPadSubBack', '← 返回'),
+      title: '',
       landingView: landingView,
       sig: sig
     };
@@ -3455,11 +3449,12 @@
       e.subHost.removeAttribute('hidden');
     }
     if (e.stage) e.stage.classList.toggle('is-detail-open', !!model.detailOpen);
+    if (e.subBar) e.subBar.hidden = true;
     if (e.subBack) {
-      e.subBack.hidden = !!model.backHidden;
+      e.subBack.hidden = true;
       e.subBack.textContent = model.backLabel || t('softPadSubBack', '← 返回');
     }
-    if (e.subTitle) e.subTitle.textContent = model.title || '';
+    if (e.subTitle) e.subTitle.textContent = '';
   }
 
   function syncEntryFromMapping(m) {
@@ -3925,7 +3920,7 @@
     };
     if (e.subTitle && softPadFace === 'pad') {
       if (!(global.__otSoftPadDetailChromeMounted && typeof global.__otSoftPadDetailChromeSync === 'function')) {
-        e.subTitle.textContent = subpageTitle(targetView);
+        e.subTitle.textContent = '';
       }
     }
     if (!stillValid()) return;

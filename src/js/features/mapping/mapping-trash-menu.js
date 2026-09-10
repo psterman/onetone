@@ -170,10 +170,20 @@
     hooks.syncEditorFromSelection();
     closeMenu();
     hooks.saveAsync({source:'mapping'}).then(function(){
+      if(global.OneToneIpc&&global.OneToneIpc.invoke){
+        global.OneToneIpc.invoke('cmd_action_history_forget_mappings',{mappingIds:[id]}).catch(function(){});
+      }
+      var stats=global.OneToneHabitActionStats;
+      if(stats&&stats.invalidate) stats.invalidate();
       renderTrashList();
       hooks.render();
       hooks.toast(t('movedToTrash'));
     }).catch(function(){
+      if(global.OneToneIpc&&global.OneToneIpc.invoke){
+        global.OneToneIpc.invoke('cmd_action_history_forget_mappings',{mappingIds:[id]}).catch(function(){});
+      }
+      var statsFail=global.OneToneHabitActionStats;
+      if(statsFail&&statsFail.invalidate) statsFail.invalidate();
       renderTrashList();
       hooks.render();
       hooks.toast(t('movedToTrash'));

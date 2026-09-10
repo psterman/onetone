@@ -169,6 +169,109 @@ fn project_camera_override(
     }
 }
 
+fn trigger_already_projected(out: &[ActionBindingView], mapping_id: &str, channel: &str, trigger: &str) -> bool {
+    let t = trigger.trim();
+    if t.is_empty() {
+        return false;
+    }
+    let tl = t.to_ascii_lowercase();
+    out.iter().any(|v| {
+        v.mapping_id == mapping_id
+            && v.channel == channel
+            && v.trigger.trim().to_ascii_lowercase() == tl
+    })
+}
+
+fn project_acoustic_voice(out: &mut Vec<ActionBindingView>, m: &MappingEntry, finish: FinishPolicy) {
+    let mapping_id = m.id.as_str();
+    for cmd in &m.acoustic_voice_commands {
+        if !cmd.enabled {
+            continue;
+        }
+        let trig = {
+            let d = cmd.display_text.trim();
+            if !d.is_empty() {
+                d.to_string()
+            } else if !cmd.label.trim().is_empty() {
+                cmd.label.trim().to_string()
+            } else {
+                cmd.id.clone()
+            }
+        };
+        if trig.is_empty() {
+            continue;
+        }
+        // Scenario acoustic wake ≈ open/focus app habit; samples without text still count.
+        let action_id = resolve_canonical_action_id("app.open", finish);
+        let bref = if cmd.id.trim().is_empty() {
+            format!("acoustic:{}", trig)
+        } else {
+            cmd.id.clone()
+        };
+        if trigger_already_projected(out, mapping_id, ActionChannel::Voice.as_str(), &trig) {
+            continue;
+        }
+        out.push(ActionBindingView {
+            mapping_id: mapping_id.to_string(),
+            action_id: action_id.clone(),
+            channel: ActionChannel::Voice.as_str().to_string(),
+            binding_ref: bref,
+            trigger: trig,
+            enabled: true,
+            risk: risk_for(&action_id),
+            availability: "static".into(),
+            source_storage: "acousticVoiceCommands".into(),
+        });
+    }
+}
+
+fn project_legacy_keys(out: &mut Vec<ActionBindingView>, m: &MappingEntry, finish: FinishPolicy) {
+    let mapping_id = m.id.as_str();
+    let tk = m.trigger_key.trim();
+    if !tk.is_empty()
+        && tk != "AutoTrigger"
+        && !trigger_already_projected(out, mapping_id, ActionChannel::Key.as_str(), tk)
+    {
+        let action_id = resolve_canonical_action_id("input.start", finish);
+        out.push(ActionBindingView {
+            mapping_id: mapping_id.to_string(),
+            action_id: action_id.clone(),
+            channel: ActionChannel::Key.as_str().to_string(),
+            binding_ref: "legacy:triggerKey".into(),
+            trigger: tk.to_string(),
+            enabled: true,
+            risk: risk_for(&action_id),
+            availability: "static".into(),
+            source_storage: "triggerKey".into(),
+        });
+    }
+
+    for (i, act) in m.effective_target_actions().iter().enumerate() {
+        let crate::config::Action::Key { value } = act else {
+            continue;
+        };
+        let chord = value.trim();
+        if chord.is_empty() {
+            continue;
+        }
+        if trigger_already_projected(out, mapping_id, ActionChannel::Key.as_str(), chord) {
+            continue;
+        }
+        let action_id = resolve_canonical_action_id("app.shortcut", finish);
+        out.push(ActionBindingView {
+            mapping_id: mapping_id.to_string(),
+            action_id: action_id.clone(),
+            channel: ActionChannel::Key.as_str().to_string(),
+            binding_ref: format!("legacy:target:{i}"),
+            trigger: chord.to_string(),
+            enabled: true,
+            risk: risk_for(&action_id),
+            availability: "static".into(),
+            source_storage: "targetActions".into(),
+        });
+    }
+}
+
 fn project_mapping(
     out: &mut Vec<ActionBindingView>,
     m: &MappingEntry,
@@ -194,6 +297,9 @@ fn project_mapping(
             source_storage: "agentBindings".into(),
         });
     }
+
+    project_acoustic_voice(out, m, finish);
+    project_legacy_keys(out, m, finish);
 
     if let Some(ref ov) = m.camera_override {
         project_camera_override(out, &mapping_id, ov, finish);
@@ -312,5 +418,89 @@ mod tests {
             }),
             "{views:?}"
         );
+    }
+
+    #[test]
+    fn projects_acoustic_and_legacy_keys() {
+        use crate::config::{AcousticVoiceCommand, Action};
+        let mut cfg = VoiceConfig::default();
+        let mid = cfg.mappings[0].id.clone();
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == mid) {
+            m.trigger_key = "F13".into();
+            m.target_actions = vec![Action::Key {
+                value: "Ctrl+Enter".into(),
+            }];
+            m.acoustic_voice_commands = vec![AcousticVoiceCommand {
+                id: "acmd_1".into(),
+                version: 1,
+                kind: "scenario-acoustic-activate".into(),
+                scenario_id: mid.clone(),
+                label: "口令".into(),
+                display_text: "打开 Cursor".into(),
+                samples: vec![],
+                threshold: 0.78,
+                margin: 0.08,
+                quality: "good".into(),
+                activation_scope: "global".into(),
+                app_boost: true,
+                enabled: true,
+                created_at: 1,
+                updated_at: 1,
+            }];
+        }
+        let views = project_action_bindings_for_mapping(&cfg, &mid);
+        assert!(
+            views.iter().any(|v| {
+                v.channel == "voice"
+                    && v.source_storage == "acousticVoiceCommands"
+                    && v.trigger.contains("打开")
+            }),
+            "{views:?}"
+        );
+        assert!(
+            views.iter().any(|v| {
+                v.channel == "key"
+                    && v.source_storage == "triggerKey"
+                    && v.trigger == "F13"
+                    && v.action_id == "input.start"
+            }),
+            "{views:?}"
+        );
+        assert!(
+            views.iter().any(|v| {
+                v.channel == "key"
+                    && v.source_storage == "targetActions"
+                    && v.trigger == "Ctrl+Enter"
+            }),
+            "{views:?}"
+        );
+        let all = project_all_action_bindings(&cfg);
+        assert!(all.len() >= views.len());
+    }
+
+    #[test]
+    fn legacy_trigger_skips_when_agent_binding_owns_chord() {
+        let mut cfg = VoiceConfig::default();
+        let mid = cfg.mappings[0].id.clone();
+        if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == mid) {
+            m.trigger_key = "Ctrl+Shift+D".into();
+            m.agent_bindings = vec![AgentBinding {
+                action_instance_id: String::new(),
+                action_args: None,
+                slot_id: "pushToTalk".into(),
+                action_id: "input.start".into(),
+                trigger_type: "key".into(),
+                trigger_binding: "Ctrl+Shift+D".into(),
+                enabled: true,
+                execution_mode: None,
+                activation_scope: "global".into(),
+            }];
+        }
+        let views = project_action_bindings_for_mapping(&cfg, &mid);
+        let legacy = views
+            .iter()
+            .filter(|v| v.source_storage == "triggerKey")
+            .count();
+        assert_eq!(legacy, 0, "{views:?}");
     }
 }

@@ -243,6 +243,139 @@ pub fn clear() {
     bump_merged_cache_gen();
 }
 
+fn write_jsonl_entries(entries: &[ActionHistoryEntry]) {
+    let path = log_path();
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let tmp = path.with_extension("jsonl.tmp");
+    let mut ok = false;
+    if let Ok(mut f) = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&tmp)
+    {
+        ok = true;
+        for entry in entries {
+            match serde_json::to_string(entry) {
+                Ok(text) => {
+                    if writeln!(f, "{text}").is_err() {
+                        ok = false;
+                        break;
+                    }
+                }
+                Err(_) => {
+                    ok = false;
+                    break;
+                }
+            }
+        }
+    }
+    if ok {
+        if fs::rename(&tmp, &path).is_err() {
+            let _ = fs::copy(&tmp, &path);
+            let _ = fs::remove_file(&tmp);
+        }
+    } else {
+        let _ = fs::remove_file(&tmp);
+    }
+}
+
+/// Remap history `mapping_id` values (merge habits: loser → winner).
+/// Returns number of entries whose mapping_id changed.
+pub fn remap_mapping_ids(pairs: &[(String, String)]) -> u64 {
+    let map: HashMap<String, String> = pairs
+        .iter()
+        .filter_map(|(from, to)| {
+            let f = from.trim();
+            let t = to.trim();
+            if f.is_empty() || t.is_empty() || f == t {
+                return None;
+            }
+            Some((f.to_string(), t.to_string()))
+        })
+        .collect();
+    if map.is_empty() {
+        return 0;
+    }
+    let mut remapped = 0u64;
+    let disk = read_jsonl_entries();
+    let mut kept = Vec::with_capacity(disk.len());
+    for mut entry in disk {
+        if let Some(mid) = entry.mapping_id.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+            if let Some(to) = map.get(mid) {
+                entry.mapping_id = Some(to.clone());
+                remapped += 1;
+            }
+        }
+        kept.push(entry);
+    }
+    write_jsonl_entries(&kept);
+
+    let mut ring = RING.lock();
+    for entry in ring.iter_mut() {
+        if let Some(mid) = entry
+            .mapping_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            if let Some(to) = map.get(mid) {
+                entry.mapping_id = Some(to.clone());
+            }
+        }
+    }
+    drop(ring);
+    bump_merged_cache_gen();
+    remapped
+}
+
+/// Drop history rows for deleted habits. Returns number of entries removed.
+pub fn forget_mapping_ids(ids: &[String]) -> u64 {
+    let forget: HashSet<String> = ids
+        .iter()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if forget.is_empty() {
+        return 0;
+    }
+    let disk = read_jsonl_entries();
+    let mut kept = Vec::with_capacity(disk.len());
+    let mut removed = 0u64;
+    for entry in disk {
+        let mid = entry
+            .mapping_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .unwrap_or("");
+        if !mid.is_empty() && forget.contains(mid) {
+            removed += 1;
+            continue;
+        }
+        kept.push(entry);
+    }
+    write_jsonl_entries(&kept);
+
+    let mut ring = RING.lock();
+    let before = ring.len();
+    ring.retain(|e| {
+        let mid = e
+            .mapping_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .unwrap_or("");
+        mid.is_empty() || !forget.contains(mid)
+    });
+    let _ring_removed = before.saturating_sub(ring.len());
+    drop(ring);
+    bump_merged_cache_gen();
+    removed
+}
+
 /// Test helper: wipe ring + seq bootstrap so parallel/serial tests don't leak.
 pub fn reset_for_test() {
     clear();
@@ -521,6 +654,53 @@ mod tests {
         let after = stats_by_mapping(Some(24));
         let total: u64 = after.rows.iter().map(|r| r.count).sum();
         assert_eq!(total, 2);
+
+        clear();
+        let _ = fs::remove_file(path);
+        set_log_path_override(None);
+    }
+
+    #[test]
+    fn remap_and_forget_mapping_ids() {
+        set_enabled(true);
+        let path = tmp_path("action-history-remap");
+        set_log_path_override(Some(path.clone()));
+        clear();
+
+        let now = crate::runtime_event::now_ms();
+        let mut a = ActionHistoryEntry::new(0, now, "key", "semantic_action", "executed", "a");
+        a.mapping_id = Some("loser".into());
+        record(a);
+        let mut b = ActionHistoryEntry::new(0, now, "voice", "voice_phrase", "executed", "b");
+        b.mapping_id = Some("winner".into());
+        record(b);
+        let mut c = ActionHistoryEntry::new(0, now, "key", "send_key", "executed", "c");
+        c.mapping_id = Some("drop-me".into());
+        record(c);
+
+        let n = remap_mapping_ids(&[("loser".into(), "winner".into())]);
+        assert_eq!(n, 1);
+        let stats = stats_by_mapping(Some(24));
+        let row = stats
+            .rows
+            .iter()
+            .find(|r| r.mapping_id == "winner")
+            .expect("winner");
+        assert_eq!(row.count, 2);
+        assert!(stats.rows.iter().all(|r| r.mapping_id != "loser"));
+
+        let removed = forget_mapping_ids(&["drop-me".into()]);
+        assert_eq!(removed, 1);
+        let stats2 = stats_by_mapping(Some(24));
+        assert!(stats2.rows.iter().all(|r| r.mapping_id != "drop-me"));
+        assert_eq!(
+            stats2
+                .rows
+                .iter()
+                .find(|r| r.mapping_id == "winner")
+                .map(|r| r.count),
+            Some(2)
+        );
 
         clear();
         let _ = fs::remove_file(path);

@@ -882,7 +882,11 @@ return Promise.resolve()
     assert.ok(pickerSrc.indexOf('hasTriggerKey') >= 0);
     // Pick hierarchy: option binding status + one-line card; IME-only big hero.
     assert.ok(pickerSrc.indexOf('pickOptionLabel') >= 0);
-    assert.ok(pickerSrc.indexOf('keysPickOptionUnset') >= 0 || pickerSrc.indexOf('未设键') >= 0);
+    assert.ok(
+      pickerSrc.indexOf('softPadPickChord') >= 0 ||
+        pickerSrc.indexOf('if (!chord) return') >= 0,
+      'unset-key pick rows must be filtered out'
+    );
     assert.ok(pickerSrc.indexOf('keys-voice-pick-card--one') >= 0);
     assert.ok(pickerSrc.indexOf('is-select-first') >= 0);
     assert.ok(pickerSrc.indexOf('data-softpad-pick-select') >= 0);

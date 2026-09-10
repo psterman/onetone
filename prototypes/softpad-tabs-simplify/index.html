@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soft Pad · 窄预览 + 竖列详情</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #152536;
+      --muted: #5c6b7a;
+      --line: rgba(21, 37, 54, 0.1);
+      --paper: #fff;
+      --stage: #eef2f6;
+      --cyan: #1f8fb8;
+      --cyan-deep: #0f6f92;
+      --cyan-soft: rgba(31, 143, 184, 0.1);
+      --pad: #152536;
+      --font: "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+      --shadow: 0 10px 28px rgba(21, 37, 54, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(640px 280px at 8% -8%, rgba(31,143,184,.1), transparent 55%),
+        var(--stage);
+      -webkit-font-smoothing: antialiased;
+    }
+    .page {
+      width: min(1100px, 100%);
+      margin: 0 auto;
+      padding: 18px 12px 40px;
+    }
+    .hero { margin-bottom: 12px; max-width: 44rem; }
+    .hero-kicker {
+      margin: 0 0 4px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cyan-deep);
+    }
+    .hero h1 {
+      margin: 0 0 5px;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+    .hero p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .compare {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 10px 0 14px;
+    }
+    .compare span {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+    .compare .good {
+      border-color: rgba(31,138,91,.3);
+      background: #f3fbf7;
+      color: #1a5c3a;
+    }
+
+    /* preview | vert | detail */
+    .stage {
+      display: grid;
+      grid-template-columns: 156px 92px minmax(0, 1fr);
+      gap: 10px;
+      align-items: stretch;
+      min-height: 520px;
+    }
+    @media (max-width: 820px) {
+      .stage {
+        grid-template-columns: 1fr;
+      }
+      .rail {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr 1fr;
+        width: auto;
+      }
+    }
+
+    /* —— 窄预览 —— */
+    .preview {
+      background: var(--pad);
+      border-radius: 12px;
+      padding: 8px;
+      color: #d7e2ec;
+      box-shadow: var(--shadow);
+      align-self: start;
+    }
+    .preview-kicker {
+      margin: 0 0 6px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #7dd3fc;
+    }
+    .pad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+    }
+    .pkey {
+      aspect-ratio: 1;
+      border-radius: 7px;
+      border: 1px solid rgba(125,211,252,.16);
+      background: rgba(8,16,28,.55);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      font-size: 9px;
+      font-weight: 600;
+      color: #c5d4e0;
+      cursor: pointer;
+      font: inherit;
+      padding: 0;
+    }
+    .pkey.on {
+      border-color: rgba(125,211,252,.7);
+      background: rgba(31,143,184,.32);
+    }
+    .pkey span { font-size: 11px; font-weight: 700; line-height: 1; }
+    .pkey small {
+      font-size: 7px;
+      font-weight: 500;
+      color: #8fa3b5;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      padding: 0 2px;
+    }
+    .preview-hint {
+      margin: 6px 0 0;
+      font-size: 9px;
+      line-height: 1.35;
+      color: #8fa3b5;
+    }
+
+    /* —— 竖列标签 —— */
+    .rail {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 12px;
+      background: var(--cyan-soft);
+      align-self: stretch;
+    }
+    .rail-tab {
+      flex: 1;
+      border: 0;
+      background: transparent;
+      border-radius: 9px;
+      padding: 10px 8px;
+      cursor: pointer;
+      color: var(--muted);
+      font: inherit;
+      text-align: left;
+      line-height: 1.2;
+      min-height: 56px;
+    }
+    .rail-tab strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .rail-tab em {
+      display: block;
+      margin-top: 3px;
+      font-size: 10px;
+      font-style: normal;
+      font-weight: 500;
+      opacity: 0.85;
+    }
+    .rail-tab.is-on {
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 1px 3px rgba(21,37,54,.08);
+    }
+    .rail-tab:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 1px;
+    }
+
+    /* —— 宽详情 —— */
+    .detail {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .pane {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+      padding: 12px 12px 10px;
+    }
+    .pane.is-on { display: flex; }
+
+    .stub-card {
+      flex: 1;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #f7fafc;
+      padding: 14px;
+    }
+    .stub-card h3 { margin: 0 0 5px; font-size: 15px; }
+    .stub-card p { margin: 0 0 12px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .stub-opts { display: flex; flex-direction: column; gap: 6px; }
+    .stub-opt {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .stub-opt small {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .stub-opt.is-on {
+      border-color: rgba(31,143,184,.45);
+      background: var(--cyan-soft);
+    }
+
+    .keys-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .keys-head h3 { margin: 0; font-size: 13px; font-weight: 700; }
+    .keys-head span { font-size: 11px; color: var(--muted); font-weight: 500; }
+
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      margin-bottom: 8px;
+    }
+    .search:focus-within {
+      border-color: rgba(31,143,184,.5);
+      box-shadow: 0 0 0 3px rgba(31,143,184,.1);
+    }
+    .search span { color: var(--muted); font-size: 13px; }
+    .search input {
+      border: 0;
+      outline: 0;
+      width: 100%;
+      font: inherit;
+      font-size: 13px;
+      background: transparent;
+    }
+
+    .cmd-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .section-label {
+      margin: 2px 2px 0;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .cmd {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+      text-align: left;
+      border: 1px solid rgba(31,143,184,.12);
+      border-radius: 10px;
+      padding: 8px 9px;
+      background: #fff;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
+    .cmd:hover { border-color: rgba(31,143,184,.35); }
+    .cmd.is-sel {
+      background: var(--cyan-soft);
+      border-color: rgba(31,143,184,.4);
+    }
+    .cmd-ico {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      border: 1px solid rgba(21,37,54,.1);
+      display: grid;
+      place-items: center;
+      color: var(--cyan-deep);
+      background: #fff;
+      font-size: 12px;
+    }
+    .cmd-title { font-size: 13px; font-weight: 700; line-height: 1.25; }
+    .cmd-note { margin-top: 2px; font-size: 11px; color: var(--muted); font-weight: 500; }
+    .cmd-pin {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--cyan-deep);
+      background: rgba(31,143,184,.12);
+      border-radius: 7px;
+      padding: 2px 6px;
+      white-space: nowrap;
+    }
+
+    .scene {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fafcfd;
+      overflow: hidden;
+    }
+    .scene-sum {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      padding: 9px 11px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink);
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .scene-sum em {
+      font-style: normal;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .scene-body {
+      display: none;
+      padding: 0 7px 7px;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .scene.is-open .scene-body { display: flex; }
+
+    .foot-esc {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      align-items: center;
+    }
+    .foot-esc button {
+      border: 0;
+      background: transparent;
+      padding: 0;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--cyan-deep);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .foot-esc button.muted {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%) translateY(8px);
+      background: var(--ink);
+      color: #fff;
+      padding: 9px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .16s ease, transform .16s ease;
+      z-index: 20;
+    }
+    .toast.is-on {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .toast { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <p class="hero-kicker">Prototype · Soft Pad layout</p>
+      <h1>窄预览 + 竖列详情</h1>
+      <p>左侧只留可点键位；中间竖列切「显示 / 改键 / 用途」；右侧加宽干活。改键页仍是单列表，无第二层横标签。</p>
+    </header>
+
+    <div class="compare" aria-label="定论">
+      <span>旧：大预览 + 双层横标签</span>
+      <span class="good">新：窄预览 · 竖列三页 · 宽详情单列表</span>
+    </div>
+
+    <div class="stage">
+      <aside class="preview" aria-label="Soft Pad 预览">
+        <p class="preview-kicker">Pad</p>
+        <div class="pad-grid" id="padGrid">
+          <button type="button" class="pkey" data-key="1" data-label="新建"><span>1</span><small>新建</small></button>
+          <button type="button" class="pkey on" data-key="2" data-label="选中"><span>2</span><small>选中</small></button>
+          <button type="button" class="pkey" data-key="3" data-label="模型"><span>3</span><small>模型</small></button>
+          <button type="button" class="pkey" data-key="4" data-label="—"><span>4</span><small>—</small></button>
+          <button type="button" class="pkey" data-key="5" data-label="—"><span>5</span><small>—</small></button>
+          <button type="button" class="pkey" data-key="6" data-label="—"><span>6</span><small>—</small></button>
+        </div>
+        <p class="preview-hint">点键 → 右侧改命令</p>
+      </aside>
+
+      <nav class="rail" role="tablist" aria-label="详情分区">
+        <button type="button" class="rail-tab" data-top="show" role="tab">
+          <strong>显示</strong><em>何时出现</em>
+        </button>
+        <button type="button" class="rail-tab is-on" data-top="keys" role="tab" aria-selected="true">
+          <strong>改键</strong><em>点键选命令</em>
+        </button>
+        <button type="button" class="rail-tab" data-top="purpose" role="tab">
+          <strong>用途</strong><em>动作 / 会话</em>
+        </button>
+      </nav>
+
+      <section class="detail">
+        <div class="pane" data-pane="show">
+          <div class="stub-card">
+            <h3>浮窗何时出现</h3>
+            <p>只管外观与显示时机，不改按键动作。</p>
+            <div class="stub-opts">
+              <div class="stub-opt is-on">跟随应用显示<small>目标应用在前台时出现</small></div>
+              <div class="stub-opt">显示为迷你条<small>占更少空间</small></div>
+              <div class="stub-opt">不显示浮窗<small>键位配置仍保留</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pane is-on" data-pane="keys">
+          <div class="keys-head">
+            <h3>选命令</h3>
+            <span id="bindCtx">绑到键 2</span>
+          </div>
+
+          <label class="search">
+            <span aria-hidden="true">⌕</span>
+            <input type="search" id="q" placeholder="搜索命令，或从下方常用里点" autocomplete="off" />
+          </label>
+
+          <div class="cmd-scroll" id="cmdScroll">
+            <p class="section-label">常用（优先）</p>
+            <div id="commonList"></div>
+            <p class="section-label" style="margin-top:4px">更多场景</p>
+            <div id="sceneList"></div>
+          </div>
+
+          <div class="foot-esc">
+            <button type="button" id="btnOther">从其它通道选</button>
+            <button type="button" class="muted" id="btnRecord">没有想要的？录制按键</button>
+          </div>
+        </div>
+
+        <div class="pane" data-pane="purpose">
+          <div class="stub-card">
+            <h3>AG 键整体用途</h3>
+            <p>决定这组键偏「动作快捷」还是「会话槽」，不是单键绑命令。</p>
+            <div class="stub-opts">
+              <div class="stub-opt is-on">动作键<small>每颗键绑一个快捷命令</small></div>
+              <div class="stub-opt">会话槽<small>实验：切会话 / 看状态</small></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var COMMON = [
+        { id: "ptt", name: "语音输入", note: "开麦说话", icon: "🎙" },
+        { id: "send", name: "发送", note: "Enter", icon: "↵" },
+        { id: "cancel", name: "取消", note: "Esc", icon: "✕" },
+        { id: "plan", name: "定计划", note: "Ctrl+Alt+Shift+P", icon: "☰" },
+        { id: "new", name: "新建对话", note: "Ctrl+N", icon: "+" }
+      ];
+      var SCENES = [
+        {
+          id: "talk",
+          title: "说话、发出去、叫停",
+          items: [
+            { id: "paste", name: "粘贴并发送", note: "剪贴板 → 发送" },
+            { id: "ptt2", name: "语音输入", note: "同常用" }
+          ]
+        },
+        {
+          id: "open",
+          title: "开聊天、回到 Cursor",
+          items: [
+            { id: "chat", name: "开 Chat", note: "Ctrl+I" },
+            { id: "summon", name: "召唤 Cursor", note: "切回前台" }
+          ]
+        },
+        {
+          id: "tools",
+          title: "打开其它工具",
+          items: [
+            { id: "term", name: "打开终端", note: "Ctrl+`" },
+            { id: "settings", name: "打开设置", note: "Ctrl+," }
+          ]
+        }
+      ];
+
+      var selectedId = "ptt";
+      var activeKey = "2";
+      var toastTimer = null;
+
+      var $ = function (s, r) { return (r || document).querySelector(s); };
+      var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+      function toast(msg) {
+        var el = $("#toast");
+        el.textContent = msg;
+        el.classList.add("is-on");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { el.classList.remove("is-on"); }, 1800);
+      }
+
+      function esc(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function renderCommon(filter) {
+        var q = (filter || "").trim().toLowerCase();
+        var host = $("#commonList");
+        var rows = COMMON.filter(function (c) {
+          if (!q) return true;
+          return (c.name + " " + c.note).toLowerCase().indexOf(q) >= 0;
+        });
+        if (!rows.length) {
+          host.innerHTML = '<p class="cmd-note" style="padding:6px">常用里没有匹配项。</p>';
+          return;
+        }
+        host.innerHTML = rows.map(function (c) {
+          var on = c.id === selectedId;
+          return (
+            '<button type="button" class="cmd' + (on ? " is-sel" : "") + '" data-cmd="' + c.id + '">' +
+            '<span class="cmd-ico" aria-hidden="true">' + c.icon + "</span>" +
+            '<span><span class="cmd-title">' + esc(c.name) + '</span>' +
+            '<span class="cmd-note">' + esc(c.note) + "</span></span>" +
+            '<span class="cmd-pin">常用</span></button>'
+          );
+        }).join("");
+      }
+
+      function renderScenes(filter) {
+        var q = (filter || "").trim().toLowerCase();
+        var host = $("#sceneList");
+        host.innerHTML = SCENES.map(function (sc) {
+          var items = sc.items.filter(function (it) {
+            if (!q) return true;
+            return (it.name + " " + it.note + " " + sc.title).toLowerCase().indexOf(q) >= 0;
+          });
+          if (q && !items.length) return "";
+          var open = q ? " is-open" : "";
+          var body = items.map(function (it) {
+            var on = it.id === selectedId;
+            return (
+              '<button type="button" class="cmd' + (on ? " is-sel" : "") + '" data-cmd="' + it.id + '">' +
+              '<span class="cmd-ico" aria-hidden="true">·</span>' +
+              '<span><span class="cmd-title">' + esc(it.name) + '</span>' +
+              '<span class="cmd-note">' + esc(it.note) + "</span></span>" +
+              "<span></span></button>"
+            );
+          }).join("");
+          return (
+            '<div class="scene' + open + '" data-scene="' + sc.id + '">' +
+            '<button type="button" class="scene-sum" data-scene-toggle="' + sc.id + '">' +
+            esc(sc.title) + "<em>" + items.length + " 项</em></button>" +
+            '<div class="scene-body">' + body + "</div></div>"
+          );
+        }).join("");
+      }
+
+      function renderAll() {
+        var q = $("#q").value || "";
+        renderCommon(q);
+        renderScenes(q);
+      }
+
+      function goKeysPane() {
+        $$(".rail-tab").forEach(function (b) {
+          var on = b.getAttribute("data-top") === "keys";
+          b.classList.toggle("is-on", on);
+          b.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        $$(".pane").forEach(function (p) {
+          p.classList.toggle("is-on", p.getAttribute("data-pane") === "keys");
+        });
+      }
+
+      $$(".rail-tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.getAttribute("data-top");
+          $$(".rail-tab").forEach(function (b) {
+            var on = b === btn;
+            b.classList.toggle("is-on", on);
+            b.setAttribute("aria-selected", on ? "true" : "false");
+          });
+          $$(".pane").forEach(function (p) {
+            p.classList.toggle("is-on", p.getAttribute("data-pane") === id);
+          });
+        });
+      });
+
+      $$("#padGrid .pkey").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          $$("#padGrid .pkey").forEach(function (b) { b.classList.remove("on"); });
+          btn.classList.add("on");
+          activeKey = btn.getAttribute("data-key");
+          var label = btn.getAttribute("data-label") || activeKey;
+          $("#bindCtx").textContent =
+            "绑到键 " + activeKey + (label !== "—" ? " · " + label : "");
+          goKeysPane();
+        });
+      });
+
+      $("#cmdScroll").addEventListener("click", function (ev) {
+        var toggle = ev.target.closest && ev.target.closest("[data-scene-toggle]");
+        if (toggle) {
+          var sc = toggle.closest(".scene");
+          if (sc) sc.classList.toggle("is-open");
+          return;
+        }
+        var cmd = ev.target.closest && ev.target.closest("[data-cmd]");
+        if (!cmd) return;
+        selectedId = cmd.getAttribute("data-cmd");
+        renderAll();
+        var title = cmd.querySelector(".cmd-title");
+        toast("键 " + activeKey + " ← " + (title ? title.textContent : selectedId));
+      });
+
+      $("#q").addEventListener("input", renderAll);
+      $("#btnOther").addEventListener("click", function () {
+        toast("打开「其它通道」二级页");
+      });
+      $("#btnRecord").addEventListener("click", function () {
+        toast("打开录制按键");
+      });
+
+      renderAll();
+    })();
+  </script>
+</body>
+</html>

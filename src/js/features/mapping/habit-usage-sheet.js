@@ -5,7 +5,7 @@
     return global.OneToneDom && global.OneToneDom.$ ? global.OneToneDom.$(id) : document.getElementById(id);
   };
 
-  var state = { mappingId: '', hours: 168, open: false };
+  var state = { mappingId: '', hours: 168, open: false, allOpen: false };
   var bound = false;
 
   function t(key, fb) {
@@ -77,6 +77,52 @@
     hint.textContent = api && api.exportHint ? api.exportHint(hours) : '';
   }
 
+  function syncAllBtnLabel() {
+    var btn = $('btnHabitUsageSheetAll');
+    if (btn) btn.textContent = t('habitUsageAllRecords', '全部记录');
+  }
+
+  function renderAllBody() {
+    var body = $('habitUsageAllBody');
+    var title = $('habitUsageAllTitle');
+    var api = statsApi();
+    if (title && api && api.windowSpoken) {
+      title.textContent = t('habitUsageOverviewTitleDyn', '{window}用过').replace(
+        '{window}',
+        api.windowSpoken(state.hours)
+      );
+    } else if (title) {
+      title.textContent = t('habitUsageOverviewTitle', '近 7 天用过');
+    }
+    if (!body) return;
+    body.innerHTML = api && api.overviewHtml ? api.overviewHtml(0) : '';
+  }
+
+  function showAllShell(on) {
+    var backdrop = $('habitUsageAllBackdrop');
+    var sheet = $('habitUsageAllSheet');
+    if (backdrop) backdrop.hidden = !on;
+    if (sheet) {
+      sheet.classList.toggle('is-closed', !on);
+      sheet.setAttribute('aria-hidden', on ? 'false' : 'true');
+    }
+    state.allOpen = !!on;
+  }
+
+  function openAll() {
+    if (!state.open) return;
+    renderAllBody();
+    showAllShell(true);
+    var closeBtn = $('btnHabitUsageAllClose');
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeAll() {
+    var body = $('habitUsageAllBody');
+    if (body) body.innerHTML = '';
+    showAllShell(false);
+  }
+
   function mountHistory(mappingId, hours) {
     var mount = global.__otMountHabitUsageSheetHistory;
     if (typeof mount === 'function') {
@@ -95,10 +141,12 @@
       .then(function () {
         renderKpi(state.mappingId, false);
         renderExportHint(state.hours);
+        if (state.allOpen) renderAllBody();
         mountHistory(state.mappingId, state.hours);
       })
       .catch(function () {
         renderKpi(state.mappingId, true);
+        if (state.allOpen) renderAllBody();
       });
   }
 
@@ -141,6 +189,7 @@
     if (sub) sub.textContent = t('habitUsageSheetSub', '使用记录');
     if (tabs) tabs.innerHTML = renderWindowTabs(state.hours);
     renderExportHint(state.hours);
+    syncAllBtnLabel();
     var exportBtn = $('btnHabitUsageSheetExport');
     if (exportBtn) exportBtn.textContent = t('habitUsageExport', '导出文档');
 
@@ -152,6 +201,7 @@
   }
 
   function close() {
+    closeAll();
     try {
       if (global.OneToneIslands && global.OneToneIslands.isMounted &&
         global.OneToneIslands.isMounted('habitUsageSheetHistory')) {
@@ -172,9 +222,19 @@
     if (backdrop) backdrop.addEventListener('click', close);
     if (closeBtn) closeBtn.addEventListener('click', close);
 
+    var allBackdrop = $('habitUsageAllBackdrop');
+    var allClose = $('btnHabitUsageAllClose');
+    if (allBackdrop) allBackdrop.addEventListener('click', closeAll);
+    if (allClose) allClose.addEventListener('click', closeAll);
+
     document.addEventListener('keydown', function (e) {
-      if (!state.open) return;
-      if (e.key === 'Escape') {
+      if (e.key !== 'Escape') return;
+      if (state.allOpen) {
+        e.preventDefault();
+        closeAll();
+        return;
+      }
+      if (state.open) {
         e.preventDefault();
         close();
       }
@@ -183,6 +243,12 @@
     var sheet = $('habitUsageSheet');
     if (sheet) {
       sheet.addEventListener('click', function (e) {
+        var allBtn = e.target && e.target.closest && e.target.closest('[data-usage-sheet-all]');
+        if (allBtn) {
+          e.preventDefault();
+          openAll();
+          return;
+        }
         var winBtn = e.target && e.target.closest && e.target.closest('[data-usage-sheet-window] [data-hours]');
         if (winBtn) {
           e.preventDefault();
@@ -205,11 +271,36 @@
         }
       });
     }
+
+    var allSheet = $('habitUsageAllSheet');
+    if (allSheet) {
+      allSheet.addEventListener('click', function (e) {
+        var exportAll = e.target && e.target.closest && e.target.closest('[data-habit-usage-export-all]');
+        if (exportAll) {
+          e.preventDefault();
+          var apiAll = statsApi();
+          if (apiAll && apiAll.exportAllHabitsDoc) {
+            apiAll.exportAllHabitsDoc({ hours: state.hours }).catch(function () {});
+          }
+          return;
+        }
+        var rank = e.target && e.target.closest && e.target.closest('[data-habit-usage-rank]');
+        if (rank) {
+          e.preventDefault();
+          var nextId = rank.getAttribute('data-habit-usage-rank') || '';
+          if (!nextId) return;
+          closeAll();
+          if (nextId !== state.mappingId) open(nextId, { hours: state.hours });
+        }
+      });
+    }
   }
 
   global.OneToneHabitUsageSheet = {
     open: open,
     close: close,
+    openAll: openAll,
+    closeAll: closeAll,
     bindEvents: bindEvents,
     isOpen: function () { return state.open; },
     currentHours: function () { return state.hours; },

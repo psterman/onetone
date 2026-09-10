@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>动作目录壳 · 绑定 / 调用 原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,700;0,9..40,800;1,9..40,500&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#142033;
+      --muted:#5b6b7f;
+      --line:#d7e2ec;
+      --soft:#f4f8fb;
+      --paper:#fff;
+      --cyan:#0b9bd7;
+      --cyan-soft:#e7f7fd;
+      --cyan-deep:#0879a8;
+      --run:#0f766e;
+      --run-soft:#ecfdf8;
+      --run-line:#99f6e4;
+      --warn:#b65a1d;
+      --shadow:0 28px 70px rgba(20,32,51,.18);
+      --radius:16px;
+      --font:"DM Sans",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);
+      color:var(--ink);
+      background:
+        radial-gradient(900px 420px at 12% -10%,rgba(11,155,215,.16),transparent 60%),
+        radial-gradient(700px 380px at 90% 0%,rgba(15,118,110,.12),transparent 55%),
+        linear-gradient(180deg,#eef4f8 0%,#e7eef5 100%);
+    }
+    .page{
+      width:min(1180px,100%);
+      margin:0 auto;
+      padding:28px 20px 48px;
+    }
+    .hero{
+      display:grid;
+      gap:10px;
+      margin-bottom:22px;
+    }
+    .hero-kicker{
+      font-family:var(--mono);
+      font-size:11px;
+      font-weight:600;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:var(--cyan-deep);
+    }
+    .hero h1{
+      margin:0;
+      font-size:clamp(26px,3.4vw,36px);
+      font-weight:800;
+      letter-spacing:-.03em;
+      line-height:1.15;
+    }
+    .hero p{
+      margin:0;
+      max-width:62ch;
+      font-size:15px;
+      line-height:1.55;
+      color:var(--muted);
+      font-weight:500;
+    }
+    .thesis{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin:18px 0 22px;
+    }
+    .thesis article{
+      padding:14px 14px 12px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:rgba(255,255,255,.72);
+    }
+    .thesis b{display:block;font-size:13px;margin-bottom:4px}
+    .thesis span{font-size:12px;line-height:1.45;color:var(--muted)}
+
+    .stage{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 280px;
+      gap:16px;
+      align-items:start;
+    }
+
+    /* —— shared shell —— */
+    .shell{
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:var(--paper);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      display:grid;
+      grid-template-rows:auto auto auto minmax(420px,58vh);
+      min-height:560px;
+      transition:border-color .25s ease, box-shadow .25s ease;
+    }
+    .shell[data-mode="run"]{
+      border-color:color-mix(in srgb,var(--run) 35%,var(--line));
+      box-shadow:0 28px 70px rgba(15,118,110,.16);
+    }
+
+    .shell-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      padding:16px 18px 12px;
+      border-bottom:1px solid var(--line);
+    }
+    .shell-title{margin:0;font-size:17px;font-weight:800;letter-spacing:-.02em}
+    .shell-sub{margin:5px 0 0;font-size:12px;color:var(--muted);line-height:1.4;font-weight:500}
+    .shell-close{
+      border:0;background:transparent;color:var(--muted);
+      font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;border-radius:8px;
+    }
+    .shell-close:hover{background:var(--soft)}
+
+    .mode-rail{
+      display:flex;
+      gap:8px;
+      padding:10px 18px;
+      border-bottom:1px solid var(--line);
+      background:linear-gradient(180deg,#fbfcfd,#f7fafc);
+    }
+    .mode-pill{
+      appearance:none;border:1px solid var(--line);background:#fff;
+      border-radius:999px;padding:8px 14px;font:inherit;font-size:12px;font-weight:750;
+      color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:8px;
+    }
+    .mode-pill i{
+      font-family:var(--mono);font-style:normal;font-size:10px;
+      padding:2px 6px;border-radius:999px;background:var(--soft);color:var(--muted);
+    }
+    .mode-pill.is-on[data-mode="bind"]{
+      border-color:var(--cyan);background:var(--cyan-soft);color:var(--cyan-deep);
+    }
+    .mode-pill.is-on[data-mode="bind"] i{background:#fff;color:var(--cyan-deep)}
+    .mode-pill.is-on[data-mode="run"]{
+      border-color:var(--run);background:var(--run-soft);color:var(--run);
+    }
+    .mode-pill.is-on[data-mode="run"] i{background:#fff;color:var(--run)}
+
+    .toolbar{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:10px;
+      align-items:center;
+      padding:10px 18px;
+      border-bottom:1px solid var(--line);
+    }
+    .search{
+      display:flex;align-items:center;gap:8px;
+      padding:0 12px;border:1px solid var(--line);border-radius:10px;background:#fff;min-height:40px;
+    }
+    .search:focus-within{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(11,155,215,.12)}
+    .search input{border:0;outline:0;width:100%;font:inherit;font-size:13px;background:transparent}
+    .scene-chips{display:flex;flex-wrap:wrap;gap:6px}
+    .chip{
+      border:1px solid var(--line);border-radius:999px;background:#fff;
+      padding:6px 12px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;
+    }
+    .chip.is-on{border-color:var(--cyan);background:var(--cyan-soft);color:var(--cyan-deep)}
+    .shell[data-mode="run"] .chip.is-on{border-color:var(--run);background:var(--run-soft);color:var(--run)}
+
+    .body{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:0}
+    .apps{
+      display:flex;flex-direction:column;gap:3px;padding:10px 8px;
+      border-right:1px solid var(--line);background:var(--soft);overflow:auto;
+    }
+    .app{
+      display:grid;grid-template-columns:34px minmax(0,1fr);gap:8px;align-items:center;
+      width:100%;padding:8px 9px;border:1px solid transparent;border-radius:10px;
+      background:transparent;text-align:left;cursor:pointer;font:inherit;color:inherit;
+    }
+    .app:hover{background:#fff}
+    .app.is-on{border-color:#b8e3f4;background:var(--cyan-soft);box-shadow:inset 3px 0 var(--cyan)}
+    .shell[data-mode="run"] .app.is-on{border-color:var(--run-line);background:var(--run-soft);box-shadow:inset 3px 0 var(--run)}
+    .app-ico{
+      width:32px;height:32px;border-radius:9px;display:grid;place-items:center;
+      background:#172235;color:#fff;font-size:10px;font-weight:800;
+    }
+    .app strong,.app small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .app strong{font-size:12px}
+    .app small{font-size:10px;color:var(--muted);margin-top:2px}
+
+    .main{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-width:0;min-height:0}
+    .channels{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 0}
+    .actions{padding:10px 12px 12px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+    .none{
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+      width:100%;padding:10px 12px;margin-bottom:6px;border:1px dashed #cbd5e1;
+      border-radius:10px;background:#f1f5f9;color:var(--muted);font:inherit;font-size:13px;font-weight:700;cursor:pointer;text-align:left;
+    }
+    .shell[data-mode="run"] .none{display:none}
+    .row{
+      display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;
+      width:100%;padding:10px 12px;border:1px solid transparent;border-radius:10px;
+      background:transparent;font:inherit;text-align:left;cursor:pointer;color:inherit;
+    }
+    .row:hover{background:var(--soft);border-color:var(--line)}
+    .row.is-sel{border-color:#b8e3f4;background:var(--cyan-soft)}
+    .shell[data-mode="run"] .row.is-sel{border-color:var(--run-line);background:var(--run-soft)}
+    .row-label{font-size:13px;font-weight:750}
+    .row-meta{font-size:11px;color:var(--muted);margin-top:2px}
+    .row-hint{font-size:10px;color:#0f766e;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .row-cta{
+      font-family:var(--mono);font-size:11px;font-weight:600;
+      min-width:52px;text-align:center;padding:5px 8px;border-radius:999px;
+      background:var(--cyan-soft);color:var(--cyan-deep);
+    }
+    .shell[data-mode="run"] .row-cta{background:var(--run-soft);color:var(--run)}
+
+    .foot{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:12px 14px;border-top:1px solid var(--line);background:#fbfdff;
+    }
+    .foot-note{font-size:12px;color:var(--muted);font-weight:500}
+    .foot-note strong{color:var(--ink)}
+    .foot-actions{display:flex;gap:8px}
+    .btn{
+      border:1px solid var(--line);background:#fff;border-radius:10px;
+      padding:9px 14px;font:inherit;font-size:12px;font-weight:750;cursor:pointer;color:var(--ink);
+    }
+    .btn.primary{border-color:transparent;background:linear-gradient(180deg,#2eb7ea,var(--cyan));color:#fff}
+    .shell[data-mode="run"] .btn.primary{background:linear-gradient(180deg,#14b8a6,var(--run))}
+
+    /* side notes */
+    .notes{
+      display:grid;gap:10px;
+      position:sticky;top:18px;
+    }
+    .note{
+      padding:14px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.82);
+      backdrop-filter:blur(8px);
+    }
+    .note h3{margin:0 0 6px;font-size:13px;font-weight:800}
+    .note p,.note li{margin:0;font-size:12px;line-height:1.5;color:var(--muted);font-weight:500}
+    .note ol{margin:8px 0 0;padding-left:18px}
+    .note code{
+      font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:4px;
+      background:var(--soft);color:var(--cyan-deep);
+    }
+    .wire{
+      margin-top:10px;
+      font-family:var(--mono);
+      font-size:10px;
+      line-height:1.45;
+      white-space:pre;
+      color:#334155;
+      background:#0f172a;
+      color:#cbd5e1;
+      border-radius:10px;
+      padding:10px 12px;
+      overflow:auto;
+    }
+
+    .toast{
+      position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(12px);
+      opacity:0;pointer-events:none;
+      padding:10px 14px;border-radius:999px;background:#142033;color:#fff;
+      font-size:12px;font-weight:700;box-shadow:var(--shadow);
+      transition:opacity .2s ease, transform .2s ease;
+      z-index:20;
+    }
+    .toast.is-on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    @media (max-width:980px){
+      .stage{grid-template-columns:1fr}
+      .thesis{grid-template-columns:1fr}
+      .notes{position:static}
+    }
+    @media (max-width:760px){
+      .body{grid-template-columns:1fr}
+      .apps{max-height:160px;border-right:0;border-bottom:1px solid var(--line)}
+      .toolbar{grid-template-columns:1fr}
+    }
+    @media (prefers-reduced-motion:reduce){
+      *{transition:none!important}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-kicker">Prototype · Action Catalog Shell</div>
+      <h1>一个壳，两种打开方式</h1>
+      <p>
+        不把「选 Camera 动作」整页改成万能菜单。抽出同一套<strong>动作目录壳</strong>：
+        左应用场景 · 右动作 · 搜索 · 通道筛选。顶部用模式切换区分
+        <strong>绑定</strong>（配置映射）与 <strong>调用</strong>（立刻执行）。
+      </p>
+    </header>
+
+    <section class="thesis" aria-label="改造原则">
+      <article>
+        <b>保留绑定身份</b>
+        <span>从手势/按键进来时，标题仍写「选 Camera 动作 · 五指张开」，主按钮是「绑定」。</span>
+      </article>
+      <article>
+        <b>另开调用入口</b>
+        <span>托盘 / Soft Pad / 快捷键打开同一壳，模式锁定为「调用」，主按钮是「执行」。</span>
+      </article>
+      <article>
+        <b>目录只抽一次</b>
+        <span>场景列表、通道过滤、搜索、动作行结构共用；勿复制第三套 picker。</span>
+      </article>
+    </section>
+
+    <div class="stage">
+      <div class="shell" id="shell" data-mode="bind" role="dialog" aria-modal="true" aria-labelledby="shellTitle">
+        <header class="shell-head">
+          <div>
+            <h2 class="shell-title" id="shellTitle">选 Camera 动作 · 五指张开</h2>
+            <p class="shell-sub" id="shellSub">按应用场景与分类筛选：同一动作可在按键 / 语音 / Soft Pad 复用</p>
+          </div>
+          <button type="button" class="shell-close" aria-label="关闭">×</button>
+        </header>
+
+        <div class="mode-rail" role="tablist" aria-label="目录模式">
+          <button type="button" class="mode-pill is-on" data-mode="bind" role="tab" aria-selected="true">
+            绑定到触发器 <i>BIND</i>
+          </button>
+          <button type="button" class="mode-pill" data-mode="run" role="tab" aria-selected="false">
+            立即调用 <i>RUN</i>
+          </button>
+        </div>
+
+        <div class="toolbar">
+          <label class="search">
+            <span aria-hidden="true">⌕</span>
+            <input id="search" type="search" placeholder="搜索动作…" autocomplete="off" />
+          </label>
+          <div class="scene-chips" id="scenes">
+            <button type="button" class="chip is-on" data-scene="begin">启动</button>
+            <button type="button" class="chip" data-scene="end">结束</button>
+            <button type="button" class="chip" data-scene="general">通用</button>
+          </div>
+        </div>
+
+        <div class="body">
+          <aside class="apps" id="apps" aria-label="应用场景"></aside>
+          <div class="main">
+            <div class="channels" id="channels"></div>
+            <div class="actions" id="actions"></div>
+            <footer class="foot">
+              <div class="foot-note" id="footNote">
+                当前：绑定到 <strong>五指张开</strong> · 场景 Cursor
+              </div>
+              <div class="foot-actions">
+                <button type="button" class="btn" id="btnCancel">取消</button>
+                <button type="button" class="btn primary" id="btnPrimary">绑定此动作</button>
+              </div>
+            </footer>
+          </div>
+        </div>
+      </div>
+
+      <aside class="notes">
+        <div class="note">
+          <h3>怎么看这个原型</h3>
+          <p>点顶部 <code>BIND</code> / <code>RUN</code>。壳布局不变，变的是标题、主按钮、是否显示「不执行」、动作行右侧 CTA。</p>
+        </div>
+        <div class="note">
+          <h3>建议接入路径</h3>
+          <ol>
+            <li>Camera / Keys 绑定 → <code>mode: bind</code></li>
+            <li>托盘「动作目录」→ <code>mode: run</code></li>
+            <li>Soft Pad 长按空白 → <code>mode: run</code></li>
+          </ol>
+        </div>
+        <div class="note">
+          <h3>信息架构草图</h3>
+          <pre class="wire">┌─ mode: bind | run ─────────────┐
+│ search     [启动][结束][通用]   │
+├──────────┬─────────────────────┤
+│ 通用     │ 通道: 全部 按键 语音 │
+│ Cursor ● │                     │
+│ Codex    │ 动作行…      [绑+/跑]│
+│ Claude   │                     │
+├──────────┴─────────────────────┤
+│ 脚注：绑定到 X / 将执行于 Y    │
+│              [取消] [主按钮]   │
+└────────────────────────────────┘</pre>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var APPS = [
+        { id: 'universal', name: '通用设置', sub: '全局默认', ico: '⌂' },
+        { id: 'cursor', name: 'Cursor', sub: 'Cursor 场景', ico: 'Cu' },
+        { id: 'codex', name: 'Codex', sub: 'Codex 场景', ico: 'Cx' },
+        { id: 'claude', name: 'Claude Code', sub: 'Claude 场景', ico: 'Cl' },
+        { id: 'minimax', name: 'MiniMax', sub: 'MiniMax 场景', ico: 'MM' },
+        { id: 'trae', name: 'Trae', sub: 'Trae 场景', ico: 'Tr' }
+      ];
+      var CHANNELS = [
+        { id: '', label: '全部', n: 14 },
+        { id: 'key', label: '按键', n: 5 },
+        { id: 'voice', label: '语音', n: 5 },
+        { id: 'softPad', label: '虚拟键盘', n: 4 }
+      ];
+      var ACTIONS = [
+        { id: 'none', label: '不执行动作', meta: '清除此触发器的绑定', hint: '', channel: '', bindOnly: true },
+        { id: 'voiceIme', label: '语音输入法激活 (F2)', meta: '开始 / 结束听写', hint: '已在按键 LAlt+R · 语音 麦克风', channel: 'voice' },
+        { id: 'summon', label: '回到当前 Agent', meta: '聚焦前台 Agent 对话', hint: '已在按键 summonCodex', channel: 'key' },
+        { id: 'palette', label: '命令菜单', meta: '打开应用内命令面板', hint: '已在 Soft Pad', channel: 'softPad' },
+        { id: 'esc', label: '发送 Esc', meta: '取消 / 关闭浮层', hint: '', channel: 'key' },
+        { id: 'privacy', label: '隐私屏', meta: '遮挡敏感内容', hint: '已在摄像头 离席', channel: 'key' },
+        { id: 'status', label: '查询 Agent 状态', meta: '读当前忙闲', hint: '', channel: 'voice' }
+      ];
+
+      var state = {
+        mode: 'bind',
+        app: 'cursor',
+        scene: 'begin',
+        channel: '',
+        selected: 'voiceIme',
+        query: ''
+      };
+
+      var shell = document.getElementById('shell');
+      var titleEl = document.getElementById('shellTitle');
+      var subEl = document.getElementById('shellSub');
+      var appsEl = document.getElementById('apps');
+      var channelsEl = document.getElementById('channels');
+      var actionsEl = document.getElementById('actions');
+      var footNote = document.getElementById('footNote');
+      var btnPrimary = document.getElementById('btnPrimary');
+      var toastEl = document.getElementById('toast');
+      var toastTimer = 0;
+
+      function appName(id) {
+        var a = APPS.find(function (x) { return x.id === id; });
+        return a ? a.name : id;
+      }
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add('is-on');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+          toastEl.classList.remove('is-on');
+        }, 1800);
+      }
+
+      function syncModeChrome() {
+        shell.setAttribute('data-mode', state.mode);
+        document.querySelectorAll('.mode-pill').forEach(function (btn) {
+          var on = btn.getAttribute('data-mode') === state.mode;
+          btn.classList.toggle('is-on', on);
+          btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        if (state.mode === 'bind') {
+          titleEl.textContent = '选 Camera 动作 · 五指张开';
+          subEl.textContent = '按应用场景与分类筛选：同一动作可在按键 / 语音 / Soft Pad 复用';
+          btnPrimary.textContent = '绑定此动作';
+          footNote.innerHTML = '当前：绑定到 <strong>五指张开</strong> · 场景 ' + appName(state.app);
+        } else {
+          titleEl.textContent = '动作目录 · 立即调用';
+          subEl.textContent = '从任意通道已登记的能力里挑一个执行；不会改手势绑定';
+          btnPrimary.textContent = '执行';
+          footNote.innerHTML = '当前：将在 <strong>' + appName(state.app) + '</strong> 场景执行所选动作';
+        }
+      }
+
+      function renderApps() {
+        appsEl.innerHTML = APPS.map(function (a) {
+          return (
+            '<button type="button" class="app' + (state.app === a.id ? ' is-on' : '') + '" data-app="' + a.id + '">' +
+            '<span class="app-ico" aria-hidden="true">' + a.ico + '</span>' +
+            '<span><strong>' + a.name + '</strong><small>' + a.sub + '</small></span>' +
+            '</button>'
+          );
+        }).join('');
+      }
+
+      function renderChannels() {
+        channelsEl.innerHTML = CHANNELS.map(function (c) {
+          var label = c.label + (c.n != null ? ' <span style="opacity:.65">' + c.n + '</span>' : '');
+          return (
+            '<button type="button" class="chip' + (state.channel === c.id ? ' is-on' : '') + '" data-channel="' + c.id + '">' +
+            label +
+            '</button>'
+          );
+        }).join('');
+      }
+
+      function filteredActions() {
+        var q = state.query.trim().toLowerCase();
+        return ACTIONS.filter(function (a) {
+          if (a.bindOnly && state.mode === 'run') return false;
+          if (state.channel && a.channel && a.channel !== state.channel && a.id !== 'none') return false;
+          if (!q) return true;
+          return (a.label + a.meta + a.hint).toLowerCase().indexOf(q) >= 0;
+        });
+      }
+
+      function renderActions() {
+        var cta = state.mode === 'bind' ? '绑+' : '跑 ›';
+        actionsEl.innerHTML = filteredActions().map(function (a) {
+          if (a.id === 'none') {
+            return (
+              '<button type="button" class="none' + (state.selected === a.id ? ' is-sel' : '') + '" data-action="' + a.id + '">' +
+              '<span>' + a.label + '</span><span aria-hidden="true">—</span>' +
+              '</button>'
+            );
+          }
+          return (
+            '<button type="button" class="row' + (state.selected === a.id ? ' is-sel' : '') + '" data-action="' + a.id + '">' +
+            '<span><div class="row-label">' + a.label + '</div><div class="row-meta">' + a.meta + '</div></span>' +
+            '<span class="row-hint">' + (a.hint || '') + '</span>' +
+            '<span class="row-cta">' + cta + '</span>' +
+            '</button>'
+          );
+        }).join('');
+      }
+
+      function render() {
+        syncModeChrome();
+        renderApps();
+        renderChannels();
+        renderActions();
+      }
+
+      document.querySelector('.mode-rail').addEventListener('click', function (e) {
+        var btn = e.target.closest('.mode-pill');
+        if (!btn) return;
+        state.mode = btn.getAttribute('data-mode');
+        if (state.mode === 'run' && state.selected === 'none') state.selected = 'voiceIme';
+        render();
+      });
+
+      document.getElementById('scenes').addEventListener('click', function (e) {
+        var chip = e.target.closest('.chip');
+        if (!chip) return;
+        state.scene = chip.getAttribute('data-scene');
+        document.querySelectorAll('#scenes .chip').forEach(function (c) {
+          c.classList.toggle('is-on', c === chip);
+        });
+      });
+
+      appsEl.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-app]');
+        if (!btn) return;
+        state.app = btn.getAttribute('data-app');
+        render();
+      });
+
+      channelsEl.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-channel]');
+        if (!btn) return;
+        state.channel = btn.getAttribute('data-channel');
+        render();
+      });
+
+      actionsEl.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        state.selected = btn.getAttribute('data-action');
+        render();
+      });
+
+      document.getElementById('search').addEventListener('input', function (e) {
+        state.query = e.target.value || '';
+        renderActions();
+      });
+
+      btnPrimary.addEventListener('click', function () {
+        var act = ACTIONS.find(function (a) { return a.id === state.selected; });
+        var name = act ? act.label : state.selected;
+        if (state.mode === 'bind') {
+          toast('已绑定：「' + name + '」→ 五指张开 · ' + appName(state.app));
+        } else {
+          toast('已调用：「' + name + '」@ ' + appName(state.app));
+        }
+      });
+
+      document.getElementById('btnCancel').addEventListener('click', function () {
+        toast('已取消（原型）');
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>

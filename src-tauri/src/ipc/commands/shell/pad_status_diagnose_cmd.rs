@@ -985,6 +985,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
         navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![
                 crate::config::CodexMicroPadKeyRoute {
                     micro_key_id: "AG04".into(),
@@ -1082,6 +1084,8 @@ mod tests {
             skin: "default".into(),
             pinned_lane_preferences: Vec::new(),
         navigation_layout_migrated: false,
+            common_slot_ids: None,
+            custom_shortcuts: Vec::new(),
             keys: vec![],
         };
         let (_l, _o, _c, hint) = build_claude_diagnose(&pad, 10, true);

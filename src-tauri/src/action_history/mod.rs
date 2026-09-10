@@ -7,8 +7,9 @@ mod summary;
 
 pub use analyze::{analyze_chat, analyze_optimization, analyze_summary, AnalyzeResult};
 pub use log::{
-    clear, log_path, recent_ring, record, stats_by_mapping, tail, usage_counts_last_days,
-    ActionHistoryListResult, ActionHistoryStatsResult, MappingActionStats,
+    clear, forget_mapping_ids, log_path, recent_ring, record, remap_mapping_ids, stats_by_mapping,
+    tail, usage_counts_last_days, ActionHistoryListResult, ActionHistoryStatsResult,
+    MappingActionStats,
 };
 pub use model::ActionHistoryEntry;
 pub use summary::{
