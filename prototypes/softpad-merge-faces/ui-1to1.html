@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soft Pad · 合并后 1:1 界面原型</title>
+  <style>
+    /* Product tokens — match app Soft Pad chrome */
+    :root {
+      --primary: #2a9cc4;
+      --primary-strong: #1f8fb8;
+      --primary-soft: rgba(42, 156, 196, 0.12);
+      --on-surface: #152536;
+      --on-surface-muted: #5c6b7a;
+      --on-surface-soft: #8a98a8;
+      --outline: rgba(26, 45, 74, 0.18);
+      --outline-variant: rgba(26, 45, 74, 0.12);
+      --surface: #ffffff;
+      --surface-soft: #f4f7fa;
+      --surface-high: #ffffff;
+      --ot-ctrl-r: 8px;
+      --ot-ctrl-r-inner: 6px;
+      --ot-ctrl-track-bg: #eef2f6;
+      --ot-ctrl-track-border: rgba(26, 45, 74, 0.12);
+      --ot-ctrl-active-bg: #ffffff;
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--on-surface);
+      background: #dce4ec;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Settings shell frame */
+    .app-frame {
+      width: min(1080px, 100%);
+      margin: 16px auto 40px;
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      border-radius: 12px;
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+      overflow: hidden;
+      min-height: calc(100vh - 56px);
+      display: flex;
+      flex-direction: column;
+    }
+    .proto-bar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 8px 12px; background: #0f172a; color: #94a3b8;
+      font-size: 11px; font-weight: 600;
+    }
+    .proto-bar b { color: #e2e8f0; font-weight: 700; }
+    .proto-bar a { color: #7dd3fc; text-decoration: none; margin-left: auto; }
+    .proto-bar a:hover { text-decoration: underline; }
+
+    .settings-panel {
+      padding: 12px 14px 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: var(--surface);
+    }
+
+    /* Status bar */
+    .page-status-bar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      margin: 0 0 10px;
+      border: 1px solid var(--outline-variant);
+      border-radius: 12px;
+      background: var(--surface-soft);
+    }
+    .page-status-bar-main { min-width: 0; flex: 1; }
+    .keys-scheme-summary-title-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;
+    }
+    .keys-scheme-summary-name {
+      font-size: 15px; font-weight: 800; letter-spacing: -0.02em;
+    }
+    .keys-scheme-summary-pill {
+      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      border: 1px solid rgba(5, 150, 105, 0.35);
+      background: rgba(5, 150, 105, 0.1); color: #059669;
+    }
+    .soft-pad-bind-app__btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      border: 1px solid var(--outline-variant);
+      background: rgba(248, 250, 252, 0.85);
+      color: var(--on-surface);
+      font: 700 12px/1.2 inherit;
+      padding: 4px 10px; border-radius: 999px; cursor: pointer;
+    }
+    .soft-pad-bind-app__chev { font-size: 10px; opacity: 0.7; }
+    .keys-scheme-summary-meta {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 0;
+      font-size: 12px;
+    }
+    .keys-scheme-summary-item { display: inline-flex; gap: 4px; align-items: baseline; }
+    .keys-scheme-summary-lbl { color: var(--on-surface-soft); font-weight: 600; }
+    .keys-scheme-summary-val { color: var(--on-surface-muted); font-weight: 650; }
+    .keys-scheme-summary-divider {
+      width: 1px; height: 12px; background: var(--outline-variant); margin: 0 8px; align-self: center;
+    }
+    .page-status-bar-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .page-status-btn {
+      border: 1px solid var(--outline);
+      background: var(--surface);
+      color: var(--on-surface-muted);
+      font: 700 12px/1 inherit;
+      padding: 7px 11px; border-radius: 8px; cursor: pointer;
+    }
+    .page-status-btn:hover { color: var(--on-surface); border-color: var(--primary); }
+
+    /* Preview banner */
+    .soft-pad-settings-preview-banner {
+      display: flex; align-items: flex-start; gap: 10px;
+      margin: 0 0 10px; padding: 10px 12px; border-radius: 12px;
+      border: 1px solid rgba(42, 156, 196, 0.22);
+      background: linear-gradient(135deg, rgba(79, 172, 254, 0.1), rgba(42, 156, 196, 0.06));
+    }
+    .soft-pad-settings-preview-banner__icon {
+      flex-shrink: 0; width: 20px; height: 20px; color: var(--primary-strong); margin-top: 1px;
+    }
+    .soft-pad-settings-preview-banner__icon svg { width: 20px; height: 20px; display: block; }
+    .soft-pad-settings-preview-banner__title {
+      margin: 0 0 2px; font-size: 12px; font-weight: 750; color: var(--primary-strong);
+    }
+    .soft-pad-settings-preview-banner__body {
+      margin: 0; font-size: 12px; line-height: 1.45; color: var(--on-surface-muted);
+    }
+
+    /* Workspace: left preview | right panel — match .soft-pad-face-pad */
+    .soft-pad-face-pad {
+      display: grid;
+      grid-template-columns: minmax(340px, 1.05fr) minmax(0, 1.1fr);
+      gap: 12px 18px;
+      align-items: start;
+      flex: 1;
+      min-height: 0;
+    }
+    @media (max-width: 860px) {
+      .soft-pad-face-pad { grid-template-columns: 1fr; }
+    }
+
+    .soft-pad-preview-host {
+      border-radius: 18px;
+      border: 1px solid rgba(26, 45, 74, 0.1);
+      background: rgba(248, 250, 252, 0.55);
+      padding: 10px 8px 12px;
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      position: sticky;
+      top: 8px;
+    }
+    .preview-label {
+      width: 100%; max-width: 380px; margin: 0 auto 8px; padding: 0 2px;
+      font-size: 11px; font-weight: 700; color: var(--on-surface-soft);
+      letter-spacing: 0.02em;
+    }
+    .hw-wrap {
+      margin: 0 auto; width: min(100%, 280px);
+      transition: box-shadow .25s ease, transform .25s ease;
+    }
+    .hw-shell {
+      border-radius: 18px; padding: 10px;
+      background: #1a2430;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.28);
+    }
+    .soft-pad-preview-host.is-lights .hw-shell {
+      box-shadow:
+        0 0 0 2px rgba(56, 189, 248, 0.35),
+        0 0 24px rgba(56, 189, 248, 0.35),
+        0 12px 28px rgba(15, 23, 42, 0.28);
+    }
+    .hw-face { display: flex; flex-direction: column; gap: 8px; }
+    .hw-title {
+      font-size: 11px; font-weight: 700; color: #94a3b8; text-align: center;
+    }
+    .hw-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+    }
+    .hw-key {
+      aspect-ratio: 1; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.07);
+      color: #cbd5e1; font-size: 10px; font-weight: 700;
+      display: grid; place-items: center; cursor: pointer;
+      transition: background .15s, border-color .15s, transform .12s;
+    }
+    .hw-key:hover { background: rgba(255,255,255,.12); }
+    .hw-key.is-on {
+      border-color: rgba(125, 211, 252, 0.55);
+      background: rgba(42, 156, 196, 0.28);
+      color: #e0f2fe;
+      transform: scale(0.96);
+    }
+    .soft-pad-preview-host.is-lights .hw-key {
+      box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+    .mini-float {
+      margin: 12px auto 0; width: min(100%, 280px);
+      display: none; align-items: center; gap: 8px;
+      padding: 8px 10px; border-radius: 12px;
+      background: #0f172a; border: 1px solid rgba(255,255,255,.1);
+      color: #94a3b8; font-size: 11px; font-weight: 650;
+    }
+    .soft-pad-preview-host.is-mini .mini-float { display: flex; }
+    .soft-pad-preview-host.is-mini .hw-wrap { display: none; }
+    .mini-float i {
+      width: 8px; height: 8px; border-radius: 50%; background: #34d399;
+      box-shadow: 0 0 8px rgba(52, 211, 153, 0.7);
+    }
+    .preview-hint {
+      margin: 10px auto 0; max-width: 280px; text-align: center;
+      font-size: 11px; color: var(--on-surface-soft); line-height: 1.4;
+    }
+
+    /* Right panel */
+    .soft-pad-face-pad__panel {
+      min-width: 0; min-height: 0;
+      border: 1px solid var(--outline-variant);
+      border-radius: 14px;
+      background: var(--surface-soft);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .soft-pad-pad-tabs {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      padding: 3px; margin: 10px 12px 0;
+      border-radius: var(--ot-ctrl-r);
+      background: var(--ot-ctrl-track-bg);
+      border: 1px solid var(--ot-ctrl-track-border);
+      flex: 0 0 auto;
+    }
+    .soft-pad-pad-tab {
+      flex: 1 1 0; min-width: 0;
+      border: none; background: transparent;
+      color: var(--on-surface-muted);
+      font: 700 12px/1.2 inherit;
+      padding: 7px 8px; border-radius: var(--ot-ctrl-r-inner);
+      cursor: pointer; white-space: nowrap;
+    }
+    .soft-pad-pad-tab:hover { color: var(--on-surface); }
+    .soft-pad-pad-tab.is-active {
+      color: var(--on-surface);
+      background: var(--ot-ctrl-active-bg);
+      box-shadow: 0 1px 3px rgba(26, 45, 74, 0.08);
+    }
+
+    .soft-pad-subpage-body {
+      padding: 12px; overflow: auto; flex: 1; min-height: 360px;
+    }
+    .pane[hidden] { display: none !important; }
+    .pane-h { margin: 0 0 4px; font-size: 14px; font-weight: 750; }
+    .pane-d { margin: 0 0 12px; font-size: 12px; color: var(--on-surface-muted); line-height: 1.45; }
+
+    .card {
+      border: 1px solid var(--outline-variant);
+      border-radius: 12px;
+      background: var(--surface);
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+    .card h4 { margin: 0 0 4px; font-size: 13px; font-weight: 750; }
+    .card p { margin: 0; font-size: 12px; color: var(--on-surface-muted); line-height: 1.4; }
+
+    .seg {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+    }
+    .seg button {
+      border: 1px solid var(--outline-variant);
+      background: var(--surface-soft);
+      color: var(--on-surface-muted);
+      font: 700 12px/1 inherit;
+      padding: 6px 10px; border-radius: 8px; cursor: pointer;
+    }
+    .seg button.is-on {
+      color: var(--primary-strong);
+      border-color: rgba(42, 156, 196, 0.4);
+      background: var(--primary-soft);
+    }
+
+    .skin-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .skin {
+      width: 56px; height: 40px; border-radius: 8px; border: 2px solid transparent;
+      cursor: pointer; background: #1a2430;
+    }
+    .skin:nth-child(2) { background: linear-gradient(145deg, #0f766e, #134e4a); }
+    .skin:nth-child(3) { background: linear-gradient(145deg, #1e3a5f, #0f172a); }
+    .skin.is-on { border-color: var(--primary); }
+
+    .lib-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 9px 10px; border-radius: 10px; border: 1px solid var(--outline-variant);
+      background: var(--surface); margin-bottom: 6px; cursor: pointer;
+      font-size: 12px; font-weight: 650;
+    }
+    .lib-item:hover, .lib-item.is-on {
+      border-color: rgba(42, 156, 196, 0.4);
+      background: var(--primary-soft);
+    }
+    .lib-item span { color: var(--on-surface-soft); font-weight: 600; font-size: 11px; }
+
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 8px 0; border-bottom: 1px solid var(--outline-variant); font-size: 12px; font-weight: 650;
+    }
+    .toggle-row:last-child { border-bottom: 0; }
+    .sw {
+      width: 36px; height: 20px; border-radius: 999px; background: #cbd5e1; position: relative;
+      border: 0; cursor: pointer; flex-shrink: 0;
+    }
+    .sw.is-on { background: var(--primary); }
+    .sw::after {
+      content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff; transition: left .15s;
+    }
+    .sw.is-on::after { left: 18px; }
+
+    .subtabs {
+      display: flex; gap: 4px; margin-bottom: 10px;
+    }
+    .subtabs button {
+      border: 1px solid var(--outline-variant); background: var(--surface);
+      border-radius: 999px; padding: 5px 11px;
+      font: 700 11px/1 inherit; color: var(--on-surface-muted); cursor: pointer;
+    }
+    .subtabs button.is-on {
+      color: #059669; border-color: rgba(5, 150, 105, 0.35);
+      background: rgba(5, 150, 105, 0.1);
+    }
+
+    .rail {
+      display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px;
+    }
+    .rail button {
+      border: 1px solid var(--outline-variant); background: var(--surface);
+      border-radius: 8px; padding: 6px 10px;
+      font: 700 11px/1 inherit; color: var(--on-surface-muted); cursor: pointer;
+    }
+    .rail button.is-on {
+      color: #b45309; border-color: rgba(245, 158, 11, 0.4);
+      background: rgba(245, 158, 11, 0.12);
+    }
+
+    .compare {
+      display: grid; grid-template-columns: 1fr 24px 1fr; gap: 6px; align-items: center;
+      margin-top: 8px;
+    }
+    .mini-pad {
+      background: #1a2430; border-radius: 10px; padding: 6px;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;
+    }
+    .mini-pad i {
+      aspect-ratio: 1; border-radius: 4px; background: rgba(255,255,255,.1);
+    }
+    .mini-pad.soft { box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.35); }
+    .bridge {
+      text-align: center; font-size: 10px; font-weight: 700; color: var(--primary-strong);
+    }
+
+    .ready {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+      padding: 8px 10px; border-radius: 10px; background: rgba(5, 150, 105, 0.08);
+      border: 1px solid rgba(5, 150, 105, 0.25); font-size: 12px; font-weight: 650;
+    }
+    .ready i {
+      width: 8px; height: 8px; border-radius: 50%; background: #059669;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-frame">
+    <div class="proto-bar">
+      <b>1:1 界面原型</b>
+      <span>合并后 · 无顶部分区 · 五 tab 工作区</span>
+      <a href="./index.html">← 返回讲解稿</a>
+    </div>
+
+    <div class="settings-panel" id="settingsPanelSoftPad">
+      <!-- Status bar -->
+      <div class="page-status-bar soft-pad-status-bar">
+        <div class="page-status-bar-main">
+          <div class="keys-scheme-summary-title-row">
+            <span class="keys-scheme-summary-name">虚拟键盘</span>
+            <span class="keys-scheme-summary-pill">已开启</span>
+            <button type="button" class="soft-pad-bind-app__btn">
+              <span>绑定 · Codex</span>
+              <span class="soft-pad-bind-app__chev">▾</span>
+            </button>
+          </div>
+          <div class="keys-scheme-summary-meta">
+            <span class="keys-scheme-summary-item">
+              <span class="keys-scheme-summary-lbl">灯效</span>
+              <span class="keys-scheme-summary-val">氛围灯 · 开</span>
+            </span>
+            <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
+            <span class="keys-scheme-summary-item">
+              <span class="keys-scheme-summary-lbl">键位</span>
+              <span class="keys-scheme-summary-val">10 / 12</span>
+            </span>
+          </div>
+        </div>
+        <div class="page-status-bar-actions">
+          <button type="button" class="page-status-btn">测试前台</button>
+          <button type="button" class="page-status-btn" id="btnJumpKeys">编辑键位</button>
+        </div>
+      </div>
+
+      <!-- Preview banner -->
+      <div class="soft-pad-settings-preview-banner">
+        <span class="soft-pad-settings-preview-banner__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </span>
+        <div>
+          <p class="soft-pad-settings-preview-banner__title">设置中预览</p>
+          <p class="soft-pad-settings-preview-banner__body">悬浮 Soft Pad 在设置时会自动隐藏。当前预览 = 绑定应用 Codex；右侧改动同步到左侧。</p>
+        </div>
+      </div>
+
+      <!-- Workspace -->
+      <div class="soft-pad-face-pad">
+        <div class="soft-pad-preview-host" id="previewHost">
+          <div class="preview-label" id="previewLabel">键位预览</div>
+          <div class="hw-wrap">
+            <div class="hw-shell">
+              <div class="hw-face">
+                <div class="hw-title">Codex Soft Pad</div>
+                <div class="hw-grid" id="hwGrid">
+                  <button type="button" class="hw-key" data-k="1">焦点</button>
+                  <button type="button" class="hw-key" data-k="2">听写</button>
+                  <button type="button" class="hw-key" data-k="3">发送</button>
+                  <button type="button" class="hw-key" data-k="4">取消</button>
+                  <button type="button" class="hw-key is-on" data-k="5">继续</button>
+                  <button type="button" class="hw-key" data-k="6">中断</button>
+                  <button type="button" class="hw-key" data-k="7">批准</button>
+                  <button type="button" class="hw-key" data-k="8">拒绝</button>
+                  <button type="button" class="hw-key" data-k="9">新任务</button>
+                  <button type="button" class="hw-key" data-k="0">状态</button>
+                  <button type="button" class="hw-key" data-k="a">+</button>
+                  <button type="button" class="hw-key" data-k="b">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mini-float" id="miniFloat"><i></i> Codex · 迷你栏 · 谁在忙</div>
+          <p class="preview-hint" id="previewHint">点左侧键帽选中，再点右侧命令绑定</p>
+        </div>
+
+        <aside class="soft-pad-face-pad__panel">
+          <div class="soft-pad-pad-tabs" id="padTabs" role="tablist" aria-label="Soft Pad 调整">
+            <button type="button" class="soft-pad-pad-tab" data-mode="appear" role="tab">显示</button>
+            <button type="button" class="soft-pad-pad-tab is-active" data-mode="keys" role="tab">键位</button>
+            <button type="button" class="soft-pad-pad-tab" data-mode="purpose" role="tab">用途</button>
+            <button type="button" class="soft-pad-pad-tab" data-mode="lights" role="tab">灯效</button>
+            <button type="button" class="soft-pad-pad-tab" data-mode="mini" role="tab">迷你栏</button>
+          </div>
+
+          <div class="soft-pad-subpage-body">
+            <!-- 显示 -->
+            <div class="pane" data-pane="appear" hidden>
+              <h3 class="pane-h">显示</h3>
+              <p class="pane-d">什么时候出现 Soft Pad，以及外观皮肤。</p>
+              <div class="card">
+                <h4>什么时候出现</h4>
+                <p>跟随前台 Agent 应用显示。</p>
+                <div class="seg" id="showMode">
+                  <button type="button" class="is-on">跟随应用</button>
+                  <button type="button">保持最前</button>
+                  <button type="button">迷你条</button>
+                  <button type="button">不显示</button>
+                </div>
+              </div>
+              <div class="card">
+                <h4>外观皮肤</h4>
+                <p>点选后左侧预览换成真实样式。</p>
+                <div class="skin-row">
+                  <button type="button" class="skin is-on" title="深灰"></button>
+                  <button type="button" class="skin" title="青绿"></button>
+                  <button type="button" class="skin" title="午夜"></button>
+                </div>
+              </div>
+              <div class="card">
+                <h4>Cursor 聆听</h4>
+                <p>口令「一声」· 未在 Cursor 前台时可手动进入聆听。</p>
+              </div>
+            </div>
+
+            <!-- 键位 -->
+            <div class="pane" data-pane="keys">
+              <h3 class="pane-h">键位</h3>
+              <p class="pane-d">已选中键 5「继续」。点下方命令即可绑定。</p>
+              <div class="card">
+                <h4>我的常见</h4>
+                <button type="button" class="lib-item is-on">继续 <span>已绑定 · 键5</span></button>
+                <button type="button" class="lib-item">中断生成 <span>键6</span></button>
+                <button type="button" class="lib-item">批准 <span>键7</span></button>
+                <button type="button" class="lib-item">新建任务 <span>键9</span></button>
+              </div>
+              <div class="card">
+                <h4>按场景找</h4>
+                <button type="button" class="lib-item">开始听写 <span>听写</span></button>
+                <button type="button" class="lib-item">完成并发送 <span>听写</span></button>
+                <button type="button" class="lib-item">回到 Agent <span>Agent</span></button>
+              </div>
+            </div>
+
+            <!-- 用途 -->
+            <div class="pane" data-pane="purpose" hidden>
+              <h3 class="pane-h">用途</h3>
+              <p class="pane-d">数字键盘与 Soft Pad 如何共用同一键位。</p>
+              <div class="card">
+                <h4>Soft Pad 映射</h4>
+                <p>与日常数字键盘对照 · 同一键位</p>
+                <div class="compare">
+                  <div class="mini-pad"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                  <div class="bridge">同一<br>键位</div>
+                  <div class="mini-pad soft"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                </div>
+              </div>
+              <div class="card">
+                <h4>功能开关</h4>
+                <div class="toggle-row">数字键占用 <button type="button" class="sw is-on" aria-label="开"></button></div>
+                <div class="toggle-row">方向栏 <button type="button" class="sw" aria-label="关"></button></div>
+              </div>
+            </div>
+
+            <!-- 灯效 -->
+            <div class="pane" data-pane="lights" hidden>
+              <h3 class="pane-h">灯效</h3>
+              <p class="pane-d">原「灯效与浮窗 → 灯效匹配」。氛围灯 / 按键灯。</p>
+              <div class="ready"><i></i> Codex Soft Pad 已开启 · 状态源已接入</div>
+              <div class="subtabs" id="lightsSub">
+                <button type="button" class="is-on" data-ls="ambient">氛围灯</button>
+                <button type="button" data-ls="keys">按键灯</button>
+              </div>
+              <div class="card" id="lightsCard">
+                <h4>启用盘边氛围灯</h4>
+                <p>跟随 Agent 忙闲状态呼吸。</p>
+                <div class="toggle-row" style="border:0;padding-top:8px">启用 <button type="button" class="sw is-on"></button></div>
+                <div class="seg" style="margin-top:4px">
+                  <button type="button" class="is-on">呼吸</button>
+                  <button type="button">脉冲</button>
+                  <button type="button">静态</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 迷你栏 -->
+            <div class="pane" data-pane="mini" hidden>
+              <h3 class="pane-h">迷你栏</h3>
+              <p class="pane-d">原「显示数据」+「迷你栏」。条上显示什么、浮窗长什么样。</p>
+              <div class="card">
+                <h4>显示数据</h4>
+                <p>状态栏第二行是否显示这些字段。</p>
+                <div class="toggle-row">显示账号 <button type="button" class="sw is-on"></button></div>
+                <div class="toggle-row">显示额度 <button type="button" class="sw is-on"></button></div>
+                <div class="toggle-row">显示重置 <button type="button" class="sw"></button></div>
+              </div>
+              <div class="rail" id="miniRail">
+                <button type="button" class="is-on" data-rail="agents">谁在忙</button>
+                <button type="button" data-rail="speech">听你说话</button>
+                <button type="button" data-rail="tools">快捷钮</button>
+                <button type="button" data-rail="display">浮窗形态</button>
+              </div>
+              <div class="card" id="miniCard">
+                <h4>谁在忙</h4>
+                <p>跨应用 Agent 指示。迷你条悬停可看当前忙的会话。</p>
+                <div class="toggle-row">在迷你栏显示 <button type="button" class="sw is-on"></button></div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var host = document.getElementById("previewHost");
+      var label = document.getElementById("previewLabel");
+      var hint = document.getElementById("previewHint");
+      var meta = {
+        appear: { label: "显示预览", hint: "场景与皮肤会反映在左侧键盘上", lights: false, mini: false },
+        keys: { label: "键位预览", hint: "点左侧键帽选中，再点右侧命令绑定", lights: false, mini: false },
+        purpose: { label: "用途预览", hint: "映射演示：与数字键盘同一键位", lights: false, mini: false },
+        lights: { label: "灯效预览", hint: "氛围灯 / 按键灯打在键盘描边上", lights: true, mini: false },
+        mini: { label: "迷你栏预览", hint: "浮窗缩小形态；右侧同时管显示数据", lights: false, mini: true }
+      };
+
+      function setMode(mode) {
+        document.querySelectorAll("#padTabs [data-mode]").forEach(function (b) {
+          b.classList.toggle("is-active", b.getAttribute("data-mode") === mode);
+        });
+        document.querySelectorAll("[data-pane]").forEach(function (p) {
+          p.hidden = p.getAttribute("data-pane") !== mode;
+        });
+        var m = meta[mode];
+        label.textContent = m.label;
+        hint.textContent = m.hint;
+        host.classList.toggle("is-lights", m.lights);
+        host.classList.toggle("is-mini", m.mini);
+      }
+
+      document.getElementById("padTabs").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-mode]");
+        if (btn) setMode(btn.getAttribute("data-mode"));
+      });
+      document.getElementById("btnJumpKeys").addEventListener("click", function () {
+        setMode("keys");
+      });
+
+      document.getElementById("hwGrid").addEventListener("click", function (e) {
+        var key = e.target.closest(".hw-key");
+        if (!key) return;
+        document.querySelectorAll(".hw-key").forEach(function (k) {
+          k.classList.toggle("is-on", k === key);
+        });
+        setMode("keys");
+        hint.textContent = "已选中「" + key.textContent + "」· 在右侧点命令绑定";
+      });
+
+      document.querySelectorAll(".seg").forEach(function (seg) {
+        seg.addEventListener("click", function (e) {
+          var b = e.target.closest("button");
+          if (!b || !seg.contains(b)) return;
+          seg.querySelectorAll("button").forEach(function (x) {
+            x.classList.toggle("is-on", x === b);
+          });
+        });
+      });
+      document.querySelectorAll(".sw").forEach(function (sw) {
+        sw.addEventListener("click", function () {
+          sw.classList.toggle("is-on");
+        });
+      });
+      document.querySelectorAll(".skin").forEach(function (sk) {
+        sk.addEventListener("click", function () {
+          document.querySelectorAll(".skin").forEach(function (x) {
+            x.classList.toggle("is-on", x === sk);
+          });
+        });
+      });
+      document.querySelectorAll(".lib-item").forEach(function (it) {
+        it.addEventListener("click", function () {
+          document.querySelectorAll(".lib-item").forEach(function (x) {
+            x.classList.toggle("is-on", x === it);
+          });
+        });
+      });
+
+      var lightsCard = document.getElementById("lightsCard");
+      document.getElementById("lightsSub").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-ls]");
+        if (!b) return;
+        document.querySelectorAll("#lightsSub [data-ls]").forEach(function (x) {
+          x.classList.toggle("is-on", x === b);
+        });
+        if (b.getAttribute("data-ls") === "keys") {
+          lightsCard.innerHTML =
+            "<h4>按键灯配色</h4><p>键帽高亮模板，可与氛围灯一起用。</p>" +
+            "<div class=\"seg\"><button type=\"button\" class=\"is-on\">跟随状态</button>" +
+            "<button type=\"button\">彩虹</button><button type=\"button\">单色</button></div>";
+          lightsCard.querySelector(".seg").addEventListener("click", function (ev) {
+            var btn = ev.target.closest("button");
+            if (!btn) return;
+            lightsCard.querySelectorAll(".seg button").forEach(function (x) {
+              x.classList.toggle("is-on", x === btn);
+            });
+          });
+        } else {
+          lightsCard.innerHTML =
+            "<h4>启用盘边氛围灯</h4><p>跟随 Agent 忙闲状态呼吸。</p>" +
+            "<div class=\"toggle-row\" style=\"border:0;padding-top:8px\">启用 <button type=\"button\" class=\"sw is-on\"></button></div>" +
+            "<div class=\"seg\" style=\"margin-top:4px\"><button type=\"button\" class=\"is-on\">呼吸</button>" +
+            "<button type=\"button\">脉冲</button><button type=\"button\">静态</button></div>";
+          lightsCard.querySelector(".sw").addEventListener("click", function () {
+            this.classList.toggle("is-on");
+          });
+          lightsCard.querySelector(".seg").addEventListener("click", function (ev) {
+            var btn = ev.target.closest("button");
+            if (!btn) return;
+            lightsCard.querySelectorAll(".seg button").forEach(function (x) {
+              x.classList.toggle("is-on", x === btn);
+            });
+          });
+        }
+      });
+
+      var miniCopy = {
+        agents: { h: "谁在忙", p: "跨应用 Agent 指示。迷你条悬停可看当前忙的会话。" },
+        speech: { h: "听你说话", p: "语音相关指示：是否在听、口令是否命中。" },
+        tools: { h: "快捷钮", p: "迷你条第二行点选的快捷操作。" },
+        display: { h: "浮窗形态", p: "大键盘 / 强制细条 / 不浮出。" }
+      };
+      var miniCard = document.getElementById("miniCard");
+      document.getElementById("miniRail").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-rail]");
+        if (!b) return;
+        document.querySelectorAll("#miniRail [data-rail]").forEach(function (x) {
+          x.classList.toggle("is-on", x === b);
+        });
+        var c = miniCopy[b.getAttribute("data-rail")];
+        if (b.getAttribute("data-rail") === "display") {
+          miniCard.innerHTML =
+            "<h4>" + c.h + "</h4><p>" + c.p + "</p>" +
+            "<div class=\"seg\"><button type=\"button\">大键盘</button>" +
+            "<button type=\"button\" class=\"is-on\">迷你条</button>" +
+            "<button type=\"button\">不浮出</button></div>";
+          miniCard.querySelector(".seg").addEventListener("click", function (ev) {
+            var btn = ev.target.closest("button");
+            if (!btn) return;
+            miniCard.querySelectorAll(".seg button").forEach(function (x) {
+              x.classList.toggle("is-on", x === btn);
+            });
+          });
+        } else {
+          miniCard.innerHTML =
+            "<h4>" + c.h + "</h4><p>" + c.p + "</p>" +
+            "<div class=\"toggle-row\">在迷你栏显示 <button type=\"button\" class=\"sw is-on\"></button></div>";
+          miniCard.querySelector(".sw").addEventListener("click", function () {
+            this.classList.toggle("is-on");
+          });
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -37,13 +37,20 @@
 
   // Soft Pad C IA: face = page route; padMode = pad-face local tabs only.
   // softPadView removed — use softPadPanelId() / getView() for legacy panel ids.
-  var softPadFace = 'pad'; // pad | agent | timeline
-  var softPadPadMode = 'keys'; // appear | keys | purpose (look → appear)
+  var softPadFace = 'pad'; // pad | agent | timeline (agent face retired — use padMode lights|mini)
+  var softPadPadMode = 'keys'; // appear | keys | purpose | lights | mini
   var lastSoftPadPadMode = 'keys';
   var VALID_SOFT_PAD_FACES = { pad: 1, agent: 1, timeline: 1 };
-  var VALID_SOFT_PAD_PAD_MODES = { appear: 1, keys: 1, look: 1, purpose: 1 };
-  var PAD_MODE_TO_PANEL = { appear: 'runtime', keys: 'layout', look: 'runtime', purpose: 'purpose' };
-  var PANEL_TO_PAD_MODE = { runtime: 'appear', layout: 'keys', presentation: 'appear', purpose: 'purpose' };
+  var VALID_SOFT_PAD_PAD_MODES = { appear: 1, keys: 1, look: 1, purpose: 1, lights: 1, mini: 1 };
+  var PAD_MODE_TO_PANEL = {
+    appear: 'runtime',
+    keys: 'layout',
+    look: 'runtime',
+    purpose: 'purpose',
+    lights: 'agent',
+    mini: 'agent'
+  };
+  var PANEL_TO_PAD_MODE = { runtime: 'appear', layout: 'keys', presentation: 'appear', purpose: 'purpose', agent: 'lights' };
   /** SoftPad #3c：Soft Pad 舞台面板顺序（环芯片 / model / 测试共用；agent 走 Hero 节点）。 */
   var SOFT_PAD_PANEL_ORDER = ['runtime', 'layout', 'presentation'];
   var VALID_SOFT_PAD_VIEWS = { layout: 1, presentation: 1, runtime: 1, agent: 1, timeline: 1, purpose: 1 };
@@ -1285,16 +1292,22 @@
   }
 
   function softPadPanelId() {
-    if (softPadFace === 'agent') return 'agent';
     if (softPadFace === 'timeline') return 'timeline';
+    // Merged Soft Pad: lights/mini paint agent workbench under pad face.
+    if (softPadPadMode === 'lights' || softPadPadMode === 'mini') return 'agent';
+    if (softPadFace === 'agent') return 'agent';
     return PAD_MODE_TO_PANEL[softPadPadMode] || 'runtime';
+  }
+
+  function isAgentWorkbenchMode() {
+    return softPadPadMode === 'lights' || softPadPadMode === 'mini' || softPadFace === 'agent';
   }
 
   /** One-shot map for openSubpage / forceView compat. */
   function legacyViewToRoute(view) {
     view = String(view || '');
     if (view === 'advanced') view = 'agent';
-    if (view === 'agent') return { face: 'agent', mode: null };
+    if (view === 'agent') return { face: 'pad', mode: 'lights' };
     if (view === 'timeline') return { face: 'timeline', mode: null };
     if (view === 'purpose') return { face: 'pad', mode: 'purpose' };
     if (PANEL_TO_PAD_MODE[view]) return { face: 'pad', mode: PANEL_TO_PAD_MODE[view] };
@@ -1305,7 +1318,7 @@
 
   function previewHostForFace(face) {
     face = face || softPadFace;
-    if (face === 'agent') return document.getElementById('softPadAgentPreviewHost');
+    // Always use pad preview host for merged lights/mini (agent host retired).
     if (face === 'timeline') return document.getElementById('softPadTmPreviewHost');
     return document.getElementById('softPadPreviewHost');
   }
@@ -1313,7 +1326,8 @@
   function panelPaintBody(panel) {
     var e = els();
     panel = panel || softPadPanelId();
-    if (panel === 'agent') return e.agentBody || e.subBody;
+    // Agent workbench paints into pad subpage body after face merge.
+    if (panel === 'agent') return e.subBody || e.agentBody;
     if (panel === 'timeline') return e.tmDetail || e.subBody;
     return e.subBody;
   }
@@ -1325,11 +1339,18 @@
       var mode = btn.getAttribute('data-pad-mode') || '';
       btn.hidden = false;
       btn.removeAttribute('aria-hidden');
-      var on = softPadFace === 'pad' && mode === softPadPadMode;
+      var on = softPadFace !== 'timeline' && mode === softPadPadMode;
       btn.classList.toggle('is-active', on);
       btn.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     e.padTabs.setAttribute('data-pad-mode', softPadPadMode);
+  }
+
+  function syncAgentWorkbenchTabForPadMode(mode) {
+    var Pad = global.OneToneCodexMicroPadUi;
+    if (!Pad || typeof Pad.setSoftPadWorkbenchTab !== 'function') return;
+    if (mode === 'mini') Pad.setSoftPadWorkbenchTab('mini');
+    else if (mode === 'lights') Pad.setSoftPadWorkbenchTab('match');
   }
 
   function resetSoftPadRouteToPadAppear() {
@@ -1794,7 +1815,7 @@
   }
 
   function syncAgentPreviewUsageStrip() {
-    if (softPadFace !== 'agent') return;
+    if (!isAgentWorkbenchMode()) return;
     try {
       var Pad = global.OneToneCodexMicroPadUi;
       var host = previewHostForFace('agent');
@@ -2307,7 +2328,7 @@
   function updateScopeHint() {
     var e = els();
     if (!e.hint) return;
-    if (softPadFace === 'agent') {
+    if (isAgentWorkbenchMode()) {
       e.hint.textContent = '';
       e.hint.hidden = true;
       updateStatusBar(findEntry(getSelectedMappingId()));
@@ -2783,18 +2804,16 @@
   function goSoftPadFlowNode(nodeId) {
     nodeId = String(nodeId || '');
     if (nodeId === 'agent') {
-      if (softPadFace === 'agent') return;
-      closeRingFloat();
-      setSoftPadFace('agent');
+      setSoftPadPadMode('lights', { fromUser: true });
       return;
     }
     if (nodeId === 'timeline') {
       return;
     }
     if (nodeId === 'pad') {
-      if (softPadFace === 'pad') return;
+      if (softPadFace === 'pad' && softPadPadMode !== 'lights' && softPadPadMode !== 'mini') return;
       closeRingFloat();
-      setSoftPadFace('pad', { padMode: lastSoftPadPadMode || 'keys' });
+      setSoftPadFace('pad', { padMode: lastSoftPadPadMode === 'lights' || lastSoftPadPadMode === 'mini' ? 'keys' : (lastSoftPadPadMode || 'keys') });
     }
   }
 
@@ -3272,47 +3291,43 @@
   }
 
   function syncSettingsPreviewBanner(face) {
-    var banner = document.getElementById('softPadSettingsPreviewBanner');
-    if (!banner) return;
-    var titleEl = document.getElementById('softPadSettingsPreviewBannerTitle');
-    var bodyEl = document.getElementById('softPadSettingsPreviewBannerBody');
-    if (titleEl) {
-      titleEl.textContent = t('softPadSettingsPreviewBannerTitle', '设置中预览');
-    }
-    if (bodyEl) {
-      bodyEl.textContent = t(
-        'softPadSettingsPreviewBannerBody',
-        '悬浮 Soft Pad 在设置时会自动隐藏。「全局」在未匹配 Agent 时显示迷你条且不占用实体键；匹配后使用对应应用的键位。右侧改动同步到左侧预览。'
-      );
-    }
-    banner.hidden = face === 'timeline';
-    var previewLbl = t('softPadSettingsPreviewBannerTitle', '设置中预览');
+    // Banner retired — keep data-preview-label on hosts for a11y only.
+    void face;
+    var previewLbl = t('softPadPreviewHostLbl', 'Soft Pad 预览');
     ['softPadPreviewHost', 'softPadAgentPreviewHost'].forEach(function (id) {
       var host = document.getElementById(id);
       if (host) host.setAttribute('data-preview-label', previewLbl);
     });
   }
 
-  /** Face-mutex chrome: exactly one of pad / agent / timeline face roots. */
+  /** Face-mutex chrome: pad workspace (merged) or timeline. Agent face root stays hidden. */
   function syncFaceChrome(entry) {
     var e = els();
-    var face = softPadFace;
+    var face = softPadFace === 'timeline' ? 'timeline' : 'pad';
+    softPadFace = face;
     syncSettingsPreviewBanner(face);
     if (e.stage) {
       e.stage.setAttribute('data-soft-pad-face', face);
+      e.stage.setAttribute('data-soft-pad-mode', softPadPadMode);
       e.stage.removeAttribute('data-soft-pad-stage');
       e.stage.classList.remove('is-tm-desk');
       e.stage.classList.remove('is-preview-collapsed');
     }
     var panel = document.getElementById('settingsPanelSoftPad');
-    if (panel) panel.setAttribute('data-soft-pad-face', face);
+    if (panel) {
+      panel.setAttribute('data-soft-pad-face', face);
+      panel.setAttribute('data-soft-pad-mode', softPadPadMode);
+    }
     function showFace(el, on) {
       if (!el) return;
       if (on) el.removeAttribute('hidden');
       else el.setAttribute('hidden', '');
     }
     showFace(e.facePad, face === 'pad');
-    showFace(e.faceAgent, face === 'agent');
+    showFace(e.faceAgent, false);
+    if (e.faceAgent) {
+      e.faceAgent.setAttribute('aria-hidden', 'true');
+    }
     showFace(e.faceTimeline, face === 'timeline');
 
     var tm = global.OneToneSoftPadTimeMachine;
@@ -3365,16 +3380,16 @@
     }
     syncSoftPadFlowNodes(entry);
     if (e.pageBody) {
-      e.pageBody.classList.toggle('is-face-agent', face === 'agent');
+      e.pageBody.classList.toggle('is-face-agent', isAgentWorkbenchMode());
     }
     if (e.switcher) {
-      e.switcher.hidden = face === 'agent';
+      e.switcher.hidden = false;
     }
     if (e.aside) {
       e.aside.setAttribute('hidden', '');
       e.aside.setAttribute('aria-hidden', 'true');
     }
-    if (face === 'agent') {
+    if (isAgentWorkbenchMode()) {
       setBindAppMenuOpen(false);
       renderAgentDirectory();
     }
@@ -3673,7 +3688,7 @@
     if (panel === 'presentation') {
       updateStatusBar(entry);
       patchSchemeRowPresentation(entry);
-      if (onPad || softPadFace === 'agent') renderFuncTiles(entry);
+      if (onPad || isAgentWorkbenchMode()) renderFuncTiles(entry);
       return;
     }
     markActiveRow(getSelectedMappingId());
@@ -3684,7 +3699,7 @@
       updateStatusBar(entry);
       patchSchemeRowPresentation(entry);
       if (onPad && softPadPadMode === 'keys') schedulePreviewPaint(entry);
-      if (onPad || softPadFace === 'agent') renderFuncTiles(entry);
+      if (onPad || isAgentWorkbenchMode()) renderFuncTiles(entry);
       if (onPad && softPadPadMode === 'keys' && changeOpts.remountLayout !== false) {
         paintSubpage(entry, { forceRemount: true });
       }
@@ -3710,7 +3725,7 @@
           }
         });
       }
-      if (onPad || softPadFace === 'agent') renderFuncTiles(entry);
+      if (onPad || isAgentWorkbenchMode()) renderFuncTiles(entry);
       return;
     }
     if (panel === 'agent') {
@@ -3718,7 +3733,7 @@
     }
     updateStatusBar(entry);
     if (onPad && softPadPadMode === 'keys') schedulePreviewPaint(entry);
-    if (onPad || softPadFace === 'agent') renderFuncTiles(entry);
+    if (onPad || isAgentWorkbenchMode()) renderFuncTiles(entry);
   }
 
   function softPadSubpagePaintEl(preferred) {
@@ -3822,7 +3837,9 @@
       onChanged: function (mapping, panel, changeOpts) {
         onSoftPadPanelChanged(mapping, panel || targetView, changeOpts);
       },
-      agentLoadToken: agentLoadToken
+      agentLoadToken: agentLoadToken,
+      hideWorkbenchTabs: softPadPadMode === 'lights' || softPadPadMode === 'mini',
+      foldDataIntoMini: softPadPadMode === 'mini'
     };
   }
 
@@ -3934,9 +3951,10 @@
       return;
     }
 
-    // Pad face island path only — agent paints into #softPadAgentBody.
+    // Pad face island path only — agent/purpose paint into #softPadSubpageBody.
     if (softPadFace === 'pad' && global.__otSoftPadSubpageMounted &&
-        typeof global.__otSoftPadSubpageSync === 'function' && targetView !== 'purpose') {
+        typeof global.__otSoftPadSubpageSync === 'function' &&
+        targetView !== 'purpose' && targetView !== 'agent') {
       try {
         if (Pad.closeEditKeycap) Pad.closeEditKeycap({ reopenInline: false });
         ++subpageToken;
@@ -3983,9 +4001,12 @@
       } else if (targetView === 'agent' && Pad.renderSoftPadAgentPanel) {
         var token = agentLoadToken;
         body.setAttribute('data-agent-load-token', String(token));
+        syncAgentWorkbenchTabForPadMode(softPadPadMode);
         Pad.renderSoftPadAgentPanel(paintHost, m, {
           onChanged: onChanged,
-          agentLoadToken: token
+          agentLoadToken: token,
+          hideWorkbenchTabs: softPadPadMode === 'lights' || softPadPadMode === 'mini',
+          foldDataIntoMini: softPadPadMode === 'mini'
         });
         paintHost.setAttribute('data-lights-scope', String(selectedScopeId || ''));
         body.setAttribute('data-lights-scope', String(selectedScopeId || ''));
@@ -4010,6 +4031,12 @@
     opts = opts || {};
     face = String(face || '');
     if (!VALID_SOFT_PAD_FACES[face]) return;
+    // Agent face retired: route to pad + lights (or opts.padMode if lights/mini).
+    if (face === 'agent') {
+      var agentMode = opts.padMode === 'mini' ? 'mini' : 'lights';
+      setSoftPadPadMode(agentMode, opts);
+      return;
+    }
     var prevFace = softPadFace;
     var entry = resolveSoftPadEntry();
 
@@ -4025,7 +4052,7 @@
         return;
       }
     }
-    if (face === 'agent' || prevFace === 'agent') ++agentLoadToken;
+    if (isAgentWorkbenchMode() || prevFace === 'agent') ++agentLoadToken;
     softPadFace = face;
     if (face === 'pad') {
       var mode = opts.padMode || lastSoftPadPadMode || 'keys';
@@ -4033,6 +4060,7 @@
       if (!VALID_SOFT_PAD_PAD_MODES[mode]) mode = 'keys';
       softPadPadMode = mode;
       rememberSoftPadPadMode(mode);
+      syncAgentWorkbenchTabForPadMode(mode);
     }
     if (hasMapping(entry)) {
       ensureSoftPadConfig(entry, { persist: !!opts.fromUser });
@@ -4089,6 +4117,7 @@
     ensureSoftPadConfig(entry, { persist: !!opts.fromUser });
     adoptSoftPadSelection(entry);
     if (mode === softPadPadMode) {
+      syncAgentWorkbenchTabForPadMode(mode);
       syncFaceChrome(entry);
       if (!softPadSubpageAlreadyPainted(entry, softPadPanelId())) {
         paintSubpage(entry, { forceRemount: true });
@@ -4100,8 +4129,13 @@
       var Pad = global.OneToneCodexMicroPadUi;
       if (Pad && Pad.closeEditKeycap) Pad.closeEditKeycap({ reopenInline: false });
     } catch (_) {}
+    var prevMode = softPadPadMode;
+    var wasAgent = prevMode === 'lights' || prevMode === 'mini';
+    var nextAgent = mode === 'lights' || mode === 'mini';
+    if (wasAgent || nextAgent) ++agentLoadToken;
     softPadPadMode = mode;
     rememberSoftPadPadMode(mode);
+    syncAgentWorkbenchTabForPadMode(mode);
     syncFaceChrome(entry);
     paintSubpage(entry, { forceRemount: true });
     ensureSoftPadPreview(entry);
@@ -4199,7 +4233,7 @@
     var scopes = listAppScopes();
     var entries = listAsideEntries();
     pruneInvalidUserLanePin(listSoftPadSchemes());
-    var onAgentFace = softPadFace === 'agent';
+    var onAgentFace = isAgentWorkbenchMode();
     // App scope lives in status-bar bind dropdown (v15); hide horizontal chip rail.
     var chips = scopes.map(function (scope) {
       return { id: scope.id, html: appSwitcherChipView(scope) };
@@ -4411,7 +4445,7 @@
         if (entry.mapping && entry.mapping.codexMicroPad) {
           applyScreenOpacityToPreview(entry.mapping.codexMicroPad.screenOpacity);
         }
-        if (softPadFace === 'agent' && Pad.syncStatusLightsPreviewChrome) {
+        if (isAgentWorkbenchMode() && Pad.syncStatusLightsPreviewChrome) {
           var chromeOpts = Pad.workbenchPreviewOpts
             ? Pad.workbenchPreviewOpts()
             : { subtab: Pad.getSoftPadLightsSubtab ? Pad.getSoftPadLightsSubtab() : 'ambient' };
@@ -4442,7 +4476,8 @@
       return;
     }
     // Non-pad faces always force — island cannot fill agent/tm hosts.
-    paintPreview(entry, softPadFace === 'pad' ? undefined : { force: true });
+    // lights/mini need force so Soft Pad remount + outer chrome sync after purpose leftovers.
+    paintPreview(entry, (softPadFace === 'pad' && !isAgentWorkbenchMode()) ? undefined : { force: true });
   }
 
   /** Single cancelable preview queue (keys-mode refresh). Uses previewEpoch, not selectToken. */
@@ -4681,7 +4716,7 @@
       syncScopeChrome(entry, { rebuildSwitcher: !!opts.rebuildList });
       if (opts.rebuildList) renderSchemeList();
       renderFuncTiles(entry);
-      paintSubpage(entry, softPadFace === 'agent' ? { forceRemount: true } : undefined);
+      paintSubpage(entry, isAgentWorkbenchMode() ? { forceRemount: true } : undefined);
       if (!(softPadFace === 'pad' && softPadPadMode === 'keys')) ensureSoftPadPreview(entry);
       return;
     }
@@ -4720,7 +4755,7 @@
         fromList: true,
         scopeId: selectedScopeId,
         rebuildList: !!opts.rebuildList,
-        forceRemount: !!opts.forceRemount || softPadFace === 'agent',
+        forceRemount: !!opts.forceRemount || isAgentWorkbenchMode(),
         resetView: opts.resetView === true,
         previewOnly: false
       });
@@ -4728,7 +4763,7 @@
       renderAppSwitcher();
       updateScopeHint();
       syncSoftPadPadRing();
-      if (softPadFace === 'agent') {
+      if (isAgentWorkbenchMode()) {
         patchAgentDirectorySelection();
       }
       requestOverlayUsageForScope(selectedScopeId);
@@ -4751,7 +4786,7 @@
     renderAppSwitcher();
     updateScopeHint();
     syncSoftPadPadRing();
-    if (softPadFace === 'agent') {
+    if (isAgentWorkbenchMode()) {
       patchAgentDirectorySelection();
     }
     requestOverlayUsageForScope(selectedScopeId);
@@ -4946,7 +4981,7 @@
   function patchAgentDirectorySelection() {}
 
   function refreshAgentDirectoryConnectPills() {
-    if (softPadFace !== 'agent') return;
+    if (!isAgentWorkbenchMode()) return;
     renderBindAppMenu();
   }
 
@@ -4964,7 +4999,7 @@
     if (e.aside) e.aside.setAttribute('aria-label', t('softPadSchemeFgTitle', '识别应用'));
     var entries = listAsideEntries();
     if (e.count) e.count.textContent = String(entries.length);
-    var fgBar = softPadFace === 'agent' ? renderForegroundAppBarHtml() : '';
+    var fgBar = isAgentWorkbenchMode() ? renderForegroundAppBarHtml() : '';
     if (!entries.length) {
       e.list.innerHTML = fgBar + '<p class="keys-hub-empty">' +
         esc(t('softPadHubEmptyTitle', '还没有可管理的虚拟键盘')) + '</p>';
@@ -5106,7 +5141,7 @@
   }
 
   function isAgentPanelCurrent(token, mappingId) {
-    if (softPadFace !== 'agent') return false;
+    if (!isAgentWorkbenchMode()) return false;
     if (token != null && Number(token) !== Number(agentLoadToken)) return false;
     if (mappingId != null && String(mappingId) !== String(getSelectedMappingId() || '')) return false;
     var ui = global.OneToneState && global.OneToneState.ui;
@@ -5235,8 +5270,8 @@
           fromList: true,
           scopeId: kind || undefined,
           // Agent face：换应用必须重绘中心配置 + 左栏顶栏聚焦。
-          forceRemount: softPadFace === 'agent',
-          resetView: softPadFace !== 'agent'
+          forceRemount: isAgentWorkbenchMode(),
+          resetView: !isAgentWorkbenchMode()
         });
       });
     }
@@ -5254,7 +5289,7 @@
           if (bindOpt) {
             ev.preventDefault();
             ev.stopPropagation();
-            selectScope(bindOpt.getAttribute('data-scope'), { fromUser: true, resetView: false, forceRemount: softPadFace === 'agent' });
+            selectScope(bindOpt.getAttribute('data-scope'), { fromUser: true, resetView: false, forceRemount: isAgentWorkbenchMode() });
             return;
           }
           var bindBtn = ev.target.closest && ev.target.closest('#softPadBindAppBtn');
@@ -5837,7 +5872,7 @@
     openDetail: openDetail,
     selectScheme: selectScheme,
     selectScope: selectScope,
-    getSoftPadFace: function () { return softPadFace; },
+    getSoftPadFace: function () { return (softPadPadMode === 'lights' || softPadPadMode === 'mini') ? 'agent' : softPadFace; },
     softPadScopeSwitchLabel: softPadScopeSwitchLabel,
     renderSoftPadScopeMenuItems: renderSoftPadScopeMenuItems,
     buildBindAppProps: buildBindAppProps,

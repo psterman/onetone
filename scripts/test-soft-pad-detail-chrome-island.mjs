@@ -101,7 +101,9 @@ check('sig 非空', typeof model.sig === 'string' && model.sig.length > 0);
 check('backLabel 非空', typeof model.backLabel === 'string' && model.backLabel.length > 0);
 API.setSoftPadFace('agent');
 model = API.buildSoftPadDetailChromeModel();
-check('agent face 时 detailOpen=false', model.detailOpen === false);
+check('agent deep-link keeps detail open (merged lights)', model.detailOpen === true);
+check('agent deep-link → getSoftPadFace compat agent', API.getSoftPadFace() === 'agent');
+check('agent deep-link → lights padMode', API.getView() === 'agent');
 API.setSoftPadFace('pad', { padMode: 'appear' });
 
 console.log('[soft-pad-detail-chrome] 源码护栏:');
@@ -129,11 +131,11 @@ check('render softPadRender 心跳 tag', softPadJs.includes("setTag('softPadRend
 check('floatingOverlayBlocked 门闩', softPadJs.includes('function floatingOverlayBlocked') &&
   softPadJs.includes('ui.drawerOpen') && softPadJs.includes('isSoftPadPageVisible()'));
 check('export getOpenGen', softPadJs.includes('getOpenGen:'));
-check('落地硬编码 appear', /var landMode = 'appear'/.test(softPadJs) && /fe softPad\.land/.test(softPadJs));
+check('落地硬编码 keys', /var landMode = 'keys'/.test(softPadJs) && /fe softPad\.land/.test(softPadJs));
 check('落地锁定 suppress keys', /softPadLandUntil[\s\S]*?suppress-keys/.test(softPadJs));
 check('pad tabs 带 fromUser', /setSoftPadPadMode\(tab\.getAttribute\('data-pad-mode'\),\s*\{\s*fromUser:\s*true/.test(softPadJs));
-check('Soft Pad 流程节点落地 face pad', /nodeId === 'pad'[\s\S]*?setSoftPadFace\('pad'/.test(softPadJs));
-check('render 同步先 setSoftPadFace 落地', /var landMode = 'appear';[\s\S]*?setSoftPadFace\('pad'/.test(softPadJs));
+check('Soft Pad 深链 agent → lights', /face === 'agent'[\s\S]*?setSoftPadPadMode/.test(softPadJs));
+check('render 同步先 setSoftPadFace 落地', /var landMode = 'keys';[\s\S]*?setSoftPadFace\('pad'/.test(softPadJs));
 const landingStart = softPadJs.indexOf('function paintSoftPadLanding()');
 const landingEnd = softPadJs.indexOf('// Second pass after island paint-targets commit', landingStart);
 const landingRetry = landingStart >= 0 && landingEnd > landingStart
@@ -141,7 +143,7 @@ const landingRetry = landingStart >= 0 && landingEnd > landingStart
   : '';
 check('延迟落地不重复 selectScheme', !landingRetry.includes('selectScheme('));
 check('延迟落地只在缺页时补画', /!softPadSubpageAlreadyPainted[\s\S]*?paintSubpage/.test(landingRetry));
-check('defaultDetailView 默认 runtime', /function defaultDetailView\([\s\S]*?return 'runtime'/.test(softPadJs));
+check('defaultDetailView 默认 layout(键位)', /function defaultDetailView\([\s\S]*?return 'layout'/.test(softPadJs));
 check('openSubpage 适配 legacyViewToRoute', /function openSubpage\([\s\S]*?legacyViewToRoute/.test(softPadJs));
 check('setSoftPadFace 导出', softPadJs.includes('setSoftPadFace: setSoftPadFace'));
 check('无 softPadView 驱动', !/(?:^|[^\w/])softPadView\s*=/.test(softPadJs));

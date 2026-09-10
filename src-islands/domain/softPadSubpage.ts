@@ -15,6 +15,8 @@ export interface SoftPadSubpageModel {
 export interface SoftPadSubpagePaintOpts {
   onChanged?: (mapping: unknown, panel: string | null, changeOpts?: unknown) => void;
   agentLoadToken?: number | string;
+  hideWorkbenchTabs?: boolean;
+  foldDataIntoMini?: boolean;
 }
 
 interface LegacySoftPadHub {

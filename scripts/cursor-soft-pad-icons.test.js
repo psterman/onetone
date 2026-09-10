@@ -76,7 +76,17 @@ Pad.CURSOR_COMMON_DEFAULT_SLOTS.forEach(function (sid) {
   assert.ok(Pad.CURSOR_SOFT_PAD_SLOT_IDS[sid], 'common default not in allowlist: ' + sid);
 });
 assert.ok(padSrc.indexOf('soft-pad-action-layers') >= 0, 'cursor action library layers');
+assert.ok(padSrc.indexOf('data-layout-layer="browse"') >= 0, 'merged browse layer');
+assert.ok(padSrc.indexOf('data-layout-layer="common"') < 0, 'common top tab retired');
+assert.ok(padSrc.indexOf('data-layout-layer="scenes"') < 0, 'scenes top tab retired');
+assert.ok(padSrc.indexOf("LAYOUT_SCENE_COMMON") >= 0 || padSrc.indexOf("'__common__'") >= 0,
+  'commons lives in scene rail');
 assert.ok(padSrc.indexOf('data-layout-layer') >= 0, 'layer tabs');
+assert.ok(padSrc.indexOf('function revealCommonsLayoutForKey') >= 0, 'key pick reveals 我的常见');
+assert.ok(padSrc.indexOf('scrollLayoutEditorIntoView') >= 0, 'inline form auto-scroll');
+assert.ok(padSrc.indexOf('id="softPadSettingsPreviewBanner"') < 0 ||
+  !require('fs').readFileSync(require('path').join(__dirname, '../src/index.html'), 'utf8').includes('id="softPadSettingsPreviewBanner"'),
+  'settings preview banner removed from index');
 assert.ok(padSrc.indexOf('data-layout-pin') >= 0, 'pin to commons');
 assert.ok(padSrc.indexOf('iconIdForCapabilitySlot') >= 0 && padSrc.indexOf('iconSvg(iconId)') >= 0, 'list uses Lucide iconSvg');
 assert.ok(padSrc.indexOf('soft-pad-action-item__icon micro-hw__icon') >= 0, 'list icon uses micro-hw__icon');

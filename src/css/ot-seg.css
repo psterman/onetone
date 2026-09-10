@@ -225,7 +225,7 @@ html[data-font-scale="xl"] .pref-segmented {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
-/* ── soft-pad pad tabs (显示/键位/用途) ── */
+/* ── soft-pad pad tabs (显示/键位/用途/灯效/迷你栏) ── */
 .soft-pad-pad-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -244,8 +244,8 @@ html[data-font-scale="xl"] .pref-segmented {
   border: none;
   background: transparent;
   color: var(--on-surface-muted);
-  font: 700 12px/1.2 inherit;
-  padding: 6px 12px;
+  font: 700 11px/1.2 inherit;
+  padding: 6px 8px;
   border-radius: var(--ot-ctrl-r-inner);
   cursor: pointer;
 }

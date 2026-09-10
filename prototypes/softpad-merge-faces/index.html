@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soft Pad 合并讲解 · 给小白看的完整方案</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #152536;
+      --muted: #5c6b7a;
+      --faint: #8a98a8;
+      --line: rgba(21, 37, 54, 0.1);
+      --paper: #fff;
+      --stage: #e6edf3;
+      --cyan: #1f8fb8;
+      --cyan-deep: #0f6f92;
+      --cyan-soft: rgba(31, 143, 184, 0.12);
+      --green: #1a7a4c;
+      --green-soft: rgba(26, 122, 76, 0.1);
+      --amber: #b45309;
+      --amber-soft: rgba(245, 158, 11, 0.14);
+      --rose: #9a3412;
+      --rose-soft: #fff6f3;
+      --pad: #1a2430;
+      --font: "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+      --shadow: 0 14px 36px rgba(21, 37, 54, 0.08);
+      --nav-w: 200px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; min-height: 100%;
+      font-family: var(--font); color: var(--ink);
+      background:
+        radial-gradient(800px 360px at 0% -5%, rgba(31,143,184,.13), transparent 55%),
+        radial-gradient(600px 280px at 100% 8%, rgba(26,122,76,.07), transparent 50%),
+        var(--stage);
+      -webkit-font-smoothing: antialiased;
+    }
+    .shell {
+      display: grid;
+      grid-template-columns: var(--nav-w) minmax(0, 1fr);
+      gap: 0;
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      padding: 18px 12px 64px;
+    }
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .toc { position: static !important; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+      .toc a { flex: 0 0 auto; }
+    }
+
+    .toc {
+      position: sticky; top: 16px; align-self: start;
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 10px 8px;
+    }
+    .toc .t-lbl {
+      font-family: var(--mono); font-size: 9px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--faint);
+      padding: 4px 8px 8px;
+    }
+    .toc a {
+      display: block; text-decoration: none; color: var(--muted);
+      font-size: 12px; font-weight: 650; padding: 7px 10px; border-radius: 8px;
+      border: 1px solid transparent;
+    }
+    .toc a:hover, .toc a.is-on {
+      color: var(--cyan-deep); background: rgba(255,255,255,.75);
+      border-color: var(--line);
+    }
+
+    .main { min-width: 0; }
+    .hero {
+      background: var(--paper); border: 1px solid var(--line); border-radius: 20px;
+      padding: 22px 22px 18px; box-shadow: var(--shadow); margin-bottom: 16px;
+    }
+    .kicker {
+      margin: 0 0 6px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+      letter-spacing: .07em; text-transform: uppercase; color: var(--cyan-deep);
+    }
+    .hero h1 { margin: 0 0 10px; font-size: 26px; font-weight: 750; letter-spacing: -0.03em; line-height: 1.25; }
+    .hero .lead { margin: 0; font-size: 14px; line-height: 1.6; color: var(--muted); max-width: 40rem; }
+    .metaphor {
+      margin: 14px 0 0; padding: 12px 14px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--cyan-soft), rgba(255,255,255,.6));
+      border: 1px solid rgba(31,143,184,.22);
+      font-size: 13px; line-height: 1.55;
+    }
+    .metaphor b { color: var(--cyan-deep); }
+
+    section.ch {
+      background: var(--paper); border: 1px solid var(--line); border-radius: 18px;
+      padding: 18px 18px 20px; box-shadow: var(--shadow); margin-bottom: 14px;
+      scroll-margin-top: 16px;
+    }
+    .ch-h {
+      display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+      margin: 0 0 6px;
+    }
+    .ch-h .num {
+      font-family: var(--mono); font-size: 11px; font-weight: 700;
+      color: var(--cyan-deep); letter-spacing: .04em;
+    }
+    .ch-h h2 { margin: 0; font-size: 18px; font-weight: 750; letter-spacing: -0.02em; }
+    .ch > .sub {
+      margin: 0 0 14px; font-size: 13px; line-height: 1.55; color: var(--muted); max-width: 42rem;
+    }
+
+    .callout {
+      padding: 12px 14px; border-radius: 12px; margin: 0 0 14px;
+      font-size: 13px; line-height: 1.55;
+    }
+    .callout.why { background: #f3fbf7; border: 1px solid rgba(31,138,91,.28); color: #1a5c3a; }
+    .callout.problem { background: var(--rose-soft); border: 1px solid rgba(185,70,40,.28); color: var(--rose); }
+    .callout.info { background: var(--cyan-soft); border: 1px solid rgba(31,143,184,.25); color: var(--cyan-deep); }
+    .callout strong { display: block; margin-bottom: 4px; font-size: 12px; }
+
+    /* Two rooms inventory */
+    .rooms {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    @media (max-width: 720px) { .rooms { grid-template-columns: 1fr; } }
+    .room {
+      border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+      background: #f8fafc;
+    }
+    .room-h {
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .room-h .badge {
+      font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 999px;
+      letter-spacing: .04em;
+    }
+    .room.a .badge { background: var(--cyan-soft); color: var(--cyan-deep); }
+    .room.b .badge { background: var(--green-soft); color: var(--green); }
+    .room-h h3 { margin: 0; font-size: 14px; font-weight: 750; }
+    .room-b { padding: 10px 12px 12px; }
+    .tree {
+      list-style: none; margin: 0; padding: 0;
+    }
+    .tree > li { margin: 0 0 10px; }
+    .tree .folder {
+      font-size: 12px; font-weight: 750; color: var(--ink);
+      padding: 6px 8px; border-radius: 8px; background: #fff; border: 1px solid var(--line);
+      margin-bottom: 4px;
+    }
+    .tree .folder span {
+      float: right; font-size: 10px; font-weight: 700; color: var(--faint);
+      font-family: var(--mono);
+    }
+    .tree ul { list-style: none; margin: 0; padding: 2px 0 0 10px; }
+    .tree ul li {
+      font-size: 12px; color: var(--muted); padding: 4px 0 4px 10px;
+      border-left: 2px solid var(--line); line-height: 1.4;
+    }
+    .tree ul li em {
+      font-style: normal; font-size: 10px; font-weight: 700;
+      color: var(--faint); margin-left: 6px;
+    }
+
+    /* Why grid */
+    .why-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    @media (max-width: 800px) { .why-grid { grid-template-columns: 1fr; } }
+    .why-card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+      background: #f8fafc;
+    }
+    .why-card .ico {
+      width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+      background: var(--cyan-soft); color: var(--cyan-deep); margin-bottom: 8px;
+      font-size: 14px; font-weight: 800;
+    }
+    .why-card h3 { margin: 0 0 4px; font-size: 13px; font-weight: 750; }
+    .why-card p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+    /* Mapping table */
+    .map-table {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+    }
+    .map-table th, .map-table td {
+      text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line);
+      vertical-align: top; line-height: 1.4;
+    }
+    .map-table th {
+      font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+      color: var(--faint); background: #f8fafc;
+    }
+    .map-table tr:last-child td { border-bottom: 0; }
+    .tag {
+      display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px;
+      border-radius: 999px; margin-right: 4px;
+    }
+    .tag.from-a { background: var(--cyan-soft); color: var(--cyan-deep); }
+    .tag.from-b { background: var(--green-soft); color: var(--green); }
+    .tag.to {
+      background: #f1f5f9; color: var(--ink); border: 1px solid var(--line);
+    }
+    .arrow { color: var(--faint); font-weight: 700; padding: 0 4px; }
+
+    /* Interactive demo */
+    .demo-app {
+      border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      background: #fff;
+    }
+    .demo-status {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      padding: 11px 14px; border-bottom: 1px solid var(--line); background: #f8fafc;
+    }
+    .demo-status .brand { font-size: 14px; font-weight: 800; }
+    .demo-status .pill {
+      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: var(--green-soft); color: var(--green); border: 1px solid rgba(26,122,76,.28);
+    }
+    .demo-status .bind {
+      font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px;
+      border: 1px solid var(--line); background: #fff;
+    }
+    .demo-guide {
+      padding: 8px 14px; font-size: 12px; background: var(--amber-soft);
+      border-bottom: 1px solid rgba(245,158,11,.25); color: var(--amber);
+    }
+    .demo-guide b { color: var(--ink); }
+    .demo-ws {
+      display: grid; grid-template-columns: minmax(180px, 0.85fr) minmax(0, 1.25fr);
+      gap: 0; min-height: 440px;
+    }
+    @media (max-width: 720px) { .demo-ws { grid-template-columns: 1fr; } }
+    .demo-prev {
+      background: var(--pad); color: #c9d5e0; padding: 14px;
+      border-right: 1px solid rgba(255,255,255,.06);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .demo-prev .lbl {
+      font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      color: #7dd3fc;
+    }
+    .pad-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;
+      max-width: 160px; margin: 6px auto; width: 100%;
+    }
+    .k {
+      aspect-ratio: 1; border-radius: 8px; border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.06); display: grid; place-items: center;
+      font-size: 9px; font-weight: 700; color: #a8b8c8;
+    }
+    .demo-prev.is-lights .k {
+      box-shadow: inset 0 0 14px rgba(56,189,248,.3), 0 0 8px rgba(56,189,248,.2);
+      border-color: rgba(125,211,252,.4);
+    }
+    .mini-strip {
+      display: flex; align-items: center; gap: 6px; padding: 8px 10px;
+      border-radius: 10px; background: rgba(15,23,42,.55);
+      border: 1px solid rgba(255,255,255,.1); margin-top: auto;
+      font-size: 10px; color: #94a3b8;
+    }
+    .mini-strip i {
+      width: 8px; height: 8px; border-radius: 50%; background: #34d399;
+      box-shadow: 0 0 8px rgba(52,211,153,.6);
+    }
+    .demo-prev .cap { font-size: 11px; color: #8aa0b4; line-height: 1.4; margin: 0; }
+
+    .demo-right { display: flex; flex-direction: column; min-width: 0; background: #f8fafc; }
+    .demo-tabs {
+      display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid var(--line);
+      background: #fff; padding: 0 4px;
+    }
+    .demo-tabs button {
+      border: 0; border-bottom: 2px solid transparent; background: transparent;
+      padding: 11px 11px; font: inherit; font-size: 12px; font-weight: 750;
+      color: var(--muted); cursor: pointer; margin-bottom: -1px;
+    }
+    .demo-tabs button.is-on { color: var(--cyan-deep); border-bottom-color: var(--cyan); }
+    .demo-tabs button[data-m="lights"].is-on { color: var(--green); border-bottom-color: #22c55e; }
+    .demo-tabs button[data-m="mini"].is-on { color: var(--amber); border-bottom-color: #f59e0b; }
+    .demo-pane { padding: 14px; overflow: auto; flex: 1; }
+    .demo-pane[hidden] { display: none !important; }
+    .demo-pane h3 { margin: 0 0 4px; font-size: 15px; font-weight: 750; }
+    .demo-pane .explain {
+      margin: 0 0 12px; padding: 8px 10px; border-radius: 8px;
+      background: #fff; border: 1px dashed var(--line);
+      font-size: 12px; color: var(--muted); line-height: 1.45;
+    }
+    .demo-pane .explain b { color: var(--ink); }
+    .card {
+      border: 1px solid var(--line); border-radius: 11px; background: #fff;
+      padding: 11px 12px; margin-bottom: 8px;
+    }
+    .card h4 { margin: 0 0 3px; font-size: 12px; font-weight: 750; }
+    .card p { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.4; }
+    .card .from {
+      margin-top: 6px; font-size: 10px; font-weight: 700; color: var(--faint);
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .chips span {
+      font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 8px;
+      border: 1px solid var(--line); background: #f8fafc; color: var(--muted);
+    }
+    .chips .on {
+      color: var(--cyan-deep); border-color: rgba(31,143,184,.35); background: var(--cyan-soft);
+    }
+    .subtabs { display: flex; gap: 4px; margin-bottom: 10px; }
+    .subtabs button {
+      border: 1px solid var(--line); background: #fff; border-radius: 999px;
+      padding: 4px 10px; font: inherit; font-size: 11px; font-weight: 700;
+      color: var(--muted); cursor: pointer;
+    }
+    .subtabs button.is-on {
+      color: var(--green); border-color: rgba(26,122,76,.35); background: var(--green-soft);
+    }
+
+    /* Journey steps */
+    .journey {
+      display: grid; gap: 8px;
+    }
+    .j-step {
+      display: grid; grid-template-columns: 36px 1fr; gap: 10px; align-items: start;
+      padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: #f8fafc;
+    }
+    .j-step .n {
+      width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+      background: var(--cyan-soft); color: var(--cyan-deep);
+      font-family: var(--mono); font-size: 12px; font-weight: 700;
+    }
+    .j-step h3 { margin: 0 0 2px; font-size: 13px; font-weight: 750; }
+    .j-step p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+    /* FAQ */
+    details.faq {
+      border: 1px solid var(--line); border-radius: 12px; background: #f8fafc;
+      padding: 0; margin-bottom: 8px; overflow: hidden;
+    }
+    details.faq summary {
+      cursor: pointer; padding: 11px 14px; font-size: 13px; font-weight: 750;
+      list-style: none;
+    }
+    details.faq summary::-webkit-details-marker { display: none; }
+    details.faq summary::after {
+      content: "+"; float: right; color: var(--faint); font-weight: 700;
+    }
+    details.faq[open] summary::after { content: "–"; }
+    details.faq .ans {
+      padding: 0 14px 12px; font-size: 12px; color: var(--muted); line-height: 1.55;
+    }
+
+    .footer-note {
+      margin-top: 8px; font-size: 11px; color: var(--faint); text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav class="toc" aria-label="章节">
+      <div class="t-lbl">讲解目录</div>
+      <a href="#s0" class="is-on">0 · 一句话</a>
+      <a href="#s1">1 · 现在有什么</a>
+      <a href="#s2">2 · 为什么要合</a>
+      <a href="#s3">3 · 合到哪里</a>
+      <a href="#s4">4 · 合并后长这样</a>
+      <a href="#s5">5 · 用户怎么用</a>
+      <a href="#s6">6 · 小白问答</a>
+    </nav>
+
+    <div class="main">
+      <header class="hero" id="s0">
+        <p class="kicker">Soft Pad · 合并方案讲解稿</p>
+        <h1>虚拟键盘 + 灯效浮窗<br />不是两个产品，是同一块板子的不同旋钮</h1>
+        <p class="lead">给产品/设计/测试看的完整说明：现在拆成两间「房间」各自藏了什么、为什么不合理、合并后每一项去哪、合并后界面怎么操作。</p>
+        <p class="metaphor">
+          <b>生活类比：</b>Soft Pad 就像桌上那块「给 Agent 用的遥控板」。
+          「虚拟键盘」是在改按键和什么时候亮出来；「灯效与浮窗」是在改灯怎么闪、迷你条长什么样。
+          现在却要你先选进 A 房间还是 B 房间——其实板子就一块，旋钮应在同一面板上。
+        </p>
+        <p style="margin:14px 0 0">
+          <a href="./ui-1to1.html" style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:10px;background:#0f6f92;color:#fff;font-size:13px;font-weight:700;text-decoration:none">
+            打开合并后 1:1 界面原型 →
+          </a>
+        </p>
+      </header>
+
+      <!-- 1 inventory -->
+      <section class="ch" id="s1">
+        <div class="ch-h">
+          <span class="num">01</span>
+          <h2>现在有什么（完整清单）</h2>
+        </div>
+        <p class="sub">先把两间房间里的东西摊开。合并不是「删一半」，是「搬家」——每样东西都要有着落。</p>
+        <div class="callout problem">
+          <strong>现状结构</strong>
+          顶上先选：「虚拟键盘」或「灯效与浮窗」→ 再进各自内部的小标签。像进了两个 App。
+        </div>
+
+        <div class="rooms">
+          <div class="room a">
+            <div class="room-h">
+              <span class="badge">房间 A</span>
+              <h3>虚拟键盘</h3>
+            </div>
+            <div class="room-b">
+              <ul class="tree">
+                <li>
+                  <div class="folder">显示 <span>appear</span></div>
+                  <ul>
+                    <li>什么时候出现（跟随应用 / 置顶 / 迷你条 / 不显示）</li>
+                    <li>出现场景示意（桌面预览）</li>
+                    <li>外观皮肤（选皮肤 → 左预览变真皮肤）</li>
+                    <li>Cursor 聆听口令（可选）</li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="folder">键位 <span>keys</span></div>
+                  <ul>
+                    <li>左侧：键盘实物预览（点键帽）</li>
+                    <li>右侧：命令库（我的常见 / 按场景 / 本应用）</li>
+                    <li>绑定：键帽 ←→ 动作（继续、批准、听写…）</li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="folder">用途 <span>purpose</span></div>
+                  <ul>
+                    <li>Soft Pad 映射（与数字键盘同一键位）</li>
+                    <li>数字键占用 / 临时切换</li>
+                    <li>方向栏（导航键）演示与开关</li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="room b">
+            <div class="room-h">
+              <span class="badge">房间 B</span>
+              <h3>灯效与浮窗</h3>
+            </div>
+            <div class="room-b">
+              <ul class="tree">
+                <li>
+                  <div class="folder">灯效匹配 <span>match</span></div>
+                  <ul>
+                    <li>当前 Agent 就绪（Pad 开关、接入状态）</li>
+                    <li>氛围灯（盘边呼吸 / 脉冲 / 静态）<em>子 tab</em></li>
+                    <li>按键灯（键帽高亮、配色模板）<em>子 tab</em></li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="folder">显示数据 <span>data</span></div>
+                  <ul>
+                    <li>状态栏显示：账号 / 额度 / 重置</li>
+                    <li>Cursor 活动 / API 额度候补</li>
+                    <li>跳去迷你栏的入口</li>
+                  </ul>
+                </li>
+                <li>
+                  <div class="folder">迷你栏 <span>mini</span></div>
+                  <ul>
+                    <li>谁在忙（跨应用指示）</li>
+                    <li>听你说话（语音相关指示）</li>
+                    <li>快捷钮</li>
+                    <li>浮窗形态（大键盘 / 迷你条 / 不浮出）</li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout info" style="margin-top:14px">
+          <strong>共用、不在房间里的东西（合并后也不动）</strong>
+          顶栏品牌「虚拟键盘」、开关状态、绑定应用（Codex/Claude…）、测试前台、编辑键位按钮、设置中预览提示条。
+        </div>
+      </section>
+
+      <!-- 2 why -->
+      <section class="ch" id="s2">
+        <div class="ch-h">
+          <span class="num">02</span>
+          <h2>为什么要合（合理性）</h2>
+        </div>
+        <p class="sub">不是为了「标签变少好看」，而是现在的切法会让小白迷路，也和真实使用方式打架。</p>
+
+        <div class="why-grid">
+          <div class="why-card">
+            <div class="ico">1</div>
+            <h3>对象是同一个</h3>
+            <p>灯打在键盘边上，迷你栏是键盘的缩小形态。拆成两个入口，像「车灯设置」和「方向盘设置」要进两个 App。</p>
+          </div>
+          <div class="why-card">
+            <div class="ico">2</div>
+            <h3>任务不需要先选房间</h3>
+            <p>用户心里是：「改 Codex 这块板」。不会先想「我现在算键盘用户还是灯效用户」。</p>
+          </div>
+          <div class="why-card">
+            <div class="ico">3</div>
+            <h3>内容有重叠</h3>
+            <p>「显示」管何时浮出；「迷你栏·浮窗形态」也管大/小/藏。分两房后，同类问题要跑两趟。</p>
+          </div>
+          <div class="why-card">
+            <div class="ico">4</div>
+            <h3>绑定应用是共享的</h3>
+            <p>键位、灯效、迷你栏都跟着「绑定 · Codex」。顶上再切 face，等于重复声明「这是哪个 App」。</p>
+          </div>
+          <div class="why-card">
+            <div class="ico">5</div>
+            <h3>预览本应连着改</h3>
+            <p>左边预览是同一块板：改键、改灯、改迷你条都应打在同一预览上，而不是换 face 换宿主。</p>
+          </div>
+          <div class="why-card">
+            <div class="ico">6</div>
+            <h3>不是删功能</h3>
+            <p>合并 = 取消「先选房间」。房间 B 的每一项都搬进同一排标签，能力完整保留。</p>
+          </div>
+        </div>
+
+        <div class="callout why" style="margin-top:14px">
+          <strong>一句话结论</strong>
+          Soft Pad 页只应回答：「这块板怎么显示、怎么按、干什么用、怎么发光、缩小成什么样」——五个问题，一排标签，不必两张脸。
+        </div>
+      </section>
+
+      <!-- 3 map -->
+      <section class="ch" id="s3">
+        <div class="ch-h">
+          <span class="num">03</span>
+          <h2>合到哪里（搬家表）</h2>
+        </div>
+        <p class="sub">左边「原来在哪」→ 右边「合并后去哪」。方便对照验收：少一项都不行。</p>
+
+        <div style="overflow-x:auto; border:1px solid var(--line); border-radius:12px;">
+          <table class="map-table">
+            <thead>
+              <tr>
+                <th>原来</th>
+                <th>具体内容</th>
+                <th>合并后</th>
+                <th>说明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="tag from-a">A 显示</span></td>
+                <td>出现时机、场景、皮肤、聆听</td>
+                <td><span class="tag to">显示</span></td>
+                <td>原样保留</td>
+              </tr>
+              <tr>
+                <td><span class="tag from-a">A 键位</span></td>
+                <td>键帽绑定命令</td>
+                <td><span class="tag to">键位</span></td>
+                <td>原样保留（主入口）</td>
+              </tr>
+              <tr>
+                <td><span class="tag from-a">A 用途</span></td>
+                <td>映射 / 占用 / 方向栏</td>
+                <td><span class="tag to">用途</span></td>
+                <td>原样保留</td>
+              </tr>
+              <tr>
+                <td><span class="tag from-b">B 灯效匹配</span></td>
+                <td>就绪、氛围灯、按键灯</td>
+                <td><span class="tag to">灯效</span></td>
+                <td>整包搬入；子 tab 仍分氛围/按键</td>
+              </tr>
+              <tr>
+                <td><span class="tag from-b">B 显示数据</span></td>
+                <td>账号/额度/重置、Cursor 用量</td>
+                <td><span class="tag to">迷你栏</span> 首段</td>
+                <td>不再单独占一顶栏；和浮窗「看见什么」放一起</td>
+              </tr>
+              <tr>
+                <td><span class="tag from-b">B 迷你栏</span></td>
+                <td>谁在忙 / 听你说话 / 快捷钮 / 形态</td>
+                <td><span class="tag to">迷你栏</span> 主体</td>
+                <td>原样保留在「迷你栏」下半</td>
+              </tr>
+              <tr>
+                <td><span class="tag from-a">A|B 顶部分区</span></td>
+                <td>虚拟键盘 | 灯效与浮窗</td>
+                <td><span class="tag to">删除</span></td>
+                <td>唯一砍掉的是「选房间」这一层</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout info" style="margin-top:14px">
+          <strong>为什么「显示数据」塞进迷你栏，而不是第六个 tab？</strong>
+          它管的是「条上显示什么数」，和迷你栏/浮窗强相关；单独占 tab 会让顶栏变成 6 个，小白更难扫。显示数据里本来就有「去迷你栏」的跳转——说明两者本就是一对。
+        </div>
+      </section>
+
+      <!-- 4 interactive -->
+      <section class="ch" id="s4">
+        <div class="ch-h">
+          <span class="num">04</span>
+          <h2>合并后长这样（可点）</h2>
+        </div>
+        <p class="sub">没有顶部分区。一排五个标签 = 五个旋钮。点标签看完整内容从哪搬来。</p>
+
+        <div class="demo-app">
+          <div class="demo-status">
+            <span class="brand">虚拟键盘</span>
+            <span class="pill">已开启</span>
+            <span class="bind">绑定 · Codex</span>
+          </div>
+          <div class="demo-guide" id="demoGuide">
+            现在在看：<b>键位</b> — 来自原「房间 A」。试着点「灯效」「迷你栏」，看房间 B 的内容如何出现在同一排。
+          </div>
+          <div class="demo-ws">
+            <div class="demo-prev" id="demoPrev">
+              <div class="lbl" id="demoPrevLbl">预览 · 键位</div>
+              <div class="pad-grid" aria-hidden="true">
+                <div class="k">焦点</div><div class="k">听写</div><div class="k">发送</div>
+                <div class="k">取消</div><div class="k">继续</div><div class="k">中断</div>
+                <div class="k">批准</div><div class="k">拒绝</div><div class="k">+</div>
+              </div>
+              <div class="mini-strip" id="demoMini" hidden><i></i> Codex · 迷你栏形态</div>
+              <p class="cap" id="demoCap">同一块板的预览：改键、改灯、改迷你都打在这里。</p>
+            </div>
+            <div class="demo-right">
+              <div class="demo-tabs" id="demoTabs" role="tablist">
+                <button type="button" data-m="appear">显示</button>
+                <button type="button" class="is-on" data-m="keys">键位</button>
+                <button type="button" data-m="purpose">用途</button>
+                <button type="button" data-m="lights">灯效</button>
+                <button type="button" data-m="mini">迷你栏</button>
+              </div>
+
+              <div class="demo-pane" data-p="appear" hidden>
+                <h3>显示</h3>
+                <p class="explain"><b>来自房间 A · 显示。</b>管「板子什么时候出现、长什么样」。</p>
+                <div class="card">
+                  <h4>什么时候出现</h4>
+                  <p>跟随应用 / 保持最前 / 迷你条 / 不显示浮窗</p>
+                  <div class="chips"><span class="on">跟随应用</span><span>保持最前</span><span>迷你条</span><span>不显示</span></div>
+                  <div class="from">原路径：虚拟键盘 → 显示</div>
+                </div>
+                <div class="card">
+                  <h4>外观皮肤</h4>
+                  <p>选皮肤后，左侧预览换成真实样式（不是缩略图墙）</p>
+                  <div class="from">原路径：虚拟键盘 → 显示 → 皮肤</div>
+                </div>
+                <div class="card">
+                  <h4>Cursor 聆听口令</h4>
+                  <p>未在 Cursor 前台时，说口令进入聆听（可选）</p>
+                  <div class="from">原路径：虚拟键盘 → 显示</div>
+                </div>
+              </div>
+
+              <div class="demo-pane" data-p="keys">
+                <h3>键位</h3>
+                <p class="explain"><b>来自房间 A · 键位。</b>和 Soft Pad 核心交互一样：左点键，右选命令。</p>
+                <div class="card">
+                  <h4>命令库 · 我的常见</h4>
+                  <p>继续 · 中断 · 批准 · 新建任务 · 开始听写…</p>
+                  <div class="from">原路径：虚拟键盘 → 键位</div>
+                </div>
+                <div class="card">
+                  <h4>按场景找 / 本应用</h4>
+                  <p>听写收尾、Agent 控制、安全确认等分组</p>
+                  <div class="from">原路径：虚拟键盘 → 键位</div>
+                </div>
+              </div>
+
+              <div class="demo-pane" data-p="purpose" hidden>
+                <h3>用途</h3>
+                <p class="explain"><b>来自房间 A · 用途。</b>解释数字键和 Soft Pad 怎么共用物理键位。</p>
+                <div class="card">
+                  <h4>Soft Pad 映射</h4>
+                  <p>与日常数字键盘「同一键位」对照演示</p>
+                  <div class="from">原路径：虚拟键盘 → 用途</div>
+                </div>
+                <div class="card">
+                  <h4>数字键占用 / 方向栏</h4>
+                  <p>临时占用、导航键靠左等开关</p>
+                  <div class="from">原路径：虚拟键盘 → 用途</div>
+                </div>
+              </div>
+
+              <div class="demo-pane" data-p="lights" hidden>
+                <h3>灯效</h3>
+                <p class="explain"><b>来自房间 B · 灯效匹配。</b>整包搬过来，不再先切「灯效与浮窗」脸。</p>
+                <div class="card">
+                  <h4>当前 Agent 就绪</h4>
+                  <p>Pad 开关、接入状态。灯要亮，先确认板子开着。</p>
+                  <div class="from">原路径：灯效与浮窗 → 灯效匹配</div>
+                </div>
+                <div class="subtabs" id="lightsSub">
+                  <button type="button" class="is-on" data-ls="ambient">氛围灯</button>
+                  <button type="button" data-ls="keys">按键灯</button>
+                </div>
+                <div class="card" id="lightsCard">
+                  <h4>氛围灯</h4>
+                  <p>盘边呼吸 / 脉冲 / 静态，跟随 Agent 状态</p>
+                  <div class="chips"><span class="on">呼吸</span><span>脉冲</span><span>静态</span></div>
+                  <div class="from">原路径：灯效与浮窗 → 灯效匹配 → 氛围灯</div>
+                </div>
+              </div>
+
+              <div class="demo-pane" data-p="mini" hidden>
+                <h3>迷你栏</h3>
+                <p class="explain"><b>来自房间 B · 显示数据 + 迷你栏。</b>「条上显示什么」和「条长什么样」放一页，避免来回跳。</p>
+                <div class="card">
+                  <h4>显示数据（原独立顶栏）</h4>
+                  <p>状态栏是否显示：账号 · 额度 · 重置；Cursor 活动 / API 候补</p>
+                  <div class="chips"><span class="on">账号</span><span class="on">额度</span><span>重置</span></div>
+                  <div class="from">原路径：灯效与浮窗 → 显示数据</div>
+                </div>
+                <div class="card">
+                  <h4>谁在忙</h4>
+                  <p>跨应用 Agent 指示，谁在跑任务</p>
+                  <div class="from">原路径：灯效与浮窗 → 迷你栏 → 谁在忙</div>
+                </div>
+                <div class="card">
+                  <h4>听你说话 · 快捷钮</h4>
+                  <p>语音相关指示；迷你条上的快捷操作</p>
+                  <div class="from">原路径：灯效与浮窗 → 迷你栏</div>
+                </div>
+                <div class="card">
+                  <h4>浮窗形态</h4>
+                  <p>大键盘 / 强制细条 / 不浮出（与「显示」互补，管形态细节）</p>
+                  <div class="chips"><span>大键盘</span><span class="on">迷你条</span><span>不浮出</span></div>
+                  <div class="from">原路径：灯效与浮窗 → 迷你栏 → 浮窗形态</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 journey -->
+      <section class="ch" id="s5">
+        <div class="ch-h">
+          <span class="num">05</span>
+          <h2>用户怎么用（合并后路径）</h2>
+        </div>
+        <p class="sub">用三件最常见的事，对比「现在」和「合并后」要走几步。</p>
+
+        <div class="journey">
+          <div class="j-step">
+            <div class="n">A</div>
+            <div>
+              <h3>我想给 Codex 改「继续」键</h3>
+              <p><b>现在：</b>进虚拟键盘房间 → 键位 → 点键选命令。<br />
+                <b>合并后：</b>打开 Soft Pad → 键位 → 同样操作。（少一步选房间）</p>
+            </div>
+          </div>
+          <div class="j-step">
+            <div class="n">B</div>
+            <div>
+              <h3>我想把盘边灯改成呼吸</h3>
+              <p><b>现在：</b>先切到「灯效与浮窗」→ 灯效匹配 → 氛围灯。<br />
+                <b>合并后：</b>打开 Soft Pad → 灯效 → 氛围灯。（仍是配灯，但不再换「脸」）</p>
+            </div>
+          </div>
+          <div class="j-step">
+            <div class="n">C</div>
+            <div>
+              <h3>我想看额度，并把浮窗改成细条</h3>
+              <p><b>现在：</b>灯效房 → 显示数据看额度 → 再切迷你栏改形态（两次顶栏）。<br />
+                <b>合并后：</b>迷你栏一页里：上面数据，下面形态。（相关能力放一起）</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6 FAQ -->
+      <section class="ch" id="s6">
+        <div class="ch-h">
+          <span class="num">06</span>
+          <h2>小白问答</h2>
+        </div>
+        <p class="sub">合并方案最容易被误解的几点，先答清楚。</p>
+
+        <details class="faq" open>
+          <summary>是不是把灯效功能删掉了？</summary>
+          <div class="ans">没有。灯效、迷你栏、显示数据全都还在，只是从「第二张脸」搬进同一排标签。删掉的只有「先选虚拟键盘还是灯效」这一层门。</div>
+        </details>
+        <details class="faq">
+          <summary>五个标签会不会太多？</summary>
+          <div class="ans">比「2 个大门 + 门内再 3 个」更少层级。扫一眼能看见全部能力；以前灯效藏在另一扇门后，小白常常根本不知道有灯可配。</div>
+        </details>
+        <details class="faq">
+          <summary>「显示」和「迷你栏」会不会重复？</summary>
+          <div class="ans">有分工：显示 = 何时出现、皮肤；迷你栏 = 缩小后的形态与条上信息。合并后反而方便对照，避免两房各改各的。</div>
+        </details>
+        <details class="faq">
+          <summary>为什么不做成「高级设置」折叠？</summary>
+          <div class="ans">灯效和迷你栏是日常能力（看谁在忙、盘边状态），不是调试项。藏进高级会再次制造「第二房间」。</div>
+        </details>
+        <details class="faq">
+          <summary>和按键页 / 语音页有什么关系？</summary>
+          <div class="ans">无关。这次只整理 Soft Pad 自己页里的两张脸。按键流水线、语音听写仍是各自的页面。</div>
+        </details>
+        <details class="faq">
+          <summary>开发上难不难？</summary>
+          <div class="ans">主要是路由：去掉 face 切换，把 agent 面板按 tab 画进同一个右侧宿主机；预览共用一个宿主。功能函数大多可复用，属于搬家不是重写。</div>
+        </details>
+      </section>
+
+      <p class="footer-note">原型仅讲解合并 IA · 非正式 UI 定稿 · Soft Pad merge explainer</p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var links = document.querySelectorAll(".toc a");
+      var sections = [];
+      links.forEach(function (a) {
+        var id = a.getAttribute("href").slice(1);
+        var el = document.getElementById(id);
+        if (el) sections.push({ id: id, el: el, a: a });
+      });
+      function syncToc() {
+        var y = window.scrollY + 80;
+        var cur = sections[0];
+        sections.forEach(function (s) {
+          if (s.el.offsetTop <= y) cur = s;
+        });
+        links.forEach(function (a) { a.classList.toggle("is-on", a === cur.a); });
+      }
+      window.addEventListener("scroll", syncToc, { passive: true });
+
+      var guides = {
+        appear: "现在在看：显示 — 来自原「房间 A」。管何时出现与皮肤。",
+        keys: "现在在看：键位 — 来自原「房间 A」。左键右命令，主路径不变。",
+        purpose: "现在在看：用途 — 来自原「房间 A」。数字键与 Soft Pad 如何共用。",
+        lights: "现在在看：灯效 — 来自原「房间 B · 灯效匹配」。无需再切「灯效与浮窗」脸。",
+        mini: "现在在看：迷你栏 — 来自原「房间 B」的显示数据 + 迷你栏，合并成一页。"
+      };
+      var prevMeta = {
+        appear: { lbl: "预览 · 显示", cap: "场景 + 真实皮肤会反映在这块板上。", lights: false, mini: false },
+        keys: { lbl: "预览 · 键位", cap: "同一块板的预览：改键、改灯、改迷你都打在这里。", lights: false, mini: false },
+        purpose: { lbl: "预览 · 用途", cap: "映射演示仍用这块板对照数字键盘。", lights: false, mini: false },
+        lights: { lbl: "预览 · 灯效", cap: "氛围灯 / 按键灯直接打在预览描边上。", lights: true, mini: false },
+        mini: { lbl: "预览 · 迷你栏", cap: "缩小形态与指示；右侧同时管显示数据。", lights: false, mini: true }
+      };
+
+      var prev = document.getElementById("demoPrev");
+      var guide = document.getElementById("demoGuide");
+      document.getElementById("demoTabs").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-m]");
+        if (!btn) return;
+        var m = btn.getAttribute("data-m");
+        document.querySelectorAll("#demoTabs [data-m]").forEach(function (b) {
+          b.classList.toggle("is-on", b === btn);
+        });
+        document.querySelectorAll("[data-p]").forEach(function (p) {
+          p.hidden = p.getAttribute("data-p") !== m;
+        });
+        guide.innerHTML = "现在在看：<b>" + btn.textContent + "</b> — " + guides[m].replace(/^现在在看：.*?— /, "");
+        var meta = prevMeta[m];
+        document.getElementById("demoPrevLbl").textContent = meta.lbl;
+        document.getElementById("demoCap").textContent = meta.cap;
+        prev.classList.toggle("is-lights", meta.lights);
+        document.getElementById("demoMini").hidden = !meta.mini;
+      });
+
+      var lightsCard = document.getElementById("lightsCard");
+      document.getElementById("lightsSub").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-ls]");
+        if (!btn) return;
+        document.querySelectorAll("#lightsSub [data-ls]").forEach(function (b) {
+          b.classList.toggle("is-on", b === btn);
+        });
+        if (btn.getAttribute("data-ls") === "keys") {
+          lightsCard.innerHTML =
+            "<h4>按键灯</h4><p>键帽高亮、配色模板，可与氛围灯一起用</p>" +
+            "<div class=\"chips\"><span class=\"on\">跟随状态</span><span>彩虹</span><span>单色</span></div>" +
+            "<div class=\"from\">原路径：灯效与浮窗 → 灯效匹配 → 按键灯</div>";
+        } else {
+          lightsCard.innerHTML =
+            "<h4>氛围灯</h4><p>盘边呼吸 / 脉冲 / 静态，跟随 Agent 状态</p>" +
+            "<div class=\"chips\"><span class=\"on\">呼吸</span><span>脉冲</span><span>静态</span></div>" +
+            "<div class=\"from\">原路径：灯效与浮窗 → 灯效匹配 → 氛围灯</div>";
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

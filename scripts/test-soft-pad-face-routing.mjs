@@ -38,10 +38,13 @@ assert(/getView:\s*function\s*\(\)\s*\{\s*return softPadPanelId\(\)/.test(src), 
 assert(/facePad:|faceAgent:|faceTimeline:/.test(src), 'els() face roots');
 assert(/softPadAgentPreviewHost/.test(src) && /softPadTmPreviewHost/.test(src), 'per-face preview hosts');
 assert(/PAD_MODE_TO_PANEL/.test(src) && /PANEL_TO_PAD_MODE/.test(src), 'pad mode ↔ panel maps');
-assert(/goSoftPadFlowNode[\s\S]*?setSoftPadFace\('agent'\)/.test(src), 'flow node agent → setSoftPadFace');
+assert(/lights:\s*'agent'/.test(src) && /mini:\s*'agent'/.test(src), 'lights/mini map to agent panel');
+assert(/function isAgentWorkbenchMode\(/.test(src), 'isAgentWorkbenchMode helper');
+assert(/face === 'agent'[\s\S]*?setSoftPadPadMode/.test(src), 'setSoftPadFace(agent) → padMode');
+assert(/goSoftPadFlowNode[\s\S]*?setSoftPadPadMode\('lights'/.test(src),
+  'legacy flow node agent → lights padMode');
 assert(/goSoftPadFlowNode[\s\S]*?nodeId === 'timeline'[\s\S]*?return;/.test(src),
   'flow node timeline retired (no setSoftPadFace)');
-assert(/nodeId === 'pad'[\s\S]*?setSoftPadFace\('pad'/.test(src), 'flow node pad → setSoftPadFace');
 assert(/canPaint = true/.test(src), 'timeline keeps Soft Pad preview');
 
 assert(html.includes('id="softPadFacePad"'), 'html face pad root');
@@ -53,6 +56,11 @@ assert(html.includes('data-pad-mode="keys"'), 'html keys tab');
 assert(!html.includes('data-pad-mode="look"'), 'html look tab removed');
 assert(html.includes('id="softPadPadTabDisplay"'), 'html display tab id');
 assert(html.includes('data-pad-mode="purpose"'), 'html purpose tab');
+assert(html.includes('data-pad-mode="lights"') && html.includes('id="softPadPadTabLights"'),
+  'html lights tab');
+assert(html.includes('data-pad-mode="mini"') && html.includes('id="softPadPadTabMini"'),
+  'html mini tab');
+assert(!html.includes('id="softPadFlowNodes"'), 'html face-seg retired');
 assert(html.includes('id="softPadAgentBody"'), 'html agent body host');
 assert(!html.includes('id="softPadAgentDirectory"'), 'html agent directory removed');
 assert(html.includes('id="cameraWorkflowTabsBar"'), 'html camera status bar');
@@ -107,9 +115,8 @@ assert(/data-agent-workbench-tab/.test(padUi), 'workbench horizontal tab marker'
 assert(/function bindAgentWorkbenchSubtabEvents\(/.test(padUi), 'bindAgentWorkbenchSubtabEvents');
 assert(/function getSoftPadWorkbenchTab\(/.test(padUi), 'getSoftPadWorkbenchTab export');
 assert(/omitFaceTopbar/.test(padUi), 'agent face omitFaceTopbar preview dedup');
-assert(/renderAgentWorkbench\(m, pad\)/.test(
-  padUi.slice(padUi.indexOf('function renderSoftPadAgentPanel'), padUi.indexOf('function setSoftPadControlsBusy'))
-), 'agent panel uses renderAgentWorkbench');
+assert(/renderAgentWorkbench\(m, pad,\s*opts\)/.test(padUi),
+  'agent panel uses renderAgentWorkbench with opts');
 assert(/data-connect-mode="scope"/.test(padUi), 'connect scope mode marker');
 assert(/data-connect-mode="fold"/.test(padUi), 'connect fold mode marker');
 assert(/previewUsagePropsForScope/.test(src), 'hub exports preview usage for left strip');
@@ -301,8 +308,24 @@ assert(/\.soft-pad-lights-subtabs/.test(css) && /data-lights-preview-accent="amb
 assert(!/\.soft-pad-hub-page\.is-face-agent \.soft-pad-bind-app[\s\S]*?display:\s*none/.test(css),
   'v15c agent face keeps status-bar bind app');
 assert(/data-strip-mode/.test(padUi), 'preview strip mode attribute');
-assert(/forceRemount: softPadFace === 'agent'/.test(src),
-  'agent face bind select forceRemounts lights panel');
+assert(/function clearStatusLightsPreviewChrome\(/.test(padUi), 'clearStatusLightsPreviewChrome helper');
+assert(/paintSoftPadPadModePreview[\s\S]*?clearStatusLightsPreviewChrome/.test(padUi),
+  'appear/purpose demos clear leftover lights chrome');
+assert(/habitKindForMappingId/.test(padUi) && /enabledKinds\[kind\]/.test(padUi),
+  'full topbar strip skips habit chips that duplicate agent kinds');
+assert(/getSoftPadFace\(\) === 'agent'/.test(padUi),
+  'Soft Pad preview omits face topbar for merged lights/mini');
+assert(/!isAgentWorkbenchMode\(\)\) \? undefined : \{ force: true \}/.test(src),
+  'lights/mini force Soft Pad preview remount + chrome');
+assert(/forceRemount: isAgentWorkbenchMode\(\)/.test(src),
+  'agent workbench bind select forceRemounts lights panel');
+assert(/hideWorkbenchTabs: softPadPadMode === 'lights' \|\| softPadPadMode === 'mini'/.test(src),
+  'hub passes hideWorkbenchTabs for flat lights/mini');
+assert(/foldDataIntoMini: softPadPadMode === 'mini'/.test(src),
+  'hub folds data panel into mini');
+assert(/hideWorkbenchTabs/.test(padUi) && /foldDataIntoMini/.test(padUi) &&
+  /data-hide-workbench-tabs/.test(padUi),
+  'agent workbench honors flat Soft Pad tabs');
 assert(/getSelectedScopeId:\s*function/.test(src) && /iconForKind:\s*iconForKind/.test(src),
   'hub exports scope id and iconForKind for topbar focus');
 assert(/is-focused/.test(padUi) && /\.is-focused/.test(css),

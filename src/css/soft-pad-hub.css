@@ -150,60 +150,6 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-status-bar .keys-scheme-
   background: var(--outline-variant);
 }
 
-/* Soft Pad face seg — peer tabs (not flow progress) */
-#settingsPanelSoftPad .soft-pad-face-seg {
-  margin: 0 0 10px;
-  max-width: 560px;
-}
-#settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  min-height: 52px;
-  padding: 8px 12px;
-  white-space: normal;
-  text-align: left;
-}
-#settingsPanelSoftPad .soft-pad-face-seg__icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  opacity: 0.72;
-}
-#settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn.is-active .soft-pad-face-seg__icon {
-  opacity: 1;
-}
-#settingsPanelSoftPad .soft-pad-face-seg__lbl {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-#settingsPanelSoftPad .soft-pad-face-seg__title {
-  font-size: 13px;
-  font-weight: 750;
-  line-height: 1.2;
-}
-#settingsPanelSoftPad .soft-pad-face-seg__sub {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--on-surface-muted);
-  line-height: 1.3;
-}
-#settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn.is-active .soft-pad-face-seg__sub {
-  color: inherit;
-  opacity: 0.78;
-}
-#settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn[data-soft-pad-node="pad"].is-active {
-  color: var(--primary-strong, #0f6f92);
-}
-#settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn[data-soft-pad-node="agent"].is-active {
-  color: #1a7a4c;
-}
-html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-seg .ot-seg__btn[data-soft-pad-node="agent"].is-active {
-  color: #34d399;
-}
 .soft-pad-tm-desk {
   min-width: 0;
   min-height: 0;
@@ -914,49 +860,6 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
   line-height: var(--type-lh-body, 1.45);
   color: var(--on-surface-muted);
 }
-.soft-pad-settings-preview-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin: 0 0 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(42, 156, 196, 0.22);
-  background: linear-gradient(135deg, rgba(79, 172, 254, 0.1), rgba(42, 156, 196, 0.06));
-  box-sizing: border-box;
-}
-#settingsPanelSoftPad[data-soft-pad-face="tray"] #softPadSettingsPreviewBanner {
-  display: none !important;
-}
-.soft-pad-settings-preview-banner__icon {
-  flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
-  margin-top: 1px;
-  color: rgba(42, 156, 196, 0.92);
-}
-.soft-pad-settings-preview-banner__icon svg {
-  display: block;
-  width: 22px;
-  height: 22px;
-}
-.soft-pad-settings-preview-banner__text {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.soft-pad-settings-preview-banner__title {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.35;
-  color: var(--on-surface, #1e293b);
-}
-.soft-pad-settings-preview-banner__body {
-  margin: 3px 0 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--on-surface-muted, rgba(26, 45, 74, 0.68));
-}
 #settingsPanelSoftPad #habitChannelStatusStripSoftPad,
 #settingsPanelSoftPad #softPadBoundaryHint,
 #settingsPanelSoftPad #softPadScopeHint[hidden],
@@ -1219,6 +1122,154 @@ html[data-theme="dark"] .soft-pad-agent-workbench__card {
 .soft-pad-agent-data-live {
   display: grid;
   gap: 8px;
+}
+.soft-pad-agent-workbench__data.is-goto-flash,
+[data-agent-data-panel].is-goto-flash {
+  outline: 2px solid rgba(37, 99, 235, 0.45);
+  outline-offset: 2px;
+  border-radius: 12px;
+  transition: outline-color 0.8s ease;
+}
+.soft-pad-purpose-locked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  flex-wrap: wrap;
+}
+.soft-pad-purpose-locked__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font: 600 12px/1.2 system-ui, sans-serif;
+  color: #1e3a8a;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.28);
+}
+.soft-pad-purpose-locked__hint {
+  font-size: 12px;
+  color: #64748b;
+}
+.soft-pad-cursor-activity__viz {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.08), rgba(148, 163, 184, 0.06));
+  border: 1px solid rgba(37, 99, 235, 0.12);
+}
+.soft-pad-cursor-activity__meter {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 44px;
+}
+.soft-pad-cursor-activity__bar {
+  flex: 1 1 0;
+  height: var(--h, 40%);
+  min-height: 6px;
+  border-radius: 4px 4px 2px 2px;
+  background: rgba(100, 116, 139, 0.35);
+}
+.soft-pad-cursor-activity__bar.is-today {
+  background: #2563eb;
+}
+.soft-pad-cursor-activity__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.soft-pad-cursor-activity__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font: 600 11px/1.2 system-ui, sans-serif;
+}
+.soft-pad-cursor-activity__chip.is-on {
+  color: #166534;
+  background: rgba(34, 197, 94, 0.14);
+}
+.soft-pad-cursor-activity__chip.is-off {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.12);
+  text-decoration: line-through;
+}
+.soft-pad-cursor-live__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.soft-pad-cursor-live__stat {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.1);
+  box-sizing: border-box;
+}
+.soft-pad-cursor-live__n {
+  font: 700 18px/1.2 system-ui, sans-serif;
+  color: #0f172a;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.soft-pad-cursor-live__k {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+.soft-pad-cursor-live__bar {
+  display: block;
+  height: 4px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+.soft-pad-cursor-live__bar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--pct, 0%);
+  border-radius: inherit;
+  background: #2563eb;
+}
+.soft-pad-cursor-live__delta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+  font: 700 13px/1.3 system-ui, sans-serif;
+  color: #475569;
+}
+.soft-pad-cursor-live__delta span {
+  font-weight: 500;
+  font-size: 12px;
+  color: #64748b;
+}
+.soft-pad-cursor-live__delta.is-up { color: #16a34a; }
+.soft-pad-cursor-live__delta.is-down { color: #dc2626; }
+.soft-pad-cursor-live__state {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #94a3b8;
+}
+.soft-pad-cursor-live__empty { margin: 0; }
+html[data-theme="dark"] .soft-pad-purpose-locked__badge {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(96, 165, 250, 0.35);
+}
+html[data-theme="dark"] .soft-pad-cursor-live__n { color: #e2e8f0; }
+html[data-theme="dark"] .soft-pad-cursor-live__stat {
+  background: rgba(255, 255, 255, 0.06);
+}
+@media (max-width: 560px) {
+  .soft-pad-cursor-live__stats { grid-template-columns: 1fr; }
 }
 .soft-pad-agent-data-live__note {
   margin: 0;
@@ -3459,6 +3510,14 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   overflow: auto;
   padding: 2px 0;
 }
+.soft-pad-action-scene-rail__btn--common {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  margin-bottom: 4px;
+  padding-bottom: 8px;
+}
+.soft-pad-action-scene-rail__btn--common .soft-pad-action-scene-rail__title {
+  font-weight: 750;
+}
 .soft-pad-action-scene-rail__btn {
   display: flex;
   flex-direction: column;
@@ -3585,7 +3644,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
 }
 .soft-pad-action-layers {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 4px;
   padding: 3px;
   border-radius: 12px;
@@ -5254,19 +5313,6 @@ html[data-theme="dark"] #settingsPanelSoftPad .keys-aside-card {
 
 html[data-theme="dark"] .soft-pad-scope-hint {
   color: var(--indigo-muted);
-}
-html[data-theme="dark"] .soft-pad-settings-preview-banner {
-  border-color: rgba(79, 172, 254, 0.28);
-  background: linear-gradient(135deg, rgba(79, 172, 254, 0.14), rgba(18, 26, 40, 0.72));
-}
-html[data-theme="dark"] .soft-pad-settings-preview-banner__icon {
-  color: rgba(125, 211, 252, 0.92);
-}
-html[data-theme="dark"] .soft-pad-settings-preview-banner__title {
-  color: #e2e8f0;
-}
-html[data-theme="dark"] .soft-pad-settings-preview-banner__body {
-  color: rgba(203, 213, 225, 0.78);
 }
 html[data-theme="dark"] #softPadPreviewHost[data-preview-label]::before,
 html[data-theme="dark"] #softPadAgentPreviewHost[data-preview-label]::before {

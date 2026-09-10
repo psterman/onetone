@@ -68,7 +68,13 @@ check('layout key record uses rec sheet mode', pad.includes("layoutRecSheetMode 
   i18n.includes("softPadLayoutCustomRecOkKey:'确认'"));
 check('accordion relocate helpers', pad.includes('function parkLayoutEditorOutsideList') &&
   pad.includes('function placeLayoutEditorUnderSelection') &&
-  pad.includes('soft-pad-layout-editor--accordion'));
+  pad.includes('soft-pad-layout-editor--accordion') &&
+  pad.includes('function revealCommonsLayoutForKey') &&
+  pad.includes('function scrollLayoutEditorIntoView'));
+check('key pick reveals 我的常见 + scrolls form',
+  /function softPadPreviewEditKey[\s\S]*?revealCommonsLayoutForKey/.test(pad));
+check('settings preview banner removed',
+  !readFileSync(join(root, 'src/index.html'), 'utf8').includes('id="softPadSettingsPreviewBanner"'));
 check('custom layer creates new shortcut (not overwrite key)', pad.includes('data-layout-custom-record') &&
   pad.includes('function createCustomShortcut') &&
   pad.includes('function openCustomRecSheet') &&

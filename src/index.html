@@ -1202,31 +1202,6 @@
               <button type="button" class="page-status-btn" id="btnSoftPadEditKeys" data-cockpit-action="edit-keys">编辑键位</button>
             </div>
           </div>
-          <section class="ot-seg ot-seg--wide soft-pad-face-seg" id="softPadFlowNodes" role="tablist" aria-label="Soft Pad 分区" data-i18n-aria="softPadFaceSegAria">
-            <button type="button" class="ot-seg__btn is-active" id="softPadFlowNodePad" role="tab" data-soft-pad-node="pad" aria-selected="true" aria-controls="softPadFacePad" aria-labelledby="softPadFlowNodePadTitle">
-              <svg class="soft-pad-face-seg__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><rect x="6.2" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="6.2" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="10.3" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="14.4" y="10.3" width="3.4" height="3.4" rx=".7"/><rect x="6.2" y="14.4" width="7.5" height="3.4" rx=".7"/><rect x="14.4" y="14.4" width="3.4" height="3.4" rx=".7"/></svg>
-              <span class="soft-pad-face-seg__lbl">
-                <span class="soft-pad-face-seg__title" id="softPadFlowNodePadTitle">虚拟键盘</span>
-                <span class="soft-pad-face-seg__sub" id="softPadFlowNodePadHint">按应用改键位 · 何时显示</span>
-              </span>
-            </button>
-            <button type="button" class="ot-seg__btn" id="softPadFlowNodeAgent" role="tab" data-soft-pad-node="agent" aria-selected="false" aria-controls="softPadFaceAgent" aria-labelledby="softPadFlowNodeAgentTitle">
-              <svg class="soft-pad-face-seg__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="15" rx="3"/><circle cx="12" cy="6.5" r="1.35" fill="currentColor" stroke="none"/><circle cx="12" cy="10" r="1.35" fill="currentColor" stroke="none" opacity=".7"/><circle cx="12" cy="13.5" r="1.35" fill="currentColor" stroke="none" opacity=".4"/><path d="M10.5 19.5h3M11 21.5h2"/></svg>
-              <span class="soft-pad-face-seg__lbl">
-                <span class="soft-pad-face-seg__title" id="softPadFlowNodeAgentTitle">灯效与浮窗</span>
-                <span class="soft-pad-face-seg__sub" id="softPadFlowNodeAgentHint">按应用配灯 · 迷你栏 · 用量</span>
-              </span>
-            </button>
-          </section>
-          <div class="soft-pad-settings-preview-banner" id="softPadSettingsPreviewBanner" role="note" aria-labelledby="softPadSettingsPreviewBannerTitle">
-            <span class="soft-pad-settings-preview-banner__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/></svg>
-            </span>
-            <div class="soft-pad-settings-preview-banner__text">
-              <p class="soft-pad-settings-preview-banner__title" id="softPadSettingsPreviewBannerTitle">设置中预览</p>
-              <p class="soft-pad-settings-preview-banner__body" id="softPadSettingsPreviewBannerBody">悬浮 Soft Pad 在设置时会自动隐藏，避免挡住界面。当前预览 = 上方所选应用；右侧改动会同步到左侧预览。关闭设置并在 Agent 前台可看到真实浮窗。</p>
-          </div>
-          </div>
           <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用"></div>
           <p class="soft-pad-scope-hint" id="softPadScopeHint" aria-live="polite" hidden></p>
           <span class="sr-only" id="softPadScanStatus" aria-live="polite"></span>
@@ -1240,7 +1215,7 @@
             <div class="keys-page-main soft-pad-page-main">
               <div class="soft-pad-hub-stage" id="softPadHubStage" data-soft-pad-face="pad" role="tabpanel" aria-label="虚拟键盘详情">
                 <div class="soft-pad-func-tiles" id="softPadFuncTiles" role="tablist" aria-label="你想改什么？" hidden></div>
-                <!-- C1 Soft Pad face: left preview + right padMode tabs + panel -->
+                <!-- Unified Soft Pad workspace: left preview + right tabs (显示/键位/用途/灯效/迷你栏) -->
                 <div class="soft-pad-face-root soft-pad-face-pad" id="softPadFacePad" data-face="pad">
                   <div class="soft-pad-face-pad__preview soft-pad-preview-host" id="softPadPreviewHost"></div>
                   <aside class="soft-pad-face-pad__panel soft-pad-detail" id="softPadSubpageHost" aria-live="polite">
@@ -1248,6 +1223,8 @@
                       <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="appear" aria-selected="false" id="softPadPadTabDisplay">显示</button>
                       <button type="button" class="soft-pad-pad-tab is-active" role="tab" data-pad-mode="keys" aria-selected="true" id="softPadPadTabKeys">键位</button>
                       <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="purpose" aria-selected="false" id="softPadPadTabPurpose">用途</button>
+                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="lights" aria-selected="false" id="softPadPadTabLights">灯效</button>
+                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="mini" aria-selected="false" id="softPadPadTabMini">迷你栏</button>
                     </div>
                     <div class="soft-pad-detail-idle" id="softPadDetailIdle" hidden>
                       <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">选择上方一项开始调整</p>
@@ -1265,8 +1242,8 @@
                   <div class="soft-pad-pad-ring" id="softPadPadRing" hidden aria-hidden="true"></div>
                   <div class="soft-pad-ring-float" id="softPadRingFloat" hidden></div>
                 </div>
-                <!-- C2 Agent face: left preview · right workbench (v15c) -->
-                <div class="soft-pad-face-root soft-pad-face-agent" id="softPadFaceAgent" data-face="agent" hidden>
+                <!-- Retired agent face (merged into pad tabs lights/mini); hosts kept for legacy lookups -->
+                <div class="soft-pad-face-root soft-pad-face-agent" id="softPadFaceAgent" data-face="agent" hidden aria-hidden="true">
                   <div class="soft-pad-face-agent__preview soft-pad-preview-host" id="softPadAgentPreviewHost"></div>
                   <aside class="soft-pad-face-agent__panel soft-pad-detail" id="softPadAgentPanelHost" aria-live="polite">
                     <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadAgentBody"></div>
