@@ -858,7 +858,7 @@
                       <button type="button" class="record-probe-btn" id="btnRecordProbeClear">清空</button>
                     </span>
                   </header>
-                  <p class="record-probe-hint" id="recordProbeHint">01 启动建议 F13 / 音量减 / 侧键 2。SoftPad 格子可用 F14–F24 或小键盘。把脚踏、旋钮固件设成这些键。主事件会自动提交。未知 HID 只在「抓取自定义键」里点选。没有新行 = 系统没把按键交给 OneTone。只有 wv、没有 rs = 请重新编译并重启（只刷新页面不够）。</p>
+                  <p class="record-probe-hint" id="recordProbeHint" data-i18n="keysCaptureProbeHint">录触发时请按外设键（侧键 / 音量 / F13）。日志里「页面收到」表示网页看到了键；「系统钩子」表示 OneTone 底层也接到了。只有页面、没有系统钩子时，请重新编译并重启应用。</p>
                   <label class="record-probe-adv"><input type="checkbox" id="recordProbeAdvancedHid"> 抓取自定义键</label>
                   <div class="record-probe-hid-box" id="recordProbeHidBox" hidden>
                     <ol class="record-probe-hid-list" id="recordProbeHidList"></ol>
@@ -918,7 +918,7 @@
                     <p class="keys-keycap-hint" id="keysKeycapHint">点击修改快捷键</p>
                     </div>
                     <div class="keys-workflow-footer-zone keys-trigger-modes-block">
-                      <p class="habit-flow-subsection-title" id="keysTriggerModeFooterLbl">触发方式</p>
+                      <p class="habit-flow-subsection-title" id="keysTriggerModeFooterLbl">录到的用法</p>
                       <div class="keys-trigger-modes-host" id="keysTriggerModeHost"></div>
                       <div class="keys-trigger-conflict" id="keysTriggerConflict" hidden role="alert"></div>
                       <div class="keys-test-progress" id="keysTestProgress" hidden aria-live="polite">
@@ -941,7 +941,7 @@
                     <div class="keys-step-body flow-step-body">
                       <div class="keys-workflow-keycap-zone sr-only" aria-hidden="true">
                         <div class="keys-step-row keys-step-row--hero">
-                          <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTarget" role="button" tabindex="-1" aria-label="点击配置识别" title=""></div>
+                          <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTarget" role="button" tabindex="-1" aria-label="点击录制识别按键" title=""></div>
                           <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTarget"></div>
                         </div>
                         <p class="keys-keycap-mode" id="keysTargetModeBadge" data-i18n="keysHeroModeIme">输入法识别键</p>
@@ -964,11 +964,6 @@
                               </nav>
                             </div>
                             <div class="keys-channel-pane-right" id="keysChannelPaneRight">
-                              <div class="keys-ime-strip-wrap" id="keysImeStripWrap">
-                                <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
-                                <p class="ime-preset-confirm" id="imePresetConfirmMapping" hidden></p>
-                                <p class="ime-preset-verify-hint" id="imePresetVerifyHint" hidden></p>
-                              </div>
                               <div class="keys-detail-card keys-detail-card--hero keys-ime-step keys-ime-step--start" id="keysCaptureHeroCard">
                                 <div class="keys-capture-keycap-zone keys-workflow-keycap-zone" id="keysCaptureKeycapZone">
                                   <div class="keys-ime-step-head">
@@ -985,6 +980,11 @@
                                   <p class="keys-keycap-mode" id="keysCaptureKeycapBadge" data-i18n="keysHeroModeIme" hidden aria-hidden="true">听写键</p>
                                   <p class="keys-keycap-hint" id="keysCaptureRecordHint" data-i18n="keysCaptureRecordHint">点键帽，按下你的听写快捷键。</p>
                                   <p class="keys-ime-stay" id="keysImeStay" hidden></p>
+                                </div>
+                                <div class="keys-ime-strip-wrap" id="keysImeStripWrap">
+                                  <div class="ime-preset-strip" id="imePresetStripMapping" data-ime-context="mapping"></div>
+                                  <p class="ime-preset-confirm" id="imePresetConfirmMapping" hidden></p>
+                                  <p class="ime-preset-verify-hint" id="imePresetVerifyHint" hidden></p>
                                 </div>
                                 <div class="keys-capture-recording-feedback-host" id="keysCaptureRecordingFeedbackHost"></div>
                                 <div class="keys-capture-record-probe-host" id="keysCaptureRecordProbeHost"></div>
@@ -1073,6 +1073,7 @@
                       <span class="app-target-card-badge keys-trigger-context-badge is-placeholder" id="triggerAppBadgeMapping" aria-hidden="true"></span>
                       <span class="habit-key-icon-host" aria-hidden="true"></span>
                       <span class="display-value" id="triggerView">未设置</span>
+                      <span class="keys-trigger-gesture-badge" id="triggerGestureBadge" hidden aria-hidden="true"></span>
                     </div>
                     <button class="habit-rerecord-link record-btn" id="btnRecordTrigger" type="button">
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -1143,6 +1144,26 @@
                 <div class="conflict-pill" id="conflictBanner" role="status"></div>
               </div>
             </div>
+          </div>
+          </div>
+            <aside class="keys-page-aside keys-scene-actions" id="keysSceneActionsPanel" hidden data-panel="dir" aria-label="本场景动作">
+              <div class="keys-scene-actions__head">
+                <div class="keys-scene-actions__titles">
+                  <div class="keys-scene-actions__app" id="keysSceneActionsApp" hidden>
+                    <img class="keys-scene-actions__app-ico" id="keysSceneActionsAppIcon" alt="" width="20" height="20" hidden />
+                    <span class="keys-scene-actions__app-name" id="keysSceneActionsAppName"></span>
+                  </div>
+                  <h3 class="keys-scene-actions__title" id="keysSceneActionsTitle" data-i18n="keysSceneActionsTitle">本场景动作</h3>
+                  <p class="keys-scene-actions__meta" id="keysSceneActionsMeta"></p>
+                </div>
+                <button type="button" class="keys-scene-actions__back" id="keysSceneActionsBack" hidden data-i18n="keysSceneActionsBack">收起</button>
+              </div>
+              <div class="keys-scene-actions__dir" id="keysSceneActionsDir" role="list"></div>
+              <div class="keys-scene-actions__detail" id="keysSceneActionsDetail" hidden>
+                <div class="keys-scene-actions__picks" id="keysSceneActionsPicks"></div>
+                <div class="keys-scene-actions__edit" id="keysSceneActionsEdit"></div>
+              </div>
+            </aside>
           </div>
           <div class="keys-page-foot">
             <button type="button" class="btn-test-send keys-page-test" id="btnTestSend" disabled>请先录好语音快捷键</button>
@@ -5127,6 +5148,7 @@
   <script src="js/features/agent/action-catalog-filter.js"></script>
   <script src="js/features/agent/action-binding-adapters.js"></script>
   <script src="js/features/mapping/keys-channel-command-picker.js"></script>
+  <script src="js/features/mapping/keys-scene-actions-panel.js"></script>
   <script src="js/features/agent/semantic-action-presets.js"></script>
   <script src="js/features/agent/action-nav.js"></script>
   <script src="js/features/agent/semantic-action-picker.js"></script>

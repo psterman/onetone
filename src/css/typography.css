@@ -151,15 +151,33 @@ html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .key
   margin: 0 auto;
 }
 
-html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body,
-html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body,
+html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body:not(.has-scene-panel),
+html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body:not(.has-scene-panel),
 html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .voice-page-body,
 html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .voice-page-body {
   grid-template-columns: 1fr;
 }
 
-html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-aside,
-html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-aside,
+/* Keep Keys B scene dock beside main (default window 760px — never mid-collapse). */
+html[data-font-scale="sm"] #settingsPanelKeys .keys-page-body.has-scene-panel,
+html[data-font-scale="md"] #settingsPanelKeys .keys-page-body.has-scene-panel,
+html[data-font-scale="lg"] #settingsPanelKeys .keys-page-body.has-scene-panel,
+html[data-font-scale="xl"] #settingsPanelKeys .keys-page-body.has-scene-panel,
+html[data-font-scale="sm"] #settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+html[data-font-scale="md"] #settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+html[data-font-scale="lg"] #settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+html[data-font-scale="xl"] #settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+html[data-font-scale="sm"] #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body,
+html[data-font-scale="md"] #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body,
+html[data-font-scale="lg"] #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body,
+html[data-font-scale="xl"] #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 240px) !important;
+  align-items: start;
+}
+
+html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-aside:not(.keys-scene-actions),
+html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-aside:not(.keys-scene-actions),
 html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .voice-page-aside,
 html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .voice-page-aside {
   position: static;

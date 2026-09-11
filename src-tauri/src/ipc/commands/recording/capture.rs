@@ -72,7 +72,11 @@ pub fn cmd_frontend_keydown(
     let is_target = mode == "target";
     let mapping_id = mapping_id.clone();
     if !is_target {
-        let physical = normalize_hardware_key(&key);
+        let physical = if let Some(rest) = key.strip_prefix("keyup:") {
+            format!("keyup:{}", normalize_hardware_key(rest))
+        } else {
+            normalize_hardware_key(&key)
+        };
         handle_hardware_record_key(state.inner(), &window, &physical);
         return;
     }

@@ -106,16 +106,28 @@
 
   function autoTriggerDisplay(lang, sourceKey){
     var src = String(sourceKey || '').trim();
-    if(src && src !== 'AutoTrigger') return friendlyKeyName(src, lang);
+    // RAlt as source is recognition/BT echo, not the real peripheral label.
+    if(src && src !== 'AutoTrigger' && src !== 'RAlt') return friendlyKeyName(src, lang);
     return lang === 'zh' ? '音量减 / 音量加' : 'Volume Down / Up';
+  }
+
+  function triggerGestureMark(mapping, lang){
+    if(!mapping) return '';
+    var mode=String(mapping.triggerMode||'tap').toLowerCase();
+    if(mode==='double') return '×2';
+    if(mode==='longpress'||mode==='hold') return lang==='en'?'hold':'按住';
+    return '';
   }
 
   function triggerDisplayLabel(mapping, lang){
     if(!mapping) return '';
     var trig = String(mapping.triggerKey || '').trim();
     if(!trig) return '';
-    if(trig === 'AutoTrigger') return autoTriggerDisplay(lang, mapping.sourceKey);
-    return friendlyKeyName(trig, lang);
+    var base = trig === 'AutoTrigger'
+      ? autoTriggerDisplay(lang, mapping.sourceKey)
+      : friendlyKeyName(trig, lang);
+    var mark = triggerGestureMark(mapping, lang);
+    return mark ? (base + ' ' + mark) : base;
   }
 
   function targetDisplayLabel(mapping, lang){
@@ -221,6 +233,7 @@
   global.OneToneKeyLabels = {
     friendlyKeyName: friendlyKeyName,
     triggerDisplayLabel: triggerDisplayLabel,
+    triggerGestureMark: triggerGestureMark,
     targetDisplayLabel: targetDisplayLabel,
     labelsForMapping: labelsForMapping,
     autoTriggerDisplay: autoTriggerDisplay,

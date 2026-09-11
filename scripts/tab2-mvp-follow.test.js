@@ -168,11 +168,23 @@ var applyRs = read('src-tauri/src/ipc/recording/apply.rs');
 assert.ok(/if is_volume_hotkey\(raw\)/.test(applyRs), 'volume still AutoTrigger');
 assert.ok(/else if is_peripheral_trigger_key\(raw\)/.test(applyRs), 'peripherals keep physical name');
 assert.ok(/AutoTrigger is volume-only/.test(applyRs), 'XButton not folded to AutoTrigger');
+assert.ok(/canon == "RAlt"/.test(applyRs) || /RAlt" \|\| raw_canon/.test(applyRs), 'RAlt trigger folds to AutoTrigger on disk');
+
+var configRsHeal = read('src-tauri/src/config.rs');
+assert.ok(
+  /Stuck RAlt trigger|trigger_key\) == "RAlt"/.test(configRsHeal),
+  'normalize heals stuck RAlt trigger → AutoTrigger'
+);
 
 var kbJs = read('src/js/core/app-keyboard.js');
 assert.ok(/auxclick/.test(kbJs), 'auxclick fallback for side buttons');
 assert.ok(/pointerdown/.test(kbJs), 'pointerdown fallback for side buttons');
 assert.ok(/mouseup/.test(kbJs), 'mouseup fallback for side buttons');
+assert.ok(/tryDismissSecondaryUi/.test(kbJs), 'Esc peels secondary UI before home');
+assert.ok(
+  /tryEscapeRecording[\s\S]*tryDismissSecondaryUi[\s\S]*closeDrawer/.test(kbJs),
+  'Esc order: cancel record → dismiss layer → close drawer'
+);
 
 var handlerRs = read('src-tauri/src/ipc/recording/hardware/handler.rs');
 assert.ok(/is_record_start_suppressed_mouse/.test(handlerRs), 'side buttons skip 900ms suppress');
@@ -248,11 +260,20 @@ assert.ok(/isRecordUiLeakKey/.test(recInput), 'Enter/Tab ignored during trigger 
 assert.ok(/sawVolumeToken\|\|isRecognitionKeyEcho/.test(recInput), 'RAlt does not overwrite real volume');
 assert.ok(/blob\.indexOf\('browser'\)/.test(recJs), 'BrowserForward without underscore is delegated');
 assert.ok(/k==='RAlt'/.test(recJs), 'RAlt trigger folds to AutoTrigger');
+assert.ok(/foldedRAlt/.test(recJs) && /backendCommitted\|\|foldedRAlt/.test(recJs), 'FE re-saves after RAlt fold');
+
+var labelsJs = read('src/js/key-labels.js');
+assert.ok(/src !== 'RAlt'/.test(labelsJs), 'AutoTrigger+RAlt source paints as volume, not 右 Alt');
+
+var pickerHero = read('src/js/features/mapping/keys-channel-command-picker.js');
+assert.ok(/dictationHero/.test(pickerHero), '02 dictation hero prefers live targetKey over stale binding');
 
 var probeJs = read('src/js/features/mapping/mapping-record-probe.js');
 assert.ok(/mvp_record_probe/.test(read('src-tauri/src/ipc/recording/hardware/guard.rs')), 'rust emits record probe');
 assert.ok(/type==='mvp_record_probe'/.test(recInput), 'frontend handles record probe');
 assert.ok(/OneToneRecordProbe/.test(probeJs), 'record probe panel module');
+assert.ok(/srcLabel|keysCaptureProbeSrcWv/.test(probeJs), 'probe log uses human-readable source labels');
+assert.ok(/kindLabel|keysCaptureProbeKindTrigger/.test(probeJs), 'probe log uses human-readable kind labels');
 
 var hotkeyRs = read('src-tauri/src/hotkey_win.rs');
 assert.ok(/xbutton_name_from_mouse_data/.test(hotkeyRs), 'side button mouseData hi/lo word');
@@ -286,6 +307,9 @@ assert.strictEqual(KL.karabinerAlias('XButton2'), 'pointing_button5');
 assert.strictEqual(KL.karabinerAlias('Volume_Down'), 'volume_decrement');
 assert.ok(KL.triggerDisplayLabel({ triggerKey: 'AutoTrigger', sourceKey: 'Volume_Down' }, 'zh').indexOf('音量减') >= 0, 'AutoTrigger shows volume direction');
 assert.ok(KL.triggerDisplayLabel({ triggerKey: 'AutoTrigger', sourceKey: 'Volume_Up' }, 'zh').indexOf('外设触发键') < 0, 'trigger chip has no 外设 prefix');
+assert.ok(KL.triggerDisplayLabel({ triggerKey: 'RShift', triggerMode: 'double' }, 'zh').indexOf('×2') >= 0, 'double mode shows ×2 on label');
+assert.ok(KL.triggerGestureMark({ triggerMode: 'double' }, 'zh') === '×2', 'gesture mark for double');
+assert.ok(KL.triggerGestureMark({ triggerMode: 'longpress' }, 'zh') === '按住', 'gesture mark for hold');
 assert.ok(KL.friendlyKeyName('Volume_Up', 'zh').indexOf('volume_increment') < 0, 'friendly name has no Karabiner suffix');
 assert.strictEqual(KL.friendlyKeyName('XButton2', 'zh'), '鼠标侧键 2');
 

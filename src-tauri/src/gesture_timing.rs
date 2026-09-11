@@ -2,6 +2,8 @@
 
 pub const RECORD_LONG_PRESS_MS: u64 = 400;
 pub const RECORD_DOUBLE_MS: u64 = 400;
+/// Ignore keydown echoes right after release (FE backup vs LL hook race).
+pub const RECORD_DOUBLE_MIN_GAP_MS: u64 = 40;
 
 pub const DEFAULT_RUNTIME_LONG_PRESS_MS: u32 = 500;
 pub const DEFAULT_RUNTIME_DOUBLE_MS: u32 = 400;

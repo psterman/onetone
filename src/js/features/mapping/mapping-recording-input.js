@@ -10,6 +10,90 @@
     if(probe&&probe.push) probe.push(src, kind, key, note);
   }
   var cap={pendingModifier:'',mods:{ctrl:false,shift:false,alt:false,meta:false},modSide:{ctrl:'',shift:'',alt:'',meta:''}};
+  // FE-side gesture for lone modifiers (Shift/Ctrl/…). Matches Rust RECORD_* timing.
+  // Needed because focused-window presses often never reach the LL hook, and the
+  // async cmd_frontend_keydown backup can arrive after GetAsyncKeyState already
+  // sees the key up — dropping the first press before a double can form.
+  var FE_DOUBLE_MS=400;
+  var FE_LONG_MS=400;
+  var FE_DOUBLE_MIN_GAP_MS=40;
+  var feModGesture={key:'', downAt:0, releaseAt:0, timer:null};
+  function clearFeModGesture(){
+    if(feModGesture.timer){
+      clearTimeout(feModGesture.timer);
+      feModGesture.timer=null;
+    }
+    feModGesture.key='';
+    feModGesture.downAt=0;
+    feModGesture.releaseAt=0;
+  }
+  function commitFeModGesture(key, mode){
+    clearFeModGesture();
+    if(Rec().mode()!=='trigger') return;
+    cap.pendingModifier='';
+    paintFeModGesturePreview(key, mode==='double'?'×2':(mode==='longpress'?'按住':''));
+    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(key);
+    probePush('fe','commit',key, mode||'tap');
+    Rec().finishTrigger(key, null, key, String(Date.now()), {
+      backendCommitted:false,
+      triggerMode:mode||'tap'
+    });
+  }
+  function paintFeModGesturePreview(key, mark){
+    var view=$('triggerView');
+    var badge=$('triggerGestureBadge');
+    var disp=$('triggerDisplay');
+    var label=hooks().friendlyKeyName(key);
+    if(view) view.textContent=mark? (label+' '+mark) : label;
+    if(badge){
+      badge.textContent=mark||'';
+      badge.hidden=!mark;
+      badge.setAttribute('aria-hidden',mark?'false':'true');
+    }
+    if(disp){
+      disp.classList.toggle('empty',!key);
+      disp.classList.toggle('is-gesture-double',mark==='×2');
+      disp.classList.toggle('is-gesture-hold',mark==='按住'||mark==='hold');
+    }
+  }
+  function onFeModKeyDown(key){
+    var now=Date.now();
+    if(feModGesture.releaseAt && feModGesture.key===key){
+      var gap=now-feModGesture.releaseAt;
+      if(gap>=FE_DOUBLE_MIN_GAP_MS && gap<=FE_DOUBLE_MS){
+        commitFeModGesture(key, 'double');
+        return true;
+      }
+    }
+    if(feModGesture.timer){
+      clearTimeout(feModGesture.timer);
+      feModGesture.timer=null;
+    }
+    feModGesture.key=key;
+    feModGesture.downAt=now;
+    feModGesture.releaseAt=0;
+    return false;
+  }
+  function onFeModKeyUp(key){
+    if(feModGesture.key!==key || !feModGesture.downAt) return false;
+    var now=Date.now();
+    var held=now-feModGesture.downAt;
+    if(held>=FE_LONG_MS){
+      commitFeModGesture(key, 'longpress');
+      return true;
+    }
+    feModGesture.releaseAt=now;
+    feModGesture.downAt=0;
+    paintFeModGesturePreview(key, '×2');
+    if(feModGesture.timer) clearTimeout(feModGesture.timer);
+    feModGesture.timer=setTimeout(function(){
+      feModGesture.timer=null;
+      if(feModGesture.key===key && feModGesture.releaseAt){
+        commitFeModGesture(key, 'tap');
+      }
+    }, FE_DOUBLE_MS);
+    return true;
+  }
 
   // Watchdog timer: if we dispatched a hardware capture but the backend
   // never confirms via mvp_key_captured within RECONCILE_GRACE_MS, surface
@@ -82,6 +166,16 @@
       hooks().pushLog('[record] cmd_frontend_keydown backup failed: '+String(err&&err.message||err||'unknown'));
       return false;
     });
+  }
+  // Serialize mod backups so keyup never races ahead of its keydown over IPC.
+  var modBackupChain=Promise.resolve();
+  function queueModifierGestureBackup(key){
+    const physical=String(key||'').trim();
+    if(!physical) return Promise.resolve(false);
+    modBackupChain=modBackupChain.then(function(){
+      return invokeFrontendKeydownBackup(physical);
+    }).catch(function(){ return false; });
+    return modBackupChain;
   }
   function retryPeripheralCaptureFromWatchdog(){
     if(Rec().mode()!=='trigger'&&Rec().mode()!=='agentBinding') return Promise.resolve(false);
@@ -288,6 +382,8 @@
     cap.pendingModifier='';
     cap.mods={ctrl:false,shift:false,alt:false,meta:false};
     cap.modSide={ctrl:'',shift:'',alt:'',meta:''};
+    modBackupChain=Promise.resolve();
+    clearFeModGesture();
   }
 
   function noteModifierSide(code){
@@ -383,7 +479,13 @@
     const standalone=normalizeStandaloneModifier(code);
     if($('triggerState')) $('triggerState').textContent=t('comboHint')+(standalone||'');
     hooks().pushLog(t('logWaitMain'));
-    if(standalone) Rec().updatePreview('trigger',standalone);
+    if(standalone){
+      Rec().updatePreview('trigger',standalone);
+      probePush('fe','keydown',standalone,'mod-gesture');
+      if(onFeModKeyDown(standalone)) return;
+      paintFeModGesturePreview(standalone, '');
+      queueModifierGestureBackup(standalone);
+    }
     return;
     }
     const main=normalizeKeyFromCode(code, key);
@@ -611,9 +713,16 @@
       cap.pendingModifier='';
       return;
     }
-    if(isTargetModifierToken(modifierName)) return;
-    if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(modifierName);
-    Rec().finishFrontendTrigger(modifierName);
+    // FE owns focused-window modifier gestures (tap / double / hold).
+    if($('triggerState')) $('triggerState').textContent=t('comboHint')+hooks().friendlyKeyName(modifierName);
+    probePush('fe','keyup',modifierName,'mod-gesture');
+    if(onFeModKeyUp(modifierName)){
+      cap.pendingModifier='';
+      queueModifierGestureBackup('keyup:'+modifierName);
+      return;
+    }
+    cap.pendingModifier='';
+    return;
     }
     else if(Rec().mode()==='agentBinding'){
     e.preventDefault();
@@ -783,7 +892,7 @@
     if(Date.now()<hooks().triggerPeripheralGuardUntil()&&isTargetModifierToken(key)&&key!=='AutoTrigger'){
     return true;
     }
-    Rec().finishTrigger(key, msg.source||null, msg.sourceKey||'', msg.sourceTime||'', {backendCommitted:true});
+    Rec().finishTrigger(key, msg.source||null, msg.sourceKey||'', msg.sourceTime||'', {backendCommitted:true, triggerMode:msg.triggerMode||''});
     }else if(Rec().applyBackendKeyCapture(msg)){
     Rec().clearMappingGuard();
     Rec().clearTimer();

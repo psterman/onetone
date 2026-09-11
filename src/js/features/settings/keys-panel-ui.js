@@ -572,29 +572,34 @@
     }
     var current=normalizeTriggerModeUi(m.triggerMode);
     var gate=holdGateFor(m);
-    var modes=[
-      {id:'tap',label:'keysTriggerModeTap',mode:'tap'},
-      {id:'double',label:'keysTriggerModeDouble',mode:'double'},
-      {id:'hold',label:'keysTriggerModeHold',mode:'longpress'}
-    ];
-    var html='<div class="keys-trigger-modes" role="radiogroup" aria-label="'+esc(t('triggerModeTitle'))+'">';
-    modes.forEach(function(opt){
-      var active=current===opt.id;
-      var gated=opt.id==='hold'&&!gate.ok;
-      var supported=opt.id==='hold'&&gate.ok;
-      var cls='keys-trigger-mode-seg'+(active?' is-active':'')+(gated?' is-gated':'')+(supported?' is-hold-supported':'');
-      var title='';
-      if(opt.id==='hold'){
-        if(gate.ok) title=t('keysHoldGateSupported');
-        else if(gate.reason==='pulse_only') title=t('keysHoldGatePulseOnly');
-        else title=t('keysHoldGateUntested');
+    var trig=(core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim()));
+    var hasKey=!!String(trig||'').trim();
+    var opt=current==='double'
+      ?{label:'keysTriggerModeDouble',desc:'keysTriggerModeDoubleDesc',tip:'keysTriggerModeDoubleTip'}
+      :(current==='hold'
+        ?{label:'keysTriggerModeHold',desc:'keysTriggerModeHoldDesc',tip:'keysTriggerModeHoldTip'}
+        :{label:'keysTriggerModeTap',desc:'keysTriggerModeTapDesc',tip:'keysTriggerModeTapTip'});
+    var descKey=opt.desc;
+    var title=t(opt.tip);
+    if(current==='hold'){
+      if(gate.ok) title=t('keysHoldGateSupported');
+      else if(gate.reason==='pulse_only'){
+        title=t('keysHoldGatePulseOnly');
+        descKey='keysTriggerModeHoldDescLocked';
+      }else{
+        title=t('keysHoldGateUntested');
+        descKey='keysTriggerModeHoldDescLocked';
       }
-      html+='<button type="button" class="'+cls+'" data-trigger-mode="'+esc(m.id)+'" data-mode="'+esc(opt.mode)+'" role="radio" aria-checked="'+(active?'true':'false')+'"'
-        +(gated?' aria-disabled="true"':'')
-        +(title?' title="'+esc(title)+'"':'')
-        +'>'+esc(t(opt.label))+'</button>';
-    });
-    html+='</div>';
+    }
+    var html='';
+    if(hasKey){
+      html+='<div class="keys-trigger-modes keys-trigger-modes--detected" role="status" aria-label="'+esc(t('keysWorkflowFooterTrigger'))+'">'
+        +'<div class="keys-trigger-mode-seg is-active is-readonly" aria-current="true"'
+        +(title?' title="'+esc(title)+'"':'')+'>'
+        +'<span class="keys-trigger-mode-seg__title">'+esc(t(opt.label))+'</span>'
+        +'<span class="keys-trigger-mode-seg__desc">'+esc(t(descKey))+'</span>'
+        +'</div></div>';
+    }
     if(current==='hold'&&!gate.ok){
       html+='<div class="keys-hold-risk-hint" role="status">'
         +'<p class="keys-hold-risk-text">'+esc(t('keysHoldLegacyRisk'))+'</p>'
@@ -606,6 +611,7 @@
     var sig=[
       m.id,
       current,
+      hasKey?'1':'0',
       gate.ok?'1':'0',
       String(gate.reason||''),
       html
@@ -635,10 +641,9 @@
       m=core()&&core().selected?core().selected():null;
     }
     var trig=core().editorTrigger?core().editorTrigger(m):((m&&m.triggerKey)||'').trim();
+    // Trigger conflict UI is same-app only (previewKeyConflict). Do not fall back to
+    // schemeHasConflict — that also covers target-chord collisions and confused users.
     var msg=previewKeyConflict('trigger',trig);
-    if(!msg&&m&&core().schemeHasConflict&&core().schemeHasConflict(m)){
-      msg=t('keysRecordConflictScheme');
-    }
     var mappingId=m&&m.id?String(m.id):'';
     if(!msg){
       return {
@@ -646,20 +651,32 @@
         hidden:true,
         mappingId:mappingId,
         msg:'',
+        peerId:'',
         sig:'empty'
       };
     }
+    var recKey=recommendedTriggerKey(m);
+    var recLabel=friendlyKey(recKey)||recKey||'';
+    var peer=findTriggerConflictPeer(m);
+    var peerName=peer?habitName(peer):'';
+    var recBtn=recLabel
+      ?t('keysConflictRecommend').replace('{key}',recLabel)
+      :t('keysConflictRecommendFallback');
+    var viewBtn=peerName
+      ?t('keysConflictViewPeer').replace('{habit}',peerName)
+      :t('keysConflictView');
     var html='<span class="keys-trigger-conflict-text">'+esc(msg)+'</span>'
       +'<div class="keys-trigger-conflict-actions">'
-      +'<button type="button" class="keys-trigger-conflict-btn" data-keys-conflict-recommend="1">'+esc(t('keysConflictRecommend'))+'</button>'
-      +'<button type="button" class="keys-trigger-conflict-btn" data-keys-conflict-view="1">'+esc(t('keysConflictView'))+'</button>'
+      +'<button type="button" class="keys-trigger-conflict-btn is-primary" data-keys-conflict-recommend="1" title="'+esc(t('keysConflictRecommendTip'))+'">'+esc(recBtn)+'</button>'
+      +'<button type="button" class="keys-trigger-conflict-btn" data-keys-conflict-view="1" title="'+esc(t('keysConflictViewTip'))+'">'+esc(viewBtn)+'</button>'
       +'</div>';
     return {
       html:html,
       hidden:false,
       mappingId:mappingId,
       msg:String(msg),
-      sig:[mappingId,msg,html].join('\0')
+      peerId:peer&&peer.id?String(peer.id):'',
+      sig:[mappingId,msg,recKey,peer&&peer.id||'',html].join('\0')
     };
   }
 
@@ -711,12 +728,41 @@
     if(hooks().save) hooks().save();
     if(hooks().renderEditor) hooks().renderEditor();
     render();
+    try{
+      if(global.OneToneApp&&typeof global.OneToneApp.toast==='function'){
+        global.OneToneApp.toast(
+          t('keysConflictRecommendDone').replace('{key}',friendlyKey(key)||key)
+        );
+      }
+    }catch(_){}
   }
 
   function viewConflicts(){
+    var m=core()&&core().selected?core().selected():null;
+    var peer=findTriggerConflictPeer(m);
+    if(peer&&peer.id&&core()&&typeof core().focus==='function'){
+      try{ core().focus(peer.id); }catch(_){}
+      try{
+        if(global.OneToneApp&&typeof global.OneToneApp.toast==='function'){
+          global.OneToneApp.toast(
+            t('keysConflictOpenedPeer').replace('{habit}',habitName(peer))
+          );
+        }
+      }catch(_){}
+      return;
+    }
+    // Fallback: buried count pill (legacy). Prefer toast when peer missing.
+    try{
+      if(global.OneToneApp&&typeof global.OneToneApp.toast==='function'){
+        global.OneToneApp.toast(t('keysConflictPeerMissing'));
+      }
+    }catch(_){}
     var banner=$('conflictBanner');
     var stash=$('keysCompatStash');
-    if(stash) stash.hidden=false;
+    if(stash){
+      stash.hidden=false;
+      stash.setAttribute('aria-hidden','false');
+    }
     if(banner){
       banner.classList.add('show');
       banner.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -922,16 +968,58 @@
     return String(key||'').trim();
   }
 
+  function mappingById(id){
+    id=String(id||'').trim();
+    if(!id||!core()) return null;
+    if(core().byId) return core().byId(id);
+    var mappings=(state().config&&state().config.mappings)||[];
+    for(var i=0;i<mappings.length;i++){
+      if(mappings[i]&&String(mappings[i].id)===id) return mappings[i];
+    }
+    return null;
+  }
+
+  /** Enabled peer that already owns this mapping's trigger key — same app only. */
+  function findTriggerConflictPeer(m){
+    if(!m||!core()) return null;
+    var trig=core().editorTrigger?core().editorTrigger(m):String(m.triggerKey||'').trim();
+    if(!trig) return null;
+    var norm=normalizeTriggerKey(trig);
+    if(!norm) return null;
+    var app=String(m.appTargetId||'').trim();
+    var mappings=(state().config&&state().config.mappings)||[];
+    for(var i=0;i<mappings.length;i++){
+      var other=mappings[i];
+      if(!other||other.id===m.id||!other.enabled) continue;
+      // Different apps (and app vs 通用) may share the same launch key.
+      if(String(other.appTargetId||'').trim()!==app) continue;
+      var otherTrig=core().editorTrigger?core().editorTrigger(other):String(other.triggerKey||'').trim();
+      if(otherTrig&&normalizeTriggerKey(otherTrig)===norm) return other;
+    }
+    if(typeof core().conflictsFor==='function'&&typeof core().otherConflictId==='function'){
+      var list=core().conflictsFor(m.id)||[];
+      for(var j=0;j<list.length;j++){
+        var oid=core().otherConflictId(list[j],m.id);
+        var peer=mappingById(oid);
+        if(peer&&peer.enabled&&String(peer.appTargetId||'').trim()===app) return peer;
+      }
+    }
+    return null;
+  }
+
   function previewKeyConflict(mode,key){
     key=String(key||'').trim();
     if(!key||!core()) return '';
     var m=core().selected();
     if(!m) return '';
     var norm=normalizeTriggerKey(key);
+    var app=String(m.appTargetId||'').trim();
     var mappings=(state().config&&state().config.mappings)||[];
     for(var i=0;i<mappings.length;i++){
       var other=mappings[i];
       if(!other||other.id===m.id||!other.enabled) continue;
+      // Different apps may share the same key — only same appTargetId collides.
+      if(String(other.appTargetId||'').trim()!==app) continue;
       var otherTrig=core().editorTrigger?core().editorTrigger(other):(other.triggerKey||'');
       var otherTgt=core().editorTarget?core().editorTarget(other):(other.targetKey||'');
       if(mode==='trigger'&&otherTrig&&normalizeTriggerKey(otherTrig)===norm){
@@ -940,9 +1028,6 @@
       if(mode==='target'&&otherTgt&&String(otherTgt).trim()===key){
         return t('keysRecordConflictTarget').replace('{habit}',habitName(other));
       }
-    }
-    if(mode==='trigger'&&core().schemeHasConflict&&core().schemeHasConflict(m)){
-      return t('keysRecordConflictScheme');
     }
     return '';
   }
@@ -1260,6 +1345,13 @@
     if(global.OneToneHabitScenarioContextBanner) global.OneToneHabitScenarioContextBanner.render();
     renderStatusChips();
     if(appRules()&&appRules().renderKeysAside) appRules().renderKeysAside();
+    var scenePanel=global.OneToneKeysSceneActionsPanel;
+    if(scenePanel&&typeof scenePanel.render==='function'){
+      try{
+        var m=core()&&core().selected?core().selected():null;
+        scenePanel.render(m);
+      }catch(_){}
+    }
   }
 
   function bindEvents(){

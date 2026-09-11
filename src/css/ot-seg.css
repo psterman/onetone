@@ -205,16 +205,38 @@ html[data-font-scale="xl"] .pref-segmented {
 #settingsPanelKeys .keys-trigger-mode-seg {
   flex: 1;
   min-width: 0;
-  padding: 7px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
   border: none;
   border-radius: var(--ot-ctrl-r-inner);
   background: transparent;
   font: inherit;
   font-size: var(--type-caption, 11px);
   font-weight: 600;
+  line-height: 1.2;
   color: var(--on-surface-muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.keys-trigger-mode-seg__title {
+  display: block;
+  font-weight: inherit;
+}
+
+.keys-trigger-mode-seg__desc {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.72;
+}
+
+.keys-trigger-mode-seg.is-active .keys-trigger-mode-seg__desc {
+  opacity: 0.88;
 }
 
 .keys-trigger-mode-seg.is-active,

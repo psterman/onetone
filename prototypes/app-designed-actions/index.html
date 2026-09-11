@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>本应用已设计动作 · 四通道原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #ffffff;
+      --wash: #f3f7fa;
+      --bg: #e8eef3;
+      --cyan: #00658f;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --ok: #15803d;
+      --ok-soft: #ecfdf5;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --amber: #c2410c;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --shadow: 0 18px 40px rgba(19, 32, 44, 0.1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(820px 360px at 8% -12%, rgba(0, 101, 143, 0.14), transparent 55%),
+        radial-gradient(640px 300px at 92% 0%, rgba(21, 128, 61, 0.08), transparent 50%),
+        var(--bg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+
+    .page {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 22px 16px 72px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 16px;
+      max-width: 58rem;
+    }
+    .hero-kicker {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cyan);
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(24px, 3.4vw, 34px);
+      font-weight: 750;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+    }
+    .hero p {
+      margin: 0;
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: var(--muted);
+      font-weight: 450;
+    }
+
+    .contract {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 14px 0 18px;
+    }
+    @media (max-width: 900px) {
+      .contract { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .contract article {
+      padding: 12px 12px 11px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+    .contract b {
+      display: block;
+      font-size: 12px;
+      font-weight: 750;
+      margin-bottom: 4px;
+    }
+    .contract span {
+      display: block;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: var(--muted);
+      font-weight: 450;
+    }
+    .contract .need { border-color: color-mix(in srgb, var(--warn) 35%, var(--line)); background: var(--warn-soft); }
+    .contract .have { border-color: color-mix(in srgb, var(--ok) 35%, var(--line)); background: var(--ok-soft); }
+    .contract .share { border-color: color-mix(in srgb, var(--cyan) 35%, var(--line)); background: var(--cyan-soft); }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; }
+    }
+
+    .rail {
+      position: sticky;
+      top: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .rail-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .rail-card h2 {
+      margin: 0;
+      padding: 12px 14px 8px;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .app-list, .ch-list {
+      display: grid;
+      gap: 4px;
+      padding: 0 8px 10px;
+    }
+    .app-btn, .ch-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 10px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .app-btn:hover, .ch-btn:hover { background: var(--wash); }
+    .app-btn.is-on, .ch-btn.is-on {
+      background: var(--cyan-soft);
+      box-shadow: inset 0 0 0 1px var(--cyan-bd);
+    }
+    .app-btn:focus-visible, .ch-btn:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 1px;
+    }
+    .app-ico {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #1b2430;
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .app-btn strong, .ch-btn strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .app-btn small, .ch-btn small {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 450;
+    }
+    .badge {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--wash);
+      color: var(--muted);
+    }
+    .badge.need { background: var(--warn-soft); color: var(--warn); }
+    .badge.have { background: var(--ok-soft); color: var(--ok); }
+    .badge.share { background: var(--cyan-soft); color: var(--cyan); }
+
+    .stage {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 640px;
+    }
+    .stage-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fafcfd, #f4f8fb);
+    }
+    .stage-bar .ctx {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .stage-bar h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 750;
+    }
+    .stage-bar p {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 450;
+    }
+    .stage-pill {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+    }
+    .stage-pill.need { border-color: #f0c9a0; background: var(--warn-soft); color: var(--warn); }
+    .stage-pill.have { border-color: #a7e3c0; background: var(--ok-soft); color: var(--ok); }
+    .stage-pill.share { border-color: var(--cyan-bd); background: var(--cyan-soft); color: var(--cyan); }
+
+    .stage-body { padding: 14px 16px 20px; display: grid; gap: 14px; }
+
+    .note {
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--wash);
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: var(--muted);
+      font-weight: 450;
+    }
+    .note strong { color: var(--ink); font-weight: 650; }
+    .note.need { background: var(--warn-soft); border-color: #f0c9a0; }
+    .note.have { background: var(--ok-soft); border-color: #a7e3c0; }
+    .note.share { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+
+    .section-h {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 2px 0 8px;
+    }
+    .section-h h3 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .section-h span {
+      font-size: 11px;
+      color: var(--faint);
+      font-family: var(--mono);
+      font-weight: 500;
+    }
+
+    .action-list {
+      display: grid;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .action-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(120px, 0.8fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 11px 12px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
+    .action-row:last-child { border-bottom: 0; }
+    .action-row:hover { background: var(--wash); }
+    .action-row.is-on {
+      background: var(--cyan-soft);
+      box-shadow: inset 3px 0 0 var(--cyan);
+    }
+    .action-row:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: -2px;
+    }
+    .action-row .name {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 650;
+    }
+    .action-row .effect {
+      display: block;
+      margin-top: 2px;
+      font-size: 11.5px;
+      color: var(--muted);
+      font-weight: 450;
+    }
+    .binds {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .chip {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: var(--wash);
+      color: var(--muted);
+      border: 1px solid var(--line);
+    }
+    .chip.on {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+      color: var(--cyan);
+    }
+    .chip.empty {
+      border-style: dashed;
+      color: var(--faint);
+    }
+    .cta {
+      font-size: 11.5px;
+      font-weight: 650;
+      color: var(--cyan);
+      white-space: nowrap;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(240px, 0.95fr);
+      gap: 12px;
+    }
+    @media (max-width: 780px) {
+      .split, .action-row {
+        grid-template-columns: 1fr;
+      }
+      .action-row .cta { justify-self: start; }
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .panel-h {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--wash);
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+    }
+    .panel-h b { font-size: 12px; font-weight: 750; }
+    .panel-h span { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+    .panel-b { padding: 10px 12px 12px; display: grid; gap: 8px; }
+
+    .pad-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 7px;
+    }
+    .keycap {
+      min-height: 58px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(180deg, #fbfdff, #eef3f7);
+      padding: 8px;
+      display: grid;
+      align-content: space-between;
+      cursor: pointer;
+    }
+    .keycap:hover { border-color: var(--cyan-bd); }
+    .keycap.is-on {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 2px rgba(0, 101, 143, 0.18);
+      background: var(--cyan-soft);
+    }
+    .keycap.is-empty {
+      border-style: dashed;
+      background: #fafbfc;
+      color: var(--faint);
+    }
+    .keycap b { font-size: 12px; font-weight: 650; }
+    .keycap span { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+    .gesture {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .gesture:hover { border-color: var(--cyan-bd); }
+    .gesture.is-on {
+      border-color: var(--cyan);
+      background: var(--cyan-soft);
+    }
+    .gesture-pic {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: var(--wash);
+      font-size: 18px;
+    }
+    .gesture strong { display: block; font-size: 13px; font-weight: 650; }
+    .gesture small { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
+    .gesture .map {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--cyan);
+      max-width: 12ch;
+      text-align: right;
+    }
+
+    .drawer {
+      border: 1px dashed var(--cyan-bd);
+      border-radius: 12px;
+      background: var(--cyan-soft);
+      padding: 10px 12px;
+      display: none;
+      gap: 8px;
+    }
+    .drawer.is-open { display: grid; }
+    .drawer h4 {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .drawer p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .drawer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .mini {
+      border: 1px solid var(--cyan-bd);
+      background: #fff;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 650;
+      color: var(--cyan);
+      cursor: pointer;
+    }
+    .mini:hover { background: #fff; box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04); }
+
+    .muted-list .action-row { opacity: 0.72; }
+    .muted-list .action-row:hover { opacity: 1; }
+
+    .foot {
+      margin-top: 16px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .foot a { color: var(--cyan); }
+    .foot code {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%) translateY(8px);
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(19, 32, 44, 0.92);
+      color: #fff;
+      font-size: 12.5px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      z-index: 40;
+    }
+    .toast.is-show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-kicker">Prototype · App designed actions</div>
+      <h1>一份设计目录，四种通道入口</h1>
+      <p>
+        选应用场景后：按键 / 语音补「本应用已设计动作」总览；Soft Pad 继续当权威编排面；
+        摄像头不另做总表，手势绑定时共用同一目录。
+      </p>
+    </header>
+
+    <div class="contract" aria-label="四通道配备策略">
+      <article class="need"><b>按键</b><span>缺总览 → 加只读设计目录，点行去绑键</span></article>
+      <article class="need"><b>语音</b><span>缺总览 → 加设计目录，点行去改说法</span></article>
+      <article class="have"><b>Soft Pad</b><span>已配备 → 布局即目录，只加摘要即可</span></article>
+      <article class="share"><b>摄像头</b><span>不平行总表 → picker 同源推荐 / 已绑</span></article>
+    </div>
+
+    <div class="shell">
+      <aside class="rail">
+        <div class="rail-card">
+          <h2>应用场景</h2>
+          <div class="app-list" id="appList" role="listbox" aria-label="应用场景"></div>
+        </div>
+        <div class="rail-card">
+          <h2>通道页</h2>
+          <div class="ch-list" id="chList" role="tablist" aria-label="通道"></div>
+        </div>
+      </aside>
+
+      <main class="stage" aria-live="polite">
+        <div class="stage-bar">
+          <div class="ctx">
+            <div class="app-ico" id="stageIco">Cu</div>
+            <div>
+              <h2 id="stageTitle">按键 · Cursor</h2>
+              <p id="stageSub">本应用已设计动作总览（原型）</p>
+            </div>
+          </div>
+          <div class="stage-pill need" id="stagePill">需补总览</div>
+        </div>
+        <div class="stage-body" id="stageBody"></div>
+      </main>
+    </div>
+
+    <p class="foot">
+      文件：<code>prototypes/app-designed-actions/index.html</code>
+      · <a href="./drawer-schemes.html">抽屉五方案对照</a>
+      · 总览矩阵：<a href="../channel-capability-map/index.html">能力接线矩阵</a>
+      · 绑定壳：<a href="../universal-action-shell/index.html">动作目录壳</a>
+    </p>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var APPS = [
+        { id: "cursor", name: "Cursor", ico: "Cu", pack: "Cursor 快捷 + Soft Pad pack" },
+        { id: "codex", name: "Codex", ico: "Cx", pack: "Codex Micro pack" },
+        { id: "claude", name: "Claude Code", ico: "Cl", pack: "Claude 能力槽" }
+      ];
+
+      var CHANNELS = [
+        { id: "keys", name: "按键", badge: "need", badgeText: "缺", tone: "need", pill: "需补总览", sub: "设计目录只读；绑键仍在本页" },
+        { id: "voice", name: "语音", badge: "need", badgeText: "缺", tone: "need", pill: "需补总览", sub: "设计目录 + 已有口令桥面" },
+        { id: "softPad", name: "Soft Pad", badge: "have", badgeText: "有", tone: "have", pill: "已配备", sub: "布局编辑器即权威动作面" },
+        { id: "camera", name: "摄像头", badge: "share", badgeText: "共享", tone: "share", pill: "共享目录", sub: "手势主职；动作用同源 picker" }
+      ];
+
+      /**
+       * Designed catalog per app (pack truth). Channel chips = already wired demo state.
+       * empty chip = designed but not bound on that channel yet.
+       */
+      var CATALOG = {
+        cursor: [
+          { id: "continue", name: "继续", effect: "让 Agent 接着干", designed: true, binds: { key: "", voice: "继续", softPad: "继续", camera: "" } },
+          { id: "send", name: "发送", effect: "提交当前输入", designed: true, binds: { key: "Enter", voice: "发送", softPad: "发送", camera: "" } },
+          { id: "newThread", name: "新会话", effect: "开一条干净对话", designed: true, binds: { key: "", voice: "新会话", softPad: "新会话", camera: "" } },
+          { id: "stop", name: "停止", effect: "停生成", designed: true, binds: { key: "Esc", voice: "取消", softPad: "停止", camera: "摇头" } },
+          { id: "focus", name: "聚焦 Composer", effect: "回到对话输入", designed: true, binds: { key: "Ctrl+L", voice: "", softPad: "召回", camera: "" } },
+          { id: "dictation", name: "开始听写", effect: "字进光标处", designed: true, binds: { key: "LAlt+R", voice: "说话", softPad: "麦", camera: "" } }
+        ],
+        codex: [
+          { id: "continue", name: "继续", effect: "让 Codex 接着干", designed: true, binds: { key: "", voice: "", softPad: "继续", camera: "点头" } },
+          { id: "send", name: "发送", effect: "提交并跑", designed: true, binds: { key: "Enter", voice: "发送", softPad: "发送", camera: "" } },
+          { id: "plan", name: "计划模式", effect: "切入 plan", designed: true, binds: { key: "", voice: "", softPad: "Plan", camera: "" } },
+          { id: "review", name: "打开审查", effect: "跳到审查入口", designed: true, binds: { key: "", voice: "", softPad: "审查", camera: "" } },
+          { id: "focus", name: "回到 Codex", effect: "聚焦窗口", designed: true, binds: { key: "", voice: "打开 Codex", softPad: "召回", camera: "五指" } },
+          { id: "dictation", name: "开始听写", effect: "听写进 Composer", designed: true, binds: { key: "LAlt+R", voice: "开始听写", softPad: "", camera: "" } }
+        ],
+        claude: [
+          { id: "continue", name: "继续", effect: "让 Claude 接着干", designed: true, binds: { key: "", voice: "", softPad: "继续", camera: "" } },
+          { id: "send", name: "发送", effect: "提交", designed: true, binds: { key: "", voice: "", softPad: "发送", camera: "OK 手" } },
+          { id: "newThread", name: "新对话", effect: "新开会话", designed: true, binds: { key: "", voice: "新对话", softPad: "新会话", camera: "" } },
+          { id: "approve", name: "批准工具", effect: "确认工具调用", designed: true, binds: { key: "", voice: "", softPad: "批准", camera: "点头" } },
+          { id: "dictation", name: "开始听写", effect: "听写进对话", designed: true, binds: { key: "LAlt+R", voice: "说话", softPad: "", camera: "" } }
+        ]
+      };
+
+      var GESTURES = [
+        { id: "away", name: "离席", icon: "🚶", hint: "人离开画面" },
+        { id: "return", name: "回席", icon: "👤", hint: "人回到画面" },
+        { id: "shake", name: "摇头", icon: "🙅", hint: "左右摇头" },
+        { id: "nod", name: "点头", icon: "🙆", hint: "上下点头" },
+        { id: "ok", name: "OK 手", icon: "👌", hint: "确认手势" },
+        { id: "palm", name: "五指张开", icon: "🖐", hint: "召回 / 聚焦" }
+      ];
+
+      var state = { app: "cursor", channel: "keys", selected: null, gesture: "shake", pickerOpen: false };
+      var toastTimer = 0;
+
+      function appMeta() {
+        return APPS.find(function (a) { return a.id === state.app; }) || APPS[0];
+      }
+      function chMeta() {
+        return CHANNELS.find(function (c) { return c.id === state.channel; }) || CHANNELS[0];
+      }
+      function catalog() {
+        return CATALOG[state.app] || [];
+      }
+      function esc(s) {
+        return String(s == null ? "" : s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+      function toast(msg) {
+        var el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.add("is-show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { el.classList.remove("is-show"); }, 1600);
+      }
+
+      function bindChips(row, emphasize) {
+        var labels = [
+          { k: "key", t: "键" },
+          { k: "voice", t: "说" },
+          { k: "softPad", t: "Pad" },
+          { k: "camera", t: "摄" }
+        ];
+        return labels.map(function (L) {
+          var v = row.binds[L.k];
+          var on = !!v;
+          var cls = "chip" + (on ? " on" : " empty");
+          if (emphasize && L.k === emphasize) cls += " on";
+          return '<span class="' + cls + '">' + esc(L.t) + (on ? " · " + esc(v) : " · —") + "</span>";
+        }).join("");
+      }
+
+      function designedListHtml(opts) {
+        opts = opts || {};
+        var rows = catalog();
+        var cta = opts.cta || "去绑定";
+        var emphasize = opts.emphasize || null;
+        var filterBound = opts.onlyBound || false;
+        var html = '<div class="action-list' + (opts.muted ? " muted-list" : "") + '">';
+        rows.forEach(function (row) {
+          var boundOnChannel = emphasize ? !!row.binds[emphasize] : true;
+          if (filterBound && !boundOnChannel) return;
+          var selected = state.selected === row.id;
+          var localCta = boundOnChannel && opts.boundCta ? opts.boundCta : cta;
+          html +=
+            '<button type="button" class="action-row' + (selected ? " is-on" : "") + '" data-action="' + esc(row.id) + '">' +
+            '<span><span class="name">' + esc(row.name) + '</span><span class="effect">' + esc(row.effect) + '</span></span>' +
+            '<span class="binds">' + bindChips(row, emphasize) + "</span>" +
+            '<span class="cta">' + esc(localCta) + "</span>" +
+            "</button>";
+        });
+        html += "</div>";
+        return html;
+      }
+
+      function renderKeys() {
+        var designed = catalog().length;
+        var keyed = catalog().filter(function (r) { return r.binds.key; }).length;
+        return (
+          '<div class="note need"><strong>提案：</strong>在「我录的键 / 口头指令」之上，加一块只读「本应用已设计 ' +
+          designed +
+          " 个动作」。已绑键 " +
+          keyed +
+          " 个；未绑的点行去录键。Cursor「软件自带」目录可并入此表。</div>" +
+          '<div class="section-h"><h3>本应用已设计动作</h3><span>NEW · designed catalog</span></div>' +
+          designedListHtml({ cta: "去绑键", boundCta: "改键", emphasize: "key" }) +
+          '<div class="section-h"><h3>已录的键（现状保留）</h3><span>configured only</span></div>' +
+          designedListHtml({ onlyBound: true, emphasize: "key", muted: true, cta: "编辑序列", boundCta: "编辑序列" })
+        );
+      }
+
+      function renderVoice() {
+        var phrased = catalog().filter(function (r) { return r.binds.voice; }).length;
+        return (
+          '<div class="note need"><strong>提案：</strong>听写仍是主职。桥面上方加设计目录：' +
+          catalog().length +
+          " 个动作里已有说法 " +
+          phrased +
+          " 个。点未配行 → 添加口令；已配行 → 改说法。</div>" +
+          '<div class="section-h"><h3>本应用已设计动作</h3><span>NEW · designed catalog</span></div>' +
+          designedListHtml({ cta: "加说法", boundCta: "改说法", emphasize: "voice" }) +
+          '<div class="section-h"><h3>按键口令桥（现状）</h3><span>phrase-only for bound</span></div>' +
+          designedListHtml({ onlyBound: true, emphasize: "voice", muted: true, cta: "改说法", boundCta: "改说法" })
+        );
+      }
+
+      function renderSoftPad() {
+        var rows = catalog();
+        var filled = rows.filter(function (r) { return r.binds.softPad; });
+        var keys = "";
+        filled.slice(0, 8).forEach(function (r) {
+          keys +=
+            '<button type="button" class="keycap' + (state.selected === r.id ? " is-on" : "") + '" data-action="' + esc(r.id) + '">' +
+            "<b>" + esc(r.name) + "</b>" +
+            "<span>" + esc(r.binds.softPad) + "</span>" +
+            "</button>";
+        });
+        for (var i = filled.length; i < 8; i++) {
+          keys += '<div class="keycap is-empty"><b>空位</b><span>点此选动作</span></div>';
+        }
+        return (
+          '<div class="note have"><strong>已配备：</strong>Soft Pad 布局编辑器就是设计动作面。不必再做平行总表；顶栏摘要即可。</div>' +
+          '<div class="split">' +
+          '<div class="panel">' +
+          '<div class="panel-h"><b>键位布局（权威）</b><span>' + filled.length + " / 8 已填</span></div>" +
+          '<div class="panel-b"><div class="pad-grid">' + keys + "</div></div>" +
+          "</div>" +
+          '<div class="panel">' +
+          '<div class="panel-h"><b>本场景 pack 摘要</b><span>可选</span></div>' +
+          '<div class="panel-b">' +
+          "<p class=\"note\" style=\"margin:0\">" + esc(appMeta().name) + " · " + esc(appMeta().pack) + " · 设计 " + rows.length + " 个动作，Pad 已落 " + filled.length + " 个。</p>" +
+          designedListHtml({ cta: "放到键帽", boundCta: "改键帽", emphasize: "softPad" }) +
+          "</div></div></div>"
+        );
+      }
+
+      function cameraMapForGesture(g) {
+        var hit = catalog().find(function (r) { return r.binds.camera === g.name || (g.id === "shake" && r.binds.camera === "摇头") || (g.id === "nod" && r.binds.camera === "点头") || (g.id === "ok" && r.binds.camera.indexOf("OK") === 0) || (g.id === "palm" && r.binds.camera.indexOf("五指") === 0); });
+        return hit || null;
+      }
+
+      function renderCamera() {
+        var g = GESTURES.find(function (x) { return x.id === state.gesture; }) || GESTURES[2];
+        var mapped = cameraMapForGesture(g);
+        var gestures = GESTURES.map(function (x) {
+          var m = cameraMapForGesture(x);
+          return (
+            '<button type="button" class="gesture' + (state.gesture === x.id ? " is-on" : "") + '" data-gesture="' + esc(x.id) + '">' +
+            '<span class="gesture-pic" aria-hidden="true">' + x.icon + "</span>" +
+            "<span><strong>" + esc(x.name) + "</strong><small>" + esc(x.hint) + "</small></span>" +
+            '<span class="map">' + esc(m ? m.name : "未绑动作") + "</span>" +
+            "</button>"
+          );
+        }).join("");
+
+        var picks = catalog()
+          .map(function (r) {
+            return '<button type="button" class="mini" data-pick="' + esc(r.id) + '">' + esc(r.name) + (r.binds.camera ? " · 已有" : "") + "</button>";
+          })
+          .join("");
+
+        return (
+          '<div class="note share"><strong>提案：</strong>摄像头页主职仍是「识别什么」。不摊整张应用动作总表；点手势后打开同源目录（pack 推荐置顶）。</div>' +
+          '<div class="split">' +
+          '<div>' +
+          '<div class="section-h"><h3>识别哪些动作</h3><span>gesture first</span></div>' +
+          '<div style="display:grid;gap:8px">' + gestures + "</div>" +
+          "</div>" +
+          '<div class="panel">' +
+          '<div class="panel-h"><b>绑定目标</b><span>' + esc(g.name) + "</span></div>" +
+          '<div class="panel-b">' +
+          "<p class=\"note\" style=\"margin:0\">当前：" +
+          (mapped ? "<strong>" + esc(mapped.name) + "</strong> · " + esc(mapped.effect) : "<strong>未绑定</strong> · 从本应用设计目录里选") +
+          "</p>" +
+          '<div class="drawer is-open" id="camPicker">' +
+          "<h4>同源设计目录（picker）</h4>" +
+          "<p>" + esc(appMeta().name) + " pack 可绑语义动作 · 发送类仍需二次确认</p>" +
+          '<div class="drawer-actions">' + picks + "</div>" +
+          "</div>" +
+          "</div></div></div>"
+        );
+      }
+
+      function renderStage() {
+        var app = appMeta();
+        var ch = chMeta();
+        document.getElementById("stageIco").textContent = app.ico;
+        document.getElementById("stageTitle").textContent = ch.name + " · " + app.name;
+        document.getElementById("stageSub").textContent = ch.sub;
+        var pill = document.getElementById("stagePill");
+        pill.textContent = ch.pill;
+        pill.className = "stage-pill " + ch.tone;
+
+        var body = document.getElementById("stageBody");
+        if (state.channel === "keys") body.innerHTML = renderKeys();
+        else if (state.channel === "voice") body.innerHTML = renderVoice();
+        else if (state.channel === "softPad") body.innerHTML = renderSoftPad();
+        else body.innerHTML = renderCamera();
+
+        body.querySelectorAll("[data-action]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            state.selected = btn.getAttribute("data-action");
+            var row = catalog().find(function (r) { return r.id === state.selected; });
+            var verb =
+              state.channel === "keys" ? "绑键" :
+              state.channel === "voice" ? "改说法" :
+              state.channel === "softPad" ? "放到键帽" : "绑定到手势";
+            toast((row ? row.name : "动作") + " → " + verb + "（原型）");
+            renderStage();
+          });
+        });
+        body.querySelectorAll("[data-gesture]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            state.gesture = btn.getAttribute("data-gesture");
+            state.pickerOpen = true;
+            renderStage();
+          });
+        });
+        body.querySelectorAll("[data-pick]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var id = btn.getAttribute("data-pick");
+            var row = catalog().find(function (r) { return r.id === id; });
+            var g = GESTURES.find(function (x) { return x.id === state.gesture; });
+            toast((g ? g.name : "手势") + " → " + (row ? row.name : id) + "（同源目录）");
+            state.selected = id;
+          });
+        });
+      }
+
+      function renderRail() {
+        var appList = document.getElementById("appList");
+        appList.innerHTML = APPS.map(function (a) {
+          return (
+            '<button type="button" class="app-btn' + (state.app === a.id ? " is-on" : "") + '" role="option" aria-selected="' + (state.app === a.id) + '" data-app="' + esc(a.id) + '">' +
+            '<span class="app-ico">' + esc(a.ico) + "</span>" +
+            "<span><strong>" + esc(a.name) + "</strong><small>" + esc(a.pack) + "</small></span>" +
+            "</button>"
+          );
+        }).join("");
+        appList.querySelectorAll("[data-app]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            state.app = btn.getAttribute("data-app");
+            state.selected = null;
+            renderRail();
+            renderStage();
+          });
+        });
+
+        var chList = document.getElementById("chList");
+        chList.innerHTML = CHANNELS.map(function (c) {
+          return (
+            '<button type="button" class="ch-btn' + (state.channel === c.id ? " is-on" : "") + '" role="tab" aria-selected="' + (state.channel === c.id) + '" data-ch="' + esc(c.id) + '">' +
+            "<span><strong>" + esc(c.name) + "</strong><small>" + esc(c.pill) + "</small></span>" +
+            '<span class="badge ' + esc(c.badge) + '">' + esc(c.badgeText) + "</span>" +
+            "</button>"
+          );
+        }).join("");
+        chList.querySelectorAll("[data-ch]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            state.channel = btn.getAttribute("data-ch");
+            state.selected = null;
+            renderRail();
+            renderStage();
+          });
+        });
+      }
+
+      renderRail();
+      renderStage();
+    })();
+  </script>
+</body>
+</html>

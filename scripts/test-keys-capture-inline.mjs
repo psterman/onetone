@@ -49,6 +49,12 @@ check(
 );
 check('no habit scheme strip', !targetChunk.includes('id="keysHabitSchemeStrip"'));
 check('ime strip in card', targetChunk.includes('id="keysImeStripWrap"'));
+check(
+  'ime strip below 听写键 keycap',
+  targetChunk.indexOf('id="keysCaptureKeycapZone"') < targetChunk.indexOf('id="keysImeStripWrap"') &&
+    targetChunk.indexOf('id="keysImeStripWrap"') < targetChunk.indexOf('id="keysCaptureKeyPanel"') &&
+    targetChunk.indexOf('id="keysCaptureHeroCard"') < targetChunk.indexOf('id="keysImeStripWrap"')
+);
 check('finish host inside target card', targetChunk.includes('id="keysFinishModeHost"'));
 check('picker not in popover', !popChunk.includes('id="keysChannelPicker"'));
 
@@ -68,9 +74,11 @@ check(
     !/#settingsPanelKeys \.keys-channel-tree[\s\S]{0,500}?justify-content:\s*space-between/.test(css)
 );
 check(
-  'ime strip spaced above hero card',
-  /#settingsPanelKeys \.keys-ime-strip-wrap[\s\S]{0,280}?padding:\s*4px 2px 10px/.test(css) &&
-    /#settingsPanelKeys \.keys-channel-pane-right\s*\{[^}]*gap:\s*14px/s.test(css)
+  'ime strip below keycap, centered',
+  /#settingsPanelKeys \.keys-ime-strip-wrap[\s\S]{0,400}?align-items:\s*center/.test(css) &&
+    /#settingsPanelKeys \.keys-ime-strip-wrap \.ime-preset-strip[\s\S]{0,200}?justify-content:\s*center/.test(
+      css
+    )
 );
 
 const pickerSrc = readFileSync(join(root, 'src/js/features/mapping/keys-channel-command-picker.js'), 'utf8');

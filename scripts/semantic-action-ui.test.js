@@ -121,7 +121,15 @@ assert.ok(adaptersSrc.indexOf('duplicate_primary_binding') >= 0);
     /function persistHeroCapture[\s\S]*?scheduleHubPaint/.test(pickerSrc),
     'persistHeroCapture must scheduleHubPaint so 我的习惯 tracks recognition pick'
   );
-  assert.ok(pickerSrc.indexOf('liveForHabit') >= 0, 'resolveHeroCapture must scope live selection to the habit');
+  assert.ok(
+    pickerSrc.indexOf('dictationHero') >= 0,
+    'dictation hero on 02 must prefer live targetKey (not stale LAlt+R binding)'
+  );
+  assert.ok(
+    pickerSrc.indexOf('未选中匹配行时识别键帽保持') >= 0 ||
+      /isDefaultCaptureHeroRef\(ref\) && activeTab === 'key'[\s\S]{0,200}badgeNotRecorded/.test(pickerSrc),
+    'custom-key tab must not fill recognition keycap until a match is selected'
+  );
   assert.ok(
     pickerSrc.indexOf('function resolveImeDictationCap') >= 0 &&
       pickerSrc.indexOf('never force IME by activeTab') >= 0,
@@ -165,6 +173,10 @@ assert.ok(adaptersSrc.indexOf('duplicate_primary_binding') >= 0);
     /source==='ime'[\s\S]*?never strip app scenario|source==='ime'[\s\S]*?keepApp/.test(applySrc) ||
       (applySrc.indexOf("source==='ime'") >= 0 && applySrc.indexOf('keepApp') >= 0),
     'IME apply must keep appTargetId'
+  );
+  assert.ok(
+    applySrc.indexOf("m.appTargetId=''") < 0 && applySrc.indexOf('m.appTargetId=""') < 0,
+    'picker/record apply must not wipe appTargetId'
   );
   assert.ok(
     recordingSrc.indexOf("mayFork=appId==='custom'") >= 0 ||

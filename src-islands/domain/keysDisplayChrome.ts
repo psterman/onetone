@@ -9,6 +9,8 @@ export interface KeysDisplayChromeModel {
   targetRaw: string;
   triggerRecording: boolean;
   targetRecording: boolean;
+  triggerGesture?: string;
+  triggerGestureMark?: string;
   traceText: string;
   traceShow: boolean;
   mappingId: string;
@@ -66,12 +68,22 @@ type KeyIconsApi = {
 export function applyKeysDisplayChromeHosts(model: KeysDisplayChromeModel): void {
   const triggerDisp = document.getElementById('triggerDisplay');
   const targetDisp = document.getElementById('targetDisplay');
+  const gestureBadge = document.getElementById('triggerGestureBadge');
   const icons = (window as unknown as { OneToneKeyIcons?: KeyIconsApi }).OneToneKeyIcons;
+  const gesture = String(model.triggerGesture || 'tap');
+  const mark = String(model.triggerGestureMark || '');
 
   if (triggerDisp) {
     triggerDisp.classList.toggle('empty', !!model.triggerEmpty);
     triggerDisp.classList.toggle('is-recording', !!model.triggerRecording);
+    triggerDisp.classList.toggle('is-gesture-double', gesture === 'double');
+    triggerDisp.classList.toggle('is-gesture-hold', gesture === 'hold');
     if (icons?.syncDisplayIcon) icons.syncDisplayIcon(triggerDisp, model.triggerRaw || '');
+  }
+  if (gestureBadge) {
+    gestureBadge.textContent = mark;
+    gestureBadge.hidden = !mark;
+    gestureBadge.setAttribute('aria-hidden', mark ? 'false' : 'true');
   }
   if (targetDisp) {
     targetDisp.classList.toggle('empty', !!model.targetEmpty);

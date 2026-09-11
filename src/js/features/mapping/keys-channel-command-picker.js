@@ -1805,10 +1805,22 @@
       refreshKeysCustomKeyMatchList();
       return;
     }
-    // Edit the selected match row; fall back to habit only if none picked.
+    // Edit the selected match row; when that match is applied as habit 02, edit the habit
+    // (runtime fires habit.targetActions).
     var editId = String(customKeyMatchEditId || '').trim();
-    var m = editId ? mappingById(editId) : null;
-    if (!m) m = mappingById(selectedMappingId());
+    var habit = mappingById(selectedMappingId());
+    var href = habit ? captureHeroRefForMapping(habit) : null;
+    var appliedAsRec =
+      !!(
+        habit &&
+        editId &&
+        href &&
+        href.kind === 'customKey' &&
+        String(href.bindingRef) === editId &&
+        String(habit.id) !== editId
+      );
+    var m = appliedAsRec ? habit : editId ? mappingById(editId) : null;
+    if (!m) m = habit;
     if (!m && global.OneToneMappingCore && global.OneToneMappingCore.selected) {
       try {
         m = global.OneToneMappingCore.selected();
@@ -1825,13 +1837,18 @@
     }
     var hint = document.getElementById('keysCaptureTargetActionsHint');
     if (hint) {
-      hint.textContent = t(
-        'keysCaptureSeqHint',
-        '按一次启动键后，下面的步骤会依次执行。'
-      );
+      hint.textContent = appliedAsRec
+        ? t(
+            'keysCaptureSeqHintAsRecognition',
+            '已替换听写快捷键。触发后按顺序执行下面的步骤。'
+          )
+        : t(
+            'keysCaptureSeqHint',
+            '按一次启动键后，下面的步骤会依次执行。'
+          );
     }
-    // Match launch key belongs to the row under edit (never the habit 01 key).
-    refreshKeysCustomKeyMatchLaunch(editId ? mappingById(editId) : null);
+    // Match launch key belongs to the library row (not when applied as habit 02).
+    refreshKeysCustomKeyMatchLaunch(appliedAsRec ? null : editId ? mappingById(editId) : null);
     if (m) {
       global.OneToneHomeTargetActions.render(container, m, {
         mode: 'picker',
@@ -1868,6 +1885,168 @@
     return raw;
   }
 
+  function looksLikeAutoChordLabel(lab) {
+    var s = String(lab || '').trim();
+    if (!s) return true;
+    if (/→|->/.test(s)) return true;
+    if (/^AutoTrigger\b/i.test(s)) return true;
+    return false;
+  }
+
+  function customKeyMatchDisplayName(m) {
+    var lab = String((m && m.label) || '').trim();
+    if (lab && !looksLikeAutoChordLabel(lab)) return lab;
+    return t('keysCustomKeyMatchTitle', '按键匹配');
+  }
+
+  function promptCustomKeyMatchName(current) {
+    var fallback = t('keysCustomKeyMatchTitle', '按键匹配');
+    var seed = String(current || '').trim();
+    if (!seed || looksLikeAutoChordLabel(seed)) seed = fallback;
+    var next = seed;
+    try {
+      if (typeof window !== 'undefined' && typeof window.prompt === 'function') {
+        var asked = window.prompt(
+          t('keysCustomKeyMatchNamePrompt', '给这条「我录的键」起个名字'),
+          seed
+        );
+        // WebView often returns null for unsupported prompt — keep seed, don't abort.
+        if (asked != null) next = String(asked).trim();
+      }
+    } catch (_) {}
+    if (!next) next = fallback;
+    return next;
+  }
+
+  function renameCustomKeyMatch(matchId, nextName) {
+    var mid = String(matchId || '').trim();
+    var m = mid ? mappingById(mid) : null;
+    if (!m) return false;
+    var next =
+      nextName != null
+        ? String(nextName || '').trim()
+        : promptCustomKeyMatchName(m.label);
+    if (next == null) return false;
+    if (!next) next = t('keysCustomKeyMatchTitle', '按键匹配');
+    m.label = next;
+    var persist = global.OneToneConfigPersist;
+    if (persist && typeof persist.save === 'function') {
+      try {
+        persist.save({ source: 'mapping' });
+      } catch (_) {}
+    }
+    refreshKeysCustomKeyMatchList();
+    applyHero();
+    syncRecognitionEditorPreview();
+    try {
+      var scene = global.OneToneKeysSceneActionsPanel;
+      if (scene && typeof scene.refresh === 'function') scene.refresh();
+    } catch (_) {}
+    return true;
+  }
+
+  function beginInlineRenameCustomKeyMatch(rowEl, matchId) {
+    var mid = String(matchId || '').trim();
+    var m = mid ? mappingById(mid) : null;
+    if (!m || !rowEl) return;
+    var trig = rowEl.querySelector('.keys-custom-key-match-trig');
+    if (!trig || trig.querySelector('input')) return;
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'keys-custom-key-match-rename';
+    input.value = customKeyMatchDisplayName(m);
+    input.setAttribute(
+      'aria-label',
+      t('keysCustomKeyMatchNamePrompt', '给这条「我录的键」起个名字')
+    );
+    input.maxLength = 48;
+    trig.textContent = '';
+    trig.appendChild(input);
+    var done = false;
+    var commit = function (save) {
+      if (done) return;
+      done = true;
+      if (save) renameCustomKeyMatch(mid, input.value);
+      else refreshKeysCustomKeyMatchList();
+    };
+    input.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+    input.addEventListener('mousedown', function (ev) {
+      ev.stopPropagation();
+    });
+    input.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        commit(true);
+      } else if (ev.key === 'Escape') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        commit(false);
+      }
+    });
+    input.addEventListener('blur', function () {
+      commit(true);
+    });
+    setTimeout(function () {
+      try {
+        input.focus();
+        input.select();
+      } catch (_) {}
+    }, 0);
+  }
+
+  function deleteCustomKeyMatch(matchId) {
+    var mid = String(matchId || '').trim();
+    if (!mid) return false;
+    var habit = mappingById(selectedMappingId());
+    // Never delete the habit row itself from this list affordance.
+    if (habit && String(habit.id) === mid) {
+      toast(t('keysCustomKeyMatchDeleteHabitBlocked', '请在习惯列表中删除该习惯'));
+      return false;
+    }
+    if (
+      habit &&
+      habit.captureHeroRef &&
+      String(habit.captureHeroRef.kind || '')
+        .trim()
+        .toLowerCase() === 'customkey' &&
+      String(habit.captureHeroRef.bindingRef || '') === mid
+    ) {
+      habit.captureHeroRef = null;
+      habit.targetActions = [];
+      habit.targetKey = habit.targetKey || '';
+    }
+    if (String(customKeyMatchEditId || '') === mid) customKeyMatchEditId = '';
+    var shared = global.OneToneHabitShared;
+    if (shared && typeof shared.deleteMapping === 'function') {
+      shared.deleteMapping(mid);
+    } else {
+      var cfg = config();
+      var maps = Array.isArray(cfg.mappings) ? cfg.mappings : [];
+      cfg.mappings = maps.filter(function (x) {
+        return x && String(x.id) !== mid;
+      });
+      var persist = global.OneToneConfigPersist;
+      if (persist && typeof persist.save === 'function') {
+        try {
+          persist.save({ source: 'mapping' });
+        } catch (_) {}
+      }
+    }
+    refreshKeysCustomKeyMatchList();
+    refreshKeysTargetActionsEditor();
+    applyHero();
+    syncRecognitionEditorPreview();
+    try {
+      var scene = global.OneToneKeysSceneActionsPanel;
+      if (scene && typeof scene.refresh === 'function') scene.refresh();
+    } catch (_) {}
+    return true;
+  }
+
   function targetActionsSummary(m) {
     var acts = null;
     if (global.OneToneHomeTargetActions && typeof global.OneToneHomeTargetActions.effective === 'function') {
@@ -1896,6 +2075,38 @@
     return parts.length ? parts.join(' · ') : t('keysCustomKeyMatchNoActions', '尚无动作');
   }
 
+  /** 我录的键 library row — not IME, and not the habit that only *applies* a match. */
+  function isCustomKeyMatchMapping(m, opts) {
+    if (!m || !m.id) return false;
+    var editId = opts && opts.editId != null ? String(opts.editId) : String(customKeyMatchEditId || '');
+    if (editId && String(m.id) === editId) return true;
+    var mid = String(m.id);
+    var ref = m.captureHeroRef;
+    var kindCustom =
+      ref &&
+      typeof ref === 'object' &&
+      String(ref.kind || '')
+        .trim()
+        .toLowerCase() === 'customkey';
+    if (kindCustom) {
+      var bref = String(ref.bindingRef || '').trim();
+      // Habit 02 apply points at another mapping — that shadow must not list as a match.
+      if (bref && bref !== mid) return false;
+      return true;
+    }
+    // Legacy library peers: disabled sequence row without kind yet.
+    if (
+      m.enabled === false &&
+      Array.isArray(m.targetActions) &&
+      m.targetActions.length > 0 &&
+      !String(m.imePresetId || '').trim() &&
+      !String(m.targetKey || '').trim()
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   function listCustomKeyMappingsForCurrentApp() {
     // Always key off the habit under edit (01 trigger), never a focused match row.
     var anchor = mappingById(selectedMappingId());
@@ -1907,14 +2118,8 @@
       var m = mappings[i];
       if (!m || !m.id) continue;
       if (String(m.appTargetId || '').trim() !== appId) continue;
-      var hasActs = Array.isArray(m.targetActions) && m.targetActions.length > 0;
-      var hasTriggerKey = !!String(m.triggerKey || '').trim();
-      var isEditing = editId && String(m.id) === editId;
-      // Skip bare habit row (no launch key, no sequence).
-      if (anchor && String(m.id) === String(anchor.id) && !hasActs && !hasTriggerKey) {
-        continue;
-      }
-      if (!hasActs && !hasTriggerKey && !isEditing) continue;
+      // 听写 / IME peers stay out — only sequence matches (+ in-progress edit).
+      if (!isCustomKeyMatchMapping(m, { editId: editId })) continue;
       out.push(m);
     }
     out.sort(function (a, b) {
@@ -1956,37 +2161,45 @@
       .map(function (m) {
         var id = String(m.id || '');
         var active = editId && id === editId ? ' is-active' : '';
+        var primary = customKeyMatchDisplayName(m);
+        var trig = String(m.triggerKey || '').trim();
+        var steps = targetActionsSummary(m);
+        var secondary = trig
+          ? friendlyTriggerLabel(trig) + ' · ' + steps
+          : steps;
+        var delLbl = t('keysCustomKeyMatchDelete', '删除');
         return (
-          '<button type="button" class="keys-custom-key-match-item' +
+          '<div class="keys-custom-key-match-item' +
           active +
           '" role="listitem" data-match-id="' +
           esc(id) +
+          '" title="' +
+          esc(t('keysCustomKeyMatchRenameHint', '双击改名')) +
+          '">' +
+          '<button type="button" class="keys-custom-key-match-main" data-match-select="' +
+          esc(id) +
           '">' +
           '<span class="keys-custom-key-match-trig">' +
-          esc(friendlyTriggerLabel(m.triggerKey)) +
+          esc(primary) +
           '</span>' +
           '<span class="keys-custom-key-match-sum">' +
-          esc(targetActionsSummary(m)) +
+          esc(secondary) +
           '</span>' +
-          '</button>'
+          '</button>' +
+          '<button type="button" class="keys-custom-key-match-del" data-match-del="' +
+          esc(id) +
+          '" title="' +
+          esc(delLbl) +
+          '" aria-label="' +
+          esc(delLbl) +
+          '">×</button>' +
+          '</div>'
         );
       })
       .join('');
   }
 
-  function createCustomKeyMatchMapping() {
-    var core = global.OneToneMappingCore;
-    var source = mappingById(selectedMappingId()) || (core && core.selected ? core.selected() : null);
-    if (!source || !core || typeof core.newMappingId !== 'function') {
-      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
-      return null;
-    }
-    try {
-      if (global.OneToneConfigPersist && global.OneToneConfigPersist.ensureConfig) {
-        global.OneToneConfigPersist.ensureConfig();
-      }
-    } catch (_) {}
-    var cfg = config();
+  function clonePeerMappingShell(source, core) {
     var copy;
     try {
       copy = JSON.parse(JSON.stringify(source));
@@ -2001,40 +2214,138 @@
     copy.sourceTime = '';
     copy.targetKey = '';
     copy.targetActions = [];
+    copy.agentBindings = [];
+    copy.imePresetId = '';
+    copy.voiceCommands = [];
+    copy.acousticVoiceCommands = [];
     copy.enabled = false;
-    copy.order = Array.isArray(cfg.mappings) ? cfg.mappings.length : 0;
-    copy.label = t('keysCustomKeyMatchTitle', '按键匹配');
+    copy.order = Array.isArray(config().mappings) ? config().mappings.length : 0;
     copy.updatedAt = Date.now();
     copy.lastUsedAt = 0;
     copy.useCount = 0;
-    if (core.ensureMappingExtras) {
-      try {
-        core.ensureMappingExtras(copy);
-      } catch (_) {}
-    }
-    if (
-      global.OneToneConfigPersist &&
-      global.OneToneConfigPersist.rekeyVoiceCommandsForMapping
-    ) {
-      try {
-        copy.voiceCommands = global.OneToneConfigPersist.rekeyVoiceCommandsForMapping(
-          copy.voiceCommands,
-          newId
-        );
-      } catch (_) {}
-    }
+    return copy;
+  }
+
+  function persistNewPeerMapping(copy) {
+    var cfg = config();
     cfg.mappings = Array.isArray(cfg.mappings) ? cfg.mappings : [];
     cfg.mappings.push(copy);
-    // Keep habit focused so 01 trigger stays; edit the new match in-place.
-    customKeyMatchEditId = newId;
     var persist = global.OneToneConfigPersist;
     if (persist && typeof persist.save === 'function') {
       try {
         persist.save({ source: 'mapping' });
       } catch (_) {}
     }
-    toast(t('keysCustomKeyMatchCreated', '已新建按键匹配，可在右侧添加动作'));
-    previewCustomKeyMatch(newId);
+  }
+
+  /** 我录的键：自定义序列匹配（与听写方式平行）。 */
+  function createCustomKeyMatchMapping() {
+    var core = global.OneToneMappingCore;
+    var source = mappingById(selectedMappingId()) || (core && core.selected ? core.selected() : null);
+    if (!source || !core || typeof core.newMappingId !== 'function') {
+      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      return null;
+    }
+    try {
+      if (global.OneToneConfigPersist && global.OneToneConfigPersist.ensureConfig) {
+        global.OneToneConfigPersist.ensureConfig();
+      }
+    } catch (_) {}
+    var copy = clonePeerMappingShell(source, core);
+    if (!copy) return null;
+    var newId = copy.id;
+    copy.captureHeroRef = {
+      channel: 'key',
+      bindingRef: newId,
+      actionId: '',
+      actionInstanceId: '',
+      kind: 'customKey'
+    };
+    var named = promptCustomKeyMatchName('');
+    copy.label = named;
+    if (core.ensureMappingExtras) {
+      try {
+        core.ensureMappingExtras(copy);
+      } catch (_) {}
+    }
+    persistNewPeerMapping(copy);
+    // Stay on habit — apply empty sequence as 02 (replaces IME) so user can build steps.
+    customKeyMatchEditId = newId;
+    setActiveTab('key', { skipHeroClear: true });
+    applyCustomKeyMatchAsRecognition(newId);
+    toast(
+      t(
+        'keysCustomKeyMatchCreated',
+        '已新建按键匹配。请编排系列动作；已替换当前听写快捷键'
+      )
+    );
+    return copy;
+  }
+
+  /** 侧栏新建动作：听写方式 peer（IME），不进「我录的键」。 */
+  function createVoiceInputMapping() {
+    var core = global.OneToneMappingCore;
+    var source = mappingById(selectedMappingId()) || (core && core.selected ? core.selected() : null);
+    if (!source || !core || typeof core.newMappingId !== 'function') {
+      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      return null;
+    }
+    try {
+      if (global.OneToneConfigPersist && global.OneToneConfigPersist.ensureConfig) {
+        global.OneToneConfigPersist.ensureConfig();
+      }
+    } catch (_) {}
+    var copy = clonePeerMappingShell(source, core);
+    if (!copy) return null;
+    var newId = copy.id;
+    copy.captureHeroRef = null;
+    copy.label = t('keysSceneActionsNewVoiceLabel', '语音输入');
+    if (core.ensureMappingExtras) {
+      try {
+        core.ensureMappingExtras(copy);
+      } catch (_) {}
+    }
+    // In-memory only until trigger/recognition is set — empty stubs must not
+    // stick in 本场景动作 / config after the user walks away.
+    var cfg = config();
+    var appId = String(copy.appTargetId || '').trim();
+    cfg.mappings = Array.isArray(cfg.mappings) ? cfg.mappings : [];
+    cfg.mappings = cfg.mappings.filter(function (m) {
+      if (!m || !m.id) return false;
+      if (String(m.id) === newId) return false;
+      if (String(m.appTargetId || '').trim() !== appId) return true;
+      if (String(m.triggerKey || '').trim()) return true;
+      if (String(m.imePresetId || '').trim()) return true;
+      if (String(m.targetKey || '').trim()) return true;
+      if (Array.isArray(m.targetActions) && m.targetActions.length) return true;
+      var ref = m.captureHeroRef;
+      if (
+        ref &&
+        typeof ref === 'object' &&
+        String(ref.kind || '')
+          .trim()
+          .toLowerCase() === 'customkey'
+      ) {
+        return true;
+      }
+      // Drop prior empty voice drafts for this app.
+      return false;
+    });
+    cfg.mappings.push(copy);
+    customKeyMatchEditId = '';
+    if (typeof core.focus === 'function') {
+      try {
+        core.focus(newId);
+      } catch (_) {}
+    } else if (global.OneToneState && global.OneToneState.state) {
+      global.OneToneState.state.selectedMappingId = newId;
+    }
+    toast(
+      t(
+        'keysVoiceInputMappingCreated',
+        '已新建语音输入。请录制 01 触发，再在 02 选择识别键或输入法'
+      )
+    );
     return copy;
   }
 
@@ -2043,14 +2354,53 @@
     var addBtn = document.getElementById('btnKeysCustomKeyMatchAdd');
     if (listEl && !listEl.__wiredMatchList) {
       listEl.__wiredMatchList = true;
+      // Defer select so dblclick can rename without the first click wiping the row DOM.
+      var selectTimer = null;
       listEl.addEventListener('click', function (ev) {
-        var btn = ev.target && ev.target.closest ? ev.target.closest('[data-match-id]') : null;
-        if (!btn) return;
-        var id = String(btn.getAttribute('data-match-id') || '').trim();
+        var delBtn =
+          ev.target && ev.target.closest ? ev.target.closest('[data-match-del]') : null;
+        if (delBtn && listEl.contains(delBtn)) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (selectTimer) {
+            clearTimeout(selectTimer);
+            selectTimer = null;
+          }
+          deleteCustomKeyMatch(delBtn.getAttribute('data-match-del'));
+          return;
+        }
+        if (ev.target && ev.target.closest && ev.target.closest('.keys-custom-key-match-rename')) {
+          return;
+        }
+        var btn =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-match-select],[data-match-id]')
+            : null;
+        if (!btn || !listEl.contains(btn)) return;
+        var id = String(
+          btn.getAttribute('data-match-select') || btn.getAttribute('data-match-id') || ''
+        ).trim();
         if (!id) return;
         ev.preventDefault();
-        // Do not core.focus(match) — that swaps 01 trigger onto the match row.
-        previewCustomKeyMatch(id);
+        if (selectTimer) clearTimeout(selectTimer);
+        selectTimer = setTimeout(function () {
+          selectTimer = null;
+          applyCustomKeyMatchAsRecognition(id);
+        }, 280);
+      });
+      listEl.addEventListener('dblclick', function (ev) {
+        if (ev.target && ev.target.closest && ev.target.closest('[data-match-del]')) return;
+        var row =
+          ev.target && ev.target.closest ? ev.target.closest('[data-match-id]') : null;
+        if (!row || !listEl.contains(row)) return;
+        var id = String(row.getAttribute('data-match-id') || '').trim();
+        if (!id) return;
+        ev.preventDefault();
+        if (selectTimer) {
+          clearTimeout(selectTimer);
+          selectTimer = null;
+        }
+        beginInlineRenameCustomKeyMatch(row, id);
       });
     }
     if (addBtn && !addBtn.__wiredMatchAdd) {
@@ -2164,20 +2514,56 @@
   }
 
   /**
-   * Custom-key match row → 02 recognition preview + sequence editor.
-   * Leaves selectedMappingId alone so 01 trigger stays on the habit.
+   * Apply a 我录的键 sequence as this habit's 02 recognition — replaces IME shortcut.
+   * Keeps habit focused (01 unchanged); copies targetActions onto the habit for runtime.
    */
-  function previewCustomKeyMatch(mappingId) {
-    var matchId = String(mappingId || '').trim();
-    if (!matchId || !mappingById(matchId)) return false;
-    var anchorId = String(selectedMappingId() || '').trim();
-    if (!anchorId || !mappingById(anchorId)) return false;
-    customKeyMatchEditId = matchId;
+  function applyCustomKeyMatchAsRecognition(matchId) {
+    var matchIdNorm = String(matchId || '').trim();
+    var match = matchIdNorm ? mappingById(matchIdNorm) : null;
+    var habit = mappingById(selectedMappingId());
+    if (!match || !habit) return false;
+    // Selecting the match row itself for editing its own peer — not a replace.
+    if (String(habit.id) === matchIdNorm) {
+      customKeyMatchEditId = matchIdNorm;
+      setSelection(
+        {
+          mappingId: habit.id,
+          sourceChannel: 'key',
+          sourceBindingRef: matchIdNorm,
+          actionId: '',
+          keyBindingRef: '',
+          actionInstanceId: '',
+          actionArgs: null
+        },
+        { skipRender: true }
+      );
+      refreshKeysTargetActionsEditor();
+      applyHero();
+      refreshKeysCustomKeyMatchList();
+      return true;
+    }
+    var acts = [];
+    try {
+      acts = Array.isArray(match.targetActions)
+        ? JSON.parse(JSON.stringify(match.targetActions))
+        : [];
+    } catch (_) {
+      acts = Array.isArray(match.targetActions) ? match.targetActions.slice() : [];
+    }
+    habit.targetActions = acts;
+    habit.targetKey = '';
+    habit.imePresetId = '';
+    try {
+      if (global.OneToneImePresets && global.OneToneImePresets.clearSelectedForManualRecord) {
+        global.OneToneImePresets.clearSelectedForManualRecord('mapping');
+      }
+    } catch (_) {}
+    customKeyMatchEditId = matchIdNorm;
     setSelection(
       {
-        mappingId: anchorId,
+        mappingId: String(habit.id),
         sourceChannel: 'key',
-        sourceBindingRef: matchId,
+        sourceBindingRef: matchIdNorm,
         actionId: '',
         keyBindingRef: '',
         actionInstanceId: '',
@@ -2185,12 +2571,48 @@
       },
       { skipRender: true }
     );
+    var persist = global.OneToneConfigPersist;
+    if (persist && typeof persist.save === 'function') {
+      try {
+        persist.save({ source: 'mapping' });
+      } catch (_) {}
+    }
     refreshKeysTargetActionsEditor();
+    applyHero();
+    syncRecognitionEditorPreview();
+    refreshKeysCustomKeyMatchList();
+    try {
+      var scene = global.OneToneKeysSceneActionsPanel;
+      if (scene && typeof scene.refresh === 'function') scene.refresh();
+    } catch (_) {}
+    toast(
+      t(
+        'keysCustomKeyMatchAppliedAsRecognition',
+        '已用「我录的键」替换听写快捷键 · 触发后执行该系列动作'
+      )
+    );
     return true;
   }
 
-  function resolveCustomKeyHeroCap(m, friendly) {
-    // Compact 02: "N步" — full sequence lives in the match detail card.
+  /**
+   * Custom-key match row → 02 recognition preview + sequence editor.
+   * Leaves selectedMappingId alone so 01 trigger stays on the habit.
+   */
+  function previewCustomKeyMatch(mappingId) {
+    return applyCustomKeyMatchAsRecognition(mappingId);
+  }
+
+  function resolveCustomKeyHeroCap(m, friendly, nameSource) {
+    // 02 keycap: named title first; sequence / chord as secondary.
+    friendly =
+      friendly ||
+      (global.__vp_mapping_core_hooks__ || {}).friendlyKeyName ||
+      function (k) {
+        return k;
+      };
+    var nameM = nameSource || m;
+    var name = customKeyMatchDisplayName(nameM);
+    var tgt = String((m && m.targetKey) || '').trim();
     var acts = null;
     if (global.OneToneHomeTargetActions && typeof global.OneToneHomeTargetActions.effective === 'function') {
       try {
@@ -2204,22 +2626,23 @@
       else acts = [];
     }
     var n = acts.length;
-    var empty = n === 0;
-    var primary = empty
-      ? t('keysCustomKeyMatchNoActions', '尚无动作')
-      : String(n) + t('keysCustomKeyMatchSteps', '步');
+    var secondary = n
+      ? targetActionsSummary(m)
+      : tgt
+        ? friendly(tgt) || tgt
+        : t('keysCustomKeyMatchPickHint', '请选择按键或功能');
     return {
       kind: 'customKey',
       active: true,
-      primaryLabel: primary,
-      secondaryLabel: friendlyTriggerLabel(m && m.triggerKey),
+      primaryLabel: name,
+      secondaryLabel: secondary,
       badge: t('keysChannelTabKey', '我录的键'),
-      chord: '',
-      empty: empty,
+      chord: tgt,
+      empty: !tgt && !n,
       channel: 'key',
       channelLabel: t('keysChannelTabKey', '我录的键'),
-      targetLabel: primary,
-      targetEmpty: empty,
+      targetLabel: name,
+      targetEmpty: !tgt && !n,
       actionId: '',
       sourceChannel: 'key',
       iconHtml: ''
@@ -2335,13 +2758,40 @@
     if (liveForHabit) ref = selectionToHeroRef(selection);
     else ref = captureHeroRefForMapping(m);
     if (ref.kind === 'customKey') {
-      var cm = mappingById(ref.bindingRef) || mappingById(customKeyMatchEditId) || m;
-      return resolveCustomKeyHeroCap(cm, friendly);
+      var cm = mappingById(ref.bindingRef) || mappingById(customKeyMatchEditId);
+      // Habit holds applied sequence (runtime); name comes from the match library row.
+      if (
+        m &&
+        cm &&
+        String(m.id) !== String(cm.id) &&
+        Array.isArray(m.targetActions) &&
+        m.targetActions.length
+      ) {
+        return resolveCustomKeyHeroCap(m, friendly, cm);
+      }
+      if (cm) return resolveCustomKeyHeroCap(cm, friendly, cm);
+      if (m && Array.isArray(m.targetActions) && m.targetActions.length) {
+        return resolveCustomKeyHeroCap(m, friendly, m);
+      }
     }
-    // On 自定义键 tab, never preview global dictation key for default hero.
+    // 我录的键：未选中匹配行时识别键帽保持「未设置」，不拿列表第一条/听写键冒充。
     if (isDefaultCaptureHeroRef(ref) && activeTab === 'key') {
-      var editM = mappingById(customKeyMatchEditId);
-      return resolveCustomKeyHeroCap(editM || m, friendly);
+      return {
+        kind: 'customKey',
+        active: false,
+        primaryLabel: t('badgeNotRecorded', '未设置'),
+        secondaryLabel: '',
+        badge: t('keysChannelTabKey', '我录的键'),
+        chord: '',
+        empty: true,
+        channel: 'key',
+        channelLabel: t('keysChannelTabKey', '我录的键'),
+        targetLabel: t('badgeNotRecorded', '未设置'),
+        targetEmpty: true,
+        actionId: '',
+        sourceChannel: 'key',
+        iconHtml: ''
+      };
     }
     if (isDefaultCaptureHeroRef(ref)) {
       var coreApi = global.OneToneMappingCore;
@@ -2384,6 +2834,19 @@
     var bindM = heroBindMappingForRef(ref, m);
     var keyB = findKeyBinding(bindM, ref.actionId, ref.actionInstanceId);
     var chord = keyB ? String(keyB.triggerBinding || '').trim() : '';
+    // 语音输入 / pushToTalk：02 与「本场景动作」同用听写键，不展示过期 agentBinding（如 LAlt+R）。
+    var aid = canonicalActionId(ref.actionId);
+    var dictationHero =
+      aid === 'input.start' ||
+      aid === 'startDictation' ||
+      String(ref.bindingRef || '').trim() === 'pushToTalk';
+    if (dictationHero) {
+      var liveTgt =
+        (global.OneToneMappingCore && global.OneToneMappingCore.editorTarget
+          ? String(global.OneToneMappingCore.editorTarget(m) || '').trim()
+          : '') || String((m && m.targetKey) || '').trim();
+      if (liveTgt) chord = liveTgt;
+    }
     // Compact 02: chord alone, or "待设置 · 短名" — no long "chord · full label".
     var shortName = String(label || '').trim();
     if (shortName.length > 14) shortName = shortName.slice(0, 14) + '…';
@@ -2392,7 +2855,7 @@
       : t('keysHeroActionNeedsKey', '待设置') + (shortName ? ' · ' + shortName : '');
     if (scopeTitle && !chord) primary = scopeTitle + (shortName ? ' · ' + shortName : '');
     var badge = channelTabLabel(ref.channel);
-    if (chord || ref.kind === 'action') {
+    if ((chord || ref.kind === 'action') && !dictationHero) {
       badge = badge + ' · ' + t('keysHeroModeAction', '动作快捷键');
     }
     return {
@@ -5363,15 +5826,12 @@
     activeTab = ch;
     openPanels[ch] = true;
     if (ch === 'key') {
-      // Rehydrate match-edit cursor from habit hero without stealing 01 focus.
+      // Rehydrate match-edit cursor only from a persisted customKey hero (explicit prior selection).
+      // Do not seed the first list row — recognition keycap stays unset until the user picks.
       var habit = mappingById(selectedMappingId());
       var href = habit ? captureHeroRefForMapping(habit) : null;
       if (href && href.kind === 'customKey' && href.bindingRef) {
         customKeyMatchEditId = String(href.bindingRef);
-      }
-      if (!customKeyMatchEditId || !mappingById(customKeyMatchEditId)) {
-        var seedRows = listCustomKeyMappingsForCurrentApp();
-        if (seedRows.length) customKeyMatchEditId = String(seedRows[0].id || '');
       }
     }
     if (ch === 'ime' && selection) {
@@ -5960,6 +6420,10 @@
       picker.hidden = keysStep() !== 'target' && !capturePopoverOpen;
       applyHero();
       renderPanelOnly();
+      try {
+        var sceneEarly = global.OneToneKeysSceneActionsPanel;
+        if (sceneEarly && typeof sceneEarly.refresh === 'function') sceneEarly.refresh();
+      } catch (_) {}
       return Promise.resolve();
     }
     picker.hidden = false;
@@ -5988,6 +6452,10 @@
       bindableMappingId = '';
       renderPanelOnly();
       applyHero();
+      try {
+        var sceneNoStore = global.OneToneKeysSceneActionsPanel;
+        if (sceneNoStore && typeof sceneNoStore.refresh === 'function') sceneNoStore.refresh();
+      } catch (_) {}
       return Promise.resolve();
     }
 
@@ -5995,6 +6463,10 @@
       if (token !== renderToken) return;
       renderPanelOnly();
       applyHero();
+      try {
+        var scenePanel = global.OneToneKeysSceneActionsPanel;
+        if (scenePanel && typeof scenePanel.refresh === 'function') scenePanel.refresh();
+      } catch (_) {}
     }
 
     function handleRefreshFailure(err) {
@@ -6080,20 +6552,6 @@
         var rec = global.OneToneMappingRecording;
         if (rec && rec.mode && rec.mode() !== 'none') return;
         if (hasSelection() && selection.sourceChannel && selection.sourceChannel !== 'key') {
-          recordSelected();
-          return;
-        }
-        var table = global.OneToneHabitKeyMappingTable;
-        if (table && table.startTargetRecordForKeysPanel) {
-          table.startTargetRecordForKeysPanel();
-        }
-      });
-      keyZone.addEventListener('contextmenu', function (ev) {
-        if (ev.target && ev.target.closest && ev.target.closest('button,a,input,label')) return;
-        var rec = global.OneToneMappingRecording;
-        if (rec && rec.mode && rec.mode() !== 'none') return;
-        ev.preventDefault();
-        if (hasSelection() && selection.sourceChannel && selection.sourceChannel !== 'key' && selection.actionId) {
           recordSelected();
           return;
         }
@@ -6360,7 +6818,29 @@
     setSelection: setSelection,
     selectFromSlotId: selectFromSlotId,
     selectedSlotId: selectedSlotId,
+    applyCustomKeyMatchAsRecognition: applyCustomKeyMatchAsRecognition,
     previewCustomKeyMatch: previewCustomKeyMatch,
+    createCustomKeyMatchMapping: createCustomKeyMatchMapping,
+    createVoiceInputMapping: createVoiceInputMapping,
+    isCustomKeyMatchMapping: isCustomKeyMatchMapping,
+    customKeyMatchDisplayName: customKeyMatchDisplayName,
+    renameCustomKeyMatch: renameCustomKeyMatch,
+    deleteCustomKeyMatch: deleteCustomKeyMatch,
+    listCustomKeyMappingsForCurrentApp: listCustomKeyMappingsForCurrentApp,
+    clearCustomKeyRecognition: function (m) {
+      m = m || mappingById(selectedMappingId());
+      if (!m) return;
+      customKeyMatchEditId = '';
+      var ref = captureHeroRefForMapping(m);
+      if (ref && ref.kind === 'customKey') {
+        persistHeroCapture(defaultCaptureHeroRef(), m.id);
+      }
+      clearSelection({ skipRender: true, skipHero: true, skipPersist: true });
+      applyHero();
+      syncRecognitionEditorPreview();
+      refreshKeysCustomKeyMatchList();
+      refreshKeysTargetActionsEditor();
+    },
     applyHero: applyHero,
     syncRecognitionEditorPreview: syncRecognitionEditorPreview,
     heroModel: heroModel,

@@ -64,19 +64,37 @@
     var keepApp=String(m.appTargetId||'').trim();
     if(source==='record'&&global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.applyRecordedVoiceShortcut){
       global.OneToneAppTargetPresets.applyRecordedVoiceShortcut(m,combo);
+      m.targetActions=[];
+      try{
+        if(m.captureHeroRef&&String(m.captureHeroRef.kind||'').toLowerCase()==='customkey'){
+          m.captureHeroRef=null;
+        }
+      }catch(_){}
       if(!presetId) syncImeSelection('');
     }else if(source==='ime'){
       // IME strip: set recognition key + preset; never strip app scenario into 通用设置.
+      // Replaces any prior「我录的键」sequence on this habit.
       m.imePresetId=presetId;
       m.targetKey=combo;
+      m.targetActions=[];
+      try{
+        var picker=global.OneToneKeysChannelCommandPicker;
+        if(picker&&typeof picker.clearCustomKeyRecognition==='function'){
+          picker.clearCustomKeyRecognition(m);
+        }else if(m.captureHeroRef&&String(m.captureHeroRef.kind||'').toLowerCase()==='customkey'){
+          m.captureHeroRef=null;
+        }
+      }catch(_){}
       if(keepApp&&global.OneToneAppTargetPresets&&global.OneToneAppTargetPresets.applyVoiceShortcutKeys){
         global.OneToneAppTargetPresets.applyVoiceShortcutKeys(combo,{skipConfirm:true});
       }
       syncImeSelection(presetId);
     }else{
+      // Manual picker: set recognition key only — never strip app scenario
+      // (same keepApp rule as IME). Clearing appTargetId hid 本场景动作 +
+      // emptied「我录的键」list filtered by app.
       m.imePresetId=presetId;
       m.targetKey=combo;
-      m.appTargetId='';
       syncImeSelection(presetId);
     }
     var trig=c.editorTrigger?c.editorTrigger(m):(m.triggerKey||'');
@@ -91,6 +109,10 @@
       if(h.toast&&source!=='record') h.toast(t(toastKeyForSource(source)));
       if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
     }
+    try{
+      var scene=global.OneToneKeysSceneActionsPanel;
+      if(scene&&typeof scene.refresh==='function') scene.refresh();
+    }catch(_){}
     return true;
   }
 

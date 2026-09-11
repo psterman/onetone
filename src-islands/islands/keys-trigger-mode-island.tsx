@@ -9,7 +9,7 @@ import {
 } from '../domain/keysTriggerMode';
 
 // P12b-6: #keysTriggerModeHost sync-push 岛。
-// HTML 来自 legacy buildKeysTriggerModeModel；交互仍走 data-trigger-mode / data-keys-hold-switch 委托。
+// HTML 来自 legacy buildKeysTriggerModeModel（只读「录到的用法」）；风险降级仍走 data-keys-hold-switch。
 
 const EMPTY: KeysTriggerModeModel = {
   modeHtml: '',

@@ -152,30 +152,34 @@
   function renderAdvanced(m,baseline,disabled){
     var modeUi=normalizeTriggerModeUi(m.triggerMode!=null?m.triggerMode:baseline.triggerMode);
     var gate=holdGateForMapping(m);
-    var modes=[
-      {id:'tap',label:'keysTriggerModeTap',mode:'tap'},
-      {id:'double',label:'keysTriggerModeDouble',mode:'double'},
-      {id:'hold',label:'keysTriggerModeHold',mode:'longpress'}
-    ];
-    var modeHtml='<div class="keys-trigger-modes habit-scenario-keys-modes" role="radiogroup">';
-    modes.forEach(function(opt){
-      var active=modeUi===opt.id;
-      var gated=opt.id==='hold'&&!gate.ok;
-      var supported=opt.id==='hold'&&gate.ok;
-      var title='';
-      if(opt.id==='hold'){
-        if(gate.ok) title=t('keysHoldGateSupported');
-        else if(gate.reason==='pulse_only') title=t('keysHoldGatePulseOnly');
-        else title=t('keysHoldGateUntested');
+    var trig=String(m.triggerKey!=null?m.triggerKey:(baseline.triggerKey||'')).trim();
+    var hasKey=!!trig;
+    var opt=modeUi==='double'
+      ?{label:'keysTriggerModeDouble',desc:'keysTriggerModeDoubleDesc',tip:'keysTriggerModeDoubleTip'}
+      :(modeUi==='hold'
+        ?{label:'keysTriggerModeHold',desc:'keysTriggerModeHoldDesc',tip:'keysTriggerModeHoldTip'}
+        :{label:'keysTriggerModeTap',desc:'keysTriggerModeTapDesc',tip:'keysTriggerModeTapTip'});
+    var descKey=opt.desc;
+    var title=t(opt.tip);
+    if(modeUi==='hold'){
+      if(gate.ok) title=t('keysHoldGateSupported');
+      else if(gate.reason==='pulse_only'){
+        title=t('keysHoldGatePulseOnly');
+        descKey='keysTriggerModeHoldDescLocked';
+      }else{
+        title=t('keysHoldGateUntested');
+        descKey='keysTriggerModeHoldDescLocked';
       }
-      modeHtml+='<button type="button" class="keys-trigger-mode-seg'+(active?' is-active':'')+(gated?' is-gated':'')+(supported?' is-hold-supported':'')+'"'
-        +' data-scenario-trigger-mode="'+esc(opt.mode)+'" role="radio" aria-checked="'+(active?'true':'false')+'"'
-        +(gated?' aria-disabled="true"':'')
-        +(title?' title="'+esc(title)+'"':'')
-        +(disabled?' disabled':'')+'>'
-        +esc(t(opt.label))+'</button>';
-    });
-    modeHtml+='</div>';
+    }
+    var modeHtml='';
+    if(hasKey){
+      modeHtml+='<div class="keys-trigger-modes habit-scenario-keys-modes keys-trigger-modes--detected" role="status" aria-label="'+esc(t('keysWorkflowFooterTrigger'))+'">'
+        +'<div class="keys-trigger-mode-seg is-active is-readonly" aria-current="true"'
+        +(title?' title="'+esc(title)+'"':'')+'>'
+        +'<span class="keys-trigger-mode-seg__title">'+esc(t(opt.label))+'</span>'
+        +'<span class="keys-trigger-mode-seg__desc">'+esc(t(descKey))+'</span>'
+        +'</div></div>';
+    }
     if(modeUi==='hold'&&!gate.ok){
       modeHtml+='<div class="keys-hold-risk-hint" role="status">'
         +'<p class="keys-hold-risk-text">'+esc(t('keysHoldLegacyRisk'))+'</p>'

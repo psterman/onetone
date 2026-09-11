@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>共享动作 Panel · 四通道一真相</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #fff;
+      --wash: #f3f7fa;
+      --bg: #e8eef3;
+      --cyan: #00658f;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --ok: #15803d;
+      --ok-soft: #ecfdf5;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --w-dir: 188px;
+      --w-detail: min(420px, 94vw);
+      --shadow: 0 18px 40px rgba(19, 32, 44, 0.1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(780px 340px at 10% -12%, rgba(0, 101, 143, 0.12), transparent 55%),
+        var(--bg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+
+    .page {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 18px 14px 48px;
+    }
+    .hero { max-width: 56rem; margin-bottom: 12px; }
+    .hero-kicker {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cyan);
+    }
+    .hero h1 {
+      margin: 6px 0;
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 750;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+    }
+    .hero p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+    .hero a { color: var(--cyan); font-weight: 650; text-decoration: none; }
+    .hero a:hover { text-decoration: underline; }
+
+    .thesis {
+      margin: 12px 0 14px;
+      padding: 11px 13px;
+      border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--ok) 35%, var(--line));
+      background: var(--ok-soft);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--ink);
+    }
+    .thesis strong { color: var(--ok); }
+
+    .shell {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 640px;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fafcfd, #f4f8fb);
+    }
+    .app {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .app-ico {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #1b2430;
+      color: #fff;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .app h2 { margin: 0; font-size: 14px; font-weight: 750; }
+    .app p { margin: 2px 0 0; font-size: 11.5px; color: var(--muted); }
+    .truth {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: var(--ok-soft);
+      border: 1px solid color-mix(in srgb, var(--ok) 30%, var(--line));
+      color: var(--ok);
+    }
+
+    .channels {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+    .ch {
+      border: 0;
+      border-right: 1px solid var(--line);
+      background: transparent;
+      padding: 11px 10px;
+      font: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+    .ch:last-child { border-right: 0; }
+    .ch:hover { background: var(--wash); }
+    .ch.is-on {
+      background: var(--cyan-soft);
+      box-shadow: inset 0 -2px 0 var(--cyan);
+    }
+    .ch:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: -2px;
+    }
+    .ch b {
+      display: block;
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .ch span {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 450;
+    }
+    .ch.is-on span { color: var(--cyan); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      min-height: 520px;
+    }
+    .main {
+      padding: 14px;
+      transition: margin-right 260ms var(--ease);
+      min-width: 0;
+    }
+    .shell[data-panel="dir"] .main { margin-right: var(--w-dir); }
+    .shell[data-panel="detail"] .main { margin-right: var(--w-detail); }
+
+    .entry {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: var(--wash);
+      margin-bottom: 10px;
+    }
+    .entry b { display: block; font-size: 13px; margin-bottom: 4px; }
+    .entry p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .entry .open {
+      margin-top: 10px;
+      border: 1px solid var(--cyan-bd);
+      background: var(--cyan-soft);
+      color: var(--cyan);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .fake-rows, .gesture-rows { display: grid; gap: 6px; }
+    .fake-row, .gesture {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      font-size: 12.5px;
+    }
+    .fake-row em, .gesture em {
+      font-style: normal;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--faint);
+    }
+    .gesture {
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+    }
+    .gesture:hover { border-color: var(--cyan-bd); }
+    .gesture .map { color: var(--cyan); font-weight: 650; font-family: var(--mono); font-size: 11px; }
+    .pad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+    .keycap {
+      min-height: 56px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(180deg, #fbfdff, #eef3f7);
+      padding: 8px;
+      display: grid;
+      align-content: space-between;
+      cursor: pointer;
+      font: inherit;
+      text-align: left;
+      color: inherit;
+    }
+    .keycap:hover { border-color: var(--cyan-bd); }
+    .keycap b { font-size: 12px; font-weight: 650; }
+    .keycap span { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+    .keycap.is-empty {
+      border-style: dashed;
+      color: var(--faint);
+      background: #fafbfc;
+    }
+
+    /* Shared panel — ONE instance */
+    .panel {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: var(--w-dir);
+      border-left: 1px solid var(--line);
+      background: #f7fafc;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+      z-index: 20;
+      transition: width 260ms var(--ease), background 200ms ease, box-shadow 200ms ease;
+    }
+    .shell[data-panel="detail"] .panel {
+      width: var(--w-detail);
+      background: #fff;
+      box-shadow: -12px 0 28px rgba(19, 32, 44, 0.06);
+    }
+
+    .p-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      flex: 0 0 auto;
+    }
+    .p-head h3 { margin: 0; font-size: 13px; font-weight: 750; }
+    .shell[data-panel="detail"] .p-head h3 { font-size: 15px; }
+    .p-head .sub {
+      margin: 3px 0 0;
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .ch-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 6px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--cyan-soft);
+      border: 1px solid var(--cyan-bd);
+      color: var(--cyan);
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .back {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 6px 9px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--cyan);
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    .shell[data-panel="dir"] .back { display: none; }
+    .back:hover { background: var(--cyan-soft); }
+
+    .dir-hint {
+      margin: 0;
+      padding: 8px 12px 0;
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .shell[data-panel="detail"] .dir-hint { display: none; }
+
+    .dir-list {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 8px;
+      display: grid;
+      gap: 5px;
+      align-content: start;
+    }
+    .shell[data-panel="detail"] .dir-list { display: none; }
+
+    .dir-item {
+      display: grid;
+      gap: 4px;
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 9px 10px;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
+    .dir-item:hover { border-color: var(--cyan-bd); }
+    .dir-item .n { font-size: 13px; font-weight: 650; }
+    .dir-item .focus-bind {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-weight: 600;
+    }
+    .dir-item .focus-bind.ok { color: var(--ok); }
+    .dir-item .focus-bind.miss { color: var(--warn); }
+    .mini-binds {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+    }
+    .mchip {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      font-weight: 600;
+      padding: 2px 5px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--wash);
+      color: var(--faint);
+    }
+    .mchip.on {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+      color: var(--cyan);
+    }
+    .mchip.cur {
+      box-shadow: 0 0 0 1px var(--cyan);
+      background: #d7eef8;
+      color: var(--cyan);
+      border-color: var(--cyan);
+    }
+    .dir-item .go {
+      font-size: 11px;
+      font-weight: 650;
+      color: var(--cyan);
+    }
+
+    .tools {
+      display: none;
+      padding: 8px 12px 0;
+      gap: 6px;
+    }
+    .shell[data-panel="detail"] .tools { display: grid; }
+    .tools input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 13px;
+    }
+    .tools input:focus {
+      outline: none;
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(0, 101, 143, 0.15);
+    }
+
+    .detail-list {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 6px 8px;
+      gap: 4px;
+      align-content: start;
+    }
+    .shell[data-panel="detail"] .detail-list { display: grid; }
+
+    .d-row {
+      display: grid;
+      gap: 6px;
+      width: 100%;
+      text-align: left;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 10px;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
+    .d-row:hover { background: var(--wash); }
+    .d-row.is-on {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+    }
+    .d-row .n { font-size: 13.5px; font-weight: 650; }
+    .d-row .e { margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+    .binds {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .chip {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--wash);
+      color: var(--muted);
+    }
+    .chip.on {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+      color: var(--cyan);
+    }
+    .chip.empty {
+      border-style: dashed;
+      color: var(--faint);
+    }
+    .chip.cur {
+      box-shadow: 0 0 0 1.5px var(--cyan);
+      background: #d7eef8;
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .editor {
+      display: none;
+      border-top: 1px solid var(--line);
+      padding: 10px 12px 12px;
+      background: #f7fafc;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .shell[data-panel="detail"] .editor { display: grid; }
+    .editor h4 { margin: 0; font-size: 13px; font-weight: 750; }
+    .editor .desc { margin: 0; font-size: 12px; color: var(--muted); }
+    .sync-note {
+      margin: 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: var(--warn-soft);
+      border: 1px solid #f0c9a0;
+      font-size: 11.5px;
+      line-height: 1.4;
+      color: var(--ink);
+    }
+    .edit-grid { display: grid; gap: 6px; }
+    .edit-grid label {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+    .edit-grid label.is-cur {
+      background: var(--cyan-soft);
+      border-radius: 8px;
+      padding: 4px 6px;
+      margin: 0 -6px;
+    }
+    .edit-grid input {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font: inherit;
+      font-size: 12px;
+      font-family: var(--mono);
+    }
+    .edit-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .edit-actions button {
+      border: 1px solid var(--cyan-bd);
+      background: #fff;
+      color: var(--cyan);
+      border-radius: 10px;
+      padding: 7px 11px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .edit-actions .primary {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #fff;
+    }
+
+    .foot {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    @media (max-width: 800px) {
+      .foot { grid-template-columns: 1fr; }
+      .channels { grid-template-columns: 1fr 1fr; }
+    }
+    .foot article {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 12px;
+      background: rgba(255, 255, 255, 0.78);
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .foot b { display: block; color: var(--ink); margin-bottom: 4px; }
+    .foot .rec {
+      border-color: color-mix(in srgb, var(--ok) 35%, var(--line));
+      background: var(--ok-soft);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%) translateY(8px);
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(19, 32, 44, 0.92);
+      color: #fff;
+      font-size: 12.5px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      z-index: 50;
+    }
+    .toast.is-show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-kicker">Prototype · Shared action panel</div>
+      <h1>一份动作真相 · 四个通道入口</h1>
+      <p>
+        按键 / 语音 / Soft Pad / 摄像头共用右侧<strong>同一个</strong> panel（目录 → 详情）。
+        改「发送」的按键后，切到语音/Pad/摄，同一条记录立刻更新——没有四份脏副本。
+        <strong>若觉得抽屉太重：</strong><a href="./shared-panel-lite.html">轻量版（推荐）</a>
+        ·
+        <a href="./b-two-states.html">B 两态</a>
+      </p>
+    </header>
+
+    <div class="thesis">
+      <strong>策略：</strong>DOM 里只有一个 <code>#actionPanel</code>。通道页只换左边主职与「当前通道高亮」；
+      6 个动作 × 4 绑定写在同一数组。保存后任意通道重绘都读这份数据。
+    </div>
+
+    <div class="shell" id="shell" data-channel="key" data-panel="dir">
+      <div class="top">
+        <div class="app">
+          <div class="app-ico">Cu</div>
+          <div>
+            <h2>Cursor 应用场景</h2>
+            <p id="topHint">当前在按键页 · 右侧是共享动作 panel</p>
+          </div>
+        </div>
+        <div class="truth">1 panel · 1 source</div>
+      </div>
+
+      <div class="channels" role="tablist" aria-label="通道">
+        <button type="button" class="ch is-on" data-ch="key" role="tab" aria-selected="true">
+          <b>按键</b><span>入口强调「键」列</span>
+        </button>
+        <button type="button" class="ch" data-ch="voice" role="tab" aria-selected="false">
+          <b>语音</b><span>入口强调「说」列</span>
+        </button>
+        <button type="button" class="ch" data-ch="softPad" role="tab" aria-selected="false">
+          <b>Soft Pad</b><span>键帽映射同一动作</span>
+        </button>
+        <button type="button" class="ch" data-ch="camera" role="tab" aria-selected="false">
+          <b>摄像头</b><span>手势绑进同一目录</span>
+        </button>
+      </div>
+
+      <div class="workspace">
+        <div class="main" id="main"></div>
+      </div>
+
+      <!-- THE shared panel: only one -->
+      <aside class="panel" id="actionPanel" aria-label="本场景动作（共享）">
+        <div class="p-head">
+          <div>
+            <h3>本场景动作</h3>
+            <p class="sub" id="panelSub">共享目录 · 点一项修改</p>
+            <div class="ch-badge" id="chBadge">当前通道 · 按键</div>
+          </div>
+          <button type="button" class="back" id="btnBack">收起</button>
+        </div>
+        <p class="dir-hint" id="dirHint">粗框芯片 = 当前通道。改任一通道，四个入口看到的是同一条。</p>
+        <div class="dir-list" id="dirList"></div>
+        <div class="tools">
+          <input type="search" id="search" placeholder="搜动作…" autocomplete="off" />
+        </div>
+        <div class="detail-list" id="detailList"></div>
+        <div class="editor" id="editor"></div>
+      </aside>
+    </div>
+
+    <div class="foot">
+      <article class="rec">
+        <b>一个 panel</b>
+        切通道不卸载、不换第二份列表。只改「当前通道」高亮与左边主职。
+      </article>
+      <article>
+        <b>试脏状态</b>
+        详情里改「发送」按键 → 切到语音/Pad/摄 → 看芯片是否一起变。
+      </article>
+      <article>
+        <b>摄像头</b>
+        仍先选手势，再打开<strong>同一个</strong> panel 选动作；不是另一套目录。
+      </article>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      /** Single source of truth — 6 actions × 4 channel binds */
+      var ACTIONS = [
+        { id: "send", name: "发送", effect: "提交当前输入", binds: { key: "Enter", voice: "发送", softPad: "发送", camera: "" } },
+        { id: "continue", name: "继续", effect: "让 Agent 接着干", binds: { key: "", voice: "继续", softPad: "继续", camera: "点头" } },
+        { id: "dictation", name: "开始听写", effect: "字进光标处", binds: { key: "LAlt+R", voice: "说话", softPad: "麦", camera: "" } },
+        { id: "stop", name: "停止", effect: "停生成", binds: { key: "Esc", voice: "取消", softPad: "停止", camera: "摇头" } },
+        { id: "newThread", name: "新会话", effect: "开一条干净对话", binds: { key: "", voice: "新会话", softPad: "新会话", camera: "" } },
+        { id: "focus", name: "聚焦 Composer", effect: "回到对话输入", binds: { key: "Ctrl+L", voice: "", softPad: "召回", camera: "五指" } }
+      ];
+
+      var CH = {
+        key: { label: "按键", short: "键", field: "key", hint: "当前在按键页 · 右侧是共享动作 panel" },
+        voice: { label: "语音", short: "说", field: "voice", hint: "当前在语音页 · 同一 panel，高亮「说」" },
+        softPad: { label: "Soft Pad", short: "Pad", field: "softPad", hint: "当前在 Soft Pad · 键帽绑的是同一 6 动作" },
+        camera: { label: "摄像头", short: "摄", field: "camera", hint: "当前在摄像头 · 手势入口，目录仍是共享 panel" }
+      };
+
+      var GESTURES = [
+        { id: "nod", name: "点头", actionId: "continue" },
+        { id: "shake", name: "摇头", actionId: "stop" },
+        { id: "palm", name: "五指张开", actionId: "focus" },
+        { id: "away", name: "离席", actionId: null }
+      ];
+
+      var state = {
+        channel: "key",
+        panel: "dir",
+        selected: "send",
+        q: "",
+        revision: 1
+      };
+
+      var shell = document.getElementById("shell");
+      var main = document.getElementById("main");
+      var toastEl = document.getElementById("toast");
+      var toastTimer = 0;
+
+      function esc(s) {
+        return String(s == null ? "" : s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("is-show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("is-show"); }, 1400);
+      }
+
+      function curField() {
+        return CH[state.channel].field;
+      }
+
+      function bindVal(row, field) {
+        return String((row.binds && row.binds[field]) || "");
+      }
+
+      function focusStatus(row) {
+        var v = bindVal(row, curField());
+        if (v) return { cls: "ok", text: v };
+        return { cls: "miss", text: "未配 · " + CH[state.channel].short };
+      }
+
+      function miniBinds(row) {
+        return ["key", "voice", "softPad", "camera"].map(function (f) {
+          var v = bindVal(row, f);
+          var lab = { key: "键", voice: "说", softPad: "Pad", camera: "摄" }[f];
+          var cls = "mchip" + (v ? " on" : "") + (f === curField() ? " cur" : "");
+          return '<span class="' + cls + '">' + esc(lab) + (v ? " · " + esc(v) : "") + "</span>";
+        }).join("");
+      }
+
+      function chips(row) {
+        return ["key", "voice", "softPad", "camera"].map(function (f) {
+          var v = bindVal(row, f);
+          var lab = { key: "键", voice: "说", softPad: "Pad", camera: "摄" }[f];
+          var cls = "chip" + (v ? " on" : " empty") + (f === curField() ? " cur" : "");
+          return '<span class="' + cls + '">' + esc(lab) + (v ? " · " + esc(v) : "") + "</span>";
+        }).join("");
+      }
+
+      function actionById(id) {
+        return ACTIONS.find(function (a) { return a.id === id; });
+      }
+
+      function paintMain() {
+        var ch = state.channel;
+        var html = "";
+        if (ch === "key") {
+          html =
+            '<div class="entry"><b>按键页主职</b><p>录键、序列仍在左边。右侧共享 panel 看本场景 6 个动作；点动作改绑（含其它通道）。</p>' +
+            '<button type="button" class="open" data-focus-panel>把注意力放到动作目录</button></div>' +
+            '<div class="fake-rows">' +
+            ACTIONS.filter(function (a) { return bindVal(a, "key"); }).map(function (a) {
+              return '<div class="fake-row"><span>' + esc(a.name) + "</span><em>" + esc(bindVal(a, "key")) + "</em></div>";
+            }).join("") +
+            '<div class="fake-row"><span>自定义序列…</span><em>+</em></div></div>';
+        } else if (ch === "voice") {
+          html =
+            '<div class="entry"><b>语音页主职</b><p>听写是主场；动作口令改法走共享 panel。高亮「说」列。</p>' +
+            '<button type="button" class="open" data-focus-panel>打开共享动作目录</button></div>' +
+            '<div class="fake-rows">' +
+            ACTIONS.filter(function (a) { return bindVal(a, "voice"); }).map(function (a) {
+              return '<div class="fake-row"><span>' + esc(a.name) + "</span><em>说法 · " + esc(bindVal(a, "voice")) + "</em></div>";
+            }).join("") +
+            "</div>";
+        } else if (ch === "softPad") {
+          html =
+            '<div class="entry"><b>Soft Pad 主职</b><p>键帽布局在左；能力仍是那 6 个共享动作。点键帽 = 打开同一 panel 的该动作。</p></div>' +
+            '<div class="pad-grid">' +
+            ACTIONS.map(function (a) {
+              var v = bindVal(a, "softPad");
+              if (!v) return '<div class="keycap is-empty"><b>空位</b><span>选动作</span></div>';
+              return (
+                '<button type="button" class="keycap" data-open="' + esc(a.id) + '">' +
+                "<b>" + esc(a.name) + "</b><span>" + esc(v) + "</span></button>"
+              );
+            }).join("") +
+            "</div>";
+        } else {
+          html =
+            '<div class="entry"><b>摄像头主职</b><p>先认手势，再绑动作。绑的目标来自<strong>同一份</strong>本场景动作，不是第二套目录。</p></div>' +
+            '<div class="gesture-rows">' +
+            GESTURES.map(function (g) {
+              var a = g.actionId ? actionById(g.actionId) : null;
+              var map = a ? a.name : "未绑动作";
+              return (
+                '<button type="button" class="gesture" data-gesture="' + esc(g.id) + '"' +
+                (a ? ' data-open="' + esc(a.id) + '"' : "") + ">" +
+                "<span><strong>" + esc(g.name) + "</strong></span>" +
+                '<span class="map">' + esc(map) + "</span></button>"
+              );
+            }).join("") +
+            "</div>";
+        }
+        main.innerHTML = html;
+        main.querySelectorAll("[data-focus-panel]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            setPanel("dir");
+            toast("聚焦共享 panel");
+          });
+        });
+        main.querySelectorAll("[data-open]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            openDetail(btn.getAttribute("data-open"));
+          });
+        });
+      }
+
+      function paintDir() {
+        var host = document.getElementById("dirList");
+        host.innerHTML = ACTIONS.map(function (a) {
+          var st = focusStatus(a);
+          return (
+            '<button type="button" class="dir-item" data-open="' + esc(a.id) + '">' +
+            '<span class="n">' + esc(a.name) + "</span>" +
+            '<span class="focus-bind ' + st.cls + '">' + esc(CH[state.channel].short) + " · " + esc(st.text) + "</span>" +
+            '<span class="mini-binds">' + miniBinds(a) + "</span>" +
+            '<span class="go">修改 →</span></button>'
+          );
+        }).join("");
+        host.querySelectorAll("[data-open]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            openDetail(btn.getAttribute("data-open"));
+          });
+        });
+      }
+
+      function paintDetailList() {
+        var host = document.getElementById("detailList");
+        var q = state.q.trim().toLowerCase();
+        var rows = ACTIONS.filter(function (a) {
+          return !q || (a.name + a.effect).toLowerCase().indexOf(q) >= 0;
+        });
+        host.innerHTML = rows.map(function (a) {
+          return (
+            '<button type="button" class="d-row' + (state.selected === a.id ? " is-on" : "") + '" data-sel="' + esc(a.id) + '">' +
+            '<span><span class="n">' + esc(a.name) + '</span><span class="e">' + esc(a.effect) + "</span></span>" +
+            '<span class="binds">' + chips(a) + "</span></button>"
+          );
+        }).join("");
+        host.querySelectorAll("[data-sel]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            state.selected = btn.getAttribute("data-sel");
+            paintDetailList();
+            paintEditor();
+          });
+        });
+      }
+
+      function paintEditor() {
+        var ed = document.getElementById("editor");
+        var row = actionById(state.selected);
+        if (!row) {
+          ed.innerHTML = "";
+          return;
+        }
+        var fields = [
+          { f: "key", lab: "按键" },
+          { f: "voice", lab: "说法" },
+          { f: "softPad", lab: "Pad" },
+          { f: "camera", lab: "手势" }
+        ];
+        ed.innerHTML =
+          "<h4>正在改 · " + esc(row.name) + "</h4>" +
+          '<p class="desc">' + esc(row.effect) + "</p>" +
+          '<p class="sync-note">保存后：按键 / 语音 / Soft Pad / 摄像头四个入口读的是<strong>同一条</strong>记录（rev ' + state.revision + "）。</p>" +
+          '<div class="edit-grid">' +
+          fields.map(function (x) {
+            return (
+              '<label class="' + (x.f === curField() ? "is-cur" : "") + '">' +
+              "<span>" + esc(x.lab) + "</span>" +
+              '<input data-field="' + x.f + '" value="' + esc(bindVal(row, x.f)) + '" placeholder="未配" />' +
+              "</label>"
+            );
+          }).join("") +
+          "</div>" +
+          '<div class="edit-actions">' +
+          '<button type="button" data-back>收起</button>' +
+          '<button type="button" class="primary" data-save>保存到共享真相</button>' +
+          "</div>";
+
+        ed.querySelector("[data-save]").addEventListener("click", function () {
+          fields.forEach(function (x) {
+            row.binds[x.f] = ed.querySelector('[data-field="' + x.f + '"]').value.trim();
+          });
+          state.revision += 1;
+          // Sync camera gesture demo map when camera bind changes
+          GESTURES.forEach(function (g) {
+            if (!g.actionId) return;
+            if (g.actionId === row.id) {
+              /* keep mapping; display reads from ACTIONS */
+            }
+          });
+          paintAll();
+          toast("已写入共享真相 · " + row.name + " · rev " + state.revision);
+        });
+        ed.querySelector("[data-back]").addEventListener("click", function () {
+          setPanel("dir");
+        });
+      }
+
+      function setPanel(mode) {
+        state.panel = mode;
+        shell.setAttribute("data-panel", mode);
+        document.getElementById("panelSub").textContent =
+          mode === "dir" ? "共享目录 · 点一项修改" : "共享详情 · 四通道同一条记录";
+        if (mode === "dir") paintDir();
+        else {
+          paintDetailList();
+          paintEditor();
+        }
+      }
+
+      function openDetail(id) {
+        state.selected = id;
+        setPanel("detail");
+        var row = actionById(id);
+        toast("共享 panel · " + (row ? row.name : id));
+      }
+
+      function setChannel(ch) {
+        state.channel = ch;
+        shell.setAttribute("data-channel", ch);
+        document.getElementById("topHint").textContent = CH[ch].hint;
+        document.getElementById("chBadge").textContent = "当前通道 · " + CH[ch].label;
+        document.getElementById("dirHint").textContent =
+          "粗框芯片 = " + CH[ch].short + "（当前通道）。改任一列，四个入口同步。";
+        document.querySelectorAll(".ch").forEach(function (btn) {
+          var on = btn.getAttribute("data-ch") === ch;
+          btn.classList.toggle("is-on", on);
+          btn.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        paintMain();
+        // Same panel instance — just re-highlight
+        if (state.panel === "dir") paintDir();
+        else {
+          paintDetailList();
+          paintEditor();
+        }
+        toast("切到" + CH[ch].label + " · panel 未重建");
+      }
+
+      function paintAll() {
+        paintMain();
+        if (state.panel === "dir") paintDir();
+        else {
+          paintDetailList();
+          paintEditor();
+        }
+      }
+
+      document.querySelectorAll(".ch").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          setChannel(btn.getAttribute("data-ch"));
+        });
+      });
+      document.getElementById("btnBack").addEventListener("click", function () {
+        setPanel("dir");
+      });
+      document.getElementById("search").addEventListener("input", function (e) {
+        state.q = e.target.value || "";
+        paintDetailList();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && state.panel === "detail") setPanel("dir");
+      });
+
+      setChannel("key");
+      setPanel("dir");
+    })();
+  </script>
+</body>
+</html>

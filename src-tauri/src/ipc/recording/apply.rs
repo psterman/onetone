@@ -75,12 +75,19 @@ pub(crate) fn apply_trigger_capture(
             m.trigger_source = Some(make_combo_trigger_source(&stored));
         } else {
             let canon = canonical_trigger(captured);
-            m.trigger_key = canon.clone();
-            m.source_key = canonical_trigger(raw);
-            m.trigger_source = Some(make_peripheral_mixed_source_with_device(
-                &[raw.to_string()],
-                device,
-            ));
+            let raw_canon = canonical_trigger(raw);
+            // Match FE: BT volume / recognition often arrive as RAlt while 02 is also RAlt.
+            // Never persist RAlt as 01 trigger — fold to AutoTrigger (volume path).
+            if canon == "RAlt" || raw_canon == "RAlt" {
+                apply_peripheral_autotrigger_with_device(m, "Volume_Down", device);
+            } else {
+                m.trigger_key = canon.clone();
+                m.source_key = raw_canon;
+                m.trigger_source = Some(make_peripheral_mixed_source_with_device(
+                    &[raw.to_string()],
+                    device,
+                ));
+            }
         }
         if let Some(src) = &mut m.trigger_source {
             src.mode = gesture.source_mode_id().into();

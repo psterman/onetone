@@ -182,8 +182,18 @@ pub fn normalize_voice_override(ov: Option<VoiceOverride>) -> Option<VoiceOverri
 }
 
 /// Voice-only / voice-override shells keep empty trigger/target through normalize.
+/// Custom-key match rows use `target_actions` (or an empty pick) — never invent IME RAlt.
 pub fn mapping_should_keep_empty_target_key(m: &MappingEntry) -> bool {
-    m.trigger_key.trim().is_empty() && m.voice_override.as_ref().is_some_and(|ov| !ov.is_empty())
+    if m.trigger_key.trim().is_empty() && m.voice_override.as_ref().is_some_and(|ov| !ov.is_empty())
+    {
+        return true;
+    }
+    if !m.target_actions.is_empty() {
+        return true;
+    }
+    m.capture_hero_ref
+        .as_ref()
+        .is_some_and(|r| r.kind.trim().eq_ignore_ascii_case("customKey"))
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -4850,9 +4860,13 @@ impl VoiceConfig {
                 m.id = new_mapping_id();
             }
             m.trigger_key = canonical_trigger(&m.trigger_key);
+            // Stuck RAlt trigger = recognition echo / BT dongle; FE already folds these.
+            if canonical_trigger(&m.trigger_key) == "RAlt" {
+                apply_peripheral_autotrigger_with_device(m, "Volume_Down", "");
+            }
             if m.trigger_key.is_empty() {
                 let from_source = canonical_trigger(&m.source_key);
-                if is_allowed_trigger(&from_source) {
+                if is_allowed_trigger(&from_source) && from_source != "RAlt" {
                     m.trigger_key = from_source.clone();
                 }
             }
@@ -5149,7 +5163,9 @@ impl VoiceConfig {
         let mut conflicts = Vec::new();
 
         for other in self.mappings.iter().filter(|m| m.enabled && m.id != id) {
-            if is_app_scenario_mapping(entry) || is_app_scenario_mapping(other) {
+            // App scopes are independent: Cursor / Codex / 通用 may share the same
+            // launch key. Only collide within the same app_target_id.
+            if entry.app_target_id.trim() != other.app_target_id.trim() {
                 continue;
             }
             let other_canonical = canonical_trigger(&other.trigger_key);

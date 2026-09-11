@@ -1,4 +1,4 @@
-// P12b-6 单测：buildKeysTriggerModeModel + renderTriggerModeSegments 守卫 + 挂载入口
+// P12b-6 单测：buildKeysTriggerModeModel（只读录到的用法）+ render 守卫 + 挂载入口
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -81,13 +81,20 @@ console.log('[keys-trigger-mode] 模型:');
 check('buildKeysTriggerModeModel 已导出', typeof API.buildKeysTriggerModeModel === 'function');
 
 let model = API.buildKeysTriggerModeModel();
-check('有映射时有 modeHtml', typeof model.modeHtml === 'string' && model.modeHtml.includes('data-trigger-mode'));
+check('有映射时有只读用法卡片', typeof model.modeHtml === 'string' && model.modeHtml.includes('keys-trigger-modes--detected') && model.modeHtml.includes('is-readonly'));
+check('两行模式标签 title+desc', model.modeHtml.includes('keys-trigger-mode-seg__title') && model.modeHtml.includes('keys-trigger-mode-seg__desc'));
+check('不再渲染自动录制长说明', !model.modeHtml.includes('keysTriggerModeAutoHint') && !model.modeHtml.includes('keys-trigger-mode-auto-hint'));
+check('不再渲染可点分段', !model.modeHtml.includes('data-trigger-mode') && !model.modeHtml.includes('role="radiogroup"'));
 check('triggerUi=tap', model.triggerUi === 'tap');
-check('gateOk=false 时 hold gated', model.gateOk === false && model.modeHtml.includes('is-gated'));
 check('sig 含 mappingId', typeof model.sig === 'string' && model.sig.indexOf('m1') === 0);
 
 model = API.buildKeysTriggerModeModel(null);
 check('空映射 modeHtml 为空', model.modeHtml === '' && model.sig === 'empty');
+
+state.config.mappings[0].triggerKey = '';
+model = API.buildKeysTriggerModeModel();
+check('无触发键时无卡片无说明', !model.modeHtml.includes('keys-trigger-modes--detected') && !model.modeHtml.includes('keysTriggerModeAutoHint'));
+state.config.mappings[0].triggerKey = 'F1';
 
 state.config.mappings[0].triggerMode = 'longpress';
 globalThis.OneToneHomeWorkbenchCompat.canUseHoldMode = () => ({ ok: false, reason: 'untested' });
@@ -96,7 +103,7 @@ check('hold+未通过 gate 含风险提示', model.triggerUi === 'hold' && model
 
 globalThis.OneToneHomeWorkbenchCompat.canUseHoldMode = () => ({ ok: true, reason: 'ok' });
 model = API.buildKeysTriggerModeModel();
-check('hold+通过 gate 含 is-hold-supported', model.gateOk === true && model.modeHtml.includes('is-hold-supported'));
+check('hold+通过 gate 无风险提示', model.gateOk === true && !model.modeHtml.includes('keys-hold-risk-hint'));
 state.config.mappings[0].triggerMode = 'tap';
 globalThis.OneToneHomeWorkbenchCompat.canUseHoldMode = () => ({ ok: false, reason: 'untested' });
 

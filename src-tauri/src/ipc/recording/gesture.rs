@@ -221,10 +221,13 @@ pub(super) fn is_record_start_suppressed_mouse(key: &str) -> bool {
 }
 
 pub(super) fn uses_gesture_trigger_recording(state: &AppState, key: &str) -> bool {
-    if is_peripheral_trigger_key(key) || is_volume_hotkey(key) {
+    // Pulse peripherals lack reliable keyup — keep Tap-on-down path.
+    // Modifiers stay on the pending path so Ctrl+Key combos still work; lone
+    // modifier double/tap is finished via begin_waiting_double after keyup.
+    if is_peripheral_trigger_key(key) || is_volume_hotkey(key) || is_modifier_token(key) {
         return false;
     }
-    state.record_hw_pending.lock().is_none() && !is_modifier_token(key)
+    state.record_hw_pending.lock().is_none()
 }
 
 #[cfg(test)]

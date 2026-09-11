@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>按键设置 · 整页原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #ffffff;
+      --wash: #f3f7fa;
+      --bg: #e8eef3;
+      --sidebar: #f7f9fb;
+      --cyan: #2a9cc4;
+      --cyan-ink: #0f5f7a;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --ok: #15803d;
+      --ok-soft: #ecfdf5;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --warn-bd: #fdba74;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background: var(--bg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    .proto-bar {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+      padding: 10px 16px;
+      background: #13202c; color: #c5d0de;
+      font-size: 12.5px; line-height: 1.45;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; }
+    .proto-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+    .proto-toggles button {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: #e2e8f0;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font: inherit; font-size: 11.5px; font-weight: 650;
+      cursor: pointer;
+      transition: background 150ms var(--ease), transform 130ms var(--ease);
+    }
+    .proto-toggles button:hover { background: rgba(255,255,255,0.12); }
+    .proto-toggles button:active { transform: scale(0.97); }
+    .proto-toggles button.is-on {
+      background: rgba(42, 156, 196, 0.35);
+      border-color: rgba(125, 211, 252, 0.45);
+      color: #fff;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 200px minmax(0, 1fr);
+      max-width: 1280px;
+      min-height: calc(100vh - 48px);
+      margin: 0 auto;
+      background: var(--paper);
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+    }
+    @media (max-width: 960px) {
+      .app { grid-template-columns: 1fr; }
+      .nav { display: none; }
+    }
+
+    /* —— left nav (chrome only) —— */
+    .nav {
+      border-right: 1px solid var(--line);
+      background: var(--sidebar);
+      padding: 14px 10px;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 8px 14px;
+      font-weight: 750; font-size: 14px;
+    }
+    .brand i {
+      width: 22px; height: 22px; border-radius: 7px;
+      background: linear-gradient(145deg, #35c6ff, #087fc4);
+      display: grid; place-items: center;
+      color: #fff; font-size: 11px; font-style: normal; font-weight: 800;
+    }
+    .nav-search {
+      margin: 0 6px 12px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--faint);
+      font-size: 12px;
+    }
+    .nav-lab {
+      margin: 10px 8px 4px;
+      font-size: 10px; font-weight: 750;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--faint);
+    }
+    .nav-item {
+      display: block; width: 100%;
+      text-align: left;
+      border: 0; background: transparent;
+      padding: 8px 10px; border-radius: 10px;
+      font: inherit; font-size: 13px; font-weight: 550;
+      color: var(--muted); cursor: default;
+    }
+    .nav-item.is-on {
+      background: rgba(42, 156, 196, 0.12);
+      color: var(--cyan-ink); font-weight: 650;
+    }
+
+    /* —— main column —— */
+    .main {
+      display: flex; flex-direction: column;
+      min-width: 0; min-height: 0;
+      background: var(--wash);
+    }
+
+    .topbar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+      padding: 10px 14px;
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+    }
+    .top-ctx {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      font-size: 13px; font-weight: 650;
+    }
+    .top-ctx .sep { color: var(--faint); font-weight: 450; }
+    .badge-ok {
+      font-size: 11px; font-weight: 650;
+      padding: 2px 8px; border-radius: 999px;
+      background: var(--ok-soft); color: var(--ok);
+      border: 1px solid #86efac;
+    }
+    .top-acts {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 7px 12px;
+      font: inherit; font-size: 12.5px; font-weight: 650;
+      cursor: pointer;
+      transition: transform 130ms var(--ease), filter 140ms var(--ease);
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn.primary {
+      border-color: transparent;
+      background: var(--cyan); color: #fff;
+    }
+    .btn.primary:hover { filter: brightness(1.05); }
+    .sw {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted); font-weight: 550;
+    }
+    .sw i {
+      width: 34px; height: 20px; border-radius: 999px;
+      background: var(--cyan);
+      position: relative; display: inline-block;
+    }
+    .sw i::after {
+      content: "";
+      position: absolute; top: 2px; right: 2px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff;
+    }
+
+    .workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 248px;
+      min-height: 0;
+    }
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; }
+      .aside { border-left: none; border-top: 1px solid var(--line); }
+    }
+
+    .desk {
+      padding: 12px 14px 16px;
+      overflow: auto;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+
+    /* A. two-step hero — keep */
+    .hero {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px 12px;
+      position: relative;
+    }
+    .flow-track {
+      position: absolute;
+      left: 22%; right: 22%;
+      top: 48px;
+      height: 8px;
+      color: rgba(42, 156, 196, 0.18);
+      pointer-events: none;
+    }
+    .flow-track svg { width: 100%; height: 100%; display: block; }
+    .flow-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      position: relative; z-index: 1;
+    }
+    .flow-node {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 6px; text-align: center;
+    }
+    .flow-tag {
+      font-family: var(--mono);
+      font-size: 10px; font-weight: 650; letter-spacing: 0.04em;
+      color: var(--cyan-ink);
+      background: rgba(42, 156, 196, 0.08);
+      border: 1px solid rgba(42, 156, 196, 0.22);
+      border-radius: 999px;
+      padding: 2px 8px;
+    }
+    .flow-btn {
+      width: 52px; height: 52px; border-radius: 16px;
+      border: 1.5px solid var(--line);
+      background: var(--paper);
+      color: var(--muted);
+      display: grid; place-items: center;
+      cursor: pointer;
+      transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease), color 150ms var(--ease), transform 130ms var(--ease);
+    }
+    .flow-btn svg { width: 22px; height: 22px; }
+    .flow-btn:hover { border-color: var(--cyan-bd); color: var(--cyan-ink); }
+    .flow-btn:active { transform: scale(0.96); }
+    .flow-btn:focus-visible { outline: 2px solid rgba(42,156,196,0.45); outline-offset: 3px; }
+    .flow-btn.is-active {
+      border-color: rgba(42, 156, 196, 0.6);
+      color: var(--cyan);
+      box-shadow: 0 0 0 4px rgba(42, 156, 196, 0.14), 0 0 24px rgba(42, 156, 196, 0.18);
+    }
+    .flow-title { margin: 0; font-size: 14px; font-weight: 750; letter-spacing: -0.02em; }
+    .flow-hint {
+      margin: 0; max-width: 220px;
+      font-family: var(--mono); font-size: 12px; font-weight: 650;
+      color: var(--muted); line-height: 1.35; min-height: 1.35em;
+    }
+    .flow-hint .mark {
+      display: inline-block; margin-left: 4px; padding: 0 6px;
+      border-radius: 999px; font-size: 11px;
+      color: var(--cyan-ink);
+      background: rgba(42, 156, 196, 0.14);
+      border: 1px solid rgba(42, 156, 196, 0.26);
+      vertical-align: 1px;
+    }
+    .flow-node.is-dim .flow-title,
+    .flow-node.is-dim .flow-hint { color: var(--faint); }
+    .flow-node.is-dim .flow-tag {
+      color: var(--faint);
+      background: rgba(132, 148, 166, 0.08);
+      border-color: rgba(132, 148, 166, 0.2);
+    }
+
+    /* B. stage — no card head */
+    .stage-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 28px 22px 22px;
+      min-height: 280px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px;
+      background-image: radial-gradient(420px 180px at 50% 18%, rgba(42, 156, 196, 0.08), transparent 70%);
+      background-color: var(--paper);
+    }
+
+    .keycap {
+      position: relative;
+      width: min(100%, 300px);
+      min-height: 88px;
+      padding: 18px 22px 16px;
+      border-radius: 16px;
+      border: 1.5px solid var(--cyan-bd);
+      background: linear-gradient(180deg, #f7fcfe, #eef8fc);
+      box-shadow: 0 2px 0 rgba(42, 156, 196, 0.12);
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer; user-select: none;
+      font: inherit; color: inherit; text-align: left;
+      transition: transform 140ms var(--ease), border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+    }
+    .keycap:hover { border-color: var(--cyan); box-shadow: 0 4px 0 rgba(42, 156, 196, 0.16); }
+    .keycap:active { transform: scale(0.97); }
+    .keycap:focus-visible { outline: 2px solid rgba(42,156,196,0.45); outline-offset: 3px; }
+    .keycap-ico { width: 28px; height: 28px; color: var(--cyan-ink); opacity: 0.85; flex: 0 0 auto; }
+    .keycap-label { font-size: 22px; font-weight: 750; letter-spacing: -0.03em; line-height: 1.15; }
+    .keycap-badge {
+      position: absolute; top: 8px; right: 10px;
+      min-width: 1.7em; padding: 1px 7px; border-radius: 999px;
+      font-family: var(--mono); font-size: 11px; font-weight: 650;
+      color: var(--cyan-ink);
+      background: rgba(42, 156, 196, 0.16);
+      border: 1px solid rgba(42, 156, 196, 0.28);
+    }
+    .keycap-badge[hidden] { display: none; }
+
+    .key-meta {
+      margin: 0; text-align: center;
+      font-size: 13px; color: var(--muted); line-height: 1.4;
+    }
+    .key-meta strong { color: var(--ink); font-weight: 650; }
+    .key-hint { margin: 0; font-size: 12px; color: var(--faint); min-height: 1.2em; }
+
+    .conflict {
+      width: min(100%, 340px);
+      padding: 10px 12px; border-radius: 12px;
+      border: 1px solid var(--warn-bd); background: var(--warn-soft);
+      color: var(--warn); font-size: 12.5px; line-height: 1.45;
+      display: none;
+    }
+    .conflict strong { display: block; margin-bottom: 2px; color: #9a3412; }
+    .conflict .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .conflict .acts button {
+      border: 1px solid var(--warn-bd); background: #fff; color: #9a3412;
+      border-radius: 8px; padding: 4px 8px;
+      font: inherit; font-size: 11.5px; font-weight: 650; cursor: pointer;
+    }
+
+    .stage-card.is-recording .keycap {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.18);
+      animation: pulse-ring 1.4s var(--ease) infinite;
+    }
+    .stage-card.is-recording .key-hint { color: var(--cyan-ink); font-weight: 650; }
+    .stage-card.is-conflict .conflict { display: block; }
+    .stage-card.is-empty .keycap-label { color: var(--faint); }
+
+    .target-pane {
+      width: min(100%, 380px);
+      display: none; flex-direction: column; gap: 10px;
+    }
+    .stage-card.is-target .trigger-pane { display: none; }
+    .stage-card.is-target .target-pane { display: flex; }
+    .target-card {
+      padding: 14px; border-radius: 14px;
+      border: 1px solid var(--line); background: var(--wash);
+    }
+    .target-card h4 { margin: 0 0 4px; font-size: 13px; font-weight: 750; }
+    .target-card p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+    .target-chip {
+      display: inline-flex; margin-top: 8px;
+      font-family: var(--mono); font-size: 12px; font-weight: 650;
+      padding: 4px 8px; border-radius: 8px;
+      background: var(--paper); border: 1px solid var(--cyan-bd); color: var(--cyan-ink);
+    }
+    .channel-tabs {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .channel-tabs span {
+      font-size: 11.5px; font-weight: 650;
+      padding: 5px 9px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--muted); background: var(--paper);
+    }
+    .channel-tabs span.is-on {
+      border-color: var(--cyan-bd); color: var(--cyan-ink); background: var(--cyan-soft);
+    }
+
+    @keyframes pulse-ring {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.18); }
+      50% { box-shadow: 0 0 0 6px rgba(42, 156, 196, 0.08); }
+    }
+
+    .foot {
+      display: flex; justify-content: flex-end;
+      padding: 0 2px;
+    }
+
+    /* C. aside */
+    .aside {
+      border-left: 1px solid var(--line);
+      background: #f8fafc;
+      display: flex; flex-direction: column;
+      min-height: 0;
+    }
+    .aside-head {
+      padding: 14px 12px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .aside-app {
+      display: flex; align-items: center; gap: 7px; margin-bottom: 2px;
+    }
+    .aside-app-ico {
+      width: 16px; height: 16px; border-radius: 4px;
+      background: linear-gradient(145deg, #35c6ff, #087fc4);
+    }
+    .aside-app-name { font-size: 11px; font-weight: 650; color: var(--faint); }
+    .aside-title { margin: 0; font-size: 14px; font-weight: 750; letter-spacing: -0.02em; }
+    .aside-meta { margin: 3px 0 0; font-size: 11.5px; color: var(--faint); }
+
+    .dir {
+      list-style: none; margin: 0; padding: 8px;
+      display: flex; flex-direction: column; gap: 3px;
+      overflow: auto; flex: 1;
+    }
+    .dir-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 2px 8px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      cursor: pointer; text-align: left;
+      font: inherit; color: inherit;
+      transition: background 140ms var(--ease), border-color 140ms var(--ease), transform 120ms var(--ease);
+    }
+    .dir-item:hover { background: rgba(42, 156, 196, 0.06); }
+    .dir-item:active { transform: scale(0.98); }
+    .dir-item.is-active {
+      background: var(--paper);
+      border-color: var(--cyan-bd);
+      box-shadow: 0 1px 0 rgba(42, 156, 196, 0.08);
+    }
+    .dir-name { font-size: 13px; font-weight: 650; letter-spacing: -0.01em; }
+    .dir-when {
+      grid-column: 1 / -1;
+      font-family: var(--mono); font-size: 11px; color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dir-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--ok); margin-top: 5px;
+    }
+    .dir-dot.is-off { background: var(--faint); }
+
+    .aside-foot {
+      padding: 10px;
+      border-top: 1px solid var(--line);
+    }
+    .aside-foot .btn { width: 100%; }
+
+    .note {
+      max-width: 1280px; margin: 14px auto 32px; padding: 0 14px;
+      font-size: 12.5px; color: var(--muted); line-height: 1.55;
+    }
+    .note h2 { margin: 0 0 6px; font-size: 13px; color: var(--ink); font-weight: 750; }
+    .note ul { margin: 0; padding-left: 1.15em; }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <div>
+      <strong>按键设置 · 整页原型</strong>
+      — 保留两步 Hero；舞台无卡片头；用法一行；右栏可扫。
+      <a href="./keys-trigger-two-step-hero.html">局部稿</a>
+    </div>
+    <div class="proto-toggles" role="group" aria-label="预览状态">
+      <button type="button" class="is-on" data-state="idle">空闲</button>
+      <button type="button" data-state="recording">录制中</button>
+      <button type="button" data-state="conflict">有冲突</button>
+      <button type="button" data-state="empty">未绑键</button>
+    </div>
+  </div>
+
+  <div class="app">
+    <aside class="nav" aria-label="导航">
+      <div class="brand"><i>O</i> OneTone</div>
+      <div class="nav-search">搜索功能或设置…</div>
+      <div class="nav-lab">主要功能</div>
+      <button type="button" class="nav-item">首页</button>
+      <button type="button" class="nav-item">我的习惯</button>
+      <button type="button" class="nav-item is-on">按键设置</button>
+      <button type="button" class="nav-item">虚拟键盘</button>
+      <button type="button" class="nav-item">语音设置</button>
+      <div class="nav-lab">设备</div>
+      <button type="button" class="nav-item">摄像头</button>
+      <div class="nav-lab">系统</div>
+      <button type="button" class="nav-item">通用设置</button>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="top-ctx">
+          <span>按键</span>
+          <span class="sep">/</span>
+          <span>正在编辑: Cursor</span>
+          <span class="badge-ok">已与前台一致</span>
+        </div>
+        <div class="top-acts">
+          <button type="button" class="btn">我的习惯</button>
+          <button type="button" class="btn primary">保存页面设置</button>
+          <span class="sw">配语音 <i aria-hidden="true"></i></span>
+          <span class="sw">总开关 <i aria-hidden="true"></i></span>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <div class="desk">
+          <!-- A. Hero -->
+          <section class="hero" aria-label="触发流程">
+            <div class="flow-track" aria-hidden="true">
+              <svg viewBox="0 0 500 8" fill="none" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="rgba(79,172,254,0.85)"/>
+                    <stop offset="50%" stop-color="rgba(42,156,196,0.95)"/>
+                    <stop offset="100%" stop-color="rgba(245,158,11,0.85)"/>
+                  </linearGradient>
+                </defs>
+                <path d="M 0,4 Q 125,-5 250,4 T 500,4" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                <path d="M 0,4 Q 125,-5 250,4 T 500,4" stroke="url(#g)" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="flow-grid">
+              <div class="flow-node" id="nodeTrigger">
+                <span class="flow-tag">01 / 触发</span>
+                <button type="button" class="flow-btn is-active" id="btnTrigger" aria-label="第一步：触发">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="2" y="5" width="20" height="14" rx="2"/>
+                    <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/>
+                  </svg>
+                </button>
+                <h3 class="flow-title">触发</h3>
+                <p class="flow-hint" id="hintTrigger">左 Ctrl<span class="mark">×2</span></p>
+              </div>
+              <div class="flow-node is-dim" id="nodeTarget">
+                <span class="flow-tag">02 / 识别</span>
+                <button type="button" class="flow-btn" id="btnTarget" aria-label="第二步：识别">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                  </svg>
+                </button>
+                <h3 class="flow-title">识别</h3>
+                <p class="flow-hint" id="hintTarget">左 Alt</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- B. Stage -->
+          <section class="stage-card" id="stage" aria-label="编辑舞台">
+            <div class="trigger-pane">
+              <button type="button" class="keycap" id="keycap" aria-label="点击录制或修改触发键">
+                <svg class="keycap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/>
+                </svg>
+                <span class="keycap-label" id="keycapLabel">左 Ctrl</span>
+                <span class="keycap-badge" id="keycapBadge">×2</span>
+              </button>
+              <p class="key-meta" id="keyMeta"><strong>双击开关</strong> · 再双击结束</p>
+              <p class="key-hint" id="keyHint">点击修改快捷键</p>
+              <div class="conflict" id="conflict" role="alert">
+                <strong>与「侧键语音」共用触发键</strong>
+                同应用内冲突。
+                <div class="acts">
+                  <button type="button">改用 右 Alt</button>
+                  <button type="button">打开侧键语音</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="target-pane">
+              <div class="channel-tabs" aria-hidden="true">
+                <span class="is-on">听写方式</span>
+                <span>我录的键</span>
+                <span>口头指令</span>
+                <span>软件自带</span>
+              </div>
+              <div class="target-card">
+                <h4>听写键</h4>
+                <p>启动识别后注入的键</p>
+                <span class="target-chip" id="targetChip">左 Alt</span>
+              </div>
+              <p class="key-hint">正式页这里是通道树 + 听写配置；原型只示意第二步。</p>
+            </div>
+          </section>
+
+          <div class="foot">
+            <button type="button" class="btn primary" id="btnTest">测试一次</button>
+          </div>
+        </div>
+
+        <!-- C. Aside -->
+        <aside class="aside" aria-label="本场景动作">
+          <div class="aside-head">
+            <div class="aside-app">
+              <span class="aside-app-ico" aria-hidden="true"></span>
+              <span class="aside-app-name">Cursor</span>
+            </div>
+            <h3 class="aside-title">本场景动作</h3>
+            <p class="aside-meta" id="asideMeta">3 个动作</p>
+          </div>
+          <div class="dir" role="list">
+            <button type="button" class="dir-item is-active" role="listitem"
+              data-key="左 Ctrl" data-mark="×2" data-meta="双击开关 · 再双击结束" data-out="左 Alt" data-name="捷径输入">
+              <span class="dir-name">捷径输入</span>
+              <span class="dir-dot" aria-hidden="true"></span>
+              <span class="dir-when">左 Ctrl ×2</span>
+            </button>
+            <button type="button" class="dir-item" role="listitem"
+              data-key="侧键" data-mark="" data-meta="单击开关 · 再按结束" data-out="Win+H" data-name="侧键语音">
+              <span class="dir-name">侧键语音</span>
+              <span class="dir-dot is-off" aria-hidden="true"></span>
+              <span class="dir-when">XButton1</span>
+            </button>
+            <button type="button" class="dir-item" role="listitem"
+              data-key="F13" data-mark="按住" data-meta="按住说话 · 松手结束" data-out="F2" data-name="按住口述">
+              <span class="dir-name">按住口述</span>
+              <span class="dir-dot" aria-hidden="true"></span>
+              <span class="dir-when">F13 按住</span>
+            </button>
+          </div>
+          <div class="aside-foot">
+            <button type="button" class="btn">＋ 新建动作</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <h2>对照规划</h2>
+    <ul>
+      <li><strong>A Hero</strong>：保留 01→02；hint 显示键×用法 / 识别结果；点节点切步。</li>
+      <li><strong>B 舞台</strong>：无「触发 / 你按的键」卡片头；无长说明；用法一行 meta。</li>
+      <li><strong>C 右栏</strong>：动作名 + 键可扫；点行切换当前绑定。</li>
+      <li><strong>顶栏 / 底栏</strong>：场景上下文 + 保存；测试一次。</li>
+    </ul>
+  </div>
+
+  <script>
+    (function () {
+      var stage = document.getElementById('stage');
+      var hint = document.getElementById('keyHint');
+      var label = document.getElementById('keycapLabel');
+      var badge = document.getElementById('keycapBadge');
+      var meta = document.getElementById('keyMeta');
+      var hintTrigger = document.getElementById('hintTrigger');
+      var hintTarget = document.getElementById('hintTarget');
+      var targetChip = document.getElementById('targetChip');
+      var nodeTrigger = document.getElementById('nodeTrigger');
+      var nodeTarget = document.getElementById('nodeTarget');
+      var btnTrigger = document.getElementById('btnTrigger');
+      var btnTarget = document.getElementById('btnTarget');
+      var toggles = document.querySelectorAll('.proto-toggles [data-state]');
+      var items = document.querySelectorAll('.dir-item');
+      var bind = {
+        key: '左 Ctrl',
+        mark: '×2',
+        meta: '双击开关 · 再双击结束',
+        out: '左 Alt'
+      };
+
+      function renderBind() {
+        label.textContent = bind.key || '未绑键';
+        if (bind.mark) {
+          badge.hidden = false;
+          badge.textContent = bind.mark;
+          hintTrigger.innerHTML = (bind.key || '—') + '<span class="mark">' + bind.mark + '</span>';
+        } else {
+          badge.hidden = true;
+          hintTrigger.textContent = bind.key || '—';
+        }
+        meta.innerHTML = bind.meta
+          ? '<strong>' + bind.meta.split(' · ')[0] + '</strong> · ' + (bind.meta.split(' · ')[1] || '')
+          : '点键帽开始录制';
+        hintTarget.textContent = bind.out || '—';
+        targetChip.textContent = bind.out || '—';
+      }
+
+      function setStep(step) {
+        var onTrigger = step === 'trigger';
+        btnTrigger.classList.toggle('is-active', onTrigger);
+        btnTarget.classList.toggle('is-active', !onTrigger);
+        nodeTrigger.classList.toggle('is-dim', !onTrigger);
+        nodeTarget.classList.toggle('is-dim', onTrigger);
+        stage.classList.toggle('is-target', !onTrigger);
+      }
+
+      function setState(name) {
+        stage.classList.remove('is-recording', 'is-conflict', 'is-empty');
+        toggles.forEach(function (b) {
+          b.classList.toggle('is-on', b.getAttribute('data-state') === name);
+        });
+        if (name === 'recording') {
+          setStep('trigger');
+          stage.classList.add('is-recording');
+          hint.textContent = '按下启动键…（单击 / 双击 / 按住都会自动记下）';
+        } else if (name === 'conflict') {
+          setStep('trigger');
+          stage.classList.add('is-conflict');
+          hint.textContent = '点击修改快捷键';
+          renderBind();
+        } else if (name === 'empty') {
+          setStep('trigger');
+          stage.classList.add('is-empty');
+          bind = { key: '未绑键', mark: '', meta: '', out: '尚未选择识别' };
+          renderBind();
+          hint.textContent = '点键帽录制启动键';
+        } else {
+          hint.textContent = '点击修改快捷键';
+          renderBind();
+        }
+      }
+
+      toggles.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          setState(btn.getAttribute('data-state'));
+        });
+      });
+
+      items.forEach(function (item) {
+        item.addEventListener('click', function () {
+          items.forEach(function (el) { el.classList.remove('is-active'); });
+          item.classList.add('is-active');
+          bind = {
+            key: item.getAttribute('data-key') || '',
+            mark: item.getAttribute('data-mark') || '',
+            meta: item.getAttribute('data-meta') || '',
+            out: item.getAttribute('data-out') || ''
+          };
+          setState('idle');
+          setStep('trigger');
+        });
+      });
+
+      btnTrigger.addEventListener('click', function () { setStep('trigger'); });
+      btnTarget.addEventListener('click', function () { setStep('target'); });
+
+      document.getElementById('keycap').addEventListener('click', function () {
+        if (stage.classList.contains('is-target')) return;
+        setState(stage.classList.contains('is-recording') ? 'idle' : 'recording');
+      });
+
+      renderBind();
+    })();
+  </script>
+</body>
+</html>

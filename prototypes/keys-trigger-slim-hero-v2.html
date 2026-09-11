@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>按键 · 触发页原型 v2（键帽舞台）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0f1a24;
+      --muted: #5c6d7e;
+      --faint: #8a9aab;
+      --line: #d2dbe6;
+      --paper: #ffffff;
+      --wash: #eef3f7;
+      --bg: #dfe7ee;
+      --cyan: #1f90b8;
+      --cyan-ink: #0c5a74;
+      --cyan-soft: #e3f3f9;
+      --cyan-bd: #95c5d8;
+      --ok: #15803d;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --warn-bd: #fdba74;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.23, 1, 0.32, 1);
+      --shadow: 0 18px 40px rgba(15, 26, 36, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(640px 260px at 8% -10%, rgba(31, 144, 184, 0.11), transparent 55%),
+        radial-gradient(520px 240px at 92% 0%, rgba(15, 26, 36, 0.04), transparent 50%),
+        var(--bg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    .proto-bar {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+      padding: 10px 16px;
+      background: #0f1a24; color: #c5d0de;
+      font-size: 12.5px; line-height: 1.45;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; }
+    .proto-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+    .proto-toggles button {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: #e2e8f0;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: background 160ms var(--ease), transform 140ms var(--ease);
+    }
+    .proto-toggles button:hover { background: rgba(255,255,255,0.12); }
+    .proto-toggles button:active { transform: scale(0.97); }
+    .proto-toggles button.is-on {
+      background: rgba(31, 144, 184, 0.38);
+      border-color: rgba(125, 211, 252, 0.45);
+      color: #fff;
+    }
+
+    .shell {
+      width: min(1040px, 100%);
+      margin: 18px auto 48px;
+      padding: 0 14px;
+    }
+
+    .page {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    /* brand + step tabs (replaces decorative pipeline) */
+    .top {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand {
+      font-size: 14px; font-weight: 750; letter-spacing: -0.02em;
+    }
+    .steps {
+      display: inline-flex;
+      padding: 3px;
+      border-radius: 999px;
+      background: var(--wash);
+      border: 1px solid var(--line);
+      gap: 2px;
+    }
+    .step {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      padding: 5px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 150ms var(--ease), color 150ms var(--ease), transform 140ms var(--ease);
+    }
+    .step:hover { color: var(--ink); }
+    .step:active { transform: scale(0.97); }
+    .step.is-on {
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 0 1px 0 rgba(15, 26, 36, 0.06);
+    }
+    .pill {
+      margin-left: auto;
+      font-size: 11px; font-weight: 650;
+      padding: 3px 9px; border-radius: 999px;
+      background: var(--cyan-soft); color: var(--cyan-ink);
+      border: 1px solid var(--cyan-bd);
+    }
+    .pill.is-dirty {
+      background: var(--warn-soft); color: var(--warn); border-color: var(--warn-bd);
+    }
+
+    /* thesis strip: current binding only — no 01/02 kickers */
+    .thesis {
+      display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #f7fafc, var(--wash));
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .thesis b {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 650;
+      color: var(--ink);
+      letter-spacing: -0.02em;
+    }
+    .thesis .mark {
+      display: inline-block;
+      margin-left: 4px;
+      padding: 0 6px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 650;
+      color: var(--cyan-ink);
+      background: rgba(31, 144, 184, 0.14);
+      border: 1px solid rgba(31, 144, 184, 0.26);
+      vertical-align: 1px;
+    }
+    .thesis .sep {
+      color: var(--faint);
+      font-weight: 550;
+    }
+
+    .body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(200px, 248px);
+      min-height: 400px;
+    }
+    @media (max-width: 820px) {
+      .body { grid-template-columns: 1fr; }
+      .aside { border-left: none; border-top: 1px solid var(--line); }
+    }
+
+    /* stage: keycap is the only hero object */
+    .stage {
+      padding: 28px 24px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background:
+        radial-gradient(380px 160px at 50% 28%, rgba(31, 144, 184, 0.07), transparent 68%),
+        var(--paper);
+    }
+
+    .keycap {
+      --press: 0;
+      position: relative;
+      width: min(100%, 280px);
+      min-height: 104px;
+      padding: 22px 20px 18px;
+      border: 0;
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, #fcfeff 0%, #eef5f9 100%);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.9) inset,
+        0 -2px 0 rgba(15, 26, 36, 0.06) inset,
+        0 calc(5px - var(--press) * 3px) 0 #c5d4df,
+        0 calc(6px - var(--press) * 3px) 14px rgba(15, 26, 36, 0.12);
+      transform: translateY(calc(var(--press) * 3px));
+      cursor: pointer;
+      user-select: none;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      transition: transform 120ms var(--ease), box-shadow 120ms var(--ease);
+    }
+    .keycap:hover {
+      background: linear-gradient(180deg, #ffffff 0%, #f1f7fb 100%);
+    }
+    .keycap:active, .keycap.is-down { --press: 1; }
+    .keycap:focus-visible {
+      outline: 2px solid rgba(31, 144, 184, 0.5);
+      outline-offset: 4px;
+    }
+    .keycap-top {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+    }
+    .keycap-name {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 750;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+    }
+    .keycap-gesture {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--cyan-ink);
+      background: rgba(31, 144, 184, 0.12);
+      border: 1px solid rgba(31, 144, 184, 0.22);
+      border-radius: 8px;
+      padding: 3px 8px;
+      white-space: nowrap;
+    }
+    .keycap-gesture[hidden] { display: none; }
+    .keycap-meta {
+      margin: 10px 0 0;
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .keycap-meta strong { color: var(--ink); font-weight: 650; }
+
+    .hint {
+      margin: 0;
+      min-height: 1.2em;
+      font-size: 12px;
+      color: var(--faint);
+    }
+
+    .conflict {
+      width: min(100%, 320px);
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--warn-bd);
+      background: var(--warn-soft);
+      color: var(--warn);
+      font-size: 12.5px;
+      line-height: 1.45;
+      display: none;
+    }
+    .conflict strong { display: block; margin-bottom: 2px; color: #9a3412; }
+    .conflict .acts {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+    }
+    .conflict .acts button {
+      border: 1px solid var(--warn-bd);
+      background: #fff;
+      color: #9a3412;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .stage.is-recording .keycap {
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.9) inset,
+        0 -2px 0 rgba(15, 26, 36, 0.06) inset,
+        0 5px 0 #a8cfe0,
+        0 0 0 3px rgba(31, 144, 184, 0.2),
+        0 6px 14px rgba(15, 26, 36, 0.12);
+      animation: breathe 1.35s var(--ease) infinite;
+    }
+    .stage.is-recording .hint { color: var(--cyan-ink); font-weight: 650; }
+    .stage.is-conflict .conflict { display: block; }
+    .stage.is-empty .keycap-name { color: var(--faint); font-weight: 650; }
+    @keyframes breathe {
+      0%, 100% { box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 -2px 0 rgba(15,26,36,0.06) inset, 0 5px 0 #a8cfe0, 0 0 0 3px rgba(31,144,184,0.2), 0 6px 14px rgba(15,26,36,0.12); }
+      50% { box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 -2px 0 rgba(15,26,36,0.06) inset, 0 5px 0 #a8cfe0, 0 0 0 6px rgba(31,144,184,0.08), 0 6px 14px rgba(15,26,36,0.12); }
+    }
+
+    /* aside: scannable directory */
+    .aside {
+      border-left: 1px solid var(--line);
+      background: #f7f9fb;
+      display: flex; flex-direction: column;
+      min-height: 0;
+    }
+    .aside-head {
+      padding: 12px 12px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .aside-app {
+      display: flex; align-items: center; gap: 7px;
+      margin-bottom: 2px;
+    }
+    .aside-app-ico {
+      width: 16px; height: 16px; border-radius: 4px;
+      background: linear-gradient(145deg, #35c6ff, #087fc4);
+    }
+    .aside-app-name {
+      font-size: 11px; font-weight: 650; color: var(--faint);
+    }
+    .aside-title {
+      margin: 0;
+      font-size: 13px; font-weight: 750;
+      letter-spacing: -0.02em;
+    }
+
+    .dir {
+      list-style: none; margin: 0; padding: 6px;
+      display: flex; flex-direction: column; gap: 2px;
+      overflow: auto; flex: 1;
+    }
+    .dir-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      transition: background 140ms var(--ease), border-color 140ms var(--ease), transform 120ms var(--ease);
+    }
+    .dir-item:hover { background: rgba(31, 144, 184, 0.06); }
+    .dir-item:active { transform: scale(0.98); }
+    .dir-item.is-active {
+      background: var(--paper);
+      border-color: var(--cyan-bd);
+    }
+    .dir-name {
+      font-size: 13px; font-weight: 650;
+      letter-spacing: -0.01em;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .dir-bind {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 650;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .dir-item.is-active .dir-bind { color: var(--cyan-ink); }
+    .dir-item.is-off .dir-bind { color: var(--faint); font-weight: 550; }
+
+    .foot {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--line);
+      background: var(--wash);
+    }
+    .btn {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 14px;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: transform 120ms var(--ease), filter 140ms var(--ease);
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn.primary {
+      border-color: transparent;
+      background: var(--cyan);
+      color: #fff;
+    }
+    .btn.primary:hover { filter: brightness(1.05); }
+
+    .note {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px dashed var(--line);
+      background: rgba(255,255,255,0.55);
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .note h2 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      color: var(--ink);
+      font-weight: 750;
+    }
+    .note ul { margin: 0; padding-left: 1.15em; }
+    .note a { color: var(--cyan-ink); font-weight: 650; }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <div>
+      <strong>原型 v2 · 键帽舞台</strong>
+      — 去掉 01/02 踢脚线与卡片头；绑定摘要一行；键帽即主控件。
+      <a href="./keys-trigger-slim-hero.html">← v1</a>
+    </div>
+    <div class="proto-toggles" role="group" aria-label="预览状态">
+      <button type="button" class="is-on" data-state="idle">空闲</button>
+      <button type="button" data-state="recording">录制中</button>
+      <button type="button" data-state="conflict">有冲突</button>
+      <button type="button" data-state="empty">未绑键</button>
+    </div>
+  </div>
+
+  <div class="shell">
+    <div class="page">
+      <header class="top">
+        <span class="brand">Cursor · 按键</span>
+        <div class="steps" role="tablist" aria-label="步骤">
+          <button type="button" class="step is-on" role="tab" aria-selected="true" data-step="trigger">触发</button>
+          <button type="button" class="step" role="tab" aria-selected="false" data-step="target">识别</button>
+        </div>
+        <span class="pill" id="statusPill">已激活</span>
+      </header>
+
+      <div class="thesis" aria-label="当前绑定">
+        <span>当前</span>
+        <b id="thesisKey">右 Shift<span class="mark" id="thesisMark">×2</span></b>
+        <span class="sep" aria-hidden="true">→</span>
+        <span id="thesisOut">音量增 · 右 Alt</span>
+      </div>
+
+      <div class="body">
+        <main class="stage" id="stage">
+          <button type="button" class="keycap" id="keycap" aria-label="点击录制或修改触发键">
+            <div class="keycap-top">
+              <p class="keycap-name" id="keycapName">右 Shift</p>
+              <span class="keycap-gesture" id="keycapGesture">×2</span>
+            </div>
+            <p class="keycap-meta" id="keycapMeta"><strong>双击开关</strong> · 再双击结束</p>
+          </button>
+          <p class="hint" id="hint">点键帽改触发</p>
+          <div class="conflict" id="conflict" role="alert">
+            <strong>与「侧键语音」共用触发键</strong>
+            同应用内冲突。
+            <div class="acts">
+              <button type="button">改用 右 Alt</button>
+              <button type="button">打开侧键语音</button>
+            </div>
+          </div>
+        </main>
+
+        <aside class="aside" aria-label="本场景动作">
+          <div class="aside-head">
+            <div class="aside-app">
+              <span class="aside-app-ico" aria-hidden="true"></span>
+              <span class="aside-app-name">Cursor</span>
+            </div>
+            <h3 class="aside-title">本场景动作</h3>
+          </div>
+          <div class="dir" role="list">
+            <button type="button" class="dir-item is-active" role="listitem"
+              data-key="右 Shift" data-mark="×2" data-meta="双击开关 · 再双击结束" data-out="音量增 · 右 Alt">
+              <span class="dir-name">语音输入</span>
+              <span class="dir-bind">右 Shift ×2</span>
+            </button>
+            <button type="button" class="dir-item is-off" role="listitem"
+              data-key="侧键" data-mark="" data-meta="单击开关 · 再按结束" data-out="听写 · Win+H">
+              <span class="dir-name">侧键语音</span>
+              <span class="dir-bind">XButton1</span>
+            </button>
+            <button type="button" class="dir-item" role="listitem"
+              data-key="F13" data-mark="按住" data-meta="按住说话 · 松手结束" data-out="听写 · F2">
+              <span class="dir-name">按住口述</span>
+              <span class="dir-bind">F13 按住</span>
+            </button>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="foot">
+        <button type="button" class="btn">测试一次</button>
+        <button type="button" class="btn primary">完成</button>
+      </footer>
+    </div>
+
+    <div class="note">
+      <h2>相对 v1 / 现状</h2>
+      <ul>
+        <li>步骤改成顶栏两枚胶囊（触发 / 识别），不再用弯轨 + 01/02 踢脚线。</li>
+        <li>绑定摘要一行：<code>右 Shift ×2 → 识别</code>，不重复「触发」字样。</li>
+        <li>键帽做成可按压实体；用法写在键面下沿，去掉第二行「点击修改」与用法卡。</li>
+        <li>右栏：动作名左、键右，单行可扫；去掉「N 个动作 · 点选…」。</li>
+        <li>多了「未绑键」态。</li>
+      </ul>
+      旧稿：<a href="./keys-trigger-slim-hero.html">v1 slim hero</a>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var stage = document.getElementById('stage');
+      var pill = document.getElementById('statusPill');
+      var hint = document.getElementById('hint');
+      var nameEl = document.getElementById('keycapName');
+      var gesture = document.getElementById('keycapGesture');
+      var meta = document.getElementById('keycapMeta');
+      var thesisKey = document.getElementById('thesisKey');
+      var thesisMark = document.getElementById('thesisMark');
+      var thesisOut = document.getElementById('thesisOut');
+      var toggles = document.querySelectorAll('.proto-toggles [data-state]');
+      var items = document.querySelectorAll('.dir-item');
+      var steps = document.querySelectorAll('.step');
+      var lastBind = {
+        key: '右 Shift',
+        mark: '×2',
+        meta: '双击开关 · 再双击结束',
+        out: '音量增 · 右 Alt'
+      };
+
+      function applyBind(b) {
+        lastBind = b;
+        nameEl.textContent = b.key || '未绑键';
+        meta.innerHTML = b.meta
+          ? '<strong>' + b.meta.split(' · ')[0] + '</strong> · ' + (b.meta.split(' · ')[1] || '')
+          : '点键帽开始录制';
+        if (b.mark) {
+          gesture.hidden = false;
+          gesture.textContent = b.mark;
+          thesisKey.innerHTML = (b.key || '') + '<span class="mark" id="thesisMark">' + b.mark + '</span>';
+        } else {
+          gesture.hidden = true;
+          thesisKey.textContent = b.key || '—';
+        }
+        thesisOut.textContent = b.out || '—';
+      }
+
+      function setState(name) {
+        stage.classList.remove('is-recording', 'is-conflict', 'is-empty');
+        toggles.forEach(function (b) {
+          b.classList.toggle('is-on', b.getAttribute('data-state') === name);
+        });
+        if (name === 'recording') {
+          stage.classList.add('is-recording');
+          pill.textContent = '正在录制';
+          pill.classList.add('is-dirty');
+          hint.textContent = '按下启动键… 单击 / 双击 / 按住都会自动记下';
+          meta.innerHTML = '<strong>等待按键</strong>';
+        } else if (name === 'conflict') {
+          stage.classList.add('is-conflict');
+          pill.textContent = '有冲突';
+          pill.classList.add('is-dirty');
+          hint.textContent = '';
+          applyBind(lastBind);
+        } else if (name === 'empty') {
+          stage.classList.add('is-empty');
+          pill.textContent = '未完成';
+          pill.classList.add('is-dirty');
+          applyBind({ key: '未绑键', mark: '', meta: '', out: '尚未选择识别' });
+          hint.textContent = '点键帽录制启动键';
+        } else {
+          pill.textContent = '已激活';
+          pill.classList.remove('is-dirty');
+          hint.textContent = '点键帽改触发';
+          applyBind(lastBind);
+        }
+      }
+
+      toggles.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          setState(btn.getAttribute('data-state'));
+        });
+      });
+
+      items.forEach(function (item) {
+        item.addEventListener('click', function () {
+          items.forEach(function (el) { el.classList.remove('is-active'); });
+          item.classList.add('is-active');
+          applyBind({
+            key: item.getAttribute('data-key') || '',
+            mark: item.getAttribute('data-mark') || '',
+            meta: item.getAttribute('data-meta') || '',
+            out: item.getAttribute('data-out') || ''
+          });
+          setState('idle');
+        });
+      });
+
+      steps.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          steps.forEach(function (s) {
+            var on = s === btn;
+            s.classList.toggle('is-on', on);
+            s.setAttribute('aria-selected', on ? 'true' : 'false');
+          });
+        });
+      });
+
+      document.getElementById('keycap').addEventListener('click', function () {
+        setState(stage.classList.contains('is-recording') ? 'idle' : 'recording');
+      });
+    })();
+  </script>
+</body>
+</html>

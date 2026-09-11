@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>按键页 + B 方案 · 共享动作轻目录</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2d4a;
+      --muted: #64748b;
+      --faint: #94a3b8;
+      --line: rgba(26, 45, 74, 0.1);
+      --paper: #fff;
+      --wash: #f1f5f9;
+      --bg: #e8eef3;
+      --cyan: #2a9cc4;
+      --cyan-deep: #1f8fb8;
+      --cyan-soft: #e6f7fc;
+      --cyan-bd: rgba(42, 156, 196, 0.35);
+      --ok: #15803d;
+      --warn: #b45309;
+      --sidebar: #f8fafc;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --w-dir: 176px;
+      --w-detail: 320px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background: var(--bg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    .proto-bar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      padding: 10px 16px;
+      background: #13202c;
+      color: #c5d0de;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 200px minmax(0, 1fr);
+      min-height: calc(100vh - 52px);
+      max-width: 1280px;
+      margin: 0 auto;
+      background: var(--paper);
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+    }
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: var(--sidebar);
+      padding: 16px 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px 16px;
+      font-weight: 750;
+      font-size: 15px;
+    }
+    .brand i {
+      width: 22px; height: 22px; border-radius: 7px;
+      background: linear-gradient(145deg, #35c6ff, #087fc4);
+      display: grid; place-items: center; color: #fff; font-size: 11px; font-style: normal; font-weight: 800;
+    }
+    .nav-lab {
+      margin: 10px 8px 6px;
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: 0.06em;
+      color: var(--faint);
+      text-transform: uppercase;
+    }
+    .nav-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      border-radius: 9px;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 550;
+      color: var(--muted);
+      cursor: default;
+    }
+    .nav-item.is-on {
+      background: var(--cyan-soft);
+      color: var(--cyan-deep);
+      font-weight: 700;
+    }
+
+    .stage {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      position: relative;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 12px 16px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .status .left { min-width: 0; }
+    .crumb {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 550;
+    }
+    .crumb em { font-style: normal; color: var(--cyan-deep); font-weight: 700; }
+    .habit-switch {
+      margin-top: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 6px 10px;
+      background: #fff;
+      font-size: 12.5px;
+      font-weight: 650;
+    }
+    .habit-switch .ico {
+      width: 18px; height: 18px; border-radius: 5px;
+      background: #1b2430; color: #fff;
+      display: grid; place-items: center;
+      font-family: var(--mono); font-size: 8px; font-weight: 700;
+    }
+
+    .ch-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fafcfd;
+    }
+    .ch-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 11px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .ch-btn.is-on {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #fff;
+    }
+    .ch-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+    .work {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) var(--w-dir);
+      min-height: 0;
+      transition: grid-template-columns 240ms var(--ease);
+    }
+    .stage[data-panel="detail"] .work {
+      grid-template-columns: minmax(0, 1fr) var(--w-detail);
+    }
+    @media (max-width: 820px) {
+      .work { grid-template-columns: 1fr; }
+      .b-panel {
+        position: fixed;
+        top: 52px; right: 0; bottom: 0;
+        width: min(320px, 92vw);
+        z-index: 30;
+        box-shadow: -12px 0 28px rgba(19, 32, 44, 0.12);
+      }
+    }
+
+    .main {
+      padding: 16px 18px 28px;
+      overflow: auto;
+      min-width: 0;
+      background: linear-gradient(180deg, #f7fafc, #eef3f7 40%, #eef3f7);
+    }
+
+    .pipe {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 8px 0 18px;
+    }
+    .node {
+      width: 88px;
+      text-align: center;
+    }
+    .node .orb {
+      width: 56px; height: 56px;
+      margin: 0 auto 8px;
+      border-radius: 50%;
+      border: 2px solid var(--cyan-bd);
+      background: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      color: var(--cyan-deep);
+      box-shadow: 0 4px 12px rgba(42, 156, 196, 0.12);
+    }
+    .node.is-on .orb {
+      border-color: var(--cyan);
+      background: var(--cyan-soft);
+    }
+    .node .lbl {
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .node .sub {
+      margin-top: 2px;
+      font-size: 10.5px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+    .pipe-line {
+      width: 72px;
+      height: 0;
+      border-top: 2px dashed rgba(42, 156, 196, 0.35);
+      margin-bottom: 28px;
+    }
+
+    .card {
+      max-width: 560px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 28px rgba(26, 45, 74, 0.06);
+    }
+    .keycap-btn {
+      width: 100%;
+      border: 2px solid var(--cyan);
+      background: var(--cyan-soft);
+      border-radius: 14px;
+      padding: 16px 14px;
+      font: inherit;
+      text-align: center;
+      cursor: pointer;
+      color: var(--ink);
+    }
+    .keycap-btn strong {
+      display: block;
+      font-size: 16px;
+      font-weight: 750;
+    }
+    .keycap-btn span {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .field-lab {
+      margin: 16px 0 8px;
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--muted);
+    }
+    .modes {
+      display: grid;
+      gap: 8px;
+    }
+    .mode {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 12px;
+      background: #fff;
+      font: inherit;
+      cursor: pointer;
+    }
+    .mode.is-on {
+      border-color: var(--cyan-bd);
+      background: var(--cyan-soft);
+    }
+    .mode .radio {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--faint);
+      margin-top: 2px;
+      flex: 0 0 auto;
+    }
+    .mode.is-on .radio {
+      border-color: var(--cyan);
+      box-shadow: inset 0 0 0 4px var(--cyan);
+    }
+    .mode b { display: block; font-size: 13px; font-weight: 700; }
+    .mode small { display: block; margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+
+    .note {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fff7ed;
+      border: 1px solid #f0c9a0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--ink);
+    }
+    .note strong { color: var(--warn); }
+
+    /* —— B panel —— */
+    .b-panel {
+      border-left: 1px solid var(--line);
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .stage[data-panel="detail"] .b-panel {
+      background: #fff;
+    }
+    .bp-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 12px 11px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .bp-head h3 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .bp-head p {
+      margin: 3px 0 0;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .bp-back {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 5px 8px;
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 650;
+      color: var(--cyan-deep);
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    .stage[data-panel="dir"] .bp-back { display: none; }
+
+    .bp-dir {
+      flex: 1;
+      overflow: auto;
+      padding: 6px 8px 12px;
+    }
+    .stage[data-panel="detail"] .bp-dir { display: none; }
+
+    .grp-h {
+      margin-top: 8px;
+      padding: 4px 6px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--faint);
+    }
+    .grp-h:first-child { margin-top: 2px; }
+
+    .act {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 2px 8px;
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 8px 9px;
+      margin-bottom: 4px;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
+    .act:hover { border-color: var(--cyan-bd); }
+    .act.is-hot {
+      border-color: var(--cyan);
+      background: var(--cyan-soft);
+    }
+    .act .n { font-size: 12.5px; font-weight: 700; }
+    .act .s {
+      grid-column: 1;
+      font-family: var(--mono);
+      font-size: 10.5px;
+    }
+    .act .s.ok { color: var(--ok); }
+    .act .s.miss { color: var(--warn); }
+    .ch-icons {
+      grid-row: 1 / span 2;
+      display: flex;
+      gap: 3px;
+      align-items: center;
+    }
+    .ch-ico {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      display: grid;
+      place-items: center;
+      color: #94a3b8;
+      background: transparent;
+    }
+    .ch-ico svg {
+      width: 13px;
+      height: 13px;
+      display: block;
+    }
+    .ch-ico.is-on {
+      color: #1f8fb8;
+      background: #e6f7fc;
+    }
+    .ch-ico.is-cur {
+      box-shadow: 0 0 0 1.5px rgba(42, 156, 196, 0.55);
+    }
+    .ch-ico.is-on.is-cur {
+      background: #d7eef8;
+    }
+
+    .bp-detail {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: auto;
+    }
+    .stage[data-panel="detail"] .bp-detail { display: flex; }
+
+    .pick {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .pick button {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 650;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .pick button.is-on {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+      color: var(--cyan-deep);
+    }
+
+    .edit {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .edit h4 { margin: 0; font-size: 15px; font-weight: 750; }
+    .edit .desc { margin: 0; font-size: 12px; color: var(--muted); }
+    .primary {
+      border: 1px solid var(--cyan-bd);
+      background: var(--cyan-soft);
+      border-radius: 12px;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+    }
+    .primary label {
+      font-size: 10.5px;
+      font-weight: 750;
+      color: var(--cyan-deep);
+      font-family: var(--mono);
+    }
+    .primary .row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px;
+    }
+    .primary input {
+      border: 1px solid var(--cyan-bd);
+      border-radius: 9px;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 13px;
+      font-family: var(--mono);
+      font-weight: 650;
+    }
+    .primary button {
+      border: 1px solid var(--cyan);
+      background: var(--cyan);
+      color: #fff;
+      border-radius: 9px;
+      padding: 0 12px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    details.others {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fafcfd;
+    }
+    details.others summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--muted);
+      list-style: none;
+    }
+    details.others summary::-webkit-details-marker { display: none; }
+    details.others[open] summary {
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+    }
+    .other-grid {
+      padding: 8px 10px 10px;
+      display: grid;
+      gap: 6px;
+    }
+    .other-grid label {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+    .other-grid input {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font: inherit;
+      font-size: 12px;
+      font-family: var(--mono);
+    }
+    .edit-acts {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .edit-acts button {
+      border: 1px solid var(--cyan-bd);
+      background: #fff;
+      color: var(--cyan-deep);
+      border-radius: 10px;
+      padding: 7px 11px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .edit-acts .pri {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #fff;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%) translateY(8px);
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(19, 32, 44, 0.92);
+      color: #fff;
+      font-size: 12.5px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      z-index: 50;
+    }
+    .toast.is-show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <strong>原型 · 按键页嵌入 B 方案：</strong>
+    左边保持现网「触发 → 延时 / 录键卡片」；右边常驻共享轻目录（输入/回合/会话）。
+    点动作 → 详情主改「键」，其它通道折叠。
+    <a href="./shared-panel-lite.html">轻量共享 panel</a>
+  </div>
+
+  <div class="app">
+    <aside class="sidebar" aria-label="主导航">
+      <div class="brand"><i>1</i> OneTone</div>
+      <div class="nav-lab">主面板</div>
+      <button type="button" class="nav-item">首页</button>
+      <button type="button" class="nav-item">我的习惯</button>
+      <button type="button" class="nav-item is-on">按键设置</button>
+      <button type="button" class="nav-item">虚拟键盘</button>
+      <button type="button" class="nav-item">语音设置</button>
+      <button type="button" class="nav-item">摄像头</button>
+      <div class="nav-lab">系统</div>
+      <button type="button" class="nav-item">通用设置</button>
+      <button type="button" class="nav-item">声音与反馈</button>
+    </aside>
+
+    <div class="stage" id="stage" data-panel="dir" data-channel="key">
+      <div class="status">
+        <div class="left">
+          <div class="crumb">按键 / 正在编辑：<em>Cursor</em></div>
+          <div class="habit-switch">
+            <span class="ico">Cu</span>
+            切换 · Cursor 应用场景
+          </div>
+        </div>
+      </div>
+
+      <div class="ch-row" role="tablist" aria-label="通道入口">
+        <button type="button" class="ch-btn">我的习惯</button>
+        <button type="button" class="ch-btn">AI 助手</button>
+        <button type="button" class="ch-btn is-on" data-ch="key">脚部按钮设置</button>
+        <button type="button" class="ch-btn" data-ch="voice">配置语音</button>
+        <button type="button" class="ch-btn" data-ch="camera">配置摄像头</button>
+        <button type="button" class="ch-btn" data-ch="softPad">Soft Pad</button>
+      </div>
+
+      <div class="work">
+        <div class="main">
+          <div class="pipe" aria-hidden="true">
+            <div class="node is-on">
+              <div class="orb">⌨</div>
+              <div class="lbl">01 触发</div>
+              <div class="sub">1× · 1</div>
+            </div>
+            <div class="pipe-line"></div>
+            <div class="node">
+              <div class="orb">〰</div>
+              <div class="lbl">02 延时</div>
+              <div class="sub">无 · 0.1–2s</div>
+            </div>
+          </div>
+
+          <div class="card" id="mainCard">
+            <button type="button" class="keycap-btn" id="keycapBtn">
+              <strong id="keycapTitle">小键盘 7 · 结束或发送</strong>
+              <span>点击修改快捷键 · 对应动作「发送」</span>
+            </button>
+            <div class="field-lab">触发方式</div>
+            <div class="modes" id="modes">
+              <button type="button" class="mode is-on">
+                <i class="radio" aria-hidden="true"></i>
+                <span><b>单击开始 / 再点结束</b><small>适合脚部按钮切换听写</small></span>
+              </button>
+              <button type="button" class="mode">
+                <i class="radio" aria-hidden="true"></i>
+                <span><b>双击开始 / 再点结束</b><small>防误触</small></span>
+              </button>
+              <button type="button" class="mode">
+                <i class="radio" aria-hidden="true"></i>
+                <span><b>按住说话</b><small>短句专用</small></span>
+              </button>
+            </div>
+            <div class="note">
+              <strong>B 怎么加进来：</strong>
+              主栏仍是「这个键怎么触发」。右边目录回答「Cursor 场景有哪些动作、键绑了没」。
+              点「发送」会高亮左边卡片，并打开详情改键；改完语音/Pad/摄同源更新。
+              右侧四个图标＝首页通道图标：灰＝未绑，亮＝已绑，描边＝当前通道。
+            </div>
+          </div>
+        </div>
+
+        <aside class="b-panel" id="bPanel" aria-label="本场景动作">
+          <div class="bp-head">
+            <div>
+              <h3>本场景动作</h3>
+              <p id="bpMeta">Cursor · 当前看「键」</p>
+            </div>
+            <button type="button" class="bp-back" id="bpBack">收起</button>
+          </div>
+          <div class="bp-dir" id="bpDir"></div>
+          <div class="bp-detail" id="bpDetail">
+            <div class="pick" id="pick"></div>
+            <div class="edit" id="edit"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var GROUPS = [
+        { title: "输入", ids: ["dictation"] },
+        { title: "回合", ids: ["send", "continue", "stop"] },
+        { title: "会话", ids: ["newThread", "focus"] }
+      ];
+      var ACTIONS = [
+        { id: "dictation", name: "开始听写", effect: "字进光标处", binds: { key: "LAlt", voice: "说话", softPad: "麦", camera: "" } },
+        { id: "send", name: "发送", effect: "结束或发送", binds: { key: "Numpad7", voice: "发送", softPad: "发送", camera: "" } },
+        { id: "continue", name: "继续", effect: "让 Agent 接着干", binds: { key: "", voice: "继续", softPad: "继续", camera: "点头" } },
+        { id: "stop", name: "停止", effect: "停生成", binds: { key: "Esc", voice: "取消", softPad: "停止", camera: "摇头" } },
+        { id: "newThread", name: "新会话", effect: "开一条干净对话", binds: { key: "", voice: "新会话", softPad: "新会话", camera: "" } },
+        { id: "focus", name: "聚焦 Composer", effect: "回到对话输入", binds: { key: "", voice: "", softPad: "召回", camera: "五指" } }
+      ];
+      var CH = {
+        key: { label: "脚部按钮 / 按键", short: "键", field: "key" },
+        voice: { label: "语音", short: "说", field: "voice" },
+        softPad: { label: "Soft Pad", short: "Pad", field: "softPad" },
+        camera: { label: "摄像头", short: "摄", field: "camera" }
+      };
+
+      var state = { channel: "key", panel: "dir", selected: "send" };
+      var stage = document.getElementById("stage");
+      var toastEl = document.getElementById("toast");
+      var toastTimer = 0;
+
+      function esc(s) {
+        return String(s == null ? "" : s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("is-show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("is-show"); }, 1400);
+      }
+      function field() { return CH[state.channel].field; }
+      function val(a, f) { return String((a.binds && a.binds[f]) || ""); }
+      function byId(id) { return ACTIONS.find(function (a) { return a.id === id; }); }
+
+      function channelIcons(a) {
+        var svgs = {
+          key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>',
+          voice: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>',
+          softPad: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>',
+          camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>'
+        };
+        var titles = { key: "按键", voice: "语音", softPad: "Soft Pad", camera: "摄像头" };
+        return ["key", "voice", "softPad", "camera"].map(function (f) {
+          var on = !!val(a, f);
+          var cur = f === field();
+          return (
+            '<span class="ch-ico' + (on ? " is-on" : "") + (cur ? " is-cur" : "") + '" title="' +
+            titles[f] + (on ? " · 已绑" : " · 未绑") + '">' + svgs[f] + "</span>"
+          );
+        }).join("");
+      }
+
+      function syncKeycap() {
+        var a = byId(state.selected) || byId("send");
+        var k = val(a, "key") || "未绑键";
+        document.getElementById("keycapTitle").textContent = k + " · " + a.name;
+        document.getElementById("keycapBtn").classList.toggle("is-linked", state.selected === a.id);
+      }
+
+      function paintDir() {
+        var host = document.getElementById("bpDir");
+        var f = field();
+        host.innerHTML = GROUPS.map(function (g) {
+          return (
+            '<div class="grp-h">' + esc(g.title) + "</div>" +
+            g.ids.map(function (id) {
+              var a = byId(id);
+              var v = val(a, f);
+              var st = v ? { cls: "ok", text: v } : { cls: "miss", text: "未配" };
+              var hot = state.selected === a.id && state.panel === "detail";
+              return (
+                '<button type="button" class="act' + (hot ? " is-hot" : "") + '" data-open="' + esc(a.id) + '">' +
+                '<span class="n">' + esc(a.name) + "</span>" +
+                '<span class="ch-icons">' + channelIcons(a) + "</span>" +
+                '<span class="s ' + st.cls + '">' + esc(st.text) + "</span>" +
+                "</button>"
+              );
+            }).join("")
+          );
+        }).join("");
+        host.querySelectorAll("[data-open]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            openDetail(btn.getAttribute("data-open"));
+          });
+        });
+      }
+
+      function paintDetail() {
+        var a = byId(state.selected);
+        if (!a) return;
+        var f = field();
+        var pick = document.getElementById("pick");
+        pick.innerHTML = ACTIONS.map(function (x) {
+          return '<button type="button" class="' + (x.id === a.id ? "is-on" : "") + '" data-sel="' + esc(x.id) + '">' + esc(x.name) + "</button>";
+        }).join("");
+        pick.querySelectorAll("[data-sel]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            state.selected = btn.getAttribute("data-sel");
+            syncKeycap();
+            paintDetail();
+          });
+        });
+
+        var others = [
+          { f: "key", lab: "按键" },
+          { f: "voice", lab: "说法" },
+          { f: "softPad", lab: "Pad" },
+          { f: "camera", lab: "手势" }
+        ].filter(function (x) { return x.f !== f; });
+        var curLab = { key: "按键", voice: "说法", softPad: "Pad", camera: "手势" }[f];
+
+        var edit = document.getElementById("edit");
+        edit.innerHTML =
+          "<h4>" + esc(a.name) + "</h4>" +
+          '<p class="desc">' + esc(a.effect) + "</p>" +
+          '<div class="primary"><label>当前通道 · ' + esc(curLab) + "</label>" +
+          '<div class="row"><input data-primary value="' + esc(val(a, f)) + '" placeholder="未配" />' +
+          '<button type="button" data-rec>录</button></div></div>' +
+          '<details class="others"><summary>其它通道（同一条 · 默认收起）</summary>' +
+          '<div class="other-grid">' +
+          others.map(function (x) {
+            return "<label><span>" + esc(x.lab) + "</span><input data-o='" + x.f + "' value='" + esc(val(a, x.f)) + "' placeholder='未配' /></label>";
+          }).join("") +
+          "</div></details>" +
+          '<div class="edit-acts">' +
+          '<button type="button" data-back>收起</button>' +
+          '<button type="button" class="pri" data-save>保存</button>' +
+          "</div>";
+
+        edit.querySelector("[data-save]").addEventListener("click", function () {
+          a.binds[f] = edit.querySelector("[data-primary]").value.trim();
+          others.forEach(function (x) {
+            var el = edit.querySelector("[data-o='" + x.f + "']");
+            if (el) a.binds[x.f] = el.value.trim();
+          });
+          syncKeycap();
+          paintDir();
+          paintDetail();
+          toast("已保存 · " + a.name + "（四通道同源）");
+        });
+        edit.querySelector("[data-back]").addEventListener("click", closeDetail);
+        edit.querySelector("[data-rec]").addEventListener("click", function () {
+          toast("原型：录当前通道「" + curLab + "」");
+        });
+      }
+
+      function setPanel(mode) {
+        state.panel = mode;
+        stage.setAttribute("data-panel", mode);
+        document.getElementById("bpMeta").textContent =
+          "Cursor · 当前看「" + CH[state.channel].short + "」" + (mode === "detail" ? " · 详情" : "");
+        if (mode === "dir") paintDir();
+        else paintDetail();
+      }
+
+      function openDetail(id) {
+        state.selected = id;
+        syncKeycap();
+        setPanel("detail");
+        toast("改 · " + byId(id).name);
+      }
+
+      function closeDetail() {
+        setPanel("dir");
+        paintDir();
+      }
+
+      function setChannel(ch) {
+        if (!CH[ch]) return;
+        state.channel = ch;
+        stage.setAttribute("data-channel", ch);
+        document.querySelectorAll(".ch-btn[data-ch]").forEach(function (btn) {
+          btn.classList.toggle("is-on", btn.getAttribute("data-ch") === ch);
+        });
+        /* 示意：语音/摄入口仍停在本页壳上，真正产品可跳转；此处只换 panel 高亮列 */
+        if (state.panel === "dir") paintDir();
+        else paintDetail();
+        document.getElementById("bpMeta").textContent = "Cursor · 当前看「" + CH[ch].short + "」";
+        toast("通道强调 · " + CH[ch].label);
+      }
+
+      document.querySelectorAll(".ch-btn[data-ch]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          setChannel(btn.getAttribute("data-ch"));
+        });
+      });
+      document.getElementById("bpBack").addEventListener("click", closeDetail);
+      document.getElementById("keycapBtn").addEventListener("click", function () {
+        openDetail(state.selected || "send");
+        toast("从主栏卡片进入同一详情");
+      });
+      document.querySelectorAll(".mode").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".mode").forEach(function (m) { m.classList.remove("is-on"); });
+          btn.classList.add("is-on");
+        });
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && state.panel === "detail") closeDetail();
+      });
+
+      syncKeycap();
+      setPanel("dir");
+    })();
+  </script>
+</body>
+</html>

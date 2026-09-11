@@ -286,14 +286,9 @@
       return;
     }
     if(step==='target'){
+      // Left-click recognition keycap → record (same as trigger). Channel sheet stays via step nav.
       setDetailStep('target',{skipScroll:true});
-      var picker=global.OneToneKeysChannelCommandPicker;
-      if(picker&&(picker.openCapturePopover||picker.openCaptureSheet)){
-        var openFn=picker.openCapturePopover||picker.openCaptureSheet;
-        openFn.call(picker,{ tab:'key' });
-      }else{
-        openTargetKeyPicker();
-      }
+      startTargetRecordForKeysPanel();
       highlightRow('target');
       return;
     }
@@ -390,22 +385,6 @@
         if(key!=='Enter'&&key!==' '&&key!=='Spacebar'&&key!=='Space') return;
         handleKeycapFromEvent(e);
       });
-      // Right-click 02 recognition keycap → record key for current selection (persist via adapters/save).
-      flow.addEventListener('contextmenu',function(e){
-        var captureZone=e.target.closest&&e.target.closest('.keys-workflow-keycap-zone,#habitKeyMapCellTarget,#keysCaptureKeycapHost,#keysCaptureKeycapZone');
-        var stepEl=e.target.closest&&e.target.closest('[data-edit-step]');
-        var step=stepEl&&stepEl.dataset.editStep;
-        if(!step&&captureZone){
-          var zoneStepEl=captureZone.closest&&captureZone.closest('[data-edit-step]');
-          step=zoneStepEl&&zoneStepEl.dataset.editStep;
-        }
-        if(step!=='target'&&!(captureZone&&(!step||step==='target'))) return;
-        e.preventDefault();
-        e.stopPropagation();
-        setDetailStep('target',{skipScroll:true});
-        startTargetRecordForKeysPanel();
-        highlightRow('target');
-      });
     }
   }
 
@@ -424,6 +403,7 @@
     openTargetKeyPicker:openTargetKeyPicker,
     startTargetRecordForKeysPanel:startTargetRecordForKeysPanel,
     startTriggerRecord:startTriggerRecord,
+    handleKeycapStep:handleKeycapStep,
     // P12c-2：状态 pills sync-push 模型
     buildKeysStatusPillsModel:buildKeysStatusPillsModel
   };

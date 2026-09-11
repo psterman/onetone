@@ -732,6 +732,16 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     });
   }
 
+  function applyCapturedTriggerMode(m, raw){
+    if(!m) return;
+    var mode=String(raw||'').trim().toLowerCase();
+    if(!mode) return;
+    if(mode==='double') m.triggerMode='double';
+    else if(mode==='longpress'||mode==='hold') m.triggerMode='longpress';
+    else if(mode==='perpress') m.triggerMode='perpress';
+    else if(mode==='tap') m.triggerMode='tap';
+  }
+
   function applyBackendKeyCapture(msg){
     const mappingId=msg.mappingId||'';
     const m=OneToneMappingCore.byId(mappingId)||OneToneMappingCore.recording()||OneToneMappingCore.selected();
@@ -761,6 +771,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       else if(trig!=='AutoTrigger') m.triggerSource=null;
       m.sourceKey=msg.sourceKey||(msg.source&&msg.source.rawEvents&&msg.source.rawEvents[0]&&msg.source.rawEvents[0].hotkey)||trig;
       m.sourceTime=msg.sourceTime||'';
+      applyCapturedTriggerMode(m, msg.triggerMode);
       if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTriggerKey(trig);
     }
     m.label=(OneToneMappingCore.editorTrigger(m)||'?')+' → '+(OneToneMappingCore.editorTarget(m)||'?');
@@ -816,8 +827,10 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     var k=hooks().normalizeTriggerKey(key);
     // BT volume often arrives as RAlt while 02 识别 is also RAlt. Recording
     // trigger must not silently echo-reject — fold to AutoTrigger instead.
+    var foldedRAlt=false;
     if(k==='RAlt'){
       k='AutoTrigger';
+      foldedRAlt=true;
     }
     if(hooks().shouldIgnoreTriggerLeftClickCapture(rawKey||k,rawSourceKey||rawKey||k,source)) return false;
     // let: may retarget to an existing/forked mapping below (same-app trigger switch).
@@ -849,7 +862,11 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
         ?OneToneMappingCore.findMappingByAppAndTrigger(appId,k,m.id)
         :null;
     if(existingOther&&existingOther.id){
-      // Same app already has this trigger — switch to that habit; leave current trigger alone.
+      // Same app already has this trigger — tip + switch; do not steal onto the new row.
+      hooks().toast(t(
+        'recordTriggerAlreadyUsed',
+        '该触发键已被本场景其他动作使用，已切换到该动作'
+      ));
       if(OneToneMappingCore.focus) OneToneMappingCore.focus(existingOther.id);
       else{
         hooks().flushAllEditorToMappings&&hooks().flushAllEditorToMappings();
@@ -858,7 +875,14 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
         }
         hooks().syncEditorFromSelection&&hooks().syncEditorFromSelection();
       }
-      m=existingOther;
+      armLocalCaptureGuard();
+      rec.snapshot=null;
+      rec.mappingId='';
+      clearRecordMappingGuard();
+      clearRecTimer();
+      setRecording('none');
+      hooks().render();
+      return false;
     }else if(prevTrig&&prevTrig!==k){
       // Preset apps + universal baseline stay one row — retarget in place.
       // Only appTargetId=custom may fork (multi user-defined app habits).
@@ -886,8 +910,14 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     }else if(k!=='AutoTrigger'){
       m.triggerSource=null;
     }
-    m.sourceKey=sourceKey||(source&&source.rawEvents&&source.rawEvents[0]&&source.rawEvents[0].hotkey)||k;
+    // Folded RAlt must not keep sourceKey=RAlt (paints as「右 Alt」and survives restart).
+    if(foldedRAlt&&(rawSourceKey==='RAlt'||hooks().normalizeTriggerKey(rawSourceKey)==='RAlt'||!rawSourceKey)){
+      m.sourceKey='Volume_Down';
+    }else{
+      m.sourceKey=sourceKey||(source&&source.rawEvents&&source.rawEvents[0]&&source.rawEvents[0].hotkey)||k;
+    }
     m.sourceTime=sourceTime||'';
+    applyCapturedTriggerMode(m, opts&&opts.triggerMode);
     if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTriggerKey(k);
     m.label=k+' → '+(OneToneMappingCore.editorTarget(m)||'?');
     if(!prevTrig&&!String(m.group||'').trim()){
@@ -911,7 +941,8 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     clearRecordMappingGuard();
     clearRecTimer();
     setRecording('none');
-    if(!backendCommitted) hooks().save();
+    // Backend may have written RAlt; FE fold must re-save so restart keeps AutoTrigger.
+    if(!backendCommitted||foldedRAlt) hooks().save();
     hooks().render();
     try{
       if(global.OneToneHabitHub&&global.OneToneHabitHub.scheduleHubPaint){

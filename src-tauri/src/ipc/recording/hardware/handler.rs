@@ -120,6 +120,25 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
                     .lock()
                     .take()
                     .unwrap_or(normalized.clone());
+                // Lone modifier: detector started on keydown — keyup finishes
+                // LongPress / WaitingDouble (then poll → Tap or second press → Double).
+                if is_trigger {
+                    if !handle_record_gesture_event(state, window, &pending, device, true) {
+                        // Keydown never armed the detector (e.g. older path) —
+                        // still wait for a possible double before Tap.
+                        let now = std::time::Instant::now();
+                        state.record_gesture.lock().begin_waiting_double(
+                            &pending, device, now,
+                        );
+                        let payload = serde_json::json!({
+                            "type": "mvp_record_gesture",
+                            "phase": "waiting_double",
+                            "key": pending,
+                        });
+                        window.emit("to_js", &payload).ok();
+                    }
+                    return;
+                }
                 finish_hardware_capture(state, window, &pending, device, None);
             }
             return;
@@ -182,9 +201,24 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
     }
 
     if is_modifier_token(&normalized) {
+        // Second press of a lone modifier within the double window.
+        let waiting = state
+            .record_gesture
+            .lock()
+            .is_waiting_double_for(&normalized, device);
+        if waiting && handle_record_gesture_event(state, window, &normalized, device, false) {
+            return;
+        }
+        // FE backup arrives over async IPC — GetAsyncKeyState often already sees
+        // the key up after a fast tap. Trust this keydown as lone-modifier unless
+        // another side modifier is still held (chord).
         let pressed = collect_pressed_side_modifiers();
-        if pressed.len() == 1 && pressed[0] == normalized {
+        let other_held = pressed.iter().any(|p| p != &normalized);
+        if !other_held {
             *state.record_hw_pending.lock() = Some(normalized.clone());
+            if is_trigger {
+                handle_record_gesture_event(state, window, &normalized, device, false);
+            }
             let ack = serde_json::json!({
                 "type": "mvp_record_pending",
                 "displayKey": normalized,

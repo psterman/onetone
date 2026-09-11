@@ -85,11 +85,40 @@ check('buildKeysTriggerConflictModel 已导出', typeof API.buildKeysTriggerConf
 let model = API.buildKeysTriggerConflictModel();
 check('无冲突时 hidden', model.hidden === true && model.sig === 'empty');
 
-globalThis.OneToneMappingCore.schemeHasConflict = () => true;
+// Cross-app same key is OK.
+state.config.mappings.push({
+  id: 'm-other-app',
+  appTargetId: 'codex-chat',
+  triggerKey: 'F1',
+  targetKey: 'Enter',
+  enabled: true,
+});
+state.config.mappings[0].appTargetId = 'cursor-chat';
 model = API.buildKeysTriggerConflictModel();
-check('有 scheme 冲突时可见', model.hidden === false);
+check('跨应用同键不冲突', model.hidden === true);
+
+// Same app same key = conflict.
+state.config.mappings.push({
+  id: 'm-same-app',
+  appTargetId: 'cursor-chat',
+  triggerKey: 'F1',
+  targetKey: 'RAlt',
+  enabled: true,
+  label: 'sibling',
+});
+model = API.buildKeysTriggerConflictModel();
+check('同应用同键冲突可见', model.hidden === false);
 check('html 含 recommend', typeof model.html === 'string' && model.html.includes('data-keys-conflict-recommend'));
 check('html 含 view', model.html.includes('data-keys-conflict-view'));
+check('recommend 主按钮带 is-primary', model.html.includes('is-primary'));
+check('源码推荐文案含 {key}', src.includes("t('keysConflictRecommend')") && src.includes(".replace('{key}'"));
+check('查看占用会 focus 占用方', src.includes('findTriggerConflictPeer') && /core\(\)\.focus\(peer\.id\)/.test(src));
+check(
+  '冲突仅同 appTargetId',
+  /Different apps may share the same key/.test(src) &&
+    /other\.appTargetId\|\|''\)\.trim\(\)!==app/.test(src)
+);
+
 
 console.log('[keys-trigger-conflict] 守卫:');
 globalThis.__otKeysTriggerConflictMounted = false;

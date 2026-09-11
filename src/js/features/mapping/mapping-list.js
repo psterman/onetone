@@ -249,6 +249,18 @@
     var recMode=recApi&&typeof recApi.mode==='function'?recApi.mode():'none';
     const trace=OneToneMappingCore.formatTriggerTrace?OneToneMappingCore.formatTriggerTrace(m):'';
     var mappingId=m&&m.id?String(m.id):'';
+    var lang=OneToneI18n.getLang?OneToneI18n.getLang():'zh';
+    var gesture='tap';
+    var gestureMark='';
+    if(recMode!=='trigger'&&m){
+      var rawMode=String(m.triggerMode||'tap').toLowerCase();
+      if(rawMode==='double') gesture='double';
+      else if(rawMode==='longpress'||rawMode==='hold') gesture='hold';
+      if(global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerGestureMark){
+        gestureMark=global.OneToneKeyLabels.triggerGestureMark(m,lang)||'';
+      }else if(gesture==='double') gestureMark='×2';
+      else if(gesture==='hold') gestureMark=lang==='en'?'hold':'按住';
+    }
     return {
       triggerEmpty:!!model.triggerEmpty,
       targetEmpty:!!model.targetEmpty,
@@ -256,11 +268,13 @@
       targetRaw:model.targetRaw||'',
       triggerRecording:recMode==='trigger',
       targetRecording:recMode==='target'||recMode==='agentBinding',
+      triggerGesture:gesture,
+      triggerGestureMark:gestureMark,
       traceText:trace||'',
       traceShow:!!trace,
       mappingId:mappingId,
       recMode:recMode,
-      sig:[mappingId,recMode,model.triggerRaw||'',model.targetRaw||'',trace||''].join('\0')
+      sig:[mappingId,recMode,model.triggerRaw||'',model.targetRaw||'',trace||'',gesture,gestureMark].join('\0')
     };
   }
 
@@ -273,12 +287,21 @@
     const triggerDisp=$('triggerDisplay');
     const targetDisp=$('targetDisplay');
     const traceEl=$('triggerTrace');
+    const gestureBadge=$('triggerGestureBadge');
     if(triggerDisp){
       triggerDisp.classList.toggle('empty',!!chrome.triggerEmpty);
       triggerDisp.classList.toggle('is-recording',!!chrome.triggerRecording);
+      triggerDisp.classList.toggle('is-gesture-double',chrome.triggerGesture==='double');
+      triggerDisp.classList.toggle('is-gesture-hold',chrome.triggerGesture==='hold');
       if(global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
         global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,chrome.triggerRaw||'');
       }
+    }
+    if(gestureBadge){
+      var mark=chrome.triggerGestureMark||'';
+      gestureBadge.textContent=mark;
+      gestureBadge.hidden=!mark;
+      gestureBadge.setAttribute('aria-hidden',mark?'false':'true');
     }
     if(targetDisp){
       targetDisp.classList.toggle('empty',!!chrome.targetEmpty);

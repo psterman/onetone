@@ -76,9 +76,10 @@
     overlay.setAttribute('aria-hidden','true');
     hoverKey='';
     searchQuery='';
-    // Cancel any in-flight openWithCallback promise — caller will simply not
-    // receive a chord.  We do NOT fire onCancel so callers can no-op cleanly.
+    // Cancel any in-flight openWithCallback / record callback — caller will
+    // simply not receive a chord.  We do NOT fire onCancel so callers no-op.
     _commitCallback=null;
+    _recordCallback=null;
     var search=$('targetKeyPickerSearch');
     if(search) search.value='';
     if(docKeyHandler){
@@ -136,7 +137,9 @@
     }
     if(!canOpen()) return;
     _recordCallback=onRecord;
-    openWithCallback(onCommit);
+    // Catalog picks must use the same callback path — never default
+    // applyCustomMappingTarget (that wiped appTargetId / scene panel).
+    openWithCallback(typeof onCommit==='function' ? onCommit : onRecord);
   }
 
   function clearCommitCallback(){

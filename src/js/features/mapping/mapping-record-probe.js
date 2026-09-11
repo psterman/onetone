@@ -111,13 +111,68 @@
       return '<li class="record-probe-hid-item"><span class="k">'+esc(row.key)+'</span><span class="n">'+esc(row.note)+'</span><button type="button" class="record-probe-btn" data-hid-idx="'+i+'">'+esc(t('keysCaptureProbeUseKey','用这个'))+'</button></li>';
     }).join('');
   }
+  function srcLabel(src){
+    var map={
+      ui:t('keysCaptureProbeSrcUi','界面'),
+      wv:t('keysCaptureProbeSrcWv','页面收到'),
+      fe:t('keysCaptureProbeSrcFe','前端处理'),
+      rs:t('keysCaptureProbeSrcRs','系统钩子')
+    };
+    return map[src]||src||'?';
+  }
+  function kindLabel(kind){
+    var map={
+      trigger:t('keysCaptureProbeKindTrigger','开始录触发'),
+      target:t('keysCaptureProbeKindTarget','开始录识别'),
+      seen:t('keysCaptureProbeKindSeen','检测到按键'),
+      keyup:t('keysCaptureProbeKindKeyup','松开'),
+      keydown:t('keysCaptureProbeKindKeydown','按下'),
+      finish:t('keysCaptureProbeKindFinish','已确认写入'),
+      commit:t('keysCaptureProbeKindCommit','提交'),
+      captured:t('keysCaptureProbeKindCaptured','捕获成功'),
+      skip:t('keysCaptureProbeKindSkip','已忽略'),
+      echo:t('keysCaptureProbeKindEcho','回声拒绝'),
+      reject:t('keysCaptureProbeKindReject','已拒绝'),
+      drop:t('keysCaptureProbeKindDrop','丢弃'),
+      unknown:t('keysCaptureProbeKindUnknown','未知键'),
+      retry:t('keysCaptureProbeKindRetry','重试'),
+      watchdog:t('keysCaptureProbeKindWatchdog','超时等待'),
+      probe:t('keysCaptureProbeKindProbe','探测')
+    };
+    return map[kind]||kind||'';
+  }
+  function noteLabel(note){
+    var n=String(note||'').trim();
+    if(!n) return '';
+    if(/^m-\d+/.test(n)){
+      var id=n.length>22?n.slice(0,22)+'…':n;
+      return t('keysCaptureProbeNoteMapping','习惯 {id}').replace('{id}',id);
+    }
+    if(n==='keyup'||n==='keydown') return kindLabel(n);
+    if(n==='after-volume') return t('keysCaptureProbeNoteAfterVol','音量键之后的多余信号');
+    if(n==='recognition-echo') return t('keysCaptureProbeNoteEcho','与听写键相同，已忽略');
+    if(n==='ui-leak') return t('keysCaptureProbeNoteUiLeak','界面按键，已忽略');
+    if(n==='padBind') return t('keysCaptureProbeNotePad','SoftPad 绑键');
+    if(n==='watchdog') return t('keysCaptureProbeNoteWatchdog','等待系统确认超时');
+    if(n.indexOf('trigger')===0&&n.length>8) return t('keysCaptureProbeKindTrigger','开始录触发');
+    return n;
+  }
   function render(){
     var ol=$('recordProbeLog');
     var status=$('recordProbeStatus');
     var panel=$('recordProbePanel');
     if(!ol) return;
     ol.innerHTML=lines.map(function(row){
-      return '<li class="record-probe-line is-'+esc(row.kind)+'"><span class="t">'+esc(row.t)+'</span><span class="s">'+esc(row.src)+'</span><span class="k">'+esc(row.key)+'</span><span class="a">'+esc(row.alias)+'</span><span class="n">'+esc(row.note)+'</span></li>';
+      var what=kindLabel(row.kind);
+      var note=noteLabel(row.note);
+      var detail=what+(note&&note!==what?' · '+note:'');
+      return '<li class="record-probe-line is-'+esc(row.kind)+'" title="'+esc(row.src+' / '+row.kind+(row.note?' / '+row.note:''))+'">'
+        +'<span class="t">'+esc(row.t)+'</span>'
+        +'<span class="s" data-src="'+esc(row.src)+'">'+esc(srcLabel(row.src))+'</span>'
+        +'<span class="k">'+esc(row.key||'—')+'</span>'
+        +(row.alias?'<span class="a">'+esc(row.alias)+'</span>':'')
+        +'<span class="n">'+esc(detail)+'</span>'
+        +'</li>';
     }).join('');
     ol.scrollTop=ol.scrollHeight;
     if(panel&&!uiRevealed) panel.hidden=true;
@@ -224,7 +279,7 @@
   }
   function text(){
     return lines.map(function(row){
-      return row.t+'\t'+row.src+'\t'+row.kind+'\t'+row.key+'\t'+row.alias+'\t'+row.note;
+      return row.t+'\t'+srcLabel(row.src)+'\t'+kindLabel(row.kind)+'\t'+(row.key||'')+'\t'+(row.alias||'')+'\t'+noteLabel(row.note);
     }).join('\n');
   }
   function copy(){

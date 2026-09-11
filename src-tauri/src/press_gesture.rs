@@ -35,6 +35,7 @@ impl RecordedGesture {
 
 const RECORD_LONG_PRESS_MS: u64 = gesture_timing::RECORD_LONG_PRESS_MS;
 const RECORD_DOUBLE_MS: u64 = gesture_timing::RECORD_DOUBLE_MS;
+const RECORD_DOUBLE_MIN_GAP_MS: u64 = gesture_timing::RECORD_DOUBLE_MIN_GAP_MS;
 
 #[derive(Debug, Clone)]
 pub struct RecordGestureComplete {
@@ -71,6 +72,17 @@ impl RecordGestureDetector {
         *self = Self::new();
     }
 
+    /// After a lone modifier's first release — wait for a second press or Tap timeout.
+    pub fn begin_waiting_double(&mut self, key: &str, device: Option<&str>, now: Instant) {
+        self.reset();
+        self.store_slot(key, device);
+        self.first_release_at = Some(now);
+    }
+
+    pub fn is_waiting_double_for(&self, key: &str, device: Option<&str>) -> bool {
+        self.first_release_at.is_some() && self.same_slot(key, device)
+    }
+
     fn same_slot(&self, key: &str, device: Option<&str>) -> bool {
         self.active_key.as_deref() == Some(key) && self.active_device.as_deref() == device
     }
@@ -87,10 +99,26 @@ impl RecordGestureDetector {
         now: Instant,
     ) -> Result<Option<RecordGestureComplete>, RecordGestureHint> {
         if self.first_release_at.is_some() && self.same_slot(key, device) {
+            let released = self.first_release_at.unwrap();
+            if now.duration_since(released) < Duration::from_millis(RECORD_DOUBLE_MIN_GAP_MS) {
+                return Err(RecordGestureHint::WaitingDouble {
+                    key: key.to_string(),
+                });
+            }
             let complete = RecordGestureComplete {
                 key: key.to_string(),
                 device: device.map(str::to_string),
                 gesture: RecordedGesture::Double,
+            };
+            self.reset();
+            return Ok(Some(complete));
+        }
+        // Other key while waiting for double — commit the first tap.
+        if self.first_release_at.is_some() {
+            let complete = RecordGestureComplete {
+                key: self.active_key.clone().unwrap_or_else(|| key.to_string()),
+                device: self.active_device.clone(),
+                gesture: RecordedGesture::Tap,
             };
             self.reset();
             return Ok(Some(complete));
@@ -130,13 +158,12 @@ impl RecordGestureDetector {
             self.reset();
             return Ok(Some(complete));
         }
-        let complete = RecordGestureComplete {
+        // Wait for a second press before committing Tap.
+        self.press_started = None;
+        self.first_release_at = Some(now);
+        Err(RecordGestureHint::WaitingDouble {
             key: key.to_string(),
-            device: device.map(str::to_string),
-            gesture: RecordedGesture::Tap,
-        };
-        self.reset();
-        Ok(Some(complete))
+        })
     }
 
     pub fn poll(&mut self, now: Instant) -> Option<RecordGestureComplete> {
@@ -418,6 +445,13 @@ impl GestureTracker {
                 <= Duration::from_millis(pending.window_ms as u64 + 50)
         });
     }
+
+    /// Ctrl+V / any chord: drop pending modifier doubles so a later Ctrl tap
+    /// does not complete a false double from the chord's first Ctrl.
+    pub fn cancel_modifier_double_waits(&mut self) {
+        self.double_wait
+            .retain(|_, pending| !crate::key_chord::is_modifier_only_chord(&pending.dispatch_key));
+    }
 }
 
 pub const TRIGGER_COMPAT_PULSE_MS: u64 = 1500;
@@ -617,7 +651,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn record_short_press_completes_on_keyup() {
+    fn record_short_press_waits_then_taps() {
         let mut detector = RecordGestureDetector::new();
         let start = Instant::now();
 
@@ -626,13 +660,94 @@ mod tests {
             Err(RecordGestureHint::Holding { .. })
         ));
 
-        let complete = detector
-            .on_keyup("RAlt", None, start + Duration::from_millis(80))
-            .expect("keyup should not be a hint")
-            .expect("short press should complete");
+        assert!(matches!(
+            detector.on_keyup("RAlt", None, start + Duration::from_millis(80)),
+            Err(RecordGestureHint::WaitingDouble { .. })
+        ));
 
+        let complete = detector
+            .poll(start + Duration::from_millis(RECORD_DOUBLE_MS + 50))
+            .expect("tap should complete after double window");
         assert_eq!(complete.key, "RAlt");
         assert_eq!(complete.gesture, RecordedGesture::Tap);
+    }
+
+    #[test]
+    fn record_double_press_commits_double() {
+        let mut detector = RecordGestureDetector::new();
+        let start = Instant::now();
+
+        assert!(matches!(
+            detector.on_keydown("RShift", None, start),
+            Err(RecordGestureHint::Holding { .. })
+        ));
+        assert!(matches!(
+            detector.on_keyup("RShift", None, start + Duration::from_millis(60)),
+            Err(RecordGestureHint::WaitingDouble { .. })
+        ));
+        let complete = detector
+            .on_keydown("RShift", None, start + Duration::from_millis(120))
+            .expect("second down should not be a hint")
+            .expect("second down should complete double");
+        assert_eq!(complete.key, "RShift");
+        assert_eq!(complete.gesture, RecordedGesture::Double);
+    }
+
+    #[test]
+    fn record_double_ignores_echo_keydown() {
+        let mut detector = RecordGestureDetector::new();
+        let start = Instant::now();
+        detector.begin_waiting_double("LShift", None, start);
+        assert!(matches!(
+            detector.on_keydown("LShift", None, start + Duration::from_millis(10)),
+            Err(RecordGestureHint::WaitingDouble { .. })
+        ));
+        let complete = detector
+            .on_keydown("LShift", None, start + Duration::from_millis(80))
+            .expect("real second press should not be a hint")
+            .expect("real second press should complete double");
+        assert_eq!(complete.gesture, RecordedGesture::Double);
+    }
+
+    #[test]
+    fn cancel_modifier_double_waits_keeps_non_mod() {
+        let mut tracker = GestureTracker::new();
+        let start = Instant::now();
+        let mut mapping_ctrl = VoiceConfig::default().mappings[0].clone();
+        mapping_ctrl.trigger_key = "LCtrl".into();
+        mapping_ctrl.trigger_mode = TriggerMode::Double;
+        mapping_ctrl.double_click_ms = 400;
+        let mut mapping_f8 = VoiceConfig::default().mappings[0].clone();
+        mapping_f8.trigger_key = "F8".into();
+        mapping_f8.trigger_mode = TriggerMode::Double;
+        mapping_f8.double_click_ms = 400;
+        let ev_ctrl = PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: "LCtrl".into(),
+        };
+        let ev_f8 = PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: "F8".into(),
+        };
+        assert!(tracker.on_keydown(&ev_ctrl, &mapping_ctrl, start).is_none());
+        assert!(tracker.on_keydown(&ev_f8, &mapping_f8, start).is_none());
+        tracker.cancel_modifier_double_waits();
+        assert!(
+            tracker
+                .double_wait
+                .values()
+                .all(|p| p.dispatch_key != "LCtrl"),
+            "modifier double wait cleared"
+        );
+        assert!(
+            tracker
+                .double_wait
+                .values()
+                .any(|p| p.dispatch_key == "F8"),
+            "non-modifier double wait kept"
+        );
     }
 
     #[test]

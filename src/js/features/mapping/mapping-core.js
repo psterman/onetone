@@ -436,7 +436,8 @@
     return String(key||'').trim();
   }
 
-  /** Same app (incl. both empty = baseline) + same normalized trigger. */
+  // Same app + same normalized trigger. Skip unset triggerKey so empty peers
+  // do not collide with Volume_*/AutoTrigger peripheral capture.
   function findMappingByAppAndTrigger(appTargetId, triggerKey, exceptMappingId){
     var app=String(appTargetId||'').trim();
     var trig=normalizeMappingTrigger(triggerKey);
@@ -449,7 +450,9 @@
       if(!row||!row.id) continue;
       if(exceptMappingId&&String(row.id)===exceptMappingId) continue;
       if(appTargetKey(row)!==app) continue;
-      if(normalizeMappingTrigger(row.triggerKey)===trig) return row;
+      var rowTrig=String(row.triggerKey||'').trim();
+      if(!rowTrig) continue;
+      if(normalizeMappingTrigger(rowTrig)===trig) return row;
     }
     return null;
   }

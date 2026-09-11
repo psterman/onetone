@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>C 方案 · Channel Tabs（共享 panel）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #fff;
+      --wash: #f3f7fa;
+      --bg: #e8eef3;
+      --cyan: #00658f;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --ok: #15803d;
+      --ok-soft: #ecfdf5;
+      --warn: #b45309;
+      --warn-soft: #fef3c7;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --w-dir: 196px;
+      --w-detail: min(420px, 92vw);
+      --shadow: 0 18px 40px rgba(19, 32, 44, 0.1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(760px 320px at 8% -10%, rgba(0, 101, 143, 0.12), transparent 55%),
+        var(--bg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+
+    .page { width: min(1080px, 100%); margin: 0 auto; padding: 18px 14px 48px; }
+    .hero { max-width: 56rem; margin-bottom: 14px; }
+    .hero-kicker {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cyan);
+    }
+    .hero h1 {
+      margin: 6px 0;
+      font-size: clamp(22px, 3vw, 28px);
+      font-weight: 750;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+    }
+    .hero p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
+    .hero a { color: var(--cyan); font-weight: 650; text-decoration: none; }
+    .hero a:hover { text-decoration: underline; }
+
+    .rules { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 14px; }
+    .pill {
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 650;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+    }
+    .pill.on { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 30%, var(--line)); color: var(--ok); }
+    .pill.dim { background: var(--cyan-soft); border-color: var(--cyan-bd); color: var(--cyan); }
+
+    .shell {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-height: 620px;
+    }
+    .shell-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fafcfd, #f4f8fb);
+    }
+    .shell-top .left { display: flex; align-items: center; gap: 10px; }
+    .app-ico {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: grid; place-items: center;
+      background: #1b2430; color: #fff;
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+    }
+    .shell-top h2 { margin: 0; font-size: 14px; font-weight: 750; }
+    .shell-top p { margin: 2px 0 0; font-size: 11.5px; color: var(--muted); }
+    .mode-tag {
+      font-family: var(--mono); font-size: 11px; font-weight: 600;
+      padding: 5px 9px; border-radius: 999px;
+      background: var(--cyan-soft); border: 1px solid var(--cyan-bd); color: var(--cyan);
+    }
+
+    .body {
+      display: grid;
+      grid-template-columns: 168px minmax(0, 1fr);
+      min-height: 540px;
+    }
+    @media (max-width: 760px) {
+      .body { grid-template-columns: 1fr; }
+      .nav { display: none; }
+    }
+
+    /* ===== Left triggers (4 channels) ===== */
+    .nav {
+      border-right: 1px solid var(--line);
+      padding: 12px 10px;
+      background: #f7fafc;
+      display: grid;
+      gap: 6px;
+      align-content: start;
+    }
+    .nav-h {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--faint);
+      padding: 0 6px 4px;
+    }
+    .trigger {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 650;
+      color: var(--ink);
+      cursor: pointer;
+      text-align: left;
+    }
+    .trigger:hover { border-color: var(--cyan-bd); background: #fafcfd; }
+    .trigger:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+    .trigger .ico {
+      width: 22px; height: 22px;
+      display: grid; place-items: center;
+      border-radius: 6px;
+      background: var(--wash);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .trigger .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .trigger .cnt {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--wash);
+    }
+    .trigger.is-on {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+    }
+    .trigger.is-on .ico { background: #fff; color: var(--cyan); }
+    .trigger.is-on .lbl { color: var(--cyan); }
+    .trigger.is-on .cnt { background: #fff; color: var(--cyan); }
+
+    .main { padding: 14px; min-width: 0; transition: margin-right 260ms var(--ease); }
+    .shell[data-mode="dir"] .main { margin-right: var(--w-dir); }
+    .shell[data-mode="detail"] .main { margin-right: var(--w-detail); }
+
+    .fake { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--wash); margin-bottom: 10px; }
+    .fake b { display: block; font-size: 12.5px; margin-bottom: 4px; }
+    .fake span { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+    .rows { display: grid; gap: 6px; }
+    .row {
+      display: flex; justify-content: space-between;
+      padding: 10px 11px;
+      border: 1px solid var(--line); border-radius: 10px; background: #fff;
+      font-size: 12.5px;
+    }
+    .row em { font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+    /* ===== Right panel ===== */
+    .panel {
+      position: absolute;
+      top: 0; right: 0; bottom: 0;
+      border-left: 1px solid var(--line);
+      background: #f7fafc;
+      display: flex; flex-direction: column;
+      min-width: 0; overflow: hidden;
+      z-index: 10;
+      transition: width 260ms var(--ease), background 200ms ease, box-shadow 200ms ease;
+      width: var(--w-dir);
+    }
+    .shell[data-mode="detail"] .panel {
+      width: var(--w-detail);
+      background: #fff;
+      box-shadow: -12px 0 28px rgba(19, 32, 44, 0.06);
+    }
+
+    /* panel head */
+    .p-head {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+      padding: 10px 10px 8px;
+      border-bottom: 1px solid var(--line);
+      flex: 0 0 auto;
+    }
+    .p-head h3 { margin: 0; font-size: 13px; font-weight: 750; }
+    .p-head .sub { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+    .back-btn {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      padding: 6px 9px; font: inherit; font-size: 12px; font-weight: 650; color: var(--cyan);
+      cursor: pointer; flex: 0 0 auto; white-space: nowrap;
+    }
+    .back-btn:hover { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+    .back-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+    .shell[data-mode="dir"] .back-btn { display: none; }
+
+    /* channel tabs (the new piece) */
+    .ctabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      padding: 8px 10px 0;
+      flex: 0 0 auto;
+    }
+    .ctab {
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: 1px;
+      padding: 7px 6px 6px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      font: inherit;
+      text-align: center;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .ctab:hover { border-color: var(--cyan-bd); }
+    .ctab:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+    .ctab .g { font-size: 13px; line-height: 1; }
+    .ctab .n { font-size: 11px; font-weight: 650; }
+    .ctab .m {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--faint);
+    }
+    .ctab.is-on {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+      color: var(--cyan);
+    }
+    .ctab.is-on .m { color: var(--cyan); }
+    .ctab.sparse { opacity: 0.85; }
+    .ctab.sparse .g { filter: grayscale(0.4); }
+
+    .dir-hint {
+      margin: 0; padding: 8px 12px 0;
+      font-size: 11.5px; color: var(--muted); line-height: 1.4;
+    }
+
+    /* dir list — filtered to current channel binding */
+    .dir-list {
+      flex: 1; min-height: 0; overflow: auto;
+      padding: 8px;
+      display: grid; gap: 5px; align-content: start;
+    }
+    .shell[data-mode="detail"] .dir-list { display: none; }
+
+    .dir-item {
+      display: grid; gap: 2px; width: 100%; text-align: left;
+      border: 1px solid var(--line); border-radius: 10px; background: #fff;
+      padding: 9px 10px; font: inherit; color: inherit; cursor: pointer;
+    }
+    .dir-item:hover { border-color: var(--cyan-bd); background: #fafcfd; }
+    .dir-item:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+    .dir-item .n { font-size: 13px; font-weight: 650; }
+    .dir-item .s { font-family: var(--mono); font-size: 10.5px; font-weight: 500; }
+    .dir-item .s.ok { color: var(--ok); }
+    .dir-item .s.miss { color: var(--warn); }
+    .dir-item .go { margin-top: 2px; font-size: 11px; font-weight: 650; color: var(--cyan); }
+
+    /* detail mode only */
+    .tools {
+      display: none;
+      padding: 8px 12px 0;
+      gap: 6px;
+    }
+    .shell[data-mode="detail"] .tools { display: grid; }
+    .tools input {
+      width: 100%;
+      border: 1px solid var(--line); border-radius: 10px;
+      padding: 8px 10px; font: inherit; font-size: 13px;
+    }
+    .tools input:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0, 101, 143, 0.15); }
+    .filters { display: flex; flex-wrap: wrap; gap: 4px; }
+    .fchip {
+      border: 1px solid var(--line); background: #fff; border-radius: 999px;
+      padding: 4px 8px; font: inherit; font-size: 11px; font-weight: 650; color: var(--muted); cursor: pointer;
+    }
+    .fchip.is-on { background: var(--cyan-soft); border-color: var(--cyan-bd); color: var(--cyan); }
+
+    .detail-list {
+      display: none; flex: 1; min-height: 0; overflow: auto;
+      padding: 6px 8px 8px; gap: 4px; align-content: start;
+    }
+    .shell[data-mode="detail"] .detail-list { display: grid; }
+
+    .d-row {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px;
+      align-items: start; width: 100%; text-align: left;
+      border: 1px solid transparent; border-radius: 12px;
+      padding: 10px; background: transparent;
+      font: inherit; color: inherit; cursor: pointer;
+    }
+    .d-row:hover { background: var(--wash); }
+    .d-row.is-on { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+    .d-row .n { display: block; font-size: 13.5px; font-weight: 650; }
+    .d-row .e { display: block; margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+    .binds { display: flex; flex-wrap: wrap; gap: 3px; justify-content: flex-end; max-width: 11rem; }
+    .chip {
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      padding: 2px 6px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--wash); color: var(--muted);
+      cursor: pointer;
+    }
+    .chip:hover { border-color: var(--cyan-bd); }
+    .chip.on { background: var(--cyan-soft); border-color: var(--cyan-bd); color: var(--cyan); }
+    .chip.empty { border-style: dashed; color: var(--faint); }
+
+    /* editor */
+    .editor {
+      display: none;
+      border-top: 1px solid var(--line);
+      padding: 10px 12px 12px;
+      background: #f7fafc;
+      gap: 8px; flex: 0 0 auto;
+    }
+    .shell[data-mode="detail"] .editor { display: grid; }
+    .editor h4 { margin: 0; font-size: 13px; font-weight: 750; }
+    .editor .desc { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .edit-grid { display: grid; gap: 6px; }
+    .edit-grid .row-edit {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      padding: 6px 8px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      transition: background 160ms ease, border-color 160ms ease;
+    }
+    .edit-grid .row-edit.is-current {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+    }
+    .edit-grid .row-edit .lbl {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .edit-grid .row-edit.is-current .lbl { color: var(--cyan); }
+    .edit-grid input {
+      border: 1px solid var(--line); border-radius: 8px;
+      padding: 6px 8px; font: inherit; font-size: 12px; font-family: var(--mono);
+    }
+    .edit-grid input:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0, 101, 143, 0.15); }
+    .edit-grid button {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      padding: 5px 8px; font: inherit; font-size: 11px; font-weight: 650; color: var(--cyan);
+      cursor: pointer;
+    }
+    .edit-grid button:hover { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+    .edit-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
+    .edit-actions button {
+      border: 1px solid var(--cyan-bd); background: #fff; color: var(--cyan);
+      border-radius: 10px; padding: 7px 11px;
+      font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .edit-actions .primary { background: var(--cyan); border-color: var(--cyan); color: #fff; }
+
+    .foot { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    @media (max-width: 760px) { .foot { grid-template-columns: 1fr; } }
+    .foot article {
+      border: 1px solid var(--line); border-radius: 12px;
+      padding: 11px 12px; background: rgba(255, 255, 255, 0.78);
+      font-size: 12px; line-height: 1.45; color: var(--muted);
+    }
+    .foot b { display: block; color: var(--ink); margin-bottom: 4px; font-size: 12.5px; }
+    .foot .rec {
+      border-color: color-mix(in srgb, var(--ok) 35%, var(--line));
+      background: var(--ok-soft);
+    }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 22px;
+      transform: translateX(-50%) translateY(8px);
+      padding: 10px 14px; border-radius: 12px;
+      background: rgba(19, 32, 44, 0.92); color: #fff;
+      font-size: 12.5px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      z-index: 40;
+    }
+    .toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-kicker">C · Channel Tabs（共享 panel）</div>
+      <h1>同一个动作抽屉，4 个 channel 共用</h1>
+      <p>
+        左侧 4 个 trigger 各自唤起同一个 panel，<strong>只是预设 channel 不同</strong>。
+        面板顶部 4 个 channel tabs 任意切换，详情编辑器高亮当前 channel 那行。
+        <a href="./b-two-states.html">B 旧版</a>
+        ·
+        <a href="./drawer-schemes.html">五方案对照</a>
+      </p>
+    </header>
+
+    <div class="rules">
+      <span class="pill on">共享 panel：单源真相</span>
+      <span class="pill dim">channel 切换只改视图</span>
+      <span class="pill">chip 即跳转</span>
+      <span class="pill">摄像头稀疏，给轻提示</span>
+    </div>
+
+    <div class="shell" id="shell" data-mode="dir" data-channel="key">
+      <div class="shell-top">
+        <div class="left">
+          <div class="app-ico">Cu</div>
+          <div>
+            <h2>按键 · Cursor</h2>
+            <p id="hint">从左侧任一通道打开动作抽屉，看到该通道下你绑的所有动作。</p>
+          </div>
+        </div>
+        <div class="mode-tag" id="modeTag">目录 · 按键</div>
+      </div>
+
+      <div class="body">
+        <nav class="nav" aria-label="通道入口">
+          <div class="nav-h">通道入口</div>
+          <button type="button" class="trigger" data-channel="voice" data-open="1">
+            <span class="ico">🎙</span>
+            <span class="lbl">看我的口令</span>
+            <span class="cnt" data-cnt="voice">–</span>
+          </button>
+          <button type="button" class="trigger is-on" data-channel="key" data-open="1">
+            <span class="ico">⌨</span>
+            <span class="lbl">看我的热键</span>
+            <span class="cnt" data-cnt="key">–</span>
+          </button>
+          <button type="button" class="trigger" data-channel="camera" data-open="1">
+            <span class="ico">🎥</span>
+            <span class="lbl">看我的手势</span>
+            <span class="cnt" data-cnt="camera">–</span>
+          </button>
+          <button type="button" class="trigger" data-channel="pad" data-open="1">
+            <span class="ico">⌬</span>
+            <span class="lbl">看我的键帽</span>
+            <span class="cnt" data-cnt="pad">–</span>
+          </button>
+          <div class="nav-h" style="margin-top:6px">仅查看</div>
+          <button type="button" class="trigger" data-channel="key" data-open="0" title="不展开详情">
+            <span class="ico">≡</span>
+            <span class="lbl">扫一眼（不展开）</span>
+            <span class="cnt">–</span>
+          </button>
+        </nav>
+
+        <div class="main">
+          <div class="fake">
+            <b id="fakeTitle">左边继续配键</b>
+            <span id="fakeHint">右边按"按键"通道列出你已绑的键。要改某项，点卡片进详情。</span>
+          </div>
+          <div class="rows" aria-hidden="true">
+            <div class="row"><span>开始听写</span><em>LAlt+R</em></div>
+            <div class="row"><span>发送</span><em>Enter</em></div>
+            <div class="row"><span>停止</span><em>Esc</em></div>
+            <div class="row"><span>自定义序列…</span><em>+</em></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel" aria-label="动作抽屉">
+        <div class="p-head">
+          <div>
+            <h3>本场景动作</h3>
+            <p class="sub" id="panelSub">按键通道 · 点一项去修改</p>
+          </div>
+          <button type="button" class="back-btn" id="btnBack">收起</button>
+        </div>
+
+        <div class="ctabs" id="ctabs" role="tablist">
+          <button type="button" class="ctab" data-channel="voice" role="tab">
+            <span class="g">🎙</span><span class="n">语音</span><span class="m" data-cnt="voice">–</span>
+          </button>
+          <button type="button" class="ctab is-on" data-channel="key" role="tab">
+            <span class="g">⌨</span><span class="n">按键</span><span class="m" data-cnt="key">–</span>
+          </button>
+          <button type="button" class="ctab sparse" data-channel="camera" role="tab">
+            <span class="g">🎥</span><span class="n">摄像头</span><span class="m" data-cnt="camera">–</span>
+          </button>
+          <button type="button" class="ctab" data-channel="pad" role="tab">
+            <span class="g">⌬</span><span class="n">Pad</span><span class="m" data-cnt="pad">–</span>
+          </button>
+        </div>
+
+        <p class="dir-hint" id="dirHint">绿色＝当前通道已绑定；橙色＝空。点卡片打开修改。</p>
+        <div class="dir-list" id="dirList"></div>
+
+        <div class="tools">
+          <input type="search" id="search" placeholder="搜动作…" autocomplete="off" />
+          <div class="filters" id="filters"></div>
+        </div>
+        <div class="detail-list" id="detailList"></div>
+        <div class="editor" id="editor"></div>
+      </aside>
+    </div>
+
+    <div class="foot">
+      <article class="rec">
+        <b>4 trigger 同源</b>
+        左 4 个按钮开的是同一个 panel，仅预设 channel 与 mode 不同。改一处全通道同步。
+      </article>
+      <article>
+        <b>tab + chip 双跳</b>
+        顶部 channel tabs 切视图；列表行右侧的「键/说/Pad/摄」chip 跳 tab 并定位编辑字段。
+      </article>
+      <article>
+        <b>摄像头单独处理</b>
+        数据稀（仅 2 条）；tab 用 sparse 视觉轻提示，trigger 计数永远可见。
+      </article>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var ACTIONS = [
+        { id: "send", name: "发送", effect: "提交当前输入", binds: { key: "Enter", voice: "发送", pad: "发送", camera: "" } },
+        { id: "continue", name: "继续", effect: "让 Agent 接着干", binds: { key: "", voice: "继续", pad: "继续", camera: "" } },
+        { id: "dictation", name: "开始听写", effect: "字进光标处", binds: { key: "LAlt+R", voice: "说话", pad: "麦", camera: "" } },
+        { id: "stop", name: "停止", effect: "停生成", binds: { key: "Esc", voice: "取消", pad: "停止", camera: "摇头" } },
+        { id: "newThread", name: "新会话", effect: "开一条干净对话", binds: { key: "", voice: "新会话", pad: "新会话", camera: "" } },
+        { id: "focus", name: "聚焦 Composer", effect: "回到对话输入", binds: { key: "Ctrl+L", voice: "", pad: "召回", camera: "" } }
+      ];
+
+      var CHANNELS = [
+        { id: "key", label: "按键" },
+        { id: "voice", label: "语音" },
+        { id: "pad", label: "Pad" },
+        { id: "camera", label: "摄像头" }
+      ];
+
+      var state = { mode: "dir", channel: "key", selected: "send", filter: "all", q: "" };
+      var toastTimer = 0;
+
+      var shell = document.getElementById("shell");
+      var hint = document.getElementById("hint");
+      var fakeTitle = document.getElementById("fakeTitle");
+      var fakeHint = document.getElementById("fakeHint");
+      var modeTag = document.getElementById("modeTag");
+      var panelSub = document.getElementById("panelSub");
+      var dirHint = document.getElementById("dirHint");
+      var toastEl = document.getElementById("toast");
+
+      function esc(s) {
+        return String(s == null ? "" : s)
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      }
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("is-show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("is-show"); }, 1300);
+      }
+      function channelLabel() {
+        for (var i = 0; i < CHANNELS.length; i++) if (CHANNELS[i].id === state.channel) return CHANNELS[i].label;
+        return state.channel;
+      }
+      function countBound(ch) {
+        return ACTIONS.reduce(function (n, a) { return n + (a.binds[ch] ? 1 : 0); }, 0);
+      }
+      function cameraSparse() { return countBound("camera") <= 2; }
+
+      // ====== render ======
+      function paintCounts() {
+        document.querySelectorAll("[data-cnt]").forEach(function (el) {
+          var ch = el.getAttribute("data-cnt");
+          var n = countBound(ch);
+          el.textContent = n + " / " + ACTIONS.length;
+        });
+        document.querySelectorAll(".ctab").forEach(function (b) {
+          b.classList.toggle("sparse", b.getAttribute("data-channel") === "camera" && cameraSparse());
+        });
+      }
+
+      function paintTriggers() {
+        document.querySelectorAll(".trigger[data-channel]").forEach(function (b) {
+          b.classList.toggle("is-on", b.getAttribute("data-channel") === state.channel && b.getAttribute("data-open") === "1");
+        });
+      }
+
+      function paintTabs() {
+        document.querySelectorAll(".ctab").forEach(function (b) {
+          b.classList.toggle("is-on", b.getAttribute("data-channel") === state.channel);
+        });
+      }
+
+      function paintChrome() {
+        shell.setAttribute("data-channel", state.channel);
+        modeTag.textContent = (state.mode === "detail" ? "详情" : "目录") + " · " + channelLabel();
+        if (state.mode === "detail") {
+          hint.textContent = "正在改 · 当前通道是「" + channelLabel() + "」。";
+          fakeHint.textContent = "编辑器高亮「" + channelLabel() + "」那一行；其它通道数据未变。";
+        } else {
+          hint.textContent = "右侧按「" + channelLabel() + "」通道列出已绑定的动作。";
+          fakeHint.textContent = "点卡片进详情。摄像头是稀疏通道，仅" + countBound("camera") + " 个手势。";
+        }
+        fakeTitle.textContent = state.mode === "detail" ? "改一个动作 · 当前通道 = " + channelLabel() : "继续用「" + channelLabel() + "」工作";
+        panelSub.textContent = state.mode === "detail"
+          ? "改按键 / 说法 / Pad / 摄，改完可收起"
+          : channelLabel() + "通道 · 点一项去修改";
+        if (state.channel === "camera") {
+          dirHint.innerHTML = "摄像头是<strong>稀疏通道</strong>（" + countBound("camera") + " 个手势）。点已绑的卡片去看误识别率，或点空卡片加手势。";
+        } else {
+          dirHint.textContent = "绿色＝当前通道已绑定；橙色＝空。点卡片打开修改。";
+        }
+      }
+
+      function paintDir() {
+        var host = document.getElementById("dirList");
+        var ch = state.channel;
+        var rows = ACTIONS.slice().sort(function (a, b) {
+          return (a.binds[ch] ? 0 : 1) - (b.binds[ch] ? 0 : 1);
+        });
+        host.innerHTML = rows.map(function (a) {
+          var v = a.binds[ch];
+          var st = v ? { cls: "ok", text: v } : { cls: "miss", text: "未绑" + channelLabel() };
+          return (
+            '<button type="button" class="dir-item" data-open="' + esc(a.id) + '">' +
+            '<span class="n">' + esc(a.name) + "</span>" +
+            '<span class="s ' + st.cls + '">' + esc(st.text) + "</span>" +
+            '<span class="go">修改 →</span>' +
+            "</button>"
+          );
+        }).join("");
+        host.querySelectorAll("[data-open]").forEach(function (btn) {
+          btn.addEventListener("click", function () { openDetail(btn.getAttribute("data-open")); });
+        });
+      }
+
+      function paintFilters() {
+        var host = document.getElementById("filters");
+        var opts = [
+          { id: "all", label: "全部" },
+          { id: "bound", label: "已绑" + channelLabel() },
+          { id: "unbound", label: "未绑" + channelLabel() }
+        ];
+        host.innerHTML = opts.map(function (o) {
+          return '<button type="button" class="fchip' + (state.filter === o.id ? " is-on" : "") + '" data-filter="' + o.id + '">' + esc(o.label) + "</button>";
+        }).join("");
+        host.querySelectorAll("[data-filter]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            state.filter = btn.getAttribute("data-filter");
+            paintFilters(); paintDetailList();
+          });
+        });
+      }
+
+      function paintChips(row) {
+        return CHANNELS.map(function (c) {
+          var v = row.binds[c.id];
+          return '<span class="chip' + (v ? " on" : " empty") + '" data-jump="' + c.id + '" title="跳到' + esc(c.label) + '通道">' +
+            esc(c.id === "pad" ? "Pad" : c.id === "key" ? "键" : c.id === "voice" ? "说" : "摄") +
+            (v ? " · " + esc(v) : "") + "</span>";
+        }).join("");
+      }
+
+      function paintDetailList() {
+        var host = document.getElementById("detailList");
+        var ch = state.channel;
+        var rows = ACTIONS.filter(function (a) {
+          if (state.filter === "bound" && !a.binds[ch]) return false;
+          if (state.filter === "unbound" && a.binds[ch]) return false;
+          if (state.q && (a.name + a.effect).toLowerCase().indexOf(state.q.toLowerCase()) < 0) return false;
+          return true;
+        });
+        host.innerHTML = rows.map(function (a) {
+          return (
+            '<button type="button" class="d-row' + (state.selected === a.id ? " is-on" : "") + '" data-sel="' + esc(a.id) + '">' +
+            '<span><span class="n">' + esc(a.name) + '</span><span class="e">' + esc(a.effect) + "</span></span>" +
+            '<span class="binds">' + paintChips(a) + "</span>" +
+            "</button>"
+          );
+        }).join("") || '<p style="padding:12px;color:#8494a6;font-size:12.5px">没有匹配</p>';
+
+        host.querySelectorAll("[data-sel]").forEach(function (btn) {
+          btn.addEventListener("click", function (ev) {
+            // chip click hijack
+            var chip = ev.target.closest("[data-jump]");
+            if (chip) { jumpToChannel(chip.getAttribute("data-jump"), btn.getAttribute("data-sel")); return; }
+            state.selected = btn.getAttribute("data-sel");
+            paintDetailList(); paintEditor();
+          });
+        });
+      }
+
+      function paintEditor() {
+        var ed = document.getElementById("editor");
+        var row = ACTIONS.find(function (x) { return x.id === state.selected; });
+        if (!row) { ed.innerHTML = ""; return; }
+        ed.innerHTML =
+          "<h4>正在改 · " + esc(row.name) + "</h4>" +
+          '<p class="desc">' + esc(row.effect) + "</p>" +
+          '<div class="edit-grid">' +
+          CHANNELS.map(function (c) {
+            return '<div class="row-edit' + (state.channel === c.id ? " is-current" : "") + '" data-row="' + c.id + '">' +
+              '<span class="lbl">' + esc(c.label) + '</span>' +
+              '<input data-field="' + c.id + '" value="' + esc(row.binds[c.id]) + '" placeholder="未配" />' +
+              '<button type="button" data-rec="' + c.id + '">' +
+                (c.id === "key" ? "录键" : c.id === "voice" ? "试说" : c.id === "pad" ? "放键帽" : "录动作") +
+              '</button>' +
+              '</div>';
+          }).join("") +
+          "</div>" +
+          '<div class="edit-actions">' +
+          '<button type="button" data-back>收起</button>' +
+          '<button type="button" class="primary" data-save>保存</button>' +
+          "</div>";
+
+        ed.querySelector("[data-save]").addEventListener("click", function () {
+          CHANNELS.forEach(function (c) {
+            var inp = ed.querySelector('[data-field="' + c.id + '"]');
+            row.binds[c.id] = inp.value.trim();
+          });
+          paintCounts(); paintDir(); paintDetailList(); paintEditor();
+          toast("已保存 · " + row.name);
+        });
+        ed.querySelector("[data-back]").addEventListener("click", closeDetail);
+        ed.querySelectorAll("[data-rec]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            toast("原型：去录「" + btn.getAttribute("data-rec") + "」");
+          });
+        });
+
+        // scroll current channel row into view
+        var cur = ed.querySelector(".row-edit.is-current");
+        if (cur) cur.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+
+      // ====== actions ======
+      function setChannel(ch) {
+        if (state.channel === ch) return;
+        state.channel = ch;
+        state.filter = "all";
+        paintTabs(); paintTriggers(); paintChrome();
+        if (state.mode === "detail") { paintFilters(); paintDetailList(); paintEditor(); }
+        else { paintDir(); }
+      }
+
+      function jumpToChannel(ch, rowId) {
+        if (rowId) state.selected = rowId;
+        if (state.mode === "dir") openDetail(rowId || state.selected);
+        setChannel(ch);
+      }
+
+      function openDetail(id) {
+        state.selected = id;
+        state.mode = "detail";
+        shell.setAttribute("data-mode", "detail");
+        paintChrome(); paintTriggers(); paintFilters(); paintDetailList(); paintEditor();
+        toast("打开 · " + (ACTIONS.find(function (x) { return x.id === id; }) || {}).name);
+      }
+
+      function closeDetail() {
+        state.mode = "dir";
+        shell.setAttribute("data-mode", "dir");
+        paintChrome(); paintTriggers(); paintDir();
+      }
+
+      // ====== wire ======
+      document.querySelectorAll(".ctab").forEach(function (b) {
+        b.addEventListener("click", function () { setChannel(b.getAttribute("data-channel")); });
+      });
+      document.querySelectorAll(".trigger").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var ch = b.getAttribute("data-channel");
+          var open = b.getAttribute("data-open") === "1";
+          setChannel(ch);
+          if (open) openDetail(state.selected);
+        });
+      });
+      document.getElementById("btnBack").addEventListener("click", closeDetail);
+      document.getElementById("search").addEventListener("input", function (e) {
+        state.q = e.target.value || ""; paintDetailList();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && state.mode === "detail") closeDetail();
+      });
+
+      // init
+      paintCounts(); paintTabs(); paintTriggers(); paintChrome(); paintDir();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D 方案 · 应用感知 + 折叠</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #fff;
+      --wash: #f3f7fa;
+      --bg: #e8eef3;
+      --cyan: #00658f;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --ok: #15803d;
+      --ok-soft: #ecfdf5;
+      --warn: #b45309;
+      --warn-soft: #fef3c7;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --w-dir: 188px;
+      --w-detail: min(440px, 92vw);
+      --shadow: 0 18px 40px rgba(19, 32, 44, 0.1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(760px 320px at 8% -10%, rgba(0, 101, 143, 0.12), transparent 55%),
+        var(--bg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    .page { width: min(1180px, 100%); margin: 0 auto; padding: 18px 14px 48px; }
+    .hero { max-width: 60rem; margin-bottom: 14px; }
+    .hero-kicker {
+      font-family: var(--mono); font-size: 11px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--cyan);
+    }
+    .hero h1 { margin: 6px 0; font-size: clamp(22px, 3vw, 28px); font-weight: 750; letter-spacing: -0.03em; line-height: 1.15; }
+    .hero p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
+    .hero a { color: var(--cyan); font-weight: 650; text-decoration: none; }
+    .hero a:hover { text-decoration: underline; }
+
+    .rules { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 14px; }
+    .pill {
+      padding: 5px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 650;
+      border: 1px solid var(--line); background: #fff; color: var(--muted);
+    }
+    .pill.on { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 30%, var(--line)); color: var(--ok); }
+    .pill.dim { background: var(--cyan-soft); border-color: var(--cyan-bd); color: var(--cyan); }
+
+    .shell {
+      position: relative;
+      border: 1px solid var(--line); border-radius: 16px;
+      background: var(--paper); box-shadow: var(--shadow);
+      overflow: hidden; min-height: 640px;
+    }
+    .shell-top {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fafcfd, #f4f8fb);
+    }
+    .shell-top .left { display: flex; align-items: center; gap: 10px; }
+    .app-ico {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: grid; place-items: center;
+      background: #1b2430; color: #fff;
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+    }
+    .shell-top h2 { margin: 0; font-size: 14px; font-weight: 750; }
+    .shell-top p { margin: 2px 0 0; font-size: 11.5px; color: var(--muted); }
+    .mode-tag {
+      font-family: var(--mono); font-size: 11px; font-weight: 600;
+      padding: 5px 9px; border-radius: 999px;
+      background: var(--cyan-soft); border: 1px solid var(--cyan-bd); color: var(--cyan);
+    }
+
+    .body { display: grid; grid-template-columns: 128px minmax(0, 1fr); min-height: 560px; }
+    @media (max-width: 820px) { .body { grid-template-columns: 1fr; } .nav { display: none; } }
+
+    /* ====== Nav: 2 主 trigger + 1 折叠 ====== */
+    .nav {
+      border-right: 1px solid var(--line);
+      padding: 10px 8px;
+      background: #f7fafc;
+      display: grid; gap: 5px; align-content: start;
+    }
+    .nav-h {
+      font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint);
+      padding: 0 6px 4px;
+    }
+    .trigger {
+      display: grid; grid-template-columns: 22px minmax(0, 1fr) auto;
+      align-items: center; gap: 8px;
+      padding: 8px 9px;
+      border: 1px solid var(--line); border-radius: 10px; background: #fff;
+      font: inherit; font-size: 12.5px; font-weight: 650; color: var(--ink);
+      cursor: pointer; text-align: left;
+    }
+    .trigger:hover { border-color: var(--cyan-bd); background: #fafcfd; }
+    .trigger:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+    .trigger .ico {
+      width: 22px; height: 22px; display: grid; place-items: center;
+      border-radius: 6px; background: var(--wash); color: var(--muted);
+      font-family: var(--mono); font-size: 12px;
+    }
+    .trigger .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .trigger .cnt {
+      font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+      color: var(--muted); padding: 1px 6px; border-radius: 999px; background: var(--wash);
+    }
+    .trigger.is-on { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+    .trigger.is-on .ico { background: #fff; color: var(--cyan); }
+    .trigger.is-on .lbl { color: var(--cyan); }
+    .trigger.is-on .cnt { background: #fff; color: var(--cyan); }
+
+    .more { padding: 0; border: 0; background: transparent; }
+    .more-toggle {
+      display: grid; grid-template-columns: 22px minmax(0, 1fr) auto;
+      align-items: center; gap: 8px;
+      padding: 7px 9px; width: 100%;
+      border: 1px dashed var(--line); border-radius: 10px; background: #fff;
+      font: inherit; font-size: 12px; font-weight: 600; color: var(--muted);
+      cursor: pointer; text-align: left;
+    }
+    .more-toggle:hover { border-color: var(--cyan-bd); color: var(--ink); }
+    .more-toggle .caret { font-family: var(--mono); font-size: 10px; color: var(--faint); transition: transform 200ms var(--ease); }
+    .more.is-open .more-toggle .caret { transform: rotate(90deg); color: var(--cyan); }
+    .more-list {
+      display: none; padding: 4px 0 0 14px; gap: 4px; grid-auto-rows: min-content;
+    }
+    .more.is-open .more-list { display: grid; }
+    .more-list .trigger { padding: 6px 8px; font-size: 12px; }
+
+    .main { padding: 14px; min-width: 0; transition: margin-right 260ms var(--ease); }
+    .shell[data-mode="dir"] .main { margin-right: var(--w-dir); }
+    .shell[data-mode="detail"] .main { margin-right: var(--w-detail); }
+
+    .fake { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--wash); margin-bottom: 10px; }
+    .fake b { display: block; font-size: 12.5px; margin-bottom: 4px; }
+    .fake span { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+
+    /* preview list in main (the new piece) */
+    .preview {
+      border: 1px solid var(--line); border-radius: 12px; background: #fff;
+      overflow: hidden;
+    }
+    .preview-h {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 9px 12px; border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fafcfd, #f7fafc);
+    }
+    .preview-h .t { font-size: 12.5px; font-weight: 750; }
+    .preview-h .m { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+    .preview ul { margin: 0; padding: 4px; list-style: none; display: grid; gap: 3px; }
+    .preview li {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center;
+      padding: 7px 9px; border-radius: 8px; font-size: 12.5px;
+      cursor: pointer;
+    }
+    .preview li:hover { background: var(--wash); }
+    .preview li .n { font-weight: 650; }
+    .preview li .e { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .preview li .v { font-family: var(--mono); font-size: 11px; color: var(--ink); padding: 1px 6px; border-radius: 999px; background: var(--wash); }
+    .preview li .v.miss { color: var(--warn); background: var(--warn-soft); }
+    .preview li .v.ok { color: var(--ok); background: var(--ok-soft); }
+    .preview-empty { padding: 18px 12px; text-align: center; font-size: 12px; color: var(--faint); }
+
+    /* ====== Right panel ====== */
+    .panel {
+      position: absolute; top: 0; right: 0; bottom: 0;
+      border-left: 1px solid var(--line); background: #f7fafc;
+      display: flex; flex-direction: column;
+      min-width: 0; overflow: hidden;
+      z-index: 10;
+      transition: width 260ms var(--ease), background 200ms ease, box-shadow 200ms ease;
+      width: var(--w-dir);
+    }
+    .shell[data-mode="detail"] .panel { width: var(--w-detail); background: #fff; box-shadow: -12px 0 28px rgba(19, 32, 44, 0.06); }
+
+    .p-head {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+      padding: 10px 10px 8px; border-bottom: 1px solid var(--line);
+      flex: 0 0 auto;
+    }
+    .p-head h3 { margin: 0; font-size: 13px; font-weight: 750; }
+    .p-head .sub { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+    .back-btn {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      padding: 6px 9px; font: inherit; font-size: 12px; font-weight: 650; color: var(--cyan);
+      cursor: pointer; flex: 0 0 auto; white-space: nowrap;
+    }
+    .back-btn:hover { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+    .back-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+    .shell[data-mode="dir"] .back-btn { display: none; }
+
+    /* ====== App chip (the new piece) ====== */
+    .app-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 10px 0; flex: 0 0 auto;
+    }
+    .app-chip {
+      display: inline-grid; grid-template-columns: 16px auto auto; align-items: center; gap: 5px;
+      padding: 4px 8px 4px 6px; border: 1px solid var(--cyan-bd); background: var(--cyan-soft);
+      border-radius: 999px;
+      font: inherit; font-size: 11.5px; font-weight: 650; color: var(--cyan);
+      cursor: pointer;
+    }
+    .app-chip:hover { background: #fff; }
+    .app-chip:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+    .app-chip .dot { width: 16px; height: 16px; border-radius: 5px; background: #1b2430; color: #fff; display: grid; place-items: center; font-family: var(--mono); font-size: 9px; font-weight: 700; }
+    .app-chip .n { white-space: nowrap; }
+    .app-chip .m { font-family: var(--mono); font-size: 10.5px; color: var(--cyan); opacity: 0.75; padding-left: 4px; border-left: 1px solid color-mix(in srgb, var(--cyan) 30%, transparent); }
+    .app-chip .caret { font-family: var(--mono); font-size: 9px; opacity: 0.6; }
+    .app-chip.disabled {
+      background: var(--wash); border-color: var(--line); color: var(--muted); cursor: not-allowed;
+    }
+    .app-chip.disabled:hover { background: var(--wash); }
+    .app-chip.disabled .m { color: var(--faint); border-left-color: var(--line); }
+
+    .app-menu {
+      display: none;
+      position: absolute; top: 86px; right: 12px;
+      width: 220px; padding: 6px;
+      background: #fff; border: 1px solid var(--line); border-radius: 12px;
+      box-shadow: 0 14px 30px rgba(19, 32, 44, 0.12);
+      z-index: 30; grid; gap: 3px;
+    }
+    .app-menu.is-open { display: grid; }
+    .app-opt {
+      display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 8px;
+      padding: 7px 8px; border: 0; background: transparent; border-radius: 8px;
+      font: inherit; font-size: 12px; font-weight: 600; color: var(--ink);
+      cursor: pointer; text-align: left;
+    }
+    .app-opt:hover { background: var(--wash); }
+    .app-opt.is-on { background: var(--cyan-soft); color: var(--cyan); }
+    .app-opt .dot { width: 16px; height: 16px; border-radius: 5px; background: #1b2430; color: #fff; display: grid; place-items: center; font-family: var(--mono); font-size: 9px; }
+    .app-opt .m { font-family: var(--mono); font-size: 10.5px; color: var(--faint); font-weight: 500; }
+    .app-opt.is-on .m { color: var(--cyan); opacity: 0.75; }
+
+    /* ====== Channel tabs (collapsed — no n/0 here) ====== */
+    .ctabs {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+      padding: 8px 10px 0; flex: 0 0 auto;
+    }
+    .ctab {
+      display: grid; grid-template-rows: auto auto; gap: 1px; justify-items: center;
+      padding: 6px 4px 5px;
+      border: 1px solid var(--line); border-radius: 10px; background: #fff;
+      font: inherit; cursor: pointer; color: var(--muted);
+    }
+    .ctab:hover { border-color: var(--cyan-bd); }
+    .ctab:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+    .ctab .g { font-size: 12px; line-height: 1; }
+    .ctab .n { font-size: 10.5px; font-weight: 650; }
+    .ctab .m { font-family: var(--mono); font-size: 9.5px; color: var(--faint); }
+    .ctab.is-on { background: var(--cyan-soft); border-color: var(--cyan-bd); color: var(--cyan); }
+    .ctab.is-on .m { color: var(--cyan); }
+    .ctab.is-empty { opacity: 0.4; cursor: not-allowed; background: transparent; }
+    .ctab.is-empty:hover { border-color: var(--line); }
+    .ctab.is-empty .g { filter: grayscale(0.6); }
+
+    .dir-hint {
+      margin: 0; padding: 8px 12px 0;
+      font-size: 11.5px; color: var(--muted); line-height: 1.4;
+    }
+    .dir-list {
+      flex: 1; min-height: 0; overflow: auto;
+      padding: 8px; display: grid; gap: 5px; align-content: start;
+    }
+    .shell[data-mode="detail"] .dir-list { display: none; }
+
+    .dir-item {
+      display: grid; gap: 2px; width: 100%; text-align: left;
+      border: 1px solid var(--line); border-radius: 10px; background: #fff;
+      padding: 9px 10px; font: inherit; color: inherit; cursor: pointer;
+    }
+    .dir-item:hover { border-color: var(--cyan-bd); background: #fafcfd; }
+    .dir-item:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+    .dir-item .n { font-size: 13px; font-weight: 650; }
+    .dir-item .s { font-family: var(--mono); font-size: 10.5px; font-weight: 500; }
+    .dir-item .s.ok { color: var(--ok); }
+    .dir-item .s.miss { color: var(--warn); }
+    .dir-item .go { margin-top: 2px; font-size: 11px; font-weight: 650; color: var(--cyan); }
+
+    .tools {
+      display: none; padding: 8px 12px 0; gap: 6px;
+    }
+    .shell[data-mode="detail"] .tools { display: grid; }
+    .tools input {
+      width: 100%; border: 1px solid var(--line); border-radius: 10px;
+      padding: 8px 10px; font: inherit; font-size: 13px;
+    }
+    .tools input:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0, 101, 143, 0.15); }
+    .filters { display: flex; flex-wrap: wrap; gap: 4px; }
+    .fchip {
+      border: 1px solid var(--line); background: #fff; border-radius: 999px;
+      padding: 4px 8px; font: inherit; font-size: 11px; font-weight: 650; color: var(--muted); cursor: pointer;
+    }
+    .fchip.is-on { background: var(--cyan-soft); border-color: var(--cyan-bd); color: var(--cyan); }
+
+    .detail-list {
+      display: none; flex: 1; min-height: 0; overflow: auto;
+      padding: 6px 8px 8px; gap: 4px; align-content: start;
+    }
+    .shell[data-mode="detail"] .detail-list { display: grid; }
+
+    .d-row {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px;
+      align-items: start; width: 100%; text-align: left;
+      border: 1px solid transparent; border-radius: 12px;
+      padding: 10px; background: transparent;
+      font: inherit; color: inherit; cursor: pointer;
+    }
+    .d-row:hover { background: var(--wash); }
+    .d-row.is-on { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+    .d-row .n { display: block; font-size: 13.5px; font-weight: 650; }
+    .d-row .e { display: block; margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+    .binds { display: flex; flex-wrap: wrap; gap: 3px; justify-content: flex-end; max-width: 11rem; }
+    .chip {
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      padding: 2px 6px; border-radius: 999px;
+      border: 1px solid var(--line); background: var(--wash); color: var(--muted);
+      cursor: pointer;
+    }
+    .chip:hover { border-color: var(--cyan-bd); }
+    .chip.on { background: var(--cyan-soft); border-color: var(--cyan-bd); color: var(--cyan); }
+    .chip.empty { border-style: dashed; color: var(--faint); }
+
+    .editor {
+      display: none;
+      border-top: 1px solid var(--line);
+      padding: 10px 12px 12px; background: #f7fafc;
+      gap: 8px; flex: 0 0 auto;
+    }
+    .shell[data-mode="detail"] .editor { display: grid; }
+    .editor h4 { margin: 0; font-size: 13px; font-weight: 750; }
+    .editor .desc { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .edit-grid { display: grid; gap: 6px; }
+
+    /* per-app key editor */
+    .key-app-block {
+      display: grid; gap: 6px;
+      padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
+    }
+    .key-app-block.is-current { border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .key-app-block .h {
+      display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 650; color: var(--muted);
+    }
+    .key-app-block.is-current .h { color: var(--cyan); }
+    .key-app-block .h .dot {
+      width: 16px; height: 16px; border-radius: 5px; background: #1b2430; color: #fff;
+      display: grid; place-items: center; font-family: var(--mono); font-size: 9px; font-weight: 700;
+    }
+    .key-row {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px;
+    }
+    .key-row input {
+      border: 1px solid var(--line); border-radius: 8px;
+      padding: 6px 8px; font: inherit; font-size: 12px; font-family: var(--mono);
+    }
+    .key-row input:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0, 101, 143, 0.15); }
+    .key-row button {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      padding: 5px 8px; font: inherit; font-size: 11px; font-weight: 650; color: var(--cyan); cursor: pointer;
+    }
+    .key-row button:hover { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+    .key-add {
+      border: 1px dashed var(--line); background: transparent; border-radius: 8px;
+      padding: 5px 8px; font: inherit; font-size: 11px; font-weight: 650; color: var(--muted); cursor: pointer;
+    }
+    .key-add:hover { border-color: var(--cyan-bd); color: var(--cyan); }
+
+    .row-edit {
+      display: grid; grid-template-columns: 44px minmax(0, 1fr) auto;
+      gap: 8px; align-items: center;
+      font-size: 12px;
+      padding: 6px 8px;
+      border: 1px solid transparent; border-radius: 8px;
+    }
+    .row-edit.is-current { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+    .row-edit .lbl { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--muted); }
+    .row-edit.is-current .lbl { color: var(--cyan); }
+    .row-edit input {
+      border: 1px solid var(--line); border-radius: 8px;
+      padding: 6px 8px; font: inherit; font-size: 12px; font-family: var(--mono);
+    }
+    .row-edit input:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0, 101, 143, 0.15); }
+    .row-edit button {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      padding: 5px 8px; font: inherit; font-size: 11px; font-weight: 650; color: var(--cyan); cursor: pointer;
+    }
+    .row-edit button:hover { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+
+    .edit-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
+    .edit-actions button {
+      border: 1px solid var(--cyan-bd); background: #fff; color: var(--cyan);
+      border-radius: 10px; padding: 7px 11px;
+      font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .edit-actions .primary { background: var(--cyan); border-color: var(--cyan); color: #fff; }
+
+    .foot { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    @media (max-width: 820px) { .foot { grid-template-columns: 1fr; } }
+    .foot article {
+      border: 1px solid var(--line); border-radius: 12px;
+      padding: 11px 12px; background: rgba(255, 255, 255, 0.78);
+      font-size: 12px; line-height: 1.45; color: var(--muted);
+    }
+    .foot b { display: block; color: var(--ink); margin-bottom: 4px; font-size: 12.5px; }
+    .foot .rec { border-color: color-mix(in srgb, var(--ok) 35%, var(--line)); background: var(--ok-soft); }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 22px;
+      transform: translateX(-50%) translateY(8px);
+      padding: 10px 14px; border-radius: 12px;
+      background: rgba(19, 32, 44, 0.92); color: #fff;
+      font-size: 12.5px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      z-index: 40;
+    }
+    .toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-kicker">D · App-aware + 折叠</div>
+      <h1>2 主通道 + 1 折叠，应用上下文只对按键生效</h1>
+      <p>
+        主区让出来显示<strong>当前应用下的动作预览</strong>。App 上下文 chip 只在按键 channel 下可点（其他通道的 voice/手势/Pad 是全局的，灰掉并解释）。
+        <a href="./c-channel-tabs.html">C 旧版</a>
+        ·
+        <a href="./b-two-states.html">B 旧版</a>
+      </p>
+    </header>
+
+    <div class="rules">
+      <span class="pill on">nav 收窄到 128px</span>
+      <span class="pill dim">主通道：按键/语音</span>
+      <span class="pill">折叠：Pad/摄像头</span>
+      <span class="pill">空通道不画</span>
+      <span class="pill">App chip 仅按键可切</span>
+    </div>
+
+    <div class="shell" id="shell" data-mode="dir" data-channel="key" data-app="cursor">
+      <div class="shell-top">
+        <div class="left">
+          <div class="app-ico" id="appIco">Cu</div>
+          <div>
+            <h2 id="appName">Cursor</h2>
+            <p id="hint">从左侧选通道，或在右侧切应用上下文。</p>
+          </div>
+        </div>
+        <div class="mode-tag" id="modeTag">目录 · 按键</div>
+      </div>
+
+      <div class="body">
+        <nav class="nav" aria-label="通道入口">
+          <div class="nav-h">主通道</div>
+          <button type="button" class="trigger" data-channel="voice" data-open="1">
+            <span class="ico">🎙</span>
+            <span class="lbl">看我的口令</span>
+            <span class="cnt" data-cnt="voice">–</span>
+          </button>
+          <button type="button" class="trigger is-on" data-channel="key" data-open="1">
+            <span class="ico">⌨</span>
+            <span class="lbl">看我的热键</span>
+            <span class="cnt" data-cnt="key">–</span>
+          </button>
+          <div class="nav-h" style="margin-top:6px">折叠</div>
+          <div class="more" id="more">
+            <button type="button" class="more-toggle" id="moreToggle" aria-expanded="false">
+              <span class="ico" style="width:22px;height:22px;display:inline-grid;place-items:center">⋯</span>
+              <span>更多通道</span>
+              <span class="caret">▸</span>
+            </button>
+            <div class="more-list">
+              <button type="button" class="trigger" data-channel="pad" data-open="1">
+                <span class="ico">⌬</span>
+                <span class="lbl">看我的键帽</span>
+                <span class="cnt" data-cnt="pad">–</span>
+              </button>
+              <button type="button" class="trigger" data-channel="camera" data-open="1">
+                <span class="ico">🎥</span>
+                <span class="lbl">看我的手势</span>
+                <span class="cnt" data-cnt="camera">–</span>
+              </button>
+            </div>
+          </div>
+          <div class="nav-h" style="margin-top:6px">仅查看</div>
+          <button type="button" class="trigger" data-channel="key" data-open="0">
+            <span class="ico">≡</span>
+            <span class="lbl">扫一眼（不展开）</span>
+            <span class="cnt">–</span>
+          </button>
+        </nav>
+
+        <div class="main">
+          <div class="fake">
+            <b id="fakeTitle">主区是当前应用下的动作预览</b>
+            <span id="fakeHint">点列表里任一项直接进编辑；右侧抽屉同步切到详情模式。</span>
+          </div>
+          <div class="preview" id="preview"></div>
+        </div>
+      </div>
+
+      <aside class="panel" aria-label="动作抽屉">
+        <div class="p-head">
+          <div>
+            <h3>本场景动作</h3>
+            <p class="sub" id="panelSub">按键 · Cursor · 点一项去修改</p>
+          </div>
+          <button type="button" class="back-btn" id="btnBack">收起</button>
+        </div>
+
+        <div class="app-row">
+          <button type="button" class="app-chip" id="appChip" aria-haspopup="listbox" aria-expanded="false">
+            <span class="dot" id="appChipDot">Cu</span>
+            <span class="n" id="appChipName">Cursor</span>
+            <span class="m" id="appChipMeta">4 / 6</span>
+            <span class="caret">▾</span>
+          </button>
+        </div>
+
+        <div class="app-menu" id="appMenu" role="listbox" aria-label="应用上下文"></div>
+
+        <div class="ctabs" id="ctabs" role="tablist">
+          <button type="button" class="ctab" data-channel="voice" role="tab">
+            <span class="g">🎙</span><span class="n">语音</span><span class="m" data-cnt="voice">–</span>
+          </button>
+          <button type="button" class="ctab is-on" data-channel="key" role="tab">
+            <span class="g">⌨</span><span class="n">按键</span><span class="m" data-cnt="key">–</span>
+          </button>
+          <button type="button" class="ctab" data-channel="pad" role="tab">
+            <span class="g">⌬</span><span class="n">Pad</span><span class="m" data-cnt="pad">–</span>
+          </button>
+          <button type="button" class="ctab" data-channel="camera" role="tab">
+            <span class="g">🎥</span><span class="n">摄</span><span class="m" data-cnt="camera">–</span>
+          </button>
+        </div>
+
+        <p class="dir-hint" id="dirHint">绿色＝当前通道已绑定；橙色＝空。</p>
+        <div class="dir-list" id="dirList"></div>
+
+        <div class="tools">
+          <input type="search" id="search" placeholder="搜动作…" autocomplete="off" />
+          <div class="filters" id="filters"></div>
+        </div>
+        <div class="detail-list" id="detailList"></div>
+        <div class="editor" id="editor"></div>
+      </aside>
+    </div>
+
+    <div class="foot">
+      <article class="rec">
+        <b>主区不再空</b>
+        nav 收窄到 128px 后，main 区域宽到能展示当前应用下的 6 个动作预览，每项直接可点。
+      </article>
+      <article>
+        <b>App chip 单向生效</b>
+        按键强依赖应用 → chip 可切。voice/pad/camera 是全局的 → chip 灰掉并写明"全局"，避免误解。
+      </article>
+      <article>
+        <b>空通道不画</b>
+        n/总数=0 的 channel 灰掉、不可点。等用户配了第一条，自动恢复正常态。
+      </article>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      // Apps the user has — "all" is the meta app (no per-app key binding)
+      var APPS = [
+        { id: "all",      name: "全部应用", short: "全部", icon: "◎", fake: false },
+        { id: "cursor",   name: "Cursor",   short: "Cu", icon: "Cu", fake: false },
+        { id: "photoshop",name: "Photoshop",short: "Ps", icon: "Ps", fake: false },
+        { id: "chrome",   name: "Chrome",   short: "Ch", icon: "Ch", fake: false }
+      ];
+
+      // Each action binds.key is a dict {app: key|""}. voice/pad/camera are global.
+      var ACTIONS = [
+        { id: "send", name: "发送", effect: "提交当前输入", binds: {
+            key: { all: "Enter", cursor: "Enter", photoshop: "Ctrl+Enter", chrome: "Ctrl+Enter" },
+            voice: "发送", pad: "发送", camera: ""
+        }},
+        { id: "continue", name: "继续", effect: "让 Agent 接着干", binds: {
+            key: { all: "", cursor: "", photoshop: "", chrome: "" },
+            voice: "继续", pad: "继续", camera: ""
+        }},
+        { id: "dictation", name: "开始听写", effect: "字进光标处", binds: {
+            key: { all: "LAlt+R", cursor: "LAlt+R", photoshop: "LAlt+D", chrome: "LAlt+R" },
+            voice: "说话", pad: "麦", camera: ""
+        }},
+        { id: "stop", name: "停止", effect: "停生成", binds: {
+            key: { all: "Esc", cursor: "Esc", photoshop: "Esc", chrome: "Esc" },
+            voice: "取消", pad: "停止", camera: "摇头"
+        }},
+        { id: "newThread", name: "新会话", effect: "开一条干净对话", binds: {
+            key: { all: "", cursor: "Ctrl+N", photoshop: "", chrome: "" },
+            voice: "新会话", pad: "新会话", camera: ""
+        }},
+        { id: "focus", name: "聚焦 Composer", effect: "回到对话输入", binds: {
+            key: { all: "Ctrl+L", cursor: "Ctrl+L", photoshop: "", chrome: "" },
+            voice: "", pad: "召回", camera: ""
+        }}
+      ];
+
+      var CHANNELS = [
+        { id: "key",    label: "按键", icon: "⌨" },
+        { id: "voice",  label: "语音", icon: "🎙" },
+        { id: "pad",    label: "Pad", icon: "⌬" },
+        { id: "camera", label: "摄",   icon: "🎥" }
+      ];
+
+      var state = { mode: "dir", channel: "key", app: "cursor", selected: "send", filter: "all", q: "" };
+      var toastTimer = 0;
+
+      var shell = document.getElementById("shell");
+      var hint = document.getElementById("hint");
+      var fakeTitle = document.getElementById("fakeTitle");
+      var fakeHint = document.getElementById("fakeHint");
+      var modeTag = document.getElementById("modeTag");
+      var panelSub = document.getElementById("panelSub");
+      var dirHint = document.getElementById("dirHint");
+      var toastEl = document.getElementById("toast");
+      var appChip = document.getElementById("appChip");
+      var appMenu = document.getElementById("appMenu");
+      var appChipDot = document.getElementById("appChipDot");
+      var appChipName = document.getElementById("appChipName");
+      var appChipMeta = document.getElementById("appChipMeta");
+      var appIco = document.getElementById("appIco");
+      var appName = document.getElementById("appName");
+      var more = document.getElementById("more");
+      var moreToggle = document.getElementById("moreToggle");
+
+      function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("is-show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("is-show"); }, 1300);
+      }
+      function channelLabel() { for (var i = 0; i < CHANNELS.length; i++) if (CHANNELS[i].id === state.channel) return CHANNELS[i].label; return state.channel; }
+      function appById(id) { for (var i = 0; i < APPS.length; i++) if (APPS[i].id === id) return APPS[i]; return APPS[0]; }
+
+      function getBind(row, ch) {
+        if (ch === "key") return row.binds.key[state.app] || "";
+        return row.binds[ch] || "";
+      }
+      function setBind(row, ch, appId, val) {
+        if (ch === "key") row.binds.key[appId || state.app] = val;
+        else row.binds[ch] = val;
+      }
+      function countBound(ch) {
+        return ACTIONS.reduce(function (n, a) { return n + (getBind(a, ch) ? 1 : 0); }, 0);
+      }
+      function isChannelAppAware() { return state.channel === "key"; }
+      function isChannelEmpty(ch) { return countBound(ch) === 0; }
+
+      // ====== render ======
+      function paintCounts() {
+        document.querySelectorAll("[data-cnt]").forEach(function (el) {
+          var ch = el.getAttribute("data-cnt");
+          el.textContent = countBound(ch) + " / " + ACTIONS.length;
+        });
+        document.querySelectorAll(".ctab").forEach(function (b) {
+          var ch = b.getAttribute("data-channel");
+          b.classList.toggle("is-empty", isChannelEmpty(ch));
+        });
+        appChipMeta.textContent = isChannelAppAware() ? (countBound("key") + " / " + ACTIONS.length) : "全局";
+      }
+
+      function paintTriggers() {
+        document.querySelectorAll(".trigger[data-channel]").forEach(function (b) {
+          b.classList.toggle("is-on", b.getAttribute("data-channel") === state.channel && b.getAttribute("data-open") === "1");
+        });
+      }
+
+      function paintTabs() {
+        document.querySelectorAll(".ctab").forEach(function (b) {
+          b.classList.toggle("is-on", b.getAttribute("data-channel") === state.channel);
+        });
+      }
+
+      function paintAppChrome() {
+        var app = appById(state.app);
+        appChipDot.textContent = app.short;
+        appChipName.textContent = app.name;
+        appIco.textContent = app.short;
+        appName.textContent = app.name;
+        if (isChannelAppAware()) {
+          appChip.classList.remove("disabled");
+          appChip.removeAttribute("aria-disabled");
+        } else {
+          appChip.classList.add("disabled");
+          appChip.setAttribute("aria-disabled", "true");
+        }
+        // app menu content
+        appMenu.innerHTML = APPS.map(function (a) {
+          var isOn = a.id === state.app;
+          return '<button type="button" class="app-opt' + (isOn ? " is-on" : "") + '" data-app="' + a.id + '" role="option" aria-selected="' + isOn + '">' +
+            '<span class="dot">' + esc(a.short) + '</span>' +
+            '<span class="n">' + esc(a.name) + '</span>' +
+            '<span class="m">' + esc(isChannelAppAware() ? "按当前应用" : "全局") + '</span>' +
+            '</button>';
+        }).join("");
+        appMenu.querySelectorAll("[data-app]").forEach(function (b) {
+          b.addEventListener("click", function () { setApp(b.getAttribute("data-app")); toggleAppMenu(false); });
+        });
+      }
+
+      function paintChrome() {
+        shell.setAttribute("data-channel", state.channel);
+        shell.setAttribute("data-app", state.app);
+        var app = appById(state.app);
+        modeTag.textContent = (state.mode === "detail" ? "详情" : "目录") + " · " + channelLabel() + " · " + app.name;
+        if (state.mode === "detail") {
+          hint.textContent = "正在改 · " + channelLabel() + " · " + app.name + "。";
+          fakeHint.textContent = "编辑器优先高亮「" + channelLabel() + "」在「" + app.name + "」下的绑定。";
+        } else {
+          hint.textContent = "主区是「" + app.name + "」下的动作预览。点任一项进编辑。";
+          fakeHint.textContent = isChannelAppAware()
+            ? "右侧应用上下文已生效：按键只显示「" + app.name + "」的绑定。"
+            : "右侧应用上下文对当前通道无效（voice/手势/Pad 是全局的）。";
+        }
+        fakeTitle.textContent = isChannelAppAware() ? app.name + "下的动作" : "全局动作（不受应用上下文影响）";
+        panelSub.textContent = state.mode === "detail"
+          ? "改按键 / 说法 / Pad / 摄，改完可收起"
+          : channelLabel() + " · " + app.name + " · 点一项去修改";
+        if (state.channel === "camera") {
+          dirHint.innerHTML = "摄像头是<strong>稀疏通道</strong>（" + countBound("camera") + " 个手势）。点已绑的卡片去看误识别率，或点空卡片加手势。";
+        } else {
+          dirHint.textContent = "绿色＝当前通道已绑定；橙色＝空。点卡片打开修改。";
+        }
+      }
+
+      function paintPreview() {
+        var host = document.getElementById("preview");
+        var ch = state.channel;
+        var titleChannel = channelLabel();
+        var app = appById(state.app);
+        var rows = ACTIONS.slice().sort(function (a, b) {
+          return (getBind(a, ch) ? 0 : 1) - (getBind(b, ch) ? 0 : 1);
+        });
+        var h = '<div class="preview-h"><span class="t">' + esc(app.name) + " · " + esc(titleChannel) + '</span>' +
+                '<span class="m">' + countBound(ch) + " / " + ACTIONS.length + '</span></div>';
+        if (rows.length === 0) { host.innerHTML = h + '<div class="preview-empty">没有动作</div>'; return; }
+        var list = rows.map(function (a) {
+          var v = getBind(a, ch);
+          var cls = v ? "ok" : "miss";
+          var txt = v || "未配";
+          return '<li data-sel="' + esc(a.id) + '"><span><span class="n">' + esc(a.name) + '<span class="e">' + esc(a.effect) + '</span></span><span class="v ' + cls + '">' + esc(txt) + '</span></li>';
+        }).join("");
+        // li 用了 .n + .e 但 .e 是 block 放在 .n 里会换行错——简单点：把 n/e 拆开
+        var list2 = rows.map(function (a) {
+          var v = getBind(a, ch);
+          var cls = v ? "ok" : "miss";
+          var txt = v || "未配";
+          return '<li data-sel="' + esc(a.id) + '">' +
+            '<span><span class="n">' + esc(a.name) + '</span><span class="e">' + esc(a.effect) + '</span></span>' +
+            '<span class="v ' + cls + '">' + esc(txt) + '</span></li>';
+        }).join("");
+        host.innerHTML = h + '<ul>' + list2 + '</ul>';
+        host.querySelectorAll("[data-sel]").forEach(function (li) {
+          li.addEventListener("click", function () { openDetail(li.getAttribute("data-sel")); });
+        });
+      }
+
+      function paintDir() {
+        var host = document.getElementById("dirList");
+        var ch = state.channel;
+        var rows = ACTIONS.slice().sort(function (a, b) {
+          return (getBind(a, ch) ? 0 : 1) - (getBind(b, ch) ? 0 : 1);
+        });
+        host.innerHTML = rows.map(function (a) {
+          var v = getBind(a, ch);
+          var st = v ? { cls: "ok", text: v } : { cls: "miss", text: "未绑" + channelLabel() };
+          return (
+            '<button type="button" class="dir-item" data-open="' + esc(a.id) + '">' +
+            '<span class="n">' + esc(a.name) + "</span>" +
+            '<span class="s ' + st.cls + '">' + esc(st.text) + "</span>" +
+            '<span class="go">修改 →</span>' +
+            "</button>"
+          );
+        }).join("");
+        host.querySelectorAll("[data-open]").forEach(function (btn) {
+          btn.addEventListener("click", function () { openDetail(btn.getAttribute("data-open")); });
+        });
+      }
+
+      function paintFilters() {
+        var host = document.getElementById("filters");
+        var opts = [
+          { id: "all", label: "全部" },
+          { id: "bound", label: "已绑" + channelLabel() },
+          { id: "unbound", label: "未绑" + channelLabel() }
+        ];
+        host.innerHTML = opts.map(function (o) {
+          return '<button type="button" class="fchip' + (state.filter === o.id ? " is-on" : "") + '" data-filter="' + o.id + '">' + esc(o.label) + "</button>";
+        }).join("");
+        host.querySelectorAll("[data-filter]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            state.filter = btn.getAttribute("data-filter");
+            paintFilters(); paintDetailList();
+          });
+        });
+      }
+
+      function paintChips(row) {
+        return CHANNELS.map(function (c) {
+          var v = c.id === "key" ? (row.binds.key[state.app] || "") : (row.binds[c.id] || "");
+          return '<span class="chip' + (v ? " on" : " empty") + '" data-jump="' + c.id + '" title="跳到' + esc(c.label) + '通道">' +
+            esc(c.id === "pad" ? "Pad" : c.id === "key" ? "键" : c.id === "voice" ? "说" : "摄") +
+            (v ? " · " + esc(v) : "") + "</span>";
+        }).join("");
+      }
+
+      function paintDetailList() {
+        var host = document.getElementById("detailList");
+        var ch = state.channel;
+        var rows = ACTIONS.filter(function (a) {
+          var v = getBind(a, ch);
+          if (state.filter === "bound" && !v) return false;
+          if (state.filter === "unbound" && v) return false;
+          if (state.q && (a.name + a.effect).toLowerCase().indexOf(state.q.toLowerCase()) < 0) return false;
+          return true;
+        });
+        host.innerHTML = rows.map(function (a) {
+          return (
+            '<button type="button" class="d-row' + (state.selected === a.id ? " is-on" : "") + '" data-sel="' + esc(a.id) + '">' +
+            '<span><span class="n">' + esc(a.name) + '</span><span class="e">' + esc(a.effect) + "</span></span>" +
+            '<span class="binds">' + paintChips(a) + "</span>" +
+            "</button>"
+          );
+        }).join("") || '<p style="padding:12px;color:#8494a6;font-size:12.5px">没有匹配</p>';
+        host.querySelectorAll("[data-sel]").forEach(function (btn) {
+          btn.addEventListener("click", function (ev) {
+            var chip = ev.target.closest("[data-jump]");
+            if (chip) { jumpToChannel(chip.getAttribute("data-jump"), btn.getAttribute("data-sel")); return; }
+            state.selected = btn.getAttribute("data-sel");
+            paintDetailList(); paintEditor();
+          });
+        });
+      }
+
+      function paintKeyEditor(row) {
+        // per-app key editor: current app first, then other apps, then "+ 在另一应用也加"
+        var blocks = [];
+        var otherApps = APPS.filter(function (a) { return a.id !== state.app && a.id !== "all"; });
+        // current app
+        blocks.push(
+          '<div class="key-app-block is-current" data-row-app="' + esc(state.app) + '">' +
+            '<div class="h"><span class="dot">' + esc(appById(state.app).short) + '</span>' + esc(appById(state.app).name) + ' · 当前</div>' +
+            '<div class="key-row"><input data-field="key" data-app="' + esc(state.app) + '" value="' + esc(row.binds.key[state.app] || "") + '" placeholder="未绑" /><button type="button" data-rec="key">录键</button></div>' +
+          '</div>'
+        );
+        // "all" (fallback)
+        if (state.app !== "all") {
+          blocks.push(
+            '<div class="key-app-block" data-row-app="all">' +
+              '<div class="h"><span class="dot">◎</span>全部应用 · 兜底</div>' +
+              '<div class="key-row"><input data-field="key" data-app="all" value="' + esc(row.binds.key.all || "") + '" placeholder="未设兜底" /><button type="button" data-rec="key" data-app="all">录键</button></div>' +
+            '</div>'
+          );
+        }
+        // other apps
+        otherApps.forEach(function (a) {
+          var v = row.binds.key[a.id] || "";
+          if (!v && state.app !== "all") {
+            // collapse: don't render input by default — show a small "+ 在「Photoshop」也加" button
+            return;
+          }
+          blocks.push(
+            '<div class="key-app-block" data-row-app="' + esc(a.id) + '">' +
+              '<div class="h"><span class="dot">' + esc(a.short) + '</span>' + esc(a.name) + '</div>' +
+              '<div class="key-row"><input data-field="key" data-app="' + esc(a.id) + '" value="' + esc(v) + '" placeholder="未配" /><button type="button" data-rec="key" data-app="' + esc(a.id) + '">录键</button></div>' +
+            '</div>'
+          );
+        });
+        // "add to other app" button
+        blocks.push(
+          '<button type="button" class="key-add" data-add-app>+</button>'
+        );
+        return blocks.join("");
+      }
+
+      function paintEditor() {
+        var ed = document.getElementById("editor");
+        var row = ACTIONS.find(function (x) { return x.id === state.selected; });
+        if (!row) { ed.innerHTML = ""; return; }
+
+        var keyBlock = "";
+        if (state.channel === "key") {
+          keyBlock =
+            '<div class="edit-grid">' +
+              '<div class="row-edit is-current">' +
+                '<span class="lbl">按键</span>' +
+                '<span style="font-size:11.5px;color:var(--muted)">当前应用：' + esc(appById(state.app).name) + '</span>' +
+                '<span></span>' +
+              '</div>' +
+              paintKeyEditor(row) +
+            '</div>';
+        } else {
+          var c = CHANNELS.find(function (x) { return x.id === state.channel; });
+          var cur = getBind(row, state.channel);
+          keyBlock =
+            '<div class="edit-grid">' +
+              '<div class="row-edit is-current">' +
+                '<span class="lbl">' + esc(c.label) + '</span>' +
+                '<input data-field="ch" value="' + esc(cur) + '" placeholder="未配" />' +
+                '<button type="button" data-rec="ch">' + (c.id === "voice" ? "试说" : c.id === "pad" ? "放键帽" : c.id === "camera" ? "录动作" : "录") + '</button>' +
+              '</div>' +
+            '</div>';
+        }
+
+        ed.innerHTML =
+          "<h4>正在改 · " + esc(row.name) + "</h4>" +
+          '<p class="desc">' + esc(row.effect) + "</p>" +
+          keyBlock +
+          '<div class="edit-actions">' +
+          '<button type="button" data-back>收起</button>' +
+          '<button type="button" class="primary" data-save>保存</button>' +
+          "</div>";
+
+        ed.querySelector("[data-save]").addEventListener("click", function () {
+          if (state.channel === "key") {
+            ed.querySelectorAll('[data-field="key"]').forEach(function (inp) {
+              var appId = inp.getAttribute("data-app") || state.app;
+              row.binds.key[appId] = inp.value.trim();
+            });
+          } else {
+            var inp = ed.querySelector('[data-field="ch"]');
+            if (inp) row.binds[state.channel] = inp.value.trim();
+          }
+          paintCounts(); paintAppChrome(); paintChrome(); paintPreview(); paintDir(); paintDetailList(); paintEditor();
+          toast("已保存 · " + row.name);
+        });
+        ed.querySelector("[data-back]").addEventListener("click", closeDetail);
+        ed.querySelectorAll("[data-rec]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var ch = btn.getAttribute("data-rec");
+            var appId = btn.getAttribute("data-app");
+            toast("原型：去录「" + ch + "」" + (appId ? " · " + appById(appId).name : ""));
+          });
+        });
+        ed.querySelectorAll("[data-add-app]").forEach(function (btn) {
+          btn.addEventListener("click", function () { paintAddAppMenu(btn); });
+        });
+      }
+
+      function paintAddAppMenu(btn) {
+        // tiny inline: which app to add key binding for
+        var existing = ACTIONS.find(function (x) { return x.id === state.selected; });
+        var otherApps = APPS.filter(function (a) { return a.id !== "all" && a.id !== state.app && !(existing.binds.key[a.id]); });
+        if (otherApps.length === 0) { toast("所有应用都配了"); return; }
+        var choices = otherApps.map(function (a) { return '<button type="button" class="app-opt" data-add="' + a.id + '"><span class="dot">' + esc(a.short) + '</span><span class="n">' + esc(a.name) + '</span></button>'; }).join("");
+        appMenu.innerHTML = choices;
+        appMenu.classList.add("is-open");
+        appMenu.querySelectorAll("[data-add]").forEach(function (b) {
+          b.addEventListener("click", function () {
+            var appId = b.getAttribute("data-add");
+            existing.binds.key[appId] = "";
+            state.app = appId;
+            paintAppChrome(); paintChrome(); paintPreview(); paintDir(); paintDetailList(); paintEditor();
+            toggleAppMenu(false);
+          });
+        });
+      }
+
+      // ====== actions ======
+      function setChannel(ch) {
+        if (state.channel === ch) return;
+        state.channel = ch;
+        state.filter = "all";
+        paintTabs(); paintTriggers(); paintCounts(); paintAppChrome(); paintChrome();
+        if (state.mode === "detail") { paintFilters(); paintDetailList(); paintEditor(); }
+        else { paintDir(); paintPreview(); }
+      }
+
+      function setApp(appId) {
+        if (state.app === appId) return;
+        state.app = appId;
+        paintAppChrome(); paintChrome(); paintPreview(); paintDir();
+        if (state.mode === "detail") { paintDetailList(); paintEditor(); }
+      }
+
+      function jumpToChannel(ch, rowId) {
+        if (rowId) state.selected = rowId;
+        if (state.mode === "dir") openDetail(rowId || state.selected);
+        setChannel(ch);
+      }
+
+      function openDetail(id) {
+        state.selected = id;
+        state.mode = "detail";
+        shell.setAttribute("data-mode", "detail");
+        paintChrome(); paintTriggers(); paintFilters(); paintDetailList(); paintEditor();
+        toast("打开 · " + (ACTIONS.find(function (x) { return x.id === id; }) || {}).name);
+      }
+      function closeDetail() {
+        state.mode = "dir";
+        shell.setAttribute("data-mode", "dir");
+        paintChrome(); paintTriggers(); paintDir(); paintPreview();
+      }
+      function toggleAppMenu(force) {
+        var open = typeof force === "boolean" ? force : !appMenu.classList.contains("is-open");
+        appMenu.classList.toggle("is-open", open);
+        appChip.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+      function toggleMore(force) {
+        var open = typeof force === "boolean" ? force : !more.classList.contains("is-open");
+        more.classList.toggle("is-open", open);
+        moreToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+
+      // ====== wire ======
+      document.querySelectorAll(".ctab").forEach(function (b) {
+        b.addEventListener("click", function () {
+          if (b.classList.contains("is-empty")) { toast("该通道还没配东西"); return; }
+          setChannel(b.getAttribute("data-channel"));
+        });
+      });
+      document.querySelectorAll(".trigger").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var ch = b.getAttribute("data-channel");
+          var open = b.getAttribute("data-open") === "1";
+          setChannel(ch);
+          if (open) openDetail(state.selected);
+        });
+      });
+      appChip.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        if (appChip.classList.contains("disabled")) {
+          toast("当前通道（" + channelLabel() + "）不受应用上下文影响");
+          return;
+        }
+        toggleAppMenu();
+      });
+      moreToggle.addEventListener("click", function () { toggleMore(); });
+      document.addEventListener("click", function (ev) {
+        if (!appMenu.contains(ev.target) && ev.target !== appChip && !appChip.contains(ev.target)) toggleAppMenu(false);
+      });
+      document.getElementById("btnBack").addEventListener("click", closeDetail);
+      document.getElementById("search").addEventListener("input", function (e) {
+        state.q = e.target.value || ""; paintDetailList();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          if (appMenu.classList.contains("is-open")) { toggleAppMenu(false); return; }
+          if (state.mode === "detail") closeDetail();
+        }
+      });
+
+      // init
+      paintCounts(); paintTabs(); paintTriggers(); paintAppChrome(); paintChrome(); paintPreview(); paintDir();
+    })();
+  </script>
+</body>
+</html>

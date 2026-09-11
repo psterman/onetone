@@ -1,11 +1,11 @@
-/* Keys workflow editor — Phase A/B layout (loads after app.css) */
+/* Keys workflow editor � Phase A/B layout (loads after app.css) */
 
 #settingsPanelKeys .keys-workflow-tabs-shell {
   position: relative;
   margin-bottom: 12px;
 }
 
-/* Scheme switching lives in the sidebar hub — hide duplicate top tabs */
+/* Scheme switching lives in the sidebar hub � hide duplicate top tabs */
 #settingsPanelKeys .keys-workflow-tabs-shell {
   display: none !important;
 }
@@ -91,7 +91,7 @@
   color: var(--on-surface-muted);
 }
 
-/* Phase C — sidebar workflow overview */
+/* Phase C � sidebar workflow overview */
 #settingsPanelKeys .keys-workflow-overview-card {
   border-color: rgba(42, 156, 196, 0.18);
   background: linear-gradient(180deg, var(--surface), var(--surface-soft));
@@ -530,7 +530,7 @@
   min-height: 0;
   overflow: auto;
   padding: 4px 10px 14px;
-  /* fixed rhythm — never space-between / stretch rows */
+  /* fixed rhythm � never space-between / stretch rows */
   justify-content: flex-start;
 }
 
@@ -566,7 +566,7 @@
   background: var(--surface-high, #f7f9fb);
 }
 
-/* IME: options panel only hosts finish — don't double-wrap with a second surface */
+/* IME: options panel only hosts finish � don't double-wrap with a second surface */
 #settingsPanelKeys .keys-capture-key-panel:not(.is-custom-key-seq) {
   padding: 0;
   border: none;
@@ -1083,7 +1083,7 @@
   color: var(--on-surface-muted);
 }
 
-/* IME step hierarchy: flat stack — no card-in-card */
+/* IME step hierarchy: flat stack � no card-in-card */
 #settingsPanelKeys .keys-ime-step,
 .keys-capture-popover .keys-ime-step {
   display: flex;
@@ -1101,7 +1101,7 @@
   gap: 4px;
 }
 
-/* Later .keys-capture-keycap-zone / .is-hero-mapped rules re-box the zone — keep IME flat */
+/* Later .keys-capture-keycap-zone / .is-hero-mapped rules re-box the zone � keep IME flat */
 #settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone,
 #settingsPanelKeys .keys-detail-card--hero.keys-ime-step--start .keys-capture-keycap-zone.is-hero-mapped {
   border: none !important;
@@ -1283,18 +1283,59 @@
 #settingsPanelKeys .keys-custom-key-match-item,
 .keys-capture-popover .keys-custom-key-match-item {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
   align-items: stretch;
+  gap: 4px;
   width: 100%;
-  text-align: left;
-  padding: 8px 10px;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: 10px;
   background: var(--surface-soft);
   color: var(--on-surface);
+  font-family: inherit;
+}
+
+#settingsPanelKeys .keys-custom-key-match-main,
+.keys-capture-popover .keys-custom-key-match-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
   font-family: inherit;
+}
+
+#settingsPanelKeys .keys-custom-key-match-del,
+.keys-capture-popover .keys-custom-key-match-del {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--on-surface-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+#settingsPanelKeys .keys-custom-key-match-del:hover,
+.keys-capture-popover .keys-custom-key-match-del:hover {
+  opacity: 1;
+  background: rgba(180, 40, 40, 0.1);
+  color: #b42828;
 }
 
 #settingsPanelKeys .keys-custom-key-match-item:hover,
@@ -1315,6 +1356,21 @@
   font-weight: 800;
   color: var(--on-surface);
   overflow-wrap: anywhere;
+}
+
+#settingsPanelKeys .keys-custom-key-match-rename,
+.keys-capture-popover .keys-custom-key-match-rename {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 2px 6px;
+  border: 1px solid rgba(42, 156, 196, 0.45);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--on-surface);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 #settingsPanelKeys .keys-custom-key-match-sum,
@@ -1517,7 +1573,7 @@
   box-shadow: none;
 }
 
-/* IME finish lives inside options card — drop the second frame */
+/* IME finish lives inside options card � drop the second frame */
 #settingsPanelKeys .keys-detail-card--options.keys-capture-key-panel:not(.is-custom-key-seq) {
   padding: 0;
   border: none;
@@ -1818,7 +1874,7 @@
   color: var(--on-surface-muted, #5a7086);
 }
 
-/* 识别配置弹层：列表要用掉可用高度，不再沿用内联按键页的 148px 预算 */
+/* ??????????????????????????? 148px ?? */
 .keys-capture-popover .keys-channel-panel {
   display: flex;
   flex-direction: column;
@@ -1976,7 +2032,7 @@
   overflow: visible;
 }
 
-/* Title + agent bar need taller chassis than 1:1 or the 5×5 grid is clipped. */
+/* Title + agent bar need taller chassis than 1:1 or the 5�5 grid is clipped. */
 #settingsPanelKeys .keys-softpad-pick-host .micro-hw {
   width: 100%;
   max-width: min(100%, 320px);
@@ -1984,7 +2040,7 @@
   height: auto;
 }
 
-/* Recognition pick: compact visual anchor — must win over the 320px host rules. */
+/* Recognition pick: compact visual anchor � must win over the 320px host rules. */
 #settingsPanelKeys .keys-softpad-pick-host--mini {
   padding: 2px 0 4px;
 }
@@ -2142,8 +2198,8 @@
   border-top: 1px solid color-mix(in srgb, var(--outline-variant, #c4c6d0) 55%, transparent);
 }
 
-/* 「识别配置」弹层复用 Soft Pad 二级页布局（原先只挂在 #settingsPanelKeys）。
-   agent-bar 芯片图（codex.png 640²）在非 .soft-pad-preview-host 下会按固有尺寸撑破。 */
+/* ?????????? Soft Pad ??????????? #settingsPanelKeys??
+   agent-bar ????codex.png 640�??? .soft-pad-preview-host ?????????? */
 .keys-capture-popover .keys-softpad-scope {
   display: flex;
   flex-direction: column;
@@ -2202,7 +2258,7 @@
 .keys-capture-popover .keys-softpad-pick-host .micro-hw {
   width: 100%;
   max-width: min(100%, 440px);
-  /* Face chrome (title + agent bar) needs extra chassis height so the 5×5
+  /* Face chrome (title + agent bar) needs extra chassis height so the 5�5
      grid is not crushed / clipped out of the green face. */
   aspect-ratio: 10 / 11;
 }
@@ -2576,14 +2632,25 @@
 #settingsPanelKeys .keys-ime-strip-wrap, .keys-capture-popover .keys-ime-strip-wrap {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 6px;
   width: 100%;
   flex: 0 0 auto;
-  /* room for selected chip outline so it never paints over the hero card */
-  margin: 0 0 4px;
-  padding: 4px 2px 10px;
-  border-top: none;
+  margin: 10px 0 0;
+  padding: 8px 2px 4px;
+  border-top: 1px solid color-mix(in srgb, var(--outline-variant, #c4c6d0) 55%, transparent);
   overflow: visible;
+  box-sizing: border-box;
+}
+
+#settingsPanelKeys .keys-ime-strip-wrap .ime-preset-strip,
+.keys-capture-popover .keys-ime-strip-wrap .ime-preset-strip {
+  justify-content: center;
+  width: 100%;
+}
+
+#settingsPanelKeys .keys-capture-keycap-zone .keys-step-row--hero {
+  justify-content: center;
 }
 
 #settingsPanelKeys .keys-ime-strip-wrap[hidden], .keys-capture-popover .keys-ime-strip-wrap[hidden] {
@@ -2656,9 +2723,11 @@
 #settingsPanelKeys .ime-preset-confirm,
 #settingsPanelKeys .ime-preset-verify-hint {
   margin: 0;
+  width: 100%;
   font-size: var(--type-caption);
   line-height: 1.4;
   color: var(--on-surface-muted);
+  text-align: center;
 }
 
 #settingsPanelKeys .ime-preset-confirm[hidden],
@@ -2724,10 +2793,6 @@
 #settingsPanelKeys .keys-finish-delay-controls.is-collapsed,
 #settingsPanelKeys .keys-finish-delay-controls[hidden] {
   display: none !important;
-}
-
-#settingsPanelKeys .keys-channel-pane-right > .keys-ime-strip-wrap + .keys-detail-card {
-  margin-top: 0;
 }
 
 /* Compact IME keycap — no oversized hero padding */
@@ -2821,7 +2886,7 @@
   }
 }
 
-/* Phase D — advanced compat-only section */
+/* Phase D � advanced compat-only section */
 #settingsPanelKeys .keys-advanced-details {
   margin-top: 4px;
   border-radius: 14px;
@@ -2857,7 +2922,7 @@
   display: none !important;
 }
 
-/* Phase E — workflow templates */
+/* Phase E � workflow templates */
 #settingsPanelKeys .keys-template-card {
   margin-top: 2px;
 }
@@ -2937,7 +3002,7 @@
   cursor: not-allowed;
 }
 
-/* Merged sidebar hub — schemes + templates */
+/* Merged sidebar hub � schemes + templates */
 #settingsPanelKeys .keys-hub-card .keys-aside-card-head {
   padding: 10px 12px;
 }
@@ -3408,7 +3473,7 @@
   background: transparent;
 }
 
-/* App shortcut expand — facts instead of horizontal chain */
+/* App shortcut expand � facts instead of horizontal chain */
 #settingsPanelKeys .keys-app-expand-facts {
   display: grid;
   gap: 6px;
@@ -3729,7 +3794,7 @@
   display: none !important;
 }
 
-/* v3 — workflow editor layout */
+/* v3 � workflow editor layout */
 #settingsPanelKeys .keys-scheme-summary {
   display: flex;
   align-items: center;
@@ -3919,8 +3984,27 @@
   width: 100%;
 }
 
+#settingsPanelKeys .keys-trigger-modes--detected {
+  display: block;
+}
+
+#settingsPanelKeys .keys-trigger-mode-seg.is-readonly {
+  cursor: default;
+  pointer-events: none;
+  width: 100%;
+  text-align: left;
+}
+
+#settingsPanelKeys .keys-trigger-mode-auto-hint,
+.keys-trigger-mode-auto-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--ot-muted, #6b7280);
+}
+
 #settingsPanelKeys .keys-trigger-modes,
-#settingsPanelKeys .keys-trigger-mode-seg { /* → ot-seg.css */ }
+#settingsPanelKeys .keys-trigger-mode-seg { /* ? ot-seg.css */ }
 
 #settingsPanelKeys .keys-trigger-mode-seg.is-gated {
   opacity: 0.55;
@@ -3935,9 +4019,7 @@
 }
 
 #settingsPanelKeys .keys-trigger-conflict {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  display: block;
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid rgba(232, 147, 12, 0.28);
@@ -3945,6 +4027,21 @@
   font-size: var(--type-caption);
   line-height: 1.4;
   color: #9c6300;
+}
+
+/* Island wraps markup in an extra div — style the content root either way. */
+#settingsPanelKeys .keys-trigger-conflict > div {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+#settingsPanelKeys .keys-trigger-conflict:not(:has(> div)) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 
 #settingsPanelKeys .keys-trigger-conflict[hidden],
@@ -3955,19 +4052,20 @@
 #settingsPanelKeys .keys-trigger-conflict-text {
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 #settingsPanelKeys .keys-trigger-conflict-actions {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 #settingsPanelKeys .keys-trigger-conflict-btn {
   border: 1px solid rgba(42, 156, 196, 0.28);
   background: var(--surface);
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: 6px;
   font: inherit;
   font-size: var(--type-caption);
@@ -3975,6 +4073,14 @@
   color: var(--primary-strong);
   cursor: pointer;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#settingsPanelKeys .keys-trigger-conflict-btn.is-primary {
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
 }
 
 #settingsPanelKeys .keys-trigger-conflict-btn:hover {
@@ -4146,6 +4252,30 @@
 #settingsPanelKeys #habitKeyMapRowTrigger .habit-basic-key-display.display {
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+}
+
+#settingsPanelKeys #triggerGestureBadge,
+#settingsPanelKeys .keys-trigger-gesture-badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  color: #0f5f7a;
+  background: rgba(42, 156, 196, 0.16);
+  border: 1px solid rgba(42, 156, 196, 0.28);
+}
+
+#settingsPanelKeys #triggerDisplay.is-gesture-hold #triggerGestureBadge {
+  color: #7a4b0f;
+  background: rgba(196, 140, 42, 0.16);
+  border-color: rgba(196, 140, 42, 0.28);
 }
 
 #settingsPanelKeys #habitKeyMapRowTrigger .habit-basic-key-display.display:hover {
@@ -4928,7 +5058,7 @@
   .target-key-picker-actions { justify-content: flex-end; }
 }
 
-/* Keys page desk mode — single detail panel */
+/* Keys page desk mode � single detail panel */
 
 #settingsPanelKeys.keys-page-desk {
   --flow-node-active-color: var(--primary-strong);
@@ -4940,7 +5070,7 @@
   display: grid;
   gap: 12px;
   margin-bottom: 0;
-  /* pipeline is a layout stack only — cards live on children */
+  /* pipeline is a layout stack only � cards live on children */
   padding: 0;
   border: none;
   border-radius: 0;
@@ -5203,8 +5333,11 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   font-family:ui-monospace,Consolas,monospace;
   line-height:1.45;
 }
-.record-probe-line{ display:grid; grid-template-columns:92px 36px minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1fr); gap:6px; }
-.record-probe-line .t{ color:#889; }
+.record-probe-line{ display:grid; grid-template-columns:92px minmax(56px,4.5em) minmax(0,1fr) minmax(0,.7fr) minmax(0,1.4fr); gap:6px; align-items:baseline; }
+.record-probe-line .t{ color:#889; font-variant-numeric:tabular-nums; }
+.record-probe-line .s{ color:#556; font-size:11px; font-weight:650; white-space:nowrap; }
+.record-probe-line .k{ font-weight:700; }
+.record-probe-line .n{ color:#667; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .record-probe-line .a{ color:#7a5; font-size:11px; overflow:hidden; text-overflow:ellipsis; }
 .record-probe-line.is-drop .k,
 .record-probe-line.is-drop .n,
@@ -5213,3 +5346,266 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 .record-probe-line.is-recv .k{ color:#175cd3; }
 
 
+
+/* Keys B — scene actions light panel (page-level aside / drawer)
+   Default window is 760px (tauri.conf); do NOT collapse the dock at mid widths.
+   Drive layout off #keysSceneActionsPanel visibility so we don't depend only on
+   has-scene-panel class (can drift) or direct-child :has() quirks. */
+#settingsPanelKeys .keys-page-body.has-scene-panel,
+#settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+#settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 240px) !important;
+  align-items: start;
+  gap: 12px;
+}
+
+#settingsPanelKeys .keys-page-body.has-scene-panel > .keys-page-aside.keys-scene-actions,
+#settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-aside.keys-scene-actions,
+#settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) #keysSceneActionsPanel {
+  width: 100%;
+  max-width: 240px;
+  justify-self: stretch;
+  align-self: start;
+  position: sticky;
+  top: 8px;
+  max-height: calc(100vh - 24px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  z-index: 2;
+  box-sizing: border-box;
+  /* Never fall under main as a full-width block */
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+
+#settingsPanelKeys .keys-page-body.has-scene-panel > .keys-page-main,
+#settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-main,
+#settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body > .keys-page-main {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  min-width: 0;
+}
+
+/* app.css collapses .keys-page-body under 1040px — keep scene dock beside at Keys width. */
+@media (max-width: 1040px) {
+  #settingsPanelKeys .keys-page-body.has-scene-panel,
+  #settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+  #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body {
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 240px) !important;
+  }
+  #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) #keysSceneActionsPanel {
+    position: sticky;
+  }
+}
+
+.keys-scene-actions {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  background: var(--surface);
+  min-width: 0;
+  max-width: 100%;
+  align-self: start;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+.keys-scene-actions__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.keys-scene-actions__app {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  min-width: 0;
+}
+.keys-scene-actions__app-ico {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid var(--outline-variant);
+}
+.keys-scene-actions__app-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.keys-scene-actions__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+.keys-scene-actions__meta {
+  margin: 2px 0 0;
+  font-size: 10px;
+  color: var(--on-surface-muted);
+  line-height: 1.35;
+}
+.keys-scene-actions__sum {
+  display: none; /* trail/ime owns the right; 01→02 lives in __s */
+}
+.keys-scene-actions__dir-item.is-unset .keys-scene-actions__s {
+  color: var(--on-surface-muted);
+  font-weight: 550;
+}
+.keys-scene-actions__back {
+  flex-shrink: 0;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-soft);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  color: var(--on-surface);
+}
+.keys-scene-actions__back:hover {
+  border-color: var(--primary);
+  color: var(--primary-strong);
+}
+.keys-scene-actions__dir {
+  display: grid;
+  gap: 10px;
+  max-height: min(70vh, 560px);
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.keys-scene-actions__grp-h {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--on-surface-muted);
+}
+.keys-scene-actions__dir-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 4px;
+  padding: 8px 9px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  color: var(--on-surface);
+  min-width: 0;
+  box-sizing: border-box;
+}
+.keys-scene-actions__dir-item:hover {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--outline-variant));
+  background: color-mix(in srgb, var(--primary-soft) 55%, var(--surface));
+}
+.keys-scene-actions__dir-item:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.keys-scene-actions__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.keys-scene-actions__n {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.keys-scene-actions__trail {
+  flex: 0 1 auto;
+  max-width: 38%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+.keys-scene-actions__ime {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 3px 6px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--outline-variant));
+  background: color-mix(in srgb, var(--primary-soft) 70%, var(--surface));
+  color: var(--primary-strong, #00658f);
+}
+.keys-scene-actions__ime-ico {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: #fff;
+}
+.keys-scene-actions__ime-name {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.keys-scene-actions__s {
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--on-surface-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.keys-scene-actions__s.is-ok {
+  color: #2e7d4f;
+}
+.keys-scene-actions__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 34px;
+  margin-top: 8px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--outline-variant);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-strong, #00658f);
+  cursor: pointer;
+}
+.keys-scene-actions__add:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.keys-scene-actions__empty {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--on-surface-muted);
+}

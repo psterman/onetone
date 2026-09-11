@@ -308,6 +308,10 @@
         else if(picker.refresh) picker.refresh();
       }catch(_){}
     }
+    try{
+      var scene = global.OneToneKeysSceneActionsPanel;
+      if(scene && typeof scene.refresh === 'function') scene.refresh();
+    }catch(_){}
   }
 
   function applyOnboardingTarget(combo, presetId){

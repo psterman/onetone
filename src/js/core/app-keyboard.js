@@ -3,6 +3,80 @@
   var $=function(id){ return global.OneToneDom.$(id); };
   function hooks(){ return global.__vp_app_keyboard_hooks__ || {}; }
   function recordingInput(){ return global.OneToneMappingRecordingInput; }
+
+  /** Peel one UI layer (popover / sheet / picker). Do not jump home. */
+  function tryDismissSecondaryUi(){
+    try{
+      var picker=global.OneToneKeysChannelCommandPicker;
+      if(picker&&picker.isCapturePopoverOpen&&picker.isCapturePopoverOpen()){
+        var closePop=picker.closeCapturePopover||picker.closeCaptureSheet;
+        if(typeof closePop==='function'){
+          closePop.call(picker,{ keepPanel:true });
+          return true;
+        }
+      }
+    }catch(_){}
+    try{
+      var tk=global.OneToneTargetKeyPicker;
+      if(tk&&tk.isOpen&&tk.isOpen()&&typeof tk.close==='function'){
+        tk.close();
+        return true;
+      }
+    }catch(_){}
+    try{
+      var usage=global.OneToneHabitUsageSheet;
+      if(usage){
+        if(usage.isAllOpen&&usage.isAllOpen()&&typeof usage.closeAll==='function'){
+          usage.closeAll();
+          return true;
+        }
+        if(usage.isOpen&&usage.isOpen()&&typeof usage.close==='function'){
+          usage.close();
+          return true;
+        }
+      }
+    }catch(_){}
+    try{
+      var peek=global.OneToneHabitHubSidePeek;
+      var uiPeek=global.OneToneState&&global.OneToneState.ui;
+      if(peek&&uiPeek&&uiPeek.habitHubPeekId&&typeof peek.close==='function'){
+        peek.close();
+        return true;
+      }
+    }catch(_){}
+    try{
+      var sap=global.OneToneSemanticActionPicker;
+      if(sap&&sap.isOpen&&sap.isOpen()&&typeof sap.close==='function'){
+        sap.close();
+        return true;
+      }
+    }catch(_){}
+    try{
+      var cmdk=global.OneToneHomeWorkbenchCmdk;
+      if(cmdk&&cmdk.isOpen&&cmdk.isOpen()){
+        if(typeof cmdk.close==='function') cmdk.close();
+        else if(typeof cmdk.setOpen==='function') cmdk.setOpen(false);
+        return true;
+      }
+    }catch(_){}
+    try{
+      var scheme=global.OneToneHomeScheme;
+      if(scheme&&scheme.isMenuOpen&&scheme.isMenuOpen()){
+        if(global.OneToneHomeUiBindings&&global.OneToneHomeUiBindings.closeHomeSchemeMenu){
+          global.OneToneHomeUiBindings.closeHomeSchemeMenu();
+        }else if(scheme.closeMenu){
+          scheme.closeMenu();
+        }
+        return true;
+      }
+    }catch(_){}
+    try{
+      var wb=global.OneToneHomeWorkbench;
+      if(wb&&typeof wb.dismissEscLayer==='function'&&wb.dismissEscLayer()) return true;
+    }catch(_){}
+    return false;
+  }
+
   function bindListeners(){
     var h=hooks();
     var ui=global.OneToneState.ui;
@@ -37,10 +111,13 @@
         if(phraseOpen&&global.OneTonePhrasePractice){ e.preventDefault(); global.OneTonePhrasePractice.close(); return; }
         var confirmOpen=$('confirmOverlay')&&$('confirmOverlay').classList.contains('open');
         if(confirmOpen){ e.preventDefault(); h.closeConfirmModal(false); return; }
+        // Cancel in-progress capture before any navigation.
         if(rec&&rec.tryEscapeRecording&&rec.tryEscapeRecording(e)) return;
         if(h.onboardIsOpen()){ e.preventDefault(); h.closeWelcome(false); return; }
         if(h.welcomeOpen()){ h.closeWelcome(true); return; }
-        if(ui.drawerOpen){ h.closeDrawer(); return; }
+        // Nested UI (popover / sheet / picker) — never jump to home on first Esc.
+        if(tryDismissSecondaryUi()){ e.preventDefault(); return; }
+        if(ui.drawerOpen){ e.preventDefault(); h.closeDrawer(); return; }
       }
       h.setLastKeyDebug({
         key:h.friendlyKeyName(e.key),
@@ -88,5 +165,8 @@
       if(rec&&rec.handleKeyUp) rec.handleKeyUp(e);
     },true);
   }
-  global.OneToneAppKeyboard={bindListeners:bindListeners};
+  global.OneToneAppKeyboard={
+    bindListeners:bindListeners,
+    tryDismissSecondaryUi:tryDismissSecondaryUi
+  };
 })((typeof window!=='undefined')?window:globalThis);

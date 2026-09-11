@@ -565,6 +565,11 @@ fn hotkey_thread(cmd_rx: mpsc::Receiver<Cmd>, event_tx: mpsc::Sender<String>) {
     unsafe fn register_list(ctx: *mut WndCtx, hwnd: HWND, keys: &[String]) {
         unregister_triggers(ctx, hwnd);
         for name in keys {
+            // Lone modifiers stay in active_bindings for LL observation only —
+            // RegisterHotKey(Ctrl) would steal Ctrl+V / Ctrl+C from every app.
+            if crate::key_chord::is_modifier_only_chord(name) {
+                continue;
+            }
             register(ctx, hwnd, name);
         }
     }
@@ -1276,6 +1281,13 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                 };
                 if let Some(sender) = active_sender().lock().unwrap().as_ref() {
                     sender.send(payload).ok();
+                }
+                // Lone modifiers must reach the focused app (Ctrl+V paste, etc.).
+                // Observe like agent modifier watches — never swallow.
+                if crate::key_chord::is_modifier_only_chord(&dispatch)
+                    || crate::key_chord::is_modifier_name(&name)
+                {
+                    return CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam);
                 }
                 return 1;
             }

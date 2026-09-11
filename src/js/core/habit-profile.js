@@ -80,8 +80,18 @@
       if(siblings>1){
         var friendly=trig;
         try{
-          var utils=global.OneToneAppKeyUtils;
-          if(utils&&utils.friendlyKeyName) friendly=utils.friendlyKeyName(trig)||trig;
+          var lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';
+          if(global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerDisplayLabel){
+            friendly=global.OneToneKeyLabels.triggerDisplayLabel(m,lang)||friendly;
+          }
+          // Never surface raw AutoTrigger in UI names.
+          if(!friendly||friendly===trig||/^AutoTrigger$/i.test(String(friendly))){
+            if(global.OneToneKeyLabels&&global.OneToneKeyLabels.friendlyKeyName){
+              friendly=global.OneToneKeyLabels.friendlyKeyName(trig,lang)||friendly;
+            }else if(global.OneToneAppKeyUtils&&global.OneToneAppKeyUtils.friendlyKeyName){
+              friendly=global.OneToneAppKeyUtils.friendlyKeyName(trig)||trig;
+            }
+          }
         }catch(_){}
         name=name+' · '+friendly;
       }

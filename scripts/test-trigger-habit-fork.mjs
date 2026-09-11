@@ -51,8 +51,16 @@ const sandbox = {
   OneToneI18n: { t: function (k, fb) { return fb || k; } },
   OneToneState: { state, ui: { habitHubCreating: false } },
   OneToneAppKeyUtils: {
-    normalizeTriggerKey: function (k) { return String(k || '').trim(); },
-    friendlyKeyName: function (k) { return k; }
+    // Mirror production: empty / Volume_* → AutoTrigger (the false-conflict source).
+    normalizeTriggerKey: function (k) {
+      if (!k) return 'AutoTrigger';
+      var v = String(k).trim();
+      if (/^Volume_/i.test(v) || /^AudioVolume/i.test(v)) return 'AutoTrigger';
+      return v;
+    },
+    friendlyKeyName: function (k) {
+      return k;
+    }
   },
   OneToneAppTargetPresets: {
     displayName: function (id) {
@@ -83,6 +91,44 @@ assert.equal(
   'm1',
   'find existing by app+trigger'
 );
+
+// Empty trigger peers must not own AutoTrigger / Volume_Up.
+mappings.push({
+  id: 'empty-peer',
+  appTargetId: 'cursor-chat',
+  triggerKey: '',
+  targetKey: '',
+  targetActions: [],
+  captureHeroRef: { kind: 'customKey' },
+  enabled: false,
+  order: 1
+});
+assert.equal(
+  Core.findMappingByAppAndTrigger('cursor-chat', 'Volume_Up', 'm-recording'),
+  null,
+  'unset trigger peers must not conflict with Volume_/AutoTrigger'
+);
+assert.equal(
+  Core.findMappingByAppAndTrigger('cursor-chat', 'AutoTrigger', 'm-recording'),
+  null,
+  'unset trigger peers must not conflict with AutoTrigger token'
+);
+mappings.push({
+  id: 'real-auto',
+  appTargetId: 'cursor-chat',
+  triggerKey: 'AutoTrigger',
+  sourceKey: 'Volume_Up',
+  targetKey: 'RAlt',
+  enabled: true,
+  order: 2
+});
+assert.equal(
+  Core.findMappingByAppAndTrigger('cursor-chat', 'Volume_Up', 'm-recording').id,
+  'real-auto',
+  'explicit AutoTrigger still conflicts with Volume_Up'
+);
+// Drop extras so later reconcile assertions stay on m1 alone.
+mappings.length = 1;
 
 // API still forks when called directly (custom path); reconcile will fold presets.
 const before = mappings.length;

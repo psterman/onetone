@@ -1569,10 +1569,29 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
         return;
     }
 
+    // Chord break: Ctrl+V must not leave a pending Ctrl-double from the first Ctrl.
+    if !is_modifier_name(&event.key) {
+        state.gesture.lock().cancel_modifier_double_waits();
+    }
+
     // Modifier-only agent bindings fire on keyup after a clean tap — never on keydown.
+    // Classic Double/LongPress on a lone modifier (Ctrl ×2) continues to GestureTracker.
     let chord = build_pressed_chord(&event.key);
     if is_modifier_only_chord(&chord) {
-        return;
+        let allow_keydown_gesture = {
+            let cfg = state.cfg.lock();
+            cfg.find_mapping_for_event(&event)
+                .map(|m| {
+                    matches!(
+                        m.trigger_mode,
+                        crate::config::TriggerMode::Double | crate::config::TriggerMode::LongPress
+                    )
+                })
+                .unwrap_or(false)
+        };
+        if !allow_keydown_gesture {
+            return;
+        }
     }
 
     // Agent chords registered via WM_HOTKEY (e.g. Codex pushToTalk Ctrl+Shift+D).
