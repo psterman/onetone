@@ -70,9 +70,9 @@
           labelZh: '开 Chat',
           labelEn: 'Open Chat',
           phrase: '开 Chat',
-          chordHint: 'Ctrl+I',
-          noteZh: '侧栏 Chat / Agent（亦常见 Ctrl+L）',
-          noteEn: 'Sidepanel Chat / Agent (also Ctrl+L)'
+          chordHint: 'Ctrl+L',
+          noteZh: '侧栏 Chat / Agent（亦常见 Ctrl+I）',
+          noteEn: 'Sidepanel Chat / Agent (also Ctrl+I)'
         },
         {
           slotId: 'inlineEdit',
@@ -258,18 +258,53 @@
   var openPanels = { ime: true, key: false, voice: false, cursor: false, softPad: false, camera: false };
   var imeTabHidden = false;
   var searchQuery = '';
-  /** Common Cursor vibecoding picks first (slotId order). */
-  var CURSOR_COMMON_SLOTS = [
-    'pushToTalk',
-    'continue',
-    'stopOrSend',
-    'focusComposer',
-    'newThread',
-    'paste',
-    'quickChat',
-    'commandPalette',
-    'summarizeDiff',
-    'runChecks'
+  /**
+   * Cursor「软件自带」按使用场景分类（常用应用快捷键）。
+   * Order within each group = display order.
+   */
+  var CURSOR_PICK_GROUPS = [
+    {
+      id: 'talk',
+      titleKey: 'keysCursorPickGroupTalk',
+      titleFb: '说话与发送',
+      slots: ['pushToTalk', 'stopOrSend', 'paste', 'cancel']
+    },
+    {
+      id: 'chat',
+      titleKey: 'keysCursorPickGroupChat',
+      titleFb: '对话与回到 Cursor',
+      slots: ['newThread', 'quickChat', 'focusComposer']
+    },
+    {
+      id: 'mode',
+      titleKey: 'keysCursorPickGroupMode',
+      titleFb: 'AI 工作方式',
+      slots: ['modeMenu', 'plan', 'switchAgent']
+    },
+    {
+      id: 'find',
+      titleKey: 'keysCursorPickGroupFind',
+      titleFb: '找文件与改代码',
+      slots: ['quickSearch', 'commandPalette', 'inlineEdit']
+    },
+    {
+      id: 'diff',
+      titleKey: 'keysCursorPickGroupDiff',
+      titleFb: '补全与接受改动',
+      slots: [
+        'acceptTab',
+        'nextChange',
+        'prevChange',
+        'acceptChanges',
+        'acceptAllChanges'
+      ]
+    },
+    {
+      id: 'extra',
+      titleKey: 'keysCursorPickGroupExtra',
+      titleFb: '其它',
+      slots: ['continue', 'summarizeDiff', 'runChecks']
+    }
   ];
   /** Plain-language card copy for Cursor pick UI (何时 / 会怎样 / 干什么). */
   var CURSOR_PICK_COPY = {
@@ -605,12 +640,15 @@
   var softPadScopeMappingIdOverride = '';
   /** Voice pick UI: remember selected option across re-render. */
   var voicePickSelectedId = '';
+  var voicePickSubtabId = '';
   /** Cursor pick UI: remember selected slot across re-render. */
   var cursorPickSelectedId = '';
+  var cursorPickSubtabId = '';
   /** Camera pick UI: remember selected gesture across re-render. */
   var cameraPickSelectedId = '';
   /** Soft Pad pick UI: remember selected microKeyId across re-render. */
   var softPadPickSelectedId = '';
+  var softPadPickSubtabId = '';
   /**
    * Custom-key match being edited in the sequence card / 02 preview.
    * Must NOT replace selectedMappingId — that anchors 01 trigger for the habit.
@@ -649,6 +687,97 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  /** Horizontal scenario tabs for long pick lists (voice / cursor / softPad). */
+  function renderPickSubtabsHtml(tabs, activeId, channel) {
+    if (!tabs || tabs.length < 2) return '';
+    var html =
+      '<div class="keys-pick-subtabs" role="tablist" aria-label="' +
+      esc(t('keysPickSubtabsLabel', '分类')) +
+      '">';
+    var i;
+    for (i = 0; i < tabs.length; i++) {
+      var tab = tabs[i];
+      var on = String(tab.id) === String(activeId);
+      html +=
+        '<button type="button" role="tab" class="keys-pick-subtab' +
+        (on ? ' is-active' : '') +
+        '" data-pick-subtab="' +
+        esc(tab.id) +
+        '" data-pick-channel="' +
+        esc(channel) +
+        '" aria-selected="' +
+        (on ? 'true' : 'false') +
+        '">' +
+        esc(tab.title) +
+        '</button>';
+    }
+    return html + '</div>';
+  }
+
+  function pickSubtabResolve(tabs, currentId, preferredGroupId) {
+    var ids = {};
+    var i;
+    for (i = 0; i < (tabs || []).length; i++) ids[String(tabs[i].id)] = true;
+    if (currentId && ids[String(currentId)]) return String(currentId);
+    if (preferredGroupId && ids[String(preferredGroupId)]) return String(preferredGroupId);
+    return tabs && tabs[0] ? String(tabs[0].id) : '';
+  }
+
+  function voicePickGroupMeta(row) {
+    var aid = canonicalActionId((row && row.actionId) || '');
+    var blob = (
+      aid +
+      ' ' +
+      String((row && row.name) || '') +
+      ' ' +
+      String((row && row.say) || '') +
+      ' ' +
+      String((row && row.pickId) || '')
+    ).toLowerCase();
+    if (
+      String((row && row.pickId) || '').indexOf('voice-acoustic:') === 0 ||
+      aid === 'app.open' ||
+      aid.indexOf('app.open') === 0
+    ) {
+      return { id: 'open', title: t('keysVoicePickGroupOpen', '打开应用') };
+    }
+    if (/input\.start|startdictation|pushtotalk|听写|麦克风/.test(blob)) {
+      return { id: 'dictation', title: t('keysVoicePickGroupDictation', '听写') };
+    }
+    if (/input\.(send|commit)|stoporsend|发送|完成/.test(blob)) {
+      return { id: 'send', title: t('keysVoicePickGroupSend', '发送') };
+    }
+    if (/input\.cancel|cancel|取消|disarm/.test(blob)) {
+      return { id: 'cancel', title: t('keysVoicePickGroupCancel', '取消') };
+    }
+    if (/continue|agent|arm|status|plan|codex|继续|助手/.test(blob)) {
+      return { id: 'agent', title: t('keysVoicePickGroupAgent', 'Agent') };
+    }
+    return { id: 'more', title: t('keysVoicePickGroupMore', '其它') };
+  }
+
+  function softPadPickGroupMeta(row) {
+    var aid = canonicalActionId((row && row.actionId) || '');
+    var blob = (aid + ' ' + String((row && row.name) || '')).toLowerCase();
+    if (/input\.start|startdictation|pushtotalk|听写|麦克风/.test(blob)) {
+      return { id: 'dictation', title: t('keysSoftPadPickGroupDictation', '听写') };
+    }
+    if (/input\.(send|commit)|stoporsend|发送|完成/.test(blob)) {
+      return { id: 'send', title: t('keysSoftPadPickGroupSend', '发送') };
+    }
+    if (/input\.cancel|cancel|取消/.test(blob)) {
+      return { id: 'cancel', title: t('keysSoftPadPickGroupCancel', '取消') };
+    }
+    if (
+      aid === 'app.shortcut' ||
+      /^cursor\./.test(aid) ||
+      /newthread|quickchat|commandpalette|inlineedit|accept|plan|switchagent/.test(blob)
+    ) {
+      return { id: 'app', title: t('keysSoftPadPickGroupApp', '应用快捷键') };
+    }
+    return { id: 'more', title: t('keysSoftPadPickGroupMore', '其它') };
   }
 
   function toast(msg) {
@@ -1724,11 +1853,15 @@
     var detail = document.querySelector('.keys-custom-key-detail');
     if (!detail) return;
     var host = document.getElementById('keysCustomKeyMatchLaunch');
+    var actions = document.getElementById('keysCaptureTargetActions');
     if (!host) {
       host = document.createElement('div');
       host.id = 'keysCustomKeyMatchLaunch';
       host.className = 'keys-custom-key-launch';
-      detail.insertBefore(host, detail.firstChild);
+      if (actions && actions.parentNode === detail) detail.insertBefore(host, actions);
+      else detail.appendChild(host);
+    } else if (actions && host.nextSibling !== actions && actions.parentNode === detail) {
+      detail.insertBefore(host, actions);
     }
     if (!match || !match.id) {
       host.hidden = true;
@@ -1740,7 +1873,7 @@
     var empty = !String(match.triggerKey || '').trim();
     host.innerHTML =
       '<span class="keys-custom-key-launch-lab">' +
-      esc(t('keysCustomKeyMatchLaunch', '匹配启动键')) +
+      esc(t('keysCustomKeyMatchLaunch', '启动键')) +
       '</span>' +
       '<span class="keys-custom-key-launch-val' +
       (empty ? ' is-empty' : '') +
@@ -1750,8 +1883,8 @@
       '<button type="button" class="keys-custom-key-launch-rec" data-match-launch-record="1">' +
       esc(
         empty
-          ? t('keysCustomKeyMatchLaunchRecord', '录制启动键')
-          : t('keysCustomKeyMatchLaunchRerecord', '重录启动键')
+          ? t('keysCustomKeyMatchLaunchRecord', '录制')
+          : t('keysCustomKeyMatchLaunchRerecord', '重录')
       ) +
       '</button>';
     if (!host.__wiredLaunchRec) {
@@ -1807,7 +1940,16 @@
     }
     // Edit the selected match row; when that match is applied as habit 02, edit the habit
     // (runtime fires habit.targetActions).
+    var rows = activeTab === 'key' ? listCustomKeyMappingsForCurrentApp() : [];
     var editId = String(customKeyMatchEditId || '').trim();
+    if (activeTab === 'key' && rows.length && (!editId || !mappingById(editId))) {
+      customKeyMatchEditId = String(rows[0].id || '');
+      editId = customKeyMatchEditId;
+    }
+    if (activeTab === 'key' && !rows.length) {
+      customKeyMatchEditId = '';
+      editId = '';
+    }
     var habit = mappingById(selectedMappingId());
     var href = habit ? captureHeroRefForMapping(habit) : null;
     var appliedAsRec =
@@ -1819,36 +1961,58 @@
         String(href.bindingRef) === editId &&
         String(habit.id) !== editId
       );
+    // Library mode: never fall back to habit — that paints IME 右 Alt beside an empty match list.
     var m = appliedAsRec ? habit : editId ? mappingById(editId) : null;
-    if (!m) m = habit;
-    if (!m && global.OneToneMappingCore && global.OneToneMappingCore.selected) {
-      try {
-        m = global.OneToneMappingCore.selected();
-      } catch (_) {
-        m = null;
+    if (!m && activeTab !== 'key') {
+      m = habit;
+      if (!m && global.OneToneMappingCore && global.OneToneMappingCore.selected) {
+        try {
+          m = global.OneToneMappingCore.selected();
+        } catch (_) {
+          m = null;
+        }
       }
+    }
+    var split = document.querySelector('#keysCaptureTargetActionsHost .keys-custom-key-split');
+    var detail = document.querySelector('.keys-custom-key-detail');
+    if (split) split.classList.toggle('is-empty', activeTab === 'key' && !rows.length);
+    if (detail) {
+      if (activeTab === 'key') detail.hidden = !rows.length || !m;
+      else detail.hidden = false;
     }
     var title = document.getElementById('keysCaptureTargetActionsLbl');
     if (title) {
-      title.textContent = t(
-        'keysCaptureSeqTitle',
-        '按顺序执行的动作'
-      );
+      title.textContent = t('keysCaptureSeqTitle', '动作序列');
     }
+    var editMatch = editId ? mappingById(editId) : null;
+    var actsLen =
+      m && Array.isArray(m.targetActions) ? m.targetActions.length : 0;
     var hint = document.getElementById('keysCaptureTargetActionsHint');
     if (hint) {
-      hint.textContent = appliedAsRec
-        ? t(
-            'keysCaptureSeqHintAsRecognition',
-            '已替换听写快捷键。触发后按顺序执行下面的步骤。'
-          )
-        : t(
-            'keysCaptureSeqHint',
-            '按一次启动键后，下面的步骤会依次执行。'
-          );
+      if (actsLen === 0) {
+        hint.textContent = t(
+          'keysCaptureSeqHintEmpty',
+          '先录启动键，再用下方按钮加步骤。'
+        );
+      } else if (appliedAsRec) {
+        hint.textContent = t(
+          'keysCaptureSeqHintAsRecognition',
+          '已用作听写识别。触发后按顺序执行。'
+        );
+      } else {
+        hint.textContent = t(
+          'keysCaptureSeqHint',
+          '按一次启动键后依次执行。▲▼ 排序，点步骤可改。'
+        );
+      }
     }
-    // Match launch key belongs to the library row (not when applied as habit 02).
-    refreshKeysCustomKeyMatchLaunch(appliedAsRec ? null : editId ? mappingById(editId) : null);
+    // Always show the library row's launch key — even when applied as habit 02.
+    refreshKeysCustomKeyMatchLaunch(editMatch);
+    if (activeTab === 'key' && (!rows.length || !m)) {
+      container.innerHTML = '';
+      refreshKeysCustomKeyMatchList();
+      return;
+    }
     if (m) {
       global.OneToneHomeTargetActions.render(container, m, {
         mode: 'picker',
@@ -1903,30 +2067,53 @@
     var fallback = t('keysCustomKeyMatchTitle', '按键匹配');
     var seed = String(current || '').trim();
     if (!seed || looksLikeAutoChordLabel(seed)) seed = fallback;
-    var next = seed;
-    try {
-      if (typeof window !== 'undefined' && typeof window.prompt === 'function') {
-        var asked = window.prompt(
-          t('keysCustomKeyMatchNamePrompt', '给这条「我录的键」起个名字'),
-          seed
-        );
-        // WebView often returns null for unsupported prompt — keep seed, don't abort.
-        if (asked != null) next = String(asked).trim();
-      }
-    } catch (_) {}
-    if (!next) next = fallback;
-    return next;
+    // Prefer in-app name sheet; never rely on native prompt (tauri.localhost chrome).
+    var sheet = global.OneToneKeysActionInputSheet;
+    if (sheet && typeof sheet.openText === 'function') {
+      // Sync callers still exist — return seed; async rename goes through openNameSheet.
+      return seed;
+    }
+    return seed;
+  }
+
+  function nextCustomKeyMatchLabel() {
+    var n = listCustomKeyMappingsForCurrentApp().length + 1;
+    return t('keysCustomKeyMatchDefaultName', '自定义键') + ' ' + n;
+  }
+
+  function openCustomKeyMatchNameSheet(seed) {
+    var sheet = global.OneToneKeysActionInputSheet;
+    var fallback = t('keysCustomKeyMatchTitle', '按键匹配');
+    var start = String(seed || '').trim() || fallback;
+    if (!sheet || typeof sheet.openText !== 'function') {
+      return Promise.resolve(start);
+    }
+    return sheet
+      .openText(start, {
+        edit: true,
+        title: t('keysCustomKeyMatchNamePrompt', '给这条「我录的键」起个名字'),
+        sub: t('keysCustomKeyMatchNameSub', '双击列表也可随时改名。'),
+        okLabel: t('keysActionSheetSave', '保存')
+      })
+      .then(function (v) {
+        if (v == null) return null;
+        var next = String(v).trim();
+        return next || start;
+      });
   }
 
   function renameCustomKeyMatch(matchId, nextName) {
     var mid = String(matchId || '').trim();
     var m = mid ? mappingById(mid) : null;
     if (!m) return false;
-    var next =
-      nextName != null
-        ? String(nextName || '').trim()
-        : promptCustomKeyMatchName(m.label);
-    if (next == null) return false;
+    if (nextName == null) {
+      openCustomKeyMatchNameSheet(customKeyMatchDisplayName(m)).then(function (named) {
+        if (named == null) return;
+        renameCustomKeyMatch(mid, named);
+      });
+      return true;
+    }
+    var next = String(nextName || '').trim();
     if (!next) next = t('keysCustomKeyMatchTitle', '按键匹配');
     m.label = next;
     var persist = global.OneToneConfigPersist;
@@ -2150,10 +2337,17 @@
     }
     var rows = listCustomKeyMappingsForCurrentApp();
     var editId = String(customKeyMatchEditId || '').trim();
+    var split = document.querySelector('#keysCaptureTargetActionsHost .keys-custom-key-split');
+    if (split) split.classList.toggle('is-empty', !rows.length);
     if (!rows.length) {
       listEl.innerHTML =
         '<div class="keys-custom-key-match-empty">' +
-        esc(t('keysCustomKeyMatchEmpty', '当前应用还没有自定义键。点 + 新建一条。')) +
+        '<span>' +
+        esc(t('keysCustomKeyMatchEmpty', '还没有自定义键。点右上角 + 新建一条，再录启动键和步骤。')) +
+        '</span>' +
+        '<button type="button" class="keys-custom-key-match-empty-cta" data-match-empty-add="1">' +
+        esc(t('keysCustomKeyMatchEmptyCta', '＋ 新建一条')) +
+        '</button>' +
         '</div>';
       return;
     }
@@ -2261,7 +2455,7 @@
       actionInstanceId: '',
       kind: 'customKey'
     };
-    var named = promptCustomKeyMatchName('');
+    var named = nextCustomKeyMatchLabel();
     copy.label = named;
     if (core.ensureMappingExtras) {
       try {
@@ -2269,16 +2463,13 @@
       } catch (_) {}
     }
     persistNewPeerMapping(copy);
-    // Stay on habit — apply empty sequence as 02 (replaces IME) so user can build steps.
+    // Edit in library only — do not replace IME / blank「说完后」until steps exist.
     customKeyMatchEditId = newId;
     setActiveTab('key', { skipHeroClear: true });
-    applyCustomKeyMatchAsRecognition(newId);
-    toast(
-      t(
-        'keysCustomKeyMatchCreated',
-        '已新建按键匹配。请编排系列动作；已替换当前听写快捷键'
-      )
-    );
+    refreshKeysTargetActionsEditor();
+    applyHero();
+    refreshKeysCustomKeyMatchList();
+    toast(t('keysCustomKeyMatchCreated', '已新建。录启动键，再加步骤。'));
     return copy;
   }
 
@@ -2357,6 +2548,13 @@
       // Defer select so dblclick can rename without the first click wiping the row DOM.
       var selectTimer = null;
       listEl.addEventListener('click', function (ev) {
+        var emptyAdd =
+          ev.target && ev.target.closest ? ev.target.closest('[data-match-empty-add]') : null;
+        if (emptyAdd && listEl.contains(emptyAdd)) {
+          ev.preventDefault();
+          createCustomKeyMatchMapping();
+          return;
+        }
         var delBtn =
           ev.target && ev.target.closest ? ev.target.closest('[data-match-del]') : null;
         if (delBtn && listEl.contains(delBtn)) {
@@ -2549,6 +2747,19 @@
         : [];
     } catch (_) {
       acts = Array.isArray(match.targetActions) ? match.targetActions.slice() : [];
+    }
+    // Empty sequence: library edit only — keep habit IME /「说完后」intact.
+    if (!acts.length) {
+      customKeyMatchEditId = matchIdNorm;
+      refreshKeysTargetActionsEditor();
+      applyHero();
+      syncRecognitionEditorPreview();
+      refreshKeysCustomKeyMatchList();
+      try {
+        var sceneEmpty = global.OneToneKeysSceneActionsPanel;
+        if (sceneEmpty && typeof sceneEmpty.refresh === 'function') sceneEmpty.refresh();
+      } catch (_) {}
+      return true;
     }
     habit.targetActions = acts;
     habit.targetKey = '';
@@ -3281,6 +3492,72 @@
     return t('keysVoiceBridgeStartPhraseFallback', '开始听写');
   }
 
+  function voicePickPhraseList(list) {
+    var out = [];
+    var i;
+    for (i = 0; i < (list || []).length; i++) {
+      var p = String(list[i] || '').trim();
+      if (p && out.indexOf(p) < 0) out.push(p);
+    }
+    return out;
+  }
+
+  function voicePickLocalePhrases(pair) {
+    pair = pair || {};
+    var en = ((global.OneToneI18n && global.OneToneI18n.lang) || 'zh') === 'en';
+    var list = voicePickPhraseList(en ? pair.en : pair.zh);
+    if (list.length) return list;
+    return voicePickPhraseList(pair.zh && pair.zh.length ? pair.zh : pair.en);
+  }
+
+  /** User-facing spoken activation text for a voice-pick row. */
+  function voicePickSayForKind(kind) {
+    var cfg = config();
+    var m = mappingById(selectedMappingId());
+    var ov = (m && (m.voiceOverride || m.voice_override)) || {};
+    if (kind === 'start') {
+      var wake = voicePickPhraseList(ov.wakePhrases || ov.wake_phrases);
+      if (!wake.length) {
+        var sc = global.OneToneSceneConfig;
+        wake = sc && sc.globalWakePhrases
+          ? voicePickPhraseList(sc.globalWakePhrases(cfg))
+          : [];
+      }
+      if (!wake.length) wake = [primaryWakePhrase()];
+      return wake.join(' · ');
+    }
+    if (kind === 'cancel') {
+      var cov = ov.cancelPhrases || ov.cancel_phrases || {};
+      var clist = voicePickLocalePhrases(cov);
+      if (!clist.length) {
+        var Diff = global.OneToneHabitOverrideDiff;
+        clist = Diff && Diff.globalCancelPhrases
+          ? voicePickLocalePhrases(Diff.globalCancelPhrases(cfg))
+          : [];
+      }
+      return clist.join(' · ');
+    }
+    if (kind === 'end') {
+      var end = cfg.voiceEnd || cfg.voice_end || {};
+      var auto = String(end.sendMode || end.send_mode || 'manual').toLowerCase() === 'auto';
+      var eov = auto
+        ? ov.sendPhrases || ov.send_phrases || {}
+        : ov.endPhrases || ov.end_phrases || {};
+      var elist = voicePickLocalePhrases(eov);
+      if (!elist.length) {
+        var Diff2 = global.OneToneHabitOverrideDiff;
+        var sc2 = global.OneToneSceneConfig;
+        if (auto && Diff2 && Diff2.globalSendPhrases) {
+          elist = voicePickLocalePhrases(Diff2.globalSendPhrases(cfg));
+        } else if (sc2 && sc2.globalEndPhrases) {
+          elist = voicePickLocalePhrases(sc2.globalEndPhrases(cfg));
+        }
+      }
+      return elist.join(' · ');
+    }
+    return '';
+  }
+
   function finishSendModeLabel() {
     var cfg = config();
     var end = cfg.voiceEnd || cfg.voice_end || {};
@@ -3373,7 +3650,7 @@
           'keysVoicePickStartFunc',
           '开始说话打字。也可以点小工具条上的麦克风，或说一句开始的话。'
         ),
-        offerIme: true
+        offerIme: false
       },
       {
         kind: 'bind',
@@ -3447,66 +3724,102 @@
     var mid = selectedMappingId();
     var m = mappingById(mid);
     var out = [];
-    var bridges = voiceLifecycleBridges();
-    var bi;
-    for (bi = 0; bi < bridges.length; bi++) {
-      var br = bridges[bi];
+    if (!m) return out;
+    var seen = {};
+    var appName = appDisplayName(String(m.appTargetId || '').trim());
+
+    // 1) Per-mapping acoustic recordings (真实录制口令)
+    var cmds = Array.isArray(m.acousticVoiceCommands)
+      ? m.acousticVoiceCommands
+      : [];
+    var ci;
+    for (ci = 0; ci < cmds.length; ci++) {
+      var cmd = cmds[ci];
+      if (!cmd || cmd.enabled === false) continue;
+      var label = String(cmd.label || '').trim();
+      var say = String(cmd.displayText || cmd.display_text || '').trim() || label;
+      if (!say) continue;
+      var cid = String(cmd.id || cmd.commandId || cmd.command_id || 'acmd-' + ci).trim();
+      var bref = 'open-app-acoustic:' + cid;
+      seen[bref] = 1;
+      seen[cid] = 1;
       out.push({
-        pickId: br.pickId || br.bindingRef,
-        kind: br.kind || 'bind',
-        actionId: br.actionId,
-        bindingRef: br.bindingRef,
-        actionInstanceId: br.actionInstanceId || '',
-        name: br.name,
-        scene: br.scene || '',
-        effect: br.effect || '',
-        func: br.func || '',
-        offerIme: !!br.offerIme,
-        bindable: br.kind !== 'guide-finish'
-      });
-    }
-    var openProj = openAppAcousticProjection();
-    if (openProj) {
-      var openCopy = voicePickCopyForAction(openProj.actionId, openProj.name);
-      var appName = appDisplayName((m && m.appTargetId) || '');
-      out.push({
-        pickId: 'voice-open-app',
+        pickId: 'voice-acoustic:' + cid,
         kind: 'bind',
-        actionId: openProj.actionId,
-        bindingRef: openProj.bindingRef,
-        actionInstanceId: openProj.actionInstanceId || '',
-        name:
-          t('keysVoicePickOpen', '回到应用') + (appName ? ' · ' + appName : ''),
-        scene: openCopy.scene,
-        effect: openCopy.effect,
-        func: openCopy.func,
-        offerIme: false,
+        actionId: 'app.open',
+        bindingRef: bref,
+        actionInstanceId: 'app-open:' + String(m.id || mid || ''),
+        name: label || say,
+        scene: '',
+        effect: '',
+        func: appName
+          ? t('keysVoicePickOpen', '回到应用') + ' · ' + appName
+          : '',
+        say: say,
         bindable: true
       });
     }
+
+    // 2) User voice agentBindings (真实文本口令)
+    var binds = m.agentBindings || [];
+    var bi;
+    for (bi = 0; bi < binds.length; bi++) {
+      var b = binds[bi];
+      if (!b || b.enabled === false) continue;
+      if (String(b.triggerType || b.trigger_type || '').trim() !== 'voice') continue;
+      var bSay = String(b.triggerBinding || b.trigger_binding || '').trim();
+      if (!bSay) continue;
+      var ref = String(b.slotId || b.slot_id || b.bindingRef || b.binding_ref || '').trim();
+      if (!ref || seen[ref]) continue;
+      var aid = canonicalActionId(b.actionId || b.action_id || '');
+      if (!aid) continue;
+      var rowName = actionLabel(aid) || bSay;
+      if (!matchesSearch(rowName + ' ' + aid + ' ' + ref + ' ' + bSay)) continue;
+      var canBind = bindableByAction[aid];
+      if (canBind === undefined) canBind = true;
+      seen[ref] = 1;
+      out.push({
+        pickId: 'voice-bind:' + ref,
+        kind: 'bind',
+        actionId: aid,
+        bindingRef: ref,
+        actionInstanceId: String(b.actionInstanceId || b.action_instance_id || ''),
+        name: rowName,
+        scene: '',
+        effect: '',
+        func: '',
+        say: bSay,
+        bindable: !!canBind
+      });
+    }
+
+    // 3) BindingViews voice rows not already covered (projection catch-all)
     var views = filteredViews('voice');
     var vi;
     for (vi = 0; vi < views.length; vi++) {
       var v = views[vi];
-      var aid = viewActionId(v);
-      var ref = viewRef(v);
-      var rowName = actionLabel(aid);
-      if (!matchesSearch(rowName + ' ' + aid + ' ' + ref)) continue;
-      var bindable = bindableByAction[aid];
-      if (bindable === undefined) bindable = true;
-      var copy = voicePickCopyForAction(aid, rowName);
+      var vRef = viewRef(v);
+      var vSay = viewTrigger(v);
+      var vAid = viewActionId(v);
+      if (!vRef || !vSay || !vAid || seen[vRef]) continue;
+      if (String(vRef).indexOf('open-app-acoustic:') === 0) continue;
+      var vName = actionLabel(vAid) || vSay;
+      if (!matchesSearch(vName + ' ' + vAid + ' ' + vRef + ' ' + vSay)) continue;
+      var vBind = bindableByAction[vAid];
+      if (vBind === undefined) vBind = true;
+      seen[vRef] = 1;
       out.push({
-        pickId: 'voice-view:' + ref,
+        pickId: 'voice-view:' + vRef,
         kind: 'bind',
-        actionId: aid,
-        bindingRef: ref,
+        actionId: vAid,
+        bindingRef: vRef,
         actionInstanceId: '',
-        name: rowName,
-        scene: copy.scene,
-        effect: copy.effect,
-        func: copy.func,
-        offerIme: false,
-        bindable: !!bindable
+        name: vName,
+        scene: '',
+        effect: '',
+        func: '',
+        say: vSay,
+        bindable: !!vBind
       });
     }
     return out;
@@ -3537,24 +3850,12 @@
     var ri;
     for (ri = 0; ri < raw.length; ri++) {
       var row = raw[ri];
-      if (row.kind === 'guide-finish') continue;
-      var vChord = recognitionChord(row.actionId, row.actionInstanceId || '');
-      if (
-        !vChord &&
-        row.actionId === VOICE_LIFECYCLE_IDS.start
-      ) {
-        var vm = mappingById(selectedMappingId());
-        vChord = vm ? String(vm.targetKey || '').trim() : '';
-      }
-      if (vChord) catalog.push(row);
-    }
-    if (catalog.length) {
-      for (ri = 0; ri < raw.length; ri++) {
-        if (raw[ri].kind === 'guide-finish') {
-          catalog.push(raw[ri]);
-          break;
-        }
-      }
+      var say = String(row.say || '').trim();
+      if (!say) continue;
+      var g = voicePickGroupMeta(row);
+      row.groupId = g.id;
+      row.groupTitle = g.title;
+      catalog.push(row);
     }
     if (!catalog.length) {
       return (
@@ -3570,7 +3871,7 @@
         esc(
           t(
             'keysPickOnlySetEmptyVoice',
-            '还没有已设按键的口头指令。先在听写方式里配好，再回来。'
+            '当前应用还没有录制语音口令。先去录好口令，再回来加快捷键。'
           )
         ) +
         '</p>' +
@@ -3595,43 +3896,58 @@
       if (!still) voicePickSelectedId = catalog[0].pickId;
     }
     var sel = findVoicePick(voicePickSelectedId) || catalog[0];
-    var opts = '';
+    var tabs = [];
+    var tabSeen = {};
+    var order = ['dictation', 'send', 'cancel', 'agent', 'open', 'more'];
     var oi;
+    for (oi = 0; oi < order.length; oi++) {
+      for (ri = 0; ri < catalog.length; ri++) {
+        if (catalog[ri].groupId === order[oi] && !tabSeen[order[oi]]) {
+          tabSeen[order[oi]] = true;
+          tabs.push({ id: order[oi], title: catalog[ri].groupTitle });
+        }
+      }
+    }
+    for (ri = 0; ri < catalog.length; ri++) {
+      if (!tabSeen[catalog[ri].groupId]) {
+        tabSeen[catalog[ri].groupId] = true;
+        tabs.push({ id: catalog[ri].groupId, title: catalog[ri].groupTitle });
+      }
+    }
+    voicePickSubtabId = pickSubtabResolve(
+      tabs,
+      voicePickSubtabId,
+      sel && sel.groupId
+    );
+    var rowsHtml = '';
     for (oi = 0; oi < catalog.length; oi++) {
       var c = catalog[oi];
-      var optLabel =
-        c.kind === 'guide-finish'
-          ? c.name
-          : pickOptionLabel(
-              c.name,
-              c.actionId,
-              c.actionInstanceId || '',
-              null,
-              c.actionId === VOICE_LIFECYCLE_IDS.start
-                ? String(
-                    (mappingById(selectedMappingId()) || {}).targetKey || ''
-                  ).trim()
-                : ''
-            );
-      if (!optLabel) continue;
-      opts +=
-        '<option value="' +
+      if (c.groupId !== voicePickSubtabId) continue;
+      var on = c.pickId === sel.pickId;
+      var sayText = String(c.say || '').trim();
+      rowsHtml +=
+        '<button type="button" role="option" class="keys-voice-pick-row' +
+        (on ? ' is-selected' : '') +
+        '" data-voice-pick-row="' +
         esc(c.pickId) +
-        '"' +
-        (c.pickId === sel.pickId ? ' selected' : '') +
-        '>' +
-        esc(optLabel) +
-        '</option>';
+        '" aria-selected="' +
+        (on ? 'true' : 'false') +
+        '">' +
+        '<span class="keys-voice-pick-row-name">' +
+        esc(c.name) +
+        '</span>' +
+        (sayText
+          ? '<span class="keys-voice-pick-row-say">' +
+            '<span class="keys-voice-pick-row-lab">' +
+            esc(t('keysVoicePickLabSay', '激活')) +
+            '</span>「' +
+            esc(sayText) +
+            '」</span>'
+          : '') +
+        '</button>';
     }
-    var primaryLabel =
-      sel.kind === 'guide-finish'
-        ? t('keysVoicePickBtnFinish', '去按键设置里收尾')
-        : !sel.bindable
-          ? t('keysVoicePickBtnVoiceOnly', '用说话就行，不必加按键')
-          : t('keysVoicePickBtnBind', '给这件事加按键');
-    var oneLine = String(sel.effect || sel.func || sel.scene || '').trim();
-    var html =
-      '<div class="keys-voice-pick is-select-first" data-voice-pick="1">' +
+    return (
+      '<div class="keys-voice-pick is-list" data-voice-pick="1">' +
       '<div class="keys-voice-pick-head">' +
       '<span class="keys-voice-pick-title">' +
       esc(t('keysVoicePickTitle', '口头指令')) +
@@ -3639,37 +3955,16 @@
       '<span class="keys-voice-pick-pill">' +
       esc(voicePickHabitPill()) +
       '</span></div>' +
-      '<label class="keys-voice-pick-label" for="keysVoicePickSelect">' +
-      esc(t('keysVoicePickLabel', '选一件事')) +
-      '</label>' +
-      '<select id="keysVoicePickSelect" class="keys-voice-pick-select" data-voice-pick-select="1">' +
-      opts +
-      '</select>' +
-      (oneLine
-        ? '<p class="keys-voice-pick-card keys-voice-pick-card--one" aria-live="polite">' +
-          esc(oneLine) +
-          '</p>'
-        : '') +
-      '<div class="keys-voice-pick-actions">' +
-      '<button type="button" class="keys-voice-pick-primary" data-voice-pick-bind="1"' +
-      (!sel.bindable && sel.kind !== 'guide-finish' ? ' disabled' : '') +
-      '>' +
-      esc(primaryLabel) +
-      '</button>';
-    if (sel.offerIme) {
-      html +=
-        '<button type="button" class="keys-channel-item-link" data-bridge-ime="1">' +
-        esc(t('keysVoicePickGoIme', '改用输入法自带快捷键')) +
-        '</button>';
-    }
-    html +=
-      '</div>' +
-      '<p class="keys-voice-pick-escape">' +
-      esc(t('keysVoicePickDesignHint', '想改可以说的话或加新动作？')) +
-      ' <button type="button" class="keys-channel-item-link" data-go-softpad="1">' +
-      esc(t('keysVoicePickGoSoftPad', '去屏幕按钮里设置')) +
-      '</button></p></div>';
-    return html;
+      '<p class="keys-voice-pick-lead">' +
+      esc(t('keysVoicePickLead', '本应用已录制的口令，点一条开始录快捷键。')) +
+      '</p>' +
+      renderPickSubtabsHtml(tabs, voicePickSubtabId, 'voice') +
+      '<div class="keys-voice-pick-list" role="listbox" aria-label="' +
+      esc(t('keysVoicePickTitle', '口头指令')) +
+      '">' +
+      rowsHtml +
+      '</div></div>'
+    );
   }
 
   function selectionMatchesPick(channel, bindingRef) {
@@ -4074,9 +4369,19 @@
     cursorFlatItems().forEach(function (item) {
       bySlot[String(item.slotId)] = item;
     });
+    var groupOf = {};
+    var gi;
+    for (gi = 0; gi < CURSOR_PICK_GROUPS.length; gi++) {
+      var g = CURSOR_PICK_GROUPS[gi];
+      var slots = g.slots || [];
+      var si;
+      for (si = 0; si < slots.length; si++) {
+        groupOf[String(slots[si])] = g;
+      }
+    }
     var ordered = [];
     var seen = {};
-    function pushSlot(slotId) {
+    function pushSlot(slotId, group) {
       var id = String(slotId || '').trim();
       if (!id || seen[id] || !bySlot[id]) return;
       seen[id] = true;
@@ -4097,6 +4402,7 @@
       ) {
         return;
       }
+      var grp = group || groupOf[id] || null;
       ordered.push({
         slotId: id,
         item: item,
@@ -4109,13 +4415,20 @@
         howKind: howKind,
         howText: howText || '',
         gated: !!item.gated,
-        common: CURSOR_COMMON_SLOTS.indexOf(id) >= 0
+        groupId: grp ? grp.id : 'extra',
+        groupTitle: grp
+          ? t(grp.titleKey, grp.titleFb)
+          : t('keysCursorPickGroupExtra', '其它')
       });
     }
-    var ci;
-    for (ci = 0; ci < CURSOR_COMMON_SLOTS.length; ci++) pushSlot(CURSOR_COMMON_SLOTS[ci]);
+    for (gi = 0; gi < CURSOR_PICK_GROUPS.length; gi++) {
+      var group = CURSOR_PICK_GROUPS[gi];
+      var gSlots = group.slots || [];
+      var gj;
+      for (gj = 0; gj < gSlots.length; gj++) pushSlot(gSlots[gj], group);
+    }
     cursorFlatItems().forEach(function (item) {
-      pushSlot(item.slotId);
+      pushSlot(item.slotId, groupOf[String(item.slotId)] || null);
     });
     return ordered;
   }
@@ -4137,7 +4450,7 @@
     for (ri = 0; ri < raw.length; ri++) {
       var row = raw[ri];
       var hint = row.item ? String(row.item.chordHint || '').trim() : '';
-      if (pickOptionLabel(row.title, row.actionId, '', null, hint)) {
+      if (pickOptionLabel(row.title, row.actionId, '', null, hint) || hint) {
         catalog.push(row);
       }
     }
@@ -4168,45 +4481,68 @@
       if (!stillC) cursorPickSelectedId = catalog[0].slotId;
     }
     var sel = findCursorPick(cursorPickSelectedId) || catalog[0];
-    var commonOpts = '';
-    var moreOpts = '';
-    var oi;
-    for (oi = 0; oi < catalog.length; oi++) {
-      var c = catalog[oi];
-      var hintOpt = c.item ? String(c.item.chordHint || '').trim() : '';
-      var label = pickOptionLabel(c.title, c.actionId, '', null, hintOpt);
-      if (!label) continue;
-      var opt =
-        '<option value="' +
-        esc(c.slotId) +
+    var tabs = [];
+    var tabSeen = {};
+    var gi;
+    for (gi = 0; gi < CURSOR_PICK_GROUPS.length; gi++) {
+      var gdef = CURSOR_PICK_GROUPS[gi];
+      for (ri = 0; ri < catalog.length; ri++) {
+        if (catalog[ri].groupId === gdef.id && !tabSeen[gdef.id]) {
+          tabSeen[gdef.id] = true;
+          tabs.push({
+            id: gdef.id,
+            title: t(gdef.titleKey, gdef.titleFb)
+          });
+        }
+      }
+    }
+    for (ri = 0; ri < catalog.length; ri++) {
+      if (!tabSeen[catalog[ri].groupId]) {
+        tabSeen[catalog[ri].groupId] = true;
+        tabs.push({
+          id: catalog[ri].groupId,
+          title: catalog[ri].groupTitle || t('keysCursorPickGroupExtra', '其它')
+        });
+      }
+    }
+    cursorPickSubtabId = pickSubtabResolve(
+      tabs,
+      cursorPickSubtabId,
+      sel && sel.groupId
+    );
+    var listHtml = '';
+    for (ri = 0; ri < catalog.length; ri++) {
+      var r = catalog[ri];
+      if (r.groupId !== cursorPickSubtabId) continue;
+      var on = r.slotId === cursorPickSelectedId;
+      var chord =
+        recognitionChord(r.actionId, '') ||
+        String((r.item && r.item.chordHint) || '').trim();
+      var sub = String(r.effect || r.when || '').trim();
+      listHtml +=
+        '<button type="button" class="keys-voice-pick-row' +
+        (on ? ' is-selected' : '') +
+        (r.gated ? ' is-gated' : '') +
+        '" data-cursor-pick-row="' +
+        esc(r.slotId) +
         '"' +
-        (c.slotId === sel.slotId ? ' selected' : '') +
+        (r.gated ? ' aria-disabled="true"' : '') +
         '>' +
-        esc(label) +
-        '</option>';
-      if (c.common) commonOpts += opt;
-      else moreOpts += opt;
+        '<span class="keys-voice-pick-row-name">' +
+        esc(r.title) +
+        '</span>' +
+        (chord
+          ? '<span class="keys-cursor-pick-chord">' +
+            esc(friendlyChord(chord) || chord) +
+            '</span>'
+          : '') +
+        (sub
+          ? '<span class="keys-voice-pick-row-meta">' + esc(sub) + '</span>'
+          : '') +
+        '</button>';
     }
-    var optsHtml =
-      '<optgroup label="' +
-      esc(t('keysCursorPickGroupCommon', '常用')) +
-      '">' +
-      commonOpts +
-      '</optgroup>';
-    if (moreOpts) {
-      optsHtml +=
-        '<optgroup label="' +
-        esc(t('keysCursorPickGroupMore', '更多')) +
-        '">' +
-        moreOpts +
-        '</optgroup>';
-    }
-    var primaryLabel = sel.gated
-      ? t('keysCursorPickBtnGated', '先打开功能开关')
-      : t('keysCursorPickBtnBind', '给这件事加按键');
-    var oneLine = String(sel.effect || sel.func || sel.when || '').trim();
     return (
-      '<div class="keys-voice-pick is-select-first" data-cursor-pick="1">' +
+      '<div class="keys-voice-pick is-list" data-cursor-pick="1">' +
       '<div class="keys-voice-pick-head">' +
       '<span class="keys-voice-pick-title">' +
       esc(t('keysCursorPickTitle', '软件自带')) +
@@ -4214,29 +4550,18 @@
       '<span class="keys-voice-pick-pill">' +
       esc(t('keysCursorPickPill', '正在用 · Cursor')) +
       '</span></div>' +
-      '<label class="keys-voice-pick-label" for="keysCursorPickSelect">' +
-      esc(t('keysCursorPickLabel', '选一件事')) +
-      '</label>' +
-      '<select id="keysCursorPickSelect" class="keys-voice-pick-select" data-cursor-pick-select="1">' +
-      optsHtml +
-      '</select>' +
-      (oneLine
-        ? '<p class="keys-voice-pick-card keys-voice-pick-card--one" aria-live="polite">' +
-          esc(oneLine) +
-          '</p>'
-        : '') +
-      '<div class="keys-voice-pick-actions">' +
-      '<button type="button" class="keys-voice-pick-primary" data-cursor-pick-bind="1"' +
-      (sel.gated ? ' disabled' : '') +
-      '>' +
-      esc(primaryLabel) +
-      '</button>' +
-      '<button type="button" class="keys-channel-item-link" data-go-softpad="1">' +
-      esc(t('keysCursorPickGoPad', '去屏幕按钮看布局')) +
-      '</button></div>' +
-      '<p class="keys-voice-pick-escape">' +
-      esc(t('keysCursorPickLayoutHint', '键帽布局（几键对应什么）在屏幕按钮里改，不在本页。')) +
-      '</p></div>'
+      '<p class="keys-voice-pick-lead">' +
+      esc(
+        t(
+          'keysCursorPickLead',
+          'Cursor 常用快捷键，按场景点一条开始录键。'
+        )
+      ) +
+      '</p>' +
+      renderPickSubtabsHtml(tabs, cursorPickSubtabId, 'cursor') +
+      '<div class="keys-cursor-pick-list">' +
+      listHtml +
+      '</div></div>'
     );
   }
 
@@ -4743,6 +5068,24 @@
     return id;
   }
 
+  function softPadCursorSlotTitle(slotId) {
+    var id = String(slotId || '').trim();
+    if (!id) return '';
+    var copy = CURSOR_PICK_COPY[id];
+    if (copy) {
+      var title = cursorPickField(copy, 'titleZh', 'titleEn');
+      if (title) return title;
+    }
+    var items = cursorFlatItems();
+    var i;
+    for (i = 0; i < items.length; i++) {
+      if (String(items[i].slotId || '') === id) {
+        return cursorItemLabel(items[i]) || '';
+      }
+    }
+    return '';
+  }
+
   function softPadPickCatalog(workM) {
     var out = [];
     var seen = {};
@@ -4755,7 +5098,6 @@
       if (!chord) return;
       seen[id] = true;
       var keyName = softPadKeycapName(id);
-      var name = actionLabel(resolved.actionId) || keyName || id;
       var route = routeOnPad(workM && workM.codexMicroPad, id);
       var slotId = route && route.enabled !== false ? String(route.slotId || '').trim() : '';
       var PadUi = global.OneToneCodexMicroPadUi;
@@ -4763,6 +5105,15 @@
         PadUi && typeof PadUi.capabilityCardCopy === 'function' && slotId
           ? PadUi.capabilityCardCopy(slotId, workM)
           : null;
+      var aid = canonicalActionId(resolved.actionId);
+      // app.shortcut meta label is always「应用快捷键」— use slot / keycap title instead.
+      var name =
+        (copy && String(copy.title || '').trim()) ||
+        softPadCursorSlotTitle(slotId) ||
+        (aid && aid !== 'app.shortcut' ? actionLabel(aid) : '') ||
+        (keyName && keyName !== id ? keyName : '') ||
+        (chord ? friendlyChord(chord) || chord : '') ||
+        id;
       var effect =
         (copy && String(copy.result || '').trim()) ||
         (PadUi && typeof PadUi.slotEffectTip === 'function' && slotId
@@ -4916,7 +5267,7 @@
     var appTitle = (ctx && ctx.title) || softPadAppTitle(workM && workM.appTargetId) || '';
     if (softPadAuthorityPending(workMid)) {
       return (
-        '<div class="keys-voice-pick is-select-first keys-softpad-pick" data-softpad-pick="1">' +
+        '<div class="keys-voice-pick is-list keys-softpad-pick" data-softpad-pick="1">' +
         softPadPreviewFrameHtml(workM, {}) +
         '<p class="keys-channel-empty">' +
         esc(t('keysSoftPadCapLoading', '正在加载此场景的可绑定键位…')) +
@@ -4924,9 +5275,15 @@
       );
     }
     var catalog = softPadPickCatalog(workM);
+    var ci;
+    for (ci = 0; ci < catalog.length; ci++) {
+      var gm = softPadPickGroupMeta(catalog[ci]);
+      catalog[ci].groupId = gm.id;
+      catalog[ci].groupTitle = gm.title;
+    }
     if (!catalog.length) {
       return (
-        '<div class="keys-voice-pick is-select-first keys-softpad-pick" data-softpad-pick="1">' +
+        '<div class="keys-voice-pick is-list keys-softpad-pick" data-softpad-pick="1">' +
         '<div class="keys-voice-pick-head">' +
         '<span class="keys-voice-pick-title">' +
         esc(t('keysSoftPadPickTitle', '屏幕按钮')) +
@@ -4951,25 +5308,57 @@
     if (!softPadPickSelectedId || !findSoftPadPick(softPadPickSelectedId)) {
       softPadPickSelectedId = catalog[0].pickId;
     }
-    var sel = findSoftPadPick(softPadPickSelectedId);
-    var opts = '';
+    var sel = findSoftPadPick(softPadPickSelectedId) || catalog[0];
+    var tabs = [];
+    var tabSeen = {};
+    var order = ['dictation', 'send', 'cancel', 'app', 'more'];
     var oi;
-    for (oi = 0; oi < catalog.length; oi++) {
-      var c = catalog[oi];
-      opts +=
-        '<option value="' +
+    var ri;
+    for (oi = 0; oi < order.length; oi++) {
+      for (ri = 0; ri < catalog.length; ri++) {
+        if (catalog[ri].groupId === order[oi] && !tabSeen[order[oi]]) {
+          tabSeen[order[oi]] = true;
+          tabs.push({ id: order[oi], title: catalog[ri].groupTitle });
+        }
+      }
+    }
+    for (ri = 0; ri < catalog.length; ri++) {
+      if (!tabSeen[catalog[ri].groupId]) {
+        tabSeen[catalog[ri].groupId] = true;
+        tabs.push({ id: catalog[ri].groupId, title: catalog[ri].groupTitle });
+      }
+    }
+    softPadPickSubtabId = pickSubtabResolve(
+      tabs,
+      softPadPickSubtabId,
+      sel && sel.groupId
+    );
+    var rowsHtml = '';
+    for (ri = 0; ri < catalog.length; ri++) {
+      var c = catalog[ri];
+      if (c.groupId !== softPadPickSubtabId) continue;
+      var on = c.pickId === sel.pickId;
+      var chord = String(c.chord || '').trim();
+      rowsHtml +=
+        '<button type="button" class="keys-voice-pick-row' +
+        (on ? ' is-selected' : '') +
+        '" data-softpad-pick-row="' +
         esc(c.pickId) +
-        '"' +
-        (c.pickId === sel.pickId ? ' selected' : '') +
-        '>' +
-        esc(pickOptionLabel(c.name, c.actionId, c.actionInstanceId || '', workM, c.chord)) +
-        '</option>';
+        '">' +
+        '<span class="keys-voice-pick-row-name">' +
+        esc(c.name) +
+        '</span>' +
+        (chord
+          ? '<span class="keys-cursor-pick-chord">' +
+            esc(friendlyChord(chord) || chord) +
+            '</span>'
+          : '') +
+        '</button>';
     }
     var canRecord =
       softPadAuthorityReady(workMid) && bindableByAction[sel.actionId] === true;
-    var oneLine = String(sel.effect || sel.tip || '').trim();
     return (
-      '<div class="keys-voice-pick is-select-first keys-softpad-pick" data-softpad-pick="1">' +
+      '<div class="keys-voice-pick is-list keys-softpad-pick" data-softpad-pick="1">' +
       '<div class="keys-voice-pick-head">' +
       '<span class="keys-voice-pick-title">' +
       esc(t('keysSoftPadPickTitle', '屏幕按钮')) +
@@ -4981,26 +5370,19 @@
         : '') +
       '</div>' +
       softPadPreviewFrameHtml(workM, {}) +
-      '<label class="keys-voice-pick-label" for="keysSoftPadPickSelect">' +
-      esc(t('keysSoftPadPickLabel', '选一个已配置键')) +
-      '</label>' +
-      '<select id="keysSoftPadPickSelect" class="keys-voice-pick-select" data-softpad-pick-select="1">' +
-      opts +
-      '</select>' +
-      (oneLine
-        ? '<p class="keys-voice-pick-card keys-voice-pick-card--one" aria-live="polite">' +
-          esc(oneLine) +
+      '<p class="keys-voice-pick-lead">' +
+      esc(t('keysSoftPadPickLead', '选一个垫上已有的按钮，点一条开始录键。')) +
+      '</p>' +
+      renderPickSubtabsHtml(tabs, softPadPickSubtabId, 'softPad') +
+      '<div class="keys-cursor-pick-list keys-softpad-pick-list">' +
+      rowsHtml +
+      '</div>' +
+      (!canRecord
+        ? '<p class="keys-voice-pick-escape">' +
+          esc(t('keysSoftPadPickNeedAuth', '此键暂不可录识别键')) +
           '</p>'
         : '') +
-      '<div class="keys-voice-pick-actions">' +
-      '<button type="button" class="keys-voice-pick-primary" data-softpad-pick-bind="1"' +
-      (!canRecord ? ' disabled' : '') +
-      '>' +
-      esc(t('keysSoftPadPickBtnBind', '给这件事加按键')) +
-      '</button>' +
-      '<button type="button" class="keys-channel-item-link" data-go-softpad="1">' +
-      esc(t('keysSoftPadPickGoPad', '去屏幕按钮看布局')) +
-      '</button></div></div>'
+      '</div>'
     );
   }
 
@@ -5838,6 +6220,20 @@
       // Leaving Soft Pad / voice / cursor for IME must not wipe captureHeroRef to default
       // (that used to save 右 Alt and survive restart).
       var keepHero = !!(opts && opts.skipHeroClear);
+      // Empty「我录的键」must not keep owning 02 — restores「说完后」+ IME keycap path.
+      try {
+        var habitIme = mappingById(selectedMappingId());
+        var hrefIme = habitIme ? captureHeroRefForMapping(habitIme) : null;
+        if (hrefIme && hrefIme.kind === 'customKey' && hrefIme.bindingRef) {
+          var matchIme = mappingById(hrefIme.bindingRef);
+          var actsIme =
+            matchIme && Array.isArray(matchIme.targetActions) ? matchIme.targetActions : [];
+          if (!actsIme.length) {
+            persistHeroCapture(null, habitIme.id);
+            keepHero = true;
+          }
+        }
+      } catch (_) {}
       clearSelection({
         skipRender: true,
         skipHero: keepHero,
@@ -6614,11 +7010,54 @@
           autoCreateForTab(autoBtn.getAttribute('data-auto-create') || activeTab);
           return;
         }
-        var voiceBind =
-          ev.target && ev.target.closest ? ev.target.closest('[data-voice-pick-bind]') : null;
-        if (voiceBind && panel.contains(voiceBind)) {
+        var pickSub =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-pick-subtab]')
+            : null;
+        if (pickSub && panel.contains(pickSub)) {
           ev.preventDefault();
+          var subId = String(pickSub.getAttribute('data-pick-subtab') || '');
+          var subCh = String(pickSub.getAttribute('data-pick-channel') || '');
+          if (subCh === 'voice') voicePickSubtabId = subId;
+          else if (subCh === 'cursor') cursorPickSubtabId = subId;
+          else if (subCh === 'softPad') softPadPickSubtabId = subId;
+          renderPanelOnly();
+          return;
+        }
+        var softPadRow =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-softpad-pick-row]')
+            : null;
+        if (softPadRow && panel.contains(softPadRow)) {
+          ev.preventDefault();
+          softPadPickSelectedId = String(
+            softPadRow.getAttribute('data-softpad-pick-row') || ''
+          );
+          applySoftPadPickBind();
+          return;
+        }
+        var voiceRow =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-voice-pick-row]')
+            : null;
+        if (voiceRow && panel.contains(voiceRow)) {
+          ev.preventDefault();
+          voicePickSelectedId = String(
+            voiceRow.getAttribute('data-voice-pick-row') || ''
+          );
           applyVoicePickBind();
+          return;
+        }
+        var cursorRow =
+          ev.target && ev.target.closest
+            ? ev.target.closest('[data-cursor-pick-row]')
+            : null;
+        if (cursorRow && panel.contains(cursorRow)) {
+          ev.preventDefault();
+          cursorPickSelectedId = String(
+            cursorRow.getAttribute('data-cursor-pick-row') || ''
+          );
+          applyCursorPickBind();
           return;
         }
         var cursorBind =

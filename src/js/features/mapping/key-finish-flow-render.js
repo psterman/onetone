@@ -742,6 +742,20 @@
   }
 
   // P12b-2：Keys 分段收尾 delay/cancel 宿主单一来源（供 React 岛复用）
+  function canConfigureKeyFinish(m){
+    if(!m) return false;
+    if(hooks().isSavedMapping&&hooks().isSavedMapping(m)) return true;
+    // Trigger alone: allow「说完后」while 02 recognition is mid-edit (e.g. empty 我录的键).
+    var trig='';
+    try{
+      if(global.OneToneMappingCore&&global.OneToneMappingCore.editorTrigger){
+        trig=String(global.OneToneMappingCore.editorTrigger(m)||'').trim();
+      }
+    }catch(_){}
+    if(!trig) trig=String(m.triggerKey||'').trim();
+    return !!trig;
+  }
+
   function buildKeysFinishTimingModel(){
     hooks().ensureConfig();
     var m=hooks().selectedMapping();
@@ -755,7 +769,7 @@
       finishMode:'',
       sig:'empty'
     };
-    if(!m||!hooks().isSavedMapping(m)){
+    if(!canConfigureKeyFinish(m)){
       return Object.assign({},empty,{sig:'unsaved'});
     }
     var finishMode=resolveDisplayedFinishMode(m);
@@ -820,7 +834,7 @@
   function buildKeysFinishModeModel(){
     var m=hooks().selectedMapping();
     var esc=hooks().escHtml;
-    if(!m||!hooks().isSavedMapping(m)){
+    if(!canConfigureKeyFinish(m)){
       return {
         modeHtml:'<p class="mic-desc key-finish-empty">'+esc(t('keyFinishFlowNeedKeys'))+'</p>',
         mappingId:'',
@@ -872,7 +886,7 @@
     var esc=hooks().escHtml;
     var timingModel=buildKeysFinishTimingModel();
     var modeModel=buildKeysFinishModeModel();
-    if(!m||!hooks().isSavedMapping(m)){
+    if(!canConfigureKeyFinish(m)){
       var empty='<p class="mic-desc key-finish-empty">'+esc(t('keyFinishFlowNeedKeys'))+'</p>';
       syncKeyExecFinishCard();
       applyKeysFinishModeHost(modeModel);

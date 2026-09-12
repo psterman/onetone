@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>按键 · 我录的键 / 弹层原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #ffffff;
+      --wash: #f3f7fa;
+      --aside: #f8fafc;
+      --bg: #e8eef3;
+      --cyan: #2a9cc4;
+      --cyan-ink: #0f5f7a;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --danger: #b42318;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(640px 260px at 12% -8%, rgba(42, 156, 196, 0.1), transparent 55%),
+        var(--bg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    .proto-bar {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+      padding: 10px 16px;
+      background: #13202c; color: #c5d0de;
+      font-size: 12.5px; line-height: 1.45;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; }
+    .proto-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+    .proto-toggles button {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: #e2e8f0;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font: inherit; font-size: 11.5px; font-weight: 650;
+      cursor: pointer;
+      transition: background 150ms var(--ease), transform 120ms var(--ease);
+    }
+    .proto-toggles button:hover { background: rgba(255,255,255,0.12); }
+    .proto-toggles button:active { transform: scale(0.97); }
+    .proto-toggles button.is-on {
+      background: rgba(42, 156, 196, 0.38);
+      border-color: rgba(125, 211, 252, 0.45);
+      color: #fff;
+    }
+
+    .shell {
+      width: min(980px, 100%);
+      margin: 18px auto 48px;
+      padding: 0 14px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .note {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .note h2 { margin: 0 0 8px; font-size: 14px; font-weight: 750; }
+    .note ul { margin: 0; padding-left: 1.2em; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .note li + li { margin-top: 4px; }
+    .note strong { color: var(--ink); font-weight: 650; }
+
+    /* —— workspace frame —— */
+    .frame {
+      background: var(--wash);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 16px 36px rgba(19, 32, 44, 0.08);
+      min-height: 520px;
+      display: grid;
+      grid-template-columns: 156px minmax(0, 1fr);
+    }
+    .rail {
+      background: var(--aside);
+      border-right: 1px solid var(--line);
+      padding: 12px 10px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .rail-search {
+      margin-bottom: 6px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12.5px;
+      color: var(--faint);
+    }
+    .rail button {
+      appearance: none; border: 0; background: transparent;
+      text-align: left; padding: 9px 10px; border-radius: 10px;
+      font: inherit; font-size: 13px; font-weight: 550; color: var(--ink);
+      cursor: pointer;
+    }
+    .rail button.is-on {
+      background: var(--cyan-soft);
+      color: var(--cyan-ink);
+      font-weight: 650;
+    }
+
+    .desk { padding: 12px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+
+    /* ========== BEFORE ========== */
+    .view-before .ghost-pill {
+      height: 36px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+    }
+    .view-before .split {
+      display: grid;
+      grid-template-columns: 38% 1fr;
+      gap: 12px;
+      flex: 1;
+      min-height: 0;
+    }
+    .view-before .pane {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+      padding: 10px;
+      min-height: 280px;
+    }
+    .view-before .pane-h {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 13px; font-weight: 750;
+    }
+    .view-before .plus {
+      width: 28px; height: 28px; border-radius: 8px;
+      border: 1px solid var(--line); background: var(--wash);
+      display: grid; place-items: center; color: var(--muted); font-weight: 750;
+    }
+    .view-before .empty {
+      margin-top: 48px; text-align: center;
+      color: var(--faint); font-size: 12.5px; line-height: 1.45;
+      padding: 0 12px;
+    }
+    .view-before .step {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px; border-radius: 10px;
+      background: var(--cyan-soft); border: 1px solid var(--cyan-bd);
+      margin-bottom: 10px;
+    }
+    .view-before .step .n {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: var(--paper); display: grid; place-items: center;
+      font-size: 11px; font-weight: 750; color: var(--cyan-ink);
+    }
+    .view-before .step .lab { font-size: 11px; color: var(--muted); }
+    .view-before .step .val { font-size: 13px; font-weight: 650; }
+    .view-before .adds {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    }
+    .view-before .adds button {
+      border: 1px solid var(--cyan-bd);
+      background: var(--paper);
+      border-radius: 12px;
+      padding: 14px 6px;
+      font: inherit; font-size: 11px; font-weight: 650; color: var(--cyan-ink);
+      cursor: pointer;
+    }
+    .view-before .native {
+      margin-top: 10px;
+      border: 1px dashed #f0b4ae;
+      background: #fff7f6;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12px; color: var(--danger); line-height: 1.45;
+    }
+
+    /* ========== AFTER ========== */
+    .view-after .split {
+      display: grid;
+      grid-template-columns: 200px minmax(0, 1fr);
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+      overflow: hidden;
+    }
+    .view-after .match {
+      border-right: 1px solid var(--line);
+      background: var(--aside);
+      display: flex; flex-direction: column;
+      min-height: 0;
+    }
+    .view-after .match-h {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 12px 8px;
+    }
+    .view-after .match-h h3 {
+      margin: 0; flex: 1;
+      font-size: 13px; font-weight: 750; letter-spacing: -0.02em;
+    }
+    .view-after .icon-btn {
+      width: 28px; height: 28px; border-radius: 8px;
+      border: 1px solid var(--line); background: var(--paper);
+      display: grid; place-items: center;
+      color: var(--cyan-ink); cursor: pointer;
+      transition: background 140ms var(--ease), border-color 140ms var(--ease), transform 120ms var(--ease);
+    }
+    .view-after .icon-btn:hover { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+    .view-after .icon-btn:active { transform: scale(0.96); }
+    .view-after .match-list {
+      padding: 4px 8px 12px;
+      display: flex; flex-direction: column; gap: 4px;
+      overflow: auto;
+    }
+    .view-after .match-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px; align-items: center;
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      text-align: left; font: inherit; color: inherit;
+      cursor: pointer;
+      transition: background 140ms var(--ease), border-color 140ms var(--ease);
+    }
+    .view-after .match-item:hover { background: rgba(42,156,196,0.06); }
+    .view-after .match-item.is-on {
+      background: var(--paper);
+      border-color: var(--cyan-bd);
+    }
+    .view-after .match-item strong {
+      display: block; font-size: 13px; font-weight: 650;
+      letter-spacing: -0.01em;
+    }
+    .view-after .match-item span {
+      display: block; margin-top: 2px;
+      font-family: var(--mono); font-size: 11px; font-weight: 650;
+      color: var(--muted);
+    }
+    .view-after .match-item.is-on span { color: var(--cyan-ink); }
+    .view-after .match-empty {
+      margin: 8px;
+      padding: 14px 12px;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.55);
+      text-align: left;
+      font-size: 12.5px; color: var(--muted); line-height: 1.45;
+    }
+    .view-after .match-empty b { color: var(--cyan-ink); font-weight: 650; }
+
+    /* Empty library: one full-width CTA — no ghost「右 Alt」detail */
+    .view-after .split.is-empty {
+      grid-template-columns: 1fr;
+    }
+    .view-after .split.is-empty .match {
+      border-right: none;
+      background: var(--paper);
+      min-height: 280px;
+    }
+    .view-after .split.is-empty .detail {
+      display: none !important;
+    }
+    .view-after .split.is-empty .match-list {
+      flex: 1;
+      justify-content: center;
+      padding: 24px 16px 32px;
+    }
+    .view-after .split.is-empty .match-empty {
+      margin: 0 auto;
+      max-width: 320px;
+      padding: 28px 20px;
+      text-align: center;
+      border-style: solid;
+      background: var(--wash);
+      font-size: 13px;
+      animation: emptyIn 280ms var(--ease) both;
+    }
+    .view-after .split.is-empty .match-empty .cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 14px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--cyan-bd);
+      background: var(--cyan-soft);
+      color: var(--cyan-ink);
+      font: inherit; font-size: 12.5px; font-weight: 650;
+      cursor: pointer;
+    }
+    .view-after .split.is-empty .match-empty .cta:hover { filter: brightness(0.98); }
+    .view-after .split.is-empty .match-empty .cta:active { transform: scale(0.98); }
+    @keyframes emptyIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    .view-after .detail {
+      animation: detailIn 220ms var(--ease) both;
+    }
+    @keyframes detailIn {
+      from { opacity: 0; transform: translateX(8px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .view-after .detail {
+      display: flex; flex-direction: column;
+      min-width: 0; min-height: 0;
+      padding: 12px 14px 14px;
+      gap: 10px;
+    }
+    .view-after .detail-h h3 {
+      margin: 0;
+      font-size: 13px; font-weight: 750; letter-spacing: -0.02em;
+    }
+    .view-after .detail-h p {
+      margin: 3px 0 0;
+      font-size: 12px; color: var(--muted); line-height: 1.4;
+    }
+    .view-after .launch {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: var(--wash);
+      border: 1px solid var(--line);
+    }
+    .view-after .launch .lab { font-size: 12px; color: var(--muted); font-weight: 550; }
+    .view-after .launch .val {
+      flex: 1; font-family: var(--mono); font-size: 12.5px; font-weight: 650;
+      color: var(--cyan-ink);
+    }
+    .view-after .launch button {
+      border: 0; background: transparent;
+      color: var(--cyan-ink); font: inherit; font-size: 12px; font-weight: 650;
+      cursor: pointer; padding: 4px 6px; border-radius: 6px;
+    }
+    .view-after .launch button:hover { background: var(--cyan-soft); }
+
+    .view-after .seq {
+      display: flex; flex-direction: column; gap: 6px;
+      flex: 1; min-height: 0;
+    }
+    .view-after .seq-row {
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr) auto;
+      gap: 8px; align-items: center;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+      transition: border-color 140ms var(--ease), box-shadow 140ms var(--ease);
+    }
+    .view-after .seq-row:hover { border-color: var(--cyan-bd); }
+    .view-after .seq-row .n {
+      width: 24px; height: 24px; border-radius: 7px;
+      background: var(--cyan-soft); color: var(--cyan-ink);
+      display: grid; place-items: center;
+      font-size: 11px; font-weight: 750;
+    }
+    .view-after .seq-row .kind { font-size: 11px; color: var(--faint); font-weight: 550; }
+    .view-after .seq-row .body { font-size: 13px; font-weight: 650; }
+    .view-after .seq-ops { display: flex; gap: 2px; }
+    .view-after .seq-ops button {
+      width: 26px; height: 26px; border: 0; border-radius: 7px;
+      background: transparent; color: var(--muted); cursor: pointer;
+    }
+    .view-after .seq-ops button:hover { background: var(--wash); color: var(--ink); }
+
+    .view-after .adds {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+    .view-after .adds.is-three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .view-after .adds button {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 10px 6px 9px;
+      border: 1px solid var(--line);
+      background: var(--wash);
+      border-radius: 12px;
+      font: inherit; font-size: 11.5px; font-weight: 650; color: var(--muted);
+      cursor: pointer;
+      transition: background 140ms var(--ease), border-color 140ms var(--ease), color 140ms var(--ease), transform 120ms var(--ease);
+    }
+    .view-after .adds button svg { width: 18px; height: 18px; color: var(--cyan-ink); opacity: 0.85; }
+    .view-after .adds button:hover {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+      color: var(--cyan-ink);
+    }
+    .view-after .adds button:active { transform: scale(0.97); }
+    .view-after .adds button:focus-visible {
+      outline: 2px solid rgba(42,156,196,0.45); outline-offset: 2px;
+    }
+
+    /* —— sheets —— */
+    .sheet-stage {
+      position: relative;
+      min-height: 420px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background:
+        linear-gradient(180deg, rgba(19,32,44,0.28), rgba(19,32,44,0.38)),
+        var(--wash);
+      overflow: hidden;
+    }
+    .sheet-stage[data-sheet="none"] { background: var(--wash); }
+    .sheet-stage[data-sheet="none"] .sheet { display: none; }
+    .sheet-stage .stage-hint {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      color: #e8eef3; font-size: 13px; font-weight: 550;
+      pointer-events: none;
+    }
+    .sheet-stage[data-sheet="none"] .stage-hint { color: var(--faint); }
+
+    .sheet {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -46%);
+      width: min(440px, calc(100% - 28px));
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 24px 48px rgba(19, 32, 44, 0.22);
+      padding: 16px 16px 14px;
+      animation: sheetIn 220ms var(--ease);
+    }
+    .sheet.is-wide { width: min(520px, calc(100% - 28px)); }
+    @keyframes sheetIn {
+      from { opacity: 0; transform: translate(-50%, -42%) scale(0.98); }
+      to { opacity: 1; transform: translate(-50%, -46%) scale(1); }
+    }
+    .sheet-h {
+      display: flex; align-items: flex-start; gap: 10px;
+      margin-bottom: 10px;
+    }
+    .sheet-h h3 {
+      margin: 0; flex: 1;
+      font-size: 16px; font-weight: 750; letter-spacing: -0.02em;
+    }
+    .sheet-h p {
+      margin: 4px 0 0;
+      font-size: 12.5px; color: var(--muted); line-height: 1.4;
+    }
+    .sheet-search {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 12px;
+      font: inherit; font-size: 13px;
+      margin-bottom: 12px;
+      background: var(--wash);
+    }
+    .sheet-search:focus {
+      outline: 2px solid rgba(42,156,196,0.35); outline-offset: 1px;
+      background: var(--paper);
+    }
+    .sheet-sec {
+      margin: 0 0 6px;
+      font-size: 11px; font-weight: 650; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--faint);
+    }
+    .sheet-chips {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-bottom: 12px;
+    }
+    .sheet-chips button {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font: inherit; font-size: 12px; font-weight: 650; color: var(--ink);
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .sheet-chips button.is-on {
+      border-color: var(--cyan-bd);
+      background: var(--cyan-soft);
+      color: var(--cyan-ink);
+      box-shadow: 0 0 0 2px rgba(42,156,196,0.12);
+    }
+    .sheet-tabs {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      margin-bottom: 10px;
+    }
+    .sheet-tabs button {
+      border: 0; background: transparent;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font: inherit; font-size: 12px; font-weight: 650; color: var(--muted);
+      cursor: pointer;
+    }
+    .sheet-tabs button.is-on {
+      background: var(--cyan);
+      color: #fff;
+    }
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .sheet-grid button {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 10px;
+      padding: 10px 6px;
+      font: inherit; font-size: 12px; font-weight: 650;
+      cursor: pointer;
+    }
+    .sheet-grid button.is-on {
+      border-color: var(--cyan-bd);
+      background: var(--cyan-soft);
+      color: var(--cyan-ink);
+    }
+    .sheet-field {
+      display: grid; gap: 6px;
+      margin: 8px 0 14px;
+    }
+    .sheet-field label {
+      font-size: 12.5px; font-weight: 650; color: var(--muted);
+    }
+    .sheet-field input, .sheet-field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit; font-size: 14px;
+      background: var(--wash);
+    }
+    .sheet-field textarea { min-height: 88px; resize: vertical; }
+    .sheet-field input:focus, .sheet-field textarea:focus {
+      outline: 2px solid rgba(42,156,196,0.35); outline-offset: 1px;
+      background: var(--paper);
+    }
+    .sheet-pills {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .sheet-pills button {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      border-radius: 999px;
+      padding: 5px 11px;
+      font: inherit; font-size: 12px; font-weight: 650; color: var(--muted);
+      cursor: pointer;
+    }
+    .sheet-pills button.is-on {
+      border-color: var(--cyan-bd);
+      background: var(--cyan-soft);
+      color: var(--cyan-ink);
+    }
+    .sheet-foot {
+      display: flex; align-items: center; gap: 8px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+    .sheet-foot .sel {
+      flex: 1; min-width: 0;
+      font-family: var(--mono); font-size: 12.5px; font-weight: 650;
+      color: var(--cyan-ink);
+    }
+    .sheet-foot .btn {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font: inherit; font-size: 13px; font-weight: 650;
+      color: var(--ink); cursor: pointer;
+    }
+    .sheet-foot .btn.is-primary {
+      border-color: transparent;
+      background: var(--cyan);
+      color: #fff;
+    }
+    .sheet-foot .btn.is-ghost { color: var(--cyan-ink); border-color: var(--cyan-bd); }
+
+    .sheet-actions {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-top: 8px;
+    }
+    .sheet-actions button {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font: inherit; font-size: 12px; font-weight: 650;
+      cursor: pointer;
+    }
+    .sheet-actions button.is-on {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+      color: var(--cyan-ink);
+    }
+
+    @media (max-width: 760px) {
+      .frame { grid-template-columns: 1fr; }
+      .rail { border-right: 0; border-bottom: 1px solid var(--line); }
+      .view-before .split,
+      .view-after .split { grid-template-columns: 1fr; }
+      .view-after .match { border-right: 0; border-bottom: 1px solid var(--line); }
+      .view-before .adds,
+      .view-after .adds { grid-template-columns: repeat(2, 1fr); }
+      .sheet-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <strong>原型</strong>
+    <span>我录的键 · 空态不再蹭听写键「右 Alt」</span>
+    <a href="keys-recognize-tactile.html">识别步</a>
+    <a href="keys-page-compact-desk.html">紧凑台</a>
+    <div class="proto-toggles">
+      <button type="button" data-view="before">问题空态</button>
+      <button type="button" class="is-on" data-view="after-empty">修好空态</button>
+      <button type="button" data-view="after-filled">有匹配</button>
+    </div>
+  </div>
+
+  <div class="shell">
+    <div class="note">
+      <h2>动作序列方案（已确认）</h2>
+      <ul>
+        <li><strong>不要键盘列表</strong> — 用户能当场按键，不必再点格子填写。</li>
+        <li><strong>按键 = 录制</strong> — 一点就听下一次按键；与启动键同一套手感。</li>
+        <li><strong>三种步骤</strong> — 按键 / 文本 / 延迟。启动键单独在上方。</li>
+        <li>键盘目录只留给听写识别键等「选常见 IME 快捷键」场景，不进动作序列。</li>
+      </ul>
+    </div>
+
+    <!-- desk -->
+    <section class="frame view-after" id="deskFrame" aria-label="我录的键">
+      <nav class="rail" aria-label="分类">
+        <div class="rail-search">搜索功能…</div>
+        <button type="button">听写方式</button>
+        <button type="button" class="is-on">我录的键</button>
+        <button type="button">口头指令</button>
+        <button type="button">软件自带</button>
+        <button type="button">屏幕按钮</button>
+        <button type="button">手势</button>
+      </nav>
+
+      <div class="desk" id="viewBefore" hidden>
+        <div class="ghost-pill" aria-hidden="true"></div>
+        <div class="split">
+          <aside class="pane">
+            <div class="pane-h">按键匹配 <span class="plus">+</span></div>
+            <p class="empty">当前应用还没有自定义键，点 + 新建一条。</p>
+          </aside>
+          <div class="pane">
+            <div class="pane-h" style="display:block">
+              已录制的动作
+              <div style="margin-top:4px;font-size:12px;font-weight:450;color:var(--muted)">下面是按顺序执行的步骤。用 ▲▼ 排序，双击可编辑。</div>
+            </div>
+            <div class="step">
+              <span class="n">1</span>
+              <div>
+                <div class="lab">按键</div>
+                <div class="val">右 Alt</div>
+              </div>
+            </div>
+            <div class="adds">
+              <button type="button">● 录制快捷键</button>
+              <button type="button">⌨ 选择按键</button>
+              <button type="button">A 填入文本</button>
+              <button type="button">⏱ 延迟</button>
+            </div>
+            <p class="native">痛点：点「填入文本 / 延迟」会弹出浏览器原生 prompt（tauri.localhost 显示），和页面脱节。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="desk" id="viewAfter">
+        <div class="split is-empty" id="afterSplit">
+          <aside class="match">
+            <div class="match-h">
+              <h3>按键匹配</h3>
+              <button type="button" class="icon-btn" id="btnProtoAdd" aria-label="新建" title="新建">+</button>
+            </div>
+            <div class="match-list">
+              <div class="match-rows" id="matchRows" hidden>
+                <button type="button" class="match-item is-on" data-match="a">
+                  <div>
+                    <strong>右 Alt 宏</strong>
+                    <span>右 Alt · 1 步</span>
+                  </div>
+                </button>
+                <button type="button" class="match-item" data-match="b">
+                  <div>
+                    <strong>侧键连发</strong>
+                    <span>未录启动键 · 0 步</span>
+                  </div>
+                </button>
+              </div>
+              <div class="match-empty" id="matchEmpty">
+                还没有自定义键。<b>点 +</b> 新建一条，再录启动键和步骤。
+                <div>
+                  <button type="button" class="cta" id="btnProtoEmptyCta">＋ 新建一条</button>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <div class="detail" id="afterDetail" hidden>
+            <div class="detail-h">
+              <h3>动作序列</h3>
+              <p>启动键触发后，步骤从上到下执行。</p>
+            </div>
+            <div class="launch">
+              <span class="lab">启动键</span>
+              <span class="val" id="launchVal">右 Alt</span>
+              <button type="button">重录</button>
+            </div>
+            <div class="seq" id="seqBody">
+              <div class="seq-row">
+                <span class="n">1</span>
+                <div>
+                  <div class="kind">按键</div>
+                  <div class="body">右 Alt</div>
+                </div>
+                <div class="seq-ops">
+                  <button type="button" aria-label="上移">▲</button>
+                  <button type="button" aria-label="下移">▼</button>
+                  <button type="button" aria-label="删除">×</button>
+                </div>
+              </div>
+            </div>
+            <div class="adds is-three" role="group" aria-label="添加步骤">
+              <button type="button" data-open="none" class="is-record">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                按键
+              </button>
+              <button type="button" data-open="text">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>
+                文本
+              </button>
+              <button type="button" data-open="delay">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                延迟
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- sheets -->
+    <div>
+      <div class="sheet-actions" id="sheetToggles">
+        <button type="button" data-sheet="none" class="is-on">无弹层</button>
+        <button type="button" data-sheet="text">文本 sheet</button>
+        <button type="button" data-sheet="delay">延迟 sheet</button>
+      </div>
+      <div class="sheet-stage" id="sheetStage" data-sheet="none" style="margin-top:10px">
+        <p class="stage-hint">点上方切换弹层预览 · 替换原生 prompt</p>
+
+        <div class="sheet is-wide" id="sheetPick" hidden>
+          <div class="sheet-h">
+            <div>
+              <h3>添加按键步骤</h3>
+              <p>从列表挑选，或点「手动录制」当场按下组合键 — 同一步骤。</p>
+            </div>
+            <button type="button" class="icon-btn" data-sheet="none" aria-label="关闭">×</button>
+          </div>
+          <input class="sheet-search" type="search" placeholder="搜索按键" />
+          <p class="sheet-sec">常用</p>
+          <div class="sheet-chips">
+            <button type="button" class="is-on">右 Alt</button>
+            <button type="button">Ctrl+Space</button>
+            <button type="button">F2</button>
+            <button type="button">Enter</button>
+            <button type="button">Esc</button>
+          </div>
+          <div class="sheet-tabs">
+            <button type="button" class="is-on">修饰键</button>
+            <button type="button">数字</button>
+            <button type="button">字母</button>
+            <button type="button">功能键</button>
+            <button type="button">标点</button>
+            <button type="button">系统</button>
+          </div>
+          <div class="sheet-grid">
+            <button type="button">左 Alt</button>
+            <button type="button" class="is-on">右 Alt</button>
+            <button type="button">左 Ctrl</button>
+            <button type="button">右 Ctrl</button>
+            <button type="button">左 Shift</button>
+            <button type="button">右 Shift</button>
+            <button type="button">左 Win</button>
+            <button type="button">右 Win</button>
+          </div>
+          <div class="sheet-foot">
+            <span class="sel">右 Alt</span>
+            <button type="button" class="btn is-ghost">手动录制</button>
+            <button type="button" class="btn" data-sheet="none">取消</button>
+            <button type="button" class="btn is-primary" data-sheet="none">确定</button>
+          </div>
+        </div>
+
+        <div class="sheet" id="sheetText" hidden>
+          <div class="sheet-h">
+            <div>
+              <h3>填入文本</h3>
+              <p>步骤执行时会注入这段文字。</p>
+            </div>
+            <button type="button" class="icon-btn" data-sheet="none" aria-label="关闭">×</button>
+          </div>
+          <div class="sheet-field">
+            <label for="protoText">文本内容</label>
+            <textarea id="protoText" placeholder="例如：请帮我总结这段代码"></textarea>
+          </div>
+          <div class="sheet-foot">
+            <span class="sel"></span>
+            <button type="button" class="btn" data-sheet="none">取消</button>
+            <button type="button" class="btn is-primary" data-sheet="none">添加</button>
+          </div>
+        </div>
+
+        <div class="sheet" id="sheetDelay" hidden>
+          <div class="sheet-h">
+            <div>
+              <h3>延迟</h3>
+              <p>在上一步和下一步之间等待。</p>
+            </div>
+            <button type="button" class="icon-btn" data-sheet="none" aria-label="关闭">×</button>
+          </div>
+          <div class="sheet-field">
+            <label for="protoDelay">等待时长</label>
+            <input id="protoDelay" type="number" min="50" step="50" value="200" />
+          </div>
+          <div class="sheet-pills" id="delayPills">
+            <button type="button" data-ms="100">100ms</button>
+            <button type="button" class="is-on" data-ms="200">200ms</button>
+            <button type="button" data-ms="500">500ms</button>
+            <button type="button" data-ms="1000">1s</button>
+          </div>
+          <div class="sheet-foot">
+            <span class="sel">200 ms</span>
+            <button type="button" class="btn" data-sheet="none">取消</button>
+            <button type="button" class="btn is-primary" data-sheet="none">添加</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var before = document.getElementById("viewBefore");
+      var after = document.getElementById("viewAfter");
+      var frame = document.getElementById("deskFrame");
+      var split = document.getElementById("afterSplit");
+      var matchRows = document.getElementById("matchRows");
+      var matchEmpty = document.getElementById("matchEmpty");
+      var detail = document.getElementById("afterDetail");
+      var launchVal = document.getElementById("launchVal");
+      var seqBody = document.getElementById("seqBody");
+
+      var matchData = {
+        a: {
+          launch: "右 Alt",
+          seq:
+            '<div class="seq-row"><span class="n">1</span><div><div class="kind">按键</div><div class="body">右 Alt</div></div><div class="seq-ops"><button type="button" aria-label="上移">▲</button><button type="button" aria-label="下移">▼</button><button type="button" aria-label="删除">×</button></div></div>'
+        },
+        b: {
+          launch: "未录制",
+          seq:
+            '<div class="seq-row" style="opacity:.7"><span class="n">·</span><div><div class="kind">空序列</div><div class="body">用下方按钮添加步骤</div></div><div class="seq-ops"></div></div>'
+        }
+      };
+
+      function setAfterMode(mode) {
+        var filled = mode === "filled";
+        split.classList.toggle("is-empty", !filled);
+        matchRows.hidden = !filled;
+        matchEmpty.hidden = filled;
+        detail.hidden = !filled;
+        if (filled) {
+          var on = matchRows.querySelector(".match-item.is-on") || matchRows.querySelector(".match-item");
+          if (on) selectMatch(on.getAttribute("data-match"));
+        }
+      }
+
+      function selectMatch(id) {
+        var d = matchData[id] || matchData.a;
+        matchRows.querySelectorAll(".match-item").forEach(function (b) {
+          b.classList.toggle("is-on", b.getAttribute("data-match") === id);
+        });
+        launchVal.textContent = d.launch;
+        seqBody.innerHTML = d.seq;
+      }
+
+      function showView(view) {
+        var isBefore = view === "before";
+        before.hidden = !isBefore;
+        after.hidden = isBefore;
+        frame.classList.toggle("view-before", isBefore);
+        frame.classList.toggle("view-after", !isBefore);
+        if (!isBefore) setAfterMode(view === "after-filled" ? "filled" : "empty");
+        document.querySelectorAll("[data-view]").forEach(function (b) {
+          b.classList.toggle("is-on", b.getAttribute("data-view") === view);
+        });
+      }
+
+      document.querySelectorAll("[data-view]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          showView(btn.getAttribute("data-view"));
+        });
+      });
+      function goFilled() {
+        showView("after-filled");
+      }
+      document.getElementById("btnProtoAdd").addEventListener("click", goFilled);
+      document.getElementById("btnProtoEmptyCta").addEventListener("click", goFilled);
+      matchRows.querySelectorAll(".match-item").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          selectMatch(btn.getAttribute("data-match"));
+        });
+      });
+      showView("after-empty");
+
+      var stage = document.getElementById("sheetStage");
+      var sheets = {
+        pick: document.getElementById("sheetPick"),
+        text: document.getElementById("sheetText"),
+        delay: document.getElementById("sheetDelay")
+      };
+      function showSheet(id) {
+        stage.setAttribute("data-sheet", id || "none");
+        Object.keys(sheets).forEach(function (k) {
+          sheets[k].hidden = k !== id;
+        });
+        document.querySelectorAll("#sheetToggles [data-sheet]").forEach(function (b) {
+          b.classList.toggle("is-on", b.getAttribute("data-sheet") === (id || "none"));
+        });
+      }
+      document.querySelectorAll("[data-sheet]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          showSheet(el.getAttribute("data-sheet") || "none");
+        });
+      });
+      document.querySelectorAll(".view-after .adds [data-open]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.getAttribute("data-open");
+          if (id && id !== "none") showSheet(id);
+        });
+      });
+
+      var delayInput = document.getElementById("protoDelay");
+      var delaySel = document.querySelector("#sheetDelay .sel");
+      document.querySelectorAll("#delayPills [data-ms]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll("#delayPills [data-ms]").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+          var ms = btn.getAttribute("data-ms");
+          delayInput.value = ms;
+          delaySel.textContent = ms + " ms";
+        });
+      });
+      delayInput.addEventListener("input", function () {
+        delaySel.textContent = (delayInput.value || "0") + " ms";
+        document.querySelectorAll("#delayPills [data-ms]").forEach(function (b) {
+          b.classList.toggle("is-on", b.getAttribute("data-ms") === String(delayInput.value));
+        });
+      });
+
+      document.querySelectorAll(".sheet-chips button, .sheet-grid button").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var group = btn.parentElement;
+          group.querySelectorAll("button").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+          var sel = document.querySelector("#sheetPick .sel");
+          if (sel) sel.textContent = btn.textContent.trim();
+        });
+      });
+      document.querySelectorAll(".sheet-tabs button").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          btn.parentElement.querySelectorAll("button").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -481,6 +481,241 @@
       +'</div>';
   }
 
+  var KEYS_DELAY_PRESETS = [100, 200, 500, 1000];
+  var keysInlineListen = { mappingId: '', idx: -1, onKey: null };
+
+  function stopKeysInlineListen(){
+    if(keysInlineListen.onKey){
+      try{ document.removeEventListener('keydown', keysInlineListen.onKey, true); }catch(_){}
+    }
+    keysInlineListen.mappingId = '';
+    keysInlineListen.idx = -1;
+    keysInlineListen.onKey = null;
+  }
+
+  function startKeysInlineListen(m, idx){
+    stopKeysInlineListen();
+    if(!m||!m.id||idx<0) return;
+    keysInlineListen.mappingId = String(m.id);
+    keysInlineListen.idx = idx;
+    var isMod=function(k){ return k==='Control'||k==='Shift'||k==='Alt'||k==='Meta'; };
+    keysInlineListen.onKey=function(ev){
+      if(ev.key==='Escape'){
+        ev.preventDefault();
+        stopKeysInlineListen();
+        renderTargetActionsInto(
+          document.getElementById('keysCaptureTargetActions'),
+          m,
+          { mode:'picker', variant:'keys' }
+        );
+        return;
+      }
+      if(isMod(ev.key)){ ev.preventDefault(); return; }
+      ev.preventDefault();
+      ev.stopPropagation();
+      var p=[];
+      if(ev.ctrlKey) p.push('Ctrl');
+      if(ev.altKey) p.push('Alt');
+      if(ev.shiftKey) p.push('Shift');
+      if(ev.metaKey) p.push('Win');
+      var main=ev.key===' '?'Space':ev.key;
+      if(main.length===1) main=main.toUpperCase();
+      p.push(main);
+      var chord=p.join('+');
+      var listenIdx=keysInlineListen.idx;
+      stopKeysInlineListen();
+      var cur=effectiveTargetActions(m).slice();
+      if(!cur[listenIdx]) return;
+      cur[listenIdx]={type:'key',value:chord};
+      applyAndRefresh(m, cur);
+    };
+    document.addEventListener('keydown', keysInlineListen.onKey, true);
+  }
+
+  // Keys desk: row body IS the editor (no sheet / catalog).
+  function buildKeysInlineRowHtml(a, i, total, canEdit, listening){
+    var typ=a&&a.type?String(a.type):'';
+    var kind=typ==='key'
+      ? t('keysCaptureSeqAddKey','按键')
+      : typ==='text'
+        ? t('keysCaptureSeqAddText','文本')
+        : t('keysCaptureSeqAddDelay','延迟');
+    var body='';
+    if(typ==='key'){
+      var empty=!String(a&&a.value||'').trim();
+      var label=listening
+        ? t('keysCaptureSeqListening','按下组合键…')
+        : empty
+          ? t('keysCaptureSeqTapRecord','点此录制按键')
+          : (hooks().friendlyKeyName(a.value)||a.value);
+      body='<button type="button" class="keys-seq-key-chip'
+        +(empty&&!listening?' is-empty':'')
+        +(listening?' is-listen':'')
+        +'" data-inline-rec="'+i+'">'
+        +escHtml(label)
+        +'</button>';
+    } else if(typ==='text'){
+      body='<textarea class="keys-seq-text-in" rows="1" data-inline-text="'+i+'"'
+        +' placeholder="'+escHtml(t('keysActionTextSheetField','文本内容'))+'">'
+        +escHtml(a&&a.value||'')
+        +'</textarea>';
+    } else {
+      var ms=Number(a&&a.ms)||200;
+      var pills=KEYS_DELAY_PRESETS.map(function(preset){
+        return '<button type="button" class="keys-seq-delay-pill'
+          +(Math.abs(ms-preset)<1?' is-on':'')
+          +'" data-inline-delay="'+i+'" data-ms="'+preset+'">'
+          +(preset>=1000?(preset/1000)+'s':preset+'ms')
+          +'</button>';
+      }).join('');
+      body='<div class="keys-seq-delay-pills">'+pills
+        +'<input type="number" class="keys-seq-delay-custom" min="1" step="50" value="'+escHtml(String(ms))+'"'
+        +' data-inline-delay-custom="'+i+'" aria-label="ms" />'
+        +'<span class="keys-seq-delay-unit">ms</span></div>';
+    }
+    var upDis=!canEdit||i<=0;
+    var downDis=!canEdit||i>=total-1;
+    var acts=canEdit
+      ? ('<button type="button" class="home-key-map-action-btn" data-act="up" data-idx="'+i+'"'
+        +(upDis?' disabled':'')+' aria-label="'+escHtml(t('homeKeyMapActionUp'))+'">▲</button>'
+        +'<button type="button" class="home-key-map-action-btn" data-act="down" data-idx="'+i+'"'
+        +(downDis?' disabled':'')+' aria-label="'+escHtml(t('homeKeyMapActionDown'))+'">▼</button>'
+        +'<button type="button" class="home-key-map-action-btn is-del" data-act="del" data-idx="'+i+'"'
+        +' aria-label="'+escHtml(t('homeKeyMapActionDelete'))+'">×</button>')
+      : '';
+    return '<div class="home-key-map-action-row is-keys-inline is-'+escHtml(typ||'unknown')
+      +(listening?' is-listen':'')
+      +'" data-idx="'+i+'" role="listitem">'
+      +'<span class="home-key-map-action-idx">'+(i+1)+'</span>'
+      +'<span class="keys-seq-kind">'+escHtml(kind)+'</span>'
+      +'<div class="keys-seq-body">'+body+'</div>'
+      +'<span class="home-key-map-action-acts">'+acts+'</span>'
+      +'</div>';
+  }
+
+  function wireKeysInlineHandlers(container, m){
+    if(!container||!m||!m.id) return;
+    container.__keysInlineMappingId = String(m.id);
+    function resolveMapping(){
+      var mid=String(container.__keysInlineMappingId||'');
+      try{
+        if(global.OneToneMappingCore&&global.OneToneMappingCore.byId){
+          return global.OneToneMappingCore.byId(mid)||m;
+        }
+      }catch(_){}
+      return m;
+    }
+    if(container.__keysInlineBound) return;
+    container.__keysInlineBound=true;
+    container.addEventListener('click', function(ev){
+      if(!container.classList.contains('is-keys-inline')) return;
+      var mapping=resolveMapping();
+      if(!mapping||!mapping.id) return;
+      var t=ev.target;
+      var btn=t&&t.closest?t.closest('[data-act],[data-inline-rec],[data-inline-delay],[data-add]'):null;
+      if(!btn||!container.contains(btn)) return;
+      // Let textareas / number inputs keep default focus behavior.
+      if(btn.tagName==='TEXTAREA'||btn.tagName==='INPUT') return;
+      ev.preventDefault();
+      var cur=effectiveTargetActions(mapping).slice();
+      var act=btn.getAttribute('data-act');
+      var idx=parseInt(btn.getAttribute('data-idx')||'-1',10);
+      if(act==='up'&&idx>0){
+        var tmp=cur[idx-1]; cur[idx-1]=cur[idx]; cur[idx]=tmp;
+        stopKeysInlineListen();
+        applyAndRefresh(mapping, cur);
+        return;
+      }
+      if(act==='down'&&idx>=0&&idx<cur.length-1){
+        var tmp2=cur[idx+1]; cur[idx+1]=cur[idx]; cur[idx]=tmp2;
+        stopKeysInlineListen();
+        applyAndRefresh(mapping, cur);
+        return;
+      }
+      if(act==='del'&&idx>=0){
+        cur.splice(idx,1);
+        stopKeysInlineListen();
+        applyAndRefresh(mapping, cur);
+        return;
+      }
+      var rec=btn.getAttribute('data-inline-rec');
+      if(rec!=null){
+        var ri=parseInt(rec,10);
+        startKeysInlineListen(mapping, ri);
+        renderTargetActionsInto(container, mapping, { mode:'picker', variant:'keys' });
+        return;
+      }
+      var delayBtn=btn.getAttribute('data-inline-delay');
+      if(delayBtn!=null){
+        var di=parseInt(delayBtn,10);
+        var ms=parseInt(btn.getAttribute('data-ms')||'0',10);
+        if(cur[di]&&ms>0){
+          cur[di]={type:'delay',ms:ms};
+          applyAndRefresh(mapping, cur);
+        }
+        return;
+      }
+      var add=btn.getAttribute('data-add');
+      if(add==='key'){
+        cur.push({type:'key',value:''});
+        applyAndRefresh(mapping, cur).then(function(){
+          startKeysInlineListen(mapping, cur.length-1);
+          renderTargetActionsInto(container, mapping, { mode:'picker', variant:'keys' });
+        });
+        return;
+      }
+      if(add==='text'){
+        cur.push({type:'text',value:''});
+        applyAndRefresh(mapping, cur).then(function(){
+          var ta=container.querySelector('[data-inline-text="'+(cur.length-1)+'"]');
+          if(ta) ta.focus();
+        });
+        return;
+      }
+      if(add==='delay'){
+        cur.push({type:'delay',ms:200});
+        applyAndRefresh(mapping, cur);
+      }
+    });
+    container.addEventListener('change', function(ev){
+      if(!container.classList.contains('is-keys-inline')) return;
+      var el=ev.target;
+      if(!el||!el.getAttribute) return;
+      var mapping=resolveMapping();
+      var custom=el.getAttribute('data-inline-delay-custom');
+      if(custom!=null){
+        var ci=parseInt(custom,10);
+        var n=parseInt(el.value,10);
+        if(!(n>0)||!mapping) return;
+        var cur=effectiveTargetActions(mapping).slice();
+        if(!cur[ci]) return;
+        cur[ci]={type:'delay',ms:n};
+        applyAndRefresh(mapping, cur);
+      }
+    });
+    container.addEventListener('input', function(ev){
+      if(!container.classList.contains('is-keys-inline')) return;
+      var el=ev.target;
+      if(!el||el.getAttribute('data-inline-text')==null) return;
+      el.style.height='auto';
+      el.style.height=Math.min(120, el.scrollHeight)+'px';
+    });
+    container.addEventListener('focusout', function(ev){
+      if(!container.classList.contains('is-keys-inline')) return;
+      var el=ev.target;
+      if(!el||el.getAttribute('data-inline-text')==null) return;
+      var ti=parseInt(el.getAttribute('data-inline-text'),10);
+      var mapping=resolveMapping();
+      if(!mapping) return;
+      var cur=effectiveTargetActions(mapping).slice();
+      if(!cur[ti]||cur[ti].type!=='text') return;
+      var next=String(el.value||'');
+      if(String(cur[ti].value||'')===next) return;
+      cur[ti]={type:'text',value:next};
+      applyAndRefresh(mapping, cur);
+    });
+  }
+
   // Persist via dedicated IPC; on ACL / missing-cmd failure fall back to cmd_save
   // so the list still sticks before a rebuild picks up the new permission.
   function commitTargetActions(mappingId, actions){
@@ -525,6 +760,39 @@
       try{ console.error('targetActions persist failed', err); }catch(_){ }
       return null;
     });
+  }
+
+  // Ask for inject text via in-app sheet (keys desk); fall back to prompt.
+  function pickInjectText(seed, opts, onPicked) {
+    opts = opts || {};
+    var sheet = global.OneToneKeysActionInputSheet;
+    if (sheet && sheet.openText) {
+      sheet.openText(seed || '', opts).then(function (v) {
+        onPicked(v == null ? '' : String(v));
+      });
+      return;
+    }
+    var key = opts.edit ? 'homeKeyMapActionPromptTextEdit' : 'homeKeyMapActionPromptText';
+    var fb = opts.edit ? '编辑这段文本' : '输入要注入的文本';
+    var v = (global.prompt || window.prompt)(t(key, fb), seed || '') || '';
+    onPicked(String(v).trim());
+  }
+
+  // Ask for delay ms via in-app sheet; fall back to prompt.
+  function pickDelayMs(seed, opts, onPicked) {
+    opts = opts || {};
+    var sheet = global.OneToneKeysActionInputSheet;
+    if (sheet && sheet.openDelay) {
+      sheet.openDelay(seed || 200, opts).then(function (n) {
+        onPicked(n == null ? 0 : n);
+      });
+      return;
+    }
+    var key = opts.edit ? 'homeKeyMapActionPromptDelayEdit' : 'homeKeyMapActionPromptDelay';
+    var fb = opts.edit ? '编辑延迟毫秒数' : '输入延迟毫秒数';
+    var v = (global.prompt || window.prompt)(t(key, fb), String(seed || 200)) || '';
+    var n = parseInt(String(v).trim(), 10);
+    onPicked(n > 0 ? n : 0);
   }
 
   // Ask the user for a chord string.  Prefers the targetKeyPicker (with the
@@ -629,6 +897,7 @@
   function wireTargetActionsHandlers(actsEl, m, options){
     options = options || {};
     var mode = options.mode || 'picker';
+    var isKeys = options.variant === 'keys';
     if(!m||!m.id) return;
     var btns=actsEl.querySelectorAll('.home-key-map-action-btn, .home-key-map-action-add');
     btns.forEach(function(btn){
@@ -650,10 +919,13 @@
             var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptKey'),'Ctrl+Enter')||'';
             v=v.trim(); if(v) cur.push({type:'key',value:v});
             applyAndRefresh(m, cur);
+          } else if(isKeys){
+            pickKeyChordViaRecord(function(chord){
+              if(!chord) return;
+              cur.push({type:'key',value:chord});
+              applyAndRefresh(m, cur);
+            });
           } else {
-            // Reuse the targetKeyPicker when available so the user gets
-            // the searchable chord catalog + manual record.  Empty /
-            // cancelled picks drop the operation entirely.
             pickKeyChord(function(chord){
               if(!chord) return;
               cur.push({type:'key',value:chord});
@@ -663,15 +935,16 @@
           return;
         }
         else if(add==='record'){
-          if(mode==='prompt'){
-            // Recording-style button is hidden in 'prompt' mode but the
-            // defensive guard below prevents accidental click.
+          if(mode==='prompt') return;
+          // Keys desk: press combo only — no keyboard catalog.
+          if(isKeys){
+            pickKeyChordViaRecord(function(chord){
+              if(!chord) return;
+              cur.push({type:'key',value:chord});
+              applyAndRefresh(m, cur);
+            });
             return;
           }
-          // Open the picker with a record-callback.  The user can either
-          // tap a chord from the catalog (callback fires with the chord) or
-          // tap the picker's "manual record" button which routes through
-          // the home-page mini recorder.
           var picker=global.OneToneTargetKeyPicker;
           if(picker&&picker.openWithRecordCallback){
             picker.openWithRecordCallback(function(chord){
@@ -688,8 +961,23 @@
           }
           return;
         }
-        else if(add==='text'){ var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptText'),'')||''; v=v.trim(); if(v) cur.push({type:'text',value:v}); }
-        else if(add==='delay'){ var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptDelay'),'200')||''; v=v.trim(); var n=parseInt(v,10); if(n>0) cur.push({type:'delay',ms:n}); }
+        else if(add==='text'){
+          pickInjectText('', {}, function(v){
+            v=String(v||'').trim();
+            if(!v) return;
+            cur.push({type:'text',value:v});
+            applyAndRefresh(m, cur);
+          });
+          return;
+        }
+        else if(add==='delay'){
+          pickDelayMs(200, {}, function(n){
+            if(!n||n<=0) return;
+            cur.push({type:'delay',ms:n});
+            applyAndRefresh(m, cur);
+          });
+          return;
+        }
         else { return; }
         applyAndRefresh(m, cur);
       });
@@ -716,16 +1004,16 @@
           applyAndRefresh(m, cur);
         };
         if(editKind==='text'){
-          var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptTextEdit'), cur2.value||'')||'';
-          v=v.trim();
-          if(!v) return;
-          commitEdit(v);
+          pickInjectText(cur2.value||'', { edit:true }, function(v){
+            v=String(v||'').trim();
+            if(!v) return;
+            commitEdit(v);
+          });
         } else if(editKind==='delay'){
-          var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptDelayEdit'), String(cur2.ms||0))||'';
-          v=v.trim();
-          var n=parseInt(v,10);
-          if(!n||n<=0) return;
-          commitEdit(n);
+          pickDelayMs(cur2.ms||200, { edit:true }, function(n){
+            if(!n||n<=0) return;
+            commitEdit(n);
+          });
         } else if(editKind==='key'){
           if(mode==='prompt'){
             var v=(global.prompt||window.prompt)(t('homeKeyMapActionPromptKeyEdit'), cur2.value||'')||'';
@@ -733,6 +1021,12 @@
             if(!v) return;
             cur[idx]={type:'key',value:v};
             applyAndRefresh(m, cur);
+          } else if(isKeys){
+            pickKeyChordViaRecord(function(chord){
+              if(!chord) return;
+              cur[idx]={type:'key',value:chord};
+              applyAndRefresh(m, cur);
+            });
           } else {
             pickKeyChord(function(chord){
               if(!chord) return;
@@ -1070,10 +1364,8 @@
   //
   // Options:
   //   readOnly: render read-only, no buttons
-  //   mode: 'picker' (default) | 'prompt' — picker reuses targetKeyPicker +
-  //         mini recorder; prompt reuses plain `prompt()` so the user types
-  //         chord / text / ms themselves without any recording.
-  //   variant: 'keys' — larger empty state + add tiles for Keys「自定义键」tab.
+  //   mode: 'picker' (default) | 'prompt'
+  //   variant: 'keys' — inline sequence editor (no sheets / catalog)
   function renderTargetActionsInto(container, mapping, options){
     options = options || {};
     if(!container) return;
@@ -1082,55 +1374,83 @@
     var canEdit = !!m && !!m.id && !options.readOnly;
     var mode = options.mode || 'picker';
     var isKeys = options.variant === 'keys';
-    var showRecordBtn = (mode === 'picker');
     container.classList.toggle('is-keys-variant', isKeys);
+    container.classList.toggle('is-keys-inline', isKeys);
+    if(isKeys){
+      container.__keysInlineMappingId = m && m.id ? String(m.id) : '';
+      var listenIdx =
+        keysInlineListen.mappingId &&
+        m &&
+        String(m.id) === keysInlineListen.mappingId
+          ? keysInlineListen.idx
+          : -1;
+      var buildAddStrip = function(){
+        if(!canEdit) return '';
+        return '<div class="keys-seq-add-strip" role="group" aria-label="'+escHtml(t('keysCaptureSeqAddStrip','添加步骤'))+'">'
+          +'<button type="button" data-add="key"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddKey','按键'))+'</button>'
+          +'<button type="button" data-add="text"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddText','文本'))+'</button>'
+          +'<button type="button" data-add="delay"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddDelay','延迟'))+'</button>'
+          +'</div>';
+      };
+      container.hidden = false;
+      if(acts.length >= 1){
+        var rows = acts.map(function(a, i){
+          return buildKeysInlineRowHtml(a, i, acts.length, canEdit, listenIdx===i);
+        }).join('');
+        container.innerHTML = '<div class="home-key-map-action-list is-keys-inline" role="list">'+rows+'</div>'+buildAddStrip();
+      } else {
+        container.innerHTML =
+          '<div class="home-key-map-action-empty is-keys">'
+          + '<b>'+escHtml(t('keysCaptureSeqEmptyTitle','还没有步骤'))+'</b>'
+          + '<ol class="keys-seq-empty-recipe">'
+          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep1','上面录好启动键'))+'</li>'
+          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep2','点下方 + 按键 / 文本 / 延迟，直接在行里改'))+'</li>'
+          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep3','按启动键会按顺序执行'))+'</li>'
+          + '</ol></div>'
+          + buildAddStrip();
+      }
+      if(canEdit) wireKeysInlineHandlers(container, m);
+      container.querySelectorAll('.keys-seq-text-in').forEach(function(ta){
+        ta.style.height='auto';
+        ta.style.height=Math.min(120, ta.scrollHeight)+'px';
+      });
+      return;
+    }
+    var showRecordBtn = (mode === 'picker');
     var buildAddRow = function(){
       if(!canEdit) return '';
-      var cls = isKeys ? 'home-key-map-action-add is-tile' : 'home-key-map-action-add';
       var parts = '';
       if(showRecordBtn){
-        parts += '<button type="button" class="'+cls+'" data-add="record">'
-          + (isKeys
-            ? '<span class="home-key-map-action-add-ico" aria-hidden="true">⏺</span><span class="home-key-map-action-add-lbl">'+escHtml(t('keysCaptureSeqAddRecord','录制快捷键'))+'</span>'
-            : '⏺ '+escHtml(t('homeKeyMapActionRecord'))+' +')
+        parts += '<button type="button" class="home-key-map-action-add" data-add="record">'
+          + '⏺ '+escHtml(t('homeKeyMapActionRecord'))+' +'
           + '</button>';
       }
-      parts += '<button type="button" class="'+cls+'" data-add="key">'
-        + (isKeys
-          ? '<span class="home-key-map-action-add-ico" aria-hidden="true">⌨</span><span class="home-key-map-action-add-lbl">'+escHtml(t('keysCaptureSeqAddKey','选择按键'))+'</span>'
-          : escHtml(t('homeKeyMapActionTypeKey'))+' +')
+      parts += '<button type="button" class="home-key-map-action-add" data-add="key">'
+        + escHtml(t('homeKeyMapActionTypeKey'))+' +'
         + '</button>';
-      parts += '<button type="button" class="'+cls+'" data-add="text">'
-        + (isKeys
-          ? '<span class="home-key-map-action-add-ico" aria-hidden="true">A</span><span class="home-key-map-action-add-lbl">'+escHtml(t('keysCaptureSeqAddText','填入文本'))+'</span>'
-          : escHtml(t('homeKeyMapActionTypeText'))+' +')
+      parts += '<button type="button" class="home-key-map-action-add" data-add="text">'
+        + escHtml(t('homeKeyMapActionTypeText'))+' +'
         + '</button>';
-      parts += '<button type="button" class="'+cls+'" data-add="delay">'
-        + (isKeys
-          ? '<span class="home-key-map-action-add-ico" aria-hidden="true">⏱</span><span class="home-key-map-action-add-lbl">'+escHtml(t('keysCaptureSeqAddDelay','延迟'))+'</span>'
-          : escHtml(t('homeKeyMapActionTypeDelay'))+' +')
+      parts += '<button type="button" class="home-key-map-action-add" data-add="delay">'
+        + escHtml(t('homeKeyMapActionTypeDelay'))+' +'
         + '</button>';
-      return '<div class="home-key-map-action-addrow'+(isKeys?' is-tiles':'')+'">'+parts+'</div>';
+      return '<div class="home-key-map-action-addrow">'+parts+'</div>';
     };
     if(acts.length >= 1){
       container.hidden = false;
-      var rows = acts.map(function(a, i){ return buildActionRowHtml(a, i, acts.length, canEdit); }).join('');
+      var rows2 = acts.map(function(a, i){ return buildActionRowHtml(a, i, acts.length, canEdit); }).join('');
       var moreRow = acts.length>1
         ? '<div class="home-key-map-action-more">'+escHtml(t('homeKeyMapActionMore').replace('{n}',acts.length))+'</div>'
         : '';
-      container.innerHTML = '<div class="home-key-map-action-list">'+rows+'</div>'+buildAddRow()+moreRow;
+      container.innerHTML = '<div class="home-key-map-action-list">'+rows2+'</div>'+buildAddRow()+moreRow;
       if(canEdit) wireTargetActionsHandlers(container, m, { mode: mode });
     } else {
       container.hidden = false;
-      var emptyHtml = isKeys
-        ? ('<div class="home-key-map-action-empty is-keys">'
-          + '<b>'+escHtml(t('keysCaptureSeqEmptyTitle','还没有动作'))+'</b>'
-          + '<span>'+escHtml(t('keysCaptureSeqEmptyBody','添加录制快捷键、文本或延迟；按一次启动键会依次执行。'))+'</span>'
-          + '</div>')
-        : ('<div class="home-key-map-action-empty">'
-          + escHtml(t('homeKeyMapActionEmpty', '还没添加动作 — 下方选一个开始'))
-          + '</div>');
-      container.innerHTML = emptyHtml + buildAddRow();
+      container.innerHTML =
+        '<div class="home-key-map-action-empty">'
+        + escHtml(t('homeKeyMapActionEmpty', '还没添加动作 — 下方选一个开始'))
+        + '</div>'
+        + buildAddRow();
       if(canEdit) wireTargetActionsHandlers(container, m, { mode: mode });
     }
   }

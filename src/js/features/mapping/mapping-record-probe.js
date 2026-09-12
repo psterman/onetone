@@ -32,14 +32,33 @@
     while(ms.length<3) ms='0'+ms;
     return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())+'.'+ms;
   }
-  function syncRecordingProbeLink(){
-    var link=$('btnKeysRecordingProbe');
+  function syncSheetOpen(open){
     var panel=$('recordProbePanel');
-    if(!link) return;
-    var show=!!liveRecording&&!uiRevealed;
-    link.hidden=!show;
-    if(panel) link.setAttribute('aria-controls','recordProbePanel');
-    link.setAttribute('aria-expanded',uiRevealed?'true':'false');
+    var sheet=$('recordProbeSheet');
+    var backdrop=$('recordProbeBackdrop');
+    var chip=$('btnRecordProbeExpand');
+    if(panel) panel.classList.toggle('is-expanded',!!open);
+    if(sheet) sheet.hidden=!open;
+    if(backdrop) backdrop.hidden=!open;
+    if(chip) chip.setAttribute('aria-expanded',open?'true':'false');
+    syncChipCta();
+  }
+  function syncChipCta(){
+    var cta=$('recordProbeChipCta');
+    var panel=$('recordProbePanel');
+    if(!cta||!panel) return;
+    if(panel.classList.contains('is-problem')){
+      cta.textContent=t('keysCaptureProbeChipProblem','看问题');
+      return;
+    }
+    cta.textContent=panel.classList.contains('is-expanded')
+      ?t('keysCaptureProbeCollapse','收起')
+      :t('keysCaptureProbeChipOpen','查看');
+  }
+  function syncRecordingProbeLink(){
+    // Dock chip replaces the old inline link.
+    var link=$('btnKeysRecordingProbe');
+    if(link) link.hidden=true;
   }
   function setUiVisible(on,opts){
     opts=opts||{};
@@ -48,25 +67,34 @@
     if(!panel) return;
     panel.hidden=!on;
     panel.classList.toggle('is-revealed',on);
-    if(opts.expanded){
-      panel.classList.add('is-expanded');
-      syncProbeExpandLabel(panel);
-    }
+    if(opts.expanded) syncSheetOpen(true);
+    else if(opts.expanded===false) syncSheetOpen(false);
     syncRecordingProbeLink();
+    syncChipCta();
   }
   function reveal(opts){
     opts=opts||{};
     problemOpen=true;
+    var panel=$('recordProbePanel');
+    if(panel) panel.classList.add('is-problem');
     setUiVisible(true,{expanded:opts.expanded!==false});
     var status=$('recordProbeStatus');
     if(status&&opts.message) status.textContent=opts.message;
+    syncChipCta();
+  }
+  function closeSheet(){
+    syncSheetOpen(false);
+    // Keep dock chip if recording or a problem was flagged.
+    if(!liveRecording&&!problemOpen){
+      setUiVisible(false);
+    }
   }
   function dismiss(){
     problemOpen=false;
     var panel=$('recordProbePanel');
     if(panel){
-      panel.classList.remove('is-expanded');
-      syncProbeExpandLabel(panel);
+      panel.classList.remove('is-problem');
+      syncSheetOpen(false);
     }
     lines=[];
     hidRows=[];
@@ -78,7 +106,7 @@
   }
   function maybeRevealForProblem(kind, src){
     if(kind==='drop'||kind==='unknown'){
-      reveal({message:t('keysCaptureProbeProblemUnknown','检测到异常按键，请查看下方日志')});
+      reveal({message:t('keysCaptureProbeProblemUnknown','检测到异常按键，请查看日志')});
       return;
     }
     if(liveRecording&&src==='wv'){
@@ -249,12 +277,17 @@
     if(on){
       hidRows=[];
       sawRs=false;
-      if(panel) panel.classList.toggle('is-live',true);
+      problemOpen=false;
+      if(panel){
+        panel.classList.add('is-live');
+        panel.classList.remove('is-problem');
+      }
       if(status){
         status.dataset.live='1';
         status.textContent=t('keysCaptureProbeLive','正在录制 · {mode}').replace('{mode}',mode||'trigger');
       }
-      setUiVisible(false);
+      // Bottom-right chip while recording; sheet stays closed until problem / tap.
+      setUiVisible(true,{expanded:false});
       renderHid();
       return;
     }
@@ -268,7 +301,10 @@
       }
     }
     if(!problemOpen) dismiss();
-    else syncRecordingProbeLink();
+    else{
+      syncRecordingProbeLink();
+      syncChipCta();
+    }
     renderHid();
   }
   function setAdvancedHid(on){
@@ -288,24 +324,22 @@
       navigator.clipboard.writeText(body).catch(function(){});
     }
   }
-  function syncProbeExpandLabel(panel){
-    var btn=$('btnRecordProbeExpand');
-    if(!btn||!panel) return;
-    var expanded=panel.classList.contains('is-expanded');
-    btn.textContent=expanded
-      ?t('keysCaptureProbeCollapse','收起检测')
-      :t('keysCaptureProbeExpand','按键没反应？点开检测');
-    btn.setAttribute('aria-expanded',expanded?'true':'false');
+  function openSheet(){
+    setUiVisible(true,{expanded:true});
   }
   function bind(){
     var btn=$('btnRecordProbeCopy');
     var clr=$('btnRecordProbeClear');
+    var closeBtn=$('btnRecordProbeClose');
+    var backdrop=$('recordProbeBackdrop');
     var adv=$('recordProbeAdvancedHid');
     var host=$('recordProbeHidList');
     var expand=$('btnRecordProbeExpand');
     var recLink=$('btnKeysRecordingProbe');
     if(btn) btn.addEventListener('click',function(e){ e.preventDefault(); copy(); });
     if(clr) clr.addEventListener('click',function(e){ e.preventDefault(); clear(); });
+    if(closeBtn) closeBtn.addEventListener('click',function(e){ e.preventDefault(); closeSheet(); });
+    if(backdrop) backdrop.addEventListener('click',function(e){ e.preventDefault(); closeSheet(); });
     if(adv){
       advancedHid=!!adv.checked;
       adv.addEventListener('change',function(){ setAdvancedHid(!!adv.checked); });
@@ -323,31 +357,32 @@
         e.preventDefault();
         var panel=$('recordProbePanel');
         if(!panel) return;
-        if(!uiRevealed){
-          reveal({expanded:true});
-          return;
-        }
-        if(panel.classList.contains('is-expanded')){
-          dismiss();
-        }else{
-          panel.classList.add('is-expanded');
-          syncProbeExpandLabel(panel);
-        }
+        if(panel.classList.contains('is-expanded')) closeSheet();
+        else openSheet();
       });
     }
     if(recLink){
       recLink.addEventListener('click',function(e){
         e.preventDefault();
-        reveal({expanded:true});
+        openSheet();
       });
     }
+    document.addEventListener('keydown',function(e){
+      if(e.key!=='Escape') return;
+      var panel=$('recordProbePanel');
+      if(panel&&panel.classList.contains('is-expanded')){
+        e.preventDefault();
+        closeSheet();
+      }
+    });
     var panel=$('recordProbePanel');
     if(panel){
-      panel.classList.remove('is-expanded');
+      syncSheetOpen(false);
       panel.hidden=true;
+      panel.classList.remove('is-revealed','is-problem','is-live');
     }
-    syncProbeExpandLabel(panel);
     syncRecordingProbeLink();
+    syncChipCta();
     render();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind);

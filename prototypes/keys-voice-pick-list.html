@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>口头指令 · 真实录制口令</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink:#13202c; --muted:#5a6b7c; --faint:#8494a6; --line:#d5dee8;
+      --paper:#fff; --wash:#f1f6f9; --bg:#e4ebf1; --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-soft:#e4f2f9;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box} body{margin:0;font-family:var(--font);color:var(--ink);background:var(--bg)}
+    .bar{padding:10px 16px;background:#13202c;color:#c5d0de;font-size:12.5px}
+    .bar strong{color:#fff}
+    .shell{width:min(480px,100%);margin:20px auto;padding:0 14px}
+    .note{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:13px;line-height:1.5;color:var(--muted);margin-bottom:14px}
+    .note b{color:var(--ink)}
+    .panel{border:1px solid var(--line);border-radius:16px;background:var(--paper);padding:14px;display:flex;flex-direction:column;gap:8px}
+    .head{display:flex;justify-content:space-between;align-items:center}
+    .title{font-size:13px;font-weight:750;color:var(--muted)}
+    .pill{font-size:11px;font-weight:750;color:var(--cyan-ink);background:var(--cyan-soft);padding:2px 8px;border-radius:999px}
+    .lead{margin:0;font-size:12.5px;color:var(--muted)}
+    .list{display:flex;flex-direction:column;gap:6px}
+    .row{display:flex;flex-direction:column;gap:4px;text-align:left;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--wash);font:inherit;cursor:pointer}
+    .row.is-on{border-color:var(--cyan);background:color-mix(in srgb,var(--cyan) 10%,#fff)}
+    .name{font-size:13px;font-weight:650}
+    .say{font-size:12.5px;font-weight:650;color:var(--cyan-ink)}
+    .meta{font-size:11.5px;color:var(--muted);line-height:1.4}
+    .lab{display:inline-block;margin-right:6px;font-size:10.5px;font-weight:750;color:var(--faint)}
+  </style>
+</head>
+<body>
+  <div class="bar"><strong>口头指令</strong> 来源 = mapping.acousticVoiceCommands / voice agentBindings（不编生命周期文案）</div>
+  <div class="shell">
+    <p class="note">示例数据模拟 Cursor 习惯里<strong>真实录制</strong>的口令：名称 = <b>label</b>，激活 = <b>displayText</b>，功能 = 打开应用（真实 app 名）。没有编「开始用嘴打字」这类文案。</p>
+    <section class="panel">
+      <div class="head"><span class="title">口头指令</span><span class="pill">正在用 · Cursor</span></div>
+      <p class="lead">本应用已录制的口令，点一条开始录快捷键。</p>
+      <div class="list">
+        <button type="button" class="row is-on">
+          <span class="name">打开 Cursor</span>
+          <span class="say"><span class="lab">激活</span>「打开 Cursor」</span>
+          <span class="meta"><span class="lab">功能</span>回到应用 · Cursor</span>
+        </button>
+        <button type="button" class="row">
+          <span class="name">继续</span>
+          <span class="say"><span class="lab">激活</span>「继续 · 接着干」</span>
+        </button>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

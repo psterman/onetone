@@ -849,21 +849,31 @@
             <div class="habit-layer-shell key-wake-settings" id="keyWakeSettings">
               <section class="habit-key-mapping-section habit-flow-section" id="habitKeyMappingSection">
                 <aside class="record-probe-panel" id="recordProbePanel" hidden>
-                  <header class="record-probe-head">
-                    <strong id="recordProbeTitle">录制检测</strong>
-                    <span class="record-probe-status" id="recordProbeStatus">等待按键…</span>
-                    <button type="button" class="record-probe-expand-btn" id="btnRecordProbeExpand" data-i18n="keysCaptureProbeExpand">按键没反应？点开检测</button>
-                    <span class="record-probe-actions">
-                      <button type="button" class="record-probe-btn" id="btnRecordProbeCopy">复制日志</button>
-                      <button type="button" class="record-probe-btn" id="btnRecordProbeClear">清空</button>
+                  <button type="button" class="record-probe-chip" id="btnRecordProbeExpand" aria-expanded="false" aria-controls="recordProbeSheet">
+                    <span class="record-probe-chip-dot" aria-hidden="true"></span>
+                    <span class="record-probe-chip-text">
+                      <strong id="recordProbeTitle">录制检测</strong>
+                      <span class="record-probe-status" id="recordProbeStatus">等待按键…</span>
                     </span>
-                  </header>
-                  <p class="record-probe-hint" id="recordProbeHint" data-i18n="keysCaptureProbeHint">录触发时请按外设键（侧键 / 音量 / F13）。日志里「页面收到」表示网页看到了键；「系统钩子」表示 OneTone 底层也接到了。只有页面、没有系统钩子时，请重新编译并重启应用。</p>
-                  <label class="record-probe-adv"><input type="checkbox" id="recordProbeAdvancedHid"> 抓取自定义键</label>
-                  <div class="record-probe-hid-box" id="recordProbeHidBox" hidden>
-                    <ol class="record-probe-hid-list" id="recordProbeHidList"></ol>
+                    <span class="record-probe-chip-cta" id="recordProbeChipCta" data-i18n="keysCaptureProbeChipOpen">查看</span>
+                  </button>
+                  <div class="record-probe-backdrop" id="recordProbeBackdrop" hidden></div>
+                  <div class="record-probe-sheet" id="recordProbeSheet" role="dialog" aria-modal="true" aria-labelledby="recordProbeTitle" hidden>
+                    <header class="record-probe-head">
+                      <strong data-i18n="keysCaptureProbeTitle">录制检测</strong>
+                      <span class="record-probe-actions">
+                        <button type="button" class="record-probe-btn" id="btnRecordProbeCopy">复制日志</button>
+                        <button type="button" class="record-probe-btn" id="btnRecordProbeClear">清空</button>
+                        <button type="button" class="record-probe-btn record-probe-btn--close" id="btnRecordProbeClose" data-i18n="keysCaptureProbeClose">关闭</button>
+                      </span>
+                    </header>
+                    <p class="record-probe-hint" id="recordProbeHint" data-i18n="keysCaptureProbeHint">录触发时请按外设键（侧键 / 音量 / F13）。日志里「页面收到」表示网页看到了键；「系统钩子」表示 OneTone 底层也接到了。只有页面、没有系统钩子时，请重新编译并重启应用。</p>
+                    <label class="record-probe-adv"><input type="checkbox" id="recordProbeAdvancedHid"> 抓取自定义键</label>
+                    <div class="record-probe-hid-box" id="recordProbeHidBox" hidden>
+                      <ol class="record-probe-hid-list" id="recordProbeHidList"></ol>
+                    </div>
+                    <ol class="record-probe-log" id="recordProbeLog"></ol>
                   </div>
-                  <ol class="record-probe-log" id="recordProbeLog"></ol>
                 </aside>
                 <div class="keys-workflow-pipeline" id="keysWorkflowPipeline">
                 <section class="flow-nodes" id="keysFlowNodes" role="tablist" aria-label="触发流程导航">
@@ -991,8 +1001,8 @@
                                       <div class="keys-custom-key-match-list" id="keysCustomKeyMatchList" role="list"></div>
                                     </aside>
                                     <div class="keys-custom-key-detail">
-                                      <p class="keys-channel-group-label" id="keysCaptureTargetActionsLbl" data-i18n="keysCaptureSeqTitle">按顺序执行的动作</p>
-                                      <p class="keys-capture-target-actions-hint" id="keysCaptureTargetActionsHint" data-i18n="keysCaptureSeqHint">按一次启动键后，下面的步骤会依次执行。</p>
+                                      <p class="keys-channel-group-label" id="keysCaptureTargetActionsLbl" data-i18n="keysCaptureSeqTitle">动作序列</p>
+                                      <p class="keys-capture-target-actions-hint" id="keysCaptureTargetActionsHint" data-i18n="keysCaptureSeqHint">按一次启动键后依次执行。▲▼ 排序，点步骤可改。</p>
                                       <div class="home-key-map-actions" id="keysCaptureTargetActions"></div>
                                     </div>
                                   </div>
@@ -4879,6 +4889,36 @@
       <button type="button" class="keys-capture-popover-close" id="btnKeysCaptureClose" data-i18n="keysCaptureClose">关闭</button>
     </header>
   </div>
+  <div class="confirm-overlay keys-action-input-overlay" id="keysActionInputOverlay" aria-hidden="true">
+    <div class="confirm-modal keys-action-input-modal" role="dialog" aria-modal="true" aria-labelledby="keysActionInputTitle">
+      <div class="keys-action-input-head">
+        <div>
+          <h3 class="confirm-title" id="keysActionInputTitle">填入文本</h3>
+          <p class="keys-action-input-sub" id="keysActionInputSub">步骤执行时会注入这段文字。</p>
+        </div>
+        <button type="button" class="keys-action-input-close" id="btnKeysActionInputClose" aria-label="关闭">×</button>
+      </div>
+      <div id="keysActionTextPanel">
+        <label class="keys-action-input-label" for="keysActionTextInput" data-i18n="keysActionTextSheetField">文本内容</label>
+        <textarea class="keys-action-input-textarea" id="keysActionTextInput" rows="4" spellcheck="false"></textarea>
+      </div>
+      <div id="keysActionDelayPanel" hidden>
+        <label class="keys-action-input-label" for="keysActionDelayInput" data-i18n="keysActionDelaySheetField">毫秒</label>
+        <input type="number" class="keys-action-input-number" id="keysActionDelayInput" min="1" step="50" value="200" />
+        <div class="keys-action-delay-pills" id="keysActionDelayPills" role="group" aria-label="常用延迟">
+          <button type="button" data-ms="100">100ms</button>
+          <button type="button" class="is-on" data-ms="200">200ms</button>
+          <button type="button" data-ms="500">500ms</button>
+          <button type="button" data-ms="1000">1s</button>
+        </div>
+        <p class="keys-action-delay-sel" id="keysActionDelaySel">200 ms</p>
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn secondary" id="btnKeysActionInputCancel" data-i18n="cancel">取消</button>
+        <button type="button" class="btn primary" id="btnKeysActionInputOk" data-i18n="keysActionSheetAdd">添加</button>
+      </div>
+    </div>
+  </div>
   <div class="template-pick-overlay" id="targetKeyPickerOverlay" aria-hidden="true">
     <div class="template-pick-modal target-key-picker-modal" role="dialog" aria-modal="true" aria-labelledby="targetKeyPickerTitle" tabindex="-1">
       <div class="template-pick-head">
@@ -5052,6 +5092,7 @@
   <script src="js/features/voice/voice-schemes-ui.js"></script>
   <script src="js/core/habit-override-diff.js"></script>
   <script src="js/features/voice/voice-scheme-context.js"></script>
+  <script src="js/features/mapping/keys-action-input-sheet.js"></script>
   <script src="js/features/voice/voice-scheme-name-modal.js"></script>
   <script src="js/features/voice/voice-scheme-persist.js"></script>
   <script src="js/features/voice/voice-workflow-templates.js"></script>
