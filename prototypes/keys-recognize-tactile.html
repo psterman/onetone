@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>按键 · 识别步组件原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #ffffff;
+      --wash: #f3f7fa;
+      --bg: #e8eef3;
+      --cyan: #2a9cc4;
+      --cyan-ink: #0f5f7a;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(640px 260px at 10% -10%, rgba(42,156,196,0.09), transparent 55%),
+        var(--bg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    .proto-bar {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+      padding: 10px 16px;
+      background: #13202c; color: #c5d0de;
+      font-size: 12.5px; line-height: 1.45;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; }
+    .proto-toggles { display: flex; gap: 6px; margin-left: auto; }
+    .proto-toggles button {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: #e2e8f0;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font: inherit; font-size: 11.5px; font-weight: 650;
+      cursor: pointer;
+    }
+    .proto-toggles button.is-on {
+      background: rgba(42,156,196,0.38);
+      border-color: rgba(125,211,252,0.45);
+      color: #fff;
+    }
+
+    .shell {
+      width: min(720px, 100%);
+      margin: 18px auto 40px;
+      padding: 0 14px;
+    }
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px 18px 16px;
+      box-shadow: 0 14px 32px rgba(19,32,44,0.07);
+    }
+    .step {
+      display: flex; align-items: baseline; gap: 8px;
+      margin: 0 0 12px;
+      font-size: 14px; font-weight: 750;
+    }
+    .step .n {
+      font-family: var(--mono); font-size: 12px; font-weight: 650;
+      color: var(--cyan-ink);
+      background: var(--cyan-soft);
+      border: 1px solid var(--cyan-bd);
+      border-radius: 999px;
+      padding: 1px 8px;
+    }
+    .block + .block { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+
+    /* ========== BEFORE ========== */
+    .view-before .keycap {
+      display: inline-flex; align-items: center; gap: 8px;
+      min-height: 44px; padding: 8px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(42,156,196,0.35);
+      background: rgba(42,156,196,0.1);
+      color: var(--cyan);
+      font-size: 15px; font-weight: 750;
+    }
+    .view-before .keycap .ico {
+      width: 18px; height: 18px; border-radius: 4px; background: #fff; border: 1px solid var(--line);
+    }
+    .view-before .hint { margin: 8px 0 14px; font-size: 12.5px; }
+    .view-before .imes { display: flex; flex-wrap: wrap; gap: 8px; }
+    .view-before .ime {
+      width: 52px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      border: 0; background: transparent; cursor: pointer; font: inherit;
+      font-size: 11px; color: var(--muted);
+    }
+    .view-before .ime .tile {
+      width: 40px; height: 40px; border-radius: 10px;
+      border: 1px solid var(--line); background: #fff;
+      display: grid; place-items: center; font-weight: 750;
+    }
+    .view-before .ime.is-on .tile { border-color: var(--cyan); background: var(--cyan-soft); }
+    .view-before .ime-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+    .view-before .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .view-before .mode {
+      border: 1px solid var(--line); background: #fff; border-radius: 10px;
+      padding: 12px 10px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer;
+    }
+    .view-before .mode.is-on { border-color: var(--cyan); color: var(--cyan-ink); background: var(--cyan-soft); }
+    .view-before .delays {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+    }
+    .view-before .delay {
+      border: 0; border-right: 1px solid var(--line); background: #f7f9fb;
+      padding: 10px 0; font: inherit; font-size: 12.5px; font-weight: 650; color: var(--muted); cursor: pointer;
+    }
+    .view-before .delay:last-child { border-right: 0; }
+    .view-before .delay.is-on { background: #fff; color: var(--cyan-ink); box-shadow: inset 0 0 0 1.5px var(--cyan); }
+    .view-before .cancel-h { margin: 0 0 8px; font-size: 13px; font-weight: 750; }
+    .view-before .row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px;
+    }
+    .view-before .off { color: var(--faint); }
+    .view-before .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .view-before .chip {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      padding: 4px 8px; font-size: 11.5px; color: var(--muted);
+    }
+    .view-before .chip.is-link { color: var(--cyan); border-color: var(--cyan-bd); }
+
+    /* ========== AFTER ========== */
+    /* 1. ONLY the dictation key is a physical keycap */
+    .view-after .keycap {
+      --press: 0;
+      display: inline-flex; align-items: center; gap: 10px;
+      min-height: 56px; min-width: 148px;
+      padding: 12px 18px;
+      border: 0; border-radius: 12px;
+      background: linear-gradient(180deg, #fcfeff, #eef5f9);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.92) inset,
+        0 -2px 0 rgba(19,32,44,0.06) inset,
+        0 calc(4px - var(--press) * 2px) 0 #c5d4df,
+        0 calc(5px - var(--press) * 2px) 12px rgba(19,32,44,0.11);
+      transform: translateY(calc(var(--press) * 2px));
+      font: inherit; font-size: 17px; font-weight: 750;
+      letter-spacing: -0.02em; color: var(--ink);
+      cursor: pointer;
+      transition: transform 120ms var(--ease), box-shadow 120ms var(--ease);
+    }
+    .view-after .keycap:hover {
+      background: linear-gradient(180deg, #fff, #f1f7fb);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.96) inset,
+        0 -2px 0 rgba(19,32,44,0.06) inset,
+        0 4px 0 #b7cad8,
+        0 6px 14px rgba(19,32,44,0.13);
+    }
+    .view-after .keycap:active { --press: 1; }
+    .view-after .keycap .ico {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: #fff; border: 1px solid var(--line);
+      display: grid; place-items: center;
+      font-size: 11px; font-weight: 750; color: var(--cyan-ink);
+    }
+    .view-after .hint {
+      margin: 10px 0 0;
+      font-size: 12.5px; color: var(--muted); line-height: 1.45;
+    }
+    .view-after .hint b { color: var(--ink); font-weight: 650; }
+
+    /* 2. IME picker — icons + selection ring, no outer wash card */
+    .view-after .ime-panel {
+      margin-top: 14px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    .view-after .ime-panel-lbl {
+      margin: 0 0 8px;
+      font-size: 11px; font-weight: 650; color: var(--faint);
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .view-after .imes {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .view-after .ime {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      width: 54px; padding: 0;
+      border: 0; background: transparent;
+      font: inherit; font-size: 11px; font-weight: 550; color: var(--muted);
+      cursor: pointer;
+    }
+    .view-after .ime .tile {
+      width: 40px; height: 40px; border-radius: 11px;
+      border: 1.5px solid transparent;
+      background: var(--paper);
+      box-shadow: 0 1px 0 rgba(19,32,44,0.04);
+      display: grid; place-items: center;
+      font-size: 13px; font-weight: 750; color: var(--ink);
+      transition: border-color 140ms var(--ease), box-shadow 140ms var(--ease), background 140ms var(--ease), transform 120ms var(--ease);
+    }
+    .view-after .ime:hover .tile {
+      border-color: var(--cyan-bd);
+      transform: translateY(-1px);
+    }
+    .view-after .ime:active .tile { transform: scale(0.96); }
+    .view-after .ime.is-on { color: var(--cyan-ink); font-weight: 650; }
+    .view-after .ime.is-on .tile {
+      border-color: rgba(42,156,196,0.55);
+      background: var(--cyan-soft);
+      box-shadow: 0 0 0 3px rgba(42,156,196,0.12);
+      color: var(--cyan-ink);
+    }
+    .view-after .ime-note {
+      margin: 10px 0 0;
+      font-size: 12px; color: var(--muted);
+    }
+    .view-after .ime-note b {
+      font-family: var(--mono); font-weight: 650; color: var(--cyan-ink);
+    }
+
+    /* 3. Finish mode — segmented control + quiet helper */
+    .view-after .seg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px;
+      padding: 3px;
+      border-radius: 12px;
+      background: var(--wash);
+      border: 1px solid var(--line);
+    }
+    .view-after .seg button {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 12px;
+      background: transparent;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      color: var(--muted);
+      transition: background 140ms var(--ease), color 140ms var(--ease), box-shadow 140ms var(--ease);
+    }
+    .view-after .seg button .t {
+      display: block; font-size: 13px; font-weight: 650;
+    }
+    .view-after .seg button .d {
+      display: block; margin-top: 2px;
+      font-size: 11px; color: var(--faint); line-height: 1.35;
+    }
+    .view-after .seg button:hover { color: var(--ink); }
+    .view-after .seg button.is-on {
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 0 1px 2px rgba(19,32,44,0.06), 0 0 0 1px rgba(42,156,196,0.18);
+    }
+    .view-after .seg button.is-on .t { color: var(--cyan-ink); }
+    .view-after .seg button.is-on .d { color: var(--cyan-ink); opacity: 0.7; }
+
+    /* Delay — pill chips under the segment */
+    .view-after .delay-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .view-after .delay-lbl {
+      font-size: 12px; font-weight: 650; color: var(--faint); min-width: 3em;
+    }
+    .view-after .delay-pills {
+      display: inline-flex;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 999px;
+      background: var(--wash);
+      border: 1px solid var(--line);
+    }
+    .view-after .delay-pills button {
+      border: 0;
+      border-radius: 999px;
+      min-width: 44px;
+      padding: 6px 12px;
+      background: transparent;
+      font: inherit; font-size: 12.5px; font-weight: 650;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 140ms var(--ease), color 140ms var(--ease), box-shadow 140ms var(--ease);
+    }
+    .view-after .delay-pills button:hover { color: var(--ink); }
+    .view-after .delay-pills button.is-on {
+      background: var(--paper);
+      color: var(--cyan-ink);
+      box-shadow: 0 1px 2px rgba(19,32,44,0.06), 0 0 0 1px rgba(42,156,196,0.2);
+    }
+
+    /* 4. Cancel — settings list with switch + tag group */
+    .view-after .cancel-h {
+      margin: 0 0 10px;
+      font-size: 13px; font-weight: 750;
+    }
+    .view-after .cancel-h span { color: var(--faint); font-weight: 550; }
+    .view-after .list {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--paper);
+    }
+    .view-after .list-row {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-top: 1px solid var(--line);
+      min-height: 52px;
+    }
+    .view-after .list-row:first-child { border-top: 0; }
+    .view-after .list-row .lab { font-size: 13px; font-weight: 650; }
+    .view-after .list-row .meta { font-size: 12px; color: var(--faint); }
+    .view-after .switch {
+      position: relative;
+      width: 40px; height: 22px;
+      border: 0; border-radius: 999px;
+      background: #cfd8e2;
+      cursor: pointer;
+      padding: 0;
+      transition: background 160ms var(--ease);
+    }
+    .view-after .switch::after {
+      content: "";
+      position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(19,32,44,0.18);
+      transition: transform 160ms var(--ease);
+    }
+    .view-after .switch.is-on { background: var(--cyan); }
+    .view-after .switch.is-on::after { transform: translateX(18px); }
+    .view-after .tags {
+      display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end;
+    }
+    .view-after .tag {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font: inherit; font-size: 11.5px; font-weight: 550;
+      color: var(--muted);
+      cursor: default;
+    }
+    .view-after .tag-edit {
+      border: 1px solid var(--cyan-bd);
+      background: var(--cyan-soft);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font: inherit; font-size: 11.5px; font-weight: 650;
+      color: var(--cyan-ink);
+      cursor: pointer;
+    }
+    .view-after .tag-edit:hover { filter: brightness(0.98); }
+
+    .note {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px dashed var(--line);
+      background: rgba(255,255,255,0.55);
+      font-size: 12.5px; color: var(--muted); line-height: 1.55;
+    }
+    .note h2 { margin: 0 0 6px; font-size: 13px; color: var(--ink); font-weight: 750; }
+    .note ul { margin: 0; padding-left: 1.15em; }
+    .note li + li { margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <div>
+      <strong>识别步 · 组件原型 v2</strong>
+      — 只有听写键用键帽质感；其余用分段 / 药丸 / 开关 / 标签。
+      <a href="./keys-recognize-tactile.html">旧稿（全键帽）</a>
+    </div>
+    <div class="proto-toggles" role="group" aria-label="对比">
+      <button type="button" data-view="before">现状</button>
+      <button type="button" class="is-on" data-view="after">优化</button>
+    </div>
+  </div>
+
+  <div class="shell">
+    <div class="card view-before" id="viewBefore" hidden>
+      <div class="block">
+        <p class="step"><span class="n">1</span> 听写键</p>
+        <div class="keycap"><span class="ico"></span>右 Alt</div>
+        <p class="hint">已选 Typeless，听写键是 右 Alt。不对就点键帽改。</p>
+        <div class="imes">
+          <button type="button" class="ime"><span class="tile">✎</span>自定义</button>
+          <button type="button" class="ime"><span class="tile">讯</span>讯飞</button>
+          <button type="button" class="ime"><span class="tile">微</span>微信</button>
+          <button type="button" class="ime is-on"><span class="tile">D</span>Typeless</button>
+          <button type="button" class="ime"><span class="tile">微</span>微软</button>
+          <button type="button" class="ime"><span class="tile">智</span>智谱</button>
+          <button type="button" class="ime"><span class="tile">千</span>千问</button>
+          <button type="button" class="ime"><span class="tile">闪</span>闪电说</button>
+          <button type="button" class="ime"><span class="tile">搜</span>搜狗</button>
+          <button type="button" class="ime"><span class="tile">百</span>百度</button>
+        </div>
+        <p class="ime-note">已用 Typeless 默认听写键：右 Alt</p>
+      </div>
+      <div class="block">
+        <p class="step"><span class="n">2</span> 说完后</p>
+        <div class="modes">
+          <button type="button" class="mode is-on">再双击自动发送</button>
+          <button type="button" class="mode">再双击结束</button>
+        </div>
+        <div class="delays">
+          <button type="button" class="delay is-on">1s</button>
+          <button type="button" class="delay">2s</button>
+          <button type="button" class="delay">3s</button>
+          <button type="button" class="delay">自定义</button>
+        </div>
+      </div>
+      <div class="block">
+        <p class="cancel-h">取消听写 · 取消词</p>
+        <div class="row"><span>启动键</span><span class="off">已关闭 · 任一触发 → Esc</span></div>
+        <div class="row">
+          <span>取消词</span>
+          <div class="chips">
+            <span class="chip">取消输入</span><span class="chip">不要了</span>
+            <span class="chip">撤掉</span><span class="chip is-link">编辑</span>
+          </div>
+        </div>
+        <div class="row"><span>摄像头</span><span class="off">已关闭</span></div>
+      </div>
+    </div>
+
+    <div class="card view-after" id="viewAfter">
+      <div class="block">
+        <p class="step"><span class="n">1</span> 听写键</p>
+        <button type="button" class="keycap">
+          <span class="ico">D</span>
+          右 Alt
+        </button>
+        <p class="hint">已选 <b>Typeless</b>，听写键是 <b>右 Alt</b>。不对就点键帽改。</p>
+
+        <div class="ime-panel">
+          <p class="ime-panel-lbl">听写方式</p>
+          <div class="imes" id="imes">
+            <button type="button" class="ime"><span class="tile">✎</span>自定义</button>
+            <button type="button" class="ime"><span class="tile">讯</span>讯飞</button>
+            <button type="button" class="ime"><span class="tile">微</span>微信</button>
+            <button type="button" class="ime is-on"><span class="tile">D</span>Typeless</button>
+            <button type="button" class="ime"><span class="tile">微</span>微软</button>
+            <button type="button" class="ime"><span class="tile">智</span>智谱</button>
+            <button type="button" class="ime"><span class="tile">千</span>千问</button>
+            <button type="button" class="ime"><span class="tile">闪</span>闪电说</button>
+            <button type="button" class="ime"><span class="tile">搜</span>搜狗</button>
+            <button type="button" class="ime"><span class="tile">百</span>百度</button>
+          </div>
+          <p class="ime-note">已用 Typeless 默认听写键：<b>右 Alt</b></p>
+        </div>
+      </div>
+
+      <div class="block">
+        <p class="step"><span class="n">2</span> 说完后</p>
+        <div class="seg" id="modes" role="radiogroup" aria-label="说完后">
+          <button type="button" class="is-on" role="radio" aria-checked="true">
+            <span class="t">再双击自动发送</span>
+            <span class="d">结束 → 等待 → Enter</span>
+          </button>
+          <button type="button" role="radio" aria-checked="false">
+            <span class="t">再双击结束</span>
+            <span class="d">只结束，发送自己按</span>
+          </button>
+        </div>
+        <div class="delay-row">
+          <span class="delay-lbl">等待</span>
+          <div class="delay-pills" id="delays" role="radiogroup" aria-label="等待时长">
+            <button type="button" class="is-on" role="radio" aria-checked="true">1s</button>
+            <button type="button" role="radio" aria-checked="false">2s</button>
+            <button type="button" role="radio" aria-checked="false">3s</button>
+            <button type="button" role="radio" aria-checked="false">自定义</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <p class="cancel-h">取消听写 <span>· 取消词</span></p>
+        <div class="list">
+          <div class="list-row">
+            <span class="lab">启动键</span>
+            <span class="meta">任一触发 → Esc</span>
+            <button type="button" class="switch" aria-pressed="false" aria-label="启动键"></button>
+          </div>
+          <div class="list-row">
+            <span class="lab">取消词</span>
+            <div class="tags">
+              <span class="tag">取消输入</span>
+              <span class="tag">不要了</span>
+              <span class="tag">撤掉</span>
+              <button type="button" class="tag-edit">编辑</button>
+            </div>
+            <span></span>
+          </div>
+          <div class="list-row">
+            <span class="lab">摄像头</span>
+            <span class="meta">手势取消</span>
+            <button type="button" class="switch" aria-pressed="false" aria-label="摄像头"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <h2>原则</h2>
+      <ul>
+        <li><strong>听写键</strong>：唯一实体键帽（可点改快捷键）。</li>
+        <li><strong>听写方式</strong>：图标选择器 — 选中描边光环，不要外层背景卡，也不是键帽。</li>
+        <li><strong>说完后</strong>：分段控件（segmented）+ 下方等待时长药丸条。</li>
+        <li><strong>取消听写</strong>：设置列表 — 开关（switch）+ 词条标签 + 编辑按钮。</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var before = document.getElementById("viewBefore");
+      var after = document.getElementById("viewAfter");
+      document.querySelectorAll("[data-view]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var isAfter = btn.getAttribute("data-view") === "after";
+          before.hidden = isAfter;
+          after.hidden = !isAfter;
+          document.querySelectorAll("[data-view]").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+        });
+      });
+
+      function radioGroup(root, itemSel) {
+        if (!root) return;
+        root.querySelectorAll(itemSel).forEach(function (el) {
+          el.addEventListener("click", function () {
+            root.querySelectorAll(itemSel).forEach(function (x) {
+              var on = x === el;
+              x.classList.toggle("is-on", on);
+              if (x.hasAttribute("aria-checked")) x.setAttribute("aria-checked", on ? "true" : "false");
+            });
+          });
+        });
+      }
+      radioGroup(document.getElementById("imes"), ".ime");
+      radioGroup(document.getElementById("modes"), "button");
+      radioGroup(document.getElementById("delays"), "button");
+
+      document.querySelectorAll(".view-after .switch").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var on = btn.classList.toggle("is-on");
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

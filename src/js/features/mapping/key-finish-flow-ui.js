@@ -17,7 +17,7 @@
   }
 
   function isFinishControlTarget(el){
-    return !!(el&&el.closest&&el.closest('[data-finish-mode],[data-timing-toggle],[data-trigger-mode],[data-keys-hold-switch],[data-delay-ms],[data-delay-custom],[data-cancel-win],[data-cancel-channel],[data-cancel-gesture],[data-cancel-phrase-edit]'));
+    return !!(el&&el.closest&&el.closest('[data-finish-mode],[data-timing-toggle],[data-trigger-mode],[data-keys-hold-switch],[data-delay-ms],[data-delay-custom],[data-cancel-win],[data-cancel-channel],[data-cancel-gesture],[data-cancel-phrase-remove],[data-cancel-phrase-add]'));
   }
 
   function bindPanelFallback(panel){

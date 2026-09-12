@@ -601,6 +601,41 @@ html[data-theme="dark"] .flow-nodes-path-base {
 .settings-context-chrome__scope {
   flex-shrink: 0;
 }
+.settings-context-more {
+  position: relative;
+  display: inline-flex;
+}
+.settings-context-more > summary {
+  list-style: none;
+  cursor: pointer;
+  min-width: 34px;
+  justify-content: center;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+.settings-context-more > summary::-webkit-details-marker {
+  display: none;
+}
+.settings-context-more__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 148px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  background: var(--surface, #fff);
+  box-shadow: 0 12px 28px rgba(19, 32, 44, 0.12);
+}
+.settings-context-more__menu .page-status-btn {
+  width: 100%;
+  justify-content: flex-start;
+  margin: 0;
+}
 .page-status-bar.has-settings-context-bar .page-status-bar-main {
   flex: 0 1 auto;
   order: 2;

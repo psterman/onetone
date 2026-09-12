@@ -979,7 +979,9 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
 
   function finishFrontendTriggerCapture(combo){
     const normalized=hooks().normalizeTriggerKey(combo);
-    finishTriggerCapture(normalized, null, normalized, String(Date.now()));
+    // Letter/combo path finishes on keydown (no gesture wait) — always tap.
+    // Leaving triggerMode unset reused a prior ×2/hold from another mapping row.
+    finishTriggerCapture(normalized, null, normalized, String(Date.now()), {triggerMode:'tap'});
   }
 
   function isHardwareCaptureToken(key){

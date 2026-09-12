@@ -84,7 +84,8 @@
     }
     feModGesture.releaseAt=now;
     feModGesture.downAt=0;
-    paintFeModGesturePreview(key, '×2');
+    // Waiting for possible second press — do not paint ×2 (that looked like a commit).
+    paintFeModGesturePreview(key, '');
     if(feModGesture.timer) clearTimeout(feModGesture.timer);
     feModGesture.timer=setTimeout(function(){
       feModGesture.timer=null;
@@ -166,16 +167,6 @@
       hooks().pushLog('[record] cmd_frontend_keydown backup failed: '+String(err&&err.message||err||'unknown'));
       return false;
     });
-  }
-  // Serialize mod backups so keyup never races ahead of its keydown over IPC.
-  var modBackupChain=Promise.resolve();
-  function queueModifierGestureBackup(key){
-    const physical=String(key||'').trim();
-    if(!physical) return Promise.resolve(false);
-    modBackupChain=modBackupChain.then(function(){
-      return invokeFrontendKeydownBackup(physical);
-    }).catch(function(){ return false; });
-    return modBackupChain;
   }
   function retryPeripheralCaptureFromWatchdog(){
     if(Rec().mode()!=='trigger'&&Rec().mode()!=='agentBinding') return Promise.resolve(false);
@@ -382,7 +373,6 @@
     cap.pendingModifier='';
     cap.mods={ctrl:false,shift:false,alt:false,meta:false};
     cap.modSide={ctrl:'',shift:'',alt:'',meta:''};
-    modBackupChain=Promise.resolve();
     clearFeModGesture();
   }
 
@@ -482,9 +472,10 @@
     if(standalone){
       Rec().updatePreview('trigger',standalone);
       probePush('fe','keydown',standalone,'mod-gesture');
+      // FE owns focused-window mod gestures. Do not IPC-backup keydown —
+      // a late backup after real keyup is misread as a second press (×2).
       if(onFeModKeyDown(standalone)) return;
       paintFeModGesturePreview(standalone, '');
-      queueModifierGestureBackup(standalone);
     }
     return;
     }
@@ -718,7 +709,6 @@
     probePush('fe','keyup',modifierName,'mod-gesture');
     if(onFeModKeyUp(modifierName)){
       cap.pendingModifier='';
-      queueModifierGestureBackup('keyup:'+modifierName);
       return;
     }
     cap.pendingModifier='';

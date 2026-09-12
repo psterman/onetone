@@ -288,17 +288,21 @@
   function buildRows(m) {
     if (!m) return [];
     var maps = listAppMappings(m);
+    var lang =
+      global.OneToneI18n && global.OneToneI18n.getLang ? global.OneToneI18n.getLang() : 'zh';
     var rows = [];
     for (var i = 0; i < maps.length; i++) {
       var sm = maps[i];
       if (!sm || !sm.id) continue;
       var trig = String(sm.triggerKey || '').trim();
       var recog = recognitionDisplay(sm);
-      var chordLine = '';
-      if (trig && recog) chordLine = friendlyTrigger(trig) + ' → ' + friendlyTrigger(recog);
-      else if (recog) chordLine = friendlyTrigger(recog);
-      else if (trig) chordLine = friendlyTrigger(trig) + ' → ' + t('badgeNotRecorded', '未设置');
-      else chordLine = t('badgeNotRecorded', '未设置');
+      // Prototype parity: list shows trigger × gesture, not 01→02 chord.
+      var trigLine = '';
+      if (global.OneToneKeyLabels && global.OneToneKeyLabels.triggerDisplayLabel) {
+        trigLine = global.OneToneKeyLabels.triggerDisplayLabel(sm, lang) || '';
+      }
+      if (!trigLine && trig) trigLine = friendlyTrigger(trig);
+      if (!trigLine) trigLine = t('badgeNotRecorded', '未设置');
       if (isVoiceInputMapping(sm)) {
         rows.push({
           key: 'voice:' + String(sm.id),
@@ -307,10 +311,10 @@
           actionId: 'startDictation',
           kind: 'recognition',
           label: t('keysSceneActionsVoiceLabel', '语音输入'),
-          binds: { key: chordLine },
+          binds: { key: trigLine },
           ime: imeInfo(sm),
           summary: '',
-          unset: !recog
+          unset: !trig
         });
       } else {
         var matchName = '';
@@ -331,10 +335,10 @@
           actionId: '',
           kind: 'customKey',
           label: matchName,
-          binds: { key: chordLine },
+          binds: { key: trigLine },
           ime: null,
           summary: '',
-          unset: !recog
+          unset: !trig
         });
       }
     }
@@ -565,9 +569,11 @@
             .map(function (a) {
               var v = (a.binds && a.binds.key) || '';
               var trail = a.ime ? imeBadgeHtml(a.ime) : '';
+              var on = String(a.mappingId || '') === String(state.mappingId || '');
               return (
                 '<button type="button" class="keys-scene-actions__dir-item' +
                 (a.unset ? ' is-unset' : '') +
+                (on ? ' is-active' : '') +
                 '" role="listitem" data-jump="' +
                 esc(a.key) +
                 '">' +
@@ -581,6 +587,9 @@
                 esc(v) +
                 '</span>' +
                 '</span>' +
+                '<span class="keys-scene-actions__dot' +
+                (a.unset ? ' is-off' : '') +
+                '" aria-hidden="true"></span>' +
                 (trail
                   ? '<span class="keys-scene-actions__trail">' + trail + '</span>'
                   : '') +
@@ -589,11 +598,11 @@
             })
             .join('') +
           '</div>';
-    host.innerHTML =
-      list +
-      '<button type="button" class="keys-scene-actions__add" id="keysSceneActionsAdd" data-add="1">' +
-      esc(t('keysSceneActionsAdd', '新建动作')) +
-      '</button>';
+    host.innerHTML = list;
+    var addBtn = $('keysSceneActionsAdd');
+    if (addBtn) {
+      addBtn.textContent = '＋ ' + t('keysSceneActionsAdd', '新建动作');
+    }
   }
 
   function paint() {

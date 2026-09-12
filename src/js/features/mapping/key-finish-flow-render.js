@@ -1,7 +1,10 @@
 (function(global){
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
-  var t=function(key){ return global.OneToneI18n.t(key); };
+  var t=function(key, fallback){
+    var v=global.OneToneI18n.t(key);
+    return (v===key && fallback!=null)?fallback:v;
+  };
   function hooks(){ return global.__vp_key_finish_flow_render_hooks__ || {}; }
   function appState(){ return global.OneToneState.state; }
   var schemeStepFocus='';
@@ -194,6 +197,7 @@
       var active=current===mode;
       html+='<button type="button" class="keys-finish-segment'+(active?' is-active':'')+'" data-finish-mode="'+mode+'" role="radio" aria-checked="'+(active?'true':'false')+'">';
       html+='<span class="keys-finish-segment-label">'+t(meta.title)+'</span>';
+      if(meta.desc) html+='<span class="keys-finish-segment-desc">'+t(meta.desc)+'</span>';
       html+='</button>';
     });
     html+='</div>';
@@ -212,6 +216,8 @@
     }
     var customOpen=!matched;
     var html='<div class="keys-finish-delay-inline">';
+    html+='<div class="keys-finish-delay-row">';
+    html+='<span class="keys-finish-delay-lbl">'+t('sendTimingTitle')+'</span>';
     html+='<div class="keys-finish-delay-chips" role="group" aria-label="'+t('sendTimingTitle')+'">';
     presets.forEach(function(p){
       var sec=String(p/1000);
@@ -219,7 +225,7 @@
       html+='<button type="button" class="keys-finish-delay-chip'+(active?' is-active':'')+'" data-delay-ms="'+p+'" data-timing-id="'+id+'" aria-pressed="'+(active?'true':'false')+'">'+sec+'s</button>';
     });
     html+='<button type="button" class="keys-finish-delay-chip keys-finish-delay-chip--custom'+(customOpen?' is-active':'')+'" data-delay-custom="1" data-timing-id="'+id+'" aria-pressed="'+(customOpen?'true':'false')+'">'+t('sendTimingCustom')+'</button>';
-    html+='</div>';
+    html+='</div></div>';
     html+='<div class="voice-end-inline-range keys-finish-delay-range keys-finish-delay-controls'+(customOpen?'':' is-collapsed')+'"'+(customOpen?'':' hidden')+'>';
     html+='<input type="range" class="map-timing-range" data-timing-range="'+id+'" data-field="enterDelayMs" min="1000" max="15000" step="500" value="'+ms+'">';
     html+='<input type="number" class="keys-finish-delay-input" data-timing-range="'+id+'" data-field="enterDelayMs" min="1" max="15" step="0.5" value="'+seconds+'">';
@@ -342,36 +348,48 @@
     var m=hooks().selectedMapping();
     var mid=m&&m.id?String(m.id):'';
     var token=wantOn?'pressEsc':'none';
-    function afterBind(){
-      if(wantOn&&cam&&typeof cam.persistBindAction==='function'){
-        // ensure master presence is on so gestures actually fire
+    function afterOk(){
+      if(wantOn){
         try{
           var cfg=appState().config||{};
-          var pa=cfg.cameraPrefs&&cfg.cameraPrefs.presenceActions;
-          if(pa&&!pa.enabled){
-            // persist via bind path side effect: patch enabled through prefs if API allows
-            if(cam.applyRecommendedPresencePrefs){ /* no — don't overwrite all */ }
+          if(cfg.cameraPrefs&&cfg.cameraPrefs.presenceActions&&!cfg.cameraPrefs.presenceActions.enabled){
+            cfg.cameraPrefs.presenceActions.enabled=true;
+            cfg.cameraPrefs.enabled=true;
+            var p=global.OneToneConfigPersist;
+            if(p&&p.saveCameraPrefsQuiet) p.saveCameraPrefsQuiet();
+            else if(p&&p.saveAsync) p.saveAsync();
           }
         }catch(_){}
       }
       return true;
     }
-    if(cam&&typeof cam.persistBindAction==='function'){
-      return cam.persistBindAction(mid,key,token).then(function(){
-        if(wantOn){
-          try{
-            var cfg=appState().config||{};
-            if(cfg.cameraPrefs&&cfg.cameraPrefs.presenceActions&&!cfg.cameraPrefs.presenceActions.enabled){
-              cfg.cameraPrefs.presenceActions.enabled=true;
-              cfg.cameraPrefs.enabled=true;
-              var p=global.OneToneConfigPersist;
-              if(p&&p.saveCameraPrefsQuiet) p.saveCameraPrefsQuiet();
-              else if(p&&p.saveAsync) p.saveAsync();
+    function fail(err){
+      if(global.OneToneApp&&global.OneToneApp.toast){
+        global.OneToneApp.toast(t('keysCancelCameraFail','摄像头绑定失败'),'warn');
+      }
+      if(global.console&&console.warn) console.warn('[keys-cancel] camera bind',err);
+      return false;
+    }
+    // Keys page edits the selected scene — write mapping.cameraOverride, not global prefs.
+    if(mid&&cam&&typeof cam.persistBindActionMappingScoped==='function'){
+      return cam.persistBindActionMappingScoped(mid,key,token).then(function(){
+        // Keep gesture trigger bit on the scene so detection can fire.
+        try{
+          if(m){
+            var trigMap={shakeHead:'shake',deliberateBlink:'blink',openPalm:'openPalm',okHand:'okHand',fist:'fist',wave:'wave'};
+            var tk=trigMap[key];
+            if(tk){
+              if(!m.cameraOverride||typeof m.cameraOverride!=='object') m.cameraOverride={};
+              if(!m.cameraOverride.triggers||typeof m.cameraOverride.triggers!=='object') m.cameraOverride.triggers={};
+              if(wantOn) m.cameraOverride.triggers[tk]=true;
             }
-          }catch(_){}
-        }
-        return afterBind();
-      });
+          }
+        }catch(_){}
+        return afterOk();
+      }).catch(fail);
+    }
+    if(cam&&typeof cam.persistBindAction==='function'){
+      return cam.persistBindAction(mid,key,token).then(afterOk).catch(fail);
     }
     // Fallback: write prefs directly
     try{
@@ -394,7 +412,7 @@
       if(pers&&pers.saveCameraPrefsQuiet) pers.saveCameraPrefsQuiet();
       else if(pers&&pers.saveAsync) pers.saveAsync();
     }catch(_){}
-    return Promise.resolve(afterBind());
+    return Promise.resolve(afterOk());
   }
 
   function clearAllCameraCancelGestures(){
@@ -448,9 +466,9 @@
 
     html+='<div class="keys-cancel-list">';
 
-    // Key — name is the switch; chips are config only when on
+    // Key row — label + optional window chips + visible switch
     html+='<div class="keys-cancel-row'+(keyOn?' is-on':'')+'" data-cancel-row="key">';
-    html+='<button type="button" class="keys-cancel-name-btn'+(keyOn?' is-on':'')+'" data-timing-toggle="'+escHtmlLocal(id)+'" data-field="cancelEnabled"'+(keyOk?'':' disabled')+' aria-pressed="'+(keyOn?'true':'false')+'">'+escHtmlLocal(t('keysCancelSummaryKey'))+'</button>';
+    html+='<span class="keys-cancel-lab">'+escHtmlLocal(t('keysCancelSummaryKey'))+'</span>';
     html+='<div class="keys-cancel-ctrl">';
     if(keyOn){
       winPresets.forEach(function(p){
@@ -462,29 +480,42 @@
         html+='<input type="range" class="map-timing-range keys-cancel-range" data-timing-range="'+escHtmlLocal(id)+'" data-field="intervalMs" min="200" max="5000" step="100" value="'+ms+'">';
       }
     }else{
-      html+='<span class="keys-cancel-off">'+escHtmlLocal(t('keyFinishFlowStatusOff'))+'</span>';
+      html+='<span class="keys-cancel-meta">'+escHtmlLocal(t('keysCancelOrShort'))+'</span>';
     }
-    html+='</div></div>';
+    html+='</div>';
+    html+='<button type="button" class="toggle-switch'+(keyOn?' is-on':'')+'" data-timing-toggle="'+escHtmlLocal(id)+'" data-field="cancelEnabled"'+(keyOk?'':' disabled')+' role="switch" aria-checked="'+(keyOn?'true':'false')+'" aria-label="'+escHtmlLocal(t('keysCancelSummaryKey'))+'"></button>';
+    html+='</div>';
 
-    // Phrase
+    // Phrase row — inline tags (no master switch; voiceEnd has no cancel-only flag)
     html+='<div class="keys-cancel-row'+(phraseOn?' is-on':'')+'" data-cancel-row="phrase">';
-    html+='<button type="button" class="keys-cancel-name-btn'+(phraseOn?' is-on':'')+'" data-cancel-channel="phrase" aria-pressed="'+(phraseOn?'true':'false')+'">'+escHtmlLocal(t('keysCancelSummaryPhrase'))+'</button>';
+    html+='<span class="keys-cancel-lab">'+escHtmlLocal(t('keysCancelSummaryPhrase'))+'</span>';
     html+='<div class="keys-cancel-ctrl">';
     if(phraseOn){
-      var showPhrases=(phraseLists.zh.length?phraseLists.zh:phraseLists.en).slice(0,3);
-      if(!showPhrases.length) showPhrases=[t('keysCancelPhraseEmpty')];
-      showPhrases.forEach(function(ph){
-        html+='<span class="keys-cancel-chip is-readonly">'+escHtmlLocal(ph)+'</span>';
+      var showPhrases=phraseLists.zh.length?phraseLists.zh.slice():phraseLists.en.slice();
+      showPhrases.forEach(function(ph,idx){
+        html+='<span class="keys-cancel-chip is-tag">'
+          +escHtmlLocal(ph)
+          +'<button type="button" class="keys-cancel-chip-x" data-cancel-phrase-remove="'+idx+'" aria-label="'+escHtmlLocal(t('keysCancelPhraseRemove','删除'))+'">×</button>'
+          +'</span>';
       });
-      html+='<button type="button" class="keys-cancel-chip is-link" data-cancel-phrase-edit="1">'+escHtmlLocal(t('keysCancelPhraseEdit'))+'</button>';
+      html+='<span class="keys-cancel-add">'
+        +'<input type="text" class="keys-cancel-add-input" data-cancel-phrase-input maxlength="24" placeholder="'+escHtmlLocal(t('keysCancelPhraseAddPh','新取消词'))+'" />'
+        +'<button type="button" class="keys-cancel-chip is-link" data-cancel-phrase-add="1">'+escHtmlLocal(t('keysCancelPhraseAdd','添加'))+'</button>'
+        +'</span>';
     }else{
-      html+='<span class="keys-cancel-off">'+escHtmlLocal(t('keyFinishFlowStatusOff'))+'</span>';
+      html+='<span class="keys-cancel-meta">'+escHtmlLocal(t('keysCancelPhraseOffHint','说取消词 → Esc'))+'</span>';
     }
-    html+='</div></div>';
+    html+='</div>';
+    if(!phraseOn){
+      html+='<button type="button" class="toggle-switch" data-cancel-channel="phrase" role="switch" aria-checked="false" aria-label="'+escHtmlLocal(t('keysCancelSummaryPhrase'))+'"></button>';
+    }else{
+      html+='<span class="keys-cancel-switch-slot" aria-hidden="true"></span>';
+    }
+    html+='</div>';
 
-    // Camera
+    // Camera row
     html+='<div class="keys-cancel-row'+(camOn?' is-on':'')+'" data-cancel-row="camera">';
-    html+='<button type="button" class="keys-cancel-name-btn'+(camOn?' is-on':'')+'" data-cancel-channel="camera" aria-pressed="'+(camOn?'true':'false')+'">'+escHtmlLocal(t('keysCancelSummaryCamera'))+'</button>';
+    html+='<span class="keys-cancel-lab">'+escHtmlLocal(t('keysCancelSummaryCamera'))+'</span>';
     html+='<div class="keys-cancel-ctrl">';
     if(camOn){
       CANCEL_GESTURE_KEYS.forEach(function(gk){
@@ -496,9 +527,11 @@
         html+='<span class="keys-cancel-gesture-warn">'+escHtmlLocal(t('keysCancelGestureNeedOne'))+'</span>';
       }
     }else{
-      html+='<span class="keys-cancel-off">'+escHtmlLocal(t('keyFinishFlowStatusOff'))+'</span>';
+      html+='<span class="keys-cancel-meta">'+escHtmlLocal(t('keysCancelCameraOffHint','手势取消'))+'</span>';
     }
-    html+='</div></div>';
+    html+='</div>';
+    html+='<button type="button" class="toggle-switch'+(camOn?' is-on':'')+'" data-cancel-channel="camera" role="switch" aria-checked="'+(camOn?'true':'false')+'" aria-label="'+escHtmlLocal(t('keysCancelSummaryCamera'))+'"></button>';
+    html+='</div>';
 
     html+='</div></div>';
     return html;
@@ -734,7 +767,10 @@
     if(showCancel) cancelHtml=renderKeysFinishCancelOnly(m,m.id);
     hooks().ensureMappingTiming(m);
     var camGest=listCameraCancelGestures().join(',');
+    var phraseLists=readCancelPhraseLists();
     var phraseOn=cancelPhraseChannelOn()?'1':'0';
+    // Island skips re-render when sig is unchanged — include phrase text so add/remove paints.
+    var phraseSig=(phraseLists.zh||[]).join('\u0001')+'\u0002'+(phraseLists.en||[]).join('\u0001');
     var sig=[
       m.id,
       finishMode,
@@ -745,7 +781,8 @@
       m.cancelEnabled?'1':'0',
       m.autoEnterEnabled?'1':'0',
       camGest,
-      phraseOn
+      phraseOn,
+      phraseSig
     ].join('\0');
     return {
       delayHtml:delayHtml,
@@ -1060,40 +1097,28 @@
       e.stopPropagation();
       var ch=cancelCh.getAttribute('data-cancel-channel');
       if(ch==='phrase'){
+        // Enable-only: no cancelPhrasesEnabled flag; manage phrases inline when on.
+        if(cancelPhraseChannelOn()) return true;
         var lists=readCancelPhraseLists();
         var cfg=appState().config||{};
         if(!cfg.voiceEnd||typeof cfg.voiceEnd!=='object') cfg.voiceEnd={};
-        if(!cancelPhraseChannelOn()){
-          cfg.voiceEnd.enabled=true;
-          var zh=lists.zh.length?lists.zh.slice():['取消输入','不要了','撤掉'];
-          var en=lists.en.length?lists.en.slice():['cancel input'];
-          cfg.voiceEnd.cancelPhrasesZh=zh;
-          cfg.voiceEnd.cancelPhrasesEn=en;
-          scheduleTimingSave();
-          try{
-            var ve=global.OneToneVoiceEnd;
-            if(ve&&ve.persistCancelPhrases) ve.persistCancelPhrases(zh,en);
-            else if(global.OneToneIpc&&global.OneToneIpc.invoke){
-              global.OneToneIpc.invoke('cmd_voice_end_set_cancel_phrases',{phrasesZh:zh,phrasesEn:en}).catch(function(){});
-            }
-          }catch(_){}
-          refreshAfterGestureChange();
-        }else{
-          // No separate cancelPhrasesEnabled flag — send user to voice page to edit/disable.
-          if(global.OneToneApp&&global.OneToneApp.toast){
-            global.OneToneApp.toast(t('keysCancelPhraseEditHint','请在语音页编辑或关闭取消词'),'info');
-          }
-          var drawer=global.OneToneSettingsDrawer;
-          if(drawer&&drawer.openDrawer) drawer.openDrawer({panel:'voiceWake',voiceSubpage:'recognize'});
-          else if(drawer&&drawer.open) drawer.open({panel:'voiceWake'});
-        }
+        cfg.voiceEnd.enabled=true;
+        var zh=lists.zh.length?lists.zh.slice():['取消输入','不要了','撤掉'];
+        var en=lists.en.length?lists.en.slice():['cancel input'];
+        cfg.voiceEnd.cancelPhrasesZh=zh;
+        cfg.voiceEnd.cancelPhrasesEn=en;
+        scheduleTimingSave();
+        persistKeysCancelPhrases(zh,en);
+        refreshAfterGestureChange();
         return true;
       }
       if(ch==='camera'){
         if(cameraCancelChannelOn()){
           clearAllCameraCancelGestures().then(function(){ refreshAfterGestureChange(); });
         }else{
-          setCameraCancelGesture('shakeHead',true).then(function(){ refreshAfterGestureChange(); });
+          setCameraCancelGesture('shakeHead',true).then(function(ok){
+            if(ok!==false) refreshAfterGestureChange();
+          });
         }
         return true;
       }
@@ -1104,21 +1129,81 @@
       e.stopPropagation();
       var gk=cancelGest.getAttribute('data-cancel-gesture');
       var on=listCameraCancelGestures().indexOf(gk)<0;
-      setCameraCancelGesture(gk,on).then(function(){ refreshAfterGestureChange(); });
+      setCameraCancelGesture(gk,on).then(function(ok){
+        if(ok!==false) refreshAfterGestureChange();
+      });
       return true;
     }
-    var phraseEdit=el.closest&&el.closest('[data-cancel-phrase-edit]');
-    if(phraseEdit){
+    var phraseRemove=el.closest&&el.closest('[data-cancel-phrase-remove]');
+    if(phraseRemove){
       e.stopPropagation();
-      var drawer=global.OneToneSettingsDrawer;
-      if(drawer&&drawer.openDrawer){
-        drawer.openDrawer({panel:'voiceWake',voiceSubpage:'recognize'});
-      }else if(drawer&&drawer.open){
-        drawer.open({panel:'voiceWake'});
+      var rmIdx=Number(phraseRemove.getAttribute('data-cancel-phrase-remove'));
+      var rmLists=readCancelPhraseLists();
+      var rmZh=rmLists.zh.length?rmLists.zh.slice():rmLists.en.slice();
+      var useZh=!!rmLists.zh.length;
+      if(!(rmIdx>=0&&rmIdx<rmZh.length)) return true;
+      if(rmZh.length<=1){
+        if(global.OneToneApp&&global.OneToneApp.toast){
+          global.OneToneApp.toast(t('keysCancelPhraseKeepOne','至少保留一个取消词'),'info');
+        }
+        return true;
       }
+      rmZh.splice(rmIdx,1);
+      var nextZh=useZh?rmZh:rmLists.zh.slice();
+      var nextEn=useZh?rmLists.en.slice():rmZh;
+      var cfgRm=appState().config||{};
+      if(!cfgRm.voiceEnd||typeof cfgRm.voiceEnd!=='object') cfgRm.voiceEnd={};
+      cfgRm.voiceEnd.cancelPhrasesZh=nextZh;
+      cfgRm.voiceEnd.cancelPhrasesEn=nextEn.length?nextEn:['cancel input'];
+      persistKeysCancelPhrases(cfgRm.voiceEnd.cancelPhrasesZh,cfgRm.voiceEnd.cancelPhrasesEn);
+      refreshAfterGestureChange();
+      return true;
+    }
+    var phraseAdd=el.closest&&el.closest('[data-cancel-phrase-add]');
+    if(phraseAdd){
+      e.stopPropagation();
+      var host=phraseAdd.closest('[data-cancel-row="phrase"]')||phraseAdd.parentElement;
+      var input=host&&host.querySelector('[data-cancel-phrase-input]');
+      var raw=String(input&&input.value||'').trim();
+      if(!raw){
+        if(input) input.focus();
+        return true;
+      }
+      var addLists=readCancelPhraseLists();
+      var isEn=/^[a-zA-Z0-9\s''-]+$/.test(raw)&&!/[\u4e00-\u9fff]/.test(raw);
+      var nextZhAdd=addLists.zh.slice();
+      var nextEnAdd=addLists.en.slice();
+      var bucket=isEn?nextEnAdd:nextZhAdd;
+      if(bucket.indexOf(raw)>=0){
+        if(input) input.value='';
+        return true;
+      }
+      bucket.push(raw);
+      if(!nextZhAdd.length) nextZhAdd=['取消输入'];
+      if(!nextEnAdd.length) nextEnAdd=['cancel input'];
+      var cfgAdd=appState().config||{};
+      if(!cfgAdd.voiceEnd||typeof cfgAdd.voiceEnd!=='object') cfgAdd.voiceEnd={};
+      cfgAdd.voiceEnd.enabled=true;
+      cfgAdd.voiceEnd.cancelPhrasesZh=nextZhAdd;
+      cfgAdd.voiceEnd.cancelPhrasesEn=nextEnAdd;
+      persistKeysCancelPhrases(nextZhAdd,nextEnAdd);
+      refreshAfterGestureChange();
       return true;
     }
     return false;
+  }
+
+  function persistKeysCancelPhrases(zh,en){
+    try{
+      var ve=global.OneToneVoiceEnd;
+      if(ve&&ve.persistCancelPhrases){
+        ve.persistCancelPhrases(zh,en);
+        return;
+      }
+      if(global.OneToneIpc&&global.OneToneIpc.invoke){
+        global.OneToneIpc.invoke('cmd_voice_end_set_cancel_phrases',{phrasesZh:zh,phrasesEn:en}).catch(function(){});
+      }
+    }catch(_){}
   }
 
   function persistGestureChange(){

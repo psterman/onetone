@@ -119,13 +119,20 @@
     return '';
   }
 
-  function triggerDisplayLabel(mapping, lang){
+  /** Keycap / hero base text — gesture lives in #triggerGestureBadge / mark pill. */
+  function triggerBaseLabel(mapping, lang){
     if(!mapping) return '';
     var trig = String(mapping.triggerKey || '').trim();
     if(!trig) return '';
-    var base = trig === 'AutoTrigger'
+    return trig === 'AutoTrigger'
       ? autoTriggerDisplay(lang, mapping.sourceKey)
       : friendlyKeyName(trig, lang);
+  }
+
+  function triggerDisplayLabel(mapping, lang){
+    if(!mapping) return '';
+    var base = triggerBaseLabel(mapping, lang);
+    if(!base) return '';
     var mark = triggerGestureMark(mapping, lang);
     return mark ? (base + ' ' + mark) : base;
   }
@@ -232,6 +239,7 @@
 
   global.OneToneKeyLabels = {
     friendlyKeyName: friendlyKeyName,
+    triggerBaseLabel: triggerBaseLabel,
     triggerDisplayLabel: triggerDisplayLabel,
     triggerGestureMark: triggerGestureMark,
     targetDisplayLabel: targetDisplayLabel,

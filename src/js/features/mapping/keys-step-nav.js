@@ -63,10 +63,19 @@
   function triggerHintLabel(m){
     if(!m) return '';
     var lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';
-    if(global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerDisplayLabel){
-      return global.OneToneKeyLabels.triggerDisplayLabel(m,lang)||'';
+    if(global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerBaseLabel){
+      return global.OneToneKeyLabels.triggerBaseLabel(m,lang)||'';
     }
     return friendlyKey(core().editorTrigger?core().editorTrigger(m):m.triggerKey);
+  }
+
+  function triggerHintMark(m){
+    if(!m) return '';
+    var lang=global.OneToneI18n&&global.OneToneI18n.getLang?global.OneToneI18n.getLang():'zh';
+    if(global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerGestureMark){
+      return global.OneToneKeyLabels.triggerGestureMark(m,lang)||'';
+    }
+    return '';
   }
 
   function resolveStepHints(m){
@@ -75,9 +84,11 @@
       :mode==='agentBinding'?t('keysStatusRecordingCap','录制能力快捷键中')
       :mode==='target'?t('keysFlowNodeRecordingTarget'):'';
     var trig='';
+    var trigMark='';
     var tgt='';
     if(m&&core()){
       trig=triggerHintLabel(m);
+      trigMark=triggerHintMark(m);
       // resolveHeroCapture already returns display copy — do not re-friendly it.
       var picker=global.OneToneKeysChannelCommandPicker;
       var cap=picker&&typeof picker.resolveHeroCapture==='function'?picker.resolveHeroCapture(m):null;
@@ -97,6 +108,7 @@
     var codexCtx=capUi&&capUi.isCodexKeysEditing&&capUi.isCodexKeysEditing();
     return {
       trigger:recHint&&mode==='trigger'?recHint:(trig||t('keysStatusUnset')),
+      triggerMark:recHint&&mode==='trigger'?'':trigMark,
       target:recHint&&(mode==='target'||mode==='agentBinding')?recHint:(tgt||t('keysStatusUnset')),
       codexCtx:!!codexCtx
     };
@@ -112,13 +124,14 @@
     var ipcPhase=recordingIpcPhase();
     var recording=isRecordingUi();
     var hints=resolveStepHints(m);
-    var sig=[step,mode,ipcPhase,recording?'1':'0',hints.trigger||'',hints.target||'',hints.codexCtx?'1':'0'].join('\0');
+    var sig=[step,mode,ipcPhase,recording?'1':'0',hints.trigger||'',hints.triggerMark||'',hints.target||'',hints.codexCtx?'1':'0'].join('\0');
     return {
       activeStep:step,
       recordingMode:mode,
       ipcPhase:ipcPhase,
       recording:recording,
       triggerHint:hints.trigger||'',
+      triggerHintMark:hints.triggerMark||'',
       targetHint:hints.target||'',
       finishHint:'',
       sig:sig
@@ -142,11 +155,29 @@
         btn.classList.toggle('is-active',on);
         btn.setAttribute('aria-selected',on?'true':'false');
         btn.classList.toggle('is-recording',!!recording&&(mode===page||(page==='target'&&mode==='agentBinding')));
+        var node=btn.closest&&btn.closest('.flow-node');
+        if(node) node.classList.toggle('is-dim',!on);
       }
       var hintEl=$(meta.hint);
       if(hintEl){
-        var key=page+'Hint';
-        hintEl.textContent=model[key]||'';
+        if(page==='trigger'){
+          var base=model.triggerHint||'';
+          var mark=model.triggerHintMark||'';
+          if(mark&&typeof document!=='undefined'&&document.createElement){
+            hintEl.textContent='';
+            hintEl.appendChild(document.createTextNode(base));
+            var pill=document.createElement('span');
+            pill.className='flow-hint-mark';
+            pill.textContent=mark;
+            hintEl.appendChild(document.createTextNode(' '));
+            hintEl.appendChild(pill);
+          }else{
+            hintEl.textContent=mark?(base+' '+mark):base;
+          }
+        }else{
+          var key=page+'Hint';
+          hintEl.textContent=model[key]||'';
+        }
       }
     });
   }

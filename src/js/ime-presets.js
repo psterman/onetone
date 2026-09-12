@@ -468,8 +468,9 @@
     var customSelected = !selectedId && !!key;
     var html = '';
     if(ctx === 'mapping'){
-      html += '<button type="button" class="ime-preset-item ime-preset-item--picker"'+(disabled?' disabled':'')+' data-ime-context="'+esc(ctx)+'" data-ime-picker="1" title="'+esc(t('keysTargetKeycapPickLink'))+'" aria-label="'+esc(t('keysTargetKeycapPickLink'))+'">'
+      html += '<button type="button" class="ime-preset-item ime-preset-item--picker ime-preset-item--labeled"'+(disabled?' disabled':'')+' data-ime-context="'+esc(ctx)+'" data-ime-picker="1" title="'+esc(t('keysTargetKeycapPickLink'))+'" aria-label="'+esc(t('keysTargetKeycapPickLink'))+'">'
         +PICKER_ICON_SVG
+        +'<span class="ime-preset-name">'+esc(t('imePresetPick'))+'</span>'
         +'</button>';
       html += '<button type="button" class="ime-preset-item ime-preset-item--custom ime-preset-item--labeled'+(customSelected?' is-selected':'')+'" data-ime-context="'+esc(ctx)+'" data-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'" aria-pressed="'+(customSelected?'true':'false')+'">'
         +CUSTOM_ICON_SVG

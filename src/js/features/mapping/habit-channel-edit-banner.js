@@ -231,34 +231,55 @@
   }
 
   function contextActionsHtml(spec, m) {
-    var html =
+    var hubBtn =
       '<button type="button" class="page-status-btn settings-context-hub-btn" data-habit-edit-open-hub>'
-      + esc(t('settingsScopeHubBtn', '我的习惯')) + '</button>'
-      + '<button type="button" class="page-status-btn settings-context-follow-btn" data-habit-edit-follow-runtime>'
+      + esc(t('settingsScopeHubBtn', '我的习惯')) + '</button>';
+    var followBtn =
+      '<button type="button" class="page-status-btn settings-context-follow-btn" data-habit-edit-follow-runtime>'
       + esc(t('habitEditBannerFollowRuntime', '↻ 跟前台')) + '</button>';
-    if (!isAppScenarioMapping(m)) return html;
-    var actions = scenarioActionIds(spec);
-    if (!actions) return html;
-    var Scenario = global.OneToneHabitScenarioContextBanner;
-    var preview = Scenario && Scenario.buildPreview ? Scenario.buildPreview(m) : null;
-    var canSave = !!(preview && preview.canSave);
-    if (canSave && actions.save) {
-      html += '<button type="button" class="page-status-btn is-primary settings-context-scenario-btn" data-habit-scenario-action="'
-        + esc(actions.save) + '">' + esc(t('habitScenarioSaveBtn', '保存应用场景')) + '</button>';
+    var saveBtn = '';
+    var channelBtns = '';
+    if (isAppScenarioMapping(m)) {
+      var actions = scenarioActionIds(spec);
+      if (actions) {
+        var Scenario = global.OneToneHabitScenarioContextBanner;
+        var preview = Scenario && Scenario.buildPreview ? Scenario.buildPreview(m) : null;
+        var canSave = !!(preview && preview.canSave);
+        if (canSave && actions.save) {
+          saveBtn =
+            '<button type="button" class="page-status-btn is-primary settings-context-scenario-btn" data-habit-scenario-action="'
+            + esc(actions.save) + '">' + esc(t('habitScenarioSaveBtn', '保存应用场景')) + '</button>';
+        }
+        if (spec.panel !== 'voice' && actions.toVoice) {
+          channelBtns +=
+            '<button type="button" class="page-status-btn is-muted settings-context-scenario-btn" data-habit-scenario-action="'
+            + esc(actions.toVoice) + '">' + esc(t('habitHubGlobalOpenVoice', '配语音')) + '</button>';
+        }
+        if (spec.panel !== 'camera' && actions.toCamera) {
+          channelBtns +=
+            '<button type="button" class="page-status-btn is-muted settings-context-scenario-btn" data-habit-scenario-action="'
+            + esc(actions.toCamera) + '">' + esc(t('habitHubGlobalOpenCamera', '配摄像头')) + '</button>';
+        }
+        if (spec.panel !== 'keys' && actions.toKeys) {
+          channelBtns +=
+            '<button type="button" class="page-status-btn is-muted settings-context-scenario-btn" data-habit-scenario-action="'
+            + esc(actions.toKeys) + '">' + esc(t('habitHubGlobalOpenKeys', '配按键')) + '</button>';
+        }
+      }
     }
-    if (spec.panel !== 'voice' && actions.toVoice) {
-      html += '<button type="button" class="page-status-btn is-muted settings-context-scenario-btn" data-habit-scenario-action="'
-        + esc(actions.toVoice) + '">' + esc(t('habitHubGlobalOpenVoice', '配语音')) + '</button>';
+    // Keys page: keep Save primary; fold hub / follow / channel jumps into ⋯
+    if (spec.panel === 'keys') {
+      var moreInner = hubBtn + followBtn + channelBtns;
+      return (
+        saveBtn
+        + '<details class="settings-context-more">'
+        + '<summary class="page-status-btn is-muted settings-context-more__sum" aria-label="'
+        + esc(t('settingsContextMore', '更多')) + '">⋯</summary>'
+        + '<div class="settings-context-more__menu" role="menu">' + moreInner + '</div>'
+        + '</details>'
+      );
     }
-    if (spec.panel !== 'camera' && actions.toCamera) {
-      html += '<button type="button" class="page-status-btn is-muted settings-context-scenario-btn" data-habit-scenario-action="'
-        + esc(actions.toCamera) + '">' + esc(t('habitHubGlobalOpenCamera', '配摄像头')) + '</button>';
-    }
-    if (spec.panel !== 'keys' && actions.toKeys) {
-      html += '<button type="button" class="page-status-btn is-muted settings-context-scenario-btn" data-habit-scenario-action="'
-        + esc(actions.toKeys) + '">' + esc(t('habitHubGlobalOpenKeys', '配按键')) + '</button>';
-    }
-    return html;
+    return hubBtn + followBtn + saveBtn + channelBtns;
   }
 
   function clickScenarioAction(actionId) {
@@ -388,6 +409,14 @@
       if(scenarioBtn){
         e.preventDefault();
         clickScenarioAction(scenarioBtn.getAttribute('data-habit-scenario-action'));
+        var more=scenarioBtn.closest&&scenarioBtn.closest('details.settings-context-more');
+        if(more) more.open=false;
+        return;
+      }
+      var moreItem=e.target.closest&&e.target.closest('details.settings-context-more .page-status-btn');
+      if(moreItem){
+        var det=moreItem.closest('details');
+        if(det) setTimeout(function(){ det.open=false; }, 0);
       }
     });
   }

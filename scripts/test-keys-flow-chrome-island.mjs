@@ -119,10 +119,13 @@ check('岛含 sync bridge', islandTsx.includes('__otKeysFlowChromeSync'));
 
 const html = readFileSync(join(root, 'src/index.html'), 'utf8');
 check('index 含 keysFlowNodes', html.includes('id="keysFlowNodes"'));
+check('keys hero 用直线箭头连线', html.includes('keys-flow-link') && html.includes('keys-flow-grid--linked'));
+check('keys hero 不再用弯轨 SVG', !html.includes('id="keysFlowGrad"'));
 
 const keysCss = readFileSync(join(root, 'src/css/keys-workflow.css'), 'utf8');
 check('desk hides inactive keys step', keysCss.includes('keys-page-desk .habit-flow-step.keys-workflow-col:not(.is-active-step)') && keysCss.includes('display: none !important'));
 check('desk trigger compact stack', keysCss.includes('is-step-trigger') && keysCss.includes('#habitKeyMapRowTrigger .keys-step-body') && keysCss.includes('flex: 0 0 auto'));
+check('trigger 用法一行 meta', keysCss.includes('is-step-trigger .keys-trigger-modes--detected') && keysCss.includes('keysTriggerModeFooterLbl'));
 
 console.log(`[keys-flow-chrome] ${pass} 通过 / ${fail} 失败`);
 if (fail > 0) process.exit(1);

@@ -867,20 +867,7 @@
                 </aside>
                 <div class="keys-workflow-pipeline" id="keysWorkflowPipeline">
                 <section class="flow-nodes" id="keysFlowNodes" role="tablist" aria-label="触发流程导航">
-                  <div class="flow-nodes-track" aria-hidden="true">
-                    <svg class="flow-nodes-svg" viewBox="0 0 500 8" fill="none" preserveAspectRatio="none">
-                      <defs>
-                        <linearGradient id="keysFlowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                          <stop offset="0%" stop-color="rgba(79, 172, 254, 0.85)" />
-                          <stop offset="50%" stop-color="rgba(42, 156, 196, 0.95)" />
-                          <stop offset="100%" stop-color="rgba(245, 158, 11, 0.85)" />
-                        </linearGradient>
-                      </defs>
-                      <path class="flow-nodes-path-base" d="M 0,4 Q 125,-5 250,4 T 500,4" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-                      <path class="flow-nodes-path" d="M 0,4 Q 125,-5 250,4 T 500,4" stroke="url(#keysFlowGrad)" stroke-width="3" stroke-linecap="round"/>
-                    </svg>
-                  </div>
-                  <div class="flow-nodes-grid flow-nodes-grid--two">
+                  <div class="flow-nodes-grid flow-nodes-grid--two keys-flow-grid--linked">
                     <div class="flow-node" data-keys-node="trigger">
                       <span class="flow-node-tag" id="keysFlowNodeTriggerTag">01 / 触发</span>
                       <button type="button" class="flow-node-btn is-active" id="keysFlowNodeTrigger" role="tab" aria-selected="true" aria-labelledby="keysFlowNodeTriggerTitle" aria-controls="habitKeyMapRowTrigger">
@@ -888,6 +875,10 @@
                       </button>
                       <h3 class="flow-node-title" id="keysFlowNodeTriggerTitle">触发</h3>
                       <p class="flow-node-hint" id="keysFlowNodeTriggerHint"></p>
+                    </div>
+                    <div class="keys-flow-link" aria-hidden="true">
+                      <span class="keys-flow-link-line"></span>
+                      <span class="keys-flow-link-arrow"></span>
                     </div>
                     <div class="flow-node" data-keys-node="target">
                       <span class="flow-node-tag" id="keysFlowNodeTargetTag">02 / 识别</span>
@@ -915,11 +906,11 @@
                       <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTrigger" role="button" tabindex="0" aria-label="点击修改快捷键" title=""></div>
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTrigger"></div>
                     </div>
-                    <p class="keys-keycap-hint" id="keysKeycapHint">点击修改快捷键</p>
                     </div>
                     <div class="keys-workflow-footer-zone keys-trigger-modes-block">
                       <p class="habit-flow-subsection-title" id="keysTriggerModeFooterLbl">录到的用法</p>
                       <div class="keys-trigger-modes-host" id="keysTriggerModeHost"></div>
+                      <p class="keys-keycap-hint" id="keysKeycapHint">点击修改快捷键</p>
                       <div class="keys-trigger-conflict" id="keysTriggerConflict" hidden role="alert"></div>
                       <div class="keys-test-progress" id="keysTestProgress" hidden aria-live="polite">
                         <span class="keys-test-progress-dot" aria-hidden="true"></span>
@@ -1159,6 +1150,9 @@
                 <button type="button" class="keys-scene-actions__back" id="keysSceneActionsBack" hidden data-i18n="keysSceneActionsBack">收起</button>
               </div>
               <div class="keys-scene-actions__dir" id="keysSceneActionsDir" role="list"></div>
+              <div class="keys-scene-actions__foot">
+                <button type="button" class="keys-scene-actions__add" id="keysSceneActionsAdd" data-add="1">＋ 新建动作</button>
+              </div>
               <div class="keys-scene-actions__detail" id="keysSceneActionsDetail" hidden>
                 <div class="keys-scene-actions__picks" id="keysSceneActionsPicks"></div>
                 <div class="keys-scene-actions__edit" id="keysSceneActionsEdit"></div>

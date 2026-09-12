@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>按键页 · 紧凑工作台原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #ffffff;
+      --wash: #f3f7fa;
+      --aside: #f8fafc;
+      --bg: #e8eef3;
+      --cyan: #2a9cc4;
+      --cyan-ink: #0f5f7a;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --ok: #15803d;
+      --ok-soft: #ecfdf5;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(640px 280px at 12% -8%, rgba(42, 156, 196, 0.1), transparent 55%),
+        radial-gradient(480px 220px at 96% 0%, rgba(19, 32, 44, 0.04), transparent 50%),
+        var(--bg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    .proto-bar {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+      padding: 10px 16px;
+      background: #13202c; color: #c5d0de;
+      font-size: 12.5px; line-height: 1.45;
+    }
+    .proto-bar strong { color: #fff; }
+    .proto-bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; }
+    .proto-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+    .proto-toggles button {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: #e2e8f0;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font: inherit; font-size: 11.5px; font-weight: 650;
+      cursor: pointer;
+      transition: background 150ms var(--ease), transform 130ms var(--ease);
+    }
+    .proto-toggles button:hover { background: rgba(255,255,255,0.12); }
+    .proto-toggles button:active { transform: scale(0.97); }
+    .proto-toggles button.is-on {
+      background: rgba(42, 156, 196, 0.38);
+      border-color: rgba(125, 211, 252, 0.45);
+      color: #fff;
+    }
+
+    .shell {
+      width: min(1120px, 100%);
+      margin: 18px auto 40px;
+      padding: 0 14px;
+    }
+
+    .frame {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 18px 40px rgba(19, 32, 44, 0.08);
+      min-height: 560px;
+      display: flex; flex-direction: column;
+    }
+
+    /* —— shared chrome —— */
+    .topbar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+      padding: 10px 14px;
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+    }
+    .top-ctx {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      font-size: 13px; font-weight: 650;
+    }
+    .top-ctx .sep { color: var(--faint); font-weight: 450; }
+    .badge-ok {
+      font-size: 11px; font-weight: 650;
+      padding: 2px 8px; border-radius: 999px;
+      background: var(--ok-soft); color: var(--ok);
+      border: 1px solid #86efac;
+    }
+    .scene {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font: inherit; font-size: 12px; font-weight: 650;
+      color: var(--muted);
+      cursor: default;
+    }
+    .top-acts {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 7px 12px;
+      font: inherit; font-size: 12.5px; font-weight: 650;
+      cursor: pointer;
+      transition: transform 130ms var(--ease), filter 140ms var(--ease);
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn.primary {
+      border-color: transparent;
+      background: var(--cyan); color: #fff;
+    }
+    .btn.primary:hover { filter: brightness(1.05); }
+    .btn.ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: transparent;
+      padding-inline: 8px;
+    }
+    .btn.icon {
+      width: 34px; height: 34px; padding: 0;
+      border-radius: 999px;
+      display: grid; place-items: center;
+      color: var(--muted);
+    }
+    .btn.icon svg { width: 16px; height: 16px; }
+    .more { position: relative; }
+    .more-menu {
+      display: none;
+      position: absolute; right: 0; top: calc(100% + 6px);
+      min-width: 160px;
+      padding: 6px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 12px 28px rgba(19, 32, 44, 0.12);
+      z-index: 5;
+    }
+    .more.is-open .more-menu { display: grid; gap: 2px; }
+    .more-menu button {
+      border: 0; background: transparent;
+      text-align: left;
+      padding: 8px 10px; border-radius: 8px;
+      font: inherit; font-size: 12.5px; font-weight: 550;
+      color: var(--ink); cursor: pointer;
+    }
+    .more-menu button:hover { background: var(--wash); }
+
+    .workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 248px;
+      min-height: 0;
+      background: var(--wash);
+    }
+    @media (max-width: 860px) {
+      .workspace { grid-template-columns: 1fr; }
+      .aside { border-left: none; border-top: 1px solid var(--line); }
+    }
+
+    /* ========== BEFORE: sparse two cards ========== */
+    .view-before .desk {
+      padding: 12px 14px 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      overflow: auto;
+    }
+    .view-before .hero,
+    .view-before .stage-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+    }
+    .view-before .hero {
+      padding: 28px 18px 24px;
+      display: flex; justify-content: center;
+      min-height: 160px;
+    }
+    .view-before .flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+      width: min(420px, 100%);
+    }
+    .view-before .node {
+      display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+    }
+    .view-before .node-tag {
+      font-family: var(--mono); font-size: 10px; font-weight: 650;
+      color: var(--cyan-ink);
+      background: rgba(42,156,196,0.08);
+      border: 1px solid rgba(42,156,196,0.22);
+      border-radius: 999px; padding: 2px 8px;
+    }
+    .view-before .node-btn {
+      width: 52px; height: 52px; border-radius: 16px;
+      border: 1.5px solid rgba(42,156,196,0.55);
+      background: var(--cyan-soft); color: var(--cyan-ink);
+      display: grid; place-items: center;
+      box-shadow: 0 0 0 3px rgba(42,156,196,0.12);
+    }
+    .view-before .node-btn.dim {
+      border-color: var(--line); background: var(--paper); color: var(--muted);
+      box-shadow: none;
+    }
+    .view-before .node-btn svg { width: 22px; height: 22px; }
+    .view-before .node-title { margin: 0; font-size: 13px; font-weight: 750; }
+    .view-before .node-hint { margin: 0; font-family: var(--mono); font-size: 12px; font-weight: 650; color: var(--muted); }
+    .view-before .arrow {
+      width: 48px; height: 2px; background: var(--cyan); opacity: 0.55; position: relative; margin-top: 18px;
+    }
+    .view-before .arrow::after {
+      content: ""; position: absolute; right: -1px; top: -4px;
+      border: 5px solid transparent; border-left-color: var(--cyan);
+    }
+    .view-before .stage-card {
+      flex: 1;
+      min-height: 280px;
+      padding: 40px 22px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 12px;
+      background-image: radial-gradient(420px 180px at 50% 18%, rgba(42,156,196,0.08), transparent 70%);
+    }
+    .view-before .key-block {
+      width: 120px; height: 120px; border-radius: 18px;
+      border: 1.5px solid var(--cyan-bd);
+      background: linear-gradient(180deg, #f7fcfe, #eef8fc);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    }
+    .view-before .key-block svg { width: 28px; height: 28px; color: var(--cyan-ink); }
+    .view-before .key-block b { font-size: 18px; font-weight: 750; letter-spacing: -0.02em; }
+    .view-before .meta { margin: 0; font-size: 13px; color: var(--muted); }
+    .view-before .hint { margin: 0; font-size: 12px; color: var(--faint); }
+
+    .view-before .aside-dir { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .view-before .aside-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 10px; border-radius: 10px;
+      border: 1px solid transparent;
+    }
+    .view-before .aside-item.is-on {
+      background: var(--paper); border-color: var(--cyan-bd);
+    }
+    .view-before .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex: 0 0 auto;
+    }
+    .view-before .aside-item div { min-width: 0; }
+    .view-before .aside-item strong {
+      display: block; font-size: 13px; font-weight: 650;
+    }
+    .view-before .aside-item span {
+      font-size: 11.5px; color: var(--muted); font-family: var(--mono); font-weight: 650;
+    }
+    .view-before .aside-foot {
+      margin-top: auto; padding: 10px; border-top: 1px solid var(--line);
+    }
+
+    /* ========== AFTER: keep original hero, tighten stage + chrome ========== */
+    .view-after .desk {
+      padding: 12px 14px 16px;
+      display: flex; flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    /* original hero — same structure as live desk */
+    .view-after .hero {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px 14px;
+    }
+    .view-after .flow-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px 10px;
+    }
+    .view-after .flow-node {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 6px; text-align: center;
+    }
+    .view-after .flow-tag {
+      font-family: var(--mono);
+      font-size: 10px; font-weight: 650; letter-spacing: 0.04em;
+      color: var(--cyan-ink);
+      background: rgba(42, 156, 196, 0.08);
+      border: 1px solid rgba(42, 156, 196, 0.22);
+      border-radius: 999px;
+      padding: 2px 8px;
+    }
+    .view-after .flow-btn {
+      width: 52px; height: 52px; border-radius: 16px;
+      border: 1.5px solid var(--line);
+      background: var(--paper);
+      color: var(--muted);
+      display: grid; place-items: center;
+      cursor: pointer;
+      transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease), color 160ms var(--ease), transform 160ms var(--ease);
+    }
+    .view-after .flow-btn svg { width: 22px; height: 22px; }
+    .view-after .flow-btn:hover { border-color: var(--cyan-bd); color: var(--cyan-ink); }
+    .view-after .flow-btn:active { transform: scale(0.96); }
+    .view-after .flow-btn:focus-visible { outline: 2px solid rgba(42,156,196,0.45); outline-offset: 3px; }
+    .view-after .flow-btn.is-active {
+      border-color: rgba(42, 156, 196, 0.55);
+      color: var(--cyan-ink);
+      background: var(--cyan-soft);
+      box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.12);
+      transform: scale(1.04);
+    }
+    .view-after .flow-title { margin: 0; font-size: 14px; font-weight: 750; letter-spacing: -0.02em; }
+    .view-after .flow-hint {
+      margin: 0; max-width: 220px;
+      font-family: var(--mono); font-size: 12px; font-weight: 650;
+      color: var(--muted); line-height: 1.35; min-height: 1.35em;
+    }
+    .view-after .flow-hint .mark {
+      display: inline-block; margin-left: 4px; padding: 0 6px;
+      border-radius: 999px; font-size: 11px;
+      color: var(--cyan-ink);
+      background: rgba(42, 156, 196, 0.14);
+      border: 1px solid rgba(42, 156, 196, 0.26);
+      vertical-align: 1px;
+    }
+    .view-after .flow-node.is-dim .flow-title,
+    .view-after .flow-node.is-dim .flow-hint { color: var(--faint); }
+    .view-after .flow-node.is-dim .flow-tag {
+      color: var(--faint);
+      background: rgba(132, 148, 166, 0.08);
+      border-color: rgba(132, 148, 166, 0.2);
+    }
+    .view-after .flow-link {
+      align-self: center;
+      margin-top: 18px;
+      display: flex; align-items: center;
+      color: var(--cyan);
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .view-after .flow-link-line {
+      width: clamp(36px, 8vw, 72px);
+      height: 2px;
+      border-radius: 2px;
+      background: var(--cyan);
+    }
+    .view-after .flow-link-arrow {
+      width: 0; height: 0;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      border-left: 7px solid var(--cyan);
+    }
+
+    /* stage sits under hero — content-sized, not a tall empty card */
+    .view-after .stage {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px 22px 18px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px;
+      background-image: radial-gradient(380px 140px at 50% 20%, rgba(42,156,196,0.07), transparent 68%);
+      background-color: var(--paper);
+    }
+    .keycap {
+      --press: 0;
+      position: relative;
+      width: min(100%, 280px);
+      min-height: 104px;
+      padding: 20px 18px 16px;
+      border: 0; border-radius: 14px;
+      background: linear-gradient(180deg, #fcfeff 0%, #eef5f9 100%);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.9) inset,
+        0 -2px 0 rgba(19,32,44,0.06) inset,
+        0 calc(5px - var(--press) * 3px) 0 #c5d4df,
+        0 calc(6px - var(--press) * 3px) 14px rgba(19,32,44,0.12);
+      transform: translateY(calc(var(--press) * 3px));
+      cursor: pointer; user-select: none;
+      text-align: left; font: inherit; color: inherit;
+      transition: transform 120ms var(--ease), box-shadow 120ms var(--ease);
+    }
+    .keycap:hover { background: linear-gradient(180deg, #ffffff 0%, #f1f7fb 100%); }
+    .keycap:active, .keycap.is-down { --press: 1; }
+    .keycap:focus-visible { outline: 2px solid rgba(42,156,196,0.5); outline-offset: 4px; }
+    .keycap-top {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+    }
+    .keycap-name {
+      margin: 0; font-size: 26px; font-weight: 750;
+      letter-spacing: -0.04em; line-height: 1.1;
+    }
+    .keycap-gesture {
+      font-family: var(--mono); font-size: 12px; font-weight: 650;
+      color: var(--cyan-ink);
+      background: rgba(42,156,196,0.12);
+      border: 1px solid rgba(42,156,196,0.22);
+      border-radius: 8px; padding: 3px 8px; white-space: nowrap;
+    }
+    .keycap-meta {
+      margin: 10px 0 0;
+      font-size: 12.5px; color: var(--muted); line-height: 1.35;
+    }
+    .keycap-meta strong { color: var(--ink); font-weight: 650; }
+    .hint {
+      margin: 0; font-size: 12px; color: var(--faint); min-height: 1.2em;
+    }
+    .hint.is-action { color: var(--cyan-ink); font-weight: 650; }
+
+    /* aside shared */
+    .aside {
+      border-left: 1px solid var(--line);
+      background: var(--aside);
+      display: flex; flex-direction: column;
+      min-height: 0;
+    }
+    .aside-head {
+      padding: 12px 12px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .aside-app {
+      display: flex; align-items: center; gap: 7px; margin-bottom: 2px;
+    }
+    .aside-app-ico {
+      width: 16px; height: 16px; border-radius: 4px;
+      background: linear-gradient(145deg, #35c6ff, #087fc4);
+    }
+    .aside-app-name { font-size: 11px; font-weight: 650; color: var(--faint); }
+    .aside-title { margin: 0; font-size: 13px; font-weight: 750; letter-spacing: -0.02em; }
+    .aside-meta { margin: 2px 0 0; font-size: 11.5px; color: var(--faint); }
+
+    .view-after .dir {
+      list-style: none; margin: 0; padding: 6px;
+      display: flex; flex-direction: column; gap: 2px;
+      flex: 0 0 auto;
+    }
+    .view-after .dir-item {
+      display: grid;
+      grid-template-columns: 3px minmax(0, 1fr) auto;
+      align-items: center; gap: 8px;
+      width: 100%;
+      padding: 9px 10px 9px 8px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      cursor: pointer; text-align: left;
+      font: inherit; color: inherit;
+      transition: background 140ms var(--ease), border-color 140ms var(--ease), transform 120ms var(--ease);
+    }
+    .view-after .dir-item:hover { background: rgba(42,156,196,0.06); }
+    .view-after .dir-item:active { transform: scale(0.98); }
+    .view-after .dir-rail {
+      align-self: stretch; width: 3px; border-radius: 2px; background: transparent;
+    }
+    .view-after .dir-item.is-active {
+      background: var(--paper);
+      border-color: var(--cyan-bd);
+    }
+    .view-after .dir-item.is-active .dir-rail { background: var(--cyan); }
+    .view-after .dir-copy { min-width: 0; }
+    .view-after .dir-name {
+      display: block; font-size: 13px; font-weight: 650;
+      letter-spacing: -0.01em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .view-after .dir-sub {
+      display: block; margin-top: 1px;
+      font-family: var(--mono); font-size: 11px; font-weight: 650;
+      color: var(--muted);
+    }
+    .view-after .dir-item.is-active .dir-sub { color: var(--cyan-ink); }
+    .view-after .dir-add {
+      margin: 4px 6px 10px;
+      border: 1px dashed var(--line);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 10px;
+      padding: 9px 10px;
+      font: inherit; font-size: 12.5px; font-weight: 650;
+      cursor: pointer; text-align: left;
+      transition: background 140ms var(--ease), border-color 140ms var(--ease), color 140ms var(--ease);
+    }
+    .view-after .dir-add:hover {
+      background: rgba(42,156,196,0.06);
+      border-color: var(--cyan-bd);
+      color: var(--cyan-ink);
+    }
+
+    .note {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px dashed var(--line);
+      background: rgba(255,255,255,0.55);
+      font-size: 12.5px; color: var(--muted); line-height: 1.55;
+    }
+    .note h2 {
+      margin: 0 0 6px; font-size: 13px; color: var(--ink); font-weight: 750;
+    }
+    .note ul { margin: 0; padding-left: 1.15em; }
+    .note li + li { margin-top: 4px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="proto-bar">
+    <div>
+      <strong>按键页原型 · 保留原 hero</strong>
+      — 对照截图场景（Cursor / 左 Ctrl）；优化只动舞台/顶栏/侧栏。
+      <a href="./keys-page-full.html">整页旧稿</a>
+    </div>
+    <div class="proto-toggles" role="group" aria-label="对比">
+      <button type="button" data-view="before">现状</button>
+      <button type="button" class="is-on" data-view="after">优化</button>
+    </div>
+  </div>
+
+  <div class="shell">
+    <!-- ========== BEFORE ========== -->
+    <div class="frame view-before" id="viewBefore" hidden>
+      <header class="topbar">
+        <div class="top-ctx">
+          <span>按键</span><span class="sep">/</span><span>正在编辑: Cursor</span>
+          <span class="badge-ok">已与前台一致</span>
+          <span class="scene">切换 · Cursor 场景 · 左 Ctrl ×2</span>
+        </div>
+        <div class="top-acts">
+          <button type="button" class="btn ghost">我的习惯</button>
+          <button type="button" class="btn ghost">回到前台</button>
+          <button type="button" class="btn primary">保存应用场景</button>
+          <button type="button" class="btn icon" aria-label="配录音" title="配录音">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v3"/></svg>
+          </button>
+          <button type="button" class="btn icon" aria-label="配摄像头" title="配摄像头">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h12a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Z"/><path d="m17 11 5-3v8l-5-3"/></svg>
+          </button>
+          <button type="button" class="btn ghost">返回</button>
+        </div>
+      </header>
+      <div class="workspace">
+        <main class="desk">
+          <section class="hero" aria-label="流程">
+            <div class="flow">
+              <div class="node">
+                <span class="node-tag">01 / 触发</span>
+                <div class="node-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M7 11h2M11 11h2M15 11h2M9 15h6"/></svg>
+                </div>
+                <p class="node-title">触发</p>
+                <p class="node-hint">左 Ctrl</p>
+              </div>
+              <div class="arrow" aria-hidden="true"></div>
+              <div class="node">
+                <span class="node-tag">02 / 识别</span>
+                <div class="node-btn dim">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h2l2-4 3 8 2-5 2 3h5"/></svg>
+                </div>
+                <p class="node-title">识别</p>
+                <p class="node-hint">右 Alt</p>
+              </div>
+            </div>
+          </section>
+          <section class="stage-card" aria-label="编辑">
+            <div class="key-block">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M7 11h2M11 11h2M15 11h2M9 15h6"/></svg>
+              <b>左 Ctrl</b>
+            </div>
+            <p class="meta">双击开关 · 再双击结束</p>
+            <p class="hint">点击修改快捷键</p>
+          </section>
+        </main>
+        <aside class="aside">
+          <div class="aside-head">
+            <div class="aside-app">
+              <span class="aside-app-ico" aria-hidden="true"></span>
+              <span class="aside-app-name">Cursor</span>
+            </div>
+            <h3 class="aside-title">本场景动作</h3>
+            <p class="aside-meta">2 个动作</p>
+          </div>
+          <div class="aside-dir">
+            <div class="aside-item is-on">
+              <span class="dot" aria-hidden="true"></span>
+              <div>
+                <strong>语音输入</strong>
+                <span>左 Ctrl ×2</span>
+              </div>
+            </div>
+            <div class="aside-item">
+              <span class="dot" aria-hidden="true"></span>
+              <div>
+                <strong>语音输入</strong>
+                <span>左 Ctrl + S ×2</span>
+              </div>
+            </div>
+          </div>
+          <div class="aside-foot">
+            <button type="button" class="btn" style="width:100%">＋ 新增动作</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ========== AFTER ========== -->
+    <div class="frame view-after" id="viewAfter">
+      <header class="topbar">
+        <div class="top-ctx">
+          <span>按键</span><span class="sep">/</span><span>Cursor</span>
+          <span class="badge-ok">已同步</span>
+          <span class="scene">场景 · 左 Ctrl ×2 ▾</span>
+        </div>
+        <div class="top-acts">
+          <button type="button" class="btn primary">保存</button>
+          <div class="more" id="moreWrap">
+            <button type="button" class="btn icon" id="moreBtn" aria-expanded="false" aria-haspopup="true" aria-label="更多">
+              <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+            </button>
+            <div class="more-menu" role="menu">
+              <button type="button" role="menuitem">我的习惯</button>
+              <button type="button" role="menuitem">回到前台</button>
+              <button type="button" role="menuitem">配录音</button>
+              <button type="button" role="menuitem">配摄像头</button>
+            </div>
+          </div>
+          <button type="button" class="btn ghost">返回</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <main class="desk">
+          <section class="hero" id="hero" aria-label="触发流程">
+            <div class="flow-grid">
+              <div class="flow-node" id="nodeTrigger">
+                <span class="flow-tag">01 / 触发</span>
+                <button type="button" class="flow-btn is-active" id="btnTrigger" data-step="trigger" aria-label="第一步：触发">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="2" y="5" width="20" height="14" rx="2"/>
+                    <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/>
+                  </svg>
+                </button>
+                <h3 class="flow-title">触发</h3>
+                <p class="flow-hint" id="hintTrigger">左 Ctrl<span class="mark">×2</span></p>
+              </div>
+              <div class="flow-link" aria-hidden="true">
+                <span class="flow-link-line"></span>
+                <span class="flow-link-arrow"></span>
+              </div>
+              <div class="flow-node is-dim" id="nodeTarget">
+                <span class="flow-tag">02 / 识别</span>
+                <button type="button" class="flow-btn" id="btnTarget" data-step="target" aria-label="第二步：识别">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                  </svg>
+                </button>
+                <h3 class="flow-title">识别</h3>
+                <p class="flow-hint" id="hintTarget">右 Alt</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="stage" id="stage" aria-label="编辑舞台">
+            <button type="button" class="keycap" id="keycap" aria-label="点击修改触发键">
+              <div class="keycap-top">
+                <p class="keycap-name" id="keycapName">左 Ctrl</p>
+                <span class="keycap-gesture" id="keycapGesture">×2</span>
+              </div>
+              <p class="keycap-meta" id="keycapMeta"><strong>双击开关</strong> · 再双击结束</p>
+            </button>
+            <p class="hint is-action" id="hint">点击修改快捷键</p>
+          </section>
+        </main>
+
+        <aside class="aside" aria-label="本场景动作">
+          <div class="aside-head">
+            <div class="aside-app">
+              <span class="aside-app-ico" aria-hidden="true"></span>
+              <span class="aside-app-name">Cursor</span>
+            </div>
+            <h3 class="aside-title">本场景动作</h3>
+            <p class="aside-meta">2 个动作</p>
+          </div>
+          <div class="dir" role="list" id="dir">
+            <button type="button" class="dir-item is-active" role="listitem"
+              data-name="组合输入" data-key="左 Ctrl" data-mark="×2"
+              data-meta="双击开关 · 再双击结束" data-out="识别 · 右 Alt" data-target="右 Alt">
+              <span class="dir-rail" aria-hidden="true"></span>
+              <span class="dir-copy">
+                <span class="dir-name">组合输入</span>
+                <span class="dir-sub">左 Ctrl ×2</span>
+              </span>
+            </button>
+            <button type="button" class="dir-item" role="listitem"
+              data-name="语音输入" data-key="左 Ctrl + S" data-mark="×2"
+              data-meta="双击开关 · 再双击结束" data-out="识别 · 右 Alt" data-target="右 Alt">
+              <span class="dir-rail" aria-hidden="true"></span>
+              <span class="dir-copy">
+                <span class="dir-name">语音输入</span>
+                <span class="dir-sub">左 Ctrl + S ×2</span>
+              </span>
+            </button>
+          </div>
+          <button type="button" class="dir-add">＋ 新增动作</button>
+        </aside>
+      </div>
+    </div>
+
+    <div class="note">
+      <h2>相对现状改了什么</h2>
+      <ul>
+        <li><strong>保留原 hero</strong>：仍是 01 触发 → 02 识别，键盘 + 波形图标与直线箭头不变。</li>
+        <li><strong>舞台收紧</strong>：下方编辑卡按内容高度，不再撑出大片空白；键帽作唯一焦点。</li>
+        <li><strong>顶栏瘦身</strong>：主栏只留保存 / 更多 / 返回；习惯、录音、摄像头进溢出菜单。</li>
+        <li><strong>文案分层</strong>：键帽内写运行时行为；下方才是「点击修改」。</li>
+        <li><strong>侧栏可扫</strong>：动作名可区分 + 左边选中条；「新增」贴列表，不悬空。</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var before = document.getElementById("viewBefore");
+      var after = document.getElementById("viewAfter");
+      var toggles = document.querySelectorAll("[data-view]");
+
+      function setView(name) {
+        var isAfter = name === "after";
+        before.hidden = isAfter;
+        after.hidden = !isAfter;
+        toggles.forEach(function (btn) {
+          btn.classList.toggle("is-on", btn.getAttribute("data-view") === name);
+        });
+      }
+
+      toggles.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          setView(btn.getAttribute("data-view"));
+        });
+      });
+
+      var moreWrap = document.getElementById("moreWrap");
+      var moreBtn = document.getElementById("moreBtn");
+      if (moreBtn) {
+        moreBtn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          var open = moreWrap.classList.toggle("is-open");
+          moreBtn.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+        document.addEventListener("click", function () {
+          moreWrap.classList.remove("is-open");
+          moreBtn.setAttribute("aria-expanded", "false");
+        });
+      }
+
+      var keycap = document.getElementById("keycap");
+      var keycapName = document.getElementById("keycapName");
+      var keycapGesture = document.getElementById("keycapGesture");
+      var keycapMeta = document.getElementById("keycapMeta");
+      var hint = document.getElementById("hint");
+      var hintTrigger = document.getElementById("hintTrigger");
+      var hintTarget = document.getElementById("hintTarget");
+      var nodeTrigger = document.getElementById("nodeTrigger");
+      var nodeTarget = document.getElementById("nodeTarget");
+      var btnTrigger = document.getElementById("btnTrigger");
+      var btnTarget = document.getElementById("btnTarget");
+      var current = { key: "左 Ctrl", mark: "×2", meta: "双击开关 · 再双击结束", out: "识别 · 右 Alt", target: "右 Alt" };
+      var mode = "trigger";
+
+      function paint() {
+        if (mode === "trigger") {
+          keycapName.textContent = current.key;
+          keycapGesture.hidden = !current.mark;
+          keycapGesture.textContent = current.mark || "";
+          keycapMeta.innerHTML = "<strong>" + current.meta.split(" · ")[0] + "</strong> · " + (current.meta.split(" · ")[1] || "");
+          hint.textContent = "点击修改快捷键";
+          hint.classList.add("is-action");
+          btnTrigger.classList.add("is-active");
+          btnTarget.classList.remove("is-active");
+          nodeTrigger.classList.remove("is-dim");
+          nodeTarget.classList.add("is-dim");
+        } else {
+          keycapName.textContent = current.target;
+          keycapGesture.hidden = true;
+          keycapMeta.innerHTML = "识别键 · 用于结束或切通道";
+          hint.textContent = "点击修改识别键";
+          hint.classList.add("is-action");
+          btnTarget.classList.add("is-active");
+          btnTrigger.classList.remove("is-active");
+          nodeTarget.classList.remove("is-dim");
+          nodeTrigger.classList.add("is-dim");
+        }
+        hintTrigger.innerHTML = current.key + (current.mark ? '<span class="mark">' + current.mark + "</span>" : "");
+        hintTarget.textContent = current.target;
+      }
+
+      function setStep(step) {
+        mode = step;
+        paint();
+      }
+
+      btnTrigger.addEventListener("click", function () { setStep("trigger"); });
+      btnTarget.addEventListener("click", function () { setStep("target"); });
+
+      document.querySelectorAll(".view-after .dir-item").forEach(function (item) {
+        item.addEventListener("click", function () {
+          document.querySelectorAll(".view-after .dir-item").forEach(function (el) {
+            el.classList.toggle("is-active", el === item);
+          });
+          current = {
+            key: item.getAttribute("data-key"),
+            mark: item.getAttribute("data-mark"),
+            meta: item.getAttribute("data-meta"),
+            out: item.getAttribute("data-out"),
+            target: item.getAttribute("data-target")
+          };
+          paint();
+        });
+      });
+
+      if (keycap) {
+        keycap.addEventListener("mousedown", function () { keycap.classList.add("is-down"); });
+        keycap.addEventListener("mouseup", function () { keycap.classList.remove("is-down"); });
+        keycap.addEventListener("mouseleave", function () { keycap.classList.remove("is-down"); });
+        keycap.addEventListener("click", function () {
+          hint.textContent = "录制中… 按下目标键";
+        });
+      }
+
+      paint();
+    })();
+  </script>
+</body>
+</html>

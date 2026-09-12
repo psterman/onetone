@@ -74,9 +74,11 @@ check(
     !/#settingsPanelKeys \.keys-channel-tree[\s\S]{0,500}?justify-content:\s*space-between/.test(css)
 );
 check(
-  'ime strip below keycap, centered',
-  /#settingsPanelKeys \.keys-ime-strip-wrap[\s\S]{0,400}?align-items:\s*center/.test(css) &&
-    /#settingsPanelKeys \.keys-ime-strip-wrap \.ime-preset-strip[\s\S]{0,200}?justify-content:\s*center/.test(
+  'ime strip below keycap without wash card',
+  /#settingsPanelKeys \.keys-ime-strip-wrap[\s\S]{0,400}?align-items:\s*stretch/.test(css) &&
+    /#settingsPanelKeys \.keys-ime-strip-wrap[\s\S]{0,400}?background:\s*transparent/.test(css) &&
+    /#settingsPanelKeys \.keys-ime-strip-wrap[\s\S]{0,400}?border:\s*0/.test(css) &&
+    /#settingsPanelKeys \.keys-ime-strip-wrap \.ime-preset-strip[\s\S]{0,200}?justify-content:\s*flex-start/.test(
       css
     )
 );

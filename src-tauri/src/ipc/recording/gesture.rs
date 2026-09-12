@@ -37,6 +37,22 @@ pub(super) fn handle_record_gesture_event(
     is_keyup: bool,
 ) -> bool {
     let now = Instant::now();
+    // Late FE IPC keydown (or bounce) after real keyup must not count as ×2.
+    if !is_keyup {
+        let waiting = state
+            .record_gesture
+            .lock()
+            .is_waiting_double_for(key, device);
+        if waiting && !is_key_physically_down(key) {
+            emit_record_gesture_hint(
+                window,
+                &RecordGestureHint::WaitingDouble {
+                    key: key.to_string(),
+                },
+            );
+            return true;
+        }
+    }
     let mut detector = state.record_gesture.lock();
     let result = if is_keyup {
         detector.on_keyup(key, device, now)
@@ -71,23 +87,48 @@ pub(super) fn is_modifier_token(key: &str) -> bool {
     )
 }
 
-pub(super) fn collect_pressed_side_modifiers() -> Vec<String> {
+fn modifier_vk(key: &str) -> Option<i32> {
+    match key {
+        "LCtrl" => Some(0xA2),
+        "RCtrl" => Some(0xA3),
+        "LShift" => Some(0xA0),
+        "RShift" => Some(0xA1),
+        "LAlt" => Some(0xA4),
+        "RAlt" => Some(0xA5),
+        "LWin" => Some(0x5B),
+        "RWin" => Some(0x5C),
+        _ => None,
+    }
+}
+
+/// True when the OS still reports the key down. Used to reject stale
+/// keydown echoes that arrive after the user already released.
+pub(super) fn is_key_physically_down(key: &str) -> bool {
     use winapi::um::winuser::GetAsyncKeyState;
 
+    let vk = if let Some(v) = modifier_vk(key) {
+        v
+    } else if key.len() == 1 {
+        let c = key.chars().next().unwrap().to_ascii_uppercase();
+        if c.is_ascii_alphanumeric() {
+            c as i32
+        } else {
+            return true;
+        }
+    } else {
+        // Unknown token — do not block a real double.
+        return true;
+    };
+    unsafe { GetAsyncKeyState(vk) as u16 & 0x8000 != 0 }
+}
+
+pub(super) fn collect_pressed_side_modifiers() -> Vec<String> {
     let mut out = Vec::new();
-    let pairs: &[(i32, &str)] = &[
-        (0xA2, "LCtrl"),
-        (0xA3, "RCtrl"),
-        (0xA0, "LShift"),
-        (0xA1, "RShift"),
-        (0xA4, "LAlt"),
-        (0xA5, "RAlt"),
-        (0x5B, "LWin"),
-        (0x5C, "RWin"),
-    ];
-    for (vk, name) in pairs {
-        if unsafe { GetAsyncKeyState(*vk) } as u16 & 0x8000 != 0 {
-            out.push((*name).to_string());
+    for name in [
+        "LCtrl", "RCtrl", "LShift", "RShift", "LAlt", "RAlt", "LWin", "RWin",
+    ] {
+        if is_key_physically_down(name) {
+            out.push(name.to_string());
         }
     }
     out

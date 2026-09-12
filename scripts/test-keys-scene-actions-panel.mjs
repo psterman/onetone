@@ -35,6 +35,10 @@ check('aside node in index.html', html.includes('id="keysSceneActionsPanel"'));
 check('app brand hosts', html.includes('id="keysSceneActionsApp"') && html.includes('id="keysSceneActionsAppName"'));
 check('script tag mounted', html.includes('keys-scene-actions-panel.js'));
 check('dir host', html.includes('id="keysSceneActionsDir"'));
+check('add foot host', html.includes('keys-scene-actions__foot') && html.includes('id="keysSceneActionsAdd"'));
+check('prototype wash/paper/line tokens', /--keys-wash:\s*#f3f7fa/.test(css) && /--keys-line:\s*#d5dee8/.test(css));
+check('hero/stage use solid keys-line', /#keysFlowNodes\s*\{[^}]*border:\s*1px solid var\(--keys-line/.test(css) && /\.flow-desk-panel\s*\{[^}]*border:\s*1px solid var\(--keys-line/.test(css));
+check('aside foot sits under list', /\.keys-scene-actions__foot\s*\{[^}]*padding:\s*4px 8px 10px/.test(css));
 {
   const bodyStart = html.indexOf('class="keys-page-body"');
   const footStart = html.indexOf('class="keys-page-foot"');
@@ -58,6 +62,11 @@ check('app brand CSS', /\.keys-scene-actions__app/.test(css));
 check('ime badge CSS', /\.keys-scene-actions__ime/.test(css));
 check('row flex layout CSS', /\.keys-scene-actions__body/.test(css) && /\.keys-scene-actions__trail/.test(css));
 check('add action CSS', /\.keys-scene-actions__add/.test(css));
+check('add action not stripped to text-link', !/#settingsPanelKeys \.keys-scene-actions__add\s*\{[^}]*border:\s*none/.test(css));
+check('scene dock keeps foot under list (no tall stretch)', /#settingsPanelKeys \.keys-scene-actions\s*\{[^}]*grid-template-rows:\s*auto auto auto/.test(css));
+check('add is dashed list-adjacent button', /#settingsPanelKeys \.keys-scene-actions__add\s*\{[^}]*border:\s*1px dashed var\(--keys-line/.test(css));
+check('active row uses mappingId', /a\.mappingId/.test(panelSrc) && /state\.mappingId/.test(panelSrc));
+check('active row rail', /keys-scene-actions__dir-item\.is-active::before/.test(css));
 check('keys-panel-ui wires SceneActionsPanel', /OneToneKeysSceneActionsPanel/.test(keysUi));
 check(
   'picker exports createCustomKeyMatchMapping',
@@ -323,16 +332,19 @@ body.children.push(panel);
   'keysSceneActionsApp',
   'keysSceneActionsAppIcon',
   'keysSceneActionsAppName',
+  'keysSceneActionsAdd',
   'habitKeyMapRowTarget',
   'habitKeyMapRowTrigger'
 ].forEach((id) => {
-  const child = makeEl(id);
+  const child = makeEl(id, id === 'keysSceneActionsAdd' ? 'button' : 'div');
   child.parentElement = id.startsWith('keysScene') ? panel : null;
+  if (id === 'keysSceneActionsAdd') child.setAttribute('data-add', '1');
   els[id] = child;
 });
 els.keysSceneActionsPanel = panel;
 els.keysSceneActionsApp.hidden = true;
 els.keysSceneActionsAppIcon.hidden = true;
+els.keysSceneActionsAdd.textContent = '＋ 新建动作';
 
 const mappings = {
   base: { id: 'base', appTargetId: '', agentBindings: [] },
@@ -603,23 +615,24 @@ check('shows app title', els.keysSceneActionsApp.hidden === false && /Cursor|app
 check('shows app icon', els.keysSceneActionsAppIcon.hidden === false && els.keysSceneActionsAppIcon.src.includes('cursor.png'));
 
 const dirHtml = els.keysSceneActionsDir.innerHTML;
-check('shows recognition chord from targetKey', dirHtml.includes('RAlt') && !dirHtml.includes('LAlt+R'));
+check('shows trigger key in scene list', /XButton1|侧键|鼠标/.test(dirHtml) && !/→/.test(dirHtml));
 check('shows IME name badge', /keys-scene-actions__ime-name/.test(dirHtml) && /typeless|Typeless|imePresetTypeless/i.test(dirHtml));
 check('shows IME icon', dirHtml.includes('icons/ime/typeless.png'));
-check('lists sibling action with recognition not trigger as key', dirHtml.includes('F13') && /→|RAlt/.test(dirHtml));
+check('lists sibling action with its trigger key', dirHtml.includes('F13'));
 check('lists sibling with custom name', dirHtml.includes('继续并确认'));
 check('bare custom-key keeps list name (not 语音输入)', dirHtml.includes('>1<') || /keys-scene-actions__lbl[^>]*>1</.test(dirHtml));
 check('no channel icon strip', !/keys-scene-actions__ch-ico/.test(dirHtml));
 check('no app.shortcut leftover', !dirHtml.includes('LAlt+G'));
 check('has jump affordance', /data-jump="voice:cursor"/.test(dirHtml));
 check('row uses body+trail layout', /keys-scene-actions__body/.test(dirHtml) && /keys-scene-actions__trail/.test(dirHtml));
-check('has add action button', /data-add|keysSceneActionsAdd/.test(dirHtml));
+check('has status dot', /keys-scene-actions__dot/.test(dirHtml));
+check('has add action button', els.keysSceneActionsAdd && /新建动作/.test(els.keysSceneActionsAdd.textContent || ''));
 check('detail host stays hidden', els.keysSceneActionsDetail.hidden === true);
 check('meta shows action count', /4|keysSceneActionsMetaCount/.test(els.keysSceneActionsMeta.textContent));
 
 const rows = API.buildRows(mappings.cursor);
-check('recognition + sibling rows', rows.length === 4 && /RAlt/.test(rows[0].binds.key) && rows[1].kind === 'customKey');
-check('sibling chord line includes trigger and action', /F13/.test(rows[1].binds.key) && /Enter|步|keysCustomKeyMatchSteps/.test(rows[1].binds.key));
+check('recognition + sibling rows', rows.length === 4 && /XButton1|侧键|鼠标/.test(rows[0].binds.key) && rows[1].kind === 'customKey');
+check('sibling line is trigger not recognition chord', /F13/.test(rows[1].binds.key) && !/→/.test(rows[1].binds.key));
 check('bare custom-key row uses renamed label', rows[2].kind === 'customKey' && rows[2].label === '1');
 check('bare custom-key is not voice', rows[2].kind !== 'recognition' && rows[2].label !== '语音输入');
 check(
@@ -660,7 +673,8 @@ sandbox.OneToneImePresets.presetById = (id) =>
     ? { id: 'xunfei', nameKey: 'imePresetXunfei', icon: 'icons/ime/xunfei.png' }
     : null;
 API.render(mappings.cursor);
-check('refresh follows new IME + chord', els.keysSceneActionsDir.innerHTML.includes('F2'));
+check('refresh follows new IME badge', /xunfei|imePresetXunfei/i.test(els.keysSceneActionsDir.innerHTML));
+check('refresh keeps trigger key line', /XButton1|侧键|鼠标/.test(els.keysSceneActionsDir.innerHTML) && !/→/.test(els.keysSceneActionsDir.innerHTML));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

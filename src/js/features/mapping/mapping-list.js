@@ -199,8 +199,9 @@
     if(recMode==='trigger'){
       triggerLabel=trigRaw?hooks().friendlyKeyName(trigRaw):d.triggerPlaceholder;
     }else{
-      triggerLabel=m&&global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerDisplayLabel
-        ?global.OneToneKeyLabels.triggerDisplayLabel(m,lang)
+      // Keycap shows base key; ×2 / 按住 lives in #triggerGestureBadge (prototype parity).
+      triggerLabel=m&&global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerBaseLabel
+        ?global.OneToneKeyLabels.triggerBaseLabel(m,lang)
         :(trigRaw?hooks().friendlyKeyName(trigRaw):'');
       triggerLabel=triggerLabel||d.triggerPlaceholder;
     }

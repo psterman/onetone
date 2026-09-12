@@ -53,7 +53,7 @@
     if(e.__vpKeysPanelHandled) return;
     if(!isKeysPanelActive()) return;
 
-    if(e.target.closest&&e.target.closest('[data-finish-mode],[data-timing-toggle],[data-trigger-mode],[data-keys-hold-switch]')){
+    if(e.target.closest&&e.target.closest('[data-finish-mode],[data-timing-toggle],[data-trigger-mode],[data-keys-hold-switch],[data-delay-ms],[data-delay-custom],[data-cancel-win],[data-cancel-channel],[data-cancel-gesture],[data-cancel-phrase-remove],[data-cancel-phrase-add]')){
       dispatchFinishClick(e);
     }
   }
@@ -73,6 +73,18 @@
     }
   }
 
+  function routeKeysPanelKeydown(e){
+    if(e.__vpKeysPanelHandled||!isKeysPanelActive()) return;
+    if(e.key!=='Enter') return;
+    var input=e.target&&e.target.closest&&e.target.closest('[data-cancel-phrase-input]');
+    if(!input) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.__vpKeysPanelHandled=true;
+    var addBtn=input.parentElement&&input.parentElement.querySelector('[data-cancel-phrase-add]');
+    if(addBtn) addBtn.click();
+  }
+
   function bindEvents(){
     var panel=$('settingsPanelKeys');
     if(!panel||panel.dataset.keysPageIxBound==='1') return;
@@ -80,6 +92,7 @@
     panel.addEventListener('click',routeKeysPanelClick,true);
     panel.addEventListener('input',routeKeysPanelInput,true);
     panel.addEventListener('change',routeKeysPanelInput,true);
+    panel.addEventListener('keydown',routeKeysPanelKeydown,true);
     var enableBtn=$('btnKeysMappingEnable');
     if(enableBtn&&!enableBtn.dataset.keysEnableIxBound){
       enableBtn.dataset.keysEnableIxBound='1';

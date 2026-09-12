@@ -7,6 +7,7 @@ export interface KeysFlowChromeModel {
   ipcPhase?: string;
   recording?: boolean;
   triggerHint: string;
+  triggerHintMark?: string;
   targetHint: string;
   finishHint: string;
   sig: string;
@@ -20,6 +21,7 @@ const EMPTY: KeysFlowChromeModel = {
   activeStep: 'trigger',
   recordingMode: 'none',
   triggerHint: '',
+  triggerHintMark: '',
   targetHint: '',
   finishHint: '',
   sig: 'empty',
@@ -74,6 +76,8 @@ export function applyKeysFlowChromeHosts(model: KeysFlowChromeModel): void {
         'is-recording',
         !!recording && (mode === page || (page === 'target' && mode === 'agentBinding')),
       );
+      const node = btn.closest('.flow-node');
+      if (node) node.classList.toggle('is-dim', !on);
     }
     // trigger hint 由 React 拥有；其余 hint 由 apply 写
     if (page === 'trigger') return;

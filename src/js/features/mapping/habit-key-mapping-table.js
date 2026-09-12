@@ -301,7 +301,8 @@
     return !!el.closest([
       '.voice-end-key-mode-panel','.keys-finish-mode-host','.keys-finish-delay-host',
       '.keys-finish-cancel-host','[data-finish-mode]','[data-timing-toggle]','[data-timing-range]',
-      '[data-cancel-win]','[data-cancel-channel]','[data-cancel-gesture]','[data-cancel-phrase-edit]',
+      '[data-cancel-win]','[data-cancel-channel]','[data-cancel-gesture]',
+      '[data-cancel-phrase-remove]','[data-cancel-phrase-add]','[data-cancel-phrase-input]',
       '.toggle-switch','.keys-finish-segment','.keys-capture-voice-summary','.keys-capture-voice-link',
       '.habit-flow-finish-more','.map-timing-range','details','.ime-preset-strip','.ime-preset-item','.habit-flow-ime-block','.keys-capture-ime-block',
       '.keys-cancel-strategy','.keys-cancel-chip',

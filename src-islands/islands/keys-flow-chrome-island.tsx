@@ -15,6 +15,7 @@ const EMPTY: KeysFlowChromeModel = {
   activeStep: 'trigger',
   recordingMode: 'none',
   triggerHint: '',
+  triggerHintMark: '',
   targetHint: '',
   finishHint: '',
   sig: 'empty',
@@ -84,7 +85,14 @@ function useFlowModel(): KeysFlowChromeModel {
 
 export function KeysFlowChromeIsland(): JSX.Element {
   const model = useFlowModel();
-  return <>{model.triggerHint}</>;
+  const mark = String(model.triggerHintMark || '').trim();
+  if (!mark) return <>{model.triggerHint}</>;
+  return (
+    <>
+      {model.triggerHint}{' '}
+      <span className="flow-hint-mark">{mark}</span>
+    </>
+  );
 }
 
 export function registerKeysFlowChromeBridge(): void {

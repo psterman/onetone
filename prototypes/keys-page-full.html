@@ -206,33 +206,49 @@
       display: flex; flex-direction: column; gap: 12px;
     }
 
-    /* A. two-step hero — keep */
+    /* A. two-step hero — straight link, keycap icons (no wave / waveform) */
     .hero {
       background: var(--paper);
       border: 1px solid var(--line);
       border-radius: 16px;
-      padding: 16px 18px 12px;
-      position: relative;
+      padding: 16px 18px 14px;
     }
-    .flow-track {
-      position: absolute;
-      left: 22%; right: 22%;
-      top: 48px;
-      height: 8px;
-      color: rgba(42, 156, 196, 0.18);
-      pointer-events: none;
-    }
-    .flow-track svg { width: 100%; height: 100%; display: block; }
     .flow-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      position: relative; z-index: 1;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px 10px;
     }
     .flow-node {
       display: flex; flex-direction: column; align-items: center;
       gap: 6px; text-align: center;
     }
+    .flow-link {
+      align-self: center;
+      margin-top: 18px; /* align with circular buttons under tags */
+      display: flex; align-items: center; gap: 0;
+      color: var(--cyan);
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .flow-link-line {
+      width: clamp(36px, 8vw, 72px);
+      height: 2px;
+      border-radius: 2px;
+      background: var(--cyan);
+    }
+    .flow-link-arrow {
+      width: 0; height: 0;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      border-left: 7px solid var(--cyan);
+    }
+    .hero.is-incomplete .flow-link {
+      opacity: 0.45;
+      color: var(--faint);
+    }
+    .hero.is-incomplete .flow-link-line { background: var(--faint); }
+    .hero.is-incomplete .flow-link-arrow { border-left-color: var(--faint); }
     .flow-tag {
       font-family: var(--mono);
       font-size: 10px; font-weight: 650; letter-spacing: 0.04em;
@@ -249,16 +265,24 @@
       color: var(--muted);
       display: grid; place-items: center;
       cursor: pointer;
-      transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease), color 150ms var(--ease), transform 130ms var(--ease);
+      transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease), color 160ms var(--ease), transform 160ms var(--ease);
     }
     .flow-btn svg { width: 22px; height: 22px; }
     .flow-btn:hover { border-color: var(--cyan-bd); color: var(--cyan-ink); }
     .flow-btn:active { transform: scale(0.96); }
     .flow-btn:focus-visible { outline: 2px solid rgba(42,156,196,0.45); outline-offset: 3px; }
     .flow-btn.is-active {
-      border-color: rgba(42, 156, 196, 0.6);
-      color: var(--cyan);
-      box-shadow: 0 0 0 4px rgba(42, 156, 196, 0.14), 0 0 24px rgba(42, 156, 196, 0.18);
+      border-color: rgba(42, 156, 196, 0.55);
+      color: var(--cyan-ink);
+      background: var(--cyan-soft);
+      box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.12);
+      transform: scale(1.04);
+    }
+    .flow-btn.is-recording {
+      border-color: rgba(42, 156, 196, 0.65);
+      color: var(--cyan-ink);
+      box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.16);
+      animation: node-pulse 1.35s var(--ease) infinite;
     }
     .flow-title { margin: 0; font-size: 14px; font-weight: 750; letter-spacing: -0.02em; }
     .flow-hint {
@@ -280,6 +304,10 @@
       color: var(--faint);
       background: rgba(132, 148, 166, 0.08);
       border-color: rgba(132, 148, 166, 0.2);
+    }
+    @keyframes node-pulse {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.16); }
+      50% { box-shadow: 0 0 0 6px rgba(42, 156, 196, 0.06); }
     }
 
     /* B. stage — no card head */
@@ -313,7 +341,10 @@
     .keycap:hover { border-color: var(--cyan); box-shadow: 0 4px 0 rgba(42, 156, 196, 0.16); }
     .keycap:active { transform: scale(0.97); }
     .keycap:focus-visible { outline: 2px solid rgba(42,156,196,0.45); outline-offset: 3px; }
-    .keycap-ico { width: 28px; height: 28px; color: var(--cyan-ink); opacity: 0.85; flex: 0 0 auto; }
+    .keycap-ico {
+      width: 28px; height: 28px; color: var(--cyan-ink); opacity: 0.85; flex: 0 0 auto;
+      display: block;
+    }
     .keycap-label { font-size: 22px; font-weight: 750; letter-spacing: -0.03em; line-height: 1.15; }
     .keycap-badge {
       position: absolute; top: 8px; right: 10px;
@@ -472,7 +503,7 @@
   <div class="proto-bar">
     <div>
       <strong>按键设置 · 整页原型</strong>
-      — 保留两步 Hero；舞台无卡片头；用法一行；右栏可扫。
+      — Hero 图标恢复原样：键盘 + 波形；连线为直线箭头。
       <a href="./keys-trigger-two-step-hero.html">局部稿</a>
     </div>
     <div class="proto-toggles" role="group" aria-label="预览状态">
@@ -517,26 +548,14 @@
 
       <div class="workspace">
         <div class="desk">
-          <!-- A. Hero -->
-          <section class="hero" aria-label="触发流程">
-            <div class="flow-track" aria-hidden="true">
-              <svg viewBox="0 0 500 8" fill="none" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="rgba(79,172,254,0.85)"/>
-                    <stop offset="50%" stop-color="rgba(42,156,196,0.95)"/>
-                    <stop offset="100%" stop-color="rgba(245,158,11,0.85)"/>
-                  </linearGradient>
-                </defs>
-                <path d="M 0,4 Q 125,-5 250,4 T 500,4" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-                <path d="M 0,4 Q 125,-5 250,4 T 500,4" stroke="url(#g)" stroke-width="3" stroke-linecap="round"/>
-              </svg>
-            </div>
+          <!-- A. Hero: single keycap → inject key (no wave track / waveform) -->
+          <section class="hero" id="hero" aria-label="触发流程">
             <div class="flow-grid">
               <div class="flow-node" id="nodeTrigger">
                 <span class="flow-tag">01 / 触发</span>
                 <button type="button" class="flow-btn is-active" id="btnTrigger" aria-label="第一步：触发">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <!-- original full keyboard -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect x="2" y="5" width="20" height="14" rx="2"/>
                     <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/>
                   </svg>
@@ -544,10 +563,15 @@
                 <h3 class="flow-title">触发</h3>
                 <p class="flow-hint" id="hintTrigger">左 Ctrl<span class="mark">×2</span></p>
               </div>
+              <div class="flow-link" aria-hidden="true">
+                <span class="flow-link-line"></span>
+                <span class="flow-link-arrow"></span>
+              </div>
               <div class="flow-node is-dim" id="nodeTarget">
                 <span class="flow-tag">02 / 识别</span>
                 <button type="button" class="flow-btn" id="btnTarget" aria-label="第二步：识别">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <!-- original recognize / activity icon -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
                   </svg>
                 </button>
@@ -561,7 +585,7 @@
           <section class="stage-card" id="stage" aria-label="编辑舞台">
             <div class="trigger-pane">
               <button type="button" class="keycap" id="keycap" aria-label="点击录制或修改触发键">
-                <svg class="keycap-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <svg class="keycap-ico" id="keycapIco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <rect x="2" y="5" width="20" height="14" rx="2"/>
                   <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/>
                 </svg>
@@ -619,7 +643,7 @@
               <span class="dir-when">左 Ctrl ×2</span>
             </button>
             <button type="button" class="dir-item" role="listitem"
-              data-key="侧键" data-mark="" data-meta="单击开关 · 再按结束" data-out="Win+H" data-name="侧键语音">
+              data-key="侧键" data-mark="" data-meta="单击开关 · 再按结束" data-out="Win+H" data-name="侧键语音" data-device="mouse">
               <span class="dir-name">侧键语音</span>
               <span class="dir-dot is-off" aria-hidden="true"></span>
               <span class="dir-when">XButton1</span>
@@ -640,18 +664,20 @@
   </div>
 
   <div class="note">
-    <h2>对照规划</h2>
+    <h2>本轮改动（图标 / 连线）</h2>
     <ul>
-      <li><strong>A Hero</strong>：保留 01→02；hint 显示键×用法 / 识别结果；点节点切步。</li>
-      <li><strong>B 舞台</strong>：无「触发 / 你按的键」卡片头；无长说明；用法一行 meta。</li>
-      <li><strong>C 右栏</strong>：动作名 + 键可扫；点行切换当前绑定。</li>
-      <li><strong>顶栏 / 底栏</strong>：场景上下文 + 保存；测试一次。</li>
+      <li><strong>01 / 舞台</strong>：原来的整盘键盘图标。</li>
+      <li><strong>02</strong>：原来的波形 / 识别图标。</li>
+      <li><strong>连线</strong>：静止直线箭头（无弯轨流光）。</li>
+      <li><strong>动效</strong>：切步描边/缩放；录制时轻脉冲。</li>
     </ul>
   </div>
 
   <script>
     (function () {
+      var hero = document.getElementById('hero');
       var stage = document.getElementById('stage');
+      var keycap = document.getElementById('keycap');
       var hint = document.getElementById('keyHint');
       var label = document.getElementById('keycapLabel');
       var badge = document.getElementById('keycapBadge');
@@ -669,11 +695,20 @@
         key: '左 Ctrl',
         mark: '×2',
         meta: '双击开关 · 再双击结束',
-        out: '左 Alt'
+        out: '左 Alt',
+        device: ''
       };
 
       function renderBind() {
         label.textContent = bind.key || '未绑键';
+        var ico = document.getElementById('keycapIco');
+        if (ico) {
+          if (bind.device === 'mouse') {
+            ico.innerHTML = '<rect x="7" y="2" width="10" height="18" rx="5"/><line x1="12" y1="6" x2="12" y2="10"/>';
+          } else {
+            ico.innerHTML = '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/>';
+          }
+        }
         if (bind.mark) {
           badge.hidden = false;
           badge.textContent = bind.mark;
@@ -687,6 +722,7 @@
           : '点键帽开始录制';
         hintTarget.textContent = bind.out || '—';
         targetChip.textContent = bind.out || '—';
+        hero.classList.toggle('is-incomplete', !bind.key || bind.key === '未绑键' || !bind.out || bind.out.indexOf('尚未') === 0);
       }
 
       function setStep(step) {
@@ -696,16 +732,19 @@
         nodeTrigger.classList.toggle('is-dim', !onTrigger);
         nodeTarget.classList.toggle('is-dim', onTrigger);
         stage.classList.toggle('is-target', !onTrigger);
+        if (!onTrigger) btnTrigger.classList.remove('is-recording');
       }
 
       function setState(name) {
         stage.classList.remove('is-recording', 'is-conflict', 'is-empty');
+        btnTrigger.classList.remove('is-recording');
         toggles.forEach(function (b) {
           b.classList.toggle('is-on', b.getAttribute('data-state') === name);
         });
         if (name === 'recording') {
           setStep('trigger');
           stage.classList.add('is-recording');
+          btnTrigger.classList.add('is-recording');
           hint.textContent = '按下启动键…（单击 / 双击 / 按住都会自动记下）';
         } else if (name === 'conflict') {
           setStep('trigger');
@@ -715,7 +754,7 @@
         } else if (name === 'empty') {
           setStep('trigger');
           stage.classList.add('is-empty');
-          bind = { key: '未绑键', mark: '', meta: '', out: '尚未选择识别' };
+          bind = { key: '未绑键', mark: '', meta: '', out: '尚未选择识别', device: '' };
           renderBind();
           hint.textContent = '点键帽录制启动键';
         } else {
@@ -738,7 +777,8 @@
             key: item.getAttribute('data-key') || '',
             mark: item.getAttribute('data-mark') || '',
             meta: item.getAttribute('data-meta') || '',
-            out: item.getAttribute('data-out') || ''
+            out: item.getAttribute('data-out') || '',
+            device: item.getAttribute('data-device') || ''
           };
           setState('idle');
           setStep('trigger');
@@ -748,7 +788,7 @@
       btnTrigger.addEventListener('click', function () { setStep('trigger'); });
       btnTarget.addEventListener('click', function () { setStep('target'); });
 
-      document.getElementById('keycap').addEventListener('click', function () {
+      keycap.addEventListener('click', function () {
         if (stage.classList.contains('is-target')) return;
         setState(stage.classList.contains('is-recording') ? 'idle' : 'recording');
       });
