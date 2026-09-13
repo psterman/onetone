@@ -993,10 +993,20 @@
         setVoiceFace(btn.getAttribute('data-voice-face')||'dictate');
       });
     }
-    var btnLandingKeys=$('btnVoiceLandingKeysTarget');
-    if(btnLandingKeys&&!btnLandingKeys._landingBound){
-      btnLandingKeys._landingBound=true;
-      btnLandingKeys.addEventListener('click',function(e){
+    function bindGoKeysTarget(btn){
+      if(!btn||btn._landingBound) return;
+      btn._landingBound=true;
+      btn.addEventListener('click',function(e){
+        e.preventDefault();
+        openDrawerPanel('keys','target');
+      });
+    }
+    bindGoKeysTarget($('btnVoiceLandingKeysTarget'));
+    bindGoKeysTarget($('btnVoiceWakeGoKeysTarget'));
+    var btnVoiceImeGoKeys=$('btnVoiceImeGoKeys');
+    if(btnVoiceImeGoKeys&&!btnVoiceImeGoKeys._keysBoundUi){
+      btnVoiceImeGoKeys._keysBoundUi=true;
+      btnVoiceImeGoKeys.addEventListener('click',function(e){
         e.preventDefault();
         openDrawerPanel('keys','target');
       });
@@ -1094,10 +1104,22 @@
     }
     bindOpenOverlay('btnVoiceWakePhraseCap',function(){ openWakePhrasePopover(); });
     bindOpenOverlay('btnVoiceWakePhraseEditLink',function(){
+      var more=$('voiceWakeMoreAliases');
+      if(more) more.open=true;
       var alias=$('voiceWakeAliasBlock');
-      if(alias) alias.hidden=!alias.hidden;
-      if(alias&&!alias.hidden) openWakePhrasePopover();
+      if(alias) alias.hidden=false;
+      openWakePhrasePopover();
     });
+    var wakeGo=$('voiceWakeActionDictate');
+    if(wakeGo&&!wakeGo._goFinishBound){
+      wakeGo._goFinishBound=true;
+      wakeGo.addEventListener('click',function(e){
+        e.preventDefault();
+        if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
+          global.OneToneVoicePageState.setStep('finish');
+        }
+      });
+    }
     bindOpenOverlay('btnVoiceFinishKeepEdit',function(){ openFinishMore(); setFinishOutcome('keep'); });
     bindOpenOverlay('btnVoiceFinishKeepCap',function(){ openFinishMore(); setFinishOutcome('keep'); });
     bindOpenOverlay('btnVoiceFinishSendEdit',function(){ openFinishMore(); setFinishOutcome('send'); });

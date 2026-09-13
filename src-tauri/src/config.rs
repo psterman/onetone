@@ -2567,6 +2567,12 @@ pub struct VoiceEndConfig {
     pub auto_send_enabled: bool,
     #[serde(default = "default_voice_end_target_key")]
     pub target_key: String,
+    /// Voice page 02 intent rail: "ime" | "prompt" | "key" | "cursor" | "softpad" | "gesture"
+    #[serde(default = "default_voice_end_intent")]
+    pub intent: String,
+    /// When intent == "prompt": wake injects this text then Enter (no dictation session).
+    #[serde(default)]
+    pub prompt_inject_text: String,
 }
 
 pub fn default_voice_end_phrases_zh() -> Vec<String> {
@@ -2620,6 +2626,10 @@ pub fn normalize_voice_end_commit_key(raw: &str) -> String {
 
 fn default_voice_end_dictation_timeout_ms() -> u32 {
     60000
+}
+
+fn default_voice_end_intent() -> String {
+    "ime".into()
 }
 
 fn default_voice_end_target_key() -> String {
@@ -2744,6 +2754,8 @@ impl Default for VoiceEndConfig {
             dictation_timeout_ms: default_voice_end_dictation_timeout_ms(),
             auto_send_enabled: false,
             target_key: default_voice_end_target_key(),
+            intent: default_voice_end_intent(),
+            prompt_inject_text: String::new(),
         }
     }
 }

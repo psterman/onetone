@@ -1,0 +1,62 @@
+#!/usr/bin/env node
+'use strict';
+/** ponytail: fails if voice F-redesign hosts drift out of index.html */
+var fs = require('fs');
+var path = require('path');
+var root = path.join(__dirname, '..');
+var html = fs.readFileSync(path.join(root, 'src/index.html'), 'utf8');
+var css = fs.readFileSync(path.join(root, 'src/css/voice-page-shell.css'), 'utf8');
+var railJs = fs.readFileSync(path.join(root, 'src/js/features/voice/voice-intent-rail.js'), 'utf8');
+var persist = fs.readFileSync(path.join(root, 'src/js/core/config-persist.js'), 'utf8');
+var need = [
+  'id="voiceIntentPicker"',
+  'id="voiceIntentRail"',
+  'id="voiceIntentPaneIme"',
+  'id="voiceIntentPanePrompt"',
+  'id="voiceIntentPaneKeys"',
+  'id="voiceIntentPaneSoftPad"',
+  'id="voiceIntentPaneCamera"',
+  'id="imePresetStripVoice"',
+  'id="voicePromptInjectBody"',
+  'id="voiceFaceTabs"',
+  'id="voiceWakeSecondary"',
+  'id="voiceWakeMoreAliases"',
+  'id="btnVoiceWakeGoKeysTarget"',
+  'id="voiceWakeDesk"',
+  'id="voiceWakeAliasBlock"',
+  'id="voiceWakeActionDictate"',
+  'id="voiceSceneActionsPanel"',
+  'id="voiceSceneActionsDir"',
+  'voice-f-hero',
+  'id="voiceFlowNodeWakeVal"',
+  'id="voiceFlowNodeFinishVal"',
+  'id="btnVoiceDiscardGoCamera"',
+  '字丢掉（Esc）'
+];
+var missing = need.filter(function (s) { return html.indexOf(s) < 0; });
+if (html.indexOf('voice-intent-rail.js') < 0) missing.push('script voice-intent-rail.js');
+if (html.indexOf('id="voiceWakeEngineSeg"') >= 0) missing.push('wake still has engine seg');
+if (html.indexOf('用什么听') >= 0) missing.push('wake still has 用什么听');
+if (html.indexOf('只听口令') >= 0 && html.indexOf('id="voiceWakeEngineKws"') >= 0) missing.push('wake still has 只听口令 engine');
+if (css.indexOf('.voice-wake-secondary') < 0) missing.push('css .voice-wake-secondary');
+if (css.indexOf('#voiceSceneActionsPanel') < 0) missing.push('css voiceSceneActionsPanel');
+if (railJs.indexOf('voiceSceneActionsPanel') < 0 && fs.readFileSync(path.join(root, 'src/js/features/mapping/keys-scene-actions-panel.js'), 'utf8').indexOf('voiceSceneActionsPanel') < 0) {
+  missing.push('scene panel missing voice host');
+}
+// rail must live inside picker, not as pipeline sibling before hero
+var pickerAt = html.indexOf('id="voiceIntentPicker"');
+var railAt = html.indexOf('id="voiceIntentRail"');
+var heroAt = html.indexOf('id="voiceFlowNodes"');
+if (pickerAt < 0 || railAt < pickerAt) missing.push('rail-inside-picker');
+if (heroAt > 0 && railAt > 0 && railAt < heroAt) missing.push('rail-before-hero');
+if (css.indexOf('.voice-intent-picker') < 0) missing.push('css .voice-intent-picker');
+if (css.indexOf('.voice-f-node') < 0) missing.push('css .voice-f-node');
+if (css.indexOf('#voiceFlowNodeWake::after') >= 0) missing.push('css still has 开 glyph');
+if (railJs.indexOf('voiceIntentPicker') < 0) missing.push('rail js picker');
+if (railJs.indexOf("setVoiceFace('dictate')") < 0) missing.push('rail no-face-swap');
+if (persist.indexOf('promptInjectText') < 0) missing.push('persist promptInjectText');
+if (missing.length) {
+  console.error('[voice-intent-rail-smoke] FAIL', missing);
+  process.exit(1);
+}
+console.log('[voice-intent-rail-smoke] ok');

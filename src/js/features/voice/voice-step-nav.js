@@ -80,9 +80,9 @@
 
   function resolveStepHints(vm){
     var V=global.OneToneVoiceSettingsViewModel;
-    if(!V||!vm) return {wake:'',finish:''};
-    // Proto flow nodes stay label-only (01 开启 / 02 说完了); long hints clutter the strip.
-    return {wake:'',finish:''};
+    if(!V||!vm) return {wake:'这句口令',finish:'匹配到的动作'};
+    // F hero keeps short fixed hints under the live vals.
+    return {wake:'这句口令',finish:'匹配到的动作'};
   }
 
   function buildVoiceFlowChromeModel(vm){
@@ -181,6 +181,9 @@
       rootSync.set(root, { step:step, bodies:nextBodies });
     }
     syncFlowNodes(step);
+    if(global.OneToneVoiceIntentRail&&global.OneToneVoiceIntentRail.syncRailVisibility){
+      global.OneToneVoiceIntentRail.syncRailVisibility();
+    }
   }
 
   function goToStep(page){
@@ -193,9 +196,9 @@
     if(!nodes||nodes.dataset.voiceFlowNodesBound==='1') return;
     nodes.dataset.voiceFlowNodesBound='1';
     nodes.addEventListener('click',function(e){
-      var btn=e.target.closest&&e.target.closest('.flow-node-btn');
+      var btn=e.target.closest&&e.target.closest('.flow-node-btn,[data-voice-node]');
       if(!btn) return;
-      var node=btn.closest('[data-voice-node]');
+      var node=btn.hasAttribute('data-voice-node')?btn:(btn.closest&&btn.closest('[data-voice-node]'));
       if(!node) return;
       e.preventDefault();
       goToStep(node.getAttribute('data-voice-node')||'');

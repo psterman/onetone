@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音页 A · 两步 Hero（对齐按键页）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink:#13202c; --muted:#5a6b7c; --faint:#8494a6; --line:#d5dee8;
+      --paper:#fff; --wash:#f3f7fa; --bg:#e8eef3;
+      --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-soft:#e4f2f9; --cyan-bd:#9bc6da;
+      --ok:#15803d; --ok-soft:#e8f7ee; --warn:#b45309; --warn-soft:#fdf3e3;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{font-family:var(--font);color:var(--ink);background:var(--bg)}
+    .bar{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:10px 16px;background:#13202c;color:#c5d0de;font-size:12.5px;line-height:1.45}
+    .bar strong{color:#fff}
+    .bar em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .toggles{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+    .toggles button{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#e2e8f0;border-radius:999px;padding:4px 12px;font:inherit;font-size:11.5px;font-weight:650;cursor:pointer}
+    .toggles button.is-on{background:rgba(42,156,196,.38);border-color:rgba(125,211,252,.45);color:#fff}
+    .shell{width:min(1000px,100%);margin:18px auto 48px;padding:0 14px}
+    .contract{margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:12.5px;line-height:1.6;color:var(--muted)}
+    .contract b{color:var(--ink);font-weight:650}
+    .contract .pro{color:var(--ok);font-weight:650}
+    .contract .con{color:var(--warn);font-weight:650}
+    .panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 1px 0 rgba(19,32,44,.04)}
+    .phead{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+    .phead h1{font-size:15px;font-weight:650;margin:0}
+    .pill{font-size:11px;font-weight:650;padding:2px 9px;border-radius:999px;background:var(--ok-soft);color:var(--ok)}
+    .pill.is-warn{background:var(--warn-soft);color:var(--warn)}
+    .pill.is-idle{background:var(--wash);color:var(--faint)}
+    .ghost{margin-left:auto;border:1px solid var(--line);background:transparent;border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+    .status{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--wash);margin-bottom:14px;font-size:13.5px}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+    .dot.is-warn{background:var(--warn)}
+    .dot.is-idle{background:var(--faint)}
+    .chip{font-weight:650;background:#fff;border:1px solid var(--cyan-bd);color:var(--cyan-ink);border-radius:6px;padding:1px 7px}
+    .mic{margin-left:auto;display:inline-flex;align-items:flex-end;gap:2px;height:13px}
+    .mic i{width:2px;background:var(--ok);border-radius:1px;display:block}
+    .hero{display:flex;align-items:stretch;gap:0}
+    .node{flex:1;border:1px solid var(--line);border-radius:12px;padding:13px 14px;background:#fff}
+    .node.is-lead{border-color:var(--cyan-bd);box-shadow:inset 0 0 0 1px rgba(42,156,196,.12)}
+    .tag{display:block;font-size:11px;font-weight:650;color:var(--faint);letter-spacing:.04em;margin-bottom:5px}
+    .val{display:block;font-size:16px;font-weight:650;line-height:1.25}
+    .hint{display:block;margin-top:5px;font-size:11.5px;color:var(--faint)}
+    .link{flex:0 0 46px;display:flex;align-items:center;justify-content:center;color:var(--cyan)}
+    .link span{position:relative;width:100%;height:2px;background:var(--cyan-bd)}
+    .link span::after{content:"";position:absolute;right:-1px;top:-4px;border-left:7px solid var(--cyan);border-top:5px solid transparent;border-bottom:5px solid transparent}
+    .landing{margin-top:14px;padding:11px 13px;border-radius:10px;background:var(--cyan-soft);font-size:12.5px;color:var(--cyan-ink);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .landing a{color:var(--cyan-ink);font-weight:650;text-decoration:underline;margin-left:auto;cursor:pointer}
+    .fold{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:11.5px;color:var(--faint)}
+    .banner{margin-bottom:14px;padding:11px 13px;border-radius:10px;background:var(--warn-soft);border:1px solid #f0d5a8;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;color:var(--warn)}
+    .banner button{margin-left:auto;border:1px solid #d9a95f;background:#fff;border-radius:8px;padding:4px 10px;font:inherit;font-size:12px;font-weight:650;color:var(--warn);cursor:pointer}
+    .foldbox{margin-top:10px;border:1px dashed var(--line);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--muted);display:none}
+    .foldbox.is-open{display:block}
+    .foldrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+    .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+    .seg button{border:0;background:#fff;padding:5px 11px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+    .seg button.is-on{background:var(--cyan-soft);color:var(--cyan-ink);font-weight:650}
+    .note{margin-top:16px;font-size:12px;line-height:1.6;color:var(--faint)}
+    .hidden{display:none !important}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span><strong>A 方案 · 两步 Hero</strong>　状态行 + 01/开始说 ▸ 02/说完了 + 落点条，配置全部折叠。完全对齐按键页新版式。</span>
+    <span class="toggles">
+      <button data-state="ready" class="is-on">就绪</button>
+      <button data-state="empty">未配置</button>
+      <button data-state="error">识别异常</button>
+    </span>
+  </div>
+
+  <div class="shell">
+    <div class="contract">
+      <b>主张：</b>语音页只回答两件事——<b>说什么开始</b>、<b>说完了字怎么办</b>。识别引擎、语言、节奏是"出问题才需要看"的东西，一律折叠。
+      <br /><span class="pro">优点：</span>与按键页同构，用户学一次就够；首屏零专业术语。
+      <span class="con">代价：</span>四通道在语音页内没有入口，需要靠落点条跳转。
+    </div>
+
+    <div class="panel">
+      <div class="phead">
+        <h1>语音方案</h1>
+        <span class="pill" id="pill">可以说</span>
+        <button class="ghost">保存到正在编辑的习惯</button>
+      </div>
+
+      <div class="banner hidden" id="banner">
+        <span>识别还没起来 · 现在说话不会出字</span>
+        <button>一键启动</button>
+      </div>
+
+      <div class="status" id="status">
+        <span class="dot" id="dot"></span>
+        <span id="statusText">现在说 <span class="chip">开始输入</span> 就能出字</span>
+        <span class="mic hidden" id="mic"><i style="height:5px"></i><i style="height:9px"></i><i style="height:13px"></i><i style="height:7px"></i></span>
+      </div>
+
+      <div class="hero">
+        <div class="node is-lead">
+          <span class="tag">01 / 开始说</span>
+          <span class="val" id="n1">开始输入</span>
+          <span class="hint">点一下可改口令</span>
+        </div>
+        <div class="link" aria-hidden="true"><span></span></div>
+        <div class="node">
+          <span class="tag">02 / 说完了</span>
+          <span class="val">先留着</span>
+          <span class="hint">出字 · 不发</span>
+        </div>
+      </div>
+
+      <div class="landing">
+        <span>字会打进<b>你正在点的地方</b>，跟光标走。</span>
+        <a>要限定到某个应用更稳？去按键设 →</a>
+      </div>
+
+      <div class="foldbox" id="foldbox">
+        <b>识别设置</b>（异常时自动展开）
+        <div class="foldrow">
+          <span>识别方式</span>
+          <span class="seg"><button class="is-on">系统自带</button><button>本地离线</button><button>只听口令</button></span>
+          <span>语言</span>
+          <span class="seg"><button class="is-on">中文</button><button>English</button></span>
+          <span>节奏</span>
+          <span class="seg"><button>慢</button><button class="is-on">适中</button><button>快</button></span>
+        </div>
+      </div>
+
+      <div class="fold">
+        <span>识别方式 · 语言 · 节奏（折叠）</span>
+        <span>改更多说法 →</span>
+      </div>
+    </div>
+
+    <p class="note">对照：现状首屏是「识别语言 / 识别方式 / 说话节奏」三张卡压在流程前，节点是裸编号 01、02，中间是波浪轨道——A 方案把这三处全部替换掉。</p>
+  </div>
+
+  <script>
+    var pill=document.getElementById('pill'), dot=document.getElementById('dot'),
+        text=document.getElementById('statusText'), mic=document.getElementById('mic'),
+        n1=document.getElementById('n1'), banner=document.getElementById('banner'),
+        foldbox=document.getElementById('foldbox');
+    var S={
+      ready:{pill:'可以说',cls:'',txt:'现在说 <span class="chip">开始输入</span> 就能出字',n1:'开始输入',mic:true,banner:false,fold:false},
+      empty:{pill:'缺唤醒词',cls:'is-warn',txt:'还没设唤醒词 · 设一句就能用',n1:'—',mic:false,banner:false,fold:false},
+      error:{pill:'没起来',cls:'is-warn',txt:'识别没启动 · 现在说话不会出字',n1:'开始输入',mic:false,banner:true,fold:true}
+    };
+    document.querySelectorAll('.toggles button').forEach(function(b){
+      b.addEventListener('click',function(){
+        document.querySelectorAll('.toggles button').forEach(function(x){x.classList.remove('is-on')});
+        b.classList.add('is-on');
+        var s=S[b.dataset.state];
+        pill.textContent=s.pill; pill.className='pill '+(s.cls||'');
+        dot.className='dot '+(s.cls||'');
+        text.innerHTML=s.txt; n1.textContent=s.n1;
+        mic.classList.toggle('hidden',!s.mic);
+        banner.classList.toggle('hidden',!s.banner);
+        foldbox.classList.toggle('is-open',s.fold);
+      });
+    });
+  </script>
+</body>
+</html>

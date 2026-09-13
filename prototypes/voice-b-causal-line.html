@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音页 B · 一句话因果卡</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e8eef3;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fdf3e3;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%}
+    body{font-family:var(--font);color:var(--ink);background:var(--bg)}
+    .bar{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:10px 16px;background:#13202c;color:#c5d0de;font-size:12.5px;line-height:1.45}
+    .bar strong{color:#fff}.bar em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .toggles{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+    .toggles button{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#e2e8f0;border-radius:999px;padding:4px 12px;font:inherit;font-size:11.5px;font-weight:650;cursor:pointer}
+    .toggles button.is-on{background:rgba(42,156,196,.38);border-color:rgba(125,211,252,.45);color:#fff}
+    .shell{width:min(1000px,100%);margin:18px auto 48px;padding:0 14px}
+    .contract{margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:12.5px;line-height:1.6;color:var(--muted)}
+    .contract b{color:var(--ink);font-weight:650}
+    .contract .pro{color:var(--ok);font-weight:650}
+    .contract .con{color:var(--warn);font-weight:650}
+    .panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px}
+    .phead{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+    .phead h1{font-size:15px;font-weight:650;margin:0}
+    .pill{font-size:11px;font-weight:650;padding:2px 9px;border-radius:999px;background:var(--ok-soft);color:var(--ok)}
+    .pill.is-warn{background:var(--warn-soft);color:var(--warn)}
+    .ghost{margin-left:auto;border:1px solid var(--line);background:transparent;border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+
+    .card{border:1px solid var(--cyan-bd);border-radius:14px;background:linear-gradient(180deg,#fff,var(--cyan-soft));padding:20px 18px;text-align:center}
+    .say{font-size:20px;font-weight:650;line-height:1.55;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
+    .cap{background:#fff;border:1px solid var(--cyan-bd);color:var(--cyan-ink);border-radius:8px;padding:3px 12px;font-size:19px;font-weight:650}
+    .plain{font-weight:550}
+    .arr{color:var(--cyan);font-size:17px}
+    .sub{margin-top:10px;font-size:12.5px;color:var(--muted)}
+    .cta{margin-top:16px;display:flex;gap:10px;justify-content:center;align-items:center}
+    .cta button{border:0;background:var(--cyan);color:#fff;border-radius:10px;padding:9px 22px;font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+    .cta .sec{border:1px solid var(--line);background:#fff;color:var(--muted);font-weight:550;padding:8px 16px;border-radius:10px;font:inherit;font-size:13px;cursor:pointer}
+    .fold{margin-top:14px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:11.5px;color:var(--faint)}
+    .foldbox{margin-top:10px;border:1px dashed var(--line);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--muted);display:none}
+    .foldbox.is-open{display:block}
+    .foldrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+    .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+    .seg button{border:0;background:#fff;padding:5px 11px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+    .seg button.is-on{background:var(--cyan-soft);color:var(--cyan-ink);font-weight:650}
+    .note{margin-top:16px;font-size:12px;line-height:1.6;color:var(--faint)}
+    .hidden{display:none !important}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span><strong>B 方案 · 一句话因果卡</strong>　把两步压成一句人话：「说 X → 字打到光标 → 说 Y 发出去」，其余全部折叠。</span>
+    <span class="toggles">
+      <button data-state="ready" class="is-on">就绪</button>
+      <button data-state="empty">未配置</button>
+      <button data-state="error">识别异常</button>
+    </span>
+  </div>
+
+  <div class="shell">
+    <div class="contract">
+      <b>主张：</b>小白不需要理解"两步流程"，只需要记住一句因果。所有可改的东西藏在卡片后面的折叠里。
+      <br /><span class="pro">优点：</span>认知负担最低，一眼记住怎么用；首屏极致干净。
+      <span class="con">代价：</span>可发现性差——用户不知道"说完了"还能改成发送；与按键页版式不同构。
+    </div>
+
+    <div class="panel">
+      <div class="phead">
+        <h1>语音方案</h1>
+        <span class="pill" id="pill">可以说</span>
+        <button class="ghost">保存到正在编辑的习惯</button>
+      </div>
+
+      <div class="card">
+        <div class="say" id="say">
+          <span>说</span><span class="cap" id="cap1">开始输入</span>
+          <span class="arr">→</span><span class="plain">字打到光标处</span>
+          <span class="arr">→</span><span class="plain">停一会儿就留着</span>
+        </div>
+        <p class="sub" id="sub">说完了字会留着，不自动发送</p>
+        <div class="cta">
+          <button>试一下</button>
+          <button class="sec">改口令</button>
+        </div>
+      </div>
+
+      <div class="foldbox" id="foldbox">
+        <b>全部设置</b>
+        <div class="foldrow">
+          <span>说完了</span>
+          <span class="seg"><button>发出去</button><button class="is-on">先留着</button><button>不要了</button></span>
+          <span>识别方式</span>
+          <span class="seg"><button class="is-on">系统自带</button><button>本地离线</button><button>只听口令</button></span>
+        </div>
+      </div>
+
+      <div class="fold">
+        <span>改更多说法 · 识别设置（折叠）</span>
+        <span>去按键设应用 →</span>
+      </div>
+    </div>
+
+    <p class="note">对照：A 方案是"两块可点的节点卡"，B 是"一句只读的因果句 + 一个试一下"。B 更适合纯小白首启，A 更适合长期可维护。</p>
+  </div>
+
+  <script>
+    var pill=document.getElementById('pill'),say=document.getElementById('say'),
+        cap1=document.getElementById('cap1'),sub=document.getElementById('sub'),
+        foldbox=document.getElementById('foldbox');
+    var S={
+      ready:{pill:'可以说',cls:'',cap:'开始输入',sub:'说完了字会留着，不自动发送',fold:false},
+      empty:{pill:'缺唤醒词',cls:'is-warn',cap:'还没设',sub:'设一句唤醒词就能用',fold:false},
+      error:{pill:'没起来',cls:'is-warn',cap:'开始输入',sub:'识别没启动，点一键启动后再试',fold:true}
+    };
+    document.querySelectorAll('.toggles button').forEach(function(b){
+      b.addEventListener('click',function(){
+        document.querySelectorAll('.toggles button').forEach(function(x){x.classList.remove('is-on')});
+        b.classList.add('is-on');
+        var s=S[b.dataset.state];
+        pill.textContent=s.pill; pill.className='pill '+(s.cls||'');
+        cap1.textContent=s.cap; sub.textContent=s.sub;
+        foldbox.classList.toggle('is-open',s.fold);
+      });
+    });
+  </script>
+</body>
+</html>

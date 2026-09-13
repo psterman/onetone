@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音页 F · 02 意图完整复刻按键识别</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e8eef3;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fdf3e3;
+      --violet:#6d28d9;--violet-soft:#f3e8ff;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+      --ease:cubic-bezier(.23,1,.32,1);
+      --rail:152px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);color:var(--ink);
+      background:radial-gradient(640px 280px at 10% -6%,rgba(42,156,196,.1),transparent 55%),var(--bg);
+    }
+    @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+    .bar{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:10px 16px;background:#13202c;color:#c5d0de;font-size:12.5px;line-height:1.45}
+    .bar strong{color:#fff}.bar em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .bar a{color:#7dd3fc;font-weight:650;text-decoration:none}
+    .toggles{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px}
+    .toggles button{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#e2e8f0;border-radius:999px;padding:4px 12px;font:inherit;font-size:11.5px;font-weight:650;cursor:pointer}
+    .toggles button.is-on{background:rgba(42,156,196,.38);border-color:rgba(125,211,252,.45);color:#fff}
+
+    .shell{width:min(1040px,100%);margin:16px auto 40px;padding:0 14px}
+    .contract{margin:0 0 12px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:12.5px;line-height:1.55;color:var(--muted)}
+    .contract b{color:var(--ink);font-weight:650}
+    .contract code{font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--cyan-ink);background:var(--cyan-soft);border-radius:4px;padding:1px 5px}
+    .rules{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 0}
+    @media(max-width:800px){.rules{grid-template-columns:1fr}}
+    .rule{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--wash);font-size:11.5px;line-height:1.45}
+    .rule .k{font-weight:750;margin-bottom:3px}
+    .rule.inc .k{color:var(--ok)}.rule.exc .k{color:var(--warn)}.rule.ov .k{color:var(--violet)}
+
+    .frame{border:1px solid var(--line);border-radius:16px;background:var(--paper);box-shadow:0 18px 40px rgba(19,32,44,.08);overflow:hidden}
+    .topbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+    .top-ctx{font-size:13px;font-weight:650;display:flex;gap:8px;align-items:center}
+    .top-ctx .sep{color:var(--faint);font-weight:450}
+    .scene{border:1px solid var(--line);background:var(--wash);border-radius:10px;padding:6px 10px;font:inherit;font-size:12px;font-weight:650;color:var(--muted)}
+    .top-acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+    .btn{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:10px;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:650;cursor:pointer}
+    .btn.primary{border-color:transparent;background:var(--cyan);color:#fff}
+    .btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+
+    .status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fbfdfe,var(--wash))}
+    .brand{font-size:15px;font-weight:750}
+    .pill{font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;background:var(--ok-soft);color:var(--ok);border:1px solid #86efac}
+    .pill.is-warn{background:var(--warn-soft);color:var(--warn);border-color:#f0d5a8}
+    .status .btn{margin-left:auto}
+
+    .body{background:var(--wash);padding:10px 14px 16px;display:flex;flex-direction:column;gap:10px}
+
+    .hero{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+    .flow{display:flex;align-items:stretch;gap:0}
+    .node{flex:1;text-align:left;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;font:inherit;cursor:pointer}
+    .node.is-on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+    .node .tag{display:block;font-size:11px;font-weight:650;color:var(--faint);letter-spacing:.04em;margin-bottom:4px}
+    .node.is-on .tag{color:var(--cyan-ink)}
+    .node .val{display:block;font-size:16px;font-weight:650}
+    .node .hint{display:block;margin-top:3px;font-size:11.5px;color:var(--faint)}
+    .flow-link{flex:0 0 44px;display:flex;align-items:center;justify-content:center}
+    .flow-link span{position:relative;width:100%;height:2px;background:var(--cyan-bd)}
+    .flow-link span::after{content:"";position:absolute;right:-1px;top:-4px;border-left:7px solid var(--cyan);border-top:5px solid transparent;border-bottom:5px solid transparent}
+
+    .desk{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+    .desk h2{font-size:14px;font-weight:650;margin:0 0 4px}
+    .desk .sub{font-size:12px;color:var(--muted);margin:0 0 12px}
+    .caprow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .cap{font-size:17px;font-weight:650;background:#fff;border:1px solid var(--cyan-bd);color:var(--cyan-ink);border-radius:8px;padding:4px 14px;cursor:pointer}
+    .cap.is-empty{color:var(--faint);border-color:var(--line)}
+    .capnote{font-size:11.5px;color:var(--faint)}
+    .attr{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+    .attr .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+    .attr .lb{font-size:11.5px;color:var(--faint);width:74px;flex:none}
+    .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+    .seg button{border:0;background:#fff;padding:4px 11px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+    .seg button.is-on{background:var(--cyan-soft);color:var(--cyan-ink);font-weight:650}
+    .why{margin-left:6px;font-size:11px;color:var(--faint)}
+    .attract{margin-top:10px;font-size:11.5px;color:var(--faint);cursor:pointer}
+    .more{margin-top:10px;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--muted);background:var(--wash);display:none}
+    .more.is-open{display:block}
+
+    .picker{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-height:340px;background:var(--wash)}
+    .rail{display:flex;flex-direction:column;gap:2px;padding:6px;background:#eef3f7;border-right:1px solid var(--line);min-width:0}
+    .rail-search{margin:0 0 4px;flex:none}
+    .rail-search input{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;font-size:12px;background:#fff;color:var(--ink)}
+    #rail{display:flex;flex-direction:column;gap:2px;flex:1;min-height:0;overflow:auto}
+    .rail-item{
+      display:block;width:100%;box-sizing:border-box;flex:none;
+      border:0;background:transparent;text-align:left;
+      padding:8px 10px;border-radius:8px;
+      font:inherit;font-size:12.5px;font-weight:650;color:var(--muted);
+      cursor:pointer;line-height:1.25;
+    }
+    .rail-item:hover{background:rgba(255,255,255,.55);color:var(--ink)}
+    .rail-item.is-on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+    .rail-item .n{display:block;margin-top:2px;font-size:10.5px;font-weight:550;color:var(--faint)}
+    .rail-item.is-on .n{color:var(--cyan)}
+    .rail-item .badge-ov{
+      display:inline-block;margin-left:4px;font-size:9px;font-weight:750;
+      color:var(--violet);background:var(--violet-soft);padding:1px 5px;border-radius:999px;
+      vertical-align:middle;
+    }
+
+    .pane{padding:12px;background:var(--paper);display:flex;flex-direction:column;gap:10px;min-width:0}
+    .pane-head{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}
+    .pane-head h3{margin:0;font-size:13.5px;font-weight:650}
+    .pane-head .hint{font-size:11.5px;color:var(--faint)}
+
+    .banner{margin:0;padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.45}
+    .banner.bridge{background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd)}
+    .banner.overlap{background:var(--violet-soft);color:#5b21b6;border:1px solid #ddd6fe}
+    .banner a{font-weight:650;text-decoration:underline;cursor:pointer;color:inherit}
+
+    .group-lbl{margin:4px 0 0;font-size:11px;font-weight:750;color:var(--faint);letter-spacing:.04em}
+    .acts{display:flex;flex-direction:column;gap:6px}
+    .act{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 12px;text-align:left;font:inherit;cursor:pointer;width:100%}
+    .act:hover{border-color:var(--cyan-bd)}
+    .act.is-on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+    .act.is-miss{opacity:.7}
+    .act.is-voice-owned{border-style:dashed}
+    .act-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;justify-content:space-between}
+    .act b{display:block;font-size:13.5px;font-weight:650}
+    .act .desc{display:block;margin-top:3px;font-size:11.5px;color:var(--faint);line-height:1.4}
+    .act .meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center;flex:none}
+    .chip{font-size:10.5px;font-weight:650;border-radius:999px;padding:1px 7px;color:var(--muted);background:var(--wash)}
+    .chip.miss{color:var(--warn);background:var(--warn-soft)}
+    .chip.voice{color:var(--violet);background:var(--violet-soft)}
+    .chip.ok{color:var(--ok);background:var(--ok-soft)}
+    .chip.rec{color:var(--cyan-ink);background:var(--cyan-soft)}
+
+    /* 听写方式 · 对齐按键页工作台 */
+    .ime-desk{display:flex;flex-direction:column;gap:12px}
+    .ime-block{
+      border:1px solid var(--line);border-radius:12px;background:#fff;padding:12px 14px;
+    }
+    .ime-step{
+      display:flex;align-items:center;gap:8px;margin:0 0 10px;
+      font-size:13px;font-weight:750;
+    }
+    .ime-step .n{
+      width:20px;height:20px;border-radius:50%;background:var(--cyan);color:#fff;
+      font-size:11px;font-weight:750;display:inline-flex;align-items:center;justify-content:center;
+    }
+    .ime-keycap{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      min-width:120px;padding:14px 22px;border-radius:12px;cursor:pointer;
+      border:1.5px solid var(--cyan-bd);background:linear-gradient(180deg,#fff,#f4f8fb);
+      box-shadow:0 2px 0 rgba(19,32,44,.06),inset 0 1px 0 #fff;
+      font-family:var(--mono);font-size:18px;font-weight:750;color:var(--cyan-ink);
+    }
+    .ime-keycap:hover{border-color:var(--cyan)}
+    .ime-key-hint{margin:8px 0 0;font-size:12px;color:var(--muted);line-height:1.45}
+    .ime-key-hint b{color:var(--ink);font-weight:650}
+    .ime-strip{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+    .ime-tile{
+      display:flex;flex-direction:column;align-items:center;gap:4px;width:54px;
+      border:0;background:transparent;padding:0;font:inherit;font-size:11px;font-weight:550;
+      color:var(--muted);cursor:pointer;
+    }
+    .ime-tile .pic{
+      width:40px;height:40px;border-radius:11px;border:1.5px solid transparent;
+      background:var(--paper);box-shadow:0 1px 0 rgba(19,32,44,.04);
+      display:grid;place-items:center;overflow:hidden;
+    }
+    .ime-tile .pic img{width:26px;height:26px;object-fit:contain}
+    .ime-tile .pic .glyph{font-size:13px;font-weight:750;color:var(--ink)}
+    .ime-tile:hover .pic{border-color:var(--cyan-bd)}
+    .ime-tile.is-on{color:var(--cyan-ink);font-weight:650}
+    .ime-tile.is-on .pic{
+      border-color:rgba(42,156,196,.55);background:var(--cyan-soft);
+      box-shadow:0 0 0 3px rgba(42,156,196,.12);
+    }
+    .ime-confirm{margin:10px 0 0;font-size:12px;color:var(--muted)}
+    .ime-confirm b{font-family:var(--mono);font-weight:650;color:var(--cyan-ink)}
+
+    .ime-finish-modes{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+    }
+    .ime-finish-modes button{
+      border:1px solid var(--line);border-radius:10px;padding:10px 11px;background:#fff;
+      font:inherit;text-align:left;cursor:pointer;color:var(--muted);
+    }
+    .ime-finish-modes button .t{display:block;font-size:13px;font-weight:650;color:var(--ink)}
+    .ime-finish-modes button .d{display:block;margin-top:3px;font-size:11px;color:var(--faint);line-height:1.35}
+    .ime-finish-modes button .cap{
+      display:inline-block;margin-top:6px;font-size:11px;font-weight:650;
+      color:var(--cyan-ink);background:var(--cyan-soft);border-radius:999px;padding:2px 8px;
+    }
+    .ime-finish-modes button.is-on{
+      border-color:var(--cyan);color:var(--ink);
+      box-shadow:inset 0 0 0 1px var(--cyan);
+    }
+    .ime-finish-modes button.is-on .t{color:var(--cyan-ink)}
+    .ime-finish-detail{
+      margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);
+      font-size:12px;color:var(--muted);line-height:1.45;
+    }
+    .ime-finish-detail b{color:var(--ink);font-weight:650}
+    .ime-delay{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .ime-delay .lb{font-size:12px;font-weight:650;color:var(--faint);min-width:4em}
+    .ime-pills{
+      display:inline-flex;gap:2px;padding:3px;border-radius:999px;
+      background:var(--wash);border:1px solid var(--line);
+    }
+    .ime-pills button{
+      border:0;border-radius:999px;min-width:44px;padding:6px 12px;background:transparent;
+      font:inherit;font-size:12.5px;font-weight:650;color:var(--muted);cursor:pointer;
+    }
+    .ime-pills button.is-on{
+      background:var(--paper);color:var(--cyan-ink);
+      box-shadow:0 1px 2px rgba(19,32,44,.06),0 0 0 1px rgba(42,156,196,.2);
+    }
+
+    .ime-cancel-h{margin:0 0 8px;font-size:13px;font-weight:750}
+    .ime-cancel-h span{color:var(--faint);font-weight:550}
+    .ime-list{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+    .ime-list-row{
+      display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:10px;
+      padding:10px 12px;border-top:1px solid var(--line);min-height:48px;
+    }
+    .ime-list-row:first-child{border-top:0}
+    .ime-list-row .lab{font-size:12.5px;font-weight:650}
+    .ime-switch{
+      position:relative;width:40px;height:22px;border:0;border-radius:999px;
+      background:#cfd8e2;cursor:pointer;padding:0;
+    }
+    .ime-switch::after{
+      content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+      background:#fff;box-shadow:0 1px 3px rgba(19,32,44,.18);
+    }
+    .ime-switch.is-on{background:var(--cyan)}
+    .ime-switch.is-on::after{transform:translateX(18px)}
+    .ime-tags{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+    .ime-tag{
+      border:1px solid var(--line);background:var(--wash);border-radius:999px;
+      padding:4px 10px;font-size:11.5px;font-weight:550;color:var(--muted);
+    }
+    .ime-tag.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink);font-weight:650}
+    .ime-tag-add{
+      border:1px solid var(--cyan-bd);background:var(--cyan-soft);border-radius:999px;
+      padding:4px 10px;font:inherit;font-size:11.5px;font-weight:650;color:var(--cyan-ink);cursor:pointer;
+    }
+    @media(max-width:720px){.ime-finish-modes{grid-template-columns:1fr}.ime-list-row{grid-template-columns:1fr}}
+
+    /* 口头指令 · 一词注入 prompt */
+    .prompt-hero{
+      border:2px solid var(--violet);border-radius:12px;background:linear-gradient(180deg,#faf8ff,#fff);
+      padding:12px 14px;text-align:left;font:inherit;width:100%;
+      box-shadow:inset 0 0 0 1px rgba(124,92,191,.12);
+    }
+    .prompt-hero.is-on{box-shadow:inset 0 0 0 1px var(--violet),0 0 0 3px rgba(124,92,191,.1)}
+    .prompt-kicker{
+      display:inline-block;font-size:10px;font-weight:750;letter-spacing:.06em;
+      color:var(--violet);background:var(--violet-soft);border-radius:999px;padding:2px 8px;margin-bottom:6px;
+    }
+    .prompt-hero .ttl{display:block;font-size:16px;font-weight:750;margin:0 0 4px}
+    .prompt-hero .dsc{margin:0;font-size:12px;color:var(--muted);line-height:1.45}
+    .prompt-steps{
+      display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;
+      padding-top:10px;border-top:1px dashed rgba(124,92,191,.28);
+    }
+    .prompt-step{
+      display:inline-flex;align-items:center;gap:5px;
+      font-size:11.5px;font-weight:650;color:var(--violet);
+      background:#fff;border:1px solid rgba(124,92,191,.28);border-radius:8px;padding:4px 8px;
+    }
+    .prompt-step i{
+      width:16px;height:16px;border-radius:50%;background:var(--violet);color:#fff;
+      font-style:normal;font-size:10px;font-weight:750;
+      display:inline-flex;align-items:center;justify-content:center;
+    }
+    .prompt-steps .arr{color:var(--violet);font-weight:750}
+    .prompt-field{margin-top:10px}
+    .prompt-field label{
+      display:block;font-size:11px;font-weight:650;color:var(--muted);margin:0 0 5px;
+    }
+    .prompt-field textarea{
+      width:100%;min-height:72px;resize:vertical;box-sizing:border-box;
+      border:1px solid rgba(124,92,191,.28);border-radius:8px;padding:8px 10px;
+      font:inherit;font-size:12.5px;line-height:1.45;color:var(--ink);background:#fff;
+    }
+    .prompt-field textarea:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(124,92,191,.12)}
+    .prompt-field .hint{margin:5px 0 0;font-size:11px;color:var(--faint);line-height:1.4}
+    .prompt-presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .prompt-presets button{
+      border:1px solid var(--line);border-radius:999px;background:#fff;padding:4px 10px;
+      font:inherit;font-size:11.5px;font-weight:550;color:var(--muted);cursor:pointer;
+    }
+    .prompt-presets button:hover{border-color:var(--violet);color:var(--violet)}
+    .prompt-presets button.is-on{border-color:var(--violet);color:var(--violet);background:var(--violet-soft)}
+
+    .empty{padding:18px 14px;border:1px dashed var(--line);border-radius:10px;background:var(--wash);text-align:center;font-size:12.5px;color:var(--muted)}
+    .empty a{color:var(--cyan-ink);font-weight:650;cursor:pointer;text-decoration:underline}
+
+    .causal{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--cyan-ink);font-weight:550}
+    .causal .arr{color:var(--cyan);font-weight:650}
+    .causal .to{font-weight:650}
+
+    .tail{margin-top:12px;border:1px dashed #f0d5a8;border-radius:10px;padding:10px 12px;background:#fffdf8;display:none}
+    .tail.is-on{display:block}
+    .tail .tl{font-size:11px;font-weight:650;color:var(--warn);margin:0 0 4px}
+    .tail .sub{font-size:11.5px;color:var(--muted);margin:0 0 8px}
+    .outcomes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .oc{border:1px solid var(--line);border-radius:8px;background:#fff;padding:7px 9px;text-align:left;font:inherit;cursor:pointer}
+    .oc.is-on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+    .oc b{display:block;font-size:12.5px;font-weight:650}
+    .oc span{display:block;margin-top:2px;font-size:11px;color:var(--faint)}
+
+    .landing{margin:0;padding:11px 13px;border-radius:10px;background:var(--cyan-soft);font-size:12.5px;color:var(--cyan-ink);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .landing a{margin-left:auto;color:var(--cyan-ink);font-weight:650;text-decoration:underline;cursor:pointer}
+
+    .mirror{margin-top:12px;padding:11px 13px;border-radius:10px;background:var(--paper);border:1px solid var(--line);font-size:12px;color:var(--muted);line-height:1.6}
+    .mirror code{font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--cyan-ink);background:var(--cyan-soft);border-radius:4px;padding:1px 5px}
+    .hidden{display:none!important}
+    @media(max-width:720px){:root{--rail:120px}.outcomes{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span><strong>F · 口令→动作</strong>　听写 / 录键 / <em>一词注入 prompt</em> / 软件自带 / Pad / 手势。</span>
+    <a href="voice-page-variants-index.html">索引</a>
+    <span class="toggles">
+      <button type="button" data-bind="full" class="is-on">已接通</button>
+      <button type="button" data-bind="thin">部分缺绑</button>
+      <button type="button" data-bind="empty">口令未设</button>
+    </span>
+  </div>
+
+  <div class="shell">
+    <div class="contract">
+      <b>目标：</b>口令只匹配 <code>动作</code>（听写 / 录键 / 注入 prompt / 软件命令 / Pad / 手势）。
+      <div class="rules">
+        <div class="rule inc"><div class="k">匹配目标</div>听写方式（按键同规格工作台）· 我录的键 · 口头指令 · 软件自带 · 屏幕按钮 · 手势</div>
+        <div class="rule exc"><div class="k">不搬（深链）</div>序列编辑 · Pad 布局 · 手势标定（听写键可在本页点键帽改）</div>
+        <div class="rule ov"><div class="k">听写方式</div>①听写键+IME ②说完后三选一；取消词挂在「不要了」下，不另开卡片</div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <header class="topbar">
+        <div class="top-ctx"><span>语音</span><span class="sep">/</span><span>正在编辑: Cursor</span></div>
+        <button type="button" class="scene" tabindex="-1">切换 · Cursor · 左 Ctrl × 2</button>
+        <div class="top-acts">
+          <button type="button" class="btn ghost">我的习惯</button>
+          <button type="button" class="btn primary">保存当前场景</button>
+        </div>
+      </header>
+      <div class="status">
+        <span class="brand">语音</span>
+        <span class="pill" id="pill">可以说</span>
+        <button type="button" class="btn primary">保存到正在编辑的习惯</button>
+      </div>
+
+      <div class="body">
+        <section class="hero" aria-label="口令到动作">
+          <div class="flow">
+            <button type="button" class="node is-on" id="node1">
+              <span class="tag">01 / 说了什么</span>
+              <span class="val" id="n1val">开始输入</span>
+              <span class="hint">这句口令</span>
+            </button>
+            <div class="flow-link" aria-hidden="true"><span></span></div>
+            <button type="button" class="node" id="node2">
+              <span class="tag">02 / 意图效果</span>
+              <span class="val" id="n2val">Typeless · 右 Alt</span>
+              <span class="hint">匹配到的动作</span>
+            </button>
+          </div>
+        </section>
+
+        <div class="desk" id="desk1">
+          <h2>说了什么</h2>
+          <p class="sub">口令是触发内容 · 语音独有</p>
+          <div class="caprow">
+            <span class="cap" id="cap1">开始输入</span>
+          </div>
+          <p class="capnote" style="margin:8px 0 0">默认用这句。不对就改</p>
+          <div class="attr" style="border-top:1px dashed var(--line);margin-top:12px;padding-top:10px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center">
+            <div class="attract" id="more1t" style="margin:0">同义说法 ▾</div>
+            <button type="button" class="btn ghost" style="padding:0;font-size:11.5px;font-weight:550;color:var(--faint);text-decoration:underline">改听写目标 →</button>
+            <div class="attract" id="adv1t" style="margin:0">高级 ▾</div>
+            <div class="more" id="more1">同义：开始听写 · 打开听写 · 语音输入</div>
+            <div class="more" id="adv1">口令唤醒 · 不在目标窗时自动切过去（默认关）</div>
+          </div>
+        </div>
+
+        <div class="desk hidden" id="desk2">
+          <h2>意图效果</h2>
+          <p class="sub">完整复刻按键识别类目 · 选中 = 本口令匹配该动作</p>
+
+          <div class="picker">
+            <nav class="rail" aria-label="识别类目">
+              <div class="rail-search"><input type="search" id="q" placeholder="搜索功能…" autocomplete="off" /></div>
+              <div id="rail"></div>
+            </nav>
+            <div class="pane">
+              <div class="pane-head">
+                <h3 id="paneTitle">听写方式</h3>
+                <span class="hint" id="paneHint">听写键 · 说完后 · 取消 · 对齐按键</span>
+              </div>
+              <p class="banner bridge" id="banner"></p>
+              <div class="acts" id="acts"></div>
+            </div>
+          </div>
+
+          <div class="causal">
+            <span>说「<b id="cPhrase">开始输入</b>」</span>
+            <span class="arr">→</span>
+            <span class="to" id="cTo">Typeless · 右 Alt</span>
+          </div>
+
+          <div class="tail" id="tail">
+            <p class="tl">听写收尾 · 其它类目不显示</p>
+            <p class="sub">听写方式工作台已含「说完后 / 取消」；此块仅兼容旧示意</p>
+            <div class="outcomes">
+              <button type="button" class="oc" data-oc="send"><b>发出去</b><span>对齐自动发送</span></button>
+              <button type="button" class="oc is-on" data-oc="keep"><b>先留着</b><span>对齐只结束</span></button>
+              <button type="button" class="oc" data-oc="discard"><b>不要了</b><span>取消本段</span></button>
+            </div>
+          </div>
+
+          <div class="attract" id="more2t">更多：试说 · 边界说明 ▾</div>
+          <div class="more" id="more2"></div>
+        </div>
+
+        <p class="landing">
+          <span id="landText">字打进 <b>光标处</b></span>
+          <a id="landLink">去按键改听写键 →</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="mirror">
+      <b style="color:var(--ink)">口头指令</b> = 一词激活的动作模板：自动聚焦 → 写入 prompt → 自动发送。
+      触发词在 01；prompt 正文在本页填写。不是「口令再匹配另一句口头」。
+    </div>
+  </div>
+
+  <script>
+(function () {
+  var IME_ICON = '../src/icons/ime/';
+  var IME_PRESETS = [
+    { id: 'custom', label: '自定义', glyph: '✎', chord: '点键帽录', icon: '' },
+    { id: 'xunfei', label: '讯飞', glyph: '讯', chord: 'F2', icon: 'xunfei.png' },
+    { id: 'wechat', label: '微信', glyph: '微', chord: 'Ctrl+Shift+Win', icon: 'weixin.png' },
+    { id: 'typeless', label: 'Typeless', glyph: 'T', chord: '右 Alt', icon: 'typeless.png' },
+    { id: 'microsoft', label: '微软', glyph: 'W', chord: 'Win+H', icon: 'microsoft.svg' },
+    { id: 'zhipu', label: '智谱', glyph: '智', chord: '右 Alt', icon: 'zhipu.png' },
+    { id: 'qianwen', label: '千问', glyph: '千', chord: '右 Alt', icon: 'qianwen.png' },
+    { id: 'shandianshuo', label: '闪电说', glyph: '闪', chord: '右 Alt', icon: 'shandianshuo.jpg' },
+    { id: 'sogou', label: '搜狗', glyph: '搜', chord: 'Ctrl+Shift+Z', icon: 'sougou.png' },
+    { id: 'baidu', label: '百度', glyph: '百', chord: 'Alt+`', icon: 'baidu.svg' }
+  ];
+  var imeState = { id: 'typeless', finish: 'keep', delay: '3s' };
+
+  var CATS = [
+    {
+      id: 'ime',
+      label: '听写方式',
+      hint: '按键同规格 · 听写键 / 说完后 / 取消',
+      layout: 'ime-desk',
+      banner: { type: 'bridge', html: '听写键对齐按键；说完后三选一。取消词 / 摄像头只挂在 <b>不要了</b> 下，不另开卡片。' },
+      groups: []
+    },
+    {
+      id: 'key',
+      label: '我录的键',
+      hint: '匹配到本场景已录序列 · 不在此录制',
+      banner: { type: 'bridge', html: '语音匹配「我录的键」动作。新建 / 改序列 → <a data-go="keys-key">去按键 · 我录的键</a>' },
+      groups: [
+        {
+          name: '已录匹配',
+          acts: [
+            { id: 'rec-copy', label: '复制一段', desc: 'Ctrl+C → 停顿 → Ctrl+V 类序列', bind: '已录 · 复制流', pick: true, land: '说这句 = 我录的键 · <b>复制一段</b>', link: '去按键改序列 →', more: '录制与排序只在按键页。' },
+            { id: 'rec-clip', label: '剪贴板整理', desc: '自定义四步序列', bind: '已录 · 整理', pick: true, land: '说这句 = 我录的键 · <b>剪贴板整理</b>', link: '去按键改序列 →', more: '' },
+            { id: 'rec-miss', label: '尚未命名的序列', desc: '习惯里还没有这条', bind: null, miss: true, pick: true, land: '缺绑定 · 先去按键录一条', link: '去按键新建匹配 →', more: '缺绑定时仍可看见，点选后引导补齐。' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'voice',
+      label: '口头指令',
+      hint: '一词激活 · 聚焦 → 填 prompt → 自动发送',
+      layout: 'prompt',
+      banner: { type: 'bridge', html: '说 <b>01 的一词</b> → 自动聚焦输入框 → 写入下方 prompt → <b>自动发送</b>。改触发词 → <a data-go="step1">01</a>。' },
+      groups: [
+        {
+          name: '一词注入',
+          acts: [
+            {
+              id: 'prompt-inject-send',
+              label: '聚焦 · 填入 · 发送',
+              desc: '一词激活整条流水线',
+              bind: '推荐',
+              pick: true,
+              primary: true,
+              steps: ['一词激活', '自动聚焦', '填入 prompt', '自动发送'],
+              promptDefault: '画一个原型图，风格简洁，输出可直接落地的交互说明。',
+              presets: [
+                { id: 'p-proto', label: '画原型图', text: '画一个原型图，风格简洁，输出可直接落地的交互说明。' },
+                { id: 'p-agent', label: 'Agent 总结', text: '总结当前对话要点，并给出下一步可执行建议。' },
+                { id: 'p-continue', label: '继续', text: '继续上一步，保持同样约束。' }
+              ],
+              land: '说这句 = <b>聚焦输入框 → 写入 prompt → 回车发送</b>',
+              link: '改 01 触发词 →',
+              more: '触发词只负责激活；正文用 prompt，不必把长文念出来。'
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'cursor',
+      label: '软件自带',
+      hint: '匹配软件命令 / 快捷键动作 · 与按键共用',
+      banner: { type: 'bridge', html: '新场景口令挂这里的 <b>快捷键 / 软件命令</b>。缺键 → <a data-go="keys-cursor">去按键 · 软件自带</a>' },
+      groups: [
+        {
+          name: '说话与发送',
+          acts: [
+            { id: 'c-stop', label: '停止语音输入', desc: '软件动作 · 快捷键/内置', bind: '内置', pick: true, land: '说这句 = 动作 · <b>停止语音输入</b>', link: '去按键 · 软件自带 →', more: '' }
+          ]
+        },
+        {
+          name: '对话与 Agent',
+          acts: [
+            { id: 'c-chat', label: '打开 Chat', desc: '快捷键动作', bind: 'Ctrl+L', pick: true, land: '说这句 = 动作 · <b>打开 Chat</b>', link: '去按键 · 软件自带 →', more: '' },
+            { id: 'c-agent', label: 'Agent 总结', desc: '场景动作 · 仍是命令/快捷键', bind: 'Ctrl+Shift+A', pick: true, land: '说这句 = 动作 · <b>Agent 总结</b>', link: '去按键补快捷键 →', more: '若要一词填长 prompt，改用「口头指令」。' },
+            { id: 'c-cmd', label: '打开命令面板', desc: '快捷键动作', bind: 'Ctrl+Shift+P', pick: true, land: '说这句 = 动作 · <b>命令面板</b>', link: '去按键 · 软件自带 →', more: '' }
+          ]
+        },
+        {
+          name: '找文件与改代码',
+          acts: [
+            { id: 'c-file', label: '快速打开文件', desc: '快捷键动作', bind: 'Ctrl+P', pick: true, land: '说这句 = 动作 · <b>快速打开</b>', link: '去按键 · 软件自带 →', more: '' },
+            { id: 'c-fmt', label: '格式化文档', desc: '可能未绑', bind: null, miss: true, pick: true, land: '缺绑定 · 去按键种子快捷键', link: '去按键补绑定 →', more: '' }
+          ]
+        },
+        {
+          name: '打开应用',
+          acts: [
+            { id: 'c-app', label: '打开终端', desc: '应用/命令动作', bind: 'Ctrl+`', pick: true, land: '说这句 = 动作 · <b>打开终端</b>', link: '去按键完善 →', more: '' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'softPad',
+      label: '屏幕按钮',
+      hint: '匹配 SoftPad 格 · 布局在 SoftPad 页',
+      banner: { type: 'bridge', html: '语音 = 点屏幕按钮。改格子 / 准备虚拟键盘 → <a data-go="softpad">去 SoftPad</a>（按键页也可绑识别键）' },
+      groups: [
+        {
+          name: '听写 / 发送 / 取消',
+          acts: [
+            { id: 'sp-dict', label: '听写', desc: 'Pad 上听写键', bind: 'Pad·听写', pick: true, land: '说这句 = 屏幕按钮 · <b>听写</b>', link: '去 SoftPad →', more: '与「听写方式」某激活方案语义接近时优先统一。' },
+            { id: 'sp-send', label: '发送', desc: 'Pad 上发送', bind: 'Pad·发送', pick: true, land: '说这句 = 屏幕按钮 · <b>发送</b>', link: '去 SoftPad →', more: '' },
+            { id: 'sp-cancel', label: '取消', desc: 'Pad 上取消', bind: 'Pad·取消', pick: true, land: '说这句 = 屏幕按钮 · <b>取消</b>', link: '去 SoftPad →', more: '' }
+          ]
+        },
+        {
+          name: '应用快捷键',
+          acts: [
+            { id: 'sp-go', label: '继续', desc: '场景常用', bind: 'Pad·继续', pick: true, land: '说这句 = 屏幕按钮 · <b>继续</b>', link: '去 SoftPad 改键位 →', more: '' },
+            { id: 'sp-undo', label: '撤销', desc: '场景常用', bind: 'Pad·撤销', pick: true, land: '说这句 = 屏幕按钮 · <b>撤销</b>', link: '去 SoftPad 改键位 →', more: '' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'camera',
+      label: '手势',
+      hint: '匹配摄像头手势动作 · 标定在摄像头页',
+      banner: { type: 'bridge', html: '语音匹配手势动作。标定 / 阈值 → <a data-go="camera">去摄像头</a>。按键取消区也可挂摄像头 → Esc' },
+      groups: [
+        {
+          name: '确认类',
+          acts: [
+            { id: 'cam-ok', label: 'OK 手势', desc: '确认 / 可以', bind: 'OK', pick: true, land: '说这句 = 手势 · <b>OK</b>', link: '去摄像头改标定 →', more: '无收尾：手势是一次性动作。' },
+            { id: 'cam-nod', label: '点头', desc: '确认', bind: '点头', pick: true, land: '说这句 = 手势 · <b>点头</b>', link: '去摄像头改标定 →', more: '' }
+          ]
+        },
+        {
+          name: '取消 / 其它',
+          acts: [
+            { id: 'cam-shake', label: '摇头', desc: '取消', bind: '摇头', pick: true, land: '说这句 = 手势 · <b>摇头</b>', link: '去摄像头改标定 →', more: '' },
+            { id: 'cam-palm', label: '五指张开', desc: '打断 / 取消', bind: '五指张开', pick: true, land: '说这句 = 手势 · <b>五指张开</b>', link: '去摄像头改标定 →', more: '' },
+            { id: 'cam-wave', label: '挥手', desc: '招呼 / 取消', bind: '挥手', pick: true, land: '说这句 = 手势 · <b>挥手</b>', link: '去摄像头改标定 →', more: '' },
+            { id: 'cam-miss', label: '故意闭眼', desc: '未在本习惯接通', bind: null, miss: true, pick: true, land: '缺绑定 · 先去摄像头设好', link: '去摄像头补绑定 →', more: '' }
+          ]
+        }
+      ]
+    }
+  ];
+
+  var pill = document.getElementById('pill');
+  var n1 = document.getElementById('n1val');
+  var n2 = document.getElementById('n2val');
+  var cap1 = document.getElementById('cap1');
+  var cPhrase = document.getElementById('cPhrase');
+  var cTo = document.getElementById('cTo');
+  var railEl = document.getElementById('rail');
+  var actsEl = document.getElementById('acts');
+  var banner = document.getElementById('banner');
+  var paneTitle = document.getElementById('paneTitle');
+  var paneHint = document.getElementById('paneHint');
+  var tail = document.getElementById('tail');
+  var landText = document.getElementById('landText');
+  var landLink = document.getElementById('landLink');
+  var more2 = document.getElementById('more2');
+  var desk1 = document.getElementById('desk1');
+  var desk2 = document.getElementById('desk2');
+  var node1 = document.getElementById('node1');
+  var node2 = document.getElementById('node2');
+  var q = document.getElementById('q');
+
+  var bindMode = 'full';
+  var curCat = CATS[0];
+  var curAct = null;
+  var filter = '';
+
+  function showStep(n) {
+    var on1 = n === 1;
+    node1.classList.toggle('is-on', on1);
+    node2.classList.toggle('is-on', !on1);
+    desk1.classList.toggle('hidden', !on1);
+    desk2.classList.toggle('hidden', on1);
+  }
+
+  function flatActs(cat) {
+    var out = [];
+    cat.groups.forEach(function (g) {
+      g.acts.forEach(function (a) { out.push(a); });
+    });
+    return out;
+  }
+
+  function visibleAct(a) {
+    if (bindMode === 'full' && a.miss) return false;
+    if (filter) {
+      var hay = (a.label + ' ' + a.desc + ' ' + (a.bind || '')).toLowerCase();
+      if (hay.indexOf(filter) < 0) return false;
+    }
+    return true;
+  }
+
+  function countCat(cat) {
+    if (cat.layout === 'ime-desk') return '工作台';
+    if (cat.layout === 'prompt') return '1';
+    return flatActs(cat).filter(visibleAct).length;
+  }
+
+  function applyImePreset(preset) {
+    imeState.id = preset.id;
+    var label = preset.label + ' · ' + preset.chord;
+    n2.textContent = label;
+    cTo.textContent = label;
+    cPhrase.textContent = n1.textContent;
+    landText.innerHTML = '说「' + n1.textContent + '」= 注入听写键 <b>' + preset.chord + '</b>（' + preset.label + '）';
+    landLink.textContent = '点键帽可改听写键';
+    landLink.onclick = null;
+    more2.textContent = '听写键对齐按键；说完后 / 取消按语音习惯（词与通道，不是再双击）。';
+    tail.classList.remove('is-on');
+    var cap = document.getElementById('imeKeycap');
+    var hint = document.getElementById('imeKeyHint');
+    var confirm = document.getElementById('imeConfirm');
+    if (cap) cap.textContent = preset.chord;
+    if (hint) {
+      hint.innerHTML = preset.id === 'custom'
+        ? '自定义听写键。点键帽录制你的听写快捷键。'
+        : '已选 <b>' + preset.label + '</b>，听写键是 <b>' + preset.chord + '</b>。不对就点键帽改。';
+    }
+    if (confirm) {
+      confirm.innerHTML = preset.id === 'custom'
+        ? '自定义听写键：<b>' + preset.chord + '</b>'
+        : '已用 ' + preset.label + ' 默认听写键：<b>' + preset.chord + '</b>';
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('.ime-tile'), function (b) {
+      b.classList.toggle('is-on', b.getAttribute('data-ime') === preset.id);
+    });
+  }
+
+  function renderImeDesk() {
+    var desk = document.createElement('div');
+    desk.className = 'ime-desk';
+    var strip = IME_PRESETS.map(function (p) {
+      var pic = p.icon
+        ? '<img src="' + IME_ICON + p.icon + '" alt="" />'
+        : '<span class="glyph">' + p.glyph + '</span>';
+      return '<button type="button" class="ime-tile' + (p.id === imeState.id ? ' is-on' : '') +
+        '" data-ime="' + p.id + '"><span class="pic">' + pic + '</span>' + p.label + '</button>';
+    }).join('');
+    var cur = IME_PRESETS.filter(function (p) { return p.id === imeState.id; })[0] || IME_PRESETS[3];
+    desk.innerHTML =
+      '<div class="ime-block">' +
+        '<p class="ime-step"><span class="n">1</span>听写键</p>' +
+        '<button type="button" class="ime-keycap" id="imeKeycap">' + cur.chord + '</button>' +
+        '<p class="ime-key-hint" id="imeKeyHint">已选 <b>' + cur.label + '</b>，听写键是 <b>' + cur.chord + '</b>。不对就点键帽改。</p>' +
+        '<div class="ime-strip">' + strip + '</div>' +
+        '<p class="ime-confirm" id="imeConfirm">已用 ' + cur.label + ' 默认听写键：<b>' + cur.chord + '</b></p>' +
+      '</div>' +
+      '<div class="ime-block">' +
+        '<p class="ime-step"><span class="n">2</span>说完后</p>' +
+        '<div class="ime-finish-modes" id="imeFinishModes">' +
+          '<button type="button" data-finish="send" class="' + (imeState.finish === 'send' ? 'is-on' : '') + '">' +
+            '<span class="t">发出去</span>' +
+            '<span class="d">说结束/发送词 → 回车发出</span>' +
+            '<span class="cap">「发送」</span>' +
+          '</button>' +
+          '<button type="button" data-finish="keep" class="' + (imeState.finish === 'keep' ? 'is-on' : '') + '">' +
+            '<span class="t">先留着</span>' +
+            '<span class="d">说结束词 → 字留下不发</span>' +
+            '<span class="cap">「停一会儿」</span>' +
+          '</button>' +
+          '<button type="button" data-finish="discard" class="' + (imeState.finish === 'discard' ? 'is-on' : '') + '">' +
+            '<span class="t">不要了</span>' +
+            '<span class="d">说取消词 → 本段丢掉</span>' +
+            '<span class="cap">「不要了」</span>' +
+          '</button>' +
+        '</div>' +
+        '<div class="ime-finish-detail" id="imeFinishDetail"></div>' +
+        '<div class="ime-delay" id="imeDelayRow">' +
+          '<span class="lb">等待多久</span>' +
+          '<div class="ime-pills" id="imeDelay">' +
+            ['1s', '2s', '3s', '自定义'].map(function (d) {
+              return '<button type="button" data-delay="' + d + '" class="' +
+                (imeState.delay === d ? 'is-on' : '') + '">' + d + '</button>';
+            }).join('') +
+          '</div>' +
+        '</div>' +
+        '<div class="ime-discard-pane" id="imeDiscardPane" hidden>' +
+          '<p class="ime-cancel-h" style="margin-top:4px">怎么取消 <span>说词或摇头 → Esc</span></p>' +
+          '<div class="ime-list">' +
+            '<div class="ime-list-row">' +
+              '<span class="lab">取消词</span>' +
+              '<div class="ime-tags">' +
+                '<span class="ime-tag is-on">不要了</span>' +
+                '<span class="ime-tag is-on">取消输入</span>' +
+                '<span class="ime-tag">算了</span>' +
+                '<button type="button" class="ime-tag-add">添加</button>' +
+              '</div>' +
+              '<span></span>' +
+            '</div>' +
+            '<div class="ime-list-row">' +
+              '<span class="lab">摄像头</span>' +
+              '<div class="ime-tags">' +
+                '<span class="ime-tag is-on">摇头</span>' +
+                '<span class="ime-tag">五指张开</span>' +
+                '<span class="ime-tag">挥手</span>' +
+              '</div>' +
+              '<button type="button" class="ime-switch" data-sw="cam" aria-label="摄像头取消"></button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    actsEl.appendChild(desk);
+
+    function syncFinishUi() {
+      var detail = document.getElementById('imeFinishDetail');
+      var delayRow = document.getElementById('imeDelayRow');
+      var discardPane = document.getElementById('imeDiscardPane');
+      var map = {
+        send: '说「发送」→ 等一会儿 → 自动回车发出。',
+        keep: '说「停一会儿」→ 结束听写，字留在输入框，不自动发送。',
+        discard: '选中「不要了」后配置取消词 / 摄像头；命中后按 <b>Esc</b> 丢弃本段。'
+      };
+      if (detail) detail.innerHTML = map[imeState.finish] || map.keep;
+      if (delayRow) delayRow.style.display = imeState.finish === 'send' ? '' : 'none';
+      if (discardPane) discardPane.hidden = imeState.finish !== 'discard';
+    }
+
+    Array.prototype.forEach.call(desk.querySelectorAll('.ime-tile'), function (b) {
+      b.addEventListener('click', function () {
+        var p = IME_PRESETS.filter(function (x) { return x.id === b.getAttribute('data-ime'); })[0];
+        if (p) applyImePreset(p);
+      });
+    });
+    desk.querySelector('#imeKeycap').addEventListener('click', function () {
+      landText.innerHTML = '原型示意：点键帽进入 <b>录制听写键</b>（与按键页相同）';
+    });
+    Array.prototype.forEach.call(desk.querySelectorAll('#imeFinishModes button'), function (b) {
+      b.addEventListener('click', function () {
+        imeState.finish = b.getAttribute('data-finish');
+        Array.prototype.forEach.call(desk.querySelectorAll('#imeFinishModes button'), function (x) {
+          x.classList.toggle('is-on', x === b);
+        });
+        syncFinishUi();
+      });
+    });
+    Array.prototype.forEach.call(desk.querySelectorAll('#imeDelay button'), function (b) {
+      b.addEventListener('click', function () {
+        imeState.delay = b.getAttribute('data-delay');
+        Array.prototype.forEach.call(desk.querySelectorAll('#imeDelay button'), function (x) {
+          x.classList.toggle('is-on', x === b);
+        });
+      });
+    });
+    Array.prototype.forEach.call(desk.querySelectorAll('.ime-switch'), function (b) {
+      b.addEventListener('click', function () { b.classList.toggle('is-on'); });
+    });
+    Array.prototype.forEach.call(desk.querySelectorAll('.ime-tag'), function (t) {
+      t.addEventListener('click', function () { t.classList.toggle('is-on'); });
+    });
+
+    applyImePreset(cur);
+    syncFinishUi();
+  }
+
+  function applyAct(act) {
+    curAct = act;
+    if (!act) return;
+    var miss = act.miss && bindMode === 'thin';
+    n2.textContent = miss ? '尚未接通' : act.label;
+    cTo.textContent = miss ? '（缺绑定）' + act.label : act.label;
+    cPhrase.textContent = n1.textContent;
+    landText.innerHTML = act.land;
+    landLink.textContent = act.link;
+    landLink.onclick = (act.id === 'prompt-inject-send')
+      ? function (e) { e.preventDefault(); showStep(1); }
+      : null;
+    more2.textContent = act.more || '试说一次，确认命中当前动作。';
+    tail.classList.toggle('is-on', !!act.tail && !miss);
+    Array.prototype.forEach.call(actsEl.querySelectorAll('.act, .prompt-hero'), function (b) {
+      b.classList.toggle('is-on', b.getAttribute('data-id') === act.id);
+    });
+  }
+
+  function wireBannerLinks(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-go]'), function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var go = a.getAttribute('data-go');
+        if (go === 'step1') showStep(1);
+        else if (go === 'keys-ime') renderCat('ime');
+        else if (go === 'keys-key') renderCat('key');
+        else if (go === 'keys-cursor') renderCat('cursor');
+        else if (go === 'keys-voice') renderCat('voice');
+        else if (go === 'softpad') {
+          landText.innerHTML = '原型示意：正式版跳转 <b>SoftPad</b>';
+        } else if (go === 'camera') {
+          landText.innerHTML = '原型示意：正式版跳转 <b>摄像头</b>';
+        }
+      });
+    });
+  }
+
+  function renderRail() {
+    railEl.innerHTML = '';
+    CATS.forEach(function (cat) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rail-item' + (cat.id === curCat.id ? ' is-on' : '');
+      var sub = (typeof countCat(cat) === 'number' ? countCat(cat) + ' 项' : String(countCat(cat)));
+      var badge = cat.overlap ? ' <span class="badge-ov">重叠</span>' : '';
+      b.innerHTML = cat.label + badge + '<span class="n">' + sub + '</span>';
+      b.addEventListener('click', function () { renderCat(cat.id); });
+      railEl.appendChild(b);
+    });
+  }
+
+  function renderCat(id) {
+    curCat = CATS.filter(function (c) { return c.id === id; })[0] || CATS[0];
+    renderRail();
+    paneTitle.textContent = curCat.label;
+    paneHint.textContent = curCat.hint;
+    banner.className = 'banner ' + curCat.banner.type;
+    banner.innerHTML = curCat.banner.html;
+    wireBannerLinks(banner);
+    actsEl.innerHTML = '';
+
+    if (bindMode === 'empty') {
+      actsEl.innerHTML = '<div class="empty">先设口令，再选意图。<br/><a id="go1">回到 01 →</a></div>';
+      var g = document.getElementById('go1');
+      if (g) g.addEventListener('click', function () { showStep(1); });
+      n2.textContent = '—';
+      cTo.textContent = '—';
+      tail.classList.remove('is-on');
+      return;
+    }
+
+    var first = null;
+
+    function appendSecAct(a) {
+      if (!first && a.pick !== false) first = a;
+      if (!first) first = a;
+      var miss = a.miss && bindMode === 'thin';
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'act' + (miss ? ' is-miss' : '');
+      b.setAttribute('data-id', a.id);
+      var chips = '';
+      if (miss) chips += '<span class="chip miss">未绑定</span>';
+      else if (a.bind) chips += '<span class="chip">' + a.bind + '</span>';
+      chips += '<span class="chip ok">动作</span>';
+      b.innerHTML = '<div class="act-row"><div><b>' + a.label + '</b><span class="desc">' + a.desc + '</span></div><div class="meta">' + chips + '</div></div>';
+      b.addEventListener('click', function () { applyAct(a); });
+      actsEl.appendChild(b);
+    }
+
+    if (curCat.layout === 'ime-desk') {
+      renderImeDesk();
+      return;
+    }
+
+    if (curCat.layout === 'prompt') {
+      var pAct = null;
+      curCat.groups.forEach(function (g) {
+        g.acts.filter(visibleAct).forEach(function (a) {
+          if (a.primary || !pAct) pAct = a;
+        });
+      });
+      if (pAct) {
+        first = pAct;
+        var ph = document.createElement('div');
+        ph.className = 'prompt-hero is-on';
+        ph.setAttribute('data-id', pAct.id);
+        var pSteps = (pAct.steps || []).map(function (s, i) {
+          return (i ? '<span class="arr">→</span>' : '') +
+            '<span class="prompt-step"><i>' + (i + 1) + '</i>' + s + '</span>';
+        }).join('');
+        var presetHtml = (pAct.presets || []).map(function (p) {
+          return '<button type="button" data-preset="' + p.id + '">' + p.label + '</button>';
+        }).join('');
+        ph.innerHTML =
+          '<span class="prompt-kicker">一词注入</span>' +
+          '<span class="ttl">' + pAct.label + '</span>' +
+          '<p class="dsc">' + pAct.desc + ' · 触发词来自 01（当前：<b id="promptTrigger">' + n1.textContent + '</b>）</p>' +
+          '<div class="prompt-steps">' + pSteps + '</div>' +
+          '<div class="prompt-field">' +
+            '<label for="promptBody">要填入并发送的 prompt</label>' +
+            '<textarea id="promptBody" placeholder="在此填写要自动写入并发送的内容…">' +
+              (pAct.promptDefault || '') +
+            '</textarea>' +
+            '<p class="hint">说一词即可跑完整条；长文放这里，不必念出来。</p>' +
+            '<div class="prompt-presets">' + presetHtml + '</div>' +
+          '</div>';
+        actsEl.appendChild(ph);
+        var ta = ph.querySelector('#promptBody');
+        var syncLand = function () {
+          var body = (ta && ta.value || '').trim();
+          var preview = body.length > 36 ? body.slice(0, 36) + '…' : body;
+          landText.innerHTML = '说「' + n1.textContent + '」= 聚焦 → 写入' +
+            (preview ? '「' + preview + '」' : ' prompt') + ' → <b>自动发送</b>';
+        };
+        applyAct(pAct);
+        syncLand();
+        if (ta) {
+          ta.addEventListener('input', syncLand);
+          ta.addEventListener('click', function (e) { e.stopPropagation(); });
+        }
+        Array.prototype.forEach.call(ph.querySelectorAll('[data-preset]'), function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var pid = btn.getAttribute('data-preset');
+            var preset = (pAct.presets || []).filter(function (x) { return x.id === pid; })[0];
+            if (!preset || !ta) return;
+            ta.value = preset.text;
+            Array.prototype.forEach.call(ph.querySelectorAll('[data-preset]'), function (x) {
+              x.classList.toggle('is-on', x === btn);
+            });
+            syncLand();
+          });
+        });
+        landLink.onclick = function (e) {
+          e.preventDefault();
+          showStep(1);
+        };
+        // applyAct already ran; keep live preview from textarea
+        return;
+      }
+    } else {
+      curCat.groups.forEach(function (g) {
+        var list = g.acts.filter(visibleAct);
+        if (!list.length) return;
+        var lbl = document.createElement('p');
+        lbl.className = 'group-lbl';
+        lbl.textContent = g.name;
+        actsEl.appendChild(lbl);
+        list.forEach(appendSecAct);
+      });
+    }
+
+    if (!actsEl.children.length) {
+      actsEl.innerHTML = '<div class="empty">无匹配项 · 换个类目或清空搜索</div>';
+      return;
+    }
+    applyAct(first);
+  }
+
+  node1.addEventListener('click', function () { showStep(1); });
+  node2.addEventListener('click', function () { showStep(2); });
+  document.getElementById('more1t').addEventListener('click', function () {
+    document.getElementById('more1').classList.toggle('is-open');
+  });
+  document.getElementById('adv1t').addEventListener('click', function () {
+    document.getElementById('adv1').classList.toggle('is-open');
+  });
+  document.getElementById('more2t').addEventListener('click', function () {
+    more2.classList.toggle('is-open');
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.oc, .seg button'), function (b) {
+    b.addEventListener('click', function () {
+      var group = b.classList.contains('oc') ? document.querySelectorAll('.oc') : b.parentNode.querySelectorAll('button');
+      Array.prototype.forEach.call(group, function (x) { x.classList.remove('is-on'); });
+      b.classList.add('is-on');
+    });
+  });
+  q.addEventListener('input', function () {
+    filter = (q.value || '').trim().toLowerCase();
+    renderCat(curCat.id);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.toggles button'), function (b) {
+    b.addEventListener('click', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.toggles button'), function (x) { x.classList.remove('is-on'); });
+      b.classList.add('is-on');
+      bindMode = b.getAttribute('data-bind');
+      if (bindMode === 'empty') {
+        pill.textContent = '缺唤醒词';
+        pill.className = 'pill is-warn';
+        n1.textContent = '还没设';
+        cap1.textContent = '还没设';
+        cap1.classList.add('is-empty');
+        showStep(1);
+      } else {
+        pill.textContent = '可以说';
+        pill.className = 'pill';
+        n1.textContent = '开始输入';
+        cap1.textContent = '开始输入';
+        cap1.classList.remove('is-empty');
+      }
+      renderCat(curCat.id);
+      if (bindMode !== 'empty') showStep(2);
+    });
+  });
+
+  renderCat('ime');
+})();
+  </script>
+</body>
+</html>

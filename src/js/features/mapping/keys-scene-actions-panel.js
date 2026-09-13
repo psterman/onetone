@@ -11,6 +11,36 @@
     bound: false
   };
 
+  // Keys + Voice share the same dock; only the visible settings page paints.
+  var HOSTS = [
+    {
+      panel: 'keysSceneActionsPanel',
+      page: 'settingsPanelKeys',
+      bodySel: '.keys-page-body',
+      app: 'keysSceneActionsApp',
+      appIcon: 'keysSceneActionsAppIcon',
+      appName: 'keysSceneActionsAppName',
+      meta: 'keysSceneActionsMeta',
+      back: 'keysSceneActionsBack',
+      dir: 'keysSceneActionsDir',
+      detail: 'keysSceneActionsDetail',
+      add: 'keysSceneActionsAdd'
+    },
+    {
+      panel: 'voiceSceneActionsPanel',
+      page: 'settingsPanelVoiceWake',
+      bodySel: '.voice-page-body',
+      app: 'voiceSceneActionsApp',
+      appIcon: 'voiceSceneActionsAppIcon',
+      appName: 'voiceSceneActionsAppName',
+      meta: 'voiceSceneActionsMeta',
+      back: 'voiceSceneActionsBack',
+      dir: 'voiceSceneActionsDir',
+      detail: 'voiceSceneActionsDetail',
+      add: 'voiceSceneActionsAdd'
+    }
+  ];
+
   function t(key, fallback) {
     try {
       if (global.OneToneI18n && typeof global.OneToneI18n.t === 'function') {
@@ -60,6 +90,15 @@
   }
 
   function selectedMapping() {
+    if (onVoicePage()) {
+      try {
+        var hdr = global.OneToneVoicePageHeaderRender;
+        if (hdr && typeof hdr.resolveScopeMapping === 'function') {
+          var scoped = hdr.resolveScopeMapping(null);
+          if (scoped) return scoped;
+        }
+      } catch (_) {}
+    }
     var core = mappingCore();
     if (core && typeof core.selected === 'function') return core.selected();
     try {
@@ -80,25 +119,66 @@
     return !!(m && String(m.appTargetId || '').trim());
   }
 
-  function pageBody(panelEl) {
+  function pageIsOpen(pageId) {
+    var page = $(pageId);
+    return !!(page && !page.hidden);
+  }
+
+  function activeHost() {
+    var i;
+    for (i = 0; i < HOSTS.length; i++) {
+      if (pageIsOpen(HOSTS[i].page)) return HOSTS[i];
+    }
+    return HOSTS[0];
+  }
+
+  function hostBody(host) {
+    if (!host) return null;
     try {
-      var root = $('settingsPanelKeys');
+      var root = $(host.page);
       if (root && root.querySelector) {
-        var body = root.querySelector('.keys-page-body');
+        var body = root.querySelector(host.bodySel);
         if (body) return body;
       }
     } catch (_) {}
-    return (panelEl && panelEl.parentElement) || null;
+    var panel = $(host.panel);
+    return (panel && panel.parentElement) || null;
   }
 
   function setVisible(show) {
-    var panel = $('keysSceneActionsPanel');
-    if (!panel) return;
-    panel.hidden = !show;
-    var body = pageBody(panel);
-    if (!body || !body.classList) return;
-    if (show) body.classList.add('has-scene-panel');
-    else body.classList.remove('has-scene-panel');
+    var active = activeHost();
+    var i;
+    for (i = 0; i < HOSTS.length; i++) {
+      var host = HOSTS[i];
+      var panel = $(host.panel);
+      var body = hostBody(host);
+      var showThis = !!(show && active && host.panel === active.panel && pageIsOpen(host.page));
+      if (panel) panel.hidden = !showThis;
+      if (body && body.classList) {
+        if (showThis) body.classList.add('has-scene-panel');
+        else body.classList.remove('has-scene-panel');
+      }
+    }
+  }
+
+  function openKeysPanelIfNeeded() {
+    var ui = global.OneToneState && global.OneToneState.ui;
+    if (!ui || ui.settingsPanel === 'keys') return;
+    try {
+      if (global.OneToneSettingsDrawer && typeof global.OneToneSettingsDrawer.open === 'function') {
+        global.OneToneSettingsDrawer.open({ panel: 'keys' });
+        return;
+      }
+    } catch (_) {}
+    try {
+      var hooks = global.__vp_bootstrap_hooks__ || {};
+      if (typeof hooks.setSettingsPanel === 'function') hooks.setSettingsPanel('keys');
+    } catch (_) {}
+  }
+
+  function onVoicePage() {
+    var ui = global.OneToneState && global.OneToneState.ui;
+    return !!(ui && ui.settingsPanel === 'voiceWake');
   }
 
   function appInfo(m) {
@@ -383,6 +463,20 @@
       global.OneToneState.state.selectedMappingId = mid;
     }
     if (mid) state.mappingId = mid;
+    // Voice page: voice-input rows stay here; custom-key peers jump to Keys.
+    if (onVoicePage()) {
+      if (row && row.kind === 'customKey') {
+        openKeysPanelIfNeeded();
+      } else {
+        paint();
+        try {
+          if (global.OneToneVoiceSettingsFlow && global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender) {
+            global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+          }
+        } catch (_) {}
+        return;
+      }
+    }
     if (row && row.kind === 'customKey') {
       if (page && typeof page.setStep === 'function') {
         try {
@@ -433,6 +527,7 @@
   }
 
   function startNewAction() {
+    openKeysPanelIfNeeded();
     var picker = global.OneToneKeysChannelCommandPicker;
     var created = null;
     var createFn =
@@ -509,10 +604,11 @@
     }
   }
 
-  function paintApp(m) {
-    var wrap = $('keysSceneActionsApp');
-    var ico = $('keysSceneActionsAppIcon');
-    var nameEl = $('keysSceneActionsAppName');
+  function paintApp(m, host) {
+    host = host || activeHost();
+    var wrap = $(host.app);
+    var ico = $(host.appIcon);
+    var nameEl = $(host.appName);
     if (!wrap) return;
     var info = appInfo(m);
     if (!info.id) {
@@ -532,30 +628,33 @@
     }
   }
 
-  function paintMeta(m) {
-    var meta = $('keysSceneActionsMeta');
+  function paintMeta(m, host) {
+    host = host || activeHost();
+    var meta = $(host.meta);
     if (!meta) return;
     var n = buildRows(m).length;
     meta.textContent = t('keysSceneActionsMetaCount', '{n} 个动作').replace('{n}', String(n));
   }
 
-  function paintChrome(m) {
-    var panel = $('keysSceneActionsPanel');
+  function paintChrome(m, host) {
+    host = host || activeHost();
+    var panel = $(host.panel);
     if (!panel) return;
     panel.setAttribute('data-panel', 'dir');
-    var back = $('keysSceneActionsBack');
-    var dir = $('keysSceneActionsDir');
-    var detail = $('keysSceneActionsDetail');
+    var back = $(host.back);
+    var dir = $(host.dir);
+    var detail = $(host.detail);
     if (back) back.hidden = true;
     if (dir) dir.hidden = false;
     if (detail) detail.hidden = true;
-    paintApp(m);
-    paintMeta(m);
+    paintApp(m, host);
+    paintMeta(m, host);
   }
 
-  function paintDir(rows) {
-    var host = $('keysSceneActionsDir');
-    if (!host) return;
+  function paintDir(rows, host) {
+    host = host || activeHost();
+    var dirHost = $(host.dir);
+    if (!dirHost) return;
     var list =
       !rows.length
         ? '<p class="keys-scene-actions__empty">' +
@@ -598,8 +697,8 @@
             })
             .join('') +
           '</div>';
-    host.innerHTML = list;
-    var addBtn = $('keysSceneActionsAdd');
+    dirHost.innerHTML = list;
+    var addBtn = $(host.add);
     if (addBtn) {
       addBtn.textContent = '＋ ' + t('keysSceneActionsAdd', '新建动作');
     }
@@ -612,9 +711,10 @@
       return;
     }
     setVisible(true);
+    var host = activeHost();
     var rows = buildRows(m);
-    paintChrome(m);
-    paintDir(rows);
+    paintChrome(m, host);
+    paintDir(rows, host);
   }
 
   function onPanelClick(e) {
@@ -637,10 +737,12 @@
 
   function bindOnce() {
     if (state.bound) return;
-    var panel = $('keysSceneActionsPanel');
-    if (!panel || !panel.addEventListener) return;
     state.bound = true;
-    panel.addEventListener('click', onPanelClick);
+    var i;
+    for (i = 0; i < HOSTS.length; i++) {
+      var panel = $(HOSTS[i].panel);
+      if (panel && panel.addEventListener) panel.addEventListener('click', onPanelClick);
+    }
   }
 
   function render(mapping) {

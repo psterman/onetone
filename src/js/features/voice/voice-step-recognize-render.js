@@ -281,6 +281,12 @@
     var sub=$('voiceRecognizePageSub');
     if(title) title.textContent=t('voiceRecognizePageTitle');
     if(sub) sub.textContent=t('voiceRecognizePageSub');
+    if(global.OneToneVoiceIntentRail&&global.OneToneVoiceIntentRail.syncLabels){
+      global.OneToneVoiceIntentRail.syncLabels();
+    }
+    if(global.OneToneVoiceIntentRail&&global.OneToneVoiceIntentRail.syncHeroVals){
+      global.OneToneVoiceIntentRail.syncHeroVals();
+    }
     var cancelTab=$('btnVoiceRecognizeIntentCancel');
     var confirmTab=$('btnVoiceRecognizeIntentConfirm');
     if(cancelTab) cancelTab.textContent=t('voiceRecognizeIntentCancel');

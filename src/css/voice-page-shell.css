@@ -2677,6 +2677,10 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   border: 1px solid color-mix(in srgb, var(--outline-variant) 55%, transparent);
   background: color-mix(in srgb, var(--surface-high, var(--surface)) 88%, transparent);
 }
+/* display:flex above beats UA [hidden] — same trap as camera-workflow / bridge faces */
+.voice-face-tabs[hidden] {
+  display: none !important;
+}
 
 .voice-face-tab {
   border: 0;
@@ -2824,39 +2828,229 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
 #settingsPanelVoiceWake .keys-workflow-arrow.voice-workflow-arrow {
   display: none !important;
 }
+
+/* —— 01 说了什么：F desk（hero 完整 + 本步引擎/语言 + 同义折叠） —— */
+#settingsPanelVoiceWake.is-step-wake .voice-f-hero.flow-nodes{
+  padding:14px 16px;
+  margin:0 0 12px;
+  border-radius:14px;
+  background:var(--surface, #fff);
+}
+#settingsPanelVoiceWake.is-step-wake .voice-f-node .val,
+#settingsPanelVoiceWake.is-step-wake .voice-f-node .hint{
+  display:block;
+}
+#settingsPanelVoiceWake.is-step-wake #voiceSettingsWakeBody{
+  max-width:720px;
+  margin:0 auto;
+  padding:0 4px 20px;
+}
+#settingsPanelVoiceWake.is-step-wake .voice-wake-toolbar{display:none}
+#settingsPanelVoiceWake.is-step-wake .voice-f-desk{
+  display:grid;
+  gap:10px;
+  padding:14px 16px;
+  border:1px solid rgba(213,222,232,.95);
+  border-radius:14px;
+  background:#fff;
+}
+#settingsPanelVoiceWake.is-step-wake #voiceWakeCurrentSectionLbl{
+  margin:0;
+  font-size:14px;
+  font-weight:650;
+  text-align:left;
+  color:#13202c;
+}
+#settingsPanelVoiceWake.is-step-wake #voiceWakePageSubVisible{
+  margin:0;
+  font-size:12px;
+  text-align:left;
+  color:#5a6b7c;
+}
+#settingsPanelVoiceWake.is-step-wake .voice-wake-caprow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  margin-top:2px;
+}
+#settingsPanelVoiceWake.is-step-wake #btnVoiceWakePhraseCap.voice-phrase-cap{
+  min-width:0;
+  padding:4px 14px;
+  font-size:17px;
+  font-weight:650;
+  border-radius:8px;
+}
+#settingsPanelVoiceWake.is-step-wake #voiceWakeDisplayHint{
+  margin:0;
+  text-align:left;
+  font-size:12px;
+  color:#8494a6;
+}
+#settingsPanelVoiceWake.is-step-wake .voice-wake-secondary{
+  margin-top:12px;
+  padding-top:10px;
+  border-top:1px dashed rgba(213,222,232,.95);
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 14px;
+  align-items:center;
+}
+#settingsPanelVoiceWake.is-step-wake .voice-wake-more-aliases,
+#settingsPanelVoiceWake.is-step-wake .voice-wake-advanced{
+  margin:0;
+  border:0;
+  background:transparent;
+  padding:0;
+  font-size:11.5px;
+  color:#8494a6;
+}
+#settingsPanelVoiceWake.is-step-wake .voice-wake-more-aliases > summary,
+#settingsPanelVoiceWake.is-step-wake .voice-wake-advanced > summary{
+  cursor:pointer;
+  list-style:none;
+  font-weight:550;
+  color:#8494a6;
+}
+#settingsPanelVoiceWake.is-step-wake .voice-wake-more-aliases > summary::-webkit-details-marker,
+#settingsPanelVoiceWake.is-step-wake .voice-wake-advanced > summary::-webkit-details-marker{display:none}
+#settingsPanelVoiceWake.is-step-wake .voice-wake-more-aliases > summary::after,
+#settingsPanelVoiceWake.is-step-wake .voice-wake-advanced > summary::after{content:" ▾"}
+#settingsPanelVoiceWake.is-step-wake .voice-wake-more-aliases[open] > summary::after,
+#settingsPanelVoiceWake.is-step-wake .voice-wake-advanced[open] > summary::after{content:" ▴"}
+#settingsPanelVoiceWake.is-step-wake #voiceWakeAliasBlock{
+  display:grid;
+  gap:8px;
+  margin-top:8px;
+  padding:0;
+  border:0;
+  background:transparent;
+}
+#settingsPanelVoiceWake.is-step-wake .voice-wake-secondary-link{
+  border:0;
+  background:transparent;
+  padding:0;
+  font:inherit;
+  font-size:11.5px;
+  font-weight:550;
+  color:#8494a6;
+  cursor:pointer;
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+#settingsPanelVoiceWake.is-step-wake .voice-wake-secondary-link:hover{color:#0f5f7a}
+#settingsPanelVoiceWake.is-step-wake .voice-wake-advanced-inner{
+  margin-top:8px;
+  display:grid;
+  gap:8px;
+}
+#settingsPanelVoiceWake.is-step-wake #voiceWrongFgStatus{
+  display:none !important;
+}
+
 #settingsPanelVoiceWake.is-step-wake #voiceCoreConfig,
 #settingsPanelVoiceWake.is-step-finish #voiceCoreConfig,
 #settingsPanelVoiceWake.is-step-wake #voiceConfigIsland,
 #settingsPanelVoiceWake.is-step-finish #voiceConfigIsland {
   display: none !important;
 }
-#settingsPanelVoiceWake .flow-node-hint {
-  display: none; /* proto: labels only under nodes */
+/* F hero: two summary cards (not 开/完 circular glyphs) */
+#settingsPanelVoiceWake .voice-f-hero.flow-nodes{
+  margin:0 0 10px;
+  padding:14px 16px;
+  border:1px solid color-mix(in srgb, var(--outline-variant) 70%, transparent);
+  border-radius:14px;
+  background:var(--surface, #fff);
 }
-/* Keep original large 80px hero nodes; glyph text instead of SVG icons */
-#settingsPanelVoiceWake .flow-node-btn .flow-node-icon {
-  display: none;
+#settingsPanelVoiceWake .voice-f-hero .flow-nodes-track,
+#settingsPanelVoiceWake .voice-f-hero .flow-node-icon{
+  display:none !important;
 }
-#settingsPanelVoiceWake .flow-node-btn {
-  font: 800 22px/1 inherit;
+#settingsPanelVoiceWake .voice-f-flow{
+  display:flex;
+  align-items:stretch;
+  gap:0;
+  max-width:none;
+  margin:0;
 }
-#settingsPanelVoiceWake #voiceFlowNodeWake::after { content: "开"; }
-#settingsPanelVoiceWake #voiceFlowNodeFinish::after { content: "完"; }
-#settingsPanelVoiceWake .flow-node-btn.is-active {
-  color: #fff;
-  background: var(--primary, #00658F);
-  border-color: var(--primary, #00658F);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary, #00658F) 18%, transparent),
-    0 0 24px color-mix(in srgb, var(--primary, #00658F) 22%, transparent);
+#settingsPanelVoiceWake .voice-f-node.flow-node-btn{
+  flex:1;
+  display:block;
+  text-align:left;
+  border:1px solid color-mix(in srgb, var(--outline-variant) 70%, transparent);
+  border-radius:12px;
+  padding:12px 14px;
+  background:#fff;
+  font:inherit;
+  color:inherit;
+  box-shadow:none;
+  min-height:0;
+  width:auto;
+  height:auto;
+  aspect-ratio:auto;
 }
-#settingsPanelVoiceWake .flow-node-title {
-  font-size: 13px;
-  font-weight: 700;
+#settingsPanelVoiceWake .voice-f-node.flow-node-btn::after{ content:none !important; }
+#settingsPanelVoiceWake .voice-f-node.flow-node-btn.is-active{
+  border-color:var(--primary, #2a9cc4);
+  box-shadow:inset 0 0 0 1px var(--primary, #2a9cc4);
+  color:inherit;
+  background:#fff;
 }
-#settingsPanelVoiceWake .flow-nodes-grid {
-  max-width: 420px;
-  margin: 0 auto;
-  grid-template-columns: repeat(2, 1fr);
+#settingsPanelVoiceWake .voice-f-node .tag{
+  display:block;
+  font-size:11px;
+  font-weight:650;
+  color:#8494a6;
+  letter-spacing:.04em;
+  margin-bottom:4px;
+}
+#settingsPanelVoiceWake .voice-f-node.is-active .tag,
+#settingsPanelVoiceWake .voice-f-node.flow-node-btn.is-active .tag{
+  color:#0f5f7a;
+}
+#settingsPanelVoiceWake .voice-f-node .val{
+  display:block;
+  font-size:16px;
+  font-weight:650;
+  color:#13202c;
+  line-height:1.3;
+}
+#settingsPanelVoiceWake .voice-f-node .hint{
+  display:block;
+  margin-top:3px;
+  font-size:11.5px;
+  color:#8494a6;
+}
+#settingsPanelVoiceWake .voice-f-flow-link{
+  flex:0 0 44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+#settingsPanelVoiceWake .voice-f-flow-link span{
+  position:relative;
+  width:100%;
+  height:2px;
+  background:#9bc6da;
+}
+#settingsPanelVoiceWake .voice-f-flow-link span::after{
+  content:"";
+  position:absolute;
+  right:-1px;
+  top:-4px;
+  border-left:7px solid #2a9cc4;
+  border-top:5px solid transparent;
+  border-bottom:5px solid transparent;
+}
+@media (max-width:720px){
+  #settingsPanelVoiceWake .voice-f-flow{flex-direction:column;gap:8px}
+  #settingsPanelVoiceWake .voice-f-flow-link{flex:none;height:20px}
+  #settingsPanelVoiceWake .voice-f-flow-link span{width:2px;height:100%;margin:0 auto}
+  #settingsPanelVoiceWake .voice-f-flow-link span::after{
+    right:auto;left:-4px;top:auto;bottom:-1px;
+    border-left:5px solid transparent;border-right:5px solid transparent;
+    border-top:7px solid #2a9cc4;border-bottom:0;
+  }
 }
 
 .voice-wrong-fg-status {
@@ -3198,6 +3392,10 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
 #voiceWorkflowPipeline[data-voice-face="camera"] #voiceFlowNodes,
 #voiceWorkflowPipeline[data-voice-face="camera"] #voiceDeskPanel {
   display: none !important;
+}
+/* Intent rail keeps hero (说了什么 → 意图效果) while bridge faces show on the right */
+#voiceWorkflowPipeline:has(#voiceIntentRail:not([hidden])) #voiceFlowNodes {
+  display: block !important;
 }
 
 .voice-wake-sidelinks {
@@ -3687,8 +3885,57 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   overflow: auto;
 }
 
+#settingsPanelVoiceWake.voice-page-k .voice-page-body.has-scene-panel,
+#settingsPanelVoiceWake.voice-page-k .voice-page-body:has(> .keys-scene-actions:not([hidden])),
+#settingsPanelVoiceWake.voice-page-k:has(#voiceSceneActionsPanel:not([hidden])) .voice-page-body {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 248px) !important;
+  grid-template-rows: minmax(0, 1fr) auto !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  overflow: hidden;
+}
+
 #settingsPanelVoiceWake.voice-page-k .voice-page-aside {
   display: none !important;
+}
+
+#settingsPanelVoiceWake.voice-page-k .voice-page-body.has-scene-panel > .keys-scene-actions,
+#settingsPanelVoiceWake.voice-page-k .voice-page-body:has(> .keys-scene-actions:not([hidden])) > .keys-scene-actions,
+#settingsPanelVoiceWake.voice-page-k:has(#voiceSceneActionsPanel:not([hidden])) #voiceSceneActionsPanel {
+  display: flex !important;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  justify-self: stretch;
+  align-self: stretch !important;
+  position: relative;
+  top: auto;
+  max-height: none;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  z-index: 2;
+  box-sizing: border-box;
+  grid-column: 2 !important;
+  grid-row: 1 / -1 !important;
+  border-left: 1px solid color-mix(in srgb, var(--outline-variant, #d5dee8) 80%, transparent);
+  background: var(--surface, #fff);
+  padding: 12px 10px 14px;
+}
+
+#settingsPanelVoiceWake.voice-page-k .voice-page-body.has-scene-panel > .voice-page-main,
+#settingsPanelVoiceWake.voice-page-k:has(#voiceSceneActionsPanel:not([hidden])) .voice-page-body > .voice-page-main {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  min-width: 0;
+  overflow: auto;
+}
+
+#settingsPanelVoiceWake.voice-page-k .voice-page-body.has-scene-panel > .voice-bottom-dock,
+#settingsPanelVoiceWake.voice-page-k:has(#voiceSceneActionsPanel:not([hidden])) .voice-page-body > .voice-bottom-dock {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
 }
 
 #settingsPanelVoiceWake.voice-page-k .voice-page-main {
@@ -4261,4 +4508,138 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   #settingsPanelVoiceWake .voice-core-config {
     grid-template-columns: 1fr;
   }
+}
+
+/* Voice intent picker (F .picker: rail + pane inside finish desk) */
+.voice-face-tabs[hidden],
+#voiceIntentPicker[hidden]{
+  display:none !important;
+}
+.voice-intent-picker{
+  display:grid;
+  grid-template-columns:152px minmax(0,1fr);
+  border:1px solid rgba(213,222,232,.95);
+  border-radius:12px;
+  overflow:hidden;
+  min-height:340px;
+  background:#f3f7fa;
+}
+#voiceIntentRail{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  margin:0;
+  padding:6px;
+  max-width:none;
+  border:0;
+  border-right:1px solid rgba(213,222,232,.95);
+  border-radius:0;
+  background:#eef3f7;
+}
+.voice-intent-rail-item{
+  display:block;width:100%;box-sizing:border-box;
+  border:0;background:transparent;text-align:left;
+  padding:8px 10px;border-radius:8px;
+  font:inherit;font-size:12.5px;font-weight:650;color:#5a6b7c;
+  cursor:pointer;line-height:1.25;
+}
+.voice-intent-rail-item:hover{background:rgba(255,255,255,.55);color:#13202c}
+.voice-intent-rail-item.is-on{background:#fff;color:#0f5f7a;box-shadow:0 1px 2px rgba(19,32,44,.06)}
+.voice-intent-rail-item .n{display:block;margin-top:2px;font-size:10.5px;font-weight:550;color:#8494a6}
+.voice-intent-rail-item.is-on .n{color:#2a9cc4}
+.voice-intent-pane-host{
+  min-width:0;
+  background:#fff;
+  padding:12px;
+}
+.voice-intent-panes{display:flex;flex-direction:column;gap:10px;min-width:0}
+.voice-intent-pane[hidden]{display:none !important}
+.voice-intent-banner{
+  margin:0;
+  padding:8px 10px;
+  border-radius:8px;
+  font-size:12px;
+  line-height:1.45;
+  background:#e4f2f9;
+  color:#0f5f7a;
+  border:1px solid #9bc6da;
+}
+.voice-intent-bridge-host{margin-top:8px}
+#voiceWorkflowPipeline .voice-bridge-face.is-in-picker{
+  display:block !important;
+  margin:0;
+  padding:0;
+  border:0;
+  background:transparent;
+}
+.voice-bridge-face.is-in-picker .voice-bridge-card{
+  border:0;
+  padding:0;
+  box-shadow:none;
+}
+
+.voice-ime-desk{margin:0 0 12px;padding:12px 14px;border:1px solid rgba(213,222,232,.95);border-radius:12px;background:#fff}
+.voice-ime-step{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:13px;font-weight:750}
+.voice-ime-step .n{
+  width:20px;height:20px;border-radius:50%;background:#2a9cc4;color:#fff;
+  font-size:11px;font-weight:750;display:inline-flex;align-items:center;justify-content:center;
+}
+.voice-ime-keycap{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:120px;padding:14px 22px;border-radius:12px;cursor:pointer;
+  border:1.5px solid #9bc6da;background:linear-gradient(180deg,#fff,#f4f8fb);
+  box-shadow:0 2px 0 rgba(19,32,44,.06);
+  font-family:ui-monospace,Consolas,monospace;font-size:18px;font-weight:750;color:#0f5f7a;
+}
+.voice-ime-hint{margin:8px 0 0;font-size:12px;color:#5a6b7c;line-height:1.45}
+.voice-ime-hint b{color:#13202c}
+.voice-ime-strip-wrap{margin-top:12px}
+.voice-ime-deeplink{margin:8px 0 0}
+.voice-intent-cam-hint{margin:10px 0 0;font-size:12px;color:#5a6b7c}
+
+.voice-prompt-desk{
+  border:2px solid #6d28d9;border-radius:12px;
+  background:linear-gradient(180deg,#faf8ff,#fff);
+  padding:12px 14px;
+  box-shadow:inset 0 0 0 1px rgba(124,92,191,.12);
+}
+.voice-prompt-kicker{
+  display:inline-block;font-size:10px;font-weight:750;letter-spacing:.06em;
+  color:#6d28d9;background:#f3e8ff;border-radius:999px;padding:2px 8px;margin-bottom:6px;
+}
+.voice-prompt-title{margin:0 0 4px;font-size:16px;font-weight:750}
+.voice-prompt-desc{margin:0;font-size:12px;color:#5a6b7c;line-height:1.45}
+.voice-prompt-steps{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(124,92,191,.28)}
+.voice-prompt-step{
+  display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:650;color:#6d28d9;
+  background:#fff;border:1px solid rgba(124,92,191,.28);border-radius:8px;padding:4px 8px;
+}
+.voice-prompt-step i{
+  width:16px;height:16px;border-radius:50%;background:#6d28d9;color:#fff;
+  font-style:normal;font-size:10px;font-weight:750;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.voice-prompt-steps .arr{color:#6d28d9;font-weight:750}
+.voice-prompt-label{display:block;font-size:11px;font-weight:650;color:#5a6b7c;margin:10px 0 5px}
+.voice-prompt-textarea{
+  width:100%;min-height:72px;resize:vertical;box-sizing:border-box;
+  border:1px solid rgba(124,92,191,.28);border-radius:8px;padding:8px 10px;
+  font:inherit;font-size:12.5px;line-height:1.45;color:#13202c;background:#fff;
+}
+.voice-prompt-textarea:focus{outline:none;border-color:#6d28d9;box-shadow:0 0 0 3px rgba(124,92,191,.12)}
+.voice-prompt-presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.voice-prompt-presets button{
+  border:1px solid #d5dee8;border-radius:999px;background:#fff;padding:4px 10px;
+  font:inherit;font-size:11.5px;font-weight:550;color:#5a6b7c;cursor:pointer;
+}
+.voice-prompt-presets button.is-on,.voice-prompt-presets button:hover{border-color:#6d28d9;color:#6d28d9;background:#f3e8ff}
+.voice-prompt-land{margin:10px 0 0;font-size:12px;color:#0f5f7a;font-weight:550}
+
+@media(max-width:900px){
+  .voice-intent-picker{grid-template-columns:1fr;min-height:0}
+  #voiceIntentRail{
+    flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid rgba(213,222,232,.95);
+  }
+  .voice-intent-rail-item{width:auto;flex:1 1 40%}
+  .voice-intent-rail-item .n{display:none}
 }

@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音打通四通道 · 布局原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #ffffff;
+      --wash: #f3f7fa;
+      --bg: #e8eef3;
+      --cyan: #2a9cc4;
+      --cyan-ink: #0f5f7a;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --dict: #1f6fa8;
+      --dict-soft: #e8f2fb;
+      --pad: #0f7a6a;
+      --pad-soft: #e6f6f2;
+      --keys: #8a5a12;
+      --keys-soft: #f8f0e2;
+      --cam: #6b4ea3;
+      --cam-soft: #f1ebf9;
+      --ok: #15803d;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(720px 300px at 8% -10%, rgba(42,156,196,0.12), transparent 55%),
+        radial-gradient(520px 240px at 96% 0%, rgba(19,32,44,0.05), transparent 50%),
+        var(--bg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    .bar {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+      padding: 10px 16px;
+      background: #13202c; color: #c5d0de;
+      font-size: 12.5px; line-height: 1.45;
+    }
+    .bar strong { color: #fff; }
+    .bar em { font-style: normal; color: #7dd3fc; font-weight: 650; }
+    .toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+    .toggles button {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      color: #e2e8f0;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font: inherit; font-size: 11.5px; font-weight: 650;
+      cursor: pointer;
+    }
+    .toggles button:hover { background: rgba(255,255,255,0.12); }
+    .toggles button.is-on {
+      background: rgba(42,156,196,0.38);
+      border-color: rgba(125,211,252,0.45);
+      color: #fff;
+    }
+
+    .shell { width: min(1100px, 100%); margin: 18px auto 48px; padding: 0 14px; }
+    .contract {
+      margin: 0 0 14px; padding: 12px 14px;
+      border: 1px solid var(--line); border-radius: 12px;
+      background: color-mix(in srgb, var(--paper) 90%, transparent);
+      font-size: 12.5px; line-height: 1.55; color: var(--muted);
+    }
+    .contract b { color: var(--ink); font-weight: 650; }
+    .contract code {
+      font-family: var(--mono); font-size: 11.5px; font-weight: 650;
+      color: var(--cyan-ink); background: var(--cyan-soft);
+      border-radius: 4px; padding: 1px 5px;
+    }
+
+    /* —— map layout —— */
+    .map {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+      box-shadow: 0 18px 40px rgba(19,32,44,0.08);
+      overflow: hidden;
+    }
+    .map-head {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline;
+    }
+    .map-head h1 {
+      margin: 0; font-size: 16px; font-weight: 750; letter-spacing: -0.02em;
+    }
+    .map-head p { margin: 0; font-size: 12.5px; color: var(--muted); }
+
+    .spine {
+      display: grid;
+      grid-template-columns: 168px minmax(0, 1fr);
+      min-height: 520px;
+    }
+    @media (max-width: 780px) {
+      .spine { grid-template-columns: 1fr; }
+      .say-rail { border-right: none; border-bottom: 1px solid var(--line); }
+    }
+
+    /* left: one voice rail */
+    .say-rail {
+      background: linear-gradient(180deg, #0f5f7a 0%, #176989 55%, #1a7a9e 100%);
+      color: #e8f6fb;
+      padding: 18px 14px;
+      display: flex; flex-direction: column; gap: 14px;
+      border-right: 1px solid rgba(255,255,255,0.12);
+    }
+    .say-kicker {
+      font-size: 10.5px; font-weight: 750; letter-spacing: 0.08em;
+      text-transform: uppercase; opacity: 0.75;
+    }
+    .say-title {
+      margin: 0; font-size: 22px; font-weight: 750; letter-spacing: -0.03em; line-height: 1.15;
+    }
+    .say-sub { margin: 0; font-size: 12px; line-height: 1.45; opacity: 0.88; }
+    .say-steps {
+      margin-top: 4px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .say-step {
+      display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start;
+      font-size: 12px; line-height: 1.35;
+    }
+    .say-n {
+      width: 22px; height: 22px; border-radius: 7px;
+      background: rgba(255,255,255,0.16);
+      display: grid; place-items: center;
+      font-family: var(--mono); font-size: 11px; font-weight: 650;
+    }
+    .habit-chip {
+      margin-top: auto;
+      padding: 10px 11px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.18);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-size: 12px; line-height: 1.4;
+    }
+    .habit-chip strong { display: block; font-size: 13px; margin-bottom: 2px; }
+
+    /* right: four channel lanes */
+    .lanes {
+      background: var(--wash);
+      padding: 14px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .lanes-caption {
+      display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center;
+      font-size: 12px; color: var(--muted);
+    }
+    .lanes-caption b { color: var(--ink); font-weight: 650; }
+    .legend {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-left: auto; font-size: 11.5px;
+    }
+    .legend i {
+      width: 10px; height: 10px; border-radius: 3px; display: inline-block;
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: 118px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: stretch;
+      padding: 12px 12px 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+      cursor: pointer;
+      text-align: left;
+      font: inherit; color: inherit;
+      transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease), transform 130ms var(--ease);
+      position: relative;
+      overflow: hidden;
+    }
+    .lane::before {
+      content: "";
+      position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+      background: var(--accent, var(--cyan));
+    }
+    .lane:hover {
+      border-color: var(--cyan-bd);
+      box-shadow: 0 8px 22px rgba(19,32,44,0.06);
+    }
+    .lane:active { transform: scale(0.995); }
+    .lane:focus-visible {
+      outline: 2px solid rgba(42,156,196,0.5); outline-offset: 2px;
+    }
+    .lane.is-on {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+    }
+    .lane[data-ch="dictate"] { --accent: var(--dict); }
+    .lane[data-ch="softpad"] { --accent: var(--pad); }
+    .lane[data-ch="keys"] { --accent: var(--keys); }
+    .lane[data-ch="camera"] { --accent: var(--cam); }
+
+    .lane-id {
+      display: flex; flex-direction: column; gap: 4px; justify-content: center;
+    }
+    .lane-tag {
+      font-family: var(--mono); font-size: 10px; font-weight: 650;
+      letter-spacing: 0.04em; color: var(--faint);
+    }
+    .lane-name {
+      margin: 0; font-size: 15px; font-weight: 750; letter-spacing: -0.02em;
+    }
+    .lane-role {
+      margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.3;
+    }
+
+    .lane-body { min-width: 0; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+    .say-eq {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+      font-size: 13px; font-weight: 650;
+    }
+    .say-eq .phrase {
+      display: inline-flex; align-items: center;
+      padding: 3px 9px; border-radius: 8px;
+      background: color-mix(in srgb, var(--accent) 12%, #fff);
+      color: color-mix(in srgb, var(--accent) 85%, #13202c);
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+      font-family: var(--mono); font-size: 12px; font-weight: 650;
+    }
+    .say-eq .arrow { color: var(--cyan); opacity: 0.7; }
+    .say-eq .out { color: var(--ink); }
+    .lane-own {
+      margin: 0; font-size: 11.5px; color: var(--faint); line-height: 1.35;
+    }
+    .lane-own strong { color: var(--muted); font-weight: 650; }
+
+    .lane-go {
+      align-self: center;
+      white-space: nowrap;
+      font-size: 12px; font-weight: 650; color: var(--cyan-ink);
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: var(--cyan-soft);
+      border: 1px solid rgba(42,156,196,0.22);
+    }
+
+    /* detail sheet under map */
+    .detail {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+    }
+    @media (max-width: 780px) {
+      .detail { grid-template-columns: 1fr; }
+    }
+    .detail-main { padding: 16px 18px 18px; border-right: 1px solid var(--line); }
+    @media (max-width: 780px) {
+      .detail-main { border-right: none; border-bottom: 1px solid var(--line); }
+    }
+    .detail-kicker {
+      font-size: 11px; font-weight: 750; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--cyan);
+      margin-bottom: 4px;
+    }
+    .detail-main h2 {
+      margin: 0 0 6px; font-size: 18px; font-weight: 750; letter-spacing: -0.02em;
+    }
+    .detail-main .lead {
+      margin: 0 0 14px; font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 52ch;
+    }
+
+    .split {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    @media (max-width: 560px) { .split { grid-template-columns: 1fr; } }
+    .box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: var(--wash);
+    }
+    .box h3 {
+      margin: 0 0 8px; font-size: 12px; font-weight: 750; color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .box ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+    .box li {
+      font-size: 12.5px; line-height: 1.4;
+      padding-left: 14px; position: relative;
+    }
+    .box li::before {
+      content: "";
+      position: absolute; left: 0; top: 7px;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--cyan);
+    }
+    .box.here { background: var(--cyan-soft); border-color: rgba(42,156,196,0.28); }
+    .box.here h3 { color: var(--cyan-ink); }
+    .box.there li::before { background: var(--faint); }
+
+    .flow-line {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px dashed var(--cyan-bd);
+      background: linear-gradient(90deg, rgba(42,156,196,0.06), transparent 70%);
+      font-size: 12.5px; line-height: 1.5; color: var(--muted);
+    }
+    .flow-line b { color: var(--ink); font-weight: 650; }
+    .flow-line .mono {
+      font-family: var(--mono); font-weight: 650; color: var(--cyan-ink);
+    }
+
+    .detail-side {
+      padding: 16px;
+      background: var(--aside, #f8fafc);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .mock-chrome {
+      font-size: 11px; color: var(--faint); font-weight: 650;
+      display: flex; gap: 6px; align-items: center;
+    }
+    .mock-chrome .d { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }
+    .mock-face {
+      display: flex; gap: 3px; padding: 3px;
+      background: var(--wash); border: 1px solid var(--line); border-radius: 9px;
+    }
+    .mock-face span {
+      flex: 1; text-align: center;
+      padding: 7px 4px; border-radius: 7px;
+      font-size: 11px; font-weight: 700; color: var(--muted);
+    }
+    .mock-face span.on {
+      background: #fff; color: var(--cyan-ink);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+    .mock-card {
+      flex: 1;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .mock-card h4 { margin: 0; font-size: 13px; font-weight: 750; }
+    .mock-card p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .mock-phrase {
+      margin-top: 4px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #fcfeff, #eef6fa);
+      border: 1px solid rgba(42,156,196,0.25);
+      font-size: 15px; font-weight: 750; color: var(--cyan-ink);
+      text-align: center;
+    }
+    .mock-link {
+      margin-top: auto;
+      border: 0; background: transparent;
+      color: var(--cyan-ink); font: inherit; font-size: 12px; font-weight: 650;
+      cursor: pointer; text-align: left; padding: 0;
+    }
+    .mock-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+    /* wrong model overlay */
+    .frame.is-silo .say-rail {
+      background: #5a6b7c;
+    }
+    .frame.is-silo .say-title::after {
+      content: "？";
+    }
+    .frame.is-silo .lane {
+      opacity: 0.55;
+      filter: grayscale(0.35);
+    }
+    .frame.is-silo .lane.is-on {
+      opacity: 1; filter: none;
+    }
+    .frame.is-silo .lanes-caption .hub-note { display: none; }
+    .frame.is-silo .lanes-caption .silo-note { display: inline; }
+    .lanes-caption .silo-note { display: none; color: #9a3412; }
+    .frame.is-silo .detail-main .hub-only { display: none; }
+    .frame.is-silo .detail-main .silo-only { display: block; }
+    .silo-only { display: none; }
+    .silo-banner {
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+      color: #9a3412;
+      font-size: 12.5px; line-height: 1.45;
+    }
+
+    .toast {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      padding: 8px 14px; border-radius: 999px;
+      background: #13202c; color: #fff;
+      font-size: 12.5px; font-weight: 650;
+      opacity: 0; pointer-events: none;
+      transition: opacity 180ms var(--ease), transform 180ms var(--ease);
+      z-index: 50;
+    }
+    .toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>语音打通四通道</strong>
+    <span>布局问题：<em>说</em> 如何串起听写 / SoftPad / 按键 / 摄像头 · 不是改组件样式</span>
+    <div class="toggles" role="group" aria-label="心智模型">
+      <button type="button" data-model="hub" class="is-on">对 · 口令枢纽</button>
+      <button type="button" data-model="silo">错 · 四套设置</button>
+    </div>
+  </div>
+
+  <div class="shell">
+    <p class="contract">
+      <b>一句话</b>：同一习惯里，<code>说</code> 是共用触发器；四通道是四种后果。
+      语音页只改「说法」；键位 / 手势 / 目标窗仍回各通道页。
+      听写是语音主职；另外三面是<strong>桥面</strong>（有口令才在此出现）。
+    </p>
+
+    <div class="frame map" id="frame">
+      <div class="map-head">
+        <h1>布局骨架</h1>
+        <p>左条 = 语音一根脊 · 右四条 = 通道能力 · 点一条看归属拆分</p>
+      </div>
+
+      <div class="spine">
+        <aside class="say-rail" aria-label="语音脊">
+          <div class="say-kicker">Voice spine</div>
+          <h2 class="say-title">说</h2>
+          <p class="say-sub">识别口令后，落到当前习惯里已接通的通道能力。</p>
+          <div class="say-steps">
+            <div class="say-step"><span class="say-n">1</span><span>听到一句</span></div>
+            <div class="say-step"><span class="say-n">2</span><span>匹配本习惯口令</span></div>
+            <div class="say-step"><span class="say-n">3</span><span>执行对应通道动作</span></div>
+          </div>
+          <div class="habit-chip">
+            <strong>正在编辑 · Cursor</strong>
+            四通道配置跟着这个习惯走
+          </div>
+        </aside>
+
+        <div class="lanes">
+          <div class="lanes-caption">
+            <span class="hub-note"><b>四条能力</b> · 同一根「说」脊，四种后果</span>
+            <span class="silo-note"><b>错法</b> · 每通道各自一套唤醒，用户要学四次</span>
+            <span class="legend" aria-hidden="true">
+              <i style="background:var(--dict)"></i>听写
+              <i style="background:var(--pad)"></i>Pad
+              <i style="background:var(--keys)"></i>按键
+              <i style="background:var(--cam)"></i>摄像
+            </span>
+          </div>
+
+          <button type="button" class="lane is-on" data-ch="dictate" aria-pressed="true">
+            <div class="lane-id">
+              <span class="lane-tag">01 · 主职</span>
+              <p class="lane-name">听写</p>
+              <p class="lane-role">语音独有</p>
+            </div>
+            <div class="lane-body">
+              <div class="say-eq">
+                <span class="phrase">「开始输入」</span>
+                <span class="arrow">→</span>
+                <span class="out">字打进光标 / 目标窗</span>
+              </div>
+              <p class="lane-own"><strong>本页管</strong>开启 · 说完了 · 落点旁注</p>
+            </div>
+            <span class="lane-go">听写面</span>
+          </button>
+
+          <button type="button" class="lane" data-ch="softpad" aria-pressed="false">
+            <div class="lane-id">
+              <span class="lane-tag">02 · 桥面</span>
+              <p class="lane-name">SoftPad</p>
+              <p class="lane-role">说 = 点键</p>
+            </div>
+            <div class="lane-body">
+              <div class="say-eq">
+                <span class="phrase">「继续」</span>
+                <span class="arrow">→</span>
+                <span class="out">等于点了 Pad 上那一格</span>
+              </div>
+              <p class="lane-own"><strong>本页管</strong>说法 · <strong>Pad 页管</strong>键位与布局</p>
+            </div>
+            <span class="lane-go">去 SoftPad →</span>
+          </button>
+
+          <button type="button" class="lane" data-ch="keys" aria-pressed="false">
+            <div class="lane-id">
+              <span class="lane-tag">03 · 桥面</span>
+              <p class="lane-name">按键</p>
+              <p class="lane-role">说 = 按键</p>
+            </div>
+            <div class="lane-body">
+              <div class="say-eq">
+                <span class="phrase">「发送」</span>
+                <span class="arrow">→</span>
+                <span class="out">等于按了绑定的快捷键</span>
+              </div>
+              <p class="lane-own"><strong>本页管</strong>说法 · <strong>按键页管</strong>触发键 · 目标 · 序列</p>
+            </div>
+            <span class="lane-go">去按键 →</span>
+          </button>
+
+          <button type="button" class="lane" data-ch="camera" aria-pressed="false">
+            <div class="lane-id">
+              <span class="lane-tag">04 · 桥面</span>
+              <p class="lane-name">摄像头</p>
+              <p class="lane-role">说 = 做动作</p>
+            </div>
+            <div class="lane-body">
+              <div class="say-eq">
+                <span class="phrase">「确认」</span>
+                <span class="arrow">→</span>
+                <span class="out">等于做了绑定的手势动作</span>
+              </div>
+              <p class="lane-own"><strong>本页管</strong>说法 · <strong>摄像头页管</strong>识别与标定</p>
+            </div>
+            <span class="lane-go">去摄像头 →</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <section class="detail" id="detail" aria-live="polite">
+      <div class="detail-main">
+        <div class="silo-only silo-banner">
+          若四通道各自一套唤醒词 / 各自设置页入口，用户要学四次「怎么开口」。
+          打通失败点：没有共用的「说」脊，只有四个并列开关。
+        </div>
+        <div class="detail-kicker" id="detailKicker">01 · 主职</div>
+        <h2 id="detailTitle">听写</h2>
+        <p class="lead hub-only" id="detailLead">
+          语音页的主场。其它三面是桥：有口令才出现，改说法后写回通道；不在这里配键位 / 手势 / 目标。
+        </p>
+        <p class="lead silo-only">每通道独立配置唤醒，听写不再是枢纽——语音页沦为第四套设置。</p>
+
+        <div class="split hub-only">
+          <div class="box here">
+            <h3>语音页负责</h3>
+            <ul id="detailHere"></ul>
+          </div>
+          <div class="box there">
+            <h3>通道页负责</h3>
+            <ul id="detailThere"></ul>
+          </div>
+        </div>
+
+        <div class="flow-line hub-only" id="detailFlow"></div>
+      </div>
+
+      <aside class="detail-side" aria-label="页内预览">
+        <div class="mock-chrome">
+          <span class="d"></span><span class="d"></span><span class="d"></span>
+          语音设置 · 页级四面
+        </div>
+        <div class="mock-face" id="mockFace" aria-hidden="true">
+          <span data-f="dictate" class="on">听写</span>
+          <span data-f="softpad">SoftPad</span>
+          <span data-f="keys">按键</span>
+          <span data-f="camera">摄像头</span>
+        </div>
+        <div class="mock-card">
+          <h4 id="mockTitle">怎么开启打字？</h4>
+          <p id="mockSub">先会用这一句就行 · 别的等要用再打开</p>
+          <div class="mock-phrase" id="mockPhrase">「开始输入」</div>
+          <button type="button" class="mock-link" id="mockLink">要限定应用？去按键设目标 →</button>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var DATA = {
+        dictate: {
+          kicker: '01 · 主职',
+          title: '听写',
+          lead: '语音独有主职：开口 → 打字。其它通道用「说」复用同一条识别脊，但不替代听写。',
+          here: ['开启口令 / 同义说法', '说完了：发出去 · 先留着 · 不要了', '落点旁注（跟光标 / 进某应用）', '试麦克风 dock（四面共用）'],
+          there: ['目标窗 / appTargetId → 按键页', '不在语音页做「全局|应用」双卡'],
+          flow: '运行时：<b>情景口令优先</b>，再听写入口。听写中只认收尾。 <span class="mono">说「开始输入」→ 听写</span>',
+          mockTitle: '怎么开启打字？',
+          mockSub: '先会用这一句就行 · 别的等要用再打开',
+          mockPhrase: '「开始输入」',
+          mockLink: '要限定应用？去按键设目标 →',
+          toast: '听写面 · 语音主职'
+        },
+        softpad: {
+          kicker: '02 · 桥面',
+          title: 'SoftPad',
+          lead: '说出来 = 点左边的键。语音页只改说法；格子怎么摆仍在 SoftPad 页。',
+          here: ['已有键的口令列表', '改说法 / 开关可说', '面内试说'],
+          there: ['Pad 布局与键位', '绑定到哪一格', '显示形态'],
+          flow: '打通方式：<b>同一习惯</b>里 Pad 动作挂上 voice 触发。 <span class="mono">说「继续」→ SoftPad·继续</span>',
+          mockTitle: 'SoftPad 口令',
+          mockSub: '改说法；键位仍在 SoftPad 页配置',
+          mockPhrase: '「继续」',
+          mockLink: '去 SoftPad →',
+          toast: '桥面 · 写回 SoftPad'
+        },
+        keys: {
+          kicker: '03 · 桥面',
+          title: '按键',
+          lead: '说出来 = 等于按了键。快捷键、目标窗、序列在按键页；这里只碰口令。',
+          here: ['动作口令（发送 / 打开应用等）', '改说法 / 开关可说', '面内试说'],
+          there: ['触发键与识别键', '目标应用', '序列与收尾'],
+          flow: '打通方式：按 vs 说 = <b>同一动作的两种触发器</b>。 <span class="mono">说「发送」→ 按键映射动作</span>',
+          mockTitle: '按键口令',
+          mockSub: '改说法；快捷键仍在按键页配置',
+          mockPhrase: '「发送」',
+          mockLink: '去按键页 →',
+          toast: '桥面 · 写回按键'
+        },
+        camera: {
+          kicker: '04 · 桥面',
+          title: '摄像头',
+          lead: '说出来 = 等于做了动作。标定与手势识别在摄像头页；语音只挂说法。',
+          here: ['已绑动作的口令', '改说法 / 开关可说', '面内试说'],
+          there: ['手势 / 姿态识别', '离席与存在', '动作标定'],
+          flow: '打通方式：摄像头动作也可被口令触发，仍属同一习惯。 <span class="mono">说「确认」→ 摄像头动作</span>',
+          mockTitle: '摄像头口令',
+          mockSub: '改说法；识别与标定仍在摄像头页',
+          mockPhrase: '「确认」',
+          mockLink: '去摄像头页 →',
+          toast: '桥面 · 写回摄像头'
+        }
+      };
+
+      var frame = document.getElementById('frame');
+      var toast = document.getElementById('toast');
+      var toastTimer = 0;
+      var current = 'dictate';
+
+      function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('is-on');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toast.classList.remove('is-on'); }, 1400);
+      }
+
+      function fillList(el, items) {
+        el.innerHTML = items.map(function (t) { return '<li>' + t + '</li>'; }).join('');
+      }
+
+      function select(ch, quiet) {
+        current = ch;
+        var d = DATA[ch];
+        document.querySelectorAll('.lane').forEach(function (lane) {
+          var on = lane.getAttribute('data-ch') === ch;
+          lane.classList.toggle('is-on', on);
+          lane.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        document.getElementById('detailKicker').textContent = d.kicker;
+        document.getElementById('detailTitle').textContent = d.title;
+        document.getElementById('detailLead').textContent = d.lead;
+        fillList(document.getElementById('detailHere'), d.here);
+        fillList(document.getElementById('detailThere'), d.there);
+        document.getElementById('detailFlow').innerHTML = d.flow;
+        document.getElementById('mockTitle').textContent = d.mockTitle;
+        document.getElementById('mockSub').textContent = d.mockSub;
+        document.getElementById('mockPhrase').textContent = d.mockPhrase;
+        document.getElementById('mockLink').textContent = d.mockLink;
+        document.querySelectorAll('#mockFace [data-f]').forEach(function (s) {
+          s.classList.toggle('on', s.getAttribute('data-f') === ch);
+        });
+        if (!quiet) showToast(d.toast);
+      }
+
+      document.querySelectorAll('.lane').forEach(function (lane) {
+        lane.addEventListener('click', function () {
+          select(lane.getAttribute('data-ch'));
+        });
+      });
+
+      document.querySelectorAll('.toggles [data-model]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var model = btn.getAttribute('data-model');
+          document.querySelectorAll('.toggles [data-model]').forEach(function (b) {
+            b.classList.toggle('is-on', b === btn);
+          });
+          frame.classList.toggle('is-silo', model === 'silo');
+          showToast(model === 'hub' ? '口令枢纽 · 一根脊四条能力' : '四套设置 · 打不通');
+        });
+      });
+
+      document.getElementById('mockLink').addEventListener('click', function () {
+        showToast(DATA[current].mockLink.replace('→', '').trim() + '（原型）');
+      });
+
+      select('dictate', true);
+    })();
+  </script>
+</body>
+</html>

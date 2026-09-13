@@ -943,7 +943,7 @@
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
       voiceKws:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:'resources/kws/sherpa-kws-zh-small',modelPreset:'cn-light'},
-      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','就这样','停止听写'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation',"that's it",'stop dictation'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了','撤掉'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind','forget it'],sendPhrasesZh:['发送','发出去','提交'],sendPhrasesEn:['send it','send','submit'],sendMode:'confirm',commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt'},
+      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','就这样','停止听写'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation',"that's it",'stop dictation'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了','撤掉'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind','forget it'],sendPhrasesZh:['发送','发出去','提交'],sendPhrasesEn:['send it','send','submit'],sendMode:'confirm',commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt',intent:'ime',promptInjectText:''},
       voiceWakeAcousticCommands:[]
     };
   }
@@ -1398,7 +1398,9 @@
           commitKey:String(cfg.commitKey||cfg.commit_key||'Enter').trim()||'Enter',
           dictationTimeoutMs:Number(cfg.dictationTimeoutMs||cfg.dictation_timeout_ms)||60000,
           autoSendEnabled:!!cfg.autoSendEnabled||!!cfg.auto_send_enabled||String(cfg.sendMode||'').toLowerCase()==='auto',
-          targetKey:String(cfg.targetKey||cfg.target_key||'RAlt').trim()||'RAlt'
+          targetKey:String(cfg.targetKey||cfg.target_key||'RAlt').trim()||'RAlt',
+          intent:String(cfg.intent||'ime').trim()||'ime',
+          promptInjectText:String(cfg.promptInjectText||cfg.prompt_inject_text||'')
         };
       })(),
       voiceListeningStrategy:String(st.config.voiceListeningStrategy||st.config.voice_listening_strategy||'off'),

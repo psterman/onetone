@@ -233,7 +233,66 @@
     return set;
   }
 
-  /* One row per key instance; voice attaches by slotId / actionInstanceId. */
+  /* Seed design catalog (same slots as keys「软件自带」/常用), then overlay live bindings.
+   * Camera bridge already always lists CAM_META; keys used to only list chorded agentBindings —
+   * so the voice「按键」face looked empty even when keys page had a full action catalog. */
+  function seedCatalogRows(byId,order){
+    KEY_GROUPS.forEach(function(g){
+      (g.slots||[]).forEach(function(slot){
+        var sid=String(slot||'').trim();
+        if(!sid||byId[sid]) return;
+        var meta=KEY_META[sid]||{};
+        var copy=pickCopy(sid,sid);
+        byId[sid]={
+          id:sid,
+          actionId:sid,
+          slotId:sid,
+          actionInstanceId:'',
+          phrase:'',
+          chord:'',
+          enabled:true,
+          title:meta.title||sid,
+          when:copy.when||meta.when||'',
+          effect:copy.effect||meta.effect||'',
+          fromCatalog:true
+        };
+        order.push(sid);
+      });
+    });
+  }
+
+  function seedCustomKeyRows(byId,order){
+    var P=global.OneToneKeysChannelCommandPicker;
+    if(!P||!P.listCustomKeyMappingsForCurrentApp) return;
+    var list;
+    try{ list=P.listCustomKeyMappingsForCurrentApp()||[]; }catch(_e){ return; }
+    list.forEach(function(ck){
+      if(!ck||!ck.id) return;
+      var id='customKey:'+String(ck.id);
+      if(byId[id]) return;
+      var chord=String(ck.triggerKey||ck.triggerBinding||'').trim();
+      var title=String(
+        (P.customKeyMatchDisplayName&&P.customKeyMatchDisplayName(ck))||ck.name||ck.label||'我录的键'
+      ).trim();
+      byId[id]={
+        id:id,
+        actionId:String(ck.actionId||ck.id),
+        slotId:String(ck.slotId||('customKey:'+ck.id)),
+        actionInstanceId:String(ck.id),
+        phrase:'',
+        chord:chord,
+        enabled:true,
+        title:title,
+        when:'等于执行这条「我录的键」序列。',
+        effect:chord?('触发键 '+chord):'在按键页录制的动作序列',
+        fromCatalog:true,
+        customKey:true
+      };
+      order.push(id);
+    });
+  }
+
+  /* One row per action; voice attaches by slotId / actionInstanceId. */
   function listRows(phraseOnly){
     var m=currentMapping();
     if(!m) return [];
@@ -241,14 +300,17 @@
     var byId={};
     var order=[];
 
+    seedCatalogRows(byId,order);
+    seedCustomKeyRows(byId,order);
+
     function ensureFromKey(b){
       if(isSoftPadVoice(b,padSlots)) return null;
       var id=rowIdentity(b);
       if(!id) return null;
+      var chord=String(b.triggerBinding||'').trim();
+      var title=bindingTitle(b,chord,m);
+      var copy=pickCopy(b.actionId||b.slotId,title);
       if(!byId[id]){
-        var chord=String(b.triggerBinding||'').trim();
-        var title=bindingTitle(b,chord,m);
-        var copy=pickCopy(b.actionId||b.slotId,title);
         byId[id]={
           id:id,
           actionId:b.actionId||b.slotId,
@@ -259,9 +321,16 @@
           enabled:true,
           title:title,
           when:copy.when,
-          effect:copy.effect
+          effect:copy.effect,
+          fromCatalog:false
         };
         order.push(id);
+      }else{
+        var row=byId[id];
+        if(chord) row.chord=chord;
+        if(title) row.title=title;
+        if(b.actionInstanceId) row.actionInstanceId=b.actionInstanceId;
+        row.fromCatalog=false;
       }
       return byId[id];
     }
@@ -284,6 +353,7 @@
       var hit=null;
       if(inst&&byId[aid+'#'+inst]) hit=byId[aid+'#'+inst];
       if(!hit&&sid&&byId[sid]) hit=byId[sid];
+      if(!hit&&aid&&byId[aid]) hit=byId[aid];
       if(!hit){
         hit=order.map(function(id){ return byId[id]; }).find(function(r){
           return String(r.actionId)===aid&&!r.phrase;
@@ -303,13 +373,15 @@
           enabled:true,
           title:title,
           when:copy.when,
-          effect:copy.effect
+          effect:copy.effect,
+          fromCatalog:false
         };
         byId[id]=hit;
         order.push(id);
       }
       hit.phrase=phrase;
       hit.enabled=b.enabled!==false;
+      hit.fromCatalog=false;
       if(b.title||b.label){
         var t2=bindingTitle(b,hit.chord,m);
         if(t2) hit.title=t2;
@@ -321,7 +393,8 @@
     return order.map(function(id){ return byId[id]; }).filter(function(r){
       if(!r) return false;
       if(phraseOnly) return !!r.phrase;
-      return !!(r.chord||r.phrase);
+      /* Always include catalog + bound rows (camera bridge pattern). */
+      return true;
     });
   }
 
@@ -466,7 +539,9 @@
         btn.setAttribute('role','option');
         var km=r.phrase
           ?('说「'+esc(r.phrase)+'」'+(r.chord?(' · <span class="kb">'+esc(r.chord)+'</span>'):''))
-          :(r.chord?('键 <span class="kb">'+esc(r.chord)+'</span> · 还没口令'):'还没口令');
+          :(r.chord
+            ?('键 <span class="kb">'+esc(r.chord)+'</span> · 还没口令')
+            :(r.fromCatalog?'来自按键动作库 · 还没口令':'还没口令'));
         btn.innerHTML='<span class="kn">'+esc(r.title||r.actionId)+'</span><span class="km">'+km+'</span>';
         btn.addEventListener('click',function(){ pickId=r.id; render(); });
         host.appendChild(btn);
@@ -607,5 +682,13 @@
     return true;
   }
 
-  global.OneToneVoiceBridgeKeys={ render:render, addPhrase:addPhrase };
+  global.OneToneVoiceBridgeKeys={
+    render:render,
+    addPhrase:addPhrase,
+    listRows:listRows,
+    setCat:function(id){
+      catId=String(id||'common');
+      render();
+    }
+  };
 })((typeof window!=='undefined')?window:globalThis);

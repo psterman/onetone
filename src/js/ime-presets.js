@@ -503,6 +503,33 @@
     }).join('');
     host.innerHTML = html;
     renderCardBadge(ctx);
+    if(ctx === 'voice'){
+      var confirmEl = $('imePresetConfirmVoice');
+      var display = $('voiceSettingsTargetKey');
+      var chord = friendlyChord(key || (presetById(selectedId)||{}).targetKey || '');
+      if(display && chord) display.textContent = chord || '—';
+      if(confirmEl){
+        var preset = presetById(selectedId);
+        if(preset){
+          confirmEl.hidden = false;
+          confirmEl.textContent = t('imePresetConfirmDefault')
+            .replace('{ime}', t(preset.shortKey || preset.nameKey))
+            .replace('{chord}', chord);
+        }else if(key){
+          confirmEl.hidden = false;
+          confirmEl.textContent = t('imePresetConfirmCustom').replace('{chord}', friendlyChord(key));
+        }else{
+          confirmEl.hidden = true;
+        }
+      }
+      var hint = $('voiceImeDeskHint');
+      if(hint){
+        var p2 = presetById(selectedId);
+        if(p2){
+          hint.innerHTML = '已选 <b>'+esc(t(p2.shortKey||p2.nameKey))+'</b>，听写键是 <b>'+esc(chord)+'</b>。说 01 口令 = 注入该键。';
+        }
+      }
+    }
   }
 
   function refresh(ctx){

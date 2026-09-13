@@ -141,12 +141,17 @@
     if(collapse){ collapse.hidden=true; collapse.setAttribute('aria-hidden','true'); }
     var optInRow=$('voiceWakeListeningOptInRow');
     if(optInRow) optInRow.hidden=false;
+    // Primary desk: phrase only. Causal / landing / lang stay off this step.
     var actionBar=$('voiceWakeActionBar');
-    if(actionBar) actionBar.hidden=false;
+    if(actionBar){ actionBar.hidden=true; actionBar.setAttribute('aria-hidden','true'); }
     var landing=$('voiceLandingStrip');
-    if(landing) landing.hidden=false;
+    if(landing){ landing.hidden=true; landing.setAttribute('aria-hidden','true'); }
+    var lang=$('voiceWakeLangToggle');
+    if(lang){ lang.hidden=true; lang.setAttribute('aria-hidden','true'); }
     var adv=$('voiceWakeAdvanced');
     if(adv) adv.hidden=false;
+    var alias=$('voiceWakeAliasBlock');
+    if(alias) alias.hidden=false;
     // Ensure proto card titles stay visible (section inside presets panel).
     var unified=$('voiceWakeCurrentSectionLbl');
     if(unified) unified.hidden=false;
@@ -465,33 +470,47 @@
     var lbl=$('voiceWakeActionLbl');
     if(lbl) lbl.textContent=t('voiceWakeActionLbl')||'唤醒后';
     var dictate=$('voiceWakeActionDictate');
-    if(dictate) dictate.textContent=t('voiceWakeActionDictate')||'进入听写';
+    if(dictate){
+      var intent=global.__vp_voice_intent__||(global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config&&global.OneToneState.state.config.voiceEnd&&global.OneToneState.state.config.voiceEnd.intent)||'ime';
+      if(intent==='prompt') dictate.textContent=t('voiceIntentPromptTitle')||'聚焦 · 填入 · 发送';
+      else if(intent==='ime') dictate.textContent=t('voiceWakeActionDictate')||'进入听写';
+      else dictate.textContent=t('voiceIntentImeHint')||'匹配所选意图动作';
+    }
     /* FORBID: never paint send_mode copy on the wake action bar */
   }
 
   function renderLandingStrip(){
-    var strip=$('voiceLandingStrip');
-    if(!strip||strip.hidden) return;
     var m=currentEditMapping();
     var appId=m?String(m.appTargetId||'').trim():'';
     var isGlobal=!appId;
-    var line=$('voiceLandingLine');
-    var cta=$('btnVoiceLandingKeysTarget');
-    var bringRow=$('voiceWakeBringUpRow');
     var name=mappingDisplayName(m)||appId;
-    if(isGlobal){
-      if(line) line.innerHTML=t('voiceLandingGlobalLine')||'字会打进<strong>你正在点的地方</strong>（跟光标走）。';
-      if(cta) cta.textContent=t('voiceLandingGlobalCta')||'要限定到某个应用更稳？去按键设一下 →';
-      if(bringRow) bringRow.hidden=true;
-      strip.classList.add('is-global');
-      strip.classList.remove('is-app');
-    }else{
-      if(line) line.innerHTML=String(t('voiceLandingAppLine')||'字会打进 <strong>{name}</strong>。').replace('{name}',name||'—');
-      if(cta) cta.textContent=t('voiceLandingAppCta')||'不对就去按键改目标 →';
-      if(bringRow){
+    var strip=$('voiceLandingStrip');
+    // Landing copy stays off primary; keep hosts in sync only if shown.
+    if(strip&&!strip.hidden){
+      var line=$('voiceLandingLine');
+      var cta=$('btnVoiceLandingKeysTarget');
+      if(isGlobal){
+        if(line) line.innerHTML=t('voiceLandingGlobalLine')||'字会打进<strong>你正在点的地方</strong>（跟光标走）。';
+        if(cta) cta.textContent=t('voiceLandingGlobalCta')||'不对就去按键改目标 →';
+        strip.classList.add('is-global');
+        strip.classList.remove('is-app');
+      }else{
+        if(line) line.innerHTML=String(t('voiceLandingAppLine')||'字会打进 <strong>{name}</strong>。').replace('{name}',name||'—');
+        if(cta) cta.textContent=t('voiceLandingAppCta')||'不对就去按键改目标 →';
+        strip.classList.add('is-app');
+        strip.classList.remove('is-global');
+      }
+    }
+    var bringRow=$('voiceWakeBringUpRow');
+    if(bringRow){
+      if(isGlobal){
+        bringRow.hidden=true;
+      }else{
         bringRow.hidden=false;
         var bringLbl=$('voiceSchemeBringUpLbl');
-        if(bringLbl) bringLbl.textContent=String(t('voiceSchemeBringUpLbl')||'错前台时自动打开 {name}').replace('{name}',name||'目标');
+        if(bringLbl) bringLbl.textContent=String(t('voiceSchemeBringUpLbl')||'不在目标窗时自动切过去').replace('{name}',name||'目标');
+        var bringHint=$('voiceSchemeBringUpHint');
+        if(bringHint) bringHint.textContent=t('voiceSchemeBringUpHint')||'默认关 · 避免误开别的应用';
         var tog=$('voiceAllowBringUpTargetToggle');
         if(tog){
           var on=!!(m&&m.voiceAllowBringUpTarget);
@@ -499,9 +518,9 @@
           tog.classList.toggle('is-on',on);
         }
       }
-      strip.classList.add('is-app');
-      strip.classList.remove('is-global');
     }
+    var goKeys=$('btnVoiceWakeGoKeysTarget');
+    if(goKeys) goKeys.textContent=t('voiceWakeGoKeysTarget')||'改听写目标 →';
     var advSum=$('voiceWakeAdvancedSummary');
     if(advSum) advSum.textContent=t('voiceWakeAdvancedSummary')||'高级';
   }
@@ -509,45 +528,8 @@
   function renderWrongFgStatus(){
     var row=$('voiceWrongFgStatus');
     if(!row) return;
-    var face=global.__vp_voice_face__||'dictate';
-    if(face!=='dictate'){
-      row.hidden=true;
-      return;
-    }
-    var m=currentEditMapping();
-    var appId=m?String(m.appTargetId||'').trim():'';
-    if(!appId||(m&&m.voiceAllowBringUpTarget)){
-      row.hidden=true;
-      return;
-    }
-    var fgId='';
-    var fgName='';
-    try{
-      var nav=global.OneToneHabitLayerNav;
-      if(nav&&nav.getForegroundIdentity){
-        var fg=nav.getForegroundIdentity();
-        if(fg){
-          fgId=String(fg.appTargetId||fg.id||fg.targetId||'').trim();
-          fgName=String(fg.appName||fg.name||fgId||'').trim();
-        }
-      }
-      if(!fgId&&nav&&nav.getForegroundAppId) fgId=String(nav.getForegroundAppId()||'').trim();
-      if(!fgId&&nav&&nav.getForegroundContextRef&&m){
-        fgId=String(nav.getForegroundContextRef(m)||'').trim();
-      }
-    }catch(_e){}
-    if(fgId&&fgId===appId){
-      row.hidden=true;
-      return;
-    }
-    var targetName=mappingDisplayName(m)||appId;
-    var text=$('voiceWrongFgText');
-    if(text){
-      text.textContent=String(t('voiceWrongFgStatus')||'现在在 {fg} · 习惯绑的是 {target} · 先切过去再说')
-        .replace('{fg}',fgName||fgId||(t('voiceWrongFgUnknown')||'未知'))
-        .replace('{target}',targetName);
-    }
-    row.hidden=false;
+    // Keep off step-01 primary; bring-up lives under 高级.
+    row.hidden=true;
   }
 
   var VOICE_FACES=['dictate','softpad','keys','camera'];
@@ -570,9 +552,10 @@
     var isDictate=face==='dictate';
     var flow=$('voiceFlowNodes');
     var desk=$('voiceDeskPanel');
+    // Keep hero (说了什么 → 意图效果) visible for all intent faces.
     if(flow){
-      flow.hidden=!isDictate;
-      flow.setAttribute('aria-hidden',isDictate?'false':'true');
+      flow.hidden=false;
+      flow.setAttribute('aria-hidden','false');
     }
     if(desk){
       desk.hidden=!isDictate;
@@ -610,9 +593,13 @@
 
   function renderWakeSectionLabels(){
     var unified=$('voiceWakeCurrentSectionLbl');
-    if(unified) unified.textContent=t('voiceWakePageTitle')||'怎么开启打字？';
+    if(unified) unified.textContent=t('voiceFlowNodeWakeTitle')||'说了什么';
     var pageSubVis=$('voiceWakePageSubVisible');
-    if(pageSubVis) pageSubVis.textContent=t('voiceWakePageSubProto')||'先会用这一句就行 · 别的等要用再打开';
+    if(pageSubVis) pageSubVis.textContent=t('voiceWakeDeskSub')||'口令是触发内容 · 语音独有';
+    var moreSum=$('voiceWakeMoreAliasesSummary');
+    if(moreSum) moreSum.textContent=t('voiceWakeMoreAliases')||'同义说法';
+    var goKeys=$('btnVoiceWakeGoKeysTarget');
+    if(goKeys) goKeys.textContent=t('voiceWakeGoKeysTarget')||'改听写目标 →';
     var bridge=$('voiceWakePoolBridge');
     if(bridge) bridge.textContent=t('voiceWakePoolBridge');
     var aliasHint=$('voiceWakeAliasHint');
@@ -644,10 +631,16 @@
     if(dockTry) dockTry.textContent=t('voiceDockTryMic')||'试麦克风';
     var actionLbl=$('voiceWakeActionLbl');
     if(actionLbl) actionLbl.textContent=t('voiceWakeActionLbl')||'说出这句';
-    var dictate=$('voiceWakeActionDictate');
-    if(dictate) dictate.textContent=t('voiceWakeActionDictate')||'开始听写';
+    renderWakeActionBar();
     var editLink=$('btnVoiceWakePhraseEditLink');
     if(editLink) editLink.textContent=t('voiceWakePhraseEditLink')||'不对就改';
+    var hint=$('voiceWakeDisplayHint');
+    if(hint&&editLink){
+      var lead=t('voiceWakeHeroHintShort')||'默认用这句。';
+      hint.innerHTML='';
+      hint.appendChild(document.createTextNode(lead+(lead.slice(-1)==='。'?'':' ')));
+      hint.appendChild(editLink);
+    }
     renderLandingStrip();
     renderWrongFgStatus();
   }
@@ -754,6 +747,9 @@
     if(activeLbl) activeLbl.textContent=t('voiceWakeActiveLbl');
     var wakeAdd=$('btnVoiceWakePoolAdd');
     if(wakeAdd) wakeAdd.textContent=t('voiceWakePoolAddBtn');
+    if(global.OneToneVoiceIntentRail&&global.OneToneVoiceIntentRail.syncHeroVals){
+      global.OneToneVoiceIntentRail.syncHeroVals();
+    }
   }
 
   global.OneToneVoiceStepWake={

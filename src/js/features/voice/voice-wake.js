@@ -179,17 +179,20 @@
     }
     const voskOnly=global.OneToneVoiceEngineReadiness&&global.OneToneVoiceEngineReadiness.isVoskOnlyUi();
     const pending=!!(global.OneToneVoiceWake&&global.OneToneVoiceWake.isModeSwitchPending&&global.OneToneVoiceWake.isModeSwitchPending());
-    const grid=document.getElementById('voiceRecognizeSourceGrid');
-    if(grid){
-      grid.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
+    function paint(root){
+      if(!root) return;
+      root.querySelectorAll('[data-voice-engine-tab]').forEach(function(btn){
         const tab=btn.getAttribute('data-voice-engine-tab')||'';
         const active=!loading&&tabMode===tab;
         btn.classList.toggle('is-active',active);
+        btn.classList.toggle('is-on',active);
         btn.disabled=pending;
         if(tab==='sapi') btn.hidden=!!voskOnly;
         else btn.hidden=false;
       });
     }
+    paint(document.getElementById('voiceRecognizeSourceGrid'));
+    paint(document.getElementById('voiceWakeEngineSeg'));
     syncVoiceStrategyTabButtons(loading);
   }
 

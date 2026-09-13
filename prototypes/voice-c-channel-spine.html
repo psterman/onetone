@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音页 C · 四通道骨架（语音=说，通道=做什么）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e8eef3;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --dict:#1f6fa8;--dict-soft:#e8f2fb;
+      --pad:#0f7a6a;--pad-soft:#e6f6f2;
+      --keys:#8a5a12;--keys-soft:#f8f0e2;
+      --cam:#6b4ea3;--cam-soft:#f1ebf9;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fdf3e3;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%}
+    body{font-family:var(--font);color:var(--ink);background:var(--bg)}
+    .bar{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:10px 16px;background:#13202c;color:#c5d0de;font-size:12.5px;line-height:1.45}
+    .bar strong{color:#fff}.bar em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .toggles{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+    .toggles button{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#e2e8f0;border-radius:999px;padding:4px 12px;font:inherit;font-size:11.5px;font-weight:650;cursor:pointer}
+    .toggles button.is-on{background:rgba(42,156,196,.38);border-color:rgba(125,211,252,.45);color:#fff}
+    .shell{width:min(1000px,100%);margin:18px auto 48px;padding:0 14px}
+    .contract{margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:12.5px;line-height:1.6;color:var(--muted)}
+    .contract b{color:var(--ink);font-weight:650}
+    .contract .pro{color:var(--ok);font-weight:650}
+    .contract .con{color:var(--warn);font-weight:650}
+    .panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px}
+    .phead{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+    .phead h1{font-size:15px;font-weight:650;margin:0}
+    .pill{font-size:11px;font-weight:650;padding:2px 9px;border-radius:999px;background:var(--ok-soft);color:var(--ok)}
+    .pill.is-warn{background:var(--warn-soft);color:var(--warn)}
+    .ghost{margin-left:auto;border:1px solid var(--line);background:transparent;border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+
+    .spine{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:var(--wash);border:1px solid var(--line);margin-bottom:6px}
+    .spine .lb{font-size:11px;font-weight:650;color:var(--faint);letter-spacing:.05em}
+    .cap{font-weight:650;background:#fff;border:1px solid var(--cyan-bd);color:var(--cyan-ink);border-radius:7px;padding:3px 11px;font-size:14px}
+    .spine .mid{font-size:12.5px;color:var(--muted)}
+    .stem{height:18px;width:2px;background:var(--cyan-bd);margin:0 auto 6px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+    .ch{border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:#fff;position:relative}
+    .ch.on{border-color:var(--cyan-bd)}
+    .ch .nm{font-size:13.5px;font-weight:650;display:flex;align-items:center;gap:7px}
+    .ch .sw{width:8px;height:8px;border-radius:50%;background:var(--line)}
+    .ch.on .sw{background:var(--ok)}
+    .ch .ds{margin:6px 0 0;font-size:12px;color:var(--muted);line-height:1.5}
+    .ch .go{margin-top:9px;font-size:11.5px;color:var(--cyan-ink);font-weight:650;cursor:pointer}
+    .ch .go.dim{color:var(--faint);font-weight:550}
+    .ch[data-k="dict"] .nm{color:var(--dict)}
+    .ch[data-k="pad"] .nm{color:var(--pad)}
+    .ch[data-k="keys"] .nm{color:var(--keys)}
+    .ch[data-k="cam"] .nm{color:var(--cam)}
+    .foot{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;font-size:11.5px;color:var(--faint)}
+    .note{margin-top:16px;font-size:12px;line-height:1.6;color:var(--faint)}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span><strong>C 方案 · 四通道骨架</strong>　语音页当总入口：<em>上面一根"说"的中轴</em>，下面四个通道各说一句"能做什么 + 去设置"。</span>
+    <span class="toggles">
+      <button data-state="ready" class="is-on">已接通 2 个</button>
+      <button data-state="empty">只接听写</button>
+      <button data-state="error">识别异常</button>
+    </span>
+  </div>
+
+  <div class="shell">
+    <div class="contract">
+      <b>主张：</b>语音的本质是"说"，四个通道是被说驱动的<b>能力</b>。语音页负责上半根轴（怎么说、说完怎么办），通道页负责下半截（做什么）。
+      <br /><span class="pro">优点：</span>一页看清全局，通道之间可横向对比与跳转；适合把语音当中心枢纽的产品叙事。
+      <span class="con">代价：</span>首屏信息量最大，四通道与首页底部导航仍有一定重复；对纯小白偏重。
+    </div>
+
+    <div class="panel">
+      <div class="phead">
+        <h1>语音方案</h1>
+        <span class="pill" id="pill">可以说</span>
+        <button class="ghost">保存到正在编辑的习惯</button>
+      </div>
+
+      <div class="spine">
+        <span class="lb">说</span>
+        <span class="cap" id="cap1">开始输入</span>
+        <span class="mid">→ 落到下面已接通的通道</span>
+        <span class="lb" style="margin-left:auto">说完了</span>
+        <span class="cap">停一会儿</span>
+      </div>
+      <div class="stem" aria-hidden="true"></div>
+
+      <div class="grid">
+        <div class="ch on" data-k="dict">
+          <div class="nm"><span class="sw"></span>听写</div>
+          <p class="ds">把说的话打成字，落到光标处</p>
+          <div class="go">改口令 →</div>
+        </div>
+        <div class="ch" data-k="pad">
+          <div class="nm"><span class="sw"></span>SoftPad</div>
+          <p class="ds">在屏幕上的小面板点选，不靠说话</p>
+          <div class="go dim" id="goPad">去接通 →</div>
+        </div>
+        <div class="ch on" data-k="keys">
+          <div class="nm"><span class="sw"></span>按键</div>
+          <p class="ds">按住一个键代替另一个键</p>
+          <div class="go">改按键 →</div>
+        </div>
+        <div class="ch" data-k="cam">
+          <div class="nm"><span class="sw"></span>摄像头</div>
+          <p class="ds">点头摇头就能确认或取消</p>
+          <div class="go dim">去接通 →</div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <span>识别方式 · 语言 · 节奏（折叠）</span>
+        <span>改更多说法 →</span>
+      </div>
+    </div>
+
+    <p class="note">对照：A 把通道收走、B 把通道彻底藏起，C 反过来把通道摆在首屏。三者取舍就是一句话——<b>语音页到底是"设置页"还是"总入口"</b>。</p>
+  </div>
+
+  <script>
+    var pill=document.getElementById('pill'),cap1=document.getElementById('cap1'),
+        keys=document.querySelector('.ch[data-k="keys"]'),pad=document.querySelector('.ch[data-k="pad"]'),
+        goPad=document.getElementById('goPad');
+    var S={
+      ready:{pill:'可以说',cls:'',cap:'开始输入',keysOn:true,padOn:false},
+      empty:{pill:'只接听写',cls:'',cap:'开始输入',keysOn:false,padOn:false},
+      error:{pill:'没起来',cls:'is-warn',cap:'开始输入',keysOn:true,padOn:false}
+    };
+    document.querySelectorAll('.toggles button').forEach(function(b){
+      b.addEventListener('click',function(){
+        document.querySelectorAll('.toggles button').forEach(function(x){x.classList.remove('is-on')});
+        b.classList.add('is-on');
+        var s=S[b.dataset.state];
+        pill.textContent=s.pill; pill.className='pill '+(s.cls||'');
+        cap1.textContent=s.cap;
+        keys.classList.toggle('on',s.keysOn);
+        pad.classList.toggle('on',s.padOn);
+        goPad.classList.toggle('dim',!s.padOn);
+      });
+    });
+  </script>
+</body>
+</html>

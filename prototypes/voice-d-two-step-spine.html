@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音页 D · 两步脊椎（正解：说了什么 ▸ 意图效果）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e8eef3;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fdf3e3;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%}
+    body{font-family:var(--font);color:var(--ink);background:var(--bg)}
+    .bar{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:10px 16px;background:#13202c;color:#c5d0de;font-size:12.5px;line-height:1.45}
+    .bar strong{color:#fff}.bar em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .toggles{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+    .toggles button{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#e2e8f0;border-radius:999px;padding:4px 12px;font:inherit;font-size:11.5px;font-weight:650;cursor:pointer}
+    .toggles button.is-on{background:rgba(42,156,196,.38);border-color:rgba(125,211,252,.45);color:#fff}
+    .shell{width:min(1000px,100%);margin:18px auto 48px;padding:0 14px}
+    .contract{margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:12.5px;line-height:1.65;color:var(--muted)}
+    .contract b{color:var(--ink);font-weight:650}
+    .contract .pro{color:var(--ok);font-weight:650}
+    .contract .con{color:var(--warn);font-weight:650}
+    .panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px}
+    .phead{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+    .phead h1{font-size:15px;font-weight:650;margin:0}
+    .pill{font-size:11px;font-weight:650;padding:2px 9px;border-radius:999px;background:var(--ok-soft);color:var(--ok)}
+    .pill.is-warn{background:var(--warn-soft);color:var(--warn)}
+    .ghost{margin-left:auto;border:1px solid var(--line);background:transparent;border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+
+    .hero{display:flex;align-items:stretch;gap:0;margin-bottom:14px}
+    .node{flex:1;text-align:left;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;font:inherit;cursor:pointer}
+    .node.is-on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+    .node .tag{display:block;font-size:11px;font-weight:650;color:var(--faint);letter-spacing:.04em;margin-bottom:4px}
+    .node.is-on .tag{color:var(--cyan-ink)}
+    .node .val{display:block;font-size:16px;font-weight:650}
+    .node .hint{display:block;margin-top:3px;font-size:11.5px;color:var(--faint)}
+    .link{flex:0 0 46px;display:flex;align-items:center;justify-content:center;color:var(--cyan)}
+    .link span{position:relative;width:100%;height:2px;background:var(--cyan-bd)}
+    .link span::after{content:"";position:absolute;right:-1px;top:-4px;border-left:7px solid var(--cyan);border-top:5px solid transparent;border-bottom:5px solid transparent}
+
+    .desk{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--wash)}
+    .desk h2{font-size:13.5px;font-weight:650;margin:0 0 4px}
+    .desk .sub{font-size:12px;color:var(--muted);margin:0 0 12px}
+    .caprow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .cap{font-size:17px;font-weight:650;background:#fff;border:1px solid var(--cyan-bd);color:var(--cyan-ink);border-radius:8px;padding:4px 14px;cursor:pointer}
+    .cap.is-empty{color:var(--faint);border-color:var(--line)}
+    .capnote{font-size:11.5px;color:var(--faint)}
+    .attr{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+    .attr .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+    .attr .row:last-child{margin-bottom:0}
+    .attr .lb{font-size:11.5px;color:var(--faint);width:74px;flex:none}
+    .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+    .seg button{border:0;background:#fff;padding:4px 11px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+    .seg button.is-on{background:var(--cyan-soft);color:var(--cyan-ink);font-weight:650}
+    .why{margin-left:6px;font-size:11px;color:var(--faint)}
+    .attract{margin-top:10px;font-size:11.5px;color:var(--faint);cursor:pointer}
+    .more{margin-top:10px;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--muted);background:#fff;display:none}
+    .more.is-open{display:block}
+    .more .row{margin-bottom:8px}
+
+    .outcomes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .oc{border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px 11px;text-align:left;font:inherit;cursor:pointer}
+    .oc.is-on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+    .oc b{display:block;font-size:13.5px;font-weight:650}
+    .oc span{display:block;margin-top:2px;font-size:11.5px;color:var(--faint)}
+    .landing{margin-top:14px;padding:11px 13px;border-radius:10px;background:var(--cyan-soft);font-size:12.5px;color:var(--cyan-ink);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .landing a{margin-left:auto;color:var(--cyan-ink);font-weight:650;text-decoration:underline;cursor:pointer}
+    .banner{margin-bottom:14px;padding:11px 13px;border-radius:10px;background:var(--warn-soft);border:1px solid #f0d5a8;display:none;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;color:var(--warn)}
+    .banner.is-on{display:flex}
+    .banner button{margin-left:auto;border:1px solid #d9a95f;background:#fff;border-radius:8px;padding:4px 10px;font:inherit;font-size:12px;font-weight:650;color:var(--warn);cursor:pointer}
+    .mirror{margin-top:16px;padding:11px 13px;border-radius:10px;background:var(--paper);border:1px solid var(--line);font-size:12px;color:var(--muted);line-height:1.6}
+    .mirror code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;font-weight:650;color:var(--cyan-ink);background:var(--cyan-soft);border-radius:4px;padding:1px 5px}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span><strong>D 方案 · 两步脊椎（正解）</strong>　骨架只有两步，点节点切详情。<em>01 是「说了什么」（识别），02 是「意图效果」（文字去哪、做什么）；引擎、口令语言归 01，落点节奏归 02</em>。没有第三层。</span>
+    <span class="toggles">
+      <button data-state="ready" class="is-on">就绪</button>
+      <button data-state="empty">未配置</button>
+      <button data-state="error">识别异常</button>
+    </span>
+  </div>
+
+  <div class="shell">
+    <div class="contract">
+      <b>与按键页严格同构：</b>按键页是 <b>01 按什么 ▸ 02 出什么</b>，语音页就是 <b>01 说了什么 ▸ 02 意图效果</b>——两步讲的是「内容」和「效果」，不是「说话的时序」。
+      <br />配置不再有独立版图：<b>用什么听（引擎）</b>和<b>口令语言</b>是「说了什么」的属性，<b>停多久算完（节奏）</b>是「意图效果」的属性——三者各自掉进对应步骤，页面里不再出现"识别设置"这一层。
+      <br /><span class="pro">优点：</span>两步描述语义（内容→效果），小白顺着想就通；与按键页同一套心智。
+      <span class="con">代价：</span>引擎选择藏深了，老用户找设置要多点一下（用异常态自动展开兜底）。
+    </div>
+
+    <div class="panel">
+      <div class="phead">
+        <h1>语音方案</h1>
+        <span class="pill" id="pill">可以说</span>
+        <button class="ghost">保存到正在编辑的习惯</button>
+      </div>
+
+      <div class="banner" id="banner">
+        <span>识别没起来 · 现在说话不会出字</span>
+        <button>一键启动</button>
+      </div>
+
+      <div class="hero">
+        <button class="node is-on" id="node1" data-step="1">
+          <span class="tag">01 / 说了什么</span>
+          <span class="val" id="n1val">开始输入</span>
+          <span class="hint">说这句，声音就变文字</span>
+        </button>
+        <div class="link" aria-hidden="true"><span></span></div>
+        <button class="node" id="node2" data-step="2">
+          <span class="tag">02 / 意图效果</span>
+          <span class="val">先留着</span>
+          <span class="hint">文字去哪、做什么</span>
+        </button>
+      </div>
+
+      <div class="desk" id="desk1">
+        <h2>说了什么</h2>
+        <p class="sub">说出这句，后面的话实时变成文字 · 点大字可改</p>
+        <div class="caprow">
+          <span class="cap" id="cap1">开始输入</span>
+          <span class="capnote">默认用这句就行，不对再改</span>
+        </div>
+        <div class="attr">
+          <div class="row">
+            <span class="lb">用什么听</span>
+            <span class="seg" id="segEngine"><button class="is-on">系统自带</button><button>本地离线</button><button>只听口令</button></span>
+            <span class="why">默认系统自带，不用管</span>
+          </div>
+          <div class="row">
+            <span class="lb">口令语言</span>
+            <span class="seg"><button class="is-on">中文</button><button>English</button></span>
+          </div>
+          <div class="attract" id="moreToggle1">更多：其他开启口令、自定义 ▾</div>
+          <div class="more" id="more1">
+            <div class="row"><span class="lb">其他说法</span><span class="capnote">开始听写 · 打开听写 · 语音输入（都算数）</span></div>
+            <div class="row"><span class="lb">自定义</span><span class="capnote">+ 添加口令</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="desk" id="desk2" style="display:none">
+        <h2>意图效果</h2>
+        <p class="sub">文字出来后去哪、做什么 · 选一个就够</p>
+        <div class="outcomes">
+          <button class="oc" data-oc="send"><b>发出去</b><span>停完再发</span></button>
+          <button class="oc is-on" data-oc="keep"><b>先留着</b><span>只出字</span></button>
+          <button class="oc" data-oc="discard"><b>不要了</b><span>字丢掉</span></button>
+        </div>
+        <div class="attr">
+          <div class="row">
+            <span class="lb">停多久算完</span>
+            <span class="seg"><button>慢 6s</button><button class="is-on">适中 4s</button><button>快 2s</button></span>
+            <span class="why">说完停一会儿就收尾</span>
+          </div>
+          <div class="attract" id="moreToggle2">更多：结束口令、在目标应用里自动发 ▾</div>
+          <div class="more" id="more2">
+            <div class="row"><span class="lb">结束口令</span><span class="capnote">发送 · 不要了（说了才生效）</span></div>
+            <div class="row"><span class="lb">自动发送</span><span class="capnote">未开 · 你说了才发</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="landing">
+        <span>字会打进<b>你正在点的地方</b>，跟光标走。</span>
+        <a>要限定到某个应用更稳？去按键设 →</a>
+      </div>
+    </div>
+
+    <div class="mirror">
+      与按键页的对称关系：按键页 <code>01 / 触发</code>→<code>02 / 识别</code>，语音页 <code>01 / 说了什么</code>→<code>02 / 意图效果</code>。
+      两页第二步回答的都是"产出/效果"，第一步都是"你做了什么动作"——同一套心智，用户学一次即可。
+    </div>
+  </div>
+
+  <script>
+    var pill=document.getElementById('pill'),banner=document.getElementById('banner'),
+        cap1=document.getElementById('cap1'),n1val=document.getElementById('n1val'),
+        node1=document.getElementById('node1'),node2=document.getElementById('node2'),
+        desk1=document.getElementById('desk1'),desk2=document.getElementById('desk2'),
+        more1=document.getElementById('more1'),more2=document.getElementById('more2'),
+        segEngine=document.getElementById('segEngine');
+    function showStep(n){
+      var on1=n===1;
+      node1.classList.toggle('is-on',on1);node2.classList.toggle('is-on',!on1);
+      desk1.style.display=on1?'':'none';desk2.style.display=on1?'none':'';
+    }
+    node1.addEventListener('click',function(){showStep(1)});
+    node2.addEventListener('click',function(){showStep(2)});
+    document.getElementById('moreToggle1').addEventListener('click',function(){more1.classList.toggle('is-open')});
+    document.getElementById('moreToggle2').addEventListener('click',function(){more2.classList.toggle('is-open')});
+    document.querySelectorAll('.oc').forEach(function(b){
+      b.addEventListener('click',function(){
+        document.querySelectorAll('.oc').forEach(function(x){x.classList.remove('is-on')});
+        b.classList.add('is-on');
+      });
+    });
+    document.querySelectorAll('.seg button').forEach(function(b){
+      b.addEventListener('click',function(){
+        var seg=b.parentNode;
+        seg.querySelectorAll('button').forEach(function(x){x.classList.remove('is-on')});
+        b.classList.add('is-on');
+      });
+    });
+    var S={
+      ready:{pill:'可以说',cls:'',cap:'开始输入',banner:false,openMore:false,n1:'开始输入'},
+      empty:{pill:'缺唤醒词',cls:'is-warn',cap:'还没设',banner:false,openMore:false,n1:'还没设'},
+      error:{pill:'没起来',cls:'is-warn',cap:'开始输入',banner:true,openMore:true,n1:'开始输入'}
+    };
+    document.querySelectorAll('.toggles button').forEach(function(b){
+      b.addEventListener('click',function(){
+        document.querySelectorAll('.toggles button').forEach(function(x){x.classList.remove('is-on')});
+        b.classList.add('is-on');
+        var s=S[b.dataset.state];
+        pill.textContent=s.pill;pill.className='pill '+(s.cls||'');
+        cap1.textContent=s.cap;n1val.textContent=s.n1;
+        banner.classList.toggle('is-on',s.banner);
+        more1.classList.toggle('is-open',s.openMore);
+        if(s.openMore){showStep(1)}
+      });
+    });
+  </script>
+</body>
+</html>

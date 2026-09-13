@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音页 E · 说了什么 → 匹配动作（对齐按键识别）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e8eef3;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fdf3e3;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%}
+    body{font-family:var(--font);color:var(--ink);background:var(--bg)}
+    .bar{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:10px 16px;background:#13202c;color:#c5d0de;font-size:12.5px;line-height:1.45}
+    .bar strong{color:#fff}.bar em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .toggles{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+    .toggles button{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#e2e8f0;border-radius:999px;padding:4px 12px;font:inherit;font-size:11.5px;font-weight:650;cursor:pointer}
+    .toggles button.is-on{background:rgba(42,156,196,.38);border-color:rgba(125,211,252,.45);color:#fff}
+    .shell{width:min(1000px,100%);margin:18px auto 48px;padding:0 14px}
+    .fix{margin:0 0 14px;padding:12px 14px;border:1px solid #f0d5a8;border-radius:12px;background:var(--warn-soft);font-size:12.5px;line-height:1.65;color:#6b3d05}
+    .fix b{font-weight:650}
+    .fix .wrong{text-decoration:line-through;opacity:.75}
+    .fix .right{font-weight:650;color:var(--ok)}
+    .fix code{font-family:var(--mono);font-size:11.5px;font-weight:650;background:rgba(255,255,255,.55);border-radius:4px;padding:1px 5px}
+    .contract{margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:12.5px;line-height:1.65;color:var(--muted)}
+    .contract b{color:var(--ink);font-weight:650}
+    .contract .pro{color:var(--ok);font-weight:650}
+    .contract .con{color:var(--warn);font-weight:650}
+    .panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px}
+    .phead{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+    .phead h1{font-size:15px;font-weight:650;margin:0}
+    .pill{font-size:11px;font-weight:650;padding:2px 9px;border-radius:999px;background:var(--ok-soft);color:var(--ok)}
+    .pill.is-warn{background:var(--warn-soft);color:var(--warn)}
+    .ghost{margin-left:auto;border:1px solid var(--line);background:transparent;border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+
+    .hero{display:flex;align-items:stretch;gap:0;margin-bottom:14px}
+    .node{flex:1;text-align:left;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;font:inherit;cursor:pointer}
+    .node.is-on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+    .node .tag{display:block;font-size:11px;font-weight:650;color:var(--faint);letter-spacing:.04em;margin-bottom:4px}
+    .node.is-on .tag{color:var(--cyan-ink)}
+    .node .val{display:block;font-size:16px;font-weight:650}
+    .node .hint{display:block;margin-top:3px;font-size:11.5px;color:var(--faint)}
+    .link{flex:0 0 46px;display:flex;align-items:center;justify-content:center;color:var(--cyan)}
+    .link span{position:relative;width:100%;height:2px;background:var(--cyan-bd)}
+    .link span::after{content:"";position:absolute;right:-1px;top:-4px;border-left:7px solid var(--cyan);border-top:5px solid transparent;border-bottom:5px solid transparent}
+
+    .desk{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--wash)}
+    .desk h2{font-size:13.5px;font-weight:650;margin:0 0 4px}
+    .desk .sub{font-size:12px;color:var(--muted);margin:0 0 12px}
+    .caprow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .cap{font-size:17px;font-weight:650;background:#fff;border:1px solid var(--cyan-bd);color:var(--cyan-ink);border-radius:8px;padding:4px 14px;cursor:pointer}
+    .cap.is-empty{color:var(--faint);border-color:var(--line)}
+    .capnote{font-size:11.5px;color:var(--faint)}
+    .attr{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+    .attr .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+    .attr .row:last-child{margin-bottom:0}
+    .attr .lb{font-size:11.5px;color:var(--faint);width:74px;flex:none}
+    .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+    .seg button{border:0;background:#fff;padding:4px 11px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+    .seg button.is-on{background:var(--cyan-soft);color:var(--cyan-ink);font-weight:650}
+    .why{margin-left:6px;font-size:11px;color:var(--faint)}
+    .attract{margin-top:10px;font-size:11.5px;color:var(--faint);cursor:pointer}
+    .more{margin-top:10px;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--muted);background:#fff;display:none}
+    .more.is-open{display:block}
+    .more .row{margin-bottom:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .more .lb{font-size:11.5px;color:var(--faint);width:74px;flex:none}
+
+    .ch-tabs{display:flex;gap:3px;padding:3px;background:#e7eef3;border:1px solid var(--line);border-radius:10px;margin-bottom:12px}
+    .ch-tab{flex:1;border:0;background:transparent;padding:8px 6px;border-radius:8px;font:inherit;font-size:12.5px;font-weight:650;color:var(--muted);cursor:pointer}
+    .ch-tab.is-on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+
+    .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .act{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 12px;text-align:left;font:inherit;cursor:pointer}
+    .act.is-on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+    .act b{display:block;font-size:13.5px;font-weight:650}
+    .act span{display:block;margin-top:3px;font-size:11.5px;color:var(--faint);line-height:1.4}
+    .act .ch{display:inline-block;margin-top:6px;font-size:10.5px;font-weight:650;color:var(--cyan-ink);background:var(--cyan-soft);border-radius:999px;padding:1px 7px}
+
+    .causal{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--cyan-ink);font-weight:550}
+    .causal .arr{color:var(--cyan);font-weight:650}
+    .causal .to{font-weight:650}
+    .bridge{margin-top:10px;font-size:12px;color:var(--muted)}
+    .bridge a{color:var(--cyan-ink);font-weight:650;text-decoration:underline;cursor:pointer}
+
+    .tail{margin-top:12px;border:1px dashed #f0d5a8;border-radius:10px;padding:10px 12px;background:#fffdf8;display:none}
+    .tail.is-on{display:block}
+    .tail .tl{font-size:11px;font-weight:650;color:var(--warn);margin:0 0 6px}
+    .tail .sub{font-size:11.5px;color:var(--muted);margin:0 0 8px}
+    .outcomes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .oc{border:1px solid var(--line);border-radius:8px;background:#fff;padding:7px 9px;text-align:left;font:inherit;cursor:pointer}
+    .oc.is-on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+    .oc b{display:block;font-size:12.5px;font-weight:650}
+    .oc span{display:block;margin-top:2px;font-size:11px;color:var(--faint)}
+
+    .landing{margin-top:14px;padding:11px 13px;border-radius:10px;background:var(--cyan-soft);font-size:12.5px;color:var(--cyan-ink);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .landing a{margin-left:auto;color:var(--cyan-ink);font-weight:650;text-decoration:underline;cursor:pointer}
+    .banner{margin-bottom:14px;padding:11px 13px;border-radius:10px;background:var(--warn-soft);border:1px solid #f0d5a8;display:none;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;color:var(--warn)}
+    .banner.is-on{display:flex}
+    .banner button{margin-left:auto;border:1px solid #d9a95f;background:#fff;border-radius:8px;padding:4px 10px;font:inherit;font-size:12px;font-weight:650;color:var(--warn);cursor:pointer}
+    .mirror{margin-top:16px;padding:11px 13px;border-radius:10px;background:var(--paper);border:1px solid var(--line);font-size:12px;color:var(--muted);line-height:1.6}
+    .mirror code{font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--cyan-ink);background:var(--cyan-soft);border-radius:4px;padding:1px 5px}
+    .mirror .drift{color:var(--warn)}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span><strong>E 方案 · 口令→匹配动作</strong>　对齐按键页识别。<em>01 说了什么 · 02 意图＝通道动作</em>（听写 / SoftPad / 按键 / 摄像头）。</span>
+    <span class="toggles">
+      <button data-state="ready" class="is-on">就绪</button>
+      <button data-state="empty">未配置</button>
+      <button data-state="error">识别异常</button>
+    </span>
+  </div>
+
+  <div class="shell">
+    <div class="fix">
+      <b>纠偏两层：</b>
+      <br />① 轴：<span class="wrong"><code>开始说 → 说完了</code></span> → <span class="right"><code>说了什么 → 意图效果</code></span>
+      <br />② 意图本身：<span class="wrong"><code>发出去 / 先留着 / 不要了</code>（听写收尾）</span> → <span class="right"><code>匹配动作</code>（听写激活 · SoftPad · 按键 · 摄像头）</span>
+      <br />收尾不是意图；它只是「开启听写」这条动作下面的附属属性。
+    </div>
+
+    <div class="contract">
+      <b>与按键页严格同构：</b>按键页是 <b>01 触发 ▸ 02 识别（产出动作）</b>，语音页就是 <b>01 说了什么 ▸ 02 意图效果（匹配到的通道动作）</b>。
+      <br />说一句口令，落到本习惯里已接通的能力：开启听写、点 SoftPad 一格、打出按键动作、或做摄像头动作——和按键页第二步选「识别到什么」同一心智。
+      <br /><span class="pro">优点：</span>首屏读成「说这句 → 执行这个动作」；四通道动作共用同一根口令脊。
+      <span class="con">代价：</span>听写收尾（发出去/先留着）降到听写动作内部，不再占 hero 主轴。
+    </div>
+
+    <div class="panel">
+      <div class="phead">
+        <h1>语音方案</h1>
+        <span class="pill" id="pill">可以说</span>
+        <button class="ghost">保存到正在编辑的习惯</button>
+      </div>
+
+      <div class="banner" id="banner">
+        <span>识别没起来 · 现在说话不会匹配动作</span>
+        <button>一键启动</button>
+      </div>
+
+      <div class="hero">
+        <button class="node is-on" id="node1" data-step="1">
+          <span class="tag">01 / 说了什么</span>
+          <span class="val" id="n1val">开始输入</span>
+          <span class="hint">这句口令</span>
+        </button>
+        <div class="link" aria-hidden="true"><span></span></div>
+        <button class="node" id="node2" data-step="2">
+          <span class="tag">02 / 意图效果</span>
+          <span class="val" id="n2val">开启听写</span>
+          <span class="hint">匹配到的动作</span>
+        </button>
+      </div>
+
+      <div class="desk" id="desk1">
+        <h2>说了什么</h2>
+        <p class="sub">这句口令是触发内容 · 点大字可改</p>
+        <div class="caprow">
+          <span class="cap" id="cap1">开始输入</span>
+          <span class="capnote">默认用这句就行，不对再改</span>
+        </div>
+        <div class="attr">
+          <div class="row">
+            <span class="lb">用什么听</span>
+            <span class="seg"><button class="is-on">系统自带</button><button>本地离线</button><button>只听口令</button></span>
+            <span class="why">默认系统自带，不用管</span>
+          </div>
+          <div class="row">
+            <span class="lb">口令语言</span>
+            <span class="seg"><button class="is-on">中文</button><button>English</button></span>
+          </div>
+          <div class="attract" id="moreToggle1">更多：其他说法、自定义 ▾</div>
+          <div class="more" id="more1">
+            <div class="row"><span class="lb">其他说法</span><span class="capnote">开始听写 · 打开听写 · 语音输入（都算数）</span></div>
+            <div class="row"><span class="lb">自定义</span><span class="capnote">+ 添加口令</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="desk" id="desk2" style="display:none">
+        <h2>意图效果</h2>
+        <p class="sub">口令匹配后执行哪个动作 · 对齐按键页「识别」</p>
+
+        <div class="ch-tabs" role="tablist" aria-label="动作通道">
+          <button type="button" class="ch-tab is-on" data-ch="dictate">听写</button>
+          <button type="button" class="ch-tab" data-ch="softpad">SoftPad</button>
+          <button type="button" class="ch-tab" data-ch="keys">按键</button>
+          <button type="button" class="ch-tab" data-ch="camera">摄像头</button>
+        </div>
+
+        <div class="acts" id="acts"></div>
+
+        <div class="causal">
+          <span>说「<b id="causalPhrase">开始输入</b>」</span>
+          <span class="arr">→</span>
+          <span class="to" id="causalTo">开启听写</span>
+        </div>
+        <p class="bridge" id="bridgeNote">键位 / 手势 / Pad 布局仍在对应通道页；这里只定「说了等于做什么」。</p>
+
+        <div class="tail is-on" id="tail">
+          <p class="tl">听写收尾 · 不是意图</p>
+          <p class="sub">只有匹配「开启听写」时才有：说完字要怎样</p>
+          <div class="outcomes">
+            <button type="button" class="oc" data-oc="send"><b>发出去</b><span>停完再发</span></button>
+            <button type="button" class="oc is-on" data-oc="keep"><b>先留着</b><span>只出字</span></button>
+            <button type="button" class="oc" data-oc="discard"><b>不要了</b><span>字丢掉</span></button>
+          </div>
+          <div class="attr" style="border-top:0;padding-top:8px;margin-top:8px">
+            <div class="row">
+              <span class="lb">停多久算完</span>
+              <span class="seg"><button>慢 6s</button><button class="is-on">适中 4s</button><button>快 2s</button></span>
+              <span class="why">听写收口节奏</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="attract" id="moreToggle2">更多：试说一次、跳转通道页 ▾</div>
+        <div class="more" id="more2">
+          <div class="row"><span class="lb">试说</span><span class="capnote">对着麦念一遍，看是否命中当前动作</span></div>
+          <div class="row"><span class="lb">通道页</span><span class="capnote" id="moreBridge">去听写相关设置 →</span></div>
+        </div>
+      </div>
+
+      <div class="landing" id="landing">
+        <span id="landingText">字会打进<b>你正在点的地方</b>，跟光标走。</span>
+        <a id="landingLink">要限定到某个应用更稳？去按键设 →</a>
+      </div>
+    </div>
+
+    <div class="mirror">
+      对称：按键页 <code>01 / 触发</code>→<code>02 / 识别</code>（产出键 / 动作）≡ 语音页 <code>01 / 说了什么</code>→<code>02 / 意图效果</code>（匹配通道动作）。
+      <br /><span class="drift">勿混：<code>发出去 / 先留着 / 不要了</code> 是听写动作的收尾属性，不是第二步本身；<code>开始说 → 说完了</code> 是时间轴漂移。</span>
+    </div>
+  </div>
+
+  <script>
+    var pill=document.getElementById('pill'),banner=document.getElementById('banner'),
+        cap1=document.getElementById('cap1'),n1val=document.getElementById('n1val'),
+        n2val=document.getElementById('n2val'),
+        causalPhrase=document.getElementById('causalPhrase'),causalTo=document.getElementById('causalTo'),
+        node1=document.getElementById('node1'),node2=document.getElementById('node2'),
+        desk1=document.getElementById('desk1'),desk2=document.getElementById('desk2'),
+        more1=document.getElementById('more1'),more2=document.getElementById('more2'),
+        actsEl=document.getElementById('acts'),tail=document.getElementById('tail'),
+        landingText=document.getElementById('landingText'),landingLink=document.getElementById('landingLink'),
+        bridgeNote=document.getElementById('bridgeNote'),moreBridge=document.getElementById('moreBridge');
+
+    var ACTS={
+      dictate:[
+        {id:'dict-start',label:'开启听写',desc:'激活语音输入，字跟光标走',landing:'字会打进<b>你正在点的地方</b>，跟光标走。',link:'要限定到某个应用更稳？去按键设 →',bridge:'听写收尾（发出去/先留着）挂在这条动作下，不是意图本身。',more:'去听写相关设置 →',tail:true},
+        {id:'dict-stop',label:'结束听写',desc:'收口当前听写会话',landing:'说完这句就结束听写会话。',link:'收尾细节在听写动作里改 →',bridge:'结束听写是动作；发出去/先留着仍是收尾属性。',more:'去听写相关设置 →',tail:false}
+      ],
+      softpad:[
+        {id:'pad-continue',label:'继续',desc:'等于点了 SoftPad 上「继续」那一格',landing:'说这句 = 点 SoftPad · <b>继续</b>。',link:'去 SoftPad 改键位 →',bridge:'本页只管说法；格子怎么摆在 SoftPad 页。',more:'去 SoftPad →',tail:false},
+        {id:'pad-undo',label:'撤销',desc:'等于点了 SoftPad 上「撤销」',landing:'说这句 = 点 SoftPad · <b>撤销</b>。',link:'去 SoftPad 改键位 →',bridge:'本页只管说法；格子怎么摆在 SoftPad 页。',more:'去 SoftPad →',tail:false}
+      ],
+      keys:[
+        {id:'key-send',label:'发送',desc:'等于按了绑定的快捷键 / 序列',landing:'说这句 = 执行按键动作 · <b>发送</b>。',link:'去按键改触发与目标 →',bridge:'本页只管说法；触发键、目标窗在按键页。',more:'去按键 →',tail:false},
+        {id:'key-copy',label:'复制',desc:'等于按了复制快捷键',landing:'说这句 = 执行按键动作 · <b>复制</b>。',link:'去按键改触发与目标 →',bridge:'本页只管说法；触发键、目标窗在按键页。',more:'去按键 →',tail:false}
+      ],
+      camera:[
+        {id:'cam-confirm',label:'确认',desc:'等于做了绑定的摄像头手势动作',landing:'说这句 = 摄像头动作 · <b>确认</b>。',link:'去摄像头改识别与标定 →',bridge:'本页只管说法；手势标定在摄像头页。',more:'去摄像头 →',tail:false},
+        {id:'cam-cancel',label:'取消',desc:'等于做了绑定的取消手势',landing:'说这句 = 摄像头动作 · <b>取消</b>。',link:'去摄像头改识别与标定 →',bridge:'本页只管说法；手势标定在摄像头页。',more:'去摄像头 →',tail:false}
+      ]
+    };
+    var chLabels={dictate:'听写',softpad:'SoftPad',keys:'按键',camera:'摄像头'};
+    var curCh='dictate',curAct=ACTS.dictate[0];
+
+    function showStep(n){
+      var on1=n===1;
+      node1.classList.toggle('is-on',on1);node2.classList.toggle('is-on',!on1);
+      desk1.style.display=on1?'':'none';desk2.style.display=on1?'none':'';
+    }
+
+    function applyAct(act){
+      curAct=act;
+      n2val.textContent=act.label;
+      causalTo.textContent=act.label;
+      causalPhrase.textContent=n1val.textContent;
+      landingText.innerHTML=act.landing;
+      landingLink.textContent=act.link;
+      bridgeNote.textContent=act.bridge;
+      moreBridge.textContent=act.more;
+      tail.classList.toggle('is-on',!!act.tail);
+      document.querySelectorAll('.act').forEach(function(b){
+        b.classList.toggle('is-on',b.getAttribute('data-id')===act.id);
+      });
+    }
+
+    function renderActs(ch){
+      curCh=ch;
+      document.querySelectorAll('.ch-tab').forEach(function(t){
+        t.classList.toggle('is-on',t.getAttribute('data-ch')===ch);
+      });
+      var list=ACTS[ch];
+      actsEl.innerHTML='';
+      list.forEach(function(a,i){
+        var b=document.createElement('button');
+        b.type='button';
+        b.className='act'+(i===0?' is-on':'');
+        b.setAttribute('data-id',a.id);
+        b.innerHTML='<b>'+a.label+'</b><span>'+a.desc+'</span><span class="ch">'+chLabels[ch]+'</span>';
+        b.addEventListener('click',function(){applyAct(a)});
+        actsEl.appendChild(b);
+      });
+      applyAct(list[0]);
+    }
+
+    node1.addEventListener('click',function(){showStep(1)});
+    node2.addEventListener('click',function(){showStep(2)});
+    document.getElementById('moreToggle1').addEventListener('click',function(){more1.classList.toggle('is-open')});
+    document.getElementById('moreToggle2').addEventListener('click',function(){more2.classList.toggle('is-open')});
+    document.querySelectorAll('.ch-tab').forEach(function(t){
+      t.addEventListener('click',function(){renderActs(t.getAttribute('data-ch'))});
+    });
+    document.querySelectorAll('.oc').forEach(function(b){
+      b.addEventListener('click',function(){
+        document.querySelectorAll('.oc').forEach(function(x){x.classList.remove('is-on')});
+        b.classList.add('is-on');
+      });
+    });
+    document.querySelectorAll('.seg button').forEach(function(b){
+      b.addEventListener('click',function(){
+        var seg=b.parentNode;
+        seg.querySelectorAll('button').forEach(function(x){x.classList.remove('is-on')});
+        b.classList.add('is-on');
+      });
+    });
+
+    var S={
+      ready:{pill:'可以说',cls:'',cap:'开始输入',banner:false,openMore:false,n1:'开始输入'},
+      empty:{pill:'缺唤醒词',cls:'is-warn',cap:'还没设',banner:false,openMore:false,n1:'还没设'},
+      error:{pill:'没起来',cls:'is-warn',cap:'开始输入',banner:true,openMore:true,n1:'开始输入'}
+    };
+    document.querySelectorAll('.toggles button').forEach(function(b){
+      b.addEventListener('click',function(){
+        document.querySelectorAll('.toggles button').forEach(function(x){x.classList.remove('is-on')});
+        b.classList.add('is-on');
+        var s=S[b.dataset.state];
+        pill.textContent=s.pill;pill.className='pill '+(s.cls||'');
+        cap1.textContent=s.cap;n1val.textContent=s.n1;
+        causalPhrase.textContent=s.n1;
+        banner.classList.toggle('is-on',s.banner);
+        more1.classList.toggle('is-open',s.openMore);
+        if(s.openMore){showStep(1)}
+      });
+    });
+
+    renderActs('dictate');
+  </script>
+</body>
+</html>

@@ -837,6 +837,61 @@ pub fn handle_voice_wake_detected(
         }
     }
 
+    // Oral-prompt intent: one-shot focus → inject text → Enter (no dictation session).
+    {
+        let (intent, prompt) = {
+            let cfg = state.cfg.lock();
+            (
+                cfg.voice_end.intent.trim().to_ascii_lowercase(),
+                cfg.voice_end.prompt_inject_text.trim().to_string(),
+            )
+        };
+        if intent == "prompt" && !prompt.is_empty() {
+            let actions = [
+                crate::config::Action::Text {
+                    value: prompt.clone(),
+                },
+                crate::config::Action::Key {
+                    value: "Enter".into(),
+                },
+            ];
+            let sent =
+                send_actions_to_target(Some(state.as_ref()), Some(app), &actions, duration_ms);
+            if sent {
+                crate::runtime_event::publish_runtime_event(
+                    Some(app),
+                    state.as_ref(),
+                    "voice",
+                    crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
+                    &format!("{engine} prompt inject (phrase: {matched_phrase})"),
+                    Some(serde_json::json!({
+                        "engine": engine,
+                        "intent": "prompt",
+                        "phrase": matched_phrase,
+                        "promptChars": prompt.chars().count()
+                    })),
+                );
+                crate::tray::refresh_menu(app);
+            } else {
+                crate::runtime_event::publish_runtime_event(
+                    Some(app),
+                    state.as_ref(),
+                    "voice",
+                    crate::runtime_event::kind::VOICE_SEND_FAILED,
+                    &format!("{engine} prompt inject failed"),
+                    Some(serde_json::json!({ "engine": engine, "intent": "prompt" })),
+                );
+            }
+            return VoiceWakeDispatchResult {
+                ok: sent,
+                target_key: "promptInject".into(),
+                mapping_id,
+                used_summon_workflow: false,
+                runtime_label: format!("voice_{engine}_prompt"),
+            };
+        }
+    }
+
     let sent = send_wake_to_target(Some(state.as_ref()), Some(app), &target_key, duration_ms);
     if sent {
         enter_dictating(state, Some(app), &mapping_id, &format!("{engine} wake"));

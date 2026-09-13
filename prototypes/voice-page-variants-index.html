@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音页改版 · 方案对比（以 E 为准）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e8eef3;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fdf3e3;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%}
+    body{font-family:var(--font);color:var(--ink);background:var(--bg);line-height:1.6}
+    .shell{width:min(1040px,100%);margin:26px auto 48px;padding:0 14px}
+    h1{font-size:19px;font-weight:750;margin:0 0 6px}
+    .lead{margin:0 0 20px;font-size:13px;color:var(--muted)}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:22px}
+    .c{display:block;text-decoration:none;color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+    .c:hover{border-color:var(--cyan-bd);box-shadow:0 2px 10px rgba(19,32,44,.06)}
+    .c.is-rec{border:2px solid var(--cyan)}
+    .c.is-old{opacity:.72}
+    .c h2{font-size:14.5px;font-weight:650;margin:0 0 6px;display:flex;align-items:center;gap:8px}
+    .badge{font-size:10.5px;font-weight:750;padding:1px 7px;border-radius:999px;background:var(--cyan-soft);color:var(--cyan-ink)}
+    .badge.g{background:var(--ok-soft);color:var(--ok)}
+    .badge.d{background:var(--wash);color:var(--faint)}
+    .c p{margin:0;font-size:12.5px;color:var(--muted)}
+    .c .go{margin-top:9px;font-size:12px;font-weight:650;color:var(--cyan-ink)}
+    table{width:100%;border-collapse:collapse;background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:12.5px}
+    th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+    th{background:var(--wash);font-weight:650;font-size:12px;color:var(--muted)}
+    tr:last-child td{border-bottom:0}
+    td:first-child{color:var(--muted);white-space:nowrap}
+    .win{color:var(--ok);font-weight:650}
+    .lose{color:var(--warn);font-weight:650}
+    .verdict{margin-top:22px;padding:14px 16px;border-radius:12px;background:var(--paper);border:1px solid var(--cyan-bd);font-size:13px}
+    .verdict b{font-weight:650}
+    .verdict ul{margin:8px 0 0;padding-left:18px}
+    .verdict li{margin-bottom:5px}
+    .fix{margin-top:18px;padding:14px 16px;border-radius:12px;background:var(--warn-soft);border:1px solid #f0d5a8;font-size:12.5px;color:#6b3d05;line-height:1.65}
+    .fix b{font-weight:650}
+    footer{margin-top:22px;font-size:11.5px;color:var(--faint)}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <h1>语音页改版 · 以 F 为准</h1>
+    <p class="lead">按键页是 <b>触发 → 识别（产出动作）</b>。语音页同构：<b>01 说了什么 ▸ 02 意图效果</b>；听写方式复用按键 IME 激活方案，另含录键、一词注入、软件自带、Pad、手势。</p>
+
+    <div class="fix">
+      <b>纠偏两层：</b>
+      <br />① 轴：勿用 <b>开始说 → 说完了</b>（时间轴），应用 <b>说了什么 → 意图效果</b>（因果轴）。
+      <br />② 意图内容：勿用 <b>发出去 / 先留着 / 不要了</b>（听写收尾）；应用 <b>匹配动作</b>（对齐按键页识别）。收尾只挂在「开启听写」动作内部。
+    </div>
+
+    <div class="cards" style="margin-top:18px">
+      <a class="c is-rec" href="voice-f-keys-action-reuse.html">
+        <h2>F · 完整复刻按键识别 <span class="badge g">正解</span></h2>
+        <p>口令匹配动作：听写方式（按键同规格工作台）/ 录键 / 一词注入 / 软件自带 / Pad / 手势。</p>
+        <div class="go">打开原型 →</div>
+      </a>
+      <a class="c is-old" href="voice-e-content-intent-hero.html">
+        <h2>E · 口令→匹配动作 <span class="badge d">轴已对</span></h2>
+        <p>01 口令 ▸ 02 通道动作。F 在其上标明动作来源与缺绑定态。</p>
+        <div class="go">打开原型 →</div>
+      </a>
+      <a class="c is-old" href="voice-d-two-step-spine.html">
+        <h2>D · 两步脊椎 <span class="badge d">轴+意图都偏</span></h2>
+        <p>写成「开始说 / 说完了」，02 还是听写收尾——结构像脊椎，语义是时间轴+尾声。</p>
+        <div class="go">打开原型 →</div>
+      </a>
+      <a class="c is-old" href="voice-a-two-step-hero.html">
+        <h2>A · 两步 Hero <span class="badge d">已被 E 取代</span></h2>
+        <p>版式对，但配置仍折叠成第三层；轴与意图定义也偏。</p>
+        <div class="go">打开原型 →</div>
+      </a>
+      <a class="c is-old" href="voice-b-causal-line.html">
+        <h2>B · 一句话因果卡 <span class="badge d">保留话术</span></h2>
+        <p>认知负担最低。因果句式可搬进 E 的「说 X → 动作 Y」。</p>
+        <div class="go">打开原型 →</div>
+      </a>
+      <a class="c is-old" href="voice-c-channel-spine.html">
+        <h2>C · 四通道骨架 <span class="badge d">暂缓</span></h2>
+        <p>通道上首屏与首页重复；E 把通道动作收进 02 意图选择即可。</p>
+        <div class="go">打开原型 →</div>
+      </a>
+    </div>
+
+    <table>
+      <tr><th>维度</th><th>E · 匹配动作</th><th>D · 两步脊椎</th><th>A · 两步 Hero</th><th>B · 因果句</th><th>C · 四通道</th></tr>
+      <tr><td>骨架轴</td><td class="win">口令→动作</td><td class="lose">开始说→说完了</td><td class="lose">时间轴</td><td>一句因果</td><td class="lose">通道并列</td></tr>
+      <tr><td>02 含义</td><td class="win">通道匹配动作</td><td class="lose">听写收尾</td><td class="lose">听写收尾</td><td>混在句子里</td><td>通道本身</td></tr>
+      <tr><td>与按键「识别」同构</td><td class="win">是</td><td class="lose">否</td><td class="lose">否</td><td>部分</td><td class="lose">否</td></tr>
+      <tr><td>听写收尾位置</td><td class="win">听写动作内部</td><td class="lose">占满 02</td><td class="lose">占满 02</td><td>折叠</td><td>—</td></tr>
+      <tr><td>层级数</td><td class="win">2</td><td class="win">2</td><td class="lose">3</td><td>2</td><td class="lose">3</td></tr>
+    </table>
+
+    <div class="verdict">
+      <b>结论：按 E 实施。</b>
+      <ul>
+        <li>骨架：<code style="font-family:var(--mono)">01 / 说了什么 ▸ 02 / 意图效果</code>；02 = 听写激活 · SoftPad · 按键 · 摄像头动作（对齐按键页识别）。</li>
+        <li>废弃时间轴标签 <code style="font-family:var(--mono)">开始说 / 说完了</code>。</li>
+        <li><code style="font-family:var(--mono)">发出去 / 先留着 / 不要了</code> 降为「开启听写」动作的收尾属性，不占 hero 第二步。</li>
+        <li>识别异常时自动展开 01 的「用什么听」并给一键启动。</li>
+      </ul>
+    </div>
+
+    <footer>prototypes/ · 独立静态原型；E 顶部可切 就绪 / 未配置 / 识别异常，并在 02 切四通道动作。</footer>
+  </div>
+</body>
+</html>
