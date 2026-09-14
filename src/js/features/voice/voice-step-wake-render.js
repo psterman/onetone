@@ -149,9 +149,11 @@
     var lang=$('voiceWakeLangToggle');
     if(lang){ lang.hidden=true; lang.setAttribute('aria-hidden','true'); }
     var adv=$('voiceWakeAdvanced');
-    if(adv) adv.hidden=false;
+    if(adv){ adv.hidden=true; adv.setAttribute('aria-hidden','true'); }
     var alias=$('voiceWakeAliasBlock');
     if(alias) alias.hidden=false;
+    var secondary=$('voiceWakeSecondary');
+    if(secondary){ secondary.hidden=true; secondary.setAttribute('aria-hidden','true'); }
     // Ensure proto card titles stay visible (section inside presets panel).
     var unified=$('voiceWakeCurrentSectionLbl');
     if(unified) unified.hidden=false;
@@ -635,12 +637,9 @@
     var editLink=$('btnVoiceWakePhraseEditLink');
     if(editLink) editLink.textContent=t('voiceWakePhraseEditLink')||'不对就改';
     var hint=$('voiceWakeDisplayHint');
-    if(hint&&editLink){
-      var lead=t('voiceWakeHeroHintShort')||'默认用这句。';
-      hint.innerHTML='';
-      hint.appendChild(document.createTextNode(lead+(lead.slice(-1)==='。'?'':' ')));
-      hint.appendChild(editLink);
-    }
+    if(hint) hint.textContent=t('voiceWakeHeroHintShort')||'默认用这句。';
+    var listenLbl=$('voiceSchemeListenLbl');
+    if(listenLbl) listenLbl.textContent=t('voiceSchemeListenLbl')||'后台怎么听';
     renderLandingStrip();
     renderWrongFgStatus();
   }

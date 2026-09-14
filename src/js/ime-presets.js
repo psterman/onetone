@@ -361,6 +361,17 @@
       }
       if(global.OneToneApp && global.OneToneApp.toast) global.OneToneApp.toast(t('imePresetApplied'));
       refresh('voice');
+      try{
+        var hdr=global.OneToneVoicePageHeaderRender;
+        var scopeM=hdr&&typeof hdr.resolveScopeMapping==='function'?hdr.resolveScopeMapping(null):null;
+        if(scopeM) scopeM.imePresetId=presetId;
+        var scene=global.OneToneKeysSceneActionsPanel;
+        if(scene&&typeof scene.refresh==='function') scene.refresh();
+        else if(scene&&typeof scene.render==='function') scene.render(scopeM);
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
+      }catch(_){}
     }
     if(global.OneToneSceneSyncConfirm){
       global.OneToneSceneSyncConfirm.guardGlobalTargetWrite(write, {});

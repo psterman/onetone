@@ -407,6 +407,11 @@
     }else if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
       global.OneToneConfigPersist.save({source:'voice-bridge-keys'});
     }
+    try{
+      var scene=global.OneToneKeysSceneActionsPanel;
+      if(scene&&typeof scene.refresh==='function') scene.refresh();
+      else if(scene&&typeof scene.render==='function') scene.render(currentMapping());
+    }catch(_){}
   }
 
   function ensureVoiceBinding(m,row,phrase){

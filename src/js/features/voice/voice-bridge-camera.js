@@ -93,6 +93,14 @@
     }else if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
       global.OneToneConfigPersist.save({source:'voice-bridge-camera'});
     }
+    try{
+      var scene=global.OneToneKeysSceneActionsPanel;
+      var m=null;
+      var hdr=global.OneToneVoicePageHeaderRender;
+      if(hdr&&hdr.resolveScopeMapping) m=hdr.resolveScopeMapping(null);
+      if(scene&&typeof scene.refresh==='function') scene.refresh();
+      else if(scene&&typeof scene.render==='function') scene.render(m);
+    }catch(_){}
   }
 
   function ensureVoice(m,bindKey,phrase){

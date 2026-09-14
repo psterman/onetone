@@ -226,13 +226,10 @@
     const strategy=currentListeningStrategy();
     const grid=document.getElementById('voiceSummaryEngineSwitch');
     if(!grid) return;
-    // P6 守卫：语音配置岛挂载后隐藏 legacy 策略开关（岛提供等价 React 控件），岛卸载即恢复显示。
-    var islandOn=!!(window.OneToneIslands&&window.OneToneIslands.isMounted&&window.OneToneIslands.isMounted('voiceConfig'));
-    grid.hidden=islandOn;
-    if(islandOn) return;
+    // Scheme strip on step 02 owns this switch — keep visible even if voiceConfig island mounts.
+    grid.hidden=false;
     grid.querySelectorAll('[data-voice-strategy-tab]').forEach(function(btn){
       const tab=btn.getAttribute('data-voice-strategy-tab')||'';
-      // Keep the clicked tab active even while loading/in-flight.
       const active=strategy===tab;
       btn.classList.toggle('is-active',active);
       btn.disabled=!!loading&&pending;
@@ -2617,24 +2614,28 @@
         snap.wake.vosk=Object.assign({},vosk,{phrases:next.slice()});
       }
       syncVoiceVoskPresets(next);
-      return;
-    }
-    if(mode==='kws'){
+    }else if(mode==='kws'){
       if(state().config){
         const cfg=state().config.voiceKws||state().config.voice_kws||(state().config.voiceKws={});
         state().config.voiceKws=cfg;
         cfg.phrases=hooks().cloneStringList(next);
       }
-      renderWakePhraseTags();
-      return;
+    }else{
+      voiceSapiPresetPending=next.slice();
+      if(state().config){
+        const cfg=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
+        state().config.voiceSapi=cfg;
+        cfg.phrases=hooks().cloneStringList(next);
+      }
+      syncVoiceSapiPresets(next);
     }
-    voiceSapiPresetPending=next.slice();
-    if(state().config){
-      const cfg=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
-      state().config.voiceSapi=cfg;
-      cfg.phrases=hooks().cloneStringList(next);
-    }
-    syncVoiceSapiPresets(next);
+    // Local apply must paint 01 hero before IPC round-trip.
+    renderWakePhraseTags();
+    try{
+      if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+        global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+      }
+    }catch(_){}
   }
 
   function flushWakePhraseSave(){
@@ -2760,6 +2761,29 @@
       if(hooks().toast) hooks().toast(t('voicePhraseAdded'));
     }).catch(function(err){
       console.error('voice_custom_wake',err);
+      if(hooks().toast) hooks().toast(t('voiceSapiFail'));
+    });
+  }
+
+  /** Cap /「不对就改」: replace the displayed primary wake phrase, keep other aliases. */
+  function replacePrimaryWakePhrase(raw){
+    const phrase=String(raw||'').trim();
+    if(!phrase) return Promise.resolve();
+    var prev=currentWakePhraseList().slice();
+    // List head is primary — do not trust DOM-order preset selection.
+    var primary=String(prev[0]||'').trim();
+    var next=prev.filter(function(p){
+      return p!==phrase&&p!==primary;
+    });
+    next.unshift(phrase);
+    const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
+    if(mode==='vosk'&&phraseHasLatinLetters(phrase)&&!isEnglishVoskPreset(backendVoiceVoskPreset())){
+      if(hooks().toast) hooks().toast(t('voiceWakeMixedLangHint'));
+    }
+    return persistWakePhrases(next).then(function(){
+      renderWakePhraseTags();
+    }).catch(function(err){
+      console.error('voice_replace_wake',err);
       if(hooks().toast) hooks().toast(t('voiceSapiFail'));
     });
   }
@@ -3752,6 +3776,8 @@
     addSapiPreset:addVoiceSapiPreset,
     syncSapiPresets:syncVoiceSapiPresets,
     addCustomWakePhrase:addCustomWakePhrase,
+    replacePrimaryWakePhrase:replacePrimaryWakePhrase,
+    currentWakePhraseList:currentWakePhraseList,
     removeCustomWakePhrase:removeCustomWakePhrase,
     renderWakeCustomPhrases:renderWakeCustomPhrases,
     renderWakePhraseTags:renderWakePhraseTags,

@@ -158,4 +158,15 @@ assert.ok(/VOICE_WAKE_REFUSED_WRONG_FG|voice_wake_refused_wrong_fg/.test(rustGat
 const kind = read('src-tauri/crates/onetone-logic/src/runtime_event.rs');
 assert.ok(/VOICE_WAKE_REFUSED_WRONG_FG/.test(kind), 'runtime event kind defined');
 
+const wakeVm = read('src/js/features/voice/voice-settings-view-model.js');
+assert.ok(
+  /currentWakePhraseList/.test(wakeVm) && /Prefer persisted\/list-head order/.test(wakeVm),
+  'wake display prefers phrase list head over DOM preset order'
+);
+const wakeUi = read('src/js/features/voice/voice-ui-bindings.js');
+assert.ok(
+  /voiceWakePhraseTags[\s\S]*replacePrimaryWakePhrase/.test(wakeUi),
+  'wake alias chip promotes to primary'
+);
+
 console.log('test-voice-wake-ia: ok');

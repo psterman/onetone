@@ -149,7 +149,8 @@
   function syncRailVisibility(){
     var picker=$('voiceIntentPicker');
     var rail=$('voiceIntentRail');
-    if(!picker&&!rail) return;
+    var strip=$('voiceSchemeStrip');
+    if(!picker&&!rail&&!strip) return;
     var step=global.OneToneVoicePageState&&global.OneToneVoicePageState.getStep
       ?global.OneToneVoicePageState.getStep()
       :'wake';
@@ -158,6 +159,10 @@
     if(picker){
       picker.hidden=!show;
       picker.setAttribute('aria-hidden',show?'false':'true');
+    }
+    if(strip){
+      strip.hidden=!show;
+      strip.setAttribute('aria-hidden',show?'false':'true');
     }
     if(rail){
       rail.hidden=false;

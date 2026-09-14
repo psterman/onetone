@@ -20,6 +20,10 @@
       if (store && store.invalidateBindingViews) store.invalidateBindingViews();
       if (store && store.invalidateOptions) store.invalidateOptions();
       if (store && store.notifyLocalChange) store.notifyLocalChange();
+      try {
+        var scene = global.OneToneKeysSceneActionsPanel;
+        if (scene && typeof scene.refresh === 'function') scene.refresh();
+      } catch (_) {}
       return ok;
     });
   }

@@ -545,7 +545,7 @@
       }
     }
     paint(box);
-    if(currentStep(step)==='wake') paint(dockHeard);
+    paint(dockHeard);
   }
 
   function updateLiveSlotValues(vm,step){

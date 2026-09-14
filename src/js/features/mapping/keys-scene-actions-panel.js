@@ -8,7 +8,8 @@
 
   var state = {
     mappingId: '',
-    bound: false
+    bound: false,
+    dragKey: ''
   };
 
   // Keys + Voice share the same dock; only the visible settings page paints.
@@ -201,18 +202,67 @@
     var A = global.OneToneAgentActions;
     var sid = String(slotId || '').trim();
     var aid = String(actionId || '').trim();
-    if (A && sid) {
+    function fromAgent(id) {
+      if (!A || !id) return '';
       if (typeof A.labelForSlotForMapping === 'function') {
-        var mapped = String(A.labelForSlotForMapping(m, sid) || '').trim();
+        var mapped = String(A.labelForSlotForMapping(m, id) || '').trim();
         if (mapped) return mapped;
       }
       if (typeof A.slotById === 'function' && typeof A.labelForSlot === 'function') {
-        var slot = A.slotById(sid);
+        var slot = A.slotById(id);
         var L = String(A.labelForSlot(slot) || '').trim();
         if (L) return L;
       }
+      if (typeof A.actionById === 'function') {
+        var act = A.actionById(id);
+        if (act) {
+          var en = global.OneToneI18n && global.OneToneI18n.getLang && global.OneToneI18n.getLang() === 'en';
+          return String((en ? act.labelEn : act.labelZh) || act.labelZh || act.labelEn || '').trim();
+        }
+      }
+      return '';
     }
-    return aid || sid || '?';
+    var hit = fromAgent(sid) || fromAgent(aid);
+    if (hit) return hit;
+    // cursor.paste / semantic.foo.bar → try bare tail (paste)
+    var bareSid = sid.indexOf('.') >= 0 ? sid.split('.').pop() : '';
+    var bareAid = aid.indexOf('.') >= 0 ? aid.split('.').pop() : '';
+    hit = fromAgent(bareSid) || fromAgent(bareAid);
+    if (hit) return hit;
+    // Semantic / picker catalogue labels
+    try {
+      var store = global.OneToneSemanticActionStore;
+      if (store && typeof store.entryMeta === 'function') {
+        var meta = store.entryMeta(aid) || store.entryMeta(sid);
+        if (meta) {
+          var lang = (global.OneToneI18n && global.OneToneI18n.getLang && global.OneToneI18n.getLang()) || 'zh';
+          var sm =
+            lang === 'en'
+              ? meta.labelEn || meta.labelZh || meta.label_zh
+              : meta.labelZh || meta.label_zh || meta.labelEn;
+          if (sm) return String(sm).trim();
+        }
+      }
+    } catch (_) {}
+    // Last resort: never paint raw dotted ids for beginners
+    var raw = aid || sid || '';
+    if (raw && raw.indexOf('.') >= 0) {
+      var tail = raw.split('.').pop();
+      var known = {
+        paste: '粘贴',
+        pasteAndSend: '粘贴发送',
+        continue: '继续',
+        cancel: '取消',
+        newThread: '新建对话',
+        status: '查看状态',
+        commandPalette: '命令菜单',
+        openAgent: '打开助手',
+        pushToTalk: '语音输入',
+        stopOrSend: '结束或发送'
+      };
+      if (known[tail]) return known[tail];
+    }
+    return raw || '?';
   }
 
   function describeBinding(channel, b) {
@@ -291,7 +341,6 @@
         return !!picker.isCustomKeyMatchMapping(m);
       }
     } catch (_) {}
-    var acts = Array.isArray(m.targetActions) && m.targetActions.length > 0;
     var ref = m.captureHeroRef;
     var kindCustom =
       ref &&
@@ -299,7 +348,24 @@
       String(ref.kind || '')
         .trim()
         .toLowerCase() === 'customkey';
-    return !!(acts || kindCustom);
+    if (kindCustom) {
+      var bref = String(ref.bindingRef || '').trim();
+      var mid = String(m.id || '').trim();
+      // Habit 02 apply shadow must not list as「我录的键」.
+      if (bref && mid && bref !== mid) return false;
+      return true;
+    }
+    // Legacy library peers: disabled sequence row without kind yet.
+    if (
+      m.enabled === false &&
+      Array.isArray(m.targetActions) &&
+      m.targetActions.length > 0 &&
+      !String(m.imePresetId || '').trim() &&
+      !String(m.targetKey || '').trim()
+    ) {
+      return true;
+    }
+    return false;
   }
 
   function listAppMappings(anchor) {
@@ -334,6 +400,12 @@
       }
       out.push(m);
     }
+    out.sort(function (a, b) {
+      var ao = a && a.order != null ? Number(a.order) : 0;
+      var bo = b && b.order != null ? Number(b.order) : 0;
+      if (ao !== bo) return ao - bo;
+      return String(a.id || '').localeCompare(String(b.id || ''));
+    });
     return out;
   }
 
@@ -364,6 +436,236 @@
     return false;
   }
 
+  function channelTabLabel(ch) {
+    var fb = {
+      key: '我录的键',
+      voice: '口头指令',
+      cursor: '软件自带',
+      softPad: '屏幕按钮',
+      camera: '手势',
+      ime: '听写方式',
+      recognition: '听写方式',
+      customKey: '我录的键'
+    };
+    var keys = {
+      key: 'keysChannelTabKey',
+      voice: 'keysChannelTabVoice',
+      cursor: 'keysChannelTabCursor',
+      softPad: 'keysChannelTabSoftPad',
+      camera: 'keysChannelTabCamera',
+      ime: 'keysChannelTabIme'
+    };
+    var c = String(ch || '');
+    return t(keys[c] || c, fb[c] || c);
+  }
+
+  function heroRefFor(sm) {
+    var core = mappingCore();
+    if (core && typeof core.captureHeroRefForMapping === 'function') {
+      try {
+        return core.captureHeroRefForMapping(sm);
+      } catch (_) {}
+    }
+    return (sm && sm.captureHeroRef) || null;
+  }
+
+  function isDefaultImeHero(ref) {
+    var core = mappingCore();
+    if (core && typeof core.isDefaultCaptureHeroRef === 'function') {
+      try {
+        return !!core.isDefaultCaptureHeroRef(ref);
+      } catch (_) {}
+    }
+    if (!ref) return true;
+    var kind = String(ref.kind || '')
+      .trim()
+      .toLowerCase();
+    return kind === 'ime' && !String(ref.actionId || '').trim();
+  }
+
+  function customKeyRow(sm, trigLine) {
+    var matchName = '';
+    try {
+      var pickerName = global.OneToneKeysChannelCommandPicker;
+      if (pickerName && typeof pickerName.customKeyMatchDisplayName === 'function') {
+        matchName = String(pickerName.customKeyMatchDisplayName(sm) || '').trim();
+      }
+    } catch (_) {}
+    if (!matchName) matchName = String(sm.label || '').trim();
+    if (!matchName || /→|->/.test(matchName) || /^AutoTrigger\b/i.test(matchName)) {
+      matchName = t('keysCustomKeyMatchTitle', '按键匹配');
+    }
+    var trig = String((sm && sm.triggerKey) || '').trim();
+    return {
+      key: 'match:' + String(sm.id),
+      mappingId: String(sm.id),
+      slotId: '',
+      actionId: '',
+      kind: 'customKey',
+      label: matchName,
+      binds: { key: trigLine },
+      ime: null,
+      summary: '',
+      unset: !trig
+    };
+  }
+
+  function recognitionRow(sm, trigLine) {
+    var trig = String((sm && sm.triggerKey) || '').trim();
+    return {
+      key: 'voice:' + String(sm.id),
+      mappingId: String(sm.id),
+      slotId: 'pushToTalk',
+      actionId: 'startDictation',
+      kind: 'recognition',
+      label: t('keysSceneActionsVoiceLabel', '语音输入'),
+      binds: { key: trigLine },
+      ime: imeInfo(sm),
+      summary: '',
+      unset: !trig
+    };
+  }
+
+  /**
+   * One peer mapping → one dock row = last-selected 02 scheme (captureHeroRef).
+   * Never enumerate every agentBinding / catalogue option for the same trigger.
+   * Voice page: prefer 语音输入 for IME peers (ignore last non-IME 02 diversion).
+   */
+  function rowForLastScheme(sm, trigLine) {
+    if (!sm || !sm.id) return null;
+
+    // Voice dock: IME / 语音输入 peers always list here, even if keys last-scheme
+    // was softPad / customKey / cursor (those stay on the Keys dock only).
+    if (onVoicePage() && isVoiceInputMapping(sm)) {
+      if (!hasRecognitionScheme(sm)) return null;
+      return recognitionRow(sm, trigLine);
+    }
+
+    if (isCustomKeyMatchMapping(sm)) return customKeyRow(sm, trigLine);
+
+    var ref = heroRefFor(sm);
+    var kindLower = ref
+      ? String(ref.kind || '')
+          .trim()
+          .toLowerCase()
+      : '';
+    var ch = ref ? String(ref.channel || '').trim() : '';
+    var heroAid = ref ? String(ref.actionId || '').trim() : '';
+    var heroBref = ref ? String(ref.bindingRef || '').trim() : '';
+
+    // Habit last applied a「我录的键」match as 02 — still one scheme for this trigger.
+    if (kindLower === 'customkey' && heroBref && heroBref !== String(sm.id)) {
+      var match = mappingById(heroBref);
+      var named = match ? customKeyRow(match, trigLine) : null;
+      return {
+        key: 'match-applied:' + String(sm.id),
+        mappingId: String(sm.id),
+        slotId: heroBref,
+        actionId: '',
+        kind: 'customKey',
+        label: (named && named.label) || t('keysCustomKeyMatchTitle', '按键匹配'),
+        binds: { key: trigLine },
+        ime: null,
+        summary: '',
+        unset: !String(sm.triggerKey || '').trim()
+      };
+    }
+
+    if (!isDefaultImeHero(ref) && (ch === 'softPad' || ch === 'cursor' || ch === 'camera' || ch === 'voice')) {
+      if (heroAid || (heroBref && heroBref !== 'ime')) {
+        return {
+          key: 'hero:' + String(sm.id) + ':' + ch,
+          mappingId: String(sm.id),
+          slotId: heroBref,
+          actionId: heroAid,
+          kind: ch,
+          label: labelForRow(sm, heroBref, heroAid) || channelTabLabel(ch),
+          binds: { key: trigLine },
+          ime: null,
+          summary: '',
+          unset: !String(sm.triggerKey || '').trim()
+        };
+      }
+    }
+
+    if (isVoiceInputMapping(sm) || isDefaultImeHero(ref)) {
+      if (!hasRecognitionScheme(sm)) return null;
+      return recognitionRow(sm, trigLine);
+    }
+    return null;
+  }
+
+  /**
+   * Soft Pad / Cursor layout seeds many triggerType:voice agentBindings.
+   * Kept for keys/tests; voice dock no longer dumps these rows.
+   */
+  function isSoftPadOrSystemVoiceBinding(sm, b) {
+    if (!b) return true;
+    var sid = String(b.slotId || '').trim();
+    var aid = String(b.actionId || '').trim();
+    if (/^cursorBeginner/i.test(sid) || /^cursorBeginner/i.test(aid)) return true;
+    if (aid === 'agent.continue' || sid === 'agent.continue') return true;
+    if (aid === 'app.open' || sid.indexOf('open-app-acoustic:') === 0) return true;
+    var pad = sm && sm.codexMicroPad;
+    var keys = pad && Array.isArray(pad.keys) ? pad.keys : [];
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (!k) continue;
+      if (String(k.slotId || '').trim() === sid) return true;
+      if (String(k.slotId || '').trim() === aid) return true;
+    }
+    var customs = pad && Array.isArray(pad.customShortcuts) ? pad.customShortcuts : [];
+    for (i = 0; i < customs.length; i++) {
+      var c = customs[i];
+      if (c && String(c.id || '').trim() === sid) return true;
+    }
+    // Dual key+voice on same slot = Soft Pad / 软件自带 seed, not voice-dock managed.
+    var binds = Array.isArray(sm.agentBindings) ? sm.agentBindings : [];
+    for (i = 0; i < binds.length; i++) {
+      var kb = binds[i];
+      if (!kb || String(kb.triggerType || '') !== 'key') continue;
+      if (sid && String(kb.slotId || '').trim() === sid) return true;
+      if (aid && String(kb.actionId || '').trim() === aid && String(kb.actionInstanceId || '') === String(b.actionInstanceId || '')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Non-SoftPad voice phrases on a peer (available to callers/tests; voice dock skips dump). */
+  function voicePhraseRows(sm) {
+    if (!sm || !sm.id) return [];
+    var list = Array.isArray(sm.agentBindings) ? sm.agentBindings : [];
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      var b = list[i];
+      if (!b || String(b.triggerType || '') !== 'voice') continue;
+      if (b.enabled === false) continue;
+      if (isSoftPadOrSystemVoiceBinding(sm, b)) continue;
+      var phrase = String(b.triggerBinding || '').trim();
+      if (!phrase) continue;
+      var sid = String(b.slotId || '').trim();
+      var aid = String(b.actionId || '').trim();
+      if (sid === 'pushToTalk' || aid === 'startDictation' || aid === 'input.start') continue;
+      if (!sid && !aid) continue;
+      var inst = String(b.actionInstanceId || '').trim();
+      out.push({
+        key: 'vphrase:' + String(sm.id) + ':' + (inst || sid || aid || String(i)),
+        mappingId: String(sm.id),
+        slotId: sid,
+        actionId: aid,
+        kind: 'voicePhrase',
+        label: labelForRow(sm, sid, aid) || phrase,
+        binds: { key: '「' + phrase + '」' },
+        ime: null,
+        summary: '',
+        unset: false
+      });
+    }
+    return out;
+  }
+
   /** Peer rows for every mapping under this app — each is its own 01/02. */
   function buildRows(m) {
     if (!m) return [];
@@ -371,11 +673,11 @@
     var lang =
       global.OneToneI18n && global.OneToneI18n.getLang ? global.OneToneI18n.getLang() : 'zh';
     var rows = [];
+    var voicePage = onVoicePage();
     for (var i = 0; i < maps.length; i++) {
       var sm = maps[i];
       if (!sm || !sm.id) continue;
       var trig = String(sm.triggerKey || '').trim();
-      var recog = recognitionDisplay(sm);
       // Prototype parity: list shows trigger × gesture, not 01→02 chord.
       var trigLine = '';
       if (global.OneToneKeyLabels && global.OneToneKeyLabels.triggerDisplayLabel) {
@@ -383,44 +685,20 @@
       }
       if (!trigLine && trig) trigLine = friendlyTrigger(trig);
       if (!trigLine) trigLine = t('badgeNotRecorded', '未设置');
-      if (isVoiceInputMapping(sm)) {
-        rows.push({
-          key: 'voice:' + String(sm.id),
-          mappingId: String(sm.id),
-          slotId: 'pushToTalk',
-          actionId: 'startDictation',
-          kind: 'recognition',
-          label: t('keysSceneActionsVoiceLabel', '语音输入'),
-          binds: { key: trigLine },
-          ime: imeInfo(sm),
-          summary: '',
-          unset: !trig
-        });
-      } else {
-        var matchName = '';
-        try {
-          var pickerName = global.OneToneKeysChannelCommandPicker;
-          if (pickerName && typeof pickerName.customKeyMatchDisplayName === 'function') {
-            matchName = String(pickerName.customKeyMatchDisplayName(sm) || '').trim();
-          }
-        } catch (_) {}
-        if (!matchName) matchName = String(sm.label || '').trim();
-        if (!matchName || /→|->/.test(matchName) || /^AutoTrigger\b/i.test(matchName)) {
-          matchName = t('keysCustomKeyMatchTitle', '按键匹配');
+      if (voicePage) {
+        // Voice dock: recorded 语音输入 + non-SoftPad voice phrases (manageable).
+        if (isVoiceInputMapping(sm) && hasConcreteConfig(sm) && trig && hasRecognitionScheme(sm)) {
+          var rec = recognitionRow(sm, trigLine);
+          // Subtitle stays trigger/status; IME icon+name only in bottom trail (no duplicate).
+          rec.binds = { key: trigLine || t('badgeNotRecorded', '未设置') };
+          rows.push(rec);
         }
-        rows.push({
-          key: 'match:' + String(sm.id),
-          mappingId: String(sm.id),
-          slotId: '',
-          actionId: '',
-          kind: 'customKey',
-          label: matchName,
-          binds: { key: trigLine },
-          ime: null,
-          summary: '',
-          unset: !trig
-        });
+        var phrases = voicePhraseRows(sm);
+        for (var p = 0; p < phrases.length; p++) rows.push(phrases[p]);
+        continue;
       }
+      var row = rowForLastScheme(sm, trigLine);
+      if (row) rows.push(row);
     }
     return rows;
   }
@@ -501,11 +779,17 @@
       }
       if (picker) {
         try {
-          if (typeof picker.clearSelection === 'function') {
+          var tab = 'ime';
+          if (row && row.kind === 'softPad') tab = 'softPad';
+          else if (row && row.kind === 'cursor') tab = 'cursor';
+          else if (row && row.kind === 'camera') tab = 'camera';
+          else if (row && row.kind === 'voice') tab = 'voice';
+          else if (row && row.kind === 'recognition') tab = 'ime';
+          if (typeof picker.clearSelection === 'function' && tab === 'ime') {
             picker.clearSelection({ skipRender: true, skipHero: true, skipPersist: true });
           }
           if (typeof picker.setActiveTab === 'function') {
-            picker.setActiveTab('ime', { skipHeroClear: true });
+            picker.setActiveTab(tab, { skipHeroClear: true });
           }
           if (typeof picker.applyHero === 'function') picker.applyHero();
           if (typeof picker.syncRecognitionEditorPreview === 'function') {
@@ -527,15 +811,22 @@
   }
 
   function startNewAction() {
-    openKeysPanelIfNeeded();
+    var voice = onVoicePage();
     var picker = global.OneToneKeysChannelCommandPicker;
     var created = null;
-    var createFn =
-      picker && typeof picker.createVoiceInputMapping === 'function'
-        ? picker.createVoiceInputMapping
-        : picker && typeof picker.createCustomKeyMatchMapping === 'function'
+    var createFn = null;
+    if (voice) {
+      createFn =
+        picker && typeof picker.createVoiceInputMapping === 'function'
+          ? picker.createVoiceInputMapping
+          : null;
+    } else {
+      // Keys「新建」still seeds a「我录的键」peer; other channels are picked in 02.
+      createFn =
+        picker && typeof picker.createCustomKeyMatchMapping === 'function'
           ? picker.createCustomKeyMatchMapping
           : null;
+    }
     if (createFn) {
       try {
         created = createFn.call(picker);
@@ -553,15 +844,26 @@
     }
     var newId = String(created.id);
     state.mappingId = newId;
-    var page = global.OneToneKeysPageState;
-    if (page && typeof page.setStep === 'function') {
+    if (!voice) {
+      var page = global.OneToneKeysPageState;
+      if (page && typeof page.setStep === 'function') {
+        try {
+          page.setStep('trigger', { skipSheet: true });
+        } catch (_) {}
+      }
+      if (picker && typeof picker.setActiveTab === 'function') {
+        try {
+          picker.setActiveTab('key', { skipHeroClear: true });
+        } catch (_) {}
+      }
+    } else {
       try {
-        page.setStep('trigger', { skipSheet: true });
-      } catch (_) {}
-    }
-    if (picker && typeof picker.setActiveTab === 'function') {
-      try {
-        picker.setActiveTab('ime', { skipHeroClear: true });
+        if (
+          global.OneToneVoiceSettingsFlow &&
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender
+        ) {
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
       } catch (_) {}
     }
     setTimeout(function () {
@@ -578,29 +880,38 @@
           } catch (_) {}
         }
       }
-      var table = global.OneToneHabitKeyMappingTable;
-      if (table && typeof table.highlightRow === 'function') {
-        try {
-          table.highlightRow('trigger');
-        } catch (_) {}
+      if (!voice) {
+        var table = global.OneToneHabitKeyMappingTable;
+        if (table && typeof table.highlightRow === 'function') {
+          try {
+            table.highlightRow('trigger');
+          } catch (_) {}
+        }
       }
       paint();
     }, 0);
     try {
       if (global.OneToneApp && typeof global.OneToneApp.toast === 'function') {
         global.OneToneApp.toast(
-          t(
-            'keysSceneActionsAddTriggerHint',
-            '已新建动作 · 请录 01 触发；02 请选择输入法或识别键'
-          )
+          voice
+            ? t(
+                'keysSceneActionsAddTriggerHint',
+                '已新建动作 · 请录 01 触发；02 请选择输入法或识别键'
+              )
+            : t(
+                'keysCustomKeyMatchCreated',
+                '已新建。录启动键，再加步骤。'
+              )
         );
       }
     } catch (_) {}
-    var target = $('habitKeyMapCellTrigger') || $('habitKeyMapRowTrigger') || $('keysDeskPanel');
-    if (target && target.scrollIntoView) {
-      try {
-        target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } catch (_) {}
+    if (!voice) {
+      var target = $('habitKeyMapCellTrigger') || $('habitKeyMapRowTrigger') || $('keysDeskPanel');
+      if (target && target.scrollIntoView) {
+        try {
+          target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch (_) {}
+      }
     }
   }
 
@@ -632,7 +943,7 @@
     host = host || activeHost();
     var meta = $(host.meta);
     if (!meta) return;
-    var n = buildRows(m).length;
+    var n = filterRowsForChannel(buildRows(m)).length;
     meta.textContent = t('keysSceneActionsMetaCount', '{n} 个动作').replace('{n}', String(n));
   }
 
@@ -651,52 +962,327 @@
     paintMeta(m, host);
   }
 
+  function channelKind() {
+    if (onVoicePage()) return 'voice';
+    if (pageIsOpen('settingsPanelKeys')) return 'key';
+    return 'all';
+  }
+
+  function filterRowsForChannel(rows) {
+    var ch = channelKind();
+    if (ch === 'voice') {
+      return (rows || []).filter(function (r) {
+        return r && (r.kind === 'recognition' || r.kind === 'voicePhrase');
+      });
+    }
+    if (ch === 'key') {
+      // Keys dock: key 02 schemes only — voice phrase bindings stay on Voice page.
+      return (rows || []).filter(function (r) {
+        return r && r.kind !== 'voicePhrase';
+      });
+    }
+    return rows || [];
+  }
+
+  function hasRecognitionScheme(sm) {
+    if (!sm) return false;
+    if (String(sm.imePresetId || '').trim()) return true;
+    // Live recognition chord only counts with an IME choice / dictation bind.
+    var list = Array.isArray(sm.agentBindings) ? sm.agentBindings : [];
+    for (var i = 0; i < list.length; i++) {
+      var b = list[i];
+      if (!b || b.enabled === false) continue;
+      var sid = String(b.slotId || '').trim();
+      var aid = String(b.actionId || '').trim();
+      if (sid === 'pushToTalk' || aid === 'startDictation' || aid === 'input.start') {
+        if (String(b.triggerBinding || '').trim()) return true;
+      }
+    }
+    return false;
+  }
+
+  function persistSceneDock(source) {
+    try {
+      var persist = global.OneToneConfigPersist;
+      if (persist && typeof persist.saveAsync === 'function') {
+        persist.saveAsync({ source: source || 'scene-dock' });
+      } else if (persist && typeof persist.save === 'function') {
+        persist.save({ source: source || 'scene-dock' });
+      }
+    } catch (_) {}
+  }
+
+  function clearHabitScheme(row, m) {
+    if (!m || !row) return;
+    var kind = String(row.kind || '');
+    if (kind === 'recognition') {
+      m.imePresetId = '';
+      if (Array.isArray(m.agentBindings)) {
+        m.agentBindings = m.agentBindings.filter(function (b) {
+          if (!b) return false;
+          var sid = String(b.slotId || '').trim();
+          var aid = String(b.actionId || '').trim();
+          return !(sid === 'pushToTalk' || aid === 'startDictation' || aid === 'input.start');
+        });
+      }
+      if (isDefaultImeHero(m.captureHeroRef) || !m.captureHeroRef) m.captureHeroRef = null;
+      else if (String((m.captureHeroRef && m.captureHeroRef.channel) || '') === 'ime') m.captureHeroRef = null;
+      return;
+    }
+    if (kind === 'softPad' || kind === 'cursor' || kind === 'camera' || kind === 'voice') {
+      m.captureHeroRef = null;
+      return;
+    }
+    if (kind === 'customKey') {
+      m.captureHeroRef = null;
+      m.targetActions = [];
+    }
+  }
+
+  function sortRowsByDockOrder(rows, anchor) {
+    if (!rows || !rows.length || !anchor) return rows || [];
+    var order = Array.isArray(anchor.sceneDockOrder) ? anchor.sceneDockOrder : [];
+    if (!order.length) return rows;
+    var rank = {};
+    var i;
+    for (i = 0; i < order.length; i++) rank[String(order[i])] = i;
+    return rows.slice().sort(function (a, b) {
+      var ar = rank[String(a.key)];
+      var br = rank[String(b.key)];
+      if (ar == null && br == null) return 0;
+      if (ar == null) return 1;
+      if (br == null) return -1;
+      return ar - br;
+    });
+  }
+
+  function saveDockOrder(anchor, rows) {
+    if (!anchor || !rows) return;
+    anchor.sceneDockOrder = rows.map(function (r) {
+      return String(r.key || '');
+    });
+    persistSceneDock('scene-dock-reorder');
+  }
+
+  function deleteVoicePhraseRow(row) {
+    var mid = String((row && row.mappingId) || '').trim();
+    var m = mappingById(mid);
+    if (!m || !Array.isArray(m.agentBindings)) return;
+    var sid = String((row && row.slotId) || '').trim();
+    var aid = String((row && row.actionId) || '').trim();
+    var phrase = String((row && row.binds && row.binds.key) || '')
+      .replace(/^「/, '')
+      .replace(/」$/, '')
+      .trim();
+    var inst = '';
+    var key = String((row && row.key) || '');
+    var parts = key.split(':');
+    if (parts.length >= 3) inst = parts.slice(2).join(':');
+    m.agentBindings = m.agentBindings.filter(function (b) {
+      if (!b || String(b.triggerType || '') !== 'voice') return true;
+      if (inst && String(b.actionInstanceId || '').trim() === inst) return false;
+      if (sid && String(b.slotId || '').trim() === sid) {
+        if (!phrase || String(b.triggerBinding || '').trim() === phrase) return false;
+      }
+      if (!sid && aid && String(b.actionId || '').trim() === aid) {
+        if (!phrase || String(b.triggerBinding || '').trim() === phrase) return false;
+      }
+      return true;
+    });
+    persistSceneDock('scene-dock-del-phrase');
+    paint();
+  }
+
+  function canDeleteRow(row) {
+    return !!(row && String(row.mappingId || '').trim());
+  }
+
+  function deleteSceneRow(row) {
+    var mid = String((row && row.mappingId) || '').trim();
+    if (!mid) return;
+    if (row && row.kind === 'voicePhrase') {
+      deleteVoicePhraseRow(row);
+      return;
+    }
+    var anchor = mappingById(state.mappingId);
+    var m = mappingById(mid);
+    // Habit itself: clear this scheme (don't trash the whole Cursor scenario).
+    if (anchor && mid === String(anchor.id || '')) {
+      clearHabitScheme(row, m || anchor);
+      persistSceneDock('scene-dock-clear');
+      paint();
+      return;
+    }
+    var picker = global.OneToneKeysChannelCommandPicker;
+    if (row && row.kind === 'customKey' && picker && typeof picker.deleteCustomKeyMatch === 'function') {
+      try {
+        picker.deleteCustomKeyMatch(mid);
+      } catch (_) {}
+      return;
+    }
+    var shared = global.OneToneHabitShared;
+    if (shared && typeof shared.deleteMapping === 'function') {
+      try {
+        shared.deleteMapping(mid);
+      } catch (_) {}
+    } else {
+      try {
+        var cfg =
+          global.OneToneState && global.OneToneState.state && global.OneToneState.state.config
+            ? global.OneToneState.state.config
+            : null;
+        if (cfg && Array.isArray(cfg.mappings)) {
+          cfg.mappings = cfg.mappings.filter(function (x) {
+            return x && String(x.id) !== mid;
+          });
+        }
+        persistSceneDock('scene-dock-del');
+      } catch (_) {}
+    }
+    if (String(state.mappingId || '') === mid) {
+      var sel = selectedMapping();
+      state.mappingId = sel && isAppScenario(sel) ? String(sel.id || '') : '';
+    }
+    paint();
+  }
+
+  function reorderAppRows(fromKey, toKey) {
+    if (!fromKey || !toKey || fromKey === toKey) return;
+    var anchor = mappingById(state.mappingId);
+    if (!anchor) return;
+    var rows = sortRowsByDockOrder(filterRowsForChannel(buildRows(anchor)), anchor);
+    var from = -1;
+    var to = -1;
+    var i;
+    for (i = 0; i < rows.length; i++) {
+      if (rows[i].key === fromKey) from = i;
+      if (rows[i].key === toKey) to = i;
+    }
+    if (from < 0 || to < 0 || from === to) return;
+    var moved = rows.splice(from, 1)[0];
+    rows.splice(to, 0, moved);
+    saveDockOrder(anchor, rows);
+    // Also keep mapping.order aligned for peer mappings (keys + voice).
+    var rank = {};
+    var seen = {};
+    var orderIdx = 0;
+    for (i = 0; i < rows.length; i++) {
+      var mid = String(rows[i].mappingId || '');
+      if (!mid || seen[mid]) continue;
+      seen[mid] = 1;
+      rank[mid] = orderIdx++;
+    }
+    var cfg =
+      global.OneToneState && global.OneToneState.state && global.OneToneState.state.config
+        ? global.OneToneState.state.config
+        : null;
+    if (cfg && Array.isArray(cfg.mappings)) {
+      var appId = String(anchor.appTargetId || '').trim();
+      for (i = 0; i < cfg.mappings.length; i++) {
+        var mm = cfg.mappings[i];
+        if (!mm || String(mm.appTargetId || '').trim() !== appId) continue;
+        if (rank[String(mm.id)] != null) mm.order = rank[String(mm.id)];
+      }
+    }
+    paint();
+  }
+
   function paintDir(rows, host) {
     host = host || activeHost();
     var dirHost = $(host.dir);
     if (!dirHost) return;
+    var emptyHint =
+      channelKind() === 'voice'
+        ? t(
+            'keysSceneActionsEmptyVoice',
+            '还没有语音动作 · 点下方新建，或到「我的习惯」统管各通道'
+          )
+        : t('keysSceneActionsEmptyKeys', '还没有动作 · 点下方新建');
+    var canDrag = rows.length > 1;
     var list =
       !rows.length
         ? '<p class="keys-scene-actions__empty">' +
-          esc(t('keysSceneActionsEmptyKeys', '还没有动作 · 点下方新建')) +
-          '</p>'
+          esc(emptyHint) +
+          '</p>' +
+          '<button type="button" class="keys-scene-actions__habit-link" data-habit-hub="1">' +
+          esc(t('keysSceneActionsHabitLink', '在「我的习惯」查看全部通道 →')) +
+          '</button>'
         : '<div class="keys-scene-actions__grp" data-group="input">' +
           '<div class="keys-scene-actions__grp-h">' +
-          esc(t('keysSceneActionsGroupInput', '输入')) +
+          esc(
+            channelKind() === 'voice'
+              ? t('keysSceneActionsGroupVoice', '语音')
+              : t('keysSceneActionsTitle', '本场景动作')
+          ) +
           '</div>' +
           rows
             .map(function (a) {
               var v = (a.binds && a.binds.key) || '';
+              // Recognition: IME chip only in trail (bottom). Don't also paint ime name as subtitle.
+              if (a.kind === 'recognition' && a.ime && a.ime.name && v === String(a.ime.name)) {
+                v = '';
+              }
               var trail = a.ime ? imeBadgeHtml(a.ime) : '';
               var on = String(a.mappingId || '') === String(state.mappingId || '');
+              var delLbl = t('keysSceneActionsDelete', '删除');
+              var dragLbl = t('keysSceneActionsDrag', '拖动排序');
               return (
-                '<button type="button" class="keys-scene-actions__dir-item' +
+                '<div class="keys-scene-actions__dir-item' +
                 (a.unset ? ' is-unset' : '') +
                 (on ? ' is-active' : '') +
-                '" role="listitem" data-jump="' +
+                '" role="listitem" draggable="' +
+                (canDrag ? 'true' : 'false') +
+                '" data-row-key="' +
                 esc(a.key) +
+                '">' +
+                '<span class="keys-scene-actions__drag' +
+                (canDrag ? '' : ' is-disabled') +
+                '" title="' +
+                esc(dragLbl) +
+                '" aria-hidden="true">⋮⋮</span>' +
+                '<button type="button" class="keys-scene-actions__dir-main" data-jump="' +
+                esc(a.key) +
+                '" title="' +
+                esc(t('keysSceneActionsEditHint', '点击编辑')) +
                 '">' +
                 '<span class="keys-scene-actions__body">' +
                 '<span class="keys-scene-actions__n">' +
                 esc(a.label) +
                 '</span>' +
-                '<span class="keys-scene-actions__s' +
-                (a.unset ? '' : ' is-ok') +
-                '">' +
-                esc(v) +
-                '</span>' +
+                (v
+                  ? '<span class="keys-scene-actions__s' +
+                    (a.unset ? '' : ' is-ok') +
+                    '">' +
+                    esc(v) +
+                    '</span>'
+                  : '') +
+                (trail
+                  ? '<span class="keys-scene-actions__trail keys-scene-actions__trail--foot">' +
+                    trail +
+                    '</span>'
+                  : '') +
                 '</span>' +
                 '<span class="keys-scene-actions__dot' +
                 (a.unset ? ' is-off' : '') +
                 '" aria-hidden="true"></span>' +
-                (trail
-                  ? '<span class="keys-scene-actions__trail">' + trail + '</span>'
-                  : '') +
-                '</button>'
+                '</button>' +
+                '<button type="button" class="keys-scene-actions__dir-del" data-del="' +
+                esc(a.mappingId) +
+                '" data-del-key="' +
+                esc(a.key) +
+                '" title="' +
+                esc(delLbl) +
+                '" aria-label="' +
+                esc(delLbl) +
+                '">×</button>' +
+                '</div>'
               );
             })
             .join('') +
-          '</div>';
+          '</div>' +
+          '<button type="button" class="keys-scene-actions__habit-link" data-habit-hub="1">' +
+          esc(t('keysSceneActionsHabitLink', '在「我的习惯」查看全部通道 →')) +
+          '</button>';
     dirHost.innerHTML = list;
     var addBtn = $(host.add);
     if (addBtn) {
@@ -712,26 +1298,64 @@
     }
     setVisible(true);
     var host = activeHost();
-    var rows = buildRows(m);
+    var rows = sortRowsByDockOrder(filterRowsForChannel(buildRows(m)), m);
     paintChrome(m, host);
     paintDir(rows, host);
+  }
+
+  function openHabitHub() {
+    try {
+      if (global.OneToneSettingsDrawer && typeof global.OneToneSettingsDrawer.open === 'function') {
+        global.OneToneSettingsDrawer.open({ panel: 'habits' });
+        return;
+      }
+    } catch (_) {}
+    try {
+      var hooks = global.__vp_bootstrap_hooks__ || {};
+      if (typeof hooks.setSettingsPanel === 'function') hooks.setSettingsPanel('habits');
+    } catch (_) {}
   }
 
   function onPanelClick(e) {
     var tEl = e.target;
     if (!tEl) return;
+    if (tEl.closest && tEl.closest('[data-habit-hub]')) {
+      e.preventDefault();
+      openHabitHub();
+      return;
+    }
     if (tEl.closest && tEl.closest('[data-add]')) {
       e.preventDefault();
       startNewAction();
       return;
     }
+    var delBtn = tEl.closest && tEl.closest('[data-del]');
+    if (delBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var m = mappingById(state.mappingId);
+      var rows = m ? filterRowsForChannel(buildRows(m)) : [];
+      var delKey = delBtn.getAttribute('data-del-key') || '';
+      var row = delKey ? findRow(rows, delKey) : null;
+      if (!row) {
+        var delId = String(delBtn.getAttribute('data-del') || '').trim();
+        for (var i = 0; i < rows.length; i++) {
+          if (String(rows[i].mappingId || '') === delId) {
+            row = rows[i];
+            break;
+          }
+        }
+      }
+      if (row && canDeleteRow(row)) deleteSceneRow(row);
+      return;
+    }
     var jumpBtn = tEl.closest && tEl.closest('[data-jump]');
     if (jumpBtn) {
       e.preventDefault();
-      var m = mappingById(state.mappingId);
-      var rows = m ? buildRows(m) : [];
-      var row = findRow(rows, jumpBtn.getAttribute('data-jump'));
-      jumpToEdit(row || { kind: 'recognition', key: 'pushToTalk' });
+      var mJump = mappingById(state.mappingId);
+      var jumpRows = mJump ? filterRowsForChannel(buildRows(mJump)) : [];
+      var jumpRow = findRow(jumpRows, jumpBtn.getAttribute('data-jump'));
+      jumpToEdit(jumpRow || { kind: 'recognition', key: 'pushToTalk' });
     }
   }
 
@@ -742,6 +1366,52 @@
     for (i = 0; i < HOSTS.length; i++) {
       var panel = $(HOSTS[i].panel);
       if (panel && panel.addEventListener) panel.addEventListener('click', onPanelClick);
+      var dir = $(HOSTS[i].dir);
+      if (dir && dir.addEventListener) {
+        dir.addEventListener('dragstart', function (e) {
+          var item = e.target && e.target.closest && e.target.closest('[data-row-key]');
+          if (!item || item.getAttribute('draggable') !== 'true') return;
+          var key = item.getAttribute('data-row-key') || '';
+          state.dragKey = key;
+          try {
+            e.dataTransfer.setData('text/plain', key);
+            e.dataTransfer.effectAllowed = 'move';
+          } catch (_) {}
+          item.classList.add('is-dragging');
+        });
+        dir.addEventListener('dragend', function (e) {
+          state.dragKey = '';
+          var item = e.target && e.target.closest && e.target.closest('[data-row-key]');
+          if (item) item.classList.remove('is-dragging');
+          dir.querySelectorAll('.is-drag-over').forEach(function (el) {
+            el.classList.remove('is-drag-over');
+          });
+        });
+        dir.addEventListener('dragover', function (e) {
+          var item = e.target && e.target.closest && e.target.closest('[data-row-key]');
+          if (!item || !state.dragKey) return;
+          e.preventDefault();
+          try {
+            e.dataTransfer.dropEffect = 'move';
+          } catch (_) {}
+          dir.querySelectorAll('.is-drag-over').forEach(function (el) {
+            if (el !== item) el.classList.remove('is-drag-over');
+          });
+          item.classList.add('is-drag-over');
+        });
+        dir.addEventListener('drop', function (e) {
+          var item = e.target && e.target.closest && e.target.closest('[data-row-key]');
+          if (!item) return;
+          e.preventDefault();
+          var toKey = item.getAttribute('data-row-key') || '';
+          var fromKey = state.dragKey || '';
+          try {
+            fromKey = e.dataTransfer.getData('text/plain') || fromKey;
+          } catch (_) {}
+          item.classList.remove('is-drag-over');
+          reorderAppRows(fromKey, toKey);
+        });
+      }
     }
   }
 

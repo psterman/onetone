@@ -67,6 +67,10 @@ check('scene dock keeps foot under list (no tall stretch)', /#settingsPanelKeys 
 check('add is dashed list-adjacent button', /#settingsPanelKeys \.keys-scene-actions__add\s*\{[^}]*border:\s*1px dashed var\(--keys-line/.test(css));
 check('active row uses mappingId', /a\.mappingId/.test(panelSrc) && /state\.mappingId/.test(panelSrc));
 check('active row rail', /keys-scene-actions__dir-item\.is-active::before/.test(css));
+check(
+  '02 pick refreshes scene dock via persistHeroCapture',
+  /function persistHeroCapture[\s\S]*?KeysSceneActionsPanel[\s\S]*?scene\.refresh/.test(pickerSrc)
+);
 check('keys-panel-ui wires SceneActionsPanel', /OneToneKeysSceneActionsPanel/.test(keysUi));
 check(
   'picker exports createCustomKeyMatchMapping',
@@ -218,8 +222,28 @@ check(
     /clearCustomKeyRecognition|customkey/.test(read('src/js/features/mapping/target-key-apply.js'))
 );
 check(
-  'scene new action prefers createVoiceInputMapping',
-  /createVoiceInputMapping/.test(panelSrc)
+  'scene new action is channel-aware (keys custom / voice input)',
+  /onVoicePage\(\)/.test(panelSrc) &&
+    /createCustomKeyMatchMapping/.test(panelSrc) &&
+    /createVoiceInputMapping/.test(panelSrc) &&
+    /function startNewAction[\s\S]*?var voice = onVoicePage\(\)/.test(panelSrc) &&
+    !/function startNewAction\(\) \{\s*openKeysPanelIfNeeded\(\)/.test(panelSrc) &&
+    /Keys「新建」still seeds/.test(panelSrc)
+);
+check(
+  'keys buildRows uses last-selected scheme only (not all bindings)',
+  /rowForLastScheme/.test(panelSrc) &&
+    /Never enumerate every agentBinding/.test(panelSrc) &&
+    !/appendKeysChannelExtras/.test(panelSrc)
+);
+check(
+  'mapping-recording refreshes scene after trigger capture',
+  /OneToneKeysSceneActionsPanel/.test(read('src/js/features/mapping/mapping-recording.js'))
+);
+check(
+  'wake phrase replace primary exported',
+  /replacePrimaryWakePhrase/.test(read('src/js/features/voice/voice-wake.js')) &&
+    /openWakePhrasePopover\('replace'\)/.test(read('src/js/features/voice/voice-ui-bindings.js'))
 );
 check(
   'scene list hides empty stubs until configured',
@@ -307,6 +331,25 @@ function makeEl(id, tag) {
         n = n.parentElement;
       }
       return null;
+    },
+    querySelector(sel) {
+      if (!sel) return null;
+      if (sel.startsWith('.')) {
+        const cls = sel.slice(1).split('.')[0];
+        const walk = (n) => {
+          if (!n) return null;
+          if (n.classList && n.classList.contains(cls)) return n;
+          const kids = n.children || [];
+          for (let i = 0; i < kids.length; i++) {
+            const hit = walk(kids[i]);
+            if (hit) return hit;
+          }
+          return null;
+        };
+        return walk(this);
+      }
+      if (sel.startsWith('#')) return this.id === sel.slice(1) ? this : null;
+      return null;
     }
   };
   el.classList = makeClassList(el);
@@ -346,6 +389,45 @@ els.keysSceneActionsApp.hidden = true;
 els.keysSceneActionsAppIcon.hidden = true;
 els.keysSceneActionsAdd.textContent = '＋ 新建动作';
 
+const voiceBody = makeEl('', 'div');
+voiceBody.className = 'voice-page-body';
+const voicePanel = makeEl('voiceSceneActionsPanel', 'aside');
+voicePanel.hidden = true;
+voicePanel.parentElement = voiceBody;
+voiceBody.children.push(voicePanel);
+[
+  'voiceSceneActionsTitle',
+  'voiceSceneActionsMeta',
+  'voiceSceneActionsBack',
+  'voiceSceneActionsDir',
+  'voiceSceneActionsDetail',
+  'voiceSceneActionsPicks',
+  'voiceSceneActionsEdit',
+  'voiceSceneActionsApp',
+  'voiceSceneActionsAppIcon',
+  'voiceSceneActionsAppName',
+  'voiceSceneActionsAdd'
+].forEach((id) => {
+  const child = makeEl(id, id === 'voiceSceneActionsAdd' ? 'button' : 'div');
+  child.parentElement = voicePanel;
+  if (id === 'voiceSceneActionsAdd') child.setAttribute('data-add', '1');
+  els[id] = child;
+});
+els.voiceSceneActionsPanel = voicePanel;
+els.voiceSceneActionsApp.hidden = true;
+els.voiceSceneActionsAppIcon.hidden = true;
+
+const keysPage = makeEl('settingsPanelKeys', 'section');
+keysPage.hidden = false;
+keysPage.children = [body];
+body.parentElement = keysPage;
+const voicePage = makeEl('settingsPanelVoiceWake', 'section');
+voicePage.hidden = true;
+voicePage.children = [voiceBody];
+voiceBody.parentElement = voicePage;
+els.settingsPanelKeys = keysPage;
+els.settingsPanelVoiceWake = voicePage;
+
 const mappings = {
   base: { id: 'base', appTargetId: '', agentBindings: [] },
   cursor: {
@@ -375,6 +457,7 @@ const mappings = {
     label: '继续并确认',
     triggerKey: 'F13',
     targetActions: [{ type: 'key', value: 'Enter' }],
+    captureHeroRef: { kind: 'customKey', bindingRef: 'match1' },
     agentBindings: []
   },
   // Bug repro: targetKey set, empty targetActions — must stay custom name, not 语音输入.
@@ -418,6 +501,7 @@ let jumpedFocus = '';
 let recordPinned = '';
 let createdCalls = 0;
 let createdVoiceCalls = 0;
+let openedSettingsPanel = '';
 const mappingList = [
   mappings.cursor,
   mappings.match1,
@@ -460,7 +544,23 @@ const sandbox = {
       config: {
         mappings: mappingList
       }
+    },
+    ui: {
+      settingsPanel: 'keys',
+      drawerOpen: true
     }
+  },
+  OneToneSettingsDrawer: {
+    open(opts) {
+      openedSettingsPanel = String((opts && opts.panel) || '');
+      if (openedSettingsPanel) {
+        // Keep ui in sync when jump helpers fire.
+        sandbox.OneToneState.ui.settingsPanel = openedSettingsPanel;
+      }
+    }
+  },
+  OneToneVoiceSettingsFlow: {
+    scheduleVoiceSettingsRender() {}
   },
   OneToneMappingCore: {
     byId(id) {
@@ -474,6 +574,19 @@ const sandbox = {
     },
     editorTarget(m) {
       return (m && m.targetKey) || '';
+    },
+    defaultCaptureHeroRef() {
+      return { channel: 'key', bindingRef: 'ime', actionId: '', actionInstanceId: '', kind: 'ime' };
+    },
+    isDefaultCaptureHeroRef(ref) {
+      if (!ref) return true;
+      return String(ref.kind || '') === 'ime' && !String(ref.actionId || '').trim();
+    },
+    captureHeroRefForMapping(m) {
+      if (!m || !m.captureHeroRef) {
+        return { channel: 'key', bindingRef: 'ime', actionId: '', actionInstanceId: '', kind: 'ime' };
+      }
+      return m.captureHeroRef;
     }
   },
   OneToneAppTargetPresets: {
@@ -604,6 +717,13 @@ vm.runInContext(panelSrc, sandbox, { filename: 'keys-scene-actions-panel.js' });
 const API = sandbox.OneToneKeysSceneActionsPanel;
 assert.ok(API, 'API exported');
 
+check('source filters by channel', /filterRowsForChannel/.test(panelSrc) && /kind === 'recognition'/.test(panelSrc));
+check('habit hub deeplink in dock', /data-habit-hub/.test(panelSrc));
+check(
+  'scene labels prefer Chinese over dotted action ids',
+  /function labelForRow/.test(panelSrc) && /known\[tail\]/.test(panelSrc) && /bareAid/.test(panelSrc)
+);
+
 API.render(mappings.base);
 check('baseline mapping → panel hidden', panel.hidden === true);
 
@@ -615,26 +735,54 @@ check('shows app title', els.keysSceneActionsApp.hidden === false && /Cursor|app
 check('shows app icon', els.keysSceneActionsAppIcon.hidden === false && els.keysSceneActionsAppIcon.src.includes('cursor.png'));
 
 const dirHtml = els.keysSceneActionsDir.innerHTML;
-check('shows trigger key in scene list', /XButton1|侧键|鼠标/.test(dirHtml) && !/→/.test(dirHtml));
-check('shows IME name badge', /keys-scene-actions__ime-name/.test(dirHtml) && /typeless|Typeless|imePresetTypeless/i.test(dirHtml));
-check('shows IME icon', dirHtml.includes('icons/ime/typeless.png'));
-check('lists sibling action with its trigger key', dirHtml.includes('F13'));
+check('keys page shows recognition jump', /data-jump="voice:cursor"/.test(dirHtml));
+check('keys page shows custom-key trigger', dirHtml.includes('F13'));
+check(
+  'keys page does not list every agentBinding scheme',
+  !/LAlt\+G/.test(dirHtml) && !/softPad:cursor/.test(dirHtml)
+);
 check('lists sibling with custom name', dirHtml.includes('继续并确认'));
-check('bare custom-key keeps list name (not 语音输入)', dirHtml.includes('>1<') || /keys-scene-actions__lbl[^>]*>1</.test(dirHtml));
+check('bare custom-key keeps list name (not 语音输入)', dirHtml.includes('>1<') || /keys-scene-actions__n[^>]*>1</.test(dirHtml));
 check('no channel icon strip', !/keys-scene-actions__ch-ico/.test(dirHtml));
-check('no app.shortcut leftover', !dirHtml.includes('LAlt+G'));
-check('has jump affordance', /data-jump="voice:cursor"/.test(dirHtml));
-check('row uses body+trail layout', /keys-scene-actions__body/.test(dirHtml) && /keys-scene-actions__trail/.test(dirHtml));
+check('row uses body+trail layout', /keys-scene-actions__body/.test(dirHtml));
 check('has status dot', /keys-scene-actions__dot/.test(dirHtml));
+check('edit is main button jump', /keys-scene-actions__dir-main[^>]*data-jump="voice:cursor"/.test(dirHtml));
+check('peer custom-key has delete', /data-del="match1"/.test(dirHtml));
+check('habit recognition also has delete', /data-del="cursor"/.test(dirHtml));
+check('drag handle when multiple rows', /keys-scene-actions__drag/.test(dirHtml));
 check('has add action button', els.keysSceneActionsAdd && /新建动作/.test(els.keysSceneActionsAdd.textContent || ''));
 check('detail host stays hidden', els.keysSceneActionsDetail.hidden === true);
-check('meta shows action count', /4|keysSceneActionsMetaCount/.test(els.keysSceneActionsMeta.textContent));
+check('meta shows one-scheme-per-peer count', /4/.test(els.keysSceneActionsMeta.textContent));
+check('habit link present', /data-habit-hub/.test(dirHtml));
+check('keys dock group is 本场景动作', /本场景动作|keysSceneActionsTitle/.test(dirHtml));
 
 const rows = API.buildRows(mappings.cursor);
-check('recognition + sibling rows', rows.length === 4 && /XButton1|侧键|鼠标/.test(rows[0].binds.key) && rows[1].kind === 'customKey');
-check('sibling line is trigger not recognition chord', /F13/.test(rows[1].binds.key) && !/→/.test(rows[1].binds.key));
-check('bare custom-key row uses renamed label', rows[2].kind === 'customKey' && rows[2].label === '1');
-check('bare custom-key is not voice', rows[2].kind !== 'recognition' && rows[2].label !== '语音输入');
+check(
+  'one last scheme per peer (IME + 3 customKey)',
+  rows.length === 4 &&
+    rows.filter((r) => r.kind === 'recognition').length === 1 &&
+    rows.filter((r) => r.kind === 'customKey').length === 3 &&
+    !rows.some((r) => r.actionId === 'app.shortcut')
+);
+check(
+  'keys customKey rows are only 我录的键 ids',
+  rows
+    .filter((r) => r.kind === 'customKey')
+    .every((r) => ['match1', 'matchBare', 'matchNamedEmpty'].includes(r.mappingId))
+);
+check(
+  'sibling line is trigger not recognition chord',
+  /F13/.test(rows.find((r) => r.mappingId === 'match1').binds.key) &&
+    !/→/.test(rows.find((r) => r.mappingId === 'match1').binds.key)
+);
+check(
+  'bare custom-key row uses renamed label',
+  rows.some((r) => r.mappingId === 'matchBare' && r.kind === 'customKey' && r.label === '1')
+);
+check(
+  'bare custom-key is not voice',
+  rows.every((r) => r.mappingId !== 'matchBare' || (r.kind === 'customKey' && r.label !== '语音输入'))
+);
 check(
   'empty voice stub hidden from scene list',
   rows.every((r) => r.mappingId !== 'emptyVoice')
@@ -643,8 +791,109 @@ check(
   'named empty custom-key still listed',
   rows.some((r) => r.mappingId === 'matchNamedEmpty' && r.label === '2' && r.kind === 'customKey')
 );
-check('row carries ime meta', rows[0].ime && rows[0].ime.id === 'typeless');
+check(
+  'voice recognition carries ime meta',
+  rows.some((r) => r.kind === 'recognition' && r.ime && r.ime.id === 'typeless')
+);
 check('habit trigger not overwritten in rows', mappings.cursor.triggerKey === 'XButton1');
+
+// Last-selected Soft Pad replaces IME for the same trigger — still one row.
+mappings.cursor.captureHeroRef = {
+  channel: 'softPad',
+  bindingRef: 'pad1',
+  actionId: 'app.shortcut',
+  actionInstanceId: 'a1',
+  kind: 'action'
+};
+const softRows = API.buildRows(mappings.cursor);
+check(
+  'last softPad scheme replaces IME on same peer',
+  softRows.filter((r) => r.mappingId === 'cursor').length === 1 &&
+    softRows.some((r) => r.mappingId === 'cursor' && r.kind === 'softPad' && r.actionId === 'app.shortcut') &&
+    !softRows.some((r) => r.mappingId === 'cursor' && r.kind === 'recognition')
+);
+mappings.cursor.captureHeroRef = null;
+API.render(mappings.cursor);
+
+// Voice page host: only recognition rows
+keysPage.hidden = true;
+voicePage.hidden = false;
+sandbox.OneToneState.ui.settingsPanel = 'voiceWake';
+API.render(mappings.cursor);
+const voiceDir = els.voiceSceneActionsDir.innerHTML;
+check('voice page shows recognition jump', /data-jump="voice:cursor"/.test(voiceDir));
+check('voice page hides custom-key F13', !voiceDir.includes('F13'));
+check('voice page shows IME badge', /keys-scene-actions__ime-name/.test(voiceDir));
+check('voice meta is 1', /1/.test(els.voiceSceneActionsMeta.textContent));
+check('voice habit recognition has delete', /data-del="cursor"/.test(voiceDir));
+check('voice row shows drag handle', /keys-scene-actions__drag/.test(voiceDir));
+check(
+  'voice dock source skips empty recognition fallback',
+  !/still show 语音输入/.test(panelSrc) && !/rows\.push\(recognitionRow\(m, fbTrig\)\)/.test(panelSrc)
+);
+
+// Voice page still lists 语音输入 when keys last-scheme diverted to softPad
+mappings.cursor.captureHeroRef = {
+  channel: 'softPad',
+  bindingRef: 'pad1',
+  actionId: 'app.shortcut',
+  actionInstanceId: 'a1',
+  kind: 'action'
+};
+API.render(mappings.cursor);
+check(
+  'voice page keeps recognition when softPad is last keys scheme',
+  /data-jump="voice:cursor"/.test(els.voiceSceneActionsDir.innerHTML)
+);
+mappings.cursor.agentBindings.push({
+  triggerType: 'voice',
+  triggerBinding: '继续并确认',
+  slotId: 'app.shortcut',
+  actionId: 'app.shortcut',
+  actionInstanceId: 'a1',
+  enabled: true
+});
+API.render(mappings.cursor);
+check(
+  'voice page does not dump Soft Pad / agent voice catalogue',
+  !/继续并确认/.test(els.voiceSceneActionsDir.innerHTML) &&
+    !/agent\.continue/.test(els.voiceSceneActionsDir.innerHTML)
+);
+// Non-SoftPad voice phrase (no pad keys) should list and be deletable.
+mappings.cursor.agentBindings.push({
+  triggerType: 'voice',
+  triggerBinding: '场景专用口令',
+  slotId: 'scene.voice.only',
+  actionId: 'app.shortcut',
+  actionInstanceId: 'scene-v1',
+  enabled: true
+});
+API.render(mappings.cursor);
+check(
+  'voice page lists non-SoftPad voice phrase',
+  /场景专用口令/.test(els.voiceSceneActionsDir.innerHTML)
+);
+check(
+  'voice phrase row has delete',
+  /data-del-key="vphrase:cursor:scene-v1"/.test(els.voiceSceneActionsDir.innerHTML) ||
+    /data-del="cursor"/.test(els.voiceSceneActionsDir.innerHTML)
+);
+mappings.cursor.agentBindings = mappings.cursor.agentBindings.filter(function (b) {
+  return !(b && String(b.triggerBinding || '') === '场景专用口令');
+});
+check(
+  'voice page line keeps IME chip at foot (no duplicate name line)',
+  /keys-scene-actions__trail--foot/.test(els.voiceSceneActionsDir.innerHTML) &&
+    /keys-scene-actions__ime/.test(els.voiceSceneActionsDir.innerHTML)
+);
+mappings.cursor.captureHeroRef = null;
+mappings.cursor.agentBindings = mappings.cursor.agentBindings.filter(function (b) {
+  return !(b && b.triggerType === 'voice' && String(b.triggerBinding || '') === '继续并确认');
+});
+keysPage.hidden = false;
+voicePage.hidden = true;
+sandbox.OneToneState.ui.settingsPanel = 'keys';
+API.render(mappings.cursor);
 
 jumpedTab = '';
 jumpedStep = '';
@@ -659,12 +908,34 @@ createdVoiceCalls = 0;
 recordPinned = '';
 jumpedStep = '';
 jumpedTab = '';
+openedSettingsPanel = '';
 API.startNewAction();
-check('new action creates voice mapping', createdVoiceCalls === 1 && createdCalls === 0);
-check('new action opens trigger step', jumpedStep === 'trigger');
-check('new action records on new mapping id', recordPinned === 'voice-new');
-check('new action prefers ime tab for recognition', jumpedTab === 'ime');
+check('keys new action creates custom-key mapping', createdCalls === 1 && createdVoiceCalls === 0);
+check('keys new action opens trigger step', jumpedStep === 'trigger');
+check('keys new action records on new mapping id', recordPinned === 'match-new');
+check('keys new action opens key tab for match', jumpedTab === 'key');
+check('keys new action stays on keys panel', openedSettingsPanel === '' && sandbox.OneToneState.ui.settingsPanel === 'keys');
 check('habit trigger unchanged after new action', mappings.cursor.triggerKey === 'XButton1');
+
+// Voice page: create voice peer, do not jump to keys
+keysPage.hidden = true;
+voicePage.hidden = false;
+sandbox.OneToneState.ui.settingsPanel = 'voiceWake';
+createdCalls = 0;
+createdVoiceCalls = 0;
+recordPinned = '';
+jumpedStep = '';
+jumpedTab = '';
+openedSettingsPanel = '';
+API.render(mappings.cursor);
+API.startNewAction();
+check('voice new action creates voice mapping', createdVoiceCalls === 1 && createdCalls === 0);
+check('voice new action records on voice mapping id', recordPinned === 'voice-new');
+check('voice new action does not open keys panel', openedSettingsPanel !== 'keys');
+check('voice new action stays on voiceWake', sandbox.OneToneState.ui.settingsPanel === 'voiceWake');
+keysPage.hidden = false;
+voicePage.hidden = true;
+sandbox.OneToneState.ui.settingsPanel = 'keys';
 
 mappings.cursor.targetKey = 'F2';
 mappings.cursor.imePresetId = 'xunfei';
@@ -673,8 +944,13 @@ sandbox.OneToneImePresets.presetById = (id) =>
     ? { id: 'xunfei', nameKey: 'imePresetXunfei', icon: 'icons/ime/xunfei.png' }
     : null;
 API.render(mappings.cursor);
-check('refresh follows new IME badge', /xunfei|imePresetXunfei/i.test(els.keysSceneActionsDir.innerHTML));
-check('refresh keeps trigger key line', /XButton1|侧键|鼠标/.test(els.keysSceneActionsDir.innerHTML) && !/→/.test(els.keysSceneActionsDir.innerHTML));
+check('keys refresh still lists custom-key', els.keysSceneActionsDir.innerHTML.includes('F13'));
+keysPage.hidden = true;
+voicePage.hidden = false;
+sandbox.OneToneState.ui.settingsPanel = 'voiceWake';
+API.render(mappings.cursor);
+check('voice refresh follows new IME badge', /xunfei|imePresetXunfei/i.test(els.voiceSceneActionsDir.innerHTML));
+check('voice refresh keeps recognition row', /data-jump="voice:cursor"/.test(els.voiceSceneActionsDir.innerHTML));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

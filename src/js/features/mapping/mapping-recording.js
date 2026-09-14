@@ -882,6 +882,10 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       clearRecTimer();
       setRecording('none');
       hooks().render();
+      try{
+        var sceneSwitch=global.OneToneKeysSceneActionsPanel;
+        if(sceneSwitch&&typeof sceneSwitch.refresh==='function') sceneSwitch.refresh();
+      }catch(_){}
       return false;
     }else if(prevTrig&&prevTrig!==k){
       // Preset apps + universal baseline stay one row — retarget in place.
@@ -944,6 +948,10 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     // Backend may have written RAlt; FE fold must re-save so restart keeps AutoTrigger.
     if(!backendCommitted||foldedRAlt) hooks().save();
     hooks().render();
+    try{
+      var scene=global.OneToneKeysSceneActionsPanel;
+      if(scene&&typeof scene.refresh==='function') scene.refresh();
+    }catch(_){}
     try{
       if(global.OneToneHabitHub&&global.OneToneHabitHub.scheduleHubPaint){
         global.OneToneHabitHub.scheduleHubPaint();

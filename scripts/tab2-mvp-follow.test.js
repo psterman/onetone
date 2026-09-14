@@ -274,6 +274,8 @@ assert.ok(/type==='mvp_record_probe'/.test(recInput), 'frontend handles record p
 assert.ok(/OneToneRecordProbe/.test(probeJs), 'record probe panel module');
 assert.ok(/srcLabel|keysCaptureProbeSrcWv/.test(probeJs), 'probe log uses human-readable source labels');
 assert.ok(/kindLabel|keysCaptureProbeKindTrigger/.test(probeJs), 'probe log uses human-readable kind labels');
+assert.ok(probeJs.includes('setUiVisible(true,{expanded:!!opts.expanded})'), 'probe problems show chip only; sheet opens on tap');
+assert.ok(!/expanded:opts\.expanded!==false/.test(probeJs), 'probe no longer auto-opens sheet on problem');
 
 var hotkeyRs = read('src-tauri/src/hotkey_win.rs');
 assert.ok(/xbutton_name_from_mouse_data/.test(hotkeyRs), 'side button mouseData hi/lo word');

@@ -77,7 +77,8 @@
     problemOpen=true;
     var panel=$('recordProbePanel');
     if(panel) panel.classList.add('is-problem');
-    setUiVisible(true,{expanded:opts.expanded!==false});
+    // Chip only — sheet opens when user taps 右下角 / 看问题.
+    setUiVisible(true,{expanded:!!opts.expanded});
     var status=$('recordProbeStatus');
     if(status&&opts.message) status.textContent=opts.message;
     syncChipCta();

@@ -51,6 +51,7 @@
 
   function barCountForWrap(wrap){
     if(!wrap||!wrap.classList) return 12;
+    if(wrap.classList.contains('mic-level-bars--dock')) return 10;
     if(wrap.classList.contains('mic-level-bars--pill')) return 8;
     if(wrap.classList.contains('mic-level-bars--home')) return 28;
     if(wrap.classList.contains('mic-level-bars--global')) return 8;
@@ -92,6 +93,8 @@
     if(heroMic&&!heroMic.hidden) pushTarget(heroMic);
     var snapCheck=$('cameraSnapMicCheck');
     if(snapCheck) pushTarget(snapCheck);
+    var dockBars=$('voiceDockMicBars');
+    if(dockBars) pushTarget(dockBars);
     return targets;
   }
 

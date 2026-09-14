@@ -1884,7 +1884,7 @@
                           <span class="voice-phrase-compact-en" id="voiceWakeCompactEn" hidden>—</span>
                         </button>
                       </div>
-                      <p class="voice-phrase-hint" id="voiceWakeDisplayHint">默认用这句。<button type="button" class="voice-phrase-hint-link" id="btnVoiceWakePhraseEditLink">不对就改</button></p>
+                      <p class="voice-phrase-hint" id="voiceWakeDisplayHint">默认用这句。</p>
                       <div class="voice-phrase-hero sr-only" id="voiceWakeHeroCard" aria-hidden="true">
                         <button type="button" class="sr-only" id="voiceWakeHeroReady" tabindex="-1" aria-live="polite">语音未启用</button>
                         <span class="sr-only" id="voiceWakePrimaryFastBadge">响应最快</span>
@@ -1914,40 +1914,8 @@
                           <button type="button" class="voice-landing-cta" id="btnVoiceLandingKeysTarget">不对就去按键改目标 →</button>
                         </div>
                       </section>
-                      <div class="voice-wake-secondary" id="voiceWakeSecondary">
-                        <details class="voice-wake-more-aliases" id="voiceWakeMoreAliases">
-                          <summary id="voiceWakeMoreAliasesSummary">同义说法</summary>
-                          <div class="voice-wake-pool-alias-inset voice-wake-alias-card" id="voiceWakeAliasBlock">
-                            <p class="voice-wake-pool-bridge sr-only" id="voiceWakePoolBridge">这些说法同样有效</p>
-                            <p class="voice-phrase-pool-label sr-only" id="voiceWakeActiveLbl">已启用的唤醒短语</p>
-                            <p class="voice-phrase-panel-hint sr-only" id="voiceWakeAliasSectionLbl">其他开启口令</p>
-                            <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="voiceWakePhraseTags" role="listbox" aria-labelledby="voiceWakeAliasSectionLbl"></div>
-                            <div class="voice-wake-pool-actions">
-                              <button type="button" class="voice-wake-pool-add-btn" id="btnVoiceWakePoolAdd">+ 添加口令</button>
-                            </div>
-                          </div>
-                        </details>
-                        <button type="button" class="voice-wake-secondary-link" id="btnVoiceWakeGoKeysTarget">改听写目标 →</button>
-                        <details class="voice-wake-advanced" id="voiceWakeAdvanced">
-                          <summary id="voiceWakeAdvancedSummary">高级</summary>
-                          <div class="voice-wake-advanced-inner">
-                            <div class="voice-wake-optin-row" id="voiceWakeListeningOptInRow">
-                              <div class="voice-wake-optin-copy">
-                                <span class="voice-wake-optin-label" id="voiceWakeListeningOptInLabel" data-i18n="voiceWakeListeningOptInLabel">口令唤醒</span>
-                                <span class="voice-wake-optin-hint" id="voiceWakeListeningOptInHint" data-i18n="voiceWakeListeningOptInHint">后台听口令更耗电；关掉后用麦键开听写</span>
-                              </div>
-                              <button type="button" class="toggle-switch" id="voiceWakeListeningOptInToggle" role="switch" aria-checked="false" aria-labelledby="voiceWakeListeningOptInLabel"></button>
-                            </div>
-                            <div class="voice-wake-optin-row" id="voiceWakeBringUpRow" hidden>
-                              <div class="voice-wake-optin-copy">
-                                <span class="voice-wake-optin-label" id="voiceSchemeBringUpLbl">不在目标窗时自动切过去</span>
-                                <span class="voice-wake-optin-hint" id="voiceSchemeBringUpHint">默认关 · 避免误开别的应用</span>
-                              </div>
-                              <button type="button" class="toggle-switch" id="voiceAllowBringUpTargetToggle" role="switch" aria-checked="false" aria-labelledby="voiceSchemeBringUpLbl"></button>
-                            </div>
-                          </div>
-                        </details>
-                      </div>
+                      <!-- Secondary controls moved to #voiceSchemeStrip on step 02 -->
+                      <div class="voice-wake-secondary sr-only" id="voiceWakeSecondary" hidden aria-hidden="true"></div>
                     </section>
                     </div>
                     <div class="voice-phrase-kind-pane" id="voiceWakeKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" hidden aria-hidden="true">
@@ -2003,6 +1971,42 @@
                       <h3 class="voice-step-page-title" id="voiceRecognizePageTitle">意图效果</h3>
                       <p class="voice-step-page-sub" id="voiceRecognizePageSub">选意图 · 听写方式对齐按键 · 收尾用语音习惯</p>
                     </header>
+                    <div class="voice-scheme-strip" id="voiceSchemeStrip">
+                      <div class="voice-scheme-strip-listen">
+                        <span class="voice-scheme-strip-lbl" id="voiceSchemeListenLbl">后台怎么听</span>
+                        <div class="voice-summary-engine-switch voice-strategy-seg voice-recognize-source-grid" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSchemeListenLbl">
+                          <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="auto" id="voiceSummaryEngineAuto">自动</button>
+                          <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="resourceSaver" id="voiceSummaryEngineResourceSaver">省电</button>
+                          <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="enhanced" id="voiceSummaryEngineEnhanced">增强</button>
+                        </div>
+                        <div class="voice-wake-optin-row voice-scheme-optin" id="voiceWakeListeningOptInRow">
+                          <div class="voice-wake-optin-copy">
+                            <span class="voice-wake-optin-label" id="voiceWakeListeningOptInLabel" data-i18n="voiceWakeListeningOptInLabel">口令唤醒</span>
+                            <span class="voice-wake-optin-hint" id="voiceWakeListeningOptInHint" data-i18n="voiceWakeListeningOptInHint">后台听口令更耗电；关掉后用麦键开听写</span>
+                          </div>
+                          <button type="button" class="toggle-switch" id="voiceWakeListeningOptInToggle" role="switch" aria-checked="false" aria-labelledby="voiceWakeListeningOptInLabel"></button>
+                        </div>
+                      </div>
+                      <div class="voice-scheme-strip-phrase">
+                        <button type="button" class="voice-wake-secondary-link" id="btnVoiceWakePhraseEditLink">不对就改</button>
+                        <details class="voice-wake-more-aliases" id="voiceWakeMoreAliases">
+                          <summary id="voiceWakeMoreAliasesSummary">同义说法</summary>
+                          <div class="voice-wake-pool-alias-inset voice-wake-alias-card" id="voiceWakeAliasBlock">
+                            <p class="voice-wake-pool-bridge sr-only" id="voiceWakePoolBridge">这些说法同样有效</p>
+                            <p class="voice-phrase-pool-label sr-only" id="voiceWakeActiveLbl">已启用的唤醒短语</p>
+                            <p class="voice-phrase-panel-hint sr-only" id="voiceWakeAliasSectionLbl">其他开启口令</p>
+                            <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="voiceWakePhraseTags" role="listbox" aria-labelledby="voiceWakeAliasSectionLbl"></div>
+                            <div class="voice-wake-pool-actions">
+                              <button type="button" class="voice-wake-pool-add-btn" id="btnVoiceWakePoolAdd">+ 添加口令</button>
+                            </div>
+                          </div>
+                        </details>
+                        <button type="button" class="voice-wake-secondary-link" id="btnVoiceWakeGoKeysTarget">改听写目标 →</button>
+                      </div>
+                      <details class="voice-wake-advanced sr-only" id="voiceWakeAdvanced" hidden aria-hidden="true">
+                        <summary id="voiceWakeAdvancedSummary">高级</summary>
+                      </details>
+                    </div>
                     <div class="voice-intent-picker" id="voiceIntentPicker" hidden>
                     <nav class="voice-intent-rail" id="voiceIntentRail" role="tablist" aria-label="意图分类">
                       <button type="button" class="voice-intent-rail-item is-on" data-voice-intent="ime" role="tab" aria-selected="true" id="voiceIntentTabIme">听写方式<span class="n">IME</span></button>
@@ -2304,6 +2308,13 @@
                           <button type="button" data-prompt-preset="continue">继续</button>
                         </div>
                         <p class="voice-prompt-land" id="voicePromptLand">说 01 口令 = 聚焦 → 写入 prompt → 回车发送</p>
+                        <div class="voice-wake-optin-row voice-prompt-bringup" id="voiceWakeBringUpRow" hidden>
+                          <div class="voice-wake-optin-copy">
+                            <span class="voice-wake-optin-label" id="voiceSchemeBringUpLbl">不在目标窗时自动切过去</span>
+                            <span class="voice-wake-optin-hint" id="voiceSchemeBringUpHint">默认关 · 避免误开别的应用</span>
+                          </div>
+                          <button type="button" class="toggle-switch" id="voiceAllowBringUpTargetToggle" role="switch" aria-checked="false" aria-labelledby="voiceSchemeBringUpLbl"></button>
+                        </div>
                       </div>
                     </div>
                     <div class="voice-intent-pane" id="voiceIntentPaneKeys" data-voice-intent-pane="key" hidden>
@@ -2655,8 +2666,11 @@
           <footer class="voice-bottom-dock" id="voiceBottomDock" role="status" aria-live="polite">
             <div class="voice-bottom-dock-inner">
               <div class="voice-dock-live">
-                <div class="voice-dock-live-item">
-                  <span class="voice-fb-status-pill is-standby voice-dock-status-pill" id="voiceFbStatusPill">系统待命中</span>
+                <div class="voice-dock-live-item voice-dock-level-slot">
+                  <div class="voice-dock-level" id="voiceDockLevel" aria-hidden="true">
+                    <span class="mic-level-bars mic-level-bars--dock" id="voiceDockMicBars"></span>
+                  </div>
+                  <span class="voice-fb-status-pill is-standby voice-dock-status-pill sr-only" id="voiceFbStatusPill">系统待命中</span>
                 </div>
                 <div class="voice-dock-live-item is-grow">
                   <span class="voice-dock-lbl" id="voiceDockHeardLbl">听到</span>
@@ -2676,13 +2690,6 @@
                 </div>
                 <div class="voice-dock-live-item">
                   <button type="button" class="voice-dock-try-mic" id="btnVoiceDockTryMic">试麦克风</button>
-                </div>
-                <div class="voice-dock-live-item">
-                  <div class="voice-summary-engine-switch voice-strategy-seg voice-recognize-source-grid voice-dock-engine" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSummaryEngineLbl">
-                    <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="auto" id="voiceSummaryEngineAuto">自动</button>
-                    <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="resourceSaver" id="voiceSummaryEngineResourceSaver">省电</button>
-                    <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="enhanced" id="voiceSummaryEngineEnhanced">增强</button>
-                  </div>
                 </div>
               </div>
               <div class="voice-dock-actions voice-scheme-status-actions sr-only" id="voiceDockActionsLegacy" aria-hidden="true"></div>

@@ -49,6 +49,10 @@
     if(micNameEl) micNameEl.textContent=vm.wakeSourceLabel;
     const barsEl=$('voiceSettingsMicBars');
     if(barsEl&&!barsEl.children.length) barsEl.innerHTML=hooks().buildMicLevelBars();
+    const dockBars=$('voiceDockMicBars');
+    if(dockBars&&!dockBars.children.length&&hooks().buildMicLevelBars){
+      dockBars.innerHTML=hooks().buildMicLevelBars(10);
+    }
     hooks().syncVoiceEndCommitKeyUi(vm.autoSendKey);
     hooks().syncVoiceEndDelayRanges(vm.autoSendDelayMs);
     syncVoiceSceneActions();
@@ -129,6 +133,10 @@
     if(micNameEl) micNameEl.textContent=vm.wakeSourceLabel;
     const barsEl=$('voiceSettingsMicBars');
     if(barsEl&&!barsEl.children.length) barsEl.innerHTML=hooks().buildMicLevelBars();
+    const dockBars=$('voiceDockMicBars');
+    if(dockBars&&!dockBars.children.length&&hooks().buildMicLevelBars){
+      dockBars.innerHTML=hooks().buildMicLevelBars(10);
+    }
 
     if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.renderVoiceAside){
       global.OneToneAppBehaviorRules.renderVoiceAside();

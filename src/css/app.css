@@ -1943,8 +1943,11 @@
     .settings-page-back:active{transform:scale(.97)}
     .settings-panel-wrap:has(#settingsPanelKeys:not([hidden])),
     .settings-panel-wrap:has(#settingsPanelVoiceWake:not([hidden])){
-      padding-bottom:20px;
+      padding-bottom:0;
       scroll-padding-bottom:32px;
+    }
+    .settings-panel-wrap:has(#settingsPanelVoiceWake:not([hidden])){
+      overflow:hidden;
     }
     .settings-panel{display:block}
     .settings-panel[hidden]{display:none!important}
@@ -3183,8 +3186,9 @@
     .keys-recording-feedback{
       padding:10px 12px;border-radius:12px;border:1px solid rgba(220,53,69,.28);
       background:linear-gradient(180deg,rgba(220,53,69,.08),rgba(220,53,69,.03));
+      text-align:center;
     }
-    .keys-recording-feedback-main{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .keys-recording-feedback-main{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
     .keys-recording-pulse{
       width:10px;height:10px;border-radius:999px;background:#dc3545;flex-shrink:0;
       animation:keys-recording-pulse-dot 1s ease-in-out infinite;
@@ -8186,10 +8190,10 @@
       transform:translateY(calc(var(--keys-cap-press) * 2px));
       transition:transform 120ms ease,box-shadow 120ms ease,background 140ms ease;
     }
-    #settingsPanelKeys #keysCaptureKeycapHost #targetDisplay.habit-basic-key-display.display:hover,
-    #settingsPanelKeys #keysCaptureKeycapHost #targetDisplay.habit-basic-key-display.display:not(.empty):hover,
-    #settingsPanelKeys #keysCaptureHeroCard #targetDisplay.habit-basic-key-display.display:hover,
-    #settingsPanelKeys #keysCaptureHeroCard #targetDisplay.habit-basic-key-display.display:not(.empty):hover{
+    #settingsPanelKeys .keys-capture-keycap-zone:hover:not(:active) #targetDisplay.habit-basic-key-display.display,
+    #settingsPanelKeys .keys-capture-keycap-zone:hover:not(:active) #targetDisplay.habit-basic-key-display.display:not(.empty),
+    #settingsPanelKeys #keysCaptureKeycapHost #targetDisplay.habit-basic-key-display.display:hover:not(:active),
+    #settingsPanelKeys #keysCaptureHeroCard #targetDisplay.habit-basic-key-display.display:hover:not(:active){
       background:linear-gradient(180deg,#fff,#f1f7fb)!important;border-color:transparent!important;
       box-shadow:
         0 1px 0 rgba(255,255,255,.95) inset,
@@ -8197,9 +8201,16 @@
         0 4px 0 #b7cad8,
         0 6px 14px rgba(19,32,44,.13);
     }
+    #settingsPanelKeys .keys-capture-keycap-zone:active #targetDisplay.habit-basic-key-display.display,
     #settingsPanelKeys #keysCaptureKeycapHost #targetDisplay.habit-basic-key-display.display:active,
     #settingsPanelKeys #keysCaptureHeroCard #targetDisplay.habit-basic-key-display.display:active{
       --keys-cap-press:1;
+      transform:translateY(2px);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,.85) inset,
+        0 -1px 0 rgba(19,32,44,.05) inset,
+        0 1px 0 #c5d4df,
+        0 2px 6px rgba(19,32,44,.1)!important;
     }
     #settingsPanelKeys #keysCaptureKeycapHost #targetDisplay .display-value,
     #settingsPanelKeys #keysCaptureHeroCard #targetDisplay .display-value,

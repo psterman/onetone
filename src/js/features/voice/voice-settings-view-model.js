@@ -231,27 +231,30 @@
     var zh='';
     var en='';
     var lang=global.__vp_voice_wake_lang__||'zh';
-    var presets=global.OneToneVoiceWakePresets;
-    if(presets){
-      if(vm.mode==='sapi'){
-        zh=presets.firstSelectedPhrase('sapi')||vm.wakePhrase;
-      }else if(vm.mode==='vosk'){
-        zh=presets.firstSelectedPhrase('vosk','zh')||'';
-        en=presets.firstSelectedPhrase('vosk','en')||'';
-        if(!zh&&!en) zh=vm.wakePhrase;
-      }else if(vm.mode==='kws'){
-        zh=vm.wakePhrase;
-      }else{
-        zh=vm.wakePhrase;
-      }
-    }else if(vm.mode==='sapi'){
-      zh=firstSelectedPhrase('#voiceSapiPresets')||vm.wakePhrase;
-    }else if(vm.mode==='vosk'){
-      zh=firstSelectedPhrase('#voiceVoskPresetsCn');
-      en=firstSelectedPhrase('#voiceVoskPresetsEn');
-      if(!zh&&!en) zh=vm.wakePhrase;
+    // Prefer persisted/list-head order over DOM preset order (「开始输入」is first in HTML).
+    var list=[];
+    var wake=global.OneToneVoiceWake;
+    if(wake&&typeof wake.currentWakePhraseList==='function'){
+      try{ list=sanitizePhraseList(wake.currentWakePhraseList()); }catch(_e){ list=[]; }
+    }
+    if(!list.length&&vm.wakePhrase) list=[sanitizePhrase(vm.wakePhrase)];
+    if(vm.mode==='vosk'){
+      list.forEach(function(p){
+        if((/[\u4e00-\u9fff]/.test(p)?'zh':'en')==='en'){ if(!en) en=p; }
+        else if(!zh) zh=p;
+      });
     }else{
-      zh=vm.wakePhrase;
+      zh=list[0]||'';
+    }
+    if(!zh&&!en){
+      var presets=global.OneToneVoiceWakePresets;
+      if(presets){
+        if(vm.mode==='sapi') zh=presets.firstSelectedPhrase('sapi')||'';
+        else if(vm.mode==='vosk'){
+          zh=presets.firstSelectedPhrase('vosk','zh')||'';
+          en=presets.firstSelectedPhrase('vosk','en')||'';
+        }
+      }
     }
     var display='';
     if(vm.mode==='vosk'&&lang==='en'&&(en||zh)) display=en||zh;

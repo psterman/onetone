@@ -1922,6 +1922,10 @@
       refreshKeysCustomKeyMatchList();
       applyHero();
       syncRecognitionEditorPreview();
+      try {
+        var sceneLaunch = global.OneToneKeysSceneActionsPanel;
+        if (sceneLaunch && typeof sceneLaunch.refresh === 'function') sceneLaunch.refresh();
+      } catch (_) {}
       var persist = global.OneToneConfigPersist;
       if (persist && typeof persist.save === 'function') {
         try {
@@ -2693,6 +2697,11 @@
     try {
       var hub = global.OneToneHabitHub;
       if (hub && hub.scheduleHubPaint) hub.scheduleHubPaint();
+    } catch (_) {}
+    // Dock row = last captureHeroRef — refresh as soon as 02 pick lands.
+    try {
+      var scene = global.OneToneKeysSceneActionsPanel;
+      if (scene && typeof scene.refresh === 'function') scene.refresh();
     } catch (_) {}
   }
 
@@ -4168,7 +4177,7 @@
     var keyB = findKeyBinding(m, row.actionId, row.actionInstanceId || '');
     var chord = keyB ? String(keyB.triggerBinding || '').trim() : '';
     selectionToast(row.name, !!chord);
-    recordSelected();
+    // Select only — 录制快捷键 via keycap / explicit record control.
   }
 
   function applyCursorPickBind() {
@@ -4192,7 +4201,7 @@
     var mapCur = mappingById(mid);
     var keyBCur = findKeyBinding(mapCur, row.actionId, '');
     selectionToast(row.title, !!(keyBCur && keyBCur.triggerBinding));
-    recordSelected();
+    // Select only — 录制快捷键 via keycap / explicit record control.
   }
 
   function applyCameraPickBind() {
@@ -4216,7 +4225,7 @@
     var m = mappingById(mid);
     var keyB = findKeyBinding(m, row.actionId, '');
     selectionToast(row.title, !!(keyB && keyB.triggerBinding));
-    recordSelected();
+    // Select only — 录制快捷键 via keycap / explicit record control.
   }
 
   function existingAppShortcutRows(m) {
@@ -5201,7 +5210,7 @@
     var keyB = findKeyBinding(m, row.actionId, row.actionInstanceId || '');
     var chord = keyB ? String(keyB.triggerBinding || '').trim() : '';
     selectionToast(row.name, !!chord);
-    recordSelected();
+    // Select only — 录制快捷键 via keycap / [data-softpad-record] / Alt·Shift click.
   }
 
   function softPadPreviewFrameHtml(workM, opts) {
@@ -6472,7 +6481,7 @@
         : actionLabel(actionId);
     selectionToast(displayName, !!chord);
 
-    if (forceRecord || !chord) {
+    if (forceRecord) {
       recordSelected();
     }
   }
