@@ -563,9 +563,13 @@
       desk.hidden=!isDictate;
       desk.setAttribute('aria-hidden',isDictate?'false':'true');
     }
+    var picker=$('voiceIntentPicker');
     ['voiceSoftPadFace','voiceKeysFace','voiceCameraFace'].forEach(function(id){
       var el=$(id);
       if(!el) return;
+      // Intent-rail owns visibility while bridge is mounted in the F picker.
+      if(el.classList&&el.classList.contains('is-in-picker')) return;
+      if(picker&&picker.contains(el)) return;
       var pane=el.getAttribute('data-voice-face-pane');
       var show=pane===face;
       el.hidden=!show;
@@ -640,6 +644,12 @@
     if(hint) hint.textContent=t('voiceWakeHeroHintShort')||'默认用这句。';
     var listenLbl=$('voiceSchemeListenLbl');
     if(listenLbl) listenLbl.textContent=t('voiceSchemeListenLbl')||'后台怎么听';
+    var troubleSum=$('voiceSchemeTroubleSummary');
+    if(troubleSum) troubleSum.textContent=t('voiceSchemeTroubleSummary')||'听不准或太慢？';
+    var optInLbl=$('voiceWakeListeningOptInLabel');
+    if(optInLbl) optInLbl.textContent=t('voiceWakeListeningOptInLabel')||'全局口令唤醒';
+    var optInHint=$('voiceWakeListeningOptInHint');
+    if(optInHint) optInHint.textContent=t('voiceWakeListeningOptInHint')||'';
     renderLandingStrip();
     renderWrongFgStatus();
   }

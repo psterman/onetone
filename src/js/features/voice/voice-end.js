@@ -1093,6 +1093,43 @@
     });
   }
 
+  function replacePrimaryFinishPhrase(kind,raw){
+    kind=kind==='send'||kind==='discard'?kind:'keep';
+    var phrase=String(raw||'').trim();
+    if(!phrase) return Promise.resolve();
+    var lists,persist,render,langKey;
+    if(kind==='send'){
+      lists=currentSendPhraseLists();
+      langKey='__vp_voice_send_lang__';
+      persist=persistSendPhrases;
+      render=renderSendCustomPhrases;
+    }else if(kind==='discard'){
+      lists=currentCancelPhraseLists();
+      langKey='__vp_voice_cancel_lang__';
+      persist=persistCancelPhrases;
+      render=renderCancelCustomPhrases;
+    }else{
+      lists=currentEndPhraseLists();
+      langKey='__vp_voice_end_lang__';
+      persist=persistEndPhrases;
+      render=renderEndCustomPhrases;
+    }
+    var lang=global[langKey]||(/[\u4e00-\u9fff]/.test(phrase)?'zh':'en');
+    var prev=lang==='en'?lists.en.slice():lists.zh.slice();
+    var primary=String(prev[0]||'').trim();
+    var next=prev.filter(function(p){ return p!==phrase&&p!==primary; });
+    next.unshift(phrase);
+    var nextZh=lang==='zh'?next:lists.zh;
+    var nextEn=lang==='en'?next:lists.en;
+    return persist(nextZh,nextEn).then(function(){
+      if(render) render();
+      if(hooks().renderVoiceSettingsFlow) hooks().renderVoiceSettingsFlow();
+    }).catch(function(err){
+      console.error('voice_replace_finish',err);
+      hooks().toast(t('voiceEndFail'));
+    });
+  }
+
   function removeCustomBundlePhrase(kind,phrase){
     phrase=String(phrase||'').trim();
     if(!phrase) return;
@@ -1205,6 +1242,7 @@
     currentCancelPhraseLists:currentCancelPhraseLists,
     currentSendPhraseLists:currentSendPhraseLists,
     currentEndPhraseLists:currentEndPhraseLists,
+    replacePrimaryFinishPhrase:replacePrimaryFinishPhrase,
 
     testStop:testVoiceEndStop,
 

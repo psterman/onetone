@@ -33,13 +33,21 @@ check(
     !/named = promptCustomKeyMatchName\(''\)/.test(src)
 );
 check(
-  'launch shown for edit match even when applied',
-  /refreshKeysCustomKeyMatchLaunch\(editMatch\)/.test(src)
+  'launch inherits 01 trigger (no record button)',
+  /keysCustomKeyMatchLaunchFrom01/.test(src) &&
+    /syncCustomKeyLaunchFromHabit/.test(src) &&
+    !/data-match-launch-record/.test(src)
 );
 check('empty hint copy', /keysCaptureSeqHintEmpty/.test(src));
 check(
+  'create copies habit triggerKey',
+  /copy\.triggerKey = String\(source\.triggerKey/.test(src)
+);
+check(
   'desk fills pane-right',
-  /keys-channel-pane-right:has\(\.keys-custom-key-split\)/.test(css)
+  /keys-channel-pane-right:has\(#keysCaptureTargetActionsHost:not\(\[hidden\]\) \.keys-custom-key-split\)/.test(
+    css
+  )
 );
 check(
   'split borderless in channel frame',

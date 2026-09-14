@@ -1622,24 +1622,17 @@
   color: var(--on-surface-variant);
 }
 
-#settingsPanelKeys .keys-custom-key-launch-rec,
-.keys-capture-popover .keys-custom-key-launch-rec {
+#settingsPanelKeys .keys-custom-key-launch-note,
+.keys-capture-popover .keys-custom-key-launch-note {
   margin-left: auto;
-  border: 1px solid rgba(42, 156, 196, 0.4);
-  border-radius: 8px;
-  background: rgba(42, 156, 196, 0.1);
-  color: #0f5f7a;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 5px 12px;
-  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: #8494a6;
 }
 
-#settingsPanelKeys .keys-custom-key-launch-rec:hover,
-.keys-capture-popover .keys-custom-key-launch-rec:hover {
-  border-color: var(--primary);
-  background: rgba(42, 156, 196, 0.18);
-  color: var(--primary-strong, var(--primary));
+#settingsPanelKeys .keys-custom-key-launch-rec,
+.keys-capture-popover .keys-custom-key-launch-rec {
+  display: none;
 }
 
 #settingsPanelKeys .keys-custom-key-detail .home-key-map-actions.is-keys-variant,
@@ -1777,7 +1770,9 @@
   color: #0f5f7a;
 }
 #settingsPanelKeys .keys-seq-text-in,
-.keys-capture-popover .keys-seq-text-in {
+.keys-capture-popover .keys-seq-text-in,
+#settingsPanelKeys .keys-seq-open-in,
+.keys-capture-popover .keys-seq-open-in {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid var(--keys-line, var(--outline-variant));
@@ -1791,8 +1786,213 @@
   min-height: 36px;
   line-height: 1.35;
 }
+#settingsPanelKeys .keys-seq-open-in,
+.keys-capture-popover .keys-seq-open-in {
+  min-height: 32px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#settingsPanelKeys .keys-seq-open-row,
+.keys-capture-popover .keys-seq-open-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+#settingsPanelKeys .keys-seq-open-browse,
+.keys-capture-popover .keys-seq-open-browse {
+  flex: 0 0 auto;
+  border: 1px solid var(--keys-line, var(--outline-variant));
+  background: var(--keys-paper, var(--surface));
+  border-radius: 8px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: #0f5f7a;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#settingsPanelKeys .keys-seq-open-browse:hover,
+.keys-capture-popover .keys-seq-open-browse:hover {
+  border-color: rgba(42, 156, 196, 0.45);
+  background: rgba(42, 156, 196, 0.1);
+}
+
+/* Chrome / Edge bookmark picker */
+.keys-bookmark-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 14130;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(18, 24, 32, 0.45);
+}
+.keys-bookmark-picker-modal {
+  width: min(480px, 96vw);
+  max-height: min(72vh, 560px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  border-radius: 16px;
+  background: var(--surface, #fff);
+  color: var(--on-surface, #1a1a1a);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+.keys-bookmark-picker-modal.is-wide {
+  width: min(720px, 96vw);
+  max-height: min(82vh, 640px);
+}
+.keys-bookmark-picker-body {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) minmax(0, 1fr);
+  gap: 10px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.keys-bookmark-picker-folders {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 160px;
+  max-height: 480px;
+  overflow: auto;
+  padding-right: 2px;
+}
+.keys-bookmark-picker-folder {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  padding: 7px 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--on-surface, #1a1a1a);
+  cursor: pointer;
+}
+.keys-bookmark-picker-folder:hover {
+  background: rgba(42, 156, 196, 0.08);
+}
+.keys-bookmark-picker-folder.is-on {
+  background: rgba(42, 156, 196, 0.14);
+  border-color: rgba(42, 156, 196, 0.35);
+  color: #0f5f7a;
+}
+.keys-bookmark-picker-folder-lab {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.keys-bookmark-picker-folder-n {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.65;
+  font-size: 11px;
+}
+.keys-bookmark-picker-more {
+  padding: 10px 8px 4px;
+  font-size: 12px;
+  color: var(--on-surface-variant, #667);
+}
+.keys-bookmark-picker-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.keys-bookmark-picker-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+.keys-bookmark-picker-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--on-surface-variant, #667);
+}
+.keys-bookmark-picker-close {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--on-surface-variant, #667);
+  padding: 0 4px;
+}
+.keys-bookmark-picker-search {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--outline-variant, #ccd);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+}
+.keys-bookmark-picker-search:focus {
+  outline: none;
+  border-color: var(--primary, #2a9cc4);
+  box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.15);
+}
+.keys-bookmark-picker-list {
+  flex: 1 1 auto;
+  min-height: 160px;
+  max-height: 480px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.keys-bookmark-picker-empty {
+  padding: 28px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--on-surface-variant, #667);
+}
+.keys-bookmark-picker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  padding: 8px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+.keys-bookmark-picker-item:hover {
+  background: rgba(42, 156, 196, 0.1);
+  border-color: rgba(42, 156, 196, 0.25);
+}
+.keys-bookmark-picker-item-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--on-surface, #1a1a1a);
+}
+.keys-bookmark-picker-item-meta {
+  font-size: 11px;
+  color: var(--on-surface-variant, #667);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
 #settingsPanelKeys .keys-seq-text-in:focus,
-.keys-capture-popover .keys-seq-text-in:focus {
+.keys-capture-popover .keys-seq-text-in:focus,
+#settingsPanelKeys .keys-seq-open-in:focus,
+.keys-capture-popover .keys-seq-open-in:focus {
   outline: none;
   border-color: var(--primary, #2a9cc4);
   box-shadow: 0 0 0 3px rgba(42, 156, 196, 0.15);
@@ -6993,20 +7193,164 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   cursor: default;
 }
 
-/* Voice page: same manage affordances as keys (always show × / drag). */
 #settingsPanelVoiceWake .keys-scene-actions__dir-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 2px;
   padding-right: 2px;
 }
+#settingsPanelVoiceWake .keys-scene-actions__dir-item.has-wake {
+  align-items: flex-start;
+}
+#settingsPanelVoiceWake .keys-scene-actions__dir-stack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#settingsPanelVoiceWake .keys-scene-actions__dir-stack .keys-scene-actions__dir-main {
+  width: 100%;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 2px 2px 0;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-fold {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-sum {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px 0;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--on-surface-muted);
+  user-select: none;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-sum::-webkit-details-marker { display: none; }
+#settingsPanelVoiceWake .keys-scene-actions__wake-sum::after {
+  content: "▾";
+  font-size: 10px;
+  opacity: 0.65;
+  flex: 0 0 auto;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-fold[open] > .keys-scene-actions__wake-sum::after {
+  content: "▴";
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-sum-lbl {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--primary-strong, #1e87ad);
+  font-weight: 700;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0 4px;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-sec-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #8494a6;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-chip,
+#settingsPanelVoiceWake .keys-scene-actions__wake-add {
+  appearance: none;
+  border: 1px solid var(--keys-line, #d5dee8);
+  background: var(--surface, #fff);
+  color: var(--on-surface);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.3;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-chip.is-primary {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 45%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, #fff);
+  color: var(--primary-strong, #1e87ad);
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-chip--finish {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 28%, transparent);
+  color: var(--primary-strong, #1e87ad);
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-chip--finish.is-danger {
+  border-color: rgba(185, 28, 28, 0.28);
+  color: #b91c1c;
+  background: #fef2f2;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-add {
+  border-style: dashed;
+  color: var(--on-surface-muted);
+  font-weight: 600;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-toggle {
+  flex: 0 0 auto;
+  transform: scale(0.88);
+  transform-origin: center right;
+}
+#settingsPanelVoiceWake .keys-scene-actions__wake-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 550;
+  color: #0f5f7a;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 #settingsPanelVoiceWake .keys-scene-actions__drag {
   opacity: 0.7;
+  margin-top: 10px;
 }
 #settingsPanelVoiceWake .keys-scene-actions__dir-del {
   opacity: 0.85;
   width: 30px;
   font-size: 18px;
+  margin-top: 4px;
 }
 #settingsPanelVoiceWake .keys-scene-actions__dir-del:hover {
   opacity: 1;

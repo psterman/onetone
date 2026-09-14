@@ -601,12 +601,37 @@ fn send_unicode_char(ch: char) {
 /// phrases (12ms × 8 chars ≈ 100ms tail).
 const KEY_GAP_MS: u64 = 12;
 
+/// Shell-open a path or URL via `cmd /C start` (Windows). `kind` is display-only
+/// for file/url; folders prefer Explorer so nested paths open as directories.
+fn shell_open_action(kind: &str, value: &str) -> bool {
+    let v = value.trim();
+    if v.is_empty() {
+        return false;
+    }
+    #[cfg(windows)]
+    {
+        if kind.eq_ignore_ascii_case("folder") {
+            return crate::data_root::open_path(std::path::Path::new(v)).is_ok();
+        }
+        // file + url (+ unknown): default handler via start
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", v])
+            .spawn()
+            .is_ok()
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (kind, v);
+        false
+    }
+}
+
 /// Execute an ordered action sequence.  `Key` reuses `send_chord` with the
 /// caller's `key_press_duration_ms`; `Text` calls `send_text`; `Delay` does a
-/// blocking `thread::sleep`.  Because Delay blocks, callers MUST invoke this
-/// from a worker thread (voice_end_runtime already wraps the whole end-of-
-/// session body in `std::thread::spawn`).  Returns false on the first failing
-/// step and stops.
+/// blocking `thread::sleep`; `Open` shell-opens a file/folder/URL.  Because
+/// Delay blocks, callers MUST invoke this from a worker thread
+/// (voice_end_runtime already wraps the whole end-of-session body in
+/// `std::thread::spawn`).  Returns false on the first failing step and stops.
 pub fn run_action_sequence(actions: &[crate::config::Action], key_press_duration_ms: u32) -> bool {
     for act in actions {
         match act {
@@ -622,6 +647,15 @@ pub fn run_action_sequence(actions: &[crate::config::Action], key_press_duration
             }
             crate::config::Action::Delay { ms } => {
                 std::thread::sleep(std::time::Duration::from_millis(*ms as u64));
+            }
+            crate::config::Action::Open { kind, value } => {
+                // Skip blank rows (UI may persist an unfinished open step).
+                if value.trim().is_empty() {
+                    continue;
+                }
+                if !shell_open_action(kind, value) {
+                    return false;
+                }
             }
         }
     }

@@ -2596,6 +2596,10 @@
     if(collapse){ collapse.hidden=true; collapse.setAttribute('aria-hidden','true'); }
     var legacy=$('voiceWakeCustomChips');
     if(legacy){ legacy.hidden=true; legacy.innerHTML=''; }
+    try{
+      var scene=global.OneToneKeysSceneActionsPanel;
+      if(scene&&typeof scene.refresh==='function') scene.refresh();
+    }catch(_){}
   }
 
   function applyWakePhrasesLocally(next){

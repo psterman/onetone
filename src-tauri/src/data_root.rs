@@ -209,6 +209,36 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
 }}
 "#
     );
+    run_winforms_path_dialog(&script)
+}
+
+#[cfg(windows)]
+pub fn pick_file_dialog() -> Result<Option<PathBuf>, String> {
+    pick_file_dialog_desc("选择文件")
+}
+
+#[cfg(windows)]
+pub fn pick_file_dialog_desc(title: &str) -> Result<Option<PathBuf>, String> {
+    // ponytail: same WinForms+PowerShell pattern as folder picker.
+    let title = title.replace('\'', "''");
+    let script = format!(
+        r#"
+Add-Type -AssemblyName System.Windows.Forms | Out-Null
+$d = New-Object System.Windows.Forms.OpenFileDialog
+$d.Title = '{title}'
+$d.Filter = 'All files (*.*)|*.*'
+$d.CheckFileExists = $true
+$d.Multiselect = $false
+if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
+  Write-Output $d.FileName
+}}
+"#
+    );
+    run_winforms_path_dialog(&script)
+}
+
+#[cfg(windows)]
+fn run_winforms_path_dialog(script: &str) -> Result<Option<PathBuf>, String> {
     let mut cmd = std::process::Command::new("powershell");
     cmd.args([
         "-NoProfile",
@@ -216,7 +246,7 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
         "-WindowStyle",
         "Hidden",
         "-Command",
-        &script,
+        script,
     ]);
     {
         use std::os::windows::process::CommandExt;
@@ -226,7 +256,7 @@ if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
     let output = cmd.output().map_err(|e| e.to_string())?;
     if !output.status.success() {
         let err = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("folder dialog failed: {err}"));
+        return Err(format!("path dialog failed: {err}"));
     }
     let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if path.is_empty() {
@@ -244,6 +274,16 @@ pub fn pick_folder_dialog() -> Result<Option<PathBuf>, String> {
 #[cfg(not(windows))]
 pub fn pick_folder_dialog_desc(_description: &str) -> Result<Option<PathBuf>, String> {
     pick_folder_dialog()
+}
+
+#[cfg(not(windows))]
+pub fn pick_file_dialog() -> Result<Option<PathBuf>, String> {
+    Err("file picker is only supported on Windows".into())
+}
+
+#[cfg(not(windows))]
+pub fn pick_file_dialog_desc(_title: &str) -> Result<Option<PathBuf>, String> {
+    pick_file_dialog()
 }
 
 pub fn open_path(path: &Path) -> Result<(), String> {

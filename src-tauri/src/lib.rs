@@ -23,6 +23,7 @@ mod audio_win;
 mod backdrop;
 #[cfg(feature = "bfinal_e2e")]
 mod bfinal_e2e;
+mod browser_bookmarks;
 mod builtin_app_catalog;
 mod camera_capability_probe;
 mod claude_cli_session;
@@ -1055,6 +1056,8 @@ pub fn run() {
             ipc::cmd_clear_last_ui_stall,
             ipc::cmd_open_url,
             ipc::cmd_open_path,
+            ipc::cmd_pick_path,
+            ipc::cmd_list_browser_bookmarks,
             ipc::cmd_data_root_status,
             ipc::cmd_data_root_pick,
             ipc::cmd_data_root_open,

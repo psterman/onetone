@@ -65,7 +65,8 @@ pub fn cmd_mapping_conflicts(
 }
 
 /// Frontend payload shape: `{ type: "key", value: "Ctrl+Enter" }` /
-/// `{ type: "text", value: "继续" }` / `{ type: "delay", ms: 200 }`.
+/// `{ type: "text", value: "继续" }` / `{ type: "delay", ms: 200 }` /
+/// `{ type: "open", kind: "file"|"folder"|"url", value: "…" }`.
 /// Mirrors the on-disk schema exactly, so JSON roundtrip is lossless.
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -73,6 +74,7 @@ pub enum ActionPayload {
     Key { value: String },
     Text { value: String },
     Delay { ms: u32 },
+    Open { kind: String, value: String },
 }
 
 impl From<ActionPayload> for Action {
@@ -81,6 +83,7 @@ impl From<ActionPayload> for Action {
             ActionPayload::Key { value } => Action::Key { value },
             ActionPayload::Text { value } => Action::Text { value },
             ActionPayload::Delay { ms } => Action::Delay { ms },
+            ActionPayload::Open { kind, value } => Action::Open { kind, value },
         }
     }
 }

@@ -243,11 +243,10 @@
     }
 
     if(focus==='recordingAudio'){
-      if(ui.settingsPanel!=='voiceWake') setSettingsPanel('voiceWake');
-      if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
-        global.OneToneVoicePageState.setStep('finish');
-      }
-      scrollSettingsToTarget(['recordingAudioCard']);
+      if(ui.settingsPanel!=='sounds') setSettingsPanel('sounds');
+      var audioDetails=$('voiceFinishMoreDetails');
+      if(audioDetails) audioDetails.open=true;
+      scrollSettingsToTarget(['recordingAudioCard','voiceFinishMoreDetails']);
       return;
     }
 

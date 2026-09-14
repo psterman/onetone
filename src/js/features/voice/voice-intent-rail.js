@@ -117,12 +117,24 @@
     var wake=global.OneToneVoiceStepWake;
     if(wake&&wake.setVoiceFace) wake.setVoiceFace('dictate');
     parkBridges();
-    if(BRIDGE_MOUNT[id]) mountBridge(id);
+    if(BRIDGE_MOUNT[id]){
+      mountBridge(id);
+      // Re-assert after setVoiceFace — later init/drawer calls must not leave face hidden.
+      var mounted=$(BRIDGE_MOUNT[id].face);
+      if(mounted){
+        mounted.hidden=false;
+        mounted.setAttribute('aria-hidden','false');
+        mounted.classList.add('is-in-picker');
+      }
+    }
 
     if((id==='key'||id==='cursor')&&global.OneToneVoiceBridgeKeys){
-      if(global.OneToneVoiceBridgeKeys.setCat){
-        global.OneToneVoiceBridgeKeys.setCat(id==='key'?'other':'inject');
-      }else if(global.OneToneVoiceBridgeKeys.render){
+      if(global.OneToneVoiceBridgeKeys.setMode){
+        global.OneToneVoiceBridgeKeys.setMode(id==='key'?'customKey':'catalog');
+      }
+      if(id==='cursor'&&global.OneToneVoiceBridgeKeys.setCat){
+        global.OneToneVoiceBridgeKeys.setCat('inject');
+      }else if(!global.OneToneVoiceBridgeKeys.setMode&&global.OneToneVoiceBridgeKeys.render){
         global.OneToneVoiceBridgeKeys.render();
       }
     }

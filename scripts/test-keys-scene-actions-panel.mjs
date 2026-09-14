@@ -71,6 +71,36 @@ check(
   '02 pick refreshes scene dock via persistHeroCapture',
   /function persistHeroCapture[\s\S]*?KeysSceneActionsPanel[\s\S]*?scene\.refresh/.test(pickerSrc)
 );
+check(
+  'voice scheme strip is trouble details (not big card)',
+  html.includes('id="voiceSchemeTrouble"') &&
+    html.includes('voice-scheme-strip--trouble') &&
+    /voiceSchemeTroubleSummary/.test(html)
+);
+check(
+  'strategy + global opt-in live inside trouble body',
+  /voiceSchemeTrouble[\s\S]*voiceSummaryEngineSwitch[\s\S]*voiceWakeListeningOptInToggle/.test(html)
+);
+{
+  const troubleOpen = html.indexOf('class="voice-scheme-trouble-body"');
+  const troubleClose = html.indexOf('</details>', troubleOpen);
+  const troubleChunk =
+    troubleOpen >= 0 && troubleClose > troubleOpen ? html.slice(troubleOpen, troubleClose) : '';
+  check(
+    'phrase edit / aliases / keys-target not in visible strip body',
+    !!troubleChunk &&
+      !troubleChunk.includes('btnVoiceWakePhraseEditLink') &&
+      !troubleChunk.includes('btnVoiceWakeGoKeysTarget') &&
+      !troubleChunk.includes('voiceWakeMoreAliases')
+  );
+}
+check(
+  'voice dock paints wake chips + opt-in',
+  /function voiceWakeExtrasHtml/.test(panelSrc) &&
+    /data-wake-optin/.test(panelSrc) &&
+    /data-wake-add/.test(panelSrc) &&
+    /data-wake-phrase/.test(panelSrc)
+);
 check('keys-panel-ui wires SceneActionsPanel', /OneToneKeysSceneActionsPanel/.test(keysUi));
 check(
   'picker exports createCustomKeyMatchMapping',
@@ -562,6 +592,25 @@ const sandbox = {
   OneToneVoiceSettingsFlow: {
     scheduleVoiceSettingsRender() {}
   },
+  OneToneVoiceWake: {
+    currentWakePhraseList() {
+      return ['开始输入', '开始听写'];
+    },
+    replacePrimaryWakePhrase() {
+      return Promise.resolve();
+    }
+  },
+  OneToneVoiceEnd: {
+    currentSendPhraseLists() {
+      return { zh: ['发送'], en: ['send'] };
+    },
+    currentEndPhraseLists() {
+      return { zh: ['结束输入'], en: ['end dictation'] };
+    },
+    currentCancelPhraseLists() {
+      return { zh: ['取消输入'], en: ['cancel input'] };
+    }
+  },
   OneToneMappingCore: {
     byId(id) {
       return mappings[id] || null;
@@ -827,6 +876,12 @@ check('voice page shows IME badge', /keys-scene-actions__ime-name/.test(voiceDir
 check('voice meta is 1', /1/.test(els.voiceSceneActionsMeta.textContent));
 check('voice habit recognition has delete', /data-del="cursor"/.test(voiceDir));
 check('voice row shows drag handle', /keys-scene-actions__drag/.test(voiceDir));
+check('voice card shows wake phrase chips', /data-wake-phrase="开始输入"/.test(voiceDir));
+check('voice card shows wake opt-in toggle', /data-wake-optin/.test(voiceDir));
+check('voice card shows add phrase', /data-wake-add/.test(voiceDir));
+check('voice recognition card shows keys target link', /data-wake-activation/.test(voiceDir));
+check('voice card shows finish phrase chips', /data-finish-edit="send"/.test(voiceDir) && /data-finish-edit="keep"/.test(voiceDir) && /data-finish-edit="discard"/.test(voiceDir));
+check('voice card activation link stays on voice scheme', /data-wake-activation/.test(panelSrc) && /openVoiceActivationScheme/.test(panelSrc));
 check(
   'voice dock source skips empty recognition fallback',
   !/still show 语音输入/.test(panelSrc) && !/rows\.push\(recognitionRow\(m, fbTrig\)\)/.test(panelSrc)
@@ -933,6 +988,24 @@ check('voice new action creates voice mapping', createdVoiceCalls === 1 && creat
 check('voice new action records on voice mapping id', recordPinned === 'voice-new');
 check('voice new action does not open keys panel', openedSettingsPanel !== 'keys');
 check('voice new action stays on voiceWake', sandbox.OneToneState.ui.settingsPanel === 'voiceWake');
+check(
+  'voice new action draft stays visible in dock',
+  /data-jump="voice:voice-new"/.test(els.voiceSceneActionsDir.innerHTML)
+);
+check(
+  'voice new action keeps existing recognition row',
+  /data-jump="voice:cursor"/.test(els.voiceSceneActionsDir.innerHTML)
+);
+
+// Wake-first: IME set, no hardware triggerKey — must still list (口令唤醒).
+const prevTrig = mappings.cursor.triggerKey;
+mappings.cursor.triggerKey = '';
+API.render(mappings.cursor);
+check(
+  'voice dock lists recognition without triggerKey',
+  /data-jump="voice:cursor"/.test(els.voiceSceneActionsDir.innerHTML)
+);
+mappings.cursor.triggerKey = prevTrig;
 keysPage.hidden = false;
 voicePage.hidden = true;
 sandbox.OneToneState.ui.settingsPanel = 'keys';

@@ -1308,7 +1308,8 @@ pub struct MappingEntry {
 /// One step in a habit's target action sequence.
 ///
 /// `serde(tag = "type")` → on-disk shape is `{"type":"key","value":"Ctrl+Enter"}`,
-/// `{"type":"text","value":"继续"}`, or `{"type":"delay","ms":200}`.
+/// `{"type":"text","value":"继续"}`, `{"type":"delay","ms":200}`, or
+/// `{"type":"open","kind":"file"|"folder"|"url","value":"…"}`.
 /// The legacy single-string `targetKey` field is still read and folded back in
 /// through [`MappingEntry::effective_target_actions`] so old configs need no
 /// migration.
@@ -1321,6 +1322,8 @@ pub enum Action {
     Text { value: String },
     /// Pause for `ms` milliseconds before the next step.
     Delay { ms: u32 },
+    /// Shell-open a file, folder, or URL. `kind` is file | folder | url.
+    Open { kind: String, value: String },
 }
 
 impl Action {
@@ -1330,6 +1333,9 @@ impl Action {
             Action::Key { value } => format!("Key({value})"),
             Action::Text { value } => format!("Text({})", truncate_for_display(value, 32)),
             Action::Delay { ms } => format!("Delay({ms}ms)"),
+            Action::Open { kind, value } => {
+                format!("Open({kind}:{})", truncate_for_display(value, 32))
+            }
         }
     }
 }
@@ -8913,12 +8919,22 @@ mod tests {
             Action::Key { value: "Ctrl+Enter".into() },
             Action::Text { value: "继续 + more".into() },
             Action::Delay { ms: 1500 },
+            Action::Open {
+                kind: "url".into(),
+                value: "https://example.com".into(),
+            },
+            Action::Open {
+                kind: "folder".into(),
+                value: r"C:\Users".into(),
+            },
         ];
         let json = serde_json::to_string(&original).expect("serialize");
         // Tagged form: each entry has a "type" discriminator.
         assert!(json.contains(r#""type":"key""#));
         assert!(json.contains(r#""type":"text""#));
         assert!(json.contains(r#""type":"delay""#));
+        assert!(json.contains(r#""type":"open""#));
+        assert!(json.contains(r#""kind":"url""#));
         let back: Vec<Action> = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, original);
     }

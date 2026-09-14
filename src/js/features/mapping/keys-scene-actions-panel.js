@@ -686,12 +686,26 @@
       if (!trigLine && trig) trigLine = friendlyTrigger(trig);
       if (!trigLine) trigLine = t('badgeNotRecorded', '未设置');
       if (voicePage) {
-        // Voice dock: recorded 语音输入 + non-SoftPad voice phrases (manageable).
-        if (isVoiceInputMapping(sm) && hasConcreteConfig(sm) && trig && hasRecognitionScheme(sm)) {
+        // Voice dock: 语音输入 peers + non-SoftPad voice phrases.
+        // Wake-first habits often have IME / recognition without a hardware triggerKey —
+        // requiring trig here emptied the list after 新建/改口令 (kept mapping, 0 rows).
+        var keep =
+          String(sm.id || '') === String(state.mappingId || '').trim();
+        if (
+          isVoiceInputMapping(sm) &&
+          hasRecognitionScheme(sm) &&
+          (hasConcreteConfig(sm) || keep)
+        ) {
           var rec = recognitionRow(sm, trigLine);
           // Subtitle stays trigger/status; IME icon+name only in bottom trail (no duplicate).
           rec.binds = { key: trigLine || t('badgeNotRecorded', '未设置') };
           rows.push(rec);
+        } else if (keep && !isCustomKeyMatchMapping(sm)) {
+          // 「新建动作」draft: stay visible while user records 01 / picks 02.
+          var draft = recognitionRow(sm, trigLine);
+          draft.binds = { key: t('badgeNotRecorded', '未设置') };
+          draft.unset = true;
+          rows.push(draft);
         }
         var phrases = voicePhraseRows(sm);
         for (var p = 0; p < phrases.length; p++) rows.push(phrases[p]);
@@ -900,7 +914,7 @@
               )
             : t(
                 'keysCustomKeyMatchCreated',
-                '已新建。录启动键，再加步骤。'
+                '已新建。直接加步骤即可（启动键同 01）。'
               )
         );
       }
@@ -1187,6 +1201,241 @@
     paint();
   }
 
+  function globalWakeOptInOn() {
+    try {
+      var cfg =
+        global.OneToneState && global.OneToneState.state && global.OneToneState.state.config
+          ? global.OneToneState.state.config
+          : {};
+      return !!cfg.voiceWakeListeningOptIn;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function wakePhrasesForRow(a) {
+    if (!a) return [];
+    if (a.kind === 'recognition') {
+      try {
+        var Wake = global.OneToneVoiceWake;
+        if (Wake && typeof Wake.currentWakePhraseList === 'function') {
+          return (Wake.currentWakePhraseList() || []).filter(Boolean);
+        }
+      } catch (_) {}
+      var sm = mappingById(a.mappingId);
+      var ov = sm && sm.voiceOverride && Array.isArray(sm.voiceOverride.wakePhrases)
+        ? sm.voiceOverride.wakePhrases
+        : [];
+      return ov.map(function (p) {
+        return String(p || '').trim();
+      }).filter(Boolean);
+    }
+    if (a.kind === 'voicePhrase') {
+      var line = String((a.binds && a.binds.key) || '').trim();
+      var m = line.match(/^「(.+)」$/);
+      if (m) return [m[1]];
+      if (line) return [line];
+      var peer = mappingById(a.mappingId);
+      var list = peer && Array.isArray(peer.agentBindings) ? peer.agentBindings : [];
+      var out = [];
+      for (var i = 0; i < list.length; i++) {
+        var b = list[i];
+        if (!b || String(b.triggerType || '') !== 'voice') continue;
+        if (String(b.slotId || '') !== String(a.slotId || '') && String(b.actionId || '') !== String(a.actionId || '')) {
+          continue;
+        }
+        var ph = String(b.triggerBinding || '').trim();
+        if (ph) out.push(ph);
+      }
+      return out;
+    }
+    return [];
+  }
+
+  function firstPhraseFromLists(lists, fallback) {
+    var lang =
+      global.OneToneI18n && global.OneToneI18n.getLang ? global.OneToneI18n.getLang() : 'zh';
+    var arr = lists ? (lang === 'en' ? lists.en : lists.zh) : null;
+    if (Array.isArray(arr)) {
+      for (var i = 0; i < arr.length; i++) {
+        var p = String(arr[i] || '').trim();
+        if (p) return p;
+      }
+    }
+    return fallback;
+  }
+
+  function finishPhraseBundle() {
+    var End = global.OneToneVoiceEnd;
+    return {
+      send: firstPhraseFromLists(
+        End && typeof End.currentSendPhraseLists === 'function' ? End.currentSendPhraseLists() : null,
+        '发送'
+      ),
+      keep: firstPhraseFromLists(
+        End && typeof End.currentEndPhraseLists === 'function' ? End.currentEndPhraseLists() : null,
+        '结束输入'
+      ),
+      discard: firstPhraseFromLists(
+        End && typeof End.currentCancelPhraseLists === 'function'
+          ? End.currentCancelPhraseLists()
+          : null,
+        '取消输入'
+      )
+    };
+  }
+
+  function openVoiceActivationScheme() {
+    try {
+      if (global.OneToneVoicePageState && typeof global.OneToneVoicePageState.setStep === 'function') {
+        global.OneToneVoicePageState.setStep('finish');
+      }
+    } catch (_) {}
+    setTimeout(function () {
+      var target =
+        $('voiceImeStripWrap') ||
+        $('imePresetStripVoice') ||
+        $('voiceFinishCard') ||
+        $('voiceSettingsRecognizeBody');
+      if (target && target.scrollIntoView) {
+        try {
+          target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch (_) {}
+      }
+    }, 0);
+  }
+
+  function openFinishPhraseEdit(outcome) {
+    outcome = outcome === 'send' || outcome === 'discard' ? outcome : 'keep';
+    try {
+      if (global.OneToneVoicePageState && typeof global.OneToneVoicePageState.setStep === 'function') {
+        global.OneToneVoicePageState.setStep('finish');
+      }
+    } catch (_) {}
+    setTimeout(function () {
+      var edit =
+        document.querySelector &&
+        document.querySelector('.voice-finish-outcome-edit[data-finish-edit="' + outcome + '"]');
+      if (edit && typeof edit.click === 'function') edit.click();
+    }, 0);
+  }
+
+  function voiceWakeExtrasHtml(a) {
+    if (channelKind() !== 'voice' || !a) return '';
+    if (a.kind !== 'recognition' && a.kind !== 'voicePhrase') return '';
+    var phrases = wakePhrasesForRow(a);
+    var on = globalWakeOptInOn();
+    var primary = phrases.length ? String(phrases[0]) : '';
+    var extra = Math.max(0, phrases.length - 1);
+    var finish = a.kind === 'recognition' ? finishPhraseBundle() : null;
+    var chips = phrases
+      .map(function (p, idx) {
+        return (
+          '<button type="button" class="keys-scene-actions__wake-chip' +
+          (idx === 0 ? ' is-primary' : '') +
+          '" data-wake-phrase="' +
+          esc(p) +
+          '" title="' +
+          esc(t('voiceWakePhraseEditLink', '不对就改')) +
+          '">' +
+          esc(p) +
+          '</button>'
+        );
+      })
+      .join('');
+    var finishChips = finish
+      ? '<div class="keys-scene-actions__wake-sec">' +
+        '<span class="keys-scene-actions__wake-sec-lbl">' +
+        esc(t('voiceDockFinishSec', '说完')) +
+        '</span>' +
+        '<div class="keys-scene-actions__wake-chips">' +
+        '<button type="button" class="keys-scene-actions__wake-chip keys-scene-actions__wake-chip--finish" data-finish-edit="send" title="' +
+        esc(t('voiceFinishEditLink', '编辑')) +
+        '">「' +
+        esc(finish.send) +
+        '」</button>' +
+        '<button type="button" class="keys-scene-actions__wake-chip keys-scene-actions__wake-chip--finish" data-finish-edit="keep" title="' +
+        esc(t('voiceFinishEditLink', '编辑')) +
+        '">「' +
+        esc(finish.keep) +
+        '」</button>' +
+        '<button type="button" class="keys-scene-actions__wake-chip keys-scene-actions__wake-chip--finish is-danger" data-finish-edit="discard" title="' +
+        esc(t('voiceFinishEditLink', '编辑')) +
+        '">「' +
+        esc(finish.discard) +
+        '」</button>' +
+        '</div></div>'
+      : '';
+    var activationLink =
+      a.kind === 'recognition'
+        ? '<button type="button" class="keys-scene-actions__wake-link" data-wake-activation="1">' +
+          esc(t('voiceDockWakeActivation', '改听写方式 →')) +
+          '</button>'
+        : '';
+    var sumLbl = primary
+      ? esc(primary) + (extra ? ' · +' + extra : '') + (finish ? ' · 说完' : '')
+      : esc(t('voiceDockWakeAdd', '＋ 口令'));
+    return (
+      '<div class="keys-scene-actions__wake" data-wake-card="' +
+      esc(a.key) +
+      '">' +
+      '<div class="keys-scene-actions__wake-row">' +
+      '<details class="keys-scene-actions__wake-fold">' +
+      '<summary class="keys-scene-actions__wake-sum">' +
+      '<span class="keys-scene-actions__wake-sum-lbl">' +
+      sumLbl +
+      '</span>' +
+      '</summary>' +
+      '<div class="keys-scene-actions__wake-body">' +
+      '<div class="keys-scene-actions__wake-sec">' +
+      '<span class="keys-scene-actions__wake-sec-lbl">' +
+      esc(t('voiceDockWakeSec', '激活')) +
+      '</span>' +
+      '<div class="keys-scene-actions__wake-chips">' +
+      chips +
+      '<button type="button" class="keys-scene-actions__wake-add" data-wake-add="1">' +
+      esc(t('voiceDockWakeAdd', '＋ 口令')) +
+      '</button>' +
+      '</div></div>' +
+      finishChips +
+      '</div>' +
+      '</details>' +
+      '<button type="button" class="toggle-switch keys-scene-actions__wake-toggle' +
+      (on ? ' is-on' : '') +
+      '" role="switch" aria-checked="' +
+      (on ? 'true' : 'false') +
+      '" data-wake-optin="1" title="' +
+      esc(t('voiceDockWakeOptIn', '口令唤醒')) +
+      '" aria-label="' +
+      esc(t('voiceDockWakeOptIn', '口令唤醒')) +
+      '"></button>' +
+      '</div>' +
+      activationLink +
+      '</div>'
+    );
+  }
+
+  function clickHidden(id) {
+    var el = $(id);
+    if (el && typeof el.click === 'function') el.click();
+  }
+
+  function ensureGlobalWakeOptInFromCard() {
+    var cfg =
+      global.OneToneState && global.OneToneState.state && global.OneToneState.state.config
+        ? global.OneToneState.state.config
+        : null;
+    if (!cfg) return;
+    if (cfg.voiceWakeListeningOptIn) {
+      // Toggle off via the shared control.
+      clickHidden('voiceWakeListeningOptInToggle');
+      paint();
+      return;
+    }
+    clickHidden('voiceWakeListeningOptInToggle');
+    paint();
+  }
+
   function paintDir(rows, host) {
     host = host || activeHost();
     var dirHost = $(host.dir);
@@ -1199,6 +1448,7 @@
           )
         : t('keysSceneActionsEmptyKeys', '还没有动作 · 点下方新建');
     var canDrag = rows.length > 1;
+    var voice = channelKind() === 'voice';
     var list =
       !rows.length
         ? '<p class="keys-scene-actions__empty">' +
@@ -1210,7 +1460,7 @@
         : '<div class="keys-scene-actions__grp" data-group="input">' +
           '<div class="keys-scene-actions__grp-h">' +
           esc(
-            channelKind() === 'voice'
+            voice
               ? t('keysSceneActionsGroupVoice', '语音')
               : t('keysSceneActionsTitle', '本场景动作')
           ) +
@@ -1226,20 +1476,8 @@
               var on = String(a.mappingId || '') === String(state.mappingId || '');
               var delLbl = t('keysSceneActionsDelete', '删除');
               var dragLbl = t('keysSceneActionsDrag', '拖动排序');
-              return (
-                '<div class="keys-scene-actions__dir-item' +
-                (a.unset ? ' is-unset' : '') +
-                (on ? ' is-active' : '') +
-                '" role="listitem" draggable="' +
-                (canDrag ? 'true' : 'false') +
-                '" data-row-key="' +
-                esc(a.key) +
-                '">' +
-                '<span class="keys-scene-actions__drag' +
-                (canDrag ? '' : ' is-disabled') +
-                '" title="' +
-                esc(dragLbl) +
-                '" aria-hidden="true">⋮⋮</span>' +
+              var wake = voice ? voiceWakeExtrasHtml(a) : '';
+              var mainInner =
                 '<button type="button" class="keys-scene-actions__dir-main" data-jump="' +
                 esc(a.key) +
                 '" title="' +
@@ -1265,7 +1503,26 @@
                 '<span class="keys-scene-actions__dot' +
                 (a.unset ? ' is-off' : '') +
                 '" aria-hidden="true"></span>' +
-                '</button>' +
+                '</button>';
+              var mid = wake
+                ? '<div class="keys-scene-actions__dir-stack">' + mainInner + wake + '</div>'
+                : mainInner;
+              return (
+                '<div class="keys-scene-actions__dir-item' +
+                (a.unset ? ' is-unset' : '') +
+                (on ? ' is-active' : '') +
+                (wake ? ' has-wake' : '') +
+                '" role="listitem" draggable="' +
+                (canDrag ? 'true' : 'false') +
+                '" data-row-key="' +
+                esc(a.key) +
+                '">' +
+                '<span class="keys-scene-actions__drag' +
+                (canDrag ? '' : ' is-disabled') +
+                '" title="' +
+                esc(dragLbl) +
+                '" aria-hidden="true">⋮⋮</span>' +
+                mid +
                 '<button type="button" class="keys-scene-actions__dir-del" data-del="' +
                 esc(a.mappingId) +
                 '" data-del-key="' +
@@ -1327,6 +1584,60 @@
     if (tEl.closest && tEl.closest('[data-add]')) {
       e.preventDefault();
       startNewAction();
+      return;
+    }
+    var wakeOpt = tEl.closest && tEl.closest('[data-wake-optin]');
+    if (wakeOpt) {
+      e.preventDefault();
+      e.stopPropagation();
+      ensureGlobalWakeOptInFromCard();
+      return;
+    }
+    var wakeAdd = tEl.closest && tEl.closest('[data-wake-add]');
+    if (wakeAdd) {
+      e.preventDefault();
+      e.stopPropagation();
+      clickHidden('btnVoiceWakePoolAdd');
+      return;
+    }
+    var finishEdit = tEl.closest && tEl.closest('[data-finish-edit]');
+    if (finishEdit) {
+      e.preventDefault();
+      e.stopPropagation();
+      openFinishPhraseEdit(finishEdit.getAttribute('data-finish-edit') || 'keep');
+      return;
+    }
+    var wakePhrase = tEl.closest && tEl.closest('[data-wake-phrase]');
+    if (wakePhrase) {
+      e.preventDefault();
+      e.stopPropagation();
+      var phrase = String(wakePhrase.getAttribute('data-wake-phrase') || '').trim();
+      var Wake = global.OneToneVoiceWake;
+      if (phrase && Wake && typeof Wake.replacePrimaryWakePhrase === 'function') {
+        try {
+          Promise.resolve(Wake.replacePrimaryWakePhrase(phrase)).then(function () {
+            paint();
+          });
+        } catch (_) {
+          clickHidden('btnVoiceWakePhraseEditLink');
+        }
+      } else {
+        clickHidden('btnVoiceWakePhraseEditLink');
+      }
+      return;
+    }
+    var wakeAct = tEl.closest && tEl.closest('[data-wake-activation]');
+    if (wakeAct) {
+      e.preventDefault();
+      e.stopPropagation();
+      openVoiceActivationScheme();
+      return;
+    }
+    var wakeKeys = tEl.closest && tEl.closest('[data-wake-keys-target]');
+    if (wakeKeys) {
+      e.preventDefault();
+      e.stopPropagation();
+      openVoiceActivationScheme();
       return;
     }
     var delBtn = tEl.closest && tEl.closest('[data-del]');

@@ -99,6 +99,34 @@ pub fn cmd_open_path(path: String) -> Result<(), String> {
     crate::data_root::open_path(&p)
 }
 
+/// Native file/folder picker for action-sequence Open steps. `kind`: `file` | `folder`.
+/// Returns `None` when the user cancels.
+#[tauri::command]
+pub async fn cmd_pick_path(kind: String) -> Result<Option<String>, String> {
+    let k = kind.trim().to_ascii_lowercase();
+    tauri::async_runtime::spawn_blocking(move || {
+        let picked = if k == "folder" {
+            crate::data_root::pick_folder_dialog()?
+        } else if k == "file" {
+            crate::data_root::pick_file_dialog()?
+        } else {
+            return Err("kind must be file or folder".into());
+        };
+        Ok(picked.map(|p| p.to_string_lossy().to_string()))
+    })
+    .await
+    .map_err(|e| format!("pick_path task failed: {e}"))?
+}
+
+/// Chrome / Edge bookmarks (http/https only). Empty if browsers not installed.
+#[tauri::command]
+pub async fn cmd_list_browser_bookmarks(
+) -> Result<Vec<crate::browser_bookmarks::BrowserBookmark>, String> {
+    tauri::async_runtime::spawn_blocking(crate::browser_bookmarks::list_browser_bookmarks)
+        .await
+        .map_err(|e| format!("list_browser_bookmarks task failed: {e}"))
+}
+
 #[tauri::command]
 pub fn cmd_data_root_status() -> crate::data_root::DataRootStatus {
     crate::data_root::status()

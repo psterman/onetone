@@ -13,13 +13,15 @@ kws = ["build", "--features", "kws-engine"]
 #   rustc invocation is intercepted. First run is normal; subsequent runs reuse
 #   artifacts on disk. Override cache location with SCCACHE_DIR if needed.
 # - lld-link: same exe vendored by rustup as rust-lld.exe. Setting
-#   `linker = "<abs path>"` together with `-Clinker-flavor=gnu-lld` makes
-#   rustc invoke rust-lld explicitly. rust-lld then auto-detects the LLD mode
-#   from the calling args. ~30-60s link steps become ~5-15s on Tauri-sized
-#   binaries. Requires LLVM tools (`rustup component add llvm-tools`).
+#   `linker = "<abs path>"` together with `-Clinker-flavor=lld-link` makes
+#   rustc invoke rust-lld explicitly. ~30-60s link steps become ~5-15s on
+#   Tauri-sized binaries. Requires LLVM tools (`rustup component add llvm-tools`).
+# - /DEFAULTLIB:ucrt.lib: bundled sqlite (rusqlite) objects import CRT via
+#   dllimport; rust-lld otherwise picks static libucrt.lib and fails with
+#   `undefined symbol: __declspec(dllimport) strspn`.
 [build]
 rustc-wrapper = "C:/Users/Administrator/.cargo/bin/sccache.exe"
 
 [target.x86_64-pc-windows-msvc]
 linker = "C:/Users/Administrator/.rustup/toolchains/stable-x86_64-pc-windows-msvc/lib/rustlib/x86_64-pc-windows-msvc/bin/rust-lld.exe"
-rustflags = ["-Clinker-flavor=lld-link"]
+rustflags = ["-Clinker-flavor=lld-link", "-Clink-arg=/DEFAULTLIB:ucrt.lib"]

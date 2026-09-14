@@ -275,6 +275,9 @@
             + '<button type="button" class="home-key-map-action-add" data-add="record">⏺ '+escHtml(t('homeKeyMapActionRecord'))+' +</button>'
             + '<button type="button" class="home-key-map-action-add" data-add="text">'+escHtml(t('homeKeyMapActionTypeText'))+' +</button>'
             + '<button type="button" class="home-key-map-action-add" data-add="delay">'+escHtml(t('homeKeyMapActionTypeDelay'))+' +</button>'
+            + '<button type="button" class="home-key-map-action-add" data-add="open-file">'+escHtml(t('keysCaptureSeqAddOpenFile','文件'))+' +</button>'
+            + '<button type="button" class="home-key-map-action-add" data-add="open-folder">'+escHtml(t('keysCaptureSeqAddOpenFolder','文件夹'))+' +</button>'
+            + '<button type="button" class="home-key-map-action-add" data-add="open-url">'+escHtml(t('keysCaptureSeqAddOpenUrl','网址'))+' +</button>'
             + '</div>'
           : '';
         var moreRow=acts.length>1
@@ -408,11 +411,28 @@
     }
   }
   // ── target action sequence helpers (added 2026-09) ──
+  function openKindLabel(kind){
+    var k=String(kind||'file').toLowerCase();
+    if(k==='folder') return t('keysCaptureSeqAddOpenFolder','文件夹');
+    if(k==='url') return t('keysCaptureSeqAddOpenUrl','网址');
+    return t('keysCaptureSeqAddOpenFile','文件');
+  }
+  function openKindPlaceholder(kind){
+    var k=String(kind||'file').toLowerCase();
+    if(k==='folder') return t('keysCaptureSeqOpenFolderPh','文件夹路径，如 C:\\Users');
+    if(k==='url') return t('keysCaptureSeqOpenUrlPh','https://…');
+    return t('keysCaptureSeqOpenFilePh','文件路径，如 C:\\a.txt');
+  }
+  function normalizeOpenKind(kind){
+    var k=String(kind||'file').toLowerCase();
+    if(k==='folder'||k==='url') return k;
+    return 'file';
+  }
   function effectiveTargetActions(m){
     if(!m) return [];
     if(Array.isArray(m.targetActions)&&m.targetActions.length){
       return m.targetActions.map(function(a){
-        return {type:a.type||'key',value:a.value,ms:a.ms};
+        return {type:a.type||'key',value:a.value,ms:a.ms,kind:a.kind};
       });
     }
     var tk=String(m.targetKey||'').trim();
@@ -451,6 +471,11 @@
       badge='⏱'; typeLbl=t('homeKeyMapActionTypeDelay');
       body=escHtml(String(a.ms||0)+' ms');
       editHint=' data-edit="delay"';
+    } else if(typ==='open'){
+      badge='↗';
+      typeLbl=openKindLabel(a&&a.kind);
+      body=escHtml(a.value||'')||escHtml(t('keysCaptureSeqOpenEmpty','未填写'));
+      editHint=' data-edit="open"';
     } else {
       typeLbl=escHtml(typ||'?');
       body='';
@@ -539,7 +564,9 @@
       ? t('keysCaptureSeqAddKey','按键')
       : typ==='text'
         ? t('keysCaptureSeqAddText','文本')
-        : t('keysCaptureSeqAddDelay','延迟');
+        : typ==='open'
+          ? openKindLabel(a&&a.kind)
+          : t('keysCaptureSeqAddDelay','延迟');
     var body='';
     if(typ==='key'){
       var empty=!String(a&&a.value||'').trim();
@@ -559,6 +586,30 @@
         +' placeholder="'+escHtml(t('keysActionTextSheetField','文本内容'))+'">'
         +escHtml(a&&a.value||'')
         +'</textarea>';
+    } else if(typ==='open'){
+      var okind=normalizeOpenKind(a&&a.kind);
+      var sideBtns =
+        okind === 'url'
+          ? ('<button type="button" class="keys-seq-open-browse" data-inline-open-paste="'+i+'"'
+            +' title="'+escHtml(t('keysCaptureSeqOpenPaste','粘贴'))+'">'
+            +escHtml(t('keysCaptureSeqOpenPaste','粘贴'))
+            +'</button>'
+            +'<button type="button" class="keys-seq-open-browse" data-inline-open-bookmarks="'+i+'"'
+            +' title="'+escHtml(t('keysCaptureSeqOpenBookmarks','收藏夹'))+'">'
+            +escHtml(t('keysCaptureSeqOpenBookmarks','收藏夹'))
+            +'</button>')
+          : ('<button type="button" class="keys-seq-open-browse" data-inline-open-browse="'+i+'"'
+            +' data-open-kind="'+escHtml(okind)+'"'
+            +' title="'+escHtml(t('keysCaptureSeqOpenBrowse','浏览'))+'">'
+            +escHtml(t('keysCaptureSeqOpenBrowse','浏览'))
+            +'</button>');
+      body='<div class="keys-seq-open-row">'
+        +'<input type="text" class="keys-seq-open-in" data-inline-open="'+i+'"'
+        +' data-open-kind="'+escHtml(okind)+'"'
+        +' value="'+escHtml(a&&a.value||'')+'"'
+        +' placeholder="'+escHtml(openKindPlaceholder(okind))+'" />'
+        +sideBtns
+        +'</div>';
     } else {
       var ms=Number(a&&a.ms)||200;
       var pills=KEYS_DELAY_PRESETS.map(function(preset){
@@ -612,7 +663,7 @@
       var mapping=resolveMapping();
       if(!mapping||!mapping.id) return;
       var t=ev.target;
-      var btn=t&&t.closest?t.closest('[data-act],[data-inline-rec],[data-inline-delay],[data-add]'):null;
+      var btn=t&&t.closest?t.closest('[data-act],[data-inline-rec],[data-inline-delay],[data-inline-open-browse],[data-inline-open-paste],[data-inline-open-bookmarks],[data-add]'):null;
       if(!btn||!container.contains(btn)) return;
       // Let textareas / number inputs keep default focus behavior.
       if(btn.tagName==='TEXTAREA'||btn.tagName==='INPUT') return;
@@ -655,6 +706,48 @@
         }
         return;
       }
+      var browseBtn=btn.getAttribute('data-inline-open-browse');
+      if(browseBtn!=null){
+        var bi=parseInt(browseBtn,10);
+        var bk=normalizeOpenKind(btn.getAttribute('data-open-kind')||(cur[bi]&&cur[bi].kind));
+        if(bk==='url'||!cur[bi]) return;
+        pickOpenValue(bk, String(cur[bi].value||''), function(v){
+          if(!v) return;
+          var next=effectiveTargetActions(mapping).slice();
+          if(!next[bi]||next[bi].type!=='open') return;
+          next[bi]={type:'open',kind:bk,value:v};
+          applyAndRefresh(mapping, next);
+        });
+        return;
+      }
+      var pasteBtn=btn.getAttribute('data-inline-open-paste');
+      if(pasteBtn!=null){
+        var pi=parseInt(pasteBtn,10);
+        if(!cur[pi]||cur[pi].type!=='open') return;
+        readClipboardText(function(text){
+          var v=String(text||'').trim();
+          if(!v) return;
+          var next=effectiveTargetActions(mapping).slice();
+          if(!next[pi]||next[pi].type!=='open') return;
+          next[pi]={type:'open',kind:'url',value:v};
+          applyAndRefresh(mapping, next);
+        });
+        return;
+      }
+      var bmBtn=btn.getAttribute('data-inline-open-bookmarks');
+      if(bmBtn!=null){
+        var bmi=parseInt(bmBtn,10);
+        if(!cur[bmi]||cur[bmi].type!=='open') return;
+        pickBrowserBookmark(function(url){
+          var v=String(url||'').trim();
+          if(!v) return;
+          var next=effectiveTargetActions(mapping).slice();
+          if(!next[bmi]||next[bmi].type!=='open') return;
+          next[bmi]={type:'open',kind:'url',value:v};
+          applyAndRefresh(mapping, next);
+        });
+        return;
+      }
       var add=btn.getAttribute('data-add');
       if(add==='key'){
         cur.push({type:'key',value:''});
@@ -675,6 +768,24 @@
       if(add==='delay'){
         cur.push({type:'delay',ms:200});
         applyAndRefresh(mapping, cur);
+        return;
+      }
+      if(add==='open-file'||add==='open-folder'||add==='open-url'){
+        var ok=add==='open-folder'?'folder':add==='open-url'?'url':'file';
+        if(ok==='url'){
+          cur.push({type:'open',kind:ok,value:''});
+          applyAndRefresh(mapping, cur).then(function(){
+            var inp=container.querySelector('[data-inline-open="'+(cur.length-1)+'"]');
+            if(inp) inp.focus();
+          });
+          return;
+        }
+        pickOpenValue(ok, '', function(v){
+          if(!v) return;
+          cur.push({type:'open',kind:ok,value:v});
+          applyAndRefresh(mapping, cur);
+        });
+        return;
       }
     });
     container.addEventListener('change', function(ev){
@@ -703,16 +814,31 @@
     container.addEventListener('focusout', function(ev){
       if(!container.classList.contains('is-keys-inline')) return;
       var el=ev.target;
-      if(!el||el.getAttribute('data-inline-text')==null) return;
-      var ti=parseInt(el.getAttribute('data-inline-text'),10);
+      if(!el||!el.getAttribute) return;
       var mapping=resolveMapping();
       if(!mapping) return;
-      var cur=effectiveTargetActions(mapping).slice();
-      if(!cur[ti]||cur[ti].type!=='text') return;
-      var next=String(el.value||'');
-      if(String(cur[ti].value||'')===next) return;
-      cur[ti]={type:'text',value:next};
-      applyAndRefresh(mapping, cur);
+      var ti=el.getAttribute('data-inline-text');
+      if(ti!=null){
+        var tix=parseInt(ti,10);
+        var cur=effectiveTargetActions(mapping).slice();
+        if(!cur[tix]||cur[tix].type!=='text') return;
+        var next=String(el.value||'');
+        if(String(cur[tix].value||'')===next) return;
+        cur[tix]={type:'text',value:next};
+        applyAndRefresh(mapping, cur);
+        return;
+      }
+      var oi=el.getAttribute('data-inline-open');
+      if(oi!=null){
+        var oix=parseInt(oi,10);
+        var curO=effectiveTargetActions(mapping).slice();
+        if(!curO[oix]||curO[oix].type!=='open') return;
+        var nextO=String(el.value||'').trim();
+        var kindO=normalizeOpenKind(el.getAttribute('data-open-kind')||curO[oix].kind);
+        if(String(curO[oix].value||'')===nextO&&normalizeOpenKind(curO[oix].kind)===kindO) return;
+        curO[oix]={type:'open',kind:kindO,value:nextO};
+        applyAndRefresh(mapping, curO);
+      }
     });
   }
 
@@ -760,6 +886,299 @@
       try{ console.error('targetActions persist failed', err); }catch(_){ }
       return null;
     });
+  }
+
+  // File/folder: native picker via cmd_pick_path; URL still prompts.
+  function readClipboardText(onDone) {
+    var clip = global.navigator && global.navigator.clipboard;
+    if (clip && typeof clip.readText === 'function') {
+      clip
+        .readText()
+        .then(function (text) {
+          onDone(String(text || ''));
+        })
+        .catch(function () {
+          onDone('');
+        });
+      return;
+    }
+    onDone('');
+  }
+
+  function escAttr(s) {
+    return escHtml(String(s == null ? '' : s));
+  }
+
+  function pickBrowserBookmark(onPicked) {
+    var invoke = global.OneToneIpc && global.OneToneIpc.invoke;
+    if (typeof invoke !== 'function') {
+      try {
+        global.OneToneApp &&
+          global.OneToneApp.toast &&
+          global.OneToneApp.toast(
+            t(
+              'keysCaptureSeqBookmarksNeedApp',
+              '需要在桌面版 OneTone 中打开（浏览器预览无法读取本机收藏夹）'
+            )
+          );
+      } catch (_) {}
+      onPicked('');
+      return;
+    }
+    var existing = document.getElementById('keysBookmarkPickerOverlay');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'keysBookmarkPickerOverlay';
+    overlay.className = 'keys-bookmark-picker-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.innerHTML =
+      '<div class="keys-bookmark-picker-modal is-wide">' +
+      '<div class="keys-bookmark-picker-head">' +
+      '<div>' +
+      '<div class="keys-bookmark-picker-title">' +
+      escHtml(t('keysCaptureSeqBookmarksTitle', '从收藏夹选择')) +
+      '</div>' +
+      '<div class="keys-bookmark-picker-sub">' +
+      escHtml(t('keysCaptureSeqBookmarksSub', '读取本机 Chrome / Edge 收藏夹')) +
+      '</div>' +
+      '</div>' +
+      '<button type="button" class="keys-bookmark-picker-close" data-bm-close="1" aria-label="×">×</button>' +
+      '</div>' +
+      '<input type="search" class="keys-bookmark-picker-search" data-bm-search="1" placeholder="' +
+      escAttr(t('keysCaptureSeqBookmarksSearch', '搜索标题或网址')) +
+      '" />' +
+      '<div class="keys-bookmark-picker-body">' +
+      '<div class="keys-bookmark-picker-folders" data-bm-folders="1"></div>' +
+      '<div class="keys-bookmark-picker-list" data-bm-list="1">' +
+      '<div class="keys-bookmark-picker-empty">' +
+      escHtml(t('keysCaptureSeqBookmarksLoading', '正在读取…')) +
+      '</div>' +
+      '</div>' +
+      '</div>' +
+      '</div>';
+
+    var cache = [];
+    var loadError = '';
+    var activeFolder = '';
+
+    function finish(url) {
+      try {
+        overlay.remove();
+      } catch (_) {}
+      onPicked(url || '');
+    }
+
+    function folderKey(it) {
+      return String((it && it.folder) || '').trim() || t('keysCaptureSeqBookmarksUnfiled', '未分类');
+    }
+
+    function buildFolderCounts(items) {
+      var map = {};
+      for (var i = 0; i < items.length; i++) {
+        var k = folderKey(items[i]);
+        map[k] = (map[k] || 0) + 1;
+      }
+      return Object.keys(map)
+        .sort(function (a, b) {
+          return map[b] - map[a] || a.localeCompare(b, 'zh');
+        })
+        .map(function (k) {
+          return { name: k, count: map[k] };
+        });
+    }
+
+    function renderFolders(items) {
+      var host = overlay.querySelector('[data-bm-folders]');
+      if (!host) return;
+      var rows = buildFolderCounts(items);
+      var allLbl = t('keysCaptureSeqBookmarksAll', '全部');
+      var html =
+        '<button type="button" class="keys-bookmark-picker-folder' +
+        (!activeFolder ? ' is-on' : '') +
+        '" data-bm-folder="">' +
+        escHtml(allLbl) +
+        '<span class="keys-bookmark-picker-folder-n">' +
+        items.length +
+        '</span></button>';
+      html += rows
+        .map(function (row) {
+          return (
+            '<button type="button" class="keys-bookmark-picker-folder' +
+            (activeFolder === row.name ? ' is-on' : '') +
+            '" data-bm-folder="' +
+            escAttr(row.name) +
+            '" title="' +
+            escAttr(row.name) +
+            '">' +
+            '<span class="keys-bookmark-picker-folder-lab">' +
+            escHtml(row.name) +
+            '</span>' +
+            '<span class="keys-bookmark-picker-folder-n">' +
+            row.count +
+            '</span></button>'
+          );
+        })
+        .join('');
+      host.innerHTML = html;
+    }
+
+    function renderList(items, q) {
+      var list = overlay.querySelector('[data-bm-list]');
+      if (!list) return;
+      var needle = String(q || '')
+        .trim()
+        .toLowerCase();
+      var filtered = items.filter(function (it) {
+        if (activeFolder && folderKey(it) !== activeFolder) return false;
+        if (!needle) return true;
+        var hay =
+          String(it.title || '').toLowerCase() +
+          ' ' +
+          String(it.url || '').toLowerCase() +
+          ' ' +
+          String(it.source || '').toLowerCase() +
+          ' ' +
+          String(it.folder || '').toLowerCase();
+        return hay.indexOf(needle) >= 0;
+      });
+      if (!filtered.length) {
+        var msg = loadError
+          ? loadError
+          : items.length
+            ? t('keysCaptureSeqBookmarksNoMatch', '没有匹配的收藏')
+            : t('keysCaptureSeqBookmarksEmpty', '未找到 Chrome / Edge 收藏夹');
+        list.innerHTML =
+          '<div class="keys-bookmark-picker-empty">' + escHtml(msg) + '</div>';
+        return;
+      }
+      // Cap DOM nodes when browsing "全部" without search.
+      var cap = needle || activeFolder ? 800 : 400;
+      var shown = filtered.slice(0, cap);
+      var more =
+        filtered.length > shown.length
+          ? '<div class="keys-bookmark-picker-more">' +
+            escHtml(
+              t('keysCaptureSeqBookmarksMore', '已显示 {n}/{total}，可用左侧分类或搜索缩小范围')
+                .replace('{n}', String(shown.length))
+                .replace('{total}', String(filtered.length))
+            ) +
+            '</div>'
+          : '';
+      list.innerHTML =
+        shown
+          .map(function (it) {
+            return (
+              '<button type="button" class="keys-bookmark-picker-item" data-bm-url="' +
+              escAttr(it.url) +
+              '">' +
+              '<span class="keys-bookmark-picker-item-title">' +
+              escHtml(it.title || it.url) +
+              '</span>' +
+              '<span class="keys-bookmark-picker-item-meta">' +
+              escHtml(folderKey(it)) +
+              ' · ' +
+              escHtml(it.source || '') +
+              ' · ' +
+              escHtml(it.url || '') +
+              '</span>' +
+              '</button>'
+            );
+          })
+          .join('') +
+        more;
+    }
+
+    function refresh() {
+      var search = overlay.querySelector('[data-bm-search]');
+      renderFolders(cache);
+      renderList(cache, search && search.value);
+    }
+
+    overlay.addEventListener('click', function (ev) {
+      var el = ev.target;
+      if (el === overlay || (el && el.getAttribute && el.getAttribute('data-bm-close'))) {
+        finish('');
+        return;
+      }
+      var folderBtn = el && el.closest ? el.closest('[data-bm-folder]') : null;
+      if (folderBtn && overlay.contains(folderBtn)) {
+        activeFolder = folderBtn.getAttribute('data-bm-folder') || '';
+        refresh();
+        return;
+      }
+      var item = el && el.closest ? el.closest('[data-bm-url]') : null;
+      if (item && overlay.contains(item)) {
+        finish(item.getAttribute('data-bm-url') || '');
+      }
+    });
+    document.body.appendChild(overlay);
+    var search = overlay.querySelector('[data-bm-search]');
+    if (search) {
+      search.addEventListener('input', function () {
+        renderList(cache, search.value);
+      });
+      search.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          finish('');
+        }
+      });
+      setTimeout(function () {
+        try {
+          search.focus();
+        } catch (_) {}
+      }, 0);
+    }
+
+    invoke('cmd_list_browser_bookmarks')
+      .then(function (rows) {
+        loadError = '';
+        cache = Array.isArray(rows) ? rows : [];
+        refresh();
+      })
+      .catch(function () {
+        loadError = t(
+          'keysCaptureSeqBookmarksNeedApp',
+          '需要在桌面版 OneTone 中打开（浏览器预览无法读取本机收藏夹）'
+        );
+        cache = [];
+        refresh();
+      });
+  }
+
+  function pickOpenValue(kind, seed, onPicked) {
+    var k = normalizeOpenKind(kind);
+    if (k === 'url') {
+      var title = t('keysCaptureSeqOpenUrlPh', 'https://…');
+      var v = (global.prompt || window.prompt)(title, seed || '') || '';
+      onPicked(String(v).trim());
+      return;
+    }
+    var invoke = global.OneToneIpc && global.OneToneIpc.invoke;
+    if (typeof invoke === 'function') {
+      invoke('cmd_pick_path', { kind: k })
+        .then(function (path) {
+          if (path == null || path === '') return;
+          onPicked(String(path).trim());
+        })
+        .catch(function () {
+          var fb =
+            k === 'folder'
+              ? t('keysCaptureSeqOpenFolderPh', '文件夹路径，如 C:\\Users')
+              : t('keysCaptureSeqOpenFilePh', '文件路径，如 C:\\a.txt');
+          var typed = (global.prompt || window.prompt)(fb, seed || '') || '';
+          onPicked(String(typed).trim());
+        });
+      return;
+    }
+    var fallback =
+      k === 'folder'
+        ? t('keysCaptureSeqOpenFolderPh', '文件夹路径，如 C:\\Users')
+        : t('keysCaptureSeqOpenFilePh', '文件路径，如 C:\\a.txt');
+    var typed2 = (global.prompt || window.prompt)(fallback, seed || '') || '';
+    onPicked(String(typed2).trim());
   }
 
   // Ask for inject text via in-app sheet (keys desk); fall back to prompt.
@@ -978,6 +1397,15 @@
           });
           return;
         }
+        else if(add==='open-file'||add==='open-folder'||add==='open-url'){
+          var okAdd=add==='open-folder'?'folder':add==='open-url'?'url':'file';
+          pickOpenValue(okAdd, '', function(v){
+            if(!v) return;
+            cur.push({type:'open',kind:okAdd,value:v});
+            applyAndRefresh(m, cur);
+          });
+          return;
+        }
         else { return; }
         applyAndRefresh(m, cur);
       });
@@ -1034,6 +1462,12 @@
               applyAndRefresh(m, cur);
             });
           }
+        } else if(editKind==='open'){
+          pickOpenValue(cur2.kind||'file', cur2.value||'', function(v){
+            if(!v) return;
+            cur[idx]={type:'open',kind:normalizeOpenKind(cur2.kind),value:v};
+            applyAndRefresh(m, cur);
+          });
         } else { return; }
       });
     });
@@ -1390,6 +1824,9 @@
           +'<button type="button" data-add="key"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddKey','按键'))+'</button>'
           +'<button type="button" data-add="text"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddText','文本'))+'</button>'
           +'<button type="button" data-add="delay"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddDelay','延迟'))+'</button>'
+          +'<button type="button" data-add="open-file"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddOpenFile','文件'))+'</button>'
+          +'<button type="button" data-add="open-folder"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddOpenFolder','文件夹'))+'</button>'
+          +'<button type="button" data-add="open-url"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddOpenUrl','网址'))+'</button>'
           +'</div>';
       };
       container.hidden = false;
@@ -1404,7 +1841,7 @@
           + '<b>'+escHtml(t('keysCaptureSeqEmptyTitle','还没有步骤'))+'</b>'
           + '<ol class="keys-seq-empty-recipe">'
           + '<li>'+escHtml(t('keysCaptureSeqEmptyStep1','上面录好启动键'))+'</li>'
-          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep2','点下方 + 按键 / 文本 / 延迟，直接在行里改'))+'</li>'
+          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep2','点下方 + 按键 / 文本 / 延迟 / 文件 / 文件夹 / 网址，直接在行里改'))+'</li>'
           + '<li>'+escHtml(t('keysCaptureSeqEmptyStep3','按启动键会按顺序执行'))+'</li>'
           + '</ol></div>'
           + buildAddStrip();
@@ -1433,6 +1870,15 @@
         + '</button>';
       parts += '<button type="button" class="home-key-map-action-add" data-add="delay">'
         + escHtml(t('homeKeyMapActionTypeDelay'))+' +'
+        + '</button>';
+      parts += '<button type="button" class="home-key-map-action-add" data-add="open-file">'
+        + escHtml(t('keysCaptureSeqAddOpenFile','文件'))+' +'
+        + '</button>';
+      parts += '<button type="button" class="home-key-map-action-add" data-add="open-folder">'
+        + escHtml(t('keysCaptureSeqAddOpenFolder','文件夹'))+' +'
+        + '</button>';
+      parts += '<button type="button" class="home-key-map-action-add" data-add="open-url">'
+        + escHtml(t('keysCaptureSeqAddOpenUrl','网址'))+' +'
         + '</button>';
       return '<div class="home-key-map-action-addrow">'+parts+'</div>';
     };

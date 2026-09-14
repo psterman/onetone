@@ -372,6 +372,10 @@
           global.OneToneConfigPersist.invokeSaveOnce('voiceWakeOptIn');
         }
         syncWakeListeningOptInToggle();
+        try{
+          var scene=global.OneToneKeysSceneActionsPanel;
+          if(scene&&typeof scene.refresh==='function') scene.refresh();
+        }catch(_){}
         if(global.OneToneHomeLive&&global.OneToneHomeLive.render) global.OneToneHomeLive.render();
         if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.render) global.OneToneHomeWorkbench.render();
       };
@@ -1044,6 +1048,18 @@
         }
       });
     }
+    function firstTagPhrase(hostId,fallback){
+      var host=$(hostId);
+      if(!host) return fallback;
+      var chip=host.querySelector('.voice-phrase-tag,.voice-wake-alias-chip,[data-phrase],button');
+      var txt=chip?(chip.getAttribute('data-phrase')||chip.textContent||''):'';
+      txt=String(txt).replace(/[×x✖]/g,'').trim();
+      return txt||fallback;
+    }
+    function finishPhraseLabel(raw){
+      var p=String(raw||'').trim();
+      return p?'「'+p+'」':'';
+    }
     function setFinishOutcome(outcome){
       outcome=outcome==='send'||outcome==='discard'?outcome:'keep';
       global.__vp_voice_finish_outcome__=outcome;
@@ -1052,22 +1068,28 @@
         el.classList.toggle('is-on',on);
         el.setAttribute('aria-checked',on?'true':'false');
       });
-      var detailKeep=$('voiceFinishDetailKeep');
-      var detailSend=$('voiceFinishDetailSend');
-      var detailDiscard=$('voiceFinishDetailDiscard');
-      if(detailKeep) detailKeep.hidden=outcome!=='keep';
-      if(detailSend) detailSend.hidden=outcome!=='send';
-      if(detailDiscard) detailDiscard.hidden=outcome!=='discard';
       var cancelPane=$('voiceCancelPhrasePanel');
       var endPane=$('voiceEndPhrasePanel');
       var sendPane=$('voiceFinishSendPane');
       if(cancelPane) cancelPane.hidden=outcome!=='discard';
       if(endPane) endPane.hidden=outcome!=='keep';
       if(sendPane) sendPane.hidden=outcome!=='send';
+      var keepRaw=firstTagPhrase('voiceEndPhraseTags','结束输入');
+      var sendRaw=firstTagPhrase('voiceSendPhraseTags','发送');
+      var discardRaw=firstTagPhrase('voiceCancelPhraseTags','取消输入');
+      var keepPhrase=finishPhraseLabel(keepRaw);
+      var sendPhrase=finishPhraseLabel(sendRaw);
+      var discardPhrase=finishPhraseLabel(discardRaw);
+      var keepOutcome=$('voiceFinishOutcomePhraseKeep');
+      if(keepOutcome) keepOutcome.textContent=keepPhrase;
+      var sendOutcome=$('voiceFinishOutcomePhraseSend');
+      if(sendOutcome) sendOutcome.textContent=sendPhrase;
+      var discardOutcome=$('voiceFinishOutcomePhraseDiscard');
+      if(discardOutcome) discardOutcome.textContent=discardPhrase;
       var causal={
         keep:{lead:'停一会儿',mid:'字留下',tail:'不发'},
-        send:{lead:'停',mid:'说「发送」',tail:'回车'},
-        discard:{lead:'不要了',mid:'字丢掉',tail:'结束'}
+        send:{lead:'听写停下',mid:'说'+sendPhrase,tail:'才发送'},
+        discard:{lead:'说'+discardPhrase,mid:'取消听写',tail:'恢复开启前'}
       };
       var c=causal[outcome]||causal.keep;
       var lead=$('voiceFinishCausalLead');
@@ -1076,36 +1098,205 @@
       if(lead) lead.textContent=c.lead;
       if(mid) mid.textContent=c.mid;
       if(tail) tail.textContent=c.tail;
-      /* Sync primary phrase caps from tag pools when present */
-      function firstTagPhrase(hostId,fallback){
-        var host=$(hostId);
-        if(!host) return fallback;
-        var chip=host.querySelector('.voice-phrase-tag,.voice-wake-alias-chip,[data-phrase],button');
-        var txt=chip?(chip.getAttribute('data-phrase')||chip.textContent||''):'';
-        txt=String(txt).replace(/[×x✖]/g,'').trim();
-        return txt||fallback;
-      }
-      var keepCap=$('btnVoiceFinishKeepCap');
-      if(keepCap) keepCap.textContent='「'+firstTagPhrase('voiceEndPhraseTags','停一会儿')+'」';
-      var sendCap=$('btnVoiceFinishSendCap');
-      if(sendCap) sendCap.textContent='「'+firstTagPhrase('voiceSendPhraseTags','发送')+'」';
-      var discardCap=$('btnVoiceFinishDiscardCap');
-      if(discardCap) discardCap.textContent='「'+firstTagPhrase('voiceCancelPhraseTags','不要了')+'」';
     }
+    var finishPhrasePopoverKind='keep';
+    var phraseEditSaveHandler=null;
+    function getFinishPopoverPresets(kind){
+      var map={
+        send:['voiceSendPresetsZh','发送','发出去','提交'],
+        keep:['voiceEndPresetsZh','结束输入','就这样','停止听写'],
+        discard:['voiceCancelPresetsZh','取消输入','不要了','撤掉']
+      };
+      var row=map[kind]||map.keep;
+      var host=$(row[0]);
+      var out=[];
+      if(host){
+        host.querySelectorAll('[data-phrase]').forEach(function(btn){
+          var p=String(btn.getAttribute('data-phrase')||'').trim();
+          if(p) out.push(p);
+        });
+      }
+      if(!out.length) out=row.slice(1);
+      return out;
+    }
+    function paintFinishPopoverPresetsList(presets){
+      var box=$('voiceFinishPopoverPresets');
+      if(!box) return;
+      presets=Array.isArray(presets)?presets:[];
+      box.innerHTML=presets.map(function(p){
+        return '<button type="button" class="voice-sapi-preset" data-phrase="'+String(p).replace(/"/g,'&quot;')+'">'+p+'</button>';
+      }).join('');
+    }
+    function paintFinishPopoverPresets(kind){
+      paintFinishPopoverPresetsList(getFinishPopoverPresets(kind));
+    }
+    function openPhraseEditPopover(opts){
+      opts=opts||{};
+      phraseEditSaveHandler=typeof opts.onSave==='function'?opts.onSave:null;
+      var overlay=$('voiceFinishPhraseOverlay');
+      if(!overlay) return;
+      var titleEl=$('voiceFinishPopoverTitle');
+      if(titleEl) titleEl.textContent=opts.title||t('voiceFinishEditKeepTitle','编辑结束词');
+      var subEl=$('voiceFinishPopoverSub');
+      if(subEl) subEl.textContent=opts.sub||'';
+      paintFinishPopoverPresetsList(opts.presets||[]);
+      var input=$('voiceFinishPhraseInput');
+      if(input){
+        input.value=String(opts.value||'');
+        input.placeholder=opts.placeholder||'例如：结束输入';
+      }
+      var count=$('voiceFinishPhraseCount');
+      if(count) count.textContent=String((input&&input.value)||'').length+'/48';
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden','false');
+      if(input){
+        setTimeout(function(){ input.focus(); input.select(); },0);
+      }
+    }
+    function openFinishPhrasePopover(outcome){
+      outcome=outcome==='send'||outcome==='discard'?outcome:'keep';
+      finishPhrasePopoverKind=outcome;
+      phraseEditSaveHandler=null;
+      setFinishOutcome(outcome);
+      var titles={
+        send:t('voiceFinishEditSendTitle','编辑发送词'),
+        keep:t('voiceFinishEditKeepTitle','编辑结束词'),
+        discard:t('voiceFinishEditCancelTitle','编辑取消词')
+      };
+      var subs={
+        send:t('voiceFinishEditSendSub','听写停下后，说出这个词才发送'),
+        keep:t('voiceFinishEditKeepSub','停下听写，字留下不发送'),
+        discard:t('voiceFinishEditCancelSub','取消听写，恢复开启前状态')
+      };
+      var hostId=outcome==='send'?'voiceSendPhraseTags':(outcome==='discard'?'voiceCancelPhraseTags':'voiceEndPhraseTags');
+      var fb=outcome==='send'?'发送':(outcome==='discard'?'取消输入':'结束输入');
+      openPhraseEditPopover({
+        title:titles[outcome]||titles.keep,
+        sub:subs[outcome]||subs.keep,
+        value:firstTagPhrase(hostId,fb),
+        presets:getFinishPopoverPresets(outcome),
+        placeholder:outcome==='send'?'例如：发送':(outcome==='discard'?'例如：取消输入':'例如：结束输入')
+      });
+    }
+    function closeFinishPhrasePopover(){
+      var overlay=$('voiceFinishPhraseOverlay');
+      if(!overlay) return;
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden','true');
+      phraseEditSaveHandler=null;
+      var input=$('voiceFinishPhraseInput');
+      if(input) input.value='';
+    }
+    function submitFinishPhraseFromPopover(phrase){
+      phrase=String(phrase||'').trim();
+      if(!phrase) return;
+      if(phraseEditSaveHandler){
+        var fn=phraseEditSaveHandler;
+        phraseEditSaveHandler=null;
+        closeFinishPhrasePopover();
+        fn(phrase);
+        return;
+      }
+      var endApi=global.OneToneVoiceEnd;
+      var run=endApi&&typeof endApi.replacePrimaryFinishPhrase==='function'
+        ?endApi.replacePrimaryFinishPhrase(finishPhrasePopoverKind,phrase)
+        :null;
+      if(run&&typeof run.then==='function'){
+        run.then(function(){
+          closeFinishPhrasePopover();
+          setFinishOutcome(finishPhrasePopoverKind);
+          var scene=global.OneToneKeysSceneActionsPanel;
+          if(scene&&typeof scene.refresh==='function') scene.refresh();
+        });
+      }else{
+        closeFinishPhrasePopover();
+        setFinishOutcome(finishPhrasePopoverKind);
+      }
+    }
+    function openFinishEdit(outcome){
+      openFinishPhrasePopover(outcome||global.__vp_voice_finish_outcome__||'keep');
+    }
+    global.__vp_openPhraseEditPopover__=openPhraseEditPopover;
+    (function syncFinishCardCopy(){
+      var descMap=[
+        ['voiceFinishOutcomeDescSend','voiceFinishDescSend','听写停下后，说出关键词才发送'],
+        ['voiceFinishOutcomeDescKeep','voiceFinishDescKeep','字留下，不发送'],
+        ['voiceFinishOutcomeDescDiscard','voiceFinishDescDiscard','取消听写，恢复开启前状态']
+      ];
+      descMap.forEach(function(row){
+        var el=$(row[0]);
+        if(el) el.textContent=t(row[1],row[2]);
+      });
+      document.querySelectorAll('.voice-finish-outcome-edit').forEach(function(el){
+        el.textContent=t('voiceFinishEditLink','编辑');
+      });
+      var sum=$('voiceFinishMoreDetailsSummary');
+      if(sum) sum.textContent=t('voiceFinishMoreDetailsSummary','改更多说法与发送方式');
+    })();
     var finishOutcomes=$('voiceFinishOutcomes');
     if(finishOutcomes&&!finishOutcomes._outcomeBound){
       finishOutcomes._outcomeBound=true;
       finishOutcomes.addEventListener('click',function(e){
+        var edit=e.target&&e.target.closest&&e.target.closest('[data-finish-edit]');
+        if(edit){
+          e.preventDefault();
+          e.stopPropagation();
+          openFinishEdit(edit.getAttribute('data-finish-edit')||'keep');
+          return;
+        }
         var btn=e.target.closest&&e.target.closest('[data-voice-outcome]');
-        if(!btn) return;
+        if(!btn||!finishOutcomes.contains(btn)) return;
         e.preventDefault();
         setFinishOutcome(btn.getAttribute('data-voice-outcome')||'keep');
       });
       setFinishOutcome(global.__vp_voice_finish_outcome__||'keep');
     }
-    function openFinishMore(){
-      var d=$('voiceFinishMoreDetails');
-      if(d) d.open=true;
+    var finishPhraseOverlay=$('voiceFinishPhraseOverlay');
+    if(finishPhraseOverlay&&!finishPhraseOverlay.dataset.bound){
+      finishPhraseOverlay.dataset.bound='1';
+      finishPhraseOverlay.addEventListener('click',function(e){
+        if(e.target===finishPhraseOverlay) closeFinishPhrasePopover();
+      });
+    }
+    var btnVoiceFinishPopoverClose=$('btnVoiceFinishPopoverClose');
+    if(btnVoiceFinishPopoverClose){
+      btnVoiceFinishPopoverClose.onclick=function(e){
+        e.preventDefault();
+        closeFinishPhrasePopover();
+      };
+    }
+    var btnVoiceFinishPopoverCancel=$('btnVoiceFinishPopoverCancel');
+    if(btnVoiceFinishPopoverCancel){
+      btnVoiceFinishPopoverCancel.onclick=function(e){
+        e.preventDefault();
+        closeFinishPhrasePopover();
+      };
+    }
+    bindCustomPhraseAdd('voiceFinishPhraseInput','btnVoiceFinishPhraseAdd',submitFinishPhraseFromPopover);
+    var finishPhraseInput=$('voiceFinishPhraseInput');
+    if(finishPhraseInput&&!finishPhraseInput.dataset.countBound){
+      finishPhraseInput.dataset.countBound='1';
+      finishPhraseInput.addEventListener('input',function(){
+        var count=$('voiceFinishPhraseCount');
+        if(count) count.textContent=String(finishPhraseInput.value||'').length+'/48';
+      });
+      finishPhraseInput.addEventListener('keydown',function(e){
+        if(e.key==='Escape'){
+          e.preventDefault();
+          closeFinishPhrasePopover();
+        }
+      });
+    }
+    var finishPopoverPresets=$('voiceFinishPopoverPresets');
+    if(finishPopoverPresets&&!finishPopoverPresets.dataset.bound){
+      finishPopoverPresets.dataset.bound='1';
+      finishPopoverPresets.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-phrase]');
+        if(!btn) return;
+        e.preventDefault();
+        var phrase=String(btn.getAttribute('data-phrase')||'').trim();
+        if(phrase) submitFinishPhraseFromPopover(phrase);
+      });
     }
     function bindOpenOverlay(id,fn){
       var el=$(id);
@@ -1134,12 +1325,6 @@
         }
       });
     }
-    bindOpenOverlay('btnVoiceFinishKeepEdit',function(){ openFinishMore(); setFinishOutcome('keep'); });
-    bindOpenOverlay('btnVoiceFinishKeepCap',function(){ openFinishMore(); setFinishOutcome('keep'); });
-    bindOpenOverlay('btnVoiceFinishSendEdit',function(){ openFinishMore(); setFinishOutcome('send'); });
-    bindOpenOverlay('btnVoiceFinishSendCap',function(){ openFinishMore(); setFinishOutcome('send'); });
-    bindOpenOverlay('btnVoiceFinishDiscardEdit',function(){ openFinishMore(); setFinishOutcome('discard'); });
-    bindOpenOverlay('btnVoiceFinishDiscardCap',function(){ openFinishMore(); setFinishOutcome('discard'); });
     bindOpenOverlay('btnVoiceFinishNeedScene',function(){ openDrawerPanel('keys','target'); });
     var autoToggle=$('voiceFinishAutoToggle');
     if(autoToggle&&!autoToggle._autoBound){
@@ -1321,24 +1506,17 @@
         }
       });
     }
-    var openRecognizeAudio=$('btnRecordingAudioOpenRecognize');
-    if(openRecognizeAudio){
-      openRecognizeAudio.onclick=function(e){
-        e.preventDefault();
-        if(typeof hooks.setSettingsPanel==='function') hooks.setSettingsPanel('voiceWake');
-        else if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.setSettingsPanel){
-          global.OneToneSettingsDrawer.setSettingsPanel('voiceWake');
-        }
-        if(global.OneToneVoicePageState&&global.OneToneVoicePageState.setStep){
-          global.OneToneVoicePageState.setStep('finish');
-        }else if(global.OneToneVoiceStepNav&&global.OneToneVoiceStepNav.goToStep){
-          global.OneToneVoiceStepNav.goToStep('recognize');
-        }
-        setTimeout(function(){
-          var card=$('recordingAudioCard');
-          if(card&&card.scrollIntoView) card.scrollIntoView({behavior:'smooth',block:'nearest'});
-        },60);
-      };
+    function openRecordingAudioOnSounds(){
+      if(typeof hooks.setSettingsPanel==='function') hooks.setSettingsPanel('sounds');
+      else if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.setSettingsPanel){
+        global.OneToneSettingsDrawer.setSettingsPanel('sounds');
+      }
+      setTimeout(function(){
+        var details=$('voiceFinishMoreDetails');
+        if(details) details.open=true;
+        var card=$('recordingAudioCard');
+        if(card&&card.scrollIntoView) card.scrollIntoView({behavior:'smooth',block:'nearest'});
+      },60);
     }
     var btnVoiceEndAudioSettings=$('btnVoiceEndAudioSettings');
     if(btnVoiceEndAudioSettings){
@@ -1348,7 +1526,7 @@
           global.OneToneSettingsDrawer.focusField('recordingAudio');
           return;
         }
-        if(openRecognizeAudio) openRecognizeAudio.click();
+        openRecordingAudioOnSounds();
       };
     }
     var pc=global.OneToneVoicePhraseCustom;
@@ -1402,5 +1580,12 @@
       });
     };
   }
-  global.OneToneVoiceUiBindings={bindEvents:bindEvents};
+  global.OneToneVoiceUiBindings={
+    bindEvents:bindEvents,
+    openPhraseEditPopover:function(opts){
+      if(typeof global.__vp_openPhraseEditPopover__==='function'){
+        global.__vp_openPhraseEditPopover__(opts);
+      }
+    }
+  };
 })((typeof window!=='undefined')?window:globalThis);

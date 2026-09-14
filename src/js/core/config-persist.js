@@ -700,6 +700,13 @@
         if(!isFinite(ms)||ms<=0) return null;
         return {type:'delay',ms:Math.floor(ms)};
       }
+      if(typ==='open'){
+        var ov=String(a.value!=null?a.value:'').trim();
+        if(!ov) return null;
+        var kind=String(a.kind||'file').toLowerCase();
+        if(kind!=='folder'&&kind!=='url') kind='file';
+        return {type:'open',kind:kind,value:ov};
+      }
       return null;
     }).filter(Boolean);
   }

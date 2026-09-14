@@ -102,6 +102,19 @@ assert.ok(/\.voice-bridge-empty\[hidden\]/.test(css), 'bridge empty hidden beats
 assert.ok(/\.voice-finish-detail\[hidden\]/.test(css), 'finish detail hidden beats display:grid');
 assert.ok(/\.voice-finish-delay-chips\[hidden\]/.test(css), 'finish delay chips hidden beats display:flex');
 assert.ok(/data-voice-face="softpad".*#voiceSoftPadFace|not\(\[data-voice-face="softpad"\]\).*#voiceSoftPadFace/.test(css.replace(/\s+/g,' ')), 'css face gate for softpad');
+assert.ok(/#voiceKeysFace:not\(\.is-in-picker\)/.test(css), 'face gate skips picker-mounted keys face');
+assert.ok(/#voiceSoftPadFace:not\(\.is-in-picker\)/.test(css), 'face gate skips picker-mounted softpad face');
+assert.ok(/#voiceCameraFace:not\(\.is-in-picker\)/.test(css), 'face gate skips picker-mounted camera face');
+assert.ok(/#voiceIntentPicker\s+\.voice-bridge-face\.is-in-picker:not\(\[hidden\]\)/.test(css), 'picker bridge display beats pipeline face gate');
+assert.ok(/\.voice-bridge-face\.is-in-picker:not\(\[hidden\]\)/.test(css), 'picker bridge visible outside pipeline');
+
+assert.ok(/is-in-picker/.test(wakeRender)&&/voiceIntentPicker/.test(wakeRender), 'setVoiceFace skips picker-mounted bridges');
+const intentRail = read('src/js/features/voice/voice-intent-rail.js');
+assert.ok(/mountBridge/.test(intentRail)&&/is-in-picker/.test(intentRail), 'intent rail mounts bridges into picker');
+assert.ok(/mounted\.hidden\s*=\s*false/.test(intentRail), 'setIntent re-asserts bridge face visible');
+
+assert.ok(/listMode|setMode|customKey/.test(keysBridge), 'keys bridge separates 我录的键 from catalog');
+assert.ok(/setMode\(id==='key'\?'customKey':'catalog'\)|setMode\(id==="key"\?"customKey":"catalog"\)/.test(intentRail.replace(/\s+/g,'')), 'intent rail maps 我录的键 to customKey mode');
 
 assert.ok(html.includes('voice-bridge-softpad.js'), 'loads softpad bridge script');
 assert.ok(html.includes('voice-bridge-keys.js'), 'loads keys bridge script');

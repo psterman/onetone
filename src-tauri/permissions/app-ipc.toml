@@ -109,6 +109,8 @@ permissions = [
   "allow-cmd-ui-heartbeat",
   "allow-cmd-ui-hb-snapshot",
   "allow-cmd-open-url",
+  "allow-cmd-pick-path",
+  "allow-cmd-list-browser-bookmarks",
   "allow-cmd-probe-camera-capabilities",
   "allow-cmd-windows-hello-confirm",
   "allow-cmd-coach-hud-get-state",

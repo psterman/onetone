@@ -137,6 +137,8 @@ fn main() {
         "cmd_ui_hb_snapshot",
         "cmd_open_url",
         "cmd_open_path",
+        "cmd_pick_path",
+        "cmd_list_browser_bookmarks",
         "cmd_data_root_status",
         "cmd_data_root_pick",
         "cmd_data_root_open",

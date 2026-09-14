@@ -582,9 +582,7 @@
       ['btnRecordingAudioStrengthLight',d.recordingMuteStrengthLight],['btnRecordingAudioStrengthBalanced',d.recordingMuteStrengthBalanced],
       ['btnRecordingAudioStrengthStrong',d.recordingMuteStrengthStrong],['btnRecordingAudioStrengthMute',d.recordingMuteStrengthMute],
       ['recordingAudioDiagHint',d.recordingAudioDiagHint],['recordingAudioDiagAction',d.recordingAudioDiagAction],
-      ['recordingAudioSoundsLinkTitle',d.recordingAudioTitle],
-      ['recordingAudioSoundsLinkDesc',d.recordingAudioSoundsLinkDesc],
-      ['btnRecordingAudioOpenRecognize',d.recordingAudioOpenRecognize]
+      ['voiceFinishMoreDetailsSummary',d.voiceFinishMoreDetailsSummary]
     ].forEach(function(pair){
       var el=$(pair[0]); if(el) el.textContent=pair[1];
     });

@@ -1849,6 +1849,30 @@
     if (panel) panel.hidden = false;
   }
 
+  function habitAnchorForCustomKey() {
+    return mappingById(selectedMappingId());
+  }
+
+  function habitTriggerKeyForCustomKey() {
+    var habit = habitAnchorForCustomKey();
+    return habit ? String(habit.triggerKey || '').trim() : '';
+  }
+
+  function syncCustomKeyLaunchFromHabit(match) {
+    if (!match) return '';
+    var trig = habitTriggerKeyForCustomKey();
+    if (trig && String(match.triggerKey || '').trim() !== trig) {
+      match.triggerKey = trig;
+      try {
+        var persist = global.OneToneConfigPersist;
+        if (persist && typeof persist.save === 'function') {
+          persist.save({ source: 'mapping' });
+        }
+      } catch (_) {}
+    }
+    return String(match.triggerKey || '').trim() || trig;
+  }
+
   function refreshKeysCustomKeyMatchLaunch(match) {
     var detail = document.querySelector('.keys-custom-key-detail');
     if (!detail) return;
@@ -1869,8 +1893,8 @@
       return;
     }
     host.hidden = false;
-    var trig = friendlyTriggerLabel(match.triggerKey);
-    var empty = !String(match.triggerKey || '').trim();
+    var trig = syncCustomKeyLaunchFromHabit(match);
+    var empty = !trig;
     host.innerHTML =
       '<span class="keys-custom-key-launch-lab">' +
       esc(t('keysCustomKeyMatchLaunch', '启动键')) +
@@ -1878,62 +1902,20 @@
       '<span class="keys-custom-key-launch-val' +
       (empty ? ' is-empty' : '') +
       '">' +
-      esc(trig) +
-      '</span>' +
-      '<button type="button" class="keys-custom-key-launch-rec" data-match-launch-record="1">' +
       esc(
         empty
-          ? t('keysCustomKeyMatchLaunchRecord', '录制')
-          : t('keysCustomKeyMatchLaunchRerecord', '重录')
+          ? t('keysCustomKeyMatchLaunchNeed01', '请先在 01 录触发键')
+          : friendlyTriggerLabel(trig)
       ) +
-      '</button>';
-    if (!host.__wiredLaunchRec) {
-      host.__wiredLaunchRec = true;
-      host.addEventListener('click', function (ev) {
-        var btn =
-          ev.target && ev.target.closest
-            ? ev.target.closest('[data-match-launch-record]')
-            : null;
-        if (!btn || !host.contains(btn)) return;
-        ev.preventDefault();
-        recordCustomKeyMatchLaunch();
-      });
-    }
+      '</span>' +
+      '<span class="keys-custom-key-launch-note">' +
+      esc(t('keysCustomKeyMatchLaunchFrom01', '同 01 触发')) +
+      '</span>';
   }
 
   function recordCustomKeyMatchLaunch() {
-    var mid = String(customKeyMatchEditId || '').trim();
-    var m = mid ? mappingById(mid) : null;
-    if (!m) {
-      toast(t('keysCustomKeyMatchNeedSelect', '请先选一条按键匹配'));
-      return;
-    }
-    var rec = global.OneToneHomeRecordChord;
-    if (typeof rec !== 'function') {
-      toast(t('keysCustomKeyMatchLaunchUnavailable', '当前无法录制，请稍后重试'));
-      return;
-    }
-    rec(function (chord) {
-      var k = String(chord || '').trim();
-      if (!k) return;
-      m.triggerKey = k;
-      m.enabled = true;
-      refreshKeysCustomKeyMatchLaunch(m);
-      refreshKeysCustomKeyMatchList();
-      applyHero();
-      syncRecognitionEditorPreview();
-      try {
-        var sceneLaunch = global.OneToneKeysSceneActionsPanel;
-        if (sceneLaunch && typeof sceneLaunch.refresh === 'function') sceneLaunch.refresh();
-      } catch (_) {}
-      var persist = global.OneToneConfigPersist;
-      if (persist && typeof persist.save === 'function') {
-        try {
-          persist.save({ source: 'mapping' });
-        } catch (_) {}
-      }
-      toast(t('keysCustomKeyMatchLaunchSaved', '已保存匹配启动键') + ' · ' + friendlyTriggerLabel(k));
-    });
+    // Launch key inherits habit 01 — recording stays on the trigger step.
+    toast(t('keysCustomKeyMatchLaunchFrom01', '同 01 触发'));
   }
 
   function refreshKeysTargetActionsEditor() {
@@ -1996,7 +1978,7 @@
       if (actsLen === 0) {
         hint.textContent = t(
           'keysCaptureSeqHintEmpty',
-          '先录启动键，再用下方按钮加步骤。'
+          '用下方按钮加步骤；启动键与 01 触发相同。'
         );
       } else if (appliedAsRec) {
         hint.textContent = t(
@@ -2006,7 +1988,7 @@
       } else {
         hint.textContent = t(
           'keysCaptureSeqHint',
-          '按一次启动键后依次执行。▲▼ 排序，点步骤可改。'
+          '按 01 触发键后依次执行。▲▼ 排序，点步骤可改。'
         );
       }
     }
@@ -2034,7 +2016,7 @@
         esc(
           t(
             'keysCaptureSeqEmptyBody',
-            '添加录制快捷键、文本或延迟；按一次启动键会依次执行。'
+            '添加录制快捷键、文本或延迟；按 01 触发键会依次执行。'
           )
         ) +
         '</span></div>';
@@ -2044,7 +2026,7 @@
 
   function friendlyTriggerLabel(key) {
     var raw = String(key || '').trim();
-    if (!raw) return t('keysCustomKeyMatchNoTrigger', '未录制启动键');
+    if (!raw) return t('keysCustomKeyMatchNoTrigger', '01 尚未录触发键');
     try {
       if (global.OneToneKeyLabels && global.OneToneKeyLabels.friendlyKeyName) {
         return global.OneToneKeyLabels.friendlyKeyName(raw) || raw;
@@ -2261,6 +2243,14 @@
         parts.push(t('homeKeyMapActionTypeText', '输入文本') + ' ' + String(a.value || ''));
       } else if (a.type === 'delay') {
         parts.push(t('homeKeyMapActionTypeDelay', '等待') + ' ' + String(a.ms || 0) + 'ms');
+      } else if (a.type === 'open') {
+        var ok =
+          a.kind === 'folder'
+            ? t('keysCaptureSeqAddOpenFolder', '文件夹')
+            : a.kind === 'url'
+              ? t('keysCaptureSeqAddOpenUrl', '网址')
+              : t('keysCaptureSeqAddOpenFile', '文件');
+        parts.push(ok + ' ' + String(a.value || ''));
       }
     }
     return parts.length ? parts.join(' · ') : t('keysCustomKeyMatchNoActions', '尚无动作');
@@ -2347,7 +2337,7 @@
       listEl.innerHTML =
         '<div class="keys-custom-key-match-empty">' +
         '<span>' +
-        esc(t('keysCustomKeyMatchEmpty', '还没有自定义键。点右上角 + 新建一条，再录启动键和步骤。')) +
+        esc(t('keysCustomKeyMatchEmpty', '还没有自定义键。点右上角 + 新建一条，再加步骤。')) +
         '</span>' +
         '<button type="button" class="keys-custom-key-match-empty-cta" data-match-empty-add="1">' +
         esc(t('keysCustomKeyMatchEmptyCta', '＋ 新建一条')) +
@@ -2360,7 +2350,7 @@
         var id = String(m.id || '');
         var active = editId && id === editId ? ' is-active' : '';
         var primary = customKeyMatchDisplayName(m);
-        var trig = String(m.triggerKey || '').trim();
+        var trig = syncCustomKeyLaunchFromHabit(m);
         var steps = targetActionsSummary(m);
         var secondary = trig
           ? friendlyTriggerLabel(trig) + ' · ' + steps
@@ -2406,7 +2396,7 @@
     }
     var newId = core.newMappingId();
     copy.id = newId;
-    copy.triggerKey = '';
+    copy.triggerKey = String(source.triggerKey || '').trim();
     copy.triggerSource = null;
     copy.sourceKey = '';
     copy.sourceTime = '';
@@ -2473,7 +2463,7 @@
     refreshKeysTargetActionsEditor();
     applyHero();
     refreshKeysCustomKeyMatchList();
-    toast(t('keysCustomKeyMatchCreated', '已新建。录启动键，再加步骤。'));
+    toast(t('keysCustomKeyMatchCreated', '已新建。直接加步骤即可（启动键同 01）。'));
     return copy;
   }
 
@@ -2513,15 +2503,15 @@
       if (String(m.imePresetId || '').trim()) return true;
       if (String(m.targetKey || '').trim()) return true;
       if (Array.isArray(m.targetActions) && m.targetActions.length) return true;
+      // Keep peers that already have voice/key bindings (wake phrases, Soft Pad, etc.).
+      if (Array.isArray(m.agentBindings) && m.agentBindings.length) return true;
       var ref = m.captureHeroRef;
-      if (
-        ref &&
-        typeof ref === 'object' &&
-        String(ref.kind || '')
+      if (ref && typeof ref === 'object') {
+        var kind = String(ref.kind || '')
           .trim()
-          .toLowerCase() === 'customkey'
-      ) {
-        return true;
+          .toLowerCase();
+        if (kind === 'customkey' || kind === 'ime') return true;
+        if (String(ref.channel || '').trim() || String(ref.actionId || '').trim()) return true;
       }
       // Drop prior empty voice drafts for this app.
       return false;

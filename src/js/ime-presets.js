@@ -355,10 +355,7 @@
       cfg.imePresetId = presetId;
       var persist = global.OneToneConfigPersist;
       if(persist && persist.save) persist.save();
-      var display = $('voiceSettingsTargetKey');
-      if(display && global.OneToneKeyLabels){
-        display.textContent = global.OneToneKeyLabels.friendlyKeyName(combo, global.OneToneApp && global.OneToneApp.getLang ? global.OneToneApp.getLang() : 'zh') || combo;
-      }
+      // refresh('voice') repaints keycap chord + IME icon; don't wipe button children.
       if(global.OneToneApp && global.OneToneApp.toast) global.OneToneApp.toast(t('imePresetApplied'));
       refresh('voice');
       try{
@@ -516,28 +513,36 @@
     renderCardBadge(ctx);
     if(ctx === 'voice'){
       var confirmEl = $('imePresetConfirmVoice');
-      var display = $('voiceSettingsTargetKey');
-      var chord = friendlyChord(key || (presetById(selectedId)||{}).targetKey || '');
-      if(display && chord) display.textContent = chord || '—';
       if(confirmEl){
-        var preset = presetById(selectedId);
-        if(preset){
-          confirmEl.hidden = false;
-          confirmEl.textContent = t('imePresetConfirmDefault')
-            .replace('{ime}', t(preset.shortKey || preset.nameKey))
-            .replace('{chord}', chord);
-        }else if(key){
-          confirmEl.hidden = false;
-          confirmEl.textContent = t('imePresetConfirmCustom').replace('{chord}', friendlyChord(key));
+        confirmEl.hidden = true;
+        confirmEl.textContent = '';
+      }
+      var display = $('voiceSettingsTargetKey');
+      var chordEl = $('voiceSettingsTargetKeyChord');
+      var icoEl = $('voiceSettingsTargetKeyIco');
+      var chord = friendlyChord(key || (presetById(selectedId)||{}).targetKey || '');
+      var preset = presetById(selectedId);
+      if(chordEl) chordEl.textContent = chord || '—';
+      else if(display && chord) display.textContent = chord || '—';
+      if(icoEl){
+        if(preset && String(preset.icon || '').trim()){
+          icoEl.src = preset.icon;
+          icoEl.alt = t(preset.shortKey || preset.nameKey || '');
+          icoEl.hidden = false;
+          if(display) display.classList.add('has-ime-ico');
         }else{
-          confirmEl.hidden = true;
+          icoEl.hidden = true;
+          icoEl.removeAttribute('src');
+          icoEl.alt = '';
+          if(display) display.classList.remove('has-ime-ico');
         }
       }
       var hint = $('voiceImeDeskHint');
       if(hint){
         var p2 = presetById(selectedId);
         if(p2){
-          hint.innerHTML = '已选 <b>'+esc(t(p2.shortKey||p2.nameKey))+'</b>，听写键是 <b>'+esc(chord)+'</b>。说 01 口令 = 注入该键。';
+          hint.textContent =
+            '已选 ' + t(p2.shortKey || p2.nameKey) + '，听写键是 ' + chord + '。说 01 口令 = 注入该键。';
         }
       }
     }
