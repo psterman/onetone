@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>粗圈校准</title>
+  <style>
+    /*
+      Window chrome is transparent; body MUST paint non-zero alpha on every pixel.
+      Fully transparent pixels are click-through on Windows layered WebView2.
+    */
+    html,body{
+      margin:0;width:100%;height:100%;overflow:hidden;
+      background:rgba(8,16,24,.42)!important;
+      font-family:system-ui,"Segoe UI","Microsoft YaHei UI",sans-serif;
+      cursor:crosshair;user-select:none;touch-action:none
+    }
+    #hint{
+      position:fixed;left:50%;top:28px;transform:translateX(-50%);z-index:3;
+      background:rgba(255,255,255,.96);color:#12181f;font-size:15px;font-weight:650;
+      padding:10px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.28);
+      pointer-events:none;max-width:min(520px,92%);text-align:center
+    }
+    #mq{
+      position:fixed;border:2px solid #5ad0f5;background:rgba(90,208,245,.18);
+      display:none;z-index:1;pointer-events:none;box-sizing:border-box
+    }
+    #pin{
+      position:fixed;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;
+      border:2px solid #fff;background:#1aa3d1;display:none;z-index:2;pointer-events:none;
+      box-shadow:0 0 0 3px rgba(26,163,209,.35)
+    }
+    #bar{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:3;display:flex;gap:10px}
+    button{border:0;border-radius:10px;padding:10px 16px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+    #cancel{background:#fff;color:#12181f}
+  </style>
+</head>
+<body>
+  <div id="hint">第一步：按住拖动，圈住聊天输入框（可略大）</div>
+  <div id="mq"></div>
+  <div id="pin"></div>
+  <div id="bar"><button type="button" id="cancel">取消 Esc</button></div>
+  <script>
+    (function () {
+      function getInvoke() {
+        if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
+          return function (cmd, args) { return window.__TAURI_INTERNALS__.invoke(cmd, args); };
+        }
+        if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
+          return function (cmd, args) { return window.__TAURI__.core.invoke(cmd, args); };
+        }
+        return null;
+      }
+      var invoke = getInvoke();
+      var hint = document.getElementById('hint');
+      var mq = document.getElementById('mq');
+      var pin = document.getElementById('pin');
+      var cancelBtn = document.getElementById('cancel');
+      var phase = 'draw';
+      var dragging = false;
+      var x0 = 0, y0 = 0;
+      var box = null;
+
+      function call(cmd, args) {
+        if (!invoke) return Promise.reject(new Error('no_invoke'));
+        return invoke(cmd, args || {});
+      }
+
+      function cancel() {
+        call('cmd_input_aim_calibrate_cancel', {}).finally(function () {
+          try { window.close(); } catch (_) {}
+        });
+      }
+      cancelBtn.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        cancel();
+      };
+      window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') cancel();
+      });
+
+      function onDown(e) {
+        if (e.button !== 0) return;
+        if (e.target === cancelBtn || (cancelBtn.contains && cancelBtn.contains(e.target))) return;
+        e.preventDefault();
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+
+        if (phase === 'refine') {
+          if (!box) return;
+          if (e.clientX < box.l || e.clientX > box.r || e.clientY < box.t || e.clientY > box.b) {
+            hint.textContent = '请点在蓝框内部';
+            return;
+          }
+          pin.style.display = 'block';
+          pin.style.left = e.clientX + 'px';
+          pin.style.top = e.clientY + 'px';
+          hint.textContent = '已记下，正在保存…';
+          call('cmd_input_aim_calibrate_commit', {
+            screenX: Math.round(e.screenX),
+            screenY: Math.round(e.screenY)
+          }).then(function () {
+            hint.textContent = '已保存';
+            setTimeout(function () { try { window.close(); } catch (_) {} }, 350);
+          }).catch(function (err) {
+            hint.textContent = '保存失败：' + (err && err.message ? err.message : String(err || ''));
+          });
+          return;
+        }
+
+        dragging = true;
+        x0 = e.clientX;
+        y0 = e.clientY;
+        mq.style.display = 'block';
+        mq.style.left = x0 + 'px';
+        mq.style.top = y0 + 'px';
+        mq.style.width = '0px';
+        mq.style.height = '0px';
+        hint.textContent = '拖动中…松开完成粗圈';
+      }
+
+      function onMove(e) {
+        if (!dragging) return;
+        var l = Math.min(x0, e.clientX), t = Math.min(y0, e.clientY);
+        mq.style.left = l + 'px';
+        mq.style.top = t + 'px';
+        mq.style.width = Math.abs(e.clientX - x0) + 'px';
+        mq.style.height = Math.abs(e.clientY - y0) + 'px';
+      }
+
+      function onUp(e) {
+        if (!dragging) return;
+        dragging = false;
+        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+        var l = Math.min(x0, e.clientX), t = Math.min(y0, e.clientY);
+        var r = Math.max(x0, e.clientX), b = Math.max(y0, e.clientY);
+        if (r - l < 12 || b - t < 12) {
+          hint.textContent = '圈太小，请再拖大一点';
+          mq.style.display = 'none';
+          return;
+        }
+        box = { l: l, t: t, r: r, b: b };
+        phase = 'refine';
+        hint.textContent = '第二步：在蓝框内点一下精确位置';
+      }
+
+      // Attach to documentElement so the whole screen hits, including near edges.
+      var root = document.documentElement;
+      root.addEventListener('pointerdown', onDown);
+      root.addEventListener('pointermove', onMove);
+      root.addEventListener('pointerup', onUp);
+      root.addEventListener('pointercancel', onUp);
+
+      if (!invoke) hint.textContent = '校准层未接到 IPC，请从应用内打开';
+    })();
+  </script>
+</body>
+</html>

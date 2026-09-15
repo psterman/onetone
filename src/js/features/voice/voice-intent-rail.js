@@ -502,6 +502,205 @@
     syncHeroVals();
   }
 
+  function currentAppTargetId(){
+    var m=selectedOrHabit();
+    var id=m?String(m.appTargetId||'').trim():'';
+    if(id) return id;
+    try{
+      var st=global.OneToneState&&global.OneToneState.state;
+      var cfg=st&&st.config;
+      var aid=cfg&&String(cfg.activeSceneId||'').trim();
+      if(aid){
+        var am=mappingById(aid);
+        id=am?String(am.appTargetId||'').trim():'';
+        if(id) return id;
+      }
+      var maps=cfg&&cfg.mappings;
+      if(Array.isArray(maps)){
+        for(var i=0;i<maps.length;i++){
+          var x=maps[i];
+          if(!x) continue;
+          id=String(x.appTargetId||'').trim();
+          if(id&&global.OneToneKeysChannelCommandPicker
+            &&global.OneToneKeysChannelCommandPicker.isPromptInjectMapping
+            &&global.OneToneKeysChannelCommandPicker.isPromptInjectMapping(x)){
+            return id;
+          }
+        }
+        for(var j=0;j<maps.length;j++){
+          id=maps[j]?String(maps[j].appTargetId||'').trim():'';
+          if(id) return id;
+        }
+      }
+    }catch(_){}
+    // Most calibrate users are on Cursor; avoid a silent no-op when scope is empty.
+    return 'cursor-chat';
+  }
+
+  function aimCalLog(line){
+    try{
+      if(global.OneToneIpc&&typeof global.OneToneIpc.invoke==='function'){
+        global.OneToneIpc.invoke('cmd_app_log',{line:String(line||'')}).catch(function(){});
+      }
+    }catch(_){}
+  }
+
+  function aimCalTip(msg,ok){
+    var hint=document.getElementById('voicePromptAimCalHint');
+    if(hint){
+      hint.classList.toggle('is-ok',!!ok);
+      hint.textContent=String(msg||'');
+    }
+    try{
+      if(global.OneToneAppToast&&typeof global.OneToneAppToast.show==='function'){
+        global.OneToneAppToast.show(msg);
+        return;
+      }
+    }catch(_){}
+    try{
+      if(global.OneToneUiFeedback&&typeof global.OneToneUiFeedback.toast==='function'){
+        global.OneToneUiFeedback.toast(msg);
+        return;
+      }
+    }catch(_){}
+    toast(msg);
+  }
+
+  function beginAimCalibrate(){
+    aimCalLog('fe aim_calibrate_click');
+    var appId=currentAppTargetId()||'cursor-chat';
+    aimCalTip(t('voiceAimCalStarting','正在打开校准层…'),false);
+    aimCalLog('fe aim_calibrate_begin_invoke app='+appId);
+    var inv=global.OneToneIpc&&typeof global.OneToneIpc.invokeTimeout==='function'
+      ?global.OneToneIpc.invokeTimeout('cmd_input_aim_calibrate_begin',{appTargetId:appId},4000)
+      :invokeAimCal('cmd_input_aim_calibrate_begin',{appTargetId:appId});
+    inv.then(function(res){
+      var ok=t('voiceAimCalStarted','已打开校准层 · 先圈住再点一下');
+      aimCalTip(ok,true);
+      aimCalLog('fe aim_calibrate_begin_ok app='+appId+' res='+JSON.stringify(res||{}));
+    }).catch(function(err){
+      var raw=String((err&&(err.message||err))||err||'');
+      var msg;
+      if(raw.indexOf('need_app_target')>=0||raw.indexOf('unknown_app')>=0){
+        msg=t('voiceAimCalNeedApp','先选好目标应用，再校准');
+      }else if(raw.indexOf('window_not_found')>=0){
+        msg=t('voiceAimCalNoWindow','找不到目标窗口，请先打开该应用');
+      }else if(raw.indexOf('ipc_unavailable')>=0||raw.indexOf('tauri invoke')>=0){
+        msg=t('voiceAimCalFail','校准未能开始')+' · IPC';
+      }else if(raw.indexOf('timeout')>=0){
+        msg=t('voiceAimCalFail','校准未能开始')+' · 超时';
+      }else{
+        msg=t('voiceAimCalFail','校准未能开始')+(raw?(' · '+raw.slice(0,120)):'');
+      }
+      aimCalTip(msg,false);
+      aimCalLog('fe aim_calibrate_begin_fail app='+appId+' err='+raw);
+    });
+  }
+
+  function invokeAimCal(cmd,args){
+    if(!global.OneToneIpc||typeof global.OneToneIpc.invoke!=='function'){
+      return Promise.reject(new Error('ipc_unavailable'));
+    }
+    return global.OneToneIpc.invoke(cmd,args||{});
+  }
+
+  // Capture-phase delegation: CSP blocks inline onclick; bind() alone can miss remounts.
+  (function installAimCalClickCapture(){
+    function onDocClick(e){
+      var el=e.target&&e.target.closest?e.target.closest('#btnVoiceAimCalibrate,#btnVoiceAimCalibrateClear'):null;
+      if(!el) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if(el.id==='btnVoiceAimCalibrateClear'){
+        var appId=currentAppTargetId()||'cursor-chat';
+        aimCalLog('fe aim_calibrate_clear_click app='+appId);
+        invokeAimCal('cmd_input_aim_calibrate_clear',{appTargetId:appId}).then(function(){
+          var st=global.OneToneState&&global.OneToneState.state;
+          if(st&&st.config&&st.config.voiceEnd){
+            if(!st.config.voiceEnd.composerAnchors) st.config.voiceEnd.composerAnchors={};
+            delete st.config.voiceEnd.composerAnchors[appId];
+          }
+          syncAimCalStatus({calibrated:false,appTargetId:appId});
+          aimCalTip(t('voiceAimCalCleared','已恢复默认位置'),false);
+        }).catch(function(err){
+          aimCalTip(t('voiceAimCalFail','校准未能开始')+' · '+String((err&&err.message)||err||'').slice(0,80),false);
+        });
+        return;
+      }
+      beginAimCalibrate();
+    }
+    function attach(){
+      if(!global.document||global.document._vpAimCalCapture) return;
+      global.document._vpAimCalCapture=true;
+      global.document.addEventListener('click',onDocClick,true);
+      aimCalLog('fe aim_calibrate_capture_bound');
+    }
+    if(global.document&&global.document.readyState==='loading'){
+      global.document.addEventListener('DOMContentLoaded',attach);
+    }else{
+      attach();
+    }
+  })();
+
+  function syncAimCalStatus(status){
+    var hint=$('voicePromptAimCalHint');
+    var clearBtn=$('btnVoiceAimCalibrateClear');
+    var appId=currentAppTargetId();
+    if(!appId){
+      if(hint){
+        hint.classList.remove('is-ok');
+        hint.textContent=t('voiceAimCalNeedApp','先选好目标应用，再校准');
+      }
+      if(clearBtn) clearBtn.hidden=true;
+      return;
+    }
+    var calibrated=!!(status&&status.calibrated);
+    if(!status){
+      var st=global.OneToneState&&global.OneToneState.state;
+      var anchors=st&&st.config&&st.config.voiceEnd?st.config.voiceEnd.composerAnchors:null;
+      if(anchors&&anchors[appId]) calibrated=true;
+    }
+    if(clearBtn) clearBtn.hidden=!calibrated;
+    if(hint){
+      hint.classList.toggle('is-ok',calibrated);
+      if(calibrated&&status&&isFinite(Number(status.x))&&isFinite(Number(status.y))){
+        hint.textContent=t('voiceAimCalOkFmt','已校准 · {xy}')
+          .replace('{xy}',Number(status.x).toFixed(2)+','+Number(status.y).toFixed(2));
+      }else if(calibrated){
+        hint.textContent=t('voiceAimCalOk','已校准 · 按 App 记住');
+      }else{
+        hint.textContent=t('voiceAimCalHint','先圈住，再框内点一下 · 按 App 记住');
+      }
+    }
+  }
+
+  function refreshAimCalStatus(){
+    var appId=currentAppTargetId();
+    if(!appId){
+      syncAimCalStatus(null);
+      return Promise.resolve(null);
+    }
+    return invokeAimCal('cmd_input_aim_calibrate_status',{appTargetId:appId}).then(function(res){
+      var st=global.OneToneState&&global.OneToneState.state;
+      if(st&&st.config){
+        if(!st.config.voiceEnd) st.config.voiceEnd={};
+        if(!st.config.voiceEnd.composerAnchors||typeof st.config.voiceEnd.composerAnchors!=='object'){
+          st.config.voiceEnd.composerAnchors={};
+        }
+        if(res&&res.calibrated&&isFinite(Number(res.x))&&isFinite(Number(res.y))){
+          st.config.voiceEnd.composerAnchors[appId]={x:Number(res.x),y:Number(res.y)};
+        }else if(res&&res.calibrated===false){
+          delete st.config.voiceEnd.composerAnchors[appId];
+        }
+      }
+      syncAimCalStatus(res||null);
+      return res;
+    }).catch(function(){
+      syncAimCalStatus(null);
+      return null;
+    });
+  }
+
   function syncPromptUi(){
     var ta=$('voicePromptInjectBody');
     var st=global.OneToneState&&global.OneToneState.state;
@@ -510,13 +709,28 @@
       ta._promptHydrated=true;
       ta.value=String(cfg.promptInjectText||PROMPT_PRESETS.proto);
     }
+    var aimSel=$('voiceInputAimStrategy');
+    if(aimSel){
+      var aim=String(cfg.inputAimStrategy||cfg.input_aim_strategy||'auto').trim()||'auto';
+      if(aim!=='auto'&&aim!=='none'&&aim!=='probe') aim='auto';
+      if(aimSel.value!==aim) aimSel.value=aim;
+      var radios=document.querySelectorAll('input[name="voiceInputAimStrategy"]');
+      for(var ri=0;ri<radios.length;ri++){
+        var r=radios[ri];
+        r.checked=String(r.value)===aim;
+        var card=r.closest&&r.closest('.voice-prompt-aim__card');
+        if(card) card.classList.toggle('is-on',r.checked);
+      }
+    }
     var land=$('voicePromptLand');
     if(land&&ta){
       var body=(ta.value||'').trim();
       var preview=body.length>36?body.slice(0,36)+'…':body;
-      land.textContent='说 01 口令 = 聚焦 → 写入'+(preview?('「'+preview+'」'):' prompt')+' → 回车发送';
+      land.textContent=(typeof t==='function'?t('voicePromptLandFmt','说 01 口令 = 对准输入框 → 写入{preview} → 回车发送'):'说 01 口令 = 对准输入框 → 写入{preview} → 回车发送')
+        .replace('{preview}',preview?('「'+preview+'」'):' prompt');
     }
     syncPromptSaveHint(!!promptEditId);
+    refreshAimCalStatus();
   }
 
   function savePromptText(){
@@ -526,6 +740,15 @@
     if(!st||!st.config) return;
     if(!st.config.voiceEnd) st.config.voiceEnd={};
     st.config.voiceEnd.promptInjectText=String(ta.value||'');
+    var aimSel=$('voiceInputAimStrategy');
+    if(aimSel){
+      var aim=String(aimSel.value||'auto').trim()||'auto';
+      var checked=document.querySelector('input[name="voiceInputAimStrategy"]:checked');
+      if(checked) aim=String(checked.value||aim).trim()||'auto';
+      if(aim!=='auto'&&aim!=='none'&&aim!=='probe') aim='auto';
+      aimSel.value=aim;
+      st.config.voiceEnd.inputAimStrategy=aim;
+    }
     if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
       global.OneToneConfigPersist.save({source:'voice-prompt'});
     }
@@ -566,6 +789,30 @@
     }
     var customBtn=$('btnVoicePromptCustom');
     if(customBtn) customBtn.textContent=t('voicePromptCustomBtn','＋ 自定义');
+    var aimLegend=$('voiceInputAimStrategyLbl');
+    if(aimLegend) aimLegend.textContent=t('voicePromptAimLegend','写入前怎么处理输入框');
+    var aimLead=$('voiceInputAimStrategyHint');
+    if(aimLead) aimLead.textContent=t('voicePromptAimLead','四个通道共用这一处设置。默认帮你对准；对不准就不填，避免打进编辑器。');
+    function setAimCard(value,titleKey,titleFb,descKey,descFb){
+      var inp=document.querySelector('input[name="voiceInputAimStrategy"][value="'+value+'"]');
+      if(!inp) return;
+      var card=inp.closest&&inp.closest('.voice-prompt-aim__card');
+      if(!card) return;
+      var title=card.querySelector('.voice-prompt-aim__title');
+      var desc=card.querySelector('.voice-prompt-aim__desc');
+      var badge=card.querySelector('.voice-prompt-aim__badge');
+      if(title) title.textContent=t(titleKey,titleFb);
+      if(desc) desc.textContent=t(descKey,descFb);
+      if(badge) badge.textContent=t('voicePromptAimBadge','推荐');
+    }
+    setAimCard('auto','voicePromptAimAutoTitle','先对准，再填入','voicePromptAimAutoDesc','自动点进聊天输入框；对不上就取消，不乱填。');
+    setAimCard('none','voicePromptAimNoneTitle','直接填入','voicePromptAimNoneDesc','假定你已点好输入框，跳过对准，立刻写入。');
+    setAimCard('probe','voicePromptAimProbeTitle','只在已对准时填','voicePromptAimProbeDesc','光标已在输入框才填；否则取消。不主动点屏。');
+    var calBtn=$('btnVoiceAimCalibrate');
+    if(calBtn) calBtn.textContent=t('voiceAimCalBtn','粗圈校准输入框');
+    var calClear=$('btnVoiceAimCalibrateClear');
+    if(calClear) calClear.textContent=t('voiceAimCalClear','恢复默认位置');
+    syncAimCalStatus(null);
     var wakeTag=$('voiceFlowNodeWakeTag');
     if(wakeTag) wakeTag.textContent='01 / '+t('voiceFlowNodeWakeTitle','说了什么');
     var finishTag=$('voiceFlowNodeFinishTag');
@@ -663,6 +910,29 @@
         savePromptText();
       });
     }
+    var aimSel=$('voiceInputAimStrategy');
+    if(aimSel&&!aimSel._bound){
+      aimSel._bound=true;
+      aimSel.addEventListener('change',function(){
+        savePromptText();
+      });
+    }
+    var aimRadios=document.querySelectorAll('input[name="voiceInputAimStrategy"]');
+    for(var ai=0;ai<aimRadios.length;ai++){
+      var radio=aimRadios[ai];
+      if(radio._bound) continue;
+      radio._bound=true;
+      radio.addEventListener('change',function(){
+        var sel=$('voiceInputAimStrategy');
+        if(sel) sel.value=String(this.value||'auto');
+        var cards=document.querySelectorAll('.voice-prompt-aim__card');
+        for(var ci=0;ci<cards.length;ci++){
+          var inp=cards[ci].querySelector('input[name="voiceInputAimStrategy"]');
+          cards[ci].classList.toggle('is-on',!!(inp&&inp.checked));
+        }
+        savePromptText();
+      });
+    }
     var presets=$('voicePromptPresets');
     if(presets&&!presets._bound){
       presets._bound=true;
@@ -691,6 +961,40 @@
       saveBtn.addEventListener('click',function(e){
         e.preventDefault();
         savePromptToScene({quiet:false});
+      });
+    }
+    var calBtn=$('btnVoiceAimCalibrate');
+    if(calBtn&&!calBtn._bound){
+      calBtn._bound=true;
+      calBtn.addEventListener('click',function(e){
+        e.preventDefault();
+        beginAimCalibrate();
+      });
+    }
+    var calClearBtn=$('btnVoiceAimCalibrateClear');
+    if(calClearBtn&&!calClearBtn._bound){
+      calClearBtn._bound=true;
+      calClearBtn.addEventListener('click',function(e){
+        e.preventDefault();
+        var appId=currentAppTargetId();
+        if(!appId) return;
+        invokeAimCal('cmd_input_aim_calibrate_clear',{appTargetId:appId}).then(function(){
+          var st=global.OneToneState&&global.OneToneState.state;
+          if(st&&st.config&&st.config.voiceEnd){
+            if(!st.config.voiceEnd.composerAnchors) st.config.voiceEnd.composerAnchors={};
+            delete st.config.voiceEnd.composerAnchors[appId];
+          }
+          syncAimCalStatus({calibrated:false,appTargetId:appId});
+          toast(t('voiceAimCalCleared','已恢复默认位置'));
+        }).catch(function(){
+          toast(t('voiceAimCalFail','校准未能开始'));
+        });
+      });
+    }
+    if(global.document&&!global.document._vpAimCalFocusBound){
+      global.document._vpAimCalFocusBound=true;
+      global.document.addEventListener('visibilitychange',function(){
+        if(!global.document.hidden) refreshAimCalStatus();
       });
     }
   }
@@ -733,7 +1037,8 @@
     syncHeroVals:syncHeroVals,
     applyPromptMapping:applyPromptMapping,
     savePromptToScene:savePromptToScene,
-    startNewCustomPrompt:startNewCustomPrompt
+    startNewCustomPrompt:startNewCustomPrompt,
+    beginAimCalibrate:beginAimCalibrate
   };
 
   if(global.document&&global.document.readyState==='loading'){

@@ -994,9 +994,9 @@
                               <div class="keys-detail-card keys-detail-card--options keys-capture-key-panel" id="keysCaptureKeyPanel" data-capture-panel="key">
                                 <div class="keys-capture-target-actions-host" id="keysCaptureTargetActionsHost" hidden>
                                   <div class="keys-custom-key-split">
-                                    <aside class="keys-custom-key-match" id="keysCustomKeyMatchPane" aria-label="按键匹配">
+                                    <aside class="keys-custom-key-match" id="keysCustomKeyMatchPane" aria-label="自定义键">
                                       <div class="keys-custom-key-match-head">
-                                        <p class="keys-channel-group-label" id="keysCustomKeyMatchLbl" data-i18n="keysCustomKeyMatchTitle">按键匹配</p>
+                                        <p class="keys-channel-group-label" id="keysCustomKeyMatchLbl" data-i18n="keysCustomKeyMatchTitle">自定义键</p>
                                         <button type="button" class="keys-custom-key-match-add" id="btnKeysCustomKeyMatchAdd" title="新建" aria-label="新建" data-i18n-aria="keysCustomKeyMatchAdd">+</button>
                                       </div>
                                       <div class="keys-custom-key-match-list" id="keysCustomKeyMatchList" role="list"></div>
@@ -2277,7 +2277,7 @@
                         <div class="voice-prompt-steps" aria-hidden="true">
                           <span class="voice-prompt-step"><i>1</i>一词激活</span>
                           <span class="arr">→</span>
-                          <span class="voice-prompt-step"><i>2</i>自动聚焦</span>
+                          <span class="voice-prompt-step"><i>2</i>对准输入框</span>
                           <span class="arr">→</span>
                           <span class="voice-prompt-step"><i>3</i>填入 prompt</span>
                           <span class="arr">→</span>
@@ -2295,11 +2295,44 @@
                           <button type="button" class="control-btn primary" id="btnVoicePromptSaveScene">保存到本场景列表</button>
                           <span class="voice-prompt-save-hint" id="voicePromptSaveHint">点保存，或改完文案后自动写入右侧</span>
                         </div>
-                        <p class="voice-prompt-land" id="voicePromptLand">说 01 口令 = 聚焦 → 写入 prompt → 回车发送</p>
+                        <p class="voice-prompt-land" id="voicePromptLand">说 01 口令 = 对准输入框 → 写入 prompt → 回车发送</p>
+                        <fieldset class="voice-prompt-aim" id="voicePromptAimRow">
+                          <legend class="voice-prompt-aim__legend" id="voiceInputAimStrategyLbl">写入前怎么处理输入框</legend>
+                          <p class="voice-prompt-aim__lead" id="voiceInputAimStrategyHint">四个通道共用这一处设置。默认帮你对准；对不准就不填，避免打进编辑器。</p>
+                          <div class="voice-prompt-aim__cards" role="radiogroup" aria-labelledby="voiceInputAimStrategyLbl">
+                            <label class="voice-prompt-aim__card is-on">
+                              <input type="radio" name="voiceInputAimStrategy" id="voiceInputAimStrategyAuto" value="auto" checked />
+                              <span class="voice-prompt-aim__title">先对准，再填入</span>
+                              <span class="voice-prompt-aim__badge">推荐</span>
+                              <span class="voice-prompt-aim__desc">自动点进聊天输入框；对不上就取消，不乱填。</span>
+                            </label>
+                            <label class="voice-prompt-aim__card">
+                              <input type="radio" name="voiceInputAimStrategy" id="voiceInputAimStrategyNone" value="none" />
+                              <span class="voice-prompt-aim__title">直接填入</span>
+                              <span class="voice-prompt-aim__desc">假定你已点好输入框，跳过对准，立刻写入。</span>
+                            </label>
+                            <label class="voice-prompt-aim__card">
+                              <input type="radio" name="voiceInputAimStrategy" id="voiceInputAimStrategyProbe" value="probe" />
+                              <span class="voice-prompt-aim__title">只在已对准时填</span>
+                              <span class="voice-prompt-aim__desc">光标已在输入框才填；否则取消。不主动点屏。</span>
+                            </label>
+                          </div>
+                          <div class="voice-prompt-aim-cal" id="voicePromptAimCalRow">
+                            <button type="button" class="control-btn" id="btnVoiceAimCalibrate">粗圈校准输入框</button>
+                            <button type="button" class="control-btn ghost" id="btnVoiceAimCalibrateClear" hidden>恢复默认位置</button>
+                            <span class="voice-prompt-aim-cal__hint" id="voicePromptAimCalHint">先圈住，再框内点一下 · 按 App 记住</span>
+                          </div>
+                          <!-- keep id for older rail sync; hidden mirror of radios -->
+                          <select id="voiceInputAimStrategy" class="voice-prompt-aim-select" hidden aria-hidden="true">
+                            <option value="auto">先对准，再填入</option>
+                            <option value="none">直接填入</option>
+                            <option value="probe">只在已对准时填</option>
+                          </select>
+                        </fieldset>
                         <div class="voice-wake-optin-row voice-prompt-bringup" id="voiceWakeBringUpRow" hidden>
                           <div class="voice-wake-optin-copy">
                             <span class="voice-wake-optin-label" id="voiceSchemeBringUpLbl">不在目标窗时自动切过去</span>
-                            <span class="voice-wake-optin-hint" id="voiceSchemeBringUpHint">默认关 · 避免误开别的应用</span>
+                            <span class="voice-wake-optin-hint" id="voiceSchemeBringUpHint">默认关 · 只管切到应用窗口；输入框对准见上方</span>
                           </div>
                           <button type="button" class="toggle-switch" id="voiceAllowBringUpTargetToggle" role="switch" aria-checked="false" aria-labelledby="voiceSchemeBringUpLbl"></button>
                         </div>
@@ -5204,7 +5237,7 @@
   <script src="js/features/voice/voice-step-wake-render.js"></script>
   <script src="js/features/voice/voice-bridge-softpad.js"></script>
   <script src="js/features/voice/voice-bridge-keys.js"></script>
-  <script src="js/features/voice/voice-intent-rail.js?v=prompt-dock-2"></script>
+  <script src="js/features/voice/voice-intent-rail.js?v=aim-cal-b5"></script>
   <script src="js/features/voice/voice-bridge-camera.js"></script>
   <script src="js/features/voice/voice-step-recognize-render.js"></script>
   <script src="js/features/voice/voice-step-send-render.js"></script>

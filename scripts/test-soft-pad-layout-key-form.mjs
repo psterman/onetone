@@ -71,8 +71,10 @@ check('accordion relocate helpers', pad.includes('function parkLayoutEditorOutsi
   pad.includes('soft-pad-layout-editor--accordion') &&
   pad.includes('function revealCommonsLayoutForKey') &&
   pad.includes('function scrollLayoutEditorIntoView'));
-check('key pick reveals 我的常见 + scrolls form',
-  /function softPadPreviewEditKey[\s\S]*?revealCommonsLayoutForKey/.test(pad));
+check('key pick reveals matching scene + scrolls form',
+  /function softPadPreviewEditKey[\s\S]*?revealCommonsLayoutForKey/.test(pad) &&
+  pad.includes('function layoutSceneIdForSlot') &&
+  /function revealCommonsLayoutForKey[\s\S]*?layoutSceneIdForSlot/.test(pad));
 check('settings preview banner removed',
   !readFileSync(join(root, 'src/index.html'), 'utf8').includes('id="softPadSettingsPreviewBanner"'));
 check('custom layer creates new shortcut (not overwrite key)', pad.includes('data-layout-custom-record') &&

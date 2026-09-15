@@ -1039,8 +1039,21 @@
         var m=hdr&&hdr.resolveScopeMapping?hdr.resolveScopeMapping(null):null;
         if(!m||!String(m.appTargetId||'').trim()) return;
         m.voiceAllowBringUpTarget=!m.voiceAllowBringUpTarget;
-        bringToggle.setAttribute('aria-checked',m.voiceAllowBringUpTarget?'true':'false');
-        bringToggle.classList.toggle('is-on',!!m.voiceAllowBringUpTarget);
+        var on=!!m.voiceAllowBringUpTarget;
+        // Same-app peers share the switch — prompt peers were staying false while UI looked on.
+        var appId=String(m.appTargetId||'').trim();
+        var maps=[];
+        try{
+          var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+          maps=cfg&&Array.isArray(cfg.mappings)?cfg.mappings:[];
+        }catch(_){}
+        for(var i=0;i<maps.length;i++){
+          var x=maps[i];
+          if(!x||String(x.appTargetId||'').trim()!==appId) continue;
+          x.voiceAllowBringUpTarget=on;
+        }
+        bringToggle.setAttribute('aria-checked',on?'true':'false');
+        bringToggle.classList.toggle('is-on',on);
         if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
           global.OneToneConfigPersist.save({source:'voice'});
         }
@@ -1395,15 +1408,29 @@
       global.__vp_voice_wrong_fg_toast__=true;
       global.addEventListener('ot:runtime-event',function(e){
         var ev=e&&e.detail;
-        if(!ev||String(ev.kind||'')!=='voice_wake_refused_wrong_fg') return;
-        var payload=ev.payload||{};
-        var target=String(payload.targetName||payload.appTargetId||'').trim()||'目标应用';
-        var msg=String((typeof t==='function'&&t('voiceWrongFgToast'))||'当前窗口不是「{target}」。请先切换，或到听写「高级」里打开自动拉起。')
-          .replace('{target}',target);
-        if(global.OneToneAppToast&&global.OneToneAppToast.show) global.OneToneAppToast.show(msg,'lite');
-        else if(global.OneToneApp&&global.OneToneApp.toast) global.OneToneApp.toast(msg);
-        if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.renderWrongFgStatus){
-          global.OneToneVoiceStepWake.renderWrongFgStatus();
+        if(!ev) return;
+        var kind=String(ev.kind||'');
+        if(kind==='voice_wake_refused_wrong_fg'){
+          var payload=ev.payload||{};
+          var target=String(payload.targetName||payload.appTargetId||'').trim()||'目标应用';
+          var msg=String((typeof t==='function'&&t('voiceWrongFgToast'))||'当前窗口不是「{target}」。请先切换，或到听写「高级」里打开自动拉起。')
+            .replace('{target}',target);
+          if(global.OneToneAppToast&&global.OneToneAppToast.show) global.OneToneAppToast.show(msg,'lite');
+          else if(global.OneToneApp&&global.OneToneApp.toast) global.OneToneApp.toast(msg);
+          if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.renderWrongFgStatus){
+            global.OneToneVoiceStepWake.renderWrongFgStatus();
+          }
+          return;
+        }
+        if(kind==='voice_prompt_aim_failed'){
+          var p2=ev.payload||{};
+          var reason=String(p2.reason||'').trim();
+          var aimMsg=String((typeof t==='function'&&t('voicePromptAimFailedToast'))||'没对准目标输入框，未写入。请先点一下聊天输入框再说口令，或改选「直接填入」。');
+          if(reason==='no_profile'){
+            aimMsg=String((typeof t==='function'&&t('voicePromptAimNoProfileToast'))||'当前应用还不能自动对准，未写入。请先手动点进输入框，或改选「直接填入」。');
+          }
+          if(global.OneToneAppToast&&global.OneToneAppToast.show) global.OneToneAppToast.show(aimMsg,'lite');
+          else if(global.OneToneApp&&global.OneToneApp.toast) global.OneToneApp.toast(aimMsg);
         }
       });
     }

@@ -156,6 +156,175 @@ pub fn idle_wake_phrases(cfg: &VoiceConfig) -> Vec<String> {
     out
 }
 
+/// Prompt-inject peer: `captureHeroRef.kind=prompt` and `bindingRef` owns itself.
+pub fn is_prompt_inject_mapping(m: &MappingEntry) -> bool {
+    let Some(href) = m.capture_hero_ref.as_ref() else {
+        return false;
+    };
+    href.kind.eq_ignore_ascii_case("prompt")
+        && href.binding_ref.trim() == m.id.trim()
+        && m.enabled
+}
+
+/// First Text action on a prompt peer (inject body).
+pub fn prompt_text_from_mapping(m: &MappingEntry) -> String {
+    for a in m.effective_target_actions() {
+        if let crate::config::Action::Text { value } = a {
+            let t = value.trim();
+            if !t.is_empty() {
+                return t.to_string();
+            }
+        }
+    }
+    String::new()
+}
+
+/// MVP: phrase → unique prompt peer via peer-owned `voiceOverride.wakePhrases`.
+/// Prefers same `appTargetId` as the active scene when multiple peers match.
+pub fn find_prompt_inject_peer_for_phrase<'a>(
+    cfg: &'a VoiceConfig,
+    phrase: &str,
+) -> Option<&'a MappingEntry> {
+    let active_app = cfg
+        .find_mapping_by_id(&cfg.active_scene_id)
+        .map(|m| m.app_target_id.trim().to_string())
+        .unwrap_or_default();
+    let mut best: Option<&MappingEntry> = None;
+    let mut best_same_app = false;
+    for m in &cfg.mappings {
+        if !is_prompt_inject_mapping(m) {
+            continue;
+        }
+        if prompt_text_from_mapping(m).is_empty() {
+            continue;
+        }
+        let Some(ov) = m.voice_override.as_ref() else {
+            continue;
+        };
+        let Some(phrases) = ov.wake_phrases.as_ref() else {
+            continue;
+        };
+        if !phrases
+            .iter()
+            .any(|w| crate::config::phrases_fuzzy_match(phrase, w))
+        {
+            continue;
+        }
+        let same_app = !active_app.is_empty() && m.app_target_id.trim() == active_app.as_str();
+        match best {
+            None => {
+                best = Some(m);
+                best_same_app = same_app;
+            }
+            Some(_) if same_app && !best_same_app => {
+                best = Some(m);
+                best_same_app = true;
+            }
+            _ => {}
+        }
+    }
+    best
+}
+
+fn dispatch_prompt_inject(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    matched_phrase: &str,
+    duration_ms: u32,
+    engine: &str,
+    mapping_id: String,
+    app_tid: &str,
+    prompt: &str,
+    route: &str,
+) -> VoiceWakeDispatchResult {
+    let strategy = {
+        let cfg = state.cfg.lock();
+        crate::input_focus_aim::InputAimStrategy::parse(&cfg.voice_end.input_aim_strategy)
+    };
+    if !app_tid.is_empty() {
+        if let Err(err) =
+            crate::input_focus_aim::aim_input_focus(app, app_tid, strategy, duration_ms)
+        {
+            crate::runtime_event::publish_runtime_event(
+                Some(app),
+                state.as_ref(),
+                "voice",
+                crate::runtime_event::kind::VOICE_PROMPT_AIM_FAILED,
+                &format!(
+                    "{engine} prompt aim failed reason={} strategy={} app={app_tid} route={route}",
+                    err.as_str(),
+                    strategy.as_str()
+                ),
+                Some(serde_json::json!({
+                    "engine": engine,
+                    "intent": "prompt",
+                    "route": route,
+                    "phrase": matched_phrase,
+                    "appTargetId": app_tid,
+                    "strategy": strategy.as_str(),
+                    "reason": err.as_str()
+                })),
+            );
+            return VoiceWakeDispatchResult {
+                ok: false,
+                target_key: "promptInject".into(),
+                mapping_id,
+                used_summon_workflow: false,
+                runtime_label: format!("voice_{engine}_prompt_aim_failed"),
+            };
+        }
+    }
+    let actions = [
+        crate::config::Action::Text {
+            value: prompt.to_string(),
+        },
+        crate::config::Action::Key {
+            value: "Enter".into(),
+        },
+    ];
+    let sent = crate::keyboard::run_action_sequence(&actions, duration_ms);
+    if sent {
+        mark_voice_wake_key_sent(state.as_ref());
+        crate::runtime_event::publish_runtime_event(
+            Some(app),
+            state.as_ref(),
+            "voice",
+            crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
+            &format!("{engine} prompt inject ({route}; phrase: {matched_phrase})"),
+            Some(serde_json::json!({
+                "engine": engine,
+                "intent": "prompt",
+                "route": route,
+                "phrase": matched_phrase,
+                "promptChars": prompt.chars().count(),
+                "strategy": strategy.as_str(),
+                "mappingId": mapping_id
+            })),
+        );
+        crate::tray::refresh_menu(app);
+    } else {
+        crate::runtime_event::publish_runtime_event(
+            Some(app),
+            state.as_ref(),
+            "voice",
+            crate::runtime_event::kind::VOICE_SEND_FAILED,
+            &format!("{engine} prompt inject failed ({route})"),
+            Some(serde_json::json!({
+                "engine": engine,
+                "intent": "prompt",
+                "route": route
+            })),
+        );
+    }
+    VoiceWakeDispatchResult {
+        ok: sent,
+        target_key: "promptInject".into(),
+        mapping_id,
+        used_summon_workflow: false,
+        runtime_label: format!("voice_{engine}_prompt"),
+    }
+}
+
 /// Wake + summon phrases that may start a voice session (routes differ in dispatch).
 pub fn idle_start_phrases(cfg: &VoiceConfig) -> Vec<String> {
     let global = crate::scene_config::global_summon_phrases(cfg);
@@ -413,13 +582,19 @@ pub fn run_mapping_target_sequence(
     {
         #[cfg(windows)]
         {
-            if let Err(err) =
-                crate::app_chat_workflow::focus_composer_for_send(app, &app_target, duration_ms)
-            {
-                let prefix = crate::app_chat_workflow::profile_for(&app_target)
-                    .map(|p| p.error_prefix)
-                    .unwrap_or("app");
-                let reason = format!("focus_failed:{}", err.reason(prefix));
+            let strategy = {
+                let cfg = state.cfg.lock();
+                crate::input_focus_aim::InputAimStrategy::parse(
+                    &cfg.voice_end.input_aim_strategy,
+                )
+            };
+            if let Err(err) = crate::input_focus_aim::aim_input_focus(
+                app,
+                &app_target,
+                strategy,
+                duration_ms,
+            ) {
+                let reason = format!("focus_failed:{}", err.as_str());
                 crate::app_log::log_line(
                     state.as_ref(),
                     "send",
@@ -774,6 +949,65 @@ pub fn handle_voice_wake_detected(
         }
     }
 
+    // Prompt inject before wrong_fg: aim() brings the app window; do not refuse
+    // just because Soft Pad / settings still hold FG or bring-up toggle is off.
+    {
+        let peer_hit = {
+            let cfg = state.cfg.lock();
+            find_prompt_inject_peer_for_phrase(&cfg, matched_phrase).map(|m| {
+                (
+                    m.id.clone(),
+                    m.app_target_id.trim().to_string(),
+                    prompt_text_from_mapping(m),
+                )
+            })
+        };
+        if let Some((peer_id, peer_app, prompt)) = peer_hit {
+            if !prompt.is_empty() {
+                return dispatch_prompt_inject(
+                    state,
+                    app,
+                    matched_phrase,
+                    duration_ms,
+                    engine,
+                    peer_id,
+                    &peer_app,
+                    &prompt,
+                    "peer",
+                );
+            }
+        }
+    }
+
+    // Fallback: global voiceEnd.intent=prompt + promptInjectText (no peer phrase stamp yet).
+    {
+        let (intent, prompt, app_tid) = {
+            let cfg = state.cfg.lock();
+            let tid = mapping_snapshot
+                .as_ref()
+                .map(|m| m.app_target_id.trim().to_string())
+                .unwrap_or_default();
+            (
+                cfg.voice_end.intent.trim().to_ascii_lowercase(),
+                cfg.voice_end.prompt_inject_text.trim().to_string(),
+                tid,
+            )
+        };
+        if intent == "prompt" && !prompt.is_empty() {
+            return dispatch_prompt_inject(
+                state,
+                app,
+                matched_phrase,
+                duration_ms,
+                engine,
+                mapping_id,
+                &app_tid,
+                &prompt,
+                "intent",
+            );
+        }
+    }
+
     // R7: empty appTargetId = global dictation — never wrong-FG gate.
     // App scene + allowBringUp off + FG ≠ target → refuse (Q15 toast via FE).
     // App scene + allowBringUp on → focus/launch target then dictate (no auto-send).
@@ -834,61 +1068,6 @@ pub fn handle_voice_wake_detected(
                     &format!("wake bring_up focus miss app={app_tid}"),
                 );
             }
-        }
-    }
-
-    // Oral-prompt intent: one-shot focus → inject text → Enter (no dictation session).
-    {
-        let (intent, prompt) = {
-            let cfg = state.cfg.lock();
-            (
-                cfg.voice_end.intent.trim().to_ascii_lowercase(),
-                cfg.voice_end.prompt_inject_text.trim().to_string(),
-            )
-        };
-        if intent == "prompt" && !prompt.is_empty() {
-            let actions = [
-                crate::config::Action::Text {
-                    value: prompt.clone(),
-                },
-                crate::config::Action::Key {
-                    value: "Enter".into(),
-                },
-            ];
-            let sent =
-                send_actions_to_target(Some(state.as_ref()), Some(app), &actions, duration_ms);
-            if sent {
-                crate::runtime_event::publish_runtime_event(
-                    Some(app),
-                    state.as_ref(),
-                    "voice",
-                    crate::runtime_event::kind::VOICE_WAKE_TRIGGERED,
-                    &format!("{engine} prompt inject (phrase: {matched_phrase})"),
-                    Some(serde_json::json!({
-                        "engine": engine,
-                        "intent": "prompt",
-                        "phrase": matched_phrase,
-                        "promptChars": prompt.chars().count()
-                    })),
-                );
-                crate::tray::refresh_menu(app);
-            } else {
-                crate::runtime_event::publish_runtime_event(
-                    Some(app),
-                    state.as_ref(),
-                    "voice",
-                    crate::runtime_event::kind::VOICE_SEND_FAILED,
-                    &format!("{engine} prompt inject failed"),
-                    Some(serde_json::json!({ "engine": engine, "intent": "prompt" })),
-                );
-            }
-            return VoiceWakeDispatchResult {
-                ok: sent,
-                target_key: "promptInject".into(),
-                mapping_id,
-                used_summon_workflow: false,
-                runtime_label: format!("voice_{engine}_prompt"),
-            };
         }
     }
 
@@ -2247,5 +2426,44 @@ mod tests {
             .as_deref(),
             Some("Ctrl+Shift+Space")
         );
+    }
+
+    #[test]
+    fn prompt_peer_phrase_routes_before_generic_wake() {
+        let peer: MappingEntry = serde_json::from_value(serde_json::json!({
+            "id": "peer-prompt-1",
+            "label": "continue",
+            "enabled": true,
+            "appTargetId": "cursor",
+            "captureHeroRef": {
+                "channel": "voice",
+                "bindingRef": "peer-prompt-1",
+                "kind": "prompt"
+            },
+            "voiceOverride": { "wakePhrases": ["么么哒"] },
+            "targetActions": [
+                { "type": "text", "value": "继续吗？" },
+                { "type": "key", "value": "Enter" }
+            ]
+        }))
+        .expect("prompt peer");
+        let habit: MappingEntry = serde_json::from_value(serde_json::json!({
+            "id": "habit-cursor",
+            "label": "Cursor",
+            "enabled": true,
+            "appTargetId": "cursor",
+            "voiceOverride": { "wakePhrases": ["开始输入", "么么哒"] }
+        }))
+        .expect("habit");
+        let mut cfg = VoiceConfig::default();
+        cfg.active_scene_id = habit.id.clone();
+        cfg.mappings = vec![habit, peer];
+        cfg.voice_end.intent = "ime".into();
+        cfg.voice_end.prompt_inject_text = String::new();
+
+        let hit = find_prompt_inject_peer_for_phrase(&cfg, "么么哒").expect("peer hit");
+        assert_eq!(hit.id, "peer-prompt-1");
+        assert_eq!(prompt_text_from_mapping(hit), "继续吗？");
+        assert!(find_prompt_inject_peer_for_phrase(&cfg, "开始输入").is_none());
     }
 }

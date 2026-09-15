@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-cmd-input-aim-calibrate-cancel"
+description = "Cancel scheme-B calibrate"
+commands.allow = ["cmd_input_aim_calibrate_cancel"]
+
+[[permission]]
+identifier = "deny-cmd-input-aim-calibrate-cancel"
+description = "Deny cancel calibrate"
+commands.deny = ["cmd_input_aim_calibrate_cancel"]

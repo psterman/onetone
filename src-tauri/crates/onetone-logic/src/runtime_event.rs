@@ -21,6 +21,8 @@ pub mod kind {
     pub const VOICE_ERROR: &str = "voice_error";
     pub const VOICE_WAKE_TRIGGERED: &str = "voice_wake_triggered";
     pub const VOICE_WAKE_REFUSED_WRONG_FG: &str = "voice_wake_refused_wrong_fg";
+    /// Prompt inject / Text+Enter blocked because input aim failed (fail-closed).
+    pub const VOICE_PROMPT_AIM_FAILED: &str = "voice_prompt_aim_failed";
     pub const VOICE_SEND_FAILED: &str = "voice_send_failed";
     pub const SESSION_STARTED: &str = "session_started";
     pub const SESSION_ENDED: &str = "session_ended";

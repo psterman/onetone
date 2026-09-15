@@ -14,6 +14,8 @@ mod cursor_local_activity;
 #[path = "cursor_local_activity_stub.rs"]
 mod cursor_local_activity;
 mod app_chat_workflow;
+mod input_focus_aim;
+mod input_aim_calibrate;
 mod app_exe_icon;
 mod app_icon;
 mod app_identity;
@@ -1079,6 +1081,11 @@ pub fn run() {
             ipc::cmd_voice_end_ui_end,
             ipc::cmd_voice_end_ui_cancel,
             ipc::cmd_voice_end_test_commit,
+            input_aim_calibrate::cmd_input_aim_calibrate_begin,
+            input_aim_calibrate::cmd_input_aim_calibrate_commit,
+            input_aim_calibrate::cmd_input_aim_calibrate_cancel,
+            input_aim_calibrate::cmd_input_aim_calibrate_clear,
+            input_aim_calibrate::cmd_input_aim_calibrate_status,
             ipc::cmd_update_check,
             ipc::cmd_update_install,
             ipc::cmd_export_logs,

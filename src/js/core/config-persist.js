@@ -748,6 +748,20 @@
     if(!cfg.voiceSapi&&cfg.voice_sapi) cfg.voiceSapi=cfg.voice_sapi;
     if(!cfg.voiceKws&&cfg.voice_kws) cfg.voiceKws=cfg.voice_kws;
     if(!cfg.voiceEnd&&cfg.voice_end) cfg.voiceEnd=cfg.voice_end;
+    if(cfg.voiceEnd&&typeof cfg.voiceEnd==='object'){
+      if(!cfg.voiceEnd.composerAnchors&&cfg.voiceEnd.composer_anchors){
+        cfg.voiceEnd.composerAnchors=cfg.voiceEnd.composer_anchors;
+      }
+      if(!cfg.voiceEnd.composerAnchors||typeof cfg.voiceEnd.composerAnchors!=='object'){
+        cfg.voiceEnd.composerAnchors={};
+      }
+      if(!cfg.voiceEnd.inputAimStrategy&&cfg.voiceEnd.input_aim_strategy){
+        cfg.voiceEnd.inputAimStrategy=cfg.voiceEnd.input_aim_strategy;
+      }
+      if(cfg.voiceEnd.promptInjectText==null&&cfg.voiceEnd.prompt_inject_text!=null){
+        cfg.voiceEnd.promptInjectText=cfg.voiceEnd.prompt_inject_text;
+      }
+    }
     if(!cfg.desiredEngine&&cfg.desired_engine) cfg.desiredEngine=String(cfg.desired_engine);
     if(!cfg.voiceListeningStrategy&&cfg.voice_listening_strategy){
       cfg.voiceListeningStrategy=String(cfg.voice_listening_strategy);
@@ -950,7 +964,7 @@
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
       voiceKws:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:'resources/kws/sherpa-kws-zh-small',modelPreset:'cn-light'},
-      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','就这样','停止听写'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation',"that's it",'stop dictation'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了','撤掉'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind','forget it'],sendPhrasesZh:['发送','发出去','提交'],sendPhrasesEn:['send it','send','submit'],sendMode:'confirm',commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt',intent:'ime',promptInjectText:''},
+      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','就这样','停止听写'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation',"that's it",'stop dictation'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了','撤掉'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind','forget it'],sendPhrasesZh:['发送','发出去','提交'],sendPhrasesEn:['send it','send','submit'],sendMode:'confirm',commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt',intent:'ime',promptInjectText:'',inputAimStrategy:'auto',composerAnchors:{}},
       voiceWakeAcousticCommands:[]
     };
   }
@@ -1407,7 +1421,21 @@
           autoSendEnabled:!!cfg.autoSendEnabled||!!cfg.auto_send_enabled||String(cfg.sendMode||'').toLowerCase()==='auto',
           targetKey:String(cfg.targetKey||cfg.target_key||'RAlt').trim()||'RAlt',
           intent:String(cfg.intent||'ime').trim()||'ime',
-          promptInjectText:String(cfg.promptInjectText||cfg.prompt_inject_text||'')
+          promptInjectText:String(cfg.promptInjectText||cfg.prompt_inject_text||''),
+          inputAimStrategy:String(cfg.inputAimStrategy||cfg.input_aim_strategy||'auto').trim()||'auto',
+          composerAnchors:(function(){
+            var raw=cfg.composerAnchors||cfg.composer_anchors||{};
+            if(!raw||typeof raw!=='object') return {};
+            var out={};
+            Object.keys(raw).forEach(function(k){
+              var a=raw[k];
+              if(!a||typeof a!=='object') return;
+              var x=Number(a.x), y=Number(a.y);
+              if(!isFinite(x)||!isFinite(y)) return;
+              out[String(k)]={x:x,y:y};
+            });
+            return out;
+          })()
         };
       })(),
       voiceListeningStrategy:String(st.config.voiceListeningStrategy||st.config.voice_listening_strategy||'off'),

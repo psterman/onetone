@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-cmd-input-aim-calibrate-begin"
+description = "Begin scheme-B input aim calibrate overlay"
+commands.allow = ["cmd_input_aim_calibrate_begin"]
+
+[[permission]]
+identifier = "deny-cmd-input-aim-calibrate-begin"
+description = "Deny begin calibrate"
+commands.deny = ["cmd_input_aim_calibrate_begin"]

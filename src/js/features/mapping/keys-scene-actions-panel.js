@@ -685,7 +685,7 @@
     } catch (_) {}
     if (!matchName) matchName = String(sm.label || '').trim();
     if (!matchName || /→|->/.test(matchName) || /^AutoTrigger\b/i.test(matchName)) {
-      matchName = t('keysCustomKeyMatchTitle', '按键匹配');
+      matchName = t('keysCustomKeyMatchDefaultName', '自定义键');
     }
     var trig = String((sm && sm.triggerKey) || '').trim();
     return {
@@ -834,7 +834,7 @@
         slotId: heroBref,
         actionId: '',
         kind: 'customKey',
-        label: (named && named.label) || t('keysCustomKeyMatchTitle', '按键匹配'),
+        label: (named && named.label) || t('keysCustomKeyMatchDefaultName', '自定义键'),
         binds: { key: trigLine },
         ime: null,
         summary: '',
@@ -1039,7 +1039,7 @@
           var ckLabel =
             (onVoicePage() && primaryWakePhraseLabel()) ||
             (vNamed && vNamed.label) ||
-            t('keysCustomKeyMatchTitle', '按键匹配');
+            t('keysCustomKeyMatchDefaultName', '自定义键');
           rows.push({
             key: 'match-applied:' + String(sm.id),
             mappingId: String(sm.id),
@@ -1690,6 +1690,18 @@
 
   function wakePhrasesForRow(a) {
     if (!a) return [];
+    if (a.kind === 'prompt') {
+      var peer = mappingById(a.mappingId);
+      var pov = peer && (peer.voiceOverride || peer.voice_override);
+      var pwp = pov && (pov.wakePhrases || pov.wake_phrases);
+      if (Array.isArray(pwp) && pwp.length) {
+        return pwp
+          .map(function (p) {
+            return String(p || '').trim();
+          })
+          .filter(Boolean);
+      }
+    }
     if (a.kind === 'recognition' || a.kind === 'prompt') {
       try {
         var Wake = global.OneToneVoiceWake;

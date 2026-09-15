@@ -1,0 +1,10 @@
+{
+  "identifier": "input-aim-calibrate",
+  "description": "Scheme-B input aim calibrate overlay",
+  "windows": ["input_aim_calibrate"],
+  "permissions": [
+    "core:default",
+    "allow-cmd-input-aim-calibrate-commit",
+    "allow-cmd-input-aim-calibrate-cancel"
+  ]
+}

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SoftPad · 动作详情何时出现</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,700;9..40,800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#142033;--muted:#5b6b7f;--line:#d7e2ec;--soft:#f4f8fb;--paper:#fff;
+      --cyan:#0b9bd7;--cyan-soft:#e7f7fd;--cyan-deep:#0879a8;
+      --ok:#0f766e;--ok-soft:#ecfdf8;--warn:#9a6700;--warn-soft:#fff8e8;
+      --pad:#0f1a24;--key:#1c2b3a;--key-line:#2d4256;
+      --font:"DM Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;
+      --shadow:0 18px 50px rgba(20,32,51,.12);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:var(--font);color:var(--ink);
+      background:radial-gradient(720px 320px at 8% -8%,rgba(11,155,215,.14),transparent 55%),
+        linear-gradient(180deg,#eef4f8,#e8eef4);
+    }
+    .page{width:min(1180px,100%);margin:0 auto;padding:28px 20px 56px}
+    .eyebrow{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan-deep)}
+    h1{margin:0 0 8px;font-size:28px;font-weight:800;letter-spacing:-.02em}
+    .lede{margin:0 0 20px;max-width:70ch;color:var(--muted);font-size:15px;line-height:1.55}
+    .lede strong{color:var(--ink)}
+
+    .plan{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px
+    }
+    @media (max-width:900px){.plan{grid-template-columns:1fr}}
+    .plan article{
+      background:var(--paper);border:1px solid var(--line);border-radius:16px;
+      padding:14px 16px;box-shadow:var(--shadow)
+    }
+    .plan .step{
+      display:inline-flex;align-items:center;gap:6px;margin:0 0 8px;
+      font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--cyan-deep)
+    }
+    .plan .step i{
+      width:20px;height:20px;border-radius:7px;display:grid;place-items:center;
+      background:var(--cyan-soft);font-style:normal;font-family:var(--mono);font-size:11px
+    }
+    .plan h2{margin:0 0 6px;font-size:15px;font-weight:800}
+    .plan p{margin:0;font-size:13px;color:var(--muted);line-height:1.45}
+    .plan .detail{
+      margin-top:10px;padding:8px 10px;border-radius:10px;font-size:12px;font-weight:700;line-height:1.35
+    }
+    .plan .detail.show{background:var(--ok-soft);color:var(--ok);border:1px solid #99e2d0}
+    .plan .detail.hide{background:var(--warn-soft);color:var(--warn);border:1px solid #f0d9a8}
+
+    .board{
+      background:var(--paper);border:1px solid var(--line);border-radius:18px;
+      box-shadow:var(--shadow);overflow:hidden
+    }
+    .board-h{
+      display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;
+      padding:12px 16px;border-bottom:1px solid var(--line);background:var(--soft)
+    }
+    .board-h strong{font-size:13px;font-weight:800}
+    .modes{display:flex;gap:6px;flex-wrap:wrap}
+    .modes button{
+      border:1px solid var(--line);background:#fff;color:var(--muted);
+      border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer
+    }
+    .modes button.on{background:var(--cyan-soft);border-color:#9dd4ea;color:var(--cyan-deep)}
+    .modes button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+    .desk{
+      display:grid;grid-template-columns:minmax(200px,.9fr) minmax(320px,1.2fr) 150px;
+      gap:0;min-height:420px
+    }
+    @media (max-width:960px){
+      .desk{grid-template-columns:1fr}
+    }
+    .col{padding:12px;border-right:1px solid var(--line);min-width:0;display:flex;flex-direction:column;gap:8px}
+    .col:last-child{border-right:0;background:linear-gradient(180deg,#f3fafd,#fff)}
+    .lbl{
+      margin:0;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)
+    }
+
+    .pad{
+      flex:1;border-radius:12px;background:var(--pad);padding:10px;
+      display:grid;grid-template-columns:repeat(3,1fr);gap:6px;align-content:center
+    }
+    .pad .k{
+      aspect-ratio:1.15;border-radius:8px;background:var(--key);border:1px solid var(--key-line);
+      color:#c9d7e4;display:grid;place-items:center;font-size:12px;font-weight:700
+    }
+    .pad .k.on{outline:2px solid var(--cyan);background:#214056;color:#fff}
+
+    .mid{display:flex;flex-direction:column;gap:8px;min-height:0}
+    .summary{
+      padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff
+    }
+    .summary .name{margin:0 0 4px;font-size:15px;font-weight:800}
+    .summary .meta{margin:0 0 10px;font-size:12px;color:var(--muted)}
+    .summary .cta{
+      display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;
+      border:1px solid #9dd4ea;background:var(--cyan-soft);color:var(--cyan-deep);
+      font:inherit;font-size:12px;font-weight:750;cursor:pointer
+    }
+    .summary .cta:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+    .pick{
+      display:none;flex:1;min-height:0;border:1px solid var(--line);border-radius:12px;
+      background:#fff;overflow:hidden;flex-direction:column
+    }
+    .pick.is-on{display:flex}
+    .pick-h{
+      display:flex;align-items:center;justify-content:space-between;gap:8px;
+      padding:10px 12px;border-bottom:1px solid var(--line);background:var(--soft)
+    }
+    .pick-h b{font-size:13px}
+    .pick-h button{
+      border:0;background:transparent;color:var(--muted);font:inherit;font-size:12px;
+      font-weight:700;cursor:pointer;padding:4px 6px;border-radius:6px
+    }
+    .pick-h button:hover{background:#fff;color:var(--ink)}
+    .pick-body{display:grid;grid-template-columns:120px 1fr;min-height:180px;flex:1}
+    .rail{border-right:1px solid var(--line);padding:8px;background:var(--soft);display:flex;flex-direction:column;gap:4px}
+    .rail button{
+      text-align:left;border:0;background:transparent;border-radius:8px;padding:8px 10px;
+      font:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer
+    }
+    .rail button.on{background:#fff;color:var(--cyan-deep);box-shadow:inset 0 0 0 1px #9dd4ea}
+    .grid-ime,
+    .grid-cam{
+      padding:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-content:start
+    }
+    .grid-cam{grid-template-columns:1fr;gap:6px}
+    .grid-cam[hidden],.grid-ime[hidden]{display:none}
+    .ime,.cam{
+      border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 8px;
+      font:inherit;font-size:11px;font-weight:700;color:var(--ink);cursor:pointer;text-align:center
+    }
+    .cam{text-align:left;display:flex;flex-direction:column;gap:2px;padding:10px 12px}
+    .cam small{font-weight:650;color:var(--muted);font-size:10px}
+    .ime:hover,.cam:hover{border-color:#9dd4ea;background:var(--cyan-soft)}
+    .ime.on,.cam.on{border-color:var(--cyan);background:var(--cyan-soft);color:var(--cyan-deep)}
+    .cam.dim{opacity:.55;cursor:not-allowed}
+    .pick-lead{grid-column:1/-1;margin:0 0 4px;font-size:11px;font-weight:650;color:var(--muted);line-height:1.4}
+
+    .detail{
+      border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;
+      transition:opacity .2s ease, transform .2s ease
+    }
+    .detail[hidden]{display:none}
+    .detail.is-dim{opacity:.45;transform:scale(.985);pointer-events:none}
+    .detail-h{
+      display:flex;align-items:center;justify-content:space-between;gap:8px;
+      padding:10px 12px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#f8fcfe,#fff)
+    }
+    .detail-h .t{font-size:13px;font-weight:800}
+    .detail-h .s{font-size:11px;color:var(--muted);font-weight:650}
+    .fields{padding:12px;display:grid;gap:10px}
+    .field label{display:block;font-size:11px;font-weight:750;color:var(--muted);margin:0 0 4px}
+    .field .box{
+      display:flex;align-items:center;gap:8px;min-height:36px;padding:0 10px;
+      border:1px solid var(--line);border-radius:8px;background:var(--soft);font-size:12px;font-weight:650
+    }
+    .field .box em{margin-left:auto;font-style:normal;color:var(--cyan-deep);font-weight:750}
+    .seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;border-radius:9px;background:var(--soft);border:1px solid var(--line)}
+    .seg span{
+      text-align:center;padding:7px 6px;border-radius:7px;font-size:11px;font-weight:750;color:var(--muted)
+    }
+    .seg span.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(20,32,51,.08)}
+
+    .habit .row{
+      display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:8px;
+      font-size:12px;font-weight:700;color:var(--muted)
+    }
+    .habit .row.on{background:var(--cyan-soft);color:var(--cyan-deep)}
+    .habit .row .m{margin-left:auto;font-family:var(--mono);font-size:10px;opacity:.75}
+    .habit .add{
+      margin-top:auto;padding:7px;border-radius:999px;border:1px dashed #b7c9d8;
+      background:transparent;color:var(--muted);font:inherit;font-size:11px;font-weight:650
+    }
+
+    .note{
+      margin:14px 0 0;padding:12px 14px;border-radius:12px;background:var(--paper);
+      border:1px solid var(--line);font-size:13px;color:var(--muted);line-height:1.5
+    }
+    .note b{color:var(--ink)}
+    .wire{
+      margin-top:10px;font-family:var(--mono);font-size:11px;line-height:1.55;
+      white-space:pre;overflow:auto;padding:10px 12px;border-radius:10px;
+      background:#142033;color:#c9d7e4
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <p class="eyebrow">SoftPad · key detail timing</p>
+    <h1>动作详情：何时开、何时收</h1>
+    <p class="lede">规划一句话：<strong>改本键时打开详情；挑命令时收起详情</strong>。下面三态可点切换，对照你截图里「听写方式 + 执行动作序列」叠在一起的问题。</p>
+
+    <div class="plan">
+      <article>
+        <p class="step"><i>1</i> 改此键</p>
+        <h2>默认态</h2>
+        <p>选中数字 7 → 中栏只看「这键绑了什么」+ 快捷键 / 口令 / 焦点。</p>
+        <div class="detail show">下方详情：开</div>
+      </article>
+      <article>
+        <p class="step"><i>2</i> 更换命令</p>
+        <h2>挑选态</h2>
+        <p>点「更换命令」→ 分类目录盖住中栏；详情收起，避免和听写网格抢戏。</p>
+        <div class="detail hide">下方详情：收</div>
+      </article>
+      <article>
+        <p class="step"><i>3</i> 绑完</p>
+        <h2>回到改键</h2>
+        <p>点一个输入法后自动关闭目录，详情再打开，只改弦 / 口令 / 送到哪里。</p>
+        <div class="detail show">下方详情：再开</div>
+      </article>
+    </div>
+
+    <section class="board" aria-label="可交互原型">
+      <div class="board-h">
+        <strong>可点原型 · 绑定 · Cursor</strong>
+        <div class="modes" role="tablist" aria-label="演示状态">
+          <button type="button" class="on" data-mode="edit" role="tab" aria-selected="true">① 改此键</button>
+          <button type="button" data-mode="pick" role="tab" aria-selected="false">② 更换命令</button>
+          <button type="button" data-mode="bound" role="tab" aria-selected="false">③ 绑完听写</button>
+        </div>
+      </div>
+
+      <div class="desk">
+        <div class="col">
+          <p class="lbl">预览</p>
+          <div class="pad" aria-hidden="true">
+            <div class="k">4</div><div class="k">5</div><div class="k">6</div>
+            <div class="k on">7</div><div class="k">8</div><div class="k">9</div>
+            <div class="k">1</div><div class="k">2</div><div class="k">3</div>
+          </div>
+        </div>
+
+        <div class="col mid">
+          <p class="lbl">中栏 · 一次只做一件事</p>
+
+          <div class="summary" id="summary">
+            <p class="name" id="cmdName">命令菜单</p>
+            <p class="meta" id="cmdMeta">数字 7 · 当前绑定</p>
+            <button type="button" class="cta" id="btnPick" type="button">更换命令 ▸</button>
+          </div>
+
+          <div class="pick" id="pick" aria-label="命令目录">
+            <div class="pick-h">
+              <b>选一个命令绑到数字 7</b>
+              <button type="button" id="btnClosePick">关闭</button>
+            </div>
+            <div class="pick-body">
+              <div class="rail" role="tablist">
+                <button type="button" class="on" data-ch="ime">听写方式</button>
+                <button type="button" data-ch="key">我录的键</button>
+                <button type="button" data-ch="voice">口头指令</button>
+                <button type="button" data-ch="camera">手势</button>
+                <button type="button" data-ch="agent">屏幕按钮</button>
+              </div>
+              <div class="grid-ime" id="imeGrid">
+                <p class="pick-lead">听写方式 · 点一个绑到数字 7</p>
+                <button type="button" class="ime" data-ime="讯飞">讯飞</button>
+                <button type="button" class="ime" data-ime="微信">微信</button>
+                <button type="button" class="ime" data-ime="Typeless">Typeless</button>
+                <button type="button" class="ime" data-ime="微软">微软</button>
+                <button type="button" class="ime" data-ime="智谱">智谱</button>
+                <button type="button" class="ime" data-ime="搜狗">搜狗</button>
+              </div>
+              <div class="grid-cam" id="camGrid" hidden>
+                <p class="pick-lead">Cursor 摄像头里已选好的动作 · 不是通用手势目录</p>
+                <button type="button" class="cam" data-cam="停止 / 发送" data-g="OK 手势">
+                  停止 / 发送<small>OK 手势 · Cursor 已选</small>
+                </button>
+                <button type="button" class="cam" data-cam="取消本轮" data-g="摇头">
+                  取消本轮<small>摇头 · Cursor 已选</small>
+                </button>
+                <button type="button" class="cam dim" disabled data-cam="语音取消" data-g="刻意眨眼">
+                  语音取消<small>刻意眨眼 · Soft Pad 暂不能跑本地动作</small>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail" id="detail">
+            <div class="detail-h">
+              <div>
+                <div class="t" id="detailTitle">数字 7</div>
+                <div class="s" id="detailSub">动作详情 · 只改这一键</div>
+              </div>
+            </div>
+            <div class="fields">
+              <div class="field">
+                <label>快捷键</label>
+                <div class="box">— <em>录制</em></div>
+              </div>
+              <div class="field">
+                <label>文本口令 · 可选</label>
+                <div class="box" id="phraseBox">开麦</div>
+              </div>
+              <div class="field">
+                <label>送到哪里</label>
+                <div class="seg">
+                  <span class="on">正在用的编辑器</span>
+                  <span>不抢焦点</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col habit">
+          <p class="lbl">本场景键位</p>
+          <div class="row on">数字 7<span class="m">7</span></div>
+          <div class="row">语音输入<span class="m">1</span></div>
+          <div class="row">结束发送<span class="m">↵</span></div>
+          <button type="button" class="add">＋ 新建键位</button>
+        </div>
+      </div>
+    </section>
+
+    <p class="note" id="note">
+      <b>① 改此键：</b>详情打开。上面只显示当前绑定摘要 +「更换命令」，不常驻整页听写网格。
+    </p>
+
+    <div class="wire" aria-hidden="true">[改此键]
+  摘要: 命令菜单
+  详情: 开 ← 快捷键 / 口令 / 焦点
+
+[更换命令]
+  目录: 开（听写·我录的键·…）
+  详情: 收  ← 避免叠两套表单
+
+[绑完]
+  目录: 关
+  详情: 开  ← 继续微调本键</div>
+  </div>
+
+  <script>
+    (function () {
+      var mode = 'edit';
+      var summary = document.getElementById('summary');
+      var pick = document.getElementById('pick');
+      var detail = document.getElementById('detail');
+      var cmdName = document.getElementById('cmdName');
+      var cmdMeta = document.getElementById('cmdMeta');
+      var detailSub = document.getElementById('detailSub');
+      var phraseBox = document.getElementById('phraseBox');
+      var note = document.getElementById('note');
+      var modes = document.querySelectorAll('.modes [data-mode]');
+
+      var copy = {
+        edit: {
+          name: '命令菜单',
+          meta: '数字 7 · 当前绑定',
+          phrase: '开麦',
+          sub: '动作详情 · 只改这一键',
+          note: '<b>① 改此键：</b>详情打开。上面只显示当前绑定摘要 +「更换命令」，不常驻整页听写网格。'
+        },
+        pick: {
+          name: '命令菜单',
+          meta: '数字 7 · 正在更换…',
+          phrase: '开麦',
+          sub: '挑选中 · 详情已收起',
+          note: '<b>② 更换命令：</b>分类目录展开；下方详情收起，避免「听写方式」和「动作详情」两套 UI 叠在一起（正是你截图里的问题）。'
+        },
+        bound: {
+          name: '讯飞听写',
+          meta: '数字 7 · 刚从听写方式绑定',
+          phrase: '',
+          sub: '动作详情 · 可改弦 / 口令 / 焦点',
+          note: '<b>③ 绑完听写：</b>目录关闭，详情再打开。口令可空；不要默认塞「执行动作」这类系统话术。'
+        }
+      };
+
+      function paint() {
+        var c = copy[mode];
+        modes.forEach(function (btn) {
+          var on = btn.getAttribute('data-mode') === mode;
+          btn.classList.toggle('on', on);
+          btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        var picking = mode === 'pick';
+        summary.hidden = picking;
+        pick.classList.toggle('is-on', picking);
+        detail.hidden = picking;
+        detail.classList.toggle('is-dim', false);
+        cmdName.textContent = c.name;
+        cmdMeta.textContent = c.meta;
+        detailSub.textContent = c.sub;
+        phraseBox.textContent = c.phrase || '（可选，未填）';
+        note.innerHTML = c.note;
+      }
+
+      modes.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          mode = btn.getAttribute('data-mode');
+          paint();
+        });
+      });
+
+      document.getElementById('btnPick').addEventListener('click', function () {
+        mode = 'pick';
+        paint();
+      });
+      document.getElementById('btnClosePick').addEventListener('click', function () {
+        mode = 'edit';
+        paint();
+      });
+
+      document.querySelectorAll('.rail [data-ch]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var ch = btn.getAttribute('data-ch');
+          document.querySelectorAll('.rail [data-ch]').forEach(function (b) {
+            b.classList.toggle('on', b === btn);
+          });
+          var ime = document.getElementById('imeGrid');
+          var cam = document.getElementById('camGrid');
+          ime.hidden = ch !== 'ime';
+          cam.hidden = ch !== 'camera';
+          if (ch !== 'ime' && ch !== 'camera') {
+            ime.hidden = true;
+            cam.hidden = true;
+          }
+        });
+      });
+
+      document.querySelectorAll('.ime').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.ime').forEach(function (b) {
+            b.classList.toggle('on', b === btn);
+          });
+          copy.bound.name = btn.getAttribute('data-ime') + '听写';
+          mode = 'bound';
+          paint();
+        });
+      });
+
+      document.querySelectorAll('.cam:not(.dim)').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.cam').forEach(function (b) {
+            b.classList.toggle('on', b === btn);
+          });
+          copy.bound.name = btn.getAttribute('data-cam');
+          copy.bound.meta = '数字 7 · 来自 Cursor 手势「' + (btn.getAttribute('data-g') || '') + '」';
+          copy.bound.note =
+            '<b>③ 绑完手势动作：</b>列表来自 Cursor 摄像头已选动作，不是通用手势目录。详情再打开可改弦 / 口令。';
+          mode = 'bound';
+          paint();
+        });
+      });
+
+      paint();
+    })();
+  </script>
+</body>
+</html>

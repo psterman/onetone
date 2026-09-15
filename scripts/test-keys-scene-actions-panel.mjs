@@ -135,13 +135,7 @@ check(
       if (bref && bref !== mid) return false;
       return true;
     }
-    return (
-      m.enabled === false &&
-      Array.isArray(m.targetActions) &&
-      m.targetActions.length > 0 &&
-      !String(m.imePresetId || '').trim() &&
-      !String(m.targetKey || '').trim()
-    );
+    return false;
   }
   var habit = {
     id: 'habit1',
@@ -157,6 +151,16 @@ check(
   };
   check('create apply: habit shadow not a library row', !isLib(habit, 'peer1'));
   check('create apply: peer is the only library row', isLib(peer, 'peer1'));
+  check(
+    'legacy disabled orphans are not library rows',
+    !isLib({
+      id: 'orphan',
+      enabled: false,
+      targetActions: [{ type: 'open', kind: 'url', value: 'https://example.com' }],
+      imePresetId: '',
+      targetKey: ''
+    })
+  );
 }
 check(
   '录制快捷键 catalog pick stays in callback mode',
@@ -723,15 +727,11 @@ const sandbox = {
         if (bref && bref !== mid) return false;
         return true;
       }
-      return !!(
-        m.enabled === false &&
-        Array.isArray(m.targetActions) &&
-        m.targetActions.length
-      );
+      return false;
     },
     customKeyMatchDisplayName(m) {
       const lab = String((m && m.label) || '').trim();
-      return lab || '按键匹配';
+      return lab || '自定义键';
     },
     listCustomKeyMappingsForCurrentApp() {
       return [mappings.match1, mappings.matchBare];

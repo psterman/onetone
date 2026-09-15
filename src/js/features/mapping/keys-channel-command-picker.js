@@ -266,31 +266,31 @@
     {
       id: 'talk',
       titleKey: 'keysCursorPickGroupTalk',
-      titleFb: '说话与发送',
+      titleFb: '听写',
       slots: ['pushToTalk', 'stopOrSend', 'paste', 'cancel']
     },
     {
       id: 'chat',
       titleKey: 'keysCursorPickGroupChat',
-      titleFb: '对话与回到 Cursor',
+      titleFb: '对话',
       slots: ['newThread', 'quickChat', 'focusComposer']
     },
     {
       id: 'mode',
       titleKey: 'keysCursorPickGroupMode',
-      titleFb: 'AI 工作方式',
+      titleFb: '模式',
       slots: ['modeMenu', 'plan', 'switchAgent']
     },
     {
       id: 'find',
       titleKey: 'keysCursorPickGroupFind',
-      titleFb: '找文件与改代码',
+      titleFb: '查找',
       slots: ['quickSearch', 'commandPalette', 'inlineEdit']
     },
     {
       id: 'diff',
       titleKey: 'keysCursorPickGroupDiff',
-      titleFb: '补全与接受改动',
+      titleFb: '补全',
       slots: [
         'acceptTab',
         'nextChange',
@@ -2047,11 +2047,11 @@
   function customKeyMatchDisplayName(m) {
     var lab = String((m && m.label) || '').trim();
     if (lab && !looksLikeAutoChordLabel(lab)) return lab;
-    return t('keysCustomKeyMatchTitle', '按键匹配');
+    return t('keysCustomKeyMatchDefaultName', '自定义键');
   }
 
   function promptCustomKeyMatchName(current) {
-    var fallback = t('keysCustomKeyMatchTitle', '按键匹配');
+    var fallback = t('keysCustomKeyMatchDefaultName', '自定义键');
     var seed = String(current || '').trim();
     if (!seed || looksLikeAutoChordLabel(seed)) seed = fallback;
     // Prefer in-app name sheet; never rely on native prompt (tauri.localhost chrome).
@@ -2070,7 +2070,7 @@
 
   function openCustomKeyMatchNameSheet(seed) {
     var sheet = global.OneToneKeysActionInputSheet;
-    var fallback = t('keysCustomKeyMatchTitle', '按键匹配');
+    var fallback = t('keysCustomKeyMatchDefaultName', '自定义键');
     var start = String(seed || '').trim() || fallback;
     if (!sheet || typeof sheet.openText !== 'function') {
       return Promise.resolve(start);
@@ -2101,7 +2101,7 @@
       return true;
     }
     var next = String(nextName || '').trim();
-    if (!next) next = t('keysCustomKeyMatchTitle', '按键匹配');
+    if (!next) next = t('keysCustomKeyMatchDefaultName', '自定义键');
     m.label = next;
     var persist = global.OneToneConfigPersist;
     if (persist && typeof persist.save === 'function') {
@@ -2221,7 +2221,7 @@
     return true;
   }
 
-  function targetActionsSummary(m) {
+  function effectiveTargetActions(m) {
     var acts = null;
     if (global.OneToneHomeTargetActions && typeof global.OneToneHomeTargetActions.effective === 'function') {
       try {
@@ -2231,9 +2231,26 @@
       }
     }
     if (!Array.isArray(acts) || !acts.length) {
-      if (Array.isArray(m && m.targetActions) && m.targetActions.length) acts = m.targetActions;
-      else return t('keysCustomKeyMatchNoActions', '尚无动作');
+      if (Array.isArray(m && m.targetActions) && m.targetActions.length) return m.targetActions;
+      return [];
     }
+    return acts;
+  }
+
+  /** List row: trigger status + step count only (never dump URL/text payloads). */
+  function customKeyMatchListSecondary(m) {
+    var n = effectiveTargetActions(m).length;
+    var steps = n
+      ? String(n) + t('keysCustomKeyMatchSteps', ' 步')
+      : t('keysCustomKeyMatchNoActions', '尚无动作');
+    var trig = customKeyMatchTrigger(m);
+    if (trig) return friendlyTriggerLabel(trig) + ' · ' + steps;
+    return t('keysCustomKeyMatchEmptyTrigger', '待录触发键') + ' · ' + steps;
+  }
+
+  function targetActionsSummary(m) {
+    var acts = effectiveTargetActions(m);
+    if (!acts.length) return t('keysCustomKeyMatchNoActions', '尚无动作');
     var parts = [];
     for (var i = 0; i < acts.length; i++) {
       var a = acts[i];
@@ -2323,6 +2340,48 @@
     ];
   }
 
+  /**
+   * MVP: stamp the current primary wake phrase onto the prompt peer so Rust can
+   * route phrase → this inject without relying on global voiceEnd.intent.
+   * Only the first phrase — avoid stealing the whole dictation wake pool.
+   */
+  function stampPromptPeerWakePhrases(peer) {
+    if (!peer) return;
+    var list = [];
+    try {
+      var Wake = global.OneToneVoiceWake;
+      if (Wake && typeof Wake.currentWakePhraseList === 'function') {
+        list = (Wake.currentWakePhraseList() || [])
+          .map(function (p) {
+            return String(p || '').trim();
+          })
+          .filter(Boolean);
+      }
+    } catch (_) {}
+    if (!list.length) {
+      try {
+        var sm =
+          mappingById(selectedMappingId()) ||
+          (global.OneToneMappingCore && global.OneToneMappingCore.selected
+            ? global.OneToneMappingCore.selected()
+            : null);
+        var ov = sm && (sm.voiceOverride || sm.voice_override);
+        var wp = ov && (ov.wakePhrases || ov.wake_phrases);
+        if (Array.isArray(wp)) {
+          list = wp
+            .map(function (p) {
+              return String(p || '').trim();
+            })
+            .filter(Boolean);
+        }
+      } catch (_) {}
+    }
+    if (!list.length) return;
+    peer.voiceOverride =
+      peer.voiceOverride && typeof peer.voiceOverride === 'object' ? peer.voiceOverride : {};
+    peer.voiceOverride.wakePhrases = [list[0]];
+  }
+
   function findPromptPeerByText(appId, text) {
     appId = String(appId || '').trim();
     text = String(text || '').trim();
@@ -2408,6 +2467,7 @@
       existing.targetActions = promptInjectActions(text);
       existing.enabled = true;
       existing.updatedAt = Date.now();
+      stampPromptPeerWakePhrases(existing);
       var persistUp = global.OneToneConfigPersist;
       if (persistUp && typeof persistUp.save === 'function') {
         try {
@@ -2476,6 +2536,8 @@
     copy.targetActions = promptInjectActions(text);
     // Keep enabled so scene dock / completeness checks treat it as a real action.
     copy.enabled = true;
+    // Don't inherit habit's full wake pool — own one phrase for phrase→inject routing.
+    stampPromptPeerWakePhrases(copy);
     if (core.ensureMappingExtras) {
       try {
         core.ensureMappingExtras(copy);
@@ -2506,16 +2568,7 @@
       if (bref && bref !== mid) return false;
       return true;
     }
-    // Legacy library peers: disabled sequence row without kind yet.
-    if (
-      m.enabled === false &&
-      Array.isArray(m.targetActions) &&
-      m.targetActions.length > 0 &&
-      !String(m.imePresetId || '').trim() &&
-      !String(m.targetKey || '').trim()
-    ) {
-      return true;
-    }
+    // Legacy: disabled+targetActions without kind pulled Soft Pad/voice orphans into「自定义键」.
     return false;
   }
 
@@ -2567,9 +2620,12 @@
     var listEl = document.getElementById('keysCustomKeyMatchList');
     var title = document.getElementById('keysCustomKeyMatchLbl');
     var addBtn = document.getElementById('btnKeysCustomKeyMatchAdd');
-    if (title) title.textContent = t('keysCustomKeyMatchTitle', '按键匹配');
+    var pane = document.getElementById('keysCustomKeyMatchPane');
+    var sectionTitle = t('keysCustomKeyMatchTitle', '自定义键');
+    if (title) title.textContent = sectionTitle;
+    if (pane) pane.setAttribute('aria-label', sectionTitle);
     if (addBtn) {
-      var addLbl = t('keysCustomKeyMatchAdd', '新建按键匹配');
+      var addLbl = t('keysCustomKeyMatchAdd', '新建自定义键');
       addBtn.setAttribute('title', addLbl);
       addBtn.setAttribute('aria-label', addLbl);
     }
@@ -2599,11 +2655,7 @@
         var id = String(m.id || '');
         var active = editId && id === editId ? ' is-active' : '';
         var primary = customKeyMatchDisplayName(m);
-        var trig = customKeyMatchTrigger(m);
-        var steps = targetActionsSummary(m);
-        var secondary = trig
-          ? friendlyTriggerLabel(trig) + ' · ' + steps
-          : t('keysCustomKeyMatchLaunchNeed', '点击录制触发键') + ' · ' + steps;
+        var secondary = customKeyMatchListSecondary(m);
         var delLbl = t('keysCustomKeyMatchDelete', '删除');
         return (
           '<div class="keys-custom-key-match-item' +
@@ -2611,7 +2663,7 @@
           '" role="listitem" data-match-id="' +
           esc(id) +
           '" title="' +
-          esc(t('keysCustomKeyMatchRenameHint', '双击改名')) +
+          esc(primary + ' · ' + secondary + ' · ' + t('keysCustomKeyMatchRenameHint', '双击改名')) +
           '">' +
           '<button type="button" class="keys-custom-key-match-main" data-match-select="' +
           esc(id) +
@@ -3118,7 +3170,7 @@
   }
 
   function resolveCustomKeyHeroCap(m, friendly, nameSource) {
-    // 02 keycap: named title first; sequence / chord as secondary.
+    // 02 keycap: named title first; trigger · N steps as secondary (no URL dump).
     friendly =
       friendly ||
       (global.__vp_mapping_core_hooks__ || {}).friendlyKeyName ||
@@ -3128,24 +3180,8 @@
     var nameM = nameSource || m;
     var name = customKeyMatchDisplayName(nameM);
     var tgt = String((m && m.targetKey) || '').trim();
-    var acts = null;
-    if (global.OneToneHomeTargetActions && typeof global.OneToneHomeTargetActions.effective === 'function') {
-      try {
-        acts = global.OneToneHomeTargetActions.effective(m);
-      } catch (_) {
-        acts = null;
-      }
-    }
-    if (!Array.isArray(acts) || !acts.length) {
-      if (Array.isArray(m && m.targetActions) && m.targetActions.length) acts = m.targetActions;
-      else acts = [];
-    }
-    var n = acts.length;
-    var secondary = n
-      ? targetActionsSummary(m)
-      : tgt
-        ? friendly(tgt) || tgt
-        : t('keysCustomKeyMatchPickHint', '请选择按键或功能');
+    var secondary = customKeyMatchListSecondary(m);
+    var n = effectiveTargetActions(m).length;
     return {
       kind: 'customKey',
       active: true,
@@ -5015,7 +5051,7 @@
     return en ? copy[enKey] || copy[zhKey] || '' : copy[zhKey] || copy[enKey] || '';
   }
 
-  function cameraPickCatalog() {
+  function buildCameraPickRows() {
     var byRef = {};
     filteredViews('camera').forEach(function (v) {
       var ref = viewRef(v);
@@ -5037,13 +5073,6 @@
       var func = cameraPickField(copy, 'funcZh', 'funcEn');
       var how = cameraPickField(copy, 'howZh', 'howEn') || t('keysChannelGesture', '手势');
       var howKind = copy.howKind || 'phrase';
-      if (
-        !matchesSearch(
-          title + ' ' + when + ' ' + effect + ' ' + func + ' ' + id + ' ' + (view ? viewActionId(view) : '')
-        )
-      ) {
-        return;
-      }
       seen[id] = true;
       var actionId = view ? viewActionId(view) : '';
       var bindable = !!(view && actionId && bindableByAction[actionId] !== false);
@@ -5070,8 +5099,91 @@
     return ordered;
   }
 
+  function cameraPickCatalog() {
+    return buildCameraPickRows().filter(function (row) {
+      return matchesSearch(
+        (row.title || '') +
+          ' ' +
+          (row.when || '') +
+          ' ' +
+          (row.effect || '') +
+          ' ' +
+          (row.func || '') +
+          ' ' +
+          (row.pickId || '') +
+          ' ' +
+          (row.actionId || '')
+      );
+    });
+  }
+
+  /** Soft Pad / external catalogs — only gestures with a user-selected action (no empty commons). */
+  function catalogCameraGestures(query, workM) {
+    var byRef = {};
+    var views = filteredViews('camera');
+    if (workM && workM.id) {
+      var mid = String(workM.id);
+      if (mid && softPadViewsMappingId === mid && Array.isArray(softPadViewsCache)) {
+        views = softPadViewsCache.filter(function (v) {
+          return viewChannel(v) === 'camera';
+        });
+      } else if (mid && String(selectedMappingId()) === mid) {
+        views = (viewsCache || []).filter(function (v) {
+          return viewChannel(v) === 'camera';
+        });
+      }
+    }
+    views.forEach(function (v) {
+      if (!v || v.enabled === false) return;
+      var ref = viewRef(v);
+      var aid = viewActionId(v);
+      if (!ref || !aid) return;
+      byRef[ref] = v;
+    });
+    var ordered = [];
+    Object.keys(byRef).forEach(function (id) {
+      var view = byRef[id];
+      var copy = CAMERA_PICK_COPY[id] || {};
+      var actionId = viewActionId(view);
+      var gestureTitle =
+        cameraPickField(copy, 'titleZh', 'titleEn') || gestureLabel(id) || id;
+      var actLab = actionLabel(actionId);
+      ordered.push({
+        pickId: id,
+        gesture: id,
+        view: view,
+        actionId: actionId,
+        // Primary: the action the user already chose for this app gesture.
+        title: actLab || gestureTitle,
+        when: gestureTitle,
+        effect: cameraPickField(copy, 'effectZh', 'effectEn') || t('keysCameraPickGenericEffect', '执行已绑动作。'),
+        func: actLab || gestureTitle,
+        how: cameraPickField(copy, 'howZh', 'howEn') || t('keysChannelGesture', '手势'),
+        howKind: copy.howKind || 'phrase',
+        bindable: bindableByAction[actionId] !== false,
+        common: CAMERA_COMMON_REFS.indexOf(id) >= 0
+      });
+    });
+    return ordered.filter(function (row) {
+      return catalogQueryMatch(
+        (row.title || '') +
+          ' ' +
+          (row.when || '') +
+          ' ' +
+          (row.effect || '') +
+          ' ' +
+          (row.func || '') +
+          ' ' +
+          (row.pickId || '') +
+          ' ' +
+          (row.actionId || ''),
+        query
+      );
+    });
+  }
+
   function findCameraPick(pickId) {
-    var catalog = cameraPickCatalog();
+    var catalog = buildCameraPickRows();
     var id = String(pickId || '').trim();
     var i;
     for (i = 0; i < catalog.length; i++) {
@@ -7776,6 +7888,8 @@
     isPromptInjectMapping: isPromptInjectMapping,
     scrubStalePromptHero: scrubStalePromptHero,
     promptTextFromMapping: promptTextFromMapping,
+    promptInjectActions: promptInjectActions,
+    stampPromptPeerWakePhrases: stampPromptPeerWakePhrases,
     savePromptInjectMapping: savePromptInjectMapping,
     pruneDuplicatePromptPeers: pruneDuplicatePromptPeers,
     customKeyMatchDisplayName: customKeyMatchDisplayName,
@@ -7832,6 +7946,7 @@
     isCaptureSheetOpen: isCaptureSheetOpen,
     catalogCustomKeysForApp: catalogCustomKeysForApp,
     catalogVoicePromptsForMapping: catalogVoicePromptsForMapping,
+    catalogCameraGestures: catalogCameraGestures,
     catalogSoftPadBindRowsForMapping: catalogSoftPadBindRowsForMapping,
     catalogCursorPickRows: catalogCursorPickRows,
     catalogCursorPickGroups: catalogCursorPickGroups,

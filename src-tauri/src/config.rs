@@ -2579,6 +2579,29 @@ pub struct VoiceEndConfig {
     /// When intent == "prompt": wake injects this text then Enter (no dictation session).
     #[serde(default)]
     pub prompt_inject_text: String,
+    /// Shared InputFocusAim strategy before prompt inject: auto|none|probe|hotkey|smart|click.
+    #[serde(default = "default_voice_end_input_aim_strategy")]
+    pub input_aim_strategy: String,
+    /// Per-app composer click ratios from scheme-B calibrate (overrides profile anchor).
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub composer_anchors: std::collections::HashMap<String, ComposerAnchor>,
+}
+
+/// Relative click inside a target window's client area (0..1).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComposerAnchor {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl ComposerAnchor {
+    pub fn clamped(self) -> Self {
+        Self {
+            x: self.x.clamp(0.02, 0.98),
+            y: self.y.clamp(0.02, 0.98),
+        }
+    }
 }
 
 pub fn default_voice_end_phrases_zh() -> Vec<String> {
@@ -2636,6 +2659,10 @@ fn default_voice_end_dictation_timeout_ms() -> u32 {
 
 fn default_voice_end_intent() -> String {
     "ime".into()
+}
+
+fn default_voice_end_input_aim_strategy() -> String {
+    "auto".into()
 }
 
 fn default_voice_end_target_key() -> String {
@@ -2762,6 +2789,8 @@ impl Default for VoiceEndConfig {
             target_key: default_voice_end_target_key(),
             intent: default_voice_end_intent(),
             prompt_inject_text: String::new(),
+            input_aim_strategy: default_voice_end_input_aim_strategy(),
+            composer_anchors: std::collections::HashMap::new(),
         }
     }
 }

@@ -1,0 +1,56 @@
+/**
+ * Scheme-B input aim calibrate guard: overlay + per-app anchors + FE wire.
+ */
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const read = (p) => readFileSync(join(root, p), 'utf8');
+
+let fail = 0;
+function check(name, ok) {
+  console.log((ok ? 'PASS' : 'FAIL') + ' ' + name);
+  if (!ok) fail++;
+}
+
+const cal = read('src-tauri/src/input_aim_calibrate.rs');
+const chat = read('src-tauri/src/app_chat_workflow.rs');
+const cfg = read('src-tauri/src/config.rs');
+const lib = read('src-tauri/src/lib.rs');
+const ipc = read('src-tauri/permissions/app-ipc.toml');
+const cap = read('src-tauri/capabilities/input-aim-calibrate.json');
+const overlay = read('src/input-aim-calibrate.html');
+const html = read('src/index.html');
+const rail = read('src/js/features/voice/voice-intent-rail.js');
+const persist = read('src/js/core/config-persist.js');
+
+check('ComposerAnchor struct', /struct ComposerAnchor/.test(cfg));
+check('voice_end.composer_anchors', /composer_anchors/.test(cfg));
+check('composer_anchor_for_app prefers calibrate', /composer_anchor_for_app/.test(chat) && /composer_anchors\.get/.test(chat));
+check('focus_composer_for_send uses calibrated', /let anchor = composer_anchor_for_app/.test(chat));
+check('screen_point_to_client_ratio', /fn screen_point_to_client_ratio/.test(chat));
+check('prepare_target_for_calibrate', /fn prepare_target_for_calibrate/.test(chat));
+check('calibrate module cmds', /cmd_input_aim_calibrate_begin/.test(cal) && /cmd_input_aim_calibrate_commit/.test(cal));
+check('no Win32 fullscreen (breaks transparency)', !/\.fullscreen\s*\(/.test(cal));
+check('borderless transparent overlay', /\.transparent\s*\(\s*true\s*\)/.test(cal) && /\.decorations\s*\(\s*false\s*\)/.test(cal) && /\.shadow\s*\(\s*false\s*\)/.test(cal));
+check('cover primary monitor helper', /fn cover_primary_monitor/.test(cal));
+check('lib registers calibrate', /mod input_aim_calibrate/.test(lib) && lib.includes('cmd_input_aim_calibrate_begin'));
+check('app-ipc allows', ipc.includes('allow-cmd-input-aim-calibrate-begin') && ipc.includes('allow-cmd-input-aim-calibrate-status'));
+check('overlay capability', cap.includes('input_aim_calibrate') && cap.includes('allow-cmd-input-aim-calibrate-commit'));
+check('overlay HTML scheme B', overlay.includes('粗圈') && overlay.includes('cmd_input_aim_calibrate_commit') && overlay.includes('screenX'));
+check('HTML body paints alpha (hit-test)', /background:rgba\(8,\s*16,\s*24/.test(overlay) && overlay.includes('setPointerCapture'));
+check('no click-through veil', !overlay.includes('id="veil"'));
+check('FE buttons', html.includes('btnVoiceAimCalibrate') && html.includes('btnVoiceAimCalibrateClear'));
+check('rail invokes begin/clear/status', rail.includes('cmd_input_aim_calibrate_begin') && rail.includes('cmd_input_aim_calibrate_clear') && rail.includes('cmd_input_aim_calibrate_status'));
+check('persist composerAnchors', persist.includes('composerAnchors'));
+check('overlay loads without query string', /WebviewUrl::App\("input-aim-calibrate\.html"\.into\(\)\)/.test(cal));
+check('prepare warn does not abort begin', /calibrate_prepare_warn/.test(cal) && !/prepare_target_for_calibrate\(&tid\)\?/.test(cal));
+check('FE beginAimCalibrate export', rail.includes('beginAimCalibrate'));
+check('FE capture-phase click', rail.includes('_vpAimCalCapture') && rail.includes('aim_calibrate_click'));
+check('FE script cache bust', html.includes('voice-intent-rail.js?v=aim-cal-b5'));
+check('no CSP-blocked inline onclick', !/btnVoiceAimCalibrate"[^>]*onclick=/.test(html));
+check('begin queues then opens on UI thread', /calibrate_begin_queued/.test(cal) && /run_on_main_thread/.test(cal) && /calibrate_open_ok/.test(cal));
+check('prepare not on IPC path', /aim-cal-begin/.test(cal) && !/prepare_target_for_calibrate\(&tid\)\?/.test(cal));
+
+process.exit(fail ? 1 : 0);

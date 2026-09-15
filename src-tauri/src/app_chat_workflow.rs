@@ -308,6 +308,91 @@ pub fn profile_for(app_target_id: &str) -> Option<&'static AppChatProfile> {
     }
 }
 
+/// Prefer user-calibrated scheme-B anchor; else built-in profile.
+pub fn composer_anchor_for_app(
+    app: &AppHandle,
+    app_target_id: &str,
+    profile: &AppChatProfile,
+) -> (f32, f32) {
+    let tid = app_target_id.trim();
+    if tid.is_empty() {
+        return profile.composer_anchor;
+    }
+    if let Some(state) = app.try_state::<Arc<AppState>>() {
+        let cfg = state.cfg.lock();
+        if let Some(a) = cfg.voice_end.composer_anchors.get(tid) {
+            let c = a.clamped();
+            return (c.x, c.y);
+        }
+    }
+    profile.composer_anchor
+}
+
+/// Convert absolute screen pixels → client-relative ratios for the app window.
+#[cfg(windows)]
+pub fn screen_point_to_client_ratio(
+    app_target_id: &str,
+    screen_x: i32,
+    screen_y: i32,
+) -> Result<(f32, f32), String> {
+    use winapi::shared::windef::POINT;
+    use winapi::um::winuser::{GetClientRect, ScreenToClient};
+
+    let profile = profile_for(app_target_id).ok_or_else(|| "unknown_app".to_string())?;
+    let (hwnd, _) = ensure_app_window(profile).ok_or_else(|| "window_not_found".to_string())?;
+    let mut pt = POINT {
+        x: screen_x,
+        y: screen_y,
+    };
+    unsafe {
+        if ScreenToClient(hwnd, &mut pt) == 0 {
+            return Err("screen_to_client_failed".into());
+        }
+        let mut rect = std::mem::zeroed();
+        if GetClientRect(hwnd, &mut rect) == 0 {
+            return Err("get_client_rect_failed".into());
+        }
+        let w = (rect.right - rect.left).max(1) as f32;
+        let h = (rect.bottom - rect.top).max(1) as f32;
+        Ok((
+            (pt.x as f32 / w).clamp(0.0, 1.0),
+            (pt.y as f32 / h).clamp(0.0, 1.0),
+        ))
+    }
+}
+
+#[cfg(not(windows))]
+pub fn screen_point_to_client_ratio(
+    _app_target_id: &str,
+    _screen_x: i32,
+    _screen_y: i32,
+) -> Result<(f32, f32), String> {
+    Err("unsupported_platform".into())
+}
+
+/// Focus/launch target so the user can see it under the calibrate overlay.
+pub fn prepare_target_for_calibrate(app_target_id: &str) -> Result<(), String> {
+    let profile = profile_for(app_target_id).ok_or_else(|| "unknown_app".to_string())?;
+    #[cfg(windows)]
+    {
+        let (hwnd, fresh) =
+            ensure_app_window(profile).ok_or_else(|| "window_not_found".to_string())?;
+        if fresh {
+            std::thread::sleep(Duration::from_millis(1200));
+        }
+        if !crate::keyboard::focus_window(hwnd) {
+            return Err("focus_failed".into());
+        }
+        std::thread::sleep(Duration::from_millis(120));
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = profile;
+        Err("unsupported_platform".into())
+    }
+}
+
 pub const CLAUDE_CODE_APP_TARGET_ID: &str = "claude-code";
 
 pub use crate::app_identity::foreground_app_target_id;
@@ -570,6 +655,7 @@ pub fn focus_composer_for_send(
     duration_ms: u32,
 ) -> Result<(), AppChatWorkflowError> {
     let profile = profile_for(app_target_id).ok_or(AppChatWorkflowError::NotFound)?;
+    let anchor = composer_anchor_for_app(app, app_target_id, profile);
     let _hide_guard = MainWindowHideGuard::maybe_hide(app);
     let (hwnd, freshly_launched) =
         ensure_app_window(profile).ok_or(AppChatWorkflowError::NotFound)?;
@@ -580,7 +666,14 @@ pub fn focus_composer_for_send(
         "focus_start",
         serde_json::json!({
             "appTargetId": app_target_id,
-            "anchor": [profile.composer_anchor.0, profile.composer_anchor.1],
+            "anchor": [anchor.0, anchor.1],
+            "anchorSource": if (anchor.0 - profile.composer_anchor.0).abs() > 0.001
+                || (anchor.1 - profile.composer_anchor.1).abs() > 0.001
+            {
+                "calibrated"
+            } else {
+                "profile"
+            },
             "openKeyConfigured": profile.open_key,
             "openKeyWillSend": false,
             "freshlyLaunched": freshly_launched,
@@ -607,14 +700,14 @@ pub fn focus_composer_for_send(
     let mut click_via = "post";
     let post_ok = crate::keyboard::click_client_relative_via_message(
         hwnd,
-        profile.composer_anchor.0,
-        profile.composer_anchor.1,
+        anchor.0,
+        anchor.1,
     );
     crate::app_log::cursor_send_oplog(
         "click_post",
         serde_json::json!({
             "ok": post_ok,
-            "anchor": [profile.composer_anchor.0, profile.composer_anchor.1],
+            "anchor": [anchor.0, anchor.1],
             "minScore": min_score,
         }),
     );
@@ -632,25 +725,52 @@ pub fn focus_composer_for_send(
         }),
     );
     let mut uia_ok = probe.ok;
-    if !uia_ok
-        && allow_blind_after_right_click
-        && post_ok
-        && probe.focused_score >= 10
-    {
-        // ponytail: Cursor composer UIA names are often empty; ceiling = wrong Edit if
-        // anchor drifts. Upgrade: geometry-bias UIA to right half of window.
+    // Blind accept only when the click actually left keyboard focus on an Edit
+    // (empty-named Cursor Agent box scores ~10). Do not accept SCM / unfocused guesses.
+    let can_blind = |p: &UiaFocusProbe| {
+        allow_blind_after_right_click
+            && p.has_keyboard_focus
+            && p.focused_score >= 10
+            && !looks_like_scm_input(&p.focused_name)
+            && !looks_like_scm_input(&p.best_name)
+            // Filename "input-*.html" scored as composer via substring "input".
+            && !looks_like_editor_document(&p.focused_name)
+            && !looks_like_editor_document(&p.best_name)
+    };
+    if !uia_ok && post_ok && can_blind(&probe) {
         uia_ok = true;
         click_via = "post_accept_edit";
     }
+    // Cursor: after right-panel click, retry UIA at low score so empty Agent Edit
+    // (score≈10) can win now that SCM "Message…commit" is demoted.
+    if !uia_ok && profile.id == CURSOR_APP_TARGET_ID && post_ok {
+        let low = uia_focus_chat_input_probe(hwnd, 10);
+        crate::app_log::cursor_send_oplog(
+            "uia_cursor_low",
+            serde_json::json!({
+                "ok": low.ok,
+                "bestName": low.best_name,
+                "bestScore": low.best_score,
+                "focusedName": low.focused_name,
+                "focusedScore": low.focused_score,
+                "hasKeyboardFocus": low.has_keyboard_focus,
+            }),
+        );
+        if low.ok || can_blind(&low) {
+            probe = low;
+            uia_ok = true;
+            click_via = "post_cursor_low";
+        }
+    }
     if !uia_ok {
         // Soft Pad should already be click-through (caller guard); screen click as last resort.
-        let screen_ok = click_composer_anchor(hwnd, profile.composer_anchor);
+        let screen_ok = click_composer_anchor(hwnd, anchor);
         click_via = "screen";
         crate::app_log::cursor_send_oplog(
             "click_screen",
             serde_json::json!({
                 "ok": screen_ok,
-                "anchor": [profile.composer_anchor.0, profile.composer_anchor.1],
+                "anchor": [anchor.0, anchor.1],
             }),
         );
         std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
@@ -667,13 +787,17 @@ pub fn focus_composer_for_send(
             }),
         );
         uia_ok = probe.ok;
-        if !uia_ok
-            && allow_blind_after_right_click
-            && screen_ok
-            && probe.focused_score >= 10
-        {
+        if !uia_ok && screen_ok && can_blind(&probe) {
             uia_ok = true;
             click_via = "screen_accept_edit";
+        }
+        if !uia_ok && profile.id == CURSOR_APP_TARGET_ID && screen_ok {
+            let low = uia_focus_chat_input_probe(hwnd, 10);
+            if low.ok || can_blind(&low) {
+                probe = low;
+                uia_ok = true;
+                click_via = "screen_cursor_low";
+            }
         }
     }
 
@@ -687,7 +811,8 @@ pub fn focus_composer_for_send(
     } else {
         "other"
     };
-    let result = if crate::app_identity::foreground_is_self() || !uia_ok {
+    // Soft Pad / settings can still report FG=self; trust composer keyboard focus.
+    let result = if !uia_ok {
         "FocusFailed"
     } else {
         "Ok"
@@ -703,13 +828,43 @@ pub fn focus_composer_for_send(
             "bestName": probe.best_name,
             "bestScore": probe.best_score,
             "focusedName": probe.focused_name,
+            "hasKeyboardFocus": probe.has_keyboard_focus,
         }),
     );
 
-    if crate::app_identity::foreground_is_self() || !uia_ok {
+    if !uia_ok {
         return Err(AppChatWorkflowError::FocusFailed);
     }
     Ok(())
+}
+
+#[cfg(windows)]
+fn looks_like_scm_input(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.contains("commit") || lower.contains("source control") || lower.contains("scm")
+}
+
+/// VS Code / Cursor editor tab titles (not Agent/Chat composer).
+/// Field log: focusedName=`input-aim-calibrate-3ways.html - voice-pilot - Cursor…`
+/// scored +40 from substring "input" and passed uia_cursor_low (minScore=10).
+fn looks_like_editor_document(name: &str) -> bool {
+    let n = name.trim();
+    if n.is_empty() {
+        return false;
+    }
+    let lower = n.to_ascii_lowercase();
+    if lower.contains(" - cursor") || lower.contains(" — cursor") {
+        return true;
+    }
+    if lower.contains("untracked") {
+        return true;
+    }
+    // Tab title often ends with "file.ext - folder - Cursor"
+    const EXTS: &[&str] = &[
+        ".html", ".htm", ".js", ".ts", ".tsx", ".jsx", ".rs", ".py", ".css", ".json", ".md",
+        ".vue", ".go", ".toml", ".yml", ".yaml", ".scss", ".less",
+    ];
+    EXTS.iter().any(|ext| lower.contains(ext))
 }
 
 #[cfg(windows)]
@@ -1540,6 +1695,25 @@ mod ensure_launch_tests {
     }
 }
 
+#[cfg(test)]
+mod editor_document_score_tests {
+    use super::looks_like_editor_document;
+
+    #[test]
+    fn rejects_cursor_tab_with_input_in_filename() {
+        assert!(looks_like_editor_document(
+            "input-aim-calibrate-3ways.html - voice-pilot - Cursor - Untracked [Administrator]"
+        ));
+    }
+
+    #[test]
+    fn allows_real_composer_names() {
+        assert!(!looks_like_editor_document("Chat input"));
+        assert!(!looks_like_editor_document("Agent"));
+        assert!(!looks_like_editor_document(""));
+    }
+}
+
 #[cfg(windows)]
 fn launch_shell_apps_folder(aumid: &str) -> bool {
     let aumid = aumid.trim();
@@ -1926,9 +2100,20 @@ fn score_input_name(name: &str, control_type: i32) -> i32 {
     if lower.contains("search") || lower.contains("filter") || lower.contains("find") {
         score -= 45;
     }
+    // Git SCM commit box also contains "message" — never treat as Agent composer.
+    if lower.contains("commit")
+        || lower.contains("source control")
+        || lower.contains("scm")
+    {
+        score -= 80;
+    }
     // Empty Document is usually the code editor — never prefer it over Chat/Agent Edit.
     if name.trim().is_empty() && control_type == UIA_DocumentControlTypeId.0 as i32 {
         score -= 40;
+    }
+    // Editor tab titles must lose hard — "input" in a filename is not a chat box.
+    if looks_like_editor_document(name) {
+        score -= 100;
     }
     if control_type == UIA_EditControlTypeId.0 as i32 {
         score += 10;

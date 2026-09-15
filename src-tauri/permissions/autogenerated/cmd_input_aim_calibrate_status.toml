@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-cmd-input-aim-calibrate-status"
+description = "Read calibrated composer anchor"
+commands.allow = ["cmd_input_aim_calibrate_status"]
+
+[[permission]]
+identifier = "deny-cmd-input-aim-calibrate-status"
+description = "Deny calibrate status"
+commands.deny = ["cmd_input_aim_calibrate_status"]

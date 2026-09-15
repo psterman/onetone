@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>输入框校准 · 六方案</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#12181f;--muted:#5a6a7a;--line:#d5dde6;--soft:#eef3f7;--paper:#fff;
+      --aim:#0a7ea4;--aim-deep:#086485;--aim-soft:#e6f5fb;--aim-hot:#1aa3d1;
+      --ok:#0f6b5c;--ok-soft:#e8f7f3;--warn:#8a5a00;--warn-soft:#fff6e0;
+      --font:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--ink);background:
+      radial-gradient(800px 380px at 80% -8%,#d7eef6 0%,transparent 50%),
+      linear-gradient(180deg,#f4f7fa,#e8eef3)}
+    .page{width:min(980px,100%);margin:0 auto;padding:28px 18px 56px}
+    .eyebrow{margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--aim-deep)}
+    h1{margin:0 0 8px;font-size:clamp(24px,3.6vw,32px);font-weight:700;letter-spacing:-.02em}
+    .lede{margin:0 0 16px;max-width:66ch;color:var(--muted);font-size:14px;line-height:1.55}
+    .group{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 8px}
+
+    .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+    .tab{
+      border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;
+      font:inherit;font-size:13px;font-weight:650;color:var(--muted);cursor:pointer
+    }
+    .tab:hover{border-color:#9ec9da;color:var(--ink)}
+    .tab.on{background:var(--aim);border-color:var(--aim);color:#fff}
+    .tab.simple{border-style:dashed}
+    .tab.simple.on{border-style:solid}
+    .tab:focus-visible{outline:2px solid var(--aim);outline-offset:2px}
+
+    .panel{display:none;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px 18px 18px}
+    .panel.on{display:block;animation:in .22s ease}
+    @keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+    .meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+    .chip{font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;background:var(--soft);color:var(--muted)}
+    .chip.good{background:var(--ok-soft);color:var(--ok)}
+    .chip.mid{background:var(--warn-soft);color:var(--warn)}
+
+    h2{margin:0 0 4px;font-size:16px;font-weight:700}
+    .how{margin:0 0 14px;font-size:13px;color:var(--muted);line-height:1.5}
+
+    .stage-wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}
+    @media(max-width:760px){.stage-wrap{grid-template-columns:1fr}}
+
+    .stage{
+      position:relative;height:280px;border-radius:12px;overflow:hidden;
+      border:1px solid #2a3340;background:#171c24;user-select:none;touch-action:none
+    }
+    .stage.armed{cursor:crosshair}
+    .stage.armed-grab{cursor:grab}
+    .stage.armed-grab.dragging{cursor:grabbing}
+    .tb{height:26px;display:flex;align-items:center;gap:5px;padding:0 10px;font-size:10px;color:#8a95a3;border-bottom:1px solid rgba(255,255,255,.06)}
+    .dot{width:6px;height:6px;border-radius:50%;background:#445}
+    .cols{display:grid;grid-template-columns:1.3fr .85fr;height:calc(100% - 26px)}
+    .ed{padding:10px;font-family:var(--mono);font-size:10px;line-height:1.5;color:#5a6573}
+    .ag{border-left:1px solid rgba(255,255,255,.08);padding:8px;display:flex;flex-direction:column;background:rgba(10,126,164,.07)}
+    .ag .l{font-size:9px;font-weight:700;color:#6eb8d4;letter-spacing:.05em;margin-bottom:6px}
+    .fake-box{
+      margin-top:auto;height:34px;border-radius:8px;border:1px solid #3a8eab;
+      background:rgba(10,126,164,.22);position:relative
+    }
+    .fake-box::after{content:"聊天输入框";position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:10px;color:#9ed3e6;opacity:.7}
+    .fake-box.lit{box-shadow:0 0 0 2px #5ad0f5;border-color:#5ad0f5}
+
+    .veil{
+      position:absolute;inset:0;background:rgba(8,16,24,.42);display:none;
+      align-items:flex-start;justify-content:center;padding-top:36px;z-index:3;pointer-events:none
+    }
+    .stage.armed .veil,.stage.armed-grab .veil,.stage.listening .veil{display:flex}
+    .hint{
+      background:rgba(255,255,255,.94);color:var(--ink);
+      font-size:13px;font-weight:650;padding:8px 12px;border-radius:10px;
+      box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:90%;text-align:center
+    }
+    .hint kbd{
+      font-family:var(--mono);font-size:11px;background:var(--soft);border:1px solid var(--line);
+      border-radius:5px;padding:1px 6px;margin:0 2px
+    }
+
+    .marquee{
+      position:absolute;border:2px solid #5ad0f5;background:rgba(90,208,245,.15);
+      display:none;z-index:4;pointer-events:none
+    }
+    .pin{
+      position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;
+      border:2px solid #fff;background:var(--aim-hot);box-shadow:0 0 0 3px rgba(26,163,209,.35);
+      display:none;z-index:5;pointer-events:none
+    }
+    .pin.ok{background:var(--ok)}
+    .pin.drag{
+      display:block;width:28px;height:28px;margin:-14px 0 0 -14px;z-index:6;
+      pointer-events:auto;cursor:grab;border-width:3px
+    }
+    .pin.drag::after{
+      content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;
+      border-radius:50%;background:#fff
+    }
+    .ghost-cursor{
+      position:absolute;width:18px;height:18px;margin:-2px 0 0 -2px;display:none;z-index:6;pointer-events:none;
+      border-left:2px solid #fff;border-top:2px solid #fff;transform:rotate(-15deg);
+      filter:drop-shadow(1px 1px 0 #000)
+    }
+
+    .side{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--soft)}
+    .side h3{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+    .side ol{margin:0;padding-left:18px;font-size:13px;line-height:1.55;color:var(--ink)}
+    .side li{margin:0 0 6px}
+    .readout{
+      margin-top:12px;padding:10px;border-radius:10px;background:#fff;border:1px solid var(--line);
+      font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--muted);min-height:3.2em
+    }
+    .readout b{color:var(--ink);font-weight:650}
+    .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    .btn{
+      border:0;border-radius:10px;padding:9px 14px;font:inherit;font-size:13px;font-weight:650;cursor:pointer
+    }
+    .btn.pri{background:var(--aim);color:#fff}
+    .btn.pri:hover{background:var(--aim-deep)}
+    .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+    .btn:focus-visible{outline:2px solid var(--aim);outline-offset:2px}
+
+    .compare{margin-top:16px;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px 16px;overflow:auto}
+    .compare h2{margin:0 0 10px;font-size:14px}
+    table{width:100%;border-collapse:collapse;font-size:12px;min-width:640px}
+    th,td{text-align:left;padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}
+    th{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:var(--soft);border-top:0}
+    .pick{color:var(--ok);font-weight:700}
+    .verdict{margin:12px 0 0;padding:12px 14px;border-radius:12px;background:var(--aim-soft);border:1px solid #b7dceb;font-size:13px;line-height:1.5}
+    .verdict strong{color:var(--aim-deep)}
+
+    @media(prefers-reduced-motion:reduce){.panel.on{animation:none}}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <p class="eyebrow">校准输入框 · 更简单的三种 + 原三方案</p>
+    <h1>还有更直白的吗？有。</h1>
+    <p class="lede">
+      框选对小白仍像「工具」。<strong>D 拖贴纸、E 鼠标到位按空格、F 你平时怎么点就怎么点</strong>
+      更接近日常：看得见落点、少学新手势、跨 App/CLI 仍用相对坐标。
+    </p>
+
+    <p class="group">更简单直观</p>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab simple on" data-tab="d">D · 拖准星贴纸</button>
+      <button type="button" class="tab simple" data-tab="e">E · 移到框上按空格</button>
+      <button type="button" class="tab simple" data-tab="f">F · 你先点进框</button>
+    </div>
+    <p class="group">原来的三方案</p>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab" data-tab="a">A · 框选取心</button>
+      <button type="button" class="tab" data-tab="b">B · 粗圈+精点</button>
+      <button type="button" class="tab" data-tab="c">C · 磁吸</button>
+    </div>
+
+    <!-- D -->
+    <div class="panel on" id="panel-d">
+      <div class="meta">
+        <span class="chip good">所见即所得</span>
+        <span class="chip good">跨 App / CLI</span>
+        <span class="chip good">小白首选候选</span>
+      </div>
+      <h2>拖这颗「钉子」放到输入框上</h2>
+      <p class="how">开始后出现一颗大准星。按住拖到输入框正中，松手或点「就这」。像贴便利贴，不用学框选。</p>
+      <div class="stage-wrap">
+        <div class="stage armed-grab" id="stage-d">
+          <div class="tb"><span class="dot"></span><span class="dot"></span><span class="dot"></span> 示意窗口</div>
+          <div class="cols">
+            <div class="ed">把钉子拖到右侧框</div>
+            <div class="ag"><div class="l">AGENT</div><div class="fake-box"></div></div>
+          </div>
+          <div class="veil"><div class="hint">拖动蓝点到输入框，再点「就这」</div></div>
+          <div class="pin drag" id="pin-d" style="left:28%;top:42%"></div>
+        </div>
+        <div class="side">
+          <h3>步骤</h3>
+          <ol>
+            <li>准星已出现（可再点「重置钉子」）</li>
+            <li>拖到输入框中央</li>
+            <li>点「就这」保存</li>
+          </ol>
+          <div class="readout" id="out-d">拖动钉子对齐输入框…</div>
+          <div class="btns">
+            <button type="button" class="btn pri" id="ok-d">就这</button>
+            <button type="button" class="btn ghost" id="reset-d">重置钉子</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- E -->
+    <div class="panel" id="panel-e">
+      <div class="meta">
+        <span class="chip good">零拖拽</span>
+        <span class="chip good">跨 App / CLI</span>
+        <span class="chip mid">要会按一个键</span>
+      </div>
+      <h2>鼠标移到框上，按空格</h2>
+      <p class="how">不框选、不拖钉。只把鼠标放到要打字的地方，按 <kbd>Space</kbd> 定住。真机可用全局热键，遮罩不抢鼠标。</p>
+      <div class="stage-wrap">
+        <div class="stage" id="stage-e">
+          <div class="tb"><span class="dot"></span><span class="dot"></span><span class="dot"></span> 示意窗口</div>
+          <div class="cols">
+            <div class="ed">移动鼠标到右侧</div>
+            <div class="ag"><div class="l">AGENT</div><div class="fake-box"></div></div>
+          </div>
+          <div class="veil"><div class="hint">鼠标移到输入框上，按 <kbd>Space</kbd></div></div>
+          <div class="ghost-cursor" id="gc-e"></div>
+          <div class="pin" id="pin-e"></div>
+        </div>
+        <div class="side">
+          <h3>步骤</h3>
+          <ol>
+            <li>点「开始」</li>
+            <li>鼠标移到输入框（本页内移动即可）</li>
+            <li>按空格锁定</li>
+          </ol>
+          <div class="readout" id="out-e">尚未开始</div>
+          <div class="btns">
+            <button type="button" class="btn pri" id="arm-e">开始</button>
+            <button type="button" class="btn ghost" id="reset-e">重来</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- F -->
+    <div class="panel" id="panel-f">
+      <div class="meta">
+        <span class="chip good">几乎不用学</span>
+        <span class="chip good">用已有习惯</span>
+        <span class="chip mid">CLI 也可：点进终端再确认</span>
+      </div>
+      <h2>你先像平时一样点进输入框</h2>
+      <p class="how">不教新手势。用户自己点进框（和每天用的一样），再点「记住这里」。真机可读「当前焦点控件」中心；无 UIA 则记点击位置。</p>
+      <div class="stage-wrap">
+        <div class="stage" id="stage-f">
+          <div class="tb"><span class="dot"></span><span class="dot"></span><span class="dot"></span> 示意窗口</div>
+          <div class="cols">
+            <div class="ed">先点右侧输入框</div>
+            <div class="ag"><div class="l">AGENT</div><div class="fake-box" id="hot-f" tabindex="0"></div></div>
+          </div>
+          <div class="veil"><div class="hint">请先点进输入框（它会亮起）</div></div>
+          <div class="pin" id="pin-f"></div>
+        </div>
+        <div class="side">
+          <h3>步骤</h3>
+          <ol>
+            <li>点「开始记住」</li>
+            <li>像平时一样点输入框</li>
+            <li>框亮起后，点「记住这里」</li>
+          </ol>
+          <div class="readout" id="out-f">尚未开始</div>
+          <div class="btns">
+            <button type="button" class="btn pri" id="arm-f">开始记住</button>
+            <button type="button" class="btn pri" id="ok-f" disabled>记住这里</button>
+            <button type="button" class="btn ghost" id="reset-f">重来</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A -->
+    <div class="panel" id="panel-a">
+      <div class="meta"><span class="chip">原方案</span><span class="chip good">容错高</span></div>
+      <h2>框住输入框，松手取底边中心</h2>
+      <p class="how">拖矩形圈住；可圈大一点。落点取底边中心。</p>
+      <div class="stage-wrap">
+        <div class="stage" id="stage-a">
+          <div class="tb"><span class="dot"></span><span class="dot"></span><span class="dot"></span> 示意</div>
+          <div class="cols"><div class="ed">圈右侧</div><div class="ag"><div class="l">AGENT</div><div class="fake-box"></div></div></div>
+          <div class="veil"><div class="hint">拖动圈住输入框</div></div>
+          <div class="marquee" id="mq-a"></div>
+          <div class="pin" id="pin-a"></div>
+        </div>
+        <div class="side">
+          <h3>步骤</h3>
+          <ol><li>开始框选</li><li>拖一圈</li><li>松手保存</li></ol>
+          <div class="readout" id="out-a">尚未校准</div>
+          <div class="btns">
+            <button type="button" class="btn pri" data-arm="a">开始框选</button>
+            <button type="button" class="btn ghost" data-reset="a">重来</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B -->
+    <div class="panel" id="panel-b">
+      <div class="meta"><span class="chip">原方案</span><span class="chip good">最准</span></div>
+      <h2>粗圈 + 框内精点</h2>
+      <p class="how">先圈大概，再只在圈内点一下。</p>
+      <div class="stage-wrap">
+        <div class="stage" id="stage-b">
+          <div class="tb"><span class="dot"></span><span class="dot"></span><span class="dot"></span> 示意</div>
+          <div class="cols"><div class="ed">先圈再点</div><div class="ag"><div class="l">AGENT</div><div class="fake-box"></div></div></div>
+          <div class="veil"><div class="hint" id="hint-b">第一步：拖动粗圈</div></div>
+          <div class="marquee" id="mq-b"></div>
+          <div class="pin" id="pin-b"></div>
+        </div>
+        <div class="side">
+          <h3>步骤</h3>
+          <ol><li>粗圈</li><li>框内精点</li></ol>
+          <div class="readout" id="out-b">尚未校准</div>
+          <div class="btns">
+            <button type="button" class="btn pri" data-arm="b">开始两步</button>
+            <button type="button" class="btn ghost" data-reset="b">重来</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C -->
+    <div class="panel" id="panel-c">
+      <div class="meta"><span class="chip">原方案</span><span class="chip mid">靠 UIA</span></div>
+      <h2>点附近，吸到控件中心</h2>
+      <p class="how">CLI / 无 Edit 的窗口较弱。</p>
+      <div class="stage-wrap">
+        <div class="stage" id="stage-c">
+          <div class="tb"><span class="dot"></span><span class="dot"></span><span class="dot"></span> 示意</div>
+          <div class="cols"><div class="ed">点附近</div><div class="ag"><div class="l">AGENT</div><div class="fake-box" id="hot-c"></div></div></div>
+          <div class="veil"><div class="hint">点输入框附近</div></div>
+          <div class="pin" id="pin-c"></div>
+        </div>
+        <div class="side">
+          <h3>步骤</h3>
+          <ol><li>开始磁吸</li><li>点附近</li></ol>
+          <div class="readout" id="out-c">尚未校准</div>
+          <div class="btns">
+            <button type="button" class="btn pri" data-arm="c">开始磁吸</button>
+            <button type="button" class="btn ghost" data-reset="c">重来</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare">
+      <h2>怎么选（含新方案）</h2>
+      <table>
+        <thead>
+          <tr><th>方案</th><th>一句话</th><th>小白</th><th>跨 App/CLI</th><th>精度</th><th>推荐</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>D 拖准星</strong></td><td>把钉子拖到框上</td><td class="pick">很低</td><td class="pick">强</td><td>高</td><td class="pick">产品默认</td></tr>
+          <tr><td><strong>E 空格定住</strong></td><td>鼠标到位按键</td><td>很低</td><td class="pick">强</td><td>高</td><td>键鼠熟练者</td></tr>
+          <tr><td><strong>F 先点进框</strong></td><td>用你平时的点法</td><td class="pick">最低</td><td>强</td><td>中高</td><td>引导最省事</td></tr>
+          <tr><td>A 框选</td><td>圈起来</td><td>低</td><td>强</td><td>中高</td><td>备选</td></tr>
+          <tr><td>B 粗+精</td><td>圈完再点</td><td>中</td><td class="pick">最强容错</td><td class="pick">最高</td><td>老失败时</td></tr>
+          <tr><td>C 磁吸</td><td>点附近吸附</td><td>低</td><td>弱于 CLI</td><td>靠 UIA</td><td>增强项</td></tr>
+        </tbody>
+      </table>
+      <p class="verdict">
+        <strong>更简单直观的默认：D（拖准星贴纸）。</strong>
+        文案就一句：「把蓝点拖到要打字的地方」。
+        失败个案再升级到 B；有 UIA 再叠 C。F 适合首次引导（「你先点一下，我们跟着学」）。
+      </p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var ids = ['a','b','c','d','e','f'];
+      var panels = {};
+      ids.forEach(function (id) { panels[id] = document.getElementById('panel-' + id); });
+
+      document.querySelectorAll('.tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          var id = tab.getAttribute('data-tab');
+          document.querySelectorAll('.tab').forEach(function (t) {
+            var on = t === tab;
+            t.classList.toggle('on', on);
+          });
+          // keep simple-group highlight only on matching tab
+          document.querySelectorAll('.tab').forEach(function (t) {
+            if (t.getAttribute('data-tab') === id) t.classList.add('on');
+            else t.classList.remove('on');
+          });
+          ids.forEach(function (k) { panels[k].classList.toggle('on', k === id); });
+        });
+      });
+
+      function rel(stage, x, y) {
+        var r = stage.getBoundingClientRect();
+        return {
+          nx: Math.min(1, Math.max(0, (x - r.left) / r.width)),
+          ny: Math.min(1, Math.max(0, (y - r.top) / r.height))
+        };
+      }
+      function setPin(pin, nx, ny, ok) {
+        pin.style.display = 'block';
+        pin.style.left = nx * 100 + '%';
+        pin.style.top = ny * 100 + '%';
+        pin.classList.toggle('ok', !!ok);
+      }
+      function fmt(nx, ny, note) {
+        return '<b>已保存</b> x=' + nx.toFixed(3) + ' y=' + ny.toFixed(3) + (note ? '<br>' + note : '');
+      }
+
+      // D drag pin
+      (function () {
+        var stage = document.getElementById('stage-d');
+        var pin = document.getElementById('pin-d');
+        var out = document.getElementById('out-d');
+        var drag = false;
+        function place(nx, ny) {
+          pin.style.left = nx * 100 + '%';
+          pin.style.top = ny * 100 + '%';
+        }
+        pin.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          drag = true;
+          stage.classList.add('dragging');
+          pin.setPointerCapture(e.pointerId);
+        });
+        pin.addEventListener('pointermove', function (e) {
+          if (!drag) return;
+          var p = rel(stage, e.clientX, e.clientY);
+          place(p.nx, p.ny);
+        });
+        pin.addEventListener('pointerup', function () {
+          drag = false;
+          stage.classList.remove('dragging');
+        });
+        document.getElementById('ok-d').addEventListener('click', function () {
+          var nx = parseFloat(pin.style.left) / 100;
+          var ny = parseFloat(pin.style.top) / 100;
+          pin.classList.add('ok');
+          out.innerHTML = fmt(nx, ny, '拖准星 · 所见即所得');
+        });
+        document.getElementById('reset-d').addEventListener('click', function () {
+          place(0.28, 0.42);
+          pin.classList.remove('ok');
+          out.textContent = '拖动钉子对齐输入框…';
+        });
+      })();
+
+      // E space
+      (function () {
+        var stage = document.getElementById('stage-e');
+        var pin = document.getElementById('pin-e');
+        var gc = document.getElementById('gc-e');
+        var out = document.getElementById('out-e');
+        var armed = false;
+        var last = { nx: 0.5, ny: 0.5 };
+
+        document.getElementById('arm-e').addEventListener('click', function () {
+          armed = true;
+          stage.classList.add('armed');
+          gc.style.display = 'block';
+          pin.style.display = 'none';
+          out.textContent = '移动鼠标，按 Space 锁定…';
+        });
+        document.getElementById('reset-e').addEventListener('click', function () {
+          armed = false;
+          stage.classList.remove('armed');
+          gc.style.display = 'none';
+          pin.style.display = 'none';
+          out.textContent = '尚未开始';
+        });
+        stage.addEventListener('pointermove', function (e) {
+          if (!armed) return;
+          last = rel(stage, e.clientX, e.clientY);
+          gc.style.left = last.nx * 100 + '%';
+          gc.style.top = last.ny * 100 + '%';
+        });
+        window.addEventListener('keydown', function (e) {
+          if (!armed || e.code !== 'Space') return;
+          if (!panels.e.classList.contains('on')) return;
+          e.preventDefault();
+          setPin(pin, last.nx, last.ny, true);
+          gc.style.display = 'none';
+          armed = false;
+          stage.classList.remove('armed');
+          out.innerHTML = fmt(last.nx, last.ny, '空格定住鼠标位置');
+        });
+      })();
+
+      // F natural click
+      (function () {
+        var stage = document.getElementById('stage-f');
+        var hot = document.getElementById('hot-f');
+        var pin = document.getElementById('pin-f');
+        var out = document.getElementById('out-f');
+        var okBtn = document.getElementById('ok-f');
+        var listening = false;
+        var hit = null;
+
+        document.getElementById('arm-f').addEventListener('click', function () {
+          listening = true;
+          hit = null;
+          hot.classList.remove('lit');
+          pin.style.display = 'none';
+          okBtn.disabled = true;
+          stage.classList.add('listening');
+          out.textContent = '请像平时一样点进输入框…';
+        });
+        document.getElementById('reset-f').addEventListener('click', function () {
+          listening = false;
+          hit = null;
+          hot.classList.remove('lit');
+          pin.style.display = 'none';
+          okBtn.disabled = true;
+          stage.classList.remove('listening');
+          out.textContent = '尚未开始';
+        });
+        hot.addEventListener('click', function (e) {
+          if (!listening) return;
+          e.stopPropagation();
+          var p = rel(stage, e.clientX, e.clientY);
+          // snap to box center for demo "focus remembered"
+          var hr = hot.getBoundingClientRect();
+          var sr = stage.getBoundingClientRect();
+          hit = {
+            nx: ((hr.left + hr.right) / 2 - sr.left) / sr.width,
+            ny: ((hr.top + hr.bottom) / 2 - sr.top) / sr.height
+          };
+          hot.classList.add('lit');
+          okBtn.disabled = false;
+          out.innerHTML = '已点进输入框 · 再点 <b>记住这里</b>';
+        });
+        stage.addEventListener('click', function (e) {
+          if (!listening || e.target === hot) return;
+          out.innerHTML = '请点<strong>右侧输入框</strong>（不要点编辑器）';
+        });
+        okBtn.addEventListener('click', function () {
+          if (!hit) return;
+          setPin(pin, hit.nx, hit.ny, true);
+          listening = false;
+          stage.classList.remove('listening');
+          out.innerHTML = fmt(hit.nx, hit.ny, '跟随你的自然点击');
+        });
+      })();
+
+      // A/B marquee (same as before)
+      function bindMarquee(letter, twoStep) {
+        var stage = document.getElementById('stage-' + letter);
+        var mq = document.getElementById('mq-' + letter);
+        var pin = document.getElementById('pin-' + letter);
+        var out = document.getElementById('out-' + letter);
+        var hint = stage.querySelector('.hint');
+        var dragging = false, phase = 'idle', x0, y0, box = null;
+
+        document.querySelector('[data-arm="' + letter + '"]').addEventListener('click', function () {
+          stage.classList.add('armed');
+          mq.style.display = 'none';
+          pin.style.display = 'none';
+          box = null;
+          phase = 'draw';
+          if (hint) hint.textContent = twoStep ? '第一步：拖动粗圈' : '拖动圈住输入框';
+          out.textContent = '选择模式已开…';
+        });
+        document.querySelector('[data-reset="' + letter + '"]').addEventListener('click', function () {
+          stage.classList.remove('armed');
+          mq.style.display = 'none';
+          pin.style.display = 'none';
+          phase = 'idle';
+          out.textContent = '尚未校准';
+        });
+        stage.addEventListener('pointerdown', function (e) {
+          if (!stage.classList.contains('armed')) return;
+          if (phase === 'refine' && twoStep) {
+            var p = rel(stage, e.clientX, e.clientY);
+            var inside = box && p.nx >= box.l && p.nx <= box.r && p.ny >= box.t && p.ny <= box.b;
+            if (!inside) { out.innerHTML = '请点在<strong>蓝框内</strong>'; return; }
+            setPin(pin, p.nx, p.ny, true);
+            out.innerHTML = fmt(p.nx, p.ny, '精点');
+            stage.classList.remove('armed');
+            phase = 'idle';
+            return;
+          }
+          if (phase !== 'draw') return;
+          dragging = true;
+          stage.setPointerCapture(e.pointerId);
+          var p0 = rel(stage, e.clientX, e.clientY);
+          x0 = p0.nx; y0 = p0.ny;
+          mq.style.display = 'block';
+          mq.style.left = x0 * 100 + '%';
+          mq.style.top = y0 * 100 + '%';
+          mq.style.width = mq.style.height = '0';
+        });
+        stage.addEventListener('pointermove', function (e) {
+          if (!dragging) return;
+          var p = rel(stage, e.clientX, e.clientY);
+          var l = Math.min(x0, p.nx), t = Math.min(y0, p.ny);
+          mq.style.left = l * 100 + '%';
+          mq.style.top = t * 100 + '%';
+          mq.style.width = Math.abs(p.nx - x0) * 100 + '%';
+          mq.style.height = Math.abs(p.ny - y0) * 100 + '%';
+        });
+        stage.addEventListener('pointerup', function (e) {
+          if (!dragging) return;
+          dragging = false;
+          var p = rel(stage, e.clientX, e.clientY);
+          var l = Math.min(x0, p.nx), t = Math.min(y0, p.ny);
+          var r = Math.max(x0, p.nx), b = Math.max(y0, p.ny);
+          if (r - l < 0.02 || b - t < 0.02) { out.textContent = '圈太小'; mq.style.display = 'none'; return; }
+          box = { l: l, t: t, r: r, b: b };
+          if (twoStep) {
+            phase = 'refine';
+            if (hint) hint.textContent = '第二步：在蓝框内点一下';
+            out.innerHTML = '粗圈好了 · <b>再点框内</b>';
+            return;
+          }
+          var nx = (l + r) / 2, ny = t + (b - t) * 0.82;
+          setPin(pin, nx, ny, true);
+          out.innerHTML = fmt(nx, ny, '框选底边中心');
+          stage.classList.remove('armed');
+          phase = 'idle';
+        });
+      }
+      bindMarquee('a', false);
+      bindMarquee('b', true);
+
+      // C magnet
+      (function () {
+        var stage = document.getElementById('stage-c');
+        var pin = document.getElementById('pin-c');
+        var out = document.getElementById('out-c');
+        var hot = document.getElementById('hot-c');
+        document.querySelector('[data-arm="c"]').addEventListener('click', function () {
+          stage.classList.add('armed');
+          pin.style.display = 'none';
+          out.textContent = '点输入框附近…';
+        });
+        document.querySelector('[data-reset="c"]').addEventListener('click', function () {
+          stage.classList.remove('armed');
+          pin.style.display = 'none';
+          out.textContent = '尚未校准';
+        });
+        stage.addEventListener('pointerdown', function (e) {
+          if (!stage.classList.contains('armed')) return;
+          var sr = stage.getBoundingClientRect(), hr = hot.getBoundingClientRect(), pad = 28;
+          var near = e.clientX >= hr.left - pad && e.clientX <= hr.right + pad &&
+            e.clientY >= hr.top - pad && e.clientY <= hr.bottom + pad;
+          if (!near) { out.innerHTML = '太远 · 点<strong>右侧输入条附近</strong>'; return; }
+          var nx = ((hr.left + hr.right) / 2 - sr.left) / sr.width;
+          var ny = ((hr.top + hr.bottom) / 2 - sr.top) / sr.height;
+          setPin(pin, nx, ny, true);
+          out.innerHTML = fmt(nx, ny, '磁吸到中心');
+          stage.classList.remove('armed');
+        });
+      })();
+    })();
+  </script>
+</body>
+</html>

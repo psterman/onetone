@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-cmd-input-aim-calibrate-clear"
+description = "Clear calibrated composer anchor"
+commands.allow = ["cmd_input_aim_calibrate_clear"]
+
+[[permission]]
+identifier = "deny-cmd-input-aim-calibrate-clear"
+description = "Deny clear calibrate"
+commands.deny = ["cmd_input_aim_calibrate_clear"]

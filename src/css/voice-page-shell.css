@@ -5003,6 +5003,50 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
 .voice-prompt-save-hint{font-size:12px;color:#5a6b7c;line-height:1.35}
 .voice-prompt-save-hint.is-ok{color:#0f5f7a;font-weight:600}
 .voice-prompt-land{margin:10px 0 0;font-size:12px;color:#0f5f7a;font-weight:550}
+.voice-prompt-aim{
+  margin:12px 0 0;padding:12px;border-radius:12px;
+  border:1px solid rgba(109,40,217,.16);background:rgba(109,40,217,.04)
+}
+.voice-prompt-aim__legend{
+  padding:0 4px;font-size:12px;font-weight:800;color:#4c1d95
+}
+.voice-prompt-aim__lead{
+  margin:6px 0 10px;font-size:11px;color:#6b7280;line-height:1.4
+}
+.voice-prompt-aim__cards{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px
+}
+@media (max-width:900px){
+  .voice-prompt-aim__cards{grid-template-columns:1fr}
+}
+.voice-prompt-aim__card{
+  position:relative;display:flex;flex-direction:column;gap:4px;
+  margin:0;padding:10px 12px 12px;border-radius:10px;cursor:pointer;
+  border:1px solid rgba(109,40,217,.18);background:#fff;
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease
+}
+.voice-prompt-aim__card input{
+  position:absolute;opacity:0;pointer-events:none
+}
+.voice-prompt-aim__card.is-on,
+.voice-prompt-aim__card:has(input:checked){
+  border-color:#7c3aed;background:#faf5ff;
+  box-shadow:inset 0 0 0 1px rgba(124,58,237,.2)
+}
+.voice-prompt-aim__title{font-size:12px;font-weight:800;color:#312e81;padding-right:36px}
+.voice-prompt-aim__badge{
+  position:absolute;top:10px;right:10px;
+  font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;
+  background:#ede9fe;color:#5b21b6
+}
+.voice-prompt-aim__desc{font-size:11px;color:#6b7280;line-height:1.4;font-weight:550}
+.voice-prompt-aim-cal{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;
+  padding-top:10px;border-top:1px dashed #d7e2ec
+}
+.voice-prompt-aim-cal__hint{font-size:11px;color:#6b7280;line-height:1.4}
+.voice-prompt-aim-cal__hint.is-ok{color:#0f6b5c;font-weight:650}
+.voice-prompt-aim-select{display:none}
 
 @media(max-width:900px){
   .voice-intent-picker{grid-template-columns:1fr;min-height:0}

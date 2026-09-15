@@ -75,26 +75,29 @@ assert.ok(Pad.CURSOR_COMMON_DEFAULT_SLOTS, 'CURSOR_COMMON_DEFAULT_SLOTS');
 Pad.CURSOR_COMMON_DEFAULT_SLOTS.forEach(function (sid) {
   assert.ok(Pad.CURSOR_SOFT_PAD_SLOT_IDS[sid], 'common default not in allowlist: ' + sid);
 });
-assert.ok(padSrc.indexOf('soft-pad-action-layers') >= 0, 'cursor action library layers');
-assert.ok(padSrc.indexOf('data-layout-layer="browse"') >= 0, 'merged browse layer');
+assert.ok(padSrc.indexOf('soft-pad-action-library--channels') >= 0, 'channel command library');
 assert.ok(padSrc.indexOf('data-layout-layer="common"') < 0, 'common top tab retired');
 assert.ok(padSrc.indexOf('data-layout-layer="scenes"') < 0, 'scenes top tab retired');
-assert.ok(padSrc.indexOf("LAYOUT_SCENE_COMMON") >= 0 || padSrc.indexOf("'__common__'") >= 0,
-  'commons lives in scene rail');
-assert.ok(padSrc.indexOf('data-layout-layer') >= 0, 'layer tabs');
-assert.ok(padSrc.indexOf('function revealCommonsLayoutForKey') >= 0, 'key pick reveals 我的常见');
+assert.ok(padSrc.indexOf('soft-pad-action-scene-rail__btn--common') < 0, 'commons rail removed from 屏幕按钮');
+assert.ok(padSrc.indexOf('function layoutSceneIdForSlot') >= 0, 'slot → scene helper');
+assert.ok(padSrc.indexOf('function buildCursorLayoutSceneGroups') >= 0, 'scene groups builder');
+assert.ok(padSrc.indexOf('getCustomShortcuts') < 0 ||
+  !/function buildCursorLayoutSceneGroups[\s\S]*?getCustomShortcuts/.test(padSrc),
+  'screen-button scenes do not dump customShortcuts');
+assert.ok(padSrc.indexOf('function revealCommonsLayoutForKey') >= 0, 'key pick reveals matching scene');
 assert.ok(padSrc.indexOf('scrollLayoutEditorIntoView') >= 0, 'inline form auto-scroll');
 assert.ok(padSrc.indexOf('id="softPadSettingsPreviewBanner"') < 0 ||
   !require('fs').readFileSync(require('path').join(__dirname, '../src/index.html'), 'utf8').includes('id="softPadSettingsPreviewBanner"'),
   'settings preview banner removed from index');
-assert.ok(padSrc.indexOf('data-layout-pin') >= 0, 'pin to commons');
 assert.ok(padSrc.indexOf('iconIdForCapabilitySlot') >= 0 && padSrc.indexOf('iconSvg(iconId)') >= 0, 'list uses Lucide iconSvg');
 assert.ok(padSrc.indexOf('soft-pad-action-item__icon micro-hw__icon') >= 0, 'list icon uses micro-hw__icon');
-assert.ok(padSrc.indexOf('commonSlotIds') >= 0, 'persist commonSlotIds');
 assert.ok(padSrc.indexOf('soft-pad-action-scene-split') >= 0, 'Directory D scene split');
 assert.ok(padSrc.indexOf('soft-pad-action-scene-rail') >= 0, 'Directory D scene rail');
 assert.ok(padSrc.indexOf('cursorSlotGroupRailLabel') >= 0, 'rail short labels');
 assert.ok(padSrc.indexOf('data-layout-scene-back') < 0, 'no drill-back (D is always split)');
+assert.ok(Pad.CURSOR_SLOT_GROUPS.some(function (g) {
+  return g.id === 'seq' && (g.slots || []).indexOf('runTargetSequence') >= 0;
+}), 'runTargetSequence lives in seq scene');
 assert.ok(Pad.isCursorCustomSlotId('custom_abc'), 'custom_ id helper');
 assert.ok(!Pad.isCursorCustomSlotId('pushToTalk'), 'builtin not custom');
 assert.ok(padSrc.indexOf('function createCustomShortcut') >= 0, 'create custom shortcut');

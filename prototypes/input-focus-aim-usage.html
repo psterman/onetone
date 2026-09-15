@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>写入前怎么处理输入框 · 命名与 UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,700;9..40,800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#142033;--muted:#5b6b7f;--line:#d7e2ec;--soft:#f4f8fb;--paper:#fff;
+      --violet:#6d28d9;--violet-soft:#f3e8ff;--violet-deep:#5b21b6;
+      --ok:#0f766e;--ok-soft:#ecfdf8;--bad:#b42318;--bad-soft:#fef3f2;
+      --font:"DM Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;
+      --shadow:0 18px 50px rgba(20,32,51,.12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--ink);background:linear-gradient(180deg,#eef4f8,#e8eef4)}
+    .page{width:min(980px,100%);margin:0 auto;padding:28px 20px 56px}
+    .eyebrow{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--violet-deep)}
+    h1{margin:0 0 8px;font-size:26px;font-weight:800}
+    .lede{margin:0 0 18px;max-width:70ch;color:var(--muted);font-size:15px;line-height:1.55}
+    .card{background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:16px 18px;margin-bottom:14px}
+    h2{margin:0 0 10px;font-size:15px;font-weight:800}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{text-align:left;padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+    th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-top:0;background:var(--soft)}
+    .old{color:var(--bad);text-decoration:line-through;opacity:.75}
+    .neu{font-weight:800;color:var(--violet-deep)}
+    .mono{font-family:var(--mono);font-size:11px;background:var(--soft);padding:2px 6px;border-radius:5px}
+
+    .desk{
+      border:1px solid rgba(109,40,217,.2);border-radius:16px;padding:16px;
+      background:linear-gradient(180deg,#faf5ff,#fff)
+    }
+    .desk .kicker{font-size:11px;font-weight:800;color:var(--violet);letter-spacing:.06em;text-transform:uppercase}
+    .desk h3{margin:4px 0 6px;font-size:18px;font-weight:800}
+    .desk .desc{margin:0 0 12px;font-size:13px;color:var(--muted)}
+    .steps{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 14px;font-size:12px;font-weight:700;color:var(--muted)}
+    .steps i{
+      display:inline-grid;place-items:center;width:18px;height:18px;border-radius:999px;
+      background:var(--violet);color:#fff;font-style:normal;font-size:10px;margin-right:4px
+    }
+    .steps .arr{opacity:.45}
+
+    fieldset{border:0;margin:0;padding:0}
+    legend{font-size:13px;font-weight:800;color:var(--violet-deep);margin:0 0 4px}
+    .lead{margin:0 0 12px;font-size:12px;color:var(--muted);line-height:1.45}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    @media(max-width:720px){.cards{grid-template-columns:1fr}}
+    .opt{
+      position:relative;display:flex;flex-direction:column;gap:4px;cursor:pointer;
+      margin:0;padding:12px 14px 14px;border-radius:12px;border:1px solid #ddd6fe;background:#fff
+    }
+    .opt input{position:absolute;opacity:0;pointer-events:none}
+    .opt.on{border-color:#7c3aed;background:#faf5ff;box-shadow:inset 0 0 0 1px rgba(124,58,237,.25)}
+    .opt .t{font-size:13px;font-weight:800;color:#312e81;padding-right:40px}
+    .opt .badge{
+      position:absolute;top:12px;right:12px;font-size:10px;font-weight:800;
+      padding:2px 7px;border-radius:999px;background:#ede9fe;color:#5b21b6
+    }
+    .opt .d{font-size:12px;color:var(--muted);line-height:1.4;font-weight:550}
+    .opt .fail{
+      margin-top:6px;font-size:11px;font-weight:700;color:#7c3aed;background:#f5f3ff;
+      border-radius:8px;padding:6px 8px
+    }
+    .opt.on .fail{background:#ede9fe}
+
+    .flow{
+      display:grid;grid-template-columns:1fr 24px 1.2fr 24px 1fr;gap:0;align-items:center;margin-top:14px
+    }
+    @media(max-width:720px){.flow{grid-template-columns:1fr;gap:8px}.arrx{display:none}}
+    .box{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;min-height:88px}
+    .box.aim{border-color:#c4b5fd;background:#faf5ff}
+    .box h4{margin:0 0 4px;font-size:12px;font-weight:800}
+    .box p{margin:0;font-size:12px;color:var(--muted);line-height:1.4}
+    .arrx{text-align:center;color:#94a3b8;font-weight:800}
+    .note{margin:12px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
+    .note b{color:var(--ink)}
+    .rules{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+    @media(max-width:720px){.rules{grid-template-columns:1fr}}
+    .rules .r{border-radius:12px;padding:12px;border:1px solid var(--line);background:#fff}
+    .rules .r.bad{border-color:#fecaca;background:var(--bad-soft)}
+    .rules .r.good{border-color:#a7f3d0;background:var(--ok-soft)}
+    .rules h3{margin:0 0 6px;font-size:13px}
+    .rules ul{margin:0;padding-left:18px;font-size:12px;color:var(--muted);line-height:1.5}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <p class="eyebrow">InputFocusAim · naming + UI</p>
+    <h1>名称要能望文生义，选项要说清后果</h1>
+    <p class="lede">内部仍用 <span class="mono">auto / none / probe</span>；用户看到的是「会做什么 / 失败怎样」。不要写「链式」「探测」这类实现词。</p>
+
+    <div class="card">
+      <h2>改名对照</h2>
+      <table>
+        <thead>
+          <tr><th>旧（难懂）</th><th>新（望文生义）</th><th>失败时</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="old">自动链式</span></td>
+            <td><span class="neu">先对准，再填入</span></td>
+            <td>对不准 → 取消，不乱填</td>
+          </tr>
+          <tr>
+            <td><span class="old">不对准</span></td>
+            <td><span class="neu">直接填入</span></td>
+            <td>不检查；你已点好框</td>
+          </tr>
+          <tr>
+            <td><span class="old">仅探测</span></td>
+            <td><span class="neu">只在已对准时填</span></td>
+            <td>光标不在框里 → 取消</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>一词注入桌面 · 完善后的 UI（可点）</h2>
+      <div class="desk">
+        <div class="kicker">一词注入</div>
+        <h3>聚焦 · 填入 · 发送</h3>
+        <p class="desc">触发词来自 01；正文写在下方，不必念出来</p>
+        <div class="steps" aria-hidden="true">
+          <span><i>1</i>一词激活</span><span class="arr">→</span>
+          <span><i>2</i>处理输入框</span><span class="arr">→</span>
+          <span><i>3</i>写入正文</span><span class="arr">→</span>
+          <span><i>4</i>回车发送</span>
+        </div>
+
+        <fieldset>
+          <legend>写入前怎么处理输入框</legend>
+          <p class="lead">四个通道共用这一处。默认帮你对准；对不准就不填，避免打进编辑器。</p>
+          <div class="cards" id="cards">
+            <label class="opt on" data-v="auto">
+              <input type="radio" name="aim" value="auto" checked />
+              <span class="t">先对准，再填入</span>
+              <span class="badge">推荐</span>
+              <span class="d">自动点进聊天输入框，再写入。</span>
+              <span class="fail" data-fail>对不上 → 取消本次，不乱填</span>
+            </label>
+            <label class="opt" data-v="none">
+              <input type="radio" name="aim" value="none" />
+              <span class="t">直接填入</span>
+              <span class="d">假定你已点好输入框，跳过对准。</span>
+              <span class="fail" data-fail>不检查光标 · 适合已对准时</span>
+            </label>
+            <label class="opt" data-v="probe">
+              <input type="radio" name="aim" value="probe" />
+              <span class="t">只在已对准时填</span>
+              <span class="d">光标已在框里才填；不主动点屏。</span>
+              <span class="fail" data-fail>未对准 → 取消本次</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="flow">
+          <div class="box">
+            <h4>① 通道触发</h4>
+            <p>语音 / 按键 / Soft Pad / 摄像头 → 都进同一前置</p>
+          </div>
+          <div class="arrx">→</div>
+          <div class="box aim">
+            <h4>② <span id="aimTitle">先对准，再填入</span></h4>
+            <p id="aimBody">对不上就停。切窗是另一个开关，不管输入框。</p>
+          </div>
+          <div class="arrx">→</div>
+          <div class="box">
+            <h4>③ 写入 + 发送</h4>
+            <p id="doBody">对准成功后才 Text + Enter。</p>
+          </div>
+        </div>
+        <p class="note" id="note"><b>推荐默认：</b>「先对准，再填入」。高级用户才选「直接填入」。</p>
+      </div>
+    </div>
+
+    <div class="rules">
+      <div class="r bad">
+        <h3>UI 别这样</h3>
+        <ul>
+          <li>下拉里塞「链式 / 探测 / UIA」</li>
+          <li>只有短名、没有「失败会怎样」</li>
+          <li>每个通道再各勾一遍</li>
+        </ul>
+      </div>
+      <div class="r good">
+        <h3>UI 要这样</h3>
+        <ul>
+          <li>三张卡片：标题 = 动作，副文 = 适用场景</li>
+          <li>每张写清失败后果</li>
+          <li>一处设置，全通道继承</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var meta = {
+        auto: {
+          title: '先对准，再填入',
+          body: '自动点进聊天输入框；对不上就取消。切窗另算。',
+          doBody: '对准成功后才 Text + Enter。',
+          note: '<b>推荐默认：</b>「先对准，再填入」。帮你对准；对不准绝不乱填。'
+        },
+        none: {
+          title: '直接填入',
+          body: '跳过对准。请确保光标已在聊天输入框。',
+          doBody: '立刻写入 + Enter（不检查光标）。',
+          note: '<b>直接填入：</b>你已对准时用。省一步，但误填风险自己承担。'
+        },
+        probe: {
+          title: '只在已对准时填',
+          body: '检查光标是否已在输入框；不主动点屏。',
+          doBody: '仅当已对准才写入；否则取消。',
+          note: '<b>只在已对准时填：</b>最保守。适合你常自己点好框、又怕乱填。'
+        }
+      };
+      function paint(v) {
+        document.querySelectorAll('.opt').forEach(function (el) {
+          el.classList.toggle('on', el.getAttribute('data-v') === v);
+        });
+        var m = meta[v];
+        document.getElementById('aimTitle').textContent = m.title;
+        document.getElementById('aimBody').textContent = m.body;
+        document.getElementById('doBody').textContent = m.doBody;
+        document.getElementById('note').innerHTML = m.note;
+      }
+      document.querySelectorAll('.opt').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var inp = el.querySelector('input');
+          if (inp) inp.checked = true;
+          paint(el.getAttribute('data-v'));
+        });
+      });
+      paint('auto');
+    })();
+  </script>
+</body>
+</html>

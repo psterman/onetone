@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-cmd-input-aim-calibrate-commit"
+description = "Commit scheme-B calibrate point"
+commands.allow = ["cmd_input_aim_calibrate_commit"]
+
+[[permission]]
+identifier = "deny-cmd-input-aim-calibrate-commit"
+description = "Deny commit calibrate"
+commands.deny = ["cmd_input_aim_calibrate_commit"]
