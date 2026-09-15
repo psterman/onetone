@@ -38,22 +38,35 @@
   // Soft Pad C IA: face = page route; padMode = pad-face local tabs only.
   // softPadView removed — use softPadPanelId() / getView() for legacy panel ids.
   var softPadFace = 'pad'; // pad | agent | timeline (agent face retired — use padMode lights|mini)
-  var softPadPadMode = 'keys'; // appear | keys | purpose | lights | mini
+  var softPadPadMode = 'keys'; // keys | agent | style (+ legacy aliases normalized on entry)
   var lastSoftPadPadMode = 'keys';
   var VALID_SOFT_PAD_FACES = { pad: 1, agent: 1, timeline: 1 };
-  var VALID_SOFT_PAD_PAD_MODES = { appear: 1, keys: 1, look: 1, purpose: 1, lights: 1, mini: 1 };
+  var VALID_SOFT_PAD_PAD_MODES = { keys: 1, agent: 1, style: 1 };
   var PAD_MODE_TO_PANEL = {
-    appear: 'runtime',
     keys: 'layout',
-    look: 'runtime',
-    purpose: 'purpose',
-    lights: 'agent',
-    mini: 'agent'
+    agent: 'agent',
+    style: 'style'
   };
-  var PANEL_TO_PAD_MODE = { runtime: 'appear', layout: 'keys', presentation: 'appear', purpose: 'purpose', agent: 'lights' };
+  var PANEL_TO_PAD_MODE = {
+    layout: 'keys',
+    agent: 'agent',
+    style: 'style',
+    runtime: 'style',
+    presentation: 'style',
+    purpose: 'style'
+  };
+
+  /** Five legacy pad tabs → three (keys / agent / style). */
+  function normalizeSoftPadPadMode(mode) {
+    mode = String(mode || '').trim();
+    if (mode === 'look') mode = 'style';
+    if (mode === 'appear' || mode === 'presentation' || mode === 'purpose') mode = 'style';
+    if (mode === 'lights' || mode === 'mini') mode = 'agent';
+    return mode;
+  }
   /** SoftPad #3c：Soft Pad 舞台面板顺序（环芯片 / model / 测试共用；agent 走 Hero 节点）。 */
   var SOFT_PAD_PANEL_ORDER = ['runtime', 'layout', 'presentation'];
-  var VALID_SOFT_PAD_VIEWS = { layout: 1, presentation: 1, runtime: 1, agent: 1, timeline: 1, purpose: 1 };
+  var VALID_SOFT_PAD_VIEWS = { layout: 1, presentation: 1, runtime: 1, style: 1, agent: 1, timeline: 1, purpose: 1 };
   var chromeBound = false;
   var tmHeroBooted = false;
   var selectToken = 0;
@@ -863,6 +876,9 @@
         if (!patchAppSwitcher()) renderAppSwitcher();
         syncSoftPadPadRing(resolveSoftPadEntry());
         schedulePreviewPaint(resolveSoftPadEntry());
+        if (normalizeSoftPadPadMode(softPadPadMode) === 'style') {
+          paintSubpage(resolveSoftPadEntry(), { forceRemount: true });
+        }
       })
       .catch(function (err) {
         toast(t('softPadPurposePersistFail', '会话导航保存失败：{err}')
@@ -1286,34 +1302,85 @@
       padRing: document.getElementById('softPadPadRing'),
       ringFloat: document.getElementById('softPadRingFloat'),
       aside: document.getElementById('softPadSchemeAside'),
+      sceneKeys: document.getElementById('softPadSceneKeysPanel'),
+      sceneKeysDir: document.getElementById('softPadSceneKeysDir'),
+      sceneKeysMeta: document.getElementById('softPadSceneKeysMeta'),
+      sceneKeysAdd: document.getElementById('softPadSceneKeysAdd'),
       pageBody: document.getElementById('softPadPageBody'),
       softPadPanel: document.getElementById('settingsPanelSoftPad')
     };
   }
 
+  /** Right dock = Keys「本场景动作」(same rows / chrome). Soft Pad no longer lists pad keys. */
+  function refreshSoftPadSceneKeys(entry) {
+    entry = entry || resolveSoftPadEntry();
+    var e = els();
+    var Panel = global.OneToneKeysSceneActionsPanel;
+    var face = softPadFace === 'pad' && normalizeSoftPadPadMode(softPadPadMode) !== 'agent';
+    var show = face && hasMapping(entry);
+    if (!show) {
+      if (e.sceneKeys) {
+        e.sceneKeys.setAttribute('hidden', '');
+        e.sceneKeys.setAttribute('aria-hidden', 'true');
+      }
+      if (e.pageBody) e.pageBody.classList.remove('has-scene-panel');
+      return;
+    }
+    if (Panel && typeof Panel.render === 'function') {
+      try {
+        Panel.render(entry.mapping);
+        return;
+      } catch (_) {}
+    }
+    if (e.sceneKeys) {
+      e.sceneKeys.removeAttribute('hidden');
+      e.sceneKeys.setAttribute('aria-hidden', 'false');
+    }
+    if (e.pageBody) e.pageBody.classList.add('has-scene-panel');
+  }
+
+  function focusSoftPadSceneKey(microKeyId, entry) {
+    microKeyId = String(microKeyId || '').trim();
+    if (!microKeyId) return;
+    entry = entry || resolveSoftPadEntry();
+    if (!hasMapping(entry)) return;
+    var Pad = global.OneToneCodexMicroPadUi;
+    if (Pad && typeof Pad.openEditKeycap === 'function') {
+      try {
+        Pad.openEditKeycap(entry.mapping, microKeyId, { mode: 'inline' });
+      } catch (_) {}
+    }
+    if (normalizeSoftPadPadMode(softPadPadMode) !== 'keys') {
+      setSoftPadPadMode('keys', { fromUser: true });
+    }
+    refreshSoftPadSceneKeys(entry);
+  }
+
   function softPadPanelId() {
     if (softPadFace === 'timeline') return 'timeline';
-    // Merged Soft Pad: lights/mini paint agent workbench under pad face.
-    if (softPadPadMode === 'lights' || softPadPadMode === 'mini') return 'agent';
     if (softPadFace === 'agent') return 'agent';
-    return PAD_MODE_TO_PANEL[softPadPadMode] || 'runtime';
+    var mode = normalizeSoftPadPadMode(softPadPadMode);
+    return PAD_MODE_TO_PANEL[mode] || 'layout';
   }
 
   function isAgentWorkbenchMode() {
-    return softPadPadMode === 'lights' || softPadPadMode === 'mini' || softPadFace === 'agent';
+    return normalizeSoftPadPadMode(softPadPadMode) === 'agent' || softPadFace === 'agent';
   }
 
   /** One-shot map for openSubpage / forceView compat. */
   function legacyViewToRoute(view) {
     view = String(view || '');
     if (view === 'advanced') view = 'agent';
-    if (view === 'agent') return { face: 'pad', mode: 'lights' };
+    if (view === 'agent' || view === 'lights' || view === 'mini') return { face: 'pad', mode: 'agent' };
     if (view === 'timeline') return { face: 'timeline', mode: null };
-    if (view === 'purpose') return { face: 'pad', mode: 'purpose' };
+    if (view === 'purpose') return { face: 'pad', mode: 'style' };
+    if (view === 'runtime' || view === 'presentation' || view === 'appear' || view === 'look') {
+      return { face: 'pad', mode: 'style' };
+    }
     if (PANEL_TO_PAD_MODE[view]) return { face: 'pad', mode: PANEL_TO_PAD_MODE[view] };
     if (VALID_SOFT_PAD_PAD_MODES[view]) return { face: 'pad', mode: view };
-    if (view === 'hub' || !view) return { face: 'pad', mode: 'appear' };
-    return { face: 'pad', mode: 'appear' };
+    if (view === 'hub' || !view) return { face: 'pad', mode: 'keys' };
+    return { face: 'pad', mode: 'keys' };
   }
 
   function previewHostForFace(face) {
@@ -1349,8 +1416,13 @@
   function syncAgentWorkbenchTabForPadMode(mode) {
     var Pad = global.OneToneCodexMicroPadUi;
     if (!Pad || typeof Pad.setSoftPadWorkbenchTab !== 'function') return;
-    if (mode === 'mini') Pad.setSoftPadWorkbenchTab('mini');
-    else if (mode === 'lights') Pad.setSoftPadWorkbenchTab('match');
+    mode = normalizeSoftPadPadMode(mode);
+    if (mode !== 'agent') return;
+    if (Pad.getSoftPadWorkbenchTab && Pad.getSoftPadWorkbenchTab() === 'mini') {
+      Pad.setSoftPadWorkbenchTab('mini');
+    } else {
+      Pad.setSoftPadWorkbenchTab('match');
+    }
   }
 
   function resetSoftPadRouteToPadAppear() {
@@ -2740,10 +2812,12 @@
   }
 
   function normalizeFourPanelView(view) {
-    view = String(view || 'runtime');
+    view = String(view || 'style');
     if (view === 'advanced') return 'agent';
+    if (view === 'runtime' || view === 'presentation' || view === 'appear' || view === 'look') return 'style';
+    if (view === 'purpose') return 'layout';
     if (VALID_SOFT_PAD_VIEWS[view]) return view;
-    return 'runtime';
+    return 'style';
   }
 
   function subpageTitle(view) {
@@ -2753,8 +2827,8 @@
     view = normalizeFourPanelView(view);
     if (view === 'layout') return t('softPadTileLayout', '改按键');
     if (view === 'presentation') return t('softPadTilePres', '外观');
-    if (view === 'runtime') return t('softPadTileDisplay', '显示');
-    if (view === 'agent') return t('softPadTileMore', '更多');
+    if (view === 'runtime' || view === 'style') return t('softPadPadTabStyle', '样式');
+    if (view === 'agent') return t('softPadPadTabAgent', 'Agent');
     return '';
   }
 
@@ -2804,16 +2878,18 @@
   function goSoftPadFlowNode(nodeId) {
     nodeId = String(nodeId || '');
     if (nodeId === 'agent') {
-      setSoftPadPadMode('lights', { fromUser: true });
+      setSoftPadPadMode('agent', { fromUser: true });
       return;
     }
     if (nodeId === 'timeline') {
       return;
     }
     if (nodeId === 'pad') {
-      if (softPadFace === 'pad' && softPadPadMode !== 'lights' && softPadPadMode !== 'mini') return;
+      if (softPadFace === 'pad' && normalizeSoftPadPadMode(softPadPadMode) === 'keys') return;
       closeRingFloat();
-      setSoftPadFace('pad', { padMode: lastSoftPadPadMode === 'lights' || lastSoftPadPadMode === 'mini' ? 'keys' : (lastSoftPadPadMode || 'keys') });
+      setSoftPadFace('pad', {
+        padMode: normalizeSoftPadPadMode(lastSoftPadPadMode) === 'agent' ? 'keys' : (lastSoftPadPadMode || 'keys')
+      });
     }
   }
 
@@ -2934,14 +3010,9 @@
       feLog('fe softPad.padRing suppress-land ' + act);
       return;
     }
-    if (act === 'show') {
+    if (act === 'show' || act === 'look') {
       setSoftPadFace('pad', { fromUser: true });
-      setSoftPadPadMode('appear', { fromUser: true });
-      return;
-    }
-    if (act === 'look') {
-      setSoftPadFace('pad', { fromUser: true });
-      setSoftPadPadMode('appear', { fromUser: true });
+      setSoftPadPadMode('style', { fromUser: true });
       return;
     }
     if (act === 'enable') {
@@ -2950,7 +3021,7 @@
     }
     if (act === 'purpose') {
       setSoftPadFace('pad', { fromUser: true });
-      setSoftPadPadMode('purpose', { fromUser: true });
+      setSoftPadPadMode('keys', { fromUser: true });
       return;
     }
     if (act === 'agent-lights' || act === 'agent-connect' || act === 'agent-explain') {
@@ -3213,6 +3284,7 @@
   }
 
   function rememberSoftPadPadMode(mode) {
+    mode = normalizeSoftPadPadMode(mode);
     if (VALID_SOFT_PAD_PAD_MODES[mode]) lastSoftPadPadMode = mode;
   }
 
@@ -3389,6 +3461,9 @@
       e.aside.setAttribute('hidden', '');
       e.aside.setAttribute('aria-hidden', 'true');
     }
+    if (e.sceneKeys) {
+      refreshSoftPadSceneKeys(entry);
+    }
     if (isAgentWorkbenchMode()) {
       setBindAppMenuOpen(false);
       renderAgentDirectory();
@@ -3549,6 +3624,9 @@
       return !!(host.querySelector('[data-soft-pad-action-library]') ||
         host.querySelector('[data-soft-pad-layout-editor]'));
     }
+    if (view === 'style') {
+      return !!host.querySelector('.soft-pad-style-panel');
+    }
     if (view === 'purpose') {
       return !!(host.querySelector('[data-pad-purpose]') &&
         host.querySelector('.soft-pad-feature-cards'));
@@ -3569,7 +3647,7 @@
 
   function syncRuntimeCheckboxes(entry) {
     if (softPadFace !== 'pad' || !hasMapping(entry)) return;
-    if (softPadPadMode !== 'appear' && softPadPadMode !== 'purpose') return;
+    if (normalizeSoftPadPadMode(softPadPadMode) !== 'style') return;
     var e = els();
     if (!e.subBody) return;
     // P14k：query paint-target（岛挂载后控件在 paint 子节点内）。
@@ -3698,14 +3776,15 @@
     if (panel === 'layout') {
       updateStatusBar(entry);
       patchSchemeRowPresentation(entry);
-      if (onPad && softPadPadMode === 'keys') schedulePreviewPaint(entry);
+      if (onPad && normalizeSoftPadPadMode(softPadPadMode) === 'keys') schedulePreviewPaint(entry);
       if (onPad || isAgentWorkbenchMode()) renderFuncTiles(entry);
-      if (onPad && softPadPadMode === 'keys' && changeOpts.remountLayout !== false) {
+      refreshSoftPadSceneKeys(entry);
+      if (onPad && normalizeSoftPadPadMode(softPadPadMode) === 'keys' && changeOpts.remountLayout !== false) {
         paintSubpage(entry, { forceRemount: true });
       }
       return;
     }
-    if (panel === 'runtime') {
+    if (panel === 'runtime' || panel === 'style') {
       updateStatusBar(entry);
       patchSchemeRowEnable(entry);
       patchSchemeRowPresentation(entry);
@@ -3714,7 +3793,7 @@
       if (changeOpts.refreshPreview) {
         var mapId = String(entry.mapping.id);
         requestAnimationFrame(function () {
-          if (softPadFace !== 'pad' || softPadPadMode !== 'appear') return;
+          if (softPadFace !== 'pad' || normalizeSoftPadPadMode(softPadPadMode) !== 'style') return;
           if (String(getSelectedMappingId() || '') !== mapId) return;
           var cur = findEntry(mapId);
           if (!hasMapping(cur)) return;
@@ -3778,7 +3857,7 @@
     var clear = true;
     var agentLoadTokenStr = '';
     if (has && (view === 'layout' || view === 'presentation' || view === 'runtime' ||
-        view === 'agent' || view === 'purpose')) {
+        view === 'style' || view === 'agent' || view === 'purpose')) {
       clear = false;
       panel = view === 'purpose' ? 'purpose' : normalizeFourPanelView(view);
       if (view === 'agent' && !isHubSoftPadKind(selectedScopeId)) {
@@ -3838,8 +3917,8 @@
         onSoftPadPanelChanged(mapping, panel || targetView, changeOpts);
       },
       agentLoadToken: agentLoadToken,
-      hideWorkbenchTabs: softPadPadMode === 'lights' || softPadPadMode === 'mini',
-      foldDataIntoMini: softPadPadMode === 'mini'
+      hideWorkbenchTabs: false,
+      foldDataIntoMini: false
     };
   }
 
@@ -3917,7 +3996,7 @@
     }
 
     if (!paintOpts.forceRemount && softPadSubpageAlreadyPainted(entry, targetView)) {
-      if (targetView === 'runtime' || targetView === 'purpose') syncRuntimeCheckboxes(entry);
+      if (targetView === 'runtime' || targetView === 'style' || targetView === 'purpose') syncRuntimeCheckboxes(entry);
       feLog('fe softPad.paintSubpage skip-remount ' + targetView);
       return;
     }
@@ -3954,7 +4033,7 @@
     // Pad face island path only — agent/purpose paint into #softPadSubpageBody.
     if (softPadFace === 'pad' && global.__otSoftPadSubpageMounted &&
         typeof global.__otSoftPadSubpageSync === 'function' &&
-        targetView !== 'purpose' && targetView !== 'agent') {
+        targetView !== 'purpose' && targetView !== 'agent' && targetView !== 'style') {
       try {
         if (Pad.closeEditKeycap) Pad.closeEditKeycap({ reopenInline: false });
         ++subpageToken;
@@ -3992,6 +4071,8 @@
       var m = entry.mapping;
       if (targetView === 'layout' && Pad.renderSoftPadLayoutPanel) {
         Pad.renderSoftPadLayoutPanel(paintHost, m, { onChanged: onChanged });
+      } else if (targetView === 'style' && Pad.renderSoftPadStylePanel) {
+        Pad.renderSoftPadStylePanel(paintHost, m, { onChanged: onChanged });
       } else if (targetView === 'presentation' && Pad.renderSoftPadPresentationPanel) {
         Pad.renderSoftPadPresentationPanel(paintHost, m, { onChanged: onChanged });
       } else if (targetView === 'runtime' && Pad.renderSoftPadDisplayPanel) {
@@ -4005,8 +4086,8 @@
         Pad.renderSoftPadAgentPanel(paintHost, m, {
           onChanged: onChanged,
           agentLoadToken: token,
-          hideWorkbenchTabs: softPadPadMode === 'lights' || softPadPadMode === 'mini',
-          foldDataIntoMini: softPadPadMode === 'mini'
+          hideWorkbenchTabs: false,
+          foldDataIntoMini: false
         });
         paintHost.setAttribute('data-lights-scope', String(selectedScopeId || ''));
         body.setAttribute('data-lights-scope', String(selectedScopeId || ''));
@@ -4031,10 +4112,9 @@
     opts = opts || {};
     face = String(face || '');
     if (!VALID_SOFT_PAD_FACES[face]) return;
-    // Agent face retired: route to pad + lights (or opts.padMode if lights/mini).
+    // Agent face retired: route to pad + Agent tab.
     if (face === 'agent') {
-      var agentMode = opts.padMode === 'mini' ? 'mini' : 'lights';
-      setSoftPadPadMode(agentMode, opts);
+      setSoftPadPadMode('agent', opts);
       return;
     }
     var prevFace = softPadFace;
@@ -4055,8 +4135,7 @@
     if (isAgentWorkbenchMode() || prevFace === 'agent') ++agentLoadToken;
     softPadFace = face;
     if (face === 'pad') {
-      var mode = opts.padMode || lastSoftPadPadMode || 'keys';
-      if (mode === 'look') mode = 'appear';
+      var mode = normalizeSoftPadPadMode(opts.padMode || lastSoftPadPadMode || 'keys');
       if (!VALID_SOFT_PAD_PAD_MODES[mode]) mode = 'keys';
       softPadPadMode = mode;
       rememberSoftPadPadMode(mode);
@@ -4091,8 +4170,7 @@
 
   function setSoftPadPadMode(mode, opts) {
     opts = opts || {};
-    mode = String(mode || '');
-    if (mode === 'look') mode = 'appear';
+    mode = normalizeSoftPadPadMode(mode);
     if (!VALID_SOFT_PAD_PAD_MODES[mode]) return;
     if (softPadFace !== 'pad') {
       setSoftPadFace('pad', Object.assign({}, opts, { padMode: mode }));
@@ -4130,8 +4208,8 @@
       if (Pad && Pad.closeEditKeycap) Pad.closeEditKeycap({ reopenInline: false });
     } catch (_) {}
     var prevMode = softPadPadMode;
-    var wasAgent = prevMode === 'lights' || prevMode === 'mini';
-    var nextAgent = mode === 'lights' || mode === 'mini';
+    var wasAgent = normalizeSoftPadPadMode(prevMode) === 'agent';
+    var nextAgent = mode === 'agent';
     if (wasAgent || nextAgent) ++agentLoadToken;
     softPadPadMode = mode;
     rememberSoftPadPadMode(mode);
@@ -4154,8 +4232,18 @@
     var route = legacyViewToRoute(view);
     if (!route || !route.face) return;
     if (route.face === 'pad') {
-      var nextMode = route.mode || 'appear';
-      if (softPadFace === 'pad' && softPadPadMode === nextMode) return;
+      var nextMode = route.mode || 'keys';
+      var jumpPurposePad = view === 'purpose';
+      if (jumpPurposePad) {
+        var Pad = global.OneToneCodexMicroPadUi;
+        if (Pad && typeof Pad.setSoftPadStyleSubtab === 'function') {
+          Pad.setSoftPadStyleSubtab('pad');
+        }
+      }
+      if (softPadFace === 'pad' && softPadPadMode === nextMode) {
+        if (jumpPurposePad) paintSubpage(resolveSoftPadEntry(), { forceRemount: true });
+        return;
+      }
       if (softPadFace !== 'pad') {
         setSoftPadFace('pad', Object.assign({}, openOpts, { padMode: nextMode }));
       } else {
@@ -4173,8 +4261,8 @@
     feLog('fe softPad.closeSubpage from=' + fromFace + '/' + fromMode);
     var entry = resolveSoftPadEntry();
     if (hasMapping(entry)) adoptSoftPadSelection(entry);
-    if (fromFace === 'pad' && fromMode !== 'appear') {
-      setSoftPadPadMode('appear');
+    if (fromFace === 'pad' && normalizeSoftPadPadMode(fromMode) !== 'keys') {
+      setSoftPadPadMode('keys');
       return;
     }
     if (fromFace === 'agent' || fromFace === 'timeline') {
@@ -4182,7 +4270,7 @@
         var tmClose = global.OneToneSoftPadTimeMachine;
         if (tmClose) tmClose.closeDesk();
       }
-      setSoftPadFace('pad', { padMode: 'appear' });
+      setSoftPadFace('pad', { padMode: 'keys' });
       return;
     }
   }
@@ -4301,8 +4389,7 @@
     var collapsed = false;
     var skipPaint = false;
     var light = softPadFace !== 'pad' || softPadPadMode !== 'keys';
-    var modePreview = softPadFace === 'pad' &&
-      (softPadPadMode === 'appear' || softPadPadMode === 'purpose');
+    var modePreview = softPadFace === 'pad' && normalizeSoftPadPadMode(softPadPadMode) === 'style';
     if (modePreview) {
       // appear/purpose own left column via paintSoftPadPadModePreview — island must not paint keyboard.
       skipPaint = true;
@@ -4461,13 +4548,12 @@
   /** Ensure Soft Pad preview exists on active face host. */
   function ensureSoftPadPreview(entry) {
     if (!hasMapping(entry)) return;
-    if (softPadFace === 'pad' &&
-        (softPadPadMode === 'appear' || softPadPadMode === 'purpose')) {
+    if (softPadFace === 'pad' && normalizeSoftPadPadMode(softPadPadMode) === 'style') {
       var PadMode = global.OneToneCodexMicroPadUi;
       var modeHost = previewHostForFace('pad');
       if (PadMode && typeof PadMode.paintSoftPadPadModePreview === 'function' && modeHost) {
         try {
-          PadMode.paintSoftPadPadModePreview(modeHost, entry.mapping, softPadPadMode);
+          PadMode.paintSoftPadPadModePreview(modeHost, entry.mapping, 'appear');
           paintedMappingId = String(entry.mapping.id);
           modeHost.hidden = false;
           modeHost.removeAttribute('hidden');
@@ -4703,7 +4789,7 @@
         var land = defaultDetailView(opts);
         var route = legacyViewToRoute(land);
         softPadFace = route.face;
-        softPadPadMode = route.mode || 'appear';
+        softPadPadMode = normalizeSoftPadPadMode(route.mode || 'keys');
         rememberSoftPadPadMode(softPadPadMode);
       }
     }
@@ -5058,13 +5144,13 @@
     patchSchemeRowEnable(entry);
     if (!patchAppSwitcher()) renderAppSwitcher();
     updateScopeHint();
-    if (softPadFace === 'pad' &&
-        (softPadPadMode === 'appear' || softPadPadMode === 'purpose')) {
+    if (softPadFace === 'pad' && normalizeSoftPadPadMode(softPadPadMode) === 'style') {
       syncRuntimeCheckboxes(entry);
     }
-    if (softPadFace === 'pad' && softPadPadMode === 'keys') {
+    if (softPadFace === 'pad' && normalizeSoftPadPadMode(softPadPadMode) === 'keys') {
       schedulePreviewPaint(entry);
     }
+    refreshSoftPadSceneKeys(entry);
   }
 
   function toastPad(msg) {
@@ -5361,7 +5447,7 @@
         var purposeEl = ev.target.closest && ev.target.closest('[data-pad-purpose]');
         if (purposeEl && handlePurposeChipClick(purposeEl)) {
           ev.preventDefault();
-          if (softPadPadMode === 'purpose') {
+          if (normalizeSoftPadPadMode(softPadPadMode) === 'style') {
             paintSubpage(resolveSoftPadEntry(), { forceRemount: true });
           }
           return;
@@ -5399,10 +5485,10 @@
         schedulePreviewPaint(entry);
       }
       syncFaceChrome(entry);
-      if (softPadFace === 'pad' &&
-          (softPadPadMode === 'appear' || softPadPadMode === 'purpose')) {
+      if (softPadFace === 'pad' && normalizeSoftPadPadMode(softPadPadMode) === 'style') {
         syncRuntimeCheckboxes(entry);
       }
+      refreshSoftPadSceneKeys(entry);
     }
   }
 
@@ -5872,7 +5958,11 @@
     openDetail: openDetail,
     selectScheme: selectScheme,
     selectScope: selectScope,
-    getSoftPadFace: function () { return (softPadPadMode === 'lights' || softPadPadMode === 'mini') ? 'agent' : softPadFace; },
+    getSoftPadFace: function () {
+      return normalizeSoftPadPadMode(softPadPadMode) === 'agent' ? 'agent' : softPadFace;
+    },
+    refreshSoftPadSceneKeys: refreshSoftPadSceneKeys,
+    focusSoftPadSceneKey: focusSoftPadSceneKey,
     softPadScopeSwitchLabel: softPadScopeSwitchLabel,
     renderSoftPadScopeMenuItems: renderSoftPadScopeMenuItems,
     buildBindAppProps: buildBindAppProps,
@@ -5887,6 +5977,7 @@
     iconForKind: iconForKind,
     iconHtmlForKind: function (kind) { return iconHtml(kind, 'settings-scope-switch__icon-img'); },
     kindForAppId: kindForAppId,
+    appIdForKind: appIdForKind,
     isAgentInstalledForAppId: isAgentInstalledForAppId,
     isScopeVisibleForMenu: isScopeVisibleForMenu,
     listAppScopes: listAppScopes,
@@ -5946,6 +6037,7 @@
     persistPadPurposeAndSlots: persistPadPurposeAndSlots,
     setPadPurpose: setPadPurpose,
     kindForAppId: kindForAppId,
+    appIdForKind: appIdForKind,
     pruneInvalidUserLanePin: pruneInvalidUserLanePin,
     ingestSoftPadRuntimeSnapshot: ingestSoftPadRuntimeSnapshot,
     refreshSoftPadRuntimeAsync: refreshSoftPadRuntimeAsync,

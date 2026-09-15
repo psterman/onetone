@@ -361,12 +361,29 @@
       try{
         var hdr=global.OneToneVoicePageHeaderRender;
         var scopeM=hdr&&typeof hdr.resolveScopeMapping==='function'?hdr.resolveScopeMapping(null):null;
-        if(scopeM) scopeM.imePresetId=presetId;
+        if(scopeM){
+          scopeM.imePresetId=presetId;
+          scopeM.targetKey=combo;
+          // 同一口令只匹配听写：清掉「我录的键」序列影子。
+          scopeM.targetActions=[];
+          try{
+            scopeM.captureHeroRef={
+              channel:'key',
+              bindingRef:'ime',
+              actionId:'',
+              actionInstanceId:'',
+              kind:'ime'
+            };
+          }catch(_h){}
+        }
         var scene=global.OneToneKeysSceneActionsPanel;
-        if(scene&&typeof scene.refresh==='function') scene.refresh();
-        else if(scene&&typeof scene.render==='function') scene.render(scopeM);
+        if(scene&&typeof scene.render==='function'&&scopeM) scene.render(scopeM);
+        else if(scene&&typeof scene.refresh==='function') scene.refresh();
         if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
           global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
+        if(global.OneToneVoiceIntentRail&&global.OneToneVoiceIntentRail.syncHeroVals){
+          global.OneToneVoiceIntentRail.syncHeroVals();
         }
       }catch(_){}
     }
@@ -606,12 +623,51 @@
     refresh();
   }
 
+  /** Inline labeled strip for Soft Pad / embed contexts (no side effects). */
+  function buildLabeledStripHtml(opts){
+    opts = opts || {};
+    var selectedId = String(opts.selectedId || '');
+    var disabled = !!opts.disabled;
+    var ctx = String(opts.context || 'softPadLayout');
+    var html = '';
+    html += '<button type="button" class="ime-preset-item ime-preset-item--picker ime-preset-item--labeled"'+(disabled?' disabled':'')+' data-soft-pad-ime-picker="1" title="'+esc(t('keysTargetKeycapPickLink'))+'" aria-label="'+esc(t('keysTargetKeycapPickLink'))+'">'
+      +PICKER_ICON_SVG
+      +'<span class="ime-preset-name">'+esc(t('imePresetPick'))+'</span>'
+      +'</button>';
+    html += '<button type="button" class="ime-preset-item ime-preset-item--custom ime-preset-item--labeled'+((!selectedId && opts.customKey)?' is-selected':'')+'" data-soft-pad-ime-custom="1"'+(disabled?' disabled':'')+' title="'+esc(t('imePresetCustomHint'))+'" aria-label="'+esc(t('imePresetCustom'))+'">'
+      +CUSTOM_ICON_SVG
+      +'<span class="ime-preset-name">'+esc(t('imePresetCustom'))+'</span>'
+      +'</button>';
+    html += PRESETS.map(function(p){
+      return renderPresetButton(ctx, p, { selectedId:selectedId, disabled:disabled, labeled:true })
+        .replace(/data-ime-id="/g, 'data-soft-pad-ime-id="')
+        .replace(/data-ime-context="[^"]*"/g, 'data-soft-pad-ime-context="'+esc(ctx)+'"');
+    }).join('');
+    return html;
+  }
+
+  function confirmLineText(selectedId, key){
+    var preset = presetById(selectedId);
+    if(preset){
+      return t('imePresetConfirmDefault')
+        .replace('{ime}', t(preset.shortKey || preset.nameKey))
+        .replace('{chord}', friendlyChord(preset.targetKey || key || ''));
+    }
+    if(key){
+      return t('imePresetConfirmCustom').replace('{chord}', friendlyChord(key));
+    }
+    return t('softPadLayoutImePickHint', '选一个输入法，绑定其听写快捷键到左侧选中的键');
+  }
+
   global.OneToneImePresets = {
     init: init,
     refresh: refresh,
     applyLang: applyLang,
     presets: PRESETS,
     presetById: presetById,
+    buildLabeledStripHtml: buildLabeledStripHtml,
+    confirmLineText: confirmLineText,
+    friendlyChord: friendlyChord,
     clearSelectedForManualRecord: clearSelectedForManualRecord,
     renderCardBadge: renderCardBadge,
     renderMappingTargetImeBadge: renderMappingTargetImeBadge

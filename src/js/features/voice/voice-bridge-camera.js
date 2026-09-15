@@ -178,7 +178,22 @@
           ?(r.gest+' '+r.gestName+' · 「'+r.phrase+'」')
           :(r.gest+' '+r.gestName+(r.suggest?(' · 建议「'+r.suggest+'」'):' · 还没口令'));
         btn.innerHTML='<span class="kn">'+r.title+badge+'</span><span class="km">'+km+'</span>';
-        btn.addEventListener('click',function(){ pickId=r.bindKey; render(); });
+        btn.addEventListener('click',function(){
+          pickId=r.bindKey;
+          try{
+            var cur=currentMapping();
+            var sceneClaim=global.OneToneKeysSceneActionsPanel;
+            if(cur&&sceneClaim&&typeof sceneClaim.claimVoiceChannelMatch==='function'){
+              sceneClaim.claimVoiceChannelMatch(
+                cur,
+                'camera',
+                String(r.slotId||('semantic:camera:'+r.bindKey)),
+                String(r.actionId||r.bindKey||'')
+              );
+            }
+          }catch(_c){}
+          render();
+        });
         host.appendChild(btn);
       });
     }
@@ -290,5 +305,15 @@
     return true;
   }
 
-  global.OneToneVoiceBridgeCamera={ render:render, listCameraVoice:listCameraRows, addPhrase:addPhrase };
+  global.OneToneVoiceBridgeCamera={
+    render:render,
+    listCameraVoice:listCameraRows,
+    addPhrase:addPhrase,
+    labelForBindKey:function(key){
+      key=String(key||'').trim();
+      if(key.indexOf('semantic:camera:')===0) key=key.slice('semantic:camera:'.length);
+      var meta=CAM_META[key];
+      return meta?(meta.title||meta.gestName||''):'';
+    }
+  };
 })((typeof window!=='undefined')?window:globalThis);

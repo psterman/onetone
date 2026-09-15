@@ -13,7 +13,7 @@
     dragKey: ''
   };
 
-  // Keys + Voice share the same dock; only the visible settings page paints.
+  // Keys + Voice + Soft Pad share the same dock; only the visible settings page paints.
   var HOSTS = [
     {
       panel: 'keysSceneActionsPanel',
@@ -40,6 +40,19 @@
       dir: 'voiceSceneActionsDir',
       detail: 'voiceSceneActionsDetail',
       add: 'voiceSceneActionsAdd'
+    },
+    {
+      panel: 'softPadSceneKeysPanel',
+      page: 'settingsPanelSoftPad',
+      bodySel: '.soft-pad-page-body',
+      app: 'softPadSceneKeysApp',
+      appIcon: 'softPadSceneKeysAppIcon',
+      appName: 'softPadSceneKeysAppName',
+      meta: 'softPadSceneKeysMeta',
+      back: 'softPadSceneKeysBack',
+      dir: 'softPadSceneKeysDir',
+      detail: 'softPadSceneKeysDetail',
+      add: 'softPadSceneKeysAdd'
     }
   ];
 
@@ -101,6 +114,15 @@
         }
       } catch (_) {}
     }
+    if (onSoftPadPage()) {
+      try {
+        var Hub = global.OneToneSoftPadHub;
+        if (Hub && typeof Hub.resolveSoftPadEntry === 'function') {
+          var entry = Hub.resolveSoftPadEntry();
+          if (entry && entry.mapping) return entry.mapping;
+        }
+      } catch (_) {}
+    }
     var core = mappingCore();
     if (core && typeof core.selected === 'function') return core.selected();
     try {
@@ -131,6 +153,7 @@
     var panel = ui && String(ui.settingsPanel || '');
     if (panel === 'voiceWake') return HOSTS[1];
     if (panel === 'keys') return HOSTS[0];
+    if (panel === 'softPad') return HOSTS[2];
     var i;
     for (i = 0; i < HOSTS.length; i++) {
       if (pageIsOpen(HOSTS[i].page)) return HOSTS[i];
@@ -154,6 +177,8 @@
   function setVisible(show) {
     var active = activeHost();
     var voice = onVoicePage();
+    var softPad = onSoftPadPage();
+    var softPadFaceOk = softPadSceneDockAllowed();
     var i;
     for (i = 0; i < HOSTS.length; i++) {
       var host = HOSTS[i];
@@ -163,8 +188,10 @@
       if (show && active && host.panel === active.panel) {
         // Prefer settingsPanel over DOM [hidden] — live-frontend navigate can race panel.hidden.
         if (host.page === 'settingsPanelVoiceWake') showThis = voice;
-        else if (host.page === 'settingsPanelKeys') showThis = !voice && pageIsOpen(host.page);
-        else showThis = pageIsOpen(host.page);
+        else if (host.page === 'settingsPanelKeys') showThis = !voice && !softPad && pageIsOpen(host.page);
+        else if (host.page === 'settingsPanelSoftPad') {
+          showThis = softPad && softPadFaceOk && pageIsOpen(host.page);
+        } else showThis = pageIsOpen(host.page);
       }
       if (panel) panel.hidden = !showThis;
       var addBtn = $(host.add);
@@ -194,6 +221,23 @@
   function onVoicePage() {
     var ui = global.OneToneState && global.OneToneState.ui;
     return !!(ui && ui.settingsPanel === 'voiceWake');
+  }
+
+  function onSoftPadPage() {
+    var ui = global.OneToneState && global.OneToneState.ui;
+    return !!(ui && ui.settingsPanel === 'softPad');
+  }
+
+  /** Soft Pad dock only beside the pad face (not agent / timeline). */
+  function softPadSceneDockAllowed() {
+    if (!onSoftPadPage()) return false;
+    try {
+      var Hub = global.OneToneSoftPadHub;
+      if (Hub && typeof Hub.getSoftPadFace === 'function') {
+        return String(Hub.getSoftPadFace() || '') === 'pad';
+      }
+    } catch (_) {}
+    return true;
   }
 
   function appInfo(m) {
@@ -258,7 +302,36 @@
         }
       }
     } catch (_) {}
-    // Last resort: never paint raw dotted ids for beginners
+    // Camera gesture ids (deliberateBlink / semantic:camera:…)
+    var camId = sid;
+    if (camId.indexOf('semantic:camera:') === 0) camId = camId.slice('semantic:camera:'.length);
+    if (!camId || camId.indexOf(':') >= 0) camId = aid;
+    if (camId.indexOf('semantic:camera:') === 0) camId = camId.slice('semantic:camera:'.length);
+    if (!camId) camId = bareAid || bareSid;
+    try {
+      var Cam = global.OneToneVoiceBridgeCamera;
+      if (Cam && typeof Cam.labelForBindKey === 'function') {
+        var camL = String(Cam.labelForBindKey(camId) || '').trim();
+        if (camL) return camL;
+      }
+    } catch (_) {}
+    try {
+      var Picker = global.OneToneKeysChannelCommandPicker;
+      if (Picker && typeof Picker.gestureLabel === 'function') {
+        var gL = String(Picker.gestureLabel(camId) || '').trim();
+        if (gL && gL !== camId) return gL;
+      }
+    } catch (_2) {}
+    // Voice「软件自带」catalog titles
+    try {
+      var KeysBr = global.OneToneVoiceBridgeKeys;
+      if (KeysBr && typeof KeysBr.labelForSlot === 'function') {
+        var kL =
+          String(KeysBr.labelForSlot(sid) || KeysBr.labelForSlot(aid) || KeysBr.labelForSlot(bareSid) || KeysBr.labelForSlot(bareAid) || '').trim();
+        if (kL) return kL;
+      }
+    } catch (_3) {}
+    // Last resort: never paint raw dotted / camelCase ids for beginners
     var raw = aid || sid || '';
     if (raw && raw.indexOf('.') >= 0) {
       var tail = raw.split('.').pop();
@@ -275,6 +348,22 @@
         stopOrSend: '结束或发送'
       };
       if (known[tail]) return known[tail];
+    }
+    var camKnown = {
+      deliberateBlink: '故意眨眼',
+      shakeHead: '摇头取消',
+      onAway: '离席',
+      onReturn: '回席',
+      openPalm: '五指张开',
+      okHand: 'OK 确认',
+      fist: '握拳取消',
+      wave: '挥手'
+    };
+    if (camKnown[camId]) return camKnown[camId];
+    if (camKnown[raw]) return camKnown[raw];
+    // Hide camelCase / snake_case technical ids from the dock subtitle.
+    if (/^[a-z]+[A-Z]/.test(raw) || raw.indexOf('_') >= 0) {
+      return t('keysChannelTabCamera', '手势');
     }
     return raw || '?';
   }
@@ -344,6 +433,23 @@
     if (String(m.imePresetId || '').trim()) return true;
     if (String(m.targetKey || '').trim()) return true;
     if (Array.isArray(m.targetActions) && m.targetActions.length) return true;
+    // Soft Pad / Cursor last-scheme on this habit counts for 本场景动作.
+    var ref = m.captureHeroRef;
+    if (ref && typeof ref === 'object') {
+      var ch = String(ref.channel || '').trim();
+      var kind = String(ref.kind || '')
+        .trim()
+        .toLowerCase();
+      if (ch === 'softPad' || ch === 'cursor' || ch === 'camera' || kind === 'customkey') {
+        if (String(ref.bindingRef || '').trim() || String(ref.actionId || '').trim()) return true;
+      }
+    }
+    var pad = m.codexMicroPad;
+    var keys = pad && Array.isArray(pad.keys) ? pad.keys : [];
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (k && k.enabled !== false && String(k.slotId || '').trim()) return true;
+    }
     return false;
   }
 
@@ -424,7 +530,27 @@
 
   function listAppMappings(anchor) {
     var appId = String((anchor && anchor.appTargetId) || '').trim();
-    if (!appId) return [];
+    if (!appId) {
+      try {
+        var Hub = global.OneToneSoftPadHub;
+        if (onSoftPadPage() && Hub) {
+          if (typeof Hub.resolveSoftPadEntry === 'function') {
+            var entry = Hub.resolveSoftPadEntry();
+            if (entry && entry.appId) appId = String(entry.appId || '').trim();
+            if (!appId && entry && entry.kind && typeof Hub.appIdForKind === 'function') {
+              appId = String(Hub.appIdForKind(entry.kind) || '').trim();
+            }
+          }
+          if (!appId && typeof Hub.getSelectedScopeId === 'function' && typeof Hub.appIdForKind === 'function') {
+            appId = String(Hub.appIdForKind(Hub.getSelectedScopeId()) || '').trim();
+          }
+        }
+      } catch (_) {}
+    }
+    if (!appId) {
+      // Soft Pad habit with no app id yet — still list itself so dock isn't blank.
+      return anchor && anchor.id ? [anchor] : [];
+    }
     // Full app peers (voice + custom) — do not reuse filtered 我录的键 list.
     var maps =
       (global.OneToneState &&
@@ -576,12 +702,37 @@
     };
   }
 
+  function primaryWakePhraseLabel() {
+    try {
+      var Wake = global.OneToneVoiceWake;
+      if (Wake && typeof Wake.primaryWakePhraseDisplay === 'function') {
+        var p = String(Wake.primaryWakePhraseDisplay() || '').trim();
+        if (p) return p;
+      }
+    } catch (_) {}
+    try {
+      var V = global.OneToneVoiceSettingsViewModel;
+      if (V && V.build && V.resolveDisplayWakePhrase) {
+        var d = String(V.resolveDisplayWakePhrase(V.build(false)).display || '').trim();
+        if (d) return d;
+      }
+    } catch (_2) {}
+    try {
+      var Wake2 = global.OneToneVoiceWake;
+      if (Wake2 && typeof Wake2.currentWakePhraseList === 'function') {
+        var list = Wake2.currentWakePhraseList() || [];
+        if (list.length) return String(list[0] || '').trim();
+      }
+    } catch (_3) {}
+    return '';
+  }
+
   function recognitionRow(sm, trigLine) {
     var trig = String((sm && sm.triggerKey) || '').trim();
     var tgt = String((sm && sm.targetKey) || '').trim();
-    // Keys dock: this is the 听写方式 scheme for the trigger — not a Voice-page dump.
+    // Voice dock: title = 用户口令（如「一声」），不是泛称「语音输入」.
     var label = onVoicePage()
-      ? t('keysSceneActionsVoiceLabel', '语音输入')
+      ? primaryWakePhraseLabel() || t('keysSceneActionsVoiceLabel', '语音输入')
       : t('keysChannelTabIme', '听写方式');
     var bindLine = trigLine;
     if (!onVoicePage() && tgt) {
@@ -623,6 +774,10 @@
     // Don't mirror the full prompt as the title (looks like a duplicate card).
     if (!label || label === preview || label.length > 18) {
       label = t('voiceIntentPrompt', '口头指令');
+    }
+    // Voice dock: title = 用户口令；prompt 正文放副标题.
+    if (onVoicePage()) {
+      label = primaryWakePhraseLabel() || label;
     }
     if (preview.length > 28) preview = preview.slice(0, 28) + '…';
     return {
@@ -773,8 +928,13 @@
         slotId: 'wakePhrase',
         actionId: 'wake.start',
         kind: 'wakePhrase',
-        label: i === 0 ? t('voiceWakePrimaryRow', '开启口令') : t('voiceWakeAliasRow', '同义口令'),
-        binds: { key: '「' + phrase + '」' },
+        // Title is the 口令 itself (not「开启口令」generic).
+        label: phrase,
+        binds: {
+          key: i === 0
+            ? t('voiceWakePrimaryRow', '开启口令')
+            : t('voiceWakeAliasRow', '同义口令')
+        },
         ime: null,
         summary: '',
         unset: false,
@@ -808,8 +968,8 @@
         slotId: sid,
         actionId: aid,
         kind: 'voicePhrase',
-        label: labelForRow(sm, sid, aid) || phrase,
-        binds: { key: '「' + phrase + '」' },
+        label: onVoicePage() ? phrase : (labelForRow(sm, sid, aid) || phrase),
+        binds: { key: onVoicePage() ? (labelForRow(sm, sid, aid) || phrase) : ('「' + phrase + '」') },
         ime: null,
         summary: '',
         unset: false
@@ -839,7 +999,8 @@
       if (!trigLine && trig) trigLine = friendlyTrigger(trig);
       if (!trigLine) trigLine = t('badgeNotRecorded', '未设置');
       if (voicePage) {
-        // Voice dock: 一词注入 peers + 语音输入 peers + non-SoftPad voice phrases.
+        // Voice dock: 一词注入 + 我录的键 + SoftPad/软件自带/手势 heroes + 语音输入 + phrases.
+        // Filtered later by active channel tab (听写方式/我录的键/口头指令/…).
         // Wake-first habits often have IME / recognition without a hardware triggerKey —
         // requiring trig here emptied the list after 新建/改口令 (kept mapping, 0 rows).
         if (isPromptInjectMapping(sm)) {
@@ -854,6 +1015,68 @@
           if (pbody) seenPromptText[pbody] = true;
           rows.push(promptRow(sm));
           continue;
+        }
+        // Library「我录的键」peers — voice build path used to skip these entirely.
+        if (isCustomKeyMatchMapping(sm)) {
+          var ck = customKeyRow(sm, trigLine);
+          if (ck) rows.push(ck);
+          continue;
+        }
+        // Habit last applied a match / SoftPad / Cursor / camera as 02 — channel tabs need them.
+        // (rowForLastScheme on Voice prefers recognition for IME peers; read hero directly.)
+        var vRef = heroRefFor(sm);
+        var vCh = vRef ? String(vRef.channel || '').trim() : '';
+        var vKind = vRef
+          ? String(vRef.kind || '')
+              .trim()
+              .toLowerCase()
+          : '';
+        var vBref = vRef ? String(vRef.bindingRef || '').trim() : '';
+        var vAid = vRef ? String(vRef.actionId || '').trim() : '';
+        if (vKind === 'customkey' && vBref && vBref !== String(sm.id)) {
+          var vMatch = mappingById(vBref);
+          var vNamed = vMatch ? customKeyRow(vMatch, trigLine) : null;
+          var ckLabel =
+            (onVoicePage() && primaryWakePhraseLabel()) ||
+            (vNamed && vNamed.label) ||
+            t('keysCustomKeyMatchTitle', '按键匹配');
+          rows.push({
+            key: 'match-applied:' + String(sm.id),
+            mappingId: String(sm.id),
+            slotId: vBref,
+            actionId: '',
+            kind: 'customKey',
+            label: ckLabel,
+            binds: {
+              key:
+                (vNamed && vNamed.binds && vNamed.binds.key) ||
+                trigLine
+            },
+            ime: null,
+            summary: '',
+            unset: !String(sm.triggerKey || '').trim()
+          });
+        } else if (
+          (vCh === 'softPad' || vCh === 'cursor' || vCh === 'camera') &&
+          (vAid || (vBref && vBref !== 'ime'))
+        ) {
+          var heroLbl =
+            labelForRow(sm, vBref, vAid) || channelTabLabel(vCh);
+          rows.push({
+            key: 'hero:' + String(sm.id) + ':' + vCh,
+            mappingId: String(sm.id),
+            slotId: vBref,
+            actionId: vAid,
+            kind: vCh,
+            label:
+              (onVoicePage() && primaryWakePhraseLabel()) || heroLbl,
+            binds: {
+              key: onVoicePage() ? heroLbl : trigLine
+            },
+            ime: null,
+            summary: '',
+            unset: false
+          });
         }
         var keep =
           String(sm.id || '') === String(state.mappingId || '').trim();
@@ -899,10 +1122,8 @@
       var row = rowForLastScheme(sm, trigLine);
       if (row) rows.push(row);
     }
-    if (voicePage && m) {
-      var wakes = wakeCommandRows(m);
-      for (var w = 0; w < wakes.length; w++) rows.push(wakes[w]);
-    }
+    // Voice dock titles the matched command with the 口令 — skip bare wake chips
+    // (they duplicated「一声」as a second card next to 听写/口头指令).
     return rows;
   }
 
@@ -944,6 +1165,10 @@
       global.OneToneState.state.selectedMappingId = mid;
     }
     if (mid) state.mappingId = mid;
+    // Soft Pad dock → Keys editor (same 本场景动作, edit surface lives on Keys).
+    if (onSoftPadPage()) {
+      openKeysPanelIfNeeded();
+    }
     // Voice page: voice-input / prompt rows stay here; custom-key peers jump to Keys.
     if (onVoicePage()) {
       if (row && row.kind === 'customKey') {
@@ -1051,6 +1276,7 @@
       clickHidden('btnVoiceWakePoolAdd');
       return;
     }
+    if (onSoftPadPage()) openKeysPanelIfNeeded();
     var picker = global.OneToneKeysChannelCommandPicker;
     var createFn =
       picker && typeof picker.createBlankSceneActionMapping === 'function'
@@ -1132,46 +1358,109 @@
 
   function channelKind() {
     if (onVoicePage()) return 'voice';
-    if (pageIsOpen('settingsPanelKeys')) return 'key';
+    if (pageIsOpen('settingsPanelKeys') || onSoftPadPage()) return 'key';
     return 'all';
   }
 
+  /** Right dock follows the active channel rail (Keys / Soft Pad / Voice). */
+  function activeChannelTab() {
+    // Voice page: intent rail wins — Keys picker may still sit on「我录的键」.
+    if (onVoicePage()) {
+      try {
+        var rail = global.OneToneVoiceIntentRail;
+        if (rail && typeof rail.getIntent === 'function') {
+          var intent = String(rail.getIntent() || '').trim();
+          if (intent === 'key' || intent === 'customKey') return 'key';
+          if (intent === 'prompt') return 'voice';
+          if (intent === 'ime' || intent === 'dictation') return 'ime';
+          if (intent === 'cursor') return 'cursor';
+          if (intent === 'softPad' || intent === 'softpad') return 'softPad';
+          if (intent === 'gesture' || intent === 'camera') return 'camera';
+        }
+      } catch (_) {}
+      return 'ime';
+    }
+    if (onSoftPadPage()) {
+      try {
+        var Pad = global.OneToneCodexMicroPadUi;
+        if (Pad && typeof Pad.getLayoutChannelTab === 'function') {
+          var softTab = String(Pad.getLayoutChannelTab() || '').trim();
+          if (softTab) return softTab;
+        }
+      } catch (_) {}
+    }
+    try {
+      var Picker = global.OneToneKeysChannelCommandPicker;
+      if (Picker && typeof Picker.getActiveTab === 'function') {
+        var tab = String(Picker.getActiveTab() || '').trim();
+        if (tab) return tab;
+      }
+    } catch (_) {}
+    return 'ime';
+  }
+
   function filterRowsForChannel(rows) {
-    var ch = channelKind();
-    if (ch === 'voice') {
-      // Voice dock: 语音输入 / 口头指令 / 口令 — never 我录的键 or Soft Pad heroes.
-      return (rows || []).filter(function (r) {
+    var page = channelKind();
+    if (page !== 'voice' && page !== 'key') return rows || [];
+    var tab = activeChannelTab();
+    var out = rows || [];
+    // 只收录当前应用 × 当前通道（口头指令 ≠ 我录的键）
+    if (tab === 'ime') {
+      out = out.filter(function (r) {
+        return r && r.kind === 'recognition';
+      });
+    } else if (tab === 'key') {
+      out = out.filter(function (r) {
+        return r && r.kind === 'customKey';
+      });
+    } else if (tab === 'cursor') {
+      out = out.filter(function (r) {
+        return r && r.kind === 'cursor';
+      });
+    } else if (tab === 'softPad') {
+      out = out.filter(function (r) {
+        return r && r.kind === 'softPad';
+      });
+    } else if (tab === 'camera') {
+      out = out.filter(function (r) {
+        return r && r.kind === 'camera';
+      });
+    } else {
+      // voice / 口头指令：口令 · 一词注入
+      out = out.filter(function (r) {
         return (
           r &&
-          (r.kind === 'recognition' ||
-            r.kind === 'voicePhrase' ||
+          (r.kind === 'voicePhrase' ||
             r.kind === 'wakePhrase' ||
             r.kind === 'prompt' ||
             (r.kind === 'voice' && String(r.key || '').indexOf('prompt:') === 0))
         );
       });
     }
-    if (ch === 'key') {
-      // Keys dock: 听写方式(recognition) + 我录的键 + SoftPad/软件自带/手势.
-      // Prompt / voicePhrase stay on Voice page.
-      return (rows || []).filter(function (r) {
-        return (
-          r &&
-          (r.kind === 'recognition' ||
-            r.kind === 'customKey' ||
-            r.kind === 'softPad' ||
-            r.kind === 'cursor' ||
-            r.kind === 'camera' ||
-            r.kind === 'key')
-        );
-      });
+    // Voice: one 口令 → one command — prefer the current scene habit only.
+    if (onVoicePage()) {
+      var mid = String(state.mappingId || '').trim();
+      if (mid) {
+        var scoped = out.filter(function (r) {
+          return r && String(r.mappingId || '') === mid;
+        });
+        if (scoped.length) out = scoped;
+      }
+      // Applied「我录的键」on the habit beats bare library peers with the same kind.
+      if (tab === 'key' && out.length > 1) {
+        var applied = out.filter(function (r) {
+          return r && String(r.key || '').indexOf('match-applied:') === 0;
+        });
+        if (applied.length) out = applied;
+      }
     }
-    return rows || [];
+    return out;
   }
 
   function hasRecognitionScheme(sm) {
     if (!sm) return false;
     if (String(sm.imePresetId || '').trim()) return true;
+    if (String(sm.targetKey || '').trim()) return true;
     // Live recognition chord only counts with an IME choice / dictation bind.
     var list = Array.isArray(sm.agentBindings) ? sm.agentBindings : [];
     for (var i = 0; i < list.length; i++) {
@@ -1885,6 +2174,50 @@
     paint();
   }
 
+  /**
+   * Voice 软件自带 / 屏幕按钮 / 手势：把选中命令写到当前习惯 last-scheme，
+   * 右侧「本场景动作」按通道才能收录。
+   */
+  function claimVoiceChannelMatch(m, channel, bindingRef, actionId) {
+    if (!m || !m.id) return false;
+    channel = String(channel || '').trim();
+    bindingRef = String(bindingRef || '').trim();
+    actionId = String(actionId || '').trim();
+    if (!channel) return false;
+    if (!bindingRef && !actionId) return false;
+    var kind = 'action';
+    if (channel === 'ime') kind = 'ime';
+    else if (channel === 'key') kind = 'customKey';
+    else if (channel === 'camera') kind = 'gesture';
+    m.captureHeroRef = {
+      channel: channel === 'ime' ? 'key' : channel,
+      bindingRef: channel === 'ime' ? 'ime' : bindingRef || actionId,
+      actionId: actionId,
+      actionInstanceId: '',
+      kind: kind
+    };
+    state.mappingId = String(m.id);
+    state.highlightId = String(m.id);
+    try {
+      var st = global.OneToneState && global.OneToneState.state;
+      if (st && st.config) {
+        if (!st.config.voiceEnd) st.config.voiceEnd = {};
+        st.config.voiceEnd.intent =
+          channel === 'softPad' ? 'softpad' : channel === 'camera' ? 'gesture' : channel;
+      }
+    } catch (_) {}
+    try {
+      var persist = global.OneToneConfigPersist;
+      if (persist && typeof persist.saveAsync === 'function') {
+        persist.saveAsync({ source: 'voice-channel-claim' });
+      } else if (persist && typeof persist.save === 'function') {
+        persist.save({ source: 'voice-channel-claim' });
+      }
+    } catch (_2) {}
+    paint();
+    return true;
+  }
+
   global.OneToneKeysSceneActionsPanel = {
     render: render,
     refresh: refresh,
@@ -1894,6 +2227,7 @@
     startNewAction: startNewAction,
     buildRows: buildRows,
     deleteSceneRow: deleteSceneRow,
-    isVisibleFor: isAppScenario
+    isVisibleFor: isAppScenario,
+    claimVoiceChannelMatch: claimVoiceChannelMatch
   };
 })(typeof window !== 'undefined' ? window : globalThis);

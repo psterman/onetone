@@ -3858,6 +3858,7 @@
     removeCustomWakePhrase:removeCustomWakePhrase,
     renderWakeCustomPhrases:renderWakeCustomPhrases,
     renderWakePhraseTags:renderWakePhraseTags,
+    primaryWakePhraseDisplay:primaryWakePhraseDisplay,
     resolveActiveAppSummonInfo:resolveActiveAppSummonInfo,
     activeAppScopeSummonPhrases:activeAppScopeSummonPhrases,
     toggleWakePhrase:toggleWakePhrase,

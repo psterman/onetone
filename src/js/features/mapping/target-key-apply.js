@@ -103,10 +103,13 @@
     if(ed&&ed.setEditorTargetKey) ed.setEditorTargetKey(m.targetKey||combo);
     if(!skipPersist){
       if(h.save) h.save();
-      if(h.render) h.render();
-      else if(c.renderChrome) c.renderChrome();
+      // Soft Pad / quiet callers: skip full habits remount (drops Soft Pad editDraft).
+      if(!opts.skipRender){
+        if(h.render) h.render();
+        else if(c.renderChrome) c.renderChrome();
+      }
       if(source!=='record'&&c.maybeEnableMappingAfterComplete) c.maybeEnableMappingAfterComplete(m);
-      if(h.toast&&source!=='record') h.toast(t(toastKeyForSource(source)));
+      if(h.toast&&source!=='record'&&!opts.quiet) h.toast(t(toastKeyForSource(source)));
       if(global.OneToneAppTargetPresets) global.OneToneAppTargetPresets.refresh('mapping');
     }
     try{

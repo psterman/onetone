@@ -68,10 +68,12 @@ function paintTargetLooksEmpty(host: HTMLElement | null, panel: string): boolean
       host.querySelector('[data-soft-pad-layout-editor]')
     );
   }
-  if (panel === 'runtime') {
+  if (panel === 'runtime' || panel === 'style') {
     return !(
+      host.querySelector('.soft-pad-style-panel') ||
       host.querySelector('button[data-act="showMode"][data-show-mode]') ||
-      host.querySelector('select[data-act="showMode"]')
+      host.querySelector('select[data-act="showMode"]') ||
+      host.querySelector('.soft-pad-display-panel')
     );
   }
   if (panel === 'presentation') {
@@ -90,7 +92,8 @@ function syncFromLegacy(): void {
   const next = pullModel();
   const sig = softPadSubpageSignature(next);
   const el = paintTarget();
-  const staleRuntime = next.panel === 'runtime' && runtimePanelMissingSkin(el);
+  const staleRuntime =
+    (next.panel === 'runtime' || next.panel === 'style') && runtimePanelMissingSkin(el);
   const wiped = !next.clear && !!next.panel && paintTargetLooksEmpty(el, next.panel);
   // Same sig → skip remount (避免 refresh 清掉 layout 内联编辑器)；
   // paintSubpage / clearSubpage 会改 model.sig（含 subpageToken）。

@@ -230,11 +230,20 @@
             }catch(_){}
           },80);
         }
-        if(focus!=='softPadStatus'&&focus!=='softPadMini'){
-          var mode=focus==='softPadLayout'?'keys':'appear';
-          var tab=document.querySelector('[data-pad-mode="'+mode+'"]');
-          if(tab&&typeof tab.click==='function') tab.click();
+        var mode='agent';
+        if(focus==='softPadLayout') mode='keys';
+        else if(focus==='softPadDisplay'||focus==='softPadPurpose') mode='style';
+        if(focus==='softPadPurpose'){
+          try{
+            var PadPurpose=global.OneToneCodexMicroPadUi||global.OneToneSoftPadPadUi;
+            if(PadPurpose&&typeof PadPurpose.setSoftPadStyleSubtab==='function'){
+              PadPurpose.setSoftPadStyleSubtab('pad');
+            }
+          }catch(_){}
         }
+        else if(focus!=='softPadStatus'&&focus!=='softPadMini') mode='style';
+        var tab=document.querySelector('[data-pad-mode="'+mode+'"]');
+        if(tab&&typeof tab.click==='function') tab.click();
         scrollSettingsToTarget((focus==='softPadStatus'||focus==='softPadMini')
           ?['softPadFaceAgent','softPadStatusBar','soft-pad-agent-workbench']
           :['softPadSubpageHost','softPadPreviewHost']);

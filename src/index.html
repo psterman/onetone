@@ -1243,11 +1243,9 @@
                   <div class="soft-pad-face-pad__preview soft-pad-preview-host" id="softPadPreviewHost"></div>
                   <aside class="soft-pad-face-pad__panel soft-pad-detail" id="softPadSubpageHost" aria-live="polite">
                     <div class="soft-pad-pad-tabs" id="softPadPadTabs" role="tablist" aria-label="Soft Pad 调整">
-                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="appear" aria-selected="false" id="softPadPadTabDisplay">显示</button>
-                      <button type="button" class="soft-pad-pad-tab is-active" role="tab" data-pad-mode="keys" aria-selected="true" id="softPadPadTabKeys">键位</button>
-                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="purpose" aria-selected="false" id="softPadPadTabPurpose">用途</button>
-                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="lights" aria-selected="false" id="softPadPadTabLights">灯效</button>
-                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="mini" aria-selected="false" id="softPadPadTabMini">迷你栏</button>
+                      <button type="button" class="soft-pad-pad-tab is-active" role="tab" data-pad-mode="keys" aria-selected="true" id="softPadPadTabKeys" data-i18n="softPadPadTabKeys">按键</button>
+                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="agent" aria-selected="false" id="softPadPadTabAgent" data-i18n="softPadPadTabAgent">Agent</button>
+                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="style" aria-selected="false" id="softPadPadTabStyle" data-i18n="softPadPadTabStyle">样式</button>
                     </div>
                     <div class="soft-pad-detail-idle" id="softPadDetailIdle" hidden>
                       <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">选择上方一项开始调整</p>
@@ -1290,6 +1288,27 @@
                 <div class="keys-hub-schemes" id="softPadSchemeList" role="list"></div>
                 <button type="button" class="keys-hub-scheme-add" id="btnSoftPadEnsureCodex">+ 准备 Codex 虚拟键盘</button>
               </section>
+            </aside>
+            <aside class="keys-page-aside keys-scene-actions soft-pad-scene-keys" id="softPadSceneKeysPanel" hidden data-panel="dir" aria-label="本场景动作">
+              <div class="keys-scene-actions__head">
+                <div class="keys-scene-actions__titles">
+                  <div class="keys-scene-actions__app" id="softPadSceneKeysApp" hidden>
+                    <img class="keys-scene-actions__app-ico" id="softPadSceneKeysAppIcon" alt="" width="20" height="20" hidden />
+                    <span class="keys-scene-actions__app-name" id="softPadSceneKeysAppName"></span>
+                  </div>
+                  <h3 class="keys-scene-actions__title" id="softPadSceneKeysTitle" data-i18n="keysSceneActionsTitle">本场景动作</h3>
+                  <p class="keys-scene-actions__meta" id="softPadSceneKeysMeta"></p>
+                </div>
+                <button type="button" class="keys-scene-actions__back" id="softPadSceneKeysBack" hidden data-i18n="keysSceneActionsBack">收起</button>
+              </div>
+              <div class="keys-scene-actions__dir" id="softPadSceneKeysDir" role="list"></div>
+              <div class="keys-scene-actions__detail" id="softPadSceneKeysDetail" hidden>
+                <div class="keys-scene-actions__picks" id="softPadSceneKeysPicks"></div>
+                <div class="keys-scene-actions__edit" id="softPadSceneKeysEdit"></div>
+              </div>
+              <div class="keys-scene-actions__foot">
+                <button type="button" class="keys-hub-scheme-add" id="softPadSceneKeysAdd" data-i18n="keysSceneActionsAdd">＋ 新建动作</button>
+              </div>
             </aside>
           </div>
         </section>

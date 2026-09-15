@@ -32,6 +32,7 @@ interface LegacyPadUi {
   renderSoftPadLayoutPanel?: (host: HTMLElement, mapping: unknown, opts?: SoftPadSubpagePaintOpts) => void;
   renderSoftPadPresentationPanel?: (host: HTMLElement, mapping: unknown, opts?: SoftPadSubpagePaintOpts) => void;
   renderSoftPadDisplayPanel?: (host: HTMLElement, mapping: unknown, opts?: SoftPadSubpagePaintOpts) => void;
+  renderSoftPadStylePanel?: (host: HTMLElement, mapping: unknown, opts?: SoftPadSubpagePaintOpts) => void;
   renderSoftPadRuntimePanel?: (host: HTMLElement, mapping: unknown, opts?: SoftPadSubpagePaintOpts) => void;
   renderSoftPadAgentPanel?: (host: HTMLElement, mapping: unknown, opts?: SoftPadSubpagePaintOpts) => void;
   resolveSoftPadSubpagePaintHost?: (preferred?: HTMLElement | null) => HTMLElement | null;
@@ -180,6 +181,8 @@ export function paintSoftPadSubpageTarget(paintEl: HTMLElement, model: SoftPadSu
       pad.renderSoftPadLayoutPanel(paintEl, mapping, opts);
     } else if (model.panel === 'presentation' && typeof pad.renderSoftPadPresentationPanel === 'function') {
       pad.renderSoftPadPresentationPanel(paintEl, mapping, opts);
+    } else if (model.panel === 'style' && typeof pad.renderSoftPadStylePanel === 'function') {
+      pad.renderSoftPadStylePanel(paintEl, mapping, opts);
     } else if (model.panel === 'runtime' && typeof pad.renderSoftPadDisplayPanel === 'function') {
       pad.renderSoftPadDisplayPanel(paintEl, mapping, opts);
     } else if (model.panel === 'runtime' && typeof pad.renderSoftPadRuntimePanel === 'function') {

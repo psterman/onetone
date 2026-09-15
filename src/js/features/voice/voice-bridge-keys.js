@@ -263,22 +263,32 @@
 
   function seedCustomKeyRows(byId,order){
     var P=global.OneToneKeysChannelCommandPicker;
-    if(!P||!P.listCustomKeyMappingsForCurrentApp) return;
-    var list;
-    try{ list=P.listCustomKeyMappingsForCurrentApp()||[]; }catch(_e){ return; }
+    if(!P) return;
+    var m=currentMapping();
+    var list=[];
+    try{
+      if(P.catalogCustomKeysForApp) list=P.catalogCustomKeysForApp(m,'')||[];
+      else if(P.listCustomKeyMappingsForCurrentApp){
+        list=(P.listCustomKeyMappingsForCurrentApp()||[]).map(function(ck){
+          return {
+            mappingId:String(ck.id||''),
+            name:(P.customKeyMatchDisplayName&&P.customKeyMatchDisplayName(ck))||ck.name||ck.label||'我录的键',
+            chord:String(ck.triggerKey||'').trim()
+          };
+        });
+      }
+    }catch(_e){ return; }
     list.forEach(function(ck){
-      if(!ck||!ck.id) return;
-      var id='customKey:'+String(ck.id);
+      if(!ck||!ck.mappingId) return;
+      var id='customKey:'+String(ck.mappingId);
       if(byId[id]) return;
-      var chord=String(ck.triggerKey||ck.triggerBinding||'').trim();
-      var title=String(
-        (P.customKeyMatchDisplayName&&P.customKeyMatchDisplayName(ck))||ck.name||ck.label||'我录的键'
-      ).trim();
+      var chord=String(ck.chord||'').trim();
+      var title=String(ck.name||'我录的键').trim();
       byId[id]={
         id:id,
-        actionId:String(ck.actionId||ck.id),
-        slotId:String(ck.slotId||('customKey:'+ck.id)),
-        actionInstanceId:String(ck.id),
+        actionId:'runTargetSequence',
+        slotId:'runTargetSequence',
+        actionInstanceId:String(ck.mappingId),
         phrase:'',
         chord:chord,
         enabled:true,
@@ -286,7 +296,8 @@
         when:'等于执行这条「我录的键」序列。',
         effect:chord?('触发键 '+chord):'在按键页录制的动作序列',
         fromCatalog:true,
-        customKey:true
+        customKey:true,
+        matchMappingId:String(ck.mappingId)
       };
       order.push(id);
     });
@@ -425,6 +436,27 @@
     }catch(_){}
   }
 
+  /** 同一口令只匹配一个命令：清掉其它 voice 绑定上的同文案. */
+  function detachPhraseFromOthers(m,phrase,keep){
+    phrase=String(phrase||'').trim();
+    if(!m||!phrase) return;
+    keep=keep||{};
+    var keepSid=String(keep.slotId||keep.actionId||'').trim();
+    var keepInst=String(keep.actionInstanceId||'').trim();
+    var list=m.agentBindings||[];
+    for(var i=0;i<list.length;i++){
+      var b=list[i];
+      if(!b||String(b.triggerType||'')!=='voice') continue;
+      if(String(b.triggerBinding||'').trim()!==phrase) continue;
+      var sid=String(b.slotId||b.actionId||'').trim();
+      var inst=String(b.actionInstanceId||'').trim();
+      if(keepInst&&inst===keepInst) continue;
+      if(!keepInst&&keepSid&&sid===keepSid) continue;
+      b.triggerBinding='';
+      b.enabled=false;
+    }
+  }
+
   function ensureVoiceBinding(m,row,phrase){
     if(!m||!row) return null;
     var list=m.agentBindings||(m.agentBindings=[]);
@@ -439,6 +471,7 @@
       ab.triggerBinding=phrase;
       ab.enabled=true;
       if(inst) ab.actionInstanceId=inst;
+      detachPhraseFromOthers(m,phrase,{slotId:sid,actionInstanceId:inst});
       return ab;
     }
     ab={
@@ -450,6 +483,7 @@
     };
     if(inst) ab.actionInstanceId=inst;
     list.push(ab);
+    detachPhraseFromOthers(m,phrase,{slotId:sid,actionInstanceId:inst});
     return ab;
   }
 
@@ -493,18 +527,40 @@
     phrase=String(phrase||'').trim();
     if(!row||!phrase) return false;
     pickId=row.id;
+    //「我录的键」：先把序列写到当前习惯，口令再挂 runTargetSequence。
+    if(row.customKey&&row.matchMappingId){
+      try{
+        var mid=mappingId();
+        var st=global.OneToneState&&global.OneToneState.state;
+        if(st&&mid) st.selectedMappingId=String(mid);
+        var P=global.OneToneKeysChannelCommandPicker;
+        if(P&&typeof P.applyCustomKeyMatchAsRecognition==='function'){
+          P.applyCustomKeyMatchAsRecognition(row.matchMappingId);
+        }
+      }catch(_e){}
+    }
     var Adapters=global.OneToneActionBindingAdapters;
-    var mid=mappingId();
-    if(Adapters&&Adapters.voice&&Adapters.voice.upsert&&mid){
-      Adapters.voice.upsert(mid,row.actionId||row.slotId,phrase,{
-        bindingRef:row.slotId||row.actionId,
-        actionInstanceId:row.actionInstanceId||''
+    var mid2=mappingId();
+    if(Adapters&&Adapters.voice&&Adapters.voice.upsert&&mid2){
+      Adapters.voice.upsert(mid2,row.actionId||row.slotId||'runTargetSequence',phrase,{
+        bindingRef:row.slotId||row.actionId||'runTargetSequence',
+        actionInstanceId:row.actionInstanceId||row.matchMappingId||''
       });
+      try{
+        detachPhraseFromOthers(currentMapping(),phrase,{
+          slotId:row.slotId||row.actionId||'runTargetSequence',
+          actionInstanceId:row.actionInstanceId||row.matchMappingId||''
+        });
+      }catch(_d){}
     }else{
       ensureVoiceBinding(currentMapping(),row,phrase);
       persist();
     }
     render();
+    try{
+      var scene=global.OneToneKeysSceneActionsPanel;
+      if(scene&&typeof scene.refresh==='function') scene.refresh();
+    }catch(_s){}
     return true;
   }
 
@@ -617,7 +673,42 @@
             ?('键 <span class="kb">'+esc(r.chord)+'</span> · 还没口令')
             :(r.customKey?'未录启动键 · 还没口令':(r.fromCatalog?'来自按键动作库 · 还没口令':'还没口令')));
         btn.innerHTML='<span class="kn">'+esc(r.title||r.actionId)+'</span><span class="km">'+km+'</span>';
-        btn.addEventListener('click',function(){ pickId=r.id; render(); });
+        btn.addEventListener('click',function(){
+          pickId=r.id;
+          // Selecting「我录的键」applies the sequence onto the current Voice scope habit
+          // so 本场景动作 / Soft Pad can pick it up.
+          if(r.customKey&&r.matchMappingId){
+            try{
+              var mid=mappingId();
+              // Avoid MappingCore.focus — it remounts editors; just pin selectedMappingId.
+              var st=global.OneToneState&&global.OneToneState.state;
+              if(st&&mid) st.selectedMappingId=String(mid);
+              var P=global.OneToneKeysChannelCommandPicker;
+              if(P&&typeof P.applyCustomKeyMatchAsRecognition==='function'){
+                P.applyCustomKeyMatchAsRecognition(r.matchMappingId);
+              }
+            }catch(_e){}
+          }else{
+            // 软件自带：写入 cursor last-scheme，右侧本场景动作才能收录
+            try{
+              var cur=currentMapping();
+              var sceneClaim=global.OneToneKeysSceneActionsPanel;
+              if(cur&&sceneClaim&&typeof sceneClaim.claimVoiceChannelMatch==='function'){
+                sceneClaim.claimVoiceChannelMatch(
+                  cur,
+                  'cursor',
+                  String(r.slotId||r.actionId||''),
+                  String(r.actionId||r.slotId||'')
+                );
+              }
+            }catch(_c){}
+          }
+          render();
+          try{
+            var scene=global.OneToneKeysSceneActionsPanel;
+            if(scene&&typeof scene.refresh==='function') scene.refresh();
+          }catch(_s){}
+        });
         host.appendChild(btn);
       });
     }
@@ -702,6 +793,12 @@
     render:render,
     addPhrase:addPhrase,
     listRows:listRows,
+    labelForSlot:function(slot){
+      slot=String(slot||'').trim();
+      if(!slot) return '';
+      var meta=KEY_META[slot]||KEY_META[slot.replace(/^semantic:[^:]+:/,'')];
+      return meta&&meta.title?String(meta.title):'';
+    },
     setMode:function(mode){
       listMode=mode==='customKey'?'customKey':'catalog';
       if(listMode==='catalog'&&(!catId||catId==='other')) catId='common';

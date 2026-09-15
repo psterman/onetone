@@ -2522,7 +2522,25 @@
   function listCustomKeyMappingsForCurrentApp() {
     // Always key off the habit under edit (01 trigger), never a focused match row.
     var anchor = mappingById(selectedMappingId());
-    var appId = anchor ? String(anchor.appTargetId || '').trim() : '';
+    // Soft Pad / Voice: always prefer the page scope mapping (dock click may focus a match peer).
+    try {
+      var ui = global.OneToneState && global.OneToneState.ui;
+      var panel = ui && String(ui.settingsPanel || '');
+      if (panel === 'voiceWake') {
+        var hdr = global.OneToneVoicePageHeaderRender;
+        if (hdr && typeof hdr.resolveScopeMapping === 'function') {
+          var scoped = hdr.resolveScopeMapping(null);
+          if (scoped) anchor = scoped;
+        }
+      } else if (panel === 'softPad') {
+        var Hub = global.OneToneSoftPadHub;
+        if (Hub && typeof Hub.resolveSoftPadEntry === 'function') {
+          var entry = Hub.resolveSoftPadEntry();
+          if (entry && entry.mapping) anchor = entry.mapping;
+        }
+      }
+    } catch (_) {}
+    var appId = resolveCatalogAppTargetId(anchor);
     var editId = String(customKeyMatchEditId || '').trim();
     var mappings = Array.isArray(config().mappings) ? config().mappings : [];
     var out = [];
@@ -4006,9 +4024,9 @@
     };
   }
 
-  function voicePickCatalog() {
-    var mid = selectedMappingId();
-    var m = mappingById(mid);
+  function voicePickCatalog(forMapping) {
+    var m = forMapping || mappingById(selectedMappingId());
+    var mid = m ? String(m.id || '') : selectedMappingId();
     var out = [];
     if (!m) return out;
     var seen = {};
@@ -4650,7 +4668,7 @@
     return out;
   }
 
-  function cursorPickCatalog() {
+  function cursorPickCatalog(queryOverride) {
     var bySlot = {};
     cursorFlatItems().forEach(function (item) {
       bySlot[String(item.slotId)] = item;
@@ -4681,14 +4699,18 @@
       var how = cursorPickField(copy, 'howZh', 'howEn');
       var howText = cursorPickField(copy, 'howTextZh', 'howTextEn');
       var howKind = copy.howKind || (item.gated ? 'warn' : item.chordHint ? 'key' : 'phrase');
-      if (
-        !matchesSearch(
-          title + ' ' + when + ' ' + effect + ' ' + func + ' ' + id + ' ' + cursorItemLabel(item)
-        )
-      ) {
+      var hay =
+        title + ' ' + when + ' ' + effect + ' ' + func + ' ' + id + ' ' + cursorItemLabel(item);
+      if (queryOverride != null) {
+        if (!catalogQueryMatch(hay, queryOverride)) return;
+      } else if (!matchesSearch(hay)) {
         return;
       }
       var grp = group || groupOf[id] || null;
+      var chord =
+        String((item && item.chordHint) || '').trim() ||
+        recognitionChord(cursorItemActionId(item), '') ||
+        '';
       ordered.push({
         slotId: id,
         item: item,
@@ -4701,6 +4723,7 @@
         howKind: howKind,
         howText: howText || '',
         gated: !!item.gated,
+        chord: chord,
         groupId: grp ? grp.id : 'extra',
         groupTitle: grp
           ? t(grp.titleKey, grp.titleFb)
@@ -4717,6 +4740,17 @@
       pushSlot(item.slotId, groupOf[String(item.slotId)] || null);
     });
     return ordered;
+  }
+
+  /** SoftPad「软件自带」：横向场景标签 + Cursor 快捷键卡片。 */
+  function catalogCursorPickRows(query) {
+    return cursorPickCatalog(query == null ? '' : query);
+  }
+
+  function catalogCursorPickGroups() {
+    return CURSOR_PICK_GROUPS.map(function (g) {
+      return { id: g.id, title: t(g.titleKey, g.titleFb) };
+    });
   }
 
   function findCursorPick(slotId) {
@@ -5372,7 +5406,8 @@
     return '';
   }
 
-  function softPadPickCatalog(workM) {
+  function softPadPickCatalog(workM, queryOverride) {
+    workM = workM || softPadWorkMapping();
     var out = [];
     var seen = {};
     function pushMicro(microId) {
@@ -5413,11 +5448,10 @@
         'keysSoftPadPickTip',
         '点「给这件事加按键」录制识别键；之后按该键 = Soft Pad「{key}」'
       ).replace('{key}', keyName || name);
-      if (
-        !matchesSearch(
-          name + ' ' + keyName + ' ' + effect + ' ' + tip + ' ' + id + ' ' + resolved.actionId
-        )
-      ) {
+      var hay = name + ' ' + keyName + ' ' + effect + ' ' + tip + ' ' + id + ' ' + resolved.actionId;
+      if (queryOverride != null) {
+        if (!catalogQueryMatch(hay, queryOverride)) return;
+      } else if (!matchesSearch(hay)) {
         return;
       }
       out.push({
@@ -6315,6 +6349,192 @@
     return html || '<p class="keys-channel-empty">' + esc(emptyCopy(ch)) + '</p>';
   }
 
+  function catalogQueryMatch(hay, query) {
+    query = String(query || '').trim().toLowerCase();
+    if (!query) return true;
+    return String(hay || '').toLowerCase().indexOf(query) >= 0;
+  }
+
+  /** Soft Pad / Keys share app peers — resolve cursor-chat even when mapping.appTargetId is empty. */
+  function resolveCatalogAppTargetId(appTargetIdOrMapping) {
+    var appId = '';
+    if (appTargetIdOrMapping && typeof appTargetIdOrMapping === 'object') {
+      appId = String(appTargetIdOrMapping.appTargetId || '').trim();
+    } else {
+      appId = String(appTargetIdOrMapping || '').trim();
+    }
+    if (appId) return appId;
+    try {
+      var Hub = global.OneToneSoftPadHub;
+      if (Hub && typeof Hub.getSelectedScopeId === 'function') {
+        var kind = String(Hub.getSelectedScopeId() || '').trim();
+        if (kind && kind !== 'universal' && kind !== 'global' && typeof Hub.appIdForKind === 'function') {
+          appId = String(Hub.appIdForKind(kind) || '').trim();
+        }
+      }
+    } catch (_) {}
+    return appId;
+  }
+
+  /** Soft Pad layout slots — voice seeds that should not appear as「口头指令」. */
+  function isSoftPadLayoutVoiceSlot(workM, slotId) {
+    slotId = String(slotId || '').trim();
+    if (!slotId || !workM) return false;
+    if (/^cursorBeginner/i.test(slotId)) return true;
+    if (slotId === 'agent.continue' || slotId === 'app.open') return true;
+    var pad = workM.codexMicroPad;
+    var keys = pad && Array.isArray(pad.keys) ? pad.keys : [];
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      if (keys[i] && String(keys[i].slotId || '').trim() === slotId) return true;
+    }
+    var customs = pad && Array.isArray(pad.customShortcuts) ? pad.customShortcuts : [];
+    for (i = 0; i < customs.length; i++) {
+      if (customs[i] && String(customs[i].id || '').trim() === slotId) return true;
+    }
+    return false;
+  }
+
+  function catalogCustomKeysForApp(appTargetIdOrMapping, query) {
+    var out = [];
+    var appId = resolveCatalogAppTargetId(appTargetIdOrMapping);
+    var mappings = Array.isArray(config().mappings) ? config().mappings : [];
+    var i;
+    for (i = 0; i < mappings.length; i++) {
+      var cm = mappings[i];
+      if (!cm || !cm.id) continue;
+      if (String(cm.appTargetId || '').trim() !== appId) continue;
+      if (!isCustomKeyMatchMapping(cm, { editId: '' })) continue;
+      var name = customKeyMatchDisplayName(cm);
+      var chord = String(cm.triggerKey || '').trim();
+      var acts = Array.isArray(cm.targetActions) ? cm.targetActions.length : 0;
+      if (!catalogQueryMatch(name + ' ' + chord + ' ' + acts, query)) continue;
+      out.push({
+        mappingId: String(cm.id),
+        name: name,
+        chord: chord,
+        note: chord
+          ? friendlyChord(chord) || chord
+          : t('keysCustomKeyMatchEmptyTrigger', '待录触发键'),
+        stepCount: acts
+      });
+    }
+    return out;
+  }
+
+  /**
+   * SoftPad「口头指令」：对齐语音设置「口头指令」方案（一词注入），去重同文案。
+   * SoftPad 自定义快捷键上用户填过的口令也收录。不扫 Soft Pad / 软件自带种子绑定。
+   */
+  function catalogVoicePromptsForMapping(workM, query) {
+    if (!workM) return [];
+    var out = [];
+    var seenPick = {};
+    var seenSay = {};
+    var appId = resolveCatalogAppTargetId(workM);
+    var pad = workM.codexMicroPad;
+
+    function push(row) {
+      if (!row) return;
+      var key = String(row.pickId || '');
+      if (!key || seenPick[key]) return;
+      var sayKey = String(row.say || '')
+        .trim()
+        .toLowerCase();
+      // Deduplicate identical prompt bodies (orphan peers).
+      if (sayKey && seenSay[sayKey]) return;
+      if (
+        !catalogQueryMatch(
+          (row.name || '') + ' ' + (row.say || '') + ' ' + (row.func || ''),
+          query
+        )
+      ) {
+        return;
+      }
+      seenPick[key] = 1;
+      if (sayKey) seenSay[sayKey] = 1;
+      out.push(row);
+    }
+
+    // 1) 语音设置 · 口头指令（一词注入 peers）
+    var maps = Array.isArray(config().mappings) ? config().mappings : [];
+    var mi;
+    for (mi = 0; mi < maps.length; mi++) {
+      var cm = maps[mi];
+      if (!cm || !cm.id) continue;
+      if (String(cm.appTargetId || '').trim() !== appId) continue;
+      if (!isPromptInjectMapping(cm)) continue;
+      var text = String(promptTextFromMapping(cm) || '').trim();
+      if (!text) continue;
+      var label = String(cm.label || '').trim();
+      if (!label || label === text || label.length > 18) {
+        label = text.length > 18 ? text.slice(0, 18) + '…' : text;
+      }
+      push({
+        pickId: 'prompt:' + String(cm.id),
+        kind: 'prompt',
+        mappingId: String(cm.id),
+        actionId: '',
+        bindingRef: '',
+        name: label,
+        say: text,
+        func: t('voiceIntentPrompt', '口头指令'),
+        bindable: true
+      });
+    }
+
+    // 2) SoftPad 自定义快捷键上用户填的口令
+    var customs =
+      pad && Array.isArray(pad.customShortcuts) ? pad.customShortcuts : [];
+    var xi;
+    for (xi = 0; xi < customs.length; xi++) {
+      var cs = customs[xi];
+      if (!cs) continue;
+      var phrases = String(cs.phrases || '').trim();
+      if (!phrases) continue;
+      var sid = String(cs.id || '').trim();
+      if (!sid) continue;
+      push({
+        pickId: 'voice-custom:' + sid,
+        kind: 'custom',
+        actionId: 'app.shortcut',
+        bindingRef: sid,
+        name: String(cs.name || sid).trim() || sid,
+        say: phrases,
+        func: '',
+        bindable: true
+      });
+    }
+
+    return out;
+  }
+
+  function catalogSoftPadBindRowsForMapping(workM, query) {
+    if (!workM || !workM.codexMicroPad) return [];
+    var catalog = softPadPickCatalog(workM, query);
+    var out = [];
+    var i;
+    for (i = 0; i < catalog.length; i++) {
+      var c = catalog[i];
+      var microId = String(c.microKeyId || c.pickId || '').trim();
+      if (!microId) continue;
+      var route = routeOnPad(workM.codexMicroPad, microId);
+      var slotId =
+        route && route.enabled !== false ? String(route.slotId || '').trim() : '';
+      if (!slotId) continue;
+      var gm = softPadPickGroupMeta(c);
+      out.push({
+        slotId: slotId,
+        microKeyId: microId,
+        name: c.name || microId,
+        note: c.chord ? friendlyChord(c.chord) || c.chord : c.keyName || '',
+        groupId: gm.id,
+        groupTitle: gm.title
+      });
+    }
+    return out;
+  }
+
   function matchesSearch(text) {
     var q = String(searchQuery || '')
       .trim()
@@ -6553,6 +6773,10 @@
     if (prev !== ch) {
       applyHero();
       syncRecognitionEditorPreview();
+      try {
+        var scene = global.OneToneKeysSceneActionsPanel;
+        if (scene && typeof scene.refresh === 'function') scene.refresh();
+      } catch (_) {}
     }
     syncCaptureRecordChrome();
   }
@@ -7605,6 +7829,13 @@
     isCapturePopoverOpen: isCapturePopoverOpen,
     openCaptureSheet: openCaptureSheet,
     closeCaptureSheet: closeCaptureSheet,
-    isCaptureSheetOpen: isCaptureSheetOpen
+    isCaptureSheetOpen: isCaptureSheetOpen,
+    catalogCustomKeysForApp: catalogCustomKeysForApp,
+    catalogVoicePromptsForMapping: catalogVoicePromptsForMapping,
+    catalogSoftPadBindRowsForMapping: catalogSoftPadBindRowsForMapping,
+    catalogCursorPickRows: catalogCursorPickRows,
+    catalogCursorPickGroups: catalogCursorPickGroups,
+    softPadPickCatalogForMapping: softPadPickCatalog,
+    gestureLabel: gestureLabel
   };
 })(typeof window !== 'undefined' ? window : globalThis);

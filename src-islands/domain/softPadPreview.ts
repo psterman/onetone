@@ -103,12 +103,12 @@ export function paintSoftPadPreviewTarget(
     padMode = '';
   }
   if (
-    (padMode === 'appear' || padMode === 'purpose') &&
+    padMode === 'style' &&
     typeof pad.paintSoftPadPadModePreview === 'function' &&
     mapping
   ) {
     try {
-      pad.paintSoftPadPadModePreview(paintEl, mapping, padMode);
+      pad.paintSoftPadPadModePreview(paintEl, mapping, 'appear');
     } catch (err) {
       console.error('[islands] paintSoftPadPadModePreview failed', err);
     }

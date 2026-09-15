@@ -358,13 +358,31 @@
   function syncHeroVals(){
     var wakeVal=$('voiceFlowNodeWakeVal');
     var finishVal=$('voiceFlowNodeFinishVal');
-    var phrase='—';
+    var phrase='';
     var tags=$('voiceWakePhraseTags');
     if(tags){
       var on=tags.querySelector('.is-on,.is-active,[aria-selected="true"]');
       var raw=on?(on.getAttribute('data-phrase')||on.textContent||''):'';
-      phrase=String(raw).replace(/[「」]/g,'').trim()||phrase;
+      phrase=String(raw).replace(/[「」]/g,'').trim();
     }
+    // Primary wake lives outside the alias chips — fall back so 01 isn't stuck on「—」.
+    if(!phrase){
+      try{
+        var Wake=global.OneToneVoiceWake;
+        if(Wake&&typeof Wake.primaryWakePhraseDisplay==='function'){
+          phrase=String(Wake.primaryWakePhraseDisplay()||'').trim();
+        }
+      }catch(_w){}
+    }
+    if(!phrase){
+      try{
+        var V=global.OneToneVoiceSettingsViewModel;
+        if(V&&V.build&&V.resolveDisplayWakePhrase){
+          phrase=String(V.resolveDisplayWakePhrase(V.build(false)).display||'').trim();
+        }
+      }catch(_v){}
+    }
+    if(!phrase) phrase='—';
     if(wakeVal) wakeVal.textContent=phrase;
     var intent=currentIntent();
     var finish='—';
@@ -447,6 +465,10 @@
       else dictate.textContent=t('voiceIntentImeHint','匹配所选意图动作');
     }
     syncHeroVals();
+    try{
+      var scene=global.OneToneKeysSceneActionsPanel;
+      if(scene&&typeof scene.refresh==='function') scene.refresh();
+    }catch(_s){}
   }
 
   function syncRailVisibility(){

@@ -192,6 +192,17 @@
           if(!padKey) return;
           pickMicroKeyId=mid;
           pickSlotId=String(padKey.slotId||'');
+          try{
+            var sceneClaim=global.OneToneKeysSceneActionsPanel;
+            if(cur&&sceneClaim&&typeof sceneClaim.claimVoiceChannelMatch==='function'){
+              sceneClaim.claimVoiceChannelMatch(
+                cur,
+                'softPad',
+                mid,
+                String(padKey.slotId||padKey.actionId||'')
+              );
+            }
+          }catch(_c){}
           render();
         });
       }
