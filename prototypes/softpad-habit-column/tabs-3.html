@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SoftPad · 三标签合并原型（按键 / Agent / 样式）</title>
+  <style>
+    :root{
+      --bg:#e8eef4;--paper:#fff;--ink:#142033;--muted:#5b6b7f;
+      --line:#d5dee8;--soft:#f4f8fb;--primary:#2a9cc4;--primary-soft:rgba(42,156,196,.12);
+      --primary-strong:#0f5f7a;--pad:#121c26;--key:#1e2d3c;--key-bd:#314556;
+      --font:"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--ink);background:#dfe7ef}
+    .shell{display:grid;grid-template-columns:188px 1fr;min-height:100vh}
+    .nav{background:#f7fafc;border-right:1px solid var(--line);padding:12px 8px}
+    .nav .brand{font-weight:800;font-size:13px;padding:8px 10px 14px}
+    .nav a{display:block;padding:8px 10px;border-radius:10px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:650;margin:2px 0}
+    .nav a.on{background:var(--primary-soft);color:var(--primary-strong)}
+    .main{display:flex;flex-direction:column;min-width:0}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--paper);border-bottom:1px solid var(--line)}
+    .top h1{margin:0;font-size:15px;font-weight:800}
+    .bind{padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--soft);font-size:12px;font-weight:750;color:var(--primary-strong)}
+    .body{display:grid;grid-template-columns:minmax(260px,.95fr) minmax(340px,1.15fr) 196px;gap:10px;padding:10px;flex:1;min-height:0}
+    @media (max-width:1100px){.shell{grid-template-columns:1fr}.nav{display:none}.body{grid-template-columns:1fr}}
+    .panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+    .ph{padding:9px 12px;border-bottom:1px solid var(--line);font-size:12px;font-weight:800;color:var(--muted);display:flex;justify-content:space-between}
+    .ph b{color:var(--primary-strong);font-weight:800}
+    .preview{padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px;background:linear-gradient(180deg,#f2f7fa,#fff)}
+    .pad{width:min(100%,300px);aspect-ratio:1;background:var(--pad);border-radius:20px;padding:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;box-shadow:0 0 0 5px rgba(42,156,196,.14),0 16px 36px rgba(15,23,42,.22)}
+    .k{border:1px solid var(--key-bd);background:var(--key);border-radius:11px;color:#d5e2ee;font-size:12px;font-weight:700;cursor:pointer;display:grid;place-items:center}
+    .k.on{outline:2px solid var(--primary);background:#26485c}
+    .cap{text-align:center;font-size:13px;font-weight:750}
+    .cap span{display:block;font-size:11px;color:var(--muted);font-weight:600}
+    .mid{display:flex;flex-direction:column;min-height:0}
+    .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);background:var(--soft);padding:0 6px}
+    .tabs button{flex:1;border:0;background:transparent;padding:11px 8px;font:inherit;font-size:13px;font-weight:750;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+    .tabs button.on{color:var(--primary-strong);background:var(--paper);border-bottom-color:var(--primary);border-radius:10px 10px 0 0}
+    .scroll{padding:12px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:10px}
+    .view[hidden]{display:none !important}
+    .card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
+    .card h3{margin:0 0 6px;font-size:13px;font-weight:800}
+    .card p{margin:0;font-size:12px;color:var(--muted);line-height:1.45}
+    .map{font-size:11px;color:var(--primary-strong);font-weight:700;margin:0 0 8px;padding:4px 8px;border-radius:8px;background:var(--primary-soft);display:inline-block}
+    .opts{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+    .opt{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;font-weight:700;background:var(--soft);cursor:pointer}
+    .opt.on{border-color:rgba(42,156,196,.5);background:var(--primary-soft);color:var(--primary-strong)}
+    label.field{display:grid;gap:4px;font-size:11px;font-weight:700;color:var(--muted);margin-top:8px}
+    input,select{height:34px;border:1px solid var(--line);border-radius:9px;padding:0 10px;font:inherit;font-size:13px;font-weight:650}
+    .row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+    .btn{height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--line);background:var(--soft);font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+    .btn.primary{background:var(--primary);border-color:transparent;color:#fff}
+    .btn.block{width:100%;margin-top:8px}
+    .btn.ghost{width:100%;background:transparent;border-style:dashed;color:var(--muted)}
+    .chk{display:flex;align-items:flex-start;gap:8px;font-size:12px;font-weight:650;margin-top:8px}
+    .sw{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:12px;font-weight:700}
+    .sw:first-of-type{border-top:0}
+    .pill{width:34px;height:18px;border-radius:999px;background:#c5d0da;position:relative;flex-shrink:0}
+    .pill.on{background:var(--primary)}
+    .pill.on::after{right:2px}
+    .pill::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff}
+    .seg2{display:flex;gap:6px;margin:8px 0}
+    .seg2 button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 8px;font:inherit;font-size:12px;font-weight:750;color:var(--muted);cursor:pointer;text-align:left}
+    .seg2 button.on{border-color:rgba(42,156,196,.45);background:var(--primary-soft);color:var(--primary-strong)}
+    .seg2 button small{display:block;font-size:10px;font-weight:600;opacity:.75;margin-top:2px}
+    .cmd{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--line);border-radius:10px;margin-top:6px;font-size:12px;font-weight:700}
+    .cmd span{margin-left:auto;color:var(--muted);font-size:11px}
+    .drawer{border:1px dashed rgba(42,156,196,.45);border-radius:12px;padding:10px;background:var(--primary-soft);font-size:12px;color:var(--primary-strong);line-height:1.45}
+    .drawer[hidden]{display:none !important}
+    .list{padding:8px;display:flex;flex-direction:column;gap:4px;overflow:auto;flex:1}
+    .item{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;border-radius:10px;border:1px solid transparent;background:transparent;cursor:pointer;font:inherit;text-align:left}
+    .item.on{background:var(--primary-soft);border-color:rgba(42,156,196,.35)}
+    .item .t{flex:1;font-size:12px;font-weight:750}
+    .item .m{font-size:10px;color:var(--muted);font-weight:700}
+    .foot{padding:8px;border-top:1px solid var(--line)}
+    .legend{margin:10px;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid var(--line);font-size:12px;line-height:1.5;color:var(--muted)}
+    .legend b{color:var(--ink)}
+    .legend code{font-size:11px;background:var(--soft);padding:1px 5px;border-radius:4px}
+    /* 按键页：与 keys/voice 一致的竖列通道 */
+    .keys-split{display:grid;grid-template-columns:112px 1fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;min-height:320px;background:#fff}
+    .ch-rail{display:flex;flex-direction:column;gap:2px;padding:6px;background:var(--soft);border-right:1px solid var(--line)}
+    .ch-rail button{
+      border:0;background:transparent;text-align:left;padding:8px 8px;border-radius:9px;
+      font:inherit;font-size:11px;font-weight:750;color:var(--muted);cursor:pointer;line-height:1.25;
+    }
+    .ch-rail button small{display:block;font-size:9px;font-weight:600;opacity:.7;margin-top:1px}
+    .ch-rail button.on{background:var(--paper);color:var(--primary-strong);box-shadow:0 0 0 1px rgba(42,156,196,.28)}
+    .ch-pane{padding:10px;overflow:auto;display:flex;flex-direction:column;gap:8px;min-width:0}
+    .ch-pane[hidden]{display:none !important}
+    .ch-pane .search{height:32px;border:1px solid var(--line);border-radius:8px;padding:0 10px;font:inherit;font-size:12px;width:100%}
+    .key-edit{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--soft);margin-bottom:10px}
+    .scroll.keys-scroll{padding:10px;gap:8px}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="nav">
+      <div class="brand">一声 OneTone</div>
+      <a href="#">首页</a>
+      <a href="#">我的习惯</a>
+      <a href="#">按键设置</a>
+      <a class="on" href="#">虚拟键盘</a>
+      <a href="#">语音设置</a>
+    </aside>
+    <div class="main">
+      <header class="top">
+        <h1>虚拟键盘</h1>
+        <span class="bind">绑定 · Cursor ▾</span>
+      </header>
+      <div class="body">
+        <section class="panel">
+          <div class="ph">SOFT PAD 预览 <b>Cursor · 14 键</b></div>
+          <div class="preview">
+            <div class="pad" id="pad">
+              <button type="button" class="k" data-id="up">↑</button>
+              <button type="button" class="k" data-id="search">⌕</button>
+              <button type="button" class="k" data-id="clip">⧉</button>
+              <button type="button" class="k" data-id="cmd">⌘</button>
+              <button type="button" class="k" data-id="left">←</button>
+              <button type="button" class="k" data-id="mic">🎙</button>
+              <button type="button" class="k" data-id="send">↵</button>
+              <button type="button" class="k" data-id="right">→</button>
+              <button type="button" class="k" data-id="down">↓</button>
+              <button type="button" class="k on" data-id="7">7</button>
+              <button type="button" class="k" data-id="8">8</button>
+              <button type="button" class="k" data-id="9">9</button>
+              <button type="button" class="k" data-id="4">4</button>
+              <button type="button" class="k" data-id="5">5</button>
+              <button type="button" class="k" data-id="6">6</button>
+              <button type="button" class="k" data-id="plus">＋</button>
+            </div>
+            <div class="cap" id="cap">命令菜单<span>Ctrl+Shift+P</span></div>
+          </div>
+        </section>
+
+        <section class="panel mid">
+          <div class="tabs" role="tablist">
+            <button type="button" class="on" data-tab="keys">按键</button>
+            <button type="button" data-tab="agent">Agent</button>
+            <button type="button" data-tab="style">样式</button>
+          </div>
+          <div class="scroll keys-scroll">
+            <!-- 按键 = 竖列通道（对齐按键/语音页）+ 当前键编辑 -->
+            <div class="view" id="tabKeys">
+              <span class="map">按键 Tab：竖列切换通道 · 点选绑定到左侧 SoftPad 键</span>
+              <div class="key-edit">
+                <h3 style="margin:0 0 6px;font-size:13px">当前键 · <span id="curKeyLbl">数字 7</span></h3>
+                <div class="row">
+                  <label class="field" style="margin:0">快捷键 / 已绑动作<input id="curChord" value="命令菜单 · Ctrl+Shift+P" readonly /></label>
+                  <button type="button" class="btn">录制</button>
+                </div>
+                <label class="chk" style="margin-top:8px"><input type="checkbox" checked /> 启用 Soft Pad 映射（实体数字键）</label>
+              </div>
+              <div class="keys-split">
+                <nav class="ch-rail" id="chRail" aria-label="动作通道">
+                  <button type="button" class="on" data-ch="ime">听写方式<small>IME</small></button>
+                  <button type="button" data-ch="key">我录的键<small>序列</small></button>
+                  <button type="button" data-ch="voice">口头指令<small>注入</small></button>
+                  <button type="button" data-ch="cursor">软件自带<small>命令</small></button>
+                  <button type="button" data-ch="camera">手势<small>摄像头</small></button>
+                  <button type="button" data-ch="pad">板设置<small>占键</small></button>
+                </nav>
+                <div class="ch-pane" id="chIme" data-ch-pane="ime">
+                  <input class="search" placeholder="搜听写 / IME…" />
+                  <p style="margin:0;font-size:11px;color:var(--muted)">点一条绑到当前 SoftPad 键（与按键页听写方式同源）</p>
+                  <div class="cmd">语音输入 · RAlt<span>绑定</span></div>
+                  <div class="cmd">结束或发送 · Enter<span>绑定</span></div>
+                  <div class="cmd">系统听写<span>绑定</span></div>
+                </div>
+                <div class="ch-pane" id="chKey" data-ch-pane="key" hidden>
+                  <input class="search" placeholder="搜我录的键…" />
+                  <p style="margin:0;font-size:11px;color:var(--muted)">本场景已录序列，点选接到板上</p>
+                  <div class="cmd">自定义序列 1<span>绑定</span></div>
+                  <div class="cmd">自定义序列 2<span>绑定</span></div>
+                </div>
+                <div class="ch-pane" id="chVoice" data-ch-pane="voice" hidden>
+                  <input class="search" placeholder="搜口头指令…" />
+                  <p style="margin:0;font-size:11px;color:var(--muted)">语音页已保存的注入 / 口令动作</p>
+                  <div class="cmd">画原型图<span>绑定</span></div>
+                  <div class="cmd">继续并确认<span>绑定</span></div>
+                </div>
+                <div class="ch-pane" id="chCursor" data-ch-pane="cursor" hidden>
+                  <input class="search" placeholder="搜意图，如：Plan、终端…" />
+                  <p style="margin:0;font-size:11px;color:var(--muted)">软件自带命令（Cursor 等）</p>
+                  <div class="cmd">命令菜单 · Ctrl+Shift+P<span>绑定</span></div>
+                  <div class="cmd">Plan 模式<span>绑定</span></div>
+                  <div class="cmd">新建对话<span>绑定</span></div>
+                </div>
+                <div class="ch-pane" id="chCamera" data-ch-pane="camera" hidden>
+                  <p style="margin:0;font-size:11px;color:var(--muted)">摄像头 / 手势通道已有动作，点选绑到板上</p>
+                  <div class="cmd">抬头开始<span>绑定</span></div>
+                  <div class="cmd">挥手取消<span>绑定</span></div>
+                </div>
+                <div class="ch-pane" id="chPad" data-ch-pane="pad" hidden>
+                  <p style="margin:0;font-size:12px;font-weight:750;color:var(--ink)">板如何占用实体键</p>
+                  <p style="margin:0;font-size:11px;color:var(--muted)">原「用途」稀疏页收在这里，不再单独顶 Tab</p>
+                  <label class="chk"><input type="checkbox" checked /> Soft Pad 映射开启</label>
+                  <label class="chk"><input type="checkbox" /> 数字键占用</label>
+                  <label class="chk"><input type="checkbox" /> Soft Pad 方向栏</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Agent = 接入、聆听、读数、Pad 启用 -->
+            <div class="view" id="tabAgent" hidden>
+              <span class="map">合并自：灯效·接入 / 显示·聆听 / 迷你栏·读数</span>
+              <div class="card">
+                <h3>当前 Agent · Cursor</h3>
+                <div class="sw"><span>Pad 已启用</span><div class="pill on"></div></div>
+                <p style="margin-top:6px">Cursor · 未接入 · 当前前台</p>
+                <div class="row" style="margin-top:8px">
+                  <button type="button" class="btn primary">复制 Cursor Hook 配置</button>
+                  <button type="button" class="btn">刷新状态</button>
+                </div>
+              </div>
+              <div class="card">
+                <h3>聆听激活</h3>
+                <p>软件不在前台时，可用口令手动唤起（原「显示」里的聆听块）。</p>
+                <div class="row" style="margin-top:8px">
+                  <label class="field" style="margin:0">聆听激活口令<input value="一声" /></label>
+                  <button type="button" class="btn">保存</button>
+                </div>
+              </div>
+              <div class="card">
+                <h3>用量 / 活动读数</h3>
+                <p>迷你栏一句摘要的数据源（原「迷你栏」读数与本地活动统计）。</p>
+                <p style="margin-top:6px">Cursor 活动统计未启用 · 暂无读数</p>
+              </div>
+            </div>
+
+            <!-- 样式 = 何时出现、外观、灯、迷你栏展示字段 -->
+            <div class="view" id="tabStyle" hidden>
+              <span class="map">合并自：显示·出现/外观 + 灯效·氛围/按键灯 + 迷你栏·摘要开关</span>
+              <div class="card">
+                <h3>什么时候出现</h3>
+                <div class="opts">
+                  <div class="opt">跟随应用显示</div>
+                  <div class="opt">保持在最前</div>
+                  <div class="opt">显示为迷你条</div>
+                  <div class="opt on">不显示浮窗</div>
+                </div>
+                <p style="margin-top:8px">不显示悬浮键盘；你改过的键位配置会保留。</p>
+                <button type="button" class="btn primary block">启用浮窗显示</button>
+              </div>
+              <div class="card">
+                <h3>外观风格</h3>
+                <p>键盘皮肤 / 布局预览卡片（原「显示 · 外观风格」）。</p>
+                <div class="opts">
+                  <div class="opt on">风格 A</div>
+                  <div class="opt">风格 B</div>
+                </div>
+              </div>
+              <div class="card">
+                <h3>灯效</h3>
+                <div class="seg2">
+                  <button type="button" class="on">氛围灯<small>盘边 / Soft RGB</small></button>
+                  <button type="button">按键灯<small>单键反馈</small></button>
+                </div>
+                <label class="chk"><input type="checkbox" checked /> 启用盘边氛围灯</label>
+              </div>
+              <div class="card">
+                <h3>迷你栏摘要字段</h3>
+                <p>预览条第二行显示什么（纯展示，不含接入）。</p>
+                <div class="sw"><span>显示账号</span><div class="pill on"></div></div>
+                <div class="sw"><span>显示额度</span><div class="pill on"></div></div>
+                <div class="sw"><span>显示重置</span><div class="pill on"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="legend">
+            <b>五 → 三</b>：
+            <code>键位+用途</code>→按键（竖列通道） ·
+            <code>接入+聆听+读数</code>→Agent ·
+            <code>出现/外观+灯+迷你栏字段</code>→样式
+          </div>
+        </section>
+
+        <aside class="panel">
+          <div class="ph">本场景键位</div>
+          <div class="list" id="list"></div>
+          <div class="foot"><button type="button" class="btn ghost">＋ 新建键位</button></div>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <script>
+    var actions=[
+      {id:'7',title:'命令菜单',chord:'Ctrl+Shift+P',key:'7'},
+      {id:'mic',title:'语音输入',chord:'Alt',key:'🎙'},
+      {id:'send',title:'结束发送',chord:'Enter',key:'↵'},
+      {id:'clip',title:'复制',chord:'Ctrl+C',key:'⧉'}
+    ];
+    var selected='7';
+    var paneMap={ime:'chIme',key:'chKey',voice:'chVoice',cursor:'chCursor',camera:'chCamera',pad:'chPad'};
+    function paint(){
+      document.getElementById('list').innerHTML=actions.map(function(a){
+        return '<button type="button" class="item'+(a.id===selected?' on':'')+'" data-id="'+a.id+'"><span class="t">'+a.title+'</span><span class="m">'+a.key+'</span></button>';
+      }).join('');
+      Array.prototype.forEach.call(document.querySelectorAll('.k'),function(el){
+        el.classList.toggle('on',el.getAttribute('data-id')===selected);
+      });
+      var a=actions.find(function(x){return x.id===selected;})||actions[0];
+      document.getElementById('cap').innerHTML=a.title+'<span>'+a.chord+'</span>';
+      var lbl=document.getElementById('curKeyLbl');
+      var chord=document.getElementById('curChord');
+      if(lbl) lbl.textContent=a.key==='7'?'数字 7':('键 '+a.key);
+      if(chord) chord.value=a.title+' · '+a.chord;
+    }
+    function select(id){if(!actions.some(function(a){return a.id===id;}))return;selected=id;paint();}
+    document.getElementById('list').onclick=function(e){var b=e.target.closest('[data-id]');if(b)select(b.getAttribute('data-id'));};
+    document.getElementById('pad').onclick=function(e){var b=e.target.closest('.k');if(b)select(b.getAttribute('data-id'));};
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(btn){
+      btn.onclick=function(){
+        Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(x){x.classList.remove('on');});
+        btn.classList.add('on');
+        var t=btn.getAttribute('data-tab');
+        document.getElementById('tabKeys').hidden=t!=='keys';
+        document.getElementById('tabAgent').hidden=t!=='agent';
+        document.getElementById('tabStyle').hidden=t!=='style';
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#chRail button'),function(btn){
+      btn.onclick=function(){
+        Array.prototype.forEach.call(document.querySelectorAll('#chRail button'),function(x){x.classList.remove('on');});
+        btn.classList.add('on');
+        var ch=btn.getAttribute('data-ch');
+        Object.keys(paneMap).forEach(function(k){
+          var el=document.getElementById(paneMap[k]);
+          if(el) el.hidden=k!==ch;
+        });
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.opt'),function(el){
+      el.onclick=function(){
+        Array.prototype.forEach.call(el.parentNode.querySelectorAll('.opt'),function(x){x.classList.remove('on');});
+        el.classList.add('on');
+      };
+    });
+    paint();
+  </script>
+</body>
+</html>

@@ -217,7 +217,9 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
         if(mode==='trigger'){
           if(triggerDisp) triggerDisp.classList.toggle('empty',!normalized);
           if(triggerDisp&&global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
-            global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,normalized);
+            var iconTok=normalized;
+            if(iconTok==='AutoTrigger'||iconTok==='RAlt') iconTok='Volume_Down';
+            global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,iconTok);
           }
         }else if(mode==='target'||mode==='agentBinding'){
           if(targetDisp) targetDisp.classList.toggle('empty',!normalized);
@@ -541,7 +543,20 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     const fallback=(OneToneMappingCore.selected()&&OneToneMappingCore.selected().id)
       ||(state.config&&state.config.mappings&&state.config.mappings[0]&&state.config.mappings[0].id)
       ||'';
+    // Custom-key match peers record via rec.mappingId only — do not steal the habit selection
+    // (that blanked 02 / hid the scene dock when「新建动作」pinned the peer).
+    var pinIsCustomKeyMatch=false;
     if(pin){
+      var pinM=OneToneMappingCore.byId?OneToneMappingCore.byId(pin):null;
+      var pref=pinM&&pinM.captureHeroRef;
+      pinIsCustomKeyMatch=!!(
+        pref&&
+        typeof pref==='object'&&
+        String(pref.kind||'').trim().toLowerCase()==='customkey'&&
+        String(pref.bindingRef||'').trim()===pin
+      );
+    }
+    if(pin&&!pinIsCustomKeyMatch){
       state.selectedMappingId=pin;
     }else if(!state.selectedMappingId&&fallback){
       state.selectedMappingId=fallback;
@@ -759,8 +774,14 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       }
       if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTargetKey(m.targetKey);
     }else{
-      const trig=hooks().normalizeTriggerKey(key);
-      const rawSourceKey=String(msg.sourceKey||'').trim();
+      var trig=hooks().normalizeTriggerKey(key);
+      var rawSourceKey=String(msg.sourceKey||'').trim();
+      // Same RAlt→AutoTrigger fold as finishTriggerCapture (BT volume often arrives as RAlt).
+      var foldedRAlt=false;
+      if(trig==='RAlt'){
+        trig='AutoTrigger';
+        foldedRAlt=true;
+      }
       if(!hooks().isAllowedTriggerKey(key||trig)) return false;
       if(rawSourceKey&&!hooks().isAllowedTriggerKey(rawSourceKey)) return false;
       if(!hooks().isAllowedTriggerKey(trig)) return false;
@@ -769,7 +790,11 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       m.triggerKey=trig;
       if(msg.source) m.triggerSource=msg.source;
       else if(trig!=='AutoTrigger') m.triggerSource=null;
-      m.sourceKey=msg.sourceKey||(msg.source&&msg.source.rawEvents&&msg.source.rawEvents[0]&&msg.source.rawEvents[0].hotkey)||trig;
+      if(foldedRAlt&&(rawSourceKey==='RAlt'||hooks().normalizeTriggerKey(rawSourceKey)==='RAlt'||!rawSourceKey)){
+        m.sourceKey='Volume_Down';
+      }else{
+        m.sourceKey=msg.sourceKey||(msg.source&&msg.source.rawEvents&&msg.source.rawEvents[0]&&msg.source.rawEvents[0].hotkey)||trig;
+      }
       m.sourceTime=msg.sourceTime||'';
       applyCapturedTriggerMode(m, msg.triggerMode);
       if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTriggerKey(trig);
@@ -781,7 +806,12 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
   function previewCaptureKey(mode,key){
     const raw=String(key||'').trim();
     if(!raw) return '';
-    if(mode==='trigger'||mode==='agentBinding') return hooks().normalizeTriggerKey(raw);
+    if(mode==='trigger'||mode==='agentBinding'){
+      var n=hooks().normalizeTriggerKey(raw);
+      // Live preview: BT volume echo as RAlt must not paint「右 Alt」on the trigger keycap.
+      if(mode==='trigger'&&n==='RAlt') return 'AutoTrigger';
+      return n;
+    }
     const media=hooks().normalizeMediaTargetKey(raw,raw);
     if(media) return media;
     return hooks().sanitizeTargetCombo(raw)||raw;

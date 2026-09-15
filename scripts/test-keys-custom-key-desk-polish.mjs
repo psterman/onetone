@@ -33,15 +33,17 @@ check(
     !/named = promptCustomKeyMatchName\(''\)/.test(src)
 );
 check(
-  'launch inherits 01 trigger (no record button)',
-  /keysCustomKeyMatchLaunchFrom01/.test(src) &&
-    /syncCustomKeyLaunchFromHabit/.test(src) &&
-    !/data-match-launch-record/.test(src)
+  'launch is per-match unique trigger (record button)',
+  /keysCustomKeyMatchLaunchUnique/.test(src) &&
+    /customKeyMatchTrigger/.test(src) &&
+    /data-match-launch-record/.test(src) &&
+    !/syncCustomKeyLaunchFromHabit/.test(src)
 );
 check('empty hint copy', /keysCaptureSeqHintEmpty/.test(src));
 check(
-  'create copies habit triggerKey',
-  /copy\.triggerKey = String\(source\.triggerKey/.test(src)
+  'create starts with empty triggerKey',
+  /copy\.triggerKey = ''/.test(src) &&
+    !/copy\.triggerKey = String\(source\.triggerKey/.test(src)
 );
 check(
   'desk fills pane-right',

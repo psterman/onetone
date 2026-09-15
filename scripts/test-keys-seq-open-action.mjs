@@ -69,6 +69,8 @@ check(
   /data-inline-open-bookmarks/.test(home) &&
     /cmd_list_browser_bookmarks/.test(home) &&
     /data-bm-folder/.test(home) &&
+    /function groupKey/.test(home) &&
+    /inActiveGroup/.test(home) &&
     /cmd_list_browser_bookmarks/.test(
       readFileSync(join(root, 'src-tauri/src/ipc/commands/shell/prefs.rs'), 'utf8')
     ) &&

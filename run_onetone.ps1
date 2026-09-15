@@ -169,14 +169,15 @@ function Test-PortOpen {
   }
 }
 
-## Dev webview loads http://localhost:1420 — without serve, the window shows ERR_CONNECTION_REFUSED.
+## Dev webview loads http://localhost:5173 — without serve, the window shows ERR_CONNECTION_REFUSED.
 ## Release embeds frontendDist, but this launcher still starts serve for hybrid/dev asset reloads.
+## Note: :1420 is often in Windows Hyper-V excluded ranges (EACCES); keep serve on 5173.
 function Ensure-FrontendServe {
-  if (Test-PortOpen -Port 1420) {
-    Write-LaunchLog 'frontend serve already on :1420'
+  if (Test-PortOpen -Port 5173) {
+    Write-LaunchLog 'frontend serve already on :5173'
     return
   }
-  Write-LaunchLog 'starting frontend serve on :1420 (required for webview)'
+  Write-LaunchLog 'starting frontend serve on :5173 (required for webview)'
   $npm = Get-Command npm -ErrorAction SilentlyContinue
   if (-not $npm) {
     Write-LaunchLog 'npm not found; cannot start serve — UI will show localhost refused'
@@ -186,13 +187,13 @@ function Ensure-FrontendServe {
   Start-Process -FilePath 'cmd.exe' -ArgumentList @('/c', 'npm', 'run', 'serve') -WorkingDirectory $root -WindowStyle Hidden | Out-Null
   $deadline = (Get-Date).AddSeconds(15)
   while ((Get-Date) -lt $deadline) {
-    if (Test-PortOpen -Port 1420) {
-      Write-LaunchLog 'frontend serve ready on :1420'
+    if (Test-PortOpen -Port 5173) {
+      Write-LaunchLog 'frontend serve ready on :5173'
       return
     }
     Start-Sleep -Milliseconds 400
   }
-  Write-LaunchLog 'frontend serve did not become ready on :1420'
+  Write-LaunchLog 'frontend serve did not become ready on :5173'
 }
 
 function Start-OnetoneProcess {
@@ -242,7 +243,11 @@ function Start-OnetoneExe {
   Sync-KwsBundleResources -ReleaseDir $releaseDir
   Ensure-FrontendServe
   Write-LaunchLog "runtime log: $(Join-Path $logDir 'runtime-live.log')"
-  $extraEnv = @{ ONETONE_LOG_DIR = $logDir }
+  $extraEnv = @{
+    ONETONE_LOG_DIR = $logDir
+    # Load UI from npm serve :5173 so src/ HTML/JS changes apply without waiting on embed.
+    ONETONE_LIVE_FRONTEND = '1'
+  }
   if ($Safe) {
     Write-LaunchLog 'launching safe mode'
     $extraEnv['ONETONE_SAFE_MODE'] = '1'
@@ -250,6 +255,20 @@ function Start-OnetoneExe {
   if ($CodexMicroProtocol) {
     $extraEnv['ONETONE_CODEX_MICRO_PROTOCOL'] = '1'
     Write-LaunchLog 'Labs: ONETONE_CODEX_MICRO_PROTOCOL=1 (loopback 8796)'
+  }
+  # Drop WebView2 cache so live frontend is not stuck on a stale index.html.
+  foreach ($cacheRoot in @(
+      (Join-Path $env:LOCALAPPDATA 'com.onetone.app\EBWebView'),
+      (Join-Path $env:LOCALAPPDATA 'OneTone\EBWebView')
+    )) {
+    if (Test-Path $cacheRoot) {
+      try {
+        Remove-Item -LiteralPath $cacheRoot -Recurse -Force -ErrorAction Stop
+        Write-LaunchLog "cleared webview cache: $cacheRoot"
+      } catch {
+        Write-LaunchLog "webview cache clear skipped: $($_.Exception.Message)"
+      }
+    }
   }
   Start-OnetoneProcess -ExePath $ExePath -WorkingDirectory $exeDir -ExtraEnv $extraEnv
   Write-LaunchLog "launched onetone.exe from $ExePath"

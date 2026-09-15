@@ -694,7 +694,13 @@
       }
     }
     if(voiceSapiPresetPending) cfg.phrases=hooks().cloneStringList(voiceSapiPresetPending);
-    else if(Array.isArray(res.phrases)&&res.phrases.length) cfg.phrases=hooks().cloneStringList(res.phrases);
+    else if(Array.isArray(res.phrases)&&res.phrases.length){
+      var localS=normalizePhraseList(cfg.phrases);
+      var remoteS=normalizePhraseList(res.phrases);
+      if(!localS.length || phraseListsEqual(localS, remoteS)){
+        cfg.phrases=hooks().cloneStringList(remoteS);
+      }
+    }
     if(res.targetKey!=null) cfg.targetKey=String(res.targetKey||'').trim();
     if(res.cooldownMs!=null) cfg.cooldownMs=Number(res.cooldownMs)||2000;
     if(res.minConfidence!=null) cfg.minConfidence=Number(res.minConfidence)||0.35;
@@ -720,7 +726,14 @@
     }
     const pending=pendingWakePhrases();
     if(pending) cfg.phrases=hooks().cloneStringList(pending);
-    else if(Array.isArray(res.phrases)) cfg.phrases=hooks().cloneStringList(res.phrases);
+    else if(Array.isArray(res.phrases)){
+      var local=normalizePhraseList(cfg.phrases);
+      var remote=normalizePhraseList(res.phrases);
+      // Keep local custom primary when status poll still returns the default list.
+      if(!local.length || phraseListsEqual(local, remote) || !remote.length){
+        if(remote.length) cfg.phrases=hooks().cloneStringList(remote);
+      }
+    }
     if(res.targetKey!=null) cfg.targetKey=String(res.targetKey||'').trim();
     if(res.cooldownMs!=null) cfg.cooldownMs=Number(res.cooldownMs)||2000;
     if(res.modelPath!=null) cfg.modelPath=String(res.modelPath||'').trim();
@@ -2505,16 +2518,57 @@
     }
     if(mode==='vosk'){
       const vosk=cfg.voiceVosk||cfg.voice_vosk||{};
+      // Prefer config over live snapshot — status polls otherwise snap the cap back to「开始输入」.
+      const fromCfg=normalizePhraseList(vosk.phrases);
+      if(fromCfg.length) return fromCfg;
       const w=hooks().voiceUiSnapshot.wake||{};
       const live=w.vosk||{};
-      const fromLive=normalizePhraseList(live.phrases);
-      if(fromLive.length) return fromLive;
-      return normalizePhraseList(vosk.phrases);
+      return normalizePhraseList(live.phrases);
     }
     const sapi=cfg.voiceSapi||cfg.voice_sapi||{};
     const selected=normalizePhraseList(voiceSapiSelectedPhrases);
     if(selected.length) return selected;
     return normalizePhraseList(sapi.phrases);
+  }
+
+  function paintWakeCapPhrase(phrase){
+    phrase=String(phrase||'').trim();
+    if(!phrase) return;
+    var zhEl=$('voiceWakeCompactZh');
+    var enEl=$('voiceWakeCompactEn');
+    if(zhEl){
+      zhEl.textContent='「'+phrase+'」';
+      zhEl.hidden=false;
+    }
+    if(enEl) enEl.hidden=true;
+    var hint=$('voiceWakeDisplayHint');
+    if(hint&&!hint.querySelector('#btnVoiceWakePhraseEditLink,.voice-phrase-hint-link')){
+      // Keep short hint; full paint comes from scheduleVoiceSettingsRender.
+    }
+  }
+
+  /** Keep sapi/vosk/kws phrase heads aligned so strategy/engine flips don't resurrect「开始输入」. */
+  function mirrorWakePhrasesAllEngines(next){
+    next=normalizePhraseList(next);
+    if(!next.length) return;
+    var cfg=state().config;
+    if(!cfg) return;
+    var vosk=cfg.voiceVosk||cfg.voice_vosk||(cfg.voiceVosk={});
+    cfg.voiceVosk=vosk;
+    vosk.phrases=hooks().cloneStringList(next);
+    var sapi=cfg.voiceSapi||cfg.voice_sapi||(cfg.voiceSapi={});
+    cfg.voiceSapi=sapi;
+    sapi.phrases=hooks().cloneStringList(next);
+    voiceSapiSelectedPhrases=next.slice();
+    var kws=cfg.voiceKws||cfg.voice_kws||(cfg.voiceKws={});
+    cfg.voiceKws=kws;
+    kws.phrases=hooks().cloneStringList(next);
+    var snap=hooks().voiceUiSnapshot;
+    if(snap&&snap.wake){
+      if(snap.wake.vosk) snap.wake.vosk=Object.assign({},snap.wake.vosk,{phrases:next.slice()});
+      if(snap.wake.sapi) snap.wake.sapi=Object.assign({},snap.wake.sapi,{phrases:next.slice()});
+      if(snap.wake.kws) snap.wake.kws=Object.assign({},snap.wake.kws,{phrases:next.slice()});
+    }
   }
 
   function filterWakePhrasesByLang(phrases,lang){
@@ -2606,33 +2660,16 @@
     next=normalizePhraseList(next);
     if(!next.length) next=['开始输入'];
     const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
+    mirrorWakePhrasesAllEngines(next);
     if(mode==='vosk'){
-      if(state().config){
-        const cfg=state().config.voiceVosk||state().config.voice_vosk||(state().config.voiceVosk={});
-        state().config.voiceVosk=cfg;
-        cfg.phrases=hooks().cloneStringList(next);
-      }
-      const snap=hooks().voiceUiSnapshot;
-      if(snap&&snap.wake){
-        const vosk=snap.wake.vosk||{};
-        snap.wake.vosk=Object.assign({},vosk,{phrases:next.slice()});
-      }
       syncVoiceVoskPresets(next);
     }else if(mode==='kws'){
-      if(state().config){
-        const cfg=state().config.voiceKws||state().config.voice_kws||(state().config.voiceKws={});
-        state().config.voiceKws=cfg;
-        cfg.phrases=hooks().cloneStringList(next);
-      }
+      /* kws phrases already mirrored */
     }else{
       voiceSapiPresetPending=next.slice();
-      if(state().config){
-        const cfg=state().config.voiceSapi||state().config.voice_sapi||(state().config.voiceSapi={});
-        state().config.voiceSapi=cfg;
-        cfg.phrases=hooks().cloneStringList(next);
-      }
       syncVoiceSapiPresets(next);
     }
+    paintWakeCapPhrase(next[0]);
     // Local apply must paint 01 hero before IPC round-trip.
     renderWakePhraseTags();
     try{
@@ -2647,6 +2684,7 @@
     if(!next) return Promise.resolve();
     const saveSeq=++voiceWakePresetSaveSeq;
     const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
+    // Persist to the active engine; siblings already mirrored in config for UI consistency.
     let invoke;
     if(mode==='vosk'){
       invoke=global.OneToneIpc.invoke('cmd_voice_vosk_set_phrases',{phrases:next});
@@ -2655,7 +2693,15 @@
     }else{
       invoke=global.OneToneIpc.invoke('cmd_voice_sapi_set_phrases',{phrases:next});
     }
-    return invoke.then(function(res){
+    // Also push mirrored list to the other engines so status polls can't revive「开始输入」.
+    var mirrors=[];
+    try{
+      if(mode!=='vosk') mirrors.push(global.OneToneIpc.invoke('cmd_voice_vosk_set_phrases',{phrases:next}).catch(function(){return null;}));
+      if(mode!=='kws') mirrors.push(global.OneToneIpc.invoke('cmd_voice_kws_set_phrases',{phrases:next}).catch(function(){return null;}));
+      if(mode!=='sapi') mirrors.push(global.OneToneIpc.invoke('cmd_voice_sapi_set_phrases',{phrases:next}).catch(function(){return null;}));
+    }catch(_){}
+    return Promise.all([invoke].concat(mirrors)).then(function(arr){
+      var res=arr&&arr[0];
       if(saveSeq!==voiceWakePresetSaveSeq) return res;
       if(mode==='vosk'){
         renderVoiceVoskStatus(res);
@@ -2669,6 +2715,9 @@
         voiceSapiPresetPending=null;
         hooks().syncHomeFromVoiceSettings(null,res,null,{lightOnly:true});
       }
+      // Re-assert local list after status handlers (they may sync older server phrases).
+      mirrorWakePhrasesAllEngines(next);
+      paintWakeCapPhrase(next[0]);
       voiceWakePresetSavePending=null;
       if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
         global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
@@ -2750,19 +2799,33 @@
   function addCustomWakePhrase(raw){
     const phrase=String(raw||'').trim();
     if(!phrase) return Promise.resolve();
-    const next=currentWakePhraseList().slice();
-    if(next.indexOf(phrase)>=0){
+    const prev=currentWakePhraseList().slice();
+    if(prev.indexOf(phrase)>=0){
       if(hooks().toast) hooks().toast(t('voicePhraseAlreadyAdded'));
+      try{
+        var scene0=global.OneToneKeysSceneActionsPanel;
+        if(scene0&&typeof scene0.refresh==='function') scene0.refresh();
+      }catch(_){}
       return Promise.resolve();
     }
+    // Append — keep current primary. New 口令 becomes its own right-dock row.
+    const next=prev.concat([phrase]);
     const mode=voiceWakeExpandedMode||currentVoiceMode()||defaultUiVoiceMode();
     if(mode==='vosk'&&phraseHasLatinLetters(phrase)&&!isEnglishVoskPreset(backendVoiceVoskPreset())){
       if(hooks().toast) hooks().toast(t('voiceWakeMixedLangHint'));
     }
-    next.push(phrase);
     return persistWakePhrases(next).then(function(){
       renderWakePhraseTags();
-      if(hooks().toast) hooks().toast(t('voicePhraseAdded'));
+      try{
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
+      }catch(_){}
+      try{
+        var scene=global.OneToneKeysSceneActionsPanel;
+        if(scene&&typeof scene.refresh==='function') scene.refresh();
+      }catch(_){}
+      if(hooks().toast) hooks().toast(t('voicePhraseAddedToList','已添加到右侧口令列表'));
     }).catch(function(err){
       console.error('voice_custom_wake',err);
       if(hooks().toast) hooks().toast(t('voiceSapiFail'));
@@ -2786,6 +2849,16 @@
     }
     return persistWakePhrases(next).then(function(){
       renderWakePhraseTags();
+      paintWakeCapPhrase(next[0]);
+      try{
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender){
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
+      }catch(_){}
+      try{
+        var sceneR=global.OneToneKeysSceneActionsPanel;
+        if(sceneR&&typeof sceneR.refresh==='function') sceneR.refresh();
+      }catch(_){}
     }).catch(function(err){
       console.error('voice_replace_wake',err);
       if(hooks().toast) hooks().toast(t('voiceSapiFail'));

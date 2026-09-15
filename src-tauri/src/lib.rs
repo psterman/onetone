@@ -490,6 +490,39 @@ pub fn run() {
                 return Ok(());
             };
             app_log::log_line(&app_state, "startup", "main window acquired");
+
+            // Dev launcher sets ONETONE_LIVE_FRONTEND=1 so UI tracks src/ via :5173
+            // instead of the frontend snapshot embedded at last cargo build.
+            if std::env::var("ONETONE_LIVE_FRONTEND")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(false)
+            {
+                let bust = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis())
+                    .unwrap_or(0);
+                let live = format!("http://127.0.0.1:5173/?onetone_live={bust}");
+                match live.parse::<url::Url>() {
+                    Ok(url) => match window.navigate(url) {
+                        Ok(()) => app_log::log_line(
+                            &app_state,
+                            "startup",
+                            &format!("live frontend navigate {live}"),
+                        ),
+                        Err(err) => app_log::log_line(
+                            &app_state,
+                            "startup",
+                            &format!("live frontend navigate failed: {err}"),
+                        ),
+                    },
+                    Err(err) => app_log::log_line(
+                        &app_state,
+                        "startup",
+                        &format!("live frontend url parse failed: {err}"),
+                    ),
+                }
+            }
+
             webview_camera_permission::install_camera_permission_allow(&window);
             app_log::log_line(
                 &app_state,

@@ -13,6 +13,294 @@
     agent:'总结当前对话要点，并给出下一步可执行建议。',
     continue:'继续上一步，保持同样约束。'
   };
+  var PROMPT_PRESET_LABELS={
+    proto:'画原型图',
+    agent:'Agent 总结',
+    continue:'继续',
+    custom:'自定义口头指令'
+  };
+  var promptEditId='';
+  var promptForceNew=false;
+  var autosaveTimer=0;
+  var applyingPrompt=false;
+  var lastSaveFailToast=0;
+
+  function toast(msg){
+    try{
+      if(global.OneToneApp&&typeof global.OneToneApp.toast==='function'){
+        global.OneToneApp.toast(msg);
+      }
+    }catch(_){}
+  }
+
+  function mappingById(id){
+    id=String(id||'').trim();
+    if(!id) return null;
+    var maps=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config
+      ?global.OneToneState.state.config.mappings:null;
+    if(!Array.isArray(maps)) return null;
+    for(var i=0;i<maps.length;i++){
+      if(maps[i]&&String(maps[i].id)===id) return maps[i];
+    }
+    return null;
+  }
+
+  function selectedOrHabit(){
+    try{
+      var hdr=global.OneToneVoicePageHeaderRender;
+      if(hdr&&typeof hdr.resolveScopeMapping==='function'){
+        var scoped=hdr.resolveScopeMapping(null);
+        if(scoped) return scoped;
+      }
+    }catch(_){}
+    var core=global.OneToneMappingCore;
+    var sid='';
+    try{
+      if(global.OneToneState&&global.OneToneState.state){
+        sid=String(global.OneToneState.state.selectedMappingId||'').trim();
+      }
+    }catch(_){}
+    var m=sid?mappingById(sid):null;
+    if(m) return m;
+    try{
+      if(core&&typeof core.selected==='function') return core.selected();
+    }catch(_){}
+    return null;
+  }
+
+  function clearPresetOn(){
+    var presets=$('voicePromptPresets');
+    if(!presets) return;
+    Array.prototype.forEach.call(presets.querySelectorAll('[data-prompt-preset]'),function(x){
+      x.classList.remove('is-on');
+    });
+  }
+
+  function setPresetOn(pid){
+    var presets=$('voicePromptPresets');
+    if(!presets) return;
+    Array.prototype.forEach.call(presets.querySelectorAll('[data-prompt-preset]'),function(x){
+      x.classList.toggle('is-on',x.getAttribute('data-prompt-preset')===pid);
+    });
+  }
+
+  function promptLabelFromUi(){
+    var presets=$('voicePromptPresets');
+    if(presets){
+      var on=presets.querySelector('[data-prompt-preset].is-on');
+      if(on){
+        var pid=on.getAttribute('data-prompt-preset');
+        if(pid&&PROMPT_PRESET_LABELS[pid]) return PROMPT_PRESET_LABELS[pid];
+        var txt=String(on.textContent||'').trim();
+        if(txt) return txt;
+      }
+    }
+    return '';
+  }
+
+  function findPromptPeerId(label, text){
+    var anchor=selectedOrHabit();
+    var appId=anchor?String(anchor.appTargetId||'').trim():'';
+    if(!appId) return '';
+    var picker=global.OneToneKeysChannelCommandPicker;
+    var maps=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config
+      ?global.OneToneState.state.config.mappings:[];
+    if(!Array.isArray(maps)) return '';
+    label=String(label||'').trim();
+    text=String(text||'').trim();
+    var byLabel='', byText='', first='', editStill='';
+    for(var i=0;i<maps.length;i++){
+      var m=maps[i];
+      if(!m||String(m.appTargetId||'').trim()!==appId) continue;
+      if(!(picker&&picker.isPromptInjectMapping&&picker.isPromptInjectMapping(m))) continue;
+      var id=String(m.id||'');
+      if(!id) continue;
+      if(!first) first=id;
+      if(promptEditId&&id===promptEditId) editStill=id;
+      if(label&&String(m.label||'').trim()===label) byLabel=id;
+      var body='';
+      if(picker.promptTextFromMapping) body=String(picker.promptTextFromMapping(m)||'').trim();
+      if(text&&body===text) byText=id;
+    }
+    return byLabel||editStill||byText||first||'';
+  }
+
+  function activatePromptText(text, opts){
+    opts=opts||{};
+    text=String(text||'');
+    var ta=$('voicePromptInjectBody');
+    if(ta){
+      ta._promptHydrated=true;
+      ta.value=text;
+    }
+    var st=global.OneToneState&&global.OneToneState.state;
+    if(st&&st.config){
+      if(!st.config.voiceEnd) st.config.voiceEnd={};
+      st.config.voiceEnd.promptInjectText=text;
+      st.config.voiceEnd.intent='prompt';
+    }
+    global.__vp_voice_intent__='prompt';
+    syncPromptUi();
+    if(opts.skipScene!==true) scheduleAutosavePromptScene(0);
+  }
+
+  function refreshSceneList(mid){
+    try{
+      var scene=global.OneToneKeysSceneActionsPanel;
+      if(!scene) return;
+      var anchor=null;
+      try{
+        var hdr=global.OneToneVoicePageHeaderRender;
+        if(hdr&&typeof hdr.resolveScopeMapping==='function'){
+          anchor=hdr.resolveScopeMapping(null);
+        }
+      }catch(_){}
+      if(!anchor) anchor=selectedOrHabit();
+      var picker=global.OneToneKeysChannelCommandPicker;
+      // Keep habit (or any non-prompt peer) as dock anchor so 语音输入 + 口头指令 both list.
+      if(anchor&&picker&&picker.isPromptInjectMapping&&picker.isPromptInjectMapping(anchor)){
+        var appId=String(anchor.appTargetId||'').trim();
+        var maps=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config
+          ?global.OneToneState.state.config.mappings:[];
+        if(Array.isArray(maps)){
+          for(var i=0;i<maps.length;i++){
+            var x=maps[i];
+            if(!x||String(x.appTargetId||'').trim()!==appId) continue;
+            if(picker.isPromptInjectMapping(x)) continue;
+            anchor=x;
+            break;
+          }
+        }
+      }
+      if(anchor&&typeof scene.render==='function') scene.render(anchor);
+      else if(typeof scene.refresh==='function') scene.refresh();
+      if(mid&&typeof scene.highlightMapping==='function') scene.highlightMapping(String(mid));
+      try{
+        var flow=global.OneToneVoiceSettingsFlow;
+        if(flow&&typeof flow.scheduleVoiceSettingsRender==='function'){
+          flow.scheduleVoiceSettingsRender();
+        }
+      }catch(_){}
+    }catch(_){}
+  }
+
+  function syncPromptSaveHint(ok){
+    var hint=$('voicePromptSaveHint');
+    if(!hint) return;
+    hint.textContent=ok
+      ?t('voicePromptSynced','已同步到右侧列表')
+      :t('voicePromptSaveHint','改文案即写入右侧列表');
+    hint.classList.toggle('is-ok',!!ok);
+  }
+
+  function applyPromptMapping(mid){
+    mid=String(mid||'').trim();
+    var m=mappingById(mid);
+    var picker=global.OneToneKeysChannelCommandPicker;
+    if(!m||!(picker&&picker.isPromptInjectMapping&&picker.isPromptInjectMapping(m))){
+      setIntent('prompt');
+      return;
+    }
+    applyingPrompt=true;
+    promptEditId=mid;
+    var body='';
+    if(picker.promptTextFromMapping) body=String(picker.promptTextFromMapping(m)||'');
+    activatePromptText(body,{skipScene:true});
+    setIntent('prompt',{persist:true});
+    syncPromptSaveHint(true);
+    applyingPrompt=false;
+  }
+
+  function savePromptToScene(opts){
+    opts=opts||{};
+    var quiet=!!opts.quiet;
+    var ta=$('voicePromptInjectBody');
+    var text=ta?String(ta.value||'').trim():'';
+    if(!text){
+      if(!quiet) toast(t('voicePromptSaveNeedText','先填写要注入的 prompt'));
+      return null;
+    }
+    var picker=global.OneToneKeysChannelCommandPicker;
+    if(!picker||typeof picker.savePromptInjectMapping!=='function'){
+      if(!quiet) toast(t('voicePromptSaveUnavailable','暂无法保存'));
+      return null;
+    }
+    var label=promptLabelFromUi();
+    if(!label||label===PROMPT_PRESET_LABELS.custom){
+      label=text.length>16?text.slice(0,16)+'…':text;
+    }
+    // Same prompt text always upserts — never spawn twins via autosave/forceCreate.
+    var editId=String(promptEditId||'').trim()||findPromptPeerId(label,text);
+    var saved=picker.savePromptInjectMapping({
+      text:text,
+      label:label,
+      editId:editId,
+      forceCreate:false
+    });
+    if(!saved||!saved.id){
+      if(!quiet||Date.now()-lastSaveFailToast>2500){
+        lastSaveFailToast=Date.now();
+        // savePromptInjectMapping already toasted a reason when possible.
+      }
+      syncPromptSaveHint(false);
+      return null;
+    }
+    promptEditId=String(saved.id);
+    promptForceNew=false;
+    var st=global.OneToneState&&global.OneToneState.state;
+    if(st&&st.config){
+      if(!st.config.voiceEnd) st.config.voiceEnd={};
+      st.config.voiceEnd.promptInjectText=text;
+      st.config.voiceEnd.intent='prompt';
+    }
+    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
+      try{ global.OneToneConfigPersist.save({source:'voice-prompt-scene'}); }catch(_){}
+    }
+    refreshSceneList(promptEditId);
+    syncPromptSaveHint(true);
+    if(!quiet) toast(t('voicePromptSaved','已保存到本场景列表'));
+    return saved;
+  }
+
+  function startNewCustomPrompt(){
+    applyingPrompt=true;
+    promptForceNew=true;
+    promptEditId='';
+    clearPresetOn();
+    setPresetOn('custom');
+    var ta=$('voicePromptInjectBody');
+    if(ta){
+      ta._promptHydrated=true;
+      ta.value='';
+      try{ ta.focus(); }catch(_){}
+    }
+    var st=global.OneToneState&&global.OneToneState.state;
+    if(st&&st.config){
+      if(!st.config.voiceEnd) st.config.voiceEnd={};
+      st.config.voiceEnd.promptInjectText='';
+      st.config.voiceEnd.intent='prompt';
+    }
+    global.__vp_voice_intent__='prompt';
+    setIntent('prompt',{persist:true});
+    syncPromptUi();
+    syncPromptSaveHint(false);
+    applyingPrompt=false;
+    toast(t('voicePromptCustomHint','写下自定义 prompt，再点「保存到本场景列表」'));
+  }
+
+  function scheduleAutosavePromptScene(delay){
+    if(applyingPrompt) return;
+    if(currentIntent()!=='prompt') return;
+    if(autosaveTimer){
+      try{ clearTimeout(autosaveTimer); }catch(_){}
+      autosaveTimer=0;
+    }
+    var ms=delay==null?320:Number(delay)||0;
+    autosaveTimer=setTimeout(function(){
+      autosaveTimer=0;
+      savePromptToScene({quiet:true});
+    },ms);
+  }
   var PANE_BY_INTENT={
     ime:'voiceIntentPaneIme',
     prompt:'voiceIntentPanePrompt',
@@ -147,7 +435,10 @@
     if(id==='ime'&&global.OneToneImePresets&&global.OneToneImePresets.refresh){
       global.OneToneImePresets.refresh('voice');
     }
-    if(id==='prompt') syncPromptUi();
+    if(id==='prompt'){
+      syncPromptUi();
+      scheduleAutosavePromptScene(0);
+    }
 
     var dictate=$('voiceWakeActionDictate');
     if(dictate){
@@ -203,6 +494,7 @@
       var preview=body.length>36?body.slice(0,36)+'…':body;
       land.textContent='说 01 口令 = 聚焦 → 写入'+(preview?('「'+preview+'」'):' prompt')+' → 回车发送';
     }
+    syncPromptSaveHint(!!promptEditId);
   }
 
   function savePromptText(){
@@ -216,6 +508,7 @@
       global.OneToneConfigPersist.save({source:'voice-prompt'});
     }
     syncPromptUi();
+    scheduleAutosavePromptScene();
   }
 
   function syncLabels(){
@@ -243,6 +536,14 @@
       var el=$(pair[0]);
       if(el&&!el.querySelector('button')) el.textContent=t(pair[1]);
     });
+    var saveBtn=$('btnVoicePromptSaveScene');
+    if(saveBtn) saveBtn.textContent=t('voicePromptSaveScene','保存到本场景列表');
+    var saveHint=$('voicePromptSaveHint');
+    if(saveHint&&!saveHint.classList.contains('is-ok')){
+      saveHint.textContent=t('voicePromptSaveHint','点保存，或改完文案后自动写入右侧');
+    }
+    var customBtn=$('btnVoicePromptCustom');
+    if(customBtn) customBtn.textContent=t('voicePromptCustomBtn','＋ 自定义');
     var wakeTag=$('voiceFlowNodeWakeTag');
     if(wakeTag) wakeTag.textContent='01 / '+t('voiceFlowNodeWakeTitle','说了什么');
     var finishTag=$('voiceFlowNodeFinishTag');
@@ -263,7 +564,38 @@
     if(typeof hooks.setSettingsPanel==='function') hooks.setSettingsPanel(panel);
   }
 
+  function ensurePromptSaveChrome(){
+    var desk=$('voicePromptDesk');
+    if(!desk) return;
+    var presets=$('voicePromptPresets');
+    if(presets&&!$('btnVoicePromptCustom')){
+      var custom=document.createElement('button');
+      custom.type='button';
+      custom.setAttribute('data-prompt-preset','custom');
+      custom.id='btnVoicePromptCustom';
+      custom.textContent=t('voicePromptCustomBtn','＋ 自定义');
+      presets.appendChild(custom);
+    }
+    if($('btnVoicePromptSaveScene')) return;
+    var row=document.createElement('div');
+    row.className='voice-prompt-save-row';
+    row.innerHTML=
+      '<button type="button" class="control-btn primary" id="btnVoicePromptSaveScene"></button>'+
+      '<span class="voice-prompt-save-hint" id="voicePromptSaveHint"></span>';
+    var land=$('voicePromptLand');
+    if(land&&land.parentNode===desk) desk.insertBefore(row,land);
+    else if(presets&&presets.parentNode===desk){
+      if(presets.nextSibling) desk.insertBefore(row,presets.nextSibling);
+      else desk.appendChild(row);
+    }else desk.appendChild(row);
+    var saveBtn=$('btnVoicePromptSaveScene');
+    if(saveBtn) saveBtn.textContent=t('voicePromptSaveScene','保存到本场景列表');
+    var hint=$('voicePromptSaveHint');
+    if(hint) hint.textContent=t('voicePromptSaveHint','点保存，或改完文案后自动写入右侧');
+  }
+
   function bind(){
+    ensurePromptSaveChrome();
     var rail=$('voiceIntentRail');
     if(rail&&!rail._intentBound){
       rail._intentBound=true;
@@ -300,20 +632,43 @@
     var ta=$('voicePromptInjectBody');
     if(ta&&!ta._bound){
       ta._bound=true;
-      ta.addEventListener('input',function(){ savePromptText(); });
+      ta.addEventListener('input',function(){
+        // Typing a custom body — keep editing current row unless user asked for new.
+        if(!promptForceNew){
+          var onCustom=$('btnVoicePromptCustom');
+          if(onCustom&&onCustom.classList.contains('is-on')) promptForceNew=true;
+        }
+        savePromptText();
+      });
     }
     var presets=$('voicePromptPresets');
     if(presets&&!presets._bound){
       presets._bound=true;
       presets.addEventListener('click',function(e){
         var b=e.target.closest&&e.target.closest('[data-prompt-preset]');
-        if(!b||!ta) return;
+        if(!b) return;
         var pid=b.getAttribute('data-prompt-preset');
+        if(pid==='custom'){
+          e.preventDefault();
+          startNewCustomPrompt();
+          return;
+        }
+        if(!ta) return;
         ta.value=PROMPT_PRESETS[pid]||ta.value;
-        Array.prototype.forEach.call(presets.querySelectorAll('[data-prompt-preset]'),function(x){
-          x.classList.toggle('is-on',x===b);
-        });
+        setPresetOn(pid);
+        promptForceNew=false;
+        promptEditId=findPromptPeerId(PROMPT_PRESET_LABELS[pid]||'', String(ta.value||'').trim());
         savePromptText();
+        // Preset click: save immediately and show toast so list update is obvious.
+        savePromptToScene({quiet:false,forceCreate:!promptEditId});
+      });
+    }
+    var saveBtn=$('btnVoicePromptSaveScene');
+    if(saveBtn&&!saveBtn._bound){
+      saveBtn._bound=true;
+      saveBtn.addEventListener('click',function(e){
+        e.preventDefault();
+        savePromptToScene({quiet:false});
       });
     }
   }
@@ -338,6 +693,7 @@
         &&global.document.getElementById('voiceIntentPaneKeys')
         &&global.document.getElementById('imePresetStripVoice')
         &&global.document.getElementById('voicePromptInjectBody')
+        &&global.document.getElementById('btnVoicePromptSaveScene')
         &&global.document.getElementById('voiceWakeAliasBlock')
         &&global.document.getElementById('voiceWakeActionDictate'));
       if(!ok&&global.console&&console.warn){
@@ -352,7 +708,10 @@
     getIntent:currentIntent,
     syncRailVisibility:syncRailVisibility,
     syncLabels:syncLabels,
-    syncHeroVals:syncHeroVals
+    syncHeroVals:syncHeroVals,
+    applyPromptMapping:applyPromptMapping,
+    savePromptToScene:savePromptToScene,
+    startNewCustomPrompt:startNewCustomPrompt
   };
 
   if(global.document&&global.document.readyState==='loading'){

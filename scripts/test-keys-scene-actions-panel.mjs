@@ -35,7 +35,8 @@ check('aside node in index.html', html.includes('id="keysSceneActionsPanel"'));
 check('app brand hosts', html.includes('id="keysSceneActionsApp"') && html.includes('id="keysSceneActionsAppName"'));
 check('script tag mounted', html.includes('keys-scene-actions-panel.js'));
 check('dir host', html.includes('id="keysSceneActionsDir"'));
-check('add foot host', html.includes('keys-scene-actions__foot') && html.includes('id="keysSceneActionsAdd"'));
+check('center add host', html.includes('keys-center-new-action') && html.includes('id="keysSceneActionsAdd"'));
+check('voice center add host', html.includes('id="voiceSceneActionsAdd"') && html.includes('keys-center-new-action'));
 check('prototype wash/paper/line tokens', /--keys-wash:\s*#f3f7fa/.test(css) && /--keys-line:\s*#d5dee8/.test(css));
 check('hero/stage use solid keys-line', /#keysFlowNodes\s*\{[^}]*border:\s*1px solid var\(--keys-line/.test(css) && /\.flow-desk-panel\s*\{[^}]*border:\s*1px solid var\(--keys-line/.test(css));
 check('aside foot sits under list', /\.keys-scene-actions__foot\s*\{[^}]*padding:\s*4px 8px 10px/.test(css));
@@ -95,11 +96,8 @@ check(
   );
 }
 check(
-  'voice dock paints wake chips + opt-in',
-  /function voiceWakeExtrasHtml/.test(panelSrc) &&
-    /data-wake-optin/.test(panelSrc) &&
-    /data-wake-add/.test(panelSrc) &&
-    /data-wake-phrase/.test(panelSrc)
+  'voice dock stays flat (no wake expand / opt-in)',
+  /Voice dock stays a flat list/.test(panelSrc) && /function voiceWakeExtrasHtml\(\)\s*\{\s*return '';\s*\}/.test(panelSrc)
 );
 check('keys-panel-ui wires SceneActionsPanel', /OneToneKeysSceneActionsPanel/.test(keysUi));
 check(
@@ -252,13 +250,17 @@ check(
     /clearCustomKeyRecognition|customkey/.test(read('src/js/features/mapping/target-key-apply.js'))
 );
 check(
-  'scene new action is channel-aware (keys custom / voice input)',
+  'scene new action: keys blank peer / voice wake popover',
   /onVoicePage\(\)/.test(panelSrc) &&
-    /createCustomKeyMatchMapping/.test(panelSrc) &&
-    /createVoiceInputMapping/.test(panelSrc) &&
+    /createBlankSceneActionMapping/.test(panelSrc) &&
+    /openWakePhrasePopover/.test(panelSrc) &&
     /function startNewAction[\s\S]*?var voice = onVoicePage\(\)/.test(panelSrc) &&
     !/function startNewAction\(\) \{\s*openKeysPanelIfNeeded\(\)/.test(panelSrc) &&
-    /Keys「新建」still seeds/.test(panelSrc)
+    !/Keys「新建」still seeds/.test(panelSrc)
+);
+check(
+  'picker exports createBlankSceneActionMapping',
+  /createBlankSceneActionMapping:\s*createBlankSceneActionMapping/.test(pickerSrc)
 );
 check(
   'keys buildRows uses last-selected scheme only (not all bindings)',
@@ -531,6 +533,8 @@ let jumpedFocus = '';
 let recordPinned = '';
 let createdCalls = 0;
 let createdVoiceCalls = 0;
+let createdBlankCalls = 0;
+let wakePopoverMode = '';
 let openedSettingsPanel = '';
 const mappingList = [
   mappings.cursor,
@@ -692,6 +696,11 @@ const sandbox = {
       recordPinned = String(id || '');
     }
   },
+  OneToneVoiceUiBindings: {
+    openWakePhrasePopover(mode) {
+      wakePopoverMode = mode || 'add';
+    }
+  },
   OneToneKeysChannelCommandPicker: {
     clearSelection() {},
     setActiveTab(tab) {
@@ -741,6 +750,23 @@ const sandbox = {
       mappingList.push(copy);
       return copy;
     },
+    createBlankSceneActionMapping() {
+      createdBlankCalls++;
+      const copy = {
+        id: 'blank-new',
+        appTargetId: 'cursor-chat',
+        triggerKey: '',
+        targetKey: '',
+        targetActions: [],
+        captureHeroRef: null,
+        label: '新动作'
+      };
+      mappings['blank-new'] = copy;
+      mappingList.push(copy);
+      jumpedStep = 'trigger';
+      jumpedTab = 'ime';
+      return copy;
+    },
     createVoiceInputMapping() {
       createdVoiceCalls++;
       const copy = {
@@ -784,7 +810,8 @@ check('shows app title', els.keysSceneActionsApp.hidden === false && /Cursor|app
 check('shows app icon', els.keysSceneActionsAppIcon.hidden === false && els.keysSceneActionsAppIcon.src.includes('cursor.png'));
 
 const dirHtml = els.keysSceneActionsDir.innerHTML;
-check('keys page shows recognition jump', /data-jump="voice:cursor"/.test(dirHtml));
+check('keys page shows recognition (听写方式)', /data-jump="voice:cursor"/.test(dirHtml));
+check('keys recognition labeled 听写方式 not 语音输入', /听写方式|keysChannelTabIme/.test(dirHtml) || !/>语音输入</.test(dirHtml));
 check('keys page shows custom-key trigger', dirHtml.includes('F13'));
 check(
   'keys page does not list every agentBinding scheme',
@@ -841,6 +868,10 @@ check(
   rows.some((r) => r.mappingId === 'matchNamedEmpty' && r.label === '2' && r.kind === 'customKey')
 );
 check(
+  'keys recognition labeled 听写方式',
+  rows.some((r) => r.kind === 'recognition' && r.label === '听写方式')
+);
+check(
   'voice recognition carries ime meta',
   rows.some((r) => r.kind === 'recognition' && r.ime && r.ime.id === 'typeless')
 );
@@ -873,15 +904,12 @@ const voiceDir = els.voiceSceneActionsDir.innerHTML;
 check('voice page shows recognition jump', /data-jump="voice:cursor"/.test(voiceDir));
 check('voice page hides custom-key F13', !voiceDir.includes('F13'));
 check('voice page shows IME badge', /keys-scene-actions__ime-name/.test(voiceDir));
-check('voice meta is 1', /1/.test(els.voiceSceneActionsMeta.textContent));
+check('voice meta includes recognition + wake phrases', /3/.test(els.voiceSceneActionsMeta.textContent));
+check('voice dock lists wake phrase rows', /data-row-key="wake:开始输入"/.test(voiceDir) || /开启口令/.test(voiceDir));
 check('voice habit recognition has delete', /data-del="cursor"/.test(voiceDir));
 check('voice row shows drag handle', /keys-scene-actions__drag/.test(voiceDir));
-check('voice card shows wake phrase chips', /data-wake-phrase="开始输入"/.test(voiceDir));
-check('voice card shows wake opt-in toggle', /data-wake-optin/.test(voiceDir));
-check('voice card shows add phrase', /data-wake-add/.test(voiceDir));
-check('voice recognition card shows keys target link', /data-wake-activation/.test(voiceDir));
-check('voice card shows finish phrase chips', /data-finish-edit="send"/.test(voiceDir) && /data-finish-edit="keep"/.test(voiceDir) && /data-finish-edit="discard"/.test(voiceDir));
-check('voice card activation link stays on voice scheme', /data-wake-activation/.test(panelSrc) && /openVoiceActivationScheme/.test(panelSrc));
+check('voice card has no wake expand', !/data-wake-phrase/.test(voiceDir) && !/data-wake-optin/.test(voiceDir));
+check('voice card has no finish chips', !/data-finish-edit="send"/.test(voiceDir));
 check(
   'voice dock source skips empty recognition fallback',
   !/still show 语音输入/.test(panelSrc) && !/rows\.push\(recognitionRow\(m, fbTrig\)\)/.test(panelSrc)
@@ -953,47 +981,47 @@ API.render(mappings.cursor);
 jumpedTab = '';
 jumpedStep = '';
 jumpedFocus = '';
-API.jumpToEdit(rows[0]);
+API.jumpToEdit(rows.find((r) => r.kind === 'recognition') || rows[0]);
 check('jump opens target step', jumpedStep === 'target');
 check('jump opens ime tab (no record in dock)', jumpedTab === 'ime');
 check('jump focuses voice mapping', jumpedFocus === 'cursor');
 
 createdCalls = 0;
 createdVoiceCalls = 0;
+createdBlankCalls = 0;
 recordPinned = '';
 jumpedStep = '';
 jumpedTab = '';
 openedSettingsPanel = '';
 API.startNewAction();
-check('keys new action creates custom-key mapping', createdCalls === 1 && createdVoiceCalls === 0);
+check('keys new action creates blank scene mapping', createdBlankCalls === 1 && createdCalls === 0 && createdVoiceCalls === 0);
 check('keys new action opens trigger step', jumpedStep === 'trigger');
-check('keys new action records on new mapping id', recordPinned === 'match-new');
-check('keys new action opens key tab for match', jumpedTab === 'key');
+check('keys new action does not auto-record trigger', recordPinned === '');
+check('keys new action stays on ime tab', jumpedTab === 'ime');
 check('keys new action stays on keys panel', openedSettingsPanel === '' && sandbox.OneToneState.ui.settingsPanel === 'keys');
 check('habit trigger unchanged after new action', mappings.cursor.triggerKey === 'XButton1');
 
-// Voice page: create voice peer, do not jump to keys
+// Voice page: open wake phrase popover, do not record / create voice peer
 keysPage.hidden = true;
 voicePage.hidden = false;
 sandbox.OneToneState.ui.settingsPanel = 'voiceWake';
 createdCalls = 0;
 createdVoiceCalls = 0;
+createdBlankCalls = 0;
 recordPinned = '';
+wakePopoverMode = '';
 jumpedStep = '';
 jumpedTab = '';
 openedSettingsPanel = '';
 API.render(mappings.cursor);
 API.startNewAction();
-check('voice new action creates voice mapping', createdVoiceCalls === 1 && createdCalls === 0);
-check('voice new action records on voice mapping id', recordPinned === 'voice-new');
+check('voice new action opens wake phrase popover', wakePopoverMode === 'add');
+check('voice new action does not create mappings', createdVoiceCalls === 0 && createdBlankCalls === 0 && createdCalls === 0);
+check('voice new action does not auto-record', recordPinned === '');
 check('voice new action does not open keys panel', openedSettingsPanel !== 'keys');
 check('voice new action stays on voiceWake', sandbox.OneToneState.ui.settingsPanel === 'voiceWake');
 check(
-  'voice new action draft stays visible in dock',
-  /data-jump="voice:voice-new"/.test(els.voiceSceneActionsDir.innerHTML)
-);
-check(
-  'voice new action keeps existing recognition row',
+  'voice dock keeps existing recognition row',
   /data-jump="voice:cursor"/.test(els.voiceSceneActionsDir.innerHTML)
 );
 
@@ -1024,6 +1052,15 @@ sandbox.OneToneState.ui.settingsPanel = 'voiceWake';
 API.render(mappings.cursor);
 check('voice refresh follows new IME badge', /xunfei|imePresetXunfei/i.test(els.voiceSceneActionsDir.innerHTML));
 check('voice refresh keeps recognition row', /data-jump="voice:cursor"/.test(els.voiceSceneActionsDir.innerHTML));
+
+// Delete habit 语音输入 must not resurrect as unset draft.
+API.deleteSceneRow({ kind: 'recognition', mappingId: 'cursor', key: 'voice:cursor' });
+API.render(mappings.cursor);
+check(
+  'voice delete habit recognition removes dock row',
+  !/data-jump="voice:cursor"/.test(els.voiceSceneActionsDir.innerHTML)
+);
+check('voice delete clears habit ime', !String(mappings.cursor.imePresetId || '').trim());
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

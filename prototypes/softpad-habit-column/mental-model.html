@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SoftPad · 心智分层 · 保留能力</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#142033;--muted:#5b6b7f;--line:#d7e2ec;--soft:#f4f8fb;--paper:#fff;
+      --cyan:#0b9bd7;--cyan-soft:#e7f7fd;--cyan-deep:#0879a8;
+      --teal:#0f766e;--teal-soft:#ecfdf8;--amber:#9a6700;--amber-soft:#fff8e8;
+      --font:"DM Sans",system-ui,sans-serif;--shadow:0 18px 50px rgba(20,32,51,.12);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--font);color:var(--ink);background:linear-gradient(180deg,#eef4f8,#e8eef4)}
+    .page{width:min(1100px,100%);margin:0 auto;padding:28px 20px 48px}
+    .eyebrow{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan-deep)}
+    h1{margin:0 0 8px;font-size:28px;font-weight:800}
+    .lede{margin:0 0 20px;max-width:70ch;color:var(--muted);font-size:15px;line-height:1.55}
+    .card{background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px 20px;margin-bottom:14px}
+    h2{margin:0 0 10px;font-size:16px;font-weight:800}
+    .mix{
+      display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px;
+    }
+    .chip{
+      padding:8px 12px;border-radius:12px;border:1px solid var(--line);
+      font-size:12px;font-weight:750;background:#fff;color:var(--muted);
+    }
+    .chip.bad{opacity:.55;text-decoration:line-through}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{text-align:left;padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+    th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-top:0;background:var(--soft)}
+    .obj{font-weight:800}
+    .o1{color:var(--cyan-deep)}.o2{color:var(--teal)}.o3{color:var(--amber)}
+    .pill{
+      display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;
+    }
+    .p1{background:var(--cyan-soft);color:var(--cyan-deep)}
+    .p2{background:var(--teal-soft);color:var(--teal)}
+    .p3{background:var(--amber-soft);color:var(--amber)}
+    .layout{
+      display:grid;grid-template-columns:1.1fr 1fr 160px;gap:10px;margin-top:8px;
+      min-height:200px;
+    }
+    .pane{border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--soft)}
+    .pane.r{border-color:#9bc6da;background:linear-gradient(180deg,#f3fafd,#fff)}
+    .lbl{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+    .mode{display:flex;gap:6px;margin-bottom:8px}
+    .mode span{font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--muted)}
+    .mode span.on{background:var(--cyan-soft);border-color:#9dd4ea;color:var(--cyan-deep)}
+    .box{height:12px;border-radius:5px;background:#e2ebf2;margin:6px 0}
+    .hint{margin:12px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
+    ul{margin:0;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.55}
+    li{margin:4px 0}
+    strong{color:var(--ink)}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <p class="eyebrow">SoftPad mental model</p>
+    <h1>保留能力，先分清「在改哪样东西」</h1>
+    <p class="lede">杂糅不是功能太多，而是五个平级 Tab 把<strong>板上的键</strong>、<strong>整块板</strong>、<strong>迷你栏/灯效附属</strong>摆成同一层。用户心智应先选对象，再进细节。</p>
+
+    <div class="card">
+      <h2>现在（平级 Tab = 心智打架）</h2>
+      <div class="mix">
+        <span class="chip bad">显示 · 样式</span>
+        <span class="chip bad">键位 · SoftPad 按键</span>
+        <span class="chip bad">用途 · Agent/场景</span>
+        <span class="chip bad">灯效 · Agent 反馈</span>
+        <span class="chip bad">迷你栏 · 另一块 UI</span>
+      </div>
+      <p class="hint" style="margin:0">同一横条暗示「五件事同等重要、可随便跳」——实际主路径只有「给当前应用的板上键赋值」。</p>
+    </div>
+
+    <div class="card">
+      <h2>改成三个对象（能力全留）</h2>
+      <table>
+        <thead>
+          <tr><th>对象</th><th>用户一句话</th><th>收纳现在的能力</th><th>入口</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="obj o1">① 板上的键</td>
+            <td>这块板上绑了什么、改哪个键</td>
+            <td>键位、找命令、本应用命令、录制快捷键、文本口令、生效范围</td>
+            <td><span class="pill p1">主路径 · 默认</span></td>
+          </tr>
+          <tr>
+            <td class="obj o2">② 整块板</td>
+            <td>板子怎么出现、长什么样</td>
+            <td>显示（大小/位置/出现时机）、用途里「这套板给谁用」的浅设置</td>
+            <td><span class="pill p2">中栏切换「整板」</span></td>
+          </tr>
+          <tr>
+            <td class="obj o3">③ 附属条</td>
+            <td>灯效和迷你栏怎么跟手</td>
+            <td>灯效、迷你栏（Agent 状态反馈）</td>
+            <td><span class="pill p3">整板里的子项，或顶栏次要入口</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>页面结构（习惯仍在最右）</h2>
+      <div class="layout">
+        <div class="pane">
+          <p class="lbl">预览 · 对象①的身体</p>
+          <div class="box" style="height:88px;background:#142033;border-radius:10px"></div>
+          <p class="hint" style="margin:8px 0 0;font-size:12px">点键 = 选中一条习惯</p>
+        </div>
+        <div class="pane">
+          <p class="lbl">中栏 · 一次只改一个对象</p>
+          <div class="mode">
+            <span class="on">此键 ①</span>
+            <span>整板 ②</span>
+            <span>附属 ③</span>
+          </div>
+          <div class="box"></div><div class="box" style="width:70%"></div><div class="box" style="width:50%"></div>
+          <p class="hint" style="margin:8px 0 0;font-size:12px">「找命令」只在此键里点「更换命令」才打开</p>
+        </div>
+        <div class="pane r">
+          <p class="lbl">最右 · 本场景键位</p>
+          <div style="font-size:12px;font-weight:700;padding:6px 0;border-radius:8px;background:var(--cyan-soft);padding-left:8px;margin-bottom:4px">命令菜单</div>
+          <div style="font-size:12px;font-weight:650;padding:6px 0 6px 8px;color:var(--muted)">语音输入</div>
+          <div style="font-size:12px;font-weight:650;padding:6px 0 6px 8px;color:var(--muted)">结束发送</div>
+          <p class="hint" style="margin:auto 0 0;font-size:11px">＋ 新建键位</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>用途 / Agent 放哪（避免再平级）</h2>
+      <ul>
+        <li><strong>绑定应用</strong>留在顶栏（场景），不要再做一个叫「用途」的大 Tab 和键位抢戏。</li>
+        <li><strong>Agent 灯效 / 迷你栏</strong>归对象③「附属条」——用户心智是「跟手的状态条」，不是「又一种键位」。</li>
+        <li><strong>本应用已有命令</strong>（你截图里的卡片）= 此键流程里的「从其它通道借用」，抽屉打开，不是第五个顶 Tab。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>一句话心智</h2>
+      <p class="hint" style="margin:0;font-size:15px;color:var(--ink)"><strong>先选场景 → 再管板上的键（主）→ 偶尔调整板长什么样 / 附属条。</strong> 五个旧 Tab 变成「中栏对象切换」，能力不删，层级不抢。</p>
+    </div>
+  </div>
+</body>
+</html>

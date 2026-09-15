@@ -195,6 +195,8 @@
     }else if(recMode==='target'||recMode==='agentBinding'){
       tgt=previewKey||'';
     }
+    // Stuck / live RAlt trigger token → AutoTrigger for keycap chrome (icon + empty checks).
+    if(String(trigRaw||'')==='RAlt') trigRaw='AutoTrigger';
     var triggerLabel;
     if(recMode==='trigger'){
       triggerLabel=trigRaw?hooks().friendlyKeyName(trigRaw):d.triggerPlaceholder;
@@ -295,7 +297,13 @@
       triggerDisp.classList.toggle('is-gesture-double',chrome.triggerGesture==='double');
       triggerDisp.classList.toggle('is-gesture-hold',chrome.triggerGesture==='hold');
       if(global.OneToneKeyIcons&&global.OneToneKeyIcons.syncDisplayIcon){
-        global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,chrome.triggerRaw||'');
+        var iconTok=chrome.triggerRaw||'';
+        if(iconTok==='AutoTrigger'||iconTok==='RAlt'){
+          var mm=OneToneMappingCore.selected();
+          var src=mm&&String(mm.sourceKey||'').trim();
+          iconTok=(src&&src!=='RAlt'&&src!=='AutoTrigger')?src:'Volume_Down';
+        }
+        global.OneToneKeyIcons.syncDisplayIcon(triggerDisp,iconTok);
       }
     }
     if(gestureBadge){

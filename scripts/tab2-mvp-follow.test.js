@@ -261,9 +261,21 @@ assert.ok(/sawVolumeToken\|\|isRecognitionKeyEcho/.test(recInput), 'RAlt does no
 assert.ok(/blob\.indexOf\('browser'\)/.test(recJs), 'BrowserForward without underscore is delegated');
 assert.ok(/k==='RAlt'/.test(recJs), 'RAlt trigger folds to AutoTrigger');
 assert.ok(/foldedRAlt/.test(recJs) && /backendCommitted\|\|foldedRAlt/.test(recJs), 'FE re-saves after RAlt fold');
+assert.ok(
+  /function applyBackendKeyCapture[\s\S]*?foldedRAlt[\s\S]*?AutoTrigger/.test(recJs),
+  'backend capture also folds RAlt → AutoTrigger'
+);
 
 var labelsJs = read('src/js/key-labels.js');
 assert.ok(/src !== 'RAlt'/.test(labelsJs), 'AutoTrigger+RAlt source paints as volume, not 右 Alt');
+assert.ok(
+  /trig === 'AutoTrigger' \|\| trig === 'RAlt'/.test(labelsJs),
+  'triggerBaseLabel treats stuck RAlt like AutoTrigger'
+);
+assert.ok(
+  /Stuck RAlt trigger|triggerKey\|\|''\)\.trim\(\)==='RAlt'/.test(read('src/js/features/mapping/mapping-core.js')),
+  'ensureMappingExtras heals RAlt trigger on load'
+);
 
 var pickerHero = read('src/js/features/mapping/keys-channel-command-picker.js');
 assert.ok(/dictationHero/.test(pickerHero), '02 dictation hero prefers live targetKey over stale binding');

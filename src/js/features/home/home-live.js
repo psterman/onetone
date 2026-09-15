@@ -974,10 +974,30 @@
       return String((it && it.folder) || '').trim() || t('keysCaptureSeqBookmarksUnfiled', '未分类');
     }
 
+    // Sidebar: top category only (书签栏/自 → includes 书签栏/自/设计). Full paths are too many.
+    function groupKey(it) {
+      var parts = folderKey(it).split('/').filter(Boolean);
+      if (!parts.length) return t('keysCaptureSeqBookmarksUnfiled', '未分类');
+      if (parts.length === 1) return parts[0];
+      return parts[0] + '/' + parts[1];
+    }
+
+    function groupLabel(key) {
+      var parts = String(key || '').split('/').filter(Boolean);
+      if (parts.length >= 2) return parts.slice(1).join('/');
+      return key || t('keysCaptureSeqBookmarksUnfiled', '未分类');
+    }
+
+    function inActiveGroup(it) {
+      if (!activeFolder) return true;
+      var full = folderKey(it);
+      return full === activeFolder || full.indexOf(activeFolder + '/') === 0;
+    }
+
     function buildFolderCounts(items) {
       var map = {};
       for (var i = 0; i < items.length; i++) {
-        var k = folderKey(items[i]);
+        var k = groupKey(items[i]);
         map[k] = (map[k] || 0) + 1;
       }
       return Object.keys(map)
@@ -985,7 +1005,7 @@
           return map[b] - map[a] || a.localeCompare(b, 'zh');
         })
         .map(function (k) {
-          return { name: k, count: map[k] };
+          return { name: k, label: groupLabel(k), count: map[k] };
         });
     }
 
@@ -1013,7 +1033,7 @@
             escAttr(row.name) +
             '">' +
             '<span class="keys-bookmark-picker-folder-lab">' +
-            escHtml(row.name) +
+            escHtml(row.label) +
             '</span>' +
             '<span class="keys-bookmark-picker-folder-n">' +
             row.count +
@@ -1031,7 +1051,7 @@
         .trim()
         .toLowerCase();
       var filtered = items.filter(function (it) {
-        if (activeFolder && folderKey(it) !== activeFolder) return false;
+        if (!inActiveGroup(it)) return false;
         if (!needle) return true;
         var hay =
           String(it.title || '').toLowerCase() +

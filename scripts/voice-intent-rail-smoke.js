@@ -84,6 +84,16 @@ if (css.indexOf('#voiceFlowNodeWake::after') >= 0) missing.push('css still has å
 if (railJs.indexOf('voiceIntentPicker') < 0) missing.push('rail js picker');
 if (railJs.indexOf("setVoiceFace('dictate')") < 0) missing.push('rail no-face-swap');
 if (persist.indexOf('promptInjectText') < 0) missing.push('persist promptInjectText');
+if (html.indexOf('id="btnVoicePromptSaveScene"') < 0) missing.push('prompt save button');
+if (railJs.indexOf('savePromptToScene') < 0) missing.push('rail savePromptToScene');
+if (railJs.indexOf('applyPromptMapping') < 0) missing.push('rail applyPromptMapping');
+if (sceneJs.indexOf("kind === 'prompt'") < 0 && sceneJs.indexOf('kind === "prompt"') < 0) {
+  if (sceneJs.indexOf("r.kind === 'prompt'") < 0) missing.push('scene prompt filter');
+}
+if (sceneJs.indexOf('isPromptInjectMapping') < 0) missing.push('scene isPromptInjectMapping');
+var pickerJs = fs.readFileSync(path.join(root, 'src/js/features/mapping/keys-channel-command-picker.js'), 'utf8');
+if (pickerJs.indexOf('savePromptInjectMapping') < 0) missing.push('picker savePromptInjectMapping');
+if (pickerJs.indexOf("kind: 'prompt'") < 0) missing.push('picker prompt kind');
 if (missing.length) {
   console.error('[voice-intent-rail-smoke] FAIL', missing);
   process.exit(1);

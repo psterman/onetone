@@ -124,9 +124,11 @@
     if(!mapping) return '';
     var trig = String(mapping.triggerKey || '').trim();
     if(!trig) return '';
-    return trig === 'AutoTrigger'
-      ? autoTriggerDisplay(lang, mapping.sourceKey)
-      : friendlyKeyName(trig, lang);
+    // BT volume often lands as RAlt (same token as 02 识别). Never paint「右 Alt」on 01.
+    if(trig === 'AutoTrigger' || trig === 'RAlt'){
+      return autoTriggerDisplay(lang, mapping.sourceKey);
+    }
+    return friendlyKeyName(trig, lang);
   }
 
   function triggerDisplayLabel(mapping, lang){

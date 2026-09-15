@@ -915,7 +915,7 @@ fn handle_test_pulse_post(stream: &mut TcpStream, raw: &str) -> Result<(), Strin
 
 fn cors_headers_get() -> String {
     // GET allowlist for Tauri/dev origins only — never wildcard on connector POSTs.
-    "Access-Control-Allow-Origin: http://localhost:1420\r\n\
+    "Access-Control-Allow-Origin: http://localhost:5173\r\n\
      Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n\
      Access-Control-Allow-Headers: Content-Type, X-Onetone-Token, Authorization\r\n\
      Vary: Origin\r\n"
@@ -1103,7 +1103,7 @@ mod tests {
     #[test]
     fn cors_get_is_not_wildcard() {
         assert!(!cors_headers_get().contains("Access-Control-Allow-Origin: *"));
-        assert!(cors_headers_get().contains("localhost:1420"));
+        assert!(cors_headers_get().contains("localhost:5173"));
     }
 
     fn http_exchange(port: u16, req: &str) -> String {

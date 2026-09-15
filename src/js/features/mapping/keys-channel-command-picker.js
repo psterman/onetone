@@ -1849,28 +1849,8 @@
     if (panel) panel.hidden = false;
   }
 
-  function habitAnchorForCustomKey() {
-    return mappingById(selectedMappingId());
-  }
-
-  function habitTriggerKeyForCustomKey() {
-    var habit = habitAnchorForCustomKey();
-    return habit ? String(habit.triggerKey || '').trim() : '';
-  }
-
-  function syncCustomKeyLaunchFromHabit(match) {
-    if (!match) return '';
-    var trig = habitTriggerKeyForCustomKey();
-    if (trig && String(match.triggerKey || '').trim() !== trig) {
-      match.triggerKey = trig;
-      try {
-        var persist = global.OneToneConfigPersist;
-        if (persist && typeof persist.save === 'function') {
-          persist.save({ source: 'mapping' });
-        }
-      } catch (_) {}
-    }
-    return String(match.triggerKey || '').trim() || trig;
+  function customKeyMatchTrigger(match) {
+    return match ? String(match.triggerKey || '').trim() : '';
   }
 
   function refreshKeysCustomKeyMatchLaunch(match) {
@@ -1893,29 +1873,50 @@
       return;
     }
     host.hidden = false;
-    var trig = syncCustomKeyLaunchFromHabit(match);
+    var trig = customKeyMatchTrigger(match);
     var empty = !trig;
     host.innerHTML =
       '<span class="keys-custom-key-launch-lab">' +
       esc(t('keysCustomKeyMatchLaunch', '启动键')) +
       '</span>' +
-      '<span class="keys-custom-key-launch-val' +
+      '<button type="button" class="keys-custom-key-launch-val' +
       (empty ? ' is-empty' : '') +
+      '" data-match-launch-record="1" title="' +
+      esc(t('keysCustomKeyMatchLaunchRecord', '点击录制触发键')) +
       '">' +
       esc(
         empty
-          ? t('keysCustomKeyMatchLaunchNeed01', '请先在 01 录触发键')
+          ? t('keysCustomKeyMatchLaunchNeed', '点击录制触发键')
           : friendlyTriggerLabel(trig)
       ) +
-      '</span>' +
+      '</button>' +
       '<span class="keys-custom-key-launch-note">' +
-      esc(t('keysCustomKeyMatchLaunchFrom01', '同 01 触发')) +
+      esc(t('keysCustomKeyMatchLaunchUnique', '不可与本场景其他动作相同')) +
       '</span>';
+    if (!host.__wiredLaunchRecord) {
+      host.__wiredLaunchRecord = true;
+      host.addEventListener('click', function (ev) {
+        var btn =
+          ev.target && ev.target.closest ? ev.target.closest('[data-match-launch-record]') : null;
+        if (!btn || !host.contains(btn)) return;
+        ev.preventDefault();
+        recordCustomKeyMatchLaunch();
+      });
+    }
   }
 
   function recordCustomKeyMatchLaunch() {
-    // Launch key inherits habit 01 — recording stays on the trigger step.
-    toast(t('keysCustomKeyMatchLaunchFrom01', '同 01 触发'));
+    var mid = String(customKeyMatchEditId || '').trim();
+    if (!mid) {
+      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      return;
+    }
+    var Rec = global.OneToneMappingRecording;
+    if (Rec && typeof Rec.startTrigger === 'function') {
+      try {
+        Rec.startTrigger(mid);
+      } catch (_) {}
+    }
   }
 
   function refreshKeysTargetActionsEditor() {
@@ -1978,7 +1979,7 @@
       if (actsLen === 0) {
         hint.textContent = t(
           'keysCaptureSeqHintEmpty',
-          '用下方按钮加步骤；启动键与 01 触发相同。'
+          '用下方按钮加步骤；上方可录制本条专属触发键。'
         );
       } else if (appliedAsRec) {
         hint.textContent = t(
@@ -1988,7 +1989,7 @@
       } else {
         hint.textContent = t(
           'keysCaptureSeqHint',
-          '按 01 触发键后依次执行。▲▼ 排序，点步骤可改。'
+          '按本条触发键后依次执行。▲▼ 排序，点步骤可改。'
         );
       }
     }
@@ -2016,7 +2017,7 @@
         esc(
           t(
             'keysCaptureSeqEmptyBody',
-            '添加录制快捷键、文本或延迟；按 01 触发键会依次执行。'
+            '添加录制快捷键、文本或延迟；按本条触发键会依次执行。'
           )
         ) +
         '</span></div>';
@@ -2026,7 +2027,7 @@
 
   function friendlyTriggerLabel(key) {
     var raw = String(key || '').trim();
-    if (!raw) return t('keysCustomKeyMatchNoTrigger', '01 尚未录触发键');
+    if (!raw) return t('keysCustomKeyMatchNoTrigger', '尚未录制触发键');
     try {
       if (global.OneToneKeyLabels && global.OneToneKeyLabels.friendlyKeyName) {
         return global.OneToneKeyLabels.friendlyKeyName(raw) || raw;
@@ -2256,9 +2257,239 @@
     return parts.length ? parts.join(' · ') : t('keysCustomKeyMatchNoActions', '尚无动作');
   }
 
+  function captureHeroKind(m) {
+    var ref = m && m.captureHeroRef;
+    return ref && typeof ref === 'object'
+      ? String(ref.kind || '')
+          .trim()
+          .toLowerCase()
+      : '';
+  }
+
+  /** 语音「一词注入」peer — Text+Enter，触发词仍用习惯 01。 */
+  function isPromptInjectMapping(m) {
+    if (!m || !m.id || captureHeroKind(m) !== 'prompt') return false;
+    var bref = String((m.captureHeroRef && m.captureHeroRef.bindingRef) || '').trim();
+    // Real peers own themselves (bindingRef === id). Habits must not inherit a deleted peer's kind.
+    return bref === String(m.id);
+  }
+
+  /** Clear habit.captureHeroRef / inject payload left behind when a prompt peer was deleted. */
+  function scrubStalePromptHero(m) {
+    if (!m || !m.id || captureHeroKind(m) !== 'prompt') return false;
+    var bref = String((m.captureHeroRef && m.captureHeroRef.bindingRef) || '').trim();
+    if (bref === String(m.id)) return false;
+    m.captureHeroRef = null;
+    var acts = Array.isArray(m.targetActions) ? m.targetActions : [];
+    if (acts.length === 2) {
+      var a0 = acts[0];
+      var a1 = acts[1];
+      var t0 = a0
+        ? String(a0.type || a0.kind || '')
+            .trim()
+            .toLowerCase()
+        : '';
+      var t1 = a1
+        ? String(a1.type || a1.kind || '')
+            .trim()
+            .toLowerCase()
+        : '';
+      if (t0 === 'text' && t1 === 'key' && /^enter$/i.test(String((a1 && a1.value) || '').trim())) {
+        m.targetActions = [];
+      }
+    }
+    return true;
+  }
+
+  function promptTextFromMapping(m) {
+    var acts = Array.isArray(m && m.targetActions) ? m.targetActions : [];
+    for (var i = 0; i < acts.length; i++) {
+      var a = acts[i];
+      if (!a) continue;
+      var ty = String(a.type || a.kind || '')
+        .trim()
+        .toLowerCase();
+      if (ty === 'text' || ty === 'type' || ty === 'string') {
+        return String(a.value != null ? a.value : a.text || '');
+      }
+    }
+    return '';
+  }
+
+  function promptInjectActions(text) {
+    return [
+      { type: 'text', value: String(text || '') },
+      { type: 'key', value: 'Enter' }
+    ];
+  }
+
+  function findPromptPeerByText(appId, text) {
+    appId = String(appId || '').trim();
+    text = String(text || '').trim();
+    if (!appId || !text) return null;
+    var maps = Array.isArray(config().mappings) ? config().mappings : [];
+    for (var i = 0; i < maps.length; i++) {
+      var m = maps[i];
+      if (!m || !isPromptInjectMapping(m)) continue;
+      if (String(m.appTargetId || '').trim() !== appId) continue;
+      if (String(promptTextFromMapping(m) || '').trim() === text) return m;
+    }
+    return null;
+  }
+
+  /** Drop same-app prompt peers with identical inject text (keep earliest). */
+  function pruneDuplicatePromptPeers(appId, keepId) {
+    appId = String(appId || '').trim();
+    keepId = String(keepId || '').trim();
+    if (!appId) return 0;
+    var cfg = config();
+    var maps = Array.isArray(cfg.mappings) ? cfg.mappings : [];
+    var seen = {};
+    if (keepId) {
+      var keep = mappingById(keepId);
+      if (keep && isPromptInjectMapping(keep)) {
+        seen[String(promptTextFromMapping(keep) || '').trim()] = keepId;
+      }
+    }
+    var next = [];
+    var dropped = 0;
+    for (var i = 0; i < maps.length; i++) {
+      var m = maps[i];
+      if (!m) continue;
+      if (!isPromptInjectMapping(m) || String(m.appTargetId || '').trim() !== appId) {
+        next.push(m);
+        continue;
+      }
+      var body = String(promptTextFromMapping(m) || '').trim();
+      var mid = String(m.id || '');
+      if (keepId && mid === keepId) {
+        next.push(m);
+        continue;
+      }
+      if (body && seen[body] && seen[body] !== mid) {
+        dropped++;
+        continue;
+      }
+      if (body) seen[body] = mid;
+      next.push(m);
+    }
+    if (!dropped) return 0;
+    cfg.mappings = next;
+    var persist = global.OneToneConfigPersist;
+    if (persist && typeof persist.save === 'function') {
+      try {
+        persist.save({ source: 'voice-prompt-dedupe' });
+      } catch (_) {}
+    }
+    return dropped;
+  }
+
+  /**
+   * Upsert a prompt-inject scene peer. editId updates an existing prompt row;
+   * otherwise creates a new one under the current habit's app.
+   */
+  function savePromptInjectMapping(opts) {
+    opts = opts || {};
+    var text = String(opts.text != null ? opts.text : '').trim();
+    if (!text) {
+      toast(t('voicePromptSaveNeedText', '先填写要注入的 prompt'));
+      return null;
+    }
+    var label = String(opts.label || '').trim();
+    if (!label) {
+      label = text.length > 16 ? text.slice(0, 16) + '…' : text;
+    }
+    var core = global.OneToneMappingCore;
+    // Same text under one app = one row (forceCreate only seeds a blank custom).
+    var forceCreate = !!opts.forceCreate;
+    var editId = forceCreate ? '' : String(opts.editId || '').trim();
+    function updatePromptPeer(existing) {
+      existing.label = label;
+      existing.targetActions = promptInjectActions(text);
+      existing.enabled = true;
+      existing.updatedAt = Date.now();
+      var persistUp = global.OneToneConfigPersist;
+      if (persistUp && typeof persistUp.save === 'function') {
+        try {
+          persistUp.save({ source: 'voice-prompt-save' });
+        } catch (_) {}
+      }
+      pruneDuplicatePromptPeers(existing.appTargetId, existing.id);
+      return existing;
+    }
+    if (editId) {
+      var existing = mappingById(editId);
+      if (existing && isPromptInjectMapping(existing)) {
+        return updatePromptPeer(existing);
+      }
+    }
+    var source = null;
+    try {
+      var hdr = global.OneToneVoicePageHeaderRender;
+      if (hdr && typeof hdr.resolveScopeMapping === 'function') {
+        source = hdr.resolveScopeMapping(null);
+      }
+    } catch (_) {}
+    if (!source) {
+      source = mappingById(selectedMappingId()) || (core && core.selected ? core.selected() : null);
+    }
+    // If a prompt peer is focused, clone from another same-app peer (habit) instead.
+    if (source && isPromptInjectMapping(source)) {
+      var appId = String(source.appTargetId || '').trim();
+      var mapsSrc = Array.isArray(config().mappings) ? config().mappings : [];
+      var fallback = null;
+      for (var si = 0; si < mapsSrc.length; si++) {
+        var sm = mapsSrc[si];
+        if (!sm || String(sm.appTargetId || '').trim() !== appId) continue;
+        if (isPromptInjectMapping(sm)) continue;
+        fallback = sm;
+        break;
+      }
+      if (fallback) source = fallback;
+    }
+    if (!source || !String(source.appTargetId || '').trim()) {
+      toast(t('voicePromptNeedAppScene', '请先切换到某个应用场景（不要停在通用设置）'));
+      return null;
+    }
+    var twin = findPromptPeerByText(source.appTargetId, text);
+    if (twin) return updatePromptPeer(twin);
+    if (!core || typeof core.newMappingId !== 'function') {
+      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      return null;
+    }
+    try {
+      if (global.OneToneConfigPersist && global.OneToneConfigPersist.ensureConfig) {
+        global.OneToneConfigPersist.ensureConfig();
+      }
+    } catch (_) {}
+    var copy = clonePeerMappingShell(source, core);
+    if (!copy) return null;
+    var newId = copy.id;
+    copy.captureHeroRef = {
+      channel: 'voice',
+      bindingRef: newId,
+      actionId: '',
+      actionInstanceId: '',
+      kind: 'prompt'
+    };
+    copy.label = label;
+    copy.targetActions = promptInjectActions(text);
+    // Keep enabled so scene dock / completeness checks treat it as a real action.
+    copy.enabled = true;
+    if (core.ensureMappingExtras) {
+      try {
+        core.ensureMappingExtras(copy);
+      } catch (_) {}
+    }
+    persistNewPeerMapping(copy);
+    pruneDuplicatePromptPeers(copy.appTargetId, copy.id);
+    return copy;
+  }
+
   /** 我录的键 library row — not IME, and not the habit that only *applies* a match. */
   function isCustomKeyMatchMapping(m, opts) {
     if (!m || !m.id) return false;
+    if (isPromptInjectMapping(m)) return false;
     var editId = opts && opts.editId != null ? String(opts.editId) : String(customKeyMatchEditId || '');
     if (editId && String(m.id) === editId) return true;
     var mid = String(m.id);
@@ -2350,11 +2581,11 @@
         var id = String(m.id || '');
         var active = editId && id === editId ? ' is-active' : '';
         var primary = customKeyMatchDisplayName(m);
-        var trig = syncCustomKeyLaunchFromHabit(m);
+        var trig = customKeyMatchTrigger(m);
         var steps = targetActionsSummary(m);
         var secondary = trig
           ? friendlyTriggerLabel(trig) + ' · ' + steps
-          : steps;
+          : t('keysCustomKeyMatchLaunchNeed', '点击录制触发键') + ' · ' + steps;
         var delLbl = t('keysCustomKeyMatchDelete', '删除');
         return (
           '<div class="keys-custom-key-match-item' +
@@ -2396,7 +2627,8 @@
     }
     var newId = core.newMappingId();
     copy.id = newId;
-    copy.triggerKey = String(source.triggerKey || '').trim();
+    // Each scene action owns a unique trigger — never inherit the habit's.
+    copy.triggerKey = '';
     copy.triggerSource = null;
     copy.sourceKey = '';
     copy.sourceTime = '';
@@ -2424,6 +2656,61 @@
         persist.save({ source: 'mapping' });
       } catch (_) {}
     }
+  }
+
+  /** 侧栏/中心「新建动作」：保存当前，再开一条空 01/02（不进「我录的键」、不自动开录）。 */
+  function createBlankSceneActionMapping() {
+    var core = global.OneToneMappingCore;
+    var source = mappingById(selectedMappingId()) || (core && core.selected ? core.selected() : null);
+    if (!source || !core || typeof core.newMappingId !== 'function') {
+      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      return null;
+    }
+    try {
+      if (core.flushAllEditor) core.flushAllEditor();
+      else if (core.flushEditor) core.flushEditor(source);
+    } catch (_) {}
+    try {
+      if (global.OneToneConfigPersist && global.OneToneConfigPersist.ensureConfig) {
+        global.OneToneConfigPersist.ensureConfig();
+      }
+      if (global.OneToneConfigPersist && typeof global.OneToneConfigPersist.save === 'function') {
+        global.OneToneConfigPersist.save({ source: 'mapping' });
+      }
+    } catch (_) {}
+    var copy = clonePeerMappingShell(source, core);
+    if (!copy) return null;
+    copy.captureHeroRef = null;
+    copy.label = t('keysSceneActionsNewBlankLabel', '新动作');
+    if (core.ensureMappingExtras) {
+      try {
+        core.ensureMappingExtras(copy);
+      } catch (_) {}
+    }
+    persistNewPeerMapping(copy);
+    if (core.focus) {
+      try {
+        core.focus(copy.id);
+      } catch (_) {}
+    } else if (global.OneToneState && global.OneToneState.state) {
+      global.OneToneState.state.selectedMappingId = copy.id;
+    }
+    try {
+      var hooks = global.__vp_mapping_core_hooks__ || {};
+      if (hooks.setEditorTriggerKey) hooks.setEditorTriggerKey('');
+      if (hooks.setEditorTargetKey) hooks.setEditorTargetKey('');
+      if (hooks.syncEditorFromSelection) hooks.syncEditorFromSelection();
+    } catch (_) {}
+    try {
+      var page = global.OneToneKeysPageState;
+      if (page && typeof page.setStep === 'function') page.setStep('trigger', { skipSheet: true });
+    } catch (_) {}
+    try {
+      setActiveTab('ime', { skipHeroClear: true });
+    } catch (_) {}
+    applyHero();
+    toast(t('keysSceneActionsBlankCreated', '已保存当前动作。请为新动作录 01 触发，再选 02 识别'));
+    return copy;
   }
 
   /** 我录的键：自定义序列匹配（与听写方式平行）。 */
@@ -2463,7 +2750,7 @@
     refreshKeysTargetActionsEditor();
     applyHero();
     refreshKeysCustomKeyMatchList();
-    toast(t('keysCustomKeyMatchCreated', '已新建。直接加步骤即可（启动键同 01）。'));
+    toast(t('keysCustomKeyMatchCreated', '已新建。请录制触发键（不可与本场景其他动作相同），再加步骤。'));
     return copy;
   }
 
@@ -7259,8 +7546,14 @@
     applyCustomKeyMatchAsRecognition: applyCustomKeyMatchAsRecognition,
     previewCustomKeyMatch: previewCustomKeyMatch,
     createCustomKeyMatchMapping: createCustomKeyMatchMapping,
+    createBlankSceneActionMapping: createBlankSceneActionMapping,
     createVoiceInputMapping: createVoiceInputMapping,
     isCustomKeyMatchMapping: isCustomKeyMatchMapping,
+    isPromptInjectMapping: isPromptInjectMapping,
+    scrubStalePromptHero: scrubStalePromptHero,
+    promptTextFromMapping: promptTextFromMapping,
+    savePromptInjectMapping: savePromptInjectMapping,
+    pruneDuplicatePromptPeers: pruneDuplicatePromptPeers,
     customKeyMatchDisplayName: customKeyMatchDisplayName,
     renameCustomKeyMatch: renameCustomKeyMatch,
     deleteCustomKeyMatch: deleteCustomKeyMatch,

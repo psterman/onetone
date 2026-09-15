@@ -731,6 +731,13 @@
 .keys-capture-popover .keys-capture-recording-feedback-host .btn-cancel-record {
   margin-left: auto;
   flex-shrink: 0;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid #f0b4ad;
+  background: #fff;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .keys-capture-popover .keys-capture-recording-feedback-host .keys-recording-conflict {
@@ -1610,10 +1617,22 @@
 
 #settingsPanelKeys .keys-custom-key-launch-val,
 .keys-capture-popover .keys-custom-key-launch-val {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
   font-size: 13px;
   font-weight: 700;
   color: var(--on-surface);
   font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+#settingsPanelKeys .keys-custom-key-launch-val:hover,
+.keys-capture-popover .keys-custom-key-launch-val:hover {
+  color: var(--primary, #0f5f7a);
 }
 
 #settingsPanelKeys .keys-custom-key-launch-val.is-empty,
@@ -5097,12 +5116,34 @@
 }
 
 #settingsPanelKeys .keys-keycap-hint {
-  margin: 0;
-  min-height: 18px;
-  font-size: var(--type-caption);
-  font-weight: 600;
-  color: var(--on-surface-muted);
-  text-align: center;
+  display: none !important;
+}
+
+.keys-center-new-action {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 10px auto 4px;
+  padding: 5px 14px;
+  border: 1px dashed color-mix(in srgb, var(--outline-variant, #d5dee8) 80%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-surface-muted, #6b7c8a);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  opacity: 0.72;
+  cursor: pointer;
+}
+.keys-center-new-action:hover {
+  opacity: 1;
+  color: var(--primary-strong, #0f5f7a);
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 35%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 5%, transparent);
+}
+.keys-center-new-action[hidden] {
+  display: none !important;
 }
 
 #settingsPanelKeys .keys-workflow-keycap-zone:hover .keys-keycap-hint,
@@ -6254,18 +6295,38 @@
   align-self: stretch;
 }
 
-/* Recording banner overlays — must not push keycap / flow down. */
+/* Recording banner: document flow under status — never cover 01/02 nodes. */
 #settingsPanelKeys.keys-page-desk #keysRecordingFeedback:not([hidden]) {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 10px;
-  z-index: 6;
-  margin: 0;
+  position: static;
+  left: auto;
+  right: auto;
+  top: auto;
+  transform: none;
+  z-index: 1;
+  margin: 8px 16px 0;
+  max-width: none;
   pointer-events: auto;
-  box-shadow: 0 8px 20px rgba(180, 35, 24, 0.12);
+  box-shadow: none;
 }
 #settingsPanelKeys.keys-page-desk #keysRecordingFeedback[hidden] {
+  display: none !important;
+}
+#settingsPanelKeys.keys-page-desk #keysRecordingFeedback .btn-cancel-record,
+#settingsPanelKeys.keys-page-desk #btnCancelRecordInline {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid #f0b4ad;
+  background: #fff;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--radius-pill, 999px);
+  cursor: pointer;
+}
+#settingsPanelKeys.keys-page-desk #btnCancelRecordInline[hidden] {
   display: none !important;
 }
 

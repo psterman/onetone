@@ -826,6 +826,7 @@
         },0);
       }
     }
+    global.__vp_openWakePhrasePopover__=openWakePhrasePopover;
     function closeWakePhrasePopover(){
       var overlay=$('voiceWakePhraseOverlay');
       if(!overlay) return;
@@ -1582,6 +1583,14 @@
   }
   global.OneToneVoiceUiBindings={
     bindEvents:bindEvents,
+    openWakePhrasePopover:function(mode){
+      if(typeof global.__vp_openWakePhrasePopover__==='function'){
+        global.__vp_openWakePhrasePopover__(mode);
+        return;
+      }
+      var btn=$('btnVoiceWakePoolAdd');
+      if(btn&&typeof btn.click==='function') btn.click();
+    },
     openPhraseEditPopover:function(opts){
       if(typeof global.__vp_openPhraseEditPopover__==='function'){
         global.__vp_openPhraseEditPopover__(opts);

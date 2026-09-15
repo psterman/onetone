@@ -3454,6 +3454,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "tokio",
+ "url",
  "vosk",
  "webview2-com",
  "winapi",

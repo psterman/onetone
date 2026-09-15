@@ -44,7 +44,7 @@ assert.ok(health.includes('aggregate_actionable_state'));
 assert.ok(server.includes('TEST_PULSE_PATH'));
 assert.ok(server.includes('host_is_loopback'));
 assert.ok(server.includes('cors_headers_get'));
-assert.ok(server.includes('http://localhost:1420'));
+assert.ok(server.includes('http://localhost:5173'));
 // Production CORS helper must not use wildcard; ignore test assertions that mention "*".
 var corsFn = server.match(/fn cors_headers_get\(\)[\s\S]*?\n\}/);
 assert.ok(corsFn, 'cors_headers_get missing');

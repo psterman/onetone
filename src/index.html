@@ -913,14 +913,15 @@
                     <div class="keys-step-body flow-step-body">
                     <div class="keys-workflow-keycap-zone">
                     <div class="keys-step-row keys-step-row--hero">
-                      <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTrigger" role="button" tabindex="0" aria-label="点击修改快捷键" title=""></div>
+                      <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTrigger" role="button" tabindex="0" aria-label="录制触发键" title=""></div>
                       <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTrigger"></div>
                     </div>
+                    <button type="button" class="keys-center-new-action" id="keysSceneActionsAdd" data-add="1" hidden>＋ 新建动作</button>
                     </div>
                     <div class="keys-workflow-footer-zone keys-trigger-modes-block">
                       <p class="habit-flow-subsection-title" id="keysTriggerModeFooterLbl">录到的用法</p>
                       <div class="keys-trigger-modes-host" id="keysTriggerModeHost"></div>
-                      <p class="keys-keycap-hint" id="keysKeycapHint">点击修改快捷键</p>
+                      <p class="keys-keycap-hint" id="keysKeycapHint" hidden aria-hidden="true"></p>
                       <div class="keys-trigger-conflict" id="keysTriggerConflict" hidden role="alert"></div>
                       <div class="keys-test-progress" id="keysTestProgress" hidden aria-live="polite">
                         <span class="keys-test-progress-dot" aria-hidden="true"></span>
@@ -1160,9 +1161,6 @@
                 <button type="button" class="keys-scene-actions__back" id="keysSceneActionsBack" hidden data-i18n="keysSceneActionsBack">收起</button>
               </div>
               <div class="keys-scene-actions__dir" id="keysSceneActionsDir" role="list"></div>
-              <div class="keys-scene-actions__foot">
-                <button type="button" class="keys-scene-actions__add" id="keysSceneActionsAdd" data-add="1">＋ 新建动作</button>
-              </div>
               <div class="keys-scene-actions__detail" id="keysSceneActionsDetail" hidden>
                 <div class="keys-scene-actions__picks" id="keysSceneActionsPicks"></div>
                 <div class="keys-scene-actions__edit" id="keysSceneActionsEdit"></div>
@@ -1884,6 +1882,7 @@
                           <span class="voice-phrase-compact-en" id="voiceWakeCompactEn" hidden>—</span>
                         </button>
                       </div>
+                      <button type="button" class="keys-center-new-action" id="voiceSceneActionsAdd" data-add="1" hidden>＋ 新建动作</button>
                       <p class="voice-phrase-hint" id="voiceWakeDisplayHint">默认用这句。</p>
                       <div class="voice-phrase-hero sr-only" id="voiceWakeHeroCard" aria-hidden="true">
                         <button type="button" class="sr-only" id="voiceWakeHeroReady" tabindex="-1" aria-live="polite">语音未启用</button>
@@ -2271,6 +2270,11 @@
                           <button type="button" data-prompt-preset="proto">画原型图</button>
                           <button type="button" data-prompt-preset="agent">Agent 总结</button>
                           <button type="button" data-prompt-preset="continue">继续</button>
+                          <button type="button" data-prompt-preset="custom" id="btnVoicePromptCustom">＋ 自定义</button>
+                        </div>
+                        <div class="voice-prompt-save-row">
+                          <button type="button" class="control-btn primary" id="btnVoicePromptSaveScene">保存到本场景列表</button>
+                          <span class="voice-prompt-save-hint" id="voicePromptSaveHint">点保存，或改完文案后自动写入右侧</span>
                         </div>
                         <p class="voice-prompt-land" id="voicePromptLand">说 01 口令 = 聚焦 → 写入 prompt → 回车发送</p>
                         <div class="voice-wake-optin-row voice-prompt-bringup" id="voiceWakeBringUpRow" hidden>
@@ -2726,9 +2730,6 @@
                 <button type="button" class="keys-scene-actions__back" id="voiceSceneActionsBack" hidden data-i18n="keysSceneActionsBack">收起</button>
               </div>
               <div class="keys-scene-actions__dir" id="voiceSceneActionsDir" role="list"></div>
-              <div class="keys-scene-actions__foot">
-                <button type="button" class="keys-scene-actions__add" id="voiceSceneActionsAdd" data-add="1">＋ 新建动作</button>
-              </div>
               <div class="keys-scene-actions__detail" id="voiceSceneActionsDetail" hidden>
                 <div class="keys-scene-actions__picks" id="voiceSceneActionsPicks"></div>
                 <div class="keys-scene-actions__edit" id="voiceSceneActionsEdit"></div>
@@ -5165,7 +5166,7 @@
   <script src="js/features/voice/voice-engine-readiness.js"></script>
   <script src="js/features/voice/voice-wake-presets.js"></script>
   <script src="js/features/voice/voice-wake-navigation.js"></script>
-  <script src="js/features/voice/voice-wake.js?v=20260809-stall9"></script>
+  <script src="js/features/voice/voice-wake.js?v=wake-list-1"></script>
   <script src="js/shared/voice-surface-copy.js"></script>
   <script src="js/features/voice/voice-home-summary.js"></script>
   <script src="js/features/input-flow-summary.js"></script>
@@ -5184,7 +5185,7 @@
   <script src="js/features/voice/voice-step-wake-render.js"></script>
   <script src="js/features/voice/voice-bridge-softpad.js"></script>
   <script src="js/features/voice/voice-bridge-keys.js"></script>
-  <script src="js/features/voice/voice-intent-rail.js"></script>
+  <script src="js/features/voice/voice-intent-rail.js?v=prompt-dock-2"></script>
   <script src="js/features/voice/voice-bridge-camera.js"></script>
   <script src="js/features/voice/voice-step-recognize-render.js"></script>
   <script src="js/features/voice/voice-step-send-render.js"></script>
@@ -5267,8 +5268,8 @@
   <script src="js/features/agent/semantic-action-store.js"></script>
   <script src="js/features/agent/action-catalog-filter.js"></script>
   <script src="js/features/agent/action-binding-adapters.js"></script>
-  <script src="js/features/mapping/keys-channel-command-picker.js"></script>
-  <script src="js/features/mapping/keys-scene-actions-panel.js"></script>
+  <script src="js/features/mapping/keys-channel-command-picker.js?v=channel-dock-1"></script>
+  <script src="js/features/mapping/keys-scene-actions-panel.js?v=wake-list-1"></script>
   <script src="js/features/agent/semantic-action-presets.js"></script>
   <script src="js/features/agent/action-nav.js"></script>
   <script src="js/features/agent/semantic-action-picker.js"></script>

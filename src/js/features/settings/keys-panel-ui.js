@@ -445,7 +445,11 @@
     var keycapHint=$('keysKeycapHint');
     var keycapHost=$('habitKeyMapCellTrigger');
     var targetKeycapHost=$('habitKeyMapCellTarget');
-    if(keycapHint) keycapHint.textContent=t('keysKeycapHint');
+    if(keycapHint){
+      keycapHint.hidden=true;
+      keycapHint.setAttribute('aria-hidden','true');
+      keycapHint.textContent='';
+    }
     var imeHint=$('imePresetHintMapping');
     if(imeHint) imeHint.textContent=t('keysCaptureImeSource');
     var triggerFooterLbl=$('keysTriggerModeFooterLbl');
@@ -510,7 +514,12 @@
       delete toggle.dataset.vpToggleBusy;
     }
     if(keycapHost){
-      keycapHost.setAttribute('title',recording&&recMode==='trigger'?t('keysKeycapRecording'):t('keysKeycapHint'));
+      keycapHost.setAttribute('title',recording&&recMode==='trigger'
+        ?t('keysKeycapRecording','请按下触发键')
+        :t('keysKeycapEditAria','录制触发键'));
+      keycapHost.setAttribute('aria-label',recording&&recMode==='trigger'
+        ?t('keysKeycapRecording','请按下触发键')
+        :t('keysKeycapEditAria','录制触发键'));
     }
     if(targetKeycapHost){
       targetKeycapHost.setAttribute('title',recording&&(recMode==='target'||recMode==='agentBinding')?t('keysKeycapRecording'):t('keysTargetKeycapHint'));
@@ -519,8 +528,10 @@
     }
     var tgtRow=$('habitKeyMapRowTarget');
     if(tgtRow) tgtRow.classList.toggle('is-record-pending',!!recPending);
-    if(keycapHint&&recording&&recMode==='trigger') keycapHint.textContent=t('keysKeycapRecording');
-    else if(keycapHint) keycapHint.textContent=t('keysKeycapHint');
+    if(keycapHint){
+      keycapHint.hidden=true;
+      keycapHint.textContent='';
+    }
     if(global.OneToneAgentCapabilityUi&&global.OneToneAgentCapabilityUi.applyRecognitionOverlay){
       global.OneToneAgentCapabilityUi.applyRecognitionOverlay();
     }
@@ -536,9 +547,13 @@
   function syncKeyDisplayIcons(m){
     if(!global.OneToneKeyIcons||!global.OneToneKeyIcons.syncDisplayIcon) return;
     var trigDisp=$('triggerDisplay');
-    var tgtDisp=$('targetDisplay');
     var trig=core().editorTrigger?core().editorTrigger(m):((m&&m.triggerKey)||'').trim();
-    var tgt=core().editorTarget?core().editorTarget(m):((m&&m.targetKey)||'').trim();
+    // AutoTrigger / stuck RAlt: icon follows sourceKey (volume), never leave「右 Alt」glyph.
+    if(trig==='AutoTrigger'||trig==='RAlt'){
+      var src=m&&String(m.sourceKey||'').trim();
+      if(src&&src!=='RAlt'&&src!=='AutoTrigger') trig=src;
+      else trig='Volume_Down';
+    }
     if(trigDisp) global.OneToneKeyIcons.syncDisplayIcon(trigDisp,trig);
   }
 
@@ -1033,11 +1048,10 @@
   }
 
   function syncInlineCancelForCapture(){
-    var table=global.OneToneHabitKeyMappingTable;
-    var captureOwns=table&&table.captureOwnsLiveRecording&&table.captureOwnsLiveRecording();
     var snap=recordingUiSnapshot();
     var recording=snap.recording;
-    var showInline=!!(captureOwns&&recording);
+    // Always surface cancel inside the recording strip on Keys — bar/island may be off-screen.
+    var showInline=!!(keysPanelActive()&&recording);
     var inline=$('btnCancelRecordInline');
     var bar=$('recordCancelBar');
     if(inline){
@@ -1049,17 +1063,12 @@
 
   function syncCancelButtonHost(){
     syncInlineCancelForCapture();
-    // P12b-3：录制取消条岛拥有 #btnCancelRecord，禁止挪出 React root
+    // Inline cancel already sits in #keysRecordingFeedbackMain; keep #btnCancelRecord in its bar.
     if(global.__otRecordCancelBarMounted) return;
     var btn=$('btnCancelRecord');
-    var feedbackMain=$('keysRecordingFeedbackMain');
     var bar=$('recordCancelBar');
     if(!btn||!bar) return;
-    var snap=recordingUiSnapshot();
-    var recording=snap.recording;
-    var onKeys=keysPanelActive();
-    var host=(onKeys&&recording&&feedbackMain)?feedbackMain:bar;
-    if(btn.parentNode!==host) host.appendChild(btn);
+    if(btn.parentNode!==bar) bar.appendChild(btn);
   }
 
   function buildKeysRecordingFeedbackModel(){

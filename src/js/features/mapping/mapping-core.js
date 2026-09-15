@@ -365,6 +365,12 @@
     if((m.triggerMode||'').toLowerCase()==='toggle') m.triggerMode='tap';
     // Legacy alias: old UI used `hold`; runtime uses `longpress` for hold-to-talk.
     if((m.triggerMode||'').toLowerCase()==='hold') m.triggerMode='longpress';
+    // Stuck RAlt trigger (BT volume echo) → AutoTrigger so keycap never shows「右 Alt」.
+    if(String(m.triggerKey||'').trim()==='RAlt'){
+      m.triggerKey='AutoTrigger';
+      var src=String(m.sourceKey||'').trim();
+      if(!src||src==='RAlt'||src==='AutoTrigger') m.sourceKey='Volume_Down';
+    }
     ensureMappingTiming(m);
     if(!Array.isArray(m.switchKeys)) m.switchKeys=[];
     if(m.nativeKeyRestore===undefined) m.nativeKeyRestore=false;

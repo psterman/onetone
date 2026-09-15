@@ -3201,6 +3201,24 @@
     }
     #settingsPanelKeys .key-wake-settings.is-recording .keys-recording-feedback{display:block}
     #settingsPanelKeys .keys-recording-feedback-main .btn-cancel-record{margin-left:auto;flex-shrink:0}
+    /* Cancel must read as the primary escape during record — not a muted ghost pill. */
+    #settingsPanelKeys .keys-recording-feedback-main .btn-cancel-record,
+    #settingsPanelKeys .btn-cancel-record,
+    .keys-capture-popover .keys-capture-recording-feedback-host .btn-cancel-record{
+      height:36px;padding:0 16px;border-radius:var(--radius-pill);
+      border:1px solid #f0b4ad;background:#fff;color:#b42318;
+      font:inherit;font-size:13px;font-weight:700;cursor:pointer;
+      box-shadow:0 1px 0 rgba(180,35,24,.06);
+    }
+    #settingsPanelKeys .keys-recording-feedback-main .btn-cancel-record:hover,
+    #settingsPanelKeys .btn-cancel-record:hover,
+    .keys-capture-popover .keys-capture-recording-feedback-host .btn-cancel-record:hover{
+      background:#fff5f4;border-color:#e08980;color:#912018;
+    }
+    /* Recording chrome: pulse the feedback strip, don't paint a huge red cage over the desk. */
+    #settingsPanelKeys .habit-flow-step.is-recording-active{
+      border-color:rgba(220,53,69,.28);box-shadow:none;
+    }
     .keys-app-expand-list{display:grid;gap:8px}
     .keys-app-expand-wrap{
       position:relative;border:1px solid var(--outline-variant);border-radius:12px;background:var(--surface);overflow:visible;
@@ -8301,25 +8319,17 @@
     }
     #settingsPanelKeys .habit-key-mapping-foot.keys-page-tip-bar{display:none}
     #settingsPanelKeys .habit-flow-step.is-recording-active{
-      border-color:rgba(220,53,69,.4)!important;
-      box-shadow:0 0 0 2px rgba(220,53,69,.1);
-      animation:keys-step-recording-border 1.4s ease-in-out infinite;
-    }
-    @keyframes keys-step-recording-border{
-      0%,100%{box-shadow:0 0 0 2px rgba(220,53,69,.1)}
-      50%{box-shadow:0 0 0 4px rgba(220,53,69,.06)}
+      border-color:rgba(220,53,69,.28)!important;
+      box-shadow:none;
+      animation:none;
     }
     #settingsPanelKeys .habit-flow-step.is-recording-active .habit-basic-key-display.display.is-recording,
     #settingsPanelKeys .habit-flow-step.is-recording-active .habit-basic-key-display.display{
-      border-color:rgba(220,53,69,.45)!important;
-      background:linear-gradient(180deg,rgba(220,53,69,.1),rgba(220,53,69,.04))!important;
-      animation:keys-key-recording-pulse 1.2s ease-in-out infinite;
+      border-color:rgba(220,53,69,.35)!important;
+      background:linear-gradient(180deg,rgba(220,53,69,.06),rgba(220,53,69,.02))!important;
+      animation:none;
     }
     #settingsPanelKeys .habit-flow-step.is-recording-active .habit-basic-key-display .display-value{color:#b42318!important}
-    @keyframes keys-key-recording-pulse{
-      0%,100%{box-shadow:0 0 0 0 rgba(220,53,69,.32)}
-      50%{box-shadow:0 0 0 5px rgba(220,53,69,.1)}
-    }
     .keys-page-aside .keys-aside-card{padding:0;overflow:visible}
     #settingsPanelKeys .keys-app-expand-list{padding:0 12px 12px}
     #settingsPanelKeys .keys-hub-schemes,

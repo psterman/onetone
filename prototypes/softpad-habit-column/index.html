@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SoftPad · 本场景键位习惯列 · 原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,700;9..40,800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#142033;
+      --muted:#5b6b7f;
+      --line:#d7e2ec;
+      --soft:#f4f8fb;
+      --paper:#fff;
+      --cyan:#0b9bd7;
+      --cyan-soft:#e7f7fd;
+      --cyan-deep:#0879a8;
+      --shadow:0 18px 50px rgba(20,32,51,.12);
+      --font:"DM Sans",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);
+      color:var(--ink);
+      background:
+        radial-gradient(800px 360px at 8% -8%,rgba(11,155,215,.14),transparent 55%),
+        linear-gradient(180deg,#eef4f8,#e8eef4);
+    }
+    .page{width:min(1280px,100%);margin:0 auto;padding:28px 20px 48px}
+    .eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan-deep);margin:0 0 8px}
+    h1{margin:0 0 8px;font-size:28px;font-weight:800;letter-spacing:-.02em}
+    .lede{margin:0 0 22px;max-width:62ch;color:var(--muted);font-size:15px;line-height:1.55}
+    .compare{
+      display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;
+    }
+    @media (max-width:900px){.compare{grid-template-columns:1fr}}
+    .card{
+      background:var(--paper);border:1px solid var(--line);border-radius:18px;
+      box-shadow:var(--shadow);overflow:hidden;
+    }
+    .card-h{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:12px 14px;border-bottom:1px solid var(--line);background:var(--soft);
+    }
+    .card-h strong{font-size:13px;font-weight:800}
+    .tag{
+      font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;
+      border:1px solid var(--line);color:var(--muted);background:#fff;
+    }
+    .tag.bad{border-color:#f0c2b8;color:#b42318;background:#fff5f4}
+    .tag.good{border-color:#9dd4ea;color:var(--cyan-deep);background:var(--cyan-soft)}
+    .mock{padding:12px;min-height:320px}
+    .chrome{
+      display:flex;align-items:center;justify-content:space-between;gap:8px;
+      margin-bottom:10px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:#fff;
+      font-size:12px;font-weight:700;
+    }
+    .chrome .bind{color:var(--cyan-deep)}
+    .cols2{display:grid;grid-template-columns:1.05fr 1fr;gap:10px;height:260px}
+    .cols3{display:grid;grid-template-columns:1.05fr 1fr 168px;gap:10px;height:280px}
+    .pane{
+      border:1px dashed #b9c9d8;border-radius:12px;background:#fbfdff;padding:8px;
+      display:flex;flex-direction:column;min-width:0;
+    }
+    .pane.is-habit{border-style:solid;border-color:#9bc6da;background:linear-gradient(180deg,#f3fafd,#fff)}
+    .pane-lbl{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+    .preview{
+      flex:1;border-radius:10px;background:#0f1a24;padding:10px;display:grid;
+      grid-template-columns:repeat(4,1fr);gap:6px;align-content:center;
+    }
+    .key{
+      aspect-ratio:1;border-radius:8px;background:#1c2b3a;border:1px solid #2d4256;
+      color:#c9d7e4;display:grid;place-items:center;font-size:11px;font-weight:700;
+    }
+    .key.on{outline:2px solid var(--cyan);background:#214056}
+    .detail{flex:1;display:flex;flex-direction:column;gap:6px}
+    .tabs{display:flex;gap:4px;flex-wrap:wrap}
+    .tabs span{
+      font-size:10px;font-weight:700;padding:4px 7px;border-radius:8px;
+      border:1px solid var(--line);color:var(--muted);background:#fff;
+    }
+    .tabs span.on{background:var(--cyan-soft);border-color:#9dd4ea;color:var(--cyan-deep)}
+    .blk{height:18px;border-radius:6px;background:#e8eef4}
+    .blk.w60{width:60%}.blk.w80{width:80%}.blk.w40{width:40%}
+    .habit-list{display:flex;flex-direction:column;gap:4px;overflow:auto;flex:1}
+    .habit-item{
+      display:flex;align-items:center;gap:6px;padding:6px 7px;border-radius:8px;
+      border:1px solid transparent;font-size:11px;font-weight:650;color:var(--ink);
+      background:transparent;cursor:default;
+    }
+    .habit-item.on{background:var(--cyan-soft);border-color:#9dd4ea}
+    .habit-item .dot{width:6px;height:6px;border-radius:99px;background:var(--cyan);flex-shrink:0}
+    .habit-item .meta{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--muted);font-weight:600}
+    .add{
+      margin-top:6px;width:100%;padding:6px 8px;border-radius:999px;border:1px dashed #b7c9d8;
+      background:transparent;color:var(--muted);font:inherit;font-size:11px;font-weight:650;opacity:.8;
+    }
+    .notes{
+      display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-top:8px;
+    }
+    @media (max-width:900px){.notes{grid-template-columns:1fr}}
+    .notes article{
+      background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px 18px;
+    }
+    .notes h2{margin:0 0 8px;font-size:15px;font-weight:800}
+    .notes ul{margin:0;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.55}
+    .notes li{margin:4px 0}
+    .x{text-decoration:line-through;opacity:.55}
+    .arrow{text-align:center;font-size:12px;font-weight:700;color:var(--muted);padding:4px 0 12px}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <p class="eyebrow">OneTone SoftPad prototype</p>
+    <h1>虚拟键盘 · 习惯列放哪</h1>
+    <p class="lede">对照：现状两栏 vs 建议三栏。习惯列记录「本场景已绑的 SoftPad 键」，预览仍是板子，右侧仍是改当前键——三者不融合。</p>
+
+    <div class="compare">
+      <section class="card">
+        <div class="card-h">
+          <strong>A · 现状（两栏）</strong>
+          <span class="tag bad">缺习惯目录</span>
+        </div>
+        <div class="mock">
+          <div class="chrome">
+            <span>虚拟键盘</span>
+            <span class="bind">绑定 · Cursor ▾</span>
+          </div>
+          <div class="cols2">
+            <div class="pane">
+              <p class="pane-lbl">预览 = 板子</p>
+              <div class="preview" aria-hidden="true">
+                <div class="key">↑</div><div class="key">🔍</div><div class="key">📋</div><div class="key on">⌘</div>
+                <div class="key">←</div><div class="key">·</div><div class="key">·</div><div class="key">→</div>
+                <div class="key">↓</div><div class="key">7</div><div class="key">8</div><div class="key">9</div>
+              </div>
+            </div>
+            <div class="pane">
+              <p class="pane-lbl">右侧 = 改当前键</p>
+              <div class="detail">
+                <div class="tabs">
+                  <span>显示</span><span class="on">键位</span><span>用途</span><span>灯效</span>
+                </div>
+                <div class="blk w80"></div>
+                <div class="blk w60"></div>
+                <div class="blk w40"></div>
+                <div class="blk w80"></div>
+                <p style="margin:auto 0 0;font-size:11px;color:var(--muted);line-height:1.4">命令目录混在这里；没有「本场景已绑哪些键」的总览。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">
+          <strong>B · 建议（三栏）</strong>
+          <span class="tag good">习惯列外挂</span>
+        </div>
+        <div class="mock">
+          <div class="chrome">
+            <span>虚拟键盘</span>
+            <span class="bind">绑定 · Cursor ▾</span>
+          </div>
+          <div class="cols3">
+            <div class="pane">
+              <p class="pane-lbl">预览 · 与列表联动</p>
+              <div class="preview" aria-hidden="true">
+                <div class="key">↑</div><div class="key">🔍</div><div class="key">📋</div><div class="key">⌘</div>
+                <div class="key">←</div><div class="key">·</div><div class="key">·</div><div class="key">→</div>
+                <div class="key">↓</div><div class="key on">7</div><div class="key">8</div><div class="key">9</div>
+              </div>
+            </div>
+            <div class="pane">
+              <p class="pane-lbl">中间 · 只改选中键</p>
+              <div class="detail">
+                <div class="tabs">
+                  <span>显示</span><span class="on">键位</span><span>用途</span><span>灯效</span>
+                </div>
+                <div class="blk w80"></div>
+                <div class="blk w60"></div>
+                <div class="blk w40"></div>
+                <p style="margin:auto 0 0;font-size:11px;color:var(--muted);line-height:1.4">选中「命令菜单」↔ 预览高亮数字 7 ↔ 中间编辑快捷键。</p>
+              </div>
+            </div>
+            <div class="pane is-habit">
+              <p class="pane-lbl">最右 · 本场景键位</p>
+              <div class="habit-list">
+                <div class="habit-item on"><span class="dot"></span>命令菜单<span class="meta">7</span></div>
+                <div class="habit-item"><span class="dot"></span>语音输入<span class="meta">1</span></div>
+                <div class="habit-item"><span class="dot"></span>结束发送<span class="meta">↵</span></div>
+                <div class="habit-item"><span class="dot"></span>复制<span class="meta">3</span></div>
+                <div class="habit-item"><span class="dot"></span>上一步<span class="meta">↑</span></div>
+              </div>
+              <button type="button" class="add">＋ 新建键位</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="arrow">顶栏「绑定 · Cursor」换应用场景 → 左列只刷该场景的 SoftPad 键；预览不塞列表</p>
+
+    <div class="notes">
+      <article>
+        <h2>交互约定</h2>
+        <ul>
+          <li>最右列 = 本场景已绑定动作（习惯记录）</li>
+          <li>点列表行 ↔ 预览键高亮 ↔ 中间进入该键编辑</li>
+          <li>「＋ 新建键位」= 空一个键再赋值，不新开 Profile</li>
+          <li>中间「我的常见 / 常用」仍是命令素材库，不是习惯列</li>
+        </ul>
+      </article>
+      <article>
+        <h2>刻意不做</h2>
+        <ul>
+          <li class="x">把习惯列表画进预览键帽</li>
+          <li class="x">和命令目录合成一列</li>
+          <li class="x">复制按键页整套「我录的键」模型</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</body>
+</html>

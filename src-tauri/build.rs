@@ -247,8 +247,12 @@ fn main() {
     // Frontend lives in ../src; force re-embed when voice strategy UI changes.
     println!("cargo:rerun-if-changed=../src/js/features/voice/voice-wake.js");
     println!("cargo:rerun-if-changed=../src/js/features/voice/voice-ui-bindings.js");
+    println!("cargo:rerun-if-changed=../src/js/features/voice/voice-intent-rail.js");
+    println!("cargo:rerun-if-changed=../src/js/features/mapping/keys-scene-actions-panel.js");
+    println!("cargo:rerun-if-changed=../src/js/features/mapping/keys-channel-command-picker.js");
     println!("cargo:rerun-if-changed=../src/js/core/config-persist.js");
     println!("cargo:rerun-if-changed=../src/index.html");
+    println!("cargo:rerun-if-changed=../src/css/voice-page-shell.css");
     println!("cargo:rerun-if-changed=../src/codex-micro-overlay.html");
     println!("cargo:rerun-if-changed=../src/css/codex-micro-overlay.css");
     println!("cargo:rerun-if-changed=../src/css/motion.css");
