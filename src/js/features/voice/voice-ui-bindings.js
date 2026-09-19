@@ -1290,6 +1290,7 @@
       });
     }
     bindOpenOverlay('btnVoiceWakePhraseCap',function(){ openWakePhrasePopover('replace'); });
+    bindOpenOverlay('btnVoiceIntentStartPhrase',function(){ openWakePhrasePopover('replace'); });
     bindOpenOverlay('btnVoiceWakePhraseEditLink',function(){
       var more=$('voiceWakeMoreAliases');
       if(more) more.open=true;

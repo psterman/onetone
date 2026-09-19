@@ -13,14 +13,6 @@
     wave:{title:'挥手',when:'招呼一下唤起或切换。',effect:'张开手掌左右摆。',gest:'👋',gestName:'挥手',phrase:'开始说话',badge:'实验'}
   };
 
-  var CAM_GROUPS=[
-    {id:'common',title:'常用',slots:['shakeHead','deliberateBlink','onAway','onReturn','okHand','openPalm']},
-    {id:'presence',title:'人在不在',slots:['onAway','onReturn']},
-    {id:'head',title:'头与脸',slots:['shakeHead','deliberateBlink']},
-    {id:'hand',title:'手势',slots:['openPalm','okHand','fist','wave']},
-    {id:'privacy',title:'隐私与防误触',slots:['onAway','okHand']}
-  ];
-
   function currentMapping(){
     var hdr=global.OneToneVoicePageHeaderRender;
     if(hdr&&hdr.resolveScopeMapping) return hdr.resolveScopeMapping(null);
@@ -57,20 +49,22 @@
     return map;
   }
 
-  /* Always expose design catalog (mock Q43 empty only when channel missing entirely). */
+  /** Only camera-page activation schemes for the current app — not the full catalog. */
   function listCameraRows(){
     var m=currentMapping();
     var pa=presencePrefs();
     var voices=voiceByKey(m);
-    return Object.keys(CAM_META).map(function(key){
-      var meta=CAM_META[key];
+    return Object.keys(CAM_META).filter(function(key){
+      return actionOn(pa,key);
+    }).map(function(key){
+      var meta=CAM_META[key]||{};
       var voice=voices[key];
-      var on=actionOn(pa,key);
+      var phrase=voice?String(voice.triggerBinding||'').trim():'';
       return {
         bindKey:key,
         actionId:voice?(voice.actionId||key):key,
         slotId:'semantic:camera:'+key,
-        phrase:voice?String(voice.triggerBinding||'').trim():'',
+        phrase:phrase,
         enabled:voice?voice.enabled!==false:true,
         title:meta.title||key,
         when:meta.when||'',
@@ -78,14 +72,13 @@
         gest:meta.gest||'📷',
         gestName:meta.gestName||key,
         suggest:meta.phrase||'',
-        bound:on,
-        badge:on?'已开':(meta.badge||'')
+        bound:true,
+        badge:phrase?'':(meta.phrase?'待配口令':'')
       };
     });
   }
 
   var pickId='';
-  var catId='common';
 
   function persist(){
     if(global.OneToneConfigPersist&&global.OneToneConfigPersist.saveAsync){
@@ -120,16 +113,9 @@
     return ab;
   }
 
-  function rowsInCat(all){
-    var g=CAM_GROUPS.find(function(x){ return x.id===catId; })||CAM_GROUPS[0];
-    var set={};
-    (g.slots||[]).forEach(function(s){ set[s]=true; });
-    return all.filter(function(r){ return set[r.bindKey]; });
-  }
-
   function render(){
     var all=listCameraRows();
-    var rows=rowsInCat(all);
+    var rows=all;
     var off=$('voiceCamBridgeOff');
     var on=$('voiceCamLinked');
     if(off) off.hidden=all.length>0;
@@ -137,30 +123,24 @@
     var pill=$('voiceCamScopePill');
     var m=currentMapping();
     if(pill) pill.textContent=(m&&(m.name||m.appTargetId))?'视觉 · '+(m.name||m.appTargetId):'视觉';
-    if(!all.length) return;
-
+    var hint=$('voiceCamScopeHint');
+    if(hint) hint.textContent=all.length
+      ?('摄像头页已开 '+all.length+' 项')
+      :'先去摄像头页打开动作';
     var cats=$('voiceCamCats');
     if(cats){
       cats.innerHTML='';
-      CAM_GROUPS.forEach(function(g){
-        var b=document.createElement('button');
-        b.type='button';
-        b.className='voice-bridge-cat'+(g.id===catId?' is-on':'');
-        b.textContent=g.title;
-        b.setAttribute('role','tab');
-        b.setAttribute('aria-selected',g.id===catId?'true':'false');
-        b.addEventListener('click',function(){ catId=g.id; render(); });
-        cats.appendChild(b);
-      });
+      cats.hidden=true;
     }
+    var addMore=$('btnVoiceCamAddMore');
+    if(addMore){
+      addMore.hidden=!all.length;
+      addMore.textContent=all.some(function(r){ return !r.phrase; })?'给未配口令的动作加说法':'改口令';
+    }
+    if(!all.length) return;
 
-    if(!rows.length){
-      var g0=CAM_GROUPS[0];
-      catId=g0.id;
-      rows=rowsInCat(all);
-    }
     if(!pickId||!rows.some(function(r){ return r.bindKey===pickId; })){
-      pickId=rows[0]?rows[0].bindKey:(all[0]&&all[0].bindKey)||'';
+      pickId=rows[0]?rows[0].bindKey:'';
     }
 
     var host=$('voiceCamCmdList');
@@ -172,7 +152,7 @@
         btn.className='voice-bridge-cmd'+(r.bindKey===pickId?' is-on':'');
         btn.setAttribute('role','option');
         var badge=r.badge
-          ?('<span class="badge '+(r.badge==='已开'?'is-on':(r.badge==='推荐'?'is-rec':'is-exp'))+'">'+r.badge+'</span>')
+          ?('<span class="badge is-exp">'+r.badge+'</span>')
           :'';
         var km=r.phrase
           ?(r.gest+' '+r.gestName+' · 「'+r.phrase+'」')

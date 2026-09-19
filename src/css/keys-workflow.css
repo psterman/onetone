@@ -1603,14 +1603,7 @@
 
 #settingsPanelKeys .keys-custom-key-launch,
 .keys-capture-popover .keys-custom-key-launch {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: none;
-  border-radius: 10px;
-  background: var(--keys-wash, var(--surface-high, #f3f7fa));
+  display: none !important;
 }
 
 #settingsPanelKeys .keys-custom-key-launch-lab,
@@ -2064,6 +2057,140 @@
   color: var(--on-surface-muted);
   font-weight: 650;
 }
+#settingsPanelKeys .keys-custom-key-detail-name,
+.keys-capture-popover .keys-custom-key-detail-name {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  margin: 2px 0 6px;
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 1.5px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--on-surface, #13202c);
+  letter-spacing: -0.02em;
+}
+#settingsPanelKeys .keys-custom-key-detail-name:hover,
+.keys-capture-popover .keys-custom-key-detail-name:hover {
+  border-bottom-color: var(--keys-line, var(--outline-variant));
+}
+#settingsPanelKeys .keys-custom-key-detail-name:focus,
+.keys-capture-popover .keys-custom-key-detail-name:focus {
+  outline: none;
+  border-bottom-color: #2a9cc4;
+}
+#settingsPanelKeys .keys-custom-key-detail-name:disabled,
+.keys-capture-popover .keys-custom-key-detail-name:disabled {
+  opacity: 0.45;
+}
+
+#settingsPanelKeys .keys-seq-add-row,
+.keys-capture-popover .keys-seq-add-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--keys-line, var(--outline-variant));
+}
+#settingsPanelKeys .keys-seq-add-toggle,
+.keys-capture-popover .keys-seq-add-toggle {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(42, 156, 196, 0.14);
+  color: #0f5f7a;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+#settingsPanelKeys .keys-seq-add-toggle:hover,
+.keys-capture-popover .keys-seq-add-toggle:hover {
+  background: rgba(42, 156, 196, 0.22);
+}
+#settingsPanelKeys .keys-seq-add-toggle.is-open,
+.keys-capture-popover .keys-seq-add-toggle.is-open {
+  background: #2a9cc4;
+  color: #fff;
+}
+#settingsPanelKeys .keys-seq-add-menu,
+.keys-capture-popover .keys-seq-add-menu {
+  display: none;
+  flex: 1 1 auto;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  box-shadow: 0 6px 20px rgba(19, 32, 44, 0.1);
+  overflow-x: auto;
+}
+#settingsPanelKeys .keys-seq-add-menu.is-on,
+.keys-capture-popover .keys-seq-add-menu.is-on {
+  display: flex;
+}
+#settingsPanelKeys .keys-seq-add-menu button,
+.keys-capture-popover .keys-seq-add-menu button {
+  flex: 1 1 0;
+  min-width: 44px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  padding: 8px 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--on-surface, #13202c);
+  cursor: pointer;
+  white-space: nowrap;
+}
+#settingsPanelKeys .keys-seq-add-menu button:hover,
+.keys-capture-popover .keys-seq-add-menu button:hover {
+  background: rgba(42, 156, 196, 0.12);
+  color: #0f5f7a;
+}
+#settingsPanelKeys .keys-seq-recent,
+.keys-capture-popover .keys-seq-recent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+#settingsPanelKeys .keys-seq-recent-lab,
+.keys-capture-popover .keys-seq-recent-lab {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+#settingsPanelKeys .keys-seq-recent-chip,
+.keys-capture-popover .keys-seq-recent-chip {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(19, 32, 44, 0.05);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--on-surface-muted, #5a6b7c);
+  cursor: pointer;
+}
+#settingsPanelKeys .keys-seq-recent-chip:hover,
+.keys-capture-popover .keys-seq-recent-chip:hover {
+  background: rgba(42, 156, 196, 0.14);
+  color: #0f5f7a;
+}
+
 #settingsPanelKeys .keys-seq-add-strip,
 .keys-capture-popover .keys-seq-add-strip {
   display: flex;

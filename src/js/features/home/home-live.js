@@ -507,6 +507,34 @@
   }
 
   var KEYS_DELAY_PRESETS = [100, 200, 500, 1000];
+  var KEYS_SEQ_RECENT_LS = 'onetone.keys.seq.recentKinds';
+  var keysSeqAddMenuOpen = false;
+
+  function loadKeysSeqRecent(){
+    try{
+      var raw=localStorage.getItem(KEYS_SEQ_RECENT_LS);
+      var arr=raw?JSON.parse(raw):[];
+      return Array.isArray(arr)?arr.filter(function(id){
+        return /^(key|text|delay|open-file|open-folder|open-url)$/.test(String(id));
+      }).slice(0,5):[];
+    }catch(_){ return []; }
+  }
+  function pushKeysSeqRecent(kind){
+    var id=String(kind||'');
+    if(!id) return;
+    var arr=loadKeysSeqRecent().filter(function(x){ return x!==id; });
+    arr.unshift(id);
+    try{ localStorage.setItem(KEYS_SEQ_RECENT_LS, JSON.stringify(arr.slice(0,5))); }catch(_){}
+  }
+  function keysSeqRecentLabel(kind){
+    if(kind==='key') return t('keysCaptureSeqAddKey','按键');
+    if(kind==='text') return t('keysCaptureSeqAddText','文本');
+    if(kind==='delay') return t('keysCaptureSeqAddDelay','延迟');
+    if(kind==='open-file') return t('keysCaptureSeqAddOpenFile','文件');
+    if(kind==='open-folder') return t('keysCaptureSeqAddOpenFolder','文件夹');
+    if(kind==='open-url') return t('keysCaptureSeqAddOpenUrl','网址');
+    return kind;
+  }
   var keysInlineListen = { mappingId: '', idx: -1, onKey: null };
 
   function stopKeysInlineListen(){
@@ -663,11 +691,16 @@
       var mapping=resolveMapping();
       if(!mapping||!mapping.id) return;
       var t=ev.target;
-      var btn=t&&t.closest?t.closest('[data-act],[data-inline-rec],[data-inline-delay],[data-inline-open-browse],[data-inline-open-paste],[data-inline-open-bookmarks],[data-add]'):null;
+      var btn=t&&t.closest?t.closest('[data-act],[data-inline-rec],[data-inline-delay],[data-inline-open-browse],[data-inline-open-paste],[data-inline-open-bookmarks],[data-add],[data-add-toggle]'):null;
       if(!btn||!container.contains(btn)) return;
       // Let textareas / number inputs keep default focus behavior.
       if(btn.tagName==='TEXTAREA'||btn.tagName==='INPUT') return;
       ev.preventDefault();
+      if(btn.getAttribute('data-add-toggle')){
+        keysSeqAddMenuOpen=!keysSeqAddMenuOpen;
+        renderTargetActionsInto(container, mapping, { mode:'picker', variant:'keys' });
+        return;
+      }
       var cur=effectiveTargetActions(mapping).slice();
       var act=btn.getAttribute('data-act');
       var idx=parseInt(btn.getAttribute('data-idx')||'-1',10);
@@ -750,6 +783,8 @@
       }
       var add=btn.getAttribute('data-add');
       if(add==='key'){
+        pushKeysSeqRecent('key');
+        keysSeqAddMenuOpen=false;
         cur.push({type:'key',value:''});
         applyAndRefresh(mapping, cur).then(function(){
           startKeysInlineListen(mapping, cur.length-1);
@@ -758,6 +793,8 @@
         return;
       }
       if(add==='text'){
+        pushKeysSeqRecent('text');
+        keysSeqAddMenuOpen=false;
         cur.push({type:'text',value:''});
         applyAndRefresh(mapping, cur).then(function(){
           var ta=container.querySelector('[data-inline-text="'+(cur.length-1)+'"]');
@@ -766,11 +803,15 @@
         return;
       }
       if(add==='delay'){
+        pushKeysSeqRecent('delay');
+        keysSeqAddMenuOpen=false;
         cur.push({type:'delay',ms:200});
         applyAndRefresh(mapping, cur);
         return;
       }
       if(add==='open-file'||add==='open-folder'||add==='open-url'){
+        pushKeysSeqRecent(add);
+        keysSeqAddMenuOpen=false;
         var ok=add==='open-folder'?'folder':add==='open-url'?'url':'file';
         if(ok==='url'){
           cur.push({type:'open',kind:ok,value:''});
@@ -1840,14 +1881,36 @@
           : -1;
       var buildAddStrip = function(){
         if(!canEdit) return '';
-        return '<div class="keys-seq-add-strip" role="group" aria-label="'+escHtml(t('keysCaptureSeqAddStrip','添加步骤'))+'">'
-          +'<button type="button" data-add="key"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddKey','按键'))+'</button>'
-          +'<button type="button" data-add="text"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddText','文本'))+'</button>'
-          +'<button type="button" data-add="delay"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddDelay','延迟'))+'</button>'
-          +'<button type="button" data-add="open-file"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddOpenFile','文件'))+'</button>'
-          +'<button type="button" data-add="open-folder"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddOpenFolder','文件夹'))+'</button>'
-          +'<button type="button" data-add="open-url"><span class="keys-seq-add-plus">+</span> '+escHtml(t('keysCaptureSeqAddOpenUrl','网址'))+'</button>'
-          +'</div>';
+        var recent=loadKeysSeqRecent();
+        var recentHtml=recent.length
+          ? ('<div class="keys-seq-recent" role="group" aria-label="'+escHtml(t('keysCaptureSeqRecent','近期'))+'">'
+            +'<span class="keys-seq-recent-lab">'+escHtml(t('keysCaptureSeqRecent','近期'))+'</span>'
+            +recent.map(function(id){
+              return '<button type="button" class="keys-seq-recent-chip" data-add="'+escHtml(id)+'">'
+                +escHtml(keysSeqRecentLabel(id))+'</button>';
+            }).join('')
+            +'</div>')
+          : '';
+        return '<div class="keys-seq-add-row">'
+          +'<button type="button" class="keys-seq-add-toggle'+(keysSeqAddMenuOpen?' is-open':'')+'" data-add-toggle="1"'
+          +' aria-expanded="'+(keysSeqAddMenuOpen?'true':'false')+'"'
+          +' title="'+escHtml(t('keysCaptureSeqAddStrip','添加步骤'))+'">＋</button>'
+          +'<div class="keys-seq-add-menu'+(keysSeqAddMenuOpen?' is-on':'')+'" role="menu"'
+          +' aria-label="'+escHtml(t('keysCaptureSeqAddStrip','添加步骤'))+'">'
+          +'<button type="button" role="menuitem" data-add="key">'
+            +escHtml(t('keysCaptureSeqAddKey','按键'))+'</button>'
+          +'<button type="button" role="menuitem" data-add="text">'
+            +escHtml(t('keysCaptureSeqAddText','文本'))+'</button>'
+          +'<button type="button" role="menuitem" data-add="delay">'
+            +escHtml(t('keysCaptureSeqAddDelay','延迟'))+'</button>'
+          +'<button type="button" role="menuitem" data-add="open-file">'
+            +escHtml(t('keysCaptureSeqAddOpenFile','文件'))+'</button>'
+          +'<button type="button" role="menuitem" data-add="open-folder">'
+            +escHtml(t('keysCaptureSeqAddOpenFolder','文件夹'))+'</button>'
+          +'<button type="button" role="menuitem" data-add="open-url">'
+            +escHtml(t('keysCaptureSeqAddOpenUrl','网址'))+'</button>'
+          +'</div></div>'
+          +recentHtml;
       };
       container.hidden = false;
       if(acts.length >= 1){
@@ -1860,9 +1923,9 @@
           '<div class="home-key-map-action-empty is-keys">'
           + '<b>'+escHtml(t('keysCaptureSeqEmptyTitle','还没有步骤'))+'</b>'
           + '<ol class="keys-seq-empty-recipe">'
-          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep1','上面录好启动键'))+'</li>'
-          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep2','点下方 + 按键 / 文本 / 延迟 / 文件 / 文件夹 / 网址，直接在行里改'))+'</li>'
-          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep3','按启动键会按顺序执行'))+'</li>'
+          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep1','点 ＋ 选择要添加的命令'))+'</li>'
+          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep2','按键 / 文本 / 延迟 / 文件 / 文件夹 / 网址横排可选'))+'</li>'
+          + '<li>'+escHtml(t('keysCaptureSeqEmptyStep3','触发后按顺序执行'))+'</li>'
           + '</ol></div>'
           + buildAddStrip();
       }

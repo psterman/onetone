@@ -316,6 +316,24 @@
       seedCustomKeyRows(byId,order);
     }else{
       seedCatalogRows(byId,order);
+      /* Fill default chords so full-width cards match Keys page density. */
+      var A=global.OneToneAgentActions;
+      var PadUi=global.OneToneCodexMicroPadUi;
+      order.forEach(function(id){
+        var row=byId[id];
+        if(!row||String(row.chord||'').trim()) return;
+        var ch='';
+        try{
+          if(PadUi&&PadUi.chordForSlot) ch=String(PadUi.chordForSlot(m,row.slotId||id)||'').trim();
+        }catch(_c){}
+        if(!ch&&A&&A.defaultKeyForMapping){
+          try{ ch=String(A.defaultKeyForMapping(m,row.slotId||id)||'').trim(); }catch(_d){}
+        }
+        if(!ch&&A&&A.defaultKeyForSlot){
+          try{ ch=String(A.defaultKeyForSlot(row.slotId||id)||'').trim(); }catch(_e){}
+        }
+        if(ch) row.chord=ch;
+      });
     }
 
     function ensureFromKey(b){
@@ -612,7 +630,31 @@
     var m=currentMapping();
     if(pill) pill.textContent=scopePillText(m);
     var desk=document.querySelector('#voiceKeysFace .voice-keys-desk');
-    if(desk) desk.classList.toggle('is-custom-key',customOnly);
+    if(desk){
+      desk.classList.toggle('is-custom-key',customOnly);
+      desk.classList.toggle('is-catalog',!customOnly);
+    }
+    var face=$('voiceKeysFace');
+    if(face) face.classList.toggle('is-catalog-list',!customOnly);
+    var hint=$('voiceKeysNoviceHint');
+    if(hint){
+      hint.textContent=customOnly
+        ?'点左侧序列 · 右侧录口令'
+        :'常用快捷键按场景浏览 · 改键位去按键页';
+    }
+    var pickLbl=$('voiceKeysPickLbl');
+    if(pickLbl){
+      pickLbl.hidden=!customOnly;
+      pickLbl.textContent='选一条我录的键';
+    }
+    var phraseWrap=$('voiceKeysPhraseOnlyWrap');
+    if(phraseWrap) phraseWrap.hidden=!customOnly;
+    var addMore=$('btnVoiceKeysAddMore');
+    if(addMore) addMore.hidden=!customOnly;
+    var explainPane=$('voiceKeysExplainPane');
+    if(explainPane) explainPane.hidden=true; /* catalog: no right pane; custom uses phrase pane */
+    var phrasePane=$('voiceKeysPhrasePane');
+    if(phrasePane) phrasePane.hidden=!customOnly;
     var cats=$('voiceKeysCats');
     if(cats) cats.hidden=!!customOnly;
     if(!all.length) return;
@@ -665,14 +707,27 @@
       rows.forEach(function(r){
         var btn=document.createElement('button');
         btn.type='button';
-        btn.className='voice-bridge-cmd'+(r.id===pickId?' is-on':'');
+        btn.className=(customOnly?'voice-bridge-cmd':'voice-keys-pick-row')+(r.id===pickId?' is-on':'');
         btn.setAttribute('role','option');
-        var km=r.phrase
-          ?('说「'+esc(r.phrase)+'」'+(r.chord?(' · <span class="kb">'+esc(r.chord)+'</span>'):''))
-          :(r.chord
-            ?('键 <span class="kb">'+esc(r.chord)+'</span> · 还没口令')
-            :(r.customKey?'未录启动键 · 还没口令':(r.fromCatalog?'来自按键动作库 · 还没口令':'还没口令')));
-        btn.innerHTML='<span class="kn">'+esc(r.title||r.actionId)+'</span><span class="km">'+km+'</span>';
+        if(customOnly){
+          var km=r.phrase
+            ?('说「'+esc(r.phrase)+'」'+(r.chord?(' · <span class="kb">'+esc(r.chord)+'</span>'):''))
+            :(r.chord
+              ?('键 <span class="kb">'+esc(r.chord)+'</span> · 还没口令')
+              :'未录启动键 · 还没口令');
+          btn.innerHTML='<span class="kn">'+esc(r.title||r.actionId)+'</span><span class="km">'+km+'</span>';
+        }else{
+          var blurb=String(r.effect||r.when||'').trim();
+          var chord=String(r.chord||'').trim();
+          btn.innerHTML=
+            '<span class="voice-keys-pick-row__body">'+
+              '<span class="voice-keys-pick-row__name">'+esc(r.title||r.actionId||'')+'</span>'+
+              (blurb?('<span class="voice-keys-pick-row__desc">'+esc(blurb)+'</span>'):'')+
+            '</span>'+
+            (chord
+              ?('<span class="voice-keys-pick-row__key">'+esc(chord)+'</span>')
+              :'<span class="voice-keys-pick-row__key is-empty">去按键页</span>');
+        }
         btn.addEventListener('click',function(){
           pickId=r.id;
           // Selecting「我录的键」applies the sequence onto the current Voice scope habit
@@ -724,11 +779,28 @@
     var title=$('voiceKeysCapTitle');
     if(title) title.textContent=row.title||row.actionId||'—';
     var when=$('voiceKeysCapWhen');
-    if(when) when.textContent=row.when||'';
+    if(when) when.textContent=row.when||'需要时用按键或 Soft Pad 触发。';
     var effect=$('voiceKeysCapEffect');
-    if(effect) effect.textContent=row.effect||'';
+    if(effect) effect.textContent=row.effect||('执行「'+(row.title||row.actionId||'该动作')+'」。');
     var chord=$('voiceKeysChord');
     if(chord) chord.textContent=row.chord||'—';
+    var keyLine=$('voiceKeysKeyLine');
+    if(keyLine) keyLine.hidden=!row.chord;
+    var goCap=$('btnVoiceKeysGoFromCap');
+    if(goCap&&!goCap._bound){
+      goCap._bound=true;
+      goCap.addEventListener('click',function(e){
+        e.preventDefault();
+        var hooks=global.OneToneHooks||{};
+        if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
+          global.OneToneSettingsDrawer.open({panel:'keys'});
+          return;
+        }
+        if(typeof hooks.setSettingsPanel==='function') hooks.setSettingsPanel('keys');
+      });
+    }
+    var phraseRef=$('voiceKeysPhraseRef');
+    if(phraseRef) phraseRef.textContent=row.title||row.actionId||'—';
     var eq=$('voiceKeysEqLine');
     if(eq) eq.textContent='说出这句 → 执行左侧动作';
     var cap=$('voiceKeysPhraseCap');
@@ -780,6 +852,11 @@
   }
 
   function addPhrase(){
+    if(listMode!=='customKey'){
+      var go=$('btnVoiceKeysGoFromCap')||$('btnVoiceKeysGoPage');
+      if(go) go.click();
+      return true;
+    }
     var list=listRows(false);
     if(!list.length) return false;
     var r=list.find(function(x){ return x.id===pickId; })||list.find(function(x){ return !x.phrase; })||list[0];
@@ -798,6 +875,9 @@
       if(!slot) return '';
       var meta=KEY_META[slot]||KEY_META[slot.replace(/^semantic:[^:]+:/,'')];
       return meta&&meta.title?String(meta.title):'';
+    },
+    explainForSlot:function(slot,name){
+      return pickCopy(slot,name);
     },
     setMode:function(mode){
       listMode=mode==='customKey'?'customKey':'catalog';

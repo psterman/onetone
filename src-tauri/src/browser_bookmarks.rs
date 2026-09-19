@@ -1,4 +1,6 @@
 //! Read Chrome / Edge bookmark JSON on Windows (no Safari — not useful here).
+//! Profile dirs come from each browser's `Local State` (last_used + info_cache),
+//! not a hardcoded Default / Profile 1–3 list.
 
 use serde::Serialize;
 use serde_json::Value;
@@ -19,7 +21,7 @@ pub struct BrowserBookmark {
     pub folder: String,
 }
 
-/// Flat list of http(s) bookmarks from Chrome + Edge (Default / Profile 1–3).
+/// Flat list of http(s) bookmarks from Chrome + Edge (profiles via Local State).
 pub fn list_browser_bookmarks() -> Vec<BrowserBookmark> {
     let mut out = Vec::new();
     let mut seen = HashSet::new();
@@ -57,11 +59,11 @@ fn collect_browser(
     if !user_data.is_dir() {
         return;
     }
-    for profile in ["Default", "Profile 1", "Profile 2", "Profile 3"] {
+    for profile in discover_profiles(user_data) {
         if out.len() >= MAX_BOOKMARKS {
             return;
         }
-        let path = user_data.join(profile).join("Bookmarks");
+        let path = user_data.join(&profile).join("Bookmarks");
         if !path.is_file() {
             continue;
         }
@@ -79,6 +81,64 @@ fn collect_browser(
         };
         walk_roots(&json, &label, out, seen);
     }
+}
+
+/// Prefer `profile.last_used`, then `info_cache` keys, then any child dir with Bookmarks.
+/// Falls back to Default / Profile 1–3 if Local State is missing.
+fn discover_profiles(user_data: &Path) -> Vec<String> {
+    let mut ordered: Vec<String> = Vec::new();
+    let mut seen = HashSet::new();
+    let push = |name: String, ordered: &mut Vec<String>, seen: &mut HashSet<String>| {
+        if name.is_empty() || name == "System Profile" {
+            return;
+        }
+        if !user_data.join(&name).join("Bookmarks").is_file() {
+            return;
+        }
+        if seen.insert(name.clone()) {
+            ordered.push(name);
+        }
+    };
+
+    let local_state = user_data.join("Local State");
+    if let Ok(raw) = fs::read_to_string(&local_state) {
+        if let Ok(json) = serde_json::from_str::<Value>(&raw) {
+            if let Some(last) = json
+                .pointer("/profile/last_used")
+                .and_then(|v| v.as_str())
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+            {
+                push(last.to_string(), &mut ordered, &mut seen);
+            }
+            if let Some(cache) = json
+                .pointer("/profile/info_cache")
+                .and_then(|v| v.as_object())
+            {
+                for key in cache.keys() {
+                    push(key.clone(), &mut ordered, &mut seen);
+                }
+            }
+        }
+    }
+
+    if let Ok(entries) = fs::read_dir(user_data) {
+        for ent in entries.flatten() {
+            let Ok(ft) = ent.file_type() else { continue };
+            if !ft.is_dir() {
+                continue;
+            }
+            let name = ent.file_name().to_string_lossy().into_owned();
+            push(name, &mut ordered, &mut seen);
+        }
+    }
+
+    if ordered.is_empty() {
+        for profile in ["Default", "Profile 1", "Profile 2", "Profile 3"] {
+            push(profile.to_string(), &mut ordered, &mut seen);
+        }
+    }
+    ordered
 }
 
 fn walk_roots(
@@ -202,5 +262,27 @@ mod tests {
         assert_eq!(out[0].folder, "书签栏");
         assert_eq!(out[1].title, "Nested");
         assert_eq!(out[1].folder, "书签栏/工具");
+    }
+
+    #[test]
+    fn discover_profiles_reads_local_state_order() {
+        let dir = std::env::temp_dir().join(format!(
+            "onetone-bm-profiles-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("Profile 2")).unwrap();
+        fs::create_dir_all(dir.join("Default")).unwrap();
+        fs::write(dir.join("Profile 2").join("Bookmarks"), "{}").unwrap();
+        fs::write(dir.join("Default").join("Bookmarks"), "{}").unwrap();
+        fs::write(
+            dir.join("Local State"),
+            r#"{"profile":{"last_used":"Profile 2","info_cache":{"Profile 2":{},"Default":{}}}}"#,
+        )
+        .unwrap();
+        let got = discover_profiles(&dir);
+        assert_eq!(got.first().map(String::as_str), Some("Profile 2"));
+        assert!(got.iter().any(|p| p == "Default"));
+        let _ = fs::remove_dir_all(&dir);
     }
 }

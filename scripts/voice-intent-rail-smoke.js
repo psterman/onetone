@@ -28,6 +28,10 @@ var need = [
   'id="voiceWakeDesk"',
   'id="voiceWakeAliasBlock"',
   'id="voiceWakeActionDictate"',
+  'id="voiceIntentStartSlim"',
+  'id="btnVoiceIntentStartPhrase"',
+  'id="voiceMatchChain"',
+  'voice-start-slim',
   'id="voiceSceneActionsPanel"',
   'id="voiceSceneActionsDir"',
   'id="voiceSchemeStrip"',
@@ -78,6 +82,21 @@ var heroAt = html.indexOf('id="voiceFlowNodes"');
 if (pickerAt < 0 || railAt < pickerAt) missing.push('rail-inside-picker');
 if (heroAt > 0 && railAt > 0 && railAt < heroAt) missing.push('rail-before-hero');
 if (css.indexOf('.voice-intent-picker') < 0) missing.push('css .voice-intent-picker');
+if (css.indexOf('.voice-prompt-pick') < 0) missing.push('css horizontal prompt pick');
+if (css.indexOf('.voice-prompt-writebar') < 0) missing.push('css prompt writebar');
+if (html.indexOf('id="btnVoicePromptTplMore"') < 0) missing.push('常用… toggle');
+if (html.indexOf('voice-prompt-lib-pane') >= 0 && html.indexOf('voice-prompt-lib-pane__h') >= 0) {
+  missing.push('old vertical lib pane still in html');
+}
+/* F hero must stay suppressed (C2 desk, not two-step hero). */
+if (!/#voiceWorkflowPipeline[\s\S]*#voiceFlowNodes[\s\S]*display:\s*none\s*!important/.test(css.replace(/\s+/g,' '))) {
+  missing.push('css must hide voiceFlowNodes hero');
+}
+if (html.indexOf('id="voiceFlowNodes"') >= 0 && !/id="voiceFlowNodes"[^>]*\bhidden\b/.test(html)) {
+  missing.push('voiceFlowNodes should be hidden in markup');
+}
+if (railJs.indexOf('paintMatchChain') < 0) missing.push('rail paintMatchChain');
+if (railJs.indexOf('paintIntentStartSlim') < 0) missing.push('rail paintIntentStartSlim');
 if (css.indexOf('.voice-f-node') < 0) missing.push('css .voice-f-node');
 if (css.indexOf('#voiceFlowNodeWake::after') >= 0) missing.push('css still has 开 glyph');
 if (railJs.indexOf('voiceIntentPicker') < 0) missing.push('rail js picker');

@@ -132,7 +132,11 @@ assert.ok(/triggerType==='key'|triggerType==="key"/.test(keysBridge), 'keys brid
 const softBridge = read('src/js/features/voice/voice-bridge-softpad.js');
 assert.ok(/resolveScopeMapping/.test(softBridge), 'softpad bridge uses scope mapping');
 assert.ok(/ensurePad/.test(softBridge), 'softpad heals pad before paint');
-assert.ok(/applyVoiceOverlay|sp-voice-ph/.test(softBridge), 'softpad voice overlay on keys');
+assert.ok(/renderSoftPadPreview/.test(softBridge), 'softpad paints real Soft Pad 1:1');
+assert.ok(/padKeys\(m\)/.test(softBridge), 'softpad lists only Soft Pad armed keys');
+assert.ok(/keyExplain|explainForSlot/.test(softBridge), 'softpad explains capability not phrases');
+assert.ok(/applySelectOverlay/.test(softBridge), 'softpad select overlay without phrase edit');
+assert.ok(/explainForSlot/.test(keysBridge), 'keys bridge exports explainForSlot');
 assert.ok(/addPhrase/.test(softBridge), 'softpad addPhrase write-back');
 assert.ok(/addPhrase/.test(keysBridge), 'keys addPhrase write-back');
 assert.ok(/catalogSlotOf/.test(keysBridge)&&/agent\.continue/.test(keysBridge), 'keys maps actionId to catalog slot');
@@ -145,8 +149,8 @@ assert.ok(/semantic:camera:/.test(camBridge), 'camera bridge uses camera slot pr
 assert.ok(/OneToneVoiceBridgeCamera/.test(camBridge), 'camera bridge exports');
 assert.ok(/resolveScopeMapping/.test(camBridge), 'camera bridge uses scope mapping');
 assert.ok(/presencePrefs|CameraPresenceActions/.test(camBridge), 'camera bridge reads presence actions');
-assert.ok(/CAM_GROUPS|voiceCamCats/.test(camBridge), 'camera bridge has category framework');
-assert.ok(/Object\.keys\(CAM_META\)|listCameraRows/.test(camBridge), 'camera always builds catalog');
+assert.ok(/activeCameraKeys|actionOn\(pa/.test(camBridge), 'camera lists only active presence actions');
+assert.ok(/cats\.hidden\s*=\s*true|hidden=true/.test(camBridge), 'camera hides catalog categories');
 assert.ok(/addPhrase/.test(camBridge), 'camera addPhrase write-back');
 
 assert.ok(/voiceKeysPhraseOnly/.test(keysBridge), 'keys phrase-only filter');

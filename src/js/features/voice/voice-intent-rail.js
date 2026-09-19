@@ -186,16 +186,28 @@
     }
   }
 
-  function paintPromptFromTpl(hasPeers){
+  function paintPromptFromTpl(forceOpen){
     var host=$('voicePromptFromTpl');
+    var more=$('btnVoicePromptTplMore');
     if(!host) return;
-    if(!hasPeers){
+    var peers=listPromptPeersForCurrentApp();
+    var open=!!forceOpen;
+    if(more) open=more.getAttribute('aria-expanded')==='true';
+    if(!peers.length){
+      /* empty: templates live inside lib empty state */
+      host.hidden=true;
+      host.innerHTML='';
+      if(more){ more.hidden=true; more.setAttribute('aria-expanded','false'); }
+      return;
+    }
+    if(more) more.hidden=false;
+    if(!open){
       host.hidden=true;
       host.innerHTML='';
       return;
     }
     host.hidden=false;
-    host.innerHTML='<span class="voice-prompt-from-tpl__lb">'+escHtml(t('voicePromptFromTpl','从常用开始'))+
+    host.innerHTML='<span class="voice-prompt-from-tpl__lb">'+escHtml(t('voicePromptFromTpl','常用起步'))+
       '</span><span class="voice-prompt-from-tpl__pills">'+promptTplPillsHtml()+'</span>';
   }
 
@@ -233,11 +245,10 @@
     var peers=listPromptPeersForCurrentApp();
     var count=$('voicePromptLibCount');
     if(count) count.textContent=peers.length?String(peers.length):'';
-    paintPromptFromTpl(peers.length>0);
+    paintPromptFromTpl();
     if(!peers.length){
       host.innerHTML='<div class="voice-prompt-lib__empty">'+
-        '<p class="voice-prompt-lib__empty-lead">'+escHtml(t('voicePromptLibEmpty','还没有口头指令'))+'</p>'+
-        '<p class="voice-prompt-lib__empty-hint">'+escHtml(t('voicePromptLibEmptyHint','点一个常用起步，或右侧直接写'))+'</p>'+
+        '<span class="voice-prompt-lib__empty-lead">'+escHtml(t('voicePromptLibEmpty','还没有'))+'</span>'+
         '<div class="voice-prompt-lib__tpls">'+promptTplPillsHtml()+'</div></div>';
       paintPromptArmed();
       return;
@@ -248,29 +259,16 @@
       try{
         if(picker&&picker.promptTextFromMapping) body=String(picker.promptTextFromMapping(m)||'').trim();
       }catch(_){}
-      var empty=t('voicePromptRowEmpty','未填写 prompt');
+      var empty=t('voicePromptRowEmpty','未填写');
       var stored=String(m.label||'').trim();
       var name=stored||(body?body.split(/\r?\n/)[0].trim():'');
       if(!name) name=empty;
-      if(name.length>22) name=name.slice(0,22)+'…';
-      var preview='';
-      if(body){
-        var first=body.split(/\r?\n/)[0].trim();
-        if(stored&&stored!==first){
-          preview=body.replace(/\s+/g,' ').trim();
-          if(preview.length>28) preview=preview.slice(0,28)+'…';
-        }else if(body.length>name.length){
-          preview=body.replace(/\s+/g,' ').trim();
-          if(preview.length>28) preview=preview.slice(0,28)+'…';
-        }
-      }
+      if(name.length>10) name=name.slice(0,10)+'…';
       var on=String(m.id)===String(promptEditId);
-      var curTag=on?'<span class="voice-prompt-lib__cur">'+escHtml(t('voicePromptLibCurrent','当前'))+'</span>':'';
       return '<button type="button" class="voice-prompt-lib__chip'+(on?' is-on':'')+
         '" role="option" aria-selected="'+(on?'true':'false')+
         '" data-prompt-peer="'+escHtml(String(m.id))+'" title="'+escHtml(body||empty)+'">'+
-        '<span class="voice-prompt-lib__body">'+escHtml(name)+curTag+'</span>'+
-        (preview?'<span class="voice-prompt-lib__preview">'+escHtml(preview)+'</span>':'')+
+        '<span class="voice-prompt-lib__body">'+escHtml(name)+'</span>'+
         '</button>';
     }).join('');
     paintPromptArmed();
@@ -308,8 +306,10 @@
     applyingPrompt=false;
     var saved=savePromptToScene({quiet:true});
     if(saved&&saved.id){
-      toast(t('voicePromptTplApplied','已加入指令库 · 「{label}」').replace('{label}',tpl.label));
+      toast(t('voicePromptTplApplied','已加入 · 「{label}」').replace('{label}',tpl.label));
     }
+    var more=$('btnVoicePromptTplMore');
+    if(more) more.setAttribute('aria-expanded','false');
     paintPromptLibrary();
   }
 
@@ -665,16 +665,41 @@
     var phrase=primaryWakePhraseDisplay();
     if(wakeVal) wakeVal.textContent=phrase;
     var intent=currentIntent();
-    var finish='—';
-    if(intent==='ime'){
-      finish='听写';
-    }else if(intent==='prompt') finish=t('voiceIntentPromptTitle','聚焦 · 填入 · 发送');
-    else if(intent==='key') finish=t('voiceIntentKey','我录的键');
-    else if(intent==='cursor') finish=t('voiceIntentCursor','软件自带');
-    else if(intent==='softpad') finish=t('voiceIntentSoftPad','屏幕按钮');
-    else if(intent==='gesture') finish=t('voiceIntentGesture','手势');
+    var finish=intentFinishLabel(intent);
     if(finishVal) finishVal.textContent=finish;
     paintPromptArmed();
+    paintMatchChain(phrase, finish);
+    paintIntentStartSlim(phrase);
+  }
+
+  function intentFinishLabel(intent){
+    if(intent==='ime') return t('voiceIntentIme','听写方式');
+    if(intent==='prompt') return t('voiceIntentPrompt','口头指令');
+    if(intent==='key') return t('voiceIntentKey','我录的键');
+    if(intent==='cursor') return t('voiceIntentCursor','软件自带');
+    if(intent==='softpad') return t('voiceIntentSoftPad','屏幕按钮');
+    if(intent==='gesture') return t('voiceIntentGesture','手势');
+    return '—';
+  }
+
+  function paintMatchChain(phrase, finish){
+    var lead=$('voiceMatchChainLead');
+    var pEl=$('voiceMatchChainPhrase');
+    var iEl=$('voiceMatchChainIntent');
+    var chain=$('voiceMatchChain');
+    if(lead) lead.textContent=t('voiceMatchChainLead','说');
+    if(pEl) pEl.textContent=phrase||'—';
+    if(iEl) iEl.textContent=finish||'—';
+    if(chain) chain.classList.add('is-on');
+  }
+
+  function paintIntentStartSlim(phrase){
+    var text=$('voiceIntentStartPhraseText');
+    if(text){
+      var p=String(phrase||'—').trim();
+      if(p && p.charAt(0)!=='「') p='「'+p+'」';
+      text.textContent=p||'—';
+    }
   }
 
   function setIntent(id, opts){
@@ -1240,10 +1265,12 @@
     var aimSel=$('voiceInputAimStrategy');
     if(aimSel){
       var aim=String(aimSel.value||'none').trim()||'none';
-      var checked=document.querySelector('input[name="voiceInputAimStrategy"]:checked');
-      if(checked) aim=String(checked.value||aim).trim()||'none';
       if(aim!=='auto'&&aim!=='none'&&aim!=='probe') aim='none';
       aimSel.value=aim;
+      var radios=document.querySelectorAll('input[name="voiceInputAimStrategy"]');
+      for(var ri=0;ri<radios.length;ri++){
+        radios[ri].checked=String(radios[ri].value)===aim;
+      }
       st.config.voiceEnd.inputAimStrategy=aim;
     }
     if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
@@ -1303,6 +1330,16 @@
     });
     var rail=$('voiceIntentRail');
     if(rail) rail.setAttribute('aria-label',t('voiceIntentRailLbl','意图分类'));
+    var railSec=$('voiceIntentRailSec');
+    if(railSec) railSec.textContent=t('voiceIntentRailSec','意图');
+    var startBadge=$('voiceIntentStartBadge');
+    if(startBadge) startBadge.textContent=t('voiceStartBadge','起点');
+    var startTitle=$('voiceIntentStartTitle');
+    if(startTitle) startTitle.textContent=t('voiceFlowNodeWakeTitle','说了什么');
+    var startHint=$('voiceIntentStartHint');
+    if(startHint) startHint.textContent=t('voiceWakePhraseTapHint','点按可改口令');
+    var startBtn=$('btnVoiceIntentStartPhrase');
+    if(startBtn) startBtn.title=t('voiceWakePhraseCapTitle','点击改口令');
     [['voiceIntentPromptTitle','voiceIntentPromptTitle'],
      ['voiceIntentPromptDesc','voiceIntentPromptDesc'],
      ['voiceIntentPromptLabel','voiceIntentPromptLabel'],
@@ -1326,20 +1363,40 @@
       newMain.title=t('voicePromptCustomHint','已开新稿 · 输入后自动进左侧列表');
     }
     var whatSub=$('voicePromptColWhatSub');
-    if(whatSub) whatSub.textContent=t('voicePromptColWhatSub','当前口头指令 · 输入即保存');
+    if(whatSub) whatSub.textContent=t('voicePromptColWhatSub','选指令 · 改标题和 prompt · 左上口令负责唤醒');
+    var libLbl=$('voicePromptLibLbl');
+    if(libLbl) libLbl.textContent=t('voicePromptLibLbl','指令');
+    var tplMore=$('btnVoicePromptTplMore');
+    if(tplMore) tplMore.textContent=t('voicePromptTplMore','常用…');
+    var aimScope=$('voicePromptAimScopeLbl');
+    if(aimScope) aimScope.textContent=t('voicePromptAimScope','本应用共用');
     var titleLbl=$('voicePromptTitleLbl');
-    if(titleLbl) titleLbl.textContent=t('voicePromptTitleLbl','标题（可选）');
+    if(titleLbl) titleLbl.textContent=t('voicePromptTitleLbl','标题');
     var titleIn=$('voicePromptTitle');
-    if(titleIn) titleIn.placeholder=t('voicePromptTitlePh','缩短成列表短名，如：总结改动');
+    if(titleIn) titleIn.placeholder=t('voicePromptTitlePh','列表短名，如：你好');
+    var intentLbl=$('voiceIntentPromptLabel');
+    if(intentLbl) intentLbl.textContent=t('voiceIntentPromptLabelShort','prompt');
     paintPromptLibrary();
     var aimLegend=$('voiceInputAimStrategyLbl');
     if(aimLegend) aimLegend.textContent=t('voicePromptAimLegend','写入前怎么对准输入框');
     var aimLead=$('voicePromptAimLead');
-    if(aimLead) aimLead.textContent=t('voicePromptAimLead','口令都会识别；差别在「要不要自动点框、没对准时写不写」。');
+    if(aimLead) aimLead.textContent=t('voicePromptAimLead','');
     var colWhat=$('voicePromptColWhatTitle');
     if(colWhat) colWhat.textContent=t('voicePromptColWhat','写什么');
     var colAim=$('voicePromptColAimTitle');
-    if(colAim) colAim.textContent=t('voicePromptColAim','怎么对准');
+    if(colAim) colAim.textContent=t('voicePromptColAim','写入方式');
+    var aimSelOpts=$('voiceInputAimStrategy');
+    if(aimSelOpts){
+      var optMap=[
+        ['none','voicePromptAimNoneTitle','直接写入'],
+        ['auto','voicePromptAimAutoTitle','先对准'],
+        ['probe','voicePromptAimProbeTitle','防误写']
+      ];
+      for(var oi=0;oi<optMap.length;oi++){
+        var opt=aimSelOpts.querySelector('option[value="'+optMap[oi][0]+'"]');
+        if(opt) opt.textContent=t(optMap[oi][1],optMap[oi][2]);
+      }
+    }
     function setAimCard(value,titleKey,titleFb,descKey,descFb){
       var inp=document.querySelector('input[name="voiceInputAimStrategy"][value="'+value+'"]');
       if(!inp) return;
@@ -1350,11 +1407,18 @@
       var badge=card.querySelector('.voice-prompt-aim__badge');
       if(title) title.textContent=t(titleKey,titleFb);
       if(desc) desc.textContent=t(descKey,descFb);
-      if(badge) badge.textContent=t('voicePromptAimBadge','推荐');
+      if(badge) badge.textContent=t('voicePromptAimBadgeShort','荐');
     }
-    setAimCard('none','voicePromptAimNoneTitle','不对准，直接写入','voicePromptAimNoneDesc','假定你已点好框。最快，但焦点在哪就打到哪。');
-    setAimCard('auto','voicePromptAimAutoTitle','自动对准再写入','voicePromptAimAutoDesc','说出口令后点到聊天框再填；对不上就取消。一说就要写入时用这个。');
-    setAimCard('probe','voicePromptAimProbeTitle','防误写：未对准则跳过','voicePromptAimProbeDesc','聊天框没有光标时，口令触发也不写入。适合旁边开着代码、怕误唤醒写进文件。');
+    setAimCard('none','voicePromptAimNoneTitle','直接写入','voicePromptAimNoneDesc','假定你已点好框。最快，但焦点在哪就打到哪。');
+    setAimCard('auto','voicePromptAimAutoTitle','先对准','voicePromptAimAutoDesc','说出口令后点到聊天框再填；对不上就取消。一说就要写入时用这个。');
+    setAimCard('probe','voicePromptAimProbeTitle','防误写','voicePromptAimProbeDesc','聊天框没有光标时，口令触发也不写入。适合旁边开着代码、怕误唤醒写进文件。');
+    var demoLbl=$('voiceAimDemoToggleLbl');
+    if(demoLbl){
+      var explainOpen=$('voiceAimExplain');
+      demoLbl.textContent=(explainOpen&&!explainOpen.hidden)
+        ?t('voiceAimDemoToggleHide','收起')
+        :t('voiceAimDemoToggleShow','看演示');
+    }
     var calBtn=$('btnVoiceAimCalibrate');
     if(calBtn) calBtn.textContent=t('voiceAimCalBtn','校准此位置');
     var calClear=$('btnVoiceAimCalibrateClear');
@@ -1401,8 +1465,8 @@
     }
     if(btn) btn.setAttribute('aria-expanded',open?'true':'false');
     if(lbl) lbl.textContent=open
-      ?t('voiceAimDemoToggleHide','收起对准演示')
-      :t('voiceAimDemoToggleShow','看对准演示');
+      ?t('voiceAimDemoToggleHide','收起')
+      :t('voiceAimDemoToggleShow','看演示');
     if(open) restartAimDemoAnim();
   }
 
@@ -1448,6 +1512,8 @@
       var custom=document.createElement('button');
       custom.type='button';
       custom.id='btnVoicePromptCustom';
+      custom.hidden=true;
+      custom.setAttribute('data-voice-prompt-new','');
       custom.textContent=t('voicePromptCustomBtn','＋ 新建');
       presets.appendChild(custom);
     }
@@ -1540,10 +1606,27 @@
         applyPromptTemplate(tplBtn.getAttribute('data-prompt-tpl'));
       });
     }
+    var tplMore=$('btnVoicePromptTplMore');
+    if(tplMore&&!tplMore._bound){
+      tplMore._bound=true;
+      tplMore.addEventListener('click',function(e){
+        e.preventDefault();
+        var open=tplMore.getAttribute('aria-expanded')!=='true';
+        tplMore.setAttribute('aria-expanded',open?'true':'false');
+        paintPromptFromTpl();
+      });
+    }
     var aimSel=$('voiceInputAimStrategy');
     if(aimSel&&!aimSel._bound){
       aimSel._bound=true;
       aimSel.addEventListener('change',function(){
+        var next=String(aimSel.value||'none');
+        if(next!=='auto'&&next!=='none'&&next!=='probe') next='none';
+        var radios=document.querySelectorAll('input[name="voiceInputAimStrategy"]');
+        for(var ri=0;ri<radios.length;ri++){
+          radios[ri].checked=String(radios[ri].value)===next;
+        }
+        syncAimStrategyChrome(next);
         savePromptText();
       });
     }
@@ -1655,6 +1738,9 @@
         &&global.document.getElementById('btnVoicePromptNewMain')
         &&global.document.getElementById('voicePromptArmed')
         &&global.document.getElementById('voicePromptFromTpl')
+        &&global.document.getElementById('voiceMatchChain')
+        &&global.document.getElementById('voiceIntentStartSlim')
+        &&global.document.getElementById('btnVoiceIntentStartPhrase')
         &&global.document.getElementById('voiceWakeAliasBlock')
         &&global.document.getElementById('voiceWakeActionDictate'));
       if(!ok&&global.console&&console.warn){

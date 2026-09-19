@@ -158,7 +158,11 @@
     var unified=$('voiceWakeCurrentSectionLbl');
     if(unified) unified.hidden=false;
     var pageSubVis=$('voiceWakePageSubVisible');
-    if(pageSubVis) pageSubVis.hidden=false;
+    if(pageSubVis){
+      pageSubVis.hidden=true;
+      pageSubVis.setAttribute('aria-hidden','true');
+      pageSubVis.classList.add('sr-only');
+    }
   }
 
   function renderCompactWake(vm){
@@ -185,6 +189,16 @@
       enEl.textContent='「'+(phrase.en||display)+'」';
       enEl.hidden=!showEn;
     }
+    try{
+      var rail=global.OneToneVoiceIntentRail;
+      if(rail&&typeof rail.syncHeroVals==='function') rail.syncHeroVals();
+      else{
+        var startText=document.getElementById('voiceIntentStartPhraseText');
+        if(startText) startText.textContent=showEn
+          ?('「'+(phrase.en||display)+'」')
+          :('「'+(phrase.zh||display)+'」');
+      }
+    }catch(_sync){}
     const langToggle=$('voiceWakeLangToggle');
     if(langToggle) langToggle.hidden=true;
     syncWakePresetLangVisibility({lang:presetLang});
@@ -582,6 +596,8 @@
   function renderWakeSectionLabels(){
     var unified=$('voiceWakeCurrentSectionLbl');
     if(unified) unified.textContent=t('voiceFlowNodeWakeTitle')||'说了什么';
+    var startBadge=$('voiceWakeStartBadge');
+    if(startBadge) startBadge.textContent=t('voiceStartBadge')||'起点';
     var pageSubVis=$('voiceWakePageSubVisible');
     if(pageSubVis) pageSubVis.textContent=t('voiceWakeDeskSub')||'口令是触发内容 · 语音独有';
     var moreSum=$('voiceWakeMoreAliasesSummary');
@@ -623,7 +639,9 @@
     var editLink=$('btnVoiceWakePhraseEditLink');
     if(editLink) editLink.textContent=t('voiceWakePhraseEditLink')||'不对就改';
     var hint=$('voiceWakeDisplayHint');
-    if(hint) hint.textContent=t('voiceWakeHeroHintShort')||'默认用这句。';
+    if(hint) hint.textContent=t('voiceWakePhraseTapHint')||'点按可改口令';
+    var capBtn=$('btnVoiceWakePhraseCap');
+    if(capBtn) capBtn.title=t('voiceWakePhraseCapTitle')||'点击改口令';
     var listenLbl=$('voiceSchemeListenLbl');
     if(listenLbl) listenLbl.textContent=t('voiceSchemeListenLbl')||'后台怎么听';
     var troubleSum=$('voiceSchemeTroubleSummary');
@@ -692,15 +710,11 @@
     var hint=$('voiceWakeDisplayHint');
     if(hint){
       var link=hint.querySelector('#btnVoiceWakePhraseEditLink,.voice-phrase-hint-link');
-      var lead=vm.loading?t('homeLiveLoading'):(t('voiceWakeHeroHint')||'默认用这句开始听写。');
+      var lead=vm.loading?t('homeLiveLoading'):(t('voiceWakePhraseTapHint')||'点按可改口令');
       if(link){
-        hint.innerHTML='';
-        hint.appendChild(document.createTextNode(lead+(vm.loading?'':' ')));
-        if(!vm.loading){
-          link.textContent=t('voiceWakePhraseEditLink')||'不对就改';
-          hint.appendChild(link);
-        }
-      }else if(!link){
+        /* Slim: keep one short line; edit is the phrase button itself. */
+        hint.textContent=lead;
+      }else{
         hint.textContent=lead;
       }
     }

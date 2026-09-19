@@ -1854,54 +1854,42 @@
   }
 
   function refreshKeysCustomKeyMatchLaunch(match) {
-    var detail = document.querySelector('.keys-custom-key-detail');
-    if (!detail) return;
     var host = document.getElementById('keysCustomKeyMatchLaunch');
-    var actions = document.getElementById('keysCaptureTargetActions');
-    if (!host) {
-      host = document.createElement('div');
-      host.id = 'keysCustomKeyMatchLaunch';
-      host.className = 'keys-custom-key-launch';
-      if (actions && actions.parentNode === detail) detail.insertBefore(host, actions);
-      else detail.appendChild(host);
-    } else if (actions && host.nextSibling !== actions && actions.parentNode === detail) {
-      detail.insertBefore(host, actions);
-    }
-    if (!match || !match.id) {
+    if (host) {
       host.hidden = true;
       host.innerHTML = '';
+    }
+    // Detail no longer shows a launch-key row; trigger lives on the left list / 01.
+    void match;
+  }
+
+  function syncKeysCustomKeyMatchNameInput(match) {
+    var input = document.getElementById('keysCustomKeyMatchName');
+    if (!input) return;
+    if (!input.__wiredName) {
+      input.__wiredName = true;
+      var commit = function () {
+        var mid = String(customKeyMatchEditId || '').trim();
+        if (!mid) return;
+        renameCustomKeyMatch(mid, input.value);
+      };
+      input.addEventListener('change', commit);
+      input.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          input.blur();
+          commit();
+        }
+      });
+    }
+    if (!match || !match.id) {
+      input.value = '';
+      input.disabled = true;
       return;
     }
-    host.hidden = false;
-    var trig = customKeyMatchTrigger(match);
-    var empty = !trig;
-    host.innerHTML =
-      '<span class="keys-custom-key-launch-lab">' +
-      esc(t('keysCustomKeyMatchLaunch', '启动键')) +
-      '</span>' +
-      '<button type="button" class="keys-custom-key-launch-val' +
-      (empty ? ' is-empty' : '') +
-      '" data-match-launch-record="1" title="' +
-      esc(t('keysCustomKeyMatchLaunchRecord', '点击录制触发键')) +
-      '">' +
-      esc(
-        empty
-          ? t('keysCustomKeyMatchLaunchNeed', '点击录制触发键')
-          : friendlyTriggerLabel(trig)
-      ) +
-      '</button>' +
-      '<span class="keys-custom-key-launch-note">' +
-      esc(t('keysCustomKeyMatchLaunchUnique', '不可与本场景其他动作相同')) +
-      '</span>';
-    if (!host.__wiredLaunchRecord) {
-      host.__wiredLaunchRecord = true;
-      host.addEventListener('click', function (ev) {
-        var btn =
-          ev.target && ev.target.closest ? ev.target.closest('[data-match-launch-record]') : null;
-        if (!btn || !host.contains(btn)) return;
-        ev.preventDefault();
-        recordCustomKeyMatchLaunch();
-      });
+    input.disabled = false;
+    if (document.activeElement !== input) {
+      input.value = customKeyMatchDisplayName(match);
     }
   }
 
@@ -1979,7 +1967,7 @@
       if (actsLen === 0) {
         hint.textContent = t(
           'keysCaptureSeqHintEmpty',
-          '用下方按钮加步骤；上方可录制本条专属触发键。'
+          '点 ＋ 选择按键 / 文本 / 延迟 / 文件 / 文件夹 / 网址。'
         );
       } else if (appliedAsRec) {
         hint.textContent = t(
@@ -1989,12 +1977,12 @@
       } else {
         hint.textContent = t(
           'keysCaptureSeqHint',
-          '按本条触发键后依次执行。▲▼ 排序，点步骤可改。'
+          '触发后依次执行。点 ＋ 添加步骤，悬停可排序。'
         );
       }
     }
-    // Always show the library row's launch key — even when applied as habit 02.
     refreshKeysCustomKeyMatchLaunch(editMatch);
+    syncKeysCustomKeyMatchNameInput(editMatch);
     if (activeTab === 'key' && (!rows.length || !m)) {
       container.innerHTML = '';
       refreshKeysCustomKeyMatchList();
@@ -2110,6 +2098,10 @@
       } catch (_) {}
     }
     refreshKeysCustomKeyMatchList();
+    var nameIn = document.getElementById('keysCustomKeyMatchName');
+    if (nameIn && document.activeElement !== nameIn) {
+      nameIn.value = next;
+    }
     applyHero();
     syncRecognitionEditorPreview();
     try {

@@ -2,7 +2,7 @@
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   var STEPS=['wake','finish'];
-  var activeStep='wake';
+  var activeStep='finish';
   var stepChangeHook=null;
 
   function panel(){
@@ -12,7 +12,9 @@
   function normalizeStep(step){
     step=String(step||'').trim();
     if(step==='recognize'||step==='send') return 'finish';
-    if(STEPS.indexOf(step)<0) return 'wake';
+    /* C2+A slim: no F hero / no separate wake page — phrase lives in rail start. */
+    if(step==='wake') return 'finish';
+    if(STEPS.indexOf(step)<0) return 'finish';
     return step;
   }
 

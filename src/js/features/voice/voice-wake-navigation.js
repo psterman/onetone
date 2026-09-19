@@ -18,9 +18,9 @@
   }
 
   function ensureWakeStep(){
+    /* C2 slim: stay on finish desk; rail start owns the phrase. */
     if(global.OneToneVoicePageState){
-      var cur=global.OneToneVoicePageState.getStep();
-      if(cur!=='wake') global.OneToneVoicePageState.setStep('wake');
+      global.OneToneVoicePageState.setStep('finish');
     }
   }
 

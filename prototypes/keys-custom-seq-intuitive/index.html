@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>我录的键 · 动作序列原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2330;
+      --muted: #6b7a8c;
+      --faint: #8b97a8;
+      --line: #e8edf3;
+      --paper: #ffffff;
+      --wash: #f4f7fa;
+      --bg: #f0f3f7;
+      --cyan: #2a9cc4;
+      --cyan-ink: #0f6a88;
+      --cyan-soft: #eaf6fb;
+      --ok: #1a9a52;
+      --warn: #b45309;
+      --warn-soft: #fff8f0;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { font-family: var(--font); color: var(--ink); background: var(--bg); }
+    :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    .bar {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center;
+      padding: 9px 16px;
+      background: #1a2330; color: #a8b4c4; font-size: 12px;
+    }
+    .bar strong { color: #fff; font-weight: 650; }
+
+    .shell {
+      width: min(920px, 100%);
+      margin: 20px auto 56px;
+      padding: 0 16px;
+      display: grid; gap: 14px;
+    }
+    .brief {
+      padding: 0 2px;
+      font-size: 12.5px; line-height: 1.5; color: var(--muted);
+    }
+    .brief b { color: var(--ink); font-weight: 650; }
+    .brief code {
+      font-family: var(--mono); font-size: 11px;
+      color: var(--cyan-ink);
+    }
+
+    .desk {
+      border-radius: 18px;
+      background: var(--paper);
+      box-shadow: 0 1px 0 rgba(26,35,48,.04), 0 18px 40px rgba(26,35,48,.06);
+      overflow: visible;
+      min-height: 560px;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(168px, 200px) minmax(0, 1fr);
+      min-height: 560px;
+    }
+    @media (max-width: 680px) {
+      .split { grid-template-columns: 1fr; }
+    }
+
+    .aside {
+      background: var(--wash);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100%;
+    }
+    .aside__head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 14px 8px;
+    }
+    .aside__head h2 {
+      margin: 0; font-size: 12px; font-weight: 650; color: var(--faint);
+      letter-spacing: .04em; text-transform: none;
+    }
+    .aside__add {
+      appearance: none; width: 26px; height: 26px;
+      border: 0; border-radius: 8px;
+      background: transparent; color: var(--muted);
+      font: inherit; font-size: 18px; line-height: 1; font-weight: 550;
+      cursor: pointer;
+    }
+    .aside__add:hover { background: #fff; color: var(--cyan-ink); }
+    .aside__list {
+      padding: 4px 8px 16px;
+      display: grid; gap: 2px;
+      align-content: start;
+      overflow: auto; max-height: 520px;
+    }
+    .match {
+      appearance: none; width: 100%;
+      display: grid; grid-template-columns: 6px minmax(0, 1fr);
+      gap: 10px; align-items: center;
+      text-align: left; border: 0;
+      border-radius: 10px; background: transparent;
+      padding: 10px 10px; font: inherit; cursor: pointer;
+    }
+    .match:hover { background: rgba(255,255,255,.7); }
+    .match.is-on { background: #fff; box-shadow: 0 1px 2px rgba(26,35,48,.04); }
+    .match__name {
+      font-size: 13px; font-weight: 650;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .match.is-on .match__name { color: var(--cyan-ink); }
+    .match__meta {
+      grid-column: 2;
+      font-size: 11px; color: var(--faint); font-weight: 500;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #c5ced8; flex-shrink: 0; }
+    .dot.ok { background: var(--ok); }
+    .dot.draft { background: #e2a336; }
+
+    .detail {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      min-height: 560px;
+    }
+    .detail__top {
+      padding: 18px 22px 0;
+    }
+    .detail__titles { display: grid; gap: 2px; }
+    .detail__label {
+      margin: 0; font-size: 11px; font-weight: 650; color: var(--faint);
+      letter-spacing: .03em;
+    }
+    .detail__name {
+      width: 100%; max-width: 360px;
+      height: 40px;
+      border: 0;
+      border-bottom: 1.5px solid transparent;
+      border-radius: 0;
+      padding: 0;
+      font: inherit; font-size: 20px; font-weight: 650;
+      letter-spacing: -.02em;
+      color: var(--ink); background: transparent;
+    }
+    .detail__name:hover { border-bottom-color: var(--line); }
+    .detail__name:focus {
+      outline: none; border-bottom-color: var(--cyan);
+    }
+    .detail__name::placeholder { color: #b0bac6; font-weight: 550; }
+    .detail__hint {
+      margin: 0; padding: 4px 22px 12px;
+      font-size: 12px; color: var(--faint); line-height: 1.4;
+    }
+
+    .detail__body {
+      padding: 0 14px 12px 18px;
+      overflow: visible;
+      min-height: 280px;
+    }
+
+    .steps { display: grid; gap: 6px; }
+    .step {
+      position: relative;
+      display: grid;
+      grid-template-columns: 22px auto minmax(0, 1fr) auto;
+      gap: 8px; align-items: center;
+      padding: 10px 8px 10px 10px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--cyan-soft);
+      transition: background .15s var(--ease);
+    }
+    .step:hover,
+    .step.is-open { background: #dceff7; }
+    .step__num {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 11px; font-weight: 650;
+      background: transparent; color: var(--faint);
+      margin-top: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .step__kind {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 12.5px; font-weight: 650; color: var(--ink); margin-bottom: 0;
+      white-space: nowrap;
+    }
+    .step__kind-ico {
+      width: 15px; height: 15px; flex-shrink: 0;
+      color: var(--cyan-ink); opacity: .9;
+    }
+    .step__kind-ico svg {
+      width: 15px; height: 15px; display: block;
+      stroke: currentColor; fill: none;
+      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .step__sum {
+      appearance: none;
+      justify-self: start;
+      max-width: 100%;
+      border: 0;
+      border-radius: 8px;
+      background: #fff;
+      padding: 5px 10px;
+      font: inherit; font-size: 13px; font-weight: 550;
+      font-family: var(--mono);
+      color: var(--ink);
+      cursor: pointer;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .step__sum.is-empty {
+      font-family: var(--font);
+      color: var(--faint);
+      font-weight: 550;
+    }
+    .step__sum:hover {
+      box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--cyan) 40%, transparent);
+    }
+    .step.is-open .step__sum { display: none; }
+    .step__fly {
+      display: none;
+      grid-column: 3;
+      min-width: 0;
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      position: static;
+      transform: none;
+      left: auto; top: auto;
+      z-index: 1;
+    }
+    .step.is-open .step__fly { display: block; }
+    .step__ctrl {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 6px;
+      align-items: center;
+      overflow-x: auto;
+      max-width: 100%;
+      scrollbar-width: thin;
+    }
+    .step__ctrl input[type="text"],
+    .step__ctrl input[type="number"] {
+      font: inherit; font-size: 13px;
+      border: 0;
+      border-radius: 8px;
+      background: #fff;
+      padding: 6px 10px;
+      min-width: 96px;
+      width: 160px;
+      flex: 0 0 auto;
+    }
+    .step__ctrl input[type="text"]:focus,
+    .step__ctrl input[type="number"]:focus {
+      outline: none;
+      box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--cyan) 45%, transparent);
+    }
+    .step__ctrl input.is-wide { width: min(280px, 48vw); }
+    .delay-pills {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+    .delay-pills button {
+      appearance: none; border: 0; border-radius: 8px;
+      background: #fff; padding: 6px 11px;
+      font: inherit; font-size: 12px; font-weight: 650;
+      color: var(--muted); cursor: pointer;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .delay-pills button.is-on {
+      background: #fff;
+      color: var(--cyan-ink);
+      box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--cyan) 50%, transparent);
+    }
+    .step__ctrl .btn { flex: 0 0 auto; white-space: nowrap; background: #fff; }
+    .step__acts {
+      grid-column: 4;
+      display: flex; gap: 0; align-items: center;
+      opacity: 0;
+      transition: opacity .12s var(--ease);
+    }
+    .step:hover .step__acts,
+    .step:focus-within .step__acts,
+    .step.is-open .step__acts { opacity: 1; }
+    .step__acts button {
+      appearance: none; width: 28px; height: 28px;
+      border: 0; border-radius: 7px; background: transparent;
+      color: var(--faint); font: inherit; font-size: 11px;
+      cursor: pointer;
+    }
+    .step__acts button:hover { background: #fff; color: var(--ink); }
+
+    .btn {
+      appearance: none; height: 30px; padding: 0 11px;
+      border: 0; border-radius: 8px;
+      background: var(--wash); color: var(--muted);
+      font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .btn:hover { color: var(--ink); background: #e8eef4; }
+    .btn.primary {
+      background: var(--cyan-soft); color: var(--cyan-ink);
+    }
+
+    .add-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 4px 4px;
+      flex-wrap: nowrap;
+    }
+    .add-plus {
+      appearance: none;
+      width: 36px; height: 36px;
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 50%;
+      background: var(--cyan-soft);
+      color: var(--cyan-ink);
+      font: inherit; font-size: 20px; font-weight: 550; line-height: 1;
+      cursor: pointer;
+      transition: transform .12s var(--ease), background .12s var(--ease);
+    }
+    .add-plus:hover { background: #d7eef7; }
+    .add-plus:active { transform: scale(0.96); }
+    .add-plus.is-open { background: var(--cyan); color: #fff; }
+    .add-menu {
+      display: none;
+      flex: 1 1 auto;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 2px;
+      min-width: 0;
+      padding: 4px;
+      border: 0;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 8px 28px rgba(26,35,48,.12), 0 0 0 1px rgba(26,35,48,.04);
+      position: static;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+    .add-menu.is-on { display: flex; }
+    .add-tile-wrap {
+      position: relative;
+      flex: 1 1 0;
+      min-width: 52px;
+    }
+    .add-tile {
+      appearance: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: 100%;
+      text-align: center;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      padding: 8px 4px;
+      font: inherit;
+      color: var(--ink);
+      cursor: pointer;
+      min-height: 62px;
+    }
+    .add-tile:hover,
+    .add-tile:focus-visible,
+    .add-tile-wrap.is-fly .add-tile {
+      background: var(--wash);
+      outline: none;
+    }
+    .add-tile__ico {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      display: grid; place-items: center;
+      background: var(--wash);
+      border: 0;
+      color: var(--cyan-ink);
+    }
+    .add-tile:hover .add-tile__ico,
+    .add-tile-wrap.is-fly .add-tile__ico {
+      background: var(--cyan-soft);
+    }
+    .add-tile__ico svg {
+      width: 16px; height: 16px;
+      stroke: currentColor; fill: none;
+      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .add-tile__t {
+      font-size: 11.5px; font-weight: 650; line-height: 1.2;
+      white-space: nowrap;
+    }
+    .add-fly {
+      display: none;
+      position: absolute;
+      left: 50%;
+      top: calc(100% + 6px);
+      transform: translateX(-50%);
+      z-index: 30;
+      padding: 6px;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 10px 28px rgba(26,35,48,.14), 0 0 0 1px rgba(26,35,48,.05);
+      white-space: nowrap;
+    }
+    .add-tile-wrap.is-fly .add-fly {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      gap: 4px;
+      align-items: center;
+    }
+    .add-fly button {
+      appearance: none; border: 0; border-radius: 8px;
+      background: var(--wash); padding: 7px 12px;
+      font: inherit; font-size: 12.5px; font-weight: 650;
+      color: var(--ink); cursor: pointer;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .add-fly button:hover {
+      background: var(--cyan-soft); color: var(--cyan-ink);
+    }
+
+    .empty {
+      padding: 36px 12px 16px;
+      text-align: left;
+      color: var(--faint); font-size: 13px; line-height: 1.5;
+    }
+    .empty b { display: block; color: var(--ink); margin-bottom: 4px; font-weight: 650; }
+
+    .recent {
+      border-top: 1px solid var(--line);
+      background: transparent;
+      padding: 12px 22px 16px;
+    }
+    .recent__lbl {
+      font-size: 11px; font-weight: 650; color: var(--faint);
+      margin-bottom: 8px;
+    }
+    .recent__row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .recent__chip {
+      appearance: none;
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--wash);
+      padding: 5px 11px;
+      font: inherit; font-size: 12px; font-weight: 650;
+      color: var(--muted); cursor: pointer;
+    }
+    .recent__chip svg {
+      width: 13px; height: 13px;
+      stroke: currentColor; fill: none;
+      stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .recent__chip:hover {
+      background: var(--cyan-soft); color: var(--cyan-ink);
+    }
+    .recent__empty { font-size: 12px; color: var(--faint); }
+
+    .overlay {
+      display: none; position: fixed; inset: 0; z-index: 80;
+      background: rgba(26,35,48,.28);
+      align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .overlay.is-on { display: flex; }
+    .modal {
+      width: min(480px, 100%);
+      max-height: min(80vh, 640px);
+      overflow: auto;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 24px 56px rgba(26,35,48,.18);
+      padding: 20px 20px 18px;
+      display: grid; gap: 12px;
+    }
+    .modal h3 { margin: 0; font-size: 16px; font-weight: 650; }
+    .modal p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+    .modal code {
+      font-family: var(--mono); font-size: 11.5px;
+      background: var(--wash); border-radius: 4px; padding: 1px 5px;
+    }
+    .detect {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: var(--wash);
+      display: grid; gap: 6px;
+      font-size: 12.5px;
+    }
+    .detect.is-ok { background: #eef8f2; }
+    .detect.is-miss { background: var(--warn-soft); }
+    .detect strong { color: var(--ink); font-weight: 650; }
+    .bm-list { display: grid; gap: 4px; max-height: 220px; overflow: auto; }
+    .bm-list button {
+      appearance: none; width: 100%;
+      text-align: left; border: 0;
+      border-radius: 10px; background: var(--wash);
+      padding: 10px 12px; font: inherit; cursor: pointer;
+      display: grid; gap: 2px;
+    }
+    .bm-list button:hover { background: var(--cyan-soft); }
+    .bm-list .t { font-size: 13px; font-weight: 650; }
+    .bm-list .u { font-size: 11px; color: var(--faint); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .modal__acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .algo {
+      font-size: 11.5px; color: var(--faint); line-height: 1.45;
+      padding-top: 4px;
+    }
+
+    .foot {
+      font-size: 12px; color: var(--faint); text-align: center; line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>我录的键</strong>
+    <span>动作序列原型 · 左目录保留 · 无启动键 · 流程内 ➕ · 近期类型 · 收藏夹动态探测</span>
+  </div>
+
+  <div class="shell">
+    <p class="brief">六个选项一字横排 · 点 ＋ 展开</p>
+
+    <div class="desk">
+      <div class="split">
+        <aside class="aside" aria-label="自定义键目录">
+          <div class="aside__head">
+            <h2>自定义键</h2>
+            <button type="button" class="aside__add" id="btnAddMatch" title="新建" aria-label="新建">+</button>
+          </div>
+          <div class="aside__list" id="matchList" role="list"></div>
+        </aside>
+
+        <section class="detail" aria-label="动作序列">
+          <div class="detail__top">
+            <div class="detail__titles">
+              <p class="detail__label">动作序列</p>
+              <input
+                class="detail__name"
+                id="matchName"
+                type="text"
+                maxlength="40"
+                placeholder="命名这条动作"
+                autocomplete="off"
+              />
+            </div>
+          </div>
+          <p class="detail__hint">点摘要横向改选项 · 类目从 ＋ 选</p>
+          <div class="detail__body" id="detailBody"></div>
+          <div class="recent">
+            <div class="recent__lbl">近期</div>
+            <div class="recent__row" id="recentRow"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <p class="foot">
+      生产收藏夹应对齐：读 Chrome/Edge <code>Local State</code> → <code>profile.last_used</code> + <code>info_cache</code> 拼 Bookmarks；失败再 <code>cmd_pick_path</code> 选文件并记忆路径。
+    </p>
+  </div>
+
+  <div class="overlay" id="bmOverlay" role="dialog" aria-modal="true" aria-labelledby="bmTitle">
+    <div class="modal">
+      <h3 id="bmTitle">从收藏夹选网址</h3>
+      <p>路径来自本机探测，不写死 Profile 名。</p>
+      <div class="detect" id="bmDetect"></div>
+      <div class="bm-list" id="bmList"></div>
+      <div class="modal__acts">
+        <button type="button" class="btn" id="bmPickFile">选择 Bookmarks 文件…</button>
+        <button type="button" class="btn" id="bmPaste">粘贴 URL</button>
+        <button type="button" class="btn primary" id="bmClose">关闭</button>
+      </div>
+      <div class="algo">
+        生产算法：%LOCALAPPDATA%\…\User Data → 读 Local State 枚举 profile → 优先 last_used →
+        扫存在 Bookmarks 的目录；可选读默认浏览器；失败则选手动文件并写入 prefs。
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var KINDS = [
+        { id: 'key', title: '按键', group: 'run', hint: '模拟按键', icon: 'key' },
+        { id: 'text', title: '文本', group: 'run', hint: '打字输入', icon: 'text' },
+        { id: 'delay', title: '延迟', group: 'run', hint: '等待片刻', icon: 'delay' },
+        { id: 'file', title: '文件', group: 'open', hint: '打开文件', icon: 'file' },
+        { id: 'folder', title: '文件夹', group: 'open', hint: '打开目录', icon: 'folder' },
+        { id: 'url', title: '网址', group: 'open', hint: '打开链接', icon: 'url' }
+      ];
+      var GROUPS = [
+        { id: 'run', lab: '输入与等待' },
+        { id: 'open', lab: '打开' }
+      ];
+
+      function kindIcon(id) {
+        var paths = {
+          key: '<rect x="3" y="7" width="18" height="11" rx="2"/><path d="M7 11h.01M11 11h.01M15 11h.01M8 15h8"/>',
+          text: '<path d="M5 6h14M12 6v12M8 18h8"/>',
+          delay: '<circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/>',
+          file: '<path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/>',
+          folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>',
+          url: '<circle cx="12" cy="12" r="8"/><path d="M3 12h18M12 4a14 14 0 0 1 0 16M12 4a14 14 0 0 0 0 16"/>'
+        };
+        return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (paths[id] || paths.key) + '</svg>';
+      }
+      var DELAYS = [100, 200, 500, 1000];
+      var LS_RECENT = 'onetone.proto.seq.recentKinds';
+      var LS_BM_PATH = 'onetone.proto.seq.bookmarksPath';
+      var LS_BM_MODE = 'onetone.proto.seq.bookmarksMode';
+
+      /* Mock: what Local State discovery would return on a real machine */
+      var DETECTED = {
+        ok: true,
+        defaultBrowser: 'Edge',
+        path: 'C:\\Users\\pstem\\AppData\\Local\\Microsoft\\Edge\\User Data\\Profile 2\\Bookmarks',
+        label: 'Edge · Profile 2（Local State · last_used）',
+        bookmarks: [
+          { title: 'OneTone 文档', url: 'https://example.com/onetone' },
+          { title: '工作台', url: 'https://example.com/desk' },
+          { title: '设计稿', url: 'https://figma.com/file/demo' }
+        ]
+      };
+
+      var matches = [
+        {
+          id: 'm1',
+          name: '粘贴并发送',
+          ready: true,
+          steps: [
+            { kind: 'key', value: 'J' },
+            { kind: 'text', value: '就' },
+            { kind: 'delay', value: 200 },
+            { kind: 'folder', value: 'C:\\Users\\pstem' }
+          ]
+        },
+        {
+          id: 'm2',
+          name: '新开对话',
+          ready: true,
+          steps: [
+            { kind: 'key', value: 'Ctrl+N' }
+          ]
+        },
+        {
+          id: 'm3',
+          name: '未命名动作',
+          ready: false,
+          steps: []
+        }
+      ];
+
+      var activeId = 'm1';
+      var menuOpen = false;
+      var addFlyKind = null;
+      var openStepIdx = -1;
+      var editingUrlStep = -1;
+      var forceMissDetect = false;
+
+      function kindTitle(id) {
+        var k = KINDS.find(function (x) { return x.id === id; });
+        return k ? k.title : id;
+      }
+      function active() {
+        return matches.find(function (m) { return m.id === activeId; }) || matches[0];
+      }
+      function loadRecent() {
+        try {
+          var raw = localStorage.getItem(LS_RECENT);
+          var arr = raw ? JSON.parse(raw) : [];
+          return Array.isArray(arr) ? arr.filter(function (id) {
+            return KINDS.some(function (k) { return k.id === id; });
+          }).slice(0, 5) : [];
+        } catch (_) { return []; }
+      }
+      function saveRecent(arr) {
+        try { localStorage.setItem(LS_RECENT, JSON.stringify(arr.slice(0, 5))); } catch (_) {}
+      }
+      function pushRecent(kind) {
+        var arr = loadRecent().filter(function (id) { return id !== kind; });
+        arr.unshift(kind);
+        saveRecent(arr);
+        renderRecent();
+      }
+      function loadBmPath() {
+        try { return localStorage.getItem(LS_BM_PATH) || ''; } catch (_) { return ''; }
+      }
+      function saveBmPath(p) {
+        try { localStorage.setItem(LS_BM_PATH, p); } catch (_) {}
+      }
+      function loadBmMode() {
+        try { return localStorage.getItem(LS_BM_MODE) || 'auto'; } catch (_) { return 'auto'; }
+      }
+      function saveBmMode(m) {
+        try { localStorage.setItem(LS_BM_MODE, m); } catch (_) {}
+      }
+
+      function defaultStep(kind) {
+        if (kind === 'key') return { kind: 'key', value: '' };
+        if (kind === 'text') return { kind: 'text', value: '' };
+        if (kind === 'delay') return { kind: 'delay', value: 200 };
+        if (kind === 'file') return { kind: 'file', value: '' };
+        if (kind === 'folder') return { kind: 'folder', value: '' };
+        return { kind: 'url', value: '' };
+      }
+
+      function addStep(kind, preset) {
+        var m = active();
+        if (!m) return;
+        var step = defaultStep(kind);
+        if (preset != null && preset !== '') step.value = preset;
+        m.steps.push(step);
+        m.ready = true;
+        pushRecent(kind);
+        menuOpen = false;
+        addFlyKind = null;
+        openStepIdx = m.steps.length - 1;
+        render();
+        if (kind === 'url' && !step.value) {
+          editingUrlStep = openStepIdx;
+          openBookmarkModal();
+        }
+      }
+
+      function stepSummary(step) {
+        if (step.kind === 'delay') {
+          var ms = Number(step.value) || 0;
+          return ms >= 1000 ? (ms / 1000) + 's' : ms + 'ms';
+        }
+        var v = String(step.value || '').trim();
+        if (!v) {
+          if (step.kind === 'key') return '录按键';
+          if (step.kind === 'text') return '输入文本';
+          if (step.kind === 'file') return '选文件';
+          if (step.kind === 'folder') return '选文件夹';
+          return '填网址';
+        }
+        if (v.length > 28) return v.slice(0, 26) + '…';
+        return v;
+      }
+
+      function stepFlyHtml(step, i) {
+        var kind = step.kind;
+        if (kind === 'key') {
+          return (
+            '<div class="step__ctrl">' +
+              '<input type="text" data-field="value" data-i="' + i + '" placeholder="录按键或输入" value="' + escAttr(step.value) + '" />' +
+            '</div>'
+          );
+        }
+        if (kind === 'text') {
+          return (
+            '<div class="step__ctrl">' +
+              '<input type="text" class="is-wide" data-field="value" data-i="' + i + '" placeholder="要输入的文本" value="' + escAttr(step.value) + '" />' +
+            '</div>'
+          );
+        }
+        if (kind === 'delay') {
+          var ms = Number(step.value) || 200;
+          return (
+            '<div class="step__ctrl">' +
+              '<div class="delay-pills">' +
+                DELAYS.map(function (d) {
+                  var lab = d >= 1000 ? (d / 1000) + 's' : d + 'ms';
+                  return '<button type="button" class="' + (ms === d ? 'is-on' : '') + '" data-delay="' + d + '" data-i="' + i + '">' + lab + '</button>';
+                }).join('') +
+              '</div>' +
+            '</div>'
+          );
+        }
+        if (kind === 'file' || kind === 'folder') {
+          return (
+            '<div class="step__ctrl">' +
+              '<input type="text" class="is-wide" data-field="value" data-i="' + i + '" placeholder="' + (kind === 'file' ? '文件路径' : '文件夹路径') + '" value="' + escAttr(step.value) + '" />' +
+              '<button type="button" class="btn" data-browse="' + kind + '" data-i="' + i + '">浏览</button>' +
+            '</div>'
+          );
+        }
+        return (
+          '<div class="step__ctrl">' +
+            '<input type="text" class="is-wide" data-field="value" data-i="' + i + '" placeholder="https://…" value="' + escAttr(step.value) + '" />' +
+            '<button type="button" class="btn primary" data-bm="' + i + '">收藏夹</button>' +
+          '</div>'
+        );
+      }
+
+      function addFlyOptions(kind) {
+        if (kind === 'delay') {
+          return DELAYS.map(function (d) {
+            var lab = d >= 1000 ? (d / 1000) + 's' : d + 'ms';
+            return '<button type="button" data-add-preset="' + kind + '" data-preset="' + d + '">' + lab + '</button>';
+          }).join('');
+        }
+        if (kind === 'file') {
+          return '<button type="button" data-add-preset="file" data-preset="pick">浏览文件…</button>';
+        }
+        if (kind === 'folder') {
+          return '<button type="button" data-add-preset="folder" data-preset="pick">浏览文件夹…</button>';
+        }
+        if (kind === 'url') {
+          return (
+            '<button type="button" data-add-preset="url" data-preset="bm">收藏夹</button>' +
+            '<button type="button" data-add-preset="url" data-preset="paste">粘贴 URL</button>'
+          );
+        }
+        return '';
+      }
+
+      function kindHasFly(kind) {
+        return kind === 'delay' || kind === 'file' || kind === 'folder' || kind === 'url';
+      }
+
+      function renderList() {
+        document.getElementById('matchList').innerHTML = matches.map(function (m) {
+          return (
+            '<button type="button" class="match' + (m.id === activeId ? ' is-on' : '') + '" data-id="' + m.id + '" role="listitem">' +
+              '<span class="dot ' + (m.ready && m.steps.length ? 'ok' : 'draft') + '"></span>' +
+              '<span class="match__name">' + esc(m.name || '未命名动作') + '</span>' +
+              '<span class="match__meta">' + (m.steps.length ? m.steps.length + ' 步' : '空') + '</span>' +
+            '</button>'
+          );
+        }).join('');
+        document.querySelectorAll('#matchList [data-id]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            activeId = btn.getAttribute('data-id');
+            menuOpen = false;
+            addFlyKind = null;
+            openStepIdx = -1;
+            render();
+          });
+        });
+      }
+
+      function renderRecent() {
+        var arr = loadRecent();
+        var row = document.getElementById('recentRow');
+        if (!arr.length) {
+          row.innerHTML = '<span class="recent__empty">添加步骤后，类型会出现在这里</span>';
+          return;
+        }
+        row.innerHTML = arr.map(function (id) {
+          return (
+            '<button type="button" class="recent__chip" data-kind="' + id + '">' +
+              kindIcon(id) + esc(kindTitle(id)) +
+            '</button>'
+          );
+        }).join('');
+        row.querySelectorAll('[data-kind]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            addStep(btn.getAttribute('data-kind'));
+          });
+        });
+      }
+
+      function stepBodyHtml(step, i) {
+        var kind = step.kind;
+        var label = kindTitle(kind);
+        var sum = stepSummary(step);
+        var empty = !String(step.value || '').trim() && kind !== 'delay';
+        var open = openStepIdx === i;
+        return (
+          '<article class="step' + (open ? ' is-open' : '') + '" data-step="' + i + '">' +
+            '<span class="step__num">' + (i + 1) + '</span>' +
+            '<span class="step__kind"><span class="step__kind-ico">' + kindIcon(kind) + '</span>' + esc(label) + '</span>' +
+            '<button type="button" class="step__sum' + (empty ? ' is-empty' : '') + '" data-open-step="' + i + '">' + esc(sum) + '</button>' +
+            '<div class="step__acts">' +
+              '<button type="button" data-move="up" data-i="' + i + '" title="上移" ' + (i === 0 ? 'disabled' : '') + '>▲</button>' +
+              '<button type="button" data-move="down" data-i="' + i + '" title="下移">▼</button>' +
+              '<button type="button" data-del="' + i + '" title="删除">×</button>' +
+            '</div>' +
+            (open ? '<div class="step__fly" data-fly="' + i + '">' + stepFlyHtml(step, i) + '</div>' : '') +
+          '</article>'
+        );
+      }
+
+      function addBlockHtml() {
+        var tiles = KINDS.map(function (k) {
+          var fly = kindHasFly(k.id);
+          var isFly = addFlyKind === k.id;
+          return (
+            '<div class="add-tile-wrap' + (isFly ? ' is-fly' : '') + '" data-tile="' + k.id + '">' +
+              '<button type="button" class="add-tile" role="menuitem" data-add="' + k.id + '" data-has-fly="' + (fly ? '1' : '0') + '">' +
+                '<span class="add-tile__ico">' + kindIcon(k.icon) + '</span>' +
+                '<span class="add-tile__t">' + esc(k.title) + '</span>' +
+              '</button>' +
+              (fly ? '<div class="add-fly">' + addFlyOptions(k.id) + '</div>' : '') +
+            '</div>'
+          );
+        }).join('');
+        return (
+          '<div class="add-row">' +
+            '<button type="button" class="add-plus' + (menuOpen ? ' is-open' : '') + '" id="btnPlus" aria-expanded="' + (menuOpen ? 'true' : 'false') + '" aria-haspopup="menu" title="添加步骤">＋</button>' +
+            '<div class="add-menu' + (menuOpen ? ' is-on' : '') + '" id="addMenu" role="menu">' +
+              tiles +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      function renderBody() {
+        var m = active();
+        var body = document.getElementById('detailBody');
+        var nameEl = document.getElementById('matchName');
+        if (document.activeElement !== nameEl) {
+          nameEl.value = m.name || '';
+        }
+        if (!m.steps.length) {
+          body.innerHTML =
+            '<div class="empty"><b>还没有步骤</b>点下方 ＋，选择要添加的命令</div>' +
+            addBlockHtml();
+        } else {
+          body.innerHTML =
+            '<div class="steps">' + m.steps.map(stepBodyHtml).join('') + '</div>' +
+            addBlockHtml();
+        }
+        wireBody(m);
+      }
+
+      function wireBody(m) {
+        var plus = document.getElementById('btnPlus');
+        var menu = document.getElementById('addMenu');
+        if (plus) {
+          plus.addEventListener('click', function (e) {
+            e.stopPropagation();
+            menuOpen = !menuOpen;
+            addFlyKind = null;
+            openStepIdx = -1;
+            renderBody();
+          });
+        }
+        if (menu) {
+          menu.addEventListener('click', function (e) { e.stopPropagation(); });
+          menu.querySelectorAll('[data-add]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+              e.stopPropagation();
+              var kind = btn.getAttribute('data-add');
+              if (btn.getAttribute('data-has-fly') === '1') {
+                addFlyKind = addFlyKind === kind ? null : kind;
+                renderBody();
+                return;
+              }
+              addStep(kind);
+            });
+          });
+          menu.querySelectorAll('[data-add-preset]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+              e.stopPropagation();
+              var kind = btn.getAttribute('data-add-preset');
+              var preset = btn.getAttribute('data-preset');
+              if (kind === 'delay') {
+                addStep('delay', Number(preset));
+                return;
+              }
+              if (kind === 'file' || kind === 'folder') {
+                var path = kind === 'folder'
+                  ? 'C:\\Users\\pstem\\Documents'
+                  : 'C:\\Users\\pstem\\Desktop\\note.txt';
+                addStep(kind, path);
+                return;
+              }
+              if (kind === 'url' && preset === 'paste') {
+                var url = window.prompt('粘贴网址', 'https://');
+                if (url && /^https?:\/\//i.test(url.trim())) addStep('url', url.trim());
+                else addStep('url');
+                return;
+              }
+              if (kind === 'url' && preset === 'bm') {
+                addStep('url');
+              }
+            });
+          });
+        }
+
+        document.querySelectorAll('#detailBody [data-open-step]').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var i = Number(btn.getAttribute('data-open-step'));
+            openStepIdx = openStepIdx === i ? -1 : i;
+            menuOpen = false;
+            addFlyKind = null;
+            renderBody();
+          });
+        });
+
+        document.querySelectorAll('#detailBody .step__fly').forEach(function (fly) {
+          fly.addEventListener('click', function (e) { e.stopPropagation(); });
+        });
+
+        document.querySelectorAll('#detailBody [data-field]').forEach(function (el) {
+          el.addEventListener('input', function () {
+            var i = Number(el.getAttribute('data-i'));
+            var field = el.getAttribute('data-field');
+            if (!m.steps[i]) return;
+            var v = el.value;
+            if (m.steps[i].kind === 'delay') v = Number(v) || 0;
+            m.steps[i][field] = v;
+            var sumBtn = document.querySelector('#detailBody [data-open-step="' + i + '"]');
+            if (sumBtn) {
+              var empty = !String(v || '').trim() && m.steps[i].kind !== 'delay';
+              sumBtn.textContent = stepSummary(m.steps[i]);
+              sumBtn.classList.toggle('is-empty', empty);
+            }
+          });
+          el.addEventListener('change', function () {
+            renderList();
+          });
+        });
+
+        document.querySelectorAll('#detailBody [data-delay]').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var i = Number(btn.getAttribute('data-i'));
+            if (!m.steps[i]) return;
+            m.steps[i].value = Number(btn.getAttribute('data-delay'));
+            renderBody();
+          });
+        });
+
+        document.querySelectorAll('#detailBody [data-move]').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var i = Number(btn.getAttribute('data-i'));
+            var dir = btn.getAttribute('data-move');
+            var j = dir === 'up' ? i - 1 : i + 1;
+            if (j < 0 || j >= m.steps.length) return;
+            var tmp = m.steps[i];
+            m.steps[i] = m.steps[j];
+            m.steps[j] = tmp;
+            if (openStepIdx === i) openStepIdx = j;
+            else if (openStepIdx === j) openStepIdx = i;
+            renderBody();
+          });
+        });
+
+        document.querySelectorAll('#detailBody [data-del]').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var i = Number(btn.getAttribute('data-del'));
+            m.steps.splice(i, 1);
+            if (!m.steps.length) m.ready = false;
+            openStepIdx = -1;
+            render();
+          });
+        });
+
+        document.querySelectorAll('#detailBody [data-browse]').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var i = Number(btn.getAttribute('data-i'));
+            var kind = btn.getAttribute('data-browse');
+            if (!m.steps[i]) return;
+            m.steps[i].value = kind === 'folder'
+              ? 'C:\\Users\\pstem\\Documents'
+              : 'C:\\Users\\pstem\\Desktop\\note.txt';
+            renderBody();
+          });
+        });
+
+        document.querySelectorAll('#detailBody [data-bm]').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            editingUrlStep = Number(btn.getAttribute('data-bm'));
+            openBookmarkModal();
+          });
+        });
+      }
+
+      function detectState() {
+        var mode = loadBmMode();
+        var saved = loadBmPath();
+        if (forceMissDetect && mode !== 'manual') {
+          return {
+            ok: false,
+            label: '未在本机找到 Chrome / Edge 的 Local State',
+            path: '',
+            bookmarks: []
+          };
+        }
+        if (mode === 'manual' && saved) {
+          return {
+            ok: true,
+            label: '手动指定的 Bookmarks',
+            path: saved,
+            bookmarks: [
+              { title: '（来自所选文件）示例站', url: 'https://example.com/from-file' },
+              { title: '本地收藏', url: 'https://example.com/local-fav' }
+            ]
+          };
+        }
+        return {
+          ok: DETECTED.ok,
+          label: DETECTED.label,
+          path: DETECTED.path,
+          bookmarks: DETECTED.bookmarks,
+          defaultBrowser: DETECTED.defaultBrowser
+        };
+      }
+
+      function openBookmarkModal() {
+        var overlay = document.getElementById('bmOverlay');
+        var detectEl = document.getElementById('bmDetect');
+        var listEl = document.getElementById('bmList');
+        var st = detectState();
+        detectEl.className = 'detect ' + (st.ok ? 'is-ok' : 'is-miss');
+        detectEl.innerHTML = st.ok
+          ? '<strong>已探测</strong> ' + esc(st.label) +
+            (st.defaultBrowser ? '<div>系统默认浏览器：' + esc(st.defaultBrowser) + '</div>' : '') +
+            '<div><code>' + esc(st.path) + '</code></div>'
+          : '<strong>未探测到</strong> ' + esc(st.label) +
+            '<div>请选择本机 <code>Bookmarks</code> 文件（Chrome / Edge 用户数据目录内）。</div>';
+
+        if (st.ok && st.bookmarks.length) {
+          listEl.innerHTML = st.bookmarks.map(function (b, idx) {
+            return (
+              '<button type="button" data-url="' + escAttr(b.url) + '">' +
+                '<span class="t">' + esc(b.title) + '</span>' +
+                '<span class="u">' + esc(b.url) + '</span>' +
+              '</button>'
+            );
+          }).join('');
+          listEl.querySelectorAll('[data-url]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              applyUrl(btn.getAttribute('data-url'));
+              closeBookmarkModal();
+            });
+          });
+        } else {
+          listEl.innerHTML = '<p style="margin:0;font-size:12.5px;color:var(--faint)">暂无书签条目。可选手动文件或粘贴 URL。</p>';
+        }
+        overlay.classList.add('is-on');
+      }
+
+      function closeBookmarkModal() {
+        document.getElementById('bmOverlay').classList.remove('is-on');
+        editingUrlStep = -1;
+      }
+
+      function applyUrl(url) {
+        var m = active();
+        if (!m || editingUrlStep < 0 || !m.steps[editingUrlStep]) return;
+        m.steps[editingUrlStep].value = url;
+        renderBody();
+        renderList();
+      }
+
+      function render() {
+        renderList();
+        renderBody();
+        renderRecent();
+      }
+
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+          return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+        });
+      }
+      function escAttr(s) { return esc(s); }
+
+      document.getElementById('matchName').addEventListener('input', function () {
+        var m = active();
+        if (!m) return;
+        m.name = this.value.trim() || '未命名动作';
+        renderList();
+      });
+
+      document.getElementById('btnAddMatch').addEventListener('click', function () {
+        var id = 'm' + Date.now();
+        matches.unshift({ id: id, name: '未命名动作', ready: false, steps: [] });
+        activeId = id;
+        menuOpen = false;
+        render();
+        document.getElementById('matchName').focus();
+      });
+
+      document.getElementById('bmClose').addEventListener('click', closeBookmarkModal);
+      document.getElementById('bmOverlay').addEventListener('click', function (e) {
+        if (e.target === this) closeBookmarkModal();
+      });
+
+      document.getElementById('bmPickFile').addEventListener('click', function () {
+        /* Prototype: simulate native file pick of a Bookmarks JSON file */
+        var mock =
+          'C:\\Users\\pstem\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Bookmarks';
+        saveBmPath(mock);
+        saveBmMode('manual');
+        forceMissDetect = false;
+        openBookmarkModal();
+      });
+
+      document.getElementById('bmPaste').addEventListener('click', function () {
+        var url = window.prompt('粘贴网址', 'https://');
+        if (url && /^https?:\/\//i.test(url.trim())) {
+          applyUrl(url.trim());
+          closeBookmarkModal();
+        }
+      });
+
+      /* Toggle demo: long-press title in brief? Use URL ?miss=1 */
+      if (/[?&]miss=1\b/.test(location.search)) {
+        forceMissDetect = true;
+        saveBmMode('auto');
+      }
+
+      document.addEventListener('click', function () {
+        var dirty = false;
+        if (menuOpen) { menuOpen = false; addFlyKind = null; dirty = true; }
+        if (openStepIdx >= 0) { openStepIdx = -1; dirty = true; }
+        if (dirty) renderBody();
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>
