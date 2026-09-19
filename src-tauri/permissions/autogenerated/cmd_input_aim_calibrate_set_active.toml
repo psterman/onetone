@@ -1,0 +1,11 @@
+# Automatically generated - Allow Command Input Aim Calibrate Set Active Permission
+
+[[permission]]
+identifier = "allow-cmd-input-aim-calibrate-set-active"
+description = "Enables the cmd_input_aim_calibrate_set_active command without any pre-configured scope."
+commands.allow = ["cmd_input_aim_calibrate_set_active"]
+
+[[permission]]
+identifier = "deny-cmd-input-aim-calibrate-set-active"
+description = "Denies the cmd_input_aim_calibrate_set_active command without any pre-configured scope."
+commands.deny = ["cmd_input_aim_calibrate_set_active"]

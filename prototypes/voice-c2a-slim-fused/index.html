@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音页 · C2+A 瘦身融合稿（F 轴 × 现网 UI）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e8eef3;--rail:#eef3f7;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fdf3e3;
+      --violet:#6d28d9;--violet-soft:#f3e8ff;
+      --dict:#1f6fa8;--pad:#0f7a6a;--keys:#8a5a12;--cam:#6b4ea3;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+      --ease:cubic-bezier(.23,1,.32,1);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);color:var(--ink);
+      background:
+        radial-gradient(700px 280px at 10% -8%,rgba(42,156,196,.1),transparent 55%),
+        radial-gradient(480px 220px at 96% 0%,rgba(19,32,44,.04),transparent 50%),
+        var(--bg);
+      -webkit-font-smoothing:antialiased;
+    }
+    @media (prefers-reduced-motion:reduce){
+      *,*::before,*::after{animation:none!important;transition:none!important}
+    }
+
+    .bar{
+      position:sticky;top:0;z-index:40;
+      display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;
+      padding:10px 16px;background:#13202c;color:#c5d0de;font-size:12.5px;line-height:1.45;
+    }
+    .bar strong{color:#fff}
+    .bar em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .bar a{color:#7dd3fc;font-weight:650;text-decoration:none}
+    .toggles{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px}
+    .toggles button{
+      border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
+      color:#e2e8f0;border-radius:999px;padding:4px 12px;font:inherit;font-size:11.5px;font-weight:650;cursor:pointer;
+    }
+    .toggles button.is-on{background:rgba(42,156,196,.38);border-color:rgba(125,211,252,.45);color:#fff}
+
+    .shell{width:min(1120px,100%);margin:16px auto 48px;padding:0 14px}
+    .contract{
+      margin:0 0 12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;
+      background:rgba(255,255,255,.92);font-size:12.5px;color:var(--muted);line-height:1.55;
+    }
+    .contract b{color:var(--ink)}
+    .contract code{
+      font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--cyan-ink);
+      background:var(--cyan-soft);border-radius:4px;padding:1px 5px;
+    }
+    .rules{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 0}
+    @media(max-width:900px){.rules{grid-template-columns:1fr 1fr}}
+    @media(max-width:560px){.rules{grid-template-columns:1fr}}
+    .rule{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--wash);font-size:11.5px;line-height:1.45}
+    .rule .k{font-weight:750;margin-bottom:3px;color:var(--ink)}
+
+    .frame{
+      border:1px solid var(--line);border-radius:16px;background:var(--paper);
+      box-shadow:0 18px 40px rgba(19,32,44,.08);overflow:hidden;
+      display:flex;flex-direction:column;min-height:680px;
+    }
+
+    .topbar{
+      display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;
+      padding:10px 14px;border-bottom:1px solid var(--line);
+    }
+    .top-ctx{font-size:13px;font-weight:650;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .top-ctx .sep{color:var(--faint);font-weight:450}
+    .scene{
+      border:1px solid var(--line);background:var(--wash);border-radius:10px;
+      padding:6px 10px;font:inherit;font-size:12px;font-weight:650;color:var(--muted);
+    }
+    .top-acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+    .btn{
+      border:1px solid var(--line);background:var(--paper);color:var(--ink);
+      border-radius:10px;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:650;cursor:pointer;
+    }
+    .btn.primary{border-color:transparent;background:var(--cyan);color:#fff}
+    .btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+
+    .status{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:8px 14px;border-bottom:1px solid var(--line);
+      background:linear-gradient(180deg,#fbfdfe,var(--wash));
+    }
+    .brand{font-size:15px;font-weight:750}
+    .pill{
+      font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;
+      background:var(--ok-soft);color:var(--ok);border:1px solid #86efac;
+    }
+    .pill.is-listen{background:var(--cyan-soft);color:var(--cyan-ink);border-color:var(--cyan-bd)}
+    .pill.is-match{background:var(--ok-soft);color:var(--ok)}
+    .mic{
+      margin-left:auto;display:inline-flex;align-items:flex-end;gap:2px;height:14px;padding:0 4px;
+    }
+    .mic i{
+      width:2.5px;border-radius:1px;background:var(--faint);display:block;height:4px;
+      transition:height .12s var(--ease),background .12s;
+    }
+    .status.is-live .mic i{background:var(--cyan);animation:micWave 1.1s ease-in-out infinite}
+    .status.is-live .mic i:nth-child(1){animation-delay:0s}
+    .status.is-live .mic i:nth-child(2){animation-delay:.08s}
+    .status.is-live .mic i:nth-child(3){animation-delay:.16s}
+    .status.is-live .mic i:nth-child(4){animation-delay:.24s}
+    .status.is-live .mic i:nth-child(5){animation-delay:.32s}
+    @keyframes micWave{
+      0%,100%{height:4px} 40%{height:14px} 70%{height:7px}
+    }
+
+    .body{background:var(--wash);padding:10px 14px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
+
+    /* Face tabs — 现网四面 */
+    .faces{
+      display:flex;flex-wrap:wrap;gap:3px;padding:3px;width:100%;
+      background:color-mix(in srgb,var(--wash) 40%,#e8eef3);border:1px solid var(--line);border-radius:9px;
+    }
+    .faces button{
+      border:0;background:transparent;padding:7px 10px;border-radius:7px;flex:1;min-width:64px;
+      font:inherit;font-size:12px;font-weight:750;color:var(--muted);cursor:pointer;text-align:center;
+    }
+    .faces button.is-on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+    .faces button[data-face="dictate"].is-on{color:var(--dict)}
+    .faces button[data-face="softpad"].is-on{color:var(--pad)}
+    .faces button[data-face="keys"].is-on{color:var(--keys)}
+    .faces button[data-face="camera"].is-on{color:var(--cam)}
+
+    /* F hero · 01→02 因果轴 */
+    .hero{
+      background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 14px;
+    }
+    .flow{display:flex;align-items:stretch;gap:0}
+    .node{
+      flex:1;text-align:left;border:1px solid var(--line);border-radius:12px;
+      padding:11px 13px;background:#fff;font:inherit;cursor:pointer;
+      transition:border-color .15s var(--ease),box-shadow .15s var(--ease);
+    }
+    .node.is-on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+    .node .tag{display:block;font-size:11px;font-weight:650;color:var(--faint);letter-spacing:.04em;margin-bottom:4px}
+    .node.is-on .tag{color:var(--cyan-ink)}
+    .node .val{display:block;font-size:15px;font-weight:750}
+    .node .hint{display:block;margin-top:3px;font-size:11.5px;color:var(--faint)}
+    .flow-link{flex:0 0 40px;display:flex;align-items:center;justify-content:center}
+    .flow-link span{position:relative;width:100%;height:2px;background:var(--cyan-bd)}
+    .flow-link span::after{
+      content:"";position:absolute;right:-1px;top:-4px;
+      border-left:7px solid var(--cyan);border-top:5px solid transparent;border-bottom:5px solid transparent;
+    }
+    .flow-link.is-pulse span{animation:linkPulse 1.4s var(--ease) infinite}
+    @keyframes linkPulse{
+      0%,100%{opacity:.55} 50%{opacity:1;box-shadow:0 0 0 2px rgba(42,156,196,.15)}
+    }
+
+    /* 三栏：C2 骨架 + 瘦身起点 */
+    .desk{
+      flex:1;display:grid;grid-template-columns:200px minmax(0,1fr) 200px;
+      border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--paper);min-height:420px;
+    }
+    @media(max-width:900px){.desk{grid-template-columns:1fr}}
+
+    .rail{
+      background:var(--rail);border-right:1px solid var(--line);
+      padding:8px;display:flex;flex-direction:column;gap:6px;min-height:0;overflow:auto;
+    }
+    @media(max-width:900px){.rail{border-right:0;border-bottom:1px solid var(--line)}}
+
+    /* —— C2+A 瘦身起点（定稿视觉） —— */
+    .start-slim{
+      padding:10px 8px 12px;margin-bottom:2px;
+      background:#fff;border:1px solid var(--line);border-radius:10px;
+      transition:border-color .2s var(--ease);
+    }
+    .start-slim.is-hit{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .start-slim .badge{
+      display:inline-block;font-size:10px;font-weight:750;
+      color:#fff;background:var(--cyan-ink);border-radius:999px;padding:2px 7px;margin-bottom:6px;
+    }
+    .start-slim h3{margin:0;font-size:12.5px;font-weight:750}
+    .start-slim .phrase{
+      appearance:none;width:100%;margin-top:8px;border:1px solid var(--line);background:#fff;
+      border-radius:10px;padding:12px 8px;font:inherit;font-size:15px;font-weight:750;
+      cursor:pointer;text-align:center;color:var(--ink);
+      transition:border-color .15s var(--ease),transform .12s var(--ease);
+    }
+    .start-slim .phrase:hover{border-color:var(--cyan-bd)}
+    .start-slim .phrase:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+    .start-slim .phrase .q{color:var(--faint);font-weight:650}
+    .start-slim.is-hit .phrase{border-color:var(--cyan);transform:scale(1.02)}
+    .start-slim .hint{margin:6px 0 0;font-size:10.5px;color:var(--faint);line-height:1.35;text-align:center}
+
+    .sec{margin:4px 4px 0;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+    .intent{
+      appearance:none;width:100%;border:0;background:transparent;text-align:left;
+      padding:8px 10px;border-radius:8px;font:inherit;cursor:pointer;color:var(--muted);
+    }
+    .intent:hover{background:rgba(255,255,255,.55);color:var(--ink)}
+    .intent.is-on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+    .intent .a{display:block;font-size:12.5px;font-weight:650}
+    .intent .b{display:block;margin-top:1px;font-size:10.5px;color:var(--faint)}
+    .intent.is-on .b{color:var(--cyan)}
+
+    .main{min-width:0;padding:12px;display:flex;flex-direction:column;gap:10px;overflow:auto;background:var(--wash)}
+    .detail{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;flex:1}
+    .detail h3{margin:0 0 4px;font-size:14px;font-weight:750}
+    .detail .sub{margin:0 0 10px;font-size:12px;color:var(--muted);line-height:1.4}
+
+    .chain{
+      margin:0 0 12px;padding:8px 10px;border-radius:10px;
+      background:var(--ok-soft);border:1px solid #86efac;
+      font-size:12px;font-weight:650;color:var(--ok);
+      display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+      opacity:0;transform:translateY(4px);
+      transition:opacity .28s var(--ease),transform .28s var(--ease);
+    }
+    .chain.is-on{opacity:1;transform:none}
+    .chain code{
+      font-family:inherit;font-size:12px;background:#fff;border:1px solid #86efac;
+      border-radius:6px;padding:1px 7px;color:var(--cyan-ink);font-weight:650;
+    }
+    .chain .arr{color:var(--cyan);font-weight:750}
+
+    .landing{
+      margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--cyan-soft);
+      border:1px solid var(--cyan-bd);font-size:12.5px;color:var(--cyan-ink);
+      display:flex;flex-wrap:wrap;gap:6px;align-items:center;line-height:1.45;
+    }
+    .landing a{margin-left:auto;color:var(--cyan-ink);font-weight:650;text-decoration:underline;cursor:pointer}
+
+    .cards{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+    .card{
+      border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;
+      font-size:11.5px;cursor:pointer;text-align:left;font:inherit;color:inherit;
+    }
+    .card.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink);font-weight:650}
+
+    .prompt-hero{
+      border:1px solid rgba(109,40,217,.28);border-radius:10px;background:linear-gradient(180deg,#faf8ff,#fff);
+      padding:12px 14px;margin-top:8px;
+    }
+    .prompt-kicker{
+      display:inline-block;font-size:10px;font-weight:750;letter-spacing:.05em;
+      color:var(--violet);background:var(--violet-soft);border-radius:999px;padding:2px 8px;margin-bottom:6px;
+    }
+    .prompt-hero .ttl{display:block;font-size:15px;font-weight:750;margin:0 0 4px}
+    .prompt-hero .dsc{margin:0;font-size:12px;color:var(--muted);line-height:1.45}
+
+    .cap-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+    @media(max-width:560px){.cap-grid{grid-template-columns:1fr}}
+    .cap-tile{
+      border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;font-size:11.5px;
+    }
+    .cap-tile b{display:block;font-size:12px;font-weight:750;margin-bottom:2px}
+    .cap-tile span{color:var(--faint);line-height:1.35}
+
+    .demo-stage{
+      margin-top:10px;padding:10px 12px;border-radius:10px;border:1px dashed var(--line);
+      background:var(--wash);font-size:12px;color:var(--muted);
+      display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    }
+    .demo-stage .beat{
+      display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;
+      background:#fff;border:1px solid var(--line);font-weight:650;font-size:11.5px;color:var(--faint);
+    }
+    .demo-stage .beat.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink)}
+    .demo-stage .beat.is-done{border-color:#86efac;background:var(--ok-soft);color:var(--ok)}
+
+    /* Dock */
+    .dock{
+      background:#eef3f7;border-left:1px solid var(--line);
+      padding:12px;display:flex;flex-direction:column;gap:8px;min-height:0;
+    }
+    @media(max-width:900px){.dock{border-left:0;border-top:1px solid var(--line)}}
+    .dock__app{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:750}
+    .dock__ico{
+      width:20px;height:20px;border-radius:5px;background:#13202c;color:#fff;
+      display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:750;flex:none;
+    }
+    .dock__title{margin:0;font-size:14px;font-weight:750}
+    .dock__meta{margin:0;font-size:12px;color:var(--faint)}
+    .dock__rule{height:1px;background:var(--line);flex:none}
+    .dock__empty{margin:0;font-size:12.5px;color:var(--faint);line-height:1.45}
+    .dock__link{
+      appearance:none;border:0;background:none;padding:0;font:inherit;font-size:12px;
+      font-weight:650;color:var(--cyan-ink);text-decoration:underline;cursor:pointer;text-align:left;
+    }
+    .dock__list{display:flex;flex-direction:column;gap:4px;flex:1}
+    .dock__row{
+      appearance:none;width:100%;border:1px solid transparent;background:#fff;border-radius:8px;
+      padding:8px 9px;text-align:left;font:inherit;cursor:pointer;
+      transition:border-color .15s,background .15s;
+    }
+    .dock__row:hover{border-color:var(--cyan-bd)}
+    .dock__row.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .dock__row.is-flash{animation:rowFlash .7s var(--ease)}
+    @keyframes rowFlash{
+      0%{box-shadow:0 0 0 0 rgba(42,156,196,.35)}
+      100%{box-shadow:0 0 0 6px transparent}
+    }
+    .dock__row .t{display:block;font-size:12.5px;font-weight:650}
+    .dock__row .d{display:block;margin-top:2px;font-size:10.5px;color:var(--faint)}
+    .dock__new{
+      appearance:none;width:100%;margin-top:auto;border:1px solid #8a9aab;background:#e8eef3;
+      border-radius:8px;padding:10px 12px;font:inherit;font-size:13px;font-weight:650;cursor:pointer;
+    }
+    .dock__new:hover{background:#fff;border-color:var(--ink)}
+
+    /* Bridge faces (simplified) */
+    .bridge{display:none;padding:4px 0}
+    .bridge.is-on{display:block}
+    .bridge-hero{
+      padding:12px 14px;border-radius:12px;background:#fff;border:1px solid var(--line);
+      font-size:13px;line-height:1.5;
+    }
+    .bridge-hero strong{display:block;font-size:14px;margin-bottom:4px}
+    .bridge-hero .eq{color:var(--muted);font-size:12.5px}
+    .bridge-hero .arr{color:var(--cyan);font-weight:800;margin:0 4px}
+
+    .foot-dock{
+      display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;
+      padding:8px 12px;border-radius:10px;background:var(--paper);border:1px solid var(--line);
+      font-size:12px;color:var(--muted);
+    }
+    .foot-dock .ghost{
+      margin-left:auto;border:1px solid var(--line);background:#fff;border-radius:8px;
+      padding:5px 10px;font:inherit;font-size:12px;font-weight:650;color:var(--cyan-ink);cursor:pointer;
+    }
+
+    .verdict{
+      margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;
+      background:#fff;font-size:12.5px;color:var(--muted);line-height:1.55;
+    }
+    .verdict b{color:var(--ink)}
+    .verdict ul{margin:8px 0 0;padding-left:18px}
+    .verdict li{margin-bottom:4px}
+    .hidden{display:none!important}
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span><strong>C2+A 瘦身 · 融合稿</strong>　<em>F 因果轴</em> × 现网四面 × 能力演示</span>
+    <a href="../voice-c2-compare/index.html">← 三列对比</a>
+    <a href="../voice-page-variants-index.html">方案索引</a>
+    <span class="toggles">
+      <button type="button" class="is-on" id="btnDemo" data-demo="play">▶ 演示动画</button>
+      <button type="button" id="dockFilled" data-dock="filled" class="is-on">有动作</button>
+      <button type="button" id="dockEmpty" data-dock="empty">空列表</button>
+    </span>
+  </div>
+
+  <div class="shell">
+    <div class="contract">
+      <b>融合主张：</b>骨架用现网 <code>01 说了什么 ▸ 02 意图效果</code>（F 轴）；口令区用 C2+A 瘦身（白底分区 + 15px 口令，无阴影 / 无「匹配到」条）；匹配叙事只进中栏绿链；右栏本场景动作；四面与底栏 dock 对齐现网能力。
+      <div class="rules">
+        <div class="rule"><div class="k">架构</div>听写主场；桥面只改口令；情景优先 &gt; 听写</div>
+        <div class="rule"><div class="k">能力</div>听写 · 口头指令 · 录键 · 软件自带 · Pad · 手势</div>
+        <div class="rule"><div class="k">动画</div>麦浪 · 口令 hit · 绿链 reveal · dock 闪一下</div>
+        <div class="rule"><div class="k">瘦身砍</div>卡片阴影 · 常驻匹配条 · 左栏啰嗦提示</div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="topbar">
+        <div class="top-ctx">
+          <span>语音方案</span>
+          <span class="sep">·</span>
+          <button type="button" class="scene" id="sceneBtn">习惯 · Cursor</button>
+        </div>
+        <div class="top-acts">
+          <button type="button" class="btn ghost">试说</button>
+          <button type="button" class="btn primary">保存到正在编辑的习惯</button>
+        </div>
+      </div>
+
+      <div class="status" id="statusRow">
+        <span class="brand">OneTone</span>
+        <span class="pill" id="statusPill">可以说</span>
+        <span id="statusMsg" style="font-size:12.5px;color:var(--muted)">就绪 · 情景优先匹配命令</span>
+        <span class="mic" aria-hidden="true" title="听麦电平"><i></i><i></i><i></i><i></i><i></i></span>
+      </div>
+
+      <div class="body">
+        <div class="faces" role="tablist" aria-label="语音方案分面">
+          <button type="button" class="is-on" data-face="dictate" role="tab" aria-selected="true">听写</button>
+          <button type="button" data-face="softpad" role="tab" aria-selected="false">SoftPad</button>
+          <button type="button" data-face="keys" role="tab" aria-selected="false">按键</button>
+          <button type="button" data-face="camera" role="tab" aria-selected="false">摄像头</button>
+        </div>
+
+        <!-- 听写面 -->
+        <div id="faceDictate">
+          <div class="hero">
+            <div class="flow">
+              <button type="button" class="node is-on" id="nodeWake" data-step="wake">
+                <span class="tag">01 / 说了什么</span>
+                <span class="val" id="nodeWakeVal">开始输入</span>
+                <span class="hint">这句口令 · 点左栏可改</span>
+              </button>
+              <div class="flow-link" id="flowLink" aria-hidden="true"><span></span></div>
+              <button type="button" class="node" id="nodeFinish" data-step="finish">
+                <span class="tag">02 / 意图效果</span>
+                <span class="val" id="nodeFinishVal">口头指令</span>
+                <span class="hint">匹配到的动作</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="desk">
+            <nav class="rail" aria-label="起点与意图">
+              <div class="start-slim" id="startSlim">
+                <span class="badge">起点</span>
+                <h3>说了什么</h3>
+                <button type="button" class="phrase" id="phraseBtn" title="点击改口令">
+                  <span class="q">「</span><span id="phraseText">开始输入</span><span class="q">」</span>
+                </button>
+                <p class="hint">点按可改口令</p>
+              </div>
+              <div class="sec">意图</div>
+              <button type="button" class="intent" data-intent="ime"><span class="a">听写方式</span><span class="b">IME · 按键同规格</span></button>
+              <button type="button" class="intent is-on" data-intent="prompt"><span class="a">口头指令</span><span class="b">一词注入</span></button>
+              <button type="button" class="intent" data-intent="seq"><span class="a">我录的键</span><span class="b">序列</span></button>
+              <button type="button" class="intent" data-intent="builtin"><span class="a">软件自带</span><span class="b">内置</span></button>
+              <button type="button" class="intent" data-intent="pad"><span class="a">屏幕按钮</span><span class="b">Pad</span></button>
+              <button type="button" class="intent" data-intent="gesture"><span class="a">手势</span><span class="b">摄像头桥</span></button>
+            </nav>
+
+            <div class="main">
+              <div class="detail" id="detailPane">
+                <h3 id="detailTitle">动作详情 · 口头指令</h3>
+                <p class="sub" id="detailSub">中栏只编当前意图；匹配关系只在绿链，左栏不重复讲故事。</p>
+
+                <div class="chain is-on" id="chain">
+                  说 <code id="chainPhrase">开始输入</code>
+                  <span class="arr">→</span>
+                  <code id="chainIntent">口头指令 · 总结改动</code>
+                </div>
+
+                <div class="landing" id="landing">
+                  <span>字会打进 <strong>Cursor</strong>（应用落点）。</span>
+                  <a>不对就去按键改目标 →</a>
+                </div>
+
+                <div id="intentBody"></div>
+
+                <div class="demo-stage" id="demoStage" aria-live="polite">
+                  <span style="font-weight:750;color:var(--ink)">演示节拍</span>
+                  <span class="beat" data-beat="listen">① 听到</span>
+                  <span class="beat" data-beat="match">② 匹配</span>
+                  <span class="beat" data-beat="run">③ 执行</span>
+                </div>
+
+                <div class="cap-grid">
+                  <div class="cap-tile"><b>听写主职</b><span>字进光标 / 目标窗</span></div>
+                  <div class="cap-tile"><b>桥面口令</b><span>Pad · 按键 · 摄像头改说法</span></div>
+                  <div class="cap-tile"><b>运行时</b><span>情景优先 · arm 互斥</span></div>
+                </div>
+              </div>
+            </div>
+
+            <aside class="dock" id="dock" data-dock></aside>
+          </div>
+        </div>
+
+        <!-- 桥面 -->
+        <div class="bridge" id="faceSoftpad">
+          <div class="bridge-hero">
+            <strong>SoftPad 桥面 · 只改说法</strong>
+            <p class="eq">点屏上的键 <span class="arr">=</span> 说出口令 · 键位仍回 Soft Pad 页</p>
+            <p class="eq" style="margin-top:8px">空态示例：有键盘 · 无口令 →「加一句口令」写回通道</p>
+          </div>
+        </div>
+        <div class="bridge" id="faceKeys">
+          <div class="bridge-hero">
+            <strong>按键桥面 · 只改说法</strong>
+            <p class="eq">按键 <span class="arr">=</span> 说 · 目标窗 / 快捷键位回按键页</p>
+            <p class="eq" style="margin-top:8px">分类列表仅已有口令的动作；高级 = 本条可说</p>
+          </div>
+        </div>
+        <div class="bridge" id="faceCamera">
+          <div class="bridge-hero">
+            <strong>摄像头桥面 · 只改说法</strong>
+            <p class="eq">点头 / 摇头 <span class="arr">=</span> 口令等价 · 标定回摄像头页</p>
+            <p class="eq" style="margin-top:8px">安全：手势不能单独「发出去」，须二次确认</p>
+          </div>
+        </div>
+
+        <div class="foot-dock">
+          <span>麦 · 默认</span>
+          <span>引擎 · 自动</span>
+          <span>听到…</span>
+          <button type="button" class="ghost" id="btnTryMic">试麦克风</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <b>定稿对照：</b>
+      <ul>
+        <li>相对 <a href="../voice-c2-compare/index.html">三列对比</a> 的 ③：本页把瘦身起点嵌进现网 F 轴 + 四面 + dock，可直接当落 <code>src/</code> 的视觉真源。</li>
+        <li>口令区：平面白底分区；勿回退到实心 primary 大按钮或 C2+A 满的阴影/匹配条。</li>
+        <li>绿链 = 唯一匹配叙事；左栏 hint 一行够用。</li>
+        <li>演示：顶栏「演示动画」循环 听到→匹配→执行；<code>prefers-reduced-motion</code> 下全部静帧。</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  var PHRASE = '开始输入';
+  var INTENTS = {
+    ime: {
+      title: '动作详情 · 听写方式',
+      sub: '对齐按键页 IME 工作台：听写键 + 说完后三选一；收尾挂在「开启听写」内部。',
+      chain: '听写方式 · 跟光标打字',
+      body:
+        '<div class="cards">' +
+          '<button type="button" class="card is-on">不对准，直接写入</button>' +
+          '<button type="button" class="card">自动对准再写入</button>' +
+        '</div>' +
+        '<p class="sub" style="margin-top:10px">说完了：发出去 / 先留着 / 不要了 — 不占 hero 第二步。</p>'
+    },
+    prompt: {
+      title: '动作详情 · 口头指令',
+      sub: '中栏只编当前意图；右栏是本场景动作。',
+      chain: '口头指令 · 总结改动',
+      body:
+        '<div class="prompt-hero">' +
+          '<span class="prompt-kicker">一词注入</span>' +
+          '<span class="ttl">总结改动</span>' +
+          '<p class="dsc">说出后把整段 prompt 写入当前输入框，不经听写环。</p>' +
+        '</div>' +
+        '<div class="cards" style="margin-top:10px">' +
+          '<button type="button" class="card is-on">不对准，直接写入</button>' +
+          '<button type="button" class="card">自动对准再写入</button>' +
+        '</div>'
+    },
+    seq: {
+      title: '动作详情 · 我录的键',
+      sub: '复用按键页已录序列；本页只绑口令，不改编辑器。',
+      chain: '我录的键 · 贴代码块',
+      body: '<p class="sub">缺绑时中栏提示「去按键页录一段」；有序列则展示键帽摘要。</p>'
+    },
+    builtin: {
+      title: '动作详情 · 软件自带',
+      sub: '内置命令投影；改说法写回通道。',
+      chain: '软件自带 · 新会话',
+      body: '<p class="sub">常见：继续 · 发送 · 新会话。点选后绿链更新。</p>'
+    },
+    pad: {
+      title: '动作详情 · 屏幕按钮',
+      sub: '与 SoftPad 键位同源；语音页只改可说说法。',
+      chain: '屏幕按钮 · 发送',
+      body: '<p class="sub">桥面可预览键；布局仍回 Soft Pad。</p>'
+    },
+    gesture: {
+      title: '动作详情 · 手势',
+      sub: '摄像头桥：点头确认 / 摇头取消；标定不在本页。',
+      chain: '手势 · 点头确认',
+      body: '<p class="sub">安全条：手势不能单独发出去。</p>'
+    }
+  };
+
+  var FILLED =
+    '<div class="dock__app"><span class="dock__ico">C</span><span>Cursor</span></div>' +
+    '<h3 class="dock__title">本场景动作</h3>' +
+    '<p class="dock__meta">2 个动作</p>' +
+    '<div class="dock__rule"></div>' +
+    '<div class="dock__list">' +
+      '<button type="button" class="dock__row is-on" data-row="0"><span class="t">开始输入</span><span class="d">口头指令</span></button>' +
+      '<button type="button" class="dock__row" data-row="1"><span class="t">贴代码块</span><span class="d">我录的键</span></button>' +
+    '</div>' +
+    '<div class="dock__rule"></div>' +
+    '<button type="button" class="dock__new">＋ 新建动作</button>';
+
+  var EMPTY =
+    '<div class="dock__app"><span class="dock__ico">C</span><span>Cursor</span></div>' +
+    '<h3 class="dock__title">本场景动作</h3>' +
+    '<p class="dock__meta">0 个动作</p>' +
+    '<div class="dock__rule"></div>' +
+    '<p class="dock__empty">还没有动作 · 点中间新建</p>' +
+    '<button type="button" class="dock__link">在「我的习惯」查看全部通道 →</button>' +
+    '<div class="dock__rule"></div>' +
+    '<button type="button" class="dock__new">＋ 新建动作</button>';
+
+  var dockMode = 'filled';
+  var intent = 'prompt';
+  var step = 'wake';
+  var demoTimer = null;
+  var demoOn = true;
+
+  function paintDock() {
+    document.getElementById('dock').innerHTML = dockMode === 'empty' ? EMPTY : FILLED;
+  }
+
+  function paintIntent() {
+    var meta = INTENTS[intent];
+    document.getElementById('detailTitle').textContent = meta.title;
+    document.getElementById('detailSub').textContent = meta.sub;
+    document.getElementById('chainIntent').textContent = meta.chain;
+    document.getElementById('chainPhrase').textContent = PHRASE;
+    document.getElementById('intentBody').innerHTML = meta.body;
+    document.getElementById('nodeFinishVal').textContent = meta.chain.split('·')[0].trim();
+    document.getElementById('landing').classList.toggle('hidden', intent !== 'ime' && intent !== 'prompt');
+
+    document.querySelectorAll('.intent').forEach(function (btn) {
+      btn.classList.toggle('is-on', btn.getAttribute('data-intent') === intent);
+    });
+  }
+
+  function setStep(next) {
+    step = next;
+    document.getElementById('nodeWake').classList.toggle('is-on', step === 'wake');
+    document.getElementById('nodeFinish').classList.toggle('is-on', step === 'finish');
+  }
+
+  function setFace(face) {
+    document.querySelectorAll('.faces button').forEach(function (b) {
+      var on = b.getAttribute('data-face') === face;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.getElementById('faceDictate').classList.toggle('hidden', face !== 'dictate');
+    document.getElementById('faceSoftpad').classList.toggle('is-on', face === 'softpad');
+    document.getElementById('faceKeys').classList.toggle('is-on', face === 'keys');
+    document.getElementById('faceCamera').classList.toggle('is-on', face === 'camera');
+  }
+
+  function setBeat(name) {
+    document.querySelectorAll('[data-beat]').forEach(function (el) {
+      el.classList.remove('is-on', 'is-done');
+      var id = el.getAttribute('data-beat');
+      if (id === name) el.classList.add('is-on');
+      else if (
+        (name === 'match' && id === 'listen') ||
+        (name === 'run' && (id === 'listen' || id === 'match'))
+      ) el.classList.add('is-done');
+    });
+  }
+
+  function demoCycle() {
+    var status = document.getElementById('statusRow');
+    var pill = document.getElementById('statusPill');
+    var msg = document.getElementById('statusMsg');
+    var slim = document.getElementById('startSlim');
+    var chain = document.getElementById('chain');
+    var link = document.getElementById('flowLink');
+    var row = document.querySelector('.dock__row.is-on');
+
+    // reset
+    status.classList.remove('is-live');
+    slim.classList.remove('is-hit');
+    chain.classList.remove('is-on');
+    link.classList.remove('is-pulse');
+    if (row) row.classList.remove('is-flash');
+    pill.textContent = '可以说';
+    pill.className = 'pill';
+    msg.textContent = '就绪 · 情景优先匹配命令';
+    setBeat(null);
+    setStep('wake');
+
+    var t = 0;
+    function later(ms, fn) {
+      return setTimeout(fn, (t += ms));
+    }
+
+    later(400, function () {
+      if (!demoOn) return;
+      status.classList.add('is-live');
+      pill.textContent = '在听';
+      pill.className = 'pill is-listen';
+      msg.textContent = '听到口令…';
+      setBeat('listen');
+    });
+    later(1100, function () {
+      if (!demoOn) return;
+      slim.classList.add('is-hit');
+      pill.textContent = '匹配到';
+      pill.className = 'pill is-match';
+      msg.textContent = '「' + PHRASE + '」→ ' + INTENTS[intent].chain;
+      setBeat('match');
+      setStep('finish');
+      link.classList.add('is-pulse');
+      chain.classList.add('is-on');
+    });
+    later(900, function () {
+      if (!demoOn) return;
+      status.classList.remove('is-live');
+      slim.classList.remove('is-hit');
+      setBeat('run');
+      msg.textContent = '已执行 · 写入当前输入';
+      var r = document.querySelector('.dock__row.is-on');
+      if (r) r.classList.add('is-flash');
+    });
+    later(1400, function () {
+      if (!demoOn) return;
+      link.classList.remove('is-pulse');
+      demoTimer = setTimeout(demoCycle, 600);
+    });
+  }
+
+  function startDemo() {
+    stopDemo();
+    demoOn = true;
+    document.getElementById('btnDemo').classList.add('is-on');
+    document.getElementById('btnDemo').textContent = '⏸ 演示中';
+    demoCycle();
+  }
+
+  function stopDemo() {
+    demoOn = false;
+    if (demoTimer) clearTimeout(demoTimer);
+    demoTimer = null;
+    document.getElementById('btnDemo').classList.remove('is-on');
+    document.getElementById('btnDemo').textContent = '▶ 演示动画';
+    document.getElementById('statusRow').classList.remove('is-live');
+    document.getElementById('startSlim').classList.remove('is-hit');
+    document.getElementById('flowLink').classList.remove('is-pulse');
+    document.getElementById('chain').classList.add('is-on');
+    document.getElementById('statusPill').textContent = '可以说';
+    document.getElementById('statusPill').className = 'pill';
+    document.getElementById('statusMsg').textContent = '就绪 · 情景优先匹配命令';
+    setBeat(null);
+  }
+
+  document.getElementById('dockFilled').addEventListener('click', function () {
+    dockMode = 'filled';
+    this.classList.add('is-on');
+    document.getElementById('dockEmpty').classList.remove('is-on');
+    paintDock();
+  });
+  document.getElementById('dockEmpty').addEventListener('click', function () {
+    dockMode = 'empty';
+    this.classList.add('is-on');
+    document.getElementById('dockFilled').classList.remove('is-on');
+    paintDock();
+  });
+
+  document.getElementById('btnDemo').addEventListener('click', function () {
+    if (demoOn) stopDemo();
+    else startDemo();
+  });
+
+  document.querySelectorAll('.faces button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      setFace(b.getAttribute('data-face'));
+    });
+  });
+
+  document.getElementById('nodeWake').addEventListener('click', function () { setStep('wake'); });
+  document.getElementById('nodeFinish').addEventListener('click', function () { setStep('finish'); });
+
+  document.querySelector('.rail').addEventListener('click', function (e) {
+    var btn = e.target.closest('.intent');
+    if (!btn) return;
+    intent = btn.getAttribute('data-intent');
+    paintIntent();
+    setStep('finish');
+  });
+
+  document.getElementById('phraseBtn').addEventListener('click', function () {
+    var next = window.prompt('改口令', PHRASE);
+    if (!next) return;
+    PHRASE = next.trim();
+    document.getElementById('phraseText').textContent = PHRASE;
+    document.getElementById('nodeWakeVal').textContent = PHRASE;
+    document.getElementById('chainPhrase').textContent = PHRASE;
+  });
+
+  document.getElementById('btnTryMic').addEventListener('click', function () {
+    var status = document.getElementById('statusRow');
+    status.classList.add('is-live');
+    document.getElementById('statusPill').textContent = '试麦';
+    document.getElementById('statusPill').className = 'pill is-listen';
+    document.getElementById('statusMsg').textContent = '正在听麦克风…';
+    setTimeout(function () {
+      status.classList.remove('is-live');
+      document.getElementById('statusPill').textContent = '可以说';
+      document.getElementById('statusPill').className = 'pill';
+      document.getElementById('statusMsg').textContent = '麦正常 · 就绪';
+    }, 1800);
+  });
+
+  document.getElementById('intentBody').addEventListener('click', function (e) {
+    var card = e.target.closest('.card');
+    if (!card) return;
+    card.parentElement.querySelectorAll('.card').forEach(function (c) { c.classList.remove('is-on'); });
+    card.classList.add('is-on');
+  });
+
+  paintDock();
+  paintIntent();
+
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    startDemo();
+  }
+})();
+  </script>
+</body>
+</html>

@@ -181,6 +181,10 @@ pub struct AppState {
     /// Suppress secondary automation key injection (presence/test-send) during
     /// recording or app-targeted workflow dispatch windows.
     pub external_voice_send_suppressed_until: Mutex<Option<std::time::Instant>>,
+    /// Physical modifier tap already reached the IME (hook never swallows RAlt/…).
+    /// Armed across the next `input.start` so we do not re-inject the same chord
+    /// (toggle IME off immediately after turning it on).
+    pub voice_key_passthrough_armed: Mutex<Option<String>>,
     pub paused: Mutex<bool>,
     /// Wall-clock ms when timed silence ends; None = not silenced.
     pub listen_silence_until_ms: Mutex<Option<u64>>,
@@ -324,6 +328,7 @@ pub fn run() {
         record_started_at: Mutex::new(None),
         record_guard_until: Mutex::new(None),
         external_voice_send_suppressed_until: Mutex::new(None),
+        voice_key_passthrough_armed: Mutex::new(None),
         paused: Mutex::new(false),
         listen_silence_until_ms: Mutex::new(None),
         mic_monitor: Mutex::new(None),
@@ -1085,6 +1090,7 @@ pub fn run() {
             input_aim_calibrate::cmd_input_aim_calibrate_commit,
             input_aim_calibrate::cmd_input_aim_calibrate_cancel,
             input_aim_calibrate::cmd_input_aim_calibrate_clear,
+            input_aim_calibrate::cmd_input_aim_calibrate_set_active,
             input_aim_calibrate::cmd_input_aim_calibrate_status,
             ipc::cmd_update_check,
             ipc::cmd_update_install,

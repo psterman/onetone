@@ -11,10 +11,22 @@
   var jumpAndHighlight = window.__otJumpAndHighlight;
   if (typeof jumpAndHighlight !== 'function') {
     // Fallback: open panel only, no scroll/highlight
-    jumpAndHighlight = function (panel) {
+    jumpAndHighlight = function (panel, _scrollId, opts) {
       var drawer = window.OneToneSettingsDrawer;
-      if (drawer && drawer.open) drawer.open({ panel: panel });
+      if (drawer && drawer.open) drawer.open(Object.assign({ panel: panel }, opts || {}));
     };
+  }
+
+  function openSoftPadFocus(focus) {
+    var drawer = window.OneToneSettingsDrawer;
+    if (drawer && drawer.open) drawer.open({ panel: 'softPad', focus: focus });
+    else jumpAndHighlight('softPad', null, { focus: focus });
+  }
+
+  function openPanel(panel) {
+    var drawer = window.OneToneSettingsDrawer;
+    if (drawer && drawer.open) drawer.open({ panel: panel });
+    else jumpAndHighlight(panel);
   }
 
   function t(key) {
@@ -64,13 +76,27 @@
       run: function () { jumpAndHighlight('keys'); },
     },
 
-    // --- softPad panel ---
+    // --- softPad / Agent directories ---
     {
       id: 'softPad',
       title: t('homeWbNavSoftPad'),
       keywords: ['虚拟键盘', 'soft pad', 'softpad', '悬浮', '面板'],
       group: group,
-      run: function () { jumpAndHighlight('softPad'); },
+      run: function () { openSoftPadFocus('softPadLayout'); },
+    },
+    {
+      id: 'agent',
+      title: t('homeWbNavAgent'),
+      keywords: ['agent', '灯效', '迷你栏', 'hook', '连接'],
+      group: group,
+      run: function () { openPanel('agent'); },
+    },
+    {
+      id: 'agentData',
+      title: t('homeWbNavAgentData'),
+      keywords: ['数据', '额度', 'usage', '读数', '账号', 'data'],
+      group: group,
+      run: function () { openPanel('agentData'); },
     },
 
     // --- habits panel ---

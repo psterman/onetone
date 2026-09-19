@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>口头指令 · 单列表 + 空状态模板</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e8eef3;--rail:#eef3f7;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+      --ease:cubic-bezier(.23,1,.32,1);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);color:var(--ink);
+      background:
+        radial-gradient(720px 300px at 8% -8%,rgba(42,156,196,.12),transparent 55%),
+        radial-gradient(560px 260px at 96% 0%,rgba(15,95,122,.06),transparent 50%),
+        var(--bg);
+      padding:18px 14px 48px;-webkit-font-smoothing:antialiased;
+    }
+    @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+    .shell{max-width:1120px;margin:0 auto}
+    .bar{
+      display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;
+      margin:0 0 12px;padding:10px 14px;border-radius:12px;
+      background:#13202c;color:#c5d0de;font-size:12.5px;line-height:1.45;
+    }
+    .bar strong{color:#fff}.bar em{font-style:normal;color:#7dd3fc;font-weight:650}
+
+    .note{
+      margin:0 0 14px;padding:12px 14px;border:1px solid var(--line);
+      border-radius:12px;background:rgba(255,255,255,.88);font-size:12.5px;
+      color:var(--muted);line-height:1.55;
+    }
+    .note b{color:var(--ink);font-weight:650}
+    .note code{font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--cyan-ink);background:var(--cyan-soft);border-radius:4px;padding:1px 5px}
+
+    .frame{
+      border:1px solid var(--line);border-radius:16px;background:var(--paper);
+      box-shadow:0 18px 40px rgba(19,32,44,.08);overflow:hidden;
+    }
+    .intent-rail{
+      display:flex;gap:2px;padding:6px;background:var(--rail);border-bottom:1px solid var(--line);
+      overflow:auto;
+    }
+    .intent-rail button{
+      appearance:none;border:0;background:transparent;text-align:left;
+      padding:8px 12px;border-radius:8px;font:inherit;font-size:12.5px;
+      font-weight:650;color:var(--muted);cursor:pointer;white-space:nowrap;
+    }
+    .intent-rail button .n{display:block;margin-top:2px;font-size:10.5px;font-weight:550;color:var(--faint)}
+    .intent-rail button.is-on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+    .intent-rail button.is-on .n{color:var(--cyan)}
+    .intent-rail button:disabled{opacity:.4;cursor:default}
+
+    .desk{padding:14px 16px 18px;display:flex;flex-direction:column;gap:12px;background:var(--wash)}
+    .desk-head{
+      background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
+    }
+    .kicker{
+      display:inline-block;font-size:10px;font-weight:750;letter-spacing:.06em;
+      color:var(--cyan-ink);background:var(--cyan-soft);border-radius:999px;padding:2px 8px;margin-bottom:6px;
+    }
+    .desk-head h1{margin:0;font-size:17px;font-weight:750;letter-spacing:-.01em}
+    .desk-head p{margin:4px 0 0;font-size:12.5px;color:var(--muted);line-height:1.45;max-width:52em}
+    .armed{
+      margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+      padding:8px 10px;border-radius:10px;background:var(--ok-soft);border:1px solid #86efac;
+      font-size:12.5px;font-weight:650;color:var(--ok);
+    }
+    .armed .wake{
+      font-family:var(--mono);font-size:12px;background:#fff;border:1px solid #86efac;
+      border-radius:6px;padding:2px 8px;color:var(--cyan-ink);
+    }
+    .armed .label{color:var(--ink)}
+
+    .body{
+      display:grid;grid-template-columns:220px minmax(0,1fr);gap:10px;align-items:stretch;
+      min-height:420px;
+    }
+    @media(max-width:820px){.body{grid-template-columns:1fr}}
+
+    .lib{
+      background:var(--paper);border:1px solid var(--line);border-radius:14px;
+      display:flex;flex-direction:column;min-height:0;overflow:hidden;padding:10px;
+    }
+    .lib-h{
+      display:flex;align-items:center;justify-content:space-between;gap:8px;
+      margin:0 0 8px;font-size:13px;font-weight:650;color:var(--ink);
+    }
+    .lib-h .cnt{font-size:11.5px;font-weight:650;color:var(--faint)}
+    .mine-list{flex:1;overflow:auto;min-height:100px}
+    .chips{display:flex;flex-direction:column;gap:4px}
+    .chip{
+      appearance:none;width:100%;border:1px solid transparent;background:transparent;
+      text-align:left;padding:8px 9px;border-radius:9px;font:inherit;cursor:pointer;
+      transition:background .15s var(--ease),border-color .15s var(--ease);
+    }
+    .chip:hover{background:var(--wash)}
+    .chip .t{display:block;font-size:12.5px;font-weight:650;color:var(--ink);line-height:1.25}
+    .chip .d{display:block;margin-top:2px;font-size:11px;color:var(--faint);line-height:1.35;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .chip.is-on{
+      background:var(--cyan-soft);border-color:var(--cyan-bd);box-shadow:inset 0 0 0 1px var(--cyan-bd);
+    }
+    .chip.is-on .t{color:var(--cyan-ink)}
+    .chip .tag{
+      display:inline-block;margin-left:4px;font-size:9px;font-weight:750;
+      color:var(--ok);background:#fff;border:1px solid #86efac;border-radius:999px;padding:0 5px;
+      vertical-align:middle;
+    }
+
+    .empty{
+      margin:0 0 8px;padding:12px 10px;border:1px dashed var(--line);border-radius:10px;
+      text-align:center;
+    }
+    .empty p{margin:0 0 10px;font-size:12px;color:var(--faint);line-height:1.45}
+    .empty .lead{font-weight:650;color:var(--muted)}
+    .tpl-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+    .tpl-pill{
+      appearance:none;border:1px dashed var(--line);background:var(--wash);
+      border-radius:999px;padding:5px 10px;font:inherit;font-size:11.5px;font-weight:650;
+      color:var(--muted);cursor:pointer;
+    }
+    .tpl-pill:hover{border-color:var(--cyan-bd);color:var(--cyan-ink);background:var(--cyan-soft)}
+
+    .lib-foot{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+    .btn-new{
+      appearance:none;width:100%;border:1px solid var(--line);
+      background:var(--wash);border-radius:9px;padding:8px 10px;font:inherit;
+      font-size:12.5px;font-weight:650;color:var(--muted);cursor:pointer;
+    }
+    .btn-new:hover{border-color:var(--cyan-bd);color:var(--cyan-ink);background:var(--cyan-soft)}
+    .from-tpl{
+      display:none;flex-wrap:wrap;gap:4px;align-items:center;
+    }
+    .from-tpl.is-on{display:flex}
+    .from-tpl .lb{font-size:10.5px;color:var(--faint);width:100%;margin-bottom:2px}
+    .from-tpl .tpl-pill{padding:3px 8px;font-size:11px}
+
+    .main{display:flex;flex-direction:column;gap:10px;min-width:0}
+    .col{
+      background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 14px;
+    }
+    .col-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px}
+    .col-h h2{margin:0;font-size:13.5px;font-weight:650}
+    .col-h .sub{font-size:11.5px;color:var(--faint)}
+    .aim{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    @media(max-width:720px){.aim{grid-template-columns:1fr}}
+    .aim label{
+      display:block;border:1px solid var(--line);border-radius:10px;padding:10px;
+      cursor:pointer;background:#fff;position:relative;
+    }
+    .aim label.is-on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan);background:var(--cyan-soft)}
+    .aim input{position:absolute;opacity:0;pointer-events:none}
+    .aim .tt{display:block;font-size:12.5px;font-weight:650;margin-bottom:3px}
+    .aim .bd{display:inline-block;font-size:10px;font-weight:750;color:var(--cyan-ink);background:#fff;border-radius:999px;padding:0 6px;margin-left:4px}
+    .aim .dd{display:block;font-size:11px;color:var(--faint);line-height:1.4}
+
+    textarea{
+      width:100%;min-height:140px;resize:vertical;border:1px solid var(--line);
+      border-radius:10px;padding:10px 12px;font:inherit;font-size:13px;line-height:1.5;
+      color:var(--ink);background:#fff;
+    }
+    textarea:focus{outline:2px solid var(--cyan-bd);outline-offset:1px;border-color:var(--cyan)}
+    textarea::placeholder{color:var(--faint)}
+    .hint{margin:10px 0 0;font-size:11.5px;color:var(--faint);line-height:1.4}
+    .toast{
+      position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(12px);
+      background:#13202c;color:#fff;font-size:12.5px;font-weight:650;
+      padding:8px 14px;border-radius:999px;opacity:0;pointer-events:none;
+      transition:opacity .2s var(--ease),transform .2s var(--ease);z-index:50;
+    }
+    .toast.is-on{opacity:1;transform:translateX(-50%) translateY(0)}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="bar">
+      <strong>v2</strong> · 左栏只留指令库 · 模板只在空状态 /「＋」旁 · <em>点选即当前</em>
+    </div>
+
+    <div class="note">
+      <b>收束后：</b>没有「模板管理」也没有常驻「我的模板」双列表。
+      说 <code>开始输入</code> = 写入左侧<strong>当前选中</strong>那条。
+    </div>
+
+    <div class="frame">
+      <nav class="intent-rail" aria-label="语音意图">
+        <button type="button" disabled>听写方式<span class="n">IME</span></button>
+        <button type="button" disabled>我录的键<span class="n">序列</span></button>
+        <button type="button" class="is-on">口头指令<span class="n">一词注入</span></button>
+        <button type="button" disabled>软件自带<span class="n">内置</span></button>
+        <button type="button" disabled>屏幕按钮<span class="n">Pad</span></button>
+        <button type="button" disabled>手势<span class="n">相机</span></button>
+      </nav>
+
+      <div class="desk">
+        <header class="desk-head">
+          <span class="kicker">一词注入</span>
+          <h1>说一词 · 写入 · 发送</h1>
+          <p>选一条或从常用起步；右侧改文案。场景唤醒只打当前选中。</p>
+          <div class="armed" id="armedBanner" aria-live="polite">
+            说 <span class="wake">开始输入</span>
+            → 写入 <span class="label" id="armedLabel">（还没有）</span>
+          </div>
+        </header>
+
+        <div class="body">
+          <aside class="lib" aria-label="指令库">
+            <div class="lib-h">指令库 <span class="cnt" id="mineCount">0</span></div>
+            <div class="mine-list">
+              <div class="empty" id="mineEmpty">
+                <p class="lead">还没有口头指令</p>
+                <p>点一个常用起步，或右侧直接写。</p>
+                <div class="tpl-row" id="emptyTpls"></div>
+              </div>
+              <div class="chips" id="mineList" role="listbox" aria-label="已保存的口头指令" hidden></div>
+            </div>
+            <div class="lib-foot">
+              <div class="from-tpl" id="fromTpl">
+                <span class="lb">从常用开始</span>
+                <span id="footTpls"></span>
+              </div>
+              <button type="button" class="btn-new" id="btnNew">＋ 新建</button>
+            </div>
+          </aside>
+
+          <div class="main">
+            <section class="col" aria-labelledby="aimTitle">
+              <div class="col-h">
+                <h2 id="aimTitle">怎么对准</h2>
+                <span class="sub">写入前 · 本应用共用</span>
+              </div>
+              <div class="aim" role="radiogroup" aria-labelledby="aimTitle">
+                <label class="is-on" data-aim="none">
+                  <input type="radio" name="aim" value="none" checked />
+                  <span class="tt">不对准，直接写入<span class="bd">推荐</span></span>
+                  <span class="dd">已点好聊天框时最快。</span>
+                </label>
+                <label data-aim="auto">
+                  <input type="radio" name="aim" value="auto" />
+                  <span class="tt">自动对准再写入</span>
+                  <span class="dd">先点到输入框再填。</span>
+                </label>
+                <label data-aim="probe">
+                  <input type="radio" name="aim" value="probe" />
+                  <span class="tt">防误写</span>
+                  <span class="dd">没光标就不写。</span>
+                </label>
+              </div>
+            </section>
+
+            <section class="col" aria-labelledby="whatTitle">
+              <div class="col-h">
+                <h2 id="whatTitle">写什么</h2>
+                <span class="sub" id="whatSub">当前口头指令 · 输入即保存</span>
+              </div>
+              <textarea id="body" placeholder="填要自动写入并发送的内容…"></textarea>
+              <p class="hint" id="saveHint">输入即保存 · 点左侧条目 = 当前要注入的那条</p>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+(function () {
+  var TEMPLATES = [
+    { id: 'tpl-continue', label: '继续', text: '继续上一步，保持同样约束。' },
+    { id: 'tpl-fix', label: '修这个', text: '根据当前报错修好它，改动尽量小，说明原因。' },
+    { id: 'tpl-summary', label: '总结改动', text: '用三条要点总结刚改了什么，以及下一步建议。' },
+    { id: 'tpl-explain', label: '解释这段', text: '用白话解释当前选中/打开的代码在干什么，以及风险点。' },
+    { id: 'tpl-next', label: '下一步', text: '基于当前进度，给出一个可立刻执行的下一步，并直接开干。' }
+  ];
+
+  var mine = [];
+  var selectedId = '';
+  var saveTimer = null;
+
+  var mineList = document.getElementById('mineList');
+  var mineEmpty = document.getElementById('mineEmpty');
+  var mineCount = document.getElementById('mineCount');
+  var fromTpl = document.getElementById('fromTpl');
+  var body = document.getElementById('body');
+  var armedLabel = document.getElementById('armedLabel');
+  var whatSub = document.getElementById('whatSub');
+  var toastEl = document.getElementById('toast');
+  var toastTimer = null;
+
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('is-on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('is-on'); }, 1600);
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  function labelFromText(text) {
+    var line = String(text || '').trim().split(/\n/)[0] || '';
+    return line.slice(0, 18) || '未命名';
+  }
+
+  function findMine(id) {
+    for (var i = 0; i < mine.length; i++) if (mine[i].id === id) return mine[i];
+    return null;
+  }
+
+  function tplPillsHtml() {
+    return TEMPLATES.map(function (t) {
+      return '<button type="button" class="tpl-pill" data-tpl="' + t.id + '">' + esc(t.label) + '</button>';
+    }).join('');
+  }
+
+  function paintTpls() {
+    document.getElementById('emptyTpls').innerHTML = tplPillsHtml();
+    document.getElementById('footTpls').innerHTML = tplPillsHtml();
+  }
+
+  function paintMine() {
+    mineCount.textContent = mine.length ? String(mine.length) : '';
+    var has = mine.length > 0;
+    mineEmpty.hidden = has;
+    mineList.hidden = !has;
+    fromTpl.classList.toggle('is-on', has);
+
+    var sel = findMine(selectedId);
+    armedLabel.textContent = sel ? sel.label : '（还没有）';
+
+    mineList.innerHTML = mine.map(function (m) {
+      var on = m.id === selectedId ? ' is-on' : '';
+      var tag = m.id === selectedId ? '<span class="tag">当前</span>' : '';
+      return '<button type="button" class="chip' + on + '" role="option" aria-selected="' +
+        (m.id === selectedId) + '" data-mine="' + m.id + '">' +
+        '<span class="t">' + esc(m.label) + tag + '</span>' +
+        '<span class="d">' + esc(m.text) + '</span></button>';
+    }).join('');
+  }
+
+  function upsertFromBody() {
+    var text = String(body.value || '').trim();
+    if (!text) return null;
+    var existing = selectedId ? findMine(selectedId) : null;
+    if (existing) {
+      existing.text = text;
+      existing.label = labelFromText(text);
+      paintMine();
+      return existing;
+    }
+    var item = {
+      id: 'm-' + Date.now().toString(36),
+      label: labelFromText(text),
+      text: text
+    };
+    mine.unshift(item);
+    selectedId = item.id;
+    paintMine();
+    return item;
+  }
+
+  function applyTemplate(tpl) {
+    // Same body as an existing item → just select it (no duplicate).
+    for (var i = 0; i < mine.length; i++) {
+      if (mine[i].text === tpl.text) {
+        selectMine(mine[i].id, '已是当前「' + mine[i].label + '」');
+        return;
+      }
+    }
+    body.value = tpl.text;
+    selectedId = '';
+    var item = upsertFromBody();
+    whatSub.textContent = '来自「' + tpl.label + '」· 可改';
+    toast('已加入指令库 · 「' + (item && item.label) + '」');
+  }
+
+  function selectMine(id, msg) {
+    var m = findMine(id);
+    if (!m) return;
+    selectedId = m.id;
+    body.value = m.text;
+    whatSub.textContent = '当前口头指令 · 输入即保存';
+    paintMine();
+    if (msg) toast(msg);
+  }
+
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      if (!String(body.value || '').trim()) return;
+      upsertFromBody();
+      whatSub.textContent = '已保存';
+    }, 400);
+  }
+
+  paintTpls();
+  paintMine();
+
+  function onTplClick(e) {
+    var btn = e.target.closest('[data-tpl]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-tpl');
+    var tpl = TEMPLATES.filter(function (t) { return t.id === id; })[0];
+    if (tpl) applyTemplate(tpl);
+  }
+  document.getElementById('emptyTpls').addEventListener('click', onTplClick);
+  document.getElementById('footTpls').addEventListener('click', onTplClick);
+
+  mineList.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-mine]');
+    if (!btn) return;
+    selectMine(btn.getAttribute('data-mine'));
+  });
+
+  document.getElementById('btnNew').addEventListener('click', function () {
+    clearTimeout(saveTimer);
+    selectedId = '';
+    body.value = '';
+    whatSub.textContent = '空白稿 · 输入后进指令库';
+    paintMine();
+    body.focus();
+    toast('已开新稿');
+  });
+
+  body.addEventListener('input', scheduleSave);
+
+  document.querySelectorAll('.aim label').forEach(function (lab) {
+    lab.addEventListener('click', function () {
+      document.querySelectorAll('.aim label').forEach(function (x) { x.classList.remove('is-on'); });
+      lab.classList.add('is-on');
+      lab.querySelector('input').checked = true;
+    });
+  });
+})();
+  </script>
+</body>
+</html>

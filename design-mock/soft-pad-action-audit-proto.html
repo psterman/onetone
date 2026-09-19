@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soft Pad · 对齐真机 · 新动作审核</title>
+<style>
+:root{
+  --bg:#e8eef5; --surface:#fff; --soft:#f4f7fb; --line:rgba(26,45,74,.1);
+  --on:#152238; --mute:#5a7086; --faint:#8b9aab;
+  --p:#2a9cc4; --p-ink:#1a7a9c; --p-soft:#e8f6fb; --outline:rgba(42,156,196,.32);
+  --ok:#1b7a45; --ok-soft:#e8f6ee;
+  --warn:#8a6a12; --warn-soft:#fff8e8;
+  --bad:#9b2c2c; --bad-soft:#fdecec;
+  --core:#0f6b5c; --core-soft:#e6f5f1;
+  --mode:#5b4bb7; --mode-soft:#efeaff;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;background:var(--bg);color:var(--on)}
+.page{max-width:1280px;margin:0 auto;padding:14px 12px 48px}
+h1{margin:0 0 4px;font-size:17px;font-weight:800}
+.lede{margin:0 0 10px;font-size:12.5px;color:var(--mute);max-width:88ch}
+.banner{
+  margin:0 0 10px;padding:10px 12px;border-radius:12px;background:var(--warn-soft);
+  border:1px solid rgba(180,130,20,.3);font-size:12px;color:var(--warn);line-height:1.5;
+}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.tab{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:7px 14px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.tab.is-on{border-color:var(--p);background:var(--p-soft);color:var(--p-ink)}
+.panel{display:none}.panel.is-on{display:block}
+.audit-bar,.gap-bar{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px;
+  padding:8px 10px;border-radius:10px;background:#fff;border:1px solid var(--line);font-size:12px;
+}
+.audit-bar .stat,.gap-bar .stat{color:var(--mute)}.audit-bar .stat b,.gap-bar .stat b{color:var(--on)}
+.btn{
+  appearance:none;border:1px solid var(--outline);background:var(--p-soft);color:var(--p-ink);
+  border-radius:8px;padding:6px 10px;font:inherit;font-size:12px;font-weight:750;cursor:pointer;
+}
+.btn.ghost{background:#fff;border-color:var(--line);color:var(--mute)}
+.btn.ok{background:var(--ok-soft);border-color:rgba(27,122,69,.35);color:var(--ok)}
+.btn.bad{background:var(--bad-soft);border-color:rgba(155,44,44,.35);color:var(--bad)}
+
+/* —— 对齐真机 Soft Pad：左预览 + 右 Hub —— */
+.mock{
+  border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden;
+  box-shadow:0 10px 28px rgba(26,45,74,.07);
+}
+.stage{
+  display:grid;grid-template-columns:minmax(250px,300px) minmax(0,1fr);
+  min-height:620px;background:#f7f9fc;
+}
+@media (max-width:980px){.stage{grid-template-columns:1fr}}
+
+.pad-col{
+  padding:14px 12px;background:#eef2f7;border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:8px;
+}
+.pad-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pad-top strong{font-size:12.5px;letter-spacing:.02em}
+.pad-top .meta{font-size:11px;color:var(--mute)}
+.pad-top .meta b{color:var(--p-ink)}
+.pad-grid{
+  display:grid;grid-template-columns:28px repeat(4,1fr);grid-auto-rows:minmax(46px,auto);gap:6px;
+  padding:8px;border-radius:16px;background:#fff;border:1px solid var(--line);
+}
+.pkey{
+  appearance:none;border:1.5px solid rgba(26,45,74,.14);background:#f8fafc;border-radius:12px;
+  padding:4px 2px;cursor:pointer;font:inherit;color:var(--on);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:46px;
+}
+.pkey .lab{font-size:9px;font-weight:700;color:var(--faint)}
+.pkey .act{font-size:10.5px;font-weight:800;text-align:center;line-height:1.15;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.pkey.nav{border-radius:50%;width:28px;justify-self:center;min-height:28px;padding:0}
+.pkey.nav .act{display:none}
+.pkey.wide{grid-column:span 2}
+.pkey.core{background:var(--core-soft);border-color:rgba(15,107,92,.35)}
+.pkey.mode{background:var(--mode-soft);border-color:rgba(91,75,183,.35)}
+.pkey.combo{background:#f3efff;border-color:rgba(91,75,183,.28)}
+.pkey.empty{opacity:.4;border-style:dashed}
+.pkey.is-on{box-shadow:0 0 0 3px rgba(42,156,196,.28);border-color:var(--p);background:#fff}
+.pkey.pass{outline:2px solid rgba(27,122,69,.5)}
+.pkey.fail{outline:2px solid rgba(155,44,44,.5)}
+.pad-bind{padding:10px 11px;border-radius:10px;background:#fff;border:1px solid var(--line)}
+.pad-bind .n{font-weight:800}
+.pad-bind .c{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--p-ink);margin-top:2px}
+.pad-hint{margin:0;font-size:11px;color:var(--faint)}
+
+.hub{display:flex;flex-direction:column;min-width:0;background:#f7f9fc}
+.face-tabs{
+  display:flex;gap:0;border-bottom:1px solid var(--line);background:#fff;padding:0 8px;
+}
+.face-tab{
+  appearance:none;border:0;background:transparent;padding:12px 16px;font:inherit;
+  font-size:13px;font-weight:700;color:var(--mute);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.face-tab.is-on{color:var(--p-ink);border-bottom-color:var(--p)}
+.face-pane{display:none;flex:1;min-height:0}
+.face-pane.is-on{display:flex}
+
+.hub-keys{
+  display:grid;grid-template-columns:148px 150px minmax(0,1fr);
+  flex:1;min-height:0;
+}
+@media (max-width:900px){.hub-keys{grid-template-columns:1fr}}
+
+.ch-rail,.sc-rail{
+  border-right:1px solid var(--line);background:#f3f6fa;padding:8px 6px;
+  display:flex;flex-direction:column;gap:2px;overflow:auto;
+}
+.ch-search{
+  margin:0 2px 8px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;
+  font:inherit;font-size:12px;background:#fff;color:var(--mute);
+}
+.rail-btn{
+  appearance:none;border:0;background:transparent;text-align:left;width:100%;
+  padding:8px 9px;border-radius:9px;font:inherit;cursor:pointer;color:var(--mute);
+}
+.rail-btn:hover{background:rgba(26,45,74,.04)}
+.rail-btn.is-on{background:#fff;color:var(--p-ink);font-weight:800;box-shadow:0 1px 2px rgba(26,45,74,.06);border:1px solid var(--line)}
+.rail-btn .t{font-size:12px}
+.rail-btn small{float:right;font-size:10px;color:var(--faint)}
+.rail-btn.is-on small{color:var(--p-ink)}
+.rail-btn.is-dim{opacity:.55}
+.rail-sep{
+  margin:8px 6px 4px;font-size:10px;font-weight:800;color:var(--faint);
+  letter-spacing:.06em;text-transform:uppercase;
+}
+.rail-btn.is-aux .t{font-weight:650;color:var(--faint)}
+.rail-btn.is-aux.is-on .t{color:var(--p-ink);font-weight:800}
+.rail-btn .badge{
+  display:inline-block;margin-left:4px;padding:0 5px;border-radius:999px;
+  font-size:9px;font-weight:750;background:var(--p-soft);color:var(--p-ink);vertical-align:middle;
+}
+
+.mid{padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0;overflow:auto;background:#fff}
+.mid-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.mid-head h2{margin:0;font-size:14px;font-weight:800}
+.mid-head .desc{margin:2px 0 0;font-size:11.5px;color:var(--mute)}
+.pill-app{
+  font-size:11px;font-weight:750;color:var(--p-ink);background:var(--p-soft);
+  border:1px solid var(--outline);border-radius:999px;padding:3px 9px;white-space:nowrap;
+}
+.cmd{
+  border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;
+}
+.cmd.is-on{border-color:var(--p);background:var(--p-soft)}
+.cmd-head{
+  appearance:none;width:100%;border:0;background:transparent;text-align:left;
+  padding:10px 12px;cursor:pointer;font:inherit;display:grid;
+  grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;
+}
+.cmd-head .name{font-weight:800;font-size:13px}
+.cmd-head .sub{font-size:11px;color:var(--mute)}
+.cmd-head .chord{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--p-ink)}
+.tag{display:inline-block;margin-left:5px;padding:1px 6px;border-radius:999px;font-size:10px;font-weight:750}
+.tag.ship{background:var(--ok-soft);color:var(--ok)}
+.tag.soon{background:var(--p-soft);color:var(--p-ink)}
+.tag.more{background:var(--warn-soft);color:var(--warn)}
+.tag.combo{background:#efeaff;color:#5b4bb7}
+.tag.hard{background:var(--bad-soft);color:var(--bad)}
+.cmd-body{display:none;padding:0 12px 12px;border-top:1px dashed var(--line);background:#fff}
+.cmd.is-on .cmd-body{display:grid;gap:8px;padding-top:10px}
+.field{display:grid;gap:4px}
+.field label{font-size:11px;font-weight:700;color:var(--mute)}
+.field input,.field .fake{
+  border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;background:#f8fafc;
+}
+.row2{display:flex;gap:6px;align-items:center}
+.row2 .fake{flex:1}
+.seg{display:flex;gap:6px}
+.seg button{
+  flex:1;appearance:none;border:1px solid var(--line);background:#fff;border-radius:8px;
+  padding:7px;font:inherit;font-size:11px;font-weight:700;color:var(--mute);cursor:pointer;
+}
+.seg button.is-on{border-color:var(--p);background:var(--p-soft);color:var(--p-ink)}
+.box{padding:8px 10px;border-radius:10px;background:var(--soft);border:1px solid var(--line);font-size:12px;color:var(--mute)}
+.box b{color:var(--on)}
+.box code{font-family:var(--mono);font-size:11px;color:var(--p-ink)}
+.diff{
+  padding:8px 10px;border-radius:10px;background:#fff;border:1px dashed rgba(180,130,20,.4);
+  font-size:11.5px;color:var(--warn);
+}
+.audit-actions{display:flex;flex-wrap:wrap;gap:6px}
+
+.face-stub{
+  flex:1;display:grid;place-items:center;padding:40px 20px;color:var(--mute);font-size:13px;text-align:center;
+}
+
+.gap-filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.gap-chip{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:5px 11px;font:inherit;font-size:11.5px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.gap-chip.is-on{border-color:var(--p);background:var(--p-soft);color:var(--p-ink)}
+.gap-table-wrap,.factory-wrap{
+  border:1px solid var(--line);border-radius:14px;background:#fff;overflow:auto;
+  box-shadow:0 10px 28px rgba(26,45,74,.07);
+}
+.gap-table,.factory-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px}
+.gap-table th,.gap-table td,.factory-table th,.factory-table td{
+  padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);
+}
+.gap-table th,.factory-table th{font-size:11px;font-weight:750;color:var(--mute);background:#f7f9fc}
+.gap-table code,.factory-table code{font-family:var(--mono);font-size:11px;color:var(--p-ink)}
+.st{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:750;white-space:nowrap}
+.st.need{background:var(--p-soft);color:var(--p-ink)}
+.st.ok{background:var(--ok-soft);color:var(--ok)}
+.st.skip{background:var(--bad-soft);color:var(--bad)}
+.gap-note{margin:10px 0 0;font-size:12px;color:var(--mute);line-height:1.5}
+.foot{margin-top:12px;font-size:11.5px;color:var(--faint)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Soft Pad · 对齐真机布局 · 新动作审核</h1>
+  <p class="lede">分类轴 = 操控对象（科学）。展示分三带且连续：日常对话 → 切换 → 其它。不用「主环/玩家新类」黑话。绑键 v4。</p>
+
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab is-on" data-tab="audit">1 · 真机布局审核</button>
+    <button type="button" class="tab" data-tab="factory">2 · 出厂对照</button>
+    <button type="button" class="tab" data-tab="gaps">3 · 补录清单</button>
+  </div>
+
+  <section class="panel is-on" id="panel-audit">
+    <div class="banner"><b>规范：</b>①一条轨一种对象；②分组连续不重复；③分组名给用户看（日常对话/切换/其它），规划黑话不进 UI；④小白先看日常四轨。</div>
+    <div class="audit-bar">
+      <strong>审核</strong>
+      <span class="stat">键通过 <b id="nPass">0</b></span>
+      <span class="stat">打回 <b id="nFail">0</b></span>
+      <span class="stat">未审 <b id="nTodo">0</b></span>
+      <button type="button" class="btn ghost" id="btnReset">清空审核</button>
+      <button type="button" class="btn ghost" id="btnResetBind">恢复出厂草案</button>
+      <button type="button" class="btn" id="btnExport">导出 JSON</button>
+    </div>
+
+    <div class="mock">
+      <div class="stage">
+        <aside class="pad-col">
+          <div class="pad-top">
+            <strong>SOFT PAD 预览</strong>
+            <span class="meta">Cursor · 已开启 · 已绑定 <b id="nBound">0</b> 个键</span>
+          </div>
+          <div class="pad-grid" id="padGrid"></div>
+          <div class="pad-bind">
+            <div class="n" id="padName">—</div>
+            <div class="c" id="padChord">—</div>
+          </div>
+          <p class="pad-hint">蓝框 = 正在编辑，点其它键可切换 · 绿/红描边 = 审核通过/打回</p>
+        </aside>
+
+        <div class="hub">
+          <div class="face-tabs" role="tablist">
+            <button type="button" class="face-tab is-on" data-face="keys">按键</button>
+            <button type="button" class="face-tab" data-face="agent">Agent</button>
+            <button type="button" class="face-tab" data-face="style">样式</button>
+          </div>
+
+          <div class="face-pane is-on" id="face-keys">
+            <div class="hub-keys">
+              <nav class="ch-rail" id="chRail"></nav>
+              <nav class="sc-rail" id="scRail"></nav>
+              <section class="mid">
+                <div class="mid-head">
+                  <div>
+                    <h2 id="catTitle">—</h2>
+                    <p class="desc" id="catDesc">—</p>
+                  </div>
+                  <span class="pill-app">正在用 · Cursor</span>
+                </div>
+                <div id="cmdList"></div>
+              </section>
+            </div>
+          </div>
+          <div class="face-pane" id="face-agent">
+            <div class="face-stub" style="max-width:42ch;margin:0 auto;text-align:left;line-height:1.55">
+              <b>状态（灯，不是命令类）</b><br>
+              Soft Pad 分类标准里，「看数据」归 Agent 面 / 键帽灯：<br>
+              · Agent 跑着 / 闲着 / 等接受<br>
+              · 当前工作模式（Plan / Agent）<br>
+              · 当前模型<br>
+              · 是否有待接受改动<br>
+              点灯可跳到对应上下文；不要做成假命令塞进「屏幕按钮」列表。
+            </div>
+          </div>
+          <div class="face-pane" id="face-style">
+            <div class="face-stub">样式面 · 本原型不展开（与真机一致占位）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="foot">localStorage：<code>onetone.softPadKeyAuditPad.v4</code> · <code>onetone.softPadKeyBindDraft.v4</code></p>
+  </section>
+
+  <section class="panel" id="panel-factory">
+    <p class="banner">出厂草案一览：相对旧 Codex Soft Pad 默认，哪些键改了。</p>
+    <div class="factory-wrap">
+      <table class="factory-table" id="factoryTable">
+        <thead><tr><th>物理键</th><th>草案动作</th><th>slot</th><th>相对旧默认</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-gaps">
+    <p class="banner"><b>补录 × 分类标准：</b>「怎么补」列标清 · 可落地/半落地/占位 · 现有类或新类（会话、模型、状态灯）。</p>
+    <div class="gap-bar">
+      <strong>补录</strong>
+      <span class="stat">要补 <b id="gNeed">0</b></span>
+      <span class="stat">已齐 <b id="gOk">0</b></span>
+      <span class="stat">不做 <b id="gSkip">0</b></span>
+    </div>
+    <div class="gap-filters" id="gapFilters"></div>
+    <div class="gap-table-wrap">
+      <table class="gap-table">
+        <thead><tr><th>来源</th><th>要什么</th><th>Cursor / Soft Pad</th><th>状态</th><th>怎么补</th></tr></thead>
+        <tbody id="gapBody"></tbody>
+      </table>
+    </div>
+    <p class="gap-note">社区检索后优先补：全部拒绝（与全收成对）→ 模式菜单/轮模式 → 选区加对话 → 校正模型键为 Ctrl+/ → 会话←→。Ctrl+K/Tab 仍不进 Soft Pad 主环。</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  var LS_AUDIT = 'onetone.softPadKeyAuditPad.v4';
+  var LS_BIND = 'onetone.softPadKeyBindDraft.v4';
+
+  /**
+   * 分类标准 = 操控对象（科学轴）
+   * 展示规范：同一 band 必须连续；分组名用小白话，不用「主环/玩家新类」。
+   * 顺序：日常对话 → 切换 → 其它
+   */
+  var SCENES = [
+    {
+      id: 'turn', band: 'daily', short: '开麦发送', title: '本轮：开麦、发送、停住、继续',
+      desc: '管输入框和正在生成的 Agent。',
+      slots: ['pushToTalk', 'stopOrSend', 'cancel', 'continue', 'pasteAndSend']
+    },
+    {
+      id: 'review', band: 'daily', short: '接受改动', title: '改动结果：接受或拒绝',
+      desc: '管建议改动 / diff。须在聊天或建议区。',
+      slots: ['acceptAllChanges', 'rejectAllChanges', 'acceptChanges', 'nextChange']
+    },
+    {
+      id: 'mode', band: 'daily', short: '工作模式', title: 'Agent 怎么干：Plan / Agent',
+      desc: '管工作方式。Build 暂无稳定快捷键。',
+      slots: ['plan', 'switchAgent', 'modeMenu', 'rotateMode', 'buildPlan']
+    },
+    {
+      id: 'recover', band: 'daily', short: '切回纠错', title: '切回 Cursor · 纠错重说',
+      desc: '管窗口焦点和说错重来。',
+      slots: ['summonCodex', 'comboFocusTalk', 'comboFix', 'undo']
+    },
+    {
+      id: 'session', band: 'switch', short: '会话切换', title: '哪一场对话',
+      desc: '管 Chat 会话：新开、标签、上一/下一、关闭。',
+      slots: ['newThread', 'newChatTab', 'prevChat', 'nextChat', 'closeChat']
+    },
+    {
+      id: 'model', band: 'switch', short: '模型', title: '用哪套模型',
+      desc: '管当前模型。官方主键 Ctrl+/。',
+      slots: ['cycleModel']
+    },
+    {
+      id: 'context', band: 'switch', short: '加上下文', title: '把代码加进对话',
+      desc: '管选区/剪贴板进 Chat。须先有选区或先聚焦 Chat。',
+      slots: ['addSelectionToChat', 'pasteAsContext']
+    },
+    {
+      id: 'panel', band: 'other', short: '窗口面板', title: 'Chat 面板 · 布局 · 侧栏',
+      desc: '管 IDE 面板显隐与 Agent 布局。不进出厂主路径。',
+      slots: ['quickChat', 'toggleAgentLayout', 'toggleSidebar']
+    },
+    {
+      id: 'find', band: 'other', short: '找文件命令', title: '搜文件 · 命令菜单',
+      desc: '管打开文件和命令面板。键盘往往更快。',
+      slots: ['quickSearch', 'commandPalette']
+    },
+    {
+      id: 'seq', band: 'other', short: '自定义步骤', title: '跑我录好的按键',
+      desc: '管个人多步流程。无法一键抽象的操作放这里。',
+      slots: ['runTargetSequence']
+    }
+  ];
+
+  var CHANNELS = [
+    { id: 'ime', title: '听写方式', n: '', dim: true },
+    { id: 'key', title: '我录的键', n: '', dim: true },
+    { id: 'voice', title: '口头指令', n: '1', dim: true },
+    { id: 'camera', title: '手势', n: '', dim: true },
+    { id: 'cursor', title: '软件自带', n: '16', dim: true },
+    { id: 'softPad', title: '屏幕按钮', n: '', dim: false }
+  ];
+
+  /**
+   * title = 列表主名（小白话）
+   * why = 列表副文案「我想·…」
+   * scheme = 展开详情里的方案说明
+   */
+  var ACTIONS = {
+    pushToTalk: {
+      title: '开麦说话', tier: 'ship', chord: 'RAlt', phrase: '麦克风',
+      why: '把想法说进输入框', focus: 'soft',
+      scheme: '按住/点一下开麦，字进当前前台输入框。建议先回到 Cursor，避免打到别的软件。'
+    },
+    stopOrSend: {
+      title: '发给 AI', tier: 'ship', chord: 'Enter', phrase: '发送',
+      why: '说完了，让它干', focus: 'hard',
+      scheme: '先确认 Agent 输入框有焦点，再 Enter。没有焦点时：先聚焦再发，禁止盲按。'
+    },
+    cancel: {
+      title: '马上停住', tier: 'ship', chord: 'Ctrl+Shift+Backspace', phrase: '取消',
+      why: '它写歪了，先刹车', focus: 'soft',
+      scheme: '停止当前生成。这是「停」，不是「拒审批」。停完若要重说，用「切回纠错 → 说错了重说」。'
+    },
+    continue: {
+      title: '让它继续', tier: 'ship', chord: '宏·焦点+塞话', phrase: '继续',
+      why: '它停住了，接着干', focus: 'hard',
+      scheme: '①聚焦 Agent 输入框（无焦点绝不盲发）②写入固定句「继续」③Enter。不用 Ctrl+Enter，避免和「全部收下」撞车。口头说「继续」也可，按键与口头并存。'
+    },
+    pasteAndSend: {
+      title: '粘贴后发出去', tier: 'more', chord: '多步', phrase: '',
+      why: '剪贴板里有一段要交出去', focus: 'hard',
+      scheme: '多步：聚焦 → 粘贴 → Enter。偶尔用，不和「发给 AI」抢出厂位。'
+    },
+    acceptAllChanges: {
+      title: '全部接受', tier: 'ship', chord: 'Ctrl+Enter', phrase: '全部接受',
+      why: '这波改动都 OK', focus: 'hard',
+      scheme: '官方：建议改动出现时 Ctrl+Enter。Reddit/教程 S 级。须在聊天/建议上下文。'
+    },
+    rejectAllChanges: {
+      title: '全部拒绝', tier: 'ship', chord: 'Ctrl+Backspace', phrase: '全部拒绝',
+      why: '这波改动不要', focus: 'hard',
+      scheme: '官方：建议改动时 Reject all（Ctrl+Backspace）。与「全部接受」成对；社区与 Accept 同频抱怨/使用。注意：与「停生成」和弦不同语境。'
+    },
+    acceptChanges: {
+      title: '接受这一处', tier: 'soon', chord: 'UI/不稳', phrase: '接受',
+      why: '只留这一处，别的再说', focus: 'hard',
+      scheme: '官方未单列稳定单条键；多靠审阅条。部分文称 Ctrl+Y。默认关防误触。'
+    },
+    nextChange: {
+      title: '跳到下一处', tier: 'more', chord: 'F7?', phrase: '下一处',
+      why: '一处处翻着看', focus: 'soft',
+      scheme: '可能因版本不稳。可绑，标「可能不准」。'
+    },
+    plan: {
+      title: '先定计划', tier: 'ship', chord: 'Ctrl+Alt+Shift+P', phrase: '定计划',
+      why: '大事先想清楚再改', focus: 'soft',
+      scheme: '切到 Plan。也可 Shift+Tab 轮模式。'
+    },
+    switchAgent: {
+      title: '直接开工改', tier: 'ship', chord: 'Ctrl+Alt+.', phrase: '开工',
+      why: '别计划了，动手改代码', focus: 'soft',
+      scheme: '切到 Agent。和「先定计划」成对。'
+    },
+    modeMenu: {
+      title: '打开模式菜单', tier: 'soon', chord: 'Ctrl+.', phrase: '',
+      why: '弹出 Agent/Plan/Ask 菜单', focus: 'soft',
+      scheme: '官方 Mode Menu。社区称「很多人半年发现不了」。Keys 已有；应进 Soft Pad。'
+    },
+    rotateMode: {
+      title: '轮换工作模式', tier: 'soon', chord: 'Shift+Tab', phrase: '',
+      why: '输入框里快速切模式', focus: 'hard',
+      scheme: '官方：聊天输入框内 Shift+Tab 轮模式。须输入框焦点。'
+    },
+    buildPlan: {
+      title: '按计划开工', tier: 'soon', chord: '无官方键', phrase: '',
+      why: '计划看过了，开始做', focus: 'hard',
+      scheme: 'Build 多为按钮。占位；可录 UI 或命令面板。'
+    },
+    newThread: {
+      title: '新开对话', tier: 'ship', chord: 'Ctrl+N', phrase: '新建',
+      why: '换一场空白对话', focus: 'soft',
+      scheme: '官方 New chat。不是 Fork。'
+    },
+    newChatTab: {
+      title: '新对话标签', tier: 'more', chord: 'Ctrl+T', phrase: '',
+      why: '再开一个 Chat 标签页', focus: 'soft',
+      scheme: '官方 New chat tab。多会话并行时用。'
+    },
+    prevChat: {
+      title: '上一个对话', tier: 'soon', chord: 'Ctrl+[', phrase: '',
+      why: '跳回上一场 Chat', focus: 'soft',
+      scheme: '官方 Previous chat。'
+    },
+    nextChat: {
+      title: '下一个对话', tier: 'soon', chord: 'Ctrl+]', phrase: '',
+      why: '跳到下一场 Chat', focus: 'soft',
+      scheme: '官方 Next chat。'
+    },
+    closeChat: {
+      title: '关闭当前对话', tier: 'more', chord: 'Ctrl+W', phrase: '',
+      why: '关掉这一场 Chat', focus: 'soft',
+      scheme: '官方 Close chat。靠后，防误关。'
+    },
+    cycleModel: {
+      title: '轮换模型', tier: 'soon', chord: 'Ctrl+/', phrase: '',
+      why: '换快模 / 贵模', focus: 'soft',
+      scheme: '官方 General：Ctrl+/ Loop models；另 Ctrl+Alt+/ Model toggle。Reddit 确认高频。勿塞 /model。'
+    },
+    summonCodex: {
+      title: '回到 Cursor', tier: 'ship', chord: '焦点', phrase: '',
+      why: '人在别的软件，先切回来', focus: 'soft',
+      scheme: '前置 Cursor。开麦/继续/接受前需要。'
+    },
+    comboFocusTalk: {
+      title: '回来并开麦', tier: 'ship', chord: '宏', phrase: '',
+      why: '切回 Cursor，马上说话', focus: 'hard',
+      scheme: '①聚焦 ②开麦。'
+    },
+    comboFix: {
+      title: '说错了 · 停并重说', tier: 'ship', chord: '宏', phrase: '',
+      why: '刚说错 / 它跑偏了，重来一句', focus: 'hard',
+      scheme: '停→聚焦→开麦→发。'
+    },
+    addSelectionToChat: {
+      title: '选中代码加到对话', tier: 'soon', chord: 'Ctrl+Shift+L', phrase: '',
+      why: '把这段丢进 Chat 当上下文', focus: 'soft',
+      scheme: '官方 Add selection to Chat。须先有选区；无选区应提示。GitHub tips / 掘金高频。'
+    },
+    pasteAsContext: {
+      title: '剪贴板加为上下文', tier: 'more', chord: 'Ctrl+V（Chat 内）', phrase: '',
+      why: '复制的代码/日志直接 @ 进对话', focus: 'hard',
+      scheme: '官方：Chat 内 Ctrl+V 可作 context。须先聚焦 Chat。'
+    },
+    quickChat: {
+      title: '拉开侧边聊天', tier: 'more', chord: 'Ctrl+I', phrase: '',
+      why: '找 Chat 面板', focus: 'none',
+      scheme: 'Toggle Sidepanel。社区亦常用 Ctrl+L。'
+    },
+    toggleAgentLayout: {
+      title: '切换 Agent 布局', tier: 'soon', chord: 'Ctrl+E', phrase: '',
+      why: '换 Agent 窗口排布', focus: 'soft',
+      scheme: '官方 Toggle Agent layout。玩家版布局键。'
+    },
+    toggleSidebar: {
+      title: '显隐侧栏', tier: 'more', chord: 'Ctrl+B', phrase: '',
+      why: '腾地方看代码', focus: 'none',
+      scheme: '可绑不主推。'
+    },
+    quickSearch: {
+      title: '搜文件名', tier: 'more', chord: 'Ctrl+P', phrase: '',
+      why: '打开某个文件对照', focus: 'none',
+      scheme: 'IDE 键；Pad 可选。'
+    },
+    commandPalette: {
+      title: '打开命令菜单', tier: 'more', chord: 'Ctrl+Shift+P', phrase: '',
+      why: '搜一个记不住的命令', focus: 'none',
+      scheme: '万能兜底。'
+    },
+    undo: {
+      title: '撤销一步', tier: 'more', chord: 'Ctrl+Z', phrase: '',
+      why: '手滑了撤一下', focus: 'soft',
+      scheme: '纠错可选用。'
+    },
+    runTargetSequence: {
+      title: '跑我录好的步骤', tier: 'more', chord: '序列', phrase: '',
+      why: '重复一套自己的操作', focus: 'soft',
+      scheme: '自定义逃生口。'
+    },
+    '': { title: '（空）', tier: 'more', chord: '—', phrase: '', why: '未绑定', focus: 'none', scheme: '' }
+  };
+
+  var TIER = { ship: '出厂', soon: '第二周', more: '更多', combo: '组合' };
+  var FOCUS_LAB = { none: '不抢焦点', soft: '建议在 Cursor', hard: '必须先聚焦输入' };
+
+  var PHYS = {
+    AG00: '数字 7', AG01: '数字 8', AG02: '数字 9',
+    AG03: '数字 4', AG04: '数字 5', AG05: '数字 6',
+    ACT09: '数字 1', UNDO: '数字 2', SEARCH: '数字 3',
+    ACT10: '数字 0', DOT: '. 键', ACT07: '/ 键', ACT06: '* 键',
+    ACT08: '- 键', PLUS: '+ 键', ACT12: '回车', ENC: '屏幕总开关',
+    NAV_UP: '上', NAV_DOWN: '下', NAV_LEFT: '左', NAV_RIGHT: '右'
+  };
+
+  var FACTORY = {
+    ENC: { slot: 'summonCodex', label: 'ENC', zone: 'core', old: 'summonCodex', note: '切回纠错·聚焦' },
+    ACT06: { slot: 'comboFix', label: 'ACT06', zone: 'combo', old: 'quickChat', note: '切回纠错·停并重说' },
+    ACT07: { slot: 'acceptAllChanges', label: 'ACT07', zone: 'core', old: 'commandPalette', note: '接受改动·全部接受' },
+    ACT08: { slot: 'cancel', label: 'ACT08', zone: 'core', old: 'cancel', note: '开麦发送·停' },
+    NAV_UP: { slot: 'cycleModel', label: '↑', zone: 'mode', old: '', note: '模型·Ctrl+/ 循环' },
+    AG00: { slot: 'rejectAllChanges', label: 'AG00', zone: 'core', old: 'commandPalette', note: '接受改动·全部拒绝（社区漏补）' },
+    AG01: { slot: 'newThread', label: 'AG01', zone: 'core', old: 'newThread', note: '会话·新开' },
+    AG02: { slot: 'comboFocusTalk', label: 'AG02', zone: 'combo', old: 'quickChat', note: '切回纠错·回来开麦' },
+    PLUS: { slot: 'plan', label: '+', zone: 'mode', old: '', note: '工作模式·Plan' },
+    NAV_LEFT: { slot: 'prevChat', label: '←', zone: 'core', old: '', note: '会话·上一聊' },
+    AG03: { slot: 'modeMenu', label: 'AG03', zone: 'mode', old: 'quickSearch', note: '工作模式·Ctrl+.' },
+    AG04: { slot: 'stopOrSend', label: 'AG04', zone: 'core', old: 'stopOrSend', note: '开麦发送·发' },
+    AG05: { slot: 'continue', label: 'AG05', zone: 'core', old: 'cancel', note: '开麦发送·继续' },
+    NAV_DOWN: { slot: 'toggleSidebar', label: '↓', zone: 'more', old: '', note: '窗口面板·侧栏' },
+    ACT09: { slot: 'addSelectionToChat', label: 'ACT09', zone: 'soon', old: 'newThread', note: '加上下文·选区（勿当 Fork）' },
+    UNDO: { slot: 'acceptChanges', label: 'UNDO', zone: 'soon', old: 'undo', note: '接受改动·这一处' },
+    SEARCH: { slot: 'quickSearch', label: 'SEARCH', zone: 'more', old: 'quickSearch', note: '找文件·靠后' },
+    ACT12: { slot: 'stopOrSend', label: 'ENT', zone: 'core', old: 'stopOrSend', note: '开麦发送·发' },
+    NAV_RIGHT: { slot: 'nextChat', label: '→', zone: 'core', old: '', note: '会话·下一聊' },
+    ACT10: { slot: 'pushToTalk', label: 'MIC', zone: 'core', old: 'pushToTalk', wide: true, note: '开麦发送·麦' },
+    DOT: { slot: 'switchAgent', label: '·', zone: 'mode', old: '', note: '工作模式·Agent' }
+  };
+
+  var PAD_ORDER = [
+    { id: 'NAV_UP', r: 1, c: 1 },
+    { id: 'ENC', r: 1, c: 2 },
+    { id: 'ACT06', r: 1, c: 3 },
+    { id: 'ACT07', r: 1, c: 4 },
+    { id: 'ACT08', r: 1, c: 5 },
+    { id: 'NAV_LEFT', r: 2, c: 1 },
+    { id: 'AG00', r: 2, c: 2 },
+    { id: 'AG01', r: 2, c: 3 },
+    { id: 'AG02', r: 2, c: 4 },
+    { id: 'PLUS', r: 2, c: 5, tall: true },
+    { id: 'NAV_DOWN', r: 3, c: 1 },
+    { id: 'AG03', r: 3, c: 2 },
+    { id: 'AG04', r: 3, c: 3 },
+    { id: 'AG05', r: 3, c: 4 },
+    { id: 'NAV_RIGHT', r: 4, c: 1 },
+    { id: 'ACT09', r: 4, c: 2 },
+    { id: 'UNDO', r: 4, c: 3 },
+    { id: 'SEARCH', r: 4, c: 4 },
+    { id: 'ACT12', r: 4, c: 5, tall: true },
+    { id: 'ACT10', r: 5, c: 2, wide: true },
+    { id: 'DOT', r: 5, c: 4 }
+  ];
+
+  var GAPS = [
+    { src: '社区+官方', want: '全部拒绝 Reject all', now: 'Pad 白名单 + Ctrl+Backspace', status: 'ok', how: '已落地 · 接受改动 · 与全收成对' },
+    { src: '官方+教程', want: '模式菜单 Ctrl+.', now: 'Pad modeMenu', status: 'ok', how: '已落地 · 工作模式' },
+    { src: '官方', want: 'Shift+Tab 轮模式', now: '须输入焦点', status: 'need', how: 'P2 · 工作模式' },
+    { src: 'GitHub tips', want: '选中加到对话 Ctrl+Shift+L', now: '新类「加上下文」', status: 'need', how: 'P2 · 须选区' },
+    { src: '官方', want: 'Agent 布局 Ctrl+E', now: '窗口面板', status: 'need', how: 'P2 · 靠后' },
+    { src: '官方', want: '新对话标签 / 关闭 Chat', now: 'Ctrl+T / Ctrl+W', status: 'need', how: 'P2 · 会话 · 靠后' },
+    { src: '官方校正', want: '轮换模型 chord', now: 'Pad cycleModel Ctrl+/', status: 'ok', how: '已落地 · 模型' },
+    { src: '接受改动', want: '全部接受', now: 'Pad acceptAllChanges Ctrl+Enter', status: 'ok', how: '已落地 · 现有类' },
+    { src: '开麦发送', want: '继续（按键）', now: '硬焦点→塞「继续」→Enter', status: 'ok', how: '已落地 · Soft Pad 工作流' },
+    { src: '切回纠错', want: '回来开麦 / 纠错宏', now: 'comboFocusTalk / comboFix', status: 'ok', how: '已落地 · 宏' },
+    { src: '会话切换', want: '上一聊 / 下一聊', now: 'prevChat / nextChat Ctrl+[ ]', status: 'ok', how: '已落地 · 切换' },
+    { src: '状态灯', want: '跑着/待接受/模式/模型', now: '灯非命令', status: 'need', how: 'Agent 面 · 无稳定公开源' },
+    { src: '工作模式', want: 'Plan / Agent', now: '已可绑', status: 'ok', how: '已齐' },
+    { src: '开麦发送', want: '开麦·发送·停', now: '已齐', status: 'ok', how: '已齐' },
+    { src: '社区 S 但不进 Pad', want: 'Ctrl+K 行内 · Tab 补全', now: '手改', status: 'skip', how: 'Keys 软件自带' },
+    { src: '不做', want: '总结 / Fast / Fork / 六会话 / YOLO 自动全收', now: '设置项或做不到', status: 'skip', how: '口头/设置/不做假' }
+  ];
+
+  var binds = {};
+  var audit = {};
+  var keyId = 'ACT10';
+  var sceneId = 'turn';
+  var pickId = 'pushToTalk';
+  var gapFilter = 'all';
+
+  try { audit = JSON.parse(localStorage.getItem(LS_AUDIT) || '{}') || {}; } catch (_) {}
+  try {
+    var b = JSON.parse(localStorage.getItem(LS_BIND) || 'null');
+    binds = b && typeof b === 'object' ? b : {};
+  } catch (_) { binds = {}; }
+
+  function factorySlot(id) { return (FACTORY[id] && FACTORY[id].slot) || ''; }
+  function slotOf(id) { return binds.hasOwnProperty(id) ? binds[id] : factorySlot(id); }
+  function actionOf(slot) { return ACTIONS[slot] || ACTIONS['']; }
+  function saveAudit() { try { localStorage.setItem(LS_AUDIT, JSON.stringify(audit)); } catch (_) {} }
+  function saveBinds() { try { localStorage.setItem(LS_BIND, JSON.stringify(binds)); } catch (_) {} }
+
+  function sceneOfSlot(slot) {
+    for (var i = 0; i < SCENES.length; i++) {
+      if (SCENES[i].slots.indexOf(slot) >= 0) return SCENES[i].id;
+    }
+    return sceneId;
+  }
+
+  function paintPad() {
+    var host = document.getElementById('padGrid');
+    host.innerHTML = '';
+    var bound = 0;
+    PAD_ORDER.forEach(function (cell) {
+      var meta = FACTORY[cell.id];
+      var slot = slotOf(cell.id);
+      if (slot) bound++;
+      var act = actionOf(slot);
+      var b = document.createElement('button');
+      b.type = 'button';
+      var zone = meta.zone || 'more';
+      b.className = 'pkey ' + zone +
+        (cell.id === keyId ? ' is-on' : '') +
+        (audit[cell.id] === 'pass' ? ' pass' : '') +
+        (audit[cell.id] === 'fail' ? ' fail' : '') +
+        (cell.wide || meta.wide ? ' wide' : '') +
+        (/^NAV_/.test(cell.id) ? ' nav' : '') +
+        (!slot ? ' empty' : '');
+      b.style.gridColumn = String(cell.c);
+      b.style.gridRow = String(cell.r) + (cell.tall ? ' / span 2' : '');
+      if (cell.wide || meta.wide) b.style.gridColumn = cell.c + ' / span 2';
+      b.innerHTML = '<span class="lab">' + meta.label + '</span><span class="act">' + (act.title || '空') + '</span>';
+      b.title = (PHYS[cell.id] || cell.id) + ' → ' + (slot || '空');
+      b.addEventListener('click', function () {
+        keyId = cell.id;
+        var s = slotOf(keyId);
+        pickId = s || pickId;
+        if (s) sceneId = sceneOfSlot(s);
+        paint();
+      });
+      host.appendChild(b);
+    });
+    document.getElementById('nBound').textContent = String(bound);
+  }
+
+  function paintChannels() {
+    var host = document.getElementById('chRail');
+    host.innerHTML = '<input class="ch-search" placeholder="搜索功能..." readonly>';
+    CHANNELS.forEach(function (c) {
+      var n = c.id === 'softPad'
+        ? String(SCENES.reduce(function (a, s) { return a + s.slots.length; }, 0))
+        : c.n;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rail-btn' + (c.id === 'softPad' ? ' is-on' : '') + (c.dim ? ' is-dim' : '');
+      b.innerHTML = '<span class="t">' + c.title + '</span>' + (n ? '<small>' + n + '</small>' : '');
+      host.appendChild(b);
+    });
+  }
+
+  function paintScenes() {
+    var host = document.getElementById('scRail');
+    host.innerHTML = '';
+    var lastBand = '';
+    var BAND_LAB = { daily: '日常对话', switch: '切换', other: '其它' };
+    SCENES.forEach(function (s) {
+      if (s.band !== lastBand) {
+        lastBand = s.band;
+        var sep = document.createElement('div');
+        sep.className = 'rail-sep';
+        sep.textContent = BAND_LAB[s.band] || s.band;
+        host.appendChild(sep);
+      }
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rail-btn' +
+        (s.id === sceneId ? ' is-on' : '') +
+        (s.band === 'other' ? ' is-aux' : '');
+      var badge = s.band === 'switch' ? '<span class="badge">进阶</span>' : '';
+      b.innerHTML = '<span class="t">' + s.short + badge + '</span><small>' + s.slots.length + '</small>';
+      b.addEventListener('click', function () {
+        sceneId = s.id;
+        pickId = s.slots[0] || pickId;
+        paint();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  function paintCmds() {
+    var sc = SCENES.find(function (s) { return s.id === sceneId; }) || SCENES[0];
+    document.getElementById('catTitle').textContent = sc.title;
+    document.getElementById('catDesc').textContent = sc.desc + ' · 点一条绑到左侧蓝框键';
+    var host = document.getElementById('cmdList');
+    host.innerHTML = '';
+    var meta = FACTORY[keyId] || {};
+    var phys = PHYS[keyId] || keyId;
+
+    sc.slots.forEach(function (id) {
+      var a = ACTIONS[id];
+      if (!a) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'cmd' + (id === pickId ? ' is-on' : '');
+      var tags = '<span class="tag ' + a.tier + '">' + (TIER[a.tier] || a.tier) + '</span>';
+      if (a.focus === 'hard') tags += '<span class="tag hard">硬焦点</span>';
+      wrap.innerHTML =
+        '<button type="button" class="cmd-head">' +
+          '<span><span class="name">' + a.title + tags + '</span>' +
+          '<div class="sub">我想·' + a.why + '</div></span>' +
+          '<span class="chord">' + a.chord + '</span>' +
+        '</button>' +
+        '<div class="cmd-body"></div>';
+      var head = wrap.querySelector('.cmd-head');
+      var body = wrap.querySelector('.cmd-body');
+      head.addEventListener('click', function () {
+        pickId = id;
+        binds[keyId] = id;
+        saveBinds();
+        paint();
+      });
+      if (id === pickId) {
+        var boundSlot = slotOf(keyId);
+        var note = meta.note
+          ? '<div class="diff"><b>相对旧默认：</b>' + meta.note + '</div>'
+          : '';
+        body.innerHTML =
+          '<div class="field"><label>命令名称</label><input value="' + phys + ' · ' + a.title + '" readonly></div>' +
+          '<div class="field"><label>快捷键</label><div class="row2"><span class="fake">' + (a.chord || '—') + '</span><button type="button" class="btn ghost">录制</button></div></div>' +
+          '<div class="field"><label>文本口令（可选）</label><input value="' + (a.phrase || '') + '" placeholder="无则仅按键" readonly></div>' +
+          '<div class="field"><label>送到哪里</label><div class="seg">' +
+            '<button type="button" class="' + (a.focus === 'none' ? '' : 'is-on') + '">正在用的编辑器</button>' +
+            '<button type="button" class="' + (a.focus === 'none' ? 'is-on' : '') + '">不抢焦点</button>' +
+          '</div></div>' +
+          '<div class="box"><b>焦点：</b>' + (FOCUS_LAB[a.focus] || a.focus) +
+            (a.scheme ? '<br><b>方案：</b>' + a.scheme : '') +
+            '<br><b>slot</b> <code>' + id + '</code>' +
+            (boundSlot === id ? ' · 已绑到此键' : '') +
+          '</div>' +
+          note +
+          '<div class="audit-actions">' +
+            '<button type="button" class="btn ok" data-a="pass">此键通过</button>' +
+            '<button type="button" class="btn bad" data-a="fail">此键打回</button>' +
+            '<button type="button" class="btn ghost" data-a="clear">清除审核</button>' +
+            '<button type="button" class="btn ghost" data-a="unbind">解绑为空</button>' +
+          '</div>';
+        body.querySelectorAll('[data-a]').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var v = btn.getAttribute('data-a');
+            if (v === 'unbind') { binds[keyId] = ''; saveBinds(); }
+            else if (v === 'clear') { delete audit[keyId]; saveAudit(); }
+            else { audit[keyId] = v; saveAudit(); }
+            paint();
+          });
+        });
+      }
+      host.appendChild(wrap);
+    });
+
+    var cur = actionOf(slotOf(keyId));
+    document.getElementById('padName').textContent = (cur.title || '空') + ' · ' + (cur.chord || '—');
+    document.getElementById('padChord').textContent = phys + ' · ' + (meta.label || keyId);
+  }
+
+  function paintStats() {
+    var ids = Object.keys(FACTORY);
+    var pass = 0, fail = 0;
+    ids.forEach(function (id) {
+      if (audit[id] === 'pass') pass++;
+      if (audit[id] === 'fail') fail++;
+    });
+    document.getElementById('nPass').textContent = pass;
+    document.getElementById('nFail').textContent = fail;
+    document.getElementById('nTodo').textContent = ids.length - pass - fail;
+  }
+
+  function paint() {
+    paintPad();
+    paintChannels();
+    paintScenes();
+    paintCmds();
+    paintStats();
+  }
+
+  document.getElementById('btnReset').addEventListener('click', function () {
+    if (!confirm('清空全部键的审核状态？')) return;
+    audit = {}; saveAudit(); paint();
+  });
+  document.getElementById('btnResetBind').addEventListener('click', function () {
+    if (!confirm('恢复出厂草案绑键？')) return;
+    binds = {}; saveBinds(); paint();
+  });
+  document.getElementById('btnExport').addEventListener('click', function () {
+    var keys = Object.keys(FACTORY).map(function (id) {
+      return {
+        microKeyId: id,
+        phys: PHYS[id] || id,
+        slotId: slotOf(id),
+        title: actionOf(slotOf(id)).title,
+        factorySlotId: factorySlot(id),
+        note: FACTORY[id].note || '',
+        audit: audit[id] || 'todo'
+      };
+    });
+    var blob = new Blob([JSON.stringify({ version: 2, keys: keys }, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'soft-pad-cursor-key-audit.json'; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('is-on', t === tab); });
+      var id = tab.getAttribute('data-tab');
+      document.querySelectorAll('.panel').forEach(function (p) {
+        p.classList.toggle('is-on', p.id === 'panel-' + id);
+      });
+    });
+  });
+
+  document.querySelectorAll('.face-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.face-tab').forEach(function (t) { t.classList.toggle('is-on', t === tab); });
+      var id = tab.getAttribute('data-face');
+      document.querySelectorAll('.face-pane').forEach(function (p) {
+        p.classList.toggle('is-on', p.id === 'face-' + id);
+      });
+    });
+  });
+
+  function paintGaps() {
+    var c = { need: 0, ok: 0, skip: 0 };
+    GAPS.forEach(function (g) { c[g.status]++; });
+    document.getElementById('gNeed').textContent = c.need;
+    document.getElementById('gOk').textContent = c.ok;
+    document.getElementById('gSkip').textContent = c.skip;
+    var host = document.getElementById('gapFilters');
+    host.innerHTML = '';
+    [{ id: 'all', label: '全部' }, { id: 'need', label: '要补' }, { id: 'ok', label: '已齐' }, { id: 'skip', label: '不做' }].forEach(function (f) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'gap-chip' + (gapFilter === f.id ? ' is-on' : '');
+      b.textContent = f.label;
+      b.addEventListener('click', function () { gapFilter = f.id; paintGaps(); });
+      host.appendChild(b);
+    });
+    var tb = document.getElementById('gapBody');
+    tb.innerHTML = '';
+    GAPS.filter(function (g) { return gapFilter === 'all' || g.status === gapFilter; }).forEach(function (g) {
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + g.src + '</td><td><b>' + g.want + '</b></td><td>' + g.now + '</td>' +
+        '<td><span class="st ' + g.status + '">' + ({ need: '要补', ok: '已齐', skip: '不做' }[g.status]) + '</span></td>' +
+        '<td>' + g.how + '</td>';
+      tb.appendChild(tr);
+    });
+  }
+
+  function paintFactoryTable() {
+    var tb = document.querySelector('#factoryTable tbody');
+    tb.innerHTML = '';
+    PAD_ORDER.forEach(function (cell) {
+      var meta = FACTORY[cell.id];
+      var slot = factorySlot(cell.id);
+      var act = actionOf(slot);
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><code>' + cell.id + '</code> · ' + (PHYS[cell.id] || meta.label) + '</td>' +
+        '<td>' + (act.title || '（空）') + '</td>' +
+        '<td><code>' + (slot || '—') + '</code></td>' +
+        '<td>' + (meta.note || '同旧 / 无变化') + '</td>';
+      tb.appendChild(tr);
+    });
+  }
+
+  paint();
+  paintGaps();
+  paintFactoryTable();
+})();
+</script>
+</body>
+</html>

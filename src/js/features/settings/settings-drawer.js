@@ -18,7 +18,9 @@
 
     habits:'settingsPanelHabits',sounds:'settingsPanelSounds',debug:'settingsPanelDebug',
 
-    camera:'settingsPanelCamera',camera2:'settingsPanelCamera2',tray:'settingsPanelTray'
+    camera:'settingsPanelCamera',camera2:'settingsPanelCamera2',tray:'settingsPanelTray',
+
+    agent:'settingsPanelAgent',agentData:'settingsPanelAgentData'
 
   };
 
@@ -203,36 +205,25 @@
       return;
     }
 
-    if(focus==='softPadLayout'||focus==='softPadDisplay'||focus==='softPadStatus'||focus==='softPadMini'){
+    if(focus==='softPadLayout'||focus==='softPadDisplay'||focus==='softPadStatus'||focus==='softPadMini'||focus==='softPadAgent'||focus==='softPadAgentData'||focus==='softPadPurpose'){
       setSettingsPanel('softPad');
       setTimeout(function(){
-        var flowId=(focus==='softPadStatus'||focus==='softPadMini')?'softPadFlowNodeAgent':'softPadFlowNodePad';
+        var flowId=(focus==='softPadStatus'||focus==='softPadMini'||focus==='softPadAgent'||focus==='softPadAgentData')
+          ?'softPadFlowNodeAgent':'softPadFlowNodePad';
         var flowBtn=document.getElementById(flowId);
         if(flowBtn&&typeof flowBtn.click==='function') flowBtn.click();
-        if(focus==='softPadMini'){
-          try{
-            var Pad=global.OneToneCodexMicroPadUi||global.OneToneSoftPadPadUi;
-            if(Pad&&typeof Pad.setSoftPadWorkbenchTab==='function'){
-              Pad.setSoftPadWorkbenchTab('mini');
-            }
-          }catch(_){}
-          setTimeout(function(){
-            try{
-              var Hub=global.OneToneSoftPadHub;
-              var entry=Hub&&Hub.resolveSoftPadEntry?Hub.resolveSoftPadEntry():null;
-              var body=document.getElementById('softPadSubpageBody')||document.querySelector('[data-agent-workbench]');
-              var Pad2=global.OneToneCodexMicroPadUi;
-              if(Pad2&&Pad2.patchAgentWorkbench&&entry&&entry.mapping&&entry.pad){
-                Pad2.patchAgentWorkbench(body&&body.closest?body.closest('.soft-pad-face-agent')||document:document, entry.mapping, entry.pad);
-              }else if(Hub&&typeof Hub.render==='function'){
-                Hub.render({forceRemount:true});
-              }
-            }catch(_){}
-          },80);
-        }
+        try{
+          var PadFocus=global.OneToneCodexMicroPadUi||global.OneToneSoftPadPadUi;
+          if(focus==='softPadMini'&&PadFocus&&typeof PadFocus.setSoftPadWorkbenchTab==='function'){
+            PadFocus.setSoftPadWorkbenchTab('mini');
+          }else if((focus==='softPadAgent'||focus==='softPadStatus')&&PadFocus&&typeof PadFocus.setSoftPadWorkbenchTab==='function'){
+            PadFocus.setSoftPadWorkbenchTab('match');
+          }
+        }catch(_){}
         var mode='agent';
         if(focus==='softPadLayout') mode='keys';
         else if(focus==='softPadDisplay'||focus==='softPadPurpose') mode='style';
+        else if(focus==='softPadAgent'||focus==='softPadAgentData'||focus==='softPadStatus'||focus==='softPadMini') mode='agent';
         if(focus==='softPadPurpose'){
           try{
             var PadPurpose=global.OneToneCodexMicroPadUi||global.OneToneSoftPadPadUi;
@@ -241,11 +232,50 @@
             }
           }catch(_){}
         }
-        else if(focus!=='softPadStatus'&&focus!=='softPadMini') mode='style';
-        var tab=document.querySelector('[data-pad-mode="'+mode+'"]');
-        if(tab&&typeof tab.click==='function') tab.click();
-        scrollSettingsToTarget((focus==='softPadStatus'||focus==='softPadMini')
-          ?['softPadFaceAgent','softPadStatusBar','soft-pad-agent-workbench']
+        try{
+          var HubMode=global.OneToneSoftPadHub;
+          if(HubMode&&typeof HubMode.setSoftPadPadMode==='function'){
+            HubMode.setSoftPadPadMode(mode,{fromUser:true});
+          }else{
+            var tab=document.querySelector('[data-pad-mode="'+mode+'"]');
+            if(tab&&typeof tab.click==='function') tab.click();
+          }
+        }catch(_){
+          var tabFallback=document.querySelector('[data-pad-mode="'+mode+'"]');
+          if(tabFallback&&typeof tabFallback.click==='function') tabFallback.click();
+        }
+        // After padMode settle — data tab must win over syncAgentWorkbenchTabForPadMode default
+        try{
+          var PadAfter=global.OneToneCodexMicroPadUi||global.OneToneSoftPadPadUi;
+          if(focus==='softPadAgentData'&&PadAfter&&typeof PadAfter.setSoftPadWorkbenchTab==='function'){
+            PadAfter.setSoftPadWorkbenchTab('data');
+          }
+        }catch(_){}
+        if(focus==='softPadMini'||focus==='softPadAgent'||focus==='softPadAgentData'||focus==='softPadStatus'){
+          setTimeout(function(){
+            try{
+              var Hub=global.OneToneSoftPadHub;
+              var entry=Hub&&Hub.resolveSoftPadEntry?Hub.resolveSoftPadEntry():null;
+              var body=document.getElementById('softPadSubpageBody')||document.querySelector('[data-agent-workbench]');
+              var Pad2=global.OneToneCodexMicroPadUi;
+              if(focus==='softPadAgentData'&&Pad2&&typeof Pad2.setSoftPadWorkbenchTab==='function'){
+                Pad2.setSoftPadWorkbenchTab('data');
+              }
+              if(Pad2&&Pad2.patchAgentWorkbench&&entry&&entry.mapping&&entry.pad){
+                Pad2.patchAgentWorkbench(body&&body.closest?body.closest('.soft-pad-face-agent')||document:document, entry.mapping, entry.pad);
+              }else if(Hub&&typeof Hub.render==='function'){
+                Hub.render({forceRemount:true});
+              }
+            }catch(_){}
+          },80);
+        }
+        try{
+          if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.syncNavActiveState){
+            global.OneToneHomeWorkbench.syncNavActiveState('softPad',{focus:focus});
+          }
+        }catch(_){}
+        scrollSettingsToTarget((focus==='softPadStatus'||focus==='softPadMini'||focus==='softPadAgent'||focus==='softPadAgentData')
+          ?['softPadFaceAgent','softPadStatusBar','soft-pad-agent-workbench','softPadSubpageHost']
           :['softPadSubpageHost','softPadPreviewHost']);
       },0);
       return;
@@ -711,6 +741,19 @@
         if(softTiles) softTiles.innerHTML='';
       }
     }
+    if(panelChanged&&lastPanel==='agentData'&&panel!=='agentData'){
+      if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
+        try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
+      }
+    }
+    if(panelChanged&&lastPanel==='agent'&&panel!=='agent'){
+      if(global.OneToneAgentPagePreviewBridge&&global.OneToneAgentPagePreviewBridge.stop){
+        try{ global.OneToneAgentPagePreviewBridge.stop(); }catch(_){}
+      }
+      if(global.OneToneAgentPageSettingsBridge&&global.OneToneAgentPageSettingsBridge.stop){
+        try{ global.OneToneAgentPageSettingsBridge.stop(); }catch(_){}
+      }
+    }
     if(panelChanged&&lastPanel==='tray'&&panel!=='tray'){
       var trayUiLeave=global.OneToneSoftPadTrayUi;
       if(trayUiLeave&&trayUiLeave.onPanelLeave){
@@ -882,6 +925,35 @@
               global.OneToneSoftPadHub.render(softOpts);
             }catch(err){
               console.error('softPad panel defer render',err);
+            }
+          }
+        },0);
+      });
+
+    }else if(panel==='agentData'){
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!=='agentData') return;
+          if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.start){
+            try{ global.OneToneAgentDataBridge.start(); }catch(err){
+              console.error('agentData bridge start',err);
+            }
+          }
+        },0);
+      });
+
+    }else if(panel==='agent'){
+      requestAnimationFrame(function(){
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!=='agent') return;
+          if(global.OneToneAgentPagePreviewBridge&&global.OneToneAgentPagePreviewBridge.start){
+            try{ global.OneToneAgentPagePreviewBridge.start(); }catch(err){
+              console.error('agent preview bridge start',err);
+            }
+          }
+          if(global.OneToneAgentPageSettingsBridge&&global.OneToneAgentPageSettingsBridge.start){
+            try{ global.OneToneAgentPageSettingsBridge.start(); }catch(err){
+              console.error('agent settings bridge start',err);
             }
           }
         },0);
@@ -1423,6 +1495,7 @@
     if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.syncNavActiveState){
       var navOpts={};
       if((opts.panel||'basic')==='debug'&&opts.debugMode) navOpts.debugMode=opts.debugMode;
+      if(opts.focus) navOpts.focus=opts.focus;
       syncWorkbenchNav(ui.settingsPanel,navOpts);
     }
 
@@ -1584,6 +1657,20 @@
   }
 
 
+
+  if(!global.__otAgentProtoNavBound){
+    global.__otAgentProtoNavBound=true;
+    window.addEventListener('message',function(ev){
+      var data=ev&&ev.data;
+      if(!data||data.type!=='ot-nav'||!data.panel) return;
+      if(data.panel!=='agent'&&data.panel!=='agentData'&&data.panel!=='softPad') return;
+      try{
+        if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
+          global.OneToneSettingsDrawer.open({panel:String(data.panel)});
+        }
+      }catch(_){}
+    });
+  }
 
   global.OneToneSettingsDrawer={
 

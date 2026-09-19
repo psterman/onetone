@@ -321,8 +321,9 @@ pub fn composer_anchor_for_app(
     if let Some(state) = app.try_state::<Arc<AppState>>() {
         let cfg = state.cfg.lock();
         if let Some(a) = cfg.voice_end.composer_anchors.get(tid) {
-            let c = a.clamped();
-            return (c.x, c.y);
+            if let Some(p) = a.active_point() {
+                return (p.x, p.y);
+            }
         }
     }
     profile.composer_anchor
@@ -757,9 +758,14 @@ pub fn focus_composer_for_send(
             }),
         );
         if low.ok || can_blind(&low) {
-            probe = low;
-            uia_ok = true;
-            click_via = "post_cursor_low";
+            // uia_cursor_low SetFocus must not steal onto editor a11y / tab titles.
+            if !looks_like_editor_document(&low.focused_name)
+                && !looks_like_editor_document(&low.best_name)
+            {
+                probe = low;
+                uia_ok = true;
+                click_via = "post_cursor_low";
+            }
         }
     }
     if !uia_ok {
@@ -793,7 +799,10 @@ pub fn focus_composer_for_send(
         }
         if !uia_ok && profile.id == CURSOR_APP_TARGET_ID && screen_ok {
             let low = uia_focus_chat_input_probe(hwnd, 10);
-            if low.ok || can_blind(&low) {
+            if (low.ok || can_blind(&low))
+                && !looks_like_editor_document(&low.focused_name)
+                && !looks_like_editor_document(&low.best_name)
+            {
                 probe = low;
                 uia_ok = true;
                 click_via = "screen_cursor_low";
@@ -844,19 +853,31 @@ fn looks_like_scm_input(name: &str) -> bool {
     lower.contains("commit") || lower.contains("source control") || lower.contains("scm")
 }
 
-/// VS Code / Cursor editor tab titles (not Agent/Chat composer).
-/// Field log: focusedName=`input-aim-calibrate-3ways.html - voice-pilot - Cursor…`
-/// scored +40 from substring "input" and passed uia_cursor_low (minScore=10).
+/// VS Code / Cursor editor surfaces (not Agent/Chat composer).
+/// Field logs:
+/// - tab `input-aim-calibrate-3ways.html - … - Cursor` (+40 from substring "input")
+/// - a11y banner `The editor is not accessible… Shift+Alt+F1` (Edit +10 → uia_cursor_low)
 fn looks_like_editor_document(name: &str) -> bool {
     let n = name.trim();
     if n.is_empty() {
         return false;
+    }
+    // Composer names are short; editor a11y / chat transcript / tab titles are long.
+    if n.chars().count() > 80 {
+        return true;
     }
     let lower = n.to_ascii_lowercase();
     if lower.contains(" - cursor") || lower.contains(" — cursor") {
         return true;
     }
     if lower.contains("untracked") {
+        return true;
+    }
+    // Cursor/VS Code editor accessibility status — not a chat box.
+    if lower.contains("editor is not accessible")
+        || lower.contains("screen reader optimized")
+        || lower.contains("shift+alt+f1")
+    {
         return true;
     }
     // Tab title often ends with "file.ext - folder - Cursor"
@@ -1703,6 +1724,13 @@ mod editor_document_score_tests {
     fn rejects_cursor_tab_with_input_in_filename() {
         assert!(looks_like_editor_document(
             "input-aim-calibrate-3ways.html - voice-pilot - Cursor - Untracked [Administrator]"
+        ));
+    }
+
+    #[test]
+    fn rejects_editor_a11y_banner() {
+        assert!(looks_like_editor_document(
+            "The editor is not accessible at this time. To enable screen reader optimized mode, use Shift+Alt+F1"
         ));
     }
 

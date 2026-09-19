@@ -376,7 +376,7 @@
     if(m.nativeKeyRestore===undefined) m.nativeKeyRestore=false;
     if(m.imePresetId===undefined) m.imePresetId='';
     if(m.appTargetId===undefined) m.appTargetId='';
-    if(m.voiceAllowBringUpTarget===undefined) m.voiceAllowBringUpTarget=false;
+    if(m.voiceAllowBringUpTarget===undefined) m.voiceAllowBringUpTarget=true;
     if(!Array.isArray(m.appBehaviorRules)) m.appBehaviorRules=[];
     if(m.voiceOverride===undefined) m.voiceOverride=null;
     if(m.cameraOverride===undefined) m.cameraOverride=null;

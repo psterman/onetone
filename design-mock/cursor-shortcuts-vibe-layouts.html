@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cursor 社区快捷键 · 分类统计 × 四套挑选布局</title>
+<style>
+:root{
+  --bg:#eef2f7; --surface:#fff; --soft:#f3f6fa; --line:rgba(26,45,74,.1);
+  --on:#152238; --mute:#5a7086; --faint:#8494a6;
+  --p:#2a9cc4; --p-ink:#1e87ad; --p-soft:#e6f7fc; --outline:rgba(42,156,196,.28);
+  --ok:#15803d; --ok-soft:#dcfce7; --warn:#9a6700; --warn-soft:#fef3c7;
+  --hot:#b91c1c; --hot-soft:#fee2e2;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;background:var(--bg);color:var(--on)}
+.page{max-width:1320px;margin:0 auto;padding:18px 16px 64px}
+h1{margin:0 0 4px;font-size:18px;font-weight:800}
+h1 em{font-style:normal;color:var(--p-ink)}
+.lede{margin:0 0 14px;color:var(--mute);font-size:12.5px;max-width:58rem}
+
+.sources{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;
+}
+@media(max-width:900px){.sources{grid-template-columns:1fr 1fr}}
+.src{
+  padding:8px 10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);
+  font-size:11.5px;color:var(--mute);
+}
+.src b{display:block;color:var(--on);font-size:12px;margin-bottom:2px}
+
+.stats{
+  border:1px solid var(--line);border-radius:14px;background:var(--surface);
+  padding:12px 14px;margin-bottom:16px;
+}
+.stats h2{margin:0 0 8px;font-size:13px;font-weight:800}
+.stats-note{margin:0 0 10px;font-size:12px;color:var(--mute)}
+.tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tag{
+  display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;
+  font-size:11px;font-weight:750;border:1px solid var(--line);background:var(--soft);color:var(--mute);cursor:pointer;
+}
+.tag.is-on{background:var(--p-soft);border-color:var(--outline);color:var(--p-ink)}
+.tag .n{font-family:var(--mono);font-size:10px;opacity:.8}
+.freq{font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px}
+.freq.s{background:var(--hot-soft);color:var(--hot)}
+.freq.a{background:#ffedd5;color:#c2410c}
+.freq.b{background:var(--p-soft);color:var(--p-ink)}
+.freq.c{background:var(--soft);color:var(--faint)}
+
+.table-wrap{overflow:auto;max-height:280px;border:1px solid var(--line);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:7px 9px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{position:sticky;top:0;background:var(--soft);font-size:11px;color:var(--mute);font-weight:800}
+td.chord{font-family:var(--mono);font-weight:700;white-space:nowrap}
+td.muted{color:var(--mute);font-size:11.5px}
+
+.toolbar{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px;
+  padding:10px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--line);
+}
+.toolbar .lbl{font-size:11px;font-weight:800;color:var(--faint);letter-spacing:.04em;text-transform:uppercase}
+.seg{display:inline-flex;padding:3px;border-radius:10px;background:var(--soft);border:1px solid var(--line)}
+.seg button{
+  appearance:none;border:0;background:transparent;padding:6px 11px;border-radius:8px;
+  font:inherit;font-size:12px;font-weight:700;color:var(--mute);cursor:pointer;
+}
+.seg button.is-on{background:#fff;color:var(--on);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.rec{margin-left:auto;font-size:12px;font-weight:750;color:var(--ok)}
+
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(max-width:1100px){.grid{grid-template-columns:1fr}}
+
+.card{
+  border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden;
+  display:flex;flex-direction:column;min-height:420px;
+}
+.card.is-rec{border-color:rgba(21,128,61,.45);box-shadow:0 0 0 3px rgba(21,128,61,.12)}
+.card-h{
+  display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fbfdff,#f3f7fb);
+}
+.card-h h3{margin:0;font-size:13px;font-weight:800;flex:1}
+.badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px}
+.badge.rec{background:var(--ok-soft);color:var(--ok)}
+.badge.alt{background:var(--warn-soft);color:var(--warn)}
+.badge.meh{background:var(--soft);color:var(--faint)}
+.why{margin:0;padding:0 12px 8px;font-size:11.5px;color:var(--mute)}
+.mock-body{padding:10px 12px 14px;flex:1;display:grid;gap:8px;align-content:start}
+
+.fg{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;
+  background:var(--p-soft);border:1px solid var(--outline);font-size:11.5px;color:var(--p-ink);
+}
+.fg .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+
+/* shared list bits */
+.tabs{display:flex;flex-wrap:wrap;gap:5px}
+.tab{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:4px 9px;font:inherit;font-size:11px;font-weight:650;color:var(--mute);cursor:pointer;
+}
+.tab.is-on{background:var(--p-soft);border-color:var(--outline);color:var(--p-ink);font-weight:800}
+.list{display:grid;gap:5px;max-height:260px;overflow:auto;padding:3px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--soft) 60%,#fff)}
+.row{
+  display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;
+  padding:8px 10px;border-radius:9px;border:1.5px solid transparent;background:#fff;cursor:pointer;
+}
+.row:hover,.row.is-on{border-color:var(--outline);background:color-mix(in srgb,var(--p-soft) 40%,#fff)}
+.row .t{font-weight:750;font-size:12.5px}
+.row .m{font-size:11px;color:var(--mute);grid-column:1}
+.row .k{font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 6px;border-radius:5px;background:var(--soft);border:1px solid var(--line)}
+
+.bind{
+  display:grid;gap:6px;padding:10px;border-radius:10px;border:1px dashed var(--outline);background:var(--p-soft);
+}
+.bind .eq{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.kc{font-family:var(--mono);font-weight:800;padding:7px 11px;border-radius:8px;background:#fff;border:1px solid var(--line);font-size:12px}
+.arr{font-weight:900;color:var(--p-ink)}
+.bind p{margin:0;text-align:center;font-size:11.5px;color:var(--mute)}
+.btn{appearance:none;border:0;background:var(--p);color:#fff;padding:8px 12px;border-radius:9px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;justify-self:center}
+
+/* A: vibe loop */
+.loop{
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;
+  padding:10px;border-radius:12px;background:var(--soft);border:1px solid var(--line);
+}
+.chip{
+  appearance:none;border:1.5px solid var(--line);background:#fff;border-radius:999px;
+  padding:7px 12px;font:inherit;font-size:12px;font-weight:750;cursor:pointer;color:var(--on);
+}
+.chip.is-on{border-color:var(--p);background:var(--p-soft);color:var(--p-ink)}
+.chip .k{display:block;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--faint);margin-top:1px}
+.loop-more{width:100%;text-align:center;font-size:11px;color:var(--faint);margin-top:2px}
+
+/* B: hierarchy heroes */
+.heroes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+@media(max-width:520px){.heroes{grid-template-columns:1fr}}
+.hero{
+  appearance:none;border:1.5px solid var(--line);background:#fff;border-radius:12px;
+  padding:10px 8px;text-align:center;cursor:pointer;font:inherit;color:inherit;
+}
+.hero.is-on{border-color:var(--p);background:var(--p-soft)}
+.hero .big{font-family:var(--mono);font-size:14px;font-weight:900;color:var(--p-ink)}
+.hero .nm{font-size:12px;font-weight:800;margin-top:2px}
+.hero .ds{font-size:10.5px;color:var(--mute);margin-top:2px}
+
+/* D: frequency tiers */
+.tier{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.tier-h{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--soft);
+  font-size:11.5px;font-weight:800;cursor:pointer;border:0;width:100%;text-align:left;font:inherit;color:inherit;
+}
+.tier-h .freq{margin-left:auto}
+.tier-body{padding:6px;display:grid;gap:4px}
+.tier-body[hidden]{display:none}
+
+.verdict{
+  margin-top:16px;padding:12px 14px;border-radius:12px;border:1px solid rgba(21,128,61,.3);
+  background:linear-gradient(90deg,var(--ok-soft),#fff);
+}
+.verdict h2{margin:0 0 6px;font-size:14px;font-weight:800;color:var(--ok)}
+.verdict p{margin:0;font-size:12.5px;color:var(--mute);max-width:60rem}
+.verdict p + p{margin-top:6px}
+footer{margin-top:12px;font-size:11px;color:var(--faint)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Cursor 社区快捷键统计 → <em>四套 vibecoding 挑选布局</em></h1>
+  <p class="lede">
+    汇总官方文档、GitHub 攻略、Reddit / r/vibecoding、中文教程常见提及（Win 以 Ctrl 计）。
+    只列<strong>应用内置快捷键</strong>，不含 OneTone「塞话」类命令。下面四套布局共用同一份数据，方便对比。
+  </p>
+
+  <div class="sources">
+    <div class="src"><b>官方</b>cursor.com/docs · Keyboard Shortcuts（I/L 侧栏、K 行内、. 模式、Shift+Tab…）</div>
+    <div class="src"><b>GitHub</b>murataslan1/cursor-ai-tips · K/L/I「命令层级」被反复引用</div>
+    <div class="src"><b>Reddit</b>r/cursor · r/vibecoding · TokRepo 汇总：先学 K/L/I + Tab/Esc</div>
+    <div class="src"><b>中文社区</b>掘金/教程站 · 「Tab · K · L · I · Agent」五件套叙事（Gitee 少系统表，多转载 GitHub）</div>
+  </div>
+
+  <section class="stats">
+    <h2>分类标签 × 社区热度</h2>
+    <p class="stats-note">
+      热度 S/A/B/C = 社区提及密度（非官方排名）。
+      <span class="freq s">S</span> 几乎每篇必提 ·
+      <span class="freq a">A</span> vibe 日用 ·
+      <span class="freq b">B</span> 熟手常用 ·
+      <span class="freq c">C</span> 偶发 / 可进「更多」
+    </p>
+    <div class="tag-row" id="filterTags"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>分类</th><th>命令</th><th>Win 键</th><th>热度</th><th>社区共识</th><th>来源侧重</th>
+          </tr>
+        </thead>
+        <tbody id="statBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <span class="lbl">布局方案</span>
+    <div class="seg" id="layoutSeg">
+      <button type="button" class="is-on" data-show="all">四套并排</button>
+      <button type="button" data-show="A">只看 A</button>
+      <button type="button" data-show="B">只看 B</button>
+      <button type="button" data-show="C">只看 C</button>
+      <button type="button" data-show="D">只看 D</button>
+    </div>
+    <span class="rec">推荐 vibecoding：方案 A（环上高频）+ B 的三巨头导语</span>
+  </div>
+
+  <div class="grid" id="layoutGrid">
+    <!-- A -->
+    <article class="card is-rec" data-layout="A">
+      <div class="card-h">
+        <h3>A · Vibe 环（高频闭环）</h3>
+        <span class="badge rec">推荐</span>
+      </div>
+      <p class="why">对标 r/vibecoding 真实节奏：开面板 → 改/问 → 发送 → 停 → 新开。默认只露 8 个，其余折叠。</p>
+      <div class="mock-body">
+        <div class="fg"><span class="dot"></span>前台 · Cursor · 软件自带</div>
+        <div class="loop" id="loopA"></div>
+        <p class="loop-more" id="loopMoreA">更多应用快捷键 ▾</p>
+        <div class="list" id="listA" hidden></div>
+        <div class="bind" id="bindA"></div>
+      </div>
+    </article>
+
+    <!-- B -->
+    <article class="card is-rec" data-layout="B">
+      <div class="card-h">
+        <h3>B · 社区三巨头（K / 侧栏 / Agent）</h3>
+        <span class="badge rec">教学向</span>
+      </div>
+      <p class="why">GitHub/Reddit 统一叙事：K=局部改、L/I=侧栏对话与 Agent。先建立心智，再列同组命令。</p>
+      <div class="mock-body">
+        <div class="fg"><span class="dot"></span>前台 · Cursor · 软件自带</div>
+        <div class="heroes" id="heroesB"></div>
+        <div class="tabs" id="tabsB"></div>
+        <div class="list" id="listB"></div>
+        <div class="bind" id="bindB"></div>
+      </div>
+    </article>
+
+    <!-- C -->
+    <article class="card" data-layout="C">
+      <div class="card-h">
+        <h3>C · 场景标签（全目录）</h3>
+        <span class="badge alt">熟手浏览</span>
+      </div>
+      <p class="why">按「对话 / 改码 / 模式 / 找东西 / 终端」分签。覆盖全，但 vibe 用户要多点一次才摸到高频。</p>
+      <div class="mock-body">
+        <div class="fg"><span class="dot"></span>前台 · Cursor · 软件自带</div>
+        <div class="tabs" id="tabsC"></div>
+        <div class="list" id="listC"></div>
+        <div class="bind" id="bindC"></div>
+      </div>
+    </article>
+
+    <!-- D -->
+    <article class="card" data-layout="D">
+      <div class="card-h">
+        <h3>D · 热度分层（S→C）</h3>
+        <span class="badge meh">百科</span>
+      </div>
+      <p class="why">按社区热度折叠。信息诚实，但「像说明书」——和 vibecoding 心流冲突，适合设置页而非日用挑。</p>
+      <div class="mock-body">
+        <div class="fg"><span class="dot"></span>前台 · Cursor · 软件自带</div>
+        <div id="tiersD"></div>
+        <div class="bind" id="bindD"></div>
+      </div>
+    </article>
+  </div>
+
+  <section class="verdict">
+    <h2>结论（给 vibecoding 用户）</h2>
+    <p><b>首选方案 A</b>：默认只放社区 S/A 级、且落在「说→发→改→停→新开」环上的键；点「更多」才展开全表。符合 OneTone「小白闭环」和 Reddit 高频清单，挑选成本最低。</p>
+    <p><b>方案 B 作开箱导语</b>：首屏三张巨头卡（Ctrl+K / Ctrl+L·I / 模式）教心智，下方再接 A 的环或短列表。纯 C/D 更适合「我要搜全表」的熟手，不适合 vibe 日用主路径。</p>
+    <p>实现时注意：官方已写 <b>Ctrl+I 与 Ctrl+L 均可 Toggle Sidepanel</b>；社区旧文仍写「I=Composer / L=Chat」。目录文案建议写「打开 AI 侧栏」，避免和过时 Composer 标签打架。</p>
+  </section>
+
+  <footer>
+    数据截止检索：官方 docs + GitHub cursor-ai-tips + Reddit/vibecoding 二次汇总 + 中文教程站。
+    文件：design-mock/cursor-shortcuts-vibe-layouts.html
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /** Community-ranked Cursor native shortcuts (Windows). Agent/phrase inject excluded. */
+  var ITEMS = [
+    { id: 'inlineEdit', title: '行内编辑', chord: 'Ctrl+K', tag: 'ai-core', freq: 'S',
+      consensus: '选中→自然语言就地改；终端里同键生成命令', sources: '官方 / GitHub / Reddit / 中文教程' },
+    { id: 'sidepanel', title: '打开 AI 侧栏', chord: 'Ctrl+I / Ctrl+L', tag: 'ai-core', freq: 'S',
+      consensus: '官方：I 与 L 均可 Toggle Sidepanel；社区旧称 Chat/Composer', sources: '官方 / 全社区' },
+    { id: 'acceptTab', title: '接受补全', chord: 'Tab', tag: 'ai-core', freq: 'S',
+      consensus: '接受灰字 / 建议；拒绝用 Esc', sources: '官方 / Reddit' },
+    { id: 'modeMenu', title: '模式菜单', chord: 'Ctrl+.', tag: 'mode', freq: 'A',
+      consensus: 'Ask / Agent / Plan 等模式入口', sources: '官方' },
+    { id: 'rotateMode', title: '轮换 Agent 模式', chord: 'Shift+Tab', tag: 'mode', freq: 'A',
+      consensus: '中文速查与官方均强调', sources: '官方 / 中文站' },
+    { id: 'loopModel', title: '切换模型', chord: 'Ctrl+/', tag: 'mode', freq: 'B',
+      consensus: 'Loop AI models', sources: '官方' },
+    { id: 'send', title: '发送 / 提交', chord: 'Enter', tag: 'chat', freq: 'S',
+      consensus: '对话与行内提交；强制发送多为 Ctrl+Enter', sources: '官方 / vibe 工作流' },
+    { id: 'forceSend', title: '强制发送', chord: 'Ctrl+Enter', tag: 'chat', freq: 'A',
+      consensus: '绕过队列立即发送；审改时或为接受全部', sources: '官方' },
+    { id: 'cancel', title: '取消生成', chord: 'Ctrl+Shift+Backspace', tag: 'chat', freq: 'A',
+      consensus: '停住跑飞的 Agent', sources: '官方 / OneTone 需求' },
+    { id: 'newChat', title: '新对话', chord: 'Ctrl+N', tag: 'chat', freq: 'A',
+      consensus: '上下文脏了就新开（Reddit Fresh Chat）', sources: '官方 / Reddit' },
+    { id: 'addContext', title: '选区加入上下文', chord: 'Ctrl+Shift+L', tag: 'context', freq: 'A',
+      consensus: '先攒上下文再提问', sources: '官方 / GitHub / vibe blog' },
+    { id: 'reject', title: '拒绝建议', chord: 'Esc', tag: 'ai-core', freq: 'A',
+      consensus: '拒 Tab / 关行内', sources: '社区' },
+    { id: 'acceptAll', title: '接受全部改动', chord: 'Ctrl+Enter', tag: 'review', freq: 'B',
+      consensus: '有建议改动时；与强制发送同键需看焦点', sources: '官方' },
+    { id: 'rejectAll', title: '拒绝全部改动', chord: 'Ctrl+Shift+Backspace', tag: 'review', freq: 'B',
+      consensus: '有建议改动时', sources: '官方' },
+    { id: 'agentLayout', title: '切换 Agent 布局', chord: 'Ctrl+E', tag: 'mode', freq: 'B',
+      consensus: 'Toggle Agent layout', sources: '官方' },
+    { id: 'cmdPalette', title: '命令面板', chord: 'Ctrl+Shift+P', tag: 'find', freq: 'A',
+      consensus: '万能入口；Resync Index 等', sources: 'VS Code 基线 / 中文坑文' },
+    { id: 'quickOpen', title: '快速打开文件', chord: 'Ctrl+P', tag: 'find', freq: 'A',
+      consensus: '日用导航', sources: 'VS Code / 社区速查' },
+    { id: 'searchFiles', title: '全局搜索', chord: 'Ctrl+Shift+F', tag: 'find', freq: 'B',
+      consensus: '找引用/文案', sources: 'VS Code' },
+    { id: 'terminal', title: '终端', chord: 'Ctrl+`', tag: 'terminal', freq: 'B',
+      consensus: '跑测前常开；终端内 Ctrl+K = AI 命令', sources: '速查表' },
+    { id: 'termAi', title: '终端 AI 提示', chord: 'Ctrl+K（终端内）', tag: 'terminal', freq: 'A',
+      consensus: '用自然语言生成 shell', sources: '官方 / GitHub / Reddit' },
+    { id: 'voice', title: 'Cursor 自带语音', chord: 'Ctrl+Shift+Space', tag: 'ai-core', freq: 'C',
+      consensus: '官方有；OneTone 听写不走此键', sources: '官方' },
+    { id: 'settings', title: 'Cursor 设置', chord: 'Ctrl+Shift+J', tag: 'find', freq: 'C',
+      consensus: '偶发', sources: '官方' },
+    { id: 'sidebar', title: '切换边栏', chord: 'Ctrl+B', tag: 'find', freq: 'C',
+      consensus: '腾地方', sources: 'VS Code' },
+    { id: 'fullComposer', title: '全屏 Composer（旧）', chord: 'Ctrl+Shift+I', tag: 'ai-core', freq: 'C',
+      consensus: '旧社区文常见；新版以侧栏 Agent 为主', sources: 'GitHub 旧文' }
+  ];
+
+  var TAGS = [
+    { id: 'all', title: '全部' },
+    { id: 'ai-core', title: 'AI 核心' },
+    { id: 'chat', title: '对话收尾' },
+    { id: 'mode', title: '模式' },
+    { id: 'context', title: '上下文' },
+    { id: 'review', title: '审改动' },
+    { id: 'find', title: '找东西' },
+    { id: 'terminal', title: '终端' }
+  ];
+
+  var TAG_TITLE = {};
+  TAGS.forEach(function (t) { TAG_TITLE[t.id] = t.title; });
+
+  var SCENE_GROUPS = [
+    { id: 'talk', title: '对话', tags: ['chat', 'context'] },
+    { id: 'edit', title: '改码', tags: ['ai-core'] },
+    { id: 'mode', title: '模式', tags: ['mode'] },
+    { id: 'review', title: '审改动', tags: ['review'] },
+    { id: 'find', title: '找东西', tags: ['find'] },
+    { id: 'term', title: '终端', tags: ['terminal'] }
+  ];
+
+  var VIBE_LOOP = ['sidepanel', 'inlineEdit', 'send', 'acceptTab', 'cancel', 'newChat', 'modeMenu', 'addContext'];
+
+  var HEROES = [
+    { id: 'inlineEdit', big: 'Ctrl+K', nm: '行内改', ds: '局部 · 选中就改' },
+    { id: 'sidepanel', big: 'Ctrl+I/L', nm: 'AI 侧栏', ds: '问 · Agent · 多文件' },
+    { id: 'modeMenu', big: 'Ctrl+.', nm: '切模式', ds: 'Ask / Agent / Plan' }
+  ];
+
+  var state = {
+    filter: 'all',
+    sel: { A: 'sidepanel', B: 'inlineEdit', C: 'sidepanel', D: 'inlineEdit' },
+    sceneC: 'edit',
+    heroB: 'inlineEdit',
+    moreA: false,
+    tierOpen: { S: true, A: true, B: false, C: false }
+  };
+
+  function $(id) { return document.getElementById(id); }
+
+  function byId(id) {
+    for (var i = 0; i < ITEMS.length; i++) if (ITEMS[i].id === id) return ITEMS[i];
+    return null;
+  }
+
+  function freqBadge(f) {
+    return '<span class="freq ' + f.toLowerCase() + '">' + f + '</span>';
+  }
+
+  function renderFilters() {
+    $('filterTags').innerHTML = TAGS.map(function (t) {
+      var n = t.id === 'all' ? ITEMS.length : ITEMS.filter(function (i) { return i.tag === t.id; }).length;
+      return '<button type="button" class="tag' + (state.filter === t.id ? ' is-on' : '') + '" data-tag="' + t.id + '">' +
+        t.title + ' <span class="n">' + n + '</span></button>';
+    }).join('');
+  }
+
+  function renderStats() {
+    var rows = ITEMS.filter(function (i) {
+      return state.filter === 'all' || i.tag === state.filter;
+    });
+    rows.sort(function (a, b) {
+      var o = { S: 0, A: 1, B: 2, C: 3 };
+      return o[a.freq] - o[b.freq] || a.title.localeCompare(b.title, 'zh');
+    });
+    $('statBody').innerHTML = rows.map(function (i) {
+      return '<tr><td>' + (TAG_TITLE[i.tag] || i.tag) + '</td><td>' + i.title + '</td>' +
+        '<td class="chord">' + i.chord + '</td><td>' + freqBadge(i.freq) + '</td>' +
+        '<td class="muted">' + i.consensus + '</td><td class="muted">' + i.sources + '</td></tr>';
+    }).join('');
+  }
+
+  function bindHtml(layout) {
+    var it = byId(state.sel[layout]);
+    if (!it) return '';
+    return '<div class="eq"><span class="kc">01 侧键</span><span class="arr">→</span><span class="kc">' + it.chord + '</span></div>' +
+      '<p><b>' + it.title + '</b> · ' + it.consensus + '</p>' +
+      '<button type="button" class="btn" data-bind="' + layout + '">用这条</button>';
+  }
+
+  function rowHtml(it, layout, on) {
+    return '<button type="button" class="row' + (on ? ' is-on' : '') + '" data-lay="' + layout + '" data-id="' + it.id + '">' +
+      '<span class="t">' + it.title + ' ' + freqBadge(it.freq) + '</span>' +
+      '<span class="k">' + it.chord + '</span>' +
+      '<span class="m">' + it.consensus + '</span></button>';
+  }
+
+  function renderA() {
+    var host = $('loopA');
+    host.innerHTML = VIBE_LOOP.map(function (id) {
+      var it = byId(id);
+      return '<button type="button" class="chip' + (state.sel.A === id ? ' is-on' : '') + '" data-id="' + id + '">' +
+        it.title + '<span class="k">' + it.chord + '</span></button>';
+    }).join('');
+    $('loopMoreA').textContent = state.moreA ? '收起更多 ▴' : '更多应用快捷键（' + (ITEMS.length - VIBE_LOOP.length) + '）▾';
+    var list = $('listA');
+    if (state.moreA) {
+      list.hidden = false;
+      var extra = ITEMS.filter(function (i) { return VIBE_LOOP.indexOf(i.id) < 0; });
+      list.innerHTML = extra.map(function (i) { return rowHtml(i, 'A', state.sel.A === i.id); }).join('');
+    } else {
+      list.hidden = true;
+    }
+    $('bindA').innerHTML = bindHtml('A');
+  }
+
+  function renderB() {
+    $('heroesB').innerHTML = HEROES.map(function (h) {
+      return '<button type="button" class="hero' + (state.heroB === h.id ? ' is-on' : '') + '" data-hero="' + h.id + '">' +
+        '<div class="big">' + h.big + '</div><div class="nm">' + h.nm + '</div><div class="ds">' + h.ds + '</div></button>';
+    }).join('');
+    var hero = byId(state.heroB);
+    var related = ITEMS.filter(function (i) {
+      if (hero.tag === 'ai-core') return i.tag === 'ai-core' || i.tag === 'context';
+      return i.tag === hero.tag;
+    });
+    $('tabsB').innerHTML = '<span class="tab is-on">与「' + hero.title + '」相关</span>';
+    $('listB').innerHTML = related.map(function (i) { return rowHtml(i, 'B', state.sel.B === i.id); }).join('');
+    $('bindB').innerHTML = bindHtml('B');
+  }
+
+  function renderC() {
+    $('tabsC').innerHTML = SCENE_GROUPS.map(function (g) {
+      return '<button type="button" class="tab' + (state.sceneC === g.id ? ' is-on' : '') + '" data-scene="' + g.id + '">' + g.title + '</button>';
+    }).join('');
+    var g = SCENE_GROUPS.filter(function (x) { return x.id === state.sceneC; })[0];
+    var rows = ITEMS.filter(function (i) { return g.tags.indexOf(i.tag) >= 0; });
+    $('listC').innerHTML = rows.map(function (i) { return rowHtml(i, 'C', state.sel.C === i.id); }).join('');
+    $('bindC').innerHTML = bindHtml('C');
+  }
+
+  function renderD() {
+    var tiers = ['S', 'A', 'B', 'C'];
+    var labels = { S: 'S · 几乎每篇必提', A: 'A · vibe 日用', B: 'B · 熟手', C: 'C · 偶发 / 旧文' };
+    $('tiersD').innerHTML = tiers.map(function (f) {
+      var items = ITEMS.filter(function (i) { return i.freq === f; });
+      var open = state.tierOpen[f];
+      return '<div class="tier">' +
+        '<button type="button" class="tier-h" data-tier="' + f + '">' + labels[f] +
+        ' <span class="freq ' + f.toLowerCase() + '">' + items.length + '</span></button>' +
+        '<div class="tier-body"' + (open ? '' : ' hidden') + '>' +
+        items.map(function (i) { return rowHtml(i, 'D', state.sel.D === i.id); }).join('') +
+        '</div></div>';
+    }).join('');
+    $('bindD').innerHTML = bindHtml('D');
+  }
+
+  function renderAll() {
+    renderFilters();
+    renderStats();
+    renderA();
+    renderB();
+    renderC();
+    renderD();
+  }
+
+  $('filterTags').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-tag]');
+    if (!btn) return;
+    state.filter = btn.getAttribute('data-tag');
+    renderFilters();
+    renderStats();
+  });
+
+  $('layoutSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-show]');
+    if (!btn) return;
+    Array.prototype.forEach.call($('layoutSeg').querySelectorAll('button'), function (b) {
+      b.classList.toggle('is-on', b === btn);
+    });
+    var show = btn.getAttribute('data-show');
+    Array.prototype.forEach.call(document.querySelectorAll('[data-layout]'), function (card) {
+      card.style.display = (show === 'all' || card.getAttribute('data-layout') === show) ? '' : 'none';
+    });
+  });
+
+  $('loopA').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-id]');
+    if (!btn) return;
+    state.sel.A = btn.getAttribute('data-id');
+    renderA();
+  });
+  $('loopMoreA').addEventListener('click', function () {
+    state.moreA = !state.moreA;
+    renderA();
+  });
+  $('listA').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-id]');
+    if (!btn) return;
+    state.sel.A = btn.getAttribute('data-id');
+    renderA();
+  });
+
+  $('heroesB').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-hero]');
+    if (!btn) return;
+    state.heroB = btn.getAttribute('data-hero');
+    state.sel.B = state.heroB;
+    renderB();
+  });
+  $('listB').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-id]');
+    if (!btn) return;
+    state.sel.B = btn.getAttribute('data-id');
+    renderB();
+  });
+
+  $('tabsC').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-scene]');
+    if (!btn) return;
+    state.sceneC = btn.getAttribute('data-scene');
+    renderC();
+  });
+  $('listC').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-id]');
+    if (!btn) return;
+    state.sel.C = btn.getAttribute('data-id');
+    renderC();
+  });
+
+  $('tiersD').addEventListener('click', function (e) {
+    var tier = e.target.closest('[data-tier]');
+    if (tier) {
+      var f = tier.getAttribute('data-tier');
+      state.tierOpen[f] = !state.tierOpen[f];
+      renderD();
+      return;
+    }
+    var row = e.target.closest('[data-id]');
+    if (!row) return;
+    state.sel.D = row.getAttribute('data-id');
+    renderD();
+  });
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-bind]');
+    if (!b) return;
+    var lay = b.getAttribute('data-bind');
+    var it = byId(state.sel[lay]);
+    b.textContent = '已绑 · ' + it.chord;
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>

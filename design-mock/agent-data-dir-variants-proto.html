@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>数据目录 · 布局方案对照</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;600&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#101c2c;--mute:#5a6c80;--faint:#8496a8;--line:rgba(16,28,44,.12);
+  --paper:#f3f6fa;--agent:#3a4580;--accent:#0088cc;--ok:#157a45;--warn:#9a6700;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;color:var(--ink);background:
+  radial-gradient(800px 360px at 0% 0%,rgba(0,136,204,.1),transparent 55%),
+  linear-gradient(168deg,#c5d0de,#d8e1ec)}
+.page{max-width:1180px;margin:0 auto;padding:16px 14px 48px}
+.eyebrow{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+h1{margin:0 0 6px;font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.02em}
+.lede{margin:0 0 14px;max-width:72ch;color:var(--mute);font-size:14px}
+.picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.picker button{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:12px;
+  padding:9px 12px;font:inherit;cursor:pointer;text-align:left;min-width:140px;
+  display:flex;flex-direction:column;gap:2px;
+}
+.picker button .t{font-size:13px;font-weight:800}
+.picker button .s{font-size:11px;color:var(--mute);font-weight:650}
+.picker button.is-on{background:var(--agent);border-color:var(--agent);color:#fff}
+.picker button.is-on .s{color:rgba(255,255,255,.8)}
+.frame{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 14px 32px rgba(15,27,42,.08)}
+.frame-h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:9px 12px;background:#e4ebf3;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--mute)}
+.frame-h b{color:var(--ink)}
+.layout{display:grid;grid-template-columns:120px 1fr;min-height:560px}
+@media (max-width:760px){.layout{grid-template-columns:1fr}}
+.snav{background:#e8eef5;border-right:1px solid var(--line);padding:10px 8px}
+.snav .g{margin:8px 6px 4px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.snav .i{padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;color:var(--mute);margin:2px 0}
+.snav .i.on{background:#fff;color:#066a9c;box-shadow:inset 3px 0 0 var(--accent)}
+.stage{position:relative;min-width:0;background:#0b1220}
+.variant{display:none;min-height:560px}.variant.is-on{display:block}
+.note{margin-top:12px;padding:12px 14px;border-radius:14px;background:linear-gradient(120deg,#e4e7f5,#fff 70%);border:1px solid rgba(58,69,128,.3)}
+.note strong{display:block;margin:0 0 4px;font-size:13px}
+.note p{margin:0;font-size:12.5px;color:var(--mute)}
+
+/* shared bits */
+.bars{display:flex;align-items:flex-end;gap:3px;height:64px}
+.bars i{flex:1;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#3b9ad9,#1a5a8a);min-width:3px;opacity:.85}
+.heat{display:grid;grid-template-columns:repeat(16,1fr);gap:2px}
+.heat i{aspect-ratio:1;border-radius:2px;background:rgba(42,157,106,.15)}
+.heat i.on{background:rgba(42,157,106,.75)}
+.heat i.mid{background:rgba(42,157,106,.4)}
+.btn{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#d7e2ef;border-radius:8px;padding:6px 10px;font:inherit;font-size:11.5px;font-weight:750;cursor:pointer}
+.btn.pri{background:#0088cc;border-color:#0088cc;color:#fff}
+.badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px}
+.badge.ok{background:rgba(21,122,69,.2);color:#3dce84}
+.badge.warn{background:rgba(154,103,0,.25);color:#e9c46a}
+.badge.off{background:rgba(255,255,255,.08);color:#8496a8}
+
+/* —— A Ops wall —— */
+.a{padding:14px 16px 18px;color:#d7e2ef;background:linear-gradient(165deg,#101826,#0a1018)}
+.a .top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-bottom:12px}
+.a h2{margin:0;font-size:18px;font-weight:800;color:#fff}
+.a .meta{font-size:11.5px;color:#8496a8;margin-top:3px}
+.a .acts{display:flex;gap:6px;flex-wrap:wrap}
+.a .week{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:#8496a8;margin-bottom:12px}
+.a .week b{color:#e8eef5}
+.a .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media (max-width:700px){.a .kpi{grid-template-columns:1fr 1fr}}
+.a .k{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.a .k .l{font-size:10.5px;font-weight:750;color:#8496a8;text-transform:uppercase}
+.a .k .v{font:800 22px/1.1 var(--mono);color:#fff;margin:3px 0}
+.a .k .s{font-size:11px;color:#6a7f96}
+.a .charts{display:grid;grid-template-columns:1.2fr 1fr;gap:8px;margin-bottom:12px}
+@media (max-width:700px){.a .charts{grid-template-columns:1fr}}
+.a .chart{padding:12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.a .chart h4{margin:0 0 8px;font-size:12px;color:#c5d4e4}
+.a .src-h{margin:0 0 8px;font-size:12px;font-weight:800;color:#c5d4e4}
+.a .src-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+@media (max-width:700px){.a .src-g{grid-template-columns:1fr}}
+.a .src{padding:10px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.a .src .nm{font-weight:800;color:#fff}
+.a .src .r{display:flex;justify-content:space-between;font-size:11.5px;color:#9aadc2;padding:2px 0}
+.a .src .r em{font-style:normal;font-family:var(--mono);color:#e8eef5}
+.a .go{margin-top:8px;width:100%;appearance:none;border:1px dashed rgba(0,136,204,.5);background:rgba(0,136,204,.12);color:#7ec8ef;border-radius:8px;padding:5px 8px;font:inherit;font-size:11px;font-weight:750;cursor:pointer}
+
+/* —— B Source-first —— */
+.b{display:grid;grid-template-columns:220px 1fr;min-height:560px;background:#0e1624;color:#d7e2ef}
+@media (max-width:800px){.b{grid-template-columns:1fr}}
+.b-list{border-right:1px solid rgba(255,255,255,.08);padding:12px;background:#121a28}
+.b-list h3{margin:0 0 4px;font-size:14px;color:#fff}
+.b-list .sub{font-size:11px;color:#8496a8;margin-bottom:10px}
+.b-list .grp{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#6a7f96;margin:10px 0 4px}
+.b-item{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:10px;cursor:pointer;border:1px solid transparent}
+.b-item:hover{background:rgba(255,255,255,.04)}
+.b-item.on{background:rgba(0,136,204,.15);border-color:rgba(0,136,204,.35)}
+.b-item .nm{flex:1;font-weight:750;font-size:12.5px;color:#e8eef5}
+.b-item .pct{font-family:var(--mono);font-size:11px;color:#8496a8}
+.b-detail{padding:14px 16px}
+.b-detail .hd{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.b-detail h2{margin:0;font-size:20px;color:#fff}
+.b-detail .row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+@media (max-width:700px){.b-detail .row{grid-template-columns:1fr}}
+.b-detail .cell{padding:12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.b-detail .cell .l{font-size:11px;color:#8496a8}
+.b-detail .cell .v{font:800 26px/1.1 var(--mono);color:#fff;margin-top:4px}
+.b-detail .panel{padding:12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);margin-bottom:8px}
+.b-detail .panel h4{margin:0 0 8px;font-size:12px;color:#c5d4e4}
+
+/* —— C Today focus (light) —— */
+.c{padding:16px;background:#f5f8fb;color:var(--ink);min-height:560px}
+.c .top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-bottom:14px}
+.c h2{margin:0;font-family:var(--display);font-size:22px}
+.c .meta{font-size:12px;color:var(--mute);margin-top:2px}
+.c .hero{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;margin-bottom:14px}
+@media (max-width:700px){.c .hero{grid-template-columns:1fr}}
+.c .big{padding:18px;border-radius:16px;background:#fff;border:1px solid var(--line);box-shadow:0 8px 20px rgba(15,27,42,.04)}
+.c .big .lab{font-size:12px;font-weight:750;color:var(--mute)}
+.c .big .num{font:800 48px/1 var(--mono);letter-spacing:-.03em;margin:8px 0 4px;color:var(--ink)}
+.c .big .sub{font-size:12.5px;color:var(--mute)}
+.c .side{display:flex;flex-direction:column;gap:8px}
+.c .side .tile{flex:1;padding:14px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+.c .side .tile .l{font-size:11px;color:var(--mute);font-weight:750}
+.c .side .tile .v{font:800 24px/1.1 var(--mono);margin-top:4px}
+.c .strip{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+@media (max-width:700px){.c .strip{grid-template-columns:1fr}}
+.c .box{padding:12px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+.c .box h4{margin:0 0 8px;font-size:12.5px}
+.c .table{width:100%;border-collapse:collapse}
+.c .table th,.c .table td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);font-size:12.5px}
+.c .table th{font-size:11px;color:var(--mute);font-weight:750}
+.c .btn{border-color:var(--line);background:#fff;color:var(--ink)}
+.c .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* —— D Secondary dense —— */
+.d{padding:10px 12px 14px;background:#070b12;color:#c5d4e4;min-height:560px;font-size:12px}
+.d .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08)}
+.d .bar h2{margin:0;font-size:13px;font-weight:800;color:#fff;letter-spacing:.04em;text-transform:uppercase}
+.d .bar .live{width:8px;height:8px;border-radius:50%;background:#2a9d6a;box-shadow:0 0 0 3px rgba(42,157,106,.25)}
+.d .bar .sp{flex:1}
+.d .kpis{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.d .kpi{padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);min-width:88px}
+.d .kpi .l{font-size:9.5px;color:#6a7f96;text-transform:uppercase}
+.d .kpi .v{font:700 16px/1.1 var(--mono);color:#fff}
+.d .grid{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:6px;margin-bottom:8px}
+@media (max-width:800px){.d .grid{grid-template-columns:1fr}}
+.d .pane{padding:8px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)}
+.d .pane h4{margin:0 0 6px;font-size:10.5px;color:#8496a8;text-transform:uppercase;letter-spacing:.04em}
+.d .bars{height:48px}
+.d table{width:100%;border-collapse:collapse}
+.d td{padding:4px 2px;border-bottom:1px solid rgba(255,255,255,.06);font-size:11.5px}
+.d td:last-child{text-align:right;font-family:var(--mono);color:#e8eef5}
+.d .foot{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:#6a7f96;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Data directory · layout variants</p>
+  <h1>数据目录：四版布局对照</h1>
+  <p class="lede">同一套读数（请求 / 活跃 / 配额 / 源卡），四种排法。点上方方案切换。落地时只选一版做默认，其余可砍。</p>
+
+  <div class="picker" id="picker">
+    <button type="button" class="is-on" data-v="a"><span class="t">A · 运维墙</span><span class="s">KPI 顶栏 · 图 · 源卡</span></button>
+    <button type="button" data-v="b"><span class="t">B · 源优先</span><span class="s">左名册 · 右详情</span></button>
+    <button type="button" data-v="c"><span class="t">C · 今日主视</span><span class="s">浅色 · 大数字</span></button>
+    <button type="button" data-v="d"><span class="t">D · 副屏密排</span><span class="s">深色 · 一屏盯盘</span></button>
+  </div>
+
+  <div class="frame">
+    <div class="frame-h">
+      <span><b>设置 → 数据</b> · 独立目录（非 Agent 五叶）</span>
+      <span id="frameTag">A · 运维墙 · 网页版默认</span>
+    </div>
+    <div class="layout">
+      <aside class="snav">
+        <div class="g">动作面</div>
+        <div class="i">虚拟键盘</div>
+        <div class="g">配置</div>
+        <div class="i">Agent</div>
+        <div class="g">看板</div>
+        <div class="i on">数据</div>
+      </aside>
+      <div class="stage">
+
+        <!-- A -->
+        <div class="variant is-on" id="v-a">
+          <div class="a">
+            <div class="top">
+              <div>
+                <h2>Agent 统计</h2>
+                <div class="meta">本机 · 本地活动 + 合法配额 · 缺字段 — · 2026年9月18日</div>
+              </div>
+              <div class="acts">
+                <button type="button" class="btn">导出 JSON</button>
+                <button type="button" class="btn pri">副屏打开</button>
+              </div>
+            </div>
+            <div class="week"><span>‹</span><b>本周</b><span>9/15 – 9/18</span><span style="margin-left:auto">覆盖 4 / 13 源</span></div>
+            <div class="kpi">
+              <div class="k"><div class="l">请求</div><div class="v">128</div><div class="s">Cursor 领先</div></div>
+              <div class="k"><div class="l">活跃</div><div class="v">2h14</div><div class="s">Σ active</div></div>
+              <div class="k"><div class="l">会话</div><div class="v">18</div><div class="s">4 个源</div></div>
+              <div class="k"><div class="l">最紧配额</div><div class="v">32%</div><div class="s">Cursor warn</div></div>
+            </div>
+            <div class="charts">
+              <div class="chart"><h4>近 30 日请求</h4><div class="bars" data-bars></div></div>
+              <div class="chart"><h4>活动热力 · 16 周</h4><div class="heat" data-heat></div></div>
+            </div>
+            <p class="src-h">有活动</p>
+            <div class="src-g">
+              <div class="src"><div class="nm">Cursor <span class="badge ok">live</span></div><div class="r"><span>请求</span><em>86</em></div><div class="r"><span>活跃</span><em>1h42</em></div><div class="r"><span>配额</span><em>32%</em></div></div>
+              <div class="src"><div class="nm">Claude <span class="badge ok">本地</span></div><div class="r"><span>请求</span><em>24</em></div><div class="r"><span>活跃</span><em>28m</em></div><div class="r"><span>配额</span><em>—</em></div></div>
+              <div class="src"><div class="nm">Codex <span class="badge warn">仅配额</span></div><div class="r"><span>请求</span><em>—</em></div><div class="r"><span>活跃</span><em>—</em></div><div class="r"><span>配额</span><em>71%</em></div></div>
+            </div>
+            <p class="src-h">未接通</p>
+            <div class="src-g">
+              <div class="src"><div class="nm">Windsurf <span class="badge off">off</span></div><div class="r"><span>读数</span><em>—</em></div><button type="button" class="go">去接通</button></div>
+              <div class="src"><div class="nm">Continue <span class="badge off">off</span></div><div class="r"><span>读数</span><em>—</em></div><button type="button" class="go">去接通</button></div>
+              <div class="src"><div class="nm">… +7</div><div class="r"><span>名册其余</span><em>—</em></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- B -->
+        <div class="variant" id="v-b">
+          <div class="b">
+            <div class="b-list">
+              <h3>数据 · 源</h3>
+              <div class="sub">点源看详情 · 总览在顶</div>
+              <div class="grp">有活动</div>
+              <div class="b-item on"><span class="badge ok">●</span><span class="nm">Cursor</span><span class="pct">32%</span></div>
+              <div class="b-item"><span class="badge ok">●</span><span class="nm">Claude</span><span class="pct">—</span></div>
+              <div class="b-item"><span class="badge warn">●</span><span class="nm">Codex</span><span class="pct">71%</span></div>
+              <div class="grp">未接通</div>
+              <div class="b-item"><span class="badge off">○</span><span class="nm">Windsurf</span><span class="pct">—</span></div>
+              <div class="b-item"><span class="badge off">○</span><span class="nm">Continue</span><span class="pct">—</span></div>
+              <div class="b-item"><span class="badge off">○</span><span class="nm">其余 +7</span><span class="pct">—</span></div>
+              <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+                <button type="button" class="btn pri">副屏打开</button>
+                <button type="button" class="btn">导出 JSON</button>
+              </div>
+            </div>
+            <div class="b-detail">
+              <div class="hd">
+                <div>
+                  <h2>Cursor</h2>
+                  <div class="meta" style="color:#8496a8;font-size:12px;margin-top:2px">live · 前台 · 本周累计</div>
+                </div>
+                <button type="button" class="btn">去接通设置</button>
+              </div>
+              <div class="row">
+                <div class="cell"><div class="l">今日请求</div><div class="v">86</div></div>
+                <div class="cell"><div class="l">活跃</div><div class="v">1h42</div></div>
+                <div class="cell"><div class="l">配额剩余</div><div class="v">32%</div></div>
+              </div>
+              <div class="panel"><h4>近 30 日 · 此源</h4><div class="bars" data-bars></div></div>
+              <div class="panel"><h4>全源对照（迷你）</h4>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px">
+                  <span>全源请求 <b style="font-family:var(--mono);color:#fff">128</b></span>
+                  <span>会话 <b style="font-family:var(--mono);color:#fff">18</b></span>
+                  <span>最紧配额 <b style="font-family:var(--mono);color:#e9c46a">32%</b></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- C -->
+        <div class="variant" id="v-c">
+          <div class="c">
+            <div class="top">
+              <div>
+                <h2>今日数据</h2>
+                <div class="meta">浅色设置页 · 适合先看今天，再翻历史</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button type="button" class="btn">本周</button>
+                <button type="button" class="btn pri">副屏打开</button>
+              </div>
+            </div>
+            <div class="hero">
+              <div class="big">
+                <div class="lab">今日请求 · 全源</div>
+                <div class="num">128</div>
+                <div class="sub">Cursor 贡献 86 · 覆盖 4 / 13 源</div>
+              </div>
+              <div class="side">
+                <div class="tile"><div class="l">活跃时长</div><div class="v">2h 14m</div></div>
+                <div class="tile"><div class="l">会话</div><div class="v">18</div></div>
+                <div class="tile"><div class="l">最紧配额</div><div class="v" style="color:var(--warn)">32%</div></div>
+              </div>
+            </div>
+            <div class="strip">
+              <div class="box"><h4>近 30 日</h4><div class="bars" data-bars style="height:56px"></div></div>
+              <div class="box"><h4>热力</h4><div class="heat" data-heat></div></div>
+            </div>
+            <div class="box">
+              <h4>源列表</h4>
+              <table class="table">
+                <thead><tr><th>源</th><th>状态</th><th>请求</th><th>配额</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td><b>Cursor</b></td><td><span class="badge ok">live</span></td><td>86</td><td>32%</td><td></td></tr>
+                  <tr><td><b>Claude</b></td><td><span class="badge ok">本地</span></td><td>24</td><td>—</td><td></td></tr>
+                  <tr><td><b>Codex</b></td><td><span class="badge warn">仅配额</span></td><td>—</td><td>71%</td><td></td></tr>
+                  <tr><td>Windsurf</td><td><span class="badge off">off</span></td><td>—</td><td>—</td><td style="color:var(--accent);font-weight:750">去接通</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- D -->
+        <div class="variant" id="v-d">
+          <div class="d">
+            <div class="bar">
+              <span class="live"></span>
+              <h2>Agent Stats</h2>
+              <span>2026-09-18 · local</span>
+              <span class="sp"></span>
+              <span>4/13 sources</span>
+              <button type="button" class="btn" style="padding:4px 8px;font-size:10.5px">Export</button>
+            </div>
+            <div class="kpis">
+              <div class="kpi"><div class="l">Req</div><div class="v">128</div></div>
+              <div class="kpi"><div class="l">Active</div><div class="v">2h14</div></div>
+              <div class="kpi"><div class="l">Sess</div><div class="v">18</div></div>
+              <div class="kpi"><div class="l">Quota</div><div class="v" style="color:#e9c46a">32%</div></div>
+            </div>
+            <div class="grid">
+              <div class="pane"><h4>30d requests</h4><div class="bars" data-bars></div></div>
+              <div class="pane"><h4>Heat 16w</h4><div class="heat" data-heat></div></div>
+              <div class="pane">
+                <h4>Sources</h4>
+                <table>
+                  <tr><td>Cursor</td><td>86 · 32%</td></tr>
+                  <tr><td>Claude</td><td>24 · —</td></tr>
+                  <tr><td>Codex</td><td>— · 71%</td></tr>
+                  <tr><td style="color:#6a7f96">Windsurf</td><td>—</td></tr>
+                  <tr><td style="color:#6a7f96">Continue</td><td>—</td></tr>
+                  <tr><td style="color:#6a7f96">+7 offline</td><td>—</td></tr>
+                </table>
+              </div>
+            </div>
+            <div class="foot">
+              <span>副屏密排 · 少装饰 · 一眼 KPI</span>
+              <span>缺字段 — · 不填 0</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="note" id="note">
+    <strong>A · 运维墙</strong>
+    <p>和现稿最接近：总览 KPI → 图 → 分区分源。适合网页版默认；副屏也能用，但不如 D 省视线。</p>
+  </div>
+</div>
+<script>
+(function(){
+  var heights=[40,28,55,72,35,22,48,60,33,18,44,70,52,30,25,58,41,36,62,45,20,50,68,38,26,54,47,31,42,65];
+  document.querySelectorAll('[data-bars]').forEach(function(el){
+    el.innerHTML=heights.map(function(h){return '<i style="height:'+h+'%"></i>';}).join('');
+  });
+  document.querySelectorAll('[data-heat]').forEach(function(el){
+    var html='',i,r;
+    for(i=0;i<112;i++){r=Math.random();html+='<i class="'+(r>.7?'on':r>.4?'mid':'')+'"></i>';}
+    el.innerHTML=html;
+  });
+
+  var notes={
+    a:{tag:'A · 运维墙 · 网页版默认',title:'A · 运维墙',body:'和现稿最接近：总览 KPI → 图 → 分区分源。适合网页版默认；副屏也能用，但不如 D 省视线。'},
+    b:{tag:'B · 源优先 · 名册驱动',title:'B · 源优先',body:'左栏名册、右栏单源详情。源多时最好找；总览弱一点，适合「先接通再盯某一个」。'},
+    c:{tag:'C · 今日主视 · 浅色设置风',title:'C · 今日主视',body:'跟设置壳同色，大数字先讲今天。表格列源清晰；副屏对比度偏弱，更适合主窗网页版。'},
+    d:{tag:'D · 副屏密排 · 一屏盯盘',title:'D · 副屏密排',body:'装饰最少、信息密度最高。适合本地副窗拖到第二屏；主窗网页版会显得「太工具」。'}
+  };
+
+  function show(id){
+    document.querySelectorAll('.variant').forEach(function(el){el.classList.toggle('is-on',el.id==='v-'+id);});
+    document.querySelectorAll('#picker [data-v]').forEach(function(b){b.classList.toggle('is-on',b.getAttribute('data-v')===id);});
+    var n=notes[id];
+    document.getElementById('frameTag').textContent=n.tag;
+    document.getElementById('note').innerHTML='<strong>'+n.title+'</strong><p>'+n.body+'</p>';
+  }
+  document.querySelectorAll('#picker [data-v]').forEach(function(b){
+    b.addEventListener('click',function(){show(b.getAttribute('data-v'));});
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent 独立目录 · 内容梳理与 IA 原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,500;0,9..40,700;0,9..40,800&family=IBM+Plex+Mono:wght@500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#d4dde8;
+  --paper:#f5f8fb;
+  --ink:#121f30;
+  --mute:#5a6d82;
+  --faint:#8798aa;
+  --line:rgba(18,31,48,.12);
+  --teal:#1f7a8c;
+  --teal-ink:#155e6c;
+  --teal-soft:#e1f2f5;
+  --coral:#c45c48;
+  --coral-soft:#fcebe7;
+  --ok:#1b6b45;
+  --ok-soft:#e6f4ec;
+  --amber:#8a6518;
+  --amber-soft:#fff6e3;
+  --indigo:#3d4f8a;
+  --indigo-soft:#e8ebf6;
+  --nav:#e7edf4;
+  --font:"DM Sans","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Source Serif 4","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:var(--font);font-size:13px;line-height:1.45;color:var(--ink);
+  background:
+    radial-gradient(820px 380px at 4% -6%,rgba(61,79,138,.14),transparent 55%),
+    radial-gradient(700px 360px at 100% 0%,rgba(31,122,140,.14),transparent 50%),
+    linear-gradient(180deg,#c8d3e0,#d4dde8 45%,#dce4ed);
+}
+.page{max-width:1240px;margin:0 auto;padding:18px 14px 64px}
+.eyebrow{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo)}
+h1{margin:0 0 6px;font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.lede{margin:0;max-width:76ch;color:var(--mute);font-size:14px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 12px}
+.tab{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:7px 13px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.tab.is-on{border-color:rgba(61,79,138,.4);background:var(--indigo-soft);color:var(--indigo)}
+.tab:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.panel{display:none}.panel.is-on{display:block}
+.card{
+  background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;
+  box-shadow:0 14px 32px rgba(18,31,48,.06);
+}
+.h2{margin:0 0 8px;font-size:14px;font-weight:800}
+.note{margin:0 0 10px;font-size:12.5px;color:var(--mute)}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:750}
+.pill.bad{background:var(--coral-soft);color:var(--coral)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--amber-soft);color:var(--amber)}
+.pill.teal{background:var(--teal-soft);color:var(--teal-ink)}
+.pill.ind{background:var(--indigo-soft);color:var(--indigo)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+
+/* inventory tables */
+.inv{width:100%;border-collapse:collapse;font-size:12px;margin:0 0 12px}
+.inv th,.inv td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+.inv th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:800}
+.inv td code{font-family:var(--mono);font-size:10.5px;color:var(--indigo)}
+.dup{background:var(--coral-soft)}
+.keep{background:var(--ok-soft)}
+.move{background:var(--amber-soft)}
+
+.flow{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px;
+}
+.flow .box{
+  padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#fff;
+  font-size:11.5px;font-weight:750;
+}
+.flow .box.old{border-color:rgba(196,92,72,.35);background:var(--coral-soft);color:var(--coral)}
+.flow .box.neu{border-color:rgba(61,79,138,.35);background:var(--indigo-soft);color:var(--indigo)}
+.flow .box.soft{border-color:rgba(31,122,140,.35);background:var(--teal-soft);color:var(--teal-ink)}
+.flow .arr{color:var(--faint);font-weight:800}
+
+/* settings chrome */
+.shell{
+  display:grid;grid-template-columns:158px 1fr;min-height:460px;
+  border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--paper);
+}
+@media (max-width:720px){.shell{grid-template-columns:1fr}}
+.snav{background:var(--nav);border-right:1px solid var(--line);padding:10px 8px;display:flex;flex-direction:column;gap:2px}
+.snav .grp{margin:8px 6px 4px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.snav button{
+  appearance:none;border:0;border-radius:9px;background:transparent;text-align:left;
+  padding:8px 10px;font:inherit;font-size:12px;font-weight:700;color:var(--mute);cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;gap:6px;
+}
+.snav button:hover{background:rgba(255,255,255,.55);color:var(--ink)}
+.snav button.is-on{background:#fff;color:var(--indigo);box-shadow:inset 3px 0 0 var(--indigo)}
+.snav button .tag{font-size:9px;font-weight:800;padding:1px 5px;border-radius:999px;background:var(--indigo-soft);color:var(--indigo)}
+.smain{display:flex;flex-direction:column;min-width:0}
+.shead{padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+.shead h3{margin:0;font-size:15px;font-weight:800}
+.shead p{margin:3px 0 0;font-size:12px;color:var(--mute)}
+.sbody{padding:12px 14px 16px;flex:1;min-height:0}
+.subtabs{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 12px}
+.subtabs button{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:10px;
+  padding:7px 11px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.subtabs button.is-on{border-color:rgba(61,79,138,.4);background:var(--indigo-soft);color:var(--indigo)}
+.block{margin:0 0 10px;padding:10px;border-radius:12px;border:1px solid var(--line);background:#fff}
+.block h4{margin:0 0 6px;font-size:12px;font-weight:800}
+.block p,.block li{margin:0;font-size:11.5px;color:var(--mute)}
+.block ul{margin:0;padding-left:16px}
+.row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:7px 9px;border-radius:9px;border:1px solid var(--line);background:#fafcfe;margin:0 0 5px;font-size:12px;
+}
+.row strong{font-weight:800}
+.row em{font-style:normal;color:var(--faint);font-family:var(--mono);font-size:10.5px}
+.seg-mock{
+  display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:6px;border-radius:12px;background:#dce5ef;margin:0 0 10px;
+}
+.seg-mock span{
+  text-align:center;padding:9px;border-radius:9px;font-size:12px;font-weight:750;color:var(--mute);
+}
+.seg-mock span.on{background:#fff;color:var(--ink);box-shadow:0 1px 0 rgba(18,31,48,.06)}
+.lights{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.lights span{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:9px;border:1px solid var(--line);font-size:10.5px;font-weight:700;color:var(--mute)}
+.dot{width:12px;height:12px;border-radius:50%}
+.dot.a{background:#8aa0b4}.dot.b{background:#2a9d6a}.dot.c{background:#d4a017}.dot.d{background:#c45c48}
+.float{
+  margin-top:8px;max-width:260px;padding:10px 12px;border-radius:12px;
+  background:rgba(18,31,48,.9);color:#e8eef5;font-size:11.5px;
+}
+.float .k{display:flex;justify-content:space-between;font-weight:800}
+.float .m{margin-top:3px;opacity:.55;font-family:var(--mono);font-size:10px}
+.strip{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  padding:8px 10px;border-radius:12px;background:#e8eef5;border:1px dashed rgba(31,122,140,.3);
+  margin:0 0 10px;font-size:12px;
+}
+.strip b{color:var(--teal-ink)}
+.callout{
+  margin-top:12px;padding:12px 14px;border-radius:14px;
+  background:linear-gradient(135deg,var(--indigo-soft),#fff 65%);
+  border:1px solid rgba(61,79,138,.22);
+}
+.callout strong{display:block;margin:0 0 4px;font-size:13px}
+.callout p{margin:0;color:var(--mute);font-size:12.5px}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+@keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.panel.is-on .card{animation:rise .25s ease-out}
+@media (prefers-reduced-motion:reduce){.panel.is-on .card{animation:none}}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">IA · Agent 独立目录</p>
+  <h1>先梳清 Agent / 样式，再立目录</h1>
+  <p class="lede">截图里的两大标签装的不是对称能力：一边接灯与读数，一边管出现与映射，却又共用灯效/迷你栏。下面先盘点 → 定 IA → 可点原型：设置左栏独立 <b>Agent</b>，虚拟键盘只剩绑键。</p>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tab is-on" data-tab="inventory">① 内容盘点</button>
+    <button type="button" class="tab" data-tab="ia">② IA 方案</button>
+    <button type="button" class="tab" data-tab="wire">③ 可点原型</button>
+  </nav>
+
+  <!-- INVENTORY -->
+  <section class="panel is-on" id="p-inventory">
+    <div class="grid2">
+      <div class="card">
+        <h2 class="h2">现状 · Agent <span class="pill bad">3 子页</span></h2>
+        <p class="note">对应截图左栏。真实职责是「接上 Agent + 看状态」，却和样式抢灯/迷你栏。</p>
+        <table class="inv">
+          <thead><tr><th>子页</th><th>装了什么</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>灯效匹配</b></td>
+              <td>虚拟键盘开关 · Hook 接入 · <b>氛围灯</b> · <b>按键灯</b>（含高级）</td>
+            </tr>
+            <tr>
+              <td><b>显示数据</b></td>
+              <td>当前读数 · 预览条摘要开关 · API 额度 / Cursor 本地统计</td>
+            </tr>
+            <tr class="dup">
+              <td><b>迷你栏</b></td>
+              <td>谁在忙 · 听你说话 · 快捷钮 · 浮窗形态（与样式重复）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2 class="h2">现状 · 样式 <span class="pill bad">4 子页</span></h2>
+        <p class="note">对应截图右栏（当前选中）。名字像皮肤，实际混了出现时机、键用途、灯、迷你栏。</p>
+        <table class="inv">
+          <thead><tr><th>子页</th><th>装了什么</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>何时出现</b></td>
+              <td>显示方式（跟应用/置顶/迷你条/不显示）· 聆听口令 · <b>外观皮肤</b></td>
+            </tr>
+            <tr>
+              <td><b>动作键</b></td>
+              <td>AG 用途 · Soft Pad 映射 · 数字键占用 · 方向栏</td>
+            </tr>
+            <tr class="dup">
+              <td><b>灯效</b></td>
+              <td>与 Agent「灯效匹配」同一套氛围灯/按键灯（无接入卡）</td>
+            </tr>
+            <tr class="dup">
+              <td><b>迷你栏</b></td>
+              <td>与 Agent「迷你栏」同一渲染器</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2 class="h2">重复与错位</h2>
+      <table class="inv">
+        <thead><tr><th>问题</th><th>说明</th><th>处理</th></tr></thead>
+        <tbody>
+          <tr class="dup"><td>灯效双入口</td><td>Agent·灯效匹配 ↔ 样式·灯效</td><td>只留 Agent 目录 · 灯效</td></tr>
+          <tr class="dup"><td>迷你栏双入口</td><td>两边同一 <code>renderAgentMiniPanel</code></td><td>只留 Agent 目录 · 迷你栏</td></tr>
+          <tr class="dup"><td>何时浮出双文案</td><td>样式「显示方式」≈ 迷你「何时浮出」</td><td>并入样式 · 何时出现（一处）</td></tr>
+          <tr class="move"><td>动作键不像「样式」</td><td>管 AG/数字键行为，属绑键规则</td><td>迁回虚拟键盘顶条</td></tr>
+          <tr class="keep"><td>显示数据无对偶</td><td>仅 Agent 有</td><td>Agent 目录 · 数据</td></tr>
+          <tr class="keep"><td>外观皮肤埋在何时出现</td><td>用户找「样式」却点到出现时机</td><td>并入 Agent · 样式（皮肤+出现）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- IA -->
+  <section class="panel" id="p-ia">
+    <div class="card">
+      <h2 class="h2">构建原则</h2>
+      <p class="note">按「我想改什么」分桶，不按历史 tab 名。虚拟键盘 = 动作面；Agent = 设置左栏独立目录（配置类，不进首页四通道）。</p>
+      <div class="flow">
+        <span class="box old">Agent ×3</span>
+        <span class="box old">样式 ×4</span>
+        <span class="arr">→</span>
+        <span class="box soft">虚拟键盘 · 绑键 + 动作键顶条</span>
+        <span class="box neu">Agent · 灯效 | 数据 | 样式 | 迷你栏</span>
+      </div>
+      <table class="inv">
+        <thead><tr><th>新位置</th><th>子页</th><th>迁入内容</th><th>用户一句话</th></tr></thead>
+        <tbody>
+          <tr>
+            <td rowspan="4"><b>设置 → Agent</b><br><span class="pill ind">独立目录</span></td>
+            <td><b>灯效</b></td>
+            <td>接入/开关（短卡）+ 氛围灯 + 按键灯</td>
+            <td>灯怎么亮、跟谁匹配</td>
+          </tr>
+          <tr>
+            <td><b>数据</b></td>
+            <td>当前读数 · 预览摘要 · 额度/本地统计</td>
+            <td>条上显示哪些数</td>
+          </tr>
+          <tr>
+            <td><b>样式</b></td>
+            <td>何时出现（唯一）· 外观皮肤 · 聆听口令</td>
+            <td>何时露、长什么样</td>
+          </tr>
+          <tr>
+            <td><b>迷你栏</b></td>
+            <td>谁在忙 · 听你说话 · 快捷钮 · 细条/完整键盘</td>
+            <td>浮窗条上有什么</td>
+          </tr>
+          <tr>
+            <td><b>设置 → 虚拟键盘</b></td>
+            <td>主面 + 顶条</td>
+            <td>键位绑定；顶条：动作键 / AG 用途 / 数字键占用</td>
+            <td>这颗键干什么</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>为何目录就叫 Agent（不用「监视」）</strong>
+        <p>你要管的是 Agent 相关能力整包（灯、数据、样式、迷你栏）。左栏文案与产品对象一致；二级再用「灯效 / 数据 / 样式 / 迷你栏」拆开，避免再出现「Agent | 样式」两大标签对打。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- WIRE -->
+  <section class="panel" id="p-wire">
+    <div class="card">
+      <div class="legend">
+        <span class="pill ind">点左栏 Agent / 虚拟键盘</span>
+        <span class="pill teal">Agent 内四个子页可点</span>
+        <span class="pill ok">灯效·迷你栏各只一处</span>
+      </div>
+      <div class="shell" id="shell">
+        <aside class="snav">
+          <div class="grp">动作面</div>
+          <button type="button" data-nav="keys">按键</button>
+          <button type="button" data-nav="softPad">虚拟键盘</button>
+          <button type="button" data-nav="voice">语音</button>
+          <button type="button" data-nav="camera">摄像头</button>
+          <div class="grp">配置</div>
+          <button type="button" class="is-on" data-nav="agent">Agent <span class="tag">新目录</span></button>
+          <button type="button" data-nav="tray">托盘</button>
+          <button type="button" data-nav="habits">习惯</button>
+          <button type="button" data-nav="debug">状态与维护</button>
+        </aside>
+        <div class="smain">
+          <div class="shead" id="head">
+            <h3>Agent</h3>
+            <p>灯效、数据、样式与迷你栏——一处管完，不再和虚拟键盘抢 tab。</p>
+          </div>
+          <div class="sbody" id="body"></div>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>对照旧截图</strong>
+        <p>旧：虚拟键盘里 <b>Agent | 样式</b> 两大标签。新：左栏独立 <b>Agent</b>，内部分 <b>灯效 · 数据 · 样式 · 迷你栏</b>；虚拟键盘不再出现这两大标签。</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var tabs=document.querySelectorAll('.tab');
+  var panels={inventory:document.getElementById('p-inventory'),ia:document.getElementById('p-ia'),wire:document.getElementById('p-wire')};
+  tabs.forEach(function(t){
+    t.addEventListener('click',function(){
+      tabs.forEach(function(x){x.classList.toggle('is-on',x===t);});
+      Object.keys(panels).forEach(function(k){panels[k].classList.toggle('is-on',k===t.getAttribute('data-tab'));});
+    });
+  });
+
+  var head=document.getElementById('head');
+  var body=document.getElementById('body');
+  var navs=document.querySelectorAll('#shell .snav [data-nav]');
+
+  var agentPanes={
+    lights:
+      '<div class="block"><h4>接入</h4><ul><li>虚拟键盘开关</li><li>Hook / 连接状态（短卡，不另开一级）</li></ul></div>'+
+      '<div class="block"><h4>氛围灯</h4><div class="row"><strong>启用盘边氛围灯</strong><em>开</em></div><div class="row"><strong>模式</strong><em>跟随状态</em></div></div>'+
+      '<div class="block"><h4>按键灯</h4><p>模板 + 调色；高级折叠。</p>'+
+      '<div class="lights"><span><i class="dot a"></i>闲</span><span><i class="dot b"></i>跑</span><span><i class="dot c"></i>等</span><span><i class="dot d"></i>错</span></div></div>',
+    data:
+      '<div class="block"><h4>当前读数</h4><div class="row"><strong>账号 / 额度</strong><em>live</em></div><div class="row"><strong>重置</strong><em>—</em></div></div>'+
+      '<div class="block"><h4>预览条摘要</h4><div class="row"><strong>显示账号</strong><em>开</em></div><div class="row"><strong>显示额度</strong><em>开</em></div></div>'+
+      '<div class="block"><h4>来源</h4><div class="row"><strong>API 额度候补</strong><em>key</em></div><div class="row"><strong>Cursor 本地统计</strong><em>可选</em></div></div>',
+    style:
+      '<div class="block"><h4>何时出现</h4><p>唯一入口（合并旧「显示方式」与迷你「何时浮出」文案）。</p>'+
+      '<div class="row"><strong>跟随应用显示</strong><em>默认</em></div><div class="row"><strong>保持在最前</strong><em>—</em></div>'+
+      '<div class="row"><strong>显示为迷你条</strong><em>—</em></div><div class="row"><strong>不显示浮窗</strong><em>—</em></div></div>'+
+      '<div class="block"><h4>外观皮肤</h4><div class="row"><strong>默认 / 玻璃 / Hybrid / Vibe</strong><em>skin</em></div></div>'+
+      '<div class="block"><h4>聆听口令</h4><div class="row"><strong>激活口令</strong><em>Cursor</em></div></div>',
+    mini:
+      '<div class="block"><h4>谁在忙</h4><div class="row"><strong>条上忙闲圆点</strong><em>开</em></div></div>'+
+      '<div class="block"><h4>听你说话</h4><div class="row"><strong>条下显示话术</strong><em>开</em></div></div>'+
+      '<div class="block"><h4>快捷钮</h4><div class="row"><strong>悬停：麦 / 发 / 续 / 新 / 停</strong><em>多选</em></div></div>'+
+      '<div class="block"><h4>浮窗形态</h4><div class="row"><strong>细条 vs 完整键盘</strong><em>细条</em></div>'+
+      '<div class="float"><div class="k"><span>Agent · 跑着</span><span>72%</span></div><div class="m">model · Plan off</div></div></div>'
+  };
+
+  function agentHtml(sub){
+    sub=sub||'lights';
+    return '<div class="subtabs" role="tablist">'+
+      '<button type="button" data-sub="lights"'+(sub==='lights'?' class="is-on"':'')+'>灯效</button>'+
+      '<button type="button" data-sub="data"'+(sub==='data'?' class="is-on"':'')+'>数据</button>'+
+      '<button type="button" data-sub="style"'+(sub==='style'?' class="is-on"':'')+'>样式</button>'+
+      '<button type="button" data-sub="mini"'+(sub==='mini'?' class="is-on"':'')+'>迷你栏</button>'+
+      '</div><div id="agentPane">'+agentPanes[sub]+'</div>';
+  }
+
+  var pages={
+    agent:{
+      title:'Agent',
+      sub:'灯效、数据、样式与迷你栏——一处管完，不再和虚拟键盘抢 tab。',
+      html:agentHtml('lights'),
+      after:bindAgent
+    },
+    softPad:{
+      title:'虚拟键盘',
+      sub:'只绑键。不再有 Agent / 样式两大标签。',
+      html:
+        '<div class="strip"><b>顶条 · 动作键</b><span>AG 用途 · Soft Pad 映射 · 数字键占用 · 方向栏</span></div>'+
+        '<div class="row"><strong>停止生成</strong><em>Num8</em></div>'+
+        '<div class="row"><strong>发送</strong><em>Num4</em></div>'+
+        '<div class="row"><strong>继续</strong><em>Num6</em></div>'+
+        '<p class="note" style="margin:8px 0 0">灯效 / 数据 / 皮肤 / 迷你栏 → 左栏 Agent。</p>'
+    },
+    keys:{title:'按键',sub:'动作面对照。',html:'<p class="note">实体键绑定。</p>'},
+    voice:{title:'语音',sub:'动作面对照。',html:'<p class="note">口令与意图。</p>'},
+    camera:{title:'摄像头',sub:'动作面对照。',html:'<p class="note">手势与指针。</p>'},
+    tray:{title:'托盘',sub:'粗开关。',html:'<p class="note">显隐等；细配置仍在 Agent。</p>'},
+    habits:{title:'习惯',sub:'场景库。',html:'<p class="note">—</p>'},
+    debug:{title:'状态与维护',sub:'诊断。',html:'<p class="note">—</p>'}
+  };
+
+  function bindAgent(){
+    body.querySelectorAll('[data-sub]').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var id=btn.getAttribute('data-sub');
+        body.innerHTML=agentHtml(id);
+        bindAgent();
+      });
+    });
+  }
+
+  function show(id){
+    var p=pages[id]||pages.agent;
+    head.innerHTML='<h3>'+p.title+'</h3><p>'+p.sub+'</p>';
+    body.innerHTML=p.html;
+    navs.forEach(function(b){b.classList.toggle('is-on',b.getAttribute('data-nav')===id);});
+    if(p.after) p.after();
+  }
+
+  navs.forEach(function(b){b.addEventListener('click',function(){show(b.getAttribute('data-nav'));});});
+  show('agent');
+})();
+</script>
+</body>
+</html>

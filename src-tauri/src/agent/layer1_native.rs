@@ -365,6 +365,14 @@ fn execute_start(
                 Some("cursor input.start needs configured voice input target key".into()),
             );
         };
+        // Physical RAlt already toggled the IME on (modifier watch never swallows).
+        // Skip focus-click + re-inject — both would end dictation immediately.
+        if crate::voice_end_runtime::take_voice_key_passthrough(state.as_ref(), &voice_key) {
+            crate::voice_end_runtime::arm_external_voice_send_suppression(state.as_ref(), 3500);
+            return Layer1Outcome::ok_detail(format!(
+                "input.start cursor voice {voice_key} (passthrough)"
+            ));
+        }
         crate::voice_end_runtime::arm_external_voice_send_suppression(state.as_ref(), 3500);
         let _ = crate::app_chat_workflow::focus_composer_only(
             &window.app_handle(),

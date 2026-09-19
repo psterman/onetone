@@ -165,4 +165,55 @@ const filteredVoice = keysRows.filter(
 );
 assert.equal(filteredVoice.filter((r) => r.kind === 'prompt').length, 1);
 
+// Clicking the prompt row used to set dock anchor = peer, so × hit clearHabitScheme (no-op).
+sandbox.OneToneState.ui.settingsPanel = 'voiceWake';
+const promptAlive = {
+  id: 'prompt-del',
+  label: '继续',
+  appTargetId: 'cursor-chat',
+  enabled: true,
+  captureHeroRef: {
+    channel: 'voice',
+    bindingRef: 'prompt-del',
+    actionId: '',
+    actionInstanceId: '',
+    kind: 'prompt'
+  },
+  targetActions: [
+    { type: 'text', value: '继续上一步' },
+    { type: 'key', value: 'Enter' }
+  ]
+};
+sandbox.OneToneState.state.config.mappings = [habit, promptAlive];
+sandbox.OneToneState.state.selectedMappingId = habit.id;
+sandbox.OneToneMappingCore.byId = (id) =>
+  id === habit.id ? habit : id === promptAlive.id ? promptAlive : null;
+sandbox.OneToneMappingCore.selected = () => habit;
+sandbox.OneToneKeysChannelCommandPicker.isPromptInjectMapping = (m) =>
+  !!(
+    m &&
+    m.captureHeroRef &&
+    String(m.captureHeroRef.kind).toLowerCase() === 'prompt' &&
+    String(m.captureHeroRef.bindingRef) === String(m.id)
+  );
+let deleted = [];
+sandbox.OneToneHabitShared = {
+  deleteMapping: (id) => {
+    deleted.push(String(id));
+    sandbox.OneToneState.state.config.mappings = sandbox.OneToneState.state.config.mappings.filter(
+      (m) => m && String(m.id) !== String(id)
+    );
+  }
+};
+sandbox.OneToneVoiceIntentRail = { onPromptPeerDeleted: () => {} };
+api.render(habit);
+api.jumpToEdit({ kind: 'prompt', mappingId: promptAlive.id, key: 'prompt:' + promptAlive.id });
+api.deleteSceneRow({ kind: 'prompt', mappingId: promptAlive.id, key: 'prompt:' + promptAlive.id });
+assert.deepEqual(deleted, ['prompt-del'], '× after jump must trash prompt peer');
+assert.equal(
+  sandbox.OneToneState.state.config.mappings.some((m) => m && m.id === 'prompt-del'),
+  false,
+  'prompt peer removed from mappings'
+);
+
 console.log('PASS voice dock lists prompt inject peers');

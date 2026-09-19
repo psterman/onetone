@@ -1568,6 +1568,7 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
         mini_usage_pill_hide_empty: true,
         mini_chrome: Default::default(),
         skin: "default".into(),
+        screen_opacity: 82,
         keys: default_codex_micro_pad_routes(),
         common_slot_ids: None,
         custom_shortcuts: Vec::new(),

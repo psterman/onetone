@@ -2,7 +2,7 @@
 
 Website: **https://www.onetone.app**
 
-言出即行，万象成形 · *speak to create*
+The natural-interaction layer between desktop apps · *bridge every trigger to every app*
 
 [English](README.en.md) | [中文](README.md)
 
@@ -13,78 +13,133 @@ Website: **https://www.onetone.app**
 
 > v1.0.0 is unsigned. Windows SmartScreen may block the installer on first launch. Click **More info** -> **Run anyway**.
 
-OneTone is a Windows desktop utility that connects hardware triggers and voice commands to the voice-input or streaming IME you already use.
+## What it is
 
-It is not a new IME and it does not replace your dictation engine. OneTone is the trigger layer in the background: it records your trigger source, sends the IME activation shortcut, manages voice wake/end phrases, and runs after-speaking actions so you can start dictating in any text field faster.
+OneTone is a **natural-interaction layer between desktop apps** on Windows. It does not replace your IME, your dictation engine, or any AI agent.
+
+It unifies every trigger source on your desktop — **voice, keys, camera, peripherals, virtual panels, agent status lights** — into a single dispatch layer that drives **whatever desktop app you are working in**.
 
 **No AutoHotkey. No external host app required.**
 
-## What It Solves
+## What it solves
 
-Many voice-input tools still require you to switch windows, click a button, or press an awkward shortcut. OneTone shortens the path to:
+Desktop workflows are fragmented:
 
+- Each AI coding agent has its own shortcuts and its own composer entry
+- One habit = one keymap; switching apps means re-learning shortcuts and re-aiming at the input box
+- When an agent is running in the background, there is no way to glance at your desk and see *where it is stuck*
+- Microphone, camera, mouse side buttons, gamepads, and touch surfaces do not talk to each other
+
+OneTone collapses this into one path:
+
+```text
+voice / keys / softPad / camera  ->  OneTone  ->  any desktop app
+                                          |
+                                          └─  PadStatus lights  ->  agent hook feedback
 ```
-device / voice trigger -> OneTone -> voice-input or streaming IME -> focused text field
+
+## Core architecture
+
+| Dimension | What it covers |
+|---|---|
+| **Four input channels** | voice / keys / softPad / camera trigger the same capability cards (`slotId`) and feed one dispatcher |
+| **App adapters** | 17+ `AppChatProfile`s: Cursor, Codex, Claude, Trae, Windsurf, Qoder, Roo, Aider, Cline, Copilot, … |
+| **Status lights** | `PadStatus` × agent hooks: Codex single light, Claude self-built multi-light aggregation |
+| **Custom workflows** | habit / scene / `agentBindings` / `semantic_action` / `app-behavior-rules` |
+| **Local-first** | KWS, camera, and visual triggers all run on-device; nothing is uploaded to OneTone servers |
+
+## Four channels
+
+The four channels are not four parallel features. They are **four trigger paths for the same set of capability cards**. Hooks decide the current state; each state highlights which cards can be said or pressed.
+
+### voice
+
+- **Closed-set commands**: local KWS (Vosk) exact match; grammar is filtered by hook state
+- **Long-form dictation**: routes to a third-party IME via push-to-talk, separated from the command layer so they never share a decoder
+- **Acoustic commands**: cancel / end phrases, finish / discard the current turn
+- **Local engines**: Windows SAPI, offline Vosk, KWS
+
+### keys
+
+- Keyboard, mouse side buttons, volume keys, chords, gamepads, trackballs, Bluetooth rings and other Windows-recognized inputs
+- Windows low-level hooks + Raw Input + RegisterHotKey
+- Shares the same `slotId` as voice / softPad so the same action can be triggered three ways
+
+### softPad
+
+- A virtual capability-card panel on screen: **visible, pressable, tappable**
+- Same slot as voice and physical keys — pressing a pad key is identical to saying a command or hitting a hotkey
+- The mini bar is a strip projection of the pad; chips share `slotId` with pad keys
+
+### camera
+
+- MediaPipe face landmarker running locally
+- Trigger types: leave / return, head shake, long blink, OK gesture, open palm, fist, double blink, gaze dwell in 3-zone / 9-grid regions
+- Typical actions: leave → pause voice + privacy screen; head shake → cancel; long blink → activate; OK → confirm
+- The camera is **not** treated as a precise mouse; region dwell is off by default
+
+## App adapters (AppChatProfile)
+
+`src-tauri/src/app_chat_workflow.rs` maintains a profile per app: process names, path markers, activation keys, composer anchors, and UIA compatibility flags.
+
+```text
+Cursor · Codex · Claude · MiniMax · Workbuddy
+Trae (Work / Code / Chat) · Windsurf · Qoder
+Gemini CLI · Cline · Roo · OpenCode
+Copilot (CLI / VSCode) · Aider · ……
 ```
 
-Typical scenarios:
+Each app also gets hooks (Cursor / Codex / Claude / Copilot / Aider, …) and `semantic_action` mappings.
 
-- Your hand is on the mouse: press a side button and start dictating.
-- You are away from the keyboard: trigger with a gamepad, remote, Bluetooth ring, or trackball.
-- You want hands-free control: wake with a microphone phrase, then finish or cancel with end/cancel phrases.
-- You switch contexts often: keep separate habits/scenes for email, notes, chat, and documents.
+Adding a new app = adding a new `AppChatProfile`. The dispatcher stays untouched.
 
-## Features
+## Status lights (PadStatus)
 
-### Home workbench
+OneTone renders status lights on the Soft Pad and ties them to your agents:
 
-- **Hero dashboard**: live caption, standby/dictating state, pause/resume transcription; switch voice vs hotkey activation.
-- **Quick start**: walk through a first successful trigger chain.
-- **Hotkey / voice cards**: show the current shortcut or wake phrases; open the matching settings.
-- **Mic + engine card**: device, level meters, and recognition engine in one place; wake phrases appear on hover.
-- **Scene rail**: switch habits horizontally; add a new habit from the trailing card.
+- **Codex hook** → primary `PadStatus` single light (`slotId=status`; falls back to AG00 when missing)
+- **Claude hook** → **Claude Agent Activity Pad**: `claude_lights` self-built multi-light (agent activity + OneTone aggregation)
+- Loopback listener on `127.0.0.1:8796`: `POST /api/codex-app/state`, etc.
 
-### Triggers and schemes
+When an agent is running, waiting, needs input, or has a diff — you do not need to switch back to the agent window. Just look at the pad.
 
-- **Many device triggers**: keyboard, mouse, volume keys, chords, gamepads, trackballs, Bluetooth devices, and other Windows-recognized inputs.
-- **IME shortcut mapping**: map a trigger to the shortcut that activates your voice-input or streaming IME.
-- **IME presets**: Typeless, Zhipu, Qianwen, Shandianshuo, Sogou, Xunfei, WeChat IME, plus manual shortcut capture.
-- **Habits / scenes**: save, sort, and switch mappings per workflow; target-key catalog and app targeting.
+## Custom workflows
 
-### Voice pipeline (wake → recognize → send)
+Every capability card has four bindings:
 
-- **Voice wake**: Windows SAPI, offline Vosk, and keyword spotting (KWS).
-- **Acoustic commands**: habit-level acoustic phrases and samples; cancel phrases, end phrases, finish/discard the current turn.
-- **After-speaking actions**: silence wait, Enter/send, and scheme-specific finish behavior.
-- **Local-first**: settings stay on disk; wake/KWS can run locally and are not uploaded to OneTone servers.
+| Binding | Content |
+|---|---|
+| Visual | Pad keycap label + chip on the mini bar |
+| Key | A single tap on the Soft Pad |
+| Voice | A closed-set command (e.g. "plan", "send") |
+| App | Shortcut / focus / hook response in the target app |
 
-### Always-on UX
+Storage: an `agentBindings` entry with one `slotId` can carry `triggerType: softPad | voice | key` simultaneously.
 
-- **Coach HUD**: compact overlay for mapping, listening/dictation state, and feedback.
-- **System tray**: pause/resume, settings, autostart.
-- **In-app updates**: checks on launch without overwriting local config.
+Per-app / per-context setups are saved as **habits** and **scenes** and switched horizontally.
 
-## Quick Start
+**Input aim:** `input_focus_aim` is a shared layer — every channel runs through it before injecting text. It probes the target app, activates it, focuses the right field, and writes safely. If aim fails, injection is refused (fail-closed).
 
-1. Download the latest Windows installer from [GitHub Releases](https://github.com/psterman/onetone/releases).
-2. If SmartScreen appears, choose **More info** -> **Run anyway**.
-3. Launch OneTone and complete onboarding (or use **Quick start** on the home page).
-4. Record a trigger source (volume key, mouse side button, Bluetooth button, etc.).
-5. Pick an IME preset, or manually record your voice-input shortcut.
-6. Focus any text field and trigger once. If the IME starts listening or text lands in the field, the chain is working.
+## Quick start
 
-Start with an IME preset and a hotkey path, then enable voice wake, end/cancel phrases, or auto-send as needed.
+1. Download the latest Windows installer from [GitHub Releases](https://github.com/psterman/onetone/releases)
+2. If SmartScreen appears, choose **More info** -> **Run anyway**
+3. Launch OneTone and complete onboarding (or use **Quick start** on the home page)
+4. Pick an app (Cursor / Codex / Claude are good first targets) and record its activation key
+5. Tap a card on the pad, say a command, or press a side button — the trigger fires
+6. Turn on the camera channel, status lights, and custom workflows as you need them
 
 ## Requirements
 
 - Windows 10 or 11 (x64)
-- A voice-input method or streaming IME that exposes a keyboard shortcut
-- Optional: microphone for wake, KWS, and end/cancel phrases
+- Optional: microphone (voice wake, KWS, acoustic commands)
+- Optional: camera (MediaPipe, on-device)
+- Optional: mouse / gamepad / Bluetooth ring and similar peripherals
 
-## Install and Updates
+## Install and updates
 
 - Installer: [GitHub Releases](https://github.com/psterman/onetone/releases)
-- The app checks for updates on startup; only application files are replaced.
+- The app checks for updates on startup; only application files are replaced
 
 User settings:
 
@@ -100,8 +155,9 @@ Stack:
 
 - Frontend: plain HTML / CSS / JavaScript under `src/` (home workbench + settings)
 - Backend: Rust + Tauri 2 (`src-tauri/`, including shared crates such as `onetone-logic`)
-- Hotkeys and devices: Windows low-level hooks + Raw Input + RegisterHotKey
+- Trigger layer: Windows low-level hooks + Raw Input + RegisterHotKey
 - Voice: SAPI / Vosk / KWS + acoustic-command runtime
+- Vision: MediaPipe face landmarker (on-device)
 
 Requirements:
 
@@ -113,7 +169,7 @@ cd src-tauri
 cargo tauri dev
 ```
 
-Build release:
+Build a release:
 
 ```powershell
 npm run build
@@ -142,7 +198,7 @@ TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 
 The private key must match the updater public key in `src-tauri/tauri.conf.json`.
 
-## Project Layout
+## Project layout
 
 ```
 onetone/
@@ -150,10 +206,10 @@ onetone/
 ├── src/                 # Desktop frontend (home / settings / tray / HUD)
 ├── src-tauri/           # Rust backend and Tauri config
 │   ├── crates/          # Shared logic crates
-│   ├── src/             # Hotkeys, voice runtime, IPC
+│   ├── src/             # Hotkeys, voice runtime, IPC, AppChatProfile, PadStatus
 │   └── tauri.conf.json
 ├── website/             # Static website
-├── docs/                # Privacy, terms, release notes
+├── docs/                # Privacy, terms, release notes, capability-card contracts
 ├── package.json
 ├── run_onetone.ps1
 └── Start-OneTone.vbs

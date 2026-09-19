@@ -1402,15 +1402,21 @@
   function syncPadTabs() {
     var e = els();
     if (!e.padTabs) return;
+    // Soft Pad 动作面只绑键；Agent / 样式 / 数据改走左栏目录（deep-link 仍可 setSoftPadPadMode）
     e.padTabs.querySelectorAll('[data-pad-mode]').forEach(function (btn) {
       var mode = btn.getAttribute('data-pad-mode') || '';
-      btn.hidden = false;
-      btn.removeAttribute('aria-hidden');
-      var on = softPadFace !== 'timeline' && mode === softPadPadMode;
-      btn.classList.toggle('is-active', on);
-      btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      btn.hidden = true;
+      btn.setAttribute('aria-hidden', 'true');
+      btn.classList.remove('is-active');
+      btn.setAttribute('aria-selected', 'false');
+      if (softPadFace !== 'timeline' && mode === softPadPadMode) {
+        // keep attribute for diagnostics / legacy click targets
+        btn.classList.add('is-active');
+      }
     });
     e.padTabs.setAttribute('data-pad-mode', softPadPadMode);
+    e.padTabs.hidden = true;
+    e.padTabs.setAttribute('aria-hidden', 'true');
   }
 
   function syncAgentWorkbenchTabForPadMode(mode) {
@@ -1418,8 +1424,9 @@
     if (!Pad || typeof Pad.setSoftPadWorkbenchTab !== 'function') return;
     mode = normalizeSoftPadPadMode(mode);
     if (mode !== 'agent') return;
-    if (Pad.getSoftPadWorkbenchTab && Pad.getSoftPadWorkbenchTab() === 'mini') {
-      Pad.setSoftPadWorkbenchTab('mini');
+    var cur = Pad.getSoftPadWorkbenchTab ? Pad.getSoftPadWorkbenchTab() : '';
+    if (cur === 'mini' || cur === 'data') {
+      Pad.setSoftPadWorkbenchTab(cur);
     } else {
       Pad.setSoftPadWorkbenchTab('match');
     }
@@ -2964,29 +2971,33 @@
     });
     var pad = m.codexMicroPad;
     var cur = Number(pad.screenOpacity);
-    if (!(cur > 0) || cur > 1) cur = 0.82;
+    // Accept legacy 0.4–1.0 float or percent 40–100.
+    if (cur > 0 && cur <= 1) cur = Math.round(cur * 100);
+    if (!(cur >= 40) || cur > 100) cur = 82;
+    pad.screenOpacity = cur;
     var wrap = document.createElement('div');
     wrap.className = 'soft-pad-ring-float__opacity';
     wrap.innerHTML =
       '<label class="codex-pad-mgr__setting">' +
-      '<span>' + esc(t('softPadScreenOpacityLbl', '屏幕透明度')) + '</span>' +
+      '<span>' + esc(t('softPadScreenOpacityLbl', '浮窗透明度')) + '</span>' +
       '<input type="range" min="40" max="100" step="1" data-act="screenOpacity" value="' +
-      Math.round(cur * 100) + '">' +
-      '<span data-screen-opacity-val>' + Math.round(cur * 100) + '%</span>' +
+      cur + '">' +
+      '<span data-screen-opacity-val>' + cur + '%</span>' +
       '</label>';
     host.appendChild(wrap);
-    applyScreenOpacityToPreview(cur);
+    applyScreenOpacityToPreview(cur / 100);
     var range = wrap.querySelector('[data-act="screenOpacity"]');
     if (!range) return;
     range.addEventListener('input', function () {
-      var v = Math.max(0.4, Math.min(1, Number(range.value) / 100));
-      pad.screenOpacity = v;
-      applyScreenOpacityToPreview(v);
+      var pct = Math.max(40, Math.min(100, Math.round(Number(range.value) || 82)));
+      pad.screenOpacity = pct;
+      applyScreenOpacityToPreview(pct / 100);
       var lab = wrap.querySelector('[data-screen-opacity-val]');
-      if (lab) lab.textContent = Math.round(v * 100) + '%';
+      if (lab) lab.textContent = pct + '%';
       try {
-        var p = global.OneTonePersistence;
+        var p = global.OneToneConfigPersist || global.OneTonePersistence;
         if (p && p.saveAsync) p.saveAsync();
+        else if (p && p.save) p.save();
       } catch (_) {}
     });
   }
@@ -2995,7 +3006,9 @@
     var host = previewHostForFace();
     if (!host || !host.style || typeof host.style.setProperty !== 'function') return;
     var v = Number(value);
+    if (v > 1 && v <= 100) v = v / 100;
     if (!(v > 0) || v > 1) v = 0.82;
+    v = Math.max(0.4, Math.min(1, v));
     host.style.setProperty('--micro-hw-screen-opacity', String(v));
   }
 

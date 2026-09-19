@@ -2075,15 +2075,25 @@ html[data-theme="dark"] .soft-pad-agent-left-data {
   background: rgba(22, 28, 40, 0.65);
   color: #94a3b8;
 }
+#softPadPreviewHost.is-agent-preview-data .soft-pad-agent-left-data,
 #softPadAgentPreviewHost.is-agent-preview-data .soft-pad-agent-left-data {
   border-style: solid;
   border-color: rgba(62, 184, 220, 0.35);
   color: #0f172a;
   font-weight: 600;
 }
+html[data-theme="dark"] #softPadPreviewHost.is-agent-preview-data .soft-pad-agent-left-data,
 html[data-theme="dark"] #softPadAgentPreviewHost.is-agent-preview-data .soft-pad-agent-left-data {
   color: #e2e8f0;
 }
+#softPadPreviewHost.is-agent-preview-mini .micro-hw,
+#softPadPreviewHost.is-agent-preview-mini .micro-hw-shell,
+#softPadPreviewHost.is-agent-preview-mini .codex-micro-pad,
+#softPadPreviewHost.is-agent-preview-mini .soft-pad-lights-preview-legend,
+#softPadPreviewHost.is-agent-preview-mini .soft-pad-preview-paint,
+#softPadPreviewHost.is-agent-preview-mini [data-soft-pad-preview-paint],
+#softPadPreviewHost.is-agent-preview-mini .soft-pad-lights-topbar-preview,
+#softPadPreviewHost.is-agent-preview-mini .soft-pad-agent-left-data,
 #softPadAgentPreviewHost.is-agent-preview-mini .micro-hw,
 #softPadAgentPreviewHost.is-agent-preview-mini .micro-hw-shell,
 #softPadAgentPreviewHost.is-agent-preview-mini .codex-micro-pad,
@@ -2094,6 +2104,7 @@ html[data-theme="dark"] #softPadAgentPreviewHost.is-agent-preview-data .soft-pad
 #softPadAgentPreviewHost.is-agent-preview-mini .soft-pad-agent-left-data {
   display: none !important;
 }
+#softPadPreviewHost.is-agent-preview-mini,
 #softPadAgentPreviewHost.is-agent-preview-mini {
   display: flex;
   align-items: center;
@@ -2106,24 +2117,25 @@ html[data-theme="dark"] #softPadAgentPreviewHost.is-agent-preview-data .soft-pad
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 16px 8px 8px;
+  padding: 12px 10px 10px; /* outline 出血 */
   box-sizing: border-box;
+  overflow: visible;
 }
 .soft-pad-agent-mini-bar {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
-  min-width: 280px;
+  min-width: 0;
   padding: 0;
   border-radius: 14px;
   border: 1.5px solid rgba(90, 157, 184, 0.55);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 4px 14px rgba(0, 101, 143, 0.12);
   box-sizing: border-box;
-  overflow: visible;
+  overflow: hidden; /* 工具行不裁出边框 */
 }
 html[data-theme="dark"] .soft-pad-agent-mini-bar {
   border-color: rgba(255, 255, 255, 0.12);
@@ -2133,17 +2145,21 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar {
 .soft-pad-agent-mini-bar__row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
-  min-height: 36px;
+  gap: 8px;
+  padding: 8px 10px;
+  min-height: 40px;
+  box-sizing: border-box;
 }
 .soft-pad-agent-mini-bar__busy {
   display: flex;
   align-items: center;
   gap: 4px;
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: 72px;
   max-width: none;
+  padding: 2px;
+  border-radius: 10px;
+  box-sizing: border-box;
 }
 .soft-pad-agent-mini-bar__dots {
   display: none;
@@ -2152,7 +2168,7 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar {
   display: flex !important;
   flex-wrap: nowrap !important;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   flex: 1 1 auto;
   min-width: 0;
   max-width: none;
@@ -2160,23 +2176,24 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar {
   overflow-y: hidden;
   justify-content: flex-start;
   scrollbar-width: none;
+  padding: 2px 0;
 }
 .soft-pad-agent-mini-bar__chips::-webkit-scrollbar { display: none; }
 .soft-pad-agent-mini-bar__chips .soft-pad-agent-bar__chip,
 .soft-pad-agent-mini-bar__chips .soft-pad-agent-bar__chip--preview {
-  width: 18px !important;
-  height: 18px !important;
-  min-width: 18px !important;
-  max-width: 18px !important;
-  flex: 0 0 18px !important;
-  border-radius: 5px;
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+  flex: 0 0 22px !important;
+  border-radius: 6px;
 }
 .soft-pad-agent-mini-bar__chips .soft-pad-agent-bar__chip img,
 .soft-pad-agent-mini-bar__chips .soft-pad-agent-bar__chip--preview img {
-  width: 11px !important;
-  height: 11px !important;
-  max-width: 11px !important;
-  max-height: 11px !important;
+  width: 13px !important;
+  height: 13px !important;
+  max-width: 13px !important;
+  max-height: 13px !important;
 }
 .soft-pad-agent-mini-bar__listen {
   flex: 0 0 auto;
@@ -2214,40 +2231,57 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex: 0 0 auto;
   max-width: none;
-  padding: 2px 4px 2px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid #c5d8e4;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-sizing: border-box;
 }
 .soft-pad-agent-mini-bar__pill {
   flex: 0 0 auto;
   max-width: none;
-  padding: 2px 6px;
+  padding: 2px 7px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 650;
   line-height: 1.25;
   color: #0f172a;
-  background: transparent;
-  border: 0;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #c5d8e4;
   white-space: nowrap;
   overflow: visible;
   text-overflow: clip;
 }
 html[data-theme="dark"] .soft-pad-agent-mini-bar__pill {
   color: #e2e8f0;
+  background: rgba(22, 28, 40, 0.85);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.soft-pad-agent-mini-bar__win {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  box-sizing: border-box;
+  margin-left: 0;
+  background: rgba(232, 244, 250, 0.55);
+  border: 1px solid #c5d8e4;
 }
 .soft-pad-agent-mini-bar__tools {
   display: none;
   align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 5px;
+  flex-wrap: wrap;
   min-height: 0;
-  padding: 4px 8px 6px;
-  border-top: 1px dashed rgba(90, 157, 184, 0.4);
+  padding: 6px 10px 8px;
+  border-top: 1px dashed rgba(90, 157, 184, 0.35);
+  box-sizing: border-box;
+  width: 100%;
 }
 .soft-pad-agent-mini-bar:hover .soft-pad-agent-mini-bar__tools:not([hidden]),
 .soft-pad-agent-mini-bar:focus-within .soft-pad-agent-mini-bar__tools:not([hidden]),
@@ -2255,27 +2289,33 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar__pill {
   display: flex;
 }
 .soft-pad-agent-mini-bar__tool {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  min-height: 28px;
-  border-radius: 8px;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 7px;
   border: 1px solid #9ec5d6;
   background: #cfe6f2;
   display: grid;
   place-items: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
   color: #1e5a75;
   cursor: pointer;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+}
+.soft-pad-agent-mini-bar__tool svg {
+  width: 13px;
+  height: 13px;
+  display: block;
 }
 .soft-pad-agent-mini-bar__tool:hover {
   background: #b9dceb;
   border-color: #5a9db8;
 }
 .soft-pad-agent-mini-bar__tool--settings {
-  margin-left: auto;
+  margin-left: 0;
   background: #fff;
   border-color: #9ec5d6;
   color: #475569;
@@ -2292,15 +2332,15 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar__pill {
 }
 .soft-pad-agent-mini-bar__speech {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
-  min-width: 240px;
-  margin-top: 8px;
-  padding: 9px 11px;
+  min-width: 0;
+  margin-top: 6px;
+  padding: 8px 10px;
   border-radius: 12px;
-  border: 1.5px solid rgba(90, 157, 184, 0.55);
+  border: 1.5px solid rgba(90, 157, 184, 0.45);
   background: #fff;
   box-sizing: border-box;
   color: #0369a1;
@@ -2309,8 +2349,9 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar__pill {
 }
 .soft-pad-agent-mini-bar__speech[hidden] { display: none !important; }
 .soft-pad-agent-mini-bar-stage.is-mini-rail-speech .soft-pad-agent-mini-bar__speech {
-  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.35);
   background: #f0f9ff;
+  border-color: rgba(14, 165, 233, 0.45);
 }
 .soft-pad-agent-mini-bar__speech-text {
   flex: 1 1 auto;
@@ -2676,16 +2717,10 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar__pill {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: none; }
 }
-.soft-pad-agent-mini-bar__win {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: 4px;
-}
 .soft-pad-agent-mini-bar__winbtn {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
   display: grid;
   place-items: center;
   font-size: 10px;
@@ -2693,11 +2728,7 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar__pill {
   color: #0369a1;
   background: #e8f4fa;
   border: 1px solid #9ec5d6;
-}
-.soft-pad-agent-mini-bar__tool svg {
-  width: 12px;
-  height: 12px;
-  display: block;
+  box-sizing: border-box;
 }
 .soft-pad-agent-mini-bar-stage.is-mini-rail-agents [data-mini-zone="agents"],
 .soft-pad-agent-mini-bar-stage.is-mini-rail-tools [data-mini-zone="tools"],
@@ -4946,16 +4977,20 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   gap: 2.5px !important;
 }
 
-/* Appear: skins moved to right controls; left shows live Soft Pad */
+/* Appear: live Soft Pad — safe inset (出血), no clip */
 .soft-pad-mode-preview--appear .soft-pad-mode-preview__live {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 8px;
-  padding: 12px 10px 10px;
+  padding: 10px 10px 12px;
   border-radius: 14px;
   border: 1px solid var(--sp-preview-line);
   background: rgba(255, 255, 255, 0.78);
   box-shadow: 0 6px 16px rgba(21, 37, 54, 0.05);
+  overflow: hidden;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 .soft-pad-mode-preview--appear .soft-pad-mode-preview__live-lbl {
   margin: 0;
@@ -4966,19 +5001,114 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
 }
 .soft-pad-mode-preview--appear .soft-pad-mode-preview__hw {
   width: 100%;
-  max-width: min(100%, 360px);
+  max-width: min(100%, 216px);
   margin: 0 auto;
   pointer-events: none;
   user-select: none;
+  box-sizing: border-box;
+}
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw-wrap,
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw-shell {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 .soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw {
-  width: 100%;
-  max-width: none;
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  margin: 0 !important;
+  padding: 8px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 .soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .codex-micro-pad__head,
 .soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .soft-pad-preview__hint,
-.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .soft-pad-key-caption {
-  display: none;
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .soft-pad-key-caption,
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw__face-top,
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .soft-pad-agent-bar--face {
+  display: none !important;
+}
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw__face {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 6px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  /* 预览去掉皮肤大块色底，避免「多余色块」 */
+  background: rgba(248, 250, 252, 0.92) !important;
+  box-shadow: none !important;
+}
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw__grid {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
+  gap: 4px !important;
+  box-sizing: border-box !important;
+}
+/* 设置预览：关掉 Agent 键彩色光晕（易看成多余色块） */
+.soft-pad-mode-preview .micro-hw__key--agent,
+.soft-pad-mode-preview .micro-hw__key--agent.is-bound,
+.agent-preview-host .micro-hw__key--agent,
+.agent-preview-host .micro-hw__key--agent.is-bound {
+  --ag-glow: transparent !important;
+  background: linear-gradient(180deg, #f8f9fb 0%, #eef0f4 100%) !important;
+  border: 1px solid rgba(26, 45, 74, 0.1) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 4px rgba(26, 45, 74, 0.08) !important;
+  backdrop-filter: none !important;
+}
+/* 去掉 Codex 默认绿晕盘底（预览里像「冲破框架」的色块） */
+.soft-pad-mode-preview .micro-hw-shell.is-mode-codex .micro-hw,
+.soft-pad-mode-preview .micro-hw-shell.is-mode-numpad .micro-hw,
+.soft-pad-mode-preview .micro-hw,
+.soft-pad-mode-preview .soft-pad-demo-hw.micro-hw,
+.agent-preview-host .micro-hw-shell.is-mode-codex .micro-hw,
+.agent-preview-host .micro-hw-shell.is-mode-numpad .micro-hw,
+.agent-preview-host .micro-hw {
+  background: #eef2f6 !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85),
+    0 4px 12px rgba(15, 23, 42, 0.08) !important;
+  filter: none !important;
+}
+.soft-pad-mode-preview .micro-hw-shell,
+.agent-preview-host .micro-hw-shell {
+  filter: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  opacity: var(--micro-hw-screen-opacity, 0.82);
+}
+.soft-pad-preview-host .micro-hw-shell,
+.soft-pad-preview-host .codex-micro-pad {
+  opacity: var(--micro-hw-screen-opacity, 0.82);
+}
+.agent-preview-host[data-lights-preview-accent="ambient"] .micro-hw-shell {
+  box-shadow:
+    0 0 0 3px var(--agent-ambient-ring, rgba(124, 58, 237, 0.4)),
+    0 0 22px var(--agent-ambient-glow, rgba(124, 58, 237, 0.2)) !important;
+  filter: none !important;
+  transition: box-shadow 0.18s ease;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw {
+  max-width: min(100%, 236px);
+  box-shadow: none !important;
+  filter: none !important;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw:hover {
+  transform: none;
+}
+.soft-pad-mode-preview--appear.is-skin-focus .soft-pad-mode-preview__live {
+  padding: 12px;
+}
+.soft-pad-mode-preview--appear.is-skin-focus .soft-pad-mode-preview__hw {
+  max-width: min(100%, 228px);
 }
 
 /* Purpose demos — no white card; keyboards use the full left stage */
@@ -5007,10 +5137,12 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
 .soft-pad-mode-preview--purpose .soft-pad-demo-compare__col {
   flex: 0 0 auto;
   width: 100%;
-  max-width: 168px;
+  max-width: 236px;
   min-width: 0;
   gap: 6px;
   justify-content: flex-start;
+  padding: 2px;
+  box-sizing: border-box;
 }
 .soft-pad-mode-preview--purpose .soft-pad-demo-compare__tag,
 .soft-pad-mode-preview--purpose .soft-pad-demo-switch__mode {
@@ -5023,7 +5155,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   flex: 0 0 auto;
   flex-direction: row;
   width: 100%;
-  max-width: 168px;
+  max-width: 236px;
   align-self: center;
   gap: 6px;
 }
@@ -5037,16 +5169,55 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   height: 2px;
   animation: soft-pad-numpad-flow 1.4s linear infinite;
 }
-/* Same seat footprint: stacked compare in narrow left column */
+/* Same seat footprint: stacked compare — larger so Soft Pad matches numpad weight */
 .soft-pad-mode-preview--purpose .soft-pad-demo-compare .soft-pad-demo-chassis,
 .soft-pad-mode-preview--purpose .soft-pad-demo-compare .soft-pad-purpose-live-hw {
   width: 100%;
-  max-width: 168px;
+  max-width: min(100%, 236px);
   margin: 0 auto;
   box-sizing: border-box;
 }
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare__hint {
+  margin: 4px 0 0;
+  max-width: 236px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--sp-preview-muted, #5c6b7a);
+  text-align: center;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare__cap {
+  margin: 4px 0 0;
+  max-width: 236px;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--sp-preview-cyan, #1f8fb8);
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare__col.is-dim {
+  opacity: 0.42;
+  filter: grayscale(0.25);
+  transition: opacity 0.22s ease, filter 0.22s ease;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare__col.is-active-src .soft-pad-demo-chassis--numpad,
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare__col.is-active-src .soft-pad-demo-arrows-t {
+  box-shadow: 0 0 0 2px rgba(31, 143, 184, 0.32), 0 14px 28px rgba(15, 23, 42, 0.14);
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare[data-occupy-compare="1"][data-numpad-on="1"] .soft-pad-demo-compare__col.is-active-soft .soft-pad-purpose-live-hw,
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare[data-occupy-compare="1"][data-numpad-on="1"] .is-active-soft .soft-pad-demo-compare__tag {
+  box-shadow: 0 0 0 2px rgba(31, 143, 184, 0.35);
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare[data-occupy-compare="1"][data-numpad-on="0"] .soft-pad-demo-chassis--numpad {
+  box-shadow: 0 0 0 2px rgba(31, 143, 184, 0.28), 0 14px 28px rgba(15, 23, 42, 0.16);
+}
+.soft-pad-mode-preview--purpose .soft-pad-nav-demo[data-nav-on="1"] .soft-pad-purpose-live-hw .micro-hw__key--nav,
+.soft-pad-mode-preview--purpose .soft-pad-nav-demo[data-nav-on="1"] .soft-pad-purpose-live-hw .micro-hw__key[data-micro-key^="NAV_"] {
+  outline: 1.5px solid rgba(8, 145, 178, 0.85);
+  outline-offset: 1px;
+  animation: soft-pad-nav-key-pulse 1.8s ease-in-out infinite;
+}
 .soft-pad-mode-preview--purpose .soft-pad-demo-chassis {
-  padding: 12px;
+  padding: 10px;
   border-radius: 16px;
   box-shadow:
     0 14px 28px rgba(15, 23, 42, 0.16),
@@ -5071,22 +5242,16 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
 }
 .soft-pad-mode-preview--purpose .soft-pad-demo-key b {
-  font-size: 14px;
+  font-size: 18px;
+  font-weight: 750;
 }
-.soft-pad-mode-preview--purpose .soft-pad-demo-key.is-enc {
-  cursor: pointer;
-}
-.soft-pad-mode-preview--purpose .soft-pad-demo-key.is-enc:hover {
-  transform: translateY(-1px) scale(1.03);
-  filter: brightness(1.06);
-}
-.soft-pad-mode-preview--purpose .soft-pad-demo-key.is-enc:active {
-  transform: translateY(1px) scale(0.97);
+.soft-pad-mode-preview--purpose .soft-pad-demo-key.is-enc b {
+  font-size: 13px;
 }
 .soft-pad-mode-preview--purpose .soft-pad-demo-key__glyph {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
 }
 .soft-pad-mode-preview--purpose .soft-pad-demo-arrows-t {
   min-height: 180px;
@@ -5102,14 +5267,16 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
 }
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw {
   width: 100%;
-  max-width: min(100%, 320px);
+  max-width: min(100%, 236px);
   margin: 0 auto;
   pointer-events: auto;
   user-select: none;
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease;
+  box-shadow: none !important;
+  filter: none !important;
 }
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw:hover {
-  transform: translateY(-2px);
+  transform: none;
 }
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw-wrap,
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw-shell {
@@ -5124,13 +5291,18 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   max-width: none !important;
   min-width: 0 !important;
   height: auto !important;
-  aspect-ratio: auto !important;
+  aspect-ratio: 1 / 1 !important;
   flex: none !important;
   margin: 0 !important;
-  padding: 10px !important;
+  padding: 8px !important;
   border-radius: 16px !important;
-  box-sizing: border-box;
+  box-sizing: border-box !important;
   overflow: hidden !important;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-compare .soft-pad-purpose-live-hw .micro-hw {
+  aspect-ratio: 1 / 1 !important;
+  height: auto !important;
+  padding: 8px !important;
 }
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .codex-micro-pad__head,
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .soft-pad-preview__hint,
@@ -5143,23 +5315,25 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   display: flex !important;
   flex-direction: column !important;
   width: 100% !important;
-  height: auto !important;
+  height: 100% !important;
   min-height: 0 !important;
-  padding: 8px !important;
+  padding: 5px !important;
   border-radius: 12px !important;
   overflow: hidden !important;
   box-sizing: border-box;
+  background: rgba(248, 250, 252, 0.95) !important;
+  box-shadow: none !important;
 }
-/* Keep Soft Pad grid as a contained square (same as keys preview) — never fixed px rows. */
+/* Keep Soft Pad grid as a contained square — fill seat like numpad */
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__grid {
   display: grid !important;
-  flex: 0 0 auto !important;
+  flex: 1 1 auto !important;
   width: 100% !important;
-  height: auto !important;
+  height: 100% !important;
   min-height: 0 !important;
-  aspect-ratio: 1 / 1 !important;
+  aspect-ratio: auto !important;
   grid-template-rows: repeat(5, minmax(0, 1fr)) !important;
-  gap: 5px !important;
+  gap: 3px !important;
   overflow: hidden !important;
   box-sizing: border-box;
 }
@@ -5172,6 +5346,9 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   min-height: 0 !important;
   height: auto !important;
   overflow: hidden !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 1px !important;
   cursor: default;
   transition:
     transform 0.14s cubic-bezier(0.22, 1, 0.36, 1),
@@ -5188,19 +5365,32 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   filter: brightness(0.96);
   box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.18);
 }
-/* Icon-first in demos: hide labels so keys fit the square grid cleanly */
+/* Icon-first: glyphs fill key caps like numpad digits */
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__meta {
   display: none !important;
 }
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__icon,
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__icon svg {
-  width: 18px !important;
-  height: 18px !important;
-  max-width: 22px;
-  max-height: 22px;
+  width: 26px !important;
+  height: 26px !important;
+  max-width: 78% !important;
+  max-height: 78% !important;
 }
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__digit {
-  font-size: 14px !important;
+  font-size: 17px !important;
+  font-weight: 750 !important;
+  line-height: 1 !important;
+}
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__key.is-span2 .micro-hw__icon,
+.soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__key.is-span2 .micro-hw__icon svg {
+  width: 28px !important;
+  height: 28px !important;
+  max-width: 42% !important;
+}
+.soft-pad-mode-preview--purpose .soft-pad-demo-face .soft-pad-demo-key {
+  display: grid;
+  place-items: center;
+  padding: 2px;
 }
 .soft-pad-mode-preview--purpose .soft-pad-demo-switch__modes {
   gap: 8px;
@@ -6847,6 +7037,9 @@ html[data-theme="dark"] .soft-pad-feature-subtab.is-active { /* → ot-seg.css *
 }
 .soft-pad-nav-demo[data-nav-on="0"] .soft-pad-demo-compare__col:last-child {
   opacity: 0.78;
+}
+.soft-pad-mode-preview--purpose .soft-pad-nav-demo[data-nav-on="0"] .soft-pad-demo-compare__col.is-dim {
+  opacity: 0.42;
 }
 .soft-pad-nav-demo[data-nav-on="0"] .soft-pad-demo-compare__bridge-txt {
   color: var(--on-surface-muted);

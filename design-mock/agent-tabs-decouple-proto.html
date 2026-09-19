@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent 目录 · 四叶解耦重切</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;600&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#cfd9e6;--ink:#101c2c;--mute:#5a6c80;--faint:#8496a8;--line:rgba(16,28,44,.12);
+  --paper:#f4f7fb;--agent:#3a4580;--agent-soft:#e4e7f5;--agent-line:rgba(58,69,128,.35);
+  --bad:#b42318;--bad-soft:#fce8e6;--ok:#157a45;--ok-soft:#e3f5eb;--warn:#9a6700;--warn-soft:#fff6e0;
+  --a:#1a7a6c;--a-soft:#dcefeb;--b:#8a4b2a;--b-soft:#f7ebe4;--c:#3a4580;--c-soft:#e4e7f5;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;color:var(--ink);background:
+  radial-gradient(860px 400px at 4% -8%,rgba(58,69,128,.14),transparent 55%),
+  radial-gradient(640px 340px at 100% 0%,rgba(138,75,42,.08),transparent 48%),
+  linear-gradient(168deg,#c5d0de,var(--bg) 50%,#d8e1ec)}
+.page{max-width:1140px;margin:0 auto;padding:18px 14px 64px}
+.eyebrow{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--agent)}
+h1{margin:0 0 8px;font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.12}
+.lede{margin:0 0 14px;max-width:74ch;color:var(--mute);font-size:14.5px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.tab{appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer}
+.tab.is-on{background:var(--agent-soft);border-color:var(--agent-line);color:var(--agent)}
+.panel{display:none}.panel.is-on{display:block}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 12px 28px rgba(16,28,44,.06)}
+.h2{margin:0 0 8px;font-size:14px;font-weight:800}
+.note{margin:0 0 10px;font-size:12.5px;color:var(--mute)}
+.pill{display:inline-flex;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:750;margin-left:4px}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+
+/* coupling matrix */
+.matrix{width:100%;border-collapse:collapse;font-size:12px;margin:0 0 8px}
+.matrix th,.matrix td{border:1px solid var(--line);padding:8px 7px;text-align:left;vertical-align:top}
+.matrix th{background:#eef2f7;font-size:10.5px;font-weight:800;color:var(--mute)}
+.matrix .x{background:var(--bad-soft);color:var(--bad);font-weight:750;text-align:center}
+.matrix .ok{background:var(--ok-soft);color:var(--ok);font-weight:750;text-align:center}
+.matrix .dim{color:var(--faint)}
+
+.old4{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.old4 span{padding:7px 12px;border-radius:999px;border:1px solid var(--line);font-size:12px;font-weight:750;color:var(--mute);background:#fff}
+.old4 span.on{background:var(--agent-soft);border-color:var(--agent-line);color:var(--agent)}
+
+.layers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+@media (max-width:860px){.layers{grid-template-columns:1fr}}
+.layer{border-radius:14px;padding:12px;border:2px solid var(--line);background:#fff}
+.layer.l1{border-color:rgba(26,122,108,.4);background:linear-gradient(160deg,var(--a-soft),#fff 70%)}
+.layer.l2{border-color:rgba(138,75,42,.35);background:linear-gradient(160deg,var(--b-soft),#fff 70%)}
+.layer.l3{border-color:var(--agent-line);background:linear-gradient(160deg,var(--c-soft),#fff 70%)}
+.layer .tag{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.layer.l1 .tag{color:var(--a)}.layer.l2 .tag{color:var(--b)}.layer.l3 .tag{color:var(--agent)}
+.layer h3{margin:0 0 6px;font-size:16px;font-weight:800}
+.layer ul{margin:0;padding-left:16px;font-size:12.5px;color:var(--mute)}
+.layer .from{margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--faint)}
+
+/* interactive */
+.shell{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 14px 32px rgba(16,28,44,.07)}
+.shell-h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:9px 12px;background:#e4ebf3;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--mute)}
+.shell-h b{color:var(--ink)}
+.layout{display:grid;grid-template-columns:132px 1fr;min-height:400px}
+@media (max-width:720px){.layout{grid-template-columns:1fr}}
+.snav{background:#e8eef5;border-right:1px solid var(--line);padding:10px 8px}
+.snav .g{margin:8px 6px 4px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.snav .i{padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;color:var(--mute);margin:2px 0}
+.snav .i.on{background:#fff;color:var(--agent);box-shadow:inset 3px 0 0 var(--agent)}
+.main{display:flex;flex-direction:column;min-width:0}
+.head{padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+.head h3{margin:0;font-size:15px;font-weight:800}
+.head p{margin:3px 0 0;font-size:12px;color:var(--mute)}
+.subtabs{display:flex;flex-wrap:wrap;gap:4px;padding:10px 14px 0}
+.subtabs button{appearance:none;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:8px 14px;font:inherit;font-size:12.5px;font-weight:750;color:var(--mute);cursor:pointer}
+.subtabs button.is-on{color:#fff}
+.subtabs button[data-sub="float"].is-on{background:var(--a);border-color:var(--a)}
+.subtabs button[data-sub="lights"].is-on{background:var(--b);border-color:var(--b)}
+.subtabs button[data-sub="connect"].is-on{background:var(--agent);border-color:var(--agent)}
+.body{padding:14px;display:grid;grid-template-columns:1fr 210px;gap:12px}
+@media (max-width:800px){.body{grid-template-columns:1fr}}
+.canvas{border-radius:14px;border:1px solid var(--line);background:var(--paper);padding:14px;min-height:240px}
+.canvas .cap{margin:0 0 10px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.insp{border-radius:14px;border:1px solid var(--line);padding:12px;background:#fff}
+.insp .ph{margin:0 0 4px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.insp h4{margin:0 0 6px;font-size:13.5px;font-weight:800}
+.insp p,.insp li{font-size:12px;color:var(--mute);margin:0}
+.insp ul{margin:0;padding-left:16px}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:7px 8px;border-radius:8px;border:1px solid var(--line);background:var(--paper);margin:0 0 5px;font-size:12px}
+
+.float{max-width:320px;margin:0 auto;border-radius:14px;padding:10px 12px;background:rgba(16,28,44,.92);color:#e8eef5}
+.float .top{display:flex;align-items:center;gap:8px}
+.float .dot{width:12px;height:12px;border-radius:50%;background:#2a9d6a}
+.float .t{flex:1;font-weight:800;font-size:12.5px}
+.float .u{font-family:var(--mono);font-size:11px;opacity:.8}
+.float .sp{margin-top:8px;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.08);font-size:11.5px}
+.appear{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.appear span{padding:8px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:11.5px;font-weight:750;text-align:center}
+.appear span.on{border-color:var(--a);background:var(--a-soft);color:var(--a)}
+.board{max-width:240px;margin:0 auto;padding:12px;border-radius:14px;background:linear-gradient(160deg,#1a2a3c,#24384d);position:relative}
+.board .rim{position:absolute;inset:5px;border-radius:10px;border:3px solid #2a9d6a;pointer-events:none}
+.board .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;position:relative;padding:8px}
+.board .keys i{aspect-ratio:1;border-radius:7px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:10px;color:#d7e4f0;font-weight:700}
+.connect-list{display:flex;flex-direction:column;gap:6px;max-width:360px;margin:0 auto}
+.connect-list .c{padding:10px;border-radius:12px;border:1px solid var(--line);background:#fff}
+.connect-list .c b{display:block;font-size:12.5px;margin-bottom:2px}
+.connect-list .c span{font-size:11.5px;color:var(--mute)}
+
+.migrate{width:100%;border-collapse:collapse;font-size:12px}
+.migrate th,.migrate td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+.migrate th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint)}
+.callout{margin-top:12px;padding:12px 14px;border-radius:14px;background:linear-gradient(120deg,var(--agent-soft),#fff 70%);border:1px solid var(--agent-line)}
+.callout strong{display:block;margin:0 0 4px;font-size:13px}
+.callout p{margin:0;font-size:12.5px;color:var(--mute)}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">IA rethink · decouple Agent tabs</p>
+  <h1>四叶解耦不够：按「改哪一层」重切成三层</h1>
+  <p class="lede">截图里的 <b>迷你栏 · 灯效 · 样式 · 数据</b> 名字像四块，实际在抢同一块屏幕：条上有什么、何时出现、读数显不显。下面先拆耦合，再定新目录。</p>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tab is-on" data-tab="why">① 为何缠在一起</button>
+    <button type="button" class="tab" data-tab="cut">② 新切法 · 三层</button>
+    <button type="button" class="tab" data-tab="demo">③ 可点原型</button>
+  </nav>
+
+  <!-- WHY -->
+  <section class="panel is-on" id="p-why">
+    <div class="card">
+      <h2 class="h2">旧四叶 <span class="pill bad">边界糊</span></h2>
+      <div class="old4">
+        <span class="on">迷你栏</span><span>灯效</span><span>样式</span><span>数据</span>
+      </div>
+      <p class="note">对照现在产品里 Agent + 样式页的真实内容：</p>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>用户想改的事</th>
+            <th>迷你栏</th>
+            <th>灯效</th>
+            <th>样式</th>
+            <th>数据</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>浮窗何时出现</td>
+            <td class="x">形态里也有</td>
+            <td class="dim">—</td>
+            <td class="x">何时出现</td>
+            <td class="dim">—</td>
+          </tr>
+          <tr>
+            <td>条上显示额度</td>
+            <td class="x">用量开关</td>
+            <td class="dim">—</td>
+            <td class="dim">—</td>
+            <td class="x">预览摘要</td>
+          </tr>
+          <tr>
+            <td>忙闲怎么表示</td>
+            <td class="x">圆点</td>
+            <td class="x">键灯/氛围</td>
+            <td class="dim">—</td>
+            <td class="dim">—</td>
+          </tr>
+          <tr>
+            <td>皮肤 / 细条样子</td>
+            <td class="x">浮窗形态</td>
+            <td class="dim">—</td>
+            <td class="x">外观皮肤</td>
+            <td class="dim">—</td>
+          </tr>
+          <tr>
+            <td>Hook / API Key</td>
+            <td class="dim">—</td>
+            <td class="x">塞在灯效匹配</td>
+            <td class="dim">—</td>
+            <td class="x">额度来源</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note">根因：四叶是按<strong>旧面板名字</strong>拼的，不是按<strong>运行时对象</strong>切的。迷你栏≈浮层 UI，样式≈浮层出现与皮，数据≈浮层上的数——三者本是同一层。</p>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2 class="h2">现在 Agent / 样式页 · 内容归位</h2>
+      <table class="migrate">
+        <thead><tr><th>现状入口</th><th>真实在管</th><th>问题</th></tr></thead>
+        <tbody>
+          <tr><td><b>Agent · 灯效匹配</b></td><td>接入 + 氛围灯 + 按键灯</td><td>接入和灯绑死；和样式·灯效重复</td></tr>
+          <tr><td><b>Agent · 显示数据</b></td><td>读数 + 条上摘要开关 + 来源</td><td>「摘要开关」属于浮层，不该独立成叶</td></tr>
+          <tr><td><b>Agent · 迷你栏</b></td><td>条内容 + 形态 + 何时浮出</td><td>与样式抢「何时 / 长什么样」</td></tr>
+          <tr><td><b>样式 · 何时出现</b></td><td>显示方式 + 皮肤 + 聆听口令</td><td>名叫样式，却管生命周期</td></tr>
+          <tr><td><b>样式 · 动作键</b></td><td>AG / 数字键映射</td><td>属绑键，应回虚拟键盘</td></tr>
+          <tr><td><b>样式 · 灯效 / 迷你栏</b></td><td>与 Agent 同渲染器</td><td>双入口，解耦为零</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- CUT -->
+  <section class="panel" id="p-cut">
+    <div class="card">
+      <h2 class="h2">按运行时三层切 <span class="pill ok">推荐</span></h2>
+      <p class="note">一层一个对象，叶子之间尽量零重叠。</p>
+      <div class="layers">
+        <div class="layer l1">
+          <div class="tag">Layer · Overlay</div>
+          <h3>浮窗</h3>
+          <ul>
+            <li>何时出现（唯一）</li>
+            <li>皮肤</li>
+            <li>细条 / 完整键盘</li>
+            <li>条上：忙闲 · 话术 · 快捷 · <b>读数显隐</b></li>
+            <li>聆听口令</li>
+          </ul>
+          <div class="from">← 样式·何时出现 + 迷你栏 + 数据·摘要开关</div>
+        </div>
+        <div class="layer l2">
+          <div class="tag">Layer · Pad signal</div>
+          <h3>灯效</h3>
+          <ul>
+            <li>氛围灯（盘边）</li>
+            <li>按键灯（模板/色）</li>
+            <li>只谈「键上怎么亮」</li>
+          </ul>
+          <div class="from">← Agent/样式 双边灯效（去重）</div>
+        </div>
+        <div class="layer l3">
+          <div class="tag">Layer · Plumbing</div>
+          <h3>接入</h3>
+          <ul>
+            <li>虚拟键盘开关</li>
+            <li>Hook / 连接</li>
+            <li>额度 API / 本地统计来源</li>
+          </ul>
+          <div class="from">← 灯效匹配·接入 + 数据·来源</div>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>丢掉的叶</strong>
+        <p>不再单开「样式」「数据」「迷你栏」三个名字——它们描述的是同一浮层的不同侧面。动作键不进 Agent，留在虚拟键盘顶条。</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2 class="h2">和「对着实物改」怎么配合</h2>
+      <table class="migrate">
+        <thead><tr><th>叶</th><th>中间实物</th><th>点哪里</th></tr></thead>
+        <tbody>
+          <tr><td><b>浮窗</b></td><td>迷你条（或出现方式卡片）</td><td>点圆点/额度/话术/快捷；或点出现卡片</td></tr>
+          <tr><td><b>灯效</b></td><td>盘边+键灯示意板</td><td>点光圈或键（不是绑键画布）</td></tr>
+          <tr><td><b>接入</b></td><td>连接状态列表</td><td>点某一 Agent 行 → 装 Hook / 填 Key</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- DEMO -->
+  <section class="panel" id="p-demo">
+    <div class="shell">
+      <div class="shell-h">
+        <span><b>设置 → Agent</b> · 三叶解耦</span>
+        <span class="pill ok">浮窗 · 灯效 · 接入</span>
+      </div>
+      <div class="layout">
+        <aside class="snav">
+          <div class="g">配置</div>
+          <div class="i on">Agent</div>
+          <div class="i">托盘</div>
+        </aside>
+        <div class="main">
+          <div class="head">
+            <h3>Agent</h3>
+            <p>三层各管各的：浮层 UI · 键上灯 · 接线与数据源。</p>
+          </div>
+          <div class="subtabs" id="subs">
+            <button type="button" class="is-on" data-sub="float">浮窗</button>
+            <button type="button" data-sub="lights">灯效</button>
+            <button type="button" data-sub="connect">接入</button>
+          </div>
+          <div class="body">
+            <div class="canvas" id="canvas"></div>
+            <aside class="insp" id="insp"></aside>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var tabs=document.querySelectorAll('.tab');
+  var panels={why:document.getElementById('p-why'),cut:document.getElementById('p-cut'),demo:document.getElementById('p-demo')};
+  tabs.forEach(function(t){
+    t.addEventListener('click',function(){
+      tabs.forEach(function(x){x.classList.toggle('is-on',x===t);});
+      Object.keys(panels).forEach(function(k){panels[k].classList.toggle('is-on',k===t.getAttribute('data-tab'));});
+    });
+  });
+
+  var canvas=document.getElementById('canvas');
+  var insp=document.getElementById('insp');
+  var pages={
+    float:{
+      canvas:
+        '<p class="cap">浮窗 · 一条上的所有可见东西</p>'+
+        '<div class="float">'+
+          '<div class="top"><span class="dot"></span><span class="t">Agent · 跑着</span><span class="u">72%</span></div>'+
+          '<div class="sp">「把这段重构一下…」</div>'+
+        '</div>'+
+        '<div class="appear">'+
+          '<span class="on">跟随应用</span><span>保持最前</span><span>迷你条</span><span>不显示</span>'+
+        '</div>',
+      insp:
+        '<p class="ph">本叶职责</p><h4>浮窗</h4>'+
+        '<p>管「露不露、长什么样、条上有什么」。读数显隐也在这里，不再单开数据叶。</p>'+
+        '<ul><li>何时出现（唯一）</li><li>皮肤 / 细条形态</li><li>忙闲 · 话术 · 快捷</li><li>额度等读数显隐</li></ul>'+
+        '<div class="row" style="margin-top:8px"><span>显示额度</span><b>✓</b></div>'
+    },
+    lights:{
+      canvas:
+        '<p class="cap">灯效 · 只谈键与盘边怎么亮</p>'+
+        '<div class="board"><div class="rim"></div><div class="keys"><i>停</i><i>发</i><i>续</i><i>收</i><i>5</i><i>新</i></div></div>',
+      insp:
+        '<p class="ph">本叶职责</p><h4>灯效</h4>'+
+        '<p>不管浮窗、不管 API Key。只配置氛围灯与按键灯。</p>'+
+        '<ul><li>氛围灯跟随状态</li><li>按键灯模板 / 色板</li></ul>'+
+        '<div class="row" style="margin-top:8px"><span>盘边氛围</span><b>开</b></div>'
+    },
+    connect:{
+      canvas:
+        '<p class="cap">接入 · 接线与数据从哪来</p>'+
+        '<div class="connect-list">'+
+          '<div class="c"><b>Cursor</b><span>Hook 已安装 · 本地统计可选</span></div>'+
+          '<div class="c"><b>Codex</b><span>待连接</span></div>'+
+          '<div class="c"><b>额度候补</b><span>粘贴 API Key（不是浮窗开关）</span></div>'+
+        '</div>',
+      insp:
+        '<p class="ph">本叶职责</p><h4>接入</h4>'+
+        '<p>管「接上没有、数从哪来」。不管条上显不显示——显示在浮窗叶。</p>'+
+        '<ul><li>Pad 总开关</li><li>各 Agent Hook</li><li>额度来源</li></ul>'+
+        '<div class="row" style="margin-top:8px"><span>虚拟键盘</span><b>已启用</b></div>'
+    }
+  };
+
+  function show(id){
+    var p=pages[id]||pages.float;
+    canvas.innerHTML=p.canvas;
+    insp.innerHTML=p.insp;
+    document.querySelectorAll('#subs [data-sub]').forEach(function(b){
+      b.classList.toggle('is-on',b.getAttribute('data-sub')===id);
+    });
+  }
+  document.querySelectorAll('#subs [data-sub]').forEach(function(b){
+    b.addEventListener('click',function(){show(b.getAttribute('data-sub'));});
+  });
+  show('float');
+})();
+</script>
+</body>
+</html>

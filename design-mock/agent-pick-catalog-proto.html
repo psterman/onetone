@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>原型 · 软件自带（单栏 · 对齐定稿）</title>
+<style>
+:root{
+  --bg:#edf2f8; --surface:#fff; --soft:#f0f7fb; --line:rgba(26,45,74,.1);
+  --on:#152238; --mute:#5a7086; --faint:#8494a6;
+  --p:#2a9cc4; --p-ink:#1e87ad; --p-soft:#e6f7fc; --outline:rgba(42,156,196,.28);
+  --ok:#15803d; --ok-soft:#dcfce7; --star:#ca8a04; --star-soft:#fef9c3;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;background:var(--bg);color:var(--on)}
+.page{max-width:900px;margin:0 auto;padding:18px 16px 48px}
+h1{margin:0 0 4px;font-size:17px;font-weight:800}
+.lede{margin:0 0 12px;font-size:12.5px;color:var(--mute)}
+.note{margin-bottom:12px;padding:9px 11px;border-radius:10px;background:var(--ok-soft);border:1px solid rgba(21,128,61,.28);font-size:12.5px;color:var(--ok)}
+.mock{border:1px solid var(--line);border-radius:16px;background:var(--surface);overflow:hidden;box-shadow:0 8px 28px rgba(26,45,74,.06)}
+.chrome{display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fbfdff,#f3f7fb)}
+.dots{display:flex;gap:5px}.dots i{width:9px;height:9px;border-radius:50%;background:#d5dde8}
+.chrome strong{font-size:12px;display:block}.chrome span{font-size:11px;color:var(--mute)}
+.body{padding:12px;background:#f4f7fb;display:grid;gap:10px}
+.fg{display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:10px;background:var(--p-soft);border:1px solid var(--outline);font-size:12px;color:var(--p-ink)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.split{display:grid;grid-template-columns:150px 1fr;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden;min-height:460px}
+@media(max-width:700px){.split{grid-template-columns:1fr}}
+.nav{padding:10px 8px;background:var(--soft);border-right:1px solid var(--line);display:grid;gap:4px;align-content:start}
+@media(max-width:700px){.nav{border-right:0;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap}}
+.chan{appearance:none;border:1px solid transparent;background:transparent;text-align:left;padding:8px 10px;border-radius:8px;font:inherit;font-size:12px;font-weight:650;color:var(--mute)}
+.chan.is-on{background:#fff;border-color:var(--outline);color:var(--p-ink);font-weight:800;box-shadow:0 1px 2px rgba(26,45,74,.05)}
+.main{padding:12px;display:grid;gap:10px;align-content:start}
+.head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.head h2{margin:0;font-size:14px;font-weight:800}
+.pill{font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:999px;background:var(--p-soft);color:var(--p-ink);border:1px solid var(--outline)}
+.lbl{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.pins{display:flex;flex-wrap:wrap;gap:6px;min-height:32px;padding:8px;border-radius:10px;border:1px dashed rgba(202,138,4,.4);background:var(--star-soft);align-items:center}
+.pins.empty{border-style:solid;border-color:var(--line);background:#f7f9fb;color:var(--mute);font-size:12px}
+.pin{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:#fff;border:1px solid rgba(202,138,4,.35);font-size:12px;font-weight:750;cursor:pointer}
+.pin .x{border:0;background:0;cursor:pointer;color:var(--faint)}
+.search{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit}
+.tabs{display:flex;flex-wrap:wrap;gap:5px}
+.tab{appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 10px;font:inherit;font-size:11.5px;font-weight:650;color:var(--mute);cursor:pointer}
+.tab.is-on{background:var(--p-soft);border-color:var(--outline);color:var(--p-ink);font-weight:800}
+.core{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{appearance:none;border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:10px;text-align:left;font:inherit;cursor:pointer;display:grid;gap:2px}
+.card.is-on{border-color:var(--p);background:var(--p-soft)}
+.card .t{font-weight:800;font-size:13.5px}
+.card .w{font-size:11.5px;color:var(--mute)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.more{appearance:none;width:100%;border:1px dashed var(--line);background:#f7f9fb;border-radius:10px;padding:8px;font:inherit;font-weight:750;color:var(--p-ink);cursor:pointer}
+.list{display:grid;gap:5px;max-height:280px;overflow:auto}
+.row{display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:8px 10px;border:1.5px solid transparent;border-radius:9px;background:#fff}
+.row.is-on{border-color:var(--outline);background:var(--p-soft)}
+.star{border:0;background:0;cursor:pointer;color:#d4d4d8;font-size:14px}.star.on{color:var(--star)}
+.chord{font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 6px;border-radius:5px;background:#f7f9fb;border:1px solid var(--line)}
+.use{appearance:none;border:1px solid var(--p);background:var(--p);color:#fff;border-radius:7px;padding:5px 9px;font:inherit;font-size:11.5px;font-weight:800;cursor:pointer}
+.strip{display:none;padding:9px 11px;border-radius:10px;background:var(--ok-soft);border:1px solid rgba(21,128,61,.3);color:var(--ok);font-size:12.5px;font-weight:700}
+.strip.show{display:block}
+.demo{margin-top:10px;font-size:11px;color:var(--faint)}
+.demo button{margin-right:6px;font:inherit;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:#fff;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>按键页 · 软件自带（与定稿对齐）</h1>
+  <p class="lede">通道树保留；内容区改为单栏渐进。详版交互见 cursor-shortcuts-beginner-pro.html。</p>
+  <div class="note">无右栏 02 · 无新手/熟手双面 · 置顶≠分类 · 行内「用」+ 底条确认</div>
+
+  <div class="demo">原型调试模拟前台：
+    <button type="button" data-fg="cursor">Cursor</button>
+    <button type="button" data-fg="codex">Codex</button>
+  </div>
+
+  <section class="mock" style="margin-top:10px">
+    <div class="chrome">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div><strong>OneTone · 按键</strong><span>01 触发已录 · 软件自带</span></div>
+    </div>
+    <div class="body">
+      <div class="fg"><span class="dot"></span><span id="fgText">前台 · Cursor</span></div>
+      <div class="split">
+        <nav class="nav">
+          <button class="chan" disabled>听写方式</button>
+          <button class="chan" disabled>我录的键</button>
+          <button class="chan" disabled>口头指令</button>
+          <button class="chan is-on">软件自带</button>
+          <button class="chan" disabled>屏幕按钮</button>
+        </nav>
+        <div class="main" id="main"></div>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+(function(){
+  var DATA={
+    cursor:{name:'Cursor',core:[
+      {id:'sidepanel',plain:'开 AI',when:'跟 AI 说话',chord:'Ctrl+I'},
+      {id:'send',plain:'发出去',when:'写好了交给 AI',chord:'Enter'},
+      {id:'cancel',plain:'停住',when:'跑偏了',chord:'Ctrl+Shift+Backspace'},
+      {id:'newChat',plain:'新开',when:'聊乱了',chord:'Ctrl+N'}
+    ],more:[
+      {id:'inlineEdit',title:'行内编辑',chord:'Ctrl+K',tag:'改码'},
+      {id:'addContext',title:'选区加入上下文',chord:'Ctrl+Shift+L',tag:'对话'},
+      {id:'modeMenu',title:'切模式',chord:'Ctrl+.',tag:'模式'},
+      {id:'cmdPalette',title:'命令面板',chord:'Ctrl+Shift+P',tag:'找东西'},
+      {id:'quickOpen',title:'搜文件',chord:'Ctrl+P',tag:'找东西'}
+    ]},
+    codex:{name:'Codex',core:[
+      {id:'new',plain:'新任务',when:'开新任务',chord:'Ctrl+N'},
+      {id:'send',plain:'发送',when:'写好了',chord:'Enter'},
+      {id:'cmd',plain:'命令菜单',when:'搜命令',chord:'Ctrl+Shift+P'},
+      {id:'dict',plain:'听写',when:'Composer 听写',chord:'Ctrl+Shift+D'}
+    ],more:[
+      {id:'archive',title:'归档任务',chord:'Ctrl+Shift+A',tag:'对话'},
+      {id:'model',title:'模型选择器',chord:'Ctrl+Shift+M',tag:'模式'},
+      {id:'back',title:'返回',chord:'Ctrl+[',tag:'找东西'}
+    ]}
+  };
+  var st={fg:'cursor',exp:false,bound:null,pins:[],tab:'全部',sel:null};
+  try{var p=JSON.parse(localStorage.getItem('onetone-pick-pins')||'[]');if(Array.isArray(p))st.pins=p}catch(e){}
+  function app(){return DATA[st.fg]}
+  function pinned(id){return st.pins.indexOf(id)>=0}
+  function save(){try{localStorage.setItem('onetone-pick-pins',JSON.stringify(st.pins))}catch(e){}}
+  function all(){return app().core.map(function(c){return{id:c.id,title:c.plain,chord:c.chord,tag:'常用'}}).concat(app().more)}
+  function render(){
+    document.getElementById('fgText').textContent='前台 · '+app().name+' · 内置快捷键';
+    var m=document.getElementById('main');
+    var pinsHtml=st.pins.length?st.pins.map(function(id){
+      var it=all().filter(function(x){return x.id===id})[0];
+      if(!it)return '';
+      return '<span class="pin" data-sel="'+id+'">★ '+it.title+'<button class="x" data-unpin="'+id+'">×</button></span>';
+    }).join(''):'';
+    var core=app().core.map(function(c){
+      return '<button class="card'+(st.sel===c.id?' is-on':'')+'" data-sel="'+c.id+'"><span class="t">'+c.plain+'</span><span class="w">'+c.when+'</span><span class="k">'+c.chord+' · <u data-use="'+c.id+'">用</u></span></button>';
+    }).join('');
+    var more='';
+    if(st.exp){
+      var tabs=['全部','对话','改码','模式','找东西','常用'];
+      var th=tabs.map(function(t){return '<button class="tab'+(st.tab===t?' is-on':'')+'" data-tab="'+t+'">'+t+'</button>'}).join('');
+      var rows=all().filter(function(x){return st.tab==='全部'||x.tag===st.tab||(st.tab==='常用'&&app().core.some(function(c){return c.id===x.id}))});
+      more='<input class="search" id="q" placeholder="搜索…"><div class="tabs">'+th+'</div><div class="list">'+rows.map(function(x){
+        return '<div class="row'+(st.sel===x.id?' is-on':'')+'" data-sel="'+x.id+'"><button class="star'+(pinned(x.id)?' on':'')+'" data-star="'+x.id+'">★</button><span>'+x.title+'</span><span class="chord">'+x.chord+'</span><button class="use" data-use="'+x.id+'">'+(st.bound===x.id?'已用':'用')+'</button></div>';
+      }).join('')+'</div><button class="more" id="less">▴ 收起</button>';
+    }
+    m.innerHTML='<div class="head"><h2>软件自带</h2><span class="pill">正在用 · '+app().name+'</span></div>'+
+      '<div class="lbl">我的置顶 · 不是分类</div><div class="pins'+(st.pins.length?'':' empty')+'" id="pins">'+(pinsHtml||'点 ★ 收藏常用')+'</div>'+
+      (st.exp?'':('<div class="core">'+core+'</div><button class="more" id="more">更多快捷键 · 搜索与分类 ▾</button>'))+
+      more+
+      '<div class="strip'+(st.bound?' show':'')+'" id="strip">'+(st.bound?('已绑到 01：侧键 → '+(all().filter(function(x){return x.id===st.bound})[0]||{}).chord):'')+'</div>';
+  }
+  document.addEventListener('click',function(e){
+    var fg=e.target.closest('[data-fg]');if(fg){st.fg=fg.getAttribute('data-fg');st.bound=null;st.sel=null;st.exp=false;st.tab='全部';render();return}
+    if(e.target.id==='more'){st.exp=true;render();return}
+    if(e.target.id==='less'){st.exp=false;st.tab='全部';render();return}
+    var u=e.target.closest('[data-use]');if(u){st.bound=u.getAttribute('data-use');st.sel=st.bound;render();return}
+    var s=e.target.closest('[data-star]');if(s){var id=s.getAttribute('data-star');var i=st.pins.indexOf(id);if(i>=0)st.pins.splice(i,1);else if(st.pins.length<8)st.pins.unshift(id);save();render();return}
+    var up=e.target.closest('[data-unpin]');if(up){st.pins=st.pins.filter(function(x){return x!==up.getAttribute('data-unpin')});save();render();return}
+    var t=e.target.closest('[data-tab]');if(t){st.tab=t.getAttribute('data-tab');render();return}
+    var sel=e.target.closest('[data-sel]');if(sel){st.sel=sel.getAttribute('data-sel');render()}
+  });
+  render();
+})();
+</script>
+</body>
+</html>

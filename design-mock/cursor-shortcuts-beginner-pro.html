@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>软件自带 · 单栏 · 无重复映射</title>
+<style>
+:root{
+  --bg:#e8eef5; --surface:#fff; --soft:#f4f7fb; --line:rgba(26,45,74,.1);
+  --on:#152238; --mute:#5a7086; --faint:#8b9aab;
+  --p:#2a9cc4; --p-ink:#1a7a9c; --p-soft:#e8f6fb; --outline:rgba(42,156,196,.32);
+  --ok:#1b7a45; --ok-soft:#e8f6ee;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;background:var(--bg);color:var(--on)}
+.page{max-width:560px;margin:0 auto;padding:16px 14px 48px}
+h1{margin:0 0 4px;font-size:17px;font-weight:800;letter-spacing:-.02em}
+.lede{margin:0 0 12px;font-size:12.5px;color:var(--mute)}
+
+.mock{
+  border:1px solid var(--line);border-radius:14px;background:var(--surface);
+  overflow:hidden;box-shadow:0 10px 32px rgba(26,45,74,.07);
+}
+.chrome{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 14px;
+  border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fbfdff,#f2f6fa);
+}
+.dots{display:flex;gap:5px}
+.dots i{width:8px;height:8px;border-radius:50%;background:#d5dde8}
+.chrome strong{font-size:12px}
+.chrome .map-hint{
+  margin-left:auto;font-size:11.5px;color:var(--mute);
+  font-family:var(--mono);font-weight:700;
+}
+.chrome .map-hint b{color:var(--p-ink);font-weight:800}
+
+.body{padding:12px;display:grid;gap:10px;background:#f7f9fc}
+
+.fg{
+  display:inline-flex;align-items:center;gap:7px;width:fit-content;
+  padding:5px 10px;border-radius:999px;background:var(--p-soft);
+  border:1px solid var(--outline);font-size:11.5px;font-weight:700;color:var(--p-ink);
+}
+.fg i{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+
+.head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.head h2{margin:0;font-size:14px;font-weight:800}
+.count{font-size:11px;color:var(--faint);font-weight:650}
+.edit{
+  appearance:none;border:0;background:transparent;order:-1;
+  color:var(--p-ink);font:inherit;font-size:12px;font-weight:650;cursor:pointer;padding:4px 0;
+}
+.edit:hover{text-decoration:underline}
+
+.search{
+  width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 11px;
+  font:inherit;font-size:12.5px;background:#fff;
+}
+.search:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px rgba(42,156,196,.12)}
+
+.filters{display:flex;flex-wrap:wrap;gap:4px}
+.chip{
+  appearance:none;border:0;background:transparent;color:var(--mute);
+  padding:5px 9px;border-radius:7px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;
+}
+.chip:hover{background:rgba(26,45,74,.04);color:var(--on)}
+.chip.is-on{background:#fff;color:var(--p-ink);font-weight:800;box-shadow:0 1px 2px rgba(26,45,74,.06);border:1px solid var(--line)}
+
+.edit-bar{
+  display:none;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:7px 9px;border-radius:8px;background:#fff8e8;border:1px solid rgba(180,130,20,.25);
+  font-size:12px;color:#8a6a12;
+}
+.edit-bar.show{display:flex}
+.edit-bar .btn{
+  appearance:none;border:1px solid rgba(180,130,20,.35);background:#fff;color:#8a6a12;
+  border-radius:6px;padding:4px 9px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;
+}
+.edit-bar .btn.pri{background:#8a6a12;color:#fff;border-color:#8a6a12}
+
+.list{display:grid;gap:2px;max-height:420px;overflow:auto;padding:2px}
+.row{
+  display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:2px 8px;align-items:center;
+  padding:9px 10px 9px 4px;border-radius:10px;border:1px solid transparent;background:transparent;
+  width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;
+}
+.row:hover{background:rgba(255,255,255,.9)}
+.row.is-on{background:#fff;border-color:var(--outline);box-shadow:0 1px 3px rgba(42,156,196,.12)}
+.star{
+  appearance:none;border:0;background:transparent;cursor:pointer;
+  grid-column:1;grid-row:1 / span 2;align-self:center;
+  width:32px;height:32px;border-radius:8px;display:grid;place-items:center;
+  color:#c5ced8;font-size:16px;line-height:1;
+}
+.star:hover{background:rgba(26,45,74,.05)}
+.star.on{color:#c9a227}
+.t{grid-column:2;font-size:13px;font-weight:700}
+.m{grid-column:2;font-size:11.5px;color:var(--mute)}
+.chord{
+  grid-column:3;grid-row:1 / span 2;align-self:center;
+  font-family:var(--mono);font-size:11px;font-weight:700;color:var(--faint);
+}
+.row.is-on .chord{color:var(--p-ink)}
+.mark{margin-left:6px;font-size:10px;font-weight:750;color:var(--p-ink);opacity:.75}
+.tag-c{margin-left:6px;font-size:10px;font-weight:750;color:var(--mute);
+  padding:1px 5px;border-radius:4px;background:rgba(26,45,74,.06)}
+
+.custom-entry{
+  margin-top:6px;border:1px dashed var(--outline);background:rgba(255,255,255,.75);
+  grid-template-columns:1fr;padding:11px 12px;justify-items:start;
+}
+.custom-entry .t{grid-column:1;color:var(--p-ink)}
+.custom-entry .m{grid-column:1}
+
+.rec{
+  display:none;margin-top:4px;padding:12px;border-radius:12px;background:#fff;
+  border:1px solid var(--outline);display:none;gap:8px;
+}
+.rec.show{display:grid}
+.rec label{font-size:11px;font-weight:700;color:var(--mute)}
+.rec input{
+  width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;
+}
+.rec input:focus{outline:none;border-color:var(--p)}
+.chord-box{
+  display:flex;align-items:center;justify-content:center;min-height:44px;
+  border:1px dashed var(--outline);border-radius:10px;background:var(--p-soft);
+  font-family:var(--mono);font-weight:800;font-size:14px;color:var(--p-ink);cursor:pointer;
+}
+.chord-box.listening{border-style:solid;box-shadow:0 0 0 3px rgba(42,156,196,.12)}
+.rec-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  appearance:none;border:1px solid var(--p);background:var(--p);color:#fff;
+  border-radius:8px;padding:8px 12px;font:inherit;font-size:12px;font-weight:750;cursor:pointer;
+}
+.btn.ghost{background:#fff;color:var(--p-ink)}
+.btn.danger{border-color:#fecaca;background:#fff;color:#b91c1c}
+
+.strip{
+  display:none;padding:8px 10px;border-radius:8px;background:var(--ok-soft);
+  border:1px solid rgba(27,122,69,.25);font-size:12px;font-weight:700;color:var(--ok);
+}
+.strip.show{display:block}
+.strip .mono{font-family:var(--mono)}
+
+.note{margin:0;font-size:11.5px;color:var(--faint)}
+footer{margin-top:10px;font-size:11px;color:var(--faint)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>单栏挑选 · 映射不重复</h1>
+  <p class="lede">顶部已有 01 触发，列表右侧已有注入键。不再单独开「习惯映射」栏。找不到就展开自定义录制。</p>
+
+  <section class="mock">
+    <div class="chrome">
+      <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+      <strong>软件自带</strong>
+      <span class="map-hint" id="topMap">01 <b>侧键</b> → <b id="topChord">Ctrl+I</b></span>
+    </div>
+
+    <div class="body">
+      <div class="fg"><i></i>前台 · Cursor</div>
+
+      <div class="head">
+        <button type="button" class="edit" id="btnEdit">★ 改常用</button>
+        <h2>挑一条命令</h2>
+        <span class="count" id="countLabel"></span>
+      </div>
+
+      <div class="edit-bar" id="editBar">
+        <span>★ 调整常用（1～8）</span>
+        <button type="button" class="btn pri" id="btnDone">完成</button>
+        <button type="button" class="btn" id="btnReset">出厂 4 项</button>
+        <button type="button" class="btn" id="btnCancel">取消</button>
+      </div>
+
+      <input type="search" class="search" id="search" placeholder="搜索命令…" autocomplete="off">
+      <div class="filters" id="filters"></div>
+      <div class="list" id="list" role="listbox"></div>
+
+      <div class="rec" id="rec">
+        <label for="recName">叫什么</label>
+        <input id="recName" placeholder="例如：开 Plan" maxlength="24" autocomplete="off">
+        <label>快捷键</label>
+        <div class="chord-box" id="chordBox" tabindex="0">点击后按下组合键…</div>
+        <div class="rec-actions">
+          <button type="button" class="btn" id="btnSave" disabled>保存并选用</button>
+          <button type="button" class="btn ghost" id="btnRecCancel">收起</button>
+          <button type="button" class="btn danger" id="btnDel" hidden>删除</button>
+        </div>
+      </div>
+
+      <div class="strip" id="strip"></div>
+      <p class="note">映射 = 顶栏触发 × 列表键位。点行即选用，★ 只管常用短名单。</p>
+    </div>
+  </section>
+
+  <footer>design-mock/cursor-shortcuts-beginner-pro.html</footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var BUILTIN = [
+    { id: 'sidepanel', title: '开 AI', when: '跟 AI 说话或改多文件', chord: 'Ctrl+I', tag: '跟 AI 聊', seed: true, q: '侧栏' },
+    { id: 'send', title: '发出去', when: '写好了交给 AI', chord: 'Enter', tag: '跟 AI 聊', seed: true, q: '发送' },
+    { id: 'cancel', title: '停住', when: '跑偏了马上停', chord: 'Ctrl+Shift+Backspace', tag: '跟 AI 聊', seed: true, q: '取消' },
+    { id: 'newChat', title: '新开一局', when: '聊乱了想重来', chord: 'Ctrl+N', tag: '跟 AI 聊', seed: true, q: '新对话' },
+    { id: 'forceSend', title: '立刻发出去', when: '别排队马上发', chord: 'Ctrl+Enter', tag: '跟 AI 聊', seed: false, q: '强制' },
+    { id: 'addContext', title: '把这段给 AI', when: '先指定代码再问', chord: 'Ctrl+Shift+L', tag: '跟 AI 聊', seed: false, q: '上下文' },
+    { id: 'inlineEdit', title: '就地改这段', when: '只改眼前代码', chord: 'Ctrl+K', tag: '改代码', seed: false, q: '行内' },
+    { id: 'acceptTab', title: '收下灰字', when: '补全看起来对', chord: 'Tab', tag: '改代码', seed: false, q: 'tab' },
+    { id: 'reject', title: '不要这个建议', when: '补全不对', chord: 'Esc', tag: '改代码', seed: false, q: 'esc' },
+    { id: 'paste', title: '粘贴', when: '贴进输入框', chord: 'Ctrl+V', tag: '改代码', seed: false, q: '粘贴' },
+    { id: 'modeMenu', title: '换工作方式', when: 'Ask / Agent / Plan', chord: 'Ctrl+.', tag: '换方式', seed: false, q: '模式' },
+    { id: 'rotateMode', title: '快速换方式', when: '模式间切换', chord: 'Shift+Tab', tag: '换方式', seed: false, q: 'shift' },
+    { id: 'loopModel', title: '换模型', when: '切换 AI 模型', chord: 'Ctrl+/', tag: '换方式', seed: false, q: '模型' },
+    { id: 'cmdPalette', title: '搜一切命令', when: '记不住键时', chord: 'Ctrl+Shift+P', tag: '找东西', seed: false, q: '命令' },
+    { id: 'quickOpen', title: '打开某个文件', when: '快速跳文件', chord: 'Ctrl+P', tag: '找东西', seed: false, q: '文件' },
+    { id: 'searchFiles', title: '搜全文', when: '找一段文字', chord: 'Ctrl+Shift+F', tag: '找东西', seed: false, q: '搜索' },
+    { id: 'termAi', title: '终端里问 AI', when: '生成 shell', chord: 'Ctrl+K（终端）', tag: '终端', seed: false, q: '终端' },
+    { id: 'acceptAll', title: '接受全部改动', when: '有建议改动时', chord: 'Ctrl+Enter', tag: '审改动', seed: false, q: '接受' },
+    { id: 'agentLayout', title: '切换 Agent 布局', when: '换 Agent 窗布局', chord: 'Ctrl+E', tag: '换方式', seed: false, q: '布局' }
+  ];
+
+  var FILTERS = [
+    { id: 'common', label: '常用' },
+    { id: '跟 AI 聊', label: '跟 AI 聊' },
+    { id: '改代码', label: '改代码' },
+    { id: '换方式', label: '换方式' },
+    { id: '找东西', label: '找东西' },
+    { id: '终端', label: '终端' },
+    { id: '审改动', label: '审改动' },
+    { id: '我录的', label: '我录的' },
+    { id: 'all', label: '全部' }
+  ];
+
+  var COMMON_MAX = 8;
+  var SEED = ['sidepanel', 'send', 'cancel', 'newChat'];
+
+  var state = {
+    filter: 'common',
+    q: '',
+    sel: 'sidepanel',
+    common: SEED.slice(),
+    editing: false,
+    draft: null,
+    customs: [],
+    recOpen: false,
+    recording: false,
+    recChord: '',
+    editCustomId: null
+  };
+
+  try {
+    var c = JSON.parse(localStorage.getItem('onetone-cursor-common-v4') || 'null');
+    if (Array.isArray(c) && c.length) state.common = c.slice(0, COMMON_MAX);
+    var u = JSON.parse(localStorage.getItem('onetone-cursor-customs-v2') || 'null');
+    if (Array.isArray(u)) state.customs = u;
+  } catch (e) {}
+
+  function $(id) { return document.getElementById(id); }
+
+  function allItems() { return BUILTIN.concat(state.customs); }
+
+  function byId(id) {
+    var list = allItems();
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  function commonIds() {
+    return state.editing && state.draft ? state.draft : state.common;
+  }
+
+  function inCommon(id) { return commonIds().indexOf(id) >= 0; }
+
+  function save() {
+    try {
+      localStorage.setItem('onetone-cursor-common-v4', JSON.stringify(state.common));
+      localStorage.setItem('onetone-cursor-customs-v2', JSON.stringify(state.customs));
+    } catch (e) {}
+  }
+
+  function match(it, q) {
+    if (!q) return true;
+    var hay = (it.title + ' ' + it.chord + ' ' + (it.q || '') + ' ' + it.when + ' ' + it.tag).toLowerCase();
+    return hay.indexOf(q) !== -1;
+  }
+
+  function visible() {
+    var q = state.q.trim().toLowerCase();
+    var f = state.filter;
+    var ids = commonIds();
+    var list = allItems().filter(function (it) {
+      if (!match(it, q)) return false;
+      if (f === 'common') return ids.indexOf(it.id) >= 0;
+      if (f === 'all') return true;
+      return it.tag === f;
+    });
+    if (f === 'common') list.sort(function (a, b) { return ids.indexOf(a.id) - ids.indexOf(b.id); });
+    else list.sort(function (a, b) { return (inCommon(a.id) ? 0 : 1) - (inCommon(b.id) ? 0 : 1); });
+    return list;
+  }
+
+  function chordFromEvent(e) {
+    var parts = [];
+    if (e.ctrlKey) parts.push('Ctrl');
+    if (e.altKey) parts.push('Alt');
+    if (e.shiftKey) parts.push('Shift');
+    if (e.metaKey) parts.push('Meta');
+    var k = e.key;
+    if (!k || k === 'Control' || k === 'Shift' || k === 'Alt' || k === 'Meta') return '';
+    if (k === ' ') k = 'Space';
+    else if (k.length === 1) k = k.toUpperCase();
+    parts.push(k);
+    return parts.join('+');
+  }
+
+  function toggleCommon(id) {
+    var ids = (state.editing ? state.draft : state.common).slice();
+    var i = ids.indexOf(id);
+    if (i >= 0) {
+      if (ids.length <= 1) return;
+      ids.splice(i, 1);
+    } else {
+      if (ids.length >= COMMON_MAX) return;
+      ids.push(id);
+    }
+    if (state.editing) state.draft = ids;
+    else { state.common = ids; save(); }
+    renderList();
+  }
+
+  function select(id) {
+    state.sel = id;
+    state.recOpen = false;
+    state.editCustomId = null;
+    var it = byId(id);
+    if (it) {
+      $('topChord').textContent = it.chord;
+      var strip = $('strip');
+      strip.textContent = '已选用 · 侧键 → ' + it.chord;
+      strip.classList.add('show');
+    }
+    renderList();
+    renderRec();
+  }
+
+  function openRec(editId) {
+    state.recOpen = true;
+    state.sel = null;
+    state.recording = false;
+    state.recChord = '';
+    state.editCustomId = editId || null;
+    if (editId) {
+      var it = byId(editId);
+      $('recName').value = it ? it.title : '';
+      state.recChord = it ? it.chord : '';
+    } else {
+      $('recName').value = '';
+    }
+    renderList();
+    renderRec();
+    updateRec();
+  }
+
+  function updateRec() {
+    var box = $('chordBox');
+    if (state.recChord) {
+      box.textContent = state.recChord;
+      box.classList.remove('listening');
+    } else if (state.recording) {
+      box.textContent = '再按组合键…';
+      box.classList.add('listening');
+    } else {
+      box.textContent = '点击后按下组合键…';
+      box.classList.remove('listening');
+    }
+    $('btnSave').disabled = !($('recName').value.trim() && state.recChord);
+    $('btnDel').hidden = !state.editCustomId;
+  }
+
+  function renderFilters() {
+    $('filters').innerHTML = FILTERS.map(function (f) {
+      return '<button type="button" class="chip' + (state.filter === f.id ? ' is-on' : '') +
+        '" data-filter="' + f.id + '">' + f.label + '</button>';
+    }).join('');
+  }
+
+  function renderList() {
+    var rows = visible();
+    var html = rows.map(function (it) {
+      var on = inCommon(it.id);
+      var showMark = state.filter !== 'common' && on;
+      return '<button type="button" class="row' + (state.sel === it.id ? ' is-on' : '') + '" data-sel="' + it.id + '">' +
+        '<span class="star' + (on ? ' on' : '') + '" data-star="' + it.id + '" title="' + (on ? '移出常用' : '加入常用') + '">★</span>' +
+        '<span class="t">' + it.title +
+          (showMark ? '<span class="mark">常用</span>' : '') +
+          (it.custom ? '<span class="tag-c">自定</span>' : '') + '</span>' +
+        '<span class="chord">' + it.chord + '</span>' +
+        '<span class="m">' + it.when + '</span></button>';
+    }).join('');
+
+    if (!rows.length) html = '<p style="margin:14px;text-align:center;color:var(--mute)">没有匹配</p>';
+
+    html += '<button type="button" class="row custom-entry' + (state.recOpen ? ' is-on' : '') + '" data-custom="1">' +
+      '<span class="t">＋ 自定义录制</span>' +
+      '<span class="m">列表没有的键，录一条接到 01</span></button>';
+
+    $('list').innerHTML = html;
+    $('countLabel').textContent = '内置 ' + BUILTIN.length + ' · 自定 ' + state.customs.length;
+  }
+
+  function renderRec() {
+    $('rec').classList.toggle('show', state.recOpen);
+    if (state.recOpen) updateRec();
+  }
+
+  function renderEdit() {
+    $('editBar').classList.toggle('show', state.editing);
+    $('btnEdit').style.visibility = state.editing ? 'hidden' : 'visible';
+  }
+
+  function render() {
+    renderEdit();
+    renderFilters();
+    renderList();
+    renderRec();
+    var it = byId(state.sel);
+    if (it) $('topChord').textContent = it.chord;
+  }
+
+  $('search').addEventListener('input', function () {
+    state.q = $('search').value || '';
+    renderList();
+  });
+
+  $('btnEdit').addEventListener('click', function () {
+    state.editing = true;
+    state.draft = state.common.slice();
+    state.filter = 'all';
+    state.q = '';
+    $('search').value = '';
+    state.recOpen = false;
+    render();
+  });
+  $('btnDone').addEventListener('click', function () {
+    state.common = state.draft.slice();
+    save();
+    state.editing = false;
+    state.draft = null;
+    state.filter = 'common';
+    render();
+  });
+  $('btnCancel').addEventListener('click', function () {
+    state.editing = false;
+    state.draft = null;
+    state.filter = 'common';
+    render();
+  });
+  $('btnReset').addEventListener('click', function () {
+    state.draft = SEED.slice();
+    renderList();
+  });
+
+  $('chordBox').addEventListener('click', function () {
+    state.recording = true;
+    state.recChord = '';
+    updateRec();
+    $('chordBox').focus();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (!state.recOpen || !state.recording) return;
+    e.preventDefault();
+    var ch = chordFromEvent(e);
+    if (!ch) return;
+    state.recChord = ch;
+    state.recording = false;
+    updateRec();
+  });
+
+  $('recName').addEventListener('input', updateRec);
+
+  $('btnSave').addEventListener('click', function () {
+    var name = $('recName').value.trim();
+    if (!name || !state.recChord) return;
+    if (state.editCustomId) {
+      state.customs = state.customs.map(function (x) {
+        if (x.id !== state.editCustomId) return x;
+        return Object.assign({}, x, { title: name, chord: state.recChord, q: name });
+      });
+      select(state.editCustomId);
+    } else {
+      var item = {
+        id: 'custom_' + Date.now(),
+        title: name,
+        when: '我录的快捷键',
+        chord: state.recChord,
+        tag: '我录的',
+        custom: true,
+        q: name
+      };
+      state.customs.unshift(item);
+      save();
+      state.filter = '我录的';
+      select(item.id);
+    }
+    save();
+    state.recOpen = false;
+    render();
+  });
+
+  $('btnRecCancel').addEventListener('click', function () {
+    state.recOpen = false;
+    if (!state.sel) state.sel = state.common[0] || 'sidepanel';
+    render();
+  });
+
+  $('btnDel').addEventListener('click', function () {
+    var id = state.editCustomId;
+    if (!id) return;
+    state.customs = state.customs.filter(function (x) { return x.id !== id; });
+    state.common = state.common.filter(function (x) { return x !== id; });
+    if (state.draft) state.draft = state.draft.filter(function (x) { return x !== id; });
+    save();
+    state.recOpen = false;
+    state.editCustomId = null;
+    state.sel = state.common[0] || 'sidepanel';
+    render();
+  });
+
+  document.addEventListener('click', function (e) {
+    var f = e.target.closest('[data-filter]');
+    if (f) {
+      state.filter = f.getAttribute('data-filter');
+      state.recOpen = false;
+      renderFilters();
+      renderList();
+      renderRec();
+      return;
+    }
+    var star = e.target.closest('[data-star]');
+    if (star) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleCommon(star.getAttribute('data-star'));
+      return;
+    }
+    if (e.target.closest('[data-custom]')) {
+      openRec(null);
+      return;
+    }
+    var sel = e.target.closest('[data-sel]');
+    if (sel) {
+      var id = sel.getAttribute('data-sel');
+      var it = byId(id);
+      if (it && it.custom && e.detail === 2) {
+        openRec(id);
+        return;
+      }
+      select(id);
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

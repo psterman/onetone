@@ -1501,6 +1501,23 @@ fn try_dispatch_agent_modifier_keyup(
             },
         )
     };
+    // RAlt (etc.) is observed but never swallowed — IME already saw the physical tap.
+    // startDictation would send the same chord again and toggle dictation off.
+    if matches!(
+        action_id.as_str(),
+        "startDictation" | "input.start"
+    ) {
+        let voice_key = {
+            let cfg = state.cfg.lock();
+            crate::voice_end_runtime::resolve_voice_input_target_key(&cfg)
+        };
+        if voice_key
+            .as_deref()
+            .is_some_and(|vk| crate::key_chord::chords_equivalent(vk, &chord))
+        {
+            crate::voice_end_runtime::arm_voice_key_passthrough(state.as_ref(), &chord);
+        }
+    }
     execute_agent_binding(
         state,
         window,

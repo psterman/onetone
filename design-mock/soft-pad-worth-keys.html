@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soft Pad 值得做的按键 · 分类定稿草案</title>
+<style>
+:root{
+  --bg:#e8eef5; --surface:#fff; --soft:#f4f7fb; --line:rgba(26,45,74,.1);
+  --on:#152238; --mute:#5a7086; --faint:#8b9aab;
+  --p:#2a9cc4; --p-ink:#1a7a9c; --p-soft:#e8f6fb; --outline:rgba(42,156,196,.32);
+  --ok:#1b7a45; --ok-soft:#e8f6ee;
+  --warn:#8a6a12; --warn-soft:#fff8e8;
+  --bad:#9b2c2c; --bad-soft:#fdecec;
+  --alt:#1e4d8c; --alt-soft:#e8f0fa;
+  --agent:#0f6b5c; --agent-soft:#e6f5f1;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;background:var(--bg);color:var(--on)}
+.page{max-width:960px;margin:0 auto;padding:16px 14px 64px}
+h1{margin:0 0 4px;font-size:18px;font-weight:800;letter-spacing:-.02em}
+.lede{margin:0 0 12px;font-size:13px;color:var(--mute);max-width:70ch}
+
+.verdict{
+  margin:0 0 14px;padding:12px 14px;border-radius:14px;background:var(--ok-soft);
+  border:1px solid rgba(27,122,69,.28);font-size:12.5px;color:var(--ok);line-height:1.55;
+}
+.verdict b{font-weight:800}
+
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.chip{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:6px 12px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.chip.is-on{border-color:var(--p);background:var(--p-soft);color:var(--p-ink)}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.legend span{
+  display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+  background:#fff;border:1px solid var(--line);font-size:11px;font-weight:700;color:var(--mute);
+}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.ship{background:var(--ok)}
+.dot.soon{background:var(--p)}
+.dot.more{background:#c47a12}
+.dot.voice{background:var(--alt)}
+.dot.no{background:var(--bad)}
+
+.sec{
+  margin:16px 0 8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+}
+.sec h2{margin:0;font-size:14px;font-weight:800}
+.sec p{margin:0;font-size:12px;color:var(--mute)}
+
+.grid{display:grid;gap:8px}
+.card{
+  border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden;
+  box-shadow:0 6px 16px rgba(26,45,74,.05);
+}
+.card.no{opacity:.92;border-style:dashed;border-color:rgba(155,44,44,.35)}
+.hd{
+  display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;
+  padding:11px 13px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fbfdff,#f4f7fb);
+}
+.hd .title{font-size:14px;font-weight:800}
+.hd .want{font-size:12px;color:var(--mute);margin-top:2px}
+.hd .want i{font-style:normal;color:var(--agent);font-weight:750}
+.pills{display:flex;flex-wrap:wrap;gap:5px}
+.pill{
+  padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:750;
+}
+.pill.ship{background:var(--ok-soft);color:var(--ok)}
+.pill.soon{background:var(--p-soft);color:var(--p-ink)}
+.pill.more{background:var(--warn-soft);color:var(--warn)}
+.pill.voice{background:var(--alt-soft);color:var(--alt)}
+.pill.no{background:var(--bad-soft);color:var(--bad)}
+.pill.agent{background:var(--agent-soft);color:var(--agent)}
+.pill.native{background:var(--p-soft);color:var(--p-ink)}
+
+.bd{padding:11px 13px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:700px){.bd{grid-template-columns:1fr}}
+.cell{
+  padding:8px 10px;border-radius:10px;background:var(--soft);border:1px solid var(--line);font-size:12px;
+}
+.cell .k{font-size:10px;font-weight:800;color:var(--faint);letter-spacing:.04em;margin-bottom:3px}
+.cell .v{font-weight:650;color:var(--on)}
+.cell code{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--p-ink)}
+.why{
+  grid-column:1/-1;padding:9px 10px;border-radius:10px;background:#fff;border:1px solid var(--line);
+  font-size:12px;color:var(--mute);
+}
+.why b{color:var(--on)}
+
+.pad-sketch{
+  margin-top:18px;padding:14px;border-radius:14px;background:#fff;border:1px solid var(--line);
+}
+.pad-sketch h2{margin:0 0 6px;font-size:14px;font-weight:800}
+.pad-sketch .sub{margin:0 0 12px;font-size:12px;color:var(--mute)}
+.zones{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media (max-width:700px){.zones{grid-template-columns:1fr}}
+.zone{padding:11px;border-radius:12px;border:1px solid var(--line);background:var(--soft)}
+.zone.core{background:var(--ok-soft);border-color:rgba(27,122,69,.28)}
+.zone.mode{background:var(--p-soft);border-color:var(--outline)}
+.zone h3{margin:0 0 6px;font-size:12.5px;font-weight:800}
+.zone ul{margin:0;padding-left:1.15em;font-size:12px;color:var(--mute)}
+.zone li{margin:3px 0}
+
+.foot{margin-top:14px;font-size:11.5px;color:var(--faint);line-height:1.5}
+.foot a{color:var(--p-ink)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Soft Pad 值得做的按键命令</h1>
+  <p class="lede">综合三份输入：①「我想…」场景 ② Codex Micro 出厂键 ③ 发出后常见鼠标/键盘干预。只收录<strong>常见 + 可一键（或固定口令）+ 小白点得懂</strong>的项；缺口与不做的单独标出。</p>
+
+  <div class="verdict">
+    <b>定稿口径：</b>虚拟键盘主推 <b>Agent 操控环</b>（开口→交给 AI→失控干预→审改动→换方式）。应用自带键进「更多」。Micro 的 Fast / 六会话槽 / 旋钮模式 Cursor 做不到就标不做。接受 diff 值得做但需补 Soft Pad 白名单。
+  </div>
+
+  <div class="legend">
+    <span><i class="dot ship"></i>出厂钉死</span>
+    <span><i class="dot soon"></i>第二周 / 待补白名单</span>
+    <span><i class="dot more"></i>更多可绑</span>
+    <span><i class="dot voice"></i>口头指令（不进一键塞话）</span>
+    <span><i class="dot no"></i>不做 / 缺口说明</span>
+  </div>
+
+  <div class="filters" id="filters"></div>
+  <div id="list"></div>
+
+  <div class="pad-sketch">
+    <h2>落到键盘上的建议分区</h2>
+    <p class="sub">同一 Micro 拓扑；Cursor 只定出厂绑什么。</p>
+    <div class="zones">
+      <div class="zone core">
+        <h3>循环区 · 出厂</h3>
+        <ul>
+          <li>ENC：聚焦 Cursor</li>
+          <li>大键/0：开麦</li>
+          <li>Enter：发送</li>
+          <li>旁键：停住</li>
+          <li>旁键：新开一局（建议长按）</li>
+        </ul>
+      </div>
+      <div class="zone mode">
+        <h3>模式列 · 第二周</h3>
+        <ul>
+          <li>+：Plan</li>
+          <li>·：Agent</li>
+          <li>（待补）接受 / 全部接受 → 对齐 Micro Approve</li>
+        </ul>
+      </div>
+      <div class="zone">
+        <h3>迷你栏 / 口头</h3>
+        <ul>
+          <li>继续 · 总结改动 · 想检查（塞话通道）</li>
+          <li>与 Pad 同 slot 文案，不当 Soft Pad 一键塞话</li>
+        </ul>
+      </div>
+      <div class="zone">
+        <h3>更多 · 应用自带</h3>
+        <ul>
+          <li>侧边 Chat · 搜文件 · 命令菜单 · 侧栏 · Undo</li>
+          <li>行内编辑 / Tab 补全（偏手改，不进 Agent 环）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">
+    相关原型：
+    <a href="./cursor-want-scenes-presets.html">我想…场景</a> ·
+    <a href="./cursor-command-tags-proto.html">分类标签</a> ·
+    <a href="./codex-micro-cursor-flow-map.html">流程缺口</a> ·
+    <a href="./soft-pad-codex-micro-rethink.html">Micro 重思</a>
+  </p>
+</div>
+
+<script>
+(function () {
+  var FILTERS = [
+    { id: 'all', label: '全部值得做' },
+    { id: 'ship', label: '出厂钉死' },
+    { id: 'soon', label: '第二周/待补' },
+    { id: 'more', label: '更多' },
+    { id: 'voice', label: '口头指令' },
+    { id: 'no', label: '不做与缺口' }
+  ];
+
+  /**
+   * tier: ship | soon | more | voice | no
+   * cat: 想开口 | 交给AI | 失控干预 | 审改动 | 换方式 | 重来 | 找和看 | 不做
+   */
+  var ITEMS = [
+    {
+      cat: '想开口', tier: 'ship', lane: 'agent',
+      title: '聚焦 Cursor', want: '回到 Cursor 继续干',
+      slot: 'summonCodex', micro: 'ENC 按压 / 双击 AG 前置',
+      afterSend: '跨软件回来再干预', 
+      why: '没有聚焦，后面开麦/发送都会打到错误窗口。Micro 用 ENC/前置窗口；Cursor Soft Pad 必钉。'
+    },
+    {
+      cat: '想开口', tier: 'ship', lane: 'agent',
+      title: '开麦说话', want: '把需求说进输入框',
+      slot: 'pushToTalk', micro: 'ACT10 PTT',
+      afterSend: '补丁回合再开口',
+      why: '小白最高频提速点。OneTone 听写，不是 Cursor 自带麦。对齐 Micro 麦克风键。'
+    },
+    {
+      cat: '交给AI', tier: 'ship', lane: 'agent',
+      title: '发出去', want: '说完了交给 AI',
+      slot: 'stopOrSend', micro: 'ACT12 Send',
+      afterSend: '—（发出动作本身）',
+      why: '闭环必备。与 Micro Send、Codex Enter 同源语义。'
+    },
+    {
+      cat: '失控干预', tier: 'ship', lane: 'agent',
+      title: '停住', want: '它写歪了马上停',
+      slot: 'cancel', micro: 'ACT08 Decline≈（停生成）',
+      afterSend: '发出后最常见干预 #1',
+      why: '发出后第一急救键。注意：这是停生成，不是 Codex 拒审批的完整 Decline。'
+    },
+    {
+      cat: '失控干预', tier: 'voice', lane: 'agent',
+      title: '继续', want: '它停住了，让它接着干',
+      slot: 'continue（口头指令）', micro: '无命令键 · 偏塞话',
+      afterSend: '发出后最常见干预 #2',
+      why: '需求文档小白四卡之一。固定模板注入，走口头/迷你栏，不进 Soft Pad 一键塞话。'
+    },
+    {
+      cat: '重来', tier: 'ship', lane: 'agent',
+      title: '新开一局', want: '聊乱了重开',
+      slot: 'newThread', micro: '新建 · 勿冒充 ACT09 Fork',
+      afterSend: '上下文脏了甩开',
+      why: '小白焦虑释放键。建议长按防误触。语义是空白新局，不是 Fork。'
+    },
+    {
+      cat: '换方式', tier: 'soon', lane: 'agent',
+      title: '定计划', want: '先想清楚再改',
+      slot: 'plan', micro: '摇杆↑ Plan',
+      afterSend: '中途改工作方式',
+      why: '对齐 Micro Plan。Cursor 放 +/· 模式列，第二周再教，避免和小白环抢注意力。'
+    },
+    {
+      cat: '换方式', tier: 'soon', lane: 'agent',
+      title: '开工 Agent', want: '让它直接改代码',
+      slot: 'switchAgent', micro: 'Cursor 扩展（Micro 无默认）',
+      afterSend: '中途改工作方式',
+      why: 'Cursor vibe 刚需。与 Plan 成对，同属模式列。'
+    },
+    {
+      cat: '审改动', tier: 'soon', lane: 'agent',
+      title: '接受这一处', want: '这处改动可以，收下',
+      slot: 'acceptChanges', micro: 'ACT07 Approve≈',
+      afterSend: '发出后审 diff #1',
+      why: 'Micro Approve 在 Cursor 上的真对应。Keys 目录已有；值得补进 Soft Pad 白名单后出厂/第二周露出。'
+    },
+    {
+      cat: '审改动', tier: 'soon', lane: 'agent',
+      title: '全部接受', want: '整波都收下',
+      slot: 'acceptAllChanges', micro: 'Approve 变体',
+      afterSend: '发出后审 diff #2',
+      why: '与接受这一处同包。gate 关则灰掉，诚实不假装。'
+    },
+    {
+      cat: '审改动', tier: 'more', lane: 'agent',
+      title: '下一处 / 上一处', want: '跳着看 diff',
+      slot: 'nextChange · prevChange', micro: '无稳定官方键',
+      afterSend: '细读 diff',
+      why: '常见但 Cursor 上可能不稳（F7 lineage）。可绑「更多」，UI 须标注不可靠。'
+    },
+    {
+      cat: '找和看', tier: 'more', lane: 'native',
+      title: '打开侧边聊天', want: '拉开 Chat 面板',
+      slot: 'quickChat', micro: '偏聊天 Command',
+      afterSend: '找回复面板',
+      why: '应用自带 Ctrl+I。常用但不是循环核心，进更多。'
+    },
+    {
+      cat: '找和看', tier: 'more', lane: 'native',
+      title: '搜文件', want: '打开某个文件',
+      slot: 'quickSearch', micro: 'AG 搜索位',
+      afterSend: '对照代码',
+      why: 'Ctrl+P。背得住快捷键的人用键更快；Pad 给「偶尔找」的人。'
+    },
+    {
+      cat: '找和看', tier: 'more', lane: 'native',
+      title: '命令菜单', want: '搜一个 Cursor 命令',
+      slot: 'commandPalette', micro: '命令菜单键',
+      afterSend: '逃生舱',
+      why: 'Ctrl+Shift+P。万能兜底，不进出厂环，免占肌肉记忆。'
+    },
+    {
+      cat: '找和看', tier: 'more', lane: 'native',
+      title: '切换边栏 / 撤销', want: '腾地方 · 撤一步',
+      slot: 'toggleSidebar · undo', micro: '摇杆↓ · Undo 键帽',
+      afterSend: '收拾界面 / 手滑',
+      why: '对齐 Micro 摇杆侧栏与 Undo 键帽。可绑未出厂。'
+    },
+    {
+      cat: '失控干预', tier: 'voice', lane: 'agent',
+      title: '总结改动 / 想检查', want: '概括刚改了啥 · 想想怎么测',
+      slot: 'summarizeDiff · runChecks', micro: '无',
+      afterSend: '粗看结果',
+      why: '塞话模板，口头指令通道。不做 Soft Pad 一键。'
+    },
+    {
+      cat: '不做', tier: 'no', lane: 'agent',
+      title: 'Fast 模式', want: '让它答快点',
+      slot: '—', micro: 'ACT06 Fast',
+      afterSend: '—',
+      why: 'Cursor 无对等能力。不做假键。'
+    },
+    {
+      cat: '不做', tier: 'no', lane: 'agent',
+      title: '六会话 Agent 键', want: '在最近对话间跳',
+      slot: '—', micro: 'AG00–05',
+      afterSend: '切会话',
+      why: '依赖官方 thstatus。灯可 Hook 近似，点击切会话不做假。'
+    },
+    {
+      cat: '不做', tier: 'no', lane: 'agent',
+      title: 'Fork 带上下文新开', want: '从当前对话分叉',
+      slot: '—', micro: 'ACT09 Fork',
+      afterSend: '分叉再试',
+      why: 'Codex 桌面「在新任务中继续」常未分配；Cursor 无稳定槽。有和弦再补；勿用 newThread 冒充。'
+    },
+    {
+      cat: '不做', tier: 'no', lane: 'agent',
+      title: '点回复里的文件 / Run', want: '打开它提到的文件 · 跑它给的命令',
+      slot: '—', micro: '无',
+      afterSend: '鼠标高频但无法抽象一键',
+      why: '指哪打哪，Pad 无法通用一键。个案用「我录的键」；纠错用组合预设「纠错重说」。'
+    },
+    {
+      cat: '不做', tier: 'no', lane: 'agent',
+      title: '旋钮推理 / 滚聊天', want: '调推理强度 · 滚到最新',
+      slot: '—', micro: 'Dial 多模式',
+      afterSend: '读长回复',
+      why: 'Micro Dial 能力；Cursor Soft Pad 只保留 ENC 聚焦，不做假拨轮。'
+    }
+  ];
+
+  var TIER_LABEL = {
+    ship: '出厂钉死',
+    soon: '第二周/待补',
+    more: '更多可绑',
+    voice: '口头指令',
+    no: '不做/缺口'
+  };
+
+  var filter = 'all';
+
+  function paintFilters() {
+    var host = document.getElementById('filters');
+    host.innerHTML = '';
+    FILTERS.forEach(function (f) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (f.id === filter ? ' is-on' : '');
+      b.textContent = f.label;
+      b.addEventListener('click', function () { filter = f.id; paint(); });
+      host.appendChild(b);
+    });
+  }
+
+  function paint() {
+    paintFilters();
+    var host = document.getElementById('list');
+    host.innerHTML = '';
+    var rows = ITEMS.filter(function (x) {
+      return filter === 'all' ? x.tier !== 'no' : x.tier === filter;
+    });
+    // when filter all, also show no at end via separate - user may want no in "不做" tab only
+    if (filter === 'all') {
+      rows = ITEMS.filter(function (x) { return x.tier !== 'no'; });
+    }
+
+    var order = ['想开口', '交给AI', '失控干预', '重来', '换方式', '审改动', '找和看', '不做'];
+    var cats = [];
+    rows.forEach(function (x) {
+      if (cats.indexOf(x.cat) < 0) cats.push(x.cat);
+    });
+    cats.sort(function (a, b) {
+      return order.indexOf(a) - order.indexOf(b);
+    });
+
+    cats.forEach(function (cat) {
+      var sec = document.createElement('div');
+      sec.className = 'sec';
+      var tip = {
+        '想开口': '发出前 / 再开口',
+        '交给AI': '闭环发送',
+        '失控干预': '发出后急救',
+        '重来': '上下文重置',
+        '换方式': 'Plan / Agent',
+        '审改动': '发出后收 diff',
+        '找和看': '应用自带 · 更多',
+        '不做': '诚实边界'
+      }[cat] || '';
+      sec.innerHTML = '<h2>' + cat + '</h2><p>' + tip + '</p>';
+      host.appendChild(sec);
+
+      var grid = document.createElement('div');
+      grid.className = 'grid';
+      rows.filter(function (x) { return x.cat === cat; }).forEach(function (item) {
+        var card = document.createElement('article');
+        card.className = 'card' + (item.tier === 'no' ? ' no' : '');
+        card.innerHTML =
+          '<div class="hd">' +
+            '<div><div class="title">' + item.title + '</div>' +
+            '<div class="want"><i>我想</i>·' + item.want + '</div></div>' +
+            '<div class="pills">' +
+              '<span class="pill ' + item.tier + '">' + TIER_LABEL[item.tier] + '</span>' +
+              '<span class="pill ' + (item.lane === 'agent' ? 'agent' : 'native') + '">' +
+                (item.lane === 'agent' ? 'Agent 操控' : '应用自带键') +
+              '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="bd">' +
+            '<div class="cell"><div class="k">CURSOR SLOT</div><div class="v"><code>' + item.slot + '</code></div></div>' +
+            '<div class="cell"><div class="k">MICRO 对齐</div><div class="v">' + item.micro + '</div></div>' +
+            '<div class="cell"><div class="k">发出后场景</div><div class="v">' + item.afterSend + '</div></div>' +
+            '<div class="cell"><div class="k">通道</div><div class="v">' + (item.lane === 'agent' ? 'Soft Pad / Agent' : '软件自带 / 更多') + '</div></div>' +
+            '<div class="why"><b>为什么值得进键盘：</b>' + item.why + '</div>' +
+          '</div>';
+        grid.appendChild(card);
+      });
+      host.appendChild(grid);
+    });
+  }
+
+  paint();
+})();
+</script>
+</body>
+</html>

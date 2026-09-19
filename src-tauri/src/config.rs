@@ -1255,8 +1255,11 @@ pub struct MappingEntry {
     #[serde(rename = "appTargetId", default)]
     pub app_target_id: String,
     /// When true (app-scene only), wrong-foreground wake may focus/launch target then dictate.
-    /// Default false — refuse wake with toast when FG ≠ target (Q15 / Q22).
-    #[serde(rename = "voiceAllowBringUpTarget", default)]
+    /// Default true — say the phrase, bring the target app forward (user can turn off).
+    #[serde(
+        rename = "voiceAllowBringUpTarget",
+        default = "default_voice_allow_bring_up_target"
+    )]
     pub voice_allow_bring_up_target: bool,
     #[serde(rename = "appBehaviorRules", default)]
     pub app_behavior_rules: Vec<AppBehaviorRule>,
@@ -1598,6 +1601,9 @@ pub struct CodexMicroPadConfig {
     /// Soft Pad visual skin: `"default"` | `"glass-light"` | `"hybrid-pro"` | `"vibe-light"` | `"vibe-dark"`.
     #[serde(default = "default_codex_micro_skin")]
     pub skin: String,
+    /// Whole Soft Pad float opacity as percent (40–100). Applied to overlay / preview chrome.
+    #[serde(default = "default_screen_opacity")]
+    pub screen_opacity: u8,
     #[serde(default)]
     pub keys: Vec<CodexMicroPadKeyRoute>,
     /// Cursor Soft Pad「我的常见」slot ids. `None` = use FE defaults; `Some([])` = user cleared.
@@ -1655,6 +1661,7 @@ impl Default for CodexMicroPadConfig {
             mini_usage_pill_hide_empty: true,
             mini_chrome: MiniChromeConfig::default(),
             skin: default_codex_micro_skin(),
+            screen_opacity: default_screen_opacity(),
             keys: Vec::new(),
             common_slot_ids: None,
             custom_shortcuts: Vec::new(),
@@ -1772,6 +1779,10 @@ fn default_codex_micro_skin() -> String {
     "default".into()
 }
 
+fn default_screen_opacity() -> u8 {
+    82
+}
+
 /// Physical numpad key -> Micro cell -> agent slot (output chord lives on slot binding).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -1879,6 +1890,10 @@ fn default_long_press_ms() -> u32 {
 
 fn default_double_click_ms() -> u32 {
     400
+}
+
+fn default_voice_allow_bring_up_target() -> bool {
+    true
 }
 
 pub const SCHEME_CYCLE_MARKER: &str = "__scheme_cycle__";
@@ -2582,6 +2597,9 @@ pub struct VoiceEndConfig {
     /// Shared InputFocusAim strategy before prompt inject: auto|none|probe|hotkey|smart|click.
     #[serde(default = "default_voice_end_input_aim_strategy")]
     pub input_aim_strategy: String,
+    /// Bumps when product default for inputAimStrategy changes; FE remaps old installs once.
+    #[serde(default)]
+    pub aim_default_rev: u32,
     /// Per-app composer click ratios from scheme-B calibrate (overrides profile anchor).
     #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
     pub composer_anchors: std::collections::HashMap<String, ComposerAnchor>,
@@ -2590,17 +2608,173 @@ pub struct VoiceEndConfig {
 /// Relative click inside a target window's client area (0..1).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct ComposerAnchor {
+pub struct ComposerPoint {
     pub x: f32,
     pub y: f32,
 }
 
-impl ComposerAnchor {
+impl ComposerPoint {
     pub fn clamped(self) -> Self {
         Self {
             x: self.x.clamp(0.02, 0.98),
             y: self.y.clamp(0.02, 0.98),
         }
+    }
+}
+
+/// Up to two remembered composer spots per app; `active` picks which click path uses.
+/// Legacy configs stored a flat `{x,y}` — migrated on deserialize.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComposerAnchor {
+    pub slots: Vec<Option<ComposerPoint>>,
+    pub active: usize,
+}
+
+impl Default for ComposerAnchor {
+    fn default() -> Self {
+        Self {
+            slots: vec![None, None],
+            active: 0,
+        }
+    }
+}
+
+impl ComposerAnchor {
+    pub const MAX_SLOTS: usize = 2;
+
+    pub fn from_legacy_xy(x: f32, y: f32) -> Self {
+        Self {
+            slots: vec![Some(ComposerPoint { x, y }.clamped()), None],
+            active: 0,
+        }
+    }
+
+    pub fn normalize(&mut self) {
+        while self.slots.len() < Self::MAX_SLOTS {
+            self.slots.push(None);
+        }
+        if self.slots.len() > Self::MAX_SLOTS {
+            self.slots.truncate(Self::MAX_SLOTS);
+        }
+        for slot in &mut self.slots {
+            if let Some(p) = slot.as_mut() {
+                *p = p.clamped();
+            }
+        }
+        if self.active >= Self::MAX_SLOTS {
+            self.active = 0;
+        }
+    }
+
+    pub fn into_normalized(mut self) -> Self {
+        self.normalize();
+        self
+    }
+
+    pub fn active_point(&self) -> Option<ComposerPoint> {
+        self.slots.get(self.active).and_then(|s| *s)
+    }
+
+    pub fn set_active(&mut self, slot: usize) {
+        if slot < Self::MAX_SLOTS {
+            self.active = slot;
+        }
+    }
+
+    pub fn set_slot(&mut self, slot: usize, point: ComposerPoint) {
+        self.normalize();
+        if slot < Self::MAX_SLOTS {
+            self.slots[slot] = Some(point.clamped());
+            self.active = slot;
+        }
+    }
+
+    pub fn clear_slot(&mut self, slot: usize) {
+        self.normalize();
+        if slot < Self::MAX_SLOTS {
+            self.slots[slot] = None;
+        }
+        if self.active_point().is_none() {
+            if let Some((i, _)) = self
+                .slots
+                .iter()
+                .enumerate()
+                .find(|(_, s)| s.is_some())
+            {
+                self.active = i;
+            } else {
+                self.active = 0;
+            }
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.slots.iter().all(|s| s.is_none())
+    }
+
+    pub fn any_set(&self) -> bool {
+        self.slots.iter().any(|s| s.is_some())
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ComposerAnchorDe {
+    x: Option<f32>,
+    y: Option<f32>,
+    slots: Option<Vec<Option<ComposerPoint>>>,
+    active: Option<usize>,
+}
+
+impl From<ComposerAnchorDe> for ComposerAnchor {
+    fn from(d: ComposerAnchorDe) -> Self {
+        if let Some(slots) = d.slots {
+            return Self {
+                slots,
+                active: d.active.unwrap_or(0),
+            }
+            .into_normalized();
+        }
+        if let (Some(x), Some(y)) = (d.x, d.y) {
+            return Self::from_legacy_xy(x, y);
+        }
+        Self::default()
+    }
+}
+
+impl<'de> Deserialize<'de> for ComposerAnchor {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        ComposerAnchorDe::deserialize(deserializer).map(Into::into)
+    }
+}
+
+#[cfg(test)]
+mod composer_anchor_tests {
+    use super::*;
+
+    #[test]
+    fn legacy_xy_migrates_to_slot0() {
+        let raw = r#"{"x":0.5,"y":0.9}"#;
+        let a: ComposerAnchor = serde_json::from_str(raw).unwrap();
+        assert_eq!(a.active, 0);
+        assert!(a.slots[0].is_some());
+        assert!(a.slots[1].is_none());
+        let p = a.active_point().unwrap();
+        assert!((p.x - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn dual_slots_roundtrip() {
+        let mut a = ComposerAnchor::default();
+        a.set_slot(0, ComposerPoint { x: 0.4, y: 0.8 });
+        a.set_slot(1, ComposerPoint { x: 0.7, y: 0.5 });
+        a.set_active(1);
+        let s = serde_json::to_string(&a).unwrap();
+        let b: ComposerAnchor = serde_json::from_str(&s).unwrap();
+        assert_eq!(b.active, 1);
+        assert!(b.slots[0].is_some() && b.slots[1].is_some());
+        assert!((b.active_point().unwrap().x - 0.7).abs() < 0.001);
     }
 }
 
@@ -2662,7 +2836,7 @@ fn default_voice_end_intent() -> String {
 }
 
 fn default_voice_end_input_aim_strategy() -> String {
-    "auto".into()
+    "none".into()
 }
 
 fn default_voice_end_target_key() -> String {
@@ -2790,6 +2964,7 @@ impl Default for VoiceEndConfig {
             intent: default_voice_end_intent(),
             prompt_inject_text: String::new(),
             input_aim_strategy: default_voice_end_input_aim_strategy(),
+            aim_default_rev: 0,
             composer_anchors: std::collections::HashMap::new(),
         }
     }

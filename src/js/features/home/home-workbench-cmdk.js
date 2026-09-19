@@ -23,7 +23,9 @@
       {id:'habit', labelKey:'homeWbQuickNewHabit', hintKey:'homeWbCmdkHintSettings', panel:'habits', habitWizard:true},
       {id:'model', labelKey:'homeWbQuickSwitchModel', hintKey:'homeWbCmdkHintSettings', panel:'voiceWake'},
       {id:'triggers', labelKey:'homeWbNavTriggers', hintKey:'homeWbCmdkHintSettings', panel:'keys'},
-      {id:'softPad', labelKey:'homeWbNavSoftPad', hintKey:'homeWbCmdkHintSettings', panel:'softPad'},
+      {id:'softPad', labelKey:'homeWbNavSoftPad', hintKey:'homeWbCmdkHintSettings', panel:'softPad', focus:'softPadLayout'},
+      {id:'agent', labelKey:'homeWbNavAgent', hintKey:'homeWbCmdkHintSettings', panel:'agent'},
+      {id:'agentData', labelKey:'homeWbNavAgentData', hintKey:'homeWbCmdkHintSettings', panel:'agentData'},
       {id:'tray', labelKey:'homeWbNavTray', hintKey:'homeWbCmdkHintSettings', panel:'tray'},
       {id:'schemes', labelKey:'homeWbNavSchemes', hintKey:'homeWbCmdkHintSettings', panel:'habits'},
       {id:'sounds', labelKey:'homeWbNavSounds', hintKey:'homeWbCmdkHintSettings', panel:'sounds'},
@@ -113,6 +115,7 @@
       var opts={panel:item.panel};
       if(item.debugMode) opts.debugMode=item.debugMode;
       if(item.habitWizard) opts.habitWizard=true;
+      if(item.focus) opts.focus=item.focus;
       global.OneToneSettingsDrawer.open(opts);
     }
   }

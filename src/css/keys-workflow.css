@@ -6878,13 +6878,14 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 
 
 
-/* Keys B — scene actions light panel (page-level aside / drawer)
+/* Keys B + Voice — scene actions light panel (page-level aside / drawer)
    Default window is 760px (tauri.conf); do NOT collapse the dock at mid widths.
-   Drive layout off #keysSceneActionsPanel visibility so we don't depend only on
+   Drive layout off panel visibility so we don't depend only on
    has-scene-panel class (can drift) or direct-child :has() quirks. */
-#settingsPanelKeys .keys-page-body.has-scene-panel,
-#settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
-#settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+#settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body,
+#settingsPanelVoiceWake:has(#voiceSceneActionsPanel:not([hidden])) .keys-page-body {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) minmax(200px, 248px) !important;
   align-items: stretch !important;
@@ -6892,15 +6893,20 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   min-height: 0;
 }
 
-#settingsPanelKeys .keys-page-body.has-scene-panel > .keys-page-aside.keys-scene-actions,
-#settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-aside.keys-scene-actions,
-#settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) #keysSceneActionsPanel {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel > .keys-page-aside.keys-scene-actions,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-aside.keys-scene-actions,
+#settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) #keysSceneActionsPanel,
+#settingsPanelVoiceWake:has(#voiceSceneActionsPanel:not([hidden])) #voiceSceneActionsPanel {
   width: 100%;
   max-width: none;
   justify-self: stretch;
   align-self: stretch !important;
-  position: relative;
-  top: auto;
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  inset: auto !important;
   max-height: none;
   height: auto;
   min-height: 100%;
@@ -6911,30 +6917,35 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   /* Never fall under main as a full-width block */
   grid-column: 2 !important;
   grid-row: 1 !important;
+  float: none !important;
 }
 
-#settingsPanelKeys .keys-page-body.has-scene-panel > .keys-page-main,
-#settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-main,
-#settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body > .keys-page-main {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel > .keys-page-main,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])) > .keys-page-main,
+#settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body > .keys-page-main,
+#settingsPanelVoiceWake:has(#voiceSceneActionsPanel:not([hidden])) .keys-page-body > .keys-page-main {
   grid-column: 1 !important;
   grid-row: 1 !important;
   min-width: 0;
 }
 
-/* app.css collapses .keys-page-body under 1040px — keep scene dock beside at Keys width. */
+/* app.css collapses .keys-page-body under 1040px — keep scene dock beside. */
 @media (max-width: 1040px) {
-  #settingsPanelKeys .keys-page-body.has-scene-panel,
-  #settingsPanelKeys .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
-  #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body {
+  :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body.has-scene-panel,
+  :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-body:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+  #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body,
+  #settingsPanelVoiceWake:has(#voiceSceneActionsPanel:not([hidden])) .keys-page-body {
     grid-template-columns: minmax(0, 1fr) minmax(200px, 248px) !important;
   }
-  #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) #keysSceneActionsPanel {
-    position: relative;
+  #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) #keysSceneActionsPanel,
+  #settingsPanelVoiceWake:has(#voiceSceneActionsPanel:not([hidden])) #voiceSceneActionsPanel {
+    position: relative !important;
   }
 }
 
-/* Scene actions: scannable rows; foot sits under list (no tall empty stretch) */
-#settingsPanelKeys .keys-scene-actions {
+/* Scene actions: scannable rows; foot sits under list (no tall empty stretch).
+   Voice reuses the same chrome as Keys so the right rail matches. */
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions {
   display: grid;
   grid-template-rows: auto auto auto;
   align-content: start;
@@ -6951,38 +6962,37 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   box-sizing: border-box;
   overflow-x: hidden;
 }
-#settingsPanelKeys .keys-scene-actions__head {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__head {
   padding: 14px 12px 10px;
   border-bottom: 1px solid var(--keys-line, #d5dee8);
   background: var(--keys-aside, #f8fafc);
 }
-#settingsPanelKeys .keys-scene-actions__app-name {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__app-name {
   font-size: 11px;
   font-weight: 650;
   color: var(--on-surface-muted);
 }
-#settingsPanelKeys .keys-scene-actions__title {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__title {
   font-size: 14px;
   font-weight: 750;
   letter-spacing: -0.02em;
 }
-#settingsPanelKeys .keys-scene-actions__grp-h {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__grp-h {
   display: none;
 }
-#settingsPanelKeys .keys-scene-actions__trail {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__trail {
   display: none;
 }
-#settingsPanelVoiceWake .keys-scene-actions__trail--foot,
-#settingsPanelKeys .keys-scene-actions__trail--foot {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__trail--foot {
   display: flex;
 }
-#settingsPanelKeys .keys-scene-actions__dir {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir {
   gap: 3px;
   padding: 8px;
   max-height: none;
   overflow: visible;
 }
-#settingsPanelKeys .keys-scene-actions__dir-item {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-item {
   display: grid;
   grid-template-columns: 3px 16px minmax(0, 1fr) auto auto;
   align-items: center;
@@ -6994,15 +7004,15 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   border-radius: 10px;
   overflow: visible;
 }
-#settingsPanelKeys .keys-scene-actions__drag {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__drag {
   grid-column: 2;
   grid-row: 1 / span 2;
   width: 16px;
 }
-#settingsPanelKeys .keys-scene-actions__dir-main {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-main {
   display: contents;
 }
-#settingsPanelKeys .keys-scene-actions__dir-item::before {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-item::before {
   content: "";
   grid-column: 1;
   grid-row: 1 / span 2;
@@ -7011,21 +7021,21 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   border-radius: 2px;
   background: transparent;
 }
-#settingsPanelKeys .keys-scene-actions__dir-item:hover {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-item:hover {
   background: rgba(42, 156, 196, 0.06);
   border-color: transparent;
 }
-#settingsPanelKeys .keys-scene-actions__dir-item.is-active,
-#settingsPanelKeys .keys-scene-actions__dir-item:focus-within {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-item.is-active,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-item:focus-within {
   background: var(--keys-paper, #fff);
   border-color: var(--keys-cyan-bd, #9bc6da);
   outline: none;
 }
-#settingsPanelKeys .keys-scene-actions__dir-item.is-active::before,
-#settingsPanelKeys .keys-scene-actions__dir-item:focus-within::before {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-item.is-active::before,
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-item:focus-within::before {
   background: var(--primary, #2a9cc4);
 }
-#settingsPanelKeys .keys-scene-actions__dir-del {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-del {
   grid-column: 5;
   grid-row: 1 / span 2;
   width: 26px;
@@ -7035,15 +7045,15 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   border-radius: 8px;
   opacity: 0.75;
 }
-#settingsPanelKeys .keys-scene-actions__body {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__body {
   display: contents;
 }
-#settingsPanelKeys .keys-scene-actions__n {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__n {
   grid-column: 3;
   font-size: 13px;
   font-weight: 650;
 }
-#settingsPanelKeys .keys-scene-actions__dot {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dot {
   grid-column: 4;
   grid-row: 1;
   width: 7px;
@@ -7053,10 +7063,10 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   background: #15803d;
   justify-self: end;
 }
-#settingsPanelKeys .keys-scene-actions__dot.is-off {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dot.is-off {
   background: #8494a6;
 }
-#settingsPanelKeys .keys-scene-actions__s {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__s {
   grid-column: 3;
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 11px;
@@ -7066,15 +7076,15 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#settingsPanelKeys .keys-scene-actions__dir-item.is-active .keys-scene-actions__s {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__dir-item.is-active .keys-scene-actions__s {
   color: var(--primary-strong, #0f5f7a);
 }
-#settingsPanelKeys .keys-scene-actions__foot {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__foot {
   padding: 4px 8px 10px;
   border-top: none;
   background: transparent;
 }
-#settingsPanelKeys .keys-scene-actions__add {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__add {
   width: 100%;
   margin: 0;
   min-height: 36px;
@@ -7087,7 +7097,7 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   font-weight: 650;
   cursor: pointer;
 }
-#settingsPanelKeys .keys-scene-actions__add:hover {
+:is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-scene-actions__add:hover {
   border-color: var(--keys-cyan-bd, #9bc6da);
   background: rgba(42, 156, 196, 0.06);
   color: var(--primary-strong, #0f5f7a);
@@ -7259,14 +7269,12 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   cursor: default;
 }
 
-#settingsPanelVoiceWake .keys-scene-actions__dir-item {
+/* Wake rows need a flex stack; plain rows keep Keys grid chrome above. */
+#settingsPanelVoiceWake .keys-scene-actions__dir-item.has-wake {
   display: flex;
   align-items: flex-start;
   gap: 2px;
   padding-right: 2px;
-}
-#settingsPanelVoiceWake .keys-scene-actions__dir-item.has-wake {
-  align-items: flex-start;
 }
 #settingsPanelVoiceWake .keys-scene-actions__dir-stack {
   flex: 1;
@@ -7277,6 +7285,15 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
 }
 #settingsPanelVoiceWake .keys-scene-actions__dir-stack .keys-scene-actions__dir-main {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+#settingsPanelVoiceWake .keys-scene-actions__dir-item.has-wake .keys-scene-actions__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 #settingsPanelVoiceWake .keys-scene-actions__wake {
   display: flex;
@@ -7408,17 +7425,17 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-#settingsPanelVoiceWake .keys-scene-actions__drag {
+#settingsPanelVoiceWake .keys-scene-actions__dir-item.has-wake .keys-scene-actions__drag {
   opacity: 0.7;
   margin-top: 10px;
 }
-#settingsPanelVoiceWake .keys-scene-actions__dir-del {
+#settingsPanelVoiceWake .keys-scene-actions__dir-item.has-wake .keys-scene-actions__dir-del {
   opacity: 0.85;
   width: 30px;
   font-size: 18px;
   margin-top: 4px;
 }
-#settingsPanelVoiceWake .keys-scene-actions__dir-del:hover {
+#settingsPanelVoiceWake .keys-scene-actions__dir-item.has-wake .keys-scene-actions__dir-del:hover {
   opacity: 1;
 }
 .keys-scene-actions__body {

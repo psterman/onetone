@@ -73,7 +73,11 @@ body {
 }
 
 .wrap:active { cursor: grabbing; }
-.wrap.is-visible { opacity: 1; transform: none; pointer-events: auto; }
+.wrap.is-visible {
+  opacity: var(--micro-hw-screen-opacity, 0.82);
+  transform: none;
+  pointer-events: auto;
+}
 
 /* Decorative top screw dots removed — do not reintroduce via ::before/::after. */
 .wrap::before,

@@ -8,6 +8,7 @@
   var lastMvpInitKey='';
   var lastMvpInitAt=0;
   var pendingMvpInitMsg=null;
+  var pendingAimDefaultPersist=false;
   /** Serialize cmd_save so a stale in-flight payload cannot wipe newer app scenarios. */
   var saveInFlight=null;
   var saveNeedsRerun=false;
@@ -758,6 +759,31 @@
       if(!cfg.voiceEnd.inputAimStrategy&&cfg.voiceEnd.input_aim_strategy){
         cfg.voiceEnd.inputAimStrategy=cfg.voiceEnd.input_aim_strategy;
       }
+      if(cfg.voiceEnd.aimDefaultRev==null&&cfg.voiceEnd.aim_default_rev!=null){
+        cfg.voiceEnd.aimDefaultRev=cfg.voiceEnd.aim_default_rev;
+      }
+      /* Rev1: product default flipped auto → none. Remap once so old installs
+         stop opening 口头指令 on「自动对准」(and its cal strip).
+         Flag in localStorage so Rust round-trip cannot erase the migration.
+         Heal: if localStorage already says migrated but backend still lacks
+         aimDefaultRev (incomplete earlier migrate), force none + persist. */
+      var aimRev=0;
+      try{ aimRev=Number(global.localStorage&&global.localStorage.getItem('otAimDefaultRev')||cfg.voiceEnd.aimDefaultRev||0)|0; }catch(_r){ aimRev=Number(cfg.voiceEnd.aimDefaultRev||0)|0; }
+      var backendAimRev=Number(cfg.voiceEnd.aimDefaultRev||0)|0;
+      if(aimRev<1||backendAimRev<1){
+        var curAim=String(cfg.voiceEnd.inputAimStrategy||cfg.voiceEnd.input_aim_strategy||'').trim().toLowerCase();
+        var remapped=false;
+        if(!curAim||curAim==='auto'){
+          cfg.voiceEnd.inputAimStrategy='none';
+          cfg.voiceEnd.input_aim_strategy='none';
+          remapped=true;
+        }
+        cfg.voiceEnd.aimDefaultRev=1;
+        try{ if(global.localStorage) global.localStorage.setItem('otAimDefaultRev','1'); }catch(_w){}
+        /* Only write when strategy changed — avoids save-loop if an older
+           Rust binary still strips aimDefaultRev on round-trip. */
+        if(remapped) pendingAimDefaultPersist=true;
+      }
       if(cfg.voiceEnd.promptInjectText==null&&cfg.voiceEnd.prompt_inject_text!=null){
         cfg.voiceEnd.promptInjectText=cfg.voiceEnd.prompt_inject_text;
       }
@@ -964,7 +990,7 @@
       voiceSapi:{enabled:false,phrases:pack?pack.voiceSapiPhrases.slice():['开始输入','开始听写','开启输入','开始说话'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,minConfidence:0.35},
       voiceVosk:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:pack?pack.voskModelPath:'resources/vosk/vosk-model-small-cn-0.22',modelPreset:pack?pack.voskModelPreset:'cn-light'},
       voiceKws:{enabled:false,phrases:pack?pack.voiceVoskPhrases.slice():['开始输入','开始听写','打开听写','语音输入','开启输入'],targetKey:pack?pack.voiceTargetKey:'RAlt',cooldownMs:2000,modelPath:'resources/kws/sherpa-kws-zh-small',modelPreset:'cn-light'},
-      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','就这样','停止听写'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation',"that's it",'stop dictation'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了','撤掉'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind','forget it'],sendPhrasesZh:['发送','发出去','提交'],sendPhrasesEn:['send it','send','submit'],sendMode:'confirm',commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt',intent:'ime',promptInjectText:'',inputAimStrategy:'auto',composerAnchors:{}},
+      voiceEnd:{enabled:false,phrasesZh:pack?pack.voiceEndPhrasesZh.slice():['结束输入','就这样','停止听写'],phrasesEn:pack?pack.voiceEndPhrasesEn.slice():['end dictation',"that's it",'stop dictation'],cancelPhrasesZh:pack?pack.voiceCancelPhrasesZh.slice():['取消输入','不要了','撤掉'],cancelPhrasesEn:pack?pack.voiceCancelPhrasesEn.slice():['cancel input','never mind','forget it'],sendPhrasesZh:['发送','发出去','提交'],sendPhrasesEn:['send it','send','submit'],sendMode:'confirm',commitDelayMs:4000,commitKey:'Enter',dictationTimeoutMs:120000,autoSendEnabled:false,targetKey:pack?pack.voiceTargetKey:'RAlt',intent:'ime',promptInjectText:'',inputAimStrategy:'none',aimDefaultRev:1,composerAnchors:{}},
       voiceWakeAcousticCommands:[]
     };
   }
@@ -1422,7 +1448,8 @@
           targetKey:String(cfg.targetKey||cfg.target_key||'RAlt').trim()||'RAlt',
           intent:String(cfg.intent||'ime').trim()||'ime',
           promptInjectText:String(cfg.promptInjectText||cfg.prompt_inject_text||''),
-          inputAimStrategy:String(cfg.inputAimStrategy||cfg.input_aim_strategy||'auto').trim()||'auto',
+          inputAimStrategy:String(cfg.inputAimStrategy||cfg.input_aim_strategy||'none').trim()||'none',
+          aimDefaultRev:Number(cfg.aimDefaultRev||0)|0,
           composerAnchors:(function(){
             var raw=cfg.composerAnchors||cfg.composer_anchors||{};
             if(!raw||typeof raw!=='object') return {};
@@ -1430,9 +1457,26 @@
             Object.keys(raw).forEach(function(k){
               var a=raw[k];
               if(!a||typeof a!=='object') return;
+              // Dual-slot bank (preferred) or legacy {x,y}
+              if(Array.isArray(a.slots)){
+                var slots=[];
+                for(var i=0;i<2;i++){
+                  var s=a.slots[i];
+                  if(s&&typeof s==='object'&&isFinite(Number(s.x))&&isFinite(Number(s.y))){
+                    slots.push({x:Number(s.x),y:Number(s.y)});
+                  }else{
+                    slots.push(null);
+                  }
+                }
+                if(!slots[0]&&!slots[1]) return;
+                var active=Number(a.active);
+                if(!isFinite(active)||active<0||active>1) active=slots[0]?0:1;
+                out[String(k)]={slots:slots,active:active|0};
+                return;
+              }
               var x=Number(a.x), y=Number(a.y);
               if(!isFinite(x)||!isFinite(y)) return;
-              out[String(k)]={x:x,y:y};
+              out[String(k)]={slots:[{x:x,y:y},null],active:0};
             });
             return out;
           })()
@@ -2204,6 +2248,10 @@
           var earlyHold=global.OneToneVoiceWake&&global.OneToneVoiceWake.getStrategyHold&&global.OneToneVoiceWake.getStrategyHold();
           if(earlyHold&&state().config) state().config.voiceListeningStrategy=earlyHold;
         }catch(_){}
+        if(pendingAimDefaultPersist){
+          pendingAimDefaultPersist=false;
+          try{ setTimeout(function(){ save({source:'aim-default-migrate'}); },0); }catch(_s){}
+        }
         if(global.OneToneMappingEditActions&&global.OneToneMappingEditActions.applyPendingEnable){
           global.OneToneMappingEditActions.applyPendingEnable(state().config);
         }
@@ -2241,6 +2289,10 @@
         reinjectRememberedAppScenarios(inbound);
         st.config=inbound;
         st.__vp_rustMapN=rustMapN;
+      }
+      if(pendingAimDefaultPersist){
+        pendingAimDefaultPersist=false;
+        try{ setTimeout(function(){ save({source:'aim-default-migrate'}); },0); }catch(_s){}
       }
       if(heldStrategy&&st.config){
         st.config.voiceListeningStrategy=heldStrategy;

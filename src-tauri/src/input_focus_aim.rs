@@ -11,10 +11,10 @@
 
 use tauri::AppHandle;
 
-/// User-selectable aim strategy (MD §7). Default [`InputAimStrategy::Auto`].
+/// User-selectable aim strategy (MD §7). Default [`InputAimStrategy::None`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputAimStrategy {
-    /// Assume caret already in the box — skip aim.
+    /// Assume caret already in the box — skip aim. Novice default.
     None,
     /// Continue only if editable; Phase0 uses composer focus path (fail-closed).
     Probe,
@@ -24,7 +24,7 @@ pub enum InputAimStrategy {
     Smart,
     /// Relative-window composer click.
     Click,
-    /// Probe → (safe) hotkey → smart/click chain. Novice default.
+    /// Probe → (safe) hotkey → smart/click chain.
     Auto,
 }
 

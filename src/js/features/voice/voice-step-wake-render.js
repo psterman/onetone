@@ -503,24 +503,6 @@
         strip.classList.remove('is-global');
       }
     }
-    var bringRow=$('voiceWakeBringUpRow');
-    if(bringRow){
-      if(isGlobal){
-        bringRow.hidden=true;
-      }else{
-        bringRow.hidden=false;
-        var bringLbl=$('voiceSchemeBringUpLbl');
-        if(bringLbl) bringLbl.textContent=String(t('voiceSchemeBringUpLbl')||'不在目标窗时自动切过去').replace('{name}',name||'目标');
-        var bringHint=$('voiceSchemeBringUpHint');
-        if(bringHint) bringHint.textContent=t('voiceSchemeBringUpHint')||'默认关 · 避免误开别的应用';
-        var tog=$('voiceAllowBringUpTargetToggle');
-        if(tog){
-          var on=!!(m&&m.voiceAllowBringUpTarget);
-          tog.setAttribute('aria-checked',on?'true':'false');
-          tog.classList.toggle('is-on',on);
-        }
-      }
-    }
     var goKeys=$('btnVoiceWakeGoKeysTarget');
     if(goKeys) goKeys.textContent=t('voiceWakeGoKeysTarget')||'改听写目标 →';
     var advSum=$('voiceWakeAdvancedSummary');
@@ -530,7 +512,7 @@
   function renderWrongFgStatus(){
     var row=$('voiceWrongFgStatus');
     if(!row) return;
-    // Keep off step-01 primary; bring-up lives under 高级.
+    // App scenes always bring-up; no wrong-FG banner on step-01.
     row.hidden=true;
   }
 

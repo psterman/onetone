@@ -21,6 +21,13 @@
       padding:10px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.28);
       pointer-events:none;max-width:min(520px,92%);text-align:center
     }
+    /* Dock beside the marquee so the next click is where the eye already is. */
+    #hint.is-near{
+      left:0;top:0;
+      max-width:min(420px,90vw);
+      transform:translate(-50%,-100%)
+    }
+    #hint.is-near.is-below{transform:translate(-50%,0)}
     #mq{
       position:fixed;border:2px solid #5ad0f5;background:rgba(90,208,245,.18);
       display:none;z-index:1;pointer-events:none;box-sizing:border-box
@@ -30,7 +37,12 @@
       border:2px solid #fff;background:#1aa3d1;display:none;z-index:2;pointer-events:none;
       box-shadow:0 0 0 3px rgba(26,163,209,.35)
     }
-    #bar{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:3;display:flex;gap:10px}
+    #bar{
+      position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:3;display:flex;gap:10px
+    }
+    #bar.is-near{
+      left:0;bottom:auto;top:0;transform:translateX(-50%)
+    }
     button{border:0;border-radius:10px;padding:10px 16px;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
     #cancel{background:#fff;color:#12181f}
   </style>
@@ -55,6 +67,7 @@
       var hint = document.getElementById('hint');
       var mq = document.getElementById('mq');
       var pin = document.getElementById('pin');
+      var bar = document.getElementById('bar');
       var cancelBtn = document.getElementById('cancel');
       var phase = 'draw';
       var dragging = false;
@@ -64,6 +77,43 @@
       function call(cmd, args) {
         if (!invoke) return Promise.reject(new Error('no_invoke'));
         return invoke(cmd, args || {});
+      }
+
+      function clamp(n, lo, hi) {
+        return Math.min(Math.max(n, lo), hi);
+      }
+
+      /** Put tip + cancel next to the marquee (eye stays on the box). */
+      function placeChromeNearBox(b) {
+        if (!b) {
+          hint.classList.remove('is-near', 'is-below');
+          hint.style.left = '';
+          hint.style.top = '';
+          bar.classList.remove('is-near');
+          bar.style.left = '';
+          bar.style.top = '';
+          return;
+        }
+        var mid = (b.l + b.r) / 2;
+        var vw = window.innerWidth || 1280;
+        var vh = window.innerHeight || 800;
+        mid = clamp(mid, 48, vw - 48);
+        var preferAbove = b.t >= 64;
+        hint.classList.add('is-near');
+        hint.classList.toggle('is-below', !preferAbove);
+        hint.style.left = Math.round(mid) + 'px';
+        hint.style.top = Math.round(preferAbove ? b.t - 10 : b.b + 10) + 'px';
+
+        // Cancel on the opposite side of the tip so both stay in peripheral vision.
+        bar.classList.add('is-near');
+        bar.style.left = Math.round(mid) + 'px';
+        var barTop = preferAbove ? b.b + 12 : Math.max(12, b.t - 52);
+        bar.style.top = Math.round(clamp(barTop, 12, vh - 56)) + 'px';
+      }
+
+      function setHint(msg, nearBox) {
+        hint.textContent = msg;
+        placeChromeNearBox(nearBox ? box : null);
       }
 
       function cancel() {
@@ -89,21 +139,21 @@
         if (phase === 'refine') {
           if (!box) return;
           if (e.clientX < box.l || e.clientX > box.r || e.clientY < box.t || e.clientY > box.b) {
-            hint.textContent = '请点在蓝框内部';
+            setHint('请点在蓝框内部', true);
             return;
           }
           pin.style.display = 'block';
           pin.style.left = e.clientX + 'px';
           pin.style.top = e.clientY + 'px';
-          hint.textContent = '已记下，正在保存…';
+          setHint('已记下，正在保存…', true);
           call('cmd_input_aim_calibrate_commit', {
             screenX: Math.round(e.screenX),
             screenY: Math.round(e.screenY)
           }).then(function () {
-            hint.textContent = '已保存';
+            setHint('已保存', true);
             setTimeout(function () { try { window.close(); } catch (_) {} }, 350);
           }).catch(function (err) {
-            hint.textContent = '保存失败：' + (err && err.message ? err.message : String(err || ''));
+            setHint('保存失败：' + (err && err.message ? err.message : String(err || '')), true);
           });
           return;
         }
@@ -116,7 +166,7 @@
         mq.style.top = y0 + 'px';
         mq.style.width = '0px';
         mq.style.height = '0px';
-        hint.textContent = '拖动中…松开完成粗圈';
+        setHint('拖动中…松开完成粗圈', false);
       }
 
       function onMove(e) {
@@ -135,13 +185,14 @@
         var l = Math.min(x0, e.clientX), t = Math.min(y0, e.clientY);
         var r = Math.max(x0, e.clientX), b = Math.max(y0, e.clientY);
         if (r - l < 12 || b - t < 12) {
-          hint.textContent = '圈太小，请再拖大一点';
+          box = null;
+          setHint('圈太小，请再拖大一点', false);
           mq.style.display = 'none';
           return;
         }
         box = { l: l, t: t, r: r, b: b };
         phase = 'refine';
-        hint.textContent = '第二步：在蓝框内点一下精确位置';
+        setHint('第二步：在蓝框内点一下精确位置', true);
       }
 
       // Attach to documentElement so the whole screen hits, including near edges.
@@ -151,7 +202,7 @@
       root.addEventListener('pointerup', onUp);
       root.addEventListener('pointercancel', onUp);
 
-      if (!invoke) hint.textContent = '校准层未接到 IPC，请从应用内打开';
+      if (!invoke) setHint('校准层未接到 IPC，请从应用内打开', false);
     })();
   </script>
 </body>

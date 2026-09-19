@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我想… 场景全集 · Cursor × Micro · 一键与组合预设</title>
+<style>
+:root{
+  --bg:#e8eef5; --surface:#fff; --soft:#f4f7fb; --line:rgba(26,45,74,.1);
+  --on:#152238; --mute:#5a7086; --faint:#8b9aab;
+  --p:#2a9cc4; --p-ink:#1a7a9c; --p-soft:#e8f6fb; --outline:rgba(42,156,196,.32);
+  --ok:#1b7a45; --ok-soft:#e8f6ee;
+  --warn:#8a6a12; --warn-soft:#fff8e8;
+  --bad:#9b2c2c; --bad-soft:#fdecec;
+  --alt:#1e4d8c; --alt-soft:#e8f0fa;
+  --agent:#0f6b5c; --agent-soft:#e6f5f1;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;background:var(--bg);color:var(--on)}
+.page{max-width:980px;margin:0 auto;padding:16px 14px 64px}
+h1{margin:0 0 4px;font-size:18px;font-weight:800;letter-spacing:-.02em}
+.lede{margin:0 0 12px;font-size:13px;color:var(--mute);max-width:72ch}
+
+.hero{
+  margin:0 0 14px;padding:12px 14px;border-radius:14px;background:#fff;border:1px solid var(--line);
+  font-size:12.5px;color:var(--mute);line-height:1.55;
+}
+.hero b{color:var(--on)}
+.hero code{font-family:var(--mono);font-size:11.5px;color:var(--p-ink)}
+
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.chip{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:6px 12px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.chip.is-on{border-color:var(--p);background:var(--p-soft);color:var(--p-ink)}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.legend span{
+  display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+  background:#fff;border:1px solid var(--line);font-size:11px;font-weight:700;color:var(--mute);
+}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.one{background:var(--ok)}
+.dot.combo{background:#c47a12}
+.dot.voice{background:var(--alt)}
+.dot.gap{background:var(--bad)}
+.dot.native{background:var(--p)}
+
+.card{
+  margin:0 0 10px;border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden;
+  box-shadow:0 6px 16px rgba(26,45,74,.05);
+}
+.card.combo{border-color:rgba(180,130,20,.35)}
+.card.gap{border-color:rgba(155,44,44,.35);border-style:dashed}
+.card .hd{
+  display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;
+  padding:12px 14px;background:linear-gradient(180deg,#fbfdff,#f4f7fb);border-bottom:1px solid var(--line);
+}
+.want{
+  font-size:15px;font-weight:800;letter-spacing:-.01em;
+}
+.want i{font-style:normal;color:var(--agent);font-weight:800}
+.meta{font-size:12px;color:var(--mute);margin-top:3px}
+.badges{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end}
+.pill{
+  padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:750;white-space:nowrap;
+}
+.pill.one{background:var(--ok-soft);color:var(--ok)}
+.pill.combo{background:var(--warn-soft);color:var(--warn)}
+.pill.voice{background:var(--alt-soft);color:var(--alt)}
+.pill.gap{background:var(--bad-soft);color:var(--bad)}
+.pill.native{background:var(--p-soft);color:var(--p-ink)}
+.pill.factory{background:var(--agent-soft);color:var(--agent)}
+
+.bd{padding:12px 14px;display:grid;gap:8px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+@media (max-width:720px){.grid3{grid-template-columns:1fr}}
+.cell{
+  padding:9px 10px;border-radius:10px;background:var(--soft);border:1px solid var(--line);
+  font-size:12px;
+}
+.cell .k{font-size:10.5px;font-weight:800;color:var(--faint);margin-bottom:4px;letter-spacing:.03em}
+.cell .v{font-weight:700;color:var(--on)}
+.cell .v code{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--p-ink)}
+.steps{
+  margin:0;padding:10px 12px;border-radius:10px;background:var(--warn-soft);border:1px solid rgba(180,130,20,.28);
+  font-size:12px;color:var(--warn);
+}
+.steps ol{margin:6px 0 0;padding-left:1.2em}
+.steps li{margin:2px 0;color:#6a5010}
+.preset-name{font-weight:800;color:#6a5010}
+
+.section{margin:18px 0 8px;font-size:13px;font-weight:800}
+.section span{font-weight:650;color:var(--mute);font-size:12px;margin-left:8px}
+
+.summary{
+  margin-top:16px;padding:14px;border-radius:14px;background:#fff;border:1px solid var(--line);
+}
+.summary h2{margin:0 0 8px;font-size:14px;font-weight:800}
+.summary ul{margin:0;padding-left:1.2em;font-size:12.5px;color:var(--mute)}
+.summary li{margin:4px 0}
+.foot{margin-top:12px;font-size:11.5px;color:var(--faint)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>我想… 场景全集</h1>
+  <p class="lede">按小白嘴里那句话归类。能一键的对齐 Cursor Soft Pad + Micro 键位；一键做不到的单独成「组合预设」，给小白开箱可用的多步宏。</p>
+
+  <div class="hero">
+    <b>怎么读：</b>每张卡 = 一个「我想…」。<br>
+    <b>一键</b> = Soft Pad / Micro 单键或单口令即可。<br>
+    <b>组合预设</b> = 需要 2+ 步（聚焦→模式→开麦→发送…），建议做成命名宏，小白只点一次。<br>
+    筛选：<code>出厂</code> 钉在迷你栏/循环区；其余进更多或第二周。
+  </div>
+
+  <div class="legend">
+    <span><i class="dot one"></i>一键可行</span>
+    <span><i class="dot combo"></i>组合预设</span>
+    <span><i class="dot voice"></i>口头指令通道</span>
+    <span><i class="dot gap"></i>能力缺口</span>
+    <span><i class="dot native"></i>偏应用自带键</span>
+  </div>
+
+  <div class="filters" id="filters"></div>
+  <div id="list"></div>
+
+  <div class="summary">
+    <h2>组合预设优先做（建议开箱 6 个）</h2>
+    <ul id="presetPriority"></ul>
+  </div>
+  <p class="foot">本页为场景共识稿，不改产品代码。落地：一键进 Soft Pad 白名单；组合进「我录的键」预设包或 Soft Pad 宏槽。</p>
+</div>
+
+<script>
+(function () {
+  /**
+   * kind: one | combo | voice | gap
+   * lane: agent | native
+   * factory: beginner pin
+   * micro: closest Micro physical / semantic
+   * cursor: Soft Pad slot or Keys slot or channel
+   */
+  var SCENES = [
+    // —— 开口 / 聚焦 ——
+    { id: 'focus', want: '回到 Cursor 继续干', group: '开口前', kind: 'one', lane: 'agent', factory: true,
+      cursor: 'summonCodex', micro: 'ENC 按压 / 双击 AG 前置', note: '窗口聚焦 + 尽量点到输入框' },
+    { id: 'talk', want: '把需求说进输入框', group: '开口前', kind: 'one', lane: 'agent', factory: true,
+      cursor: 'pushToTalk', micro: 'ACT10 PTT', note: 'OneTone 听写，不是 Cursor 自带麦' },
+    { id: 'focus-talk', want: '人在微信里，一键切回来并开麦', group: '开口前', kind: 'combo', lane: 'agent', factory: true,
+      cursor: 'summonCodex → pushToTalk', micro: 'ENC → ACT10', note: '两步；小白最高频跨软件',
+      preset: '回 Cursor 开麦', steps: ['聚焦 Cursor', '按下开麦（按住说）'] },
+
+    // —— 交给 AI ——
+    { id: 'send', want: '说完了 / 写完了，交给 AI', group: '交给 AI', kind: 'one', lane: 'agent', factory: true,
+      cursor: 'stopOrSend', micro: 'ACT12 Send', note: 'Enter' },
+    { id: 'talk-send', want: '说完自动发出去（免再找发送键）', group: '交给 AI', kind: 'combo', lane: 'agent', factory: false,
+      cursor: 'pushToTalk(松手) → stopOrSend', micro: 'ACT10 release → ACT12', note: '可选；松手只停听写还是连发，产品要定',
+      preset: '说完即发', steps: ['按住开麦说话', '松手结束听写', '发送 Enter'] },
+    { id: 'paste-send', want: '剪贴板内容贴进去并发走', group: '交给 AI', kind: 'combo', lane: 'agent', factory: false,
+      cursor: 'pasteAndSend 工作流', micro: '无对等 · 多步', note: '聚焦→Ctrl+V→Enter；标多步诚实',
+      preset: '粘贴发送', steps: ['聚焦 Composer', '粘贴', '发送'] },
+
+    // —— 失控 / 卡住 ——
+    { id: 'stop', want: '它写歪了，马上停', group: '失控卡住', kind: 'one', lane: 'agent', factory: true,
+      cursor: 'cancel', micro: 'ACT08 Decline≈', note: '停生成；≠ 拒审批' },
+    { id: 'continue', want: '它停住了，让它接着干', group: '失控卡住', kind: 'voice', lane: 'agent', factory: true,
+      cursor: 'continue（口头指令）', micro: '无命令键 · 偏塞话', note: '不进 Soft Pad 一键塞话；迷你栏可露 chip' },
+    { id: 'stop-new', want: '停掉并开干净一局', group: '失控卡住', kind: 'combo', lane: 'agent', factory: false,
+      cursor: 'cancel → newThread', micro: 'ACT08 → 新局键', note: '防误触：新局建议长按',
+      preset: '停下重开', steps: ['取消生成', '新开一局（长按）'] },
+
+    // —— 重来 ——
+    { id: 'new', want: '聊乱了，重开一局', group: '重来', kind: 'one', lane: 'agent', factory: true,
+      cursor: 'newThread', micro: 'AG 新建 / ACT09 易混', note: '空白新对话；勿标成 Fork' },
+    { id: 'fork', want: '带着现在的上下文另开一聊', group: '重来', kind: 'gap', lane: 'agent', factory: false,
+      cursor: '（无稳定槽）', micro: 'ACT09 Fork', note: '有稳定 Cursor 和弦再补；先不做假 Fork' },
+
+    // —— 换方式 ——
+    { id: 'plan', want: '先让它想计划，别直接改代码', group: '换方式', kind: 'one', lane: 'agent', factory: false,
+      cursor: 'plan', micro: '摇杆↑ Plan', note: 'Cursor 放 + 模式列 · 第二周' },
+    { id: 'agent', want: '让它直接动手改', group: '换方式', kind: 'one', lane: 'agent', factory: false,
+      cursor: 'switchAgent', micro: '无官方默认 · Cursor 扩展', note: '键 · 模式列' },
+    { id: 'plan-talk-send', want: '切到 Plan，把需求说进去并发出去', group: '换方式', kind: 'combo', lane: 'agent', factory: true,
+      cursor: 'plan → pushToTalk → stopOrSend', micro: '摇杆↑ → PTT → Send', note: '小白「我要先商量」一条龙',
+      preset: 'Plan 说需求', steps: ['切 Plan', '开麦说话', '发送'] },
+    { id: 'agent-talk-send', want: '切到 Agent，说完就让它改', group: '换方式', kind: 'combo', lane: 'agent', factory: true,
+      cursor: 'switchAgent → pushToTalk → stopOrSend', micro: '模式 → PTT → Send', note: '小白「直接干」一条龙',
+      preset: 'Agent 说完就改', steps: ['切 Agent', '开麦说话', '发送'] },
+
+    // —— 审改动 ——
+    { id: 'accept-one', want: '这一处改动可以，收下', group: '审改动', kind: 'gap', lane: 'agent', factory: false,
+      cursor: 'acceptChanges（Keys 有 · Soft Pad 缺）', micro: 'ACT07 Approve≈', note: '优先补 Soft Pad 白名单' },
+    { id: 'accept-all', want: '整波改动都收下', group: '审改动', kind: 'gap', lane: 'agent', factory: false,
+      cursor: 'acceptAllChanges', micro: 'Approve 变体', note: '补 Pad 后可一键' },
+    { id: 'review-loop', want: '看完 diff：能收就收，不行就停并重说', group: '审改动', kind: 'combo', lane: 'agent', factory: false,
+      cursor: 'accept* 或 cancel → talk-send', micro: 'Approve / Decline → 再输入', note: '依赖接受键补齐',
+      preset: '审完再开口', steps: ['（可选）接受改动', '或取消', '开麦说明哪里不对', '发送'] },
+
+    // —— 找 / 看（自带键） ——
+    { id: 'sidechat', want: '拉开侧边 Chat', group: '找和看', kind: 'one', lane: 'native', factory: false,
+      cursor: 'quickChat', micro: '偏 ACT 聊天键', note: 'Ctrl+I · 应用自带键目录' },
+    { id: 'find-file', want: '快速打开某个文件', group: '找和看', kind: 'one', lane: 'native', factory: false,
+      cursor: 'quickSearch', micro: 'AG 搜索', note: 'Ctrl+P' },
+    { id: 'palette', want: '搜一个 Cursor 命令', group: '找和看', kind: 'one', lane: 'native', factory: false,
+      cursor: 'commandPalette', micro: '命令菜单键', note: 'Ctrl+Shift+P' },
+    { id: 'sidebar', want: '侧栏挡着了，收起来', group: '找和看', kind: 'one', lane: 'native', factory: false,
+      cursor: 'toggleSidebar', micro: '摇杆↓', note: '可绑未出厂' },
+
+    // —— 改两行（自带键） ——
+    { id: 'inline', want: '就这几行，原地改一下', group: '改两行', kind: 'one', lane: 'native', factory: false,
+      cursor: 'inlineEdit', micro: '无 Soft Pad 主环', note: 'Ctrl+K · 软件自带' },
+    { id: 'tab', want: '灰色补全收下', group: '改两行', kind: 'one', lane: 'native', factory: false,
+      cursor: 'acceptTab', micro: '无', note: 'Tab' },
+
+    // —— 特殊 / 组合 / 缺口 ——
+    { id: 'summarize', want: '让它用一句话总结刚改了啥', group: '特殊诉求', kind: 'voice', lane: 'agent', factory: false,
+      cursor: 'summarizeDiff 口头指令', micro: '无', note: '塞话模板' },
+    { id: 'run-checks', want: '让它想想怎么测 / 检查', group: '特殊诉求', kind: 'voice', lane: 'agent', factory: false,
+      cursor: 'runChecks 口头指令', micro: '无', note: '塞话；不直接跑终端' },
+    { id: 'run-seq', want: '跑我以前录好的那串键', group: '特殊诉求', kind: 'one', lane: 'agent', factory: false,
+      cursor: 'runTargetSequence', micro: '无官方默认', note: '更多 · 熟手' },
+    { id: 'fast', want: '开 Fast 让它答快点', group: '特殊诉求', kind: 'gap', lane: 'agent', factory: false,
+      cursor: '—', micro: 'ACT06 Fast', note: 'Cursor 无对等 · 不做' },
+    { id: 'switch-chat', want: '在六个最近对话间跳', group: '特殊诉求', kind: 'gap', lane: 'agent', factory: false,
+      cursor: '—', micro: 'AG00–05 会话槽', note: '无 thstatus；不做假六槽' },
+    { id: 'from-cold', want: '冷启动：打开 Cursor + 新局 + 开麦', group: '开口前', kind: 'combo', lane: 'agent', factory: true,
+      cursor: 'open/focus → newThread → pushToTalk', micro: 'ENC → 新局 → PTT', note: '跨进程；探测失败要诚实提示',
+      preset: '开机开聊', steps: ['启动或聚焦 Cursor', '新开一局', '开麦'] },
+    { id: 'fix-retry', want: '这段不对：停 → 说明错在哪 → 再发', group: '失控卡住', kind: 'combo', lane: 'agent', factory: true,
+      cursor: 'cancel → pushToTalk → stopOrSend', micro: 'Decline → PTT → Send', note: '纠错主路径',
+      preset: '纠错重说', steps: ['停住', '开麦说哪里不对', '发送'] }
+  ];
+
+  var GROUPS = ['全部', '开口前', '交给 AI', '失控卡住', '重来', '换方式', '审改动', '找和看', '改两行', '特殊诉求', '仅组合预设', '仅缺口'];
+  var filter = '全部';
+
+  var KIND = {
+    one: '一键',
+    combo: '组合预设',
+    voice: '口头指令',
+    gap: '缺口'
+  };
+
+  function matchFilter(s) {
+    if (filter === '全部') return true;
+    if (filter === '仅组合预设') return s.kind === 'combo';
+    if (filter === '仅缺口') return s.kind === 'gap';
+    return s.group === filter;
+  }
+
+  function paintFilters() {
+    var host = document.getElementById('filters');
+    host.innerHTML = '';
+    GROUPS.forEach(function (g) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (g === filter ? ' is-on' : '');
+      b.textContent = g;
+      b.addEventListener('click', function () { filter = g; paint(); });
+      host.appendChild(b);
+    });
+  }
+
+  function paintList() {
+    var host = document.getElementById('list');
+    host.innerHTML = '';
+    var lastGroup = '';
+    SCENES.filter(matchFilter).forEach(function (s) {
+      if (s.group !== lastGroup && filter === '全部') {
+        lastGroup = s.group;
+        var h = document.createElement('div');
+        h.className = 'section';
+        h.innerHTML = s.group + ' <span>我想…</span>';
+        host.appendChild(h);
+      }
+      var card = document.createElement('article');
+      card.className = 'card' + (s.kind === 'combo' ? ' combo' : '') + (s.kind === 'gap' ? ' gap' : '');
+      var badges =
+        '<span class="pill ' + s.kind + '">' + KIND[s.kind] + '</span>' +
+        (s.factory ? '<span class="pill factory">出厂建议</span>' : '') +
+        (s.lane === 'native' ? '<span class="pill native">应用自带键</span>' : '<span class="pill factory">Agent 操控</span>');
+      var steps = '';
+      if (s.kind === 'combo' && s.steps) {
+        steps =
+          '<div class="steps"><span class="preset-name">预设「' + (s.preset || s.want) + '」</span>' +
+          '<ol>' + s.steps.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol></div>';
+      }
+      card.innerHTML =
+        '<div class="hd">' +
+          '<div><div class="want"><i>我想</i> ' + s.want.replace(/^我想/, '') + '</div>' +
+          '<div class="meta">' + s.group + (s.note ? ' · ' + s.note : '') + '</div></div>' +
+          '<div class="badges">' + badges + '</div>' +
+        '</div>' +
+        '<div class="bd"><div class="grid3">' +
+          '<div class="cell"><div class="k">CURSOR</div><div class="v"><code>' + s.cursor + '</code></div></div>' +
+          '<div class="cell"><div class="k">MICRO 对齐</div><div class="v">' + s.micro + '</div></div>' +
+          '<div class="cell"><div class="k">通道</div><div class="v">' + (s.lane === 'agent' ? 'Agent 操控' : '应用自带键') + '</div></div>' +
+        '</div>' + steps + '</div>';
+      // fix want display - want field already full phrase
+      card.querySelector('.want').innerHTML = '<i>我想</i>·' + s.want.replace(/^我想/, '');
+      // Actually wants don't all start with 我想 - fix properly
+      host.appendChild(card);
+    });
+    // fix want titles properly in second pass
+    host.querySelectorAll('.card').forEach(function (card, i) {
+      var visible = SCENES.filter(matchFilter);
+      var s = visible[i];
+      // section headers mess up index - better rebuild want in template correctly
+    });
+  }
+
+  // Rebuild paintList cleanly without index bug
+  function paintList2() {
+    var host = document.getElementById('list');
+    host.innerHTML = '';
+    var lastGroup = '';
+    SCENES.filter(matchFilter).forEach(function (s) {
+      if (s.group !== lastGroup && (filter === '全部' || filter === '仅组合预设' || filter === '仅缺口')) {
+        if (filter === '全部') {
+          lastGroup = s.group;
+          var h = document.createElement('div');
+          h.className = 'section';
+          h.innerHTML = s.group + ' <span>需求场景</span>';
+          host.appendChild(h);
+        }
+      }
+      var card = document.createElement('article');
+      card.className = 'card' + (s.kind === 'combo' ? ' combo' : '') + (s.kind === 'gap' ? ' gap' : '');
+      var badges =
+        '<span class="pill ' + s.kind + '">' + KIND[s.kind] + '</span>' +
+        (s.factory ? '<span class="pill factory">出厂建议</span>' : '') +
+        (s.lane === 'native' ? '<span class="pill native">应用自带键</span>' : '<span class="pill factory">Agent 操控</span>');
+      var steps = '';
+      if (s.kind === 'combo' && s.steps) {
+        steps =
+          '<div class="steps"><span class="preset-name">预设名称：' + (s.preset || '') + '</span>' +
+          '<ol>' + s.steps.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol></div>';
+      }
+      if (s.kind === 'gap') {
+        steps = '<div class="steps">缺口：' + s.note + ' · 有和弦/协议前不假装一键。</div>';
+      }
+      card.innerHTML =
+        '<div class="hd">' +
+          '<div style="grid-column:1/-1"><div class="want">我想·' + s.want + '</div>' +
+          '<div class="meta">' + s.group + '</div></div>' +
+          '<div class="badges" style="grid-column:1/-1">' + badges + '</div>' +
+        '</div>' +
+        '<div class="bd"><div class="grid3">' +
+          '<div class="cell"><div class="k">CURSOR</div><div class="v"><code>' + s.cursor + '</code></div></div>' +
+          '<div class="cell"><div class="k">MICRO</div><div class="v">' + s.micro + '</div></div>' +
+          '<div class="cell"><div class="k">通道</div><div class="v">' + (s.lane === 'agent' ? 'Agent 操控' : '应用自带键') + '</div></div>' +
+        '</div>' + steps + '</div>';
+      // simplify hd grid
+      card.querySelector('.hd').style.display = 'block';
+      host.appendChild(card);
+    });
+  }
+
+  function paintPriority() {
+    var host = document.getElementById('presetPriority');
+    var presets = SCENES.filter(function (s) { return s.kind === 'combo' && s.factory; });
+    // also include important non-factory combos recommended
+    var extra = SCENES.filter(function (s) {
+      return s.kind === 'combo' && !s.factory && (s.id === 'paste-send' || s.id === 'talk-send');
+    });
+    host.innerHTML = '';
+    presets.concat(extra).forEach(function (s, i) {
+      var li = document.createElement('li');
+      li.innerHTML = '<b>' + (s.preset || s.want) + '</b> — ' + s.steps.join(' → ') +
+        (s.factory ? ' <code>出厂</code>' : ' <code>可选</code>');
+      host.appendChild(li);
+    });
+    var gaps = SCENES.filter(function (s) { return s.kind === 'gap'; });
+    gaps.forEach(function (s) {
+      var li = document.createElement('li');
+      li.innerHTML = '<b style="color:#9b2c2c">缺口 · ' + s.want + '</b> — ' + s.note;
+      host.appendChild(li);
+    });
+  }
+
+  function paint() {
+    paintFilters();
+    paintList2();
+    paintPriority();
+  }
+
+  paint();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>语音页 · C2 / C2+A 满 / C2+A 瘦身</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e8eef3;--rail:#eef3f7;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fdf3e3;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --ease:cubic-bezier(.23,1,.32,1);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:var(--font);color:var(--ink);
+      background:radial-gradient(700px 280px at 10% -8%,rgba(42,156,196,.1),transparent 55%),var(--bg);
+      padding:16px 12px 40px;-webkit-font-smoothing:antialiased;
+    }
+    @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
+
+    .shell{max-width:1680px;margin:0 auto}
+    .bar{
+      padding:10px 14px;border-radius:12px;background:#13202c;color:#c5d0de;
+      font-size:12.5px;line-height:1.45;margin-bottom:10px;
+      display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;
+    }
+    .bar strong{color:#fff}.bar em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .bar .toggles{margin-left:auto;display:flex;gap:6px}
+    .bar .toggles button{
+      border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
+      color:#e2e8f0;border-radius:999px;padding:4px 12px;font:inherit;font-size:11.5px;font-weight:650;cursor:pointer;
+    }
+    .bar .toggles button.is-on{background:rgba(42,156,196,.38);border-color:rgba(125,211,252,.45);color:#fff}
+
+    .note{
+      margin:0 0 12px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;
+      background:rgba(255,255,255,.9);font-size:12.5px;color:var(--muted);line-height:1.5;
+    }
+    .note b{color:var(--ink)}
+
+    .pair{
+      display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:stretch;
+    }
+    @media(max-width:1280px){.pair{grid-template-columns:1fr}}
+
+    .col-label{
+      display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+      margin:0 0 8px;padding:0 2px;
+    }
+    .col-label h2{margin:0;font-size:13px;font-weight:750}
+    .col-label .tag{
+      font-size:10px;font-weight:750;padding:2px 8px;border-radius:999px;flex:none;
+    }
+    .tag-base{background:var(--wash);color:var(--muted);border:1px solid var(--line)}
+    .tag-mid{background:var(--warn-soft);color:var(--warn)}
+    .tag-ok{background:var(--ok-soft);color:var(--ok)}
+    .col-label p{margin:4px 0 0;font-size:11.5px;color:var(--faint);line-height:1.4;width:100%}
+
+    .frame{
+      border:1px solid var(--line);border-radius:14px;background:var(--paper);
+      box-shadow:0 12px 28px rgba(19,32,44,.07);overflow:hidden;
+      display:flex;flex-direction:column;min-height:560px;
+    }
+    .top{
+      display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+      padding:10px 14px;border-bottom:1px solid var(--line);
+      background:linear-gradient(180deg,#fbfdfe,var(--wash));font-size:13px;font-weight:650;
+    }
+    .top .scene{
+      border:1px solid var(--line);background:#fff;border-radius:8px;
+      padding:3px 8px;font-size:11.5px;font-weight:650;color:var(--muted);
+    }
+    .top .hint{margin-left:auto;font-size:11px;font-weight:550;color:var(--faint)}
+
+    /* —— 三栏骨架：左 | 中 | 右 dock —— */
+    .body{
+      flex:1;display:grid;grid-template-columns:200px minmax(0,1fr) 200px;
+      background:var(--wash);min-height:0;
+    }
+    @media(max-width:720px){
+      .body{grid-template-columns:1fr}
+    }
+
+    .rail{
+      background:var(--rail);border-right:1px solid var(--line);
+      padding:8px;display:flex;flex-direction:column;gap:6px;min-height:0;overflow:auto;
+    }
+    .intent{
+      appearance:none;width:100%;border:0;background:transparent;text-align:left;
+      padding:8px 10px;border-radius:8px;font:inherit;cursor:pointer;color:var(--muted);
+    }
+    .intent:hover{background:rgba(255,255,255,.55);color:var(--ink)}
+    .intent.is-on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+    .intent .a{display:block;font-size:12.5px;font-weight:650}
+    .intent .b{display:block;margin-top:1px;font-size:10.5px;color:var(--faint)}
+    .intent.is-on .b{color:var(--cyan)}
+    .sec{
+      margin:4px 4px 0;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint);
+    }
+
+    .main{min-width:0;padding:12px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+    .detail{
+      background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;flex:1;
+    }
+    .detail h3{margin:0 0 4px;font-size:14px;font-weight:750}
+    .detail .sub{margin:0 0 10px;font-size:12px;color:var(--muted);line-height:1.4}
+    .chain{
+      margin:0 0 12px;padding:8px 10px;border-radius:10px;background:var(--ok-soft);border:1px solid #86efac;
+      font-size:12px;font-weight:650;color:var(--ok);display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+    }
+    .chain code{
+      font-family:inherit;font-size:12px;background:#fff;border:1px solid #86efac;
+      border-radius:6px;padding:1px 7px;color:var(--cyan-ink);font-weight:650;
+    }
+    .fake{height:10px;border-radius:4px;background:var(--wash);margin-top:8px}
+    .fake.w80{width:80%}.fake.w60{width:60%}.fake.w40{width:40%}
+    .cards{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+    .card{
+      border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;font-size:11.5px;
+    }
+    .card.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink);font-weight:650}
+
+    /* —— dock —— */
+    .dock{
+      background:#eef3f7;border-left:1px solid var(--line);
+      padding:12px;display:flex;flex-direction:column;gap:8px;min-height:0;
+    }
+    .dock__app{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:750}
+    .dock__ico{
+      width:20px;height:20px;border-radius:5px;background:#13202c;color:#fff;
+      display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:750;flex:none;
+    }
+    .dock__title{margin:0;font-size:14px;font-weight:750}
+    .dock__meta{margin:0;font-size:12px;color:var(--faint)}
+    .dock__rule{height:1px;background:var(--line);flex:none}
+    .dock__empty{margin:0;font-size:12.5px;color:var(--faint);line-height:1.45}
+    .dock__link{
+      appearance:none;border:0;background:none;padding:0;font:inherit;font-size:12px;
+      font-weight:650;color:var(--cyan-ink);text-decoration:underline;cursor:pointer;text-align:left;
+    }
+    .dock__list{display:flex;flex-direction:column;gap:4px;flex:1}
+    .dock__row{
+      appearance:none;width:100%;border:1px solid transparent;background:#fff;border-radius:8px;
+      padding:8px 9px;text-align:left;font:inherit;cursor:pointer;
+    }
+    .dock__row:hover{border-color:var(--cyan-bd)}
+    .dock__row.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .dock__row .t{display:block;font-size:12.5px;font-weight:650}
+    .dock__row .d{display:block;margin-top:2px;font-size:10.5px;color:var(--faint)}
+    .dock__new{
+      appearance:none;width:100%;margin-top:auto;border:1px solid #8a9aab;background:#e8eef3;
+      border-radius:8px;padding:10px 12px;font:inherit;font-size:13px;font-weight:650;cursor:pointer;
+    }
+    .dock__new:hover{background:#fff;border-color:var(--ink)}
+
+    /* ========== C2 基线：口令嵌在左栏，克制 ========== */
+    .start-base{
+      padding:6px 4px 10px;border-bottom:1px solid var(--line);margin-bottom:2px;
+    }
+    .start-base .badge{
+      display:inline-block;font-size:10px;font-weight:750;color:#fff;background:var(--cyan-ink);
+      border-radius:999px;padding:2px 7px;margin-bottom:6px;
+    }
+    .start-base .lbl{font-size:11px;font-weight:650;color:var(--faint);margin:0 0 6px}
+    .start-base .phrase{
+      appearance:none;width:100%;border:1px solid var(--line);background:#fff;
+      border-radius:10px;padding:10px 8px;font:inherit;font-size:13.5px;font-weight:750;
+      cursor:pointer;text-align:center;
+    }
+    .start-base .phrase:hover{border-color:var(--cyan-bd)}
+    .start-base .hint{margin:6px 0 0;font-size:10.5px;color:var(--faint);line-height:1.35}
+
+    /* ========== C2+A 满：对照用（阴影 + 匹配条） ========== */
+    .start-strong{
+      margin:-2px -2px 4px;padding:12px 10px 14px;
+      background:linear-gradient(180deg,#fff 0%,#f7fafc 100%);
+      border:1px solid var(--line);border-radius:12px;
+      box-shadow:0 4px 14px rgba(19,32,44,.05);
+    }
+    .start-strong .badge{
+      display:inline-block;font-size:10px;font-weight:750;letter-spacing:.05em;
+      color:#fff;background:var(--cyan-ink);border-radius:999px;padding:2px 8px;margin-bottom:8px;
+    }
+    .start-strong h3{margin:0;font-size:13px;font-weight:750}
+    .start-strong .phrase{
+      appearance:none;width:100%;margin-top:10px;border:1px solid var(--cyan-bd);background:#fff;
+      border-radius:12px;padding:14px 10px;font:inherit;font-size:16px;font-weight:750;
+      cursor:pointer;text-align:center;color:var(--ink);
+      box-shadow:0 6px 16px rgba(42,156,196,.1);
+      transition:border-color .15s var(--ease),box-shadow .15s var(--ease);
+    }
+    .start-strong .phrase:hover{
+      border-color:var(--cyan);box-shadow:0 8px 20px rgba(42,156,196,.16);
+    }
+    .start-strong .phrase .q{color:var(--faint);font-weight:650}
+    .start-strong .hint{margin:8px 0 0;font-size:11px;color:var(--faint);line-height:1.4;text-align:center}
+    .start-strong .match{
+      margin:8px 0 0;padding:5px 8px;border-radius:8px;background:var(--cyan-soft);
+      font-size:11px;font-weight:650;color:var(--cyan-ink);text-align:center;
+    }
+
+    /* ========== C2+A 瘦身：分区 + 字号，无阴影 / 无匹配条 ========== */
+    .start-slim{
+      padding:10px 8px 12px;margin-bottom:2px;
+      background:#fff;border:1px solid var(--line);border-radius:10px;
+    }
+    .start-slim .badge{
+      display:inline-block;font-size:10px;font-weight:750;
+      color:#fff;background:var(--cyan-ink);border-radius:999px;padding:2px 7px;margin-bottom:6px;
+    }
+    .start-slim h3{margin:0;font-size:12.5px;font-weight:750}
+    .start-slim .phrase{
+      appearance:none;width:100%;margin-top:8px;border:1px solid var(--line);background:#fff;
+      border-radius:10px;padding:12px 8px;font:inherit;font-size:15px;font-weight:750;
+      cursor:pointer;text-align:center;color:var(--ink);
+      transition:border-color .15s var(--ease);
+    }
+    .start-slim .phrase:hover{border-color:var(--cyan-bd)}
+    .start-slim .phrase:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+    .start-slim .phrase .q{color:var(--faint);font-weight:650}
+    .start-slim .hint{margin:6px 0 0;font-size:10.5px;color:var(--faint);line-height:1.35;text-align:center}
+
+    .verdict{
+      margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;
+      background:#fff;font-size:12.5px;color:var(--muted);line-height:1.55;
+    }
+    .verdict b{color:var(--ink)}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="bar">
+      <strong>对比原型</strong> · <em>C2</em> · <em>C2+A 满</em> · <em>C2+A 瘦身</em>（砍阴影 + 匹配条）
+      <div class="toggles">
+        <button type="button" class="is-on" id="dockFilled" data-dock="filled">有 2 个动作</button>
+        <button type="button" id="dockEmpty" data-dock="empty">空列表</button>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>瘦身规则：</b>保留「白底分区 + 更大口令字」；删掉卡片/按钮阴影、常驻「匹配到」条、啰嗦提示。
+      匹配关系只留在中栏绿色链（说 X → 口头指令），避免左栏每天重复讲故事。
+    </div>
+
+    <div class="pair">
+      <!-- ===== C2 基线 ===== -->
+      <div>
+        <div class="col-label">
+          <div style="width:100%">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+              <h2>① C2 骨架</h2>
+              <span class="tag tag-base">基线</span>
+            </div>
+            <p>口令嵌 rail，克制。发现性弱。</p>
+          </div>
+        </div>
+        <div class="frame" data-variant="c2">
+          <div class="top">
+            <span>语音</span>
+            <span class="scene">习惯 · Cursor</span>
+            <span class="hint">基线</span>
+          </div>
+          <div class="body">
+            <nav class="rail" aria-label="起点与意图">
+              <div class="start-base">
+                <span class="badge">起点</span>
+                <div class="lbl">说了什么</div>
+                <button type="button" class="phrase">「开始输入」</button>
+                <p class="hint">说出后匹配下面意图</p>
+              </div>
+              <div class="sec">意图</div>
+              <button type="button" class="intent"><span class="a">听写方式</span><span class="b">IME</span></button>
+              <button type="button" class="intent is-on"><span class="a">口头指令</span><span class="b">一词注入</span></button>
+              <button type="button" class="intent"><span class="a">我录的键</span><span class="b">序列</span></button>
+              <button type="button" class="intent"><span class="a">软件自带</span><span class="b">内置</span></button>
+              <button type="button" class="intent"><span class="a">屏幕按钮</span><span class="b">Pad</span></button>
+            </nav>
+            <div class="main">
+              <div class="detail">
+                <h3>动作详情 · 口头指令</h3>
+                <p class="sub">中栏只编当前意图；右栏是本场景动作。</p>
+                <div class="chain">说 <code>开始输入</code> → <code>口头指令 · 总结改动</code></div>
+                <div class="cards">
+                  <div class="card is-on">不对准，直接写入</div>
+                  <div class="card">自动对准再写入</div>
+                </div>
+                <div class="fake w80"></div>
+                <div class="fake w60"></div>
+                <div class="fake w40"></div>
+              </div>
+            </div>
+            <aside class="dock" data-dock></aside>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== C2 + A 满 ===== -->
+      <div>
+        <div class="col-label">
+          <div style="width:100%">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+              <h2>② C2+A 满</h2>
+              <span class="tag tag-mid">偏满</span>
+            </div>
+            <p>大字 + 阴影 + 匹配条。心智强，略吵。</p>
+          </div>
+        </div>
+        <div class="frame" data-variant="c2a">
+          <div class="top">
+            <span>语音</span>
+            <span class="scene">习惯 · Cursor</span>
+            <span class="hint">对照</span>
+          </div>
+          <div class="body">
+            <nav class="rail" aria-label="起点与意图">
+              <div class="start-strong">
+                <span class="badge">起点</span>
+                <h3>说了什么</h3>
+                <button type="button" class="phrase"><span class="q">「</span>开始输入<span class="q">」</span></button>
+                <p class="hint">默认用这句 · 点大按钮可改口令</p>
+                <div class="match">匹配到 → 口头指令</div>
+              </div>
+              <div class="sec">意图</div>
+              <button type="button" class="intent"><span class="a">听写方式</span><span class="b">IME</span></button>
+              <button type="button" class="intent is-on"><span class="a">口头指令</span><span class="b">一词注入</span></button>
+              <button type="button" class="intent"><span class="a">我录的键</span><span class="b">序列</span></button>
+              <button type="button" class="intent"><span class="a">软件自带</span><span class="b">内置</span></button>
+              <button type="button" class="intent"><span class="a">屏幕按钮</span><span class="b">Pad</span></button>
+            </nav>
+            <div class="main">
+              <div class="detail">
+                <h3>动作详情 · 口头指令</h3>
+                <p class="sub">中栏只编当前意图；右栏是本场景动作。</p>
+                <div class="chain">说 <code>开始输入</code> → <code>口头指令 · 总结改动</code></div>
+                <div class="cards">
+                  <div class="card is-on">不对准，直接写入</div>
+                  <div class="card">自动对准再写入</div>
+                </div>
+                <div class="fake w80"></div>
+                <div class="fake w60"></div>
+                <div class="fake w40"></div>
+              </div>
+            </div>
+            <aside class="dock" data-dock></aside>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== C2 + A 瘦身 ===== -->
+      <div>
+        <div class="col-label">
+          <div style="width:100%">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+              <h2>③ C2+A 瘦身</h2>
+              <span class="tag tag-ok">推荐落 src</span>
+            </div>
+            <p>白底分区 + 15px 口令；无阴影、无匹配条。</p>
+          </div>
+        </div>
+        <div class="frame" data-variant="c2a-slim">
+          <div class="top">
+            <span>语音</span>
+            <span class="scene">习惯 · Cursor</span>
+            <span class="hint">瘦身</span>
+          </div>
+          <div class="body">
+            <nav class="rail" aria-label="起点与意图">
+              <div class="start-slim">
+                <span class="badge">起点</span>
+                <h3>说了什么</h3>
+                <button type="button" class="phrase"><span class="q">「</span>开始输入<span class="q">」</span></button>
+                <p class="hint">点按可改口令</p>
+              </div>
+              <div class="sec">意图</div>
+              <button type="button" class="intent"><span class="a">听写方式</span><span class="b">IME</span></button>
+              <button type="button" class="intent is-on"><span class="a">口头指令</span><span class="b">一词注入</span></button>
+              <button type="button" class="intent"><span class="a">我录的键</span><span class="b">序列</span></button>
+              <button type="button" class="intent"><span class="a">软件自带</span><span class="b">内置</span></button>
+              <button type="button" class="intent"><span class="a">屏幕按钮</span><span class="b">Pad</span></button>
+            </nav>
+            <div class="main">
+              <div class="detail">
+                <h3>动作详情 · 口头指令</h3>
+                <p class="sub">中栏只编当前意图；右栏是本场景动作。</p>
+                <div class="chain">说 <code>开始输入</code> → <code>口头指令 · 总结改动</code></div>
+                <div class="cards">
+                  <div class="card is-on">不对准，直接写入</div>
+                  <div class="card">自动对准再写入</div>
+                </div>
+                <div class="fake w80"></div>
+                <div class="fake w60"></div>
+                <div class="fake w40"></div>
+              </div>
+            </div>
+            <aside class="dock" data-dock></aside>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <b>定稿建议：</b>③ 瘦身 = 心智（分区口令）+ 简约（少一层文案/特效）+ 美感（平面、不抢中栏）。
+      匹配叙事交给中栏 chain。确认后落到 <code>src/</code> 语音页。
+      <br /><br />
+      <b>融合稿：</b>把 ③ 嵌进现网 F 轴 / 四面 / dock / 演示动画 →
+      <a href="../voice-c2a-slim-fused/index.html" style="color:var(--cyan-ink);font-weight:650">voice-c2a-slim-fused</a>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  var FILLED =
+    '<div class="dock__app"><span class="dock__ico">C</span><span>Cursor</span></div>' +
+    '<h3 class="dock__title">本场景动作</h3>' +
+    '<p class="dock__meta">2 个动作</p>' +
+    '<div class="dock__rule"></div>' +
+    '<div class="dock__list">' +
+      '<button type="button" class="dock__row is-on"><span class="t">开始输入</span><span class="d">口头指令</span></button>' +
+      '<button type="button" class="dock__row"><span class="t">贴代码块</span><span class="d">我录的键</span></button>' +
+    '</div>' +
+    '<div class="dock__rule"></div>' +
+    '<button type="button" class="dock__new">＋ 新建动作</button>';
+
+  var EMPTY =
+    '<div class="dock__app"><span class="dock__ico">C</span><span>Cursor</span></div>' +
+    '<h3 class="dock__title">本场景动作</h3>' +
+    '<p class="dock__meta">0 个动作</p>' +
+    '<div class="dock__rule"></div>' +
+    '<p class="dock__empty">还没有动作 · 点中间新建</p>' +
+    '<button type="button" class="dock__link">在「我的习惯」查看全部通道 →</button>' +
+    '<div class="dock__rule"></div>' +
+    '<button type="button" class="dock__new">＋ 新建动作</button>';
+
+  var mode = 'filled';
+  function paintDocks() {
+    var html = mode === 'empty' ? EMPTY : FILLED;
+    document.querySelectorAll('[data-dock]').forEach(function (el) {
+      el.innerHTML = html;
+    });
+  }
+  document.getElementById('dockFilled').addEventListener('click', function () {
+    mode = 'filled';
+    this.classList.add('is-on');
+    document.getElementById('dockEmpty').classList.remove('is-on');
+    paintDocks();
+  });
+  document.getElementById('dockEmpty').addEventListener('click', function () {
+    mode = 'empty';
+    this.classList.add('is-on');
+    document.getElementById('dockFilled').classList.remove('is-on');
+    paintDocks();
+  });
+
+  document.querySelectorAll('.rail').forEach(function (rail) {
+    rail.addEventListener('click', function (e) {
+      var btn = e.target.closest('.intent');
+      if (!btn) return;
+      rail.querySelectorAll('.intent').forEach(function (b) { b.classList.remove('is-on'); });
+      btn.classList.add('is-on');
+      var match = rail.querySelector('.match');
+      if (match) match.textContent = '匹配到 → ' + btn.querySelector('.a').textContent;
+    });
+  });
+
+  paintDocks();
+})();
+  </script>
+</body>
+</html>

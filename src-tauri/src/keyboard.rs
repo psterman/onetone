@@ -596,10 +596,9 @@ fn send_unicode_char(ch: char) {
     }
 }
 
-/// Per-character pacing for `send_text`.  Long enough that buffered IME / TSF
-/// pipelines don't drop characters, short enough to feel instant for short
-/// phrases (12ms × 8 chars ≈ 100ms tail).
-const KEY_GAP_MS: u64 = 12;
+/// Per-character pacing for `send_text`. Short enough for long prompts to feel
+/// snappy; pair with a short post-text Delay before Enter so Electron/IME can settle.
+const KEY_GAP_MS: u64 = 4;
 
 /// Shell-open a path or URL via `cmd /C start` (Windows). `kind` is display-only
 /// for file/url; folders prefer Explorer so nested paths open as directories.

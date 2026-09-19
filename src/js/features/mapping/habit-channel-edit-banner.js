@@ -267,6 +267,20 @@
         }
       }
     }
+    // Voice: channel jumps fold into ⋯; 听不准 slot lives in status bar (CSS), not here.
+    if (spec.panel === 'voice') {
+      var voiceMore = channelBtns;
+      return (
+        hubBtn + followBtn + saveBtn
+        + (voiceMore
+          ? ('<details class="settings-context-more">'
+            + '<summary class="page-status-btn is-muted settings-context-more__sum" aria-label="'
+            + esc(t('settingsContextMore', '更多')) + '">⋯</summary>'
+            + '<div class="settings-context-more__menu" role="menu">' + voiceMore + '</div>'
+            + '</details>')
+          : '')
+      );
+    }
     // Keys page: keep Save primary; fold hub / follow / channel jumps into ⋯
     if (spec.panel === 'keys') {
       var moreInner = hubBtn + followBtn + channelBtns;

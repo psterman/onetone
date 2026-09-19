@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soft Pad · 屏幕按钮 · Agent 能力目录</title>
+<style>
+:root{
+  --bg:#e8eef5; --surface:#fff; --soft:#f4f7fb; --line:rgba(26,45,74,.1);
+  --on:#152238; --mute:#5a7086; --faint:#8b9aab;
+  --p:#2a9cc4; --p-ink:#1a7a9c; --p-soft:#e8f6fb; --outline:rgba(42,156,196,.32);
+  --ok:#1b7a45; --ok-soft:#e8f6ee; --warn:#8a6a12; --warn-soft:#fff8e8;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;background:var(--bg);color:var(--on)}
+.page{max-width:1100px;margin:0 auto;padding:16px 14px 48px}
+h1{margin:0 0 4px;font-size:17px;font-weight:800;letter-spacing:-.02em}
+.lede{margin:0 0 10px;font-size:12.5px;color:var(--mute);max-width:72ch}
+.note{
+  margin:0 0 14px;padding:9px 12px;border-radius:10px;background:var(--warn-soft);
+  border:1px solid rgba(180,130,20,.28);font-size:12px;color:var(--warn);line-height:1.5;
+}
+.note b{font-weight:800}
+.compare{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px;
+}
+@media (max-width:720px){.compare{grid-template-columns:1fr}}
+.compare article{
+  padding:10px 12px;border-radius:10px;background:#fff;border:1px solid var(--line);
+}
+.compare h3{margin:0 0 4px;font-size:12.5px;font-weight:800}
+.compare p{margin:0;font-size:11.5px;color:var(--mute)}
+.compare .tag{
+  display:inline-block;margin-bottom:6px;padding:2px 7px;border-radius:999px;
+  font-size:10.5px;font-weight:750;
+}
+.compare .tag.agent{background:var(--ok-soft);color:var(--ok)}
+.compare .tag.keys{background:var(--p-soft);color:var(--p-ink)}
+
+.mock{
+  border:1px solid var(--line);border-radius:14px;background:var(--surface);
+  overflow:hidden;box-shadow:0 10px 32px rgba(26,45,74,.07);
+}
+.chrome{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 14px;
+  border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fbfdff,#f2f6fa);
+}
+.dots{display:flex;gap:5px}
+.dots i{width:8px;height:8px;border-radius:50%;background:#d5dde8}
+.chrome strong{font-size:12px}
+.chrome .pill{
+  margin-left:auto;font-size:11px;font-weight:750;color:var(--p-ink);
+  background:var(--p-soft);border:1px solid var(--outline);border-radius:999px;padding:3px 9px;
+}
+
+.stage{
+  display:grid;grid-template-columns:minmax(240px,280px) minmax(0,1fr);
+  gap:0;min-height:520px;
+}
+@media (max-width:900px){.stage{grid-template-columns:1fr}}
+
+.pad-col{
+  padding:14px 12px 16px;background:#f0f4f9;border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:10px;
+}
+.pad-head{display:flex;align-items:center;gap:8px}
+.pad-logo{
+  width:22px;height:22px;border-radius:6px;background:#1a1a1a;color:#fff;
+  display:grid;place-items:center;font-size:11px;font-weight:800;
+}
+.pad-head strong{font-size:13px}
+.pad-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:4px 2px;
+}
+.pkey{
+  aspect-ratio:1;border-radius:50%;border:1.5px solid rgba(26,45,74,.12);
+  background:#fff;display:grid;place-items:center;font-size:14px;color:var(--mute);
+  cursor:pointer;position:relative;
+}
+.pkey.is-on{
+  border-color:var(--p);box-shadow:0 0 0 3px rgba(42,156,196,.2);color:var(--p-ink);
+}
+.pkey.is-on::after{
+  content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--p);pointer-events:none;
+}
+.pad-bind{
+  margin-top:auto;padding:10px 11px;border-radius:10px;background:#fff;border:1px solid var(--line);
+}
+.pad-bind .name{font-weight:800;font-size:13px}
+.pad-bind .chord{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--p-ink);margin-top:2px}
+.pad-hint{font-size:11px;color:var(--faint);margin:0}
+
+.lib{
+  display:grid;grid-template-columns:150px minmax(0,1fr) minmax(200px,240px);
+  background:#f7f9fc;min-height:520px;
+}
+@media (max-width:900px){.lib{grid-template-columns:1fr}}
+
+.rail{
+  padding:12px 8px;border-right:1px solid var(--line);background:#f3f6fa;
+  display:flex;flex-direction:column;gap:3px;
+}
+.rail button{
+  appearance:none;border:0;background:transparent;text-align:left;
+  padding:8px 9px;border-radius:8px;font:inherit;font-size:11.5px;font-weight:650;
+  color:var(--mute);cursor:pointer;display:flex;justify-content:space-between;gap:6px;
+}
+.rail button:hover{background:rgba(26,45,74,.04);color:var(--on)}
+.rail button.is-on{background:#fff;color:var(--p-ink);font-weight:800;box-shadow:0 1px 2px rgba(26,45,74,.06);border:1px solid var(--line)}
+.rail button small{font-weight:700;color:var(--faint);font-size:10px}
+.rail button.is-on small{color:var(--p-ink)}
+.rail .sep{height:1px;background:var(--line);margin:6px 4px}
+
+.mid{padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.mid-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mid-head h2{margin:0;font-size:14px;font-weight:800}
+.mid-pill{
+  font-size:11px;font-weight:750;color:var(--p-ink);background:var(--p-soft);
+  border:1px solid var(--outline);border-radius:999px;padding:2px 8px;
+}
+.lead{margin:0;font-size:12px;color:var(--mute)}
+.search{
+  width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 11px;
+  font:inherit;font-size:12.5px;background:#fff;
+}
+.scenes{display:flex;flex-direction:column;gap:4px;overflow:auto;max-height:min(420px,58vh)}
+.scene{
+  appearance:none;border:1px solid transparent;background:#fff;border-radius:10px;
+  padding:9px 11px;text-align:left;cursor:pointer;font:inherit;color:inherit;
+  display:grid;gap:2px;
+}
+.scene:hover{border-color:var(--line)}
+.scene.is-on{border-color:rgba(42,156,196,.45);background:rgba(42,156,196,.08)}
+.scene .t{font-size:12.5px;font-weight:800}
+.scene .d{font-size:11px;color:var(--mute)}
+.scene .n{font-size:10.5px;font-weight:700;color:var(--faint)}
+
+.cmds{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.cmd{
+  appearance:none;width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;
+  padding:9px 11px;text-align:left;cursor:pointer;font:inherit;color:inherit;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;
+}
+.cmd.is-on{border-color:var(--p);background:var(--p-soft)}
+.cmd .title{font-weight:800;font-size:13px}
+.cmd .meta{grid-column:1/-1;font-size:11px;color:var(--mute)}
+.cmd .k{
+  font-family:var(--mono);font-size:11px;font-weight:700;color:var(--p-ink);
+  background:var(--p-soft);border-radius:6px;padding:2px 7px;align-self:center;
+}
+.badge{
+  display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;
+  font-size:10px;font-weight:750;background:var(--ok-soft);color:var(--ok);vertical-align:middle;
+}
+
+.edit{
+  padding:12px;border-left:1px solid var(--line);background:#fff;
+  display:flex;flex-direction:column;gap:10px;
+}
+.edit h3{margin:0;font-size:13px;font-weight:800}
+.edit .sub{margin:0;font-size:11.5px;color:var(--mute)}
+.field{display:grid;gap:4px}
+.field label{font-size:11px;font-weight:700;color:var(--mute)}
+.field input,.field .fake{
+  border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;background:#f8fafc;
+}
+.row{display:flex;gap:6px;align-items:center}
+.row .fake{flex:1}
+.btn{
+  appearance:none;border:1px solid var(--outline);background:var(--p-soft);color:var(--p-ink);
+  border-radius:8px;padding:6px 10px;font:inherit;font-size:12px;font-weight:750;cursor:pointer;
+}
+.seg{display:flex;gap:6px}
+.seg button{
+  flex:1;appearance:none;border:1px solid var(--line);background:#fff;border-radius:8px;
+  padding:8px;font:inherit;font-size:11.5px;font-weight:700;color:var(--mute);cursor:pointer;
+}
+.seg button.is-on{border-color:var(--p);background:var(--p-soft);color:var(--p-ink)}
+
+.foot{
+  margin-top:14px;padding:10px 12px;border-radius:10px;background:#fff;border:1px solid var(--line);
+  font-size:11.5px;color:var(--mute);line-height:1.55;
+}
+.foot code{font-family:var(--mono);font-size:11px;color:var(--on)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Soft Pad · 屏幕按钮 · Agent 能力</h1>
+  <p class="lede">左侧键帽绑的是「一按就有结果」的 Agent 操作，不是应用自带快捷键目录。工程底座来自 Codex Micro 小键盘；场景与白名单是 Cursor 专用分化。</p>
+  <p class="note"><b>与「软件自带」分工：</b>软件自带 = Keys 里挑 Cursor 原生和弦（无 PTT / 无塞话）。屏幕按钮 = Soft Pad 能力白名单（含听写、Plan/Agent、粘贴发送、跑序列）。两套目录不要合并。</p>
+
+  <div class="compare">
+    <article>
+      <span class="tag agent">屏幕按钮 · Agent</span>
+      <h3>CURSOR_SLOT_GROUPS · 19 槽</h3>
+      <p>pushToTalk · plan · switchAgent · pasteAndSend · runTargetSequence · 开聊天 / 导航 / 工具…</p>
+    </article>
+    <article>
+      <span class="tag keys">软件自带 · 应用键</span>
+      <h3>CURSOR_PICK_GROUPS · 排除 inject</h3>
+      <p>跟 AI 聊 / 改代码 / 换方式 / 找东西 / 审改动 · 无 PTT · 无 continue 塞话</p>
+    </article>
+  </div>
+
+  <div class="mock">
+    <div class="chrome">
+      <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+      <strong>虚拟键盘 · Soft Pad</strong>
+      <span class="pill">底座 · Codex Micro · 配置键 mapping.codexMicroPad</span>
+    </div>
+
+    <div class="stage">
+      <aside class="pad-col">
+        <div class="pad-head">
+          <span class="pad-logo" aria-hidden="true">C</span>
+          <strong>Cursor</strong>
+        </div>
+        <div class="pad-grid" id="padGrid" aria-label="虚拟键"></div>
+        <div class="pad-bind">
+          <div class="name" id="padName">语音输入</div>
+          <div class="chord" id="padChord">触发快捷键 RAlt</div>
+        </div>
+        <p class="pad-hint">蓝框 = 正在编辑，点其它键可切换</p>
+      </aside>
+
+      <div class="lib">
+        <nav class="rail" aria-label="命令来源">
+          <button type="button" disabled>听写方式 <small>—</small></button>
+          <button type="button" disabled>我录的键 <small>—</small></button>
+          <button type="button" disabled>口头指令 <small>—</small></button>
+          <button type="button" disabled>手势 <small>—</small></button>
+          <button type="button" disabled>软件自带 <small>16</small></button>
+          <button type="button" class="is-on">屏幕按钮 <small>19</small></button>
+          <div class="sep"></div>
+          <button type="button" disabled style="opacity:.55">≠ 软件自带目录</button>
+        </nav>
+
+        <section class="mid">
+          <div class="mid-head">
+            <h2>屏幕按钮</h2>
+            <span class="mid-pill">正在用 · Cursor</span>
+          </div>
+          <p class="lead">按 Agent 场景找能力，点一条绑到左侧选中键。可再改快捷键与可选口令。</p>
+          <input class="search" type="search" placeholder="搜索功能…" id="q" autocomplete="off">
+
+          <div class="scenes" id="scenes" role="tablist"></div>
+          <div class="cmds" id="cmds" role="listbox"></div>
+        </section>
+
+        <aside class="edit" id="editPane">
+          <h3 id="editTitle">语音输入</h3>
+          <p class="sub" id="editSub">触发快捷键 RAlt</p>
+          <div class="field">
+            <label>命令名称</label>
+            <input value="语音输入" readonly>
+          </div>
+          <div class="field">
+            <label>快捷键</label>
+            <div class="row">
+              <span class="fake" id="editChord">RAlt</span>
+              <button type="button" class="btn">录制</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>文本口令（可选）</label>
+            <input value="麦克风" readonly>
+          </div>
+          <div class="field">
+            <label>送到哪里</label>
+            <div class="seg">
+              <button type="button">正在用的编辑器</button>
+              <button type="button" class="is-on">不抢焦点</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <b>定位备忘</b> · Soft Pad 产品名；工程模块仍是 <code>codex-micro-pad-ui.js</code> / <code>codexMicroPad</code>。
+    Codex 白名单偏 Review / 浏览器面板；Cursor 白名单加 <code>plan</code> · <code>switchAgent</code> · <code>pasteAndSend</code>，槽名 <code>summonCodex</code> 展示为「聚焦 Cursor」。
+    塞话（继续 / 总结改动）不进屏幕按钮一键，走「口头指令」。
+  </div>
+</div>
+
+<script>
+(function () {
+  var SLOTS = {
+    pushToTalk: { title: '语音输入', when: '对着 Cursor 说需求', chord: 'RAlt', agent: true },
+    stopOrSend: { title: '发出去', when: '写好了交给 AI', chord: 'Enter' },
+    pasteAndSend: { title: '粘贴发送', when: '剪贴板贴进去并发走', chord: '—', agent: true },
+    cancel: { title: '取消', when: '生成跑偏了停住', chord: 'Ctrl+Shift+Backspace' },
+    newThread: { title: '新开一局', when: '聊乱了想重来', chord: 'Ctrl+N' },
+    quickChat: { title: '打开侧边聊天', when: '拉开 Chat / Agent', chord: 'Ctrl+I' },
+    summonCodex: { title: '聚焦 Cursor', when: '从别的软件切回来', chord: '焦点', agent: true },
+    plan: { title: '定计划', when: '先想清楚再动手', chord: 'Ctrl+Alt+Shift+P', agent: true },
+    switchAgent: { title: '开工 Agent', when: '计划好了让 Agent 改', chord: 'Ctrl+Alt+.', agent: true },
+    quickSearch: { title: '搜文件', when: '快速打开文件', chord: 'Ctrl+P' },
+    commandPalette: { title: '命令菜单', when: '搜任意命令', chord: 'Ctrl+Shift+P' },
+    navBack: { title: '返回', when: '上一处导航', chord: 'Alt+Left' },
+    navForward: { title: '前进', when: '下一处导航', chord: 'Alt+Right' },
+    toggleSidebar: { title: '切换边栏', when: '腾出或收回侧栏', chord: 'Ctrl+B' },
+    openTerminal: { title: '打开终端', when: '跑命令', chord: 'Ctrl+`' },
+    newBrowserTab: { title: '新浏览器标签', when: '开网页', chord: 'Ctrl+T' },
+    openSettings: { title: '打开设置', when: '改编辑器设置', chord: 'Ctrl+,' },
+    undo: { title: '撤销', when: '刚做错一步', chord: 'Ctrl+Z' },
+    runTargetSequence: { title: '跑我录的动作', when: '执行「我录的键」序列', chord: '序列', agent: true }
+  };
+
+  var GROUPS = [
+    { id: 'talk', rail: '说话', title: '说话、发出去、叫停', desc: '输入这一轮：开麦、发送、粘贴发、取消', slots: ['pushToTalk', 'stopOrSend', 'pasteAndSend', 'cancel'] },
+    { id: 'open', rail: '开聊天', title: '开聊天、回到 Cursor', desc: '新开对话、拉开 Chat、从别的软件切回来', slots: ['newThread', 'quickChat', 'summonCodex'] },
+    { id: 'mode', rail: '换方式', title: '换 AI 怎么干活', desc: 'Plan 先想清楚，或 Agent 直接改代码', slots: ['plan', 'switchAgent'] },
+    { id: 'find', rail: '找东西', title: '找文件或命令', desc: '搜文件名，或打开命令面板', slots: ['quickSearch', 'commandPalette'] },
+    { id: 'nav', rail: '走动', title: '在窗口里走动', desc: '前进后退、显示或隐藏侧栏', slots: ['navBack', 'navForward', 'toggleSidebar'] },
+    { id: 'tools', rail: '工具', title: '打开其它工具', desc: '终端、浏览器、设置、撤销', slots: ['openTerminal', 'newBrowserTab', 'openSettings', 'undo'] },
+    { id: 'seq', rail: '序列', title: '跑我录的动作', desc: '执行按键页「我录的键」里配好的步骤', slots: ['runTargetSequence'] }
+  ];
+
+  var ICONS = ['⏻', '⚙', '⇧', '🔍', '↩', '🎤', '💬', '✦', '☰', '⌫', '↵', '⊞', '⌫', '·', '·', '·', '·', '·', '·', '·'];
+  var sceneId = 'talk';
+  var pickId = 'pushToTalk';
+
+  function renderPad() {
+    var host = document.getElementById('padGrid');
+    host.innerHTML = '';
+    ICONS.forEach(function (ic, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pkey' + (i === 5 ? ' is-on' : '');
+      b.textContent = ic;
+      b.title = i === 5 ? '语音输入' : '键 ' + (i + 1);
+      host.appendChild(b);
+    });
+  }
+
+  function renderScenes() {
+    var host = document.getElementById('scenes');
+    var q = String(document.getElementById('q').value || '').trim().toLowerCase();
+    host.innerHTML = '';
+    GROUPS.forEach(function (g) {
+      if (q) {
+        var hay = (g.title + ' ' + g.desc + ' ' + g.slots.join(' ')).toLowerCase();
+        var hit = hay.indexOf(q) >= 0 || g.slots.some(function (s) {
+          var row = SLOTS[s];
+          return row && (row.title + ' ' + row.when).toLowerCase().indexOf(q) >= 0;
+        });
+        if (!hit) return;
+      }
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'scene' + (g.id === sceneId ? ' is-on' : '');
+      b.innerHTML =
+        '<span class="t">' + g.title + '</span>' +
+        '<span class="d">' + g.desc + '</span>' +
+        '<span class="n">' + g.slots.length + ' 项</span>';
+      b.addEventListener('click', function () {
+        sceneId = g.id;
+        var first = g.slots[0];
+        if (first) pickId = first;
+        paint();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  function renderCmds() {
+    var host = document.getElementById('cmds');
+    var g = GROUPS.find(function (x) { return x.id === sceneId; }) || GROUPS[0];
+    var q = String(document.getElementById('q').value || '').trim().toLowerCase();
+    host.innerHTML = '';
+    g.slots.forEach(function (id) {
+      var row = SLOTS[id];
+      if (!row) return;
+      if (q) {
+        var hay = (row.title + ' ' + row.when + ' ' + id).toLowerCase();
+        if (hay.indexOf(q) < 0 && (g.title + g.desc).toLowerCase().indexOf(q) < 0) return;
+      }
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cmd' + (id === pickId ? ' is-on' : '');
+      b.innerHTML =
+        '<span class="title">' + row.title +
+        (row.agent ? '<span class="badge">Agent</span>' : '') +
+        '</span>' +
+        '<span class="k">' + row.chord + '</span>' +
+        '<span class="meta">' + row.when + '</span>';
+      b.addEventListener('click', function () {
+        pickId = id;
+        paint();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  function paintEdit() {
+    var row = SLOTS[pickId] || SLOTS.pushToTalk;
+    document.getElementById('editTitle').textContent = row.title;
+    document.getElementById('editSub').textContent = '触发快捷键 ' + row.chord;
+    document.getElementById('editChord').textContent = row.chord;
+    document.getElementById('padName').textContent = row.title;
+    document.getElementById('padChord').textContent = '触发快捷键 ' + row.chord;
+    var nameInput = document.querySelector('.edit input');
+    if (nameInput) nameInput.value = row.title;
+  }
+
+  function paint() {
+    renderScenes();
+    renderCmds();
+    paintEdit();
+  }
+
+  renderPad();
+  paint();
+  document.getElementById('q').addEventListener('input', paint);
+})();
+</script>
+</body>
+</html>

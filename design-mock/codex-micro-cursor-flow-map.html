@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vibe Coding 完整流程 · Soft Pad 按键布局规划</title>
+<style>
+:root{
+  --bg:#e8eef5; --surface:#fff; --soft:#f4f7fb; --line:rgba(26,45,74,.1);
+  --on:#152238; --mute:#5a7086; --faint:#8b9aab;
+  --p:#2a9cc4; --p-ink:#1a7a9c; --p-soft:#e8f6fb; --outline:rgba(42,156,196,.32);
+  --ok:#1b7a45; --ok-soft:#e8f6ee;
+  --warn:#8a6a12; --warn-soft:#fff8e8;
+  --bad:#9b2c2c; --bad-soft:#fdecec;
+  --alt:#1e4d8c; --alt-soft:#e8f0fa;
+  --na:#6b7280; --na-soft:#f1f3f5;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.5;background:var(--bg);color:var(--on)}
+.page{max-width:880px;margin:0 auto;padding:18px 14px 64px}
+h1{margin:0 0 6px;font-size:19px;font-weight:800;letter-spacing:-.02em}
+.lede{margin:0 0 14px;font-size:13px;color:var(--mute);max-width:62ch}
+
+.story{
+  margin:0 0 18px;padding:14px 16px;border-radius:14px;background:#fff;
+  border:1px solid var(--line);box-shadow:0 8px 24px rgba(26,45,74,.06);
+}
+.story h2{margin:0 0 8px;font-size:14px;font-weight:800}
+.story ol{margin:0;padding-left:1.2em;color:var(--mute);font-size:12.5px}
+.story ol li{margin:3px 0}
+.story .loop{
+  margin-top:10px;padding:8px 10px;border-radius:9px;background:var(--p-soft);
+  border:1px solid var(--outline);font-family:var(--mono);font-size:12px;font-weight:700;color:var(--p-ink);
+  text-align:center;
+}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+.legend span{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+  background:#fff;border:1px solid var(--line);font-size:11.5px;font-weight:700;color:var(--mute);
+}
+.dot{width:9px;height:9px;border-radius:50%}
+.dot.must{background:var(--ok)}
+.dot.week2{background:var(--p)}
+.dot.more{background:#c47a12}
+.dot.miss{background:var(--bad)}
+.dot.other{background:var(--alt)}
+.dot.skip{background:var(--na)}
+
+.step{
+  margin:0 0 12px;border:1px solid var(--line);border-radius:14px;background:#fff;
+  overflow:hidden;box-shadow:0 6px 18px rgba(26,45,74,.05);
+}
+.step-hd{
+  display:grid;grid-template-columns:48px 1fr;gap:0;align-items:stretch;
+}
+.step-n{
+  background:linear-gradient(180deg,#fbfdff,#eef3f8);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-weight:800;color:var(--p-ink);font-size:18px;padding:12px 0;
+}
+.step-n small{font-size:10px;font-weight:750;color:var(--faint);margin-top:2px}
+.step-title{padding:12px 14px}
+.step-title h3{margin:0 0 4px;font-size:15px;font-weight:800}
+.step-title p{margin:0;font-size:12.5px;color:var(--mute)}
+.step-bd{padding:0 14px 14px 14px;border-top:1px solid var(--line);background:#fafcfd}
+.step-bd .lab{
+  margin:12px 0 6px;font-size:11px;font-weight:800;color:var(--faint);
+  letter-spacing:.04em;text-transform:uppercase;
+}
+.keys{display:grid;gap:8px}
+.keyrow{
+  display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) auto;
+  gap:8px 12px;align-items:center;padding:10px 11px;border-radius:11px;
+  background:#fff;border:1px solid var(--line);
+}
+@media (max-width:640px){
+  .keyrow{grid-template-columns:1fr;gap:4px}
+}
+.keyrow.miss{border-style:dashed;border-color:rgba(155,44,44,.4);background:var(--bad-soft)}
+.keyrow .what{font-weight:800;font-size:13px}
+.keyrow .when{font-size:11.5px;color:var(--mute);margin-top:2px}
+.keyrow .slot{font-family:var(--mono);font-size:11px;color:var(--on)}
+.keyrow .slot span{display:block;font-family:var(--font);font-size:11px;color:var(--mute);margin-top:2px}
+.badge{
+  justify-self:end;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:750;white-space:nowrap;
+}
+.badge.must{background:var(--ok-soft);color:var(--ok)}
+.badge.week2{background:var(--p-soft);color:var(--p-ink)}
+.badge.more{background:var(--warn-soft);color:var(--warn)}
+.badge.miss{background:var(--bad-soft);color:var(--bad)}
+.badge.other{background:var(--alt-soft);color:var(--alt)}
+.badge.skip{background:var(--na-soft);color:var(--na)}
+
+.pad-plan{
+  margin-top:18px;padding:14px;border-radius:14px;background:#fff;border:1px solid var(--line);
+}
+.pad-plan h2{margin:0 0 6px;font-size:14px;font-weight:800}
+.pad-plan .sub{margin:0 0 12px;font-size:12px;color:var(--mute)}
+.zones{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:640px){.zones{grid-template-columns:1fr}}
+.zone{
+  padding:11px;border-radius:12px;border:1px solid var(--line);background:var(--soft);
+}
+.zone h4{margin:0 0 6px;font-size:12.5px;font-weight:800}
+.zone ul{margin:0;padding-left:1.1em;font-size:12px;color:var(--mute)}
+.zone.core{background:var(--ok-soft);border-color:rgba(27,122,69,.28)}
+.zone.mode{background:var(--p-soft);border-color:var(--outline)}
+.zone.gap{background:var(--bad-soft);border-color:rgba(155,44,44,.28)}
+
+.mine-bar{
+  margin:14px 0 0;padding:10px 12px;border-radius:10px;background:var(--warn-soft);
+  border:1px solid rgba(180,130,20,.28);font-size:12px;color:var(--warn);
+}
+.mine-bar label{display:inline-flex;align-items:center;gap:6px;margin:4px 8px 0 0;cursor:pointer;font-weight:700}
+.foot{margin-top:14px;font-size:11.5px;color:var(--faint)}
+.foot code{font-family:var(--mono);color:var(--mute)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Vibe Coding 完整流程 · 按键布局规划</h1>
+  <p class="lede">不问「Micro 有哪些键」，而问：用户从打开 Cursor 到改完一版代码，手上要反复按什么。下表按会话时间线排；每一步写出 Soft Pad 该放的键，以及 Cursor 现在能不能接上。</p>
+
+  <div class="story">
+    <h2>用户在干什么（一条环，不是多条工作流）</h2>
+    <ol>
+      <li>人在微信 / 浏览器 → 要回到 Cursor 继续聊</li>
+      <li>对着输入框说一大段需求（或打字）</li>
+      <li>发出去，等 Agent 跑</li>
+      <li>跑偏了就停；停住等你就「继续」；聊乱了就新开一局</li>
+      <li>熟了以后才：切 Plan/Agent、接受 diff、开侧栏找文件</li>
+    </ol>
+    <div class="loop">聚焦 → 说话 → 发送 →（继续 | 停 | 新局）→ 再说话</div>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot must"></i>出厂必放（小白 4+聚焦）</span>
+    <span><i class="dot week2"></i>第二周露出</span>
+    <span><i class="dot more"></i>更多 / 可绑</span>
+    <span><i class="dot miss"></i>流程需要 · Soft Pad 还缺</span>
+    <span><i class="dot other"></i>不进 Pad · 口头指令</span>
+    <span><i class="dot skip"></i>Cursor 不做</span>
+  </div>
+
+  <!-- steps injected -->
+  <div id="steps"></div>
+
+  <div class="pad-plan">
+    <h2>落到键盘上的分区（规划结论）</h2>
+    <p class="sub">同一套 Soft Pad 拓扑（Codex Micro 底座）。Cursor 只换「出厂绑什么」，不另做第二块板。</p>
+    <div class="zones">
+      <div class="zone core">
+        <h4>本轮循环区（出厂高亮）</h4>
+        <ul>
+          <li>大键 / 0：开麦 pushToTalk</li>
+          <li>Enter 位：发送 stopOrSend</li>
+          <li>旁键：取消 cancel</li>
+          <li>旁键：新局 newThread（建议长按防误触）</li>
+          <li>ENC：聚焦 Cursor summonCodex</li>
+        </ul>
+      </div>
+      <div class="zone mode">
+        <h4>模式列（+/· · 第二周）</h4>
+        <ul>
+          <li>+ ：Plan</li>
+          <li>· ：Agent</li>
+          <li>与官方 Micro「摇杆↑=Plan」同语义，位置改到模式列以免和循环键抢手</li>
+        </ul>
+      </div>
+      <div class="zone">
+        <h4>次环（默认可绑 · 不抢首屏）</h4>
+        <ul>
+          <li>开聊天 quickChat · 命令菜单 · 搜文件</li>
+          <li>侧栏 / 历史导航</li>
+          <li>粘贴发送（标多步）· 跑我录的序列</li>
+        </ul>
+      </div>
+      <div class="zone gap">
+        <h4>流程缺口（要规划，尚未 Soft Pad）</h4>
+        <ul>
+          <li>批准 diff → 补 acceptChanges* 进白名单</li>
+          <li>Fork（当前对话分叉）→ 有稳定和弦再补；勿用新局冒充</li>
+          <li>「继续」→ 固定走口头指令，不进一键塞话</li>
+          <li>AG 六会话槽 / Fast / 旋钮模式 → 不做或仅灯近似</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="mine-bar">
+      <b>我的归类（勾选会记住）</b><br>
+      <span id="mineHost"></span>
+    </div>
+  </div>
+
+  <p class="foot">对照 Micro：官方也是「说→发→批/拒/Fork」环，不是 IDE 全功能。我们按 vibe 环排键；Micro 的 Fast / AG 会话槽 / Dial 在 Cursor 上诚实标灰。<code>localStorage: onetone.vibePadPlanMine.v1</code></p>
+</div>
+
+<script>
+(function () {
+  var LS = 'onetone.vibePadPlanMine.v1';
+  var BADGE = {
+    must: '出厂必放',
+    week2: '第二周',
+    more: '更多',
+    miss: 'Soft Pad 缺',
+    other: '口头指令',
+    skip: '不做'
+  };
+
+  var STEPS = [
+    {
+      n: 1,
+      title: '回到 Cursor',
+      user: '人在别的软件里，要继续 vibe coding。',
+      keys: [
+        { what: '聚焦 Cursor', when: '切回窗口并尽量点到输入框', slot: 'summonCodex', note: 'ENC 出厂', tier: 'must' }
+      ]
+    },
+    {
+      n: 2,
+      title: '说清需求',
+      user: '对着 Composer 说一大段（或自己打字）。效率来自听写，不是背口令。',
+      keys: [
+        { what: '开麦 / 按住说话', when: '字进当前输入框', slot: 'pushToTalk', note: '默认 RAlt · 大键', tier: 'must' }
+      ]
+    },
+    {
+      n: 3,
+      title: '交出去',
+      user: '写好了，让 Agent 开始干。',
+      keys: [
+        { what: '发送', when: 'Enter · 结束听写并发送', slot: 'stopOrSend', note: 'Enter 位', tier: 'must' }
+      ]
+    },
+    {
+      n: 4,
+      title: '等结果 · 失控时',
+      user: 'Agent 在跑；跑偏了要立刻停。',
+      keys: [
+        { what: '取消 / 停住', when: '停生成', slot: 'cancel', note: 'Ctrl+Shift+Backspace', tier: 'must' }
+      ]
+    },
+    {
+      n: 5,
+      title: 'Agent 停住等你',
+      user: '最常见卡壳：以为坏了。小白要「继续」这一步。',
+      keys: [
+        { what: '继续', when: '往对话塞「继续」类提示', slot: 'continue（inject）', note: '不进 Soft Pad 一键', tier: 'other' }
+      ]
+    },
+    {
+      n: 6,
+      title: '聊乱了 · 重来',
+      user: '上下文脏了，开干净一局。',
+      keys: [
+        { what: '新开一局', when: '空白新对话', slot: 'newThread', note: '建议长按 0.5s', tier: 'must' },
+        { what: 'Fork（从当前分叉）', when: '带着上下文开新聊天', slot: '（无）', note: 'Micro ACT09 · Cursor 无稳定和弦', tier: 'miss' }
+      ]
+    },
+    {
+      n: 7,
+      title: '换 AI 怎么干活',
+      user: '第二周才教：先 Plan 再动手，或直接 Agent 改。',
+      keys: [
+        { what: '定计划', when: '切 Plan 模式', slot: 'plan', note: '键 +', tier: 'week2' },
+        { what: '开工 Agent', when: '切 Agent 模式', slot: 'switchAgent', note: '键 ·', tier: 'week2' }
+      ]
+    },
+    {
+      n: 8,
+      title: '看完 diff · 收下或再改',
+      user: 'Agent 改完代码；要对齐 Micro 的「批准」门。',
+      keys: [
+        { what: '接受改动', when: '收下当前 / 全部建议', slot: 'acceptChanges*', note: 'Keys 有 · Soft Pad 白名单缺', tier: 'miss' },
+        { what: '拒绝审批', when: '权限/确认弹窗拒掉', slot: 'Decline 专槽', note: 'cancel 只近似停生成', tier: 'miss' }
+      ]
+    },
+    {
+      n: 9,
+      title: '找东西 · 拉开面板（次环）',
+      user: '偶尔要搜文件、开 Chat、命令菜单；不是每分钟都按。',
+      keys: [
+        { what: '打开侧边聊天', when: 'Ctrl+I', slot: 'quickChat', note: '次环', tier: 'more' },
+        { what: '搜文件 / 命令菜单', when: 'Quick Open / Palette', slot: 'quickSearch · commandPalette', note: '次环', tier: 'more' },
+        { what: '侧栏 / 前进后退', when: '腾空间、回上一页', slot: 'toggleSidebar · nav*', note: '可绑未出厂', tier: 'more' }
+      ]
+    },
+    {
+      n: 10,
+      title: '不做的（诚实标灰）',
+      user: '官方 Micro 有、Cursor Soft Pad 不应假装有的。',
+      keys: [
+        { what: 'Fast 模式', when: 'Codex Fast 开关', slot: '—', note: 'Cursor 无对等', tier: 'skip' },
+        { what: '六会话 Agent 键', when: '一键切聊天 + 官方灯', slot: 'AG00–05', note: '无 thstatus；灯可近似', tier: 'skip' },
+        { what: '旋钮推理 / Composer 拨轮', when: 'ENC 多模式', slot: 'dial', note: '仅保留按压缩放', tier: 'skip' }
+      ]
+    }
+  ];
+
+  var MINE = [
+    { id: 'core4', label: '出厂只要：聚焦+麦+发+停+新局' },
+    { id: 'contVoice', label: '「继续」只口头指令' },
+    { id: 'approvePad', label: '要把批准补进 Soft Pad' },
+    { id: 'forkLater', label: 'Fork 等有和弦再说' },
+    { id: 'modePlus', label: 'Plan/Agent 放 +/·' }
+  ];
+
+  var mine = {};
+  try { mine = JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (_) {}
+
+  function save() {
+    try { localStorage.setItem(LS, JSON.stringify(mine)); } catch (_) {}
+  }
+
+  function paintSteps() {
+    var host = document.getElementById('steps');
+    host.innerHTML = '';
+    STEPS.forEach(function (step) {
+      var el = document.createElement('section');
+      el.className = 'step';
+      var rows = step.keys.map(function (k) {
+        return (
+          '<div class="keyrow ' + (k.tier === 'miss' ? 'miss' : '') + '">' +
+            '<div><div class="what">' + k.what + '</div><div class="when">' + k.when + '</div></div>' +
+            '<div class="slot">' + k.slot + '<span>' + k.note + '</span></div>' +
+            '<span class="badge ' + k.tier + '">' + BADGE[k.tier] + '</span>' +
+          '</div>'
+        );
+      }).join('');
+      el.innerHTML =
+        '<div class="step-hd">' +
+          '<div class="step-n">' + step.n + '<small>步</small></div>' +
+          '<div class="step-title"><h3>' + step.title + '</h3><p>' + step.user + '</p></div>' +
+        '</div>' +
+        '<div class="step-bd"><div class="lab">这一步要规划的键</div><div class="keys">' + rows + '</div></div>';
+      host.appendChild(el);
+    });
+  }
+
+  function paintMine() {
+    var host = document.getElementById('mineHost');
+    host.innerHTML = '';
+    MINE.forEach(function (m) {
+      var lab = document.createElement('label');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!mine[m.id];
+      cb.addEventListener('change', function () {
+        if (cb.checked) mine[m.id] = 1;
+        else delete mine[m.id];
+        save();
+      });
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode(' ' + m.label));
+      host.appendChild(lab);
+    });
+  }
+
+  paintSteps();
+  paintMine();
+})();
+</script>
+</body>
+</html>

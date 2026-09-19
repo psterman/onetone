@@ -2,7 +2,7 @@
 
 官网：**https://www.onetone.app**
 
-言出即行，万象成形 · *speak to create*
+桌面应用之间的自然交互中间层 · *bridge every trigger to every app*
 
 [English](README.en.md) | 中文
 
@@ -13,78 +13,133 @@
 
 > v1.0.0 未做代码签名。Windows SmartScreen 可能在首次安装时拦截，请点击 **更多信息** -> **仍要运行**。
 
-一声 OneTone 是一个 Windows 桌面工具：把鼠标侧键、音量键、手柄、蓝牙戒指、轨迹球、遥控器、麦克风口令等触发方式，连接到你正在使用的语音输入法或流式输入法。
+## 它是什么
 
-它不是新的输入法，也不负责替代听写引擎。OneTone 是后台触发层：负责录入触发源、发送输入法激活键、管理语音起止和说完后的动作，让你在任意输入框里更快开始说话、上屏和发送。
+OneTone 是 Windows 桌面上的**应用自然交互中间层**。它不替换输入法、不替代听写引擎，也不替代任何 Agent。
 
-**不依赖 AutoHotkey，不依赖牛马（niuma）主程序。**
+它做的事是把桌面上的所有触发来源——**声音、按键、摄像头、外设、虚拟面板、Agent 状态灯**——统一成一个执行层，接到**你正在操作的任意桌面应用**里。
 
-## 它解决什么
+**不依赖 AutoHotkey，不依赖任何宿主应用。**
 
-很多语音输入工具都需要你先切换窗口、点按钮或按复杂快捷键。OneTone 把这条链路缩短成：
+## 它解决什么问题
 
+桌面工作流已经被切碎：
+
+- 一个 AI 编程 Agent 一套快捷键、一套 Composer 入口
+- 一套习惯对应一套按键，切换应用 = 重新记一遍快捷键 + 重新对准输入框
+- Agent 在后台跑的时候，没法在桌面上"看一眼它卡在哪了"
+- 摄像头、麦克风、鼠标侧键、手柄这些触发介质互不打通
+
+OneTone 把这条链路统一成：
+
+```text
+voice / keys / softPad / camera  ->  OneTone  ->  任何桌面应用
+                                          |
+                                          └─  PadStatus 状态灯  ->  Agent Hook 反馈
 ```
-外设 / 口令触发 -> OneTone -> 流式输入法或语音输入法 -> 当前输入框
+
+## 核心架构
+
+| 维度 | 内容 |
+|---|---|
+| **四通道输入** | voice / keys / softPad / camera，触发同一组能力卡（`slotId`），统一 dispatch |
+| **应用适配** | 17+ 个 `AppChatProfile`：Cursor、Codex、Claude、Trae、Windsurf、Qoder、Roo、Aider、Cline、Copilot …… |
+| **状态灯** | `PadStatus` × Agent Hook：Codex 单灯、Claude 自建多灯聚合 |
+| **定制工作流** | habit / scene / `agentBindings` / `semantic_action` / `app-behavior-rules` |
+| **本地优先** | KWS、摄像头、视觉触发都在本机；不上传 OneTone 服务器 |
+
+## 四通道
+
+四通道不是四个并列功能，而是**同一组能力卡的四种触发方式**。Hook 决定"现在什么态"，每一态高亮哪些能力卡可说 / 可按。
+
+### voice（语音）
+
+- **闭集口令**：本地 KWS（Vosk）exact match；grammar 按 Hook 态过滤
+- **长内容听写**：走第三方输入法（PTT），与口令分层，不抢同一 decoder
+- **声学命令**：取消词、结束词、说完、丢本轮
+- **本地引擎**：Windows SAPI、离线 Vosk、KWS
+
+### keys（按键）
+
+- 键盘、鼠标侧键、音量键、组合键、手柄、轨迹球、蓝牙戒指 / 外设等 Windows 可识别输入
+- Windows 低级钩子 + Raw Input + RegisterHotKey
+- 与 voice / softPad 同一 `slotId`，可复用同一动作
+
+### softPad（虚拟面板）
+
+- 屏幕上的能力卡面板——**看得见、按得着、点得到**
+- 与口令、实体键**同一槽位**——按 Pad = 喊口令 = 按实体键
+- 迷你栏 = Pad 的条形投影，chip 与 Pad 键共享 `slotId`
+
+### camera（摄像头）
+
+- MediaPipe face landmarker，本地推理
+- 触发类型：离席 / 回席、摇头、长眨、OK 手势、五指摊开、握拳、双眨、视线三区 / 9 宫格停留
+- 典型动作：离席 → 暂停语音 + 隐私屏；摇头 → 取消；长眨 → 激活；OK → 确认
+- 不把摄像头当精确鼠标；区域停留运行时本轮不接
+
+## 应用适配（AppChatProfile）
+
+`src-tauri/src/app_chat_workflow.rs` 维护了一组应用 profile，每个都有：进程名、路径标记、激活键、Composer 锚点、UIA 兼容性。
+
+```text
+Cursor · Codex · Claude · MiniMax · Workbuddy
+Trae (Work / Code / Chat) · Windsurf · Qoder
+Gemini CLI · Cline · Roo · OpenCode
+Copilot (CLI / VSCode) · Aider · ……
 ```
 
-典型场景：
+每个应用还配 Hook（Cursor / Codex / Claude / Copilot / Aider 等）和 `semantic_action`。
 
-- 手在鼠标上：按鼠标侧键，直接开始语音输入。
-- 离键盘较远：用手柄、遥控器或蓝牙戒指触发。
-- 不想动手：用麦克风口令唤醒输入法，或用结束词 / 取消词完成或丢掉这一轮。
-- 多场景切换：邮件、笔记、聊天、文档各自一套方案（习惯 / 情景）。
+新增应用 = 新增一个 `AppChatProfile`，不改 dispatch 主体。
 
-## 核心功能
+## 状态灯（PadStatus）
 
-### 首页 Workbench
+OneTone 在 Soft Pad 上提供状态灯，与 Agent 联动：
 
-- **Hero 工作台**：听写字幕、待命/听写状态、停止/恢复转写；语音与按键两种激活方式一键切换。
-- **快速入门**：引导完成触发链路试跑。
-- **按键 / 语音联动卡**：展示当前快捷键或唤醒词，点进对应设置。
-- **麦克风与引擎**：设备、电平与识别引擎合在一张卡；唤醒词悬停可见。
-- **情景底栏**：横向切换常用方案，末尾可新建习惯。
+- **Codex Hook** → 主 `PadStatus` 单灯（`slotId=status`；无则 fallback AG00）
+- **Claude Hook** → **Claude Agent Activity Pad**：`claude_lights` 自建多灯（agent 活动灯 + OneTone 自建聚合）
+- Loopback 监听 `127.0.0.1:8796`：`POST /api/codex-app/state` 等
 
-### 触发与方案
+Agent 在跑、停、等输入、有 diff——不用切回 Agent 窗口，看一眼 Pad 上的灯就行。
 
-- **任意设备触发**：键盘、鼠标、音量键、组合键、手柄、轨迹球、蓝牙外设等 Windows 可识别输入。
-- **输入法快捷键映射**：触发源 → 语音 / 流式输入法激活键。
-- **输入法预设**：Typeless、智谱、千问、闪电说、搜狗、讯飞、微信输入法等；也可手动录制任意快捷键。
-- **习惯 / 情景方案**：多套映射按场景保存、排序与切换；支持目标按键目录与应用定向。
+## 定制工作流
 
-### 语音链路（唤起 → 识别 → 发送）
+每一张能力卡都有四重绑定：
 
-- **语音唤醒**：Windows SAPI、离线 Vosk，以及关键词唤醒（KWS）。
-- **声学命令**：为习惯配置声学口令与样本；取消词、结束词、说完/丢掉本轮。
-- **说完动作**：静音等待、Enter / 发送等，按方案配置。
-- **本地优先**：配置在本机；唤醒与 KWS 可走本地引擎，不上传到 OneTone 服务器。
+| 绑定 | 内容 |
+|---|---|
+| 视觉 | Pad 键帽 + 迷你栏 chip |
+| 按键 | Soft Pad 一键 |
+| 口令 | 固定口令（如「定计划」「发送」） |
+| 应用 | 快捷键 / 聚焦 / Hook 反馈 |
 
-### 常驻与反馈
+存储：`agentBindings` 中同一 `slotId` 可同时有 `triggerType: softPad | voice | key`。
 
-- **Coach HUD**：底部轻提示（映射、监听/听写状态、触发反馈）。
-- **系统托盘**：暂停/恢复、设置入口、开机自启。
-- **应用内更新**：启动时检查新版本（不覆盖本地配置）。
+按应用 / 场景分别保存为 **habit（习惯）** 和 **scene（情景）**，横向切换。
+
+**输入瞄准：** `input_focus_aim` 共享层——任何通道在注入文本前，都先对准目标应用的输入框（探测 → 激活 → 聚焦 → 安全写入），失败时主动拒绝（fail-closed）。
 
 ## 快速上手
 
-1. 从 [GitHub Releases](https://github.com/psterman/onetone/releases) 下载 Windows 安装包。
-2. 首次安装若出现 SmartScreen，点击 **更多信息** -> **仍要运行**。
-3. 打开 OneTone，完成首次引导（或首页 **快速入门**）。
-4. 录入一个触发源（音量键、鼠标侧键、蓝牙外设等）。
-5. 选择输入法预设，或手动录入语音输入法激活键。
-6. 在任意输入框里触发一次；输入法进入听写或文字上屏，即表示链路跑通。
-
-建议先用内置预设跑通按键链路，再按需开启语音唤醒、结束/取消词和自动发送。
+1. 从 [GitHub Releases](https://github.com/psterman/onetone/releases) 下载 Windows 安装包
+2. 首次安装若出现 SmartScreen，点击 **更多信息** -> **仍要运行**
+3. 打开 OneTone，完成首次引导（或首页 **快速入门**）
+4. 选一个应用（推荐先从 Cursor / Codex / Claude 开始），录入激活键
+5. 在 Pad 上点一张能力卡，或喊口令，或按侧键——触发完成
+6. 按需开启摄像头通道、状态灯、定制工作流
 
 ## 系统要求
 
 - Windows 10 / 11（x64）
-- 一个可通过快捷键激活的语音输入法或流式输入法
-- 可选：麦克风（语音唤醒、KWS、结束/取消词）
+- 可选：麦克风（语音唤醒、KWS、声学命令）
+- 可选：摄像头（MediaPipe，本地推理）
+- 可选：鼠标 / 手柄 / 蓝牙戒指等外设
 
 ## 安装与更新
 
 - 安装包：[GitHub Releases](https://github.com/psterman/onetone/releases)
-- 启动后检查更新；只替换程序文件，不覆盖本地配置。
+- 启动后检查更新；只替换程序文件，不覆盖本地配置
 
 配置位置：
 
@@ -100,8 +155,9 @@
 
 - 前端：`src/` 原生 HTML / CSS / JavaScript（首页 workbench + 设置页）
 - 后端：Rust + Tauri 2（`src-tauri/`，含 `onetone-logic` 等 crate）
-- 热键与设备：Windows 低级钩子 + Raw Input + RegisterHotKey
+- 触发层：Windows 低级钩子 + Raw Input + RegisterHotKey
 - 语音：SAPI / Vosk / KWS + 声学命令运行时
+- 视觉：MediaPipe face landmarker（本地）
 
 环境：
 
@@ -150,10 +206,10 @@ onetone/
 ├── src/                 # 桌面前端（首页 / 设置 / 托盘 / HUD）
 ├── src-tauri/           # Rust 后端与 Tauri 配置
 │   ├── crates/          # 逻辑与共享 crate
-│   ├── src/             # 热键、语音运行时、IPC
+│   ├── src/             # 热键、语音运行时、IPC、AppChatProfile、PadStatus
 │   └── tauri.conf.json
 ├── website/             # 官网
-├── docs/                # 隐私、条款、发布说明
+├── docs/                # 隐私、条款、发布说明、能力卡契约
 ├── package.json
 ├── run_onetone.ps1
 └── Start-OneTone.vbs

@@ -1030,38 +1030,6 @@
         openDrawerPanel('keys','target');
       });
     }
-    var bringToggle=$('voiceAllowBringUpTargetToggle');
-    if(bringToggle&&!bringToggle._bringBound){
-      bringToggle._bringBound=true;
-      bringToggle.addEventListener('click',function(e){
-        e.preventDefault();
-        var hdr=global.OneToneVoicePageHeaderRender;
-        var m=hdr&&hdr.resolveScopeMapping?hdr.resolveScopeMapping(null):null;
-        if(!m||!String(m.appTargetId||'').trim()) return;
-        m.voiceAllowBringUpTarget=!m.voiceAllowBringUpTarget;
-        var on=!!m.voiceAllowBringUpTarget;
-        // Same-app peers share the switch — prompt peers were staying false while UI looked on.
-        var appId=String(m.appTargetId||'').trim();
-        var maps=[];
-        try{
-          var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
-          maps=cfg&&Array.isArray(cfg.mappings)?cfg.mappings:[];
-        }catch(_){}
-        for(var i=0;i<maps.length;i++){
-          var x=maps[i];
-          if(!x||String(x.appTargetId||'').trim()!==appId) continue;
-          x.voiceAllowBringUpTarget=on;
-        }
-        bringToggle.setAttribute('aria-checked',on?'true':'false');
-        bringToggle.classList.toggle('is-on',on);
-        if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
-          global.OneToneConfigPersist.save({source:'voice'});
-        }
-        if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.renderWrongFgStatus){
-          global.OneToneVoiceStepWake.renderWrongFgStatus();
-        }
-      });
-    }
     function firstTagPhrase(hostId,fallback){
       var host=$(hostId);
       if(!host) return fallback;

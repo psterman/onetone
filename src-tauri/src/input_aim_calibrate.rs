@@ -8,25 +8,31 @@ use tauri::{
     WebviewWindow, WebviewWindowBuilder,
 };
 
-use crate::config::{ComposerAnchor, VoiceConfig};
+use crate::config::{ComposerAnchor, ComposerPoint, VoiceConfig};
 use crate::AppState;
 
 const LABEL: &str = "input_aim_calibrate";
 
 static PENDING_APP: Mutex<String> = Mutex::new(String::new());
+static PENDING_SLOT: Mutex<usize> = Mutex::new(0);
 static HID_MAIN: Mutex<bool> = Mutex::new(false);
 
-fn set_pending(app_target_id: &str) {
+fn set_pending(app_target_id: &str, slot: usize) {
     if let Ok(mut g) = PENDING_APP.lock() {
         *g = app_target_id.trim().to_string();
     }
+    if let Ok(mut g) = PENDING_SLOT.lock() {
+        *g = slot.min(ComposerAnchor::MAX_SLOTS.saturating_sub(1));
+    }
 }
 
-fn take_pending() -> String {
-    PENDING_APP
+fn take_pending() -> (String, usize) {
+    let tid = PENDING_APP
         .lock()
         .map(|mut g| std::mem::take(&mut *g))
-        .unwrap_or_default()
+        .unwrap_or_default();
+    let slot = PENDING_SLOT.lock().map(|g| *g).unwrap_or(0);
+    (tid, slot)
 }
 
 fn hide_main_for_calibrate(app: &AppHandle) {
@@ -152,8 +158,10 @@ fn open_calibrate_overlay(app: &AppHandle) {
 #[tauri::command]
 pub fn cmd_input_aim_calibrate_begin(
     app: AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
     #[allow(non_snake_case)] appTargetId: Option<String>,
     app_target_id: Option<String>,
+    slot: Option<usize>,
 ) -> Result<serde_json::Value, String> {
     let tid = app_target_id
         .or(appTargetId)
@@ -167,8 +175,23 @@ pub fn cmd_input_aim_calibrate_begin(
         return Err("unknown_app".into());
     }
 
-    set_pending(&tid);
-    crate::app_log::early_line("input_aim", &format!("calibrate_begin_queued app={tid}"));
+    let slot = {
+        let cfg = state.cfg.lock();
+        slot.unwrap_or_else(|| {
+            cfg.voice_end
+                .composer_anchors
+                .get(&tid)
+                .map(|a| a.active)
+                .unwrap_or(0)
+        })
+        .min(ComposerAnchor::MAX_SLOTS.saturating_sub(1))
+    };
+
+    set_pending(&tid, slot);
+    crate::app_log::early_line(
+        "input_aim",
+        &format!("calibrate_begin_queued app={tid} slot={slot}"),
+    );
 
     let app_bg = app.clone();
     let tid_bg = tid.clone();
@@ -193,7 +216,8 @@ pub fn cmd_input_aim_calibrate_begin(
     Ok(serde_json::json!({
         "ok": true,
         "queued": true,
-        "appTargetId": tid
+        "appTargetId": tid,
+        "slot": slot
     }))
 }
 
@@ -206,49 +230,71 @@ pub fn cmd_input_aim_calibrate_commit(
     #[allow(non_snake_case)] screenY: Option<i32>,
     screen_y: Option<i32>,
 ) -> Result<serde_json::Value, String> {
-    let tid = take_pending();
+    let (tid, slot) = take_pending();
     if tid.is_empty() {
         return Err("no_pending".into());
     }
     let sx = screen_x.or(screenX).ok_or("need_screen_x")?;
     let sy = screen_y.or(screenY).ok_or("need_screen_y")?;
     let (x, y) = crate::app_chat_workflow::screen_point_to_client_ratio(&tid, sx, sy)?;
-    let anchor = ComposerAnchor { x, y }.clamped();
+    let point = ComposerPoint { x, y }.clamped();
 
-    {
+    let bank = {
         let mut cfg = state.cfg.lock();
+        let mut bank = cfg
+            .voice_end
+            .composer_anchors
+            .remove(&tid)
+            .unwrap_or_default();
+        bank.normalize();
+        bank.set_slot(slot, point);
         cfg.voice_end
             .composer_anchors
-            .insert(tid.clone(), anchor);
+            .insert(tid.clone(), bank.clone());
         persist_voice_cfg(&cfg)?;
-    }
+        bank
+    };
 
     close_overlay(&app);
     crate::app_log::early_line(
         "input_aim",
-        &format!("calibrate_commit app={tid} x={:.3} y={:.3}", anchor.x, anchor.y),
+        &format!(
+            "calibrate_commit app={tid} slot={slot} x={:.3} y={:.3}",
+            point.x, point.y
+        ),
     );
 
-    Ok(serde_json::json!({
-        "ok": true,
-        "appTargetId": tid,
-        "x": anchor.x,
-        "y": anchor.y
-    }))
+    let payload = status_payload(&tid, Some(&bank));
+    let _ = crate::ipc::emit_to_main_if_available(
+        &app,
+        Some(state.inner().as_ref()),
+        {
+            let mut p = payload.clone();
+            p["type"] = serde_json::json!("input_aim_calibrated");
+            p["ok"] = serde_json::json!(true);
+            p
+        },
+    );
+
+    Ok(payload)
 }
 
 #[tauri::command]
 pub fn cmd_input_aim_calibrate_cancel(app: AppHandle) -> Result<serde_json::Value, String> {
-    set_pending("");
+    set_pending("", 0);
     close_overlay(&app);
     Ok(serde_json::json!({ "ok": true }))
 }
 
 #[tauri::command]
 pub fn cmd_input_aim_calibrate_clear(
+    app: AppHandle,
     state: tauri::State<'_, Arc<AppState>>,
     #[allow(non_snake_case)] appTargetId: Option<String>,
     app_target_id: Option<String>,
+    slot: Option<usize>,
+    #[allow(non_snake_case)] clearAll: Option<bool>,
+    clear_all: Option<bool>,
 ) -> Result<serde_json::Value, String> {
     let tid = app_target_id
         .or(appTargetId)
@@ -258,10 +304,121 @@ pub fn cmd_input_aim_calibrate_clear(
     if tid.is_empty() {
         return Err("need_app_target".into());
     }
-    let mut cfg = state.cfg.lock();
-    cfg.voice_end.composer_anchors.remove(&tid);
-    persist_voice_cfg(&cfg)?;
-    Ok(serde_json::json!({ "ok": true, "appTargetId": tid }))
+    let wipe_all = clear_all.or(clearAll).unwrap_or(false);
+    let bank = {
+        let mut cfg = state.cfg.lock();
+        if wipe_all {
+            cfg.voice_end.composer_anchors.remove(&tid);
+            persist_voice_cfg(&cfg)?;
+            None
+        } else {
+            let mut bank = cfg
+                .voice_end
+                .composer_anchors
+                .remove(&tid)
+                .unwrap_or_default();
+            bank.normalize();
+            let idx = slot.unwrap_or(bank.active);
+            bank.clear_slot(idx);
+            if bank.is_empty() {
+                persist_voice_cfg(&cfg)?;
+                None
+            } else {
+                cfg.voice_end
+                    .composer_anchors
+                    .insert(tid.clone(), bank.clone());
+                persist_voice_cfg(&cfg)?;
+                Some(bank)
+            }
+        }
+    };
+    let payload = status_payload(&tid, bank.as_ref());
+    let _ = crate::ipc::emit_to_main_if_available(
+        &app,
+        Some(state.inner().as_ref()),
+        {
+            let mut p = payload.clone();
+            p["type"] = serde_json::json!("input_aim_calibrated");
+            p["ok"] = serde_json::json!(true);
+            p
+        },
+    );
+    Ok(payload)
+}
+
+#[tauri::command]
+pub fn cmd_input_aim_calibrate_set_active(
+    app: AppHandle,
+    state: tauri::State<'_, Arc<AppState>>,
+    #[allow(non_snake_case)] appTargetId: Option<String>,
+    app_target_id: Option<String>,
+    slot: Option<usize>,
+) -> Result<serde_json::Value, String> {
+    let tid = app_target_id
+        .or(appTargetId)
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    if tid.is_empty() {
+        return Err("need_app_target".into());
+    }
+    let slot = slot.unwrap_or(0);
+    let bank = {
+        let mut cfg = state.cfg.lock();
+        let mut bank = cfg
+            .voice_end
+            .composer_anchors
+            .remove(&tid)
+            .unwrap_or_default();
+        bank.normalize();
+        bank.set_active(slot);
+        if bank.is_empty() {
+            // Keep empty bank so active preference sticks until first calibrate.
+            cfg.voice_end
+                .composer_anchors
+                .insert(tid.clone(), bank.clone());
+        } else {
+            cfg.voice_end
+                .composer_anchors
+                .insert(tid.clone(), bank.clone());
+        }
+        persist_voice_cfg(&cfg)?;
+        bank
+    };
+    let payload = status_payload(&tid, Some(&bank));
+    let _ = crate::ipc::emit_to_main_if_available(
+        &app,
+        Some(state.inner().as_ref()),
+        {
+            let mut p = payload.clone();
+            p["type"] = serde_json::json!("input_aim_calibrated");
+            p["ok"] = serde_json::json!(true);
+            p
+        },
+    );
+    Ok(payload)
+}
+
+fn status_payload(tid: &str, hit: Option<&ComposerAnchor>) -> serde_json::Value {
+    let mut bank = hit.cloned().unwrap_or_default();
+    bank.normalize();
+    let slots: Vec<serde_json::Value> = bank
+        .slots
+        .iter()
+        .map(|s| match s {
+            Some(p) => serde_json::json!({ "x": p.x, "y": p.y, "set": true }),
+            None => serde_json::json!({ "set": false }),
+        })
+        .collect();
+    let active_pt = bank.active_point();
+    serde_json::json!({
+        "appTargetId": tid,
+        "calibrated": bank.any_set(),
+        "active": bank.active,
+        "slots": slots,
+        "x": active_pt.map(|p| p.x),
+        "y": active_pt.map(|p| p.y)
+    })
 }
 
 #[tauri::command]
@@ -277,12 +434,7 @@ pub fn cmd_input_aim_calibrate_status(
         .to_string();
     let cfg = state.cfg.lock();
     let hit = cfg.voice_end.composer_anchors.get(&tid);
-    serde_json::json!({
-        "appTargetId": tid,
-        "calibrated": hit.is_some(),
-        "x": hit.map(|a| a.x),
-        "y": hit.map(|a| a.y)
-    })
+    status_payload(&tid, hit)
 }
 
 fn persist_voice_cfg(cfg: &VoiceConfig) -> Result<(), String> {

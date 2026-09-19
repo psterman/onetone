@@ -75,7 +75,10 @@ check(
 check(
   'voice scheme strip is trouble details (not big card)',
   html.includes('id="voiceSchemeTrouble"') &&
-    html.includes('voice-scheme-strip--trouble') &&
+    html.includes('voice-scheme-strip--top') &&
+    html.includes('id="voiceWorkflowTabsBar"') &&
+    html.indexOf('id="voiceWorkflowTabsBar"') < html.indexOf('id="voiceSchemeStrip"') &&
+    html.indexOf('id="voiceSchemeStrip"') < html.indexOf('id="voiceIntentPicker"') &&
     /voiceSchemeTroubleSummary/.test(html)
 );
 check(

@@ -18,6 +18,9 @@ var need = [
   'id="voiceIntentPaneCamera"',
   'id="imePresetStripVoice"',
   'id="voicePromptInjectBody"',
+  'id="voicePromptTitle"',
+  'id="voicePromptArmed"',
+  'id="voicePromptFromTpl"',
   'id="voiceFaceTabs"',
   'id="voiceWakeSecondary"',
   'id="voiceWakeMoreAliases"',
@@ -30,12 +33,9 @@ var need = [
   'id="voiceSchemeStrip"',
   'id="voiceDockMicBars"',
   'id="voiceWakeListeningOptInToggle"',
-  'id="voiceWakeBringUpRow"',
   'voice-f-hero',
   'id="voiceFlowNodeWakeVal"',
   'id="voiceFlowNodeFinishVal"',
-  'id="btnVoiceDiscardGoCamera"',
-  '字丢掉（Esc）'
 ];
 var missing = need.filter(function (s) { return html.indexOf(s) < 0; });
 if (html.indexOf('voice-intent-rail.js') < 0) missing.push('script voice-intent-rail.js');
@@ -53,10 +53,9 @@ if (dockAt > 0) {
   var dockChunk = dockEnd > dockAt ? html.slice(dockAt, dockEnd) : '';
   if (dockChunk.indexOf('voiceSummaryEngineSwitch') >= 0) missing.push('strategy still in bottom dock');
 }
-// Bring-up under prompt pane
-var bringAt = html.indexOf('id="voiceWakeBringUpRow"');
-var promptAt = html.indexOf('id="voiceIntentPanePrompt"');
-if (bringAt < 0 || promptAt < 0 || bringAt < promptAt) missing.push('bring-up not in prompt pane');
+// Bring-up toggle removed — app scenes always bring target forward.
+if (html.indexOf('id="voiceWakeBringUpRow"') >= 0) missing.push('bring-up toggle still in html');
+if (html.indexOf('id="voiceAllowBringUpTargetToggle"') >= 0) missing.push('bring-up switch still in html');
 if (css.indexOf('.voice-wake-secondary') < 0) missing.push('css .voice-wake-secondary');
 if (css.indexOf('.voice-scheme-strip') < 0) missing.push('css .voice-scheme-strip');
 if (css.indexOf('#voiceSceneActionsPanel') < 0) missing.push('css voiceSceneActionsPanel');
@@ -84,7 +83,12 @@ if (css.indexOf('#voiceFlowNodeWake::after') >= 0) missing.push('css still has �
 if (railJs.indexOf('voiceIntentPicker') < 0) missing.push('rail js picker');
 if (railJs.indexOf("setVoiceFace('dictate')") < 0) missing.push('rail no-face-swap');
 if (persist.indexOf('promptInjectText') < 0) missing.push('persist promptInjectText');
-if (html.indexOf('id="btnVoicePromptSaveScene"') < 0) missing.push('prompt save button');
+if (html.indexOf('id="btnVoicePromptSaveScene"') >= 0) missing.push('prompt save button should be gone');
+if (html.indexOf('id="voicePromptSaveHint"') < 0) missing.push('prompt autosave hint');
+if (html.indexOf('btnVoicePromptCustom') < 0) missing.push('prompt new button');
+if (html.indexOf('btnVoicePromptNewMain') < 0) missing.push('prompt new primary');
+if (html.indexOf('data-voice-prompt-new') < 0) missing.push('prompt new data attr');
+if (railJs.indexOf('flushPromptDraftQuiet') < 0) missing.push('rail flushPromptDraftQuiet');
 if (railJs.indexOf('savePromptToScene') < 0) missing.push('rail savePromptToScene');
 if (railJs.indexOf('applyPromptMapping') < 0) missing.push('rail applyPromptMapping');
 if (sceneJs.indexOf("kind === 'prompt'") < 0 && sceneJs.indexOf('kind === "prompt"') < 0) {

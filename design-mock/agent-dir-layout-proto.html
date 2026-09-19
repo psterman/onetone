@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent 目录布局 · 为何不用半屏键盘预览</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;600&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ced8e5;
+  --ink:#101c2c;
+  --mute:#5a6c80;
+  --faint:#8496a8;
+  --line:rgba(16,28,44,.12);
+  --paper:#f5f8fb;
+  --action:#1a7a6c;
+  --action-soft:#dcefeb;
+  --agent:#3a4580;
+  --agent-soft:#e4e7f5;
+  --agent-line:rgba(58,69,128,.35);
+  --bad:#b42318;
+  --bad-soft:#fce8e6;
+  --ok:#157a45;
+  --ok-soft:#e3f5eb;
+  --warn:#9a6700;
+  --warn-soft:#fff6e0;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:var(--font);font-size:13px;line-height:1.45;color:var(--ink);
+  background:
+    radial-gradient(880px 400px at 8% -8%,rgba(58,69,128,.15),transparent 55%),
+    radial-gradient(640px 360px at 100% 0%,rgba(26,122,108,.11),transparent 48%),
+    linear-gradient(170deg,#c4cfdc,var(--bg) 50%,#d7e0eb);
+}
+.page{max-width:1160px;margin:0 auto;padding:18px 14px 64px}
+.eyebrow{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--agent)}
+h1{margin:0 0 8px;font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.12}
+.lede{margin:0 0 16px;max-width:70ch;color:var(--mute);font-size:14.5px}
+
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.tab{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:7px 13px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.tab.is-on{background:var(--agent-soft);border-color:var(--agent-line);color:var(--agent)}
+.panel{display:none}.panel.is-on{display:block}
+
+.verdict{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;
+}
+@media (max-width:800px){.verdict{grid-template-columns:1fr}}
+.vcard{
+  border-radius:14px;padding:12px 13px;border:1px solid var(--line);background:#fff;
+}
+.vcard.no{border-color:rgba(180,35,24,.25);background:linear-gradient(135deg,var(--bad-soft),#fff 70%)}
+.vcard.yes{border-color:rgba(21,122,69,.28);background:linear-gradient(135deg,var(--ok-soft),#fff 70%)}
+.vcard h2{margin:0 0 4px;font-size:13px;font-weight:800}
+.vcard p{margin:0;font-size:12.5px;color:var(--mute)}
+.vcard .mark{font-size:11px;font-weight:800;letter-spacing:.04em;margin-bottom:4px}
+.vcard.no .mark{color:var(--bad)}
+.vcard.yes .mark{color:var(--ok)}
+
+/* mock shells */
+.shell{
+  border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--paper);
+  box-shadow:0 14px 32px rgba(16,28,44,.07);
+}
+.shell-h{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:9px 12px;background:#e4ebf3;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--mute);
+}
+.shell-h b{color:var(--ink)}
+.pill{display:inline-flex;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:750}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+
+/* BAD: soft-pad chrome clone */
+.bad-layout{
+  display:grid;grid-template-columns:140px 1fr;min-height:320px;
+}
+@media (max-width:640px){.bad-layout{grid-template-columns:1fr}}
+.pad-mock{
+  padding:12px;background:linear-gradient(160deg,#1a2a3c,#24384d);display:flex;flex-direction:column;gap:8px;
+}
+.pad-mock .lab{font-size:10px;font-weight:700;color:rgba(255,255,255,.45)}
+.numpad{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:4px;
+}
+.numpad i{
+  aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.08);color:#d7e4f0;font-style:normal;font-size:9px;font-weight:700;font-family:var(--mono);
+}
+.bad-right{display:flex;flex-direction:column;min-width:0;background:#fff}
+.bad-tabs{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:8px;background:#dce5ef;border-bottom:1px solid var(--line);
+}
+.bad-tabs span{
+  text-align:center;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:750;color:var(--mute);
+}
+.bad-tabs span.on{background:#fff;color:var(--agent)}
+.bad-body{padding:12px;flex:1}
+.bad-body .x{font-size:12px;color:var(--mute);margin:0 0 8px}
+.strike{text-decoration:line-through;opacity:.55}
+
+/* GOOD: agent form layout */
+.good{
+  display:grid;grid-template-columns:150px 1fr;min-height:380px;
+}
+@media (max-width:720px){.good{grid-template-columns:1fr}}
+.snav{background:#e8eef5;border-right:1px solid var(--line);padding:10px 8px}
+.snav .g{margin:8px 6px 4px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.snav .i{padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;color:var(--mute);margin:2px 0}
+.snav .i.on{background:#fff;color:var(--agent);box-shadow:inset 3px 0 0 var(--agent)}
+.smain{display:flex;flex-direction:column;background:#fff;min-width:0}
+.shead{padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+.shead h3{margin:0;font-size:15px;font-weight:800}
+.shead p{margin:3px 0 0;font-size:12px;color:var(--mute)}
+.subtabs{display:flex;flex-wrap:wrap;gap:4px;padding:10px 14px 0}
+.subtabs button{
+  appearance:none;border:1px solid var(--line);background:var(--paper);border-radius:10px;
+  padding:7px 12px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.subtabs button.is-on{background:var(--agent-soft);border-color:var(--agent-line);color:var(--agent)}
+.sbody{padding:12px 14px 16px;display:grid;grid-template-columns:1fr 168px;gap:12px;align-items:start}
+@media (max-width:720px){.sbody{grid-template-columns:1fr}}
+.form{min-width:0}
+.block{margin:0 0 10px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--paper)}
+.block h4{margin:0 0 6px;font-size:12px;font-weight:800}
+.row{
+  display:flex;justify-content:space-between;gap:8px;align-items:center;
+  padding:7px 8px;border-radius:8px;background:#fff;border:1px solid var(--line);margin:0 0 5px;font-size:12px;
+}
+.row em{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.preview-slot{
+  border-radius:12px;border:1px dashed var(--agent-line);background:var(--agent-soft);
+  padding:10px;position:sticky;top:8px;
+}
+.preview-slot .ph{margin:0 0 6px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--agent)}
+.preview-slot .hint{margin:6px 0 0;font-size:10.5px;color:var(--mute)}
+.preview-slot.is-off{opacity:.4}
+.preview-slot.is-off .mock{filter:grayscale(.8)}
+.float-mock{
+  padding:9px 10px;border-radius:10px;background:rgba(16,28,44,.9);color:#e8eef5;font-size:11px;
+}
+.float-mock .k{display:flex;justify-content:space-between;font-weight:800}
+.float-mock .m{margin-top:3px;opacity:.5;font-family:var(--mono);font-size:9.5px}
+.lights{display:flex;gap:6px;justify-content:center;margin:4px 0}
+.lights i{width:12px;height:12px;border-radius:50%;display:block}
+.lights .a{background:#8aa0b4}.lights .b{background:#2a9d6a}.lights .c{background:#d4a017}.lights .d{background:#c45c48}
+
+.why{
+  margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+}
+@media (max-width:900px){.why{grid-template-columns:1fr}}
+.why .card{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 13px;
+}
+.why h3{margin:0 0 4px;font-size:13px;font-weight:800}
+.why p{margin:0;font-size:12.5px;color:var(--mute)}
+.soft-compare{
+  margin-top:12px;border-radius:14px;border:1px solid rgba(26,122,108,.3);
+  background:linear-gradient(120deg,var(--action-soft),#fff 60%);padding:12px 14px;
+}
+.soft-compare strong{display:block;margin:0 0 4px;font-size:13px;color:var(--action)}
+.soft-compare p{margin:0;font-size:12.5px;color:var(--mute)}
+
+@keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.panel.is-on .shell{animation:rise .22s ease-out}
+@media (prefers-reduced-motion:reduce){.panel.is-on .shell{animation:none}}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Layout proto · Agent vs Soft Pad chrome</p>
+  <h1>Agent 用「顶栏 + 表单」，不用半屏键盘</h1>
+  <p class="lede">虚拟键盘可以左预览右绑键；Agent 独立目录若照搬同一壳，心智又变回「还在改 Soft Pad」。下面对照错误壳与推荐壳，并写清原因。</p>
+
+  <div class="verdict">
+    <div class="vcard no">
+      <div class="mark">不采用</div>
+      <h2>左半屏数字键盘 + 右上标签 + 右下详情</h2>
+      <p>这是 Soft Pad 动作面的壳。搬进 Agent，目录拆开了，视觉还绑在键盘上。</p>
+    </div>
+    <div class="vcard yes">
+      <div class="mark">采用</div>
+      <h2>顶栏四叶 + 全宽表单 + 按需小预览</h2>
+      <p>配置页长相；灯效 / 迷你栏旁嵌细条或灯点，数据页可关掉预览。</p>
+    </div>
+  </div>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tab is-on" data-tab="good">推荐 · Agent 页</button>
+    <button type="button" class="tab" data-tab="bad">反例 · 照搬 Soft Pad 壳</button>
+    <button type="button" class="tab" data-tab="why">为什么</button>
+  </nav>
+
+  <!-- GOOD -->
+  <section class="panel is-on" id="p-good">
+    <div class="shell">
+      <div class="shell-h">
+        <span><b>设置 → Agent</b>（独立目录）</span>
+        <span class="pill ok">顶栏四叶 · 表单主路径</span>
+      </div>
+      <div class="good">
+        <aside class="snav">
+          <div class="g">动作面</div>
+          <div class="i">按键</div>
+          <div class="i">虚拟键盘</div>
+          <div class="i">语音</div>
+          <div class="g">配置</div>
+          <div class="i on">Agent</div>
+          <div class="i">托盘</div>
+        </aside>
+        <div class="smain">
+          <div class="shead">
+            <h3>Agent</h3>
+            <p>灯效、数据、样式、迷你栏——配置页，不是绑键页。</p>
+          </div>
+          <div class="subtabs" role="tablist" id="agentSubs">
+            <button type="button" class="is-on" data-sub="lights">灯效</button>
+            <button type="button" data-sub="data">数据</button>
+            <button type="button" data-sub="style">样式</button>
+            <button type="button" data-sub="mini">迷你栏</button>
+          </div>
+          <div class="sbody">
+            <div class="form" id="agentForm"></div>
+            <aside class="preview-slot" id="previewSlot">
+              <p class="ph" id="previewPh">对照预览</p>
+              <div id="previewBody"></div>
+              <p class="hint" id="previewHint"></p>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="soft-compare">
+      <strong>虚拟键盘页仍用左预览右绑键</strong>
+      <p>那是动作面：改键必须看见键盘。Agent 是配置目录，主路径是表单；预览降级为「按需小窗」，不占半屏。</p>
+    </div>
+  </section>
+
+  <!-- BAD -->
+  <section class="panel" id="p-bad">
+    <div class="shell">
+      <div class="shell-h">
+        <span><b>反例</b> · Agent 仍套 Soft Pad 壳</span>
+        <span class="pill bad">心智冲突</span>
+      </div>
+      <div class="bad-layout">
+        <div class="pad-mock">
+          <div class="lab">半屏键盘常驻</div>
+          <div class="numpad">
+            <i>7</i><i>8</i><i>9</i><i>4</i><i>5</i><i>6</i><i>1</i><i>2</i><i>3</i>
+          </div>
+          <div class="lab" style="margin-top:auto">用户在改「额度开关」也被迫看键盘</div>
+        </div>
+        <div class="bad-right">
+          <div class="bad-tabs">
+            <span>灯效</span><span class="on">数据</span><span>样式</span><span>迷你栏</span>
+          </div>
+          <div class="bad-body">
+            <p class="x">问题：</p>
+            <div class="row"><strong class="strike">看起来还在 Soft Pad 里</strong><em>目录白拆</em></div>
+            <div class="row"><strong class="strike">数据页不需要键盘</strong><em>半屏浪费</em></div>
+            <div class="row"><strong class="strike">和虚拟键盘页双胞胎</strong><em>找不到哪页绑键</em></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY -->
+  <section class="panel" id="p-why">
+    <div class="why">
+      <div class="card">
+        <h3>1. 任务不同</h3>
+        <p>虚拟键盘 =「这颗键绑什么」。Agent =「灯怎么亮、条上显示什么、何时出现」。前者需要键盘画布，后者需要表单。</p>
+      </div>
+      <div class="card">
+        <h3>2. 目录要可辨</h3>
+        <p>左栏拆出 Agent，就是为了离开 Soft Pad。若壳一模一样，用户会以为点错了，或继续在两处找灯效。</p>
+      </div>
+      <div class="card">
+        <h3>3. 预览按页给</h3>
+        <p>灯效要灯点、迷你栏要细条、样式要皮肤感——用右侧小预览够了。数据页关掉预览，不浪费宽度。</p>
+      </div>
+    </div>
+    <div class="why" style="margin-top:10px">
+      <div class="card">
+        <h3>对齐市面</h3>
+        <p>Stream Deck：主画布绑键；亮度等进 Preferences 表单页，不是再开一块半屏键帽。</p>
+      </div>
+      <div class="card">
+        <h3>对齐本产品</h3>
+        <p>按键 / 语音 / 摄像头是动作面各有形态；托盘等配置页是表单。Agent 归配置组，跟托盘一类，不跟虚拟键盘一类。</p>
+      </div>
+      <div class="card">
+        <h3>实现边界</h3>
+        <p>Soft Pad：<code>keys</code> + 左预览。Agent：<code>lights|data|style|mini</code> 顶栏；小预览组件按子页显隐。</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var tabs=document.querySelectorAll('.tab');
+  var panels={good:document.getElementById('p-good'),bad:document.getElementById('p-bad'),why:document.getElementById('p-why')};
+  tabs.forEach(function(t){
+    t.addEventListener('click',function(){
+      tabs.forEach(function(x){x.classList.toggle('is-on',x===t);});
+      Object.keys(panels).forEach(function(k){panels[k].classList.toggle('is-on',k===t.getAttribute('data-tab'));});
+    });
+  });
+
+  var forms={
+    lights:{
+      html:
+        '<div class="block"><h4>接入</h4><div class="row"><strong>虚拟键盘开关</strong><em>开</em></div><div class="row"><strong>Hook 状态</strong><em>已连接</em></div></div>'+
+        '<div class="block"><h4>氛围灯</h4><div class="row"><strong>跟随状态</strong><em>开</em></div><div class="row"><strong>透明度</strong><em>72%</em></div></div>'+
+        '<div class="block"><h4>按键灯</h4><div class="row"><strong>模板</strong><em>状态色</em></div></div>',
+      preview:'lights',
+      ph:'灯色对照',
+      hint:'只显示状态色点，不渲染整块数字键盘。'
+    },
+    data:{
+      html:
+        '<div class="block"><h4>当前读数</h4><div class="row"><strong>额度</strong><em>72%</em></div><div class="row"><strong>重置</strong><em>—</em></div></div>'+
+        '<div class="block"><h4>预览条摘要</h4><div class="row"><strong>显示额度</strong><em>开</em></div><div class="row"><strong>显示账号</strong><em>开</em></div></div>'+
+        '<div class="block"><h4>来源</h4><div class="row"><strong>API 候补 / 本地统计</strong><em>可选</em></div></div>',
+      preview:null,
+      ph:'本页无需预览',
+      hint:'改开关即可；半屏键盘在此纯属噪音。'
+    },
+    style:{
+      html:
+        '<div class="block"><h4>何时出现</h4><div class="row"><strong>跟随应用显示</strong><em>默认</em></div><div class="row"><strong>保持在最前</strong><em>—</em></div></div>'+
+        '<div class="block"><h4>外观皮肤</h4><div class="row"><strong>默认 / 玻璃 / Hybrid</strong><em>skin</em></div></div>'+
+        '<div class="block"><h4>聆听口令</h4><div class="row"><strong>激活口令</strong><em>Cursor</em></div></div>',
+      preview:'float',
+      ph:'出现形态',
+      hint:'用细条示意浮窗，不必铺满键盘。'
+    },
+    mini:{
+      html:
+        '<div class="block"><h4>谁在忙</h4><div class="row"><strong>忙闲圆点</strong><em>开</em></div></div>'+
+        '<div class="block"><h4>听你说话</h4><div class="row"><strong>条下话术</strong><em>开</em></div></div>'+
+        '<div class="block"><h4>快捷钮</h4><div class="row"><strong>悬停快捷</strong><em>麦/发/续</em></div></div>'+
+        '<div class="block"><h4>浮窗形态</h4><div class="row"><strong>细条 vs 完整键盘</strong><em>细条</em></div></div>',
+      preview:'float',
+      ph:'迷你栏对照',
+      hint:'预览=运行时浮层样子，不是设置里的绑键画布。'
+    }
+  };
+
+  var formEl=document.getElementById('agentForm');
+  var slot=document.getElementById('previewSlot');
+  var ph=document.getElementById('previewPh');
+  var body=document.getElementById('previewBody');
+  var hint=document.getElementById('previewHint');
+  var subs=document.querySelectorAll('#agentSubs [data-sub]');
+
+  function paint(id){
+    var c=forms[id]||forms.lights;
+    formEl.innerHTML=c.html;
+    ph.textContent=c.ph;
+    hint.textContent=c.hint;
+    if(!c.preview){
+      slot.classList.add('is-off');
+      body.innerHTML='<p style="margin:0;font-size:12px;color:var(--mute)">预览关闭</p>';
+    }else{
+      slot.classList.remove('is-off');
+      if(c.preview==='lights'){
+        body.innerHTML='<div class="lights" aria-hidden="true"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div>';
+      }else{
+        body.innerHTML='<div class="float-mock"><div class="k"><span>Agent · 跑着</span><span>72%</span></div><div class="m">model · Plan off</div></div>';
+      }
+    }
+    subs.forEach(function(b){
+      var on=b.getAttribute('data-sub')===id;
+      b.classList.toggle('is-on',on);
+    });
+  }
+  subs.forEach(function(b){b.addEventListener('click',function(){paint(b.getAttribute('data-sub'));});});
+  paint('lights');
+})();
+</script>
+</body>
+</html>

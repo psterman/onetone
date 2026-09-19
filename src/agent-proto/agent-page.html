@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent 五叶导览 · 键位拆清</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;600&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/codex-micro-pad.css">
+<link rel="stylesheet" href="../css/soft-pad-hub.css">
+<style>
+:root{
+  --bg:#c9d4e2;--ink:#0f1b2a;--mute:#5a6c80;--faint:#8496a8;--line:rgba(15,27,42,.12);
+  --paper:#f3f6fa;--agent:#3a4580;--agent-soft:#e4e7f5;--agent-line:rgba(58,69,128,.35);
+  --float:#1a7a6c;--float-soft:#dcefeb;--mini:#6b4f9a;--mini-soft:#efe8f7;
+  --lights:#8a4b2a;--lights-soft:#f7ebe4;--keys:#0f6b8a;--keys-soft:#e0f2f8;
+  --accent:#0088cc;--accent-soft:#e5f5fc;
+  --ok:#157a45;--ok-soft:#e3f5eb;--warn:#9a6700;--warn-soft:#fff6e0;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;color:var(--ink);background:
+  radial-gradient(900px 400px at 0% -8%,rgba(58,69,128,.14),transparent 55%),
+  radial-gradient(700px 360px at 100% 0%,rgba(15,107,138,.1),transparent 48%),
+  linear-gradient(168deg,#bfcbda,var(--bg) 50%,#d5dfeb)}
+.page{max-width:1240px;margin:0 auto;padding:16px 14px 56px}
+.eyebrow{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--agent)}
+h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.12}
+.lede{margin:0 0 14px;max-width:78ch;color:var(--mute);font-size:14px}
+
+/* —— 五叶导览卡（壳外，先懂再点） —— */
+.guide{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:0 0 14px}
+@media (max-width:980px){.guide{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.guide{grid-template-columns:1fr}}
+.gcard{
+  appearance:none;border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:11px 12px;
+  text-align:left;cursor:pointer;font:inherit;color:inherit;box-shadow:0 8px 18px rgba(15,27,42,.04);
+  transition:border-color .15s,box-shadow .15s,transform .15s;
+}
+.gcard:hover{transform:translateY(-1px)}
+.gcard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.gcard .ix{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px}
+.gcard h3{margin:0 0 4px;font-size:14px;font-weight:800}
+.gcard p{margin:0;font-size:11.5px;color:var(--mute);line-height:1.35}
+.gcard[data-jump="float"] .ix{color:var(--float)}
+.gcard[data-jump="mini"] .ix{color:var(--mini)}
+.gcard[data-jump="lights"] .ix{color:var(--lights)}
+.gcard[data-jump="connect"] .ix{color:var(--agent)}
+.gcard[data-jump="keys"] .ix{color:var(--keys)}
+.gcard.is-on[data-jump="float"]{border-color:var(--float);background:linear-gradient(165deg,var(--float-soft),#fff 70%);box-shadow:0 0 0 1px var(--float)}
+.gcard.is-on[data-jump="mini"]{border-color:var(--mini);background:linear-gradient(165deg,var(--mini-soft),#fff 70%);box-shadow:0 0 0 1px var(--mini)}
+.gcard.is-on[data-jump="lights"]{border-color:var(--lights);background:linear-gradient(165deg,var(--lights-soft),#fff 70%);box-shadow:0 0 0 1px var(--lights)}
+.gcard.is-on[data-jump="connect"]{border-color:var(--agent);background:linear-gradient(165deg,var(--agent-soft),#fff 70%);box-shadow:0 0 0 1px var(--agent)}
+.gcard.is-on[data-jump="keys"]{border-color:var(--keys);background:linear-gradient(165deg,var(--keys-soft),#fff 70%);box-shadow:0 0 0 1px var(--keys)}
+
+.shell{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 14px 32px rgba(15,27,42,.07)}
+.shell-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:9px 12px;background:#e4ebf3;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--mute)}
+.shell-h b{color:var(--ink)}
+.layout{display:grid;grid-template-columns:132px 1fr;min-height:600px}
+@media (max-width:760px){.layout{grid-template-columns:1fr}}
+.main-stack{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--paper)}
+.view{display:none;flex-direction:column;flex:1;min-height:0}
+.view.is-on{display:flex}
+.snav{background:#e8eef5;border-right:1px solid var(--line);padding:10px 8px}
+.snav .g{margin:8px 6px 4px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.snav .i{padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;color:var(--mute);margin:2px 0;cursor:pointer;border:0;background:transparent;width:100%;text-align:left;font-family:inherit}
+.snav .i.on{background:#fff;color:var(--agent);box-shadow:inset 3px 0 0 var(--agent)}
+.snav .i.stats.on{color:#066a9c;box-shadow:inset 3px 0 0 var(--accent)}
+.stats-main{flex:1;min-height:0;overflow:auto}
+.head{padding:10px 14px;border-bottom:1px solid var(--line);background:#fff;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center}
+.head h3{margin:0;font-size:15px;font-weight:800}
+.head .app{font-size:12px;color:var(--mute)}
+.head .app strong{color:var(--ink)}
+.wall-cta{appearance:none;border:1px solid rgba(0,136,204,.4);background:var(--accent-soft);color:#066a9c;border-radius:10px;padding:8px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-decoration:none}
+.wall-cta small{font-weight:650;font-size:10.5px;opacity:.85}
+.app-pick{appearance:none;border:1px solid var(--line);background:#fff;border-radius:6px;padding:2px 7px;font:inherit;font-size:11px;font-weight:750;color:var(--mute);cursor:pointer;margin-left:2px}
+.app-pick.is-on{border-color:var(--agent);background:var(--agent-soft);color:var(--agent)}
+
+/* Agent 顶栏 · 当前应用数据快照（简约，非整盘） */
+.app-snap{
+  display:flex;align-items:center;gap:0;flex-wrap:wrap;
+  margin:0 14px 0;padding:0;border-bottom:1px solid var(--line);background:#f7fafc;
+}
+.app-snap .snap-body{
+  flex:1;min-width:0;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:8px 4px 8px 14px;border:0;background:transparent;font:inherit;color:inherit;
+  cursor:pointer;text-align:left;border-radius:0;
+}
+.app-snap .snap-body:hover{background:rgba(0,136,204,.04)}
+.app-snap .snap-body:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.app-snap .who{font-size:11px;font-weight:800;color:var(--faint);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.app-snap .who b{color:var(--ink);font-weight:800;text-transform:none;letter-spacing:0;margin-left:4px}
+.app-snap .mets{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.app-snap .met{display:flex;align-items:baseline;gap:5px;font-size:11px;color:var(--mute)}
+.app-snap .met em{font-style:normal;font-family:var(--mono);font-size:13px;font-weight:800;color:var(--ink)}
+.app-snap .met.miss em{color:var(--faint);font-weight:650}
+.app-snap .go{
+  appearance:none;border:0;border-left:1px solid var(--line);background:transparent;
+  padding:10px 14px;font:inherit;font-size:12px;font-weight:800;color:#066a9c;cursor:pointer;white-space:nowrap;
+}
+.app-snap .go:hover{background:var(--accent-soft)}
+.app-snap .go:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+.workspace{display:grid;grid-template-columns:248px 1fr;flex:1;min-height:0}
+@media (max-width:900px){.workspace{grid-template-columns:1fr}}
+.preview{border-right:1px solid var(--line);background:#e8eef5;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.preview .cap{margin:0;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.preview .note{margin:0;font-size:11px;color:var(--mute)}
+.preview-mode{display:none}.preview-mode.is-on{display:block}
+
+.scene{border-radius:12px;padding:10px;background:linear-gradient(160deg,#d5dde8,#cfd8e4);border:1px solid var(--line)}
+.scene .hint{font-size:10.5px;color:var(--mute);margin-top:6px}
+.float-chip{max-width:150px;margin:0 auto;padding:6px 8px;border-radius:10px;background:rgba(15,27,42,.9);color:#e8eef5;font-size:10px}
+.float-chip .r{display:flex;align-items:center;gap:5px}
+.float-chip .d{width:8px;height:8px;border-radius:50%;background:#2a9d6a}
+.float-chip .u{margin-left:auto;font-family:var(--mono);opacity:.75}
+
+.agent-preview-host.soft-pad-preview-host{
+  min-height:0;height:auto;max-height:none;position:static;padding:8px 4px 10px;
+  margin:0;width:100%;box-sizing:border-box;align-self:stretch;
+}
+.agent-preview-host[data-pad-mode-preview]{
+  background:
+    radial-gradient(520px 220px at 12% -10%,rgba(31,143,184,.12),transparent 58%),
+    radial-gradient(420px 180px at 92% 8%,rgba(42,156,196,.08),transparent 55%),
+    rgba(241,246,250,.92);
+  border:1px solid rgba(31,143,184,.16);border-radius:14px;padding:10px 8px 12px;
+}
+.agent-preview-host[data-pad-mode-preview="purpose"]{
+  background:transparent;border-color:transparent;box-shadow:none;padding:2px 0 6px;
+}
+.agent-preview-host .soft-pad-mode-preview{max-width:100%;margin:0}
+.agent-preview-host .soft-pad-mode-preview__live{margin:0 0 8px;order:-1;overflow:hidden}
+.agent-preview-host .soft-pad-mode-preview--appear{display:flex;flex-direction:column;max-width:100%}
+.agent-preview-host .soft-pad-mode-preview__hw,
+.agent-preview-host .soft-pad-mode-preview__hw .micro-hw,
+.agent-preview-host .soft-pad-mode-preview__hw .micro-hw-shell{
+  max-width:min(100%,216px)!important;width:100%!important;margin:0 auto;aspect-ratio:1/1;box-sizing:border-box!important;
+}
+.agent-preview-host .soft-pad-purpose-live-hw .micro-hw,
+.agent-preview-host .soft-pad-purpose-live-hw .micro-hw-shell,
+.agent-preview-host .soft-pad-demo-compare .micro-hw{
+  max-width:none!important;width:100%!important;
+}
+.agent-preview-host .soft-pad-demo-compare{padding:2px;box-sizing:border-box}
+.agent-preview-host.soft-pad-preview-host[data-preview-label]::before{
+  max-width:100%;text-align:left;color:var(--faint);letter-spacing:.06em;
+}
+.agent-preview-host .codex-micro-pad.soft-pad-preview{width:100%;max-width:100%;margin:0}
+.agent-preview-host .codex-micro-pad__head,
+.agent-preview-host .soft-pad-preview__hint,
+.agent-preview-host .soft-pad-key-caption,
+.agent-preview-host .micro-hw__face-top,
+.agent-preview-host .soft-pad-agent-bar--face{display:none!important}
+.agent-preview-host .micro-hw__face{
+  background:rgba(248,250,252,.92)!important;box-shadow:none!important;
+}
+.agent-preview-host:not([data-pad-mode-preview]) .micro-hw-wrap,
+.agent-preview-host:not([data-pad-mode-preview]) .micro-hw-shell{width:100%;max-width:220px;margin:0 auto}
+.agent-preview-host:not([data-pad-mode-preview]) .micro-hw,
+.agent-preview-host:not([data-pad-mode-preview]) .micro-hw-shell .micro-hw{
+  width:100%;max-width:220px;aspect-ratio:1/1;padding:10px;border-radius:22px;
+}
+.agent-preview-host .micro-hw__face{border-radius:16px}
+.agent-preview-host .micro-hw__face-title{font-size:12px;font-weight:800}
+.agent-preview-host[data-lights-preview-accent="ambient"] .micro-hw-shell{
+  box-shadow:
+    0 0 0 3px var(--agent-ambient-ring, rgba(124, 58, 237, 0.4)),
+    0 0 22px var(--agent-ambient-glow, rgba(124, 58, 237, 0.2));
+  border-radius:16px;
+  filter:none;
+  transition: box-shadow 0.18s ease;
+}
+.agent-preview-host[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"]{
+  outline:1.5px solid rgba(59,130,246,.85);
+  outline-offset:1px;
+}
+.agent-preview-host .micro-hw__key.is-focused,
+.agent-preview-host .micro-hw__key.is-pressed{
+  outline:2px solid rgba(42,157,106,.75);outline-offset:1px;
+}
+.agent-preview-host .micro-hw__key.hi-ag{
+  outline:1.5px dashed rgba(15,107,138,.85);outline-offset:1px;
+  background:rgba(224,242,248,.55)!important;
+  box-shadow:none!important;
+}
+.agent-preview-host .micro-hw__key.hi-digit{
+  outline:1.5px dashed rgba(154,103,0,.85);outline-offset:1px;
+  background:rgba(255,246,224,.55)!important;
+  box-shadow:none!important;
+}
+.agent-preview-host .soft-pad-purpose-live-hw,
+.agent-preview-host .soft-pad-purpose-live-hw .micro-hw,
+.agent-preview-host .soft-pad-purpose-live-hw .micro-hw-shell{
+  box-shadow:none!important;filter:none!important;
+}
+.agent-preview-host .soft-pad-purpose-live-hw .micro-hw,
+.agent-preview-host .micro-hw-shell.is-mode-codex .micro-hw{
+  background:#eef2f6!important;
+}
+.agent-preview-empty{
+  padding:18px 12px;border-radius:14px;background:#fff;border:1px dashed var(--line);
+  font-size:12.5px;color:var(--mute);line-height:1.45;text-align:center;
+}
+.pad-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pad-legend span{font-size:10px;font-weight:750;padding:2px 7px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--mute)}
+.pad-legend .ag{border-style:dashed;border-color:rgba(15,107,138,.55);color:var(--keys);background:var(--keys-soft)}
+.pad-legend .digit{border-style:dashed;border-color:rgba(154,103,0,.5);color:var(--warn);background:var(--warn-soft)}
+
+.agent-mini-host{
+  border-radius:14px;padding:12px 10px 10px;min-height:0;
+  background:linear-gradient(180deg,rgba(15,27,42,.04),transparent 40%),#d8e0ea;
+  border:1px solid var(--line);display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;
+  box-sizing:border-box;gap:8px;overflow:visible;
+}
+.agent-mini-host .soft-pad-agent-mini-bar-stage{
+  width:100%;max-width:100%;padding:4px 2px 2px;gap:6px;box-sizing:border-box;
+  overflow:visible;align-items:stretch;
+}
+.agent-mini-host .soft-pad-agent-mini-bar{max-width:100%;min-width:0;width:100%}
+.agent-mini-host .soft-pad-agent-mini-bar__speech{width:100%;max-width:100%;min-width:0}
+.agent-mini-host .soft-pad-agent-mini-demo-banner{width:100%;margin:0;box-sizing:border-box}
+.agent-mini-host .note,
+#barFoot{
+  margin:2px 0 0;padding:0 2px;font-size:11px;color:var(--mute);line-height:1.35;
+}
+.agent-mini-host [data-mini-zone].is-hi{
+  outline:none;
+  box-shadow:inset 0 0 0 1.5px rgba(42,157,106,.55);
+  border-radius:10px;
+}
+
+.id-card{border-radius:14px;padding:12px;border:2px solid var(--line);background:#fff}
+.id-card.connect{border-color:var(--agent-line);background:linear-gradient(160deg,var(--agent-soft),#fff 70%)}
+.id-card .big{margin:0 0 4px;font-size:15px;font-weight:800}
+.id-card .one{margin:0 0 10px;font-size:12.5px;color:var(--mute);line-height:1.4}
+.id-card .pipe{display:flex;flex-direction:column;gap:4px}
+.id-card .pipe .p{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:9px;background:#fff;border:1px solid var(--line);font-size:11.5px;font-weight:750}
+.id-card .pipe .p i{width:20px;height:20px;border-radius:50%;background:var(--agent);color:#fff;font-style:normal;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+.panel{display:flex;flex-direction:column;min-width:0;background:#fff}
+.subtabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:10px 12px 0;border-bottom:1px solid var(--line)}
+@media (max-width:720px){.subtabs{grid-template-columns:1fr 1fr}}
+.subtabs button{
+  appearance:none;border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:8px 8px 9px;
+  font:inherit;cursor:pointer;color:var(--mute);text-align:left;display:flex;flex-direction:column;gap:2px;
+}
+.subtabs button .t{font-size:12.5px;font-weight:800}
+.subtabs button .s{font-size:10px;font-weight:650;opacity:.85;line-height:1.25}
+.subtabs button.is-on[data-sub="float"]{background:var(--float);border-color:var(--float);color:#fff}
+.subtabs button.is-on[data-sub="mini"]{background:var(--mini);border-color:var(--mini);color:#fff}
+.subtabs button.is-on[data-sub="lights"]{background:var(--lights);border-color:var(--lights);color:#fff}
+.subtabs button.is-on[data-sub="connect"]{background:var(--agent);border-color:var(--agent);color:#fff}
+.subtabs button.is-on[data-sub="keys"]{background:var(--keys);border-color:var(--keys);color:#fff}
+.detail{padding:12px;overflow:auto;flex:1}
+
+.job{
+  margin:0 0 12px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);
+  background:linear-gradient(120deg,#fff,var(--paper));
+}
+.job .lab{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:0 0 4px}
+.job h4{margin:0 0 4px;font-size:15px;font-weight:800}
+.job p{margin:0;font-size:12.5px;color:var(--mute)}
+.job[data-tone="float"]{border-color:rgba(26,122,108,.3);background:linear-gradient(120deg,#fff,var(--float-soft))}
+.job[data-tone="mini"]{border-color:rgba(107,79,154,.3);background:linear-gradient(120deg,#fff,var(--mini-soft))}
+.job[data-tone="lights"]{border-color:rgba(138,75,42,.3);background:linear-gradient(120deg,#fff,var(--lights-soft))}
+.job[data-tone="connect"]{border-color:var(--agent-line);background:linear-gradient(120deg,#fff,var(--agent-soft))}
+.job[data-tone="keys"]{border-color:rgba(15,107,138,.35);background:linear-gradient(120deg,#fff,var(--keys-soft))}
+
+.sec{margin:0 0 12px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--paper)}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line)}
+.sec-h .n{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.sec-h h4{margin:0;font-size:13px;font-weight:800}
+.sec-b{padding:10px 12px}
+.sec-b > p.lead{margin:0 0 8px;font-size:12px;color:var(--mute)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 9px;border-radius:9px;border:1px solid var(--line);background:#fff;margin:0 0 6px;font-size:12px}
+.row:last-child{margin-bottom:0}
+.row .sub{display:block;font-size:10.5px;color:var(--faint);font-weight:650;margin-top:2px}
+.btn-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.btn{appearance:none;border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 11px;font:inherit;font-size:12px;font-weight:750;cursor:pointer;color:var(--ink)}
+.btn.primary{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:#066a9c}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.ok{background:var(--ok-soft);color:var(--ok)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:0 0 8px}
+.seg.n4{grid-template-columns:1fr 1fr}
+.seg button{appearance:none;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px;font:inherit;font-size:11.5px;font-weight:750;cursor:pointer;color:var(--mute)}
+.seg button.is-on{border-color:var(--float);background:var(--float-soft);color:var(--float)}
+.seg.purpose button.is-on{border-color:var(--keys);background:var(--keys-soft);color:var(--keys)}
+.skins{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.skins button{appearance:none;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px;text-align:left;cursor:pointer;font:inherit}
+.skins button.is-on{border-color:var(--keys);box-shadow:0 0 0 1px var(--keys)}
+.skins button b{display:block;font-size:11.5px;margin-bottom:4px}
+.skins .sw{height:28px;border-radius:6px;background:linear-gradient(160deg,#1a2a3c,#24384d)}
+.rail{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 8px}
+.rail button{appearance:none;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font:inherit;font-size:11.5px;font-weight:750;color:var(--mute);cursor:pointer}
+.rail button.is-on{background:var(--mini-soft);border-color:rgba(107,79,154,.4);color:var(--mini)}
+/* 叶内多标签页（浮窗 / 迷你 / 灯效 / 接通） */
+.leaf-page{display:flex;flex-direction:column;gap:0;min-height:220px}
+.leaf-tabs{
+  display:grid;gap:0;border-bottom:1px solid var(--line);margin:0 0 12px;background:#fff;
+  border-radius:12px 12px 0 0;overflow:hidden;border:1px solid var(--line);
+}
+.leaf-tabs.n2{grid-template-columns:1fr 1fr}
+.leaf-tabs.n3{grid-template-columns:repeat(3,1fr)}
+.leaf-tabs.n4{grid-template-columns:repeat(4,1fr)}
+.leaf-tabs button{
+  appearance:none;border:0;border-right:1px solid var(--line);background:var(--paper);
+  padding:10px 8px;font:inherit;cursor:pointer;color:var(--mute);text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.leaf-tabs button:last-child{border-right:0}
+.leaf-tabs button .t{font-size:12.5px;font-weight:800}
+.leaf-tabs button .s{font-size:10px;font-weight:650;opacity:.8;line-height:1.2}
+.leaf-tabs button.is-on{background:#fff}
+.leaf-page[data-tone="float"] .leaf-tabs button.is-on{color:var(--float);box-shadow:inset 0 -2px 0 var(--float)}
+.leaf-page[data-tone="float"] .leaf-tabs button:focus-visible{outline:2px solid var(--float);outline-offset:-2px}
+.leaf-page[data-tone="mini"] .leaf-tabs button.is-on{color:var(--mini);box-shadow:inset 0 -2px 0 var(--mini)}
+.leaf-page[data-tone="mini"] .leaf-tabs button:focus-visible{outline:2px solid var(--mini);outline-offset:-2px}
+.leaf-page[data-tone="lights"] .leaf-tabs button.is-on{color:var(--lights);box-shadow:inset 0 -2px 0 var(--lights)}
+.leaf-page[data-tone="lights"] .leaf-tabs button:focus-visible{outline:2px solid var(--lights);outline-offset:-2px}
+.leaf-page[data-tone="connect"] .leaf-tabs button.is-on{color:var(--agent);box-shadow:inset 0 -2px 0 var(--agent)}
+.leaf-page[data-tone="connect"] .leaf-tabs button:focus-visible{outline:2px solid var(--agent);outline-offset:-2px}
+.leaf-pane{padding:0 2px 4px}
+.leaf-pane .pane-lead{margin:0 0 10px;font-size:12.5px;color:var(--mute)}
+@media (max-width:520px){
+  .leaf-tabs.n3,.leaf-tabs.n4{grid-template-columns:1fr 1fr}
+  .leaf-tabs.n4 button:nth-child(2){border-right:0}
+  .leaf-tabs.n4 button:nth-child(1),.leaf-tabs.n4 button:nth-child(2){border-bottom:1px solid var(--line)}
+  .leaf-tabs.n3 button:nth-child(2){border-right:0;border-bottom:1px solid var(--line)}
+  .leaf-tabs.n3 button:nth-child(1){border-bottom:1px solid var(--line)}
+}
+.tools{display:flex;flex-wrap:wrap;gap:6px}
+.tools .t{padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:11px;font-weight:750;text-align:center;min-width:64px}
+.tools .t em{display:block;font-style:normal;font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-top:2px}
+.tog{width:36px;height:20px;border-radius:999px;background:#c5d0dc;border:0;position:relative;cursor:pointer;padding:0;flex-shrink:0}
+.tog.on{background:#3b82f6}
+.tog::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.tog.on::after{left:18px}
+
+/* keys tab: two zones */
+.zones{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 12px}
+@media (max-width:640px){.zones{grid-template-columns:1fr}}
+.zone{border-radius:14px;border:2px solid var(--line);background:#fff;padding:12px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.zone:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.zone.ag{border-color:rgba(15,107,138,.35)}
+.zone.digit{border-color:rgba(154,103,0,.3)}
+.zone.is-focus.ag{border-color:var(--keys);box-shadow:0 0 0 1px var(--keys),0 8px 20px rgba(15,107,138,.12)}
+.zone.is-focus.digit{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn),0 8px 20px rgba(154,103,0,.1)}
+.zone .ztag{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+.zone.ag .ztag{color:var(--keys)}
+.zone.digit .ztag{color:var(--warn)}
+.zone h5{margin:0 0 6px;font-size:14px;font-weight:800}
+.zone .zwhy{margin:0 0 10px;font-size:11.5px;color:var(--mute);line-height:1.4}
+.zone .zkeys{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 10px}
+.zone .zkeys span{font-family:var(--mono);font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:7px;background:var(--paper);border:1px solid var(--line)}
+.zone.ag .zkeys span{background:var(--keys-soft);border-color:rgba(15,107,138,.3);color:var(--keys)}
+.zone.digit .zkeys span{background:var(--warn-soft);border-color:rgba(154,103,0,.3);color:var(--warn)}
+.choice{display:grid;gap:5px}
+.choice button{
+  appearance:none;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:9px 10px;
+  font:inherit;text-align:left;cursor:pointer;color:var(--ink);
+}
+.choice button b{display:block;font-size:12.5px;font-weight:800;margin-bottom:2px}
+.choice button small{display:block;font-size:11px;color:var(--mute);font-weight:650}
+.choice button.is-on{border-color:var(--keys);background:var(--keys-soft)}
+.zone.digit .choice button.is-on{border-color:var(--warn);background:var(--warn-soft)}
+.linkout{margin-top:0;padding:12px;border-radius:14px;border:1px dashed rgba(15,107,138,.4);background:var(--keys-soft);font-size:12.5px;color:var(--keys)}
+.linkout b{font-weight:800}
+.linkout .go{margin-top:8px;display:inline-flex;appearance:none;border:1px solid var(--keys);background:#fff;color:var(--keys);border-radius:9px;padding:7px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.split-note{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid var(--line);font-size:12px;color:var(--mute)}
+.split-note b{color:var(--ink)}
+
+.callout{margin-top:14px;padding:12px 14px;border-radius:14px;background:linear-gradient(120deg,var(--agent-soft),#fff 70%);border:1px solid var(--agent-line)}
+.callout strong{display:block;margin:0 0 4px;font-size:13px}
+.callout p{margin:0;font-size:12.5px;color:var(--mute)}
+
+/* wall overlay (kept lean) */
+.wall-scr{display:none;position:fixed;inset:0;z-index:40;background:rgba(15,27,42,.45);padding:18px;align-items:center;justify-content:center}
+.wall-scr.is-on{display:flex}
+.wall-frame{width:min(1080px,100%);max-height:calc(100vh - 36px);display:flex;flex-direction:column;border-radius:14px;overflow:hidden;box-shadow:0 24px 60px rgba(15,27,42,.35);background:#0f1724}
+.wall-frame[data-surface="web"] .chrome-local{display:none}
+.wall-frame[data-surface="local"] .chrome-web{display:none}
+.wall-chrome{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1a2333;border-bottom:1px solid rgba(255,255,255,.08);color:#9aadc2;font-size:11.5px}
+.wall-chrome .dots{display:flex;gap:5px}
+.wall-chrome .dots i{width:10px;height:10px;border-radius:50%;background:#4a5568}
+.wall-chrome .dots i:nth-child(1){background:#e26d5a}
+.wall-chrome .dots i:nth-child(2){background:#e9c46a}
+.wall-chrome .dots i:nth-child(3){background:#2a9d6a}
+.wall-chrome .url{flex:1;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.06);font-family:var(--mono);font-size:10.5px;color:#c5d4e4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wall-chrome .ttl{flex:1;font-weight:800;color:#e8eef5;font-size:12px}
+.wall-chrome .x{appearance:none;border:0;background:rgba(255,255,255,.08);color:#e8eef5;border-radius:8px;padding:5px 10px;font:inherit;font-size:11px;font-weight:750;cursor:pointer}
+.wall-surf{display:flex;gap:4px;padding:8px 12px;background:#121a28;border-bottom:1px solid rgba(255,255,255,.06)}
+.wall-surf button{appearance:none;border:1px solid rgba(255,255,255,.12);background:transparent;color:#9aadc2;border-radius:8px;padding:6px 12px;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.wall-surf button.is-on{background:#0088cc;border-color:#0088cc;color:#fff}
+.wall-surf .hint{margin-left:auto;font-size:11px;color:#6a7f96;align-self:center}
+.wall-body{flex:1;overflow:auto;padding:14px 16px 20px}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media (max-width:720px){.kpi{grid-template-columns:1fr 1fr}}
+.kpi .k{padding:10px 12px;border-radius:12px;background:#fff;border:1px solid rgba(21,32,51,.1)}
+.kpi .k .l{font-size:10.5px;font-weight:750;color:#5c6d82;text-transform:uppercase;letter-spacing:.04em}
+.kpi .k .v{font-size:22px;font-weight:800;font-family:var(--mono);color:#152033;margin:2px 0}
+.kpi .k .s{font-size:11px;color:#8a9aab}
+.charts{display:grid;grid-template-columns:1.2fr 1fr;gap:8px;margin-bottom:12px}
+@media (max-width:720px){.charts{grid-template-columns:1fr}}
+.chart{padding:12px;border-radius:12px;background:#fff;border:1px solid rgba(21,32,51,.1)}
+.chart h4{margin:0 0 8px;font-size:12px;font-weight:800;color:#5c6d82}
+.bars{display:flex;align-items:flex-end;gap:3px;height:72px}
+.bars i{flex:1;border-radius:3px 3px 0 0;min-width:4px}
+.src-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:720px){.src-g{grid-template-columns:1fr}}
+.src{padding:10px;border-radius:12px;background:#fff;border:1px solid rgba(21,32,51,.1)}
+.src .nm{font-weight:800;font-size:13px;color:#152033}
+.src .st{font-size:10.5px;font-weight:750;margin:4px 0 6px;color:#157a45}
+.src .r{display:flex;justify-content:space-between;font-size:11.5px;color:#5c6d82;padding:2px 0}
+.src .r em{font-style:normal;font-family:var(--mono);color:#152033}
+.wall-foot{margin-top:10px;font-size:11px;color:#8a9aab;text-align:center}
+@media (prefers-reduced-motion:reduce){.gcard,.zone,.micro-hw__key{transition:none}}
+</style>
+<style id="ot-embed">
+html.ot-embed,html.ot-embed body{background:#f3f6fa!important;margin:0}
+html.ot-embed body{min-height:100%}
+html.ot-embed .page{max-width:none;padding:0;margin:0}
+html.ot-embed .eyebrow,html.ot-embed .page>h1,html.ot-embed .lede,html.ot-embed .honest,html.ot-embed .pills,
+html.ot-embed .guide,html.ot-embed .callout,html.ot-embed .verdict,html.ot-embed .compare,html.ot-embed .picker,
+html.ot-embed .wall-scr,html.ot-embed .frame-h{display:none!important}
+html.ot-embed .frame,html.ot-embed .shell{border:0;border-radius:0;box-shadow:none;min-height:100vh}
+html.ot-embed .layout{min-height:100vh;grid-template-columns:1fr!important}
+html.ot-embed .snav{display:none!important}
+html.ot-embed #viewStats{display:none!important}
+html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
+</style>
+<script>
+(function(){
+  if(/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('ot-embed');
+})();
+</script>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Agent remodel · 五叶先懂再配</p>
+  <h1>一叶一件事 · 键位拆成「继续」和「开关」</h1>
+  <p class="lede">先看下面五张卡搞清每叶干什么；再进壳里改。旧的「开关继续」把两件事揉在一起——现拆成 Soft Pad 上两块：<b>虚线 = 继续（AG）</b>，<b>黄框 = 开关（数字键）</b>。</p>
+
+  <div class="guide" id="guide" role="navigation" aria-label="五叶导览">
+    <button type="button" class="gcard is-on" data-jump="float">
+      <div class="ix">01 · 外观</div>
+      <h3>浮窗</h3>
+      <p>三标签：何时出现 · 皮肤 · 口令。</p>
+    </button>
+    <button type="button" class="gcard" data-jump="mini">
+      <div class="ix">02 · 细条</div>
+      <h3>迷你栏</h3>
+      <p>四标签：谁在忙 · 话术 · 快捷钮 · 形态。</p>
+    </button>
+    <button type="button" class="gcard" data-jump="lights">
+      <div class="ix">03 · 反馈</div>
+      <h3>灯效</h3>
+      <p>两标签：盘边氛围 · 按键灯。</p>
+    </button>
+    <button type="button" class="gcard" data-jump="connect">
+      <div class="ix">04 · 接通</div>
+      <h3 id="guideConnect">Cursor</h3>
+      <p>三标签：开 Pad · 接 hooks · 读数。</p>
+    </button>
+    <button type="button" class="gcard" data-jump="keys">
+      <div class="ix">05 · 键位</div>
+      <h3>开关 · 继续</h3>
+      <p>AG 区干什么 · 数字键占不占用。</p>
+    </button>
+  </div>
+
+  <div class="shell">
+    <div class="shell-h">
+      <span class="path"><b id="shellPath">设置 → Agent</b></span>
+      <span id="shellHint">五叶配置 · 不含图表</span>
+    </div>
+    <div class="layout">
+      <aside class="snav">
+        <div class="g">动作面</div>
+        <button type="button" class="i" data-nav="keys" disabled title="原型外">虚拟键盘</button>
+        <div class="g">配置</div>
+        <button type="button" class="i on" data-nav="agent">Agent</button>
+        <div class="g">看板</div>
+        <button type="button" class="i stats" data-nav="stats">数据</button>
+      </aside>
+      <div class="main-stack">
+      <div class="main view is-on" id="viewAgent">
+        <div class="head">
+          <div>
+            <h3>Agent</h3>
+            <div class="app">当前 · <strong id="appName">Cursor</strong> · 前台
+              <span style="margin-left:8px;font-size:11px;color:var(--faint)">试切：</span>
+              <button type="button" class="app-pick is-on" data-app="Cursor">Cursor</button>
+              <button type="button" class="app-pick" data-app="Claude">Claude</button>
+              <button type="button" class="app-pick" data-app="Codex">Codex</button>
+            </div>
+          </div>
+        </div>
+        <div class="app-snap" id="appSnap" aria-label="当前应用今日摘要">
+          <button type="button" class="snap-body" id="snapBody" title="打开数据目录">
+            <span class="who">今日 · <b id="snapApp">Cursor</b></span>
+            <span class="mets" id="snapMets"></span>
+          </button>
+          <button type="button" class="go" id="gotoStats">查看数据 →</button>
+        </div>
+        <div class="workspace">
+          <aside class="preview" id="preview">
+            <div class="preview-mode is-on" data-mode="pad" id="modePad">
+              <p class="cap" id="padCap">浮窗场景</p>
+              <div class="scene" id="sceneBox">
+                <div class="float-chip" id="floatChip">
+                  <div class="r"><span class="d"></span><span>跑着</span><span class="u" id="usagePill">72%</span></div>
+                </div>
+                <div class="hint" id="sceneHint">保持在最前 · 切窗口仍可见</div>
+              </div>
+              <div class="soft-pad-preview-host agent-preview-host" id="agentPadHost" data-preview-label="键盘预览 · Soft Pad">
+                <div id="agentPadPaint" data-soft-pad-preview-paint>
+                  <div class="agent-preview-empty">等待 Soft Pad 预览…</div>
+                </div>
+              </div>
+              <div class="pad-legend" id="padLegend" hidden>
+                <span class="ag">青虚线 · 继续（AG）</span>
+                <span class="digit">黄虚线 · 开关（数字）</span>
+              </div>
+              <p class="note" id="padNote">与虚拟键盘同一套 Soft Pad 外观。</p>
+            </div>
+            <div class="preview-mode" data-mode="bar" id="modeBar">
+              <p class="cap">悬浮栏预览 · 迷你栏</p>
+              <div class="agent-mini-host" id="agentMiniHost">
+                <div id="agentMiniPaint">
+                  <div class="agent-preview-empty">等待迷你栏预览…</div>
+                </div>
+                <p class="note" id="barFoot">右侧改分区时，左边对应区域会描边。</p>
+              </div>
+            </div>
+            <div class="preview-mode" data-mode="connect" id="modeConnect">
+              <p class="cap" id="connectCap">Cursor</p>
+              <div class="id-card connect">
+                <p class="big">开 Pad → 接 hooks → 读数</p>
+                <p class="one" id="connectOne">没连上，灯和迷你栏没有忙闲/额度来源。</p>
+                <div class="pipe">
+                  <div class="p"><i>1</i>打开 Soft Pad</div>
+                  <div class="p"><i>2</i><span id="connectHook">复制 hooks 接到 Cursor</span></div>
+                  <div class="p"><i>3</i>读数：本机活动 / Key</div>
+                </div>
+              </div>
+            </div>
+          </aside>
+          <div class="panel">
+            <div class="subtabs" id="subs" role="tablist">
+              <button type="button" class="is-on" data-sub="float" role="tab"><span class="t">浮窗</span><span class="s">三标签页</span></button>
+              <button type="button" data-sub="mini" role="tab"><span class="t">迷你栏</span><span class="s">四标签页</span></button>
+              <button type="button" data-sub="lights" role="tab"><span class="t">灯效</span><span class="s">两标签页</span></button>
+              <button type="button" data-sub="connect" id="tabConnect" role="tab"><span class="t">Cursor</span><span class="s">三标签页</span></button>
+              <button type="button" data-sub="keys" role="tab"><span class="t">开关·继续</span><span class="s">键位两区</span></button>
+            </div>
+            <div class="detail" id="detail"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="main view" id="viewStats">
+        <div class="head">
+          <div>
+            <h3>数据</h3>
+            <div class="app">效率 · 费用 · 能力 · 时长 · 灵感(高峰+缓存)</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <a class="wall-cta" href="agent-data-inventory-proto.html">打开完整盘点<small>五视角</small></a>
+            <button type="button" class="wall-cta" id="openWall">副屏打开<small>本地副窗</small></button>
+          </div>
+        </div>
+        <div class="stats-main" style="background:var(--paper);color:var(--ink)">
+          <div style="padding:14px 16px 20px">
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px" id="embedLenses">
+              <button type="button" class="filter-chip is-on" data-elens="eff" style="appearance:none;border:1px solid rgba(21,32,51,.12);background:#e2f3f5;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;color:#0f6e7a">效率</button>
+              <button type="button" class="filter-chip" data-elens="cost" style="appearance:none;border:1px solid rgba(21,32,51,.12);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;color:#5c6d82">费用</button>
+              <button type="button" class="filter-chip" data-elens="cap" style="appearance:none;border:1px solid rgba(21,32,51,.12);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;color:#5c6d82">能力</button>
+              <button type="button" class="filter-chip" data-elens="time" style="appearance:none;border:1px solid rgba(21,32,51,.12);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;color:#5c6d82">时长</button>
+              <button type="button" class="filter-chip" data-elens="spark" style="appearance:none;border:1px solid rgba(21,32,51,.12);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;color:#5c6d82">灵感</button>
+            </div>
+            <div style="padding:16px 18px;border-radius:16px;background:linear-gradient(145deg,#fff 30%,#e2f3f5);border:1px solid rgba(15,110,122,.18);margin-bottom:12px">
+              <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#0f6e7a" id="embedLab">效率 · Cursor 回合/活跃时</div>
+              <div style="font:800 40px/1 'IBM Plex Mono',monospace;letter-spacing:-.03em;margin:6px 0" id="embedNum">50.6</div>
+              <div style="font-size:13px;color:#5c6d82" id="embedLine">仅 Cursor 本地 turns ÷ activeMs · Claude/Codex → —</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="embedKpis">
+              <div style="padding:12px;border-radius:12px;background:#fff;border:1px solid rgba(21,32,51,.1)"><div style="font-size:11px;color:#5c6d82;font-weight:750">效率</div><div style="font:800 20px/1.2 'IBM Plex Mono',monospace;margin-top:4px">50.6</div></div>
+              <div style="padding:12px;border-radius:12px;background:#fff;border:1px solid rgba(21,32,51,.1)"><div style="font-size:11px;color:#5c6d82;font-weight:750">高速窗</div><div style="font:800 16px/1.2 'IBM Plex Mono',monospace;margin-top:4px">19:00–20:00</div></div>
+              <div style="padding:12px;border-radius:12px;background:#fff;border:1px solid rgba(21,32,51,.1)"><div style="font-size:11px;color:#5c6d82;font-weight:750">缓存最佳</div><div style="font:800 20px/1.2 'IBM Plex Mono',monospace;margin-top:4px">82%</div></div>
+              <div style="padding:12px;border-radius:12px;background:#fff;border:1px solid rgba(21,32,51,.1)"><div style="font-size:11px;color:#5c6d82;font-weight:750">可知费用</div><div style="font:800 20px/1.2 'IBM Plex Mono',monospace;margin-top:4px">$1.12</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>记三句话</strong>
+    <p><b>继续</b> = Soft Pad 虚线 AG 区干什么。<b>开关</b> = 实体数字键要不要被占用。<b>顶栏摘要</b> = 只看当前应用今日几个数，点「查看数据」进大盘。</p>
+  </div>
+</div>
+
+<div class="wall-scr" id="wallScr" role="dialog" aria-label="工作数据">
+  <div class="wall-frame" id="wallFrame" data-surface="web">
+    <div class="wall-chrome chrome-web">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="url">https://app.onetone.local/agent/stats</div>
+      <button type="button" class="x" id="closeWall1">关闭</button>
+    </div>
+    <div class="wall-chrome chrome-local">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="ttl">工作数据 · 本地副窗</div>
+      <button type="button" class="x" id="closeWall2">关闭</button>
+    </div>
+    <div class="wall-surf">
+      <button type="button" class="is-on" data-surface="web">网页版</button>
+      <button type="button" data-surface="local">本地副窗</button>
+      <span class="hint" id="surfHint">同站页 · 可新标签全屏到副屏</span>
+    </div>
+    <div class="wall-body" style="background:linear-gradient(165deg,#f3f6fa,#e8eef5);color:#152033">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <div>
+          <h2 style="margin:0;font-size:18px;color:#152033">今日工作</h2>
+          <div style="font-size:11.5px;color:#5c6d82;margin-top:3px">效率 · 高速窗 · 缓存 · 可知费用</div>
+        </div>
+        <button type="button" id="wallToConnect" style="appearance:none;border:0;background:#0f6e7a;color:#fff;border-radius:8px;padding:7px 12px;font:inherit;font-size:12px;font-weight:750;cursor:pointer">打开完整盘点</button>
+      </div>
+      <div class="kpi">
+        <div class="k"><div class="l">效率</div><div class="v">50.6</div><div class="s">Cursor 回合/时</div></div>
+        <div class="k"><div class="l">高速窗</div><div class="v" style="font-size:16px">19:00–20:00</div><div class="s">灵感</div></div>
+        <div class="k"><div class="l">缓存最佳</div><div class="v">82%</div><div class="s">Claude</div></div>
+        <div class="k"><div class="l">可知费用</div><div class="v">$1.12</div><div class="s">缺价 3</div></div>
+      </div>
+      <div class="charts">
+        <div class="chart"><h4>近 7 日 · Cursor 效率</h4><div class="bars" id="wallBars"></div></div>
+        <div class="chart">
+          <h4>灵感 · 有数源</h4>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px">
+            <div style="display:flex;justify-content:space-between"><span><b>1</b> Cursor 高峰</span><span style="font-family:var(--mono)">79/h</span></div>
+            <div style="display:flex;justify-content:space-between"><span><b>2</b> Claude 缓存</span><span style="font-family:var(--mono)">82%</span></div>
+            <div style="display:flex;justify-content:space-between;color:#8a9aab"><span>Codex</span><span style="font-family:var(--mono)">—</span></div>
+          </div>
+        </div>
+      </div>
+      <p style="margin:0 0 8px;font-size:12px;font-weight:800;color:#5c6d82">工作切片</p>
+      <div class="src-g">
+        <div class="src"><div class="nm">Cursor</div><div class="st">Composer · 本地活动</div><div class="r"><span>高速窗</span><em>19:00–20:00</em></div><div class="r"><span>回合</span><em>86</em></div></div>
+        <div class="src"><div class="nm">Claude</div><div class="st">Sonnet · cache</div><div class="r"><span>缓存</span><em>82%</em></div><div class="r"><span>费用</span><em>$1.12</em></div></div>
+        <div class="src"><div class="nm">Codex</div><div class="st" style="color:#9a6700">高峰 —</div><div class="r"><span>Token</span><em>410K</em></div><div class="r"><span>费用</span><em style="color:#8a9aab">—</em></div></div>
+      </div>
+      <p class="wall-foot">灵感=高峰+缓存 · 网页/本地同 JSON</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var detail=document.getElementById('detail');
+  var state={sub:'float',show:'follow',skin:'default',ambient:true,usage:true,purpose:'actions',digitOn:true,numpadOccupy:true,zone:'ag',mini:'busy',float:'show',lights:'ambient',connect:'pad',app:'Cursor',miniChrome:{agentsBarEnabled:true,textPreviewEnabled:true,voiceChipEnabled:true,toolsBarEnabled:true,expandBtnEnabled:true,closeBtnEnabled:true},padEnabled:true,ambientMode:'status',ambientRgb:'#7c3aed',ambientOpacity:100,floatOpacity:82,keyLights:true,settingsSnap:null};
+
+  function app(){return state.app;}
+
+  function postSettingsCmd(cmd, extra){
+    try{
+      var msg=Object.assign({ type:'ot-agent-settings-cmd', cmd:cmd }, extra||{});
+      window.parent.postMessage(msg, '*');
+    }catch(_){}
+  }
+
+  function snapConnect(){
+    return (state.settingsSnap&&state.settingsSnap.connect)||{};
+  }
+
+  function connectJobBody(){
+    var c=snapConnect();
+    if(c.jobLead) return c.jobLead;
+    return '没接上，灯和迷你栏没有忙闲/额度。今日摘要在顶栏；完整盘去「数据」。';
+  }
+
+  function phaseBadgeHtml(){
+    var c=snapConnect();
+    var label=c.phaseLabel||'未接入';
+    var cls=c.badgeClass||'warn';
+    if(c.phase==='connected'||c.phase==='solo') cls='ok';
+    return '<span class="badge '+cls+'" data-connect-phase="'+(c.phase||'not_configured')+'">'+label+'</span>';
+  }
+
+  var MINI_LEAF_TO_RAIL={busy:'agents',speech:'speech',tools:'tools',form:'display'};
+
+  function postMiniPreview(){
+    try{
+      window.parent.postMessage({
+        type:'ot-agent-preview-cmd',
+        cmd:'setMiniPreview',
+        miniRail:MINI_LEAF_TO_RAIL[state.mini]||'agents',
+        miniChrome:state.miniChrome
+      },'*');
+    }catch(_){}
+  }
+
+  function postLeftPreview(){
+    if(state.sub==='mini'){ postMiniPreview(); return; }
+    var kind='pad';
+    var purposeTab='mapping';
+    if(state.sub==='float'){
+      if(state.float==='show') kind='show';
+      else if(state.float==='skin') kind='skin';
+      else kind='pad';
+    }else if(state.sub==='keys'){
+      kind='purpose';
+      purposeTab=state.zone==='digit'?'occupy':'mapping';
+    }else if(state.sub==='lights'){
+      kind='pad';
+    }
+    try{
+      window.parent.postMessage({
+        type:'ot-agent-preview-cmd',
+        cmd:'setLeftPreview',
+        leftKind:kind,
+        showMode:state.show,
+        purposeTab:purposeTab,
+        purposeOccupy:state.numpadOccupy,
+        purposeMapping:state.digitOn,
+        skin:state.skin
+      },'*');
+    }catch(_){}
+  }
+
+  function job(tone,title,body){
+    return '<div class="job" data-tone="'+tone+'"><div class="lab">这一叶管什么</div><h4>'+title+'</h4><p>'+body+'</p></div>';
+  }
+
+  function leafShell(tone,n,railId,aria,tabsHtml){
+    return '<div class="leaf-page" data-tone="'+tone+'">'+
+      '<div class="leaf-tabs '+n+'" id="'+railId+'" role="tablist" aria-label="'+aria+'">'+tabsHtml+'</div>'+
+      '<div class="leaf-pane" id="'+railId+'Body"></div></div>';
+  }
+
+  function tabBtn(attr,id,cur,t,s){
+    return '<button type="button" role="tab" '+attr+'="'+id+'"'+(cur===id?' class="is-on"':'')+'><span class="t">'+t+'</span><span class="s">'+s+'</span></button>';
+  }
+
+  var pages={
+    float:function(){
+      var cur=state.float||'show';
+      return job('float','浮窗 · 三标签页','窗何时出现、长什么样、听什么口令。不绑键、不接 hooks。')+
+        leafShell('float','n3','floatRail','浮窗分区',
+          tabBtn('data-float','show',cur,'何时出现','跟随 / 最前')+
+          tabBtn('data-float','skin',cur,'皮肤','外观')+
+          tabBtn('data-float','voice',cur,'聆听口令','激活词')
+        );
+    },
+    mini:function(){
+      var m=state.mini||'busy';
+      return job('mini','迷你栏 · 四标签页','顶条四块各自一页。今日数字看顶栏摘要，完整盘去「数据」。')+
+        leafShell('mini','n4','miniRail','迷你栏分区',
+          tabBtn('data-mini','busy',m,'谁在忙','忙闲圆点')+
+          tabBtn('data-mini','speech',m,'听你说话','话术区')+
+          tabBtn('data-mini','tools',m,'快捷钮','悬停第二行')+
+          tabBtn('data-mini','form',m,'浮窗形态','细条 / 全盘')
+        );
+    },
+    lights:function(){
+      var cur=state.lights||'ambient';
+      return job('lights','灯效 · 两标签页','盘边氛围灯 + 按键状态灯。亮度跟「接通」后的忙闲状态走。')+
+        leafShell('lights','n2','lightsRail','灯效分区',
+          tabBtn('data-lights','ambient',cur,'盘边氛围','状态色圈')+
+          tabBtn('data-lights','keys',cur,'按键灯','键上状态')
+        );
+    },
+    connect:function(){
+      var a=app();
+      var cur=state.connect||'pad';
+      return job('connect',a+' · 三标签页',connectJobBody())+
+        leafShell('connect','n3','connectRail',a+' 接通',
+          tabBtn('data-connect','pad',cur,'打开 Soft Pad','总开关')+
+          tabBtn('data-connect','hook',cur,'接到 '+a,'hooks')+
+          tabBtn('data-connect','read',cur,'读数来源','本机 / Key')
+        );
+    },
+    keys:function(){
+      var purposeActions=state.purpose==='actions';
+      return job('keys','开关 · 继续 · Soft Pad 两区','旧名「开关继续」易混。左边点分区 → 预览高亮对应键。停/发/续绑命令不在这里。')+
+        '<p class="split-note"><b>继续</b> = AG 虚线区干什么。<b>开关</b> = 实体数字键要不要被占用。点左右卡片对照 Soft Pad。</p>'+
+        '<div class="zones">'+
+          '<div class="zone ag'+(state.zone==='ag'?' is-focus':'')+'" data-zone="ag" tabindex="0">'+
+            '<div class="ztag">继续 · AG 区</div>'+
+            '<h5>这几键干什么？</h5>'+
+            '<p class="zwhy">虚线框里的键：收 / 新 / Plan。决定它们是快捷动作，还是用来切会话。</p>'+
+            '<div class="zkeys"><span>收</span><span>新</span><span>Plan</span></div>'+
+            '<div class="choice" id="purposeSeg">'+
+              '<button type="button" data-purpose="actions"'+(purposeActions?' class="is-on"':'')+'><b>快捷动作</b><small>继续、收起、新对话等高频操作</small></button>'+
+              '<button type="button" data-purpose="sessions"'+(purposeActions?'':' class="is-on"')+'><b>切换会话</b><small>在多个 Agent 会话之间跳转</small></button>'+
+            '</div>'+
+          '</div>'+
+          '<div class="zone digit'+(state.zone==='digit'?' is-focus':'')+'" data-zone="digit" tabindex="0">'+
+            '<div class="ztag">开关 · 数字键</div>'+
+            '<h5>实体数字键占不占用？</h5>'+
+            '<p class="zwhy">中间数字位（如 5）。关闭 = 只输入数字；打开后需用 Number 切入快捷 Soft Pad。</p>'+
+            '<div class="zkeys"><span>4</span><span>5</span><span>6</span><span>…</span></div>'+
+            '<div class="row"><span>允许接管数字键<span class="sub">总开关 · 默认建议先关</span></span><button type="button" class="tog'+(state.digitOn?' on':'')+'" data-digit-tog></button></div>'+
+            '<div class="row"><span>占用数字小键盘<span class="sub">开 = 同一键位改成 Soft Pad 快捷；关 = 照常打数字</span></span><button type="button" class="tog'+(state.numpadOccupy?' on':'')+'" data-occupy-tog></button></div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="linkout">'+
+          '<b>停 / 发 / 续 · 绑命令</b><br>选具体 Agent 命令在「虚拟键盘」配，不进这一叶。'+
+          '<div><button type="button" class="go" disabled title="原型外">去虚拟键盘</button></div>'+
+        '</div>';
+    }
+  };
+
+  function floatBodies(){
+    var op=state.floatOpacity!=null?state.floatOpacity:82;
+    return {
+      show:'<p class="pane-lead">决定 Soft Pad 整窗何时出现在屏幕上。</p>'+
+        '<div class="seg n4" id="showSeg">'+
+          '<button type="button" data-show="follow">跟随应用</button>'+
+          '<button type="button" data-show="top">保持最前</button>'+
+          '<button type="button" data-show="mini">迷你条</button>'+
+          '<button type="button" data-show="off">不显示</button>'+
+        '</div>',
+      skin:'<p class="pane-lead">换皮肤时，左边 Soft Pad 预览会跟着变。透明度作用于整块浮窗。</p>'+
+        '<div class="skins" id="skinSeg">'+
+          '<button type="button" data-skin="default"><b>默认</b><div class="sw"></div></button>'+
+          '<button type="button" data-skin="glass-light"><b>玻璃浅色</b><div class="sw" style="background:linear-gradient(160deg,#4a5a6c,#6a7a8c)"></div></button>'+
+          '<button type="button" data-skin="hybrid-pro"><b>Hybrid Pro</b><div class="sw" style="background:linear-gradient(160deg,#0e1a28,#1a2e42)"></div></button>'+
+          '<button type="button" data-skin="vibe-light"><b>Vibe Light</b><div class="sw" style="background:linear-gradient(160deg,#2a3544,#3a4554)"></div></button>'+
+        '</div>'+
+        '<div class="row" style="margin-top:10px"><span>浮窗透明度</span><label style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end"><input type="range" data-float-opacity min="40" max="100" value="'+op+'" style="width:100px"><strong data-float-opacity-val>'+op+'%</strong></label></div>',
+      voice:'<p class="pane-lead">语音激活口令；不进虚拟键盘绑键。</p>'+
+        '<div class="row"><span>激活口令</span><strong>一声</strong></div>'
+    };
+  }
+
+  var miniBodies={
+    busy:'<p class="pane-lead">顶行忙闲圆点：谁在跑、谁空闲。</p>'+
+      '<div class="row"><span>条上显示忙闲圆点</span><button type="button" class="tog on" data-mini-chrome="agentsBarEnabled"></button></div>'+
+      '<p class="lead" style="margin-top:8px">Agents 名单入口可从这里跳进配置。</p>',
+    speech:'<p class="pane-lead">条下话术区：你刚说的话、麦标预览。</p>'+
+      '<div class="row"><span>条下显示你说的话</span><button type="button" class="tog on" data-mini-chrome="textPreviewEnabled"></button></div>'+
+      '<div class="row"><span>预览卡带麦标</span><button type="button" class="tog on" data-mini-chrome="voiceChipEnabled"></button></div>',
+    tools:'<p class="pane-lead">悬停第二行：点亮的快捷钮会亮。绑具体命令仍在「虚拟键盘」。</p>'+
+      '<div class="row"><span>悬停时出现快捷钮</span><button type="button" class="tog on" data-mini-chrome="toolsBarEnabled"></button></div>'+
+      '<div class="tools" style="margin-top:8px"><div class="t">麦克风<em>ACT10</em></div><div class="t">发送<em>ACT12</em></div><div class="t">继续<em>AG02</em></div><div class="t">新建<em>AG01</em></div><div class="t">取消<em>ACT08</em></div></div>',
+    form:'<p class="pane-lead">细条还是完整键盘；右侧放大/关掉。</p>'+
+      '<div class="row"><span>呈现</span><strong>细条</strong></div>'+
+      '<div class="row"><span>细条右侧 · 放大</span><button type="button" class="tog on" data-mini-chrome="expandBtnEnabled"></button></div>'+
+      '<div class="row"><span>细条右侧 · 关掉</span><button type="button" class="tog on" data-mini-chrome="closeBtnEnabled"></button></div>'
+  };
+
+  function lightsBodies(){
+    var on=state.ambient!==false;
+    var mode=state.ambientMode==='solid'?'solid':'status';
+    var rgb=state.ambientRgb||'#7c3aed';
+    var op=state.ambientOpacity!=null?state.ambientOpacity:100;
+    var keyOn=state.keyLights!==false;
+    return {
+      ambient:'<p class="pane-lead">盘边光圈：跟随忙闲，或固定一色。</p>'+
+        '<div class="row"><span>启用</span><button type="button" class="tog'+(on?' on':'')+'" data-ambient-tog></button></div>'+
+        '<div class="seg" id="ambientModeSeg">'+
+          '<button type="button" data-ambient-mode="status"'+(mode==='status'?' class="is-on"':'')+'>跟随状态</button>'+
+          '<button type="button" data-ambient-mode="solid"'+(mode==='solid'?' class="is-on"':'')+'>固定色</button>'+
+        '</div>'+
+        '<div class="row"><span>盘边颜色</span><input type="color" data-ambient-rgb value="'+rgb+'" style="width:28px;height:22px;border:0;background:transparent;padding:0;cursor:pointer"></div>'+
+        '<div class="row"><span>透明度</span><label style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end"><input type="range" data-ambient-opacity min="0" max="100" value="'+op+'" style="width:100px"><strong data-ambient-opacity-val>'+op+'%</strong></label></div>',
+      keys:'<p class="pane-lead">按键上的状态灯，对照左边 Soft Pad。</p>'+
+        '<div class="row"><span>显示状态灯</span><button type="button" class="tog'+(keyOn?' on':'')+'" data-key-lights-tog></button></div>'
+    };
+  }
+
+  function connectBodies(){
+    var a=app();
+    var snap=state.settingsSnap||{};
+    var padOn=state.padEnabled!==false;
+    var c=snap.connect||{};
+    var read=snap.read||{};
+    var primary=c.primaryAction||null;
+    var copyLabel=primary==='install'?'确认接入':'复制连接配置';
+    var pathLine=c.path?'<div class="row"><span>配置路径</span><em style="font-style:normal;font-size:11px;color:var(--faint)">'+c.path+'</em></div>':'';
+    var cursorOn=!!read.cursorActivityEnabled;
+    var cursorRow=read.cursorActivityApplicable!==false
+      ? '<div class="row"><span>本机活动统计</span><button type="button" class="tog'+(cursorOn?' on':'')+'" data-cursor-activity-tog></button></div>'
+      : '<div class="row"><span>本机活动统计</span><em style="font-style:normal;font-size:11px;color:var(--faint)">仅 Cursor</em></div>';
+    var keyLine=read.keyApplicable
+      ? ('<div class="row"><span>额度 Key（可选）</span><em style="font-style:normal;font-size:11px;color:var(--faint)">'+(read.keySet?'已设置':'未设置')+'</em></div>'+
+        '<div class="btn-row"><button type="button" class="btn" data-settings-act="paste-key">粘贴 Key</button></div>')
+      : '<div class="row"><span>额度 Key</span><em style="font-style:normal;font-size:11px;color:var(--faint)">完整盘去「数据」</em></div>';
+    return {
+      pad:'<p class="pane-lead">先打开 Soft Pad，后面接通和灯效才有意义。</p>'+
+        '<div class="row"><span>打开 Soft Pad</span><button type="button" class="tog'+(padOn?' on':'')+'" data-pad-enabled-tog></button></div>',
+      hook:'<p class="pane-lead">复制配置，粘贴进 '+a+' 的 hooks.json。</p>'+
+        '<div class="row"><span>连接状态</span>'+phaseBadgeHtml()+'</div>'+
+        '<div class="row"><span>'+a+' 前台</span><span class="badge">'+(c.isFg?'是':'—')+'</span></div>'+
+        pathLine+
+        '<div class="btn-row">'+
+          '<button type="button" class="btn primary" data-settings-act="'+(primary==='install'?'install':'copy')+'">'+copyLabel+'</button>'+
+          '<button type="button" class="btn" data-settings-act="refresh">刷新</button>'+
+        '</div>',
+      read:'<p class="pane-lead">本机只数对话次数/时长，不碰正文。今日摘要在 Agent 顶栏。</p>'+
+        cursorRow+
+        keyLine
+    };
+  }
+
+  function highlightPadZone(zone){
+    var host=document.getElementById('agentPadPaint');
+    if(!host) return;
+    host.querySelectorAll('.micro-hw__key').forEach(function(k){
+      k.classList.remove('hi-ag','hi-digit','is-focused');
+      var mk=String(k.getAttribute('data-micro-key')||'');
+      var isAg=k.classList.contains('micro-hw__key--agent')||/^AG/i.test(mk);
+      var isDigit=mk==='ENC'||k.classList.contains('micro-hw__key--numpad');
+      if(zone==='ag'&&isAg) k.classList.add('hi-ag');
+      if(zone==='digit'&&isDigit) k.classList.add('hi-digit');
+    });
+  }
+
+  function highlightMiniZone(id){
+    var host=document.getElementById('agentMiniPaint');
+    if(!host) return;
+    host.querySelectorAll('[data-mini-zone]').forEach(function(el){
+      var z=el.getAttribute('data-mini-zone');
+      var on=(id==='speech'&&z==='speech')||
+        (id==='tools'&&z==='tools')||
+        (id==='busy'&&z==='agents')||
+        (id==='form'&&(z==='pill'||z==='win'));
+      el.classList.toggle('is-hi',!!on);
+    });
+  }
+
+  function setPreviewMode(sub){
+    document.querySelectorAll('.preview-mode').forEach(function(el){
+      var on=false;
+      if(sub==='mini') on=el.id==='modeBar';
+      else if(sub==='connect') on=el.id==='modeConnect';
+      else on=el.id==='modePad';
+      el.classList.toggle('is-on',on);
+    });
+    var padCap=document.getElementById('padCap');
+    var padNote=document.getElementById('padNote');
+    var sceneBox=document.getElementById('sceneBox');
+    var legend=document.getElementById('padLegend');
+    var padHost=document.getElementById('agentPadHost');
+    legend.hidden=sub!=='keys';
+    if(sub!=='lights'&&padHost){
+      padHost.removeAttribute('data-lights-preview-accent');
+      padHost.style.removeProperty('--agent-ambient-ring');
+      padHost.style.removeProperty('--agent-ambient-glow');
+    }
+    if(sub==='lights'){
+      padCap.textContent='灯效对照';
+      sceneBox.style.display='none';
+      padNote.textContent='盘边光圈与按键灯对照 Soft Pad。';
+      if(padHost) padHost.removeAttribute('data-pad-mode-preview');
+      highlightPadZone(null);
+      paintAmbientPreview();
+    }else if(sub==='keys'){
+      padCap.textContent='键位对照 · 点右侧分区';
+      sceneBox.style.display='none';
+      padNote.textContent=state.zone==='digit'?'左边演示：数字键 ⇄ Soft Pad':'青高亮 = 继续（AG）· 左边对照 Soft Pad。';
+      if(padHost) padHost.setAttribute('data-pad-mode-preview','purpose');
+      highlightPadZone(state.zone);
+    }else if(sub==='float'){
+      var animLeaf=state.float==='show'||state.float==='skin';
+      padCap.textContent=animLeaf?(state.float==='skin'?'皮肤对照 · Soft Pad':'何时出现 · 桌面示意'):'浮窗场景';
+      sceneBox.style.display=animLeaf?'none':'';
+      padNote.textContent=animLeaf?'左侧动画随右侧选项切换。':'与虚拟键盘同一套 Soft Pad 外观。';
+      if(padHost){
+        if(animLeaf) padHost.setAttribute('data-pad-mode-preview','appear');
+        else padHost.removeAttribute('data-pad-mode-preview');
+      }
+      highlightPadZone(null);
+    }else{
+      if(padHost) padHost.removeAttribute('data-pad-mode-preview');
+      highlightPadZone(null);
+    }
+  }
+
+  function hexToRgb(hex){
+    hex=String(hex||'').replace('#','');
+    if(hex.length===3) hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+    if(hex.length!==6) return {r:124,g:58,b:237};
+    var n=parseInt(hex,16);
+    if(!isFinite(n)) return {r:124,g:58,b:237};
+    return {r:(n>>16)&255,g:(n>>8)&255,b:n&255};
+  }
+
+  function paintKeyLightsDemo(on){
+    var host=document.getElementById('agentPadPaint');
+    if(!host) return;
+    var demo=[
+      {micro:'AG00',status:'running'},
+      {micro:'AG01',status:'needs_input'},
+      {micro:'AG02',status:'done'},
+      {micro:'AG03',status:'failed'},
+      {micro:'AG04',status:'listening'}
+    ];
+    demo.forEach(function(row){
+      var el=host.querySelector('.micro-hw__key[data-micro-key="'+row.micro+'"]');
+      if(!el) return;
+      if(on&&state.keyLights!==false){
+        el.setAttribute('data-run-status',row.status);
+        el.setAttribute('data-palette-demo','1');
+      }else if(el.getAttribute('data-palette-demo')==='1'){
+        el.setAttribute('data-run-status','idle');
+        el.removeAttribute('data-palette-demo');
+      }
+    });
+  }
+
+  /** Whole Soft Pad float opacity on left preview (instant). */
+  function paintFloatOpacity(){
+    var padHost=document.getElementById('agentPadHost');
+    if(!padHost||!padHost.style) return;
+    var pct=Number(state.floatOpacity);
+    if(!(pct>=40)||pct>100) pct=82;
+    var v=Math.max(0.4, Math.min(1, pct/100));
+    padHost.style.setProperty('--micro-hw-screen-opacity', String(v));
+  }
+
+  /** Instant left-preview ambient ring from local state (no round-trip). */
+  function paintAmbientPreview(){
+    var padHost=document.getElementById('agentPadHost');
+    if(!padHost) return;
+    if(state.sub!=='lights'){
+      padHost.removeAttribute('data-lights-preview-accent');
+      padHost.style.removeProperty('--agent-ambient-ring');
+      padHost.style.removeProperty('--agent-ambient-glow');
+      paintKeyLightsDemo(false);
+      return;
+    }
+    if(state.lights==='keys'){
+      padHost.setAttribute('data-lights-preview-accent','keys');
+      padHost.style.removeProperty('--agent-ambient-ring');
+      padHost.style.removeProperty('--agent-ambient-glow');
+      paintKeyLightsDemo(true);
+      return;
+    }
+    paintKeyLightsDemo(false);
+    if(state.ambient===false){
+      padHost.removeAttribute('data-lights-preview-accent');
+      padHost.style.removeProperty('--agent-ambient-ring');
+      padHost.style.removeProperty('--agent-ambient-glow');
+      return;
+    }
+    padHost.setAttribute('data-lights-preview-accent','ambient');
+    var hex=state.ambientMode==='solid'?(state.ambientRgb||'#7c3aed'):'#2a9d6a';
+    var c=hexToRgb(hex);
+    var a=Math.max(0.12, Math.min(1, (Number(state.ambientOpacity)||100)/100));
+    padHost.style.setProperty('--agent-ambient-ring','rgba('+c.r+','+c.g+','+c.b+','+(0.55*a).toFixed(3)+')');
+    padHost.style.setProperty('--agent-ambient-glow','rgba('+c.r+','+c.g+','+c.b+','+(0.28*a).toFixed(3)+')');
+  }
+
+  function syncPreview(){
+    var pill=document.getElementById('usagePill');
+    if(pill) pill.style.display=state.usage?'':'none';
+    var hints={follow:'跟随 Cursor 前台时出现',top:'保持在最前 · 切窗口仍可见',mini:'强制迷你条',off:'不显示浮窗'};
+    var sceneHint=document.getElementById('sceneHint');
+    if(sceneHint) sceneHint.textContent=hints[state.show]||hints.follow;
+    var floatChip=document.getElementById('floatChip');
+    if(floatChip) floatChip.style.display=state.show==='off'?'none':'block';
+    paintAmbientPreview();
+    paintFloatOpacity();
+    postLeftPreview();
+  }
+
+  function applyPreviewPayload(payload){
+    payload=payload||{};
+    var padPaint=document.getElementById('agentPadPaint');
+    var miniPaint=document.getElementById('agentMiniPaint');
+    if(payload.empty){
+      var empty='<div class="agent-preview-empty">'+(payload.message||'先在 Soft Pad 创建应用场景')+'</div>';
+      if(padPaint) padPaint.innerHTML=empty;
+      if(miniPaint) miniPaint.innerHTML=empty;
+      return;
+    }
+    if(padPaint&&payload.padHtml){
+      padPaint.innerHTML=payload.padHtml;
+      if(state.sub==='keys'&&payload.leftKind!=='purpose') highlightPadZone(state.zone);
+    }
+    if(miniPaint&&payload.miniHtml){
+      miniPaint.innerHTML=payload.miniHtml;
+      if(state.sub==='mini') highlightMiniZone(state.mini);
+    }
+    var padHost=document.getElementById('agentPadHost');
+    if(padHost&&payload.leftKind){
+      if(payload.leftKind==='show'||payload.leftKind==='skin') padHost.setAttribute('data-pad-mode-preview','appear');
+      else if(payload.leftKind==='purpose') padHost.setAttribute('data-pad-mode-preview','purpose');
+      else padHost.removeAttribute('data-pad-mode-preview');
+    }
+    if(payload.title){
+      var titles=document.querySelectorAll('#agentPadPaint .micro-hw__face-title');
+      titles.forEach(function(t){ t.textContent=payload.title; });
+    }
+    paintAmbientPreview();
+    paintFloatOpacity();
+  }
+
+  function applySettingsPayload(payload){
+    payload=payload||{};
+    state.settingsSnap=payload;
+    if(payload.padEnabled!=null) state.padEnabled=!!payload.padEnabled;
+    if(payload.screenOpacity!=null){
+      var fo=Math.round(Number(payload.screenOpacity));
+      if(fo>=40&&fo<=100) state.floatOpacity=fo;
+    }
+    if(payload.ambient){
+      if(payload.ambient.enabled!=null) state.ambient=!!payload.ambient.enabled;
+      if(payload.ambient.mode) state.ambientMode=payload.ambient.mode==='solid'?'solid':'status';
+      if(payload.ambient.solidRgb) state.ambientRgb=String(payload.ambient.solidRgb);
+      if(payload.ambient.opacity!=null) state.ambientOpacity=Number(payload.ambient.opacity)||0;
+    }
+    if(payload.keyLights&&payload.keyLights.enabled!=null) state.keyLights=!!payload.keyLights.enabled;
+    /* lights: keep local controls; remount would kill opacity slider mid-drag */
+    if(state.sub==='connect'){
+      var leaf=state.connect;
+      detail.innerHTML=pages.connect();
+      bindDetail();
+      state.connect=leaf;
+    }else if(state.sub==='float'&&state.float==='skin'){
+      var lab=detail.querySelector('[data-float-opacity-val]');
+      var range=detail.querySelector('[data-float-opacity]');
+      if(lab) lab.textContent=state.floatOpacity+'%';
+      if(range) range.value=String(state.floatOpacity);
+    }
+    paintAmbientPreview();
+    paintFloatOpacity();
+  }
+
+  window.addEventListener('message',function(ev){
+    var data=ev&&ev.data;
+    if(!data) return;
+    if(data.type==='ot-agent-preview') applyPreviewPayload(data.payload);
+    if(data.type==='ot-agent-settings') applySettingsPayload(data.payload);
+  });
+  try{ window.parent.postMessage({ type:'ot-agent-preview-cmd', cmd:'refresh' }, '*'); }catch(_){}
+  try{ window.parent.postMessage({ type:'ot-agent-settings-cmd', cmd:'refresh' }, '*'); }catch(_){}
+
+  function syncGuide(){
+    document.querySelectorAll('#guide [data-jump]').forEach(function(c){
+      c.classList.toggle('is-on',c.getAttribute('data-jump')===state.sub);
+    });
+  }
+
+  function bindDetail(){
+    function syncMiniChromeTogs(root){
+      (root||detail).querySelectorAll('[data-mini-chrome]').forEach(function(t){
+        var flag=t.getAttribute('data-mini-chrome');
+        if(!flag||!(flag in state.miniChrome)) return;
+        t.classList.toggle('on',state.miniChrome[flag]!==false);
+      });
+    }
+    function wireTogs(root){
+      (root||detail).querySelectorAll('.tog').forEach(function(t){
+        t.addEventListener('click',function(e){
+          e.stopPropagation();
+          t.classList.toggle('on');
+          var on=t.classList.contains('on');
+          if(t.hasAttribute('data-ambient-tog')){
+            state.ambient=on;
+            paintAmbientPreview();
+            postSettingsCmd('setAmbient',{ enabled:on });
+          }
+          if(t.hasAttribute('data-key-lights-tog')){
+            state.keyLights=on;
+            paintAmbientPreview();
+            postSettingsCmd('setAgentLights',{ enabled:on });
+          }
+          if(t.hasAttribute('data-pad-enabled-tog')){
+            state.padEnabled=on;
+            postSettingsCmd('setPadEnabled',{ enabled:on });
+          }
+          if(t.hasAttribute('data-cursor-activity-tog')){
+            postSettingsCmd('enableCursorActivity',{ enabled:on });
+          }
+          if(t.hasAttribute('data-usage-tog')){state.usage=on;syncPreview();}
+          if(t.hasAttribute('data-digit-tog')){state.digitOn=on;postLeftPreview();}
+          if(t.hasAttribute('data-occupy-tog')){
+            state.numpadOccupy=on;
+            state.zone='digit';
+            detail.querySelectorAll('.zone').forEach(function(z){
+              z.classList.toggle('is-focus',z.getAttribute('data-zone')==='digit');
+            });
+            setPreviewMode('keys');
+            var padNote=document.getElementById('padNote');
+            if(padNote) padNote.textContent=on
+              ?'左边：数字小键盘被 Soft Pad 占用 · 同一键位变快捷'
+              :'左边：数字小键盘照常打数字 · Soft Pad 仅悬浮';
+            postLeftPreview();
+          }
+          var flag=t.getAttribute('data-mini-chrome');
+          if(flag&&(flag in state.miniChrome)){
+            state.miniChrome[flag]=on;
+            postMiniPreview();
+          }
+        });
+      });
+      syncMiniChromeTogs(root);
+    }
+    function wireSettingsControls(root){
+      var scope=root||detail;
+      var modeSeg=scope.querySelector('#ambientModeSeg');
+      if(modeSeg){
+        modeSeg.querySelectorAll('[data-ambient-mode]').forEach(function(b){
+          b.addEventListener('click',function(){
+            var next=b.getAttribute('data-ambient-mode')==='solid'?'solid':'status';
+            state.ambientMode=next;
+            modeSeg.querySelectorAll('[data-ambient-mode]').forEach(function(x){
+              x.classList.toggle('is-on',x.getAttribute('data-ambient-mode')===next);
+            });
+            paintAmbientPreview();
+            postSettingsCmd('setAmbient',{ mode:next });
+          });
+        });
+      }
+      var rgb=scope.querySelector('[data-ambient-rgb]');
+      if(rgb){
+        rgb.addEventListener('input',function(){
+          state.ambientRgb=rgb.value||'#7c3aed';
+          state.ambientMode='solid';
+          var modeSeg2=scope.querySelector('#ambientModeSeg');
+          if(modeSeg2){
+            modeSeg2.querySelectorAll('[data-ambient-mode]').forEach(function(x){
+              x.classList.toggle('is-on',x.getAttribute('data-ambient-mode')==='solid');
+            });
+          }
+          paintAmbientPreview();
+          postSettingsCmd('setAmbient',{ solidRgb:state.ambientRgb, mode:'solid' });
+        });
+      }
+      var op=scope.querySelector('[data-ambient-opacity]');
+      if(op){
+        op.addEventListener('input',function(){
+          var v=Math.max(0,Math.min(100,Math.round(Number(op.value)||0)));
+          state.ambientOpacity=v;
+          var lab=scope.querySelector('[data-ambient-opacity-val]');
+          if(lab) lab.textContent=v+'%';
+          paintAmbientPreview();
+          postSettingsCmd('setAmbient',{ opacity:v });
+        });
+      }
+      var fop=scope.querySelector('[data-float-opacity]');
+      if(fop){
+        fop.addEventListener('input',function(){
+          var v=Math.max(40,Math.min(100,Math.round(Number(fop.value)||82)));
+          state.floatOpacity=v;
+          var lab=scope.querySelector('[data-float-opacity-val]');
+          if(lab) lab.textContent=v+'%';
+          paintFloatOpacity();
+          postSettingsCmd('setScreenOpacity',{ opacity:v });
+        });
+      }
+      scope.querySelectorAll('[data-settings-act]').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          var act=btn.getAttribute('data-settings-act');
+          if(act==='copy') postSettingsCmd('copyHookConfig');
+          else if(act==='install') postSettingsCmd('installConnect');
+          else if(act==='refresh') postSettingsCmd('refreshConnect');
+          else if(act==='paste-key'){
+            var key='';
+            try{ key=window.prompt('粘贴额度 Key（仅保存在本机）','')||''; }catch(_){}
+            if(key) postSettingsCmd('setProviderKey',{ key:key });
+          }
+        });
+      });
+    }
+    function wireShowSkin(root){
+      var showSeg=(root||detail).querySelector('#showSeg');
+      if(showSeg){
+        showSeg.querySelectorAll('[data-show]').forEach(function(b){
+          b.classList.toggle('is-on',b.getAttribute('data-show')===state.show);
+          b.addEventListener('click',function(){
+            state.show=b.getAttribute('data-show');
+            showSeg.querySelectorAll('[data-show]').forEach(function(x){x.classList.toggle('is-on',x===b);});
+            syncPreview();
+          });
+        });
+      }
+      var skinSeg=(root||detail).querySelector('#skinSeg');
+      if(skinSeg){
+        skinSeg.querySelectorAll('[data-skin]').forEach(function(b){
+          b.classList.toggle('is-on',b.getAttribute('data-skin')===state.skin);
+          b.addEventListener('click',function(){
+            state.skin=b.getAttribute('data-skin');
+            skinSeg.querySelectorAll('[data-skin]').forEach(function(x){x.classList.toggle('is-on',x===b);});
+            syncPreview();
+          });
+        });
+      }
+    }
+    wireTogs(detail);
+    wireShowSkin(detail);
+    wireSettingsControls(detail);
+
+    var purposeSeg=detail.querySelector('#purposeSeg');
+    if(purposeSeg){
+      purposeSeg.querySelectorAll('[data-purpose]').forEach(function(b){
+        b.addEventListener('click',function(e){
+          e.stopPropagation();
+          purposeSeg.querySelectorAll('[data-purpose]').forEach(function(x){x.classList.toggle('is-on',x===b);});
+          state.purpose=b.getAttribute('data-purpose');
+          state.zone='ag';
+          detail.querySelectorAll('.zone').forEach(function(z){z.classList.toggle('is-focus',z.getAttribute('data-zone')==='ag');});
+          highlightPadZone('ag');
+        });
+      });
+    }
+    detail.querySelectorAll('.zone[data-zone]').forEach(function(z){
+      function focusZone(){
+        state.zone=z.getAttribute('data-zone');
+        detail.querySelectorAll('.zone').forEach(function(x){x.classList.toggle('is-focus',x===z);});
+        highlightPadZone(state.zone);
+        setPreviewMode('keys');
+        postLeftPreview();
+      }
+      z.addEventListener('click',focusZone);
+      z.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();focusZone();}});
+    });
+
+    function bindLeaf(railId,attr,stateKey,bodies,onPaint){
+      var rail=detail.querySelector('#'+railId);
+      var body=detail.querySelector('#'+railId+'Body');
+      if(!rail||!body) return;
+      function paint(id){
+        state[stateKey]=id;
+        rail.querySelectorAll('['+attr+']').forEach(function(x){x.classList.toggle('is-on',x.getAttribute(attr)===id);});
+        var html=typeof bodies==='function'?bodies()[id]:bodies[id];
+        body.innerHTML=html||'';
+        wireTogs(body);
+        wireShowSkin(body);
+        wireSettingsControls(body);
+        if(onPaint) onPaint(id);
+      }
+      rail.querySelectorAll('['+attr+']').forEach(function(b){
+        b.addEventListener('click',function(){paint(b.getAttribute(attr));});
+      });
+      paint(state[stateKey]);
+    }
+
+    bindLeaf('floatRail','data-float','float',floatBodies,function(){
+      setPreviewMode('float');
+      paintFloatOpacity();
+      postLeftPreview();
+    });
+    bindLeaf('miniRail','data-mini','mini',miniBodies,function(id){
+      highlightMiniZone(id);
+      postMiniPreview();
+      var foot=document.getElementById('barFoot');
+      if(!foot) return;
+      foot.textContent=id==='form'?'细条形态 · 可切完整键盘':id==='busy'?'顶行忙闲圆点':id==='speech'?'条下话术区':id==='tools'?'悬停第二行快捷钮':'细条形态 · 悬停第二行出快捷钮';
+    });
+    bindLeaf('lightsRail','data-lights','lights',lightsBodies,function(){
+      paintAmbientPreview();
+      postLeftPreview();
+    });
+    bindLeaf('connectRail','data-connect','connect',connectBodies);
+  }
+
+  function setNav(id){
+    document.querySelectorAll('.snav [data-nav]').forEach(function(b){
+      if(b.disabled) return;
+      b.classList.toggle('on',b.getAttribute('data-nav')===id);
+    });
+    document.getElementById('viewAgent').classList.toggle('is-on',id==='agent');
+    document.getElementById('viewStats').classList.toggle('is-on',id==='stats');
+    document.getElementById('shellPath').textContent=id==='stats'?'设置 → 数据':'设置 → Agent';
+    document.getElementById('shellHint').textContent=id==='stats'?'大盘 · 网页版与本地副窗':'五叶配置 · 不含图表';
+  }
+  document.querySelectorAll('.snav [data-nav]').forEach(function(b){
+    if(b.disabled) return;
+    b.addEventListener('click',function(){setNav(b.getAttribute('data-nav'));});
+  });
+  document.getElementById('gotoStats').addEventListener('click',function(){
+    if(document.documentElement.classList.contains('ot-embed') && window.parent && window.parent !== window){
+      window.parent.postMessage({ type:'ot-nav', panel:'agentData' }, '*');
+      return;
+    }
+    setNav('stats');
+  });
+  document.getElementById('snapBody').addEventListener('click',function(){setNav('stats');});
+
+  /* 当前应用 · 简约摘要（不是五叶大盘） */
+  var APP_SNAP={
+    Cursor:[
+      {l:'效率',v:'50.6'},
+      {l:'活跃',v:'1h42'},
+      {l:'回合',v:'86'},
+      {l:'费用',v:'—',miss:true}
+    ],
+    Claude:[
+      {l:'缓存',v:'82%'},
+      {l:'费用',v:'$1.12'},
+      {l:'Token',v:'270K'},
+      {l:'效率',v:'—',miss:true}
+    ],
+    Codex:[
+      {l:'Token',v:'410K'},
+      {l:'费用',v:'—',miss:true},
+      {l:'高峰',v:'—',miss:true},
+      {l:'效率',v:'—',miss:true}
+    ]
+  };
+  function paintSnap(name){
+    document.getElementById('snapApp').textContent=name;
+    var mets=APP_SNAP[name]||APP_SNAP.Cursor;
+    document.getElementById('snapMets').innerHTML=mets.map(function(m){
+      return '<span class="met'+(m.miss?' miss':'')+'">'+m.l+' <em>'+m.v+'</em></span>';
+    }).join('');
+  }
+
+  function setApp(name){
+    state.app=name;
+    document.getElementById('appName').textContent=name;
+    var tab=document.getElementById('tabConnect');
+    tab.innerHTML='<span class="t">'+name+'</span><span class="s">三标签页</span>';
+    document.getElementById('connectCap').textContent=name;
+    document.getElementById('guideConnect').textContent=name;
+    var hook=document.getElementById('connectHook');
+    if(hook) hook.textContent='复制 hooks 接到 '+name;
+    document.querySelectorAll('.app-pick').forEach(function(b){
+      b.classList.toggle('is-on',b.getAttribute('data-app')===name);
+    });
+    paintSnap(name);
+    postSettingsCmd('selectAgent',{ app:name });
+    if(state.sub==='connect'||state.sub==='mini'||state.sub==='lights'){
+      detail.innerHTML=pages[state.sub]();
+      bindDetail();
+    }
+  }
+  document.querySelectorAll('.app-pick').forEach(function(b){
+    b.addEventListener('click',function(){setApp(b.getAttribute('data-app'));});
+  });
+
+  function setSub(id){
+    state.sub=id;
+    if(id==='keys'&&!state.zone) state.zone='ag';
+    document.querySelectorAll('#subs [data-sub]').forEach(function(b){b.classList.toggle('is-on',b.getAttribute('data-sub')===id);});
+    detail.innerHTML=pages[id]();
+    setPreviewMode(id);
+    bindDetail();
+    syncPreview();
+    syncGuide();
+    setNav('agent');
+  }
+  document.querySelectorAll('#subs [data-sub]').forEach(function(b){
+    b.addEventListener('click',function(){setSub(b.getAttribute('data-sub'));});
+  });
+  document.querySelectorAll('#guide [data-jump]').forEach(function(c){
+    c.addEventListener('click',function(){setSub(c.getAttribute('data-jump'));});
+  });
+
+  setApp('Cursor');
+  setSub('float');
+  setNav('agent');
+
+  (function(){
+    var scr=document.getElementById('wallScr');
+    var frame=document.getElementById('wallFrame');
+    var hint=document.getElementById('surfHint');
+    var heights=[42,48,55,38,62,51,58];
+    var wallBars=document.getElementById('wallBars');
+    if(wallBars) wallBars.innerHTML=heights.map(function(h){return '<i style="height:'+h+'%;background:linear-gradient(180deg,#3aa8b5,#0f6e7a)"></i>';}).join('');
+
+    function openWall(){
+      if(frame) frame.setAttribute('data-surface','local');
+      if(hint) hint.textContent='Tauri 独立窗 · 拖到副屏常亮';
+      if(scr) scr.classList.add('is-on');
+    }
+    function closeWall(){if(scr) scr.classList.remove('is-on');}
+    var openBtn=document.getElementById('openWall');
+    if(openBtn) openBtn.addEventListener('click',openWall);
+    var c1=document.getElementById('closeWall1');
+    var c2=document.getElementById('closeWall2');
+    if(c1) c1.addEventListener('click',closeWall);
+    if(c2) c2.addEventListener('click',closeWall);
+    if(scr) scr.addEventListener('click',function(e){if(e.target===scr) closeWall();});
+
+    document.querySelectorAll('.wall-scr .wall-surf [data-surface]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var s=b.getAttribute('data-surface');
+        if(frame) frame.setAttribute('data-surface',s);
+        document.querySelectorAll('.wall-scr .wall-surf [data-surface]').forEach(function(x){
+          x.classList.toggle('is-on',x.getAttribute('data-surface')===s);
+        });
+        if(hint) hint.textContent=s==='web'?'同站页 · 可新标签全屏到副屏':'Tauri 独立窗 · 拖到副屏常亮';
+      });
+    });
+
+    var wallTo=document.getElementById('wallToConnect');
+    if(wallTo) wallTo.addEventListener('click',function(){
+      closeWall();
+      window.location.href='agent-data-inventory-proto.html';
+    });
+
+    var EMBED={
+      eff:{lab:'效率 · Cursor 回合/活跃时',num:'50.6',line:'仅 Cursor 本地 turns ÷ activeMs · Claude/Codex → —'},
+      cost:{lab:'费用 · 可知成本',num:'$1.12',line:'仅 Claude OTel 有 $ · Codex/Cursor/MiniMax 缺价 —'},
+      cap:{lab:'能力 · 此刻模型',num:'Sonnet',line:'当前芯片，不是历史占比'},
+      time:{lab:'时长 · Cursor 活跃',num:'1h42',line:'仅 Cursor activeMs · 高峰另见灵感镜头'},
+      spark:{lab:'灵感 · 今日最高效窗',num:'19:00–20:00',line:'高速时段 + 缓存最佳 82%'}
+    };
+    document.querySelectorAll('#embedLenses [data-elens]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var id=b.getAttribute('data-elens');
+        document.querySelectorAll('#embedLenses [data-elens]').forEach(function(x){
+          var on=x===b;
+          x.classList.toggle('is-on',on);
+          x.style.background=on?'#e2f3f5':'#fff';
+          x.style.color=on?'#0f6e7a':'#5c6d82';
+        });
+        var e=EMBED[id];
+        document.getElementById('embedLab').textContent=e.lab;
+        document.getElementById('embedNum').textContent=e.num;
+        document.getElementById('embedLine').textContent=e.line;
+      });
+    });
+  })();
+})();
+</script>
+</body>
+</html>

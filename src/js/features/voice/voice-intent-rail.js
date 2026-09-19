@@ -8,20 +8,9 @@
   };
 
   var INTENTS=['ime','key','prompt','cursor','softpad','gesture'];
-  var PROMPT_PRESETS={
-    proto:'画一个原型图，风格简洁，输出可直接落地的交互说明。',
-    agent:'总结当前对话要点，并给出下一步可执行建议。',
-    continue:'继续上一步，保持同样约束。'
-  };
-  var PROMPT_PRESET_LABELS={
-    proto:'画原型图',
-    agent:'Agent 总结',
-    continue:'继续',
-    custom:'自定义口头指令'
-  };
   var promptEditId='';
-  var promptForceNew=false;
   var autosaveTimer=0;
+  var saveHintPulseTimer=0;
   var applyingPrompt=false;
   var lastSaveFailToast=0;
 
@@ -68,61 +57,260 @@
     return null;
   }
 
-  function clearPresetOn(){
-    var presets=$('voicePromptPresets');
-    if(!presets) return;
-    Array.prototype.forEach.call(presets.querySelectorAll('[data-prompt-preset]'),function(x){
-      x.classList.remove('is-on');
-    });
+  function escHtml(s){
+    try{
+      if(global.OneToneDom&&typeof global.OneToneDom.esc==='function') return global.OneToneDom.esc(s);
+    }catch(_){}
+    return String(s==null?'':s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
   }
 
-  function setPresetOn(pid){
-    var presets=$('voicePromptPresets');
-    if(!presets) return;
-    Array.prototype.forEach.call(presets.querySelectorAll('[data-prompt-preset]'),function(x){
-      x.classList.toggle('is-on',x.getAttribute('data-prompt-preset')===pid);
-    });
+  function promptLabelFromText(text){
+    text=String(text||'').trim();
+    if(!text) return t('voiceIntentPrompt','口头指令');
+    return text.length>16?text.slice(0,16)+'…':text;
   }
 
-  function promptLabelFromUi(){
-    var presets=$('voicePromptPresets');
-    if(presets){
-      var on=presets.querySelector('[data-prompt-preset].is-on');
-      if(on){
-        var pid=on.getAttribute('data-prompt-preset');
-        if(pid&&PROMPT_PRESET_LABELS[pid]) return PROMPT_PRESET_LABELS[pid];
-        var txt=String(on.textContent||'').trim();
-        if(txt) return txt;
-      }
-    }
-    return '';
+  function readPromptTitleUi(){
+    var el=$('voicePromptTitle');
+    return el?String(el.value||'').trim():'';
   }
 
-  function findPromptPeerId(label, text){
+  /** Empty title field = auto from prompt body. */
+  function resolvePromptLabel(text){
+    var title=readPromptTitleUi();
+    if(title) return title.length>32?title.slice(0,32)+'…':title;
+    return promptLabelFromText(text);
+  }
+
+  function setPromptTitleUi(label, body){
+    var el=$('voicePromptTitle');
+    if(!el) return;
+    label=String(label||'').trim();
+    body=String(body||'').trim();
+    var auto=promptLabelFromText(body);
+    el.value=(label&&label!==auto)?label:'';
+  }
+
+  function forcePromptTitleUi(title){
+    var el=$('voicePromptTitle');
+    if(!el) return;
+    el.value=String(title||'').trim();
+  }
+
+  /** Built-in starters for vibe coding — not a second library. */
+  function promptTemplates(){
+    return [
+      {id:'tpl-continue',label:t('voicePromptTplContinue','继续'),text:t('voicePromptTplContinueText','继续上一步，保持同样约束。')},
+      {id:'tpl-fix',label:t('voicePromptTplFix','修这个'),text:t('voicePromptTplFixText','根据当前报错修好它，改动尽量小，说明原因。')},
+      {id:'tpl-summary',label:t('voicePromptTplSummary','总结改动'),text:t('voicePromptTplSummaryText','用三条要点总结刚改了什么，以及下一步建议。')},
+      {id:'tpl-explain',label:t('voicePromptTplExplain','解释这段'),text:t('voicePromptTplExplainText','用白话解释当前选中/打开的代码在干什么，以及风险点。')},
+      {id:'tpl-next',label:t('voicePromptTplNext','下一步'),text:t('voicePromptTplNextText','基于当前进度，给出一个可立刻执行的下一步，并直接开干。')}
+    ];
+  }
+
+  function promptTplPillsHtml(){
+    return promptTemplates().map(function(tpl){
+      return '<button type="button" class="voice-prompt-tpl-pill" data-prompt-tpl="'+escHtml(tpl.id)+'">'+
+        escHtml(tpl.label)+'</button>';
+    }).join('');
+  }
+
+  function listPromptPeersForCurrentApp(){
     var anchor=selectedOrHabit();
     var appId=anchor?String(anchor.appTargetId||'').trim():'';
-    if(!appId) return '';
     var picker=global.OneToneKeysChannelCommandPicker;
-    var maps=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config
-      ?global.OneToneState.state.config.mappings:[];
-    if(!Array.isArray(maps)) return '';
-    label=String(label||'').trim();
-    text=String(text||'').trim();
-    var byLabel='', byText='', first='', editStill='';
-    for(var i=0;i<maps.length;i++){
-      var m=maps[i];
-      if(!m||String(m.appTargetId||'').trim()!==appId) continue;
-      if(!(picker&&picker.isPromptInjectMapping&&picker.isPromptInjectMapping(m))) continue;
-      var id=String(m.id||'');
-      if(!id) continue;
-      if(!first) first=id;
-      if(promptEditId&&id===promptEditId) editStill=id;
-      if(label&&String(m.label||'').trim()===label) byLabel=id;
-      var body='';
-      if(picker.promptTextFromMapping) body=String(picker.promptTextFromMapping(m)||'').trim();
-      if(text&&body===text) byText=id;
+    if(!(picker&&picker.listPromptPeersForApp&&appId)) return [];
+    try{ return picker.listPromptPeersForApp(appId)||[]; }catch(_){ return []; }
+  }
+
+  function primaryWakePhraseDisplay(){
+    var phrase='';
+    var tags=$('voiceWakePhraseTags');
+    if(tags){
+      var on=tags.querySelector('.is-on,.is-active,[aria-selected="true"]');
+      var raw=on?(on.getAttribute('data-phrase')||on.textContent||''):'';
+      phrase=String(raw).replace(/[「」]/g,'').trim();
     }
-    return byLabel||editStill||byText||first||'';
+    if(!phrase){
+      try{
+        var Wake=global.OneToneVoiceWake;
+        if(Wake&&typeof Wake.primaryWakePhraseDisplay==='function'){
+          phrase=String(Wake.primaryWakePhraseDisplay()||'').trim();
+        }
+      }catch(_w){}
+    }
+    if(!phrase){
+      try{
+        var V=global.OneToneVoiceSettingsViewModel;
+        if(V&&V.build&&V.resolveDisplayWakePhrase){
+          phrase=String(V.resolveDisplayWakePhrase(V.build(false)).display||'').trim();
+        }
+      }catch(_v){}
+    }
+    return phrase||'—';
+  }
+
+  function paintPromptArmed(){
+    var el=$('voicePromptArmed');
+    var land=$('voicePromptLand');
+    var ta=$('voicePromptInjectBody');
+    var body=ta?String(ta.value||'').trim():'';
+    if(!body) body=currentPromptPeerBody();
+    var title=readPromptTitleUi();
+    if(!title){
+      var peer=currentPromptPeer();
+      if(peer) title=String(peer.label||'').trim();
+    }
+    if(!title) title=promptLabelFromText(body);
+    var preview=title||(body?body.split(/\r?\n/)[0].trim():'');
+    if(preview.length>28) preview=preview.slice(0,28)+'…';
+    var wake=primaryWakePhraseDisplay();
+    var fmt=t('voicePromptArmedFmt','说 {wake} → 写入 {preview}');
+    var none=t('voicePromptArmedEmpty','（还没有）');
+    var line=fmt
+      .replace('{wake}',wake)
+      .replace('{preview}',preview?('「'+preview+'」'):none);
+    if(el){
+      el.innerHTML='<span class="voice-prompt-armed__wake">'+escHtml(wake)+'</span>'+
+        '<span class="voice-prompt-armed__arrow">→</span>'+
+        '<span class="voice-prompt-armed__preview">'+escHtml(preview||none)+'</span>';
+      el.setAttribute('title',line);
+    }
+    if(land){
+      land.textContent=(typeof t==='function'?t('voicePromptLandFmt','说 01 口令 = 对准输入框 → 写入{preview} → 回车发送'):'说 01 口令 = 对准输入框 → 写入{preview} → 回车发送')
+        .replace('{preview}',preview?('「'+preview+'」'):' prompt');
+    }
+  }
+
+  function paintPromptFromTpl(hasPeers){
+    var host=$('voicePromptFromTpl');
+    if(!host) return;
+    if(!hasPeers){
+      host.hidden=true;
+      host.innerHTML='';
+      return;
+    }
+    host.hidden=false;
+    host.innerHTML='<span class="voice-prompt-from-tpl__lb">'+escHtml(t('voicePromptFromTpl','从常用开始'))+
+      '</span><span class="voice-prompt-from-tpl__pills">'+promptTplPillsHtml()+'</span>';
+  }
+
+  function currentPromptPeer(){
+    if(promptEditId){
+      var m=mappingById(promptEditId);
+      if(m) return m;
+    }
+    return null;
+  }
+
+  function currentPromptPeerBody(){
+    var picker=global.OneToneKeysChannelCommandPicker;
+    var m=currentPromptPeer();
+    if(!m||!(picker&&picker.promptTextFromMapping)) return '';
+    return String(picker.promptTextFromMapping(m)||'').trim();
+  }
+
+  function refreshPromptSaveHint(){
+    var hint=$('voicePromptSaveHint');
+    var cur=hint?String(hint.getAttribute('data-save-state')||''):'';
+    /* Don't clobber in-flight autosave UX (was flashing 编辑中 ↔ 输入后自动保存). */
+    if(cur==='editing'||cur==='saving') return;
+    var ta=$('voicePromptInjectBody');
+    var text=ta?String(ta.value||'').trim():'';
+    var peer=currentPromptPeer();
+    var bodyOk=!!(text&&peer&&text===currentPromptPeerBody());
+    syncPromptSaveHint(!!bodyOk);
+  }
+
+  function paintPromptLibrary(){
+    var host=$('voicePromptLib');
+    if(!host) return;
+    var picker=global.OneToneKeysChannelCommandPicker;
+    var peers=listPromptPeersForCurrentApp();
+    var count=$('voicePromptLibCount');
+    if(count) count.textContent=peers.length?String(peers.length):'';
+    paintPromptFromTpl(peers.length>0);
+    if(!peers.length){
+      host.innerHTML='<div class="voice-prompt-lib__empty">'+
+        '<p class="voice-prompt-lib__empty-lead">'+escHtml(t('voicePromptLibEmpty','还没有口头指令'))+'</p>'+
+        '<p class="voice-prompt-lib__empty-hint">'+escHtml(t('voicePromptLibEmptyHint','点一个常用起步，或右侧直接写'))+'</p>'+
+        '<div class="voice-prompt-lib__tpls">'+promptTplPillsHtml()+'</div></div>';
+      paintPromptArmed();
+      return;
+    }
+    host.innerHTML=peers.map(function(m){
+      if(!m||!m.id) return '';
+      var body='';
+      try{
+        if(picker&&picker.promptTextFromMapping) body=String(picker.promptTextFromMapping(m)||'').trim();
+      }catch(_){}
+      var empty=t('voicePromptRowEmpty','未填写 prompt');
+      var stored=String(m.label||'').trim();
+      var name=stored||(body?body.split(/\r?\n/)[0].trim():'');
+      if(!name) name=empty;
+      if(name.length>22) name=name.slice(0,22)+'…';
+      var preview='';
+      if(body){
+        var first=body.split(/\r?\n/)[0].trim();
+        if(stored&&stored!==first){
+          preview=body.replace(/\s+/g,' ').trim();
+          if(preview.length>28) preview=preview.slice(0,28)+'…';
+        }else if(body.length>name.length){
+          preview=body.replace(/\s+/g,' ').trim();
+          if(preview.length>28) preview=preview.slice(0,28)+'…';
+        }
+      }
+      var on=String(m.id)===String(promptEditId);
+      var curTag=on?'<span class="voice-prompt-lib__cur">'+escHtml(t('voicePromptLibCurrent','当前'))+'</span>':'';
+      return '<button type="button" class="voice-prompt-lib__chip'+(on?' is-on':'')+
+        '" role="option" aria-selected="'+(on?'true':'false')+
+        '" data-prompt-peer="'+escHtml(String(m.id))+'" title="'+escHtml(body||empty)+'">'+
+        '<span class="voice-prompt-lib__body">'+escHtml(name)+curTag+'</span>'+
+        (preview?'<span class="voice-prompt-lib__preview">'+escHtml(preview)+'</span>':'')+
+        '</button>';
+    }).join('');
+    paintPromptArmed();
+  }
+
+  function applyPromptTemplate(tplId){
+    tplId=String(tplId||'').trim();
+    var tpl=null;
+    var list=promptTemplates();
+    for(var i=0;i<list.length;i++){
+      if(list[i].id===tplId){ tpl=list[i]; break; }
+    }
+    if(!tpl) return;
+    var picker=global.OneToneKeysChannelCommandPicker;
+    var peers=listPromptPeersForCurrentApp();
+    var want=String(tpl.text||'').trim();
+    for(var pi=0;pi<peers.length;pi++){
+      var m=peers[pi];
+      var body='';
+      try{
+        if(picker&&picker.promptTextFromMapping) body=String(picker.promptTextFromMapping(m)||'').trim();
+      }catch(_){}
+      if(body===want&&m&&m.id){
+        applyPromptMapping(String(m.id));
+        toast(t('voicePromptTplAlready','已是当前「{label}」').replace('{label}',tpl.label));
+        return;
+      }
+    }
+    flushPromptDraftQuiet();
+    applyingPrompt=true;
+    promptEditId='';
+    forcePromptTitleUi(tpl.label);
+    activatePromptText(want,{skipScene:true});
+    setIntent('prompt',{persist:true});
+    applyingPrompt=false;
+    var saved=savePromptToScene({quiet:true});
+    if(saved&&saved.id){
+      toast(t('voicePromptTplApplied','已加入指令库 · 「{label}」').replace('{label}',tpl.label));
+    }
+    paintPromptLibrary();
   }
 
   function activatePromptText(text, opts){
@@ -185,16 +373,76 @@
   }
 
   function syncPromptSaveHint(ok){
+    setPromptSaveHint(ok?'ok':'idle');
+  }
+
+  /** idle | editing | saving | ok | fail — visible state machine for autosave feedback */
+  function setPromptSaveHint(state, failMsg){
     var hint=$('voicePromptSaveHint');
     if(!hint) return;
-    hint.textContent=ok
-      ?t('voicePromptSynced','已同步到右侧列表')
-      :t('voicePromptSaveHint','改文案即写入右侧列表');
-    hint.classList.toggle('is-ok',!!ok);
+    state=String(state||'idle');
+    var cur=hint.getAttribute('data-save-state')||'';
+    /* Same state → no-op (incl. ok). Re-applying classes flashed via CSS transition. */
+    if(state===cur) return;
+    if(saveHintPulseTimer){
+      try{ clearTimeout(saveHintPulseTimer); }catch(_){}
+      saveHintPulseTimer=0;
+    }
+    hint.setAttribute('data-save-state',state);
+    hint.classList.remove('is-ok','is-saving','is-editing','is-pulse','is-fail');
+    if(state==='ok'){
+      hint.textContent=t('voicePromptSynced','已保存');
+      hint.classList.add('is-ok','is-pulse');
+      saveHintPulseTimer=setTimeout(function(){
+        saveHintPulseTimer=0;
+        var h=$('voicePromptSaveHint');
+        if(h) h.classList.remove('is-pulse');
+      },1200);
+      return;
+    }
+    if(state==='saving'){
+      hint.textContent=t('voicePromptSaving','保存中…');
+      hint.classList.add('is-saving');
+      return;
+    }
+    if(state==='editing'){
+      hint.textContent=t('voicePromptEditing','编辑中…');
+      hint.classList.add('is-editing');
+      return;
+    }
+    if(state==='fail'){
+      hint.textContent=failMsg||t('voicePromptSaveUnavailable','暂无法保存');
+      hint.classList.add('is-fail');
+      return;
+    }
+    hint.textContent=t('voicePromptSaveHint','输入后自动保存');
+  }
+
+  function promptDraftIsDirty(){
+    var ta=$('voicePromptInjectBody');
+    var text=ta?String(ta.value||'').trim():'';
+    if(!text) return false;
+    var peer=currentPromptPeer();
+    if(!peer) return true;
+    if(text!==currentPromptPeerBody()) return true;
+    var stored=String(peer.label||'').trim();
+    var effective=resolvePromptLabel(text);
+    return effective!==stored;
+  }
+
+  function flushPromptDraftQuiet(){
+    if(applyingPrompt) return;
+    var ta=$('voicePromptInjectBody');
+    var text=ta?String(ta.value||'').trim():'';
+    if(!text) return;
+    if(!promptDraftIsDirty()) return;
+    savePromptToScene({quiet:true});
   }
 
   function applyPromptMapping(mid){
     mid=String(mid||'').trim();
+    if(mid&&mid===String(promptEditId||'')) return;
+    flushPromptDraftQuiet();
     var m=mappingById(mid);
     var picker=global.OneToneKeysChannelCommandPicker;
     if(!m||!(picker&&picker.isPromptInjectMapping&&picker.isPromptInjectMapping(m))){
@@ -205,8 +453,10 @@
     promptEditId=mid;
     var body='';
     if(picker.promptTextFromMapping) body=String(picker.promptTextFromMapping(m)||'');
+    setPromptTitleUi(m.label,body);
     activatePromptText(body,{skipScene:true});
     setIntent('prompt',{persist:true});
+    paintPromptLibrary();
     syncPromptSaveHint(true);
     applyingPrompt=false;
   }
@@ -214,66 +464,87 @@
   function savePromptToScene(opts){
     opts=opts||{};
     var quiet=!!opts.quiet;
+    if(promptEditId&&!mappingById(promptEditId)){
+      promptEditId='';
+    }
     var ta=$('voicePromptInjectBody');
     var text=ta?String(ta.value||'').trim():'';
-    if(!text){
-      if(!quiet) toast(t('voicePromptSaveNeedText','先填写要注入的 prompt'));
-      return null;
-    }
-    var picker=global.OneToneKeysChannelCommandPicker;
-    if(!picker||typeof picker.savePromptInjectMapping!=='function'){
-      if(!quiet) toast(t('voicePromptSaveUnavailable','暂无法保存'));
-      return null;
-    }
-    var label=promptLabelFromUi();
-    if(!label||label===PROMPT_PRESET_LABELS.custom){
-      label=text.length>16?text.slice(0,16)+'…':text;
-    }
-    // Same prompt text always upserts — never spawn twins via autosave/forceCreate.
-    var editId=String(promptEditId||'').trim()||findPromptPeerId(label,text);
-    var saved=picker.savePromptInjectMapping({
-      text:text,
-      label:label,
-      editId:editId,
-      forceCreate:false
-    });
-    if(!saved||!saved.id){
-      if(!quiet||Date.now()-lastSaveFailToast>2500){
-        lastSaveFailToast=Date.now();
-        // savePromptInjectMapping already toasted a reason when possible.
+    try{
+      if(!text){
+        syncPromptSaveHint(false);
+        if(!quiet) toast(t('voicePromptSaveNeedText','先填写要注入的 prompt'));
+        return null;
       }
+      var picker=global.OneToneKeysChannelCommandPicker;
+      if(!picker||typeof picker.savePromptInjectMapping!=='function'){
+        syncPromptSaveHint(false);
+        if(!quiet) toast(t('voicePromptSaveUnavailable','暂无法保存'));
+        return null;
+      }
+      var label=resolvePromptLabel(text);
+      var existing=promptEditId?mappingById(promptEditId):null;
+      if(existing&&!(picker.isPromptInjectMapping&&picker.isPromptInjectMapping(existing))){
+        existing=null;
+        promptEditId='';
+      }
+      var wasNew=!existing;
+      var saved=picker.savePromptInjectMapping({
+        text:text,
+        label:label,
+        editId:existing?String(existing.id):'',
+        forceCreate:!existing,
+        // Clear per-peer wake; routing uses scene / 01 wake only.
+        wakePhrases:[],
+        quiet:quiet
+      });
+      if(!saved||!saved.id){
+        var anchor=selectedOrHabit();
+        var noApp=!anchor||!String(anchor.appTargetId||'').trim();
+        var failMsg=noApp
+          ?t('voicePromptNeedAppScene','请先切换到某个应用场景（不要停在通用设置）')
+          :t('voicePromptSaveUnavailable','暂无法保存');
+        setPromptSaveHint('fail',failMsg);
+        if(!quiet){
+          if(Date.now()-lastSaveFailToast>2500){
+            lastSaveFailToast=Date.now();
+            toast(failMsg);
+          }
+        }
+        return null;
+      }
+      promptEditId=String(saved.id);
+      var st=global.OneToneState&&global.OneToneState.state;
+      if(st&&st.config){
+        if(!st.config.voiceEnd) st.config.voiceEnd={};
+        st.config.voiceEnd.promptInjectText=text;
+        st.config.voiceEnd.intent='prompt';
+      }
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
+        try{ global.OneToneConfigPersist.save({source:'voice-prompt-scene'}); }catch(_){}
+      }
+      paintPromptLibrary();
+      refreshSceneList(promptEditId);
+      syncPromptSaveHint(true);
+      if(!quiet) toast(t(wasNew?'voicePromptSavedNew':'voicePromptSaved','已保存口头指令'));
+      return saved;
+    }catch(_e){
       syncPromptSaveHint(false);
       return null;
     }
-    promptEditId=String(saved.id);
-    promptForceNew=false;
-    var st=global.OneToneState&&global.OneToneState.state;
-    if(st&&st.config){
-      if(!st.config.voiceEnd) st.config.voiceEnd={};
-      st.config.voiceEnd.promptInjectText=text;
-      st.config.voiceEnd.intent='prompt';
-    }
-    if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
-      try{ global.OneToneConfigPersist.save({source:'voice-prompt-scene'}); }catch(_){}
-    }
-    refreshSceneList(promptEditId);
-    syncPromptSaveHint(true);
-    if(!quiet) toast(t('voicePromptSaved','已保存到本场景列表'));
-    return saved;
   }
 
   function startNewCustomPrompt(){
+    // Commit current draft into the left list, then open a blank editor.
+    flushPromptDraftQuiet();
     applyingPrompt=true;
-    promptForceNew=true;
     promptEditId='';
-    clearPresetOn();
-    setPresetOn('custom');
     var ta=$('voicePromptInjectBody');
     if(ta){
       ta._promptHydrated=true;
       ta.value='';
       try{ ta.focus(); }catch(_){}
     }
+    forcePromptTitleUi('');
     var st=global.OneToneState&&global.OneToneState.state;
     if(st&&st.config){
       if(!st.config.voiceEnd) st.config.voiceEnd={};
@@ -282,23 +553,56 @@
     }
     global.__vp_voice_intent__='prompt';
     setIntent('prompt',{persist:true});
-    syncPromptUi();
+    paintPromptLibrary();
     syncPromptSaveHint(false);
     applyingPrompt=false;
-    toast(t('voicePromptCustomHint','写下自定义 prompt，再点「保存到本场景列表」'));
+    toast(t('voicePromptCustomHint','已开新稿 · 输入后自动进左侧列表'));
   }
 
   function scheduleAutosavePromptScene(delay){
     if(applyingPrompt) return;
     if(currentIntent()!=='prompt') return;
+    var ta=$('voicePromptInjectBody');
+    var text=ta?String(ta.value||'').trim():'';
+    if(!text){
+      setPromptSaveHint('idle');
+      return;
+    }
+    /* Already matches library — skip. Prevents save→render→autosave(0) flicker loop. */
+    if(!promptDraftIsDirty()){
+      setPromptSaveHint('ok');
+      if(autosaveTimer){
+        try{ clearTimeout(autosaveTimer); }catch(_){}
+        autosaveTimer=0;
+      }
+      return;
+    }
     if(autosaveTimer){
       try{ clearTimeout(autosaveTimer); }catch(_){}
       autosaveTimer=0;
     }
     var ms=delay==null?320:Number(delay)||0;
+    /* delay 0 (post-render flush): skip「编辑中」flash, go straight to saving */
+    if(ms<=0) setPromptSaveHint('saving');
+    else setPromptSaveHint('editing');
     autosaveTimer=setTimeout(function(){
       autosaveTimer=0;
-      savePromptToScene({quiet:true});
+      if(applyingPrompt||currentIntent()!=='prompt') return;
+      var live=$('voicePromptInjectBody');
+      if(!(live&&String(live.value||'').trim())){
+        setPromptSaveHint('idle');
+        return;
+      }
+      if(!promptDraftIsDirty()){
+        setPromptSaveHint('ok');
+        return;
+      }
+      setPromptSaveHint('saving');
+      try{
+        savePromptToScene({quiet:true});
+      }catch(_e){
+        setPromptSaveHint('fail');
+      }
     },ms);
   }
   var PANE_BY_INTENT={
@@ -358,31 +662,7 @@
   function syncHeroVals(){
     var wakeVal=$('voiceFlowNodeWakeVal');
     var finishVal=$('voiceFlowNodeFinishVal');
-    var phrase='';
-    var tags=$('voiceWakePhraseTags');
-    if(tags){
-      var on=tags.querySelector('.is-on,.is-active,[aria-selected="true"]');
-      var raw=on?(on.getAttribute('data-phrase')||on.textContent||''):'';
-      phrase=String(raw).replace(/[「」]/g,'').trim();
-    }
-    // Primary wake lives outside the alias chips — fall back so 01 isn't stuck on「—」.
-    if(!phrase){
-      try{
-        var Wake=global.OneToneVoiceWake;
-        if(Wake&&typeof Wake.primaryWakePhraseDisplay==='function'){
-          phrase=String(Wake.primaryWakePhraseDisplay()||'').trim();
-        }
-      }catch(_w){}
-    }
-    if(!phrase){
-      try{
-        var V=global.OneToneVoiceSettingsViewModel;
-        if(V&&V.build&&V.resolveDisplayWakePhrase){
-          phrase=String(V.resolveDisplayWakePhrase(V.build(false)).display||'').trim();
-        }
-      }catch(_v){}
-    }
-    if(!phrase) phrase='—';
+    var phrase=primaryWakePhraseDisplay();
     if(wakeVal) wakeVal.textContent=phrase;
     var intent=currentIntent();
     var finish='—';
@@ -394,6 +674,7 @@
     else if(intent==='softpad') finish=t('voiceIntentSoftPad','屏幕按钮');
     else if(intent==='gesture') finish=t('voiceIntentGesture','手势');
     if(finishVal) finishVal.textContent=finish;
+    paintPromptArmed();
   }
 
   function setIntent(id, opts){
@@ -455,7 +736,8 @@
     }
     if(id==='prompt'){
       syncPromptUi();
-      scheduleAutosavePromptScene(0);
+      /* Only flush dirty drafts — clean text must not re-enter editing/saving (flicker). */
+      if(promptDraftIsDirty()) scheduleAutosavePromptScene(0);
     }
 
     var dictate=$('voiceWakeActionDictate');
@@ -486,8 +768,8 @@
       picker.setAttribute('aria-hidden',show?'false':'true');
     }
     if(strip){
-      strip.hidden=!show;
-      strip.setAttribute('aria-hidden',show?'false':'true');
+      strip.hidden=false;
+      strip.setAttribute('aria-hidden','false');
     }
     if(rail){
       rail.hidden=false;
@@ -566,18 +848,75 @@
     toast(msg);
   }
 
-  function beginAimCalibrate(){
+  function normalizeAimBank(raw){
+    if(!raw||typeof raw!=='object') return {slots:[null,null],active:0};
+    if(Array.isArray(raw.slots)){
+      var slots=[null,null];
+      for(var i=0;i<2;i++){
+        var s=raw.slots[i];
+        if(s&&typeof s==='object'&&s.set!==false&&isFinite(Number(s.x))&&isFinite(Number(s.y))){
+          slots[i]={x:Number(s.x),y:Number(s.y)};
+        }
+      }
+      var active=Number(raw.active);
+      if(!isFinite(active)||active<0||active>1) active=slots[0]?0:(slots[1]?1:0);
+      return {slots:slots,active:active|0};
+    }
+    if(isFinite(Number(raw.x))&&isFinite(Number(raw.y))){
+      return {slots:[{x:Number(raw.x),y:Number(raw.y)},null],active:0};
+    }
+    return {slots:[null,null],active:0};
+  }
+
+  function bankFromStatus(status){
+    if(!status||typeof status!=='object') return {slots:[null,null],active:0};
+    return normalizeAimBank({
+      slots:status.slots,
+      active:status.active,
+      x:status.x,
+      y:status.y
+    });
+  }
+
+  function writeAimBank(appId,bank){
+    var st=global.OneToneState&&global.OneToneState.state;
+    if(!st||!st.config||!appId) return;
+    if(!st.config.voiceEnd) st.config.voiceEnd={};
+    if(!st.config.voiceEnd.composerAnchors||typeof st.config.voiceEnd.composerAnchors!=='object'){
+      st.config.voiceEnd.composerAnchors={};
+    }
+    bank=normalizeAimBank(bank);
+    if(!bank.slots[0]&&!bank.slots[1]){
+      delete st.config.voiceEnd.composerAnchors[appId];
+    }else{
+      st.config.voiceEnd.composerAnchors[appId]=bank;
+    }
+  }
+
+  function currentAimSlot(){
+    var appId=currentAppTargetId();
+    var st=global.OneToneState&&global.OneToneState.state;
+    var anchors=st&&st.config&&st.config.voiceEnd?st.config.voiceEnd.composerAnchors:null;
+    var bank=normalizeAimBank(appId&&anchors?anchors[appId]:null);
+    return bank.active|0;
+  }
+
+  function beginAimCalibrate(slotOpt){
     aimCalLog('fe aim_calibrate_click');
     var appId=currentAppTargetId()||'cursor-chat';
+    var slot=isFinite(Number(slotOpt))?Number(slotOpt)|0:currentAimSlot();
+    if(slot<0||slot>1) slot=0;
     aimCalTip(t('voiceAimCalStarting','正在打开校准层…'),false);
-    aimCalLog('fe aim_calibrate_begin_invoke app='+appId);
+    aimCalLog('fe aim_calibrate_begin_invoke app='+appId+' slot='+slot);
+    var args={appTargetId:appId,slot:slot};
     var inv=global.OneToneIpc&&typeof global.OneToneIpc.invokeTimeout==='function'
-      ?global.OneToneIpc.invokeTimeout('cmd_input_aim_calibrate_begin',{appTargetId:appId},4000)
-      :invokeAimCal('cmd_input_aim_calibrate_begin',{appTargetId:appId});
+      ?global.OneToneIpc.invokeTimeout('cmd_input_aim_calibrate_begin',args,4000)
+      :invokeAimCal('cmd_input_aim_calibrate_begin',args);
     inv.then(function(res){
       var ok=t('voiceAimCalStarted','已打开校准层 · 先圈住再点一下');
       aimCalTip(ok,true);
       aimCalLog('fe aim_calibrate_begin_ok app='+appId+' res='+JSON.stringify(res||{}));
+      startAimCalWatch(appId);
     }).catch(function(err){
       var raw=String((err&&(err.message||err))||err||'');
       var msg;
@@ -597,6 +936,130 @@
     });
   }
 
+  var _aimCalWatchTimer=0;
+  var _aimCalWatchUntil=0;
+  function stopAimCalWatch(){
+    if(_aimCalWatchTimer){
+      clearInterval(_aimCalWatchTimer);
+      _aimCalWatchTimer=0;
+    }
+    _aimCalWatchUntil=0;
+  }
+  function startAimCalWatch(appId){
+    stopAimCalWatch();
+    _aimCalWatchUntil=Date.now()+45000;
+    _aimCalWatchTimer=setInterval(function(){
+      if(Date.now()>_aimCalWatchUntil){
+        stopAimCalWatch();
+        return;
+      }
+      refreshAimCalStatus().then(function(res){
+        if(res&&res.calibrated){
+          var bank=bankFromStatus(res);
+          if(bank.slots[0]||bank.slots[1]){
+            stopAimCalWatch();
+            aimCalTip(aimHintForBank(bank),true);
+          }
+        }
+      });
+    },700);
+  }
+
+  function aimHintForBank(bank){
+    bank=normalizeAimBank(bank);
+    var n=(bank.slots[0]?1:0)+(bank.slots[1]?1:0);
+    var cur=(bank.active|0)+1;
+    if(n===0) return t('voiceAimCalHint','点上方 1 / 2 切换查看；校准写入当前点');
+    if(n===2) return t('voiceAimCalOkBoth','两个光点都已记住 · 当前查看 {n}').replace('{n}',String(cur));
+    if(bank.slots[bank.active|0]){
+      return t('voiceAimCalOkView','光点 {n} 已记住 · 点另一格可切换查看')
+        .replace('{n}',String(cur));
+    }
+    return t('voiceAimCalOkSlot','光点 {n} 已记住 · 可再校准另一个')
+      .replace('{n}',String(bank.slots[0]?1:2));
+  }
+
+  function syncAimSlotDots(bank){
+    bank=normalizeAimBank(bank);
+    var host=$('voiceAimSlots');
+    if(!host) return;
+    // Unset preview: one composer-ish ghost (not a second fake park beside slot 1).
+    var unsetPreview={x:0.50,y:0.86};
+    var active=bank.active|0;
+    var spots=host.querySelectorAll('.voice-aim-spot[data-aim-slot]');
+    for(var i=0;i<spots.length;i++){
+      var btn=spots[i];
+      var idx=Number(btn.getAttribute('data-aim-slot'))|0;
+      var pt=bank.slots[idx];
+      var set=!!pt;
+      var on=idx===active;
+      btn.hidden=!on;
+      if(!on){
+        btn.classList.remove('is-on');
+        btn.setAttribute('aria-selected','false');
+        continue;
+      }
+      var x=set?pt.x:unsetPreview.x;
+      var y=set?pt.y:unsetPreview.y;
+      if(!isFinite(x)) x=unsetPreview.x;
+      if(!isFinite(y)) y=unsetPreview.y;
+      x=Math.max(0.06,Math.min(0.94,x));
+      y=Math.max(0.08,Math.min(0.92,y));
+      btn.style.left=(x*100).toFixed(2)+'%';
+      btn.style.top=(y*100).toFixed(2)+'%';
+      btn.classList.toggle('is-set',set);
+      btn.classList.add('is-on');
+      btn.setAttribute('aria-selected','true');
+      var label=t(idx===0?'voiceAimSlot1':'voiceAimSlot2',idx===0?'位置 1':'位置 2');
+      btn.title=set?label:(label+' · '+t('voiceAimSlotEmpty','未校准'));
+      btn.setAttribute('aria-label',btn.title);
+      var num=btn.querySelector('.voice-aim-spot__n');
+      if(num) num.textContent=String(idx+1);
+      var demo=$('voiceAimDemo');
+      if(demo){
+        demo.style.setProperty('--spot-x',(x*100).toFixed(2)+'%');
+        demo.style.setProperty('--spot-y',(y*100).toFixed(2)+'%');
+      }
+    }
+    var tabs=$('voiceAimSlotTabs');
+    if(tabs){
+      var tabBtns=tabs.querySelectorAll('[data-aim-slot]');
+      for(var ti=0;ti<tabBtns.length;ti++){
+        var tab=tabBtns[ti];
+        var tIdx=Number(tab.getAttribute('data-aim-slot'))|0;
+        var tSet=!!bank.slots[tIdx];
+        var tOn=tIdx===active;
+        tab.classList.toggle('is-on',tOn);
+        tab.classList.toggle('is-set',tSet);
+        tab.setAttribute('aria-selected',tOn?'true':'false');
+        var state=tab.querySelector('[data-aim-slot-state]');
+        if(state) state.textContent=tSet?t('voiceAimSlotReady','已记住'):t('voiceAimSlotEmpty','未校准');
+        var tLabel=t(tIdx===0?'voiceAimSlot1':'voiceAimSlot2',tIdx===0?'位置 1':'位置 2');
+        tab.title=tOn?(tLabel+' · '+t('voiceAimSlotViewing','正在查看')):tLabel;
+      }
+    }
+  }
+
+  function applyAimCalEvent(msg){
+    if(!msg||msg.type!=='input_aim_calibrated') return false;
+    stopAimCalWatch();
+    var appId=String(msg.appTargetId||currentAppTargetId()||'').trim();
+    if(appId){
+      var bank=bankFromStatus(msg);
+      writeAimBank(appId,bank);
+      syncAimCalStatus(msg);
+      if(bank.slots[0]||bank.slots[1]){
+        aimCalTip(aimHintForBank(bank),true);
+      }else{
+        aimCalTip(t('voiceAimCalCleared','已清除此位置'),false);
+      }
+    }else{
+      refreshAimCalStatus();
+    }
+    aimCalLog('fe aim_calibrate_event '+JSON.stringify(msg||{}));
+    return true;
+  }
+
   function invokeAimCal(cmd,args){
     if(!global.OneToneIpc||typeof global.OneToneIpc.invoke!=='function'){
       return Promise.reject(new Error('ipc_unavailable'));
@@ -604,27 +1067,62 @@
     return global.OneToneIpc.invoke(cmd,args||{});
   }
 
+  function clearActiveAimSlot(){
+    var appId=currentAppTargetId()||'cursor-chat';
+    var slot=currentAimSlot();
+    aimCalLog('fe aim_calibrate_clear_click app='+appId+' slot='+slot);
+    return invokeAimCal('cmd_input_aim_calibrate_clear',{appTargetId:appId,slot:slot}).then(function(res){
+      writeAimBank(appId,bankFromStatus(res));
+      syncAimCalStatus(res||{calibrated:false,appTargetId:appId,active:slot,slots:[]});
+      aimCalTip(t('voiceAimCalCleared','已清除此位置'),false);
+    }).catch(function(err){
+      aimCalTip(t('voiceAimCalFail','校准未能开始')+' · '+String((err&&err.message)||err||'').slice(0,80),false);
+    });
+  }
+
+  function setActiveAimSlot(slot){
+    slot=Number(slot)|0;
+    if(slot<0||slot>1) return Promise.resolve(null);
+    var appId=currentAppTargetId()||'cursor-chat';
+    aimCalLog('fe aim_slot_set app='+appId+' slot='+slot);
+    return invokeAimCal('cmd_input_aim_calibrate_set_active',{appTargetId:appId,slot:slot}).then(function(res){
+      writeAimBank(appId,bankFromStatus(res));
+      syncAimCalStatus(res||null);
+      return res;
+    }).catch(function(err){
+      // Optimistic local switch if IPC fails mid-edit
+      var st=global.OneToneState&&global.OneToneState.state;
+      var anchors=st&&st.config&&st.config.voiceEnd?st.config.voiceEnd.composerAnchors:null;
+      var bank=normalizeAimBank(appId&&anchors?anchors[appId]:null);
+      bank.active=slot;
+      writeAimBank(appId,bank);
+      syncAimCalStatus({
+        calibrated:!!(bank.slots[0]||bank.slots[1]),
+        active:slot,
+        slots:bank.slots.map(function(p){return p?{set:true,x:p.x,y:p.y}:{set:false};})
+      });
+      aimCalLog('fe aim_slot_set_fail '+String((err&&err.message)||err||''));
+      return null;
+    });
+  }
+
   // Capture-phase delegation: CSP blocks inline onclick; bind() alone can miss remounts.
   (function installAimCalClickCapture(){
     function onDocClick(e){
+      var inCal=e.target&&e.target.closest?e.target.closest('#voicePromptAimCalRow'):null;
+      var slotBtn=inCal&&e.target.closest?e.target.closest('[data-aim-slot]'):null;
+      if(slotBtn){
+        e.preventDefault();
+        e.stopPropagation();
+        setActiveAimSlot(slotBtn.getAttribute('data-aim-slot'));
+        return;
+      }
       var el=e.target&&e.target.closest?e.target.closest('#btnVoiceAimCalibrate,#btnVoiceAimCalibrateClear'):null;
       if(!el) return;
       e.preventDefault();
       e.stopPropagation();
       if(el.id==='btnVoiceAimCalibrateClear'){
-        var appId=currentAppTargetId()||'cursor-chat';
-        aimCalLog('fe aim_calibrate_clear_click app='+appId);
-        invokeAimCal('cmd_input_aim_calibrate_clear',{appTargetId:appId}).then(function(){
-          var st=global.OneToneState&&global.OneToneState.state;
-          if(st&&st.config&&st.config.voiceEnd){
-            if(!st.config.voiceEnd.composerAnchors) st.config.voiceEnd.composerAnchors={};
-            delete st.config.voiceEnd.composerAnchors[appId];
-          }
-          syncAimCalStatus({calibrated:false,appTargetId:appId});
-          aimCalTip(t('voiceAimCalCleared','已恢复默认位置'),false);
-        }).catch(function(err){
-          aimCalTip(t('voiceAimCalFail','校准未能开始')+' · '+String((err&&err.message)||err||'').slice(0,80),false);
-        });
+        clearActiveAimSlot();
         return;
       }
       beginAimCalibrate();
@@ -652,25 +1150,24 @@
         hint.textContent=t('voiceAimCalNeedApp','先选好目标应用，再校准');
       }
       if(clearBtn) clearBtn.hidden=true;
+      syncAimSlotDots({slots:[null,null],active:0});
       return;
     }
-    var calibrated=!!(status&&status.calibrated);
-    if(!status){
+    var bank;
+    if(status&&(status.slots||status.calibrated!=null)){
+      bank=bankFromStatus(status);
+    }else{
       var st=global.OneToneState&&global.OneToneState.state;
       var anchors=st&&st.config&&st.config.voiceEnd?st.config.voiceEnd.composerAnchors:null;
-      if(anchors&&anchors[appId]) calibrated=true;
+      bank=normalizeAimBank(anchors?anchors[appId]:null);
     }
-    if(clearBtn) clearBtn.hidden=!calibrated;
+    var calibrated=!!(bank.slots[0]||bank.slots[1]);
+    var activeSet=!!bank.slots[bank.active|0];
+    if(clearBtn) clearBtn.hidden=!activeSet;
+    syncAimSlotDots(bank);
     if(hint){
       hint.classList.toggle('is-ok',calibrated);
-      if(calibrated&&status&&isFinite(Number(status.x))&&isFinite(Number(status.y))){
-        hint.textContent=t('voiceAimCalOkFmt','已校准 · {xy}')
-          .replace('{xy}',Number(status.x).toFixed(2)+','+Number(status.y).toFixed(2));
-      }else if(calibrated){
-        hint.textContent=t('voiceAimCalOk','已校准 · 按 App 记住');
-      }else{
-        hint.textContent=t('voiceAimCalHint','先圈住，再框内点一下 · 按 App 记住');
-      }
+      hint.textContent=aimHintForBank(bank);
     }
   }
 
@@ -681,18 +1178,7 @@
       return Promise.resolve(null);
     }
     return invokeAimCal('cmd_input_aim_calibrate_status',{appTargetId:appId}).then(function(res){
-      var st=global.OneToneState&&global.OneToneState.state;
-      if(st&&st.config){
-        if(!st.config.voiceEnd) st.config.voiceEnd={};
-        if(!st.config.voiceEnd.composerAnchors||typeof st.config.voiceEnd.composerAnchors!=='object'){
-          st.config.voiceEnd.composerAnchors={};
-        }
-        if(res&&res.calibrated&&isFinite(Number(res.x))&&isFinite(Number(res.y))){
-          st.config.voiceEnd.composerAnchors[appId]={x:Number(res.x),y:Number(res.y)};
-        }else if(res&&res.calibrated===false){
-          delete st.config.voiceEnd.composerAnchors[appId];
-        }
-      }
+      writeAimBank(appId,bankFromStatus(res));
       syncAimCalStatus(res||null);
       return res;
     }).catch(function(){
@@ -705,14 +1191,29 @@
     var ta=$('voicePromptInjectBody');
     var st=global.OneToneState&&global.OneToneState.state;
     var cfg=st&&st.config&&st.config.voiceEnd?st.config.voiceEnd:{};
+    // Keep empty promptEditId when user started「新建」; only hydrate from newest if never chosen.
+    if(promptEditId&&!mappingById(promptEditId)) promptEditId='';
     if(ta&&!ta._promptHydrated){
       ta._promptHydrated=true;
-      ta.value=String(cfg.promptInjectText||PROMPT_PRESETS.proto);
+      if(!promptEditId){
+        var anchor=selectedOrHabit();
+        var appId=anchor?String(anchor.appTargetId||'').trim():'';
+        var picker=global.OneToneKeysChannelCommandPicker;
+        var one=picker&&picker.findPromptPeerForApp&&appId?picker.findPromptPeerForApp(appId):null;
+        if(one){
+          promptEditId=String(one.id);
+        }
+      }
+      var seed=String(cfg.promptInjectText||'').trim();
+      if(!seed) seed=currentPromptPeerBody();
+      ta.value=seed;
+      var peer0=promptEditId?mappingById(promptEditId):null;
+      setPromptTitleUi(peer0&&peer0.label,seed);
     }
     var aimSel=$('voiceInputAimStrategy');
     if(aimSel){
-      var aim=String(cfg.inputAimStrategy||cfg.input_aim_strategy||'auto').trim()||'auto';
-      if(aim!=='auto'&&aim!=='none'&&aim!=='probe') aim='auto';
+      var aim=String(cfg.inputAimStrategy||cfg.input_aim_strategy||'none').trim()||'none';
+      if(aim!=='auto'&&aim!=='none'&&aim!=='probe') aim='none';
       if(aimSel.value!==aim) aimSel.value=aim;
       var radios=document.querySelectorAll('input[name="voiceInputAimStrategy"]');
       for(var ri=0;ri<radios.length;ri++){
@@ -721,15 +1222,11 @@
         var card=r.closest&&r.closest('.voice-prompt-aim__card');
         if(card) card.classList.toggle('is-on',r.checked);
       }
+      syncAimStrategyChrome(aim);
     }
-    var land=$('voicePromptLand');
-    if(land&&ta){
-      var body=(ta.value||'').trim();
-      var preview=body.length>36?body.slice(0,36)+'…':body;
-      land.textContent=(typeof t==='function'?t('voicePromptLandFmt','说 01 口令 = 对准输入框 → 写入{preview} → 回车发送'):'说 01 口令 = 对准输入框 → 写入{preview} → 回车发送')
-        .replace('{preview}',preview?('「'+preview+'」'):' prompt');
-    }
-    syncPromptSaveHint(!!promptEditId);
+    paintPromptArmed();
+    paintPromptLibrary();
+    refreshPromptSaveHint();
     refreshAimCalStatus();
   }
 
@@ -742,10 +1239,10 @@
     st.config.voiceEnd.promptInjectText=String(ta.value||'');
     var aimSel=$('voiceInputAimStrategy');
     if(aimSel){
-      var aim=String(aimSel.value||'auto').trim()||'auto';
+      var aim=String(aimSel.value||'none').trim()||'none';
       var checked=document.querySelector('input[name="voiceInputAimStrategy"]:checked');
-      if(checked) aim=String(checked.value||aim).trim()||'auto';
-      if(aim!=='auto'&&aim!=='none'&&aim!=='probe') aim='auto';
+      if(checked) aim=String(checked.value||aim).trim()||'none';
+      if(aim!=='auto'&&aim!=='none'&&aim!=='probe') aim='none';
       aimSel.value=aim;
       st.config.voiceEnd.inputAimStrategy=aim;
     }
@@ -754,6 +1251,38 @@
     }
     syncPromptUi();
     scheduleAutosavePromptScene();
+  }
+
+  /** Per-keystroke path: memory + land only. Persist/scene autosave are debounced.
+   *  Calling savePromptText() on every input re-ran syncPromptUi → refreshAimCalStatus IPC
+   *  and made the textarea feel stuck. */
+  var promptPersistTimer=0;
+  function paintPromptLand(){
+    paintPromptArmed();
+  }
+  function schedulePromptPersist(){
+    if(promptPersistTimer){
+      try{ clearTimeout(promptPersistTimer); }catch(_){}
+      promptPersistTimer=0;
+    }
+    promptPersistTimer=setTimeout(function(){
+      promptPersistTimer=0;
+      if(global.OneToneConfigPersist&&global.OneToneConfigPersist.save){
+        global.OneToneConfigPersist.save({source:'voice-prompt'});
+      }
+    },720);
+  }
+  function onPromptBodyInput(){
+    var ta=$('voicePromptInjectBody');
+    if(!ta) return;
+    var st=global.OneToneState&&global.OneToneState.state;
+    if(st&&st.config){
+      if(!st.config.voiceEnd) st.config.voiceEnd={};
+      st.config.voiceEnd.promptInjectText=String(ta.value||'');
+    }
+    paintPromptLand();
+    schedulePromptPersist();
+    scheduleAutosavePromptScene(640);
   }
 
   function syncLabels(){
@@ -781,18 +1310,36 @@
       var el=$(pair[0]);
       if(el&&!el.querySelector('button')) el.textContent=t(pair[1]);
     });
-    var saveBtn=$('btnVoicePromptSaveScene');
-    if(saveBtn) saveBtn.textContent=t('voicePromptSaveScene','保存到本场景列表');
     var saveHint=$('voicePromptSaveHint');
-    if(saveHint&&!saveHint.classList.contains('is-ok')){
-      saveHint.textContent=t('voicePromptSaveHint','点保存，或改完文案后自动写入右侧');
+    if(saveHint
+      &&!saveHint.classList.contains('is-ok')
+      &&!saveHint.classList.contains('is-editing')
+      &&!saveHint.classList.contains('is-saving')
+      &&!saveHint.classList.contains('is-fail')){
+      saveHint.textContent=t('voicePromptSaveHint','输入后自动保存');
     }
     var customBtn=$('btnVoicePromptCustom');
-    if(customBtn) customBtn.textContent=t('voicePromptCustomBtn','＋ 自定义');
+    if(customBtn) customBtn.textContent=t('voicePromptCustomBtn','＋ 新建');
+    var newMain=$('btnVoicePromptNewMain');
+    if(newMain){
+      newMain.textContent=t('voicePromptCustomBtn','＋ 新建');
+      newMain.title=t('voicePromptCustomHint','已开新稿 · 输入后自动进左侧列表');
+    }
+    var whatSub=$('voicePromptColWhatSub');
+    if(whatSub) whatSub.textContent=t('voicePromptColWhatSub','当前口头指令 · 输入即保存');
+    var titleLbl=$('voicePromptTitleLbl');
+    if(titleLbl) titleLbl.textContent=t('voicePromptTitleLbl','标题（可选）');
+    var titleIn=$('voicePromptTitle');
+    if(titleIn) titleIn.placeholder=t('voicePromptTitlePh','缩短成列表短名，如：总结改动');
+    paintPromptLibrary();
     var aimLegend=$('voiceInputAimStrategyLbl');
-    if(aimLegend) aimLegend.textContent=t('voicePromptAimLegend','写入前怎么处理输入框');
-    var aimLead=$('voiceInputAimStrategyHint');
-    if(aimLead) aimLead.textContent=t('voicePromptAimLead','四个通道共用这一处设置。默认帮你对准；对不准就不填，避免打进编辑器。');
+    if(aimLegend) aimLegend.textContent=t('voicePromptAimLegend','写入前怎么对准输入框');
+    var aimLead=$('voicePromptAimLead');
+    if(aimLead) aimLead.textContent=t('voicePromptAimLead','口令都会识别；差别在「要不要自动点框、没对准时写不写」。');
+    var colWhat=$('voicePromptColWhatTitle');
+    if(colWhat) colWhat.textContent=t('voicePromptColWhat','写什么');
+    var colAim=$('voicePromptColAimTitle');
+    if(colAim) colAim.textContent=t('voicePromptColAim','怎么对准');
     function setAimCard(value,titleKey,titleFb,descKey,descFb){
       var inp=document.querySelector('input[name="voiceInputAimStrategy"][value="'+value+'"]');
       if(!inp) return;
@@ -805,13 +1352,13 @@
       if(desc) desc.textContent=t(descKey,descFb);
       if(badge) badge.textContent=t('voicePromptAimBadge','推荐');
     }
-    setAimCard('auto','voicePromptAimAutoTitle','先对准，再填入','voicePromptAimAutoDesc','自动点进聊天输入框；对不上就取消，不乱填。');
-    setAimCard('none','voicePromptAimNoneTitle','直接填入','voicePromptAimNoneDesc','假定你已点好输入框，跳过对准，立刻写入。');
-    setAimCard('probe','voicePromptAimProbeTitle','只在已对准时填','voicePromptAimProbeDesc','光标已在输入框才填；否则取消。不主动点屏。');
+    setAimCard('none','voicePromptAimNoneTitle','不对准，直接写入','voicePromptAimNoneDesc','假定你已点好框。最快，但焦点在哪就打到哪。');
+    setAimCard('auto','voicePromptAimAutoTitle','自动对准再写入','voicePromptAimAutoDesc','说出口令后点到聊天框再填；对不上就取消。一说就要写入时用这个。');
+    setAimCard('probe','voicePromptAimProbeTitle','防误写：未对准则跳过','voicePromptAimProbeDesc','聊天框没有光标时，口令触发也不写入。适合旁边开着代码、怕误唤醒写进文件。');
     var calBtn=$('btnVoiceAimCalibrate');
-    if(calBtn) calBtn.textContent=t('voiceAimCalBtn','粗圈校准输入框');
+    if(calBtn) calBtn.textContent=t('voiceAimCalBtn','校准此位置');
     var calClear=$('btnVoiceAimCalibrateClear');
-    if(calClear) calClear.textContent=t('voiceAimCalClear','恢复默认位置');
+    if(calClear) calClear.textContent=t('voiceAimCalClear','清除此位置');
     syncAimCalStatus(null);
     var wakeTag=$('voiceFlowNodeWakeTag');
     if(wakeTag) wakeTag.textContent='01 / '+t('voiceFlowNodeWakeTitle','说了什么');
@@ -833,34 +1380,87 @@
     if(typeof hooks.setSettingsPanel==='function') hooks.setSettingsPanel(panel);
   }
 
+  function restartAimDemoAnim(){
+    var demo=$('voiceAimDemo');
+    if(!demo) return;
+    /* Toggle data-mode so every [data-mode] child animation restarts together (proto pattern). */
+    var mode=demo.getAttribute('data-mode')||'auto';
+    demo.removeAttribute('data-mode');
+    void demo.offsetWidth;
+    demo.setAttribute('data-mode',mode);
+  }
+
+  function setAimDemoOpen(open){
+    var explain=$('voiceAimExplain');
+    var btn=$('btnVoiceAimDemoToggle');
+    var lbl=$('voiceAimDemoToggleLbl');
+    open=!!open;
+    if(explain){
+      explain.hidden=!open;
+      explain.classList.toggle('is-open',open);
+    }
+    if(btn) btn.setAttribute('aria-expanded',open?'true':'false');
+    if(lbl) lbl.textContent=open
+      ?t('voiceAimDemoToggleHide','收起对准演示')
+      :t('voiceAimDemoToggleShow','看对准演示');
+    if(open) restartAimDemoAnim();
+  }
+
+  function syncAimStrategyChrome(aim){
+    aim=String(aim||'none');
+    if(aim!=='auto'&&aim!=='none'&&aim!=='probe') aim='none';
+    var row=$('voicePromptAimRow');
+    if(row) row.setAttribute('data-aim',aim);
+    var explain=$('voiceAimExplain');
+    if(explain) explain.setAttribute('data-mode',aim);
+    var demo=$('voiceAimDemo');
+    var prev=demo?String(demo.getAttribute('data-mode')||''):'';
+    if(demo) demo.setAttribute('data-mode',aim);
+    /* Only restart when mode changes (or first paint). syncPromptUi runs often —
+       restarting every time pins opacity at 0% and looks like "no animation". */
+    if(explain&&!explain.hidden&&prev!==aim) restartAimDemoAnim();
+    var panes=document.querySelectorAll('[data-aim-explain]');
+    for(var pi=0;pi<panes.length;pi++){
+      var pane=panes[pi];
+      var on=pane.getAttribute('data-aim-explain')===aim;
+      pane.hidden=!on;
+    }
+    var badge=$('voiceAimDemoBadge');
+    if(badge){
+      badge.className='voice-aim-demo__badge '+(aim==='auto'?'is-ok':'is-warn');
+      if(aim==='auto') badge.textContent=t('voiceAimDemoBadgeAuto','已写入聊天框');
+      else if(aim==='none') badge.textContent=t('voiceAimDemoBadgeNone','打进了代码区');
+      else badge.textContent=t('voiceAimDemoBadgeProbe','未对准 · 已跳过');
+    }
+    var cal=$('voicePromptAimCalRow');
+    if(cal){
+      cal.hidden=aim!=='auto';
+      cal.setAttribute('aria-hidden',aim==='auto'?'false':'true');
+    }
+  }
+
   function ensurePromptSaveChrome(){
     var desk=$('voicePromptDesk');
     if(!desk) return;
+    var host=desk.querySelector('.voice-prompt-col--what')||desk;
     var presets=$('voicePromptPresets');
     if(presets&&!$('btnVoicePromptCustom')){
       var custom=document.createElement('button');
       custom.type='button';
-      custom.setAttribute('data-prompt-preset','custom');
       custom.id='btnVoicePromptCustom';
-      custom.textContent=t('voicePromptCustomBtn','＋ 自定义');
+      custom.textContent=t('voicePromptCustomBtn','＋ 新建');
       presets.appendChild(custom);
     }
-    if($('btnVoicePromptSaveScene')) return;
+    var saveBtn=$('btnVoicePromptSaveScene');
+    if(saveBtn) saveBtn.remove();
+    if($('voicePromptSaveHint')) return;
     var row=document.createElement('div');
     row.className='voice-prompt-save-row';
-    row.innerHTML=
-      '<button type="button" class="control-btn primary" id="btnVoicePromptSaveScene"></button>'+
-      '<span class="voice-prompt-save-hint" id="voicePromptSaveHint"></span>';
-    var land=$('voicePromptLand');
-    if(land&&land.parentNode===desk) desk.insertBefore(row,land);
-    else if(presets&&presets.parentNode===desk){
-      if(presets.nextSibling) desk.insertBefore(row,presets.nextSibling);
-      else desk.appendChild(row);
-    }else desk.appendChild(row);
-    var saveBtn=$('btnVoicePromptSaveScene');
-    if(saveBtn) saveBtn.textContent=t('voicePromptSaveScene','保存到本场景列表');
+    row.innerHTML='<span class="voice-prompt-save-hint" id="voicePromptSaveHint"></span>';
+    var pane=host.querySelector('.voice-prompt-edit-pane')||host;
+    pane.appendChild(row);
     var hint=$('voicePromptSaveHint');
-    if(hint) hint.textContent=t('voicePromptSaveHint','点保存，或改完文案后自动写入右侧');
+    if(hint) hint.textContent=t('voicePromptSaveHint','输入后自动保存');
   }
 
   function bind(){
@@ -902,12 +1502,42 @@
     if(ta&&!ta._bound){
       ta._bound=true;
       ta.addEventListener('input',function(){
-        // Typing a custom body — keep editing current row unless user asked for new.
-        if(!promptForceNew){
-          var onCustom=$('btnVoicePromptCustom');
-          if(onCustom&&onCustom.classList.contains('is-on')) promptForceNew=true;
+        onPromptBodyInput();
+        // scheduleAutosave shows 保存中… then savePromptToScene → 已保存
+      });
+    }
+    var titleIn=$('voicePromptTitle');
+    if(titleIn&&!titleIn._bound){
+      titleIn._bound=true;
+      titleIn.addEventListener('input',function(){
+        paintPromptArmed();
+        scheduleAutosavePromptScene(640);
+      });
+    }
+    var lib=$('voicePromptLib');
+    if(lib&&!lib._bound){
+      lib._bound=true;
+      lib.addEventListener('click',function(e){
+        var tplBtn=e.target.closest&&e.target.closest('[data-prompt-tpl]');
+        if(tplBtn){
+          e.preventDefault();
+          applyPromptTemplate(tplBtn.getAttribute('data-prompt-tpl'));
+          return;
         }
-        savePromptText();
+        var chip=e.target.closest&&e.target.closest('[data-prompt-peer]');
+        if(!chip) return;
+        e.preventDefault();
+        applyPromptMapping(chip.getAttribute('data-prompt-peer'));
+      });
+    }
+    var fromTpl=$('voicePromptFromTpl');
+    if(fromTpl&&!fromTpl._bound){
+      fromTpl._bound=true;
+      fromTpl.addEventListener('click',function(e){
+        var tplBtn=e.target.closest&&e.target.closest('[data-prompt-tpl]');
+        if(!tplBtn) return;
+        e.preventDefault();
+        applyPromptTemplate(tplBtn.getAttribute('data-prompt-tpl'));
       });
     }
     var aimSel=$('voiceInputAimStrategy');
@@ -923,44 +1553,45 @@
       if(radio._bound) continue;
       radio._bound=true;
       radio.addEventListener('change',function(){
+        var next=String(this.value||'auto');
         var sel=$('voiceInputAimStrategy');
-        if(sel) sel.value=String(this.value||'auto');
+        if(sel) sel.value=next;
         var cards=document.querySelectorAll('.voice-prompt-aim__card');
         for(var ci=0;ci<cards.length;ci++){
           var inp=cards[ci].querySelector('input[name="voiceInputAimStrategy"]');
           cards[ci].classList.toggle('is-on',!!(inp&&inp.checked));
         }
+        syncAimStrategyChrome(next);
         savePromptText();
       });
     }
-    var presets=$('voicePromptPresets');
-    if(presets&&!presets._bound){
-      presets._bound=true;
-      presets.addEventListener('click',function(e){
-        var b=e.target.closest&&e.target.closest('[data-prompt-preset]');
-        if(!b) return;
-        var pid=b.getAttribute('data-prompt-preset');
-        if(pid==='custom'){
-          e.preventDefault();
-          startNewCustomPrompt();
-          return;
-        }
-        if(!ta) return;
-        ta.value=PROMPT_PRESETS[pid]||ta.value;
-        setPresetOn(pid);
-        promptForceNew=false;
-        promptEditId=findPromptPeerId(PROMPT_PRESET_LABELS[pid]||'', String(ta.value||'').trim());
-        savePromptText();
-        // Preset click: save immediately and show toast so list update is obvious.
-        savePromptToScene({quiet:false,forceCreate:!promptEditId});
+    var calRow=$('voicePromptAimCalRow');
+    if(calRow&&!calRow._stopLabelToggle){
+      calRow._stopLabelToggle=true;
+      calRow.addEventListener('click',function(e){
+        // Keep calibrate / spot clicks from flipping the parent radio label.
+        e.stopPropagation();
       });
     }
-    var saveBtn=$('btnVoicePromptSaveScene');
-    if(saveBtn&&!saveBtn._bound){
-      saveBtn._bound=true;
-      saveBtn.addEventListener('click',function(e){
+    var demoToggle=$('btnVoiceAimDemoToggle');
+    if(demoToggle&&!demoToggle._bound){
+      demoToggle._bound=true;
+      demoToggle.addEventListener('click',function(e){
         e.preventDefault();
-        savePromptToScene({quiet:false});
+        var explain=$('voiceAimExplain');
+        setAimDemoOpen(!(explain&&!explain.hidden));
+      });
+    }
+    setAimDemoOpen(false);
+    syncAimStrategyChrome(($('voiceInputAimStrategy')&&$('voiceInputAimStrategy').value)||'none');
+    var newBtns=document.querySelectorAll('[data-voice-prompt-new]');
+    for(var ni=0;ni<newBtns.length;ni++){
+      var nb=newBtns[ni];
+      if(nb._bound) continue;
+      nb._bound=true;
+      nb.addEventListener('click',function(e){
+        e.preventDefault();
+        startNewCustomPrompt();
       });
     }
     var calBtn=$('btnVoiceAimCalibrate');
@@ -976,25 +1607,24 @@
       calClearBtn._bound=true;
       calClearBtn.addEventListener('click',function(e){
         e.preventDefault();
-        var appId=currentAppTargetId();
-        if(!appId) return;
-        invokeAimCal('cmd_input_aim_calibrate_clear',{appTargetId:appId}).then(function(){
-          var st=global.OneToneState&&global.OneToneState.state;
-          if(st&&st.config&&st.config.voiceEnd){
-            if(!st.config.voiceEnd.composerAnchors) st.config.voiceEnd.composerAnchors={};
-            delete st.config.voiceEnd.composerAnchors[appId];
-          }
-          syncAimCalStatus({calibrated:false,appTargetId:appId});
-          toast(t('voiceAimCalCleared','已恢复默认位置'));
-        }).catch(function(){
-          toast(t('voiceAimCalFail','校准未能开始'));
-        });
+        clearActiveAimSlot();
       });
     }
     if(global.document&&!global.document._vpAimCalFocusBound){
       global.document._vpAimCalFocusBound=true;
       global.document.addEventListener('visibilitychange',function(){
         if(!global.document.hidden) refreshAimCalStatus();
+      });
+      global.window.addEventListener('focus',function(){
+        refreshAimCalStatus();
+      });
+    }
+    if(global.chrome&&global.chrome.webview&&typeof global.chrome.webview.addEventListener==='function'
+      &&!global.document._vpAimCalToJsBound){
+      global.document._vpAimCalToJsBound=true;
+      global.chrome.webview.addEventListener('message',function(e){
+        var msg=e&&e.data;
+        applyAimCalEvent(msg);
       });
     }
   }
@@ -1019,7 +1649,12 @@
         &&global.document.getElementById('voiceIntentPaneKeys')
         &&global.document.getElementById('imePresetStripVoice')
         &&global.document.getElementById('voicePromptInjectBody')
-        &&global.document.getElementById('btnVoicePromptSaveScene')
+        &&global.document.getElementById('voicePromptTitle')
+        &&global.document.getElementById('voicePromptSaveHint')
+        &&global.document.getElementById('btnVoicePromptCustom')
+        &&global.document.getElementById('btnVoicePromptNewMain')
+        &&global.document.getElementById('voicePromptArmed')
+        &&global.document.getElementById('voicePromptFromTpl')
         &&global.document.getElementById('voiceWakeAliasBlock')
         &&global.document.getElementById('voiceWakeActionDictate'));
       if(!ok&&global.console&&console.warn){
@@ -1036,9 +1671,18 @@
     syncLabels:syncLabels,
     syncHeroVals:syncHeroVals,
     applyPromptMapping:applyPromptMapping,
+    applyPromptTemplate:applyPromptTemplate,
     savePromptToScene:savePromptToScene,
     startNewCustomPrompt:startNewCustomPrompt,
-    beginAimCalibrate:beginAimCalibrate
+    beginAimCalibrate:beginAimCalibrate,
+    onPromptPeerDeleted:function(mid){
+      mid=String(mid||'').trim();
+      if(mid&&String(promptEditId)===mid){
+        promptEditId='';
+        syncPromptSaveHint(false);
+      }
+      paintPromptLibrary();
+    }
   };
 
   if(global.document&&global.document.readyState==='loading'){

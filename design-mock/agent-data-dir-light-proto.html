@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>数据目录 · 浅色更好方案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;600&family=Newsreader:opsz,wght@6..72,600;6..72,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#152033;--mute:#5c6d82;--faint:#8a9aab;--line:rgba(21,32,51,.1);
+  --bg:#d4dee9;--paper:#f7f9fc;--card:#fff;
+  --teal:#0f6e7a;--teal-soft:#e2f3f5;--ink-soft:#e8edf4;
+  --warn:#9a5b12;--warn-soft:#fff3e0;--ok:#1a6b42;--ok-soft:#e6f4ec;
+  --off:#6a7a8c;--font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Newsreader","Songti SC",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;color:var(--ink);background:
+  radial-gradient(900px 420px at 100% -10%,rgba(15,110,122,.12),transparent 50%),
+  linear-gradient(165deg,#c8d4e2,var(--bg) 45%,#dde5ef)}
+.page{max-width:1160px;margin:0 auto;padding:16px 14px 52px}
+.eyebrow{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--teal)}
+h1{margin:0 0 6px;font-family:var(--display);font-size:26px;font-weight:700;letter-spacing:-.02em}
+.lede{margin:0 0 14px;max-width:70ch;color:var(--mute);font-size:14px}
+
+.picker{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media (max-width:800px){.picker{grid-template-columns:1fr 1fr}}
+.picker button{
+  appearance:none;border:1px solid var(--line);background:var(--card);border-radius:14px;
+  padding:10px 12px;text-align:left;cursor:pointer;font:inherit;
+}
+.picker button .t{display:block;font-size:13px;font-weight:800;margin-bottom:2px}
+.picker button .s{font-size:11.5px;color:var(--mute);font-weight:650;line-height:1.35}
+.picker button.is-on{border-color:var(--teal);background:var(--teal-soft);box-shadow:inset 0 0 0 1px rgba(15,110,122,.25)}
+
+.frame{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--card);box-shadow:0 16px 36px rgba(21,32,51,.07)}
+.frame-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:9px 12px;background:#e8eef5;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--mute)}
+.frame-h b{color:var(--ink)}
+.layout{display:grid;grid-template-columns:118px 1fr;min-height:540px}
+@media (max-width:720px){.layout{grid-template-columns:1fr}}
+.snav{background:#eef2f7;border-right:1px solid var(--line);padding:10px 8px}
+.snav .g{margin:8px 6px 4px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.snav .i{padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;color:var(--mute);margin:2px 0}
+.snav .i.on{background:#fff;color:var(--teal);box-shadow:inset 3px 0 0 var(--teal)}
+.stage{min-width:0;background:var(--paper)}
+.variant{display:none;min-height:540px}.variant.is-on{display:block}
+
+.btn{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:7px 11px;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.btn.pri{background:var(--teal);border-color:var(--teal);color:#fff}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:750}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.off{background:var(--ink-soft);color:var(--off)}
+
+.bars{display:flex;align-items:flex-end;gap:3px;height:56px}
+.bars i{flex:1;min-width:3px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#2a9aaa,#0f6e7a);opacity:.88}
+.heat{display:grid;grid-template-columns:repeat(16,1fr);gap:2px}
+.heat i{aspect-ratio:1;border-radius:2px;background:rgba(15,110,122,.1)}
+.heat i.mid{background:rgba(15,110,122,.35)}
+.heat i.on{background:rgba(15,110,122,.75)}
+
+.verdict{margin-top:12px;padding:12px 14px;border-radius:14px;border:1px solid rgba(15,110,122,.28);background:linear-gradient(120deg,var(--teal-soft),#fff 65%)}
+.verdict strong{display:block;margin:0 0 4px;font-size:13px}
+.verdict p{margin:0;font-size:12.5px;color:var(--mute)}
+.compare{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:700px){.compare{grid-template-columns:1fr}}
+.compare div{padding:10px 12px;border-radius:12px;background:#fff;border:1px solid var(--line);font-size:12px;color:var(--mute)}
+.compare b{display:block;color:var(--ink);margin-bottom:2px;font-size:12.5px}
+
+/* —— L1 今日叙事（推荐浅色默认） —— */
+.l1{padding:16px 18px 20px}
+.l1-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:16px}
+.l1-top h2{margin:0;font-family:var(--display);font-size:22px;font-weight:700}
+.l1-top .meta{margin-top:3px;font-size:12.5px;color:var(--mute)}
+.l1-top .acts{display:flex;gap:6px;flex-wrap:wrap}
+.l1-story{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:14px;margin-bottom:14px}
+@media (max-width:800px){.l1-story{grid-template-columns:1fr}}
+.l1-hero{padding:18px 20px;border-radius:18px;background:
+  linear-gradient(145deg,#fff 40%,var(--teal-soft));
+  border:1px solid rgba(15,110,122,.18)}
+.l1-hero .lab{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.l1-hero .num{font:800 56px/1 var(--mono);letter-spacing:-.04em;margin:8px 0 6px;color:var(--ink)}
+.l1-hero .line{font-size:13.5px;color:var(--mute);max-width:36ch}
+.l1-hero .split{display:flex;gap:16px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(15,110,122,.15)}
+.l1-hero .split div{font-size:12px;color:var(--mute)}
+.l1-hero .split strong{display:block;font:800 18px/1.2 var(--mono);color:var(--ink);margin-top:2px}
+.l1-rail{display:flex;flex-direction:column;gap:8px}
+.l1-rail .m{flex:1;padding:14px 14px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+.l1-rail .m .l{font-size:11.5px;font-weight:750;color:var(--mute)}
+.l1-rail .m .v{font:800 26px/1.1 var(--mono);margin-top:4px}
+.l1-rail .m .s{font-size:11.5px;color:var(--faint);margin-top:4px}
+.l1-mid{display:grid;grid-template-columns:1.2fr 1fr;gap:10px;margin-bottom:14px}
+@media (max-width:800px){.l1-mid{grid-template-columns:1fr}}
+.l1-box{padding:12px 14px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+.l1-box h4{margin:0 0 8px;font-size:12.5px;font-weight:800}
+.l1-table{width:100%;border-collapse:collapse}
+.l1-table th,.l1-table td{text-align:left;padding:9px 6px;border-bottom:1px solid var(--line);font-size:12.5px}
+.l1-table th{font-size:11px;color:var(--mute);font-weight:750}
+.l1-table td:nth-child(3),.l1-table td:nth-child(4){font-family:var(--mono);font-size:12px}
+.l1-table tr:last-child td{border-bottom:0}
+.l1-table a{color:var(--teal);font-weight:750;text-decoration:none}
+
+/* —— L2 双栏：总览 + 名册 —— */
+.l2{display:grid;grid-template-columns:1fr 280px;min-height:540px}
+@media (max-width:860px){.l2{grid-template-columns:1fr}}
+.l2-main{padding:16px 18px;border-right:1px solid var(--line)}
+@media (max-width:860px){.l2-main{border-right:0;border-bottom:1px solid var(--line)}}
+.l2-main h2{margin:0 0 4px;font-family:var(--display);font-size:20px}
+.l2-main .meta{font-size:12px;color:var(--mute);margin-bottom:12px}
+.l2-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.l2-kpis .k{padding:12px;border-radius:12px;background:#fff;border:1px solid var(--line)}
+.l2-kpis .k .l{font-size:11px;color:var(--mute);font-weight:750}
+.l2-kpis .k .v{font:800 24px/1.1 var(--mono);margin-top:3px}
+.l2-box{padding:12px;border-radius:12px;background:#fff;border:1px solid var(--line);margin-bottom:8px}
+.l2-box h4{margin:0 0 8px;font-size:12px;font-weight:800}
+.l2-side{padding:14px 12px;background:#f0f4f8}
+.l2-side h3{margin:0 0 8px;font-size:13px;font-weight:800}
+.l2-side .item{display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:10px;background:#fff;border:1px solid var(--line);margin-bottom:6px}
+.l2-side .item .nm{flex:1;font-weight:750;font-size:12.5px}
+.l2-side .item .pct{font-family:var(--mono);font-size:11.5px;color:var(--mute)}
+.l2-side .sec{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:10px 0 6px}
+.l2-side .acts{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+
+/* —— L3 工作台条带 —— */
+.l3{padding:0;min-height:540px;display:flex;flex-direction:column}
+.l3-band{padding:14px 18px;background:#fff;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.l3-band .brand{font-family:var(--display);font-size:18px;font-weight:700}
+.l3-band .stat{min-width:72px}
+.l3-band .stat .l{font-size:10.5px;font-weight:750;color:var(--mute);text-transform:uppercase}
+.l3-band .stat .v{font:800 18px/1.2 var(--mono)}
+.l3-band .sp{flex:1}
+.l3-body{padding:14px 18px;flex:1;display:grid;grid-template-columns:1.3fr 1fr;gap:12px}
+@media (max-width:800px){.l3-body{grid-template-columns:1fr}}
+.l3-card{padding:14px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+.l3-card h4{margin:0 0 10px;font-size:13px;font-weight:800}
+.l3-src{display:flex;flex-direction:column;gap:6px}
+.l3-src .row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--paper);border:1px solid transparent}
+.l3-src .row:hover{border-color:var(--line);background:#fff}
+.l3-src .row .nm{font-weight:750}
+.l3-src .row .n{font-family:var(--mono);font-size:12px;color:var(--mute)}
+
+/* —— L4 浅色副屏（仍浅，但更密） —— */
+.l4{padding:12px 14px;background:#eef2f6;min-height:540px}
+.l4 .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.l4 .bar h2{margin:0;font-size:14px;font-weight:800}
+.l4 .bar .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.l4 .bar .sp{flex:1}
+.l4 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+@media (max-width:700px){.l4 .kpis{grid-template-columns:1fr 1fr}}
+.l4 .k{padding:8px 10px;border-radius:10px;background:#fff;border:1px solid var(--line)}
+.l4 .k .l{font-size:10px;color:var(--mute);font-weight:750}
+.l4 .k .v{font:800 18px/1.1 var(--mono)}
+.l4 .grid{display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:8px}
+@media (max-width:800px){.l4 .grid{grid-template-columns:1fr}}
+.l4 .pane{padding:10px;border-radius:10px;background:#fff;border:1px solid var(--line)}
+.l4 .pane h4{margin:0 0 6px;font-size:11px;font-weight:800;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.l4 table{width:100%;border-collapse:collapse}
+.l4 td{padding:5px 2px;border-bottom:1px solid var(--line);font-size:12px}
+.l4 td:last-child{text-align:right;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Data directory · light + better layouts</p>
+  <h1>浅色四案：比深色仪表盘更好在哪</h1>
+  <p class="lede">深色墙适合副屏，但设置里的「数据」目录更该跟浅色壳一致。下面四案都是浅色，结构各不同——推荐默认用 <strong>L1 今日叙事</strong>。</p>
+
+  <div class="picker" id="picker">
+    <button type="button" class="is-on" data-v="l1"><span class="t">L1 · 今日叙事</span><span class="s">大数字讲故事 · 表列源</span></button>
+    <button type="button" data-v="l2"><span class="t">L2 · 总览+名册</span><span class="s">主区图 · 右侧源常驻</span></button>
+    <button type="button" data-v="l3"><span class="t">L3 · 工作台条</span><span class="s">顶 KPI 条 · 下分栏</span></button>
+    <button type="button" data-v="l4"><span class="t">L4 · 浅色密排</span><span class="s">副屏可用 · 仍浅色</span></button>
+  </div>
+
+  <div class="frame">
+    <div class="frame-h">
+      <span><b>设置 → 数据</b> · 浅色目录页</span>
+      <span id="frameTag">L1 · 今日叙事 · 推荐默认</span>
+    </div>
+    <div class="layout">
+      <aside class="snav">
+        <div class="g">动作面</div>
+        <div class="i">虚拟键盘</div>
+        <div class="g">配置</div>
+        <div class="i">Agent</div>
+        <div class="g">看板</div>
+        <div class="i on">数据</div>
+      </aside>
+      <div class="stage">
+
+        <!-- L1 -->
+        <div class="variant is-on" id="v-l1">
+          <div class="l1">
+            <div class="l1-top">
+              <div>
+                <h2>今日数据</h2>
+                <div class="meta">2026年9月18日 · 本机活动 + 合法配额 · 缺字段 —</div>
+              </div>
+              <div class="acts">
+                <button type="button" class="btn">本周</button>
+                <button type="button" class="btn">导出</button>
+                <button type="button" class="btn pri">副屏打开</button>
+              </div>
+            </div>
+            <div class="l1-story">
+              <div class="l1-hero">
+                <div class="lab">全源请求</div>
+                <div class="num">128</div>
+                <div class="line">Cursor 贡献大半；4 个源有读数，9 个还没接通。</div>
+                <div class="split">
+                  <div>活跃<strong>2h 14m</strong></div>
+                  <div>会话<strong>18</strong></div>
+                  <div>最紧配额<strong style="color:var(--warn)">32%</strong></div>
+                </div>
+              </div>
+              <div class="l1-rail">
+                <div class="m"><div class="l">领先源</div><div class="v">Cursor</div><div class="s">86 请求 · 配额 32%</div></div>
+                <div class="m"><div class="l">覆盖</div><div class="v">4 / 13</div><div class="s">本地 3 · 配额 1 · 未接 9</div></div>
+                <div class="m"><div class="l">诚实缺位</div><div class="v">—</div><div class="s">无官方 Token 时不填 0</div></div>
+              </div>
+            </div>
+            <div class="l1-mid">
+              <div class="l1-box"><h4>近 30 日请求</h4><div class="bars" data-bars></div></div>
+              <div class="l1-box"><h4>活动热力 · 16 周</h4><div class="heat" data-heat></div></div>
+            </div>
+            <div class="l1-box">
+              <h4>源</h4>
+              <table class="l1-table">
+                <thead><tr><th>名称</th><th>状态</th><th>请求</th><th>配额</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td><b>Cursor</b></td><td><span class="pill ok">live</span></td><td>86</td><td>32%</td><td></td></tr>
+                  <tr><td><b>Claude</b></td><td><span class="pill ok">本地</span></td><td>24</td><td>—</td><td></td></tr>
+                  <tr><td><b>Codex</b></td><td><span class="pill warn">仅配额</span></td><td>—</td><td>71%</td><td></td></tr>
+                  <tr><td>Windsurf</td><td><span class="pill off">未接通</span></td><td>—</td><td>—</td><td><a href="#">去接通</a></td></tr>
+                  <tr><td>Continue</td><td><span class="pill off">未接通</span></td><td>—</td><td>—</td><td><a href="#">去接通</a></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- L2 -->
+        <div class="variant" id="v-l2">
+          <div class="l2">
+            <div class="l2-main">
+              <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:flex-start">
+                <div>
+                  <h2>数据总览</h2>
+                  <div class="meta">左图右册 · 源多时不用滚到底</div>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button type="button" class="btn">导出</button>
+                  <button type="button" class="btn pri">副屏打开</button>
+                </div>
+              </div>
+              <div class="l2-kpis">
+                <div class="k"><div class="l">请求</div><div class="v">128</div></div>
+                <div class="k"><div class="l">活跃</div><div class="v">2h14</div></div>
+                <div class="k"><div class="l">会话</div><div class="v">18</div></div>
+                <div class="k"><div class="l">最紧配额</div><div class="v" style="color:var(--warn)">32%</div></div>
+              </div>
+              <div class="l2-box"><h4>近 30 日</h4><div class="bars" data-bars></div></div>
+              <div class="l2-box"><h4>热力</h4><div class="heat" data-heat></div></div>
+            </div>
+            <aside class="l2-side">
+              <h3>源名册</h3>
+              <div class="sec">有活动</div>
+              <div class="item"><span class="pill ok">●</span><span class="nm">Cursor</span><span class="pct">32%</span></div>
+              <div class="item"><span class="pill ok">●</span><span class="nm">Claude</span><span class="pct">—</span></div>
+              <div class="item"><span class="pill warn">●</span><span class="nm">Codex</span><span class="pct">71%</span></div>
+              <div class="sec">未接通</div>
+              <div class="item"><span class="pill off">○</span><span class="nm">Windsurf</span><span class="pct">—</span></div>
+              <div class="item"><span class="pill off">○</span><span class="nm">Continue</span><span class="pct">—</span></div>
+              <div class="item"><span class="pill off">○</span><span class="nm">+7</span><span class="pct">—</span></div>
+              <div class="acts">
+                <button type="button" class="btn pri" style="width:100%">去接通缺源</button>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <!-- L3 -->
+        <div class="variant" id="v-l3">
+          <div class="l3">
+            <div class="l3-band">
+              <div class="brand">数据</div>
+              <div class="stat"><div class="l">请求</div><div class="v">128</div></div>
+              <div class="stat"><div class="l">活跃</div><div class="v">2h14</div></div>
+              <div class="stat"><div class="l">会话</div><div class="v">18</div></div>
+              <div class="stat"><div class="l">配额</div><div class="v" style="color:var(--warn)">32%</div></div>
+              <div class="sp"></div>
+              <button type="button" class="btn">导出</button>
+              <button type="button" class="btn pri">副屏打开</button>
+            </div>
+            <div class="l3-body">
+              <div class="l3-card">
+                <h4>近 30 日 · 热力</h4>
+                <div class="bars" data-bars style="margin-bottom:12px"></div>
+                <div class="heat" data-heat></div>
+              </div>
+              <div class="l3-card">
+                <h4>源状态</h4>
+                <div class="l3-src">
+                  <div class="row"><span class="nm">Cursor</span><span class="pill ok">live</span><span class="n">86</span><span class="n">32%</span></div>
+                  <div class="row"><span class="nm">Claude</span><span class="pill ok">本地</span><span class="n">24</span><span class="n">—</span></div>
+                  <div class="row"><span class="nm">Codex</span><span class="pill warn">配额</span><span class="n">—</span><span class="n">71%</span></div>
+                  <div class="row"><span class="nm">Windsurf</span><span class="pill off">off</span><span class="n">—</span><span class="n" style="color:var(--teal);font-weight:750">接通</span></div>
+                  <div class="row"><span class="nm">Continue</span><span class="pill off">off</span><span class="n">—</span><span class="n" style="color:var(--teal);font-weight:750">接通</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- L4 -->
+        <div class="variant" id="v-l4">
+          <div class="l4">
+            <div class="bar">
+              <span class="dot"></span>
+              <h2>Agent 统计 · 浅色副屏</h2>
+              <span style="font-size:11.5px;color:var(--mute)">4/13 源 · 2026-09-18</span>
+              <span class="sp"></span>
+              <button type="button" class="btn">导出</button>
+            </div>
+            <div class="kpis">
+              <div class="k"><div class="l">请求</div><div class="v">128</div></div>
+              <div class="k"><div class="l">活跃</div><div class="v">2h14</div></div>
+              <div class="k"><div class="l">会话</div><div class="v">18</div></div>
+              <div class="k"><div class="l">配额</div><div class="v" style="color:var(--warn)">32%</div></div>
+            </div>
+            <div class="grid">
+              <div class="pane"><h4>30 日</h4><div class="bars" data-bars></div></div>
+              <div class="pane"><h4>热力</h4><div class="heat" data-heat></div></div>
+              <div class="pane"><h4>源</h4>
+                <table>
+                  <tr><td>Cursor</td><td>86 · 32%</td></tr>
+                  <tr><td>Claude</td><td>24 · —</td></tr>
+                  <tr><td>Codex</td><td>— · 71%</td></tr>
+                  <tr><td style="color:var(--faint)">Windsurf</td><td>—</td></tr>
+                  <tr><td style="color:var(--faint)">+8 off</td><td>—</td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict" id="note">
+    <strong>L1 · 今日叙事（推荐）</strong>
+    <p>先用一句话讲清今天，再用表列源。比「四宫格 KPI + 深色墙」更像产品页，也更适合设置里的浅色壳。副屏可另用 L4 密排。</p>
+  </div>
+  <div class="compare">
+    <div><b>比旧深色墙好在哪</b>跟 Agent 配置同色温；少一层「进了另一个 App」的跳戏。</div>
+    <div><b>比四宫格 KPI 好在哪</b>L1 把数字收进叙事块，避免仪表盘模板感。</div>
+  </div>
+</div>
+<script>
+(function(){
+  var heights=[40,28,55,72,35,22,48,60,33,18,44,70,52,30,25,58,41,36,62,45,20,50,68,38,26,54,47,31,42,65];
+  document.querySelectorAll('[data-bars]').forEach(function(el){
+    el.innerHTML=heights.map(function(h){return '<i style="height:'+h+'%"></i>';}).join('');
+  });
+  document.querySelectorAll('[data-heat]').forEach(function(el){
+    var html='',i,r;
+    for(i=0;i<112;i++){r=Math.random();html+='<i class="'+(r>.7?'on':r>.4?'mid':'')+'"></i>';}
+    el.innerHTML=html;
+  });
+  var notes={
+    l1:{tag:'L1 · 今日叙事 · 推荐默认',title:'L1 · 今日叙事（推荐）',body:'先用一句话讲清今天，再用表列源。比「四宫格 KPI + 深色墙」更像产品页，也更适合设置里的浅色壳。副屏可另用 L4 密排。'},
+    l2:{tag:'L2 · 总览+名册',title:'L2 · 总览+名册',body:'右侧源常驻，源多时不用滚到底。总览仍偏「仪表」，但比纯卡片墙好找源。'},
+    l3:{tag:'L3 · 工作台条',title:'L3 · 工作台条',body:'KPI 收进顶条，下面只留图+源。信息层级最干净，适合常开主窗。'},
+    l4:{tag:'L4 · 浅色密排',title:'L4 · 浅色密排',body:'副屏密度，但保持浅色。若副屏要深夜护眼，再单独做深色壳即可，目录页仍用 L1/L3。'}
+  };
+  function show(id){
+    document.querySelectorAll('.variant').forEach(function(el){el.classList.toggle('is-on',el.id==='v-'+id);});
+    document.querySelectorAll('#picker [data-v]').forEach(function(b){b.classList.toggle('is-on',b.getAttribute('data-v')===id);});
+    var n=notes[id];
+    document.getElementById('frameTag').textContent=n.tag;
+    document.getElementById('note').innerHTML='<strong>'+n.title+'</strong><p>'+n.body+'</p>';
+  }
+  document.querySelectorAll('#picker [data-v]').forEach(function(b){
+    b.addEventListener('click',function(){show(b.getAttribute('data-v'));});
+  });
+})();
+</script>
+</body>
+</html>

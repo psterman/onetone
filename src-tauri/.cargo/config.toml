@@ -8,24 +8,17 @@ t = ["test", "-p", "onetone-logic"]
 kws = ["build", "--features", "kws-engine"]
 
 # Tier-1 build speed-ups.
-# - sccache: caches rlib/rmeta per-crate across builds and across projects.
-#   Set C:\Users\Administrator\.cargo\bin\sccache.exe as rustc-wrapper so every
-#   rustc invocation is intercepted. First run is normal; subsequent runs reuse
-#   artifacts on disk. Override cache location with SCCACHE_DIR if needed.
-# - lld-link: same exe vendored by rustup as rust-lld.exe. Setting
-#   `linker = "<abs path>"` together with `-Clinker-flavor=lld-link` makes
-#   rustc invoke rust-lld explicitly. ~30-60s link steps become ~5-15s on
-#   Tauri-sized binaries. Requires LLVM tools (`rustup component add llvm-tools`).
+# - sccache (optional): install sccache and set env RUSTC_WRAPPER=sccache
+#   (do not hardcode a machine-specific path here).
+# - lld-link: rustup-vendored rust-lld. ~30-60s link steps become ~5-15s on
+#   Tauri-sized binaries.
 # - /DEFAULTLIB:ucrt.lib + /NODEFAULTLIB:libucrt*: bundled sqlite (rusqlite)
 #   objects import CRT via dllimport; rust-lld otherwise picks static
 #   libucrt.lib and either fails (`undefined __declspec(dllimport) strspn`)
 #   or, after forcing ucrt.lib alone, duplicates `_wctype` against libucrt.
 #   Keep one CRT: dynamic ucrt import lib only.
-[build]
-rustc-wrapper = "C:/Users/Administrator/.cargo/bin/sccache.exe"
-
 [target.x86_64-pc-windows-msvc]
-linker = "C:/Users/Administrator/.rustup/toolchains/stable-x86_64-pc-windows-msvc/lib/rustlib/x86_64-pc-windows-msvc/bin/rust-lld.exe"
+linker = "rust-lld"
 rustflags = [
   "-Clinker-flavor=lld-link",
   "-Clink-arg=/NODEFAULTLIB:libucrt.lib",

@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>数据目录 · P0 可落地（效率 / 费用 / 能力 / 时长）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;600&family=Newsreader:opsz,wght@6..72,600;6..72,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#152033;--mute:#5c6d82;--faint:#8a9aab;--line:rgba(21,32,51,.1);
+  --bg:#d4dee9;--paper:#f7f9fc;--card:#fff;
+  --teal:#0f6e7a;--teal-soft:#e2f3f5;
+  --warn:#9a5b12;--warn-soft:#fff3e0;  --ok:#1a6b42;
+  --spark:#7c3aed;--spark-soft:#f3eefc;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Newsreader","Songti SC",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;color:var(--ink);background:
+  radial-gradient(900px 420px at 100% -10%,rgba(15,110,122,.1),transparent 50%),
+  linear-gradient(165deg,#c8d4e2,var(--bg) 45%,#dde5ef)}
+.page{max-width:1180px;margin:0 auto;padding:16px 14px 56px}
+.eyebrow{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--teal)}
+h1{margin:0 0 6px;font-family:var(--display);font-size:24px;font-weight:700}
+.lede{margin:0 0 10px;max-width:78ch;color:var(--mute);font-size:14px}
+.honest{margin:0 0 14px;padding:10px 12px;border-radius:12px;background:var(--warn-soft);border:1px solid rgba(154,91,18,.25);font-size:12.5px;color:var(--warn)}
+.honest b{color:var(--ink)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.pills span{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:#fff;border:1px solid var(--line);color:var(--mute)}
+.pills span.on{background:var(--teal-soft);border-color:rgba(15,110,122,.35);color:var(--teal)}
+.pills span.off{opacity:.55;text-decoration:line-through}
+
+.frame{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--card);box-shadow:0 16px 36px rgba(21,32,51,.07)}
+.frame-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:9px 12px;background:#e8eef5;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--mute)}
+.frame-h b{color:var(--ink)}
+.layout{display:grid;grid-template-columns:118px 1fr;min-height:640px}
+@media (max-width:760px){.layout{grid-template-columns:1fr}}
+.snav{background:#eef2f7;border-right:1px solid var(--line);padding:10px 8px}
+.snav .g{margin:8px 6px 4px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.snav .i{padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;color:var(--mute);margin:2px 0}
+.snav .i.on{background:#fff;color:var(--teal);box-shadow:inset 3px 0 0 var(--teal)}
+.main{background:var(--paper);display:flex;flex-direction:column;min-width:0}
+
+.head{padding:12px 16px;background:#fff;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center}
+.head h2{margin:0;font-family:var(--display);font-size:18px}
+.head .meta{font-size:12px;color:var(--mute);margin-top:2px}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.btn{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:7px 11px;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.btn.pri{background:var(--teal);border-color:var(--teal);color:#fff}
+
+.dates{padding:10px 16px;background:#fff;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dates .label,.lenses .label{font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button{appearance:none;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer}
+.seg button.is-on{background:var(--ink);border-color:var(--ink);color:#fff}
+.day-rail{display:flex;gap:4px;overflow:auto;padding-bottom:2px;flex:1;min-width:0}
+.day-rail button{appearance:none;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:6px 9px;font:inherit;cursor:pointer;min-width:52px;text-align:center}
+.day-rail button .d{display:block;font-size:10.5px;color:var(--mute);font-weight:650}
+.day-rail button .n{display:block;font:800 14px/1.2 var(--mono);color:var(--ink)}
+.day-rail button.is-on{background:var(--teal-soft);border-color:rgba(15,110,122,.4)}
+.day-rail button.is-on .n{color:var(--teal)}
+
+.lenses{padding:10px 16px;background:#f3f6fa;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lens{appearance:none;border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px 12px;font:inherit;cursor:pointer;text-align:left;min-width:100px}
+.lens .t{display:block;font-size:12.5px;font-weight:800}
+.lens .s{display:block;font-size:10.5px;color:var(--mute);margin-top:2px;font-weight:650}
+.lens.is-on{border-color:var(--teal);background:var(--teal-soft);box-shadow:inset 0 0 0 1px rgba(15,110,122,.2)}
+.lens.is-on[data-lens="cost"]{border-color:var(--warn);background:var(--warn-soft)}
+.lens.is-on[data-lens="spark"]{border-color:var(--spark);background:var(--spark-soft);box-shadow:inset 0 0 0 1px rgba(124,58,237,.25)}
+.lens.ghost{opacity:.45;cursor:not-allowed;position:relative}
+.lens.ghost::after{content:"P2";position:absolute;top:4px;right:6px;font-size:9px;font-weight:800;color:var(--faint)}
+
+.hero[data-lens="spark"]{background:linear-gradient(145deg,#fff 30%,var(--spark-soft));border-color:rgba(124,58,237,.22)}
+.hero[data-lens="spark"] .lab{color:var(--spark)}
+.inv .k.spark-hi{border-color:rgba(124,58,237,.35);background:var(--spark-soft)}
+
+.hours{display:flex;align-items:flex-end;gap:3px;height:56px;margin-top:4px}
+.hours i{flex:1;min-width:0;border-radius:3px 3px 0 0;background:rgba(15,110,122,.22)}
+.hours i.peak{background:linear-gradient(180deg,#a78bfa,#7c3aed)}
+.hours i.cache{box-shadow:inset 0 0 0 2px rgba(15,110,122,.55)}
+.feed{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.feed .f{padding:9px 11px;border-radius:10px;background:var(--paper);border:1px solid var(--line);display:grid;grid-template-columns:72px 1fr auto;gap:8px;align-items:center}
+.feed .f .when{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.feed .f .what{font-size:12.5px;font-weight:750}
+.feed .f .where{font-size:11px;color:var(--mute);display:block;margin-top:2px}
+.feed .f .kind{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;background:var(--spark-soft);color:var(--spark)}
+.feed .f .kind.cache{background:var(--teal-soft);color:var(--teal)}
+
+.subtabs{display:flex;flex-wrap:wrap;gap:4px;padding:10px 16px 0;background:#fff;border-bottom:1px solid var(--line)}
+.subtabs button{appearance:none;border:1px solid transparent;background:transparent;border-radius:10px 10px 0 0;padding:9px 14px;font:inherit;font-size:13px;font-weight:800;color:var(--mute);cursor:pointer;margin-bottom:-1px}
+.subtabs button.is-on{background:var(--paper);border-color:var(--line);border-bottom-color:var(--paper);color:var(--teal)}
+.body{padding:14px 16px 20px;overflow:auto;flex:1}
+.pane{display:none}.pane.is-on{display:block}
+.pane-lead{margin:0 0 12px;font-size:12.5px;color:var(--mute)}
+
+.hero{padding:16px 18px;border-radius:16px;background:linear-gradient(145deg,#fff 30%,var(--teal-soft));border:1px solid rgba(15,110,122,.18);margin-bottom:12px}
+.hero[data-lens="cost"]{background:linear-gradient(145deg,#fff 30%,var(--warn-soft));border-color:rgba(154,91,18,.2)}
+.hero .lab{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.hero[data-lens="cost"] .lab{color:var(--warn)}
+.hero .num{font:800 44px/1 var(--mono);letter-spacing:-.03em;margin:6px 0 4px}
+.hero .num.miss{color:var(--faint);font-weight:650}
+.hero .line{font-size:13px;color:var(--mute);max-width:52ch}
+.hero .split{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(21,32,51,.08)}
+.hero .split div{font-size:12px;color:var(--mute)}
+.hero .split strong{display:block;font:800 16px/1.2 var(--mono);color:var(--ink);margin-top:2px}
+.hero .split strong.miss{color:var(--faint);font-weight:650}
+
+.vs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.vs .chip{padding:8px 12px;border-radius:10px;background:#fff;border:1px solid var(--line);font-size:12px}
+.vs .chip b{font-family:var(--mono)}
+.vs .chip .up{color:var(--ok);font-weight:800}
+.vs .chip .na{color:var(--faint);font-weight:750}
+
+.insight{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#fff;border:1px dashed rgba(15,110,122,.35);font-size:12.5px;color:var(--mute)}
+.insight strong{color:var(--ink)}
+
+.inv{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media (max-width:800px){.inv{grid-template-columns:1fr 1fr}}
+.inv .k{padding:12px;border-radius:12px;background:#fff;border:1px solid var(--line)}
+.inv .k .l{font-size:11px;font-weight:750;color:var(--mute)}
+.inv .k .v{font:800 20px/1.15 var(--mono);margin-top:4px}
+.inv .k .v.miss{color:var(--faint);font-weight:650}
+.inv .k .s{font-size:11px;color:var(--faint);margin-top:3px}
+.inv .k.hi{border-color:rgba(15,110,122,.35);background:var(--teal-soft)}
+
+.grid2{display:grid;grid-template-columns:1.15fr 1fr;gap:10px}
+@media (max-width:800px){.grid2{grid-template-columns:1fr}}
+.panel{padding:12px 14px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+.panel h3{margin:0 0 10px;font-size:13px;font-weight:800}
+.bars{display:flex;align-items:flex-end;gap:3px;height:64px}
+.bars i{flex:1;min-width:3px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#2a9aaa,#0f6e7a);opacity:.88}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags span{padding:5px 10px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-size:12px;font-weight:750}
+.tags span em{font-style:normal;font-family:var(--mono);color:var(--mute);margin-left:4px}
+.tags span.miss{color:var(--faint);border-style:dashed}
+
+.lb{display:flex;flex-direction:column;gap:6px}
+.lb .row{display:grid;grid-template-columns:28px 1fr auto auto;gap:8px;align-items:center;padding:10px 12px;border-radius:10px;background:#fff;border:1px solid var(--line)}
+.lb .row.dim{opacity:.55}
+.lb .rk{width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--mono);background:#e8edf4;color:var(--mute)}
+.lb .rk.r1{background:#fff3e0;color:#b45309}
+.lb .nm{font-weight:750}
+.lb .metric{font-family:var(--mono);font-size:14px;font-weight:700}
+.lb .metric.miss{color:var(--faint);font-weight:650}
+.lb .sub{font-size:11px;color:var(--faint)}
+
+.cost-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:700px){.cost-grid{grid-template-columns:1fr}}
+.cost-card{padding:12px;border-radius:12px;background:#fff;border:1px solid var(--line)}
+.cost-card .nm{font-weight:800;margin-bottom:8px}
+.cost-card .nums{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--mute)}
+.cost-card .nums strong{display:block;font:700 15px/1.2 var(--mono);color:var(--ink);margin-top:2px}
+.cost-card .nums strong.miss{color:var(--faint);font-weight:650}
+.cost-sum{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--warn-soft);font-size:13px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cost-sum b{font-family:var(--mono)}
+
+.agents{display:flex;flex-direction:column;gap:8px}
+.agent{border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden}
+.agent-h{display:grid;grid-template-columns:1fr auto auto auto 28px;gap:10px;align-items:center;padding:11px 12px;cursor:pointer;width:100%;border:0;background:transparent;font:inherit;text-align:left}
+@media (max-width:700px){.agent-h{grid-template-columns:1fr auto 28px}}
+.agent-h .title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.agent-h .title b{font-size:13.5px}
+.agent-h .cell{font-family:var(--mono);font-size:12px;color:var(--mute);text-align:right}
+.agent-h .cell strong{display:block;color:var(--ink);font-size:13px}
+.agent-h .cell strong.miss{color:var(--faint);font-weight:650}
+.agent-h .chev{color:var(--faint)}
+.agent.open{border-color:rgba(15,110,122,.35)}
+.agent-b{display:none;padding:0 12px 12px;border-top:1px solid var(--line);background:#f7fafc}
+.agent.open .agent-b{display:block}
+.detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+@media (max-width:700px){.detail-grid{grid-template-columns:1fr 1fr}}
+.detail-grid .d{padding:8px;border-radius:10px;background:#fff;border:1px solid var(--line)}
+.detail-grid .d .l{font-size:10.5px;color:var(--mute)}
+.detail-grid .d .v{font:700 14px/1.2 var(--mono);margin-top:2px}
+.detail-grid .d .v.miss{color:var(--faint);font-weight:650}
+.pill{display:inline-flex;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:750;background:var(--teal-soft);color:var(--teal)}
+.pill.weak{background:#eef2f6;color:var(--faint)}
+
+.callout{margin-top:12px;padding:12px 14px;border-radius:14px;background:linear-gradient(120deg,var(--teal-soft),#fff 70%);border:1px solid rgba(15,110,122,.28)}
+.callout strong{display:block;margin-bottom:4px}
+.callout p{margin:0;font-size:12.5px;color:var(--mute)}
+
+/* wall */
+.wall-scr{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(12,18,28,.55);backdrop-filter:blur(6px)}
+.wall-scr.is-on{display:flex}
+.wall-frame{width:min(920px,100%);max-height:min(720px,92vh);overflow:auto;border-radius:18px;background:#f3f6fa;box-shadow:0 28px 60px rgba(0,0,0,.35)}
+.wall-chrome{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#1a2332;color:#e8eef5}
+.wall-chrome .dots{display:flex;gap:5px}
+.wall-chrome .dots i{width:9px;height:9px;border-radius:50%;background:#5c6d82}
+.wall-chrome .dots i:first-child{background:#e35d6a}
+.wall-chrome .dots i:nth-child(2){background:#e0a84a}
+.wall-chrome .dots i:nth-child(3){background:#4caf7a}
+.wall-chrome .ttl{flex:1;font-size:12px;font-weight:750}
+.wall-chrome .x{appearance:none;border:0;background:rgba(255,255,255,.1);color:#fff;border-radius:8px;padding:5px 10px;font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.wall-surf{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 12px;background:#e8eef5;border-bottom:1px solid var(--line)}
+.wall-surf button{appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;font:inherit;font-size:11.5px;font-weight:750;cursor:pointer;color:var(--mute)}
+.wall-surf button.is-on{background:var(--teal);border-color:var(--teal);color:#fff}
+.wall-surf .hint{font-size:11px;color:var(--faint)}
+.wall-body{padding:14px 16px 18px}
+.wall-body h2{margin:0;font-family:var(--display);font-size:20px}
+.wall-body .meta{font-size:12px;color:var(--mute);margin-top:2px}
+.wall-wh{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-bottom:12px}
+.wall-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+@media (max-width:700px){.wall-kpi{grid-template-columns:1fr 1fr}}
+.wall-kpi .k{padding:12px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+.wall-kpi .l{font-size:11px;font-weight:800;color:var(--mute);letter-spacing:.04em;text-transform:uppercase}
+.wall-kpi .v{font:800 22px/1.1 var(--mono);margin-top:4px}
+.wall-kpi .v.miss{color:var(--faint);font-weight:650}
+.wall-kpi .s{font-size:11px;color:var(--faint);margin-top:3px}
+.wall-charts{display:grid;grid-template-columns:1.1fr .9fr;gap:10px;margin-bottom:12px}
+@media (max-width:700px){.wall-charts{grid-template-columns:1fr}}
+.wall-chart{padding:12px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+.wall-chart h4{margin:0 0 10px;font-size:12px;color:var(--mute)}
+.wall-bars{display:flex;align-items:flex-end;gap:6px;height:88px}
+.wall-bars i{flex:1;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#3aa8b5,#0f6e7a);min-width:0}
+.wall-rank{display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.wall-rank div{display:flex;justify-content:space-between}
+.wall-rank span:last-child{font-family:var(--mono);color:var(--mute)}
+.wall-src-h{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.wall-src-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:700px){.wall-src-g{grid-template-columns:1fr}}
+.wall-src{padding:12px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+.wall-src .nm{font-weight:800}
+.wall-src .st{font-size:11px;color:var(--teal);margin:2px 0 8px}
+.wall-src .st.warn{color:var(--warn)}
+.wall-src .r{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);padding:2px 0}
+.wall-src .r em{font-style:normal;font-family:var(--mono);font-weight:700;color:var(--ink)}
+.wall-src .r em.miss{color:var(--faint);font-weight:650}
+.wall-foot{margin:14px 0 0;font-size:11.5px;color:var(--faint);text-align:center}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Data · peak feedback + P0</p>
+  <h1>数据：干活反馈，含「灵感」高峰</h1>
+  <p class="lede"><strong>灵感</strong> = 你效率最高时的反馈：高速工作时段 · Token 缓存最佳。不是新建/分支玄学分。</p>
+  <div class="pills">
+    <span class="on">P0 效率</span><span class="on">P0 费用</span><span class="on">P0 能力</span><span class="on">P0 时长</span>
+    <span class="on">灵感 · 高峰反馈</span>
+    <span class="off">模式占比</span><span class="off">接受率 / LoC</span>
+  </div>
+  <p class="honest"><b>诚实：</b>高速时段来自 Cursor 活动 span 分桶（可落地方向）；缓存最佳来自 Claude prompt cache（有 OTel/status 才显）。无数标 —。</p>
+
+  <div class="frame">
+    <div class="frame-h">
+      <span><b>设置 → 数据</b></span>
+      <span id="frameHint">视角 · 效率 · P0</span>
+    </div>
+    <div class="layout">
+      <aside class="snav">
+        <div class="g">动作面</div>
+        <div class="i">虚拟键盘</div>
+        <div class="g">配置</div>
+        <div class="i">Agent</div>
+        <div class="g">看板</div>
+        <div class="i on">数据</div>
+      </aside>
+      <div class="main">
+        <div class="head">
+          <div>
+            <h2>我的工作数据</h2>
+            <div class="meta" id="headMeta">今日 · 2026年9月18日</div>
+          </div>
+          <div class="acts">
+            <button type="button" class="btn">导出</button>
+            <button type="button" class="btn pri" id="openWall">副屏打开</button>
+          </div>
+        </div>
+
+        <div class="dates">
+          <span class="label">时间</span>
+          <div class="seg" id="rangeSeg">
+            <button type="button" class="is-on" data-range="day">按日</button>
+            <button type="button" data-range="week">本周</button>
+            <button type="button" data-range="month">本月</button>
+          </div>
+          <div class="day-rail" id="dayRail"></div>
+        </div>
+
+        <div class="lenses" id="lenses">
+          <span class="label">视角</span>
+          <button type="button" class="lens is-on" data-lens="eff"><span class="t">效率</span><span class="s">Cursor 回合/活跃时</span></button>
+          <button type="button" class="lens" data-lens="cost"><span class="t">费用</span><span class="s">Token · 可知 $</span></button>
+          <button type="button" class="lens" data-lens="cap"><span class="t">能力</span><span class="s">此刻模型芯片</span></button>
+          <button type="button" class="lens" data-lens="time"><span class="t">时长</span><span class="s">Cursor 活跃</span></button>
+          <button type="button" class="lens" data-lens="spark"><span class="t">灵感</span><span class="s">高峰时段 · 缓存最佳</span></button>
+        </div>
+
+        <div class="subtabs" id="subtabs">
+          <button type="button" class="is-on" data-tab="overview">总览</button>
+          <button type="button" data-tab="rank">排行</button>
+          <button type="button" data-tab="cost">费用账</button>
+          <button type="button" data-tab="work">工作明细</button>
+        </div>
+
+        <div class="body">
+          <div class="pane is-on" id="pane-overview">
+            <div class="hero" id="hero">
+              <div class="lab" id="heroLab">效率</div>
+              <div class="num" id="heroNum">50.6</div>
+              <div class="line" id="heroLine"></div>
+              <div class="split" id="heroSplit"></div>
+            </div>
+            <div class="vs" id="vsRow"></div>
+            <p class="insight" id="insight"></p>
+            <div class="inv" id="inv"></div>
+            <div class="grid2">
+              <div class="panel"><h3 id="chartTitle">近 7 日 · Cursor 效率</h3><div class="bars" id="bars"></div><div class="hours" id="hourRail" hidden></div></div>
+              <div class="panel"><h3 id="sideTitle">此刻模型</h3><div class="tags" id="sideTags"></div><div class="feed" id="sparkFeed" hidden></div></div>
+            </div>
+          </div>
+
+          <div class="pane" id="pane-rank">
+            <p class="pane-lead" id="rankLead">只排有数的源；无数标 —，不插 0。</p>
+            <div class="lb" id="lb"></div>
+          </div>
+
+          <div class="pane" id="pane-cost">
+            <p class="pane-lead">可知 $ 才加总；Codex / Cursor 无单价 → —。不乘臆造价。</p>
+            <div class="cost-grid" id="costGrid"></div>
+            <div class="cost-sum">
+              <span>可知 Token <b id="sumTok">—</b></span>
+              <span>可知费用 <b id="sumUsd">—</b></span>
+              <span>缺价源 <b id="sumMiss">—</b></span>
+            </div>
+          </div>
+
+          <div class="pane" id="pane-work">
+            <p class="pane-lead">字段对齐 AgentUsageSnapshot + Cursor ActivityTotals。点开看 — 与有数项。</p>
+            <div class="agents" id="agents"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>灵感 = 最高效反馈</strong>
+    <p>告诉你「什么时候最猛」：Cursor 高速时段（活动 span 分桶）+ Claude Token 缓存命中最佳窗。不做新建/分支灵感分，也不追接受率/LoC。</p>
+  </div>
+</div>
+
+<div class="wall-scr" id="wallScr" aria-hidden="true">
+  <div class="wall-frame" id="wallFrame" data-surface="local">
+    <div class="wall-chrome">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="ttl">工作数据 · 本地副窗</div>
+      <button type="button" class="x" id="closeWall">关闭</button>
+    </div>
+    <div class="wall-surf">
+      <button type="button" data-surface="web">网页版</button>
+      <button type="button" class="is-on" data-surface="local">本地副窗</button>
+      <span class="hint" id="surfHint">Tauri 独立窗 · 拖到副屏常亮</span>
+    </div>
+    <div class="wall-body">
+      <div class="wall-wh">
+        <div>
+          <h2>今日工作</h2>
+          <div class="meta">效率 · 活跃 · 可知费用 · 灵感高峰 · 缺字段 —</div>
+        </div>
+        <button type="button" class="btn">导出</button>
+      </div>
+      <div class="wall-kpi">
+        <div class="k"><div class="l">效率</div><div class="v" id="wallEff">—</div><div class="s">Cursor 回合/时</div></div>
+        <div class="k"><div class="l">高速窗</div><div class="v" id="wallPeak" style="font-size:15px">—</div><div class="s">灵感</div></div>
+        <div class="k"><div class="l">缓存最佳</div><div class="v" id="wallCache">—</div><div class="s">Claude</div></div>
+        <div class="k"><div class="l">可知费用</div><div class="v" id="wallCost">—</div><div class="s">缺价另计</div></div>
+      </div>
+      <div class="wall-charts">
+        <div class="wall-chart">
+          <h4>近 7 日 · Cursor 效率</h4>
+          <div class="wall-bars" id="wallBars"></div>
+        </div>
+        <div class="wall-chart">
+          <h4>有数源排行 · 效率</h4>
+          <div class="wall-rank" id="wallRank"></div>
+        </div>
+      </div>
+      <p class="wall-src-h">工作切片</p>
+      <div class="wall-src-g" id="wallSrc"></div>
+      <p class="wall-foot">同一 overview · 灵感=高峰+缓存 · 网页/本地只换壳</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var DAYS=[
+    {id:'0912',label:'12',dow:'六'},
+    {id:'0913',label:'13',dow:'日'},
+    {id:'0914',label:'14',dow:'一'},
+    {id:'0915',label:'15',dow:'二'},
+    {id:'0916',label:'16',dow:'三'},
+    {id:'0917',label:'17',dow:'四'},
+    {id:'0918',label:'18',dow:'五'}
+  ];
+
+  function fmtUsd(n){return n==null?'—':('$'+Number(n).toFixed(2));}
+  function fmtMin(m){
+    if(m==null) return '—';
+    var h=Math.floor(m/60),r=m%60;
+    return h?(h+'h'+(r?String(r).padStart(2,'0'):'00')):(r+'m');
+  }
+  function fmtTok(n){
+    if(n==null) return '—';
+    if(n>=1e6) return (n/1e6).toFixed(2).replace(/\.?0+$/,'')+'M';
+    if(n>=1e3) return Math.round(n/1e3)+'K';
+    return String(n);
+  }
+  function effOf(a){
+    if(a.turns==null||a.activeMin==null||!a.activeMin) return null;
+    return Math.round(a.turns/(a.activeMin/60)*10)/10;
+  }
+
+  /* Honest mock: only Cursor has turns+active; Claude has $ + cache; Codex tokens no $ */
+  function peakFor(dayId){
+    var f=dayId==='0918'?1:dayId==='0917'?1.05:dayId==='0913'?0.4:0.75;
+    /* Cursor activity spans → hour buckets (landable direction) */
+    var hours=[4,6,8,12,18,28,42,55,38,22,14,10,8,6,5,7,16,32,48,62,44,20,10,6].map(function(v){return Math.round(v*f);});
+    var peakH=0,peakV=0;
+    hours.forEach(function(v,i){if(v>peakV){peakV=v;peakH=i;}});
+    var peakEff=Math.round((48+peakV/2)*10)/10;
+    return {
+      hours:hours,
+      peakLabel:String(peakH).padStart(2,'0')+':00–'+String((peakH+1)%24).padStart(2,'0')+':00',
+      peakEff:peakEff,
+      peakMin:Math.round(peakV*1.2),
+      /* Claude prompt-cache best window */
+      cacheHit:Math.min(96,Math.round(62+peakV/3)),
+      cacheLabel:String(Math.max(9,peakH-1)).padStart(2,'0')+':40–'+String(peakH).padStart(2,'0')+':15',
+      events:[
+        {when:String(peakH).padStart(2,'0')+':12',kind:'peak',what:'高速窗',where:'Cursor · '+peakEff+'/h'},
+        {when:String(Math.max(9,peakH-1)).padStart(2,'0')+':48',kind:'cache',what:'缓存最佳',where:'Claude · 命中 '+Math.min(96,Math.round(62+peakV/3))+'%'},
+        {when:String((peakH+2)%24).padStart(2,'0')+':05',kind:'peak',what:'次高峰',where:'Cursor · 连续回合密'}
+      ]
+    };
+  }
+
+  function agentsFor(dayId){
+    var f=dayId==='0918'?1:dayId==='0917'?1.05:dayId==='0913'?0.4:dayId==='0912'?0.55:0.75;
+    var peak=peakFor(dayId);
+    return [
+      {
+        id:'cursor',name:'Cursor',
+        turns:Math.round(86*f), activeMin:Math.round(102*f), sessions:Math.round(11*f),
+        tok:null, usd:null, cacheHit:null,
+        model:'Composer', modelConf:'med',
+        peakLabel:peak.peakLabel, peakEff:peak.peakEff,
+        note:'本地 ActivityTotals · span 可分桶'
+      },
+      {
+        id:'claude',name:'Claude',
+        turns:null, activeMin:null, sessions:null,
+        tok:Math.round(270000*f), usd:Math.round(1.12*f*100)/100,
+        cacheHit:peak.cacheHit,
+        model:'Sonnet', modelConf:'high',
+        peakLabel:peak.cacheLabel, peakEff:null,
+        note:'OTel 估费 · prompt cache'
+      },
+      {
+        id:'codex',name:'Codex',
+        turns:null, activeMin:null, sessions:null,
+        tok:Math.round(410000*f), usd:null, cacheHit:null,
+        model:'o系列', modelConf:'high',
+        peakLabel:null, peakEff:null,
+        note:'Token 有 · $ / 高峰 —'
+      },
+      {
+        id:'minimax',name:'MiniMax',
+        turns:null, activeMin:null, sessions:null,
+        tok:Math.round(140000*f), usd:null, cacheHit:null,
+        model:'abab', modelConf:'med',
+        peakLabel:null, peakEff:null,
+        note:'ledger Token · 无高峰源'
+      }
+    ];
+  }
+
+  function mergeAgents(lists){
+    var map={};
+    lists.forEach(function(list){
+      list.forEach(function(a){
+        if(!map[a.id]){map[a.id]=Object.assign({},a);return;}
+        var t=map[a.id];
+        if(a.turns!=null) t.turns=(t.turns||0)+a.turns;
+        if(a.activeMin!=null) t.activeMin=(t.activeMin||0)+a.activeMin;
+        if(a.sessions!=null) t.sessions=(t.sessions||0)+a.sessions;
+        if(a.tok!=null) t.tok=(t.tok||0)+a.tok;
+        if(a.usd!=null) t.usd=(t.usd||0)+a.usd;
+      });
+    });
+    return Object.keys(map).map(function(k){return map[k];});
+  }
+
+  var state={dayId:'0918',lens:'eff',tab:'overview',openId:'cursor',range:'day'};
+
+  function dayIndex(){return DAYS.findIndex(function(d){return d.id===state.dayId;});}
+  function agentsInRange(){
+    var i=dayIndex();
+    if(state.range==='day') return agentsFor(state.dayId);
+    if(state.range==='week'){
+      var from=Math.max(0,i-3);
+      return mergeAgents(DAYS.slice(from,i+1).map(function(d){return agentsFor(d.id);}));
+    }
+    return mergeAgents(DAYS.map(function(d){return agentsFor(d.id);}));
+  }
+  function prevAgents(){
+    var i=dayIndex();
+    if(state.range==='day') return i>0?agentsFor(DAYS[i-1].id):null;
+    if(state.range==='week'){
+      var from=Math.max(0,i-3);
+      if(from===0) return null;
+      return mergeAgents(DAYS.slice(Math.max(0,from-4),from).map(function(d){return agentsFor(d.id);}));
+    }
+    return null;
+  }
+
+  function summarize(list){
+    var cursor=list.find(function(a){return a.id==='cursor';});
+    var claude=list.find(function(a){return a.id==='claude';});
+    var usd=null, miss=0, tok=0, tokOk=false;
+    list.forEach(function(a){
+      if(a.usd==null) miss++; else usd=(usd||0)+a.usd;
+      if(a.tok!=null){tok+=a.tok;tokOk=true;}
+    });
+    var peak=peakFor(state.dayId);
+    return {
+      list:list,
+      cursor:cursor,
+      claude:claude,
+      eff:cursor?effOf(cursor):null,
+      active:cursor&&cursor.activeMin!=null?cursor.activeMin:null,
+      turns:cursor&&cursor.turns!=null?cursor.turns:null,
+      sessions:cursor&&cursor.sessions!=null?cursor.sessions:null,
+      usd:usd,
+      miss:miss,
+      tok:tokOk?tok:null,
+      peakLabel:cursor&&cursor.peakLabel?cursor.peakLabel:null,
+      peakEff:cursor&&cursor.peakEff!=null?cursor.peakEff:null,
+      cacheHit:claude&&claude.cacheHit!=null?claude.cacheHit:null,
+      cacheLabel:claude&&claude.peakLabel?claude.peakLabel:null,
+      peak:peak,
+      topModel:(function(){
+        var best=null;
+        list.forEach(function(a){
+          if(!a.model) return;
+          if(!best||(a.modelConf==='high'&&best.modelConf!=='high')) best=a;
+        });
+        return best?best.model:null;
+      })()
+    };
+  }
+
+  function rangeLabel(){
+    if(state.range==='day') return '选定日 · 9/'+state.dayId.slice(2);
+    if(state.range==='week') return '本周累计';
+    return '本月累计';
+  }
+
+  function setLens(l){
+    state.lens=l;
+    document.querySelectorAll('#lenses .lens[data-lens]').forEach(function(b){
+      b.classList.toggle('is-on',b.getAttribute('data-lens')===l);
+    });
+    render();
+  }
+  function setTab(t){
+    state.tab=t;
+    document.querySelectorAll('#subtabs [data-tab]').forEach(function(b){b.classList.toggle('is-on',b.getAttribute('data-tab')===t);});
+    document.querySelectorAll('.pane').forEach(function(p){p.classList.toggle('is-on',p.id==='pane-'+t);});
+  }
+
+  function renderDays(){
+    document.getElementById('dayRail').innerHTML=DAYS.map(function(d){
+      return '<button type="button" class="'+(d.id===state.dayId?'is-on':'')+'" data-day="'+d.id+'"><span class="d">'+d.dow+'</span><span class="n">'+d.label+'</span></button>';
+    }).join('');
+    document.querySelectorAll('#dayRail [data-day]').forEach(function(b){
+      b.addEventListener('click',function(){state.dayId=b.getAttribute('data-day');render();});
+    });
+  }
+
+  function renderOverview(){
+    var s=summarize(agentsInRange());
+    var p=prevAgents()?summarize(prevAgents()):null;
+    var L={
+      eff:{lab:'效率 · Cursor 回合/活跃时',num:s.eff==null?'—':s.eff,miss:s.eff==null,
+        line:'仅 Cursor 本地 turns ÷ activeMs。Claude / Codex 无回合计数 → —。',
+        insight:s.eff==null?'今日无 Cursor 活跃读数（关同意或非 Windows 时亦如此）。':'Cursor 效率 <strong>'+s.eff+'</strong> 回合/时 · 活跃 '+fmtMin(s.active)+' · '+s.turns+' 回合。'},
+      cost:{lab:'费用 · 可知成本',num:fmtUsd(s.usd),miss:s.usd==null,
+        line:'只加总有 $ 的源。Codex / MiniMax / Cursor 无单价不进合计。',
+        insight:'可知费用 <strong>'+fmtUsd(s.usd)+'</strong> · 缺价源 <strong>'+s.miss+'</strong> · Token '+fmtTok(s.tok)+'。'},
+      cap:{lab:'能力 · 此刻模型',num:s.topModel||'—',miss:!s.topModel,
+        line:'当前芯片，不是历史占比。无 Agent/Ask/Plan 直方图。',
+        insight:'置信最高芯片 <strong>'+(s.topModel||'—')+'</strong>。模式拆分属社区 P1，本机无源。'},
+      time:{lab:'时长 · Cursor 活跃',num:fmtMin(s.active),miss:s.active==null,
+        line:'仅 Cursor activeMs。灵感镜头另看「高速时段」。',
+        insight:s.active==null?'无活跃时长。':'活跃 <strong>'+fmtMin(s.active)+'</strong> · 会话 '+(s.sessions==null?'—':s.sessions)+'。'},
+      spark:{lab:'灵感 · 今日最高效窗',num:s.peakLabel||'—',miss:!s.peakLabel,
+        line:'高速工作时段（Cursor span 分桶）+ Token 缓存最佳（Claude）。反馈你什么时候最猛。',
+        insight:s.peakLabel
+          ?('高峰 <strong>'+s.peakLabel+'</strong> · 当时约 <strong>'+(s.peakEff==null?'—':s.peakEff)+'/h</strong> · 缓存最佳 <strong>'+(s.cacheHit==null?'—':(s.cacheHit+'%'))+'</strong>'+(s.cacheLabel?(' · '+s.cacheLabel):''))
+          :'无高峰读数。'}
+    }[state.lens];
+
+    document.getElementById('headMeta').textContent=rangeLabel()+' · 视角「'+state.lens+'」';
+    document.getElementById('frameHint').textContent='视角 · '+state.lens+(state.lens==='spark'?' · 高峰反馈':' · landable');
+    var hero=document.getElementById('hero');
+    hero.setAttribute('data-lens',state.lens);
+    document.getElementById('heroLab').textContent=L.lab;
+    var hn=document.getElementById('heroNum');
+    hn.textContent=L.num;
+    hn.classList.toggle('miss',!!L.miss);
+    if(state.lens==='cap'||state.lens==='spark') hn.style.fontSize='26px'; else hn.style.fontSize='';
+    document.getElementById('heroLine').textContent=L.line;
+    document.getElementById('heroSplit').innerHTML=
+      '<div>高速窗<strong class="'+(s.peakLabel?'':'miss')+'">'+(s.peakLabel||'—')+'</strong></div>'+
+      '<div>峰时效率<strong class="'+(s.peakEff==null?'miss':'')+'">'+(s.peakEff==null?'—':s.peakEff)+'</strong></div>'+
+      '<div>缓存命中<strong class="'+(s.cacheHit==null?'miss':'')+'">'+(s.cacheHit==null?'—':(s.cacheHit+'%'))+'</strong></div>'+
+      '<div>可知费用<strong class="'+(s.usd==null?'miss':'')+'">'+fmtUsd(s.usd)+'</strong></div>';
+    document.getElementById('insight').innerHTML=L.insight;
+
+    function chip(label,cur,prev,fmt){
+      if(cur==null) return '<div class="chip">'+label+' <b class="na">—</b></div>';
+      var d=prev==null?null:(cur-prev);
+      var arrow=d==null?'':(d>0?'<span class="up">↑'+ (fmt?fmt(Math.abs(d)):Math.abs(d))+'</span>':(d<0?'<span class="up" style="color:var(--warn)">↓'+(fmt?fmt(Math.abs(d)):Math.abs(d))+'</span>':'<span class="na">持平</span>'));
+      return '<div class="chip">'+label+' <b>'+(fmt?fmt(cur):cur)+'</b> '+(arrow||'<span class="na">无上期</span>')+'</div>';
+    }
+    document.getElementById('vsRow').innerHTML=
+      chip('效率',s.eff,p?p.eff:null,null)+
+      chip('峰效',s.peakEff,p?p.peakEff:null,null)+
+      chip('缓存%',s.cacheHit,p?p.cacheHit:null,null)+
+      chip('时长',s.active,p?p.active:null,fmtMin);
+
+    document.getElementById('inv').innerHTML=[
+      {l:'效率',v:s.eff==null?'—':s.eff,s:'全日均',hi:state.lens==='eff',miss:s.eff==null,spark:false},
+      {l:'高速窗',v:s.peakLabel||'—',s:'灵感',hi:state.lens==='spark',miss:!s.peakLabel,spark:true},
+      {l:'缓存最佳',v:s.cacheHit==null?'—':(s.cacheHit+'%'),s:s.cacheLabel||'Claude',hi:state.lens==='spark',miss:s.cacheHit==null,spark:true},
+      {l:'可知费用',v:fmtUsd(s.usd),s:'缺价 '+s.miss,hi:state.lens==='cost',miss:s.usd==null,spark:false}
+    ].map(function(k){
+      return '<div class="k'+(k.hi?(k.spark?' spark-hi':' hi'):'')+'"><div class="l">'+k.l+'</div><div class="v'+(k.miss?' miss':'')+'" style="'+(k.l==='高速窗'?'font-size:15px':'')+'">'+k.v+'</div><div class="s">'+k.s+'</div></div>';
+    }).join('');
+
+    var hourRail=document.getElementById('hourRail');
+    var sparkFeed=document.getElementById('sparkFeed');
+    var bars=document.getElementById('bars');
+    if(state.lens==='spark'){
+      document.getElementById('chartTitle').textContent='今日 24h · 活跃密度（紫=高速）';
+      bars.hidden=true;
+      hourRail.hidden=false;
+      var maxH=Math.max.apply(null,s.peak.hours.concat([1]));
+      var peakH=0,peakV=0;
+      s.peak.hours.forEach(function(v,i){if(v>peakV){peakV=v;peakH=i;}});
+      var cacheH=Math.max(0,peakH-1);
+      hourRail.innerHTML=s.peak.hours.map(function(v,i){
+        var h=Math.max(6,Math.round(v/maxH*100));
+        var cls=(i===peakH||i===peakH+1&&v>peakV*0.7)?'peak':'';
+        if(i===cacheH) cls+=(cls?' ':'')+'cache';
+        return '<i class="'+cls+'" style="height:'+h+'%" title="'+i+':00"></i>';
+      }).join('');
+      document.getElementById('sideTitle').textContent='灵感事件';
+      document.getElementById('sideTags').innerHTML='';
+      sparkFeed.hidden=false;
+      sparkFeed.innerHTML=s.peak.events.map(function(e){
+        return '<div class="f"><span class="when">'+e.when+'</span><div><span class="what">'+e.what+'</span><span class="where">'+e.where+'</span></div><span class="kind'+(e.kind==='cache'?' cache':'')+'">'+(e.kind==='cache'?'缓存':'高峰')+'</span></div>';
+      }).join('');
+    } else {
+      bars.hidden=false;
+      hourRail.hidden=true;
+      sparkFeed.hidden=true;
+      document.getElementById('chartTitle').textContent=state.lens==='cost'?'近 7 日 · 可知费用示意':(state.lens==='time'?'近 7 日 · Cursor 活跃':'近 7 日 · Cursor 效率');
+      var heights=DAYS.map(function(d){
+        var ss=summarize(agentsFor(d.id));
+        if(state.lens==='cost') return Math.max(8,Math.min(100,(ss.usd||0)*40));
+        if(state.lens==='time') return Math.max(8,Math.min(100,(ss.active||0)/1.5));
+        if(state.lens==='cap') return Math.max(8,Math.min(100,(ss.turns||10)/1.2));
+        return Math.max(8,Math.min(100,(ss.eff||0)*8));
+      });
+      bars.innerHTML=heights.map(function(h){return '<i style="height:'+h+'%"></i>';}).join('');
+      document.getElementById('sideTitle').textContent='此刻模型芯片';
+      document.getElementById('sideTags').innerHTML=s.list.map(function(a){
+        var weak=a.modelConf!=='high'?' weak':'';
+        return '<span class="'+weak+'">'+a.name+' <em>'+a.model+'</em></span>';
+      }).join('');
+    }
+  }
+
+  function renderRank(){
+    var list=agentsInRange().slice();
+    var metric=function(a){
+      if(state.lens==='eff') return effOf(a);
+      if(state.lens==='cost') return a.usd;
+      if(state.lens==='time') return a.activeMin;
+      if(state.lens==='spark') return a.peakEff!=null?a.peakEff:(a.cacheHit!=null?a.cacheHit:null);
+      return a.model?1:null;
+    };
+    var fmt=function(a,v){
+      if(state.lens==='eff') return v==null?'—':(v+'/h');
+      if(state.lens==='cost') return fmtUsd(v);
+      if(state.lens==='time') return fmtMin(v);
+      if(state.lens==='spark'){
+        if(a.peakEff!=null) return a.peakLabel+' · '+a.peakEff+'/h';
+        if(a.cacheHit!=null) return '缓存 '+a.cacheHit+'%';
+        return '—';
+      }
+      return a.model||'—';
+    };
+    list.sort(function(a,b){
+      var va=metric(a),vb=metric(b);
+      if(va==null&&vb==null) return 0;
+      if(va==null) return 1;
+      if(vb==null) return -1;
+      return vb-va;
+    });
+    document.getElementById('rankLead').textContent=
+      state.lens==='eff'?'效率榜：只有 Cursor 有数，其余 —。':
+      state.lens==='cost'?'费用榜：仅有 $ 的源参与排序。':
+      state.lens==='time'?'时长榜：仅 Cursor activeMs。':
+      state.lens==='spark'?'灵感榜：高峰效率（Cursor）与缓存命中（Claude）；无数源 —。':
+      '能力：按芯片展示，无历史占比。';
+    document.getElementById('lb').innerHTML=list.map(function(a,i){
+      var v=metric(a);
+      var dim=v==null&&state.lens!=='cap';
+      return '<div class="row'+(dim?' dim':'')+'"><div class="rk'+(i===0&&!dim?' r1':'')+'">'+(i+1)+'</div>'+
+        '<div class="nm">'+a.name+'</div>'+
+        '<div class="metric'+(v==null&&state.lens!=='cap'?' miss':'')+'" style="font-size:'+(state.lens==='spark'?'12px':'14px')+'">'+fmt(a,v)+'</div>'+
+        '<div class="sub">'+a.note+'</div></div>';
+    }).join('');
+  }
+
+  function renderCost(){
+    var list=agentsInRange();
+    var s=summarize(list);
+    document.getElementById('costGrid').innerHTML=list.map(function(a){
+      return '<div class="cost-card"><div class="nm">'+a.name+'</div><div class="nums">'+
+        '<div>Token<strong class="'+(a.tok==null?'miss':'')+'">'+fmtTok(a.tok)+'</strong></div>'+
+        '<div>费用<strong class="'+(a.usd==null?'miss':'')+'">'+fmtUsd(a.usd)+'</strong></div>'+
+        '<div>回合<strong class="'+(a.turns==null?'miss':'')+'">'+(a.turns==null?'—':a.turns)+'</strong></div>'+
+        '<div>模型<strong>'+a.model+'</strong></div></div></div>';
+    }).join('');
+    document.getElementById('sumTok').textContent=fmtTok(s.tok);
+    document.getElementById('sumUsd').textContent=fmtUsd(s.usd);
+    document.getElementById('sumMiss').textContent=String(s.miss);
+  }
+
+  function renderWork(){
+    var list=agentsInRange();
+    document.getElementById('agents').innerHTML=list.map(function(a){
+      var open=state.openId===a.id?' open':'';
+      var e=effOf(a);
+      return '<div class="agent'+open+'">'+
+        '<button type="button" class="agent-h" data-toggle="'+a.id+'">'+
+          '<div class="title"><b>'+a.name+'</b><span class="pill'+(a.modelConf!=='high'?' weak':'')+'">'+a.model+'</span></div>'+
+          '<div class="cell"><strong class="'+(e==null?'miss':'')+'">'+(e==null?'—':e)+'</strong>效率</div>'+
+          '<div class="cell"><strong class="'+(a.activeMin==null?'miss':'')+'">'+fmtMin(a.activeMin)+'</strong>时长</div>'+
+          '<div class="cell"><strong class="'+(a.usd==null?'miss':'')+'">'+fmtUsd(a.usd)+'</strong>费用</div>'+
+          '<div class="chev">›</div></button>'+
+        '<div class="agent-b"><div class="detail-grid">'+
+          '<div class="d"><div class="l">回合</div><div class="v'+(a.turns==null?' miss':'')+'">'+(a.turns==null?'—':a.turns)+'</div></div>'+
+          '<div class="d"><div class="l">会话</div><div class="v'+(a.sessions==null?' miss':'')+'">'+(a.sessions==null?'—':a.sessions)+'</div></div>'+
+          '<div class="d"><div class="l">Token</div><div class="v'+(a.tok==null?' miss':'')+'">'+fmtTok(a.tok)+'</div></div>'+
+          '<div class="d"><div class="l">费用</div><div class="v'+(a.usd==null?' miss':'')+'">'+fmtUsd(a.usd)+'</div></div>'+
+          '<div class="d"><div class="l">模型</div><div class="v">'+a.model+'</div></div>'+
+          '<div class="d"><div class="l">置信</div><div class="v">'+a.modelConf+'</div></div>'+
+          '<div class="d" style="grid-column:span 2"><div class="l">说明</div><div class="v" style="font:650 12px var(--font)">'+a.note+'</div></div>'+
+        '</div></div></div>';
+    }).join('');
+    document.querySelectorAll('[data-toggle]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var id=b.getAttribute('data-toggle');
+        state.openId=state.openId===id?'':id;
+        renderWork();
+      });
+    });
+  }
+
+  function paintWall(){
+    var s=summarize(agentsInRange());
+    var el=document.getElementById('wallEff');
+    el.textContent=s.eff==null?'—':s.eff; el.classList.toggle('miss',s.eff==null);
+    el=document.getElementById('wallPeak');
+    el.textContent=s.peakLabel||'—'; el.classList.toggle('miss',!s.peakLabel);
+    el=document.getElementById('wallCache');
+    el.textContent=s.cacheHit==null?'—':(s.cacheHit+'%'); el.classList.toggle('miss',s.cacheHit==null);
+    el=document.getElementById('wallCost');
+    el.textContent=fmtUsd(s.usd); el.classList.toggle('miss',s.usd==null);
+    var hs=DAYS.map(function(d){return Math.max(8,Math.min(100,(summarize(agentsFor(d.id)).eff||0)*8));});
+    document.getElementById('wallBars').innerHTML=hs.map(function(h){return '<i style="height:'+h+'%"></i>';}).join('');
+    var ranked=s.list.filter(function(a){return a.peakEff!=null||a.cacheHit!=null;});
+    ranked.sort(function(a,b){return (b.peakEff||b.cacheHit||0)-(a.peakEff||a.cacheHit||0);});
+    document.getElementById('wallRank').innerHTML=ranked.length
+      ?ranked.map(function(a,i){
+        var m=a.peakEff!=null?(a.peakEff+'/h'):('缓存 '+a.cacheHit+'%');
+        return '<div><span><b>'+(i+1)+'</b> '+a.name+'</span><span>'+m+'</span></div>';
+      }).join('')
+      :'<div><span>无数源</span><span>—</span></div>';
+    document.getElementById('wallSrc').innerHTML=s.list.slice(0,3).map(function(a){
+      return '<div class="wall-src"><div class="nm">'+a.name+'</div><div class="st'+(a.usd==null&&a.tok==null?' warn':'')+'">'+a.model+'</div>'+
+        '<div class="r"><span>高峰</span><em class="'+(a.peakLabel?'':'miss')+'">'+(a.peakLabel||'—')+'</em></div>'+
+        '<div class="r"><span>费用</span><em class="'+(a.usd==null?'miss':'')+'">'+fmtUsd(a.usd)+'</em></div>'+
+        '<div class="r"><span>缓存</span><em class="'+(a.cacheHit==null?'miss':'')+'">'+(a.cacheHit==null?'—':(a.cacheHit+'%'))+'</em></div></div>';
+    }).join('');
+  }
+
+  function render(){
+    renderDays();
+    renderOverview();
+    renderRank();
+    renderCost();
+    renderWork();
+  }
+
+  document.querySelectorAll('#lenses .lens[data-lens]').forEach(function(b){
+    b.addEventListener('click',function(){setLens(b.getAttribute('data-lens'));});
+  });
+  document.querySelectorAll('#subtabs [data-tab]').forEach(function(b){
+    b.addEventListener('click',function(){setTab(b.getAttribute('data-tab'));});
+  });
+  document.querySelectorAll('#rangeSeg [data-range]').forEach(function(b){
+    b.addEventListener('click',function(){
+      state.range=b.getAttribute('data-range');
+      document.querySelectorAll('#rangeSeg [data-range]').forEach(function(x){x.classList.toggle('is-on',x===b);});
+      render();
+    });
+  });
+
+  var scr=document.getElementById('wallScr');
+  var frame=document.getElementById('wallFrame');
+  var hint=document.getElementById('surfHint');
+  function openWall(){
+    paintWall();
+    if(frame) frame.setAttribute('data-surface','local');
+    if(hint) hint.textContent='Tauri 独立窗 · 拖到副屏常亮';
+    document.querySelectorAll('#wallScr .wall-surf [data-surface]').forEach(function(x){
+      x.classList.toggle('is-on',x.getAttribute('data-surface')==='local');
+    });
+    scr.classList.add('is-on');scr.setAttribute('aria-hidden','false');
+  }
+  function closeWall(){scr.classList.remove('is-on');scr.setAttribute('aria-hidden','true');}
+  document.getElementById('openWall').addEventListener('click',openWall);
+  document.getElementById('closeWall').addEventListener('click',closeWall);
+  scr.addEventListener('click',function(e){if(e.target===scr) closeWall();});
+  document.querySelectorAll('#wallScr .wall-surf [data-surface]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var s=b.getAttribute('data-surface');
+      frame.setAttribute('data-surface',s);
+      document.querySelectorAll('#wallScr .wall-surf [data-surface]').forEach(function(x){
+        x.classList.toggle('is-on',x.getAttribute('data-surface')===s);
+      });
+      hint.textContent=s==='web'?'同站页 · 可新标签全屏到副屏':'Tauri 独立窗 · 拖到副屏常亮';
+    });
+  });
+
+  setTab('overview');
+  render();
+})();
+</script>
+</body>
+</html>

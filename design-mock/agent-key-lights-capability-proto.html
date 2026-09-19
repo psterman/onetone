@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>按键灯 · 能力叶原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;600&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#c9d4e2;--ink:#0f1b2a;--mute:#5a6c80;--faint:#8496a8;--line:rgba(15,27,42,.12);
+  --paper:#f3f6fa;--lights:#8a4b2a;--lights-soft:#f7ebe4;
+  --ok:#157a45;--ok-soft:#e3f5eb;--warn:#9a6700;--warn-soft:#fff6e0;
+  --accent:#0088cc;--accent-soft:#e5f5fc;
+  --st-idle:#94a3b8;--st-run:#2a9cc4;--st-wait:#f5a623;--st-done:#40b478;--st-fail:#dc505a;--st-listen:#00a3ff;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;--mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --preset-run:rgba(42,156,196,.75);
+  --preset-wait:rgba(245,166,35,.88);
+  --preset-done:rgba(64,180,120,.85);
+  --preset-fail:rgba(220,80,90,.9);
+  --preset-listen:rgba(0,163,255,.9);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:var(--font);font-size:13px;line-height:1.45;color:var(--ink);
+  background:
+    radial-gradient(900px 400px at 0% -8%,rgba(138,75,42,.16),transparent 55%),
+    radial-gradient(700px 360px at 100% 0%,rgba(15,107,138,.1),transparent 48%),
+    linear-gradient(168deg,#bfcbda,var(--bg) 50%,#d5dfeb);
+}
+.page{max-width:1100px;margin:0 auto;padding:18px 14px 48px}
+.eyebrow{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--lights)}
+h1{margin:0 0 6px;font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.02em}
+.lede{margin:0 0 16px;max-width:72ch;color:var(--mute);font-size:14px}
+
+.shell{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 14px 32px rgba(15,27,42,.07)}
+.shell-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:9px 12px;background:#e4ebf3;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--mute)}
+.shell-h b{color:var(--ink)}
+.layout{display:grid;grid-template-columns:minmax(240px,320px) 1fr;min-height:560px}
+@media (max-width:820px){.layout{grid-template-columns:1fr}}
+
+.preview{
+  padding:14px;background:linear-gradient(165deg,#eef2f6,#e2e8f0);
+  border-right:1px solid var(--line);display:flex;flex-direction:column;gap:10px;
+}
+.preview .cap{margin:0;font-size:12px;font-weight:800;color:var(--lights)}
+.preview .note{margin:0;font-size:11.5px;color:var(--mute)}
+.pad{
+  margin:8px auto 0;width:min(100%,220px);aspect-ratio:1;padding:10px;border-radius:18px;
+  background:#eef2f6;box-shadow:0 10px 24px rgba(15,23,42,.12);display:grid;gap:5px;
+  grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(5,1fr);
+}
+.key{
+  border-radius:8px;background:linear-gradient(180deg,#f8fafc,#e2e8f0);
+  border:1px solid rgba(15,23,42,.1);display:grid;place-items:center;
+  font-size:10px;font-weight:750;color:#64748b;position:relative;
+}
+.key.ag{background:linear-gradient(180deg,#f1f5f9,#e2e8f0)}
+.key.ag::after{
+  content:"";position:absolute;inset:3px;border-radius:6px;opacity:.9;
+  box-shadow:inset 0 0 0 1.5px var(--halo, transparent);
+}
+.key[data-st="running"]{--halo:var(--preset-run)}
+.key[data-st="needs_input"]{--halo:var(--preset-wait)}
+.key[data-st="done"]{--halo:var(--preset-done)}
+.key[data-st="failed"]{--halo:var(--preset-fail)}
+.key[data-st="listening"]{--halo:var(--preset-listen)}
+.key[data-st="running"]::after{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{filter:brightness(1.15)}}
+.legend{
+  display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:8px;
+}
+.legend span{
+  display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:750;color:var(--mute);
+  padding:3px 7px;border-radius:999px;background:#fff;border:1px solid var(--line);
+}
+.legend i{width:8px;height:8px;border-radius:50%;display:block}
+.legend .idle i{background:var(--st-idle)}
+.legend .run i{background:var(--st-run)}
+.legend .wait i{background:var(--st-wait)}
+.legend .done i{background:var(--st-done)}
+.legend .fail i{background:var(--st-fail)}
+.legend .listen i{background:var(--st-listen)}
+
+.detail{padding:12px 14px 16px;overflow:auto;background:var(--paper)}
+.job{
+  margin:0 0 12px;padding:12px 14px;border-radius:14px;border:1px solid rgba(138,75,42,.3);
+  background:linear-gradient(120deg,#fff,var(--lights-soft));
+}
+.job .lab{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:0 0 4px}
+.job h4{margin:0 0 4px;font-size:15px;font-weight:800}
+.job p{margin:0;font-size:12.5px;color:var(--mute)}
+
+.leaf-tabs{
+  display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);
+  border-radius:12px 12px 0 0;overflow:hidden;margin:0 0 12px;background:#fff;
+}
+.leaf-tabs button{
+  appearance:none;border:0;border-right:1px solid var(--line);background:var(--paper);
+  padding:10px 8px;font:inherit;cursor:pointer;color:var(--mute);
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.leaf-tabs button:last-child{border-right:0}
+.leaf-tabs button .t{font-size:12.5px;font-weight:800}
+.leaf-tabs button .s{font-size:10px;font-weight:650;opacity:.85}
+.leaf-tabs button.is-on{background:#fff;color:var(--lights);box-shadow:inset 0 -2px 0 var(--lights)}
+
+.pane-lead{margin:0 0 10px;font-size:12.5px;color:var(--mute)}
+.status-strip{
+  display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding:8px 10px;
+  border-radius:10px;border:1px solid var(--line);background:#fff;
+}
+.status-strip span{
+  display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:750;color:var(--mute);
+}
+.status-strip i{width:9px;height:9px;border-radius:50%}
+
+.cards{display:flex;flex-direction:column;gap:8px;margin:0 0 14px}
+.card{
+  border:1px solid var(--line);border-radius:12px;background:#fff;padding:10px 12px;
+  display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:start;
+}
+.card.is-off{opacity:.72}
+.card .who{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card .who b{font-size:13px;font-weight:800}
+.card .tier{
+  font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;
+  background:var(--lights-soft);color:var(--lights);border:1px solid rgba(138,75,42,.25);
+}
+.card .tier.custom{background:var(--accent-soft);color:#066a9c;border-color:rgba(0,136,204,.3)}
+.card .blurb{grid-column:1/-1;margin:0;font-size:12px;color:var(--mute);line-height:1.4}
+.card .meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:#066a9c}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.ok{background:var(--ok-soft);color:var(--ok)}
+.tog{
+  width:40px;height:22px;border-radius:999px;border:1px solid var(--line);background:#e2e8f0;
+  position:relative;cursor:pointer;appearance:none;flex-shrink:0;
+}
+.tog.on{background:#3b82f6;border-color:#3b82f6}
+.tog::after{
+  content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.2);transition:left .15s;
+}
+.tog.on::after{left:20px}
+
+.presets{margin:0 0 14px}
+.presets .lbl{margin:0 0 6px;font-size:11px;font-weight:800;color:var(--faint);letter-spacing:.04em}
+.preset-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+@media (max-width:520px){.preset-row{grid-template-columns:1fr 1fr}}
+.preset-row button{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:10px;
+  padding:8px 6px;font:inherit;cursor:pointer;text-align:center;
+}
+.preset-row button.is-on{border-color:var(--lights);box-shadow:0 0 0 1px var(--lights);background:var(--lights-soft)}
+.preset-row button b{display:block;font-size:11.5px;font-weight:800;margin-bottom:5px}
+.swatch{display:flex;justify-content:center;gap:3px}
+.swatch i{width:10px;height:10px;border-radius:3px}
+
+.fold{
+  margin:0 0 12px;padding:8px 10px;border-radius:10px;border:1px dashed var(--line);
+  background:#fff;font-size:11.5px;color:var(--mute);
+}
+.fold b{color:var(--ink)}
+
+.roadmap{
+  margin:0;padding:12px 12px 10px;border-radius:12px;border:1px solid rgba(138,75,42,.22);
+  background:linear-gradient(160deg,#fffaf7,var(--lights-soft));
+}
+.roadmap .h{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--lights)}
+.roadmap h5{margin:0 0 6px;font-size:13px;font-weight:800}
+.roadmap ol{margin:0;padding-left:18px;color:var(--mute);font-size:12px}
+.roadmap li{margin:0 0 4px}
+.roadmap .foot{margin:8px 0 0;font-size:11px;color:var(--faint)}
+
+.foot-note{margin:12px 0 0;font-size:11.5px;color:var(--faint)}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Design mock · Agent 设置 · 灯效</p>
+  <h1>按键灯 · 能力叶</h1>
+  <p class="lede">替换空洞的「显示状态灯」单开关：用 Codex / Claude / Cursor 三层能力卡 + 状态图例 + 配色预设；左侧 Soft Pad 对照键上状态。Vibecoding 价值写在底部后期说明，本原型不实现。</p>
+
+  <div class="shell">
+    <div class="shell-h">
+      <span>设置 → <b>Agent</b> → 灯效 → <b>按键灯</b></span>
+      <span>原型 · 可点开关 / 预设</span>
+    </div>
+    <div class="layout">
+      <aside class="preview">
+        <p class="cap">灯效对照 · Soft Pad</p>
+        <p class="note" id="padNote">AG 键晕圈 = 状态灯。切预设会换色；关开关则该 Agent 不点亮（演示仍显示图例态）。</p>
+        <div class="pad" id="pad" aria-label="Soft Pad 预览">
+          <div class="key ag" data-st="running">收</div>
+          <div class="key ag" data-st="needs_input">新</div>
+          <div class="key ag" data-st="done">Plan</div>
+          <div class="key ag" data-st="failed">止</div>
+          <div class="key">⌘</div>
+          <div class="key">💬</div>
+          <div class="key ag" data-st="listening">听</div>
+          <div class="key">+</div>
+          <div class="key">⌕</div>
+          <div class="key">⇥</div>
+          <div class="key">×</div>
+          <div class="key">+</div>
+          <div class="key">↩</div>
+          <div class="key">↶</div>
+          <div class="key">⌕</div>
+          <div class="key">⇥</div>
+          <div class="key" style="grid-column:span 2">🎤</div>
+          <div class="key">·</div>
+          <div class="key">·</div>
+        </div>
+        <div class="legend">
+          <span class="idle"><i></i>空闲</span>
+          <span class="run"><i></i>忙</span>
+          <span class="wait"><i></i>等你</span>
+          <span class="done"><i></i>完成</span>
+          <span class="fail"><i></i>失败</span>
+          <span class="listen"><i></i>聆听</span>
+        </div>
+      </aside>
+
+      <main class="detail">
+        <div class="job">
+          <div class="lab">这一叶管什么</div>
+          <h4>灯效 · 按键灯</h4>
+          <p>键上状态晕圈跟接通后的忙闲走。先看谁支持什么，再决定开不开；配色三 Agent 共用。</p>
+        </div>
+
+        <div class="leaf-tabs" role="tablist">
+          <button type="button" disabled><span class="t">盘边氛围</span><span class="s">状态色圈</span></button>
+          <button type="button" class="is-on"><span class="t">按键灯</span><span class="s">键上状态</span></button>
+        </div>
+
+        <p class="pane-lead">核心三 Agent 按键灯能力不同。未接通时开了灯也点不亮——先去对应「三标签页」接通。</p>
+
+        <div class="status-strip" aria-label="状态图例">
+          <span><i style="background:var(--st-idle)"></i>灰 · 空闲</span>
+          <span><i style="background:var(--st-run)"></i>蓝 · 忙</span>
+          <span><i style="background:var(--st-wait)"></i>琥珀 · 等你</span>
+          <span><i style="background:var(--st-done)"></i>绿 · 完成</span>
+          <span><i style="background:var(--st-fail)"></i>红 · 失败</span>
+          <span><i style="background:var(--st-listen)"></i>青 · 聆听</span>
+        </div>
+
+        <div class="cards" id="cards">
+          <article class="card" data-kind="codex">
+            <div class="who">
+              <b>Codex</b>
+              <span class="tier">preset · 单键宿主</span>
+            </div>
+            <button type="button" class="tog" data-tog="codex" aria-label="Codex 按键灯"></button>
+            <p class="blurb">一条状态键（默认 AG00 / 指定 status 槽）显示忙闲。适合「一个 Codex 会话一个灯」。需 hooks 接通后才有真数据。</p>
+            <div class="meta">
+              <span class="badge warn">还没接上</span>
+              <span class="badge">session ✓</span>
+            </div>
+          </article>
+
+          <article class="card" data-kind="claude">
+            <div class="who">
+              <b>Claude</b>
+              <span class="tier">preset · 可多分身</span>
+            </div>
+            <button type="button" class="tog on" data-tog="claude" aria-label="Claude 按键灯"></button>
+            <p class="blurb">可把多个子 Agent 摊到不同 AG 键上。比 Codex 更「分身灯」。需 Claude hooks / OTel 接通。</p>
+            <div class="meta">
+              <span class="badge ok">已接入</span>
+              <span class="badge">session ✓ · multi</span>
+            </div>
+          </article>
+
+          <article class="card" data-kind="cursor">
+            <div class="who">
+              <b>Cursor</b>
+              <span class="tier custom">customizable</span>
+            </div>
+            <button type="button" class="tog on" data-tog="cursor" aria-label="Cursor 按键灯"></button>
+            <p class="blurb">可配单键 / 多键模板；本机活动 + hooks。无会话分身列。细调模板仍在 Soft Pad「按键灯」。</p>
+            <div class="meta">
+              <span class="badge ok">已接入</span>
+              <span class="badge">无 session 分身</span>
+            </div>
+          </article>
+        </div>
+
+        <div class="presets">
+          <p class="lbl">共用配色预设（三 Agent 共用）</p>
+          <div class="preset-row" id="presets" role="radiogroup">
+            <button type="button" class="is-on" data-preset="default">
+              <b>默认</b>
+              <span class="swatch"><i style="background:#2a9cc4"></i><i style="background:#f5a623"></i><i style="background:#40b478"></i><i style="background:#dc505a"></i></span>
+            </button>
+            <button type="button" data-preset="cool">
+              <b>冷色</b>
+              <span class="swatch"><i style="background:#38bdf8"></i><i style="background:#a78bfa"></i><i style="background:#34d399"></i><i style="background:#fb7185"></i></span>
+            </button>
+            <button type="button" data-preset="warm">
+              <b>暖色</b>
+              <span class="swatch"><i style="background:#fb923c"></i><i style="background:#fbbf24"></i><i style="background:#84cc16"></i><i style="background:#f87171"></i></span>
+            </button>
+            <button type="button" data-preset="highContrast">
+              <b>高对比</b>
+              <span class="swatch"><i style="background:#0284c7"></i><i style="background:#d97706"></i><i style="background:#15803d"></i><i style="background:#b91c1c"></i></span>
+            </button>
+          </div>
+        </div>
+
+        <p class="fold"><b>其它 Agent</b>（WorkBuddy / Trae / MiniMax…）— 多数只有顶栏圆点或氛围灯，无自动按键灯。去 Soft Pad 迷你栏管理。</p>
+
+        <aside class="roadmap">
+          <p class="h">后期 · Vibecoding</p>
+          <h5>灯效如何对长时间挂机写码有用</h5>
+          <ol>
+            <li><b>流式忙态</b> — running 时 AG 键微脉冲，一眼知道 Agent 还在干活。</li>
+            <li><b>等你打断</b> — needs_input 高对比，挂机回来不会漏提示。</li>
+            <li><b>皮肤成套</b> — vibe-light / vibe-dark 与状态预设绑定，少调参。</li>
+            <li><b>不默认轰炸</b> — 核心三 Agent 仍默认关灯，接通后再建议开启。</li>
+          </ol>
+          <p class="foot">本原型仅展示文案位；不实现上述行为。</p>
+        </aside>
+      </main>
+    </div>
+  </div>
+  <p class="foot-note">文件：design-mock/agent-key-lights-capability-proto.html · 对齐计划「按键灯能力叶」</p>
+</div>
+
+<script>
+(function () {
+  var PRESETS = {
+    default: {
+      run: 'rgba(42,156,196,.75)',
+      wait: 'rgba(245,166,35,.88)',
+      done: 'rgba(64,180,120,.85)',
+      fail: 'rgba(220,80,90,.9)',
+      listen: 'rgba(0,163,255,.9)'
+    },
+    cool: {
+      run: 'rgba(56,189,248,.8)',
+      wait: 'rgba(167,139,250,.88)',
+      done: 'rgba(52,211,153,.85)',
+      fail: 'rgba(251,113,133,.9)',
+      listen: 'rgba(34,211,238,.9)'
+    },
+    warm: {
+      run: 'rgba(251,146,60,.8)',
+      wait: 'rgba(251,191,36,.9)',
+      done: 'rgba(132,204,22,.85)',
+      fail: 'rgba(248,113,113,.9)',
+      listen: 'rgba(251,113,133,.75)'
+    },
+    highContrast: {
+      run: 'rgba(2,132,199,.95)',
+      wait: 'rgba(217,119,6,.95)',
+      done: 'rgba(21,128,61,.95)',
+      fail: 'rgba(185,28,28,.95)',
+      listen: 'rgba(8,145,178,.95)'
+    }
+  };
+
+  function applyPreset(id) {
+    var p = PRESETS[id] || PRESETS.default;
+    var root = document.documentElement;
+    root.style.setProperty('--preset-run', p.run);
+    root.style.setProperty('--preset-wait', p.wait);
+    root.style.setProperty('--preset-done', p.done);
+    root.style.setProperty('--preset-fail', p.fail);
+    root.style.setProperty('--preset-listen', p.listen);
+    document.getElementById('padNote').textContent =
+      '当前预设「' + id + '」。关某 Agent 开关后，其键晕在真机中不更新（本原型仍展示图例态）。';
+  }
+
+  document.getElementById('presets').addEventListener('click', function (ev) {
+    var btn = ev.target.closest('[data-preset]');
+    if (!btn) return;
+    document.querySelectorAll('#presets [data-preset]').forEach(function (b) {
+      b.classList.toggle('is-on', b === btn);
+    });
+    applyPreset(btn.getAttribute('data-preset'));
+  });
+
+  document.getElementById('cards').addEventListener('click', function (ev) {
+    var tog = ev.target.closest('[data-tog]');
+    if (!tog) return;
+    tog.classList.toggle('on');
+    var card = tog.closest('.card');
+    if (card) card.classList.toggle('is-off', !tog.classList.contains('on'));
+  });
+
+  document.querySelectorAll('.card').forEach(function (card) {
+    var on = card.querySelector('.tog.on');
+    card.classList.toggle('is-off', !on);
+  });
+})();
+</script>
+</body>
+</html>

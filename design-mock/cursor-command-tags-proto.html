@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cursor 命令分类标签 · Agent 操控 vs 应用自带键</title>
+<style>
+:root{
+  --bg:#e8eef5; --surface:#fff; --soft:#f4f7fb; --line:rgba(26,45,74,.1);
+  --on:#152238; --mute:#5a7086; --faint:#8b9aab;
+  --p:#2a9cc4; --p-ink:#1a7a9c; --p-soft:#e8f6fb; --outline:rgba(42,156,196,.32);
+  --ok:#1b7a45; --ok-soft:#e8f6ee;
+  --agent:#0f6b5c; --agent-soft:#e6f5f1; --agent-line:rgba(15,107,92,.32);
+  --native:#1a5f8a; --native-soft:#e8f3fa; --native-line:rgba(26,95,138,.28);
+  --warn:#8a6a12; --warn-soft:#fff8e8;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;background:var(--bg);color:var(--on)}
+.page{max-width:920px;margin:0 auto;padding:16px 14px 56px}
+h1{margin:0 0 4px;font-size:18px;font-weight:800;letter-spacing:-.02em}
+.lede{margin:0 0 12px;font-size:13px;color:var(--mute);max-width:68ch}
+
+.split{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;
+}
+@media (max-width:700px){.split{grid-template-columns:1fr}}
+.rail{
+  padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:#fff;
+}
+.rail.agent{border-color:var(--agent-line);background:var(--agent-soft)}
+.rail.native{border-color:var(--native-line);background:var(--native-soft)}
+.rail h2{margin:0 0 4px;font-size:14px;font-weight:800}
+.rail p{margin:0;font-size:12px;color:var(--mute);line-height:1.45}
+.rail .how{margin-top:8px;font-size:11.5px;font-weight:700;color:var(--on)}
+
+.mock{
+  border:1px solid var(--line);border-radius:14px;background:#fff;
+  overflow:hidden;box-shadow:0 10px 28px rgba(26,45,74,.07);
+}
+.chrome{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;
+  border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fbfdff,#f2f6fa);
+}
+.chrome strong{font-size:12.5px}
+.chrome .hint{margin-left:auto;font-size:11.5px;color:var(--mute)}
+
+.body{padding:12px;background:#f7f9fc;display:grid;gap:10px}
+
+.src{
+  display:flex;gap:6px;flex-wrap:wrap;
+}
+.src button{
+  appearance:none;border:1.5px solid var(--line);background:#fff;border-radius:999px;
+  padding:7px 14px;font:inherit;font-size:12.5px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.src button.is-on.agent{border-color:var(--agent-line);background:var(--agent-soft);color:var(--agent)}
+.src button.is-on.native{border-color:var(--native-line);background:var(--native-soft);color:var(--native)}
+
+.tags{display:flex;flex-wrap:wrap;gap:5px}
+.tag{
+  appearance:none;border:0;background:transparent;color:var(--mute);
+  padding:6px 11px;border-radius:8px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;
+}
+.tag:hover{background:rgba(26,45,74,.05);color:var(--on)}
+.tag.is-on{background:#fff;color:var(--p-ink);font-weight:800;box-shadow:0 1px 2px rgba(26,45,74,.06);border:1px solid var(--line)}
+.tag .n{font-size:10.5px;font-weight:700;color:var(--faint);margin-left:4px}
+
+.lead{margin:0;font-size:12.5px;color:var(--mute)}
+.lead b{color:var(--on)}
+
+.list{display:flex;flex-direction:column;gap:7px;max-height:min(520px,62vh);overflow:auto}
+.row{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 10px;
+  padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;
+  cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%;
+}
+.row:hover{border-color:rgba(42,156,196,.35)}
+.row.is-on{border-color:var(--p);background:var(--p-soft);box-shadow:0 0 0 1px rgba(42,156,196,.2)}
+.row .star{width:22px;align-self:center;color:var(--faint);font-size:14px;text-align:center}
+.row .star.on{color:#c47a12}
+.row .name{font-size:13.5px;font-weight:800}
+.row .why{font-size:12px;color:var(--mute);margin-top:2px}
+.row .drive{
+  margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;
+}
+.pill{
+  display:inline-block;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:750;
+}
+.pill.agent{background:var(--agent-soft);color:var(--agent);border:1px solid var(--agent-line)}
+.pill.native{background:var(--native-soft);color:var(--native);border:1px solid var(--native-line)}
+.pill.way{background:#eef1f5;color:var(--mute)}
+.row .chord{
+  font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--p-ink);
+  background:var(--p-soft);border-radius:7px;padding:3px 8px;align-self:start;white-space:nowrap;
+}
+.row .chord.none{background:#eef1f5;color:var(--faint);font-family:var(--font);font-size:11px}
+
+.note{
+  margin:12px 0 0;padding:10px 12px;border-radius:10px;background:var(--warn-soft);
+  border:1px solid rgba(180,130,20,.28);font-size:12px;color:var(--warn);line-height:1.5;
+}
+.foot{margin-top:12px;font-size:11.5px;color:var(--faint)}
+code{font-family:var(--mono);font-size:11px;color:var(--mute)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>分类标签 · 小白怎么选 Cursor 命令</h1>
+  <p class="lede">先选来源，再选人话标签。每条命令都标清：是用 OneTone <b>操控 Agent</b>，还是按下 Cursor <b>自己原来的快捷键</b>——两套不要混在一个列表里假装一样。</p>
+
+  <div class="split">
+    <article class="rail agent">
+      <h2>A · Agent 操控</h2>
+      <p>OneTone 替你在 Cursor 里完成「这一轮 vibe」：开麦、发送、停、新局、切 Plan/Agent、继续（口令）、接受改动。</p>
+      <div class="how">对接：焦点 / OneTone 听写 / Composer 模式热键 / 塞话 / 接受 diff</div>
+    </article>
+    <article class="rail native">
+      <h2>B · 应用自带键</h2>
+      <p>Cursor / VS Code 本来就有的和弦：搜文件、命令面板、行内编辑、前进后退……按下等于你在 Cursor 里手按同一组键。</p>
+      <div class="how">对接：稳定 App 快捷键（软件自带目录）</div>
+    </article>
+  </div>
+
+  <div class="mock">
+    <div class="chrome">
+      <strong>选命令绑到 Soft Pad / 习惯</strong>
+      <span class="hint">标签 = 小白话 · 来源 = 会不会和原快捷键搞混</span>
+    </div>
+    <div class="body">
+      <div class="src" role="tablist" aria-label="命令来源">
+        <button type="button" class="is-on agent" data-src="agent">Agent 操控</button>
+        <button type="button" class="native" data-src="native">应用自带键</button>
+      </div>
+      <div class="tags" id="tags" role="tablist" aria-label="人话分类"></div>
+      <p class="lead" id="lead"></p>
+      <div class="list" id="list" role="listbox"></div>
+    </div>
+  </div>
+
+  <p class="note"><b>小白默认只看 Agent 操控 →「这一轮」：</b>开麦、发送、停、新局（+ 聚焦）。「继续」在口头指令通道，不进 Soft Pad 一键塞话。Plan/Agent、审改动第二周再露。「应用自带键」整栏对小白默认折叠进「更多」。</p>
+  <p class="foot">本页是分类共识原型，不改产品代码。落地时 Soft Pad「屏幕按钮」主推 A；Keys「软件自带」主推 B。重叠项（如发送 Enter）在 A/B 各出现一次时，文案必须带来源 pill。</p>
+</div>
+
+<script>
+(function () {
+  /** source: agent | native — beginner tags under each */
+  var TAGS = {
+    agent: [
+      { id: 'round', label: '这一轮', tip: '说 → 发 → 停 → 新开。小白默认只看这里。' },
+      { id: 'mode', label: '换方式', tip: 'Plan 先想，或 Agent 直接改。第二周再教。' },
+      { id: 'review', label: '审改动', tip: 'Agent 改完代码后，收下或跳过建议。' },
+      { id: 'focus', label: '回到 Cursor', tip: '人在别的软件时，一键切回来。' },
+      { id: 'say', label: '口头指令', tip: '塞一句话给 AI（继续等）。不进 Soft Pad 一键。' }
+    ],
+    native: [
+      { id: 'chat', label: '跟 AI 聊', tip: 'Cursor 自带的聊天相关快捷键。' },
+      { id: 'edit', label: '改代码', tip: '行内编辑、补全、粘贴。' },
+      { id: 'find', label: '找东西', tip: '搜文件、命令面板。' },
+      { id: 'move', label: '在窗口走动', tip: '侧栏、前进后退、终端等。' }
+    ]
+  };
+
+  /**
+   * drive = how OneTone/Cursor actually fires
+   * chord = user-visible key or channel note
+   */
+  var ITEMS = [
+    // —— Agent 操控 · 这一轮 ——
+    { src: 'agent', tag: 'round', id: 'pushToTalk', title: '开麦说话', why: '对着输入框说需求（OneTone 听写，不是 Cursor 自带麦）', drive: 'OneTone 听写', chord: 'RAlt', beginner: true },
+    { src: 'agent', tag: 'round', id: 'stopOrSend', title: '发出去', why: '写好了交给 Agent', drive: 'Composer 发送', chord: 'Enter', beginner: true },
+    { src: 'agent', tag: 'round', id: 'cancel', title: '停住', why: '生成跑偏立刻停', drive: '取消生成', chord: 'Ctrl+Shift+Backspace', beginner: true },
+    { src: 'agent', tag: 'round', id: 'newThread', title: '新开一局', why: '聊乱了开干净对话', drive: '新建 Chat', chord: 'Ctrl+N', beginner: true },
+    // —— Agent · 聚焦 ——
+    { src: 'agent', tag: 'focus', id: 'summonCodex', title: '聚焦 Cursor', why: '从别的软件切回来并尽量点到输入框', drive: '窗口聚焦', chord: '焦点', beginner: true },
+    // —— Agent · 换方式 ——
+    { src: 'agent', tag: 'mode', id: 'plan', title: '定计划', why: '先想清楚再动手', drive: 'Composer 模式热键', chord: 'Ctrl+Alt+Shift+P' },
+    { src: 'agent', tag: 'mode', id: 'switchAgent', title: '开工 Agent', why: '让 Agent 直接改代码', drive: 'Composer 模式热键', chord: 'Ctrl+Alt+.' },
+    // —— Agent · 审改动 ——
+    { src: 'agent', tag: 'review', id: 'acceptChanges', title: '接受这一处', why: '收下当前 diff 建议', drive: '接受改动键', chord: '待确认', gap: true },
+    { src: 'agent', tag: 'review', id: 'acceptAllChanges', title: '全部接受', why: '整批建议都收下', drive: '全部接受键', chord: '待确认', gap: true },
+    // —— Agent · 口头 ——
+    { src: 'agent', tag: 'say', id: 'continue', title: '继续', why: 'Agent 停住时让它接着干', drive: '口头指令 · 塞话', chord: '说「继续」', voiceOnly: true },
+    { src: 'agent', tag: 'say', id: 'summarizeDiff', title: '总结改动', why: '让 AI 概括刚改了什么', drive: '口头指令 · 塞话', chord: '说口令', voiceOnly: true },
+
+    // —— 应用自带键 ——
+    { src: 'native', tag: 'chat', id: 'quickChat', title: '打开侧边聊天', why: '拉开 Cursor Chat / Agent 面板', drive: '应用快捷键', chord: 'Ctrl+I' },
+    { src: 'native', tag: 'chat', id: 'nStop', title: '发送（应用键）', why: '与 Agent「发出去」同一 Enter，但归在自带键目录', drive: '应用快捷键', chord: 'Enter', twin: 'stopOrSend' },
+    { src: 'native', tag: 'chat', id: 'nCancel', title: '取消（应用键）', why: 'Cursor 取消生成和弦', drive: '应用快捷键', chord: 'Ctrl+Shift+Backspace', twin: 'cancel' },
+    { src: 'native', tag: 'chat', id: 'nNew', title: '新对话（应用键）', why: 'Ctrl+N 新建', drive: '应用快捷键', chord: 'Ctrl+N', twin: 'newThread' },
+    { src: 'native', tag: 'edit', id: 'inlineEdit', title: '行内编辑', why: '选中代码就地改', drive: '应用快捷键', chord: 'Ctrl+K' },
+    { src: 'native', tag: 'edit', id: 'acceptTab', title: '接受补全', why: '收下灰色 Tab 建议', drive: '应用快捷键', chord: 'Tab' },
+    { src: 'native', tag: 'edit', id: 'paste', title: '粘贴', why: 'Ctrl+V', drive: '应用快捷键', chord: 'Ctrl+V' },
+    { src: 'native', tag: 'find', id: 'quickSearch', title: '搜文件', why: 'Quick Open', drive: '应用快捷键', chord: 'Ctrl+P' },
+    { src: 'native', tag: 'find', id: 'commandPalette', title: '命令菜单', why: '搜任意命令', drive: '应用快捷键', chord: 'Ctrl+Shift+P' },
+    { src: 'native', tag: 'move', id: 'toggleSidebar', title: '切换边栏', why: '腾出编辑区', drive: '应用快捷键', chord: 'Ctrl+B' },
+    { src: 'native', tag: 'move', id: 'navBack', title: '返回', why: '导航上一处', drive: '应用快捷键', chord: 'Alt+Left' },
+    { src: 'native', tag: 'move', id: 'openTerminal', title: '打开终端', why: '跑命令', drive: '应用快捷键', chord: 'Ctrl+`' }
+  ];
+
+  var src = 'agent';
+  var tagId = 'round';
+  var pick = 'pushToTalk';
+
+  function tagsFor() { return TAGS[src] || []; }
+
+  function paintTags() {
+    var host = document.getElementById('tags');
+    var list = tagsFor();
+    if (!list.some(function (t) { return t.id === tagId; })) tagId = list[0].id;
+    host.innerHTML = '';
+    list.forEach(function (t) {
+      var count = ITEMS.filter(function (x) { return x.src === src && x.tag === t.id; }).length;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tag' + (t.id === tagId ? ' is-on' : '');
+      b.innerHTML = t.label + '<span class="n">' + count + '</span>';
+      b.addEventListener('click', function () {
+        tagId = t.id;
+        var first = ITEMS.find(function (x) { return x.src === src && x.tag === tagId; });
+        if (first) pick = first.id;
+        paint();
+      });
+      host.appendChild(b);
+    });
+    var tip = list.find(function (t) { return t.id === tagId; });
+    document.getElementById('lead').innerHTML = tip
+      ? '<b>' + tip.label + '</b> · ' + tip.tip
+      : '';
+  }
+
+  function paintList() {
+    var host = document.getElementById('list');
+    host.innerHTML = '';
+    ITEMS.filter(function (x) { return x.src === src && x.tag === tagId; }).forEach(function (item) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'row' + (item.id === pick ? ' is-on' : '');
+      var srcPill = item.src === 'agent'
+        ? '<span class="pill agent">Agent 操控</span>'
+        : '<span class="pill native">应用自带键</span>';
+      var way = '<span class="pill way">' + item.drive + '</span>';
+      if (item.voiceOnly) way += '<span class="pill way">不进 Soft Pad 一键</span>';
+      if (item.gap) way += '<span class="pill way">待补 Soft Pad</span>';
+      if (item.beginner) way += '<span class="pill way">小白默认</span>';
+      if (item.twin) way += '<span class="pill way">与 Agent「' + item.twin + '」同键 · 目录不同</span>';
+      var chordCls = item.chord === '待确认' || item.voiceOnly ? 'chord none' : 'chord';
+      b.innerHTML =
+        '<span class="star' + (item.beginner ? ' on' : '') + '">★</span>' +
+        '<span><span class="name">' + item.title + '</span>' +
+        '<div class="why">' + item.why + '</div>' +
+        '<div class="drive">' + srcPill + way + '</div></span>' +
+        '<span class="' + chordCls + '">' + item.chord + '</span>';
+      b.addEventListener('click', function () {
+        pick = item.id;
+        paintList();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  function paint() {
+    document.querySelectorAll('.src button').forEach(function (btn) {
+      var s = btn.getAttribute('data-src');
+      btn.classList.toggle('is-on', s === src);
+      btn.classList.toggle('agent', s === 'agent');
+      btn.classList.toggle('native', s === 'native');
+    });
+    paintTags();
+    paintList();
+  }
+
+  document.querySelectorAll('.src button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      src = btn.getAttribute('data-src');
+      tagId = TAGS[src][0].id;
+      var first = ITEMS.find(function (x) { return x.src === src && x.tag === tagId; });
+      pick = first ? first.id : '';
+      paint();
+    });
+  });
+
+  paint();
+})();
+</script>
+</body>
+</html>

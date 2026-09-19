@@ -3396,6 +3396,12 @@
       var rootEl=document.querySelector('.root');
       if(rootEl) rootEl.setAttribute('data-pad-skin', padSkin);
       wrap.setAttribute('data-pad-skin', padSkin);
+      var screenOp=Number(s.screenOpacity!=null?s.screenOpacity:s.screen_opacity);
+      if(screenOp>1&&screenOp<=100) screenOp=screenOp/100;
+      if(!(screenOp>0)||screenOp>1) screenOp=0.82;
+      if(screenOp<0.4) screenOp=0.4;
+      wrap.style.setProperty('--micro-hw-screen-opacity', String(screenOp));
+      if(rootEl) rootEl.style.setProperty('--micro-hw-screen-opacity', String(screenOp));
       var purpose=String(s.purpose||'shortcuts').toLowerCase()==='sessions'?'sessions':'shortcuts';
       var agRaw=String(s.agSurface||'').toLowerCase();
       var agSurface=(agRaw==='mixed'||agRaw==='sessionlanes')?'mixed':'actions';

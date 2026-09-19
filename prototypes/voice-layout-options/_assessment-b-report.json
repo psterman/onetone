@@ -1,0 +1,362 @@
+{
+  "shots": [
+    {
+      "path": "E:/voice-pilot/prototypes/voice-layout-options/_shot-a-filled.png",
+      "exists": true,
+      "bytes": 127474
+    },
+    {
+      "path": "E:/voice-pilot/prototypes/voice-layout-options/_shot-c2-filled.png",
+      "exists": true,
+      "bytes": 118582
+    },
+    {
+      "path": "E:/voice-pilot/prototypes/voice-layout-options/_shot-c2-empty.png",
+      "exists": true,
+      "bytes": 119363
+    },
+    {
+      "path": "E:/voice-pilot/prototypes/voice-layout-options/_shot-a-empty.png",
+      "exists": true,
+      "bytes": 128651
+    }
+  ],
+  "measurements": {
+    "aFilled": {
+      "scheme": "a",
+      "rail": {
+        "w": 150,
+        "h": 302,
+        "x": 27,
+        "y": 471.9
+      },
+      "detail": {
+        "w": 856,
+        "h": 302,
+        "x": 187,
+        "y": 471.9
+      },
+      "sceneDock": {
+        "w": 200,
+        "h": 302,
+        "x": 1053,
+        "y": 471.9
+      },
+      "grid": {
+        "className": "a-body",
+        "display": "grid",
+        "gridTemplateColumns": "150px 856px 200px",
+        "gap": "10px",
+        "width": 1250
+      },
+      "emptyPresent": false,
+      "filledRows": 2,
+      "dockMeta": "2 个动作"
+    },
+    "c2Filled": {
+      "scheme": "c2",
+      "rail": {
+        "w": 200,
+        "h": 392.8,
+        "x": 27,
+        "y": 352.9
+      },
+      "detail": {
+        "w": 806,
+        "h": 392.8,
+        "x": 237,
+        "y": 352.9
+      },
+      "sceneDock": {
+        "w": 200,
+        "h": 392.8,
+        "x": 1053,
+        "y": 352.9
+      },
+      "grid": {
+        "className": "a-body",
+        "display": "grid",
+        "gridTemplateColumns": "200px 806px 200px",
+        "gap": "10px",
+        "width": 1250
+      },
+      "emptyPresent": false,
+      "filledRows": 2,
+      "dockMeta": "2 个动作"
+    },
+    "aEmpty": {
+      "scheme": "a",
+      "rail": {
+        "w": 150,
+        "h": 276,
+        "x": 27,
+        "y": 471.9
+      },
+      "detail": {
+        "w": 856,
+        "h": 276,
+        "x": 187,
+        "y": 471.9
+      },
+      "sceneDock": {
+        "w": 200,
+        "h": 276,
+        "x": 1053,
+        "y": 471.9
+      },
+      "grid": {
+        "className": "a-body",
+        "display": "grid",
+        "gridTemplateColumns": "150px 856px 200px",
+        "gap": "10px",
+        "width": 1250
+      },
+      "emptyPresent": true,
+      "filledRows": 0,
+      "dockMeta": "0 个动作"
+    },
+    "c2Empty": {
+      "scheme": "c2",
+      "rail": {
+        "w": 200,
+        "h": 392.8,
+        "x": 27,
+        "y": 352.9
+      },
+      "detail": {
+        "w": 806,
+        "h": 392.8,
+        "x": 237,
+        "y": 352.9
+      },
+      "sceneDock": {
+        "w": 200,
+        "h": 392.8,
+        "x": 1053,
+        "y": 352.9
+      },
+      "grid": {
+        "className": "a-body",
+        "display": "grid",
+        "gridTemplateColumns": "200px 806px 200px",
+        "gap": "10px",
+        "width": 1250
+      },
+      "emptyPresent": true,
+      "filledRows": 0,
+      "dockMeta": "0 个动作"
+    }
+  },
+  "facts": {
+    "focusRuleCount": 1,
+    "focusRulesSample": [
+      "CSSOM error: Failed to read the 'cssRules' property from 'CSSStyleSheet': Cannot access rules"
+    ],
+    "mediaRules": [],
+    "focusStylesOnButtons": [
+      {
+        "className": "is-on",
+        "outline": "rgb(255, 255, 255) none 3px",
+        "outlineWidth": "3px",
+        "outlineStyle": "none",
+        "boxShadow": "none"
+      },
+      {
+        "className": "intent",
+        "outline": "rgb(90, 107, 124) none 3px",
+        "outlineWidth": "3px",
+        "outlineStyle": "none",
+        "boxShadow": "none"
+      },
+      {
+        "className": "chip is-on",
+        "outline": "rgb(15, 95, 122) none 3px",
+        "outlineWidth": "3px",
+        "outlineStyle": "none",
+        "boxShadow": "none"
+      },
+      {
+        "className": "scene-dock__new",
+        "outline": "rgb(19, 32, 44) none 3px",
+        "outlineWidth": "3px",
+        "outlineStyle": "none",
+        "boxShadow": "none"
+      }
+    ],
+    "hasRoleTablist": false,
+    "tabsAria": {
+      "tabsContainerRole": null,
+      "firstTabAriaSelected": null,
+      "firstTabAriaControls": null
+    },
+    "emptyCopy": "还没有动作 · 点中间新建",
+    "emptyLink": "在「我的习惯」查看全部通道 →",
+    "imgWithoutAlt": 0,
+    "buttonsWithoutType": 0
+  },
+  "stacking": [
+    {
+      "width": 1280,
+      "a": {
+        "scheme": "a",
+        "gridCols": "150px 856px 200px",
+        "railW": 150,
+        "detailW": 856,
+        "dockW": 200,
+        "railDetailSameRow": true,
+        "detailDockSameRow": true,
+        "columnsStacked": false
+      },
+      "c2": {
+        "scheme": "c2",
+        "gridCols": "200px 806px 200px",
+        "railW": 200,
+        "detailW": 806,
+        "dockW": 200,
+        "railDetailSameRow": true,
+        "detailDockSameRow": true,
+        "columnsStacked": false
+      }
+    },
+    {
+      "width": 1024,
+      "a": {
+        "scheme": "a",
+        "gridCols": "150px 600px 200px",
+        "railW": 150,
+        "detailW": 600,
+        "dockW": 200,
+        "railDetailSameRow": true,
+        "detailDockSameRow": true,
+        "columnsStacked": false
+      },
+      "c2": {
+        "scheme": "c2",
+        "gridCols": "200px 550px 200px",
+        "railW": 200,
+        "detailW": 550,
+        "dockW": 200,
+        "railDetailSameRow": true,
+        "detailDockSameRow": true,
+        "columnsStacked": false
+      }
+    },
+    {
+      "width": 960,
+      "a": {
+        "scheme": "a",
+        "gridCols": "906px",
+        "railW": 906,
+        "detailW": 906,
+        "dockW": 906,
+        "railDetailSameRow": false,
+        "detailDockSameRow": false,
+        "columnsStacked": true
+      },
+      "c2": {
+        "scheme": "c2",
+        "gridCols": "200px 486px 200px",
+        "railW": 200,
+        "detailW": 486,
+        "dockW": 200,
+        "railDetailSameRow": true,
+        "detailDockSameRow": true,
+        "columnsStacked": false
+      }
+    },
+    {
+      "width": 959,
+      "a": {
+        "scheme": "a",
+        "gridCols": "905px",
+        "railW": 905,
+        "detailW": 905,
+        "dockW": 905,
+        "railDetailSameRow": false,
+        "detailDockSameRow": false,
+        "columnsStacked": true
+      },
+      "c2": {
+        "scheme": "c2",
+        "gridCols": "200px 485px 200px",
+        "railW": 200,
+        "detailW": 485,
+        "dockW": 200,
+        "railDetailSameRow": true,
+        "detailDockSameRow": true,
+        "columnsStacked": false
+      }
+    },
+    {
+      "width": 800,
+      "a": {
+        "scheme": "a",
+        "gridCols": "746px",
+        "railW": 746,
+        "detailW": 746,
+        "dockW": 746,
+        "railDetailSameRow": false,
+        "detailDockSameRow": false,
+        "columnsStacked": true
+      },
+      "c2": {
+        "scheme": "c2",
+        "gridCols": "200px 326px 200px",
+        "railW": 200,
+        "detailW": 326,
+        "dockW": 200,
+        "railDetailSameRow": true,
+        "detailDockSameRow": true,
+        "columnsStacked": false
+      }
+    },
+    {
+      "width": 768,
+      "a": {
+        "scheme": "a",
+        "gridCols": "714px",
+        "railW": 714,
+        "detailW": 714,
+        "dockW": 714,
+        "railDetailSameRow": false,
+        "detailDockSameRow": false,
+        "columnsStacked": true
+      },
+      "c2": {
+        "scheme": "c2",
+        "gridCols": "200px 294px 200px",
+        "railW": 200,
+        "detailW": 294,
+        "dockW": 200,
+        "railDetailSameRow": true,
+        "detailDockSameRow": true,
+        "columnsStacked": false
+      }
+    },
+    {
+      "width": 640,
+      "a": {
+        "scheme": "a",
+        "gridCols": "586px",
+        "railW": 586,
+        "detailW": 586,
+        "dockW": 586,
+        "railDetailSameRow": false,
+        "detailDockSameRow": false,
+        "columnsStacked": true
+      },
+      "c2": {
+        "scheme": "c2",
+        "gridCols": "200px 166px 200px",
+        "railW": 200,
+        "detailW": 166,
+        "dockW": 200,
+        "railDetailSameRow": true,
+        "detailDockSameRow": true,
+        "columnsStacked": false
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": []
+}

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent 配置 · 对着实物改</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;600&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#cfd9e6;
+  --ink:#101c2c;
+  --mute:#5a6c80;
+  --faint:#8496a8;
+  --line:rgba(16,28,44,.12);
+  --paper:#f4f7fb;
+  --agent:#3a4580;
+  --agent-soft:#e4e7f5;
+  --agent-line:rgba(58,69,128,.35);
+  --action:#1a7a6c;
+  --action-soft:#dcefeb;
+  --ok:#157a45;
+  --ok-soft:#e3f5eb;
+  --warn:#9a6700;
+  --warn-soft:#fff6e0;
+  --bad:#b42318;
+  --bad-soft:#fce8e6;
+  --hot:#c45c48;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:var(--font);font-size:13px;line-height:1.45;color:var(--ink);
+  background:
+    radial-gradient(860px 400px at 6% -8%,rgba(58,69,128,.15),transparent 55%),
+    radial-gradient(620px 340px at 100% 4%,rgba(196,92,72,.08),transparent 48%),
+    linear-gradient(168deg,#c5d0de,var(--bg) 48%,#d8e1ec);
+}
+.page{max-width:1120px;margin:0 auto;padding:18px 14px 64px}
+.eyebrow{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--agent)}
+h1{margin:0 0 8px;font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.12}
+.lede{margin:0 0 14px;max-width:72ch;color:var(--mute);font-size:14.5px}
+
+.problem{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;
+}
+@media (max-width:800px){.problem{grid-template-columns:1fr}}
+.pcard{
+  border-radius:14px;padding:12px 13px;border:1px solid var(--line);background:#fff;
+}
+.pcard.bad{background:linear-gradient(135deg,var(--bad-soft),#fff 75%)}
+.pcard.ok{background:linear-gradient(135deg,var(--ok-soft),#fff 75%)}
+.pcard .m{font-size:11px;font-weight:800;margin-bottom:4px}
+.pcard.bad .m{color:var(--bad)}
+.pcard.ok .m{color:var(--ok)}
+.pcard h2{margin:0 0 4px;font-size:13.5px;font-weight:800}
+.pcard p{margin:0;font-size:12.5px;color:var(--mute)}
+
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.tab{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:7px 13px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.tab.is-on{background:var(--agent-soft);border-color:var(--agent-line);color:var(--agent)}
+.panel{display:none}.panel.is-on{display:block}
+
+.shell{
+  border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;
+  box-shadow:0 14px 32px rgba(16,28,44,.07);
+}
+.shell-h{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;
+  padding:9px 12px;background:#e4ebf3;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--mute);
+}
+.shell-h b{color:var(--ink)}
+.pill{display:inline-flex;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:750}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+
+.layout{display:grid;grid-template-columns:140px 1fr;min-height:420px}
+@media (max-width:720px){.layout{grid-template-columns:1fr}}
+.snav{background:#e8eef5;border-right:1px solid var(--line);padding:10px 8px}
+.snav .g{margin:8px 6px 4px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.snav .i{padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;color:var(--mute);margin:2px 0}
+.snav .i.on{background:#fff;color:var(--agent);box-shadow:inset 3px 0 0 var(--agent)}
+.main{display:flex;flex-direction:column;min-width:0}
+.head{padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+.head h3{margin:0;font-size:15px;font-weight:800}
+.head p{margin:3px 0 0;font-size:12px;color:var(--mute)}
+.subtabs{display:flex;flex-wrap:wrap;gap:4px;padding:10px 14px 0}
+.subtabs button{
+  appearance:none;border:1px solid var(--line);background:var(--paper);border-radius:10px;
+  padding:7px 12px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.subtabs button.is-on{background:var(--agent-soft);border-color:var(--agent-line);color:var(--agent)}
+
+/* WYSIWYG stage */
+.stage{padding:14px;display:grid;grid-template-columns:1fr 220px;gap:14px;align-items:start}
+@media (max-width:860px){.stage{grid-template-columns:1fr}}
+.canvas{
+  border-radius:14px;border:1px solid var(--line);background:
+    radial-gradient(circle at 20% 20%,rgba(58,69,128,.06),transparent 50%),
+    var(--paper);
+  padding:16px;min-height:260px;position:relative;
+}
+.canvas .cap{
+  margin:0 0 12px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);
+}
+.guide{margin:10px 0 0;font-size:12px;color:var(--mute)}
+.guide b{color:var(--hot)}
+
+/* interactive float */
+.float{
+  max-width:340px;margin:0 auto;border-radius:14px;padding:10px 12px;
+  background:rgba(16,28,44,.92);color:#e8eef5;
+  box-shadow:0 16px 36px rgba(16,28,44,.25);
+  position:relative;
+}
+.float .top{display:flex;align-items:center;gap:8px}
+.float .dots{display:flex;gap:5px}
+.float .dots button{
+  width:14px;height:14px;border-radius:50%;border:2px solid transparent;padding:0;cursor:pointer;
+  background:#8aa0b4;
+}
+.float .dots button.run{background:#2a9d6a}
+.float .dots button.wait{background:#d4a017}
+.float .dots button.is-pick{border-color:#fff;box-shadow:0 0 0 2px var(--hot)}
+.float .title{flex:1;font-weight:800;font-size:12.5px}
+.float .usage{
+  font-family:var(--mono);font-size:11px;padding:2px 6px;border-radius:6px;
+  background:rgba(255,255,255,.1);border:2px solid transparent;cursor:pointer;color:#e8eef5;
+}
+.float .usage.is-pick{border-color:var(--hot)}
+.float .speech{
+  margin-top:8px;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.08);
+  font-size:11.5px;border:2px solid transparent;cursor:pointer;color:rgba(232,238,245,.85);
+}
+.float .speech.is-pick{border-color:var(--hot)}
+.float .tools{
+  margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;
+}
+.float .tools button{
+  appearance:none;border:2px solid transparent;background:rgba(255,255,255,.12);
+  color:#e8eef5;border-radius:8px;padding:5px 8px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;
+}
+.float .tools button.is-pick{border-color:var(--hot)}
+
+/* lights canvas */
+.light-board{
+  max-width:280px;margin:0 auto;padding:14px;border-radius:16px;
+  background:linear-gradient(160deg,#1a2a3c,#24384d);position:relative;
+}
+.light-board .rim{
+  position:absolute;inset:6px;border-radius:12px;border:3px solid #2a9d6a;
+  opacity:.85;pointer-events:none;transition:border-color .15s;
+}
+.light-board .rim.is-pick{outline:2px dashed var(--hot);outline-offset:2px}
+.light-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;position:relative;z-index:1;padding:10px}
+.light-keys button{
+  aspect-ratio:1;border-radius:8px;border:2px solid transparent;cursor:pointer;
+  background:rgba(255,255,255,.1);color:#d7e4f0;font:inherit;font-size:10px;font-weight:700;
+}
+.light-keys button.is-pick{border-color:var(--hot);box-shadow:0 0 0 2px rgba(196,92,72,.35)}
+.light-keys button.lit{box-shadow:inset 0 0 12px rgba(42,157,106,.55)}
+
+/* appear cards */
+.appear{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:560px){.appear{grid-template-columns:1fr}}
+.appear button{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:12px;
+  padding:10px;text-align:left;cursor:pointer;font:inherit;
+}
+.appear button.is-on{border-color:var(--agent);background:var(--agent-soft);box-shadow:0 0 0 1px var(--agent)}
+.appear button b{display:block;font-size:12.5px;font-weight:800;margin-bottom:4px}
+.appear button span{display:block;font-size:11.5px;color:var(--mute)}
+.appear .mini-vis{
+  margin-top:8px;height:28px;border-radius:8px;background:rgba(16,28,44,.88);
+  display:flex;align-items:center;padding:0 8px;gap:4px;
+}
+.appear .mini-vis i{width:8px;height:8px;border-radius:50%;background:#2a9d6a;display:block}
+.appear .mini-vis em{font-style:normal;font-size:10px;color:#cfd8e4;flex:1}
+.appear .full-vis{margin-top:8px;height:48px;border-radius:8px;background:#1a2a3c;opacity:.9}
+.appear .gone-vis{margin-top:8px;height:28px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--faint)}
+
+/* inspector */
+.insp{
+  border-radius:14px;border:1px solid var(--agent-line);background:var(--agent-soft);padding:12px;
+  position:sticky;top:8px;min-height:180px;
+}
+.insp .ph{margin:0 0 4px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--agent)}
+.insp h4{margin:0 0 8px;font-size:14px;font-weight:800}
+.insp p{margin:0 0 8px;font-size:12px;color:var(--mute)}
+.insp .row{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:7px 8px;border-radius:8px;background:#fff;border:1px solid var(--line);margin:0 0 5px;font-size:12px;
+}
+.tog{
+  width:36px;height:20px;border-radius:999px;background:#c5d0dc;position:relative;cursor:pointer;border:0;padding:0;
+}
+.tog.on{background:var(--agent)}
+.tog::after{
+  content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;
+  transition:left .15s;
+}
+.tog.on::after{left:18px}
+.insp .empty{font-size:12.5px;color:var(--mute);padding:12px 0}
+
+.rules{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:900px){.rules{grid-template-columns:1fr}}
+.rules .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px}
+.rules h3{margin:0 0 4px;font-size:13px;font-weight:800}
+.rules p{margin:0;font-size:12.5px;color:var(--mute)}
+
+@keyframes pulse-hot{
+  0%,100%{box-shadow:0 0 0 0 rgba(196,92,72,.35)}
+  50%{box-shadow:0 0 0 4px rgba(196,92,72,.15)}
+}
+.is-pick{animation:pulse-hot 1.2s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.is-pick{animation:none}}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Config UX · direct manipulation</p>
+  <h1>配置要「对着实物改」，不是对着开关列表猜</h1>
+  <p class="lede">上一版只有表单行，看不出改的是条上哪一块。正确做法：中间是运行时会看到的东西，<b>点哪里配哪里</b>；右侧才是这一块的开关。</p>
+
+  <div class="problem">
+    <div class="pcard bad">
+      <div class="m">不直观（旧稿）</div>
+      <h2>纯表单：显示额度 · 忙闲圆点 · …</h2>
+      <p>用户不知道这些字对应屏幕上哪一截，只能死记文案。</p>
+    </div>
+    <div class="pcard ok">
+      <div class="m">直观（本原型）</div>
+      <h2>点迷你栏上的「72%」→ 右侧出现额度开关</h2>
+      <p>实物在中间，控件贴着热区。仍不做半屏绑键键盘。</p>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <button type="button" class="tab is-on" data-tab="demo">可点演示</button>
+    <button type="button" class="tab" data-tab="rules">规则说明</button>
+  </nav>
+
+  <section class="panel is-on" id="p-demo">
+    <div class="shell">
+      <div class="shell-h">
+        <span><b>设置 → Agent</b> · 对着实物配置</span>
+        <span class="pill ok">点热区 · 右侧出控件</span>
+      </div>
+      <div class="layout">
+        <aside class="snav">
+          <div class="g">配置</div>
+          <div class="i on">Agent</div>
+          <div class="i">托盘</div>
+        </aside>
+        <div class="main">
+          <div class="head">
+            <h3>Agent</h3>
+            <p>先选子页，再点预览上的部位——不要只翻开关列表。</p>
+          </div>
+          <div class="subtabs" id="subs">
+            <button type="button" class="is-on" data-sub="mini">迷你栏</button>
+            <button type="button" data-sub="lights">灯效</button>
+            <button type="button" data-sub="style">样式</button>
+            <button type="button" data-sub="data">数据</button>
+          </div>
+          <div class="stage">
+            <div class="canvas" id="canvas"></div>
+            <aside class="insp" id="insp">
+              <p class="ph">正在配置</p>
+              <div class="empty">点左侧预览上的高亮部位</div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="p-rules">
+    <div class="rules">
+      <div class="card">
+        <h3>中间 = 你平时看见的</h3>
+        <p>迷你栏页放细条浮层；灯效页放盘边/键灯；样式页放「出现方式」可视化卡片。不是设置专用的抽象列表。</p>
+      </div>
+      <div class="card">
+        <h3>点部位 = 打开对应控件</h3>
+        <p>点忙闲点 → 管谁在忙；点 72% → 管额度显示；点快捷钮 → 多选按钮。文案跟着部位走。</p>
+      </div>
+      <div class="card">
+        <h3>仍不是 Soft Pad 壳</h3>
+        <p>不占半屏数字键盘画布。预览只渲染「配置对象」本身；绑键继续去虚拟键盘页。</p>
+      </div>
+    </div>
+    <div class="rules" style="margin-top:10px">
+      <div class="card">
+        <h3>数据页怎么直观？</h3>
+        <p>数据页复用迷你栏顶行：点「账号 / 额度 / 重置」每一段，右侧只出这一段的开关与来源。表单挂在实物上。</p>
+      </div>
+      <div class="card">
+        <h3>样式页怎么直观？</h3>
+        <p>四种「何时出现」做成带小示意的卡片点选，不要四个干电台。皮肤用缩略条，点选即换。</p>
+      </div>
+      <div class="card">
+        <h3>和虚拟键盘的边界</h3>
+        <p>这里改「亮什么、条上有什么、何时露」。改「键绑什么命令」仍在虚拟键盘左预览右列表。</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var tabs=document.querySelectorAll('.tab');
+  var panels={demo:document.getElementById('p-demo'),rules:document.getElementById('p-rules')};
+  tabs.forEach(function(t){
+    t.addEventListener('click',function(){
+      tabs.forEach(function(x){x.classList.toggle('is-on',x===t);});
+      Object.keys(panels).forEach(function(k){panels[k].classList.toggle('is-on',k===t.getAttribute('data-tab'));});
+    });
+  });
+
+  var canvas=document.getElementById('canvas');
+  var insp=document.getElementById('insp');
+  var subs=document.querySelectorAll('#subs [data-sub]');
+  var state={sub:'mini',hot:''};
+
+  function inspHtml(title, body){
+    return '<p class="ph">正在配置</p><h4>'+title+'</h4>'+body;
+  }
+  function row(label, on){
+    return '<div class="row"><span>'+label+'</span><button type="button" class="tog'+(on?' on':'')+'" aria-label="'+label+'"></button></div>';
+  }
+
+  function clearPick(root){
+    if(!root) return;
+    root.querySelectorAll('.is-pick').forEach(function(el){el.classList.remove('is-pick');});
+  }
+
+  function paintInsp(){
+    var hot=state.hot;
+    if(state.sub==='mini'||state.sub==='data'){
+      if(hot==='dots'){
+        insp.innerHTML=inspHtml('谁在忙', '<p>点的是条上的忙闲圆点。</p>'+row('条上显示忙闲圆点',true)+row('显示 Cursor',true)+row('显示 Codex',false));
+      }else if(hot==='usage'){
+        insp.innerHTML=inspHtml('额度读数', '<p>点的是条右上角的 72%。</p>'+row('显示额度',true)+row('显示重置时间',false)+'<div class="row"><span>来源</span><em style="font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--faint)">API / 本地</em></div>');
+      }else if(hot==='speech'){
+        insp.innerHTML=inspHtml('听你说话', '<p>点的是条下话术区。</p>'+row('条下显示你说的话',true)+row('预览卡带麦标',true));
+      }else if(hot==='tools'){
+        insp.innerHTML=inspHtml('快捷钮', '<p>点的是悬停快捷区。</p>'+row('悬停时出现',true)+row('麦克风',true)+row('发送',true)+row('继续',true)+row('取消',false));
+      }else{
+        insp.innerHTML='<p class="ph">正在配置</p><div class="empty">点迷你栏上的圆点、72%、话术或快捷钮</div>';
+      }
+      return;
+    }
+    if(state.sub==='lights'){
+      if(hot==='rim'){
+        insp.innerHTML=inspHtml('氛围灯（盘边）', '<p>点的是盘边光圈。</p>'+row('启用氛围灯',true)+'<div class="row"><span>模式</span><em style="font-style:normal;font-size:11px">跟随状态</em></div>');
+      }else if(hot==='key'){
+        insp.innerHTML=inspHtml('按键灯', '<p>点的是某颗状态键。</p>'+row('显示该键状态灯',true)+'<div class="row"><span>色板</span><em style="font-style:normal;font-size:11px">跑着=绿</em></div>');
+      }else{
+        insp.innerHTML='<p class="ph">正在配置</p><div class="empty">点盘边光圈，或点一颗键</div>';
+      }
+      return;
+    }
+    if(state.sub==='style'){
+      if(hot==='appear'){
+        insp.innerHTML=inspHtml('何时出现', '<p>用带示意的卡片选择，不是干电台。</p>'+row('跟随应用显示',true));
+      }else if(hot==='skin'){
+        insp.innerHTML=inspHtml('外观皮肤', '<p>点卡片下方皮肤条切换。</p><div class="row"><span>当前</span><em style="font-style:normal;font-size:11px">默认</em></div>');
+      }else{
+        insp.innerHTML='<p class="ph">正在配置</p><div class="empty">点一种出现方式卡片</div>';
+      }
+    }
+  }
+
+  function paintCanvas(){
+    var sub=state.sub;
+    if(sub==='mini'||sub==='data'){
+      canvas.innerHTML=
+        '<p class="cap">'+(sub==='data'?'数据 · 点条上每一段':'迷你栏 · 点你要改的部位')+'</p>'+
+        '<div class="float" id="floatMock">'+
+          '<div class="top">'+
+            '<div class="dots" data-hot="dots" title="谁在忙">'+
+              '<button type="button" class="run" data-hot="dots" aria-label="忙闲"></button>'+
+              '<button type="button" data-hot="dots" aria-label="闲"></button>'+
+            '</div>'+
+            '<div class="title">Agent · 跑着</div>'+
+            '<button type="button" class="usage" data-hot="usage">72%</button>'+
+          '</div>'+
+          (sub==='mini'
+            ? ('<div class="speech" data-hot="speech">「把这段重构一下…」</div>'+
+               '<div class="tools" data-hot="tools">'+
+                 '<button type="button" data-hot="tools">麦</button>'+
+                 '<button type="button" data-hot="tools">发</button>'+
+                 '<button type="button" data-hot="tools">续</button>'+
+               '</div>')
+            : '<div class="speech" style="cursor:default;opacity:.5">数据页只配顶行读数段</div>')+
+        '</div>'+
+        '<p class="guide">试试点 <b>圆点</b>、<b>72%</b>'+(sub==='mini'?'、话术或快捷钮':'')+' → 右侧出现对应配置</p>';
+      bindHot(canvas);
+      return;
+    }
+    if(sub==='lights'){
+      canvas.innerHTML=
+        '<p class="cap">灯效 · 点盘边或键</p>'+
+        '<div class="light-board">'+
+          '<div class="rim" data-hot="rim" id="rim"></div>'+
+          '<div class="light-keys">'+
+            '<button type="button" data-hot="key">停</button>'+
+            '<button type="button" class="lit" data-hot="key">发</button>'+
+            '<button type="button" data-hot="key">续</button>'+
+            '<button type="button" data-hot="key">收</button>'+
+            '<button type="button" data-hot="key">5</button>'+
+            '<button type="button" data-hot="key">新</button>'+
+          '</div>'+
+        '</div>'+
+        '<p class="guide">这是<strong>灯效示意板</strong>，不是绑键画布。改命令仍去虚拟键盘。</p>';
+      // rim click
+      var rim=document.getElementById('rim');
+      if(rim){
+        rim.style.pointerEvents='auto';
+        rim.style.cursor='pointer';
+        rim.addEventListener('click',function(){state.hot='rim'; syncPick();});
+      }
+      bindHot(canvas);
+      return;
+    }
+    if(sub==='style'){
+      canvas.innerHTML=
+        '<p class="cap">样式 · 点选出现方式</p>'+
+        '<div class="appear">'+
+          '<button type="button" class="is-on" data-hot="appear"><b>跟随应用</b><span>Cursor 前台时出现</span><div class="mini-vis"><i></i><em>细条示意</em></div></button>'+
+          '<button type="button" data-hot="appear"><b>保持最前</b><span>一直挂着</span><div class="mini-vis"><i></i><em>一直可见</em></div></button>'+
+          '<button type="button" data-hot="appear"><b>迷你条</b><span>强制细条</span><div class="mini-vis"><i></i><em>只留一条</em></div></button>'+
+          '<button type="button" data-hot="appear"><b>不显示浮窗</b><span>只要实体键</span><div class="gone-vis">无浮层</div></button>'+
+        '</div>'+
+        '<p class="guide">带小示意的卡片，比四个干电台好懂。</p>';
+      canvas.querySelectorAll('[data-hot="appear"]').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          canvas.querySelectorAll('[data-hot="appear"]').forEach(function(b){b.classList.remove('is-on');});
+          btn.classList.add('is-on');
+          state.hot='appear';
+          paintInsp();
+        });
+      });
+      state.hot='appear';
+      paintInsp();
+    }
+  }
+
+  function syncPick(){
+    clearPick(canvas);
+    if(!state.hot) {paintInsp(); return;}
+    canvas.querySelectorAll('[data-hot="'+state.hot+'"]').forEach(function(el){el.classList.add('is-pick');});
+    if(state.hot==='rim'){
+      var rim=document.getElementById('rim');
+      if(rim) rim.classList.add('is-pick');
+    }
+    paintInsp();
+  }
+
+  function bindHot(root){
+    root.querySelectorAll('[data-hot]').forEach(function(el){
+      el.addEventListener('click',function(ev){
+        ev.stopPropagation();
+        state.hot=el.getAttribute('data-hot');
+        syncPick();
+      });
+    });
+    if(state.hot) syncPick();
+    else paintInsp();
+  }
+
+  function setSub(id){
+    state.sub=id;
+    state.hot='';
+    subs.forEach(function(b){b.classList.toggle('is-on',b.getAttribute('data-sub')===id);});
+    paintCanvas();
+  }
+
+  subs.forEach(function(b){
+    b.addEventListener('click',function(){setSub(b.getAttribute('data-sub'));});
+  });
+
+  // toggling demo
+  insp.addEventListener('click',function(ev){
+    var t=ev.target.closest('.tog');
+    if(t) t.classList.toggle('on');
+  });
+
+  setSub('mini');
+})();
+</script>
+</body>
+</html>

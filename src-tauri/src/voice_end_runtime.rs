@@ -274,10 +274,14 @@ fn dispatch_prompt_inject(
             };
         }
     }
+    // Settle after unicode inject so Cursor/Electron can commit the buffer before Enter.
+    // ~2ms/char capped — long prompts used to Enter while the box was still catching up.
+    let settle_ms = ((prompt.chars().count() as u32) * 2 + 60).clamp(80, 420);
     let actions = [
         crate::config::Action::Text {
             value: prompt.to_string(),
         },
+        crate::config::Action::Delay { ms: settle_ms },
         crate::config::Action::Key {
             value: "Enter".into(),
         },
@@ -369,6 +373,27 @@ pub fn wake_key_cooldown_remaining_ms(state: &AppState, cooldown_ms: u32) -> Opt
 
 pub fn mark_voice_wake_key_sent(state: &AppState) {
     *state.voice_wake_last_key_at.lock() = Some(Instant::now());
+}
+
+/// Mark that `chord` already reached the foreground app via passthrough (e.g. RAlt).
+pub fn arm_voice_key_passthrough(state: &AppState, chord: &str) {
+    let c = chord.trim();
+    if c.is_empty() {
+        return;
+    }
+    *state.voice_key_passthrough_armed.lock() = Some(c.to_string());
+}
+
+/// Consume a matching passthrough arm. True → caller must not re-inject `chord`.
+pub fn take_voice_key_passthrough(state: &AppState, chord: &str) -> bool {
+    let mut g = state.voice_key_passthrough_armed.lock();
+    let hit = g
+        .as_ref()
+        .is_some_and(|armed| crate::key_chord::chords_equivalent(armed, chord));
+    if hit {
+        *g = None;
+    }
+    hit
 }
 
 pub fn arm_external_voice_send_suppression(state: &AppState, window_ms: u64) {
@@ -1009,17 +1034,13 @@ pub fn handle_voice_wake_detected(
     }
 
     // R7: empty appTargetId = global dictation — never wrong-FG gate.
-    // App scene + allowBringUp off + FG ≠ target → refuse (Q15 toast via FE).
-    // App scene + allowBringUp on → focus/launch target then dictate (no auto-send).
+    // App scene always brings target forward when FG ≠ target (no user toggle).
     {
         let app_tid = mapping_snapshot
             .as_ref()
             .map(|m| m.app_target_id.trim().to_string())
             .unwrap_or_default();
-        let allow_bring_up = mapping_snapshot
-            .as_ref()
-            .map(|m| m.voice_allow_bring_up_target)
-            .unwrap_or(false);
+        let allow_bring_up = !app_tid.is_empty();
         let target_name = mapping_snapshot
             .as_ref()
             .map(|m| {
@@ -1059,7 +1080,7 @@ pub fn handle_voice_wake_detected(
                 runtime_label: format!("voice_{engine}_wrong_fg"),
             };
         }
-        if !app_tid.is_empty() && allow_bring_up {
+        if allow_bring_up {
             let focused = crate::app_chat_workflow::quick_focus_app_target_for_hold(&app_tid);
             if !focused {
                 crate::app_log::log_line(

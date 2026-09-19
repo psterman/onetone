@@ -192,7 +192,7 @@
 }
 
 .micro-hw__key.is-screen-only {
-  opacity: var(--micro-hw-screen-opacity, 0.82);
+  opacity: 0.78;
 }
 
 .micro-hw__key.is-advanced-only {

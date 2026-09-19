@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soft Pad · 对照 Codex Micro · Cursor 重思方案</title>
+<style>
+:root{
+  --bg:#e8eef5; --surface:#fff; --soft:#f4f7fb; --line:rgba(26,45,74,.1);
+  --on:#152238; --mute:#5a7086; --faint:#8b9aab;
+  --p:#2a9cc4; --p-ink:#1a7a9c; --p-soft:#e8f6fb; --outline:rgba(42,156,196,.32);
+  --ok:#1b7a45; --ok-soft:#e8f6ee; --warn:#8a6a12; --warn-soft:#fff8e8;
+  --bad:#9b2c2c; --bad-soft:#fdecec;
+  --font:"Segoe UI","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;background:var(--bg);color:var(--on)}
+.page{max-width:1120px;margin:0 auto;padding:16px 14px 56px}
+h1{margin:0 0 4px;font-size:18px;font-weight:800;letter-spacing:-.02em}
+.lede{margin:0 0 12px;font-size:12.5px;color:var(--mute);max-width:78ch}
+.verdict{
+  margin:0 0 16px;padding:12px 14px;border-radius:12px;background:var(--warn-soft);
+  border:1px solid rgba(180,130,20,.3);font-size:12.5px;color:var(--warn);line-height:1.55;
+}
+.verdict b{font-weight:800;color:#6a5010}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.tab{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:6px 12px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.tab.is-on{border-color:var(--p);background:var(--p-soft);color:var(--p-ink)}
+.panel{display:none}
+.panel.is-on{display:block}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+.card{
+  border:1px solid var(--line);border-radius:14px;background:#fff;
+  overflow:hidden;box-shadow:0 8px 24px rgba(26,45,74,.06);
+}
+.card .hd{
+  padding:10px 12px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fbfdff,#f2f6fa);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.card .hd strong{font-size:12.5px}
+.card .hd .tag{
+  margin-left:auto;font-size:10.5px;font-weight:750;padding:2px 8px;border-radius:999px;
+}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.card .bd{padding:12px;display:grid;gap:10px}
+
+.principle{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.principle li{
+  padding:8px 10px;border-radius:9px;background:var(--soft);border:1px solid var(--line);
+  font-size:12px;
+}
+.principle li b{display:block;font-size:12px;margin-bottom:2px}
+.principle li span{color:var(--mute);font-size:11.5px}
+
+.zones{display:grid;gap:6px;font-family:var(--mono);font-size:11px}
+.zone{
+  display:grid;grid-template-columns:72px 1fr;gap:8px;align-items:start;
+  padding:8px;border-radius:8px;background:#f7f9fc;border:1px solid var(--line);
+}
+.zone .z{font-weight:800;color:var(--p-ink)}
+.zone .s{color:var(--mute);line-height:1.5}
+
+.kb{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-width:280px;
+}
+.key{
+  border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px 4px;
+  text-align:center;min-height:52px;display:flex;flex-direction:column;justify-content:center;gap:2px;
+}
+.key .n{font-size:10px;color:var(--faint);font-weight:700}
+.key .a{font-size:11px;font-weight:800}
+.key.spare{opacity:.45;border-style:dashed}
+.key.mode{background:var(--p-soft);border-color:var(--outline)}
+.key.core{background:var(--ok-soft);border-color:rgba(27,122,69,.25)}
+
+.table{width:100%;border-collapse:collapse;font-size:12px}
+.table th,.table td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+.table th{font-size:11px;color:var(--mute);font-weight:750}
+.keep{color:var(--ok);font-weight:750}
+.drop{color:var(--bad);font-weight:750}
+.reshape{color:var(--warn);font-weight:750}
+
+.mock{
+  border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden;
+  box-shadow:0 10px 32px rgba(26,45,74,.07);
+}
+.chrome{
+  display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#fbfdff,#f2f6fa);
+}
+.chrome strong{font-size:12px}
+.chrome .pill{
+  margin-left:auto;font-size:11px;font-weight:750;color:var(--p-ink);
+  background:var(--p-soft);border:1px solid var(--outline);border-radius:999px;padding:3px 9px;
+}
+.stage{display:grid;grid-template-columns:minmax(220px,260px) minmax(0,1fr);min-height:460px}
+@media (max-width:800px){.stage{grid-template-columns:1fr}}
+.pad-col{padding:14px 12px;background:#f0f4f9;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.pad-head{display:flex;align-items:center;gap:8px;font-weight:800}
+.pad-logo{width:22px;height:22px;border-radius:6px;background:#1a1a1a;color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800}
+.pad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.pkey{
+  aspect-ratio:1;border-radius:50%;border:1.5px solid rgba(26,45,74,.12);
+  background:#fff;display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--mute);cursor:pointer;
+}
+.pkey.core{color:var(--ok);border-color:rgba(27,122,69,.35);background:#f3fbf6}
+.pkey.mode{color:var(--p-ink);border-color:var(--outline);background:var(--p-soft)}
+.pkey.is-on{box-shadow:0 0 0 3px rgba(42,156,196,.22);border-color:var(--p)}
+.pad-bind{margin-top:auto;padding:10px;border-radius:10px;background:#fff;border:1px solid var(--line)}
+.pad-bind .name{font-weight:800}
+.pad-bind .chord{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--p-ink);margin-top:2px}
+.hint{margin:0;font-size:11px;color:var(--faint)}
+
+.lib{padding:12px;background:#f7f9fc;display:flex;flex-direction:column;gap:8px}
+.lib-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lib-head h2{margin:0;font-size:14px;font-weight:800}
+.lead{margin:0;font-size:12px;color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{
+  appearance:none;border:0;background:transparent;color:var(--mute);
+  padding:5px 9px;border-radius:7px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;
+}
+.chip.is-on{background:#fff;color:var(--p-ink);font-weight:800;box-shadow:0 1px 2px rgba(26,45,74,.06);border:1px solid var(--line)}
+.cmds{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto}
+.cmd{
+  appearance:none;width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;
+  padding:9px 11px;text-align:left;cursor:pointer;font:inherit;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;
+}
+.cmd.is-on{border-color:var(--p);background:var(--p-soft)}
+.cmd .t{font-weight:800;font-size:13px}
+.cmd .m{grid-column:1/-1;font-size:11px;color:var(--mute)}
+.cmd .k{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--p-ink);background:var(--p-soft);border-radius:6px;padding:2px 7px;align-self:center}
+.badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;font-size:10px;font-weight:750;vertical-align:middle}
+.badge.loop{background:var(--ok-soft);color:var(--ok)}
+.badge.adv{background:#eef1f5;color:var(--faint)}
+.badge.multi{background:var(--warn-soft);color:var(--warn)}
+
+.foot{margin-top:14px;font-size:11.5px;color:var(--mute);line-height:1.55}
+.foot code{font-family:var(--mono);font-size:11px;color:var(--on)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>对照 Codex Micro · 重思 Cursor Soft Pad</h1>
+  <p class="lede">Codex Micro Soft Pad 的本质是：小键盘上的<strong>少数一键动作</strong>（按一下就有可见结果），不是「Agent 能力操作系统」。Cursor 应继承拓扑与原则，把场景目录收成「本轮循环 + 模式列 + 更多」，而不是 7 轨 × 19 槽的 IDE 遥控器。</p>
+
+  <p class="verdict"><b>重思结论：</b>保留 AG/ACT 物理分区与「一键生效 / 禁止塞话」；砍掉默认首屏里的导航·工具·浏览器；Plan/Agent 明确标成 Cursor「模式列」（+/·）；粘贴发送标成多步工作流；继续/跑测试仍走口头指令。屏幕按钮 ≠ 软件自带。</p>
+
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab is-on" data-tab="why">1 · 原则对照</button>
+    <button type="button" class="tab" data-tab="zones">2 · 物理分区</button>
+    <button type="button" class="tab" data-tab="proto">3 · 新原型（收束）</button>
+    <button type="button" class="tab" data-tab="diff">4 · 保留 / 降级 / 剔除</button>
+  </div>
+
+  <!-- 1 -->
+  <section class="panel is-on" id="panel-why">
+    <div class="grid2">
+      <div class="card">
+        <div class="hd"><strong>Codex Micro 原原则</strong><span class="tag ok">应继承</span></div>
+        <div class="bd">
+          <ul class="principle">
+            <li><b>一键生效</b><span>按一下 → 眼前立刻变（开菜单 / 新对话 / 发送 / 停 / 开麦 / 聚焦）</span></li>
+            <li><b>对齐官方能力</b><span>尽量是 App 已有快捷键或焦点，不发明第二套 CLI</span></li>
+            <li><b>禁止 insertOnly 塞话</b><span>Soft Pad 不灌 /plan、不自动 Enter 发 slash</span></li>
+            <li><b>扁平小白名单</b><span>openEditKeycap ≈ 二十个以内「能记住」的动作，不是场景浏览器</span></li>
+            <li><b>灯 ≠ 键</b><span>状态灯可挂在 AG00，按下仍是命令菜单</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd"><strong>当前 Cursor Soft Pad 偏离</strong><span class="tag warn">要纠偏</span></div>
+        <div class="bd">
+          <ul class="principle">
+            <li><b>7 场景轨 × 19 槽</b><span>变成能力目录 OS，违背「少数一键」记忆模型</span></li>
+            <li><b>导航 / 设置 / 浏览器进首屏</b><span>IDE 遥控器，不是 vibe 循环</span></li>
+            <li><b>常用里塞 plan</b><span>需求文档初学者环是：说→发→（继续走口令）→新局；Plan 属第二周</span></li>
+            <li><b>pasteAndSend 与 Enter 平级</b><span>实为 focus→粘贴→发送多步，诚实边界被抹平</span></li>
+            <li><b>与 Keys「软件自带」并行易混</b><span>channel 都叫目录，用户不知道绑键帽还是加识别键</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="panel" id="panel-zones">
+    <div class="grid2">
+      <div class="card">
+        <div class="hd"><strong>Codex 默认分区（应保留拓扑）</strong><span class="tag ok">共享 LAYOUT</span></div>
+        <div class="bd">
+          <div class="zones">
+            <div class="zone"><div class="z">AG 7–9</div><div class="s">命令菜单 · 新对话 · 快速聊天</div></div>
+            <div class="zone"><div class="z">AG 4–6</div><div class="s">查找 · 发送 · 取消</div></div>
+            <div class="zone"><div class="z">ACT 底</div><div class="s">开麦 · Enter 发送 · ENC 聚焦</div></div>
+            <div class="zone"><div class="z">+ / .</div><div class="s">Codex：空 · Cursor：可作「模式列」</div></div>
+          </div>
+          <div class="kb" aria-hidden="true" style="margin-top:8px">
+            <div class="key core"><span class="n">7</span><span class="a">命令</span></div>
+            <div class="key core"><span class="n">8</span><span class="a">新局</span></div>
+            <div class="key core"><span class="n">9</span><span class="a">聊天</span></div>
+            <div class="key spare"><span class="n">←</span><span class="a">聚焦</span></div>
+            <div class="key"><span class="n">4</span><span class="a">查找</span></div>
+            <div class="key core"><span class="n">5</span><span class="a">发送</span></div>
+            <div class="key core"><span class="n">6</span><span class="a">取消</span></div>
+            <div class="key mode"><span class="n">+</span><span class="a">Plan</span></div>
+            <div class="key"><span class="n">1</span><span class="a">新局</span></div>
+            <div class="key spare"><span class="n">2</span><span class="a">空</span></div>
+            <div class="key"><span class="n">3</span><span class="a">查找</span></div>
+            <div class="key mode"><span class="n">.</span><span class="a">Agent</span></div>
+            <div class="key core" style="grid-column:span 2"><span class="n">0</span><span class="a">开麦</span></div>
+            <div class="key spare"><span class="n">·</span><span class="a">—</span></div>
+            <div class="key core"><span class="n">Ent</span><span class="a">发送</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd"><strong>Cursor 在同一拓扑上怎么放</strong><span class="tag warn">分化和弦，不分化分区</span></div>
+        <div class="bd">
+          <ul class="principle">
+            <li><b>同一肌肉记忆</b><span>7–9 / 4–6 / 0 / Enter / ENC 语义与 Codex 同族；只换 Cursor 和弦（Ctrl+I、RAlt、Ctrl+Shift+Backspace…）</span></li>
+            <li><b>模式列显式</b><span>+ = Plan，. = Agent：文档与 UI 标注「Cursor 模式列」，避免和 AG 聊天键混成一套</span></li>
+            <li><b>不进默认键位</b><span>nav / settings / browser / undo：高级可绑，不占出厂布局</span></li>
+            <li><b>诚实多步</b><span>粘贴发送可绑，但编辑面板标「多步工作流」，不与 Enter 同列主推</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="panel" id="panel-proto">
+    <div class="mock">
+      <div class="chrome">
+        <strong>屏幕按钮 · 收束版（Codex 原则 × Cursor 循环）</strong>
+        <span class="pill">默认 8 槽 · 更多折叠 · 禁止塞话</span>
+      </div>
+      <div class="stage">
+        <aside class="pad-col">
+          <div class="pad-head"><span class="pad-logo">C</span> Cursor Soft Pad</div>
+          <div class="pad-grid" id="padGrid"></div>
+          <div class="pad-bind">
+            <div class="name" id="padName">语音输入</div>
+            <div class="chord" id="padChord">RAlt · 一键开麦</div>
+          </div>
+          <p class="hint">绿 = 本轮循环 · 蓝 = 模式列 · 点键再点右侧命令</p>
+        </aside>
+        <div class="lib">
+          <div class="lib-head">
+            <h2>绑到选中键</h2>
+            <span class="chip is-on" style="pointer-events:none">屏幕按钮</span>
+          </div>
+          <p class="lead">先选本轮循环；模式列单独一组；其余进「更多」。塞话（继续 / 总结 / 跑测试）不在这里。</p>
+          <div class="chips" id="chips" role="tablist"></div>
+          <div class="cmds" id="cmds" role="listbox"></div>
+        </div>
+      </div>
+    </div>
+    <p class="foot" style="margin-top:10px">对照旧原型 <code>soft-pad-agent-capability-proto.html</code>：那边是 7 场景全目录；本页是按 Codex「小白名单」收束后的首屏。</p>
+  </section>
+
+  <!-- 4 -->
+  <section class="panel" id="panel-diff">
+    <div class="card">
+      <div class="hd"><strong>槽位处置表</strong><span class="tag ok">落地清单</span></div>
+      <div class="bd" style="padding:0">
+        <table class="table">
+          <thead>
+            <tr><th>槽</th><th>处置</th><th>理由（Codex 视角）</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>pushToTalk / stopOrSend / cancel / newThread / summonCodex</td><td class="keep">保留 · 默认循环</td><td>一键可见结果；Cursor vibe 主环</td></tr>
+            <tr><td>quickChat / commandPalette / quickSearch</td><td class="keep">保留 · 次环</td><td>与 Codex AG 区同族</td></tr>
+            <tr><td>plan / switchAgent</td><td class="reshape">保留 · 模式列（+/·）</td><td>Cursor 特有；须标成模式，非塞话</td></tr>
+            <tr><td>pasteAndSend</td><td class="reshape">更多 · 标多步</td><td>非单一 App 和弦</td></tr>
+            <tr><td>runTargetSequence</td><td class="reshape">更多</td><td>高级出口，不进首屏</td></tr>
+            <tr><td>nav* / openSettings / newBrowserTab / undo / openTerminal</td><td class="drop">更多或可绑不主推</td><td>IDE 遥控器，违背小白名单</td></tr>
+            <tr><td>continue / summarizeDiff / runChecks</td><td class="drop">口头指令</td><td>insertOnly 禁区</td></tr>
+            <tr><td>inlineEdit / acceptTab / diff accept*</td><td class="drop">软件自带</td><td>Keys 目录，不是 Soft Pad 一键</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('is-on', t === tab); });
+      var id = tab.getAttribute('data-tab');
+      document.querySelectorAll('.panel').forEach(function (p) {
+        p.classList.toggle('is-on', p.id === 'panel-' + id);
+      });
+    });
+  });
+
+  var SLOTS = {
+    pushToTalk: { title: '语音输入', when: '开麦说需求', chord: 'RAlt', tier: 'loop' },
+    stopOrSend: { title: '发出去', when: '写好了交给 AI', chord: 'Enter', tier: 'loop' },
+    cancel: { title: '取消', when: '跑偏立刻停', chord: 'Ctrl+Shift+Backspace', tier: 'loop' },
+    newThread: { title: '新开一局', when: '聊乱了重来', chord: 'Ctrl+N', tier: 'loop' },
+    summonCodex: { title: '聚焦 Cursor', when: '从别的软件切回来', chord: '焦点', tier: 'loop' },
+    plan: { title: '定计划', when: '先想清楚再动手', chord: 'Ctrl+Alt+Shift+P', tier: 'mode' },
+    switchAgent: { title: '开工 Agent', when: '让 Agent 直接改', chord: 'Ctrl+Alt+.', tier: 'mode' },
+    quickChat: { title: '打开侧边聊天', when: '拉开 Chat', chord: 'Ctrl+I', tier: 'more' },
+    commandPalette: { title: '命令菜单', when: '搜任意命令', chord: 'Ctrl+Shift+P', tier: 'more' },
+    quickSearch: { title: '搜文件', when: '快速打开', chord: 'Ctrl+P', tier: 'more' },
+    pasteAndSend: { title: '粘贴发送', when: '多步：聚焦→粘贴→发送', chord: '工作流', tier: 'more', multi: true },
+    runTargetSequence: { title: '跑我录的动作', when: '执行「我录的键」', chord: '序列', tier: 'more' }
+  };
+
+  var GROUPS = [
+    { id: 'loop', label: '本轮循环', ids: ['pushToTalk', 'stopOrSend', 'cancel', 'newThread', 'summonCodex'] },
+    { id: 'mode', label: '模式列', ids: ['plan', 'switchAgent'] },
+    { id: 'more', label: '更多', ids: ['quickChat', 'commandPalette', 'quickSearch', 'pasteAndSend', 'runTargetSequence'] }
+  ];
+
+  var PAD = [
+    { label: '命令', cls: '', slot: 'commandPalette' },
+    { label: '新局', cls: 'core', slot: 'newThread' },
+    { label: '聊天', cls: '', slot: 'quickChat' },
+    { label: '聚焦', cls: 'core', slot: 'summonCodex' },
+    { label: '查找', cls: '', slot: 'quickSearch' },
+    { label: '发送', cls: 'core', slot: 'stopOrSend' },
+    { label: '取消', cls: 'core', slot: 'cancel' },
+    { label: 'Plan', cls: 'mode', slot: 'plan' },
+    { label: '新局', cls: '', slot: 'newThread' },
+    { label: '—', cls: '', slot: '' },
+    { label: '查找', cls: '', slot: 'quickSearch' },
+    { label: 'Agent', cls: 'mode', slot: 'switchAgent' },
+    { label: '开麦', cls: 'core', slot: 'pushToTalk' },
+    { label: '—', cls: '', slot: '' },
+    { label: '—', cls: '', slot: '' },
+    { label: '发送', cls: 'core', slot: 'stopOrSend' }
+  ];
+
+  var groupId = 'loop';
+  var pickId = 'pushToTalk';
+
+  function paintPad() {
+    var host = document.getElementById('padGrid');
+    host.innerHTML = '';
+    PAD.forEach(function (cell) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pkey ' + (cell.cls || '') + (cell.slot === pickId ? ' is-on' : '');
+      b.textContent = cell.label;
+      if (cell.slot) {
+        b.addEventListener('click', function () {
+          pickId = cell.slot;
+          var row = SLOTS[pickId];
+          groupId = row.tier === 'mode' ? 'mode' : row.tier === 'more' ? 'more' : 'loop';
+          paint();
+        });
+      } else {
+        b.disabled = true;
+        b.style.opacity = '.35';
+      }
+      host.appendChild(b);
+    });
+  }
+
+  function paintChips() {
+    var host = document.getElementById('chips');
+    host.innerHTML = '';
+    GROUPS.forEach(function (g) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (g.id === groupId ? ' is-on' : '');
+      b.textContent = g.label;
+      b.addEventListener('click', function () {
+        groupId = g.id;
+        pickId = g.ids[0];
+        paint();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  function paintCmds() {
+    var host = document.getElementById('cmds');
+    var g = GROUPS.find(function (x) { return x.id === groupId; }) || GROUPS[0];
+    host.innerHTML = '';
+    g.ids.forEach(function (id) {
+      var row = SLOTS[id];
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cmd' + (id === pickId ? ' is-on' : '');
+      var badge =
+        row.multi ? '<span class="badge multi">多步</span>' :
+        row.tier === 'loop' ? '<span class="badge loop">循环</span>' :
+        row.tier === 'mode' ? '<span class="badge loop">模式</span>' :
+        '<span class="badge adv">更多</span>';
+      b.innerHTML =
+        '<span class="t">' + row.title + badge + '</span>' +
+        '<span class="k">' + row.chord + '</span>' +
+        '<span class="m">' + row.when + '</span>';
+      b.addEventListener('click', function () {
+        pickId = id;
+        paint();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  function paintBind() {
+    var row = SLOTS[pickId];
+    document.getElementById('padName').textContent = row.title;
+    document.getElementById('padChord').textContent = row.chord + (row.multi ? ' · 多步工作流' : ' · 一键生效');
+  }
+
+  function paint() {
+    paintPad();
+    paintChips();
+    paintCmds();
+    paintBind();
+  }
+
+  paint();
+})();
+</script>
+</body>
+</html>

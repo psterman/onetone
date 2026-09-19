@@ -2334,31 +2334,65 @@
   }
 
   function promptInjectActions(text) {
+    var body = String(text || '');
+    // Settle before Enter — long unicode inject used to submit while Cursor was still catching up.
+    var settle = Math.min(420, Math.max(80, body.length * 2 + 60));
     return [
-      { type: 'text', value: String(text || '') },
+      { type: 'text', value: body },
+      { type: 'delay', ms: settle },
       { type: 'key', value: 'Enter' }
     ];
   }
 
   /**
-   * MVP: stamp the current primary wake phrase onto the prompt peer so Rust can
-   * route phrase → this inject without relying on global voiceEnd.intent.
-   * Only the first phrase — avoid stealing the whole dictation wake pool.
+   * Stamp wake phrases onto a prompt peer for Rust phrase→inject routing.
+   * If `phrases` is an array (incl. empty), write exactly that — empty = free match
+   * (no peer-specific wake; user relies on global/scene wake).
+   * If omitted, keep existing or fall back to primary wake.
    */
-  function stampPromptPeerWakePhrases(peer) {
+  function stampPromptPeerWakePhrases(peer, phrases) {
     if (!peer) return;
     var list = [];
-    try {
-      var Wake = global.OneToneVoiceWake;
-      if (Wake && typeof Wake.currentWakePhraseList === 'function') {
-        list = (Wake.currentWakePhraseList() || [])
+    var explicit = Array.isArray(phrases);
+    if (explicit) {
+      list = phrases
+        .map(function (p) {
+          return String(p || '').trim();
+        })
+        .filter(Boolean);
+    } else if (phrases != null && String(phrases).trim()) {
+      explicit = true;
+      list = String(phrases)
+        .split(/[,，、;；\n]+/)
+        .map(function (p) {
+          return String(p || '').trim();
+        })
+        .filter(Boolean);
+    }
+    if (!explicit) {
+      var ovKeep = peer.voiceOverride || peer.voice_override;
+      var keep = ovKeep && (ovKeep.wakePhrases || ovKeep.wake_phrases);
+      if (Array.isArray(keep) && keep.length) {
+        list = keep
           .map(function (p) {
             return String(p || '').trim();
           })
           .filter(Boolean);
       }
-    } catch (_) {}
-    if (!list.length) {
+    }
+    if (!explicit && !list.length) {
+      try {
+        var Wake = global.OneToneVoiceWake;
+        if (Wake && typeof Wake.currentWakePhraseList === 'function') {
+          list = (Wake.currentWakePhraseList() || [])
+            .map(function (p) {
+              return String(p || '').trim();
+            })
+            .filter(Boolean);
+        }
+      } catch (_) {}
+    }
+    if (!explicit && !list.length) {
       try {
         var sm =
           mappingById(selectedMappingId()) ||
@@ -2376,10 +2410,14 @@
         }
       } catch (_) {}
     }
-    if (!list.length) return;
     peer.voiceOverride =
       peer.voiceOverride && typeof peer.voiceOverride === 'object' ? peer.voiceOverride : {};
-    peer.voiceOverride.wakePhrases = [list[0]];
+    if (explicit && !list.length) {
+      delete peer.voiceOverride.wakePhrases;
+      return;
+    }
+    if (!list.length) return;
+    peer.voiceOverride.wakePhrases = list;
   }
 
   function findPromptPeerByText(appId, text) {
@@ -2396,62 +2434,64 @@
     return null;
   }
 
-  /** Drop same-app prompt peers with identical inject text (keep earliest). */
-  function pruneDuplicatePromptPeers(appId, keepId) {
+  /** Newest prompt-inject peer for an app (legacy helpers). */
+  function findPromptPeerForApp(appId) {
     appId = String(appId || '').trim();
-    keepId = String(keepId || '').trim();
-    if (!appId) return 0;
-    var cfg = config();
-    var maps = Array.isArray(cfg.mappings) ? cfg.mappings : [];
-    var seen = {};
-    if (keepId) {
-      var keep = mappingById(keepId);
-      if (keep && isPromptInjectMapping(keep)) {
-        seen[String(promptTextFromMapping(keep) || '').trim()] = keepId;
-      }
-    }
-    var next = [];
-    var dropped = 0;
+    if (!appId) return null;
+    var maps = Array.isArray(config().mappings) ? config().mappings : [];
+    var best = null;
+    var bestTs = -1;
     for (var i = 0; i < maps.length; i++) {
       var m = maps[i];
-      if (!m) continue;
-      if (!isPromptInjectMapping(m) || String(m.appTargetId || '').trim() !== appId) {
-        next.push(m);
-        continue;
+      if (!m || !isPromptInjectMapping(m)) continue;
+      if (String(m.appTargetId || '').trim() !== appId) continue;
+      var ts = Number(m.updatedAt || m.createdAt || 0) || 0;
+      if (!best || ts >= bestTs) {
+        best = m;
+        bestTs = ts;
       }
-      var body = String(promptTextFromMapping(m) || '').trim();
-      var mid = String(m.id || '');
-      if (keepId && mid === keepId) {
-        next.push(m);
-        continue;
-      }
-      if (body && seen[body] && seen[body] !== mid) {
-        dropped++;
-        continue;
-      }
-      if (body) seen[body] = mid;
-      next.push(m);
     }
-    if (!dropped) return 0;
-    cfg.mappings = next;
-    var persist = global.OneToneConfigPersist;
-    if (persist && typeof persist.save === 'function') {
-      try {
-        persist.save({ source: 'voice-prompt-dedupe' });
-      } catch (_) {}
+    return best;
+  }
+
+  /** All prompt-inject peers for an app, newest first. */
+  function listPromptPeersForApp(appId) {
+    appId = String(appId || '').trim();
+    if (!appId) return [];
+    var maps = Array.isArray(config().mappings) ? config().mappings : [];
+    var out = [];
+    for (var i = 0; i < maps.length; i++) {
+      var m = maps[i];
+      if (!m || !isPromptInjectMapping(m)) continue;
+      if (String(m.appTargetId || '').trim() !== appId) continue;
+      out.push(m);
     }
-    return dropped;
+    out.sort(function (a, b) {
+      return (Number(b.updatedAt || b.createdAt || 0) || 0) - (Number(a.updatedAt || a.createdAt || 0) || 0);
+    });
+    return out;
+  }
+
+  /** @deprecated — multi-peer library; no longer collapses to one. */
+  function pruneToSinglePromptPeer() {
+    return 0;
+  }
+
+  /** @deprecated alias */
+  function pruneDuplicatePromptPeers() {
+    return 0;
   }
 
   /**
-   * Upsert a prompt-inject scene peer. editId updates an existing prompt row;
-   * otherwise creates a new one under the current habit's app.
+   * Upsert a prompt-inject peer. forceCreate / empty editId → new peer.
+   * Same app may keep many peers; each stamps its own wakePhrases for routing.
    */
   function savePromptInjectMapping(opts) {
     opts = opts || {};
+    var quiet = !!opts.quiet;
     var text = String(opts.text != null ? opts.text : '').trim();
     if (!text) {
-      toast(t('voicePromptSaveNeedText', '先填写要注入的 prompt'));
+      if (!quiet) toast(t('voicePromptSaveNeedText', '先填写要注入的 prompt'));
       return null;
     }
     var label = String(opts.label || '').trim();
@@ -2459,30 +2499,26 @@
       label = text.length > 16 ? text.slice(0, 16) + '…' : text;
     }
     var core = global.OneToneMappingCore;
-    // Same text under one app = one row (forceCreate only seeds a blank custom).
+    var editId = String(opts.editId || '').trim();
     var forceCreate = !!opts.forceCreate;
-    var editId = forceCreate ? '' : String(opts.editId || '').trim();
+    var wakePhrases = opts.wakePhrases;
+
     function updatePromptPeer(existing) {
       existing.label = label;
       existing.targetActions = promptInjectActions(text);
       existing.enabled = true;
       existing.updatedAt = Date.now();
-      stampPromptPeerWakePhrases(existing);
+      existing.voiceAllowBringUpTarget = true;
+      stampPromptPeerWakePhrases(existing, wakePhrases);
       var persistUp = global.OneToneConfigPersist;
       if (persistUp && typeof persistUp.save === 'function') {
         try {
           persistUp.save({ source: 'voice-prompt-save' });
         } catch (_) {}
       }
-      pruneDuplicatePromptPeers(existing.appTargetId, existing.id);
       return existing;
     }
-    if (editId) {
-      var existing = mappingById(editId);
-      if (existing && isPromptInjectMapping(existing)) {
-        return updatePromptPeer(existing);
-      }
-    }
+
     var source = null;
     try {
       var hdr = global.OneToneVoicePageHeaderRender;
@@ -2493,28 +2529,35 @@
     if (!source) {
       source = mappingById(selectedMappingId()) || (core && core.selected ? core.selected() : null);
     }
-    // If a prompt peer is focused, clone from another same-app peer (habit) instead.
     if (source && isPromptInjectMapping(source)) {
-      var appId = String(source.appTargetId || '').trim();
+      var appFallback = String(source.appTargetId || '').trim();
       var mapsSrc = Array.isArray(config().mappings) ? config().mappings : [];
-      var fallback = null;
+      var habit = null;
       for (var si = 0; si < mapsSrc.length; si++) {
         var sm = mapsSrc[si];
-        if (!sm || String(sm.appTargetId || '').trim() !== appId) continue;
+        if (!sm || String(sm.appTargetId || '').trim() !== appFallback) continue;
         if (isPromptInjectMapping(sm)) continue;
-        fallback = sm;
+        habit = sm;
         break;
       }
-      if (fallback) source = fallback;
+      if (habit) source = habit;
     }
     if (!source || !String(source.appTargetId || '').trim()) {
-      toast(t('voicePromptNeedAppScene', '请先切换到某个应用场景（不要停在通用设置）'));
+      if (!quiet) toast(t('voicePromptNeedAppScene', '请先切换到某个应用场景（不要停在通用设置）'));
       return null;
     }
-    var twin = findPromptPeerByText(source.appTargetId, text);
-    if (twin) return updatePromptPeer(twin);
+    var appId = String(source.appTargetId || '').trim();
+
+    var existing =
+      !forceCreate && editId && mappingById(editId) && isPromptInjectMapping(mappingById(editId))
+        ? mappingById(editId)
+        : null;
+    if (existing && String(existing.appTargetId || '').trim() === appId) {
+      return updatePromptPeer(existing);
+    }
+
     if (!core || typeof core.newMappingId !== 'function') {
-      toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
+      if (!quiet) toast(t('keysActionKeyNeedHabit', '请先选择一个习惯'));
       return null;
     }
     try {
@@ -2534,17 +2577,15 @@
     };
     copy.label = label;
     copy.targetActions = promptInjectActions(text);
-    // Keep enabled so scene dock / completeness checks treat it as a real action.
     copy.enabled = true;
-    // Don't inherit habit's full wake pool — own one phrase for phrase→inject routing.
-    stampPromptPeerWakePhrases(copy);
+    copy.voiceAllowBringUpTarget = true;
+    stampPromptPeerWakePhrases(copy, wakePhrases);
     if (core.ensureMappingExtras) {
       try {
         core.ensureMappingExtras(copy);
       } catch (_) {}
     }
     persistNewPeerMapping(copy);
-    pruneDuplicatePromptPeers(copy.appTargetId, copy.id);
     return copy;
   }
 
@@ -7891,6 +7932,9 @@
     promptInjectActions: promptInjectActions,
     stampPromptPeerWakePhrases: stampPromptPeerWakePhrases,
     savePromptInjectMapping: savePromptInjectMapping,
+    findPromptPeerForApp: findPromptPeerForApp,
+    listPromptPeersForApp: listPromptPeersForApp,
+    pruneToSinglePromptPeer: pruneToSinglePromptPeer,
     pruneDuplicatePromptPeers: pruneDuplicatePromptPeers,
     customKeyMatchDisplayName: customKeyMatchDisplayName,
     renameCustomKeyMatch: renameCustomKeyMatch,

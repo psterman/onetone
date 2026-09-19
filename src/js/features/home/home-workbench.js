@@ -2970,6 +2970,8 @@
     habits:'schemes',
     keys:'triggers',
     softPad:'softPad',
+    agent:'agent',
+    agentData:'agentData',
     voiceWake:'voice',
     models:'voice',
     camera:'camera',
@@ -3321,6 +3323,7 @@
         }
         var opts={panel:row.panel};
         if(row.debugMode) opts.debugMode=row.debugMode;
+        if(row.focus) opts.focus=row.focus;
         openSettings(opts);
       }
     });

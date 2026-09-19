@@ -620,11 +620,11 @@ html:not([data-theme="dark"]) .voice-fb-action-btn:hover {
   }
 }
 
-/* Idle voiceWake park: kill infinite CSS pulse — GPU churn after engines parked (~16min 假死). */
-html.ot-voice-wake-park #settingsPanelVoiceWake * {
-  animation: none !important;
-}
-html.ot-voice-wake-park #settingsPanelVoiceWake .voice-fb-status-pill.is-live::before {
+/* Idle voiceWake park: kill known infinite pulses only (GPU churn / 假死).
+   Do not blanket-kill all animations under the voice panel — that freezes
+   aim-strategy explainer loops (.voice-aim-demo*). */
+html.ot-voice-wake-park #settingsPanelVoiceWake .voice-fb-status-pill.is-live::before,
+html.ot-voice-wake-park #settingsPanelVoiceWake .voice-wake-test-wave span {
   animation: none !important;
 }
 

@@ -108,6 +108,7 @@ permissions = [
   "allow-cmd-input-aim-calibrate-commit",
   "allow-cmd-input-aim-calibrate-cancel",
   "allow-cmd-input-aim-calibrate-clear",
+  "allow-cmd-input-aim-calibrate-set-active",
   "allow-cmd-input-aim-calibrate-status",
   "allow-cmd-export-logs",
   "allow-cmd-app-log",

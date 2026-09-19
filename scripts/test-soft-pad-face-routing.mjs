@@ -140,6 +140,11 @@ assert(/showMini = face === 'mini' && pad\.presentation === 'mini'/.test(padUi),
   'mini preview only when presentation is mini');
 assert(/stripMode: showMini \? 'focus'/.test(padUi),
   'mini preview uses focus strip; full keyboard uses full');
+assert(/#softPadPreviewHost\.is-agent-preview-mini/.test(css),
+  'mini hide rules target softPadPreviewHost (not only retired agent host)');
+assert(/demoMiniBarChipsHtml/.test(padUi), 'empty mini strip falls back to demo chips');
+assert(/syncStatusLightsPreviewChrome\(previewHostC/.test(padUi),
+  'mini chrome toggle re-paints left preview');
 assert(/softPadMiniBarHint/.test(padUi) && /softPadMiniFullHint/.test(padUi),
   'display cards hint mini abbrev vs full data');
 assert(/data-act="mini-chrome"/.test(padUi), 'mini chrome toggles');

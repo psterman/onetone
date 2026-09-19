@@ -140,6 +140,9 @@ const ia = sandbox.OneToneShellIaConvergence;
 check('shell IA camera is pro', ia.resolve('camera').pro === true);
 check('shell IA forbids camera home CTA', ia.isForbiddenHomeCta('camera') === true);
 check('shell IA home returns home', ia.resolve('home').home === true);
+check('shell IA agent focus', ia.resolve('agent').panel === 'agent');
+check('shell IA agentData focus', ia.resolve('agentData').panel === 'agentData');
+check('shell IA softPad keys focus', ia.resolve('softPad').focus === 'softPadLayout');
 
 const life = sandbox.OneToneRecordIpcLifecycle;
 check('record ipc idle→starting', life.canTransition('idle', 'starting'));

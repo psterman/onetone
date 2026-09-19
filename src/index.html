@@ -28,15 +28,16 @@
   <link rel="stylesheet" href="css/habit-hub-table.css" />
   <link rel="stylesheet" href="css/home-v9.css" />
   <link rel="stylesheet" href="css/home-workbench.css" />
-  <link rel="stylesheet" href="css/keys-workflow.css" />
+  <link rel="stylesheet" href="css/agent-proto-panel.css" />
+  <link rel="stylesheet" href="css/keys-workflow.css?v=scene-voice-share-3" />
   <link rel="stylesheet" href="css/flow-desk.css" />
   <link rel="stylesheet" href="css/camera-workflow.css" />
   <link rel="stylesheet" href="css/camera2-workbench.css" />
   <link rel="stylesheet" href="css/camera-teach.css" />
   <link rel="stylesheet" href="css/camera-action-picker.css" />
   <link rel="stylesheet" href="css/voice-workflow.css" />
-  <link rel="stylesheet" href="css/voice-page-shell.css" />
-  <link rel="stylesheet" href="css/voice-feedback-rail.css" />
+  <link rel="stylesheet" href="css/voice-page-shell.css?v=prompt-title-1" />
+  <link rel="stylesheet" href="css/voice-feedback-rail.css?v=aim-demo-3" />
   <link rel="stylesheet" href="css/codex-micro-hw-tokens.css" />
   <link rel="stylesheet" href="css/codex-micro-pad.css?v=20260825-pad1" />
   <link rel="stylesheet" href="css/soft-pad-hub.css?v=20260825-pad1" />
@@ -47,7 +48,7 @@
   <link rel="stylesheet" href="css/habit-novice.css" />
   <link rel="stylesheet" href="css/home-context-actions.css" />
   <link rel="stylesheet" href="css/qs-mode-matrix.css" />
-  <link rel="stylesheet" href="css/typography.css" />
+  <link rel="stylesheet" href="css/typography.css?v=voice-scene-keep-1" />
   <link rel="stylesheet" href="css/motion.css" />
 </head>
 <body>
@@ -135,6 +136,14 @@
               <button type="button" class="wb-nav-item" data-wb-nav="softPad" id="wbNavSoftPad">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>
                 <span data-i18n="homeWbNavSoftPad">虚拟键盘</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="agent" id="wbNavAgent">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/><path d="M16.5 7.5l1.5-1.5M19 10h2"/></svg>
+                <span data-i18n="homeWbNavAgent">Agent</span>
+              </button>
+              <button type="button" class="wb-nav-item" data-wb-nav="agentData" id="wbNavAgentData">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 17V9"/><path d="M12 17v-5"/><path d="M16 17V7"/></svg>
+                <span data-i18n="homeWbNavAgentData">数据</span>
               </button>
               <button type="button" class="wb-nav-item" data-wb-nav="voice" id="wbNavVoice">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
@@ -1779,6 +1788,46 @@
               <button type="button" class="page-status-btn is-primary" id="btnVoiceSaveHabit">保存到正在编辑的习惯</button>
               <button type="button" class="page-status-btn sr-only" id="btnVoiceSchemeAdd">+ 新建</button>
             </div>
+            <div class="voice-scheme-strip voice-scheme-strip--top" id="voiceSchemeStrip">
+              <details class="voice-scheme-trouble" id="voiceSchemeTrouble">
+                <summary id="voiceSchemeTroubleSummary" data-i18n="voiceSchemeTroubleSummary">听不准或太慢？</summary>
+                <div class="voice-scheme-trouble-body">
+                  <span class="voice-scheme-strip-lbl" id="voiceSchemeListenLbl">后台怎么听</span>
+                  <div class="voice-summary-engine-switch voice-strategy-seg voice-recognize-source-grid" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSchemeListenLbl">
+                    <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="auto" id="voiceSummaryEngineAuto">自动</button>
+                    <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="resourceSaver" id="voiceSummaryEngineResourceSaver">省电</button>
+                    <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="enhanced" id="voiceSummaryEngineEnhanced">增强</button>
+                  </div>
+                  <div class="voice-wake-optin-row voice-scheme-optin" id="voiceWakeListeningOptInRow">
+                    <div class="voice-wake-optin-copy">
+                      <span class="voice-wake-optin-label" id="voiceWakeListeningOptInLabel" data-i18n="voiceWakeListeningOptInLabel">全局口令唤醒</span>
+                      <span class="voice-wake-optin-hint" id="voiceWakeListeningOptInHint" data-i18n="voiceWakeListeningOptInHint">后台听口令更耗电；动作卡上可加多条口令</span>
+                    </div>
+                    <button type="button" class="toggle-switch" id="voiceWakeListeningOptInToggle" role="switch" aria-checked="false" aria-labelledby="voiceWakeListeningOptInLabel"></button>
+                  </div>
+                </div>
+              </details>
+              <!-- Hidden hosts: wake.js / bindings still paint here; dock cards drive the UX. -->
+              <div class="sr-only" aria-hidden="true">
+                <button type="button" id="btnVoiceWakePhraseEditLink">不对就改</button>
+                <button type="button" id="btnVoiceWakeGoKeysTarget">改听写目标 →</button>
+                <details class="voice-wake-more-aliases" id="voiceWakeMoreAliases">
+                  <summary id="voiceWakeMoreAliasesSummary">同义说法</summary>
+                  <div class="voice-wake-pool-alias-inset voice-wake-alias-card" id="voiceWakeAliasBlock">
+                    <p class="voice-wake-pool-bridge" id="voiceWakePoolBridge">这些说法同样有效</p>
+                    <p class="voice-phrase-pool-label" id="voiceWakeActiveLbl">已启用的唤醒短语</p>
+                    <p class="voice-phrase-panel-hint" id="voiceWakeAliasSectionLbl">其他开启口令</p>
+                    <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="voiceWakePhraseTags" role="listbox" aria-labelledby="voiceWakeAliasSectionLbl"></div>
+                    <div class="voice-wake-pool-actions">
+                      <button type="button" class="voice-wake-pool-add-btn" id="btnVoiceWakePoolAdd">+ 添加口令</button>
+                    </div>
+                  </div>
+                </details>
+                <details class="voice-wake-advanced" id="voiceWakeAdvanced" hidden>
+                  <summary id="voiceWakeAdvancedSummary">高级</summary>
+                </details>
+              </div>
+            </div>
             <div class="voice-unified-extras" id="voiceUnifiedExtras"></div>
             <span class="sr-only" id="voiceStatusCenterCluster"></span>
             <span class="keys-scheme-summary-lbl sr-only" id="voiceSummaryEngineLbl">语音模式</span>
@@ -1804,8 +1853,8 @@
             </div>
           </div>
           <div class="voice-page-shell">
-          <div class="voice-page-body">
-            <div class="voice-page-main">
+          <div class="voice-page-body keys-page-body">
+            <div class="voice-page-main keys-page-main">
           <div class="voice-page-layout">
               <div class="keys-workflow-pipeline voice-workflow-pipeline" id="voiceWorkflowPipeline" data-voice-face="dictate">
             <div class="voice-face-tabs" id="voiceFaceTabs" role="tablist" aria-label="语音方案分面" hidden aria-hidden="true">
@@ -1989,46 +2038,6 @@
                       <h3 class="voice-step-page-title" id="voiceRecognizePageTitle">意图效果</h3>
                       <p class="voice-step-page-sub" id="voiceRecognizePageSub">选意图 · 听写方式对齐按键 · 收尾用语音习惯</p>
                     </header>
-                    <div class="voice-scheme-strip voice-scheme-strip--trouble" id="voiceSchemeStrip">
-                      <details class="voice-scheme-trouble" id="voiceSchemeTrouble">
-                        <summary id="voiceSchemeTroubleSummary" data-i18n="voiceSchemeTroubleSummary">听不准或太慢？</summary>
-                        <div class="voice-scheme-trouble-body">
-                          <span class="voice-scheme-strip-lbl" id="voiceSchemeListenLbl">后台怎么听</span>
-                          <div class="voice-summary-engine-switch voice-strategy-seg voice-recognize-source-grid" id="voiceSummaryEngineSwitch" role="group" aria-labelledby="voiceSchemeListenLbl">
-                            <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="auto" id="voiceSummaryEngineAuto">自动</button>
-                            <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="resourceSaver" id="voiceSummaryEngineResourceSaver">省电</button>
-                            <button type="button" class="voice-strategy-btn voice-recognize-source-btn" data-voice-strategy-tab="enhanced" id="voiceSummaryEngineEnhanced">增强</button>
-                          </div>
-                          <div class="voice-wake-optin-row voice-scheme-optin" id="voiceWakeListeningOptInRow">
-                            <div class="voice-wake-optin-copy">
-                              <span class="voice-wake-optin-label" id="voiceWakeListeningOptInLabel" data-i18n="voiceWakeListeningOptInLabel">全局口令唤醒</span>
-                              <span class="voice-wake-optin-hint" id="voiceWakeListeningOptInHint" data-i18n="voiceWakeListeningOptInHint">后台听口令更耗电；动作卡上可加多条口令</span>
-                            </div>
-                            <button type="button" class="toggle-switch" id="voiceWakeListeningOptInToggle" role="switch" aria-checked="false" aria-labelledby="voiceWakeListeningOptInLabel"></button>
-                          </div>
-                        </div>
-                      </details>
-                      <!-- Hidden hosts: wake.js / bindings still paint here; dock cards drive the UX. -->
-                      <div class="sr-only" aria-hidden="true">
-                        <button type="button" id="btnVoiceWakePhraseEditLink">不对就改</button>
-                        <button type="button" id="btnVoiceWakeGoKeysTarget">改听写目标 →</button>
-                        <details class="voice-wake-more-aliases" id="voiceWakeMoreAliases">
-                          <summary id="voiceWakeMoreAliasesSummary">同义说法</summary>
-                          <div class="voice-wake-pool-alias-inset voice-wake-alias-card" id="voiceWakeAliasBlock">
-                            <p class="voice-wake-pool-bridge" id="voiceWakePoolBridge">这些说法同样有效</p>
-                            <p class="voice-phrase-pool-label" id="voiceWakeActiveLbl">已启用的唤醒短语</p>
-                            <p class="voice-phrase-panel-hint" id="voiceWakeAliasSectionLbl">其他开启口令</p>
-                            <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="voiceWakePhraseTags" role="listbox" aria-labelledby="voiceWakeAliasSectionLbl"></div>
-                            <div class="voice-wake-pool-actions">
-                              <button type="button" class="voice-wake-pool-add-btn" id="btnVoiceWakePoolAdd">+ 添加口令</button>
-                            </div>
-                          </div>
-                        </details>
-                        <details class="voice-wake-advanced" id="voiceWakeAdvanced" hidden>
-                          <summary id="voiceWakeAdvancedSummary">高级</summary>
-                        </details>
-                      </div>
-                    </div>
                     <div class="voice-intent-picker" id="voiceIntentPicker" hidden>
                     <nav class="voice-intent-rail" id="voiceIntentRail" role="tablist" aria-label="意图分类">
                       <button type="button" class="voice-intent-rail-item is-on" data-voice-intent="ime" role="tab" aria-selected="true" id="voiceIntentTabIme">听写方式<span class="n">IME</span></button>
@@ -2271,70 +2280,162 @@
                     </div>
                     <div class="voice-intent-pane" id="voiceIntentPanePrompt" data-voice-intent-pane="prompt" hidden>
                       <div class="voice-prompt-desk" id="voicePromptDesk">
-                        <span class="voice-prompt-kicker" id="voiceIntentPromptKicker">一词注入</span>
-                        <h4 class="voice-prompt-title" id="voiceIntentPromptTitle">聚焦 · 填入 · 发送</h4>
-                        <p class="voice-prompt-desc" id="voiceIntentPromptDesc">触发词来自 01；正文写在下方，不必念出来</p>
-                        <div class="voice-prompt-steps" aria-hidden="true">
-                          <span class="voice-prompt-step"><i>1</i>一词激活</span>
-                          <span class="arr">→</span>
-                          <span class="voice-prompt-step"><i>2</i>对准输入框</span>
-                          <span class="arr">→</span>
-                          <span class="voice-prompt-step"><i>3</i>填入 prompt</span>
-                          <span class="arr">→</span>
-                          <span class="voice-prompt-step"><i>4</i>自动发送</span>
-                        </div>
-                        <label class="voice-prompt-label" for="voicePromptInjectBody" id="voiceIntentPromptLabel">要填入并发送的 prompt</label>
-                        <textarea id="voicePromptInjectBody" class="voice-prompt-textarea" rows="4" placeholder="在此填写要自动写入并发送的内容…"></textarea>
-                        <div class="voice-prompt-presets" id="voicePromptPresets">
-                          <button type="button" data-prompt-preset="proto">画原型图</button>
-                          <button type="button" data-prompt-preset="agent">Agent 总结</button>
-                          <button type="button" data-prompt-preset="continue">继续</button>
-                          <button type="button" data-prompt-preset="custom" id="btnVoicePromptCustom">＋ 自定义</button>
-                        </div>
-                        <div class="voice-prompt-save-row">
-                          <button type="button" class="control-btn primary" id="btnVoicePromptSaveScene">保存到本场景列表</button>
-                          <span class="voice-prompt-save-hint" id="voicePromptSaveHint">点保存，或改完文案后自动写入右侧</span>
-                        </div>
-                        <p class="voice-prompt-land" id="voicePromptLand">说 01 口令 = 对准输入框 → 写入 prompt → 回车发送</p>
-                        <fieldset class="voice-prompt-aim" id="voicePromptAimRow">
-                          <legend class="voice-prompt-aim__legend" id="voiceInputAimStrategyLbl">写入前怎么处理输入框</legend>
-                          <p class="voice-prompt-aim__lead" id="voiceInputAimStrategyHint">四个通道共用这一处设置。默认帮你对准；对不准就不填，避免打进编辑器。</p>
-                          <div class="voice-prompt-aim__cards" role="radiogroup" aria-labelledby="voiceInputAimStrategyLbl">
-                            <label class="voice-prompt-aim__card is-on">
-                              <input type="radio" name="voiceInputAimStrategy" id="voiceInputAimStrategyAuto" value="auto" checked />
-                              <span class="voice-prompt-aim__title">先对准，再填入</span>
-                              <span class="voice-prompt-aim__badge">推荐</span>
-                              <span class="voice-prompt-aim__desc">自动点进聊天输入框；对不上就取消，不乱填。</span>
-                            </label>
-                            <label class="voice-prompt-aim__card">
-                              <input type="radio" name="voiceInputAimStrategy" id="voiceInputAimStrategyNone" value="none" />
-                              <span class="voice-prompt-aim__title">直接填入</span>
-                              <span class="voice-prompt-aim__desc">假定你已点好输入框，跳过对准，立刻写入。</span>
-                            </label>
-                            <label class="voice-prompt-aim__card">
-                              <input type="radio" name="voiceInputAimStrategy" id="voiceInputAimStrategyProbe" value="probe" />
-                              <span class="voice-prompt-aim__title">只在已对准时填</span>
-                              <span class="voice-prompt-aim__desc">光标已在输入框才填；否则取消。不主动点屏。</span>
-                            </label>
+                        <header class="voice-prompt-desk__head">
+                          <div class="voice-prompt-desk__head-copy">
+                            <span class="voice-prompt-kicker" id="voiceIntentPromptKicker">一词注入</span>
+                            <h4 class="voice-prompt-title" id="voiceIntentPromptTitle">说一词 · 写入 · 发送</h4>
+                            <p class="voice-prompt-desc" id="voiceIntentPromptDesc">左栏选指令或从常用起步；右侧先选怎么对准，再编辑要写入的 prompt。场景唤醒只打当前选中。</p>
                           </div>
-                          <div class="voice-prompt-aim-cal" id="voicePromptAimCalRow">
-                            <button type="button" class="control-btn" id="btnVoiceAimCalibrate">粗圈校准输入框</button>
-                            <button type="button" class="control-btn ghost" id="btnVoiceAimCalibrateClear" hidden>恢复默认位置</button>
-                            <span class="voice-prompt-aim-cal__hint" id="voicePromptAimCalHint">先圈住，再框内点一下 · 按 App 记住</span>
+                          <div class="voice-prompt-armed" id="voicePromptArmed" aria-live="polite"></div>
+                        </header>
+                        <div class="voice-prompt-desk__body">
+                          <aside class="voice-prompt-lib-pane" aria-label="口头指令库">
+                            <div class="voice-prompt-lib-pane__h">
+                              <span id="voicePromptLibLbl">指令库</span>
+                              <span class="voice-prompt-lib-pane__count" id="voicePromptLibCount"></span>
+                            </div>
+                            <div class="voice-prompt-lib" id="voicePromptLib" role="listbox" aria-label="已保存的口头指令"></div>
+                            <div class="voice-prompt-presets" id="voicePromptPresets">
+                              <div class="voice-prompt-from-tpl" id="voicePromptFromTpl" hidden></div>
+                              <button type="button" class="voice-prompt-lib-new" id="btnVoicePromptCustom" data-voice-prompt-new>＋ 新建</button>
+                            </div>
+                          </aside>
+
+                          <div class="voice-prompt-desk__main">
+                            <section class="voice-prompt-col voice-prompt-col--send" aria-labelledby="voiceInputAimStrategyLbl">
+                              <div class="voice-prompt-col__h">
+                                <h5 class="voice-prompt-col__title" id="voicePromptColAimTitle">怎么对准</h5>
+                                <span class="voice-prompt-col__sub">写入前 · 按应用共用</span>
+                              </div>
+                              <fieldset class="voice-prompt-aim" id="voicePromptAimRow" data-aim="none">
+                                <legend class="voice-prompt-aim__legend" id="voiceInputAimStrategyLbl">写入前怎么对准输入框</legend>
+                                <p class="voice-prompt-aim__lead" id="voicePromptAimLead">口令都会识别；差别在「要不要自动点框、没对准时写不写」。</p>
+                                <div class="voice-prompt-aim__cards" role="radiogroup" aria-labelledby="voiceInputAimStrategyLbl">
+                                  <label class="voice-prompt-aim__card is-on" data-aim-value="none">
+                                    <input type="radio" name="voiceInputAimStrategy" id="voiceInputAimStrategyNone" value="none" checked />
+                                    <span class="voice-prompt-aim__title">不对准，直接写入</span>
+                                    <span class="voice-prompt-aim__badge">推荐</span>
+                                    <span class="voice-prompt-aim__desc">假定你已点好框。最快，焦点在哪就打到哪。</span>
+                                  </label>
+                                  <label class="voice-prompt-aim__card" data-aim-value="auto">
+                                    <input type="radio" name="voiceInputAimStrategy" id="voiceInputAimStrategyAuto" value="auto" />
+                                    <span class="voice-prompt-aim__title">自动对准再写入</span>
+                                    <span class="voice-prompt-aim__desc">说出口令后点到聊天框再填；对不上就取消。</span>
+                                  </label>
+                                  <label class="voice-prompt-aim__card" data-aim-value="probe">
+                                    <input type="radio" name="voiceInputAimStrategy" id="voiceInputAimStrategyProbe" value="probe" />
+                                    <span class="voice-prompt-aim__title">防误写：未对准则跳过</span>
+                                    <span class="voice-prompt-aim__desc">聊天框没有光标时，口令触发也不写入。</span>
+                                  </label>
+                                </div>
+
+                                <button type="button" class="voice-aim-demo-toggle" id="btnVoiceAimDemoToggle" aria-expanded="false" aria-controls="voiceAimExplain">
+                                  <span id="voiceAimDemoToggleLbl">看对准演示</span>
+                                </button>
+
+                                <div class="voice-aim-explain" id="voiceAimExplain" data-mode="auto" hidden>
+                                  <div class="voice-aim-explain__stage">
+                                    <div class="voice-aim-demo" id="voiceAimDemo" data-mode="auto" style="--spot-x:78%;--spot-y:84%" aria-hidden="true">
+                                      <div class="voice-aim-demo__win">
+                                        <span class="voice-aim-demo__title">目标窗口</span>
+                                        <div class="voice-aim-demo__code">fn main() {<br>&nbsp;&nbsp;// 编辑器<br>}</div>
+                                        <div class="voice-aim-demo__chat">
+                                          <span class="voice-aim-demo__caret"></span>
+                                          <span class="voice-aim-demo__type">继续</span>
+                                          <span class="voice-aim-demo__ph">聊天输入框</span>
+                                        </div>
+                                        <span class="voice-aim-demo__type-wrong">继续</span>
+                                      </div>
+                                      <div class="voice-aim-map" id="voiceAimSlots" aria-label="当前落点预览">
+                                        <button type="button" class="voice-aim-spot is-on" data-aim-slot="0" role="tab" aria-selected="true" title="位置 1">
+                                          <span class="voice-aim-spot__n">1</span>
+                                        </button>
+                                        <button type="button" class="voice-aim-spot" data-aim-slot="1" role="tab" aria-selected="false" title="位置 2" hidden>
+                                          <span class="voice-aim-spot__n">2</span>
+                                        </button>
+                                      </div>
+                                      <span class="voice-aim-demo__cursor"></span>
+                                      <span class="voice-aim-demo__badge is-ok" id="voiceAimDemoBadge">已写入聊天框</span>
+                                    </div>
+                                    <div class="voice-aim-explain__copy">
+                                      <div class="voice-aim-explain__pane" data-aim-explain="auto">
+                                        <h6 id="voiceAimExplainAutoTitle">自动对准再写入</h6>
+                                        <p id="voiceAimExplainAutoBody">光点 = 落点。口令后点到该点再写入；对不上就取消。</p>
+                                        <ol class="voice-aim-explain__steps">
+                                          <li><i>1</i>说出口令</li>
+                                          <li><i>2</i>自动点到光点</li>
+                                          <li><i>3</i>写入并发送</li>
+                                        </ol>
+                                      </div>
+                                      <div class="voice-aim-explain__pane" data-aim-explain="none" hidden>
+                                        <h6 id="voiceAimExplainNoneTitle">不对准，直接写入</h6>
+                                        <p id="voiceAimExplainNoneBody">焦点在哪就打到哪。最快，但旁边开着代码时容易误写入文件。</p>
+                                        <ol class="voice-aim-explain__steps">
+                                          <li><i>1</i>说出口令</li>
+                                          <li><i>2</i>立刻在当前焦点打字</li>
+                                          <li><i>3</i>不对焦聊天框也会写入</li>
+                                        </ol>
+                                      </div>
+                                      <div class="voice-aim-explain__pane" data-aim-explain="probe" hidden>
+                                        <h6 id="voiceAimExplainProbeTitle">防误写：未对准则跳过</h6>
+                                        <p id="voiceAimExplainProbeBody">聊天框没有光标就不写。口令仍识别，只是本轮不注入。</p>
+                                        <ol class="voice-aim-explain__steps">
+                                          <li><i>1</i>说出口令</li>
+                                          <li><i>2</i>检查是否已对准</li>
+                                          <li><i>3</i>未对准 → 跳过，不写入</li>
+                                        </ol>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div class="voice-prompt-aim-cal" id="voicePromptAimCalRow" hidden>
+                                  <div class="voice-aim-slot-tabs" id="voiceAimSlotTabs" role="tablist" aria-label="对准落点">
+                                    <button type="button" class="voice-aim-slot-tab is-on" data-aim-slot="0" role="tab" aria-selected="true" title="位置 1">
+                                      <span class="voice-aim-slot-tab__n">1</span>
+                                      <span class="voice-aim-slot-tab__s" data-aim-slot-state="0">未校准</span>
+                                    </button>
+                                    <button type="button" class="voice-aim-slot-tab" data-aim-slot="1" role="tab" aria-selected="false" title="位置 2">
+                                      <span class="voice-aim-slot-tab__n">2</span>
+                                      <span class="voice-aim-slot-tab__s" data-aim-slot-state="1">未校准</span>
+                                    </button>
+                                  </div>
+                                  <div class="voice-prompt-aim-cal__actions">
+                                    <button type="button" class="control-btn" id="btnVoiceAimCalibrate">校准此位置</button>
+                                    <button type="button" class="control-btn ghost" id="btnVoiceAimCalibrateClear" hidden>清除此位置</button>
+                                  </div>
+                                  <span class="voice-prompt-aim-cal__hint" id="voicePromptAimCalHint">点 1 / 2 切换查看；校准写入当前点</span>
+                                </div>
+
+                                <select id="voiceInputAimStrategy" class="voice-prompt-aim-select" hidden aria-hidden="true">
+                                  <option value="none" selected>不对准，直接写入</option>
+                                  <option value="auto">自动对准再写入</option>
+                                  <option value="probe">防误写：未对准则跳过</option>
+                                </select>
+                              </fieldset>
+                            </section>
+
+                            <section class="voice-prompt-col voice-prompt-col--what" aria-labelledby="voicePromptColWhatTitle">
+                              <div class="voice-prompt-col__h">
+                                <div class="voice-prompt-col__h-text">
+                                  <h5 class="voice-prompt-col__title" id="voicePromptColWhatTitle">写什么</h5>
+                                  <span class="voice-prompt-col__sub" id="voicePromptColWhatSub">当前口头指令 · 输入即保存</span>
+                                </div>
+                                <button type="button" class="voice-prompt-new-primary" id="btnVoicePromptNewMain" data-voice-prompt-new title="保存当前内容并开一条新的">
+                                  ＋ 新建
+                                </button>
+                              </div>
+                              <div class="voice-prompt-edit-pane">
+                                <label class="voice-prompt-label" for="voicePromptTitle" id="voicePromptTitleLbl">标题（可选）</label>
+                                <input type="text" id="voicePromptTitle" class="voice-prompt-title" maxlength="32" placeholder="缩短成列表短名，如：总结改动" autocomplete="off" />
+                                <label class="voice-prompt-label" for="voicePromptInjectBody" id="voiceIntentPromptLabel">要填入并发送的 prompt</label>
+                                <textarea id="voicePromptInjectBody" class="voice-prompt-textarea" rows="6" placeholder="在此填写要自动写入并发送的内容…"></textarea>
+                                <div class="voice-prompt-save-row">
+                                  <span class="voice-prompt-save-hint" id="voicePromptSaveHint">输入后自动保存</span>
+                                </div>
+                              </div>
+                            </section>
                           </div>
-                          <!-- keep id for older rail sync; hidden mirror of radios -->
-                          <select id="voiceInputAimStrategy" class="voice-prompt-aim-select" hidden aria-hidden="true">
-                            <option value="auto">先对准，再填入</option>
-                            <option value="none">直接填入</option>
-                            <option value="probe">只在已对准时填</option>
-                          </select>
-                        </fieldset>
-                        <div class="voice-wake-optin-row voice-prompt-bringup" id="voiceWakeBringUpRow" hidden>
-                          <div class="voice-wake-optin-copy">
-                            <span class="voice-wake-optin-label" id="voiceSchemeBringUpLbl">不在目标窗时自动切过去</span>
-                            <span class="voice-wake-optin-hint" id="voiceSchemeBringUpHint">默认关 · 只管切到应用窗口；输入框对准见上方</span>
-                          </div>
-                          <button type="button" class="toggle-switch" id="voiceAllowBringUpTargetToggle" role="switch" aria-checked="false" aria-labelledby="voiceSchemeBringUpLbl"></button>
                         </div>
                       </div>
                     </div>
@@ -2674,6 +2775,7 @@
               </div>
           </div>
             </div>
+          <!-- voice-page-main ends; scene aside stays body sibling (Keys pattern). -->
           <!-- Hidden legacy Tab2 hosts so existing renderHero/bindOnce no-op safely -->
           <div id="voiceTab2Mvp" hidden aria-hidden="true">
             <p id="voiceTab2VoiceGate" hidden></p>
@@ -2684,7 +2786,48 @@
             <p id="voiceTab2FailHint" hidden></p>
             <details id="voiceTab2Advanced" hidden><summary id="voiceTab2AdvancedSummary"><span id="voiceTab2AdvancedBadge" hidden></span></summary><p id="voiceTab2AdvancedHint"></p></details>
           </div>
-          <footer class="voice-bottom-dock" id="voiceBottomDock" role="status" aria-live="polite">
+                    <aside class="keys-page-aside keys-scene-actions" id="voiceSceneActionsPanel" hidden data-panel="dir" aria-label="本场景动作">
+              <div class="keys-scene-actions__head">
+                <div class="keys-scene-actions__titles">
+                  <div class="keys-scene-actions__app" id="voiceSceneActionsApp" hidden>
+                    <img class="keys-scene-actions__app-ico" id="voiceSceneActionsAppIcon" alt="" width="20" height="20" hidden />
+                    <span class="keys-scene-actions__app-name" id="voiceSceneActionsAppName"></span>
+                  </div>
+                  <h3 class="keys-scene-actions__title" id="voiceSceneActionsTitle" data-i18n="keysSceneActionsTitle">本场景动作</h3>
+                  <p class="keys-scene-actions__meta" id="voiceSceneActionsMeta"></p>
+                </div>
+                <button type="button" class="keys-scene-actions__back" id="voiceSceneActionsBack" hidden data-i18n="keysSceneActionsBack">收起</button>
+              </div>
+              <div class="keys-scene-actions__dir" id="voiceSceneActionsDir" role="list"></div>
+              <div class="keys-scene-actions__detail" id="voiceSceneActionsDetail" hidden>
+                <div class="keys-scene-actions__picks" id="voiceSceneActionsPicks"></div>
+                <div class="keys-scene-actions__edit" id="voiceSceneActionsEdit"></div>
+              </div>
+            </aside>
+            <!-- Legacy hub hosts kept for bindings; page-k uses scene actions aside instead. -->
+            <aside class="voice-page-aside sr-only" id="voicePanelAside" aria-hidden="true" hidden>
+              <section class="keys-aside-card keys-hub-card" id="voiceHubCard" hidden>
+                <div class="keys-hub-schemes" id="voiceHubSchemeList" role="list"></div>
+                <button type="button" class="keys-hub-scheme-add" id="btnVoiceHubAddDraft" hidden>+ 新建草稿</button>
+                <div id="voiceHubTemplatesDisclosure" hidden>
+                  <span id="voiceHubTemplatesLbl"></span>
+                  <span id="voiceHubTemplatesCount"></span>
+                  <span id="voiceHubTemplatesHint"></span>
+                  <div id="voiceHubTemplateList"></div>
+                  <div id="voiceHubTemplatesFillWrap" hidden>
+                    <span id="voiceHubTemplatesFillLbl"></span>
+                    <div id="voiceHubTemplatesFillList"></div>
+                  </div>
+                </div>
+                <span id="voiceHubTitleLbl"></span>
+                <span id="voiceHubCount"></span>
+                <span id="voiceHubEditHint"></span>
+                <span id="voiceHubDivider"></span>
+                <span id="voiceHubTemplatesSummary"></span>
+              </section>
+            </aside>
+          </div>
+<footer class="voice-bottom-dock" id="voiceBottomDock" role="status" aria-live="polite">
             <div class="voice-bottom-dock-inner">
               <div class="voice-dock-live">
                 <div class="voice-dock-live-item voice-dock-level-slot">
@@ -2769,46 +2912,6 @@
               </div>
             </div>
           </footer>
-          <aside class="keys-page-aside keys-scene-actions" id="voiceSceneActionsPanel" hidden data-panel="dir" aria-label="本场景动作">
-              <div class="keys-scene-actions__head">
-                <div class="keys-scene-actions__titles">
-                  <div class="keys-scene-actions__app" id="voiceSceneActionsApp" hidden>
-                    <img class="keys-scene-actions__app-ico" id="voiceSceneActionsAppIcon" alt="" width="20" height="20" hidden />
-                    <span class="keys-scene-actions__app-name" id="voiceSceneActionsAppName"></span>
-                  </div>
-                  <h3 class="keys-scene-actions__title" id="voiceSceneActionsTitle" data-i18n="keysSceneActionsTitle">本场景动作</h3>
-                  <p class="keys-scene-actions__meta" id="voiceSceneActionsMeta"></p>
-                </div>
-                <button type="button" class="keys-scene-actions__back" id="voiceSceneActionsBack" hidden data-i18n="keysSceneActionsBack">收起</button>
-              </div>
-              <div class="keys-scene-actions__dir" id="voiceSceneActionsDir" role="list"></div>
-              <div class="keys-scene-actions__detail" id="voiceSceneActionsDetail" hidden>
-                <div class="keys-scene-actions__picks" id="voiceSceneActionsPicks"></div>
-                <div class="keys-scene-actions__edit" id="voiceSceneActionsEdit"></div>
-              </div>
-            </aside>
-            <!-- Legacy hub hosts kept for bindings; page-k uses scene actions aside instead. -->
-            <aside class="voice-page-aside sr-only" id="voicePanelAside" aria-hidden="true" hidden>
-              <section class="keys-aside-card keys-hub-card" id="voiceHubCard" hidden>
-                <div class="keys-hub-schemes" id="voiceHubSchemeList" role="list"></div>
-                <button type="button" class="keys-hub-scheme-add" id="btnVoiceHubAddDraft" hidden>+ 新建草稿</button>
-                <div id="voiceHubTemplatesDisclosure" hidden>
-                  <span id="voiceHubTemplatesLbl"></span>
-                  <span id="voiceHubTemplatesCount"></span>
-                  <span id="voiceHubTemplatesHint"></span>
-                  <div id="voiceHubTemplateList"></div>
-                  <div id="voiceHubTemplatesFillWrap" hidden>
-                    <span id="voiceHubTemplatesFillLbl"></span>
-                    <div id="voiceHubTemplatesFillList"></div>
-                  </div>
-                </div>
-                <span id="voiceHubTitleLbl"></span>
-                <span id="voiceHubCount"></span>
-                <span id="voiceHubEditHint"></span>
-                <span id="voiceHubDivider"></span>
-                <span id="voiceHubTemplatesSummary"></span>
-              </section>
-            </aside>
           </div>
           <p class="settings-panel-desc voice-page-head-desc sr-only" id="settingsPanelVoiceWakeDesc">配置从声音采集到文本输出的本地语音输入流程</p>
           <p class="settings-panel-note voice-page-scene-note sr-only" id="voiceActiveSceneNote" hidden aria-hidden="true"></p>
@@ -4160,6 +4263,13 @@
   <p id="camera2CompareStatus" class="camera2-compare-status" hidden style="margin:8px 16px;font-size:12px;color:#5a7086"></p>
   <div id="camera2Mount"></div>
 </section>
+
+<section class="settings-panel drawer-section agent-proto-page" id="settingsPanelAgent" hidden>
+  <iframe class="agent-proto-frame" id="agentProtoFrame" title="Agent" src="agent-proto/agent-page?embed=1" loading="lazy"></iframe>
+</section>
+<section class="settings-panel drawer-section agent-proto-page" id="settingsPanelAgentData" hidden>
+  <iframe class="agent-proto-frame" id="agentDataProtoFrame" title="数据" src="agent-proto/agent-data?embed=1" loading="lazy"></iframe>
+</section>
           </div>
         </div>
       </div>
@@ -5172,7 +5282,7 @@
   <script src="js/core/app-voice-presets.js"></script>
   <script src="js/core/scene-config.js"></script>
   <script src="js/core/habit-profile.js"></script>
-  <script src="js/core/config-persist.js?v=20260809-stall9"></script>
+  <script src="js/core/config-persist.js?v=aim-default-none-3"></script>
   <script src="js/core/app-text-utils.js"></script>
   <script src="js/core/app-autostart.js"></script>
   <script src="js/core/app-start-minimized.js"></script>
@@ -5237,7 +5347,7 @@
   <script src="js/features/voice/voice-step-wake-render.js"></script>
   <script src="js/features/voice/voice-bridge-softpad.js"></script>
   <script src="js/features/voice/voice-bridge-keys.js"></script>
-  <script src="js/features/voice/voice-intent-rail.js?v=aim-cal-b5"></script>
+  <script src="js/features/voice/voice-intent-rail.js?v=prompt-title-1"></script>
   <script src="js/features/voice/voice-bridge-camera.js"></script>
   <script src="js/features/voice/voice-step-recognize-render.js"></script>
   <script src="js/features/voice/voice-step-send-render.js"></script>
@@ -5247,7 +5357,7 @@
   <script src="js/features/voice/voice-settings-flow.js?v=20260809-stall9"></script>
   <script src="js/features/voice/voice-subpages.js"></script>
   <script src="js/features/voice/voice-models-panel.js"></script>
-  <script src="js/features/voice/voice-ui-bindings.js?v=20260809-stall9"></script>
+  <script src="js/features/voice/voice-ui-bindings.js?v=bringup-always-1"></script>
   <script src="js/features/settings/settings-debug-hooks.js"></script>
   <script src="js/features/settings/basic-panel-ui.js"></script>
   <script src="js/features/settings/workspace-layout-ui.js"></script>
@@ -5320,8 +5430,8 @@
   <script src="js/features/agent/semantic-action-store.js"></script>
   <script src="js/features/agent/action-catalog-filter.js"></script>
   <script src="js/features/agent/action-binding-adapters.js"></script>
-  <script src="js/features/mapping/keys-channel-command-picker.js?v=channel-dock-1"></script>
-  <script src="js/features/mapping/keys-scene-actions-panel.js?v=wake-list-1"></script>
+  <script src="js/features/mapping/keys-channel-command-picker.js?v=prompt-autosave-2"></script>
+  <script src="js/features/mapping/keys-scene-actions-panel.js?v=prompt-multi-1"></script>
   <script src="js/features/agent/semantic-action-presets.js"></script>
   <script src="js/features/agent/action-nav.js"></script>
   <script src="js/features/agent/semantic-action-picker.js"></script>
@@ -5333,8 +5443,11 @@
   <script src="js/features/agent/soft-pad-tray-ui.js"></script>
   <script src="js/features/agent/soft-pad-time-machine-ui.js"></script>
   <script src="js/features/agent/usage-format.js"></script>
+  <script src="js/features/agent/agent-data-bridge.js"></script>
+  <script src="js/features/agent/agent-page-preview-bridge.js"></script>
   <script src="js/features/agent/shell-agent-hook-panel.js"></script>
   <script src="js/features/agent/soft-pad-connect-status.js"></script>
+  <script src="js/features/agent/agent-page-settings-bridge.js"></script>
   <script src="js/features/agent/soft-pad-agent-registry.js"></script>
   <script src="js/features/agent/soft-pad-hub-ui.js"></script>
   <script src="js/features/agent/agent-capability-ui.js"></script>
@@ -5350,7 +5463,7 @@
   <script src="js/features/voice/voice-wake-acoustic.js"></script>
   <script src="js/features/mapping/habit-scenario-voice-editor.js"></script>
   <script src="js/features/settings/settings-scope-switch.js"></script>
-  <script src="js/features/mapping/habit-channel-edit-banner.js"></script>
+  <script src="js/features/mapping/habit-channel-edit-banner.js?v=prompt-land-5"></script>
   <script src="js/features/mapping/habit-scenario-context-banner.js"></script>
   <script src="js/features/mapping/habit-channel-status-strip.js"></script>
   <script src="js/features/mapping/habit-scenario-access-cards.js"></script>

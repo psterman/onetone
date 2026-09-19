@@ -1,0 +1,23 @@
+{
+  "total": 38,
+  "bySeverity": {
+    "warning": 38
+  },
+  "byAntipattern": {
+    "low-contrast": 10,
+    "undersized-ui-text": 25,
+    "tiny-text": 1,
+    "cramped-padding": 1,
+    "nested-cards": 1
+  },
+  "lowContrastRatios": [],
+  "undersizedPxValues": [
+    "10px",
+    "10.5px"
+  ],
+  "crampedSnippets": [],
+  "nestedSnippets": [
+    "Card inside card (div)"
+  ],
+  "parseNote": "Full JSON invalid (mojibake/unescaped quote in Chinese snippets from console encoding). Counts via regex."
+}

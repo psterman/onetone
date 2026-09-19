@@ -770,14 +770,23 @@
       }
     }
     var preview = body.trim();
-    var label = String((sm && sm.label) || '').trim();
-    // Don't mirror the full prompt as the title (looks like a duplicate card).
+    var wakes = [];
+    try {
+      var ov = sm && (sm.voiceOverride || sm.voice_override);
+      var wp = ov && (ov.wakePhrases || ov.wake_phrases);
+      if (Array.isArray(wp)) {
+        wakes = wp
+          .map(function (p) {
+            return String(p || '').trim();
+          })
+          .filter(Boolean);
+      }
+    } catch (_) {}
+    var label = wakes.length
+      ? wakes.join('、')
+      : String((sm && sm.label) || '').trim();
     if (!label || label === preview || label.length > 18) {
       label = t('voiceIntentPrompt', '口头指令');
-    }
-    // Voice dock: title = 用户口令；prompt 正文放副标题.
-    if (onVoicePage()) {
-      label = primaryWakePhraseLabel() || label;
     }
     if (preview.length > 28) preview = preview.slice(0, 28) + '…';
     return {
@@ -986,7 +995,6 @@
       global.OneToneI18n && global.OneToneI18n.getLang ? global.OneToneI18n.getLang() : 'zh';
     var rows = [];
     var voicePage = onVoicePage();
-    var seenPromptText = {};
     for (var i = 0; i < maps.length; i++) {
       var sm = maps[i];
       if (!sm || !sm.id) continue;
@@ -1004,15 +1012,6 @@
         // Wake-first habits often have IME / recognition without a hardware triggerKey —
         // requiring trig here emptied the list after 新建/改口令 (kept mapping, 0 rows).
         if (isPromptInjectMapping(sm)) {
-          var pbody = '';
-          try {
-            var pp = global.OneToneKeysChannelCommandPicker;
-            if (pp && typeof pp.promptTextFromMapping === 'function') {
-              pbody = String(pp.promptTextFromMapping(sm) || '').trim();
-            }
-          } catch (_) {}
-          if (pbody && seenPromptText[pbody]) continue;
-          if (pbody) seenPromptText[pbody] = true;
           rows.push(promptRow(sm));
           continue;
         }
@@ -1156,6 +1155,29 @@
     var picker = global.OneToneKeysChannelCommandPicker;
     var core = mappingCore();
     var mid = row && row.mappingId ? String(row.mappingId) : '';
+    // Prompt peers: keep habit as dock anchor. Focusing the peer made × hit
+    // clearHabitScheme (no prompt handler) so delete looked broken.
+    if (onVoicePage() && row && row.kind === 'prompt') {
+      if (mid) state.highlightId = mid;
+      try {
+        var railJump = global.OneToneVoiceIntentRail;
+        if (railJump && typeof railJump.applyPromptMapping === 'function') {
+          railJump.applyPromptMapping(mid);
+        } else if (railJump && typeof railJump.setIntent === 'function') {
+          railJump.setIntent('prompt');
+        }
+      } catch (_) {}
+      paint();
+      try {
+        if (
+          global.OneToneVoiceSettingsFlow &&
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender
+        ) {
+          global.OneToneVoiceSettingsFlow.scheduleVoiceSettingsRender();
+        }
+      } catch (_) {}
+      return;
+    }
     // Focus the row's mapping so 01/02 are that pair — peers don't steal each other.
     if (mid && core && typeof core.focus === 'function') {
       try {
@@ -1169,7 +1191,7 @@
     if (onSoftPadPage()) {
       openKeysPanelIfNeeded();
     }
-    // Voice page: voice-input / prompt rows stay here; custom-key peers jump to Keys.
+    // Voice page: voice-input rows stay here; custom-key peers jump to Keys.
     if (onVoicePage()) {
       if (row && row.kind === 'customKey') {
         openKeysPanelIfNeeded();
@@ -1187,16 +1209,6 @@
           } catch (_) {}
           paint();
           return;
-        }
-        if (row && row.kind === 'prompt') {
-          try {
-            var rail = global.OneToneVoiceIntentRail;
-            if (rail && typeof rail.applyPromptMapping === 'function') {
-              rail.applyPromptMapping(mid);
-            } else if (rail && typeof rail.setIntent === 'function') {
-              rail.setIntent('prompt');
-            }
-          } catch (_) {}
         }
         paint();
         try {
@@ -1265,7 +1277,16 @@
   function startNewAction() {
     var voice = onVoicePage();
     if (voice) {
-      // 语音「新建动作」= 新建口令，不拉起按键录制。
+      // 一词注入 desk：新建一条可保存的 prompt 方案，而不是只加唤醒词。
+      try {
+        var rail = global.OneToneVoiceIntentRail;
+        var intent = rail && typeof rail.getIntent === 'function' ? rail.getIntent() : '';
+        if (intent === 'prompt' && typeof rail.startNewCustomPrompt === 'function') {
+          rail.startNewCustomPrompt();
+          return;
+        }
+      } catch (_) {}
+      // 其它语音意图：「新建动作」= 新建口令，不拉起按键录制。
       try {
         var bind = global.OneToneVoiceUiBindings;
         if (bind && typeof bind.openWakePhrasePopover === 'function') {
@@ -1438,13 +1459,22 @@
       });
     }
     // Voice: one 口令 → one command — prefer the current scene habit only.
+    // Prompt peers are separate mappings (own id) — never drop them when scoping.
     if (onVoicePage()) {
       var mid = String(state.mappingId || '').trim();
       if (mid) {
-        var scoped = out.filter(function (r) {
-          return r && String(r.mappingId || '') === mid;
-        });
-        if (scoped.length) out = scoped;
+        if (tab === 'voice') {
+          out = out.filter(function (r) {
+            if (!r) return false;
+            if (r.kind === 'prompt') return true;
+            return String(r.mappingId || '') === mid;
+          });
+        } else {
+          var scoped = out.filter(function (r) {
+            return r && String(r.mappingId || '') === mid;
+          });
+          if (scoped.length) out = scoped;
+        }
       }
       // Applied「我录的键」on the habit beats bare library peers with the same kind.
       if (tab === 'key' && out.length > 1) {
@@ -1489,6 +1519,20 @@
   function clearHabitScheme(row, m) {
     if (!m || !row) return;
     var kind = String(row.kind || '');
+    // Habit wrongly stamped as prompt inject — scrub payload, never trash the scene.
+    if (kind === 'prompt') {
+      m.captureHeroRef = null;
+      if (Array.isArray(m.targetActions) && m.targetActions.length) {
+        var scrubActs = m.targetActions;
+        var looksInject =
+          scrubActs.length >= 2 &&
+          String((scrubActs[0] && (scrubActs[0].type || scrubActs[0].kind)) || '')
+            .trim()
+            .toLowerCase() === 'text';
+        if (looksInject) m.targetActions = [];
+      }
+      return;
+    }
     if (kind === 'recognition') {
       m.imePresetId = '';
       if (Array.isArray(m.agentBindings)) {
@@ -1572,6 +1616,31 @@
     return !!(row && String(row.mappingId || '').trim());
   }
 
+  function reanchorDockAfterPeerDelete(deletedId, appId) {
+    deletedId = String(deletedId || '').trim();
+    appId = String(appId || '').trim();
+    if (String(state.mappingId || '') !== deletedId && String(state.highlightId || '') !== deletedId) {
+      return;
+    }
+    state.highlightId = '';
+    var maps =
+      global.OneToneState && global.OneToneState.state && global.OneToneState.state.config
+        ? global.OneToneState.state.config.mappings
+        : null;
+    if (Array.isArray(maps) && appId) {
+      for (var i = 0; i < maps.length; i++) {
+        var x = maps[i];
+        if (!x || String(x.id) === deletedId) continue;
+        if (String(x.appTargetId || '').trim() !== appId) continue;
+        if (isPromptInjectMapping(x)) continue;
+        state.mappingId = String(x.id);
+        return;
+      }
+    }
+    var sel = selectedMapping();
+    state.mappingId = sel && isAppScenario(sel) ? String(sel.id || '') : '';
+  }
+
   function deleteSceneRow(row) {
     var mid = String((row && row.mappingId) || '').trim();
     if (!mid) return;
@@ -1590,6 +1659,62 @@
           Wake.removeCustomWakePhrase(phrase);
         }
       } catch (_) {}
+      paint();
+      return;
+    }
+    // Prompt inject peer: always trash the peer. Never "clear habit scheme" —
+    // that path no-op'd when dock anchor == peer after clicking the row.
+    if (row && row.kind === 'prompt') {
+      var promptPeer = mappingById(mid);
+      var promptApp = promptPeer ? String(promptPeer.appTargetId || '').trim() : '';
+      var habitPeers = promptApp ? listAppMappings({ appTargetId: promptApp }) : [];
+      var nonPromptHabit = null;
+      for (var hi = 0; hi < habitPeers.length; hi++) {
+        var hp = habitPeers[hi];
+        if (!hp || String(hp.id) === mid) continue;
+        if (isPromptInjectMapping(hp)) continue;
+        nonPromptHabit = hp;
+        break;
+      }
+      if (!nonPromptHabit && promptPeer && isPromptInjectMapping(promptPeer)) {
+        clearHabitScheme(row, promptPeer);
+        persistSceneDock('scene-dock-clear-prompt');
+        try {
+          var railScrub = global.OneToneVoiceIntentRail;
+          if (railScrub && typeof railScrub.onPromptPeerDeleted === 'function') {
+            railScrub.onPromptPeerDeleted(mid);
+          }
+        } catch (_) {}
+        paint();
+        return;
+      }
+      var sharedPrompt = global.OneToneHabitShared;
+      if (sharedPrompt && typeof sharedPrompt.deleteMapping === 'function') {
+        try {
+          sharedPrompt.deleteMapping(mid);
+        } catch (_) {}
+      } else {
+        try {
+          var cfgPrompt =
+            global.OneToneState && global.OneToneState.state && global.OneToneState.state.config
+              ? global.OneToneState.state.config
+              : null;
+          if (cfgPrompt && Array.isArray(cfgPrompt.mappings)) {
+            cfgPrompt.mappings = cfgPrompt.mappings.filter(function (x) {
+              return x && String(x.id) !== mid;
+            });
+          }
+          persistSceneDock('scene-dock-del-prompt');
+        } catch (_) {}
+      }
+      if (nonPromptHabit) scrubStalePromptHero(nonPromptHabit);
+      try {
+        var railDel = global.OneToneVoiceIntentRail;
+        if (railDel && typeof railDel.onPromptPeerDeleted === 'function') {
+          railDel.onPromptPeerDeleted(mid);
+        }
+      } catch (_) {}
+      reanchorDockAfterPeerDelete(mid, promptApp);
       paint();
       return;
     }
@@ -1628,6 +1753,12 @@
         persistSceneDock('scene-dock-del');
       } catch (_) {}
     }
+    try {
+      var rail = global.OneToneVoiceIntentRail;
+      if (rail && typeof rail.onPromptPeerDeleted === 'function') {
+        rail.onPromptPeerDeleted(mid);
+      }
+    } catch (_) {}
     if (String(state.mappingId || '') === mid) {
       var sel = selectedMapping();
       state.mappingId = sel && isAppScenario(sel) ? String(sel.id || '') : '';
@@ -1953,17 +2084,6 @@
       return;
     }
     setVisible(true);
-    try {
-      var picker = global.OneToneKeysChannelCommandPicker;
-      if (
-        onVoicePage() &&
-        picker &&
-        typeof picker.pruneDuplicatePromptPeers === 'function' &&
-        m.appTargetId
-      ) {
-        picker.pruneDuplicatePromptPeers(m.appTargetId);
-      }
-    } catch (_) {}
     var host = activeHost();
     var rows = sortRowsByDockOrder(filterRowsForChannel(buildRows(m)), m);
     paintChrome(m, host);
