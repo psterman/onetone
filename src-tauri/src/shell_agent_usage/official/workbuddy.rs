@@ -549,6 +549,130 @@ fn fetch_dosage_notify_zh(headers: &[(&str, String)]) -> Option<String> {
     None
 }
 
+/// Buddy 加油站：社区免费用户主路径（`get-user-resource` 常对个人号返回 10085）。
+pub fn parse_workbuddy_checkin(
+    value: &Value,
+    meta: WorkbuddyParseMeta<'_>,
+) -> Result<AgentUsageSnapshot, String> {
+    let data = value
+        .pointer("/data")
+        .ok_or_else(|| "WorkBuddy checkin missing data".to_string())?;
+    let active = data
+        .get("active")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if !active {
+        return Err("WorkBuddy checkin inactive".into());
+    }
+    let today_done = data
+        .get("today_checked_in")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let streak = number(data.get("streak_days").unwrap_or(&Value::Null))
+        .unwrap_or(0.0)
+        .round() as i64;
+    let daily = number(data.get("daily_credit").unwrap_or(&Value::Null)).unwrap_or(0.0);
+    let today_credit =
+        number(data.get("today_credit").unwrap_or(&Value::Null)).unwrap_or(daily);
+    let period_total = number(data.get("total_credits").unwrap_or(&Value::Null));
+    let end_raw = data
+        .get("end_time")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let resets_at = end_raw.and_then(|s| parse_wb_instant_ms(&Value::String(s.to_string())));
+
+    let mut bits: Vec<String> = vec!["加油站".into()];
+    if today_done {
+        bits.push("已签".into());
+        if today_credit > 0.0 {
+            bits.push(format!("今日+{}", fmt_cred(today_credit)));
+        }
+    } else {
+        bits.push("未签".into());
+        if daily > 0.0 {
+            bits.push(format!("可领{}", fmt_cred(daily)));
+        }
+    }
+    if streak > 0 {
+        bits.push(format!("连签{streak}天"));
+    }
+    if let Some(t) = period_total.filter(|t| *t > 0.0) {
+        bits.push(format!("本期{}", fmt_cred(t)));
+    }
+    if let Some(end) = end_raw.filter(|s| s.len() >= 10) {
+        // `2026-09-29 23:59:59` → `9/29`
+        let md = &end[5..10];
+        if let Some((m, d)) = md.split_once('-') {
+            let m = m.trim_start_matches('0');
+            let d = d.trim_start_matches('0');
+            bits.push(format!("至{m}/{d}"));
+        }
+    }
+    if let Some(zh) = meta
+        .dosage_notify_zh
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        bits.push(zh.to_string());
+    }
+
+    let now = now_ms();
+    let account_label = meta
+        .nickname
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or("WorkBuddy")
+        .to_string();
+
+    Ok(AgentUsageSnapshot {
+        source: SRC_WB_LOCAL.into(),
+        status: "ready".into(),
+        confidence: "official".into(),
+        message: bits.join(" · "),
+        resets_at,
+        plan_type: "加油站".into(),
+        account_type: "workbuddy".into(),
+        account_label,
+        console_url: WORKBUDDY_CONSOLE.into(),
+        updated_at: now,
+        last_success_at: now,
+        ..Default::default()
+    })
+}
+
+fn fetch_checkin_activity(headers: &[(&str, String)]) -> Result<Value, String> {
+    let body = serde_json::json!({});
+    let mut last_err = String::new();
+    for ep in [WB_ENDPOINT, WB_ENDPOINT_INTL] {
+        match http_post_json(
+            &format!("{ep}/v2/billing/meter/checkin-activity-status"),
+            headers,
+            &body,
+        ) {
+            Ok(text) => {
+                let v: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+                let code = number(v.get("code").unwrap_or(&Value::Null)).unwrap_or(-1.0);
+                if code != 0.0 && code != 200.0 {
+                    last_err = v
+                        .get("msg")
+                        .and_then(|m| m.as_str())
+                        .unwrap_or("checkin failed")
+                        .to_string();
+                    continue;
+                }
+                return Ok(v);
+            }
+            Err(e) => last_err = e,
+        }
+    }
+    Err(if last_err.is_empty() {
+        "WorkBuddy checkin unavailable".into()
+    } else {
+        last_err
+    })
+}
+
 #[cfg(windows)]
 fn workbuddy_from_disk_and_api() -> Result<AgentUsageSnapshot, String> {
     let value = load_workbuddy_desktop_auth()
@@ -614,6 +738,14 @@ fn workbuddy_from_disk_and_api() -> Result<AgentUsageSnapshot, String> {
         return Err(last_err);
     }
 
+    // 个人号：Buddy 加油站优先（免费用户主路径；`get-user-resource` 常 10085）。
+    // 活动未开再回退资源包 / 企业额度。
+    let mut last_err = String::new();
+    match fetch_checkin_activity(&headers).and_then(|v| parse_workbuddy_checkin(&v, meta)) {
+        Ok(snap) => return Ok(snap),
+        Err(e) => last_err = e,
+    }
+
     let body = serde_json::json!({
         "PageNumber": 1,
         "PageSize": 100,
@@ -622,7 +754,6 @@ fn workbuddy_from_disk_and_api() -> Result<AgentUsageSnapshot, String> {
         "PackageStartTimeRangeBegin": "2024-12-01 21:25:00",
         "PackageStartTimeRangeEnd": utc_ymdhms_now(),
     });
-    let mut last_err = String::new();
     for ep in endpoints {
         match http_post_json(
             &format!("{ep}/v2/billing/meter/get-user-resource"),
@@ -649,7 +780,7 @@ fn workbuddy_from_disk_and_api() -> Result<AgentUsageSnapshot, String> {
                                 }
                             }
                         }
-                        return Err(personal_err);
+                        last_err = personal_err;
                     }
                 }
             }
@@ -802,5 +933,79 @@ mod tests {
         .expect("parse");
         assert_eq!(snap.plan_type, "企业");
         assert!(snap.message.contains("企业额度不限"), "{}", snap.message);
+    }
+
+    #[test]
+    fn parse_checkin_checked_in() {
+        let v = json!({
+            "code": 0,
+            "msg": "OK",
+            "data": {
+                "active": true,
+                "today_checked_in": true,
+                "streak_days": 3,
+                "daily_credit": 100,
+                "today_credit": 100,
+                "total_credits": 300,
+                "end_time": "2026-09-29 23:59:59"
+            }
+        });
+        let snap = parse_workbuddy_checkin(
+            &v,
+            WorkbuddyParseMeta {
+                account_type: Some("personal"),
+                nickname: Some("小白"),
+                dosage_notify_zh: None,
+            },
+        )
+        .expect("parse");
+        assert_eq!(snap.plan_type, "加油站");
+        assert_eq!(snap.account_label, "小白");
+        assert!(snap.message.contains("已签"), "{}", snap.message);
+        assert!(snap.message.contains("连签3天"), "{}", snap.message);
+        assert!(snap.message.contains("今日+100"), "{}", snap.message);
+        assert!(snap.message.contains("本期300"), "{}", snap.message);
+        assert!(snap.message.contains("至9/29"), "{}", snap.message);
+        assert!(snap.resets_at.is_some());
+    }
+
+    #[test]
+    fn parse_checkin_not_yet() {
+        let v = json!({
+            "data": {
+                "active": true,
+                "today_checked_in": false,
+                "streak_days": 2,
+                "daily_credit": 100,
+                "today_credit": 0,
+                "total_credits": 200
+            }
+        });
+        let snap = parse_workbuddy_checkin(
+            &v,
+            WorkbuddyParseMeta {
+                account_type: Some("personal"),
+                nickname: None,
+                dosage_notify_zh: None,
+            },
+        )
+        .expect("parse");
+        assert!(snap.message.contains("未签"), "{}", snap.message);
+        assert!(snap.message.contains("可领100"), "{}", snap.message);
+        assert!(snap.message.contains("连签2天"), "{}", snap.message);
+    }
+
+    #[test]
+    fn parse_checkin_inactive_errs() {
+        let v = json!({ "data": { "active": false } });
+        assert!(parse_workbuddy_checkin(
+            &v,
+            WorkbuddyParseMeta {
+                account_type: None,
+                nickname: None,
+                dosage_notify_zh: None,
+            },
+        )
+        .is_err());
     }
 }
