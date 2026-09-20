@@ -1167,6 +1167,20 @@
       var lines=[agentLabel(kind)+'：'+lightStatusLabel(state)];
       var fail=chipFailureHonestyLine(state);
       if(fail) lines.push(fail);
+      // WorkBuddy tip inventory: expand every ` · ` segment onto its own tip line.
+      if(kind==='workbuddy'){
+        var wbMsg=String((usage&&usage.message)||'').trim();
+        if(wbMsg&&String((usage&&usage.status)||'')!=='unavailable'){
+          wbMsg.split(' · ').map(function(p){ return String(p||'').trim(); }).filter(Boolean).forEach(function(p){
+            lines.push(p);
+          });
+        }else{
+          var wbSummary=usageSummary(kind,usage||{},true,row,s);
+          if(wbSummary) lines.push(wbSummary);
+        }
+        lines.push(chipFocusActionLine(kind));
+        return lines;
+      }
       var summary=usageSummary(kind,usage||{},true,row,s);
       if(summary){
         lines.push(summary);

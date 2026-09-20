@@ -7894,7 +7894,10 @@
       return t('softPadLayoutChannelLeadIme', '选输入法 · 绑定其听写快捷键到左侧选中的键');
     }
     if (tab === 'key') {
-      return t('softPadLayoutChannelLeadKey', '来自按键页「我录的键」· 点一条绑到左侧选中的键');
+      return t(
+        'softPadLayoutChannelLeadKey',
+        '点选一条序列绑到左侧选中的键 · 步骤与触发键在按键页改'
+      );
     }
     if (tab === 'voice') {
       return t(
@@ -8291,6 +8294,7 @@
     }
     // Soft Pad key runs the copied sequence (same runner as Keys 我录的键).
     onLayoutActionPick('runTargetSequence');
+    if (editDraft) editDraft.phrases = '';
     refreshLayoutActionLibrary(m);
     refreshSoftPadSceneDock(m);
   }
@@ -8465,42 +8469,93 @@
     if (!rows.length) {
       html +=
         '<p class="soft-pad-action-empty">' +
-        esc(t('keysCustomKeyMatchEmpty', '还没有自定义键。点右上角 + 新建一条，再加步骤。')) +
+        esc(
+          t(
+            'softPadLayoutEmptyKey',
+            '还没有自定义键 · 去按键页「我录的键」新建序列、加好步骤。这里只负责点选绑定。'
+          )
+        ) +
         '</p>';
     } else {
       rows.forEach(function (row) {
         var mid = String(row.mappingId || '');
-        var on = !!(selectedMatchId && mid === selectedMatchId);
+        var on = !!(
+          selectedMatchId &&
+          mid === selectedMatchId &&
+          selectedSlot === 'runTargetSequence'
+        );
+        var chord = String(row.chord || '').trim();
+        var steps = Number(row.stepCount) || 0;
+        var desc = steps > 0
+          ? t('softPadLayoutKeyStepCount', '{n} 步').replace('{n}', String(steps)) +
+            (chord
+              ? ' · ' + t('softPadLayoutKeyTrig', '触发 {chord}').replace('{chord}', chord)
+              : ' · ' + t('keysCustomKeyMatchEmptyTrigger', '待录触发键'))
+          : chord
+            ? t('softPadLayoutKeyTrigOnly', '触发 {chord} · 尚无动作').replace('{chord}', chord)
+            : t('softPadLayoutKeyEmptySeq', '待录触发键 · 尚无动作');
         html +=
-          '<button type="button" class="soft-pad-action-item keys-voice-pick-row' +
-          (on ? ' is-selected is-on' : '') +
+          '<button type="button" class="soft-pad-action-item soft-pad-key-seq-row' +
+          (on ? ' is-selected is-on is-applied' : '') +
           '" data-layout-custom-key="1" ' +
           'data-custom-key-id="' +
           esc(mid) +
           '" data-custom-key-chord="' +
-          esc(row.chord || '') +
+          esc(chord) +
           '" data-custom-key-name="' +
           esc(row.name || '') +
           '" role="option" aria-selected="' +
           (on ? 'true' : 'false') +
           '">' +
-          '<span class="soft-pad-action-item__title keys-voice-pick-row-name">' +
-          esc(row.name || '—') +
-          '</span>' +
-          '<span class="soft-pad-action-item__when keys-cursor-pick-chord">' +
-          esc(row.note || '—') +
-          '</span>' +
-          (row.stepCount
-            ? '<span class="soft-pad-action-item__when">' +
-              esc(
-                t('softPadLayoutKeyStepCount', '{n} 步').replace('{n}', String(row.stepCount))
-              ) +
+          '<span class="soft-pad-key-seq-row__body">' +
+          '<span class="soft-pad-key-seq-row__name">' +
+          esc(row.name || t('keysChannelTabKey', '我录的键')) +
+          (on
+            ? '<span class="soft-pad-key-seq-row__badge">' +
+              esc(t('softPadLayoutKeyApplied', '使用中')) +
               '</span>'
             : '') +
+          '</span>' +
+          '<span class="soft-pad-key-seq-row__desc">' +
+          esc(desc) +
+          '</span>' +
+          '</span>' +
+          (chord
+            ? '<span class="soft-pad-key-seq-row__key">' + esc(chord) + '</span>'
+            : '<span class="soft-pad-key-seq-row__key is-empty">' +
+              esc(t('softPadLayoutGoKeysShort', '去按键页')) +
+              '</span>') +
           '</button>';
       });
     }
+    html +=
+      '<p class="soft-pad-action-empty soft-pad-key-seq-cta">' +
+      '<button type="button" class="keys-channel-item-link" data-layout-go-keys="1">' +
+      esc(t('softPadLayoutGoKeysCustom', '去按键页管理序列 →')) +
+      '</button></p>';
     listHost.innerHTML = html;
+  }
+
+  function openKeysCustomKeyPage(m) {
+    try {
+      var mid = String((m && m.id) || '').trim();
+      var Picker = layoutChannelPicker();
+      if (Picker && typeof Picker.openCapturePopover === 'function') {
+        Picker.openCapturePopover({
+          returnPanel: 'softPad',
+          drawerOpts: mid ? { mappingId: mid } : {}
+        });
+        if (typeof Picker.setActiveTab === 'function') Picker.setActiveTab('key');
+        return;
+      }
+      var drawer = global.OneToneSettingsDrawer;
+      if (drawer && typeof drawer.setPanel === 'function') {
+        if (mid) drawer.setPanel('keys', { mappingId: mid });
+        else drawer.setPanel('keys');
+        return;
+      }
+    } catch (_) {}
+    toast(t('softPadLayoutGoKeysToast', '请打开按键设置 → 我录的键'));
   }
 
   function bindPromptInjectToPadKey(m, row) {
@@ -10131,6 +10186,12 @@
             name: customKeyBtn.getAttribute('data-custom-key-name') || '',
             chord: customKeyBtn.getAttribute('data-custom-key-chord') || ''
           });
+          return;
+        }
+        var goKeys = ev.target.closest && ev.target.closest('[data-layout-go-keys]');
+        if (goKeys && host.contains(goKeys)) {
+          ev.preventDefault();
+          openKeysCustomKeyPage(cur);
           return;
         }
         var goCam = ev.target.closest && ev.target.closest('[data-layout-go-camera]');
@@ -15555,23 +15616,44 @@
     });
   }
 
+  function layoutKeyPhrasesFieldHidden() {
+    // 我录的键：序列与触发在按键页管，这里不录 Soft Pad 专属文本口令。
+    if (normalizeLayoutChannelTab(layoutChannelTab) === 'key') return true;
+    if (String((editDraft && editDraft.slotId) || '') !== 'runTargetSequence') return false;
+    try {
+      var m = editDraft && editDraft.mapping;
+      var href = m && m.captureHeroRef;
+      return !!(
+        href &&
+        String(href.kind || '')
+          .trim()
+          .toLowerCase() === 'customkey'
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
   function syncLayoutKeyFormFields() {
     if (!editDraft) return;
     var chordEl = document.getElementById('layoutKeyChord');
     var phrasesEl = document.getElementById('layoutKeyPhrases');
+    var phrasesField = document.getElementById('layoutKeyPhrasesField');
     var focusEl = document.getElementById('layoutKeyFocus');
     var recBtn = document.getElementById('layoutKeyRecord');
     var bound = !!String(editDraft.slotId || '').trim();
     var scope = normalizeActivationScope(editDraft.activationScope);
+    var hidePhrases = layoutKeyPhrasesFieldHidden();
     if (chordEl) {
       var chordTxt = bound ? (friendlyChord(editDraft.chord || '') || '—') : '—';
       if ('value' in chordEl && chordEl.tagName === 'INPUT') chordEl.value = bound ? friendlyChord(editDraft.chord || '') : '';
       else chordEl.textContent = chordTxt;
       chordEl.classList.toggle('is-empty', !bound || !String(editDraft.chord || '').trim());
     }
+    if (phrasesField) phrasesField.hidden = hidePhrases;
     if (phrasesEl) {
-      phrasesEl.value = bound ? String(editDraft.phrases || '') : '';
-      phrasesEl.disabled = !bound;
+      phrasesEl.value = hidePhrases ? '' : bound ? String(editDraft.phrases || '') : '';
+      phrasesEl.disabled = hidePhrases || !bound;
     }
     if (focusEl) {
       focusEl.value = scope;
@@ -15668,7 +15750,7 @@
       esc(t('softPadLayoutRecordChord', '录制')) +
       '</button>' +
       '</div></div>' +
-      '<label class="soft-pad-layout-form__field">' +
+      '<label class="soft-pad-layout-form__field" id="layoutKeyPhrasesField">' +
       '<span class="soft-pad-layout-form__lbl">' +
       esc(t('softPadLayoutFieldPhrases', '文本口令')) +
       '（' +

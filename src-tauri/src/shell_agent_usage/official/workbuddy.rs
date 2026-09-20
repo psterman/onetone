@@ -52,6 +52,8 @@ pub struct WorkbuddyParseMeta<'a> {
     pub account_type: Option<&'a str>,
     pub nickname: Option<&'a str>,
     pub dosage_notify_zh: Option<&'a str>,
+    /// From `get-payment-type` (e.g. free / pro). Soft Pad tip inventory.
+    pub payment_type: Option<&'a str>,
 }
 
 pub fn parse_workbuddy_personal(
@@ -550,6 +552,9 @@ fn fetch_dosage_notify_zh(headers: &[(&str, String)]) -> Option<String> {
 }
 
 /// Buddy 加油站：社区免费用户主路径（`get-user-resource` 常对个人号返回 10085）。
+///
+/// Soft Pad tip inventory: `message` 用 ` · ` 分段；overlay 按段拆成多行 tip。
+/// 段内禁止再嵌 ` · `（否则 tip 会误拆）。
 pub fn parse_workbuddy_checkin(
     value: &Value,
     meta: WorkbuddyParseMeta<'_>,
@@ -575,6 +580,18 @@ pub fn parse_workbuddy_checkin(
     let today_credit =
         number(data.get("today_credit").unwrap_or(&Value::Null)).unwrap_or(daily);
     let period_total = number(data.get("total_credits").unwrap_or(&Value::Null));
+    let week_days = number(data.get("week_checkin_days").unwrap_or(&Value::Null))
+        .map(|n| n.round() as i64)
+        .or_else(|| {
+            data.get("week_progress")
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter(|x| x.as_bool() == Some(true)).count() as i64)
+        });
+    let theme = data
+        .get("theme_name")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
     let end_raw = data
         .get("end_time")
         .and_then(|v| v.as_str())
@@ -582,32 +599,62 @@ pub fn parse_workbuddy_checkin(
         .filter(|s| !s.is_empty());
     let resets_at = end_raw.and_then(|s| parse_wb_instant_ms(&Value::String(s.to_string())));
 
-    let mut bits: Vec<String> = vec!["加油站".into()];
+    // Pill 取前两段：签到状态 + 今日积分优先。
+    let mut bits: Vec<String> = Vec::new();
     if today_done {
-        bits.push("已签".into());
+        bits.push("签到 已签".into());
         if today_credit > 0.0 {
-            bits.push(format!("今日+{}", fmt_cred(today_credit)));
+            bits.push(format!("今日 +{}", fmt_cred(today_credit)));
         }
     } else {
-        bits.push("未签".into());
+        bits.push("签到 未签".into());
         if daily > 0.0 {
-            bits.push(format!("可领{}", fmt_cred(daily)));
+            bits.push(format!("可领 {}", fmt_cred(daily)));
         }
     }
     if streak > 0 {
-        bits.push(format!("连签{streak}天"));
+        bits.push(format!("连签 {streak} 天"));
     }
     if let Some(t) = period_total.filter(|t| *t > 0.0) {
-        bits.push(format!("本期{}", fmt_cred(t)));
+        bits.push(format!("本期 {}", fmt_cred(t)));
+    }
+    if let Some(w) = week_days.filter(|w| *w >= 0) {
+        bits.push(format!("本周 {w}/7"));
+    }
+    if let Some(name) = theme {
+        bits.push(format!("活动 {name}"));
     }
     if let Some(end) = end_raw.filter(|s| s.len() >= 10) {
-        // `2026-09-29 23:59:59` → `9/29`
         let md = &end[5..10];
         if let Some((m, d)) = md.split_once('-') {
             let m = m.trim_start_matches('0');
             let d = d.trim_start_matches('0');
-            bits.push(format!("至{m}/{d}"));
+            bits.push(format!("截止 {m}/{d}"));
         }
+    }
+    let account_label = meta
+        .nickname
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or("WorkBuddy")
+        .to_string();
+    if meta.nickname.map(str::trim).is_some_and(|s| !s.is_empty()) {
+        bits.push(format!("账号 {account_label}"));
+    }
+    let acct = meta
+        .account_type
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or("personal");
+    let pay = meta
+        .payment_type
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or("");
+    if pay.is_empty() {
+        bits.push(format!("类型 {acct}"));
+    } else {
+        bits.push(format!("类型 {acct}/{pay}"));
     }
     if let Some(zh) = meta
         .dosage_notify_zh
@@ -618,13 +665,6 @@ pub fn parse_workbuddy_checkin(
     }
 
     let now = now_ms();
-    let account_label = meta
-        .nickname
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .unwrap_or("WorkBuddy")
-        .to_string();
-
     Ok(AgentUsageSnapshot {
         source: SRC_WB_LOCAL.into(),
         status: "ready".into(),
@@ -673,6 +713,29 @@ fn fetch_checkin_activity(headers: &[(&str, String)]) -> Result<Value, String> {
     })
 }
 
+fn fetch_payment_type(headers: &[(&str, String)]) -> Option<String> {
+    let body = serde_json::json!({});
+    for ep in [WB_ENDPOINT, WB_ENDPOINT_INTL] {
+        let Ok(text) = http_post_json(
+            &format!("{ep}/v2/billing/meter/get-payment-type"),
+            headers,
+            &body,
+        ) else {
+            continue;
+        };
+        let Ok(v) = serde_json::from_str::<Value>(&text) else {
+            continue;
+        };
+        let pay = v
+            .pointer("/data/paymentType")
+            .and_then(|x| x.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())?;
+        return Some(pay.to_string());
+    }
+    None
+}
+
 #[cfg(windows)]
 fn workbuddy_from_disk_and_api() -> Result<AgentUsageSnapshot, String> {
     let value = load_workbuddy_desktop_auth()
@@ -704,10 +767,12 @@ fn workbuddy_from_disk_and_api() -> Result<AgentUsageSnapshot, String> {
     }
 
     let dosage_zh = fetch_dosage_notify_zh(&headers);
+    let payment_type = fetch_payment_type(&headers);
     let meta = WorkbuddyParseMeta {
         account_type: account_type.as_deref(),
         nickname: nickname.as_deref(),
         dosage_notify_zh: dosage_zh.as_deref(),
+        payment_type: payment_type.as_deref(),
     };
 
     let is_enterprise = account_type.as_deref().is_some_and(|v| {
@@ -904,6 +969,7 @@ mod tests {
                 account_type: Some("personal"),
                 nickname: Some("测试昵称"),
                 dosage_notify_zh: Some("额度偏低，请关注"),
+                payment_type: None,
             },
         )
         .expect("parse");
@@ -928,6 +994,7 @@ mod tests {
                 account_type: Some("exclusive"),
                 nickname: None,
                 dosage_notify_zh: None,
+                payment_type: None,
             },
         )
         .expect("parse");
@@ -947,6 +1014,9 @@ mod tests {
                 "daily_credit": 100,
                 "today_credit": 100,
                 "total_credits": 300,
+                "week_checkin_days": 3,
+                "week_progress": [false, false, false, false, true, true, true],
+                "theme_name": "Buddy加油站",
                 "end_time": "2026-09-29 23:59:59"
             }
         });
@@ -956,16 +1026,26 @@ mod tests {
                 account_type: Some("personal"),
                 nickname: Some("小白"),
                 dosage_notify_zh: None,
+                payment_type: Some("free"),
             },
         )
         .expect("parse");
         assert_eq!(snap.plan_type, "加油站");
         assert_eq!(snap.account_label, "小白");
-        assert!(snap.message.contains("已签"), "{}", snap.message);
-        assert!(snap.message.contains("连签3天"), "{}", snap.message);
-        assert!(snap.message.contains("今日+100"), "{}", snap.message);
-        assert!(snap.message.contains("本期300"), "{}", snap.message);
-        assert!(snap.message.contains("至9/29"), "{}", snap.message);
+        assert!(snap.message.contains("签到 已签"), "{}", snap.message);
+        assert!(snap.message.contains("连签 3 天"), "{}", snap.message);
+        assert!(snap.message.contains("今日 +100"), "{}", snap.message);
+        assert!(snap.message.contains("本期 300"), "{}", snap.message);
+        assert!(snap.message.contains("本周 3/7"), "{}", snap.message);
+        assert!(snap.message.contains("活动 Buddy加油站"), "{}", snap.message);
+        assert!(snap.message.contains("截止 9/29"), "{}", snap.message);
+        assert!(snap.message.contains("账号 小白"), "{}", snap.message);
+        assert!(snap.message.contains("类型 personal/free"), "{}", snap.message);
+        assert!(
+            !snap.message.contains(" · free"),
+            "payment must not nest · separator: {}",
+            snap.message
+        );
         assert!(snap.resets_at.is_some());
     }
 
@@ -978,7 +1058,8 @@ mod tests {
                 "streak_days": 2,
                 "daily_credit": 100,
                 "today_credit": 0,
-                "total_credits": 200
+                "total_credits": 200,
+                "week_checkin_days": 2
             }
         });
         let snap = parse_workbuddy_checkin(
@@ -987,12 +1068,14 @@ mod tests {
                 account_type: Some("personal"),
                 nickname: None,
                 dosage_notify_zh: None,
+                payment_type: Some("free"),
             },
         )
         .expect("parse");
-        assert!(snap.message.contains("未签"), "{}", snap.message);
-        assert!(snap.message.contains("可领100"), "{}", snap.message);
-        assert!(snap.message.contains("连签2天"), "{}", snap.message);
+        assert!(snap.message.contains("签到 未签"), "{}", snap.message);
+        assert!(snap.message.contains("可领 100"), "{}", snap.message);
+        assert!(snap.message.contains("连签 2 天"), "{}", snap.message);
+        assert!(snap.message.contains("类型 personal/free"), "{}", snap.message);
     }
 
     #[test]
@@ -1004,6 +1087,7 @@ mod tests {
                 account_type: None,
                 nickname: None,
                 dosage_notify_zh: None,
+                payment_type: None,
             },
         )
         .is_err());

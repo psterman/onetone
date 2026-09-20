@@ -3534,6 +3534,27 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
 #voiceKeysFace .voice-keys-pick-row__key.is-empty{
   font-weight:600;font-family:inherit;color:#8494a6;background:transparent;border-style:dashed;
 }
+#voiceKeysFace .voice-keys-pick-row__badge{
+  display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;
+  font:700 10px/14px inherit;vertical-align:middle;
+  background:color-mix(in srgb, var(--primary, #00658F) 14%, #fff);
+  color:var(--primary, #00658F);
+}
+#voiceKeysFace .voice-keys-pick-row.is-applied{
+  border-color:color-mix(in srgb, var(--primary-strong, #1f8fb8) 55%, #d0dae6);
+}
+/* 我录的键：全宽清晰列表，不录专属口令 */
+#voiceKeysFace.is-custom-key-seq .voice-keys-desk__phrase,
+#voiceKeysFace.is-custom-key-seq .voice-keys-desk__explain{
+  display:none !important;
+}
+#voiceKeysFace.is-custom-key-seq .voice-keys-desk{
+  grid-template-columns:minmax(0,1fr);
+}
+#voiceKeysFace.is-custom-key-seq #voiceKeysCmdList{
+  display:flex;flex-direction:column;gap:8px;
+  max-height:min(58vh,560px);overflow:auto;padding:2px;
+}
 #voiceKeysFace .voice-keys-desk.is-custom-key .voice-keys-desk__explain{display:none!important}
 #voiceKeysFace .voice-bridge-col-label .n{display:none}
 #voiceKeysFace .voice-keys-desk.is-custom-key .voice-bridge-filter--inline{

@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>按键设置 · 三列并列（起点瘦身 · 中栏现网）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e8eef3;--rail:#eef3f7;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+      --ease:cubic-bezier(.23,1,.32,1);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);color:var(--ink);
+      background:
+        radial-gradient(700px 280px at 10% -8%,rgba(42,156,196,.1),transparent 55%),
+        var(--bg);
+      -webkit-font-smoothing:antialiased;
+    }
+    .bar{
+      position:sticky;top:0;z-index:40;
+      display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;
+      padding:10px 16px;background:#13202c;color:#c5d0de;font-size:12.5px;line-height:1.45;
+    }
+    .bar strong{color:#fff}
+    .bar em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .bar a{color:#7dd3fc;font-weight:650;text-decoration:none;margin-left:auto}
+    .shell{width:min(1180px,100%);margin:16px auto 48px;padding:0 14px}
+    .contract{
+      margin:0 0 12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;
+      background:rgba(255,255,255,.92);font-size:12.5px;color:var(--muted);line-height:1.55;
+    }
+    .contract b{color:var(--ink)}
+    .contract code{
+      font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--cyan-ink);
+      background:var(--cyan-soft);border-radius:4px;padding:1px 5px;
+    }
+
+    .frame{
+      border:1px solid var(--line);border-radius:16px;background:var(--paper);
+      box-shadow:0 18px 40px rgba(19,32,44,.08);overflow:hidden;
+      display:flex;flex-direction:column;min-height:720px;
+    }
+    .topbar{
+      display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;
+      padding:10px 14px;border-bottom:1px solid var(--line);
+    }
+    .top-ctx{font-size:13px;font-weight:650;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .scene{
+      border:1px solid var(--line);background:var(--wash);border-radius:10px;
+      padding:6px 10px;font:inherit;font-size:12px;font-weight:650;color:var(--muted);
+    }
+    .top-acts{margin-left:auto;display:flex;gap:6px}
+    .btn{
+      border:1px solid var(--line);background:var(--paper);color:var(--ink);
+      border-radius:10px;padding:7px 12px;font:inherit;font-size:12.5px;font-weight:650;cursor:pointer;
+    }
+    .btn.primary{border-color:transparent;background:var(--cyan);color:#fff}
+    .status{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:8px 14px;border-bottom:1px solid var(--line);
+      background:linear-gradient(180deg,#fbfdfe,var(--wash));
+    }
+    .brand{font-size:15px;font-weight:750}
+    .pill{
+      font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;
+      background:var(--ok-soft);color:var(--ok);border:1px solid #86efac;
+    }
+    .body{background:var(--wash);padding:10px 14px 16px;flex:1;display:flex;flex-direction:column;min-height:0}
+
+    /* 三列：左=触发键+目录 | 中=现网详情台 | 右本场景动作 */
+    .desk{
+      flex:1;display:grid;grid-template-columns:168px minmax(0,1fr) 220px;
+      border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--paper);min-height:560px;
+    }
+    @media(max-width:960px){.desk{grid-template-columns:1fr}}
+
+    /* —— 左：触发键 + 下方目录（无用法动作列表） —— */
+    .rail{
+      background:var(--rail);border-right:1px solid var(--line);
+      padding:10px 8px;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;
+    }
+    .start-slim{
+      padding:10px 8px 12px;background:#fff;border:1px solid var(--line);border-radius:10px;flex:none;
+    }
+    .start-slim .badge{
+      display:inline-block;font-size:10px;font-weight:750;
+      color:#fff;background:var(--cyan-ink);border-radius:999px;padding:2px 7px;margin-bottom:6px;
+    }
+    .start-slim h3{margin:0;font-size:12.5px;font-weight:750}
+    .keycap{
+      appearance:none;width:100%;margin-top:8px;border:1px solid var(--line);background:#fff;
+      border-radius:10px;padding:16px 8px;font:inherit;font-size:20px;font-weight:750;
+      cursor:pointer;text-align:center;color:var(--ink);font-family:var(--mono);
+    }
+    .keycap:hover{border-color:var(--cyan-bd)}
+    .start-slim .hint{margin:6px 0 0;font-size:10.5px;color:var(--faint);line-height:1.35;text-align:center}
+
+    .dir{
+      flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;
+      padding:8px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto;
+    }
+    .dir .sec{margin:0 2px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+    .search{
+      width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;
+      font:inherit;font-size:12px;background:var(--wash);color:var(--ink);
+    }
+    .tree{display:flex;flex-direction:column;gap:2px;margin-top:2px}
+    .subtab{
+      appearance:none;width:100%;border:0;background:transparent;text-align:left;
+      padding:8px 10px;border-radius:8px;font:inherit;font-size:12.5px;font-weight:650;
+      color:var(--muted);cursor:pointer;
+    }
+    .subtab:hover{background:var(--wash);color:var(--ink)}
+    .subtab.is-on{background:var(--cyan-soft);color:var(--cyan-ink)}
+
+    /* —— 中：现网详情台（不再内嵌左树） —— */
+    .main{
+      min-width:0;display:flex;flex-direction:column;min-height:0;background:var(--wash);
+      border-right:1px solid var(--line);
+    }
+    .main-tag{
+      flex:none;padding:8px 12px;font-size:11px;font-weight:750;letter-spacing:.04em;
+      color:var(--faint);background:#fff;border-bottom:1px solid var(--line);
+      display:flex;align-items:center;gap:8px;
+    }
+    .main-tag .pill-soft{
+      font-size:10.5px;font-weight:650;padding:2px 7px;border-radius:999px;
+      background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);
+    }
+    .pane-right{
+      flex:1;min-width:0;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px;
+      background:var(--wash);
+    }
+
+    /* 现网：听写键 hero 卡（中栏内保留） */
+    .detail-hero{
+      background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    }
+    .step-head{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+    .step-num{
+      width:22px;height:22px;border-radius:999px;background:var(--cyan-ink);color:#fff;
+      display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:750;flex:none;
+    }
+    .step-head h4{margin:0;font-size:13px;font-weight:750}
+    .step-head p{margin:2px 0 0;font-size:11.5px;color:var(--faint)}
+    .hero-keycap-row{display:flex;gap:10px;align-items:center}
+    .hero-keycap{
+      width:88px;height:64px;border:1px solid var(--cyan-bd);border-radius:12px;
+      background:var(--cyan-soft);display:flex;align-items:center;justify-content:center;
+      font-family:var(--mono);font-size:16px;font-weight:750;color:var(--cyan-ink);
+    }
+    .hero-act{font-size:12px;font-weight:650;color:var(--cyan-ink)}
+    .hero-hint{margin:8px 0 0;font-size:12px;color:var(--muted)}
+    .ime-strip{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .ime-chip{
+      border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:11.5px;font-weight:650;
+      background:#fff;color:var(--muted);cursor:pointer;
+    }
+    .ime-chip.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink)}
+
+    /* 现网：我录的键 split */
+    .detail-options{
+      background:#fff;border:1px solid var(--line);border-radius:12px;padding:0;overflow:hidden;
+      display:none;flex-direction:column;min-height:280px;
+    }
+    .detail-options.is-show{display:flex}
+    .custom-split{
+      flex:1;display:grid;grid-template-columns:160px minmax(0,1fr);min-height:260px;
+    }
+    .match-pane{border-right:1px solid var(--line);padding:10px;background:var(--rail);display:flex;flex-direction:column;gap:6px}
+    .match-head{display:flex;align-items:center;justify-content:space-between}
+    .match-head .lbl{margin:0;font-size:12px;font-weight:750}
+    .match-add{
+      width:28px;height:28px;border:1px solid var(--line);border-radius:8px;background:#fff;
+      font:inherit;font-size:16px;font-weight:700;cursor:pointer;color:var(--cyan-ink);
+    }
+    .match-item{
+      appearance:none;width:100%;border:1px solid transparent;background:#fff;border-radius:8px;
+      padding:8px;text-align:left;font:inherit;cursor:pointer;
+    }
+    .match-item.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .match-item .t{display:block;font-size:12.5px;font-weight:650}
+    .match-item .s{display:block;margin-top:2px;font-size:11px;color:var(--faint)}
+    .seq-detail{padding:12px;display:flex;flex-direction:column;gap:8px}
+    .seq-detail .lbl{margin:0;font-size:12px;font-weight:750}
+    .seq-name{
+      width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;
+    }
+    .seq-hint{margin:0;font-size:12px;color:var(--muted)}
+    .seq-steps{display:flex;flex-direction:column;gap:6px}
+    .seq-step{
+      border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;background:var(--wash);
+      display:flex;justify-content:space-between;gap:8px;
+    }
+    .seq-add{
+      appearance:none;border:1px dashed var(--line);background:transparent;border-radius:8px;
+      padding:8px;font:inherit;font-size:12.5px;font-weight:650;color:var(--cyan-ink);cursor:pointer;
+    }
+
+    /* 现网：说完后 */
+    .finish-step{
+      background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    }
+    .finish-segs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .seg{
+      border:1px solid var(--line);border-radius:8px;padding:7px 11px;font:inherit;font-size:12px;font-weight:650;
+      background:#fff;color:var(--muted);cursor:pointer;
+    }
+    .seg.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink)}
+
+    /* 其他通道占位（现网 keysChannelPanel） */
+    .channel-panel{
+      display:none;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;
+      font-size:13px;color:var(--muted);line-height:1.5;min-height:160px;
+    }
+    .channel-panel.is-show{display:block}
+    .channel-panel h4{margin:0 0 6px;font-size:14px;font-weight:750;color:var(--ink)}
+
+    .tip-bar{
+      flex:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+      padding:8px 12px;border-top:1px solid var(--line);background:#fff;font-size:12px;color:var(--muted);
+    }
+    .tip-bar button{
+      margin-left:auto;border:0;background:none;font:inherit;font-size:12px;font-weight:650;
+      color:var(--cyan-ink);cursor:pointer;text-decoration:underline;
+    }
+
+    /* 右：本场景动作 */
+    .dock{
+      background:#eef3f7;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:0;
+    }
+    .dock__app{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:750}
+    .dock__ico{
+      width:20px;height:20px;border-radius:5px;background:#13202c;color:#fff;
+      display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:750;flex:none;
+    }
+    .dock__title{margin:0;font-size:14px;font-weight:750}
+    .dock__meta{margin:0;font-size:12px;color:var(--faint)}
+    .dock__rule{height:1px;background:var(--line);flex:none}
+    .dock__list{display:flex;flex-direction:column;gap:4px;flex:1}
+    .dock__row{
+      appearance:none;width:100%;border:1px solid transparent;background:#fff;border-radius:8px;
+      padding:8px 9px;text-align:left;font:inherit;cursor:pointer;
+    }
+    .dock__row.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .dock__row .t{display:block;font-size:12.5px;font-weight:650}
+    .dock__row .s{display:block;margin-top:2px;font-size:11px;color:var(--faint)}
+    .dock__add{
+      appearance:none;width:100%;border:1px dashed var(--line);background:transparent;
+      border-radius:8px;padding:8px;font:inherit;font-size:12.5px;font-weight:650;
+      color:var(--cyan-ink);cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>按键设置 · 三列并列</strong>
+    <span>左<strong style="color:#fff;font-weight:650">触发键 + 目录</strong> · 中现网详情 · 右本场景动作</span>
+    <a href="../voice-c2a-slim-fused/index.html">对照语音原型 →</a>
+  </div>
+
+  <div class="shell">
+    <div class="contract">
+      <b>修订：</b>去掉「按一下 / 按住说话 / 切换开/关」用法列表。左栏上方仅触发键，
+      <b>目录</b>（搜索 + 通道分类）移到触发键下方。中栏保留现网详情内容（听写键卡 / 我录的键 / 说完后 / 其他通道）。
+    </div>
+
+    <div class="frame">
+      <div class="topbar">
+        <div class="top-ctx">
+          <span>正在编辑</span>
+          <button type="button" class="scene">Cursor · 写代码</button>
+        </div>
+        <div class="top-acts">
+          <button type="button" class="btn">测试</button>
+          <button type="button" class="btn primary">保存</button>
+        </div>
+      </div>
+      <div class="status">
+        <span class="brand">按键</span>
+        <span class="pill">就绪</span>
+      </div>
+
+      <div class="body">
+        <div class="desk">
+          <!-- 左：触发键 + 下方目录 -->
+          <aside class="rail" aria-label="起点与目录">
+            <div class="start-slim">
+              <span class="badge">起点</span>
+              <h3>触发键</h3>
+              <button type="button" class="keycap" id="keycapBtn" title="点按录制">F8</button>
+              <p class="hint">点按录制</p>
+            </div>
+            <div class="dir" id="keysChannelPaneLeft">
+              <p class="sec">目录</p>
+              <input class="search" type="search" placeholder="搜索功能…" aria-label="搜索识别功能" />
+              <nav class="tree" id="keysChannelSubtabs" role="tree" aria-label="识别分类">
+                <button type="button" class="subtab is-on" data-ch="ime">听写方式</button>
+                <button type="button" class="subtab" data-ch="key">我录的键</button>
+                <button type="button" class="subtab" data-ch="voice">口头指令</button>
+                <button type="button" class="subtab" data-ch="cursor">软件自带</button>
+                <button type="button" class="subtab" data-ch="softPad">屏幕按钮</button>
+                <button type="button" class="subtab" data-ch="camera">手势</button>
+              </nav>
+            </div>
+          </aside>
+
+          <!-- 中：现网详情（无左树） -->
+          <main class="main" aria-label="工作间">
+            <div class="main-tag">
+              工作间
+              <span class="pill-soft">现网详情内容</span>
+            </div>
+            <div class="pane-right" id="keysChannelPaneRight">
+                <!-- 听写：hero 卡 + 说完后（现网结构） -->
+                <div id="imeBundle">
+                  <div class="detail-hero" id="keysCaptureHeroCard">
+                    <div class="step-head">
+                      <span class="step-num">1</span>
+                      <div>
+                        <h4>听写键</h4>
+                        <p>点键帽，按下你的听写快捷键</p>
+                      </div>
+                    </div>
+                    <div class="hero-keycap-row">
+                      <div class="hero-keycap">右 Alt</div>
+                      <span class="hero-act">重新录制</span>
+                    </div>
+                    <p class="hero-hint">输入法识别键 · 现网 #keysCaptureHeroCard 保留在中栏</p>
+                    <div class="ime-strip" id="imePresetStripMapping">
+                      <button type="button" class="ime-chip is-on">微信输入法</button>
+                      <button type="button" class="ime-chip">搜狗</button>
+                      <button type="button" class="ime-chip">系统听写</button>
+                      <button type="button" class="ime-chip">自定义…</button>
+                    </div>
+                  </div>
+                  <section class="finish-step" id="keysImeFinishStep">
+                    <div class="step-head">
+                      <span class="step-num">2</span>
+                      <div>
+                        <h4>说完后</h4>
+                        <p>听写结束怎么收尾</p>
+                      </div>
+                    </div>
+                    <div class="finish-segs">
+                      <button type="button" class="seg is-on">回车发送</button>
+                      <button type="button" class="seg">仅停止</button>
+                      <button type="button" class="seg">延迟发送</button>
+                    </div>
+                  </section>
+                </div>
+
+                <!-- 我录的键：现网 custom-key-split -->
+                <div class="detail-options" id="keysCaptureKeyPanel">
+                  <div class="custom-split">
+                    <aside class="match-pane">
+                      <div class="match-head">
+                        <p class="lbl">自定义键</p>
+                        <button type="button" class="match-add" title="新建">+</button>
+                      </div>
+                      <button type="button" class="match-item is-on"><span class="t">粘贴说明并发送</span><span class="s">Ctrl+Alt+V · 4 步</span></button>
+                      <button type="button" class="match-item"><span class="t">清屏重来</span><span class="s">F9 · 2 步</span></button>
+                      <button type="button" class="match-item"><span class="t">待录序列</span><span class="s">待录触发键</span></button>
+                    </aside>
+                    <div class="seq-detail">
+                      <p class="lbl">动作序列</p>
+                      <input class="seq-name" type="text" value="粘贴说明并发送" />
+                      <p class="seq-hint">触发后依次执行。点 ＋ 添加步骤。</p>
+                      <div class="seq-steps">
+                        <div class="seq-step"><span>1 · 文本</span><span style="color:var(--faint)">粘贴剪贴板</span></div>
+                        <div class="seq-step"><span>2 · 按键</span><span style="color:var(--faint)">Enter</span></div>
+                        <div class="seq-step"><span>3 · 等待</span><span style="color:var(--faint)">200ms</span></div>
+                        <div class="seq-step"><span>4 · 按键</span><span style="color:var(--faint)">Ctrl+Enter</span></div>
+                      </div>
+                      <button type="button" class="seq-add">＋ 添加步骤</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 其他通道：现网 keysChannelPanel -->
+                <div class="channel-panel" id="keysChannelPanel">
+                  <h4 id="panelTitle">口头指令</h4>
+                  <p id="panelBody">现网通道列表面板占位 · 框架保留在中栏。</p>
+                </div>
+            </div>
+            <footer class="tip-bar">
+              <span>提示：先设左侧触发键，再选目录通道配置识别与收尾</span>
+              <button type="button">查看使用教程</button>
+            </footer>
+          </main>
+
+          <!-- 右 -->
+          <aside class="dock" aria-label="本场景动作">
+            <div class="dock__app">
+              <span class="dock__ico">C</span>
+              <span>Cursor</span>
+            </div>
+            <h3 class="dock__title">本场景动作</h3>
+            <p class="dock__meta">3 条 · 习惯动作</p>
+            <div class="dock__rule"></div>
+            <div class="dock__list">
+              <button type="button" class="dock__row is-on"><span class="t">粘贴说明并发送</span><span class="s">我录的键 · 4 步</span></button>
+              <button type="button" class="dock__row"><span class="t">切换 Agent 模式</span><span class="s">软件自带 · Ctrl+.</span></button>
+              <button type="button" class="dock__row"><span class="t">打开 Chat</span><span class="s">软件自带 · Ctrl+L</span></button>
+            </div>
+            <button type="button" class="dock__add">＋ 新建动作</button>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var EXTRA = {
+      voice: ['口头指令', '一词注入列表 · 现网 keysChannelPanel'],
+      cursor: ['软件自带', 'Cursor 快捷键目录 · 按场景浏览'],
+      softPad: ['屏幕按钮', 'Soft Pad 可绑能力列表'],
+      camera: ['手势', '摄像头已配置手势动作']
+    };
+
+    function show(ch) {
+      document.querySelectorAll('#keysChannelSubtabs .subtab').forEach(function (b) {
+        b.classList.toggle('is-on', b.getAttribute('data-ch') === ch);
+      });
+      var ime = document.getElementById('imeBundle');
+      var key = document.getElementById('keysCaptureKeyPanel');
+      var panel = document.getElementById('keysChannelPanel');
+      ime.style.display = ch === 'ime' ? '' : 'none';
+      key.classList.toggle('is-show', ch === 'key');
+      var extra = EXTRA[ch];
+      panel.classList.toggle('is-show', !!extra);
+      if (extra) {
+        document.getElementById('panelTitle').textContent = extra[0];
+        document.getElementById('panelBody').textContent = extra[1];
+      }
+    }
+
+    document.getElementById('keysChannelSubtabs').addEventListener('click', function (ev) {
+      var b = ev.target.closest('.subtab');
+      if (b) show(b.getAttribute('data-ch'));
+    });
+    document.getElementById('keycapBtn').addEventListener('click', function () {
+      this.textContent = this.textContent === 'F8' ? 'F7' : 'F8';
+    });
+    show('ime');
+  </script>
+</body>
+</html>
