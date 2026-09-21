@@ -1942,11 +1942,13 @@
     .settings-page-back:hover{background:var(--primary-soft);border-color:rgba(42,156,196,.26);transform:translateY(-1px)}
     .settings-page-back:active{transform:scale(.97)}
     .settings-panel-wrap:has(#settingsPanelKeys:not([hidden])),
-    .settings-panel-wrap:has(#settingsPanelVoiceWake:not([hidden])){
+    .settings-panel-wrap:has(#settingsPanelVoiceWake:not([hidden])),
+    .settings-panel-wrap:has(#settingsPanelSoftPad:not([hidden])){
       padding-bottom:0;
       scroll-padding-bottom:32px;
     }
-    .settings-panel-wrap:has(#settingsPanelVoiceWake:not([hidden])){
+    .settings-panel-wrap:has(#settingsPanelVoiceWake:not([hidden])),
+    .settings-panel-wrap:has(#settingsPanelSoftPad:not([hidden])){
       overflow:hidden;
     }
     .settings-panel{display:block}

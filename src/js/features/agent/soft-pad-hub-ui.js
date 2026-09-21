@@ -2,6 +2,8 @@
   'use strict';
 
   var selectedScopeId = 'codex';
+  /** True only after the user picks a Hub app. Implicit 'codex' must not hide Cursor. */
+  var scopePickedByUser = false;
   /** Dedup Hub → overlay pin IPC (selectScheme can fire often during paint). */
   var softPadPinnedMappingId = '';
   /** Temporary display pin mirror; authoritative pin lives in Rust after IPC. */
@@ -39,6 +41,8 @@
   // softPadView removed — use softPadPanelId() / getView() for legacy panel ids.
   var softPadFace = 'pad'; // pad | agent | timeline (agent face retired — use padMode lights|mini)
   var softPadPadMode = 'keys'; // keys | agent | style (+ legacy aliases normalized on entry)
+  /** Left rail recognize channel — softPad shows mid workbench; others show Keys deeplink bridge. */
+  var softPadRailChannel = 'softPad';
   var lastSoftPadPadMode = 'keys';
   var VALID_SOFT_PAD_FACES = { pad: 1, agent: 1, timeline: 1 };
   var VALID_SOFT_PAD_PAD_MODES = { keys: 1, agent: 1, style: 1 };
@@ -399,15 +403,25 @@
     return t('softPadHubKindSoft', 'Soft Pad');
   }
 
-  /** Default Hub tab — agent apps first; universal fallback is secondary. */
+  /** Default Hub tab — prefer live FG agent, then any enabled pad; never invent Codex. */
   function pickHubDefaultScopeId(entries) {
     entries = entries || listSoftPadSchemes();
     var i;
-    for (i = 0; i < entries.length; i++) {
-      if (entries[i].padEnabled && entries[i].kind === 'codex') return 'codex';
+    var fgKind = kindForAppId(getFreshForegroundAppId());
+    if (fgKind) {
+      for (i = 0; i < entries.length; i++) {
+        if (entries[i].kind === fgKind && hasMapping(entries[i])) return fgKind;
+      }
     }
     for (i = 0; i < entries.length; i++) {
-      if (entries[i].padEnabled) return entries[i].kind;
+      if (entries[i].padEnabled && entries[i].kind !== SOFT_PAD_UNIVERSAL_KIND) {
+        return entries[i].kind;
+      }
+    }
+    for (i = 0; i < entries.length; i++) {
+      if (entries[i].kind !== SOFT_PAD_UNIVERSAL_KIND && hasMapping(entries[i])) {
+        return entries[i].kind;
+      }
     }
     if (entries[0] && entries[0].kind) return entries[0].kind;
     return 'codex';
@@ -435,13 +449,30 @@
 
   /**
    * displayLane only (homepage / Hub summary). Not overlay dispatchLane.
-   * Auto: waiting → foreground → fallback, except intentional Soft Pad FG
-   * (open Cursor/Claude/…) beats another agent's waiting. User pin removed.
+   * Auto: foreign app → that app's page or 通用; else waiting → foreground agent → fallback.
+   * Opening Cursor/Claude/… beats another agent's waiting. User pin removed.
    * Pure — does not write globals.
    */
   function resolvePrimaryLaneResult(entries, ctx) {
     ctx = ctx || {};
     entries = Array.isArray(entries) ? entries : [];
+    if (ctx.foreignHost) {
+      var fgApp = String(ctx.foregroundAppId || '').trim();
+      var a;
+      if (fgApp && !kindForAppId(fgApp)) {
+        for (a = 0; a < entries.length; a++) {
+          if (entries[a] && entries[a].appId === fgApp && entries[a].padEnabled) {
+            return { entry: entries[a], reason: LANE_REASONS.foreground };
+          }
+        }
+      }
+      for (a = 0; a < entries.length; a++) {
+        if (entries[a] && entries[a].kind === SOFT_PAD_UNIVERSAL_KIND) {
+          return { entry: entries[a], reason: LANE_REASONS.foreground };
+        }
+      }
+      return { entry: null, reason: LANE_REASONS.none };
+    }
     var pool = entries.filter(function (e) {
       return !!(e && e.padEnabled && e.kind && isHubSoftPadKind(e.kind));
     });
@@ -614,6 +645,36 @@
     return false;
   }
 
+  function isTrayFgNoise(exe) {
+    return exe === 'explorer.exe'
+      || exe === 'shellexperiencehost.exe'
+      || exe === 'startmenuexperiencehost.exe'
+      || exe === 'searchhost.exe'
+      || exe === 'applicationframehost.exe'
+      || exe === 'textinputhost.exe'
+      || exe === 'lockapp.exe'
+      || exe === 'systemsettings.exe';
+  }
+
+  /** Chrome and other non-agent windows. OneTone itself and tray shell stay put. */
+  function foreignHostFromLane(fgAppId, fgFresh) {
+    var id = null;
+    try {
+      var ui = global.OneToneState && global.OneToneState.ui;
+      id = ui && ui.habitHubFgIdentity;
+    } catch (_) {}
+    if (id) {
+      var exe = String(id.exeName || id.exe_name || '').toLowerCase();
+      var path = String(id.fullPath || id.full_path || '').toLowerCase();
+      var self = exe.indexOf('onetone') >= 0 || path.indexOf('onetone') >= 0 || path.indexOf('voice-pilot') >= 0;
+      if (!self && exe && !isTrayFgNoise(exe)) {
+        var preset = String(id.matchedPresetAppId || id.matched_preset_app_id || id.appId || '').trim();
+        if (!kindForAppId(preset)) return true;
+      }
+    }
+    return !!(fgFresh && fgAppId && !kindForAppId(fgAppId));
+  }
+
   /**
    * Read-only lane context for resolvePrimaryLane*.
    * Filters expired evidence; prefers Soft Pad cache then habit-layer-nav fg.
@@ -651,6 +712,7 @@
 
     return {
       foregroundAppId: fgFresh ? fg : '',
+      foreignHost: foreignHostFromLane(fgFresh ? fg : '', fgFresh),
       waitingKinds: waitFresh && Array.isArray(cache.waitingKinds) ? cache.waitingKinds.slice() : [],
       userLaneId: null,
       foregroundFresh: !!fgFresh && !!fg,
@@ -1307,14 +1369,125 @@
       sceneKeysMeta: document.getElementById('softPadSceneKeysMeta'),
       sceneKeysAdd: document.getElementById('softPadSceneKeysAdd'),
       pageBody: document.getElementById('softPadPageBody'),
-      softPadPanel: document.getElementById('settingsPanelSoftPad')
+      softPadPanel: document.getElementById('settingsPanelSoftPad'),
+      pageRail: document.getElementById('softPadPageRail'),
+      channelNav: document.getElementById('softPadChannelNav'),
+      previewHint: document.getElementById('softPadPreviewHint'),
+      rightCol: document.getElementById('softPadRightCol'),
+      channelBridge: document.getElementById('softPadChannelBridge'),
+      channelBridgeTitle: document.getElementById('softPadChannelBridgeTitle'),
+      channelBridgeBody: document.getElementById('softPadChannelBridgeBody'),
+      channelBridgeGo: document.getElementById('softPadChannelBridgeGo'),
+      workChannelPill: document.getElementById('softPadWorkChannelPill')
     };
+  }
+
+  function ensureSoftPadThreeColLayout() {
+    var body = document.getElementById('softPadPageBody');
+    if (body && body.classList) body.classList.add('soft-pad-page-body--three-col');
+  }
+
+  function softPadChannelLabel(ch) {
+    var map = {
+      ime: ['keysChannelTabIme', '听写方式'],
+      key: ['keysChannelTabKey', '我录的键'],
+      voice: ['keysChannelTabVoice', '口头指令'],
+      cursor: ['keysChannelTabCursor', '软件自带'],
+      softPad: ['keysChannelTabSoftPad', '屏幕按钮'],
+      camera: ['keysChannelTabCamera', '手势']
+    };
+    var row = map[ch] || map.softPad;
+    return t(row[0], row[1]);
+  }
+
+  function syncSoftPadRailChrome() {
+    var ch = softPadRailChannel === 'softPad' ? 'softPad' : softPadRailChannel;
+    var nav = document.getElementById('softPadChannelNav');
+    if (nav) {
+      var items = nav.querySelectorAll('[data-soft-pad-channel]');
+      for (var i = 0; i < items.length; i++) {
+        var btn = items[i];
+        var channel = btn.getAttribute('data-soft-pad-channel') || '';
+        var on = channel === ch;
+        btn.classList.toggle('is-active', on);
+        btn.classList.remove('is-keys-page');
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      }
+    }
+    var pill = document.getElementById('softPadWorkChannelPill');
+    if (pill) pill.textContent = softPadChannelLabel(ch);
+    var isPad = ch === 'softPad';
+    var padTabs = document.getElementById('softPadPadTabs');
+    var detailIdle = document.getElementById('softPadDetailIdle');
+    var detailPanel = document.getElementById('softPadDetailPanel');
+    var bridge = document.getElementById('softPadChannelBridge');
+    var workTag = document.getElementById('softPadWorkTag');
+    // Pad tabs retired; work-tag looked like dead tabs — channel lives on the left rail.
+    if (padTabs) {
+      padTabs.hidden = true;
+      padTabs.setAttribute('aria-hidden', 'true');
+    }
+    if (workTag) {
+      workTag.hidden = true;
+      workTag.setAttribute('aria-hidden', 'true');
+    }
+    if (detailPanel) detailPanel.hidden = false;
+    if (detailIdle && !isPad) detailIdle.hidden = true;
+    // Jump-only bridge retired: channels render conventional content in mid.
+    if (bridge) bridge.setAttribute('hidden', '');
+  }
+
+  function paintSoftPadRailChannelWorkbench(ch) {
+    ch = String(ch || softPadRailChannel || 'softPad').trim();
+    var entry = resolveSoftPadEntry();
+    if (!entry || !hasMapping(entry)) return;
+    var paintHost = document.getElementById('softPadSubpageBody');
+    var Pad = global.OneToneCodexMicroPadUi;
+    if (!paintHost || !Pad) return;
+    if (ch === 'softPad') {
+      try {
+        paintSubpage(entry, { forceRemount: true });
+      } catch (_) {}
+      return;
+    }
+    if (typeof Pad.renderSoftPadChannelWorkbench === 'function') {
+      try {
+        Pad.renderSoftPadChannelWorkbench(paintHost, entry.mapping, ch, {});
+      } catch (_) {}
+    }
+  }
+
+  function setSoftPadRailChannel(ch, opts) {
+    opts = opts || {};
+    ch = String(ch || 'softPad').trim();
+    if (!/^(ime|key|voice|cursor|softPad|camera)$/.test(ch)) ch = 'softPad';
+    softPadRailChannel = ch;
+    syncSoftPadRailChrome();
+    if (opts.fromUser || opts.forcePaint) {
+      paintSoftPadRailChannelWorkbench(ch);
+    }
+  }
+
+  function openSoftPadChannelInKeys(channel) {
+    channel = String(channel || '').trim() || 'ime';
+    try {
+      var drawer = global.OneToneSettingsDrawer;
+      if (drawer && typeof drawer.open === 'function') drawer.open({ panel: 'keys' });
+      else if (drawer && typeof drawer.setPanel === 'function') drawer.setPanel('keys');
+    } catch (_) {}
+    setTimeout(function () {
+      try {
+        var picker = global.OneToneKeysChannelCommandPicker;
+        if (picker && typeof picker.setActiveTab === 'function') picker.setActiveTab(channel);
+      } catch (_) {}
+    }, 80);
   }
 
   /** Right dock = Keys「本场景动作」(same rows / chrome). Soft Pad no longer lists pad keys. */
   function refreshSoftPadSceneKeys(entry) {
     entry = entry || resolveSoftPadEntry();
     var e = els();
+    ensureSoftPadThreeColLayout();
     var Panel = global.OneToneKeysSceneActionsPanel;
     var face = softPadFace === 'pad' && normalizeSoftPadPadMode(softPadPadMode) !== 'agent';
     var show = face && hasMapping(entry);
@@ -1323,6 +1496,7 @@
         e.sceneKeys.setAttribute('hidden', '');
         e.sceneKeys.setAttribute('aria-hidden', 'true');
       }
+      // three-col keeps right column; has-scene-panel only marks habits visibility for CSS that still looks for it
       if (e.pageBody) e.pageBody.classList.remove('has-scene-panel');
       return;
     }
@@ -1650,6 +1824,14 @@
           setTimeout(function () {
             if (!isSoftPadPageVisible()) return;
             updateStatusBar(findEntry(getSelectedMappingId()));
+            try {
+              var PadStats = global.OneToneCodexMicroPadUi;
+              var statsEntry = findEntry(getSelectedMappingId());
+              if (PadStats && typeof PadStats.paintSoftPadPreviewStats === 'function' &&
+                  statsEntry && statsEntry.mapping) {
+                PadStats.paintSoftPadPreviewStats(statsEntry.mapping);
+              }
+            } catch (_) {}
           }, 0);
         }
         return snap;
@@ -1671,6 +1853,39 @@
     overlayUsageDeferToken += 1;
   }
 
+  var foregroundFollowTimer = 0;
+  var foregroundFollowToken = '';
+
+  function ensureForegroundFollow() {
+    if (foregroundFollowTimer) return;
+    followForegroundOnce();
+    foregroundFollowTimer = setInterval(followForegroundOnce, 700);
+  }
+
+  /** Switch the visible scene to the app in front. OneTone's own window does not pull it back. */
+  function followForegroundOnce() {
+    if (!isSoftPadPageVisible()) return;
+    var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
+    if (!invoke) return;
+    Promise.resolve(invoke('cmd_foreground_app', {})).then(function (res) {
+      if (!isSoftPadPageVisible() || !res) return;
+      var exe = String(res.exeName || res.exe_name || '').toLowerCase();
+      var path = String(res.fullPath || res.full_path || '').toLowerCase();
+      if (!exe) return;
+      if (exe.indexOf('onetone') >= 0 || path.indexOf('onetone') >= 0 || path.indexOf('voice-pilot') >= 0) return;
+      if (isTrayFgNoise(exe)) return;
+      var preset = String(res.matchedPresetAppId || res.matched_preset_app_id || res.appId || '').trim();
+      var kind = kindForAppId(preset) || SOFT_PAD_UNIVERSAL_KIND;
+      var token = kind + '|' + preset + '|' + exe;
+      if (token === foregroundFollowToken && String(selectedScopeId || '') === kind) return;
+      var scope = findScope(kind);
+      if (!scope || String(scope.id) !== kind) return;
+      foregroundFollowToken = token;
+      if (String(selectedScopeId || '') === kind) return;
+      selectScope(kind, { fromForeground: true, resetView: false });
+    }).catch(function () {});
+  }
+
   function ensureOverlayUsagePolling() {
     if (overlayUsageTimer) return;
     overlayUsageTimer = setInterval(function () {
@@ -1684,6 +1899,7 @@
     var kind = String(scopeId || selectedScopeId || '');
     if (kind !== 'codex' && kind !== 'claude' && kind !== 'cursor' && kind !== 'minimax') return;
     if (!isSoftPadPageVisible()) return;
+    ensureForegroundFollow();
     ensureOverlayUsagePolling();
     // Scope switch: reuse cache immediately, then one deferred refresh.
     updateStatusBar(findEntry(getSelectedMappingId()));
@@ -1713,10 +1929,27 @@
   function resolveSoftPadEntry() {
     var byId = findEntry(getSelectedMappingId());
     if (hasMapping(byId)) return byId;
+    // Restart used to keep the module default scope "codex" and open Codex prepare
+    // even when Cursor was foreground and already had a Soft Pad scene.
+    if (!scopePickedByUser) {
+      var fgKind = kindForAppId(getFreshForegroundAppId());
+      var fgEntry = fgKind ? entryForScopeKind(fgKind) : null;
+      if (hasMapping(fgEntry)) return fgEntry;
+      var schemes = listSoftPadSchemes();
+      var i;
+      var hit = null;
+      for (i = 0; i < schemes.length; i++) {
+        if (!schemes[i] || schemes[i].kind === SOFT_PAD_UNIVERSAL_KIND) continue;
+        if (!hasMapping(schemes[i])) continue;
+        if (schemes[i].padEnabled) return schemes[i];
+        if (!hit) hit = schemes[i];
+      }
+      if (hit) return hit;
+    }
     var scope = findScope(selectedScopeId || 'codex');
     if (scope && hasMapping(scope.entry)) return scope.entry;
     // Current app chip still needs「准备」— don't steal another app's pad for preview.
-    if (scope && scope.canPrepare) return scope.entry || null;
+    if (scopePickedByUser && scope && scope.canPrepare) return scope.entry || null;
     var entries = listSoftPadSchemes();
     if (!entries.length) return null;
     return pickDefaultEntry(entries) || entries[0] || null;
@@ -1728,6 +1961,11 @@
     setSelectedMappingId(String(entry.mapping.id));
     if (entry.kind) selectedScopeId = entry.kind;
     syncHabitEditFromSoftPadEntry(entry);
+    // Top chrome ("正在编辑 / 已与前台一致") paints before Soft Pad adopt — refresh it.
+    try {
+      var Banner = global.OneToneHabitChannelEditBanner;
+      if (Banner && Banner.renderAll) Banner.renderAll();
+    } catch (_) {}
     return entry;
   }
 
@@ -2049,23 +2287,25 @@
   }
 
   function updateStatusBar(entry) {
-    // P10: React island owns this DOM when mounted — push state and skip legacy DOM writes.
-    if (global.__otSoftPadStatusMounted) {
-      if (global.__otSoftPadStatusSync) global.__otSoftPadStatusSync(buildStatusProps(entry));
-      updateSoftPadFlowHints(entry);
-      syncSoftPadFlowNodes(entry);
-      syncSoftPadPadRing(entry);
-      syncAgentPreviewUsageStrip();
-      return;
-    }
+    // P10: React island owns the slim status bar when mounted.
+    // Preview-hint chrome (meta / bind / actions) stays in static DOM — always paint those.
     var e = els();
     var props = buildStatusProps(entry);
-    var brandEl = document.getElementById('softPadPageBrandTitle');
-    if (brandEl) brandEl.textContent = props.brandTitle || t('softPadPageBrandTitle', '虚拟键盘');
-    if (e.name) e.name.textContent = props.name;
-    if (e.status) {
-      e.status.textContent = props.status;
-      e.status.className = ['keys-scheme-summary-pill', props.statusCls].filter(Boolean).join(' ');
+    if (global.__otSoftPadStatusMounted) {
+      if (global.__otSoftPadStatusSync) global.__otSoftPadStatusSync(props);
+    } else {
+      var brandEl = document.getElementById('softPadPageBrandTitle');
+      if (brandEl) brandEl.textContent = props.brandTitle || t('softPadPageBrandTitle', '虚拟键盘');
+      if (e.name) e.name.textContent = props.name;
+      if (e.status) {
+        e.status.textContent = props.status;
+        e.status.className = ['keys-scheme-summary-pill', props.statusCls].filter(Boolean).join(' ');
+      }
+      if (e.enable) {
+        e.enable.disabled = !props.hasMapping;
+        e.enable.classList.toggle('is-on', !!props.padEnabled);
+        e.enable.setAttribute('aria-checked', props.padEnabled ? 'true' : 'false');
+      }
     }
     if (e.agent) e.agent.textContent = props.agent;
     if (e.accountMeta) {
@@ -2087,23 +2327,18 @@
     if (e.resetMeta && e.resetMeta.style) {
       e.resetMeta.style.cursor = mmScope ? 'pointer' : '';
     }
-    if (e.enable) {
-      e.enable.disabled = !props.hasMapping;
-      e.enable.classList.toggle('is-on', !!props.padEnabled);
-      e.enable.setAttribute('aria-checked', props.padEnabled ? 'true' : 'false');
-    }
     var testBtn = document.getElementById('btnSoftPadTestFg');
     var editBtn = document.getElementById('btnSoftPadEditKeys');
     if (testBtn) testBtn.disabled = !props.hasMapping;
     if (editBtn) editBtn.disabled = !props.hasMapping;
     syncBindAppControl(props);
     updateSoftPadFlowHints(entry);
+    syncSoftPadFlowNodes(entry);
     syncSoftPadPadRing(entry);
     syncAgentPreviewUsageStrip();
   }
 
   function syncBindAppControl(props) {
-    if (global.__otSoftPadStatusMounted) return;
     var e = els();
     if (!e.bindAppLbl && !e.bindAppBtn) return;
     props = props || buildBindAppProps();
@@ -2198,7 +2433,6 @@
   }
 
   function setBindAppMenuOpen(open) {
-    if (global.__otSoftPadStatusMounted) return;
     var e = els();
     if (!e.bindAppMenu || !e.bindAppBtn) return;
     e.bindAppMenu.hidden = !open;
@@ -3457,13 +3691,15 @@
       var idleTitle = e.detailIdle.querySelector('.soft-pad-detail-idle__title');
       var idleSub = e.detailIdle.querySelector('.soft-pad-detail-idle__sub');
       if (idleTitle) {
-        idleTitle.textContent = t('softPadDetailIdleTitle', '点顶部一项开始调整');
+        idleTitle.textContent = t('softPadDetailIdleTitle', '点中间键盘上的键');
       }
       if (idleSub) {
-        idleSub.textContent = t('softPadDetailIdleSub', '右侧打开详情；左侧键盘保持不动');
+        idleSub.textContent = t('softPadDetailIdleSub', '选中后在这里告诉它做什么');
       }
     }
     syncSoftPadFlowNodes(entry);
+    ensureSoftPadThreeColLayout();
+    syncSoftPadRailChrome();
     if (e.pageBody) {
       e.pageBody.classList.toggle('is-face-agent', isAgentWorkbenchMode());
     }
@@ -3635,6 +3871,9 @@
     }
     if (view === 'layout') {
       return !!(host.querySelector('[data-soft-pad-action-library]') ||
+        host.querySelector('[data-soft-pad-flat-bind]') ||
+        host.querySelector('[data-soft-pad-flat-bind-dock]') ||
+        host.querySelector('.soft-pad-flat-bind-dock') ||
         host.querySelector('[data-soft-pad-layout-editor]'));
     }
     if (view === 'style') {
@@ -4029,6 +4268,26 @@
       }
     }
     if (!stillValid()) return;
+
+    // Page rail on a Keys channel → mid shows that channel's conventional picker (not Soft Pad flat bind / bridge).
+    if (softPadRailChannel && softPadRailChannel !== 'softPad') {
+      var channelHost = softPadSubpagePaintEl(body) || body;
+      if (typeof Pad.renderSoftPadChannelWorkbench === 'function' && channelHost) {
+        try {
+          if (Pad.closeEditKeycap) Pad.closeEditKeycap({ reopenInline: false });
+          ++subpageToken;
+          Pad.renderSoftPadChannelWorkbench(channelHost, entry.mapping, softPadRailChannel, {
+            onChanged: onChanged
+          });
+        } catch (errCh) {
+          feLog('fe softPad.paintSubpage channel ' + (errCh && errCh.message ? errCh.message : 'unknown'));
+          throw errCh;
+        } finally {
+          feLog('fe softPad.paintSubpage channel:' + softPadRailChannel + ' ' + (Date.now() - t0) + 'ms');
+        }
+        return;
+      }
+    }
 
     if (targetView === 'timeline') {
       try {
@@ -4777,8 +5036,10 @@
 
     if (opts.scopeId) {
       selectedScopeId = String(opts.scopeId);
+      scopePickedByUser = true;
     } else if (opts.fromList || !selectedScopeId) {
       selectedScopeId = entry.kind;
+      if (opts.fromList) scopePickedByUser = true;
     }
 
     // Pin overlay Soft Pad to this Hub mapping (same tid may have several).
@@ -4845,6 +5106,7 @@
     }
 
     selectedScopeId = String(scope.id);
+    scopePickedByUser = true;
     setBindAppMenuOpen(false);
 
     // Same path as the (removed) aside list — proven to switch Codex/Claude/Cursor.
@@ -5284,6 +5546,8 @@
     if (chromeBound) return;
     chromeBound = true;
     var e = els();
+    ensureSoftPadThreeColLayout();
+    syncSoftPadRailChrome();
     var scanBtn = document.getElementById('softPadScanBtn');
     if (scanBtn && !scanBtn.__otScanBound) {
       scanBtn.__otScanBound = true;
@@ -5294,6 +5558,77 @@
     // Always bind on the host — island may remount HTML, but bubble still hits #softPadAppSwitcher.
     // (React onClick on dangerouslySetInnerHTML is unreliable in WebView2.)
     ensureSwitcherClickBound();
+    if (e.channelNav && !e.channelNav.__otRailBound) {
+      e.channelNav.__otRailBound = true;
+      e.channelNav.addEventListener('click', function (ev) {
+        var tab = ev.target.closest && ev.target.closest('[data-soft-pad-channel]');
+        if (!tab || !e.channelNav.contains(tab)) return;
+        ev.preventDefault();
+        setSoftPadRailChannel(tab.getAttribute('data-soft-pad-channel'), { fromUser: true });
+      });
+    }
+    var restoreDefaults = document.getElementById('btnSoftPadRestoreDefaults');
+    if (restoreDefaults && !restoreDefaults.__otRestoreBound) {
+      restoreDefaults.__otRestoreBound = true;
+      restoreDefaults.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        var entry = resolveSoftPadEntry();
+        if (!hasMapping(entry)) {
+          toastPad(t('softPadPreviewEmptyNoMapping', '还没有可预览的虚拟键盘'));
+          return;
+        }
+        var Pad = global.OneToneCodexMicroPadUi;
+        if (Pad && typeof Pad.confirmRestoreSoftPadLayout === 'function') {
+          Pad.confirmRestoreSoftPadLayout(entry.mapping);
+          return;
+        }
+        toastPad(t('softPadPrepareFail', '准备失败：未能创建应用场景'));
+      });
+    }
+    var bridgeGo = document.getElementById('softPadChannelBridgeGo');
+    if (bridgeGo && !bridgeGo.__otBridgeBound) {
+      bridgeGo.__otBridgeBound = true;
+      bridgeGo.addEventListener('click', function () {
+        openSoftPadChannelInKeys(softPadRailChannel);
+      });
+    }
+    function onPreviewHintClick(ev) {
+      var bindOpt = ev.target.closest && ev.target.closest('#softPadBindAppMenu [data-scope]');
+      if (bindOpt) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        selectScope(bindOpt.getAttribute('data-scope'), { fromUser: true, resetView: false, forceRemount: isAgentWorkbenchMode() });
+        return;
+      }
+      var bindBtn = ev.target.closest && ev.target.closest('#softPadBindAppBtn');
+      if (bindBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        var menu = els().bindAppMenu;
+        setBindAppMenuOpen(!(menu && !menu.hidden));
+        return;
+      }
+      var usageHit = ev.target.closest && ev.target.closest('#softPadSummaryUsage, #softPadSummaryReset');
+      if (usageHit && String(selectedScopeId || '') === 'minimax') {
+        ev.preventDefault();
+        var keyInput = document.querySelector('#softPadMinimaxKeyInput');
+        if (keyInput) {
+          keyInput.focus();
+          try { keyInput.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+        } else {
+          openMinimaxCodingConsole();
+        }
+        return;
+      }
+      var btn = ev.target.closest && ev.target.closest('[data-cockpit-action]');
+      if (!btn || btn.disabled) return;
+      ev.preventDefault();
+      handleStatusAction(btn.getAttribute('data-cockpit-action'));
+    }
+    if (e.previewHint && !e.previewHint.__otHintBound) {
+      e.previewHint.__otHintBound = true;
+      e.previewHint.addEventListener('click', onPreviewHintClick);
+    }
     if (e.tiles) {
       e.tiles.addEventListener('click', function (ev) {
         var tile = ev.target.closest && ev.target.closest('[data-tile]');
@@ -5439,7 +5774,6 @@
       });
     }
     document.addEventListener('click', function (ev) {
-      if (global.__otSoftPadStatusMounted) return;
       var e2 = els();
       if (!e2.bindApp || !e2.bindAppMenu || e2.bindAppMenu.hidden) return;
       if (e2.bindApp.contains(ev.target)) return;
@@ -5488,6 +5822,13 @@
   function refreshSelected(m) {
     if (paintReentry > 0) return;
     var entry = syncEntryFromMapping(m);
+    // Soft Pad mapping on + no occupy → physical 7 is still Home; turn occupy on quietly.
+    try {
+      var PadOcc = global.OneToneCodexMicroPadUi;
+      if (PadOcc && PadOcc.ensurePhysicalNumpadOccupy && entry && entry.mapping) {
+        PadOcc.ensurePhysicalNumpadOccupy(entry.mapping, { quiet: true, respectUserOff: true });
+      }
+    } catch (_) {}
     markActiveRow(getSelectedMappingId());
     if (!patchAppSwitcher()) renderAppSwitcher();
     updateScopeHint();
@@ -5583,15 +5924,25 @@
     renderAppSwitcher();
     updateScopeHint();
 
-    if (opts.scopeId) selectedScopeId = String(opts.scopeId);
+    if (opts.scopeId) {
+      selectedScopeId = String(opts.scopeId);
+      scopePickedByUser = true;
+    }
     if (opts.mappingId) {
       setSelectedMappingId(String(opts.mappingId));
       var mapped = findEntry(getSelectedMappingId());
       if (mapped && !opts.scopeId) selectedScopeId = mapped.kind;
     } else if (!getSelectedMappingId() && entries.length) {
-      var defEntry = pickDefaultEntry(entries);
-      setSelectedMappingId(defEntry ? String(defEntry.mapping.id) : String(entries[0].mapping.id));
-      if (!opts.scopeId) selectedScopeId = pickDefaultScopeId(entries);
+      // Prefer FG / existing pad over the module default "codex".
+      var softFirst = resolveSoftPadEntry();
+      if (hasMapping(softFirst)) {
+        setSelectedMappingId(String(softFirst.mapping.id));
+        if (!opts.scopeId) selectedScopeId = softFirst.kind;
+      } else {
+        var defEntry = pickDefaultEntry(entries);
+        setSelectedMappingId(defEntry ? String(defEntry.mapping.id) : String(entries[0].mapping.id));
+        if (!opts.scopeId) selectedScopeId = pickDefaultScopeId(entries);
+      }
     }
 
     if (!entries.length) {
@@ -5976,10 +6327,20 @@
     },
     refreshSoftPadSceneKeys: refreshSoftPadSceneKeys,
     focusSoftPadSceneKey: focusSoftPadSceneKey,
+    setSoftPadRailChannel: setSoftPadRailChannel,
+    openSoftPadChannelInKeys: openSoftPadChannelInKeys,
     softPadScopeSwitchLabel: softPadScopeSwitchLabel,
     renderSoftPadScopeMenuItems: renderSoftPadScopeMenuItems,
     buildBindAppProps: buildBindAppProps,
-    getSelectedScopeId: function () { return selectedScopeId; },
+    getSelectedScopeId: function () {
+      // Prefer the Soft Pad entry actually on screen — module default "codex" used to
+      // stick in the status chrome while the pad preview already showed Cursor.
+      try {
+        var live = resolveSoftPadEntry();
+        if (live && live.kind) return live.kind;
+      } catch (_) {}
+      return selectedScopeId;
+    },
     appTitleFor: appTitleFor,
     isUniversalSoftPadScope: function () { return String(selectedScopeId || '') === SOFT_PAD_UNIVERSAL_KIND; },
     ensureBaselineSoftPadOverlay: ensureBaselineSoftPadOverlay,

@@ -329,8 +329,10 @@
     if (spec.panel === 'softPad') {
       var hub = global.OneToneSoftPadHub;
       if (hub && hub.appTitleFor && hub.getSelectedScopeId) {
-        return hub.appTitleFor(hub.getSelectedScopeId());
+        var sid = hub.getSelectedScopeId();
+        if (sid) return hub.appTitleFor(sid);
       }
+      // Fall through to mapping name if Hub scope is empty.
     }
     return habitScopeDisplayName(m);
   }

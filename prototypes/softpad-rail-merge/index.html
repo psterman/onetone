@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>原型图 · Soft Pad 右预览</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e4ebf1;--rail:#eef3f7;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fff7ed;
+      --pad:#1a2430;--pad-key:#243444;--pad-line:#334859;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+      --ease:cubic-bezier(.23,1,.32,1);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);color:var(--ink);
+      background:
+        radial-gradient(900px 360px at 8% -10%,rgba(42,156,196,.12),transparent 55%),
+        radial-gradient(700px 280px at 92% 0%,rgba(15,95,122,.06),transparent 50%),
+        var(--bg);
+      -webkit-font-smoothing:antialiased;
+    }
+
+    .top{
+      position:sticky;top:0;z-index:50;
+      display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;
+      padding:12px 20px;background:#0f1820;color:#a8b6c6;font-size:12.5px;
+    }
+    .top strong{color:#fff;font-size:14px}
+    .top em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .top a{color:#7dd3fc;font-weight:650;text-decoration:none;margin-left:auto}
+
+    .page{width:min(1240px,100%);margin:0 auto;padding:20px 16px 56px}
+
+    .hero-note{
+      display:grid;grid-template-columns:1.25fr .75fr;gap:14px;margin-bottom:16px;
+    }
+    @media(max-width:860px){.hero-note{grid-template-columns:1fr}}
+    .note-card{
+      background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:14px;
+      padding:14px 16px;font-size:13px;color:var(--muted);line-height:1.55;
+    }
+    .note-card h1{margin:0 0 6px;font-size:18px;font-weight:750;color:var(--ink);letter-spacing:-.02em}
+    .note-card p{margin:0}
+    .note-card b{color:var(--ink)}
+    .legend{display:flex;flex-direction:column;gap:8px}
+    .leg{
+      display:flex;gap:10px;align-items:flex-start;
+      background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+    }
+    .leg i{
+      flex:none;width:22px;height:22px;border-radius:999px;background:var(--cyan-ink);color:#fff;
+      display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:750;
+    }
+    .leg span{font-size:12.5px;color:var(--muted);line-height:1.4}
+    .leg b{color:var(--ink);font-weight:650}
+
+    .wire{
+      margin-top:12px;padding:10px 12px;border-radius:10px;background:#13202c;color:#c5d0de;
+      font-family:var(--mono);font-size:11px;line-height:1.45;white-space:pre;overflow:auto;
+    }
+
+    .board{
+      position:relative;
+      border:1px solid var(--line);border-radius:18px;background:#fff;
+      box-shadow:0 22px 50px rgba(19,32,44,.1);overflow:visible;
+    }
+    .board-chrome{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:10px 14px;border-bottom:1px solid var(--line);background:#fbfdfe;
+      border-radius:18px 18px 0 0;
+    }
+    .board-chrome .dot{width:8px;height:8px;border-radius:999px;background:#d5dee8}
+    .board-chrome .ttl{font-size:13px;font-weight:650}
+    .board-chrome .pill{
+      font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;
+      background:var(--ok-soft);color:var(--ok);border:1px solid #86efac;
+    }
+    .board-chrome .bind{
+      margin-left:auto;border:1px solid var(--line);background:var(--wash);border-radius:9px;
+      padding:5px 10px;font:inherit;font-size:12px;font-weight:650;color:var(--muted);cursor:pointer;
+    }
+    .btn{
+      border:1px solid var(--line);background:#fff;border-radius:9px;
+      padding:6px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;color:var(--ink);
+    }
+    .btn.pri{background:var(--cyan);border-color:transparent;color:#fff}
+
+    /* 左目录 | 中详情 | 右预览 */
+    .desk{
+      display:grid;grid-template-columns:168px minmax(0,1fr) 240px;
+      min-height:600px;position:relative;
+    }
+    @media(max-width:960px){
+      .desk{grid-template-columns:1fr}
+      .anno{display:none !important}
+      .preview-ring{display:none !important}
+    }
+
+    .rail{
+      background:var(--rail);border-right:1px solid var(--line);
+      padding:8px 4px;display:flex;flex-direction:column;gap:0;min-height:0;overflow:auto;
+    }
+    .sec{
+      margin:6px 6px 4px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint);
+    }
+    .nav{display:flex;flex-direction:column;gap:1px;flex:1}
+    .item{
+      appearance:none;width:100%;border:0;background:transparent;text-align:left;
+      padding:8px 6px;border-radius:8px;font:inherit;font-size:12.5px;font-weight:650;
+      color:var(--muted);cursor:pointer;line-height:1.3;
+    }
+    .item:hover{background:rgba(255,255,255,.55);color:var(--ink)}
+    .item.on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+
+    .main{min-width:0;display:flex;flex-direction:column;background:var(--wash);border-right:1px solid var(--line)}
+    .main-tag{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:8px 12px;background:#fff;border-bottom:1px solid var(--line);
+      font-size:11px;font-weight:750;letter-spacing:.04em;color:var(--faint);
+    }
+    .chip{
+      font-size:10.5px;font-weight:650;padding:2px 7px;border-radius:999px;letter-spacing:0;
+      background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);
+    }
+    .tabs{margin-left:auto;display:flex;gap:4px}
+    .tab{
+      border:1px solid var(--line);background:#fff;border-radius:8px;
+      padding:4px 10px;font:inherit;font-size:11.5px;font-weight:650;color:var(--muted);cursor:pointer;
+    }
+    .tab.on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink)}
+    .pane{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+    .card h4{margin:0 0 6px;font-size:13px;font-weight:750}
+    .card p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5}
+    .row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .seg{
+      border:1px solid var(--line);border-radius:8px;padding:6px 10px;
+      font-size:11.5px;font-weight:650;background:#fff;color:var(--muted);cursor:pointer;
+    }
+    .seg.on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink)}
+    .bind-list{display:flex;flex-direction:column;gap:4px;margin-top:10px}
+    .bind-row{
+      display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;
+      border:1px solid var(--line);background:var(--wash);font-size:12.5px;font-weight:650;
+    }
+    .bind-row .k{
+      font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:6px;
+      background:#fff;border:1px solid var(--line);color:var(--cyan-ink);
+    }
+    .bind-row .m{margin-left:auto;font-size:11px;color:var(--faint);font-weight:550}
+    .dock-row{
+      appearance:none;width:100%;border:1px solid transparent;background:#fff;border-radius:8px;
+      padding:7px 9px;text-align:left;font:inherit;cursor:pointer;
+    }
+    .dock-row.on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .dock-row .t{display:block;font-size:12px;font-weight:650}
+    .dock-row .s{display:block;margin-top:2px;font-size:10.5px;color:var(--faint)}
+    .dock-add{
+      appearance:none;width:100%;border:1px dashed var(--line);background:transparent;
+      border-radius:8px;padding:7px;font:inherit;font-size:12px;font-weight:650;
+      color:var(--cyan-ink);cursor:pointer;flex:none;
+    }
+
+    /* 右：屏幕预览 + 习惯列表 */
+    .preview-col{
+      position:relative;z-index:2;
+      background:var(--rail);padding:10px 10px 12px;
+      display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;
+    }
+    .preview-col__lbl{
+      margin:0;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint);flex:none;
+    }
+    .preview-card{
+      flex:none;padding:10px;background:#fff;border:1px solid var(--line);border-radius:12px;
+    }
+    .pad{
+      background:var(--pad);border-radius:12px;padding:12px 10px 14px;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .pad__title{
+      margin:0 0 10px;text-align:center;font-size:11px;font-weight:650;color:#9bb0c2;
+    }
+    .pad__grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+    .pad__key{
+      aspect-ratio:1;border-radius:8px;background:var(--pad-key);border:1px solid var(--pad-line);
+      color:#c9d7e4;display:grid;place-items:center;font-size:10px;font-weight:650;
+      cursor:pointer;transition:outline .12s var(--ease),background .12s var(--ease);
+    }
+    .pad__key:hover{background:#2a3d4f}
+    .pad__key.on{outline:2px solid var(--cyan);background:#214056;color:#fff}
+    .pad__hint{margin:10px 0 0;font-size:10.5px;color:#8494a6;text-align:center;line-height:1.35}
+    .preview-meta{
+      margin:0;font-size:11.5px;color:var(--muted);line-height:1.45;padding:0 2px;flex:none;
+    }
+
+    .habit-dock{
+      flex:1 1 auto;min-height:140px;display:flex;flex-direction:column;gap:6px;
+      margin-top:4px;padding:10px;background:#fff;border:1px solid var(--line);border-radius:12px;
+    }
+    .habit-dock__head{
+      display:flex;align-items:center;gap:8px;flex:none;
+    }
+    .habit-dock__ico{
+      width:20px;height:20px;border-radius:5px;background:#13202c;color:#fff;
+      display:grid;place-items:center;font-size:10px;font-weight:750;flex:none;
+    }
+    .habit-dock__title{margin:0;font-size:13px;font-weight:750}
+    .habit-dock__meta{margin:0;font-size:11px;color:var(--faint);font-weight:550}
+    .habit-dock__list{
+      display:flex;flex-direction:column;gap:4px;flex:1 1 auto;min-height:0;overflow:auto;
+    }
+
+    .preview-ring{
+      position:absolute;inset:6px 6px 6px auto;width:calc(240px - 4px);
+      border:2px dashed rgba(42,156,196,.55);border-radius:12px;pointer-events:none;z-index:1;
+    }
+    .anno{
+      position:absolute;z-index:5;display:flex;align-items:center;gap:8px;
+      pointer-events:none;max-width:200px;
+    }
+    .anno .bubble{
+      background:#0f1820;color:#e8eef3;border-radius:10px;padding:8px 10px;
+      font-size:11.5px;line-height:1.4;box-shadow:0 10px 24px rgba(15,24,32,.25);
+    }
+    .anno .bubble b{color:#7dd3fc;font-weight:650}
+    .anno .pin{
+      width:22px;height:22px;border-radius:999px;background:var(--cyan);
+      color:#fff;display:grid;place-items:center;font-size:11px;font-weight:750;flex:none;
+      box-shadow:0 0 0 4px rgba(42,156,196,.25);
+    }
+    .anno-1{left:-8px;top:48px;transform:translateX(-100%)}
+    .anno-2{left:50%;top:28px;transform:translate(-50%,-120%)}
+    .anno-3{right:-8px;top:48px;transform:translateX(100%);flex-direction:row-reverse}
+    .anno-4{right:-8px;bottom:80px;transform:translateX(100%);flex-direction:row-reverse}
+
+    .foot{
+      margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;
+    }
+    @media(max-width:700px){.foot{grid-template-columns:1fr}}
+    .ban{border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.5}
+    .ban.yes{background:var(--ok-soft);border:1px solid #86efac;color:#166534}
+    .ban.no{background:var(--warn-soft);border:1px solid #fdba74;color:#9a3412}
+    .ban h3{margin:0 0 6px;font-size:13px;font-weight:750}
+    .ban ul{margin:0;padding-left:1.15em}
+    .ban li{margin:3px 0}
+
+    .compare{
+      margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;
+    }
+    @media(max-width:800px){.compare{grid-template-columns:1fr}}
+    .cmp{
+      border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.92);padding:12px 14px;
+      font-size:12.5px;color:var(--muted);line-height:1.5;
+    }
+    .cmp h3{margin:0 0 6px;font-size:13px;font-weight:750;color:var(--ink)}
+    .cmp .mini{
+      margin-top:8px;display:grid;grid-template-columns:56px 1fr 72px;gap:6px;min-height:72px;
+      border:1px dashed var(--line);border-radius:10px;padding:6px;background:var(--wash);
+    }
+    .cmp .box{border-radius:6px;background:#fff;border:1px solid var(--line);font-size:10px;font-weight:650;padding:6px;color:var(--faint)}
+    .cmp .box.dark{background:var(--pad);color:#9bb0c2;border-color:var(--pad-line)}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <strong>原型图 · Soft Pad 右预览 + 习惯</strong>
+    <span>左识别 · 中工作间 · <em>右预览 + 本场景动作</em></span>
+    <a href="../keys-rail-plan/index.html">对照按键左轨 →</a>
+  </div>
+
+  <div class="page">
+    <div class="hero-note">
+      <div class="note-card">
+        <h1>虚拟键盘 · 右栏 = 预览 + 习惯列表</h1>
+        <p>左列识别目录（无搜索）。中栏通道详情。右侧上半 <b>Soft Pad 屏幕预览</b>，下半 <b>本场景动作</b>习惯列表（对齐现网 softPadSceneKeys）。</p>
+        <div class="wire">┌─ 168 ──┬───── 工作间 ─────┬─ 240 右侧 ──────┐
+│ 识别    │ 通道详情 / tabs  │ Soft Pad 预览   │
+│ 听写方式│                  ├────────────────┤
+│ 我录的键│                  │ 本场景动作      │
+│ 口头指令│                  │ · 听写键        │
+│ …       │                  │ · 粘贴说明      │
+│ 屏幕按钮│                  │ ＋ 新建动作     │
+└─────────┴──────────────────┴────────────────┘</div>
+      </div>
+      <div class="legend">
+        <div class="leg"><i>1</i><span><b>左 · 识别</b> — 扁平行目录，无搜索</span></div>
+        <div class="leg"><i>2</i><span><b>中 · 工作间</b> — 通道详情 + Pad tabs</span></div>
+        <div class="leg"><i>3</i><span><b>右上 · 屏幕预览</b> — Soft Pad 键位</span></div>
+        <div class="leg"><i>4</i><span><b>右下 · 习惯列表</b> — 本场景动作 + 新建</span></div>
+      </div>
+    </div>
+
+    <div class="board">
+      <div class="board-chrome">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="ttl">虚拟键盘</span>
+        <span class="pill">就绪</span>
+        <button type="button" class="bind">绑定 · Cursor ▾</button>
+        <button type="button" class="btn">测试</button>
+        <button type="button" class="btn pri">保存</button>
+      </div>
+
+      <div class="desk">
+        <div class="preview-ring" aria-hidden="true"></div>
+
+        <div class="anno anno-1">
+          <span class="pin">1</span>
+          <div class="bubble"><b>识别目录</b><br>无搜索 · 与按键同源</div>
+        </div>
+        <div class="anno anno-2">
+          <span class="pin">2</span>
+          <div class="bubble"><b>工作间</b><br>通道详情 + Pad tabs</div>
+        </div>
+        <div class="anno anno-3">
+          <span class="pin">3</span>
+          <div class="bubble"><b>屏幕预览</b><br>固定右上</div>
+        </div>
+        <div class="anno anno-4">
+          <span class="pin">4</span>
+          <div class="bubble"><b>习惯列表</b><br>本场景动作 · 右下</div>
+        </div>
+
+        <aside class="rail" aria-label="识别目录">
+          <div class="sec">识别</div>
+          <nav class="nav" id="nav" role="tablist" aria-label="识别分类">
+            <button type="button" class="item" data-ch="ime" role="tab">听写方式</button>
+            <button type="button" class="item" data-ch="key" role="tab">我录的键</button>
+            <button type="button" class="item" data-ch="voice" role="tab">口头指令</button>
+            <button type="button" class="item" data-ch="cursor" role="tab">软件自带</button>
+            <button type="button" class="item on" data-ch="softPad" role="tab" aria-selected="true">屏幕按钮</button>
+            <button type="button" class="item" data-ch="camera" role="tab">手势</button>
+          </nav>
+        </aside>
+
+        <main class="main" aria-label="工作间">
+          <div class="main-tag">
+            工作间
+            <span class="chip" id="chPill">屏幕按钮</span>
+            <div class="tabs" id="padTabs">
+              <button type="button" class="tab on" data-mode="keys">按键</button>
+              <button type="button" class="tab" data-mode="agent">Agent</button>
+              <button type="button" class="tab" data-mode="style">样式</button>
+            </div>
+          </div>
+          <div class="pane">
+            <div class="card" id="detailCard">
+              <h4 id="detailTitle">屏幕按钮 · 按键</h4>
+              <p id="detailSub">右侧预览里点键选中，在此改绑定。习惯列表在右下，与预览同列。</p>
+              <div class="bind-list" id="bindList">
+                <div class="bind-row"><span class="k">听写</span>微信输入法 · 右 Alt<span class="m">已绑</span></div>
+                <div class="bind-row"><span class="k">粘贴</span>粘贴说明并发送<span class="m">序列</span></div>
+                <div class="bind-row"><span class="k">清屏</span>F9<span class="m">快捷键</span></div>
+                <div class="bind-row"><span class="k">发送</span>回车<span class="m">收尾</span></div>
+              </div>
+            </div>
+            <div class="card" id="channelCard" hidden>
+              <h4 id="channelTitle">通道详情</h4>
+              <p id="channelBody">占位：该识别通道的现网配置会出现在这里。</p>
+              <div class="row" id="channelSegs"></div>
+            </div>
+          </div>
+        </main>
+
+        <aside class="preview-col" aria-label="屏幕预览与本场景动作">
+          <p class="preview-col__lbl">屏幕预览</p>
+          <div class="preview-card">
+            <div class="pad" id="padPreview">
+              <p class="pad__title">Soft Pad · Cursor</p>
+              <div class="pad__grid" id="padGrid">
+                <button type="button" class="pad__key on">听写</button>
+                <button type="button" class="pad__key">粘贴</button>
+                <button type="button" class="pad__key">清屏</button>
+                <button type="button" class="pad__key">发送</button>
+                <button type="button" class="pad__key">←</button>
+                <button type="button" class="pad__key">→</button>
+                <button type="button" class="pad__key">↵</button>
+                <button type="button" class="pad__key">⋯</button>
+              </div>
+              <p class="pad__hint">点键选中 · 中栏改绑定</p>
+            </div>
+          </div>
+          <p class="preview-meta" id="previewMeta">当前：听写 · 与中栏「听写」行同步</p>
+
+          <div class="habit-dock" aria-label="本场景动作">
+            <div class="habit-dock__head">
+              <span class="habit-dock__ico">C</span>
+              <div>
+                <p class="habit-dock__title">本场景动作</p>
+                <p class="habit-dock__meta">Cursor · 3 条</p>
+              </div>
+            </div>
+            <div class="habit-dock__list">
+              <button type="button" class="dock-row on"><span class="t">听写键</span><span class="s">屏幕按钮 · 听写</span></button>
+              <button type="button" class="dock-row"><span class="t">粘贴说明</span><span class="s">屏幕按钮 · 粘贴</span></button>
+              <button type="button" class="dock-row"><span class="t">清屏</span><span class="s">屏幕按钮 · 清屏</span></button>
+            </div>
+            <button type="button" class="dock-add">＋ 新建动作</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div class="compare">
+      <div class="cmp">
+        <h3>弃用：习惯挤进中栏</h3>
+        预览独占右侧时，习惯列表消失或塞进详情卡。
+        <div class="mini" style="grid-template-columns:56px 1fr 72px">
+          <div class="box">目录</div>
+          <div class="box">详情+习惯</div>
+          <div class="box dark">仅预览</div>
+        </div>
+      </div>
+      <div class="cmp">
+        <h3>现行：右栏上下叠</h3>
+        上 Soft Pad 预览 · 下本场景动作习惯列表。
+        <div class="mini">
+          <div class="box">目录</div>
+          <div class="box">详情</div>
+          <div class="box dark">预览<br>+习惯</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div class="ban yes">
+        <h3>右栏允许</h3>
+        <ul>
+          <li>上：Soft Pad 屏幕预览</li>
+          <li>下：本场景动作习惯列表 + 新建</li>
+        </ul>
+      </div>
+      <div class="ban no">
+        <h3>不要</h3>
+        <ul>
+          <li>搜索框</li>
+          <li>预览进左列</li>
+          <li>习惯列表只留在中栏</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var labels = {
+        ime: '听写方式', key: '我录的键', voice: '口头指令',
+        cursor: '软件自带', softPad: '屏幕按钮', camera: '手势'
+      };
+      var nav = document.getElementById('nav');
+      var pill = document.getElementById('chPill');
+      var detailCard = document.getElementById('detailCard');
+      var channelCard = document.getElementById('channelCard');
+      var detailTitle = document.getElementById('detailTitle');
+      var channelTitle = document.getElementById('channelTitle');
+      var channelBody = document.getElementById('channelBody');
+      var channelSegs = document.getElementById('channelSegs');
+      var padTabs = document.getElementById('padTabs');
+      var previewMeta = document.getElementById('previewMeta');
+      var mode = 'keys';
+
+      function showChannel(ch) {
+        pill.textContent = labels[ch] || ch;
+        var isPad = ch === 'softPad';
+        detailCard.hidden = !isPad;
+        channelCard.hidden = isPad;
+        padTabs.style.visibility = isPad ? 'visible' : 'hidden';
+        if (isPad) {
+          detailTitle.textContent = '屏幕按钮 · ' + (mode === 'keys' ? '按键' : mode === 'agent' ? 'Agent' : '样式');
+          return;
+        }
+        channelTitle.textContent = labels[ch] + ' · 详情';
+        channelBody.textContent = '中栏承载「' + labels[ch] + '」现网配置；右侧仍显示 Soft Pad 预览作对照。';
+        var samples = {
+          ime: ['微信输入法', '搜狗', '系统听写'],
+          key: ['粘贴说明', '清屏重来', '待录序列'],
+          voice: ['打开文件', '发送消息'],
+          cursor: ['Composer', 'Chat'],
+          camera: ['点头确认', '挥手取消']
+        };
+        channelSegs.innerHTML = (samples[ch] || []).map(function (s, i) {
+          return '<button type="button" class="seg' + (i === 0 ? ' on' : '') + '">' + s + '</button>';
+        }).join('');
+      }
+
+      nav.addEventListener('click', function (e) {
+        var btn = e.target.closest('.item');
+        if (!btn) return;
+        nav.querySelectorAll('.item').forEach(function (el) {
+          el.classList.toggle('on', el === btn);
+          el.setAttribute('aria-selected', el === btn ? 'true' : 'false');
+        });
+        showChannel(btn.getAttribute('data-ch'));
+      });
+
+      padTabs.addEventListener('click', function (e) {
+        var tab = e.target.closest('.tab');
+        if (!tab) return;
+        padTabs.querySelectorAll('.tab').forEach(function (el) {
+          el.classList.toggle('on', el === tab);
+        });
+        mode = tab.getAttribute('data-mode');
+        detailTitle.textContent = '屏幕按钮 · ' + (mode === 'keys' ? '按键' : mode === 'agent' ? 'Agent' : '样式');
+      });
+
+      document.getElementById('padGrid').addEventListener('click', function (e) {
+        var key = e.target.closest('.pad__key');
+        if (!key) return;
+        this.querySelectorAll('.pad__key').forEach(function (el) {
+          el.classList.toggle('on', el === key);
+        });
+        previewMeta.textContent = '当前：' + key.textContent + ' · 与中栏绑定行同步';
+      });
+    })();
+  </script>
+</body>
+</html>

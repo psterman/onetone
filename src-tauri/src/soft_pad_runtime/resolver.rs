@@ -14,9 +14,19 @@ pub struct DispatchReadyEntry {
 }
 
 #[derive(Debug, Clone)]
+pub struct AppPage {
+    pub app_target_id: String,
+    pub mapping_id: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct CandidateInput {
     pub entries: Vec<DispatchReadyEntry>,
     pub user_pin: Option<AgentKind>,
+    /// Non-agent app pages (Chrome, …). Agent apps stay in `entries`.
+    pub app_pages: Vec<AppPage>,
+    /// Baseline habit used when the foreground app has no page of its own.
+    pub universal_mapping_id: Option<String>,
     pub foreground: Option<ForegroundEvidence>,
     /// needs_input kinds only; Phase 1 may be empty.
     pub waiting_kinds: Vec<AgentKind>,
@@ -32,6 +42,8 @@ impl Default for CandidateInput {
         Self {
             entries: Vec::new(),
             user_pin: None,
+            app_pages: Vec::new(),
+            universal_mapping_id: None,
             foreground: None,
             waiting_kinds: Vec::new(),
             waiting_observed_at: Vec::new(),
@@ -43,6 +55,26 @@ impl Default for CandidateInput {
 
 pub fn resolve_candidate(input: &CandidateInput) -> CandidateDecision {
     let pool = &input.entries;
+
+    // Pinned mode: pin wins everything, including a foreign app.
+    if let Some(pin) = input.user_pin {
+        if let Some(e) = pick_kind(pool, pin) {
+            return CandidateDecision {
+                lane_kind: Some(pin),
+                mapping_id: Some(e.mapping_id.clone()),
+                reason: SelectionReason::UserPin,
+                mode: FollowMode::Pinned,
+            };
+        }
+        // Invalid pin → fall through as Auto (caller should clear pin memory separately).
+    }
+
+    // Foreign app (Chrome, …): its page, else the universal baseline.
+    // Beats another agent's waiting — those keys do not apply in this window.
+    if let Some(page) = pick_foreign_page(input) {
+        return page;
+    }
+
     if pool.is_empty() {
         return CandidateDecision {
             lane_kind: None,
@@ -56,20 +88,7 @@ pub fn resolve_candidate(input: &CandidateInput) -> CandidateDecision {
         };
     }
 
-    // Pinned mode: pin wins everything.
-    if let Some(pin) = input.user_pin {
-        if let Some(e) = pick_kind(pool, pin) {
-            return CandidateDecision {
-                lane_kind: Some(pin),
-                mapping_id: Some(e.mapping_id.clone()),
-                reason: SelectionReason::UserPin,
-                mode: FollowMode::Pinned,
-            };
-        }
-        // Invalid pin → fall through as Auto (caller should clear pin memory separately).
-    }
-
-    // Auto: needs_input > foreground > fallback
+    // Auto: needs_input > foreground agent > fallback
     if let Some(kind) = pick_waiting(input) {
         if let Some(e) = pick_kind(pool, kind) {
             return CandidateDecision {
@@ -105,13 +124,59 @@ pub fn resolve_candidate(input: &CandidateInput) -> CandidateDecision {
     }
 }
 
+fn evidence_fresh(input: &CandidateInput, ev: &ForegroundEvidence) -> bool {
+    let age = input.now.saturating_duration_since(ev.observed_at);
+    (age.as_millis() as u64) <= FG_EVIDENCE_TTL_MS
+}
+
 fn fresh_foreground(input: &CandidateInput) -> Option<AgentKind> {
     let ev = input.foreground.as_ref()?;
-    let age = input.now.saturating_duration_since(ev.observed_at);
-    if age.as_millis() as u64 > FG_EVIDENCE_TTL_MS {
+    if !evidence_fresh(input, ev) {
         return None;
     }
     ev.agent_kind
+}
+
+/// App page for this window, else the universal baseline.
+/// A fresh foreign host always resolves here so another agent's keys do not stay live.
+/// `None` only when the host is not a foreign app (or the evidence is stale).
+fn pick_foreign_page(input: &CandidateInput) -> Option<CandidateDecision> {
+    let ev = input.foreground.as_ref()?;
+    if !ev.foreign_host || !evidence_fresh(input, ev) {
+        return None;
+    }
+    let mut mid: Option<String> = None;
+    if let Some(tid) = ev
+        .app_target_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        if let Some(page) = input.app_pages.iter().find(|p| p.app_target_id == tid) {
+            let id = page.mapping_id.trim();
+            if !id.is_empty() {
+                mid = Some(id.to_string());
+            }
+        }
+    }
+    if mid.is_none() {
+        mid = input
+            .universal_mapping_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
+    }
+    Some(CandidateDecision {
+        lane_kind: None,
+        mapping_id: mid.clone(),
+        reason: if mid.is_some() {
+            SelectionReason::Foreground
+        } else {
+            SelectionReason::None
+        },
+        mode: FollowMode::Auto,
+    })
 }
 
 fn pick_waiting(input: &CandidateInput) -> Option<AgentKind> {
@@ -195,8 +260,12 @@ mod tests {
                 entry(AgentKind::Claude, "m-claude", 1, true),
             ],
             user_pin: Some(AgentKind::Claude),
+            app_pages: Vec::new(),
+            universal_mapping_id: None,
             foreground: Some(ForegroundEvidence {
                 agent_kind: Some(AgentKind::Codex),
+                app_target_id: None,
+                foreign_host: false,
                 observed_at: now,
                 sequence: 1,
             }),
@@ -220,8 +289,12 @@ mod tests {
                 entry(AgentKind::Claude, "m-claude", 1, true),
             ],
             user_pin: None,
+            app_pages: Vec::new(),
+            universal_mapping_id: None,
             foreground: Some(ForegroundEvidence {
                 agent_kind: Some(AgentKind::Claude),
+                app_target_id: None,
+                foreign_host: false,
                 observed_at: now,
                 sequence: 1,
             }),
@@ -244,8 +317,12 @@ mod tests {
                 entry(AgentKind::Claude, "m-claude", 1, true),
             ],
             user_pin: None,
+            app_pages: Vec::new(),
+            universal_mapping_id: None,
             foreground: Some(ForegroundEvidence {
                 agent_kind: Some(AgentKind::Claude),
+                app_target_id: None,
+                foreign_host: false,
                 observed_at: now - Duration::from_millis(FG_EVIDENCE_TTL_MS + 1000),
                 sequence: 1,
             }),
@@ -265,6 +342,8 @@ mod tests {
         let input = CandidateInput {
             entries: vec![entry(AgentKind::Codex, "m-codex", 0, true)],
             user_pin: Some(AgentKind::Claude),
+            app_pages: Vec::new(),
+            universal_mapping_id: None,
             foreground: None,
             waiting_kinds: vec![],
             waiting_observed_at: vec![],
@@ -286,6 +365,8 @@ mod tests {
                 entry(AgentKind::Claude, "m-claude", 1, true),
             ],
             user_pin: None,
+            app_pages: Vec::new(),
+            universal_mapping_id: None,
             foreground: None,
             waiting_kinds: vec![AgentKind::Codex, AgentKind::Claude],
             waiting_observed_at: vec![],
@@ -306,8 +387,12 @@ mod tests {
                 entry(AgentKind::Cursor, "m-cursor", 1, true),
             ],
             user_pin: None,
+            app_pages: Vec::new(),
+            universal_mapping_id: None,
             foreground: Some(ForegroundEvidence {
                 agent_kind: Some(AgentKind::Cursor),
+                app_target_id: None,
+                foreign_host: false,
                 observed_at: now,
                 sequence: 1,
             }),
@@ -331,8 +416,12 @@ mod tests {
                 entry(AgentKind::Cursor, "m-cursor", 1, true),
             ],
             user_pin: None,
+            app_pages: Vec::new(),
+            universal_mapping_id: None,
             foreground: Some(ForegroundEvidence {
                 agent_kind: Some(AgentKind::Claude),
+                app_target_id: None,
+                foreign_host: false,
                 observed_at: now,
                 sequence: 1,
             }),
@@ -363,5 +452,75 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(c.lane_kind.is_none(), c.reason == SelectionReason::None);
+        assert!(c.mapping_id.is_none());
+    }
+
+    #[test]
+    fn foreign_host_uses_universal_and_beats_waiting() {
+        let now = Instant::now();
+        let c = resolve_candidate(&CandidateInput {
+            entries: vec![entry(AgentKind::Cursor, "m-cursor", 0, true)],
+            universal_mapping_id: Some("m-base".into()),
+            foreground: Some(ForegroundEvidence {
+                agent_kind: None,
+                app_target_id: None,
+                foreign_host: true,
+                observed_at: now,
+                sequence: 1,
+            }),
+            waiting_kinds: vec![AgentKind::Cursor],
+            now,
+            current_lane: Some(AgentKind::Cursor),
+            ..Default::default()
+        });
+        assert_eq!(c.lane_kind, None);
+        assert_eq!(c.mapping_id.as_deref(), Some("m-base"));
+        assert_eq!(c.reason, SelectionReason::Foreground);
+    }
+
+    #[test]
+    fn foreign_host_prefers_app_page_over_universal() {
+        let now = Instant::now();
+        let c = resolve_candidate(&CandidateInput {
+            entries: vec![entry(AgentKind::Cursor, "m-cursor", 0, true)],
+            app_pages: vec![AppPage {
+                app_target_id: "chrome".into(),
+                mapping_id: "m-chrome".into(),
+            }],
+            universal_mapping_id: Some("m-base".into()),
+            foreground: Some(ForegroundEvidence {
+                agent_kind: None,
+                app_target_id: Some("chrome".into()),
+                foreign_host: true,
+                observed_at: now,
+                sequence: 1,
+            }),
+            now,
+            ..Default::default()
+        });
+        assert_eq!(c.mapping_id.as_deref(), Some("m-chrome"));
+        assert_eq!(c.reason, SelectionReason::Foreground);
+    }
+
+    #[test]
+    fn foreign_host_without_page_drops_agent_keys() {
+        let now = Instant::now();
+        let c = resolve_candidate(&CandidateInput {
+            entries: vec![entry(AgentKind::Cursor, "m-cursor", 0, true)],
+            foreground: Some(ForegroundEvidence {
+                agent_kind: None,
+                app_target_id: None,
+                foreign_host: true,
+                observed_at: now,
+                sequence: 1,
+            }),
+            waiting_kinds: vec![AgentKind::Cursor],
+            now,
+            current_lane: Some(AgentKind::Cursor),
+            ..Default::default()
+        });
+        assert_eq!(c.lane_kind, None);
+        assert!(c.mapping_id.is_none());
+        assert_eq!(c.reason, SelectionReason::None);
     }
 }

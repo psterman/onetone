@@ -441,6 +441,9 @@ fn run_overlay_tap_action(
     ) || (target_id.trim() == crate::app_chat_workflow::CURSOR_APP_TARGET_ID
         && matches!(route.action_id.as_str(), "plan" | "switchAgent"));
     if hotkey_action && !chord.is_empty() {
+        // Overlay click leaves Soft Pad as FG, so Cursor never sees the chord
+        // (command palette Ctrl+Shift+P looks pressed and does nothing).
+        let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
         // Single inject gate: target agent owns FG and OneTone does not.
         if !crate::codex_micro_overlay::ensure_soft_pad_inject_ready(&target_id) {
             crate::app_log::log_line(
@@ -807,19 +810,9 @@ fn try_dispatch_codex_numpad(
         return true;
     }
 
-    if !key_down {
-        return true;
-    }
-    execute_agent_binding(
-        state,
-        window,
-        &route.mapping_id,
-        &route.provider_id,
-        &route.action_id,
-        &route.slot_id,
-        None,
-        Some("foregroundApp".into()),
-    );
+    // Same path as Soft Pad overlay taps — Cursor newThread is not a provider
+    // action (Unsupported); beginner / chord inject lives in fire_codex_micro_pad_key.
+    let _ = fire_codex_micro_pad_key(state, window, &route.micro_key_id, key_down, false);
     true
 }
 
@@ -866,6 +859,9 @@ pub fn fire_codex_micro_pad_key(
     let micro_key_id = micro_key_id.trim();
     if micro_key_id.is_empty() {
         return serde_json::json!({ "ok": false, "reason": "invalid_key" });
+    }
+    if key_down {
+        crate::action_history::record_soft_pad_press(micro_key_id);
     }
     let app = window.app_handle();
     let claude_inject_ok = crate::claude_cli_session::claude_cli_can_inject().ok
@@ -1301,17 +1297,10 @@ pub fn fire_codex_micro_pad_key(
         && crate::cursor_beginner::is_beginner_slot(&route.slot_id)
         && crate::cursor_beginner::probe_ok()
     {
-        if let Some(def) = crate::cursor_beginner::slot_def(&route.slot_id) {
-            if def.tap_hold_ms > 0 {
-                return serde_json::json!({
-                    "ok": false,
-                    "reason": "hold_required",
-                    "holdMs": def.tap_hold_ms,
-                    "slotId": route.slot_id,
-                    "microKeyId": micro_key_id
-                });
-            }
-        }
+        // Soft Pad / physical fire is already intentional. Do NOT reject
+        // beginner hold slots here — that dead-ended AG01 newThread (Ctrl+N)
+        // while stopOrSend (instant tap) still worked. Mini-bar keeps its own
+        // client hold via cmd_cursor_beginner_run_slot(holdConfirmed).
         crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
         crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
         spawn_cursor_beginner_tap(

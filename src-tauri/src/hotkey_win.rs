@@ -1192,9 +1192,11 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
             if crate::codex_numpad_layer::hook_should_swallow(&source) {
                 if let Some(sender) = active_sender().lock().unwrap().as_ref() {
                     let payload = crate::codex_numpad_layer::format_event(&source, is_key_down);
-                    sender.send(payload).ok();
+                    if sender.send(payload).is_ok() {
+                        return 1;
+                    }
                 }
-                return 1;
+                // No live handler — do not eat the key into a void (digit/Home must still work).
             }
         }
         if let Some(name) = vk_to_name(kb.vkCode as u32) {

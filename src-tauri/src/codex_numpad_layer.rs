@@ -430,6 +430,15 @@ pub fn codex_foreground_for_micro() -> bool {
     crate::codex_micro_overlay::micro_pad_session_active()
 }
 
+/// Whether a physical numpad key should be swallowed into Soft Pad.
+///
+/// Soft Pad steals the key only when「数字键占用」is on **and** NumLock is off.
+/// - NumLock on → always type the digit (never Soft Pad), even if occupy is on.
+/// - Occupy off → pass through (digit or system Home/End); Soft Pad stays overlay-only.
+pub fn should_swallow_bound_numpad(has_route: bool, require_num_lock_off: bool, num_lock_off: bool) -> bool {
+    has_route && require_num_lock_off && num_lock_off
+}
+
 /// Five-condition conservative swallow check for the LL keyboard hook.
 pub fn hook_should_swallow(source: &NumpadSourceKey) -> bool {
     let gate = hook_gate().lock().unwrap();
@@ -441,10 +450,11 @@ pub fn hook_should_swallow(source: &NumpadSourceKey) -> bool {
     if !codex_foreground_for_micro() {
         return false;
     }
-    if gate.require_num_lock_off && !num_lock_is_off() {
-        return false;
-    }
-    gate.routes.contains_key(&source.id())
+    should_swallow_bound_numpad(
+        gate.routes.contains_key(&source.id()),
+        gate.require_num_lock_off,
+        num_lock_is_off(),
+    )
 }
 
 pub fn sync_hook_cache(cfg: &VoiceConfig) {
@@ -814,6 +824,8 @@ pub(crate) fn cursor_soft_pad_slot_allowed(slot_id: &str) -> bool {
             | "newBrowserTab"
             | "plan"
             | "switchAgent"
+            // Soft Pad runs Keys「我录的键」sequence (FE CURSOR_SOFT_PAD_SLOT_IDS / CURSOR_SLOT_GROUPS seq).
+            | "runTargetSequence"
     )
 }
 
@@ -827,6 +839,7 @@ pub(crate) fn soft_pad_icon_is_leftover(icon: &str, micro_key_id: &str, slot_id:
     let want = match slot {
         "plan" => "plan",
         "switchAgent" => "agent",
+        "pasteAndSend" => "clipboardPaste",
         _ => "",
     };
     if !want.is_empty() && icon == want {
@@ -837,6 +850,7 @@ pub(crate) fn soft_pad_icon_is_leftover(icon: &str, micro_key_id: &str, slot_id:
         "ACT07" => "command",
         "ACT08" => "reject",
         "ACT09" => "messagePlus",
+        // Legacy empty UNDO glyph; Soft Pad seed uses clipboardPaste for pasteAndSend.
         "UNDO" => "undo",
         "SEARCH" => "search",
         "ACT10" => "mic",
@@ -1494,13 +1508,14 @@ fn merge_pad_routes(gate: &mut HookGate, mapping: &MappingEntry, pad: &CodexMicr
             micro_key_id: route.micro_key_id.clone(),
             is_hold,
         };
-        // Physical numpad swallow table: never invent sc00:ext0 for unbound scans (e.g. JOY).
+        // Physical numpad: always index the scan. Swallow vs digit/Home is decided
+        // in hook_should_swallow (NumLock off → Soft Pad, not system Home).
         if route.source_scan > 0 {
-            let source = NumpadSourceKey {
-                scan: route.source_scan,
-                extended: route.source_extended,
-            };
-            gate.routes.insert(source.id(), snapshot.clone());
+            if let Some(source) =
+                normalize_numpad_physical(route.source_scan, route.source_extended)
+            {
+                gate.routes.insert(source.id(), snapshot.clone());
+            }
         }
         let named = route.source_key.trim();
         if !named.is_empty() {
@@ -1532,7 +1547,7 @@ pub fn default_codex_micro_pad() -> CodexMicroPadConfig {
     CodexMicroPadConfig {
         enabled: true,
         require_foreground: true,
-        require_num_lock_off: false,
+        require_num_lock_off: true,
         nav_keys_enabled: true,
         capture_physical_arrows: false,
         overlay_enabled: true,
@@ -1591,8 +1606,8 @@ pub fn default_codex_micro_pad_routes() -> Vec<CodexMicroPadKeyRoute> {
         route("ACT08", 0x4A, false, "cancel"),
         route("ACT09", 0x4F, false, "newThread"),
         // Soft physical: Numpad 2 / 3 (not on Micro 13 face; fire via scan).
-        // UNDO unbound ???not in Codex Soft Pad one-press picker; heal must not restore undo.
-        route("UNDO", 0x50, false, ""),
+        // Soft Pad preset: pasteAndSend (chordless). Never seed legacy `undo` here.
+        route("UNDO", 0x50, false, "pasteAndSend"),
         route("SEARCH", 0x51, false, "quickSearch"),
         route("ACT10", 0x52, false, "pushToTalk"),
         // Send / confirm ???Numpad Enter (region 4 preview; frees 3 for search).
@@ -1705,7 +1720,7 @@ fn route(micro_key_id: &str, scan: u16, extended: bool, slot_id: &str) -> CodexM
         "ACT07" => "command",
         "ACT08" => "reject",
         "ACT09" => "messagePlus",
-        "UNDO" => "undo",
+        "UNDO" => "clipboardPaste",
         "SEARCH" => "search",
         "ACT10" => "mic",
         "ACT12" => "send",
@@ -1787,6 +1802,21 @@ mod tests {
     }
 
     #[test]
+    fn soft_pad_swallows_only_with_occupy_and_numlock_off() {
+        // Occupy on + NumLock off → Soft Pad (7 is not Home).
+        assert!(should_swallow_bound_numpad(true, true, true));
+        // NumLock on → digit, even when occupy is on.
+        assert!(!should_swallow_bound_numpad(true, true, false));
+        // Occupy off → pass through (digit or Home); overlay Soft Pad only.
+        assert!(!should_swallow_bound_numpad(true, false, true));
+        assert!(!should_swallow_bound_numpad(true, false, false));
+        assert!(!should_swallow_bound_numpad(false, true, true));
+        // NumLock-off Home still normalizes onto the Soft Pad seat id.
+        let seven = normalize_numpad_physical(0x47, true).unwrap();
+        assert_eq!(seven.id(), "sc47:ext0");
+    }
+
+    #[test]
     fn source_id_roundtrip() {
         let s = NumpadSourceKey {
             scan: 0x50,
@@ -1850,7 +1880,8 @@ mod tests {
         assert_eq!(act09.slot_id, "newThread");
         assert_eq!(act09.source_scan, 0x4F);
         let undo = keys.iter().find(|k| k.micro_key_id == "UNDO").unwrap();
-        assert_eq!(undo.slot_id, "");
+        assert_eq!(undo.slot_id, "pasteAndSend");
+        assert_eq!(undo.ui_icon_id, "clipboardPaste");
         assert_eq!(undo.source_scan, 0x50);
         assert!(keys.iter().all(|k| k.slot_id != "status"));
         assert!(keys.iter().all(|k| k.slot_id != "undo"));

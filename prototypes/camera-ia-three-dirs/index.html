@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>原型图 · 摄像头 IA 三个方向</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e4ebf1;--rail:#eef3f7;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fff7ed;
+      --cam:#0f1724;--cam-line:#334859;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+      --ease:cubic-bezier(.23,1,.32,1);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);color:var(--ink);
+      background:
+        radial-gradient(900px 360px at 8% -10%,rgba(42,156,196,.12),transparent 55%),
+        radial-gradient(700px 280px at 92% 0%,rgba(15,95,122,.06),transparent 50%),
+        var(--bg);
+      -webkit-font-smoothing:antialiased;
+    }
+    .top{
+      position:sticky;top:0;z-index:50;
+      display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
+      padding:12px 20px;background:#0f1820;color:#a8b6c6;font-size:12.5px;
+    }
+    .top strong{color:#fff;font-size:14px}
+    .top em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .dir-switch{display:flex;gap:4px;flex-wrap:wrap;margin-left:8px}
+    .dir-switch button{
+      border:1px solid rgba(255,255,255,.14);background:transparent;color:#c5d0de;
+      border-radius:9px;padding:6px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;
+    }
+    .dir-switch button.on{background:var(--cyan);border-color:transparent;color:#fff}
+    .top a{color:#7dd3fc;font-weight:650;text-decoration:none;margin-left:auto}
+
+    .page{width:min(1240px,100%);margin:0 auto;padding:20px 16px 56px}
+    .brief{
+      display:grid;grid-template-columns:1.2fr .8fr;gap:12px;margin-bottom:16px;
+    }
+    @media(max-width:860px){.brief{grid-template-columns:1fr}}
+    .note{
+      background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:14px;
+      padding:14px 16px;font-size:13px;color:var(--muted);line-height:1.55;
+    }
+    .note h1{margin:0 0 6px;font-size:18px;font-weight:750;color:var(--ink);letter-spacing:-.02em}
+    .note p{margin:0}
+    .note b{color:var(--ink)}
+    .score{
+      background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
+    }
+    .score h2{margin:0 0 8px;font-size:13px;font-weight:750}
+    .score ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+    .score li{font-size:12.5px;color:var(--muted);line-height:1.4}
+    .score li b{color:var(--ink);font-weight:650}
+    .score .tag{
+      display:inline-block;font-size:10.5px;font-weight:750;padding:2px 7px;border-radius:999px;
+      background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);margin-right:6px;
+    }
+
+    .board{
+      border:1px solid var(--line);border-radius:18px;background:#fff;
+      box-shadow:0 22px 50px rgba(19,32,44,.1);overflow:hidden;
+    }
+    .board-chrome{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:10px 14px;border-bottom:1px solid var(--line);background:#fbfdfe;
+    }
+    .board-chrome .dot{width:8px;height:8px;border-radius:999px;background:#d5dee8}
+    .board-chrome .ttl{font-size:13px;font-weight:650}
+    .board-chrome .pill{
+      font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;
+      background:var(--ok-soft);color:var(--ok);border:1px solid #86efac;
+    }
+    .board-chrome .pill.warn{background:var(--warn-soft);color:var(--warn);border-color:#fdba74}
+    .board-chrome .pill.off{background:var(--wash);color:var(--faint);border-color:var(--line)}
+    .toggle{
+      width:42px;height:24px;border:0;border-radius:999px;background:#c5d3de;position:relative;cursor:pointer;flex:none;
+    }
+    .toggle::after{
+      content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;
+      box-shadow:0 1px 3px rgba(0,0,0,.15);
+    }
+    .toggle.on{background:var(--cyan)}
+    .toggle.on::after{transform:translateX(18px)}
+    .btn{
+      border:1px solid var(--line);background:#fff;border-radius:9px;
+      padding:6px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;color:var(--ink);
+    }
+    .btn.pri{background:var(--cyan);border-color:transparent;color:#fff}
+
+    .panel{display:none}
+    .panel.on{display:block}
+
+    /* ── Dir A: three-col match desk ── */
+    .desk-a{
+      display:grid;grid-template-columns:168px minmax(0,1fr) 240px;min-height:620px;
+    }
+    @media(max-width:960px){.desk-a{grid-template-columns:1fr}}
+    .rail{
+      background:var(--rail);border-right:1px solid var(--line);
+      padding:8px 4px;display:flex;flex-direction:column;overflow:auto;
+    }
+    .sec{margin:6px 6px 4px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+    .nav{display:flex;flex-direction:column;gap:1px;flex:1}
+    .item{
+      appearance:none;width:100%;border:0;background:transparent;text-align:left;
+      padding:8px 6px;border-radius:8px;font:inherit;font-size:12.5px;font-weight:650;
+      color:var(--muted);cursor:pointer;line-height:1.3;
+    }
+    .item:hover{background:rgba(255,255,255,.55);color:var(--ink)}
+    .item.on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+    .item .sub{display:block;margin-top:2px;font-size:10.5px;font-weight:550;color:var(--faint)}
+    .main{min-width:0;display:flex;flex-direction:column;background:var(--wash);border-right:1px solid var(--line)}
+    .work-tag{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:8px 12px;background:#fff;border-bottom:1px solid var(--line);
+      font-size:11px;font-weight:750;letter-spacing:.04em;color:var(--faint);
+    }
+    .chip{
+      font-size:10.5px;font-weight:650;padding:2px 7px;border-radius:999px;letter-spacing:0;
+      background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);
+    }
+    .tabs{margin-left:auto;display:flex;gap:4px}
+    .tab{
+      border:1px solid var(--line);background:#fff;border-radius:8px;
+      padding:4px 10px;font:inherit;font-size:11.5px;font-weight:650;color:var(--muted);cursor:pointer;
+    }
+    .tab.on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink)}
+    .pane{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+    .card h4{margin:0 0 6px;font-size:13px;font-weight:750}
+    .card p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5}
+    .bind-row{
+      display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;
+      border:1px solid var(--line);background:var(--wash);font-size:12.5px;font-weight:650;margin-top:8px;
+    }
+    .bind-row .k{
+      font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:6px;
+      background:#fff;border:1px solid var(--line);color:var(--cyan-ink);
+    }
+    .bind-row .m{margin-left:auto;font-size:11px;color:var(--faint);font-weight:550}
+    .right{
+      background:var(--rail);padding:10px;display:flex;flex-direction:column;gap:8px;overflow:auto;
+    }
+    .right__lbl{margin:0;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+    .preview-card{padding:10px;background:#fff;border:1px solid var(--line);border-radius:12px}
+    .cam-stage{
+      background:var(--cam);border-radius:12px;min-height:160px;display:grid;place-items:center;
+      color:#9bb0c2;font-size:12px;font-weight:650;position:relative;overflow:hidden;
+    }
+    .cam-stage .face{
+      width:48px;height:48px;border-radius:50%;border:2px dashed rgba(94,200,232,.45);
+      display:grid;place-items:center;font-size:10px;color:rgba(94,200,232,.9);
+    }
+    .cam-stage .chip-live{
+      position:absolute;left:8px;bottom:8px;background:rgba(15,23,36,.75);
+      border:1px solid rgba(94,200,232,.28);border-radius:999px;padding:3px 8px;font-size:10px;color:#cfe8f5;
+    }
+    .hint{
+      display:flex;flex-direction:column;gap:8px;padding:4px 2px;
+      font-size:11.5px;color:var(--muted);line-height:1.45;
+    }
+    .hint .meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}
+    .hint .meta b{color:var(--ink)}
+    .habit{
+      flex:1;min-height:120px;padding:10px;background:#fff;border:1px solid var(--line);border-radius:12px;
+      display:flex;flex-direction:column;gap:6px;
+    }
+    .habit h3{margin:0;font-size:13px;font-weight:750}
+    .habit .meta{margin:0;font-size:11px;color:var(--faint)}
+    .dock-row{
+      appearance:none;width:100%;border:1px solid transparent;background:var(--wash);border-radius:8px;
+      padding:7px 9px;text-align:left;font:inherit;cursor:pointer;
+    }
+    .dock-row.on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .dock-row .t{display:block;font-size:12px;font-weight:650}
+    .dock-row .s{display:block;margin-top:2px;font-size:10.5px;color:var(--faint)}
+
+    /* ── Dir B: trust bar + grouped capabilities ── */
+    .desk-b{display:grid;grid-template-columns:minmax(220px,.38fr) minmax(0,1.62fr);min-height:620px}
+    @media(max-width:900px){.desk-b{grid-template-columns:1fr}}
+    .trust{
+      display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;
+      padding:10px 14px;border-bottom:1px solid var(--line);background:#f7fafc;
+    }
+    .trust h2{margin:0;font-size:13px;font-weight:750}
+    .trust .state{
+      font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;
+      background:var(--ok-soft);color:var(--ok);border:1px solid #86efac;
+    }
+    .trust .state.is-off{background:var(--wash);color:var(--faint);border-color:var(--line)}
+    .trust .grow{flex:1}
+    .trust .master{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:650;color:var(--muted)}
+    .b-left{
+      background:var(--rail);border-right:1px solid var(--line);padding:12px;
+      display:flex;flex-direction:column;gap:10px;overflow:auto;
+    }
+    .b-right{min-width:0;display:flex;flex-direction:column;background:var(--wash)}
+    .groups{
+      display:flex;gap:4px;flex-wrap:wrap;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line);
+    }
+    .grp{
+      border:1px solid var(--line);background:#fff;border-radius:999px;
+      padding:6px 12px;font:inherit;font-size:12px;font-weight:650;color:var(--muted);cursor:pointer;
+    }
+    .grp.on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink)}
+    .grp .n{margin-left:4px;font-size:10.5px;color:var(--faint);font-weight:550}
+    .grp.on .n{color:var(--cyan-ink)}
+    .b-pane{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+    .rule{
+      display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
+      padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:12px;
+    }
+    .rule h4{margin:0;font-size:13px;font-weight:750}
+    .rule p{margin:3px 0 0;font-size:12px;color:var(--muted)}
+    .ghost-tabs{
+      display:flex;flex-wrap:wrap;gap:6px;opacity:.45;pointer-events:none;user-select:none;
+    }
+    .ghost-tabs span{
+      font-size:11px;padding:4px 8px;border-radius:8px;border:1px dashed var(--line);color:var(--faint);
+    }
+    .strike{text-decoration:line-through}
+
+    /* ── Dir C: single entry · Camera2 truth ── */
+    .desk-c{min-height:620px;display:flex;flex-direction:column}
+    .c-status{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+      padding:12px 14px;border-bottom:1px solid var(--line);background:#f7fafc;
+    }
+    .c-status-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .c-status h2{margin:0;font-size:13px;font-weight:750}
+    .c-status h2 .sub{color:var(--muted);font-weight:550}
+    .c-fg{
+      display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(46,125,79,.28);
+      background:var(--ok-soft);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;color:var(--ok);
+    }
+    .c-fg i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(46,125,79,.18)}
+    .c-tabs{display:flex;gap:4px;padding:8px 14px 0;border-bottom:1px solid var(--line);background:#fbfcfe}
+    .c-tabs button{
+      border:0;background:transparent;color:var(--muted);padding:10px 12px 12px;
+      font:inherit;font-size:13px;font-weight:700;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;
+    }
+    .c-tabs button.on{color:var(--cyan-ink);border-bottom-color:var(--cyan)}
+    .c-body{padding:12px 14px 16px;flex:1;display:flex;flex-direction:column;gap:10px;background:#fff}
+    .c-one{
+      margin:0;padding:12px 14px;border-radius:12px;
+      background:linear-gradient(135deg,#eef9fc,#f7fafc);border:1px solid rgba(42,156,196,.28);
+    }
+    .c-one .k{margin:0 0 4px;font-size:11px;font-weight:800;color:var(--cyan-ink)}
+    .c-one .t{margin:0;font-size:15px;font-weight:700}
+    .c-one em{font-style:normal;color:var(--cyan)}
+    .c-pair{display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid var(--line);border-radius:14px;overflow:hidden;min-height:400px;flex:1}
+    @media(max-width:720px){.c-pair{grid-template-columns:1fr}}
+    .c-dir{border-right:1px solid var(--line);background:#fafcfd;padding:10px;overflow:auto}
+    .c-fn{
+      display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;width:100%;
+      text-align:left;border:0;background:transparent;border-radius:10px;padding:9px 10px;cursor:pointer;font:inherit;
+    }
+    .c-fn:hover{background:#fff}
+    .c-fn.on{background:var(--cyan-soft);color:var(--cyan-ink);box-shadow:inset 3px 0 0 var(--cyan)}
+    .c-fn .name{font-size:13px;font-weight:700}
+    .c-fn .map{font-size:11px;font-weight:600;color:var(--faint)}
+    .c-detail{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+    .c-detail h3{margin:0;font-size:16px;font-weight:750;display:flex;align-items:center;gap:8px}
+    .c-type{font-size:10px;font-weight:800;border-radius:999px;padding:2px 7px;background:#e0f2fe;color:#0369a1}
+    .c-arrow{
+      display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;
+      background:var(--cyan-soft);border:1px solid rgba(42,156,196,.28);font-size:14px;font-weight:700;
+    }
+    .c-arrow .sep{color:var(--cyan);font-weight:800}
+    .nav-kill{
+      margin:0 0 10px;padding:10px 12px;border-radius:12px;background:#13202c;color:#c5d0de;
+      font-family:var(--mono);font-size:11.5px;line-height:1.5;
+    }
+    .nav-kill b{color:#7dd3fc;font-weight:650}
+    .nav-kill .x{color:#fca5a5;text-decoration:line-through}
+
+    .wire{
+      margin-top:14px;padding:10px 12px;border-radius:10px;background:#13202c;color:#c5d0de;
+      font-family:var(--mono);font-size:11px;line-height:1.45;white-space:pre;overflow:auto;
+    }
+    .anno-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    .anno-pill{
+      font-size:11.5px;font-weight:650;padding:6px 10px;border-radius:999px;
+      background:rgba(255,255,255,.92);border:1px solid var(--line);color:var(--muted);
+    }
+    .anno-pill b{color:var(--ink)}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <strong>摄像头 IA · 三方向原型</strong>
+    <em>critique 20/40 → 可选路径</em>
+    <div class="dir-switch" role="tablist" aria-label="三个方向">
+      <button type="button" class="on" data-dir="a" role="tab" aria-selected="true">A 三列匹配台</button>
+      <button type="button" data-dir="b" role="tab" aria-selected="false">B 信任顶栏+分组</button>
+      <button type="button" data-dir="c" role="tab" aria-selected="false">C 单入口 Camera2</button>
+    </div>
+    <a href="../softpad-rail-merge/index.html">对照 Soft Pad 三列 →</a>
+  </div>
+
+  <div class="page">
+    <div class="brief">
+      <div class="note" id="briefNote">
+        <h1 id="briefTitle">方向 A · 三列匹配工作台</h1>
+        <p id="briefBody">对齐 Keys / Soft Pad：左「识别动作」目录 · 中 if-then 工作间 · 右预览 + 信任 hint + 已绑动作。美颜/久坐/移窗降级为「更多能力」，不再与离席同级。</p>
+      </div>
+      <div class="score">
+        <h2>打哪几个 P0</h2>
+        <ul id="briefHits">
+          <li><span class="tag">P0</span><b>10 子标签</b> → 左轨 4–6 动作 + 「更多」</li>
+          <li><span class="tag">P0</span><b>空顶栏</b> → 右 hint 承接开关/状态</li>
+          <li><span class="tag">P1</span><b>壳层一致性</b> → 与 Soft Pad 同肌肉记忆</li>
+          <li><span class="tag">迁</span> Camera1/2 仍可并存，本方向先改壳</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ═══════ A ═══════ -->
+    <section class="panel on" id="panelA" role="tabpanel">
+      <div class="board">
+        <div class="board-chrome">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="ttl">摄像头 · 匹配工作台</span>
+          <span class="pill">识别已开 · 不录视频</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--faint)">导航只留「摄像头」一项</span>
+        </div>
+        <div class="desk-a">
+          <aside class="rail" aria-label="识别目录">
+            <p class="sec">识别</p>
+            <nav class="nav">
+              <button type="button" class="item on">离席<span class="sub">人脸消失 → 动作</span></button>
+              <button type="button" class="item">回席<span class="sub">跟随离席</span></button>
+              <button type="button" class="item">摇头<span class="sub">三拍确认</span></button>
+              <button type="button" class="item">故意眨眼</button>
+              <button type="button" class="item">五指张开</button>
+              <button type="button" class="item">OK / 握拳 / 挥手<span class="sub">高级手势</span></button>
+            </nav>
+            <p class="sec">更多</p>
+            <nav class="nav" style="flex:0">
+              <button type="button" class="item">设备与校准</button>
+              <button type="button" class="item">隐私与安全</button>
+              <button type="button" class="item">其它能力…</button>
+            </nav>
+          </aside>
+          <div class="main">
+            <div class="work-tag">
+              <span>工作间</span>
+              <span class="chip">离席</span>
+              <div class="tabs">
+                <button type="button" class="tab on">匹配</button>
+                <button type="button" class="tab">判定</button>
+              </div>
+            </div>
+            <div class="pane">
+              <div class="card">
+                <h4>离席 → 执行一次</h4>
+                <p>人脸消失达到设定时长视为离席。主开关在右侧提示栏，本页只配「识别 → 结果」。</p>
+                <div class="bind-row">
+                  <span class="k">3 秒</span>
+                  <span>判定时长</span>
+                  <span class="m">可调</span>
+                </div>
+                <div class="bind-row">
+                  <span class="k">→</span>
+                  <span>遮罩当前窗口</span>
+                  <span class="m">改结果</span>
+                </div>
+              </div>
+              <div class="card">
+                <h4>一键套用推荐</h4>
+                <p>离开电脑自动遮罩 · 回来取消。不打开其它能力页。</p>
+                <div style="margin-top:10px"><button type="button" class="btn pri">套用</button></div>
+              </div>
+            </div>
+          </div>
+          <aside class="right">
+            <p class="right__lbl">预览</p>
+            <div class="preview-card">
+              <div class="cam-stage">
+                <span class="face">预览</span>
+                <span class="chip-live">待命 · 点此开启</span>
+              </div>
+            </div>
+            <div class="hint">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <span><b>识别总开关</b></span>
+                <button type="button" class="toggle on" aria-label="识别已开"></button>
+              </div>
+              <div class="meta"><span>状态 <b>已开 · 未跑预览</b></span><span>隐私 <b>本机</b></span></div>
+              <div style="display:flex;gap:6px">
+                <button type="button" class="btn">测试识别</button>
+                <button type="button" class="btn">设备…</button>
+              </div>
+            </div>
+            <div class="habit">
+              <h3>本场景动作</h3>
+              <p class="meta">2 个已绑</p>
+              <button type="button" class="dock-row on"><span class="t">离席 → 遮罩</span><span class="s">3 秒判定</span></button>
+              <button type="button" class="dock-row"><span class="t">回席 → 取消遮罩</span><span class="s">跟随</span></button>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="wire">左轨 = 识别动作（非 10 Pro 特性）
+中栏 = if-then 详情（匹配 / 判定）
+右列 = 预览 + 总开关 hint + 已绑动作
+美颜/久坐/移窗 → 「其它能力」二级，不进主轨</div>
+      <div class="anno-row">
+        <span class="anno-pill"><b>解</b> 10 平级 tab</span>
+        <span class="anno-pill"><b>解</b> 空顶栏（权责进右 hint）</span>
+        <span class="anno-pill"><b>对齐</b> Soft Pad / Keys 肌肉记忆</span>
+        <span class="anno-pill"><b>未解</b> Camera1/2 双入口（可另切 C）</span>
+      </div>
+    </section>
+
+    <!-- ═══════ B ═══════ -->
+    <section class="panel" id="panelB" role="tabpanel" hidden>
+      <div class="board">
+        <div class="trust">
+          <h2>摄像头</h2>
+          <span class="state">已配置 · 识别关</span>
+          <span class="state is-off" style="font-weight:650">不会自动开摄像头</span>
+          <span class="grow"></span>
+          <div class="master">
+            <span>识别总开关</span>
+            <button type="button" class="toggle" aria-label="识别已关"></button>
+          </div>
+          <button type="button" class="btn">开启预览</button>
+        </div>
+        <div class="desk-b">
+          <aside class="b-left">
+            <p class="right__lbl">预览 · 常驻</p>
+            <div class="cam-stage" style="min-height:200px;border-radius:12px">
+              <span class="face">关</span>
+              <span class="chip-live">点右侧总开关后可预览</span>
+            </div>
+            <div class="card" style="padding:10px">
+              <h4 style="font-size:12px">设备</h4>
+              <p style="font-size:11.5px;margin-top:4px">默认摄像头 · 720p · 30fps</p>
+            </div>
+            <div class="card" style="padding:10px">
+              <h4 style="font-size:12px">运行</h4>
+              <p style="font-size:11.5px;margin-top:4px">人脸 — · 手势 — · 校准未开始</p>
+            </div>
+          </aside>
+          <div class="b-right">
+            <div class="groups" role="tablist">
+              <button type="button" class="grp on">识别匹配<span class="n">主</span></button>
+              <button type="button" class="grp">校准与设备<span class="n">3</span></button>
+              <button type="button" class="grp">隐私与安全<span class="n">信任</span></button>
+              <button type="button" class="grp">其它能力<span class="n">6</span></button>
+            </div>
+            <div class="b-pane">
+              <p style="margin:0;font-size:12px;color:var(--faint)">原 10 子标签收成 4 组。当前组 = 识别匹配。</p>
+              <div class="ghost-tabs" aria-hidden="true">
+                <span class="strike">视觉识别</span><span class="strike">手势</span><span class="strike">校准</span>
+                <span class="strike">隐私</span><span class="strike">美颜</span><span class="strike">鼠标追踪</span>
+                <span class="strike">久坐</span><span class="strike">移窗</span><span class="strike">布局</span><span class="strike">自动静音</span>
+              </div>
+              <div class="rule">
+                <button type="button" class="toggle on"></button>
+                <div><h4>离席</h4><p>人脸消失 3 秒 → 遮罩</p></div>
+                <button type="button" class="btn">改结果</button>
+              </div>
+              <div class="rule">
+                <span style="width:42px"></span>
+                <div><h4>回席</h4><p>跟随离席 · 取消遮罩</p></div>
+                <button type="button" class="btn">改结果</button>
+              </div>
+              <div class="rule">
+                <button type="button" class="toggle"></button>
+                <div><h4>摇头</h4><p>未绑定结果</p></div>
+                <button type="button" class="btn">绑定</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="wire">顶栏 = 信任句（关/开/不自动）+ 总开关
+左 = 预览常驻（沿用 Camera1 构图）
+右 = 4 组能力（识别 / 校准设备 / 隐私 / 其它）
+改动面最小 · 不追 Soft Pad 三列</div>
+      <div class="anno-row">
+        <span class="anno-pill"><b>解</b> 空顶栏 / 信任可见</span>
+        <span class="anno-pill"><b>缓</b> 10 tab → 4 组</span>
+        <span class="anno-pill"><b>保留</b> 左预览 + 右配置</span>
+        <span class="anno-pill"><b>未解</b> 双入口 · 与 Keys 壳不一致</span>
+      </div>
+    </section>
+
+    <!-- ═══════ C ═══════ -->
+    <section class="panel" id="panelC" role="tabpanel" hidden>
+      <div class="nav-kill">
+导航：<b>摄像头</b>　<span class="x">摄像头 1</span>　<span class="x">摄像头 2</span>
+<br />真源 = 现 Camera2 工作台（识别匹配 | 摄像头设置）· Camera1 能力迁入「设置」或折叠实验室
+      </div>
+      <div class="board">
+        <div class="desk-c">
+          <div class="c-status">
+            <div class="c-status-left">
+              <h2><span class="sub">摄像头 · </span>前台自动</h2>
+              <span class="c-fg"><i></i>Cursor</span>
+              <span style="font-size:11px;color:var(--faint);font-weight:600">本机识别 · 不上传画面</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:650;color:var(--muted)">
+              <span>识别已关</span>
+              <button type="button" class="toggle" aria-label="识别总开关"></button>
+            </div>
+          </div>
+          <nav class="c-tabs">
+            <button type="button" class="on">识别匹配</button>
+            <button type="button">摄像头设置</button>
+          </nav>
+          <div class="c-body">
+            <div class="c-one">
+              <p class="k">当前匹配</p>
+              <p class="t">离席 <em>3 秒</em> → 遮罩窗口 · 回席取消</p>
+            </div>
+            <div class="c-pair">
+              <aside class="c-dir">
+                <p class="sec" style="margin-top:0">常用</p>
+                <button type="button" class="c-fn on"><span class="name">离席</span><span class="map">遮罩</span></button>
+                <button type="button" class="c-fn"><span class="name">回席</span><span class="map">取消</span></button>
+                <button type="button" class="c-fn"><span class="name">摇头</span><span class="map">—</span></button>
+                <button type="button" class="c-fn"><span class="name">故意眨眼</span><span class="map">—</span></button>
+                <p class="sec">高级 · 手势</p>
+                <button type="button" class="c-fn"><span class="name">五指张开</span><span class="map">—</span></button>
+                <button type="button" class="c-fn"><span class="name">OK</span><span class="map">—</span></button>
+              </aside>
+              <div class="c-detail">
+                <h3><span class="c-type">反应</span> 离席</h3>
+                <p style="margin:0;font-size:12px;color:var(--muted)">人脸消失达时长 → 执行一次</p>
+                <div class="c-arrow"><span>离席</span><span class="sep">→</span><span>遮罩当前窗口</span></div>
+                <div class="card" style="padding:10px 12px">
+                  <p style="margin:0;font-size:12px">判定时长 · <b>3 秒</b></p>
+                </div>
+                <details open style="border:1px dashed var(--line);border-radius:12px;padding:8px 10px;background:var(--wash)">
+                  <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--muted)">测试画面 · 真预览</summary>
+                  <div class="cam-stage" style="margin-top:8px;min-height:140px;border-radius:10px">
+                    <span class="face">预览</span>
+                    <span class="chip-live">折叠默认 · 需要时展开</span>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="wire">唯一 nav「摄像头」= 现 Camera2 工作台升格
+顶栏总开关 + 前台应用信任条（已有）
+识别匹配 | 摄像头设置（2 tab，非 10）
+预览默认折叠在详情内 · 实验室承接原 Camera1 设备/校准
+美颜/久坐等：设置页二级或砍出主路径</div>
+      <div class="anno-row">
+        <span class="anno-pill"><b>解</b> Camera1/2 双入口</span>
+        <span class="anno-pill"><b>解</b> 信任顶栏（已有 c2Master）</span>
+        <span class="anno-pill"><b>缓</b> 能力过载（2 主 tab）</span>
+        <span class="anno-pill"><b>债</b> 须迁完 Camera1 设备/校准/隐私</span>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var briefs = {
+        a: {
+          title: '方向 A · 三列匹配工作台',
+          body: '对齐 Keys / Soft Pad：左「识别动作」目录 · 中 if-then 工作间 · 右预览 + 信任 hint + 已绑动作。美颜/久坐/移窗降级为「更多能力」，不再与离席同级。',
+          hits: [
+            ['P0', '10 子标签', ' → 左轨 4–6 动作 + 「更多」'],
+            ['P0', '空顶栏', ' → 右 hint 承接开关/状态'],
+            ['P1', '壳层一致性', ' → 与 Soft Pad 同肌肉记忆'],
+            ['迁', 'Camera1/2', ' 仍可并存，本方向先改壳']
+          ]
+        },
+        b: {
+          title: '方向 B · 信任顶栏 + 能力分组',
+          body: '最小改壳：先把「关着 / 不自动开 / 总开关」做成可见顶栏；10 个 Pro 子标签收成 4 组。保留 Camera1 左预览右配置，不追三列。',
+          hits: [
+            ['P0', '空顶栏', ' → 信任句 + 总开关'],
+            ['P0', '10 tab', ' → 缓成 4 组'],
+            ['小', '改动面', ' → 复用现 DOM 最多'],
+            ['未', '双入口 / 三列', ' 留给后续']
+          ]
+        },
+        c: {
+          title: '方向 C · 单入口 · Camera2 真源',
+          body: '导航只留「摄像头」；以现有 Camera2 工作台为唯一壳（总开关 + 识别匹配 | 设置）。Camera1 降级迁入实验室，消掉双入口信任裂。',
+          hits: [
+            ['P0', '双入口', ' → 杀掉 Camera1/2 并列'],
+            ['P0', '信任顶栏', ' → 已有 c2Master，升格'],
+            ['P0', '能力过载', ' → 2 主 tab，非 10'],
+            ['债', '迁移', ' → 设备/校准/隐私从 Cam1 并入']
+          ]
+        }
+      };
+
+      var switches = document.querySelectorAll('.dir-switch button');
+      var panels = { a: document.getElementById('panelA'), b: document.getElementById('panelB'), c: document.getElementById('panelC') };
+
+      function show(dir) {
+        Object.keys(panels).forEach(function (k) {
+          var on = k === dir;
+          panels[k].classList.toggle('on', on);
+          panels[k].hidden = !on;
+        });
+        switches.forEach(function (btn) {
+          var on = btn.getAttribute('data-dir') === dir;
+          btn.classList.toggle('on', on);
+          btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        var b = briefs[dir];
+        document.getElementById('briefTitle').textContent = b.title;
+        document.getElementById('briefBody').textContent = b.body;
+        var ul = document.getElementById('briefHits');
+        ul.innerHTML = b.hits.map(function (row) {
+          return '<li><span class="tag">' + row[0] + '</span><b>' + row[1] + '</b>' + row[2] + '</li>';
+        }).join('');
+        try { history.replaceState(null, '', '#' + dir); } catch (_) {}
+      }
+
+      switches.forEach(function (btn) {
+        btn.addEventListener('click', function () { show(btn.getAttribute('data-dir')); });
+      });
+
+      var hash = (location.hash || '#a').replace('#', '');
+      if (!briefs[hash]) hash = 'a';
+      show(hash);
+    })();
+  </script>
+</body>
+</html>

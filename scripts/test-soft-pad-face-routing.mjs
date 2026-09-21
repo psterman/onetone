@@ -73,7 +73,8 @@ assert(/soft-pad-face-agent/.test(css), 'css C2 face grid');
 assert(/soft-pad-face-timeline/.test(css), 'css C3 face grid');
 assert(/soft-pad-tm-spine/.test(css), 'css C3 horizontal spine');
 assert(/soft-pad-tm-mark/.test(tm), 'tm spine mark markup');
-assert(/#softPadPreviewHost.*micro-hw|min\(100%,\s*380px\)/.test(css), 'hub Soft Pad fills left column');
+assert(/#softPadPreviewHost\.soft-pad-preview-host|soft-pad-right-col__preview|168px minmax\(0, 1fr\) minmax\(220px, 260px\)/.test(css),
+  'hub Soft Pad preview in three-col right column');
 assert(/\.soft-pad-face-agent[\s\S]{0,1200}?max-width:\s*300px/.test(css),
   'C2 Soft Pad preview compact');
 assert(/\.soft-pad-face-agent[\s\S]{0,800}?grid-template-columns:\s*minmax\(220px,\s*0\.34fr\)\s*minmax\(320px,\s*1fr\)/.test(css),
@@ -81,7 +82,10 @@ assert(/\.soft-pad-face-agent[\s\S]{0,800}?grid-template-columns:\s*minmax\(220p
 assert(!/\.soft-pad-face-agent__directory/.test(css), 'C2 agent directory column css removed');
 assert(/renderSoftPadScopeMenuItems/.test(src), 'hub exports agent scope menu for unified bar');
 assert(/softPadScopeSwitchLabel/.test(src), 'hub exports scope switch label');
-assert(/__otSoftPadStatusMounted\) return/.test(src), 'bind menu skips legacy DOM when status island mounted');
+assert(/function setBindAppMenuOpen\(open\)/.test(src), 'bind menu open helper');
+assert(!/function setBindAppMenuOpen\(open\) \{\s*if \(global\.__otSoftPadStatusMounted\) return/.test(src),
+  'bind menu works from preview hint even when status island mounted');
+assert(/softPadPreviewHint/.test(src), 'hub wires preview hint chrome');
 assert(/getSoftPadFace:\s*function/.test(src), 'hub exports getSoftPadFace for island');
 assert(/OneToneSoftPadHubUi\s*=\s*global\.OneToneSoftPadHub/.test(src), 'hub Ui alias for repaint hooks');
 assert(!/soft-pad-hub-page\.is-face-agent \.soft-pad-bind-app[\s\S]*display:\s*none/.test(css),
@@ -286,7 +290,10 @@ assert(/soft-pad-action-library/.test(padUi) && /data-soft-pad-action-list/.test
   'layout uses action list + modal editor');
 assert(/function renderSoftPadRuntimePanel\([\s\S]*?renderSoftPadDisplayPanel/.test(padUi),
   'runtime panel delegates to display (show mode + skin)');
-assert(/min\(100%,\s*380px\)/.test(css), 'C1 Soft Pad fills left column up to 380px');
+assert(
+  /168px minmax\(0, 1fr\) minmax\(220px, 260px\)/.test(css) || /soft-pad-right-col__preview/.test(css),
+  'C1 Soft Pad preview sits in three-col right column'
+);
 assert(/commitEditKeycapDraft/.test(padUi) && /keepOpen:\s*true/.test(padUi),
   'key editor autosaves on pick');
 assert(/micro-hw-modal__guide/.test(padUi) && /data-guide-label="action"/.test(padUi),

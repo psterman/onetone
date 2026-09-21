@@ -359,7 +359,7 @@
       fork:'<svg viewBox="0 0 24 24"><path d="M7 4v8a4 4 0 004 4h2a4 4 0 004-4V4"/><path d="M17 4l3 3-3 3M7 4L4 7l3 3"/></svg>',
       mic:'<svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
       send:'<svg viewBox="0 0 24 24"><path d="M4 12h12"/><path d="M12 6l6 6-6 6"/><path d="M20 7v10"/></svg>',
-      clipboardPaste:'<svg viewBox="0 0 24 24"><path d="M15 2H9a1 1 0 00-1 1v2h8V3a1 1 0 00-1-1z"/><path d="M8 4H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2v-2"/><path d="M16 4h2a2 2 0 012 2v4"/><path d="M21 14H11"/><path d="M15 10l-4 4 4 4"/></svg>',
+      clipboardPaste:'<svg viewBox="0 0 24 24"><path d="M15 2H9a1 1 0 00-1 1v2h8V3a1 1 0 00-1-1z"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><path d="M21 14H11"/><path d="M15 10l-4 4 4 4"/></svg>',
       codex:'<svg viewBox="0 0 24 24"><path d="M12 3l2 5 5 1-4 3 1 5-4-3-4 3 1-5-4-3 5-1z"/></svg>',
       palette:'<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/></svg>',
       command:'<svg viewBox="0 0 24 24"><path d="M15 6v12a3 3 0 103-3H6a3 3 0 103 3V6a3 3 0 10-3 3h12a3 3 0 10-3-3"/></svg>',
@@ -3184,8 +3184,11 @@
             var holdDone=false;
             var holdT=setTimeout(function(){
               holdDone=true;
+              el.__ag01Cancel=null;
+              el.classList.remove('is-holding');
               tapFireBusy=true;
               setLocalStatus('running', id);
+              // Backend Soft Pad fire treats this as hold-confirmed (no dead-end hold_required).
               fire(id,'down').finally(function(){ tapFireBusy=false; });
             }, 500);
             function cancelAg01Hold(){
@@ -3560,7 +3563,7 @@
       var beginnerKeys={ACT10:1,ACT12:1,AG02:1,AG01:1,ACT08:1,ENC:1};
       var cursorAgIcon={AG00:'command',AG01:'messagePlus',AG02:'sparkles',AG03:'search',AG04:'send',AG05:'reject'};
       var weakSlotIcon={commandPalette:'palette',newThread:'fork',quickChat:'fast',toggleSidebar:'folder',openSettings:'status'};
-      var wantSlotIcon={commandPalette:'command',newThread:'messagePlus',quickChat:'sparkles',toggleSidebar:'panelLeft',openSettings:'settings'};
+      var wantSlotIcon={commandPalette:'command',newThread:'messagePlus',quickChat:'sparkles',toggleSidebar:'panelLeft',openSettings:'settings',pasteAndSend:'clipboardPaste'};
       grid.innerHTML=activeLayout().map(function(cell){
         var info=map[cell.id]||{};
         var isNav=isNavKeyId(cell.id);
@@ -3580,6 +3583,13 @@
         // Keep overlay == settings even when config still has prior weak defaults.
         if(slot && weakSlotIcon[slot] && iconId===weakSlotIcon[slot] && wantSlotIcon[slot]){
           iconId=wantSlotIcon[slot];
+        }
+        // pasteAndSend / other slot defaults: don't keep leftover ⌘ after rebind.
+        if(slot && wantSlotIcon[slot] && iconId && iconId!==wantSlotIcon[slot]){
+          var stock={ACT07:'command',AG00:'command',UNDO:'undo',ACT10:'mic',ACT12:'send'};
+          if(iconId===stock[cell.id] || iconId==='command' || iconId==='undo'){
+            iconId=wantSlotIcon[slot];
+          }
         }
         var keyRole=String(info.keyRole||'action');
         if(noAgChrome) keyRole='action';

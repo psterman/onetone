@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>原型图 · Soft Pad IA 三方向修正</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e4ebf1;--rail:#eef3f7;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fff7ed;
+      --pad:#1a2430;--pad-key:#243444;--pad-line:#334859;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);color:var(--ink);
+      background:
+        radial-gradient(900px 360px at 8% -10%,rgba(42,156,196,.12),transparent 55%),
+        radial-gradient(700px 280px at 92% 0%,rgba(15,95,122,.06),transparent 50%),
+        var(--bg);
+      -webkit-font-smoothing:antialiased;
+    }
+    .top{
+      position:sticky;top:0;z-index:50;
+      display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
+      padding:12px 20px;background:#0f1820;color:#a8b6c6;font-size:12.5px;
+    }
+    .top strong{color:#fff;font-size:14px}
+    .top em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .dir-switch{display:flex;gap:4px;flex-wrap:wrap;margin-left:8px}
+    .dir-switch button{
+      border:1px solid rgba(255,255,255,.14);background:transparent;color:#c5d0de;
+      border-radius:9px;padding:6px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;
+    }
+    .dir-switch button.on{background:var(--cyan);border-color:transparent;color:#fff}
+    .top a{color:#7dd3fc;font-weight:650;text-decoration:none;margin-left:auto}
+
+    .page{width:min(1240px,100%);margin:0 auto;padding:20px 16px 56px}
+    .brief{display:grid;grid-template-columns:1.2fr .8fr;gap:12px;margin-bottom:16px}
+    @media(max-width:860px){.brief{grid-template-columns:1fr}}
+    .note{
+      background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:14px;
+      padding:14px 16px;font-size:13px;color:var(--muted);line-height:1.55;
+    }
+    .note h1{margin:0 0 6px;font-size:18px;font-weight:750;color:var(--ink);letter-spacing:-.02em}
+    .note p{margin:0}
+    .note b{color:var(--ink)}
+    .score{
+      background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
+    }
+    .score h2{margin:0 0 8px;font-size:13px;font-weight:750}
+    .score ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+    .score li{font-size:12.5px;color:var(--muted);line-height:1.4}
+    .score li b{color:var(--ink);font-weight:650}
+    .score .tag{
+      display:inline-block;font-size:10.5px;font-weight:750;padding:2px 7px;border-radius:999px;
+      background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);margin-right:6px;
+    }
+
+    .board{
+      border:1px solid var(--line);border-radius:18px;background:#fff;
+      box-shadow:0 22px 50px rgba(19,32,44,.1);overflow:hidden;
+    }
+    .board-chrome{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:10px 14px;border-bottom:1px solid var(--line);background:#fbfdfe;
+    }
+    .board-chrome .dot{width:8px;height:8px;border-radius:999px;background:#d5dee8}
+    .board-chrome .ttl{font-size:13px;font-weight:650}
+    .board-chrome .pill{
+      font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;
+      background:var(--ok-soft);color:var(--ok);border:1px solid #86efac;
+    }
+    .btn{
+      border:1px solid var(--line);background:#fff;border-radius:9px;
+      padding:6px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;color:var(--ink);
+    }
+    .btn.pri{background:var(--cyan);border-color:transparent;color:#fff}
+    .btn.ghost{background:transparent;color:var(--muted)}
+
+    .panel{display:none}
+    .panel.on{display:block}
+
+    .desk{
+      display:grid;grid-template-columns:168px minmax(0,1fr) 240px;min-height:600px;
+    }
+    .desk.desk-slim-rail{grid-template-columns:148px minmax(0,1fr) 240px}
+    @media(max-width:960px){.desk,.desk.desk-slim-rail{grid-template-columns:1fr}}
+
+    .rail{
+      background:var(--rail);border-right:1px solid var(--line);
+      padding:8px 4px;display:flex;flex-direction:column;overflow:auto;
+    }
+    .sec{margin:6px 6px 4px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+    .nav{display:flex;flex-direction:column;gap:1px}
+    .item{
+      appearance:none;width:100%;border:0;background:transparent;text-align:left;
+      padding:8px 6px;border-radius:8px;font:inherit;font-size:12.5px;font-weight:650;
+      color:var(--muted);cursor:pointer;line-height:1.3;
+    }
+    .item:hover{background:rgba(255,255,255,.55);color:var(--ink)}
+    .item.on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+    .item .sub{display:block;margin-top:2px;font-size:10.5px;font-weight:550;color:var(--faint)}
+    .item.exit{
+      margin-top:8px;border:1px dashed var(--line);background:rgba(255,255,255,.4);
+      color:var(--cyan-ink);font-size:12px;
+    }
+    .item.dim{opacity:.55}
+    .item.dim .badge{
+      font-size:9.5px;font-weight:750;padding:1px 5px;border-radius:999px;
+      background:var(--wash);color:var(--faint);border:1px solid var(--line);margin-left:4px;
+    }
+
+    .main{min-width:0;display:flex;flex-direction:column;background:var(--wash);border-right:1px solid var(--line)}
+    .work-tag{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:8px 12px;background:#fff;border-bottom:1px solid var(--line);
+      font-size:11px;font-weight:750;letter-spacing:.04em;color:var(--faint);
+    }
+    .chip{
+      font-size:10.5px;font-weight:650;padding:2px 7px;border-radius:999px;
+      background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);
+    }
+    .tabs{margin-left:auto;display:flex;gap:4px}
+    .tab{
+      border:1px solid var(--line);background:#fff;border-radius:8px;
+      padding:4px 10px;font:inherit;font-size:11.5px;font-weight:650;color:var(--muted);cursor:pointer;
+    }
+    .tab.on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink)}
+    .pane{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+    .card h4{margin:0 0 6px;font-size:13px;font-weight:750}
+    .card p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5}
+
+    .bind-list{display:flex;flex-direction:column;gap:4px}
+    .bind-row{
+      display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;
+      border:1px solid var(--line);background:var(--wash);font-size:12.5px;font-weight:650;cursor:pointer;
+    }
+    .bind-row.on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .bind-row .k{
+      font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:6px;
+      background:#fff;border:1px solid var(--line);color:var(--cyan-ink);flex:none;
+    }
+    .bind-row .m{margin-left:auto;font-size:11px;color:var(--faint);font-weight:550}
+    .nest-bad{
+      margin-top:4px;padding:10px;border-radius:10px;border:1px dashed #fdba74;background:var(--warn-soft);
+      font-size:11.5px;color:#9a3412;line-height:1.45;
+    }
+    .nest-bad b{font-weight:750}
+    .nest-fake{
+      display:flex;flex-direction:column;gap:4px;opacity:.5;pointer-events:none;
+      margin-top:8px;padding:8px;border-radius:8px;background:#fff;border:1px solid var(--line);
+    }
+    .nest-fake span{font-size:11px;color:var(--faint);padding:4px 6px;border-radius:6px;background:var(--wash)}
+
+    .right{
+      background:var(--rail);padding:10px;display:flex;flex-direction:column;gap:8px;overflow:auto;
+    }
+    .right__lbl{margin:0;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+    .preview-card{padding:10px;background:#fff;border:1px solid var(--line);border-radius:12px}
+    .pad{
+      background:var(--pad);border-radius:12px;padding:12px 10px 14px;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .pad__title{margin:0 0 10px;text-align:center;font-size:11px;font-weight:650;color:#9bb0c2}
+    .pad__grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+    .pad__key{
+      aspect-ratio:1;border-radius:8px;background:var(--pad-key);border:1px solid var(--pad-line);
+      color:#c9d7e4;display:grid;place-items:center;font-size:10px;font-weight:650;
+    }
+    .pad__key.on{outline:2px solid var(--cyan);background:#214056;color:#fff}
+    .pad__hint{margin:10px 0 0;font-size:10.5px;color:#8494a6;text-align:center;line-height:1.35}
+
+    .hint-fat{
+      display:flex;flex-direction:column;gap:8px;padding:8px;background:#fff;
+      border:1px solid var(--line);border-radius:12px;font-size:11.5px;color:var(--muted);
+    }
+    .hint-fat .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .hint-fat .strike{opacity:.45;text-decoration:line-through}
+    .hint-slim{
+      display:flex;flex-direction:column;gap:6px;padding:2px;
+      font-size:11.5px;color:var(--muted);line-height:1.45;
+    }
+    .hint-slim .line{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .hint-slim b{color:var(--ink)}
+    .bind-chip{
+      border:1px solid var(--line);background:#fff;border-radius:9px;
+      padding:5px 10px;font:inherit;font-size:12px;font-weight:650;color:var(--muted);cursor:pointer;
+    }
+
+    .habit{
+      flex:1;min-height:130px;padding:10px;background:#fff;border:1px solid var(--line);border-radius:12px;
+      display:flex;flex-direction:column;gap:6px;
+    }
+    .habit h3{margin:0;font-size:13px;font-weight:750}
+    .habit .meta{margin:0;font-size:11px;color:var(--faint)}
+    .dock-row{
+      appearance:none;width:100%;border:1px solid transparent;background:var(--wash);border-radius:8px;
+      padding:7px 9px;text-align:left;font:inherit;cursor:pointer;
+    }
+    .dock-row.on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .dock-row .t{display:block;font-size:12px;font-weight:650}
+    .dock-row .s{display:block;margin-top:2px;font-size:10.5px;color:var(--faint)}
+    .empty{
+      flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+      gap:6px;padding:8px 2px;font-size:12.5px;color:var(--muted);line-height:1.45;
+    }
+    .empty b{color:var(--ink)}
+    .dock-add{
+      appearance:none;width:100%;border:1px dashed var(--line);background:transparent;
+      border-radius:8px;padding:7px;font:inherit;font-size:12px;font-weight:650;
+      color:var(--cyan-ink);cursor:pointer;margin-top:auto;
+    }
+
+    .wire{
+      margin-top:14px;padding:10px 12px;border-radius:10px;background:#13202c;color:#c5d0de;
+      font-family:var(--mono);font-size:11px;line-height:1.45;white-space:pre;overflow:auto;
+    }
+    .anno-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    .anno-pill{
+      font-size:11.5px;font-weight:650;padding:6px 10px;border-radius:999px;
+      background:rgba(255,255,255,.92);border:1px solid var(--line);color:var(--muted);
+    }
+    .anno-pill b{color:var(--ink)}
+    .now{
+      margin:0 0 12px;padding:8px 12px;border-radius:10px;background:#13202c;color:#a8b6c6;
+      font-size:12px;line-height:1.45;
+    }
+    .now b{color:#fca5a5}
+    .now em{font-style:normal;color:#7dd3fc;font-weight:650}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <strong>虚拟键盘 Soft Pad · 三方向修正</strong>
+    <em>critique 20/40 → 修 P0</em>
+    <div class="dir-switch" role="tablist" aria-label="三个方向">
+      <button type="button" class="on" data-dir="a" role="tab" aria-selected="true">A 专属工作台</button>
+      <button type="button" data-dir="b" role="tab" aria-selected="false">B 压扁中栏</button>
+      <button type="button" data-dir="c" role="tab" aria-selected="false">C 右栏清爽</button>
+    </div>
+    <a href="../softpad-rail-merge/index.html">原三列原型 →</a>
+  </div>
+
+  <div class="page">
+    <p class="now">现网问题快照：左 <b>6 通道像本地编辑</b> · 中 <b>Agent 分类嵌套</b> · 右 <b>hint 堆绑定/摘要/双按钮</b> · 习惯 <b>0 无引导</b>。下面三方向分别主攻不同 P0。</p>
+
+    <div class="brief">
+      <div class="note">
+        <h1 id="briefTitle">方向 A · Soft Pad 专属工作台</h1>
+        <p id="briefBody">页面定位 =「屏幕按钮」。左栏只留屏幕按钮 +「其它识别 → 按键页」。中栏扁平板绑定列表（点预览键 ↔ 中栏高亮）。右栏预览 + 一行绑定 + 习惯（含空态引导）。</p>
+      </div>
+      <div class="score">
+        <h2>主解</h2>
+        <ul id="briefHits">
+          <li><span class="tag">P0</span><b>左栏归属</b> — 不再扮 Keys 六通道编辑器</li>
+          <li><span class="tag">P0</span><b>中栏过深</b> — 绑列表优先，Agent/样式次级</li>
+          <li><span class="tag">P0</span><b>右 hint</b> — 只留绑定一行</li>
+          <li><span class="tag">P1</span><b>空习惯</b> — Soft Pad 专属引导</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════ A ════ -->
+    <section class="panel on" id="panelA" role="tabpanel">
+      <div class="board">
+        <div class="board-chrome">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="ttl">虚拟键盘</span>
+          <span class="pill">已启用</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--faint)">本页只配屏幕按钮</span>
+        </div>
+        <div class="desk desk-slim-rail">
+          <aside class="rail">
+            <p class="sec">本页</p>
+            <nav class="nav">
+              <button type="button" class="item on">屏幕按钮<span class="sub">Soft Pad 键位</span></button>
+            </nav>
+            <p class="sec">出口</p>
+            <nav class="nav">
+              <button type="button" class="item exit">其它识别 → 按键页<span class="sub">听写 / 口头 / 手势…</span></button>
+            </nav>
+          </aside>
+          <div class="main">
+            <div class="work-tag">
+              <span>工作间</span>
+              <span class="chip">屏幕按钮</span>
+              <div class="tabs">
+                <button type="button" class="tab on">按键</button>
+                <button type="button" class="tab">Agent</button>
+                <button type="button" class="tab">样式</button>
+              </div>
+            </div>
+            <div class="pane">
+              <div class="card" style="padding:10px 12px">
+                <p style="margin:0;font-size:12px;color:var(--faint)">点右侧预览键 → 这里改绑定。不进 Agent 分类树。</p>
+              </div>
+              <div class="bind-list">
+                <button type="button" class="bind-row on"><span class="k">7</span>命令菜单<span class="m">Ctrl+Shift+P</span></button>
+                <button type="button" class="bind-row"><span class="k">1</span>快速搜索<span class="m">Ctrl+P</span></button>
+                <button type="button" class="bind-row"><span class="k">口</span>语音听写<span class="m">未绑</span></button>
+                <button type="button" class="bind-row"><span class="k">…</span>其它已绑键<span class="m">10</span></button>
+              </div>
+              <div class="nest-bad"><b>现网不要这样：</b>
+                <div class="nest-fake">
+                  <span>按需分类查找 Agent 命令</span>
+                  <span>说话 · 开聊天 · 换 AI · 按文件或命令 ←</span>
+                  <span>快速搜索卡片 + 数字 7 编辑器嵌套</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <aside class="right">
+            <p class="right__lbl">屏幕预览</p>
+            <div class="preview-card">
+              <div class="pad">
+                <p class="pad__title">Cursor · Soft Pad</p>
+                <div class="pad__grid">
+                  <span class="pad__key">1</span><span class="pad__key">2</span><span class="pad__key">3</span><span class="pad__key">4</span>
+                  <span class="pad__key">5</span><span class="pad__key">6</span><span class="pad__key on">7</span><span class="pad__key">8</span>
+                </div>
+                <p class="pad__hint">选中 7 · 中栏同步</p>
+              </div>
+            </div>
+            <div class="hint-slim">
+              <div class="line">
+                <button type="button" class="bind-chip">绑定 · Cursor ▾</button>
+                <button type="button" class="btn ghost" style="padding:4px 8px">测试</button>
+              </div>
+              <div class="line"><span>键位 <b>13</b></span><span>灯效 <b>开</b></span></div>
+            </div>
+            <div class="habit">
+              <h3>本场景动作</h3>
+              <p class="meta">与预览键相关</p>
+              <button type="button" class="dock-row on"><span class="t">7 → 命令菜单</span><span class="s">屏幕按钮</span></button>
+              <button type="button" class="dock-row"><span class="t">1 → 快速搜索</span><span class="s">屏幕按钮</span></button>
+              <button type="button" class="dock-add">＋ 新建动作</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="wire">左 = Soft Pad 专属 + 一个「去按键」出口（非 6 通道编辑器）
+中 = 扁平板绑定列表（预览键 ↔ 行高亮）
+右 = 预览 → 一行绑定/测试 → 习惯
+Agent/样式仍可用 tab，但不做分类树当首页</div>
+      <div class="anno-row">
+        <span class="anno-pill"><b>解</b> 左栏归属</span>
+        <span class="anno-pill"><b>解</b> 中栏过深</span>
+        <span class="anno-pill"><b>解</b> hint 堆料</span>
+        <span class="anno-pill"><b>代价</b> 跨通道浏览要跳按键页</span>
+      </div>
+    </section>
+
+    <!-- ════ B ════ -->
+    <section class="panel" id="panelB" role="tabpanel" hidden>
+      <div class="board">
+        <div class="board-chrome">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="ttl">虚拟键盘</span>
+          <span class="pill">已启用</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--faint)">左栏保留六通道 · 中栏永远扁平</span>
+        </div>
+        <div class="desk">
+          <aside class="rail">
+            <p class="sec">识别</p>
+            <nav class="nav">
+              <button type="button" class="item dim">听写方式<span class="badge">按键页</span></button>
+              <button type="button" class="item dim">我录的键<span class="badge">按键页</span></button>
+              <button type="button" class="item dim">口头指令<span class="badge">按键页</span></button>
+              <button type="button" class="item dim">软件自带<span class="badge">按键页</span></button>
+              <button type="button" class="item on">屏幕按钮</button>
+              <button type="button" class="item dim">手势<span class="badge">按键页</span></button>
+            </nav>
+          </aside>
+          <div class="main">
+            <div class="work-tag">
+              <span>工作间</span>
+              <span class="chip">屏幕按钮</span>
+              <div class="tabs">
+                <button type="button" class="tab on">绑定</button>
+                <button type="button" class="tab">外观</button>
+                <button type="button" class="tab">更多</button>
+              </div>
+            </div>
+            <div class="pane">
+              <div class="bind-list">
+                <button type="button" class="bind-row on"><span class="k">7</span>命令菜单<span class="m">改结果</span></button>
+                <button type="button" class="bind-row"><span class="k">1</span>快速搜索<span class="m">改结果</span></button>
+                <button type="button" class="bind-row"><span class="k">口</span>语音听写<span class="m">未绑</span></button>
+              </div>
+              <div class="card">
+                <h4>若点左栏「口头指令」</h4>
+                <p>中栏换成一张桥卡片：「该通道在按键页配置」+ 大按钮去按键 · 同通道。不假装本页能改。</p>
+                <div style="margin-top:10px"><button type="button" class="btn pri">去按键页 · 口头指令 →</button></div>
+              </div>
+            </div>
+          </div>
+          <aside class="right">
+            <p class="right__lbl">屏幕预览</p>
+            <div class="preview-card">
+              <div class="pad">
+                <p class="pad__title">Cursor · Soft Pad</p>
+                <div class="pad__grid">
+                  <span class="pad__key">1</span><span class="pad__key">2</span><span class="pad__key">3</span><span class="pad__key">4</span>
+                  <span class="pad__key">5</span><span class="pad__key">6</span><span class="pad__key on">7</span><span class="pad__key">8</span>
+                </div>
+                <p class="pad__hint">点键 → 中栏绑定行</p>
+              </div>
+            </div>
+            <div class="hint-slim">
+              <div class="line">
+                <button type="button" class="bind-chip">绑定 · Cursor ▾</button>
+                <button type="button" class="btn ghost" style="padding:4px 8px">测试</button>
+              </div>
+            </div>
+            <div class="habit">
+              <h3>本场景动作</h3>
+              <p class="meta">2 个 · 屏幕按钮</p>
+              <button type="button" class="dock-row on"><span class="t">7 → 命令菜单</span><span class="s">屏幕按钮</span></button>
+              <button type="button" class="dock-row"><span class="t">1 → 快速搜索</span><span class="s">屏幕按钮</span></button>
+              <button type="button" class="dock-add">＋ 新建动作</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="wire">左 = 仍 6 通道（与 Keys 同目录）但角标标明「按键页」
+中 = Soft Pad 时永远是绑定列表；其它通道 = 大桥卡片
+右 = 同 A 精简
+改 tab 名：绑定 / 外观 / 更多（弱化 Agent 分类入口）</div>
+      <div class="anno-row">
+        <span class="anno-pill"><b>解</b> 中栏过深</span>
+        <span class="anno-pill"><b>缓</b> 左栏误导（角标+桥）</span>
+        <span class="anno-pill"><b>保留</b> 跨通道扫一眼</span>
+        <span class="anno-pill"><b>风险</b> 六通道仍占首屏注意力</span>
+      </div>
+    </section>
+
+    <!-- ════ C ════ -->
+    <section class="panel" id="panelC" role="tabpanel" hidden>
+      <div class="board">
+        <div class="board-chrome">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="ttl">虚拟键盘</span>
+          <span class="pill">已启用</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--faint)">壳不动 · 只清右栏 + 空态</span>
+        </div>
+        <div class="desk">
+          <aside class="rail">
+            <p class="sec">识别</p>
+            <nav class="nav">
+              <button type="button" class="item">听写方式</button>
+              <button type="button" class="item">我录的键</button>
+              <button type="button" class="item">口头指令</button>
+              <button type="button" class="item">软件自带</button>
+              <button type="button" class="item on">屏幕按钮</button>
+              <button type="button" class="item">手势</button>
+            </nav>
+          </aside>
+          <div class="main">
+            <div class="work-tag">
+              <span>工作间</span>
+              <span class="chip">屏幕按钮</span>
+              <div class="tabs">
+                <button type="button" class="tab on">按键</button>
+                <button type="button" class="tab">Agent</button>
+                <button type="button" class="tab">样式</button>
+              </div>
+            </div>
+            <div class="pane">
+              <div class="card">
+                <h4>中栏可暂留现网</h4>
+                <p>本方向不先拆 Agent 嵌套；只保证右栏不再抢戏，并补空习惯引导。中栏压扁可并进 A/B。</p>
+              </div>
+              <div class="hint-fat" style="margin:0">
+                <div class="row"><b>现网 hint 过载 →</b></div>
+                <div class="row strike">切换 · Cursor ▾</div>
+                <div class="row strike">灯效与浮窗 Cursor · 键位 21 个</div>
+                <div class="row strike">今日 45 次对话 · 较昨日 +62%</div>
+                <div class="row strike">测试前台 · 编辑键位（与中栏「按键」重复）</div>
+              </div>
+            </div>
+          </div>
+          <aside class="right">
+            <p class="right__lbl">屏幕预览</p>
+            <div class="preview-card">
+              <div class="pad">
+                <p class="pad__title">Cursor · Soft Pad</p>
+                <div class="pad__grid">
+                  <span class="pad__key">1</span><span class="pad__key">2</span><span class="pad__key">3</span><span class="pad__key">4</span>
+                  <span class="pad__key">5</span><span class="pad__key">6</span><span class="pad__key">7</span><span class="pad__key">8</span>
+                </div>
+                <p class="pad__hint">点键开始绑定</p>
+              </div>
+            </div>
+            <div class="hint-slim">
+              <div class="line">
+                <button type="button" class="bind-chip">绑定 · Cursor ▾</button>
+                <button type="button" class="btn ghost" style="padding:4px 8px">⋯</button>
+              </div>
+              <div class="line" style="font-size:11px;color:var(--faint)">灯效开 · 13 键 · 测试在 ⋯</div>
+            </div>
+            <div class="habit">
+              <h3>本场景动作</h3>
+              <div class="empty">
+                <b>还没有屏幕按钮动作</b>
+                在上方预览里点一个键，到中栏「按键」绑定结果后，会出现在这里。
+                <button type="button" class="btn pri" style="margin-top:4px">去绑第一个键</button>
+              </div>
+              <button type="button" class="dock-add">＋ 新建动作</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="wire">左/中壳 = 现网可不动（最小 diff）
+右 hint = 绑定一行 + ⋯菜单（测试/用量进菜单）
+删「编辑键位」主按钮（中栏已有按键 tab）
+习惯 0 = Soft Pad 专属空态文案 + CTA
+不解决：六通道误导、中栏 Agent 树</div>
+      <div class="anno-row">
+        <span class="anno-pill"><b>解</b> hint 堆料</span>
+        <span class="anno-pill"><b>解</b> 空习惯无助</span>
+        <span class="anno-pill"><b>解</b> 双路径「编辑键位」</span>
+        <span class="anno-pill"><b>未解</b> 左栏归属 · 中栏过深</span>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var briefs = {
+        a: {
+          title: '方向 A · Soft Pad 专属工作台',
+          body: '页面定位 =「屏幕按钮」。左栏只留屏幕按钮 +「其它识别 → 按键页」。中栏扁平板绑定列表（点预览键 ↔ 中栏高亮）。右栏预览 + 一行绑定 + 习惯（含空态引导）。',
+          hits: [
+            ['P0', '左栏归属', ' — 不再扮 Keys 六通道编辑器'],
+            ['P0', '中栏过深', ' — 绑列表优先，Agent/样式次级'],
+            ['P0', '右 hint', ' — 只留绑定一行'],
+            ['P1', '空习惯', ' — Soft Pad 专属引导']
+          ]
+        },
+        b: {
+          title: '方向 B · 压扁中栏（保留六通道）',
+          body: '左栏仍是六识别（与 Keys 同目录），但角标标明「按键页」。中栏在屏幕按钮下永远是绑定列表；其它通道只出大桥卡片。右栏同 A 精简。',
+          hits: [
+            ['P0', '中栏过深', ' — 绑定列表当首页'],
+            ['缓', '左栏误导', ' — 角标 + 诚实桥'],
+            ['保', '跨通道扫一眼', ' — 目录仍可见'],
+            ['险', '六通道占注意力', ' — 首屏仍吵']
+          ]
+        },
+        c: {
+          title: '方向 C · 右栏清爽（最小改）',
+          body: '三列壳与六通道先不动。只把右 hint 收成「绑定 + ⋯」，删重复「编辑键位」，给「本场景动作 0」写 Soft Pad 空态。中栏嵌套留给 A/B。',
+          hits: [
+            ['P0', 'hint 堆料', ' — 一行 + 菜单'],
+            ['P1', '空习惯', ' — 专属引导 + CTA'],
+            ['P1', '双路径', ' — 去掉编辑键位按钮'],
+            ['未', '左/中 P0', ' — 需另选 A 或 B']
+          ]
+        }
+      };
+      var panels = {
+        a: document.getElementById('panelA'),
+        b: document.getElementById('panelB'),
+        c: document.getElementById('panelC')
+      };
+      var briefTitle = document.getElementById('briefTitle');
+      var briefBody = document.getElementById('briefBody');
+      var briefHits = document.getElementById('briefHits');
+      var switches = document.querySelectorAll('.dir-switch button');
+
+      function show(dir) {
+        Object.keys(panels).forEach(function (k) {
+          var on = k === dir;
+          panels[k].classList.toggle('on', on);
+          panels[k].hidden = !on;
+        });
+        switches.forEach(function (btn) {
+          var on = btn.getAttribute('data-dir') === dir;
+          btn.classList.toggle('on', on);
+          btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        var b = briefs[dir];
+        briefTitle.textContent = b.title;
+        briefBody.textContent = b.body;
+        briefHits.innerHTML = b.hits.map(function (r) {
+          return '<li><span class="tag">' + r[0] + '</span><b>' + r[1] + '</b>' + r[2] + '</li>';
+        }).join('');
+        try { history.replaceState(null, '', '#' + dir); } catch (_) {}
+      }
+
+      switches.forEach(function (btn) {
+        btn.addEventListener('click', function () { show(btn.getAttribute('data-dir')); });
+      });
+      var hash = (location.hash || '#a').replace('#', '');
+      if (!briefs[hash]) hash = 'a';
+      show(hash);
+    })();
+  </script>
+</body>
+</html>

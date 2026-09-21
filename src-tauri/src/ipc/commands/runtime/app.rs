@@ -15,6 +15,31 @@ pub fn cmd_foreground_app() -> serde_json::Value {
     identity_to_json(&identity)
 }
 
+/// App the habit should follow. Live window when it is a real other app;
+/// otherwise the last one (Chrome, Cursor, …) so opening OneTone does not
+/// drop back to the universal habit.
+#[tauri::command]
+pub fn cmd_habit_foreground_app() -> serde_json::Value {
+    let live = app_identity::foreground_app_identity();
+    let self_fg = live
+        .as_ref()
+        .is_some_and(|id| app_identity::is_self_identity(id));
+    let Some(identity) = app_identity::capture_tray_foreground_identity() else {
+        return serde_json::json!({
+            "appId": serde_json::Value::Null,
+            "selfForeground": self_fg,
+        });
+    };
+    let mut value = identity_to_json(&identity);
+    if let Some(obj) = value.as_object_mut() {
+        obj.insert(
+            "selfForeground".to_string(),
+            serde_json::json!(self_fg),
+        );
+    }
+    value
+}
+
 #[tauri::command]
 pub fn cmd_app_icon(full_path: String) -> serde_json::Value {
     let path = full_path.trim();

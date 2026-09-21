@@ -1,4 +1,4 @@
-﻿(function(global){
+(function(global){
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   var t=function(key){ return global.OneToneI18n.t(key); };
@@ -171,11 +171,17 @@
     });
     if($('habitDefaultFlow')){
       var hfTrig=$('habitFlowStepTriggerLbl'), hfTgt=$('habitFlowStepTargetLbl'), hfFin=$('habitFlowStepFinishLbl');
-      if(hfTrig) hfTrig.textContent=t('habitFlowStepTriggerLbl');
+      if(hfTrig){
+        var railTrig=!!(hfTrig.closest&&hfTrig.closest('.keys-page-rail'));
+        hfTrig.textContent=t(railTrig?'keysRailTriggerLbl':'habitFlowStepTriggerLbl');
+      }
       if(hfTgt) hfTgt.textContent=t('habitFlowStepTargetLbl');
       if(hfFin) hfFin.textContent=t('habitFlowStepFinishLbl');
       var hfHint1=$('habitFlowStepTriggerHint'), hfHint2=$('habitFlowStepTargetHint');
-      if(hfHint1) hfHint1.textContent=t('habitFlowStepTriggerHint');
+      if(hfHint1){
+        var railHint=!!(hfHint1.closest&&hfHint1.closest('.keys-page-rail'));
+        hfHint1.textContent=t(railHint?'keysRailTriggerHint':'habitFlowStepTriggerHint');
+      }
       if(hfHint2) hfHint2.textContent=t('habitFlowStepTargetHint');
       var hfArr1=$('habitFlowArrowOpen'), hfArr2=$('habitFlowArrowFinish');
       if(hfArr1) hfArr1.textContent=t('sceneFlowArrowOpen');

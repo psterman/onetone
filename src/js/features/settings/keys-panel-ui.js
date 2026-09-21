@@ -453,7 +453,9 @@
     var imeHint=$('imePresetHintMapping');
     if(imeHint) imeHint.textContent=t('keysCaptureImeSource');
     var triggerFooterLbl=$('keysTriggerModeFooterLbl');
-    if(triggerFooterLbl) triggerFooterLbl.textContent=t('keysWorkflowFooterTrigger');
+    if(triggerFooterLbl){
+      triggerFooterLbl.textContent=t('keysRailModesSummary');
+    }
     if(!m){
       if(nameEl) nameEl.textContent='—';
       if(statusEl){ statusEl.textContent='—'; statusEl.className='keys-scheme-summary-pill'; }
@@ -649,6 +651,18 @@
       return;
     }
     host.innerHTML=model.modeHtml||'';
+    var summary=$('keysTriggerModeFooterLbl');
+    if(summary){
+      var modeLbl='';
+      var trigKey=m&&(core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim()));
+      if(m&&String(trigKey||'').trim()){
+        var ui=normalizeTriggerModeUi(m.triggerMode);
+        modeLbl=t(ui==='double'?'keysTriggerModeDouble':(ui==='hold'?'keysTriggerModeHold':'keysTriggerModeTap'));
+      }
+      summary.textContent=modeLbl
+        ? (t('keysRailModesSummary')+' · '+modeLbl)
+        : t('keysRailModesSummary');
+    }
   }
 
   function buildKeysTriggerConflictModel(m){
@@ -1271,6 +1285,23 @@
     return tgt;
   }
 
+  function syncKeysWorkChannelPill(){
+    var pill=$('keysWorkChannelPill');
+    if(!pill) return;
+    var active=document.querySelector('#keysChannelSubtabs [data-channel].is-active');
+    var ch=active&&active.getAttribute('data-channel');
+    var keyMap={
+      ime:'keysChannelTabIme',
+      key:'keysChannelTabKey',
+      voice:'keysChannelTabVoice',
+      cursor:'keysChannelTabCursor',
+      softPad:'keysChannelTabSoftPad',
+      camera:'keysChannelTabCamera'
+    };
+    var k=keyMap[ch]||'keysChannelTabIme';
+    pill.textContent=t(k);
+  }
+
   function renderStatusChips(){
     var m=core()&&core().selected?core().selected():null;
     renderAppContext();
@@ -1279,7 +1310,7 @@
     var advSummary=$('keysAdvancedSummary');
     if(advSummary) advSummary.textContent=t('keysAdvancedTitle');
     var stepLbls=[
-      ['habitFlowStepTriggerLbl','keysStep1Title'],
+      ['habitFlowStepTriggerLbl','keysRailTriggerLbl'],
       ['habitFlowStepTargetLbl','keysStep2Title']
     ];
     stepLbls.forEach(function(pair){
@@ -1287,7 +1318,9 @@
       if(el) el.textContent=t(pair[1]);
     });
     var colLbls=[
-      ['keysColTriggerLbl','keysColTrigger'],
+      ['keysColTriggerLbl','keysRailStartBadge'],
+      ['keysChannelDirLbl','keysRailDirLbl'],
+      ['keysWorkTagLbl','keysWorkTagLbl'],
       ['keysColCaptureLbl','keysColCapture'],
       ['keysFlowNodeTriggerTag','keysFlowNodeTriggerTag'],
       ['keysFlowNodeTargetTag','keysFlowNodeTargetTag'],
@@ -1302,6 +1335,11 @@
       var el=$(pair[0]);
       if(el) el.textContent=t(pair[1]);
     });
+    var railHint=$('habitFlowStepTriggerHint');
+    if(railHint&&railHint.closest&&railHint.closest('.keys-page-rail')){
+      railHint.textContent=t('keysRailTriggerHint');
+    }
+    syncKeysWorkChannelPill();
     syncImeStepCopy();
     var finishStepHint=$('keysImeStepFinishHint');
     if(finishStepHint){ finishStepHint.textContent=''; finishStepHint.hidden=true; }
@@ -1388,6 +1426,7 @@
     syncCancelButtonHost:syncCancelButtonHost,
     applyRecordingHighlightHosts:applyRecordingHighlightHosts,
     syncImeStepCopy:syncImeStepCopy,
+    syncKeysWorkChannelPill:syncKeysWorkChannelPill,
     renderAppContext:renderAppContext,
     renderTriggerContextBadge:renderTriggerContextBadge,
     renderImePill:renderImePill,

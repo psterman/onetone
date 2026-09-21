@@ -2459,7 +2459,6 @@
       createAppScenario(presetId);
       return;
     }
-    var prevSelected=String(state().selectedMappingId||'');
     var m=createAppScenario('custom',{deferPersist:true});
     if(!m) return;
     if(rules&&rules.setPickerCreateTarget) rules.setPickerCreateTarget(m.id);
@@ -2475,9 +2474,8 @@
         global.OneToneConfigPersist.rememberAppScenariosNow(state().config);
       }
     }catch(_){}
-    restoreBaselineSelection(prevSelected);
     ui().habitHubFgIdentity=null;
-    render();
+    openCreatedScenarioChannel(m);
   }
 
   function openExistingFgScenario(mappingId){
@@ -2575,6 +2573,21 @@
     if(global.OneToneAppToast) global.OneToneAppToast.show(t('habitHubDraftCreated','已创建草稿（未设为正在使用）'),'scheme');
   }
 
+  function adoptForegroundIdentity(identity){
+    if(!identity||isSelfForegroundIdentity(identity)) return;
+    ui().habitHubFgIdentity=identity;
+    acceptForegroundRecommend();
+  }
+
+  function loadHabitForeground(){
+    var invoke=global.OneToneIpc&&global.OneToneIpc.invoke;
+    if(!invoke) return Promise.resolve(null);
+    return invoke('cmd_habit_foreground_app',{}).catch(function(){ return null; }).then(function(held){
+      if(held&&(held.exeName||held.exe_name)&&!isSelfForegroundIdentity(held)) return held;
+      return invoke('cmd_foreground_app',{});
+    });
+  }
+
   function startForegroundConfig(){
     ui().habitView='hub';
     if(global.OneToneSettingsDrawer) global.OneToneSettingsDrawer.setPanel('habits');
@@ -2582,7 +2595,7 @@
       startInlineCreate();
       return;
     }
-    global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+    loadHabitForeground().then(function(res){
       if(res&&(res.exeName||res.exe_name)&&!isSelfForegroundIdentity(res)){
         ui().habitHubFgIdentity=res;
         var existing=findAppScenarioForIdentity(res);
@@ -3591,6 +3604,7 @@
     createAppScenario:createAppScenario,
     findAppScenarioByAppId:findAppScenarioByAppId,
     findAppScenarioForIdentity:findAppScenarioForIdentity,
+    adoptForegroundIdentity:adoptForegroundIdentity,
     listAppScenarios:listAppScenarios,
     pickCanonicalAppScenario:pickCanonicalAppScenario,
     scenarioBetter:scenarioBetter,

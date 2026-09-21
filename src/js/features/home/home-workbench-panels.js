@@ -1033,6 +1033,22 @@
     kind=kind==null?'':String(kind).toLowerCase();
     if(kind&&['codex','claude','cursor','workbuddy','trae','qoder','minimax'].indexOf(kind)<0) kind='';
 
+    if(!kind && reason==='foreground' && applied.mappingId){
+      var pageName=t('softPadScopeUniversal','通用');
+      var displayReason=t('homeWbSoftPadReasonForegroundControl','你正在使用 {app}，Soft Pad 已自动跟随')
+        .replace('{app}',pageName);
+      return finalizeSoftPadSnapshot({
+        controlLbl:pageName,
+        countLbl:t('homeWbHowToSoftPadCount').replace('{n}',String(enabled.length)),
+        agentName:pageName,
+        displayReason:displayReason,
+        reason:'foreground',
+        mappingId:applied.mappingId,
+        agentOnlyHint:'',
+        schemeCount:enabled.length
+      });
+    }
+
     if(!kind||reason==='none'){
       return finalizeSoftPadSnapshot({
         controlLbl:t('homeWbSoftPadControlNone','暂无'),

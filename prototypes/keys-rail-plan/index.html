@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>原型图 · 按键设置左轨</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e4ebf1;--rail:#eef3f7;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fff7ed;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+      --ease:cubic-bezier(.23,1,.32,1);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);color:var(--ink);
+      background:
+        radial-gradient(900px 360px at 8% -10%,rgba(42,156,196,.12),transparent 55%),
+        radial-gradient(700px 280px at 92% 0%,rgba(15,95,122,.06),transparent 50%),
+        var(--bg);
+      -webkit-font-smoothing:antialiased;
+    }
+
+    .top{
+      position:sticky;top:0;z-index:50;
+      display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;
+      padding:12px 20px;background:#0f1820;color:#a8b6c6;font-size:12.5px;
+    }
+    .top strong{color:#fff;font-size:14px}
+    .top em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .top a{color:#7dd3fc;font-weight:650;text-decoration:none;margin-left:auto}
+
+    .page{width:min(1220px,100%);margin:0 auto;padding:20px 16px 56px}
+
+    .hero-note{
+      display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-bottom:16px;
+    }
+    @media(max-width:860px){.hero-note{grid-template-columns:1fr}}
+    .note-card{
+      background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:14px;
+      padding:14px 16px;font-size:13px;color:var(--muted);line-height:1.55;
+    }
+    .note-card h1{margin:0 0 6px;font-size:18px;font-weight:750;color:var(--ink);letter-spacing:-.02em}
+    .note-card p{margin:0}
+    .note-card b{color:var(--ink)}
+    .legend{display:flex;flex-direction:column;gap:8px}
+    .leg{
+      display:flex;gap:10px;align-items:flex-start;
+      background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+    }
+    .leg i{
+      flex:none;width:22px;height:22px;border-radius:999px;background:var(--cyan-ink);color:#fff;
+      display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:750;
+    }
+    .leg span{font-size:12.5px;color:var(--muted);line-height:1.4}
+    .leg b{color:var(--ink);font-weight:650}
+
+    /* —— 画板：带标注的原型框 —— */
+    .board{
+      position:relative;
+      border:1px solid var(--line);border-radius:18px;background:#fff;
+      box-shadow:0 22px 50px rgba(19,32,44,.1);overflow:visible;
+    }
+    .board-chrome{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:10px 14px;border-bottom:1px solid var(--line);background:#fbfdfe;
+      border-radius:18px 18px 0 0;
+    }
+    .board-chrome .dot{width:8px;height:8px;border-radius:999px;background:#d5dee8}
+    .board-chrome .ttl{font-size:13px;font-weight:650}
+    .board-chrome .pill{
+      font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;
+      background:var(--ok-soft);color:var(--ok);border:1px solid #86efac;
+    }
+    .board-chrome .acts{margin-left:auto;display:flex;gap:6px}
+    .btn{
+      border:1px solid var(--line);background:#fff;border-radius:9px;
+      padding:6px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;color:var(--ink);
+    }
+    .btn.pri{background:var(--cyan);border-color:transparent;color:#fff}
+
+    .desk{
+      display:grid;grid-template-columns:180px minmax(0,1fr) 220px;
+      min-height:580px;position:relative;
+    }
+    @media(max-width:900px){
+      .desk{grid-template-columns:1fr}
+      .anno{display:none !important}
+    }
+
+    /* 左轨 */
+    .rail{
+      position:relative;z-index:2;
+      background:var(--rail);border-right:1px solid var(--line);
+      padding:8px;display:flex;flex-direction:column;gap:2px;min-height:0;
+    }
+    .rail-start{
+      flex:none;margin-bottom:4px;padding:10px 8px 12px;
+      background:#fff;border:1px solid var(--line);border-radius:10px;
+    }
+    .badge{
+      display:inline-block;font-size:10px;font-weight:750;color:#fff;
+      background:var(--cyan-ink);border-radius:999px;padding:2px 7px;margin-bottom:6px;
+    }
+    .rail-start h3{margin:0;font-size:12.5px;font-weight:750}
+    .keycap{
+      appearance:none;display:block;width:100%;margin-top:8px;
+      border:1px solid var(--line);background:#fff;border-radius:10px;
+      padding:12px 8px;font:inherit;font-family:var(--mono);font-size:15px;font-weight:750;
+      text-align:center;cursor:pointer;color:var(--ink);
+      transition:border-color .15s var(--ease),transform .12s var(--ease);
+    }
+    .keycap:hover{border-color:var(--cyan-bd)}
+    .keycap:active{transform:scale(.97)}
+    .keycap.empty{color:var(--faint);font-family:var(--font);font-weight:650}
+    .hint{margin:6px 0 0;font-size:10.5px;color:var(--faint);text-align:center;line-height:1.35}
+    .sec{
+      margin:6px 4px 2px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint);
+    }
+    .nav{display:flex;flex-direction:column;gap:2px}
+    .item{
+      appearance:none;width:100%;border:0;background:transparent;text-align:left;
+      padding:8px 10px;border-radius:8px;font:inherit;font-size:12.5px;font-weight:650;
+      color:var(--muted);cursor:pointer;line-height:1.25;
+    }
+    .item:hover{background:rgba(255,255,255,.55);color:var(--ink)}
+    .item.on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+    .item .n{display:block;margin-top:2px;font-size:10.5px;font-weight:550;color:var(--faint)}
+    .item.on .n{color:var(--cyan)}
+
+    /* 中 */
+    .main{min-width:0;display:flex;flex-direction:column;background:var(--wash);border-right:1px solid var(--line)}
+    .main-tag{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:8px 12px;background:#fff;border-bottom:1px solid var(--line);
+      font-size:11px;font-weight:750;letter-spacing:.04em;color:var(--faint);
+    }
+    .chip{
+      font-size:10.5px;font-weight:650;padding:2px 7px;border-radius:999px;
+      background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);
+    }
+    .mode{
+      margin-left:auto;border:0;background:transparent;font:inherit;font-size:11px;font-weight:650;
+      color:var(--muted);cursor:pointer;padding:4px 6px;border-radius:6px;
+    }
+    .mode:hover{background:var(--wash);color:var(--cyan-ink)}
+    .pane{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+    .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+    .step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+    .num{
+      width:22px;height:22px;border-radius:999px;background:var(--cyan-ink);color:#fff;
+      display:grid;place-items:center;font-size:11px;font-weight:750;flex:none;
+    }
+    .step h4{margin:0;font-size:13px;font-weight:750}
+    .step p{margin:2px 0 0;font-size:11.5px;color:var(--faint)}
+    .hero-row{display:flex;gap:10px;align-items:center}
+    .hero-key{
+      width:88px;height:64px;border:1px solid var(--cyan-bd);border-radius:12px;
+      background:var(--cyan-soft);display:grid;place-items:center;
+      font-family:var(--mono);font-size:16px;font-weight:750;color:var(--cyan-ink);
+    }
+    .link{font-size:12px;font-weight:650;color:var(--cyan-ink)}
+    .sub{margin:8px 0 0;font-size:12px;color:var(--muted)}
+    .row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .seg{
+      border:1px solid var(--line);border-radius:8px;padding:6px 10px;
+      font-size:11.5px;font-weight:650;background:#fff;color:var(--muted);cursor:pointer;
+    }
+    .seg.on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink)}
+    .ghost{
+      display:none;background:#fff;border:1px solid var(--line);border-radius:12px;
+      padding:14px;font-size:13px;color:var(--muted);line-height:1.5;min-height:140px;
+    }
+    .ghost.show{display:block}
+    .ghost h4{margin:0 0 6px;font-size:14px;font-weight:750;color:var(--ink)}
+
+    /* 右 */
+    .dock{background:#eef3f7;padding:12px;display:flex;flex-direction:column;gap:8px}
+    .dock-app{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:750}
+    .ico{
+      width:20px;height:20px;border-radius:5px;background:#13202c;color:#fff;
+      display:grid;place-items:center;font-size:10px;font-weight:750;flex:none;
+    }
+    .dock-meta{margin:0;font-size:12px;color:var(--faint);font-weight:550}
+    .dock-list{display:flex;flex-direction:column;gap:4px;flex:1}
+    .dock-row{
+      appearance:none;width:100%;border:1px solid transparent;background:#fff;border-radius:8px;
+      padding:8px 9px;text-align:left;font:inherit;cursor:pointer;
+    }
+    .dock-row.on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .dock-row .t{display:block;font-size:12.5px;font-weight:650}
+    .dock-row .s{display:block;margin-top:2px;font-size:11px;color:var(--faint)}
+    .dock-add{
+      appearance:none;width:100%;border:1px dashed var(--line);background:transparent;
+      border-radius:8px;padding:8px;font:inherit;font-size:12.5px;font-weight:650;
+      color:var(--cyan-ink);cursor:pointer;
+    }
+
+    /* 标注气泡 */
+    .anno{
+      position:absolute;z-index:5;display:flex;align-items:center;gap:8px;
+      pointer-events:none;max-width:200px;
+    }
+    .anno .bubble{
+      background:#0f1820;color:#e8eef3;border-radius:10px;padding:8px 10px;
+      font-size:11.5px;line-height:1.4;box-shadow:0 10px 24px rgba(15,24,32,.25);
+    }
+    .anno .bubble b{color:#7dd3fc;font-weight:650}
+    .anno .pin{
+      width:22px;height:22px;border-radius:999px;background:var(--cyan);
+      color:#fff;display:grid;place-items:center;font-size:11px;font-weight:750;flex:none;
+      box-shadow:0 0 0 4px rgba(42,156,196,.25);
+    }
+    .anno-1{left:-8px;top:28px;transform:translateX(-100%)}
+    .anno-2{left:-8px;top:168px;transform:translateX(-100%)}
+    .anno-3{left:-8px;top:268px;transform:translateX(-100%)}
+    .anno-4{right:-8px;top:48px;transform:translateX(100%);flex-direction:row-reverse}
+    .anno-5{right:-8px;bottom:28px;transform:translateX(100%);flex-direction:row-reverse}
+
+    .rail-ring{
+      position:absolute;inset:6px auto 6px 6px;width:calc(180px - 4px);
+      border:2px dashed rgba(42,156,196,.55);border-radius:12px;pointer-events:none;z-index:1;
+    }
+
+    .foot{
+      margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;
+    }
+    @media(max-width:700px){.foot{grid-template-columns:1fr}}
+    . ban{
+      border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.5;
+    }
+    .ban.yes{background:var(--ok-soft);border:1px solid #86efac;color:#166534}
+    .ban.no{background:var(--warn-soft);border:1px solid #fdba74;color:#9a3412}
+    .ban h3{margin:0 0 6px;font-size:13px;font-weight:750}
+    .ban ul{margin:0;padding-left:1.15em}
+    .ban li{margin:3px 0}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <strong>原型图 · 按键左轨</strong>
+    <span>三列：<em>起点+识别</em> · 工作间 · 本场景动作</span>
+    <a href="../voice-c2a-slim-fused/index.html">对照语音意图轨 →</a>
+  </div>
+
+  <div class="page">
+    <div class="hero-note">
+      <div class="note-card">
+        <h1>按键设置 · 左侧细节原型</h1>
+        <p>左栏只做导航：录触发键 + 选识别通道。表面规则对齐语音 <b>#voiceIntentRail</b>——wash 底、一张白起点卡、扁平行。触发方式与新建动作不进左栏。</p>
+      </div>
+      <div class="legend">
+        <div class="leg"><i>1</i><span><b>起点卡</b> — badge · 标题 · 键帽 · 一句 hint</span></div>
+        <div class="leg"><i>2</i><span><b>识别</b> — 原「目录」，与任务同名</span></div>
+        <div class="leg"><i>3</i><span><b>扁平行</b> — 主文 + 次文 .n，无边框</span></div>
+        <div class="leg"><i>4</i><span><b>触发方式</b> — 挪到中栏顶条 chip</span></div>
+        <div class="leg"><i>5</i><span><b>新建动作</b> — 固定在右栏脚</span></div>
+      </div>
+    </div>
+
+    <div class="board">
+      <div class="board-chrome">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="ttl">正在编辑 · Cursor</span>
+        <span class="pill">已与前台一致</span>
+        <div class="acts">
+          <button type="button" class="btn">测试</button>
+          <button type="button" class="btn pri">保存</button>
+        </div>
+      </div>
+
+      <div class="desk" id="desk">
+        <div class="rail-ring" aria-hidden="true"></div>
+
+        <div class="anno anno-1">
+          <span class="pin">1</span>
+          <div class="bubble"><b>唯一白卡</b><br>键帽对齐语音口令块<br>15px · padding 12</div>
+        </div>
+        <div class="anno anno-2">
+          <span class="pin">2</span>
+          <div class="bubble"><b>识别</b><br>不要「目录」文件隐喻</div>
+        </div>
+        <div class="anno anno-3">
+          <span class="pin">3</span>
+          <div class="bubble"><b>扁平行</b><br>无搜索 · 无第二张卡 · 无横线</div>
+        </div>
+        <div class="anno anno-4">
+          <span class="pin">4</span>
+          <div class="bubble"><b>触发方式离场</b><br>中栏顶条次要 chip</div>
+        </div>
+        <div class="anno anno-5">
+          <span class="pin">5</span>
+          <div class="bubble"><b>新建 → 右脚</b><br>左栏不再出现</div>
+        </div>
+
+        <aside class="rail" aria-label="起点与识别">
+          <div class="rail-start">
+            <span class="badge">起点</span>
+            <h3>触发键</h3>
+            <button type="button" class="keycap" id="keycap" title="点按录制">F8</button>
+            <p class="hint">点按录制</p>
+          </div>
+          <div class="sec">识别</div>
+          <nav class="nav" id="nav" role="tablist" aria-label="识别分类">
+            <button type="button" class="item on" data-ch="ime" role="tab" aria-selected="true">听写方式<span class="n">IME</span></button>
+            <button type="button" class="item" data-ch="key" role="tab">我录的键<span class="n">序列</span></button>
+            <button type="button" class="item" data-ch="voice" role="tab">口头指令<span class="n">注入</span></button>
+            <button type="button" class="item" data-ch="cursor" role="tab">软件自带<span class="n">命令</span></button>
+            <button type="button" class="item" data-ch="softPad" role="tab">屏幕按钮<span class="n">Pad</span></button>
+            <button type="button" class="item" data-ch="camera" role="tab">手势<span class="n">摄像头</span></button>
+          </nav>
+        </aside>
+
+        <main class="main" aria-label="工作间">
+          <div class="main-tag">
+            工作间
+            <span class="chip" id="chPill">听写方式</span>
+            <button type="button" class="mode" id="modeChip" title="触发方式（不在左栏）">触发 · 按一下</button>
+          </div>
+          <div class="pane">
+            <div class="card" id="imeCard">
+              <div class="step">
+                <span class="num">1</span>
+                <div>
+                  <h4>听写键</h4>
+                  <p>点键帽，按下你的听写快捷键</p>
+                </div>
+              </div>
+              <div class="hero-row">
+                <div class="hero-key">右 Alt</div>
+                <span class="link">重新录制</span>
+              </div>
+              <p class="sub">识别详情留在中栏 · 左栏只切换分类</p>
+              <div class="row">
+                <button type="button" class="seg on">微信输入法</button>
+                <button type="button" class="seg">搜狗</button>
+                <button type="button" class="seg">系统听写</button>
+                <button type="button" class="seg">自定义…</button>
+              </div>
+            </div>
+            <div class="card" id="finishCard">
+              <div class="step">
+                <span class="num">2</span>
+                <div>
+                  <h4>说完后</h4>
+                  <p>听写结束怎么收尾</p>
+                </div>
+              </div>
+              <div class="row">
+                <button type="button" class="seg on">回车发送</button>
+                <button type="button" class="seg">仅停止</button>
+                <button type="button" class="seg">延迟发送</button>
+              </div>
+            </div>
+            <div class="ghost" id="otherCard">
+              <h4 id="otherTitle">通道详情</h4>
+              <p>中栏承载该通道现网内容；左栏只切换分类。</p>
+            </div>
+          </div>
+        </main>
+
+        <aside class="dock" aria-label="本场景动作">
+          <div class="dock-app">
+            <span class="ico">C</span>
+            <div>
+              <div>本场景动作</div>
+              <p class="dock-meta">Cursor · 3 条</p>
+            </div>
+          </div>
+          <div class="dock-list">
+            <button type="button" class="dock-row on"><span class="t">听写 · 右 Alt</span><span class="s">微信输入法</span></button>
+            <button type="button" class="dock-row"><span class="t">粘贴说明</span><span class="s">Ctrl+Alt+V</span></button>
+            <button type="button" class="dock-row"><span class="t">清屏</span><span class="s">F9</span></button>
+          </div>
+          <button type="button" class="dock-add">＋ 新建动作</button>
+        </aside>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div class="ban yes">
+        <h3>左栏允许</h3>
+        <ul>
+          <li>起点白卡（badge / 触发键 / 键帽 / hint）</li>
+          <li>「识别」section + 6 条扁平行（含 .n）</li>
+          <li>wash 底 + 右边线</li>
+        </ul>
+      </div>
+      <div class="ban no">
+        <h3>左栏禁止</h3>
+        <ul>
+          <li>搜索框、第二张白卡、横分割线</li>
+          <li>触发方式 details、新建动作</li>
+          <li>冲突条 / 检测进度 / 44px 旧 tab</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var nav = document.getElementById('nav');
+      var pill = document.getElementById('chPill');
+      var ime = document.getElementById('imeCard');
+      var finish = document.getElementById('finishCard');
+      var other = document.getElementById('otherCard');
+      var otherTitle = document.getElementById('otherTitle');
+      var labels = {
+        ime: '听写方式', key: '我录的键', voice: '口头指令',
+        cursor: '软件自带', softPad: '屏幕按钮', camera: '手势'
+      };
+      nav.addEventListener('click', function (e) {
+        var btn = e.target.closest('.item');
+        if (!btn) return;
+        nav.querySelectorAll('.item').forEach(function (el) {
+          el.classList.toggle('on', el === btn);
+          el.setAttribute('aria-selected', el === btn ? 'true' : 'false');
+        });
+        var ch = btn.getAttribute('data-ch');
+        pill.textContent = labels[ch];
+        var showIme = ch === 'ime';
+        ime.style.display = showIme ? '' : 'none';
+        finish.style.display = showIme ? '' : 'none';
+        other.classList.toggle('show', !showIme);
+        if (!showIme) otherTitle.textContent = labels[ch] + ' · 详情占位';
+      });
+      var key = document.getElementById('keycap');
+      key.addEventListener('click', function () {
+        var empty = this.textContent === 'F8';
+        this.textContent = empty ? '未设置' : 'F8';
+        this.classList.toggle('empty', empty);
+      });
+      document.getElementById('modeChip').addEventListener('click', function () {
+        var modes = ['触发 · 按一下', '触发 · 按住', '触发 · 切换'];
+        var i = modes.indexOf(this.textContent);
+        this.textContent = modes[(i + 1) % modes.length];
+      });
+    })();
+  </script>
+</body>
+</html>

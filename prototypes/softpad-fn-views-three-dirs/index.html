@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>原型图 · Soft Pad 换功能 · 三视图方案</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --ink:#13202c;--muted:#5a6b7c;--faint:#8494a6;--line:#d5dee8;
+      --paper:#fff;--wash:#f3f7fa;--bg:#e4ebf1;--rail:#eef3f7;
+      --cyan:#2a9cc4;--cyan-ink:#0f5f7a;--cyan-soft:#e4f2f9;--cyan-bd:#9bc6da;
+      --ok:#15803d;--ok-soft:#e8f7ee;--warn:#b45309;--warn-soft:#fff7ed;
+      --pad:#1a2430;--pad-key:#243444;--pad-line:#334859;--pad-on:#2a9cc4;
+      --font:"IBM Plex Sans","Microsoft YaHei",system-ui,sans-serif;
+      --mono:"IBM Plex Mono",ui-monospace,monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%}
+    body{
+      font-family:var(--font);color:var(--ink);
+      background:
+        radial-gradient(900px 360px at 8% -10%,rgba(42,156,196,.12),transparent 55%),
+        radial-gradient(700px 280px at 92% 0%,rgba(15,95,122,.06),transparent 50%),
+        var(--bg);
+      -webkit-font-smoothing:antialiased;
+    }
+    .top{
+      position:sticky;top:0;z-index:50;
+      display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
+      padding:12px 20px;background:#0f1820;color:#a8b6c6;font-size:12.5px;
+    }
+    .top strong{color:#fff;font-size:14px}
+    .top em{font-style:normal;color:#7dd3fc;font-weight:650}
+    .dir-switch{display:flex;gap:4px;flex-wrap:wrap;margin-left:8px}
+    .dir-switch button{
+      border:1px solid rgba(255,255,255,.14);background:transparent;color:#c5d0de;
+      border-radius:9px;padding:6px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;
+    }
+    .dir-switch button.on{background:var(--cyan);border-color:transparent;color:#fff}
+    .top a{color:#7dd3fc;font-weight:650;text-decoration:none;margin-left:auto}
+
+    .page{width:min(1280px,100%);margin:0 auto;padding:20px 16px 56px}
+    .brief{display:grid;grid-template-columns:1.25fr .75fr;gap:12px;margin-bottom:16px}
+    @media(max-width:900px){.brief{grid-template-columns:1fr}}
+    .note,.score{
+      background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:14px;
+      padding:14px 16px;font-size:13px;color:var(--muted);line-height:1.55;
+    }
+    .note h1{margin:0 0 6px;font-size:18px;font-weight:750;color:var(--ink);letter-spacing:-.02em}
+    .note p{margin:0}
+    .note b{color:var(--ink)}
+    .score h2{margin:0 0 8px;font-size:13px;font-weight:750;color:var(--ink)}
+    .score ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+    .score li{font-size:12.5px;line-height:1.4}
+    .score li b{color:var(--ink);font-weight:650}
+    .tag{
+      display:inline-block;font-size:10.5px;font-weight:750;padding:2px 7px;border-radius:999px;
+      background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);margin-right:6px;
+    }
+    .now{
+      margin:0 0 12px;padding:8px 12px;border-radius:10px;background:#13202c;color:#a8b6c6;
+      font-size:12px;line-height:1.45;
+    }
+    .now b{color:#fca5a5}
+    .now em{font-style:normal;color:#7dd3fc;font-weight:650}
+
+    .board{
+      border:1px solid var(--line);border-radius:18px;background:#fff;
+      box-shadow:0 22px 50px rgba(19,32,44,.1);overflow:hidden;
+    }
+    .board-chrome{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:10px 14px;border-bottom:1px solid var(--line);background:#fbfdfe;
+    }
+    .board-chrome .dot{width:8px;height:8px;border-radius:999px;background:#d5dee8}
+    .board-chrome .ttl{font-size:13px;font-weight:650}
+    .board-chrome .pill{
+      font-size:11px;font-weight:650;padding:2px 8px;border-radius:999px;
+      background:var(--ok-soft);color:var(--ok);border:1px solid #86efac;
+    }
+    .board-chrome .hint{margin-left:auto;font-size:11px;color:var(--faint)}
+
+    .panel{display:none}
+    .panel.on{display:block}
+
+    .desk{
+      display:grid;
+      grid-template-columns:160px minmax(0,1.15fr) minmax(280px,.95fr);
+      min-height:620px;
+    }
+    .desk.desk-b{grid-template-columns:160px minmax(260px,.85fr) minmax(0,1.2fr)}
+    .desk.desk-c{grid-template-columns:160px minmax(0,1fr) minmax(260px,.9fr)}
+    @media(max-width:980px){
+      .desk,.desk.desk-b,.desk.desk-c{grid-template-columns:1fr}
+    }
+
+    .rail{
+      background:var(--rail);border-right:1px solid var(--line);
+      padding:8px 4px;display:flex;flex-direction:column;overflow:auto;
+    }
+    .sec{margin:6px 6px 4px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+    .nav{display:flex;flex-direction:column;gap:1px}
+    .item{
+      appearance:none;width:100%;border:0;background:transparent;text-align:left;
+      padding:8px 6px;border-radius:8px;font:inherit;font-size:12.5px;font-weight:650;
+      color:var(--muted);cursor:pointer;line-height:1.3;
+    }
+    .item.on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+    .item.dim{opacity:.6}
+    .badge{
+      font-size:9.5px;font-weight:750;padding:1px 5px;border-radius:999px;
+      background:rgba(255,255,255,.55);color:var(--faint);border:1px solid var(--line);margin-left:4px;
+    }
+
+    .mid{
+      min-width:0;background:var(--wash);border-right:1px solid var(--line);
+      display:flex;flex-direction:column;overflow:hidden;
+    }
+    .side{
+      min-width:0;background:var(--rail);display:flex;flex-direction:column;
+      gap:8px;padding:10px;overflow:auto;
+    }
+    .work-tag{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      padding:8px 12px;background:#fff;border-bottom:1px solid var(--line);
+      font-size:11px;font-weight:750;letter-spacing:.04em;color:var(--faint);flex:0 0 auto;
+    }
+    .chip{
+      font-size:10.5px;font-weight:650;padding:2px 7px;border-radius:999px;letter-spacing:0;
+      background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);
+    }
+    .steps{
+      display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;
+      padding:8px 12px 0;font-size:12.5px;font-weight:650;color:var(--faint);
+    }
+    .steps .on{color:var(--cyan-ink)}
+
+    .pad-wrap{padding:12px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0}
+    .pad-lbl{margin:0;font-size:12.5px;font-weight:650;color:var(--muted)}
+    .pad{
+      flex:1;min-height:280px;border-radius:16px;background:linear-gradient(160deg,#1e2a36,#152029);
+      border:1px solid #2c3b4a;padding:14px 16px 12px;display:flex;flex-direction:column;gap:10px;
+      box-shadow:inset 0 0 40px rgba(42,156,196,.08),0 12px 28px rgba(19,32,44,.18);
+    }
+    .pad-top{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#9db0c2;font-size:11px;font-weight:650}
+    .pad-grid{
+      display:grid;grid-template-columns:repeat(5,1fr);gap:7px;flex:1;align-content:center;
+    }
+    .k{
+      appearance:none;border:1px solid var(--pad-line);background:var(--pad-key);color:#d7e2ec;
+      border-radius:10px;min-height:46px;padding:6px 4px;font:inherit;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    }
+    .k small{font-size:9.5px;color:#8aa0b4;font-weight:550}
+    .k b{font-size:11px;font-weight:700;letter-spacing:-.01em}
+    .k.on{border-color:var(--pad-on);box-shadow:0 0 0 2px rgba(42,156,196,.35);background:#1e3a4a}
+    .k.tall{grid-row:span 2;min-height:99px}
+    .k.wide{grid-column:span 2}
+    .pad-cap{margin:0;font-size:12px;color:#9db0c2;text-align:center}
+    .pad-cap strong{color:#e8f4fb}
+
+    .lbl{margin:0;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
+    .card{
+      background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+      display:flex;flex-direction:column;gap:8px;
+    }
+    .card h3{margin:0;font-size:13px;font-weight:750}
+    .card .meta{margin:0;font-size:11.5px;color:var(--faint)}
+
+    .fn-list{display:flex;flex-direction:column;gap:4px;max-height:360px;overflow:auto}
+    .fn{
+      appearance:none;width:100%;border:1px solid transparent;background:var(--wash);
+      border-radius:9px;padding:8px 10px;text-align:left;font:inherit;cursor:pointer;
+    }
+    .fn:hover{border-color:var(--cyan-bd)}
+    .fn.on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .fn .t{display:block;font-size:12.5px;font-weight:650;color:var(--ink)}
+    .fn .s{display:block;margin-top:2px;font-size:11px;color:var(--faint)}
+
+    .packs{display:flex;flex-wrap:wrap;gap:6px}
+    .pack{
+      appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+      padding:6px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;color:var(--muted);
+    }
+    .pack.on{background:var(--cyan);border-color:transparent;color:#fff}
+
+    .cmd-grid{
+      display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:6px;
+      padding:10px 12px 12px;overflow:auto;flex:1;align-content:start;
+    }
+    .cmd{
+      appearance:none;border:1px solid var(--line);background:#fff;border-radius:10px;
+      padding:9px 10px;text-align:left;font:inherit;cursor:pointer;min-height:52px;
+      display:grid;grid-template-columns:auto 1fr;gap:2px 8px;align-items:center;
+    }
+    .cmd .ico{
+      grid-row:1 / span 2;font-size:12px;font-weight:750;padding:5px 7px;border-radius:8px;
+      background:var(--wash);border:1px solid var(--line);color:var(--cyan-ink);
+    }
+    .cmd .n{font-size:12.5px;font-weight:650}
+    .cmd .c{font-size:11px;color:var(--faint)}
+    .cmd.on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+    .cmd.paint{outline:2px dashed var(--cyan);outline-offset:1px}
+
+    .edit{
+      background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;
+      display:flex;flex-direction:column;gap:8px;
+    }
+    .edit h4{margin:0;font-size:14px;font-weight:750}
+    .edit .sub{margin:0;font-size:12px;color:var(--muted)}
+    .field{display:flex;flex-direction:column;gap:4px}
+    .field span{font-size:11px;font-weight:650;color:var(--faint)}
+    .field .val{
+      display:flex;align-items:center;justify-content:space-between;gap:8px;
+      border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--wash);
+      font-size:12.5px;font-weight:650;
+    }
+    .field button{
+      border:1px solid var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink);
+      border-radius:8px;padding:5px 9px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;
+    }
+
+    .wire{
+      margin-top:14px;padding:10px 12px;border-radius:10px;background:#13202c;color:#c5d0de;
+      font-family:var(--mono);font-size:11px;line-height:1.5;white-space:pre-wrap;
+    }
+    .anno-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    .anno-pill{
+      font-size:11.5px;font-weight:650;padding:6px 10px;border-radius:999px;
+      background:rgba(255,255,255,.92);border:1px solid var(--line);color:var(--muted);
+    }
+    .anno-pill b{color:var(--ink)}
+    .compare{
+      margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+    }
+    @media(max-width:900px){.compare{grid-template-columns:1fr}}
+    .compare .cell{
+      background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:12px;padding:12px;
+    }
+    .compare h3{margin:0 0 6px;font-size:13px;font-weight:750}
+    .compare p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.45}
+    .compare .who{margin-top:8px;font-size:11.5px;color:var(--cyan-ink);font-weight:650}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <strong>Soft Pad · 换功能三视图</strong>
+    <em>点键 ↔ 换命令 · 不做文本口令</em>
+    <div class="dir-switch" role="tablist" aria-label="三种视图">
+      <button type="button" class="on" data-dir="a" role="tab" aria-selected="true">A 先点键</button>
+      <button type="button" data-dir="b" role="tab" aria-selected="false">B 先选功能</button>
+      <button type="button" data-dir="c" role="tab" aria-selected="false">C 整套切换</button>
+    </div>
+    <a href="../softpad-ia-three-dirs/index.html">IA 三方向 →</a>
+  </div>
+
+  <div class="page">
+    <p class="now">现网已落地 <em>方向 A</em>：去掉扁平「还没配 / 已配好」墙 → 中 Soft Pad 选键，右侧只换当前键功能。B / C 仍为对照草案。</p>
+
+    <div class="brief">
+      <div class="note">
+        <h1 id="briefTitle">方向 A · 先点键，再换功能</h1>
+        <p id="briefBody">Soft Pad 永远是主角。点中间一个键 → 右侧只出现「这个键能换什么」。适合小白：所见即所选，一次只改一颗键。</p>
+      </div>
+      <div class="score">
+        <h2>主解</h2>
+        <ul id="briefHits">
+          <li><span class="tag">适合</span><b>偶尔改一两颗键</b></li>
+          <li><span class="tag">路径</span><b>点键 → 选命令 → 完成</b></li>
+          <li><span class="tag">代价</span><b>批量换功能要连点多次</b></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════ A 先点键 ════ -->
+    <section class="panel on" id="panelA" role="tabpanel">
+      <div class="board">
+        <div class="board-chrome">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="ttl">虚拟键盘 · Cursor</span>
+          <span class="pill">已开启 · 14 键</span>
+          <span class="hint">视图 A：键优先</span>
+        </div>
+        <div class="desk">
+          <aside class="rail">
+            <p class="sec">识别</p>
+            <nav class="nav">
+              <button type="button" class="item dim">听写方式<span class="badge">另页</span></button>
+              <button type="button" class="item dim">我录的键<span class="badge">另页</span></button>
+              <button type="button" class="item dim">口头指令<span class="badge">另页</span></button>
+              <button type="button" class="item dim">软件自带<span class="badge">另页</span></button>
+              <button type="button" class="item on">屏幕按钮</button>
+              <button type="button" class="item dim">手势<span class="badge">另页</span></button>
+            </nav>
+          </aside>
+          <div class="mid">
+            <div class="work-tag"><span>设置</span><span class="chip">屏幕按钮</span></div>
+            <div class="steps"><span class="on">① 点中间键盘</span><span>→</span><span>② 右侧换功能</span></div>
+            <div class="pad-wrap">
+              <p class="pad-lbl">点键盘上的键</p>
+              <div class="pad">
+                <div class="pad-top"><span>SOFT PAD 预览</span><span>Cursor</span></div>
+                <div class="pad-grid">
+                  <button type="button" class="k"><b>开</b><small>电源</small></button>
+                  <button type="button" class="k"><b>快</b><small>快速</small></button>
+                  <button type="button" class="k on"><b>令</b><small>菜单</small></button>
+                  <button type="button" class="k"><b>×</b><small>拒绝</small></button>
+                  <button type="button" class="k tall"><b>+</b><small>加</small></button>
+                  <button type="button" class="k"><b>↑</b></button>
+                  <button type="button" class="k"><b>新</b><small>对话</small></button>
+                  <button type="button" class="k"><b>聊</b><small>快聊</small></button>
+                  <button type="button" class="k"><b>搜</b></button>
+                  <button type="button" class="k"><b>←</b></button>
+                  <button type="button" class="k"><b>发</b></button>
+                  <button type="button" class="k"><b>停</b></button>
+                  <button type="button" class="k"><b>↓</b></button>
+                  <button type="button" class="k wide"><b>麦</b><small>语音</small></button>
+                  <button type="button" class="k"><b>·</b></button>
+                  <button type="button" class="k"><b>→</b></button>
+                </div>
+                <p class="pad-cap">选中 <strong>命令菜单 · Ctrl+Shift+P</strong> · 右侧换功能</p>
+              </div>
+            </div>
+          </div>
+          <aside class="side">
+            <p class="lbl">这个键做什么</p>
+            <div class="edit">
+              <h4>数字 7 · 命令菜单</h4>
+              <p class="sub">换一个功能，或改快捷键</p>
+              <div class="field">
+                <span>快捷键</span>
+                <div class="val">Ctrl+Shift+P <button type="button">录制</button></div>
+              </div>
+              <div class="field">
+                <span>送到哪里</span>
+                <div class="val">正在用的编辑器</div>
+              </div>
+            </div>
+            <p class="lbl">换成别的功能</p>
+            <div class="card">
+              <div class="fn-list">
+                <button type="button" class="fn on"><span class="t">命令菜单</span><span class="s">Ctrl+Shift+P · 当前</span></button>
+                <button type="button" class="fn"><span class="t">快速搜索</span><span class="s">Ctrl+P</span></button>
+                <button type="button" class="fn"><span class="t">新建对话</span><span class="s">Ctrl+N</span></button>
+                <button type="button" class="fn"><span class="t">语音输入</span><span class="s">RAlt</span></button>
+                <button type="button" class="fn"><span class="t">聚焦 Cursor</span><span class="s">Ctrl+I</span></button>
+                <button type="button" class="fn"><span class="t">未绑定</span><span class="s">清空这颗键</span></button>
+              </div>
+            </div>
+            <div class="card">
+              <h3>本场景动作</h3>
+              <p class="meta">与选中键相关</p>
+              <button type="button" class="fn on"><span class="t">7 → 命令菜单</span><span class="s">屏幕按钮</span></button>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="wire">中 = Soft Pad（唯一选键入口）
+右 = 当前键摘要 + 可换功能列表（无文本口令）
+一次只改一颗键 · 列表随选中键过滤/高亮</div>
+      <div class="anno-row">
+        <span class="anno-pill"><b>解</b> 路径最短</span>
+        <span class="anno-pill"><b>解</b> Soft Pad 在中间</span>
+        <span class="anno-pill"><b>代价</b> 不适合一次改很多键</span>
+      </div>
+    </section>
+
+    <!-- ════ B 先选功能 ════ -->
+    <section class="panel" id="panelB" role="tabpanel" hidden>
+      <div class="board">
+        <div class="board-chrome">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="ttl">虚拟键盘 · Cursor</span>
+          <span class="pill">已开启 · 14 键</span>
+          <span class="hint">视图 B：功能优先 · 油漆桶贴键</span>
+        </div>
+        <div class="desk desk-b">
+          <aside class="rail">
+            <p class="sec">识别</p>
+            <nav class="nav">
+              <button type="button" class="item dim">听写方式<span class="badge">另页</span></button>
+              <button type="button" class="item dim">我录的键<span class="badge">另页</span></button>
+              <button type="button" class="item on">屏幕按钮</button>
+              <button type="button" class="item dim">手势<span class="badge">另页</span></button>
+            </nav>
+          </aside>
+          <div class="mid">
+            <div class="work-tag"><span>设置</span><span class="chip">屏幕按钮</span></div>
+            <div class="steps"><span class="on">① 选一个功能</span><span>→</span><span>② 点 Soft Pad 贴上去</span></div>
+            <div class="pad-wrap" style="padding-top:8px">
+              <p class="pad-lbl">Cursor · 命令库（本应用）</p>
+              <div class="cmd-grid">
+                <button type="button" class="cmd on paint"><span class="ico">令</span><span class="n">命令菜单</span><span class="c">Ctrl+Shift+P</span></button>
+                <button type="button" class="cmd"><span class="ico">搜</span><span class="n">快速搜索</span><span class="c">Ctrl+P</span></button>
+                <button type="button" class="cmd"><span class="ico">新</span><span class="n">新建对话</span><span class="c">Ctrl+N</span></button>
+                <button type="button" class="cmd"><span class="ico">麦</span><span class="n">语音输入</span><span class="c">RAlt</span></button>
+                <button type="button" class="cmd"><span class="ico">开</span><span class="n">聚焦 Cursor</span><span class="c">Ctrl+I</span></button>
+                <button type="button" class="cmd"><span class="ico">聊</span><span class="n">快速聊天</span><span class="c">Ctrl+L</span></button>
+                <button type="button" class="cmd"><span class="ico">发</span><span class="n">发送</span><span class="c">Enter</span></button>
+                <button type="button" class="cmd"><span class="ico">停</span><span class="n">取消</span><span class="c">Esc</span></button>
+                <button type="button" class="cmd"><span class="ico">撤</span><span class="n">撤销</span><span class="c">Ctrl+Z</span></button>
+              </div>
+            </div>
+          </div>
+          <aside class="side">
+            <p class="lbl">贴到哪颗键</p>
+            <div class="pad" style="min-height:240px;flex:0 0 auto">
+              <div class="pad-top"><span>SOFT PAD</span><span>点键贴上</span></div>
+              <div class="pad-grid" style="gap:5px">
+                <button type="button" class="k"><b>开</b></button>
+                <button type="button" class="k"><b>快</b></button>
+                <button type="button" class="k" style="border-color:#7dd3fc;box-shadow:0 0 0 2px rgba(125,211,252,.35)"><b>令</b></button>
+                <button type="button" class="k"><b>×</b></button>
+                <button type="button" class="k"><b>+</b></button>
+                <button type="button" class="k"><b>↑</b></button>
+                <button type="button" class="k"><b>新</b></button>
+                <button type="button" class="k"><b>聊</b></button>
+                <button type="button" class="k"><b>搜</b></button>
+                <button type="button" class="k"><b>↵</b></button>
+              </div>
+              <p class="pad-cap">手持 <strong>命令菜单</strong> · 再点一颗键完成粘贴</p>
+            </div>
+            <div class="edit">
+              <h4>手持：命令菜单</h4>
+              <p class="sub">点 Soft Pad 任意键 → 覆盖该键原功能</p>
+              <div class="field">
+                <span>快捷键</span>
+                <div class="val">Ctrl+Shift+P <button type="button">录制</button></div>
+              </div>
+            </div>
+            <div class="card">
+              <h3>本应用已贴</h3>
+              <p class="meta">14 / 19</p>
+              <button type="button" class="fn"><span class="t">7 → 命令菜单</span><span class="s">刚刚贴上</span></button>
+              <button type="button" class="fn"><span class="t">1 → 新建对话</span><span class="s">Ctrl+N</span></button>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="wire">中 = 本应用命令库（管理视图主力）
+右 = Soft Pad 接收区 + 手持功能摘要
+适合：知道要哪个功能、想快速贴到多颗键</div>
+      <div class="anno-row">
+        <span class="anno-pill"><b>解</b> 命令列表管理</span>
+        <span class="anno-pill"><b>解</b> 批量贴键</span>
+        <span class="anno-pill"><b>代价</b> Soft Pad 略靠边</span>
+      </div>
+    </section>
+
+    <!-- ════ C 整套切换 ════ -->
+    <section class="panel" id="panelC" role="tabpanel" hidden>
+      <div class="board">
+        <div class="board-chrome">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="ttl">虚拟键盘 · Cursor</span>
+          <span class="pill">套装 · 对话</span>
+          <span class="hint">视图 C：先换整套，再微调一颗</span>
+        </div>
+        <div class="desk desk-c">
+          <aside class="rail">
+            <p class="sec">识别</p>
+            <nav class="nav">
+              <button type="button" class="item dim">听写方式<span class="badge">另页</span></button>
+              <button type="button" class="item on">屏幕按钮</button>
+              <button type="button" class="item dim">手势<span class="badge">另页</span></button>
+            </nav>
+          </aside>
+          <div class="mid">
+            <div class="work-tag"><span>设置</span><span class="chip">屏幕按钮</span></div>
+            <div class="steps" style="padding-bottom:4px">
+              <span class="on">① 选套装</span><span>→</span><span>② 点键微调</span>
+            </div>
+            <div style="padding:0 12px 8px">
+              <p class="lbl" style="margin-bottom:6px">本应用套装</p>
+              <div class="packs">
+                <button type="button" class="pack on">对话</button>
+                <button type="button" class="pack">编码</button>
+                <button type="button" class="pack">听写</button>
+                <button type="button" class="pack">我的自定义</button>
+              </div>
+            </div>
+            <div class="pad-wrap" style="padding-top:0">
+              <p class="pad-lbl">套装预览 · 点键可微调单键</p>
+              <div class="pad">
+                <div class="pad-top"><span>SOFT PAD · 对话套装</span><span>一键换全盘</span></div>
+                <div class="pad-grid">
+                  <button type="button" class="k"><b>开</b><small>聚焦</small></button>
+                  <button type="button" class="k"><b>聊</b><small>快聊</small></button>
+                  <button type="button" class="k on"><b>新</b><small>对话</small></button>
+                  <button type="button" class="k"><b>×</b><small>取消</small></button>
+                  <button type="button" class="k tall"><b>发</b><small>发送</small></button>
+                  <button type="button" class="k"><b>↑</b></button>
+                  <button type="button" class="k"><b>令</b><small>菜单</small></button>
+                  <button type="button" class="k"><b>搜</b></button>
+                  <button type="button" class="k"><b>麦</b></button>
+                  <button type="button" class="k"><b>←</b></button>
+                  <button type="button" class="k"><b>停</b></button>
+                  <button type="button" class="k"><b>·</b></button>
+                  <button type="button" class="k"><b>↓</b></button>
+                  <button type="button" class="k wide"><b>麦</b><small>按住说</small></button>
+                  <button type="button" class="k"><b>↵</b></button>
+                  <button type="button" class="k"><b>→</b></button>
+                </div>
+                <p class="pad-cap">当前套装 <strong>对话</strong> · 选中键可单独改</p>
+              </div>
+            </div>
+          </div>
+          <aside class="side">
+            <p class="lbl">套装说明</p>
+            <div class="card">
+              <h3>对话</h3>
+              <p class="meta">偏新建 / 发送 / 语音 / 菜单。编码套装会换成搜索、跳定义、终端。</p>
+            </div>
+            <p class="lbl">微调这颗键</p>
+            <div class="edit">
+              <h4>数字 1 · 新建对话</h4>
+              <p class="sub">只改这一颗，不影响整套其余键</p>
+              <div class="field">
+                <span>快捷键</span>
+                <div class="val">Ctrl+N <button type="button">录制</button></div>
+              </div>
+            </div>
+            <div class="card">
+              <h3>换成别的</h3>
+              <div class="fn-list" style="max-height:180px">
+                <button type="button" class="fn on"><span class="t">新建对话</span><span class="s">当前</span></button>
+                <button type="button" class="fn"><span class="t">快速聊天</span><span class="s">Ctrl+L</span></button>
+                <button type="button" class="fn"><span class="t">命令菜单</span><span class="s">Ctrl+Shift+P</span></button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <div class="wire">中上 = 套装切换（对话 / 编码 / 听写 / 自定义）
+中下 = Soft Pad 显示整套结果
+右 = 套装说明 + 单键微调
+适合：场景切换频繁，偶尔改一两颗</div>
+      <div class="anno-row">
+        <span class="anno-pill"><b>解</b> 场景切换</span>
+        <span class="anno-pill"><b>解</b> Soft Pad 仍在中间</span>
+        <span class="anno-pill"><b>代价</b> 要维护套装内容</span>
+      </div>
+    </section>
+
+    <div class="compare">
+      <div class="cell">
+        <h3>A 先点键 · 已落地</h3>
+        <p>Soft Pad 中心 · 右侧只服务当前键。路径最短，最像「改这一颗」。</p>
+        <p class="who">现网默认</p>
+      </div>
+      <div class="cell">
+        <h3>B 先选功能</h3>
+        <p>命令库是管理视图主力，Soft Pad 当接收板。适合按功能批量贴键。</p>
+        <p class="who">推荐：要「应用命令列表」</p>
+      </div>
+      <div class="cell">
+        <h3>C 整套切换</h3>
+        <p>先换场景套装，再微调单键。适合对话 / 编码 / 听写来回切。</p>
+        <p class="who">推荐：多场景用户</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var briefs = {
+        a: {
+          title: '方向 A · 先点键，再换功能',
+          body: 'Soft Pad 永远是主角。点中间一个键 → 右侧只出现「这个键能换什么」。适合小白：所见即所选，一次只改一颗键。',
+          hits: [
+            ['适合', '偶尔改一两颗键'],
+            ['路径', '点键 → 选命令 → 完成'],
+            ['代价', '批量换功能要连点多次']
+          ]
+        },
+        b: {
+          title: '方向 B · 先选功能，再贴到键',
+          body: '中栏先是本应用命令库（管理视图）。拿起一个功能，再点 Soft Pad 贴上去。适合「我知道要哪个功能」的人。',
+          hits: [
+            ['适合', '要看全应用命令列表'],
+            ['路径', '选功能 → 点键粘贴'],
+            ['代价', 'Soft Pad 略靠右']
+          ]
+        },
+        c: {
+          title: '方向 C · 整套切换，再微调',
+          body: '顶部切换「对话 / 编码 / 听写」整盘布局；需要时再点单键微调。适合场景来回切的人。',
+          hits: [
+            ['适合', '多场景切换'],
+            ['路径', '选套装 → 可选微调'],
+            ['代价', '要维护套装内容']
+          ]
+        }
+      };
+
+      var title = document.getElementById('briefTitle');
+      var body = document.getElementById('briefBody');
+      var hits = document.getElementById('briefHits');
+      var buttons = document.querySelectorAll('.dir-switch button');
+      var panels = {
+        a: document.getElementById('panelA'),
+        b: document.getElementById('panelB'),
+        c: document.getElementById('panelC')
+      };
+
+      function show(dir) {
+        buttons.forEach(function (btn) {
+          var on = btn.getAttribute('data-dir') === dir;
+          btn.classList.toggle('on', on);
+          btn.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        Object.keys(panels).forEach(function (k) {
+          var p = panels[k];
+          var on = k === dir;
+          p.classList.toggle('on', on);
+          if (on) p.removeAttribute('hidden');
+          else p.setAttribute('hidden', '');
+        });
+        var b = briefs[dir];
+        title.textContent = b.title;
+        body.textContent = b.body;
+        hits.innerHTML = b.hits.map(function (row) {
+          return '<li><span class="tag">' + row[0] + '</span><b>' + row[1] + '</b></li>';
+        }).join('');
+      }
+
+      buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          show(btn.getAttribute('data-dir'));
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -7,7 +7,61 @@ use std::time::Instant;
 
 static FG_SEQ: AtomicU64 = AtomicU64::new(1);
 
-/// Pure resolver for terminal host + child exe names (+ optional title fallback).
+fn last_external_fg() -> &'static std::sync::Mutex<Option<ForegroundEvidence>> {
+    static SLOT: std::sync::OnceLock<std::sync::Mutex<Option<ForegroundEvidence>>> =
+        std::sync::OnceLock::new();
+    SLOT.get_or_init(|| std::sync::Mutex::new(None))
+}
+
+fn read_live_foreground() -> ForegroundEvidence {
+    let ident = crate::app_identity::foreground_app_identity();
+    let self_fg = ident
+        .as_ref()
+        .is_some_and(crate::app_identity::is_self_identity);
+    let tray_noise = ident
+        .as_ref()
+        .is_some_and(crate::app_identity::is_tray_open_fg_noise);
+    let app_target_id = if self_fg {
+        None
+    } else {
+        foreground_effective_app_target_id()
+    };
+    let agent_kind = app_target_id
+        .as_deref()
+        .and_then(AgentKind::from_app_target);
+    // ponytail: unidentified windows (no identity) stay on the last page.
+    // Upgrade: treat a live HWND with no preset as foreign once exe is stable.
+    let foreign_host = ident.is_some() && !self_fg && !tray_noise && agent_kind.is_none();
+    ForegroundEvidence {
+        agent_kind,
+        app_target_id,
+        foreign_host,
+        observed_at: Instant::now(),
+        sequence: FG_SEQ.fetch_add(1, Ordering::Relaxed),
+    }
+}
+
+pub fn read_foreground_evidence() -> ForegroundEvidence {
+    let live = read_live_foreground();
+    if live.agent_kind.is_some() || live.foreign_host {
+        if let Ok(mut slot) = last_external_fg().lock() {
+            *slot = Some(live.clone());
+        }
+        return live;
+    }
+    // OneTone itself is not a scene. Keep the last real app (Chrome → 通用, Cursor → Cursor)
+    // so opening this window does not snap back to the Cursor habit.
+    if crate::app_identity::foreground_is_self() {
+        if let Ok(mut slot) = last_external_fg().lock() {
+            if let Some(prev) = slot.as_mut() {
+                prev.observed_at = Instant::now();
+                prev.sequence = live.sequence;
+                return prev.clone();
+            }
+        }
+    }
+    live
+}
 pub(crate) fn resolve_terminal_child_agent(
     host_exe: &str,
     child_exes: &[&str],
@@ -36,17 +90,6 @@ pub(crate) fn resolve_terminal_child_agent(
             None
         }
     })
-}
-
-pub fn read_foreground_evidence() -> ForegroundEvidence {
-    let agent_kind = foreground_effective_app_target_id()
-        .as_deref()
-        .and_then(AgentKind::from_app_target);
-    ForegroundEvidence {
-        agent_kind,
-        observed_at: Instant::now(),
-        sequence: FG_SEQ.fetch_add(1, Ordering::Relaxed),
-    }
 }
 
 #[cfg(test)]

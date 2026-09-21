@@ -205,13 +205,13 @@
           noteEn: 'Focus Composer from another app'
         },
         {
-          slotId: 'paste',
-          labelZh: '粘贴',
-          labelEn: 'Paste',
-          phrase: '粘贴',
-          chordHint: 'Ctrl+V',
-          noteZh: '聚焦后粘贴（截图/剪贴板）',
-          noteEn: 'Focus then paste clipboard'
+          slotId: 'pasteAndSend',
+          labelZh: '粘贴发送',
+          labelEn: 'Paste and send',
+          phrase: '粘贴发送',
+          chordHint: '',
+          noteZh: '聚焦后粘贴剪贴板并发送（Soft Pad 工作流，不是全局 Ctrl+V）',
+          noteEn: 'Paste clipboard into Agent then Enter (Soft Pad workflow, not global Ctrl+V)'
         },
         {
           slotId: 'nextChange',
@@ -267,7 +267,7 @@
       id: 'talk',
       titleKey: 'keysCursorPickGroupTalk',
       titleFb: '听写',
-      slots: ['pushToTalk', 'stopOrSend', 'paste', 'cancel']
+      slots: ['pushToTalk', 'stopOrSend', 'pasteAndSend', 'cancel']
     },
     {
       id: 'chat',
@@ -1807,6 +1807,11 @@
     if (imeTab) imeTab.classList.toggle('is-codex-hidden', imeTabHidden);
     var imeStrip = document.getElementById('keysImeStripWrap');
     if (imeStrip) imeStrip.hidden = activeTab !== 'ime' || imeTabHidden;
+    if (global.OneToneKeysPanelUi && global.OneToneKeysPanelUi.syncKeysWorkChannelPill) {
+      try {
+        global.OneToneKeysPanelUi.syncKeysWorkChannelPill();
+      } catch (_) {}
+    }
     var onIme = activeTab === 'ime';
     var onKey = activeTab === 'key';
     var onImeOrKey = onIme || onKey;
@@ -6567,9 +6572,72 @@
     return out;
   }
 
+  /** Habit / peer under this Soft Pad app (skip prompt inject peers). */
+  function catalogAppHabitMapping(workM, appId) {
+    if (workM && String(workM.appTargetId || '').trim() === appId && !isPromptInjectMapping(workM)) {
+      return workM;
+    }
+    if (!appId) return workM || null;
+    var maps = Array.isArray(config().mappings) ? config().mappings : [];
+    var i;
+    for (i = 0; i < maps.length; i++) {
+      var cm = maps[i];
+      if (!cm || String(cm.appTargetId || '').trim() !== appId) continue;
+      if (isPromptInjectMapping(cm)) continue;
+      return cm;
+    }
+    return workM || null;
+  }
+
+  /** One primary wake for this app — never the full global synonym bank. */
+  function primaryWakeSayForApp(workM, appId) {
+    var habit = catalogAppHabitMapping(workM, appId);
+    var ov = habit && habit.voiceOverride;
+    if (ov && Array.isArray(ov.wakePhrases)) {
+      var i;
+      for (i = 0; i < ov.wakePhrases.length; i++) {
+        var p = String(ov.wakePhrases[i] || '').trim();
+        if (p) return p;
+      }
+    }
+    try {
+      var Wake = global.OneToneVoiceWake;
+      if (Wake && typeof Wake.primaryWakePhraseDisplay === 'function') {
+        var d = String(Wake.primaryWakePhraseDisplay() || '').trim();
+        if (d) return d;
+      }
+      if (Wake && typeof Wake.currentWakePhraseList === 'function') {
+        var list = Wake.currentWakePhraseList() || [];
+        if (list[0]) return String(list[0] || '').trim();
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  function isDualKeyVoiceSeed(sm, b) {
+    if (!sm || !b) return false;
+    var sid = String(b.slotId || b.slot_id || '').trim();
+    var aid = String(b.actionId || b.action_id || '').trim();
+    var binds = Array.isArray(sm.agentBindings) ? sm.agentBindings : [];
+    var i;
+    for (i = 0; i < binds.length; i++) {
+      var kb = binds[i];
+      if (!kb || String(kb.triggerType || '') !== 'key') continue;
+      if (sid && String(kb.slotId || '').trim() === sid) return true;
+      if (
+        aid &&
+        String(kb.actionId || '').trim() === aid &&
+        String(kb.actionInstanceId || '') === String(b.actionInstanceId || '')
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
-   * SoftPad「口头指令」：对齐语音设置「口头指令」方案（一词注入），去重同文案。
-   * SoftPad 自定义快捷键上用户填过的口令也收录。不扫 Soft Pad / 软件自带种子绑定。
+   * SoftPad「口头指令」：当前应用场景的口令（一词注入 / 本应用语音绑定 / 主开启口令 / SoftPad 自定义）。
+   * 不扫全局听写同义词库与中英结束/发送整表。
    */
   function catalogVoicePromptsForMapping(workM, query) {
     if (!workM) return [];
@@ -6601,7 +6669,22 @@
       out.push(row);
     }
 
-    // 1) 语音设置 · 口头指令（一词注入 peers）
+    // 1) 听写方式 · 仅主开启口令（一条）
+    var wakeSay = primaryWakeSayForApp(workM, appId);
+    if (wakeSay) {
+      push({
+        pickId: 'dictation-wake:primary',
+        kind: 'bind',
+        actionId: VOICE_LIFECYCLE_IDS.start,
+        bindingRef: 'pushToTalk',
+        name: t('voiceWakePrimaryRow', '开启口令'),
+        say: wakeSay,
+        func: t('keysChannelTabIme', '听写方式'),
+        bindable: true
+      });
+    }
+
+    // 2) 本应用 · 一词注入 peers
     var maps = Array.isArray(config().mappings) ? config().mappings : [];
     var mi;
     for (mi = 0; mi < maps.length; mi++) {
@@ -6628,7 +6711,66 @@
       });
     }
 
-    // 2) SoftPad 自定义快捷键上用户填的口令
+    // 3) 本应用 · 用户语音绑定 / 声学口令（排除 Soft Pad 种子）
+    for (mi = 0; mi < maps.length; mi++) {
+      var am = maps[mi];
+      if (!am || !am.id) continue;
+      if (String(am.appTargetId || '').trim() !== appId) continue;
+      if (isPromptInjectMapping(am)) continue;
+
+      var cmds = Array.isArray(am.acousticVoiceCommands) ? am.acousticVoiceCommands : [];
+      var ci;
+      for (ci = 0; ci < cmds.length; ci++) {
+        var cmd = cmds[ci];
+        if (!cmd || cmd.enabled === false) continue;
+        var aLabel = String(cmd.label || '').trim();
+        var aSay =
+          String(cmd.displayText || cmd.display_text || '').trim() || aLabel;
+        if (!aSay) continue;
+        var cid = String(cmd.id || cmd.commandId || cmd.command_id || 'acmd-' + ci).trim();
+        push({
+          pickId: 'voice-acoustic:' + cid,
+          kind: 'bind',
+          actionId: 'app.open',
+          bindingRef: 'open-app-acoustic:' + cid,
+          name: aLabel || aSay,
+          say: aSay,
+          func: t('keysVoicePickOpen', '回到应用'),
+          bindable: true
+        });
+      }
+
+      var binds = Array.isArray(am.agentBindings) ? am.agentBindings : [];
+      var bi;
+      for (bi = 0; bi < binds.length; bi++) {
+        var b = binds[bi];
+        if (!b || b.enabled === false) continue;
+        if (String(b.triggerType || b.trigger_type || '').trim() !== 'voice') continue;
+        var bSay = String(b.triggerBinding || b.trigger_binding || '').trim();
+        if (!bSay) continue;
+        var ref = String(b.slotId || b.slot_id || b.bindingRef || b.binding_ref || '').trim();
+        if (!ref) continue;
+        if (isSoftPadLayoutVoiceSlot(am, ref) || isSoftPadLayoutVoiceSlot(workM, ref)) continue;
+        if (isDualKeyVoiceSeed(am, b)) continue;
+        var aid = canonicalActionId(b.actionId || b.action_id || '');
+        if (!aid) continue;
+        if (aid === 'input.start' || aid === 'startDictation') continue;
+        if (aid === 'agent.continue' || aid === 'app.open') continue;
+        if (/^cursorBeginner/i.test(aid) || /^cursorBeginner/i.test(ref)) continue;
+        push({
+          pickId: 'voice-bind:' + String(am.id) + ':' + ref,
+          kind: 'bind',
+          actionId: aid,
+          bindingRef: ref,
+          name: actionLabel(aid) || bSay,
+          say: bSay,
+          func: '',
+          bindable: true
+        });
+      }
+    }
+
+    // 4) SoftPad 自定义快捷键上用户填的口令
     var customs =
       pad && Array.isArray(pad.customShortcuts) ? pad.customShortcuts : [];
     var xi;

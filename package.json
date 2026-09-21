@@ -9,6 +9,7 @@
     "tauri": "tauri",
     "dev": "tauri dev",
     "prepare-vosk": "node scripts/ensure-vosk-cn-model.js",
+    "test:prepare-vosk": "node scripts/ensure-vosk-models.test.js",
     "prepare-mediapipe": "node scripts/ensure-mediapipe-face-landmarker.js",
     "prebuild": "node scripts/ensure-vosk-cn-model.js && node scripts/ensure-mediapipe-face-landmarker.js",
     "build": "tauri build",

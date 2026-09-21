@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="css/home-v9.css" />
   <link rel="stylesheet" href="css/home-workbench.css" />
   <link rel="stylesheet" href="css/agent-proto-panel.css" />
-  <link rel="stylesheet" href="css/keys-workflow.css?v=scene-voice-share-3" />
+  <link rel="stylesheet" href="css/keys-workflow.css?v=keys-rail-plan-2" />
   <link rel="stylesheet" href="css/flow-desk.css" />
   <link rel="stylesheet" href="css/camera-workflow.css" />
   <link rel="stylesheet" href="css/camera2-workbench.css" />
@@ -40,7 +40,7 @@
   <link rel="stylesheet" href="css/voice-feedback-rail.css?v=aim-demo-3" />
   <link rel="stylesheet" href="css/codex-micro-hw-tokens.css" />
   <link rel="stylesheet" href="css/codex-micro-pad.css?v=20260825-pad1" />
-  <link rel="stylesheet" href="css/soft-pad-hub.css?v=20260825-pad1" />
+  <link rel="stylesheet" href="css/soft-pad-hub.css?v=softpad-pad-left-2" />
   <link rel="stylesheet" href="css/semantic-action-picker.css" />
   <link rel="stylesheet" href="css/habit-actions-detail.css" />
   <link rel="stylesheet" href="css/habit-workspace.css" />
@@ -48,7 +48,7 @@
   <link rel="stylesheet" href="css/habit-novice.css" />
   <link rel="stylesheet" href="css/home-context-actions.css" />
   <link rel="stylesheet" href="css/qs-mode-matrix.css" />
-  <link rel="stylesheet" href="css/typography.css?v=voice-scene-keep-1" />
+  <link rel="stylesheet" href="css/typography.css?v=keys-rail-plan-1" />
   <link rel="stylesheet" href="css/motion.css" />
 </head>
 <body>
@@ -833,15 +833,21 @@
             <span class="keys-status-chip" id="keysStatusIme" hidden><span id="keysStatusImeVal"></span></span>
             <span class="keys-status-chip" id="keysStatusFinish" hidden><span id="keysStatusFinishVal"></span></span>
           </div>
-          <div class="keys-page-body">
-            <div class="keys-page-main">
-              <div class="keys-app-context" id="keysAppContext" hidden>
-                <div class="keys-app-context-main">
-                  <span class="keys-app-context-lbl" id="keysAppContextLbl">当前应用上下文</span>
-                  <span class="keys-app-context-val" id="keysAppContextVal">—</span>
-                  <span class="keys-app-context-badge" id="keysAppContextBadge" hidden></span>
+          <div class="keys-page-body keys-page-body--three-col">
+            <!-- 左轨契约：wash + 起点白卡 + 识别扁平行（对齐 prototypes/keys-rail-plan） -->
+            <aside class="keys-page-rail" id="keysPageRail" aria-label="起点与识别">
+              <div class="keys-page-rail__trigger habit-flow-step home-key-map-step is-clickable is-active-step" data-edit-step="trigger" id="habitKeyMapRowTrigger" role="region" aria-labelledby="habitFlowStepTriggerLbl">
+                <div class="keys-page-rail__start">
+                  <span class="keys-page-rail__badge" id="keysColTriggerLbl">起点</span>
+                  <span class="keys-page-rail__title home-key-map-step-label" id="habitFlowStepTriggerLbl">触发键</span>
+                  <span class="habit-flow-step-status flow-step-status sr-only" id="habitKeyMapStTrigger">—</span>
+                  <div class="keys-step-row keys-step-row--slim">
+                    <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTrigger" role="button" tabindex="0" aria-label="录制触发键" title=""></div>
+                    <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTrigger"></div>
+                  </div>
+                  <p class="keys-page-rail__hint" id="habitFlowStepTriggerHint">点按录制</p>
+                  <p class="keys-keycap-hint" id="keysKeycapHint" hidden aria-hidden="true"></p>
                 </div>
-                <p class="keys-app-context-hint" id="keysAppContextHint">—</p>
               </div>
               <div class="keys-recording-feedback" id="keysRecordingFeedback" hidden aria-live="polite">
                 <div class="keys-recording-feedback-main" id="keysRecordingFeedbackMain">
@@ -853,6 +859,42 @@
                 </div>
                 <p class="keys-recording-conflict" id="keysRecordingConflict" hidden role="alert"></p>
                 <button type="button" class="keys-recording-probe-link" id="btnKeysRecordingProbe" hidden data-i18n="keysRecordingProbeLink">按键没反应？查看检测</button>
+              </div>
+              <div class="keys-page-rail__dir" id="keysChannelPaneLeft">
+                <p class="keys-page-rail__dir-lbl" id="keysChannelDirLbl">识别</p>
+                <nav class="keys-page-rail__nav" id="keysChannelSubtabs" role="tablist" aria-label="识别分类">
+                  <button type="button" class="keys-page-rail__item is-active" role="tab" id="keysChannelTabIme" data-channel="ime" aria-selected="true" data-i18n="keysChannelTabIme">听写方式</button>
+                  <button type="button" class="keys-page-rail__item" role="tab" id="keysChannelTabKey" data-channel="key" aria-selected="false" data-i18n="keysChannelTabKey">我录的键</button>
+                  <button type="button" class="keys-page-rail__item" role="tab" id="keysChannelTabVoice" data-channel="voice" aria-selected="false" data-i18n="keysChannelTabVoice">口头指令</button>
+                  <button type="button" class="keys-page-rail__item" role="tab" id="keysChannelTabCursor" data-channel="cursor" aria-selected="false" data-i18n="keysChannelTabCursor">软件自带</button>
+                  <button type="button" class="keys-page-rail__item" role="tab" id="keysChannelTabSoftPad" data-channel="softPad" aria-selected="false" data-i18n="keysChannelTabSoftPad">屏幕按钮</button>
+                  <button type="button" class="keys-page-rail__item" role="tab" id="keysChannelTabCamera" data-channel="camera" aria-selected="false" data-i18n="keysChannelTabCamera">手势</button>
+                </nav>
+              </div>
+            </aside>
+            <div class="keys-page-main">
+              <div class="keys-work-tag" id="keysWorkTag">
+                <span class="keys-work-tag__lbl" id="keysWorkTagLbl">工作间</span>
+                <span class="keys-work-tag__ch" id="keysWorkChannelPill">听写方式</span>
+                <details class="keys-work-tag__modes">
+                  <summary id="keysTriggerModeFooterLbl">触发方式</summary>
+                  <div class="keys-trigger-modes-block">
+                    <div class="keys-trigger-modes-host" id="keysTriggerModeHost"></div>
+                  </div>
+                </details>
+              </div>
+              <div class="keys-app-context" id="keysAppContext" hidden>
+                <div class="keys-app-context-main">
+                  <span class="keys-app-context-lbl" id="keysAppContextLbl">当前应用上下文</span>
+                  <span class="keys-app-context-val" id="keysAppContextVal">—</span>
+                  <span class="keys-app-context-badge" id="keysAppContextBadge" hidden></span>
+                </div>
+                <p class="keys-app-context-hint" id="keysAppContextHint">—</p>
+              </div>
+              <div class="keys-trigger-conflict" id="keysTriggerConflict" hidden role="alert"></div>
+              <div class="keys-test-progress" id="keysTestProgress" hidden aria-live="polite">
+                <span class="keys-test-progress-dot" aria-hidden="true"></span>
+                <span class="keys-test-progress-text" id="keysTestProgressText">—</span>
               </div>
           <div class="key-flow-section" id="quickKeyWakeSection">
             <div class="habit-layer-shell key-wake-settings" id="keyWakeSettings">
@@ -885,11 +927,11 @@
                   </div>
                 </aside>
                 <div class="keys-workflow-pipeline" id="keysWorkflowPipeline">
-                <section class="flow-nodes" id="keysFlowNodes" role="tablist" aria-label="触发流程导航">
+                <section class="flow-nodes sr-only" id="keysFlowNodes" role="tablist" aria-label="触发流程导航" aria-hidden="true" hidden>
                   <div class="flow-nodes-grid flow-nodes-grid--two keys-flow-grid--linked">
                     <div class="flow-node" data-keys-node="trigger">
                       <span class="flow-node-tag" id="keysFlowNodeTriggerTag">01 / 触发</span>
-                      <button type="button" class="flow-node-btn is-active" id="keysFlowNodeTrigger" role="tab" aria-selected="true" aria-labelledby="keysFlowNodeTriggerTitle" aria-controls="habitKeyMapRowTrigger">
+                      <button type="button" class="flow-node-btn is-active" id="keysFlowNodeTrigger" role="tab" aria-selected="true" aria-labelledby="keysFlowNodeTriggerTitle" aria-controls="habitKeyMapRowTrigger" tabindex="-1">
                         <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M7 17h10"/></svg>
                       </button>
                       <h3 class="flow-node-title" id="keysFlowNodeTriggerTitle">触发</h3>
@@ -901,7 +943,7 @@
                     </div>
                     <div class="flow-node" data-keys-node="target">
                       <span class="flow-node-tag" id="keysFlowNodeTargetTag">02 / 识别</span>
-                      <button type="button" class="flow-node-btn" id="keysFlowNodeTarget" role="tab" aria-selected="false" aria-labelledby="keysFlowNodeTargetTitle" aria-controls="habitKeyMapRowTarget">
+                      <button type="button" class="flow-node-btn" id="keysFlowNodeTarget" role="tab" aria-selected="false" aria-labelledby="keysFlowNodeTargetTitle" aria-controls="habitKeyMapRowTarget" tabindex="-1">
                         <svg class="flow-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                       </button>
                       <h3 class="flow-node-title" id="keysFlowNodeTargetTitle">识别</h3>
@@ -910,39 +952,10 @@
                   </div>
                 </section>
                 <div class="flow-desk-panel" id="keysDeskPanel">
-                <div class="habit-default-flow home-key-map-flow keys-workflow-grid" id="habitDefaultFlow">
-                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable" data-edit-step="trigger" id="habitKeyMapRowTrigger" role="tabpanel" aria-labelledby="keysFlowNodeTrigger">
-                    <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head">
-                      <span class="keys-workflow-col-tag" id="keysColTriggerLbl">触发</span>
-                      <div class="keys-workflow-col-subhead">
-                        <span class="home-key-map-step-label" id="habitFlowStepTriggerLbl">你按的键</span>
-                        <span class="habit-flow-step-status flow-step-status" id="habitKeyMapStTrigger">—</span>
-                      </div>
-                    </div>
-                    <div class="keys-step-body flow-step-body">
-                    <div class="keys-workflow-keycap-zone">
-                    <div class="keys-step-row keys-step-row--hero">
-                      <div class="habit-flow-step-slot keys-step-key-area keys-key-hero keys-keycap-host" id="habitKeyMapCellTrigger" role="button" tabindex="0" aria-label="录制触发键" title=""></div>
-                      <div class="habit-flow-step-act keys-step-record-act" id="habitKeyMapActTrigger"></div>
-                    </div>
-                    <button type="button" class="keys-center-new-action" id="keysSceneActionsAdd" data-add="1" hidden>＋ 新建动作</button>
-                    </div>
-                    <div class="keys-workflow-footer-zone keys-trigger-modes-block">
-                      <p class="habit-flow-subsection-title" id="keysTriggerModeFooterLbl">录到的用法</p>
-                      <div class="keys-trigger-modes-host" id="keysTriggerModeHost"></div>
-                      <p class="keys-keycap-hint" id="keysKeycapHint" hidden aria-hidden="true"></p>
-                      <div class="keys-trigger-conflict" id="keysTriggerConflict" hidden role="alert"></div>
-                      <div class="keys-test-progress" id="keysTestProgress" hidden aria-live="polite">
-                        <span class="keys-test-progress-dot" aria-hidden="true"></span>
-                        <span class="keys-test-progress-text" id="keysTestProgressText">—</span>
-                      </div>
-                    </div>
-                    <span class="home-key-map-step-hint sr-only" id="habitFlowStepTriggerHint">比如音量键、鼠标侧键</span>
-                    </div>
-                  </div>
-                  <div class="keys-workflow-arrow" aria-hidden="true"><span class="keys-workflow-arrow-icon">→</span></div>
-                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable" data-edit-step="target" id="habitKeyMapRowTarget" role="tabpanel" aria-labelledby="keysFlowNodeTarget">
-                    <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head">
+                <div class="habit-default-flow home-key-map-flow keys-workflow-grid keys-workflow-grid--three-col" id="habitDefaultFlow">
+                  <div class="keys-workflow-arrow" aria-hidden="true" hidden><span class="keys-workflow-arrow-icon">→</span></div>
+                  <div class="habit-flow-step home-key-map-step keys-step-card keys-workflow-col is-clickable is-active-step" data-edit-step="target" id="habitKeyMapRowTarget" role="tabpanel" aria-labelledby="keysFlowNodeTarget">
+                    <div class="keys-step-card-head flow-step-card-head keys-workflow-col-head sr-only">
                       <span class="keys-workflow-col-tag" id="keysColCaptureLbl">识别</span>
                       <div class="keys-workflow-col-subhead">
                         <span class="home-key-map-step-label" id="habitFlowStepTargetLbl">识别与收尾配置</span>
@@ -959,21 +972,7 @@
                       </div>
                       <div class="habit-flow-ime-block keys-capture-ime-block" id="habitFlowImeBlock">
                         <div class="keys-channel-picker" id="keysChannelPicker">
-                          <div class="keys-channel-split" id="keysChannelSplit">
-                            <div class="keys-channel-pane-left" id="keysChannelPaneLeft">
-                              <label class="keys-channel-search" id="keysChannelSearchWrap">
-                                <span class="sr-only" id="keysChannelSearchLbl">搜索识别功能</span>
-                                <input type="search" id="keysChannelSearch" autocomplete="off" spellcheck="false" placeholder="搜索功能…" aria-labelledby="keysChannelSearchLbl" />
-                              </label>
-                              <nav class="keys-channel-tree" id="keysChannelSubtabs" role="tree" aria-label="识别分类">
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat is-active" role="treeitem" id="keysChannelTabIme" data-channel="ime" aria-selected="true" data-i18n="keysChannelTabIme">听写方式</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabKey" data-channel="key" aria-selected="false" data-i18n="keysChannelTabKey">我录的键</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabVoice" data-channel="voice" aria-selected="false" data-i18n="keysChannelTabVoice">口头指令</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabCursor" data-channel="cursor" aria-selected="false" data-i18n="keysChannelTabCursor">软件自带</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabSoftPad" data-channel="softPad" aria-selected="false" data-i18n="keysChannelTabSoftPad">屏幕按钮</button>
-                                <button type="button" class="keys-channel-subtab keys-channel-tree-cat" role="treeitem" id="keysChannelTabCamera" data-channel="camera" aria-selected="false" data-i18n="keysChannelTabCamera">手势</button>
-                              </nav>
-                            </div>
+                          <div class="keys-channel-split keys-channel-split--detail-only" id="keysChannelSplit">
                             <div class="keys-channel-pane-right" id="keysChannelPaneRight">
                               <div class="keys-detail-card keys-detail-card--hero keys-ime-step keys-ime-step--start" id="keysCaptureHeroCard">
                                 <div class="keys-capture-keycap-zone keys-workflow-keycap-zone" id="keysCaptureKeycapZone">
@@ -1076,7 +1075,7 @@
                 </div>
                 </div>
                 <footer class="habit-key-mapping-foot keys-page-tip-bar">
-                  <p class="habit-key-mapping-tip" id="habitKeyMappingTip">提示：先设置触发键，再点击识别键帽配置各通道与收尾</p>
+                  <p class="habit-key-mapping-tip" id="habitKeyMappingTip">提示：先设左侧触发键，再选目录通道配置识别与收尾</p>
                   <button type="button" class="habit-key-mapping-tutorial" id="btnHabitFlowTutorial">查看使用教程</button>
                 </footer>
               </section>
@@ -1183,6 +1182,9 @@
                 <div class="keys-scene-actions__picks" id="keysSceneActionsPicks"></div>
                 <div class="keys-scene-actions__edit" id="keysSceneActionsEdit"></div>
               </div>
+              <div class="keys-scene-actions__foot">
+                <button type="button" class="keys-scene-actions__add keys-center-new-action" id="keysSceneActionsAdd" data-add="1" hidden>＋ 新建动作</button>
+              </div>
             </aside>
           </div>
           <div class="keys-page-foot">
@@ -1191,60 +1193,18 @@
         </section>
         <section class="settings-panel drawer-section soft-pad-page" id="settingsPanelSoftPad" hidden>
           <div class="habit-scenario-context-banner" id="habitScenarioContextBannerSoftPad" hidden role="status" aria-live="polite"></div>
-          <div class="page-status-bar soft-pad-status-bar" id="softPadStatusBar">
+          <!-- Thin chrome: brand only. Summaries / bind / actions live under right preview hint. -->
+          <div class="page-status-bar soft-pad-status-bar soft-pad-status-bar--slim" id="softPadStatusBar">
             <div class="page-status-bar-main keys-scheme-status-main">
               <div class="keys-scheme-summary-title-row">
                 <span class="keys-scheme-summary-name soft-pad-page-brand-title" id="softPadPageBrandTitle">虚拟键盘</span>
                 <span class="keys-scheme-summary-pill" id="softPadSummaryStatus">—</span>
-                <div class="soft-pad-bind-app" id="softPadBindApp">
-                  <button type="button" class="soft-pad-bind-app__btn" id="softPadBindAppBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="softPadBindAppMenu">
-                    <span class="soft-pad-bind-app__lbl" id="softPadBindAppLbl">绑定 · —</span>
-                    <span class="soft-pad-bind-app__chev" aria-hidden="true">▾</span>
-                  </button>
-                  <div class="soft-pad-bind-app__menu" id="softPadBindAppMenu" role="listbox" hidden></div>
-                </div>
               </div>
               <span class="sr-only" id="softPadSummaryName">—</span>
-              <div class="keys-scheme-summary-meta">
-                <span class="keys-scheme-summary-item">
-                  <span class="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">灯效与浮窗</span>
-                  <span class="keys-scheme-summary-val" id="softPadSummaryAgent">—</span>
-                </span>
-                <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
-                <span class="keys-scheme-summary-item">
-                  <span class="keys-scheme-summary-lbl" id="softPadSummaryKeysLbl">键位</span>
-                  <span class="keys-scheme-summary-val" id="softPadSummaryKeys">—</span>
-                </span>
-                <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
-                <span class="keys-scheme-summary-item is-hidden" id="softPadSummaryTmWrap" hidden aria-hidden="true">
-                  <span class="keys-scheme-summary-lbl" id="softPadSummaryTmLbl">恢复点</span>
-                  <span class="keys-scheme-summary-val" id="softPadSummaryTm">即将接入</span>
-                </span>
-              </div>
-              <div class="keys-scheme-summary-meta soft-pad-status-usage-meta" hidden aria-hidden="true">
-                <span class="keys-scheme-summary-item">
-                  <span class="keys-scheme-summary-lbl" id="softPadSummaryAccountLbl">账号</span>
-                  <span class="keys-scheme-summary-val" id="softPadSummaryAccount">—</span>
-                </span>
-                <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
-                <span class="keys-scheme-summary-item">
-                  <span class="keys-scheme-summary-lbl" id="softPadSummaryUsageLbl">额度</span>
-                  <span class="keys-scheme-summary-val" id="softPadSummaryUsage">—</span>
-                </span>
-                <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
-                <span class="keys-scheme-summary-item">
-                  <span class="keys-scheme-summary-lbl" id="softPadSummaryResetLbl">重置</span>
-                  <span class="keys-scheme-summary-val" id="softPadSummaryReset">—</span>
-                </span>
-              </div>
-            </div>
-            <div class="page-status-bar-actions keys-scheme-status-actions">
-              <button type="button" class="page-status-btn" id="btnSoftPadTestFg" data-cockpit-action="test-fg">测试前台</button>
-              <button type="button" class="page-status-btn" id="btnSoftPadEditKeys" data-cockpit-action="edit-keys">编辑键位</button>
             </div>
           </div>
-          <div class="soft-pad-app-switcher" id="softPadAppSwitcher" role="tablist" aria-label="应用"></div>
-          <p class="soft-pad-scope-hint" id="softPadScopeHint" aria-live="polite" hidden></p>
+          <div class="soft-pad-app-switcher sr-only" id="softPadAppSwitcher" role="tablist" aria-label="应用" hidden aria-hidden="true"></div>
+          <p class="soft-pad-scope-hint sr-only" id="softPadScopeHint" aria-live="polite" hidden></p>
           <span class="sr-only" id="softPadScanStatus" aria-live="polite"></span>
           <header class="pref-page-head soft-pad-page-head sr-only">
             <div class="soft-pad-page-head-text">
@@ -1252,31 +1212,77 @@
               <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelSoftPadDesc">管理 Soft Pad 的外观、出现时机与应用内行为</p>
             </div>
           </header>
-          <div class="keys-page-body soft-pad-page-body" id="softPadPageBody">
+          <div class="keys-page-body soft-pad-page-body soft-pad-page-body--three-col" id="softPadPageBody">
+            <!-- 左：识别目录（对齐 prototypes/softpad-rail-merge） -->
+            <aside class="soft-pad-page-rail" id="softPadPageRail" aria-label="识别目录">
+              <p class="soft-pad-page-rail__sec" id="softPadRailDirLbl">识别</p>
+              <nav class="soft-pad-page-rail__nav" id="softPadChannelNav" role="tablist" aria-label="识别分类">
+                <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="ime" id="softPadRailTabIme" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabIme">听写方式</span></button>
+                <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="key" id="softPadRailTabKey" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabKey">我录的键</span></button>
+                <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="voice" id="softPadRailTabVoice" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabVoice">口头指令</span></button>
+                <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="cursor" id="softPadRailTabCursor" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabCursor">软件自带</span></button>
+                <button type="button" class="soft-pad-page-rail__item is-active" role="tab" data-soft-pad-channel="softPad" id="softPadRailTabSoftPad" aria-selected="true"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabSoftPad">屏幕按钮</span></button>
+                <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="camera" id="softPadRailTabCamera" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabCamera">手势</span></button>
+              </nav>
+            </aside>
             <div class="keys-page-main soft-pad-page-main">
               <div class="soft-pad-hub-stage" id="softPadHubStage" data-soft-pad-face="pad" role="tabpanel" aria-label="虚拟键盘详情">
                 <div class="soft-pad-func-tiles" id="softPadFuncTiles" role="tablist" aria-label="你想改什么？" hidden></div>
-                <!-- Unified Soft Pad workspace: left preview + right tabs (显示/键位/用途/灯效/迷你栏) -->
-                <div class="soft-pad-face-root soft-pad-face-pad" id="softPadFacePad" data-face="pad">
-                  <div class="soft-pad-face-pad__preview soft-pad-preview-host" id="softPadPreviewHost"></div>
-                  <aside class="soft-pad-face-pad__panel soft-pad-detail" id="softPadSubpageHost" aria-live="polite">
-                    <div class="soft-pad-pad-tabs" id="softPadPadTabs" role="tablist" aria-label="Soft Pad 调整">
-                      <button type="button" class="soft-pad-pad-tab is-active" role="tab" data-pad-mode="keys" aria-selected="true" id="softPadPadTabKeys" data-i18n="softPadPadTabKeys">按键</button>
-                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="agent" aria-selected="false" id="softPadPadTabAgent" data-i18n="softPadPadTabAgent">Agent</button>
-                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="style" aria-selected="false" id="softPadPadTabStyle" data-i18n="softPadPadTabStyle">样式</button>
-                    </div>
-                    <div class="soft-pad-detail-idle" id="softPadDetailIdle" hidden>
-                      <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">选择上方一项开始调整</p>
-                      <p class="soft-pad-detail-idle__sub" id="softPadDetailIdleSub">状态栏切换绑定应用</p>
-                    </div>
-                    <div class="soft-pad-detail-panel" id="softPadDetailPanel">
-                      <div class="soft-pad-subpage-bar" id="softPadSubpageBar" hidden>
-                        <button type="button" class="codex-micro-pad__btn soft-pad-subpage-back" id="btnSoftPadSubBack" hidden>← 返回</button>
-                        <h4 class="soft-pad-subpage-title" id="softPadSubpageTitle"></h4>
+                <!-- Mid: 左预览 + 预览下按键能力 | 右功能列表；页级右栏习惯不动 -->
+                <div class="soft-pad-face-root soft-pad-face-pad soft-pad-face-pad--desk soft-pad-face-pad--pad-mid" id="softPadFacePad" data-face="pad">
+                  <div class="soft-pad-mid-stack soft-pad-mid-stack--fused" id="softPadMidStack">
+                    <div class="soft-pad-mid-pad" id="softPadMidPad">
+                      <p class="soft-pad-mid-pad__lbl" id="softPadMidPadLbl">点键盘上的键</p>
+                      <div class="soft-pad-preview-host soft-pad-mid-pad__host" id="softPadPreviewHost"></div>
+                      <div class="soft-pad-mid-pad__foot">
+                        <p class="soft-pad-mid-pad__hint" id="softPadMidPadHint" data-i18n="softPadMidPadHint">蓝框 = 正在编辑 · 点其它键可切换 · 右侧点功能会绑到当前键</p>
+                        <button type="button" class="soft-pad-mid-pad__restore" id="btnSoftPadRestoreDefaults" data-i18n="softPadLayoutRestoreQuiet">恢复默认键位</button>
                       </div>
-                      <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadSubpageBody"></div>
                     </div>
-                  </aside>
+                    <aside class="soft-pad-face-pad__panel soft-pad-detail soft-pad-mid-ability" id="softPadSubpageHost" aria-live="polite">
+                      <div class="soft-pad-work-tag" id="softPadWorkTag">
+                        <span class="soft-pad-work-tag__lbl" id="softPadWorkTagLbl">设置</span>
+                        <span class="soft-pad-work-tag__ch" id="softPadWorkChannelPill">屏幕按钮</span>
+                      </div>
+                      <div class="soft-pad-pad-tabs" id="softPadPadTabs" role="tablist" aria-label="Soft Pad 调整">
+                        <button type="button" class="soft-pad-pad-tab is-active" role="tab" data-pad-mode="keys" aria-selected="true" id="softPadPadTabKeys" data-i18n="softPadPadTabBind">改按钮</button>
+                        <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="style" aria-selected="false" id="softPadPadTabStyle" data-i18n="softPadPadTabLook">样子</button>
+                        <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="agent" aria-selected="false" id="softPadPadTabAgent" data-i18n="softPadPadTabMore">更多</button>
+                      </div>
+                      <div class="soft-pad-detail-idle" id="softPadDetailIdle" hidden>
+                        <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">点左侧键盘上的键</p>
+                        <p class="soft-pad-detail-idle__sub" id="softPadDetailIdleSub">选中后在下方改快捷键，右侧换功能</p>
+                      </div>
+                      <div class="soft-pad-detail-panel" id="softPadDetailPanel">
+                        <div class="soft-pad-subpage-bar" id="softPadSubpageBar" hidden>
+                          <button type="button" class="codex-micro-pad__btn soft-pad-subpage-back" id="btnSoftPadSubBack" hidden>← 返回</button>
+                          <h4 class="soft-pad-subpage-title" id="softPadSubpageTitle"></h4>
+                        </div>
+                        <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadSubpageBody"></div>
+                      </div>
+                      <!-- Non-softPad channel bridge (deeplink to Keys) -->
+                      <div class="soft-pad-channel-bridge" id="softPadChannelBridge" hidden>
+                        <h4 class="soft-pad-channel-bridge__title" id="softPadChannelBridgeTitle">听写方式</h4>
+                        <p class="soft-pad-channel-bridge__body" id="softPadChannelBridgeBody">该识别通道在按键页配置。左侧 Soft Pad 预览仍可用；本场景动作在右侧栏。</p>
+                        <button type="button" class="soft-pad-channel-bridge__go" id="softPadChannelBridgeGo">去按键页 · 听写方式 →</button>
+                      </div>
+                    </aside>
+                  </div>
+                  <section class="soft-pad-mid-fn-swap" id="softPadFnSwapHost" hidden aria-label="换成别的功能">
+                    <div class="soft-pad-fn-softpad-block" id="softPadFnSoftPadBlock">
+                      <p class="soft-pad-layout-form__section-lbl" id="softPadFnSwapLbl" data-i18n="softPadKeyFnSwapLbl">换成别的功能</p>
+                      <div class="soft-pad-fn-subs" id="softPadFnSubs" role="tablist" aria-label="功能分类"></div>
+                      <div class="micro-hw-modal__cap-list soft-pad-layout-fn-swap__list" id="softPadCapList" role="listbox"></div>
+                    </div>
+                    <div class="soft-pad-fn-channel-block" id="softPadFnChannelBlock" hidden>
+                      <p class="soft-pad-layout-form__section-lbl" id="softPadFnChannelLbl">听写方式</p>
+                      <p class="soft-pad-fn-channel-lead" id="softPadFnChannelLead">点一项，绑到左侧正在编辑的键</p>
+                      <div class="soft-pad-layout-channel-card keys-voice-pick keys-softpad-pick" data-soft-pad-action-library="1" id="softPadFnChannelLib">
+                        <div class="soft-pad-action-list" data-soft-pad-action-list="1" role="listbox"></div>
+                        <p class="codex-pad-mgr__hint soft-pad-action-library__hint" data-soft-pad-action-hint="1"></p>
+                      </div>
+                    </div>
+                  </section>
                   <!-- retired pad-ring host (kept for legacy id lookups; always hidden) -->
                   <div class="soft-pad-pad-ring" id="softPadPadRing" hidden aria-hidden="true"></div>
                   <div class="soft-pad-ring-float" id="softPadRingFloat" hidden></div>
@@ -1297,6 +1303,76 @@
               </div>
               <div class="soft-pad-empty" id="softPadEmpty" hidden></div>
             </div>
+            <!-- 右：应用绑定 + 本场景动作（Soft Pad 键盘在中栏） -->
+            <aside class="soft-pad-right-col soft-pad-right-col--purpose soft-pad-right-col--habits-only" id="softPadRightCol" aria-label="应用与本场景动作">
+              <p class="soft-pad-right-col__lbl" id="softPadPreviewColLbl">当前应用</p>
+              <div class="soft-pad-preview-hint soft-pad-preview-hint--slim" id="softPadPreviewHint">
+                <div class="soft-pad-bind-app" id="softPadBindApp">
+                  <button type="button" class="soft-pad-bind-app__btn" id="softPadBindAppBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="softPadBindAppMenu">
+                    <span class="soft-pad-bind-app__lbl" id="softPadBindAppLbl">绑定 · —</span>
+                    <span class="soft-pad-bind-app__chev" aria-hidden="true">▾</span>
+                  </button>
+                  <div class="soft-pad-bind-app__menu" id="softPadBindAppMenu" role="listbox" hidden></div>
+                </div>
+                <div class="keys-scheme-summary-meta soft-pad-preview-hint__meta soft-pad-preview-hint__meta--compact">
+                  <span class="keys-scheme-summary-item">
+                    <span class="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">灯效</span>
+                    <span class="keys-scheme-summary-val" id="softPadSummaryAgent">—</span>
+                  </span>
+                  <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
+                  <span class="keys-scheme-summary-item">
+                    <span class="keys-scheme-summary-lbl" id="softPadSummaryKeysLbl">键</span>
+                    <span class="keys-scheme-summary-val" id="softPadSummaryKeys">—</span>
+                  </span>
+                  <span class="keys-scheme-summary-item is-hidden" id="softPadSummaryTmWrap" hidden aria-hidden="true">
+                    <span class="keys-scheme-summary-lbl" id="softPadSummaryTmLbl">恢复点</span>
+                    <span class="keys-scheme-summary-val" id="softPadSummaryTm">即将接入</span>
+                  </span>
+                </div>
+                <div class="keys-scheme-summary-meta soft-pad-status-usage-meta" hidden aria-hidden="true">
+                  <span class="keys-scheme-summary-item">
+                    <span class="keys-scheme-summary-lbl" id="softPadSummaryAccountLbl">账号</span>
+                    <span class="keys-scheme-summary-val" id="softPadSummaryAccount">—</span>
+                  </span>
+                  <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
+                  <span class="keys-scheme-summary-item">
+                    <span class="keys-scheme-summary-lbl" id="softPadSummaryUsageLbl">额度</span>
+                    <span class="keys-scheme-summary-val" id="softPadSummaryUsage">—</span>
+                  </span>
+                  <span class="keys-scheme-summary-divider" aria-hidden="true"></span>
+                  <span class="keys-scheme-summary-item">
+                    <span class="keys-scheme-summary-lbl" id="softPadSummaryResetLbl">重置</span>
+                    <span class="keys-scheme-summary-val" id="softPadSummaryReset">—</span>
+                  </span>
+                </div>
+                <div class="soft-pad-preview-hint__actions keys-scheme-status-actions soft-pad-preview-hint__actions--slim">
+                  <button type="button" class="page-status-btn" id="btnSoftPadTestFg" data-cockpit-action="test-fg">测试</button>
+                  <button type="button" class="page-status-btn sr-only" id="btnSoftPadEditKeys" data-cockpit-action="edit-keys" tabindex="-1" aria-hidden="true">编辑键位</button>
+                </div>
+              </div>
+              <p class="soft-pad-right-col__lbl soft-pad-right-col__lbl--habits" id="softPadHabitsColLbl">本场景动作</p>
+              <aside class="keys-page-aside keys-scene-actions soft-pad-scene-keys" id="softPadSceneKeysPanel" hidden data-panel="dir" aria-label="本场景动作">
+                <div class="keys-scene-actions__head">
+                  <div class="keys-scene-actions__titles">
+                    <div class="keys-scene-actions__app" id="softPadSceneKeysApp" hidden>
+                      <img class="keys-scene-actions__app-ico" id="softPadSceneKeysAppIcon" alt="" width="20" height="20" hidden />
+                      <span class="keys-scene-actions__app-name" id="softPadSceneKeysAppName"></span>
+                    </div>
+                    <h3 class="keys-scene-actions__title" id="softPadSceneKeysTitle" data-i18n="keysSceneActionsTitle">习惯列表</h3>
+                    <p class="keys-scene-actions__meta" id="softPadSceneKeysMeta"></p>
+                  </div>
+                  <button type="button" class="keys-scene-actions__back" id="softPadSceneKeysBack" hidden data-i18n="keysSceneActionsBack">收起</button>
+                </div>
+                <div class="keys-scene-actions__dir" id="softPadSceneKeysDir" role="list"></div>
+                <div class="keys-scene-actions__detail" id="softPadSceneKeysDetail" hidden>
+                  <div class="keys-scene-actions__picks" id="softPadSceneKeysPicks"></div>
+                  <div class="keys-scene-actions__edit" id="softPadSceneKeysEdit"></div>
+                </div>
+                <div class="keys-scene-actions__foot">
+                  <button type="button" class="keys-hub-scheme-add" id="softPadSceneKeysAdd" data-i18n="keysSceneActionsAdd">＋ 新建动作</button>
+                </div>
+              </aside>
+            </aside>
             <aside class="keys-page-aside soft-pad-page-aside soft-pad-aside--secondary" id="softPadSchemeAside" hidden aria-hidden="true" aria-label="选应用">
               <section class="keys-aside-card soft-pad-scheme-card keys-hub-card" id="softPadSchemeCard">
                 <header class="keys-aside-card-head keys-hub-head">
@@ -1306,27 +1382,6 @@
                 <div class="keys-hub-schemes" id="softPadSchemeList" role="list"></div>
                 <button type="button" class="keys-hub-scheme-add" id="btnSoftPadEnsureCodex">+ 准备 Codex 虚拟键盘</button>
               </section>
-            </aside>
-            <aside class="keys-page-aside keys-scene-actions soft-pad-scene-keys" id="softPadSceneKeysPanel" hidden data-panel="dir" aria-label="本场景动作">
-              <div class="keys-scene-actions__head">
-                <div class="keys-scene-actions__titles">
-                  <div class="keys-scene-actions__app" id="softPadSceneKeysApp" hidden>
-                    <img class="keys-scene-actions__app-ico" id="softPadSceneKeysAppIcon" alt="" width="20" height="20" hidden />
-                    <span class="keys-scene-actions__app-name" id="softPadSceneKeysAppName"></span>
-                  </div>
-                  <h3 class="keys-scene-actions__title" id="softPadSceneKeysTitle" data-i18n="keysSceneActionsTitle">本场景动作</h3>
-                  <p class="keys-scene-actions__meta" id="softPadSceneKeysMeta"></p>
-                </div>
-                <button type="button" class="keys-scene-actions__back" id="softPadSceneKeysBack" hidden data-i18n="keysSceneActionsBack">收起</button>
-              </div>
-              <div class="keys-scene-actions__dir" id="softPadSceneKeysDir" role="list"></div>
-              <div class="keys-scene-actions__detail" id="softPadSceneKeysDetail" hidden>
-                <div class="keys-scene-actions__picks" id="softPadSceneKeysPicks"></div>
-                <div class="keys-scene-actions__edit" id="softPadSceneKeysEdit"></div>
-              </div>
-              <div class="keys-scene-actions__foot">
-                <button type="button" class="keys-hub-scheme-add" id="softPadSceneKeysAdd" data-i18n="keysSceneActionsAdd">＋ 新建动作</button>
-              </div>
             </aside>
           </div>
         </section>

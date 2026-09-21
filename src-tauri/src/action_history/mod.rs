@@ -13,7 +13,8 @@ pub use log::{
 };
 pub use model::ActionHistoryEntry;
 pub use summary::{
-    from_lane_nav, from_runtime_kind, from_semantic_route, from_send_key, mapping_label,
+    from_lane_nav, from_runtime_kind, from_semantic_route, from_send_key, from_soft_pad_press,
+    mapping_label,
 };
 
 use tauri::AppHandle;
@@ -69,6 +70,22 @@ pub fn record_lane_nav(
 ) -> ActionHistoryEntry {
     let entry = from_lane_nav(state, mapping_id, micro_key_id, action, ok, detail);
     record(entry)
+}
+
+/// One Soft Pad key-down. Key-up is not a second press.
+/// ponytail: persisted in the action-history log (same 7d window as habit stats).
+pub fn record_soft_pad_press(micro_key_id: &str) {
+    let id = micro_key_id.trim();
+    if id.is_empty() || id == "JOY" {
+        return;
+    }
+    let route = crate::codex_numpad_layer::lookup_route_by_micro_key(id);
+    let entry = from_soft_pad_press(
+        route.as_ref().map(|r| r.mapping_id.as_str()),
+        id,
+        route.as_ref().map(|r| r.slot_id.as_str()),
+    );
+    let _ = record(entry);
 }
 
 pub fn record_runtime_mirror(

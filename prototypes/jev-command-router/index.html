@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jev × OneTone · 语音命令候补路由</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #152033;
+      --muted: #5c6d82;
+      --faint: #8a98a8;
+      --line: rgba(21, 32, 51, 0.1);
+      --paper: #fff;
+      --stage: #e9eef4;
+      --cyan: #1a7f9e;
+      --cyan-deep: #0f6a86;
+      --green: #1a7a4c;
+      --amber: #a65c12;
+      --rose: #a13a2a;
+      --font: "IBM Plex Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(640px 280px at 8% -8%, rgba(26,127,158,.12), transparent 55%),
+        radial-gradient(420px 220px at 100% 0%, rgba(26,122,76,.07), transparent 50%),
+        var(--stage);
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { width: min(980px, 100%); margin: 0 auto; padding: 22px 14px 48px; }
+    .kicker {
+      margin: 0 0 4px; font-family: var(--mono); font-size: 10px; font-weight: 600;
+      letter-spacing: .07em; text-transform: uppercase; color: var(--cyan-deep);
+    }
+    h1 { margin: 0 0 8px; font-size: 22px; font-weight: 700; letter-spacing: -.03em; }
+    .lead { margin: 0 0 14px; font-size: 13px; line-height: 1.55; color: var(--muted); max-width: 42rem; }
+    .flow {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 16px;
+    }
+    @media (max-width: 720px) { .flow { grid-template-columns: 1fr 1fr; } }
+    .flow div {
+      background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
+      font-size: 11px; font-weight: 600; color: var(--muted);
+    }
+    .flow b { display: block; color: var(--ink); font-size: 12px; margin-bottom: 2px; }
+    .flow .on { border-color: rgba(26,127,158,.35); background: #f3fafc; }
+    .panel {
+      background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+      padding: 14px; margin-bottom: 12px; box-shadow: 0 10px 28px rgba(21,32,51,.05);
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+    label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    input[type="text"], select {
+      flex: 1; min-width: 180px; font: inherit; font-size: 14px; padding: 9px 11px;
+      border: 1px solid var(--line); border-radius: 10px; background: #f7f9fb;
+    }
+    button {
+      font: inherit; font-size: 13px; font-weight: 700; border: 0; border-radius: 10px;
+      padding: 9px 14px; cursor: pointer; background: var(--cyan-deep); color: #fff;
+    }
+    button.ghost { background: #eef3f7; color: var(--ink); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+    .chips button {
+      background: #fff; color: var(--muted); border: 1px solid var(--line);
+      font-size: 11px; font-weight: 600; padding: 5px 10px;
+    }
+    .chips button:hover { border-color: rgba(26,127,158,.4); color: var(--cyan-deep); }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    @media (max-width: 560px) { .meta { grid-template-columns: 1fr; } }
+    .meta label { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .steps { display: grid; gap: 8px; }
+    .step {
+      border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+      background: #fafcfd; font-size: 12px; line-height: 1.45;
+    }
+    .step .t { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--faint); margin-bottom: 4px; }
+    .step strong { color: var(--ink); }
+    .badge {
+      display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 8px;
+      border-radius: 999px; margin-left: 6px; vertical-align: middle;
+    }
+    .badge.auto { background: rgba(26,122,76,.12); color: var(--green); }
+    .badge.confirm { background: rgba(166,92,18,.12); color: var(--amber); }
+    .badge.ignore { background: rgba(161,58,42,.1); color: var(--rose); }
+    .badge.local { background: rgba(26,127,158,.12); color: var(--cyan-deep); }
+    .bars { margin-top: 8px; }
+    .bar { display: grid; grid-template-columns: 110px 1fr 42px; gap: 8px; align-items: center; margin: 4px 0; }
+    .bar span { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar i {
+      display: block; height: 8px; border-radius: 99px; background: #e3e9ef; overflow: hidden;
+    }
+    .bar i em { display: block; height: 100%; background: var(--cyan); border-radius: 99px; }
+    .bar b { font-family: var(--mono); font-size: 10px; color: var(--faint); text-align: right; }
+    .verdict {
+      margin-top: 12px; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid rgba(26,122,76,.25); background: #f3faf6;
+      font-size: 13px; line-height: 1.5;
+    }
+    .verdict.warn { border-color: rgba(166,92,18,.28); background: #fff8f0; }
+    .verdict.bad { border-color: rgba(161,58,42,.25); background: #fff5f3; }
+    .note { margin-top: 10px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+    code { font-family: var(--mono); font-size: 11px; background: #eef3f7; padding: 1px 5px; border-radius: 4px; }
+    .banner {
+      margin: 0 0 12px; padding: 10px 12px; border-radius: 12px;
+      border: 1px solid rgba(166,92,18,.28); background: #fff8f0;
+      font-size: 12px; line-height: 1.5; color: var(--ink); font-weight: 600;
+    }
+    .run-flash {
+      position: fixed; top: 14px; right: 14px; z-index: 20;
+      background: #0f6a86; color: #fff; font-size: 12px; font-weight: 700;
+      padding: 10px 14px; border-radius: 12px; box-shadow: 0 10px 28px rgba(15,106,134,.28);
+      opacity: 0; transform: translateY(-8px); pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .run-flash.show { opacity: 1; transform: translateY(0); }
+    button.pulse { transform: scale(.97); filter: brightness(1.08); }
+    .fake-toast {
+      margin-top: 8px; padding: 10px 12px; border-radius: 10px;
+      background: #1a2430; color: #e8eef3; font-size: 12px; font-weight: 600;
+      font-family: var(--mono); animation: toastIn .35s ease;
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    #out.rerun .step { animation: stepPulse .45s ease; }
+    @keyframes stepPulse {
+      0% { background: #e7f5fb; }
+      100% { background: #fafcfd; }
+    }
+  </style>
+</head>
+<body>
+  <div class="run-flash" id="runFlash" aria-live="polite"></div>
+  <div class="page">
+    <p class="kicker">Prototype · not wired into production</p>
+    <h1>Jev 候补判断 → OneTone 执行命令</h1>
+    <p class="banner">
+      本页只在浏览器里<strong>模拟判断</strong>，不会打开真实 Cursor / OneTone。
+      下面已有结果 = 已经跑通过；再点「跑一遍」若输入不变，结论相同，但会弹出右上角提示并刷新时间戳。
+    </p>
+    <p class="lead">
+      演示「说话 / 输入 → 本地精确口令 →（未命中）Jev 结构化 Choice → 置信度门 →
+      <code>route_semantic_action</code>」整条链路。当前页默认用 <b>mock Jev</b>（同 API 形状）；真机 Key 用旁边脚本探测。
+    </p>
+
+    <div class="flow" id="flow">
+      <div data-s="1"><b>1. 转写</b>ASR / 输入文本</div>
+      <div data-s="2"><b>2. 本地 KWS</b>精确别名优先</div>
+      <div data-s="3"><b>3. Jev</b>Choice + Noul + Score</div>
+      <div data-s="4"><b>4. 门控</b>auto / confirm / ignore</div>
+      <div data-s="5"><b>5. 执行</b>语义动作 dispatch</div>
+    </div>
+
+    <div class="panel">
+      <div class="chips" id="samples"></div>
+      <div class="row">
+        <input id="utter" type="text" placeholder="输入或点样例：帮我开一下命令面板" value="帮我开一下命令面板" />
+        <button type="button" id="run">跑一遍</button>
+        <button type="button" class="ghost" id="clear">清空结果</button>
+      </div>
+      <div class="meta">
+        <label>前台应用
+          <select id="fg"><option>Cursor</option><option>Codex</option><option>VS Code</option></select>
+        </label>
+        <label><input type="checkbox" id="dictating" /> 当前正在听写（dictating）</label>
+      </div>
+      <div class="steps" id="out"></div>
+      <p class="note">
+        自动完成条件：本地命中 <b>或</b> Jev <code>confidence ≥ 0.75</code> 且风险为 safe。
+        <code>input.send</code> 即使高置信也只到「确认」——与 OneTone 风险门一致。
+        生产接入点：<code>voice_command_router</code> 在 Keyword 未归类时再调 Jev，不要替换 wake/end/cancel 本地路径。
+      </p>
+    </div>
+  </div>
+
+  <script src="./router.js"></script>
+  <script>
+    (function () {
+    var R = window.JevOneToneRouter;
+    if (!R) {
+      document.getElementById('out').innerHTML =
+        '<div class="step"><strong>加载失败</strong>：请确认同目录有 router.js，并用 Chrome 直接打开本页。</div>';
+      return;
+    }
+    var COMMANDS = R.COMMANDS;
+    var localExactMatch = R.localExactMatch;
+    var mockJevDecide = R.mockJevDecide;
+    var decideDisposition = R.decideDisposition;
+    var CONFIDENCE_AUTO = R.CONFIDENCE_AUTO;
+    var CONFIDENCE_CONFIRM = R.CONFIDENCE_CONFIRM;
+
+    var samples = [
+      '命令面板',
+      '帮我开一下命令面板',
+      '新建一个对话',
+      '发送',
+      '算了取消吧',
+      '打开终端看看',
+      '这段代码怎么优化',
+      '小助手',
+    ];
+
+    var samplesEl = document.getElementById('samples');
+    samples.forEach(function (s) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = s;
+      b.addEventListener('click', function () {
+        document.getElementById('utter').value = s;
+        run();
+      });
+      samplesEl.appendChild(b);
+    });
+
+    function setFlow(active) {
+      document.querySelectorAll('#flow [data-s]').forEach(function (el) {
+        el.classList.toggle('on', Number(el.getAttribute('data-s')) <= active);
+      });
+    }
+
+    function pct(n) {
+      return (Math.round(n * 1000) / 10).toFixed(1) + '%';
+    }
+
+    var runCount = 0;
+
+    function flashRun(msg) {
+      var el = document.getElementById('runFlash');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(flashRun._t);
+      flashRun._t = setTimeout(function () {
+        el.classList.remove('show');
+      }, 1600);
+      var btn = document.getElementById('run');
+      btn.classList.add('pulse');
+      setTimeout(function () {
+        btn.classList.remove('pulse');
+      }, 160);
+    }
+
+    function run() {
+      runCount += 1;
+      var transcript = document.getElementById('utter').value;
+      var session = {
+        foreground: document.getElementById('fg').value,
+        dictating: document.getElementById('dictating').checked,
+      };
+      var out = document.getElementById('out');
+      out.innerHTML = '';
+      out.classList.remove('rerun');
+      void out.offsetWidth;
+      out.classList.add('rerun');
+
+      var now = new Date();
+      var stamp =
+        now.toLocaleTimeString('zh-CN', { hour12: false }) +
+        '.' +
+        String(now.getMilliseconds()).padStart(3, '0');
+      flashRun('第 ' + runCount + ' 次已跑完 · ' + stamp);
+
+      function step(title, html) {
+        var d = document.createElement('div');
+        d.className = 'step';
+        d.innerHTML = '<div class="t">' + title + '</div>' + html;
+        out.appendChild(d);
+      }
+
+      setFlow(1);
+      step(
+        '1 · transcript',
+        '<strong>' +
+          escapeHtml(transcript || '（空）') +
+          '</strong> · ' +
+          session.foreground +
+          (session.dictating ? ' · dictating' : '') +
+          ' · <code>run #' +
+          runCount +
+          ' @ ' +
+          stamp +
+          '</code>'
+      );
+
+      var local = localExactMatch(transcript);
+      setFlow(2);
+      if (local) {
+        step(
+          '2 · local KWS',
+          '精确命中 <strong>' +
+            local.label +
+            '</strong> <code>' +
+            local.id +
+            '</code>' +
+            ' <span class="badge local">跳过 Jev</span>' +
+            ' <span class="badge auto">自动执行</span>'
+        );
+        setFlow(5);
+        verdict(out, 'auto', local, null, true);
+        return;
+      }
+      step('2 · local KWS', '无精确别名命中 → 进入 Jev 候补');
+
+      setFlow(3);
+      var jev = mockJevDecide(transcript, session);
+      var ans = jev.answers;
+      var cmd = null;
+      for (var i = 0; i < COMMANDS.length; i++) {
+        if (COMMANDS[i].id === ans.command.choice) {
+          cmd = COMMANDS[i];
+          break;
+        }
+      }
+      var ranked = Object.keys(ans.command.probabilities)
+        .map(function (id) {
+          return [id, ans.command.probabilities[id]];
+        })
+        .sort(function (a, b) {
+          return b[1] - a[1];
+        })
+        .slice(0, 6);
+      var bars = ranked
+        .map(function (row) {
+          var id = row[0];
+          var p = row[1];
+          var label = id;
+          for (var j = 0; j < COMMANDS.length; j++) {
+            if (COMMANDS[j].id === id) label = COMMANDS[j].label;
+          }
+          return (
+            '<div class="bar"><span>' +
+            escapeHtml(label) +
+            '</span><i><em style="width:' +
+            Math.round(p * 100) +
+            '%"></em></i><b>' +
+            pct(p) +
+            '</b></div>'
+          );
+        })
+        .join('');
+
+      step(
+        '3 · Jev (mock)',
+        'Choice → <strong>' +
+          (cmd ? cmd.label : ans.command.choice) +
+          '</strong> · confidence <strong>' +
+          pct(ans.command.confidence) +
+          '</strong> · is_command <strong>' +
+          pct(ans.is_voice_command.noul) +
+          '</strong><div class="bars">' +
+          bars +
+          '</div>'
+      );
+
+      setFlow(4);
+      var disp = decideDisposition(ans, cmd);
+      var badge = disp === 'auto' ? 'auto' : disp === 'confirm' ? 'confirm' : 'ignore';
+      step(
+        '4 · gate',
+        '阈值 auto≥' +
+          CONFIDENCE_AUTO +
+          ' / confirm≥' +
+          CONFIDENCE_CONFIRM +
+          ' → <span class="badge ' +
+          badge +
+          '">' +
+          disp +
+          '</span>' +
+          (cmd && cmd.risk === 'confirm' ? '（send 类强制确认）' : '')
+      );
+
+      setFlow(5);
+      verdict(out, disp, cmd, ans, false);
+    }
+
+    function verdict(out, disp, cmd, ans, fromLocal) {
+      var v = document.createElement('div');
+      v.className =
+        'verdict' + (disp === 'confirm' ? ' warn' : disp === 'ignore' ? ' bad' : '');
+      if (disp === 'auto') {
+        v.innerHTML =
+          '<strong>判断：可以自动完成</strong>（模拟）调用 <code>dispatch_semantic_action_ids</code> → <code>' +
+          (cmd.actionId || cmd.id) +
+          '</code>（' +
+          cmd.label +
+          '）。' +
+          (fromLocal ? '本地口令路径，零云延迟。' : 'Jev 高置信 + safe，无需人点确认。') +
+          '<div class="fake-toast">[模拟] ' +
+          escapeHtml(sessionForeground()) +
+          ' ← 执行 ' +
+          escapeHtml(cmd.label) +
+          ' · 真实 Cursor 不会被打开</div>';
+      } else if (disp === 'confirm') {
+        v.innerHTML =
+          '<strong>判断：需确认后执行</strong>：匹配到 <code>' +
+          (cmd.actionId || cmd.id) +
+          '</code>，但风险门要求第二通道 / 用户确认（例如发送）。不能静默自动完成。' +
+          '<div class="fake-toast">[模拟] 等待用户确认 · 未派发</div>';
+      } else {
+        v.innerHTML =
+          '<strong>判断：不执行</strong>：当作听写正文或噪声忽略，不进入语义路由。' +
+          (ans
+            ? ' top=' + ans.command.choice + ', conf=' + pct(ans.command.confidence)
+            : '') +
+          '<div class="fake-toast">[模拟] ignore · 无 dispatch</div>';
+      }
+      out.appendChild(v);
+    }
+
+    function sessionForeground() {
+      return document.getElementById('fg').value;
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    document.getElementById('run').addEventListener('click', run);
+    document.getElementById('clear').addEventListener('click', function () {
+      document.getElementById('out').innerHTML = '';
+      setFlow(0);
+    });
+    document.getElementById('utter').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') run();
+    });
+    run();
+    })();
+  </script>
+</body>
+</html>

@@ -152,6 +152,32 @@ pub fn from_lane_nav(
     entry
 }
 
+pub fn from_soft_pad_press(
+    mapping_id: Option<&str>,
+    micro_key_id: &str,
+    slot_id: Option<&str>,
+) -> ActionHistoryEntry {
+    let key = micro_key_id.trim();
+    let mut entry = ActionHistoryEntry::new(
+        0,
+        crate::runtime_event::now_ms(),
+        "softPad",
+        "pad_press",
+        "executed",
+        format!("SoftPad · {key}"),
+    );
+    entry.mapping_id = mapping_id
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+    entry.slot_id = slot_id
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+    entry.detail = Some(format!("microKey={key}"));
+    entry
+}
+
 pub fn from_runtime_kind(
     source: &str,
     kind: &str,

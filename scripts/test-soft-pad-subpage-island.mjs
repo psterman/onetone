@@ -148,7 +148,17 @@ check('runtime delegates display panel', /function renderSoftPadRuntimePanel\([\
 check('display 归一 paint host', /function renderSoftPadDisplayPanel\([\s\S]*?resolveSoftPadSubpagePaintHost/.test(padJs));
 check('agent 归一 paint host', /function renderSoftPadAgentPanel\([\s\S]*?resolveSoftPadSubpagePaintHost/.test(padJs));
 check('导出 resolveSoftPadSubpagePaintHost', padJs.includes('resolveSoftPadSubpagePaintHost: resolveSoftPadSubpagePaintHost'));
-check('softPadLayoutEditorHost 读外层 panel', /function softPadLayoutEditorHost\([\s\S]*?data-soft-pad-panel/.test(padJs));
+check('softPadLayoutEditorHost 找 layout-editor', /function softPadLayoutEditorHost\([\s\S]*?data-soft-pad-layout-editor/.test(padJs));
+check('ensureSoftPadFnCatalogPainted 存在', padJs.includes('function ensureSoftPadFnCatalogPainted'));
+check('layout remount 同步打开编辑器', /function renderSoftPadLayoutPanel\([\s\S]*?openEditKeycap\(m, openId/.test(padJs));
+check('softPadPanelActive DOM 回退', /function softPadPanelActive\([\s\S]*?settingsPanelSoftPad/.test(padJs));
+check('右侧功能点选绑到蓝框键', padJs.includes('function focusedSoftPadKeyId') &&
+  /function applySoftPadCapabilityPick\([\s\S]*?focusedSoftPadKeyId\(/.test(padJs));
+check('预览下用量看板', padJs.includes('data-soft-pad-preview-stats') &&
+  padJs.includes('function paintSoftPadPreviewStats'));
+check('按键次数统计', padJs.includes('function fillSoftPadKeyPressStats') &&
+  padJs.includes('keyPresses'));
+check('功能分类点击重绘列表', /layoutActionSceneId = sid;[\s\S]{0,280}ensureSoftPadFnCatalogPainted\(live\)/.test(padJs));
 
 const islandTsx = readFileSync(join(root, 'src-islands/islands/soft-pad-subpage-island.tsx'), 'utf8');
 check('岛含 paint 节点', islandTsx.includes('data-soft-pad-subpage-paint'));
@@ -158,6 +168,9 @@ check('sync 不 emit 以免冲掉 Pad HTML', islandTsx.includes('Do NOT emit') |
 check('subpage 岛 layout 回填', islandTsx.includes('useLayoutEffect'));
 check('subpage 岛检测被擦空 paint', islandTsx.includes('paintTargetLooksEmpty'));
 check('island stale runtime skin guard', islandTsx.includes('runtimePanelMissingSkin'));
+check('island 保护打开中的 layout 编辑器', islandTsx.includes('editingOpen') &&
+  islandTsx.includes('data-soft-pad-layout-editor') &&
+  islandTsx.includes(':not([hidden])'));
 
 const domainTs = readFileSync(join(root, 'src-islands/domain/softPadSubpage.ts'), 'utf8');
 check('domain 调四面板', domainTs.includes('renderSoftPadLayoutPanel') && domainTs.includes('renderSoftPadAgentPanel'));

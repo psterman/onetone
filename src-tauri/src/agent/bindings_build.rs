@@ -84,6 +84,15 @@ pub fn default_cursor_key_for_slot(slot_id: &str) -> &'static str {
     }
 }
 
+/// Soft Pad workflows that fire by `slot_id` with no app chord.
+/// Empty `trigger_binding` is intentional — do not drop these routes.
+pub fn is_chordless_soft_pad_slot(slot_id: &str) -> bool {
+    matches!(
+        slot_id.trim(),
+        "pasteAndSend" | "runTargetSequence" | "summonCodex"
+    ) || slot_id.trim().starts_with("custom_")
+}
+
 /// Trae IDE: side chat is Ctrl+U (docs.trae.cn). Inline Ctrl+I is not the pad default.
 pub fn default_trae_key_for_slot(slot_id: &str) -> &'static str {
     match slot_id {
@@ -338,6 +347,12 @@ mod tests {
             "Ctrl+Shift+P"
         );
         assert_eq!(default_cursor_key_for_slot("summonCodex"), "");
+        assert_eq!(default_cursor_key_for_slot("pasteAndSend"), "");
+        assert!(is_chordless_soft_pad_slot("pasteAndSend"));
+        assert!(is_chordless_soft_pad_slot("runTargetSequence"));
+        assert!(is_chordless_soft_pad_slot("summonCodex"));
+        assert!(is_chordless_soft_pad_slot("custom_abc"));
+        assert!(!is_chordless_soft_pad_slot("stopOrSend"));
         assert_eq!(default_vscode_key_for_slot("commandPalette"), "Ctrl+Shift+P");
         assert_eq!(default_vscode_key_for_slot("cancel"), "Escape");
         assert_eq!(default_vscode_key_for_slot("quickChat"), "");

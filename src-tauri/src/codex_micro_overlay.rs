@@ -1142,15 +1142,26 @@ pub fn resolve_overlay_pad_micro_route(
             )
             .to_string()
         });
-    if trigger.is_empty() {
+    // pasteAndSend / runTargetSequence / summonCodex are Soft Pad workflows —
+    // they intentionally have no app chord; empty trigger must still resolve.
+    if trigger.is_empty()
+        && !crate::agent::bindings_build::is_chordless_soft_pad_slot(slot)
+    {
         return None;
     }
     let action_id = binding
-        .map(|b| b.action_id.clone())
+        .map(|b| b.action_id.trim().to_string())
+        .filter(|s| !s.is_empty())
         .unwrap_or_else(|| {
             crate::agent::templates::slot_by_id(slot)
                 .map(|s| s.action_id.to_string())
-                .unwrap_or_default()
+                .unwrap_or_else(|| {
+                    if crate::agent::bindings_build::is_chordless_soft_pad_slot(slot) {
+                        slot.to_string()
+                    } else {
+                        String::new()
+                    }
+                })
         });
     if action_id.is_empty() {
         return None;
@@ -1620,6 +1631,19 @@ fn mapping_for_soft_pad_target<'a>(
 fn active_codex_mapping_with_overlay(
     cfg: &VoiceConfig,
 ) -> Option<(&MappingEntry, &CodexMicroPadConfig)> {
+    let fg = crate::soft_pad_runtime::platform::read_foreground_evidence();
+    // Another app (Chrome, …): its page, else the universal baseline. Do not keep
+    // the last agent's keys just because that process is still running.
+    if fg.foreign_host {
+        if let Some(tid) = fg.app_target_id.as_deref() {
+            if let Some(hit) = mapping_for_soft_pad_target(cfg, tid) {
+                if hit.1.overlay_enabled {
+                    return Some(hit);
+                }
+            }
+        }
+        return crate::codex_numpad_layer::baseline_fallback_overlay_candidate(cfg);
+    }
     // Beginner MVP: Cursor habit / FG / alive → cursor-chat Soft Pad (not sticky Codex).
     if crate::cursor_beginner::should_prefer_cursor_soft_pad(cfg) {
         if let Some(hit) = mapping_for_soft_pad_target(
@@ -4611,22 +4635,36 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
         }
     }
 
-    // Soft Pad lane follows live FG (cached terminal-CLI probe; do not re-walk process tree here).
-    // Throttle recompute: at most once per second when FG kind changes.
+    // Soft Pad lane follows the live app, including non-agent windows (Chrome → 通用).
     {
-        static LAST_RECOMPUTE: std::sync::OnceLock<parking_lot::Mutex<(Option<crate::soft_pad_runtime::AgentKind>, std::time::Instant)>> =
+        static LAST_RECOMPUTE: std::sync::OnceLock<parking_lot::Mutex<(String, std::time::Instant)>> =
             std::sync::OnceLock::new();
         let slot = LAST_RECOMPUTE.get_or_init(|| {
-            parking_lot::Mutex::new((None, std::time::Instant::now() - std::time::Duration::from_secs(2)))
+            parking_lot::Mutex::new((
+                String::new(),
+                std::time::Instant::now() - std::time::Duration::from_secs(2),
+            ))
         });
-        let fg_kind = crate::app_identity::foreground_effective_app_target_id()
-            .as_deref()
-            .and_then(crate::soft_pad_runtime::AgentKind::from_app_target);
-        let mut g = slot.lock();
-        let (prev_kind, last_at) = *g;
-        if prev_kind != fg_kind && last_at.elapsed() >= std::time::Duration::from_millis(1000) {
-            *g = (fg_kind, std::time::Instant::now());
-            drop(g);
+        let ev = crate::soft_pad_runtime::platform::read_foreground_evidence();
+        let fg_token = match (ev.agent_kind, ev.foreign_host) {
+            (Some(kind), _) => kind.as_str().to_string(),
+            (None, true) => format!(
+                "foreign:{}",
+                ev.app_target_id.as_deref().unwrap_or("")
+            ),
+            (None, false) => "idle".to_string(),
+        };
+        let mut changed = false;
+        {
+            let mut g = slot.lock();
+            let prev_token = g.0.clone();
+            let last_at = g.1;
+            if prev_token != fg_token && last_at.elapsed() >= std::time::Duration::from_millis(400) {
+                *g = (fg_token, std::time::Instant::now());
+                changed = true;
+            }
+        }
+        if changed {
             let cfg = state.cfg.lock().clone();
             crate::soft_pad_runtime::request_soft_pad_recompute(&cfg);
         }
@@ -5311,6 +5349,49 @@ mod tests {
         capture_hero_ref: None,
         target_actions: vec![],
         }
+    }
+
+    #[test]
+    fn paste_and_send_resolves_with_empty_trigger() {
+        use crate::config::{AgentBinding, CodexMicroPadKeyRoute};
+        test_clear_fg_overrides();
+        let mut pad = crate::codex_numpad_layer::default_codex_micro_pad();
+        pad.enabled = true;
+        pad.overlay_enabled = true;
+        let mut found = false;
+        for k in &mut pad.keys {
+            if k.micro_key_id == "ACT10" {
+                k.slot_id = "pasteAndSend".into();
+                k.enabled = true;
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            pad.keys.push(CodexMicroPadKeyRoute {
+                micro_key_id: "ACT10".into(),
+                slot_id: "pasteAndSend".into(),
+                enabled: true,
+                ..Default::default()
+            });
+        }
+        let mut mapping = codex_mapping(pad);
+        mapping.agent_bindings = vec![AgentBinding {
+            slot_id: "pasteAndSend".into(),
+            action_id: "pasteAndSend".into(),
+            trigger_type: "key".into(),
+            trigger_binding: String::new(),
+            enabled: true,
+            ..Default::default()
+        }];
+        let mut cfg = VoiceConfig::default();
+        cfg.mappings = vec![mapping];
+        let route = resolve_overlay_pad_micro_route(&cfg, "ACT10")
+            .expect("pasteAndSend must resolve without app chord");
+        assert_eq!(route.slot_id, "pasteAndSend");
+        assert_eq!(route.action_id, "pasteAndSend");
+        assert!(route.trigger_binding.is_empty());
+        test_clear_fg_overrides();
     }
 
     #[test]

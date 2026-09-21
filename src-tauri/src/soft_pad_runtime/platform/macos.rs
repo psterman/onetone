@@ -6,6 +6,8 @@ use std::time::Instant;
 pub fn read_foreground_evidence() -> ForegroundEvidence {
     ForegroundEvidence {
         agent_kind: None,
+        app_target_id: None,
+        foreign_host: false,
         observed_at: Instant::now(),
         sequence: 0,
     }

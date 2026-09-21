@@ -991,6 +991,7 @@ pub fn run() {
             ipc::cmd_request_runtime,
             ipc::cmd_debug_effective_scene,
             ipc::cmd_foreground_app,
+            ipc::cmd_habit_foreground_app,
             ipc::cmd_running_apps,
             ipc::cmd_app_icon,
             ipc::cmd_set_setup_interaction_active,

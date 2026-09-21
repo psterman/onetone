@@ -3423,6 +3423,7 @@ html[data-theme="dark"] .soft-pad-ring-float {
   display: flex;
   align-items: baseline;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 10px 0 0;
   min-height: 28px;
@@ -3436,19 +3437,12 @@ html[data-theme="dark"] .soft-pad-ring-float {
   font-size: 12px;
   font-weight: 700;
   color: var(--on-surface, #1e293b);
-  max-width: 70%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   opacity: 0.72;
 }
 .soft-pad-key-caption__chord {
   font-size: 11px;
   font-weight: 600;
   color: var(--on-surface-muted);
-  max-width: 28%;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .soft-pad-key-caption.is-active .soft-pad-key-caption__name {
@@ -8069,3 +8063,1359 @@ html[data-theme="dark"] .soft-pad-tray-ch-card__meta { color: #94a3b8; }
 }
 .soft-pad-tray-habits-btn:hover { border-color: rgba(42, 156, 196, 0.4); background: rgba(42, 156, 196, 0.08); }
 
+
+/* ── Soft Pad three-col IA (align prototypes/softpad-rail-merge) ── */
+#settingsPanelSoftPad .soft-pad-status-bar--slim {
+  padding-block: 8px;
+}
+#settingsPanelSoftPad .soft-pad-status-bar--slim .keys-scheme-summary-title-row {
+  margin-bottom: 0;
+}
+#settingsPanelSoftPad .soft-pad-status-bar--slim .page-status-bar-main {
+  width: 100%;
+}
+
+#settingsPanelSoftPad .soft-pad-page-body.soft-pad-page-body--three-col,
+#settingsPanelSoftPad .soft-pad-page-body--three-col.has-scene-panel,
+#settingsPanelSoftPad .soft-pad-page-body--three-col:has(.soft-pad-scene-keys:not([hidden])),
+#settingsPanelSoftPad:has(#softPadSceneKeysPanel:not([hidden])) .soft-pad-page-body--three-col {
+  display: grid !important;
+  grid-template-columns: minmax(200px, 220px) minmax(0, 1fr) minmax(300px, 340px) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+/* Soft Pad panel fills the settings wrap so three-col can stretch to the bottom */
+#settingsPanelSoftPad.soft-pad-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+#settingsPanelSoftPad.soft-pad-page::after {
+  display: none;
+}
+#settingsPanelSoftPad .soft-pad-status-bar--slim {
+  flex: 0 0 auto;
+}
+
+/* Kill legacy 2-col scene placement when three-col is on */
+#settingsPanelSoftPad .soft-pad-page-body--three-col.has-scene-panel > .soft-pad-scene-keys,
+#settingsPanelSoftPad:has(#softPadSceneKeysPanel:not([hidden])) .soft-pad-page-body--three-col > .soft-pad-scene-keys {
+  display: none !important; /* not a direct child anymore */
+}
+#settingsPanelSoftPad .soft-pad-page-body--three-col.has-scene-panel > .soft-pad-page-main,
+#settingsPanelSoftPad:has(#softPadSceneKeysPanel:not([hidden])) .soft-pad-page-body--three-col > .soft-pad-page-main {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+
+#settingsPanelSoftPad .soft-pad-page-body--three-col > .soft-pad-page-rail {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 8px 4px;
+  background: var(--keys-rail-bg, #eef3f7);
+  border-right: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  overflow: auto;
+  box-sizing: border-box;
+}
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-page-body--three-col > .soft-pad-page-rail {
+  background: rgba(18, 24, 36, 0.92);
+  border-right-color: rgba(255, 255, 255, 0.1);
+}
+
+.soft-pad-page-rail__sec {
+  margin: 6px 6px 4px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--on-surface-muted, #8494a6);
+  flex: 0 0 auto;
+}
+.soft-pad-page-rail__nav {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow: auto;
+  padding: 0;
+  gap: 1px;
+}
+.soft-pad-page-rail__item {
+  appearance: none;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.3;
+  text-align: left;
+  color: var(--on-surface-muted, #5a6b7c);
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+.soft-pad-page-rail__item:hover,
+.soft-pad-page-rail__item:focus-visible {
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--on-surface, #13202c);
+  outline: none;
+}
+.soft-pad-page-rail__item.is-active {
+  background: #fff;
+  color: var(--primary-deep, #0f5f7a);
+  font-weight: 650;
+  box-shadow: 0 1px 2px rgba(19, 32, 44, 0.06);
+}
+html[data-theme="dark"] .soft-pad-page-rail__item:hover,
+html[data-theme="dark"] .soft-pad-page-rail__item:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .soft-pad-page-rail__item.is-active {
+  background: rgba(42, 156, 196, 0.16);
+  color: #7dd3fc;
+  box-shadow: none;
+}
+
+#settingsPanelSoftPad .soft-pad-page-body--three-col > .soft-pad-page-main {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-soft, #f3f7fa);
+  border-right: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  overflow: hidden;
+}
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-page-body--three-col > .soft-pad-page-main {
+  background: rgba(14, 20, 30, 0.55);
+  border-right-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Mid desk: Soft Pad keyboard (center) + detail panel */
+.soft-pad-face-pad--desk {
+  display: flex !important;
+  flex-direction: column;
+  grid-template-columns: none !important;
+  gap: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  width: 100%;
+  align-items: stretch;
+  align-content: stretch;
+}
+.soft-pad-face-pad--desk.soft-pad-face-pad--pad-mid {
+  display: grid !important;
+  /* Pad on the left, command list on the right.
+     !important beats .soft-pad-face-pad--desk { grid-template-columns: none !important }. */
+  grid-template-columns: minmax(300px, 1.25fr) minmax(220px, 0.9fr) !important;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+  min-height: 0;
+  height: 100%;
+}
+/* Command list starts hidden — pad must fill the mid stage, not leave an empty right track. */
+.soft-pad-face-pad--desk.soft-pad-face-pad--pad-mid:not(:has(.soft-pad-mid-fn-swap:not([hidden]))) {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+.soft-pad-face-pad--desk.soft-pad-face-pad--pad-mid:not(:has(.soft-pad-mid-fn-swap:not([hidden]))) .soft-pad-mid-stack {
+  grid-column: 1 / -1;
+}
+.soft-pad-mid-fn-swap {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 10px 12px;
+  background: var(--surface-soft, #f3f7fa);
+  border-left: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.soft-pad-mid-fn-swap[hidden] {
+  display: none !important;
+}
+.soft-pad-mid-fn-swap .soft-pad-layout-form__section-lbl {
+  flex: 0 0 auto;
+  margin: 0 2px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.soft-pad-fn-subs {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 2px 2px;
+}
+.soft-pad-fn-subs[hidden] {
+  display: none !important;
+}
+.soft-pad-fn-softpad-block,
+.soft-pad-fn-channel-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.soft-pad-fn-softpad-block[hidden],
+.soft-pad-fn-channel-block[hidden] {
+  display: none !important;
+}
+.soft-pad-fn-channel-lead {
+  margin: 0 2px;
+  font-size: 11.5px;
+  font-weight: 550;
+  line-height: 1.4;
+  color: var(--on-surface-muted, #8494a6);
+}
+.soft-pad-fn-channel-block .soft-pad-layout-channel-card,
+.soft-pad-fn-channel-block .keys-voice-pick {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  overflow: hidden;
+}
+.soft-pad-fn-channel-block .soft-pad-action-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.soft-pad-key-seq-cta__quiet {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--on-surface-muted, #8494a6);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.soft-pad-page-rail__badge {
+  display: none !important;
+}
+.soft-pad-page-rail__item.is-keys-page:not(.is-active) {
+  opacity: 1;
+}
+.soft-pad-fn-sub {
+  appearance: none;
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.14));
+  background: var(--surface, #fff);
+  color: var(--on-surface-muted, #5a6b7c);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.soft-pad-fn-sub:hover {
+  border-color: var(--primary-soft, #9bc6da);
+  color: var(--primary-deep, #0f5f7a);
+}
+.soft-pad-fn-sub.is-on {
+  background: var(--primary, #2a9cc4);
+  border-color: transparent;
+  color: #fff;
+}
+.soft-pad-mid-fn-swap .soft-pad-layout-fn-swap__list,
+.soft-pad-mid-fn-swap .soft-pad-layout-fn-swap__list.micro-hw-modal__cap-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  max-height: none !important;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 2px 4px;
+  align-content: stretch;
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-sap,
+.soft-pad-mid-fn-swap .micro-hw-modal__cap-card--sap.soft-pad-fn-sap {
+  margin-top: auto;
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-section {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-sizing: border-box;
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-section__desc--alone {
+  margin: 0 2px 2px;
+  font-size: 11.5px;
+  font-weight: 550;
+  line-height: 1.4;
+  color: var(--on-surface-muted, #8494a6);
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-section__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  align-items: start;
+  padding: 10px 10px;
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  text-align: left;
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-card .micro-hw-modal__cap-icon {
+  grid-row: 1 / span 3;
+  margin-top: 2px;
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-card .micro-hw-modal__cap-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-card .micro-hw-modal__cap-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-card .micro-hw-modal__cap-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface, #13202c);
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-card__detail {
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.4;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-card__meta {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--primary-deep, #0f5f7a);
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-card.is-selected {
+  border-color: var(--primary-soft, #9bc6da);
+  background: var(--primary-container, #e4f2f9);
+  box-shadow: 0 0 0 1px rgba(42, 156, 196, 0.2);
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-card.is-on-pad:not(.is-selected) {
+  border-color: rgba(42, 156, 196, 0.28);
+}
+.soft-pad-mid-stack--fused {
+  margin: 0;
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-self: stretch;
+  border-radius: 0;
+  border: 0;
+  background: var(--surface-soft, #f3f7fa);
+  box-shadow: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.soft-pad-mid-stack--fused .soft-pad-mid-pad {
+  flex: 0 0 auto;
+  padding: 12px 14px 8px;
+  background: transparent;
+  align-items: center;
+}
+.soft-pad-mid-stack--fused .soft-pad-mid-pad__lbl,
+.soft-pad-mid-stack--fused .soft-pad-mid-pad__hint,
+.soft-pad-mid-stack--fused .soft-pad-mid-pad__foot {
+  width: 100%;
+}
+.soft-pad-mid-stack--fused .soft-pad-mid-pad__host.soft-pad-preview-host,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid .soft-pad-mid-stack--fused #softPadPreviewHost.soft-pad-preview-host {
+  width: 100%;
+  max-width: 340px;
+  margin-inline: auto;
+  background: var(--surface, #fff);
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  border-radius: 14px;
+  box-shadow: 0 8px 22px rgba(19, 32, 44, 0.06);
+}
+.soft-pad-mid-pad__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  width: 100%;
+}
+.soft-pad-mid-pad__hint {
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  font-weight: 550;
+  line-height: 1.4;
+  color: var(--on-surface-muted, #8494a6);
+  text-align: center;
+}
+/* Quiet escape hatch — not a primary CTA; matches beginner “弄乱了变回去”. */
+.soft-pad-mid-pad__restore {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.35;
+  color: var(--on-surface-faint, #8494a6);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.soft-pad-mid-pad__restore:hover {
+  color: var(--on-surface-muted, #5a6b7c);
+}
+.soft-pad-mid-pad__restore:focus-visible {
+  outline: 2px solid var(--primary, #2a9cc4);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.soft-pad-mid-stack--fused .soft-pad-mid-ability {
+  border-top: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.1));
+  background: var(--surface, #fff);
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.soft-pad-mid-stack--fused .soft-pad-work-tag[hidden],
+.soft-pad-mid-stack--fused .soft-pad-pad-tabs[hidden] {
+  display: none !important;
+}
+.soft-pad-mid-stack--fused .soft-pad-detail-panel,
+.soft-pad-mid-stack--fused .soft-pad-subpage-body,
+.soft-pad-face-pad--desk .soft-pad-mid-stack--fused .soft-pad-detail-panel,
+.soft-pad-face-pad--desk .soft-pad-mid-stack--fused .soft-pad-subpage-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  overflow: auto;
+}
+.soft-pad-mid-stack--fused .soft-pad-flat-bind-dock {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 10px 14px 14px;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+.soft-pad-mid-stack--fused .soft-pad-layout-shell--flat,
+.soft-pad-mid-stack--fused .soft-pad-layout-shell--key-first,
+.soft-pad-mid-stack--fused .soft-pad-layout-shell--pad-edit {
+  height: 100%;
+  min-height: 0;
+}
+.soft-pad-mid-stack--fused .soft-pad-layout-form__title {
+  margin-top: 0;
+}
+.soft-pad-layout-form__effect {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  font-weight: 550;
+  line-height: 1.45;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+html[data-theme="dark"] .soft-pad-fn-sub {
+  background: rgba(18, 24, 36, 0.72);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+}
+html[data-theme="dark"] .soft-pad-fn-sub.is-on {
+  background: var(--primary, #2a9cc4);
+  color: #fff;
+}
+html[data-theme="dark"] .soft-pad-mid-stack--fused {
+  background: rgba(14, 20, 30, 0.55);
+  border-color: transparent;
+  box-shadow: none;
+}
+html[data-theme="dark"] .soft-pad-mid-fn-swap .soft-pad-fn-card {
+  background: rgba(18, 24, 36, 0.55);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .soft-pad-mid-fn-swap .soft-pad-fn-card .micro-hw-modal__cap-title {
+  color: #e2e8f0;
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-sap,
+.soft-pad-mid-fn-swap .micro-hw-modal__cap-card--sap.soft-pad-fn-sap {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border: 1px dashed var(--outline-variant, rgba(26, 45, 74, 0.2));
+  border-radius: 10px;
+  background: transparent;
+  color: var(--on-surface-muted, #5a6b7c);
+  font-size: 12px;
+  font-weight: 650;
+  text-align: center;
+  justify-content: center;
+  display: block;
+}
+.soft-pad-mid-fn-swap .soft-pad-fn-sap:hover {
+  border-color: var(--primary-soft, #9bc6da);
+  color: var(--primary-deep, #0f5f7a);
+  background: rgba(42, 156, 196, 0.06);
+}
+html[data-theme="dark"] .soft-pad-mid-fn-swap .soft-pad-fn-section {
+  background: rgba(18, 24, 36, 0.72);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .soft-pad-mid-fn-swap .soft-pad-fn-section__ttl {
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .soft-pad-mid-fn-swap .soft-pad-fn-section__head {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.soft-pad-mid-stack {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-soft, #f3f7fa);
+}
+.soft-pad-mid-pad {
+  grid-column: unset;
+  grid-row: unset;
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  background: transparent;
+  border-right: 0;
+  overflow: auto;
+  box-sizing: border-box;
+}
+.soft-pad-mid-pad__lbl {
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+.soft-pad-mid-pad__host.soft-pad-preview-host,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost.soft-pad-preview-host {
+  flex: 0 1 auto;
+  min-height: 180px;
+  max-height: min(340px, 46vh);
+  position: static;
+  top: auto;
+  padding: 10px 8px 12px;
+  border-radius: 14px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  box-sizing: border-box;
+  overflow: auto;
+}
+.soft-pad-face-pad--pad-mid > .soft-pad-mid-stack > .soft-pad-face-pad__panel,
+.soft-pad-face-pad--pad-mid .soft-pad-mid-ability {
+  grid-column: unset;
+  grid-row: unset;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-top: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  background: var(--surface, #fff);
+}
+html[data-theme="dark"] .soft-pad-mid-fn-swap,
+html[data-theme="dark"] .soft-pad-mid-stack {
+  background: rgba(14, 20, 30, 0.55);
+  border-right-color: rgba(255, 255, 255, 0.1);
+  border-left-color: rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .soft-pad-mid-pad__host.soft-pad-preview-host,
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost {
+  background: rgba(18, 24, 36, 0.55);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .soft-pad-face-pad--pad-mid .soft-pad-mid-ability {
+  background: rgba(18, 24, 36, 0.55);
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+.soft-pad-face-pad--desk > .soft-pad-face-pad__panel {
+  grid-column: unset !important;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.soft-pad-face-pad--pad-mid > .soft-pad-face-pad__panel {
+  /* panel lives under preview inside .soft-pad-mid-stack */
+  grid-column: unset;
+  grid-row: unset;
+}
+@media (max-width: 1100px) {
+  .soft-pad-face-pad--desk.soft-pad-face-pad--pad-mid {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: minmax(180px, 0.7fr) minmax(0, 1.2fr);
+  }
+  .soft-pad-mid-stack {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .soft-pad-mid-fn-swap {
+    grid-column: 1;
+    grid-row: 2;
+    border-left: 0;
+    border-top: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+    max-height: none;
+  }
+}
+
+.soft-pad-work-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--on-surface-muted, #8494a6);
+  flex: 0 0 auto;
+}
+.soft-pad-work-tag__ch {
+  font-size: 10.5px;
+  font-weight: 650;
+  padding: 2px 7px;
+  border-radius: 999px;
+  letter-spacing: 0;
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 14%, #fff);
+  color: var(--primary-deep, #0f5f7a);
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 35%, transparent);
+}
+html[data-theme="dark"] .soft-pad-work-tag {
+  background: rgba(22, 30, 44, 0.95);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .soft-pad-work-tag__ch {
+  background: rgba(42, 156, 196, 0.16);
+  color: #7dd3fc;
+  border-color: rgba(42, 156, 196, 0.35);
+}
+
+.soft-pad-face-pad--desk .soft-pad-pad-tabs {
+  flex: 0 0 auto;
+  margin: 8px 12px 0;
+}
+.soft-pad-face-pad--desk .soft-pad-detail-panel,
+.soft-pad-face-pad--desk .soft-pad-detail-idle,
+.soft-pad-face-pad--desk .soft-pad-channel-bridge {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  align-self: stretch;
+  overflow: auto;
+  padding: 10px 12px 14px;
+}
+.soft-pad-face-pad--desk .soft-pad-subpage-body,
+.soft-pad-face-pad--desk .soft-pad-subpage-body > [data-soft-pad-subpage-paint],
+.soft-pad-face-pad--desk .soft-pad-subpage-body > .soft-pad-subpage-paint {
+  width: 100%;
+  max-width: none;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+.soft-pad-face-pad--desk .soft-pad-layout-shell--flat,
+.soft-pad-face-pad--desk .soft-pad-layout-shell--channel,
+.soft-pad-face-pad--desk .soft-pad-layout-shell--channel .soft-pad-layout-channel-card,
+.soft-pad-face-pad--desk .soft-pad-layout-shell--channel [data-soft-pad-action-library] {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+#settingsPanelSoftPad .soft-pad-page-body--three-col .soft-pad-hub-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  margin-bottom: 0;
+}
+#settingsPanelSoftPad .soft-pad-page-body--three-col .soft-pad-face-root {
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.soft-pad-channel-bridge {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+}
+.soft-pad-channel-bridge[hidden] {
+  display: none !important;
+}
+.soft-pad-channel-bridge__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  color: var(--on-surface);
+}
+.soft-pad-channel-bridge__body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+.soft-pad-channel-bridge__go {
+  align-self: flex-start;
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 40%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 12%, #fff);
+  color: var(--primary-deep, #0f5f7a);
+  border-radius: 9px;
+  padding: 8px 12px;
+  font: 700 12.5px/1.2 inherit;
+  cursor: pointer;
+}
+.soft-pad-channel-bridge__go:hover {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 22%, #fff);
+}
+
+/* Right: preview + hint + scene habits */
+#settingsPanelSoftPad .soft-pad-page-body--three-col > .soft-pad-right-col {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 10px 12px;
+  background: var(--keys-rail-bg, #eef3f7);
+  overflow: auto;
+  box-sizing: border-box;
+}
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-page-body--three-col > .soft-pad-right-col {
+  background: rgba(18, 24, 36, 0.92);
+}
+.soft-pad-right-col__lbl {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--on-surface-muted, #8494a6);
+  flex: 0 0 auto;
+}
+
+#settingsPanelSoftPad .soft-pad-page-body--three-col #softPadPreviewHost.soft-pad-preview-host,
+#settingsPanelSoftPad .soft-pad-right-col__preview.soft-pad-preview-host {
+  flex: 0 0 auto;
+  position: static;
+  top: auto;
+  max-height: none;
+  min-height: 200px;
+  padding: 8px 6px 10px;
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  overflow: hidden;
+}
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-right-col__preview.soft-pad-preview-host {
+  background: rgba(22, 30, 44, 0.95);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.soft-pad-preview-hint {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 2px 4px;
+  min-width: 0;
+}
+.soft-pad-preview-hint .soft-pad-bind-app {
+  margin-left: 0;
+  display: flex;
+  width: 100%;
+}
+.soft-pad-preview-hint .soft-pad-bind-app__btn {
+  width: 100%;
+  justify-content: space-between;
+  border-radius: 9px;
+}
+.soft-pad-preview-hint .soft-pad-bind-app__menu {
+  left: 0;
+  right: 0;
+  min-width: 0;
+  width: 100%;
+}
+.soft-pad-preview-hint__meta.keys-scheme-summary-meta,
+.soft-pad-preview-hint .keys-scheme-summary-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* display:flex above beats UA [hidden]; keep the account/quota/reset row off the scheme header */
+.soft-pad-preview-hint .soft-pad-status-usage-meta[hidden] {
+  display: none;
+}
+.soft-pad-preview-hint .keys-scheme-summary-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 11.5px;
+}
+.soft-pad-preview-hint .keys-scheme-summary-lbl {
+  color: var(--on-surface-muted);
+  font-weight: 600;
+}
+.soft-pad-preview-hint .keys-scheme-summary-val {
+  color: var(--on-surface);
+  font-weight: 700;
+}
+.soft-pad-preview-hint .keys-scheme-summary-divider {
+  width: 1px;
+  height: 11px;
+  background: var(--outline-variant);
+}
+.soft-pad-preview-hint__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.soft-pad-preview-hint__actions .page-status-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#settingsPanelSoftPad .soft-pad-page-body--three-col .soft-pad-right-col > .soft-pad-scene-keys,
+#settingsPanelSoftPad .soft-pad-page-body--three-col #softPadSceneKeysPanel {
+  flex: 1 1 auto;
+  min-height: 140px;
+  display: flex !important;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  grid-column: unset !important;
+  grid-row: unset !important;
+}
+#settingsPanelSoftPad .soft-pad-page-body--three-col #softPadSceneKeysPanel[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 960px) {
+  #settingsPanelSoftPad .soft-pad-page-body.soft-pad-page-body--three-col,
+  #settingsPanelSoftPad .soft-pad-page-body--three-col.has-scene-panel,
+  #settingsPanelSoftPad:has(#softPadSceneKeysPanel:not([hidden])) .soft-pad-page-body--three-col {
+    grid-template-columns: 1fr !important;
+    min-height: 0;
+  }
+  #settingsPanelSoftPad .soft-pad-page-body--three-col > .soft-pad-page-rail,
+  #settingsPanelSoftPad .soft-pad-page-body--three-col > .soft-pad-page-main,
+  #settingsPanelSoftPad .soft-pad-page-body--three-col > .soft-pad-right-col {
+    grid-column: 1 !important;
+    border-right: 0;
+  }
+}
+
+/* ── Soft Pad B：轨角标 · 扁平绑定 · 右栏预览用途+习惯 ── */
+.soft-pad-page-rail__item {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.soft-pad-page-rail__txt {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.soft-pad-page-rail__badge {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  font-weight: 750;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--on-surface-muted, #8494a6);
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  letter-spacing: 0;
+}
+.soft-pad-page-rail__item.is-keys-page:not(.is-active) {
+  opacity: 0.72;
+}
+.soft-pad-page-rail__item.is-active .soft-pad-page-rail__badge {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 14%, #fff);
+  color: var(--primary-deep, #0f5f7a);
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 35%, transparent);
+}
+html[data-theme="dark"] .soft-pad-page-rail__badge {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+}
+
+.soft-pad-layout-shell--flat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  padding: 2px 2px 8px;
+  flex: 1 1 auto;
+  align-items: stretch;
+  box-sizing: border-box;
+}
+.soft-pad-layout-shell--pad-edit {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.soft-pad-layout-shell--key-first {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.soft-pad-layout-shell--pad-edit .soft-pad-flat-bind-dock {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+.soft-pad-layout-form__section-lbl {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--on-surface-muted, #8494a6);
+}
+.soft-pad-layout-fn-swap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  margin-top: 4px;
+}
+.soft-pad-layout-fn-swap__list.micro-hw-modal__cap-list,
+.soft-pad-layout-editor .soft-pad-layout-fn-swap__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(320px, 42vh);
+  overflow: auto;
+  padding: 2px;
+}
+.soft-pad-layout-fn-swap__list .micro-hw-modal__cap-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: var(--surface-container-low, #f3f7fa);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.soft-pad-layout-fn-swap__list .micro-hw-modal__cap-card:hover {
+  border-color: var(--primary-soft, #9bc6da);
+}
+.soft-pad-layout-fn-swap__list .micro-hw-modal__cap-card.is-selected {
+  border-color: var(--primary-soft, #9bc6da);
+  background: var(--primary-container, #e4f2f9);
+}
+.soft-pad-layout-fn-swap__list .micro-hw-modal__cap-group {
+  margin: 8px 2px 2px;
+  font-size: 11px;
+  font-weight: 750;
+  color: var(--on-surface-muted, #8494a6);
+}
+.soft-pad-layout-fn-swap__list .micro-hw-modal__cap-icon {
+  width: 22px;
+  height: 22px;
+}
+.soft-pad-layout-fn-swap__list .micro-hw-modal__cap-title {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.soft-pad-app-cmd {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+.soft-pad-app-cmd__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 0 2px;
+}
+.soft-pad-app-cmd__title {
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--on-surface, #13202c);
+}
+.soft-pad-app-cmd__meta {
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--on-surface-muted, #8494a6);
+  white-space: nowrap;
+}
+.soft-pad-app-cmd .soft-pad-flat-bind {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+html[data-theme="dark"] .soft-pad-app-cmd__title {
+  color: #e2e8f0;
+}
+/* bind-steps retired — mid-pad hint covers the two-step guidance */
+.soft-pad-bind-steps,
+.soft-pad-bind-steps__item,
+.soft-pad-bind-steps__arrow {
+  display: none !important;
+}
+.soft-pad-flat-bind-dock {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  border-radius: 12px;
+  background: #fff;
+  box-sizing: border-box;
+  overflow: auto;
+}
+.soft-pad-flat-bind-dock__idle {
+  margin: 12px auto;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--on-surface-muted, #5a6b7c);
+  text-align: center;
+  max-width: min(22em, 100%);
+  align-self: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+.soft-pad-flat-bind-dock:has([data-soft-pad-layout-editor]:not([hidden])) .soft-pad-flat-bind-dock__idle {
+  display: none;
+}
+.soft-pad-preview-stats {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin-top: 8px;
+}
+.soft-pad-preview-stats .soft-pad-agent-data-live__note,
+.soft-pad-preview-stats .soft-pad-cursor-live__state {
+  display: none;
+}
+.soft-pad-preview-stats .soft-pad-cursor-live,
+.soft-pad-preview-stats .soft-pad-agent-data-live {
+  margin: 0;
+}
+.soft-pad-key-stats {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.1));
+}
+.soft-pad-key-stats__title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+.soft-pad-key-stats__empty {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--on-surface-muted, #8494a6);
+}
+.soft-pad-key-stats__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12.5px;
+}
+.soft-pad-key-stats__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.soft-pad-key-stats__n {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.soft-pad-layout-shell--flat > .soft-pad-flat-bind-dock > .soft-pad-layout-editor,
+.soft-pad-layout-shell--pad-edit > .soft-pad-flat-bind-dock > .soft-pad-layout-editor {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: auto;
+}
+.soft-pad-layout-shell--flat > .soft-pad-flat-bind-dock > .soft-pad-layout-editor[hidden] {
+  display: none !important;
+}
+html[data-theme="dark"] .soft-pad-flat-bind-dock {
+  background: rgba(18, 24, 36, 0.55);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Keep zone/list styles for any legacy flat-bind hosts */
+.soft-pad-flat-bind-map {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 2px;
+}
+.soft-pad-flat-bind {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.soft-pad-flat-bind-zone__ttl {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--on-surface, #13202c);
+}
+.soft-pad-flat-bind-zone__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px;
+}
+.soft-pad-flat-bind__row {
+  appearance: none;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--on-surface, #13202c);
+  cursor: pointer;
+  text-align: left;
+  min-height: 52px;
+}
+.soft-pad-flat-bind__row.is-need {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 5%, #fff);
+}
+.soft-pad-flat-bind__row:hover,
+.soft-pad-flat-bind__row:focus-visible {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 40%, transparent);
+  outline: none;
+}
+.soft-pad-flat-bind__row.is-on {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 45%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 12%, #fff);
+  color: var(--primary-deep, #0f5f7a);
+}
+.soft-pad-flat-bind__row.is-need .soft-pad-flat-bind__note {
+  color: var(--primary-deep, #0f5f7a);
+}
+.soft-pad-flat-bind__k {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  padding: 5px 7px;
+  border-radius: 8px;
+  background: var(--surface-soft, #f3f7fa);
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  color: var(--primary-deep, #0f5f7a);
+  font-weight: 750;
+}
+.soft-pad-flat-bind__name { grid-column: 2; grid-row: 1; min-width: 0; }
+.soft-pad-flat-bind__note {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 11.5px;
+  color: var(--on-surface-muted, #8494a6);
+}
+
+.soft-pad-layout-shell--channel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 2px 4px 10px;
+  flex: 1 1 auto;
+}
+.soft-pad-layout-shell--channel .soft-pad-layout-channel-card,
+.soft-pad-layout-shell--channel [data-soft-pad-action-library] {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
+  border-radius: 12px;
+  background: #fff;
+  box-sizing: border-box;
+}
+.soft-pad-layout-shell--channel .soft-pad-action-list {
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow: auto;
+}
+.soft-pad-channel-open-keys {
+  appearance: none;
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--primary-deep, #0f5f7a);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.soft-pad-channel-open-keys:hover,
+.soft-pad-channel-open-keys:focus-visible {
+  color: var(--primary, #2a9cc4);
+  outline: none;
+}
+html[data-theme="dark"] .soft-pad-layout-shell--channel .soft-pad-layout-channel-card,
+html[data-theme="dark"] .soft-pad-layout-shell--channel [data-soft-pad-action-library] {
+  background: rgba(18, 24, 36, 0.55);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .soft-pad-channel-open-keys {
+  color: #7dd3fc;
+}
+
+#settingsPanelSoftPad .soft-pad-right-col--habits-only {
+  gap: 8px;
+}
+#settingsPanelSoftPad .soft-pad-right-col--habits-only > .soft-pad-preview-hint--slim {
+  flex: 0 0 auto;
+}
+#settingsPanelSoftPad .soft-pad-right-col--habits-only > .soft-pad-scene-keys,
+#settingsPanelSoftPad .soft-pad-right-col--habits-only #softPadSceneKeysPanel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+#settingsPanelSoftPad .soft-pad-preview-hint--slim {
+  padding: 4px 2px 2px;
+  gap: 6px;
+}
+#settingsPanelSoftPad .soft-pad-preview-hint--slim .soft-pad-bind-app__btn {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+#settingsPanelSoftPad .soft-pad-preview-hint__meta--compact {
+  gap: 6px;
+  font-size: 11px;
+}
+#settingsPanelSoftPad .soft-pad-preview-hint__actions--slim {
+  gap: 4px;
+}
+#settingsPanelSoftPad .soft-pad-preview-hint__actions--slim .page-status-btn {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  font-size: 11.5px;
+}
+#settingsPanelSoftPad .soft-pad-right-col__lbl--habits {
+  margin-top: 2px;
+}
+#settingsPanelSoftPad .soft-pad-page-body--three-col .soft-pad-right-col--purpose > .soft-pad-scene-keys,
+#settingsPanelSoftPad .soft-pad-page-body--three-col .soft-pad-right-col--purpose #softPadSceneKeysPanel {
+  flex: 1 1 auto;
+  min-height: 180px;
+}

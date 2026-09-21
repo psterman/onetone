@@ -415,13 +415,55 @@ pub struct MappingActionStats {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SoftPadKeyPressStat {
+    pub mapping_id: String,
+    pub micro_key_id: String,
+    pub slot_id: String,
+    pub count: u64,
+    pub last_ts_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ActionHistoryStatsResult {
     pub hours: u64,
     pub rows: Vec<MappingActionStats>,
+    pub key_presses: Vec<SoftPadKeyPressStat>,
 }
 
 fn day_bucket(ts_ms: u64) -> u64 {
     ts_ms / 86_400_000
+}
+
+fn soft_pad_press_key(entry: &ActionHistoryEntry) -> Option<(String, String, String)> {
+    if !entry.channel.eq_ignore_ascii_case("softPad") || entry.kind != "pad_press" {
+        return None;
+    }
+    let detail = entry.detail.as_deref().unwrap_or("");
+    let id = detail
+        .strip_prefix("microKey=")
+        .unwrap_or("")
+        .split(';')
+        .next()
+        .unwrap_or("")
+        .trim();
+    if id.is_empty() {
+        return None;
+    }
+    let mapping_id = entry
+        .mapping_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or("")
+        .to_string();
+    let slot_id = entry
+        .slot_id
+        .as_deref()
+        .map(str::trim)
+        .unwrap_or("")
+        .to_string();
+    Some((mapping_id, id.to_string(), slot_id))
 }
 
 /// Aggregate usage per mappingId within the last `hours` (None → 168 = 7d).
@@ -441,10 +483,23 @@ pub fn stats_by_mapping(hours: Option<u64>) -> ActionHistoryStatsResult {
     }
 
     let mut map: HashMap<String, Acc> = HashMap::new();
+    let mut key_acc: HashMap<(String, String), (u64, u64, String)> = HashMap::new();
     for e in merged
         .into_iter()
         .filter(|e| e.ts_ms >= cutoff && is_usage_entry(e))
     {
+        if let Some((mapping_id, micro_key_id, slot_id)) = soft_pad_press_key(&e) {
+            let slot = key_acc
+                .entry((mapping_id, micro_key_id))
+                .or_insert((0, 0, String::new()));
+            slot.0 += 1;
+            if e.ts_ms >= slot.1 {
+                slot.1 = e.ts_ms;
+                if !slot_id.is_empty() {
+                    slot.2 = slot_id;
+                }
+            }
+        }
         let key = e
             .mapping_id
             .as_deref()
@@ -491,7 +546,22 @@ pub fn stats_by_mapping(hours: Option<u64>) -> ActionHistoryStatsResult {
         })
         .collect();
     rows.sort_by(|a, b| b.count.cmp(&a.count).then(b.last_ts_ms.cmp(&a.last_ts_ms)));
-    ActionHistoryStatsResult { hours, rows }
+    let mut key_presses: Vec<SoftPadKeyPressStat> = key_acc
+        .into_iter()
+        .map(|((mapping_id, micro_key_id), (count, last_ts_ms, slot_id))| SoftPadKeyPressStat {
+            mapping_id,
+            micro_key_id,
+            slot_id,
+            count,
+            last_ts_ms,
+        })
+        .collect();
+    key_presses.sort_by(|a, b| b.count.cmp(&a.count).then(b.last_ts_ms.cmp(&a.last_ts_ms)));
+    ActionHistoryStatsResult {
+        hours,
+        rows,
+        key_presses,
+    }
 }
 
 /// Usage counts for each of the last `days` calendar buckets (oldest → newest).
@@ -611,6 +681,28 @@ mod tests {
         assert_eq!(row_a.by_channel.get("key").copied().unwrap_or(0), 1);
         assert_eq!(row_a.by_channel.get("voice").copied().unwrap_or(0), 1);
         assert!(stats.rows.iter().all(|r| r.mapping_id != "_unmapped"));
+        assert!(stats.key_presses.is_empty());
+
+        let mut press = ActionHistoryEntry::new(0, now, "softPad", "pad_press", "executed", "p");
+        press.mapping_id = Some("map-a".into());
+        press.slot_id = Some("toggleSidebar".into());
+        press.detail = Some("microKey=AG01".into());
+        record(press.clone());
+        record(press);
+        let mut other = ActionHistoryEntry::new(0, now, "softPad", "pad_press", "executed", "q");
+        other.mapping_id = Some("map-a".into());
+        other.detail = Some("microKey=SEARCH".into());
+        record(other);
+        let presses = stats_by_mapping(Some(24));
+        let ag = presses
+            .key_presses
+            .iter()
+            .find(|k| k.micro_key_id == "AG01")
+            .expect("AG01");
+        assert_eq!(ag.count, 2);
+        assert_eq!(ag.slot_id, "toggleSidebar");
+        assert_eq!(ag.mapping_id, "map-a");
+        assert!(presses.key_presses.iter().any(|k| k.micro_key_id == "SEARCH" && k.count == 1));
         assert!(tail(50, None, None, None, None)
             .entries
             .iter()

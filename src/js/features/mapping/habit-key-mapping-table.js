@@ -309,7 +309,8 @@
       '.keys-capture-popover','.keys-capture-popover-backdrop','.keys-channel-picker','.keys-channel-subtabs','.keys-channel-source-tabs','.keys-channel-panel',
       '.habit-flow-device-link','.keys-app-context-strip','.habit-flow-device-diagnostic',
       '.keys-app-chip','.keys-ime-pill','.btn-cancel-record',
-      '.keys-trigger-modes-block','#keysTriggerModeHost',
+      '.keys-trigger-modes-block','#keysTriggerModeHost','.keys-work-tag__modes','#keysPageRail',
+      '.keys-page-rail__nav','.keys-page-rail__item',
       '.codex-cap-item','.codex-cap-strip','.codex-cap-block','.codex-pack-host',
       'input','button','select','textarea','label',
       '.keys-trigger-mode-seg','.keys-trigger-conflict-btn','.keys-finish-delay-input'
@@ -385,6 +386,35 @@
         var key=e.key||e.code||'';
         if(key!=='Enter'&&key!==' '&&key!=='Spacebar'&&key!=='Space') return;
         handleKeycapFromEvent(e);
+      });
+    }
+    // Three-col: trigger keycap lives in #keysPageRail (outside #habitDefaultFlow).
+    var rail=$('keysPageRail');
+    if(rail&&!rail.__keysRailBound){
+      rail.__keysRailBound=true;
+      rail.addEventListener('click',function(e){
+        if(isInteractiveFlowTarget(e.target)&&!e.target.closest('.keys-keycap-host,.keys-step-key-area')) return;
+        var keyArea=e.target.closest&&e.target.closest('.keys-keycap-host,.keys-step-key-area');
+        if(!keyArea) return;
+        var stepFromKey=e.target.closest&&e.target.closest('[data-edit-step]');
+        var keyStep=stepFromKey&&stepFromKey.dataset.editStep;
+        if(keyStep==='trigger'){
+          e.preventDefault();
+          e.stopPropagation();
+          handleKeycapStep('trigger');
+        }
+      });
+      rail.addEventListener('keydown',function(e){
+        var key=e.key||e.code||'';
+        if(key!=='Enter'&&key!==' '&&key!=='Spacebar'&&key!=='Space') return;
+        var keyArea=e.target.closest&&e.target.closest('.keys-keycap-host,.keys-step-key-area');
+        if(!keyArea) return;
+        var stepFromKey=e.target.closest&&e.target.closest('[data-edit-step]');
+        if(stepFromKey&&stepFromKey.dataset.editStep==='trigger'){
+          e.preventDefault();
+          e.stopPropagation();
+          handleKeycapStep('trigger');
+        }
       });
     }
   }

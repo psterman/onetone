@@ -4667,7 +4667,10 @@ pub fn agent_key_binding_for_slot<'a>(
         b.enabled
             && b.slot_id == slot_id
             && b.trigger_type.eq_ignore_ascii_case("key")
-            && !b.trigger_binding.trim().is_empty()
+            && (!b.trigger_binding.trim().is_empty()
+                || crate::agent::bindings_build::is_chordless_soft_pad_slot(slot_id)
+                // Soft Pad custom: pad key is trigger; actionArgs.chord is SendInput only.
+                || b.action_id.trim() == "app.shortcut")
     })
 }
 
@@ -7231,6 +7234,10 @@ mod tests {
             "Ctrl+F",
             "Ctrl+`",
             "Ctrl+Shift+D",
+            "Ctrl+V",
+            "Ctrl+C",
+            "Ctrl+X",
+            "Ctrl+A",
         ] {
             assert!(
                 !bindings.iter().any(|b| b == forbidden),
@@ -7240,10 +7247,35 @@ mod tests {
         assert!(crate::key_chord::is_app_synthesize_target_chord("Ctrl+K"));
         assert!(crate::key_chord::is_app_synthesize_target_chord("Ctrl+N"));
         assert!(crate::key_chord::is_app_synthesize_target_chord("LCtrl+K"));
+        assert!(crate::key_chord::is_app_synthesize_target_chord("Ctrl+V"));
         assert!(crate::key_chord::is_pass_through_app_key("Enter"));
         assert!(crate::key_chord::is_pass_through_app_key("Escape"));
         assert!(!crate::key_chord::is_pass_through_app_key("Ctrl+Alt+N"));
         assert!(crate::key_chord::is_app_synthesize_target_chord("Ctrl+Alt+N"));
+    }
+
+    #[test]
+    fn soft_pad_paste_custom_must_not_register_ctrl_v() {
+        let mut m = VoiceConfig::default().mappings.remove(0);
+        m.id = "cursor-paste-steal".into();
+        m.app_target_id = "cursor-chat".into();
+        m.trigger_key = "PageDown".into();
+        m.agent_bindings.push(AgentBinding {
+            action_instance_id: "custom_paste".into(),
+            action_args: Some(serde_json::json!({ "chord": "Ctrl+V" })),
+            slot_id: "custom_paste".into(),
+            action_id: "app.shortcut".into(),
+            trigger_type: "key".into(),
+            trigger_binding: "Ctrl+V".into(),
+            enabled: true,
+            execution_mode: Some("execute".into()),
+            activation_scope: "foregroundApp".into(),
+        });
+        let bindings = hotkey_registration_bindings(&m);
+        assert!(
+            !bindings.iter().any(|b| crate::key_chord::chords_equivalent(b, "Ctrl+V")),
+            "Ctrl+V custom Soft Pad shortcut must not RegisterHotKey: {bindings:?}"
+        );
     }
 
     #[test]

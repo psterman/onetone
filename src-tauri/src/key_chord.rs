@@ -241,6 +241,11 @@ pub fn is_app_synthesize_target_chord(combo: &str) -> bool {
     if is_hold_to_talk_chord(c) || is_pass_through_app_key(c) {
         return true;
     }
+    // OS edit chords: Soft Pad "粘贴进来" customs used to RegisterHotKey(Ctrl+V)
+    // and steal paste from every app while OneTone was open.
+    if is_os_edit_chord(c) {
+        return true;
+    }
     // Keep in sync with agent::bindings_build::default_key_for_slot (non-empty rows).
     const TARGETS: &[&str] = &[
         "Ctrl+K",
@@ -261,6 +266,13 @@ pub fn is_app_synthesize_target_chord(combo: &str) -> bool {
         "Ctrl+Alt+S",
         "Ctrl+Alt+P",
         "Ctrl+Alt+Shift+P",
+        // Cursor command palette. RegisterHotKey steals it from Cursor (and from
+        // our own SendInput) so the palette never opens.
+        "Ctrl+Shift+P",
+        "Ctrl+Shift+Backspace",
+        "Ctrl+I",
+        "Alt+Left",
+        "Alt+Right",
         "Ctrl+Alt+R",
         "Ctrl+Alt+,",
         "Ctrl+Alt+.",
@@ -268,6 +280,12 @@ pub fn is_app_synthesize_target_chord(combo: &str) -> bool {
         "Ctrl+Alt+A",
     ];
     TARGETS.iter().any(|t| chords_equivalent(t, c))
+}
+
+/// Universal Windows edit shortcuts — must reach the focused app, never RegisterHotKey.
+pub fn is_os_edit_chord(combo: &str) -> bool {
+    const EDITS: &[&str] = &["Ctrl+V", "Ctrl+C", "Ctrl+X", "Ctrl+A"];
+    EDITS.iter().any(|t| chords_equivalent(t, combo.trim()))
 }
 
 /// Compare stored binding chord with live pressed chord (Ctrl+Alt+C ≈ LCtrl+LAlt+C).
@@ -795,12 +813,19 @@ mod tests {
     #[test]
     fn soft_pad_target_chords_are_synthesize_targets() {
         assert!(is_app_synthesize_target_chord("Ctrl+K"));
+        assert!(is_app_synthesize_target_chord("Ctrl+Shift+P"));
+        assert!(is_app_synthesize_target_chord("Ctrl+I"));
         assert!(is_app_synthesize_target_chord("Ctrl+N"));
         assert!(is_app_synthesize_target_chord("Ctrl+Alt+N"));
         assert!(is_app_synthesize_target_chord("Ctrl+Shift+D"));
         assert!(is_app_synthesize_target_chord("Enter"));
         assert!(is_app_synthesize_target_chord("Escape"));
         assert!(is_app_synthesize_target_chord("Ctrl+`"));
+        assert!(is_app_synthesize_target_chord("Ctrl+V"));
+        assert!(is_app_synthesize_target_chord("LCtrl+V"));
+        assert!(is_app_synthesize_target_chord("Ctrl+C"));
+        assert!(is_os_edit_chord("Ctrl+X"));
+        assert!(is_os_edit_chord("Ctrl+A"));
         // OneTone-side exclusive triggers stay registerable.
         assert!(!is_app_synthesize_target_chord("F13"));
         assert!(!is_app_synthesize_target_chord("Gamepad_A"));

@@ -64,6 +64,9 @@ function paintTargetLooksEmpty(host: HTMLElement | null, panel: string): boolean
   if (!host) return true;
   if (panel === 'layout') {
     return !(
+      host.querySelector('[data-soft-pad-flat-bind]') ||
+      host.querySelector('[data-soft-pad-flat-bind-dock]') ||
+      host.querySelector('.soft-pad-flat-bind-dock') ||
       host.querySelector('[data-soft-pad-action-library]') ||
       host.querySelector('[data-soft-pad-layout-editor]')
     );
@@ -95,11 +98,23 @@ function syncFromLegacy(): void {
   const staleRuntime =
     (next.panel === 'runtime' || next.panel === 'style') && runtimePanelMissingSkin(el);
   const wiped = !next.clear && !!next.panel && paintTargetLooksEmpty(el, next.panel);
+  const editingOpen =
+    !!el &&
+    next.panel === 'layout' &&
+    !next.clear &&
+    !!el.querySelector('[data-soft-pad-layout-editor]:not([hidden])');
   // Same sig → skip remount (避免 refresh 清掉 layout 内联编辑器)；
   // paintSubpage / clearSubpage 会改 model.sig（含 subpageToken）。
   // ponytail: stale runtime-only DOM (no skin) must repaint after appear+look merge.
   // Also: refreshAll remounts empty paint host — must refill even when sig unchanged.
   if (sig === currentSig && !staleRuntime && !wiped) return;
+  // Key form is open — do not wipe mid ability / right catalog with a layout remount.
+  if (editingOpen && !wiped && !staleRuntime) {
+    applySoftPadSubpageOuterAttrs(next);
+    currentSig = sig;
+    currentModel = next;
+    return;
+  }
   // Paint-target not in DOM yet (createRoot lag) — don't lock sig or retries will no-op.
   if (!el && !next.clear) return;
   applyPaint(next);

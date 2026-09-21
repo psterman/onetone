@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>按键设置 · 三列并列（起点瘦身 · 中栏现网）</title>
+  <title>按键设置 · 左轨细节方案（对齐语音意图轨）</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
@@ -32,17 +32,23 @@
       padding:10px 16px;background:#13202c;color:#c5d0de;font-size:12.5px;line-height:1.45;
     }
     .bar strong{color:#fff}
-    .bar em{font-style:normal;color:#7dd3fc;font-weight:650}
     .bar a{color:#7dd3fc;font-weight:650;text-decoration:none;margin-left:auto}
     .shell{width:min(1180px,100%);margin:16px auto 48px;padding:0 14px}
     .contract{
-      margin:0 0 12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;
+      margin:0 0 12px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;
       background:rgba(255,255,255,.92);font-size:12.5px;color:var(--muted);line-height:1.55;
     }
+    .contract h2{margin:0 0 8px;font-size:14px;font-weight:750;color:var(--ink)}
     .contract b{color:var(--ink)}
+    .contract ul{margin:6px 0 0;padding-left:1.2em}
+    .contract li{margin:3px 0}
     .contract code{
       font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--cyan-ink);
       background:var(--cyan-soft);border-radius:4px;padding:1px 5px;
+    }
+    .wire{
+      margin:10px 0 0;padding:10px 12px;border-radius:10px;background:#13202c;color:#c5d0de;
+      font-family:var(--mono);font-size:11px;line-height:1.45;white-space:pre;overflow:auto;
     }
 
     .frame{
@@ -77,53 +83,76 @@
     }
     .body{background:var(--wash);padding:10px 14px 16px;flex:1;display:flex;flex-direction:column;min-height:0}
 
-    /* 三列：左=触发键+目录 | 中=现网详情台 | 右本场景动作 */
     .desk{
-      flex:1;display:grid;grid-template-columns:168px minmax(0,1fr) 220px;
+      flex:1;display:grid;grid-template-columns:180px minmax(0,1fr) 220px;
       border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--paper);min-height:560px;
     }
     @media(max-width:960px){.desk{grid-template-columns:1fr}}
 
-    /* —— 左：触发键 + 下方目录（无用法动作列表） —— */
+    /* ========== 左轨契约（对齐 #voiceIntentRail）==========
+       表面：wash + 唯一右边线
+       起点：一张白卡，三件套（标题 / 主控件 / 一句 hint）
+       导航：section 标签 + 扁平行（主文 + 次文），无搜索、无嵌套卡、无分割线
+       禁入：触发方式、新建动作、冲突、检测进度、44px 旧 tab
+    */
     .rail{
-      background:var(--rail);border-right:1px solid var(--line);
-      padding:10px 8px;display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;
+      background:var(--rail);
+      border-right:1px solid var(--line);
+      padding:8px;
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-height:0;
+      overflow:auto;
     }
-    .start-slim{
-      padding:10px 8px 12px;background:#fff;border:1px solid var(--line);border-radius:10px;flex:none;
+    .rail-start{
+      flex:0 0 auto;
+      margin-bottom:4px;
+      padding:10px 8px 12px;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:10px;
     }
-    .start-slim .badge{
-      display:inline-block;font-size:10px;font-weight:750;
-      color:#fff;background:var(--cyan-ink);border-radius:999px;padding:2px 7px;margin-bottom:6px;
+    .rail-start__badge{
+      display:inline-block;
+      font-size:10px;font-weight:750;color:#fff;
+      background:var(--cyan-ink);border-radius:999px;padding:2px 7px;margin-bottom:6px;
     }
-    .start-slim h3{margin:0;font-size:12.5px;font-weight:750}
-    .keycap{
-      appearance:none;width:100%;margin-top:8px;border:1px solid var(--line);background:#fff;
-      border-radius:10px;padding:16px 8px;font:inherit;font-size:20px;font-weight:750;
-      cursor:pointer;text-align:center;color:var(--ink);font-family:var(--mono);
+    .rail-start__title{
+      margin:0;font-size:12.5px;font-weight:750;color:var(--ink);
     }
-    .keycap:hover{border-color:var(--cyan-bd)}
-    .start-slim .hint{margin:6px 0 0;font-size:10.5px;color:var(--faint);line-height:1.35;text-align:center}
+    .rail-start__key{
+      appearance:none;display:block;width:100%;margin-top:8px;
+      border:1px solid var(--line);background:#fff;border-radius:10px;
+      padding:12px 8px;font:inherit;font-size:15px;font-weight:750;
+      font-family:var(--mono);cursor:pointer;text-align:center;color:var(--ink);
+      transition:border-color .15s var(--ease);
+    }
+    .rail-start__key:hover{border-color:var(--cyan-bd)}
+    .rail-start__key.is-empty{color:var(--faint);font-family:var(--font);font-weight:650}
+    .rail-start__hint{
+      margin:6px 0 0;font-size:10.5px;color:var(--faint);line-height:1.35;text-align:center;
+    }
 
-    .dir{
-      flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;
-      padding:8px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto;
+    .rail-sec{
+      margin:6px 4px 2px;
+      font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint);
+      flex:0 0 auto;
     }
-    .dir .sec{margin:0 2px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint)}
-    .search{
-      width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 9px;
-      font:inherit;font-size:12px;background:var(--wash);color:var(--ink);
+    .rail-nav{display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-height:0}
+    .rail-item{
+      appearance:none;display:block;width:100%;box-sizing:border-box;
+      border:0;background:transparent;text-align:left;
+      padding:8px 10px;border-radius:8px;
+      font:inherit;font-size:12.5px;font-weight:650;color:var(--muted);
+      cursor:pointer;line-height:1.25;
     }
-    .tree{display:flex;flex-direction:column;gap:2px;margin-top:2px}
-    .subtab{
-      appearance:none;width:100%;border:0;background:transparent;text-align:left;
-      padding:8px 10px;border-radius:8px;font:inherit;font-size:12.5px;font-weight:650;
-      color:var(--muted);cursor:pointer;
-    }
-    .subtab:hover{background:var(--wash);color:var(--ink)}
-    .subtab.is-on{background:var(--cyan-soft);color:var(--cyan-ink)}
+    .rail-item:hover{background:rgba(255,255,255,.55);color:var(--ink)}
+    .rail-item.is-on{background:#fff;color:var(--cyan-ink);box-shadow:0 1px 2px rgba(19,32,44,.06)}
+    .rail-item .n{display:block;margin-top:2px;font-size:10.5px;font-weight:550;color:var(--faint)}
+    .rail-item.is-on .n{color:var(--cyan)}
 
-    /* —— 中：现网详情台（不再内嵌左树） —— */
+    /* —— 中 —— */
     .main{
       min-width:0;display:flex;flex-direction:column;min-height:0;background:var(--wash);
       border-right:1px solid var(--line);
@@ -131,18 +160,21 @@
     .main-tag{
       flex:none;padding:8px 12px;font-size:11px;font-weight:750;letter-spacing:.04em;
       color:var(--faint);background:#fff;border-bottom:1px solid var(--line);
-      display:flex;align-items:center;gap:8px;
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
     }
     .main-tag .pill-soft{
       font-size:10.5px;font-weight:650;padding:2px 7px;border-radius:999px;
       background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);
     }
+    .main-tag .mode-chip{
+      margin-left:auto;font-size:11px;font-weight:650;color:var(--muted);
+      border:0;background:transparent;cursor:pointer;padding:4px 6px;border-radius:6px;
+    }
+    .main-tag .mode-chip:hover{background:var(--wash);color:var(--cyan-ink)}
     .pane-right{
       flex:1;min-width:0;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px;
       background:var(--wash);
     }
-
-    /* 现网：听写键 hero 卡（中栏内保留） */
     .detail-hero{
       background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
     }
@@ -167,47 +199,6 @@
       background:#fff;color:var(--muted);cursor:pointer;
     }
     .ime-chip.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink)}
-
-    /* 现网：我录的键 split */
-    .detail-options{
-      background:#fff;border:1px solid var(--line);border-radius:12px;padding:0;overflow:hidden;
-      display:none;flex-direction:column;min-height:280px;
-    }
-    .detail-options.is-show{display:flex}
-    .custom-split{
-      flex:1;display:grid;grid-template-columns:160px minmax(0,1fr);min-height:260px;
-    }
-    .match-pane{border-right:1px solid var(--line);padding:10px;background:var(--rail);display:flex;flex-direction:column;gap:6px}
-    .match-head{display:flex;align-items:center;justify-content:space-between}
-    .match-head .lbl{margin:0;font-size:12px;font-weight:750}
-    .match-add{
-      width:28px;height:28px;border:1px solid var(--line);border-radius:8px;background:#fff;
-      font:inherit;font-size:16px;font-weight:700;cursor:pointer;color:var(--cyan-ink);
-    }
-    .match-item{
-      appearance:none;width:100%;border:1px solid transparent;background:#fff;border-radius:8px;
-      padding:8px;text-align:left;font:inherit;cursor:pointer;
-    }
-    .match-item.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft)}
-    .match-item .t{display:block;font-size:12.5px;font-weight:650}
-    .match-item .s{display:block;margin-top:2px;font-size:11px;color:var(--faint)}
-    .seq-detail{padding:12px;display:flex;flex-direction:column;gap:8px}
-    .seq-detail .lbl{margin:0;font-size:12px;font-weight:750}
-    .seq-name{
-      width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;
-    }
-    .seq-hint{margin:0;font-size:12px;color:var(--muted)}
-    .seq-steps{display:flex;flex-direction:column;gap:6px}
-    .seq-step{
-      border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;background:var(--wash);
-      display:flex;justify-content:space-between;gap:8px;
-    }
-    .seq-add{
-      appearance:none;border:1px dashed var(--line);background:transparent;border-radius:8px;
-      padding:8px;font:inherit;font-size:12.5px;font-weight:650;color:var(--cyan-ink);cursor:pointer;
-    }
-
-    /* 现网：说完后 */
     .finish-step{
       background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
     }
@@ -217,8 +208,6 @@
       background:#fff;color:var(--muted);cursor:pointer;
     }
     .seg.is-on{border-color:var(--cyan-bd);background:var(--cyan-soft);color:var(--cyan-ink)}
-
-    /* 其他通道占位（现网 keysChannelPanel） */
     .channel-panel{
       display:none;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;
       font-size:13px;color:var(--muted);line-height:1.5;min-height:160px;
@@ -226,16 +215,7 @@
     .channel-panel.is-show{display:block}
     .channel-panel h4{margin:0 0 6px;font-size:14px;font-weight:750;color:var(--ink)}
 
-    .tip-bar{
-      flex:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-      padding:8px 12px;border-top:1px solid var(--line);background:#fff;font-size:12px;color:var(--muted);
-    }
-    .tip-bar button{
-      margin-left:auto;border:0;background:none;font:inherit;font-size:12px;font-weight:650;
-      color:var(--cyan-ink);cursor:pointer;text-decoration:underline;
-    }
-
-    /* 右：本场景动作 */
+    /* —— 右 —— */
     .dock{
       background:#eef3f7;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:0;
     }
@@ -246,7 +226,6 @@
     }
     .dock__title{margin:0;font-size:14px;font-weight:750}
     .dock__meta{margin:0;font-size:12px;color:var(--faint)}
-    .dock__rule{height:1px;background:var(--line);flex:none}
     .dock__list{display:flex;flex-direction:column;gap:4px;flex:1}
     .dock__row{
       appearance:none;width:100%;border:1px solid transparent;background:#fff;border-radius:8px;
@@ -264,15 +243,37 @@
 </head>
 <body>
   <div class="bar">
-    <strong>按键设置 · 三列并列</strong>
-    <span>左<strong style="color:#fff;font-weight:650">触发键 + 目录</strong> · 中现网详情 · 右本场景动作</span>
+    <strong>左轨细节方案</strong>
+    <span>只做导航：起点录键 + 识别分类 · 对齐语音 <em>#voiceIntentRail</em></span>
     <a href="../voice-c2a-slim-fused/index.html">对照语音原型 →</a>
   </div>
 
   <div class="shell">
     <div class="contract">
-      <b>修订：</b>去掉「按一下 / 按住说话 / 切换开/关」用法列表。左栏上方仅触发键，
-      <b>目录</b>（搜索 + 通道分类）移到触发键下方。中栏保留现网详情内容（听写键卡 / 我录的键 / 说完后 / 其他通道）。
+      <h2>Design Read</h2>
+      产品设置左轨 · 给已在配场景的用户 · 冷静 Linear 密度 · 复用 OneTone cyan/wash，不另开审美。
+      拨盘：<b>VARIANCE 3 / MOTION 2 / DENSITY 5</b>
+      <ul>
+        <li><b>一职</b>：左栏只负责「录触发键」+「选识别通道」；触发方式 / 新建 / 冲突 / 检测 全部离场。</li>
+        <li><b>一表面</b>：wash 底 + 右边线 + 一张白起点卡 + 扁平行；禁止第二张白卡、搜索框、横分割线。</li>
+        <li><b>一对齐</b>：DOM/样式契约对齐 <code>#voiceIntentRail</code>（badge · title · phrase/key · hint · sec · item+.n）。</li>
+        <li><b>一脱钩</b>：生产实现用干净 <code>keys-rail*</code> 类；保留 JS id；去掉 <code>habit-flow-step / keys-channel-subtab</code> 遗产层。</li>
+      </ul>
+      <div class="wire">┌─ rail 180px ─────────────────────┐
+│ ┌ start ───────────────────────┐ │
+│ │ 起点                         │ │
+│ │ 触发键                       │ │
+│ │ [        F8 / 未设置       ] │ │  ← 唯一主控件（15px，对齐语音口令块）
+│ │ 点按录制                     │ │
+│ └──────────────────────────────┘ │
+│ 识别                             │  ← 原「目录」→ 与任务同名
+│ 听写方式                    IME  │
+│ 我录的键                    序列 │
+│ 口头指令                    注入 │
+│ …                                │
+└──────────────────────────────────┘
+  触发方式 → 中栏顶条次要 chip（录后只读展示 / 点开改）
+  新建动作 → 右栏脚</div>
     </div>
 
     <div class="frame">
@@ -293,125 +294,86 @@
 
       <div class="body">
         <div class="desk">
-          <!-- 左：触发键 + 下方目录 -->
-          <aside class="rail" aria-label="起点与目录">
-            <div class="start-slim">
-              <span class="badge">起点</span>
-              <h3>触发键</h3>
-              <button type="button" class="keycap" id="keycapBtn" title="点按录制">F8</button>
-              <p class="hint">点按录制</p>
+          <aside class="rail" aria-label="起点与识别">
+            <div class="rail-start">
+              <span class="rail-start__badge">起点</span>
+              <h3 class="rail-start__title">触发键</h3>
+              <button type="button" class="rail-start__key" id="keycapBtn" title="点按录制">F8</button>
+              <p class="rail-start__hint">点按录制</p>
             </div>
-            <div class="dir" id="keysChannelPaneLeft">
-              <p class="sec">目录</p>
-              <input class="search" type="search" placeholder="搜索功能…" aria-label="搜索识别功能" />
-              <nav class="tree" id="keysChannelSubtabs" role="tree" aria-label="识别分类">
-                <button type="button" class="subtab is-on" data-ch="ime">听写方式</button>
-                <button type="button" class="subtab" data-ch="key">我录的键</button>
-                <button type="button" class="subtab" data-ch="voice">口头指令</button>
-                <button type="button" class="subtab" data-ch="cursor">软件自带</button>
-                <button type="button" class="subtab" data-ch="softPad">屏幕按钮</button>
-                <button type="button" class="subtab" data-ch="camera">手势</button>
-              </nav>
-            </div>
+            <div class="rail-sec" id="keysChannelDirLbl">识别</div>
+            <nav class="rail-nav" id="keysChannelSubtabs" role="tablist" aria-label="识别分类">
+              <button type="button" class="rail-item is-on" data-ch="ime" role="tab" aria-selected="true">听写方式<span class="n">IME</span></button>
+              <button type="button" class="rail-item" data-ch="key" role="tab" aria-selected="false">我录的键<span class="n">序列</span></button>
+              <button type="button" class="rail-item" data-ch="voice" role="tab" aria-selected="false">口头指令<span class="n">注入</span></button>
+              <button type="button" class="rail-item" data-ch="cursor" role="tab" aria-selected="false">软件自带<span class="n">命令</span></button>
+              <button type="button" class="rail-item" data-ch="softPad" role="tab" aria-selected="false">屏幕按钮<span class="n">Pad</span></button>
+              <button type="button" class="rail-item" data-ch="camera" role="tab" aria-selected="false">手势<span class="n">摄像头</span></button>
+            </nav>
           </aside>
 
-          <!-- 中：现网详情（无左树） -->
           <main class="main" aria-label="工作间">
             <div class="main-tag">
               工作间
-              <span class="pill-soft">现网详情内容</span>
+              <span class="pill-soft" id="mainChannelPill">听写方式</span>
+              <button type="button" class="mode-chip" id="modeChip" title="触发方式（离左轨）">触发 · 按一下</button>
             </div>
             <div class="pane-right" id="keysChannelPaneRight">
-                <!-- 听写：hero 卡 + 说完后（现网结构） -->
-                <div id="imeBundle">
-                  <div class="detail-hero" id="keysCaptureHeroCard">
-                    <div class="step-head">
-                      <span class="step-num">1</span>
-                      <div>
-                        <h4>听写键</h4>
-                        <p>点键帽，按下你的听写快捷键</p>
-                      </div>
-                    </div>
-                    <div class="hero-keycap-row">
-                      <div class="hero-keycap">右 Alt</div>
-                      <span class="hero-act">重新录制</span>
-                    </div>
-                    <p class="hero-hint">输入法识别键 · 现网 #keysCaptureHeroCard 保留在中栏</p>
-                    <div class="ime-strip" id="imePresetStripMapping">
-                      <button type="button" class="ime-chip is-on">微信输入法</button>
-                      <button type="button" class="ime-chip">搜狗</button>
-                      <button type="button" class="ime-chip">系统听写</button>
-                      <button type="button" class="ime-chip">自定义…</button>
+              <div id="imeBundle">
+                <div class="detail-hero">
+                  <div class="step-head">
+                    <span class="step-num">1</span>
+                    <div>
+                      <h4>听写键</h4>
+                      <p>点键帽，按下你的听写快捷键</p>
                     </div>
                   </div>
-                  <section class="finish-step" id="keysImeFinishStep">
-                    <div class="step-head">
-                      <span class="step-num">2</span>
-                      <div>
-                        <h4>说完后</h4>
-                        <p>听写结束怎么收尾</p>
-                      </div>
-                    </div>
-                    <div class="finish-segs">
-                      <button type="button" class="seg is-on">回车发送</button>
-                      <button type="button" class="seg">仅停止</button>
-                      <button type="button" class="seg">延迟发送</button>
-                    </div>
-                  </section>
-                </div>
-
-                <!-- 我录的键：现网 custom-key-split -->
-                <div class="detail-options" id="keysCaptureKeyPanel">
-                  <div class="custom-split">
-                    <aside class="match-pane">
-                      <div class="match-head">
-                        <p class="lbl">自定义键</p>
-                        <button type="button" class="match-add" title="新建">+</button>
-                      </div>
-                      <button type="button" class="match-item is-on"><span class="t">粘贴说明并发送</span><span class="s">Ctrl+Alt+V · 4 步</span></button>
-                      <button type="button" class="match-item"><span class="t">清屏重来</span><span class="s">F9 · 2 步</span></button>
-                      <button type="button" class="match-item"><span class="t">待录序列</span><span class="s">待录触发键</span></button>
-                    </aside>
-                    <div class="seq-detail">
-                      <p class="lbl">动作序列</p>
-                      <input class="seq-name" type="text" value="粘贴说明并发送" />
-                      <p class="seq-hint">触发后依次执行。点 ＋ 添加步骤。</p>
-                      <div class="seq-steps">
-                        <div class="seq-step"><span>1 · 文本</span><span style="color:var(--faint)">粘贴剪贴板</span></div>
-                        <div class="seq-step"><span>2 · 按键</span><span style="color:var(--faint)">Enter</span></div>
-                        <div class="seq-step"><span>3 · 等待</span><span style="color:var(--faint)">200ms</span></div>
-                        <div class="seq-step"><span>4 · 按键</span><span style="color:var(--faint)">Ctrl+Enter</span></div>
-                      </div>
-                      <button type="button" class="seq-add">＋ 添加步骤</button>
-                    </div>
+                  <div class="hero-keycap-row">
+                    <div class="hero-keycap">右 Alt</div>
+                    <span class="hero-act">重新录制</span>
+                  </div>
+                  <p class="hero-hint">识别详情留在中栏 · 左栏不再嵌套通道面板</p>
+                  <div class="ime-strip">
+                    <button type="button" class="ime-chip is-on">微信输入法</button>
+                    <button type="button" class="ime-chip">搜狗</button>
+                    <button type="button" class="ime-chip">系统听写</button>
+                    <button type="button" class="ime-chip">自定义…</button>
                   </div>
                 </div>
-
-                <!-- 其他通道：现网 keysChannelPanel -->
-                <div class="channel-panel" id="keysChannelPanel">
-                  <h4 id="panelTitle">口头指令</h4>
-                  <p id="panelBody">现网通道列表面板占位 · 框架保留在中栏。</p>
-                </div>
+                <section class="finish-step">
+                  <div class="step-head">
+                    <span class="step-num">2</span>
+                    <div>
+                      <h4>说完后</h4>
+                      <p>听写结束怎么收尾</p>
+                    </div>
+                  </div>
+                  <div class="finish-segs">
+                    <button type="button" class="seg is-on">回车发送</button>
+                    <button type="button" class="seg">仅停止</button>
+                    <button type="button" class="seg">延迟发送</button>
+                  </div>
+                </section>
+              </div>
+              <div class="channel-panel" id="otherPanel" hidden>
+                <h4 id="otherTitle">通道详情</h4>
+                <p>中栏承载该通道的现网内容；左栏只切换分类。</p>
+              </div>
             </div>
-            <footer class="tip-bar">
-              <span>提示：先设左侧触发键，再选目录通道配置识别与收尾</span>
-              <button type="button">查看使用教程</button>
-            </footer>
           </main>
 
-          <!-- 右 -->
           <aside class="dock" aria-label="本场景动作">
             <div class="dock__app">
               <span class="dock__ico">C</span>
-              <span>Cursor</span>
+              <div>
+                <p class="dock__title">本场景动作</p>
+                <p class="dock__meta">Cursor · 3 条</p>
+              </div>
             </div>
-            <h3 class="dock__title">本场景动作</h3>
-            <p class="dock__meta">3 条 · 习惯动作</p>
-            <div class="dock__rule"></div>
             <div class="dock__list">
-              <button type="button" class="dock__row is-on"><span class="t">粘贴说明并发送</span><span class="s">我录的键 · 4 步</span></button>
-              <button type="button" class="dock__row"><span class="t">切换 Agent 模式</span><span class="s">软件自带 · Ctrl+.</span></button>
-              <button type="button" class="dock__row"><span class="t">打开 Chat</span><span class="s">软件自带 · Ctrl+L</span></button>
+              <button type="button" class="dock__row is-on"><span class="t">听写 · 右 Alt</span><span class="s">微信输入法</span></button>
+              <button type="button" class="dock__row"><span class="t">粘贴说明</span><span class="s">Ctrl+Alt+V</span></button>
+              <button type="button" class="dock__row"><span class="t">清屏</span><span class="s">F9</span></button>
             </div>
             <button type="button" class="dock__add">＋ 新建动作</button>
           </aside>
@@ -421,38 +383,35 @@
   </div>
 
   <script>
-    var EXTRA = {
-      voice: ['口头指令', '一词注入列表 · 现网 keysChannelPanel'],
-      cursor: ['软件自带', 'Cursor 快捷键目录 · 按场景浏览'],
-      softPad: ['屏幕按钮', 'Soft Pad 可绑能力列表'],
-      camera: ['手势', '摄像头已配置手势动作']
-    };
-
-    function show(ch) {
-      document.querySelectorAll('#keysChannelSubtabs .subtab').forEach(function (b) {
-        b.classList.toggle('is-on', b.getAttribute('data-ch') === ch);
-      });
+    (function () {
+      var nav = document.getElementById('keysChannelSubtabs');
+      var pill = document.getElementById('mainChannelPill');
       var ime = document.getElementById('imeBundle');
-      var key = document.getElementById('keysCaptureKeyPanel');
-      var panel = document.getElementById('keysChannelPanel');
-      ime.style.display = ch === 'ime' ? '' : 'none';
-      key.classList.toggle('is-show', ch === 'key');
-      var extra = EXTRA[ch];
-      panel.classList.toggle('is-show', !!extra);
-      if (extra) {
-        document.getElementById('panelTitle').textContent = extra[0];
-        document.getElementById('panelBody').textContent = extra[1];
-      }
-    }
-
-    document.getElementById('keysChannelSubtabs').addEventListener('click', function (ev) {
-      var b = ev.target.closest('.subtab');
-      if (b) show(b.getAttribute('data-ch'));
-    });
-    document.getElementById('keycapBtn').addEventListener('click', function () {
-      this.textContent = this.textContent === 'F8' ? 'F7' : 'F8';
-    });
-    show('ime');
+      var other = document.getElementById('otherPanel');
+      var otherTitle = document.getElementById('otherTitle');
+      var labels = {
+        ime: '听写方式', key: '我录的键', voice: '口头指令',
+        cursor: '软件自带', softPad: '屏幕按钮', camera: '手势'
+      };
+      nav.addEventListener('click', function (e) {
+        var btn = e.target.closest('.rail-item');
+        if (!btn || !nav.contains(btn)) return;
+        nav.querySelectorAll('.rail-item').forEach(function (el) {
+          el.classList.toggle('is-on', el === btn);
+          el.setAttribute('aria-selected', el === btn ? 'true' : 'false');
+        });
+        var ch = btn.getAttribute('data-ch');
+        pill.textContent = labels[ch] || ch;
+        var showIme = ch === 'ime';
+        ime.hidden = !showIme;
+        other.hidden = showIme;
+        if (!showIme) otherTitle.textContent = labels[ch] + ' · 详情占位';
+      });
+      document.getElementById('keycapBtn').addEventListener('click', function () {
+        this.textContent = this.textContent === 'F8' ? '未设置' : 'F8';
+        this.classList.toggle('is-empty', this.textContent === '未设置');
+      });
+    })();
   </script>
 </body>
 </html>

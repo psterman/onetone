@@ -188,6 +188,24 @@ html[data-font-scale="xl"] #settingsPanelVoiceWake:has(#voiceSceneActionsPanel:n
   align-items: start;
 }
 
+/* Keys three-col: beat the 2-col scene-dock rule above (rail | detail | scene). */
+html[data-font-scale="sm"] #settingsPanelKeys .keys-page-body.keys-page-body--three-col.has-scene-panel,
+html[data-font-scale="md"] #settingsPanelKeys .keys-page-body.keys-page-body--three-col.has-scene-panel,
+html[data-font-scale="lg"] #settingsPanelKeys .keys-page-body.keys-page-body--three-col.has-scene-panel,
+html[data-font-scale="xl"] #settingsPanelKeys .keys-page-body.keys-page-body--three-col.has-scene-panel,
+html[data-font-scale="sm"] #settingsPanelKeys .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+html[data-font-scale="md"] #settingsPanelKeys .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+html[data-font-scale="lg"] #settingsPanelKeys .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+html[data-font-scale="xl"] #settingsPanelKeys .keys-page-body.keys-page-body--three-col:has(> .keys-page-aside.keys-scene-actions:not([hidden])),
+html[data-font-scale="sm"] #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col,
+html[data-font-scale="md"] #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col,
+html[data-font-scale="lg"] #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col,
+html[data-font-scale="xl"] #settingsPanelKeys:has(#keysSceneActionsPanel:not([hidden])) .keys-page-body.keys-page-body--three-col {
+  display: grid !important;
+  grid-template-columns: 180px minmax(0, 1fr) minmax(200px, 240px) !important;
+  align-items: stretch !important;
+}
+
 html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-aside:not(.keys-scene-actions),
 html[data-font-scale="xl"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .keys-page-aside:not(.keys-scene-actions),
 html[data-font-scale="sm"] :is(#settingsPanelKeys, #settingsPanelVoiceWake) .voice-page-aside,

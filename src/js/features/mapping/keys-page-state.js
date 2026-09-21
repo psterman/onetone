@@ -2,7 +2,7 @@
   'use strict';
   var $=function(id){ return global.OneToneDom.$(id); };
   var STEPS=['trigger','target'];
-  var activeStep='trigger';
+  var activeStep='target';
 
   function panel(){
     return $('settingsPanelKeys');
@@ -35,13 +35,17 @@
     var p=panel();
     if(!p) return;
     p.classList.add('keys-page-desk');
+    // Ensure three-col body class survives any remount/class sync.
+    var body=p.querySelector('.keys-page-body');
+    if(body) body.classList.add('keys-page-body--three-col');
     STEPS.forEach(function(s){
       p.classList.toggle('is-step-'+s,s===step);
     });
     p.classList.remove('is-step-finish');
+    // Three-col desk: trigger rail + target detail stay visible together.
     p.querySelectorAll('[data-edit-step="trigger"],[data-edit-step="target"]').forEach(function(el){
       if(!el.classList.contains('habit-flow-step')) return;
-      el.classList.toggle('is-active-step',el.getAttribute('data-edit-step')===step);
+      el.classList.add('is-active-step');
     });
     if(global.OneToneKeysPageNav&&global.OneToneKeysPageNav.syncActive){
       global.OneToneKeysPageNav.syncActive(step);
@@ -51,20 +55,16 @@
   function scrollActiveStepIntoView(opts){
     var smooth=!(opts&&opts.smooth===false);
     var behavior=smooth?'smooth':'auto';
-    var nodes=$('keysFlowNodes');
-    if(nodes&&nodes.scrollIntoView){
-      nodes.scrollIntoView({behavior:behavior,block:'nearest'});
-    }
+    // Flow nodes are hidden in three-col desk — scroll the detail desk instead.
     var desk=$('keysDeskPanel');
     if(desk&&desk.scrollIntoView){
       desk.scrollIntoView({behavior:behavior,block:'nearest'});
       return;
     }
-    var p=panel();
-    if(!p) return;
-    var card=p.querySelector('.habit-flow-step.is-active-step');
-    if(!card||!card.scrollIntoView) return;
-    card.scrollIntoView({behavior:behavior,block:'nearest'});
+    var rail=$('keysPageRail');
+    if(rail&&rail.scrollIntoView){
+      rail.scrollIntoView({behavior:behavior,block:'nearest'});
+    }
   }
 
   function setStep(step,opts){

@@ -148,7 +148,7 @@ export function SoftPadStatusBarIsland(): JSX.Element {
 
 
 
-  const { brandTitle, name, status, statusCls, agent, keys, restorePoint, padEnabled, canToggle } = props;
+  const { brandTitle, name, status, statusCls, padEnabled, canToggle } = props;
 
   const toggleDisabled = !(canToggle ?? props.hasMapping);
 
@@ -172,23 +172,7 @@ export function SoftPadStatusBarIsland(): JSX.Element {
 
         </span>
 
-        <span className="sr-only" id="softPadSummaryAgent">
-
-          {agent}
-
-        </span>
-
-        <span className="sr-only" id="softPadSummaryKeys">
-
-          {keys || '—'}
-
-        </span>
-
-        <span className="sr-only" id="softPadSummaryTm">
-
-          {restorePoint || '—'}
-
-        </span>
+        {/* agent / keys / tm summary ids live in #softPadPreviewHint — do not duplicate here */}
 
         <span
 

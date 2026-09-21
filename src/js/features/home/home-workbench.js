@@ -2233,8 +2233,16 @@
   }
 
   var followFgPollTimer=null;
+  var lastExternalFg=null;
+  var lastFollowExe='';
+  // ponytail: one new habit per exe for this session. Next launch reuses it.
+  // Upgrade path: only create from「为当前前台配置」if empty habits get noisy.
+  var adoptedFgExe={};
 
   function isFollowFgEnabled(){
+    // App scenarios exist so the home habit follows the foreground app.
+    // The switch in the rail is hidden; a saved false used to leave「当前习惯」stuck on 通用.
+    if(hasAppScenarioMappings()) return true;
     var cfg=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
     return !!(cfg&&cfg.followForegroundAppScenario);
   }
@@ -2283,6 +2291,70 @@
     return baselineMappingId();
   }
 
+  function fgExeKey(identity){
+    return String(identity&&(identity.exeName||identity.exe_name)||'').toLowerCase();
+  }
+
+  function isTrayFgIdentity(identity){
+    var exe=fgExeKey(identity);
+    return exe==='explorer.exe'
+      ||exe==='shellexperiencehost.exe'
+      ||exe==='startmenuexperiencehost.exe'
+      ||exe==='searchhost.exe'
+      ||exe==='applicationframehost.exe'
+      ||exe==='textinputhost.exe'
+      ||exe==='lockapp.exe'
+      ||exe==='systemsettings.exe';
+  }
+
+  function rememberExternalFg(identity){
+    if(!identity||isSelfFgIdentity(identity)||isTrayFgIdentity(identity)) return;
+    if(!(identity.exeName||identity.exe_name)) return;
+    lastExternalFg=identity;
+  }
+
+  function habitIdentityFrom(res){
+    if(res&&!isSelfFgIdentity(res)&&!isTrayFgIdentity(res)&&(res.exeName||res.exe_name)){
+      rememberExternalFg(res);
+      return res;
+    }
+    return lastExternalFg;
+  }
+
+  function editorOnUniversal(){
+    var st=global.OneToneState&&global.OneToneState.state;
+    if(!st) return true;
+    var id=String(st.selectedMappingId||'').trim();
+    if(!id) return true;
+    var core=global.OneToneMappingCore;
+    var m=core&&core.byId?core.byId(id):null;
+    if(!m) return true;
+    var diff=global.OneToneHabitOverrideDiff;
+    if(diff&&diff.isGlobalBaselineMapping) return !!diff.isGlobalBaselineMapping(m,st.config||{},core);
+    return !String(m.appTargetId||'').trim();
+  }
+
+  function selectFollowedHabit(id,identity){
+    var exe=fgExeKey(identity);
+    if(!id||!exe||exe===lastFollowExe) return;
+    if(!editorOnUniversal()){
+      lastFollowExe=exe;
+      return;
+    }
+    lastFollowExe=exe;
+    var st=global.OneToneState&&global.OneToneState.state;
+    if(!st||String(st.selectedMappingId||'')===id) return;
+    st.selectedMappingId=id;
+    try{
+      if(global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.render) global.OneToneKeysPanelUi.render();
+    }catch(_){}
+    try{
+      if(global.OneToneHabitChannelStatusStrip&&global.OneToneHabitChannelStatusStrip.render){
+        global.OneToneHabitChannelStatusStrip.render();
+      }
+    }catch(_){}
+  }
+
   function syncFollowForegroundApp(){
     if(!isFollowFgEnabled()) return;
     try{
@@ -2290,38 +2362,57 @@
         &&global.OneToneAppSession.isBootSettling()) return;
     }catch(_){}
     if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
-    global.OneToneIpc.invoke('cmd_foreground_app',{}).then(function(res){
+    var invoke=global.OneToneIpc.invoke;
+    invoke('cmd_habit_foreground_app',{}).catch(function(){ return null; }).then(function(held){
+      if(held&&(held.exeName||held.exe_name)&&!isSelfFgIdentity(held)) return held;
+      return invoke('cmd_foreground_app',{});
+    }).then(function(res){
       if(!isFollowFgEnabled()) return;
+      var identity=habitIdentityFrom(res);
       var rt=global.OneToneRuntimeHabitControl;
-      if(rt&&rt.noteForegroundIdentity) rt.noteForegroundIdentity(res);
+      if(rt&&rt.noteForegroundIdentity) rt.noteForegroundIdentity(identity||res);
       try{
-        var appId=res&&(res.matchedPresetAppId||res.matched_preset_app_id||res.appId)||'';
+        var noted=identity||res;
+        var appId=noted&&(noted.matchedPresetAppId||noted.matched_preset_app_id||noted.appId)||'';
         if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.noteLaneForeground){
           global.OneToneSoftPadHub.noteLaneForeground(appId);
         }
       }catch(_){}
-      if(res&&global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow){
-        global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow(res);
+      if((identity||res)&&global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow){
+        global.OneToneHomeWorkbenchPanels.renderRuntimeStatusRow(identity||res);
       }
-      var id='';
-      if(rt&&rt.resolveActiveSceneId){
-        id=rt.resolveActiveSceneId(res);
-      }else{
-        id=desiredFollowFgSceneId(res);
+      if(!identity||isSelfFgIdentity(identity)||isTrayFgIdentity(identity)) return;
+      var act=global.OneToneSceneActivate;
+      if(rt&&rt.getPin&&rt.getPin()){
+        var pinned=rt.resolveActiveSceneId?rt.resolveActiveSceneId(identity):'';
+        if(pinned&&act&&act.activateScene) act.activateScene(pinned,{source:'foreground'});
+        return;
       }
-      if(!id) return;
-      if(res&&!isSelfFgIdentity(res)){
-        var act=global.OneToneSceneActivate;
-        if(act&&act.activateScene){
-          act.activateScene(id,{source:'foreground'});
-        }
+      var hub=global.OneToneHabitHub;
+      var hit=hub&&hub.findAppScenarioForIdentity?hub.findAppScenarioForIdentity(identity):null;
+      if(hit&&hit.id){
+        if(act&&act.activateScene) act.activateScene(String(hit.id),{source:'foreground'});
+        selectFollowedHabit(String(hit.id),identity);
+        return;
+      }
+      var base=baselineMappingId();
+      if(base&&act&&act.activateScene) act.activateScene(base,{source:'foreground'});
+      var exe=fgExeKey(identity);
+      if(!exe||adoptedFgExe[exe]) return;
+      if(!hub||!hub.adoptForegroundIdentity) return;
+      adoptedFgExe[exe]=true;
+      hub.adoptForegroundIdentity(identity);
+      var created=hub.findAppScenarioForIdentity?hub.findAppScenarioForIdentity(identity):null;
+      if(created&&created.id){
+        if(act&&act.activateScene) act.activateScene(String(created.id),{source:'foreground'});
+        selectFollowedHabit(String(created.id),identity);
       }
     }).catch(function(){});
   }
 
   function startFollowFgPoll(){
     if(followFgPollTimer) return;
-    followFgPollTimer=setInterval(syncFollowForegroundApp,2000);
+    followFgPollTimer=setInterval(syncFollowForegroundApp,800);
     // Boot FG is still the launcher / Cursor — immediate sync chained scheme
     // switches and kept the homepage reshuffling for seconds.
     try{
@@ -2434,6 +2525,15 @@
     }
     if(on) startFollowFgPoll();
     else stopFollowFgPoll();
+    if(on){
+      var cfgOn=global.OneToneState&&global.OneToneState.state&&global.OneToneState.state.config;
+      if(cfgOn&&!cfgOn.followForegroundAppScenario){
+        cfgOn.followForegroundAppScenario=true;
+        var persist=global.OneToneConfigPersist;
+        if(persist&&persist.saveAsync) persist.saveAsync({source:'followFg'});
+        else if(persist&&persist.save) persist.save();
+      }
+    }
   }
 
   function setFollowFgEnabled(on){

@@ -1,8 +1,6 @@
 //! Soft Pad runtime store: ShadowDecision (always) + Applied+routes (cutover).
 
-use crate::codex_numpad_layer::{
-    self, CodexNumpadRouteSnapshot, HookGateInstall, NumpadSourceKey,
-};
+use crate::codex_numpad_layer::{self, CodexNumpadRouteSnapshot, HookGateInstall};
 use crate::config::{agent_key_binding_for_slot, MappingEntry, VoiceConfig};
 use crate::soft_pad_runtime::model::{
     now_ms, AgentKind, ApplyError, AppliedDecisionInternal, AppliedSoftPadDecision, CandidateDecision,
@@ -11,7 +9,7 @@ use crate::soft_pad_runtime::model::{
 };
 use crate::soft_pad_runtime::platform::read_foreground_evidence;
 use crate::soft_pad_runtime::resolver::{
-    resolve_candidate, CandidateInput, DispatchReadyEntry,
+    resolve_candidate, AppPage, CandidateInput, DispatchReadyEntry,
 };
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -204,6 +202,8 @@ fn request_soft_pad_recompute_body(cfg: &VoiceConfig) {
         waiting_observed_at,
         now: Instant::now(),
         current_lane,
+        app_pages: collect_app_pages(cfg),
+        universal_mapping_id: universal_mapping_id(cfg),
     };
     let candidate = resolve_candidate(&input);
 
@@ -211,13 +211,7 @@ fn request_soft_pad_recompute_body(cfg: &VoiceConfig) {
         build_agent_routes_for_candidate(cfg, &candidate);
 
     let legacy_mapping = peek_legacy_dispatch_mapping();
-    let candidate_valid = match (&candidate.lane_kind, &candidate.mapping_id) {
-        (None, None) => true,
-        (Some(_), Some(id)) => cfg
-            .find_mapping_by_id(id)
-            .is_some_and(is_dispatch_ready),
-        _ => false,
-    };
+    let candidate_valid = candidate_page_valid(cfg, &candidate);
 
     let mut discard = false;
     runtime_mut(|rt| {
@@ -267,14 +261,10 @@ fn request_soft_pad_recompute_body(cfg: &VoiceConfig) {
                 waiting_observed_at,
                 now: Instant::now(),
                 current_lane,
+                app_pages: collect_app_pages(cfg),
+                universal_mapping_id: universal_mapping_id(cfg),
             });
-            let candidate_valid = match (&candidate.lane_kind, &candidate.mapping_id) {
-                (None, None) => true,
-                (Some(_), Some(id)) => cfg
-                    .find_mapping_by_id(id)
-                    .is_some_and(is_dispatch_ready),
-                _ => false,
-            };
+            let candidate_valid = candidate_page_valid(cfg, &candidate);
             let (agent_routes, agent_by_micro, flags) =
                 build_agent_routes_for_candidate(cfg, &candidate);
             let legacy_mapping = peek_legacy_dispatch_mapping();
@@ -411,7 +401,7 @@ fn apply_build_locked(
         prev_rev.max(1)
     };
 
-    let (routes, by_micro) = if candidate.lane_kind.is_none() {
+    let (routes, by_micro) = if candidate.mapping_id.is_none() {
         (HashMap::new(), HashMap::new())
     } else {
         (agent_routes, agent_by_micro)
@@ -434,6 +424,66 @@ fn apply_build_locked(
     rt.health = RuntimeHealth::Ready;
     rt.last_recompute_error = None;
     rt.status_revision = rt.status_revision.saturating_add(1);
+}
+
+fn candidate_page_valid(cfg: &VoiceConfig, candidate: &CandidateDecision) -> bool {
+    match (&candidate.lane_kind, &candidate.mapping_id) {
+        (None, None) => true,
+        (Some(_), Some(id)) => cfg.find_mapping_by_id(id).is_some_and(is_dispatch_ready),
+        (None, Some(id)) => cfg.find_mapping_by_id(id).is_some_and(is_app_or_universal_page),
+        _ => false,
+    }
+}
+
+fn is_app_or_universal_page(m: &MappingEntry) -> bool {
+    if !m.enabled {
+        return false;
+    }
+    m.codex_micro_pad
+        .as_ref()
+        .is_some_and(|p| p.enabled || p.overlay_enabled)
+}
+
+fn universal_mapping_id(cfg: &VoiceConfig) -> Option<String> {
+    let m = crate::config::find_global_baseline_mapping(cfg)?;
+    if !is_app_or_universal_page(m) {
+        return None;
+    }
+    Some(m.id.clone())
+}
+
+/// One page per non-agent app target. Overlay-enabled wins, then lower order.
+fn collect_app_pages(cfg: &VoiceConfig) -> Vec<AppPage> {
+    let mut best: Vec<(&MappingEntry, bool)> = Vec::new();
+    for m in &cfg.mappings {
+        if !is_app_or_universal_page(m) {
+            continue;
+        }
+        let tid = m.app_target_id.trim();
+        if tid.is_empty() || AgentKind::from_app_target(tid).is_some() {
+            continue;
+        }
+        let overlay = m
+            .codex_micro_pad
+            .as_ref()
+            .is_some_and(|p| p.overlay_enabled);
+        if let Some(slot) = best.iter_mut().find(|(cur, _)| cur.app_target_id.trim() == tid) {
+            let cur_overlay = slot.1;
+            let replace = (overlay && !cur_overlay)
+                || (overlay == cur_overlay && m.order < slot.0.order);
+            if replace {
+                *slot = (m, overlay);
+            }
+        } else {
+            best.push((m, overlay));
+        }
+    }
+    best.into_iter()
+        .map(|(m, _)| AppPage {
+            app_target_id: m.app_target_id.trim().to_string(),
+            mapping_id: m.id.clone(),
+        })
+        .collect()
 }
 
 pub fn collect_dispatch_ready(cfg: &VoiceConfig) -> Vec<DispatchReadyEntry> {
@@ -515,7 +565,7 @@ fn build_agent_routes_for_candidate(
     let Some(pad) = m.codex_micro_pad.as_ref() else {
         return (routes, by_micro, flags);
     };
-    if !pad.enabled || !m.enabled {
+    if !m.enabled || (!pad.enabled && !pad.overlay_enabled) {
         return (routes, by_micro, flags);
     }
 
@@ -535,11 +585,14 @@ fn build_agent_routes_for_candidate(
             continue;
         }
         let Some(binding) = agent_key_binding_for_slot(m, &route.slot_id) else {
+            let slot = route.slot_id.trim();
             let fallback = crate::agent::bindings_build::default_key_for_scenario(
                 m.app_target_id.trim(),
-                route.slot_id.trim(),
+                slot,
             );
-            if fallback.is_empty() {
+            if fallback.is_empty()
+                && !crate::agent::bindings_build::is_chordless_soft_pad_slot(slot)
+            {
                 continue;
             }
             let provider = if m.agent_provider_id.trim().is_empty() {
@@ -547,9 +600,18 @@ fn build_agent_routes_for_candidate(
             } else {
                 m.agent_provider_id.clone()
             };
-            let action_id = crate::agent::templates::slot_by_id(route.slot_id.trim())
+            let action_id = crate::agent::templates::slot_by_id(slot)
                 .map(|s| s.action_id.to_string())
-                .unwrap_or_default();
+                .unwrap_or_else(|| {
+                    if crate::agent::bindings_build::is_chordless_soft_pad_slot(slot) {
+                        slot.to_string()
+                    } else {
+                        String::new()
+                    }
+                });
+            if action_id.is_empty() {
+                continue;
+            }
             let is_hold = action_id == "startDictation"
                 || route.slot_id.eq_ignore_ascii_case("pushToTalk");
             let snapshot = CodexNumpadRouteSnapshot {
@@ -562,11 +624,12 @@ fn build_agent_routes_for_candidate(
                 is_hold,
             };
             if route.source_scan > 0 {
-                let source = NumpadSourceKey {
-                    scan: route.source_scan,
-                    extended: route.source_extended,
-                };
-                routes.insert(source.id(), snapshot.clone());
+                if let Some(source) = crate::codex_numpad_layer::normalize_numpad_physical(
+                    route.source_scan,
+                    route.source_extended,
+                ) {
+                    routes.insert(source.id(), snapshot.clone());
+                }
             }
             if !route.source_key.trim().is_empty() {
                 routes.insert(route.source_key.trim().to_string(), snapshot.clone());
@@ -591,7 +654,9 @@ fn build_agent_routes_for_candidate(
                 .to_string()
             }
         };
-        if trigger.is_empty() {
+        if trigger.is_empty()
+            && !crate::agent::bindings_build::is_chordless_soft_pad_slot(&route.slot_id)
+        {
             continue;
         }
         let provider = if m.agent_provider_id.trim().is_empty() {
@@ -611,11 +676,12 @@ fn build_agent_routes_for_candidate(
             is_hold,
         };
         if route.source_scan > 0 {
-            let source = NumpadSourceKey {
-                scan: route.source_scan,
-                extended: route.source_extended,
-            };
-            routes.insert(source.id(), snapshot.clone());
+            if let Some(source) = crate::codex_numpad_layer::normalize_numpad_physical(
+                route.source_scan,
+                route.source_extended,
+            ) {
+                routes.insert(source.id(), snapshot.clone());
+            }
         }
         if !route.source_key.trim().is_empty() {
             routes.insert(route.source_key.trim().to_string(), snapshot.clone());

@@ -724,6 +724,43 @@ pub fn run_slot(
     }
     let app = window.app_handle();
     let duration_ms = state.cfg.lock().key_press_duration_ms;
+    // 「新建」: Ctrl+N only creates a chat when Agent composer is focused.
+    // Soft Pad often leaves caret in the editor (Ctrl+N → New File). Punch like send.
+    if def.slot_id == "newThread" {
+        let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
+        let focused =
+            app_chat_workflow::focus_composer_for_send(&app, CURSOR_APP_TARGET_ID, duration_ms)
+                .is_ok();
+        if !focused {
+            crate::app_log::log_line(
+                state.as_ref(),
+                "cursor_beginner",
+                "newThread focus_composer_for_send failed",
+            );
+            return serde_json::json!({
+                "ok": false,
+                "reason": "focus_failed",
+                "message": "未能聚焦右侧 Agent 输入框，请先点一下对话框再按新建",
+                "slotId": def.slot_id,
+                "microKeyId": def.micro_key_id
+            });
+        }
+        std::thread::sleep(Duration::from_millis(100));
+        let sent = inject_beginner_hotkey(state, &mapping_id, def.slot_id, duration_ms);
+        if from_voice {
+            note_voice_activity();
+        }
+        crate::codex_micro_overlay::note_micro_key(def.micro_key_id, true);
+        drop(_pad_pass);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        return serde_json::json!({
+            "ok": sent,
+            "reason": if sent { "executed" } else { "failed" },
+            "slotId": def.slot_id,
+            "microKeyId": def.micro_key_id,
+            "mappingId": mapping_id,
+        });
+    }
     // 「发送」must land Enter in Cursor composer — Soft Pad/voice often leaves caret elsewhere.
     if def.slot_id == "stopOrSend" {
         crate::app_log::cursor_send_oplog(
@@ -939,18 +976,7 @@ pub fn run_slot(
             "slotId": def.slot_id
         });
     }
-    let (ok, reason, detail) = if def.action_id == "newThread" {
-        let sent = inject_beginner_hotkey(state, &mapping_id, def.slot_id, duration_ms);
-        (
-            sent,
-            if sent {
-                "executed".to_string()
-            } else {
-                "failed".to_string()
-            },
-            None::<String>,
-        )
-    } else {
+    let (ok, reason, detail) = {
         let result = crate::agent::dispatch::dispatch_semantic_action_ids(
             state,
             window,
@@ -1146,10 +1172,15 @@ pub fn heal_cursor_beginner_pad_slots(m: &mut config::MappingEntry) -> bool {
     };
     let mut changed = false;
     for route in &mut pad.keys {
-        if route.micro_key_id == "AG02" && route.slot_id.trim() != "continue" {
+        // Seed defaults only when unbound — never clobber a user Soft Pad remap
+        // (e.g. switchAgent on AG02 / numpad 9 was force-rewritten to continue).
+        if route.micro_key_id == "AG02" && route.slot_id.trim().is_empty() {
             route.slot_id = "continue".into();
             if route.ui_icon_id.trim().is_empty() || route.ui_icon_id == "fast" {
                 route.ui_icon_id = "fast".into();
+            }
+            if !route.enabled {
+                route.enabled = true;
             }
             changed = true;
         }
@@ -1161,11 +1192,14 @@ pub fn heal_cursor_beginner_pad_slots(m: &mut config::MappingEntry) -> bool {
                 changed = true;
             }
         }
-        // ACT08: cancelListen — disarm + Ctrl+Shift+Backspace (see run_slot).
-        if route.micro_key_id == CANCEL_LISTEN_MICRO_KEY && route.slot_id.trim() != "cancelListen" {
+        // ACT08: seed cancelListen only when empty (user may remap).
+        if route.micro_key_id == CANCEL_LISTEN_MICRO_KEY && route.slot_id.trim().is_empty() {
             route.slot_id = "cancelListen".into();
             if route.ui_icon_id.trim().is_empty() {
                 route.ui_icon_id = "reject".into();
+            }
+            if !route.enabled {
+                route.enabled = true;
             }
             changed = true;
         }
@@ -1260,6 +1294,43 @@ mod tests {
     }
 
     #[test]
+    fn soft_pad_fire_must_not_dead_end_new_thread_hold() {
+        // Soft Pad / physical AG01 used to return hold_required and never execute
+        // Ctrl+N, while stopOrSend (tap_hold_ms=0) still worked — "7 sends, 8 no new".
+        let src = include_str!("ipc/runtime_dispatch.rs");
+        let gate = src
+            .find("is_beginner_slot(&route.slot_id)")
+            .expect("cursor beginner Soft Pad gate");
+        let chunk = &src[gate..gate.saturating_add(900)];
+        assert!(
+            !chunk.contains("hold_required"),
+            "Soft Pad beginner fire must not dead-end newThread on hold_required"
+        );
+        assert!(
+            chunk.contains("spawn_cursor_beginner_tap"),
+            "Soft Pad beginner fire must still spawn beginner tap"
+        );
+        assert!(
+            src.contains("fire_codex_micro_pad_key(state, window, &route.micro_key_id, key_down, false)"),
+            "physical numpad must share Soft Pad fire path (Cursor newThread is Unsupported on provider)"
+        );
+        // newThread must punch Agent composer like send — else Ctrl+N becomes New File.
+        let beginner = include_str!("cursor_beginner.rs");
+        let nt = beginner
+            .find("if def.slot_id == \"newThread\"")
+            .expect("dedicated newThread branch");
+        let nt_chunk = &beginner[nt..nt.saturating_add(700)];
+        assert!(
+            nt_chunk.contains("focus_composer_for_send"),
+            "newThread must use focus_composer_for_send before Ctrl+N"
+        );
+        assert!(
+            nt_chunk.contains("SoftPadSendPassGuard"),
+            "newThread must punch Soft Pad click-through like send"
+        );
+    }
+
+    #[test]
     fn cancel_listen_slot_on_act08() {
         let def = slot_def("cancelListen").unwrap();
         assert_eq!(def.micro_key_id, CANCEL_LISTEN_MICRO_KEY);
@@ -1328,6 +1399,73 @@ mod tests {
         let dispatch = include_str!("ipc/runtime_dispatch.rs");
         assert!(dispatch.contains("pasteAndSend"));
         assert!(dispatch.contains("run_paste_and_send"));
+        // Empty chord must still route — Soft Pad workflow, not a Cursor hotkey.
+        assert!(crate::agent::bindings_build::is_chordless_soft_pad_slot(
+            "pasteAndSend"
+        ));
+        let overlay = include_str!("codex_micro_overlay.rs");
+        assert!(overlay.contains("is_chordless_soft_pad_slot"));
+        let store = include_str!("soft_pad_runtime/store.rs");
+        assert!(store.contains("is_chordless_soft_pad_slot"));
+    }
+
+    #[test]
+    fn beginner_heal_does_not_clobber_ag02_user_bind() {
+        use crate::codex_numpad_layer::default_codex_micro_pad;
+        use crate::config::{MappingEntry, TriggerMode};
+        let mut pad = default_codex_micro_pad();
+        pad.enabled = true;
+        pad.overlay_enabled = true;
+        for k in &mut pad.keys {
+            if k.micro_key_id == "AG02" {
+                k.slot_id = "switchAgent".into();
+                k.ui_icon_id = "agent".into();
+                k.enabled = true;
+            }
+        }
+        let mut m = MappingEntry {
+            id: "cursor".into(),
+            label: String::new(),
+            group: "默认".into(),
+            app_target_id: CURSOR_APP_TARGET_ID.into(),
+            voice_allow_bring_up_target: false,
+            codex_micro_pad: Some(pad),
+            trigger_key: "F1".into(),
+            target_key: "RAlt".into(),
+            enabled: true,
+            key_mode_enabled: true,
+            voice_mode_enabled: true,
+            order: 0,
+            trigger_mode: TriggerMode::Tap,
+            trigger_source: None,
+            source_key: String::new(),
+            source_time: String::new(),
+            interval_ms: 1200,
+            enter_delay_ms: 5000,
+            cancel_enabled: true,
+            auto_enter_enabled: true,
+            switch_keys: vec![],
+            native_key_restore: false,
+            trigger_device: String::new(),
+            long_press_ms: 500,
+            double_click_ms: 400,
+            ime_preset_id: String::new(),
+            app_behavior_rules: vec![],
+            voice_override: None,
+            camera_override: None,
+            voice_commands: vec![],
+            acoustic_voice_commands: vec![],
+            agent_template_id: String::new(),
+            agent_provider_id: String::new(),
+            agent_bindings: vec![],
+            time_machine_workspace: String::new(),
+            capture_hero_ref: None,
+            target_actions: vec![],
+        };
+        assert!(!heal_cursor_beginner_pad_slots(&mut m));
+        let pad = m.codex_micro_pad.as_ref().unwrap();
+        let ag02 = pad.keys.iter().find(|k| k.micro_key_id == "AG02").unwrap();
+        assert_eq!(ag02.slot_id, "switchAgent");
     }
 
     fn disarm_for_test() {

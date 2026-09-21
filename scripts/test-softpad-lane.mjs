@@ -94,6 +94,36 @@ assertResult([claudeOn, cursorOn], {
   waitingKinds: ['claude'],
 }, 'cursor', 'foreground');
 
+const universalOn = {
+  kind: 'universal',
+  padEnabled: false,
+  appId: '',
+  title: '通用',
+  mapping: { id: 'm-base', appTargetId: '' },
+};
+const chromeOn = {
+  kind: 'soft',
+  padEnabled: true,
+  appId: 'chrome',
+  title: 'Chrome',
+  mapping: { id: 'm-chrome', appTargetId: 'chrome' },
+};
+
+assertResult([cursorOn, universalOn], {
+  foreignHost: true,
+  waitingKinds: ['cursor'],
+}, 'universal', 'foreground');
+
+assertResult([cursorOn, universalOn, chromeOn], {
+  foreignHost: true,
+  foregroundAppId: 'chrome',
+}, 'soft', 'foreground');
+
+assertResult([cursorOn], {
+  foreignHost: true,
+  waitingKinds: ['cursor'],
+}, null, 'none');
+
 assertResult([], {}, null, 'none');
 
 // FE revision guard
@@ -113,6 +143,9 @@ assert.equal(Hub.ingestSoftPadRuntimeSnapshot({
 }), false, 'stale decisionRevision ignored');
 assert.equal(Hub.getCachedSoftPadRuntime().snap.applied.laneKind, 'claude');
 
+const hubSrc = readFileSync(join(root, 'src/js/features/agent/soft-pad-hub-ui.js'), 'utf8');
+assert.match(hubSrc, /function followForegroundOnce/);
+assert.match(hubSrc, /SOFT_PAD_UNIVERSAL_KIND/);
 const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
 assert.match(panels, /softPadSnapshotFromApplied|getCachedSoftPadRuntime/);
 assert.match(panels, /homeWbSoftPadControlConfirming|正在确认当前控制/);

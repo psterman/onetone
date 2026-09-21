@@ -259,6 +259,10 @@ impl AppliedDecisionInternal {
 #[derive(Debug, Clone)]
 pub struct ForegroundEvidence {
     pub agent_kind: Option<AgentKind>,
+    /// Preset id when the foreground window matched one (`cursor-chat`, …).
+    pub app_target_id: Option<String>,
+    /// Another app is in front: not OneTone, not a Soft Pad agent, not tray noise.
+    pub foreign_host: bool,
     pub observed_at: Instant,
     pub sequence: u64,
 }
