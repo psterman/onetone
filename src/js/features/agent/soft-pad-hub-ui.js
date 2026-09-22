@@ -1862,26 +1862,63 @@
     foregroundFollowTimer = setInterval(followForegroundOnce, 700);
   }
 
-  /** Switch the visible scene to the app in front. OneTone's own window does not pull it back. */
+  function refreshSoftPadEditChrome() {
+    try {
+      var Banner = global.OneToneHabitChannelEditBanner;
+      if (Banner && Banner.renderAll) Banner.renderAll();
+    } catch (_) {}
+    try {
+      if (global.OneToneHabitChannelStatusStrip && global.OneToneHabitChannelStatusStrip.render) {
+        global.OneToneHabitChannelStatusStrip.render();
+      }
+    } catch (_) {}
+  }
+
+  function isSelfFgRes(res) {
+    if (!res) return true;
+    var exe = String(res.exeName || res.exe_name || '').toLowerCase();
+    var path = String(res.fullPath || res.full_path || '').toLowerCase();
+    if (!exe) return true;
+    return exe.indexOf('onetone') >= 0 || path.indexOf('onetone') >= 0 || path.indexOf('voice-pilot') >= 0;
+  }
+
+  /** Switch the visible scene to the app in front. OneTone's own window keeps the last real app. */
   function followForegroundOnce() {
     if (!isSoftPadPageVisible()) return;
     var invoke = global.__vp_invoke__ || (global.OneToneIpc && global.OneToneIpc.invoke);
     if (!invoke) return;
-    Promise.resolve(invoke('cmd_foreground_app', {})).then(function (res) {
-      if (!isSoftPadPageVisible() || !res) return;
-      var exe = String(res.exeName || res.exe_name || '').toLowerCase();
-      var path = String(res.fullPath || res.full_path || '').toLowerCase();
-      if (!exe) return;
-      if (exe.indexOf('onetone') >= 0 || path.indexOf('onetone') >= 0 || path.indexOf('voice-pilot') >= 0) return;
-      if (isTrayFgNoise(exe)) return;
-      var preset = String(res.matchedPresetAppId || res.matched_preset_app_id || res.appId || '').trim();
+    Promise.resolve(invoke('cmd_habit_foreground_app', {})).catch(function () { return null; }).then(function (held) {
+      if (held && !isSelfFgRes(held) && !isTrayFgNoise(String(held.exeName || held.exe_name || '').toLowerCase())) {
+        return held;
+      }
+      return invoke('cmd_foreground_app', {});
+    }).then(function (res) {
+      if (!isSoftPadPageVisible()) return;
+      var preset = '';
+      if (res && !isSelfFgRes(res)) {
+        var exe = String(res.exeName || res.exe_name || '').toLowerCase();
+        if (!isTrayFgNoise(exe)) {
+          preset = String(res.matchedPresetAppId || res.matched_preset_app_id || res.appId || '').trim();
+          if (preset) noteLaneForeground(preset);
+        }
+      }
+      if (!preset) preset = getFreshForegroundAppId();
+      if (!preset) return;
       var kind = kindForAppId(preset) || SOFT_PAD_UNIVERSAL_KIND;
-      var token = kind + '|' + preset + '|' + exe;
+      var token = kind + '|' + preset;
       if (token === foregroundFollowToken && String(selectedScopeId || '') === kind) return;
       var scope = findScope(kind);
       if (!scope || String(scope.id) !== kind) return;
+      // A manual pick of another agent stays. Universal is the stale open-page default.
+      if (scopePickedByUser && String(selectedScopeId || '') !== SOFT_PAD_UNIVERSAL_KIND
+          && String(selectedScopeId || '') !== kind) {
+        return;
+      }
       foregroundFollowToken = token;
-      if (String(selectedScopeId || '') === kind) return;
+      if (String(selectedScopeId || '') === kind) {
+        refreshSoftPadEditChrome();
+        return;
+      }
       selectScope(kind, { fromForeground: true, resetView: false });
     }).catch(function () {});
   }
@@ -1896,10 +1933,11 @@
 
   /** Never call get_state on the Soft Pad open/remount turn — defer like settings-drawer. */
   function requestOverlayUsageForScope(scopeId) {
+    if (!isSoftPadPageVisible()) return;
+    // Universal used to return before this, so Cursor never replaced the top「通用」.
+    ensureForegroundFollow();
     var kind = String(scopeId || selectedScopeId || '');
     if (kind !== 'codex' && kind !== 'claude' && kind !== 'cursor' && kind !== 'minimax') return;
-    if (!isSoftPadPageVisible()) return;
-    ensureForegroundFollow();
     ensureOverlayUsagePolling();
     // Scope switch: reuse cache immediately, then one deferred refresh.
     updateStatusBar(findEntry(getSelectedMappingId()));
@@ -5106,7 +5144,7 @@
     }
 
     selectedScopeId = String(scope.id);
-    scopePickedByUser = true;
+    if (!opts.fromForeground) scopePickedByUser = true;
     setBindAppMenuOpen(false);
 
     // Same path as the (removed) aside list — proven to switch Codex/Claude/Cursor.
@@ -5128,6 +5166,7 @@
         patchAgentDirectorySelection();
       }
       requestOverlayUsageForScope(selectedScopeId);
+      refreshSoftPadEditChrome();
       return;
     }
 

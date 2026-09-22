@@ -145,6 +145,8 @@ assert.equal(Hub.getCachedSoftPadRuntime().snap.applied.laneKind, 'claude');
 
 const hubSrc = readFileSync(join(root, 'src/js/features/agent/soft-pad-hub-ui.js'), 'utf8');
 assert.match(hubSrc, /function followForegroundOnce/);
+assert.match(hubSrc, /cmd_habit_foreground_app/);
+assert.match(hubSrc, /refreshSoftPadEditChrome/);
 assert.match(hubSrc, /SOFT_PAD_UNIVERSAL_KIND/);
 const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
 assert.match(panels, /softPadSnapshotFromApplied|getCachedSoftPadRuntime/);

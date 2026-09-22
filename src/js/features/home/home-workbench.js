@@ -2235,9 +2235,6 @@
   var followFgPollTimer=null;
   var lastExternalFg=null;
   var lastFollowExe='';
-  // ponytail: one new habit per exe for this session. Next launch reuses it.
-  // Upgrade path: only create from「为当前前台配置」if empty habits get noisy.
-  var adoptedFgExe={};
 
   function isFollowFgEnabled(){
     // App scenarios exist so the home habit follows the foreground app.
@@ -2397,16 +2394,6 @@
       }
       var base=baselineMappingId();
       if(base&&act&&act.activateScene) act.activateScene(base,{source:'foreground'});
-      var exe=fgExeKey(identity);
-      if(!exe||adoptedFgExe[exe]) return;
-      if(!hub||!hub.adoptForegroundIdentity) return;
-      adoptedFgExe[exe]=true;
-      hub.adoptForegroundIdentity(identity);
-      var created=hub.findAppScenarioForIdentity?hub.findAppScenarioForIdentity(identity):null;
-      if(created&&created.id){
-        if(act&&act.activateScene) act.activateScene(String(created.id),{source:'foreground'});
-        selectFollowedHabit(String(created.id),identity);
-      }
     }).catch(function(){});
   }
 

@@ -83,8 +83,8 @@ const softHub = readFileSync(join(root, 'src/js/features/agent/soft-pad-hub-ui.j
 assert.match(softHub, /resolvePrimaryLane:\s*resolvePrimaryLane/);
 assert.match(softHub, /pickHubDefaultScopeId:\s*pickHubDefaultScopeId/);
 assert.match(wb, /cmd_habit_foreground_app/);
-assert.match(wb, /adoptForegroundIdentity/);
 assert.match(wb, /lastExternalFg/);
 assert.match(wb, /selectFollowedHabit/);
+assert.doesNotMatch(wb, /adoptForegroundIdentity/);
 
 console.log('ok habit-follow-fg');
