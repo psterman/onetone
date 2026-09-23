@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-Hans" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Codex Micro Replica · Themes & Status Rings</title>
+<style>
+  /* ─── Page chrome & Background ─── */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; display: flex; flex-direction: column; }
+  body {
+    font-family: "SF Pro Rounded", "SF Pro Text", -apple-system, system-ui, sans-serif;
+    background: var(--page-bg);
+    color: var(--text-main);
+    padding: 40px 24px 80px;
+    -webkit-font-smoothing: antialiased;
+    align-items: center;
+    transition: background 0.4s ease, color 0.4s ease;
+  }
+
+  .brief {
+    max-width: 720px; width: 100%;
+    margin-bottom: 32px;
+    font-size: 13px; line-height: 1.6; color: var(--text-muted);
+  }
+  .brief strong { color: var(--text-main); font-weight: 600; }
+
+  /* ─── Toolbars ─── */
+  .toolbar-group {
+    display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 48px;
+    width: 100%; max-width: 720px; justify-content: center;
+  }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .toolbar-label {
+    font-size: 11px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.05em; margin-right: 4px;
+  }
+  .toolbar button {
+    font: inherit; font-size: 12px; font-weight: 600;
+    padding: 8px 14px; border-radius: 8px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text-muted); cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .toolbar button:hover { background: var(--btn-hover); color: var(--text-main); }
+  .toolbar button[aria-pressed="true"] {
+    border-color: var(--cyan); background: var(--cyan-bg); color: var(--cyan);
+    box-shadow: 0 2px 12px var(--cyan-bg);
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     CODEX MICRO HARDWARE TOKENS
+     ═══════════════════════════════════════════════════════════ */
+  :root {
+    /* Brand Colors */
+    --cyan: #38bdf8;
+    --cyan-bg: rgba(56, 189, 248, 0.15);
+    --pink: #fb7185;
+    
+    /* Geometry */
+    --cell: 68px;       
+    --gap: 12px;        
+    --r-key: 16px;      
+    --r-plate: 24px;    
+    --r-bumper: 44px;   
+    
+    /* Hardware Physics */
+    --press-dist: 6px;  
+    
+    /* Layout */
+    --pad-w: calc(4 * var(--cell) + 3 * var(--gap));
+    --pad-h: calc(4 * var(--cell) + 3 * var(--gap)); 
+    --plate-padding: 28px;
+  }
+
+  /* ─── Light Theme (Ceramic White) ─── */
+  html[data-theme="light"] {
+    --page-bg: #f1f5f9;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --btn-border: rgba(0,0,0,0.1);
+    --btn-bg: rgba(0,0,0,0.03);
+    --btn-hover: rgba(0,0,0,0.06);
+
+    /* Bumper (Frosted White Silicone) */
+    --bumper-bg: rgba(255, 255, 255, 0.6);
+    --bumper-blur: 24px;
+    --bumper-rim-idle: rgba(255, 255, 255, 0.9);
+    --bumper-shadow-idle: 0 12px 48px rgba(15, 23, 42, 0.08);
+
+    /* Inner Plate */
+    --plate-bg: #e6e9ed;
+    --plate-shadow: inset 0 2px 6px rgba(0,0,0,0.05), inset 0 0 0 1px rgba(0,0,0,0.02);
+    --plate-text: #94a3b8;
+
+    /* Keycaps (Opaque Matte White) */
+    --key-face: linear-gradient(180deg, #ffffff 0%, #f4f6f8 100%);
+    --key-rim-top: rgba(255, 255, 255, 1);
+    --key-rim-bot: rgba(15, 23, 42, 0.06);
+    --key-skirt: #cdd5df; 
+    --key-ink: #1e293b;
+    
+    /* Key Shadows */
+    --key-shadow-ambient: rgba(15, 23, 42, 0.08);
+    --key-shadow-deep: rgba(15, 23, 42, 0.12);
+    
+    /* Press Colors */
+    --key-face-press: linear-gradient(180deg, #f4f6f8 0%, #e2e8f0 100%);
+    --key-rim-bot-press: rgba(15, 23, 42, 0.08);
+  }
+
+  /* ─── Dark Theme (Anodized Slate) ─── */
+  html[data-theme="dark"] {
+    --page-bg: #090a0c;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --btn-border: rgba(255,255,255,0.1);
+    --btn-bg: rgba(255,255,255,0.05);
+    --btn-hover: rgba(255,255,255,0.1);
+
+    /* Bumper (Frosted Dark Silicone) */
+    --bumper-bg: rgba(26, 30, 38, 0.65);
+    --bumper-blur: 24px;
+    --bumper-rim-idle: rgba(255, 255, 255, 0.15);
+    --bumper-shadow-idle: 0 12px 48px rgba(0, 0, 0, 0.5);
+
+    /* Inner Plate */
+    --plate-bg: #1e2430;
+    --plate-shadow: inset 0 2px 12px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.02);
+    --plate-text: #64748b;
+
+    /* Keycaps (Dark Matte) */
+    --key-face: linear-gradient(180deg, #333d4e 0%, #293240 100%);
+    --key-rim-top: rgba(255, 255, 255, 0.12);
+    --key-rim-bot: rgba(0, 0, 0, 0.4);
+    --key-skirt: #181d26; 
+    --key-ink: #f8fafc;
+    
+    /* Key Shadows */
+    --key-shadow-ambient: rgba(0, 0, 0, 0.4);
+    --key-shadow-deep: rgba(0, 0, 0, 0.6);
+    
+    /* Press Colors */
+    --key-face-press: linear-gradient(180deg, #27303d 0%, #1f2631 100%);
+    --key-rim-bot-press: rgba(0, 0, 0, 0.6);
+  }
+
+  /* ─── Device Container (Silicone Bumper & Global Aura) ─── */
+  .device-bumper {
+    position: relative;
+    padding: 16px; 
+    border-radius: var(--r-bumper);
+    background: var(--bumper-bg);
+    backdrop-filter: blur(var(--bumper-blur)) saturate(150%);
+    -webkit-backdrop-filter: blur(var(--bumper-blur)) saturate(150%);
+    
+    /* Setup variables for dynamic state injection */
+    --current-bumper-rim: var(--bumper-rim-idle);
+    --current-bumper-glow: transparent;
+    --current-bumper-shadow: var(--bumper-shadow-idle);
+    
+    box-shadow: 
+      inset 0 0 0 2px var(--current-bumper-rim), 
+      0 0 80px var(--current-bumper-glow),
+      var(--current-bumper-shadow);
+      
+    transition: box-shadow 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Chassis States */
+  .device-bumper[data-chassis-state="cyan"] {
+    --current-bumper-rim: rgba(56, 189, 248, 0.5);
+    --current-bumper-glow: rgba(56, 189, 248, 0.3);
+  }
+  .device-bumper[data-chassis-state="pink"] {
+    --current-bumper-rim: rgba(251, 113, 133, 0.5);
+    --current-bumper-glow: rgba(251, 113, 133, 0.3);
+  }
+
+  /* ─── Inner Plate & Typography ─── */
+  .device-plate {
+    position: relative;
+    padding: var(--plate-padding);
+    border-radius: var(--r-plate);
+    background: var(--plate-bg);
+    box-shadow: var(--plate-shadow);
+    transition: background 0.4s ease;
+  }
+
+  .plate-label {
+    position: absolute;
+    font-size: 9px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--plate-text); text-transform: uppercase; pointer-events: none;
+    transition: color 0.4s ease;
+  }
+  .label-left { top: 50%; left: 12px; transform: translateY(-50%) rotate(-90deg); }
+  .label-right { top: 50%; right: 10px; transform: translateY(-50%) rotate(90deg); }
+  .label-top { top: 10px; left: 50%; transform: translateX(-50%); }
+  .label-bottom { bottom: 10px; left: 50%; transform: translateX(-50%); }
+
+  /* ─── Key Grid ─── */
+  .keys {
+    width: var(--pad-w); height: var(--pad-h);
+    display: grid; gap: var(--gap);
+    grid-template-columns: repeat(4, var(--cell));
+    grid-template-rows: repeat(4, var(--cell));
+  }
+
+  /* ─── Keycap (Codex True 3D Physics) ─── */
+  .key {
+    position: relative;
+    border: none; border-radius: var(--r-key); padding: 0;
+    cursor: pointer; font-family: inherit; font-size: 20px; font-weight: 500;
+    color: var(--key-ink);
+    background: var(--key-face);
+    
+    /* Subtle Status Ring Variables (Empty by default) */
+    --ring-w: 0px;
+    --ring-c: transparent;
+    --glow-b: 0px;
+    --glow-c: transparent;
+
+    /* Complex Physics Shadow Stack 
+       1. Top specular rim
+       2. Bottom soft rim
+       3. The physical skirt (thickness)
+       4. *** The Base Status Ring (injects precisely at skirt bottom) ***
+       5. *** The Base Status Glow (diffuses onto plate) ***
+       6. Ambient drop shadow
+       7. Deep drop shadow
+    */
+    box-shadow:
+      inset 0 3px 4px var(--key-rim-top),
+      inset 0 -3px 5px var(--key-rim-bot),
+      0 var(--press-dist) 0 var(--key-skirt),
+      
+      0 calc(var(--press-dist) + 1px) 0 var(--ring-w) var(--ring-c),
+      0 calc(var(--press-dist) + 4px) var(--glow-b) var(--glow-c),
+      
+      0 calc(var(--press-dist) + 4px) 12px var(--key-shadow-ambient),
+      0 calc(var(--press-dist) + 10px) 24px var(--key-shadow-deep);
+      
+    transition: 
+      transform 0.12s cubic-bezier(0.3, 0.8, 0.1, 1),
+      box-shadow 0.12s cubic-bezier(0.3, 0.8, 0.1, 1),
+      background 0.2s ease, color 0.2s ease;
+      
+    display: grid; place-items: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Subtle dish concavity */
+  .key::after {
+    content: ""; position: absolute; inset: 4px; border-radius: calc(var(--r-key) - 4px);
+    background: radial-gradient(circle at 50% 10%, rgba(255,255,255,0.15) 0%, transparent 60%);
+    pointer-events: none; mix-blend-mode: overlay;
+  }
+
+  /* Pressed State (Collapsing the skirt and status rings) */
+  .key:active, .key.is-pressed {
+    transform: translateY(var(--press-dist));
+    background: var(--key-face-press);
+    
+    /* Compress shadows so the skirt goes to 0, and ring sits flush */
+    box-shadow:
+      inset 0 2px 4px var(--key-rim-top),
+      inset 0 -2px 4px var(--key-rim-bot-press),
+      0 0 0 var(--key-skirt),
+      
+      0 1px 0 var(--ring-w) var(--ring-c),
+      0 2px calc(var(--glow-b) / 2) var(--glow-c),
+      
+      0 2px 4px var(--key-shadow-ambient),
+      0 4px 8px var(--key-shadow-deep);
+  }
+
+  /* ─── Per-Key Status Rings ─── */
+  .key.status-cyan {
+    --ring-w: 1.5px;
+    --ring-c: var(--cyan);
+    --glow-b: 16px;
+    --glow-c: rgba(56, 189, 248, 0.4);
+    /* Make icon match the ring */
+    color: var(--cyan);
+    text-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+  }
+
+  .key.status-pink {
+    --ring-w: 1.5px;
+    --ring-c: var(--pink);
+    --glow-b: 16px;
+    --glow-c: rgba(251, 113, 133, 0.4);
+    color: var(--pink);
+    text-shadow: 0 0 12px rgba(251, 113, 133, 0.4);
+  }
+
+  /* Layout Modifiers */
+  .key.wide { grid-column: span 2; border-radius: calc(var(--r-key) + 2px); }
+
+</style>
+</head>
+<body>
+  <p class="brief">
+    <strong>Codex Micro Replica</strong> — 
+    Added Apple-grade Light/Dark mode theming. Implemented a subtle <strong>LED ring at the base of the physical skirt</strong> for per-key status, which travels downwards accurately during a press. Outer silicone bumper diffuses chassis status natively.
+  </p>
+
+  <div class="toolbar-group">
+    <div class="toolbar" role="toolbar">
+      <span class="toolbar-label">Theme:</span>
+      <button type="button" data-theme-btn="dark" aria-pressed="true">Anodized Dark</button>
+      <button type="button" data-theme-btn="light" aria-pressed="false">Ceramic White</button>
+    </div>
+    
+    <div class="toolbar" role="toolbar">
+      <span class="toolbar-label">Global Aura (Bumper):</span>
+      <button type="button" data-state-btn="idle" aria-pressed="true">Idle</button>
+      <button type="button" data-state-btn="cyan" aria-pressed="false">Agent (Cyan)</button>
+      <button type="button" data-state-btn="pink" aria-pressed="false">Warn (Pink)</button>
+    </div>
+  </div>
+
+  <div class="device-bumper" id="main-bumper" data-chassis-state="idle">
+    <div class="device-plate">
+      <!-- Decorative Typography -->
+      <div class="plate-label label-top">↑</div>
+      <div class="plate-label label-left">Work Louder | OpenAI 2026</div>
+      <div class="plate-label label-right">You can just build things</div>
+      <div class="plate-label label-bottom">Let's build</div>
+
+      <!-- 4x4 Pure Grid -->
+      <div class="keys" aria-label="Micro hardware keys">
+        <!-- Row 1: Unified grid, replaced knob/black key -->
+        <button class="key" type="button">⎋</button>
+        <button class="key status-cyan" type="button">1</button> <!-- Added cyan ring test -->
+        <button class="key" type="button">2</button>
+        <button class="key" type="button">✕</button>
+        
+        <!-- Row 2 -->
+        <button class="key" type="button">3</button>
+        <button class="key" type="button">4</button>
+        <button class="key status-pink" type="button">5</button> <!-- Added pink ring test -->
+        <button class="key" type="button">6</button>
+        
+        <!-- Row 3 -->
+        <button class="key" type="button">⚡</button>
+        <button class="key" type="button">✓</button>
+        <button class="key status-cyan" type="button">⑂</button>
+        <button class="key" type="button">⌕</button>
+        
+        <!-- Row 4 -->
+        <button class="key" type="button">✨</button>
+        <button class="key wide" type="button" style="font-size: 24px;">🎤</button>
+        <button class="key" type="button">⌫</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme Switcher
+    document.querySelectorAll("[data-theme-btn]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const theme = btn.getAttribute("data-theme-btn");
+        document.documentElement.setAttribute("data-theme", theme);
+        
+        document.querySelectorAll("[data-theme-btn]").forEach((b) => {
+          b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+        });
+      });
+    });
+
+    // Bumper Aura Switcher
+    document.querySelectorAll("[data-state-btn]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const state = btn.getAttribute("data-state-btn");
+        document.getElementById("main-bumper").setAttribute("data-chassis-state", state);
+        
+        document.querySelectorAll("[data-state-btn]").forEach((b) => {
+          b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+        });
+      });
+    });
+
+    // Press Effects for all keys
+    document.querySelectorAll('.key').forEach(key => {
+      key.addEventListener('mousedown', () => key.classList.add('is-pressed'));
+      key.addEventListener('mouseup', () => key.classList.remove('is-pressed'));
+      key.addEventListener('mouseleave', () => key.classList.remove('is-pressed'));
+      
+      // Touch support
+      key.addEventListener('touchstart', () => key.classList.add('is-pressed'), {passive: true});
+      key.addEventListener('touchend', () => key.classList.remove('is-pressed'));
+    });
+  </script>
+</body>
+</html>

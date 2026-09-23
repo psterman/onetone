@@ -2616,134 +2616,149 @@ html[data-theme="dark"] .soft-pad-skin-card__preview {
   transition: color 0.16s ease, opacity 0.16s ease, letter-spacing 0.16s ease;
 }
 
-/* —— glass-light —— */
+/* —— glass-light (Spatial Glass) —— */
 .micro-hw[data-pad-skin="glass-light"],
 .codex-micro-pad.soft-pad-preview[data-pad-skin="glass-light"] .micro-hw {
   font-family: "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92) 0%, rgba(244, 247, 251, 0.88) 55%, rgba(230, 237, 246, 0.9) 100%);
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.85);
   box-shadow:
-    0 22px 48px rgba(15, 23, 42, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+    0 28px 56px rgba(15, 23, 42, 0.1),
+    inset 0 1px 2px rgba(255, 255, 255, 1);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
 }
 .micro-hw-shell.is-mode-codex .micro-hw[data-pad-skin="glass-light"],
 .micro-hw-shell.is-mode-numpad .micro-hw[data-pad-skin="glass-light"] {
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.94) 0%, rgba(241, 245, 249, 0.9) 100%);
+  background: rgba(255, 255, 255, 0.46);
 }
 .micro-hw[data-pad-skin="glass-light"] .micro-hw__face {
-  background: rgba(255, 255, 255, 0.35);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.9));
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.38));
+  border: none;
   box-shadow:
-    0 6px 14px rgba(15, 23, 42, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.98);
-  color: #1e293b;
-  border-radius: 12px;
+    0 6px 16px rgba(15, 23, 42, 0.08),
+    inset 0 1px 1px rgba(255, 255, 255, 1),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.35);
+  color: #0f172a;
+  border-radius: 14px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 .micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-name {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: #1e293b;
+  color: #0f172a;
 }
 .micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-chord {
   font-size: 9px;
   font-weight: 500;
   letter-spacing: 0.02em;
-  color: #64748b;
+  color: rgba(15, 23, 42, 0.5);
 }
 .micro-hw[data-pad-skin="glass-light"] .micro-hw__digit {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.03em;
-  color: #1e293b;
+  color: #0f172a;
 }
 .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.02);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.55));
   box-shadow:
     0 12px 24px rgba(15, 23, 42, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
-  border-color: rgba(99, 102, 241, 0.28);
+    inset 0 1px 1px rgba(255, 255, 255, 1);
 }
 .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
 .micro-hw[data-pad-skin="glass-light"] .micro-hw__key.is-pressed {
-  transform: translateY(0) scale(0.96);
+  transform: scale(0.94);
+  background: rgba(255, 255, 255, 0.92);
   box-shadow:
-    0 2px 6px rgba(15, 23, 42, 0.1),
-    inset 0 2px 4px rgba(15, 23, 42, 0.06);
+    0 2px 8px rgba(15, 23, 42, 0.08),
+    inset 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
-/* —— hybrid-pro —— */
+/* —— hybrid-pro (Keys Core) —— */
 .micro-hw[data-pad-skin="hybrid-pro"],
 .codex-micro-pad.soft-pad-preview[data-pad-skin="hybrid-pro"] .micro-hw {
-  font-family: "Segoe UI", "SF Pro Text", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
-  background:
-    linear-gradient(160deg, rgba(255, 255, 255, 0.86), rgba(238, 243, 247, 0.92));
-  border: 1px solid rgba(23, 32, 51, 0.12);
+  font-family: "SF Pro Rounded", "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  background: #cfd7e1;
+  border: 1px solid rgba(255, 255, 255, 1);
   box-shadow:
-    0 20px 44px rgba(23, 32, 51, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    0 24px 48px rgba(15, 23, 42, 0.14),
+    0 8px 16px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 2px 16px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face {
+  background: #c5ced9;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.08);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: visible;
 }
 .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder) {
-  background: linear-gradient(180deg, #fbfcfe 0%, #eef2f6 100%);
-  border: 1px solid rgba(23, 32, 51, 0.14);
+  background: linear-gradient(180deg, #ffffff 0%, #f4f7fa 100%);
+  border: 1px solid rgba(0, 0, 0, 0.07);
   box-shadow:
-    0 3px 0 rgba(23, 32, 51, 0.1),
-    0 8px 16px rgba(23, 32, 51, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  color: #172033;
-  border-radius: 11px;
+    0 5px 0 #9aa8b8,
+    0 8px 14px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  color: #334155;
+  border-radius: 10px;
+  overflow: visible;
 }
 .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--agent {
-  background: linear-gradient(180deg, #f7fbff 0%, #e8f1fa 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #eef6fb 100%);
 }
 .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--command {
-  background: linear-gradient(180deg, #f8faf8 0%, #eef3ee 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f4f7fa 100%);
 }
 .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--control {
-  background: linear-gradient(180deg, #f5f7ff 0%, #e8ecfa 100%);
+  background: linear-gradient(180deg, #f8fafc 0%, #e8eef5 100%);
 }
 .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-name {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.01em;
-  color: #172033;
+  color: #334155;
 }
 .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-chord {
   font-size: 9px;
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #5b677a;
+  color: #94a3b8;
 }
 .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__digit {
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #172033;
+  color: #334155;
 }
 .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
-  transform: translateY(-2px);
+  transform: translateY(-1.5px);
   box-shadow:
-    0 5px 0 rgba(23, 32, 51, 0.12),
-    0 14px 22px rgba(23, 32, 51, 0.12),
+    0 6px 0 #9aa8b8,
+    0 12px 18px rgba(15, 23, 42, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 1);
 }
 .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
 .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key.is-pressed {
-  transform: translateY(2px);
+  transform: translateY(3px);
+  background: linear-gradient(180deg, #f1f4f8, #e2e8f0);
   box-shadow:
-    0 1px 0 rgba(23, 32, 51, 0.14),
-    inset 0 2px 5px rgba(23, 32, 51, 0.1);
+    0 1px 0 #8a99a8,
+    inset 0 2px 5px rgba(15, 23, 42, 0.12);
 }
 
 /* —— vibe-light (light counterpart of vibe-dark) —— */
@@ -2890,66 +2905,105 @@ html[data-theme="dark"] .soft-pad-skin-card__preview {
 /* —— Soft Pad skins: dark app theme counterparts (status colors untouched) —— */
 html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"],
 html[data-theme="dark"] .codex-micro-pad.soft-pad-preview[data-pad-skin="glass-light"] .micro-hw {
-  background:
-    linear-gradient(145deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.9) 100%);
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(20, 20, 22, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow:
-    0 22px 48px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 32px 64px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
 }
 html[data-theme="dark"] .micro-hw-shell.is-mode-codex .micro-hw[data-pad-skin="glass-light"],
 html[data-theme="dark"] .micro-hw-shell.is-mode-numpad .micro-hw[data-pad-skin="glass-light"] {
-  background: linear-gradient(145deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.92));
+  background: rgba(20, 20, 22, 0.52);
 }
 html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__face {
-  background: rgba(15, 23, 42, 0.35);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
-  background: linear-gradient(145deg, rgba(51, 65, 85, 0.95), rgba(30, 41, 59, 0.92));
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  color: #e2e8f0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03));
+  border: none;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.22),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.04);
+  color: #f8fafc;
 }
 html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-name,
 html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__digit {
-  color: #f1f5f9;
+  color: #f8fafc;
 }
 html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-chord {
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.45);
 }
 html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
-  border-color: rgba(129, 140, 248, 0.45);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06));
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.28);
 }
 
 html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"],
 html[data-theme="dark"] .codex-micro-pad.soft-pad-preview[data-pad-skin="hybrid-pro"] .micro-hw {
-  background: linear-gradient(160deg, #243044, #161e2c);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: rgba(22, 28, 38, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.65),
+    0 12px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    inset 0 2px 14px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face {
+  background: #1a2130;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.45);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: visible;
 }
 html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder) {
-  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), 0 8px 16px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  color: #e2e8f0;
+  background: linear-gradient(180deg, #333d4e 0%, #293240 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 5px 0 #0f131a,
+    0 8px 16px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+  overflow: visible;
 }
 html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--agent {
-  background: linear-gradient(180deg, #2a3b52 0%, #1a2738 100%);
+  background: linear-gradient(180deg, #3a465a 0%, #2c3648 100%);
 }
 html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--command {
-  background: linear-gradient(180deg, #2c3848 0%, #1c2633 100%);
+  background: linear-gradient(180deg, #333d4e 0%, #293240 100%);
 }
 html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--control {
-  background: linear-gradient(180deg, #303a55 0%, #1d2438 100%);
+  background: linear-gradient(180deg, #2c3442 0%, #222a36 100%);
 }
 html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-name,
 html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__digit {
   color: #f8fafc;
 }
 html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-chord {
-  color: #94a3b8;
+  color: #64748b;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
+  transform: translateY(-1.5px);
+  box-shadow:
+    0 5px 0 #181d26,
+    0 12px 20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key.is-pressed {
+  transform: translateY(3px);
+  background: linear-gradient(180deg, #27303d, #1f2631);
+  box-shadow:
+    0 1px 0 #0a0d12,
+    inset 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
 /* vibe-light → vibe-dark look when app theme is dark */

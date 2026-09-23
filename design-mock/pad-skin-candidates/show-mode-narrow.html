@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>何时显示 · 物件对照（克制稿）</title>
+<style>
+  :root {
+    --bg: #eef2f6;
+    --surface: #fff;
+    --ink: #13202c;
+    --muted: #5a6c80;
+    --line: #d7dee8;
+    --primary: #2a9cc4;
+    --primary-soft: color-mix(in srgb, #2a9cc4 12%, #fff);
+    --primary-strong: #0f5f7a;
+    --pad: #e8eef4;
+    --pad-ink: #334155;
+    --frame: 360px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 24px 20px 64px;
+  }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  .lead {
+    margin: 0 0 20px; max-width: 640px;
+    font-size: 13px; color: var(--muted); line-height: 1.5;
+  }
+
+  /* ── object glossary ── */
+  .glossary {
+    display: flex; flex-wrap: wrap; gap: 16px;
+    margin: 0 0 28px; padding: 14px 16px;
+    background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    max-width: 760px;
+  }
+  .glossary__item {
+    display: flex; align-items: center; gap: 10px;
+    min-width: 160px;
+  }
+  .glossary__name { font-size: 12px; font-weight: 800; }
+  .glossary__desc { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  /* Soft Pad object */
+  .obj-pad {
+    width: 44px; height: 44px;
+    border-radius: 8px;
+    background: var(--pad);
+    border: 1px solid #b8c4d0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3px; padding: 6px;
+    flex-shrink: 0;
+  }
+  .obj-pad i {
+    margin: 0; border-radius: 3px;
+    background: #fff;
+    border: 1px solid #c5d0db;
+  }
+  .obj-pad--lg {
+    width: 72px; height: 72px;
+    border-radius: 10px; gap: 4px; padding: 9px;
+  }
+  .obj-pad--ghost {
+    background: transparent;
+    border-style: dashed;
+    border-color: #94a3b8;
+    opacity: .7;
+  }
+  .obj-pad--ghost i {
+    background: transparent;
+    border-style: dashed;
+    border-color: #94a3b8;
+  }
+
+  /* Mini bar object */
+  .obj-mini {
+    width: 88px; height: 14px;
+    border-radius: 999px;
+    background: var(--pad);
+    border: 1px solid #b8c4d0;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 2px; padding: 2px 5px;
+    flex-shrink: 0;
+  }
+  .obj-mini i {
+    margin: 0; border-radius: 2px;
+    background: #fff;
+    border: 1px solid #c5d0db;
+  }
+  .obj-mini--lg {
+    width: 140px; height: 18px;
+    gap: 3px; padding: 3px 7px;
+  }
+
+  .board { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  .col { width: var(--frame); }
+  .label {
+    font-size: 11px; font-weight: 750; color: var(--primary-strong);
+    margin: 0 0 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .label b {
+    background: var(--primary-soft); padding: 2px 7px; border-radius: 999px; font-size: 10px;
+  }
+  .why { font-size: 11.5px; color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
+
+  .frame {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 10px 12px 14px;
+  }
+  .tabs {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 4px;
+    padding: 3px; border-radius: 10px; background: #eef2f6; margin-bottom: 12px;
+  }
+  .tabs span {
+    text-align: center; padding: 7px 4px; border-radius: 8px;
+    font-size: 12px; font-weight: 700; color: var(--muted);
+  }
+  .tabs span.on { background: #fff; color: var(--primary-strong); box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+  .meta {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    font-size: 12px; font-weight: 700;
+  }
+  .pill {
+    font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    background: rgba(42,156,196,.12); color: #0369a1; border: 1px solid rgba(42,156,196,.25);
+  }
+  .q { margin: 0 0 10px; font-size: 12px; font-weight: 650; line-height: 1.4; }
+
+  /* shared demo stage — flat, no desktop */
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 100px;
+    padding: 16px 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: #f7f9fb;
+  }
+  .stage__label {
+    font-size: 11px; font-weight: 750; color: var(--muted);
+    letter-spacing: .02em;
+  }
+  .stage__label b { color: var(--primary-strong); font-weight: 800; }
+  .stage__row {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+  }
+  .stage__note {
+    font-size: 11px; color: var(--muted); text-align: center; line-height: 1.35;
+    max-width: 240px;
+  }
+  .stage__x {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1.5px solid #94a3b8; color: #64748b;
+    display: grid; place-items: center;
+    font-size: 14px; font-weight: 700; line-height: 1;
+  }
+  .stage__chip {
+    font-size: 11px; font-weight: 750;
+    padding: 3px 8px; border-radius: 6px;
+    background: #fff; border: 1px solid var(--line); color: var(--ink);
+  }
+  .stage__chip.is-on {
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--line));
+    color: var(--primary-strong);
+    background: var(--primary-soft);
+  }
+  .stage__arrow {
+    font-size: 14px; color: #94a3b8; font-weight: 700;
+  }
+
+  /* N1 buttons */
+  .n1-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .n1-btn {
+    appearance: none; font: inherit; cursor: pointer; text-align: left;
+    border: 1.5px solid color-mix(in srgb, var(--line) 92%, transparent);
+    background: #fff; border-radius: 10px; padding: 9px 10px;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+  }
+  .n1-btn:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
+  .n1-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .n1-btn.is-on {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+  .n1-t { display: block; font-size: 12px; font-weight: 800; line-height: 1.25; }
+  .n1-btn.is-on .n1-t { color: var(--primary-strong); }
+  .n1-h { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--muted); line-height: 1.3; }
+  .n1-btn.is-on .n1-h { color: #0369a1; }
+  .n1-cap { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+
+  /* N2 rows — mini object left */
+  .n2-list { display: flex; flex-direction: column; gap: 6px; }
+  .n2-row {
+    appearance: none; width: 100%; font: inherit; cursor: pointer; text-align: left;
+    border: 1.5px solid color-mix(in srgb, var(--line) 92%, transparent);
+    background: #fff; border-radius: 12px; padding: 8px 10px;
+    display: grid; grid-template-columns: 56px 1fr 14px; gap: 10px; align-items: center;
+  }
+  .n2-row:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
+  .n2-row:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .n2-row.is-on {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+  .n2-thumb {
+    width: 56px; height: 44px;
+    border-radius: 8px; border: 1px solid var(--line);
+    background: #f7f9fb;
+    display: grid; place-items: center;
+  }
+  .n2-thumb .obj-pad { width: 28px; height: 28px; padding: 4px; gap: 2px; border-radius: 5px; }
+  .n2-thumb .obj-mini { width: 40px; height: 10px; padding: 1px 3px; gap: 1.5px; }
+  .n2-thumb .obj-pad--ghost { width: 28px; height: 28px; }
+  .n2-thumb .stage__x { width: 22px; height: 22px; font-size: 11px; }
+  .n2-t { font-size: 12.5px; font-weight: 800; }
+  .n2-row.is-on .n2-t { color: var(--primary-strong); }
+  .n2-h { font-size: 11px; color: var(--muted); line-height: 1.35; margin-top: 2px; }
+  .n2-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 1.5px solid #94a3b8; justify-self: end;
+  }
+  .n2-row.is-on .n2-dot {
+    border-color: var(--primary); background: var(--primary);
+    box-shadow: inset 0 0 0 2.5px #fff;
+  }
+
+  /* N3 — object + title only */
+  .n3-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .n3-card {
+    appearance: none; font: inherit; cursor: pointer; text-align: center;
+    border: 1.5px solid color-mix(in srgb, var(--line) 92%, transparent);
+    background: #fff; border-radius: 12px; padding: 12px 8px 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .n3-card:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
+  .n3-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .n3-card.is-on {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+  .n3-card .obj-pad { width: 36px; height: 36px; }
+  .n3-card .obj-mini { width: 64px; height: 12px; }
+  .n3-t { font-size: 12px; font-weight: 800; }
+  .n3-card.is-on .n3-t { color: var(--primary-strong); }
+  .n3-cap { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+
+  .numpad-ghost {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);
+    opacity: .45; pointer-events: none;
+  }
+  .numpad-ghost h4 { margin: 0 0 2px; font-size: 13px; }
+  .numpad-ghost p { margin: 0 0 8px; font-size: 11px; color: var(--muted); }
+  .numpad-ghost .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .numpad-ghost .pair i {
+    display: block; height: 44px; border-radius: 10px;
+    border: 1px dashed var(--line); background: #f8fafc;
+  }
+
+  .verdict {
+    margin-top: 24px; max-width: 640px;
+    padding: 12px 14px; border-radius: 10px;
+    background: #fff; border: 1px solid var(--line);
+    font-size: 12.5px; line-height: 1.5; color: var(--muted);
+  }
+  .verdict strong { color: var(--ink); font-weight: 750; }
+</style>
+</head>
+<body>
+  <h1>何时显示 · 物件对照</h1>
+  <p class="lead">
+    去掉应用窗铺垫。只保留三种物件：<b>Soft Pad</b>（完整悬浮盘）、<b>迷你条</b>（收起态）、以及「不显示」时的空缺。切换方案用文字选项，示意区只换物件，不画桌面。
+  </p>
+
+  <div class="glossary">
+    <div class="glossary__item">
+      <div class="obj-pad" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div>
+        <div class="glossary__name">Soft Pad</div>
+        <div class="glossary__desc">完整悬浮键盘</div>
+      </div>
+    </div>
+    <div class="glossary__item">
+      <div class="obj-mini" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div>
+        <div class="glossary__name">迷你条</div>
+        <div class="glossary__desc">同一套盘的收起态</div>
+      </div>
+    </div>
+    <div class="glossary__item">
+      <div class="obj-pad obj-pad--ghost" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div>
+        <div class="glossary__name">不显示</div>
+        <div class="glossary__desc">无浮窗，键位仍生效</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="board">
+
+    <!-- N1 -->
+    <div class="col">
+      <div class="label"><b>N1 · 推荐</b> 物件台 + 2×2 方案</div>
+      <p class="why">上方只换 Soft Pad / 迷你条 / 空缺；下方四个切换方案。</p>
+      <div class="frame" data-scheme="n1">
+        <div class="tabs"><span>改按钮</span><span class="on">何时显示</span><span>皮肤</span></div>
+        <div class="meta">设置 <span class="pill">屏幕按钮</span></div>
+        <p class="q">决定 Soft Pad 完整窗口何时出现。</p>
+        <div class="stage" data-stage>
+          <div class="stage__label">当前形态 · <b data-stage-name>Soft Pad</b></div>
+          <div class="stage__row" data-stage-body></div>
+          <div class="stage__note" data-stage-note>目标应用在前台时显示悬浮键盘。</div>
+        </div>
+        <div class="n1-grid" data-group>
+          <button type="button" class="n1-btn is-on" data-i="0">
+            <span class="n1-t">跟随应用显示</span>
+            <span class="n1-h">有目标应用才出 Soft Pad</span>
+          </button>
+          <button type="button" class="n1-btn" data-i="1">
+            <span class="n1-t">保持在最前</span>
+            <span class="n1-h">Soft Pad 始终可见</span>
+          </button>
+          <button type="button" class="n1-btn" data-i="2">
+            <span class="n1-t">显示为迷你条</span>
+            <span class="n1-h">收成迷你条，可再展开</span>
+          </button>
+          <button type="button" class="n1-btn" data-i="3">
+            <span class="n1-t">不显示浮窗</span>
+            <span class="n1-h">无 Soft Pad / 迷你条</span>
+          </button>
+        </div>
+        <p class="n1-cap" data-cap>目标应用在前台时显示悬浮键盘。</p>
+        <div class="numpad-ghost">
+          <h4>电脑小键盘</h4>
+          <p>同一块右侧小键盘，选一种用途</p>
+          <div class="pair"><i></i><i></i></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- N2 -->
+    <div class="col">
+      <div class="label"><b>N2</b> 方案行 + 物件缩略</div>
+      <p class="why">每行左侧只放对应物件，方便四态并排扫。</p>
+      <div class="frame" data-scheme="n2">
+        <div class="tabs"><span>改按钮</span><span class="on">何时显示</span><span>皮肤</span></div>
+        <div class="meta">设置 <span class="pill">屏幕按钮</span></div>
+        <p class="q">决定 Soft Pad 完整窗口何时出现。</p>
+        <div class="n2-list" data-group>
+          <button type="button" class="n2-row is-on" data-i="0">
+            <span class="n2-thumb" aria-hidden="true"><span class="obj-pad"><i></i><i></i><i></i><i></i></span></span>
+            <span><span class="n2-t">跟随应用显示</span><div class="n2-h">有目标应用才出 Soft Pad</div></span>
+            <span class="n2-dot"></span>
+          </button>
+          <button type="button" class="n2-row" data-i="1">
+            <span class="n2-thumb" aria-hidden="true"><span class="obj-pad"><i></i><i></i><i></i><i></i></span></span>
+            <span><span class="n2-t">保持在最前</span><div class="n2-h">Soft Pad 始终可见</div></span>
+            <span class="n2-dot"></span>
+          </button>
+          <button type="button" class="n2-row" data-i="2">
+            <span class="n2-thumb" aria-hidden="true"><span class="obj-mini"><i></i><i></i><i></i><i></i><i></i><i></i></span></span>
+            <span><span class="n2-t">显示为迷你条</span><div class="n2-h">收成迷你条，可再展开</div></span>
+            <span class="n2-dot"></span>
+          </button>
+          <button type="button" class="n2-row" data-i="3">
+            <span class="n2-thumb" aria-hidden="true"><span class="obj-pad obj-pad--ghost"><i></i><i></i><i></i><i></i></span></span>
+            <span><span class="n2-t">不显示浮窗</span><div class="n2-h">无 Soft Pad / 迷你条</div></span>
+            <span class="n2-dot"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- N3 -->
+    <div class="col">
+      <div class="label"><b>N3</b> 物件卡 2×2</div>
+      <p class="why">跟随时 Soft Pad 旁加「随应用」标记；置顶加「始终」；迷你条与空缺直接换物件。</p>
+      <div class="frame" data-scheme="n3">
+        <div class="tabs"><span>改按钮</span><span class="on">何时显示</span><span>皮肤</span></div>
+        <div class="meta">设置 <span class="pill">屏幕按钮</span></div>
+        <p class="q">决定 Soft Pad 完整窗口何时出现。</p>
+        <div class="n3-grid" data-group>
+          <button type="button" class="n3-card is-on" data-i="0">
+            <span class="obj-pad" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="stage__chip is-on">随应用</span>
+            <span class="n3-t">跟随应用显示</span>
+          </button>
+          <button type="button" class="n3-card" data-i="1">
+            <span class="obj-pad" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="stage__chip">始终</span>
+            <span class="n3-t">保持在最前</span>
+          </button>
+          <button type="button" class="n3-card" data-i="2">
+            <span class="obj-mini" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <span class="stage__chip">迷你条</span>
+            <span class="n3-t">显示为迷你条</span>
+          </button>
+          <button type="button" class="n3-card" data-i="3">
+            <span class="obj-pad obj-pad--ghost" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="stage__chip">无浮窗</span>
+            <span class="n3-t">不显示浮窗</span>
+          </button>
+        </div>
+        <p class="n3-cap" data-cap>目标应用在前台时显示悬浮键盘。</p>
+        <div class="numpad-ghost">
+          <h4>电脑小键盘</h4>
+          <p>同一块右侧小键盘，选一种用途</p>
+          <div class="pair"><i></i><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <strong>规则：</strong>方块键区 = Soft Pad；细条 = 迷你条；虚线方块 = 不显示。
+    「跟随 / 置顶」差别在规则文案，不画应用窗当背景。建议仍落 N1。
+  </div>
+
+<script>
+const MODES = [
+  {
+    name: 'Soft Pad',
+    cap: '目标应用在前台时显示悬浮键盘。',
+    body: () => `
+      <span class="stage__chip is-on">随应用</span>
+      <span class="stage__arrow">→</span>
+      <span class="obj-pad obj-pad--lg" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`
+  },
+  {
+    name: 'Soft Pad',
+    cap: '浮窗保持可见；按键仍发给对应应用。',
+    body: () => `
+      <span class="stage__chip is-on">始终</span>
+      <span class="stage__arrow">·</span>
+      <span class="obj-pad obj-pad--lg" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`
+  },
+  {
+    name: '迷你条',
+    cap: '收成细条，需要时再展开完整盘。',
+    body: () => `
+      <span class="obj-pad" aria-hidden="true" style="opacity:.35"><i></i><i></i><i></i><i></i></span>
+      <span class="stage__arrow">→</span>
+      <span class="obj-mini obj-mini--lg" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>`
+  },
+  {
+    name: '无浮窗',
+    cap: '屏幕不出现 Soft Pad，只用实体键/映射。',
+    body: () => `
+      <span class="obj-pad obj-pad--ghost obj-pad--lg" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="stage__x" aria-hidden="true">×</span>`
+  }
+];
+
+function paintStage(frame, i) {
+  const m = MODES[i];
+  const stage = frame.querySelector('[data-stage]');
+  if (!stage) return;
+  stage.querySelector('[data-stage-name]').textContent = m.name;
+  stage.querySelector('[data-stage-body]').innerHTML = m.body();
+  stage.querySelector('[data-stage-note]').textContent = m.cap;
+}
+
+document.querySelectorAll('[data-scheme="n1"]').forEach((frame) => paintStage(frame, 0));
+
+document.querySelectorAll('[data-group]').forEach((group) => {
+  group.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-i]');
+    if (!btn || !group.contains(btn)) return;
+    const i = Number(btn.getAttribute('data-i'));
+    group.querySelectorAll('[data-i]').forEach((b) => b.classList.toggle('is-on', b === btn));
+    const frame = group.closest('.frame');
+    const cap = frame.querySelector('[data-cap]');
+    if (cap) cap.textContent = MODES[i].cap;
+    paintStage(frame, i);
+  });
+});
+</script>
+</body>
+</html>

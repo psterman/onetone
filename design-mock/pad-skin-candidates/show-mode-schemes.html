@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Soft Pad 何时显示 · 四卡方案原型</title>
+<style>
+  :root {
+    --bg: #f4f7fb;
+    --surface: #ffffff;
+    --ink: #13202c;
+    --muted: #5a6c80;
+    --line: #d7dee8;
+    --primary: #2a9cc4;
+    --primary-soft: color-mix(in srgb, #2a9cc4 12%, #fff);
+    --primary-strong: #0f5f7a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 28px 24px 72px;
+  }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .lead { color: var(--muted); font-size: 13px; margin: 0 0 28px; max-width: 720px; line-height: 1.5; }
+  section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 18px 20px;
+    margin-bottom: 20px;
+    max-width: 820px;
+  }
+  .scheme-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 750; letter-spacing: 0.04em;
+    color: var(--primary-strong); margin-bottom: 8px;
+  }
+  .scheme-tag b {
+    background: var(--primary-soft); color: var(--primary-strong);
+    padding: 2px 8px; border-radius: 999px; font-size: 10px;
+  }
+  h2 { font-size: 15px; margin: 0 0 4px; }
+  .why { font-size: 12px; color: var(--muted); margin: 0 0 14px; line-height: 1.45; }
+  .hint { font-size: 12px; color: var(--muted); margin: 10px 0 0; line-height: 1.4; min-height: 1.4em; }
+
+  /* ── shared mini scene pieces ── */
+  .scene {
+    width: 100%; height: 72px; border-radius: 10px;
+    background: linear-gradient(160deg, #e8eef5, #dfe7f0);
+    border: 1px solid rgba(15,23,42,.08);
+    position: relative; overflow: hidden;
+  }
+  .scene__win {
+    position: absolute; left: 10px; top: 10px; width: 58%; height: 42px;
+    border-radius: 6px; background: #fff;
+    box-shadow: 0 2px 8px rgba(15,23,42,.08);
+    border: 1px solid rgba(15,23,42,.08);
+  }
+  .scene__win::before {
+    content: ""; position: absolute; left: 6px; top: 5px;
+    width: 8px; height: 8px; border-radius: 2px; background: #94a3b8;
+  }
+  .scene__bar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 10px;
+    background: rgba(15,23,42,.12);
+  }
+  .scene__pad {
+    position: absolute; right: 8px; bottom: 14px; width: 34px; height: 34px;
+    border-radius: 7px; background: #fff;
+    border: 1px solid rgba(15,23,42,.12);
+    box-shadow: 0 4px 10px rgba(15,23,42,.12);
+    display: grid; grid-template-columns: repeat(2,1fr); gap: 2px; padding: 4px;
+  }
+  .scene__pad i { background: #cbd5e1; border-radius: 2px; }
+  .scene__pad--mini {
+    width: auto; height: 12px; bottom: 12px; right: 10px; left: 10px;
+    grid-template-columns: repeat(6,1fr); padding: 2px 4px; border-radius: 999px;
+  }
+  .scene__pad--gone { opacity: 0; }
+  .scene__pad--front {
+    outline: 2px solid var(--primary); outline-offset: 1px;
+    box-shadow: 0 6px 14px rgba(42,156,196,.28);
+  }
+  .scene__win--dim { opacity: .45; }
+  .scene__badge {
+    position: absolute; top: 6px; right: 6px;
+    font-size: 8px; font-weight: 750; padding: 1px 5px; border-radius: 999px;
+    background: rgba(255,255,255,.9); color: var(--muted);
+  }
+
+  /* ── C: polished 2×2 scene cards (product-ready) ── */
+  .c-hero {
+    max-width: 820px;
+    border-color: color-mix(in srgb, var(--primary) 28%, var(--line));
+    box-shadow: 0 10px 28px rgba(15, 32, 44, 0.06);
+  }
+  .c-q {
+    margin: 0 0 12px;
+    font-size: 12.5px;
+    font-weight: 650;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+  .c-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .c-card {
+    appearance: none;
+    border: 1.5px solid color-mix(in srgb, var(--line) 92%, transparent);
+    background: #fff;
+    border-radius: 14px;
+    padding: 10px;
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: inherit;
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease, transform .15s ease;
+  }
+  .c-card:hover {
+    border-color: color-mix(in srgb, var(--primary) 42%, transparent);
+  }
+  .c-card:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  .c-card.is-on {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 9%, #fff);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent);
+  }
+  .c-card.is-on:hover { transform: none; }
+  .c-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  }
+  .c-t { font-size: 13px; font-weight: 800; color: var(--ink); line-height: 1.3; }
+  .c-c { font-size: 11px; color: var(--muted); line-height: 1.45; margin: 0; }
+  .c-card.is-on .c-t { color: var(--primary-strong); }
+  .c-check {
+    flex: 0 0 auto;
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1.5px solid #94a3b8;
+    display: grid; place-items: center;
+    margin-top: 1px;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .c-check svg { width: 10px; height: 10px; opacity: 0; }
+  .c-card.is-on .c-check {
+    border-color: var(--primary);
+    background: var(--primary);
+  }
+  .c-card.is-on .c-check svg { opacity: 1; }
+  .c-card.is-on .c-check svg path { stroke: #fff; }
+
+  .c-scene {
+    position: relative;
+    height: 92px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(15,23,42,.08);
+    background:
+      linear-gradient(180deg, #f8fafc 0%, #e8eef5 100%);
+    box-sizing: border-box;
+  }
+  .c-card.is-on .c-scene {
+    border-color: color-mix(in srgb, var(--primary) 22%, transparent);
+    background: linear-gradient(180deg, #f0f7fb, #e2eef6);
+  }
+  .c-desk {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(120% 80% at 20% 0%, rgba(255,255,255,.7), transparent 55%),
+      linear-gradient(160deg, #eef3f8, #dce5ef);
+  }
+  .c-task {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 11px;
+    background: linear-gradient(180deg, #cbd5e1, #94a3b8);
+    opacity: .55;
+  }
+  .c-win {
+    position: absolute;
+    left: 10px; top: 12px; width: 54%; height: 48px;
+    border-radius: 7px;
+    background: #fff;
+    border: 1px solid rgba(15,23,42,.1);
+    box-shadow: 0 3px 10px rgba(15,23,42,.1);
+    overflow: hidden;
+  }
+  .c-win__chrome {
+    height: 11px;
+    display: flex; align-items: center; gap: 3px;
+    padding: 0 6px;
+    background: #f1f5f9;
+    border-bottom: 1px solid rgba(15,23,42,.06);
+  }
+  .c-win__chrome span {
+    width: 4px; height: 4px; border-radius: 50%; background: #94a3b8;
+  }
+  .c-win__body {
+    position: absolute; inset: 14px 8px 8px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #f8fafc, #e2e8f0);
+  }
+  .c-win--back {
+    left: 18px; top: 8px; width: 48%; height: 40px;
+    opacity: .55; filter: saturate(.7);
+    z-index: 0;
+  }
+  .c-win--front { z-index: 1; }
+  .c-win--dim { opacity: .42; filter: grayscale(.15); }
+  .c-win--active {
+    outline: 1.5px solid color-mix(in srgb, var(--primary) 55%, transparent);
+    outline-offset: 1px;
+  }
+  .c-pad {
+    position: absolute;
+    right: 9px; bottom: 18px;
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #fff, #f1f5f9);
+    border: 1px solid rgba(15,23,42,.12);
+    box-shadow: 0 4px 12px rgba(15,23,42,.14);
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2.5px;
+    padding: 5px;
+    z-index: 3;
+    box-sizing: border-box;
+  }
+  .c-pad i {
+    margin: 0;
+    border-radius: 3px;
+    background: #e2e8f0;
+    border: 1px solid rgba(15,23,42,.06);
+  }
+  .c-pad i.is-accent {
+    background: color-mix(in srgb, var(--primary) 32%, #fff);
+    border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+  }
+  .c-link {
+    position: absolute;
+    z-index: 2;
+    left: 58%; top: 36px;
+    width: 22px; height: 0;
+    border-top: 2px dashed color-mix(in srgb, var(--primary) 65%, #64748b);
+    opacity: .9;
+  }
+  .c-link::after {
+    content: "";
+    position: absolute; right: -4px; top: -5px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 22%, #fff);
+  }
+  .c-pad--pinned {
+    right: 8px; bottom: 16px;
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+    box-shadow:
+      0 6px 16px rgba(42,156,196,.32),
+      0 1px 0 rgba(255,255,255,.8) inset;
+  }
+  .c-pin {
+    position: absolute;
+    top: -7px; right: -5px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 8px; font-weight: 800;
+    display: grid; place-items: center;
+    box-shadow: 0 2px 6px rgba(42,156,196,.4);
+    line-height: 1;
+  }
+  .c-pad--mini {
+    left: 10px; right: 10px; bottom: 14px;
+    width: auto; height: 14px;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px; padding: 2px 5px;
+    border-radius: 999px;
+    box-shadow: 0 3px 10px rgba(15,23,42,.14);
+  }
+  .c-pad--mini i { border-radius: 2px; }
+  .c-pad--ghost {
+    opacity: .22;
+    border-style: dashed;
+    box-shadow: none;
+    filter: grayscale(1);
+  }
+  .c-hw {
+    position: absolute;
+    left: 10px; bottom: 16px;
+    display: flex; gap: 3px;
+    z-index: 3;
+  }
+  .c-hw b {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    background: #64748b;
+    font-weight: 700;
+    font-size: 6px;
+    color: #fff;
+    display: grid; place-items: center;
+    box-shadow: 0 1px 2px rgba(15,23,42,.2);
+  }
+  .c-tag {
+    position: absolute;
+    top: 6px; right: 6px;
+    z-index: 4;
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: .01em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.92);
+    color: #475569;
+    border: 1px solid rgba(15,23,42,.08);
+  }
+  .c-card.is-on .c-tag {
+    background: color-mix(in srgb, var(--primary) 14%, #fff);
+    color: var(--primary-strong);
+    border-color: color-mix(in srgb, var(--primary) 28%, transparent);
+  }
+  .c-card.is-on .c-pad:not(.c-pad--ghost) {
+    animation: c-pad-breathe 1.8s ease-in-out infinite;
+  }
+  @keyframes c-pad-breathe {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-1.5px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .c-card.is-on .c-pad { animation: none; }
+  }
+  .c-foot {
+    margin: 12px 0 0;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+  .c-foot strong { color: var(--primary-strong); font-weight: 750; }
+
+  /* A: current-like text row */
+  .a-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+  .a-card {
+    appearance: none; border: 1.5px solid var(--line); background: #fff;
+    border-radius: 12px; padding: 12px 8px; font: inherit; cursor: pointer;
+    text-align: center; font-size: 12px; font-weight: 700; color: #334155;
+  }
+  .a-card.is-on {
+    border-color: var(--primary); background: var(--primary-soft); color: var(--primary-strong);
+  }
+
+  /* B: icon + title + caption inside */
+  .b-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+  .b-card {
+    appearance: none; border: 1.5px solid var(--line); background: #fff;
+    border-radius: 14px; padding: 10px 8px 12px; font: inherit; cursor: pointer;
+    text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .b-card.is-on { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent); }
+  .b-ico {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: #eef2f6; display: grid; place-items: center; font-size: 16px;
+  }
+  .b-card.is-on .b-ico { background: #fff; }
+  .b-t { font-size: 12px; font-weight: 800; color: var(--ink); line-height: 1.25; }
+  .b-c { font-size: 10px; color: var(--muted); line-height: 1.35; font-weight: 550; }
+
+  /* D: segmented + detail */
+  .d-seg {
+    display: grid; grid-template-columns: repeat(4,1fr); gap: 0;
+    padding: 3px; border-radius: 12px; background: #eef2f6; border: 1px solid var(--line);
+  }
+  .d-seg button {
+    appearance: none; border: 0; background: transparent; font: inherit;
+    padding: 10px 6px; border-radius: 9px; cursor: pointer;
+    font-size: 12px; font-weight: 700; color: var(--muted);
+  }
+  .d-seg button.is-on { background: #fff; color: var(--primary-strong); box-shadow: 0 1px 4px rgba(15,23,42,.1); }
+  .d-detail {
+    margin-top: 12px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 12px; align-items: center;
+    padding: 12px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--line);
+  }
+  .d-detail p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .d-detail strong { display: block; color: var(--ink); font-size: 13px; margin-bottom: 4px; }
+
+  /* E: vertical radio list with side preview */
+  .e-wrap { display: grid; grid-template-columns: 1.15fr .85fr; gap: 12px; }
+  .e-list { display: flex; flex-direction: column; gap: 6px; }
+  .e-item {
+    appearance: none; width: 100%; text-align: left; font: inherit; cursor: pointer;
+    border: 1.5px solid var(--line); background: #fff; border-radius: 12px;
+    padding: 10px 12px; display: grid; grid-template-columns: 16px 1fr; gap: 10px; align-items: start;
+  }
+  .e-item.is-on { border-color: var(--primary); background: var(--primary-soft); }
+  .e-dot {
+    width: 14px; height: 14px; margin-top: 2px; border-radius: 50%;
+    border: 2px solid #94a3b8; box-sizing: border-box;
+  }
+  .e-item.is-on .e-dot { border-color: var(--primary); box-shadow: inset 0 0 0 3px var(--primary); }
+  .e-t { font-size: 13px; font-weight: 800; }
+  .e-c { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .e-preview { border-radius: 12px; border: 1px solid var(--line); padding: 10px; background: #f8fafc; }
+  .e-preview .scene { height: 110px; }
+  .e-preview p { margin: 8px 0 0; font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+  .pick { margin-top: 14px; font-size: 11px; color: var(--muted); }
+  .pick button {
+    margin-right: 8px; margin-top: 6px; appearance: none; border: 1px solid var(--line);
+    background: #fff; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 11px; cursor: pointer;
+  }
+  .pick button.is-fav { border-color: var(--primary); color: var(--primary-strong); background: var(--primary-soft); font-weight: 700; }
+</style>
+</head>
+<body>
+  <h1>何时显示 · 四个选项的多方案原型</h1>
+  <p class="lead">方案 C 已按「小键盘用途」同款视觉完善。下方 A / B / D / E 仍可对照。点卡片切换选中态。</p>
+
+  <section class="c-hero" data-scheme="C">
+    <div class="scheme-tag"><b>方案 C</b> 完善稿 · 2×2 场景示意卡</div>
+    <h2>一眼看出 Soft Pad 怎么出现</h2>
+    <p class="why">对齐产品侧栏：问句 + 2×2 场景卡。每卡自带桌面示意、标题、一句说明；选中态有勾选与轻微呼吸动效。</p>
+    <p class="c-q">决定 Soft Pad 完整窗口何时出现。点一项，左侧预览会跟着变。</p>
+    <div class="c-grid" data-group role="radiogroup" aria-label="何时显示">
+      <button type="button" class="c-card is-on" data-i="0" role="radio" aria-checked="true">
+        <div class="c-scene" aria-hidden="true">
+          <div class="c-desk"></div>
+          <div class="c-win c-win--front c-win--active">
+            <div class="c-win__chrome"><span></span><span></span><span></span></div>
+            <div class="c-win__body"></div>
+          </div>
+          <div class="c-link"></div>
+          <div class="c-pad">
+            <i class="is-accent"></i><i></i><i></i><i class="is-accent"></i>
+          </div>
+          <div class="c-task"></div>
+          <span class="c-tag">跟随应用</span>
+        </div>
+        <div class="c-head">
+          <div>
+            <div class="c-t">跟随应用显示</div>
+            <p class="c-c">目标应用在前台时显示悬浮键盘。</p>
+          </div>
+          <span class="c-check" aria-hidden="true">
+            <svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2 4.8 8.5 9.5 3.5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </div>
+      </button>
+      <button type="button" class="c-card" data-i="1" role="radio" aria-checked="false">
+        <div class="c-scene" aria-hidden="true">
+          <div class="c-desk"></div>
+          <div class="c-win c-win--back">
+            <div class="c-win__chrome"><span></span><span></span><span></span></div>
+            <div class="c-win__body"></div>
+          </div>
+          <div class="c-win c-win--front c-win--dim" style="left:10px;top:18px;width:50%;height:44px">
+            <div class="c-win__chrome"><span></span><span></span><span></span></div>
+            <div class="c-win__body"></div>
+          </div>
+          <div class="c-pad c-pad--pinned">
+            <i class="is-accent"></i><i></i><i></i><i></i>
+            <span class="c-pin">↑</span>
+          </div>
+          <div class="c-task"></div>
+          <span class="c-tag">保持最前</span>
+        </div>
+        <div class="c-head">
+          <div>
+            <div class="c-t">保持在最前</div>
+            <p class="c-c">浮窗保持可见；按键仍发给对应应用。</p>
+          </div>
+          <span class="c-check" aria-hidden="true">
+            <svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2 4.8 8.5 9.5 3.5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </div>
+      </button>
+      <button type="button" class="c-card" data-i="2" role="radio" aria-checked="false">
+        <div class="c-scene" aria-hidden="true">
+          <div class="c-desk"></div>
+          <div class="c-win c-win--front" style="height:40px">
+            <div class="c-win__chrome"><span></span><span></span><span></span></div>
+            <div class="c-win__body"></div>
+          </div>
+          <div class="c-pad c-pad--mini">
+            <i class="is-accent"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="is-accent"></i>
+          </div>
+          <div class="c-task"></div>
+          <span class="c-tag">迷你条</span>
+        </div>
+        <div class="c-head">
+          <div>
+            <div class="c-t">显示为迷你条</div>
+            <p class="c-c">收成细条，需要时再展开完整盘。</p>
+          </div>
+          <span class="c-check" aria-hidden="true">
+            <svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2 4.8 8.5 9.5 3.5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </div>
+      </button>
+      <button type="button" class="c-card" data-i="3" role="radio" aria-checked="false">
+        <div class="c-scene" aria-hidden="true">
+          <div class="c-desk"></div>
+          <div class="c-win c-win--front" style="width:62%;height:52px">
+            <div class="c-win__chrome"><span></span><span></span><span></span></div>
+            <div class="c-win__body"></div>
+          </div>
+          <div class="c-pad c-pad--ghost">
+            <i></i><i></i><i></i><i></i>
+          </div>
+          <div class="c-hw" title="实体键"><b>1</b><b>2</b><b>3</b></div>
+          <div class="c-task"></div>
+          <span class="c-tag">不显示</span>
+        </div>
+        <div class="c-head">
+          <div>
+            <div class="c-t">不显示浮窗</div>
+            <p class="c-c">屏幕不出现 Soft Pad，只用实体键/映射。</p>
+          </div>
+          <span class="c-check" aria-hidden="true">
+            <svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2 4.8 8.5 9.5 3.5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </div>
+      </button>
+    </div>
+    <p class="c-foot">选中：<strong data-c-live>跟随应用显示</strong> — <span data-c-cap>目标应用在前台时显示悬浮键盘。</span></p>
+  </section>
+
+  <section data-scheme="A">
+    <div class="scheme-tag"><b>方案 A</b> 现状增强 · 四等分文字卡</div>
+    <h2>紧凑文字行</h2>
+    <p class="why">改动最小：仍是一行四卡，靠选中色区分。适合选项名已经够短、左侧大预览承担解释。</p>
+    <div class="a-row" data-group>
+      <button type="button" class="a-card is-on" data-i="0">跟随应用显示</button>
+      <button type="button" class="a-card" data-i="1">保持在最前</button>
+      <button type="button" class="a-card" data-i="2">显示为迷你条</button>
+      <button type="button" class="a-card" data-i="3">不显示浮窗</button>
+    </div>
+    <p class="hint" data-hint>目标应用在前台时显示悬浮键盘。</p>
+  </section>
+
+  <section data-scheme="B">
+    <div class="scheme-tag"><b>方案 B</b> 图标 + 短说明进卡内</div>
+    <h2>带说明的四卡</h2>
+    <p class="why">每张卡自带一句说明，可去掉下方多余 hint。信息更自洽，高度略增。</p>
+    <div class="b-row" data-group>
+      <button type="button" class="b-card is-on" data-i="0">
+        <span class="b-ico" aria-hidden="true">⧉</span>
+        <span class="b-t">跟随应用</span>
+        <span class="b-c">应用在前才出现</span>
+      </button>
+      <button type="button" class="b-card" data-i="1">
+        <span class="b-ico" aria-hidden="true">⤒</span>
+        <span class="b-t">保持最前</span>
+        <span class="b-c">始终浮在最上层</span>
+      </button>
+      <button type="button" class="b-card" data-i="2">
+        <span class="b-ico" aria-hidden="true">▭</span>
+        <span class="b-t">迷你条</span>
+        <span class="b-c">收成底部细条</span>
+      </button>
+      <button type="button" class="b-card" data-i="3">
+        <span class="b-ico" aria-hidden="true">✕</span>
+        <span class="b-t">不显示</span>
+        <span class="b-c">只留实体键映射</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- C moved to top as polished hero -->
+
+  <section data-scheme="D">
+    <div class="scheme-tag"><b>方案 D</b> 分段控件 + 大图解释</div>
+    <h2>选模式，看详情</h2>
+    <p class="why">顶部极紧凑四段切换；下方固定一块「场景 + 说明」。适合右侧栏偏窄时省高度。</p>
+    <div class="d-seg" data-group>
+      <button type="button" class="is-on" data-i="0">跟随应用</button>
+      <button type="button" data-i="1">保持最前</button>
+      <button type="button" data-i="2">迷你条</button>
+      <button type="button" data-i="3">不显示</button>
+    </div>
+    <div class="d-detail">
+      <div class="scene" data-d-scene style="height:88px">
+        <div class="scene__win"></div>
+        <div class="scene__pad"></div>
+        <div class="scene__bar"></div>
+      </div>
+      <p><strong data-d-title>跟随应用显示</strong><span data-d-cap>目标应用在前台时显示悬浮键盘。</span></p>
+    </div>
+  </section>
+
+  <section data-scheme="E">
+    <div class="scheme-tag"><b>方案 E</b> 纵向列表 + 右侧实时预览</div>
+    <h2>列表选型</h2>
+    <p class="why">左选右看，最像设置页经典形态；四项差异用右侧大示意消化，不怕文案变长。</p>
+    <div class="e-wrap">
+      <div class="e-list" data-group>
+        <button type="button" class="e-item is-on" data-i="0">
+          <span class="e-dot" aria-hidden="true"></span>
+          <span><span class="e-t">跟随应用显示</span><div class="e-c">目标应用在前台时显示悬浮键盘。</div></span>
+        </button>
+        <button type="button" class="e-item" data-i="1">
+          <span class="e-dot" aria-hidden="true"></span>
+          <span><span class="e-t">保持在最前</span><div class="e-c">浮窗保持可见；按键仍发给对应应用。</div></span>
+        </button>
+        <button type="button" class="e-item" data-i="2">
+          <span class="e-dot" aria-hidden="true"></span>
+          <span><span class="e-t">显示为迷你条</span><div class="e-c">收成细条，需要时再展开完整盘。</div></span>
+        </button>
+        <button type="button" class="e-item" data-i="3">
+          <span class="e-dot" aria-hidden="true"></span>
+          <span><span class="e-t">不显示浮窗</span><div class="e-c">屏幕不出现 Soft Pad，只用实体键/映射。</div></span>
+        </button>
+      </div>
+      <div class="e-preview">
+        <div class="scene" data-e-scene>
+          <div class="scene__win"></div>
+          <div class="scene__pad"></div>
+          <div class="scene__bar"></div>
+        </div>
+        <p data-e-cap>目标应用在前台时显示悬浮键盘。</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="pick">
+    倾向哪个？
+    <button type="button" data-fav="A">A 文字行</button>
+    <button type="button" data-fav="B">B 图标说明</button>
+    <button type="button" data-fav="C">C 2×2 场景</button>
+    <button type="button" data-fav="D">D 分段+详情</button>
+    <button type="button" data-fav="E">E 列表+预览</button>
+    <span id="favOut" style="margin-left:8px;color:#0f5f7a;font-weight:700"></span>
+  </div>
+
+<script>
+const CAPS = [
+  '目标应用在前台时显示悬浮键盘。',
+  '浮窗保持可见；按键仍发给对应应用。',
+  '收成细条，需要时再展开完整盘。',
+  '屏幕不出现 Soft Pad，只用实体键/映射。'
+];
+const TITLES = ['跟随应用显示', '保持在最前', '显示为迷你条', '不显示浮窗'];
+
+function paintScene(el, i) {
+  if (!el) return;
+  el.innerHTML = '';
+  const win = document.createElement('div');
+  win.className = 'scene__win' + (i === 1 ? ' scene__win--dim' : '');
+  const pad = document.createElement('div');
+  pad.className = 'scene__pad' +
+    (i === 1 ? ' scene__pad--front' : '') +
+    (i === 2 ? ' scene__pad--mini' : '') +
+    (i === 3 ? ' scene__pad--gone' : '');
+  for (let n = 0; n < (i === 2 ? 6 : 4); n++) pad.appendChild(document.createElement('i'));
+  const bar = document.createElement('div');
+  bar.className = 'scene__bar';
+  el.append(win, pad, bar);
+}
+
+document.querySelectorAll('[data-group]').forEach((group) => {
+  group.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-i]');
+    if (!btn || !group.contains(btn)) return;
+    const i = Number(btn.getAttribute('data-i'));
+    group.querySelectorAll('[data-i]').forEach((b) => {
+      const on = b === btn;
+      b.classList.toggle('is-on', on);
+      if (b.hasAttribute('aria-checked')) b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    const section = group.closest('section');
+    const hint = section.querySelector('[data-hint]');
+    if (hint) hint.textContent = CAPS[i];
+    const cLive = section.querySelector('[data-c-live]');
+    const cCap = section.querySelector('[data-c-cap]');
+    if (cLive) cLive.textContent = TITLES[i];
+    if (cCap) cCap.textContent = CAPS[i];
+    const dTitle = section.querySelector('[data-d-title]');
+    const dCap = section.querySelector('[data-d-cap]');
+    const dScene = section.querySelector('[data-d-scene]');
+    if (dTitle) dTitle.textContent = TITLES[i];
+    if (dCap) dCap.textContent = CAPS[i];
+    if (dScene) paintScene(dScene, i);
+    const eCap = section.querySelector('[data-e-cap]');
+    const eScene = section.querySelector('[data-e-scene]');
+    if (eCap) eCap.textContent = CAPS[i];
+    if (eScene) paintScene(eScene, i);
+  });
+});
+
+document.querySelectorAll('[data-fav]').forEach((b) => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('[data-fav]').forEach((x) => x.classList.remove('is-fav'));
+    b.classList.add('is-fav');
+    document.getElementById('favOut').textContent = '已记：方案 ' + b.getAttribute('data-fav');
+  });
+});
+</script>
+</body>
+</html>

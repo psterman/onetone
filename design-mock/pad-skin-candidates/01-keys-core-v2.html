@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-Hans" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone Soft Pad · Keys Core CSS (Codex Micro Redesign)</title>
+<style>
+  /* ─── Page chrome (ignore for product; just to preview) ─── */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "SF Pro Rounded", "SF Pro Text", "SF Pro Display", "PingFang SC", -apple-system, system-ui, sans-serif;
+    background:
+      radial-gradient(1000px 600px at 50% 0%, #152238 0%, transparent 65%),
+      #05070a;
+    color: #e8eef6;
+    padding: 28px 24px 80px;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.4s ease;
+  }
+  
+  html[data-theme="light"] body {
+    background:
+      radial-gradient(1000px 600px at 50% 0%, #e2e8f0 0%, transparent 65%),
+      #f1f5f9;
+    color: #1e293b;
+  }
+
+  .brief {
+    max-width: 720px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #64748b;
+  }
+  .brief strong { color: #e2e8f0; }
+  html[data-theme="light"] .brief strong { color: #0f172a; }
+  
+  .toolbar-group {
+    margin-bottom: 40px;
+    display: flex; gap: 24px; flex-wrap: wrap;
+  }
+  .toolbar {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    align-items: center;
+  }
+  .toolbar-label {
+    font-size: 11px; font-weight: 700; color: #64748b;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-right: 4px;
+  }
+  .toolbar button {
+    font: inherit; font-size: 12px; font-weight: 600;
+    padding: 8px 14px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: #94a3b8; cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  html[data-theme="light"] .toolbar button {
+    border-color: rgba(0,0,0,0.1);
+    background: rgba(0,0,0,0.03);
+    color: #64748b;
+  }
+  
+  .toolbar button:hover {
+    background: rgba(255,255,255,0.08);
+    color: #cbd5e1;
+  }
+  html[data-theme="light"] .toolbar button:hover {
+    background: rgba(0,0,0,0.06);
+    color: #334155;
+  }
+
+  .toolbar button[aria-pressed="true"] {
+    border-color: rgba(56,189,248,0.4);
+    background: rgba(56,189,248,0.15);
+    color: #38bdf8;
+    box-shadow: 0 2px 12px rgba(56,189,248,0.15);
+  }
+  html[data-theme="light"] .toolbar button[aria-pressed="true"] {
+    border-color: #0ea5e9;
+    background: #e0f2fe;
+    color: #0369a1;
+  }
+
+  .stage {
+    display: flex; gap: 64px; flex-wrap: wrap; align-items: flex-start;
+  }
+  .label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #64748b; margin: 0 0 20px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     CORE PRODUCT TOKENS (Codex Micro + Mac Vision)
+     ═══════════════════════════════════════════════════════════ */
+  :root {
+    /* Brand / Status Colors */
+    --cyan: #38bdf8;
+    --cyan-deep: #00a3ff;
+    --pink: #fb7185;
+    --pink-deep: #e11d48;
+
+    /* Geometry */
+    --cell: 64px;
+    --gap: 8px; /* Slightly wider gap for premium spacing */
+    --inset: 16px; 
+    --r-chassis: 28px; /* Sharper, denser exterior */
+    --r-key: 10px; /* Tighter corner radius for hardware micro feel */
+    
+    /* Mechanics */
+    --hover-lift: 1.5px;
+    --press-dist: 4px; /* True mechanical travel distance */
+
+    --pad-w: calc(4 * var(--cell) + 3 * var(--gap));
+    --pad-h: calc(5 * var(--cell) + 4 * var(--gap));
+    --shell: calc(var(--pad-h) + 2 * var(--inset));
+  }
+
+  /* Light skin (Ceramic PBT + Clear Glass) */
+  html[data-theme="light"] {
+    /* Chassis Glass - 加深为磨砂银灰色以突显白色键帽，增加对比度 */
+    --chassis-bg: rgba(210, 218, 228, 0.75);
+    --chassis-border: rgba(255, 255, 255, 1);
+    --chassis-inner-ring: rgba(255, 255, 255, 0.5);
+    --chassis-plate-shadow: inset 0 2px 16px rgba(0,0,0,0.05);
+    --chassis-shadow: 
+      0 24px 48px rgba(15, 23, 42, 0.1),
+      0 8px 16px rgba(15, 23, 42, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 1);
+    
+    /* Keycaps (Crisp Matte White) - 纯净白色 */
+    --key-face: linear-gradient(180deg, #ffffff, #f4f7fa);
+    --key-rim: rgba(0, 0, 0, 0.06); /* 新增：按键边缘勾线，增强边界感 */
+    --key-skirt: #c1cbd7; /* The side plastic */
+    --key-skirt-contact: #8a99a8; /* Where the skirt meets the plate */
+    --key-ink: #334155;
+    --key-sub-ink: #94a3b8;
+    --key-specular-top: rgba(255, 255, 255, 1);
+    --key-shadow-ambient: rgba(15, 23, 42, 0.12);
+    
+    /* Default Plate Halo / 基础背光底晕 */
+    --key-halo: rgba(255, 255, 255, 0.7);
+
+    /* Etched legend */
+    --legend-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+
+    /* Pressed State */
+    --press-face: linear-gradient(180deg, #f1f4f8, #e2e8f0);
+  }
+
+  /* Dark skin (Anodized Slate + Smoked Glass) */
+  html[data-theme="dark"] {
+    /* Chassis Glass */
+    --chassis-bg: rgba(22, 28, 38, 0.65);
+    --chassis-border: rgba(255, 255, 255, 0.1);
+    --chassis-inner-ring: rgba(0, 0, 0, 0.6);
+    --chassis-plate-shadow: inset 0 2px 12px rgba(0,0,0,0.4);
+    --chassis-shadow: 
+      0 32px 64px rgba(0, 0, 0, 0.8),
+      0 12px 24px rgba(0, 0, 0, 0.5),
+      inset 0 1px 1px rgba(255, 255, 255, 0.15);
+
+    /* Keycaps (Dark Matte feel) */
+    --key-face: linear-gradient(180deg, #333d4e, #293240);
+    --key-rim: rgba(255, 255, 255, 0.08);
+    --key-skirt: #181d26; /* Deep dark side plastic */
+    --key-skirt-contact: #0a0d12;
+    --key-ink: #f1f5f9;
+    --key-sub-ink: #64748b;
+    --key-specular-top: rgba(255, 255, 255, 0.12);
+    --key-shadow-ambient: rgba(0, 0, 0, 0.5);
+
+    /* Default Plate Halo / 基础背光底晕 */
+    --key-halo: rgba(255, 255, 255, 0.06);
+
+    /* Etched legend */
+    --legend-shadow: 0 -1px 0 rgba(0, 0, 0, 0.3);
+
+    /* Pressed State */
+    --press-face: linear-gradient(180deg, #27303d, #1f2631);
+  }
+
+  /* ─── Chassis (Frosted Glass Shell) ─── */
+  .shell {
+    width: var(--shell);
+    height: var(--shell);
+    border-radius: var(--r-chassis);
+    padding: var(--inset);
+    position: relative;
+    background: var(--chassis-bg);
+    backdrop-filter: blur(40px) saturate(160%);
+    -webkit-backdrop-filter: blur(40px) saturate(160%);
+    border: 1px solid var(--chassis-border);
+    box-shadow: var(--chassis-shadow), var(--chassis-plate-shadow);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 2;
+  }
+
+  /* Ultra-sharp 1px inner rim for the Vision Pro glass look */
+  .shell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px var(--chassis-inner-ring);
+    pointer-events: none;
+  }
+
+  /* Global Outer Ring Glow (Chassis State) */
+  .bloom-wrap {
+    position: relative;
+    width: calc(var(--shell) + 32px);
+    display: grid;
+    place-items: center;
+  }
+  
+  .bloom {
+    position: absolute;
+    inset: -12px;
+    border-radius: calc(var(--r-chassis) + 16px);
+    opacity: 0; /* Hidden by default */
+    filter: blur(28px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Outer Ring State: Agent (Cyan) */
+  .bloom-wrap[data-chassis-state="cyan"] .bloom {
+    background: radial-gradient(circle at 50% 100%, var(--cyan), transparent 70%);
+    opacity: 0.4;
+  }
+  .bloom-wrap[data-chassis-state="cyan"] .shell {
+    box-shadow: 
+      0 24px 48px rgba(0, 163, 255, 0.2),
+      inset 0 1px 1px rgba(255, 255, 255, 0.25),
+      inset 0 -4px 16px rgba(56, 189, 248, 0.15); /* Internal ambient reflection */
+    border-bottom-color: rgba(56, 189, 248, 0.5);
+  }
+
+  /* Outer Ring State: Warn (Pink) */
+  .bloom-wrap[data-chassis-state="pink"] .bloom {
+    background: radial-gradient(circle at 50% 100%, var(--pink), transparent 70%);
+    opacity: 0.4;
+  }
+  .bloom-wrap[data-chassis-state="pink"] .shell {
+    box-shadow: 
+      0 24px 48px rgba(225, 29, 72, 0.2),
+      inset 0 1px 1px rgba(255, 255, 255, 0.25),
+      inset 0 -4px 16px rgba(251, 113, 133, 0.15);
+    border-bottom-color: rgba(251, 113, 133, 0.5);
+  }
+
+  html[data-theme="light"] .bloom-wrap[data-chassis-state="cyan"] .bloom,
+  html[data-theme="light"] .bloom-wrap[data-chassis-state="pink"] .bloom {
+    opacity: 0.6; 
+  }
+
+  /* ─── Key grid ─── */
+  .keys {
+    width: var(--pad-w);
+    height: var(--pad-h);
+    display: grid;
+    grid-template-columns: repeat(4, var(--cell));
+    grid-template-rows: repeat(5, var(--cell));
+    gap: var(--gap);
+  }
+
+  /* ─── Keycap (Codex Micro True 3D Physics) ─── */
+  .key {
+    position: relative;
+    border: none; /* Removed border to rely purely on 3D shadows for form */
+    border-radius: var(--r-key);
+    padding: 0;
+    cursor: pointer;
+    color: var(--key-ink);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    background: var(--key-face);
+    
+    /* Etched text effect */
+    text-shadow: var(--legend-shadow);
+    
+    /* Create stacking context for underglow */
+    z-index: 1;
+    
+    /* 3D Box Shadow Formula for Hardware Skirt: 
+       0. Micro rim for sharp edge definition
+       1. Top specular edge
+       2. The plastic side skirt (extending down by --press-dist)
+       3. The hard shadow where the skirt touches the plate
+       4. Soft ambient drop shadow 
+    */
+    box-shadow:
+      0 0 0 1px var(--key-rim),
+      inset 0 1px 1px var(--key-specular-top),
+      inset 0 calc(-1 * var(--press-dist)) 0 var(--key-skirt),
+      0 var(--press-dist) 0 var(--key-skirt-contact),
+      0 calc(var(--press-dist) + 6px) 16px var(--key-shadow-ambient);
+      
+    /* Springy, physical animation curve */
+    transition:
+      transform 0.12s cubic-bezier(0.3, 0.8, 0.1, 1),
+      box-shadow 0.12s cubic-bezier(0.3, 0.8, 0.1, 1),
+      background 0.2s ease,
+      color 0.2s ease,
+      text-shadow 0.2s ease;
+      
+    display: grid;
+    place-items: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Subtle dish (concave) specular top */
+  .key::after {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: calc(var(--r-key) - 1px);
+    background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  /* Hover State (Slight Lift) */
+  .key:hover {
+    transform: translateY(calc(-1 * var(--hover-lift)));
+    box-shadow:
+      0 0 0 1px var(--key-rim),
+      inset 0 1px 1px var(--key-specular-top),
+      inset 0 calc(-1 * (var(--press-dist) + var(--hover-lift))) 0 var(--key-skirt),
+      0 calc(var(--press-dist) + var(--hover-lift)) 0 var(--key-skirt-contact),
+      0 calc(var(--press-dist) + var(--hover-lift) + 8px) 20px var(--key-shadow-ambient);
+  }
+
+  /* Pressed State (Physical Skirt Compression) */
+  .key:active,
+  .key.is-pressed {
+    /* Move down exactly the distance of the skirt */
+    transform: translateY(var(--press-dist)); 
+    background: var(--press-face);
+    box-shadow:
+      0 0 0 1px var(--key-rim),
+      inset 0 1px 1px rgba(255,255,255,0.05),
+      /* Skirt disappears into the chassis completely */
+      inset 0 0 0 var(--key-skirt), 
+      0 0 0 var(--key-skirt-contact),
+      /* Ambient shadow tightens to the base */
+      0 1px 3px rgba(0,0,0,0.2); 
+  }
+
+  .key.tall { grid-row: span 2; }
+  .key.wide { grid-column: span 2; }
+  .key.empty {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* Sub labels on tall/wide keys */
+  .key .sub {
+    position: absolute;
+    bottom: calc(var(--press-dist) + 6px); /* Float above the skirt */
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--key-sub-ink);
+    text-shadow: none;
+    transition: bottom 0.12s cubic-bezier(0.3, 0.8, 0.1, 1);
+  }
+  
+  /* Compress sub label down physically on press */
+  .key:active .sub,
+  .key.is-pressed .sub {
+    bottom: 6px;
+  }
+
+  /* ─── Universal Key Halo & Shine-Through Glow ─── */
+  /* Default Backlight Halo for all keys */
+  .key::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: calc(var(--r-key) + 2px);
+    background: var(--key-halo);
+    filter: blur(6px);
+    z-index: -1;
+    pointer-events: none;
+    transition: all 0.2s ease;
+  }
+
+  /* Compress halo on press */
+  .key:active::before,
+  .key.is-pressed::before {
+    inset: 0px;
+    filter: blur(3px);
+    opacity: 0.6;
+  }
+
+  /* Agent (Cyan) Glow Override */
+  .key.glow-cyan {
+    color: #fff;
+    text-shadow: 
+      0 0 8px var(--cyan),
+      0 0 16px var(--cyan-deep);
+  }
+  .key.glow-cyan::before {
+    background: var(--cyan);
+    filter: blur(14px);
+    opacity: 0.45;
+    inset: -4px;
+  }
+
+  /* Warn (Pink) Glow Override */
+  .key.glow-pink {
+    color: #fff;
+    text-shadow: 
+      0 0 8px var(--pink),
+      0 0 16px var(--pink-deep);
+  }
+  .key.glow-pink::before {
+    background: var(--pink);
+    filter: blur(14px);
+    opacity: 0.45;
+    inset: -4px;
+  }
+
+  /* Glow hover interactions */
+  .key.glow-cyan:hover::before, .key.glow-pink:hover::before {
+    opacity: 0.65;
+  }
+  .key.glow-cyan:active::before, .key.glow-cyan.is-pressed::before,
+  .key.glow-pink:active::before, .key.glow-pink.is-pressed::before {
+    opacity: 0.25;
+    inset: -1px;
+    filter: blur(6px);
+  }
+
+  /* ─── CHANGELOG (redesign AI) ───
+     - 2026-09-23: Upgraded to "Codex/Mac" premium aesthetic.
+     - Changed keycap styling from flat background to 3D mechanical projection using multi-layered box-shadows (`inset` skirt).
+     - Adjusted press physics: travel distance (`--press-dist`) perfectly collapses the shadow-skirt, simulating real mechanical switch compression.
+     - Replaced basic chassis shell with deeply frosted glassmorphism (`backdrop-filter: blur`, rich layered inner/outer shadows).
+     - Added global chassis outer ring states (`data-chassis-state` on wrapper) for Idle/Cyan/Pink dynamic bloom lighting.
+     - Replaced border-glow with true "Shine-through PBT" logic: legends now glow via text-shadow, casting a physical underglow (`z-index: -1` on `::before`) onto the plate.
+  */
+</style>
+</head>
+<body>
+  <p class="brief">
+    <strong>OneTone Soft Pad · Keys Core (Codex Micro / Apple)</strong> —
+    Enhanced with ultra-premium hardware mechanics. The key "skirts" physically compress into the board. 
+    Glowing keys now simulate <strong>shine-through legends</strong> with a diffused underglow bleeding onto the chassis plate.
+  </p>
+
+  <div class="toolbar-group">
+    <div class="toolbar" role="toolbar" id="theme-toolbar">
+      <span class="toolbar-label">Material:</span>
+      <button type="button" data-theme-btn="dark" aria-pressed="true">Anodized Dark</button>
+      <button type="button" data-theme-btn="light" aria-pressed="false">Ceramic Light</button>
+    </div>
+    
+    <div class="toolbar" role="toolbar" id="chassis-toolbar">
+      <span class="toolbar-label">Chassis Aura:</span>
+      <button type="button" data-state-btn="idle" aria-pressed="true">Idle</button>
+      <button type="button" data-state-btn="cyan" aria-pressed="false">Agent (Cyan)</button>
+      <button type="button" data-state-btn="pink" aria-pressed="false">Warn (Pink)</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div>
+      <p class="label">Keyboard face</p>
+      <!-- bloom-wrap controls the chassis outer ring glow state -->
+      <div class="bloom-wrap" data-chassis-state="idle" id="main-pad-wrap">
+        <div class="bloom" aria-hidden="true"></div>
+        <div class="shell">
+          <div class="keys" aria-label="Soft Pad keys">
+            <!-- row 1 -->
+            <button class="key" type="button">↑</button>
+            <button class="key" type="button">↓</button>
+            <button class="key empty" type="button" tabindex="-1"></button>
+            <button class="key" type="button">✕</button>
+            <!-- row 2–3 tall -->
+            <button class="key glow-cyan" type="button">⌘K<span class="sub">Agent</span></button>
+            <button class="key" type="button">⑂</button>
+            <button class="key" type="button">✓</button>
+            <button class="key tall" type="button">⏎</button>
+            <!-- row 3 continued (tall occupies) -->
+            <button class="key glow-cyan" type="button">⌕</button>
+            <button class="key glow-pink" type="button">↵</button>
+            <button class="key" type="button">⎋</button>
+            <!-- row 4 -->
+            <button class="key wide" type="button">␣</button>
+            <button class="key" type="button">⌫</button>
+            <button class="key" type="button">⇥</button>
+            <!-- row 5 -->
+            <button class="key" type="button">1</button>
+            <button class="key" type="button">2</button>
+            <button class="key" type="button">3</button>
+            <button class="key" type="button">4</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="label">Key States (Isolated)</p>
+      <div class="keys" style="height: auto; grid-template-rows: repeat(2, var(--cell)); width: calc(3 * var(--cell) + 2 * var(--gap));">
+        <button class="key" type="button">Idle</button>
+        <!-- Forced hover state via inline style for visual comparison -->
+        <button class="key" type="button" style="transform: translateY(calc(-1 * var(--hover-lift))); box-shadow: 0 0 0 1px var(--key-rim), inset 0 1px 1px var(--key-specular-top), inset 0 calc(-1 * (var(--press-dist) + var(--hover-lift))) 0 var(--key-skirt), 0 calc(var(--press-dist) + var(--hover-lift)) 0 var(--key-skirt-contact), 0 calc(var(--press-dist) + var(--hover-lift) + 8px) 20px var(--key-shadow-ambient);">Hover</button>
+        <button class="key is-pressed" type="button">Press</button>
+        <button class="key glow-cyan" type="button">Agent</button>
+        <button class="key glow-pink" type="button">Warn</button>
+        <button class="key empty" type="button" tabindex="-1"></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme Switcher (Light / Dark)
+    document.querySelectorAll("[data-theme-btn]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const theme = btn.getAttribute("data-theme-btn");
+        document.documentElement.setAttribute("data-theme", theme);
+        
+        document.querySelectorAll("[data-theme-btn]").forEach((b) => {
+          b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+        });
+      });
+    });
+
+    // Outer Ring (Chassis) State Switcher
+    document.querySelectorAll("[data-state-btn]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const state = btn.getAttribute("data-state-btn");
+        document.getElementById("main-pad-wrap").setAttribute("data-chassis-state", state);
+        
+        document.querySelectorAll("[data-state-btn]").forEach((b) => {
+          b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+        });
+      });
+    });
+  </script>
+</body>
+</html>

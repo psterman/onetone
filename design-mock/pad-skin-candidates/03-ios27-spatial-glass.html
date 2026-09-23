@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-Hans" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone Soft Pad · iOS 27 Spatial Glass</title>
+<style>
+  /* ─── Page chrome & Spatial Background ─── */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; overflow-x: hidden; }
+  body {
+    font-family: "SF Pro Rounded", "SF Pro Text", "SF Pro Display", "PingFang SC", -apple-system, system-ui, sans-serif;
+    color: var(--text-primary);
+    padding: 28px 24px 80px;
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--page-bg);
+    transition: background-color 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+    position: relative;
+  }
+
+  /* Dynamic Mesh Blobs to showcase Glassmorphism */
+  .wallpaper {
+    position: fixed; inset: 0; z-index: -1;
+    overflow: hidden; pointer-events: none;
+    opacity: 0.8;
+    transition: opacity 0.6s ease;
+  }
+  .blob {
+    position: absolute;
+    filter: blur(80px);
+    border-radius: 50%;
+    animation: float 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .blob:nth-child(1) {
+    top: -10%; left: -10%; width: 600px; height: 600px;
+    background: var(--blob-1);
+  }
+  .blob:nth-child(2) {
+    bottom: -20%; right: -10%; width: 700px; height: 700px;
+    background: var(--blob-2);
+    animation-delay: -5s;
+  }
+  .blob:nth-child(3) {
+    top: 30%; left: 40%; width: 500px; height: 500px;
+    background: var(--blob-3);
+    animation-delay: -10s;
+  }
+
+  @keyframes float {
+    0% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(10%, 5%) scale(1.1); }
+    100% { transform: translate(-5%, 15%) scale(0.9); }
+  }
+
+  /* ─── Typography & Toolbars ─── */
+  .brief {
+    max-width: 720px; margin-bottom: 24px;
+    font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+  }
+  .brief strong { color: var(--text-primary); font-weight: 600; }
+  
+  .toolbar-group {
+    margin-bottom: 40px; display: flex; gap: 24px; flex-wrap: wrap;
+    position: relative; z-index: 10;
+  }
+  .toolbar {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .toolbar-label {
+    font-size: 11px; font-weight: 700; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.05em; margin-right: 4px;
+  }
+  .toolbar button {
+    font: inherit; font-size: 12px; font-weight: 600;
+    padding: 8px 14px; border-radius: 12px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text-secondary); cursor: pointer;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .toolbar button:hover { background: var(--btn-hover); color: var(--text-primary); }
+  .toolbar button[aria-pressed="true"] {
+    border-color: var(--btn-active-border);
+    background: var(--btn-active-bg);
+    color: var(--btn-active-text);
+  }
+
+  .stage {
+    display: flex; gap: 64px; flex-wrap: wrap; align-items: flex-start;
+    position: relative; z-index: 10;
+  }
+  .label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-secondary); margin: 0 0 20px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     iOS 27 SPATIAL DESIGN TOKENS
+     ═══════════════════════════════════════════════════════════ */
+  :root {
+    /* Geometry */
+    --cell: 64px;
+    --gap: 10px; /* Wider gap for spatial floating effect */
+    --inset: 20px; 
+    --r-chassis: 40px; /* Super smooth squircle chassis */
+    --r-key: 16px; /* Smooth rounded lozenge keys */
+
+    --pad-w: calc(4 * var(--cell) + 3 * var(--gap));
+    --pad-h: calc(5 * var(--cell) + 4 * var(--gap));
+    --shell: calc(var(--pad-h) + 2 * var(--inset));
+
+    /* Accents (Neon Injected Glass) */
+    --cyan: #06b6d4;
+    --cyan-glow: rgba(6, 182, 212, 0.5);
+    --pink: #f43f5e;
+    --pink-glow: rgba(244, 63, 94, 0.5);
+  }
+
+  /* Dark Theme (Midnight Glass) */
+  html[data-theme="dark"] {
+    --page-bg: #000000;
+    --blob-1: rgba(63, 94, 251, 0.4);
+    --blob-2: rgba(252, 70, 107, 0.3);
+    --blob-3: rgba(0, 212, 255, 0.2);
+    
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255,255,255,0.5);
+    
+    --btn-border: rgba(255,255,255,0.1);
+    --btn-bg: rgba(255,255,255,0.05);
+    --btn-hover: rgba(255,255,255,0.1);
+    --btn-active-border: rgba(255,255,255,0.3);
+    --btn-active-bg: rgba(255,255,255,0.15);
+    --btn-active-text: #ffffff;
+
+    /* Spatial Chassis */
+    --chassis-bg: rgba(20, 20, 22, 0.45);
+    --chassis-blur: 80px;
+    --chassis-border: rgba(255,255,255,0.12);
+    --chassis-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.15);
+
+    /* Spatial Keys */
+    --key-bg: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.02));
+    --key-border-top: rgba(255,255,255,0.25);
+    --key-border-bot: rgba(255,255,255,0.05);
+    --key-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    
+    /* Hover/Press */
+    --key-hover-bg: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.05));
+    --key-press-bg: rgba(255,255,255,0.25);
+  }
+
+  /* Light Theme (Frosted Air Glass) */
+  html[data-theme="light"] {
+    --page-bg: #f8fafc;
+    --blob-1: rgba(99, 102, 241, 0.2);
+    --blob-2: rgba(236, 72, 153, 0.15);
+    --blob-3: rgba(56, 189, 248, 0.2);
+
+    --text-primary: #0f172a;
+    --text-secondary: rgba(15, 23, 42, 0.5);
+    
+    --btn-border: rgba(0,0,0,0.05);
+    --btn-bg: rgba(0,0,0,0.03);
+    --btn-hover: rgba(0,0,0,0.06);
+    --btn-active-border: rgba(0,0,0,0.15);
+    --btn-active-bg: rgba(0,0,0,0.08);
+    --btn-active-text: #0f172a;
+
+    /* Spatial Chassis */
+    --chassis-bg: rgba(255, 255, 255, 0.4);
+    --chassis-blur: 80px;
+    --chassis-border: rgba(255,255,255,0.8);
+    --chassis-shadow: 0 30px 60px rgba(0,0,0,0.08), inset 0 1px 2px rgba(255,255,255,1);
+
+    /* Spatial Keys */
+    --key-bg: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.3));
+    --key-border-top: rgba(255,255,255,1);
+    --key-border-bot: rgba(255,255,255,0.4);
+    --key-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    
+    /* Hover/Press */
+    --key-hover-bg: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.5));
+    --key-press-bg: rgba(255,255,255,0.9);
+  }
+
+  /* ─── Chassis (Vision Spatial Glass Container) ─── */
+  .shell {
+    width: var(--shell);
+    height: var(--shell);
+    border-radius: var(--r-chassis);
+    padding: var(--inset);
+    position: relative;
+    background: var(--chassis-bg);
+    backdrop-filter: blur(var(--chassis-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--chassis-blur)) saturate(180%);
+    box-shadow: var(--chassis-shadow);
+    transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    z-index: 2;
+  }
+  
+  /* Super fine sub-pixel border */
+  .shell::after {
+    content: ""; position: absolute; inset: 0;
+    border-radius: inherit;
+    border: 1px solid var(--chassis-border);
+    pointer-events: none;
+    mask-image: linear-gradient(180deg, black, transparent 80%);
+    -webkit-mask-image: linear-gradient(180deg, black, transparent 80%);
+  }
+
+  /* Global Bloom for Status */
+  .bloom-wrap {
+    position: relative; width: calc(var(--shell) + 32px); display: grid; place-items: center;
+  }
+  .bloom {
+    position: absolute; inset: 0px; border-radius: calc(var(--r-chassis) + 16px);
+    opacity: 0; filter: blur(40px); transition: all 0.8s ease; pointer-events: none; z-index: 1;
+  }
+  .bloom-wrap[data-chassis-state="cyan"] .bloom {
+    background: radial-gradient(circle at 50% 100%, var(--cyan-glow), transparent 70%); opacity: 0.6;
+  }
+  .bloom-wrap[data-chassis-state="pink"] .bloom {
+    background: radial-gradient(circle at 50% 100%, var(--pink-glow), transparent 70%); opacity: 0.6;
+  }
+
+  /* ─── Key grid ─── */
+  .keys {
+    width: var(--pad-w); height: var(--pad-h);
+    display: grid; gap: var(--gap);
+    grid-template-columns: repeat(4, var(--cell));
+    grid-template-rows: repeat(5, var(--cell));
+  }
+
+  /* ─── Keycap (Spatial Glass Lozenge) ─── */
+  .key {
+    position: relative;
+    border: none; border-radius: var(--r-key); padding: 0;
+    cursor: pointer;
+    font: inherit; font-size: 16px; font-weight: 500;
+    color: var(--text-primary);
+    background: var(--key-bg);
+    
+    /* Double backdrop filter trick for inner glass refraction */
+    backdrop-filter: blur(20px) saturate(120%);
+    -webkit-backdrop-filter: blur(20px) saturate(120%);
+    
+    /* Floating shadow + fine glass rim */
+    box-shadow: 
+      var(--key-shadow),
+      inset 0 1px 1px var(--key-border-top),
+      inset 0 -1px 1px var(--key-border-bot);
+      
+    /* Smooth spatial physics */
+    transition: 
+      transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+      background 0.3s ease,
+      box-shadow 0.3s ease,
+      opacity 0.3s ease;
+      
+    display: grid; place-items: center;
+    -webkit-tap-highlight-color: transparent;
+    z-index: 1;
+  }
+
+  /* Add a subtle highlight flare on the top left of keys to simulate environmental reflection */
+  .key::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.2) 0%, transparent 40%);
+    pointer-events: none; mix-blend-mode: overlay;
+  }
+
+  /* Hover State (Floating Up & Brightening) */
+  .key:hover {
+    transform: translateY(-2px) scale(1.02);
+    background: var(--key-hover-bg);
+    box-shadow: 
+      0 12px 30px rgba(0,0,0,0.15),
+      inset 0 1px 2px var(--key-border-top),
+      inset 0 -1px 1px var(--key-border-bot);
+    z-index: 2;
+  }
+
+  /* Pressed State (Sinking & Solidifying) 
+     In spatial UI, pressing often makes things more opaque and slightly smaller
+     rather than physically translating downwards a long distance. */
+  .key:active, .key.is-pressed {
+    transform: translateY(1px) scale(0.96);
+    background: var(--key-press-bg);
+    box-shadow: 
+      0 2px 8px rgba(0,0,0,0.1),
+      inset 0 1px 1px var(--key-border-top);
+    transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.1s ease;
+  }
+
+  .key.tall { grid-row: span 2; }
+  .key.wide { grid-column: span 2; }
+  .key.empty { visibility: hidden; pointer-events: none; }
+
+  /* Sub labels */
+  .key .sub {
+    position: absolute; bottom: 8px; left: 0; right: 0; text-align: center;
+    font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text-secondary); pointer-events: none;
+  }
+
+  /* ─── State Injected Glows (Neon inside glass) ─── */
+  
+  .key.glow-cyan {
+    /* Inject color into the glass body */
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.4), rgba(6, 182, 212, 0.1));
+    color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.8);
+    box-shadow: 
+      0 8px 32px var(--cyan-glow),
+      inset 0 1px 2px rgba(255,255,255,0.6),
+      inset 0 0 0 1px rgba(6, 182, 212, 0.5);
+  }
+  .key.glow-cyan:hover {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.6), rgba(6, 182, 212, 0.2));
+    box-shadow: 0 12px 40px var(--cyan-glow), inset 0 1px 2px rgba(255,255,255,0.8);
+  }
+
+  .key.glow-pink {
+    background: linear-gradient(135deg, rgba(244, 63, 94, 0.4), rgba(244, 63, 94, 0.1));
+    color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.8);
+    box-shadow: 
+      0 8px 32px var(--pink-glow),
+      inset 0 1px 2px rgba(255,255,255,0.6),
+      inset 0 0 0 1px rgba(244, 63, 94, 0.5);
+  }
+  .key.glow-pink:hover {
+    background: linear-gradient(135deg, rgba(244, 63, 94, 0.6), rgba(244, 63, 94, 0.2));
+    box-shadow: 0 12px 40px var(--pink-glow), inset 0 1px 2px rgba(255,255,255,0.8);
+  }
+  
+  /* Pressed glow solidifies the color */
+  .key.glow-cyan:active, .key.glow-cyan.is-pressed {
+    background: rgba(6, 182, 212, 0.7); box-shadow: 0 4px 16px var(--cyan-glow);
+  }
+  .key.glow-pink:active, .key.glow-pink.is-pressed {
+    background: rgba(244, 63, 94, 0.7); box-shadow: 0 4px 16px var(--pink-glow);
+  }
+
+</style>
+</head>
+<body>
+  <!-- Dynamic Mesh Background for Glass -->
+  <div class="wallpaper">
+    <div class="blob"></div>
+    <div class="blob"></div>
+    <div class="blob"></div>
+  </div>
+
+  <p class="brief">
+    <strong>OneTone Soft Pad · iOS 27 Spatial Glass</strong> —
+    A futuristic paradigm shift. Mechanical skirts are replaced with <strong>floating frosted lozenges</strong>.
+    Interaction uses Spatial UI physics (scale & opacity interpolation instead of physical depth).
+    Glows act as neon injected directly into the glass matrix.
+  </p>
+
+  <div class="toolbar-group">
+    <div class="toolbar" role="toolbar">
+      <span class="toolbar-label">Environment:</span>
+      <button type="button" data-theme-btn="dark" aria-pressed="true">Midnight</button>
+      <button type="button" data-theme-btn="light" aria-pressed="false">Daylight</button>
+    </div>
+    
+    <div class="toolbar" role="toolbar">
+      <span class="toolbar-label">Chassis Aura:</span>
+      <button type="button" data-state-btn="idle" aria-pressed="true">Clear</button>
+      <button type="button" data-state-btn="cyan" aria-pressed="false">Cyan Field</button>
+      <button type="button" data-state-btn="pink" aria-pressed="false">Pink Field</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div>
+      <p class="label">Keyboard face</p>
+      <div class="bloom-wrap" data-chassis-state="idle" id="main-pad-wrap">
+        <div class="bloom" aria-hidden="true"></div>
+        <div class="shell">
+          <div class="keys" aria-label="Spatial Soft Pad keys">
+            <!-- row 1 -->
+            <button class="key" type="button">↑</button>
+            <button class="key" type="button">↓</button>
+            <button class="key empty" type="button" tabindex="-1"></button>
+            <button class="key" type="button">✕</button>
+            <!-- row 2–3 tall -->
+            <button class="key glow-cyan" type="button">⌘K<span class="sub">Agent</span></button>
+            <button class="key" type="button">⑂</button>
+            <button class="key" type="button">✓</button>
+            <button class="key tall" type="button">⏎</button>
+            <!-- row 3 continued -->
+            <button class="key glow-cyan" type="button">⌕</button>
+            <button class="key glow-pink" type="button">↵</button>
+            <button class="key" type="button">⎋</button>
+            <!-- row 4 -->
+            <button class="key wide" type="button">␣</button>
+            <button class="key" type="button">⌫</button>
+            <button class="key" type="button">⇥</button>
+            <!-- row 5 -->
+            <button class="key" type="button">1</button>
+            <button class="key" type="button">2</button>
+            <button class="key" type="button">3</button>
+            <button class="key" type="button">4</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="label">Spatial States</p>
+      <div class="keys" style="height: auto; grid-template-rows: repeat(2, var(--cell)); width: calc(3 * var(--cell) + 2 * var(--gap));">
+        <button class="key" type="button">Idle</button>
+        <!-- Forced hover state for visualization -->
+        <button class="key" type="button" style="transform: translateY(-2px) scale(1.02); background: var(--key-hover-bg); box-shadow: 0 12px 30px rgba(0,0,0,0.15), inset 0 1px 2px var(--key-border-top), inset 0 -1px 1px var(--key-border-bot);">Hover</button>
+        <button class="key is-pressed" type="button">Press</button>
+        <button class="key glow-cyan" type="button">Agent</button>
+        <button class="key glow-pink" type="button">Warn</button>
+        <button class="key empty" type="button" tabindex="-1"></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Theme Switcher
+    document.querySelectorAll("[data-theme-btn]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const theme = btn.getAttribute("data-theme-btn");
+        document.documentElement.setAttribute("data-theme", theme);
+        
+        document.querySelectorAll("[data-theme-btn]").forEach((b) => {
+          b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+        });
+      });
+    });
+
+    // Aura Switcher
+    document.querySelectorAll("[data-state-btn]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const state = btn.getAttribute("data-state-btn");
+        document.getElementById("main-pad-wrap").setAttribute("data-chassis-state", state);
+        
+        document.querySelectorAll("[data-state-btn]").forEach((b) => {
+          b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+        });
+      });
+    });
+  </script>
+</body>
+</html>

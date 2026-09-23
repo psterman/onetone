@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>皮肤替换对照 · 现在 vs 换皮后</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "SF Pro Text", "Segoe UI", "PingFang SC", system-ui, sans-serif;
+    background: #0b0d10;
+    color: #e8eef6;
+    padding: 28px 24px 64px;
+  }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .sub { color: #94a3b8; font-size: 13px; margin: 0 0 28px; max-width: 820px; line-height: 1.55; }
+  .row-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #64748b; margin: 28px 0 14px;
+  }
+  .row-label strong { color: #38bdf8; font-weight: 700; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 18px;
+  }
+  @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  .card { text-align: center; }
+  .card h3 {
+    margin: 0 0 4px; font-size: 13px; font-weight: 650; color: #f1f5f9;
+  }
+  .card .hint { margin: 0 0 12px; font-size: 11px; color: #64748b; min-height: 2.4em; }
+  .arrow {
+    text-align: center; color: #38bdf8; font-size: 22px; margin: 8px 0;
+    letter-spacing: 0.4em;
+  }
+
+  /* ─── Mini pad shell (product-like) ─── */
+  .pad {
+    --cell: 42px;
+    --gap: 5px;
+    width: calc(4 * var(--cell) + 3 * var(--gap) + 24px);
+    margin: 0 auto;
+    border-radius: 18px;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: repeat(4, var(--cell));
+    grid-template-rows: repeat(4, var(--cell));
+    gap: var(--gap);
+  }
+  .k {
+    border: none; border-radius: 10px; padding: 0;
+    font: inherit; font-size: 13px; font-weight: 600;
+    display: grid; place-items: center; cursor: default;
+    color: #1e293b;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .k.wide { grid-column: span 2; }
+  .k.glow-c { box-shadow: 0 0 14px rgba(56,189,248,.45) !important; color: #38bdf8 !important; }
+  .k.glow-p { box-shadow: 0 0 14px rgba(251,113,133,.45) !important; color: #fb7185 !important; }
+
+  /* ===== NOW: product skins ===== */
+  .now[data-pad-skin="default"] {
+    background: linear-gradient(160deg, #f4f6f9, #e8ecf2);
+    border: 1px solid rgba(26,45,74,.1);
+    box-shadow: 0 12px 28px rgba(15,23,42,.12);
+  }
+  .now[data-pad-skin="default"] .k {
+    background: linear-gradient(180deg, #fbfcfe, #eef2f6);
+    border: 1px solid rgba(23,32,51,.12);
+    box-shadow: 0 2px 4px rgba(23,32,51,.08), inset 0 1px 0 #fff;
+  }
+
+  .now[data-pad-skin="glass-light"] {
+    background: linear-gradient(145deg, rgba(255,255,255,.92), rgba(241,245,249,.88));
+    border: 1px solid rgba(15,23,42,.1);
+    box-shadow: 0 18px 40px rgba(15,23,42,.14), inset 0 1px 0 rgba(255,255,255,.95);
+    backdrop-filter: blur(14px);
+  }
+  .now[data-pad-skin="glass-light"] .k {
+    background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(241,245,249,.9));
+    border: 1px solid rgba(15,23,42,.1);
+    box-shadow: 0 4px 10px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.95);
+  }
+
+  .now[data-pad-skin="hybrid-pro"] {
+    background: linear-gradient(160deg, rgba(255,255,255,.9), rgba(238,243,247,.94));
+    border: 1px solid rgba(23,32,51,.12);
+    box-shadow: 0 16px 36px rgba(23,32,51,.14);
+  }
+  .now[data-pad-skin="hybrid-pro"] .k {
+    background: linear-gradient(180deg, #fbfcfe, #eef2f6);
+    border: 1px solid rgba(23,32,51,.14);
+    box-shadow: 0 2px 0 rgba(23,32,51,.1), 0 6px 12px rgba(23,32,51,.08);
+  }
+
+  .now[data-pad-skin="vibe-light"] {
+    background:
+      radial-gradient(circle at 18% 8%, rgba(99,102,241,.14), transparent 42%),
+      linear-gradient(155deg, #f8fafc, #eef2ff);
+    border: 1px solid rgba(99,102,241,.18);
+    box-shadow: 0 18px 40px rgba(79,70,229,.12);
+  }
+  .now[data-pad-skin="vibe-light"] .k {
+    background: linear-gradient(160deg, #fff, #eef2ff);
+    border: 1px solid rgba(99,102,241,.16);
+    color: #1e1b4b;
+    box-shadow: 0 6px 14px rgba(79,70,229,.1), inset 0 1px 0 #fff;
+  }
+
+  /* ===== AFTER: proposed repaint ===== */
+  /* default stays */
+  .after[data-pad-skin="default"] {
+    background: linear-gradient(160deg, #f4f6f9, #e8ecf2);
+    border: 1px solid rgba(26,45,74,.1);
+    box-shadow: 0 12px 28px rgba(15,23,42,.12);
+  }
+  .after[data-pad-skin="default"] .k {
+    background: linear-gradient(180deg, #fbfcfe, #eef2f6);
+    border: 1px solid rgba(23,32,51,.12);
+    box-shadow: 0 2px 4px rgba(23,32,51,.08), inset 0 1px 0 #fff;
+  }
+
+  /* glass-light ← Spatial Glass (light) */
+  .after[data-pad-skin="glass-light"] {
+    background: rgba(255,255,255,.4);
+    border: 1px solid rgba(255,255,255,.8);
+    box-shadow: 0 20px 40px rgba(0,0,0,.08), inset 0 1px 2px #fff;
+    backdrop-filter: blur(28px) saturate(160%);
+    position: relative;
+  }
+  .after[data-pad-skin="glass-light"]::before {
+    content: "";
+    position: absolute; inset: -40px; z-index: -1; border-radius: 40px;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(99,102,241,.35), transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(236,72,153,.28), transparent 45%),
+      radial-gradient(circle at 50% 100%, rgba(56,189,248,.25), transparent 50%);
+    filter: blur(20px);
+  }
+  .after[data-pad-skin="glass-light"] .k {
+    background: linear-gradient(135deg, rgba(255,255,255,.85), rgba(255,255,255,.35));
+    border: none;
+    color: #0f172a;
+    box-shadow:
+      0 6px 16px rgba(0,0,0,.06),
+      inset 0 1px 1px #fff,
+      inset 0 -1px 1px rgba(255,255,255,.4);
+    backdrop-filter: blur(12px);
+  }
+  .after[data-pad-skin="glass-light"] .k.glow-c {
+    background: rgba(6,182,212,.35) !important;
+    box-shadow: 0 0 18px rgba(6,182,212,.55), inset 0 0 12px rgba(6,182,212,.25) !important;
+  }
+  .after[data-pad-skin="glass-light"] .k.glow-p {
+    background: rgba(244,63,94,.3) !important;
+    box-shadow: 0 0 18px rgba(244,63,94,.5), inset 0 0 12px rgba(244,63,94,.2) !important;
+  }
+
+  /* hybrid-pro ← Keys Core v2 (dark anodized) */
+  .after[data-pad-skin="hybrid-pro"] {
+    background: rgba(22,28,38,.75);
+    border: 1px solid rgba(255,255,255,.1);
+    box-shadow:
+      0 24px 48px rgba(0,0,0,.55),
+      inset 0 1px 1px rgba(255,255,255,.12),
+      inset 0 2px 12px rgba(0,0,0,.35);
+    backdrop-filter: blur(24px) saturate(140%);
+  }
+  .after[data-pad-skin="hybrid-pro"] .k {
+    color: #f1f5f9;
+    background: linear-gradient(180deg, #333d4e, #293240);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    box-shadow:
+      0 4px 0 #181d26,
+      0 8px 16px rgba(0,0,0,.45),
+      inset 0 1px 0 rgba(255,255,255,.12);
+  }
+  .after[data-pad-skin="hybrid-pro"] .k.glow-c {
+    color: #67e8f9 !important;
+    text-shadow: 0 0 10px rgba(56,189,248,.9);
+    box-shadow:
+      0 4px 0 #181d26,
+      0 0 18px rgba(56,189,248,.45),
+      0 10px 24px rgba(56,189,248,.2) !important;
+  }
+  .after[data-pad-skin="hybrid-pro"] .k.glow-p {
+    color: #fda4af !important;
+    text-shadow: 0 0 10px rgba(251,113,133,.9);
+    box-shadow:
+      0 4px 0 #181d26,
+      0 0 18px rgba(251,113,133,.4),
+      0 10px 24px rgba(251,113,133,.18) !important;
+  }
+
+  /* vibe-light stays (no prototype pair) */
+  .after[data-pad-skin="vibe-light"] {
+    background:
+      radial-gradient(circle at 18% 8%, rgba(99,102,241,.14), transparent 42%),
+      linear-gradient(155deg, #f8fafc, #eef2ff);
+    border: 1px solid rgba(99,102,241,.18);
+    box-shadow: 0 18px 40px rgba(79,70,229,.12);
+  }
+  .after[data-pad-skin="vibe-light"] .k {
+    background: linear-gradient(160deg, #fff, #eef2ff);
+    border: 1px solid rgba(99,102,241,.16);
+    color: #1e1b4b;
+    box-shadow: 0 6px 14px rgba(79,70,229,.1), inset 0 1px 0 #fff;
+  }
+
+  .badge {
+    display: inline-block; margin-top: 8px; padding: 2px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  }
+  .badge.keep { background: rgba(148,163,184,.15); color: #94a3b8; }
+  .badge.swap { background: rgba(56,189,248,.15); color: #38bdf8; }
+
+  .stage-bg {
+    background:
+      radial-gradient(800px 400px at 50% 0%, #152238 0%, transparent 60%),
+      #05070a;
+    border-radius: 20px;
+    padding: 20px 16px 24px;
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .stage-bg.lightish {
+    background:
+      radial-gradient(800px 400px at 50% 0%, #e2e8f0 0%, transparent 60%),
+      #f1f5f9;
+  }
+  .stage-bg.lightish .card h3 { color: #0f172a; }
+  .stage-bg.lightish .card .hint { color: #64748b; }
+</style>
+</head>
+<body>
+  <h1>同 ID 换皮对照</h1>
+  <p class="sub">
+    上面是<strong>现在产品里的 4 个皮肤</strong>；下面是建议替换后的效果。
+    <code>default</code> / <code>vibe-light</code> 保留；
+    <code>glass-light</code> ← Spatial Glass；
+    <code>hybrid-pro</code> ← Keys Core v2。
+  </p>
+
+  <div class="row-label">现在 · <strong>Current</strong></div>
+  <div class="stage-bg lightish">
+    <div class="grid" id="now"></div>
+  </div>
+
+  <div class="arrow">↓ ↓ ↓ ↓</div>
+
+  <div class="row-label">换皮后 · <strong>Proposed</strong></div>
+  <div class="stage-bg">
+    <div class="grid" id="after"></div>
+  </div>
+
+<script>
+const skins = [
+  { id: 'default', name: '默认', nowHint: '干净浅色', afterHint: '保留不变', swap: false },
+  { id: 'glass-light', name: '玻璃浅色', nowHint: '半透明玻璃', afterHint: '← Spatial Glass', swap: true },
+  { id: 'hybrid-pro', name: 'Hybrid Pro', nowHint: '专业深浅混搭', afterHint: '← Keys Core v2', swap: true },
+  { id: 'vibe-light', name: 'Vibe Light', nowHint: '偏亮紫调', afterHint: '保留（无对等原型）', swap: false },
+];
+
+function padHtml(cls, skin) {
+  return `<div class="pad ${cls}" data-pad-skin="${skin}">
+    <button class="k" type="button">↑</button>
+    <button class="k" type="button">↓</button>
+    <button class="k glow-c" type="button">⌘K</button>
+    <button class="k" type="button">✕</button>
+    <button class="k glow-c" type="button">⌕</button>
+    <button class="k glow-p" type="button">↵</button>
+    <button class="k" type="button">✓</button>
+    <button class="k" type="button">⌫</button>
+    <button class="k wide" type="button">——</button>
+    <button class="k" type="button">1</button>
+    <button class="k" type="button">2</button>
+    <button class="k" type="button">3</button>
+    <button class="k" type="button">4</button>
+    <button class="k" type="button">5</button>
+    <button class="k" type="button">6</button>
+  </div>`;
+}
+
+function card(skin, which) {
+  const hint = which === 'now' ? skin.nowHint : skin.afterHint;
+  const badge = which === 'after'
+    ? `<span class="badge ${skin.swap ? 'swap' : 'keep'}">${skin.swap ? '替换' : '保留'}</span>`
+    : '';
+  return `<div class="card">
+    <h3>${skin.name}</h3>
+    <p class="hint">${hint}</p>
+    ${padHtml(which, skin.id)}
+    ${badge}
+  </div>`;
+}
+
+document.getElementById('now').innerHTML = skins.map(s => card(s, 'now')).join('');
+document.getElementById('after').innerHTML = skins.map(s => card(s, 'after')).join('');
+</script>
+</body>
+</html>

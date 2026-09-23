@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react';
 import { useIslandRefresh } from '../island-runtime';
 import {
   buildSoftPadEmptyIdleModel,
+  loadSoftPadScopeKind,
   prepareSoftPadApp,
   prepareSoftPadCreateKind,
   softPadEmptyIdleReady,
@@ -102,8 +103,39 @@ function useEmptyIdleModel(): SoftPadEmptyIdleModel {
 
 export function SoftPadEmptyIsland(): JSX.Element {
   const model = useEmptyIdleModel();
+  const actionsRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const root = actionsRef.current;
+    if (!root || model.mode !== 'empty') return;
+    const onClick = (ev: MouseEvent) => {
+      const t = ev.target as HTMLElement | null;
+      if (!t) return;
+      const load = t.closest('[data-soft-pad-load-scope]') as HTMLElement | null;
+      if (load) {
+        loadSoftPadScopeKind(load.getAttribute('data-soft-pad-load-scope') || '');
+        return;
+      }
+      const create = t.closest('[data-soft-pad-create-kind]') as HTMLElement | null;
+      if (create) {
+        prepareSoftPadCreateKind(create.getAttribute('data-soft-pad-create-kind') || 'codex');
+      }
+    };
+    root.addEventListener('click', onClick);
+    return () => root.removeEventListener('click', onClick);
+  }, [model.mode, model.sig]);
 
   if (model.mode === 'empty') {
+    // Prefer legacy emptyHtml (may list existing Agent scopes); fallback to create CTAs.
+    if (model.emptyHtml) {
+      return (
+        <div
+          ref={actionsRef}
+          className="soft-pad-empty__from-hub"
+          dangerouslySetInnerHTML={{ __html: model.emptyHtml }}
+        />
+      );
+    }
     return (
       <>
         <p className="soft-pad-empty__title">{model.emptyTitle}</p>

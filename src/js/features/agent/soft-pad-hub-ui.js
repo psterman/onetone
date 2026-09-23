@@ -3463,6 +3463,12 @@
     if (!(v > 0) || v > 1) v = 0.82;
     v = Math.max(0.4, Math.min(1, v));
     host.style.setProperty('--micro-hw-screen-opacity', String(v));
+    // Stage may live on an island paint node — pin the var there too so fade always sticks.
+    try {
+      host.querySelectorAll('[data-opacity-stage]').forEach(function (stage) {
+        if (stage && stage.style) stage.style.setProperty('--micro-hw-screen-opacity', String(v));
+      });
+    } catch (_) {}
     var pct = Math.round(v * 100);
     try {
       var lab = host.querySelector('[data-screen-opacity-preview]');
@@ -3473,6 +3479,8 @@
         if (sw) sw.style.opacity = String(v);
         var val = dock.querySelector('[data-screen-opacity-val]');
         if (val) val.textContent = pct + '%';
+        var range = dock.querySelector('[data-act="screenOpacity"]');
+        if (range && String(range.value) !== String(pct)) range.value = String(pct);
       }
     } catch (_) {}
   }
@@ -6355,9 +6363,41 @@
     // Concrete Agent Soft Pad required before showing pad + right data column.
     var softEntry = resolveSoftPadEntry();
     if (!softPadAgentReady(softEntry)) {
+      // Heal: concrete agent mapping without pad config → ensure instead of empty CTA.
+      if (hasMapping(softEntry) && softEntry.kind && softEntry.kind !== SOFT_PAD_UNIVERSAL_KIND
+          && isHubSoftPadKind(softEntry.kind)) {
+        ensureSoftPadConfig(softEntry, { persist: true });
+        softEntry = resolveSoftPadEntry();
+      }
+      // Prefer any ready Soft Pad scheme over the need-agent empty surface.
+      if (!softPadAgentReady(softEntry)) {
+        var readySchemes = listSoftPadSchemes();
+        var ri;
+        for (ri = 0; ri < readySchemes.length; ri++) {
+          var cand = readySchemes[ri];
+          if (!cand || cand.kind === SOFT_PAD_UNIVERSAL_KIND) continue;
+          if (!hasMapping(cand) || !isHubSoftPadKind(cand.kind)) continue;
+          if (!cand.mapping.codexMicroPad) ensureSoftPadConfig(cand, { persist: true });
+          if (softPadAgentReady(cand)) {
+            adoptSoftPadSelection(cand);
+            softEntry = cand;
+            break;
+          }
+        }
+      }
+    }
+    if (!softPadAgentReady(softEntry)) {
       resetSoftPadRouteToPadAppear();
       clearSubpage();
-      if (!hasMapping(softEntry)) {
+      if (hasMapping(softEntry) && softEntry.kind && softEntry.kind !== SOFT_PAD_UNIVERSAL_KIND) {
+        var prepScopeHeal = findScope(softEntry.kind) || {
+          kind: softEntry.kind,
+          appId: softEntry.appId || appIdForKind(softEntry.kind),
+          title: softEntry.title,
+          entry: softEntry
+        };
+        showPrepareMain(prepScopeHeal);
+      } else if (!hasMapping(softEntry)) {
         var prepScope = findScope(selectedScopeId || 'codex');
         if (prepScope && prepScope.kind && prepScope.kind !== SOFT_PAD_UNIVERSAL_KIND) {
           showPrepareMain(prepScope);
@@ -6365,7 +6405,7 @@
           renderEmptyMain();
         }
       } else {
-        // Universal / incomplete pad — ask to load a real Agent first.
+        // Universal-only / no concrete agent — ask to load a real Agent first.
         renderEmptyMain();
       }
       ensureSoftPadBoundaryHint();
@@ -6844,6 +6884,13 @@
     prepareSoftPadCreateKind: function (kind) {
       kind = String(kind || 'codex');
       prepareAppFromUi(appIdForKind(kind) || (kind === 'claude' ? 'claude-code' : 'codex-chat'), kind);
+    },
+    selectSoftPadScopeKind: function (kind) {
+      kind = String(kind || '').trim();
+      if (!kind) return;
+      selectedScopeId = kind;
+      scopePickedByUser = true;
+      selectScope(kind, { fromUser: true });
     },
     schemeRowView: renderSchemeRow,
     appSwitcherChipView: appSwitcherChipView,

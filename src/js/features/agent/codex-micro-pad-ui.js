@@ -6717,8 +6717,8 @@
   }
 
   function skinLabel(id) {
-    if (id === 'glass-light') return t('softPadSkinGlassLight', '玻璃浅色');
-    if (id === 'hybrid-pro') return t('softPadSkinHybridPro', 'Hybrid Pro');
+    if (id === 'glass-light') return t('softPadSkinGlassLight', '空间玻璃');
+    if (id === 'hybrid-pro') return t('softPadSkinHybridPro', 'Keys Core');
     if (id === 'vibe-light') return t('softPadSkinVibeLight', 'Vibe Light');
     return t('softPadSkinDefault', '默认');
   }
@@ -6748,8 +6748,8 @@
     var cur = canonicalizePadSkin(pad && pad.skin);
     var hints = {
       default: t('softPadSkinHintDefault', '干净浅色，适合白天'),
-      'glass-light': t('softPadSkinHintGlass', '半透明玻璃质感'),
-      'hybrid-pro': t('softPadSkinHintHybrid', '专业深浅混搭'),
+      'glass-light': t('softPadSkinHintGlass', '浮动磨砂玻璃键'),
+      'hybrid-pro': t('softPadSkinHintHybrid', '机械裙边 + 透光字'),
       'vibe-light': t('softPadSkinHintVibe', '偏亮、轻松的配色')
     };
     var html = '<div class="soft-pad-skin-list" role="radiogroup" aria-label="' +
@@ -11706,6 +11706,51 @@
     return t('softPadShowSceneFollowCap', '目标应用在前台才出现');
   }
 
+  function softPadShowObjName(mode) {
+    if (mode === 'mini') return t('softPadShowObjFormMini', '迷你条');
+    if (mode === 'hidden') return t('softPadShowObjFormNone', '无浮窗');
+    return t('softPadShowObjFormPad', 'Soft Pad');
+  }
+
+  function softPadShowModeShort(mode) {
+    if (mode === 'front') return t('softPadShowModeFrontShort', 'Soft Pad 始终可见');
+    if (mode === 'mini') return t('softPadShowModeMiniShort', '收成迷你条，可再展开');
+    if (mode === 'hidden') return t('softPadShowModeHiddenShort', '无 Soft Pad / 迷你条');
+    return t('softPadShowModeFollowShort', '有目标应用才出 Soft Pad');
+  }
+
+  function softPadShowObjBodyHtml(mode) {
+    mode = String(mode || 'follow');
+    var pad = '<span class="soft-pad-show-obj__pad" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
+    var mini = '<span class="soft-pad-show-obj__mini" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>';
+    var ghost = '<span class="soft-pad-show-obj__pad is-ghost" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
+    if (mode === 'mini') {
+      return '<span class="soft-pad-show-obj__pad is-faint" aria-hidden="true"><i></i><i></i><i></i><i></i></span>' +
+        '<span class="soft-pad-show-obj__arrow" aria-hidden="true">→</span>' + mini;
+    }
+    if (mode === 'hidden') {
+      return ghost + '<span class="soft-pad-show-obj__x" aria-hidden="true">×</span>';
+    }
+    var chip = mode === 'front'
+      ? t('softPadShowObjAlways', '始终')
+      : t('softPadShowObjFollow', '随应用');
+    return '<span class="soft-pad-show-obj__chip">' + esc(chip) + '</span>' +
+      '<span class="soft-pad-show-obj__arrow" aria-hidden="true">→</span>' + pad;
+  }
+
+  function renderShowModeObjectStageHtml(mode) {
+    mode = String(mode || 'follow');
+    return (
+      '<div class="soft-pad-show-obj" data-show-obj="' + esc(mode) + '">' +
+      '<div class="soft-pad-show-obj__label">' +
+      esc(t('softPadShowObjCurrent', '当前形态')) +
+      ' · <b data-show-obj-name>' + esc(softPadShowObjName(mode)) + '</b></div>' +
+      '<div class="soft-pad-show-obj__body" data-show-obj-body>' +
+      softPadShowObjBodyHtml(mode) +
+      '</div></div>'
+    );
+  }
+
   function syncSoftPadShowModeChrome(root, mode, pad) {
     mode = String(mode || 'follow');
     var roots = [];
@@ -11723,6 +11768,14 @@
         btn.classList.toggle('is-active', on);
         btn.setAttribute('aria-selected', on ? 'true' : 'false');
       });
+      var obj = scope.querySelector('[data-show-obj]');
+      if (obj) {
+        obj.setAttribute('data-show-obj', mode);
+        var objName = obj.querySelector('[data-show-obj-name]');
+        if (objName) objName.textContent = softPadShowObjName(mode);
+        var objBody = obj.querySelector('[data-show-obj-body]');
+        if (objBody) objBody.innerHTML = softPadShowObjBodyHtml(mode);
+      }
       var scene = scope.querySelector('[data-show-scene]');
       if (scene) {
         scene.setAttribute('data-show-scene', mode);
@@ -11746,7 +11799,9 @@
         '<button type="button" class="soft-pad-show-mode-tab' + (on ? ' is-active' : '') + '"' +
         ' role="tab" data-act="showMode" data-show-mode="' + id + '"' +
         ' aria-selected="' + (on ? 'true' : 'false') + '">' +
-        esc(label) + '</button>'
+        '<span class="soft-pad-show-mode-tab__t">' + esc(label) + '</span>' +
+        '<span class="soft-pad-show-mode-tab__h">' + esc(softPadShowModeShort(id)) + '</span>' +
+        '</button>'
       );
     }
     return (
@@ -12199,14 +12254,46 @@
   function renderNumpadMapHtml(pad) {
     pad = pad || {};
     var mode = resolveNumpadReplaceMode(pad);
-    function card(id, title, cap) {
+    function digiViz() {
+      return (
+        '<span class="soft-pad-numpad-mode__viz soft-pad-numpad-mode__viz--digits" aria-hidden="true">' +
+        '<span class="soft-pad-numpad-mode__viz-grid">' +
+        '<i>7</i><i>8</i><i>9</i>' +
+        '<i>4</i><i>5</i><i>6</i>' +
+        '<i>1</i><i>2</i><i>3</i>' +
+        '<i class="is-wide">0</i><i>.</i>' +
+        '</span>' +
+        '<span class="soft-pad-numpad-mode__viz-badge">' +
+        esc(t('softPadNumpadBadgeDigit', '日常数字键盘')) +
+        '</span>' +
+        '</span>'
+      );
+    }
+    function softViz() {
+      return (
+        '<span class="soft-pad-numpad-mode__viz soft-pad-numpad-mode__viz--soft" aria-hidden="true">' +
+        '<span class="soft-pad-numpad-mode__viz-grid soft-pad-numpad-mode__viz-grid--soft">' +
+        '<i></i><i></i><i></i>' +
+        '<i class="is-glow"></i><i></i><i></i>' +
+        '<i></i><i class="is-wide"></i><i></i>' +
+        '</span>' +
+        '<span class="soft-pad-numpad-mode__viz-badge is-soft">' +
+        esc(t('softPadNumpadBadgeSoft', '临时 Soft Pad')) +
+        '</span>' +
+        '</span>'
+      );
+    }
+    function card(id, title, cap, viz) {
       var on = mode === id;
       return (
         '<button type="button" class="soft-pad-numpad-mode' + (on ? ' is-active' : '') + '"' +
         ' role="radio" data-act="numpadMode" data-numpad-mode="' + id + '"' +
         ' aria-checked="' + (on ? 'true' : 'false') + '">' +
+        viz +
+        '<span class="soft-pad-numpad-mode__text">' +
         '<span class="soft-pad-numpad-mode__title">' + esc(title) + '</span>' +
         '<span class="soft-pad-numpad-mode__cap">' + esc(cap) + '</span>' +
+        '</span>' +
         '</button>'
       );
     }
@@ -12220,16 +12307,17 @@
       '<div class="soft-pad-feature-cards soft-pad-feature-cards--modes" data-mapping-on="' +
       (pad.enabled ? '1' : '0') + '" data-numpad-mode="' + mode + '" data-feature-tab="occupy">' +
       '<p class="soft-pad-numpad-modes__q">' +
-      esc(t('softPadNumpadModesQ', '电脑右侧小键盘用来做什么？')) + '</p>' +
+      esc(t('softPadNumpadModesQ', '同一块右侧小键盘，选一种用途')) + '</p>' +
       '<div class="soft-pad-numpad-modes" role="radiogroup" data-numpad-modes="' + mode + '"' +
-      ' aria-label="' + esc(t('softPadNumpadModesQ', '电脑右侧小键盘用来做什么？')) + '">' +
+      ' aria-label="' + esc(t('softPadNumpadModesQ', '同一块右侧小键盘，选一种用途')) + '">' +
       card('soft',
-        t('softPadNumpadModeSoft', '小键盘继续打数字'),
-        t('softPadNumpadModeSoftCap', '实体键照常 0–9；要用 Soft Pad，请点屏幕。')) +
+        t('softPadNumpadModeSoft', '继续打数字'),
+        t('softPadNumpadModeSoftCap', '实体 0–9 照常；Soft Pad 用屏幕点。'),
+        digiViz()) +
       card('occupy',
-        t('softPadNumpadModeOccupy', '小键盘触发 Soft Pad'),
-        t('softPadNumpadModeOccupyCap',
-          '整机右侧数字键临时变 Soft Pad；可一键恢复并记住。')) +
+        t('softPadNumpadModeOccupy', '变成 Soft Pad'),
+        t('softPadNumpadModeOccupyCap', '同一键位临时映射 Soft Pad，可一键恢复。'),
+        softViz()) +
       '</div>' +
       noPadTip +
       '</div>'
@@ -12397,6 +12485,7 @@
       '<div class="soft-pad-display-panel">' +
       '<div class="soft-pad-runtime-show">' +
       '<p class="codex-pad-mgr__label">' + esc(t('softPadShowModeLbl', '显示方式')) + '</p>' +
+      renderShowModeObjectStageHtml(mode) +
       renderShowModeTabsHtml(mode) +
       '<p class="codex-pad-mgr__hint soft-pad-runtime-show__hint" data-show-mode-hint>' +
       esc(softPadShowModeHint(mode)) +
@@ -13500,6 +13589,7 @@
         '决定 Soft Pad 完整窗口何时出现。点一项，左侧预览会跟着变。')) +
       '</p>' +
       '<div class="soft-pad-runtime-show">' +
+      renderShowModeObjectStageHtml(mode) +
       renderShowModeTabsHtml(mode) +
       '<p class="codex-pad-mgr__hint soft-pad-runtime-show__hint" data-show-mode-hint>' +
       esc(softPadShowModeHint(mode)) +

@@ -89,6 +89,21 @@ export function prepareSoftPadCreateKind(kind: string): void {
   }
 }
 
+/** 空态「加载已有场景」chip — 与 legacy data-soft-pad-load-scope 同路径。 */
+export function loadSoftPadScopeKind(kind: string): void {
+  const api = legacyHub() as LegacySoftPadHub & {
+    selectSoftPadScopeKind?: (kind: string) => void;
+  };
+  const k = String(kind || '').trim();
+  if (!k) return;
+  if (typeof api.selectSoftPadScopeKind === 'function') {
+    api.selectSoftPadScopeKind(k);
+    return;
+  }
+  // Fallback: create/prepare path for that kind.
+  prepareSoftPadCreateKind(k);
+}
+
 /** prepare 态 CTA。 */
 export function prepareSoftPadApp(appId: string, kind: string): void {
   const api = legacyHub();

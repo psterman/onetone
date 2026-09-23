@@ -1403,6 +1403,13 @@ assert.ok(padCss.indexOf('[data-pad-skin="glass-light"]') >= 0);
 assert.ok(padCss.indexOf('[data-pad-skin="hybrid-pro"]') >= 0);
 assert.ok(padCss.indexOf('[data-pad-skin="vibe-light"]') >= 0);
 assert.ok(padCss.indexOf('[data-pad-skin="vibe-dark"]') >= 0);
+assert.ok(padCss.indexOf('rgba(255, 255, 255, 0.42)') >= 0, 'glass-light Spatial chassis');
+assert.ok(padCss.indexOf('0 5px 0 #9aa8b8') >= 0 || padCss.indexOf('0 4px 0 #c1cbd7') >= 0, 'hybrid-pro Keys Core light skirt');
+assert.ok(padCss.indexOf('0 5px 0 #0f131a') >= 0 || padCss.indexOf('0 4px 0 #181d26') >= 0, 'hybrid-pro Keys Core dark skirt');
+assert.ok(overlayCss.indexOf('rgba(20, 20, 22, 0.48)') >= 0, 'overlay Spatial dark chassis');
+var hubCss = fs.readFileSync(path.join(__dirname, '../src/css/soft-pad-hub.css'), 'utf8');
+assert.ok(hubCss.indexOf('beat preview !important') >= 0 || hubCss.indexOf('data-pad-skin="hybrid-pro"]') >= 0 && hubCss.indexOf('background: #cfd7e1 !important') >= 0,
+  'preview host must not flatten Keys Core skin');
 assert.ok(padCss.indexOf('font-family') >= 0 && padCss.indexOf(':hover') >= 0);
 assert.ok(padCss.indexOf(':active') >= 0 || padCss.indexOf('.is-pressed') >= 0);
 assert.ok(padCss.indexOf('html[data-theme="dark"]') >= 0 && padCss.indexOf('vibe-light') >= 0,

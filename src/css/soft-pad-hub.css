@@ -5377,8 +5377,15 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   transition: box-shadow 0.2s ease, filter 0.2s ease, opacity 0.15s ease;
   opacity: var(--micro-hw-screen-opacity, 0.82);
 }
-.soft-pad-opacity-stage .soft-pad-mode-preview__hw .micro-hw-shell,
-.soft-pad-opacity-stage .codex-micro-pad {
+/* Opacity stage: checkerboard shows through the Soft Pad surface.
+   Fade the pad wrapper only; keep shell at 1 so we don't double-multiply. */
+.soft-pad-opacity-stage .codex-micro-pad.soft-pad-preview,
+.soft-pad-opacity-stage .soft-pad-mode-preview__hw {
+  opacity: var(--micro-hw-screen-opacity, 0.82) !important;
+  transition: opacity 0.15s ease;
+}
+.soft-pad-opacity-stage .micro-hw-shell,
+.soft-pad-opacity-stage .soft-pad-mode-preview__hw .micro-hw-shell {
   opacity: 1 !important;
 }
 .soft-pad-opacity-stage {
@@ -7327,37 +7334,168 @@ html[data-theme="dark"] .soft-pad-empty__desc {
 .soft-pad-runtime-show {
   margin-bottom: 16px;
 }
-.soft-pad-show-mode-tabs {
+.soft-pad-show-obj {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 14px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: #f7f9fb;
+  box-sizing: border-box;
+}
+.soft-pad-show-obj__label {
+  font-size: 11px;
+  font-weight: 650;
+  color: #5a6c80;
+  letter-spacing: 0.01em;
+}
+.soft-pad-show-obj__label b {
+  color: #0f5f7a;
+  font-weight: 800;
+}
+.soft-pad-show-obj__body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+}
+.soft-pad-show-obj__pad {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: #e8eef4;
+  border: 1px solid #b8c4d0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 6px;
+  box-sizing: border-box;
+}
+.soft-pad-show-obj__pad i {
+  margin: 0;
+  border-radius: 3px;
+  background: #fff;
+  border: 1px solid #c5d0db;
+}
+.soft-pad-show-obj__pad.is-faint {
+  opacity: 0.35;
+}
+.soft-pad-show-obj__pad.is-ghost {
+  background: transparent;
+  border-style: dashed;
+  border-color: #94a3b8;
+  opacity: 0.75;
+}
+.soft-pad-show-obj__pad.is-ghost i {
+  background: transparent;
+  border-style: dashed;
+  border-color: #94a3b8;
+}
+.soft-pad-show-obj__mini {
+  width: 112px;
+  height: 16px;
+  border-radius: 999px;
+  background: #e8eef4;
+  border: 1px solid #b8c4d0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  padding: 2px 5px;
+  box-sizing: border-box;
+}
+.soft-pad-show-obj__mini i {
+  margin: 0;
+  border-radius: 2px;
+  background: #fff;
+  border: 1px solid #c5d0db;
+}
+.soft-pad-show-obj__chip {
+  font-size: 11px;
+  font-weight: 750;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid rgba(42, 156, 196, 0.35);
+  color: #0f5f7a;
+}
+.soft-pad-show-obj__arrow {
+  font-size: 14px;
+  font-weight: 700;
+  color: #94a3b8;
+  line-height: 1;
+}
+.soft-pad-show-obj__x {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid #94a3b8;
+  color: #64748b;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+.soft-pad-show-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin-top: 6px;
 }
 .soft-pad-show-mode-tab {
-  flex: 1 1 0;
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: center;
-  padding: 8px 10px;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 9px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(26, 45, 74, 0.1);
-  background: rgba(248, 250, 252, 0.9);
-  color: #475569;
+  border: 1.5px solid rgba(26, 45, 74, 0.1);
+  background: #fff;
+  color: #334155;
+  font: inherit;
   font-size: 12px;
   font-weight: 650;
   line-height: 1.25;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 .soft-pad-show-mode-tab:hover {
   border-color: rgba(42, 156, 196, 0.35);
   color: #1a2d4a;
 }
+.soft-pad-show-mode-tab:focus-visible {
+  outline: 2px solid #2a9cc4;
+  outline-offset: 2px;
+}
 .soft-pad-show-mode-tab.is-active {
   color: #0369a1;
   background: rgba(62, 184, 220, 0.14);
-  border-color: rgba(62, 184, 220, 0.4);
+  border-color: rgba(62, 184, 220, 0.45);
+  box-shadow: 0 0 0 1px rgba(62, 184, 220, 0.28);
+}
+.soft-pad-show-mode-tab__t {
+  font-weight: 800;
+  color: inherit;
+}
+.soft-pad-show-mode-tab__h {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1.3;
+}
+.soft-pad-show-mode-tab.is-active .soft-pad-show-mode-tab__h {
+  color: #0369a1;
 }
 .soft-pad-runtime-show__select {
   display: block;
@@ -7912,12 +8050,12 @@ html[data-theme="dark"] .soft-pad-runtime-arm__input:focus {
   gap: 0;
 }
 .soft-pad-numpad-modes {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 .soft-pad-numpad-modes__q {
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   font-size: 12.5px;
   font-weight: 650;
   line-height: 1.4;
@@ -7927,12 +8065,12 @@ html[data-theme="dark"] .soft-pad-runtime-arm__input:focus {
   appearance: none;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
+  align-items: stretch;
+  gap: 8px;
   width: 100%;
   margin: 0;
-  padding: 11px 12px;
-  border-radius: 12px;
+  padding: 10px;
+  border-radius: 14px;
   border: 1.5px solid color-mix(in srgb, var(--line, #d7dee8) 92%, transparent);
   background: #fff;
   font: inherit;
@@ -7940,6 +8078,8 @@ html[data-theme="dark"] .soft-pad-runtime-arm__input:focus {
   text-align: left;
   cursor: pointer;
   box-sizing: border-box;
+  min-height: 0;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 .soft-pad-numpad-mode:hover {
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 42%, transparent);
@@ -7950,8 +8090,83 @@ html[data-theme="dark"] .soft-pad-runtime-arm__input:focus {
 }
 .soft-pad-numpad-mode.is-active {
   border-color: var(--primary, #2a9cc4);
-  background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, #fff);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 9%, #fff);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary, #2a9cc4) 35%, transparent);
+}
+.soft-pad-numpad-mode__viz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px 8px;
+  border-radius: 10px;
+  background: #eef2f6;
+  box-sizing: border-box;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+.soft-pad-numpad-mode__viz--digits {
+  background: linear-gradient(180deg, #f8fafc, #e8eef5);
+}
+.soft-pad-numpad-mode__viz--soft {
+  background: linear-gradient(180deg, #f0f7fb, #e2eef6);
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 22%, transparent);
+}
+.soft-pad-numpad-mode__viz-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 18px);
+  grid-auto-rows: 16px;
+  gap: 3px;
+  justify-content: center;
+}
+.soft-pad-numpad-mode__viz-grid i {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border-radius: 4px;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 700;
+  color: #334155;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+.soft-pad-numpad-mode__viz-grid i.is-wide {
+  grid-column: span 2;
+}
+.soft-pad-numpad-mode__viz-grid--soft {
+  grid-template-columns: repeat(3, 18px);
+  grid-auto-rows: 18px;
+}
+.soft-pad-numpad-mode__viz-grid--soft i {
+  border-radius: 5px;
+  background: linear-gradient(180deg, #ffffff, #f1f5f9);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+.soft-pad-numpad-mode__viz-grid--soft i.is-glow {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 28%, #fff);
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 45%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary, #2a9cc4) 25%, transparent);
+  color: var(--primary-strong, #0f5f7a);
+}
+.soft-pad-numpad-mode__viz-badge {
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: #64748b;
+  background: rgba(15, 23, 42, 0.06);
+}
+.soft-pad-numpad-mode__viz-badge.is-soft {
+  color: var(--primary-strong, #0f5f7a);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 16%, #fff);
+}
+.soft-pad-numpad-mode__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 .soft-pad-numpad-mode__title {
   font-size: 13px;
@@ -7960,7 +8175,7 @@ html[data-theme="dark"] .soft-pad-runtime-arm__input:focus {
   line-height: 1.3;
 }
 .soft-pad-numpad-mode__cap {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 550;
   line-height: 1.4;
   color: var(--on-surface-muted, #5a6c80);
@@ -7979,6 +8194,44 @@ html[data-theme="dark"] .soft-pad-numpad-mode__title {
 }
 html[data-theme="dark"] .soft-pad-numpad-mode__cap {
   color: #9aadc2;
+}
+html[data-theme="dark"] .soft-pad-numpad-mode__viz {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .soft-pad-numpad-mode__viz--digits {
+  background: linear-gradient(180deg, #3f4654, #2a303c);
+}
+html[data-theme="dark"] .soft-pad-numpad-mode__viz--soft {
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  border-color: rgba(251, 191, 36, 0.25);
+}
+html[data-theme="dark"] .soft-pad-numpad-mode__viz-grid i {
+  color: #e8eef6;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+html[data-theme="dark"] .soft-pad-numpad-mode__viz-grid--soft i {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06));
+}
+html[data-theme="dark"] .soft-pad-numpad-mode__viz-grid--soft i.is-glow {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 55%, #1e293b);
+  border-color: transparent;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--primary, #2a9cc4) 45%, transparent);
+  color: #e8eef6;
+}
+html[data-theme="dark"] .soft-pad-numpad-mode__viz-badge {
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .soft-pad-numpad-mode__viz-badge.is-soft {
+  color: #7dd3fc;
+  background: rgba(42, 156, 196, 0.22);
+}
+@media (max-width: 420px) {
+  .soft-pad-numpad-modes {
+    grid-template-columns: 1fr;
+  }
 }
 .soft-pad-feature-cards--merged .soft-pad-feature-card {
   padding: 10px 12px;
@@ -8633,6 +8886,30 @@ html[data-theme="dark"] .soft-pad-runtime-show__select {
   border-color: rgba(255, 255, 255, 0.12);
   color: #e2e8f0;
 }
+html[data-theme="dark"] .soft-pad-show-obj {
+  background: rgba(18, 24, 36, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .soft-pad-show-obj__label { color: #94a3b8; }
+html[data-theme="dark"] .soft-pad-show-obj__label b { color: #7dd3fc; }
+html[data-theme="dark"] .soft-pad-show-obj__pad,
+html[data-theme="dark"] .soft-pad-show-obj__mini {
+  background: #1e293b;
+  border-color: #475569;
+}
+html[data-theme="dark"] .soft-pad-show-obj__pad i,
+html[data-theme="dark"] .soft-pad-show-obj__mini i {
+  background: #334155;
+  border-color: #64748b;
+}
+html[data-theme="dark"] .soft-pad-show-obj__pad.is-ghost {
+  border-color: #64748b;
+}
+html[data-theme="dark"] .soft-pad-show-obj__chip {
+  background: rgba(18, 24, 36, 0.95);
+  border-color: rgba(125, 211, 252, 0.35);
+  color: #7dd3fc;
+}
 html[data-theme="dark"] .soft-pad-show-mode-tab {
   border-color: rgba(255, 255, 255, 0.1);
   background: rgba(18, 24, 36, 0.9);
@@ -8646,6 +8923,10 @@ html[data-theme="dark"] .soft-pad-show-mode-tab.is-active {
   color: #7dd3fc;
   background: rgba(62, 184, 220, 0.16);
   border-color: rgba(62, 184, 220, 0.4);
+}
+html[data-theme="dark"] .soft-pad-show-mode-tab__h { color: #8494a6; }
+html[data-theme="dark"] .soft-pad-show-mode-tab.is-active .soft-pad-show-mode-tab__h {
+  color: #7dd3fc;
 }
 html[data-theme="dark"] .soft-pad-hub-stage .codex-pad-mgr__label,
 html[data-theme="dark"] .soft-pad-purpose-panel .codex-pad-mgr__label,
@@ -11140,10 +11421,16 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   outline: 2px solid color-mix(in srgb, var(--primary, #2a9cc4) 65%, transparent);
   outline-offset: 1px;
 }
-/* ???????? Soft Pad ? opacity?????????? opacity:1 */
+/* Soft Pad fades on checkerboard; ambient glow must not pin opacity to 1 here */
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .soft-pad-opacity-stage .codex-micro-pad.soft-pad-preview,
-#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .soft-pad-mode-preview.is-skin-focus .soft-pad-mode-preview__hw {
-  opacity: var(--micro-hw-screen-opacity, 0.82);
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .soft-pad-mode-preview.is-skin-focus .soft-pad-opacity-stage .soft-pad-mode-preview__hw,
+#softPadPreviewHost .soft-pad-opacity-stage .codex-micro-pad.soft-pad-preview,
+#softPadPreviewHost .soft-pad-mode-preview.is-skin-focus .soft-pad-opacity-stage .soft-pad-mode-preview__hw {
+  opacity: var(--micro-hw-screen-opacity, 0.82) !important;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .soft-pad-opacity-stage .micro-hw-shell,
+#softPadPreviewHost .soft-pad-opacity-stage .micro-hw-shell {
+  opacity: 1 !important;
 }
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .codex-micro-pad.soft-pad-preview:not(.soft-pad-mode-preview__hw) {
   opacity: 1;
@@ -11639,11 +11926,11 @@ html[data-theme="dark"] .soft-pad-mid-data {
 }
 .soft-pad-float-dock .soft-pad-numpad-modes,
 .soft-pad-style-panel .soft-pad-numpad-modes {
-  gap: 6px;
+  gap: 8px;
 }
 .soft-pad-float-dock .soft-pad-numpad-mode,
 .soft-pad-style-panel .soft-pad-numpad-mode {
-  padding: 10px 11px;
+  padding: 9px;
 }
 .soft-pad-float-dock .soft-pad-lights-tab-panel__inner,
 .soft-pad-float-dock .soft-pad-lights-templates,
@@ -11696,4 +11983,165 @@ html[data-theme="dark"] .soft-pad-mid-data {
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost[data-pad-mode-preview="purpose"] .soft-pad-demo-compare__tag,
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost[data-pad-mode-preview="purpose"] .soft-pad-demo-compare__col {
   overflow: visible;
+}
+
+/* ùù Soft Pad skins: beat preview !important flat white (Keys Core / Spatial) ùù */
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"],
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .codex-micro-pad.soft-pad-preview[data-pad-skin="hybrid-pro"] .micro-hw,
+#softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"],
+.soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] {
+  background: #cfd7e1 !important;
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 2px 16px rgba(0, 0, 0, 0.06) !important;
+  filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 1);
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face,
+#softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face,
+.soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face {
+  background: #c5ced9 !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.08) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow: visible !important;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder),
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--agent,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--agent.is-bound,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--command,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--control,
+#softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder),
+.soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(180deg, #ffffff 0%, #f4f7fa 100%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.07) !important;
+  box-shadow:
+    0 5px 0 #9aa8b8,
+    0 8px 14px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 #fff !important;
+  color: #334155 !important;
+  backdrop-filter: none !important;
+  overflow: visible !important;
+  --ag-glow: transparent;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key.is-pressed,
+#softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key.is-pressed {
+  transform: translateY(3px);
+  background: linear-gradient(180deg, #f1f4f8, #e2e8f0) !important;
+  box-shadow: 0 1px 0 #8a99a8, inset 0 2px 5px rgba(15, 23, 42, 0.12) !important;
+}
+
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"],
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .codex-micro-pad.soft-pad-preview[data-pad-skin="glass-light"] .micro-hw,
+#softPadPreviewHost .micro-hw[data-pad-skin="glass-light"],
+.soft-pad-preview-host .micro-hw[data-pad-skin="glass-light"] {
+  background: rgba(255, 255, 255, 0.42) !important;
+  box-shadow:
+    0 28px 56px rgba(15, 23, 42, 0.1),
+    inset 0 1px 2px #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  filter: none !important;
+  backdrop-filter: blur(28px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__face,
+#softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__face {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: none !important;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder),
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key--agent,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key--agent.is-bound,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key--command,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key--control,
+#softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.4)) !important;
+  border: none !important;
+  box-shadow:
+    0 6px 16px rgba(15, 23, 42, 0.08),
+    inset 0 1px 1px #fff,
+    inset 0 -1px 1px rgba(255, 255, 255, 0.35) !important;
+  color: #0f172a !important;
+  border-radius: 14px !important;
+  backdrop-filter: blur(14px) !important;
+  --ag-glow: transparent;
+}
+
+/* Dark app theme */
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"],
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .codex-micro-pad.soft-pad-preview[data-pad-skin="hybrid-pro"] .micro-hw,
+html[data-theme="dark"] #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"],
+html[data-theme="dark"] .soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] {
+  background: rgba(22, 28, 38, 0.92) !important;
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.65),
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    inset 0 2px 14px rgba(0, 0, 0, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face,
+html[data-theme="dark"] #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face {
+  background: #1a2130 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.45) !important;
+  overflow: visible !important;
+}
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder),
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--agent,
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--agent.is-bound,
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--command,
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--control,
+html[data-theme="dark"] #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(180deg, #333d4e 0%, #293240 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 5px 0 #0f131a,
+    0 8px 16px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  color: #f1f5f9 !important;
+  overflow: visible !important;
+  --ag-glow: transparent;
+}
+
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"],
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .codex-micro-pad.soft-pad-preview[data-pad-skin="glass-light"] .micro-hw,
+html[data-theme="dark"] #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] {
+  background: rgba(20, 20, 22, 0.55) !important;
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px rgba(255, 255, 255, 0.14) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(32px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(160%) !important;
+}
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__face,
+html[data-theme="dark"] #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__face {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder),
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key--agent,
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key--agent.is-bound,
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key--command,
+html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key--control,
+html[data-theme="dark"] #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03)) !important;
+  border: none !important;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.22) !important;
+  color: #f8fafc !important;
+  --ag-glow: transparent;
+}
+
+/* Skirt must not be clipped */
+.soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key,
+#softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key,
+.soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__grid,
+#softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__grid {
+  overflow: visible !important;
 }
