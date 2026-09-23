@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agent 五叶导览 · 键位拆清</title>
+<title>Agent 三叶导览 · Soft Pad 与迷你栏</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;600&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
   --bg:#c9d4e2;--ink:#0f1b2a;--mute:#5a6c80;--faint:#8496a8;--line:rgba(15,27,42,.12);
   --paper:#f3f6fa;--agent:#3a4580;--agent-soft:#e4e7f5;--agent-line:rgba(58,69,128,.35);
   --float:#1a7a6c;--float-soft:#dcefeb;--mini:#6b4f9a;--mini-soft:#efe8f7;
-  --lights:#8a4b2a;--lights-soft:#f7ebe4;--keys:#0f6b8a;--keys-soft:#e0f2f8;
+  --lights:#2a9cc4;--lights-soft:#e8f6fb;--keys:#0f6b8a;--keys-soft:#e0f2f8;
   --accent:#0088cc;--accent-soft:#e5f5fc;
   --ok:#157a45;--ok-soft:#e3f5eb;--warn:#9a6700;--warn-soft:#fff6e0;
   --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
@@ -30,8 +30,8 @@ body{margin:0;font-family:var(--font);font-size:13px;line-height:1.45;color:var(
 h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.12}
 .lede{margin:0 0 14px;max-width:78ch;color:var(--mute);font-size:14px}
 
-/* —— 五叶导览卡（壳外，先懂再点） —— */
-.guide{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:0 0 14px}
+/* —— 三叶导览卡（壳外，先懂再点） —— */
+.guide{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
 @media (max-width:980px){.guide{grid-template-columns:1fr 1fr}}
 @media (max-width:520px){.guide{grid-template-columns:1fr}}
 .gcard{
@@ -46,14 +46,10 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .gcard p{margin:0;font-size:11.5px;color:var(--mute);line-height:1.35}
 .gcard[data-jump="float"] .ix{color:var(--float)}
 .gcard[data-jump="mini"] .ix{color:var(--mini)}
-.gcard[data-jump="lights"] .ix{color:var(--lights)}
-.gcard[data-jump="connect"] .ix{color:var(--agent)}
-.gcard[data-jump="keys"] .ix{color:var(--keys)}
+.gcard[data-jump="softPad"] .ix{color:var(--lights)}
 .gcard.is-on[data-jump="float"]{border-color:var(--float);background:linear-gradient(165deg,var(--float-soft),#fff 70%);box-shadow:0 0 0 1px var(--float)}
 .gcard.is-on[data-jump="mini"]{border-color:var(--mini);background:linear-gradient(165deg,var(--mini-soft),#fff 70%);box-shadow:0 0 0 1px var(--mini)}
-.gcard.is-on[data-jump="lights"]{border-color:var(--lights);background:linear-gradient(165deg,var(--lights-soft),#fff 70%);box-shadow:0 0 0 1px var(--lights)}
-.gcard.is-on[data-jump="connect"]{border-color:var(--agent);background:linear-gradient(165deg,var(--agent-soft),#fff 70%);box-shadow:0 0 0 1px var(--agent)}
-.gcard.is-on[data-jump="keys"]{border-color:var(--keys);background:linear-gradient(165deg,var(--keys-soft),#fff 70%);box-shadow:0 0 0 1px var(--keys)}
+.gcard.is-on[data-jump="softPad"]{border-color:var(--lights);background:linear-gradient(165deg,var(--lights-soft),#fff 70%);box-shadow:0 0 0 1px var(--lights)}
 
 .shell{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 14px 32px rgba(15,27,42,.07)}
 .shell-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:9px 12px;background:#e4ebf3;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--mute)}
@@ -103,7 +99,7 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .app-snap .go:hover{background:var(--accent-soft)}
 .app-snap .go:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
-.workspace{display:grid;grid-template-columns:248px 1fr;flex:1;min-height:0}
+.workspace{display:grid;grid-template-columns:minmax(340px,380px) minmax(0,1fr);flex:1;min-height:0}
 @media (max-width:900px){.workspace{grid-template-columns:1fr}}
 .preview{border-right:1px solid var(--line);background:#e8eef5;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .preview .cap{margin:0;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
@@ -137,7 +133,7 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .agent-preview-host .soft-pad-mode-preview__hw,
 .agent-preview-host .soft-pad-mode-preview__hw .micro-hw,
 .agent-preview-host .soft-pad-mode-preview__hw .micro-hw-shell{
-  max-width:min(100%,216px)!important;width:100%!important;margin:0 auto;aspect-ratio:1/1;box-sizing:border-box!important;
+  max-width:min(100%,260px)!important;width:100%!important;margin:0 auto;aspect-ratio:1/1;box-sizing:border-box!important;
 }
 .agent-preview-host .soft-pad-purpose-live-hw .micro-hw,
 .agent-preview-host .soft-pad-purpose-live-hw .micro-hw-shell,
@@ -151,17 +147,76 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .agent-preview-host .codex-micro-pad.soft-pad-preview{width:100%;max-width:100%;margin:0}
 .agent-preview-host .codex-micro-pad__head,
 .agent-preview-host .soft-pad-preview__hint,
-.agent-preview-host .soft-pad-key-caption,
+.agent-preview-host .soft-pad-key-caption{display:none!important}
+/* 默认藏顶栏；顶栏叶再打开，对齐 Soft Pad face 真样式 */
 .agent-preview-host .micro-hw__face-top,
 .agent-preview-host .soft-pad-agent-bar--face{display:none!important}
+.agent-preview-host[data-pad-topbar-preview] .micro-hw__face-top{
+  display:flex!important;flex-direction:column;align-items:stretch;gap:4px;
+  flex:0 0 auto;width:100%;margin:0 0 4px;box-sizing:border-box;
+}
+.agent-preview-host[data-pad-topbar-preview] .micro-hw__face-title{display:none!important}
+.agent-preview-host[data-pad-topbar-preview] .soft-pad-agent-bar--face{
+  display:flex!important;flex-wrap:wrap;justify-content:flex-start;gap:6px;
+  padding:5px 6px;border-radius:12px;
+  background:rgba(148,163,184,.12);border:1px solid rgba(148,163,184,.14);
+  pointer-events:auto;
+}
+/* 有顶栏时外壳长高，键区仍完整 —— 与 #softPadPreviewHost 一致 */
+.agent-preview-host[data-pad-topbar-preview]:not([data-pad-mode-preview]) .micro-hw,
+.agent-preview-host[data-pad-topbar-preview]:not([data-pad-mode-preview]) .micro-hw-shell .micro-hw{
+  aspect-ratio:auto!important;height:auto!important;overflow:visible;
+}
+.agent-preview-host[data-pad-topbar-preview][data-busy-off] .soft-pad-agent-bar__dot{display:none!important}
+.agent-preview-host [data-agent-topbar-live]{display:none!important}
+.agent-preview-host .soft-pad-agent-bar__chip--preview,
+.agent-preview-host [data-topbar-chip]{
+  position:relative;width:32px;height:28px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:9px;border:1px solid rgba(92,105,122,.16);
+  background:linear-gradient(180deg,#fff 0%,#f2f5f8 100%);padding:0;cursor:pointer;
+}
+.agent-preview-host .soft-pad-agent-bar__chip--preview.is-focused,
+.agent-preview-host [data-topbar-chip].is-focused{
+  border-color:rgba(42,156,196,.55);box-shadow:0 0 0 2px rgba(62,184,220,.22);
+}
+.agent-preview-host .soft-pad-agent-bar__chip--preview img,
+.agent-preview-host [data-topbar-chip] img{width:16px;height:16px;border-radius:4px;object-fit:contain}
+.agent-preview-host .soft-pad-agent-bar__chip--preview .chip-letter,
+.agent-preview-host [data-topbar-chip] .chip-letter{font-size:10px;font-weight:800;color:var(--ink)}
+.agent-preview-host .soft-pad-agent-bar__dot,
+.agent-preview-host [data-topbar-chip] .soft-pad-agent-bar__dot{
+  position:absolute;right:2px;bottom:2px;width:6px;height:6px;border-radius:50%;
+  background:rgba(148,163,184,.55);box-shadow:0 0 0 1px #fff;
+}
+.agent-preview-host [data-status="running"] .soft-pad-agent-bar__dot{background:#3b82f6}
+.agent-preview-host [data-status="needs_input"] .soft-pad-agent-bar__dot{background:#f59e0b}
+.agent-preview-host [data-status="done"] .soft-pad-agent-bar__dot{background:#22c55e}
+.agent-preview-host [data-status="idle"] .soft-pad-agent-bar__dot{background:rgba(148,163,184,.55)}
+.agent-preview-host [data-status="failed"] .soft-pad-agent-bar__dot,
+.agent-preview-host [data-status="error"] .soft-pad-agent-bar__dot{background:#e11d48}
+.agent-preview-host .topbar-preview-empty{font-size:11px;color:var(--faint);padding:4px 2px;width:100%}
+/* 摘要 pill：键盘外壳外下方（对照 Soft Pad 下方提示条） */
+.pad-place-rail{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;
+  margin:6px 0 0;padding:0 2px;box-sizing:border-box;
+}
+.pad-place-rail[hidden]{display:none!important}
+.pad-place-pill{
+  display:inline-flex;align-items:center;gap:6px;max-width:100%;
+  padding:6px 12px;border-radius:999px;background:#e8f4f8;border:1px solid rgba(15,110,122,.2);
+  font-size:11px;font-weight:750;color:#0f6e7a;line-height:1.3;
+}
+.pad-place-pill[hidden]{display:none!important}
+.pad-place-pill .u{font-variant-numeric:tabular-nums;font-weight:800}
+.pad-place-pill .d{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0}
 .agent-preview-host .micro-hw__face{
   background:rgba(248,250,252,.92)!important;box-shadow:none!important;
 }
 .agent-preview-host:not([data-pad-mode-preview]) .micro-hw-wrap,
-.agent-preview-host:not([data-pad-mode-preview]) .micro-hw-shell{width:100%;max-width:220px;margin:0 auto}
+.agent-preview-host:not([data-pad-mode-preview]) .micro-hw-shell{width:100%;max-width:280px;margin:0 auto}
 .agent-preview-host:not([data-pad-mode-preview]) .micro-hw,
 .agent-preview-host:not([data-pad-mode-preview]) .micro-hw-shell .micro-hw{
-  width:100%;max-width:220px;aspect-ratio:1/1;padding:10px;border-radius:22px;
+  width:100%;max-width:280px;aspect-ratio:1/1;padding:10px;border-radius:22px;
 }
 .agent-preview-host .micro-hw__face{border-radius:16px}
 .agent-preview-host .micro-hw__face-title{font-size:12px;font-weight:800}
@@ -211,26 +266,28 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 
 .agent-mini-host{
   border-radius:14px;padding:12px 10px 10px;min-height:0;
-  background:linear-gradient(180deg,rgba(15,27,42,.04),transparent 40%),#d8e0ea;
-  border:1px solid var(--line);display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;
+  background:linear-gradient(180deg,rgba(14,165,233,.06),transparent 42%),#e4edf4;
+  border:1px solid rgba(90,157,184,.28);display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;
   box-sizing:border-box;gap:8px;overflow:visible;
 }
 .agent-mini-host .soft-pad-agent-mini-bar-stage{
-  width:100%;max-width:100%;padding:4px 2px 2px;gap:6px;box-sizing:border-box;
+  width:100%;max-width:400px;margin:0 auto;padding:4px 2px 2px;gap:6px;box-sizing:border-box;
   overflow:visible;align-items:stretch;
 }
-.agent-mini-host .soft-pad-agent-mini-bar{max-width:100%;min-width:0;width:100%}
-.agent-mini-host .soft-pad-agent-mini-bar__speech{width:100%;max-width:100%;min-width:0}
-.agent-mini-host .soft-pad-agent-mini-demo-banner{width:100%;margin:0;box-sizing:border-box}
+.agent-mini-host .soft-pad-agent-mini-bar{max-width:400px;min-width:0;width:100%;margin:0 auto}
+.agent-mini-host .soft-pad-agent-mini-bar__speech{width:100%;max-width:400px;min-width:0;margin:0 auto}
+.agent-mini-host .soft-pad-agent-mini-demo-banner{
+  width:100%;max-width:400px;margin:0 auto 8px;box-sizing:border-box;
+  font-size:12px;line-height:1.4;color:#475569;
+}
+.agent-mini-host .soft-pad-agent-mini-demo-banner b{
+  font-size:13px;font-weight:800;color:#0284c7;margin-right:4px;
+}
 .agent-mini-host .note,
 #barFoot{
-  margin:2px 0 0;padding:0 2px;font-size:11px;color:var(--mute);line-height:1.35;
+  margin:2px 0 0;padding:0 2px;font-size:11px;font-weight:650;color:#64748b;line-height:1.35;text-align:center;
 }
-.agent-mini-host [data-mini-zone].is-hi{
-  outline:none;
-  box-shadow:inset 0 0 0 1.5px rgba(42,157,106,.55);
-  border-radius:10px;
-}
+/* 分区高亮交给 Soft Pad 真样式 is-mini-rail-*，不再叠绿描边 */
 
 .id-card{border-radius:14px;padding:12px;border:2px solid var(--line);background:#fff}
 .id-card.connect{border-color:var(--agent-line);background:linear-gradient(160deg,var(--agent-soft),#fff 70%)}
@@ -241,7 +298,7 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .id-card .pipe .p i{width:20px;height:20px;border-radius:50%;background:var(--agent);color:#fff;font-style:normal;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
 .panel{display:flex;flex-direction:column;min-width:0;background:#fff}
-.subtabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:10px 12px 0;border-bottom:1px solid var(--line)}
+.subtabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:10px 12px 0;border-bottom:1px solid var(--line)}
 @media (max-width:720px){.subtabs{grid-template-columns:1fr 1fr}}
 .subtabs button{
   appearance:none;border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:8px 8px 9px;
@@ -251,9 +308,8 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .subtabs button .s{font-size:10px;font-weight:650;opacity:.85;line-height:1.25}
 .subtabs button.is-on[data-sub="float"]{background:var(--float);border-color:var(--float);color:#fff}
 .subtabs button.is-on[data-sub="mini"]{background:var(--mini);border-color:var(--mini);color:#fff}
-.subtabs button.is-on[data-sub="lights"]{background:var(--lights);border-color:var(--lights);color:#fff}
-.subtabs button.is-on[data-sub="connect"]{background:var(--agent);border-color:var(--agent);color:#fff}
-.subtabs button.is-on[data-sub="keys"]{background:var(--keys);border-color:var(--keys);color:#fff}
+.subtabs button.is-on[data-sub="softPad"]{background:var(--lights);border-color:var(--lights);color:#fff}
+.subtabs button.is-on[data-sub="softPad"]{background:var(--lights);border-color:var(--lights);color:#fff}
 .detail{padding:12px;overflow:auto;flex:1}
 
 .job{
@@ -265,8 +321,7 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .job p{margin:0;font-size:12.5px;color:var(--mute)}
 .job[data-tone="float"]{border-color:rgba(26,122,108,.3);background:linear-gradient(120deg,#fff,var(--float-soft))}
 .job[data-tone="mini"]{border-color:rgba(107,79,154,.3);background:linear-gradient(120deg,#fff,var(--mini-soft))}
-.job[data-tone="lights"]{border-color:rgba(138,75,42,.3);background:linear-gradient(120deg,#fff,var(--lights-soft))}
-.job[data-tone="connect"]{border-color:var(--agent-line);background:linear-gradient(120deg,#fff,var(--agent-soft))}
+.job[data-tone="softPad"]{border-color:rgba(42,156,196,.35);background:linear-gradient(120deg,#fff,var(--lights-soft))}
 .job[data-tone="keys"]{border-color:rgba(15,107,138,.35);background:linear-gradient(120deg,#fff,var(--keys-soft))}
 
 .sec{margin:0 0 12px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--paper)}
@@ -284,6 +339,164 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:#066a9c}
 .badge.warn{background:var(--warn-soft);color:var(--warn)}
 .badge.ok{background:var(--ok-soft);color:var(--ok)}
+/* 接入：监视中 / 添加 两态 */
+.hook-modes{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0 0 10px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--paper)}
+.hook-modes button{
+  appearance:none;border:0;border-right:1px solid var(--line);background:transparent;
+  padding:9px 8px;font:inherit;font-size:12.5px;font-weight:800;color:var(--mute);cursor:pointer;
+}
+.hook-modes button:last-child{border-right:0}
+.hook-modes button.is-on{background:#fff;color:var(--lights);box-shadow:inset 0 -2px 0 var(--lights)}
+.hook-watch-list{display:flex;flex-direction:column;gap:6px;margin:0 0 8px}
+.hook-watch-item{
+  border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;
+}
+.hook-watch-item.is-on{border-color:var(--lights);box-shadow:0 0 0 1px var(--lights);background:var(--lights-soft)}
+.hook-watch-row{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;
+}
+.hook-watch-item:hover{border-color:rgba(42,156,196,.35)}
+.hook-watch-row .ico{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;background:var(--paper);flex-shrink:0;overflow:hidden}
+.hook-watch-row .ico img{width:16px;height:16px;object-fit:contain}
+.hook-watch-row .ico .chip-letter{font-size:10px;font-weight:800}
+.hook-watch-row .nm{flex:1;min-width:0;font-size:13px;font-weight:800}
+.hook-watch-row .nm small{display:block;font-size:11px;font-weight:650;color:var(--faint);margin-top:1px}
+.hook-dock--inline{
+  margin:0;border:0;border-top:1px solid rgba(42,156,196,.22);border-radius:0;
+  background:rgba(255,255,255,.72);padding:8px 10px 10px;
+}
+.hook-dock--inline .hook-dock-h{display:none}
+.keylight-schemes{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 8px;
+}
+.keylight-scheme{
+  appearance:none;border:1.5px solid rgba(26,45,74,.12);border-radius:11px;background:#fff;
+  padding:10px 8px;text-align:left;font:inherit;cursor:pointer;
+  display:flex;flex-direction:column;gap:4px;align-items:stretch;min-width:0;
+}
+.keylight-scheme:hover{border-color:rgba(42,156,196,.4);background:rgba(62,184,220,.06)}
+.keylight-scheme.is-on{border-color:rgba(42,156,196,.55);box-shadow:0 0 0 1px rgba(42,156,196,.25);background:rgba(62,184,220,.1)}
+.keylight-scheme:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.keylight-scheme strong{font-size:13px;font-weight:800;color:var(--ink);line-height:1.2}
+.keylight-scheme small{font-size:10.5px;font-weight:600;color:#64748b;line-height:1.3}
+.keylight-scheme.is-on strong{color:#0c4a6e}
+.keylight-scheme.is-on small{color:#0369a1}
+.keylight-scheme-match{
+  margin:0 0 10px;padding:8px 10px;border-radius:10px;
+  background:rgba(240,249,255,.95);border:1px solid rgba(14,165,233,.28);
+  font-size:12px;color:#475569;line-height:1.45;font-weight:600;
+}
+.keylight-scheme-match b{color:#0284c7;font-weight:800}
+.ambient-modes{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 8px;
+}
+.ambient-mode{
+  appearance:none;border:1.5px solid rgba(26,45,74,.12);border-radius:11px;background:#fff;
+  padding:10px 11px;text-align:left;font:inherit;cursor:pointer;
+  display:flex;flex-direction:column;gap:4px;min-width:0;
+}
+.ambient-mode:hover{border-color:rgba(42,156,196,.4);background:rgba(62,184,220,.06)}
+.ambient-mode.is-on{border-color:rgba(42,156,196,.55);box-shadow:0 0 0 1px rgba(42,156,196,.25);background:rgba(62,184,220,.1)}
+.ambient-mode:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ambient-mode strong{font-size:13px;font-weight:800;color:var(--ink);line-height:1.2}
+.ambient-mode small{font-size:10.5px;font-weight:600;color:#64748b;line-height:1.35}
+.ambient-mode.is-on strong{color:#0c4a6e}
+.ambient-mode.is-on small{color:#0369a1}
+.ambient-custom{
+  margin:0 0 10px;padding:10px 12px;border-radius:12px;border:1px solid rgba(26,45,74,.1);background:#fff;
+  display:flex;flex-direction:column;gap:8px;
+}
+.ambient-custom[hidden]{display:none!important}
+.ambient-custom .row{margin:0}
+.ambient-custom .btn-quiet{
+  appearance:none;border:1px solid var(--line);background:var(--paper);border-radius:8px;
+  padding:5px 10px;font:inherit;font-size:11.5px;font-weight:750;cursor:pointer;color:var(--mute);
+}
+.ambient-custom .btn-quiet:hover{border-color:var(--lights);color:var(--lights)}
+.keylight-presets{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 8px}
+@media (max-width:520px){
+  .keylight-schemes{grid-template-columns:1fr}
+  .ambient-modes{grid-template-columns:1fr}
+}
+.keylight-preset{
+  appearance:none;border:1px solid rgba(26,45,74,.12);border-radius:12px;background:#fff;
+  padding:8px 10px;text-align:left;font:inherit;cursor:pointer;
+}
+.keylight-preset:hover{border-color:rgba(42,156,196,.4)}
+.keylight-preset.is-on{border-color:rgba(42,156,196,.55);box-shadow:0 0 0 1px rgba(42,156,196,.25);background:rgba(62,184,220,.1)}
+.keylight-preset .ttl{font-size:13px;font-weight:800;color:var(--ink);line-height:1.2}
+.keylight-preset .hint{font-size:10.5px;font-weight:600;color:#64748b;margin-top:3px;line-height:1.3}
+.keylight-preset.is-on .ttl{color:#0c4a6e}
+.keylight-preset.is-on .hint{color:#0369a1}
+.keylight-preset .dots{display:flex;gap:4px;margin-top:6px}
+.keylight-preset .dots i{width:10px;height:10px;border-radius:50%;display:block}
+.hook-empty{
+  padding:18px 12px;border:1px dashed var(--line);border-radius:12px;background:var(--paper);
+  text-align:center;font-size:12.5px;color:var(--mute);line-height:1.45;
+}
+.hook-empty .btn{margin-top:10px}
+.hook-grid{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 8px;
+}
+@media (max-width:520px){.hook-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.hook-tile{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:12px;
+  padding:8px 6px 7px;font:inherit;cursor:pointer;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:4px;min-height:68px;
+}
+.hook-tile:hover{border-color:rgba(42,156,196,.4);background:var(--lights-soft)}
+.hook-tile .ico{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;background:var(--paper);overflow:hidden}
+.hook-tile .ico img{width:16px;height:16px;object-fit:contain}
+.hook-tile .ico .chip-letter{font-size:10px;font-weight:800}
+.hook-tile .nm{font-size:11px;font-weight:800;color:var(--ink);line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hook-search{width:100%;box-sizing:border-box;margin:0 0 8px;padding:7px 10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:12px;background:#fff;color:var(--ink)}
+.hook-search:focus{outline:2px solid rgba(42,156,196,.35);outline-offset:0;border-color:var(--lights)}
+.hook-dock{
+  border:1px solid var(--line);border-radius:12px;background:var(--paper);padding:10px 12px;margin:0 0 4px;
+}
+.hook-dock[hidden]{display:none!important}
+.hook-dock-h{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.hook-dock-h .ico{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;background:#fff;overflow:hidden;flex-shrink:0}
+.hook-dock-h .ico img{width:16px;height:16px;object-fit:contain}
+.hook-dock-h .nm{flex:1;min-width:0;font-size:13px;font-weight:800}
+.hook-dock-h .nm small{display:block;font-size:11px;font-weight:650;color:var(--faint);margin-top:2px}
+.hook-dock .btn-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.hook-dock .btn{padding:6px 10px;font-size:11.5px}
+.hook-meta{margin:8px 0 0;font-size:11px;color:var(--faint);line-height:1.45}
+.hook-meta code{font-family:var(--mono);font-size:10.5px;color:var(--mute)}
+.hook-hint{margin:6px 0 0;font-size:11.5px;color:var(--faint);line-height:1.45}
+.topbar-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:0 0 8px}
+.topbar-grid .row{margin:0;padding:7px 8px}
+.topbar-mgr{display:flex;flex-direction:column;gap:10px}
+.topbar-active{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.topbar-active-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--paper);border-bottom:1px solid var(--line);font-size:11px;font-weight:800;color:var(--faint);letter-spacing:.04em}
+.topbar-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.topbar-item:last-child{border-bottom:0}
+.topbar-item .ico{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;background:var(--paper);flex-shrink:0;overflow:hidden}
+.topbar-item .ico img{width:16px;height:16px;object-fit:contain}
+.topbar-item .ico .chip-letter{font-size:10px;font-weight:800}
+.topbar-item .nm{flex:1;min-width:0;font-size:12.5px;font-weight:800}
+.topbar-item .nm small{display:block;font-size:10.5px;font-weight:650;color:var(--faint);margin-top:1px}
+.topbar-item .ord{display:flex;flex-direction:column;gap:2px}
+.topbar-item .ord button,.topbar-add-list button.topbar-add-btn{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:6px;width:22px;height:18px;
+  font:inherit;font-size:10px;font-weight:800;color:var(--mute);cursor:pointer;padding:0;line-height:1;
+}
+.topbar-item .ord button:disabled{opacity:.35;cursor:default}
+.topbar-item .rm{appearance:none;border:0;background:transparent;color:var(--faint);font-size:16px;line-height:1;cursor:pointer;padding:2px 4px}
+.topbar-empty{padding:12px 10px;font-size:12px;color:var(--faint)}
+.topbar-add-list{display:flex;flex-wrap:wrap;gap:5px}
+.topbar-add-list button.topbar-add-btn{width:auto;height:auto;padding:5px 9px;border-radius:8px}
+.topbar-legend{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.topbar-legend li{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--mute);font-weight:700}
+.topbar-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.topbar-legend .idle{background:#94a3b8}.topbar-legend .busy{background:#3b82f6}
+.topbar-legend .wait{background:#f59e0b}.topbar-legend .done{background:#22c55e}.topbar-legend .fail{background:#e11d48}
+.topbar-hint{margin:0;font-size:11.5px;color:var(--faint);line-height:1.45}
+.opt-sec{
+  margin:0 0 6px;font-size:10.5px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:#8496a8;line-height:1.3;
+}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:0 0 8px}
 .seg.n4{grid-template-columns:1fr 1fr}
 .seg button{appearance:none;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px;font:inherit;font-size:11.5px;font-weight:750;cursor:pointer;color:var(--mute)}
@@ -312,17 +525,15 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
   display:flex;flex-direction:column;align-items:center;gap:2px;
 }
 .leaf-tabs button:last-child{border-right:0}
-.leaf-tabs button .t{font-size:12.5px;font-weight:800}
-.leaf-tabs button .s{font-size:10px;font-weight:650;opacity:.8;line-height:1.2}
+.leaf-tabs button .t{font-size:13px;font-weight:800;line-height:1.2}
+.leaf-tabs button .s{font-size:10px;font-weight:600;opacity:.72;line-height:1.25;color:inherit}
 .leaf-tabs button.is-on{background:#fff}
 .leaf-page[data-tone="float"] .leaf-tabs button.is-on{color:var(--float);box-shadow:inset 0 -2px 0 var(--float)}
 .leaf-page[data-tone="float"] .leaf-tabs button:focus-visible{outline:2px solid var(--float);outline-offset:-2px}
 .leaf-page[data-tone="mini"] .leaf-tabs button.is-on{color:var(--mini);box-shadow:inset 0 -2px 0 var(--mini)}
 .leaf-page[data-tone="mini"] .leaf-tabs button:focus-visible{outline:2px solid var(--mini);outline-offset:-2px}
-.leaf-page[data-tone="lights"] .leaf-tabs button.is-on{color:var(--lights);box-shadow:inset 0 -2px 0 var(--lights)}
-.leaf-page[data-tone="lights"] .leaf-tabs button:focus-visible{outline:2px solid var(--lights);outline-offset:-2px}
-.leaf-page[data-tone="connect"] .leaf-tabs button.is-on{color:var(--agent);box-shadow:inset 0 -2px 0 var(--agent)}
-.leaf-page[data-tone="connect"] .leaf-tabs button:focus-visible{outline:2px solid var(--agent);outline-offset:-2px}
+.leaf-page[data-tone="softPad"] .leaf-tabs button.is-on{color:var(--lights);box-shadow:inset 0 -2px 0 var(--lights)}
+.leaf-page[data-tone="softPad"] .leaf-tabs button:focus-visible{outline:2px solid var(--lights);outline-offset:-2px}
 .leaf-pane{padding:0 2px 4px}
 .leaf-pane .pane-lead{margin:0 0 10px;font-size:12.5px;color:var(--mute)}
 @media (max-width:520px){
@@ -340,38 +551,106 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .tog::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff}
 .tog.on::after{left:18px}
 
-/* keys tab: two zones */
-.zones{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 12px}
-@media (max-width:640px){.zones{grid-template-columns:1fr}}
-.zone{border-radius:14px;border:2px solid var(--line);background:#fff;padding:12px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
-.zone:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.zone.ag{border-color:rgba(15,107,138,.35)}
-.zone.digit{border-color:rgba(154,103,0,.3)}
-.zone.is-focus.ag{border-color:var(--keys);box-shadow:0 0 0 1px var(--keys),0 8px 20px rgba(15,107,138,.12)}
-.zone.is-focus.digit{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn),0 8px 20px rgba(154,103,0,.1)}
-.zone .ztag{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
-.zone.ag .ztag{color:var(--keys)}
-.zone.digit .ztag{color:var(--warn)}
-.zone h5{margin:0 0 6px;font-size:14px;font-weight:800}
-.zone .zwhy{margin:0 0 10px;font-size:11.5px;color:var(--mute);line-height:1.4}
-.zone .zkeys{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 10px}
-.zone .zkeys span{font-family:var(--mono);font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:7px;background:var(--paper);border:1px solid var(--line)}
-.zone.ag .zkeys span{background:var(--keys-soft);border-color:rgba(15,107,138,.3);color:var(--keys)}
-.zone.digit .zkeys span{background:var(--warn-soft);border-color:rgba(154,103,0,.3);color:var(--warn)}
-.choice{display:grid;gap:5px}
-.choice button{
-  appearance:none;border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:9px 10px;
-  font:inherit;text-align:left;cursor:pointer;color:var(--ink);
+/* 替换数字键盘 · 方案 C 小白向导 */
+.keys-page{display:flex;flex-direction:column;gap:0}
+.keys-page .pane-lead{margin:0 0 12px}
+.nw-intro{
+  margin:0 0 12px;padding:10px 12px;border-radius:12px;
+  background:linear-gradient(165deg,#fff,#f7fafc);border:1px solid var(--line);
+  font-size:12.5px;color:var(--mute);line-height:1.5;
 }
-.choice button b{display:block;font-size:12.5px;font-weight:800;margin-bottom:2px}
-.choice button small{display:block;font-size:11px;color:var(--mute);font-weight:650}
-.choice button.is-on{border-color:var(--keys);background:var(--keys-soft)}
-.zone.digit .choice button.is-on{border-color:var(--warn);background:var(--warn-soft)}
-.linkout{margin-top:0;padding:12px;border-radius:14px;border:1px dashed rgba(15,107,138,.4);background:var(--keys-soft);font-size:12.5px;color:var(--keys)}
-.linkout b{font-weight:800}
-.linkout .go{margin-top:8px;display:inline-flex;appearance:none;border:1px solid var(--keys);background:#fff;color:var(--keys);border-radius:9px;padding:7px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
-.split-note{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#fff;border:1px solid var(--line);font-size:12px;color:var(--mute)}
-.split-note b{color:var(--ink)}
+.nw-intro strong{color:var(--ink)}
+.nw-rail{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:12px;
+}
+.nw-rail .si{
+  padding:6px 4px;border-radius:9px;background:#e8eef5;border:1px solid transparent;
+  font-size:10.5px;font-weight:750;color:var(--faint);text-align:center;line-height:1.25;
+}
+.nw-rail .si em{display:block;font-style:normal;font-size:9.5px;font-weight:650;margin-top:1px}
+.nw-rail .si.on{background:var(--ok-soft);border-color:rgba(21,122,69,.35);color:var(--ok)}
+.nw-rail .si.done{background:#e3f5eb;color:var(--ok);opacity:.85}
+.nw-q{margin:0 0 4px;font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.02em;line-height:1.25}
+.nw-sub{margin:0 0 12px;font-size:12.5px;color:var(--mute);line-height:1.45}
+.nw-opts{display:flex;flex-direction:column;gap:7px}
+.nw-opt{
+  appearance:none;border:1.5px solid var(--line);background:#fff;border-radius:12px;
+  padding:11px 12px;text-align:left;cursor:pointer;font:inherit;display:flex;gap:10px;align-items:flex-start;color:inherit;
+}
+.nw-opt:hover{border-color:rgba(21,122,69,.4)}
+.nw-opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nw-opt.is-on{border-color:var(--ok);background:var(--ok-soft);box-shadow:0 0 0 1px var(--ok)}
+.nw-opt .radio{
+  width:17px;height:17px;border-radius:50%;border:2px solid #b8c4d0;flex-shrink:0;margin-top:2px;
+}
+.nw-opt.is-on .radio{border-color:var(--ok);background:radial-gradient(circle,#fff 35%,var(--ok) 38%)}
+.nw-opt strong{display:block;font-size:13px;font-weight:800}
+.nw-opt .d{display:block;font-size:12px;color:var(--mute);margin-top:2px;line-height:1.4}
+.nw-opt .eg{display:block;margin-top:5px;font-size:11.5px;color:var(--ok);font-weight:700}
+.nw-tip{
+  margin:10px 0 0;padding:9px 11px;border-radius:10px;
+  background:#eef6ff;border:1px solid #b6d4f0;font-size:12px;color:#1e4a6e;line-height:1.5;
+}
+.nw-tip b{color:#0f2f4a}
+.nw-tip.ok{background:var(--ok-soft);border-color:#86efac;color:#14532d}
+.nw-tip.warn{background:var(--warn-soft);border-color:#f5d0a0;color:var(--warn)}
+.nw-ex{margin:10px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:7px}
+@media (max-width:520px){.nw-ex{grid-template-columns:1fr}}
+.nw-ex .box{
+  padding:9px 10px;border-radius:10px;background:#fff;border:1px solid var(--line);font-size:12px;line-height:1.45;
+}
+.nw-ex .box .h{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);margin:0 0 3px}
+.nw-ex .box.on{border-color:rgba(21,122,69,.4);background:var(--ok-soft)}
+.nw-ex .box.off{opacity:.88}
+.nw-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:2px}
+.nw-slot{
+  appearance:none;border:1.5px solid var(--line);background:#fff;border-radius:10px;
+  padding:11px 6px;font:inherit;cursor:pointer;text-align:center;color:inherit;
+}
+.nw-slot.is-on{border-color:var(--ok);background:var(--ok-soft)}
+.nw-slot .k{font-family:var(--mono);font-size:18px;font-weight:800}
+.nw-slot .s{font-size:11px;font-weight:750;color:var(--ok);margin-top:2px}
+.nw-nav{display:flex;justify-content:space-between;gap:8px;margin-top:14px}
+.nw-btn{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:10px;
+  padding:8px 14px;font:inherit;font-size:12.5px;font-weight:750;cursor:pointer;color:var(--ink);
+}
+.nw-btn.primary{background:var(--ok);color:#fff;border-color:transparent}
+.nw-btn:disabled{opacity:.4;cursor:not-allowed}
+.nw-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nw-sum{
+  background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:2px;
+}
+.nw-sum h3{margin:0 0 8px;font-size:13.5px;font-weight:800}
+.nw-sum dl{margin:0;display:grid;grid-template-columns:72px 1fr;gap:5px 10px;font-size:12.5px}
+.nw-sum dt{color:var(--faint);font-weight:650}
+.nw-sum dd{margin:0;font-weight:750}
+.nw-how{
+  margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--ok-soft);
+  font-size:13px;font-weight:750;color:var(--ok);line-height:1.45;
+}
+.nw-how small{display:block;margin-top:3px;font-weight:500;color:var(--mute);font-size:11.5px}
+.keys-gain{
+  margin-top:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;
+}
+.keys-gain[hidden]{display:none!important}
+.keys-gain .g-lab{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin:0 0 4px}
+.keys-gain .g-title{margin:0 0 6px;font-size:13px;font-weight:800;color:var(--ink)}
+.keys-gain .g-pills{display:flex;flex-wrap:wrap;gap:4px}
+.keys-gain .g-pills span{
+  font-size:11px;font-weight:750;padding:3px 8px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--mute);
+}
+.keys-gain[data-tone="ag"]{border-color:rgba(15,107,138,.35);background:var(--keys-soft)}
+.keys-gain[data-tone="ag"] .g-lab,.keys-gain[data-tone="ag"] .g-title{color:var(--keys)}
+.keys-gain[data-tone="ag"] .g-pills span{border-color:rgba(15,107,138,.35);color:var(--keys);background:#fff}
+.keys-gain[data-tone="digit"]{border-color:rgba(154,103,0,.35);background:var(--warn-soft)}
+.keys-gain[data-tone="digit"] .g-lab,.keys-gain[data-tone="digit"] .g-title{color:var(--warn)}
+.keys-gain[data-tone="digit"] .g-pills span{border-color:rgba(154,103,0,.35);color:var(--warn);background:#fff}
+.agent-preview-host .micro-hw__key[data-keys-gain-lbl]::after{
+  content:attr(data-keys-gain-lbl);
+  display:block;font-size:8px;font-weight:800;line-height:1.1;margin-top:1px;
+  color:inherit;opacity:.95;
+}
 
 .callout{margin-top:14px;padding:12px 14px;border-radius:14px;background:linear-gradient(120deg,var(--agent-soft),#fff 70%);border:1px solid var(--agent-line)}
 .callout strong{display:block;margin:0 0 4px;font-size:13px}
@@ -417,7 +696,7 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .src .r{display:flex;justify-content:space-between;font-size:11.5px;color:#5c6d82;padding:2px 0}
 .src .r em{font-style:normal;font-family:var(--mono);color:#152033}
 .wall-foot{margin-top:10px;font-size:11px;color:#8a9aab;text-align:center}
-@media (prefers-reduced-motion:reduce){.gcard,.zone,.micro-hw__key{transition:none}}
+@media (prefers-reduced-motion:reduce){.gcard,.micro-hw__key{transition:none}}
 </style>
 <style id="ot-embed">
 html.ot-embed,html.ot-embed body{background:#f3f6fa!important;margin:0}
@@ -440,42 +719,32 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
 </head>
 <body>
 <div class="page">
-  <p class="eyebrow">Agent remodel · 五叶先懂再配</p>
-  <h1>一叶一件事 · 键位拆成「继续」和「开关」</h1>
-  <p class="lede">先看下面五张卡搞清每叶干什么；再进壳里改。旧的「开关继续」把两件事揉在一起——现拆成 Soft Pad 上两块：<b>虚线 = 继续（AG）</b>，<b>黄框 = 开关（数字键）</b>。</p>
+  <p class="eyebrow">Agent remodel · 三叶先懂再配</p>
+  <h1>一叶一件事 · 浮窗 ≠ Soft Pad ≠ 迷你栏</h1>
+  <p class="lede"><b>浮窗</b>＝完整 Soft Pad 窗口何时出现、长什么样。<b>迷你栏</b>＝收成细条时的顶行 chrome。<b>Soft Pad</b>＝顶栏亮谁、灯效、接入 Agent，以及是否替换数字键盘。</p>
 
-  <div class="guide" id="guide" role="navigation" aria-label="五叶导览">
+  <div class="guide" id="guide" role="navigation" aria-label="三叶导览">
     <button type="button" class="gcard is-on" data-jump="float">
-      <div class="ix">01 · 外观</div>
+      <div class="ix">01 · 整窗</div>
       <h3>浮窗</h3>
-      <p>三标签：何时出现 · 皮肤 · 口令。</p>
+      <p>何时出现 · 皮肤透明度。不管键、不接 hooks。</p>
     </button>
     <button type="button" class="gcard" data-jump="mini">
       <div class="ix">02 · 细条</div>
       <h3>迷你栏</h3>
-      <p>四标签：谁在忙 · 话术 · 快捷钮 · 形态。</p>
+      <p>收成细条：谁在忙 · 话术 · 快捷钮 · 形态。</p>
     </button>
-    <button type="button" class="gcard" data-jump="lights">
-      <div class="ix">03 · 反馈</div>
-      <h3>灯效</h3>
-      <p>两标签：盘边氛围 · 按键灯。</p>
-    </button>
-    <button type="button" class="gcard" data-jump="connect">
-      <div class="ix">04 · 接通</div>
-      <h3 id="guideConnect">Cursor</h3>
-      <p>三标签：开 Pad · 接 hooks · 读数。</p>
-    </button>
-    <button type="button" class="gcard" data-jump="keys">
-      <div class="ix">05 · 键位</div>
-      <h3>开关 · 继续</h3>
-      <p>AG 区干什么 · 数字键占不占用。</p>
+    <button type="button" class="gcard" data-jump="softPad">
+      <div class="ix">03 · 键盘</div>
+      <h3>Soft Pad</h3>
+      <p>顶栏 · 灯效 · 接入 · 替换数字键盘。</p>
     </button>
   </div>
 
   <div class="shell">
     <div class="shell-h">
       <span class="path"><b id="shellPath">设置 → Agent</b></span>
-      <span id="shellHint">五叶配置 · 不含图表</span>
+      <span id="shellHint">三叶配置 · Soft Pad ≠ 迷你栏</span>
     </div>
     <div class="layout">
       <aside class="snav">
@@ -521,9 +790,14 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
                   <div class="agent-preview-empty">等待 Soft Pad 预览…</div>
                 </div>
               </div>
-              <div class="pad-legend" id="padLegend" hidden>
-                <span class="ag">青虚线 · 继续（AG）</span>
-                <span class="digit">黄虚线 · 开关（数字）</span>
+              <div class="pad-place-rail" id="padPlaceRail" hidden>
+                <div class="pad-place-pill" id="padPlacePill" hidden><i class="d" aria-hidden="true"></i><span>今日摘要</span><span class="u">72%</span></div>
+              </div>
+              <div class="pad-legend" id="padLegend" hidden></div>
+              <div class="keys-gain" id="keysGain" hidden>
+                <p class="g-lab">一句话说清</p>
+                <p class="g-title" id="keysGainTitle">—</p>
+                <div class="g-pills" id="keysGainPills"></div>
               </div>
               <p class="note" id="padNote">与虚拟键盘同一套 Soft Pad 外观。</p>
             </div>
@@ -537,25 +811,23 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
               </div>
             </div>
             <div class="preview-mode" data-mode="connect" id="modeConnect">
-              <p class="cap" id="connectCap">Cursor</p>
+              <p class="cap" id="connectCap">接入 Agent</p>
               <div class="id-card connect">
-                <p class="big">开 Pad → 接 hooks → 读数</p>
-                <p class="one" id="connectOne">没连上，灯和迷你栏没有忙闲/额度来源。</p>
+                <p class="big">灯开关 · hooks · 状态</p>
+                <p class="one" id="connectOne">每个 Agent 单独接入；顶栏灯亮后，忙闲才有来源。</p>
                 <div class="pipe">
                   <div class="p"><i>1</i>打开 Soft Pad</div>
-                  <div class="p"><i>2</i><span id="connectHook">复制 hooks 接到 Cursor</span></div>
-                  <div class="p"><i>3</i>读数：本机活动 / Key</div>
+                  <div class="p"><i>2</i><span id="connectHook">复制 hooks 接到对应 Agent</span></div>
+                  <div class="p"><i>3</i>开顶栏灯 · 看接入状态</div>
                 </div>
               </div>
             </div>
           </aside>
           <div class="panel">
             <div class="subtabs" id="subs" role="tablist">
-              <button type="button" class="is-on" data-sub="float" role="tab"><span class="t">浮窗</span><span class="s">三标签页</span></button>
-              <button type="button" data-sub="mini" role="tab"><span class="t">迷你栏</span><span class="s">四标签页</span></button>
-              <button type="button" data-sub="lights" role="tab"><span class="t">灯效</span><span class="s">两标签页</span></button>
-              <button type="button" data-sub="connect" id="tabConnect" role="tab"><span class="t">Cursor</span><span class="s">三标签页</span></button>
-              <button type="button" data-sub="keys" role="tab"><span class="t">开关·继续</span><span class="s">键位两区</span></button>
+              <button type="button" class="is-on" data-sub="float" role="tab"><span class="t">浮窗</span><span class="s">何时 · 皮肤</span></button>
+              <button type="button" data-sub="mini" role="tab"><span class="t">迷你栏</span><span class="s">细条 chrome</span></button>
+              <button type="button" data-sub="softPad" role="tab"><span class="t">Soft Pad</span><span class="s">顶栏 · 灯 · 接入 · 数字键</span></button>
             </div>
             <div class="detail" id="detail"></div>
           </div>
@@ -602,7 +874,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
 
   <div class="callout">
     <strong>记三句话</strong>
-    <p><b>继续</b> = Soft Pad 虚线 AG 区干什么。<b>开关</b> = 实体数字键要不要被占用。<b>顶栏摘要</b> = 只看当前应用今日几个数，点「查看数据」进大盘。</p>
+    <p><b>替换数字键盘</b> = 用三问向导选好用途、键位、真键盘是否一起改（在 Soft Pad 叶内）。<b>顶栏摘要</b> = 只看当前应用今日几个数，点「查看数据」进大盘。</p>
   </div>
 </div>
 
@@ -662,7 +934,95 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
 <script>
 (function(){
   var detail=document.getElementById('detail');
-  var state={sub:'float',show:'follow',skin:'default',ambient:true,usage:true,purpose:'actions',digitOn:true,numpadOccupy:true,zone:'ag',mini:'busy',float:'show',lights:'ambient',connect:'pad',app:'Cursor',miniChrome:{agentsBarEnabled:true,textPreviewEnabled:true,voiceChipEnabled:true,toolsBarEnabled:true,expandBtnEnabled:true,closeBtnEnabled:true},padEnabled:true,ambientMode:'status',ambientRgb:'#7c3aed',ambientOpacity:100,floatOpacity:82,keyLights:true,settingsSnap:null};
+  var state={sub:'float',show:'follow',skin:'default',ambient:true,usage:true,purpose:'sessions',digitOn:true,numpadOccupy:true,numpadWizardStep:0,numpadWizardDone:false,numpadSlots:['7','8','9'],zone:'ag',mini:'busy',float:'show',softPad:'topbar',app:'Cursor',miniChrome:{agentsBarEnabled:true,textPreviewEnabled:true,voiceChipEnabled:true,toolsBarEnabled:true,expandBtnEnabled:true,closeBtnEnabled:true},padEnabled:true,ambientMode:'status',ambientRgb:'#7c3aed',ambientOpacity:100,floatOpacity:82,keyLights:true,keyLightScheme:'single',keyLightPreset:'default',settingsSnap:null,hookMode:'watch',hookOpen:'',hookQuery:'',topbarOrder:[],topbarDemo:{},topbarShowFace:true};
+  var TOPBAR_DEMO_CYCLE=['idle','running','needs_input','done','failed'];
+  var AGENT_ICON={
+    codex:'../icons/app-target/codex.png',
+    claude:'../icons/app-target/claude.png',
+    cursor:'../icons/app-target/cursor.png',
+    minimax:'../icons/app-target/minimaxcode.png',
+    workbuddy:'../icons/app-target/workbuddy.png',
+    trae:'../icons/app-target/trae.png',
+    traeCode:'../icons/app-target/trae.png',
+    qoder:'../icons/app-target/qoder.png',
+    gemini:'../icons/app-target/gemini.png',
+    cline:'../icons/app-target/cline.png',
+    opencode:'../icons/app-target/opencode.png',
+    aider:'../icons/app-target/aider.png',
+    copilotCli:'../icons/app-target/copilot.png',
+    copilotVscode:'../icons/app-target/copilot.png',
+    windsurf:'../icons/app-target/windsurf.png',
+    roo:'../icons/app-target/roo.png'
+  };
+
+  function defaultAgents(){
+    return [
+      {agent:'codex',label:'Codex',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'claude',label:'Claude',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'cursor',label:'Cursor',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'copilotCli',label:'Copilot',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'copilotVscode',label:'Copilot VS Code',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'gemini',label:'Gemini',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'minimax',label:'MiniMax',enabled:false,phase:'not_configured',phaseLabel:'额度灯',badgeClass:'warn'},
+      {agent:'workbuddy',label:'WorkBuddy',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'trae',label:'Trae Work',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'traeCode',label:'Trae Code',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'windsurf',label:'Windsurf',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'qoder',label:'Qoder',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'cline',label:'Cline',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'roo',label:'Roo',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'opencode',label:'OpenCode',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'},
+      {agent:'aider',label:'Aider',enabled:false,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'}
+    ];
+  }
+  function isHookManaged(row){
+    if(!row) return false;
+    if(row.enabled) return true;
+    var ph=row.phase||'not_configured';
+    return ph==='connected'||ph==='waiting'||ph==='error'||ph==='solo';
+  }
+
+  var KEY_LIGHT_PRESET_COLORS={
+    default:{running:'#3053FE',needsInput:'#FF6A00',done:'#00FF4C',failed:'#FF0033',listening:'#00A3FF'},
+    cool:{running:'#3B82F6',needsInput:'#06B6D4',done:'#22D3EE',failed:'#F43F5E',listening:'#60A5FA'},
+    warm:{running:'#F59E0B',needsInput:'#F97316',done:'#84CC16',failed:'#EF4444',listening:'#FB923C'},
+    highContrast:{running:'#0055FF',needsInput:'#FF8800',done:'#00FF66',failed:'#FF0033',listening:'#00CCFF'}
+  };
+  function normalizeKeyLightPreset(id){
+    id=String(id||'default');
+    if(id==='high_contrast') id='highContrast';
+    return KEY_LIGHT_PRESET_COLORS[id]?id:'default';
+  }
+  function normalizeKeyLightScheme(id){
+    id=String(id||'single');
+    if(id==='off'||id==='multi'||id==='single') return id;
+    return 'single';
+  }
+  function agentsRoster(){
+    var snap=state.settingsSnap||{};
+    return (snap.topbar&&snap.topbar.agents)||defaultAgents();
+  }
+  function syncTopbarOrder(agents){
+    agents=agents||agentsRoster();
+    var ids=agents.map(function(a){return a.agent;});
+    var cur=Array.isArray(state.topbarOrder)?state.topbarOrder.slice():[];
+    cur=cur.filter(function(id){return ids.indexOf(id)>=0;});
+    ids.forEach(function(id){ if(cur.indexOf(id)<0) cur.push(id); });
+    state.topbarOrder=cur;
+    return cur;
+  }
+  function agentsOrdered(){
+    var agents=agentsRoster();
+    var by={};
+    agents.forEach(function(a){ by[a.agent]=a; });
+    return syncTopbarOrder(agents).map(function(id){ return by[id]; }).filter(Boolean);
+  }
+  function agentIconHtml(agent,label){
+    var src=AGENT_ICON[agent]||'';
+    var letter=String(label||agent||'?').charAt(0).toUpperCase();
+    if(src) return '<img src="'+src+'" alt="" width="16" height="16" decoding="async" onerror="this.style.display=\'none\';this.nextSibling&&(this.nextSibling.hidden=false)"><span class="chip-letter" hidden>'+letter+'</span>';
+    return '<span class="chip-letter">'+letter+'</span>';
+  }
 
   function app(){return state.app;}
 
@@ -704,6 +1064,10 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     }catch(_){}
   }
 
+  function isNumpadLeaf(){
+    return state.sub==='softPad'&&state.softPad==='numpad';
+  }
+
   function postLeftPreview(){
     if(state.sub==='mini'){ postMiniPreview(); return; }
     var kind='pad';
@@ -712,10 +1076,15 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       if(state.float==='show') kind='show';
       else if(state.float==='skin') kind='skin';
       else kind='pad';
-    }else if(state.sub==='keys'){
-      kind='purpose';
-      purposeTab=state.zone==='digit'?'occupy':'mapping';
-    }else if(state.sub==='lights'){
+    }else if(isNumpadLeaf()){
+      if(state.zone==='digit'){
+        kind='purpose';
+        purposeTab='occupy';
+      }else{
+        kind='pad';
+        purposeTab='mapping';
+      }
+    }else if(state.sub==='softPad'){
       kind='pad';
     }
     try{
@@ -748,93 +1117,205 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
 
   var pages={
     float:function(){
-      var cur=state.float||'show';
-      return job('float','浮窗 · 三标签页','窗何时出现、长什么样、听什么口令。不绑键、不接 hooks。')+
-        leafShell('float','n3','floatRail','浮窗分区',
-          tabBtn('data-float','show',cur,'何时出现','跟随 / 最前')+
-          tabBtn('data-float','skin',cur,'皮肤','外观')+
-          tabBtn('data-float','voice',cur,'聆听口令','激活词')
+      var cur=state.float==='skin'?'skin':'show';
+      state.float=cur;
+      return job('float','浮窗 · 整窗何时出现','浮窗 = Soft Pad 完整窗口的出场与外观。不管键盘顶栏、不接 hooks、不改迷你栏细条。')+
+        leafShell('float','n2','floatRail','浮窗分区',
+          tabBtn('data-float','show',cur,'何时出现','跟随 / 最前 / 细条')+
+          tabBtn('data-float','skin',cur,'皮肤','外观与透明度')
         );
     },
     mini:function(){
       var m=state.mini||'busy';
-      return job('mini','迷你栏 · 四标签页','顶条四块各自一页。今日数字看顶栏摘要，完整盘去「数据」。')+
+      return job('mini','迷你栏 · 细条 chrome','浮窗收成细条时的顶行：忙闲圆点、话术、快捷钮。完整键盘顶栏请去 Soft Pad。')+
         leafShell('mini','n4','miniRail','迷你栏分区',
           tabBtn('data-mini','busy',m,'谁在忙','忙闲圆点')+
           tabBtn('data-mini','speech',m,'听你说话','话术区')+
           tabBtn('data-mini','tools',m,'快捷钮','悬停第二行')+
-          tabBtn('data-mini','form',m,'浮窗形态','细条 / 全盘')
+          tabBtn('data-mini','form',m,'细条形态','细条 / 放大')
         );
     },
-    lights:function(){
-      var cur=state.lights||'ambient';
-      return job('lights','灯效 · 两标签页','盘边氛围灯 + 按键状态灯。亮度跟「接通」后的忙闲状态走。')+
-        leafShell('lights','n2','lightsRail','灯效分区',
-          tabBtn('data-lights','ambient',cur,'盘边氛围','状态色圈')+
-          tabBtn('data-lights','keys',cur,'按键灯','键上状态')
+    softPad:function(){
+      var cur=state.softPad||'topbar';
+      if(cur==='ambient'||cur==='keys') cur='lights';
+      state.softPad=cur;
+      return job('softPad','Soft Pad · 键盘与接入','顶栏亮谁、灯效、各 Agent 接入，以及是否替换数字键盘。迷你栏细条不在这里。')+
+        leafShell('softPad','n4','softPadRail','Soft Pad 分区',
+          tabBtn('data-soft-pad','topbar',cur,'键盘顶栏','图标 · 顺序 · 灯')+
+          tabBtn('data-soft-pad','lights',cur,'灯效','盘边 + 按键')+
+          tabBtn('data-soft-pad','hook',cur,'接入 Agent','灯 · hooks · 状态')+
+          tabBtn('data-soft-pad','numpad',cur,'替换数字键盘','三问向导')
         );
-    },
-    connect:function(){
-      var a=app();
-      var cur=state.connect||'pad';
-      return job('connect',a+' · 三标签页',connectJobBody())+
-        leafShell('connect','n3','connectRail',a+' 接通',
-          tabBtn('data-connect','pad',cur,'打开 Soft Pad','总开关')+
-          tabBtn('data-connect','hook',cur,'接到 '+a,'hooks')+
-          tabBtn('data-connect','read',cur,'读数来源','本机 / Key')
-        );
-    },
-    keys:function(){
-      var purposeActions=state.purpose==='actions';
-      return job('keys','开关 · 继续 · Soft Pad 两区','旧名「开关继续」易混。左边点分区 → 预览高亮对应键。停/发/续绑命令不在这里。')+
-        '<p class="split-note"><b>继续</b> = AG 虚线区干什么。<b>开关</b> = 实体数字键要不要被占用。点左右卡片对照 Soft Pad。</p>'+
-        '<div class="zones">'+
-          '<div class="zone ag'+(state.zone==='ag'?' is-focus':'')+'" data-zone="ag" tabindex="0">'+
-            '<div class="ztag">继续 · AG 区</div>'+
-            '<h5>这几键干什么？</h5>'+
-            '<p class="zwhy">虚线框里的键：收 / 新 / Plan。决定它们是快捷动作，还是用来切会话。</p>'+
-            '<div class="zkeys"><span>收</span><span>新</span><span>Plan</span></div>'+
-            '<div class="choice" id="purposeSeg">'+
-              '<button type="button" data-purpose="actions"'+(purposeActions?' class="is-on"':'')+'><b>快捷动作</b><small>继续、收起、新对话等高频操作</small></button>'+
-              '<button type="button" data-purpose="sessions"'+(purposeActions?'':' class="is-on"')+'><b>切换会话</b><small>在多个 Agent 会话之间跳转</small></button>'+
-            '</div>'+
-          '</div>'+
-          '<div class="zone digit'+(state.zone==='digit'?' is-focus':'')+'" data-zone="digit" tabindex="0">'+
-            '<div class="ztag">开关 · 数字键</div>'+
-            '<h5>实体数字键占不占用？</h5>'+
-            '<p class="zwhy">中间数字位（如 5）。关闭 = 只输入数字；打开后需用 Number 切入快捷 Soft Pad。</p>'+
-            '<div class="zkeys"><span>4</span><span>5</span><span>6</span><span>…</span></div>'+
-            '<div class="row"><span>允许接管数字键<span class="sub">总开关 · 默认建议先关</span></span><button type="button" class="tog'+(state.digitOn?' on':'')+'" data-digit-tog></button></div>'+
-            '<div class="row"><span>占用数字小键盘<span class="sub">开 = 同一键位改成 Soft Pad 快捷；关 = 照常打数字</span></span><button type="button" class="tog'+(state.numpadOccupy?' on':'')+'" data-occupy-tog></button></div>'+
-          '</div>'+
-        '</div>'+
-        '<div class="linkout">'+
-          '<b>停 / 发 / 续 · 绑命令</b><br>选具体 Agent 命令在「虚拟键盘」配，不进这一叶。'+
-          '<div><button type="button" class="go" disabled title="原型外">去虚拟键盘</button></div>'+
-        '</div>';
     }
   };
+
+  function numpadWizardStepIndex(){
+    if(state.numpadWizardDone) return 3;
+    var s=state.numpadWizardStep|0;
+    if(s<0) s=0;
+    if(s>3) s=3;
+    return s;
+  }
+
+  function numpadOpt(id,title,desc,eg,on){
+    return '<button type="button" class="nw-opt'+(on?' is-on':'')+'" data-nw-opt="'+id+'">'+
+      '<span class="radio" aria-hidden="true"></span>'+
+      '<span><strong>'+title+'</strong><span class="d">'+desc+'</span>'+
+      (eg?'<span class="eg">'+eg+'</span>':'')+
+      '</span></button>';
+  }
+
+  function numpadNav(back,nextOk,nextLabel){
+    return '<div class="nw-nav">'+
+      (back?'<button type="button" class="nw-btn" data-nw="back">上一步</button>':'<span></span>')+
+      '<button type="button" class="nw-btn primary" data-nw="next"'+(nextOk?'':' disabled')+'>'+(nextLabel||'下一步')+'</button>'+
+      '</div>';
+  }
+
+  function numpadRailHtml(step){
+    var labels=[
+      ['1 用途','想用来干嘛'],
+      ['2 键位','哪几键'],
+      ['3 真键盘','要不要占用'],
+      ['4 确认','看一眼生效']
+    ];
+    return '<div class="nw-rail" aria-label="向导进度">'+labels.map(function(L,i){
+      var cls='si'+(i===step?' on':'')+(i<step?' done':'');
+      return '<div class="'+cls+'">'+L[0]+'<em>'+L[1]+'</em></div>';
+    }).join('')+'</div>';
+  }
+
+  function numpadBodyHtml(){
+    var step=numpadWizardStepIndex();
+    var purpose=state.purpose==='sessions'?'sessions':(state.purpose==='digits'?'digits':'actions');
+    var occupy=state.numpadOccupy!==false;
+    var slots=Array.isArray(state.numpadSlots)&&state.numpadSlots.length?state.numpadSlots.slice():['7','8','9'];
+    state.numpadSlots=slots;
+
+    var body='';
+    if(step===0){
+      body=
+        '<p class="nw-q">你想让数字键帮你做什么？</p>'+
+        '<p class="nw-sub">就像给键盘右边那块小键盘选一个工作模式。选错了也能随时回来改。</p>'+
+        '<div class="nw-opts">'+
+          numpadOpt('sessions','在几个聊天之间切换','像浏览器多个标签页：一个键一个聊天窗口。','例如：按 7 进聊天 A，按 8 进聊天 B。',purpose==='sessions')+
+          numpadOpt('actions','一键发常用操作','不切聊天，而是按一下就「新建 / 继续 / 收起」。','例如：按 7 = 继续回复，按 9 = 开新对话。',purpose==='actions')+
+          numpadOpt('digits','继续只打数字','小键盘保持原来的样子，用来输入 0–9、小数点。','适合：经常要用小键盘算数、输金额。',purpose==='digits')+
+        '</div>'+
+        '<div class="nw-tip"><b>新手怎么选？</b>经常同时开好几个 AI 聊天 → 选第一项。只想少点鼠标 → 选第二项。小键盘还要打字输数字 → 选第三项。</div>'+
+        numpadNav(false,true);
+    }else if(step===1){
+      if(purpose==='actions'){
+        body=
+          '<p class="nw-q">快捷键用我们帮你排好的位置？</p>'+
+          '<p class="nw-sub">不用自己记每个键。最常用的三个操作放在最上面一行（7、8、9）。</p>'+
+          '<div class="nw-ex">'+
+            '<div class="box on"><div class="h">按 7</div>继续让 AI 往下说</div>'+
+            '<div class="box on"><div class="h">按 8</div>收起 / 暂停当前</div>'+
+            '<div class="box on"><div class="h">按 9</div>开一个全新聊天</div>'+
+            '<div class="box off"><div class="h">其他键</div>查找、发送、取消等，之后可改</div>'+
+          '</div>'+
+          '<div class="nw-opts" style="margin-top:12px">'+
+            numpadOpt('yes','好，就用这套','省事，立刻能上手。','推荐给第一次设置的人。',true)+
+          '</div>'+
+          '<div class="nw-tip ok"><b>小提示：</b>先用起来，哪一键不顺手，再单独改那一键。</div>'+
+          numpadNav(true,true);
+      }else{
+        body=
+          '<p class="nw-q">哪几个数字键用来切换聊天？</p>'+
+          '<p class="nw-sub">点亮的键，以后一按就会跳到对应聊天。最多选 3 个。不知道选哪个？保持默认的 7、8、9。</p>'+
+          '<div class="nw-slots" id="nwSlotPick">'+
+            ['7','8','9','4','5','6'].map(function(k){
+              var idx=slots.indexOf(k);
+              var on=idx>=0;
+              return '<button type="button" class="nw-slot'+(on?' is-on':'')+'" data-nw-slot="'+k+'">'+
+                '<div class="k">'+k+'</div><div class="s">'+(on?('聊天'+(idx+1)):'点我选')+'</div></button>';
+            }).join('')+
+          '</div>'+
+          '<div class="nw-tip"><b>怎么理解「聊天1 / 聊天2」？</b>就像微信里不同的对话窗口。键 7 固定进第 1 个——手不用离开键盘去点屏幕。</div>'+
+          numpadNav(true,slots.length>0);
+      }
+    }else if(step===2){
+      var job=purpose==='sessions'?'切换聊天':'发快捷操作';
+      body=
+        '<p class="nw-q">键盘上「真的」那排数字键，要不要一起改掉？</p>'+
+        '<p class="nw-sub">屏幕上有一块 Soft Pad（虚拟盘）。另外，电脑键盘<strong>最右边</strong>还有一排实体数字键。这里问的是：实体那排要不要跟着变成上面的功能？</p>'+
+        '<div class="nw-ex">'+
+          '<div class="box'+(occupy?' on':'')+'"><div class="h">选「一起改」时</div>手指按键盘右边的 <b>7</b>，立刻'+job+'。<br>代价：这时按 7 <b>不会</b>再输入数字「7」。</div>'+
+          '<div class="box'+(!occupy?' on':' off')+'"><div class="h">选「保持打数字」时</div>键盘右边的 7 仍输入数字。<br>要'+job+'，去点屏幕上的 Soft Pad。</div>'+
+        '</div>'+
+        '<div class="nw-opts" style="margin-top:12px">'+
+          numpadOpt('occ-1','一起改（推荐）','真键盘也能'+job+'，不用盯着屏幕点。','适合：主要用 AI，很少用小键盘输数字。',occupy)+
+          numpadOpt('occ-0','保持打数字','真键盘照旧输入 0–9；功能只在 Soft Pad 上点。','适合：还要经常用小键盘算数、输金额。',!occupy)+
+        '</div>'+
+        '<div class="nw-tip warn"><b>怕选错？</b>多数人第一次选「一起改」。若发现没法输数字了，随时回来改成「保持打数字」。</div>'+
+        numpadNav(true,true);
+    }else{
+      var purposeHow={sessions:'在几个聊天之间切换',actions:'一键发常用操作',digits:'继续只打数字'}[purpose];
+      var howLine='';
+      var howSub='';
+      var slotLbl='';
+      if(purpose==='digits'){
+        howLine='小键盘继续输入数字，和以前一样。';
+        howSub='没有改掉任何按键。';
+        slotLbl='无改动';
+      }else if(purpose==='sessions'){
+        howLine=slots.map(function(k,i){ return '按 <b>'+k+'</b> → 聊天'+(i+1); }).join('，')+'。';
+        howSub=occupy?'在键盘最右边按这些键即可，不必先点屏幕。':'请在屏幕 Soft Pad 上点这些键；真键盘仍打数字。';
+        slotLbl=slots.map(function(k,i){ return '键'+k+' = 聊天'+(i+1); }).join(' · ');
+      }else{
+        howLine='按 <b>7</b> 继续，按 <b>8</b> 收起，按 <b>9</b> 新建聊天。';
+        howSub=occupy?'在键盘最右边按即可。':'请在屏幕 Soft Pad 上点；真键盘仍打数字。';
+        slotLbl='键7/8/9 = 继续/收起/新建';
+      }
+      body=
+        '<p class="nw-q">确认一下：以后你会这样用</p>'+
+        '<p class="nw-sub">看懂下面这一句就够了。点「开始使用」后立刻生效。</p>'+
+        '<div class="nw-sum">'+
+          '<h3>你的设置</h3>'+
+          '<dl>'+
+            '<dt>模式</dt><dd>'+purposeHow+'</dd>'+
+            '<dt>按键</dt><dd>'+slotLbl+'</dd>'+
+            '<dt>真键盘</dt><dd>'+(purpose==='digits'?'不改，照常打数字':(occupy?'一起改成上面的功能':'不改，照常打数字'))+'</dd>'+
+          '</dl>'+
+          '<div class="nw-how">'+howLine+'<small>'+howSub+'</small></div>'+
+        '</div>'+
+        '<div class="nw-tip ok"><b>之后想改？</b>点「重新设置」再走一遍，或只改其中一步。不会弄坏别的设置。</div>'+
+        '<div class="nw-nav">'+
+          '<button type="button" class="nw-btn" data-nw="back">上一步</button>'+
+          (state.numpadWizardDone
+            ?'<button type="button" class="nw-btn" data-nw="reset">重新设置</button>'
+            :'<button type="button" class="nw-btn primary" data-nw="done">开始使用</button>')+
+        '</div>';
+    }
+
+    return '<div class="keys-page" data-numpad-wizard="1">'+
+      '<div class="nw-intro"><strong>这是什么？</strong> 电脑键盘<strong>右边那块数字小键盘</strong>，可以改成帮你操作 AI（切聊天、发快捷），也可以继续只打数字。下面用几个小问题帮你选好。</div>'+
+      numpadRailHtml(step)+
+      body+
+    '</div>';
+  }
+
+  function refreshNumpadGainLines(){ /* wizard paints left preview via paintKeysGain */ }
 
   function floatBodies(){
     var op=state.floatOpacity!=null?state.floatOpacity:82;
     return {
-      show:'<p class="pane-lead">决定 Soft Pad 整窗何时出现在屏幕上。</p>'+
+      show:'<p class="pane-lead">决定 Soft Pad <b>完整窗口</b>何时出现。选「迷你条」只是出场形态，细条 chrome 去「迷你栏」叶改。</p>'+
         '<div class="seg n4" id="showSeg">'+
           '<button type="button" data-show="follow">跟随应用</button>'+
           '<button type="button" data-show="top">保持最前</button>'+
-          '<button type="button" data-show="mini">迷你条</button>'+
+          '<button type="button" data-show="mini">出场为细条</button>'+
           '<button type="button" data-show="off">不显示</button>'+
         '</div>',
-      skin:'<p class="pane-lead">换皮肤时，左边 Soft Pad 预览会跟着变。透明度作用于整块浮窗。</p>'+
+      skin:'<p class="pane-lead">完整 Soft Pad 窗口的皮肤与透明度；左边预览会跟着变。</p>'+
         '<div class="skins" id="skinSeg">'+
           '<button type="button" data-skin="default"><b>默认</b><div class="sw"></div></button>'+
           '<button type="button" data-skin="glass-light"><b>玻璃浅色</b><div class="sw" style="background:linear-gradient(160deg,#4a5a6c,#6a7a8c)"></div></button>'+
           '<button type="button" data-skin="hybrid-pro"><b>Hybrid Pro</b><div class="sw" style="background:linear-gradient(160deg,#0e1a28,#1a2e42)"></div></button>'+
           '<button type="button" data-skin="vibe-light"><b>Vibe Light</b><div class="sw" style="background:linear-gradient(160deg,#2a3544,#3a4554)"></div></button>'+
         '</div>'+
-        '<div class="row" style="margin-top:10px"><span>浮窗透明度</span><label style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end"><input type="range" data-float-opacity min="40" max="100" value="'+op+'" style="width:100px"><strong data-float-opacity-val>'+op+'%</strong></label></div>',
-      voice:'<p class="pane-lead">语音激活口令；不进虚拟键盘绑键。</p>'+
-        '<div class="row"><span>激活口令</span><strong>一声</strong></div>'
+        '<div class="row" style="margin-top:10px"><span>浮窗透明度</span><label style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end"><input type="range" data-float-opacity min="40" max="100" value="'+op+'" style="width:100px"><strong data-float-opacity-val>'+op+'%</strong></label></div>'
     };
   }
 
@@ -854,57 +1335,193 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       '<div class="row"><span>细条右侧 · 关掉</span><button type="button" class="tog on" data-mini-chrome="closeBtnEnabled"></button></div>'
   };
 
-  function lightsBodies(){
-    var on=state.ambient!==false;
+  function softPadBodies(){
     var mode=state.ambientMode==='solid'?'solid':'status';
     var rgb=state.ambientRgb||'#7c3aed';
     var op=state.ambientOpacity!=null?state.ambientOpacity:100;
-    var keyOn=state.keyLights!==false;
-    return {
-      ambient:'<p class="pane-lead">盘边光圈：跟随忙闲，或固定一色。</p>'+
-        '<div class="row"><span>启用</span><button type="button" class="tog'+(on?' on':'')+'" data-ambient-tog></button></div>'+
-        '<div class="seg" id="ambientModeSeg">'+
-          '<button type="button" data-ambient-mode="status"'+(mode==='status'?' class="is-on"':'')+'>跟随状态</button>'+
-          '<button type="button" data-ambient-mode="solid"'+(mode==='solid'?' class="is-on"':'')+'>固定色</button>'+
-        '</div>'+
-        '<div class="row"><span>盘边颜色</span><input type="color" data-ambient-rgb value="'+rgb+'" style="width:28px;height:22px;border:0;background:transparent;padding:0;cursor:pointer"></div>'+
-        '<div class="row"><span>透明度</span><label style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end"><input type="range" data-ambient-opacity min="0" max="100" value="'+op+'" style="width:100px"><strong data-ambient-opacity-val>'+op+'%</strong></label></div>',
-      keys:'<p class="pane-lead">按键上的状态灯，对照左边 Soft Pad。</p>'+
-        '<div class="row"><span>显示状态灯</span><button type="button" class="tog'+(keyOn?' on':'')+'" data-key-lights-tog></button></div>'
-    };
-  }
-
-  function connectBodies(){
-    var a=app();
+    var scheme=state.keyLightScheme==='off'?'off':(state.keyLightScheme==='multi'?'multi':'single');
+    var preset=normalizeKeyLightPreset(state.keyLightPreset);
     var snap=state.settingsSnap||{};
-    var padOn=state.padEnabled!==false;
-    var c=snap.connect||{};
     var read=snap.read||{};
-    var primary=c.primaryAction||null;
-    var copyLabel=primary==='install'?'确认接入':'复制连接配置';
-    var pathLine=c.path?'<div class="row"><span>配置路径</span><em style="font-style:normal;font-size:11px;color:var(--faint)">'+c.path+'</em></div>':'';
+    var agents=agentsOrdered();
     var cursorOn=!!read.cursorActivityEnabled;
-    var cursorRow=read.cursorActivityApplicable!==false
-      ? '<div class="row"><span>本机活动统计</span><button type="button" class="tog'+(cursorOn?' on':'')+'" data-cursor-activity-tog></button></div>'
-      : '<div class="row"><span>本机活动统计</span><em style="font-style:normal;font-size:11px;color:var(--faint)">仅 Cursor</em></div>';
-    var keyLine=read.keyApplicable
-      ? ('<div class="row"><span>额度 Key（可选）</span><em style="font-style:normal;font-size:11px;color:var(--faint)">'+(read.keySet?'已设置':'未设置')+'</em></div>'+
-        '<div class="btn-row"><button type="button" class="btn" data-settings-act="paste-key">粘贴 Key</button></div>')
-      : '<div class="row"><span>额度 Key</span><em style="font-style:normal;font-size:11px;color:var(--faint)">完整盘去「数据」</em></div>';
+    var hookMode=state.hookMode==='add'?'add':'watch';
+    var openId=state.hookOpen||'';
+    var q=String(state.hookQuery||'').trim().toLowerCase();
+    var enabled=agents.filter(function(r){ return r.enabled; });
+    var disabled=agents.filter(function(r){ return !r.enabled; });
+    var activeRows=enabled.map(function(row,idx){
+      var demo=state.topbarDemo[row.agent]||'idle';
+      var demoLbl={idle:'空闲',running:'忙',needs_input:'等你',done:'完成',failed:'失败'}[demo]||demo;
+      return (
+        '<div class="topbar-item" data-topbar-row="'+row.agent+'">'+
+          '<div class="ord">'+
+            '<button type="button" data-topbar-move="up" data-agent="'+row.agent+'"'+(idx===0?' disabled':'')+' aria-label="上移">▲</button>'+
+            '<button type="button" data-topbar-move="down" data-agent="'+row.agent+'"'+(idx===enabled.length-1?' disabled':'')+' aria-label="下移">▼</button>'+
+          '</div>'+
+          '<span class="ico" data-topbar-demo="'+row.agent+'" title="点按演示灯色" style="cursor:pointer">'+agentIconHtml(row.agent,row.label)+'</span>'+
+          '<div class="nm">'+row.label+'<small>演示 · '+demoLbl+' · 点图标试灯色</small></div>'+
+          '<button type="button" class="rm" data-topbar-remove="'+row.agent+'" aria-label="移除">×</button>'+
+        '</div>'
+      );
+    }).join('');
+    var addBtns=disabled.map(function(row){
+      return '<button type="button" class="topbar-add-btn" data-topbar-add="'+row.agent+'">+ '+row.label+'</button>';
+    }).join('');
+    var watching=agents.filter(function(r){ return r.enabled || isHookManaged(r); });
+    var candidates=agents.filter(function(r){
+      if(r.enabled) return false;
+      if(!q) return true;
+      return String(r.label||'').toLowerCase().indexOf(q)>=0 || String(r.agent||'').toLowerCase().indexOf(q)>=0;
+    });
+    var openRow=null;
+    agents.forEach(function(r){ if(r.agent===openId) openRow=r; });
+    var watchRows=watching.map(function(row){
+      var isOpen=openId===row.agent;
+      var dock='';
+      if(isOpen){
+        var prim=row.primaryAction||null;
+        var act=prim==='install'?'install':'copy';
+        var actLbl=prim==='install'?'接入':'复制 hooks';
+        var detailBits=[];
+        if(row.path) detailBits.push('路径 <code>'+row.path+'</code>');
+        if(row.agent==='cursor'){
+          detailBits.push(
+            '<span style="display:inline-flex;align-items:center;gap:8px;margin-top:6px">本机活动统计 <button type="button" class="tog'+(cursorOn?' on':'')+'" data-cursor-activity-tog></button></span>'
+          );
+        }
+        dock=
+          '<div class="hook-dock hook-dock--inline" data-hook-dock="1">'+
+            '<div class="btn-row">'+
+              '<button type="button" class="tog'+(row.enabled?' on':'')+'" data-topbar-agent="'+row.agent+'" title="顶栏灯"></button>'+
+              '<span style="font-size:11px;color:var(--mute);font-weight:700">顶栏灯</span>'+
+              '<button type="button" class="btn primary" data-settings-act="'+act+'" data-agent="'+row.agent+'">'+actLbl+'</button>'+
+              '<button type="button" class="btn" data-settings-act="refresh">刷新</button>'+
+            '</div>'+
+            (detailBits.length?'<p class="hook-meta">'+detailBits.join(' · ')+'</p>':'')+
+          '</div>';
+      }
+      return (
+        '<div class="hook-watch-item'+(isOpen?' is-on':'')+'">'+
+          '<div class="hook-watch-row" data-agent-hook="'+row.agent+'">'+
+            '<span class="ico">'+agentIconHtml(row.agent,row.label)+'</span>'+
+            '<div class="nm">'+row.label+'<small>'+(row.phaseLabel||'未接入')+(row.enabled?' · 灯开':'')+'</small></div>'+
+            '<span class="badge '+(row.badgeClass||'warn')+'">'+(row.phaseLabel||'未接入')+'</span>'+
+          '</div>'+
+          dock+
+        '</div>'
+      );
+    }).join('');
+    var addTiles=candidates.map(function(row){
+      return (
+        '<button type="button" class="hook-tile" data-hook-add="'+row.agent+'" title="加入监视">'+
+          '<span class="ico">'+agentIconHtml(row.agent,row.label)+'</span>'+
+          '<span class="nm">'+row.label+'</span>'+
+        '</button>'
+      );
+    }).join('');
+    var watchBody=watching.length
+      ? ('<div class="hook-watch-list">'+watchRows+'</div>')
+      : ('<div class="hook-empty">还没有监视中的 Agent<br><button type="button" class="btn primary" data-hook-mode="add">去添加</button></div>');
+    var addBody=
+      '<input class="hook-search" type="search" data-hook-search placeholder="搜索要添加的 Agent…" value="'+(state.hookQuery||'').replace(/"/g,'&quot;')+'" autocomplete="off">'+
+      '<div class="hook-grid">'+(addTiles||'<div class="hook-empty" style="grid-column:1/-1;border:0;padding:12px">没有可添加的了</div>')+'</div>'+
+      '<p class="hook-hint">点一下加入监视并开顶栏灯，再回「监视中」接 hooks。</p>';
+    var hookBody=
+      '<p class="pane-lead">左边 Soft Pad 顶栏跟监视名单；点一行在正下方展开接入。</p>'+
+      '<div class="hook-modes" role="tablist" aria-label="接入视图">'+
+        '<button type="button" data-hook-mode="watch"'+(hookMode==='watch'?' class="is-on"':'')+'>监视中 · '+watching.length+'</button>'+
+        '<button type="button" data-hook-mode="add"'+(hookMode==='add'?' class="is-on"':'')+'>添加 · '+disabled.length+'</button>'+
+      '</div>'+
+      (hookMode==='add'?addBody:watchBody);
+    var presetColors=KEY_LIGHT_PRESET_COLORS[preset]||KEY_LIGHT_PRESET_COLORS.default;
+    var schemeBtn=function(id,title,hint){
+      return '<button type="button" class="keylight-scheme'+(scheme===id?' is-on':'')+'" data-keylight-scheme="'+id+'" aria-pressed="'+(scheme===id?'true':'false')+'"><strong>'+title+'</strong><small>'+hint+'</small></button>';
+    };
+    var schemeMatch={
+      off:'任何 Agent 都不点亮状态键。适合只要盘边、不要按键灯。',
+      single:'一颗主状态键表示忙闲（忙 / 等你 / 完成 / 失败）。适合 Codex 这类「一键看状态」。',
+      multi:'多颗键按规则分别亮（不同槽位不同状态）。适合 Claude 这类多会话提示。'
+    };
+    var ambientModeBtn=function(id,title,hint){
+      return '<button type="button" class="ambient-mode'+(mode===id?' is-on':'')+'" data-ambient-mode="'+id+'" aria-pressed="'+(mode===id?'true':'false')+'"><strong>'+title+'</strong><small>'+hint+'</small></button>';
+    };
+    var presetBtn=function(id,title,hint){
+      var c=KEY_LIGHT_PRESET_COLORS[id]||KEY_LIGHT_PRESET_COLORS.default;
+      return (
+        '<button type="button" class="keylight-preset'+(preset===id?' is-on':'')+'" data-keylight-preset="'+id+'">'+
+          '<div class="ttl">'+title+'</div><div class="hint">'+hint+'</div>'+
+          '<div class="dots" aria-hidden="true">'+
+            '<i style="background:'+c.running+'"></i>'+
+            '<i style="background:'+c.needsInput+'"></i>'+
+            '<i style="background:'+c.done+'"></i>'+
+            '<i style="background:'+c.failed+'"></i>'+
+          '</div>'+
+        '</button>'
+      );
+    };
     return {
-      pad:'<p class="pane-lead">先打开 Soft Pad，后面接通和灯效才有意义。</p>'+
-        '<div class="row"><span>打开 Soft Pad</span><button type="button" class="tog'+(padOn?' on':'')+'" data-pad-enabled-tog></button></div>',
-      hook:'<p class="pane-lead">复制配置，粘贴进 '+a+' 的 hooks.json。</p>'+
-        '<div class="row"><span>连接状态</span>'+phaseBadgeHtml()+'</div>'+
-        '<div class="row"><span>'+a+' 前台</span><span class="badge">'+(c.isFg?'是':'—')+'</span></div>'+
-        pathLine+
-        '<div class="btn-row">'+
-          '<button type="button" class="btn primary" data-settings-act="'+(primary==='install'?'install':'copy')+'">'+copyLabel+'</button>'+
-          '<button type="button" class="btn" data-settings-act="refresh">刷新</button>'+
-        '</div>',
-      read:'<p class="pane-lead">本机只数对话次数/时长，不碰正文。今日摘要在 Agent 顶栏。</p>'+
-        cursorRow+
-        keyLine
+      topbar:'<div class="topbar-mgr">'+
+        '<p class="pane-lead">管 Soft Pad <b>键盘顶栏图标</b>：亮谁、顺序、灯色含义。左边预览即时跟。不是迷你栏细条。</p>'+
+        '<div class="topbar-active">'+
+          '<div class="topbar-active-h"><span>顶栏已亮 · '+enabled.length+'</span><span>↑↓ 排序</span></div>'+
+          (activeRows||'<div class="topbar-empty">尚未添加 — 顶栏不显示图标</div>')+
+        '</div>'+
+        (addBtns?'<div><p class="topbar-hint" style="margin:0 0 6px">添加监视</p><div class="topbar-add-list">'+addBtns+'</div></div>':'')+
+        '<div>'+
+          '<p class="topbar-hint" style="margin:0 0 6px">展示位置</p>'+
+          '<div class="row"><span>Soft Pad 键盘顶栏图标</span><button type="button" class="tog'+(state.topbarShowFace!==false?' on':'')+'" data-topbar-face-tog></button></div>'+
+          '<div class="row"><span>迷你栏忙闲圆点</span><button type="button" class="tog'+(state.miniChrome.agentsBarEnabled!==false?' on':'')+'" data-mini-chrome="agentsBarEnabled"></button></div>'+
+          '<div class="row"><span>下方今日摘要 pill</span><button type="button" class="tog'+(state.usage?' on':'')+'" data-usage-tog></button></div>'+
+          '<p class="topbar-hint">预览对齐 Soft Pad：图标在键盘面顶栏；忙闲=角标；摘要 pill 在外壳外下方。</p>'+
+        '</div>'+
+        '<div>'+
+          '<p class="topbar-hint" style="margin:0 0 6px">图标数据 · 灯效</p>'+
+          '<p class="topbar-hint">图标旁圆点 = 忙闲状态（不是额度数字）。Cursor/Claude/Codex 跟 Hook/活动；MiniMax 常亮额度灯；其它多靠 Hook。</p>'+
+          '<ul class="topbar-legend" aria-label="灯色图例">'+
+            '<li><i class="idle"></i>灰 · 空闲</li>'+
+            '<li><i class="busy"></i>蓝 · 忙</li>'+
+            '<li><i class="wait"></i>琥珀 · 等你</li>'+
+            '<li><i class="done"></i>绿 · 完成</li>'+
+            '<li><i class="fail"></i>红 · 失败</li>'+
+          '</ul>'+
+        '</div>'+
+      '</div>',
+      lights:'<p class="pane-lead">盘边颜色 + 按键状态灯。左边 Soft Pad 会跟着变。</p>'+
+        '<p class="opt-sec">盘边颜色</p>'+
+        '<div class="ambient-modes" id="ambientModeSeg" role="radiogroup" aria-label="盘边颜色">'+
+          ambientModeBtn('status','跟随紧急状态','忙 / 等你 / 失败时跟着变')+
+          ambientModeBtn('solid','自定义颜色','自选色 · 透明度 · 可无色')+
+        '</div>'+
+        '<div class="ambient-custom" data-ambient-custom'+(mode==='solid'?'':' hidden')+'>'+
+          '<div class="row"><span>颜色</span><input type="color" data-ambient-rgb value="'+rgb+'" style="width:28px;height:22px;border:0;background:transparent;padding:0;cursor:pointer"></div>'+
+          '<div class="row"><span>透明度</span><label style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end"><input type="range" data-ambient-opacity min="0" max="100" value="'+op+'" style="width:100px"><strong data-ambient-opacity-val>'+op+'%</strong></label></div>'+
+          '<div class="row"><span>无色</span><button type="button" class="btn-quiet" data-ambient-clear>设为无色（透明度 0）</button></div>'+
+        '</div>'+
+        '<p class="opt-sec" style="margin-top:4px">按键状态灯</p>'+
+        '<div class="keylight-schemes" role="radiogroup" aria-label="按键状态灯方案">'+
+          schemeBtn('off','关闭','不点亮状态键')+
+          schemeBtn('single','一盏','只亮主状态键')+
+          schemeBtn('multi','多键','多颗键规则驱动')+
+        '</div>'+
+        '<p class="keylight-scheme-match" data-scheme-match><b>何时用</b> '+(schemeMatch[scheme]||schemeMatch.single)+'</p>'+
+        (scheme==='off'?'':(
+          '<p class="opt-sec">状态配色</p>'+
+          '<div class="keylight-presets" role="radiogroup" aria-label="状态配色">'+
+            presetBtn('default','默认','蓝忙 / 琥珀等你 / 绿完成')+
+            presetBtn('cool','冷色','偏蓝青')+
+            presetBtn('warm','暖色','偏橙黄')+
+            presetBtn('highContrast','高对比','更醒目')+
+          '</div>'+
+          '<ul class="topbar-legend" aria-label="按键灯色图例">'+
+            '<li><i class="busy" style="background:'+presetColors.running+'"></i>忙</li>'+
+            '<li><i class="wait" style="background:'+presetColors.needsInput+'"></i>等你</li>'+
+            '<li><i class="done" style="background:'+presetColors.done+'"></i>完成</li>'+
+            '<li><i class="fail" style="background:'+presetColors.failed+'"></i>失败</li>'+
+          '</ul>'
+        )),
+      hook:hookBody,
+      numpad:numpadBodyHtml()
     };
   }
 
@@ -913,32 +1530,110 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     if(!host) return;
     host.querySelectorAll('.micro-hw__key').forEach(function(k){
       k.classList.remove('hi-ag','hi-digit','is-focused');
+      k.removeAttribute('data-keys-gain-lbl');
       var mk=String(k.getAttribute('data-micro-key')||'');
       var isAg=k.classList.contains('micro-hw__key--agent')||/^AG/i.test(mk);
       var isDigit=mk==='ENC'||k.classList.contains('micro-hw__key--numpad');
       if(zone==='ag'&&isAg) k.classList.add('hi-ag');
       if(zone==='digit'&&isDigit) k.classList.add('hi-digit');
     });
+    if(zone==='ag'||zone==='digit') paintKeysGainLabels(host,zone);
   }
 
-  function highlightMiniZone(id){
-    var host=document.getElementById('agentMiniPaint');
-    if(!host) return;
-    host.querySelectorAll('[data-mini-zone]').forEach(function(el){
-      var z=el.getAttribute('data-mini-zone');
-      var on=(id==='speech'&&z==='speech')||
-        (id==='tools'&&z==='tools')||
-        (id==='busy'&&z==='agents')||
-        (id==='form'&&(z==='pill'||z==='win'));
-      el.classList.toggle('is-hi',!!on);
+  function keysGainSpec(){
+    var purpose=state.purpose==='sessions'?'sessions':(state.purpose==='digits'?'digits':'actions');
+    if(state.zone==='digit'||purpose==='digits'){
+      if(purpose==='digits'||state.numpadOccupy===false){
+        return {
+          tone:'digit',
+          title:purpose==='digits'?'小键盘照常打数字':'真键盘仍打数字',
+          pills:purpose==='digits'?['0–9','不改键']:['0–9','功能在 Soft Pad 点'],
+          labels:{}
+        };
+      }
+      if(state.digitOn===false){
+        return {
+          tone:'digit',
+          title:'Soft Pad 关着：占用不会生效',
+          pills:['照常打数字'],
+          labels:{}
+        };
+      }
+      return {
+        tone:'digit',
+        title:'真键盘右边数字键 → Soft Pad',
+        pills:['按真键','立刻生效'],
+        labels:{}
+      };
+    }
+    if(purpose==='sessions'){
+      var slots=state.numpadSlots||['7','8','9'];
+      var labels={};
+      var pills=[];
+      slots.slice(0,3).forEach(function(k,i){
+        labels['AG0'+i]='聊天'+(i+1);
+        pills.push(k+'→聊天'+(i+1));
+      });
+      return {
+        tone:'ag',
+        title:'按数字键切换聊天',
+        pills:pills.length?pills:['聊天1','聊天2','聊天3'],
+        labels:labels
+      };
+    }
+    return {
+      tone:'ag',
+      title:'按数字键发常用操作',
+      pills:['7 继续','8 收起','9 新建'],
+      labels:{AG00:'继续',AG01:'收起',AG02:'新建'}
+    };
+  }
+
+  function paintKeysGainLabels(host,zone){
+    var spec=keysGainSpec();
+    if(zone!=='ag'||!spec.labels) return;
+    Object.keys(spec.labels).forEach(function(mk){
+      var el=host.querySelector('.micro-hw__key[data-micro-key="'+mk+'"]');
+      if(el) el.setAttribute('data-keys-gain-lbl',spec.labels[mk]);
     });
   }
 
+  function paintKeysGain(){
+    var box=document.getElementById('keysGain');
+    var title=document.getElementById('keysGainTitle');
+    var pills=document.getElementById('keysGainPills');
+    var note=document.getElementById('padNote');
+    if(!box||!title||!pills) return;
+    if(!isNumpadLeaf()){
+      box.hidden=true;
+      return;
+    }
+    var spec=keysGainSpec();
+    box.hidden=false;
+    box.setAttribute('data-tone',spec.tone);
+    title.textContent=spec.title;
+    pills.innerHTML=spec.pills.map(function(p){ return '<span>'+p+'</span>'; }).join('');
+    if(note){
+      if(state.purpose==='digits') note.textContent='左边对照：小键盘照常打数字';
+      else if(spec.tone==='digit') note.textContent=state.numpadOccupy!==false&&state.digitOn!==false
+        ?'左边对照：真键盘数字键也会触发 Soft Pad'
+        :'左边对照：真键盘仍打字 · 功能在 Soft Pad 上点';
+      else note.textContent=state.purpose==='sessions'
+        ?'左边青高亮 = 用来切换聊天的键'
+        :'左边青高亮 = 用来发快捷操作的键';
+    }
+  }
+
+  function highlightMiniZone(id){
+    /* 分区描边由 Soft Pad 真预览 is-mini-rail-* 负责；这里只同步脚注 */
+    void id;
+  }
+
   function setPreviewMode(sub){
+    var leaf=state.softPad||'topbar';
     document.querySelectorAll('.preview-mode').forEach(function(el){
       var on=false;
       if(sub==='mini') on=el.id==='modeBar';
-      else if(sub==='connect') on=el.id==='modeConnect';
       else on=el.id==='modePad';
       el.classList.toggle('is-on',on);
     });
@@ -947,25 +1642,58 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     var sceneBox=document.getElementById('sceneBox');
     var legend=document.getElementById('padLegend');
     var padHost=document.getElementById('agentPadHost');
-    legend.hidden=sub!=='keys';
-    if(sub!=='lights'&&padHost){
+    var keysGain=document.getElementById('keysGain');
+    legend.hidden=true;
+    if(keysGain&&!isNumpadLeaf()) keysGain.hidden=true;
+    if(sub!=='softPad'&&padHost){
       padHost.removeAttribute('data-lights-preview-accent');
       padHost.style.removeProperty('--agent-ambient-ring');
       padHost.style.removeProperty('--agent-ambient-glow');
+      padHost.removeAttribute('data-pad-topbar-preview');
+      var liveGone=padHost.querySelector('[data-agent-topbar-live]');
+      if(liveGone) liveGone.remove();
     }
-    if(sub==='lights'){
-      padCap.textContent='灯效对照';
-      sceneBox.style.display='none';
-      padNote.textContent='盘边光圈与按键灯对照 Soft Pad。';
-      if(padHost) padHost.removeAttribute('data-pad-mode-preview');
-      highlightPadZone(null);
-      paintAmbientPreview();
-    }else if(sub==='keys'){
-      padCap.textContent='键位对照 · 点右侧分区';
-      sceneBox.style.display='none';
-      padNote.textContent=state.zone==='digit'?'左边演示：数字键 ⇄ Soft Pad':'青高亮 = 继续（AG）· 左边对照 Soft Pad。';
-      if(padHost) padHost.setAttribute('data-pad-mode-preview','purpose');
-      highlightPadZone(state.zone);
+    if(sub==='softPad'&&(leaf==='lights'||leaf==='numpad')&&padHost){
+      padHost.removeAttribute('data-pad-topbar-preview');
+      var liveOff=padHost.querySelector('[data-agent-topbar-live]');
+      if(liveOff) liveOff.remove();
+    }
+    if(sub==='softPad'){
+      if(leaf==='hook'){
+        padCap.textContent='接入对照 · Soft Pad';
+        sceneBox.style.display='none';
+        padNote.textContent='左边 Soft Pad 顶栏跟监视名单；角标=忙闲。点右侧一行在正下方接入。';
+        if(padHost) padHost.removeAttribute('data-pad-mode-preview');
+        highlightPadZone(null);
+        paintAmbientPreview();
+        paintTopbarPreview();
+      }else if(leaf==='numpad'){
+        padCap.textContent='替换数字键盘 · Soft Pad';
+        sceneBox.style.display='none';
+        if(padHost){
+          if(state.zone==='digit') padHost.setAttribute('data-pad-mode-preview','purpose');
+          else padHost.removeAttribute('data-pad-mode-preview');
+        }
+        highlightPadZone(state.zone);
+        paintKeysGain();
+        paintTopbarPreview();
+      }else if(leaf==='topbar'){
+        padCap.textContent='键盘顶栏 · Soft Pad';
+        sceneBox.style.display='none';
+        padNote.textContent='顶栏图标在键盘面正上方（真 Soft Pad 样式）；角标=忙闲；摘要在键盘外下方。';
+        if(padHost) padHost.removeAttribute('data-pad-mode-preview');
+        highlightPadZone(null);
+        paintAmbientPreview();
+        paintTopbarPreview();
+      }else{
+        padCap.textContent='灯效对照 · Soft Pad';
+        sceneBox.style.display='none';
+        padNote.textContent='盘边氛围与按键灯方案对照 Soft Pad 完整键盘。';
+        if(padHost) padHost.removeAttribute('data-pad-mode-preview');
+        highlightPadZone(null);
+        paintAmbientPreview();
+        paintTopbarPreview();
+      }
     }else if(sub==='float'){
       var animLeaf=state.float==='show'||state.float==='skin';
       padCap.textContent=animLeaf?(state.float==='skin'?'皮肤对照 · Soft Pad':'何时出现 · 桌面示意'):'浮窗场景';
@@ -976,10 +1704,130 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
         else padHost.removeAttribute('data-pad-mode-preview');
       }
       highlightPadZone(null);
+      paintTopbarPreview();
+    }else if(sub==='mini'){
+      if(padHost) padHost.removeAttribute('data-pad-mode-preview');
+      highlightPadZone(null);
+      paintTopbarPreview();
     }else{
       if(padHost) padHost.removeAttribute('data-pad-mode-preview');
       highlightPadZone(null);
+      paintTopbarPreview();
     }
+  }
+
+  function paintTopbarPreview(){
+    var padHost=document.getElementById('agentPadHost');
+    var padPaint=document.getElementById('agentPadPaint');
+    var rail=document.getElementById('padPlaceRail');
+    var pillEl=document.getElementById('padPlacePill');
+    if(!padHost) return;
+    var onTopbarLeaf=state.sub==='softPad'&&state.softPad==='topbar';
+    var onHookLeaf=state.sub==='softPad'&&state.softPad==='hook';
+    var showFace=(onTopbarLeaf&&state.topbarShowFace!==false)||onHookLeaf;
+    var showBusy=state.miniChrome.agentsBarEnabled!==false;
+    var showPill=onTopbarLeaf&&state.usage!==false;
+    var faceLive=onTopbarLeaf||onHookLeaf;
+
+    /* 清掉旧的外壳外挂条 */
+    padHost.querySelectorAll('[data-agent-topbar-live]').forEach(function(el){ el.remove(); });
+
+    if(faceLive) padHost.setAttribute('data-pad-topbar-preview','1');
+    else padHost.removeAttribute('data-pad-topbar-preview');
+    if(faceLive&&!showBusy) padHost.setAttribute('data-busy-off','1');
+    else padHost.removeAttribute('data-busy-off');
+
+    if(faceLive&&showFace&&padPaint){
+      var appKindMap={Cursor:'cursor',Claude:'claude',Codex:'codex',MiniMax:'minimax'};
+      var focus=onHookLeaf?(state.hookOpen||''):(appKindMap[state.app]||'');
+      var enabled=agentsOrdered().filter(function(r){ return r.enabled; });
+      var chips=enabled.map(function(row){
+        var st=state.topbarDemo[row.agent]||'idle';
+        var focused=focus&&row.agent===focus;
+        return (
+          '<button type="button" class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview'+(focused?' is-focused':'')+'" '+
+          'data-topbar-chip="'+row.agent+'" data-agent="'+row.agent+'" data-status="'+st+'" title="'+row.label+' · 点按演示灯色">'+
+          agentIconHtml(row.agent,row.label)+
+          '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
+        );
+      }).join('');
+      var html=chips||'<span class="topbar-preview-empty">'+(onHookLeaf?'监视名单为空 — 去「添加」':'未添加 — 顶栏无图标')+'</span>';
+      var face=padPaint.querySelector('.micro-hw__face');
+      var faceTop=padPaint.querySelector('.micro-hw__face-top');
+      var faceBar=padPaint.querySelector('.soft-pad-agent-bar--face');
+      if(face&&!faceTop){
+        faceTop=document.createElement('div');
+        faceTop.className='micro-hw__face-top';
+        faceTop.innerHTML='<span class="micro-hw__face-title"></span>';
+        face.insertBefore(faceTop,face.firstChild);
+      }
+      if(faceTop&&!faceBar){
+        faceBar=document.createElement('div');
+        faceBar.className='soft-pad-agent-bar soft-pad-agent-bar--preview soft-pad-agent-bar--face';
+        faceBar.setAttribute('role','presentation');
+        faceTop.appendChild(faceBar);
+      }
+      if(faceBar){
+        faceBar.innerHTML=html;
+        faceBar.querySelectorAll('[data-topbar-chip]').forEach(function(btn){
+          btn.onclick=function(e){
+            e.preventDefault();
+            e.stopPropagation();
+            var id=btn.getAttribute('data-topbar-chip');
+            if(!id) return;
+            var cur=state.topbarDemo[id]||'idle';
+            var i=TOPBAR_DEMO_CYCLE.indexOf(cur);
+            state.topbarDemo[id]=TOPBAR_DEMO_CYCLE[(i+1)%TOPBAR_DEMO_CYCLE.length];
+            paintTopbarPreview();
+            if(onTopbarLeaf){
+              detail.innerHTML=pages.softPad();
+              bindDetail();
+            }
+          };
+        });
+      }
+    }else if(padPaint){
+      var barOff=padPaint.querySelector('.soft-pad-agent-bar--face');
+      if(barOff&&onTopbarLeaf&&!showFace) barOff.innerHTML='<span class="topbar-preview-empty">顶栏图标已关</span>';
+      if(barOff&&!faceLive) barOff.innerHTML='';
+    }
+
+    if(!rail||!pillEl) return;
+    if(!onTopbarLeaf){
+      rail.hidden=true;
+      return;
+    }
+    rail.hidden=!showPill;
+    pillEl.hidden=!showPill;
+    if(showPill){
+      var who=state.app||'Agent';
+      pillEl.innerHTML='<i class="d" aria-hidden="true"></i><span>今日 · '+who+'</span><span class="u">72%</span>';
+    }
+  }
+
+  function setAgentEnabledLocal(agent,enabled){
+    agent=String(agent||'');
+    var snap=state.settingsSnap||(state.settingsSnap={});
+    if(!snap.topbar) snap.topbar={agents:defaultAgents()};
+    if(!Array.isArray(snap.topbar.agents)) snap.topbar.agents=defaultAgents();
+    var hit=null;
+    snap.topbar.agents.forEach(function(row){
+      if(row.agent===agent){ row.enabled=!!enabled; hit=row; }
+    });
+    if(!hit){
+      snap.topbar.agents.push({agent:agent,label:agent,enabled:!!enabled,phase:'not_configured',phaseLabel:'未接入',badgeClass:'warn'});
+    }
+    syncTopbarOrder(snap.topbar.agents);
+  }
+
+  function remountSoftPadLeaf(){
+    if(state.sub!=='softPad') return;
+    var leaf=state.softPad;
+    detail.innerHTML=pages.softPad();
+    bindDetail();
+    state.softPad=leaf;
+    if(leaf==='topbar'||leaf==='hook') paintTopbarPreview();
+    if(leaf==='numpad'){ highlightPadZone(state.zone); paintKeysGain(); }
   }
 
   function hexToRgb(hex){
@@ -994,22 +1842,34 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
   function paintKeyLightsDemo(on){
     var host=document.getElementById('agentPadPaint');
     if(!host) return;
-    var demo=[
-      {micro:'AG00',status:'running'},
-      {micro:'AG01',status:'needs_input'},
-      {micro:'AG02',status:'done'},
-      {micro:'AG03',status:'failed'},
-      {micro:'AG04',status:'listening'}
-    ];
+    var scheme=normalizeKeyLightScheme(state.keyLightScheme);
+    var colors=KEY_LIGHT_PRESET_COLORS[normalizeKeyLightPreset(state.keyLightPreset)]||KEY_LIGHT_PRESET_COLORS.default;
+    var demo=scheme==='multi'
+      ? [
+          {micro:'AG00',status:'running',hex:colors.running},
+          {micro:'AG01',status:'needs_input',hex:colors.needsInput},
+          {micro:'AG02',status:'done',hex:colors.done},
+          {micro:'AG03',status:'failed',hex:colors.failed},
+          {micro:'AG04',status:'listening',hex:colors.listening}
+        ]
+      : [
+          {micro:'AG00',status:'running',hex:colors.running},
+          {micro:'AG01',status:'idle',hex:''},
+          {micro:'AG02',status:'idle',hex:''},
+          {micro:'AG03',status:'idle',hex:''},
+          {micro:'AG04',status:'idle',hex:''}
+        ];
     demo.forEach(function(row){
       var el=host.querySelector('.micro-hw__key[data-micro-key="'+row.micro+'"]');
       if(!el) return;
-      if(on&&state.keyLights!==false){
+      if(on&&scheme!=='off'&&row.status!=='idle'){
         el.setAttribute('data-run-status',row.status);
         el.setAttribute('data-palette-demo','1');
+        if(row.hex) el.style.setProperty('--key-light-rgb',row.hex);
       }else if(el.getAttribute('data-palette-demo')==='1'){
         el.setAttribute('data-run-status','idle');
         el.removeAttribute('data-palette-demo');
+        el.style.removeProperty('--key-light-rgb');
       }
     });
   }
@@ -1028,28 +1888,24 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
   function paintAmbientPreview(){
     var padHost=document.getElementById('agentPadHost');
     if(!padHost) return;
-    if(state.sub!=='lights'){
+    if(state.sub!=='softPad'||state.softPad==='hook'||state.softPad==='topbar'||state.softPad==='numpad'){
       padHost.removeAttribute('data-lights-preview-accent');
       padHost.style.removeProperty('--agent-ambient-ring');
       padHost.style.removeProperty('--agent-ambient-glow');
       paintKeyLightsDemo(false);
       return;
     }
-    if(state.lights==='keys'){
-      padHost.setAttribute('data-lights-preview-accent','keys');
-      padHost.style.removeProperty('--agent-ambient-ring');
-      padHost.style.removeProperty('--agent-ambient-glow');
-      paintKeyLightsDemo(true);
-      return;
-    }
-    paintKeyLightsDemo(false);
+    var scheme=normalizeKeyLightScheme(state.keyLightScheme);
+    var keysOn=scheme!=='off';
+    paintKeyLightsDemo(keysOn);
     if(state.ambient===false){
       padHost.removeAttribute('data-lights-preview-accent');
       padHost.style.removeProperty('--agent-ambient-ring');
       padHost.style.removeProperty('--agent-ambient-glow');
+      if(keysOn) padHost.setAttribute('data-lights-preview-accent','keys');
       return;
     }
-    padHost.setAttribute('data-lights-preview-accent','ambient');
+    padHost.setAttribute('data-lights-preview-accent', keysOn ? 'keys' : 'ambient');
     var hex=state.ambientMode==='solid'?(state.ambientRgb||'#7c3aed'):'#2a9d6a';
     var c=hexToRgb(hex);
     var a=Math.max(0.12, Math.min(1, (Number(state.ambientOpacity)||100)/100));
@@ -1082,7 +1938,10 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     }
     if(padPaint&&payload.padHtml){
       padPaint.innerHTML=payload.padHtml;
-      if(state.sub==='keys'&&payload.leftKind!=='purpose') highlightPadZone(state.zone);
+      if(state.sub==='keys'||isNumpadLeaf()){
+        highlightPadZone(state.zone);
+        paintKeysGain();
+      }
     }
     if(miniPaint&&payload.miniHtml){
       miniPaint.innerHTML=payload.miniHtml;
@@ -1100,12 +1959,15 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     }
     paintAmbientPreview();
     paintFloatOpacity();
+    paintTopbarPreview();
   }
 
   function applySettingsPayload(payload){
     payload=payload||{};
     state.settingsSnap=payload;
-    if(payload.padEnabled!=null) state.padEnabled=!!payload.padEnabled;
+    if(payload.topbar&&Array.isArray(payload.topbar.agents)) syncTopbarOrder(payload.topbar.agents);
+    /* Soft Pad 默认开：接入页不再暴露总开关 */
+    state.padEnabled=true;
     if(payload.screenOpacity!=null){
       var fo=Math.round(Number(payload.screenOpacity));
       if(fo>=40&&fo<=100) state.floatOpacity=fo;
@@ -1116,13 +1978,21 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       if(payload.ambient.solidRgb) state.ambientRgb=String(payload.ambient.solidRgb);
       if(payload.ambient.opacity!=null) state.ambientOpacity=Number(payload.ambient.opacity)||0;
     }
-    if(payload.keyLights&&payload.keyLights.enabled!=null) state.keyLights=!!payload.keyLights.enabled;
-    /* lights: keep local controls; remount would kill opacity slider mid-drag */
-    if(state.sub==='connect'){
-      var leaf=state.connect;
-      detail.innerHTML=pages.connect();
+    if(payload.keyLights){
+      if(payload.keyLights.scheme==='off'||payload.keyLights.scheme==='single'||payload.keyLights.scheme==='multi'){
+        state.keyLightScheme=normalizeKeyLightScheme(payload.keyLights.scheme);
+      }
+      if(payload.keyLights.preset!=null) state.keyLightPreset=normalizeKeyLightPreset(payload.keyLights.preset);
+      state.keyLights=state.keyLightScheme!=='off';
+    }
+    /* softPad: remount hook/topbar when snap arrives; keep ambient slider */
+    if(state.sub==='softPad'&&(state.softPad==='hook'||state.softPad==='topbar'||state.softPad==='lights'||state.softPad==='numpad')){
+      var leaf=state.softPad;
+      detail.innerHTML=pages.softPad();
       bindDetail();
-      state.connect=leaf;
+      state.softPad=leaf;
+      if(leaf==='topbar'||leaf==='hook') paintTopbarPreview();
+      if(leaf==='numpad'){ highlightPadZone(state.zone); paintKeysGain(); }
     }else if(state.sub==='float'&&state.float==='skin'){
       var lab=detail.querySelector('[data-float-opacity-val]');
       var range=detail.querySelector('[data-float-opacity]');
@@ -1131,6 +2001,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     }
     paintAmbientPreview();
     paintFloatOpacity();
+    paintTopbarPreview();
   }
 
   window.addEventListener('message',function(ev){
@@ -1167,37 +2038,43 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
             paintAmbientPreview();
             postSettingsCmd('setAmbient',{ enabled:on });
           }
-          if(t.hasAttribute('data-key-lights-tog')){
-            state.keyLights=on;
-            paintAmbientPreview();
-            postSettingsCmd('setAgentLights',{ enabled:on });
+          if(t.hasAttribute('data-topbar-agent')){
+            var ag=t.getAttribute('data-topbar-agent');
+            setAgentEnabledLocal(ag,on);
+            postSettingsCmd('setAgentLights',{ enabled:on, agent:ag });
+            paintTopbarPreview();
           }
-          if(t.hasAttribute('data-pad-enabled-tog')){
-            state.padEnabled=on;
-            postSettingsCmd('setPadEnabled',{ enabled:on });
+          if(t.hasAttribute('data-topbar-face-tog')){
+            state.topbarShowFace=on;
+            paintTopbarPreview();
           }
           if(t.hasAttribute('data-cursor-activity-tog')){
             postSettingsCmd('enableCursorActivity',{ enabled:on });
           }
-          if(t.hasAttribute('data-usage-tog')){state.usage=on;syncPreview();}
-          if(t.hasAttribute('data-digit-tog')){state.digitOn=on;postLeftPreview();}
+          if(t.hasAttribute('data-usage-tog')){
+            state.usage=on;
+            syncPreview();
+            paintTopbarPreview();
+          }
+          if(t.hasAttribute('data-digit-tog')){
+            state.digitOn=on;
+            state.zone='digit';
+            setPreviewMode('softPad');
+            paintKeysGain();
+            postLeftPreview();
+          }
           if(t.hasAttribute('data-occupy-tog')){
             state.numpadOccupy=on;
             state.zone='digit';
-            detail.querySelectorAll('.zone').forEach(function(z){
-              z.classList.toggle('is-focus',z.getAttribute('data-zone')==='digit');
-            });
-            setPreviewMode('keys');
-            var padNote=document.getElementById('padNote');
-            if(padNote) padNote.textContent=on
-              ?'左边：数字小键盘被 Soft Pad 占用 · 同一键位变快捷'
-              :'左边：数字小键盘照常打数字 · Soft Pad 仅悬浮';
+            setPreviewMode('softPad');
+            paintKeysGain();
             postLeftPreview();
           }
           var flag=t.getAttribute('data-mini-chrome');
           if(flag&&(flag in state.miniChrome)){
             state.miniChrome[flag]=on;
             postMiniPreview();
+            if(flag==='agentsBarEnabled') paintTopbarPreview();
           }
         });
       });
@@ -1205,17 +2082,45 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     }
     function wireSettingsControls(root){
       var scope=root||detail;
+      var SCHEME_MATCH={
+        off:'匹配：任何 Agent 都不点亮状态键。适合只要盘边、不要按键灯时。',
+        single:'匹配：用一颗主状态键表示忙闲（忙 / 等你 / 完成 / 失败）。适合 Codex 这类「一键看状态」。',
+        multi:'匹配：多颗键按规则分别亮（例如不同槽位不同状态）。适合 Claude 这类多会话提示。'
+      };
+      function syncAmbientCustom(){
+        var box=scope.querySelector('[data-ambient-custom]');
+        if(!box) return;
+        box.hidden=state.ambientMode!=='solid';
+      }
       var modeSeg=scope.querySelector('#ambientModeSeg');
       if(modeSeg){
         modeSeg.querySelectorAll('[data-ambient-mode]').forEach(function(b){
           b.addEventListener('click',function(){
             var next=b.getAttribute('data-ambient-mode')==='solid'?'solid':'status';
             state.ambientMode=next;
+            if(next==='status'){
+              state.ambient=true;
+              if(state.ambientOpacity<=0) state.ambientOpacity=100;
+            }else{
+              state.ambient=true;
+            }
             modeSeg.querySelectorAll('[data-ambient-mode]').forEach(function(x){
-              x.classList.toggle('is-on',x.getAttribute('data-ambient-mode')===next);
+              var on=x.getAttribute('data-ambient-mode')===next;
+              x.classList.toggle('is-on',on);
+              x.setAttribute('aria-pressed',on?'true':'false');
             });
+            syncAmbientCustom();
+            var op=scope.querySelector('[data-ambient-opacity]');
+            var lab=scope.querySelector('[data-ambient-opacity-val]');
+            if(op) op.value=String(state.ambientOpacity);
+            if(lab) lab.textContent=state.ambientOpacity+'%';
             paintAmbientPreview();
-            postSettingsCmd('setAmbient',{ mode:next });
+            postSettingsCmd('setAmbient',{
+              mode:next,
+              enabled:true,
+              opacity:state.ambientOpacity,
+              solidRgb:state.ambientRgb
+            });
           });
         });
       }
@@ -1224,14 +2129,23 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
         rgb.addEventListener('input',function(){
           state.ambientRgb=rgb.value||'#7c3aed';
           state.ambientMode='solid';
+          state.ambient=true;
+          if(state.ambientOpacity<=0) state.ambientOpacity=80;
           var modeSeg2=scope.querySelector('#ambientModeSeg');
           if(modeSeg2){
             modeSeg2.querySelectorAll('[data-ambient-mode]').forEach(function(x){
-              x.classList.toggle('is-on',x.getAttribute('data-ambient-mode')==='solid');
+              var on=x.getAttribute('data-ambient-mode')==='solid';
+              x.classList.toggle('is-on',on);
+              x.setAttribute('aria-pressed',on?'true':'false');
             });
           }
+          syncAmbientCustom();
+          var op=scope.querySelector('[data-ambient-opacity]');
+          var lab=scope.querySelector('[data-ambient-opacity-val]');
+          if(op) op.value=String(state.ambientOpacity);
+          if(lab) lab.textContent=state.ambientOpacity+'%';
           paintAmbientPreview();
-          postSettingsCmd('setAmbient',{ solidRgb:state.ambientRgb, mode:'solid' });
+          postSettingsCmd('setAmbient',{ solidRgb:state.ambientRgb, mode:'solid', enabled:true, opacity:state.ambientOpacity });
         });
       }
       var op=scope.querySelector('[data-ambient-opacity]');
@@ -1239,10 +2153,35 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
         op.addEventListener('input',function(){
           var v=Math.max(0,Math.min(100,Math.round(Number(op.value)||0)));
           state.ambientOpacity=v;
+          state.ambientMode='solid';
+          state.ambient=true;
           var lab=scope.querySelector('[data-ambient-opacity-val]');
           if(lab) lab.textContent=v+'%';
           paintAmbientPreview();
-          postSettingsCmd('setAmbient',{ opacity:v });
+          postSettingsCmd('setAmbient',{ opacity:v, mode:'solid', enabled:true });
+        });
+      }
+      var clearBtn=scope.querySelector('[data-ambient-clear]');
+      if(clearBtn){
+        clearBtn.addEventListener('click',function(){
+          state.ambientMode='solid';
+          state.ambientOpacity=0;
+          state.ambient=true;
+          var modeSeg3=scope.querySelector('#ambientModeSeg');
+          if(modeSeg3){
+            modeSeg3.querySelectorAll('[data-ambient-mode]').forEach(function(x){
+              var on=x.getAttribute('data-ambient-mode')==='solid';
+              x.classList.toggle('is-on',on);
+              x.setAttribute('aria-pressed',on?'true':'false');
+            });
+          }
+          syncAmbientCustom();
+          var opEl=scope.querySelector('[data-ambient-opacity]');
+          var lab=scope.querySelector('[data-ambient-opacity-val]');
+          if(opEl) opEl.value='0';
+          if(lab) lab.textContent='0%';
+          paintAmbientPreview();
+          postSettingsCmd('setAmbient',{ mode:'solid', opacity:0, enabled:true });
         });
       }
       var fop=scope.querySelector('[data-float-opacity]');
@@ -1256,17 +2195,145 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
           postSettingsCmd('setScreenOpacity',{ opacity:v });
         });
       }
+      scope.querySelectorAll('[data-keylight-scheme]').forEach(function(b){
+        b.addEventListener('click',function(){
+          var next=normalizeKeyLightScheme(b.getAttribute('data-keylight-scheme'));
+          state.keyLightScheme=next;
+          state.keyLights=next!=='off';
+          paintAmbientPreview();
+          postSettingsCmd('setKeyLightScheme',{ scheme:next, preset:state.keyLightPreset });
+          if(state.sub==='softPad'&&state.softPad==='lights'){
+            detail.innerHTML=pages.softPad();
+            bindDetail();
+          }
+        });
+      });
+      var matchEl=scope.querySelector('[data-scheme-match]');
+      if(matchEl){
+        matchEl.innerHTML='<b>何时用：</b>'+(SCHEME_MATCH[state.keyLightScheme]||SCHEME_MATCH.single);
+      }
+      scope.querySelectorAll('[data-keylight-preset]').forEach(function(b){
+        b.addEventListener('click',function(){
+          var next=normalizeKeyLightPreset(b.getAttribute('data-keylight-preset'));
+          state.keyLightPreset=next;
+          paintAmbientPreview();
+          postSettingsCmd('setKeyLightScheme',{ scheme:state.keyLightScheme, preset:next });
+          if(state.sub==='softPad'&&state.softPad==='lights'){
+            detail.innerHTML=pages.softPad();
+            bindDetail();
+          }
+        });
+      });
       scope.querySelectorAll('[data-settings-act]').forEach(function(btn){
-        btn.addEventListener('click',function(){
+        btn.addEventListener('click',function(e){
+          e.stopPropagation();
           var act=btn.getAttribute('data-settings-act');
-          if(act==='copy') postSettingsCmd('copyHookConfig');
-          else if(act==='install') postSettingsCmd('installConnect');
+          var agent=btn.getAttribute('data-agent')||'';
+          if(act==='copy') postSettingsCmd('copyHookConfig', agent?{ agent:agent }:{});
+          else if(act==='install') postSettingsCmd('installConnect', agent?{ agent:agent }:{});
           else if(act==='refresh') postSettingsCmd('refreshConnect');
           else if(act==='paste-key'){
             var key='';
             try{ key=window.prompt('粘贴额度 Key（仅保存在本机）','')||''; }catch(_){}
             if(key) postSettingsCmd('setProviderKey',{ key:key });
           }
+        });
+      });
+    }
+    function wireTopbarMgr(root){
+      var scope=root||detail;
+      scope.querySelectorAll('[data-topbar-add]').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          var id=btn.getAttribute('data-topbar-add');
+          if(!id) return;
+          setAgentEnabledLocal(id,true);
+          postSettingsCmd('setAgentLights',{ enabled:true, agent:id });
+          remountSoftPadLeaf();
+        });
+      });
+      scope.querySelectorAll('[data-topbar-remove]').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          var id=btn.getAttribute('data-topbar-remove');
+          if(!id) return;
+          setAgentEnabledLocal(id,false);
+          postSettingsCmd('setAgentLights',{ enabled:false, agent:id });
+          remountSoftPadLeaf();
+        });
+      });
+      scope.querySelectorAll('[data-topbar-move]').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          var id=btn.getAttribute('data-agent');
+          var dir=btn.getAttribute('data-topbar-move');
+          if(!id) return;
+          var enabled=agentsOrdered().filter(function(r){ return r.enabled; }).map(function(r){ return r.agent; });
+          var i=enabled.indexOf(id);
+          if(i<0) return;
+          var j=dir==='up'?i-1:i+1;
+          if(j<0||j>=enabled.length) return;
+          var tmp=enabled[i]; enabled[i]=enabled[j]; enabled[j]=tmp;
+          var rest=syncTopbarOrder().filter(function(a){ return enabled.indexOf(a)<0; });
+          state.topbarOrder=enabled.concat(rest);
+          remountSoftPadLeaf();
+        });
+      });
+      scope.querySelectorAll('[data-topbar-demo]').forEach(function(el){
+        el.addEventListener('click',function(){
+          var id=el.getAttribute('data-topbar-demo');
+          if(!id) return;
+          var cur=state.topbarDemo[id]||'idle';
+          var i=TOPBAR_DEMO_CYCLE.indexOf(cur);
+          state.topbarDemo[id]=TOPBAR_DEMO_CYCLE[(i+1)%TOPBAR_DEMO_CYCLE.length];
+          remountSoftPadLeaf();
+        });
+      });
+    }
+    function wireHookRoster(root){
+      var scope=root||detail;
+      scope.querySelectorAll('[data-hook-mode]').forEach(function(b){
+        b.addEventListener('click',function(){
+          state.hookMode=b.getAttribute('data-hook-mode')==='add'?'add':'watch';
+          if(state.hookMode==='add') state.hookOpen='';
+          if(state.sub!=='softPad') return;
+          detail.innerHTML=pages.softPad();
+          bindDetail();
+        });
+      });
+      var search=scope.querySelector('[data-hook-search]');
+      if(search){
+        search.addEventListener('input',function(){
+          state.hookQuery=search.value||'';
+          if(state.sub!=='softPad') return;
+          var keep=search.selectionStart;
+          detail.innerHTML=pages.softPad();
+          bindDetail();
+          var again=detail.querySelector('[data-hook-search]');
+          if(again){
+            again.focus();
+            try{ again.setSelectionRange(keep,keep); }catch(_){}
+          }
+        });
+      }
+      scope.querySelectorAll('[data-hook-add]').forEach(function(btn){
+        btn.addEventListener('click',function(e){
+          e.stopPropagation();
+          var id=btn.getAttribute('data-hook-add');
+          if(!id) return;
+          setAgentEnabledLocal(id,true);
+          state.hookOpen=id;
+          state.hookMode='watch';
+          state.hookQuery='';
+          postSettingsCmd('setAgentLights',{ enabled:true, agent:id });
+          remountSoftPadLeaf();
+        });
+      });
+      scope.querySelectorAll('[data-agent-hook]').forEach(function(row){
+        row.addEventListener('click',function(e){
+          if(e.target.closest('[data-settings-act],.tog,button.btn')) return;
+          var id=row.getAttribute('data-agent-hook')||'';
+          state.hookOpen=state.hookOpen===id?'':id;
+          detail.innerHTML=pages.softPad();
+          bindDetail();
+          paintTopbarPreview();
         });
       });
     }
@@ -1294,34 +2361,115 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
         });
       }
     }
+    function wireNumpadWizard(root){
+      var scope=root||detail;
+      var page=scope.querySelector('[data-numpad-wizard]')||scope;
+      function syncZone(){
+        var step=numpadWizardStepIndex();
+        if(state.purpose==='digits') state.zone='digit';
+        else if(step>=2) state.zone='digit';
+        else state.zone='ag';
+      }
+      function repaint(){
+        var body=detail.querySelector('#softPadRailBody');
+        if(!body) return;
+        body.innerHTML=numpadBodyHtml();
+        wireNumpadWizard(body);
+        syncZone();
+        highlightPadZone(state.zone);
+        paintKeysGain();
+        setPreviewMode('softPad');
+        postLeftPreview();
+      }
+      function clampStepAfterPurpose(){
+        if(state.purpose==='digits'){
+          state.numpadOccupy=false;
+          state.digitOn=true;
+        }else if(state.numpadOccupy!==false){
+          state.digitOn=true;
+        }
+      }
+      page.querySelectorAll('[data-nw-opt]').forEach(function(b){
+        b.addEventListener('click',function(e){
+          e.stopPropagation();
+          var id=b.getAttribute('data-nw-opt');
+          var step=numpadWizardStepIndex();
+          if(step===0){
+            state.purpose=id==='sessions'?'sessions':(id==='digits'?'digits':'actions');
+            state.numpadWizardDone=false;
+            if(state.purpose==='sessions'&&(!state.numpadSlots||!state.numpadSlots.length)){
+              state.numpadSlots=['7','8','9'];
+            }
+            clampStepAfterPurpose();
+            syncZone();
+            repaint();
+          }else if(step===2){
+            state.numpadOccupy=id==='occ-1';
+            if(state.numpadOccupy) state.digitOn=true;
+            state.numpadWizardDone=false;
+            syncZone();
+            repaint();
+          }
+        });
+      });
+      var pick=page.querySelector('#nwSlotPick');
+      if(pick){
+        pick.addEventListener('click',function(e){
+          var b=e.target.closest('[data-nw-slot]');
+          if(!b) return;
+          e.stopPropagation();
+          var k=b.getAttribute('data-nw-slot');
+          var slots=Array.isArray(state.numpadSlots)?state.numpadSlots.slice():[];
+          var i=slots.indexOf(k);
+          if(i>=0) slots.splice(i,1);
+          else if(slots.length<3) slots.push(k);
+          slots.sort(function(a,b){ return '789456'.indexOf(a)-'789456'.indexOf(b); });
+          state.numpadSlots=slots;
+          state.numpadWizardDone=false;
+          repaint();
+        });
+      }
+      page.querySelectorAll('[data-nw]').forEach(function(btn){
+        btn.addEventListener('click',function(e){
+          e.stopPropagation();
+          var act=btn.getAttribute('data-nw');
+          var step=numpadWizardStepIndex();
+          if(act==='back'){
+            state.numpadWizardDone=false;
+            if(step===3&&state.purpose==='digits') state.numpadWizardStep=0;
+            else if(step<=0) state.numpadWizardStep=0;
+            else state.numpadWizardStep=step-1;
+            syncZone();
+            repaint();
+          }else if(act==='next'){
+            state.numpadWizardDone=false;
+            if(step===0&&state.purpose==='digits') state.numpadWizardStep=3;
+            else state.numpadWizardStep=Math.min(3,step+1);
+            syncZone();
+            repaint();
+          }else if(act==='done'){
+            state.numpadWizardDone=true;
+            state.numpadWizardStep=3;
+            state.digitOn=true;
+            if(state.purpose==='digits') state.numpadOccupy=false;
+            syncZone();
+            repaint();
+          }else if(act==='reset'){
+            state.numpadWizardDone=false;
+            state.numpadWizardStep=0;
+            syncZone();
+            repaint();
+          }
+        });
+      });
+      syncZone();
+    }
     wireTogs(detail);
     wireShowSkin(detail);
     wireSettingsControls(detail);
-
-    var purposeSeg=detail.querySelector('#purposeSeg');
-    if(purposeSeg){
-      purposeSeg.querySelectorAll('[data-purpose]').forEach(function(b){
-        b.addEventListener('click',function(e){
-          e.stopPropagation();
-          purposeSeg.querySelectorAll('[data-purpose]').forEach(function(x){x.classList.toggle('is-on',x===b);});
-          state.purpose=b.getAttribute('data-purpose');
-          state.zone='ag';
-          detail.querySelectorAll('.zone').forEach(function(z){z.classList.toggle('is-focus',z.getAttribute('data-zone')==='ag');});
-          highlightPadZone('ag');
-        });
-      });
-    }
-    detail.querySelectorAll('.zone[data-zone]').forEach(function(z){
-      function focusZone(){
-        state.zone=z.getAttribute('data-zone');
-        detail.querySelectorAll('.zone').forEach(function(x){x.classList.toggle('is-focus',x===z);});
-        highlightPadZone(state.zone);
-        setPreviewMode('keys');
-        postLeftPreview();
-      }
-      z.addEventListener('click',focusZone);
-      z.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();focusZone();}});
-    });
+    wireHookRoster(detail);
+    wireTopbarMgr(detail);
+    wireNumpadWizard(detail);
 
     function bindLeaf(railId,attr,stateKey,bodies,onPaint){
       var rail=detail.querySelector('#'+railId);
@@ -1335,6 +2483,9 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
         wireTogs(body);
         wireShowSkin(body);
         wireSettingsControls(body);
+        wireHookRoster(body);
+        wireTopbarMgr(body);
+        wireNumpadWizard(body);
         if(onPaint) onPaint(id);
       }
       rail.querySelectorAll('['+attr+']').forEach(function(b){
@@ -1355,11 +2506,23 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       if(!foot) return;
       foot.textContent=id==='form'?'细条形态 · 可切完整键盘':id==='busy'?'顶行忙闲圆点':id==='speech'?'条下话术区':id==='tools'?'悬停第二行快捷钮':'细条形态 · 悬停第二行出快捷钮';
     });
-    bindLeaf('lightsRail','data-lights','lights',lightsBodies,function(){
+    bindLeaf('softPadRail','data-soft-pad','softPad',softPadBodies,function(id){
+      if(id==='ambient'||id==='keys'){
+        state.softPad='lights';
+        id='lights';
+      }
+      /* Soft Pad 默认打开 */
+      if(state.padEnabled===false){
+        state.padEnabled=true;
+        postSettingsCmd('setPadEnabled',{ enabled:true });
+      }
+      setPreviewMode('softPad');
       paintAmbientPreview();
+      paintTopbarPreview();
+      if(id==='numpad'){ highlightPadZone(state.zone); paintKeysGain(); }
       postLeftPreview();
+      void id;
     });
-    bindLeaf('connectRail','data-connect','connect',connectBodies);
   }
 
   function setNav(id){
@@ -1370,7 +2533,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     document.getElementById('viewAgent').classList.toggle('is-on',id==='agent');
     document.getElementById('viewStats').classList.toggle('is-on',id==='stats');
     document.getElementById('shellPath').textContent=id==='stats'?'设置 → 数据':'设置 → Agent';
-    document.getElementById('shellHint').textContent=id==='stats'?'大盘 · 网页版与本地副窗':'五叶配置 · 不含图表';
+    document.getElementById('shellHint').textContent=id==='stats'?'大盘 · 网页版与本地副窗':'三叶配置 · Soft Pad ≠ 迷你栏';
   }
   document.querySelectorAll('.snav [data-nav]').forEach(function(b){
     if(b.disabled) return;
@@ -1385,7 +2548,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
   });
   document.getElementById('snapBody').addEventListener('click',function(){setNav('stats');});
 
-  /* 当前应用 · 简约摘要（不是五叶大盘） */
+  /* 当前应用 · 简约摘要（不是数据大盘） */
   var APP_SNAP={
     Cursor:[
       {l:'效率',v:'50.6'},
@@ -1417,18 +2580,15 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
   function setApp(name){
     state.app=name;
     document.getElementById('appName').textContent=name;
-    var tab=document.getElementById('tabConnect');
-    tab.innerHTML='<span class="t">'+name+'</span><span class="s">三标签页</span>';
-    document.getElementById('connectCap').textContent=name;
-    document.getElementById('guideConnect').textContent=name;
+    document.getElementById('connectCap').textContent='接入 Agent';
     var hook=document.getElementById('connectHook');
-    if(hook) hook.textContent='复制 hooks 接到 '+name;
+    if(hook) hook.textContent='复制 hooks 接到对应 Agent';
     document.querySelectorAll('.app-pick').forEach(function(b){
       b.classList.toggle('is-on',b.getAttribute('data-app')===name);
     });
     paintSnap(name);
     postSettingsCmd('selectAgent',{ app:name });
-    if(state.sub==='connect'||state.sub==='mini'||state.sub==='lights'){
+    if(state.sub==='softPad'||state.sub==='mini'){
       detail.innerHTML=pages[state.sub]();
       bindDetail();
     }
@@ -1438,8 +2598,16 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
   });
 
   function setSub(id){
+    if(id==='connect'){ state.softPad='hook'; id='softPad'; }
+    else if(id==='keys'){ state.softPad='numpad'; id='softPad'; }
+    else if(id==='lights'){ id='softPad'; }
+    if(state.softPad==='ambient'||state.softPad==='keys'||state.softPad==='voice'){
+      if(state.softPad==='voice') state.float='show';
+      else state.softPad='lights';
+    }
+    if(state.float==='voice') state.float='show';
     state.sub=id;
-    if(id==='keys'&&!state.zone) state.zone='ag';
+    if(isNumpadLeaf()&&!state.zone) state.zone='ag';
     document.querySelectorAll('#subs [data-sub]').forEach(function(b){b.classList.toggle('is-on',b.getAttribute('data-sub')===id);});
     detail.innerHTML=pages[id]();
     setPreviewMode(id);

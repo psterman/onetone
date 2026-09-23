@@ -172,6 +172,7 @@ fn main() {
         "cmd_codex_micro_overlay_start_drag",
         "cmd_codex_micro_overlay_snap_position",
         "cmd_codex_micro_overlay_set_minimized",
+        "cmd_codex_micro_overlay_fit_content",
         "cmd_codex_micro_overlay_toggle_master",
         "cmd_codex_micro_overlay_toggle_num_mode",
         "cmd_codex_micro_overlay_toggle_pad_mode",

@@ -344,7 +344,6 @@
   function setCameraCancelGesture(bindKey,wantOn){
     var key=String(bindKey||'').trim();
     if(CANCEL_GESTURE_KEYS.indexOf(key)<0) return Promise.resolve(false);
-    var cam=global.OneToneCameraPresenceActions;
     var m=hooks().selectedMapping();
     var mid=m&&m.id?String(m.id):'';
     var token=wantOn?'pressEsc':'none';
@@ -370,10 +369,14 @@
       if(global.console&&console.warn) console.warn('[keys-cancel] camera bind',err);
       return false;
     }
-    // Keys page edits the selected scene — write mapping.cameraOverride, not global prefs.
-    if(mid&&cam&&typeof cam.persistBindActionMappingScoped==='function'){
-      return cam.persistBindActionMappingScoped(mid,key,token).then(function(){
-        // Keep gesture trigger bit on the scene so detection can fire.
+    // Keys page edits the selected scene — write mapping.cameraOverride via camera adapter.
+    var adapters=global.OneToneActionBindingAdapters;
+    if(mid&&adapters&&adapters.camera&&adapters.camera.upsert){
+      return adapters.camera.upsert(mid,'input.cancel',{
+        bindKey:key,
+        actionToken:token,
+        mappingScoped:true
+      },key).then(function(){
         try{
           if(m){
             var trigMap={shakeHead:'shake',deliberateBlink:'blink',openPalm:'openPalm',okHand:'okHand',fist:'fist',wave:'wave'};
@@ -387,9 +390,6 @@
         }catch(_){}
         return afterOk();
       }).catch(fail);
-    }
-    if(cam&&typeof cam.persistBindAction==='function'){
-      return cam.persistBindAction(mid,key,token).then(afterOk).catch(fail);
     }
     // Fallback: write prefs directly
     try{

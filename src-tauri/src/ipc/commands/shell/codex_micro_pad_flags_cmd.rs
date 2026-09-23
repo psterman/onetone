@@ -429,6 +429,60 @@ pub fn cmd_codex_micro_pad_set_skin(
     Ok(())
 }
 
+/// Quiet ambient / Soft RGB write + overlay push (slider/color must not wait on full cmd_save).
+#[tauri::command]
+pub fn cmd_codex_micro_pad_set_ambient(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    mapping_id: String,
+    ambient_enabled: bool,
+    ambient_mode: String,
+    ambient_solid_rgb: String,
+    ambient_opacity: u8,
+) -> Result<(), String> {
+    let mapping_id = mapping_id.trim().to_string();
+    if mapping_id.is_empty() {
+        return Err("mapping_id_empty".into());
+    }
+    let mode = if ambient_mode.trim().eq_ignore_ascii_case("solid") {
+        "solid"
+    } else {
+        "status"
+    }
+    .to_string();
+    let mut solid = ambient_solid_rgb.trim().to_string();
+    if !solid.is_empty() && !solid.starts_with('#') {
+        solid.insert(0, '#');
+    }
+    let opacity = ambient_opacity.min(100);
+
+    let cfg_to_save;
+    {
+        let mut cfg = state.cfg.lock();
+        let Some(mapping) = cfg.mappings.iter_mut().find(|m| m.id == mapping_id) else {
+            return Err("mapping_not_found".into());
+        };
+        let pad = mapping
+            .codex_micro_pad
+            .get_or_insert_with(codex_numpad_layer::default_codex_micro_pad);
+        pad.ambient_enabled = ambient_enabled;
+        pad.ambient_mode = mode;
+        pad.ambient_solid_rgb = solid;
+        pad.ambient_opacity = opacity;
+        codex_numpad_layer::sync_hook_cache(&cfg);
+        cfg_to_save = cfg.clone();
+    }
+
+    let state_bg = Arc::clone(state.inner());
+    let _ = std::thread::Builder::new()
+        .name("codex-micro-pad-ambient".into())
+        .spawn(move || {
+            config::save_config(&cfg_to_save);
+            codex_micro_overlay::push_state(&app, &state_bg);
+        });
+    Ok(())
+}
+
 /// Home「强制打开 Soft Pad」: quiet flag + ensure overlay mapping + push overlay.
 /// Full `cmd_save` alone never picked a Soft Pad while OneTone was FG (Codex-only fallback).
 #[tauri::command]
@@ -550,5 +604,43 @@ mod skin_ipc_tests {
             cfg.mappings[1].codex_micro_pad.as_ref().unwrap().skin,
             "vibe-light"
         );
+    }
+
+    #[test]
+    fn set_ambient_only_updates_target_mapping() {
+        let mut cfg = VoiceConfig::default();
+        let a_json = serde_json::json!({
+            "id": "map-a",
+            "label": "A",
+            "codexMicroPad": default_codex_micro_pad()
+        });
+        let b_json = serde_json::json!({
+            "id": "map-b",
+            "label": "B",
+            "codexMicroPad": default_codex_micro_pad()
+        });
+        let a: crate::config::MappingEntry = serde_json::from_value(a_json).expect("map-a");
+        let b: crate::config::MappingEntry = serde_json::from_value(b_json).expect("map-b");
+        cfg.mappings = vec![a, b];
+
+        let mapping = cfg
+            .mappings
+            .iter_mut()
+            .find(|m| m.id == "map-b")
+            .expect("map-b");
+        let pad = mapping
+            .codex_micro_pad
+            .get_or_insert_with(default_codex_micro_pad);
+        pad.ambient_enabled = true;
+        pad.ambient_mode = "solid".into();
+        pad.ambient_solid_rgb = "#ff00aa".into();
+        pad.ambient_opacity = 77;
+
+        let b = cfg.mappings[1].codex_micro_pad.as_ref().expect("b pad");
+        assert_eq!(b.ambient_mode, "solid");
+        assert_eq!(b.ambient_solid_rgb, "#ff00aa");
+        assert_eq!(b.ambient_opacity, 77);
+        let a = cfg.mappings[0].codex_micro_pad.as_ref().expect("a pad");
+        assert_ne!(a.ambient_solid_rgb, "#ff00aa");
     }
 }

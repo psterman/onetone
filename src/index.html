@@ -1232,57 +1232,67 @@
                 <div class="soft-pad-face-root soft-pad-face-pad soft-pad-face-pad--desk soft-pad-face-pad--pad-mid" id="softPadFacePad" data-face="pad">
                   <div class="soft-pad-mid-stack soft-pad-mid-stack--fused" id="softPadMidStack">
                     <div class="soft-pad-mid-pad" id="softPadMidPad">
-                      <p class="soft-pad-mid-pad__lbl" id="softPadMidPadLbl">点键盘上的键</p>
+                      <p class="soft-pad-mid-pad__lbl" id="softPadMidPadLbl" data-i18n="softPadMidPadLbl">选键</p>
                       <div class="soft-pad-preview-host soft-pad-mid-pad__host" id="softPadPreviewHost"></div>
                       <div class="soft-pad-mid-pad__foot">
-                        <p class="soft-pad-mid-pad__hint" id="softPadMidPadHint" data-i18n="softPadMidPadHint">蓝框 = 正在编辑 · 点其它键可切换 · 右侧点功能会绑到当前键</p>
+                        <p class="soft-pad-mid-pad__hint" id="softPadMidPadHint" hidden data-i18n="softPadMidPadHint">蓝框 = 正在编辑 · 点其它键可切换 · 右侧点功能会绑到当前键</p>
                         <button type="button" class="soft-pad-mid-pad__restore" id="btnSoftPadRestoreDefaults" data-i18n="softPadLayoutRestoreQuiet">恢复默认键位</button>
                       </div>
+                      <!-- 选键下方：仅用量数据 -->
+                      <div class="soft-pad-mid-data" id="softPadMidData">
+                        <div class="soft-pad-preview-stats" data-soft-pad-preview-stats="1"></div>
+                      </div>
                     </div>
-                    <aside class="soft-pad-face-pad__panel soft-pad-detail soft-pad-mid-ability" id="softPadSubpageHost" aria-live="polite">
-                      <div class="soft-pad-work-tag" id="softPadWorkTag">
-                        <span class="soft-pad-work-tag__lbl" id="softPadWorkTagLbl">设置</span>
-                        <span class="soft-pad-work-tag__ch" id="softPadWorkChannelPill">屏幕按钮</span>
-                      </div>
-                      <div class="soft-pad-pad-tabs" id="softPadPadTabs" role="tablist" aria-label="Soft Pad 调整">
-                        <button type="button" class="soft-pad-pad-tab is-active" role="tab" data-pad-mode="keys" aria-selected="true" id="softPadPadTabKeys" data-i18n="softPadPadTabBind">改按钮</button>
-                        <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="style" aria-selected="false" id="softPadPadTabStyle" data-i18n="softPadPadTabLook">样子</button>
-                        <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="agent" aria-selected="false" id="softPadPadTabAgent" data-i18n="softPadPadTabMore">更多</button>
-                      </div>
-                      <div class="soft-pad-detail-idle" id="softPadDetailIdle" hidden>
-                        <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">点左侧键盘上的键</p>
-                        <p class="soft-pad-detail-idle__sub" id="softPadDetailIdleSub">选中后在下方改快捷键，右侧换功能</p>
-                      </div>
-                      <div class="soft-pad-detail-panel" id="softPadDetailPanel">
-                        <div class="soft-pad-subpage-bar" id="softPadSubpageBar" hidden>
-                          <button type="button" class="codex-micro-pad__btn soft-pad-subpage-back" id="btnSoftPadSubBack" hidden>← 返回</button>
-                          <h4 class="soft-pad-subpage-title" id="softPadSubpageTitle"></h4>
-                        </div>
-                        <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadSubpageBody"></div>
-                      </div>
-                      <!-- Non-softPad channel bridge (deeplink to Keys) -->
-                      <div class="soft-pad-channel-bridge" id="softPadChannelBridge" hidden>
-                        <h4 class="soft-pad-channel-bridge__title" id="softPadChannelBridgeTitle">听写方式</h4>
-                        <p class="soft-pad-channel-bridge__body" id="softPadChannelBridgeBody">该识别通道在按键页配置。左侧 Soft Pad 预览仍可用；本场景动作在右侧栏。</p>
-                        <button type="button" class="soft-pad-channel-bridge__go" id="softPadChannelBridgeGo">去按键页 · 听写方式 →</button>
-                      </div>
-                    </aside>
                   </div>
-                  <section class="soft-pad-mid-fn-swap" id="softPadFnSwapHost" hidden aria-label="换成别的功能">
-                    <div class="soft-pad-fn-softpad-block" id="softPadFnSoftPadBlock">
-                      <p class="soft-pad-layout-form__section-lbl" id="softPadFnSwapLbl" data-i18n="softPadKeyFnSwapLbl">换成别的功能</p>
-                      <div class="soft-pad-fn-subs" id="softPadFnSubs" role="tablist" aria-label="功能分类"></div>
-                      <div class="micro-hw-modal__cap-list soft-pad-layout-fn-swap__list" id="softPadCapList" role="listbox"></div>
+                  <!-- 中间卡片：顶栏标签 + 改按钮/何时显示/皮肤 页面内容 -->
+                  <aside class="soft-pad-face-pad__panel soft-pad-detail soft-pad-mid-ability" id="softPadSubpageHost" aria-live="polite" hidden>
+                    <div class="soft-pad-pad-tabs" id="softPadPadTabs" role="tablist" aria-label="Soft Pad 调整">
+                      <button type="button" class="soft-pad-pad-tab is-active" role="tab" data-pad-mode="keys" aria-selected="true" id="softPadPadTabKeys" data-i18n="softPadPadTabBind">改按钮</button>
+                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="show" aria-selected="false" id="softPadPadTabShow" data-i18n="softPadPadTabShow">何时显示</button>
+                      <button type="button" class="soft-pad-pad-tab" role="tab" data-pad-mode="skin" aria-selected="false" id="softPadPadTabSkin" data-i18n="softPadPadTabSkin">皮肤</button>
                     </div>
-                    <div class="soft-pad-fn-channel-block" id="softPadFnChannelBlock" hidden>
-                      <p class="soft-pad-layout-form__section-lbl" id="softPadFnChannelLbl">听写方式</p>
-                      <p class="soft-pad-fn-channel-lead" id="softPadFnChannelLead">点一项，绑到左侧正在编辑的键</p>
-                      <div class="soft-pad-layout-channel-card keys-voice-pick keys-softpad-pick" data-soft-pad-action-library="1" id="softPadFnChannelLib">
-                        <div class="soft-pad-action-list" data-soft-pad-action-list="1" role="listbox"></div>
-                        <p class="codex-pad-mgr__hint soft-pad-action-library__hint" data-soft-pad-action-hint="1"></p>
+                    <div class="soft-pad-work-tag" id="softPadWorkTag">
+                      <span class="soft-pad-work-tag__lbl" id="softPadWorkTagLbl">设置</span>
+                      <span class="soft-pad-work-tag__ch" id="softPadWorkChannelPill">屏幕按钮</span>
+                    </div>
+                    <div class="soft-pad-detail-idle" id="softPadDetailIdle" hidden>
+                      <p class="soft-pad-detail-idle__title" id="softPadDetailIdleTitle">点左侧键盘上的键</p>
+                      <p class="soft-pad-detail-idle__sub" id="softPadDetailIdleSub">选中后在下方改快捷键，右侧换功能</p>
+                    </div>
+                    <div class="soft-pad-detail-panel" id="softPadDetailPanel">
+                      <div class="soft-pad-subpage-bar" id="softPadSubpageBar" hidden>
+                        <button type="button" class="codex-micro-pad__btn soft-pad-subpage-back" id="btnSoftPadSubBack" hidden>← 返回</button>
+                        <h4 class="soft-pad-subpage-title" id="softPadSubpageTitle"></h4>
                       </div>
+                      <div class="codex-pad-mgr soft-pad-subpage-body" id="softPadSubpageBody"></div>
                     </div>
-                  </section>
+                    <section class="soft-pad-mid-fn-swap" id="softPadFnSwapHost" hidden aria-label="按键">
+                      <div class="soft-pad-float-dock soft-pad-float-dock--side" id="softPadFloatDock" aria-label="按键与外观"></div>
+                      <div class="soft-pad-fn-softpad-block" id="softPadFnSoftPadBlock" data-float-keys-body="1">
+                        <p class="soft-pad-fn-swap__lead" id="softPadFnSwapLead" data-i18n="softPadFnSwapLead">点左侧键后，在这里选功能绑上去。</p>
+                        <label class="soft-pad-fn-find" id="softPadFnFind">
+                          <span class="sr-only" data-i18n="softPadFnFindAria">搜命令</span>
+                          <input type="search" id="softPadFnSearch" class="soft-pad-fn-find__input" data-i18n-placeholder="softPadFnFindPh" placeholder="听写、发送、Plan、终端、Ctrl+N…" autocomplete="off" />
+                        </label>
+                        <div class="soft-pad-fn-subs" id="softPadFnSubs" role="tablist" aria-label="Vibe 四件事"></div>
+                        <div class="micro-hw-modal__cap-list soft-pad-layout-fn-swap__list" id="softPadCapList" role="listbox"></div>
+                      </div>
+                      <div class="soft-pad-fn-channel-block" id="softPadFnChannelBlock" hidden>
+                        <p class="soft-pad-layout-form__section-lbl" id="softPadFnChannelLbl">听写方式</p>
+                        <p class="soft-pad-fn-channel-lead" id="softPadFnChannelLead">点一项，绑到左侧正在编辑的键</p>
+                        <div class="soft-pad-layout-channel-card keys-voice-pick keys-softpad-pick" data-soft-pad-action-library="1" id="softPadFnChannelLib">
+                          <div class="soft-pad-action-list" data-soft-pad-action-list="1" role="listbox"></div>
+                          <p class="codex-pad-mgr__hint soft-pad-action-library__hint" data-soft-pad-action-hint="1"></p>
+                        </div>
+                      </div>
+                    </section>
+                    <!-- Non-softPad channel bridge (deeplink to Keys) -->
+                    <div class="soft-pad-channel-bridge" id="softPadChannelBridge" hidden>
+                      <h4 class="soft-pad-channel-bridge__title" id="softPadChannelBridgeTitle">听写方式</h4>
+                      <p class="soft-pad-channel-bridge__body" id="softPadChannelBridgeBody">该识别通道在按键页配置。左侧 Soft Pad 预览仍可用；本场景动作在右侧栏。</p>
+                      <button type="button" class="soft-pad-channel-bridge__go" id="softPadChannelBridgeGo">去按键页 · 听写方式 →</button>
+                    </div>
+                  </aside>
                   <!-- retired pad-ring host (kept for legacy id lookups; always hidden) -->
                   <div class="soft-pad-pad-ring" id="softPadPadRing" hidden aria-hidden="true"></div>
                   <div class="soft-pad-ring-float" id="softPadRingFloat" hidden></div>
@@ -1303,17 +1313,10 @@
               </div>
               <div class="soft-pad-empty" id="softPadEmpty" hidden></div>
             </div>
-            <!-- 右：应用绑定 + 本场景动作（Soft Pad 键盘在中栏） -->
-            <aside class="soft-pad-right-col soft-pad-right-col--purpose soft-pad-right-col--habits-only" id="softPadRightCol" aria-label="应用与本场景动作">
-              <p class="soft-pad-right-col__lbl" id="softPadPreviewColLbl">当前应用</p>
-              <div class="soft-pad-preview-hint soft-pad-preview-hint--slim" id="softPadPreviewHint">
-                <div class="soft-pad-bind-app" id="softPadBindApp">
-                  <button type="button" class="soft-pad-bind-app__btn" id="softPadBindAppBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="softPadBindAppMenu">
-                    <span class="soft-pad-bind-app__lbl" id="softPadBindAppLbl">绑定 · —</span>
-                    <span class="soft-pad-bind-app__chev" aria-hidden="true">▾</span>
-                  </button>
-                  <div class="soft-pad-bind-app__menu" id="softPadBindAppMenu" role="listbox" hidden></div>
-                </div>
+            <!-- 右：本场景动作（应用切换嵌在动作栏头，不再单独「当前应用」块） -->
+            <aside class="soft-pad-right-col soft-pad-right-col--purpose soft-pad-right-col--habits-only" id="softPadRightCol" aria-label="本场景动作">
+              <p class="soft-pad-right-col__lbl" id="softPadPreviewColLbl" hidden>当前应用</p>
+              <div class="soft-pad-preview-hint soft-pad-preview-hint--slim" id="softPadPreviewHint" hidden aria-hidden="true">
                 <div class="keys-scheme-summary-meta soft-pad-preview-hint__meta soft-pad-preview-hint__meta--compact">
                   <span class="keys-scheme-summary-item">
                     <span class="keys-scheme-summary-lbl" id="softPadSummaryAgentLbl">灯效</span>
@@ -1345,20 +1348,27 @@
                     <span class="keys-scheme-summary-val" id="softPadSummaryReset">—</span>
                   </span>
                 </div>
-                <div class="soft-pad-preview-hint__actions keys-scheme-status-actions soft-pad-preview-hint__actions--slim">
-                  <button type="button" class="page-status-btn" id="btnSoftPadTestFg" data-cockpit-action="test-fg">测试</button>
+                <div class="soft-pad-preview-hint__actions keys-scheme-status-actions soft-pad-preview-hint__actions--slim" hidden>
+                  <button type="button" class="page-status-btn" id="btnSoftPadTestFg" data-cockpit-action="test-fg" hidden tabindex="-1" aria-hidden="true">测试</button>
                   <button type="button" class="page-status-btn sr-only" id="btnSoftPadEditKeys" data-cockpit-action="edit-keys" tabindex="-1" aria-hidden="true">编辑键位</button>
                 </div>
               </div>
-              <p class="soft-pad-right-col__lbl soft-pad-right-col__lbl--habits" id="softPadHabitsColLbl">本场景动作</p>
+              <p class="soft-pad-right-col__lbl soft-pad-right-col__lbl--habits" id="softPadHabitsColLbl" hidden>本场景动作</p>
               <aside class="keys-page-aside keys-scene-actions soft-pad-scene-keys" id="softPadSceneKeysPanel" hidden data-panel="dir" aria-label="本场景动作">
                 <div class="keys-scene-actions__head">
                   <div class="keys-scene-actions__titles">
-                    <div class="keys-scene-actions__app" id="softPadSceneKeysApp" hidden>
+                    <div class="keys-scene-actions__app soft-pad-scene-keys__switch" id="softPadSceneKeysApp" hidden>
                       <img class="keys-scene-actions__app-ico" id="softPadSceneKeysAppIcon" alt="" width="20" height="20" hidden />
                       <span class="keys-scene-actions__app-name" id="softPadSceneKeysAppName"></span>
                     </div>
-                    <h3 class="keys-scene-actions__title" id="softPadSceneKeysTitle" data-i18n="keysSceneActionsTitle">习惯列表</h3>
+                    <div class="soft-pad-bind-app soft-pad-bind-app--in-scene" id="softPadBindApp">
+                      <button type="button" class="soft-pad-bind-app__btn" id="softPadBindAppBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="softPadBindAppMenu">
+                        <span class="soft-pad-bind-app__lbl" id="softPadBindAppLbl">切换 · —</span>
+                        <span class="soft-pad-bind-app__chev" aria-hidden="true">▾</span>
+                      </button>
+                      <div class="soft-pad-bind-app__menu" id="softPadBindAppMenu" role="listbox" hidden></div>
+                    </div>
+                    <h3 class="keys-scene-actions__title" id="softPadSceneKeysTitle" data-i18n="keysSceneActionsTitle">本场景动作</h3>
                     <p class="keys-scene-actions__meta" id="softPadSceneKeysMeta"></p>
                   </div>
                   <button type="button" class="keys-scene-actions__back" id="softPadSceneKeysBack" hidden data-i18n="keysSceneActionsBack">收起</button>
@@ -1369,7 +1379,7 @@
                   <div class="keys-scene-actions__edit" id="softPadSceneKeysEdit"></div>
                 </div>
                 <div class="keys-scene-actions__foot">
-                  <button type="button" class="keys-hub-scheme-add" id="softPadSceneKeysAdd" data-i18n="keysSceneActionsAdd">＋ 新建动作</button>
+                  <button type="button" class="keys-scene-actions__add" id="softPadSceneKeysAdd" data-i18n="keysSceneActionsAdd">＋ 新建动作</button>
                 </div>
               </aside>
             </aside>
@@ -2659,7 +2669,7 @@
           <div class="voice-bridge-face" id="voiceSoftPadFace" data-voice-face-pane="softpad" hidden>
             <section class="voice-bridge-card">
               <h3 class="voice-bridge-title" id="voiceSoftPadFaceTitle">Soft Pad 能力</h3>
-              <p class="voice-bridge-sub" id="voiceSoftPadFaceSub">已配置的键 · 看效果与使用场景；改键位去 Soft Pad</p>
+              <p class="voice-bridge-sub" id="voiceSoftPadFaceSub">已配置的键 · 本页只看效果；口令与键位绑定请去 Soft Pad</p>
               <div class="voice-bridge-scope" id="voiceSpScopeBar">
                 <span class="voice-bridge-pill" id="voiceSpScopePill">—</span>
                 <span class="voice-bridge-hint" id="voiceSpScopeHint">来自 Soft Pad 里已有的键</span>
@@ -2673,7 +2683,7 @@
               </div>
               <div class="voice-bridge-empty" id="voiceSpBridgeOff" hidden>
                 <p><strong>Soft Pad 还没开键</strong></p>
-                <p>屏幕口令只跟当前应用在 Soft Pad 已开的键。先去那边打开要认的键，再回来配说法。</p>
+                <p>本页不录口令。先去 Soft Pad 打开要认的键，再在那边绑已有口令。</p>
                 <div class="voice-bridge-empty-actions">
                   <button type="button" class="voice-mode-meta-link" id="btnVoiceSpGoPadEmpty">去 Soft Pad 开键 →</button>
                 </div>
@@ -2699,21 +2709,21 @@
           <div class="voice-bridge-face" id="voiceKeysFace" data-voice-face-pane="keys" hidden>
             <section class="voice-bridge-card">
               <h3 class="voice-bridge-title sr-only" id="voiceKeysFaceTitle">按键口令</h3>
-              <p class="voice-bridge-sub sr-only" id="voiceKeysFaceSub">改说法；快捷键仍在按键页配置</p>
+              <p class="voice-bridge-sub sr-only" id="voiceKeysFaceSub">点选认英雄；口令在语音页录，快捷键在按键页配</p>
               <div class="voice-bridge-scope sr-only" aria-hidden="true">
                 <span class="voice-bridge-pill" id="voiceKeysScopePill">—</span>
-                <span class="voice-bridge-hint" id="voiceKeysScopeHint">加载按键页动作库 · 挂口令</span>
+                <span class="voice-bridge-hint" id="voiceKeysScopeHint">加载按键页动作库 · 本页不录口令</span>
                 <button type="button" class="voice-bridge-link" id="btnVoiceKeysGoPage">去按键页 →</button>
               </div>
               <div class="voice-bridge-empty" id="voiceKeysBridgeOff" hidden>
-                <p><strong>还没有习惯可挂口令</strong></p>
-                <p>先选一个正在编辑的习惯。按键页的动作库会自动出现在这里。</p>
+                <p><strong>还没有习惯</strong></p>
+                <p>先选一个正在编辑的习惯。按键页的动作库会出现在这里，点选即可认到当前习惯。</p>
                 <div class="voice-bridge-empty-actions">
                   <button type="button" class="voice-mode-meta-link" id="btnVoiceKeysGoEmpty">去按键页 →</button>
                 </div>
               </div>
               <div id="voiceKeysLinked" hidden>
-                <p class="voice-bridge-note" id="voiceKeysNoviceHint">点左侧动作看能力 · 键位在按键页改</p>
+                <p class="voice-bridge-note" id="voiceKeysNoviceHint">点选动作写入当前习惯 · 改键位去按键页，录口令去语音页</p>
                 <div class="voice-bridge-split voice-keys-desk">
                   <div class="voice-bridge-col voice-keys-desk__pick">
                     <div class="voice-bridge-col-head">

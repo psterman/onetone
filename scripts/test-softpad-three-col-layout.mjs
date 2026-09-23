@@ -59,10 +59,11 @@ assert.ok(!html.includes('id="softPadChannelSearch"'), 'no channel search');
   const rightIdx = block.indexOf('id="softPadRightCol"');
   assert.ok(railIdx > 0 && mainIdx > railIdx, 'rail before mid workbench');
   assert.ok(rightIdx > mainIdx, 'right col after mid');
-  assert.ok(fnIdx > mainIdx && fnIdx < midPadIdx, 'function list left of Soft Pad');
-  assert.ok(stackIdx > fnIdx && stackIdx < rightIdx, 'mid stack after fn list');
+  // Mid face: Soft Pad stack first, fn list sibling after (CSS places it to the right of the pad).
+  assert.ok(stackIdx > mainIdx && stackIdx < fnIdx, 'mid stack before fn list');
+  assert.ok(fnIdx > midPadIdx && fnIdx < rightIdx, 'function list after Soft Pad mid');
   assert.ok(previewIdx > stackIdx && previewIdx < abilityIdx, 'preview above key ability');
-  assert.ok(abilityIdx > previewIdx && abilityIdx < rightIdx, 'key ability under preview in mid');
+  assert.ok(abilityIdx > previewIdx && abilityIdx < fnIdx, 'key ability under preview in mid');
   assert.ok(hintIdx > rightIdx, 'hint in right col');
   assert.ok(sceneIdx > hintIdx, 'scene keys under hint');
   assert.ok(!/id="softPadRightCol"[\s\S]*?id="softPadPreviewHost"/.test(block), 'no Soft Pad host inside right col');
@@ -83,8 +84,8 @@ assert.ok(css.includes('soft-pad-mid-stack'), 'css mid stack');
 assert.ok(css.includes('soft-pad-mid-fn-swap'), 'css left fn swap');
 assert.ok(css.includes('soft-pad-mid-ability'), 'css ability under preview');
 assert.ok(
-  /grid-template-columns:\s*minmax\(220px,\s*0\.9fr\)\s+minmax\(300px,\s*1\.25fr\)/.test(css),
-  'css fn list | preview+ability split'
+  /grid-template-columns:\s*minmax\(300px,\s*1\.25fr\)\s+minmax\(220px,\s*0\.9fr\)/.test(css),
+  'css Soft Pad mid | fn list split'
 );
 assert.ok(
   /grid-template-columns:\s*minmax\(200px,\s*220px\)\s+minmax\(0,\s*1fr\)\s+minmax\(300px,\s*340px\)/.test(css),
@@ -100,6 +101,7 @@ assert.ok(css.includes('soft-pad-mid-stack--fused .soft-pad-work-tag[hidden]'), 
 
 assert.ok(hub.includes('setSoftPadRailChannel'), 'hub rail channel switch');
 assert.ok(hub.includes('paintSoftPadRailChannelWorkbench'), 'hub paints channel workbench');
+assert.ok(hub.includes('focusKeyId'), 'hub passes Soft Pad key focus into channel workbench');
 assert.ok(hub.includes('ensureSoftPadThreeColLayout'), 'hub ensures three-col class');
 assert.ok(hub.includes('softPadPreviewHint'), 'hub binds preview hint');
 assert.ok(hub.includes('workTag.hidden = true'), 'hub always hides work-tag');
@@ -157,14 +159,83 @@ assert.ok(css.includes('#settingsPanelSoftPad.soft-pad-page'), 'css soft-pad pan
 assert.ok(css.includes('soft-pad-fn-card__detail'), 'css detailed fn cards');
 assert.ok(css.includes('soft-pad-fn-channel-block'), 'css channel block in left column');
 assert.ok(pad.includes('renderSoftPadFnSubs'), 'pad paints horizontal subs');
+assert.ok(pad.includes('data-fn-scene="all"') || pad.includes("data-fn-scene=\"all\""), 'all vibe job pill');
+assert.ok(pad.includes('openSoftPadSemanticPick'), 'semantic pick helper (modal)');
+assert.ok(pad.includes('softPadFnQuery'), 'fn search state');
+assert.ok(pad.includes('normalizeLayoutActionSceneId'), 'legacy→vibe remap');
+assert.ok(css.includes('soft-pad-fn-find'), 'css fn search');
+assert.ok(i18n.includes('softPadFnJobAll:'), 'job all i18n');
+assert.ok(
+  i18n.includes("softPadKeyFnSwapLbl:'按键'") ||
+    i18n.includes("softPadFloatTabKeys:'按键'") ||
+    i18n.includes('这颗键做什么'),
+  'keys / float tab label'
+);
+assert.ok(!i18n.includes("softPadFnSapPeer:'语义目录'"), 'no 语义目录 i18n peer');
+assert.ok(html.includes('id="softPadFnSearch"'), 'fn search host');
 assert.ok(pad.includes('applySoftPadCapabilityPick'), 'pad click left maps onto current Soft Pad key');
-assert.ok(pad.includes("upsertRoute(m, pad, boundKey, { slotId: '', enabled: false }"), 'pad steals slot from other key when mapping');
+assert.ok(pad.includes("upsertRoute(m, pad, other, { slotId: '', enabled: false }"), 'pad steals slot from other key when mapping');
 assert.ok(pad.includes('findMicroKeyForSlot'), 'pad finds key for capability');
 assert.ok(html.includes('id="softPadFnSubs"'), 'fn subs host');
 assert.ok(html.includes('id="softPadFnChannelBlock"'), 'channel block host');
 assert.ok(html.includes('soft-pad-mid-stack--fused'), 'fused mid stack mark');
 assert.ok(!html.includes('softPadRailKeysBadge'), 'no 另页 badges on rail');
 assert.ok(i18n.includes("softPadFnUnboundOnPad:"), 'fn unbound-on-pad i18n');
+assert.ok(css.includes('is-need-agent'), 'css hides right col until agent loaded');
+assert.ok(hub.includes('syncSoftPadNeedAgentChrome'), 'hub syncs need-agent chrome');
+assert.ok(hub.includes('softPadAgentReady'), 'hub gates on concrete agent');
+assert.ok(i18n.includes('softPadNeedAgentTitle:'), 'need-agent title i18n');
 assert.ok(html.includes('当前应用') || html.includes('softPadPreviewColLbl'), 'right app label');
+// Mid card: tabs + keys/style/agent page content (fn-swap nested under ability).
+{
+  const faceStart = html.indexOf('id="softPadFacePad"');
+  const stackStart = html.indexOf('id="softPadMidStack"');
+  const tabsStart = html.indexOf('id="softPadPadTabs"');
+  const abilityStart = html.indexOf('id="softPadSubpageHost"');
+  const fnSwapStart = html.indexOf('id="softPadFnSwapHost"');
+  const bodyStart = html.indexOf('id="softPadSubpageBody"');
+  assert.ok(faceStart > 0 && stackStart > faceStart, 'mid stack inside face-pad');
+  assert.ok(abilityStart > stackStart, 'ability after mid stack');
+  assert.ok(tabsStart > abilityStart && tabsStart < bodyStart, 'pad tabs inside mid-ability card');
+  assert.ok(bodyStart > tabsStart && bodyStart < fnSwapStart || bodyStart > tabsStart,
+    'subpage body with tabs in same card');
+  assert.ok(fnSwapStart > abilityStart && fnSwapStart < html.indexOf('id="softPadPadRing"'),
+    'fn-swap nested in mid-ability card');
+  const stackSlice = html.slice(stackStart, abilityStart);
+  assert.ok(!stackSlice.includes('id="softPadPadTabs"'), 'tabs not on Soft Pad preview stack');
+  assert.ok(!stackSlice.includes('id="softPadSubpageHost"'), 'ability not nested in mid-stack');
+}
+assert.ok(hub.includes('softPadKeysWorkbenchOpen'), 'keys workbench gate');
+assert.ok(hub.includes('softPadFloatDock'), 'float dock hidden outside keys');
+assert.ok(css.includes('.soft-pad-mid-ability .soft-pad-style-panel'), 'mid-ability hosts style/more panels');
+assert.ok(css.includes('.soft-pad-style-panel .soft-pad-numpad-mode'), 'style panel reuses numpad card styles');
+
+assert.match(hub, /function syncPadTabs\([\s\S]*?softPadAgentReady/);
+assert.ok(hub.includes('panelWb'), 'style/agent shows mid-ability on right');
+assert.ok(css.includes('> .soft-pad-mid-ability'), 'css places mid-ability on right grid track');
+assert.ok(
+  css.includes('.soft-pad-face-pad--desk > .soft-pad-face-pad__panel:not(.soft-pad-mid-ability)'),
+  'desk panel unset excludes mid-ability grid cell'
+);
+assert.ok(
+  /function setDetailOpen\([\s\S]*?Do NOT removeAttribute\('hidden'\)/.test(hub),
+  'setDetailOpen does not force-show mid-ability'
+);
+assert.ok(pad.includes('soft-pad-style-panel'), 'style panel restored');
+assert.ok(pad.includes("btn('show'") && pad.includes("btn('skin'"), 'style helpers keep 何时显示 + 皮肤');
+assert.ok(pad.includes('omitSubtabs'), 'top tabs own show/skin — panel omits nested subtabs');
+assert.ok(i18n.includes("softPadPadTabShow:'何时显示'"), '何时显示 top-tab i18n');
+assert.ok(i18n.includes("softPadPadTabSkin:'皮肤'"), '皮肤 top-tab i18n');
+assert.ok(pad.includes('function renderSoftPadMorePanel'), 'more panel helper kept');
+assert.ok(hub.includes("VALID_SOFT_PAD_PAD_MODES = { keys: 1, show: 1, skin: 1 }") ||
+  /VALID_SOFT_PAD_PAD_MODES\s*=\s*\{\s*keys:\s*1,\s*show:\s*1,\s*skin:\s*1\s*\}/.test(hub),
+  'pad modes keys/show/skin');
+assert.ok(
+  /function buildSoftPadFloatDockHtml[\s\S]*?is-keys-only/.test(pad),
+  'float dock keys-only (show/skin moved to top tabs)'
+);
+assert.ok(html.includes('何时显示') && html.includes('皮肤'), 'html top tabs 何时显示/皮肤');
+assert.ok(!html.includes('data-pad-mode="style"'), 'html drops 样子 mode');
+assert.ok(!/data-i18n="softPadPadTabMore"/.test(html), 'html drops 更多 tab');
 
 console.log('ok softpad-three-col-layout');

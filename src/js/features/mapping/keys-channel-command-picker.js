@@ -4254,9 +4254,9 @@
         ) +
         '</p>' +
         '<p class="keys-voice-pick-escape">' +
-        esc(t('keysVoicePickDesignHint', '想加新动作？')) +
-        ' <button type="button" class="keys-channel-item-link" data-go-softpad="1">' +
-        esc(t('keysVoicePickGoSoftPad', '去屏幕按钮里设置')) +
+        esc(t('keysVoicePickDesignHint', '想加新口令？')) +
+        ' <button type="button" class="keys-channel-item-link" data-go-voice="1">' +
+        esc(t('keysVoicePickGoVoice', '去语音设置')) +
         '</button></p></div>'
       );
     }
@@ -5245,7 +5245,7 @@
         esc(
           t(
             'keysPickOnlySetEmptyCamera',
-            '还没有已设按键的手势。先在摄像头里设好并加过按键的，才会出现在这里。'
+            '还没有配好动作的手势。先在摄像头里为手势选好动作，再回来加快捷键。'
           )
         ) +
         '</p>' +
@@ -5347,6 +5347,19 @@
       } catch (_) {}
     }
     toast(t('keysCameraPickGoCameraToast', '请打开摄像头设置'));
+  }
+
+  function guideToVoiceSettings() {
+    var mid = selectedMappingId();
+    var drawer = global.OneToneSettingsDrawer;
+    if (drawer && drawer.setPanel) {
+      try {
+        if (mid) drawer.setPanel('voiceWake', { mappingId: mid });
+        else drawer.setPanel('voiceWake');
+        return;
+      } catch (_) {}
+    }
+    toast(t('keysVoicePickGoVoiceToast', '请打开语音设置'));
   }
 
   function guideToSoftPadSettings() {
@@ -7904,6 +7917,13 @@
         if (goSoft && panel.contains(goSoft)) {
           ev.preventDefault();
           guideToSoftPadSettings();
+          return;
+        }
+        var goVoice =
+          ev.target && ev.target.closest ? ev.target.closest('[data-go-voice]') : null;
+        if (goVoice && panel.contains(goVoice)) {
+          ev.preventDefault();
+          guideToVoiceSettings();
           return;
         }
         var prepareSoft =

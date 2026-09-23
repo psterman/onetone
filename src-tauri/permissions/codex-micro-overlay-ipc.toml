@@ -7,6 +7,7 @@ permissions = [
   "allow-cmd-codex-micro-overlay-start-drag",
   "allow-cmd-codex-micro-overlay-snap-position",
   "allow-cmd-codex-micro-overlay-set-minimized",
+  "allow-cmd-codex-micro-overlay-fit-content",
   "allow-cmd-codex-micro-overlay-toggle-pad-mode",
   "allow-cmd-codex-micro-overlay-toggle-joy-panel",
   "allow-cmd-codex-micro-overlay-toggle-master",

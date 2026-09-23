@@ -129,6 +129,12 @@ pub fn cmd_codex_micro_overlay_set_minimized(
     codex_micro_overlay::push_state(&app, state.inner());
 }
 
+/// Shrink HWND to visible Soft Pad height (drops empty transparent hit slab).
+#[tauri::command]
+pub fn cmd_codex_micro_overlay_fit_content(window: WebviewWindow, height: f64) -> bool {
+    codex_micro_overlay::fit_overlay_content_height(&window, height)
+}
+
 #[tauri::command]
 pub fn cmd_codex_micro_overlay_toggle_master(
     app: AppHandle,

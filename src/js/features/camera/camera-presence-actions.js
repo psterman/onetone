@@ -3834,13 +3834,9 @@
             if(!sel||!sel.actionId) return;
             var token=(A&&A.agentActionToken)?A.agentActionToken(sel.actionId):('agent:'+sel.actionId);
             var adapters=global.OneToneActionBindingAdapters;
-            if(adapters&&adapters.camera){
+            if(adapters&&adapters.camera&&adapters.camera.upsert){
               adapters.camera.upsert(mid||pending.mappingId,sel.actionId,{bindKey:bindKey,actionToken:token},bindKey)
                 .then(function(){ ensureActionTrigger(bindKey,token); });
-            }else{
-              persistBindAction(mid||pending.mappingId,bindKey,token).then(function(){
-                ensureActionTrigger(bindKey,token);
-              });
             }
           }
         });
@@ -4300,6 +4296,8 @@
     actionLabel:actionLabel,
     openActionPicker:openActionPicker,
     ensureActionTrigger:ensureActionTrigger,
+    // Adapter-only for UI: OneToneActionBindingAdapters.camera.upsert
+    // These two remain for the adapter implementation (not page call sites).
     persistBindAction:persistBindAction,
     persistBindActionMappingScoped:persistBindActionMappingScoped,
     normalizeAction:normalizeAction,

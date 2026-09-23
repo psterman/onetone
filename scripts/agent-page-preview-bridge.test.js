@@ -26,6 +26,8 @@ var drawer = fs.readFileSync(
 assert.ok(bridge.includes('OneToneAgentPagePreviewBridge'));
 assert.ok(bridge.includes('ot-agent-preview'));
 assert.ok(bridge.includes('renderHardwarePad'));
+assert.ok(bridge.includes("stripMode: 'full'"));
+assert.ok(bridge.includes('omitFaceTopbar: false'));
 assert.ok(bridge.includes('renderAgentMiniBarPreview'));
 assert.ok(bridge.includes("cmd === 'setMiniPreview'"));
 assert.ok(bridge.includes("cmd === 'setLeftPreview'"));

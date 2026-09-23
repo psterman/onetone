@@ -96,8 +96,16 @@ assert.ok(padSrc.indexOf('soft-pad-action-scene-rail') >= 0, 'Directory D scene 
 assert.ok(padSrc.indexOf('cursorSlotGroupRailLabel') >= 0, 'rail short labels');
 assert.ok(padSrc.indexOf('data-layout-scene-back') < 0, 'no drill-back (D is always split)');
 assert.ok(Pad.CURSOR_SLOT_GROUPS.some(function (g) {
-  return g.id === 'seq' && (g.slots || []).indexOf('runTargetSequence') >= 0;
-}), 'runTargetSequence lives in seq scene');
+  return g.id === 'session' && (g.slots || []).indexOf('runTargetSequence') >= 0;
+}), 'runTargetSequence lives in session vibe job');
+assert.ok(Pad.CURSOR_SLOT_GROUPS.length === 4, 'vibe four jobs');
+assert.ok(Pad.CURSOR_SLOT_GROUPS.every(function (g) {
+  return ['talk', 'steer', 'jump', 'session'].indexOf(g.id) >= 0;
+}), 'vibe job ids');
+assert.ok(padSrc.indexOf('normalizeLayoutActionSceneId') >= 0, 'legacy scene → vibe job');
+assert.ok(padSrc.indexOf('softPadFnQuery') >= 0, 'fn search query state');
+assert.ok(padSrc.indexOf('说给 AI') >= 0, 'plain talk job label');
+assert.ok(padSrc.indexOf('语义目录') < 0 || padSrc.indexOf("softPadFnSapPeer") < 0, 'no 语义目录 mid-path');
 assert.ok(Pad.isCursorCustomSlotId('custom_abc'), 'custom_ id helper');
 assert.ok(!Pad.isCursorCustomSlotId('pushToTalk'), 'builtin not custom');
 assert.ok(padSrc.indexOf('function createCustomShortcut') >= 0, 'create custom shortcut');

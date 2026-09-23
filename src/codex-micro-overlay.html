@@ -2131,14 +2131,28 @@
         wrap.classList.remove('is-cursor-beginner-listen');
       }
       if(typeof applyCursorBeginnerMini.__lastArmed==='undefined') applyCursorBeginnerMini.__lastArmed=false;
-      if(armed&&!applyCursorBeginnerMini.__lastArmed&&probeOk&&armHint){
-        toast(flowHint?(armHint+' · '+flowHint):armHint);
-      }
       applyCursorBeginnerMini.__lastArmed=armed;
       var cap=document.getElementById('overlayKeyCaption');
       if(armed&&probeOk&&armHint&&!keyHoverActive){
-        setKeyCaption(armHint,'');
-        if(cap) cap.classList.add('is-beginner-arm-caption');
+        // One strip only — do not also toast (that stacked a second dark pill under caption).
+        var nameEl=cap&&cap.querySelector('[data-cap-name]');
+        var chordEl=cap&&cap.querySelector('[data-cap-chord]');
+        if(nameEl) nameEl.textContent=armHint;
+        if(chordEl){
+          if(flowHint){
+            chordEl.textContent=flowHint;
+            chordEl.hidden=false;
+            if(cap) cap.classList.add('is-usage-sub');
+          } else {
+            chordEl.textContent='';
+            chordEl.hidden=true;
+            if(cap) cap.classList.remove('is-usage-sub');
+          }
+        }
+        if(cap){
+          cap.classList.add('is-beginner-arm-caption');
+          cap.classList.add('is-active');
+        }
       } else if(cap){
         cap.classList.remove('is-beginner-arm-caption');
         if(!armed&&!keyHoverActive) applyUsageCaptionIdle(s);
@@ -2854,6 +2868,24 @@
       enc.setAttribute('data-cap-chord', padEnabled?'ON':'OFF');
     }
 
+    var fitReportGen=0;
+    function reportOverlayFitContent(){
+      if(localMinimized) return;
+      if(!wrap.classList.contains('is-visible')) return;
+      var gen=++fitReportGen;
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          if(gen!==fitReportGen) return;
+          if(localMinimized||!wrap.classList.contains('is-visible')) return;
+          var rootEl=document.querySelector('.root');
+          if(!rootEl) return;
+          var h=Math.ceil(rootEl.getBoundingClientRect().height);
+          if(!(h>0)) return;
+          invoke('cmd_codex_micro_overlay_fit_content',{height:h}).catch(function(){});
+        });
+      });
+    }
+
     function applyLocalStatusDom(){
       var padSt=effectivePadStatus();
       var showListen=padSt==='listening' && !holdUiReleased;
@@ -2869,6 +2901,7 @@
       if(statusChip){
         statusChip.setAttribute('data-status', padSt);
       }
+      reportOverlayFitContent();
     }
 
     function mergeRunStatus(cellId, backendRun){
@@ -3903,6 +3936,7 @@
         });
         layoutPadAgentBar(snap, byKind, resolveUsageFocus(snap));
       }catch(_){}
+      reportOverlayFitContent();
     }
     if(padAgentBarMore){
       padAgentBarMore.addEventListener('pointerdown',function(e){ e.stopPropagation(); });

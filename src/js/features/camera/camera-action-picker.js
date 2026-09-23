@@ -816,11 +816,21 @@
       }
       return Promise.resolve(token);
     }
-    if (api() && api().persistBindActionMappingScoped) {
-      return api()
-        .persistBindActionMappingScoped(mappingId, bindKey, token)
+    var adapters = global.OneToneActionBindingAdapters;
+    var actionId =
+      String(token || '').indexOf('agent:') === 0
+        ? String(token).slice(6)
+        : String(token || '');
+    if (adapters && adapters.camera && adapters.camera.upsert) {
+      return adapters.camera
+        .upsert(
+          mappingId,
+          actionId || token,
+          { bindKey: bindKey, actionToken: token, mappingScoped: true },
+          bindKey
+        )
         .then(function () {
-          if (api().syncUiFromPrefs) api().syncUiFromPrefs();
+          if (api() && api().syncUiFromPrefs) api().syncUiFromPrefs();
           return token;
         });
     }

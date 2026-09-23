@@ -26,10 +26,11 @@
     st.textContent=
       '.wrap.is-cursor-beginner{overflow:visible}'+
       '.wrap.is-cursor-beginner .overlay-mini{overflow:visible}'+
-      '.cursor-beginner-onboard{position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);z-index:200;pointer-events:auto;width:max-content;max-width:300px}'+
-      '.cursor-beginner-onboard__card{padding:8px 10px;border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.2);font-size:11px;line-height:1.4;color:#334155;display:flex;align-items:center;gap:8px;flex-wrap:wrap}'+
-      '.cursor-beginner-onboard__text{margin:0;flex:1 1 160px;min-width:0}'+
-      '.cursor-beginner-onboard__done{flex:0 0 auto;margin:0;padding:4px 10px;border:0;border-radius:8px;background:#0ea5e9;color:#fff;font-size:11px;cursor:pointer;white-space:nowrap}';
+      '.wrap.is-cursor-beginner .overlay-mini-stack{overflow:visible}'+
+      '.cursor-beginner-onboard{position:relative;left:auto;top:auto;transform:none;z-index:2;pointer-events:auto;width:100%;max-width:none;box-sizing:border-box;flex:0 0 auto}'+
+      '.cursor-beginner-onboard__card{padding:10px 12px;border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.16);border:1px solid rgba(90,157,184,.4);font-size:12px;line-height:1.45;color:#334155;display:flex;align-items:flex-start;gap:10px;flex-wrap:nowrap;box-sizing:border-box;min-height:44px}'+
+      '.cursor-beginner-onboard__text{margin:0;flex:1 1 auto;min-width:0;overflow-wrap:anywhere;word-break:break-word;white-space:normal}'+
+      '.cursor-beginner-onboard__done{flex:0 0 auto;margin:0;padding:6px 12px;border:0;border-radius:8px;background:#0ea5e9;color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;align-self:center}';
     document.head.appendChild(st);
   }
 
@@ -50,7 +51,8 @@
       markDone();
     });
     overlay.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
-    wrap.appendChild(overlay);
+    var stack=document.getElementById('overlayMiniStack');
+    (stack||wrap).appendChild(overlay);
     return overlay;
   }
 
@@ -59,6 +61,9 @@
     if(!snap) return;
     var mode=!!(snap.cursorBeginnerMode||snap.cursor_beginner_mode);
     var probeOk=!!(snap.cursorProbeOk||snap.cursor_probe_ok);
+    var armed=!!(snap.cursorBeginnerArmed||snap.cursor_beginner_armed);
+    // Armed → listen banner owns the band; tip would double-stack and clip.
+    if(armed){ hide(); return; }
     if(!mode||!probeOk) return;
     var actions=document.getElementById('miniBeginnerActions');
     var wrap=document.getElementById('wrap');

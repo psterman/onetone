@@ -29,9 +29,52 @@ assert.ok(
   'onLayoutActionPick clears previous Soft Pad key owning the slot'
 );
 assert.ok(
-  /bindVoiceOralToPadKey[\s\S]*ensureLayoutEditDraft/.test(src) &&
-    /bindCursorShortcutToPadKey[\s\S]*ensureLayoutEditDraft/.test(src),
-  'voice + cursor catalog binds ensure Soft Pad edit draft'
+  /function ensureLayoutEditDraft[\s\S]*focusedSoftPadKeyId/.test(src),
+  'ensureLayoutEditDraft resolves focus via focusedSoftPadKeyId (DOM fallback)'
+);
+assert.ok(src.indexOf('function pickSlotOntoFocusedKey') >= 0, 'pickSlotOntoFocusedKey present');
+assert.ok(
+  /pickSlotOntoFocusedKey[\s\S]*applySoftPadCapabilityPick/.test(src),
+  'channel pick falls back to applySoftPadCapabilityPick when draft cleared'
+);
+assert.ok(
+  /buildLabeledStripHtml\(\{[\s\S]*disabled:\s*!canBind/.test(src) ||
+    /disabled:\s*!softPadCanBindIme|disabled:\s*!canBind/.test(src),
+  'IME strip enables when Soft Pad key focused (not only editDraft)'
+);
+assert.ok(
+  src.indexOf('data-soft-pad-finish-mode') >= 0 && src.indexOf('softPadImeFinishHtml') >= 0,
+  'Soft Pad IME channel shows 说完后 finish modes'
+);
+assert.ok(src.indexOf('function applySoftPadFinishMode') >= 0, 'applySoftPadFinishMode present');
+assert.ok(
+  src.indexOf('data-soft-pad-enter-delay') >= 0 && src.indexOf('applySoftPadEnterDelay') >= 0,
+  'confirm finish mode exposes send-wait chips'
+);
+assert.ok(
+  /is-key-focused[\s\S]*soft-pad-flat-bind-dock|flat-bind-dock[\s\S]*is-key-focused/.test(src),
+  'focused Soft Pad key hides flat-bind idle hint'
+);
+assert.ok(
+  /renderLayoutVoiceChannelList[\s\S]*soft-pad-action-item__icon/.test(src) &&
+    /renderLayoutCameraChannelList[\s\S]*soft-pad-action-item__icon/.test(src),
+  'voice + camera channel rows paint icons'
+);
+assert.ok(
+  /focusKeyId[\s\S]*markSoftPadPreviewFocus|opts\.focusKeyId/.test(src),
+  'channel workbench restores Soft Pad key focus after remount'
+);
+assert.ok(
+  /bindVoiceOralToPadKey[\s\S]*pickSlotOntoFocusedKey|bindVoiceOralToPadKey[\s\S]*ensureLayoutEditDraft/.test(
+    src
+  ) &&
+    /bindCursorShortcutToPadKey[\s\S]*pickSlotOntoFocusedKey/.test(src),
+  'voice + cursor catalog binds onto focused Soft Pad key'
+);
+assert.ok(
+  /soft-pad-layout-cursor-row__icon[\s\S]*iconSvg\(iconId\)/.test(src) ||
+    /iconIdForCapabilitySlot\(slotId\)[\s\S]*soft-pad-layout-cursor-row__icon/.test(src),
+  '软件自带 cursor rows paint capability icons'
 );
 assert.ok(
   src.indexOf("kind !== 'bind' && kind !== 'custom' && kind !== 'acoustic'") >= 0,

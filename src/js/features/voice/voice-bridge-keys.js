@@ -224,6 +224,20 @@
     return sid||aid;
   }
 
+  /** Hero channel for Keys-catalogue claims — input.* / pushToTalk are voice, not cursor. */
+  function claimChannelForRow(row){
+    if(!row) return 'cursor';
+    if(row.customKey) return 'key';
+    var sid=String(row.slotId||row.actionId||'').trim();
+    var act=String(row.actionId||row.slotId||'').trim();
+    if(sid.indexOf('semantic:camera:')===0) return 'camera';
+    if(sid.indexOf('semantic:softPad:')===0) return 'softPad';
+    if(act.indexOf('input.')===0||sid.indexOf('input.')===0||act==='pushToTalk'||sid==='pushToTalk'){
+      return 'voice';
+    }
+    return 'cursor';
+  }
+
   function groupIdsCovered(){
     var set={};
     KEY_GROUPS.forEach(function(g){
@@ -474,57 +488,6 @@
     }catch(_){}
   }
 
-  /** 同一口令只匹配一个命令：清掉其它 voice 绑定上的同文案. */
-  function detachPhraseFromOthers(m,phrase,keep){
-    phrase=String(phrase||'').trim();
-    if(!m||!phrase) return;
-    keep=keep||{};
-    var keepSid=String(keep.slotId||keep.actionId||'').trim();
-    var keepInst=String(keep.actionInstanceId||'').trim();
-    var list=m.agentBindings||[];
-    for(var i=0;i<list.length;i++){
-      var b=list[i];
-      if(!b||String(b.triggerType||'')!=='voice') continue;
-      if(String(b.triggerBinding||'').trim()!==phrase) continue;
-      var sid=String(b.slotId||b.actionId||'').trim();
-      var inst=String(b.actionInstanceId||'').trim();
-      if(keepInst&&inst===keepInst) continue;
-      if(!keepInst&&keepSid&&sid===keepSid) continue;
-      b.triggerBinding='';
-      b.enabled=false;
-    }
-  }
-
-  function ensureVoiceBinding(m,row,phrase){
-    if(!m||!row) return null;
-    var list=m.agentBindings||(m.agentBindings=[]);
-    var sid=String(row.slotId||row.actionId||'');
-    var inst=String(row.actionInstanceId||'').trim();
-    var ab=list.find(function(b){
-      if(!b||b.triggerType!=='voice') return false;
-      if(inst&&String(b.actionInstanceId||'')===inst) return true;
-      return String(b.slotId||b.actionId)===sid;
-    });
-    if(ab){
-      ab.triggerBinding=phrase;
-      ab.enabled=true;
-      if(inst) ab.actionInstanceId=inst;
-      detachPhraseFromOthers(m,phrase,{slotId:sid,actionInstanceId:inst});
-      return ab;
-    }
-    ab={
-      triggerType:'voice',
-      triggerBinding:phrase,
-      slotId:row.slotId||row.actionId,
-      actionId:row.actionId||row.slotId,
-      enabled:true
-    };
-    if(inst) ab.actionInstanceId=inst;
-    list.push(ab);
-    detachPhraseFromOthers(m,phrase,{slotId:sid,actionInstanceId:inst});
-    return ab;
-  }
-
   function phraseOnlyOn(){
     var el=$('voiceKeysPhraseOnly');
     return !!(el&&el.checked);
@@ -561,68 +524,6 @@
       .replace(/"/g,'&quot;');
   }
 
-  function applyPhrase(row,phrase){
-    phrase=String(phrase||'').trim();
-    if(!row||!phrase) return false;
-    pickId=row.id;
-    //「我录的键」：先把序列写到当前习惯，口令再挂 runTargetSequence。
-    if(row.customKey&&row.matchMappingId){
-      try{
-        var mid=mappingId();
-        var st=global.OneToneState&&global.OneToneState.state;
-        if(st&&mid) st.selectedMappingId=String(mid);
-        var P=global.OneToneKeysChannelCommandPicker;
-        if(P&&typeof P.applyCustomKeyMatchAsRecognition==='function'){
-          P.applyCustomKeyMatchAsRecognition(row.matchMappingId);
-        }
-      }catch(_e){}
-    }
-    var Adapters=global.OneToneActionBindingAdapters;
-    var mid2=mappingId();
-    if(Adapters&&Adapters.voice&&Adapters.voice.upsert&&mid2){
-      Adapters.voice.upsert(mid2,row.actionId||row.slotId||'runTargetSequence',phrase,{
-        bindingRef:row.slotId||row.actionId||'runTargetSequence',
-        actionInstanceId:row.actionInstanceId||row.matchMappingId||''
-      });
-      try{
-        detachPhraseFromOthers(currentMapping(),phrase,{
-          slotId:row.slotId||row.actionId||'runTargetSequence',
-          actionInstanceId:row.actionInstanceId||row.matchMappingId||''
-        });
-      }catch(_d){}
-    }else{
-      ensureVoiceBinding(currentMapping(),row,phrase);
-      persist();
-    }
-    render();
-    try{
-      var scene=global.OneToneKeysSceneActionsPanel;
-      if(scene&&typeof scene.refresh==='function') scene.refresh();
-    }catch(_s){}
-    return true;
-  }
-
-  function openEditPopover(row){
-    if(!row) return;
-    var open=global.OneToneVoiceUiBindings&&global.OneToneVoiceUiBindings.openPhraseEditPopover;
-    if(typeof open==='function'){
-      var title=String(row.title||row.actionId||'').trim();
-      var presets=title&&!looksLikeId(title)?[title]:[];
-      open({
-        title:'录制专属口令',
-        sub:title?('用于「'+title+'」'):'说出后等于执行所选动作',
-        value:String(row.phrase||''),
-        presets:presets,
-        placeholder:'例如：继续',
-        onSave:function(phrase){ applyPhrase(row,phrase); }
-      });
-      return;
-    }
-    var next=global.prompt('录制专属口令',String(row.phrase||''));
-    if(next==null) return;
-    applyPhrase(row,next);
-  }
-
   function render(){
     var all=listRows(false);
     var filterOn=phraseOnlyOn();
@@ -644,8 +545,8 @@
           if(strong) strong.textContent='还没有习惯';
           if(body) body.textContent='先选一个正在编辑的习惯，再加载按键页里录好的序列。';
         }else{
-          if(strong) strong.textContent='还没有习惯可挂口令';
-          if(body) body.textContent='先选一个正在编辑的习惯。按键页的动作库会自动出现在这里。';
+          if(strong) strong.textContent='还没有习惯可浏览';
+          if(body) body.textContent='先选一个正在编辑的习惯。按键页的动作库会出现在这里；点选只认英雄，不在本页录口令。';
         }
       }
     }
@@ -668,7 +569,7 @@
     if(hint){
       hint.textContent=customOnly
         ?'点选一条序列加载到当前习惯 · 步骤与触发键在按键页改'
-        :'常用快捷键按场景浏览 · 改键位去按键页';
+        :'点选动作写入当前习惯英雄 · 改键位去按键页，口令去语音页';
     }
     var pickLbl=$('voiceKeysPickLbl');
     if(pickLbl){
@@ -680,12 +581,12 @@
     var addMore=$('btnVoiceKeysAddMore');
     if(addMore){
       addMore.hidden=!customOnly;
-      addMore.textContent=customOnly?'去按键页管理序列 →':'加口令';
+      addMore.textContent='去按键页管理序列 →';
     }
     var explainPane=$('voiceKeysExplainPane');
     if(explainPane) explainPane.hidden=true;
     var phrasePane=$('voiceKeysPhrasePane');
-    if(phrasePane) phrasePane.hidden=true; /* 我录的键不录专属口令 */
+    if(phrasePane) phrasePane.hidden=true; /* 本面不录口令：认英雄 / 加载序列 */
     var cats=$('voiceKeysCats');
     if(cats) cats.hidden=!!customOnly;
     if(!all.length) return;
@@ -790,14 +691,14 @@
               }
             }catch(_e){}
           }else{
-            // 软件自带：写入 cursor last-scheme，右侧本场景动作才能收录
+            // 软件自带：按动作语义写入对应通道英雄（input.* → voice，其余 Agent → cursor）
             try{
               var cur=currentMapping();
               var sceneClaim=global.OneToneKeysSceneActionsPanel;
               if(cur&&sceneClaim&&typeof sceneClaim.claimVoiceChannelMatch==='function'){
                 sceneClaim.claimVoiceChannelMatch(
                   cur,
-                  'cursor',
+                  claimChannelForRow(r),
                   String(r.slotId||r.actionId||''),
                   String(r.actionId||r.slotId||'')
                 );

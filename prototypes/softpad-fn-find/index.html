@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Soft Pad · Vibe 四件事 · 直白分类</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;650&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#0f1b2a; --mute:#5a6c80; --faint:#8494a6;
+  --line:rgba(26,45,74,.12); --wash:#f3f7fa; --bg:#e4ebf1;
+  --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-deep:#0c4a6e;
+  --cyan-soft:#e8f6fb; --cyan-bd:#9bc6da;
+  --ok:#15803d; --ok-soft:#e8f7ee; --warn:#b45309; --bad:#b91c1c;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.45;
+  background:
+    radial-gradient(900px 360px at 8% -10%,rgba(42,156,196,.12),transparent 55%),
+    radial-gradient(700px 280px at 92% 0%,rgba(15,95,122,.06),transparent 50%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+.top{
+  position:sticky;top:0;z-index:40;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 16px;background:#0f1820;color:#a8b6c6;font-size:12px;
+}
+.top strong{color:#fff;font-size:13.5px}
+.top em{font-style:normal;color:#7dd3fc;font-weight:650}
+.top a{color:#7dd3fc;font-weight:650;text-decoration:none;margin-left:auto}
+.page{width:min(1220px,100%);margin:0 auto;padding:16px 14px 64px}
+
+.brief{
+  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:14px;
+  padding:16px 18px;margin-bottom:12px;
+}
+.brief h1{margin:0 0 6px;font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.02em}
+.brief p{margin:0;color:var(--mute);font-size:13.5px;max-width:86ch}
+.brief .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.brief .chips span{
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);
+}
+.brief .chips span.bad{background:#fef2f2;color:var(--bad);border-color:#fecaca}
+.brief .chips span.warn{background:#fff7ed;color:var(--warn);border-color:#fdba74}
+
+.compare{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;
+}
+@media(max-width:880px){.compare{grid-template-columns:1fr}}
+.compare article{
+  background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+}
+.compare .old{border-color:#fecaca;background:#fffbfb}
+.compare .neu{border-color:var(--cyan-bd);background:#fbfeff}
+.compare h2{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.compare h3{margin:0 0 8px;font-size:15px;font-weight:800}
+.compare ul{margin:0;padding:0 0 0 1.1em;color:var(--mute);font-size:12.5px}
+.compare li{margin:0 0 4px}
+.compare b{color:var(--ink)}
+.compare .map{
+  margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);
+  font-size:11.5px;color:var(--mute);line-height:1.55;
+}
+.compare .map code{font-family:var(--mono);font-size:10.5px;color:var(--cyan-ink)}
+
+.jobs{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;
+}
+@media(max-width:960px){.jobs{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.jobs{grid-template-columns:1fr}}
+.jobs button{
+  appearance:none;text-align:left;cursor:pointer;
+  border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px 12px;
+  font:inherit;color:inherit;
+}
+.jobs button:hover{border-color:var(--cyan-bd);background:var(--cyan-soft)}
+.jobs button.is-on{border-color:var(--cyan);background:rgba(42,156,196,.12);box-shadow:0 0 0 2px rgba(42,156,196,.15)}
+.jobs .n{font-size:14px;font-weight:800;color:var(--ink)}
+.jobs .d{margin-top:4px;font-size:11.5px;color:var(--mute);line-height:1.4}
+.jobs .c{margin-top:8px;font-size:10.5px;font-weight:750;color:var(--cyan-ink)}
+
+.stage{
+  display:grid;grid-template-columns:minmax(200px,.7fr) minmax(360px,1.3fr);gap:12px;
+}
+@media(max-width:900px){.stage{grid-template-columns:1fr}}
+
+.pad-card,.fn-card{
+  background:#fff;border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 16px 36px rgba(19,32,44,.08);overflow:hidden;
+}
+.pad-card{padding:12px 14px}
+.pad-card .lbl{margin:0 0 8px;font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--faint);text-transform:uppercase}
+.pad-shell{
+  background:linear-gradient(160deg,#1a2433,#2a3544);border-radius:16px;padding:10px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:5px;max-width:240px;margin:0 auto;
+}
+.pad-shell button{
+  appearance:none;border:0;border-radius:9px;aspect-ratio:1;
+  background:linear-gradient(#fff,#eef2f6);font:inherit;font-size:10px;font-weight:700;
+  color:#334;cursor:pointer;padding:4px;line-height:1.15;
+}
+.pad-shell button small{display:block;font-size:8px;font-weight:650;color:#5a6c80}
+.pad-shell button.is-on{outline:2px solid rgba(42,156,196,.55);outline-offset:1px}
+.pad-shell button.is-hit{outline:2px solid rgba(21,128,61,.5);background:linear-gradient(#e8f7ee,#d1fae5)}
+.pad-card .now{
+  margin:12px 0 0;padding:10px 11px;border-radius:11px;background:var(--cyan-soft);border:1px solid var(--cyan-bd);
+}
+.pad-card .now .k{font-size:10px;font-weight:800;letter-spacing:.04em;color:var(--cyan-ink);text-transform:uppercase}
+.pad-card .now .v{margin:2px 0 0;font-size:14px;font-weight:800}
+.pad-card .now .s{margin:2px 0 0;font-size:11.5px;color:var(--mute)}
+
+.fn-card{display:flex;flex-direction:column;min-height:560px;max-height:min(82vh,740px)}
+.fn-sticky{flex:0 0 auto;border-bottom:1px solid var(--line);padding:12px 12px 10px;background:#fff}
+.fn-sticky h3{margin:0;font-size:14px;font-weight:800}
+.fn-sticky .ask{margin:2px 0 10px;font-size:12px;color:var(--mute)}
+.find{
+  display:flex;align-items:center;gap:8px;
+  border:1.5px solid var(--cyan-bd);border-radius:12px;background:#fff;
+  padding:0 11px;margin-bottom:8px;box-shadow:0 0 0 3px rgba(42,156,196,.08);
+}
+.find:focus-within{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(42,156,196,.16)}
+.find svg{color:var(--cyan-ink);opacity:.7}
+.find input{
+  flex:1;border:0;background:transparent;font:inherit;font-size:14px;font-weight:600;
+  padding:11px 0;outline:none;
+}
+.find kbd{
+  font-family:var(--mono);font-size:10px;font-weight:650;color:var(--faint);
+  border:1px solid var(--line);border-radius:5px;padding:2px 5px;background:var(--wash);
+}
+.pills{display:flex;flex-wrap:wrap;gap:5px}
+.pills button{
+  appearance:none;border:1px solid var(--line);background:var(--wash);color:var(--mute);
+  border-radius:999px;padding:5px 11px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+}
+.pills button:hover{border-color:var(--cyan-bd);color:var(--cyan-ink);background:var(--cyan-soft)}
+.pills button.is-on{background:var(--cyan);border-color:transparent;color:#fff}
+
+.fn-scroll{flex:1 1 auto;min-height:0;overflow:auto;padding:8px 10px 14px}
+.sec{
+  display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  margin:10px 2px 6px;font-size:11px;font-weight:750;color:var(--faint);
+}
+.sec:first-child{margin-top:2px}
+.sec b{color:var(--cyan-ink);font-weight:800;font-size:12px}
+.sec .why{font-weight:550;color:var(--mute)}
+
+.row{
+  display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:1px 10px;align-items:center;
+  width:100%;text-align:left;border:1px solid transparent;border-radius:11px;
+  padding:9px 9px;margin:0 0 3px;font:inherit;cursor:pointer;background:transparent;color:inherit;
+}
+.row:hover{background:var(--cyan-soft);border-color:rgba(42,156,196,.22)}
+.row.is-on{background:rgba(42,156,196,.14);border-color:rgba(42,156,196,.4)}
+.row .ico{
+  width:28px;height:28px;border-radius:8px;background:var(--wash);
+  display:grid;place-items:center;font-size:13px;color:var(--cyan-ink);
+}
+.row .nm{font-size:13px;font-weight:750}
+.row .ds{grid-column:2;font-size:11px;color:var(--mute);line-height:1.35}
+.row .trail{grid-column:3;grid-row:1/span 2;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.row .chord{font-family:var(--mono);font-size:10.5px;font-weight:650;color:var(--cyan-ink)}
+.row .chord.muted{font-family:var(--font);font-weight:550;color:var(--faint)}
+.badge{
+  display:inline-block;font-size:9.5px;font-weight:750;padding:1px 6px;border-radius:999px;
+  border:1px solid var(--line);color:var(--faint);background:#fff;
+}
+.badge.on-pad{border-color:#86efac;background:var(--ok-soft);color:var(--ok)}
+
+.fn-foot{
+  flex:0 0 auto;border-top:1px solid var(--line);padding:9px 12px;background:var(--wash);
+  font-size:11.5px;color:var(--mute);line-height:1.45;
+}
+.fn-foot b{color:var(--ink)}
+
+.spec{
+  margin-top:14px;background:#0f1820;color:#c5d0de;border-radius:14px;padding:14px 16px;font-size:12px;
+}
+.spec h3{margin:0 0 8px;font-size:12px;font-weight:800;color:#7dd3fc;letter-spacing:.06em;text-transform:uppercase}
+.spec table{width:100%;border-collapse:collapse;font-size:11.5px}
+.spec th,.spec td{text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}
+.spec th{color:#7dd3fc;font-weight:700;width:22%}
+.spec td{color:#e2e8f0;font-family:var(--mono);font-size:11px}
+.spec p{margin:10px 0 0;color:#94a3b8;line-height:1.5}
+</style>
+</head>
+<body>
+  <header class="top">
+    <strong>Vibe 四件事</strong>
+    <em>直白分类 · 解耦货架</em>
+    <span>Soft Pad 找命令 v3</span>
+    <a href="../softpad-page-mac-spec/index.html">← Mac 复刻规格</a>
+  </header>
+
+  <main class="page">
+    <section class="brief">
+      <h1>别说「语义目录」——按 vibe coding 四件事找</h1>
+      <p>
+        旧标签（说话 / 聊天 / 模式 / 查找 / 走动 / 工具 / 录制）切太碎，每组只有两三个命令；
+        「语义目录」又是工程师黑话。用户真正在问的是：<b>我对 AI 说话、指挥它干活、在编辑器里跳、管这一轮会话</b>。
+        货架按这四件事重拆；底层 Soft Pad 槽 / 语义动作仍可两套数据，但展示层只露用户词。
+      </p>
+      <div class="chips">
+        <span class="bad">禁：语义目录</span>
+        <span class="warn">禁：7+ 碎片标签 · 每类 &lt;4 条</span>
+        <span>要：4 个工作意图 · 每类够用</span>
+        <span>要：口语名 · 统一列表</span>
+      </div>
+    </section>
+
+    <div class="compare">
+      <article class="old">
+        <h2>解耦前</h2>
+        <h3>两套分类抢心智</h3>
+        <ul>
+          <li><b>本机</b>：说话·聊天·模式·查找·走动·工具·录制（7 片，每片很瘦）</li>
+          <li><b>语义</b>：控制输入·Agent·确认·会话·系统（另一套词）</li>
+          <li>同义命令两边各一份，用户要猜货架</li>
+        </ul>
+        <div class="map">用户听到「语义」≈ 听不懂该点哪里</div>
+      </article>
+      <article class="neu">
+        <h2>解耦后 · 用户词</h2>
+        <h3>Vibe 四件事</h3>
+        <ul>
+          <li><b>说给 AI</b> — 听写、发送、粘贴发、取消、暂停</li>
+          <li><b>指挥 AI</b> — 聚焦、Plan、批准/拒绝、中断、继续</li>
+          <li><b>在编辑器跳</b> — 搜文件、命令面板、终端、侧栏、撤销</li>
+          <li><b>这一轮会话</b> — 新对话、打开应用、切助手、布局</li>
+        </ul>
+        <div class="map">底层 <code>slot</code> / <code>semantic:*</code> 只作角标，不进主导航</div>
+      </article>
+    </div>
+
+    <div class="jobs" id="jobCards" aria-label="四件事"></div>
+
+    <div class="stage">
+      <aside class="pad-card">
+        <p class="lbl">左侧 Soft Pad</p>
+        <div class="pad-shell" id="pad"></div>
+        <div class="now" id="nowKey"></div>
+      </aside>
+
+      <section class="fn-card">
+        <div class="fn-sticky">
+          <h3>这颗键做什么？</h3>
+          <p class="ask" id="askLine">先选上面一件事，或直接搜</p>
+          <label class="find">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.2 3.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <input id="q" type="search" placeholder="听写、批准、终端、新对话、Ctrl+N…" autocomplete="off" />
+            <kbd>/</kbd>
+          </label>
+          <div class="pills" id="pills"></div>
+        </div>
+        <div class="fn-scroll" id="list"></div>
+        <div class="fn-foot">
+          <b>直白原则：</b>导航只用「说给 AI / 指挥 AI / 在编辑器跳 / 这一轮会话」。
+          禁止「语义目录」「控制输入」等词出现在主路径。同义只推一条。
+        </div>
+      </section>
+    </div>
+
+    <aside class="spec">
+      <h3>四件事 ← 旧标签 / 语义 映射</h3>
+      <table>
+        <tr><th>用户分组</th><td>合并进来的旧东西（实现映射，不展示）</td></tr>
+        <tr><th>说给 AI</th><td>旧「说话」+ 语义 input.*（start/pause/cancel/commit/send）+ pasteAndSend</td></tr>
+        <tr><th>指挥 AI</th><td>旧「模式」一部分 + 语义 agent.* / decision（focus/plan/approve/reject/interrupt/continue）</td></tr>
+        <tr><th>在编辑器跳</th><td>旧「查找·走动·工具」合并（搜文件/命令面板/终端/侧栏/浏览器/撤销/前进后退）</td></tr>
+        <tr><th>这一轮会话</th><td>旧「聊天·录制」+ 语义 session.new / app.open / app.shortcut / workspace + 切助手</td></tr>
+      </table>
+      <p>
+        目标密度：每组大约 5–10 条可见命令，而不是 7 组 × 2～3 条。
+        搜索始终跨四组；分组只是收窄，不是第二套产品名。
+      </p>
+    </aside>
+  </main>
+
+<script>
+(function () {
+  /** 用户可见的四件事——禁止工程师黑话 */
+  var JOBS = [
+    {
+      id: 'talk',
+      name: '说给 AI',
+      desc: '听写、发送、取消——把话送进模型',
+      why: 'Vibe 主循环：说 → 发 → 停'
+    },
+    {
+      id: 'steer',
+      name: '指挥 AI',
+      desc: '聚焦、Plan、批准、拒绝、中断',
+      why: '模型跑起来之后怎么管它'
+    },
+    {
+      id: 'jump',
+      name: '在编辑器跳',
+      desc: '搜文件、终端、侧栏、撤销',
+      why: '人还要自己在 IDE 里动手脚'
+    },
+    {
+      id: 'session',
+      name: '这一轮会话',
+      desc: '新对话、开应用、切助手、布局',
+      why: '换任务 / 换窗口，而不是改一句提示'
+    }
+  ];
+
+  /**
+   * 统一命令。job = 四件事之一。
+   * alias: 同义簇；prefer: 同簇首选（用户只见一条）
+   * 不再有「语义目录」入口——sem 只是数据来源角标（可选，默认隐藏）
+   */
+  var ALL = [
+    // —— 说给 AI ——
+    { id: 'pad:ptt', job: 'talk', alias: 'dictation', prefer: true, name: '开始听写', ds: '按住说，松开结束', chord: 'Ctrl+Shift+D', icon: '🎙', tags: '听写 说话 开麦', hot: true },
+    { id: 'sem:input.start', job: 'talk', alias: 'dictation', prefer: false, name: '开始听写（通用）', ds: '可挂到语音/按键等入口', chord: '', icon: '◇', tags: '听写', hot: false },
+    { id: 'pad:send', job: 'talk', alias: 'send', prefer: true, name: '发送', ds: 'Enter 发出；听写中则先结束', chord: 'Enter', icon: '↵', tags: '发送 结束', hot: true },
+    { id: 'sem:input.send', job: 'talk', alias: 'send', prefer: false, name: '完成并发送', ds: '听写结束并发送', chord: '', icon: '◇', tags: '发送', hot: false },
+    { id: 'sem:input.commit', job: 'talk', alias: 'send', prefer: false, name: '写完先不发', ds: '结束听写，文字留在输入框', chord: '', icon: '◇', tags: '完成 提交', hot: false },
+    { id: 'pad:paste', job: 'talk', alias: '', prefer: true, name: '粘贴并发送', ds: '粘贴剪贴板后 Enter', chord: '', icon: '📋', tags: '粘贴 发送', hot: true },
+    { id: 'pad:cancel', job: 'talk', alias: 'cancel', prefer: true, name: '取消', ds: 'Esc · 取消输入或拒绝', chord: 'Esc', icon: '✕', tags: '取消', hot: true },
+    { id: 'sem:input.cancel', job: 'talk', alias: 'cancel', prefer: false, name: '取消本轮', ds: '取消当前这一轮', chord: '', icon: '◇', tags: '取消', hot: false },
+    { id: 'sem:input.pause', job: 'talk', alias: '', prefer: true, name: '暂停听写', ds: '先停嘴，稍后再继续', chord: '', icon: '⏸', tags: '暂停 听写', hot: false },
+
+    // —— 指挥 AI ——
+    { id: 'pad:focus', job: 'steer', alias: 'focus', prefer: true, name: '聚焦 AI 输入框', ds: '光标回到 Agent 输入区', chord: '', icon: '✧', tags: '聚焦 召唤', hot: true },
+    { id: 'sem:agent.focus', job: 'steer', alias: 'focus', prefer: false, name: '召唤 Agent', ds: '聚焦当前 Agent', chord: '', icon: '◇', tags: '聚焦', hot: false },
+    { id: 'pad:plan', job: 'steer', alias: '', prefer: true, name: '先想方案（Plan）', ds: '先出计划再改代码', chord: 'Ctrl+.', icon: '◎', tags: 'plan 计划', hot: true },
+    { id: 'pad:agent', job: 'steer', alias: '', prefer: true, name: '直接改代码（Agent）', ds: '切到可改文件的模式', chord: '', icon: '⚙', tags: 'agent 模式', hot: true },
+    { id: 'sem:agent.approve', job: 'steer', alias: '', prefer: true, name: '批准', ds: '同意当前请求', chord: '', icon: '✓', tags: '批准 同意 确认', hot: true },
+    { id: 'sem:agent.reject', job: 'steer', alias: '', prefer: true, name: '拒绝', ds: '否决当前请求', chord: '', icon: '✗', tags: '拒绝', hot: true },
+    { id: 'sem:agent.interrupt', job: 'steer', alias: '', prefer: true, name: '停下 AI', ds: '中断正在生成', chord: '', icon: '■', tags: '中断 停止', hot: true },
+    { id: 'sem:agent.continue', job: 'steer', alias: '', prefer: true, name: '让它继续', ds: '发送「继续」', chord: '', icon: '▶', tags: '继续', hot: false },
+    { id: 'sem:agent.respond', job: 'steer', alias: '', prefer: true, name: '回答 AI 的提问', ds: '有选择题/填空时作答', chord: '', icon: '💬', tags: '回答', hot: false },
+
+    // —— 在编辑器跳 ——
+    { id: 'pad:qo', job: 'jump', alias: '', prefer: true, name: '搜文件打开', ds: 'Ctrl+P 快速打开', chord: 'Ctrl+P', icon: '⌕', tags: '搜索 文件', hot: true },
+    { id: 'pad:cmd', job: 'jump', alias: '', prefer: true, name: '命令面板', ds: 'Ctrl+Shift+P', chord: 'Ctrl+Shift+P', icon: '⌘', tags: '命令', hot: true },
+    { id: 'pad:term', job: 'jump', alias: '', prefer: true, name: '打开终端', ds: 'Ctrl+`', chord: 'Ctrl+`', icon: '>_', tags: '终端', hot: true },
+    { id: 'pad:side', job: 'jump', alias: '', prefer: true, name: '开关侧栏', ds: 'Ctrl+B', chord: 'Ctrl+B', icon: '▤', tags: '侧栏', hot: false },
+    { id: 'pad:back', job: 'jump', alias: '', prefer: true, name: '后退', ds: '编辑位置后退', chord: 'Alt+←', icon: '←', tags: '后退', hot: false },
+    { id: 'pad:fwd', job: 'jump', alias: '', prefer: true, name: '前进', ds: '编辑位置前进', chord: 'Alt+→', icon: '→', tags: '前进', hot: false },
+    { id: 'pad:browser', job: 'jump', alias: '', prefer: true, name: '新浏览器标签', ds: 'Ctrl+T', chord: 'Ctrl+T', icon: '🌐', tags: '浏览器', hot: false },
+    { id: 'pad:undo', job: 'jump', alias: '', prefer: true, name: '撤销', ds: 'Ctrl+Z', chord: 'Ctrl+Z', icon: '↶', tags: '撤销', hot: true },
+    { id: 'pad:settings', job: 'jump', alias: '', prefer: true, name: '打开设置', ds: 'Ctrl+,', chord: 'Ctrl+,', icon: '···', tags: '设置', hot: false },
+
+    // —— 这一轮会话 ——
+    { id: 'pad:new', job: 'session', alias: 'newchat', prefer: true, name: '新建对话', ds: '开一个新的 AI 聊天', chord: 'Ctrl+N', icon: '＋', tags: '新对话 新会话', hot: true },
+    { id: 'sem:session.new', job: 'session', alias: 'newchat', prefer: false, name: '新建任务', ds: '跨入口新会话', chord: '', icon: '◇', tags: '新任务', hot: false },
+    { id: 'pad:chat', job: 'session', alias: '', prefer: true, name: '打开侧边聊天', ds: '侧栏 Chat', chord: 'Ctrl+L', icon: '💬', tags: '聊天', hot: false },
+    { id: 'pad:switch', job: 'session', alias: '', prefer: true, name: '切换助手', ds: '换一个 Agent / 模型入口', chord: '', icon: '⇄', tags: '切换 助手', hot: true },
+    { id: 'sem:app.open', job: 'session', alias: '', prefer: true, name: '打开目标应用', ds: '打开或聚焦习惯里的应用', chord: '', icon: '▣', tags: '打开应用', hot: true },
+    { id: 'sem:app.shortcut', job: 'session', alias: '', prefer: true, name: '发应用快捷键', ds: '前台已是目标应用时发组合键', chord: '', icon: '⌨', tags: '快捷键', hot: false },
+    { id: 'sem:workspace', job: 'session', alias: '', prefer: true, name: '恢复工作区布局', ds: '回到保存过的窗口布局', chord: '', icon: '▦', tags: '布局 工作区', hot: false },
+    { id: 'pad:seq', job: 'session', alias: '', prefer: true, name: '跑我录过的键', ds: '执行按键页录制的序列', chord: '', icon: '☰', tags: '录制 序列', hot: false },
+
+    { id: 'clear', job: '', alias: '', prefer: true, name: '不绑定', ds: '这颗键暂时不做事', chord: '', icon: '□', tags: '清空 未绑定', hot: false }
+  ];
+
+  var KEYS = [
+    { id: 'up', label: '↑', name: '', cmd: '' },
+    { id: 'dn', label: '↓', name: '', cmd: '' },
+    { id: 'lf', label: '←', name: '', cmd: '' },
+    { id: 'rt', label: '→', name: '', cmd: '' },
+    { id: '0', label: '0', name: '听写', cmd: 'pad:ptt' },
+    { id: '1', label: '1', name: '发送', cmd: 'pad:send' },
+    { id: '2', label: '2', name: '', cmd: '' },
+    { id: '3', label: '3', name: '取消', cmd: 'pad:cancel' },
+    { id: '4', label: '4', name: '', cmd: '' },
+    { id: '5', label: '5', name: '新对话', cmd: 'pad:new' },
+    { id: '6', label: '6', name: '', cmd: '' },
+    { id: '7', label: '7', name: 'Plan', cmd: 'pad:plan' },
+    { id: '8', label: '8', name: '', cmd: '' },
+    { id: '9', label: '9', name: '搜文件', cmd: 'pad:qo' },
+    { id: 'dot', label: '·', name: '', cmd: '' },
+    { id: 'ent', label: '↵', name: '', cmd: '' }
+  ];
+
+  var state = { job: 'talk', q: '', focusKey: '0', selected: 'pad:ptt' };
+
+  var jobCards = document.getElementById('jobCards');
+  var pills = document.getElementById('pills');
+  var listEl = document.getElementById('list');
+  var padEl = document.getElementById('pad');
+  var nowEl = document.getElementById('nowKey');
+  var qEl = document.getElementById('q');
+  var askLine = document.getElementById('askLine');
+
+  function jobMeta(id) {
+    return JOBS.find(function (j) { return j.id === id; });
+  }
+  function keyById(id) {
+    return KEYS.find(function (k) { return k.id === id; });
+  }
+  function padKeyForCmd(cmdId) {
+    return KEYS.find(function (k) { return k.cmd === cmdId; });
+  }
+  function countJob(id) {
+    var seen = {};
+    var n = 0;
+    ALL.forEach(function (c) {
+      if (c.job !== id) return;
+      if (!c.prefer && c.alias) return;
+      if (seen[c.alias || c.id]) return;
+      seen[c.alias || c.id] = 1;
+      n++;
+    });
+    return n;
+  }
+  function matchQ(c, q) {
+    if (!q) return true;
+    var blob = (c.name + ' ' + c.ds + ' ' + (c.chord || '') + ' ' + (c.tags || '')).toLowerCase();
+    return blob.indexOf(q.toLowerCase()) >= 0;
+  }
+  function collapse(rows) {
+    var byA = {};
+    var out = [];
+    rows.forEach(function (c) {
+      if (!c.alias) {
+        out.push(c);
+        return;
+      }
+      if (!byA[c.alias]) byA[c.alias] = [];
+      byA[c.alias].push(c);
+    });
+    Object.keys(byA).forEach(function (a) {
+      var g = byA[a];
+      out.push(g.find(function (x) { return x.prefer; }) || g[0]);
+    });
+    return out;
+  }
+
+  function paintJobs() {
+    jobCards.innerHTML = JOBS.map(function (j) {
+      return (
+        '<button type="button" data-job="' +
+        j.id +
+        '" class="' +
+        (state.job === j.id ? 'is-on' : '') +
+        '"><div class="n">' +
+        j.name +
+        '</div><div class="d">' +
+        j.desc +
+        '</div><div class="c">' +
+        countJob(j.id) +
+        ' 个常用动作</div></button>'
+      );
+    }).join('');
+  }
+
+  function paintPills() {
+    pills.innerHTML =
+      '<button type="button" data-job="" class="' +
+      (state.job === '' ? 'is-on' : '') +
+      '">全部</button>' +
+      JOBS.map(function (j) {
+        return (
+          '<button type="button" data-job="' +
+          j.id +
+          '" class="' +
+          (state.job === j.id ? 'is-on' : '') +
+          '">' +
+          j.name +
+          '</button>'
+        );
+      }).join('');
+  }
+
+  function paintPad() {
+    var q = state.q.trim().toLowerCase();
+    var hits = {};
+    if (q) {
+      collapse(ALL.filter(function (c) { return matchQ(c, q); })).forEach(function (c) {
+        var k = padKeyForCmd(c.id);
+        if (k) hits[k.id] = 1;
+      });
+    }
+    padEl.innerHTML = KEYS.map(function (k) {
+      var cls = k.id === state.focusKey ? ' is-on' : '';
+      if (hits[k.id]) cls += ' is-hit';
+      return (
+        '<button type="button" data-key="' +
+        k.id +
+        '" class="' +
+        cls.trim() +
+        '">' +
+        k.label +
+        (k.name ? '<small>' + k.name + '</small>' : '') +
+        '</button>'
+      );
+    }).join('');
+    var fk = keyById(state.focusKey);
+    nowEl.innerHTML =
+      '<div class="k">正在编辑</div><div class="v">数字 ' +
+      fk.label +
+      '</div><div class="s">当前：' +
+      (fk.name || '未绑定') +
+      '</div>';
+  }
+
+  function rowHtml(c) {
+    var k = padKeyForCmd(c.id);
+    return (
+      '<button type="button" class="row' +
+      (c.id === state.selected ? ' is-on' : '') +
+      '" data-id="' +
+      c.id +
+      '"><span class="ico">' +
+      c.icon +
+      '</span><span class="nm">' +
+      c.name +
+      '</span><span class="ds">' +
+      c.ds +
+      '</span><span class="trail">' +
+      (k
+        ? '<span class="badge on-pad">数字 ' + k.label + '</span>'
+        : '<span class="badge">可贴</span>') +
+      (c.chord
+        ? '<span class="chord">' + c.chord + '</span>'
+        : '<span class="chord muted">—</span>') +
+      '</span></button>'
+    );
+  }
+
+  function paintList() {
+    var q = state.q.trim();
+    var j = jobMeta(state.job);
+    askLine.textContent = q
+      ? '搜索全库 · 四件事都会找'
+      : j
+        ? j.why + ' · ' + j.desc
+        : '浏览全部 · 或点上方四件事收窄';
+
+    var rows = ALL.filter(function (c) {
+      if (c.id === 'clear') return !q;
+      if (q) return matchQ(c, q);
+      if (state.job && c.job !== state.job) return false;
+      return true;
+    });
+    rows = collapse(rows);
+
+    if (!rows.length) {
+      listEl.innerHTML = '<div style="margin:28px;text-align:center;color:var(--mute)"><b style="color:var(--ink)">没有匹配</b><br>换词：听写、批准、终端、新对话</div>';
+      paintPad();
+      return;
+    }
+
+    if (q) {
+      listEl.innerHTML =
+        '<div class="sec"><b>找到 ' +
+        rows.length +
+        ' 条</b><span class="why">点一下贴到数字 ' +
+        keyById(state.focusKey).label +
+        '</span></div>' +
+        rows.map(rowHtml).join('');
+      paintPad();
+      return;
+    }
+
+    // 无搜索：按当前 job 列出；若「全部」则分四段
+    if (state.job) {
+      var hot = rows.filter(function (c) { return c.hot && c.id !== 'clear'; });
+      var rest = rows.filter(function (c) { return !c.hot && c.id !== 'clear'; });
+      var clear = rows.find(function (c) { return c.id === 'clear'; });
+      var html = '';
+      if (hot.length) {
+        html +=
+          '<div class="sec"><b>先用这些</b><span class="why">' +
+          (j ? j.name : '') +
+          ' · 高频</span></div>' +
+          hot.map(rowHtml).join('');
+      }
+      if (rest.length) {
+        html +=
+          '<div class="sec"><b>还有</b><span class="why">' +
+          rest.length +
+          ' 条</span></div>' +
+          rest.map(rowHtml).join('');
+      }
+      if (clear) html += '<div class="sec"><b>其它</b></div>' + rowHtml(clear);
+      listEl.innerHTML = html;
+    } else {
+      listEl.innerHTML = JOBS.map(function (job) {
+        var subset = rows.filter(function (c) { return c.job === job.id; });
+        if (!subset.length) return '';
+        return (
+          '<div class="sec"><b>' +
+          job.name +
+          '</b><span class="why">' +
+          job.desc +
+          '</span></div>' +
+          subset.map(rowHtml).join('')
+        );
+      }).join('') +
+        (rows.find(function (c) { return c.id === 'clear'; })
+          ? '<div class="sec"><b>其它</b></div>' + rowHtml(rows.find(function (c) { return c.id === 'clear'; }))
+          : '');
+    }
+    paintPad();
+  }
+
+  function setJob(id) {
+    state.job = id;
+    paintJobs();
+    paintPills();
+    paintList();
+  }
+
+  function applyCmd(cmdId) {
+    var cmd = ALL.find(function (c) { return c.id === cmdId; });
+    if (!cmd) return;
+    state.selected = cmdId;
+    KEYS.forEach(function (k) {
+      if (k.cmd === cmdId) {
+        k.cmd = '';
+        k.name = '';
+      }
+    });
+    var fk = keyById(state.focusKey);
+    if (fk && cmdId !== 'clear') {
+      fk.cmd = cmdId;
+      fk.name = cmd.name.slice(0, 4);
+    } else if (fk) {
+      fk.cmd = '';
+      fk.name = '';
+    }
+    paintList();
+  }
+
+  jobCards.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-job]');
+    if (!b) return;
+    setJob(b.getAttribute('data-job'));
+  });
+  pills.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-job]');
+    if (!b) return;
+    setJob(b.getAttribute('data-job'));
+  });
+  padEl.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-key]');
+    if (!b) return;
+    state.focusKey = b.getAttribute('data-key');
+    var fk = keyById(state.focusKey);
+    if (fk && fk.cmd) state.selected = fk.cmd;
+    paintList();
+  });
+  listEl.addEventListener('click', function (e) {
+    var r = e.target.closest('[data-id]');
+    if (!r) return;
+    applyCmd(r.getAttribute('data-id'));
+  });
+  qEl.addEventListener('input', function () {
+    state.q = qEl.value;
+    paintList();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === '/' && document.activeElement !== qEl && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      qEl.focus();
+    }
+  });
+
+  paintJobs();
+  paintPills();
+  paintList();
+})();
+</script>
+</body>
+</html>

@@ -232,8 +232,10 @@
   };
 
   /**
-   * trigger = { bindKey: 'shakeHead', actionToken: 'agent:input.cancel' }
+   * trigger = { bindKey, actionToken, mappingScoped? }
    * or string actionToken with opts.bindKey
+   * mappingScoped:true → write mapping.cameraOverride only (scene edit).
+   * UI must call this upsert; do not call Cam.persistBindAction* from pages.
    */
   var cameraAdapter = {
     channel: 'camera',
@@ -248,13 +250,20 @@
       var token =
         (trigger && typeof trigger === 'object' && trigger.actionToken) ||
         (typeof trigger === 'string' ? trigger : null);
+      var mappingScoped = !!(
+        trigger &&
+        typeof trigger === 'object' &&
+        trigger.mappingScoped
+      );
       if (!token) {
         var A = global.OneToneAgentActions;
         token = A && A.agentActionToken ? A.agentActionToken(actionId) : 'agent:' + actionId;
       }
       var Cam = global.OneToneCameraPresenceActions;
+      if (mappingScoped && Cam && typeof Cam.persistBindActionMappingScoped === 'function') {
+        return Promise.resolve(Cam.persistBindActionMappingScoped(mappingId, bindKey, token));
+      }
       if (Cam && typeof Cam.persistBindAction === 'function') {
-        // persistBindAction already assertBindable
         return Promise.resolve(Cam.persistBindAction(mappingId, bindKey, token));
       }
       return withBindable('camera', mappingId, actionId, function () {

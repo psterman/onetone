@@ -43,8 +43,7 @@ assert.ok(
   'commit heals leftover for any slot default icon'
 );
 assert.ok(
-  /applySoftPadCapabilityPick[\s\S]*clipboardPaste|clear leftover/.test(pad) ||
-    pad.indexOf('editDraft.uiIconId = SLOT_DEFAULT_ICON[id]') >= 0,
+  /function applySoftPadCapabilityPick[\s\S]{0,900}SLOT_DEFAULT_ICON\[id\]/.test(pad),
   'capability pick forces slot default icon when leftover'
 );
 assert.ok(pad.indexOf("slotId) === 'pasteAndSend'") >= 0, 'pasteAndSend effect tip');

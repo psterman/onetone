@@ -2310,11 +2310,38 @@
    * Voice 软件自带 / 屏幕按钮 / 手势：把选中命令写到当前习惯 last-scheme，
    * 右侧「本场景动作」按通道才能收录。
    */
+  function normalizeClaimChannel(channel, bindingRef, actionId) {
+    var ch = String(channel || '').trim();
+    var ref = String(bindingRef || '').trim();
+    var act = String(actionId || '').trim();
+    if (ref.indexOf('semantic:camera:') === 0 || ch === 'camera' || ch === 'gesture') {
+      return 'camera';
+    }
+    if (ref.indexOf('semantic:softPad:') === 0 || ch === 'softPad' || ch === 'softpad') {
+      return 'softPad';
+    }
+    if (ch === 'ime') return 'ime';
+    if (ch === 'key' || ch === 'customKey') return 'key';
+    if (ch === 'voice') return 'voice';
+    if (
+      act.indexOf('input.') === 0 ||
+      ref.indexOf('input.') === 0 ||
+      act === 'pushToTalk' ||
+      ref === 'pushToTalk'
+    ) {
+      return 'voice';
+    }
+    if (ch === 'cursor' || ch === 'agent') return 'cursor';
+    // Agent lifecycle / app shortcuts from the Keys catalogue.
+    if (ref || act) return ch || 'cursor';
+    return ch;
+  }
+
   function claimVoiceChannelMatch(m, channel, bindingRef, actionId) {
     if (!m || !m.id) return false;
-    channel = String(channel || '').trim();
     bindingRef = String(bindingRef || '').trim();
     actionId = String(actionId || '').trim();
+    channel = normalizeClaimChannel(channel, bindingRef, actionId);
     if (!channel) return false;
     if (!bindingRef && !actionId) return false;
     var kind = 'action';

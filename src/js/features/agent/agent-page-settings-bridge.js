@@ -1,5 +1,5 @@
 /**
- * Parent ↔ Agent iframe: lights + connect (三标签页) ↔ Soft Pad IPC.
+ * Parent ↔ Agent iframe: Soft Pad 管理（顶栏 / 灯效 / 接入）↔ Soft Pad IPC.
  * Preview stays on ot-agent-preview; this bridge owns settings reads/writes.
  */
 (function (root) {
@@ -16,6 +16,26 @@
     Codex: 'codex',
     MiniMax: 'minimax'
   };
+
+  /** Soft Pad topbar / 接入 roster — keep in sync with TOPBAR_LIGHT_CANDIDATES. */
+  var TOPBAR_CORE = [
+    { agent: 'codex', label: 'Codex' },
+    { agent: 'claude', label: 'Claude' },
+    { agent: 'cursor', label: 'Cursor' },
+    { agent: 'copilotCli', label: 'Copilot' },
+    { agent: 'copilotVscode', label: 'Copilot VS Code' },
+    { agent: 'gemini', label: 'Gemini' },
+    { agent: 'minimax', label: 'MiniMax' },
+    { agent: 'workbuddy', label: 'WorkBuddy' },
+    { agent: 'trae', label: 'Trae Work' },
+    { agent: 'traeCode', label: 'Trae Code' },
+    { agent: 'windsurf', label: 'Windsurf' },
+    { agent: 'qoder', label: 'Qoder' },
+    { agent: 'cline', label: 'Cline' },
+    { agent: 'roo', label: 'Roo' },
+    { agent: 'opencode', label: 'OpenCode' },
+    { agent: 'aider', label: 'Aider' }
+  ];
 
   var pollTimer = 0;
   var inFlight = false;
@@ -75,20 +95,47 @@
 
   function agentLightEnabled(pad, agent) {
     pad = pad || {};
-    agent = String(agent || '').toLowerCase();
-    if (agent === 'claude') return !!pad.claudeStatusLightsEnabled;
-    if (agent === 'cursor') return !!pad.cursorStatusLightsEnabled;
-    if (agent === 'minimax') return !!pad.minimaxStatusLightsEnabled;
+    agent = String(agent || '');
+    var low = agent.toLowerCase();
+    if (low === 'claude') return !!pad.claudeStatusLightsEnabled;
+    if (low === 'cursor') return !!pad.cursorStatusLightsEnabled;
+    if (low === 'copilotcli') return !!pad.copilotStatusLightsEnabled;
+    if (low === 'copilotvscode') return !!pad.copilotVscodeStatusLightsEnabled;
+    if (low === 'gemini') return !!pad.geminiStatusLightsEnabled;
+    if (low === 'minimax') return !!pad.minimaxStatusLightsEnabled;
+    if (low === 'workbuddy') return !!pad.workbuddyStatusLightsEnabled;
+    if (low === 'trae') return !!pad.traeStatusLightsEnabled;
+    if (low === 'traecode') return !!pad.traeCodeStatusLightsEnabled;
+    if (low === 'windsurf') return !!pad.windsurfStatusLightsEnabled;
+    if (low === 'qoder') return !!pad.qoderStatusLightsEnabled;
+    if (low === 'cline') return !!pad.clineStatusLightsEnabled;
+    if (low === 'roo') return !!pad.rooStatusLightsEnabled;
+    if (low === 'opencode') return !!pad.opencodeStatusLightsEnabled;
+    if (low === 'aider') return !!pad.aiderStatusLightsEnabled;
     return !!pad.codexStatusLightsEnabled;
   }
 
   function setAgentLightLocal(pad, agent, enabled) {
     if (!pad) return;
-    agent = String(agent || '').toLowerCase();
-    if (agent === 'claude') pad.claudeStatusLightsEnabled = !!enabled;
-    else if (agent === 'cursor') pad.cursorStatusLightsEnabled = !!enabled;
-    else if (agent === 'minimax') pad.minimaxStatusLightsEnabled = !!enabled;
-    else pad.codexStatusLightsEnabled = !!enabled;
+    agent = String(agent || '');
+    var low = agent.toLowerCase();
+    var on = !!enabled;
+    if (low === 'claude') pad.claudeStatusLightsEnabled = on;
+    else if (low === 'cursor') pad.cursorStatusLightsEnabled = on;
+    else if (low === 'copilotcli') pad.copilotStatusLightsEnabled = on;
+    else if (low === 'copilotvscode') pad.copilotVscodeStatusLightsEnabled = on;
+    else if (low === 'gemini') pad.geminiStatusLightsEnabled = on;
+    else if (low === 'minimax') pad.minimaxStatusLightsEnabled = on;
+    else if (low === 'workbuddy') pad.workbuddyStatusLightsEnabled = on;
+    else if (low === 'trae') pad.traeStatusLightsEnabled = on;
+    else if (low === 'traecode') pad.traeCodeStatusLightsEnabled = on;
+    else if (low === 'windsurf') pad.windsurfStatusLightsEnabled = on;
+    else if (low === 'qoder') pad.qoderStatusLightsEnabled = on;
+    else if (low === 'cline') pad.clineStatusLightsEnabled = on;
+    else if (low === 'roo') pad.rooStatusLightsEnabled = on;
+    else if (low === 'opencode') pad.opencodeStatusLightsEnabled = on;
+    else if (low === 'aider') pad.aiderStatusLightsEnabled = on;
+    else pad.codexStatusLightsEnabled = on;
   }
 
   function persistPad() {
@@ -156,6 +203,7 @@
     var opacity = Number(pad.ambientOpacity);
     if (!isFinite(opacity)) opacity = 100;
     opacity = Math.max(0, Math.min(100, Math.round(opacity)));
+    var statusByKind = opts.statusByKind || {};
     return {
       agentKind: kind,
       agentName: app,
@@ -173,7 +221,45 @@
         return Math.max(40, Math.min(100, Math.round(so)));
       })(),
       keyLights: {
-        enabled: agentLightEnabled(pad, kind)
+        enabled: agentLightEnabled(pad, kind),
+        scheme: (function () {
+          var tpl = String(pad.lightTemplate || '');
+          if (tpl === 'multi') return 'multi';
+          if (tpl === 'single') return 'single';
+          return undefined;
+        })(),
+        preset: (function () {
+          var p = String(pad.keyLightPreset || 'default');
+          if (p === 'high_contrast') p = 'highContrast';
+          if (p === 'cool' || p === 'warm' || p === 'highContrast') return p;
+          return 'default';
+        })()
+      },
+      topbar: {
+        agents: TOPBAR_CORE.map(function (c) {
+          var st = statusByKind[c.agent] || null;
+          var p = 'not_configured';
+          var pl = '未接入';
+          var prim = null;
+          var pth = '';
+          if (Conn && Conn.phaseOf) {
+            p = Conn.phaseOf(c.agent, st, {}) || 'not_configured';
+            pl = Conn.phaseLabel ? Conn.phaseLabel(p) : p;
+            prim = Conn.primaryAction ? Conn.primaryAction(c.agent, p) : null;
+            pth = Conn.pathFromStatus ? Conn.pathFromStatus(st) : '';
+          }
+          return {
+            agent: c.agent,
+            label: c.label,
+            enabled: agentLightEnabled(pad, c.agent),
+            phase: p,
+            phaseLabel: pl,
+            badgeClass: badgeClassForPhase(p),
+            primaryAction: prim,
+            path: pth || '',
+            jobLead: connectJobLead(p, c.label)
+          };
+        })
       },
       connect: {
         phase: phase,
@@ -238,19 +324,35 @@
     var pad = (m && m.codexMicroPad) || {};
     var Conn = root.OneToneSoftPadConnect;
     var kind = selectedKind;
-    var statusP =
-      Conn && Conn.fetchStatus
-        ? Conn.fetchStatus(kind).catch(function () {
-            return null;
+    var statusByKind = {};
+    var rosterP = Promise.all(
+      TOPBAR_CORE.map(function (c) {
+        if (!(Conn && Conn.fetchStatus)) {
+          return Promise.resolve({ agent: c.agent, status: null });
+        }
+        return Conn.fetchStatus(c.agent)
+          .then(function (st) {
+            return { agent: c.agent, status: st };
           })
-        : Promise.resolve(null);
-    return Promise.all([statusP, fetchCursorActivity(), fetchKeyConfigured(kind)])
+          .catch(function () {
+            return { agent: c.agent, status: null };
+          });
+      })
+    ).then(function (rows) {
+      rows.forEach(function (row) {
+        statusByKind[row.agent] = row.status;
+      });
+      return statusByKind;
+    });
+    return Promise.all([rosterP, fetchCursorActivity(), fetchKeyConfigured(kind)])
       .then(function (parts) {
+        var byKind = parts[0] || {};
         var payload = projectSettingsSnapshot({
           kind: kind,
           app: selectedApp,
           pad: pad,
-          status: parts[0],
+          status: byKind[kind] || null,
+          statusByKind: byKind,
           cursorActivity: parts[1],
           keySet: parts[2]
         });
@@ -351,11 +453,36 @@
     });
   }
 
-  function setAgentLights(enabled) {
+  function setKeyLightScheme(patch) {
+    var m = resolveMapping();
+    var pad = m && m.codexMicroPad;
+    if (!pad) return Promise.resolve(null);
+    patch = patch || {};
+    var scheme = String(patch.scheme || '');
+    if (scheme === 'multi') pad.lightTemplate = 'multi';
+    else if (scheme === 'single') pad.lightTemplate = 'single';
+    else if (scheme === 'off') pad.lightTemplate = 'bezel';
+    if (patch.preset != null) {
+      var p = String(patch.preset || 'default');
+      if (p === 'high_contrast') p = 'highContrast';
+      if (p !== 'cool' && p !== 'warm' && p !== 'highContrast') p = 'default';
+      pad.keyLightPreset = p;
+      pad.statusColors = {};
+    }
+    try {
+      var Preview = root.OneToneAgentPagePreviewBridge;
+      if (Preview && Preview.refresh) Preview.refresh();
+    } catch (_) {}
+    return Promise.resolve(persistPad()).then(function () {
+      return refresh();
+    });
+  }
+
+  function setAgentLights(enabled, agentOpt) {
     var m = resolveMapping();
     var pad = m && m.codexMicroPad;
     if (!m || !m.id || !pad) return Promise.resolve(null);
-    var agent = selectedKind || 'codex';
+    var agent = String(agentOpt || selectedKind || 'codex').trim() || 'codex';
     setAgentLightLocal(pad, agent, enabled);
     return invoke('cmd_soft_pad_agent_lights_set', {
       mappingId: String(m.id),
@@ -393,9 +520,9 @@
     }
   }
 
-  function copyHookConfig() {
+  function copyHookConfig(kindOpt) {
     var Conn = root.OneToneSoftPadConnect;
-    var kind = selectedKind;
+    var kind = String(kindOpt || selectedKind || 'cursor').trim() || selectedKind;
     var p =
       Conn && Conn.fetchStatus
         ? Conn.fetchStatus(kind)
@@ -416,10 +543,11 @@
       });
   }
 
-  function installConnect() {
+  function installConnect(kindOpt) {
     var Conn = root.OneToneSoftPadConnect;
+    var kind = String(kindOpt || selectedKind || 'cursor').trim() || selectedKind;
     if (!Conn || !Conn.installKind) return refresh();
-    return Conn.installKind(selectedKind)
+    return Conn.installKind(kind)
       .then(function () {
         return refresh();
       })
@@ -490,7 +618,11 @@
       return;
     }
     if (cmd === 'setAgentLights' || cmd === 'setKeyLights') {
-      setAgentLights(!!data.enabled);
+      setAgentLights(!!data.enabled, data.agent || data.kind);
+      return;
+    }
+    if (cmd === 'setKeyLightScheme') {
+      setKeyLightScheme(data.patch || data);
       return;
     }
     if (cmd === 'refreshConnect' || cmd === 'refresh') {
@@ -498,11 +630,11 @@
       return;
     }
     if (cmd === 'copyHookConfig') {
-      copyHookConfig();
+      copyHookConfig(data.agent || data.kind);
       return;
     }
     if (cmd === 'installConnect') {
-      installConnect();
+      installConnect(data.agent || data.kind);
       return;
     }
     if (cmd === 'enableCursorActivity') {
@@ -557,10 +689,12 @@
     start: start,
     stop: stop,
     selectAgent: selectAgent,
+    getSelectedKind: function () { return selectedKind; },
     setPadEnabled: setPadEnabled,
     setAmbient: setAmbient,
     setScreenOpacity: setScreenOpacity,
     setAgentLights: setAgentLights,
+    setKeyLightScheme: setKeyLightScheme,
     copyHookConfig: copyHookConfig,
     enableCursorActivity: enableCursorActivity
   };

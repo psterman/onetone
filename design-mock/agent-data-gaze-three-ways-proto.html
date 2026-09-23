@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent × 数据 · 四案原型 · 横向比较</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;600&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#c9d4e2;--ink:#0f1b2a;--mute:#5a6c80;--faint:#8496a8;--line:rgba(15,27,42,.12);
+  --paper:#f3f6fa;--pad:#1a7a6c;--pad-soft:#dcefeb;--pad-line:rgba(26,122,108,.35);
+  --agent:#3a4580;--agent-soft:#e4e7f5;--agent-line:rgba(58,69,128,.35);
+  --data:#8a4b2a;--data-soft:#f7ebe4;--data-line:rgba(138,75,42,.32);
+  --ok:#157a45;--ok-soft:#e3f5eb;--warn:#9a6700;--warn-soft:#fff6e0;--bad:#b42318;--bad-soft:#fce8e6;
+  --accent:#066a9c;--accent-soft:#e5f5fc;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:var(--font);font-size:13px;line-height:1.45;color:var(--ink);
+  background:
+    radial-gradient(900px 400px at 0% -8%,rgba(58,69,128,.14),transparent 55%),
+    radial-gradient(700px 360px at 100% 0%,rgba(138,75,42,.1),transparent 48%),
+    linear-gradient(168deg,#bfcbda,var(--bg) 50%,#d5dfeb);
+}
+.page{max-width:1280px;margin:0 auto;padding:16px 14px 64px}
+.eyebrow{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--agent)}
+h1{margin:0 0 6px;font-family:var(--display);font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.12}
+.lede{margin:0 0 14px;max-width:82ch;color:var(--mute);font-size:14px}
+
+.scheme-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.scheme-tab{
+  appearance:none;border:1.5px solid var(--line);background:#fff;border-radius:14px;
+  padding:10px 14px;font:inherit;text-align:left;cursor:pointer;min-width:200px;flex:1;
+  transition:border-color .15s,box-shadow .15s,transform .12s;
+}
+.scheme-tab:hover{transform:translateY(-1px)}
+.scheme-tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.scheme-tab .ix{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:0 0 3px}
+.scheme-tab h3{margin:0 0 3px;font-size:14px;font-weight:800}
+.scheme-tab p{margin:0;font-size:11.5px;color:var(--mute);line-height:1.35}
+.scheme-tab[data-s="a"].is-on{border-color:var(--data);background:linear-gradient(165deg,var(--data-soft),#fff 72%);box-shadow:0 0 0 1px var(--data-line)}
+.scheme-tab[data-s="a"].is-on .ix{color:var(--data)}
+.scheme-tab[data-s="b"].is-on{border-color:var(--agent);background:linear-gradient(165deg,var(--agent-soft),#fff 72%);box-shadow:0 0 0 1px var(--agent-line)}
+.scheme-tab[data-s="b"].is-on .ix{color:var(--agent)}
+.scheme-tab[data-s="c"].is-on{border-color:var(--pad);background:linear-gradient(165deg,var(--pad-soft),#fff 72%);box-shadow:0 0 0 1px var(--pad-line)}
+.scheme-tab[data-s="c"].is-on .ix{color:var(--pad)}
+.scheme-tab[data-s="d"].is-on{border-color:var(--accent);background:linear-gradient(165deg,var(--accent-soft),#fff 72%);box-shadow:0 0 0 1px rgba(6,106,156,.35)}
+.scheme-tab[data-s="d"].is-on .ix{color:var(--accent)}
+
+.panel{display:none}.panel.is-on{display:block}
+.thesis{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;justify-content:space-between;
+  margin:0 0 12px;padding:11px 13px;border-radius:12px;background:#fff;border:1px solid var(--line);
+}
+.thesis .t{margin:0;font-size:13.5px;font-weight:800;max-width:62ch}
+.thesis .hint{margin:4px 0 0;font-size:12px;color:var(--mute);max-width:62ch}
+.pill{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:750;white-space:nowrap}
+.pill.pad{background:var(--pad-soft);color:var(--pad)}
+.pill.agent{background:var(--agent-soft);color:var(--agent)}
+.pill.data{background:var(--data-soft);color:var(--data)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+
+/* Shell chrome */
+.shell{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 14px 32px rgba(15,27,42,.07)}
+.shell-h{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;
+  padding:9px 12px;background:#e4ebf3;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--mute);
+}
+.shell-h b{color:var(--ink)}
+.topnav{display:flex;flex-wrap:wrap;gap:4px}
+.topnav button{
+  appearance:none;border:1px solid transparent;background:transparent;border-radius:8px;
+  padding:6px 11px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.topnav button.is-on{background:#fff;color:var(--ink);border-color:var(--line);box-shadow:0 1px 2px rgba(15,27,42,.06)}
+.topnav button[data-role="pad"].is-on{color:var(--pad)}
+.topnav button[data-role="agent"].is-on{color:var(--agent)}
+.topnav button[data-role="data"].is-on{color:var(--data)}
+
+.body{display:grid;grid-template-columns:1fr;min-height:520px;background:var(--paper)}
+.view{display:none;min-height:520px}.view.is-on{display:grid}
+
+/* Soft Pad stub (shared) */
+.pad-view{grid-template-columns:120px 1fr 220px}
+@media (max-width:900px){.pad-view{grid-template-columns:1fr}}
+.rail{background:#e8eef5;border-right:1px solid var(--line);padding:10px 8px}
+.rail .g{margin:6px 6px 4px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.rail .i{padding:7px 9px;border-radius:8px;font-size:12px;font-weight:700;color:var(--mute);margin:2px 0}
+.rail .i.on{background:#fff;color:var(--pad);box-shadow:inset 3px 0 0 var(--pad)}
+.mid{padding:12px;display:flex;flex-direction:column;gap:10px}
+.pad-prev{
+  border-radius:12px;background:linear-gradient(160deg,#1a2433,#243044);padding:14px 12px;color:#e8eef6;min-height:200px;
+}
+.pad-prev .plab{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(232,238,246,.5);margin:0 0 10px}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:168px;margin:0 auto}
+.keycap{
+  aspect-ratio:1;border-radius:10px;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;font-size:11px;font-weight:750;
+}
+.keycap.hi{background:rgba(26,122,108,.45);border-color:rgba(120,220,190,.45)}
+.keycap .k{font-size:10px;opacity:.55;font-family:var(--mono)}
+.side{padding:12px;border-left:1px solid var(--line);background:#fff}
+.side h4{margin:0 0 6px;font-size:13px;font-weight:800}
+.side p{margin:0 0 10px;font-size:12px;color:var(--mute)}
+.tog{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.tog:last-child{border-bottom:0}
+.sw{width:34px;height:20px;border-radius:999px;background:#c5d0dc;position:relative;flex-shrink:0}
+.sw.on{background:var(--pad)}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+
+/* Agent views */
+.agent-a{grid-template-columns:1fr 280px}
+.agent-b{grid-template-columns:minmax(0,1.05fr) minmax(260px,.95fr)}
+.agent-c{grid-template-columns:minmax(0,1.15fr) 260px}
+.agent-d{grid-template-columns:minmax(0,1.2fr) minmax(280px,.88fr)}
+@media (max-width:900px){.agent-a,.agent-b,.agent-c,.agent-d{grid-template-columns:1fr}}
+
+/* Scheme D · left agent / right data dock */
+.data-dock{
+  display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--data-line);
+  background:linear-gradient(180deg,#fbf6f1,#fff 40%);
+}
+.data-dock-h{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+  padding:10px 12px;border-bottom:1px solid var(--line);
+}
+.data-dock-h .lab{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--data)}
+.data-dock-h .lab b{font-weight:800;letter-spacing:0;text-transform:none;color:var(--ink);margin-left:4px}
+.dock-lenses{display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.65)}
+.dock-lenses button{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:8px;
+  padding:5px 9px;font:inherit;font-size:11px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.dock-lenses button.is-on{background:var(--data-soft);border-color:var(--data-line);color:var(--data)}
+.dock-body{flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+.dock-q{margin:0;font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.02em;line-height:1.25}
+.dock-num{font-family:var(--mono);font-size:32px;font-weight:800;line-height:1;margin:2px 0}
+.dock-sub{margin:0;font-size:12px;color:var(--mute)}
+.dock-split{display:grid;gap:6px}
+.dock-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:8px 10px;border-radius:10px;background:#fff;border:1px solid var(--line);font-size:12px;
+}
+.dock-row b{font-weight:800}
+.dock-row .v{font-family:var(--mono);font-weight:800}
+.dock-row.miss .v{color:var(--faint);font-weight:650}
+.dock-foot{margin-top:auto;padding-top:8px;font-size:11px;color:var(--faint)}
+.agent-d .agent-zone{padding:12px;display:flex;flex-direction:column;gap:10px;border-right:0}
+.agent-d .agent-zone .ctrl-inline{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+@media (max-width:700px){.agent-d .agent-zone .ctrl-inline{grid-template-columns:1fr}}
+.agent-d .agent-zone .ctrl-box{
+  padding:10px;border-radius:12px;background:#fff;border:1px solid var(--line);
+}
+
+.preview-col{padding:12px;display:flex;flex-direction:column;gap:10px}
+.ctrl-col{padding:12px;border-left:1px solid var(--line);background:#fff}
+.ctrl-col h4{margin:0 0 8px;font-size:13px;font-weight:800}
+.leafs{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 10px}
+.leafs span{
+  padding:5px 10px;border-radius:999px;font-size:11.5px;font-weight:750;
+  background:var(--paper);border:1px solid var(--line);color:var(--mute);
+}
+.leafs span.on{background:var(--agent-soft);border-color:var(--agent-line);color:var(--agent)}
+
+.float-stage{
+  border-radius:12px;background:linear-gradient(165deg,#1e2838,#2a3548);padding:18px 14px;
+  color:#e8eef6;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+}
+.mini-bar{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);font-size:12px;font-weight:700;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:#3ecf8e;flex-shrink:0}
+.dot.busy{background:#f0b429}
+.dot.need{background:#ff7a59}
+.lights{display:flex;gap:6px;margin-top:4px}
+.lights i{width:22px;height:22px;border-radius:7px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+.lights i.on{background:rgba(62,207,142,.35);border-color:rgba(120,230,180,.5);box-shadow:0 0 10px rgba(62,207,142,.4)}
+
+.field{margin:0 0 10px}
+.field label{display:block;margin:0 0 4px;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.field select,.field input{
+  width:100%;padding:7px 9px;border-radius:8px;border:1px solid var(--line);font:inherit;font-size:12.5px;background:#fff;
+}
+
+/* Scheme A data wall — agent rows */
+.data-a{grid-template-columns:1fr}
+.data-head{padding:12px 14px;border-bottom:1px solid var(--line);background:#fff;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
+.data-head h3{margin:0;font-size:15px;font-weight:800}
+.agent-rows{padding:12px;display:grid;gap:8px}
+.arow{
+  display:grid;grid-template-columns:110px repeat(3,1fr);gap:8px;align-items:center;
+  padding:12px;border-radius:12px;background:#fff;border:1px solid var(--line);
+}
+@media (max-width:700px){.arow{grid-template-columns:1fr 1fr}}
+.arow .who{font-weight:800;font-size:13px}
+.arow .who small{display:block;font-weight:650;color:var(--mute);font-size:11px}
+.kpi{text-align:center}
+.kpi .n{font-family:var(--mono);font-size:16px;font-weight:800}
+.kpi .l{font-size:10.5px;color:var(--mute);font-weight:700}
+.kpi.miss .n{color:var(--faint);font-weight:650}
+
+/* Scheme B mixed */
+.mix-board{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}
+.lens-row{display:flex;flex-wrap:wrap;gap:5px}
+.lens-row button{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:5px 11px;font:inherit;font-size:11.5px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.lens-row button.is-on{background:var(--data-soft);border-color:var(--data-line);color:var(--data)}
+.mix-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:700px){.mix-cards{grid-template-columns:1fr}}
+.mcard{padding:11px;border-radius:12px;background:#fff;border:1px solid var(--line)}
+.mcard .t{font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:.04em}
+.mcard .n{font-family:var(--mono);font-size:20px;font-weight:800;margin:4px 0 2px}
+.mcard .s{font-size:11.5px;color:var(--mute)}
+.mcard.warn{border-color:rgba(154,103,0,.35);background:linear-gradient(165deg,var(--warn-soft),#fff 70%)}
+.bind-note{
+  margin:0;padding:8px 10px;border-radius:10px;background:var(--bad-soft);border:1px solid rgba(180,35,24,.2);
+  font-size:11.5px;color:var(--bad);font-weight:650;
+}
+
+/* Scheme C gaze */
+.gaze-strip{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:0 12px;padding:9px 12px;border-radius:10px;background:#fff;border:1px solid var(--line);
+}
+.gaze-strip .q{font-size:11px;font-weight:800;color:var(--faint);letter-spacing:.04em;text-transform:uppercase}
+.gaze-strip .sig{
+  display:flex;align-items:baseline;gap:5px;font-size:12px;color:var(--mute);
+}
+.gaze-strip .sig em{font-style:normal;font-family:var(--mono);font-weight:800;color:var(--ink);font-size:13px}
+.gaze-strip .sig.hot em{color:var(--warn)}
+.gaze-strip .go{
+  appearance:none;margin-left:auto;border:1px solid rgba(6,106,156,.35);background:var(--accent-soft);
+  color:var(--accent);border-radius:8px;padding:6px 10px;font:inherit;font-size:11.5px;font-weight:800;cursor:pointer;
+}
+.ring{
+  display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px;
+}
+.ring span{
+  padding:5px 10px;border-radius:8px;font-size:11px;font-weight:750;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:rgba(232,238,246,.85);
+}
+.ring span.now{background:rgba(62,207,142,.3);border-color:rgba(120,230,180,.45);color:#fff}
+
+/* Scheme C data — question-first */
+.data-c{grid-template-columns:140px 1fr}
+@media (max-width:800px){.data-c{grid-template-columns:1fr}}
+.lens-rail{background:#e8eef5;border-right:1px solid var(--line);padding:10px 8px}
+.lens-rail button{
+  display:block;width:100%;text-align:left;appearance:none;border:0;background:transparent;
+  padding:9px 10px;border-radius:8px;font:inherit;margin:2px 0;cursor:pointer;color:var(--mute);
+}
+.lens-rail button .t{display:block;font-size:12.5px;font-weight:800}
+.lens-rail button .s{display:block;font-size:10.5px;margin-top:1px}
+.lens-rail button.is-on{background:#fff;color:var(--data);box-shadow:inset 3px 0 0 var(--data)}
+.lens-main{padding:14px;display:flex;flex-direction:column;gap:10px}
+.q-hero{margin:0;font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:-.02em}
+.q-ans{display:grid;grid-template-columns:1.2fr .8fr;gap:10px}
+@media (max-width:700px){.q-ans{grid-template-columns:1fr}}
+.q-big{
+  padding:16px;border-radius:14px;background:#fff;border:1px solid var(--line);
+}
+.q-big .n{font-family:var(--mono);font-size:36px;font-weight:800;line-height:1;margin:6px 0}
+.q-big .s{font-size:12.5px;color:var(--mute)}
+.q-note{
+  padding:14px;border-radius:14px;background:var(--data-soft);border:1px solid var(--data-line);
+  font-size:12.5px;color:var(--data);
+}
+.q-note b{display:block;margin-bottom:4px;font-size:12px}
+.filter-agents{display:flex;flex-wrap:wrap;gap:5px}
+.filter-agents span{
+  padding:4px 9px;border-radius:999px;font-size:11px;font-weight:750;
+  background:#fff;border:1px solid var(--line);color:var(--mute);
+}
+.filter-agents span.is-on{background:var(--agent-soft);border-color:var(--agent-line);color:var(--agent)}
+
+.anno{
+  margin-top:10px;padding:10px 12px;border-radius:10px;background:#fff;border:1px dashed var(--line);
+  font-size:12px;color:var(--mute);
+}
+.anno b{color:var(--ink)}
+
+/* Compare table */
+.compare-wrap{margin-top:22px}
+.compare-wrap h2{margin:0 0 8px;font-family:var(--display);font-size:20px;font-weight:700}
+.compare-wrap .sub{margin:0 0 12px;color:var(--mute);font-size:13px;max-width:78ch}
+.table-scroll{overflow:auto;border-radius:14px;border:1px solid var(--line);background:#fff;box-shadow:0 10px 24px rgba(15,27,42,.05)}
+table.cmp{width:100%;border-collapse:collapse;font-size:12.5px;min-width:980px}
+table.cmp th,table.cmp td{padding:11px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+table.cmp th{background:#e8eef5;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--mute);position:sticky;top:0}
+table.cmp th.pick{background:var(--accent-soft);color:var(--accent)}
+table.cmp td.pick{background:rgba(229,245,252,.55)}
+table.cmp tr:last-child td{border-bottom:0}
+table.cmp .dim{color:var(--mute)}
+table.cmp .strong{font-weight:800;color:var(--ink)}
+.verdict{
+  margin-top:12px;padding:14px;border-radius:14px;background:linear-gradient(165deg,var(--accent-soft),#fff 65%);
+  border:1px solid rgba(6,106,156,.28);
+}
+.verdict h3{margin:0 0 6px;font-size:14px;font-weight:800;color:var(--accent)}
+.verdict p{margin:0;font-size:13px;color:var(--ink);max-width:78ch}
+.foot{margin-top:16px;font-size:11.5px;color:var(--faint)}
+.foot code{font-family:var(--mono);font-size:10.5px}
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">OneTone · IA prototype</p>
+  <h1>Agent × 数据：四案原型</h1>
+  <p class="lede">前提：皮肤 / 何时出现已收进虚拟键盘。下面四案只争一件事——<strong>vibecoding 用户的注视</strong>里，能力纵深与干活反馈如何解耦，而不是把数据卡绑在 Agent 行上。</p>
+
+  <div class="scheme-tabs" role="tablist" aria-label="方案">
+    <button type="button" class="scheme-tab is-on" data-s="a" role="tab" aria-selected="true">
+      <div class="ix">方案 A</div>
+      <h3>平级双页</h3>
+      <p>Agent / 数据对等顶栏；靠跳转切换「改」与「看」。</p>
+    </button>
+    <button type="button" class="scheme-tab" data-s="b" role="tab" aria-selected="false">
+      <div class="ix">方案 B</div>
+      <h3>同屏混合</h3>
+      <p>配置与五镜塞进同一 Agent 页，省跳转、易糊成花名册。</p>
+    </button>
+    <button type="button" class="scheme-tab" data-s="c" role="tab" aria-selected="false">
+      <div class="ix">方案 C</div>
+      <h3>注视纵深</h3>
+      <p>当下态 / 会话预警 / 问题成镜 三层；数据为二级页。</p>
+    </button>
+    <button type="button" class="scheme-tab" data-s="d" role="tab" aria-selected="false">
+      <div class="ix">方案 D</div>
+      <h3>左 Agent · 右数据栏</h3>
+      <p>同屏分栏；右侧按问题动态切换，不绑 Agent 卡。</p>
+    </button>
+  </div>
+
+  <!-- ═══════ A ═══════ -->
+  <section class="panel is-on" id="panel-a" data-s="a" role="tabpanel">
+    <div class="thesis">
+      <div>
+        <p class="t">思路：两套目录各管各的——Agent 管「怎么看见 / 怎么指挥」，数据管「今天干得怎样」。</p>
+        <p class="hint">优点是边界清晰；代价是心智来回跳，且数据墙默认按 Agent 成行 → 罗列感强。</p>
+      </div>
+      <span class="pill data">顶栏三入口</span>
+    </div>
+    <div class="shell" data-scheme="a">
+      <div class="shell-h">
+        <div class="topnav" data-nav="a">
+          <button type="button" data-role="pad" data-view="a-pad">虚拟键盘</button>
+          <button type="button" data-role="agent" data-view="a-agent" class="is-on">Agent</button>
+          <button type="button" data-role="data" data-view="a-data">数据</button>
+        </div>
+        <span>皮肤已迁键盘 · <b>Agent ≠ 样子</b></span>
+      </div>
+      <div class="body">
+        <div class="view pad-view" id="a-pad">
+          <div class="rail">
+            <div class="g">通道</div>
+            <div class="i on">听写</div>
+            <div class="i">录键</div>
+            <div class="i">口头</div>
+            <div class="g">样子</div>
+            <div class="i">皮肤</div>
+            <div class="i">何时出现</div>
+          </div>
+          <div class="mid">
+            <div class="pad-prev">
+              <div class="plab">Soft Pad · 动作面</div>
+              <div class="numpad">
+                <div class="keycap hi"><span>说</span><span class="k">1</span></div>
+                <div class="keycap hi"><span>发</span><span class="k">2</span></div>
+                <div class="keycap"><span>改</span><span class="k">3</span></div>
+                <div class="keycap"><span>停</span><span class="k">4</span></div>
+                <div class="keycap"><span>新</span><span class="k">5</span></div>
+                <div class="keycap"><span>·</span><span class="k">6</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="side">
+            <h4>样子 · 已迁入</h4>
+            <p>皮肤 / 何时出现只在这里。Agent 页不再背展示方案。</p>
+            <div class="tog"><span>浮窗跟随</span><div class="sw on"></div></div>
+            <div class="tog"><span>Vibe Light</span><div class="sw on"></div></div>
+          </div>
+        </div>
+
+        <div class="view agent-a is-on" id="a-agent">
+          <div class="preview-col">
+            <div class="leafs"><span class="on">浮窗态</span><span>迷你栏</span><span>灯效</span><span>接入</span></div>
+            <div class="float-stage">
+              <div class="mini-bar"><i class="dot"></i> Cursor · 可说 · 上一句已发</div>
+              <div class="lights"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+            </div>
+            <p class="anno"><b>本页职责：</b>配「看见与指挥」。用量不进预览——点顶栏「数据」去看。</p>
+          </div>
+          <div class="ctrl-col">
+            <h4>Agent · 配置</h4>
+            <div class="field"><label>灯效语义</label>
+              <select><option>忙 / 要你 / 在听</option></select>
+            </div>
+            <div class="field"><label>迷你栏条</label>
+              <select><option>通道 · 语音 · 工具</option></select>
+            </div>
+            <div class="tog"><span>接入 Cursor</span><div class="sw on" style="background:var(--agent)"></div></div>
+            <div class="tog"><span>接入 Claude</span><div class="sw"></div></div>
+            <button type="button" class="gaze-strip go" style="width:100%;margin-top:12px" data-jump="a-data">查看数据 →</button>
+          </div>
+        </div>
+
+        <div class="view data-a" id="a-data">
+          <div class="data-head">
+            <h3>数据墙 · 按 Agent 成行</h3>
+            <span class="pill warn">主键 = Agent</span>
+          </div>
+          <div class="agent-rows">
+            <div class="arow">
+              <div class="who">Cursor<small>今日会话</small></div>
+              <div class="kpi"><div class="n">2.4</div><div class="l">效率</div></div>
+              <div class="kpi"><div class="n">1h42</div><div class="l">时长</div></div>
+              <div class="kpi"><div class="n">$4.2</div><div class="l">费用</div></div>
+            </div>
+            <div class="arow">
+              <div class="who">Claude<small>部分字段</small></div>
+              <div class="kpi miss"><div class="n">—</div><div class="l">效率</div></div>
+              <div class="kpi miss"><div class="n">—</div><div class="l">时长</div></div>
+              <div class="kpi"><div class="n">$1.1</div><div class="l">费用</div></div>
+            </div>
+            <div class="arow">
+              <div class="who">Codex<small>几乎无源</small></div>
+              <div class="kpi miss"><div class="n">—</div><div class="l">效率</div></div>
+              <div class="kpi miss"><div class="n">—</div><div class="l">时长</div></div>
+              <div class="kpi miss"><div class="n">—</div><div class="l">费用</div></div>
+            </div>
+          </div>
+          <p class="anno" style="margin:0 12px 12px"><b>问题：</b>每行同款三卡，空单元格刷屏——典型「机械绑卡」，不是「今天哪件事值得看」。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ B ═══════ -->
+  <section class="panel" id="panel-b" data-s="b" role="tabpanel" hidden>
+    <div class="thesis">
+      <div>
+        <p class="t">思路：用户配置时还想瞄一眼用量——把五镜 / KPI 嵌进 Agent，少跳转、省一个顶栏位。</p>
+        <p class="hint">同屏方便，但「改行为」与「复盘」抢同一注视；容易变成配置面板旁挂数据超市。</p>
+      </div>
+      <span class="pill agent">顶栏两入口</span>
+    </div>
+    <div class="shell" data-scheme="b">
+      <div class="shell-h">
+        <div class="topnav" data-nav="b">
+          <button type="button" data-role="pad" data-view="b-pad">虚拟键盘</button>
+          <button type="button" data-role="agent" data-view="b-agent" class="is-on">Agent · 含数据</button>
+        </div>
+        <span>数据页降级 · <b>嵌在 Agent 里</b></span>
+      </div>
+      <div class="body">
+        <div class="view pad-view" id="b-pad">
+          <div class="rail">
+            <div class="g">通道</div>
+            <div class="i on">听写</div>
+            <div class="i">录键</div>
+            <div class="g">样子</div>
+            <div class="i">皮肤</div>
+          </div>
+          <div class="mid">
+            <div class="pad-prev">
+              <div class="plab">Soft Pad</div>
+              <div class="numpad">
+                <div class="keycap hi"><span>说</span><span class="k">1</span></div>
+                <div class="keycap hi"><span>发</span><span class="k">2</span></div>
+                <div class="keycap"><span>改</span><span class="k">3</span></div>
+                <div class="keycap"><span>停</span><span class="k">4</span></div>
+                <div class="keycap"><span>新</span><span class="k">5</span></div>
+                <div class="keycap"><span>·</span><span class="k">6</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="side">
+            <h4>样子</h4>
+            <p>同 A：展示方案只在键盘。</p>
+            <div class="tog"><span>皮肤</span><div class="sw on"></div></div>
+          </div>
+        </div>
+
+        <div class="view agent-b is-on" id="b-agent">
+          <div class="preview-col">
+            <div class="leafs"><span class="on">浮窗</span><span>迷你栏</span><span>灯效</span></div>
+            <div class="float-stage">
+              <div class="mini-bar"><i class="dot busy"></i> Cursor · AI 忙 · 等待</div>
+              <div class="lights"><i class="on"></i><i></i><i class="on"></i><i></i></div>
+            </div>
+            <div class="mix-board">
+              <div class="lens-row">
+                <button type="button" class="is-on">效率</button>
+                <button type="button">费用</button>
+                <button type="button">能力</button>
+                <button type="button">时长</button>
+                <button type="button">灵感</button>
+              </div>
+              <div class="mix-cards">
+                <div class="mcard"><div class="t">Cursor</div><div class="n">2.4</div><div class="s">回合 / 活跃时</div></div>
+                <div class="mcard warn"><div class="t">费用预警</div><div class="n">$4.2</div><div class="s">今日已上报</div></div>
+                <div class="mcard"><div class="t">Claude</div><div class="n">—</div><div class="s">同卡位空置</div></div>
+              </div>
+              <p class="bind-note">风险：五镜芯片 + Agent 卡并排 = 配置页兼职统计墙；「能力」一词易与 Soft Pad 动作面撞名。</p>
+            </div>
+          </div>
+          <div class="ctrl-col">
+            <h4>仍在配灯 / 接入</h4>
+            <div class="field"><label>何时亮「要你」</label>
+              <select><option>工具结束 · 需确认</option></select>
+            </div>
+            <div class="field"><label>迷你栏密度</label>
+              <select><option>通道 + 语音</option></select>
+            </div>
+            <div class="tog"><span>显示数据条</span><div class="sw on" style="background:var(--agent)"></div></div>
+            <div class="tog"><span>按 Agent 拆卡</span><div class="sw on" style="background:var(--agent)"></div></div>
+            <p class="anno" style="margin-top:12px"><b>省跳转：</b>一眼能看数。但改灯效时视线被 KPI 拉走——不是 vibecoding「当下」该盯的。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ C ═══════ -->
+  <section class="panel" id="panel-c" data-s="c" role="tabpanel" hidden>
+    <div class="thesis">
+      <div>
+        <p class="t">思路：按注视切三层——当下态（灯/环）· 会话预警（会改下一步的信号）· 问题成镜（事后复盘）。Agent 与数据共享事件，不共享目录主键。</p>
+        <p class="hint">顶栏只留键盘 + Agent；数据是二级墙。Agent 旁只嵌「会改行为」的 1～2 个信号，不是五镜超市。</p>
+      </div>
+      <span class="pill pad">纵深 IA</span>
+    </div>
+    <div class="shell" data-scheme="c">
+      <div class="shell-h">
+        <div class="topnav" data-nav="c">
+          <button type="button" data-role="pad" data-view="c-pad">虚拟键盘</button>
+          <button type="button" data-role="agent" data-view="c-agent" class="is-on">Agent</button>
+          <button type="button" data-role="data" data-view="c-data">数据 · 二级</button>
+        </div>
+        <span>能力 = 动作 · 数据 = 问题</span>
+      </div>
+      <div class="body">
+        <div class="view pad-view" id="c-pad">
+          <div class="rail">
+            <div class="g">Vibe 四事</div>
+            <div class="i on">说给 AI</div>
+            <div class="i">指挥 AI</div>
+            <div class="i">编辑器跳</div>
+            <div class="i">这一轮</div>
+            <div class="g">样子</div>
+            <div class="i">皮肤</div>
+            <div class="i">何时出现</div>
+          </div>
+          <div class="mid">
+            <div class="pad-prev">
+              <div class="plab">动作面 · 与数据解耦</div>
+              <div class="numpad">
+                <div class="keycap hi"><span>说</span><span class="k">1</span></div>
+                <div class="keycap hi"><span>发</span><span class="k">2</span></div>
+                <div class="keycap"><span>改</span><span class="k">3</span></div>
+                <div class="keycap"><span>停</span><span class="k">4</span></div>
+                <div class="keycap"><span>新</span><span class="k">5</span></div>
+                <div class="keycap"><span>·</span><span class="k">6</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="side">
+            <h4>能力纵深在此</h4>
+            <p>「能力」= 我能下什么指令。不在数据墙用同名讲模型芯片。</p>
+            <div class="tog"><span>PTT 说话</span><div class="sw on"></div></div>
+            <div class="tog"><span>粘贴并发送</span><div class="sw on"></div></div>
+          </div>
+        </div>
+
+        <div class="view agent-c is-on" id="c-agent">
+          <div class="preview-col">
+            <div class="gaze-strip">
+              <span class="q">会话预警</span>
+              <span class="sig hot"><em>$4.2</em> 今日费用偏高</span>
+              <span class="sig"><em>19–20</em> 高峰窗</span>
+              <button type="button" class="go" data-jump="c-data">打开 · 费用镜 →</button>
+            </div>
+            <div class="leafs"><span class="on">浮窗态</span><span>迷你栏</span><span>灯效匹配</span></div>
+            <div class="float-stage">
+              <div class="mini-bar"><i class="dot need"></i> Cursor · 要你确认 · 工具刚结束</div>
+              <div class="ring">
+                <span class="now">说</span><span>发</span><span>改</span><span>停</span><span>新开</span>
+              </div>
+              <div class="lights"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+            </div>
+            <p class="anno"><b>当下注视：</b>忙不忙 / 要不要你 / 环上哪一步。数字只出现在会改变「停 / 换模 / 换通道」的预警条——不是 KPI 花名册。</p>
+          </div>
+          <div class="ctrl-col">
+            <h4>配看见，不配报表</h4>
+            <div class="field"><label>灯 = 忙 / 要你 / 在听</label>
+              <select><option>Codex 单灯 · Claude 多灯</option></select>
+            </div>
+            <div class="field"><label>迷你栏答四问</label>
+              <select><option>能否用 · AI忙 · 发出没 · 通道</option></select>
+            </div>
+            <div class="tog"><span>会话预警条</span><div class="sw on" style="background:var(--pad)"></div></div>
+            <div class="tog"><span>嵌完整五镜</span><div class="sw"></div></div>
+            <p class="anno" style="margin-top:10px"><b>关五镜嵌套：</b>复盘去二级数据墙；主键是问题，不是 Agent。</p>
+          </div>
+        </div>
+
+        <div class="view data-c" id="c-data">
+          <div class="lens-rail">
+            <div class="g" style="margin:4px 8px 6px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)">问题成镜</div>
+            <button type="button"><span class="t">效率</span><span class="s">回合密不密</span></button>
+            <button type="button" class="is-on"><span class="t">费用</span><span class="s">钱花在哪</span></button>
+            <button type="button"><span class="t">用量面</span><span class="s">模型实际被用</span></button>
+            <button type="button"><span class="t">时长</span><span class="s">活跃多久</span></button>
+            <button type="button"><span class="t">灵感</span><span class="s">高峰 + 缓存</span></button>
+          </div>
+          <div class="lens-main">
+            <p class="q-hero">今天钱花在哪？</p>
+            <div class="q-ans">
+              <div class="q-big">
+                <div class="l" style="font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase">今日已上报原价</div>
+                <div class="n">$5.3</div>
+                <div class="s">Cursor $4.2 · Claude $1.1 · Codex 无价 → 不计估价</div>
+              </div>
+              <div class="q-note">
+                <b>Agent 只是筛子</b>
+                默认回答「问题」。需要时再滤通道——不是先甩三行空卡。
+                <div class="filter-agents" style="margin-top:8px">
+                  <span class="is-on">全部</span><span>Cursor</span><span>Claude</span><span>Codex</span>
+                </div>
+              </div>
+            </div>
+            <p class="anno"><b>命名切开：</b>此处「用量面」≠ Soft Pad「能力（动作）」。灵感 = 最高效窗反馈，不是玄学分。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ D ═══════ -->
+  <section class="panel" id="panel-d" data-s="d" role="tabpanel" hidden>
+    <div class="thesis">
+      <div>
+        <p class="t">思路：C 的信息架构 + 同屏分栏——左侧纯 Agent（灯 / 环 / 配置），右侧独立数据栏按「问题」动态切换。不跳页，也不把 KPI 糊进预览。</p>
+        <p class="hint">比 B：空间解耦（左改 / 右看）。比 C：复盘不用换顶栏。窄屏可收起右栏或叠到下方。</p>
+      </div>
+      <span class="pill ok">推荐落点</span>
+    </div>
+    <div class="shell" data-scheme="d">
+      <div class="shell-h">
+        <div class="topnav" data-nav="d">
+          <button type="button" data-role="pad" data-view="d-pad">虚拟键盘</button>
+          <button type="button" data-role="agent" data-view="d-agent" class="is-on">Agent · 右栏数据</button>
+        </div>
+        <span>左 = 能力注视 · <b>右 = 问题成镜</b></span>
+      </div>
+      <div class="body">
+        <div class="view pad-view" id="d-pad">
+          <div class="rail">
+            <div class="g">Vibe 四事</div>
+            <div class="i on">说给 AI</div>
+            <div class="i">指挥 AI</div>
+            <div class="i">编辑器跳</div>
+            <div class="i">这一轮</div>
+            <div class="g">样子</div>
+            <div class="i">皮肤</div>
+            <div class="i">何时出现</div>
+          </div>
+          <div class="mid">
+            <div class="pad-prev">
+              <div class="plab">Soft Pad · 样子与动作</div>
+              <div class="numpad">
+                <div class="keycap hi"><span>说</span><span class="k">1</span></div>
+                <div class="keycap hi"><span>发</span><span class="k">2</span></div>
+                <div class="keycap"><span>改</span><span class="k">3</span></div>
+                <div class="keycap"><span>停</span><span class="k">4</span></div>
+                <div class="keycap"><span>新</span><span class="k">5</span></div>
+                <div class="keycap"><span>·</span><span class="k">6</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="side">
+            <h4>样子仍在键盘</h4>
+            <p>Agent 页左侧不再背皮肤；右侧也不背样子。</p>
+            <div class="tog"><span>Vibe Light</span><div class="sw on"></div></div>
+          </div>
+        </div>
+
+        <div class="view agent-d is-on" id="d-agent">
+          <div class="agent-zone">
+            <div class="leafs"><span class="on">浮窗态</span><span>迷你栏</span><span>灯效匹配</span><span>接入</span></div>
+            <div class="float-stage">
+              <div class="mini-bar"><i class="dot need"></i> Cursor · 要你确认 · 工具刚结束</div>
+              <div class="ring">
+                <span class="now">说</span><span>发</span><span>改</span><span>停</span><span>新开</span>
+              </div>
+              <div class="lights"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+            </div>
+            <div class="ctrl-inline">
+              <div class="ctrl-box">
+                <h4 style="margin:0 0 8px;font-size:12.5px;font-weight:800">配看见</h4>
+                <div class="field"><label>灯语义</label>
+                  <select><option>忙 / 要你 / 在听</option></select>
+                </div>
+                <div class="tog"><span>迷你栏四问</span><div class="sw on" style="background:var(--agent)"></div></div>
+              </div>
+              <div class="ctrl-box">
+                <h4 style="margin:0 0 8px;font-size:12.5px;font-weight:800">配接入</h4>
+                <div class="tog"><span>Cursor</span><div class="sw on" style="background:var(--agent)"></div></div>
+                <div class="tog"><span>Claude</span><div class="sw"></div></div>
+                <div class="tog"><span>右栏跟随预警</span><div class="sw on" style="background:var(--pad)"></div></div>
+              </div>
+            </div>
+            <p class="anno" style="margin:0"><b>左区纪律：</b>只回答「能不能说 / AI 忙不忙 / 灯怎么亮」。费用与高峰不进预览中央——进右栏，点镜切换。</p>
+          </div>
+
+          <aside class="data-dock" id="d-dock" aria-label="数据右栏">
+            <div class="data-dock-h">
+              <span class="lab">数据栏 <b id="d-dock-lens-lab">费用</b></span>
+              <span class="pill data">动态切换</span>
+            </div>
+            <div class="dock-lenses" id="d-dock-lenses">
+              <button type="button" data-lens="eff">效率</button>
+              <button type="button" data-lens="cost" class="is-on">费用</button>
+              <button type="button" data-lens="use">用量</button>
+              <button type="button" data-lens="time">时长</button>
+              <button type="button" data-lens="spark">灵感</button>
+            </div>
+            <div class="dock-body" id="d-dock-body">
+              <!-- filled by script -->
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 横向比较 -->
+  <div class="compare-wrap">
+    <h2>横向比较</h2>
+    <p class="sub">同一前提（皮肤已进键盘）。D = C 的信息架构用「左 Agent / 右数据栏」落地——同屏但不混主键。</p>
+    <div class="table-scroll">
+      <table class="cmp">
+        <thead>
+          <tr>
+            <th style="min-width:7.5rem">维度</th>
+            <th style="min-width:9rem">A · 平级双页</th>
+            <th style="min-width:9rem">B · 同屏混合</th>
+            <th style="min-width:9rem">C · 注视纵深</th>
+            <th class="pick" style="min-width:10rem">D · 左 Agent / 右栏</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="strong">布局</td>
+            <td class="dim">两页跳转</td>
+            <td class="dim">预览里塞五镜+卡</td>
+            <td class="dim">Agent 页 + 二级数据墙</td>
+            <td class="pick">左 Agent · 右数据栏（镜切换）</td>
+          </tr>
+          <tr>
+            <td class="strong">用户心里的问题</td>
+            <td class="dim">配置在哪 / 报表在哪</td>
+            <td class="dim">一边改一边看数</td>
+            <td>现在 → 这轮 → 回头</td>
+            <td class="pick">同 C，且「回头」不用换页</td>
+          </tr>
+          <tr>
+            <td class="strong">顶栏心智</td>
+            <td class="dim">三 peer</td>
+            <td>两入口（数据吞进 Agent）</td>
+            <td>两入口 + 数据二级</td>
+            <td class="pick">两入口；数据是栏不是页</td>
+          </tr>
+          <tr>
+            <td class="strong">当下注视</td>
+            <td class="dim">灯 OK；用量跳页</td>
+            <td class="dim">灯被 KPI 抢</td>
+            <td>灯 / 环为主；预警条次之</td>
+            <td class="pick">左灯/环；右栏周边视觉，可扫可忽略</td>
+          </tr>
+          <tr>
+            <td class="strong">数据主键</td>
+            <td class="dim">Agent 行 × KPI</td>
+            <td class="dim">Agent 卡 + 五镜</td>
+            <td>问题成镜</td>
+            <td class="pick">问题成镜（右栏切换）；Agent 仅筛选</td>
+          </tr>
+          <tr>
+            <td class="strong">少跳转</td>
+            <td class="dim">差</td>
+            <td>最好（但糊）</td>
+            <td class="dim">复盘要深链</td>
+            <td class="pick">最好且不糊：换镜不换页</td>
+          </tr>
+          <tr>
+            <td class="strong">罗列 / 绑卡</td>
+            <td class="dim">高</td>
+            <td class="dim">高</td>
+            <td>低</td>
+            <td class="pick">低；无源行可隐藏</td>
+          </tr>
+          <tr>
+            <td class="strong">窄屏 / 省空间</td>
+            <td class="dim">各占整页</td>
+            <td class="dim">一页过载</td>
+            <td>整页墙偶尔需要</td>
+            <td class="pick">右栏可折叠；深复盘再展开全墙（可选）</td>
+          </tr>
+          <tr>
+            <td class="strong">落地代价</td>
+            <td class="dim">低</td>
+            <td class="dim">中偏高</td>
+            <td>中</td>
+            <td class="pick">中：Agent 壳改两栏 + 右栏 bridge；可复用五镜数据</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="verdict">
+      <h3>建议落 D：C 的纵深，用右栏同屏</h3>
+      <p>A/B 分别死在「跳转」和「绑卡」。C 定对了三层注视与问题成镜，但复盘仍要换页。D 把数据做成右侧动态栏：左侧纪律只配看见与指挥，右侧按效率/费用/用量/时长/灵感切换问句——同屏关注，主键仍是问题不是 Agent。需要全墙时再从右栏「展开」即可，不必占顶栏 peer。</p>
+    </div>
+  </div>
+
+  <p class="foot">原型文件 <code>design-mock/agent-data-gaze-three-ways-proto.html</code> · 点方案 D 后，右侧五镜可切换。对照 <code>soft-pad-agent-split-beginner-proto.html</code> / <code>agent-data.html</code>。</p>
+</div>
+<script>
+(function () {
+  var tabs = [].slice.call(document.querySelectorAll('.scheme-tab'));
+  var panels = [].slice.call(document.querySelectorAll('.panel'));
+
+  function showScheme(id) {
+    tabs.forEach(function (t) {
+      var on = t.getAttribute('data-s') === id;
+      t.classList.toggle('is-on', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    panels.forEach(function (p) {
+      var on = p.getAttribute('data-s') === id;
+      p.classList.toggle('is-on', on);
+      if (on) p.removeAttribute('hidden');
+      else p.setAttribute('hidden', '');
+    });
+  }
+
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () { showScheme(t.getAttribute('data-s')); });
+  });
+
+  function wireNav(root) {
+    var nav = root.querySelector('.topnav');
+    if (!nav) return;
+    nav.addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-view]');
+      if (!btn) return;
+      var id = btn.getAttribute('data-view');
+      nav.querySelectorAll('button').forEach(function (b) { b.classList.toggle('is-on', b === btn); });
+      root.querySelectorAll('.view').forEach(function (v) {
+        v.classList.toggle('is-on', v.id === id);
+      });
+    });
+    root.querySelectorAll('[data-jump]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var id = el.getAttribute('data-jump');
+        var target = document.getElementById(id);
+        if (!target) return;
+        var shell = target.closest('.shell');
+        var navEl = shell && shell.querySelector('.topnav');
+        if (navEl) {
+          navEl.querySelectorAll('button').forEach(function (b) {
+            b.classList.toggle('is-on', b.getAttribute('data-view') === id);
+          });
+        }
+        shell.querySelectorAll('.view').forEach(function (v) {
+          v.classList.toggle('is-on', v.id === id);
+        });
+      });
+    });
+  }
+
+  document.querySelectorAll('.shell').forEach(wireNav);
+
+  // Scheme B lens chips (visual only)
+  document.querySelectorAll('#b-agent .lens-row').forEach(function (row) {
+    row.addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      row.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+    });
+  });
+
+  // Scheme C lens rail
+  var rail = document.querySelector('#c-data .lens-rail');
+  if (rail) {
+    rail.addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      rail.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      var hero = document.querySelector('#c-data .q-hero');
+      var map = {
+        '效率': '回合密不密？',
+        '费用': '今天钱花在哪？',
+        '用量面': '模型实际被用成什么样？',
+        '时长': '活跃多久？',
+        '灵感': '哪段最高效？'
+      };
+      var t = b.querySelector('.t');
+      if (hero && t && map[t.textContent]) hero.textContent = map[t.textContent];
+    });
+  }
+
+  // Scheme D · right data dock
+  var DOCK = {
+    eff: {
+      lab: '效率',
+      q: '回合密不密？',
+      num: '2.4',
+      sub: 'Cursor 回合 ÷ 活跃时 · 其余通道无源不占行',
+      rows: [
+        { name: 'Cursor', v: '2.4 /h', miss: false },
+        { name: 'Claude', v: '—', miss: true },
+        { name: 'Codex', v: '—', miss: true }
+      ],
+      foot: '筛子：只显示有数源的通道（上表示意仍列出 miss）'
+    },
+    cost: {
+      lab: '费用',
+      q: '今天钱花在哪？',
+      num: '$5.3',
+      sub: '仅会话上报原价 · 估价不进合计',
+      rows: [
+        { name: 'Cursor', v: '$4.2', miss: false },
+        { name: 'Claude', v: '$1.1', miss: false },
+        { name: 'Codex', v: '—', miss: true }
+      ],
+      foot: '预警可推左区「右栏跟随」；不把 $ 贴进灯效预览'
+    },
+    use: {
+      lab: '用量',
+      q: '模型实际被用成什么样？',
+      num: 'sonnet',
+      sub: '此刻芯片 · 非历史占比 · ≠ Soft Pad「能力」',
+      rows: [
+        { name: 'Cursor', v: 'auto', miss: false },
+        { name: 'Claude', v: 'sonnet', miss: false },
+        { name: 'Codex', v: '—', miss: true }
+      ],
+      foot: '命名：用量面 / 动作面切开'
+    },
+    time: {
+      lab: '时长',
+      q: '活跃多久？',
+      num: '1h42',
+      sub: 'Cursor activeMs · 高峰另见灵感',
+      rows: [
+        { name: 'Cursor', v: '1h42', miss: false },
+        { name: 'Claude', v: '—', miss: true },
+        { name: 'Codex', v: '—', miss: true }
+      ],
+      foot: '无源通道可隐藏，避免 A 案空 — 刷屏'
+    },
+    spark: {
+      lab: '灵感',
+      q: '哪段最高效？',
+      num: '19–20',
+      sub: '高速窗 + 缓存最佳 82%',
+      rows: [
+        { name: '高峰窗', v: '19:00–20:00', miss: false },
+        { name: '缓存命中', v: '82%', miss: false },
+        { name: '玄学分', v: '不做', miss: true }
+      ],
+      foot: '灵感 = 干活反馈，不是灵感指数'
+    }
+  };
+
+  function renderDock(lens) {
+    var data = DOCK[lens] || DOCK.cost;
+    var lab = document.getElementById('d-dock-lens-lab');
+    var body = document.getElementById('d-dock-body');
+    if (!body) return;
+    if (lab) lab.textContent = data.lab;
+    var rows = data.rows.map(function (r) {
+      return '<div class="dock-row' + (r.miss ? ' miss' : '') + '"><b>' + r.name + '</b><span class="v">' + r.v + '</span></div>';
+    }).join('');
+    body.innerHTML =
+      '<p class="dock-q">' + data.q + '</p>' +
+      '<div class="dock-num">' + data.num + '</div>' +
+      '<p class="dock-sub">' + data.sub + '</p>' +
+      '<div class="dock-split">' + rows + '</div>' +
+      '<p class="dock-foot">' + data.foot + '</p>';
+  }
+
+  var dockLenses = document.getElementById('d-dock-lenses');
+  if (dockLenses) {
+    dockLenses.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-lens]');
+      if (!b) return;
+      dockLenses.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      renderDock(b.getAttribute('data-lens'));
+    });
+    renderDock('cost');
+  }
+})();
+</script>
+</body>
+</html>

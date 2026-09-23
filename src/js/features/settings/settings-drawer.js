@@ -220,15 +220,15 @@
             PadFocus.setSoftPadWorkbenchTab('match');
           }
         }catch(_){}
-        var mode='agent';
+        var mode='skin';
         if(focus==='softPadLayout') mode='keys';
-        else if(focus==='softPadDisplay'||focus==='softPadPurpose') mode='style';
-        else if(focus==='softPadAgent'||focus==='softPadAgentData'||focus==='softPadStatus'||focus==='softPadMini') mode='agent';
+        else if(focus==='softPadDisplay'||focus==='softPadPurpose') mode='show';
+        else if(focus==='softPadAgent'||focus==='softPadAgentData'||focus==='softPadStatus'||focus==='softPadMini'||focus==='softPadLook') mode='skin';
         if(focus==='softPadPurpose'){
           try{
             var PadPurpose=global.OneToneCodexMicroPadUi||global.OneToneSoftPadPadUi;
             if(PadPurpose&&typeof PadPurpose.setSoftPadStyleSubtab==='function'){
-              PadPurpose.setSoftPadStyleSubtab('pad');
+              PadPurpose.setSoftPadStyleSubtab('show');
             }
           }catch(_){}
         }

@@ -205,7 +205,7 @@
     renderCap(m);
   }
 
-  /** Kept for bridge-add wiring; Soft Pad face is explain-only — open Soft Pad instead. */
+  /** Soft Pad face is explain-only — open Soft Pad to bind existing phrases. */
   function addPhrase(){
     var go=$('btnVoiceSpGoPadFromCap')||$('btnVoiceSpGoPad');
     if(go) go.click();

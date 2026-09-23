@@ -17,10 +17,16 @@ const desk = css.slice(
   css.indexOf(".soft-pad-face-pad--desk.soft-pad-face-pad--pad-mid {"),
   css.indexOf(".soft-pad-mid-fn-swap {")
 );
-assert(desk.includes("minmax(300px, 1.25fr) minmax(220px, 0.9fr) !important"), "wider column is the pad");
+assert(desk.includes("minmax(300px, 360px) minmax(0, 1fr) !important"), "readable pad column, commands expand");
+assert(desk.includes("border-radius: 16px"), "pad + commands share one card");
+assert(desk.includes("height: 100%"), "card fills mid stage");
 assert(
   desk.includes(":not(:has(.soft-pad-mid-fn-swap:not([hidden])))"),
   "idle pad fills mid when commands are hidden"
+);
+assert(
+  desk.includes(".soft-pad-mid-ability") && desk.includes("display: flex !important"),
+  "binding keeps ability/data under the pad"
 );
 
 const swap = css.slice(css.indexOf(".soft-pad-mid-fn-swap {"), css.indexOf(".soft-pad-mid-fn-swap[hidden]"));
@@ -32,7 +38,7 @@ assert(stackAt > 0, "pad stack is the left column");
 
 assert(html.includes("右侧点功能会绑到当前键"), "hint points at the command list on the right");
 assert(html.includes("绑到左侧正在编辑的键"), "command lead points at the pad on the left");
-assert(html.includes("softpad-pad-left-2"), "css cache bust refreshed");
+assert(html.includes("softpad-one-card-4"), "css cache bust refreshed");
 assert(i18n.includes("softPadMidPadHint:'蓝框 = 正在编辑 · 点其它键可切换 · 右侧点功能会绑到当前键'"), "zh hint");
 assert(!i18n.includes("绑到右侧正在编辑的键"), "old lead removed");
 

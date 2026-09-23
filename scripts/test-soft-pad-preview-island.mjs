@@ -145,6 +145,15 @@ check('setSoftPadFace 会 adopt Soft Pad', /function setSoftPadFace\([\s\S]*?ado
 // openSubpage('agent') needs real DOM remove(); skip live call in this fake-DOM harness.
 check('openSubpage 会切 agent face', /function openSubpage\([\s\S]*?setSoftPadFace\('agent'/.test(src) || /route\.face === 'agent'[\s\S]*?setSoftPadFace/.test(src));
 
+globalThis.OneToneCodexMicroPadUi.getSoftPadFloatTab = () => 'skin';
+state.selectedMappingId = 'm1';
+let skinModel = API.buildSoftPadPreviewModel();
+check('float tab=skin 时 skipPaint', skinModel.skipPaint === true);
+check('float tab=skin 时 sig 含 skin', String(skinModel.sig || '').includes('skin'));
+globalThis.OneToneCodexMicroPadUi.getSoftPadFloatTab = () => 'keys';
+let keysModel = API.buildSoftPadPreviewModel();
+check('float tab=keys 时可不强制 skipPaint', keysModel.skipPaint === true || keysModel.skipPaint === false);
+
 console.log('[soft-pad-preview] 源码护栏:');
 const softPadJs = src;
 check('导出 buildSoftPadPreviewModel', softPadJs.includes('buildSoftPadPreviewModel: buildSoftPadPreviewModel'));

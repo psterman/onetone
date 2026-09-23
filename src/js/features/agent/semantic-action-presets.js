@@ -235,16 +235,16 @@
   }
 
   function upsertCameraMappingScoped(mappingId, item) {
-    var Cam = global.OneToneCameraPresenceActions;
-    if (!Cam || !Cam.persistBindActionMappingScoped) {
-      return Promise.reject(new Error('camera_scoped_unavailable'));
+    var A = adapters();
+    if (!A || !A.camera || !A.camera.upsert) {
+      return Promise.reject(new Error('camera_adapter_unavailable'));
     }
     var tr = item.trigger || {};
-    return Cam.persistBindActionMappingScoped(
-      mappingId,
-      tr.bindKey,
-      tr.actionToken
-    );
+    return A.camera.upsert(mappingId, item.actionId, {
+      bindKey: tr.bindKey,
+      actionToken: tr.actionToken,
+      mappingScoped: true
+    }, tr.bindKey);
   }
 
   function upsertOne(mappingId, item) {

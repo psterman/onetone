@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Soft Pad 预览尺寸对照 · 300 / 320 / 340 / 360</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#0f1b2a; --mute:#5a6c80; --faint:#8494a6;
+  --line:rgba(26,45,74,.12); --paper:#fff; --wash:#f0f4f8; --bg:#e4ebf1;
+  --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-soft:#e8f6fb; --cyan-bd:#9bc6da;
+  --ok:#15803d; --ok-soft:#e8f7ee; --warn:#9a6700; --warn-soft:#fff8e8;
+  --pad:#1a2433; --pad2:#2a3544;
+  --font:"Figtree","Segoe UI","PingFang SC","Microsoft YaHei UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:var(--font);color:var(--ink);font-size:13px;
+  background:radial-gradient(800px 300px at 8% -8%,rgba(42,156,196,.1),transparent 55%),var(--bg);
+}
+.top{
+  position:sticky;top:0;z-index:20;
+  padding:10px 16px;background:#0f1820;color:#a8b6c6;
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+}
+.top strong{color:#fff;font-size:13.5px}
+.top em{font-style:normal;color:#7dd3fc;font-weight:650}
+.page{width:min(1480px,100%);margin:0 auto;padding:14px 12px 48px}
+.brief{
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:12px 14px;margin-bottom:12px;
+}
+.brief h1{margin:0 0 4px;font-size:18px;font-weight:800}
+.brief p{margin:0;color:var(--mute);font-size:13px;max-width:80ch}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  align-items:start;
+}
+@media (max-width:1100px){.grid{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){.grid{grid-template-columns:1fr}}
+
+.card{
+  background:var(--wash);border:1px solid var(--line);border-radius:14px;
+  padding:12px 10px 14px;display:flex;flex-direction:column;align-items:center;
+}
+.card h2{
+  margin:0 0 10px;align-self:stretch;
+  display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+  font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);
+}
+.card h2 b{font-size:15px;letter-spacing:0;text-transform:none;color:var(--ink)}
+.card.pick{outline:2px solid var(--cyan);outline-offset:1px;background:#fff}
+.card .note{margin:10px 0 0;font-size:11px;color:var(--mute);text-align:center;line-height:1.4;max-width:100%}
+.card .note strong{color:var(--cyan-ink)}
+
+.wrap{width:var(--pad-w);max-width:100%}
+.device{
+  width:100%;
+  background:linear-gradient(165deg,var(--pad),var(--pad2));
+  border-radius:16px;padding:10px 8px 12px;color:#c8d4e0;
+  box-shadow:0 10px 22px rgba(15,27,42,.2);
+}
+.device .bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:0 4px 8px;font-size:10px;font-weight:700;
+}
+.device .bar .app{color:#e2e8f0}
+.device .bar .tag{color:#7dd3fc;font-size:9px;letter-spacing:.04em}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(4px,2.2%,6px)}
+.key{
+  aspect-ratio:1;border:0;border-radius:clamp(7px,8%,10px);cursor:default;
+  background:linear-gradient(180deg,#fff,#eef2f6);color:var(--ink);
+  box-shadow:0 2px 0 #c5ced8;font-size:clamp(11px,4.2vw,14px);
+  display:grid;place-items:center;
+}
+.key.on{outline:2.5px solid #0f1820;outline-offset:1px;box-shadow:0 0 0 3px rgba(125,211,252,.55),0 2px 0 #c5ced8}
+
+.sel{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;
+  margin-top:10px;padding:8px 10px;border-radius:10px;
+  background:var(--cyan-soft);border:1px solid var(--cyan-bd);
+}
+.sel .name{font-weight:800;font-size:13px}
+.sel .st{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}
+.meta{
+  display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;
+  font-size:11px;font-weight:650;color:var(--faint);
+}
+.meta .rest{margin-left:auto;border:0;background:none;color:var(--faint);font:inherit;font-size:10px;font-weight:650;cursor:pointer}
+.meta .rest:hover{color:var(--cyan-ink)}
+
+.legend{
+  margin-top:12px;background:#0f1820;color:#c5d0de;border-radius:12px;padding:12px 14px;font-size:12px;line-height:1.5;
+}
+.legend strong{color:#7dd3fc}
+.legend ul{margin:6px 0 0;padding-left:16px}
+</style>
+</head>
+<body>
+<header class="top">
+  <strong>Soft Pad 预览尺寸</strong>
+  <em>300 · 320 · 340 · 360</em>
+</header>
+<div class="page">
+  <div class="brief">
+    <h1>四档宽度并排看</h1>
+    <p>同结构：设备 + 选中条 + 状态脚注。当前正式页约 280；这里对比更大四档。点卡片可标为「候选」。</p>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="legend">
+    <strong>怎么选</strong>
+    <ul>
+      <li><b>300</b> — 比 280 略大，键可点，仍省右栏宽</li>
+      <li><b>320</b> — 常用甜点：锚够大，不太挤功能库</li>
+      <li><b>340</b> — 键帽更松，左栏开始饱满</li>
+      <li><b>360</b> — 最接近「实体感」；窄窗可能挤中栏</li>
+    </ul>
+  </div>
+</div>
+<script>
+const SIZES = [
+  { w: 300, note: '轻放大 · 稳妥' },
+  { w: 320, note: '推荐甜点', pick: true },
+  { w: 340, note: '更易点 · 左栏更满' },
+  { w: 360, note: '最强锚 · 注意挤右' },
+];
+const ICONS = ['⏻','✨','⌘','×','▲','🎤','💬','⇥','◀','>_','📋','▼','🔍','🎯','▶','＋','💬','📥','🔍','＋'];
+
+const grid = document.getElementById('grid');
+SIZES.forEach((s) => {
+  const card = document.createElement('article');
+  card.className = 'card' + (s.pick ? ' pick' : '');
+  card.style.setProperty('--pad-w', s.w + 'px');
+  card.innerHTML =
+    '<h2><span>宽度</span><b>' + s.w + 'px</b></h2>' +
+    '<div class="wrap">' +
+    '<div class="device"><div class="bar"><span class="app">Cursor</span><span class="tag">' + s.w + '</span></div>' +
+    '<div class="keys">' +
+    ICONS.map((ic, i) => '<button type="button" class="key' + (i === 13 ? ' on' : '') + '">' + ic + '</button>').join('') +
+    '</div></div>' +
+    '<div class="sel"><span class="name">快速聊天</span><span class="st">未绑定</span></div>' +
+    '<div class="meta"><span>已开启 · 11 键</span><button type="button" class="rest">恢复默认</button></div>' +
+    '</div>' +
+    '<p class="note">' + (s.pick ? '<strong>默认标为候选 · </strong>' : '') + s.note + '</p>';
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.card').forEach((c) => c.classList.remove('pick'));
+    card.classList.add('pick');
+  });
+  grid.appendChild(card);
+});
+</script>
+</body>
+</html>

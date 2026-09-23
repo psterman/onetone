@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>虚拟键盘 · Mac 复刻规格原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;650;700&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet" />
+<style>
+/* ═══════════════════════════════════════════════
+   TOKENS — Mac 复刻请优先对齐这里
+   Soft Pad = 青系 #2A9CC4 · 本页只绑键
+   灯效 / 迷你栏 / 浮窗 → Agent 页
+   ═══════════════════════════════════════════════ */
+:root{
+  --ink:#0f1b2a; --mute:#5a6c80; --faint:#8494a6;
+  --line:rgba(26,45,74,.12); --paper:#fff; --wash:#f3f7fa; --bg:#e4ebf1;
+  --rail:#eef3f7;
+
+  --cyan:#2a9cc4; --cyan-ink:#0f5f7a; --cyan-deep:#0c4a6e;
+  --cyan-soft:#e8f6fb; --cyan-soft2:#e4f2f9; --cyan-bd:#9bc6da;
+  --cyan-mid:#3eb8dc;
+
+  --ok:#15803d; --ok-soft:#e8f7ee;
+  --agent:#3a4580; --agent-soft:#e4e7f5;
+  --data:#0f6e7a;
+
+  --pad-shell:#1a2433; --pad-shell-2:#2a3544;
+  --key-top:#fff; --key-bot:#eef2f6;
+
+  --rail-w-min:200px; --rail-w-max:220px;
+  --habit-w-min:300px; --habit-w-max:340px;
+  --pad-paint-max:240px;
+
+  --font:"Figtree","Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei UI",sans-serif;
+  --display:"Literata","Songti SC",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.45;
+  background:
+    radial-gradient(900px 360px at 8% -10%,rgba(42,156,196,.12),transparent 55%),
+    radial-gradient(700px 280px at 92% 0%,rgba(15,95,122,.06),transparent 50%),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+
+.top{
+  position:sticky;top:0;z-index:50;
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;
+  padding:10px 16px;background:#0f1820;color:#a8b6c6;font-size:12px;
+}
+.top strong{color:#fff;font-size:13.5px}
+.top em{font-style:normal;color:#7dd3fc;font-weight:650}
+.dir{display:flex;gap:4px;flex-wrap:wrap}
+.dir button{
+  border:1px solid rgba(255,255,255,.14);background:transparent;color:#c5d0de;
+  border-radius:9px;padding:6px 11px;font:inherit;font-size:12px;font-weight:650;cursor:pointer;
+}
+.dir button.on{background:var(--cyan);border-color:transparent;color:#fff}
+.top a{color:#7dd3fc;font-weight:650;text-decoration:none}
+.top .spec-tog{
+  margin-left:auto;border:1px solid rgba(125,211,252,.4);background:rgba(14,165,233,.15);
+  color:#7dd3fc;border-radius:9px;padding:6px 11px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+}
+.top .spec-tog.on{background:#0284c7;color:#fff;border-color:transparent}
+
+.page{width:min(1280px,100%);margin:0 auto;padding:16px 14px 72px}
+.brief{
+  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;margin-bottom:12px;
+}
+.brief h1{margin:0 0 6px;font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.02em}
+.brief p{margin:0;color:var(--mute);font-size:13.5px;max-width:86ch}
+.brief .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.brief .chips span{
+  font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;
+  background:var(--cyan-soft);color:var(--cyan-ink);border:1px solid var(--cyan-bd);
+}
+.brief .chips span.warn{background:#fff7ed;color:#b45309;border-color:#fdba74}
+
+.layout-outer{display:grid;grid-template-columns:1fr;gap:12px}
+.layout-outer.show-spec{grid-template-columns:1fr 280px}
+@media(max-width:1180px){.layout-outer.show-spec{grid-template-columns:1fr}}
+.spec{
+  display:none;align-self:start;position:sticky;top:56px;
+  background:#0f1820;color:#c5d0de;border-radius:14px;padding:14px;font-size:12px;
+  max-height:calc(100vh - 72px);overflow:auto;
+}
+.layout-outer.show-spec .spec{display:block}
+.spec h3{margin:0 0 8px;font-size:12px;font-weight:800;color:#7dd3fc;letter-spacing:.06em;text-transform:uppercase}
+.spec h4{margin:12px 0 6px;font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:.04em;text-transform:uppercase}
+.spec dl{margin:0;display:grid;grid-template-columns:92px 1fr;gap:4px 8px}
+.spec dt{color:#64748b;font-weight:650}
+.spec dd{margin:0;font-family:var(--mono);font-size:11px;color:#e2e8f0;word-break:break-all}
+.spec .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1px solid rgba(255,255,255,.2)}
+.spec p{margin:0 0 6px;line-height:1.45;color:#94a3b8}
+.spec code{font-family:var(--mono);font-size:10.5px;color:#7dd3fc}
+.spec a{color:#7dd3fc}
+
+/* ── 设置壳 ── */
+.frame{
+  border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;
+  box-shadow:0 16px 36px rgba(19,32,44,.08);
+}
+.shell-h{
+  display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;
+  padding:9px 12px;background:#fbfdfe;border-bottom:1px solid var(--line);
+  font-size:11.5px;color:var(--mute);
+}
+.shell-h b{color:var(--ink)}
+.status-bar{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--line);background:#fff;
+}
+.status-bar .brand{font-size:16px;font-weight:800;color:var(--ink)}
+.status-bar .pill{
+  font-size:11px;font-weight:750;padding:3px 9px;border-radius:999px;
+  background:var(--ok-soft);color:var(--ok);border:1px solid #86efac;
+}
+.status-bar .hint{margin-left:auto;font-size:11.5px;color:var(--faint)}
+
+/* 三列：220 | 1fr | 300–340 */
+.desk{
+  display:grid;
+  grid-template-columns:minmax(var(--rail-w-min),var(--rail-w-max)) minmax(0,1fr) minmax(var(--habit-w-min),var(--habit-w-max));
+  min-height:600px;
+}
+@media(max-width:960px){.desk{grid-template-columns:1fr}}
+
+/* 左轨 */
+.rail{
+  background:var(--rail);border-right:1px solid var(--line);
+  padding:8px 4px;display:flex;flex-direction:column;overflow:auto;
+}
+.rail .sec{
+  margin:6px 6px 4px;font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--faint);
+}
+.rail .item{
+  appearance:none;display:block;width:100%;margin:1px 0;padding:8px 10px;
+  border:0;border-radius:9px;background:transparent;font:inherit;
+  font-size:12.5px;font-weight:650;color:var(--mute);text-align:left;cursor:pointer;
+}
+.rail .item:hover{background:rgba(255,255,255,.55)}
+.rail .item.is-on{
+  background:#fff;color:var(--cyan-ink);
+  box-shadow:inset 3px 0 0 var(--cyan),0 0 0 1px rgba(42,156,196,.2);
+}
+.rail .item .sub{display:block;font-size:10px;font-weight:600;color:var(--faint);margin-top:1px}
+.rail .item.is-on .sub{color:rgba(15,95,122,.7)}
+.rail .item.is-bridge{opacity:.85}
+
+/* 中栏 */
+.mid{
+  background:var(--wash);padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0;
+  overflow:auto;
+}
+.mid-hint{
+  margin:0;font-size:11.5px;font-weight:550;color:var(--mute);line-height:1.4;
+}
+.mid-hint b{color:var(--cyan-ink);font-weight:750}
+.mid-stage{
+  display:grid;grid-template-columns:minmax(0,1.1fr) minmax(200px,.9fr);gap:12px;align-items:start;
+}
+.mid-stage.is-single{grid-template-columns:1fr}
+.mid-stage.is-swap{grid-template-columns:minmax(220px,.85fr) minmax(0,1.15fr)}
+@media(max-width:720px){.mid-stage,.mid-stage.is-swap{grid-template-columns:1fr}}
+
+.pad-card{
+  background:rgba(248,250,252,.9);border:1px solid var(--line);border-radius:14px;
+  padding:12px 10px 14px;box-shadow:0 8px 22px rgba(19,32,44,.06);
+  max-width:340px;margin:0 auto;width:100%;
+}
+.pad-card .lbl{
+  margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:rgba(42,156,196,.88);text-align:center;
+}
+.pad-shell{
+  width:100%;max-width:var(--pad-paint-max);margin:0 auto;
+  padding:12px;border-radius:22px;
+  background:
+    radial-gradient(120% 80% at 50% 0%,rgba(42,156,196,.18),transparent 55%),
+    linear-gradient(165deg,var(--pad-shell-2),var(--pad-shell));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    0 0 0 1px rgba(42,156,196,.15),
+    0 10px 28px rgba(0,0,0,.22);
+}
+.pad-face{
+  background:rgba(248,250,252,.94);border-radius:14px;padding:8px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.pad-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:5px;aspect-ratio:4/5;
+}
+.key{
+  border-radius:10px;border:1px solid rgba(15,27,42,.1);
+  background:linear-gradient(180deg,var(--key-top),var(--key-bot));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  font-size:9.5px;font-weight:750;color:var(--mute);cursor:pointer;
+  box-shadow:inset 0 1px 0 #fff;min-height:0;padding:4px 2px;
+  transition:box-shadow .15s,border-color .15s;
+}
+.key .k{font-size:10px;font-weight:800;color:var(--ink);line-height:1.1}
+.key .a{font-size:8.5px;font-weight:650;color:var(--faint);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.key.ag .k{color:var(--cyan-ink)}
+.key.is-on{
+  border-color:rgba(42,156,196,.55);
+  box-shadow:0 0 0 2px rgba(42,156,196,.35),inset 0 1px 0 #fff;
+  background:linear-gradient(180deg,#fff,var(--cyan-soft));
+}
+.key.is-on .k{color:var(--cyan-deep)}
+.key.is-empty .a{color:transparent}
+
+.bind-panel{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;
+  min-height:180px;
+}
+.bind-panel h4{margin:0 0 4px;font-size:13px;font-weight:800}
+.bind-panel .sub{margin:0 0 10px;font-size:11.5px;color:var(--mute)}
+.bind-row{
+  display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;
+  border:1px solid var(--line);background:var(--wash);margin:0 0 6px;
+}
+.bind-row.is-on{border-color:rgba(42,156,196,.45);background:var(--cyan-soft);box-shadow:inset 3px 0 0 var(--cyan)}
+.bind-row .nm{flex:1;min-width:0;font-size:13px;font-weight:700}
+.bind-row .nm small{display:block;font-size:10.5px;font-weight:600;color:var(--faint);margin-top:1px;font-family:var(--mono)}
+.bind-row .act{
+  appearance:none;border:1px solid var(--cyan-bd);background:#fff;color:var(--cyan-ink);
+  border-radius:8px;padding:5px 9px;font:inherit;font-size:11.5px;font-weight:750;cursor:pointer;white-space:nowrap;
+}
+.bind-row .act:hover{background:var(--cyan-soft)}
+.quiet-link{
+  appearance:none;border:0;background:transparent;color:var(--faint);
+  font:inherit;font-size:11.5px;font-weight:650;cursor:pointer;padding:4px 0;text-decoration:underline;text-underline-offset:2px;
+}
+.quiet-link:hover{color:var(--cyan-ink)}
+
+.swap-panel{
+  background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;display:none;
+}
+.mid-stage.is-swap .swap-panel{display:block}
+.mid-stage.is-swap .bind-panel{display:none}
+.swap-panel h4{margin:0 0 8px;font-size:13px;font-weight:800}
+.swap-list{display:flex;flex-direction:column;gap:4px;max-height:320px;overflow:auto}
+.swap-item{
+  appearance:none;border:1px solid var(--line);background:var(--wash);border-radius:10px;
+  padding:9px 10px;text-align:left;font:inherit;cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+}
+.swap-item:hover,.swap-item.is-on{border-color:rgba(42,156,196,.45);background:var(--cyan-soft)}
+.swap-item strong{font-size:12.5px;font-weight:750}
+.swap-item small{font-size:10.5px;font-weight:600;color:var(--faint);font-family:var(--mono)}
+
+.bridge-card{
+  display:none;background:#fff;border:1px dashed var(--cyan-bd);border-radius:14px;
+  padding:28px 20px;text-align:center;max-width:420px;margin:40px auto;
+}
+.bridge-card.is-on{display:block}
+.bridge-card h4{margin:0 0 6px;font-size:15px;font-weight:800}
+.bridge-card p{margin:0 0 14px;font-size:12.5px;color:var(--mute);line-height:1.5}
+.bridge-card .btn{
+  appearance:none;border:0;background:var(--cyan);color:#fff;border-radius:10px;
+  padding:9px 16px;font:inherit;font-size:13px;font-weight:750;cursor:pointer;
+}
+
+.mid-bind.is-hidden,.pad-card.is-hidden,.mid-stage.is-hidden{display:none!important}
+
+/* 右栏习惯 */
+.habits{
+  background:var(--rail);border-left:1px solid var(--line);
+  padding:10px 10px 14px;display:flex;flex-direction:column;gap:8px;overflow:auto;
+}
+.habits .lbl{
+  margin:2px 2px 0;font-size:10px;font-weight:750;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--faint);
+}
+.app-bind{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;
+  background:#fff;border:1px solid var(--line);cursor:pointer;position:relative;
+}
+.app-bind:hover{border-color:var(--cyan-bd)}
+.app-bind .ico{
+  width:28px;height:28px;border-radius:8px;background:var(--cyan-soft);
+  display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--cyan-ink);flex-shrink:0;
+}
+.app-bind .nm{flex:1;font-size:13px;font-weight:750}
+.app-bind .nm small{display:block;font-size:10.5px;font-weight:600;color:var(--faint)}
+.app-bind .chev{color:var(--faint);font-size:12px}
+.app-menu{
+  display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:10;
+  background:#fff;border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 12px 28px rgba(19,32,44,.12);overflow:hidden;
+}
+.app-menu.is-on{display:block}
+.app-menu button{
+  appearance:none;display:block;width:100%;border:0;border-bottom:1px solid var(--line);
+  background:#fff;padding:9px 12px;text-align:left;font:inherit;font-size:12.5px;font-weight:650;cursor:pointer;
+}
+.app-menu button:last-child{border-bottom:0}
+.app-menu button:hover,.app-menu button.is-on{background:var(--cyan-soft);color:var(--cyan-ink)}
+
+.meta-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:0 2px;font-size:11.5px;color:var(--mute);font-weight:650;
+}
+.meta-row .test{
+  appearance:none;border:1px solid var(--cyan-bd);background:#fff;color:var(--cyan-ink);
+  border-radius:8px;padding:4px 10px;font:inherit;font-size:11.5px;font-weight:750;cursor:pointer;
+}
+
+.habit-list{display:flex;flex-direction:column;gap:3px;flex:1}
+.habit{
+  appearance:none;border:1px solid transparent;background:transparent;border-radius:10px;
+  padding:8px 10px;text-align:left;font:inherit;cursor:pointer;
+  display:flex;align-items:center;gap:8px;
+}
+.habit:hover{background:rgba(255,255,255,.7)}
+.habit.is-on{
+  background:#fff;border-color:rgba(42,156,196,.35);
+  box-shadow:inset 3px 0 0 var(--cyan);
+}
+.habit .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);flex-shrink:0}
+.habit.is-empty .dot{background:#cbd5e1}
+.habit .tx{flex:1;min-width:0}
+.habit .tx strong{display:block;font-size:12.5px;font-weight:750;color:var(--ink)}
+.habit .tx small{display:block;font-size:10.5px;font-weight:600;color:var(--faint);font-family:var(--mono);margin-top:1px}
+.habit-empty{
+  display:none;padding:20px 12px;text-align:center;border:1px dashed var(--line);
+  border-radius:12px;background:rgba(255,255,255,.6);font-size:12.5px;color:var(--mute);line-height:1.5;
+}
+.habit-empty.is-on{display:block}
+.habit-empty b{color:var(--ink)}
+.add-habit{
+  appearance:none;border:1px dashed var(--cyan-bd);background:rgba(255,255,255,.7);
+  border-radius:10px;padding:9px;font:inherit;font-size:12.5px;font-weight:750;
+  color:var(--cyan-ink);cursor:pointer;width:100%;
+}
+.add-habit:hover{background:var(--cyan-soft)}
+
+.exit-note{
+  margin-top:auto;padding:8px 10px;border-radius:10px;
+  background:var(--agent-soft);border:1px solid rgba(58,69,128,.2);
+  font-size:11.5px;color:var(--agent);line-height:1.4;
+}
+.exit-note a{color:var(--agent);font-weight:750}
+
+.foot{
+  margin-top:14px;padding:12px 14px;border-radius:12px;
+  background:rgba(255,255,255,.9);border:1px solid var(--line);
+  font-size:12px;color:var(--mute);line-height:1.5;
+}
+.foot b{color:var(--ink)}
+.foot code{font-family:var(--mono);font-size:11px;color:var(--cyan-ink)}
+</style>
+</head>
+<body>
+<header class="top">
+  <strong>虚拟键盘</strong>
+  <em>Mac 复刻规格</em>
+  <nav class="dir" id="dir" aria-label="场景">
+    <button type="button" data-v="idle" class="on">① 绑键 idle</button>
+    <button type="button" data-v="select">② 选中键</button>
+    <button type="button" data-v="swap">③ 换功能</button>
+    <button type="button" data-v="empty">④ 空习惯</button>
+    <button type="button" data-v="bridge">⑤ 通道桥</button>
+    <button type="button" data-v="app">⑥ 应用绑定</button>
+  </nav>
+  <a href="../agent-page-mac-spec/index.html">Agent 页 →</a>
+  <button type="button" class="spec-tog on" id="specTog">规格面板</button>
+</header>
+
+<div class="page">
+  <div class="brief">
+    <h1>设置 → 虚拟键盘 · 可交互复刻稿</h1>
+    <p>
+      单文件、无依赖、<code>file://</code> 可开。三列 <b>220 | 1fr | 300–340</b>。本页<strong>只绑键</strong>：点 Soft Pad → 右侧绑功能。
+      Soft Pad 青 <b>#2A9CC4</b>。灯效 / 迷你栏 / 浮窗 / 数据 → 走 Agent / 数据页，不在这里。
+    </p>
+    <div class="chips">
+      <span>左轨「屏幕按钮」= Soft Pad</span>
+      <span>盘面 max 240px · 浅色键帽 · 青选中环</span>
+      <span>其它识别通道 → 桥到按键页</span>
+      <span class="warn">勿放灯效 / 迷你栏 / hooks</span>
+    </div>
+  </div>
+
+  <div class="layout-outer show-spec" id="outer">
+    <div class="frame">
+      <div class="shell-h">
+        <span><b>设置 → 虚拟键盘</b></span>
+        <span>动作面 · 只绑键 · Soft Pad ≠ Agent</span>
+      </div>
+      <div class="status-bar">
+        <span class="brand">虚拟键盘</span>
+        <span class="pill">已开启</span>
+        <span class="hint" id="statusHint">蓝框 = 正在编辑 · 右侧绑功能</span>
+      </div>
+
+      <div class="desk">
+        <!-- LEFT RAIL -->
+        <aside class="rail" id="rail">
+          <div class="sec">识别</div>
+          <button type="button" class="item is-bridge" data-ch="dictation"><span>听写</span><span class="sub">系统输入</span></button>
+          <button type="button" class="item is-bridge" data-ch="recorded"><span>我录的键</span><span class="sub">本机口令</span></button>
+          <button type="button" class="item is-bridge" data-ch="voice"><span>口头指令</span><span class="sub">去按键页</span></button>
+          <button type="button" class="item is-bridge" data-ch="builtin"><span>软件自带</span><span class="sub">去按键页</span></button>
+          <div class="sec">屏幕</div>
+          <button type="button" class="item is-on" data-ch="softpad" id="railSoft"><span>屏幕按钮</span><span class="sub">Soft Pad · 绑键</span></button>
+          <button type="button" class="item is-bridge" data-ch="gesture"><span>手势</span><span class="sub">去摄像头</span></button>
+        </aside>
+
+        <!-- MID -->
+        <section class="mid" id="mid">
+          <p class="mid-hint" id="midHint"><b>蓝框</b> = 正在编辑的键 · 点盘面或右侧列表切换 · 绑功能在右边</p>
+
+          <div class="bridge-card" id="bridgeCard">
+            <h4 id="bridgeTitle">口头指令在「按键」页</h4>
+            <p id="bridgeBody">虚拟键盘只管 Soft Pad 屏幕按钮。语音 / 听写 / 录键请去按键设置绑定。</p>
+            <button type="button" class="btn">打开按键设置 →</button>
+          </div>
+
+          <div class="mid-stage" id="midStage">
+            <div class="pad-card" id="padCard">
+              <p class="lbl">Soft Pad · 点键编辑</p>
+              <div class="pad-shell">
+                <div class="pad-face">
+                  <div class="pad-grid" id="padGrid"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bind-panel" id="bindPanel">
+              <h4 id="bindTitle">AG02 · 继续回复</h4>
+              <p class="sub" id="bindSub">当前场景 · Cursor · 点「换成别的功能」打开功能库</p>
+              <div class="bind-row is-on" id="bindRow">
+                <div class="nm">继续回复<small>AG02 · soft-pad</small></div>
+                <button type="button" class="act" id="btnSwap">换成别的功能</button>
+              </div>
+              <button type="button" class="quiet-link" id="btnRestore">恢复此键默认</button>
+            </div>
+
+            <div class="swap-panel" id="swapPanel">
+              <h4>换成别的功能 · AG02</h4>
+              <div class="swap-list" id="swapList"></div>
+              <button type="button" class="quiet-link" id="btnSwapBack" style="margin-top:8px">← 返回绑定</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- RIGHT HABITS -->
+        <aside class="habits" id="habits">
+          <div class="lbl">绑定 · 应用</div>
+          <div class="app-bind" id="appBind" tabindex="0">
+            <span class="ico" id="appIco">C</span>
+            <div class="nm"><span id="appName">Cursor</span><small>前台跟随 · Soft Pad 场景</small></div>
+            <span class="chev">▾</span>
+            <div class="app-menu" id="appMenu">
+              <button type="button" data-app="Cursor" class="is-on">Cursor</button>
+              <button type="button" data-app="Claude">Claude</button>
+              <button type="button" data-app="Codex">Codex</button>
+              <button type="button" data-app="MiniMax">MiniMax</button>
+            </div>
+          </div>
+
+          <div class="meta-row">
+            <span id="metaKeys">键 12 · 已绑 9</span>
+            <button type="button" class="test">测试</button>
+          </div>
+
+          <div class="lbl">本场景动作</div>
+          <div class="habit-list" id="habitList"></div>
+          <div class="habit-empty" id="habitEmpty">
+            <b>还没有场景动作</b><br>在 Soft Pad 上点一颗键，再绑一个功能。
+          </div>
+          <button type="button" class="add-habit">＋ 新建动作</button>
+
+          <div class="exit-note">
+            灯效 · 迷你栏 · 浮窗 · 接入不在本页。<br>
+            <a href="../agent-page-mac-spec/index.html">去 Agent 页复刻稿 →</a>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <aside class="spec" id="spec">
+      <h3>Mac 复刻 Token</h3>
+      <p>虚拟键盘 = Soft Pad 绑键。青系，不要棕。</p>
+
+      <h4>Brand</h4>
+      <dl>
+        <dt><span class="sw" style="background:#2a9cc4"></span>Primary</dt><dd>#2A9CC4</dd>
+        <dt><span class="sw" style="background:#0f5f7a"></span>Ink</dt><dd>#0F5F7A / deep #0C4A6E</dd>
+        <dt><span class="sw" style="background:#e8f6fb"></span>Soft</dt><dd>#E8F6FB / #E4F2F9</dd>
+        <dt><span class="sw" style="background:#9bc6da"></span>Border</dt><dd>#9BC6DA</dd>
+        <dt><span class="sw" style="background:#eef3f7"></span>Rail</dt><dd>#EEF3F7</dd>
+      </dl>
+
+      <h4>三列布局</h4>
+      <dl>
+        <dt>左轨</dt><dd>minmax(200px, 220px)</dd>
+        <dt>中栏</dt><dd>minmax(0, 1fr)</dd>
+        <dt>右习惯</dt><dd>minmax(300px, 340px)</dd>
+        <dt>盘面</dt><dd>max-width 240px</dd>
+        <dt>预览卡</dt><dd>max 340px · radius 14</dd>
+      </dl>
+
+      <h4>Soft Pad 盘</h4>
+      <dl>
+        <dt>外壳</dt><dd>#1A2433 → #2A3544 · r22</dd>
+        <dt>键帽</dt><dd>白→#EEF2F6 · r10</dd>
+        <dt>选中</dt><dd>2px ring rgba(42,156,196,.35)</dd>
+        <dt>网格</dt><dd>4×5 · gap 5</dd>
+        <dt>标签</dt><dd>11px/700 · uppercase · cyan</dd>
+      </dl>
+
+      <h4>字阶</h4>
+      <dl>
+        <dt>页品牌</dt><dd>16px / 800</dd>
+        <dt>轨项</dt><dd>12.5px / 650</dd>
+        <dt>轨副</dt><dd>10px / 600 · #8494A6</dd>
+        <dt>绑标题</dt><dd>13px / 800</dd>
+        <dt>提示</dt><dd>11.5px / 550</dd>
+        <dt>快捷</dt><dd>mono 10.5–11</dd>
+      </dl>
+
+      <h4>IA · 本页有</h4>
+      <p>屏幕按钮绑键 · 场景动作列表 · 应用绑定 · 换功能库 · 其它通道桥接</p>
+      <h4>IA · 本页无</h4>
+      <p>灯效 · 迷你栏 · 浮窗皮肤 · hooks · 数据看板</p>
+      <p>对照：<a href="../agent-page-mac-spec/index.html">agent-page-mac-spec</a></p>
+      <p>路径：<code>prototypes/softpad-page-mac-spec/index.html</code></p>
+    </aside>
+  </div>
+
+  <div class="foot">
+    <b>Mac 打开：</b>拷文件夹 → 双击 <code>index.html</code>，或 <code>open index.html</code>。
+    与 <code>agent-page-mac-spec</code> 成对：那边管 Agent，这边管绑键。
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEYS=[
+    {id:'AG01',label:'新建',bound:true},
+    {id:'AG02',label:'继续',bound:true},
+    {id:'AG03',label:'收起',bound:true},
+    {id:'ESC',label:'取消',bound:true},
+    {id:'7',label:'会话1',bound:true},
+    {id:'8',label:'会话2',bound:true},
+    {id:'9',label:'会话3',bound:true},
+    {id:'−',label:'',bound:false},
+    {id:'4',label:'查找',bound:true},
+    {id:'5',label:'',bound:false},
+    {id:'6',label:'发送',bound:true},
+    {id:'+',label:'',bound:false},
+    {id:'1',label:'',bound:false},
+    {id:'2',label:'',bound:false},
+    {id:'3',label:'',bound:false},
+    {id:'↵',label:'确认',bound:true},
+    {id:'0',label:'',bound:false},
+    {id:'.',label:'',bound:false},
+    {id:'FN',label:'更多',bound:true},
+    {id:'⌫',label:'',bound:false}
+  ];
+  var FUNCS=[
+    {name:'继续回复',code:'continue'},
+    {name:'新建对话',code:'new-chat'},
+    {name:'收起 / 暂停',code:'collapse'},
+    {name:'发送',code:'send'},
+    {name:'取消',code:'cancel'},
+    {name:'切换会话 1',code:'session-1'},
+    {name:'切换会话 2',code:'session-2'},
+    {name:'查找',code:'find'}
+  ];
+  var HABITS=[
+    {id:'AG01',name:'新建对话',code:'AG01'},
+    {id:'AG02',name:'继续回复',code:'AG02'},
+    {id:'AG03',name:'收起',code:'AG03'},
+    {id:'7',name:'会话 1',code:'7'},
+    {id:'8',name:'会话 2',code:'8'},
+    {id:'9',name:'会话 3',code:'9'},
+    {id:'6',name:'发送',code:'6'},
+    {id:'ESC',name:'取消',code:'ESC'},
+    {id:'FN',name:'更多',code:'FN'}
+  ];
+  var BRIDGE={
+    dictation:{title:'听写在「按键」页',body:'系统听写通道不在虚拟键盘里配置。点下方去按键设置。'},
+    recorded:{title:'我录的键在「按键」页',body:'本机录制的口令属于按键页。Soft Pad 只管屏幕按钮。'},
+    voice:{title:'口头指令在「按键」页',body:'虚拟键盘只管 Soft Pad 屏幕按钮。语音请去按键设置绑定。'},
+    builtin:{title:'软件自带快捷键',body:'应用自带动作在按键页管理，不占用 Soft Pad 盘面。'},
+    gesture:{title:'手势在「摄像头」',body:'手势识别不在虚拟键盘。去摄像头页配置。'}
+  };
+
+  var state={
+    scene:'idle', ch:'softpad', key:'AG02', app:'Cursor',
+    swap:false, empty:false, menu:false
+  };
+
+  function paintPad(){
+    var g=document.getElementById('padGrid');
+    g.innerHTML=KEYS.map(function(k,i){
+      var ag=/^AG/.test(k.id);
+      var on=state.key===k.id&&state.ch==='softpad'&&!state.empty;
+      return '<button type="button" class="key'+(ag?' ag':'')+(on?' is-on':'')+(!k.bound?' is-empty':'')+'" data-key="'+k.id+'">'+
+        '<span class="k">'+k.id+'</span>'+
+        '<span class="a">'+(k.label||'·')+'</span></button>';
+    }).join('');
+    g.querySelectorAll('[data-key]').forEach(function(b){
+      b.addEventListener('click',function(){
+        if(state.ch!=='softpad') return;
+        state.key=b.getAttribute('data-key');
+        state.swap=false;
+        state.empty=false;
+        state.scene='select';
+        syncDir();
+        paintAll();
+      });
+    });
+  }
+
+  function paintHabits(){
+    var list=document.getElementById('habitList');
+    var empty=document.getElementById('habitEmpty');
+    if(state.empty){
+      list.innerHTML='';
+      empty.classList.add('is-on');
+      document.getElementById('metaKeys').textContent='键 0 · 已绑 0';
+      return;
+    }
+    empty.classList.remove('is-on');
+    var bound=KEYS.filter(function(k){return k.bound}).length;
+    document.getElementById('metaKeys').textContent='键 '+KEYS.length+' · 已绑 '+bound;
+    list.innerHTML=HABITS.map(function(h){
+      var on=h.id===state.key;
+      return '<button type="button" class="habit'+(on?' is-on':'')+'" data-habit="'+h.id+'">'+
+        '<span class="dot"></span><div class="tx"><strong>'+h.name+'</strong><small>'+h.code+'</small></div></button>';
+    }).join('');
+    list.querySelectorAll('[data-habit]').forEach(function(b){
+      b.addEventListener('click',function(){
+        state.key=b.getAttribute('data-habit');
+        state.ch='softpad';
+        state.swap=false;
+        state.scene='select';
+        syncDir();
+        paintAll();
+      });
+    });
+  }
+
+  function paintBind(){
+    var k=KEYS.find(function(x){return x.id===state.key})||KEYS[1];
+    document.getElementById('bindTitle').textContent=k.id+' · '+(k.label||'未绑定');
+    document.getElementById('bindSub').textContent='当前场景 · '+state.app+' · 点「换成别的功能」打开功能库';
+    document.getElementById('bindRow').querySelector('.nm').innerHTML=
+      (k.label||'未绑定')+'<small>'+k.id+' · soft-pad</small>';
+  }
+
+  function paintSwap(){
+    var list=document.getElementById('swapList');
+    list.innerHTML=FUNCS.map(function(f,i){
+      return '<button type="button" class="swap-item'+(i===0?' is-on':'')+'" data-fn="'+f.code+'">'+
+        '<strong>'+f.name+'</strong><small>'+f.code+'</small></button>';
+    }).join('');
+    list.querySelectorAll('[data-fn]').forEach(function(b){
+      b.addEventListener('click',function(){
+        list.querySelectorAll('.swap-item').forEach(function(x){x.classList.remove('is-on')});
+        b.classList.add('is-on');
+        var name=b.querySelector('strong').textContent;
+        var k=KEYS.find(function(x){return x.id===state.key});
+        if(k){ k.label=name; k.bound=true; }
+        var h=HABITS.find(function(x){return x.id===state.key});
+        if(h) h.name=name;
+        state.swap=false;
+        state.scene='select';
+        syncDir();
+        paintAll();
+      });
+    });
+  }
+
+  function paintMidMode(){
+    var bridge=state.ch!=='softpad';
+    var stage=document.getElementById('midStage');
+    var card=document.getElementById('bridgeCard');
+    card.classList.toggle('is-on',bridge);
+    stage.classList.toggle('is-hidden',bridge);
+    document.getElementById('padCard').classList.toggle('is-hidden',bridge);
+
+    if(bridge){
+      var info=BRIDGE[state.ch]||BRIDGE.voice;
+      document.getElementById('bridgeTitle').textContent=info.title;
+      document.getElementById('bridgeBody').textContent=info.body;
+      document.getElementById('midHint').innerHTML='当前在<strong>桥接</strong>态 · Soft Pad 绑键请点左轨「屏幕按钮」';
+      return;
+    }
+
+    stage.classList.toggle('is-swap',state.swap);
+    stage.classList.toggle('is-single',state.empty);
+    if(state.empty){
+      document.getElementById('midHint').innerHTML='场景还是空的 · 点盘面一颗键开始绑功能';
+    }else if(state.swap){
+      document.getElementById('midHint').innerHTML='功能库已打开 · 选一项立刻绑到 <b>'+state.key+'</b>';
+      paintSwap();
+    }else{
+      document.getElementById('midHint').innerHTML='<b>蓝框</b> = 正在编辑的键 · 点盘面或右侧列表切换 · 绑功能在右边';
+    }
+  }
+
+  function paintRail(){
+    document.querySelectorAll('#rail .item').forEach(function(b){
+      b.classList.toggle('is-on',b.getAttribute('data-ch')===state.ch);
+    });
+  }
+
+  function paintApp(){
+    document.getElementById('appName').textContent=state.app;
+    document.getElementById('appIco').textContent=state.app.charAt(0);
+    document.querySelectorAll('#appMenu button').forEach(function(b){
+      b.classList.toggle('is-on',b.getAttribute('data-app')===state.app);
+    });
+    document.getElementById('appMenu').classList.toggle('is-on',state.menu);
+  }
+
+  function paintAll(){
+    paintRail();
+    paintPad();
+    paintHabits();
+    paintBind();
+    paintMidMode();
+    paintApp();
+    document.getElementById('statusHint').textContent=
+      state.ch!=='softpad'?'其它通道 · 桥到对应设置页':
+      state.swap?'正在换功能 · '+state.key:
+      state.empty?'空场景 · 点键开始':
+      '蓝框 = 正在编辑 · 右侧绑功能';
+  }
+
+  function syncDir(){
+    document.querySelectorAll('#dir button').forEach(function(b){
+      b.classList.toggle('on',b.getAttribute('data-v')===state.scene);
+    });
+  }
+
+  function applyScene(v){
+    state.scene=v;
+    state.menu=false;
+    if(v==='idle'){
+      state.ch='softpad'; state.key='AG02'; state.swap=false; state.empty=false;
+    }else if(v==='select'){
+      state.ch='softpad'; state.key='AG02'; state.swap=false; state.empty=false;
+    }else if(v==='swap'){
+      state.ch='softpad'; state.key='AG02'; state.swap=true; state.empty=false;
+    }else if(v==='empty'){
+      state.ch='softpad'; state.key=''; state.swap=false; state.empty=true;
+    }else if(v==='bridge'){
+      state.ch='voice'; state.swap=false; state.empty=false;
+    }else if(v==='app'){
+      state.ch='softpad'; state.key='AG02'; state.swap=false; state.empty=false; state.menu=true;
+    }
+    syncDir();
+    paintAll();
+  }
+
+  document.getElementById('dir').addEventListener('click',function(e){
+    var b=e.target.closest('[data-v]'); if(!b) return;
+    applyScene(b.getAttribute('data-v'));
+  });
+
+  document.getElementById('rail').addEventListener('click',function(e){
+    var b=e.target.closest('[data-ch]'); if(!b) return;
+    state.ch=b.getAttribute('data-ch');
+    state.swap=false;
+    state.empty=false;
+    state.menu=false;
+    state.scene=state.ch==='softpad'?'select':'bridge';
+    if(state.ch==='softpad'&&!state.key) state.key='AG02';
+    syncDir();
+    paintAll();
+  });
+
+  document.getElementById('btnSwap').addEventListener('click',function(){
+    state.swap=true; state.scene='swap'; syncDir(); paintAll();
+  });
+  document.getElementById('btnSwapBack').addEventListener('click',function(){
+    state.swap=false; state.scene='select'; syncDir(); paintAll();
+  });
+  document.getElementById('btnRestore').addEventListener('click',function(){
+    var k=KEYS.find(function(x){return x.id===state.key});
+    if(k){ k.label=k.id.indexOf('AG')===0?'继续':'·'; }
+    paintAll();
+  });
+
+  document.getElementById('appBind').addEventListener('click',function(e){
+    if(e.target.closest('#appMenu')) return;
+    state.menu=!state.menu;
+    state.scene=state.menu?'app':(state.ch==='softpad'?'select':'bridge');
+    syncDir();
+    paintApp();
+  });
+  document.getElementById('appMenu').addEventListener('click',function(e){
+    var b=e.target.closest('[data-app]'); if(!b) return;
+    e.stopPropagation();
+    state.app=b.getAttribute('data-app');
+    state.menu=false;
+    state.scene='select';
+    syncDir();
+    paintAll();
+  });
+  document.addEventListener('click',function(e){
+    if(!e.target.closest('#appBind')){ state.menu=false; paintApp(); }
+  });
+
+  document.getElementById('specTog').addEventListener('click',function(){
+    var on=document.getElementById('outer').classList.toggle('show-spec');
+    this.classList.toggle('on',on);
+  });
+
+  applyScene('idle');
+})();
+</script>
+</body>
+</html>

@@ -61,7 +61,7 @@ export function applySoftPadDetailShellAttrs(model: SoftPadDetailChromeModel): v
   if (detailPanel) detailPanel.hidden = !open;
   if (subHost) {
     subHost.classList.toggle('is-open', open);
-    subHost.removeAttribute('hidden');
+    // Keys mode keeps mid-ability hidden on the right track — Hub syncSoftPadNeedAgentChrome owns `hidden`.
   }
   if (stage) stage.classList.toggle('is-detail-open', open);
 }

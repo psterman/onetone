@@ -43,9 +43,9 @@ check('preview omits skin cards', !/buildSoftPadPresentationSkinSectionHtml/.tes
 check('live pad uses real hardware', /renderHardwarePad/.test(livePad));
 check('numpad controls omit compare demo', !/soft-pad-demo-compare/.test(numpad));
 check('numpad controls omit switch demo', !/soft-pad-demo-switch/.test(numpad));
-check('purpose demo has compare',
-  /soft-pad-demo-compare/.test(purposeDemo) || /renderNumpadCompareHtml/.test(purposeDemo) ||
-  /function renderNumpadCompareHtml\([\s\S]*?soft-pad-demo-compare/.test(padUi));
+check('purpose demo has solo numpad preview',
+  /renderNumpadCompareHtml/.test(purposeDemo) ||
+  /function renderNumpadCompareHtml\([\s\S]*?soft-pad-numpad-solo/.test(padUi));
 check('purpose preview wraps demo', /renderPurposeFeatureDemoHtml/.test(purposePreview));
 check('paint writes appear/purpose html', /buildSoftPadDisplayPreviewHtml/.test(paint) &&
   /buildSoftPadPurposePreviewHtml/.test(paint));
@@ -59,9 +59,15 @@ check('css left preview theme tokens', /--sp-preview-cyan/.test(css));
 check('css left live Soft Pad', /\.soft-pad-mode-preview__live/.test(css) &&
   /\.soft-pad-mode-preview__hw/.test(css));
 check('css purpose live Soft Pad', /\.soft-pad-purpose-live-hw/.test(css));
-check('css purpose compare equal footprint',
-  /\.soft-pad-mode-preview--purpose \.soft-pad-demo-compare \.soft-pad-purpose-live-hw[\s\S]*?max-width:\s*min\(100%,\s*236px\)/.test(css) &&
-  /aspect-ratio:\s*1\s*\/\s*1\s*!important/.test(css));
+check('css purpose solo numpad preview',
+  /\.soft-pad-numpad-solo/.test(css) &&
+  /\.soft-pad-numpad-solo__pad/.test(css));
+check('css opacity checkerboard stage',
+  /\.soft-pad-opacity-stage/.test(css) &&
+  /background-image:/.test(css));
+check('css skin text options',
+  /\.soft-pad-skin-text/.test(css) &&
+  /\.soft-pad-skin-list/.test(css));
 check('css purpose Soft Pad icons fill key caps',
   /\.soft-pad-mode-preview--purpose \.soft-pad-purpose-live-hw \.micro-hw__icon[\s\S]*?max-width:\s*78%/.test(css));
 check('css appear live Soft Pad hides face chrome',
@@ -79,20 +85,85 @@ check('css purpose no white frame',
   /\[data-pad-mode-preview="purpose"\][\s\S]*?background:\s*transparent/.test(css));
 check('css purpose hide face title in demos',
   /\.soft-pad-mode-preview--purpose \.soft-pad-purpose-live-hw \.micro-hw__face-top/.test(css));
-check('purpose seat-match Soft Pad',
-  /seatMatch:\s*true/.test(padUi) && /is-seat-match/.test(padUi));
+check('purpose soft/occupy share 108-only face demo',
+  /function renderKeepNumpadDemoHtml\([\s\S]*?mode: 'soft'/.test(padUi) &&
+  /function renderFullKeyboardOccupyDemoHtml\([\s\S]*?mode: 'occupy'/.test(padUi) &&
+  /soft-pad-fk--108-only/.test(padUi) &&
+  !/function renderKeepNumpadDemoHtml\([\s\S]*?soft-pad-fk__soft-col/.test(padUi));
 check('purpose demos use real hardware Soft Pad',
   /function renderPurposeLiveSoftPadHtml\([\s\S]*?renderHardwarePad/.test(padUi));
-check('purpose occupy uses live Soft Pad',
-  /function renderPurposeFeatureDemoHtml\([\s\S]*?renderPurposeLiveSoftPadHtml/.test(padUi) ||
-  /function renderNumpadCompareHtml\([\s\S]*?renderPurposeLiveSoftPadHtml/.test(padUi));
-check('purpose occupy uses stacked compare not switch',
-  /tab === 'occupy'[\s\S]{0,200}?renderNumpadCompareHtml/.test(padUi) &&
-  !/tab === 'occupy'[\s\S]{0,400}?soft-pad-demo-switch/.test(padUi));
+check('purpose occupy uses full keyboard demo',
+  /function renderNumpadCompareHtml\([\s\S]*?renderFullKeyboardOccupyDemoHtml/.test(padUi) &&
+  /function renderKeepNumpadDemoHtml/.test(padUi));
+check('purpose occupy uses solo preview not switch',
+  /function renderPurposeFeatureDemoHtml\([\s\S]*?renderNumpadCompareHtml/.test(padUi) &&
+  !/function renderPurposeFeatureDemoHtml\([\s\S]{0,400}?soft-pad-demo-switch/.test(padUi));
+check('css full keyboard occupy demo',
+  /\.soft-pad-fk__board/.test(css) &&
+  /\.soft-pad-fk__numpad/.test(css));
+check('css 108-only demo uses full width',
+  /\.soft-pad-fk--108-only/.test(css) &&
+  /soft-pad-numpad-solo__pad\.soft-pad-fk--108-only[\s\S]*?max-width:\s*100%/.test(css));
+check('css purpose preview host not capped at 340',
+  /data-pad-mode-preview="purpose"[\s\S]{0,180}?max-width:\s*none/.test(css) &&
+  /\.soft-pad-fk--108-only/.test(css));
+check('css 108 board is horizontal main|cluster|numpad',
+  /\.soft-pad-fk__board--108[\s\S]*?soft-pad-fk__108-body/.test(css) &&
+  /soft-pad-fk__board--108/.test(padUi));
+check('occupy demo flips digit→Soft Pad on same seats',
+  /data-np-face/.test(padUi) &&
+  /soft-pad-fk__np-layer--soft/.test(padUi) &&
+  /function startOccupyCompareDemo[\s\S]*?data-np-face/.test(padUi));
+check('mode preview stays on result face without loop',
+  /function startOccupyCompareDemo[\s\S]*?clearInterval/.test(padUi) &&
+  !/function startOccupyCompareDemo[\s\S]*?setInterval/.test(padUi) &&
+  /data-fk-result/.test(padUi));
+check('css soft seat fused into keyboard not floating card',
+  /\.soft-pad-fk__numpad--fused/.test(css) &&
+  /soft-pad-fk__np-layer--soft/.test(css) &&
+  /box-shadow:\s*none\s*!important/.test(css));
+check('purpose demo omits bottom explain and restore',
+  !/function renderFullKeyboardFaceDemoHtml[\s\S]*?numpadRestoreDigits/.test(padUi) &&
+  !/function renderNumpadCompareHtml[\s\S]*?soft-pad-numpad-solo__hint/.test(padUi));
+check('live pad has opacity stage',
+  /soft-pad-opacity-stage/.test(livePad) && /data-screen-opacity-preview/.test(livePad));
+check('skin seg is text list',
+  /function renderSkinSeg\([\s\S]*?soft-pad-skin-text/.test(padUi) &&
+  !/function renderSkinSeg\([\s\S]*?soft-pad-skin-card/.test(padUi));
 check('appear preview puts live Soft Pad before scene',
   /buildSoftPadAppearLivePadHtml[\s\S]{0,80}?renderShowModeSceneHtml/.test(preview));
 check('export paintSoftPadPadModePreview',
   /paintSoftPadPadModePreview:\s*paintSoftPadPadModePreview/.test(padUi));
+check('skin preview paints into island paint host',
+  /function refreshSoftPadFloatSkinPreview[\s\S]*?resolveSoftPadPreviewPaintHost/.test(padUi));
+check('skin preview keeps outer host, paints child',
+  /function refreshSoftPadFloatSkinPreview[\s\S]*?var outer = document\.getElementById\('softPadPreviewHost'\)[\s\S]*?resolveSoftPadPreviewPaintHost\(outer\)[\s\S]*?host\.innerHTML\s*=/.test(padUi));
+check('live skin lights re-check paint-target focus',
+  /function liveSoftPadFloatSkinLights[\s\S]*?resolveSoftPadPreviewPaintHost[\s\S]*?is-skin-focus/.test(padUi));
+check('hub skipPaint for float skin/show',
+  /floatTab === 'show' \|\| floatTab === 'skin'[\s\S]*?skipPaint = true/.test(hub));
+check('hub ensureSoftPadPreview keeps float skin/show',
+  /function ensureSoftPadPreview[\s\S]*?floatTab === 'skin'[\s\S]*?refreshSoftPadFloatSkinPreview/.test(hub));
+check('css mid skin ambient ring beats clear-shadow',
+  /#softPadPreviewHost\[data-skin-ambient\][\s\S]*?\.micro-hw-shell[\s\S]*?--agent-ambient-ring/.test(css));
+check('float dock change opts fall back to Hub onChanged',
+  /function softPadFloatDockChangeOpts[\s\S]*?getSoftPadSubpagePaintOpts/.test(padUi));
+check('persistPadAmbient quiet IPC',
+  /function persistPadAmbient[\s\S]*?cmd_codex_micro_pad_set_ambient/.test(padUi));
+check('ambient color input uses persistPadAmbient',
+  /data-act="ambient-solid-rgb"[\s\S]*?persistPadAmbient\(m\)/.test(padUi));
+check('numpad replace uses mode cards not checkboxes',
+  (function () {
+    var start = padUi.indexOf('function renderNumpadMapHtml(');
+    var end = padUi.indexOf('function renderSoftPadRuntimePanel(', start + 1);
+    if (start < 0 || end < 0) end = padUi.indexOf('\n  function ', start + 1);
+    var slice = start >= 0 && end > start ? padUi.slice(start, end) : '';
+    return /data-act="numpadMode"/.test(slice) &&
+      /soft-pad-numpad-mode/.test(slice) &&
+      !/type="checkbox"/.test(slice);
+  })());
+check('purpose preview scrolls to top after paint',
+  /function paintSoftPadPadModePreview[\s\S]*?scrollTop = 0/.test(padUi));
 
 console.log('[softpad-preview-split] ' + (fail ? fail + ' failed' : 'all passed'));
 if (fail) process.exit(1);

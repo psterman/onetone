@@ -85,8 +85,8 @@ function syncFromLegacy(): void {
   const next = pullModel();
   const sig = softPadPreviewSignature(next);
   applyHostAttrs(next);
-  applyPaint(next);
   if (sig === currentSig) return;
+  applyPaint(next);
   currentSig = sig;
   currentModel = next;
   // Do NOT emit(): JSX is an empty paint host; a React re-render can wipe

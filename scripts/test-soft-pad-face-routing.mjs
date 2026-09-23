@@ -38,11 +38,11 @@ assert(/getView:\s*function\s*\(\)\s*\{\s*return softPadPanelId\(\)/.test(src), 
 assert(/facePad:|faceAgent:|faceTimeline:/.test(src), 'els() face roots');
 assert(/softPadAgentPreviewHost/.test(src) && /softPadTmPreviewHost/.test(src), 'per-face preview hosts');
 assert(/PAD_MODE_TO_PANEL/.test(src) && /PANEL_TO_PAD_MODE/.test(src), 'pad mode ↔ panel maps');
-assert(/lights:\s*'agent'/.test(src) && /mini:\s*'agent'/.test(src), 'lights/mini map to agent panel');
+assert(/mode === 'lights' \|\| mode === 'mini'/.test(src), 'lights/mini normalize to skin');
 assert(/function isAgentWorkbenchMode\(/.test(src), 'isAgentWorkbenchMode helper');
 assert(/face === 'agent'[\s\S]*?setSoftPadPadMode/.test(src), 'setSoftPadFace(agent) → padMode');
-assert(/goSoftPadFlowNode[\s\S]*?setSoftPadPadMode\('lights'/.test(src),
-  'legacy flow node agent → lights padMode');
+assert(/goSoftPadFlowNode[\s\S]*?setSoftPadPadMode\('skin'/.test(src),
+  'legacy flow node agent → skin padMode');
 assert(/goSoftPadFlowNode[\s\S]*?nodeId === 'timeline'[\s\S]*?return;/.test(src),
   'flow node timeline retired (no setSoftPadFace)');
 assert(/canPaint = true/.test(src), 'timeline keeps Soft Pad preview');
@@ -51,15 +51,19 @@ assert(html.includes('id="softPadFacePad"'), 'html face pad root');
 assert(html.includes('id="softPadFaceAgent"'), 'html face agent root');
 assert(html.includes('id="softPadFaceTimeline"'), 'html face timeline root');
 assert(html.includes('id="softPadPadTabs"'), 'html pad mode tabs');
-assert(html.includes('data-pad-mode="appear"'), 'html display tab');
+assert(html.includes('data-pad-mode="show"'), 'html 何时显示 tab');
 assert(html.includes('data-pad-mode="keys"'), 'html keys tab');
+assert(html.includes('data-pad-mode="skin"'), 'html 皮肤 tab');
 assert(!html.includes('data-pad-mode="look"'), 'html look tab removed');
-assert(html.includes('id="softPadPadTabDisplay"'), 'html display tab id');
-assert(html.includes('data-pad-mode="purpose"'), 'html purpose tab');
-assert(html.includes('data-pad-mode="lights"') && html.includes('id="softPadPadTabLights"'),
-  'html lights tab');
-assert(html.includes('data-pad-mode="mini"') && html.includes('id="softPadPadTabMini"'),
-  'html mini tab');
+assert(html.includes('id="softPadPadTabShow"'), 'html show tab id');
+assert(html.includes('id="softPadPadTabSkin"'), 'html skin tab id');
+assert(!html.includes('data-pad-mode="style"'), 'html style tab promoted to show');
+assert(!html.includes('data-pad-mode="agent"'), 'html agent tab promoted to skin');
+assert(!html.includes('data-pad-mode="purpose"'), 'html purpose tab folded into show');
+assert(!html.includes('data-pad-mode="lights"') && !html.includes('id="softPadPadTabLights"'),
+  'html lights tab folded into skin');
+assert(!html.includes('data-pad-mode="mini"') && !html.includes('id="softPadPadTabMini"'),
+  'html mini tab folded into skin');
 assert(!html.includes('id="softPadFlowNodes"'), 'html face-seg retired');
 assert(html.includes('id="softPadAgentBody"'), 'html agent body host');
 assert(!html.includes('id="softPadAgentDirectory"'), 'html agent directory removed');
@@ -253,10 +257,10 @@ assert(!/renderSoftPadMoreBody[\s\S]*?renderAgentLightsPicker/.test(padUi),
   'Soft Pad more body no topbar picker');
 assert(/data-agent-workbench/.test(padUi), 'agent panel data-agent-workbench');
 assert(/function renderSoftPadPurposePanel\(/.test(padUi), 'purpose panel renderer');
-assert(/function renderSoftPadRuntimePanel\([\s\S]*?renderSoftPadPurposePanel/.test(padUi) &&
+assert(/function renderSoftPadRuntimePanel\([\s\S]*?renderSoftPadDisplayPanel/.test(padUi) &&
   !/function renderSoftPadRuntimePanel\([\s\S]*?renderNumpadMapHtml\(pad\)/.test(
-    padUi.slice(padUi.indexOf('function renderSoftPadRuntimePanel'), padUi.indexOf('function renderSoftPadPurposePanel'))
-  ), 'runtime panel no longer hosts feature demos');
+    padUi.slice(padUi.indexOf('function renderSoftPadRuntimePanel'), padUi.indexOf('function buildSoftPadPresentationSkinSectionHtml'))
+  ), 'runtime panel delegates to display (no inline demos)');
 assert(/function renderSoftPadPurposePanel\([\s\S]*?renderNumpadMapHtml\(pad\)/.test(padUi),
   'purpose panel hosts feature controls');
 assert(/function paintSoftPadPadModePreview\(/.test(padUi) &&
@@ -270,14 +274,20 @@ assert(/function buildSoftPadDisplayControlsHtml\([\s\S]*?renderShowModeTabsHtml
   'display controls host skins, omit scene');
 (function () {
   var start = padUi.indexOf('function buildSoftPadDisplayPreviewHtml(');
-  var end = padUi.indexOf('function buildSoftPadCursorArmRowHtml(', start + 1);
+  var end = padUi.indexOf('function mapAgentPageShowMode(', start + 1);
   var slice = start >= 0 && end > start ? padUi.slice(start, end) : '';
-  assert(/buildSoftPadAppearLivePadHtml/.test(slice) &&
+  // 何时出现：scene animation only — live Soft Pad would hide the switch demo.
+  assert(/renderShowModeSceneHtml/.test(slice) &&
     !/buildSoftPadPresentationSkinSectionHtml/.test(slice),
-    'display preview has live Soft Pad, not skin cards');
+    'display preview is scene animation, not skin cards');
 })();
-assert(/function renderNumpadMapHtml\([\s\S]*?soft-pad-feature-card__toggle/.test(padUi) &&
-  !/function renderNumpadMapHtml\([\s\S]*?soft-pad-demo-compare/.test(padUi),
+assert(/function renderNumpadMapHtml\([\s\S]*?data-act="numpadMode"/.test(padUi) &&
+  !/function renderNumpadMapHtml\([\s\S]*?soft-pad-demo-compare/.test(
+    padUi.slice(
+      padUi.indexOf('function renderNumpadMapHtml'),
+      padUi.indexOf('function renderSoftPadRuntimePanel')
+    )
+  ),
   'purpose controls omit inline demos');
 assert(/soft-pad-feature-subtab/.test(padUi) && /data-feature-tab/.test(padUi),
   'purpose feature demos use subtabs');
@@ -331,10 +341,14 @@ assert(/!isAgentWorkbenchMode\(\)\) \? undefined : \{ force: true \}/.test(src),
   'lights/mini force Soft Pad preview remount + chrome');
 assert(/forceRemount: isAgentWorkbenchMode\(\)/.test(src),
   'agent workbench bind select forceRemounts lights panel');
-assert(/hideWorkbenchTabs: softPadPadMode === 'lights' \|\| softPadPadMode === 'mini'/.test(src),
-  'hub passes hideWorkbenchTabs for flat lights/mini');
-assert(/foldDataIntoMini: softPadPadMode === 'mini'/.test(src),
-  'hub folds data panel into mini');
+assert(/Pad\.renderSoftPadAgentPanel/.test(src),
+  'hub keeps agent workbench path for legacy panel id');
+assert(/function renderSoftPadStylePanel\(/.test(padUi) && /omitSubtabs/.test(padUi),
+  'style panel omit nested subtabs (top tabs own show/skin)');
+assert(/btn\('show'/.test(padUi) && /btn\('skin'/.test(padUi) && /softPadStyleSubtabSkin/.test(padUi),
+  'style helpers keep 何时显示 + 皮肤');
+assert(/VALID_SOFT_PAD_PAD_MODES\s*=\s*\{\s*keys:\s*1,\s*show:\s*1,\s*skin:\s*1\s*\}/.test(src),
+  'pad modes keys/show/skin');
 assert(/hideWorkbenchTabs/.test(padUi) && /foldDataIntoMini/.test(padUi) &&
   /data-hide-workbench-tabs/.test(padUi),
   'agent workbench honors flat Soft Pad tabs');
@@ -407,6 +421,14 @@ assert(/soft-pad-key-swatch-disk|key-light-swatch|edit-guide-tab/.test(padUi + c
   'key look tab swatch disk');
 assert(/echoStatusPaletteOnSoftPads|softPadPreviewHost/.test(padUi),
   'status palette echoes onto Soft Pad previews');
+assert(/liveSoftPadFloatSkinLights|applySoftPadSkinAmbientPreview/.test(padUi),
+  'skin float live ambient apply on Soft Pad preview');
+assert(/refreshPreview === false/.test(src) && /liveSoftPadFloatSkinLights/.test(src),
+  'float-dock skips remount when refreshPreview false');
+assert(/floatTab === 'show' \|\| floatTab === 'skin'/.test(src) ||
+  /ft === 'show' \|\| ft === 'skin'/.test(src) ||
+  /ftSel !== 'show' && ftSel !== 'skin'/.test(src),
+  'keys preview paint skips while float tab is show/skin');
 
 if (fail) {
   console.error(fail + ' failed');

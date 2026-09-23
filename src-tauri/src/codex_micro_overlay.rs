@@ -17,21 +17,27 @@ use crate::AppState;
 pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 
 const OVERLAY_WIDTH: f64 = 432.0;
-/// Pad chassis (400) + usage caption + light-gate / nav CTA + root pad.
-/// Keep ahead of content: short windows clip the bottom caption/gate (flat cut).
-const OVERLAY_HEIGHT_FULL: f64 = 680.0;
+/// Default full height before content reports a tighter fit.
+/// Oversized height leaves a transparent HWND slab that blocks the desktop.
+/// Keep in sync with overlay_window.rs initial height.
+const OVERLAY_HEIGHT_FULL: f64 = 520.0;
+/// Floor/ceiling for frontend-measured content height (logical px).
+const OVERLAY_HEIGHT_FULL_MIN: f64 = 440.0;
+const OVERLAY_HEIGHT_FULL_MAX: f64 = 720.0;
 /// Left NAV rail strip is always reserved in the window so JOY open/close never
 /// resizes/repositions the pad (CSS fades the rail in-place).
 /// Deprecated: JOY side-rail removed; NAV keys live on the 5-col main pad.
 #[allow(dead_code)]
 /// 6 agent chips + full usage (`Cu · N次`) + expand/close; bar grows horizontally.
-const OVERLAY_WIDTH_MINI: f64 = 380.0;
-const OVERLAY_HEIGHT_MINI: f64 = 44.0;
-/// Compact hover tools row (~28px buttons + padding) under the main strip.
-const OVERLAY_HEIGHT_MINI_TOOLS: f64 = 76.0;
-/// Extra band for Cursor beginner listen hint under mini bar.
-const OVERLAY_HEIGHT_MINI_LISTEN: f64 = 68.0;
-const OVERLAY_HEIGHT_MINI_TOOLS_LISTEN: f64 = 100.0;
+const OVERLAY_WIDTH_MINI: f64 = 400.0;
+/// Top strip only (agents + pill + win). Matches `.overlay-mini__row` ~40px + border.
+const OVERLAY_HEIGHT_MINI: f64 = 48.0;
+/// Top strip + reserved tools row (hover/pinned). Tools ~40px + dashed divider.
+const OVERLAY_HEIGHT_MINI_TOOLS: f64 = 92.0;
+/// Top strip + listen/tip band (2-line copy + padding). Stack gap included.
+const OVERLAY_HEIGHT_MINI_LISTEN: f64 = 112.0;
+/// Tools row + listen/tip band — must fit without mid-glyph clip.
+const OVERLAY_HEIGHT_MINI_TOOLS_LISTEN: f64 = 156.0;
 const HIGHLIGHT_MS: u64 = 900;
 
 static ACTIVE_MICRO_KEY: OnceLock<Mutex<String>> = OnceLock::new();
@@ -59,6 +65,8 @@ static OVERLAY_USER_POSITION: OnceLock<ParkingMutex<Option<(i32, i32)>>> = OnceL
 /// Last applied (minimized, logical_w, logical_h). Width must participate so mini widen
 /// actually resizes; do not fight outer_size 1–2px DPI drift every tick (that 假死's mini).
 static OVERLAY_LAST_GEOM: OnceLock<ParkingMutex<Option<(bool, i32, i32)>>> = OnceLock::new();
+/// Frontend-measured full-pad content height (logical). Shrinks transparent HWND dead zone.
+static OVERLAY_FIT_HEIGHT: OnceLock<ParkingMutex<Option<f64>>> = OnceLock::new();
 /// Soft dismiss (X / settings open): hide until Soft Pad agent FG/process or settings close.
 /// Does not persist overlay_enabled=false (settings "不显示浮窗" owns that durable flag).
 static OVERLAY_SESSION_DISMISSED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
@@ -418,6 +426,10 @@ fn overlay_user_position() -> &'static ParkingMutex<Option<(i32, i32)>> {
 
 fn overlay_last_geom() -> &'static ParkingMutex<Option<(bool, i32, i32)>> {
     OVERLAY_LAST_GEOM.get_or_init(|| ParkingMutex::new(None))
+}
+
+fn overlay_fit_height() -> &'static ParkingMutex<Option<f64>> {
+    OVERLAY_FIT_HEIGHT.get_or_init(|| ParkingMutex::new(None))
 }
 
 fn overlay_session_dismissed() -> &'static ParkingMutex<bool> {
@@ -4399,17 +4411,81 @@ fn overlay_logical_size(
         };
         (OVERLAY_WIDTH_MINI, h)
     } else {
-        // NAV keys live on the 5-col main pad ? no side-rail width reserve.
-        (OVERLAY_WIDTH, OVERLAY_HEIGHT_FULL)
+        // NAV keys live on the 5-col main pad — no side-rail width reserve.
+        let fitted = *overlay_fit_height().lock();
+        let h = fitted
+            .unwrap_or(OVERLAY_HEIGHT_FULL)
+            .clamp(OVERLAY_HEIGHT_FULL_MIN, OVERLAY_HEIGHT_FULL_MAX);
+        (OVERLAY_WIDTH, h)
     }
+}
+
+/// Webview reports visible Soft Pad height so the HWND matches content (no empty hit slab).
+pub fn fit_overlay_content_height(win: &WebviewWindow, height_logical: f64) -> bool {
+    if *overlay_minimized().lock() {
+        return false;
+    }
+    let h = height_logical.clamp(OVERLAY_HEIGHT_FULL_MIN, OVERLAY_HEIGHT_FULL_MAX);
+    {
+        let mut slot = overlay_fit_height().lock();
+        if let Some(prev) = *slot {
+            if (prev - h).abs() < 1.5 {
+                return false;
+            }
+        }
+        *slot = Some(h);
+    }
+    // Force geometry re-apply even if outer already close to old constant.
+    *overlay_last_geom().lock() = None;
+    let (logical_w, logical_h) = overlay_logical_size(false, false, false, false);
+    if *overlay_user_positioned().lock() {
+        if let Some((x, y)) = *overlay_user_position().lock() {
+            let _ = win.set_position(Position::Physical(PhysicalPosition::new(x, y)));
+        }
+        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+    } else {
+        // Keep bottom edge fixed when height shrinks (dead zone was below the pad).
+        resize_overlay_anchored_from_bottom(win, logical_w, logical_h);
+    }
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let target_w = (logical_w * scale).round() as u32;
+    let target_h = (logical_h * scale).round() as u32;
+    let ok = match win.outer_size().ok().map(|s| (s.width, s.height)) {
+        Some((w, oh)) => w.abs_diff(target_w) <= 48 && oh.abs_diff(target_h) <= 48,
+        None => true,
+    };
+    if ok {
+        *overlay_last_geom().lock() =
+            Some((false, logical_w.round() as i32, logical_h.round() as i32));
+    }
+    true
+}
+
+/// Shrink/grow height while keeping the bottom edge fixed (empty slab was below the pad).
+fn resize_overlay_anchored_from_bottom(win: &WebviewWindow, logical_w: f64, logical_h: f64) {
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let target_h = (logical_h * scale).round() as i32;
+    let Ok(pos) = win.outer_position() else {
+        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+        return;
+    };
+    let Ok(size) = win.outer_size() else {
+        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+        return;
+    };
+    let new_y = pos.y + size.height as i32 - target_h;
+    let _ = win.set_position(Position::Physical(PhysicalPosition::new(pos.x, new_y)));
+    let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
 }
 
 /// Resize overlay when minimized or full height budget changes.
 fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnapshot) -> bool {
     let minimized = snapshot.minimized;
     let listen_band = snapshot.minimized
-        && ((snapshot.cursor_beginner_mode && snapshot.cursor_beginner_armed)
-            || snapshot.activation_hub_active);
+        && (snapshot.activation_hub_active
+            || (snapshot.cursor_beginner_mode && snapshot.cursor_beginner_armed)
+            // Tip「懂了」and listen banner share the band under the bar.
+            || (snapshot.cursor_beginner_mode && snapshot.cursor_probe_ok));
     let tools_row = snapshot.minimized && snapshot.mini_chrome.tools_bar_enabled;
     let (logical_w, logical_h) =
         overlay_logical_size(minimized, snapshot.joy_nav_panel_open, listen_band, tools_row);
@@ -8378,5 +8454,28 @@ mod tests {
         // User minimizes; sticky across further mapping switches
         runtime = true;
         assert!(resolve_minimized_on_mapping_change("A", false, &mut last, &mut runtime));
+    }
+
+    #[test]
+    fn mini_overlay_heights_fit_tools_and_listen_copy() {
+        // Bare / tools / listen / both — keep ahead of CSS content (see OVERLAY_HEIGHT_MINI_*).
+        assert_eq!(
+            overlay_logical_size(true, false, false, false),
+            (400.0, 48.0)
+        );
+        assert_eq!(
+            overlay_logical_size(true, false, false, true),
+            (400.0, 92.0)
+        );
+        assert_eq!(
+            overlay_logical_size(true, false, true, false),
+            (400.0, 112.0)
+        );
+        assert_eq!(
+            overlay_logical_size(true, false, true, true),
+            (400.0, 156.0)
+        );
+        assert!(overlay_logical_size(true, false, true, true).1
+            > overlay_logical_size(true, false, false, true).1);
     }
 }

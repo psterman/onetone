@@ -129,7 +129,11 @@
           '<div class="codex-micro-pad soft-pad-preview" data-pad-skin="' +
           skin.replace(/"/g, '') +
           '">' +
-          Pad.renderHardwarePad(m, pad, { mode: 'softPad' }) +
+          Pad.renderHardwarePad(m, pad, {
+            mode: 'softPad',
+            omitFaceTopbar: false,
+            stripMode: 'full'
+          }) +
           '</div>';
       }
     } catch (err) {

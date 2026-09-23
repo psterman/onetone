@@ -158,7 +158,13 @@ check('预览下用量看板', padJs.includes('data-soft-pad-preview-stats') &&
   padJs.includes('function paintSoftPadPreviewStats'));
 check('按键次数统计', padJs.includes('function fillSoftPadKeyPressStats') &&
   padJs.includes('keyPresses'));
-check('功能分类点击重绘列表', /layoutActionSceneId = sid;[\s\S]{0,280}ensureSoftPadFnCatalogPainted\(live\)/.test(padJs));
+check('功能分类点击重绘列表', /layoutActionSceneId = sid;[\s\S]{0,800}refreshSoftPadFnSwapForMode\(live\)/.test(padJs));
+check('功能分类点击锁定 vibe 标签', /layoutActionScenePinned = true/.test(padJs));
+check(
+  '换键时解锁 vibe 标签',
+  /layoutActionScenePinned = false/.test(padJs) &&
+    /if\s*\(\s*!layoutActionScenePinned\s*\)/.test(padJs)
+);
 
 const islandTsx = readFileSync(join(root, 'src-islands/islands/soft-pad-subpage-island.tsx'), 'utf8');
 check('岛含 paint 节点', islandTsx.includes('data-soft-pad-subpage-paint'));

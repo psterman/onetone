@@ -23,8 +23,51 @@
     cline: 'Cline',
     roo: 'Roo',
     opencode: 'OpenCode',
-    aider: 'Aider'
+    aider: 'Aider',
+    windsurf: 'Windsurf'
   };
+
+  /** Paths relative to agent-proto/ iframe (same assets as agent-page). */
+  var AGENT_ICONS = {
+    cursor: '../icons/app-target/cursor.png',
+    claude: '../icons/app-target/claude.png',
+    codex: '../icons/app-target/codex.png',
+    minimax: '../icons/app-target/minimaxcode.png',
+    workbuddy: '../icons/app-target/workbuddy.png',
+    trae: '../icons/app-target/trae.png',
+    traecode: '../icons/app-target/trae-code.png',
+    qoder: '../icons/app-target/qoder.png',
+    gemini: '../icons/app-target/gemini.png',
+    copilotcli: '../icons/app-target/copilot.png',
+    cline: '../icons/app-target/cline.png',
+    roo: '../icons/app-target/roo.png',
+    opencode: '../icons/app-target/opencode.png',
+    aider: '../icons/app-target/aider.png',
+    windsurf: '../icons/app-target/windsurf.png'
+  };
+
+  function iconForKind(kind) {
+    var k = kindKey(kind);
+    if (k === 'traecode') return AGENT_ICONS.traecode;
+    return AGENT_ICONS[k] || '';
+  }
+
+  function resolveFocusId(agents) {
+    agents = Array.isArray(agents) ? agents : [];
+    try {
+      var settings = root.OneToneAgentPageSettingsBridge;
+      if (settings && typeof settings.getSelectedKind === 'function') {
+        var sel = kindKey(settings.getSelectedKind());
+        if (sel && agents.some(function (a) { return kindKey(a.id) === sel; })) {
+          return sel === 'traecode' ? 'traeCode' : sel;
+        }
+      }
+    } catch (_) {}
+    var cursor = agents.find(function (a) { return kindKey(a.id) === 'cursor'; });
+    if (cursor) return cursor.id;
+    var live = agents.find(function (a) { return a.signal; });
+    return live ? live.id : (agents[0] && agents[0].id) || '';
+  }
 
   var pollTimer = 0;
   var inFlight = false;
@@ -91,6 +134,64 @@
     return Math.round(Number(rem));
   }
 
+  /**
+   * Cost honesty:
+   * 1) totalCostUsd / sessionCostUsd → official (booked)
+   * 2) estimatedCostUsd + costIsEstimate → estimate (display only, not booked)
+   * 3) estimatedCostUsd alone → official (Claude OTel / session-reported $ lands here today)
+   * 4) else → unpriced; never invent a price
+   */
+  function projectCost(usage) {
+    usage = usage || {};
+    var official = usageVal(usage, 'totalCostUsd', 'total_cost_usd');
+    if (official == null) official = usageVal(usage, 'sessionCostUsd', 'session_cost_usd');
+    var est = usageVal(usage, 'estimatedCostUsd', 'estimated_cost_usd');
+    var isEst =
+      usage.costIsEstimate === true ||
+      usage.cost_is_estimate === true ||
+      String(usage.costBasis || usage.cost_basis || '').toLowerCase() === 'estimate';
+
+    if (official != null && isFinite(Number(official))) {
+      var o = Number(official);
+      return { costBasis: 'official', usd: o, usdBooked: o };
+    }
+    if (est != null && isFinite(Number(est))) {
+      var e = Number(est);
+      if (isEst) return { costBasis: 'estimate', usd: e, usdBooked: null };
+      return { costBasis: 'official', usd: e, usdBooked: e };
+    }
+    return { costBasis: 'unpriced', usd: null, usdBooked: null };
+  }
+
+  function projectSignalGroup(row) {
+    var hasActivity =
+      row.turns != null ||
+      row.sessions != null ||
+      row.activeMin != null ||
+      row.tok != null ||
+      row.usd != null;
+    var signal = !!(hasActivity || row.status === 'ready' || row.tight);
+    var group = 'offline';
+    if (hasActivity) group = 'active';
+    else if (row.remainingPercent != null) group = 'quota';
+    return { signal: signal, group: group };
+  }
+
+  /** Filter helpers for board UI (all / quota / activity / unwired / domestic). */
+  function filterAgents(agents, filter) {
+    agents = Array.isArray(agents) ? agents : [];
+    var f = String(filter || 'all');
+    if (f === 'all') return agents.slice();
+    return agents.filter(function (a) {
+      if (!a) return false;
+      if (f === 'quota') return a.remainingPercent != null;
+      if (f === 'activity') return a.group === 'active';
+      if (f === 'unwired') return a.group === 'offline';
+      if (f === 'domestic') return !!a.domestic;
+      return true;
+    });
+  }
+
   function projectAgentRow(agent) {
     if (!agent) return null;
     var kindRaw = String(agent.kind || '').trim();
@@ -130,11 +231,9 @@
     if (tok != null && isFinite(Number(tok))) tok = Math.round(Number(tok));
     else tok = null;
 
-    var usd = usageVal(usage, 'estimatedCostUsd', 'estimated_cost_usd');
-    if (usd != null && isFinite(Number(usd))) usd = Number(usd);
-    else usd = null;
-
+    var cost = projectCost(usage);
     var rem = remainingPct(usage);
+    var tight = rem != null && rem <= 40;
     var model = String(agent.model || '').trim();
     var modelConf = String(
       agent.modelConfidence != null
@@ -142,15 +241,21 @@
         : agent.model_confidence || ''
     ).trim();
 
-    return {
-      id: kindKey(kind) === 'traecode' ? 'traeCode' : kindKey(kind),
+    var id = kindKey(kind) === 'traecode' ? 'traeCode' : kindKey(kind);
+    var row = {
+      id: id,
       name: displayName(kindRaw),
+      icon: iconForKind(kindRaw),
       turns: turns,
       sessions: sessions,
       activeMin: activeMin,
       tok: tok,
-      usd: usd,
+      usd: cost.usd,
+      usdBooked: cost.usdBooked,
+      costBasis: cost.costBasis,
       remainingPercent: rem,
+      tight: tight,
+      domestic: !!(agent.domestic === true || usage.domestic === true),
       cacheHit: null,
       peakLabel: null,
       peakEff: null,
@@ -162,6 +267,10 @@
       source: String(usage.source || ''),
       confidence: String(usage.confidence || '')
     };
+    var sg = projectSignalGroup(row);
+    row.signal = sg.signal;
+    row.group = sg.group;
+    return row;
   }
 
   /**
@@ -209,6 +318,7 @@
       range: 'day',
       history: false,
       agents: agents,
+      focusId: resolveFocusId(agents),
       cursorReady: cursorReady,
       cursorNeedsConsent: !!(
         cursor &&
@@ -328,6 +438,8 @@
     MSG_TYPE: MSG_TYPE,
     projectBoardFromOverlay: projectBoardFromOverlay,
     projectAgentRow: projectAgentRow,
+    projectCost: projectCost,
+    filterAgents: filterAgents,
     isCursorLocalReady: isCursorLocalReady,
     enableCursorActivity: enableCursorActivity,
     refresh: refresh,

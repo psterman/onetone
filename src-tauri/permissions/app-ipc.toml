@@ -168,6 +168,8 @@ permissions = [
   "allow-cmd-codex-micro-pad-set-presentation",
   "allow-cmd-codex-micro-pad-set-mini-usage-pill",
   "allow-cmd-codex-micro-pad-set-mini-chrome",
+  "allow-cmd-codex-micro-pad-set-skin",
+  "allow-cmd-codex-micro-pad-set-ambient",
   "allow-cmd-soft-pad-pin-mapping",
   "allow-cmd-soft-pad-force-open",
   "allow-cmd-soft-pad-open-shell-hook",

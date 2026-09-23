@@ -148,6 +148,43 @@ assert.match(hubSrc, /function followForegroundOnce/);
 assert.match(hubSrc, /cmd_habit_foreground_app/);
 assert.match(hubSrc, /refreshSoftPadEditChrome/);
 assert.match(hubSrc, /SOFT_PAD_UNIVERSAL_KIND/);
+// Open Soft Pad must follow FG even when first paint is need-agent /「通用」.
+assert.match(hubSrc, /need-agent[\s\S]*?ensureForegroundFollow\(\)/);
+assert.match(hubSrc, /Universal Soft Pad mapping is the open-page default/);
+assert.match(hubSrc, /fromForeground: !!opts\.fromForeground/);
+
+// resolveSoftPadEntry: universal Soft Pad mapping must not hide FG agent Soft Pad.
+sandbox.OneToneHabitOverrideDiff = {
+  findGlobalBaselineMapping: function (cfg) {
+    var maps = (cfg && cfg.mappings) || [];
+    for (var i = 0; i < maps.length; i++) {
+      if (maps[i] && maps[i].id === 'm-base') return maps[i];
+    }
+    return null;
+  },
+};
+sandbox.OneToneState.state.config.mappings = [
+  {
+    id: 'm-base',
+    group: '通用设置',
+    appTargetId: '',
+    enabled: true,
+    codexMicroPad: { enabled: true, overlayEnabled: true, keys: {} },
+  },
+  {
+    id: 'm-cursor',
+    appTargetId: 'cursor-chat',
+    agentTemplateId: 'cursor',
+    softPadKind: 'cursor',
+    enabled: true,
+    codexMicroPad: { enabled: true, overlayEnabled: true, keys: { a: {} } },
+  },
+];
+sandbox.OneToneState.state.selectedMappingId = 'm-base';
+Hub.noteLaneForeground('cursor-chat');
+assert.equal(Hub.resolveSoftPadEntry().kind, 'cursor', 'FG Cursor beats sticky universal Soft Pad');
+sandbox.OneToneState.state.selectedMappingId = 'm-cursor';
+assert.equal(Hub.resolveSoftPadEntry().kind, 'cursor', 'concrete Cursor Soft Pad still resolves');
 const panels = readFileSync(join(root, 'src/js/features/home/home-workbench-panels.js'), 'utf8');
 assert.match(panels, /softPadSnapshotFromApplied|getCachedSoftPadRuntime/);
 assert.match(panels, /homeWbSoftPadControlConfirming|正在确认当前控制/);
