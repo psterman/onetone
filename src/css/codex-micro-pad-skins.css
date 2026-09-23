@@ -1,0 +1,690 @@
+/* Soft Pad skins — prototype parity
+   Sources: codex_micro_replica_keyboard / ios_27_spatial_glass /
+   dark_mode_status_rings (Downloads + design-mock/pad-skin-candidates)
+   Map: hybrid-pro=Keys Core · glass-light=Spatial · vibe-*=Status Rings */
+
+/* ── Structural: let skirts / bloom / rings paint outside the chassis ── */
+.micro-hw[data-pad-skin="hybrid-pro"],
+.micro-hw[data-pad-skin="glass-light"],
+.micro-hw[data-pad-skin="vibe-light"],
+.micro-hw[data-pad-skin="vibe-dark"],
+.codex-micro-pad[data-pad-skin="hybrid-pro"] .micro-hw,
+.codex-micro-pad[data-pad-skin="glass-light"] .micro-hw,
+.codex-micro-pad[data-pad-skin="vibe-light"] .micro-hw,
+.codex-micro-pad[data-pad-skin="vibe-dark"] .micro-hw {
+  overflow: visible;
+  contain: none;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face,
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__face,
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__face,
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__face,
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__grid,
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__grid,
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__grid,
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key,
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key,
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key {
+  overflow: visible;
+}
+.soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key,
+.soft-pad-preview-host .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key,
+.soft-pad-preview-host .micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key,
+.soft-pad-preview-host .micro-hw[data-pad-skin="glass-light"] .micro-hw__key,
+#softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key,
+#softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key {
+  overflow: visible !important;
+}
+
+/* Shared motion */
+.micro-hw[data-pad-skin]:not([data-pad-skin="default"]) .micro-hw__key:not(.micro-hw__key--placeholder) {
+  cursor: pointer;
+  will-change: transform, box-shadow;
+  transition:
+    transform 0.12s cubic-bezier(0.3, 0.8, 0.1, 1),
+    box-shadow 0.12s cubic-bezier(0.3, 0.8, 0.1, 1),
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.16s ease,
+    filter 0.16s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   hybrid-pro — Keys Core (mechanical skirt)
+   ═══════════════════════════════════════════════════════════ */
+.micro-hw[data-pad-skin="hybrid-pro"],
+.codex-micro-pad.soft-pad-preview[data-pad-skin="hybrid-pro"] .micro-hw {
+  --press-dist: 6px;
+  --key-skirt: #cdd5df;
+  --key-rim-top: #fff;
+  --key-rim-bot: rgba(15, 23, 42, 0.08);
+  --key-shadow-ambient: rgba(15, 23, 42, 0.12);
+  --key-shadow-deep: rgba(15, 23, 42, 0.15);
+  --r-key: 14px;
+  font-family: "SF Pro Rounded", "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.9),
+    0 12px 48px rgba(70, 130, 255, 0.28),
+    0 0 80px rgba(70, 130, 255, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face {
+  background: #e6e9ed;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.08),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__grid {
+  gap: 10px;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  --ring-w: 0px;
+  --ring-c: transparent;
+  --glow-b: 0px;
+  --glow-c: transparent;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f6f8 100%);
+  border: none;
+  color: #1e293b;
+  border-radius: var(--r-key, 14px);
+  box-shadow:
+    inset 0 3px 4px var(--key-rim-top),
+    inset 0 -3px 5px var(--key-rim-bot),
+    0 var(--press-dist) 0 var(--key-skirt),
+    0 calc(var(--press-dist) + 1px) 0 var(--ring-w) var(--ring-c),
+    0 calc(var(--press-dist) + 4px) var(--glow-b) var(--glow-c),
+    0 calc(var(--press-dist) + 4px) 12px var(--key-shadow-ambient),
+    0 calc(var(--press-dist) + 10px) 24px var(--key-shadow-deep);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder)::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: calc(var(--r-key, 14px) - 4px);
+  background: radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.45) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 1;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  color: #000;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key.is-pressed:not(.micro-hw__key--placeholder) {
+  transform: translateY(var(--press-dist));
+  background: linear-gradient(180deg, #f4f6f8 0%, #e2e8f0 100%);
+  box-shadow:
+    inset 0 2px 4px #fff,
+    inset 0 -2px 4px rgba(15, 23, 42, 0.08),
+    0 0 0 var(--key-skirt),
+    0 1px 0 var(--ring-w) var(--ring-c),
+    0 2px calc(var(--glow-b) / 2) var(--glow-c),
+    0 2px 4px var(--key-shadow-ambient),
+    0 4px 8px var(--key-shadow-deep);
+}
+/* Agent / bound: blue-tinted skirt + shine */
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--agent:not(.micro-hw__key--placeholder) {
+  --key-skirt: #93c5fd;
+  color: #1e3a8a;
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+  box-shadow:
+    inset 0 3px 4px #fff,
+    inset 0 -3px 5px rgba(59, 130, 246, 0.1),
+    inset 0 0 16px rgba(59, 130, 246, 0.18),
+    0 var(--press-dist) 0 var(--key-skirt),
+    0 calc(var(--press-dist) + 1px) 0 var(--ring-w) var(--ring-c),
+    0 calc(var(--press-dist) + 4px) var(--glow-b) var(--glow-c),
+    0 calc(var(--press-dist) + 4px) 12px rgba(59, 130, 246, 0.2),
+    0 calc(var(--press-dist) + 12px) 24px rgba(59, 130, 246, 0.28);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--agent:not(.micro-hw__key--placeholder)::after {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.55) 0%, transparent 70%);
+}
+/* Status rings on Keys Core (skirt-base LED) */
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key[data-run-status="running"],
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key[data-run-status="listening"],
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key[data-run-status="needs_input"],
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key[data-run-status="done"],
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key[data-run-status="failed"] {
+  --ring-w: 1.5px;
+  --glow-b: 16px;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key[data-run-status="running"] {
+  --ring-c: var(--micro-hw-status-running, #3053fe);
+  --glow-c: color-mix(in srgb, var(--micro-hw-status-running, #3053fe) 40%, transparent);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key[data-run-status="listening"] {
+  --ring-c: var(--micro-hw-status-listening, #00a3ff);
+  --glow-c: color-mix(in srgb, var(--micro-hw-status-listening, #00a3ff) 40%, transparent);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key[data-run-status="needs_input"] {
+  --ring-c: var(--micro-hw-status-needs-input, #ff6a00);
+  --glow-c: color-mix(in srgb, var(--micro-hw-status-needs-input, #ff6a00) 40%, transparent);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key[data-run-status="done"] {
+  --ring-c: var(--micro-hw-status-done, #00ff4c);
+  --glow-c: color-mix(in srgb, var(--micro-hw-status-done, #00ff4c) 40%, transparent);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key[data-run-status="failed"] {
+  --ring-c: var(--micro-hw-status-failed, #ff0033);
+  --glow-c: color-mix(in srgb, var(--micro-hw-status-failed, #ff0033) 40%, transparent);
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-name {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.01em; color: #1e293b; position: relative; z-index: 2;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-chord {
+  font-size: 9px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: #94a3b8; position: relative; z-index: 2;
+}
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__digit,
+.micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__icon {
+  position: relative; z-index: 2;
+}
+
+/* Dark Keys Core (anodized) */
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"],
+html[data-theme="dark"] .codex-micro-pad.soft-pad-preview[data-pad-skin="hybrid-pro"] .micro-hw {
+  --key-skirt: #181d26;
+  --key-rim-top: rgba(255, 255, 255, 0.14);
+  --key-rim-bot: rgba(0, 0, 0, 0.55);
+  --key-shadow-ambient: rgba(0, 0, 0, 0.4);
+  --key-shadow-deep: rgba(0, 0, 0, 0.55);
+  background: rgba(26, 30, 38, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.12),
+    0 12px 48px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(56, 189, 248, 0.12);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face {
+  background: #1a2130;
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.45);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(180deg, #333d4e 0%, #293240 100%);
+  color: #f1f5f9;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder)::after {
+  background: radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.12) 0%, transparent 60%);
+  mix-blend-mode: overlay;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key.is-pressed:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(180deg, #27303d 0%, #1f2631 100%);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key--agent:not(.micro-hw__key--placeholder) {
+  --key-skirt: #1e3a5f;
+  background: linear-gradient(180deg, #2a3a52 0%, #1e2a3c 100%);
+  color: #93c5fd;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-name,
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__digit {
+  color: #f1f5f9;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__meta-chord {
+  color: #94a3b8;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   glass-light — iOS 27 Spatial Glass
+   ═══════════════════════════════════════════════════════════ */
+.micro-hw[data-pad-skin="glass-light"],
+.codex-micro-pad.soft-pad-preview[data-pad-skin="glass-light"] .micro-hw {
+  position: relative;
+  font-family: "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  background: rgba(255, 255, 255, 0.4);
+  border: none;
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.08),
+    inset 0 1px 2px rgba(255, 255, 255, 1);
+  backdrop-filter: blur(80px) saturate(180%);
+  -webkit-backdrop-filter: blur(80px) saturate(180%);
+}
+.micro-hw[data-pad-skin="glass-light"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+  mask-image: linear-gradient(180deg, black, transparent 80%);
+  -webkit-mask-image: linear-gradient(180deg, black, transparent 80%);
+  z-index: 2;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__face {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__grid {
+  gap: 10px;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.3));
+  border: none;
+  color: #0f172a;
+  border-radius: 16px;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.06),
+    inset 0 1px 1px rgba(255, 255, 255, 1),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  transition:
+    transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    background 0.3s ease,
+    box-shadow 0.3s ease;
+  z-index: 1;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.28) 0%, transparent 40%);
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
+  transform: translateY(-2px) scale(1.02);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.5));
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.12),
+    inset 0 1px 2px #fff,
+    inset 0 -1px 1px rgba(255, 255, 255, 0.4);
+  z-index: 2;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key.is-pressed:not(.micro-hw__key--placeholder) {
+  transform: translateY(1px) scale(0.96);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 1px #fff;
+  transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.1s ease;
+}
+/* Neon-in-glass status */
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key[data-run-status="running"],
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key[data-run-status="listening"] {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.45), rgba(6, 182, 212, 0.12));
+  color: #fff;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 8px 32px rgba(6, 182, 212, 0.5),
+    inset 0 1px 2px rgba(255, 255, 255, 0.6),
+    inset 0 0 0 1px rgba(6, 182, 212, 0.5);
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key[data-run-status="needs_input"],
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__key[data-run-status="failed"] {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.45), rgba(244, 63, 94, 0.12));
+  color: #fff;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 8px 32px rgba(244, 63, 94, 0.5),
+    inset 0 1px 2px rgba(255, 255, 255, 0.6),
+    inset 0 0 0 1px rgba(244, 63, 94, 0.5);
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-name {
+  font-size: 10px; font-weight: 600; letter-spacing: -0.02em; color: #0f172a; position: relative; z-index: 2;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-chord {
+  font-size: 9px; font-weight: 500; color: rgba(15, 23, 42, 0.5); position: relative; z-index: 2;
+}
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__digit,
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__icon {
+  position: relative; z-index: 2;
+}
+
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"],
+html[data-theme="dark"] .codex-micro-pad.soft-pad-preview[data-pad-skin="glass-light"] .micro-hw {
+  background: rgba(20, 20, 22, 0.45);
+  box-shadow:
+    0 40px 80px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"]::after {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
+  color: #fff;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.05);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder):hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05));
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__key.is-pressed:not(.micro-hw__key--placeholder) {
+  background: rgba(255, 255, 255, 0.25);
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-name,
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__digit {
+  color: #fff;
+}
+html[data-theme="dark"] .micro-hw[data-pad-skin="glass-light"] .micro-hw__meta-chord {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Spatial bloom via existing aura child */
+.micro-hw[data-pad-skin="glass-light"] .micro-hw__aura {
+  inset: -12px;
+  border-radius: calc(inherit + 16px);
+  filter: blur(40px);
+  opacity: 0;
+  background: transparent;
+  transition: opacity 0.8s ease, background 0.8s ease;
+}
+.wrap[data-pad-skin="glass-light"][data-light="running"] .micro-hw__aura,
+.wrap[data-pad-skin="glass-light"][data-light="listening"] .micro-hw__aura,
+.micro-hw[data-pad-skin="glass-light"][data-light="running"] .micro-hw__aura {
+  background: radial-gradient(circle at 50% 100%, rgba(6, 182, 212, 0.55), transparent 70%);
+  opacity: 0.6;
+}
+.wrap[data-pad-skin="glass-light"][data-light="needs_input"] .micro-hw__aura,
+.wrap[data-pad-skin="glass-light"][data-light="failed"] .micro-hw__aura {
+  background: radial-gradient(circle at 50% 100%, rgba(244, 63, 94, 0.5), transparent 70%);
+  opacity: 0.6;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   vibe-light / vibe-dark — Status Rings (Keys Core + LED ring)
+   Remapped from indigo flat → ceramic / anodized + skirt rings
+   ═══════════════════════════════════════════════════════════ */
+.micro-hw[data-pad-skin="vibe-light"],
+.codex-micro-pad.soft-pad-preview[data-pad-skin="vibe-light"] .micro-hw {
+  --press-dist: 6px;
+  --key-skirt: #cdd5df;
+  --key-rim-top: #fff;
+  --key-rim-bot: rgba(15, 23, 42, 0.08);
+  --key-shadow-ambient: rgba(15, 23, 42, 0.12);
+  --key-shadow-deep: rgba(15, 23, 42, 0.15);
+  --r-key: 14px;
+  --bumper-rim: rgba(255, 255, 255, 0.9);
+  --bumper-glow: transparent;
+  font-family: "SF Pro Rounded", "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  background: rgba(255, 255, 255, 0.62);
+  border: none;
+  box-shadow:
+    inset 0 0 0 2px var(--bumper-rim),
+    0 0 80px var(--bumper-glow),
+    0 12px 48px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  transition: box-shadow 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__face {
+  background: #e6e9ed;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.08);
+  backdrop-filter: none;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__grid { gap: 10px; }
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  --ring-w: 0px;
+  --ring-c: transparent;
+  --glow-b: 0px;
+  --glow-c: transparent;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f6f8 100%);
+  border: none;
+  color: #1e293b;
+  border-radius: var(--r-key, 14px);
+  box-shadow:
+    inset 0 3px 4px var(--key-rim-top),
+    inset 0 -3px 5px var(--key-rim-bot),
+    0 var(--press-dist) 0 var(--key-skirt),
+    0 calc(var(--press-dist) + 1px) 0 var(--ring-w) var(--ring-c),
+    0 calc(var(--press-dist) + 4px) var(--glow-b) var(--glow-c),
+    0 calc(var(--press-dist) + 4px) 12px var(--key-shadow-ambient),
+    0 calc(var(--press-dist) + 10px) 24px var(--key-shadow-deep);
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder)::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: calc(var(--r-key, 14px) - 4px);
+  background: radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.4) 0%, transparent 60%);
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key.is-pressed:not(.micro-hw__key--placeholder) {
+  transform: translateY(var(--press-dist));
+  background: linear-gradient(180deg, #f4f6f8 0%, #e2e8f0 100%);
+  box-shadow:
+    inset 0 2px 4px var(--key-rim-top),
+    inset 0 -2px 4px rgba(15, 23, 42, 0.1),
+    0 0 0 var(--key-skirt),
+    0 1px 0 var(--ring-w) var(--ring-c),
+    0 2px calc(var(--glow-b) / 2) var(--glow-c),
+    0 2px 4px var(--key-shadow-ambient),
+    0 4px 8px var(--key-shadow-deep);
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="running"],
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="listening"],
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="needs_input"],
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="done"],
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="failed"] {
+  --ring-w: 1.5px;
+  --glow-b: 16px;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="running"] {
+  --ring-c: #38bdf8;
+  --glow-c: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="listening"] {
+  --ring-c: #00a3ff;
+  --glow-c: rgba(0, 163, 255, 0.4);
+  color: #00a3ff;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="needs_input"] {
+  --ring-c: #fb7185;
+  --glow-c: rgba(251, 113, 133, 0.4);
+  color: #fb7185;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="done"] {
+  --ring-c: #4ade80;
+  --glow-c: rgba(74, 222, 128, 0.4);
+  color: #4ade80;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="failed"] {
+  --ring-c: #f87171;
+  --glow-c: rgba(248, 113, 113, 0.4);
+  color: #f87171;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__meta-name,
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__digit,
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__icon {
+  position: relative; z-index: 2;
+}
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__meta-name { font-size: 10px; font-weight: 700; color: #1e293b; }
+.micro-hw[data-pad-skin="vibe-light"] .micro-hw__meta-chord { font-size: 9px; font-weight: 600; color: #94a3b8; position: relative; z-index: 2; }
+
+/* Bumper aura follows chassis light (overlay wrap) */
+.wrap[data-pad-skin="vibe-light"][data-light="running"] .micro-hw,
+.wrap[data-pad-skin="vibe-light"][data-light="listening"] .micro-hw {
+  --bumper-rim: rgba(56, 189, 248, 0.5);
+  --bumper-glow: rgba(56, 189, 248, 0.3);
+}
+.wrap[data-pad-skin="vibe-light"][data-light="needs_input"] .micro-hw,
+.wrap[data-pad-skin="vibe-light"][data-light="failed"] .micro-hw {
+  --bumper-rim: rgba(251, 113, 133, 0.5);
+  --bumper-glow: rgba(251, 113, 133, 0.3);
+}
+.wrap[data-pad-skin="hybrid-pro"][data-light="running"] .micro-hw,
+.wrap[data-pad-skin="hybrid-pro"][data-light="listening"] .micro-hw {
+  box-shadow:
+    inset 0 0 0 2px rgba(56, 189, 248, 0.45),
+    0 12px 48px rgba(70, 130, 255, 0.28),
+    0 0 80px rgba(56, 189, 248, 0.28);
+}
+
+/* vibe-dark = anodized status rings (also used when app dark + vibe-light preference) */
+.micro-hw[data-pad-skin="vibe-dark"],
+.codex-micro-pad.soft-pad-preview[data-pad-skin="vibe-dark"] .micro-hw,
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"],
+html[data-theme="dark"] .codex-micro-pad.soft-pad-preview[data-pad-skin="vibe-light"] .micro-hw {
+  --press-dist: 6px;
+  --key-skirt: #181d26;
+  --key-rim-top: rgba(255, 255, 255, 0.14);
+  --key-rim-bot: rgba(0, 0, 0, 0.55);
+  --key-shadow-ambient: rgba(0, 0, 0, 0.4);
+  --key-shadow-deep: rgba(0, 0, 0, 0.6);
+  --r-key: 14px;
+  --bumper-rim: rgba(255, 255, 255, 0.15);
+  --bumper-glow: transparent;
+  font-family: "SF Pro Rounded", "SF Pro Text", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  background: rgba(26, 30, 38, 0.65);
+  border: none;
+  box-shadow:
+    inset 0 0 0 2px var(--bumper-rim),
+    0 0 80px var(--bumper-glow),
+    0 12px 48px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__face,
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__face {
+  background: #1a2130;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.45);
+  backdrop-filter: none;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__grid,
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__grid { gap: 10px; }
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key:not(.micro-hw__key--placeholder),
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  --ring-w: 0px;
+  --ring-c: transparent;
+  --glow-b: 0px;
+  --glow-c: transparent;
+  background: linear-gradient(180deg, #333d4e 0%, #293240 100%);
+  border: none;
+  color: #e8eef6;
+  border-radius: var(--r-key, 14px);
+  box-shadow:
+    inset 0 3px 4px var(--key-rim-top),
+    inset 0 -3px 5px var(--key-rim-bot),
+    0 var(--press-dist) 0 var(--key-skirt),
+    0 calc(var(--press-dist) + 1px) 0 var(--ring-w) var(--ring-c),
+    0 calc(var(--press-dist) + 4px) var(--glow-b) var(--glow-c),
+    0 calc(var(--press-dist) + 4px) 12px var(--key-shadow-ambient),
+    0 calc(var(--press-dist) + 10px) 24px var(--key-shadow-deep);
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key:not(.micro-hw__key--placeholder)::after,
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder)::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: calc(var(--r-key, 14px) - 4px);
+  background: radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.12) 0%, transparent 60%);
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key.is-pressed:not(.micro-hw__key--placeholder),
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder):active,
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key.is-pressed:not(.micro-hw__key--placeholder) {
+  transform: translateY(var(--press-dist));
+  background: linear-gradient(180deg, #27303d 0%, #1f2631 100%);
+  box-shadow:
+    inset 0 2px 4px var(--key-rim-top),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.6),
+    0 0 0 var(--key-skirt),
+    0 1px 0 var(--ring-w) var(--ring-c),
+    0 2px calc(var(--glow-b) / 2) var(--glow-c),
+    0 2px 4px var(--key-shadow-ambient),
+    0 4px 8px var(--key-shadow-deep);
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key[data-run-status="running"],
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key[data-run-status="listening"],
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key[data-run-status="needs_input"],
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key[data-run-status="done"],
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key[data-run-status="failed"],
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="running"],
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="listening"],
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="needs_input"],
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="done"],
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="failed"] {
+  --ring-w: 1.5px;
+  --glow-b: 16px;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key[data-run-status="running"],
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="running"] {
+  --ring-c: #38bdf8; --glow-c: rgba(56, 189, 248, 0.4); color: #38bdf8;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key[data-run-status="listening"],
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="listening"] {
+  --ring-c: #00a3ff; --glow-c: rgba(0, 163, 255, 0.4); color: #00a3ff;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key[data-run-status="needs_input"],
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="needs_input"] {
+  --ring-c: #fb7185; --glow-c: rgba(251, 113, 133, 0.4); color: #fb7185;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key[data-run-status="done"],
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="done"] {
+  --ring-c: #4ade80; --glow-c: rgba(74, 222, 128, 0.4); color: #4ade80;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key[data-run-status="failed"],
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key[data-run-status="failed"] {
+  --ring-c: #f87171; --glow-c: rgba(248, 113, 113, 0.4); color: #f87171;
+}
+.wrap[data-pad-skin="vibe-dark"][data-light="running"] .micro-hw,
+.wrap[data-pad-skin="vibe-dark"][data-light="listening"] .micro-hw,
+.wrap[data-pad-skin="vibe-light"][data-light="running"] .micro-hw,
+.wrap[data-pad-skin="vibe-light"][data-light="listening"] .micro-hw {
+  --bumper-rim: rgba(56, 189, 248, 0.5);
+  --bumper-glow: rgba(56, 189, 248, 0.3);
+}
+.wrap[data-pad-skin="vibe-dark"][data-light="needs_input"] .micro-hw,
+.wrap[data-pad-skin="vibe-dark"][data-light="failed"] .micro-hw {
+  --bumper-rim: rgba(251, 113, 133, 0.5);
+  --bumper-glow: rgba(251, 113, 133, 0.3);
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__meta-name,
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__digit,
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__meta-name,
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__digit {
+  color: #e8eef6; position: relative; z-index: 2;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__meta-chord,
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__meta-chord {
+  color: #94a3b8; position: relative; z-index: 2;
+}
+.micro-hw[data-pad-skin="vibe-dark"] .micro-hw__icon,
+html[data-theme="dark"] .micro-hw[data-pad-skin="vibe-light"] .micro-hw__icon {
+  position: relative; z-index: 2;
+}
+
+/* Overlay chassis: same unlock (attribute may live on .wrap/.root) */
+.overlay-body .micro-hw[data-pad-skin="hybrid-pro"],
+.overlay-body .micro-hw[data-pad-skin="glass-light"],
+.overlay-body .micro-hw[data-pad-skin="vibe-light"],
+.overlay-body .micro-hw[data-pad-skin="vibe-dark"],
+.root[data-pad-skin="hybrid-pro"] .overlay-body .micro-hw,
+.root[data-pad-skin="glass-light"] .overlay-body .micro-hw,
+.root[data-pad-skin="vibe-light"] .overlay-body .micro-hw,
+.root[data-pad-skin="vibe-dark"] .overlay-body .micro-hw,
+.wrap[data-pad-skin="hybrid-pro"] .overlay-body .micro-hw,
+.wrap[data-pad-skin="glass-light"] .overlay-body .micro-hw,
+.wrap[data-pad-skin="vibe-light"] .overlay-body .micro-hw,
+.wrap[data-pad-skin="vibe-dark"] .overlay-body .micro-hw {
+  overflow: visible !important;
+  contain: none !important;
+}

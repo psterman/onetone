@@ -18,11 +18,12 @@ pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 
 const OVERLAY_WIDTH: f64 = 432.0;
 /// Default full height before content reports a tighter fit.
-/// Oversized height leaves a transparent HWND slab that blocks the desktop.
+/// Must clear 400px chassis + caption (+ optional light-gate); 520 clipped the bottom bar.
 /// Keep in sync with overlay_window.rs initial height.
-const OVERLAY_HEIGHT_FULL: f64 = 520.0;
+const OVERLAY_HEIGHT_FULL: f64 = 680.0;
 /// Floor/ceiling for frontend-measured content height (logical px).
-const OVERLAY_HEIGHT_FULL_MIN: f64 = 440.0;
+/// Floor stays above pad+caption so a bad measure cannot clip「今日 N 次」.
+const OVERLAY_HEIGHT_FULL_MIN: f64 = 500.0;
 const OVERLAY_HEIGHT_FULL_MAX: f64 = 720.0;
 /// Left NAV rail strip is always reserved in the window so JOY open/close never
 /// resizes/repositions the pad (CSS fades the rail in-place).

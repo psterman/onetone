@@ -5371,7 +5371,10 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   padding: 6px !important;
   box-sizing: border-box !important;
   overflow: visible !important;
-  /* ??????????????????? */
+}
+/* Default-only flat face — prototype skins keep plate from skins.css */
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw[data-pad-skin="default"] .micro-hw__face,
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw[data-pad-skin="default"] .micro-hw__face {
   background: rgba(248, 250, 252, 0.92) !important;
   box-shadow: none !important;
 }
@@ -5383,11 +5386,32 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   gap: 4px !important;
   box-sizing: border-box !important;
 }
-/* ??????? Agent ?????????????? */
-.soft-pad-mode-preview .micro-hw__key--agent,
-.soft-pad-mode-preview .micro-hw__key--agent.is-bound,
-.agent-preview-host .micro-hw__key--agent,
-.agent-preview-host .micro-hw__key--agent.is-bound {
+/* Prototype skins need ≥ skirt depth between keys (4px gap eats 6px skirts) */
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw[data-pad-skin]:not([data-pad-skin="default"]) .micro-hw__grid,
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw[data-pad-skin]:not([data-pad-skin="default"]) .micro-hw__grid {
+  gap: 10px !important;
+}
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw[data-pad-skin]:not([data-pad-skin="default"]),
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw[data-pad-skin]:not([data-pad-skin="default"]) .micro-hw {
+  padding: 12px !important;
+}
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw[data-pad-skin]:not([data-pad-skin="default"]) .micro-hw__face,
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw[data-pad-skin]:not([data-pad-skin="default"]) .micro-hw__face {
+  padding: 10px !important;
+}
+.soft-pad-mode-preview--appear.is-skin-focus .soft-pad-opacity-stage {
+  padding: 28px 18px 32px;
+  overflow: visible;
+}
+/* Default-only flat agent keys — do not flatten Keys Core / Spatial / Rings */
+.soft-pad-mode-preview .micro-hw[data-pad-skin="default"] .micro-hw__key--agent,
+.soft-pad-mode-preview .micro-hw[data-pad-skin="default"] .micro-hw__key--agent.is-bound,
+.soft-pad-mode-preview .micro-hw:not([data-pad-skin]) .micro-hw__key--agent,
+.soft-pad-mode-preview .micro-hw:not([data-pad-skin]) .micro-hw__key--agent.is-bound,
+.agent-preview-host .micro-hw[data-pad-skin="default"] .micro-hw__key--agent,
+.agent-preview-host .micro-hw[data-pad-skin="default"] .micro-hw__key--agent.is-bound,
+.agent-preview-host .micro-hw:not([data-pad-skin]) .micro-hw__key--agent,
+.agent-preview-host .micro-hw:not([data-pad-skin]) .micro-hw__key--agent.is-bound {
   --ag-glow: transparent !important;
   background: linear-gradient(180deg, #f8f9fb 0%, #eef0f4 100%) !important;
   border: 1px solid rgba(26, 45, 74, 0.1) !important;
@@ -5396,14 +5420,21 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
     0 2px 4px rgba(26, 45, 74, 0.08) !important;
   backdrop-filter: none !important;
 }
-/* ?? Codex ????????????????????? */
-.soft-pad-mode-preview .micro-hw-shell.is-mode-codex .micro-hw,
-.soft-pad-mode-preview .micro-hw-shell.is-mode-numpad .micro-hw,
-.soft-pad-mode-preview .micro-hw,
-.soft-pad-mode-preview .soft-pad-demo-hw.micro-hw,
-.agent-preview-host .micro-hw-shell.is-mode-codex .micro-hw,
-.agent-preview-host .micro-hw-shell.is-mode-numpad .micro-hw,
-.agent-preview-host .micro-hw {
+/* Default-only flat chassis */
+.soft-pad-mode-preview .micro-hw-shell.is-mode-codex .micro-hw[data-pad-skin="default"],
+.soft-pad-mode-preview .micro-hw-shell.is-mode-numpad .micro-hw[data-pad-skin="default"],
+.soft-pad-mode-preview .micro-hw[data-pad-skin="default"],
+.soft-pad-mode-preview .soft-pad-demo-hw.micro-hw[data-pad-skin="default"],
+.soft-pad-mode-preview .micro-hw-shell.is-mode-codex .micro-hw:not([data-pad-skin]),
+.soft-pad-mode-preview .micro-hw-shell.is-mode-numpad .micro-hw:not([data-pad-skin]),
+.soft-pad-mode-preview .micro-hw:not([data-pad-skin]),
+.soft-pad-mode-preview .soft-pad-demo-hw.micro-hw:not([data-pad-skin]),
+.agent-preview-host .micro-hw-shell.is-mode-codex .micro-hw[data-pad-skin="default"],
+.agent-preview-host .micro-hw-shell.is-mode-numpad .micro-hw[data-pad-skin="default"],
+.agent-preview-host .micro-hw[data-pad-skin="default"],
+.agent-preview-host .micro-hw-shell.is-mode-codex .micro-hw:not([data-pad-skin]),
+.agent-preview-host .micro-hw-shell.is-mode-numpad .micro-hw:not([data-pad-skin]),
+.agent-preview-host .micro-hw:not([data-pad-skin]) {
   background: #eef2f6 !important;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.85),
@@ -11466,10 +11497,13 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   color: var(--primary-strong, #0f5f7a);
 }
 
-/* ??????? Codex ???? + ??? + ?????????? */
-#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw-shell.is-mode-codex .micro-hw,
-#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw-shell.is-mode-numpad .micro-hw,
-#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw {
+/* Mid-pad flat chassis — default skin only (prototype skins use skins.css) */
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw-shell.is-mode-codex .micro-hw[data-pad-skin="default"],
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw-shell.is-mode-numpad .micro-hw[data-pad-skin="default"],
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="default"],
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw-shell.is-mode-codex .micro-hw:not([data-pad-skin]),
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw-shell.is-mode-numpad .micro-hw:not([data-pad-skin]),
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw:not([data-pad-skin]) {
   --hw-shadow:
     0 1px 0 rgba(255, 255, 255, 0.92),
     0 2px 4px rgba(15, 27, 42, 0.04),
@@ -11554,8 +11588,10 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .codex-micro-pad.soft-pad-preview:not(.soft-pad-mode-preview__hw) {
   opacity: 1;
 }
-#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw__key--agent,
-#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw__key--agent.is-bound {
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="default"] .micro-hw__key--agent,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="default"] .micro-hw__key--agent.is-bound,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw:not([data-pad-skin]) .micro-hw__key--agent,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw:not([data-pad-skin]) .micro-hw__key--agent.is-bound {
   --ag-glow: transparent !important;
   background: linear-gradient(180deg, #f8f9fb 0%, #eef0f4 100%) !important;
   border: 1px solid rgba(26, 45, 74, 0.1) !important;
@@ -11564,8 +11600,10 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
     0 1px 2px rgba(26, 45, 74, 0.06) !important;
   backdrop-filter: none !important;
 }
-#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw__key--command,
-#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw__key--control {
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="default"] .micro-hw__key--command,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="default"] .micro-hw__key--control,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw:not([data-pad-skin]) .micro-hw__key--command,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw:not([data-pad-skin]) .micro-hw__key--control {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.95),
     0 1px 2px rgba(26, 45, 74, 0.06) !important;
@@ -12246,18 +12284,18 @@ html[data-theme="dark"] .soft-pad-mid-data {
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .codex-micro-pad.soft-pad-preview[data-pad-skin="hybrid-pro"] .micro-hw,
 #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"],
 .soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] {
-  background: #cfd7e1 !important;
+  background: rgba(255, 255, 255, 0.72) !important;
   box-shadow:
-    0 24px 48px rgba(15, 23, 42, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 1),
-    inset 0 2px 16px rgba(0, 0, 0, 0.06) !important;
+    inset 0 0 0 2px rgba(255, 255, 255, 0.9),
+    0 12px 48px rgba(70, 130, 255, 0.28),
+    0 0 80px rgba(70, 130, 255, 0.18) !important;
   filter: none !important;
   border: 1px solid rgba(255, 255, 255, 1);
 }
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face,
 #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face,
 .soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face {
-  background: #c5ced9 !important;
+  background: #e6e9ed !important;
   border: 1px solid rgba(255, 255, 255, 0.55) !important;
   box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.08) !important;
   backdrop-filter: none !important;
@@ -12274,9 +12312,11 @@ html[data-theme="dark"] .soft-pad-mid-data {
   background: linear-gradient(180deg, #ffffff 0%, #f4f7fa 100%) !important;
   border: 1px solid rgba(0, 0, 0, 0.07) !important;
   box-shadow:
-    0 5px 0 #9aa8b8,
-    0 8px 14px rgba(15, 23, 42, 0.14),
-    inset 0 1px 0 #fff !important;
+    inset 0 3px 4px #fff,
+    inset 0 -3px 5px rgba(15, 23, 42, 0.08),
+    0 6px 0 #cdd5df,
+    0 10px 12px rgba(15, 23, 42, 0.12),
+    0 16px 24px rgba(15, 23, 42, 0.15) !important;
   color: #334155 !important;
   backdrop-filter: none !important;
   overflow: visible !important;
@@ -12287,7 +12327,13 @@ html[data-theme="dark"] .soft-pad-mid-data {
 #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key.is-pressed {
   transform: translateY(3px);
   background: linear-gradient(180deg, #f1f4f8, #e2e8f0) !important;
-  box-shadow: 0 1px 0 #8a99a8, inset 0 2px 5px rgba(15, 23, 42, 0.12) !important;
+  transform: translateY(6px);
+  box-shadow:
+    inset 0 2px 4px #fff,
+    inset 0 -2px 4px rgba(15, 23, 42, 0.08),
+    0 0 0 #cdd5df,
+    0 2px 4px rgba(15, 23, 42, 0.1),
+    0 4px 8px rgba(15, 23, 42, 0.15) !important;
 }
 
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"],
@@ -12300,13 +12346,13 @@ html[data-theme="dark"] .soft-pad-mid-data {
     inset 0 1px 2px #fff !important;
   border: 1px solid rgba(255, 255, 255, 0.85);
   filter: none !important;
-  backdrop-filter: blur(28px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+  backdrop-filter: blur(80px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(80px) saturate(180%) !important;
 }
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__face,
 #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__face {
-  background: rgba(255, 255, 255, 0.18) !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  background: transparent !important;
+  border: none !important;
   box-shadow: none !important;
 }
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder),
@@ -12315,16 +12361,67 @@ html[data-theme="dark"] .soft-pad-mid-data {
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key--command,
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key--control,
 #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.4)) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.3)) !important;
   border: none !important;
   box-shadow:
-    0 6px 16px rgba(15, 23, 42, 0.08),
+    0 6px 16px rgba(0, 0, 0, 0.06),
     inset 0 1px 1px #fff,
-    inset 0 -1px 1px rgba(255, 255, 255, 0.35) !important;
+    inset 0 -1px 1px rgba(255, 255, 255, 0.4) !important;
   color: #0f172a !important;
-  border-radius: 14px !important;
-  backdrop-filter: blur(14px) !important;
+  border-radius: 16px !important;
+  backdrop-filter: blur(20px) saturate(120%) !important;
   --ag-glow: transparent;
+}
+
+/* Status Rings (vibe-light) mid-pad rescue */
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"],
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .codex-micro-pad.soft-pad-preview[data-pad-skin="vibe-light"] .micro-hw,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"],
+.soft-pad-preview-host .micro-hw[data-pad-skin="vibe-light"] {
+  background: rgba(255, 255, 255, 0.62) !important;
+  border: none !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.9),
+    0 12px 48px rgba(15, 23, 42, 0.08) !important;
+  filter: none !important;
+  backdrop-filter: blur(24px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+  overflow: visible !important;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__face,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__face {
+  background: #e6e9ed !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  overflow: visible !important;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder),
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key--agent,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key--agent.is-bound,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key--command,
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key--control,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key:not(.micro-hw__key--placeholder) {
+  background: linear-gradient(180deg, #ffffff 0%, #f4f6f8 100%) !important;
+  border: none !important;
+  box-shadow:
+    inset 0 3px 4px #fff,
+    inset 0 -3px 5px rgba(15, 23, 42, 0.08),
+    0 6px 0 #cdd5df,
+    0 calc(6px + 1px) 0 var(--ring-w, 0px) var(--ring-c, transparent),
+    0 calc(6px + 4px) var(--glow-b, 0px) var(--glow-c, transparent),
+    0 10px 12px rgba(15, 23, 42, 0.12),
+    0 16px 24px rgba(15, 23, 42, 0.15) !important;
+  color: #1e293b !important;
+  border-radius: 14px !important;
+  overflow: visible !important;
+  --ag-glow: transparent;
+  --press-dist: 6px;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__grid,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__grid,
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw .micro-hw[data-pad-skin="vibe-light"] .micro-hw__grid,
+.soft-pad-mode-preview--appear .soft-pad-mode-preview__hw[data-pad-skin="vibe-light"] .micro-hw__grid {
+  gap: 10px !important;
 }
 
 /* Dark app theme */
@@ -12355,9 +12452,11 @@ html[data-theme="dark"] #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"
   background: linear-gradient(180deg, #333d4e 0%, #293240 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow:
-    0 5px 0 #0f131a,
-    0 8px 16px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+    inset 0 3px 4px rgba(255, 255, 255, 0.14),
+    inset 0 -3px 5px rgba(0, 0, 0, 0.55),
+    0 6px 0 #181d26,
+    0 10px 12px rgba(0, 0, 0, 0.4),
+    0 16px 24px rgba(0, 0, 0, 0.55) !important;
   color: #f1f5f9 !important;
   overflow: visible !important;
   --ag-glow: transparent;
@@ -12371,8 +12470,8 @@ html[data-theme="dark"] #softPadPreviewHost .micro-hw[data-pad-skin="glass-light
     0 32px 64px rgba(0, 0, 0, 0.55),
     inset 0 1px 1px rgba(255, 255, 255, 0.14) !important;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(32px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(160%) !important;
+  backdrop-filter: blur(80px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(80px) saturate(180%) !important;
 }
 html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__face,
 html[data-theme="dark"] #softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__face {
@@ -12394,10 +12493,30 @@ html[data-theme="dark"] #softPadPreviewHost .micro-hw[data-pad-skin="glass-light
   --ag-glow: transparent;
 }
 
-/* Skirt must not be clipped */
+/* Skirt / LED ring must not be clipped (Keys Core + Status Rings + Spatial) */
 .soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key,
 #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__key,
+.soft-pad-preview-host .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__key,
+.soft-pad-preview-host .micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-dark"] .micro-hw__key,
+.soft-pad-preview-host .micro-hw[data-pad-skin="glass-light"] .micro-hw__key,
+#softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__key,
 .soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__grid,
-#softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__grid {
+#softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__grid,
+.soft-pad-preview-host .micro-hw[data-pad-skin="vibe-light"] .micro-hw__grid,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__grid,
+.soft-pad-preview-host .micro-hw[data-pad-skin="vibe-dark"] .micro-hw__grid,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-dark"] .micro-hw__grid,
+.soft-pad-preview-host .micro-hw[data-pad-skin="glass-light"] .micro-hw__grid,
+#softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__grid,
+.soft-pad-preview-host .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face,
+#softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"] .micro-hw__face,
+.soft-pad-preview-host .micro-hw[data-pad-skin="vibe-light"] .micro-hw__face,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-light"] .micro-hw__face,
+.soft-pad-preview-host .micro-hw[data-pad-skin="vibe-dark"] .micro-hw__face,
+#softPadPreviewHost .micro-hw[data-pad-skin="vibe-dark"] .micro-hw__face,
+.soft-pad-preview-host .micro-hw[data-pad-skin="glass-light"] .micro-hw__face,
+#softPadPreviewHost .micro-hw[data-pad-skin="glass-light"] .micro-hw__face {
   overflow: visible !important;
 }

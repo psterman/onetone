@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>虚拟键盘 Soft Pad · 全页打包 · Mac 复刻规格</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;800&family=IBM+Plex+Mono:wght@500;650;700&display=swap" rel="stylesheet" />
+<style>
+/* ═══════════════════════════════════════════════════════════
+   Soft Pad 全页原型 — Mac 复刻请对齐 :root tokens
+   产品源：#settingsPanelSoftPad · soft-pad-hub.css · codex-micro-pad-ui.js
+   中栏能力卡宽 ≈ 360px · 主色 cyan #2A9CC4
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --ink: #13202c;
+  --mute: #5a6c80;
+  --faint: #8494a6;
+  --line: #d7dee8;
+  --paper: #fff;
+  --wash: #eef2f6;
+  --bg: #e4ebf1;
+  --rail: #eef3f7;
+
+  --primary: #2a9cc4;
+  --primary-strong: #0f5f7a;
+  --primary-soft: color-mix(in srgb, #2a9cc4 12%, #fff);
+  --primary-bd: color-mix(in srgb, #2a9cc4 40%, transparent);
+
+  --c-run: #3053FE;
+  --c-wait: #FF6A00;
+  --c-done: #00FF4C;
+  --c-fail: #FF0033;
+
+  --pad-face: #e8eef4;
+  --pad-key: #fff;
+  --pad-bd: #b8c4d0;
+
+  --frame: 360px;
+  --font: "Figtree", "PingFang SC", "Hiragino Sans GB", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  background:
+    radial-gradient(900px 360px at 8% -10%, rgba(42,156,196,.1), transparent 55%),
+    var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── top nav ── */
+.top {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 10px 16px; background: #0f1820; color: #a8b6c6; font-size: 12px;
+}
+.top strong { color: #fff; font-size: 13.5px; }
+.top em { font-style: normal; color: #7dd3fc; font-weight: 650; }
+.dir { display: flex; gap: 4px; flex-wrap: wrap; }
+.dir button {
+  border: 1px solid rgba(255,255,255,.14); background: transparent; color: #c5d0de;
+  border-radius: 9px; padding: 6px 12px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.dir button.on { background: var(--primary); border-color: transparent; color: #fff; }
+.top .spec-tog {
+  margin-left: auto; border: 1px solid rgba(125,211,252,.4); background: rgba(14,165,233,.15);
+  color: #7dd3fc; border-radius: 9px; padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.top .spec-tog.on { background: #0284c7; color: #fff; border-color: transparent; }
+
+.page { width: min(1280px, 100%); margin: 0 auto; padding: 16px 14px 72px; }
+.brief {
+  background: rgba(255,255,255,.94); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 12px;
+}
+.brief h1 { margin: 0 0 6px; font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+.brief p { margin: 0; color: var(--mute); font-size: 13px; max-width: 90ch; line-height: 1.5; }
+.brief .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.brief .chips span {
+  font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
+  background: var(--primary-soft); color: var(--primary-strong); border: 1px solid var(--primary-bd);
+}
+
+.layout-outer { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.layout-outer.show-spec { grid-template-columns: 1fr 280px; }
+@media (max-width: 1180px) { .layout-outer.show-spec { grid-template-columns: 1fr; } }
+
+.spec {
+  display: none; align-self: start; position: sticky; top: 56px;
+  background: #0f1820; color: #c5d0de; border-radius: 14px; padding: 14px; font-size: 12px;
+  max-height: calc(100vh - 72px); overflow: auto;
+}
+.layout-outer.show-spec .spec { display: block; }
+.spec h3 { margin: 0 0 8px; font-size: 11px; font-weight: 800; color: #7dd3fc; letter-spacing: .06em; text-transform: uppercase; }
+.spec h4 { margin: 14px 0 6px; font-size: 10.5px; font-weight: 800; color: #94a3b8; letter-spacing: .04em; text-transform: uppercase; }
+.spec dl { margin: 0; display: grid; grid-template-columns: 88px 1fr; gap: 4px 8px; }
+.spec dt { color: #64748b; font-weight: 650; }
+.spec dd { margin: 0; font-family: var(--mono); font-size: 11px; color: #e2e8f0; word-break: break-all; }
+.spec .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; border: 1px solid rgba(255,255,255,.2); }
+.spec p { margin: 0 0 6px; line-height: 1.45; color: #94a3b8; }
+.spec code { font-family: var(--mono); font-size: 10.5px; color: #7dd3fc; }
+.spec ol { margin: 6px 0 0; padding-left: 18px; color: #94a3b8; line-height: 1.55; }
+
+/* ── app frame ── */
+.frame {
+  border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: #fff;
+  box-shadow: 0 16px 36px rgba(19,32,44,.08);
+}
+.status-bar {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border-bottom: 1px solid var(--line); background: #fff;
+}
+.status-bar .brand { font-size: 16px; font-weight: 800; }
+.status-bar .pill {
+  font-size: 11px; font-weight: 750; padding: 3px 9px; border-radius: 999px;
+  background: #e8f7ee; color: #15803d; border: 1px solid #86efac;
+}
+.status-bar .hint { margin-left: auto; font-size: 11.5px; color: var(--faint); }
+
+.desk {
+  display: grid;
+  grid-template-columns: minmax(200px, 220px) minmax(0, 1fr) minmax(280px, 320px);
+  min-height: 620px;
+}
+@media (max-width: 960px) { .desk { grid-template-columns: 1fr; } }
+
+.rail {
+  background: var(--rail); border-right: 1px solid var(--line);
+  padding: 8px 4px; overflow: auto;
+}
+.rail .sec {
+  margin: 6px 6px 4px; font-size: 10px; font-weight: 750; letter-spacing: .04em; color: var(--faint);
+}
+.rail .item {
+  appearance: none; display: block; width: 100%; margin: 1px 0; padding: 8px 10px;
+  border: 0; border-radius: 9px; background: transparent; font: inherit;
+  font-size: 12.5px; font-weight: 650; color: var(--mute); text-align: left; cursor: default;
+}
+.rail .item.is-on {
+  background: #fff; color: var(--primary-strong);
+  box-shadow: inset 3px 0 0 var(--primary), 0 0 0 1px rgba(42,156,196,.2);
+}
+
+.mid {
+  background: var(--wash); padding: 12px; display: flex; flex-direction: column; gap: 10px;
+  min-width: 0; overflow: auto;
+}
+.mid-stage {
+  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(240px, var(--frame));
+  gap: 12px; align-items: start;
+}
+@media (max-width: 720px) { .mid-stage { grid-template-columns: 1fr; } }
+
+/* Soft Pad preview */
+.pad-card {
+  background: rgba(248,250,252,.92); border: 1px solid var(--line); border-radius: 14px;
+  padding: 12px 10px 14px; box-shadow: 0 8px 22px rgba(19,32,44,.05);
+}
+.pad-card .lbl {
+  margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  color: color-mix(in srgb, var(--primary) 80%, transparent); text-align: center;
+}
+.opacity-stage {
+  border-radius: 14px; padding: 16px;
+  background:
+    linear-gradient(45deg, #dbe3eb 25%, transparent 25%) 0 0 / 16px 16px,
+    linear-gradient(-45deg, #dbe3eb 25%, transparent 25%) 0 8px / 16px 16px,
+    linear-gradient(45deg, transparent 75%, #dbe3eb 75%) 8px -8px / 16px 16px,
+    linear-gradient(-45deg, transparent 75%, #dbe3eb 75%) -8px 0 / 16px 16px,
+    #f1f5f9;
+}
+.hw {
+  width: min(100%, 240px); margin: 0 auto; border-radius: 28px;
+  background: linear-gradient(165deg, #2a3544, #1a2433);
+  padding: 14px; box-shadow: 0 10px 28px rgba(0,0,0,.22);
+  transition: box-shadow .16s ease, opacity .15s ease, background .2s ease, border-color .2s ease;
+  opacity: var(--screen-op, .82);
+  --press-dist: 5px;
+  --key-skirt: #cdd5df;
+  overflow: visible;
+}
+.hw[data-ambient="1"] {
+  box-shadow:
+    0 0 0 5px var(--ambient-ring, rgba(42,157,106,.85)),
+    0 0 28px 6px var(--ambient-glow, rgba(42,157,106,.45)),
+    0 10px 28px rgba(0,0,0,.22);
+}
+.hw-face {
+  background: var(--pad-face); border-radius: 16px; padding: 10px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  overflow: visible;
+}
+.hw-face i {
+  margin: 0; aspect-ratio: 1; border-radius: 10px;
+  background: var(--pad-key); border: 1px solid rgba(26,45,74,.1);
+  box-shadow: 0 1px 0 rgba(255,255,255,.9);
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 700; color: #64748b;
+  position: relative;
+  transition: transform .12s cubic-bezier(.3,.8,.1,1), box-shadow .12s ease, background .2s ease;
+}
+.hw-face i.is-focus {
+  outline: 2px solid var(--primary); outline-offset: 1px;
+}
+.hw-face i[data-st="running"] {
+  box-shadow: 0 0 0 2px var(--c-run), 0 0 10px var(--c-run);
+}
+.hw-face i[data-st="needs_input"] {
+  box-shadow: 0 0 0 2px var(--c-wait), 0 0 10px var(--c-wait);
+}
+
+/* —— Mac 复刻：三套产品皮肤（对齐 codex-micro-pad-skins.css） —— */
+.hw[data-skin="default"] {
+  background: linear-gradient(145deg, #f5f8fc, #dce6f0);
+  border: 1px solid rgba(255,255,255,.8);
+  box-shadow: 0 14px 28px rgba(20,30,50,.14), inset 0 1px 0 #fff;
+}
+.hw[data-skin="default"] .hw-face { background: rgba(232,238,244,.7); }
+.hw[data-skin="default"] .hw-face i {
+  background: linear-gradient(180deg,#fff,#f4f7fa);
+  border-radius: 10px;
+  box-shadow: 0 3px 0 #c1cbd7, 0 6px 10px rgba(15,23,42,.1), inset 0 1px 0 #fff;
+}
+
+/* Keys Core */
+.hw[data-skin="hybrid-pro"] {
+  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(255,255,255,.95);
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.9),
+    0 12px 40px rgba(70,130,255,.28),
+    0 0 64px rgba(70,130,255,.18);
+  backdrop-filter: blur(20px) saturate(150%);
+}
+.hw[data-skin="hybrid-pro"] .hw-face {
+  background: #e6e9ed;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.08);
+  border: 1px solid rgba(0,0,0,.04);
+}
+.hw[data-skin="hybrid-pro"] .hw-face i {
+  border: 0;
+  border-radius: 12px;
+  color: #1e293b;
+  background: linear-gradient(180deg,#fff 0%,#f4f6f8 100%);
+  box-shadow:
+    inset 0 2px 3px #fff,
+    inset 0 -2px 4px rgba(15,23,42,.08),
+    0 var(--press-dist) 0 var(--key-skirt),
+    0 calc(var(--press-dist) + 3px) 10px rgba(15,23,42,.12);
+}
+.hw[data-skin="hybrid-pro"] .hw-face i::after {
+  content: ""; position: absolute; inset: 3px; border-radius: 9px; pointer-events: none;
+  background: radial-gradient(circle at 50% 10%, rgba(255,255,255,.45), transparent 60%);
+}
+.hw[data-skin="hybrid-pro"] .hw-face i[data-k="AG00"],
+.hw[data-skin="hybrid-pro"] .hw-face i[data-k="AG01"] {
+  --key-skirt: #93c5fd;
+  color: #1e3a8a;
+  background: linear-gradient(180deg,#eff6ff,#dbeafe);
+  box-shadow:
+    inset 0 2px 3px #fff,
+    inset 0 0 12px rgba(59,130,246,.18),
+    0 var(--press-dist) 0 var(--key-skirt),
+    0 calc(var(--press-dist) + 4px) 14px rgba(59,130,246,.28);
+}
+
+/* Spatial Glass */
+.hw[data-skin="glass-light"] {
+  background: rgba(255,255,255,.4);
+  border: none;
+  box-shadow: 0 24px 48px rgba(0,0,0,.08), inset 0 1px 2px #fff;
+  backdrop-filter: blur(40px) saturate(180%);
+  position: relative;
+}
+.hw[data-skin="glass-light"]::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  border: 1px solid rgba(255,255,255,.8);
+  mask-image: linear-gradient(180deg, #000, transparent 80%);
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent 80%);
+}
+.hw[data-skin="glass-light"] .hw-face {
+  background: transparent; border: 0; box-shadow: none; gap: 9px;
+}
+.hw[data-skin="glass-light"] .hw-face i {
+  border: 0; border-radius: 14px; color: #0f172a;
+  background: linear-gradient(135deg, rgba(255,255,255,.85), rgba(255,255,255,.32));
+  box-shadow: 0 5px 14px rgba(0,0,0,.06), inset 0 1px 1px #fff, inset 0 -1px 1px rgba(255,255,255,.4);
+  backdrop-filter: blur(12px) saturate(120%);
+}
+.hw[data-skin="glass-light"] .hw-face i::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at 10% 10%, rgba(255,255,255,.3), transparent 40%);
+  mix-blend-mode: overlay;
+}
+
+/* Status Rings */
+.hw[data-skin="vibe-light"] {
+  --key-skirt: #cdd5df;
+  background: rgba(255,255,255,.62);
+  border: none;
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.9),
+    0 12px 40px rgba(15,23,42,.08);
+  backdrop-filter: blur(20px) saturate(150%);
+}
+.hw[data-skin="vibe-light"] .hw-face {
+  background: #e6e9ed;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.08);
+}
+.hw[data-skin="vibe-light"] .hw-face i {
+  border: 0; border-radius: 12px; color: #1e293b;
+  background: linear-gradient(180deg,#fff,#f4f6f8);
+  box-shadow:
+    inset 0 2px 3px #fff,
+    inset 0 -2px 4px rgba(15,23,42,.08),
+    0 var(--press-dist) 0 var(--key-skirt),
+    0 calc(var(--press-dist) + 1px) 0 0 transparent,
+    0 calc(var(--press-dist) + 3px) 10px rgba(15,23,42,.12);
+}
+.hw[data-skin="vibe-light"] .hw-face i[data-st="running"] {
+  color: #38bdf8;
+  box-shadow:
+    inset 0 2px 3px #fff,
+    inset 0 -2px 4px rgba(15,23,42,.08),
+    0 var(--press-dist) 0 var(--key-skirt),
+    0 calc(var(--press-dist) + 1px) 0 1.5px #38bdf8,
+    0 calc(var(--press-dist) + 4px) 14px rgba(56,189,248,.4);
+}
+.hw[data-skin="vibe-light"] .hw-face i[data-st="needs_input"] {
+  color: #fb7185;
+  box-shadow:
+    inset 0 2px 3px #fff,
+    inset 0 -2px 4px rgba(15,23,42,.08),
+    0 var(--press-dist) 0 var(--key-skirt),
+    0 calc(var(--press-dist) + 1px) 0 1.5px #fb7185,
+    0 calc(var(--press-dist) + 4px) 14px rgba(251,113,133,.4);
+}
+.hw[data-skin="vibe-light"][data-ambient="1"] {
+  box-shadow:
+    inset 0 0 0 2px var(--ambient-ring, rgba(56,189,248,.5)),
+    0 0 56px var(--ambient-glow, rgba(56,189,248,.3)),
+    0 12px 40px rgba(15,23,42,.08);
+}
+.pad-meta {
+  margin: 10px 0 0; text-align: center; font-size: 11.5px; color: var(--mute); font-weight: 650;
+}
+.pad-meta strong { color: var(--ink); }
+
+/* ability card */
+.ability {
+  width: 100%; max-width: var(--frame); margin: 0 auto;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+  padding: 10px 10px 14px; box-shadow: 0 8px 24px rgba(15,32,44,.05);
+  min-height: 420px;
+}
+.tabs {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  padding: 3px; border-radius: 10px; background: #eef2f6; border: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+.tabs button {
+  appearance: none; border: 0; background: transparent; font: inherit;
+  padding: 8px 6px; border-radius: 8px; cursor: pointer;
+  font-size: 12px; font-weight: 750; color: var(--mute);
+}
+.tabs button.on {
+  background: #fff; color: var(--primary-strong);
+  box-shadow: 0 1px 3px rgba(15,23,42,.08);
+}
+.pane[hidden] { display: none !important; }
+.sec { margin: 0 0 6px; font-size: 12px; font-weight: 800; }
+.lead { margin: 0 0 10px; font-size: 11.5px; color: var(--mute); line-height: 1.4; }
+
+/* 改按钮 · fn list */
+.find {
+  display: block; margin: 0 0 8px;
+}
+.find input {
+  width: 100%; border: 1px solid var(--line); border-radius: 9px;
+  padding: 8px 10px; font: inherit; font-size: 12px; background: #f7f9fb;
+}
+.subs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 8px; }
+.subs button {
+  appearance: none; border: 1px solid var(--line); background: #fff;
+  border-radius: 999px; padding: 4px 9px; font: inherit; font-size: 11px; font-weight: 700;
+  color: var(--mute); cursor: pointer;
+}
+.subs button.on { border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary-strong); }
+.caps { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow: auto; }
+.cap {
+  appearance: none; border: 1px solid transparent; background: #f7f9fb;
+  border-radius: 9px; padding: 8px 10px; text-align: left; font: inherit; cursor: pointer;
+  display: grid; grid-template-columns: 1fr auto; gap: 4px; align-items: center;
+}
+.cap:hover { border-color: var(--line); background: #fff; }
+.cap.on { border-color: var(--primary); background: var(--primary-soft); }
+.cap b { font-size: 12px; font-weight: 750; }
+.cap code { font-family: var(--mono); font-size: 10px; color: var(--faint); font-weight: 650; }
+
+/* 何时显示 */
+.show-obj {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 12px; border-radius: 12px; background: #f7f9fb; border: 1px solid var(--line);
+  margin-bottom: 10px; min-height: 72px;
+}
+.obj-pad {
+  width: 52px; height: 52px; border-radius: 10px; background: var(--pad-face);
+  border: 1px solid var(--pad-bd); display: grid; grid-template-columns: 1fr 1fr;
+  gap: 3px; padding: 6px;
+}
+.obj-pad i { margin: 0; border-radius: 4px; background: #fff; border: 1px solid #c5d0db; }
+.obj-pad.ghost { background: transparent; border-style: dashed; opacity: .7; }
+.obj-pad.ghost i { background: transparent; border-style: dashed; }
+.obj-mini {
+  width: 120px; height: 16px; border-radius: 999px; background: var(--pad-face);
+  border: 1px solid var(--pad-bd); display: grid; grid-template-columns: repeat(6, 1fr);
+  gap: 2px; padding: 2px 5px;
+}
+.obj-mini i { margin: 0; border-radius: 2px; background: #fff; border: 1px solid #c5d0db; }
+.show-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+.show-mode {
+  appearance: none; border: 1.5px solid rgba(26,45,74,.12); background: #fff;
+  border-radius: 10px; padding: 8px 10px; text-align: left; font: inherit; cursor: pointer; color: inherit;
+}
+.show-mode.on {
+  border-color: var(--primary); background: var(--primary-soft);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+.show-mode .t { font-size: 12.5px; font-weight: 800; }
+.show-mode .h { font-size: 11px; color: var(--mute); margin-top: 2px; font-weight: 600; }
+.show-mode.on .t { color: var(--primary-strong); }
+.numpad-cards { display: grid; gap: 6px; }
+.numpad-card {
+  appearance: none; border: 1.5px solid rgba(26,45,74,.12); background: #fff;
+  border-radius: 10px; padding: 9px 10px; text-align: left; font: inherit; cursor: pointer; color: inherit;
+}
+.numpad-card.on { border-color: var(--primary); background: var(--primary-soft); }
+.numpad-card .t { font-size: 12.5px; font-weight: 800; }
+.numpad-card .h { font-size: 11px; color: var(--mute); margin-top: 2px; }
+
+/* desk scene (何时显示 left) */
+.scene {
+  border-radius: 12px; border: 1px solid var(--line); background: #dbe4ee;
+  padding: 12px; min-height: 200px; position: relative; overflow: hidden;
+}
+.scene .win {
+  position: absolute; border-radius: 8px; background: #fff;
+  border: 1px solid #b8c4d0; box-shadow: 0 6px 16px rgba(15,23,42,.1);
+}
+.scene .win-a { left: 10%; top: 14%; width: 48%; height: 52%; }
+.scene .win-b { right: 8%; top: 22%; width: 36%; height: 40%; opacity: .55; }
+.scene .win-title {
+  height: 14px; background: #eef2f6; border-bottom: 1px solid #dde4ec;
+  border-radius: 8px 8px 0 0; font-size: 8px; font-weight: 700; color: #64748b;
+  display: flex; align-items: center; padding: 0 6px;
+}
+.scene .pad-float {
+  position: absolute; right: 14%; bottom: 18%; width: 72px; height: 72px;
+  border-radius: 10px; background: var(--pad-face); border: 1px solid var(--pad-bd);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 7px;
+  box-shadow: 0 8px 20px rgba(15,23,42,.18);
+}
+.scene .pad-float i { margin: 0; border-radius: 3px; background: #fff; border: 1px solid #c5d0db; }
+.scene .mini-float {
+  position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%);
+  width: 140px; height: 16px; border-radius: 999px; background: var(--pad-face);
+  border: 1px solid var(--pad-bd); display: none;
+  grid-template-columns: repeat(6, 1fr); gap: 2px; padding: 2px 5px;
+  box-shadow: 0 6px 14px rgba(15,23,42,.15);
+}
+.scene .mini-float i { margin: 0; border-radius: 2px; background: #fff; border: 1px solid #c5d0db; }
+.scene[data-mode="mini"] .pad-float { display: none; }
+.scene[data-mode="mini"] .mini-float { display: grid; }
+.scene[data-mode="hidden"] .pad-float,
+.scene[data-mode="hidden"] .mini-float { display: none; }
+.scene[data-mode="hidden"] .kept {
+  display: block; position: absolute; left: 50%; bottom: 16%; transform: translateX(-50%);
+  font-size: 10.5px; font-weight: 700; color: var(--mute); background: rgba(255,255,255,.9);
+  padding: 4px 8px; border-radius: 6px; border: 1px dashed #94a3b8;
+}
+.scene .kept { display: none; }
+
+/* 皮肤 */
+.skin-list { display: grid; gap: 5px; margin-bottom: 12px; }
+.skin {
+  appearance: none; border: 1.5px solid rgba(26,45,74,.12); background: #fff;
+  border-radius: 10px; padding: 8px 10px; text-align: left; font: inherit; cursor: pointer; color: inherit;
+}
+.skin.on { border-color: var(--primary); background: var(--primary-soft); }
+.skin .t { font-size: 12.5px; font-weight: 800; }
+.skin .h { font-size: 11px; color: var(--mute); margin-top: 1px; }
+.skin.on .t { color: var(--primary-strong); }
+.opacity-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 14px; font-size: 12px; font-weight: 700;
+}
+.opacity-row input[type="range"] { flex: 1; min-width: 80px; }
+.opacity-swatch {
+  width: 28px; height: 18px; border-radius: 5px; border: 1px solid var(--line);
+  background:
+    linear-gradient(45deg, #dbe3eb 25%, transparent 25%) 0 0 / 8px 8px,
+    #fff;
+  position: relative; overflow: hidden;
+}
+.opacity-swatch span {
+  position: absolute; inset: 0; background: #1a2433; opacity: var(--screen-op, .82);
+}
+
+/* lights where */
+.wheres { display: grid; gap: 6px; margin-bottom: 10px; }
+.where {
+  display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center;
+  appearance: none; border: 1.5px solid rgba(26,45,74,.12); background: #fff;
+  border-radius: 12px; padding: 8px 10px; text-align: left; font: inherit; cursor: pointer; color: inherit;
+}
+.where.on {
+  border-color: var(--primary); background: var(--primary-soft);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+.where .viz {
+  width: 40px; height: 40px; border-radius: 9px; background: #eef2f6;
+  border: 1px solid rgba(15,23,42,.08); display: grid; place-items: center; position: relative;
+}
+.where .viz .p {
+  width: 22px; height: 22px; border-radius: 5px; background: var(--pad-face);
+  border: 1px solid var(--pad-bd); display: grid; grid-template-columns: 1fr 1fr;
+  gap: 2px; padding: 3px; position: relative; z-index: 1;
+}
+.where .viz .p i { margin: 0; border-radius: 2px; background: #fff; border: 1px solid #c5d0db; }
+.where .viz .ring {
+  position: absolute; inset: 4px; border-radius: 8px;
+  border: 2px solid color-mix(in srgb, var(--primary) 75%, #34d399);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.where .viz--keys .p i.lit {
+  background: color-mix(in srgb, #34d399 45%, #fff);
+  border-color: #6ee7b7;
+}
+.where .viz--keys .p i.busy {
+  background: color-mix(in srgb, #f59e0b 50%, #fff);
+  border-color: #fcd34d;
+}
+.where .tt { font-size: 13px; font-weight: 800; }
+.where.on .tt { color: var(--primary-strong); }
+.where .hh { font-size: 11.5px; color: var(--mute); margin-top: 2px; font-weight: 600; }
+.where.on .hh { color: #0369a1; }
+.where.title-only .hh { display: none; }
+
+.detail[hidden] { display: none !important; }
+.modes-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+.modes-2 button {
+  appearance: none; border: 1.5px solid rgba(26,45,74,.12); background: #fff;
+  border-radius: 9px; padding: 8px; font: inherit; font-size: 11.5px; font-weight: 750;
+  color: var(--mute); cursor: pointer;
+}
+.modes-2 button.on {
+  border-color: var(--primary); background: var(--primary-soft); color: var(--primary-strong);
+}
+.bezel-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  font-size: 12px; font-weight: 700;
+}
+.bezel-row input[type="color"] {
+  width: 36px; height: 26px; border: 0; padding: 0; background: transparent; cursor: pointer;
+}
+.bezel-row input[type="range"] { width: 100px; }
+.bezel-row.is-dim { opacity: .45; pointer-events: none; }
+
+/* K3 */
+.k3-head {
+  display: flex; justify-content: space-between; align-items: baseline; margin: 4px 0 8px;
+}
+.k3-head .sec { margin: 0; }
+.k3-head .reset {
+  appearance: none; border: 0; background: transparent; font: inherit;
+  font-size: 11.5px; font-weight: 700; color: var(--primary-strong);
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer; padding: 0;
+}
+.k3 {
+  display: flex; align-items: center; gap: 12px; padding: 10px;
+  border-radius: 10px; background: #f7f9fb; border: 1px solid var(--line);
+}
+.k3-pad {
+  width: 56px; height: 56px; border-radius: 10px; background: var(--pad-face);
+  border: 1px solid var(--pad-bd); display: grid; grid-template-columns: 1fr 1fr;
+  gap: 3px; padding: 6px; flex-shrink: 0;
+}
+.k3-pad i { margin: 0; border-radius: 4px; border: 1px solid rgba(15,23,42,.12); }
+.k3-leg {
+  flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px;
+}
+.k3-leg label {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 11.5px; font-weight: 700; cursor: pointer;
+}
+.k3-leg input[type="color"] {
+  width: 36px; height: 26px; border: 0; padding: 0; background: transparent; cursor: pointer;
+}
+
+/* right habits (decorative) */
+.right {
+  border-left: 1px solid var(--line); background: #fbfdfe; padding: 10px 8px; overflow: auto;
+}
+.right .sec { margin: 0 0 8px; padding: 0 4px; }
+.habit {
+  border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px;
+  background: #fff; font-size: 12px; font-weight: 700;
+}
+.habit .sub { font-size: 10.5px; color: var(--faint); font-weight: 600; margin-top: 2px; }
+.habit.on { border-color: var(--primary-bd); background: var(--primary-soft); }
+
+.annot {
+  margin-top: 16px; padding: 12px 14px; border-radius: 12px;
+  background: #fff; border: 1px solid var(--line); font-size: 12.5px; line-height: 1.55; color: var(--ink);
+  max-width: 900px;
+}
+.annot strong { color: var(--primary-strong); }
+.annot table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+.annot th, .annot td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+.annot th { color: var(--mute); font-weight: 650; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <strong>虚拟键盘 Soft Pad</strong>
+    <em>全页打包 · Mac 复刻</em>
+    <div class="dir" id="pageDir" role="tablist">
+      <button type="button" class="on" data-page="keys">① 改按钮</button>
+      <button type="button" data-page="show">② 何时显示</button>
+      <button type="button" data-page="skin">③ 皮肤 · 灯效</button>
+    </div>
+    <button type="button" class="spec-tog" id="specTog">规格侧栏</button>
+  </div>
+
+  <div class="page">
+    <div class="brief">
+      <h1>Soft Pad 三页合一原型</h1>
+      <p>
+        对应产品中栏能力卡（改按钮 / 何时显示 / 皮肤）。无解释性长文案。
+        左侧预览随页切换；皮肤页可调透明度、盘边色、键灯样色（仅 Codex AG00 + Claude AG01）。
+        打开「规格侧栏」看 tokens 与 DOM 对照。
+      </p>
+      <div class="chips">
+        <span>主色 #2A9CC4</span>
+        <span>能力卡 ≈ 360px</span>
+        <span>键灯默认 RGB 霓虹</span>
+        <span>灯只亮 2 宿主键</span>
+      </div>
+    </div>
+
+    <div class="layout-outer" id="layout">
+      <div class="frame">
+        <div class="status-bar">
+          <span class="brand">虚拟键盘</span>
+          <span class="pill">已就绪</span>
+          <span class="hint" id="pageHint">改按钮 · 点左键 → 右栏换功能</span>
+        </div>
+        <div class="desk">
+          <nav class="rail" aria-label="识别通道">
+            <div class="sec">识别</div>
+            <div class="item">听写方式</div>
+            <div class="item">我录的键</div>
+            <div class="item">口头指令</div>
+            <div class="item">软件自带</div>
+            <div class="item is-on">屏幕按钮</div>
+            <div class="item">手势</div>
+          </nav>
+
+          <div class="mid">
+            <div class="mid-stage" id="midStage">
+              <!-- LEFT PREVIEW -->
+              <div class="pad-card">
+                <p class="lbl" id="previewLbl">选键 · Soft Pad</p>
+                <div class="scene" id="showScene" hidden data-mode="follow">
+                  <div class="win win-a"><div class="win-title">目标应用</div></div>
+                  <div class="win win-b"><div class="win-title">其他窗</div></div>
+                  <div class="pad-float" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                  <div class="mini-float" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                  <span class="kept">键位已保留 · 无浮窗</span>
+                </div>
+                <div class="opacity-stage" id="padStage">
+                  <div class="hw" id="hw" data-ambient="0" data-skin="default">
+                    <div class="hw-face" id="hwFace">
+                      <!-- 4×4 stylized: NAV + AG + ACT -->
+                      <i>↑</i><i data-k="AG00" data-st="">⌘</i><i data-k="AG01" data-st="">+</i><i>✦</i>
+                      <i>←</i><i>⌕</i><i>↵</i><i>×</i>
+                      <i>↓</i><i>⌨</i><i>🎤</i><i>⋯</i>
+                      <i>→</i><i>📋</i><i>›_</i><i>◎</i>
+                    </div>
+                  </div>
+                </div>
+                <p class="pad-meta" id="padMeta">Soft Pad 透明度 <strong id="opPct">82%</strong></p>
+              </div>
+
+              <!-- RIGHT ABILITY -->
+              <div class="ability">
+                <div class="tabs" role="tablist">
+                  <button type="button" class="on" data-tab="keys">改按钮</button>
+                  <button type="button" data-tab="show">何时显示</button>
+                  <button type="button" data-tab="skin">皮肤</button>
+                </div>
+
+                <!-- keys -->
+                <div class="pane" data-pane="keys">
+                  <label class="find"><input type="search" placeholder="听写、发送、Plan、终端…" /></label>
+                  <div class="subs">
+                    <button type="button" class="on">全部</button>
+                    <button type="button">会话</button>
+                    <button type="button">编辑</button>
+                    <button type="button">工具</button>
+                  </div>
+                  <div class="caps" id="caps">
+                    <button type="button" class="cap on"><b>命令菜单</b><code>Ctrl+Shift+P</code></button>
+                    <button type="button" class="cap"><b>新建对话</b><code>Ctrl+N</code></button>
+                    <button type="button" class="cap"><b>发送 / 停止</b><code>Enter</code></button>
+                    <button type="button" class="cap"><b>听写</b><code>Hold</code></button>
+                    <button type="button" class="cap"><b>打开终端</b><code>Ctrl+`</code></button>
+                    <button type="button" class="cap"><b>快速搜索</b><code>Ctrl+P</code></button>
+                  </div>
+                </div>
+
+                <!-- show -->
+                <div class="pane" data-pane="show" hidden>
+                  <div class="show-obj" id="showObj" aria-hidden="true">
+                    <span class="obj-pad"><i></i><i></i><i></i><i></i></span>
+                  </div>
+                  <div class="show-modes" role="radiogroup">
+                    <button type="button" class="show-mode on" data-show="follow">
+                      <div class="t">跟随应用显示</div><div class="h">目标应用在前台才出现</div>
+                    </button>
+                    <button type="button" class="show-mode" data-show="front">
+                      <div class="t">保持在最前</div><div class="h">切窗后仍悬浮</div>
+                    </button>
+                    <button type="button" class="show-mode" data-show="mini">
+                      <div class="t">显示为迷你条</div><div class="h">少占屏幕</div>
+                    </button>
+                    <button type="button" class="show-mode" data-show="hidden">
+                      <div class="t">不显示浮窗</div><div class="h">键位保留</div>
+                    </button>
+                  </div>
+                  <p class="sec">电脑小键盘</p>
+                  <div class="numpad-cards">
+                    <button type="button" class="numpad-card on">
+                      <div class="t">小键盘继续打数字</div>
+                      <div class="h">不占用 NumPad</div>
+                    </button>
+                    <button type="button" class="numpad-card">
+                      <div class="t">小键盘触发 Soft Pad</div>
+                      <div class="h">NumLock 关时接管</div>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- skin -->
+                <div class="pane" data-pane="skin" hidden>
+                  <p class="sec">外观</p>
+                  <div class="skin-list" role="radiogroup">
+                    <button type="button" class="skin on" data-skin="default">
+                      <div class="t">默认</div><div class="h">干净浅色，适合白天</div>
+                    </button>
+                    <button type="button" class="skin" data-skin="glass-light">
+                      <div class="t">空间玻璃</div><div class="h">浮动磨砂 · Spatial blur 80</div>
+                    </button>
+                    <button type="button" class="skin" data-skin="hybrid-pro">
+                      <div class="t">Keys Core</div><div class="h">6px 机械裙边 + 透光</div>
+                    </button>
+                    <button type="button" class="skin" data-skin="vibe-light">
+                      <div class="t">状态光环</div><div class="h">裙底 LED ring · Status Rings</div>
+                    </button>
+                  </div>
+                  <div class="opacity-row">
+                    <span>Soft Pad 透明度</span>
+                    <span class="opacity-swatch"><span id="opSwatch"></span></span>
+                    <input type="range" id="screenOp" min="40" max="100" value="82" />
+                    <span id="opLbl">82%</span>
+                  </div>
+
+                  <p class="sec">盘边与状态灯</p>
+                  <div class="wheres" role="radiogroup">
+                    <button type="button" class="where" data-where="off">
+                      <span class="viz viz--off"><span class="p"><i></i><i></i><i></i><i></i></span></span>
+                      <span><div class="tt">关灯</div><div class="hh">无光晕、无键灯</div></span>
+                    </button>
+                    <button type="button" class="where on" data-where="bezel">
+                      <span class="viz viz--bezel"><span class="ring"></span><span class="p"><i></i><i></i><i></i><i></i></span></span>
+                      <span><div class="tt">盘边光晕</div><div class="hh">Soft Pad 外圈亮</div></span>
+                    </button>
+                    <button type="button" class="where title-only" data-where="keys">
+                      <span class="viz viz--keys"><span class="p"><i class="lit"></i><i class="lit busy"></i><i></i><i></i></span></span>
+                      <span><div class="tt">键上状态灯</div></span>
+                    </button>
+                  </div>
+
+                  <div class="detail" data-detail="bezel">
+                    <div class="modes-2">
+                      <button type="button" data-amb="status">跟随状态</button>
+                      <button type="button" class="on" data-amb="solid">固定盘边色</button>
+                    </div>
+                    <div class="bezel-row" id="bezelSolid">
+                      <span>盘边颜色</span>
+                      <input type="color" id="ambRgb" value="#7c3aed" />
+                      <span>亮度</span>
+                      <input type="range" id="ambOp" min="10" max="100" value="68" />
+                      <span id="ambOpLbl">68%</span>
+                    </div>
+                  </div>
+
+                  <div class="detail" data-detail="keys" hidden>
+                    <div class="k3-head">
+                      <span class="sec">状态灯颜色</span>
+                      <button type="button" class="reset" id="k3Reset">恢复默认</button>
+                    </div>
+                    <div class="k3">
+                      <div class="k3-pad" aria-hidden="true">
+                        <i id="k3c0" style="background:var(--c-run)"></i>
+                        <i id="k3c1" style="background:var(--c-wait)"></i>
+                        <i id="k3c2" style="background:var(--c-done)"></i>
+                        <i id="k3c3" style="background:var(--c-fail)"></i>
+                      </div>
+                      <div class="k3-leg">
+                        <label>忙 <input type="color" data-k3="run" value="#3053FE" /></label>
+                        <label>等你 <input type="color" data-k3="wait" value="#FF6A00" /></label>
+                        <label>完成 <input type="color" data-k3="done" value="#00FF4C" /></label>
+                        <label>失败 <input type="color" data-k3="fail" value="#FF0033" /></label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="right">
+            <p class="sec">本场景动作</p>
+            <div class="habit on">Cursor · 默认<div class="sub">Pad 开 · 灯 开</div></div>
+            <div class="habit">Codex<div class="sub">Pad 可准备</div></div>
+            <div class="habit">Claude<div class="sub">Pad 开</div></div>
+          </aside>
+        </div>
+      </div>
+
+      <aside class="spec" id="spec">
+        <h3>Mac 复刻规格</h3>
+        <p>单文件交互稿。产品 DOM 见侧栏对照；颜色以 tokens 为准。</p>
+        <h4>Color</h4>
+        <dl>
+          <dt>primary</dt><dd><span class="sw" style="background:#2a9cc4"></span>#2A9CC4</dd>
+          <dt>strong</dt><dd><span class="sw" style="background:#0f5f7a"></span>#0F5F7A</dd>
+          <dt>ink</dt><dd><span class="sw" style="background:#13202c"></span>#13202C</dd>
+          <dt>wash</dt><dd><span class="sw" style="background:#eef2f6"></span>#EEF2F6</dd>
+          <dt>busy</dt><dd><span class="sw" style="background:#3053FE"></span>#3053FE</dd>
+          <dt>wait</dt><dd><span class="sw" style="background:#FF6A00"></span>#FF6A00</dd>
+          <dt>done</dt><dd><span class="sw" style="background:#00FF4C"></span>#00FF4C</dd>
+          <dt>fail</dt><dd><span class="sw" style="background:#FF0033"></span>#FF0033</dd>
+        </dl>
+        <h4>Layout</h4>
+        <dl>
+          <dt>rail</dt><dd>200–220px</dd>
+          <dt>ability</dt><dd>≈ 360px</dd>
+          <dt>habits</dt><dd>280–340px</dd>
+          <dt>pad paint</dt><dd>max ≈ 240px</dd>
+        </dl>
+        <h4>Pages</h4>
+        <ol>
+          <li><code>keys</code> 改按钮 · fn-swap</li>
+          <li><code>show</code> follow/front/mini/hidden + numpad</li>
+          <li><code>skin</code> skin ×4 + opacity + lights</li>
+        </ol>
+        <h4>Skins（对齐产品）</h4>
+        <p>
+          <code>default</code> 浅色默认<br />
+          <code>glass-light</code> Spatial · blur 80 · specular<br />
+          <code>hybrid-pro</code> Keys Core · 6px 裙边<br />
+          <code>vibe-light</code> Status Rings · 裙底 LED
+        </p>
+        <p>CSS: <code>codex-micro-pad-skins.css</code></p>
+        <h4>Lights</h4>
+        <p>where: <code>off | bezel | keys</code><br />
+        bezel: status | solid + rgb + brightness<br />
+        keys K3: 4 colors · demo only AG00+AG01</p>
+        <h4>Product files</h4>
+        <p><code>src/index.html</code> #settingsPanelSoftPad<br />
+        <code>soft-pad-hub.css</code><br />
+        <code>codex-micro-pad-ui.js</code></p>
+      </aside>
+    </div>
+
+    <div class="annot">
+      <strong>复刻顺序建议：</strong> tokens → 三列壳 → 中栏三 Tab → 左 Soft Pad 预览 → 皮肤灯效 detail。
+      <table>
+        <thead><tr><th>页</th><th>左预览</th><th>中栏要点</th></tr></thead>
+        <tbody>
+          <tr><td>改按钮</td><td>真 Soft Pad + 焦点环</td><td>搜索 · 分组 pill · 能力列表</td></tr>
+          <tr><td>何时显示</td><td>桌面场景（窗+Pad/迷你条）</td><td>四模式卡 + 小键盘二选一</td></tr>
+          <tr><td>皮肤</td><td>Pad + 透明度方格 + 盘边/键灯</td><td>四皮肤 · 透明度 · 关/盘边/键灯</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+
+  const state = {
+    page: 'keys',
+    show: 'follow',
+    skin: 'default',
+    where: 'bezel',
+    amb: 'solid',
+    screenOp: 82,
+    ambRgb: '#7c3aed',
+    ambOp: 68,
+    colors: { run: '#3053FE', wait: '#FF6A00', done: '#00FF4C', fail: '#FF0033' }
+  };
+
+  const hints = {
+    keys: '改按钮 · 点左键 → 右栏换功能',
+    show: '何时显示 · 左场景同步',
+    skin: '皮肤 · 透明度 / 盘边 / 键灯'
+  };
+
+  function hexToRgba(hex, a) {
+    const t = String(hex || '').replace(/^#/, '');
+    if (t.length !== 6) return '';
+    const r = parseInt(t.slice(0, 2), 16);
+    const g = parseInt(t.slice(2, 4), 16);
+    const b = parseInt(t.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function setPage(page) {
+    state.page = page;
+    $$('#pageDir [data-page]').forEach((b) => b.classList.toggle('on', b.dataset.page === page));
+    $$('.tabs [data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === page));
+    $$('.pane').forEach((p) => { p.hidden = p.dataset.pane !== page; });
+    $('#pageHint').textContent = hints[page];
+    const scene = $('#showScene');
+    const stage = $('#padStage');
+    const meta = $('#padMeta');
+    if (page === 'show') {
+      scene.hidden = false;
+      stage.hidden = true;
+      meta.hidden = true;
+      $('#previewLbl').textContent = '何时显示 · 场景';
+    } else {
+      scene.hidden = true;
+      stage.hidden = false;
+      meta.hidden = false;
+      $('#previewLbl').textContent = page === 'skin' ? '当前 Soft Pad' : '选键 · Soft Pad';
+    }
+    paintPreview();
+  }
+
+  function paintPreview() {
+    const hw = $('#hw');
+    hw.dataset.skin = state.skin || 'default';
+    document.documentElement.style.setProperty('--screen-op', String(state.screenOp / 100));
+    $('#opPct').textContent = state.screenOp + '%';
+    $('#opLbl').textContent = state.screenOp + '%';
+    $('#opSwatch').style.opacity = String(state.screenOp / 100);
+
+    // clear key demos
+    $$('#hwFace [data-k]').forEach((el) => {
+      el.removeAttribute('data-st');
+      el.classList.toggle('is-focus', false);
+    });
+
+    if (state.page === 'keys') {
+      hw.dataset.ambient = '0';
+      hw.style.removeProperty('--ambient-ring');
+      hw.style.removeProperty('--ambient-glow');
+      const ag0 = $('#hwFace [data-k="AG00"]');
+      if (ag0) ag0.classList.add('is-focus');
+      return;
+    }
+
+    if (state.page !== 'skin') {
+      hw.dataset.ambient = '0';
+      return;
+    }
+
+    // skin lights
+    if (state.where === 'off') {
+      hw.dataset.ambient = '0';
+      hw.style.removeProperty('--ambient-ring');
+      hw.style.removeProperty('--ambient-glow');
+      return;
+    }
+    if (state.where === 'keys') {
+      hw.dataset.ambient = '0';
+      hw.style.removeProperty('--ambient-ring');
+      hw.style.removeProperty('--ambient-glow');
+      const a0 = $('#hwFace [data-k="AG00"]');
+      const a1 = $('#hwFace [data-k="AG01"]');
+      if (a0) a0.setAttribute('data-st', 'running');
+      if (a1) a1.setAttribute('data-st', 'needs_input');
+      document.documentElement.style.setProperty('--c-run', state.colors.run);
+      document.documentElement.style.setProperty('--c-wait', state.colors.wait);
+      return;
+    }
+    // bezel
+    hw.dataset.ambient = '1';
+    const hex = state.amb === 'solid' ? state.ambRgb : '#2a9d6a';
+    const op = Math.max(0.55, Math.min(1, state.ambOp / 100));
+    hw.style.setProperty('--ambient-ring', hexToRgba(hex, op));
+    hw.style.setProperty('--ambient-glow', hexToRgba(hex, Math.max(0.35, op * 0.7)));
+  }
+
+  function syncWhereChrome() {
+    $$('.where').forEach((b) => b.classList.toggle('on', b.dataset.where === state.where));
+    $$('.detail').forEach((d) => {
+      d.hidden = d.dataset.detail !== state.where;
+    });
+    $$('[data-amb]').forEach((b) => b.classList.toggle('on', b.dataset.amb === state.amb));
+    $('#bezelSolid').classList.toggle('is-dim', state.amb !== 'solid');
+  }
+
+  function syncShow() {
+    $$('.show-mode').forEach((b) => b.classList.toggle('on', b.dataset.show === state.show));
+    $('#showScene').dataset.mode = state.show;
+    const obj = $('#showObj');
+    if (state.show === 'mini') {
+      obj.innerHTML = '<span class="obj-mini"><i></i><i></i><i></i><i></i><i></i><i></i></span>';
+    } else if (state.show === 'hidden') {
+      obj.innerHTML = '<span class="obj-pad ghost"><i></i><i></i><i></i><i></i></span>';
+    } else {
+      obj.innerHTML = '<span class="obj-pad"><i></i><i></i><i></i><i></i></span>';
+    }
+  }
+
+  function syncK3() {
+    const map = { run: 0, wait: 1, done: 2, fail: 3 };
+    Object.keys(map).forEach((k) => {
+      const el = document.getElementById('k3c' + map[k]);
+      if (el) el.style.background = state.colors[k];
+    });
+    document.documentElement.style.setProperty('--c-run', state.colors.run);
+    document.documentElement.style.setProperty('--c-wait', state.colors.wait);
+    document.documentElement.style.setProperty('--c-done', state.colors.done);
+    document.documentElement.style.setProperty('--c-fail', state.colors.fail);
+  }
+
+  /* page / tab */
+  $('#pageDir').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-page]');
+    if (!b) return;
+    setPage(b.dataset.page);
+  });
+  $$('.tabs [data-tab]').forEach((b) => {
+    b.addEventListener('click', () => setPage(b.dataset.tab));
+  });
+
+  $('#specTog').addEventListener('click', () => {
+    $('#layout').classList.toggle('show-spec');
+    $('#specTog').classList.toggle('on');
+  });
+
+  /* keys focus demo */
+  $('#hwFace').addEventListener('click', (e) => {
+    const k = e.target.closest('i[data-k], i');
+    if (!k || state.page !== 'keys') return;
+    $$('#hwFace i').forEach((el) => el.classList.remove('is-focus'));
+    k.classList.add('is-focus');
+  });
+  $$('#caps .cap').forEach((c) => {
+    c.addEventListener('click', () => {
+      $$('#caps .cap').forEach((x) => x.classList.remove('on'));
+      c.classList.add('on');
+    });
+  });
+
+  /* show */
+  $$('.show-mode').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.show = b.dataset.show;
+      syncShow();
+    });
+  });
+  $$('.numpad-card').forEach((b) => {
+    b.addEventListener('click', () => {
+      $$('.numpad-card').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+    });
+  });
+
+  /* skin */
+  $$('.skin').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.skin = b.dataset.skin || 'default';
+      $$('.skin').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+      paintPreview();
+    });
+  });
+  $('#screenOp').addEventListener('input', () => {
+    state.screenOp = Number($('#screenOp').value) || 82;
+    paintPreview();
+  });
+
+  $$('.where').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.where = b.dataset.where;
+      syncWhereChrome();
+      paintPreview();
+    });
+  });
+  $$('[data-amb]').forEach((b) => {
+    b.addEventListener('click', () => {
+      state.amb = b.dataset.amb;
+      syncWhereChrome();
+      paintPreview();
+    });
+  });
+  $('#ambRgb').addEventListener('input', () => {
+    state.ambRgb = $('#ambRgb').value;
+    state.amb = 'solid';
+    syncWhereChrome();
+    paintPreview();
+  });
+  $('#ambOp').addEventListener('input', () => {
+    state.ambOp = Number($('#ambOp').value) || 68;
+    $('#ambOpLbl').textContent = state.ambOp + '%';
+    paintPreview();
+  });
+
+  $$('[data-k3]').forEach((inp) => {
+    inp.addEventListener('input', () => {
+      const k = inp.dataset.k3;
+      state.colors[k] = inp.value;
+      syncK3();
+      paintPreview();
+    });
+  });
+  $('#k3Reset').addEventListener('click', () => {
+    state.colors = { run: '#3053FE', wait: '#FF6A00', done: '#00FF4C', fail: '#FF0033' };
+    $$('[data-k3]').forEach((inp) => { inp.value = state.colors[inp.dataset.k3]; });
+    syncK3();
+    paintPreview();
+  });
+
+  syncWhereChrome();
+  syncShow();
+  syncK3();
+  setPage('keys');
+  paintPreview();
+})();
+</script>
+</body>
+</html>

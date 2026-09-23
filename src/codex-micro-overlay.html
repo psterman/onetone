@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Codex Micro</title>
   <link rel="stylesheet" href="css/codex-micro-overlay.css" />
+  <link rel="stylesheet" href="css/codex-micro-pad-skins.css?v=20260923-proto2" />
   <link rel="stylesheet" href="css/motion.css" />
   <script src="js/core/motion.js"></script>
   <script src="js/core/agent-status-edge.js"></script>
@@ -2878,8 +2879,14 @@
           if(gen!==fitReportGen) return;
           if(localMinimized||!wrap.classList.contains('is-visible')) return;
           var rootEl=document.querySelector('.root');
-          if(!rootEl) return;
-          var h=Math.ceil(rootEl.getBoundingClientRect().height);
+          var stack=document.querySelector('.overlay-pad-stack');
+          if(!rootEl||!stack) return;
+          // Root is height:100% of the HWND — measuring it only echoes the current
+          // window size and never grows when caption/gate overflow. Measure the
+          // intrinsic pad stack + root vertical padding instead.
+          var cs=window.getComputedStyle(rootEl);
+          var padY=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0);
+          var h=Math.ceil(stack.getBoundingClientRect().height+padY);
           if(!(h>0)) return;
           invoke('cmd_codex_micro_overlay_fit_content',{height:h}).catch(function(){});
         });

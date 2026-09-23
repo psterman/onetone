@@ -30,7 +30,7 @@ pub const CODEX_MICRO_OVERLAY: OverlayWindowOpts = OverlayWindowOpts {
     url: "codex-micro-overlay.html",
     width: 432.0,
     // Keep in sync with OVERLAY_HEIGHT_FULL in codex_micro_overlay.rs
-    height: 520.0,
+    height: 680.0,
 };
 
 /// Return existing overlay window or create one matching former tauri.conf entries.

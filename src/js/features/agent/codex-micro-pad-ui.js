@@ -6719,7 +6719,7 @@
   function skinLabel(id) {
     if (id === 'glass-light') return t('softPadSkinGlassLight', '空间玻璃');
     if (id === 'hybrid-pro') return t('softPadSkinHybridPro', 'Keys Core');
-    if (id === 'vibe-light') return t('softPadSkinVibeLight', 'Vibe Light');
+    if (id === 'vibe-light') return t('softPadSkinVibeLight', '状态光环');
     return t('softPadSkinDefault', '默认');
   }
 
@@ -6748,9 +6748,9 @@
     var cur = canonicalizePadSkin(pad && pad.skin);
     var hints = {
       default: t('softPadSkinHintDefault', '干净浅色，适合白天'),
-      'glass-light': t('softPadSkinHintGlass', '浮动磨砂玻璃键'),
-      'hybrid-pro': t('softPadSkinHintHybrid', '机械裙边 + 透光字'),
-      'vibe-light': t('softPadSkinHintVibe', '偏亮、轻松的配色')
+      'glass-light': t('softPadSkinHintGlass', '浮动磨砂玻璃 · Spatial'),
+      'hybrid-pro': t('softPadSkinHintHybrid', '机械裙边 6px + 透光'),
+      'vibe-light': t('softPadSkinHintVibe', '裙底 LED 光环 · Status Rings')
     };
     var html = '<div class="soft-pad-skin-list" role="radiogroup" aria-label="' +
       esc(t('softPadSkinLbl', '外观风格')) + '">';
