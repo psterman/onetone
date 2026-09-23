@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>盘边与状态灯 · 物件卡</title>
+<style>
+  :root {
+    --primary: #2a9cc4;
+    --ink: #13202c;
+    --muted: #5a6c80;
+    --line: #d7dee8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 20px 48px;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    background: #eef2f6; color: var(--ink);
+  }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  .lead { font-size: 13px; color: var(--muted); margin: 0 0 20px; max-width: 520px; line-height: 1.5; }
+  .frame {
+    width: 360px; background: #fff; border: 1px solid var(--line);
+    border-radius: 14px; padding: 14px 12px 16px;
+  }
+  .sec { font-size: 13px; font-weight: 800; margin: 0 0 4px; }
+  .q { font-size: 12px; color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
+  .wheres { display: grid; gap: 6px; }
+  .where {
+    display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center;
+    appearance: none; font: inherit; cursor: pointer; text-align: left;
+    border: 1.5px solid rgba(26,45,74,.12); background: #fff; border-radius: 12px;
+    padding: 8px 10px; color: inherit;
+  }
+  .where.is-on {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 9%, #fff);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
+  }
+  .viz {
+    position: relative; width: 40px; height: 40px; border-radius: 9px;
+    background: #eef2f6; border: 1px solid rgba(15,23,42,.08);
+    display: grid; place-items: center;
+  }
+  .pad {
+    width: 22px; height: 22px; border-radius: 5px; background: #e8eef4;
+    border: 1px solid #b8c4d0; display: grid; grid-template-columns: 1fr 1fr;
+    gap: 2px; padding: 3px; position: relative; z-index: 1;
+  }
+  .pad i { margin: 0; border-radius: 2px; background: #fff; border: 1px solid #c5d0db; }
+  .viz--off .pad { opacity: .72; }
+  .viz--bezel .ring {
+    position: absolute; inset: 4px; border-radius: 8px;
+    border: 2px solid color-mix(in srgb, var(--primary) 75%, #34d399);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+  .viz--keys .pad i.is-lit {
+    background: color-mix(in srgb, #34d399 45%, #fff);
+    border-color: color-mix(in srgb, #34d399 40%, #94a3b8);
+  }
+  .viz--keys .pad i.is-busy {
+    background: color-mix(in srgb, #f59e0b 50%, #fff);
+    border-color: color-mix(in srgb, #f59e0b 45%, #94a3b8);
+  }
+  .t { font-size: 13px; font-weight: 800; line-height: 1.25; }
+  .where.is-on .t { color: #0f5f7a; }
+  .h { font-size: 11.5px; font-weight: 600; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+  .where.is-on .h { color: #0369a1; }
+  .legend { margin-top: 18px; font-size: 12px; color: var(--muted); line-height: 1.5; max-width: 360px; }
+</style>
+</head>
+<body>
+  <h1>盘边与状态灯</h1>
+  <p class="lead">三档只靠 Soft Pad 物件示意区分：关 / 外圈光晕 / 键色。不画应用窗背景。</p>
+  <div class="frame">
+    <p class="sec">盘边与状态灯</p>
+    <p class="q">先选灯在哪亮；左侧 Soft Pad 同步演示。</p>
+    <div class="wheres" role="radiogroup">
+      <button type="button" class="where is-on" data-i="0">
+        <span class="viz viz--off"><span class="pad"><i></i><i></i><i></i><i></i></span></span>
+        <span><span class="t">关灯</span><div class="h">无光晕、无键灯</div></span>
+      </button>
+      <button type="button" class="where" data-i="1">
+        <span class="viz viz--bezel"><span class="ring"></span><span class="pad"><i></i><i></i><i></i><i></i></span></span>
+        <span><span class="t">盘边光晕</span><div class="h">Soft Pad 外圈亮</div></span>
+      </button>
+      <button type="button" class="where" data-i="2">
+        <span class="viz viz--keys"><span class="pad"><i class="is-lit"></i><i></i><i class="is-lit"></i><i class="is-lit is-busy"></i></span></span>
+        <span><span class="t">键上状态灯</span><div class="h">键色表示忙闲</div></span>
+      </button>
+    </div>
+  </div>
+  <p class="legend">关灯：灰盘无环无色键 · 盘边：外圈描边 · 键灯：个别键亮绿/琥珀。</p>
+<script>
+document.querySelector('.wheres').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-i]');
+  if (!b) return;
+  document.querySelectorAll('[data-i]').forEach((x) => x.classList.toggle('is-on', x === b));
+});
+</script>
+</body>
+</html>

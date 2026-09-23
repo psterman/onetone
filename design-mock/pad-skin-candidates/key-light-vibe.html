@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>状态灯 · vibe 软色 vs 现 RGB</title>
+<style>
+  :root {
+    --bg: #eef2f6;
+    --surface: #fff;
+    --ink: #13202c;
+    --muted: #5a6c80;
+    --line: #d7dee8;
+    --primary: #2a9cc4;
+    --primary-soft: color-mix(in srgb, #2a9cc4 12%, #fff);
+    --primary-strong: #0f5f7a;
+    --frame: 360px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 24px 20px 64px;
+  }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  .lead {
+    margin: 0 0 22px; max-width: 640px;
+    font-size: 13px; color: var(--muted); line-height: 1.5;
+  }
+  .board { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  .col { width: var(--frame); }
+  .label {
+    font-size: 11px; font-weight: 750; color: var(--primary-strong);
+    margin: 0 0 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .label b {
+    background: var(--primary-soft); padding: 2px 7px; border-radius: 999px; font-size: 10px;
+  }
+  .why { font-size: 11.5px; color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
+  .frame {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(15,32,44,.05);
+  }
+  .frame.is-pick {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent),
+      0 8px 24px rgba(15,32,44,.05);
+  }
+
+  /* dark soft pad stage */
+  .stage {
+    border-radius: 12px;
+    background: linear-gradient(160deg, #1a222c 0%, #0e1319 100%);
+    padding: 18px 16px 16px;
+    display: grid; place-items: center;
+  }
+  .pad {
+    width: 132px; height: 132px;
+    border-radius: 18px;
+    background: #161b22;
+    border: 1px solid rgba(255,255,255,.08);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    padding: 12px; position: relative;
+  }
+  .pad[data-glow="neon"] {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-run) 55%, transparent),
+      0 0 22px color-mix(in srgb, var(--c-run) 45%, transparent);
+  }
+  .pad[data-glow="soft"] {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c-run) 40%, transparent),
+      0 0 10px color-mix(in srgb, var(--c-run) 28%, transparent);
+  }
+  .pad[data-glow="none"] { box-shadow: none; }
+  .pad i {
+    margin: 0; border-radius: 10px;
+    background: #222933;
+    border: 1px solid rgba(255,255,255,.06);
+    position: relative;
+  }
+  .pad i::after {
+    content: ""; position: absolute; inset: 22% 22%;
+    border-radius: 50%;
+    background: var(--lit, transparent);
+    box-shadow: var(--halo, none);
+  }
+  .pad i.idle { --lit: transparent; --halo: none; opacity: .85; }
+  .pad i.run { --lit: var(--c-run); }
+  .pad i.wait { --lit: var(--c-wait); }
+  .pad i.done { --lit: var(--c-done); }
+  .pad i.fail { --lit: var(--c-fail); }
+
+  .pad[data-halo="neon"] i.run,
+  .pad[data-halo="neon"] i.wait,
+  .pad[data-halo="neon"] i.done,
+  .pad[data-halo="neon"] i.fail {
+    --halo: 0 0 0 2px var(--lit), 0 0 14px var(--lit);
+  }
+  .pad[data-halo="soft"] i.run,
+  .pad[data-halo="soft"] i.wait,
+  .pad[data-halo="soft"] i.done,
+  .pad[data-halo="soft"] i.fail {
+    --halo: 0 0 0 1px color-mix(in srgb, var(--lit) 70%, transparent),
+      0 0 6px color-mix(in srgb, var(--lit) 55%, transparent);
+  }
+
+  .legend {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+    margin-top: 10px;
+  }
+  .legend span {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 700; color: var(--muted);
+  }
+  .dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1px solid rgba(15,23,42,.1);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
+  }
+  .hexes {
+    margin-top: 10px; display: grid; gap: 4px;
+    font: 600 10.5px/1.35 ui-monospace, Consolas, monospace;
+    color: var(--muted);
+  }
+  .hexes b { color: var(--ink); font-weight: 700; min-width: 2.5em; display: inline-block; }
+
+  .row5 {
+    display: flex; gap: 8px; justify-content: space-between; margin-top: 8px;
+  }
+  .row5 .chip {
+    flex: 1; text-align: center; font-size: 10px; font-weight: 700; color: var(--muted);
+  }
+  .row5 .chip .dot { margin: 0 auto 4px; width: 16px; height: 16px; }
+
+  .verdict {
+    margin-top: 28px; max-width: 760px;
+    padding: 14px 16px; border-radius: 12px;
+    background: #fff; border: 1px solid var(--line);
+    font-size: 13px; line-height: 1.55; color: var(--ink);
+  }
+  .verdict strong { color: var(--primary-strong); }
+  .verdict table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+  .verdict th, .verdict td {
+    text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line);
+  }
+  .verdict th { color: var(--muted); font-weight: 650; }
+
+  /* palette tokens per scheme */
+  .scheme-neon {
+    --c-run: #3053FE;
+    --c-wait: #FF6A00;
+    --c-done: #00FF4C;
+    --c-fail: #FF0033;
+    --c-listen: #00A3FF;
+  }
+  .scheme-vibe {
+    --c-run: #60A5FA;
+    --c-wait: #FBBF24;
+    --c-done: #4ADE80;
+    --c-fail: #F87171;
+    --c-listen: #38BDF8;
+  }
+  .scheme-cool {
+    --c-run: #3B82F6;
+    --c-wait: #06B6D4;
+    --c-done: #22D3EE;
+    --c-fail: #F43F5E;
+    --c-listen: #60A5FA;
+  }
+</style>
+</head>
+<body>
+  <h1>状态灯 · vibe 软色原型</h1>
+  <p class="lead">
+    对比现默认 RGB 霓虹、推荐 vibe 软色（对齐 diag）、以及冷色预设。键灯光晕：霓虹喷漆 vs 收过的 soft glow。
+  </p>
+
+  <div class="board">
+
+    <!-- A: current -->
+    <div class="col scheme-neon">
+      <div class="label"><b>A · 现默认</b> RGB 霓虹</div>
+      <p class="why">#3053FE / #FF6A00 / #00FF4C / #FF0033 — 像电竞键盘，语义对、气质偏硬。</p>
+      <div class="frame">
+        <div class="stage">
+          <div class="pad" data-glow="neon" data-halo="neon" aria-hidden="true">
+            <i class="run"></i><i class="wait"></i><i class="done"></i><i class="fail"></i>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--c-run)"></i>忙</span>
+          <span><i class="dot" style="background:var(--c-wait)"></i>等你</span>
+          <span><i class="dot" style="background:var(--c-done)"></i>完成</span>
+          <span><i class="dot" style="background:var(--c-fail)"></i>失败</span>
+        </div>
+        <div class="hexes">
+          <div><b>忙</b> #3053FE &nbsp; <b>等</b> #FF6A00</div>
+          <div><b>完</b> #00FF4C &nbsp; <b>败</b> #FF0033 &nbsp; <b>听</b> #00A3FF</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- B: vibe soft — recommended -->
+    <div class="col scheme-vibe">
+      <div class="label"><b>B · 推荐</b> vibe 软色 + 收光</div>
+      <p class="why">对齐 diag：#60A5FA / #FBBF24 / #4ADE80 / #F87171；光晕 6px、半透明。</p>
+      <div class="frame is-pick">
+        <div class="stage">
+          <div class="pad" data-glow="soft" data-halo="soft" aria-hidden="true">
+            <i class="run"></i><i class="wait"></i><i class="done"></i><i class="fail"></i>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--c-run)"></i>忙</span>
+          <span><i class="dot" style="background:var(--c-wait)"></i>等你</span>
+          <span><i class="dot" style="background:var(--c-done)"></i>完成</span>
+          <span><i class="dot" style="background:var(--c-fail)"></i>失败</span>
+        </div>
+        <div class="hexes">
+          <div><b>忙</b> #60A5FA &nbsp; <b>等</b> #FBBF24</div>
+          <div><b>完</b> #4ADE80 &nbsp; <b>败</b> #F87171 &nbsp; <b>听</b> #38BDF8</div>
+        </div>
+        <div class="row5" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+          <div class="chip"><i class="dot" style="background:var(--c-listen)"></i>聆听</div>
+          <div class="chip" style="opacity:.45"><i class="dot" style="background:#334155"></i>空闲灭</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C: cool preset already in product -->
+    <div class="col scheme-cool">
+      <div class="label"><b>C</b> 现「冷色」预设</div>
+      <p class="why">产品里已有；偏青蓝，完成色偏冰。可作备选，不如 B 贴近 sidebar status。</p>
+      <div class="frame">
+        <div class="stage">
+          <div class="pad" data-glow="soft" data-halo="soft" aria-hidden="true">
+            <i class="run"></i><i class="wait"></i><i class="done"></i><i class="fail"></i>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--c-run)"></i>忙</span>
+          <span><i class="dot" style="background:var(--c-wait)"></i>等你</span>
+          <span><i class="dot" style="background:var(--c-done)"></i>完成</span>
+          <span><i class="dot" style="background:var(--c-fail)"></i>失败</span>
+        </div>
+        <div class="hexes">
+          <div><b>忙</b> #3B82F6 &nbsp; <b>等</b> #06B6D4</div>
+          <div><b>完</b> #22D3EE &nbsp; <b>败</b> #F43F5E &nbsp; <b>听</b> #60A5FA</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- D: glow-only A/B on same soft palette -->
+    <div class="col scheme-vibe">
+      <div class="label"><b>D</b> 同色 · 只比光晕</div>
+      <p class="why">色板固定为 B；左霓虹喷、右 soft。落产品时只改 CSS 半径/透明度。</p>
+      <div class="frame">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <div style="font-size:10.5px;font-weight:700;color:var(--muted);margin:0 0 6px;text-align:center">霓虹 14px</div>
+            <div class="stage" style="padding:12px">
+              <div class="pad" style="width:96px;height:96px;gap:7px;padding:9px;border-radius:14px" data-glow="none" data-halo="neon" aria-hidden="true">
+                <i class="run"></i><i class="wait"></i><i class="done"></i><i class="fail"></i>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:10.5px;font-weight:700;color:var(--primary-strong);margin:0 0 6px;text-align:center">soft 6px</div>
+            <div class="stage" style="padding:12px">
+              <div class="pad" style="width:96px;height:96px;gap:7px;padding:9px;border-radius:14px" data-glow="none" data-halo="soft" aria-hidden="true">
+                <i class="run"></i><i class="wait"></i><i class="done"></i><i class="fail"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <strong>建议落 B。</strong> 语义不变；默认色换 vibe 软色；键灯光晕用 soft（约 6px + color-mix）。高对比预设继续扛霓虹需求。
+    <table>
+      <thead><tr><th>方案</th><th>气质</th><th>与 diag</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td>A 现默认</td><td>RGB 硬</td><td>偏</td><td>保留作 highContrast 参考</td></tr>
+        <tr><td>B vibe 软色</td><td>coding 侧栏</td><td>对齐</td><td>推荐作新 default</td></tr>
+        <tr><td>C 冷色预设</td><td>偏冰青</td><td>近</td><td>已有，可不升默认</td></tr>
+        <tr><td>D 光晕</td><td>—</td><td>—</td><td>跟 B 一起收</td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

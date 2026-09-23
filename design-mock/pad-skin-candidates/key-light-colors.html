@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>键上状态灯配色 · 原型方案</title>
+<style>
+  :root {
+    --bg: #eef2f6;
+    --surface: #fff;
+    --ink: #13202c;
+    --muted: #5a6c80;
+    --line: #d7dee8;
+    --primary: #2a9cc4;
+    --primary-soft: color-mix(in srgb, #2a9cc4 12%, #fff);
+    --primary-strong: #0f5f7a;
+    --frame: 360px;
+    --c-run: #3053FE;
+    --c-wait: #FF6A00;
+    --c-done: #00FF4C;
+    --c-fail: #FF0033;
+    --c-listen: #00A3FF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 24px 20px 64px;
+  }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  .lead {
+    margin: 0 0 22px; max-width: 720px;
+    font-size: 13px; color: var(--muted); line-height: 1.5;
+  }
+  .board { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  .col { width: var(--frame); }
+  .label {
+    font-size: 11px; font-weight: 750; color: var(--primary-strong);
+    margin: 0 0 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .label b {
+    background: var(--primary-soft); padding: 2px 7px; border-radius: 999px; font-size: 10px;
+  }
+  .why { font-size: 11.5px; color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
+  .frame {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(15,32,44,.05);
+  }
+  .where-on {
+    display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center;
+    padding: 8px 10px; border-radius: 12px; margin-bottom: 10px;
+    border: 1.5px solid var(--primary);
+    background: var(--primary-soft);
+  }
+  .where-on .viz {
+    width: 40px; height: 40px; border-radius: 9px; background: #fff;
+    border: 1px solid rgba(42,156,196,.28); display: grid; place-items: center;
+  }
+  .where-on .pad {
+    width: 22px; height: 22px; border-radius: 5px; background: #e8eef4;
+    border: 1px solid #b8c4d0; display: grid; grid-template-columns: 1fr 1fr;
+    gap: 2px; padding: 3px;
+  }
+  .where-on .pad i { margin: 0; border-radius: 2px; background: #fff; border: 1px solid #c5d0db; }
+  .where-on .pad i.g { background: color-mix(in srgb, #34d399 45%, #fff); border-color: #6ee7b7; }
+  .where-on .pad i.a { background: color-mix(in srgb, #f59e0b 50%, #fff); border-color: #fcd34d; }
+  .where-on .t { font-size: 13px; font-weight: 800; color: var(--primary-strong); }
+  .where-on .h { font-size: 11.5px; color: #0369a1; margin-top: 2px; }
+  .note {
+    margin: 0 0 10px; padding: 8px 10px; border-radius: 10px;
+    background: #f7f9fb; border: 1px solid var(--line);
+    font-size: 11.5px; color: var(--muted); line-height: 1.45;
+  }
+  .sec {
+    margin: 0 0 6px; font-size: 12px; font-weight: 750; color: var(--ink);
+  }
+  .reset {
+    appearance: none; border: 0; background: transparent; font: inherit;
+    font-size: 11.5px; font-weight: 700; color: var(--primary-strong);
+    cursor: pointer; padding: 0; text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .reset:hover { color: #0369a1; }
+
+  /* ── K1: 四色点横排 ── */
+  .k1-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  }
+  .swatch {
+    appearance: none; border: 1.5px solid var(--line); background: #fff;
+    border-radius: 10px; padding: 8px 4px 7px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    font: inherit; color: inherit;
+  }
+  .swatch:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
+  .swatch:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1px solid rgba(15,23,42,.12);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
+  }
+  .swatch em {
+    font-style: normal; font-size: 10.5px; font-weight: 700;
+    color: var(--muted); line-height: 1.2; text-align: center;
+  }
+  .k1-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 8px;
+  }
+  .k1-more {
+    font-size: 11px; color: var(--muted); font-weight: 600;
+  }
+
+  /* ── K2: 色点 + 标签横条 ── */
+  .k2-list { display: flex; flex-direction: column; gap: 4px; }
+  .k2-row {
+    appearance: none; width: 100%; font: inherit; cursor: pointer; text-align: left;
+    border: 1px solid transparent; background: #f7f9fb; border-radius: 8px;
+    padding: 7px 8px; display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center;
+  }
+  .k2-row:hover { border-color: var(--line); background: #fff; }
+  .k2-row .dot { width: 16px; height: 16px; }
+  .k2-row span { font-size: 12px; font-weight: 700; }
+  .k2-row code {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    font-family: ui-monospace, Consolas, monospace;
+  }
+
+  /* ── K3: 迷你 Soft Pad 示意 + 四色 ── */
+  .k3-stage {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px; border-radius: 10px; background: #f7f9fb; border: 1px solid var(--line);
+    margin-bottom: 8px;
+  }
+  .k3-pad {
+    width: 56px; height: 56px; border-radius: 10px; background: #e8eef4;
+    border: 1px solid #b8c4d0; display: grid; grid-template-columns: 1fr 1fr;
+    gap: 3px; padding: 6px; flex-shrink: 0;
+  }
+  .k3-pad i {
+    margin: 0; border-radius: 4px; border: 1px solid rgba(15,23,42,.1);
+  }
+  .k3-pad i:nth-child(1) { background: var(--c-run); }
+  .k3-pad i:nth-child(2) { background: var(--c-wait); }
+  .k3-pad i:nth-child(3) { background: var(--c-done); }
+  .k3-pad i:nth-child(4) { background: var(--c-fail); }
+  .k3-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; flex: 1; }
+  .k3-legend button {
+    appearance: none; border: 0; background: transparent; font: inherit;
+    display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 2px 0;
+    font-size: 11.5px; font-weight: 700; color: var(--ink);
+  }
+  .k3-legend .dot { width: 12px; height: 12px; }
+
+  /* ── K4: 分段「常用 / 更多」── */
+  .k4-seg {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    padding: 2px; border-radius: 9px; background: #eef2f6; border: 1px solid var(--line);
+    margin-bottom: 8px;
+  }
+  .k4-seg button {
+    appearance: none; border: 0; background: transparent; font: inherit;
+    padding: 7px; border-radius: 7px; cursor: pointer;
+    font-size: 12px; font-weight: 700; color: var(--muted);
+  }
+  .k4-seg button.is-on { background: #fff; color: var(--primary-strong); box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+  .k4-panel[hidden] { display: none !important; }
+
+  .pop {
+    position: fixed; inset: 0; background: rgba(15,23,42,.35);
+    display: none; align-items: center; justify-content: center; z-index: 20;
+  }
+  .pop.is-open { display: flex; }
+  .pop__card {
+    width: min(300px, 90vw); background: #fff; border-radius: 14px;
+    padding: 14px; border: 1px solid var(--line);
+    box-shadow: 0 16px 40px rgba(15,23,42,.18);
+  }
+  .pop__card h3 { margin: 0 0 6px; font-size: 14px; }
+  .pop__card p { margin: 0 0 12px; font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .pop__row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .pop__row input[type="color"] {
+    width: 40px; height: 32px; border: 0; padding: 0; background: transparent; cursor: pointer;
+  }
+  .pop__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  .pop__actions button {
+    appearance: none; font: inherit; font-size: 12px; font-weight: 700;
+    border-radius: 8px; padding: 7px 12px; cursor: pointer;
+  }
+  .btn-ghost { border: 1px solid var(--line); background: #fff; color: var(--muted); }
+  .btn-ok { border: 0; background: var(--primary); color: #fff; }
+
+  .verdict {
+    margin-top: 28px; max-width: 780px;
+    padding: 14px 16px; border-radius: 12px;
+    background: #fff; border: 1px solid var(--line);
+    font-size: 13px; line-height: 1.55; color: var(--ink);
+  }
+  .verdict strong { color: var(--primary-strong); }
+  .verdict table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+  .verdict th, .verdict td {
+    text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line);
+  }
+  .verdict th { color: var(--muted); font-weight: 650; }
+</style>
+</head>
+<body>
+  <h1>键上状态灯配色 · 原型</h1>
+  <p class="lead">
+    去掉四卡「状态配色」预设墙。只给<strong>忙 / 等你 / 完成 / 失败</strong>配色；聆听收进更多；重置回默认色板。点色点可改色（示意弹层）。
+  </p>
+
+  <div class="board">
+
+    <!-- K1 -->
+    <div class="col">
+      <div class="label"><b>K1 · 推荐</b> 四色点横排</div>
+      <p class="why">最省高：一行四钮，点开改色；底下一行「重置 / 聆听」。</p>
+      <div class="frame" data-scheme="k1">
+        <div class="where-on">
+          <span class="viz"><span class="pad"><i class="g"></i><i></i><i class="g"></i><i class="a"></i></span></span>
+          <span><div class="t">键上状态灯</div><div class="h">键色表示忙闲</div></span>
+        </div>
+        <p class="note">各 Agent 共用一套忙闲色；左侧按键用样色演示。</p>
+        <div class="sec">状态灯颜色</div>
+        <div class="k1-row" data-swatches>
+          <button type="button" class="swatch" data-key="running" data-label="忙/运行">
+            <span class="dot" style="background:var(--c-run)"></span><em>忙</em>
+          </button>
+          <button type="button" class="swatch" data-key="needsInput" data-label="等你">
+            <span class="dot" style="background:var(--c-wait)"></span><em>等你</em>
+          </button>
+          <button type="button" class="swatch" data-key="done" data-label="完成">
+            <span class="dot" style="background:var(--c-done)"></span><em>完成</em>
+          </button>
+          <button type="button" class="swatch" data-key="failed" data-label="失败">
+            <span class="dot" style="background:var(--c-fail)"></span><em>失败</em>
+          </button>
+        </div>
+        <div class="k1-foot">
+          <button type="button" class="reset" data-reset>恢复默认</button>
+          <button type="button" class="swatch" data-key="listening" data-label="聆听" style="flex-direction:row;gap:6px;padding:4px 8px;width:auto">
+            <span class="dot" style="width:14px;height:14px;background:var(--c-listen)"></span>
+            <em style="font-size:11px">聆听</em>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- K2 -->
+    <div class="col">
+      <div class="label"><b>K2</b> 色条列表</div>
+      <p class="why">更像设置列表，文案完整；比 K1 高一截，适合怕点太小。</p>
+      <div class="frame" data-scheme="k2">
+        <div class="where-on">
+          <span class="viz"><span class="pad"><i class="g"></i><i></i><i class="g"></i><i class="a"></i></span></span>
+          <span><div class="t">键上状态灯</div><div class="h">键色表示忙闲</div></span>
+        </div>
+        <div class="sec">状态灯颜色 <button type="button" class="reset" data-reset style="float:right;font-weight:700">恢复默认</button></div>
+        <div class="k2-list" data-swatches>
+          <button type="button" class="k2-row" data-key="running" data-label="忙/运行">
+            <span class="dot" style="background:var(--c-run)"></span><span>忙 / 运行</span><code>#3053FE</code>
+          </button>
+          <button type="button" class="k2-row" data-key="needsInput" data-label="等你">
+            <span class="dot" style="background:var(--c-wait)"></span><span>等你</span><code>#FF6A00</code>
+          </button>
+          <button type="button" class="k2-row" data-key="done" data-label="完成">
+            <span class="dot" style="background:var(--c-done)"></span><span>完成</span><code>#00FF4C</code>
+          </button>
+          <button type="button" class="k2-row" data-key="failed" data-label="失败">
+            <span class="dot" style="background:var(--c-fail)"></span><span>失败</span><code>#FF0033</code>
+          </button>
+        </div>
+        <details style="margin-top:8px">
+          <summary style="font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer">更多 · 聆听</summary>
+          <button type="button" class="k2-row" data-key="listening" data-label="聆听" style="margin-top:6px">
+            <span class="dot" style="background:var(--c-listen)"></span><span>聆听（语音键）</span><code>#00A3FF</code>
+          </button>
+        </details>
+      </div>
+    </div>
+
+    <!-- K3 -->
+    <div class="col">
+      <div class="label"><b>K3 · 已选</b> 迷你盘示意 + 图例</div>
+      <p class="why">一眼看到四色落在键上；适合强调「左侧会同步」。</p>
+      <div class="frame" data-scheme="k3">
+        <div class="where-on">
+          <span class="viz"><span class="pad"><i class="g"></i><i></i><i class="g"></i><i class="a"></i></span></span>
+          <span><div class="t">键上状态灯</div><div class="h">键色表示忙闲</div></span>
+        </div>
+        <div class="k3-stage">
+          <div class="k3-pad" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <div class="k3-legend" data-swatches>
+            <button type="button" data-key="running" data-label="忙/运行"><span class="dot" style="background:var(--c-run)"></span>忙</button>
+            <button type="button" data-key="needsInput" data-label="等你"><span class="dot" style="background:var(--c-wait)"></span>等你</button>
+            <button type="button" data-key="done" data-label="完成"><span class="dot" style="background:var(--c-done)"></span>完成</button>
+            <button type="button" data-key="failed" data-label="失败"><span class="dot" style="background:var(--c-fail)"></span>失败</button>
+          </div>
+        </div>
+        <div class="k1-foot">
+          <button type="button" class="reset" data-reset>恢复默认</button>
+          <span class="k1-more">聆听默认不展示</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- K4 -->
+    <div class="col">
+      <div class="label"><b>K4</b> 常用 / 更多 分段</div>
+      <p class="why">常用四色；更多里放聆听。结构清晰，多一步切换。</p>
+      <div class="frame" data-scheme="k4">
+        <div class="where-on">
+          <span class="viz"><span class="pad"><i class="g"></i><i></i><i class="g"></i><i class="a"></i></span></span>
+          <span><div class="t">键上状态灯</div><div class="h">键色表示忙闲</div></span>
+        </div>
+        <div class="k4-seg" data-seg>
+          <button type="button" class="is-on" data-panel="common">常用</button>
+          <button type="button" data-panel="more">更多</button>
+        </div>
+        <div class="k4-panel" data-panel-body="common">
+          <div class="k1-row" data-swatches>
+            <button type="button" class="swatch" data-key="running" data-label="忙/运行">
+              <span class="dot" style="background:var(--c-run)"></span><em>忙</em>
+            </button>
+            <button type="button" class="swatch" data-key="needsInput" data-label="等你">
+              <span class="dot" style="background:var(--c-wait)"></span><em>等你</em>
+            </button>
+            <button type="button" class="swatch" data-key="done" data-label="完成">
+              <span class="dot" style="background:var(--c-done)"></span><em>完成</em>
+            </button>
+            <button type="button" class="swatch" data-key="failed" data-label="失败">
+              <span class="dot" style="background:var(--c-fail)"></span><em>失败</em>
+            </button>
+          </div>
+          <div class="k1-foot"><button type="button" class="reset" data-reset>恢复默认</button></div>
+        </div>
+        <div class="k4-panel" data-panel-body="more" hidden>
+          <p class="note" style="margin-bottom:8px">聆听只影响语音相关键；多数场景可不动。</p>
+          <button type="button" class="k2-row" data-key="listening" data-label="聆听">
+            <span class="dot" style="background:var(--c-listen)"></span><span>聆听</span><code>#00A3FF</code>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <strong>已落 K3。</strong> 迷你盘 + 图例最简约；色板保持 A（RGB）；预设墙砍掉，用「恢复默认」；聆听收进更多。
+    <table>
+      <thead><tr><th>方案</th><th>高度</th><th>一眼</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td>K1 四色点</td><td>最低</td><td>好</td><td>—</td></tr>
+        <tr><td>K2 色条</td><td>中</td><td>文案全</td><td>—</td></tr>
+        <tr><td>K3 迷你盘</td><td>中</td><td>示意强</td><td>已落产品</td></tr>
+        <tr><td>K4 分段</td><td>低～中</td><td>分层清</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pop" id="pop" role="dialog" aria-modal="true">
+    <div class="pop__card">
+      <h3 data-pop-title>忙 / 运行</h3>
+      <p>点色块改颜色；确定后左侧 Soft Pad 样色会跟着变（产品内）。</p>
+      <div class="pop__row">
+        <input type="color" id="popColor" value="#3053FE" />
+        <span id="popHex" style="font:700 12px ui-monospace,Consolas,monospace;color:#5a6c80">#3053FE</span>
+      </div>
+      <div class="pop__actions">
+        <button type="button" class="btn-ghost" data-pop-close>取消</button>
+        <button type="button" class="btn-ok" data-pop-ok>确定</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const DEFAULTS = {
+  running: '#3053FE',
+  needsInput: '#FF6A00',
+  done: '#00FF4C',
+  failed: '#FF0033',
+  listening: '#00A3FF'
+};
+const state = { ...DEFAULTS };
+let editKey = null;
+
+const pop = document.getElementById('pop');
+const popColor = document.getElementById('popColor');
+const popHex = document.getElementById('popHex');
+const popTitle = document.querySelector('[data-pop-title]');
+
+function applyDots() {
+  document.querySelectorAll('[data-key]').forEach((el) => {
+    const key = el.getAttribute('data-key');
+    const dot = el.querySelector('.dot');
+    if (dot && state[key]) dot.style.background = state[key];
+    const code = el.querySelector('code');
+    if (code && state[key]) code.textContent = state[key];
+  });
+  const pad = document.querySelector('.k3-pad');
+  if (pad) {
+    const cells = pad.querySelectorAll('i');
+    const keys = ['running', 'needsInput', 'done', 'failed'];
+    cells.forEach((c, i) => { c.style.background = state[keys[i]]; });
+  }
+}
+
+function openPop(key, label) {
+  editKey = key;
+  popTitle.textContent = label;
+  popColor.value = state[key];
+  popHex.textContent = state[key];
+  pop.classList.add('is-open');
+}
+
+popColor.addEventListener('input', () => {
+  popHex.textContent = popColor.value.toUpperCase();
+});
+
+document.querySelector('[data-pop-close]').addEventListener('click', () => {
+  pop.classList.remove('is-open');
+  editKey = null;
+});
+document.querySelector('[data-pop-ok]').addEventListener('click', () => {
+  if (editKey) {
+    state[editKey] = popColor.value.toUpperCase();
+    applyDots();
+  }
+  pop.classList.remove('is-open');
+  editKey = null;
+});
+pop.addEventListener('click', (e) => {
+  if (e.target === pop) {
+    pop.classList.remove('is-open');
+    editKey = null;
+  }
+});
+
+document.querySelectorAll('[data-swatches], .k2-list, .k3-legend, .k4-panel').forEach((root) => {
+  root.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-key]');
+    if (!btn) return;
+    openPop(btn.getAttribute('data-key'), btn.getAttribute('data-label') || btn.getAttribute('data-key'));
+  });
+});
+
+document.querySelectorAll('[data-reset]').forEach((b) => {
+  b.addEventListener('click', () => {
+    Object.assign(state, DEFAULTS);
+    applyDots();
+  });
+});
+
+document.querySelectorAll('[data-seg]').forEach((seg) => {
+  seg.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-panel]');
+    if (!btn) return;
+    const frame = seg.closest('.frame');
+    seg.querySelectorAll('[data-panel]').forEach((x) => x.classList.toggle('is-on', x === btn));
+    const id = btn.getAttribute('data-panel');
+    frame.querySelectorAll('[data-panel-body]').forEach((p) => {
+      if (p.getAttribute('data-panel-body') === id) p.removeAttribute('hidden');
+      else p.setAttribute('hidden', '');
+    });
+  });
+});
+</script>
+</body>
+</html>

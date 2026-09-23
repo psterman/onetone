@@ -11421,9 +11421,6 @@
       '<aside class="soft-pad-flat-bind-dock" data-soft-pad-flat-bind-dock="1" aria-label="' +
       esc(t('softPadFlatBindDockAria', '这个键做什么')) +
       '">' +
-      '<p class="soft-pad-flat-bind-dock__idle">' +
-      esc(t('softPadFlatBindDockIdle', '选中键后，右侧换功能')) +
-      '</p>' +
       '<div class="soft-pad-layout-editor" data-soft-pad-layout-editor="1" hidden></div>' +
       '</aside></div>';
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
@@ -12355,7 +12352,7 @@
     if (where === 'off') {
       ambientCap = t('softPadAmbientPreviewOff', '关灯：盘边无光晕');
     } else if (where === 'keys') {
-      ambientCap = t('softPadAmbientPreviewKeys', '键上状态灯：按键颜色表示忙闲');
+      ambientCap = '';
     } else if (solid) {
       ambientCap = t('softPadAmbientPreviewSolid', '固定盘边色：外圈保持所选颜色');
     } else {
@@ -12376,9 +12373,8 @@
       '<p class="soft-pad-mode-preview__opacity-cap">' +
       esc(t('softPadOpacityPreviewCap', 'Soft Pad 透明度')) +
       ' <strong data-screen-opacity-preview>' + opPct + '%</strong>' +
-      ' — ' + esc(t('softPadOpacityPreviewHint', '拖右侧滑块，垫底方格会透出来')) +
       '</p>' +
-      (ambientOn || where === 'keys' || where === 'off'
+      (ambientCap
         ? ('<p class="soft-pad-mode-preview__ambient-cap" data-ambient-preview-cap>' +
           esc(ambientCap) + '</p>')
         : '') +
@@ -12712,10 +12708,6 @@
     softPadFloatTab = 'skin';
     container.innerHTML =
       '<div class="soft-pad-style-panel soft-pad-style-panel--more" data-style-panel="more">' +
-      '<p class="soft-pad-float-dock__lead">' +
-      esc(t('softPadFloatSkinLead',
-        '换皮肤、透明度、盘边色与状态灯；左侧预览会跟着变。')) +
-      '</p>' +
       buildSoftPadFloatSkinHtml(m, pad) +
       '</div>';
     container.setAttribute('data-soft-pad-mapping', String(m.id || ''));
@@ -12901,21 +12893,19 @@
     return n;
   }
 
-  var KEY_LIGHT_PRESETS = [
-    { id: 'default', titleKey: 'softPadKeyLightPresetDefault', title: '默认', hint: '蓝忙 / 琥珀等你 / 绿完成' },
-    { id: 'cool', titleKey: 'softPadKeyLightPresetCool', title: '冷色', hint: '偏蓝青' },
-    { id: 'warm', titleKey: 'softPadKeyLightPresetWarm', title: '暖色', hint: '偏橙黄' },
-    { id: 'highContrast', titleKey: 'softPadKeyLightPresetHC', title: '高对比', hint: '更醒目' }
-  ];
-
   var KEY_LIGHT_STATUS_FIELDS = [
-    { key: 'running', label: '忙/运行', fallback: '#3053FE' },
-    { key: 'needsInput', label: '等你', fallback: '#FF6A00' },
-    { key: 'done', label: '完成', fallback: '#00FF4C' },
-    { key: 'failed', label: '失败', fallback: '#FF0033' },
-    { key: 'listening', label: '聆听', fallback: '#00A3FF' }
+    { key: 'running', labelKey: 'softPadKeyLightStatusRunning', shortKey: 'softPadKeyLightStatusRunningShort', label: '忙/运行', short: '忙', fallback: '#3053FE' },
+    { key: 'needsInput', labelKey: 'softPadKeyLightStatusWait', shortKey: 'softPadKeyLightStatusWaitShort', label: '等你', short: '等你', fallback: '#FF6A00' },
+    { key: 'done', labelKey: 'softPadKeyLightStatusDone', shortKey: 'softPadKeyLightStatusDoneShort', label: '完成', short: '完成', fallback: '#00FF4C' },
+    { key: 'failed', labelKey: 'softPadKeyLightStatusFail', shortKey: 'softPadKeyLightStatusFailShort', label: '失败', short: '失败', fallback: '#FF0033' },
+    { key: 'listening', labelKey: 'softPadKeyLightStatusListen', shortKey: 'softPadKeyLightStatusListen', label: '聆听', short: '聆听', fallback: '#00A3FF' }
   ];
 
+  var KEY_LIGHT_COMMON_FIELDS = KEY_LIGHT_STATUS_FIELDS.filter(function (f) {
+    return f.key !== 'listening';
+  });
+
+  /* Preset ids kept for saved configs; UI is K3 (mini pad + legend). */
   var KEY_LIGHT_PRESET_COLORS = {
     default: { running: '#3053FE', needsInput: '#FF6A00', done: '#00FF4C', failed: '#FF0033', listening: '#00A3FF' },
     cool: { running: '#3B82F6', needsInput: '#06B6D4', done: '#22D3EE', failed: '#F43F5E', listening: '#60A5FA' },
@@ -12947,23 +12937,35 @@
 
   function echoStatusPaletteOnSoftPads(pad) {
     var ids = ['softPadPreviewHost', 'softPadAgentPreviewHost'];
+    var keysOn = resolveSoftPadLightsWhere(pad) === 'keys' || softPadLightsSubtab === 'keys';
     var i;
     for (i = 0; i < ids.length; i++) {
       var host = document.getElementById(ids[i]);
       if (!host) continue;
       applyStatusPaletteToPreview(host, pad);
-      paintKeysPaletteDemo(host, softPadLightsSubtab === 'keys');
+      if (keysOn) {
+        host.setAttribute('data-lights-preview-accent', 'keys');
+        paintKeysPaletteDemo(host, true, pad);
+      } else {
+        paintKeysPaletteDemo(host, softPadLightsSubtab === 'keys', pad);
+      }
     }
   }
 
-  function persistPadLightColors(m, pad) {
-    softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
+  function persistPadLightColors(m, pad, opts) {
+    opts = opts || {};
+    softPadPanelChanged(m, {
+      panel: 'agent',
+      refreshPreview: opts.refreshPreview !== false
+    });
     echoStatusPaletteOnSoftPads(pad);
     var Hub = global.OneToneSoftPadHub;
     var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
     if (previewHost) {
       syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts());
     }
+    var outer = document.getElementById('softPadPreviewHost');
+    if (outer) applySoftPadSkinAmbientPreview(outer, pad);
     var p = global.OneToneConfigPersist;
     if (p && p.saveAsync) p.saveAsync();
     else if (p && p.save) p.save();
@@ -12998,115 +13000,107 @@
 
   var KEYS_PALETTE_DEMO = [
     { micro: 'AG00', status: 'running' },
-    { micro: 'AG01', status: 'needs_input' },
-    { micro: 'AG02', status: 'done' },
-    { micro: 'AG03', status: 'failed' },
-    { micro: 'AG04', status: 'listening' },
-    { micro: 'AG05', status: 'running' },
-    { micro: 'ACT07', status: 'needs_input' },
-    { micro: 'ACT09', status: 'done' },
-    { micro: 'UNDO', status: 'listening' },
-    { micro: 'SEARCH', status: 'failed' },
-    { micro: 'ACT10', status: 'running' }
+    { micro: 'AG01', status: 'needs_input' }
   ];
 
-  function paintKeysPaletteDemo(host, on) {
+  /** 键灯预览：只亮 Codex / Claude 宿主键（与实机一致），不刷整盘。 */
+  function paintKeysPaletteDemo(host, on, pad) {
     if (!host) return;
     var padEl = host.querySelector('.micro-hw') || host;
-    /* 全部键灯：能找到的键都刷上 demo 状态，不限 Codex / Claude */
-    if (on) {
-      var allKeys = padEl.querySelectorAll('.micro-hw__key[data-micro-key]');
-      var statuses = ['running', 'needs_input', 'done', 'failed', 'listening'];
-      var si = 0;
-      allKeys.forEach(function (el) {
-        var mid = el.getAttribute('data-micro-key') || '';
-        if (!mid || mid === 'ENC' || mid.indexOf('NAV_') === 0) return;
-        el.setAttribute('data-run-status', statuses[si % statuses.length]);
-        el.setAttribute('data-palette-demo', '1');
-        si += 1;
-      });
-      if (si === 0) {
-        KEYS_PALETTE_DEMO.forEach(function (row) {
-          var el = padEl.querySelector('.micro-hw__key[data-micro-key="' + row.micro + '"]');
-          if (!el) return;
-          el.setAttribute('data-run-status', row.status);
-          el.setAttribute('data-palette-demo', '1');
-        });
-      }
-      return;
-    }
     padEl.querySelectorAll('.micro-hw__key[data-palette-demo="1"]').forEach(function (el) {
       el.setAttribute('data-run-status', 'idle');
       el.removeAttribute('data-palette-demo');
     });
+    if (!on) return;
+    var codexId = resolveStatusLightMicroKeyId(pad || {});
+    var claudeId = resolveClaudeMainLightMicroKeyId(pad || {});
+    var demo = [];
+    if (codexId) demo.push({ micro: codexId, status: 'running' });
+    if (claudeId && claudeId !== codexId) demo.push({ micro: claudeId, status: 'needs_input' });
+    if (!demo.length) demo = KEYS_PALETTE_DEMO.slice();
+    demo.forEach(function (row) {
+      var el = padEl.querySelector('.micro-hw__key[data-micro-key="' + row.micro + '"]');
+      if (!el) return;
+      el.setAttribute('data-run-status', row.status);
+      el.setAttribute('data-palette-demo', '1');
+    });
+  }
+
+  function syncKeyLightK3Chrome(root, pad) {
+    if (!root) return;
+    root.querySelectorAll('[data-act="status-color"]').forEach(function (inp) {
+      var key = inp.getAttribute('data-status-key');
+      if (!key) return;
+      var hex = resolvedStatusColor(pad, key);
+      inp.value = hex;
+      root.querySelectorAll('[data-k3-swatch="' + key + '"]').forEach(function (el) {
+        el.style.background = hex;
+      });
+    });
+  }
+
+  function afterKeyLightPaletteChange(m, pad) {
+    // Skip full remount so left Soft Pad keeps demo keys + live glow.
+    persistPadLightColors(m, pad, { refreshPreview: false });
   }
 
   function renderKeyLightPaletteEditor(pad, opts) {
     opts = opts || {};
-    var cur = normalizeKeyLightPreset(pad && pad.keyLightPreset);
-    var presetHtml = KEY_LIGHT_PRESETS.map(function (row) {
-      var on = row.id === cur;
-      return (
-        '<button type="button" class="soft-pad-lights-template' + (on ? ' is-active' : '') +
-        '" data-act="key-light-preset" data-key-light-preset="' + esc(row.id) +
-        '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
-        '<span class="soft-pad-lights-template__title">' + esc(t(row.titleKey, row.title)) + '</span>' +
-        '<span class="soft-pad-lights-template__hint">' + esc(row.hint) + '</span></button>'
-      );
+    var cells = KEY_LIGHT_COMMON_FIELDS.map(function (f) {
+      var hex = resolvedStatusColor(pad, f.key);
+      return '<i data-k3-swatch="' + esc(f.key) + '" style="background:' + esc(hex) + '"></i>';
     }).join('');
-    var colorRows = KEY_LIGHT_STATUS_FIELDS.map(function (f) {
+    var legend = KEY_LIGHT_COMMON_FIELDS.map(function (f) {
+      var hex = resolvedStatusColor(pad, f.key);
+      var name = t(f.shortKey || f.labelKey || '', f.short || f.label);
       return (
-        '<div class="soft-pad-keylight-color-row">' +
-        '<span>' + esc(f.label) + '</span>' +
+        '<label class="soft-pad-keylight-k3__leg">' +
+        '<span class="soft-pad-keylight-k3__name">' + esc(name) + '</span>' +
         '<input type="color" data-act="status-color" data-status-key="' + esc(f.key) +
-        '" value="' + esc(resolvedStatusColor(pad, f.key)) + '"></div>'
+        '" value="' + esc(hex) + '" aria-label="' + esc(t(f.labelKey || '', f.label)) + '">' +
+        '</label>'
       );
     }).join('');
     return (
-      '<div class="soft-pad-keylight-editor" data-keylight-editor="1">' +
+      '<div class="soft-pad-keylight-editor soft-pad-keylight-editor--k3" data-keylight-editor="1">' +
       (opts.lead
-        ? ('<p class="codex-pad-mgr__hint">' + esc(opts.lead) + '</p>')
+        ? ('<p class="codex-pad-mgr__hint soft-pad-lights-keys-hint">' + esc(opts.lead) + '</p>')
         : '') +
-      '<p class="codex-pad-mgr__label">' + esc(t('softPadKeyLightPresetTitle', '状态配色')) + '</p>' +
-      '<div class="soft-pad-keylight-presets" role="radiogroup">' + presetHtml + '</div>' +
-      '<p class="codex-pad-mgr__label">' + esc(t('softPadKeyLightCustomTitle', '单独调整')) + '</p>' +
-      '<div class="soft-pad-keylight-colors">' + colorRows + '</div></div>'
+      '<div class="soft-pad-keylight-k3__head">' +
+      '<span class="codex-pad-mgr__label">' + esc(t('softPadKeyLightPresetTitle', '状态灯颜色')) + '</span>' +
+      '<button type="button" class="soft-pad-keylight-k3__reset" data-act="key-light-reset">' +
+      esc(t('softPadKeyLightReset', '恢复默认')) + '</button></div>' +
+      '<div class="soft-pad-keylight-k3">' +
+      '<div class="soft-pad-keylight-k3__pad" aria-hidden="true">' + cells + '</div>' +
+      '<div class="soft-pad-keylight-k3__legend">' + legend + '</div></div></div>'
     );
   }
 
   function bindKeyLightPaletteEvents(root, m, pad) {
     if (!root || !m || !pad) return;
-    root.querySelectorAll('[data-act="key-light-preset"]').forEach(function (btn) {
+    root.querySelectorAll('[data-act="key-light-reset"]').forEach(function (btn) {
       if (btn.__softPadBound) return;
       btn.__softPadBound = true;
       btn.addEventListener('click', function () {
-        var next = normalizeKeyLightPreset(btn.getAttribute('data-key-light-preset'));
-        pad.keyLightPreset = next;
+        pad.keyLightPreset = 'default';
         pad.statusColors = {};
-        root.querySelectorAll('[data-act="key-light-preset"]').forEach(function (b) {
-          var on = b.getAttribute('data-key-light-preset') === next;
-          b.classList.toggle('is-active', on);
-          b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        });
-        root.querySelectorAll('[data-act="status-color"]').forEach(function (inp) {
-          var key = inp.getAttribute('data-status-key');
-          if (key) inp.value = resolvedStatusColor(pad, key);
-        });
-        persistPadLightColors(m, pad);
-        if (getSoftPadFloatTab() === 'skin') liveSoftPadFloatSkinLights(m);
+        syncKeyLightK3Chrome(root, pad);
+        afterKeyLightPaletteChange(m, pad);
       });
     });
     root.querySelectorAll('[data-act="status-color"]').forEach(function (inp) {
       if (inp.__softPadBound) return;
       inp.__softPadBound = true;
-      inp.addEventListener('input', function () {
+      function applyColor() {
         var key = inp.getAttribute('data-status-key');
         if (!key) return;
         if (!pad.statusColors || typeof pad.statusColors !== 'object') pad.statusColors = {};
         pad.statusColors[key] = String(inp.value || '');
-        persistPadLightColors(m, pad);
-        if (getSoftPadFloatTab() === 'skin') liveSoftPadFloatSkinLights(m);
-      });
+        syncKeyLightK3Chrome(root, pad);
+        afterKeyLightPaletteChange(m, pad);
+      }
+      inp.addEventListener('input', applyColor);
+      inp.addEventListener('change', applyColor);
     });
   }
 
@@ -13573,10 +13567,7 @@
       '<input type="range" min="40" max="100" step="1" data-act="screenOpacity" value="' +
       cur + '">' +
       '<span data-screen-opacity-val>' + cur + '%</span>' +
-      '</label>' +
-      '<p class="codex-pad-mgr__hint soft-pad-float-dock__opacity-hint">' +
-      esc(t('softPadScreenOpacityHint', '左侧垫底方格会随透明度透出来，滑到更低更明显。')) +
-      '</p>'
+      '</label>'
     );
   }
 
@@ -13610,13 +13601,44 @@
     var solid = String(pad.ambientSolidRgb || '#7c3aed');
     if (solid.charAt(0) !== '#') solid = '#' + solid;
     var opacity = clampAmbientOpacity(pad.ambientOpacity);
+    function whereViz(id) {
+      // Quiet Soft Pad silhouette — ring / keys / none. No desktop scenery.
+      if (id === 'bezel') {
+        return (
+          '<span class="soft-pad-lights-where__viz soft-pad-lights-where__viz--bezel" aria-hidden="true">' +
+          '<span class="soft-pad-lights-where__ring"></span>' +
+          '<span class="soft-pad-lights-where__pad"><i></i><i></i><i></i><i></i></span>' +
+          '</span>'
+        );
+      }
+      if (id === 'keys') {
+        return (
+          '<span class="soft-pad-lights-where__viz soft-pad-lights-where__viz--keys" aria-hidden="true">' +
+          '<span class="soft-pad-lights-where__pad">' +
+          '<i class="is-lit"></i><i class="is-lit is-busy"></i><i></i><i></i>' +
+          '</span></span>'
+        );
+      }
+      return (
+        '<span class="soft-pad-lights-where__viz soft-pad-lights-where__viz--off" aria-hidden="true">' +
+        '<span class="soft-pad-lights-where__pad"><i></i><i></i><i></i><i></i></span>' +
+        '</span>'
+      );
+    }
     function whereCard(id, title, hint) {
       var on = where === id;
+      var hintHtml = hint
+        ? ('<span class="soft-pad-lights-where__hint">' + esc(hint) + '</span>')
+        : '';
       return (
-        '<button type="button" class="soft-pad-lights-where' + (on ? ' is-active' : '') + '"' +
-        ' data-lights-where="' + id + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+        '<button type="button" class="soft-pad-lights-where' + (on ? ' is-active' : '') +
+        (hint ? '' : ' soft-pad-lights-where--title-only') + '"' +
+        ' role="radio" data-lights-where="' + id + '" aria-checked="' + (on ? 'true' : 'false') + '">' +
+        whereViz(id) +
+        '<span class="soft-pad-lights-where__txt">' +
         '<span class="soft-pad-lights-where__title">' + esc(title) + '</span>' +
-        '<span class="soft-pad-lights-where__hint">' + esc(hint) + '</span></button>'
+        hintHtml +
+        '</span></button>'
       );
     }
     function modeCard(act, val, title, hint, on) {
@@ -13635,27 +13657,23 @@
       '<div class="soft-pad-float-skin-col">' +
       '<section class="soft-pad-float-skin-sec" data-skin-sec="look">' +
       '<p class="soft-pad-float-dock__sec">' + esc(t('softPadFloatSkinLook', '外观')) + '</p>' +
-      '<p class="soft-pad-float-dock__lead soft-pad-float-dock__lead--tight">' +
-      esc(t('softPadFloatSkinLookLead', '点一项外观，左侧 Soft Pad 立刻换装。')) + '</p>' +
       renderSkinSeg(pad) +
       buildSoftPadFloatOpacityHtml(pad) +
       '</section>' +
       '<section class="soft-pad-float-skin-sec" data-skin-sec="lights" data-lights-where="' + where + '">' +
       '<p class="soft-pad-float-dock__sec">' +
-      esc(t('softPadFloatLightsSec', '盘边颜色与状态灯')) + '</p>' +
-      '<p class="soft-pad-float-dock__lead soft-pad-float-dock__lead--tight">' +
-      esc(t('softPadFloatLightsLead', '先选灯在哪亮；左侧 Soft Pad 同步演示。')) + '</p>' +
+      esc(t('softPadFloatLightsSec', '盘边与状态灯')) + '</p>' +
       '<div class="soft-pad-lights-wheres" role="radiogroup" aria-label="' +
       esc(t('softPadFloatLightKindAria', '灯效位置')) + '">' +
       whereCard('off',
         t('softPadLightsWhereOff', '关灯'),
-        t('softPadLightsWhereOffHint', '不要光晕、不要键灯')) +
+        t('softPadLightsWhereOffHint', '无光晕、无键灯')) +
       whereCard('bezel',
         t('softPadLightsWhereBezel', '盘边光晕'),
-        t('softPadLightsWhereBezelHint', '整块 Soft Pad 外圈亮')) +
+        t('softPadLightsWhereBezelHint', 'Soft Pad 外圈亮')) +
       whereCard('keys',
         t('softPadLightsWhereKeys', '键上状态灯'),
-        t('softPadLightsWhereKeysHint', '全部按键亮灯表示忙闲，不按 Agent 区分')) +
+        '') +
       '</div>' +
       '<div class="soft-pad-lights-detail" data-lights-detail="bezel"' +
       (where === 'bezel' ? '' : ' hidden') + '>' +
@@ -13682,18 +13700,8 @@
       '</div></div>' +
       '<div class="soft-pad-lights-detail" data-lights-detail="keys"' +
       (where === 'keys' ? '' : ' hidden') + '>' +
-      '<p class="codex-pad-mgr__hint soft-pad-lights-keys-hint">' +
-      esc(t('softPadLightsKeysUnifiedHint',
-        '全部键灯默认开启：所有 Agent（含 Codex、Claude）共用一套忙闲颜色，不再分开设置。')) +
-      '</p>' +
-      '<div class="soft-pad-lights-templates" role="radiogroup" aria-label="' +
-      esc(t('softPadLightTplPickKeys', '选按键灯效果')) + '">' +
-      modeCard('light-template', 'multi',
-        t('softPadLightTplMulti', '全部键灯'),
-        t('softPadLightTplMultiHint',
-          '所有 Agent 共用：各键颜色表示忙闲，不区分 Codex / Claude。'),
-        true) +
-      '</div></div></section></div></div>'
+      renderKeyLightPaletteEditor(pad) +
+      '</div></section></div></div>'
     );
   }
 
@@ -13728,11 +13736,11 @@
     var where = resolveSoftPadLightsWhere(pad);
     var sec = root.querySelector('[data-skin-sec="lights"]');
     if (sec) sec.setAttribute('data-lights-where', where);
-    root.querySelectorAll('[data-lights-where]').forEach(function (b) {
-      if (!b.classList.contains('soft-pad-lights-where')) return;
+    root.querySelectorAll('button.soft-pad-lights-where[data-lights-where]').forEach(function (b) {
       var on = b.getAttribute('data-lights-where') === where;
       b.classList.toggle('is-active', on);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+      if (b.hasAttribute('aria-pressed')) b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
     root.querySelectorAll('[data-lights-detail]').forEach(function (pane) {
       var on = pane.getAttribute('data-lights-detail') === where;
@@ -13820,29 +13828,39 @@
     var where = resolveSoftPadLightsWhere(pad);
     var ambientOn = where === 'bezel';
     var keysOn = where === 'keys';
-    host.setAttribute('data-lights-preview-accent', keysOn ? 'keys' : (ambientOn ? 'ambient' : ''));
-    host.setAttribute('data-light-template', String(pad.lightTemplate || 'bezel'));
+    // Always reset first so「关灯」不会残留上一态的环/键色。
+    host.removeAttribute('data-skin-ambient');
+    host.removeAttribute('data-lights-preview-accent');
+    host.style.removeProperty('--agent-ambient-ring');
+    host.style.removeProperty('--agent-ambient-glow');
+    paintKeysPaletteDemo(host, false, pad);
     applyStatusPaletteToPreview(host, pad);
-    paintKeysPaletteDemo(host, keysOn);
+    host.setAttribute('data-light-template', String(pad.lightTemplate || 'bezel'));
     var cap = host.querySelector('[data-ambient-preview-cap]');
     if (cap) {
       if (where === 'off') {
-        cap.textContent = t('softPadAmbientPreviewOff', '关灯：盘边无光晕');
+        cap.textContent = t('softPadAmbientPreviewOff', '关灯：盘边无光晕、键上无色');
+        cap.hidden = false;
       } else if (keysOn) {
-        cap.textContent = t('softPadAmbientPreviewKeys', '键上状态灯：按键颜色表示忙闲');
+        // 键灯不写解释文案；宿主键样色已够说明。
+        cap.textContent = '';
+        cap.hidden = true;
       } else if (String(pad.ambientMode || 'status') === 'solid') {
         cap.textContent = t('softPadAmbientPreviewSolid', '固定盘边色：外圈保持所选颜色');
+        cap.hidden = false;
       } else {
         cap.textContent = t('softPadAmbientPreviewStatus', '跟随状态：外圈随忙闲变色（演示为工作中）');
+        cap.hidden = false;
       }
     }
-    if (!ambientOn) {
-      host.style.removeProperty('--agent-ambient-ring');
-      host.style.removeProperty('--agent-ambient-glow');
-      host.removeAttribute('data-skin-ambient');
-      if (!keysOn) host.removeAttribute('data-lights-preview-accent');
+    if (where === 'off') return;
+    if (keysOn) {
+      host.setAttribute('data-lights-preview-accent', 'keys');
+      paintKeysPaletteDemo(host, true, pad);
       return;
     }
+    // bezel
+    host.setAttribute('data-lights-preview-accent', 'ambient');
     var solid = String(pad.ambientMode || 'status') === 'solid';
     host.setAttribute('data-skin-ambient', solid ? 'solid' : 'status');
     var hex = solid
@@ -13858,17 +13876,153 @@
 
   /** 皮肤浮窗：只刷灯效 CSS，不重挂 Soft Pad（滑块/取色即时） */
   function liveSoftPadFloatSkinLights(m) {
-    if (!m || getSoftPadFloatTab() !== 'skin') return;
+    if (!m) return;
     var outer = document.getElementById('softPadPreviewHost');
     var paint = resolveSoftPadPreviewPaintHost(outer);
     var pad = m.codexMicroPad;
     if (!outer || !pad) return;
-    if (outer.getAttribute('data-pad-mode-preview') !== 'appear' ||
-        !(paint && paint.querySelector('.soft-pad-mode-preview.is-skin-focus'))) {
+    var skinFocus = paint && paint.querySelector('.soft-pad-mode-preview.is-skin-focus');
+    var skinPanelOpen = !!document.querySelector('[data-skin-sec="lights"], [data-float-pane="skin"].is-active, .soft-pad-style-panel--look [data-style-pane="skin"]');
+    var tabOk = getSoftPadFloatTab() === 'skin' || skinPanelOpen || !!skinFocus;
+    if (!tabOk) return;
+    if (outer.getAttribute('data-pad-mode-preview') !== 'appear' || !skinFocus) {
       refreshSoftPadFloatSkinPreview(m);
       return;
     }
     applySoftPadSkinAmbientPreview(outer, pad);
+  }
+
+  /** 盘边 / 键灯控件：皮肤页与 Agent 灯效页共用（此前只绑在 Agent，皮肤页点了无效） */
+  function softPadSkinLightsChangeOpts(body, opts, extra) {
+    var dock = (body && body.closest && (
+      body.closest('#softPadFloatDock') ||
+      body.closest('.soft-pad-style-panel') ||
+      body.closest('[data-soft-pad-panel]')
+    )) || document.getElementById('softPadFloatDock');
+    var base = Object.assign({}, opts || {}, (body && body.__otFloatOpts) || (dock && dock.__otFloatOpts) || {});
+    if (typeof base.onChanged !== 'function') {
+      try {
+        var HubOpts = global.OneToneSoftPadHub;
+        var paintOpts = HubOpts && HubOpts.getSoftPadSubpagePaintOpts
+          ? HubOpts.getSoftPadSubpagePaintOpts()
+          : null;
+        if (paintOpts && typeof paintOpts.onChanged === 'function') {
+          base.onChanged = paintOpts.onChanged;
+        }
+      } catch (_) {}
+    }
+    return Object.assign(base, { panel: 'float-dock', remountLayout: false, refreshPreview: false }, extra || {});
+  }
+
+  function bindSoftPadSkinLightsControls(body, m, pad, opts) {
+    if (!body || !m || !pad) return;
+    opts = opts || {};
+    function bump(extra) {
+      liveSoftPadFloatSkinLights(m);
+      softPadPanelChanged(m, softPadSkinLightsChangeOpts(body, opts, extra));
+    }
+    body.querySelectorAll('[data-light-template]').forEach(function (btn) {
+      if (btn.__softPadBound) return;
+      btn.__softPadBound = true;
+      btn.addEventListener('click', function () {
+        var next = btn.getAttribute('data-light-template') || 'bezel';
+        var tplScope = btn.getAttribute('data-light-template-scope') || '';
+        if (tplScope === 'ambient') next = 'bezel';
+        else if (tplScope === 'keys') next = 'multi';
+        else if (next === 'single') next = 'multi';
+        else if (next !== 'bezel' && next !== 'multi') next = 'bezel';
+        pad.lightTemplate = next;
+        if (next === 'single' || next === 'multi') pad.ambientEnabled = false;
+        var scopeSel = tplScope
+          ? '[data-light-template-scope="' + tplScope + '"]'
+          : '[data-light-template]';
+        body.querySelectorAll(scopeSel).forEach(function (b) {
+          var on = b.getAttribute('data-light-template') === next;
+          b.classList.toggle('is-active', on);
+          b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        syncSoftPadLightsWhereChrome(body, pad);
+        bump();
+        try {
+          var p = global.OneToneConfigPersist;
+          if (p && p.saveAsync) p.saveAsync();
+          else if (p && p.save) p.save();
+        } catch (_) {}
+      });
+    });
+    body.querySelectorAll('[data-lights-where]').forEach(function (btn) {
+      if (!btn.classList.contains('soft-pad-lights-where') || btn.__softPadBound) return;
+      btn.__softPadBound = true;
+      btn.addEventListener('click', function () {
+        var next = btn.getAttribute('data-lights-where') || 'bezel';
+        if (next === resolveSoftPadLightsWhere(pad)) {
+          liveSoftPadFloatSkinLights(m);
+          return;
+        }
+        applySoftPadLightsWhere(pad, next);
+        syncSoftPadLightsWhereChrome(body, pad);
+        bump();
+        persistPadAmbient(m);
+      });
+    });
+    body.querySelectorAll('[data-act="lights-ambient-enabled"]').forEach(function (el) {
+      if (el.__softPadBound) return;
+      el.__softPadBound = true;
+      el.addEventListener('change', function () {
+        var next = !!el.checked;
+        pad.ambientEnabled = next;
+        if (next) pad.lightTemplate = 'bezel';
+        bump();
+        persistPadAmbient(m);
+      });
+    });
+    body.querySelectorAll('[data-act="ambient-mode"]').forEach(function (btn) {
+      if (btn.__softPadBound) return;
+      btn.__softPadBound = true;
+      btn.addEventListener('click', function () {
+        var next = btn.getAttribute('data-ambient-mode') === 'solid' ? 'solid' : 'status';
+        pad.ambientMode = next;
+        pad.ambientEnabled = true;
+        pad.lightTemplate = 'bezel';
+        syncSoftPadLightsWhereChrome(body, pad);
+        syncAmbientModeChrome(body, pad);
+        bump();
+        persistPadAmbient(m);
+      });
+    });
+    body.querySelectorAll('[data-act="ambient-solid-rgb"]').forEach(function (el) {
+      if (el.__softPadBound) return;
+      el.__softPadBound = true;
+      function applyRgb() {
+        var v = String(el.value || '#7c3aed').trim();
+        if (v.charAt(0) !== '#') v = '#' + v;
+        if (!/^#[0-9a-fA-F]{6}$/.test(v)) v = '#7c3aed';
+        pad.ambientSolidRgb = v;
+        pad.ambientMode = 'solid';
+        pad.ambientEnabled = true;
+        pad.lightTemplate = 'bezel';
+        el.value = v;
+        syncSoftPadLightsWhereChrome(body, pad);
+        syncAmbientModeChrome(body, pad);
+        bump();
+        persistPadAmbient(m);
+      }
+      el.addEventListener('input', applyRgb);
+      el.addEventListener('change', applyRgb);
+    });
+    body.querySelectorAll('[data-act="ambient-opacity"]').forEach(function (el) {
+      if (el.__softPadBound) return;
+      el.__softPadBound = true;
+      el.addEventListener('input', function () {
+        var v = clampAmbientOpacity(el.value);
+        pad.ambientOpacity = v;
+        var lab = body.querySelector('[data-ambient-opacity-val]');
+        if (lab) lab.textContent = v + '%';
+        bump();
+        persistPadAmbient(m);
+      });
+    });
+    bindKeyLightPaletteEvents(body, m, pad);
   }
 
   function syncAmbientModeChrome(root, pad) {
@@ -14031,10 +14185,11 @@
         }
         applySoftPadLightsWhere(padRef, where);
         syncSoftPadLightsWhereChrome(dock, padRef);
-        if (getSoftPadFloatTab() === 'skin') refreshSoftPadFloatSkinPreview(map);
+        liveSoftPadFloatSkinLights(map);
         try {
           softPadPanelChanged(map, Object.assign({}, dock.__otFloatOpts || {}, {
             remountLayout: false,
+            refreshPreview: false,
             panel: 'float-dock'
           }));
         } catch (_) {}
@@ -15383,12 +15538,17 @@
       'data-lights-preview-mode',
       'data-lights-subtab',
       'data-lights-preview-accent',
+      'data-skin-ambient',
       'data-agent-preview-face',
       'data-agent-preview-presentation',
       'data-light-template'
     ].forEach(function (attr) {
       try { outer.removeAttribute(attr); } catch (_) {}
     });
+    try {
+      outer.style.removeProperty('--agent-ambient-ring');
+      outer.style.removeProperty('--agent-ambient-glow');
+    } catch (_) {}
   }
 
   function syncStatusLightsPreviewChrome(host, m, pad, opts) {
@@ -15436,7 +15596,7 @@
         outer.insertAdjacentHTML('beforeend', renderStatusLightsPreviewLegend());
       }
     }
-    paintKeysPaletteDemo(outer, face === 'match' && tab === 'keys');
+    paintKeysPaletteDemo(outer, face === 'match' && tab === 'keys', pad);
     outer.querySelectorAll('[data-act="topbar-jump"]').forEach(function (btn) {
       if (btn.__topbarJumpBound) return;
       btn.__topbarJumpBound = true;
@@ -16262,6 +16422,8 @@
 
     bindPurposeDemoInteractions(root);
 
+    bindSoftPadSkinLightsControls(body, m, pad, opts);
+
     var enhanceEl = root.querySelector('[data-act="enhance"]');
     if (enhanceEl) {
       enhanceEl.addEventListener('change', function () {
@@ -16554,166 +16716,7 @@
     });
     bindTopbarLightsPanelEvents(body, m, pad);
     bindSoftPadLightsSubtabEvents(body, m, pad);
-    body.querySelectorAll('[data-light-template]').forEach(function (btn) {
-      if (btn.__softPadBound) return;
-      btn.__softPadBound = true;
-      btn.addEventListener('click', function () {
-        var next = btn.getAttribute('data-light-template') || 'bezel';
-        var tplScope = btn.getAttribute('data-light-template-scope') || '';
-        if (tplScope === 'ambient') next = 'bezel';
-        else if (tplScope === 'keys') next = 'multi';
-        else if (next === 'single') next = 'multi';
-        else if (next !== 'bezel' && next !== 'multi') next = 'bezel';
-        pad.lightTemplate = next;
-        if (next === 'single' || next === 'multi') pad.ambientEnabled = false;
-        var scopeSel = tplScope
-          ? '[data-light-template-scope="' + tplScope + '"]'
-          : '[data-light-template]';
-        body.querySelectorAll(scopeSel).forEach(function (b) {
-          var on = b.getAttribute('data-light-template') === next;
-          b.classList.toggle('is-active', on);
-          b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        });
-        syncSoftPadLightsWhereChrome(body, pad);
-        liveSoftPadFloatSkinLights(m);
-        softPadPanelChanged(m, softPadFloatDockChangeOpts({
-          remountLayout: false,
-          refreshPreview: false,
-          panel: 'float-dock'
-        }));
-        if (getSoftPadFloatTab() === 'skin') refreshSoftPadFloatSkinPreview(m);
-        try {
-          var p = global.OneToneConfigPersist;
-          if (p && p.saveAsync) p.saveAsync();
-          else if (p && p.save) p.save();
-        } catch (_) {}
-      });
-    });
-    body.querySelectorAll('[data-lights-where]').forEach(function (btn) {
-      if (!btn.classList.contains('soft-pad-lights-where') || btn.__softPadBound) return;
-      btn.__softPadBound = true;
-      btn.addEventListener('click', function () {
-        var next = btn.getAttribute('data-lights-where') || 'bezel';
-        if (next === resolveSoftPadLightsWhere(pad)) {
-          liveSoftPadFloatSkinLights(m);
-          return;
-        }
-        applySoftPadLightsWhere(pad, next);
-        syncSoftPadLightsWhereChrome(body, pad);
-        liveSoftPadFloatSkinLights(m);
-        softPadPanelChanged(m, softPadFloatDockChangeOpts({
-          remountLayout: false,
-          refreshPreview: false,
-          panel: 'float-dock'
-        }));
-        if (getSoftPadFloatTab() === 'skin') refreshSoftPadFloatSkinPreview(m);
-        persistPadAmbient(m);
-        try {
-          var p2 = global.OneToneConfigPersist;
-          if (p2 && p2.saveAsync) p2.saveAsync();
-          else if (p2 && p2.save) p2.save();
-        } catch (_) {}
-      });
-    });
-    function softPadFloatDockChangeOpts(extra) {
-      var dock = (body.closest && (
-        body.closest('#softPadFloatDock') ||
-        body.closest('.soft-pad-style-panel') ||
-        body.closest('[data-soft-pad-panel]')
-      )) || document.getElementById('softPadFloatDock');
-      var base = Object.assign({}, (body && body.__otFloatOpts) || (dock && dock.__otFloatOpts) || {});
-      // float dock / mid-ability 若丢了 onChanged，回落到 Hub，避免走 notifyLinkedUi 冲预览
-      if (typeof base.onChanged !== 'function') {
-        try {
-          var HubOpts = global.OneToneSoftPadHub;
-          var paintOpts = HubOpts && HubOpts.getSoftPadSubpagePaintOpts
-            ? HubOpts.getSoftPadSubpagePaintOpts()
-            : null;
-          if (paintOpts && typeof paintOpts.onChanged === 'function') {
-            base.onChanged = paintOpts.onChanged;
-          }
-        } catch (_) {}
-      }
-      return Object.assign(base, extra || {});
-    }
-    body.querySelectorAll('[data-act="lights-ambient-enabled"]').forEach(function (el) {
-      if (el.__softPadBound) return;
-      el.__softPadBound = true;
-      el.addEventListener('change', function () {
-        var next = !!el.checked;
-        pad.ambientEnabled = next;
-        if (next) pad.lightTemplate = 'bezel';
-        liveSoftPadFloatSkinLights(m);
-        softPadPanelChanged(m, softPadFloatDockChangeOpts({
-          remountLayout: false,
-          refreshPreview: false,
-          panel: 'float-dock'
-        }));
-        if (getSoftPadFloatTab() !== 'skin') {
-          var Hub = global.OneToneSoftPadHub;
-          var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
-          syncStatusLightsPreviewChrome(previewHost, m, pad, Object.assign({}, workbenchPreviewOpts(), { omitLeftData: true }));
-        }
-        persistPadAmbient(m);
-      });
-    });
-    body.querySelectorAll('[data-act="ambient-mode"]').forEach(function (btn) {
-      if (btn.__softPadBound) return;
-      btn.__softPadBound = true;
-      btn.addEventListener('click', function () {
-        var next = btn.getAttribute('data-ambient-mode') === 'solid' ? 'solid' : 'status';
-        pad.ambientMode = next;
-        pad.ambientEnabled = true;
-        pad.lightTemplate = 'bezel';
-        syncSoftPadLightsWhereChrome(body, pad);
-        liveSoftPadFloatSkinLights(m);
-        softPadPanelChanged(m, softPadFloatDockChangeOpts({
-          remountLayout: false,
-          refreshPreview: false,
-          panel: 'float-dock'
-        }));
-        if (getSoftPadFloatTab() === 'skin') refreshSoftPadFloatSkinPreview(m);
-        persistPadAmbient(m);
-      });
-    });
-    body.querySelectorAll('[data-act="ambient-solid-rgb"]').forEach(function (el) {
-      if (el.__softPadBound) return;
-      el.__softPadBound = true;
-      el.addEventListener('input', function () {
-        var v = String(el.value || '#7c3aed');
-        pad.ambientSolidRgb = v;
-        pad.ambientMode = 'solid';
-        pad.ambientEnabled = true;
-        pad.lightTemplate = 'bezel';
-        syncSoftPadLightsWhereChrome(body, pad);
-        liveSoftPadFloatSkinLights(m);
-        softPadPanelChanged(m, softPadFloatDockChangeOpts({
-          remountLayout: false,
-          refreshPreview: false,
-          panel: 'float-dock'
-        }));
-        if (getSoftPadFloatTab() === 'skin') refreshSoftPadFloatSkinPreview(m);
-        persistPadAmbient(m);
-      });
-    });
-    body.querySelectorAll('[data-act="ambient-opacity"]').forEach(function (el) {
-      if (el.__softPadBound) return;
-      el.__softPadBound = true;
-      el.addEventListener('input', function () {
-        var v = clampAmbientOpacity(el.value);
-        pad.ambientOpacity = v;
-        var lab = body.querySelector('[data-ambient-opacity-val]');
-        if (lab) lab.textContent = v + '%';
-        liveSoftPadFloatSkinLights(m);
-        softPadPanelChanged(m, softPadFloatDockChangeOpts({
-          remountLayout: false,
-          refreshPreview: false,
-          panel: 'float-dock'
-        }));
-        persistPadAmbient(m);
-      });
-    });
-    bindKeyLightPaletteEvents(body, m, pad);
+    bindSoftPadSkinLightsControls(body, m, pad, { panel: 'float-dock', remountLayout: false, refreshPreview: false });
     body.querySelectorAll('[data-act="lights-custom-enabled"]').forEach(function (el) {
       if (el.__softPadBound) return;
       el.__softPadBound = true;

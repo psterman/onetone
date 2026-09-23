@@ -2,7 +2,7 @@
    Colors follow app.css tokens (cyan brand), not a separate Tailwind blue system. */
 .soft-pad-page-head { margin-bottom: 8px; }
 
-/* Status-bar??? ù App?dropdown (replaces horizontal APP directory) */
+/* Status-bar??? ÔøΩ App?dropdown (replaces horizontal APP directory) */
 .soft-pad-bind-app {
   position: relative;
   display: inline-flex;
@@ -73,7 +73,7 @@ html[data-theme="dark"] .soft-pad-bind-app__opt {
   color: #e2e8f0;
 }
 
-/* Hero status bar ù same chrome language as Keys/Voice page-status-bar */
+/* Hero status bar ÔøΩ same chrome language as Keys/Voice page-status-bar */
 #settingsPanelSoftPad .soft-pad-status-bar {
   overflow: visible;
 }
@@ -168,7 +168,7 @@ html[data-theme="dark"] .soft-pad-tm-desk {
   border-color: rgba(255, 255, 255, 0.1);
   background: rgba(18, 24, 36, 0.92);
 }
-/* C3 horizontal spine ù time / amber line / kind+tag / day pills */
+/* C3 horizontal spine ÔøΩ time / amber line / kind+tag / day pills */
 .soft-pad-tm-rail-body {
   display: flex;
   flex-direction: column;
@@ -566,7 +566,7 @@ html[data-theme="dark"] .soft-pad-tm-safety {
   color: var(--on-surface-muted);
 }
 
-/* Time Machine v2 ù a quiet, continuous time spine with restore impact beside it. */
+/* Time Machine v2 ÔøΩ a quiet, continuous time spine with restore impact beside it. */
 .soft-pad-tm-desk {
   min-height: 520px;
   border-radius: 16px;
@@ -1228,7 +1228,7 @@ html[data-theme="dark"] .soft-pad-tm-detail .soft-pad-tm-safety { color: #f2c56f
 .soft-pad-pad-tabs,
 .soft-pad-pad-tab { /* ? ot-seg.css */ }
 
-/* C2 Agent: left preview ù right workbench (v15c) */
+/* C2 Agent: left preview ÔøΩ right workbench (v15c) */
 .soft-pad-face-agent {
   display: grid;
   grid-template-columns: minmax(220px, 0.34fr) minmax(320px, 1fr);
@@ -3204,24 +3204,119 @@ html[data-theme="dark"] .soft-pad-lights-template__hint {
   flex: 1 1 auto;
   min-width: 0;
 }
-.soft-pad-keylight-presets {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin: 8px 0;
-}
-.soft-pad-keylight-colors {
+.soft-pad-keylight-editor {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 4px;
 }
-.soft-pad-keylight-color-row {
+.soft-pad-keylight-k3__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 0 0;
+}
+.soft-pad-keylight-k3__head .codex-pad-mgr__label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 750;
+}
+.soft-pad-keylight-k3__reset {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--primary-strong, #0f5f7a);
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.soft-pad-keylight-k3__reset:hover {
+  color: var(--primary, #2a9cc4);
+}
+.soft-pad-keylight-k3 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-2, #f7f9fb) 88%, transparent);
+  border: 1px solid var(--line, rgba(26, 45, 74, 0.1));
+}
+.soft-pad-keylight-k3__pad {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: #e8eef4;
+  border: 1px solid #b8c4d0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 6px;
+  flex-shrink: 0;
+}
+html[data-theme="dark"] .soft-pad-keylight-k3__pad {
+  background: #1a222c;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.soft-pad-keylight-k3__pad i {
+  margin: 0;
+  border-radius: 4px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+.soft-pad-keylight-k3__legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  flex: 1;
+  min-width: 0;
+}
+.soft-pad-keylight-k3__leg {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  min-height: 28px;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--on-surface, #13202c);
+}
+.soft-pad-keylight-k3__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.soft-pad-keylight-k3__leg input[type="color"] {
+  position: static;
+  width: 36px;
+  height: 26px;
+  flex-shrink: 0;
+  opacity: 1;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.soft-pad-float-dock .soft-pad-keylight-k3,
+.soft-pad-style-panel .soft-pad-keylight-k3 {
+  margin-top: 4px;
+  padding: 8px;
   gap: 10px;
-  font-size: 12px;
+}
+.soft-pad-lights-where--title-only .soft-pad-lights-where__txt {
+  justify-content: center;
+}
+.soft-pad-lights-where__hint:empty {
+  display: none;
 }
 .soft-pad-key-light-rgb {
   display: flex;
@@ -3561,7 +3656,7 @@ html[data-theme="dark"] .soft-pad-ring-float {
   font-weight: 700;
 }
 .soft-pad-func-tiles__tabs .soft-pad-func-tile.is-recommended:not(.is-active) {
-  /* Keep same chrome as siblings ù cyan text alone read as a title, not a tab. */
+  /* Keep same chrome as siblings ÔøΩ cyan text alone read as a title, not a tab. */
   color: var(--on-surface-muted, #64748b);
 }
 .soft-pad-func-tiles__tabs .soft-pad-func-tile.is-disabled,
@@ -3687,7 +3782,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   flex: 0 0 auto;
 }
 /* Only lock scroll while editing keycaps on the layout panel.
-   Leaving `is-editing-key` on??????????ù?????ed to clip cards 2/3 (no scroll). */
+   Leaving `is-editing-key` on??????????ÔøΩ?????ed to clip cards 2/3 (no scroll). */
 .soft-pad-subpage-body.is-editing-key[data-soft-pad-panel="layout"] {
   overflow: hidden;
 }
@@ -3748,7 +3843,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   font-size: 13px;
   background: #fff;
 }
-/* Keys-tab channel rail ù aligned with #settingsPanelKeys .keys-channel-split */
+/* Keys-tab channel rail ÔøΩ aligned with #settingsPanelKeys .keys-channel-split */
 .soft-pad-action-library--channels {
   flex: 1 1 auto;
   min-height: 0;
@@ -3888,7 +3983,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   gap: 10px;
   padding: 4px 2px;
 }
-/* Labeled IME strip ù same rhythm as keys page (override global 32ù32 .ime-preset-item). */
+/* Labeled IME strip ÔøΩ same rhythm as keys page (override global 32ÔøΩ32 .ime-preset-item). */
 #settingsPanelSoftPad .soft-pad-layout-ime-strip.ime-preset-strip,
 #settingsPanelSoftPad .soft-pad-layout-ime-strip.ime-preset-strip--labeled {
   display: flex;
@@ -4098,7 +4193,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   background: rgba(42, 156, 196, 0.1);
   color: var(--primary-strong, #0f5f7a);
 }
-/* SoftPad ù ??????? Cursor ??????????? */
+/* SoftPad ÔøΩ ??????? Cursor ??????????? */
 #settingsPanelSoftPad .soft-pad-layout-cursor-subtabs.keys-pick-subtabs {
   display: flex;
   flex-wrap: nowrap;
@@ -4413,7 +4508,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
 .soft-pad-key-seq-cta {
   margin-top: 4px;
 }
-/* Accordion under a list row must size to content ù do not let
+/* Accordion under a list row must size to content ÔøΩ do not let
    is-editing-key flex rules shrink it to 0 (clips form ? "can't expand"). */
 .soft-pad-layout-editor--accordion {
   flex: 0 0 auto;
@@ -5090,7 +5185,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   border-top: 1px solid rgba(42, 156, 196, 0.12);
 }
 
-/* ùù Left column: appear scene + skins / purpose demos ùù */
+/* ÔøΩÔøΩ Left column: appear scene + skins / purpose demos ÔøΩÔøΩ */
 .soft-pad-mode-preview {
   --sp-preview-ink: #152536;
   --sp-preview-muted: #5c6b7a;
@@ -5115,7 +5210,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   border-color: rgba(31, 143, 184, 0.16);
   padding: 12px 10px 14px;
 }
-/* Purpose: no stage frame ù keyboards use the full left column */
+/* Purpose: no stage frame ÔøΩ keyboards use the full left column */
 #softPadPreviewHost[data-pad-mode-preview="purpose"],
 .soft-pad-face-pad__preview[data-pad-mode-preview="purpose"] {
   background: transparent;
@@ -5132,7 +5227,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   justify-content: center;
 }
 
-/* Appear: scene ù ??????????? */
+/* Appear: scene ÔøΩ ??????????? */
 .soft-pad-mode-preview--appear {
   max-width: min(100%, 320px);
 }
@@ -5214,7 +5309,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   gap: 3px !important;
 }
 
-/* Appear: live Soft Pad ù ?????? overflow ?? */
+/* Appear: live Soft Pad ÔøΩ ?????? overflow ?? */
 .soft-pad-mode-preview--appear .soft-pad-mode-preview__live {
   display: flex;
   flex-direction: column;
@@ -6202,7 +6297,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   }
 }
 
-/* Purpose demos ù no white card; keyboards use the full left stage */
+/* Purpose demos ÔøΩ no white card; keyboards use the full left stage */
 .soft-pad-mode-preview--purpose {
   max-width: none;
   width: 100%;
@@ -6477,7 +6572,7 @@ html[data-theme="dark"] .soft-pad-preview-empty__title {
   background: rgba(248, 250, 252, 0.95) !important;
   box-shadow: none !important;
 }
-/* Keep Soft Pad grid as a contained square ù fill seat like numpad */
+/* Keep Soft Pad grid as a contained square ÔøΩ fill seat like numpad */
 .soft-pad-mode-preview--purpose .soft-pad-purpose-live-hw .micro-hw__grid {
   display: grid !important;
   flex: 1 1 auto !important;
@@ -7044,7 +7139,7 @@ html[data-theme="dark"] .soft-pad-layout-form__seg.is-active {
   padding-bottom: 8px;
 }
 .soft-pad-keycap-editor__effect {
-  /* Stay with content ù sticky chrome + outer scroll made dual scrollbars louder. */
+  /* Stay with content ÔøΩ sticky chrome + outer scroll made dual scrollbars louder. */
   position: relative;
   top: auto;
   z-index: 1;
@@ -7330,7 +7425,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   color: #9aa8b8;
 }
 
-/* ???? ù show mode only; mapping demos live on????. */
+/* ???? ÔøΩ show mode only; mapping demos live on????. */
 .soft-pad-runtime-show {
   margin-bottom: 16px;
 }
@@ -7514,7 +7609,7 @@ html[data-theme="dark"] .soft-pad-empty__desc {
   margin-top: 8px;
 }
 
-/* Cursor-only listen arm ù separate from show-mode, quota-card language */
+/* Cursor-only listen arm ÔøΩ separate from show-mode, quota-card language */
 .soft-pad-runtime-arm {
   margin-top: 4px;
   margin-bottom: 8px;
@@ -9156,7 +9251,7 @@ html[data-theme="dark"] .soft-pad-feature-hint {
 .shell-hook-panel__more summary::-webkit-details-marker { display: none; }
 .shell-hook-panel__more[open] .codex-micro-pad__btn { margin-top: 6px; }
 
-/* C3 Tray face ù settings drawer: fixed preview + fluid editor */
+/* C3 Tray face ÔøΩ settings drawer: fixed preview + fluid editor */
 .tray-page {
   padding: 0;
   max-width: none;
@@ -9486,7 +9581,7 @@ html[data-theme="dark"] .soft-pad-tray-ch-card__meta { color: #94a3b8; }
 .soft-pad-tray-show-tray { font-size: 9px; color: #5a7086; display: flex; align-items: center; gap: 4px; white-space: nowrap; cursor: pointer; }
 /* .soft-pad-tray-mini-toggle ? ot-switch.css */
 
-/* Tray channel controls ù shared L1/L2 tiers */
+/* Tray channel controls ÔøΩ shared L1/L2 tiers */
 .tray-channel-controls .tray-ctrl-l1 .tray-ctrl-lbl { font-weight: 800; }
 .tray-channel-controls .tray-ctrl-l2 { padding-left: 10px; }
 .tray-channel-controls .tray-ctrl-l2 .tray-ctrl-lbl { font-weight: 600; font-size: 10.5px; }
@@ -9705,11 +9800,11 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-page-body--three-col > .
   min-height: 0;
   height: 100%;
 }
-/* Tabs live in mid-ability card with page content ù not full-bleed on face-pad. */
+/* Tabs live in mid-ability card with page content ÔøΩ not full-bleed on face-pad. */
 .soft-pad-face-pad--desk.soft-pad-face-pad--pad-mid > .soft-pad-pad-tabs {
   display: none !important;
 }
-/* Command list starts hidden ù pad must fill the mid stage, not leave an empty right track. */
+/* Command list starts hidden ÔøΩ pad must fill the mid stage, not leave an empty right track. */
 .soft-pad-face-pad--desk.soft-pad-face-pad--pad-mid:not(:has(.soft-pad-mid-fn-swap:not([hidden]))):not(:has(.soft-pad-mid-ability:not([hidden]))) {
   grid-template-columns: minmax(0, 1fr) !important;
 }
@@ -10070,7 +10165,7 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-page-body--three-col > .
   color: var(--on-surface-muted, #8494a6);
   text-align: center;
 }
-/* Quiet escape hatch ù not a primary CTA; matches beginner ù??????ù. */
+/* Quiet escape hatch ÔøΩ not a primary CTA; matches beginner ÔøΩ??????ÔøΩ. */
 .soft-pad-mid-pad__restore {
   appearance: none;
   margin: 0;
@@ -10574,7 +10669,7 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-right-col__preview.soft-
   }
 }
 
-/* ?? Soft Pad B???? ù ???? ù ??????+?? ?? */
+/* ?? Soft Pad B???? ÔøΩ ???? ÔøΩ ??????+?? ?? */
 .soft-pad-page-rail__item {
   display: flex !important;
   align-items: center;
@@ -10729,7 +10824,7 @@ html[data-theme="dark"] .soft-pad-page-rail__badge {
 html[data-theme="dark"] .soft-pad-app-cmd__title {
   color: #e2e8f0;
 }
-/* bind-steps retired ù mid-pad hint covers the two-step guidance */
+/* bind-steps retired ÔøΩ mid-pad hint covers the two-step guidance */
 .soft-pad-bind-steps,
 .soft-pad-bind-steps__item,
 .soft-pad-bind-steps__arrow {
@@ -10748,21 +10843,12 @@ html[data-theme="dark"] .soft-pad-app-cmd__title {
   box-sizing: border-box;
   overflow: auto;
 }
-.soft-pad-flat-bind-dock__idle {
-  margin: 12px auto;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--on-surface-muted, #5a6b7c);
-  text-align: center;
-  max-width: min(22em, 100%);
-  align-self: center;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: keep-all;
-}
-.soft-pad-flat-bind-dock:has([data-soft-pad-layout-editor]:not([hidden])) .soft-pad-flat-bind-dock__idle,
-.soft-pad-flat-bind-dock.is-key-focused .soft-pad-flat-bind-dock__idle {
+/* No idle copy: hide empty dock until a key editor is open */
+.soft-pad-flat-bind-dock:not(:has([data-soft-pad-layout-editor]:not([hidden]))) {
   display: none;
+}
+.soft-pad-flat-bind-dock__idle {
+  display: none !important;
 }
 .soft-pad-preview-stats {
   flex: 0 0 auto;
@@ -11072,11 +11158,11 @@ html[data-theme="dark"] .soft-pad-channel-open-keys {
 
 /* ???????????????????????????????????????????????????????????
    B+ visual hierarchy (topology unchanged)
-   L1 stage = fn-swap ù L1 anchor = pad ù L2 habits quiet ù L3 hints faint
+   L1 stage = fn-swap ÔøΩ L1 anchor = pad ÔøΩ L2 habits quiet ÔøΩ L3 hints faint
    Spec: prototypes/softpad-bind-desk/b-plus-strategy.html
    ??????????????????????????????????????????????????????????? */
 
-/* L1 ù function library is the only stage */
+/* L1 ÔøΩ function library is the only stage */
 #settingsPanelSoftPad .soft-pad-mid-fn-swap:not([hidden]) {
   background: var(--surface, #fff);
   border-left: 1px solid var(--outline-variant, rgba(26, 45, 74, 0.12));
@@ -11091,7 +11177,7 @@ html[data-theme="dark"] .soft-pad-channel-open-keys {
   color: var(--on-surface, #13202c);
 }
 
-/* L1 anchor ù pad preview: keep device, drop competing white-card chrome */
+/* L1 anchor ÔøΩ pad preview: keep device, drop competing white-card chrome */
 #settingsPanelSoftPad .soft-pad-mid-stack--fused .soft-pad-mid-pad__host.soft-pad-preview-host,
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid .soft-pad-mid-stack--fused #softPadPreviewHost.soft-pad-preview-host {
   background: transparent;
@@ -11100,7 +11186,7 @@ html[data-theme="dark"] .soft-pad-channel-open-keys {
   border-radius: 0;
 }
 
-/* L3 ù one quiet hint under pad; restore stays ghost */
+/* L3 ÔøΩ one quiet hint under pad; restore stays ghost */
 #settingsPanelSoftPad .soft-pad-mid-pad__hint {
   font-size: 11px;
   font-weight: 550;
@@ -11117,9 +11203,11 @@ html[data-theme="dark"] .soft-pad-channel-open-keys {
   color: var(--primary-strong, #0f5f7a);
 }
 
-/* Ability chrome ù don't compete with fn-swap while binding */
-#settingsPanelSoftPad .soft-pad-mid-stack--fused .soft-pad-work-tag {
-  opacity: 0.55;
+/* Ability chrome ÔøΩ don't compete with fn-swap while binding */
+#settingsPanelSoftPad .soft-pad-mid-stack--fused .soft-pad-work-tag,
+.soft-pad-fn-swap__lead,
+.soft-pad-float-dock__opacity-hint {
+  display: none !important;
 }
 #settingsPanelSoftPad .soft-pad-mid-stack--fused .soft-pad-pad-tabs {
   opacity: 0.9;
@@ -11138,7 +11226,7 @@ html[data-theme="dark"] .soft-pad-channel-open-keys {
   color: var(--on-surface-muted, #8494a6);
 }
 
-/* L2 ù habits directory quieter than the bind stage */
+/* L2 ÔøΩ habits directory quieter than the bind stage */
 #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-actions {
   background: color-mix(in srgb, var(--surface-soft, #f8fafc) 70%, transparent);
   border-left-color: rgba(26, 45, 74, 0.1);
@@ -11179,7 +11267,7 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   background: rgba(15, 22, 34, 0.45);
 }
 
-/* L1 ù single lead under stage title */
+/* L1 ÔøΩ single lead under stage title */
 #settingsPanelSoftPad .soft-pad-fn-swap__lead {
   margin: -2px 2px 6px;
   font-size: 11.5px;
@@ -11197,7 +11285,7 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   display: none !important;
 }
 
-/* L3 ù usage board as footnote under pad (not a competing card) */
+/* L3 ÔøΩ usage board as footnote under pad (not a competing card) */
 #settingsPanelSoftPad .soft-pad-flat-bind-dock__idle {
   margin: 6px 0 4px;
   font-size: 11.5px;
@@ -11283,7 +11371,7 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   color: var(--on-surface-muted, #5a6c80);
 }
 
-/* Layout key form under pad ù compact, not a second stage */
+/* Layout key form under pad ÔøΩ compact, not a second stage */
 #settingsPanelSoftPad .soft-pad-layout-form__section-lbl {
   font-size: 10px;
   font-weight: 700;
@@ -11301,7 +11389,7 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   color: var(--on-surface-muted, #8494a6);
 }
 
-/* Pad chrome replan: caption = sel strip ù status = footnote ù no legend */
+/* Pad chrome replan: caption = sel strip ÔøΩ status = footnote ÔøΩ no legend */
 #settingsPanelSoftPad .soft-pad-preview--anchor .codex-micro-pad__head {
   display: none !important;
 }
@@ -11418,8 +11506,39 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   filter: none !important;
 }
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"] {
-  outline: 2px solid color-mix(in srgb, var(--primary, #2a9cc4) 65%, transparent);
-  outline-offset: 1px;
+  outline: 0;
+  outline-offset: 0;
+}
+/* Beat mid-pad flat key !important so status glow actually previews */
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"][data-run-status="running"],
+#softPadPreviewHost[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"][data-run-status="running"] {
+  box-shadow:
+    0 0 0 2px var(--micro-hw-status-running),
+    0 0 12px var(--micro-hw-status-running) !important;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"][data-run-status="needs_input"],
+#softPadPreviewHost[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"][data-run-status="needs_input"] {
+  box-shadow:
+    0 0 0 2px var(--micro-hw-status-needs-input),
+    0 0 12px var(--micro-hw-status-needs-input) !important;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"][data-run-status="done"],
+#softPadPreviewHost[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"][data-run-status="done"] {
+  box-shadow:
+    0 0 0 2px var(--micro-hw-status-done),
+    0 0 10px var(--micro-hw-status-done) !important;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"][data-run-status="failed"],
+#softPadPreviewHost[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"][data-run-status="failed"] {
+  box-shadow:
+    0 0 0 2px var(--micro-hw-status-failed),
+    0 0 10px var(--micro-hw-status-failed) !important;
+}
+#settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"][data-run-status="listening"],
+#softPadPreviewHost[data-lights-preview-accent="keys"] .micro-hw__key[data-palette-demo="1"][data-run-status="listening"] {
+  box-shadow:
+    0 0 0 2px var(--micro-hw-status-listening),
+    0 0 12px var(--micro-hw-status-listening) !important;
 }
 /* Soft Pad fades on checkerboard; ambient glow must not pin opacity to 1 here */
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .soft-pad-opacity-stage .codex-micro-pad.soft-pad-preview,
@@ -11530,6 +11649,12 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   display: flex;
   flex-direction: column;
   padding: 6px 2px 2px;
+  scrollbar-width: none;
+}
+.soft-pad-float-dock__sheet::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 .soft-pad-float-dock .soft-pad-float-pane__body--skin,
 .soft-pad-style-panel .soft-pad-float-pane__body--skin {
@@ -11758,38 +11883,111 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   margin: 0 0 10px;
 }
 .soft-pad-lights-where {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: center;
+  gap: 10px;
   margin: 0;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 12px;
-  border: 1px solid rgba(26, 45, 74, 0.12);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1.5px solid rgba(26, 45, 74, 0.12);
+  background: #fff;
   text-align: left;
   cursor: pointer;
   color: inherit;
   font: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 .soft-pad-lights-where:hover {
-  border-color: rgba(37, 99, 235, 0.35);
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 42%, transparent);
+}
+.soft-pad-lights-where:focus-visible {
+  outline: 2px solid var(--primary, #2a9cc4);
+  outline-offset: 2px;
 }
 .soft-pad-lights-where.is-active {
-  border-color: rgba(37, 99, 235, 0.65);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
-  background: rgba(239, 246, 255, 0.95);
+  border-color: var(--primary, #2a9cc4);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 9%, #fff);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary, #2a9cc4) 28%, transparent);
+}
+.soft-pad-lights-where__viz {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  background: #eef2f6;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.soft-pad-lights-where__pad {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: #e8eef4;
+  border: 1px solid #b8c4d0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 3px;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+.soft-pad-lights-where__pad i {
+  margin: 0;
+  border-radius: 2px;
+  background: #fff;
+  border: 1px solid #c5d0db;
+}
+.soft-pad-lights-where__viz--off .soft-pad-lights-where__pad {
+  opacity: 0.72;
+}
+.soft-pad-lights-where__viz--bezel .soft-pad-lights-where__ring {
+  position: absolute;
+  inset: 4px;
+  border-radius: 8px;
+  border: 2px solid color-mix(in srgb, var(--primary, #2a9cc4) 75%, #34d399);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #2a9cc4) 18%, transparent);
+  pointer-events: none;
+}
+.soft-pad-lights-where__viz--keys .soft-pad-lights-where__pad i.is-lit {
+  background: color-mix(in srgb, #34d399 45%, #fff);
+  border-color: color-mix(in srgb, #34d399 40%, #94a3b8);
+}
+.soft-pad-lights-where__viz--keys .soft-pad-lights-where__pad i.is-busy {
+  background: color-mix(in srgb, #f59e0b 50%, #fff);
+  border-color: color-mix(in srgb, #f59e0b 45%, #94a3b8);
+}
+.soft-pad-lights-where.is-active .soft-pad-lights-where__viz {
+  background: #fff;
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 28%, transparent);
+}
+.soft-pad-lights-where__txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 .soft-pad-lights-where__title {
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 800;
   color: var(--on-surface, #13202c);
+  line-height: 1.25;
+}
+.soft-pad-lights-where.is-active .soft-pad-lights-where__title {
+  color: #0f5f7a;
 }
 .soft-pad-lights-where__hint {
   font-size: 11.5px;
-  font-weight: 550;
+  font-weight: 600;
   line-height: 1.35;
   color: var(--on-surface-muted, #5a6c80);
+}
+.soft-pad-lights-where.is-active .soft-pad-lights-where__hint {
+  color: #0369a1;
 }
 .soft-pad-lights-detail[hidden] {
   display: none !important;
@@ -11798,6 +11996,58 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.soft-pad-lights-keys-hint {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(26, 45, 74, 0.1);
+  background: #f7f9fb;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--on-surface-muted, #5a6c80);
+}
+html[data-theme="dark"] .soft-pad-lights-where {
+  background: rgba(18, 24, 36, 0.92);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .soft-pad-lights-where:hover {
+  border-color: rgba(125, 211, 252, 0.35);
+}
+html[data-theme="dark"] .soft-pad-lights-where.is-active {
+  background: rgba(62, 184, 220, 0.14);
+  border-color: rgba(125, 211, 252, 0.45);
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.2);
+}
+html[data-theme="dark"] .soft-pad-lights-where__viz {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .soft-pad-lights-where__pad {
+  background: #0f172a;
+  border-color: #475569;
+}
+html[data-theme="dark"] .soft-pad-lights-where__pad i {
+  background: #334155;
+  border-color: #64748b;
+}
+html[data-theme="dark"] .soft-pad-lights-where__title {
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .soft-pad-lights-where.is-active .soft-pad-lights-where__title {
+  color: #7dd3fc;
+}
+html[data-theme="dark"] .soft-pad-lights-where__hint {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .soft-pad-lights-where.is-active .soft-pad-lights-where__hint {
+  color: #7dd3fc;
+}
+html[data-theme="dark"] .soft-pad-lights-keys-hint {
+  background: rgba(18, 24, 36, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
 }
 .soft-pad-float-dock__lead--tight {
   margin: 0 0 8px;
@@ -11847,7 +12097,7 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   padding: 8px 10px;
   font-size: 12px;
 }
-/* ?????? 2ù2 */
+/* ?????? 2ÔøΩ2 */
 .soft-pad-float-dock .soft-pad-skin-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -11946,6 +12196,12 @@ html[data-theme="dark"] .soft-pad-mid-data {
   overflow: auto;
   padding: 10px 12px 14px;
   gap: 12px;
+  scrollbar-width: none;
+}
+.soft-pad-mid-ability .soft-pad-style-panel::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 .soft-pad-mid-ability .soft-pad-float-dock__lead {
   margin: 0;
@@ -11958,7 +12214,7 @@ html[data-theme="dark"] .soft-pad-mid-data {
   display: none;
 }
 
-/* ???? ù ?????????????? */
+/* ???? ÔøΩ ?????????????? */
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost[data-pad-mode-preview="purpose"].soft-pad-preview-host,
 #settingsPanelSoftPad .soft-pad-mid-stack--fused #softPadPreviewHost[data-pad-mode-preview="purpose"].soft-pad-preview-host {
   max-width: none;
@@ -11985,7 +12241,7 @@ html[data-theme="dark"] .soft-pad-mid-data {
   overflow: visible;
 }
 
-/* ùù Soft Pad skins: beat preview !important flat white (Keys Core / Spatial) ùù */
+/* ÔøΩÔøΩ Soft Pad skins: beat preview !important flat white (Keys Core / Spatial) ÔøΩÔøΩ */
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"],
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost .codex-micro-pad.soft-pad-preview[data-pad-skin="hybrid-pro"] .micro-hw,
 #softPadPreviewHost .micro-hw[data-pad-skin="hybrid-pro"],
