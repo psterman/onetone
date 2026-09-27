@@ -10562,7 +10562,12 @@ html[data-theme="dark"] .soft-pad-work-tag__ch {
 #settingsPanelSoftPad .soft-pad-page-body--three-col.is-need-agent > .soft-pad-page-main {
   grid-column: 2 !important;
 }
-#settingsPanelSoftPad .soft-pad-page-body--three-col.is-need-agent .soft-pad-empty {
+/* Agent ready: never leave「先加载一个 Agent」under the live pad */
+#settingsPanelSoftPad .soft-pad-page-body--three-col:not(.is-need-agent) .soft-pad-empty,
+#settingsPanelSoftPad .soft-pad-empty[hidden] {
+  display: none !important;
+}
+#settingsPanelSoftPad .soft-pad-page-body--three-col.is-need-agent .soft-pad-empty:not([hidden]) {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -11234,10 +11239,17 @@ html[data-theme="dark"] .soft-pad-channel-open-keys {
   color: var(--primary-strong, #0f5f7a);
 }
 
-/* Ability chrome � don't compete with fn-swap while binding */
+/* Ability chrome — don't compete with fn-swap while binding */
+#settingsPanelSoftPad .soft-pad-work-tag,
 #settingsPanelSoftPad .soft-pad-mid-stack--fused .soft-pad-work-tag,
 .soft-pad-fn-swap__lead,
 .soft-pad-float-dock__opacity-hint {
+  display: none !important;
+}
+/* Keys only: layout paints an empty shell into subpage-body — hide orphan card.
+   Do NOT key off fn-swap visibility: channel bind also opens fn-swap, and
+   何时显示 / 皮肤 must stay reachable. */
+#settingsPanelSoftPad #softPadPadTabs[data-pad-mode="keys"] ~ .soft-pad-detail-panel {
   display: none !important;
 }
 #settingsPanelSoftPad .soft-pad-mid-stack--fused .soft-pad-pad-tabs {
@@ -11612,6 +11624,17 @@ html[data-theme="dark"] #settingsPanelSoftPad .soft-pad-scene-keys.keys-scene-ac
   box-shadow:
     0 0 0 2px #0f1820,
     0 0 0 4px rgba(62, 184, 220, 0.45) !important;
+}
+/* Left NAV column: fixed arrow inject — not a bind target */
+#settingsPanelSoftPad #softPadPreviewHost .micro-hw__key.is-fixed-nav,
+#settingsPanelSoftPad #softPadPreviewHost .micro-hw__key[data-micro-key^="NAV_"] {
+  cursor: default;
+}
+#settingsPanelSoftPad #softPadPreviewHost .micro-hw__key.is-fixed-nav.is-focused,
+#settingsPanelSoftPad #softPadPreviewHost .micro-hw__key[data-micro-key^="NAV_"].is-focused {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 2px rgba(26, 45, 74, 0.06) !important;
 }
 /* ???????? / ?? outline???????????? */
 #settingsPanelSoftPad .soft-pad-face-pad--pad-mid #softPadPreviewHost[data-lights-preview-accent]:not([data-skin-ambient]):not([data-lights-preview-accent="keys"]):not([data-lights-preview-accent="ambient"]) .micro-hw-shell {

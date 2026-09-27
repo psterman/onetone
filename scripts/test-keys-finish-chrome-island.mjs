@@ -148,6 +148,9 @@ const finishSrc = readFileSync(join(root, 'src/js/features/mapping/key-finish-fl
 check('导出 buildKeysFinishChromeModel', finishSrc.includes('buildKeysFinishChromeModel:buildKeysFinishChromeModel'));
 check('chrome 检查岛挂载标志', finishSrc.includes('__otKeysFinishChromeMounted'));
 
+const chromeTs = readFileSync(join(root, 'src-islands/domain/keysFinishChrome.ts'), 'utf8');
+check('岛显示 finish-more 时 reopen details', /more\.open\s*=\s*!model\.moreHidden/.test(chromeTs));
+
 const html = readFileSync(join(root, 'src/index.html'), 'utf8');
 check('index 含 keysFinishModeHint', html.includes('id="keysFinishModeHint"'));
 check('index 含 keysFinishStrategyPreview', html.includes('id="keysFinishStrategyPreview"'));

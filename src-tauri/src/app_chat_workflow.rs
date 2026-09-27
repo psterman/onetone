@@ -639,7 +639,8 @@ pub fn focus_composer_only(
         return Err(AppChatWorkflowError::FocusFailed);
     }
     std::thread::sleep(Duration::from_millis(120));
-    if !focus_chat_input(hwnd, profile, duration_ms) {
+    let anchor = composer_anchor_for_app(app, app_target_id, profile);
+    if !focus_chat_input(hwnd, profile, duration_ms, anchor) {
         return Err(AppChatWorkflowError::InputNotFound);
     }
     std::thread::sleep(Duration::from_millis(80));
@@ -1060,7 +1061,8 @@ fn run_app_chat_workflow(
     }
     std::thread::sleep(Duration::from_millis(120));
 
-    if !focus_chat_input(hwnd, profile, duration_ms) {
+    let anchor = composer_anchor_for_app(&app, profile.id, profile);
+    if !focus_chat_input(hwnd, profile, duration_ms, anchor) {
         return Err((prefix.to_string(), AppChatWorkflowError::InputNotFound));
     }
     std::thread::sleep(Duration::from_millis(80));
@@ -1146,6 +1148,7 @@ fn focus_chat_input(
     hwnd: winapi::shared::windef::HWND,
     profile: &AppChatProfile,
     duration_ms: u32,
+    anchor: (f32, f32),
 ) -> bool {
     let min_score = uia_min_score(profile);
 
@@ -1155,7 +1158,7 @@ fn focus_chat_input(
     if uia_focus_chat_input(hwnd, min_score) {
         return true;
     }
-    if click_then_confirm(hwnd, profile, min_score) {
+    if click_then_confirm(hwnd, profile, min_score, anchor) {
         if allow_blind_click || uia_focus_chat_input(hwnd, min_score) {
             return true;
         }
@@ -1163,7 +1166,7 @@ fn focus_chat_input(
 
     // Hard open only after right-panel click stole focus from the editor.
     if let Some(open_key) = profile.open_key.filter(|k| !k.trim().is_empty()) {
-        let _ = click_composer_anchor(hwnd, profile.composer_anchor);
+        let _ = click_composer_anchor(hwnd, anchor);
         std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
         let _ = crate::keyboard::focus_window(hwnd);
         std::thread::sleep(Duration::from_millis(80));
@@ -1180,7 +1183,7 @@ fn focus_chat_input(
             if uia_focus_chat_input(hwnd, min_score) {
                 return true;
             }
-            if click_then_confirm(hwnd, profile, min_score) {
+            if click_then_confirm(hwnd, profile, min_score, anchor) {
                 return uia_focus_chat_input(hwnd, min_score) || allow_blind_click;
             }
             return false;
@@ -1195,8 +1198,9 @@ fn click_then_confirm(
     hwnd: winapi::shared::windef::HWND,
     profile: &AppChatProfile,
     min_score: i32,
+    anchor: (f32, f32),
 ) -> bool {
-    if !click_composer_anchor(hwnd, profile.composer_anchor) {
+    if !click_composer_anchor(hwnd, anchor) {
         return false;
     }
     std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));

@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>听写方式 · v2 原型（说完后 + 开麦前对准）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;750;800&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+<style>
+/* 听写方式 v2 — 减少决策压力
+   去掉 SayDoneMode.pressAgain（再按一次发送）
+   说完后：自动发送 | 手动发送（二选一）
+   自动发送展开：等待时长 + 发送键方案
+   取消听写：默认折叠，摘要一行 */
+:root {
+  --ink: #13202c;
+  --mute: #5a6c80;
+  --faint: #8494a6;
+  --line: #d7dee8;
+  --paper: #fff;
+  --wash: #eef2f6;
+  --bg: #e4ebf1;
+  --primary: #2a9cc4;
+  --primary-strong: #0f5f7a;
+  --primary-soft: color-mix(in srgb, #2a9cc4 12%, #fff);
+  --bad: #dc2626;
+  --ok: #15803d;
+  --font: "Figtree", "PingFang SC", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  background: radial-gradient(900px 360px at 8% -10%, rgba(42,156,196,.1), transparent 55%), var(--bg);
+}
+.top {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 10px 16px; background: #0f1820; color: #a8b6c6; font-size: 12px;
+}
+.top strong { color: #fff; font-size: 13.5px; }
+.top em { font-style: normal; color: #7dd3fc; font-weight: 650; }
+.page { width: min(1280px, 100%); margin: 0 auto; padding: 16px 14px 72px; }
+
+.brief {
+  background: rgba(255,255,255,.94); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 12px;
+}
+.brief h1 { margin: 0 0 6px; font-size: 20px; font-weight: 800; }
+.brief p, .brief li { color: var(--mute); font-size: 13px; line-height: 1.5; }
+.brief ul { margin: 8px 0 0; padding-left: 18px; }
+.brief code { font-family: var(--mono); font-size: 11.5px; background: #f1f5f9; padding: 1px 5px; border-radius: 4px; }
+
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.compare-ux { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+@media (max-width: 960px) { .compare, .compare-ux { grid-template-columns: 1fr; } }
+.tag.rec { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+.panel {
+  border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff;
+}
+.panel-hd {
+  padding: 10px 12px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.panel-hd h2 { margin: 0; font-size: 14px; font-weight: 800; }
+.tag {
+  font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 999px;
+}
+.tag.bad { background: #fef2f2; color: var(--bad); border: 1px solid #fecaca; }
+.tag.ok { background: #ecfdf5; color: var(--ok); border: 1px solid #bbf7d0; }
+
+.config-col {
+  padding: 16px 18px; max-width: 380px; margin: 0 auto;
+}
+.config-col h3 {
+  margin: 0 0 4px; font-size: 17px; font-weight: 800;
+}
+.config-col .sub {
+  font-size: 12px; color: var(--mute); margin-bottom: 14px; line-height: 1.45;
+}
+.sec-label {
+  font-size: 11px; font-weight: 800; letter-spacing: .03em;
+  text-transform: uppercase; color: var(--faint); margin: 14px 0 8px;
+}
+.divider { height: 1px; background: var(--line); margin: 14px 0; }
+
+/* —— 旧版：三卡 + 取消全展开 —— */
+.old-finish { display: flex; flex-direction: column; gap: 8px; }
+.old-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.old-card {
+  border: 1px solid rgba(15,23,42,.1); border-radius: 10px; background: #fff;
+  padding: 10px; text-align: left; cursor: default;
+}
+.old-card.on { border-color: var(--primary); background: var(--primary-soft); }
+.old-card .t { font-size: 12px; font-weight: 750; display: flex; align-items: center; gap: 6px; }
+.old-card .d { font-size: 10.5px; color: var(--mute); margin-top: 4px; line-height: 1.35; }
+.old-card.strike { opacity: .55; position: relative; }
+.old-card.strike::after {
+  content: "移除"; position: absolute; top: 8px; right: 8px;
+  font-size: 9px; font-weight: 800; color: var(--bad);
+  background: #fef2f2; border: 1px solid #fecaca; border-radius: 999px; padding: 2px 6px;
+}
+.old-cancel .row {
+  border: 1px solid rgba(15,23,42,.08); border-radius: 10px; padding: 10px;
+  margin-bottom: 6px; background: rgba(15,23,42,.02);
+}
+.old-cancel .row-h { display: flex; justify-content: space-between; align-items: flex-start; }
+.old-cancel .row-h b { font-size: 12px; }
+.old-cancel .row-h small { display: block; font-size: 10px; color: var(--mute); margin-top: 2px; font-weight: 600; }
+.toggle-fake {
+  width: 36px; height: 20px; border-radius: 999px; background: #cbd5e1; position: relative;
+}
+.toggle-fake.on { background: var(--primary); }
+.toggle-fake::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.15);
+}
+.toggle-fake.on::after { left: 18px; }
+
+/* —— v2：二选一 + 子选项内联 —— */
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mode-card {
+  appearance: none; border: 1px solid rgba(15,23,42,.1); border-radius: 10px;
+  background: #fff; padding: 10px 11px; text-align: left; cursor: pointer; font: inherit; color: inherit;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.mode-card:hover { border-color: rgba(42,156,196,.35); }
+.mode-card.on {
+  border-color: var(--primary); background: var(--primary-soft);
+  box-shadow: inset 0 0 0 1px rgba(42,156,196,.12);
+}
+.mode-card .t {
+  font-size: 12.5px; font-weight: 800; color: var(--ink);
+  display: flex; align-items: center; gap: 6px;
+}
+.mode-card.on .t { color: var(--primary-strong); }
+.mode-card .d { font-size: 10.5px; color: var(--mute); margin-top: 4px; line-height: 1.35; }
+.radio-dot {
+  width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #cbd5e1; flex-shrink: 0;
+  display: grid; place-items: center;
+}
+.mode-card.on .radio-dot { border-color: var(--primary); }
+.radio-dot i {
+  width: 7px; height: 7px; border-radius: 50%; background: transparent;
+}
+.mode-card.on .radio-dot i { background: var(--primary); }
+
+.sub-panel {
+  margin-top: 10px; padding: 10px 11px; border-radius: 10px;
+  background: var(--wash); border: 1px solid var(--line);
+  display: none;
+}
+.sub-panel.is-on { display: block; animation: fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.sub-row { margin-bottom: 10px; }
+.sub-row:last-child { margin-bottom: 0; }
+.sub-row > label {
+  display: block; font-size: 10.5px; font-weight: 750; color: var(--faint); margin-bottom: 6px;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.chip {
+  appearance: none; border: 1px solid rgba(15,23,42,.1); background: #fff;
+  border-radius: 999px; padding: 5px 11px; font: inherit; font-size: 11px; font-weight: 750;
+  color: var(--mute); cursor: pointer;
+}
+.chip.on { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-strong); }
+.chip.mono { font-family: var(--mono); font-size: 10.5px; }
+
+.slider-row { display: flex; align-items: center; gap: 10px; }
+.slider-row input[type=range] { flex: 1; accent-color: var(--primary); }
+.slider-row output {
+  font-family: var(--mono); font-size: 11px; font-weight: 650; color: var(--primary-strong);
+  min-width: 36px; text-align: right;
+}
+
+.send-scheme { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.send-opt {
+  appearance: none; border: 1px solid rgba(15,23,42,.1); border-radius: 8px;
+  background: #fff; padding: 8px 6px; text-align: center; cursor: pointer; font: inherit;
+}
+.send-opt.on { border-color: var(--primary); background: var(--primary-soft); }
+.send-opt kbd {
+  display: block; font-family: var(--mono); font-size: 13px; font-weight: 650;
+  color: var(--ink); margin-bottom: 2px;
+}
+.send-opt.on kbd { color: var(--primary-strong); }
+.send-opt span { font-size: 9.5px; color: var(--faint); font-weight: 650; }
+.send-custom {
+  margin-top: 6px; display: none; align-items: center; gap: 8px;
+}
+.send-custom.is-on { display: flex; }
+.send-custom input {
+  flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px;
+  font-family: var(--mono); font-size: 11px;
+}
+.btn-sm {
+  border: 1px solid var(--line); background: #fff; border-radius: 8px;
+  padding: 5px 10px; font: inherit; font-size: 10.5px; font-weight: 700; cursor: pointer;
+}
+.btn-sm.primary { background: var(--primary); color: #fff; border-color: transparent; }
+
+/* —— 折叠：取消听写 —— */
+.fold {
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff;
+}
+.fold-hd {
+  width: 100%; appearance: none; border: 0; background: transparent;
+  padding: 10px 11px; display: flex; align-items: center; gap: 8px;
+  cursor: pointer; font: inherit; text-align: left;
+}
+.fold-hd:hover { background: rgba(15,23,42,.02); }
+.fold-hd .chev {
+  width: 18px; height: 18px; border-radius: 5px; background: var(--wash);
+  display: grid; place-items: center; font-size: 10px; color: var(--faint);
+  transition: transform .2s;
+}
+.fold.is-open .fold-hd .chev { transform: rotate(90deg); }
+.fold-hd b { font-size: 12px; font-weight: 800; }
+.fold-hd .sum {
+  flex: 1; font-size: 10.5px; color: var(--mute); font-weight: 600; line-height: 1.35;
+}
+.fold-hd .tag-adv {
+  flex-shrink: 0; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px;
+  background: var(--wash); color: var(--faint); border: 1px solid var(--line);
+}
+.fold-bd {
+  display: none; padding: 0 11px 11px; border-top: 1px solid var(--line);
+}
+.fold.is-open .fold-bd { display: block; animation: fadeIn .2s ease; }
+.fold-item {
+  padding: 9px 0; border-bottom: 1px dashed var(--line);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+}
+.fold-item:last-child { border-bottom: 0; padding-bottom: 0; }
+.fold-item .meta b { font-size: 11.5px; font-weight: 750; display: block; }
+.fold-item .meta small { font-size: 10px; color: var(--mute); line-height: 1.35; display: block; margin-top: 2px; }
+
+.flow {
+  margin-top: 12px; background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px;
+}
+.flow h3 { margin: 0 0 10px; font-size: 14px; font-weight: 800; }
+.flow-steps { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 11px; }
+.flow-steps .step {
+  padding: 6px 10px; border-radius: 8px; background: var(--wash); border: 1px solid var(--line);
+  font-weight: 650;
+}
+.flow-steps .arrow { color: var(--faint); font-weight: 800; }
+.flow-steps .step.accent { background: var(--primary-soft); border-color: rgba(42,156,196,.25); color: var(--primary-strong); }
+
+.spec {
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; margin-top: 12px;
+}
+.spec h3 { margin: 0 0 8px; font-size: 15px; }
+.spec table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.spec th, .spec td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.spec th { color: var(--faint); font-weight: 700; width: 28%; }
+.spec td code { font-family: var(--mono); font-size: 11px; }
+
+/* —— IME 顶栏 —— */
+.ime-block {
+  border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+  background: linear-gradient(180deg, #fbfdff, #f4f8fb); margin-bottom: 4px;
+}
+.keycap {
+  margin: 0 auto 8px; width: 72px; height: 52px; border-radius: 10px;
+  background: linear-gradient(180deg, #fff, #eef2f6);
+  border: 1px solid #cbd5e1; box-shadow: 0 3px 0 #cbd5e1, 0 8px 16px rgba(15,23,42,.08);
+  display: grid; place-items: center; font-family: var(--mono); font-size: 18px; font-weight: 800;
+}
+.ime-tiles { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.ime-tile {
+  flex: 0 0 auto; width: 52px; height: 52px; border-radius: 10px;
+  border: 1px solid var(--line); background: #fff;
+  display: grid; place-items: center; font-size: 9px; font-weight: 700; color: var(--mute);
+}
+.ime-tile.on { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(42,156,196,.18); }
+.ime-hint { font-size: 10px; color: var(--faint); margin-top: 8px; text-align: center; }
+
+/* —— 开麦前：场景卡片（纵向，好读） —— */
+.pre-lead {
+  margin: 10px 0 10px; padding: 8px 10px; border-radius: 8px;
+  background: #f8fafc; border: 1px solid var(--line);
+  font-size: 11px; color: var(--mute); line-height: 1.45;
+}
+.pre-lead strong { color: var(--ink); font-weight: 750; }
+.pre-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.pre-card {
+  appearance: none; border: 1px solid rgba(15,23,42,.1); border-radius: 10px;
+  background: #fff; padding: 10px 11px; text-align: left; cursor: pointer; font: inherit; color: inherit;
+  transition: border-color .15s, background .15s;
+}
+.pre-card:hover { border-color: rgba(42,156,196,.35); }
+.pre-card.on { border-color: var(--primary); background: var(--primary-soft); }
+.pre-card-h {
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.pre-card-h .radio-dot { margin-top: 1px; }
+.pre-card-h b { font-size: 12px; font-weight: 800; color: var(--ink); display: block; }
+.pre-card.on .pre-card-h b { color: var(--primary-strong); }
+.pre-card-h .badge {
+  font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px;
+  margin-left: 4px; vertical-align: middle;
+}
+.pre-card-h .badge.ok { background: #ecfdf5; color: var(--ok); border: 1px solid #bbf7d0; }
+.pre-card-h .badge.pending {
+  background: #fffbeb; color: #b45309; border: 1px solid #fcd34d;
+}
+.pre-card-h .badge.live { background: #ecfdf5; color: var(--ok); border: 1px solid #bbf7d0; }
+.pre-card.disabled-opt { opacity: .92; }
+.pre-when {
+  font-size: 10px; font-weight: 700; color: var(--faint); margin-top: 6px;
+}
+.pre-card.on .pre-when { color: var(--primary-strong); opacity: .85; }
+.pre-flow {
+  font-size: 10.5px; color: var(--mute); margin-top: 4px; line-height: 1.4;
+}
+.pre-flow em { font-style: normal; font-family: var(--mono); font-size: 10px; font-weight: 650; color: var(--ink); }
+.pre-card.on .radio-dot { border-color: var(--primary); }
+.pre-card.on .radio-dot i { background: var(--primary); }
+
+/* —— 图形演示（主 UI，无校准表单） —— */
+.pre-setup {
+  display: none; margin-top: 10px; padding: 10px 11px; border-radius: 10px;
+  background: #fffbeb; border: 1px solid #fcd34d;
+}
+.pre-setup.is-on { display: block; animation: fadeIn .2s ease; }
+.pre-setup p { margin: 0 0 8px; font-size: 11px; color: #92400e; line-height: 1.45; }
+.pre-setup ul { margin: 0 0 10px; padding-left: 16px; font-size: 10.5px; color: #b45309; line-height: 1.4; }
+.pre-setup-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.pre-setup .mock-done { font-size: 10px; color: var(--faint); margin-top: 8px; }
+
+.pre-visual {
+  margin-top: 10px; border-radius: 10px; overflow: hidden; position: relative;
+  border: 1px solid var(--line); background: linear-gradient(145deg, #e8eef4, #dbe4ee);
+}
+.pre-visual.preview-only::after {
+  content: "效果预览 · 配置后生效";
+  position: absolute; top: 32px; right: 8px; z-index: 2;
+  font-size: 9px; font-weight: 800; color: #b45309;
+  background: rgba(255,251,235,.92); border: 1px solid #fcd34d;
+  padding: 3px 7px; border-radius: 999px;
+}
+.pre-visual-cap {
+  padding: 6px 10px; font-size: 10px; font-weight: 700; color: var(--mute);
+  background: rgba(255,255,255,.65); border-bottom: 1px solid var(--line); text-align: center;
+}
+.pre-scene {
+  position: relative; height: 108px; display: none;
+}
+.pre-scene.is-on { display: block; }
+.pre-scene .app-win {
+  position: absolute; left: 7%; top: 8%; width: 88%; height: 78%;
+  border-radius: 8px; background: #fff; border: 1px solid #b8c4d0;
+  box-shadow: 0 4px 12px rgba(15,23,42,.1);
+}
+.pre-scene .app-win::before {
+  content: "Cursor"; display: block; font-size: 8px; font-weight: 700; color: #64748b;
+  padding: 4px 7px; border-bottom: 1px solid #e2e8f0;
+}
+.pre-scene .composer {
+  position: absolute; left: 10%; right: 10%; bottom: 14%; height: 26px;
+  border-radius: 7px; border: 2px solid transparent; background: #f8fafc;
+  transition: border-color .3s, box-shadow .3s;
+}
+.pre-scene .composer.lit {
+  border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.25); background: #fff;
+}
+.pre-scene .composer.aim-lit {
+  border-color: var(--primary); box-shadow: 0 0 0 3px rgba(42,156,196,.28); background: #fff;
+}
+.pre-scene .cursor-dot {
+  position: absolute; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--primary); box-shadow: 0 0 0 3px rgba(42,156,196,.35);
+  opacity: 0;
+}
+.pre-scene .key-badge {
+  position: absolute; top: 10%; right: 8%;
+  font-family: var(--mono); font-size: 10px; font-weight: 800;
+  padding: 4px 8px; border-radius: 6px; background: #fff; border: 1px solid var(--line);
+  opacity: 0; transform: scale(.9);
+}
+.pre-scene .step-label {
+  position: absolute; bottom: 4px; left: 0; right: 0; text-align: center;
+  font-size: 9px; font-weight: 700; color: var(--faint);
+}
+
+/* 我自己点好了：框已绿 */
+#visSkip .composer { border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.22); }
+#visSkip .step-label::after { content: "光标已在框内 → 直接 fn 开麦"; }
+
+/* 帮我点进框：动画循环 */
+#visAim .cursor-dot { animation: aimClick 2.8s ease infinite; }
+#visAim .composer { animation: aimBox 2.8s ease infinite; }
+#visAim .key-badge { animation: aimFn 2.8s ease infinite; }
+#visAim .step-label::after { content: "按听写键 → 回放录制的两点 → fn 开麦"; }
+@keyframes aimClick {
+  0%, 8% { opacity: 0; left: 18%; top: 28%; }
+  18%, 38% { opacity: 1; left: 48%; top: 62%; }
+  48%, 100% { opacity: 0; left: 48%; top: 62%; }
+}
+@keyframes aimBox {
+  0%, 38% { border-color: transparent; box-shadow: none; }
+  48%, 72% { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(42,156,196,.28); }
+  82%, 100% { border-color: transparent; box-shadow: none; }
+}
+@keyframes aimFn {
+  0%, 52% { opacity: 0; transform: scale(.9); }
+  62%, 78% { opacity: 1; transform: scale(1); }
+  88%, 100% { opacity: 0; }
+}
+
+.ime-custom-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line);
+  font-size: 10.5px; color: var(--mute);
+}
+.keycap-sm {
+  display: inline-grid; place-items: center; min-width: 44px; height: 32px;
+  padding: 0 8px; border-radius: 7px; font-family: var(--mono); font-size: 12px; font-weight: 800;
+  background: linear-gradient(180deg, #fff, #eef2f6); border: 1px solid #cbd5e1;
+  box-shadow: 0 2px 0 #cbd5e1;
+}
+
+.pre-advanced {
+  margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+}
+.pre-advanced summary {
+  padding: 8px 10px; font-size: 11px; font-weight: 750; color: var(--mute);
+  cursor: pointer; background: #fafbfc; list-style: none;
+}
+.pre-advanced summary::-webkit-details-marker { display: none; }
+.pre-advanced-bd { padding: 10px 11px; border-top: 1px solid var(--line); }
+.pre-warn {
+  font-size: 10.5px; line-height: 1.4; color: #b45309;
+  background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px;
+  padding: 8px 9px; margin-bottom: 8px;
+}
+.pre-warn strong { color: #92400e; }
+.record-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px; border-radius: 8px; background: var(--wash); border: 1px solid var(--line);
+}
+.record-row .lbl { flex: 1; min-width: 120px; font-size: 10.5px; color: var(--mute); line-height: 1.35; }
+
+/* —— 三演示并排 —— */
+.demo-trio {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0;
+}
+.demo-thumb {
+  border: 1px solid var(--line); border-radius: 9px; overflow: hidden; cursor: pointer;
+  background: #fff; text-align: center; transition: border-color .15s, box-shadow .15s;
+}
+.demo-thumb.on { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(42,156,196,.15); }
+.demo-thumb .mini {
+  position: relative; height: 64px;
+  background: linear-gradient(145deg, #e8eef4, #dbe4ee);
+}
+.demo-thumb .lbl {
+  padding: 5px 4px; font-size: 9px; font-weight: 800; color: var(--mute); line-height: 1.25;
+}
+.demo-thumb.on .lbl { color: var(--primary-strong); }
+.mini-win {
+  position: absolute; left: 8%; top: 12%; width: 55%; height: 45%;
+  border-radius: 4px; background: #fff; border: 1px solid #cbd5e1;
+}
+.mini-box {
+  position: absolute; left: 12%; right: 12%; bottom: 14%; height: 14px;
+  border-radius: 4px; border: 1.5px solid transparent;
+}
+.mini-box.on { border-color: #22c55e; background: rgba(255,255,255,.9); }
+.mini-box.rec-on { animation: miniRect 3s ease infinite; }
+@keyframes miniRect {
+  0%, 18% { border-color: transparent; }
+  22%, 38% { border-color: #eab308; box-shadow: 0 0 0 1px rgba(234,179,8,.35); }
+  42%, 100% { border-color: transparent; }
+}
+.mini-dot {
+  position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--primary);
+  opacity: 0; box-shadow: 0 0 0 2px rgba(42,156,196,.35);
+}
+#thumbAim .mini-dot-a { animation: miniDotA 3s ease infinite; }
+#thumbAim .mini-dot-b { animation: miniDotB 3s ease infinite; }
+@keyframes miniDotA {
+  0%, 20% { opacity: 0; left: 22%; top: 28%; }
+  24%, 36% { opacity: 1; transform: scale(1.2); }
+  40%, 100% { opacity: 0; transform: scale(1); }
+}
+@keyframes miniDotB {
+  0%, 38% { opacity: 0; left: 50%; top: 68%; }
+  42%, 54% { opacity: 1; transform: scale(1.2); }
+  58%, 100% { opacity: 0; transform: scale(1); }
+}
+.mini-key {
+  position: absolute; top: 8%; right: 8%; font-family: var(--mono); font-size: 7px; font-weight: 800;
+  padding: 2px 4px; border-radius: 3px; background: #fff; border: 1px solid var(--line);
+  opacity: 0;
+}
+.mini-key.flash { animation: miniKey 2.4s ease infinite; }
+@keyframes miniKey {
+  0%, 56% { opacity: 0; } 62%, 78% { opacity: 1; } 84%, 100% { opacity: 0; }
+}
+#thumbShortcut .mini-key:first-of-type { animation: miniKeyFirst 2.4s ease infinite; }
+@keyframes miniKeyFirst {
+  0%, 15% { opacity: 0; } 25%, 40% { opacity: 1; } 55%, 100% { opacity: 0; }
+}
+
+.inline-config {
+  display: none; margin-top: 8px; padding: 10px; border-radius: 9px;
+  background: var(--wash); border: 1px solid var(--line);
+}
+.inline-config.is-on { display: block; animation: fadeIn .2s ease; }
+.two-pos {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.pos-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px; border-radius: 8px; background: #fff; border: 1px solid var(--line);
+}
+.pos-row .step-n {
+  flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--wash); border: 1px solid var(--line);
+  font-size: 10px; font-weight: 800; display: grid; place-items: center; color: var(--mute);
+}
+.pos-row.done .step-n { background: #dcfce7; border-color: #86efac; color: var(--ok); }
+.pos-row .pos-meta { flex: 1; min-width: 120px; }
+.pos-row .pos-meta b { display: block; font-size: 11px; }
+.pos-row .pos-meta small { font-size: 10px; color: var(--faint); }
+.pos-row .pos-st { font-size: 10px; font-weight: 750; color: var(--faint); }
+.pos-row.done .pos-st { color: var(--ok); }
+
+/* Sheet 弹窗 */
+.sheet-backdrop {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(15,23,42,.35); align-items: center; justify-content: center; padding: 20px;
+}
+.sheet-backdrop.is-on { display: flex; }
+.sheet {
+  width: min(360px, 100%); max-height: 90vh; overflow: auto;
+  background: #fff; border-radius: 14px; box-shadow: 0 24px 48px rgba(15,23,42,.2);
+  border: 1px solid var(--line);
+}
+.sheet-hd {
+  padding: 12px 14px; border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sheet-hd h4 { margin: 0; font-size: 14px; font-weight: 800; }
+.sheet-bd { padding: 14px; }
+.sheet-ft {
+  padding: 10px 14px; border-top: 1px solid var(--line);
+  display: flex; justify-content: flex-end; gap: 8px;
+}
+
+.decision {
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 12px;
+}
+.decision h3 { margin: 0 0 8px; font-size: 15px; }
+.decision table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.decision th, .decision td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.decision th { width: 22%; color: var(--faint); font-weight: 700; }
+
+/* —— 帮我点进聊天框 —— */
+.aim-card-p { margin: 0 0 10px; font-size: 11px; color: var(--mute); line-height: 1.45; }
+.aim-setup {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 9px 10px; border-radius: 8px; background: var(--wash); border: 1px solid var(--line);
+}
+.aim-setup .st { flex: 1; min-width: 120px; font-size: 11px; color: var(--ink); }
+.aim-setup .st small { display: block; margin-top: 2px; font-size: 10px; color: var(--faint); }
+.aim-setup.done { background: #f0fdf4; border-color: #bbf7d0; }
+
+.demo-block { margin-top: 10px; }
+.demo-tabs {
+  display: flex; gap: 4px; margin-bottom: 8px;
+}
+.demo-tab {
+  flex: 1; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px;
+  background: #fff; font: 750 11px var(--font); color: var(--mute); cursor: pointer;
+  text-align: center;
+}
+.demo-tab.on { border-color: var(--primary); color: var(--primary-strong); background: var(--primary-soft); }
+.aim-demo {
+  border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: #fff;
+}
+.aim-demo-hd {
+  padding: 7px 9px; font-size: 10px; font-weight: 750; color: #0369a1;
+  background: #f0f9ff; border-bottom: 1px solid #bae6fd;
+}
+.aim-stage {
+  position: relative; height: 100px;
+  background: linear-gradient(145deg, #eef2f6, #e2e8f0);
+}
+.aim-stage.overlay-mode { background: rgba(15,23,42,.55); }
+.aim-stage .win {
+  position: absolute; left: 10%; top: 10%; width: 62%; height: 58%;
+  border-radius: 5px; background: #fff; border: 1px solid #cbd5e1;
+}
+.aim-stage .composer {
+  position: absolute; left: 14%; right: 18%; bottom: 18%; height: 16px;
+  border-radius: 4px; border: 1.5px solid #cbd5e1; background: rgba(255,255,255,.9);
+}
+.aim-stage .composer.lit { border-color: var(--primary); }
+.aim-stage .sel-rect {
+  position: absolute; left: 12%; right: 22%; bottom: 14%; height: 22px;
+  border: 2px solid #eab308; border-radius: 4px; background: rgba(234,179,8,.12);
+  opacity: 0;
+}
+.aim-stage .dot {
+  position: absolute; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--primary); opacity: 0;
+  box-shadow: 0 0 0 3px rgba(42,156,196,.25);
+}
+.aim-stage .key-pill {
+  position: absolute; top: 8%; right: 8%; font-size: 9px; font-weight: 800;
+  padding: 2px 6px; border-radius: 4px; background: #fff; border: 1px solid var(--line);
+  opacity: 0;
+}
+.aim-stage .step-badge {
+  position: absolute; top: 8%; left: 50%; transform: translateX(-50%);
+  font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 999px;
+  background: #fef08a; color: #854d0e; opacity: 0;
+}
+.aim-demo-ft {
+  padding: 8px 9px; font-size: 10.5px; color: var(--mute); line-height: 1.4;
+  border-top: 1px solid var(--line);
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <strong>听写方式 · v4.3</strong>
+  <em>高级折叠 · 新手零压力 · 演示分录制/效果</em>
+</header>
+
+<main class="page">
+  <section class="brief">
+    <h1>听写方式 v4.3：高级选项默认折叠</h1>
+    <p>「帮我点进聊天框」收在<strong>高级折叠</strong>里 — 新手只看到 IME + 说完后；需要的人展开再设。默认折叠一行摘要，不设 = 直接开麦。</p>
+    <ul>
+      <li><strong>信息顺序</strong>：IME → 说完后（主路径）→ 高级折叠 → 取消听写折叠</li>
+      <li><strong>折叠摘要</strong>：未设 →「你自己点进框就行」· 已设 → App 名 + 状态</li>
+      <li><strong>展开后</strong>：设置入口 + 演示（录制 / 效果）</li>
+    </ul>
+  </section>
+
+  <div class="compare">
+    <article class="panel">
+      <div class="panel-hd">
+        <h2>当前 · 三模式 + 取消全展开</h2>
+        <span class="tag bad">决策多</span>
+      </div>
+      <div class="config-col">
+        <div class="sec-label">说完后</div>
+        <div class="old-finish">
+          <div class="old-row">
+            <div class="old-card on">
+              <div class="t">● 结束后自动发送</div>
+              <div class="d">开麦后等待，再自动按发送键。</div>
+            </div>
+            <div class="old-card strike">
+              <div class="t">○ 再按一次结束</div>
+              <div class="d">再按一次启动键结束并发送。</div>
+            </div>
+          </div>
+          <div class="old-card">
+            <div class="t">○ 只结束不发送</div>
+            <div class="d">只打开听写，发送键自己按。</div>
+          </div>
+          <div style="margin-top:8px;font-size:10px;color:var(--faint)">等待多久 · 1s 2s 3s · 5.0 · 发送键录制…</div>
+        </div>
+        <div class="sec-label">取消听写</div>
+        <div class="old-cancel">
+          <div class="row"><div class="row-h"><div><b>启动键</b><small>开麦后短时再按 → Esc</small></div><div class="toggle-fake on"></div></div></div>
+          <div class="row"><div class="row-h"><div><b>取消词</b><small>说取消词 → Esc</small></div><div class="toggle-fake"></div></div></div>
+          <div class="row"><div class="row-h"><div><b>摄像头</b><small>张掌 → Esc</small></div><div class="toggle-fake on"></div></div></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-hd">
+        <h2>v4.3 推荐 · 高级折叠 + 双演示</h2>
+        <span class="tag rec">推荐</span>
+      </div>
+      <div class="config-col" id="v2Root">
+        <h3>听写方式</h3>
+        <p class="sub">与按键、语音同一套 IME 方案。</p>
+
+        <div class="sec-label">输入法 · 开麦键</div>
+        <div class="ime-block">
+          <div class="keycap">fn</div>
+          <div class="ime-tiles">
+            <div class="ime-tile on">Typeless</div>
+            <div class="ime-tile">讯飞</div>
+            <div class="ime-tile">闪电说</div>
+            <div class="ime-tile">自定义</div>
+          </div>
+          <div class="ime-hint">已用 Typeless 默认听写键：fn</div>
+          <div class="ime-custom-row">
+            <span>听写键不是 fn？</span>
+            <button type="button" class="btn-sm primary" id="recordImeBtn">录制自定义听写键</button>
+          </div>
+        </div>
+
+        <div class="sec-label">说完后</div>
+        <div class="mode-grid" id="finishModes">
+          <button type="button" class="mode-card on" data-mode="manual">
+            <div class="t"><span class="radio-dot"><i></i></span>手动发送</div>
+            <div class="d">只结束听写，发送键自己按。</div>
+          </button>
+          <button type="button" class="mode-card" data-mode="auto">
+            <div class="t"><span class="radio-dot"><i></i></span>自动发送</div>
+            <div class="d">开麦后等待，再按发送键发出。</div>
+          </button>
+        </div>
+
+        <div class="sub-panel" id="autoPanel">
+          <div class="sub-row">
+            <label>等待多久</label>
+            <div class="slider-row">
+              <div class="chips" id="delayChips">
+                <button type="button" class="chip" data-sec="1">1s</button>
+                <button type="button" class="chip" data-sec="2">2s</button>
+                <button type="button" class="chip on" data-sec="3">3s</button>
+                <button type="button" class="chip" data-sec="custom">自定义</button>
+              </div>
+            </div>
+            <div class="slider-row" style="margin-top:8px">
+              <input type="range" id="delaySlider" min="0.5" max="15" step="0.5" value="3" />
+              <output id="delayOut">3.0s</output>
+            </div>
+          </div>
+          <div class="sub-row">
+            <label>发送键方案</label>
+            <div class="send-scheme" id="sendScheme">
+              <button type="button" class="send-opt on" data-send="enter"><kbd>↵</kbd><span>Enter</span></button>
+              <button type="button" class="send-opt" data-send="cmdenter"><kbd>⌘↵</kbd><span>换行发送</span></button>
+              <button type="button" class="send-opt" data-send="custom"><kbd>⋯</kbd><span>自定义</span></button>
+            </div>
+            <div class="send-custom" id="sendCustom">
+              <input type="text" value="⌥S" readonly />
+              <button type="button" class="btn-sm">录制</button>
+              <button type="button" class="btn-sm">重置</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="fold" id="aimFold">
+          <button type="button" class="fold-hd" id="aimFoldToggle" aria-expanded="false">
+            <span class="chev">›</span>
+            <b>帮我点进聊天框</b>
+            <span class="tag-adv">高级</span>
+            <span class="sum" id="aimFoldSummary">未设置 · 你自己点进框就行</span>
+          </button>
+          <div class="fold-bd">
+            <p class="aim-card-p">适合总忘记先点进聊天框的人。设好以后，按听写键会先帮你点进去，再开麦。</p>
+            <div class="aim-setup" id="aimSetup">
+              <div class="st" id="aimStatus">
+                <span id="aimStatusMain">还没告诉 OneTone 框在哪</span>
+                <small id="aimStatusSub">点右边开始 — 全屏里框一下，再点一下确认</small>
+              </div>
+              <button type="button" class="btn-sm primary" id="setupAimBtn">设置聊天框位置</button>
+            </div>
+            <div class="demo-block">
+              <div class="demo-tabs" role="tablist">
+                <button type="button" class="demo-tab on" data-demo="record" role="tab">录制操作</button>
+                <button type="button" class="demo-tab" data-demo="effect" role="tab">效果展示</button>
+              </div>
+              <div class="aim-demo">
+                <div class="aim-demo-hd" id="aimDemoHd">录制操作 · 全屏里连续两步</div>
+                <div class="aim-stage overlay-mode" id="aimStage">
+                  <div class="win"></div>
+                  <div class="composer" id="aimComposer"></div>
+                  <div class="sel-rect" id="aimRect"></div>
+                  <div class="dot" id="aimDot"></div>
+                  <span class="key-pill" id="aimKeyPill">开麦</span>
+                  <span class="step-badge" id="aimStepBadge">第 1 步 · 拖出矩形框</span>
+                </div>
+                <div class="aim-demo-ft" id="aimFoot">
+                  在目标 App 上按住拖动，框住聊天输入框；松手后在框内点一下 — 两步都在这一层里完成。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fold" id="cancelFold" style="margin-top:8px">
+          <button type="button" class="fold-hd" id="cancelToggle" aria-expanded="false">
+            <span class="chev">›</span>
+            <b>取消听写</b>
+            <span class="sum" id="cancelSummary">启动键 · 摄像头 → Esc · 取消词关</span>
+          </button>
+          <div class="fold-bd">
+            <div class="fold-item">
+              <div class="meta">
+                <b>启动键</b>
+                <small>开麦后 1.2s 内再按启动键 → Esc</small>
+                <div class="chips" style="margin-top:6px">
+                  <button type="button" class="chip">0.5s</button>
+                  <button type="button" class="chip on">1.2s</button>
+                  <button type="button" class="chip">2s</button>
+                </div>
+              </div>
+              <div class="toggle-fake on" role="presentation"></div>
+            </div>
+            <div class="fold-item">
+              <div class="meta">
+                <b>取消词</b>
+                <small>说「取消」→ Esc（引擎待接入）</small>
+              </div>
+              <div class="toggle-fake" role="presentation"></div>
+            </div>
+            <div class="fold-item">
+              <div class="meta">
+                <b>摄像头</b>
+                <small>张掌手势 → Esc</small>
+              </div>
+              <div class="toggle-fake on" role="presentation"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <section class="flow">
+    <h3 id="flowTitle">手动发送 · 默认时序</h3>
+    <div class="flow-steps" id="flowSteps">
+      <span class="step">① 按听写键</span>
+      <span class="arrow">→</span>
+      <span class="step accent">② 点进框 → 开麦</span>
+      <span class="arrow">→</span>
+      <span class="step">用户说话</span>
+      <span class="arrow">→</span>
+      <span class="step">手动按发送键</span>
+      <span class="arrow">→</span>
+      <span class="step">会话结束</span>
+    </div>
+  </section>
+
+  <aside class="spec">
+    <h3>Swift 映射（落地备忘）</h3>
+    <table>
+      <thead><tr><th>UI</th><th>模型</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td>自动发送</td><td><code>SayDoneMode.delayedEnter</code></td><td>保留</td></tr>
+        <tr><td>手动发送</td><td><code>SayDoneMode.none</code></td><td><strong>默认</strong> · 排左 · 新用户默认 none</td></tr>
+        <tr><td>再按一次</td><td><code>.pressAgain</code></td><td><strong>UI 移除</strong>；存量用户迁移 → delayedEnter 或 none</td></tr>
+        <tr><td>等待多久</td><td><code>sayDoneDelayMs</code></td><td>仅 auto 模式显示；chip + slider</td></tr>
+        <tr><td>发送键方案</td><td><code>sayDoneShortcut</code></td><td>Enter / ⌘↵ 预设 + 录制</td></tr>
+        <tr><td>帮我点进聊天框</td><td>折叠 · 默认关</td><td><code>DisclosureGroup</code> · 摘要一行 · 标「高级」</td></tr>
+        <tr><td>设置入口</td><td>一个按钮</td><td><code>InputAimCalibrate</code> 连续两步 · UI 不拆两行</td></tr>
+        <tr><td>演示</td><td>双 tab</td><td>录制操作 · 效果展示 · 两套 <code>VoiceAimDemoView</code> 变体</td></tr>
+        <tr><td>probe</td><td><code>.probe</code></td><td>仅口头指令页</td></tr>
+        <tr><td>自定义听写键</td><td>IME 区「录制」</td><td>本页可录</td></tr>
+        <tr><td>取消听写</td><td>折叠 <code>DisclosureGroup</code></td><td>摘要：<code>cancelRetrigger</code> + 取消词 + 摄像头</td></tr>
+      </tbody>
+    </table>
+  </aside>
+</main>
+
+<script>
+(() => {
+  const state = {
+    mode: 'manual', delay: 3, send: 'enter',
+    aimConfigured: false, aimFoldOpen: false, demoMode: 'record', cancelOpen: false
+  };
+
+  const DEMO_COPY = {
+    record: {
+      hd: '录制操作 · 全屏里连续两步',
+      foot: '在目标 App 上按住拖动，框住聊天输入框；松手后在框内点一下 — 两步都在这一层里完成，不用回到列表再点第二次。'
+    },
+    effect: {
+      hd: '效果展示 · 设好后按听写键',
+      foot: '按听写键 → 帮你点进已保存的位置 → 开麦听写。'
+    }
+  };
+
+  const finishModes = document.getElementById('finishModes');
+  const autoPanel = document.getElementById('autoPanel');
+  const flowTitle = document.getElementById('flowTitle');
+  const flowSteps = document.getElementById('flowSteps');
+  const cancelFold = document.getElementById('cancelFold');
+  const cancelToggle = document.getElementById('cancelToggle');
+  const recordImeBtn = document.getElementById('recordImeBtn');
+  const delaySlider = document.getElementById('delaySlider');
+  const delayOut = document.getElementById('delayOut');
+  const delayChips = document.getElementById('delayChips');
+  const sendScheme = document.getElementById('sendScheme');
+  const sendCustom = document.getElementById('sendCustom');
+
+  const aimFold = document.getElementById('aimFold');
+  const aimFoldToggle = document.getElementById('aimFoldToggle');
+  const aimFoldSummary = document.getElementById('aimFoldSummary');
+  const aimSetup = document.getElementById('aimSetup');
+  const aimStatusMain = document.getElementById('aimStatusMain');
+  const aimStatusSub = document.getElementById('aimStatusSub');
+  const setupAimBtn = document.getElementById('setupAimBtn');
+  const aimDemoHd = document.getElementById('aimDemoHd');
+  const aimFoot = document.getElementById('aimFoot');
+  const aimStage = document.getElementById('aimStage');
+  const aimComposer = document.getElementById('aimComposer');
+  const aimRect = document.getElementById('aimRect');
+  const aimDot = document.getElementById('aimDot');
+  const aimKeyPill = document.getElementById('aimKeyPill');
+  const aimStepBadge = document.getElementById('aimStepBadge');
+  const demoTabs = document.querySelector('.demo-tabs');
+
+  const sendLabels = { enter: '↵ Enter', cmdenter: '⌘↵', custom: '⌥S' };
+  let demoTimer = null;
+
+  function aimMidStep() {
+    if (!state.aimConfigured) return '';
+    return '<span class="arrow">→</span><span class="step accent">点进聊天框</span>';
+  }
+
+  function updateAimUI() {
+    aimSetup.classList.toggle('done', state.aimConfigured);
+    if (state.aimConfigured) {
+      aimStatusMain.textContent = 'Slack · 聊天框已设好';
+      aimStatusSub.textContent = '按听写键会先点这里，再开麦';
+      setupAimBtn.textContent = '重新设置';
+      aimFoldSummary.textContent = 'Slack 已设好 · 会先点进框再开麦';
+    } else {
+      aimStatusMain.textContent = '还没告诉 OneTone 框在哪';
+      aimStatusSub.textContent = '点右边开始 — 全屏里框一下，再点一下确认';
+      setupAimBtn.textContent = '设置聊天框位置';
+      aimFoldSummary.textContent = '未设置 · 你自己点进框就行';
+    }
+    aimFold.classList.toggle('is-open', state.aimFoldOpen);
+    aimFoldToggle.setAttribute('aria-expanded', state.aimFoldOpen);
+    const copy = DEMO_COPY[state.demoMode];
+    aimDemoHd.textContent = copy.hd;
+    aimFoot.textContent = copy.foot;
+    aimStage.classList.toggle('overlay-mode', state.demoMode === 'record');
+    demoTabs.querySelectorAll('.demo-tab').forEach(t =>
+      t.classList.toggle('on', t.dataset.demo === state.demoMode));
+    if (state.aimFoldOpen) startDemoAnim();
+    else stopDemoAnim();
+    renderFlow();
+  }
+
+  function startDemoAnim() {
+    stopDemoAnim();
+    let t = 0;
+    demoTimer = setInterval(() => {
+      t = (t + 1) % 50;
+      if (state.demoMode === 'record') {
+        const step1 = t < 22;
+        aimStepBadge.style.opacity = '1';
+        aimStepBadge.textContent = step1 ? '第 1 步 · 拖出矩形框' : '第 2 步 · 在框内点一下';
+        aimRect.style.opacity = step1 ? '1' : '1';
+        aimRect.style.transform = step1 ? `scale(${0.6 + t * 0.02})` : 'scale(1)';
+        aimDot.style.opacity = !step1 && t >= 26 && t < 38 ? '1' : '0';
+        aimDot.style.left = '50%';
+        aimDot.style.top = '72%';
+        aimKeyPill.style.opacity = '0';
+        aimComposer.classList.remove('lit');
+      } else {
+        aimStepBadge.style.opacity = '0';
+        aimRect.style.opacity = '0';
+        aimDot.style.opacity = t >= 16 && t < 28 ? '1' : '0';
+        aimDot.style.left = '50%';
+        aimDot.style.top = '72%';
+        aimComposer.classList.toggle('lit', t >= 30);
+        if (t >= 4 && t < 14) {
+          aimKeyPill.textContent = '听写键';
+          aimKeyPill.style.opacity = '1';
+        } else if (t >= 30 && t < 44) {
+          aimKeyPill.textContent = '开麦';
+          aimKeyPill.style.opacity = '1';
+        } else {
+          aimKeyPill.style.opacity = '0';
+        }
+      }
+    }, 90);
+  }
+
+  function stopDemoAnim() {
+    if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
+    aimComposer.classList.remove('lit');
+    aimRect.style.opacity = '0';
+    aimDot.style.opacity = '0';
+    aimKeyPill.style.opacity = '0';
+    aimStepBadge.style.opacity = '0';
+  }
+
+  function renderFlow() {
+    const pre = aimMidStep();
+    if (state.mode !== 'auto') {
+      flowTitle.textContent = state.aimConfigured
+        ? '完整时序 · 手动发送 + 帮你点进框'
+        : '完整时序 · 手动发送（未设框位）';
+      flowSteps.innerHTML = `
+        <span class="step">① 按听写键</span>${pre}<span class="arrow">→</span>
+        <span class="step accent">② 开麦</span><span class="arrow">→</span>
+        <span class="step">说话</span><span class="arrow">→</span>
+        <span class="step">手动发送</span><span class="arrow">→</span>
+        <span class="step">结束</span>`;
+      return;
+    }
+    flowTitle.textContent = '完整时序 · 自动发送';
+    flowSteps.innerHTML = `
+      <span class="step">① 按听写键</span>${pre}<span class="arrow">→</span>
+      <span class="step accent">② 开麦</span><span class="arrow">→</span>
+      <span class="step">用户说话</span><span class="arrow">→</span>
+      <span class="step accent">等待 ${state.delay.toFixed(1)}s</span><span class="arrow">→</span>
+      <span class="step accent">注入 ${sendLabels[state.send]}</span><span class="arrow">→</span>
+      <span class="step">结束</span>`;
+  }
+
+  aimFoldToggle.addEventListener('click', () => {
+    state.aimFoldOpen = !state.aimFoldOpen;
+    updateAimUI();
+  });
+
+  setupAimBtn.addEventListener('click', () => {
+    setupAimBtn.textContent = '设置中…';
+    setTimeout(() => {
+      state.aimConfigured = true;
+      updateAimUI();
+    }, 1200);
+  });
+
+  demoTabs.addEventListener('click', (e) => {
+    const tab = e.target.closest('[data-demo]');
+    if (!tab) return;
+    state.demoMode = tab.dataset.demo;
+    updateAimUI();
+  });
+
+  finishModes.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-mode]');
+    if (!btn) return;
+    state.mode = btn.dataset.mode;
+    finishModes.querySelectorAll('.mode-card').forEach(c => c.classList.toggle('on', c === btn));
+    autoPanel.classList.toggle('is-on', state.mode === 'auto');
+    renderFlow();
+  });
+
+  delayChips.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-sec]');
+    if (!chip) return;
+    delayChips.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === chip));
+    if (chip.dataset.sec === 'custom') return;
+    state.delay = +chip.dataset.sec;
+    delaySlider.value = state.delay;
+    delayOut.textContent = state.delay.toFixed(1) + 's';
+    renderFlow();
+  });
+
+  delaySlider.addEventListener('input', () => {
+    state.delay = +delaySlider.value;
+    delayOut.textContent = state.delay.toFixed(1) + 's';
+    delayChips.querySelectorAll('.chip').forEach(c => {
+      c.classList.toggle('on', c.dataset.sec !== 'custom' && +c.dataset.sec === state.delay);
+    });
+    renderFlow();
+  });
+
+  sendScheme.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-send]');
+    if (!btn) return;
+    state.send = btn.dataset.send;
+    sendScheme.querySelectorAll('.send-opt').forEach(o => o.classList.toggle('on', o === btn));
+    sendCustom.classList.toggle('is-on', state.send === 'custom');
+    renderFlow();
+  });
+
+  cancelToggle.addEventListener('click', () => {
+    state.cancelOpen = !state.cancelOpen;
+    cancelFold.classList.toggle('is-open', state.cancelOpen);
+    cancelToggle.setAttribute('aria-expanded', state.cancelOpen);
+  });
+
+  recordImeBtn.addEventListener('click', () => {
+    recordImeBtn.textContent = '按下听写键…';
+    setTimeout(() => {
+      recordImeBtn.textContent = '已录制 F5';
+      document.querySelector('.keycap').textContent = 'F5';
+    }, 800);
+  });
+
+  updateAimUI();
+})();
+</script>
+</body>
+</html>

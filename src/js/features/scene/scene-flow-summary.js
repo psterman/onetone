@@ -88,7 +88,8 @@
     if(!m) return 'manual';
     var gesture=resolveStartGesture(m);
     if(gesture==='hold') return 'perpress';
-    if(m.cancelEnabled||m.autoEnterEnabled) return 'confirm';
+    // Send decision only — cancel channels are independent (folded advanced).
+    if(m.autoEnterEnabled) return 'confirm';
     return 'manual';
   }
   function applyFinishMode(m,mode){
@@ -103,12 +104,14 @@
     if(gesture==='hold') m.triggerMode='tap';
     else if(gesture==='double') m.triggerMode='double';
     else m.triggerMode='tap';
-    if(mode==='confirm'){ m.cancelEnabled=true; m.autoEnterEnabled=true; return; }
-    if(mode==='manual'){ m.cancelEnabled=false; m.autoEnterEnabled=false; }
+    // Send decision only — do not flip cancelEnabled (advanced fold owns that).
+    if(mode==='confirm'){ m.autoEnterEnabled=true; return; }
+    if(mode==='manual'){ m.autoEnterEnabled=false; }
   }
   function finishModesForGesture(gesture){
     if(gesture==='hold') return ['perpress'];
-    return ['confirm','manual'];
+    // Manual left (default story) · auto right — matches 听写方式 v4 发送决策.
+    return ['manual','confirm'];
   }
   function setKeyCell(el,text,isSet){
     if(!el) return;

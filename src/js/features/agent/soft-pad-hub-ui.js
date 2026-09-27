@@ -41,7 +41,7 @@
   // softPadView removed — use softPadPanelId() / getView() for legacy panel ids.
   var softPadFace = 'pad'; // pad | agent | timeline (agent face retired — use padMode lights|mini)
   var softPadPadMode = 'keys'; // keys | show | skin (+ legacy aliases normalized on entry)
-  /** Left rail recognize channel — softPad shows mid workbench; others show Keys deeplink bridge. */
+  /** Left rail recognize channel — only drives 改按钮 bind list; show/skin stay Soft Pad chrome. */
   var softPadRailChannel = 'softPad';
   var lastSoftPadPadMode = 'keys';
   var VALID_SOFT_PAD_FACES = { pad: 1, agent: 1, timeline: 1 };
@@ -1429,7 +1429,6 @@
     if (pill) pill.textContent = softPadChannelLabel(ch);
     var isPad = ch === 'softPad';
     var detailIdle = document.getElementById('softPadDetailIdle');
-    var detailPanel = document.getElementById('softPadDetailPanel');
     var bridge = document.getElementById('softPadChannelBridge');
     var workTag = document.getElementById('softPadWorkTag');
     // Top pad tabs owned by syncPadTabs. Work-tag stayed dead chrome.
@@ -1437,7 +1436,7 @@
       workTag.hidden = true;
       workTag.setAttribute('aria-hidden', 'true');
     }
-    if (detailPanel) detailPanel.hidden = false;
+    // detailPanel owned by syncSoftPadNeedAgentChrome / detail chrome (keys → fn-swap).
     if (detailIdle && !isPad) detailIdle.hidden = true;
     // Jump-only bridge retired: channels render conventional content in mid.
     if (bridge) bridge.setAttribute('hidden', '');
@@ -1450,10 +1449,17 @@
     var paintHost = document.getElementById('softPadSubpageBody');
     var Pad = global.OneToneCodexMicroPadUi;
     if (!paintHost || !Pad) return;
+    // 何时显示 / 皮肤 = Soft Pad 浮窗设定，与左轨识别通道无关；切通道时不要冲掉。
+    if (isSoftPadLookMode()) {
+      try { paintSubpage(entry, { forceRemount: true }); } catch (_) {}
+      syncSoftPadNeedAgentChrome(entry);
+      return;
+    }
     if (ch === 'softPad') {
       try {
         paintSubpage(entry, { forceRemount: true });
       } catch (_) {}
+      syncSoftPadNeedAgentChrome(entry);
       return;
     }
     if (typeof Pad.renderSoftPadChannelWorkbench === 'function') {
@@ -1468,6 +1474,7 @@
           focusKeyId: keepKey
         });
       } catch (_) {}
+      syncSoftPadNeedAgentChrome(entry);
     }
   }
 
@@ -2816,7 +2823,11 @@
     // Always write shell attrs. Island sync can lag (React paint-target not ready) or
     // re-apply a stale hub model and leave idle tip covering an empty detail.
     if (e.detailPanel) e.detailPanel.hidden = !open;
-    if (e.detailIdle) e.detailIdle.hidden = open;
+    if (e.detailIdle) {
+      // Keys workbench: idle tip is dead chrome — fn-swap owns the right column.
+      var keysWb = softPadFace === 'pad' && normalizeSoftPadPadMode(softPadPadMode) === 'keys';
+      e.detailIdle.hidden = open || keysWb;
+    }
     if (e.subHost) {
       e.subHost.classList.toggle('is-open', open);
       // Do NOT removeAttribute('hidden') here — keys mode keeps mid-ability off the right track;
@@ -3130,6 +3141,15 @@
     var e = els();
     var ready = softPadAgentReady(entry);
     var need = !ready;
+    // Agent ready must kill the need-agent CTA — otherwise pad +「先加载」stack.
+    if (ready && (emptySurfaceMode === 'empty' || emptySurfaceMode === 'prepare')) {
+      emptySurfaceMode = 'none';
+      emptyPrepareCtx = null;
+      applySoftPadEmptyIdleHost(buildSoftPadEmptyIdleModel());
+    } else if (ready && e.empty && !e.empty.hidden) {
+      e.empty.hidden = true;
+      e.empty.setAttribute('hidden', '');
+    }
     var keysWb = softPadKeysWorkbenchOpen(entry);
     var panelWb = ready && softPadFace === 'pad' && !keysWb;
     if (e.pageBody) {
@@ -3171,10 +3191,13 @@
     if (e.detailPanel) {
       e.detailPanel.hidden = !panelWb;
     }
+    var detailIdle = document.getElementById('softPadDetailIdle');
+    if (detailIdle) detailIdle.hidden = true;
+    // Float dock chrome is keys-only empty shell — keep hidden; catalog paints into fn-swap.
     var floatDock = document.getElementById('softPadFloatDock');
     if (floatDock) {
-      floatDock.hidden = !keysWb;
-      floatDock.setAttribute('aria-hidden', keysWb ? 'false' : 'true');
+      floatDock.hidden = true;
+      floatDock.setAttribute('aria-hidden', 'true');
     }
     if (keysWb) ensureSoftPadFloatDock(entry);
     syncPadTabs();
@@ -3692,7 +3715,9 @@
     // prepares that app's mapping, then openSubpage continues into the requested view.
     // Rendering a native disabled button here made that existing prepare path unreachable.
     var canOpen = has || !!(entry && entry.canPrepare && isHubSoftPadKind(entry.kind));
-    var detailOpen = softPadFace === 'pad' && has;
+    // Keys content lives in #softPadFnSwapHost — opening detailPanel leaves an empty bordered card.
+    var detailOpen = softPadFace === 'pad' && has &&
+      normalizeSoftPadPadMode(softPadPadMode) !== 'keys';
     var landingView = defaultDetailView();
     var landingHint = t('softPadLandingHint', '建议从「{panel}」开始')
       .replace('{panel}', subpageTitle(landingView));
@@ -3900,7 +3925,8 @@
     syncSoftPadPadRing(entry);
     syncPadTabs();
 
-    var detailOpen = face === 'pad' && hasMapping(entry);
+    var detailOpen = face === 'pad' && hasMapping(entry) &&
+      normalizeSoftPadPadMode(softPadPadMode) !== 'keys';
     setDetailOpen(detailOpen);
     if (global.__otSoftPadPreviewMounted && typeof global.__otSoftPadPreviewSync === 'function') {
       global.__otSoftPadPreviewSync();
@@ -4578,8 +4604,9 @@
     }
     if (!stillValid()) return;
 
-    // Page rail on a Keys channel → mid shows that channel's conventional picker (not Soft Pad flat bind / bridge).
-    if (softPadRailChannel && softPadRailChannel !== 'softPad') {
+    // Non-softPad rail only drives 改按钮 bind list. 何时显示 / 皮肤 still paint normally.
+    if (softPadRailChannel && softPadRailChannel !== 'softPad' &&
+        normalizeSoftPadPadMode(softPadPadMode) === 'keys') {
       var channelHost = softPadSubpagePaintEl(body) || body;
       if (typeof Pad.renderSoftPadChannelWorkbench === 'function' && channelHost) {
         try {

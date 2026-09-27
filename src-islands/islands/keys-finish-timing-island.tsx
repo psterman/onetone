@@ -38,8 +38,16 @@ function emit(): void {
 function applyHostHidden(model: KeysFinishTimingModel): void {
   const delay = document.getElementById('keysFinishDelayHost');
   const cancel = document.getElementById('keysFinishCancelHost');
-  if (delay) delay.hidden = !!model.delayHidden;
-  if (cancel) cancel.hidden = !!model.cancelHidden;
+  if (delay) {
+    delay.hidden = !!model.delayHidden;
+    if (model.delayHidden) delay.setAttribute('hidden', '');
+    else delay.removeAttribute('hidden');
+  }
+  if (cancel) {
+    cancel.hidden = !!model.cancelHidden;
+    if (model.cancelHidden) cancel.setAttribute('hidden', '');
+    else cancel.removeAttribute('hidden');
+  }
 }
 
 function pullModel(): KeysFinishTimingModel {

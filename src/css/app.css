@@ -2976,10 +2976,9 @@
     #settingsPanelKeys .keys-finish-more-advanced{
       margin-top:2px;
       padding:0;
-      border:none;
-      background:transparent;
     }
-    #settingsPanelKeys .keys-finish-more-advanced > summary{
+    /* Cancel fold uses .keys-finish-adv-fold summary — do not hide it. */
+    #settingsPanelKeys .keys-finish-more-advanced:not(.keys-finish-adv-fold) > summary{
       display:none;
     }
     #settingsPanelKeys .keys-finish-more-advanced > summary::-webkit-details-marker{display:none}

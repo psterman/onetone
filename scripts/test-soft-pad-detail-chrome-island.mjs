@@ -94,8 +94,8 @@ check('buildSoftPadDetailChromeModel 已导出', typeof API.buildSoftPadDetailCh
 check('closeSubpage 已导出', typeof API.closeSubpage === 'function');
 
 let model = API.buildSoftPadDetailChromeModel();
-check('pad/appear 时 detailOpen=true', model.detailOpen === true);
-check('appear 时 backHidden=true', model.backHidden === true);
+check('keys 默认 detailOpen=false（内容在 fn-swap）', model.detailOpen === false);
+check('keys 时 backHidden=true', model.backHidden === true);
 check('顶栏标题已退役为空', model.title === '');
 check('sig 非空', typeof model.sig === 'string' && model.sig.length > 0);
 check('backLabel 非空', typeof model.backLabel === 'string' && model.backLabel.length > 0);
@@ -105,6 +105,8 @@ check('agent deep-link keeps detail open (merged lights)', model.detailOpen === 
 check('agent deep-link → getSoftPadFace compat agent', API.getSoftPadFace() === 'agent');
 check('agent deep-link → lights padMode', API.getView() === 'agent');
 API.setSoftPadFace('pad', { padMode: 'appear' });
+model = API.buildSoftPadDetailChromeModel();
+check('pad/appear(show) 时 detailOpen=true', model.detailOpen === true);
 
 console.log('[soft-pad-detail-chrome] 源码护栏:');
 const softPadJs = src;

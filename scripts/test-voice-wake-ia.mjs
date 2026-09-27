@@ -19,7 +19,24 @@ assert.ok(html.includes('voice-wake-pool-card') || html.includes('voice-phrase-h
 assert.ok(html.includes('id="btnVoiceWakePoolAdd"') || html.includes('id="btnVoiceWakePhraseCap"'), 'has wake phrase edit entry');
 assert.ok(html.includes('id="voicePhraseHero"') || html.includes('voice-phrase-cap') || html.includes('btnVoiceWakePhraseCap'), 'proto phrase-cap');
 assert.ok(html.includes('id="voiceFinishCausal"'), 'finish causal');
-assert.ok(html.includes('id="voiceFinishDetailKeep"'), 'finish keep detail');
+assert.ok(html.includes('id="voiceFinishDetailKeep"') || html.includes('voice-finish-card--c'), 'finish keep detail or C card');
+assert.ok(html.includes('voice-finish-default-seg') || html.includes('id="voiceOutputModeSegments"'), 'finish default segments');
+assert.ok(html.includes('id="voiceFinishHabit"') && html.includes('id="voiceFinishHabitPrimaryMount"'), 'finish habit primary mount');
+assert.ok(html.includes('data-habit-block="send"') && html.includes('data-habit-add="send"'), 'habit send block + add');
+assert.ok(/id="voiceFinishHabitPrimaryMount"[\s\S]*data-habit-block="keep"/.test(html), 'keep block defaults in primary mount');
+assert.ok(/id="voiceFinishCard"[\s\S]*id="voiceSendParamsAside"/.test(html), 'send params live inside finish card');
+assert.ok(/id="voiceFinishCard"[\s\S]*id="voiceSendLiteNotice"/.test(html), 'lite notice inside finish card');
+assert.ok((html.match(/id="voiceOutputAutoGuard"/g)||[]).length===1, 'single auto guard id');
+assert.ok((html.match(/id="voiceSendLiteNotice"/g)||[]).length===1, 'single lite notice id');
+assert.ok(/id="voiceFinishHabit"[\s\S]*id="voiceSendParamsAside"[\s\S]*id="voiceFinishKeysBridge"/.test(html), 'habit → params → keys bridge order');
+assert.ok(!html.includes('改更多说法与发送方式'), 'stale more-details summary removed');
+assert.ok(html.includes('录音期间系统音') || html.includes('voiceFinishMoreDetailsSummary'), 'recording-audio summary');
+assert.ok(html.includes('id="voiceFinishHabitLangToggle"'), 'habit lang toggle');
+assert.ok(html.includes('id="voiceFinishHabitAdv"') && html.includes('id="voiceEndAcousticHost"'), 'habit acoustic advanced');
+assert.ok(/id="voiceFinishHabit"[\s\S]*id="voiceEndAcousticHost"/.test(html), 'end acoustic host inside habit');
+assert.ok(/id="voiceFinishHabit"[\s\S]*id="voiceCancelAcousticHost"/.test(html), 'cancel acoustic host inside habit');
+assert.ok(html.includes('id="voiceFinishOutcomes"'), 'finish habit links/outcomes');
+assert.ok(!html.includes('id="voiceFinishMoreLinks"'), 'old more-links removed');
 assert.ok(!html.includes('btnVoiceSandboxOpen'), 'no btnVoiceSandboxOpen');
 
 /* Face strip + wrong-fg + 4 faces (no openApp) */
@@ -86,7 +103,28 @@ assert.ok(/focus:'target'|focus,\"target\"|'target'/.test(bindings), 'landing CT
 assert.ok(/voice_wake_refused_wrong_fg/.test(bindings), 'listens for wrong-fg refuse toast');
 assert.ok(/btnVoiceDockTryMic/.test(bindings), 'binds dock try mic');
 assert.ok(/setFinishOutcome|voiceFinishOutcomes/.test(bindings), 'binds finish outcomes');
+assert.ok(/syncVoiceFinishHabitLayout/.test(bindings), 'syncs habit layout from sendMode');
+assert.ok(/voiceFinishHabitAddSend/.test(bindings), 'binds habit add send');
+assert.ok(/openFinishEdit[\s\S]*voiceFinishHabitAddKeep|scrollIntoView/.test(bindings), 'finish edit focuses inline habit');
+assert.ok(!/function syncFinishHabitChrome/.test(bindings), 'dead syncFinishHabitChrome removed');
+assert.ok(/voiceFinishHabitLangToggle/.test(bindings), 'binds habit lang toggle');
+assert.ok(/voiceFinishHabitAdv/.test(bindings), 'binds habit acoustic advanced');
+assert.ok(/paintFinishHabitPlaceholders/.test(bindings), 'habit placeholders follow lang');
+assert.ok(/__otMountVoiceAcousticIslands/.test(bindings), 'habit adv remounts acoustic islands');
+assert.ok(/paintFinishModeUi/.test(bindings), 'optimistic finish mode paint on click');
+assert.ok(/__vp_setFinishOutcome__\(prefer,\s*nextMode\)/.test(bindings.replace(/\s+/g,'')), 'paint passes explicit sendMode');
+assert.ok(/typeof V\.build==='function'|V\.build\(false\)/.test(bindings), 'currentSendModeKey uses ViewModel.build');
+assert.ok(/mode==='confirm'\|\|!needsVosk[\s\S]*__vp_voice_pending_send_mode__=null/.test(bindings.replace(/\s+/g,'')), 'confirm clears pending send mode');
+assert.ok(/primary:'keep'[\s\S]*others:\['send','discard'\]/.test(bindings.replace(/\s+/g,'')), 'confirm → keep primary');
+assert.ok(/primary:'send'[\s\S]*others:\['keep','discard'\]/.test(bindings.replace(/\s+/g,'')), 'phrase/auto → send primary');
 assert.ok(!/btnVoiceWakeSideKeys/.test(bindings), 'no side-link binds');
+
+const endJs = read('src/js/features/voice/voice-end.js');
+assert.ok(/Optimistic local patch|snap\.end=Object\.assign/.test(endJs.replace(/\s+/g,'')), 'setOutputMode patches local snap before IPC');
+
+const vmJs = read('src/js/features/voice/voice-settings-view-model.js');
+assert.ok(/__vp_voice_pending_send_mode__/.test(vmJs), 'output mode key honors pending during engine switch');
+assert.ok(/pending==='phrase'\|\|pending==='auto'/.test(vmJs) && /vm\.mode==='sapi'/.test(vmJs), 'pending only while sapi/off');
 assert.ok(!/btnVoiceOpenAppTryAgent/.test(bindings), 'no openApp try-agent bind');
 
 const drawer = read('src/js/features/settings/settings-drawer.js');
@@ -95,6 +133,7 @@ assert.ok(/softpad/.test(drawer) || /keys/.test(drawer), 'drawer accepts bridge 
 
 const css = read('src/css/voice-page-shell.css');
 assert.ok(/\.voice-face-tabs/.test(css), 'face tabs css');
+assert.ok(/\.voice-finish-habit/.test(css), 'finish habit css');
 assert.ok(/\.voice-landing/.test(css), 'landing css');
 assert.ok(/\.voice-dock-try-mic/.test(css), 'dock try mic css');
 assert.ok(/\.voice-bridge-face\[hidden\]/.test(css), 'bridge face hidden beats display:grid');
@@ -113,6 +152,7 @@ const intentRail = read('src/js/features/voice/voice-intent-rail.js');
 assert.ok(/mountBridge/.test(intentRail)&&/is-in-picker/.test(intentRail), 'intent rail mounts bridges into picker');
 assert.ok(/mounted\.hidden\s*=\s*false/.test(intentRail), 'setIntent re-asserts bridge face visible');
 
+const keysBridge = read('src/js/features/voice/voice-bridge-keys.js');
 assert.ok(/listMode|setMode|customKey/.test(keysBridge), 'keys bridge separates 我录的键 from catalog');
 assert.ok(/setMode\(id==='key'\?'customKey':'catalog'\)|setMode\(id==="key"\?"customKey":"catalog"\)/.test(intentRail.replace(/\s+/g,'')), 'intent rail maps 我录的键 to customKey mode');
 
@@ -123,11 +163,15 @@ assert.ok(html.includes('id="voiceCamLinked"'), 'camera linked pane');
 assert.ok(html.includes('id="voiceKeysCapEffect"'), 'keys effect line');
 assert.ok(html.includes('id="voiceKeysKeyLine"'), 'keys keyline');
 
-const keysBridge = read('src/js/features/voice/voice-bridge-keys.js');
 assert.ok(/isSoftPadVoice|semantic:softPad/.test(keysBridge), 'keys bridge excludes SoftPad voice');
 assert.ok(/semantic:camera:/.test(keysBridge), 'keys bridge excludes camera voice');
 assert.ok(/resolveScopeMapping/.test(keysBridge), 'keys bridge uses scope mapping');
 assert.ok(/triggerType==='key'|triggerType==="key"/.test(keysBridge), 'keys bridge reads key chords');
+
+const sendRender = read('src/js/features/voice/voice-step-send-render.js');
+assert.ok(/showDelay=delayActive|delayRow\.hidden=!showDelay/.test(sendRender.replace(/\s+/g,'')), 'delay row follows phrase/auto');
+assert.ok(/sendPane\.hidden\s*=\s*true/.test(sendRender), 'legacy sendPane stays buried');
+assert.ok(/sendPanel\.hidden\s*=\s*true/.test(sendRender), 'legacy send phrase panel stays buried');
 
 const softBridge = read('src/js/features/voice/voice-bridge-softpad.js');
 assert.ok(/resolveScopeMapping/.test(softBridge), 'softpad bridge uses scope mapping');

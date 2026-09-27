@@ -207,6 +207,25 @@ assert.ok(html.includes('当前应用') || html.includes('softPadPreviewColLbl')
 }
 assert.ok(hub.includes('softPadKeysWorkbenchOpen'), 'keys workbench gate');
 assert.ok(hub.includes('softPadFloatDock'), 'float dock hidden outside keys');
+assert.ok(
+  /function syncSoftPadNeedAgentChrome[\s\S]*emptySurfaceMode = 'none'/.test(hub),
+  'need-agent chrome clears empty CTA when agent ready'
+);
+assert.ok(
+  css.includes(':not(.is-need-agent) .soft-pad-empty') &&
+    css.includes('.soft-pad-empty[hidden]'),
+  'CSS hides empty CTA when agent ready'
+);
+assert.ok(
+  /softPadRailChannel !== 'softPad' &&\s*\n\s*normalizeSoftPadPadMode\(softPadPadMode\) === 'keys'/.test(hub) ||
+  hub.includes("normalizeSoftPadPadMode(softPadPadMode) === 'keys'"),
+  'non-softPad rail channel paint only on keys mode'
+);
+assert.ok(hub.includes('isSoftPadLookMode()'), 'look mode skips channel wipe');
+assert.ok(
+  css.includes('#softPadPadTabs[data-pad-mode="keys"] ~ .soft-pad-detail-panel'),
+  'orphan detail card hide scoped to keys tabs'
+);
 assert.ok(css.includes('.soft-pad-mid-ability .soft-pad-style-panel'), 'mid-ability hosts style/more panels');
 assert.ok(css.includes('.soft-pad-style-panel .soft-pad-numpad-mode'), 'style panel reuses numpad card styles');
 

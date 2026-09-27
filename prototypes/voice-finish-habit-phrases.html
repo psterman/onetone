@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>语音习惯 · 跟默认联动改口令</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;750;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink: #13202c;
+  --mute: #5a6c80;
+  --faint: #8494a6;
+  --line: #d7dee8;
+  --paper: #fff;
+  --wash: #eef2f6;
+  --bg: #e4ebf1;
+  --primary: #2a9cc4;
+  --primary-strong: #0f5f7a;
+  --primary-soft: color-mix(in srgb, #2a9cc4 12%, #fff);
+  --primary-bd: color-mix(in srgb, #2a9cc4 38%, transparent);
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+  --font: "Figtree", "Noto Sans SC", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background:
+    radial-gradient(900px 420px at 10% -8%, #d8eef5 0%, transparent 55%),
+    radial-gradient(700px 360px at 92% 0%, #e8eef4 0%, transparent 50%),
+    var(--bg);
+  padding: 24px 16px 64px;
+}
+.page { max-width: 1100px; margin: 0 auto; }
+.hero { display: grid; gap: 8px; margin-bottom: 18px; }
+.brand {
+  font-size: 12px; font-weight: 750; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--primary-strong);
+}
+h1 {
+  margin: 0; font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+  font-weight: 800; letter-spacing: -0.02em;
+}
+.lede { margin: 0; max-width: 68ch; color: var(--mute); font-size: 14px; line-height: 1.55; }
+.tabs {
+  display: inline-flex; gap: 4px; padding: 4px; margin-top: 4px;
+  background: color-mix(in srgb, var(--paper) 85%, transparent);
+  border: 1px solid var(--line); border-radius: 12px;
+}
+.tab {
+  border: 0; background: transparent; color: var(--mute);
+  font: inherit; font-size: 13px; font-weight: 700;
+  padding: 8px 14px; border-radius: 9px; cursor: pointer;
+}
+.tab.is-on { background: var(--ink); color: #fff; }
+
+.grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;
+}
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+body.solo-new .panel-old { display: none; }
+body.solo-new .grid { grid-template-columns: minmax(0, 440px); justify-content: center; }
+
+.panel {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 14px 36px color-mix(in srgb, #13202c 6%, transparent);
+  overflow: hidden;
+}
+.panel-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 12px 14px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #f7fafc, #fff);
+}
+.panel-head h2 { margin: 0; font-size: 13px; font-weight: 800; }
+.badge {
+  font-size: 10px; font-weight: 750; padding: 3px 7px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--mute);
+}
+.badge.warn { border-color: #f0c27a; background: #fff7e8; color: #8a5a00; }
+.badge.ok { border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary-strong); }
+.desk { padding: 14px; display: grid; gap: 12px; }
+.verdict {
+  margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.5;
+  border-top: 1px solid var(--line); background: #fafbfc; color: var(--mute);
+}
+.verdict strong { color: var(--ink); }
+
+.step {
+  display: flex; align-items: center; gap: 8px; margin: 0;
+  font-size: 13px; font-weight: 800;
+}
+.step .n {
+  width: 20px; height: 20px; border-radius: 999px; display: grid; place-items: center;
+  font-size: 11px; color: #fff; background: var(--primary);
+}
+.lbl { margin: 0; font-size: 11px; font-weight: 750; color: var(--mute); }
+
+.keys-like { display: flex; gap: 4px; }
+.ks {
+  flex: 1; border: 1.5px solid var(--line); border-radius: 10px;
+  padding: 10px 6px; background: #fff; cursor: pointer; font: inherit;
+  text-align: center; font-size: 12px; font-weight: 750; color: var(--mute);
+  display: grid; justify-items: center; gap: 3px;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+.ks span { display: block; font-size: 10px; font-weight: 600; color: var(--faint); }
+.ks.is-on {
+  border-color: var(--primary); background: var(--primary-soft); color: var(--ink);
+}
+.ks.is-on span { color: var(--primary-strong); }
+.ks .ico {
+  width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--wash); color: var(--mute);
+}
+.ks .ico svg { width: 13px; height: 13px; }
+.ks.is-on .ico { background: color-mix(in srgb, var(--primary) 18%, #fff); color: var(--primary-strong); }
+
+.story {
+  margin: 0; padding: 9px 11px; border-radius: 10px;
+  background: var(--primary-soft); border: 1px solid var(--primary-bd);
+  font-size: 12px; font-weight: 650; line-height: 1.4;
+}
+.story em { font-style: normal; color: var(--primary-strong); }
+
+/* OLD pile */
+.pile {
+  display: grid; gap: 8px;
+}
+.pile-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 10px;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fbfcfd;
+}
+.pile-row.is-on {
+  border-color: var(--primary-bd); background: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.pile-row .t { font-size: 13px; font-weight: 800; color: var(--primary-strong); }
+.pile-row.danger .t { color: var(--danger); }
+.pile-row .d { grid-column: 1 / -1; margin: 0; font-size: 11px; color: var(--mute); }
+.pile-row .edit {
+  border: 0; background: none; color: var(--primary); font: inherit;
+  font-size: 12px; font-weight: 650; cursor: pointer;
+}
+.more {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  font-size: 12px; color: var(--mute);
+}
+.more button {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 700;
+  color: var(--primary-strong); cursor: pointer;
+}
+.callout {
+  border: 1px dashed #e0b35a; background: #fffaf0; color: #6b4a10;
+  border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.5;
+}
+
+/* NEW linked habit */
+.habit-primary {
+  border: 1.5px solid var(--primary-bd);
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px 14px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 10%, transparent);
+  animation: in 240ms ease;
+}
+@keyframes in {
+  from { opacity: 0.4; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.habit-primary .head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+}
+.habit-primary .kind {
+  font-size: 13px; font-weight: 800;
+}
+.habit-primary .kind-why {
+  font-size: 11px; font-weight: 650; color: var(--primary-strong);
+  background: var(--primary-soft); border-radius: 999px; padding: 3px 8px;
+}
+.habit-primary .why {
+  margin: 0; font-size: 12px; color: var(--mute); line-height: 1.4;
+}
+.tags {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+}
+.tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 8px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--wash); font-size: 12px; font-weight: 650;
+}
+.tag button {
+  border: 0; background: none; color: var(--faint); cursor: pointer;
+  font-size: 14px; line-height: 1; padding: 0 1px;
+}
+.tag button:hover { color: var(--danger); }
+.add-row { display: flex; gap: 6px; }
+.add-row input {
+  flex: 1; border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 10px; font: inherit; font-size: 13px;
+}
+.add-row input:focus {
+  outline: none; border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+.add-row button {
+  border: 1px solid var(--primary-bd); background: var(--primary-soft);
+  color: var(--primary-strong); border-radius: 8px; padding: 8px 12px;
+  font: inherit; font-size: 12px; font-weight: 750; cursor: pointer;
+  white-space: nowrap;
+}
+.hint { margin: 0; font-size: 11px; color: var(--faint); line-height: 1.4; }
+
+.others {
+  border: 1px solid var(--line); border-radius: 12px; background: #fbfcfd; overflow: hidden;
+}
+.others > summary {
+  list-style: none; cursor: pointer; padding: 10px 12px;
+  font-size: 12px; font-weight: 750; color: var(--mute);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.others > summary::-webkit-details-marker { display: none; }
+.others > summary .chev::before { content: "展开"; color: var(--primary-strong); font-weight: 700; }
+.others[open] > summary .chev::before { content: "收起"; }
+.others-body { padding: 0 12px 12px; display: grid; gap: 10px; border-top: 1px solid var(--line); }
+.other-block { display: grid; gap: 6px; padding-top: 10px; }
+.other-block .ot {
+  font-size: 12px; font-weight: 800; display: flex; justify-content: space-between; gap: 8px;
+}
+.other-block.danger .ot { color: var(--danger); }
+.other-block .od { margin: 0; font-size: 11px; color: var(--faint); }
+
+.bridge { margin: 0; font-size: 11px; color: var(--mute); }
+.bridge a { color: var(--primary-strong); font-weight: 700; text-decoration: none; }
+
+.matrix {
+  margin-top: 18px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--paper); overflow: auto;
+}
+.matrix table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.matrix th, .matrix td {
+  padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top;
+}
+.matrix th { background: #f7fafc; font-weight: 800; }
+.matrix tr:last-child td { border-bottom: 0; }
+.matrix .pick { color: #0f766e; font-weight: 750; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="brand">OneTone · Voice habit phrases</div>
+      <h1>语音习惯：跟「停顿后默认」联动改词</h1>
+      <p class="lede">
+        左栏是现在产品上的堆法（三卡 +「还能说」重复）。右栏定案：
+        <strong>只展开与当前默认相关的那组口令</strong>，标签就地增删；其余口令收进「其他口令」。
+      </p>
+      <div class="tabs">
+        <button type="button" class="tab is-on" data-view="compare">对照</button>
+        <button type="button" class="tab" data-view="solo">只看新方案</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- OLD -->
+      <section class="panel panel-old">
+        <div class="panel-head">
+          <h2>现状 · 口令堆在一起</h2>
+          <span class="badge warn">难加多个</span>
+        </div>
+        <div class="desk">
+          <p class="lbl">停顿后默认（示意已选「说了才发」）</p>
+          <div class="keys-like">
+            <button type="button" class="ks">留下<span>自查</span></button>
+            <button type="button" class="ks is-on">说了才发<span>要喊词</span></button>
+            <button type="button" class="ks">停顿就发<span>自动</span></button>
+          </div>
+          <p class="story">停顿后字留下 · 说 <em>「发送」</em> 才发出去。</p>
+          <p class="lbl">语音习惯 · 点开改口令</p>
+          <div class="pile">
+            <div class="pile-row is-on">
+              <span class="t">「发送」</span>
+              <button type="button" class="edit">改口令</button>
+              <p class="d">听写停下后，说出关键词才发送</p>
+            </div>
+            <div class="pile-row">
+              <span class="t">「结束输入」</span>
+              <button type="button" class="edit">改口令</button>
+              <p class="d">字留下，不发送</p>
+            </div>
+            <div class="pile-row danger">
+              <span class="t">「取消输入」</span>
+              <button type="button" class="edit">改口令</button>
+              <p class="d">取消听写，恢复开启前状态</p>
+            </div>
+          </div>
+          <div class="more">还能说：
+            <button type="button">结束输入</button>
+            <button type="button">取消输入</button>
+          </div>
+          <div class="callout">
+            <strong>问题：</strong>三卡永远平铺，看不出哪组和「说了才发」有关；
+            「改口令」进弹层，一次难管多个词；「还能说」又重复列了结束/取消。
+          </div>
+        </div>
+        <p class="verdict"><strong>心智：</strong>像又选了一套结果，而不是在改当前默认对应的词。</p>
+      </section>
+
+      <!-- NEW -->
+      <section class="panel panel-new">
+        <div class="panel-head">
+          <h2>定案 · 主口令跟默认联动</h2>
+          <span class="badge ok">可点切换默认</span>
+        </div>
+        <div class="desk" id="newRoot">
+          <p class="step"><span class="n">2</span>说完后</p>
+          <p class="lbl">停顿后默认</p>
+          <div class="keys-like" id="seg">
+            <button type="button" class="ks" data-mode="confirm">
+              <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+              留下<span>自查 · 按回车</span>
+            </button>
+            <button type="button" class="ks is-on" data-mode="phrase">
+              <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>
+              说了才发<span>要喊发送词</span>
+            </button>
+            <button type="button" class="ks" data-mode="auto">
+              <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+              停顿就发<span>全自动</span>
+            </button>
+          </div>
+          <p class="story" id="story">停顿后字留下 · 说 <em>「发送」</em> 才发出去。</p>
+
+          <p class="lbl">语音习惯 · 先改当前相关</p>
+          <div class="habit-primary" id="primary">
+            <div class="head">
+              <span class="kind" id="primaryKind">发送词</span>
+              <span class="kind-why" id="primaryWhy">配合「说了才发」</span>
+            </div>
+            <p class="why" id="primaryWhyLine">说出下面任一词 = 立刻把字发出去。可加多个说法。</p>
+            <div class="tags" id="primaryTags"></div>
+            <div class="add-row">
+              <input type="text" id="primaryInput" maxlength="48" placeholder="例如：发吧" />
+              <button type="button" id="primaryAdd">+ 添加</button>
+            </div>
+            <p class="hint" id="primaryHint">标签可点 × 删除。这些词始终监听；与停顿默认无关时也会生效。</p>
+          </div>
+
+          <details class="others" id="others">
+            <summary>
+              <span id="othersSummary">其他口令 · 结束 / 取消（可选）</span>
+              <span class="chev"></span>
+            </summary>
+            <div class="others-body" id="othersBody"></div>
+          </details>
+
+          <p class="bridge">键怎么收尾 → <a href="#" onclick="return false">按键设置 · 听写方式</a></p>
+        </div>
+        <p class="verdict"><strong>规则：</strong>留下→主改结束词；说了才发 / 停顿就发→主改发送词；取消永远在「其他」。</p>
+      </section>
+    </div>
+
+    <div class="matrix">
+      <table>
+        <thead>
+          <tr>
+            <th>停顿后默认</th>
+            <th>主口令区改什么</th>
+            <th>其他口令里还有</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>留下自查</td>
+            <td class="pick">结束词（停下、字留下）</td>
+            <td>发送词（可选嘴发）、取消词</td>
+          </tr>
+          <tr>
+            <td>说了才发</td>
+            <td class="pick">发送词（必须能喊）</td>
+            <td>结束词、取消词</td>
+          </tr>
+          <tr>
+            <td>停顿就发</td>
+            <td class="pick">发送词（马上发，不用等停顿）</td>
+            <td>结束词（打断自动发）、取消词</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var phrases = {
+    send: ['发送', '发出去', '提交'],
+    keep: ['结束输入', '就这样'],
+    discard: ['取消输入', '不要了']
+  };
+
+  var meta = {
+    confirm: {
+      story: '停顿后：字留下 · 你自己按回车才发。',
+      primary: 'keep',
+      kind: '结束词',
+      why: '配合「留下自查」',
+      whyLine: '说出下面任一词 = 停下听写，字留在框里。可加多个说法。',
+      hint: '当前默认不靠嘴发送；若要喊着发，可在下方「其他口令」里加发送词。',
+      othersTitle: '其他口令 · 发送 / 取消（可选）',
+      others: ['send', 'discard']
+    },
+    phrase: {
+      story: '停顿后字留下 · 说 <em>「发送」</em> 才发出去。',
+      primary: 'send',
+      kind: '发送词',
+      why: '配合「说了才发」',
+      whyLine: '说出下面任一词 = 立刻把字发出去。可加多个说法。',
+      hint: '至少保留一个发送词。结束 / 取消在下方，不挡主路径。',
+      othersTitle: '其他口令 · 结束 / 取消（可选）',
+      others: ['keep', 'discard']
+    },
+    auto: {
+      story: '停顿后：等一小会 · <em>自动发送</em>。想马上发也可说发送词。',
+      primary: 'send',
+      kind: '发送词 · 马上发',
+      why: '配合「停顿就发」',
+      whyLine: '说出下面任一词 = 不用等停顿，马上发出去。',
+      hint: '自动发送仍会监听这些词。想打断自动发，用「其他」里的结束词。',
+      othersTitle: '其他口令 · 结束（打断）/ 取消',
+      others: ['keep', 'discard']
+    }
+  };
+
+  var kindLabel = {
+    send: { title: '发送词', desc: '说出 = 把字发出去', danger: false },
+    keep: { title: '结束词', desc: '说出 = 停下，字留下', danger: false },
+    discard: { title: '取消词', desc: '说出 = 丢掉本轮', danger: true }
+  };
+
+  var mode = 'phrase';
+
+  function paintTags(host, kind, removable) {
+    host.innerHTML = '';
+    (phrases[kind] || []).forEach(function (p, idx) {
+      var span = document.createElement('span');
+      span.className = 'tag';
+      span.appendChild(document.createTextNode(p + ' '));
+      if (removable) {
+        var x = document.createElement('button');
+        x.type = 'button';
+        x.setAttribute('aria-label', '删除');
+        x.textContent = '×';
+        x.addEventListener('click', function () {
+          phrases[kind].splice(idx, 1);
+          sync();
+        });
+        span.appendChild(x);
+      }
+      host.appendChild(span);
+    });
+  }
+
+  function paintOthers(cfg) {
+    var body = document.getElementById('othersBody');
+    body.innerHTML = '';
+    cfg.others.forEach(function (kind) {
+      var block = document.createElement('div');
+      block.className = 'other-block' + (kindLabel[kind].danger ? ' danger' : '');
+      block.innerHTML =
+        '<div class="ot"><span>' + kindLabel[kind].title + '</span></div>' +
+        '<p class="od">' + kindLabel[kind].desc + '</p>';
+      var tags = document.createElement('div');
+      tags.className = 'tags';
+      paintTags(tags, kind, true);
+      block.appendChild(tags);
+      var row = document.createElement('div');
+      row.className = 'add-row';
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.maxLength = 48;
+      input.placeholder = kind === 'discard' ? '例如：算了' : kind === 'keep' ? '例如：好了' : '例如：发吧';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = '+ 添加';
+      btn.addEventListener('click', function () {
+        var v = String(input.value || '').trim();
+        if (!v) return;
+        if (phrases[kind].indexOf(v) < 0) phrases[kind].push(v);
+        input.value = '';
+        sync();
+      });
+      row.appendChild(input);
+      row.appendChild(btn);
+      block.appendChild(row);
+      body.appendChild(block);
+    });
+  }
+
+  function sync() {
+    var cfg = meta[mode];
+    document.getElementById('story').innerHTML = cfg.story;
+    document.getElementById('primaryKind').textContent = cfg.kind;
+    document.getElementById('primaryWhy').textContent = cfg.why;
+    document.getElementById('primaryWhyLine').textContent = cfg.whyLine;
+    document.getElementById('primaryHint').textContent = cfg.hint;
+    document.getElementById('othersSummary').textContent = cfg.othersTitle;
+    paintTags(document.getElementById('primaryTags'), cfg.primary, true);
+    paintOthers(cfg);
+    document.getElementById('primaryInput').placeholder =
+      cfg.primary === 'keep' ? '例如：好了' : cfg.primary === 'discard' ? '例如：算了' : '例如：发吧';
+
+    // restart primary enter animation
+    var box = document.getElementById('primary');
+    box.style.animation = 'none';
+    void box.offsetWidth;
+    box.style.animation = '';
+  }
+
+  document.getElementById('seg').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-mode]');
+    if (!btn) return;
+    mode = btn.getAttribute('data-mode');
+    document.querySelectorAll('#seg .ks').forEach(function (el) {
+      el.classList.toggle('is-on', el === btn);
+    });
+    document.getElementById('others').open = false;
+    sync();
+  });
+
+  document.getElementById('primaryAdd').addEventListener('click', function () {
+    var input = document.getElementById('primaryInput');
+    var v = String(input.value || '').trim();
+    if (!v) return;
+    var kind = meta[mode].primary;
+    if (phrases[kind].indexOf(v) < 0) phrases[kind].push(v);
+    input.value = '';
+    sync();
+  });
+  document.getElementById('primaryInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('primaryAdd').click();
+    }
+  });
+
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (t) {
+        t.classList.toggle('is-on', t === tab);
+      });
+      document.body.classList.toggle('solo-new', tab.getAttribute('data-view') === 'solo');
+    });
+  });
+
+  sync();
+})();
+</script>
+</body>
+</html>

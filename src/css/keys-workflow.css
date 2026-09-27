@@ -1311,20 +1311,553 @@
 #settingsPanelKeys .keys-finish-more-advanced {
   margin: 0;
   padding: 0;
-  border: none;
-  background: transparent;
 }
 
-#settingsPanelKeys .keys-finish-more-advanced > summary {
+#settingsPanelKeys .keys-finish-adv-fold,
+.keys-capture-popover .keys-finish-adv-fold {
+  margin-top: 8px;
+  border: 1px solid var(--keys-line, #d5dee8) !important;
+  border-radius: 10px;
+  background: var(--keys-paper, #fff) !important;
+  overflow: hidden;
+}
+#settingsPanelKeys .keys-finish-adv-fold[hidden],
+.keys-capture-popover .keys-finish-adv-fold[hidden] {
+  display: none !important;
+}
+#settingsPanelKeys .keys-finish-adv-summary,
+.keys-capture-popover .keys-finish-adv-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 11px;
   cursor: pointer;
   list-style: none;
-  font-size: var(--type-caption);
-  font-weight: 700;
-  color: var(--on-surface-muted);
+  font: inherit;
+  text-align: left;
+  color: inherit;
+}
+#settingsPanelKeys .keys-finish-adv-summary::-webkit-details-marker,
+.keys-capture-popover .keys-finish-adv-summary::-webkit-details-marker {
+  display: none;
+}
+#settingsPanelKeys .keys-finish-adv-summary:hover,
+.keys-capture-popover .keys-finish-adv-summary:hover {
+  background: rgba(15, 23, 42, 0.02);
+}
+#settingsPanelKeys .keys-finish-adv-chev,
+.keys-capture-popover .keys-finish-adv-chev {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--keys-wash, #f3f7fa);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: var(--on-surface-muted, #8494a6);
+  transition: transform 0.2s;
+}
+#settingsPanelKeys .keys-finish-adv-fold[open] > .keys-finish-adv-summary .keys-finish-adv-chev,
+.keys-capture-popover .keys-finish-adv-fold[open] > .keys-finish-adv-summary .keys-finish-adv-chev {
+  transform: rotate(90deg);
+}
+#settingsPanelKeys .keys-finish-adv-title,
+.keys-capture-popover .keys-finish-adv-title {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--on-surface, #13202c);
+}
+#settingsPanelKeys .keys-finish-adv-sum,
+.keys-capture-popover .keys-finish-adv-sum {
+  flex: 1;
+  min-width: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--on-surface-muted, #5a6c80);
+  line-height: 1.35;
+}
+#settingsPanelKeys .keys-finish-adv-fold .keys-finish-cancel-host,
+.keys-capture-popover .keys-finish-adv-fold .keys-finish-cancel-host {
+  padding: 0 11px 11px;
+}
+#settingsPanelKeys .keys-finish-adv-fold .keys-cancel-head,
+.keys-capture-popover .keys-finish-adv-fold .keys-cancel-head {
+  display: none;
 }
 
-#settingsPanelKeys .keys-finish-more-advanced > summary::-webkit-details-marker {
-  display: none;
+/* 开麦前对准 · 对齐口头指令「写入方式」条 */
+#settingsPanelKeys .keys-aim-block[hidden],
+.keys-capture-popover .keys-aim-block[hidden] {
+  display: none !important;
+}
+#settingsPanelKeys .keys-aim-block,
+.keys-capture-popover .keys-aim-block {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#settingsPanelKeys .keys-aim-writebar,
+.keys-capture-popover .keys-aim-writebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--keys-line, #d5dee8);
+  background: var(--keys-paper, #fff);
+}
+#settingsPanelKeys .keys-aim-writebar__lbl,
+.keys-capture-popover .keys-aim-writebar__lbl {
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--on-surface-muted, #5a6c80);
+  flex-shrink: 0;
+}
+#settingsPanelKeys .keys-aim-writebar__select,
+.keys-capture-popover .keys-aim-writebar__select {
+  appearance: none;
+  border: 1px solid var(--keys-line, #d5dee8);
+  border-radius: 8px;
+  background-color: var(--keys-wash, #f3f7fa);
+  padding: 5px 28px 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--on-surface, #13202c);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238494a6' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+#settingsPanelKeys .keys-aim-writebar[data-aim="auto"] .keys-aim-writebar__select,
+.keys-capture-popover .keys-aim-writebar[data-aim="auto"] .keys-aim-writebar__select {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 45%, #d5dee8);
+  background-color: var(--primary-soft, #e8f6ff);
+  color: var(--primary-strong, #0f5f7a);
+}
+#settingsPanelKeys .keys-aim-writebar__meta,
+.keys-capture-popover .keys-aim-writebar__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  min-width: 0;
+}
+#settingsPanelKeys .keys-aim-writebar__sum,
+.keys-capture-popover .keys-aim-writebar__sum {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--on-surface-muted, #8494a6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 14em;
+}
+#settingsPanelKeys .keys-aim-demo-toggle,
+.keys-capture-popover .keys-aim-demo-toggle {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--primary, #0f5f7a);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  flex-shrink: 0;
+}
+#settingsPanelKeys .keys-aim-demo-toggle[aria-expanded="true"],
+.keys-capture-popover .keys-aim-demo-toggle[aria-expanded="true"] {
+  font-weight: 750;
+}
+#settingsPanelKeys .keys-aim-explain[hidden],
+.keys-capture-popover .keys-aim-explain[hidden],
+#settingsPanelKeys .keys-aim-cal[hidden],
+.keys-capture-popover .keys-aim-cal[hidden],
+#settingsPanelKeys .keys-aim-explain__pane[hidden],
+.keys-capture-popover .keys-aim-explain__pane[hidden] {
+  display: none !important;
+}
+#settingsPanelKeys .keys-aim-explain,
+.keys-capture-popover .keys-aim-explain {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--primary, #2a9cc4) 30%, #d5dee8);
+  background: color-mix(in srgb, var(--primary-soft, #e8f6ff) 55%, #fff);
+  animation: keysAimExplainIn 0.22s ease;
+}
+@keyframes keysAimExplainIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #settingsPanelKeys .keys-aim-explain,
+  .keys-capture-popover .keys-aim-explain { animation: none; }
+}
+#settingsPanelKeys .keys-aim-explain__stage,
+.keys-capture-popover .keys-aim-explain__stage {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 1.1fr);
+  gap: 12px 16px;
+  align-items: center;
+}
+@media (max-width: 720px) {
+  #settingsPanelKeys .keys-aim-explain__stage,
+  .keys-capture-popover .keys-aim-explain__stage { grid-template-columns: 1fr; }
+}
+#settingsPanelKeys .keys-aim-demo,
+.keys-capture-popover .keys-aim-demo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  max-height: 160px;
+  border-radius: 8px;
+  border: 1px solid #b8c6d4;
+  overflow: hidden;
+  background: linear-gradient(165deg, #e8eef5 0%, #d5dee8 100%);
+}
+#settingsPanelKeys .keys-aim-demo__win,
+.keys-capture-popover .keys-aim-demo__win {
+  position: absolute;
+  inset: 10% 8% 14% 8%;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #c9d6e3;
+  box-shadow: 0 2px 8px rgba(19, 32, 44, 0.06);
+}
+#settingsPanelKeys .keys-aim-demo__title,
+.keys-capture-popover .keys-aim-demo__title {
+  position: absolute; left: 10px; top: 8px;
+  font-size: 9px; font-weight: 700; color: #8494a6;
+}
+#settingsPanelKeys .keys-aim-demo__code,
+.keys-capture-popover .keys-aim-demo__code {
+  position: absolute; left: 10px; right: 10px; top: 26px; bottom: 36%;
+  border-radius: 4px; background: #f1f5f9; padding: 6px 8px;
+  font: 10px / 1.35 ui-monospace, Consolas, monospace; color: #64748b;
+}
+#settingsPanelKeys .keys-aim-demo__chat,
+.keys-capture-popover .keys-aim-demo__chat {
+  position: absolute; left: 10px; right: 10px; bottom: 8px; height: 22%;
+  border-radius: 6px; border: 1.5px solid #cbd5e1; background: #f8fafc;
+  display: flex; align-items: center; padding: 0 8px; gap: 6px;
+  font-size: 10px; color: #94a3b8;
+}
+#settingsPanelKeys .keys-aim-demo__caret,
+.keys-capture-popover .keys-aim-demo__caret {
+  width: 1.5px; height: 11px; background: var(--primary, #0f5f7a);
+  border-radius: 1px; opacity: 0;
+}
+#settingsPanelKeys .keys-aim-demo__ph,
+.keys-capture-popover .keys-aim-demo__ph { opacity: 0.45; }
+#settingsPanelKeys .keys-aim-demo__cursor,
+.keys-capture-popover .keys-aim-demo__cursor {
+  position: absolute; width: 14px; height: 14px;
+  border-radius: 50% 50% 50% 0; z-index: 5; background: #13202c;
+  transform: rotate(-45deg); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  opacity: 0; pointer-events: none; margin-left: -2px; margin-top: -2px;
+}
+#settingsPanelKeys .keys-aim-demo__key,
+.keys-capture-popover .keys-aim-demo__key {
+  position: absolute; z-index: 6; top: 10%; right: 10%;
+  font-family: ui-monospace, Consolas, monospace; font-size: 10px; font-weight: 800;
+  padding: 3px 7px; border-radius: 5px; background: #fff; border: 1px solid #d0dae6; opacity: 0;
+}
+#settingsPanelKeys .keys-aim-demo__badge,
+.keys-capture-popover .keys-aim-demo__badge {
+  position: absolute; z-index: 6; left: 50%; top: 42%;
+  transform: translate(-50%, -50%) scale(0.94);
+  padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 750;
+  background: #fff; border: 1px solid #d0dae6; color: #0f6b5c; opacity: 0; white-space: nowrap;
+}
+#settingsPanelKeys .keys-aim-demo[data-mode="auto"] .keys-aim-demo__cursor,
+.keys-capture-popover .keys-aim-demo[data-mode="auto"] .keys-aim-demo__cursor {
+  animation: keysAimCursorAuto 5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+#settingsPanelKeys .keys-aim-demo[data-mode="auto"] .keys-aim-demo__chat,
+.keys-capture-popover .keys-aim-demo[data-mode="auto"] .keys-aim-demo__chat {
+  animation: keysAimChatFocus 5s ease infinite;
+}
+#settingsPanelKeys .keys-aim-demo[data-mode="auto"] .keys-aim-demo__caret,
+.keys-capture-popover .keys-aim-demo[data-mode="auto"] .keys-aim-demo__caret {
+  animation: keysAimCaret 5s step-end infinite;
+}
+#settingsPanelKeys .keys-aim-demo[data-mode="auto"] .keys-aim-demo__key,
+.keys-capture-popover .keys-aim-demo[data-mode="auto"] .keys-aim-demo__key {
+  animation: keysAimKeyFlash 5s ease infinite;
+}
+#settingsPanelKeys .keys-aim-demo[data-mode="auto"] .keys-aim-demo__badge,
+.keys-capture-popover .keys-aim-demo[data-mode="auto"] .keys-aim-demo__badge {
+  animation: keysAimBadgeShow 5s ease infinite;
+}
+#settingsPanelKeys .keys-aim-demo[data-mode="none"] .keys-aim-demo__chat,
+.keys-capture-popover .keys-aim-demo[data-mode="none"] .keys-aim-demo__chat {
+  border-color: var(--primary-strong, #1f8fb8); background: #fff;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #2a9cc4) 18%, transparent);
+}
+#settingsPanelKeys .keys-aim-demo[data-mode="none"] .keys-aim-demo__caret,
+.keys-capture-popover .keys-aim-demo[data-mode="none"] .keys-aim-demo__caret { opacity: 1; }
+#settingsPanelKeys .keys-aim-demo[data-mode="none"] .keys-aim-demo__key,
+.keys-capture-popover .keys-aim-demo[data-mode="none"] .keys-aim-demo__key {
+  animation: keysAimKeyFlashNone 5s ease infinite;
+}
+#settingsPanelKeys .keys-aim-demo[data-mode="none"] .keys-aim-demo__badge,
+.keys-capture-popover .keys-aim-demo[data-mode="none"] .keys-aim-demo__badge {
+  animation: keysAimBadgeShowNone 5s ease infinite;
+}
+@keyframes keysAimCursorAuto {
+  0%, 6% { opacity: 0; left: 28%; top: 38%; }
+  12% { opacity: 1; left: 28%; top: 38%; }
+  32% { opacity: 1; left: 55%; top: 78%; }
+  40%, 100% { opacity: 0; left: 55%; top: 78%; }
+}
+@keyframes keysAimChatFocus {
+  0%, 30% { border-color: #cbd5e1; box-shadow: none; background: #f8fafc; }
+  38%, 92% {
+    border-color: var(--primary-strong, #1f8fb8); background: #fff;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #2a9cc4) 18%, transparent);
+  }
+  100% { border-color: #cbd5e1; box-shadow: none; background: #f8fafc; }
+}
+@keyframes keysAimCaret { 0%, 38% { opacity: 0; } 42%, 92% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes keysAimKeyFlash {
+  0%, 48% { opacity: 0; transform: scale(0.92); }
+  56%, 72% { opacity: 1; transform: scale(1); }
+  82%, 100% { opacity: 0; }
+}
+@keyframes keysAimBadgeShow {
+  0%, 58% { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+  68%, 92% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; }
+}
+@keyframes keysAimKeyFlashNone {
+  0%, 20% { opacity: 0; } 28%, 48% { opacity: 1; } 58%, 100% { opacity: 0; }
+}
+@keyframes keysAimBadgeShowNone {
+  0%, 45% { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+  55%, 88% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #settingsPanelKeys .keys-aim-demo[data-mode] .keys-aim-demo__cursor,
+  #settingsPanelKeys .keys-aim-demo[data-mode] .keys-aim-demo__chat,
+  #settingsPanelKeys .keys-aim-demo[data-mode] .keys-aim-demo__caret,
+  #settingsPanelKeys .keys-aim-demo[data-mode] .keys-aim-demo__key,
+  #settingsPanelKeys .keys-aim-demo[data-mode] .keys-aim-demo__badge,
+  .keys-capture-popover .keys-aim-demo[data-mode] .keys-aim-demo__cursor,
+  .keys-capture-popover .keys-aim-demo[data-mode] .keys-aim-demo__chat,
+  .keys-capture-popover .keys-aim-demo[data-mode] .keys-aim-demo__caret,
+  .keys-capture-popover .keys-aim-demo[data-mode] .keys-aim-demo__key,
+  .keys-capture-popover .keys-aim-demo[data-mode] .keys-aim-demo__badge {
+    animation: none !important;
+  }
+}
+#settingsPanelKeys .keys-aim-explain__copy h6,
+.keys-capture-popover .keys-aim-explain__copy h6 {
+  margin: 0 0 2px; font-size: 12px; font-weight: 750; color: var(--primary, #0f5f7a);
+}
+#settingsPanelKeys .keys-aim-explain__copy p,
+.keys-capture-popover .keys-aim-explain__copy p {
+  margin: 0; font-size: 11px; color: #6b7280; line-height: 1.35;
+}
+#settingsPanelKeys .keys-aim-explain__steps,
+.keys-capture-popover .keys-aim-explain__steps {
+  margin: 8px 0 0; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 4px;
+}
+#settingsPanelKeys .keys-aim-explain__steps li,
+.keys-capture-popover .keys-aim-explain__steps li {
+  font-size: 11px; color: #13202c; display: flex; gap: 8px;
+  align-items: flex-start; line-height: 1.35;
+}
+#settingsPanelKeys .keys-aim-explain__steps i,
+.keys-capture-popover .keys-aim-explain__steps i {
+  flex: 0 0 auto; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--primary, #0f5f7a); color: #fff; font-style: normal;
+  font-size: 10px; font-weight: 750; display: inline-flex;
+  align-items: center; justify-content: center; margin-top: 1px;
+}
+#settingsPanelKeys .keys-aim-setup,
+.keys-capture-popover .keys-aim-setup {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 9px 10px; border-radius: 8px;
+  background: var(--keys-wash, #f3f7fa); border: 1px solid var(--keys-line, #d5dee8);
+}
+#settingsPanelKeys .keys-aim-setup.done,
+.keys-capture-popover .keys-aim-setup.done {
+  background: #f0fdf4; border-color: #bbf7d0;
+}
+#settingsPanelKeys .keys-aim-status,
+.keys-capture-popover .keys-aim-status {
+  flex: 1; min-width: 120px; font-size: 11px; color: var(--on-surface, #13202c);
+}
+#settingsPanelKeys .keys-aim-status small,
+.keys-capture-popover .keys-aim-status small {
+  display: block; margin-top: 2px; font-size: 10px; color: var(--on-surface-muted, #8494a6);
+}
+#settingsPanelKeys .keys-aim-setup-btn,
+.keys-capture-popover .keys-aim-setup-btn {
+  flex-shrink: 0; border: 1px solid transparent; border-radius: 8px;
+  padding: 6px 12px; font: inherit; font-size: 11px; font-weight: 700;
+  cursor: pointer; background: var(--primary, #2a9cc4); color: #fff;
+}
+
+/* 取消听写 · 取消词 / 摄像头演示 */
+#settingsPanelKeys .keys-cancel-demo,
+.keys-capture-popover .keys-cancel-demo {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--keys-wash, #f3f7fa) 80%, #fff);
+  border: 1px dashed var(--keys-line, #d5dee8);
+}
+#settingsPanelKeys .keys-cancel-demo__stage,
+.keys-capture-popover .keys-cancel-demo__stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  overflow: hidden;
+}
+#settingsPanelKeys .keys-cancel-demo__cap,
+.keys-capture-popover .keys-cancel-demo__cap {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--on-surface-muted, #8494a6);
+  text-align: center;
+  line-height: 1.35;
+}
+#settingsPanelKeys .keys-cancel-demo__mic,
+.keys-capture-popover .keys-cancel-demo__mic {
+  width: 18px; height: 18px; border-radius: 4px;
+  background: var(--primary, #2a9cc4);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #2a9cc4) 22%, transparent);
+  opacity: 0.35;
+  animation: keysCancelMic 4.5s ease infinite;
+}
+#settingsPanelKeys .keys-cancel-demo__wave,
+.keys-capture-popover .keys-cancel-demo__wave {
+  width: 22px; height: 14px; border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--primary, #2a9cc4) 55%, #fff);
+  opacity: 0;
+  animation: keysCancelWave 4.5s ease infinite;
+}
+#settingsPanelKeys .keys-cancel-demo__bubble,
+.keys-capture-popover .keys-cancel-demo__bubble {
+  font-size: 12px; font-weight: 800; color: var(--primary-strong, #0f5f7a);
+  padding: 4px 10px; border-radius: 999px;
+  background: var(--primary-soft, #e8f6ff);
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 35%, #d5dee8);
+  opacity: 0; transform: translateY(4px);
+  animation: keysCancelBubble 4.5s ease infinite;
+}
+#settingsPanelKeys .keys-cancel-demo__arrow,
+.keys-capture-popover .keys-cancel-demo__arrow {
+  font-size: 12px; font-weight: 800; color: var(--on-surface-muted, #8494a6);
+  opacity: 0; animation: keysCancelArrow 4.5s ease infinite;
+}
+#settingsPanelKeys .keys-cancel-demo__esc,
+.keys-capture-popover .keys-cancel-demo__esc {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px; font-weight: 800;
+  padding: 4px 8px; border-radius: 6px;
+  background: #fff; border: 1px solid #fecaca; color: #b91c1c;
+  opacity: 0; transform: scale(0.92);
+  animation: keysCancelEsc 4.5s ease infinite;
+}
+#settingsPanelKeys .keys-cancel-demo__cam,
+.keys-capture-popover .keys-cancel-demo__cam {
+  width: 22px; height: 16px; border-radius: 4px;
+  border: 2px solid #64748b; background: #e2e8f0;
+  position: relative; opacity: 0.7;
+}
+#settingsPanelKeys .keys-cancel-demo__cam::after,
+.keys-capture-popover .keys-cancel-demo__cam::after {
+  content: ""; position: absolute; right: -5px; top: 3px;
+  width: 5px; height: 8px; border-radius: 0 3px 3px 0; background: #64748b;
+}
+#settingsPanelKeys .keys-cancel-demo__palm,
+.keys-capture-popover .keys-cancel-demo__palm {
+  width: 20px; height: 24px; border-radius: 8px 8px 6px 6px;
+  background: #fbbf24; box-shadow: inset 0 -4px 0 rgba(0,0,0,.08);
+  opacity: 0; transform: translateY(8px) scale(0.9);
+  animation: keysCancelPalm 4.5s ease infinite;
+}
+#settingsPanelKeys .keys-cancel-demo__stage--camera .keys-cancel-demo__arrow,
+.keys-capture-popover .keys-cancel-demo__stage--camera .keys-cancel-demo__arrow {
+  animation-name: keysCancelArrowCam;
+}
+#settingsPanelKeys .keys-cancel-demo__stage--camera .keys-cancel-demo__esc,
+.keys-capture-popover .keys-cancel-demo__stage--camera .keys-cancel-demo__esc {
+  animation-name: keysCancelEscCam;
+}
+@keyframes keysCancelMic {
+  0%, 8% { opacity: 0.35; }
+  18%, 55% { opacity: 1; }
+  70%, 100% { opacity: 0.35; }
+}
+@keyframes keysCancelWave {
+  0%, 12% { opacity: 0; transform: scaleX(0.6); }
+  22%, 48% { opacity: 1; transform: scaleX(1); }
+  60%, 100% { opacity: 0; }
+}
+@keyframes keysCancelBubble {
+  0%, 28% { opacity: 0; transform: translateY(4px); }
+  38%, 62% { opacity: 1; transform: translateY(0); }
+  75%, 100% { opacity: 0; }
+}
+@keyframes keysCancelArrow {
+  0%, 48% { opacity: 0; }
+  55%, 78% { opacity: 1; }
+  90%, 100% { opacity: 0; }
+}
+@keyframes keysCancelEsc {
+  0%, 55% { opacity: 0; transform: scale(0.92); }
+  65%, 88% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; }
+}
+@keyframes keysCancelPalm {
+  0%, 10% { opacity: 0; transform: translateY(8px) scale(0.9); }
+  22%, 55% { opacity: 1; transform: translateY(0) scale(1); }
+  70%, 100% { opacity: 0; transform: translateY(-2px) scale(1); }
+}
+@keyframes keysCancelArrowCam {
+  0%, 40% { opacity: 0; }
+  50%, 78% { opacity: 1; }
+  90%, 100% { opacity: 0; }
+}
+@keyframes keysCancelEscCam {
+  0%, 48% { opacity: 0; transform: scale(0.92); }
+  58%, 88% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #settingsPanelKeys .keys-cancel-demo__mic,
+  #settingsPanelKeys .keys-cancel-demo__wave,
+  #settingsPanelKeys .keys-cancel-demo__bubble,
+  #settingsPanelKeys .keys-cancel-demo__arrow,
+  #settingsPanelKeys .keys-cancel-demo__esc,
+  #settingsPanelKeys .keys-cancel-demo__palm,
+  .keys-capture-popover .keys-cancel-demo__mic,
+  .keys-capture-popover .keys-cancel-demo__wave,
+  .keys-capture-popover .keys-cancel-demo__bubble,
+  .keys-capture-popover .keys-cancel-demo__arrow,
+  .keys-capture-popover .keys-cancel-demo__esc,
+  .keys-capture-popover .keys-cancel-demo__palm {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 #settingsPanelKeys .keys-custom-key-split,
@@ -2541,6 +3074,33 @@
 #settingsPanelKeys .keys-finish-mode-hint,
 .keys-capture-popover .keys-finish-mode-hint {
   display: none !important;
+}
+
+#settingsPanelKeys .keys-finish-voice-bridge,
+.keys-capture-popover .keys-finish-voice-bridge {
+  margin: 6px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--on-surface-muted, #666);
+}
+#settingsPanelKeys .keys-finish-voice-bridge-go,
+.keys-capture-popover .keys-finish-voice-bridge-go {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--primary-strong, #1e87ad);
+  cursor: pointer;
+}
+#settingsPanelKeys .keys-finish-voice-bridge-go:hover,
+.keys-capture-popover .keys-finish-voice-bridge-go:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 #settingsPanelKeys .keys-capture-keycap-zone.is-hero-mapped,

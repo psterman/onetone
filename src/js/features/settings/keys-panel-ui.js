@@ -1347,6 +1347,20 @@
     if(tip) tip.textContent=t('keysPanelFootTip');
     var finishMoreHint=$('keysFinishMoreHint');
     if(finishMoreHint) finishMoreHint.textContent=t('keysFinishMoreHint');
+    var aimTitle=$('keysAimFoldTitle');
+    if(aimTitle) aimTitle.textContent=t('keysAimFoldTitle');
+    var aimSel=$('keysAimStrategy');
+    if(aimSel&&aimSel.options&&aimSel.options.length>=2){
+      aimSel.options[0].textContent=t('keysAimOptNone');
+      aimSel.options[1].textContent=t('keysAimOptAuto');
+    }
+    var demoLbl=$('keysAimDemoToggleLbl');
+    var demoBtn=$('btnKeysAimDemoToggle');
+    if(demoLbl&&demoBtn&&demoBtn.getAttribute('aria-expanded')!=='true'){
+      demoLbl.textContent=t('keysAimDemoShow');
+    }
+    var cancelTitle=$('keysFinishCancelTitle');
+    if(cancelTitle) cancelTitle.textContent=t('habitFlowFinishMoreSummary');
     var desc=$('settingsPanelKeysDesc');
     if(desc) desc.textContent=t('settingsPanelKeysDesc');
     renderTriggerContextBadge();

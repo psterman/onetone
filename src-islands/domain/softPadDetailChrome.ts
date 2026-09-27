@@ -8,6 +8,7 @@ export interface SoftPadDetailChromeModel {
   backLabel: string;
   title: string;
   sig: string;
+  padMode?: string;
 }
 
 interface LegacySoftPadHub {
@@ -52,16 +53,24 @@ export function softPadDetailChromeSignature(model: SoftPadDetailChromeModel): s
   );
 }
 
-/** P14i: detail panel / stage / subHost 显隐（宿主不在 bar React root 内）。 */
+/** P14i: detail panel / stage / subHost 显隐（宿主不在 bar React root 内）。
+ *  Keys mode: detailOpen=false — content lives in #softPadFnSwapHost, not subpage-body.
+ */
 export function applySoftPadDetailShellAttrs(model: SoftPadDetailChromeModel): void {
   const detailPanel = document.getElementById('softPadDetailPanel');
+  const detailIdle = document.getElementById('softPadDetailIdle');
   const subHost = document.getElementById('softPadSubpageHost');
   const stage = document.getElementById('softPadHubStage');
   const open = !!model.detailOpen;
   if (detailPanel) detailPanel.hidden = !open;
+  // Idle tip only when a detail panel would otherwise be empty — never on keys (fn-swap).
+  if (detailIdle) {
+    const keysMode = String(model.padMode || '') === 'keys';
+    detailIdle.hidden = open || keysMode;
+  }
   if (subHost) {
     subHost.classList.toggle('is-open', open);
-    // Keys mode keeps mid-ability hidden on the right track — Hub syncSoftPadNeedAgentChrome owns `hidden`.
+    // Keys mode keeps mid-ability visible for tabs — Hub syncSoftPadNeedAgentChrome owns `hidden`.
   }
   if (stage) stage.classList.toggle('is-detail-open', open);
 }

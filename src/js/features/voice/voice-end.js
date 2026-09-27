@@ -494,7 +494,11 @@
 
   function resolveSendModeFromConfig(){
 
-    var endSnap=(hooks().voiceUiSnapshot().end)||{};
+    var snapRaw=hooks().voiceUiSnapshot;
+
+    var snap=typeof snapRaw==='function'?snapRaw():snapRaw;
+
+    var endSnap=(snap&&snap.end)||{};
 
     var endCfg=(state().config&&(state().config.voiceEnd||state().config.voice_end))||{};
 
@@ -513,6 +517,19 @@
   function setOutputMode(key){
 
     key=normalizeSendMode(key);
+
+    // Optimistic local patch so finish UI can flip before IPC/disk save returns.
+    try{
+      var snapRaw=hooks().voiceUiSnapshot;
+      var snap=typeof snapRaw==='function'?snapRaw():snapRaw;
+      if(snap) snap.end=Object.assign({},snap.end||{},{sendMode:key,autoSendEnabled:key==='auto'});
+      if(state().config){
+        var cfg=state().config.voiceEnd||state().config.voice_end||(state().config.voiceEnd={});
+        state().config.voiceEnd=cfg;
+        cfg.sendMode=key;
+        cfg.autoSendEnabled=key==='auto';
+      }
+    }catch(_){}
 
     return global.OneToneIpc.invoke('cmd_voice_end_set_send_mode',{sendMode:key}).then(function(res){
 

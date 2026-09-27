@@ -79,21 +79,22 @@
     }
     if(mode==='confirm'){
       if(gesture==='double'){
-        return {title:'habitFinishModeConfirmDouble',desc:'habitFinishModeConfirmDoubleDesc',hint:'keysFinishModeHintDoubleSend',recommended:true};
+        return {title:'habitFinishModeConfirmDouble',desc:'habitFinishModeConfirmDoubleDesc',hint:'keysFinishModeHintDoubleSend'};
       }
-      return {title:'habitFinishModeConfirmSend',desc:'habitFinishModeConfirmSendDesc',hint:'keysFinishModeHintTapSend',recommended:true};
+      return {title:'habitFinishModeConfirmSend',desc:'habitFinishModeConfirmSendDesc',hint:'keysFinishModeHintTapSend'};
     }
     if(gesture==='double'){
-      return {title:'habitFinishModeManualDouble',desc:'habitFinishModeManualDoubleDesc',hint:'keysFinishModeHintDoubleManual'};
+      return {title:'habitFinishModeManualDouble',desc:'habitFinishModeManualDoubleDesc',hint:'keysFinishModeHintDoubleManual',recommended:true};
     }
-    return {title:'habitFinishModeManual',desc:'habitFinishModeManualDesc',hint:'keysFinishModeHintTapManual'};
+    // Manual is the low-pressure default (发送决策 · 排左).
+    return {title:'habitFinishModeManual',desc:'habitFinishModeManualDesc',hint:'keysFinishModeHintTapManual',recommended:true};
   }
 
   function allowedFinishModes(m){
     var fs=global.OneToneSceneFlowSummary;
     var gesture=startGesture(m);
     if(fs&&fs.finishModesForGesture) return fs.finishModesForGesture(gesture);
-    return gesture==='hold'?['perpress']:['confirm','manual'];
+    return gesture==='hold'?['perpress']:['manual','confirm'];
   }
 
   function finishModeHintKey(mode,gesture){
@@ -109,6 +110,114 @@
       text=text.replace('{n}',sec);
     }
     return text;
+  }
+
+  function buildCancelSummaryText(m){
+    if(!m) return '';
+    var parts=[];
+    var finishMode=resolveDisplayedFinishMode(m);
+    var keyOn=!!(finishMode==='confirm'&&m.cancelEnabled!==false);
+    if(keyOn) parts.push(t('keysCancelSummaryKey'));
+    if(cancelPhraseChannelOn()) parts.push(t('keysCancelSummaryPhrase'));
+    if(cameraCancelChannelOn()) parts.push(t('keysCancelSummaryCamera'));
+    if(!parts.length) return t('keysCancelSummaryOff','未开启');
+    return parts.join(' · ')+' → Esc';
+  }
+
+  function keysAimConfiguredForMapping(m){
+    var appId=m&&String(m.appTargetId||'').trim();
+    if(!appId) return false;
+    var cfg=appState().config||{};
+    var end=cfg.voiceEnd||{};
+    var anchors=end.composerAnchors||end.composer_anchors||{};
+    var bank=anchors[appId];
+    if(!bank||typeof bank!=='object') return false;
+    var slots=bank.slots;
+    if(Array.isArray(slots)) return !!(slots[0]||slots[1]);
+    // Legacy single-slot shape
+    return !!(bank.x!=null||bank.y!=null||bank.calibrated);
+  }
+
+  function buildKeysAimSummary(m){
+    if(!m) return t('keysAimSummaryUnset','未设置 · 你自己点进框就行');
+    if(!String(m.appTargetId||'').trim()){
+      return t('keysAimSummaryNeedApp','先绑定应用，再设框位');
+    }
+    if(keysAimConfiguredForMapping(m)){
+      var name=String(m.appTargetId||'').replace(/-chat$/,'');
+      return t('keysAimSummarySet','{app} 已设好 · 会先点进框再开麦').replace('{app}',name);
+    }
+    return t('keysAimSummaryDefault','未校准 · 用应用默认位置');
+  }
+
+  function readKeysAimStrategy(){
+    var cfg=appState().config||{};
+    var end=cfg.voiceEnd||{};
+    var raw=String(end.inputAimStrategy||end.input_aim_strategy||'none').trim().toLowerCase();
+    if(raw==='auto'||raw==='click'||raw==='smart'||raw==='hotkey') return 'auto';
+    return 'none';
+  }
+
+  function syncKeysAimDemo(strategy){
+    strategy=strategy==='auto'?'auto':'none';
+    var explain=document.getElementById('keysAimExplain');
+    var demo=document.getElementById('keysAimDemo');
+    if(explain){
+      explain.setAttribute('data-mode',strategy);
+      explain.querySelectorAll('[data-keys-aim-explain]').forEach(function(pane){
+        var on=pane.getAttribute('data-keys-aim-explain')===strategy;
+        if(on) pane.removeAttribute('hidden');
+        else pane.setAttribute('hidden','');
+      });
+    }
+    if(demo){
+      // Restart CSS animations when switching mode.
+      demo.removeAttribute('data-mode');
+      void demo.offsetWidth;
+      demo.setAttribute('data-mode',strategy);
+    }
+  }
+
+  function collapseKeysAimDemo(){
+    var explain=document.getElementById('keysAimExplain');
+    var demoBtn=document.getElementById('btnKeysAimDemoToggle');
+    var lbl=document.getElementById('keysAimDemoToggleLbl');
+    if(explain) explain.setAttribute('hidden','');
+    if(demoBtn) demoBtn.setAttribute('aria-expanded','false');
+    if(lbl) lbl.textContent=t('keysAimDemoShow','看演示');
+  }
+
+  function syncKeysAimFold(model){
+    var fold=$('keysAimFold');
+    if(!fold) return;
+    fold.hidden=!!(model&&model.moreHidden);
+    var strategy=(model&&model.aimStrategy)||readKeysAimStrategy();
+    var bar=$('keysAimWritebar');
+    if(bar) bar.setAttribute('data-aim',strategy);
+    var sel=$('keysAimStrategy');
+    if(sel&&sel.value!==strategy) sel.value=strategy;
+    var sum=$('keysAimFoldSummary');
+    if(sum) sum.textContent=(model&&model.aimSummary)||t('keysAimSummaryUnset','未设置 · 你自己点进框就行');
+    var cal=$('keysAimCalRow');
+    if(cal) cal.hidden=strategy!=='auto';
+    syncKeysAimDemo(strategy);
+    var stMain=$('keysAimStatusMain');
+    var stSub=$('keysAimStatusSub');
+    var btn=$('btnKeysAimSetup');
+    var setup=$('keysAimSetup');
+    var configured=!!(model&&model.aimConfigured);
+    if(setup) setup.classList.toggle('done',configured);
+    if(stMain){
+      stMain.textContent=configured
+        ?t('keysAimStatusOk','聊天框已设好')
+        :t('keysAimStatusEmpty','还没告诉 OneTone 框在哪');
+    }
+    if(stSub){
+      stSub.textContent=configured
+        ?t('keysAimStatusOkSub','按听写键会先点这里，再开麦')
+        :t('keysAimStatusEmptySub','点右边开始 — 全屏里框一下，再点一下确认');
+    }
+    if(btn) btn.textContent=configured?t('keysAimBtnReset','重新设置'):t('keysAimBtnSetup','设置聊天框位置');
   }
 
   function buildKeysFinishChromeModel(m,finishMode){
@@ -127,7 +236,7 @@
       hintText=finishModeHintText(finishMode,gesture,m);
       hintHidden=false;
     }
-    // Cancel strategies (key / phrase / camera) stay visible for any finish mode; key channel self-gates.
+    // Cancel + aim stay visible for any finish mode; key channel self-gates.
     var moreHidden=!m;
     var previewText='—';
     var previewSaved=false;
@@ -143,7 +252,11 @@
     var previewClass='keys-finish-strategy-preview'+(previewSaved?' is-set':' is-empty');
     var mappingId=m&&m.id?String(m.id):'';
     var delayMs=m?String(m.enterDelayMs||0):'0';
-    var sig=[mappingId,finishMode||'',hintText,moreHidden?'1':'0',previewText,previewSaved?'1':'0',delayMs].join('\0');
+    var cancelSummary=m?buildCancelSummaryText(m):'';
+    var aimConfigured=keysAimConfiguredForMapping(m);
+    var aimStrategy=readKeysAimStrategy();
+    var aimSummary=buildKeysAimSummary(m);
+    var sig=[mappingId,finishMode||'',hintText,moreHidden?'1':'0',previewText,previewSaved?'1':'0',delayMs,cancelSummary,aimConfigured?'1':'0',aimStrategy,aimSummary].join('\0');
     return {
       hintText:hintText,
       hintHidden:hintHidden,
@@ -153,6 +266,10 @@
       previewSaved:previewSaved,
       mappingId:mappingId,
       finishMode:finishMode||'',
+      cancelSummary:cancelSummary,
+      aimConfigured:aimConfigured,
+      aimStrategy:aimStrategy,
+      aimSummary:aimSummary,
       sig:sig
     };
   }
@@ -171,8 +288,14 @@
     var more=$('habitFlowFinishMore');
     if(more){
       more.hidden=!!model.moreHidden;
-      more.open=true;
+      // Advanced fold: default collapsed; keep user toggle while visible.
+      if(model.moreHidden) more.open=false;
+      else if(model.cancelSummary!=null){
+        var sum=$('keysFinishCancelSummary');
+        if(sum) sum.textContent=model.cancelSummary;
+      }
     }
+    syncKeysAimFold(model);
     var el=$('keysFinishStrategyPreview');
     if(el){
       // Desk options card already has mode hint + delay; keep strategy line for scripts only.
@@ -258,6 +381,7 @@
     if(global.__otKeysFinishModeMounted&&typeof global.__otKeysFinishModeSync==='function'){
       global.__otKeysFinishModeSync();
       syncKeysFinishModeChrome(m,current);
+      applyKeysFinishTimingHosts(buildKeysFinishTimingModel());
       renderKeysFinishStrategyPreview(m);
       return;
     }
@@ -267,6 +391,7 @@
       btn.setAttribute('aria-checked',active?'true':'false');
     });
     syncKeysFinishModeChrome(m,current);
+    applyKeysFinishTimingHosts(buildKeysFinishTimingModel());
     renderKeysFinishStrategyPreview(m);
   }
 
@@ -512,6 +637,16 @@
       html+='<span class="keys-cancel-switch-slot" aria-hidden="true"></span>';
     }
     html+='</div>';
+    html+='<div class="keys-cancel-demo" data-cancel-demo="phrase" aria-hidden="true">';
+    html+='<div class="keys-cancel-demo__stage keys-cancel-demo__stage--phrase">';
+    html+='<span class="keys-cancel-demo__mic"></span>';
+    html+='<span class="keys-cancel-demo__wave"></span>';
+    html+='<span class="keys-cancel-demo__bubble">'+escHtmlLocal(t('keysCancelDemoPhraseWord','取消'))+'</span>';
+    html+='<span class="keys-cancel-demo__arrow">→</span>';
+    html+='<span class="keys-cancel-demo__esc">Esc</span>';
+    html+='</div>';
+    html+='<p class="keys-cancel-demo__cap">'+escHtmlLocal(t('keysCancelDemoPhraseCap','说出取消词 → Esc 丢弃本次听写'))+'</p>';
+    html+='</div>';
 
     // Camera row
     html+='<div class="keys-cancel-row'+(camOn?' is-on':'')+'" data-cancel-row="camera">';
@@ -531,6 +666,15 @@
     }
     html+='</div>';
     html+='<button type="button" class="toggle-switch'+(camOn?' is-on':'')+'" data-cancel-channel="camera" role="switch" aria-checked="'+(camOn?'true':'false')+'" aria-label="'+escHtmlLocal(t('keysCancelSummaryCamera'))+'"></button>';
+    html+='</div>';
+    html+='<div class="keys-cancel-demo" data-cancel-demo="camera" aria-hidden="true">';
+    html+='<div class="keys-cancel-demo__stage keys-cancel-demo__stage--camera">';
+    html+='<span class="keys-cancel-demo__cam"></span>';
+    html+='<span class="keys-cancel-demo__palm"></span>';
+    html+='<span class="keys-cancel-demo__arrow">→</span>';
+    html+='<span class="keys-cancel-demo__esc">Esc</span>';
+    html+='</div>';
+    html+='<p class="keys-cancel-demo__cap">'+escHtmlLocal(t('keysCancelDemoCameraCap','张掌手势 → Esc 丢弃本次听写'))+'</p>';
     html+='</div>';
 
     html+='</div></div>';
@@ -815,7 +959,11 @@
     var islandOn=!!global.__otKeysFinishTimingMounted;
     if(islandOn){
       if(typeof global.__otKeysFinishTimingSync==='function') global.__otKeysFinishTimingSync();
-      if(delayHost) delayHost.hidden=!!(model&&model.delayHidden);
+      if(delayHost){
+        delayHost.hidden=!!(model&&model.delayHidden);
+        // Belt: clear stale delay markup when switching to manual (island may lag one paint).
+        if(model&&model.delayHidden) delayHost.setAttribute('hidden','');
+      }
       if(cancelHost) cancelHost.hidden=!!(model&&model.cancelHidden);
       return;
     }
@@ -985,24 +1133,21 @@
       var ctx=activeAppContextId();
       if(!ctx&&abr&&abr.resolvePreviewContext) ctx=abr.resolvePreviewContext(m)||'';
       if(!ctx) ctx=primaryApp;
+      // Always update mapping send decision so delay host / global preview stay in sync.
+      global.OneToneSceneFlowSummary.applyFinishMode(m,mode);
       if(ctx&&abr&&abr.setAppFinishMode){
         abr.setAppFinishMode(m,ctx,mode);
-        if(global.OneToneKeyFinishFlowRender&&global.OneToneKeyFinishFlowRender.refreshFinishModeSegment){
-          global.OneToneKeyFinishFlowRender.refreshFinishModeSegment(m);
-        }
-      }else{
-        global.OneToneSceneFlowSummary.applyFinishMode(m,mode);
-        persistGestureChange();
-        refreshAfterGestureChange();
-        if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderHero){
-          setTimeout(function(){ global.OneToneSceneTabs.renderHero(); },0);
-        }
-        if(global.OneToneHabitMulti){
-          setTimeout(function(){ global.OneToneHabitMulti.render(); },0);
-        }
-        if(global.OneToneHabitKeyMappingTable){
-          setTimeout(function(){ global.OneToneHabitKeyMappingTable.syncRowStatus(); },0);
-        }
+      }
+      persistGestureChange();
+      refreshAfterGestureChange();
+      if(global.OneToneSceneTabs&&global.OneToneSceneTabs.renderHero){
+        setTimeout(function(){ global.OneToneSceneTabs.renderHero(); },0);
+      }
+      if(global.OneToneHabitMulti){
+        setTimeout(function(){ global.OneToneHabitMulti.render(); },0);
+      }
+      if(global.OneToneHabitKeyMappingTable){
+        setTimeout(function(){ global.OneToneHabitKeyMappingTable.syncRowStatus(); },0);
       }
       return true;
     }
@@ -1343,7 +1488,10 @@
     isEscCancelAction:isEscCancelAction,
     setCameraCancelGesture:setCameraCancelGesture,
     cameraCancelChannelOn:cameraCancelChannelOn,
-    cancelPhraseChannelOn:cancelPhraseChannelOn
+    cancelPhraseChannelOn:cancelPhraseChannelOn,
+    syncKeysAimFold:syncKeysAimFold,
+    syncKeysAimDemo:syncKeysAimDemo,
+    collapseKeysAimDemo:collapseKeysAimDemo
   };
 
   // ponytail: assert-based self-check for Esc-cancel token classification

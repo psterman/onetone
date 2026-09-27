@@ -1040,9 +1040,78 @@
                                     </div>
                                     <div class="keys-finish-delay-host" id="keysFinishDelayHost"></div>
                                     <p class="keys-finish-mode-hint" id="keysFinishModeHint" hidden></p>
+                                    <p class="keys-finish-voice-bridge" id="keysFinishVoiceBridge">
+                                      <span id="keysFinishVoiceBridgeText">口令发送 / 结束 / 取消</span>
+                                      <button type="button" class="keys-finish-voice-bridge-go" id="btnKeysFinishOpenVoice">语音设置 · 说完后 →</button>
+                                    </p>
                                     <p class="keys-finish-strategy-preview is-empty sr-only" id="keysFinishStrategyPreview" aria-live="polite" hidden>—</p>
-                                    <details class="habit-flow-finish-more keys-finish-more-advanced" id="habitFlowFinishMore" open hidden>
-                                      <summary class="habit-flow-finish-more-summary sr-only" id="habitFlowFinishMoreLbl">取消听写</summary>
+                                    <div class="keys-aim-block" id="keysAimFold" hidden>
+                                      <div class="keys-aim-writebar" id="keysAimWritebar" data-aim="none">
+                                        <label class="keys-aim-writebar__lbl" for="keysAimStrategy" id="keysAimFoldTitle">开麦前对准</label>
+                                        <select id="keysAimStrategy" class="keys-aim-writebar__select" aria-describedby="keysAimFoldSummary">
+                                          <option value="none" selected>自己点进框</option>
+                                          <option value="auto">帮我点进框</option>
+                                        </select>
+                                        <span class="keys-aim-writebar__meta">
+                                          <span class="keys-aim-writebar__sum" id="keysAimFoldSummary">未校准 · 用应用默认位置</span>
+                                          <button type="button" class="keys-aim-demo-toggle" id="btnKeysAimDemoToggle" aria-expanded="false" aria-controls="keysAimExplain">
+                                            <span id="keysAimDemoToggleLbl">看演示</span>
+                                          </button>
+                                        </span>
+                                      </div>
+                                      <div class="keys-aim-explain" id="keysAimExplain" data-mode="none" hidden>
+                                        <div class="keys-aim-explain__stage">
+                                          <div class="keys-aim-demo" id="keysAimDemo" data-mode="none" aria-hidden="true">
+                                            <div class="keys-aim-demo__win">
+                                              <span class="keys-aim-demo__title">目标窗口</span>
+                                              <div class="keys-aim-demo__code">fn main() {<br>&nbsp;&nbsp;// 编辑器<br>}</div>
+                                              <div class="keys-aim-demo__chat">
+                                                <span class="keys-aim-demo__caret"></span>
+                                                <span class="keys-aim-demo__ph">聊天输入框</span>
+                                              </div>
+                                            </div>
+                                            <span class="keys-aim-demo__cursor"></span>
+                                            <span class="keys-aim-demo__key" id="keysAimDemoKey">fn</span>
+                                            <span class="keys-aim-demo__badge is-ok" id="keysAimDemoBadge">已开麦</span>
+                                          </div>
+                                          <div class="keys-aim-explain__copy">
+                                            <div class="keys-aim-explain__pane" data-keys-aim-explain="auto" hidden>
+                                              <h6 id="keysAimExplainAutoTitle">帮我点进框再开麦</h6>
+                                              <p id="keysAimExplainAutoBody">按听写键 → 先点到已校准落点 → 再开麦。</p>
+                                              <ol class="keys-aim-explain__steps">
+                                                <li><i>1</i>按听写键</li>
+                                                <li><i>2</i>自动点进聊天框</li>
+                                                <li><i>3</i>开麦听写</li>
+                                              </ol>
+                                            </div>
+                                            <div class="keys-aim-explain__pane" data-keys-aim-explain="none">
+                                              <h6 id="keysAimExplainNoneTitle">自己先点进框</h6>
+                                              <p id="keysAimExplainNoneBody">假定你已点好聊天框。最快，但焦点在哪就开到哪。</p>
+                                              <ol class="keys-aim-explain__steps">
+                                                <li><i>1</i>你先点进聊天框</li>
+                                                <li><i>2</i>按听写键</li>
+                                                <li><i>3</i>直接开麦</li>
+                                              </ol>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div class="keys-aim-cal" id="keysAimCalRow" hidden>
+                                        <div class="keys-aim-setup" id="keysAimSetup">
+                                          <div class="keys-aim-status" id="keysAimStatus">
+                                            <span id="keysAimStatusMain">还没告诉 OneTone 框在哪</span>
+                                            <small id="keysAimStatusSub">点右边开始 — 全屏里框一下，再点一下确认</small>
+                                          </div>
+                                          <button type="button" class="keys-aim-setup-btn" id="btnKeysAimSetup">设置聊天框位置</button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <details class="habit-flow-finish-more keys-finish-adv-fold" id="habitFlowFinishMore" hidden>
+                                      <summary class="habit-flow-finish-more-summary keys-finish-adv-summary" id="habitFlowFinishMoreLbl">
+                                        <span class="keys-finish-adv-chev" aria-hidden="true">›</span>
+                                        <span class="keys-finish-adv-title" id="keysFinishCancelTitle">取消听写</span>
+                                        <span class="keys-finish-adv-sum" id="keysFinishCancelSummary">未开启</span>
+                                      </summary>
                                       <p class="keys-finish-more-hint" id="keysFinishMoreHint" hidden>听写中任一开启的方式触发 → Esc 丢弃（可多选）</p>
                                       <div class="habit-flow-cancel-block" id="habitKeyMapRowCancel" data-edit-step="cancel">
                                         <span class="habit-flow-cancel-label sr-only" id="habitFlowFinishMoreCancelLbl">取消听写</span>
@@ -2155,34 +2224,156 @@
                         <p class="ime-preset-confirm" id="imePresetConfirmVoice" hidden></p>
                       </div>
                     </div>
-                    <div class="voice-finish-card" id="voiceFinishCard">
-                      <p class="voice-ime-step"><span class="n">2</span>说完后</p>
-                    <div class="voice-finish-outcomes" id="voiceFinishOutcomes" role="radiogroup" aria-label="说完了的结果">
-                      <div class="voice-finish-outcome-cell">
-                        <button type="button" class="voice-finish-outcome" data-voice-outcome="send" id="btnVoiceFinishOutcomeSend" role="radio" aria-checked="false">
-                          <span class="voice-finish-outcome-t" id="voiceFinishOutcomePhraseSend">「发送」</span>
-                          <span class="voice-finish-outcome-d" id="voiceFinishOutcomeDescSend">听写停下后，说出关键词才发送</span>
+                    <div class="voice-finish-card voice-finish-card--c" id="voiceFinishCard">
+                      <p class="voice-ime-step"><span class="n">2</span><span id="voiceFinishStepTitle">说完后</span></p>
+                      <p class="voice-finish-sec-lbl" id="voiceFinishDefaultLbl">停顿后默认</p>
+                      <div class="voice-finish-default-seg voice-output-modes" id="voiceOutputModeSegments" role="radiogroup" aria-label="停顿后默认">
+                        <button type="button" class="voice-finish-seg is-active is-recommended" data-voice-output-mode="confirm" id="voiceOutputModeConfirm" role="radio" aria-checked="true">
+                          <span class="voice-finish-seg-ico" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                          </span>
+                          <span class="voice-finish-seg-t" id="voiceOutputModeConfirmTitle">留下</span>
+                          <span class="voice-finish-seg-s" id="voiceOutputModeConfirmTag">自查 · 按回车</span>
+                          <span class="voice-output-mode-desc sr-only" id="voiceOutputModeConfirmDesc">文字留在输入框，你检查后再按发送键。最不容易发错。</span>
+                          <span class="voice-output-mode-foot sr-only" id="voiceOutputModeConfirmFoot">当前使用中</span>
                         </button>
-                        <button type="button" class="voice-finish-outcome-edit" data-finish-edit="send">编辑</button>
-                      </div>
-                      <div class="voice-finish-outcome-cell">
-                        <button type="button" class="voice-finish-outcome is-on" data-voice-outcome="keep" id="btnVoiceFinishOutcomeKeep" role="radio" aria-checked="true">
-                          <span class="voice-finish-outcome-t" id="voiceFinishOutcomePhraseKeep">「结束输入」</span>
-                          <span class="voice-finish-outcome-d" id="voiceFinishOutcomeDescKeep">字留下，不发送</span>
+                        <button type="button" class="voice-finish-seg" data-voice-output-mode="phrase" id="voiceOutputModePhrase" role="radio" aria-checked="false">
+                          <span class="voice-finish-seg-ico" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                          </span>
+                          <span class="voice-finish-seg-t" id="voiceOutputModePhraseTitle">说了才发</span>
+                          <span class="voice-finish-seg-s" id="voiceOutputModePhraseTag">要喊发送词</span>
+                          <span class="voice-output-mode-desc sr-only" id="voiceOutputModePhraseDesc">只有说出发送词才会发出去；说结束词只会停下。</span>
+                          <span class="voice-output-mode-foot sr-only" id="voiceOutputModePhraseFoot">点击切换</span>
                         </button>
-                        <button type="button" class="voice-finish-outcome-edit" data-finish-edit="keep">编辑</button>
-                      </div>
-                      <div class="voice-finish-outcome-cell">
-                        <button type="button" class="voice-finish-outcome" data-voice-outcome="discard" id="btnVoiceFinishOutcomeDiscard" role="radio" aria-checked="false">
-                          <span class="voice-finish-outcome-t" id="voiceFinishOutcomePhraseDiscard">「取消输入」</span>
-                          <span class="voice-finish-outcome-d" id="voiceFinishOutcomeDescDiscard">取消听写，恢复开启前状态</span>
+                        <button type="button" class="voice-finish-seg" data-voice-output-mode="auto" id="voiceOutputModeAuto" role="radio" aria-checked="false">
+                          <span class="voice-finish-seg-ico" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle class="voice-finish-seg-spin" cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                          </span>
+                          <span class="voice-finish-seg-t" id="voiceOutputModeAutoTitle">停顿就发</span>
+                          <span class="voice-finish-seg-s" id="voiceOutputModeAutoTag">全自动</span>
+                          <span class="voice-output-mode-desc sr-only" id="voiceOutputModeAutoDesc">说完后自己会等一会儿再帮你按发送键；也可说「发送」马上发出。</span>
+                          <span class="voice-output-mode-foot sr-only" id="voiceOutputModeAutoFoot">点击切换</span>
                         </button>
-                        <button type="button" class="voice-finish-outcome-edit" data-finish-edit="discard">编辑</button>
                       </div>
-                    </div>
-                    <div class="voice-causal-finish" id="voiceFinishCausal">
-                      <strong id="voiceFinishCausalLead">停一会儿</strong><span class="arr" aria-hidden="true">→</span><span id="voiceFinishCausalMid">字留下</span><span class="arr" aria-hidden="true">→</span><span id="voiceFinishCausalTail">不发</span>
-                    </div>
+                      <div class="voice-causal-finish" id="voiceFinishCausal" aria-live="polite">
+                        <strong id="voiceFinishCausalLead">听写停下</strong><span class="arr" aria-hidden="true">→</span><span id="voiceFinishCausalMid">字留下</span><span class="arr" aria-hidden="true">→</span><span id="voiceFinishCausalTail">你按回车</span>
+                      </div>
+                      <p class="voice-send-lite-notice" id="voiceSendLiteNotice" hidden>
+                        <span id="voiceSendLiteNoticeText"></span>
+                        <button type="button" class="voice-mode-meta-link" id="btnVoiceSendSwitchVosk">切换到标准离线识别</button>
+                      </p>
+                      <p class="voice-output-auto-guard voice-finish-auto-guard" id="voiceOutputAutoGuard" hidden>说结束词只会停下；自然停顿后才会自动发送。</p>
+                      <p class="voice-finish-sec-lbl" id="voiceFinishHabitLbl">语音习惯 · 先改当前相关</p>
+                      <div class="voice-finish-habit" id="voiceFinishHabit">
+                        <div class="voice-finish-habit-primary" id="voiceFinishHabitPrimary">
+                          <div class="voice-finish-habit-primary-head">
+                            <span class="voice-finish-habit-kind" id="voiceFinishHabitKind">结束词</span>
+                            <span class="voice-finish-habit-why-badge" id="voiceFinishHabitWhyBadge">配合「留下自查」</span>
+                            <div class="flow-lang-toggle voice-finish-habit-lang" id="voiceFinishHabitLangToggle" role="group" aria-label="口令语言">
+                              <button type="button" class="flow-lang-btn is-on" data-lang="zh" id="btnVoiceFinishHabitLangZh">中</button>
+                              <button type="button" class="flow-lang-btn" data-lang="en" id="btnVoiceFinishHabitLangEn">EN</button>
+                            </div>
+                          </div>
+                          <p class="voice-finish-habit-why" id="voiceFinishHabitWhyLine">说出下面任一词 = 停下听写，字留在框里。可加多个说法。</p>
+                          <div class="voice-finish-habit-primary-mount" id="voiceFinishHabitPrimaryMount">
+                            <div class="voice-finish-habit-block is-primary" data-habit-block="keep" id="voiceFinishHabitBlockKeep">
+                              <p class="voice-finish-habit-block-title" data-habit-block-title>结束词</p>
+                              <p class="voice-finish-habit-block-desc" data-habit-block-desc>说出 = 停下，字留下</p>
+                              <div class="voice-phrase-tags" id="voiceEndPhraseTags" role="listbox" aria-label="结束词"></div>
+                              <div class="voice-finish-habit-add">
+                                <input type="text" class="voice-phrase-custom-input" id="voiceFinishHabitAddKeep" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：好了" aria-label="添加结束词">
+                                <button type="button" class="voice-finish-habit-add-btn" data-habit-add="keep" id="btnVoiceFinishHabitAddKeep">+ 添加</button>
+                              </div>
+                            </div>
+                          </div>
+                          <p class="voice-finish-habit-hint" id="voiceFinishHabitHint">当前默认不靠嘴发送；若要喊着发，可在「其他口令」里加发送词。</p>
+                        </div>
+                        <details class="voice-finish-habit-others" id="voiceFinishHabitOthers">
+                          <summary class="voice-finish-habit-others-sum">
+                            <span id="voiceFinishHabitOthersSummary">其他口令 · 发送 / 取消（可选）</span>
+                            <span class="voice-finish-habit-others-chev" aria-hidden="true"></span>
+                          </summary>
+                          <div class="voice-finish-habit-others-body" id="voiceFinishHabitOthersBody">
+                            <div class="voice-finish-habit-block" data-habit-block="send" id="voiceFinishHabitBlockSend">
+                              <p class="voice-finish-habit-block-title" data-habit-block-title>发送词</p>
+                              <p class="voice-finish-habit-block-desc" data-habit-block-desc>说出 = 把字发出去</p>
+                              <div class="voice-phrase-tags" id="voiceSendPhraseTags" role="listbox" aria-label="发送词"></div>
+                              <div class="voice-finish-habit-add">
+                                <input type="text" class="voice-phrase-custom-input" id="voiceFinishHabitAddSend" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：发吧" aria-label="添加发送词">
+                                <button type="button" class="voice-finish-habit-add-btn" data-habit-add="send" id="btnVoiceFinishHabitAddSend">+ 添加</button>
+                              </div>
+                            </div>
+                            <div class="voice-finish-habit-block danger" data-habit-block="discard" id="voiceFinishHabitBlockDiscard">
+                              <p class="voice-finish-habit-block-title" data-habit-block-title>取消词</p>
+                              <p class="voice-finish-habit-block-desc" data-habit-block-desc>说出 = 丢掉本轮</p>
+                              <div class="voice-phrase-tags" id="voiceCancelPhraseTags" role="listbox" aria-label="取消词"></div>
+                              <div class="voice-finish-habit-add">
+                                <input type="text" class="voice-phrase-custom-input" id="voiceFinishHabitAddDiscard" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：算了" aria-label="添加取消词">
+                                <button type="button" class="voice-finish-habit-add-btn" data-habit-add="discard" id="btnVoiceFinishHabitAddDiscard">+ 添加</button>
+                              </div>
+                            </div>
+                          </div>
+                        </details>
+                        <div class="voice-finish-habit-blocks" id="voiceFinishHabitBlocks" hidden></div>
+                        <details class="voice-finish-habit-adv" id="voiceFinishHabitAdv">
+                          <summary class="voice-finish-habit-adv-sum">
+                            <span id="voiceFinishHabitAdvSummary">高级 · 录制声音口令</span>
+                            <span class="voice-finish-habit-others-chev" aria-hidden="true"></span>
+                          </summary>
+                          <div class="voice-finish-habit-adv-body">
+                            <p class="voice-finish-habit-adv-lead" id="voiceFinishHabitAdvLead">用声音样本代替文字口令（可选）。</p>
+                            <div class="voice-finish-habit-acoustic" data-habit-acoustic="keep">
+                              <p class="voice-finish-habit-block-title" id="voiceFinishHabitAcousticKeepTitle">结束词 · 录制声音</p>
+                              <div id="voiceEndAcousticHost" class="habit-scenario-voice-command-host voice-control-acoustic-host"></div>
+                            </div>
+                            <div class="voice-finish-habit-acoustic" data-habit-acoustic="discard">
+                              <p class="voice-finish-habit-block-title" id="voiceFinishHabitAcousticDiscardTitle">取消词 · 录制声音</p>
+                              <div id="voiceCancelAcousticHost" class="habit-scenario-voice-command-host voice-control-acoustic-host"></div>
+                            </div>
+                          </div>
+                        </details>
+                      </div>
+                      <section class="voice-send-params-bar voice-finish-params" id="voiceSendParamsAside" aria-labelledby="voiceSettingsCommitAsideTitle">
+                        <div class="voice-output-params" id="voiceOutputParams">
+                          <p class="voice-phrase-panel-title" id="voiceSettingsCommitAsideTitle">发送键与等待</p>
+                          <div class="voice-send-params-row">
+                            <div class="voice-settings-commit-pills" id="voiceSettingsCommitPills" role="group" aria-labelledby="voiceSettingsCommitLbl">
+                              <span class="voice-settings-commit-lbl" id="voiceSettingsCommitLbl">发送快捷键</span>
+                              <button type="button" class="home-mini-toggle is-active" id="btnVoiceSettingsCommitEnter" data-commit-key="Enter">Enter</button>
+                              <button type="button" class="home-mini-toggle" id="btnVoiceSettingsCommitShiftEnter" data-commit-key="Shift+Enter">Shift+Enter</button>
+                              <button type="button" class="home-mini-toggle" id="btnVoiceSettingsCommitCtrlEnter" data-commit-key="Ctrl+Enter">Ctrl+Enter</button>
+                            </div>
+                            <div class="voice-output-delay-row" id="voiceOutputDelayRow">
+                              <div class="flow-slider-row">
+                                <span class="flow-slider-lbl" id="voiceSettingsDelayLbl">上屏等待</span>
+                                <span class="flow-slider-val" id="voiceSettingsDelayVal">4.0 秒</span>
+                              </div>
+                              <div class="voice-end-inline-range voice-finish-delay-range">
+                                <span class="sr-only" id="voiceSettingsDelayLblSr">等待时间</span>
+                                <input type="range" class="voice-sapi-range" id="voiceSettingsDelayRange" min="1000" max="10000" step="500" value="4000" aria-labelledby="voiceSettingsDelayLblSr">
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <p class="voice-finish-auto-desc" id="voiceSettingsAutoSendDesc" hidden></p>
+                        <p class="voice-finish-habit-note" id="voiceSendHabitNote" hidden></p>
+                      </section>
+                      <p class="voice-finish-keys-bridge" id="voiceFinishKeysBridge">
+                        <span id="voiceFinishKeysBridgeText">键怎么收尾（按住 / 确认发送）</span>
+                        <button type="button" class="voice-finish-keys-bridge-go" id="btnVoiceFinishOpenKeys">按键设置 · 听写方式 →</button>
+                      </p>
+                      <span class="sr-only" id="voiceFinishDetailKeep">结束输入口令编辑</span>
+                      <div class="sr-only" id="voiceFinishOutcomes" aria-hidden="true"></div>
+                      <button type="button" class="sr-only" id="btnVoiceFinishOutcomeSend" data-voice-outcome="send" tabindex="-1" aria-hidden="true"></button>
+                      <button type="button" class="sr-only" id="btnVoiceFinishOutcomeKeep" data-voice-outcome="keep" tabindex="-1" aria-hidden="true"></button>
+                      <button type="button" class="sr-only" id="btnVoiceFinishOutcomeDiscard" data-voice-outcome="discard" tabindex="-1" aria-hidden="true"></button>
+                      <span class="sr-only" id="voiceFinishOutcomePhraseSend"></span>
+                      <span class="sr-only" id="voiceFinishOutcomePhraseKeep"></span>
+                      <span class="sr-only" id="voiceFinishOutcomePhraseDiscard"></span>
+                      <span class="sr-only" id="voiceFinishOutcomeDescSend"></span>
+                      <span class="sr-only" id="voiceFinishOutcomeDescKeep"></span>
+                      <span class="sr-only" id="voiceFinishOutcomeDescDiscard"></span>
                     </div>
                     <div class="voice-finish-phrase-hosts" id="voiceFinishPhraseHosts" hidden aria-hidden="true">
                     <div class="voice-recognize-layout voice-recognize-control-grid" id="voiceRecognizeControlGrid">
@@ -2209,7 +2400,7 @@
                         <div class="voice-phrase-kind-pane" id="voiceCancelKindTextPane" data-phrase-kind-pane="text" role="tabpanel" aria-labelledby="btnVoiceCancelKindText">
                         <h4 class="voice-wake-section-title" id="voiceCancelPresetsZhLabel">取消词 · 说出即可丢弃输入</h4>
                         <div class="voice-wake-alias-card voice-end-alias-card">
-                        <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="voiceCancelPhraseTags" role="listbox" aria-labelledby="voiceCancelPresetsZhLabel"></div>
+                        <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="voiceCancelPhraseTagsLegacy" role="listbox" aria-labelledby="voiceCancelPresetsZhLabel" hidden></div>
                         <div class="voice-phrase-add-row voice-wake-add-row voice-wake-alias-add" id="voiceCancelCustomBlock">
                           <div class="voice-wake-input-wrap">
                             <input type="text" class="voice-phrase-custom-input" id="voiceCancelCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：不要了" aria-label="自定义取消词">
@@ -2222,7 +2413,7 @@
                         </div>
                         </div>
                         <div class="voice-phrase-kind-pane" id="voiceCancelKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" aria-labelledby="btnVoiceCancelKindSound" hidden>
-                          <div id="voiceCancelAcousticHost" class="habit-scenario-voice-command-host voice-control-acoustic-host"></div>
+                          <p class="voice-phrase-panel-hint" id="voiceCancelAcousticMovedHint">录制声音已移到上方「语音习惯 · 高级」。</p>
                         </div>
                       </div>
                       <div class="voice-phrase-panel voice-end-phrase-panel" id="voiceEndPhrasePanel" data-recognize-intent-pane="confirm">
@@ -2239,7 +2430,7 @@
                         <div class="voice-phrase-kind-pane" id="voiceEndKindTextPane" data-phrase-kind-pane="text" role="tabpanel" aria-labelledby="btnVoiceEndKindText">
                         <h4 class="voice-wake-section-title" id="voiceEndPresetsZhLabel">结束词 · 说出即可停止听写</h4>
                         <div class="voice-wake-alias-card voice-end-alias-card">
-                        <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="voiceEndPhraseTags" role="listbox" aria-labelledby="voiceEndPresetsZhLabel"></div>
+                        <div class="voice-phrase-tags voice-wake-active-tags voice-wake-alias-list" id="voiceEndPhraseTagsLegacy" role="listbox" aria-labelledby="voiceEndPresetsZhLabel" hidden></div>
                         <div class="voice-phrase-add-row voice-wake-add-row voice-wake-alias-add" id="voiceEndCustomBlock">
                           <div class="voice-wake-input-wrap">
                             <input type="text" class="voice-phrase-custom-input" id="voiceEndCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：就这样" aria-label="自定义结束词">
@@ -2253,7 +2444,7 @@
                         </div>
                         </div>
                         <div class="voice-phrase-kind-pane" id="voiceEndKindSoundPane" data-phrase-kind-pane="sound" role="tabpanel" aria-labelledby="btnVoiceEndKindSound" hidden>
-                          <div id="voiceEndAcousticHost" class="habit-scenario-voice-command-host voice-control-acoustic-host"></div>
+                          <p class="voice-phrase-panel-hint" id="voiceEndAcousticMovedHint">录制声音已移到上方「语音习惯 · 高级」。</p>
                         </div>
                         <p class="voice-phrase-custom-lbl sr-only" id="voiceEndCustomLbl">自定义结束词</p>
                       </div>
@@ -2304,33 +2495,12 @@
                       <p class="voice-step-page-sub" id="voiceSendPageSub">不确定就选「自己按回车」——最稳妥</p>
                     </header>
                     <div class="voice-step-page-stack voice-send-page-stack" id="voiceSendPageGrid">
-                      <section class="voice-phrase-panel voice-send-mode-panel" id="voiceSendModePanel">
-                        <p class="voice-phrase-panel-title" id="voiceEditSectionSend">请选择发送方式</p>
-                        <div class="voice-output-modes voice-output-mode-cards" id="voiceOutputModeSegments" role="radiogroup" aria-label="发送方式">
-                          <button type="button" class="voice-output-mode-card is-active is-recommended" data-voice-output-mode="confirm" id="voiceOutputModeConfirm" role="radio" aria-checked="true">
-                            <span class="voice-output-mode-tag" id="voiceOutputModeConfirmTag">最稳妥</span>
-                            <span class="voice-output-mode-title" id="voiceOutputModeConfirmTitle">你自己手动按回车</span>
-                            <span class="voice-output-mode-desc" id="voiceOutputModeConfirmDesc">文字留在输入框，你检查后再按发送键。最不容易发错。</span>
-                            <span class="voice-output-mode-foot" id="voiceOutputModeConfirmFoot">当前使用中</span>
-                          </button>
-                          <button type="button" class="voice-output-mode-card" data-voice-output-mode="phrase" id="voiceOutputModePhrase" role="radio" aria-checked="false">
-                            <span class="voice-output-mode-tag" id="voiceOutputModePhraseTag">说口令</span>
-                            <span class="voice-output-mode-title" id="voiceOutputModePhraseTitle">末尾喊「发送」才发</span>
-                            <span class="voice-output-mode-desc" id="voiceOutputModePhraseDesc">只有说出发送词才会发出去；说结束词只会停下。</span>
-                            <span class="voice-output-mode-foot" id="voiceOutputModePhraseFoot">点击切换</span>
-                          </button>
-                          <button type="button" class="voice-output-mode-card" data-voice-output-mode="auto" id="voiceOutputModeAuto" role="radio" aria-checked="false">
-                            <span class="voice-output-mode-tag" id="voiceOutputModeAutoTag">全自动</span>
-                            <span class="voice-output-mode-title" id="voiceOutputModeAutoTitle">停顿后自动发</span>
-                            <span class="voice-output-mode-desc" id="voiceOutputModeAutoDesc">说完后自己会等一会儿再帮你按发送键；也可说「发送」马上发出。</span>
-                            <span class="voice-output-mode-foot" id="voiceOutputModeAutoFoot">点击切换</span>
-                          </button>
-                        </div>
+                      <section class="voice-phrase-panel voice-send-mode-panel" id="voiceSendModePanel" hidden aria-hidden="true">
+                        <p class="voice-phrase-panel-title sr-only" id="voiceEditSectionSend">请选择发送方式</p>
                         <p class="voice-output-hint sr-only" id="voiceOutputHint">文字留在输入框，你检查后再按发送键。最不容易发错。</p>
-                        <p class="voice-output-auto-guard" id="voiceOutputAutoGuard" hidden>说结束词只会停下；自然停顿后才会自动发送。</p>
                       </section>
                       <p class="voice-send-more-cue" id="voiceSendMoreCue" hidden></p>
-                      <p class="voice-send-confirm-hint" id="voiceSendConfirmHint">当前不用配发送词。想用嘴发送或自动发送时，再切换上方另外两种方式。</p>
+                      <p class="voice-send-confirm-hint" id="voiceSendConfirmHint" hidden>当前不用配发送词。想用嘴发送或自动发送时，再切换上方另外两种方式。</p>
                       <section class="voice-phrase-panel voice-send-phrase-panel" id="voiceSendPhrasePanel" hidden>
                         <div class="voice-phrase-panel-head">
                           <p class="voice-phrase-panel-title" id="voiceSendPresetsZhLabel">发送词</p>
@@ -2340,7 +2510,7 @@
                           </div>
                         </div>
                         <div class="voice-phrase-kind-pane" id="voiceSendKindTextPane" data-phrase-kind-pane="text">
-                          <div class="voice-phrase-tags" id="voiceSendPhraseTags" role="listbox" aria-labelledby="voiceSendPresetsZhLabel"></div>
+                          <div class="voice-phrase-tags" id="voiceSendPhraseTagsLegacy" role="listbox" aria-labelledby="voiceSendPresetsZhLabel" hidden></div>
                           <div class="voice-phrase-add-row" id="voiceSendCustomBlock">
                             <input type="text" class="voice-phrase-custom-input" id="voiceSendCustomInput" autocomplete="off" spellcheck="false" maxlength="48" placeholder="例如：发出去">
                             <button type="button" class="voice-phrase-custom-listen" id="btnVoiceSendCustomListen" title="说一句，用识别结果填入">🎤</button>
@@ -2361,10 +2531,6 @@
                           </div>
                         </div>
                       </section>
-                      <p class="voice-send-lite-notice" id="voiceSendLiteNotice" hidden>
-                        <span id="voiceSendLiteNoticeText"></span>
-                        <button type="button" class="voice-mode-meta-link" id="btnVoiceSendSwitchVosk">切换到标准离线识别</button>
-                      </p>
                     </div>
                     </div>
                     </div>
@@ -2583,31 +2749,6 @@
                     </div>
                   </div>
                 </div>
-                <section class="voice-send-params-bar" id="voiceSendParamsAside" aria-labelledby="voiceSettingsCommitAsideTitle">
-                  <div class="voice-output-params" id="voiceOutputParams">
-                    <p class="voice-phrase-panel-title" id="voiceSettingsCommitAsideTitle">发送键与等待</p>
-                    <div class="voice-send-params-row">
-                      <div class="voice-settings-commit-pills" id="voiceSettingsCommitPills" role="group" aria-labelledby="voiceSettingsCommitLbl">
-                        <span class="voice-settings-commit-lbl" id="voiceSettingsCommitLbl">发送快捷键</span>
-                        <button type="button" class="home-mini-toggle is-active" id="btnVoiceSettingsCommitEnter" data-commit-key="Enter">Enter</button>
-                        <button type="button" class="home-mini-toggle" id="btnVoiceSettingsCommitShiftEnter" data-commit-key="Shift+Enter">Shift+Enter</button>
-                        <button type="button" class="home-mini-toggle" id="btnVoiceSettingsCommitCtrlEnter" data-commit-key="Ctrl+Enter">Ctrl+Enter</button>
-                      </div>
-                      <div class="voice-output-delay-row" id="voiceOutputDelayRow">
-                        <div class="flow-slider-row">
-                          <span class="flow-slider-lbl" id="voiceSettingsDelayLbl">上屏等待</span>
-                          <span class="flow-slider-val" id="voiceSettingsDelayVal">4.0 秒</span>
-                        </div>
-                        <div class="voice-end-inline-range voice-finish-delay-range">
-                          <span class="sr-only" id="voiceSettingsDelayLblSr">等待时间</span>
-                          <input type="range" class="voice-sapi-range" id="voiceSettingsDelayRange" min="1000" max="10000" step="500" value="4000" aria-labelledby="voiceSettingsDelayLblSr">
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <p class="voice-finish-auto-desc" id="voiceSettingsAutoSendDesc" hidden></p>
-                  <p class="voice-finish-habit-note" id="voiceSendHabitNote" hidden></p>
-                </section>
                 <details class="voice-recognize-resources-details" id="voiceRecognizeResourcesDetails" open>
                   <summary id="voiceRecognizeResourcesSummary">模型资源</summary>
                   <section class="voice-recognize-block voice-recognize-resources" id="voiceRecognizeResources">
@@ -3013,7 +3154,7 @@
             <input type="range" id="soundsMasterVolume" min="0" max="100" step="5" value="65" aria-labelledby="soundsMasterVolumeLabel"/>
           </div>
           <details class="voice-wake-advanced voice-sounds-advanced" id="voiceFinishMoreDetails">
-            <summary id="voiceFinishMoreDetailsSummary">改更多说法与发送方式</summary>
+            <summary id="voiceFinishMoreDetailsSummary">录音期间系统音</summary>
             <div class="recording-audio-card voice-recognize-audio-card" id="recordingAudioCard">
               <div class="sound-slot-head">
                 <div>

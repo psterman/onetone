@@ -105,6 +105,9 @@
   }
 
   function resolveOutputModeKey(vm){
+    var pending=global.__vp_voice_pending_send_mode__;
+    // Only while still on sapi/off waiting for vosk — otherwise user pick / snap wins.
+    if((pending==='phrase'||pending==='auto')&&(vm.mode==='sapi'||vm.mode==='off')) return pending;
     if(vm.mode==='sapi'||vm.mode==='off') return 'confirm';
     if(vm.sendMode==='phrase'||vm.sendMode==='auto'||vm.sendMode==='confirm') return vm.sendMode;
     return vm.autoSendEnabled?'auto':'confirm';

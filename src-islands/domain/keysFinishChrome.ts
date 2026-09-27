@@ -10,11 +10,16 @@ export interface KeysFinishChromeModel {
   previewSaved?: boolean;
   mappingId: string;
   finishMode: string;
+  cancelSummary?: string;
+  aimConfigured?: boolean;
+  aimStrategy?: string;
+  aimSummary?: string;
   sig: string;
 }
 
 interface LegacyFinishRender {
   buildKeysFinishChromeModel?: () => KeysFinishChromeModel;
+  syncKeysAimFold?: (model?: KeysFinishChromeModel) => void;
 }
 
 const EMPTY: KeysFinishChromeModel = {
@@ -66,7 +71,41 @@ export function applyKeysFinishChromeHosts(model: KeysFinishChromeModel): void {
   const more = document.getElementById('habitFlowFinishMore') as HTMLDetailsElement | null;
   if (more) {
     more.hidden = !!model.moreHidden;
+    // Advanced: default collapsed. Only force-close when leaving the finish desk.
     if (model.moreHidden) more.open = false;
+  }
+
+  const cancelSum = document.getElementById('keysFinishCancelSummary');
+  if (cancelSum && model.cancelSummary != null) {
+    cancelSum.textContent = model.cancelSummary;
+  }
+
+  // Aim fold + demo mode switch (island path used to skip pane/animation sync).
+  const legacy = window as unknown as {
+    OneToneKeyFinishFlowRender?: {
+      syncKeysAimFold?: (m: KeysFinishChromeModel) => void;
+      syncKeysAimDemo?: (strategy: string) => void;
+    };
+  };
+  const aimApi = legacy.OneToneKeyFinishFlowRender;
+  if (aimApi && typeof aimApi.syncKeysAimFold === 'function') {
+    aimApi.syncKeysAimFold(model);
+  } else {
+    const aimFold = document.getElementById('keysAimFold');
+    if (aimFold) aimFold.hidden = !!model.moreHidden;
+    const aimSum = document.getElementById('keysAimFoldSummary');
+    if (aimSum && model.aimSummary != null) aimSum.textContent = model.aimSummary;
+    const aimBar = document.getElementById('keysAimWritebar');
+    if (aimBar && model.aimStrategy) aimBar.setAttribute('data-aim', model.aimStrategy);
+    const aimSel = document.getElementById('keysAimStrategy') as HTMLSelectElement | null;
+    if (aimSel && model.aimStrategy && aimSel.value !== model.aimStrategy) {
+      aimSel.value = model.aimStrategy;
+    }
+    const aimCal = document.getElementById('keysAimCalRow');
+    if (aimCal) aimCal.hidden = model.aimStrategy !== 'auto';
+    if (aimApi && typeof aimApi.syncKeysAimDemo === 'function' && model.aimStrategy) {
+      aimApi.syncKeysAimDemo(model.aimStrategy);
+    }
   }
 
   const preview = document.getElementById('keysFinishStrategyPreview');

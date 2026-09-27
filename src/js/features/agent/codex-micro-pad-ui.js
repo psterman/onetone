@@ -2676,6 +2676,7 @@
       if (bound) cls += ' is-bound';
       if (!isNp && !isNav && route && route.slotId && route.enabled === false) cls += ' is-route-disabled';
       if ((!isNp && isScreenOnly(route) && !isAdvancedOnly(route, cell.microKeyId)) || isNav) cls += ' is-screen-only';
+      if (isNav) cls += ' is-fixed-nav';
       if (!isNp && !isNav && isAdvancedOnly(route, cell.microKeyId)) {
         cls += ' is-advanced-only';
       }
@@ -2718,9 +2719,8 @@
           metaChord = codexOn ? 'ON' : 'OFF';
       } else if (!isNp && isNavMicroKey(cell.microKeyId)) {
           metaName = cellLabel(cell);
-          metaChord = bound && route && route.slotId
-            ? friendlyChord(chordForSlot(m, route.slotId))
-            : t('codexMicroPadNavDefault', '默认注入方向键');
+          // Fixed chrome: always default direction — never surface a remappable chord.
+          metaChord = t('codexMicroPadNavDefault', '默认方向');
       } else if (!isNp && bound && route && route.slotId) {
           var metaCap = softPadKeyCaption(m, route.slotId, cellLabel(cell));
           metaName = metaCap.name;
@@ -2770,6 +2770,11 @@
 
   function isNavMicroKey(id) {
     return /^NAV_/.test(String(id || ''));
+  }
+
+  /** Soft Pad left NAV column: fixed arrow inject — never remappable. */
+  function softPadKeyBindBlocked(id) {
+    return isNavMicroKey(id);
   }
 
   /** Soft Pad left NAV column visibility (showNavigationPad). Does not capture physical arrows. */
@@ -7279,6 +7284,7 @@
 
   /** Preview key →「改按键」左预览 + 右栏场景目录内嵌表单并快速定位。 */
   function softPadPreviewEditKey(m, microKeyId) {
+    if (softPadKeyBindBlocked(microKeyId)) return;
     markSoftPadPreviewFocus(microKeyId);
     var Hub = global.OneToneSoftPadHub;
     // Land lock only blocks ghost-clicks that would *open* the layout face.
@@ -7366,6 +7372,8 @@
   function softPadCaptionStateForKey(m, microKeyId) {
     var id = String(microKeyId || '').trim();
     if (!id || !m) return '';
+    // NAV column is fixed chrome — never show 未绑定 / 已绑定 bind state.
+    if (softPadKeyBindBlocked(id) || id === 'ENC' || id === 'JOY') return '';
     try {
       var pad = m.codexMicroPad;
       if (!pad || !pad.keys) return t('codexMicroPadUnbound', '未绑定');
@@ -8768,16 +8776,16 @@
 
   function softPadFinishModeLabel(mode) {
     if (mode === 'perpress') return t('habitFinishModeAuto', '按住发送');
-    if (mode === 'confirm') return t('habitFinishModeConfirmSend', '结束后自动发送');
-    return t('habitFinishModeManual', '只结束不发送');
+    if (mode === 'confirm') return t('habitFinishModeConfirmSend', '自动发送');
+    return t('habitFinishModeManual', '手动发送');
   }
 
   function softPadFinishModeDesc(mode) {
     if (mode === 'perpress') return t('habitFinishModeAutoDesc', '按住触发键说话，松手后结束并发送。');
     if (mode === 'confirm') {
-      return t('habitFinishModeConfirmSendDesc', '再按一次听写键结束，等待后自动按 Enter 发送。');
+      return t('habitFinishModeConfirmSendDesc', '开麦后等待，再按发送键发出。');
     }
-    return t('habitFinishModeManualDesc', '再按一次听写键只结束听写，发送键自己按。');
+    return t('habitFinishModeManualDesc', '只结束听写，发送键自己按。');
   }
 
   function softPadImeDelayHtml(m, finishMode) {
@@ -11153,7 +11161,7 @@
     if (!m) return false;
     // Do not fall back to AG00 (数字 7). An unfocused pick used to rewrite key 7.
     var id = focusedSoftPadKeyId();
-    if (!id || id === 'JOY') return false;
+    if (!id || id === 'JOY' || softPadKeyBindBlocked(id)) return false;
     try {
       markSoftPadPreviewFocus(id);
       openEditKeycap(m, id, { mode: 'inline' });
@@ -11179,6 +11187,10 @@
 
   function onLayoutActionPick(slotId) {
     if (!editDraft || editDraft.__catalogOnly) return;
+    if (softPadKeyBindBlocked(editDraft.microKeyId)) {
+      toast(t('codexMicroPadNavFixedHint', '方向键固定为默认方向，不可改绑'));
+      return;
+    }
     var id = String(slotId || '').trim();
     var curKey = String(editDraft.microKeyId || '').trim();
     var pad = editDraft.mapping && editDraft.mapping.codexMicroPad;
@@ -14246,13 +14258,14 @@
       dock.hidden = true;
       return;
     }
-    // Dock chrome is keys-only. show/skin floatTab only marks left-preview ownership.
+    // Dock chrome is keys-only empty shell — keep host hidden; catalog paints into fn-swap.
     var tab = opts.floatTab != null
       ? resolveSoftPadFloatTab(opts.floatTab)
       : 'keys';
     softPadFloatTab = tab;
-    dock.hidden = false;
-    dock.removeAttribute('hidden');
+    dock.hidden = true;
+    dock.setAttribute('hidden', '');
+    dock.setAttribute('aria-hidden', 'true');
     dock.classList.add('is-open');
     dock.setAttribute('data-float-tab', 'keys');
     dock.innerHTML = buildSoftPadFloatDockHtml(m, pad, 'keys');
@@ -17350,14 +17363,13 @@
         }
         if (mode === 'softPad' || mode === 'edit' || mode === 'config') {
           if (softPadPanelActive()) {
+            // NAV is fixed Soft Pad chrome — softPadPreviewEditKey no-ops.
             softPadPreviewEditKey(m, nav);
             return;
           }
-          openEditKeycap(m, nav);
+          toast(t('codexMicroPadNavFixedHint', '方向键固定为默认方向，不可改绑'));
           return;
         }
-        toast(t('codexMicroPadNavPreview', '方向键预览') + ' · ' + String(nav || '')
-          + ' · ' + t('codexMicroPadNavEditHint', '点击绑定能力（默认注入方向键）'));
       });
     });
 
@@ -18225,7 +18237,11 @@
   function applySoftPadCapabilityPick(m, slotId) {
     m = m || softPadPreviewMapping;
     var keyId = focusedSoftPadKeyId();
-    if (!m || !keyId) {
+    if (softPadKeyBindBlocked(keyId)) {
+      toast(t('codexMicroPadNavFixedHint', '方向键固定为默认方向，不可改绑'));
+      return;
+    }
+    if (!m || !keyId || keyId === 'ENC') {
       toast(t('softPadLayoutPickKey', '先点左侧键盘上的一个键，再在右侧换功能'));
       return;
     }
@@ -18783,6 +18799,12 @@
 
   function openEditKeycap(m, microKeyId, opts) {
     opts = opts || {};
+    if (softPadKeyBindBlocked(microKeyId)) {
+      if (softPadPanelActive()) {
+        toast(t('codexMicroPadNavFixedHint', '方向键固定为默认方向，不可改绑'));
+      }
+      return;
+    }
     ensurePad(m, { persist: false });
     var mode = opts.mode === 'inline' ? 'inline' : 'modal';
     // Soft Pad settings: always left preview + right form — never capability modal.

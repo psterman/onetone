@@ -114,8 +114,9 @@ check('confirm 模式 hosts 可见', model.delayHidden === false && model.cancel
 check('sig 含 mappingId', typeof model.sig === 'string' && model.sig.indexOf('m1') === 0);
 
 globalThis.OneToneSceneFlowSummary.resolveFinishMode = () => 'manual';
-const hiddenModel = API.buildKeysFinishTimingModel();
-check('非 confirm 时 hidden', hiddenModel.delayHidden === true && hiddenModel.cancelHidden === true && !hiddenModel.delayHtml);
+const manualModel = API.buildKeysFinishTimingModel();
+// Delay is confirm-only; cancel strategies (key/phrase/camera) stay for any finish mode.
+check('非 confirm 时藏 delay、留 cancel', manualModel.delayHidden === true && !manualModel.delayHtml && manualModel.cancelHidden === false && !!manualModel.cancelHtml);
 globalThis.OneToneSceneFlowSummary.resolveFinishMode = () => 'confirm';
 
 console.log('[keys-finish-timing] panel 守卫:');

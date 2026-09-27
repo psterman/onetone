@@ -262,17 +262,41 @@
         e.preventDefault();
         var mode=btn.getAttribute('data-voice-output-mode')||'';
         if(mode!=='confirm'&&mode!=='phrase'&&mode!=='auto') return;
+        function paintFinishModeUi(nextMode){
+          root.querySelectorAll('[data-voice-output-mode]').forEach(function(el){
+            var on=(el.getAttribute('data-voice-output-mode')||'')===nextMode;
+            el.classList.toggle('is-active',on);
+            el.setAttribute('aria-checked',on?'true':'false');
+          });
+          var prefer=typeof global.__vp_preferFinishOutcomeFromSendMode__==='function'
+            ?global.__vp_preferFinishOutcomeFromSendMode__(nextMode)
+            :(nextMode==='confirm'?'keep':'send');
+          if(typeof global.__vp_setFinishOutcome__==='function') global.__vp_setFinishOutcome__(prefer,nextMode);
+          else{
+            if(typeof global.__vp_syncVoiceFinishCausal__==='function') global.__vp_syncVoiceFinishCausal__(nextMode);
+            if(typeof global.__vp_syncVoiceFinishHabit__==='function') global.__vp_syncVoiceFinishHabit__(nextMode);
+          }
+        }
+        function persistAndPaint(nextMode){
+          var pending=null;
+          if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.setOutputMode){
+            pending=global.OneToneVoiceEnd.setOutputMode(nextMode);
+          }
+          paintFinishModeUi(nextMode);
+          if(pending&&typeof pending.catch==='function') pending.catch(function(){});
+        }
         var eng=global.OneToneHomeLive&&global.OneToneHomeLive.voiceEngineOn?global.OneToneHomeLive.voiceEngineOn():'off';
-        if(eng==='sapi'||eng==='off'){
-          if(mode==='confirm') return;
-          global.__vp_voice_pending_send_mode__=mode;
+        var needsVosk=eng==='sapi'||eng==='off';
+        // User pick always wins over a leftover engine-switch pending.
+        if(mode==='confirm'||!needsVosk) global.__vp_voice_pending_send_mode__=null;
+        else global.__vp_voice_pending_send_mode__=mode;
+        if(needsVosk&&mode!=='confirm'){
+          paintFinishModeUi(mode);
           if(hooks.switchVoiceMode) hooks.switchVoiceMode('vosk');
           if(global.OneToneAppToast) global.OneToneAppToast.show(t('voiceSendSwitchEngineToast'),'lite');
           return;
         }
-        if(global.OneToneVoiceEnd&&global.OneToneVoiceEnd.setOutputMode){
-          global.OneToneVoiceEnd.setOutputMode(mode);
-        }
+        persistAndPaint(mode);
       });
     }
     var btnVoiceLiveMicChange=$('btnVoiceLiveMicChange');
@@ -1042,45 +1066,248 @@
       var p=String(raw||'').trim();
       return p?'「'+p+'」':'';
     }
-    function setFinishOutcome(outcome){
+    function preferFinishOutcomeFromSendMode(sendMode){
+      sendMode=String(sendMode||'').toLowerCase();
+      if(sendMode==='phrase'||sendMode==='auto') return 'send';
+      return 'keep';
+    }
+    function currentSendModeKey(){
+      try{
+        var V=global.OneToneVoiceSettingsViewModel;
+        if(V&&typeof V.build==='function'&&typeof V.resolveOutputModeKey==='function'){
+          return V.resolveOutputModeKey(V.build(false))||'confirm';
+        }
+        var End=global.OneToneVoiceEnd;
+        if(End&&typeof End.resolveSendMode==='function') return End.resolveSendMode()||'confirm';
+      }catch(_){}
+      return 'confirm';
+    }
+    function syncFinishCausalFromSendMode(sendMode){
+      sendMode=String(sendMode||currentSendModeKey()||'confirm').toLowerCase();
+      if(sendMode!=='phrase'&&sendMode!=='auto') sendMode='confirm';
+      var sendRaw=firstTagPhrase('voiceSendPhraseTags','发送');
+      var sendPhrase=finishPhraseLabel(sendRaw)||'「发送」';
+      var causal={
+        confirm:{lead:t('voiceFinishCausalLeadStop','听写停下'),mid:t('voiceFinishCausalMidKeep','字留下'),tail:t('voiceFinishCausalTailEnter','你按回车')},
+        phrase:{lead:t('voiceFinishCausalLeadStop','听写停下'),mid:t('voiceFinishCausalMidSay','说')+sendPhrase,tail:t('voiceFinishCausalTailSend','才发出去')},
+        auto:{lead:t('voiceFinishCausalLeadStop','听写停下'),mid:t('voiceFinishCausalMidWait','等一小会'),tail:t('voiceFinishCausalTailAuto','自动发送')}
+      };
+      var c=causal[sendMode]||causal.confirm;
+      var lead=$('voiceFinishCausalLead');
+      var mid=$('voiceFinishCausalMid');
+      var tail=$('voiceFinishCausalTail');
+      var changed=false;
+      if(lead&&lead.textContent!==c.lead){ lead.textContent=c.lead; changed=true; }
+      if(mid&&mid.textContent!==c.mid){ mid.textContent=c.mid; changed=true; }
+      if(tail&&tail.textContent!==c.tail){ tail.textContent=c.tail; changed=true; }
+      var el=$('voiceFinishCausal');
+      if(el&&changed){
+        el.classList.remove('is-pop');
+        requestAnimationFrame(function(){ el.classList.add('is-pop'); });
+      }
+    }
+    function habitMetaForSendMode(sendMode){
+      sendMode=String(sendMode||'confirm').toLowerCase();
+      if(sendMode==='phrase'){
+        return {
+          primary:'send',
+          others:['keep','discard'],
+          kind:t('voiceFinishHabitKindSend','发送词'),
+          why:t('voiceFinishHabitWhyPhrase','配合「说了才发」'),
+          whyLine:t('voiceFinishHabitWhyLinePhrase','说出下面任一词 = 立刻把字发出去。可加多个说法。'),
+          hint:t('voiceFinishHabitHintPhrase','至少保留一个发送词。结束 / 取消在下方「其他口令」。'),
+          othersTitle:t('voiceFinishHabitOthersPhrase','其他口令 · 结束 / 取消（可选）')
+        };
+      }
+      if(sendMode==='auto'){
+        return {
+          primary:'send',
+          others:['keep','discard'],
+          kind:t('voiceFinishHabitKindSendAuto','发送词 · 马上发'),
+          why:t('voiceFinishHabitWhyAuto','配合「停顿就发」'),
+          whyLine:t('voiceFinishHabitWhyLineAuto','说出下面任一词 = 不用等停顿，马上发出去。'),
+          hint:t('voiceFinishHabitHintAuto','自动发送仍监听这些词。想打断自动发，用「其他」里的结束词。'),
+          othersTitle:t('voiceFinishHabitOthersAuto','其他口令 · 结束（打断）/ 取消')
+        };
+      }
+      return {
+        primary:'keep',
+        others:['send','discard'],
+        kind:t('voiceFinishHabitKindKeep','结束词'),
+        why:t('voiceFinishHabitWhyConfirm','配合「留下自查」'),
+        whyLine:t('voiceFinishHabitWhyLineConfirm','说出下面任一词 = 停下听写，字留在框里。可加多个说法。'),
+        hint:t('voiceFinishHabitHintConfirm','当前默认不靠嘴发送；若要喊着发，可在「其他口令」里加发送词。'),
+        othersTitle:t('voiceFinishHabitOthersConfirm','其他口令 · 发送 / 取消（可选）')
+      };
+    }
+    function syncVoiceFinishHabitLayout(sendMode){
+      sendMode=String(sendMode||currentSendModeKey()||'confirm').toLowerCase();
+      if(sendMode!=='phrase'&&sendMode!=='auto') sendMode='confirm';
+      var meta=habitMetaForSendMode(sendMode);
+      var kindEl=$('voiceFinishHabitKind');
+      var whyBadge=$('voiceFinishHabitWhyBadge');
+      var whyLine=$('voiceFinishHabitWhyLine');
+      var hint=$('voiceFinishHabitHint');
+      var othersSum=$('voiceFinishHabitOthersSummary');
+      if(kindEl) kindEl.textContent=meta.kind;
+      if(whyBadge) whyBadge.textContent=meta.why;
+      if(whyLine) whyLine.textContent=meta.whyLine;
+      if(hint) hint.textContent=meta.hint;
+      if(othersSum) othersSum.textContent=meta.othersTitle;
+      var primaryMount=$('voiceFinishHabitPrimaryMount');
+      var othersBody=$('voiceFinishHabitOthersBody');
+      var stash=$('voiceFinishHabitBlocks');
+      if(!primaryMount||!othersBody) return;
+      function block(kind){ return document.querySelector('[data-habit-block="'+kind+'"]'); }
+      var titles={
+        send:t('voiceFinishHabitBlockSend','发送词'),
+        keep:t('voiceFinishHabitBlockKeep','结束词'),
+        discard:t('voiceFinishHabitBlockDiscard','取消词')
+      };
+      var descs={
+        send:t('voiceFinishHabitBlockSendDesc','说出 = 把字发出去'),
+        keep:t('voiceFinishHabitBlockKeepDesc','说出 = 停下，字留下'),
+        discard:t('voiceFinishHabitBlockDiscardDesc','说出 = 丢掉本轮')
+      };
+      function paintBlockCopy(kind){
+        var b=block(kind);
+        if(!b) return;
+        var title=b.querySelector('[data-habit-block-title]');
+        var desc=b.querySelector('[data-habit-block-desc]');
+        if(title) title.textContent=titles[kind]||'';
+        if(desc) desc.textContent=descs[kind]||'';
+        b.classList.toggle('danger',kind==='discard');
+      }
+      ['send','keep','discard'].forEach(paintBlockCopy);
+      var prevPrimary=primaryMount.querySelector('[data-habit-block]');
+      var primaryChanged=!prevPrimary||prevPrimary.getAttribute('data-habit-block')!==meta.primary;
+      var primaryBlock=block(meta.primary);
+      if(primaryBlock){
+        primaryBlock.classList.add('is-primary');
+        if(primaryBlock.parentNode!==primaryMount) primaryMount.appendChild(primaryBlock);
+      }
+      meta.others.forEach(function(kind){
+        var b=block(kind);
+        if(!b) return;
+        b.classList.remove('is-primary');
+        if(b.parentNode!==othersBody) othersBody.appendChild(b);
+      });
+      if(stash){
+        ['send','keep','discard'].forEach(function(kind){
+          if(kind===meta.primary||meta.others.indexOf(kind)>=0) return;
+          var b=block(kind);
+          if(b) stash.appendChild(b);
+        });
+      }
+      var primaryBox=$('voiceFinishHabitPrimary');
+      if(primaryBox&&primaryChanged){
+        primaryBox.classList.remove('is-pop');
+        requestAnimationFrame(function(){ primaryBox.classList.add('is-pop'); });
+      }
+      var others=$('voiceFinishHabitOthers');
+      if(others&&primaryChanged) others.open=false;
+      paintFinishHabitLang();
+      paintFinishHabitPlaceholders();
+    }
+    function finishHabitLang(){
+      return global.__vp_voice_end_lang__||global.__vp_voice_send_lang__||global.__vp_voice_cancel_lang__||'zh';
+    }
+    function paintFinishHabitLang(){
+      var host=$('voiceFinishHabitLangToggle');
+      if(!host) return;
+      var lang=finishHabitLang();
+      host.querySelectorAll('.flow-lang-btn').forEach(function(b){
+        b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===lang);
+      });
+    }
+    function paintFinishHabitPlaceholders(){
+      var lang=finishHabitLang();
+      var en=lang==='en';
+      var map=[
+        ['voiceFinishHabitAddKeep', en?'e.g. done':'例如：好了'],
+        ['voiceFinishHabitAddSend', en?'e.g. send it':'例如：发吧'],
+        ['voiceFinishHabitAddDiscard', en?'e.g. never mind':'例如：算了']
+      ];
+      map.forEach(function(row){
+        var el=$(row[0]);
+        if(el) el.placeholder=row[1];
+      });
+    }
+    function refreshHabitPhraseTags(){
+      var End=global.OneToneVoiceEnd;
+      if(!End) return;
+      if(End.renderSendCustomPhrases) End.renderSendCustomPhrases();
+      if(End.renderEndCustomPhrases) End.renderEndCustomPhrases();
+      if(End.renderCancelCustomPhrases) End.renderCancelCustomPhrases();
+    }
+    function setFinishOutcome(outcome,sendModeOpt){
       outcome=outcome==='send'||outcome==='discard'?outcome:'keep';
       global.__vp_voice_finish_outcome__=outcome;
       document.querySelectorAll('#voiceFinishOutcomes [data-voice-outcome]').forEach(function(el){
         var on=el.getAttribute('data-voice-outcome')===outcome;
         el.classList.toggle('is-on',on);
-        el.setAttribute('aria-checked',on?'true':'false');
+        el.setAttribute('aria-pressed',on?'true':'false');
       });
       var cancelPane=$('voiceCancelPhrasePanel');
       var endPane=$('voiceEndPhrasePanel');
       var sendPane=$('voiceFinishSendPane');
-      if(cancelPane) cancelPane.hidden=outcome!=='discard';
-      if(endPane) endPane.hidden=outcome!=='keep';
-      if(sendPane) sendPane.hidden=outcome!=='send';
+      var sendMode=sendModeOpt!=null?String(sendModeOpt).toLowerCase():currentSendModeKey();
+      if(sendMode!=='phrase'&&sendMode!=='auto') sendMode='confirm';
+      if(cancelPane) cancelPane.hidden=true;
+      if(endPane) endPane.hidden=true;
+      // Habit + params own the finish UI; keep legacy send stack buried.
+      if(sendPane) sendPane.hidden=true;
+      var delayRow=$('voiceOutputDelayRow');
+      if(delayRow){
+        var showDelay=sendMode==='phrase'||sendMode==='auto';
+        delayRow.hidden=!showDelay;
+        delayRow.classList.toggle('is-hidden',!showDelay);
+      }
+      var paramsBar=$('voiceSendParamsAside');
+      if(paramsBar){
+        paramsBar.hidden=false;
+        paramsBar.removeAttribute('hidden');
+      }
+      var autoGuard=$('voiceOutputAutoGuard');
+      if(autoGuard){
+        autoGuard.hidden=sendMode!=='auto';
+        if(sendMode==='auto') autoGuard.textContent=t('voiceOutputAutoGuard','说结束词只会停下；自然停顿后才会自动发送。');
+      }
       var keepRaw=firstTagPhrase('voiceEndPhraseTags','结束输入');
       var sendRaw=firstTagPhrase('voiceSendPhraseTags','发送');
       var discardRaw=firstTagPhrase('voiceCancelPhraseTags','取消输入');
-      var keepPhrase=finishPhraseLabel(keepRaw);
-      var sendPhrase=finishPhraseLabel(sendRaw);
-      var discardPhrase=finishPhraseLabel(discardRaw);
       var keepOutcome=$('voiceFinishOutcomePhraseKeep');
-      if(keepOutcome) keepOutcome.textContent=keepPhrase;
+      if(keepOutcome) keepOutcome.textContent=finishPhraseLabel(keepRaw)||'「结束输入」';
       var sendOutcome=$('voiceFinishOutcomePhraseSend');
-      if(sendOutcome) sendOutcome.textContent=sendPhrase;
+      if(sendOutcome) sendOutcome.textContent=finishPhraseLabel(sendRaw)||'「发送」';
       var discardOutcome=$('voiceFinishOutcomePhraseDiscard');
-      if(discardOutcome) discardOutcome.textContent=discardPhrase;
-      var causal={
-        keep:{lead:'停一会儿',mid:'字留下',tail:'不发'},
-        send:{lead:'听写停下',mid:'说'+sendPhrase,tail:'才发送'},
-        discard:{lead:'说'+discardPhrase,mid:'取消听写',tail:'恢复开启前'}
-      };
-      var c=causal[outcome]||causal.keep;
-      var lead=$('voiceFinishCausalLead');
-      var mid=$('voiceFinishCausalMid');
-      var tail=$('voiceFinishCausalTail');
-      if(lead) lead.textContent=c.lead;
-      if(mid) mid.textContent=c.mid;
-      if(tail) tail.textContent=c.tail;
+      if(discardOutcome) discardOutcome.textContent=finishPhraseLabel(discardRaw)||'「取消输入」';
+      syncFinishCausalFromSendMode(sendMode);
+      syncVoiceFinishHabitLayout(sendMode);
+      refreshHabitPhraseTags();
     }
+    global.__vp_syncVoiceFinishCausal__=syncFinishCausalFromSendMode;
+    global.__vp_syncVoiceFinishHabit__=syncVoiceFinishHabitLayout;
+    global.__vp_preferFinishOutcomeFromSendMode__=preferFinishOutcomeFromSendMode;
+    global.__vp_setFinishOutcome__=setFinishOutcome;
+    function refreshFinishHabitAfterAdd(){
+      setFinishOutcome(preferFinishOutcomeFromSendMode(currentSendModeKey()));
+    }
+    bindCustomPhraseAdd('voiceFinishHabitAddSend','btnVoiceFinishHabitAddSend',function(phrase){
+      var end=global.OneToneVoiceEnd;
+      if(end&&end.addCustomSendPhrase) end.addCustomSendPhrase(phrase);
+      refreshFinishHabitAfterAdd();
+    });
+    bindCustomPhraseAdd('voiceFinishHabitAddKeep','btnVoiceFinishHabitAddKeep',function(phrase){
+      var end=global.OneToneVoiceEnd;
+      if(end&&end.addCustomEndPhrase) end.addCustomEndPhrase(phrase);
+      refreshFinishHabitAfterAdd();
+    });
+    bindCustomPhraseAdd('voiceFinishHabitAddDiscard','btnVoiceFinishHabitAddDiscard',function(phrase){
+      var end=global.OneToneVoiceEnd;
+      if(end&&end.addCustomCancelPhrase) end.addCustomCancelPhrase(phrase);
+      refreshFinishHabitAfterAdd();
+    });
     var finishPhrasePopoverKind='keep';
     var phraseEditSaveHandler=null;
     function getFinishPopoverPresets(kind){
@@ -1196,7 +1423,22 @@
       }
     }
     function openFinishEdit(outcome){
-      openFinishPhrasePopover(outcome||global.__vp_voice_finish_outcome__||'keep');
+      outcome=outcome==='send'||outcome==='discard'?outcome:'keep';
+      var kind=outcome==='send'?'send':(outcome==='discard'?'discard':'keep');
+      var block=document.querySelector('[data-habit-block="'+kind+'"]');
+      var primaryMount=$('voiceFinishHabitPrimaryMount');
+      var others=$('voiceFinishHabitOthers');
+      if(block&&others&&primaryMount&&!primaryMount.contains(block)) others.open=true;
+      var inputId=kind==='send'?'voiceFinishHabitAddSend':(kind==='discard'?'voiceFinishHabitAddDiscard':'voiceFinishHabitAddKeep');
+      var input=$(inputId);
+      if(input){
+        if(typeof input.scrollIntoView==='function'){
+          try{ input.scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(_){ input.scrollIntoView(false); }
+        }
+        setTimeout(function(){ try{ input.focus(); }catch(_){ } },40);
+        return;
+      }
+      openFinishPhrasePopover(outcome);
     }
     global.__vp_openPhraseEditPopover__=openPhraseEditPopover;
     (function syncFinishCardCopy(){
@@ -1210,10 +1452,26 @@
         if(el) el.textContent=t(row[1],row[2]);
       });
       document.querySelectorAll('.voice-finish-outcome-edit').forEach(function(el){
-        el.textContent=t('voiceFinishEditLink','编辑');
+        el.textContent=t('voiceFinishEditLink','改口令');
       });
+      var lblDefault=$('voiceFinishDefaultLbl');
+      if(lblDefault) lblDefault.textContent=t('voiceFinishDefaultLbl','停顿后默认');
+      var lblHabit=$('voiceFinishHabitLbl');
+      if(lblHabit) lblHabit.textContent=t('voiceFinishHabitLbl','语音习惯 · 先改当前相关');
+      var addSend=$('btnVoiceFinishHabitAddSend');
+      if(addSend) addSend.textContent=t('voiceFinishHabitAddBtn','+ 添加');
+      var addKeep=$('btnVoiceFinishHabitAddKeep');
+      if(addKeep) addKeep.textContent=t('voiceFinishHabitAddBtn','+ 添加');
+      var addDiscard=$('btnVoiceFinishHabitAddDiscard');
+      if(addDiscard) addDiscard.textContent=t('voiceFinishHabitAddBtn','+ 添加');
+      var bridgeText=$('voiceFinishKeysBridgeText');
+      if(bridgeText) bridgeText.textContent=t('voiceFinishKeysBridgeText','键怎么收尾（按住 / 确认发送）');
+      var bridgeGo=$('btnVoiceFinishOpenKeys');
+      if(bridgeGo) bridgeGo.textContent=t('voiceFinishKeysBridgeGo','按键设置 · 听写方式 →');
+      var stepTitle=$('voiceFinishStepTitle');
+      if(stepTitle) stepTitle.textContent=t('keysCaptureKeyFinishTitle','说完后');
       var sum=$('voiceFinishMoreDetailsSummary');
-      if(sum) sum.textContent=t('voiceFinishMoreDetailsSummary','改更多说法与发送方式');
+      if(sum) sum.textContent=t('voiceFinishMoreDetailsSummary','录音期间系统音');
     })();
     var finishOutcomes=$('voiceFinishOutcomes');
     if(finishOutcomes&&!finishOutcomes._outcomeBound){
@@ -1229,9 +1487,19 @@
         var btn=e.target.closest&&e.target.closest('[data-voice-outcome]');
         if(!btn||!finishOutcomes.contains(btn)) return;
         e.preventDefault();
-        setFinishOutcome(btn.getAttribute('data-voice-outcome')||'keep');
+        var outcome=btn.getAttribute('data-voice-outcome')||'keep';
+        setFinishOutcome(outcome);
+        openFinishEdit(outcome);
       });
-      setFinishOutcome(global.__vp_voice_finish_outcome__||'keep');
+    }
+    setFinishOutcome(preferFinishOutcomeFromSendMode(currentSendModeKey()));
+    var btnVoiceFinishOpenKeys=$('btnVoiceFinishOpenKeys');
+    if(btnVoiceFinishOpenKeys&&!btnVoiceFinishOpenKeys._keysBound){
+      btnVoiceFinishOpenKeys._keysBound=true;
+      btnVoiceFinishOpenKeys.addEventListener('click',function(e){
+        e.preventDefault();
+        openDrawerPanel('keys','target');
+      });
     }
     var finishPhraseOverlay=$('voiceFinishPhraseOverlay');
     if(finishPhraseOverlay&&!finishPhraseOverlay.dataset.bound){
@@ -1490,6 +1758,78 @@
     bindFlowLangToggle('voiceEndLangToggle','__vp_voice_end_lang__');
     bindFlowLangToggle('voiceCancelLangToggle','__vp_voice_cancel_lang__');
     bindFlowLangToggle('voiceSendLangToggle','__vp_voice_send_lang__');
+    (function bindFinishHabitLangToggle(){
+      var host=$('voiceFinishHabitLangToggle');
+      if(!host||host.dataset.habitLangBound==='1') return;
+      host.dataset.habitLangBound='1';
+      function paint(lang){
+        host.querySelectorAll('.flow-lang-btn').forEach(function(b){
+          b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===lang);
+        });
+        ['voiceEndLangToggle','voiceCancelLangToggle','voiceSendLangToggle'].forEach(function(id){
+          var tgl=$(id);
+          if(!tgl) return;
+          tgl.querySelectorAll('.flow-lang-btn').forEach(function(b){
+            b.classList.toggle('is-on',(b.getAttribute('data-lang')||'')===lang);
+          });
+        });
+      }
+      paint(finishHabitLang());
+      paintFinishHabitPlaceholders();
+      host.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-lang]');
+        if(!btn) return;
+        e.preventDefault();
+        var lang=btn.getAttribute('data-lang')||'zh';
+        global.__vp_voice_end_lang__=lang;
+        global.__vp_voice_cancel_lang__=lang;
+        global.__vp_voice_send_lang__=lang;
+        paint(lang);
+        paintFinishHabitPlaceholders();
+        refreshHabitPhraseTags();
+        if(global.OneToneVoiceSettingsFlow&&global.OneToneVoiceSettingsFlow.render){
+          global.OneToneVoiceSettingsFlow.render();
+        }
+        if(global.OneToneVoiceStepRecognize&&global.OneToneVoiceStepRecognize.syncEndPresetLangVisibility){
+          global.OneToneVoiceStepRecognize.syncEndPresetLangVisibility();
+        }
+        if(global.OneToneVoiceStepRecognize&&global.OneToneVoiceStepRecognize.syncCancelLangVisibility){
+          global.OneToneVoiceStepRecognize.syncCancelLangVisibility();
+        }
+      });
+    })();
+    (function bindFinishHabitAdvAcoustic(){
+      var adv=$('voiceFinishHabitAdv');
+      if(!adv||adv.dataset.acousticBound==='1') return;
+      adv.dataset.acousticBound='1';
+      function mountAcoustic(){
+        if(typeof global.__otMountVoiceAcousticIslands==='function'){
+          try{ global.__otMountVoiceAcousticIslands(); }catch(_){}
+        }
+        var api=global.OneToneVoiceControlAcoustic;
+        if(!api) return;
+        if(api.bindEvents){
+          api.bindEvents('end');
+          api.bindEvents('cancel');
+        }
+        if(api.render){
+          api.render('end');
+          api.render('cancel');
+        }
+      }
+      adv.addEventListener('toggle',function(){
+        if(adv.open) mountAcoustic();
+      });
+      if(adv.open) mountAcoustic();
+    })();
+    var lblAdv=$('voiceFinishHabitAdvSummary');
+    if(lblAdv) lblAdv.textContent=t('voiceFinishHabitAdvSummary','高级 · 录制声音口令');
+    var leadAdv=$('voiceFinishHabitAdvLead');
+    if(leadAdv) leadAdv.textContent=t('voiceFinishHabitAdvLead','用声音样本代替文字口令（可选）。');
+    var acKeep=$('voiceFinishHabitAcousticKeepTitle');
+    if(acKeep) acKeep.textContent=t('voiceFinishHabitAcousticKeepTitle','结束词 · 录制声音');
+    var acDiscard=$('voiceFinishHabitAcousticDiscardTitle');
+    if(acDiscard) acDiscard.textContent=t('voiceFinishHabitAcousticDiscardTitle','取消词 · 录制声音');
     var recognizeIntentTabs=$('voiceRecognizeIntentTabs');
     if(recognizeIntentTabs&&recognizeIntentTabs.dataset.intentBound!=='1'){
       recognizeIntentTabs.dataset.intentBound='1';

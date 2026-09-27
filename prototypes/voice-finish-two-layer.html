@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>说完后 · 多方案对照原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;650;750;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink: #13202c;
+  --mute: #5a6c80;
+  --faint: #8494a6;
+  --line: #d7dee8;
+  --paper: #fff;
+  --wash: #eef2f6;
+  --bg: #e4ebf1;
+  --primary: #2a9cc4;
+  --primary-strong: #0f5f7a;
+  --primary-soft: color-mix(in srgb, #2a9cc4 12%, #fff);
+  --primary-bd: color-mix(in srgb, #2a9cc4 38%, transparent);
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+  --ok: #0f766e;
+  --font: "Figtree", "Noto Sans SC", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background:
+    radial-gradient(900px 420px at 12% -10%, #d8eef5 0%, transparent 55%),
+    radial-gradient(700px 380px at 90% 0%, #e8eef4 0%, transparent 50%),
+    var(--bg);
+  padding: 24px 16px 72px;
+}
+.page { max-width: 1280px; margin: 0 auto; }
+.hero { display: grid; gap: 8px; margin-bottom: 18px; }
+.brand {
+  font-size: 12px; font-weight: 750; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--primary-strong);
+}
+h1 {
+  margin: 0; font-size: clamp(1.4rem, 2.2vw, 1.85rem);
+  font-weight: 800; letter-spacing: -0.02em;
+}
+.lede { margin: 0; max-width: 72ch; color: var(--mute); font-size: 14px; line-height: 1.55; }
+
+.nav {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 4px; background: color-mix(in srgb, var(--paper) 85%, transparent);
+  border: 1px solid var(--line); border-radius: 14px; width: fit-content;
+}
+.nav button {
+  border: 0; background: transparent; color: var(--mute);
+  font: inherit; font-size: 13px; font-weight: 700;
+  padding: 9px 14px; border-radius: 10px; cursor: pointer;
+}
+.nav button.is-on { background: var(--ink); color: #fff; }
+
+.stage { margin-top: 16px; }
+.stage[hidden] { display: none !important; }
+
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 980px) { .compare-grid { grid-template-columns: 1fr; } }
+
+.card {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 14px 36px color-mix(in srgb, #13202c 6%, transparent);
+  overflow: hidden; display: flex; flex-direction: column; min-height: 0;
+}
+.card-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 12px 14px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #f7fafc, #fff);
+}
+.card-head h2 { margin: 0; font-size: 13px; font-weight: 800; }
+.badge {
+  font-size: 10px; font-weight: 750; padding: 3px 7px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--mute); white-space: nowrap;
+}
+.badge.warn { border-color: #f0c27a; background: #fff7e8; color: #8a5a00; }
+.badge.ok { border-color: color-mix(in srgb, var(--ok) 35%, #fff); background: #ecfdf8; color: var(--ok); }
+.badge.soft { border-color: var(--primary-bd); background: var(--primary-soft); color: var(--primary-strong); }
+.desk { padding: 14px; display: grid; gap: 12px; flex: 1; }
+.verdict {
+  margin: 0; padding: 10px 12px; font-size: 12px; line-height: 1.5;
+  border-top: 1px solid var(--line); background: #fafbfc; color: var(--mute);
+}
+.verdict strong { color: var(--ink); }
+
+.step {
+  display: flex; align-items: center; gap: 8px; margin: 0;
+  font-size: 13px; font-weight: 800;
+}
+.step .n {
+  width: 20px; height: 20px; border-radius: 999px; display: grid; place-items: center;
+  font-size: 11px; color: #fff; background: var(--primary);
+}
+.lbl { margin: 0; font-size: 11px; font-weight: 750; color: var(--mute); }
+
+/* A outcomes */
+.outcomes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+@media (max-width: 560px) { .outcomes { grid-template-columns: 1fr; } }
+.out {
+  border: 1.5px solid var(--line); border-radius: 10px; background: #fff;
+  padding: 10px 8px; text-align: left; cursor: pointer; font: inherit;
+  display: grid; gap: 3px; min-height: 78px;
+}
+.out .t { font-size: 13px; font-weight: 750; color: var(--primary-strong); }
+.out .d { font-size: 10px; color: var(--mute); line-height: 1.35; }
+.out.is-on { border-color: var(--primary); background: var(--primary-soft); }
+.out.danger .t { color: var(--danger); }
+.edit {
+  border: 0; background: none; color: var(--primary); font: inherit;
+  font-size: 11px; font-weight: 650; padding: 0; cursor: pointer; text-align: left;
+}
+.cell { display: grid; gap: 3px; }
+.causal {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+  padding: 8px 10px; border-radius: 999px; background: var(--primary-soft);
+  font-size: 12px; font-weight: 650;
+}
+.causal .arr { color: var(--faint); }
+.ghost {
+  opacity: 0.4; border: 1px dashed var(--line); border-radius: 10px; padding: 10px;
+  pointer-events: none;
+}
+.ghost .tag {
+  font-size: 9px; font-weight: 750; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--faint); margin-bottom: 6px;
+}
+
+/* B big modes */
+.modes { display: grid; gap: 6px; }
+.mode {
+  border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  background: #fff; cursor: pointer; text-align: left; font: inherit; display: grid; gap: 2px;
+}
+.mode.is-on { border-color: var(--primary); background: var(--primary-soft); }
+.mode .tag { font-size: 9px; font-weight: 750; color: var(--primary-strong); }
+.mode .title { font-size: 13px; font-weight: 750; }
+.mode .desc { font-size: 11px; color: var(--mute); }
+.cap {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfd;
+}
+.cap .t { font-size: 12px; font-weight: 750; }
+.cap .d { grid-column: 1 / -1; font-size: 11px; color: var(--mute); margin: 0; }
+.cap.danger .t { color: var(--danger); }
+.cap.is-edit { border-color: var(--primary-bd); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 12%, transparent); }
+
+/* B2 / C shared */
+.seg {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;
+  padding: 3px; border-radius: 10px; background: var(--wash); border: 1px solid var(--line);
+}
+.seg-btn {
+  border: 0; background: transparent; border-radius: 8px; padding: 8px 4px;
+  font: inherit; font-size: 11px; font-weight: 700; color: var(--mute);
+  cursor: pointer; line-height: 1.2; text-align: center;
+}
+.seg-btn.is-on {
+  background: #fff; color: var(--ink);
+  box-shadow: 0 1px 3px color-mix(in srgb, #13202c 12%, transparent);
+}
+.seg-btn small { display: block; font-size: 9px; font-weight: 600; color: var(--faint); margin-top: 1px; }
+.seg-btn.is-on small { color: var(--primary-strong); }
+.story {
+  margin: 0; padding: 8px 10px; border-radius: 8px;
+  background: var(--primary-soft); border: 1px solid var(--primary-bd);
+  font-size: 12px; font-weight: 650; line-height: 1.4;
+}
+.story em { font-style: normal; color: var(--primary-strong); }
+.paths { display: grid; gap: 8px; }
+.path {
+  border: 1px solid var(--line); border-radius: 12px; background: #fff; overflow: hidden;
+}
+.path.is-focus { border-color: var(--primary-bd); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 12%, transparent); }
+.path-head {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 10px;
+  padding: 10px 12px; cursor: pointer; text-align: left; width: 100%;
+  border: 0; background: transparent; font: inherit;
+}
+.path .what { font-size: 13px; font-weight: 800; }
+.path.danger .what { color: var(--danger); }
+.path .when { grid-column: 1 / -1; margin: 0; font-size: 11px; color: var(--mute); line-height: 1.35; }
+.path .chev { font-size: 10px; font-weight: 700; color: var(--primary-strong); }
+.path-body {
+  display: none; padding: 0 12px 12px; border-top: 1px solid var(--line); background: #fbfcfd;
+}
+.path.is-open .path-body { display: grid; gap: 8px; padding-top: 10px; }
+.path.is-open .chev::before { content: "收起"; }
+.path:not(.is-open) .chev::before { content: "改口令"; }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 4px 7px; border-radius: 999px; border: 1px solid var(--line);
+  background: #fff; font-size: 11px; font-weight: 650;
+}
+.add-row { display: flex; gap: 6px; }
+.add-row input {
+  flex: 1; border: 1px solid var(--line); border-radius: 7px;
+  padding: 7px 8px; font: inherit; font-size: 12px;
+}
+.add-row button {
+  border: 1px solid var(--primary-bd); background: var(--primary-soft);
+  color: var(--primary-strong); border-radius: 7px; padding: 7px 10px;
+  font: inherit; font-size: 11px; font-weight: 750; cursor: pointer;
+}
+.hint-mini { margin: 0; font-size: 10px; color: var(--faint); }
+.bridge { margin: 0; font-size: 11px; color: var(--mute); }
+.bridge a { color: var(--primary-strong); font-weight: 700; text-decoration: none; }
+
+/* C */
+.more-links {
+  display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center;
+  font-size: 12px; color: var(--mute);
+}
+.more-links button {
+  border: 0; background: none; color: var(--primary-strong);
+  font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 0;
+}
+.more-links button:hover { text-decoration: underline; }
+.keys-like {
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+.keys-like .ks {
+  flex: 1; min-width: 72px; border: 1.5px solid var(--line); border-radius: 10px;
+  padding: 10px 8px; background: #fff; cursor: pointer; font: inherit;
+  text-align: center; font-size: 12px; font-weight: 750; color: var(--mute);
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease,
+    transform 180ms ease, box-shadow 180ms ease;
+}
+.keys-like .ks:hover { border-color: color-mix(in srgb, var(--primary) 40%, var(--line)); }
+.keys-like .ks:active { transform: scale(0.98); }
+.keys-like .ks.is-on {
+  border-color: var(--primary); background: var(--primary-soft); color: var(--ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+.keys-like .ks span { display: block; font-size: 10px; font-weight: 600; color: var(--faint); margin-top: 2px; }
+
+/* C · icons + light motion */
+#croot .ks,
+.card[data-jump="c"] .ks {
+  display: grid; justify-items: center; gap: 4px; padding: 12px 8px 10px;
+}
+#croot .ks .ico,
+.card[data-jump="c"] .ks .ico {
+  width: 28px; height: 28px; border-radius: 9px;
+  display: grid; place-items: center;
+  background: var(--wash); color: var(--mute);
+  transition: background 180ms ease, color 180ms ease, transform 220ms ease;
+}
+#croot .ks .ico svg,
+.card[data-jump="c"] .ks .ico svg { width: 16px; height: 16px; }
+#croot .ks.is-on .ico,
+.card[data-jump="c"] .ks.is-on .ico {
+  background: color-mix(in srgb, var(--primary) 18%, #fff);
+  color: var(--primary-strong);
+  transform: translateY(-1px);
+}
+#croot .ks.is-on[data-mode="auto"] .ico .spin-ring {
+  transform-origin: 12px 12px;
+  animation: c-spin 2.4s linear infinite;
+}
+#croot .story-flow {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 10px 12px; border-radius: 12px;
+  background: var(--primary-soft); border: 1px solid var(--primary-bd);
+  font-size: 12px; font-weight: 650; line-height: 1.35;
+}
+#croot .story-flow.is-pop {
+  animation: c-story-in 280ms ease;
+}
+#croot .sf-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 8px; border-radius: 999px; background: #fff;
+  border: 1px solid var(--line); color: var(--ink);
+}
+#croot .sf-chip svg { width: 12px; height: 12px; color: var(--primary-strong); flex-shrink: 0; }
+#croot .sf-arr {
+  color: var(--faint); font-weight: 500;
+  animation: c-arr 1.2s ease-in-out infinite;
+}
+#croot .path {
+  transition: border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+#croot .path[hidden] {
+  display: block !important; opacity: 0; max-height: 0; overflow: hidden;
+  border-width: 0; margin: 0; padding: 0; pointer-events: none;
+  transition: opacity 160ms ease, max-height 220ms ease;
+}
+#croot .path:not([hidden]) {
+  animation: c-path-in 260ms ease;
+}
+#croot .path .pi {
+  width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--wash); color: var(--primary-strong); flex-shrink: 0;
+}
+#croot .path .pi svg { width: 13px; height: 13px; }
+#croot .path.danger .pi { background: var(--danger-soft); color: var(--danger); }
+#croot .path-head {
+  grid-template-columns: auto 1fr auto; align-items: center;
+}
+#croot .path-head .what-wrap { display: grid; gap: 2px; text-align: left; }
+#croot .tag-chip {
+  transition: transform 140ms ease, border-color 140ms ease;
+}
+#croot .tag-chip:hover { transform: translateY(-1px); border-color: var(--primary-bd); }
+#croot .more-links button {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line);
+  background: #fff; text-decoration: none !important;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+#croot .more-links button:hover {
+  border-color: var(--primary-bd); background: var(--primary-soft);
+  transform: translateY(-1px);
+}
+#croot .more-links button svg { width: 12px; height: 12px; }
+@keyframes c-story-in {
+  from { opacity: 0.35; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes c-path-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes c-arr {
+  0%, 100% { opacity: 0.45; transform: translateX(0); }
+  50% { opacity: 1; transform: translateX(2px); }
+}
+@keyframes c-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #croot .ks, #croot .path, #croot .tag-chip, #croot .more-links button { transition: none; }
+  #croot .story-flow.is-pop, #croot .path:not([hidden]), #croot .sf-arr,
+  #croot .ks.is-on[data-mode="auto"] .ico .spin-ring { animation: none; }
+}
+
+/* D single list */
+.d-row {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: start;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff;
+}
+.d-row.is-default { border-color: var(--primary-bd); background: var(--primary-soft); }
+.d-row .radio {
+  width: 16px; height: 16px; border-radius: 999px; border: 2px solid var(--line);
+  margin-top: 2px;
+}
+.d-row.is-default .radio {
+  border-color: var(--primary); background: radial-gradient(circle at center, var(--primary) 40%, transparent 45%);
+}
+.d-row .name { font-size: 13px; font-weight: 800; }
+.d-row.danger .name { color: var(--danger); }
+.d-row .meta { font-size: 11px; color: var(--mute); margin: 2px 0 0; }
+.d-row .side { font-size: 10px; font-weight: 750; color: var(--primary-strong); }
+
+.solo-wrap { max-width: 420px; margin: 0 auto; }
+
+.matrix {
+  margin-top: 20px; overflow: auto; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--paper);
+}
+.matrix table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.matrix th, .matrix td {
+  padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top;
+}
+.matrix th { background: #f7fafc; font-weight: 800; white-space: nowrap; }
+.matrix tr:last-child td { border-bottom: 0; }
+.matrix td.pick { color: var(--ok); font-weight: 750; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="brand">OneTone · 说完后 IA</div>
+      <h1>多方案对照原型</h1>
+      <p class="lede">
+        主题锚点：<em>听写方式对齐按键 · 收尾用语音习惯</em>。
+        点上方切换单看某一版，或打开「总览」四格并排比较。
+      </p>
+      <nav class="nav" role="tablist" aria-label="方案">
+        <button type="button" class="is-on" data-stage="overview">总览</button>
+        <button type="button" data-stage="a">A 现状</button>
+        <button type="button" data-stage="b">B 两层大卡</button>
+        <button type="button" data-stage="b2">B2 路径手风琴</button>
+        <button type="button" data-stage="c">C 轻量（贴主题）</button>
+        <button type="button" data-stage="d">D 单列结果</button>
+      </nav>
+    </header>
+
+    <!-- OVERVIEW -->
+    <section class="stage" id="stage-overview">
+      <div class="compare-grid">
+        <!-- A mini -->
+        <article class="card" data-jump="a">
+          <div class="card-head"><h2>A · 现状</h2><span class="badge warn">假单选</span></div>
+          <div class="desk">
+            <p class="step"><span class="n">2</span>说完后</p>
+            <div class="outcomes">
+              <div class="cell"><button type="button" class="out is-on"><span class="t">「发送」</span><span class="d">说出关键词才发</span></button><button type="button" class="edit">编辑</button></div>
+              <div class="cell"><button type="button" class="out"><span class="t">「结束输入」</span><span class="d">字留下</span></button><button type="button" class="edit">编辑</button></div>
+              <div class="cell"><button type="button" class="out danger"><span class="t">「取消输入」</span><span class="d">丢掉本轮</span></button><button type="button" class="edit">编辑</button></div>
+            </div>
+            <div class="causal"><strong>听写停下</strong><span class="arr">→</span><span>说「发送」</span><span class="arr">→</span><span>才发送</span></div>
+            <div class="ghost"><div class="tag">真发送方式藏在这里</div><div style="font-size:11px;color:var(--mute)">手动回车 / 喊发送 / 自动发</div></div>
+          </div>
+          <p class="verdict"><strong>问题：</strong>三卡像选结果，其实只是切换编辑区。</p>
+        </article>
+
+        <!-- B mini -->
+        <article class="card" data-jump="b">
+          <div class="card-head"><h2>B · 两层大卡</h2><span class="badge warn">改口令绕</span></div>
+          <div class="desk">
+            <p class="lbl">默认停下后</p>
+            <div class="modes">
+              <div class="mode"><span class="tag">最稳妥</span><span class="title">自己按回车</span></div>
+              <div class="mode is-on"><span class="tag">说口令</span><span class="title">喊发送才发</span></div>
+              <div class="mode"><span class="tag">全自动</span><span class="title">停顿自动发</span></div>
+            </div>
+            <p class="lbl">还能说 · 点编辑</p>
+            <div class="cap is-edit"><span class="t">「发送」</span><button type="button" class="edit">编辑</button><p class="d">看不清词</p></div>
+            <div class="cap"><span class="t">「结束输入」</span><button type="button" class="edit">编辑</button><p class="d">…</p></div>
+          </div>
+          <p class="verdict"><strong>问题：</strong>上面方案 + 下面编辑，两套控件抢戏。</p>
+        </article>
+
+        <!-- B2 mini -->
+        <article class="card" data-jump="b2">
+          <div class="card-head"><h2>B2 · 路径手风琴</h2><span class="badge soft">改词清楚</span></div>
+          <div class="desk">
+            <div class="seg">
+              <button type="button" class="seg-btn">留下自查<small>按回车</small></button>
+              <button type="button" class="seg-btn">说了才发<small>喊词</small></button>
+              <button type="button" class="seg-btn is-on">停顿就发<small>自动</small></button>
+            </div>
+            <p class="story">停顿后：等一会 · <em>自动发送</em>。</p>
+            <div class="path is-open is-focus">
+              <div class="path-head"><span class="what">发送 · 把字发出去</span><span class="chev"></span><p class="when">说这些词 = 马上发</p></div>
+              <div class="path-body" style="display:grid">
+                <div class="tags"><span class="tag-chip">发送</span><span class="tag-chip">发出去</span></div>
+              </div>
+            </div>
+            <div class="path"><div class="path-head"><span class="what">结束输入</span><span class="chev"></span></div></div>
+            <div class="path danger"><div class="path-head"><span class="what">取消输入</span><span class="chev"></span></div></div>
+          </div>
+          <p class="verdict"><strong>得失：</strong>改口令直观，但 3 横 + 3 纵心智偏重。</p>
+        </article>
+
+        <!-- C mini -->
+        <article class="card" data-jump="c">
+          <div class="card-head"><h2>C · 轻量（贴主题）</h2><span class="badge ok">推荐对照 · 有动效</span></div>
+          <div class="desk">
+            <p class="lbl">停顿后默认 · 图标分段</p>
+            <div class="keys-like">
+              <button type="button" class="ks"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>留下<span>自查</span></button>
+              <button type="button" class="ks is-on"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></span>说了才发<span>要喊词</span></button>
+              <button type="button" class="ks"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle class="spin-ring" cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>停顿就发<span>自动</span></button>
+            </div>
+            <p class="story">停顿后字留下 · 说 <em>「发送」</em> 才发出去。</p>
+            <p class="lbl">语音习惯 · 当前相关口令</p>
+            <div class="path is-open is-focus">
+              <div class="path-head"><span class="what">发送词</span><span class="chev"></span></div>
+              <div class="path-body" style="display:grid">
+                <div class="tags"><span class="tag-chip">发送</span><span class="tag-chip">发出去</span><span class="tag-chip">提交</span></div>
+              </div>
+            </div>
+            <div class="more-links">还能说：<button type="button">结束输入</button><button type="button">取消输入</button></div>
+            <p class="bridge">键收尾 → <a href="#" onclick="return false">按键 · 听写方式</a></p>
+          </div>
+          <p class="verdict"><strong>贴主题：</strong>主选像按键；口令降成习惯。点进单页看轻动画。</p>
+        </article>
+      </div>
+
+      <div class="matrix">
+        <table>
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>A 现状</th>
+              <th>B</th>
+              <th>B2</th>
+              <th>C 轻量</th>
+              <th>D 单列</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>用户以为在选什么</td>
+              <td>说完结果（错）</td>
+              <td>发送方式 + 口令（混）</td>
+              <td>默认 + 三条路径</td>
+              <td class="pick">停顿默认；口令次要</td>
+              <td>结果类型（易混「默认」）</td>
+            </tr>
+            <tr>
+              <td>和「对齐按键」</td>
+              <td>弱</td>
+              <td>弱（语音抢戏）</td>
+              <td>中</td>
+              <td class="pick">强（分段同构）</td>
+              <td>中</td>
+            </tr>
+            <tr>
+              <td>改口令是否好懂</td>
+              <td>差</td>
+              <td>差</td>
+              <td class="pick">好</td>
+              <td class="pick">好（少露）</td>
+              <td>中</td>
+            </tr>
+            <tr>
+              <td>心智压力</td>
+              <td>中（误解）</td>
+              <td>高</td>
+              <td>偏高 3+3</td>
+              <td class="pick">低</td>
+              <td>中</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- A detail -->
+    <section class="stage" id="stage-a" hidden>
+      <div class="solo-wrap">
+        <article class="card">
+          <div class="card-head"><h2>A · 现状（可点）</h2><span class="badge warn">假单选</span></div>
+          <div class="desk">
+            <p class="step"><span class="n">1</span>听写键</p>
+            <p class="step"><span class="n">2</span>说完后</p>
+            <div class="outcomes" id="aOut">
+              <div class="cell"><button type="button" class="out is-on" data-a="send"><span class="t">「发送」</span><span class="d">听写停下后，说出关键词才发送</span></button><button type="button" class="edit">编辑</button></div>
+              <div class="cell"><button type="button" class="out" data-a="keep"><span class="t">「结束输入」</span><span class="d">字留下，不发送</span></button><button type="button" class="edit">编辑</button></div>
+              <div class="cell"><button type="button" class="out danger" data-a="discard"><span class="t">「取消输入」</span><span class="d">取消听写，恢复开启前</span></button><button type="button" class="edit">编辑</button></div>
+            </div>
+            <div class="causal" id="aCausal"><strong>听写停下</strong><span class="arr">→</span><span>说「发送」</span><span class="arr">→</span><span>才发送</span></div>
+            <div class="ghost" id="aGhost"><div class="tag">点「发送」后才出现</div>
+              <div class="modes"><div class="mode is-on"><span class="title" style="font-size:12px">手动回车 / 喊发送 / 自动发</span></div></div>
+            </div>
+          </div>
+          <p class="verdict">点三卡只换因果条；真发送方式仍藏着。</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- B detail -->
+    <section class="stage" id="stage-b" hidden>
+      <div class="solo-wrap">
+        <article class="card">
+          <div class="card-head"><h2>B · 两层大卡</h2><span class="badge warn">改口令绕</span></div>
+          <div class="desk">
+            <p class="step"><span class="n">2</span>说完后</p>
+            <p class="lbl">默认停下后</p>
+            <div class="modes" id="bModes">
+              <button type="button" class="mode" data-m="confirm"><span class="tag">最稳妥</span><span class="title">你自己手动按回车</span><span class="desc">字留下，检查后再发</span></button>
+              <button type="button" class="mode is-on" data-m="phrase"><span class="tag">说口令</span><span class="title">末尾喊「发送」才发</span><span class="desc">说发送词才发出去</span></button>
+              <button type="button" class="mode" data-m="auto"><span class="tag">全自动</span><span class="title">停顿后自动发</span><span class="desc">等一会自动按发送键</span></button>
+            </div>
+            <div class="causal" id="bCausal"><strong>听写停下</strong><span class="arr">→</span><span>说「发送」</span><span class="arr">→</span><span>才发送</span></div>
+            <p class="lbl">听写中还能说 · 可同时生效</p>
+            <div class="cap is-edit" data-cap="send"><span class="t">「发送」</span><button type="button" class="edit">编辑</button><p class="d">听写停下后，说出关键词才发送</p></div>
+            <div class="cap" data-cap="keep"><span class="t">「结束输入」</span><button type="button" class="edit">编辑</button><p class="d">字留下，不发送</p></div>
+            <div class="cap danger" data-cap="discard"><span class="t">「取消输入」</span><button type="button" class="edit">编辑</button><p class="d">取消听写，恢复开启前</p></div>
+          </div>
+          <p class="verdict">点「编辑」只高亮，看不到词 —— 这是 B 难懂的核心。</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- B2 detail -->
+    <section class="stage" id="stage-b2" hidden>
+      <div class="solo-wrap">
+        <article class="card">
+          <div class="card-head"><h2>B2 · 路径手风琴（可点）</h2><span class="badge soft">改词清楚</span></div>
+          <div class="desk" id="b2root">
+            <p class="step"><span class="n">2</span>说完后</p>
+            <p class="lbl">停顿后默认</p>
+            <div class="seg" data-seg="b2">
+              <button type="button" class="seg-btn" data-mode="confirm">留下自查<small>自己按回车</small></button>
+              <button type="button" class="seg-btn is-on" data-mode="phrase">说了才发<small>要喊发送词</small></button>
+              <button type="button" class="seg-btn" data-mode="auto">停顿就发<small>全自动</small></button>
+            </div>
+            <p class="story" data-story>停顿后：字先留下 · 你说 <em>「发送」</em> 才发出去。</p>
+            <p class="lbl">听写中随时可说 · 点开改词</p>
+            <div class="paths" data-paths>
+              <article class="path is-open is-focus" data-path="send">
+                <button type="button" class="path-head" data-toggle="send"><span class="what">发送 · 把字发出去</span><span class="chev"></span><p class="when" data-when="send">说这些词 = 立刻发送</p></button>
+                <div class="path-body">
+                  <div class="tags"><span class="tag-chip">发送 ×</span><span class="tag-chip">发出去 ×</span><span class="tag-chip">提交 ×</span></div>
+                  <div class="add-row"><input placeholder="例如：发吧" /><button type="button">+ 添加</button></div>
+                  <p class="hint-mini">每条路径下都重复「当前默认…」，信息偏多。</p>
+                </div>
+              </article>
+              <article class="path" data-path="keep">
+                <button type="button" class="path-head" data-toggle="keep"><span class="what">结束输入 · 字留下不发</span><span class="chev"></span><p class="when" data-when="keep">说这些词 = 停下不发</p></button>
+                <div class="path-body">
+                  <div class="tags"><span class="tag-chip">结束输入 ×</span><span class="tag-chip">就这样 ×</span></div>
+                  <div class="add-row"><input placeholder="例如：好了" /><button type="button">+ 添加</button></div>
+                </div>
+              </article>
+              <article class="path danger" data-path="discard">
+                <button type="button" class="path-head" data-toggle="discard"><span class="what">取消输入 · 丢掉本轮</span><span class="chev"></span><p class="when" data-when="discard">说这些词 = 取消并恢复</p></button>
+                <div class="path-body">
+                  <div class="tags"><span class="tag-chip">取消输入 ×</span><span class="tag-chip">不要了 ×</span></div>
+                  <div class="add-row"><input placeholder="例如：算了" /><button type="button">+ 添加</button></div>
+                </div>
+              </article>
+            </div>
+            <p class="bridge">键怎么收尾 → <a href="#" onclick="return false">按键设置 · 听写方式</a></p>
+          </div>
+          <p class="verdict">结构正确，但纵三卡与横三段同级，心智 3+3。</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- C detail -->
+    <section class="stage" id="stage-c" hidden>
+      <div class="solo-wrap">
+        <article class="card">
+          <div class="card-head"><h2>C · 轻量 + 图标 / 轻动画</h2><span class="badge ok">推荐对照</span></div>
+          <div class="desk" id="croot">
+            <p class="step"><span class="n">1</span>听写键 <span style="font-weight:500;color:var(--faint);font-size:11px">右 Alt · 去按键页</span></p>
+            <p class="step"><span class="n">2</span>说完后</p>
+            <p class="lbl">停顿后默认</p>
+            <div class="keys-like" data-seg="c">
+              <button type="button" class="ks" data-mode="confirm" aria-label="留下自查">
+                <span class="ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </span>
+                留下<span>自查 · 按回车</span>
+              </button>
+              <button type="button" class="ks is-on" data-mode="phrase" aria-label="说了才发">
+                <span class="ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                </span>
+                说了才发<span>要喊发送词</span>
+              </button>
+              <button type="button" class="ks" data-mode="auto" aria-label="停顿就发">
+                <span class="ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle class="spin-ring" cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                停顿就发<span>全自动</span>
+              </button>
+            </div>
+            <div class="story-flow" data-story aria-live="polite">
+              <span class="sf-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>听写停下</span>
+              <span class="sf-arr" aria-hidden="true">→</span>
+              <span class="sf-chip" data-mid><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>说「发送」</span>
+              <span class="sf-arr" aria-hidden="true">→</span>
+              <span class="sf-chip" data-tail><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2z"/></svg>才发出去</span>
+            </div>
+            <p class="lbl">语音习惯 · 只展开当前相关</p>
+            <div class="paths" data-paths>
+              <article class="path is-open is-focus" data-path="send">
+                <button type="button" class="path-head" data-toggle="send">
+                  <span class="pi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2z"/></svg></span>
+                  <span class="what-wrap"><span class="what">发送词</span><p class="when">说出 = 立刻发出去</p></span>
+                  <span class="chev"></span>
+                </button>
+                <div class="path-body">
+                  <div class="tags"><span class="tag-chip">发送 ×</span><span class="tag-chip">发出去 ×</span><span class="tag-chip">提交 ×</span></div>
+                  <div class="add-row"><input placeholder="例如：发吧" /><button type="button">+ 添加</button></div>
+                </div>
+              </article>
+              <article class="path" data-path="keep" hidden>
+                <button type="button" class="path-head" data-toggle="keep">
+                  <span class="pi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+                  <span class="what-wrap"><span class="what">结束词</span><p class="when">说出 = 停下，字留下</p></span>
+                  <span class="chev"></span>
+                </button>
+                <div class="path-body">
+                  <div class="tags"><span class="tag-chip">结束输入 ×</span><span class="tag-chip">就这样 ×</span></div>
+                  <div class="add-row"><input placeholder="例如：好了" /><button type="button">+ 添加</button></div>
+                </div>
+              </article>
+              <article class="path danger" data-path="discard" hidden>
+                <button type="button" class="path-head" data-toggle="discard">
+                  <span class="pi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg></span>
+                  <span class="what-wrap"><span class="what">取消词</span><p class="when">说出 = 丢掉本轮</p></span>
+                  <span class="chev"></span>
+                </button>
+                <div class="path-body">
+                  <div class="tags"><span class="tag-chip">取消输入 ×</span><span class="tag-chip">不要了 ×</span></div>
+                  <div class="add-row"><input placeholder="例如：算了" /><button type="button">+ 添加</button></div>
+                </div>
+              </article>
+            </div>
+            <div class="more-links" id="cMore">还能说：
+              <button type="button" data-open="keep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>结束输入</button>
+              <button type="button" data-open="discard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>取消输入</button>
+            </div>
+            <p class="bridge">键怎么收尾（按住 / 确认发送）→ <a href="#" onclick="return false">按键设置 · 听写方式</a></p>
+          </div>
+          <p class="verdict">切换分段：选中抬起 + 故事条换场；自动模式图标轻转。口令展开有淡入。尊重 <code>prefers-reduced-motion</code>。</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- D detail -->
+    <section class="stage" id="stage-d" hidden>
+      <div class="solo-wrap">
+        <article class="card">
+          <div class="card-head"><h2>D · 单列结果（备选）</h2><span class="badge soft">另一种组织</span></div>
+          <div class="desk" id="droot">
+            <p class="step"><span class="n">2</span>说完后</p>
+            <p class="lbl">选一个作为「停顿后默认」，其余仍可作口令</p>
+            <div class="d-row is-default" data-d="keep">
+              <span class="radio" aria-hidden="true"></span>
+              <div>
+                <div class="name">结束输入 · 字留下</div>
+                <p class="meta">口令：结束输入、就这样 · <button type="button" class="edit">改词</button></p>
+              </div>
+              <span class="side">停顿默认</span>
+            </div>
+            <div class="d-row" data-d="send">
+              <span class="radio" aria-hidden="true"></span>
+              <div>
+                <div class="name">发送 · 把字发出去</div>
+                <p class="meta">口令：发送、发出去 · <button type="button" class="edit">改词</button></p>
+              </div>
+              <span class="side">设为默认≈说了才发 / 自动发需另选节奏</span>
+            </div>
+            <div class="d-row danger" data-d="discard">
+              <span class="radio" aria-hidden="true"></span>
+              <div>
+                <div class="name">取消输入 · 丢掉本轮</div>
+                <p class="meta">口令：取消输入、不要了 · <button type="button" class="edit">改词</button></p>
+              </div>
+              <span class="side">不宜作停顿默认</span>
+            </div>
+            <p class="story">把「默认」绑在结果行上，省掉横三段，但「自动发 vs 说了才发」不好表达。</p>
+          </div>
+          <p class="verdict">列表干净，但难覆盖三种发送节奏，和按键分段也不对齐。</p>
+        </article>
+      </div>
+    </section>
+  </div>
+
+<script>
+(function () {
+  var stories = {
+    confirm: '停顿后：字留下 · 你自己按回车才发。',
+    phrase: '停顿后：字先留下 · 你说 <em>「发送」</em> 才发出去。',
+    auto: '停顿后：等一小会 · <em>自动发送</em>。想马上发也可说发送词。'
+  };
+  var aCausal = {
+    send: ['听写停下', '说「发送」', '才发送'],
+    keep: ['停一会儿', '字留下', '不发'],
+    discard: ['说「取消输入」', '取消听写', '恢复开启前']
+  };
+
+  function paintCausal(el, parts) {
+    el.innerHTML = '<strong>' + parts[0] + '</strong><span class="arr">→</span><span>' +
+      parts[1] + '</span><span class="arr">→</span><span>' + parts[2] + '</span>';
+  }
+
+  function showStage(id) {
+    document.querySelectorAll('.stage').forEach(function (s) {
+      s.hidden = s.id !== 'stage-' + id;
+    });
+    document.querySelectorAll('.nav button').forEach(function (b) {
+      b.classList.toggle('is-on', b.getAttribute('data-stage') === id);
+    });
+  }
+
+  document.querySelectorAll('.nav button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      showStage(b.getAttribute('data-stage'));
+    });
+  });
+  document.querySelectorAll('[data-jump]').forEach(function (el) {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', function () {
+      showStage(el.getAttribute('data-jump'));
+    });
+  });
+
+  // A
+  var aOut = document.getElementById('aOut');
+  if (aOut) {
+    aOut.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-a]');
+      if (!btn) return;
+      aOut.querySelectorAll('.out').forEach(function (o) { o.classList.toggle('is-on', o === btn); });
+      var k = btn.getAttribute('data-a');
+      paintCausal(document.getElementById('aCausal'), aCausal[k]);
+      document.getElementById('aGhost').style.opacity = k === 'send' ? '1' : '0.4';
+    });
+  }
+
+  // B modes + caps
+  var bModes = document.getElementById('bModes');
+  if (bModes) {
+    bModes.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-m]');
+      if (!btn) return;
+      bModes.querySelectorAll('.mode').forEach(function (m) { m.classList.toggle('is-on', m === btn); });
+      var m = btn.getAttribute('data-m');
+      var map = { confirm: aCausal.keep, phrase: aCausal.send, auto: ['听写停下', '停顿一会', '自动发送'] };
+      paintCausal(document.getElementById('bCausal'), map[m]);
+    });
+    document.querySelectorAll('#stage-b .cap').forEach(function (cap) {
+      cap.addEventListener('click', function () {
+        document.querySelectorAll('#stage-b .cap').forEach(function (c) {
+          c.classList.toggle('is-edit', c === cap);
+        });
+      });
+    });
+  }
+
+  var storyFlows = {
+    confirm: { mid: '字留下', tail: '你按回车' },
+    phrase: { mid: '说「发送」', tail: '才发出去' },
+    auto: { mid: '等一小会', tail: '自动发送' }
+  };
+
+  function paintStoryFlow(el, mode) {
+    if (!el) return;
+    var flow = storyFlows[mode] || storyFlows.phrase;
+    var mid = el.querySelector('[data-mid]');
+    var tail = el.querySelector('[data-tail]');
+    if (mid) {
+      mid.innerHTML = mid.querySelector('svg')
+        ? mid.querySelector('svg').outerHTML + flow.mid
+        : flow.mid;
+    }
+    if (tail) {
+      tail.innerHTML = tail.querySelector('svg')
+        ? tail.querySelector('svg').outerHTML + flow.tail
+        : flow.tail;
+    }
+    el.classList.remove('is-pop');
+    void el.offsetWidth;
+    el.classList.add('is-pop');
+  }
+
+  function wireSegPaths(root, opts) {
+    opts = opts || {};
+    var mode = 'phrase';
+    var seg = root.querySelector('[data-seg]');
+    var story = root.querySelector('[data-story]');
+    var paths = root.querySelector('[data-paths]');
+    if (!seg || !paths) return;
+
+    function preferPath() {
+      return mode === 'confirm' ? 'keep' : 'send';
+    }
+
+    function openPath(key, toggle) {
+      paths.querySelectorAll('.path').forEach(function (p) {
+        var on = p.getAttribute('data-path') === key;
+        if (opts.hideOthers) {
+          p.hidden = !on;
+          p.classList.toggle('is-open', on);
+          p.classList.toggle('is-focus', on);
+          return;
+        }
+        if (toggle && on && p.classList.contains('is-open')) {
+          p.classList.remove('is-open', 'is-focus');
+          return;
+        }
+        p.classList.toggle('is-open', on);
+        p.classList.toggle('is-focus', on);
+      });
+      if (opts.syncMore) {
+        var more = document.getElementById('cMore');
+        if (more) {
+          more.querySelectorAll('[data-open]').forEach(function (b) {
+            b.hidden = b.getAttribute('data-open') === key;
+          });
+        }
+      }
+    }
+
+    function sync() {
+      if (story) {
+        if (story.classList.contains('story-flow')) paintStoryFlow(story, mode);
+        else story.innerHTML = stories[mode];
+      }
+      openPath(preferPath(), false);
+    }
+
+    seg.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-mode]');
+      if (!btn) return;
+      mode = btn.getAttribute('data-mode');
+      seg.querySelectorAll('[data-mode]').forEach(function (el) {
+        el.classList.toggle('is-on', el === btn);
+      });
+      sync();
+    });
+
+    paths.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-toggle]');
+      if (!t) return;
+      if (opts.hideOthers) {
+        openPath(t.getAttribute('data-toggle'), false);
+      } else {
+        openPath(t.getAttribute('data-toggle'), true);
+      }
+    });
+
+    if (opts.syncMore) {
+      var more = document.getElementById('cMore');
+      if (more) {
+        more.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-open]');
+          if (!b) return;
+          openPath(b.getAttribute('data-open'), false);
+        });
+      }
+    }
+
+    sync();
+  }
+
+  wireSegPaths(document.getElementById('b2root'), { hideOthers: false });
+  wireSegPaths(document.getElementById('croot'), { hideOthers: true, syncMore: true });
+
+  // Land on C so icons/motion are visible first
+  showStage('c');
+
+  // D
+  var droot = document.getElementById('droot');
+  if (droot) {
+    droot.addEventListener('click', function (e) {
+      var row = e.target.closest('[data-d]');
+      if (!row || row.getAttribute('data-d') === 'discard') return;
+      droot.querySelectorAll('.d-row').forEach(function (r) {
+        r.classList.toggle('is-default', r === row);
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>

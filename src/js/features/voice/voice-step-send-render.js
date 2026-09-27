@@ -134,22 +134,15 @@
       guard.textContent=t('voiceOutputAutoGuard');
     }
     if(confirmHint){
-      confirmHint.hidden=vm.loading||liteMode||key!=='confirm';
-      if(!confirmHint.hidden) confirmHint.textContent=t('voiceSendConfirmHint');
+      confirmHint.hidden=true;
     }
 
     if(sendPanel){
-      sendPanel.hidden=!showSendExtras;
-      sendPanel.classList.toggle('is-hidden-confirm',!showSendExtras);
-      sendPanel.classList.remove('is-section-inactive');
+      // Phrase editing lives in #voiceFinishHabit; keep legacy panel buried.
+      sendPanel.hidden=true;
+      sendPanel.classList.add('is-hidden-confirm');
+      sendPanel.setAttribute('aria-hidden','true');
       setSectionLock(sendPanel,false,'');
-      sendPanel.setAttribute('aria-hidden',showSendExtras?'false':'true');
-      var sendHint=$('voiceSendCustomHint');
-      if(sendHint&&showSendExtras){
-        sendHint.textContent=key==='auto'
-          ?t('voiceSendCustomHintAuto')
-          :t('voiceSendCustomHint');
-      }
     }
     if(paramsBar){
       paramsBar.hidden=false;
@@ -163,8 +156,10 @@
       params.classList.remove('is-hidden');
       syncDelayLabel(key);
       if(delayRow){
-        delayRow.classList.remove('is-hidden');
-        delayRow.hidden=false;
+        // Delay only matters for auto (wait-then-send) and phrase (optional pace).
+        var showDelay=delayActive;
+        delayRow.classList.toggle('is-hidden',!showDelay);
+        delayRow.hidden=!showDelay;
         setSectionLock(delayRow,false,'');
       }
       var commitPills=$('voiceSettingsCommitPills');
@@ -177,7 +172,8 @@
       }
     }
     forceTextPhraseKinds();
-    if(showSendExtras&&global.OneToneVoiceEnd&&global.OneToneVoiceEnd.renderSendCustomPhrases){
+    // Habit hosts need tags even on confirm (send phrases live under「其他口令」).
+    if(!vm.loading&&global.OneToneVoiceEnd&&global.OneToneVoiceEnd.renderSendCustomPhrases){
       global.OneToneVoiceEnd.renderSendCustomPhrases();
     }
   }
@@ -199,6 +195,18 @@
       var foot=btn.querySelector('.voice-output-mode-foot');
       if(foot) foot.textContent=on?t('voiceOutputModeActive'):t('voiceOutputModePick');
     });
+    if(typeof global.__vp_syncVoiceFinishCausal__==='function'){
+      global.__vp_syncVoiceFinishCausal__(key);
+    }
+    if(typeof global.__vp_syncVoiceFinishHabit__==='function'){
+      global.__vp_syncVoiceFinishHabit__(key);
+    }
+    var End=global.OneToneVoiceEnd;
+    if(End){
+      if(End.renderSendCustomPhrases) End.renderSendCustomPhrases();
+      if(End.renderEndCustomPhrases) End.renderEndCustomPhrases();
+      if(End.renderCancelCustomPhrases) End.renderCancelCustomPhrases();
+    }
   }
 
   function renderSendPage(vm){
@@ -210,6 +218,16 @@
     var sub=$('voiceSendPageSub');
     if(title) title.textContent=t('voiceSendPageTitle');
     if(sub) sub.textContent=t('voiceSendPageSub');
+    var modePanel=$('voiceSendModePanel');
+    if(modePanel){
+      modePanel.hidden=true;
+      modePanel.setAttribute('aria-hidden','true');
+    }
+    var sendPane=$('voiceFinishSendPane');
+    if(sendPane&&!vm.loading){
+      // Legacy send stack stays buried; finish card owns mode + habit + params.
+      sendPane.hidden=true;
+    }
   }
 
   global.OneToneVoiceStepSend={

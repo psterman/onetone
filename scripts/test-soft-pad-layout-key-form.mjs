@@ -25,6 +25,10 @@ check('shell mounts action library + layout editor', /soft-pad-layout-stack[\s\S
 check('softPadLayoutEditorHost returns node', pad.includes('function softPadLayoutEditorHost') &&
   /querySelector\('\[[^\]]*data-soft-pad-layout-editor[^\]]*\]'\)/.test(pad.slice(pad.indexOf('function softPadLayoutEditorHost'))));
 check('previewEdit uses inline', /function softPadPreviewEditKey[\s\S]*?mode:\s*'inline'/.test(pad));
+check('NAV keys blocked from Soft Pad bind',
+  pad.includes('function softPadKeyBindBlocked') &&
+  /function softPadPreviewEditKey[\s\S]*softPadKeyBindBlocked\(microKeyId\)/.test(pad) &&
+  /function openEditKeycap[\s\S]*softPadKeyBindBlocked\(microKeyId\)/.test(pad));
 check('softPad panel never falls back to capability modal',
   /Soft Pad settings: always left preview[\s\S]*never capability modal/.test(pad) &&
   /softPadPanelActive\(\)[\s\S]*softPadPreviewEditKey\(m, id\)/.test(pad));

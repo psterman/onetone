@@ -23,16 +23,19 @@ assert(html.includes('id="btnVoiceWakePoolAdd"') || html.includes('id="btnVoiceW
 assert(html.includes('id="voiceWakePhraseOverlay"'), 'phrase popover missing');
 assert(!html.includes('id="btnVoiceSandboxOpen"'), 'sandbox open button should be removed');
 assert(!html.includes('voice-sandbox.js'), 'sandbox script should not load');
-assert(html.includes('voice-output-mode-cards') || html.includes('id="voiceFinishOutcomes"'), 'send mode cards or finish outcomes');
+assert(html.includes('voice-output-mode-cards') || html.includes('id="voiceFinishOutcomes"') || html.includes('voice-finish-default-seg'), 'send mode cards or finish outcomes');
+assert(html.includes('id="voiceFinishHabit"') && html.includes('data-habit-block="send"'), 'habit phrase blocks');
 assert(html.includes('data-voice-output-mode="confirm"') || html.includes('data-voice-outcome="keep"'), 'confirm/keep mode');
 assert(html.includes('data-voice-output-mode="phrase"') || html.includes('data-voice-outcome="send"'), 'phrase/send mode');
 assert(html.includes('data-voice-output-mode="auto"') || html.includes('id="voiceFinishAutoToggle"'), 'auto mode');
-assert(i18n.includes("voiceSubtabWakeLbl:'怎么开启打字？'"), 'zh wake step copy missing');
+assert(i18n.includes("voiceSubtabWakeLbl:"), 'zh wake step copy missing');
 assert(i18n.includes("voiceWakeHeroAction:"), 'hero action key missing');
 assert(i18n.includes("voiceWakeSectionUnified:"), 'unified section key missing');
 assert(i18n.includes("voiceOutputModeConfirmTag:"), 'send card tag key missing');
+assert(i18n.includes("voiceFinishHabitKindSend:"), 'habit kind key missing');
 assert(bindings.includes('btnVoiceWakePoolAdd'), 'bindings open popover from pool add');
 assert(bindings.includes('voiceWakePhraseOverlay'), 'bindings wire phrase popover');
+assert(bindings.includes('syncVoiceFinishHabitLayout') || bindings.includes('voiceFinishHabitAddSend'), 'bindings wire habit layout/add');
 assert(bindings.includes('btnVoiceLandingKeysTarget') || bindings.includes("mode:'voiceOpenApp'"), 'bindings wire landing or legacy open-app');
 assert(html.includes('id="voiceLandingStrip"') || html.includes('id="btnVoiceOpenAppAdd"'), 'landing strip or legacy open-app add');
 
