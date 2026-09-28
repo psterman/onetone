@@ -42,6 +42,9 @@ src-tauri/logs/
 # Agent controller 临时 submodule 检出
 .agentcontroller-tmp/
 
+# 误嵌的第三方仓（曾以无 .gitmodules 的 gitlink 卡住 Cloudflare Pages clone）
+dsh-market/
+
 # 设计稿目录内 ephemeral 审计产出（已提交的 HTML 原型保留）
 design-mock/habit-*
 

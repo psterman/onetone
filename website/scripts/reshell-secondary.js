@@ -18,6 +18,8 @@ function shellParts(active) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <style>html,body{background:#000;color-scheme:dark}</style>
   <script src="js/theme-init.js"></script>
   <title>${title}</title>
   <meta name="description" content="${desc}">
