@@ -987,6 +987,24 @@ fn xbutton_name_from_mouse_data(mouse_data: u32) -> Option<&'static str> {
     None
 }
 
+/// Some mice / Logitech stacks deliver WM_XBUTTON* with mouseData=0 to WH_MOUSE_LL
+/// while WebView still sees button3/4. Fall back to VK state on keydown.
+fn xbutton_name_from_async_state() -> Option<&'static str> {
+    unsafe {
+        use winapi::um::winuser::GetAsyncKeyState;
+        // Prefer XButton2 first — both can read pressed if the OS latches briefly.
+        const VK_XBUTTON1: i32 = 0x05;
+        const VK_XBUTTON2: i32 = 0x06;
+        if GetAsyncKeyState(VK_XBUTTON2) as u16 & 0x8000 != 0 {
+            return Some("XButton2");
+        }
+        if GetAsyncKeyState(VK_XBUTTON1) as u16 & 0x8000 != 0 {
+            return Some("XButton1");
+        }
+    }
+    None
+}
+
 unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     let session_active = RECORDING_SESSION.load(Ordering::SeqCst);
     let sender_ready = recording_sender().lock().unwrap().is_some();
@@ -1002,7 +1020,14 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
             WM_MBUTTONDOWN => Some("MButton"),
             WM_XBUTTONDOWN | WM_XBUTTONUP => {
                 let info = *(lparam as *const MSLLHOOKSTRUCT);
-                xbutton_name_from_mouse_data(info.mouseData)
+                xbutton_name_from_mouse_data(info.mouseData).or_else(|| {
+                    // mouseData empty: still name the button on down via VK state.
+                    if is_x_up {
+                        None
+                    } else {
+                        xbutton_name_from_async_state()
+                    }
+                })
             }
             _ => None,
         };
@@ -1034,19 +1059,24 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
                 }
             } else if try_dispatch_named_pad(name, is_x_up) {
                 return 1;
-            } else if resolve_active_binding(name, None).is_some() {
-                // Side buttons are pulse-only — keyup must not re-dispatch as a second tap.
+            } else if is_side || resolve_active_binding(name, None).is_some() {
+                // Side buttons always enter the runtime loop (oral arm may match even
+                // when BindAll briefly lagged). Still only swallow when registered.
                 if !is_x_up {
                     if let Some(sender) = active_sender().lock().unwrap().as_ref() {
                         sender.send(name.to_string()).ok();
                     }
                 }
+                if !is_side || resolve_active_binding(name, None).is_some() {
+                    return 1;
+                }
+            }
+        } else if w == WM_XBUTTONDOWN || w == WM_XBUTTONUP {
+            // mouseData empty and VK state already released — still swallow while
+            // recording so WebView2 cannot navigate Forward.
+            if session_active {
                 return 1;
             }
-        } else if session_active && (w == WM_XBUTTONDOWN || w == WM_XBUTTONUP) {
-            // mouseData was empty/unrecognized. Still swallow so WebView2 cannot
-            // navigate Forward; raw input names the button on the recording channel.
-            return 1;
         }
     }
     CallNextHookEx(std::ptr::null_mut(), code, wparam, lparam)
@@ -1785,6 +1815,14 @@ mod tests {
         assert_eq!(xbutton_name_from_mouse_data(0x0000_0100), Some("XButton2"));
         assert_eq!(xbutton_name_from_mouse_data(0x0040_0000), Some("XButton1"));
         assert_eq!(xbutton_name_from_mouse_data(0), None);
+    }
+
+    #[test]
+    fn xbutton_empty_mouse_data_needs_async_fallback() {
+        // WH_MOUSE_LL sometimes delivers mouseData=0 (Logitech etc.). Resolution
+        // then depends on GetAsyncKeyState — covered at runtime; this locks the
+        // empty-data contract so we don't "fix" by pretending 0 maps to a button.
+        assert!(xbutton_name_from_mouse_data(0).is_none());
     }
 
     /// The Bluetooth keyboard bridge — when VK_RMENU arrives during recording

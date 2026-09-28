@@ -274,6 +274,17 @@
     var rec=global.OneToneMappingRecording;
     var mode=rec&&rec.mode?rec.mode():'none';
     if(mode!=='none') return;
+    var pin='';
+    try{
+      var P=global.OneToneKeysChannelCommandPicker;
+      if(P&&typeof P.activeTriggerMappingId==='function'){
+        pin=String(P.activeTriggerMappingId()||'').trim();
+      }
+    }catch(_){}
+    if(rec&&typeof rec.startTrigger==='function'){
+      rec.startTrigger(pin||undefined);
+      return;
+    }
     var bootHooks=global.__vp_bootstrap_hooks__||{};
     if(bootHooks.startTriggerRecord) bootHooks.startTriggerRecord();
   }

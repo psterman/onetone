@@ -27,7 +27,7 @@
       { microKeyId: 'SEARCH', uiLabelZh: '搜索', uiLabelEn: 'Find', kind: 'command', gridRow: 4, gridCol: 4 },
       { microKeyId: 'ACT12', uiLabelZh: '发送', uiLabelEn: 'Send', kind: 'command', gridRow: 4, gridCol: 5, gridRowSpan: 2 },
       { microKeyId: 'NAV_RIGHT', uiLabelZh: '右', uiLabelEn: 'Right', kind: 'nav', gridRow: 5, gridCol: 1 },
-      { microKeyId: 'ACT10', uiLabelZh: '开始说话', uiLabelEn: 'Mic', kind: 'command', gridRow: 5, gridCol: 2, gridColSpan: 2 },
+      { microKeyId: 'ACT10', uiLabelZh: '口头指令', uiLabelEn: 'Mic', kind: 'command', gridRow: 5, gridCol: 2, gridColSpan: 2 },
       { microKeyId: 'DOT', uiLabelZh: '小数点', uiLabelEn: 'Dot', kind: 'command', gridRow: 5, gridCol: 4 }
     ],
     numpadCells: [
@@ -8214,7 +8214,7 @@
     tab = normalizeLayoutChannelTab(tab);
     if (tab === 'ime') return t('keysChannelTabIme', '听写方式');
     if (tab === 'key') return t('keysChannelTabKey', '我录的键');
-    if (tab === 'voice') return t('keysChannelTabVoice', '口头指令');
+    if (tab === 'voice') return t('keysChannelTabVoice', '口头命令');
     if (tab === 'camera') return t('keysChannelTabCamera', '手势');
     if (tab === 'softPad') return t('keysChannelTabSoftPad', '屏幕按钮');
     return t('keysChannelTabCursor', '软件自带');
@@ -9247,7 +9247,7 @@
         esc(
           t(
             'softPadLayoutVoiceEmpty',
-            '本应用还没有可绑口令。去语音设置设开启口令，或在口头指令新建一词注入。'
+            '本应用还没有可绑口令。去语音设置设开启口令，或在一词注入新建模板。'
           )
         ) +
         '</p>' +
@@ -9289,7 +9289,9 @@
           '"' +
           (slotId ? ' data-layout-slot="' + esc(slotId) + '"' : '') +
           (isPrompt
-            ? ' data-layout-voice-prompt="1" data-prompt-name="' +
+            ? ' data-layout-voice-prompt="1" data-prompt-id="' +
+              esc(row.mappingId || '') +
+              '" data-prompt-name="' +
               esc(row.name || '') +
               '" data-prompt-text="' +
               esc(row.say || '') +
@@ -10998,6 +11000,7 @@
         if (promptBtn && host.contains(promptBtn)) {
           ev.preventDefault();
           bindPromptInjectToPadKey(cur, {
+            mappingId: promptBtn.getAttribute('data-prompt-id') || '',
             name: promptBtn.getAttribute('data-prompt-name') || '',
             say: promptBtn.getAttribute('data-prompt-text') || ''
           });
@@ -14559,7 +14562,7 @@
   }
 
   var MINI_TOOL_DEFS = [
-    { id: 'pushToTalk', label: '麦克风', slot: 'ACT10', ico: 'mic' },
+    { id: 'pushToTalk', label: '口头指令', slot: 'ACT10', ico: 'mic' },
     { id: 'stopOrSend', label: '发送', slot: 'ACT12', ico: 'send' },
     { id: 'continue', label: '继续', slot: 'AG02', ico: 'spark' },
     { id: 'newThread', label: '新建', slot: 'AG01', ico: 'plus' },

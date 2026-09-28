@@ -864,9 +864,9 @@
               <div class="keys-page-rail__dir" id="keysChannelPaneLeft">
                 <p class="keys-page-rail__dir-lbl" id="keysChannelDirLbl">识别</p>
                 <nav class="keys-page-rail__nav" id="keysChannelSubtabs" role="tablist" aria-label="识别分类">
-                  <button type="button" class="keys-page-rail__item is-active" role="tab" id="keysChannelTabIme" data-channel="ime" aria-selected="true" data-i18n="keysChannelTabIme">听写方式</button>
+                  <button type="button" class="keys-page-rail__item is-active" role="tab" id="keysChannelTabIme" data-channel="ime" aria-selected="true" data-i18n="keysChannelTabIme">听写</button>
+                  <button type="button" class="keys-page-rail__item" role="tab" id="keysChannelTabVoice" data-channel="voice" aria-selected="false" data-i18n="keysChannelTabVoice">口头命令</button>
                   <button type="button" class="keys-page-rail__item" role="tab" id="keysChannelTabKey" data-channel="key" aria-selected="false" data-i18n="keysChannelTabKey">我录的键</button>
-                  <button type="button" class="keys-page-rail__item" role="tab" id="keysChannelTabVoice" data-channel="voice" aria-selected="false" data-i18n="keysChannelTabVoice">口头指令</button>
                   <button type="button" class="keys-page-rail__item" role="tab" id="keysChannelTabCursor" data-channel="cursor" aria-selected="false" data-i18n="keysChannelTabCursor">软件自带</button>
                   <button type="button" class="keys-page-rail__item" role="tab" id="keysChannelTabSoftPad" data-channel="softPad" aria-selected="false" data-i18n="keysChannelTabSoftPad">屏幕按钮</button>
                   <button type="button" class="keys-page-rail__item" role="tab" id="keysChannelTabCamera" data-channel="camera" aria-selected="false" data-i18n="keysChannelTabCamera">手势</button>
@@ -876,7 +876,7 @@
             <div class="keys-page-main">
               <div class="keys-work-tag" id="keysWorkTag">
                 <span class="keys-work-tag__lbl" id="keysWorkTagLbl">工作间</span>
-                <span class="keys-work-tag__ch" id="keysWorkChannelPill">听写方式</span>
+                <span class="keys-work-tag__ch" id="keysWorkChannelPill">听写</span>
                 <details class="keys-work-tag__modes">
                   <summary id="keysTriggerModeFooterLbl">触发方式</summary>
                   <div class="keys-trigger-modes-block">
@@ -1003,10 +1003,10 @@
                               <div class="keys-detail-card keys-detail-card--options keys-capture-key-panel" id="keysCaptureKeyPanel" data-capture-panel="key">
                                 <div class="keys-capture-target-actions-host" id="keysCaptureTargetActionsHost" hidden>
                                   <div class="keys-custom-key-split">
-                                    <aside class="keys-custom-key-match" id="keysCustomKeyMatchPane" aria-label="自定义键">
+                                    <aside class="keys-custom-key-match" id="keysCustomKeyMatchPane" aria-label="我录的键">
                                       <div class="keys-custom-key-match-head">
-                                        <p class="keys-channel-group-label" id="keysCustomKeyMatchLbl" data-i18n="keysCustomKeyMatchTitle">自定义键</p>
-                                        <button type="button" class="keys-custom-key-match-add" id="btnKeysCustomKeyMatchAdd" title="新建" aria-label="新建" data-i18n-aria="keysCustomKeyMatchAdd">+</button>
+                                        <p class="keys-channel-group-label" id="keysCustomKeyMatchLbl" data-i18n="keysChannelTabKey">我录的键</p>
+                                        <button type="button" class="keys-custom-key-match-add" id="btnKeysCustomKeyMatchAdd" title="新建空白序列" aria-label="新建空白序列" data-i18n-aria="keysCustomKeyMatchAdd">+</button>
                                       </div>
                                       <div class="keys-custom-key-match-list" id="keysCustomKeyMatchList" role="list"></div>
                                     </aside>
@@ -1289,7 +1289,7 @@
               <nav class="soft-pad-page-rail__nav" id="softPadChannelNav" role="tablist" aria-label="识别分类">
                 <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="ime" id="softPadRailTabIme" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabIme">听写方式</span></button>
                 <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="key" id="softPadRailTabKey" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabKey">我录的键</span></button>
-                <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="voice" id="softPadRailTabVoice" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabVoice">口头指令</span></button>
+                <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="voice" id="softPadRailTabVoice" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabVoice">口头命令</span></button>
                 <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="cursor" id="softPadRailTabCursor" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabCursor">软件自带</span></button>
                 <button type="button" class="soft-pad-page-rail__item is-active" role="tab" data-soft-pad-channel="softPad" id="softPadRailTabSoftPad" aria-selected="true"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabSoftPad">屏幕按钮</span></button>
                 <button type="button" class="soft-pad-page-rail__item" role="tab" data-soft-pad-channel="camera" id="softPadRailTabCamera" aria-selected="false"><span class="soft-pad-page-rail__txt" data-i18n="keysChannelTabCamera">手势</span></button>
@@ -2196,7 +2196,7 @@
                       <div class="voice-intent-rail__sec" id="voiceIntentRailSec">意图</div>
                       <button type="button" class="voice-intent-rail-item is-on" data-voice-intent="ime" role="tab" aria-selected="true" id="voiceIntentTabIme">听写方式<span class="n">IME</span></button>
                       <button type="button" class="voice-intent-rail-item" data-voice-intent="key" role="tab" aria-selected="false" id="voiceIntentTabKey">我录的键<span class="n">序列</span></button>
-                      <button type="button" class="voice-intent-rail-item" data-voice-intent="prompt" role="tab" aria-selected="false" id="voiceIntentTabPrompt">口头指令<span class="n">注入</span></button>
+                      <button type="button" class="voice-intent-rail-item" data-voice-intent="prompt" role="tab" aria-selected="false" id="voiceIntentTabPrompt">一词注入<span class="n" data-i18n="voiceIntentPromptHintShort">写模板</span></button>
                       <button type="button" class="voice-intent-rail-item" data-voice-intent="cursor" role="tab" aria-selected="false" id="voiceIntentTabCursor">软件自带<span class="n">命令</span></button>
                       <button type="button" class="voice-intent-rail-item" data-voice-intent="softpad" role="tab" aria-selected="false" id="voiceIntentTabSoftPad">屏幕按钮<span class="n">Pad</span></button>
                       <button type="button" class="voice-intent-rail-item" data-voice-intent="gesture" role="tab" aria-selected="false" id="voiceIntentTabGesture">手势<span class="n">摄像头</span></button>
@@ -2542,6 +2542,10 @@
                             <span class="voice-prompt-kicker" id="voiceIntentPromptKicker">一词注入</span>
                             <h4 class="voice-prompt-title" id="voiceIntentPromptTitle">说一词 · 写入 · 发送</h4>
                             <p class="voice-prompt-desc" id="voiceIntentPromptDesc">选一条指令，改标题和 prompt；左上口令负责唤醒。</p>
+                            <p class="voice-oral-bridge" id="voiceOralKeysBridge">
+                              <button type="button" class="voice-oral-bridge__go" id="btnVoiceOralOpenKeys">去按键 · 口头命令 →</button>
+                              <span id="voiceOralKeysBridgeText">看收听入口与可喊列表</span>
+                            </p>
                           </div>
                           <div class="voice-prompt-armed" id="voicePromptArmed" aria-live="polite"></div>
                         </header>

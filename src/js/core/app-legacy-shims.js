@@ -246,7 +246,17 @@
     function cancelRecording(){ return OneToneMappingRecording.cancel(); }
     function cancelDraftOrRecording(){ return OneToneMappingRecording.cancelDraftOrRecording(); }
     function setRecording(mode,opts){ return OneToneMappingRecording.setRecording(mode,opts); }
-    function startTriggerRecord(){ return OneToneMappingRecording.startTrigger(); }
+    function startTriggerRecord(){
+      // 我录的键：pin peer，避免口头/习惯的右 Shift 录进所有动作。
+      var pin='';
+      try{
+        var P=global.OneToneKeysChannelCommandPicker;
+        if(P&&typeof P.activeTriggerMappingId==='function'){
+          pin=String(P.activeTriggerMappingId()||'').trim();
+        }
+      }catch(_){}
+      return OneToneMappingRecording.startTrigger(pin||undefined);
+    }
     function startTargetRecord(){ return OneToneMappingRecording.startTarget(); }
     function renderRecordCancelBar(){ return OneToneMappingRecording.renderCancelBar(); }
     function applyKeyWakeRecordingUi(){ return OneToneMappingRecording.applyRecordingUi(); }
@@ -335,6 +345,13 @@
     
     
     function selectedDisplayTriggerKey(){
+      // 通道隔离：听写 / 口头 / 我录的键 各看各的触发键；口头未录时必须空，禁止回落到听写键。
+      try{
+        var P=global.OneToneKeysChannelCommandPicker;
+        if(P&&typeof P.channelTriggerDisplayKey==='function'){
+          return String(P.channelTriggerDisplayKey()||'').trim();
+        }
+      }catch(_){}
       return editorTriggerForMapping(selectedMapping());
     }
     

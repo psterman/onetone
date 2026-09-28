@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>按键 · 说话</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #fff;
+      --wash: #f3f7fa;
+      --bg: #e8eef3;
+      --rail: #eef3f7;
+      --cyan: #2a9cc4;
+      --cyan-ink: #0f5f7a;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --violet: #6b5ce0;
+      --violet-ink: #3d3499;
+      --violet-soft: #ece9ff;
+      --violet-bd: #b8adf5;
+      --ok: #15803d;
+      --ok-soft: #ecfdf3;
+      --ok-bd: #86efac;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --warn-bd: #fdba74;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    [hidden] { display: none !important; }
+
+    .app {
+      width: min(1180px, 100%);
+      margin: 20px auto 40px;
+      padding: 0 14px;
+    }
+    .frame {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+      box-shadow: 0 18px 40px rgba(19, 32, 44, .08);
+      overflow: hidden;
+      min-height: 760px;
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .top-ctx {
+      font-size: 13px;
+      font-weight: 650;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .scene {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font: 650 12px/1 var(--font);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .top-acts { margin-left: auto; display: flex; gap: 6px; }
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 7px 12px;
+      font: 650 12.5px/1 var(--font);
+      cursor: pointer;
+    }
+    .btn.primary {
+      border-color: transparent;
+      background: var(--cyan);
+      color: #fff;
+    }
+    .btn.ghost {
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fbfdfe, var(--wash));
+    }
+    .brand { font-size: 15px; font-weight: 750; }
+    .pill {
+      font-size: 11px;
+      font-weight: 650;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--ok-soft);
+      color: var(--ok);
+      border: 1px solid var(--ok-bd);
+    }
+
+    .desk {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 172px minmax(0, 1fr) 200px;
+      min-height: 0;
+      background: var(--wash);
+    }
+    @media (max-width: 900px) {
+      .desk { grid-template-columns: 160px minmax(0, 1fr); }
+      .dock { display: none; }
+    }
+
+    .rail {
+      background: var(--rail);
+      border-right: 1px solid var(--line);
+      padding: 8px;
+      overflow: auto;
+    }
+    .rail-start {
+      padding: 10px 8px 12px;
+      margin-bottom: 6px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+    .rail-start__badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 750;
+      color: #fff;
+      background: var(--cyan-ink);
+      border-radius: 999px;
+      padding: 2px 7px;
+      margin-bottom: 6px;
+    }
+    .rail-start__title {
+      margin: 0;
+      font-size: 12.5px;
+      font-weight: 750;
+    }
+    .rail-start__key {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 10px;
+      padding: 12px 8px;
+      font: 750 15px/1 var(--mono);
+      text-align: center;
+      cursor: pointer;
+    }
+    .rail-start__hint {
+      margin: 6px 0 0;
+      font-size: 10.5px;
+      color: var(--faint);
+      text-align: center;
+    }
+    .rail-sec {
+      margin: 8px 4px 4px;
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: .04em;
+      color: var(--faint);
+    }
+    .rail-item {
+      display: block;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font: 650 12.5px/1.25 var(--font);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .rail-item:hover {
+      background: rgba(255, 255, 255, .55);
+      color: var(--ink);
+    }
+    .rail-item.is-on {
+      background: #fff;
+      color: var(--cyan-ink);
+      box-shadow: 0 1px 2px rgba(19, 32, 44, .06);
+    }
+    .rail-item .n {
+      display: block;
+      margin-top: 2px;
+      font-size: 10.5px;
+      font-weight: 550;
+      color: var(--faint);
+    }
+    .rail-item.is-on .n { color: var(--cyan); }
+
+    .main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--line);
+      background: var(--wash);
+    }
+    .main-head {
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 8px 12px 0;
+    }
+    .main-head__label {
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .04em;
+      color: var(--faint);
+      margin-bottom: 6px;
+    }
+    .tabs {
+      display: flex;
+      gap: 2px;
+      max-width: 360px;
+      padding: 3px;
+      background: #e7eef3;
+      border: 1px solid var(--line);
+      border-bottom: 0;
+      border-radius: 12px 12px 0 0;
+    }
+    .tabs button {
+      flex: 1;
+      border: 0;
+      background: transparent;
+      padding: 9px 10px;
+      border-radius: 9px;
+      font: 750 13px/1.2 var(--font);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .tabs button small {
+      display: block;
+      margin-top: 2px;
+      font-size: 10.5px;
+      font-weight: 550;
+      color: var(--faint);
+    }
+    .tabs button.is-on {
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(19, 32, 44, .08);
+    }
+    .tabs button.is-on[data-tab="dictate"] { color: var(--cyan-ink); }
+    .tabs button.is-on[data-tab="oral"] { color: var(--violet-ink); }
+
+    .pane {
+      flex: 1;
+      overflow: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .card h3 {
+      margin: 0 0 4px;
+      font-size: 13.5px;
+      font-weight: 750;
+    }
+    .card .sub {
+      margin: 0 0 12px;
+      font-size: 12px;
+      color: var(--faint);
+      line-height: 1.4;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      color: var(--muted);
+      border-radius: 10px;
+      padding: 7px 11px;
+      font-size: 12.5px;
+      font-weight: 650;
+    }
+    .chip.is-on {
+      border-color: var(--ok-bd);
+      background: var(--ok-soft);
+      color: var(--ok);
+    }
+    .chip code {
+      font-family: var(--mono);
+      font-size: 11.5px;
+    }
+    .btn-sm {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font: 650 12px/1 var(--font);
+      cursor: pointer;
+    }
+    .btn-sm.violet {
+      border-color: var(--violet-bd);
+      background: var(--violet-soft);
+      color: var(--violet-ink);
+    }
+
+    .ime-key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 88px;
+      height: 56px;
+      border-radius: 12px;
+      border: 1px solid var(--cyan-bd);
+      background: var(--cyan-soft);
+      font: 750 15px/1 var(--mono);
+      color: var(--cyan-ink);
+    }
+    .seg {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .seg button {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 7px 11px;
+      font: 650 12px/1 var(--font);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .seg button.is-on {
+      border-color: var(--cyan-bd);
+      background: var(--cyan-soft);
+      color: var(--cyan-ink);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .toolbar .meta {
+      flex: 1 1 160px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .filters button {
+      border: 1px solid var(--line);
+      background: var(--wash);
+      border-radius: 999px;
+      padding: 5px 11px;
+      font: 650 11.5px/1 var(--font);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .filters button.is-on {
+      border-color: var(--violet-bd);
+      background: var(--violet-soft);
+      color: var(--violet-ink);
+    }
+
+    .dup {
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--warn-bd);
+      background: var(--warn-soft);
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: var(--warn);
+    }
+    .dup .acts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .dup .acts button {
+      border: 1px solid var(--warn-bd);
+      background: #fff;
+      color: var(--warn);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font: 650 11.5px/1 var(--font);
+      cursor: pointer;
+    }
+
+    table.cmd {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+    table.cmd th {
+      text-align: left;
+      font-size: 10.5px;
+      font-weight: 750;
+      color: var(--faint);
+      padding: 0 8px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    table.cmd td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    table.cmd tr:last-child td { border-bottom: 0; }
+    table.cmd .name { font-weight: 750; }
+    table.cmd .via {
+      margin-top: 2px;
+      font-size: 10.5px;
+      color: var(--faint);
+    }
+    table.cmd input {
+      width: 100%;
+      max-width: 200px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 9px;
+      font: 650 12.5px/1 var(--font);
+      color: var(--ink);
+      background: var(--wash);
+    }
+    table.cmd input:focus {
+      outline: none;
+      border-color: var(--violet-bd);
+      background: #fff;
+    }
+    table.cmd .tag {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 10px;
+      font-weight: 750;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--cyan-soft);
+      color: var(--cyan-ink);
+      border: 1px solid var(--cyan-bd);
+    }
+    table.cmd .tag.edit {
+      background: var(--ok-soft);
+      color: var(--ok);
+      border-color: var(--ok-bd);
+    }
+    table.cmd .hint {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      font-weight: 650;
+      color: var(--warn);
+    }
+    table.cmd tr.is-dup td {
+      background: color-mix(in srgb, var(--warn-soft) 65%, #fff);
+    }
+    table.cmd tr.is-dup input {
+      border-color: var(--warn-bd);
+      background: #fff;
+      color: var(--warn);
+    }
+    .tog {
+      appearance: none;
+      width: 36px;
+      height: 20px;
+      border-radius: 999px;
+      background: #c5d0de;
+      border: 0;
+      position: relative;
+      cursor: pointer;
+    }
+    .tog.is-on { background: var(--ok); }
+    .tog::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+    }
+    .tog.is-on::after { left: 18px; }
+
+    .listen {
+      border: 1.5px solid var(--violet-bd);
+      background: linear-gradient(165deg, #fff, var(--violet-soft));
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .listen__top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .listen__top strong {
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--violet-ink);
+    }
+    .listen__top span {
+      font-size: 11px;
+      color: var(--faint);
+    }
+    .listen__strip {
+      border: 1px solid var(--violet-bd);
+      background: #fff;
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 650;
+      color: var(--violet-ink);
+    }
+    .listen__chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 8px;
+    }
+    .listen__chips span {
+      font-size: 11px;
+      font-weight: 650;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--violet-bd);
+      background: #fff;
+      color: var(--violet-ink);
+    }
+
+    .dock {
+      background: #eef3f7;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .dock__title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 750;
+    }
+    .dock__meta {
+      margin: 0 0 4px;
+      font-size: 12px;
+      color: var(--faint);
+    }
+    .dock__row {
+      appearance: none;
+      width: 100%;
+      border: 1px solid transparent;
+      background: #fff;
+      border-radius: 8px;
+      padding: 8px 9px;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+    }
+    .dock__row.is-on {
+      border-color: var(--cyan-bd);
+      background: var(--cyan-soft);
+    }
+    .dock__row .t {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 650;
+    }
+    .dock__row .s {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--faint);
+    }
+    .dock__add {
+      appearance: none;
+      width: 100%;
+      margin-top: auto;
+      border: 1px dashed var(--line);
+      background: transparent;
+      border-radius: 8px;
+      padding: 8px;
+      font: 650 12.5px/1 var(--font);
+      color: var(--cyan-ink);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="frame">
+      <div class="topbar">
+        <div class="top-ctx">
+          <span>正在编辑</span>
+          <button type="button" class="scene">Cursor · 写代码</button>
+        </div>
+        <div class="top-acts">
+          <button type="button" class="btn ghost">测试</button>
+          <button type="button" class="btn primary">保存</button>
+        </div>
+      </div>
+      <div class="status">
+        <span class="brand">按键</span>
+        <span class="pill">就绪</span>
+      </div>
+
+      <div class="desk">
+        <aside class="rail">
+          <div class="rail-start">
+            <span class="rail-start__badge">起点</span>
+            <h3 class="rail-start__title">触发键</h3>
+            <button type="button" class="rail-start__key">F8</button>
+            <p class="rail-start__hint">点按录制</p>
+          </div>
+          <div class="rail-sec">识别</div>
+          <button type="button" class="rail-item is-on">说话<span class="n">听写 · 口头命令</span></button>
+          <button type="button" class="rail-item">我录的键<span class="n">序列</span></button>
+          <button type="button" class="rail-item">一词注入<span class="n">写模板</span></button>
+          <button type="button" class="rail-item">软件自带<span class="n">命令</span></button>
+          <button type="button" class="rail-item">屏幕按钮<span class="n">Pad</span></button>
+          <button type="button" class="rail-item">手势<span class="n">摄像头</span></button>
+        </aside>
+
+        <main class="main">
+          <div class="main-head">
+            <div class="main-head__label">工作间</div>
+            <div class="tabs" role="tablist">
+              <button type="button" role="tab" data-tab="dictate" id="tabDictate">
+                听写
+                <small>右 Alt · 写字</small>
+              </button>
+              <button type="button" role="tab" class="is-on" data-tab="oral" id="tabOral" aria-selected="true">
+                口头命令
+                <small>麦键 · 调命令</small>
+              </button>
+            </div>
+          </div>
+
+          <div class="pane">
+            <div id="paneDictate" hidden>
+              <section class="card">
+                <h3>听写键</h3>
+                <p class="sub">按下后开始厂商听写，字写入当前输入框</p>
+                <div class="row">
+                  <span class="ime-key">右 Alt</span>
+                  <button type="button" class="btn-sm">重新录制</button>
+                </div>
+                <div class="seg" style="margin-top:12px">
+                  <button type="button" class="is-on">微信输入法</button>
+                  <button type="button">搜狗</button>
+                  <button type="button">系统听写</button>
+                </div>
+              </section>
+              <section class="card">
+                <h3>说完后</h3>
+                <p class="sub">听写结束时的收尾动作</p>
+                <div class="seg">
+                  <button type="button" class="is-on">回车发送</button>
+                  <button type="button">仅停止</button>
+                  <button type="button">延迟发送</button>
+                </div>
+              </section>
+            </div>
+
+            <div id="paneOral">
+              <section class="card">
+                <h3>打开口头命令</h3>
+                <p class="sub">点 Soft Pad 麦键进入收听，再说下方关键词执行命令</p>
+                <div class="row">
+                  <span class="chip is-on">Soft Pad 麦键</span>
+                  <span class="chip">双击 <code>Vol−</code></span>
+                  <button type="button" class="btn-sm">改绑按法</button>
+                </div>
+              </section>
+
+              <section class="card">
+                <h3>可说的命令</h3>
+                <p class="sub">说法默认用命令名自动生成，可改；重复时会提示</p>
+
+                <div class="toolbar">
+                  <span class="meta" id="genMeta">已自动生成 8 条说法</span>
+                  <button type="button" class="btn-sm violet" id="btnRegen">重新生成未改项</button>
+                  <button type="button" class="btn-sm" id="btnRegenAll">全部重置</button>
+                </div>
+
+                <div class="dup" id="dupBanner" hidden></div>
+
+                <div class="filters" id="filters">
+                  <button type="button" class="is-on" data-f="all">全部</button>
+                  <button type="button" data-f="sys">系统</button>
+                  <button type="button" data-f="keys">按键</button>
+                  <button type="button" data-f="pad">Soft Pad</button>
+                  <button type="button" data-f="cam">摄像头</button>
+                </div>
+
+                <table class="cmd" id="cmdTable">
+                  <thead>
+                    <tr>
+                      <th>命令</th>
+                      <th>说法</th>
+                      <th>启用</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr data-src="sys" data-name="发送">
+                      <td>
+                        <div class="name">发送</div>
+                        <div class="via">系统</div>
+                      </td>
+                      <td>
+                        <input value="发送" data-auto="发送" />
+                        <span class="tag">自动</span>
+                      </td>
+                      <td><button type="button" class="tog is-on" aria-label="启用"></button></td>
+                    </tr>
+                    <tr data-src="sys" data-name="取消">
+                      <td>
+                        <div class="name">取消</div>
+                        <div class="via">系统</div>
+                      </td>
+                      <td>
+                        <input value="取消" data-auto="取消" />
+                        <span class="tag">自动</span>
+                      </td>
+                      <td><button type="button" class="tog is-on"></button></td>
+                    </tr>
+                    <tr data-src="sys" data-name="新建对话">
+                      <td>
+                        <div class="name">新建对话</div>
+                        <div class="via">系统</div>
+                      </td>
+                      <td>
+                        <input value="新建对话" data-auto="新建对话" />
+                        <span class="tag">自动</span>
+                      </td>
+                      <td><button type="button" class="tog is-on"></button></td>
+                    </tr>
+                    <tr data-src="sys" data-name="继续">
+                      <td>
+                        <div class="name">继续</div>
+                        <div class="via">系统</div>
+                      </td>
+                      <td>
+                        <input value="继续" data-auto="继续" />
+                        <span class="tag">自动</span>
+                      </td>
+                      <td><button type="button" class="tog is-on"></button></td>
+                    </tr>
+                    <tr data-src="keys" data-name="接着干">
+                      <td>
+                        <div class="name">接着干</div>
+                        <div class="via">按键 · Ctrl+Enter</div>
+                      </td>
+                      <td>
+                        <input value="继续" data-auto="接着干" />
+                        <span class="tag edit">已改</span>
+                      </td>
+                      <td><button type="button" class="tog is-on"></button></td>
+                    </tr>
+                    <tr data-src="keys" data-name="总结改动">
+                      <td>
+                        <div class="name">总结改动</div>
+                        <div class="via">按键 · F9</div>
+                      </td>
+                      <td>
+                        <input value="总结改动" data-auto="总结改动" />
+                        <span class="tag">自动</span>
+                      </td>
+                      <td><button type="button" class="tog is-on"></button></td>
+                    </tr>
+                    <tr data-src="pad" data-name="接受">
+                      <td>
+                        <div class="name">接受</div>
+                        <div class="via">Soft Pad</div>
+                      </td>
+                      <td>
+                        <input value="接受" data-auto="接受" />
+                        <span class="tag">自动</span>
+                      </td>
+                      <td><button type="button" class="tog is-on"></button></td>
+                    </tr>
+                    <tr data-src="cam" data-name="暂停听写">
+                      <td>
+                        <div class="name">暂停听写</div>
+                        <div class="via">摄像头</div>
+                      </td>
+                      <td>
+                        <input value="暂停听写" data-auto="暂停听写" />
+                        <span class="tag">自动</span>
+                      </td>
+                      <td><button type="button" class="tog is-on"></button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+
+              <section class="listen">
+                <div class="listen__top">
+                  <strong>收听中</strong>
+                  <span>Soft Pad</span>
+                </div>
+                <div class="listen__strip" id="strip">可说：发送、取消、新建对话、继续、总结改动…</div>
+                <div class="listen__chips" id="chips"></div>
+              </section>
+            </div>
+          </div>
+        </main>
+
+        <aside class="dock">
+          <p class="dock__title">本场景动作</p>
+          <p class="dock__meta">Cursor · 3 条</p>
+          <button type="button" class="dock__row is-on">
+            <span class="t">听写 · 右 Alt</span>
+            <span class="s">微信输入法</span>
+          </button>
+          <button type="button" class="dock__row">
+            <span class="t">总结改动</span>
+            <span class="s">F9</span>
+          </button>
+          <button type="button" class="dock__row">
+            <span class="t">粘贴说明</span>
+            <span class="s">Ctrl+Alt+V</span>
+          </button>
+          <button type="button" class="dock__add">＋ 新建动作</button>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var tabDictate = document.getElementById("tabDictate");
+      var tabOral = document.getElementById("tabOral");
+      var paneDictate = document.getElementById("paneDictate");
+      var paneOral = document.getElementById("paneOral");
+      var table = document.getElementById("cmdTable");
+      var dupBanner = document.getElementById("dupBanner");
+      var strip = document.getElementById("strip");
+      var chips = document.getElementById("chips");
+      var genMeta = document.getElementById("genMeta");
+
+      function showTab(id) {
+        var oral = id === "oral";
+        tabOral.classList.toggle("is-on", oral);
+        tabDictate.classList.toggle("is-on", !oral);
+        tabOral.setAttribute("aria-selected", oral ? "true" : "false");
+        tabDictate.setAttribute("aria-selected", oral ? "false" : "true");
+        paneOral.hidden = !oral;
+        paneDictate.hidden = oral;
+      }
+      tabOral.addEventListener("click", function () { showTab("oral"); });
+      tabDictate.addEventListener("click", function () { showTab("dictate"); });
+
+      document.querySelectorAll(".seg").forEach(function (group) {
+        group.addEventListener("click", function (e) {
+          var btn = e.target.closest("button");
+          if (!btn || !group.contains(btn)) return;
+          group.querySelectorAll("button").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+        });
+      });
+
+      function refreshTag(input) {
+        var tag = input.parentElement.querySelector(".tag");
+        if (!tag) return;
+        var auto = input.getAttribute("data-auto") || "";
+        var edited = input.value.trim() !== auto;
+        tag.textContent = edited ? "已改" : "自动";
+        tag.classList.toggle("edit", edited);
+      }
+
+      function tokenize(v) {
+        return String(v || "")
+          .split(/[、,，\s]+/)
+          .map(function (s) { return s.trim(); })
+          .filter(Boolean);
+      }
+
+      function enabledRows() {
+        return Array.prototype.filter.call(table.querySelectorAll("tbody tr"), function (tr) {
+          var tog = tr.querySelector(".tog");
+          return tog && tog.classList.contains("is-on");
+        });
+      }
+
+      function updateStrip() {
+        var names = enabledRows().map(function (tr) {
+          return tr.querySelector("input").value.split(/[、,，]/)[0].trim() || tr.getAttribute("data-name");
+        }).filter(Boolean);
+        strip.textContent = names.length
+          ? "可说：" + names.slice(0, 5).join("、") + (names.length > 5 ? "…" : "")
+          : "暂无启用命令";
+        chips.innerHTML = names.slice(0, 6).map(function (n) {
+          return "<span>" + n + "</span>";
+        }).join("");
+        var autoCount = 0;
+        table.querySelectorAll("tbody input").forEach(function (input) {
+          if (input.value.trim() === (input.getAttribute("data-auto") || "")) autoCount++;
+        });
+        genMeta.textContent = "自动生成 " + autoCount + " 条 · 已改 " + (table.querySelectorAll("tbody tr").length - autoCount) + " 条";
+      }
+
+      function scanDup() {
+        table.querySelectorAll(".hint").forEach(function (el) { el.remove(); });
+        table.querySelectorAll("tbody tr").forEach(function (tr) { tr.classList.remove("is-dup"); });
+
+        var map = {};
+        enabledRows().forEach(function (tr) {
+          var input = tr.querySelector("input");
+          tokenize(input.value).forEach(function (tok) {
+            if (!map[tok]) map[tok] = [];
+            map[tok].push(tr);
+          });
+        });
+
+        var conflicts = [];
+        Object.keys(map).forEach(function (tok) {
+          if (map[tok].length < 2) return;
+          conflicts.push({ tok: tok, rows: map[tok] });
+          map[tok].forEach(function (tr) {
+            tr.classList.add("is-dup");
+            var cell = tr.querySelector("td:nth-child(2)");
+            var span = document.createElement("span");
+            span.className = "hint";
+            span.textContent = "与其它命令重复：「" + tok + "」";
+            cell.appendChild(span);
+          });
+        });
+
+        if (!conflicts.length) {
+          dupBanner.hidden = true;
+          dupBanner.innerHTML = "";
+          updateStrip();
+          return;
+        }
+
+        var c = conflicts[0];
+        var names = c.rows.map(function (tr) { return tr.getAttribute("data-name"); }).join("、");
+        dupBanner.hidden = false;
+        dupBanner.innerHTML =
+          "「" + c.tok + "」同时对应 " + names +
+          '<div class="acts">' +
+          '<button type="button" data-fix="rename">改回命令名</button>' +
+          '<button type="button" data-fix="disable">关掉后者</button>' +
+          '<button type="button" data-fix="keep">忽略</button>' +
+          "</div>";
+
+        dupBanner.querySelectorAll("[data-fix]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var fix = btn.getAttribute("data-fix");
+            var rows = c.rows;
+            if (fix === "rename" && rows[1]) {
+              var input = rows[1].querySelector("input");
+              input.value = input.getAttribute("data-auto") || "";
+              refreshTag(input);
+            }
+            if (fix === "disable" && rows[1]) {
+              rows[1].querySelector(".tog").classList.remove("is-on");
+            }
+            if (fix === "keep") {
+              dupBanner.hidden = true;
+              return;
+            }
+            scanDup();
+          });
+        });
+        updateStrip();
+      }
+
+      table.addEventListener("click", function (e) {
+        var tog = e.target.closest(".tog");
+        if (!tog) return;
+        tog.classList.toggle("is-on");
+        scanDup();
+      });
+
+      table.addEventListener("input", function (e) {
+        if (e.target.tagName !== "INPUT") return;
+        refreshTag(e.target);
+        scanDup();
+      });
+
+      document.getElementById("btnRegen").addEventListener("click", function () {
+        table.querySelectorAll("tbody input").forEach(function (input) {
+          var auto = input.getAttribute("data-auto") || "";
+          if (input.value.trim() === auto) {
+            input.value = auto;
+            refreshTag(input);
+          }
+        });
+        scanDup();
+      });
+
+      document.getElementById("btnRegenAll").addEventListener("click", function () {
+        table.querySelectorAll("tbody input").forEach(function (input) {
+          input.value = input.getAttribute("data-auto") || "";
+          refreshTag(input);
+        });
+        scanDup();
+      });
+
+      document.getElementById("filters").addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-f]");
+        if (!btn) return;
+        document.querySelectorAll("#filters button").forEach(function (b) {
+          b.classList.toggle("is-on", b === btn);
+        });
+        var f = btn.getAttribute("data-f");
+        table.querySelectorAll("tbody tr").forEach(function (tr) {
+          tr.hidden = f !== "all" && tr.getAttribute("data-src") !== f;
+        });
+      });
+
+      scanDup();
+    })();
+  </script>
+</body>
+</html>

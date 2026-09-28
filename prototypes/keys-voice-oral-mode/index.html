@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>原型 · 按键设置 · 口头指令（模式 + 命令方案）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #fff;
+      --wash: #f3f7fa;
+      --bg: #e8eef3;
+      --rail: #eef3f7;
+      --cyan: #2a9cc4;
+      --cyan-ink: #0f5f7a;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --violet: #6b5ce0;
+      --violet-ink: #3d3499;
+      --violet-soft: #ece9ff;
+      --violet-bd: #b8adf5;
+      --ok: #15803d;
+      --ok-soft: #ecfdf3;
+      --ok-bd: #86efac;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --warn-bd: #fdba74;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(700px 280px at 10% -8%, rgba(42, 156, 196, .08), transparent 55%),
+        var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .bar {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+      padding: 10px 16px; background: #13202c; color: #c5d0de;
+      font-size: 12.5px; line-height: 1.45;
+    }
+    .bar strong { color: #fff; }
+    .bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; margin-left: auto; }
+
+    .shell { width: min(1080px, 100%); margin: 16px auto 48px; padding: 0 14px; }
+    .contract {
+      margin: 0 0 12px; padding: 12px 14px;
+      border: 1px solid var(--line); border-radius: 12px;
+      background: rgba(255,255,255,.92);
+      font-size: 12.5px; color: var(--muted); line-height: 1.55;
+    }
+    .contract b { color: var(--ink); }
+
+    .frame {
+      border: 1px solid var(--line); border-radius: 16px;
+      background: var(--paper);
+      box-shadow: 0 18px 40px rgba(19, 32, 44, .08);
+      overflow: hidden;
+    }
+    .topbar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      padding: 10px 14px; border-bottom: 1px solid var(--line);
+    }
+    .scene {
+      border: 1px solid var(--line); background: var(--wash);
+      border-radius: 10px; padding: 6px 10px;
+      font: 650 12px/1 var(--font); color: var(--muted);
+    }
+    .top-acts { margin-left: auto; display: flex; gap: 6px; }
+    .btn {
+      border: 1px solid var(--line); background: var(--paper);
+      border-radius: 10px; padding: 7px 12px;
+      font: 650 12.5px/1 var(--font); cursor: pointer;
+    }
+    .btn.primary { border-color: transparent; background: var(--cyan); color: #fff; }
+
+    .desk {
+      display: grid; grid-template-columns: 168px minmax(0, 1fr);
+      min-height: 640px;
+    }
+    @media (max-width: 760px) { .desk { grid-template-columns: 1fr; } }
+
+    .rail {
+      background: var(--rail); border-right: 1px solid var(--line);
+      padding: 8px;
+    }
+    .rail-start {
+      padding: 10px 8px; margin-bottom: 6px;
+      background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    }
+    .rail-start small {
+      display: block; font-size: 10px; font-weight: 750;
+      color: var(--faint); letter-spacing: .04em; margin-bottom: 4px;
+    }
+    .rail-start .key {
+      display: block; width: 100%; margin-top: 6px;
+      border: 1px solid var(--line); border-radius: 8px;
+      padding: 10px; font: 750 14px/1 var(--mono); text-align: center;
+      background: #fff;
+    }
+    .rail-sec { margin: 8px 4px 4px; font-size: 10px; font-weight: 750; color: var(--faint); }
+    .rail-item {
+      display: block; width: 100%; border: 0; background: transparent;
+      text-align: left; padding: 8px 10px; border-radius: 8px;
+      font: 650 12.5px/1.25 var(--font); color: var(--muted); cursor: pointer;
+    }
+    .rail-item.is-on { background: #fff; color: var(--violet-ink); box-shadow: 0 1px 2px rgba(19,32,44,.06); }
+    .rail-item .n { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 550; color: var(--faint); }
+    .rail-item.is-on .n { color: var(--violet); }
+    .rail-item.is-dim { opacity: .55; }
+
+    .main { background: var(--wash); padding: 14px 16px 20px; min-width: 0; }
+
+    /* —— 核心：两种方案对照 —— */
+    .contrast {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 640px) { .contrast { grid-template-columns: 1fr; } }
+    .contrast article {
+      border-radius: 12px; padding: 12px 14px;
+      font-size: 12.5px; line-height: 1.5; color: var(--muted);
+    }
+    .contrast article.dim {
+      border: 1px solid var(--line); background: rgba(255,255,255,.6);
+    }
+    .contrast article.focus {
+      border: 1.5px solid var(--violet-bd);
+      background: linear-gradient(165deg, #fff, var(--violet-soft));
+    }
+    .contrast .tag {
+      display: inline-block; font-size: 10px; font-weight: 750;
+      padding: 2px 7px; border-radius: 999px; margin-bottom: 6px;
+    }
+    .contrast .dim .tag { background: var(--wash); color: var(--faint); }
+    .contrast .focus .tag { background: var(--violet-soft); color: var(--violet-ink); border: 1px solid var(--violet-bd); }
+    .contrast h3 { margin: 0 0 4px; font-size: 14px; font-weight: 750; color: var(--ink); }
+    .contrast .eq {
+      margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+      font-family: var(--mono); font-size: 11px; font-weight: 650;
+      background: rgba(19,32,44,.04); color: var(--ink);
+    }
+    .contrast .focus .eq { background: rgba(107,92,224,.08); color: var(--violet-ink); }
+
+    /* —— 流水线 —— */
+    .pipe {
+      display: flex; flex-wrap: wrap; align-items: stretch; gap: 0;
+      margin-bottom: 14px;
+      border: 1px solid var(--violet-bd); border-radius: 12px;
+      background: #fff; overflow: hidden;
+    }
+    .pipe-step {
+      flex: 1 1 120px; padding: 12px 14px;
+      border-right: 1px solid var(--line);
+      min-width: 0;
+    }
+    .pipe-step:last-child { border-right: 0; }
+    .pipe-step .n {
+      font-size: 10px; font-weight: 750; color: var(--violet);
+      letter-spacing: .04em; margin-bottom: 4px;
+    }
+    .pipe-step strong { display: block; font-size: 13px; font-weight: 750; margin-bottom: 2px; }
+    .pipe-step span { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+
+    /* —— 两块主内容 —— */
+    .block {
+      background: #fff; border: 1px solid var(--line);
+      border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
+    }
+    .block h4 {
+      margin: 0 0 4px; font-size: 13.5px; font-weight: 750;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .block h4 .badge {
+      font-size: 10px; font-weight: 750; padding: 2px 7px; border-radius: 999px;
+      background: var(--violet-soft); color: var(--violet-ink);
+    }
+    .block .sub { margin: 0 0 12px; font-size: 12px; color: var(--faint); line-height: 1.4; }
+
+    .activate-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .activate-row .chip {
+      border: 1px solid var(--ok-bd); background: var(--ok-soft);
+      color: var(--ok); border-radius: 10px;
+      padding: 8px 12px; font-size: 12.5px; font-weight: 650;
+    }
+    .activate-row .chip code { font-family: var(--mono); font-size: 11.5px; }
+    .activate-row .chip.alt {
+      border-color: var(--line); background: var(--wash); color: var(--muted);
+    }
+    .activate-row button {
+      border: 1px solid var(--violet-bd); background: var(--violet-soft);
+      color: var(--violet-ink); border-radius: 8px;
+      padding: 6px 10px; font: 650 12px/1 var(--font); cursor: pointer;
+    }
+    .activate-note {
+      margin: 10px 0 0; padding: 9px 11px; border-radius: 8px;
+      border: 1px dashed var(--violet-bd); background: var(--violet-soft);
+      font-size: 12px; line-height: 1.45; color: var(--violet-ink);
+    }
+
+    .scheme-pick {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px;
+    }
+    .scheme-pick select {
+      flex: 1 1 200px; min-width: 180px;
+      border: 1px solid var(--line); border-radius: 10px;
+      padding: 8px 10px; font: 650 12.5px/1 var(--font);
+      background: var(--wash); color: var(--ink);
+    }
+    .scheme-pick button {
+      border: 1px solid var(--line); background: #fff;
+      border-radius: 8px; padding: 7px 10px;
+      font: 650 12px/1 var(--font); cursor: pointer; color: var(--muted);
+    }
+
+    .cmd-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .cmd-table th {
+      text-align: left; font-size: 10.5px; font-weight: 750;
+      color: var(--faint); letter-spacing: .03em;
+      padding: 0 8px 8px; border-bottom: 1px solid var(--line);
+    }
+    .cmd-table td {
+      padding: 10px 8px; border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    .cmd-table tr:last-child td { border-bottom: 0; }
+    .cmd-table .say {
+      font-weight: 750; color: var(--violet-ink);
+    }
+    .cmd-table .cap { color: var(--muted); }
+    .cmd-table .src {
+      font-size: 11px; font-weight: 650; color: var(--faint);
+    }
+    .cmd-table .src.is-sys { color: var(--cyan-ink); }
+    .cmd-table .src.is-user { color: var(--ok); }
+    .cmd-table tr.is-off { opacity: .45; }
+    .cmd-table tr.is-off .say { text-decoration: line-through; }
+
+    .table-foot {
+      margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px;
+      font-size: 12px; color: var(--muted);
+    }
+    .table-foot button {
+      border: 0; background: none; padding: 0;
+      font: inherit; font-weight: 650; color: var(--cyan-ink);
+      cursor: pointer; text-decoration: underline;
+      text-decoration-style: dashed;
+    }
+
+    /* —— 悬浮栏：收在一条里 —— */
+    .float-inline {
+      display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+      padding: 12px 14px;
+      border: 1px solid var(--line); border-radius: 12px;
+      background: linear-gradient(165deg, #dce8f0, #c5d5e2);
+    }
+    @media (max-width: 640px) { .float-inline { grid-template-columns: 1fr; } }
+    .float-inline .copy { min-width: 0; }
+    .float-inline .copy strong {
+      display: block; font-size: 11px; font-weight: 750;
+      color: rgba(19,32,44,.45); letter-spacing: .04em; margin-bottom: 6px;
+    }
+    .float-inline .strip {
+      border: 1.5px solid var(--violet-bd); background: #fff;
+      border-radius: 10px; padding: 8px 11px;
+      font-size: 12px; font-weight: 650; color: var(--violet-ink);
+    }
+    .float-inline .hint {
+      margin: 6px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.4;
+    }
+    .mini-pad {
+      width: 140px; background: #fff; border: 2px solid var(--violet-bd);
+      border-radius: 12px; padding: 8px; text-align: center;
+      box-shadow: 0 6px 16px rgba(15,40,60,.1);
+    }
+    .mini-pad .mic {
+      display: inline-block; margin-top: 6px;
+      padding: 4px 12px; border-radius: 8px;
+      border: 1px solid var(--violet-bd); background: var(--violet-soft);
+      font-size: 11px; font-weight: 750; color: var(--violet-ink);
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>按键 · 口头指令页 v2</strong>
+    <span>与「我录的键」不同范式：开模式 → 匹配命令方案 → 调系统能力</span>
+    <a href="../voice-command-discover-preset/index.html">← 发现×预置</a>
+  </div>
+
+  <div class="shell">
+    <p class="contract">
+      <b>一页只讲两件事：</b>① 怎么进入口头模式（只绑模式开关，不绑逐条命令）
+      ② 当前场景用哪套<b>命令方案</b>（系统预置 + 用户自定义说法 → 映射到 OneTone 内置能力）。
+      收听时的提醒在悬浮栏，不在本页堆芯片。
+    </p>
+
+    <div class="frame">
+      <div class="topbar">
+        <span style="font-size:13px;font-weight:650">正在编辑</span>
+        <button type="button" class="scene">Cursor · 写代码</button>
+        <div class="top-acts">
+          <button type="button" class="btn">测试口头模式</button>
+          <button type="button" class="btn primary">保存</button>
+        </div>
+      </div>
+
+      <div class="desk">
+        <aside class="rail">
+          <div class="rail-start">
+            <small>起点 · 场景触发</small>
+            <span style="font-size:12px;font-weight:750">F8</span>
+            <span class="key">F8</span>
+          </div>
+          <div class="rail-sec">识别</div>
+          <button type="button" class="rail-item">听写方式<span class="n">IME</span></button>
+          <button type="button" class="rail-item is-dim">我录的键<span class="n">一键一命令</span></button>
+          <button type="button" class="rail-item is-on">口头指令<span class="n">模式 + 方案</span></button>
+          <button type="button" class="rail-item">软件自带<span class="n">命令</span></button>
+          <button type="button" class="rail-item">屏幕按钮<span class="n">Pad</span></button>
+        </aside>
+
+        <main class="main">
+          <div class="contrast">
+            <article class="dim">
+              <span class="tag">其它通道 · 我录的键</span>
+              <h3>特殊快捷键 → 特殊命令</h3>
+              每个动作单独录键。按一下 = 执行那一个命令，一对一。
+              <div class="eq">F9 → 发送 · Ctrl+K → 新会话</div>
+            </article>
+            <article class="focus">
+              <span class="tag">本页 · 口头指令</span>
+              <h3>激活口头模式 → 匹配命令方案</h3>
+              先进入收听；你说的话去<b>匹配预置方案</b>里的条目，命中后调用 OneTone 系统能力。
+              <div class="eq">开麦 → 说「发送」→ 匹配方案 → stopOrSend</div>
+            </article>
+          </div>
+
+          <div class="pipe" aria-label="口头指令工作流">
+            <div class="pipe-step">
+              <div class="n">①</div>
+              <strong>激活口头模式</strong>
+              <span>绑按法 / 点麦 · 只开收听，不绑每条命令</span>
+            </div>
+            <div class="pipe-step">
+              <div class="n">②</div>
+              <strong>听 & 识别</strong>
+              <span>转写你说的话</span>
+            </div>
+            <div class="pipe-step">
+              <div class="n">③</div>
+              <strong>匹配命令方案</strong>
+              <span>系统内置 + 用户自定义说法</span>
+            </div>
+            <div class="pipe-step">
+              <div class="n">④</div>
+              <strong>调用系统能力</strong>
+              <span>发送 / 取消 / 新会话… OneTone 语音管理</span>
+            </div>
+          </div>
+
+          <section class="block">
+            <h4>口头模式 <span class="badge">只绑开关</span></h4>
+            <p class="sub">进入「语音管理」会话的方式；与命令方案内容无关。</p>
+            <div class="activate-row">
+              <span class="chip">已绑 · 双击 <code>Vol−</code></span>
+              <span class="chip alt">Soft Pad 麦键 · 始终可用</span>
+              <button type="button">改绑按法</button>
+            </div>
+            <p class="activate-note">
+              这里<strong>不是</strong>给「发送」「继续」逐条录快捷键。
+              那些说法在下面的命令方案里配置，收听时由匹配引擎命中。
+            </p>
+          </section>
+
+          <section class="block">
+            <h4>命令方案 <span class="badge">预置 + 自定义</span></h4>
+            <p class="sub">当前场景加载哪套可匹配条目；命中后调用右侧「系统能力」，不是录新快捷键。</p>
+            <div class="scheme-pick">
+              <select aria-label="命令方案">
+                <option selected>Cursor 语音管理 · 系统预置（默认）</option>
+                <option>Cursor 语音管理 · 我的说法</option>
+                <option>通用 Agent · 系统预置</option>
+              </select>
+              <button type="button">复制方案</button>
+              <button type="button">新建自定义</button>
+            </div>
+            <table class="cmd-table">
+              <thead>
+                <tr>
+                  <th>用户说法（可改）</th>
+                  <th>调用系统能力</th>
+                  <th>来源</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="say">发送 · 发出去</td>
+                  <td class="cap">stopOrSend — 在输入框发送</td>
+                  <td class="src is-sys">系统预置</td>
+                </tr>
+                <tr>
+                  <td class="say">取消 · 算了</td>
+                  <td class="cap">cancel — 退出本轮 / 停生成</td>
+                  <td class="src is-sys">系统预置</td>
+                </tr>
+                <tr>
+                  <td class="say">新建 · 新会话</td>
+                  <td class="cap">newThread — 新开对话</td>
+                  <td class="src is-sys">系统预置</td>
+                </tr>
+                <tr>
+                  <td class="say">继续 · 接着干</td>
+                  <td class="cap">continue — 注入「继续」（需已知前台）</td>
+                  <td class="src is-sys">系统预置</td>
+                </tr>
+                <tr>
+                  <td class="say">开麦 · 麦克风</td>
+                  <td class="cap">toggleListen — 开关收听</td>
+                  <td class="src is-sys">系统预置</td>
+                </tr>
+                <tr>
+                  <td class="say">接受改动</td>
+                  <td class="cap">acceptDiff — Cursor 接受</td>
+                  <td class="src is-user">用户自定义</td>
+                </tr>
+                <tr class="is-off">
+                  <td class="say">跑测试</td>
+                  <td class="cap">runChecks — 注入跑测试</td>
+                  <td class="src is-sys">系统预置 · 已关闭</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="table-foot">
+              <button type="button">＋ 加一条说法</button>
+              <span>·</span>
+              <span>编辑说法 / 开关条目 / 改映射能力</span>
+            </div>
+          </section>
+
+          <section class="float-inline">
+            <div class="copy">
+              <strong>收听时 · 悬浮栏提醒（只读预览）</strong>
+              <div class="strip">语音管理中 · 方案「Cursor 默认」· 可说：发送、取消、新建、继续…</div>
+              <p class="hint">
+                底条摘要当前方案的<b>已启用说法</b>，不是在本页再摆一遍芯片。
+                输入未对准 / 应用不确定时，底条先报原因（实现层，此处不展开）。
+              </p>
+            </div>
+            <div class="mini-pad" aria-hidden="true">
+              <div style="font-size:10px;font-weight:700;color:var(--faint)">Soft Pad</div>
+              <span class="mic">🎙 收听</span>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

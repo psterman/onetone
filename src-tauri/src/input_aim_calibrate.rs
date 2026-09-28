@@ -26,6 +26,38 @@ fn set_pending(app_target_id: &str, slot: usize) {
     }
 }
 
+/// Queue scheme-B calibrate for an app (oral first-use / settings). Returns immediately.
+pub fn queue_begin_for_app(app: &AppHandle, app_target_id: &str, slot: usize) -> bool {
+    let tid = app_target_id.trim();
+    if tid.is_empty() || crate::app_chat_workflow::profile_for(tid).is_none() {
+        return false;
+    }
+    let slot = slot.min(ComposerAnchor::MAX_SLOTS.saturating_sub(1));
+    set_pending(tid, slot);
+    crate::app_log::early_line(
+        "input_aim",
+        &format!("calibrate_begin_queued app={tid} slot={slot}"),
+    );
+    let app_bg = app.clone();
+    let tid_bg = tid.to_string();
+    let _ = std::thread::Builder::new()
+        .name("aim-cal-begin".into())
+        .spawn(move || {
+            if let Err(err) = crate::app_chat_workflow::prepare_target_for_calibrate(&tid_bg) {
+                crate::app_log::early_line(
+                    "input_aim",
+                    &format!("calibrate_prepare_warn app={tid_bg} err={err}"),
+                );
+            }
+            std::thread::sleep(Duration::from_millis(60));
+            let app_ui = app_bg.clone();
+            let _ = app_bg.run_on_main_thread(move || {
+                open_calibrate_overlay(&app_ui);
+            });
+        });
+    true
+}
+
 fn take_pending() -> (String, usize) {
     let tid = PENDING_APP
         .lock()
@@ -187,31 +219,9 @@ pub fn cmd_input_aim_calibrate_begin(
         .min(ComposerAnchor::MAX_SLOTS.saturating_sub(1))
     };
 
-    set_pending(&tid, slot);
-    crate::app_log::early_line(
-        "input_aim",
-        &format!("calibrate_begin_queued app={tid} slot={slot}"),
-    );
-
-    let app_bg = app.clone();
-    let tid_bg = tid.clone();
-    let _ = std::thread::Builder::new()
-        .name("aim-cal-begin".into())
-        .spawn(move || {
-            // Bring target forward off the IPC path (may sleep / launch).
-            if let Err(err) = crate::app_chat_workflow::prepare_target_for_calibrate(&tid_bg) {
-                crate::app_log::early_line(
-                    "input_aim",
-                    &format!("calibrate_prepare_warn app={tid_bg} err={err}"),
-                );
-            }
-            // Let the invoke return + JS resume before touching WebView creation.
-            std::thread::sleep(Duration::from_millis(60));
-            let app_ui = app_bg.clone();
-            let _ = app_bg.run_on_main_thread(move || {
-                open_calibrate_overlay(&app_ui);
-            });
-        });
+    if !queue_begin_for_app(&app, &tid, slot) {
+        return Err("unknown_app".into());
+    }
 
     Ok(serde_json::json!({
         "ok": true,
@@ -237,6 +247,14 @@ pub fn cmd_input_aim_calibrate_commit(
     let sx = screen_x.or(screenX).ok_or("need_screen_x")?;
     let sy = screen_y.or(screenY).ok_or("need_screen_y")?;
     let (x, y) = crate::app_chat_workflow::screen_point_to_client_ratio(&tid, sx, sy)?;
+    // Cursor Agent is on the right — refuse left/center marks (those are the code editor).
+    if tid == crate::app_chat_workflow::CURSOR_APP_TARGET_ID
+        && x < crate::app_chat_workflow::CURSOR_AGENT_MIN_X_RATIO
+    {
+        return Err(format!(
+            "cursor_anchor_too_left x={x:.3} — 请圈选右侧 Agent 输入框，不要圈中间代码区"
+        ));
+    }
     let point = ComposerPoint { x, y }.clamped();
 
     let bank = {
@@ -263,6 +281,24 @@ pub fn cmd_input_aim_calibrate_commit(
             point.x, point.y
         ),
     );
+
+    // Oral listen may have opened calibrate as first-use init — lock caret now.
+    crate::voice_command_session::clear_need_composer_aim();
+    if crate::voice_command_session::is_armed() {
+        let duration_ms = state.cfg.lock().key_press_duration_ms;
+        let app_h = app.clone();
+        let tid_h = tid.clone();
+        let _ = std::thread::Builder::new()
+            .name("oral-aim-focus".into())
+            .spawn(move || {
+                let _pad = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app_h);
+                let _ = crate::app_chat_workflow::focus_composer_for_send(
+                    &app_h,
+                    &tid_h,
+                    duration_ms,
+                );
+            });
+    }
 
     let payload = status_payload(&tid, Some(&bank));
     let _ = crate::ipc::emit_to_main_if_available(

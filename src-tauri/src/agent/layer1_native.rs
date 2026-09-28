@@ -355,37 +355,106 @@ fn execute_start(
         );
     };
     let duration = state.cfg.lock().key_press_duration_ms;
-    // Cursor: do not open Cursor Composer workflow (it would hardcode Cursor native voice mode).
-    // Instead: focus composer only, then send the user's configured IME/voice input chord.
+    // Cursor: focus Agent box, then fire the user's IME/voice chord (RAlt / Ctrl+Shift+Space…).
+    // Do not use Composer-native workflow (hardcodes Cursor voice mode).
     if app_target == crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
-        let voice_key = crate::voice_end_runtime::resolve_voice_input_target_key(&state.cfg.lock());
+        let voice_key = {
+            let cfg = state.cfg.lock();
+            let mapping = if mid.is_empty() {
+                None
+            } else {
+                cfg.find_mapping_by_id(&mid)
+            };
+            crate::voice_end_runtime::resolve_voice_key_for_mapping(&cfg, mapping)
+                .or_else(|| crate::voice_end_runtime::resolve_voice_input_target_key(&cfg))
+        };
         let Some(voice_key) = voice_key.filter(|s| !s.trim().is_empty()) else {
             return Layer1Outcome::err(
                 "voice_key_unset",
                 Some("cursor input.start needs configured voice input target key".into()),
             );
         };
+        let app = window.app_handle();
+        // Already in Soft 槽 speak / dictating: never re-pulse a toggle chord.
+        if crate::voice_command_session::ime_voice_active()
+            || crate::voice_end_runtime::session_state(state.as_ref()) == "dictating"
+        {
+            return Layer1Outcome::ok_detail(format!(
+                "input.start cursor voice already active ({voice_key})"
+            ));
+        }
         // Physical RAlt already toggled the IME on (modifier watch never swallows).
         // Skip focus-click + re-inject — both would end dictation immediately.
         if crate::voice_end_runtime::take_voice_key_passthrough(state.as_ref(), &voice_key) {
             crate::voice_end_runtime::arm_external_voice_send_suppression(state.as_ref(), 3500);
+            crate::voice_command_session::note_ime_voice_active();
+            // Same as wake: keep Soft 槽 capture up so 发送/取消/继续 still match.
+            crate::voice_end_runtime::enter_dictating(
+                state,
+                Some(&app),
+                &mid,
+                "soft_slot speak passthrough",
+            );
+            if crate::voice_command_session::is_armed() {
+                crate::voice_command_session::extend_armed_window(
+                    &app,
+                    state,
+                    crate::voice_command_session::default_window_ms(),
+                );
+            }
             return Layer1Outcome::ok_detail(format!(
                 "input.start cursor voice {voice_key} (passthrough)"
             ));
         }
+        // Mirror classic wake: chord only — no Soft Pad composer click. A click
+        // (or a second toggle pulse) aborts Cursor Voice Mode right after it opens.
         crate::voice_end_runtime::arm_external_voice_send_suppression(state.as_ref(), 3500);
-        let _ = crate::app_chat_workflow::focus_composer_only(
-            &window.app_handle(),
-            crate::app_chat_workflow::CURSOR_APP_TARGET_ID,
-            duration,
-        );
-        if !crate::keyboard::send_chord(&voice_key, duration) {
-            return Layer1Outcome::err(
-                "send_failed",
-                Some(format!("failed to send cursor voice chord {voice_key}")),
+        if !crate::app_identity::foreground_is_self() {
+            // Ensure Cursor is FG without punching the composer (click ends voice).
+            let _ = crate::app_chat_workflow::quick_focus_app_target_for_hold(
+                crate::app_chat_workflow::CURSOR_APP_TARGET_ID,
             );
         }
-        return Layer1Outcome::ok_detail(format!("input.start cursor voice {voice_key}"));
+        // Hold chords (Ctrl+Shift+D) must stay pressed; toggle chords get a single pulse.
+        let hold_ok = if crate::voice_end_runtime::is_hold_to_talk_voice_key(&voice_key)
+            && !crate::key_chord::is_toggle_voice_chord(&voice_key)
+        {
+            if !crate::voice_end_runtime::begin_hold_voice_chord(state.as_ref(), &voice_key) {
+                return Layer1Outcome::err(
+                    "send_failed",
+                    Some(format!("failed to hold cursor voice chord {voice_key}")),
+                );
+            }
+            true
+        } else {
+            if !crate::keyboard::send_chord(&voice_key, duration) {
+                return Layer1Outcome::err(
+                    "send_failed",
+                    Some(format!("failed to send cursor voice chord {voice_key}")),
+                );
+            }
+            false
+        };
+        crate::voice_end_runtime::mark_voice_wake_key_sent(state.as_ref());
+        crate::voice_command_session::note_ime_voice_active();
+        crate::voice_end_runtime::enter_dictating(
+            state,
+            Some(&app),
+            &mid,
+            "soft_slot speak",
+        );
+        if crate::voice_command_session::is_armed() {
+            crate::voice_command_session::extend_armed_window(
+                &app,
+                state,
+                crate::voice_command_session::default_window_ms(),
+            );
+        }
+        return Layer1Outcome::ok_detail(if hold_ok {
+            format!("input.start cursor voice hold {voice_key}")
+        } else {
+            format!("input.start cursor voice {voice_key}")
+        });
     }
     match crate::app_chat_workflow::run_for_target_id(
         state,
@@ -562,16 +631,34 @@ pub(crate) fn continue_prompt_text() -> &'static str {
     "继续"
 }
 
-/// Transparent prompt: focus agent → insert Continue/继续 → Enter. Not a native hotkey claim.
+/// Transparent prompt: box-select composer punch → insert Continue/继续 → commit_key.
 pub fn execute_agent_continue(
     state: &Arc<AppState>,
     window: &WebviewWindow,
     mapping_id: Option<&str>,
 ) -> Layer1Outcome {
-    if let Err(e) = ensure_mapping_target_foreground(state, window, mapping_id, true) {
-        return e;
-    }
-    let duration_ms = state.cfg.lock().key_press_duration_ms;
+    let app = window.app_handle();
+    let (app_target, duration_ms, commit_key) = {
+        let cfg = state.cfg.lock();
+        let app_target = mapping_id
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .and_then(|mid| cfg.find_mapping_by_id(mid))
+            .map(|m| m.app_target_id.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| {
+                crate::app_chat_workflow::CURSOR_APP_TARGET_ID.to_string()
+            });
+        let commit = {
+            let k = cfg.voice_end.commit_key.trim();
+            if k.is_empty() {
+                "Enter".to_string()
+            } else {
+                k.to_string()
+            }
+        };
+        (app_target, cfg.key_press_duration_ms, commit)
+    };
     #[cfg(windows)]
     {
         if crate::app_identity::foreground_is_self() {
@@ -580,20 +667,39 @@ pub fn execute_agent_continue(
                 Some("refused continue: OneTone owns foreground".into()),
             );
         }
+        // Same punch as Soft Pad 「继续」/发送 — uses voiceEnd.composerAnchors (框选).
+        let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
+        if let Err(err) = crate::app_chat_workflow::focus_composer_for_send(
+            &app,
+            &app_target,
+            duration_ms,
+        ) {
+            let reason = match err {
+                crate::app_chat_workflow::AppChatWorkflowError::NotFound => "not_running",
+                crate::app_chat_workflow::AppChatWorkflowError::FocusFailed
+                | crate::app_chat_workflow::AppChatWorkflowError::InputNotFound => "focus_failed",
+                crate::app_chat_workflow::AppChatWorkflowError::VoiceFailed => "input_failed",
+            };
+            return Layer1Outcome::err(
+                reason,
+                Some("未能聚焦对话输入框，请先框选校准或点一下输入框".into()),
+            );
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
         let text = continue_prompt_text();
         if let Err(e) = crate::agent::insert_text::insert_text_no_enter(text, duration_ms) {
             return Layer1Outcome::err(e.as_reason(), Some(format!("{e:?}")));
         }
         std::thread::sleep(std::time::Duration::from_millis(60));
-        if crate::keyboard::send_chord("Enter", duration_ms) {
+        if crate::keyboard::send_chord(&commit_key, duration_ms) {
             Layer1Outcome::ok_detail(format!("agent.continue sent {text}"))
         } else {
-            Layer1Outcome::err("input_failed", Some("Enter failed".into()))
+            Layer1Outcome::err("input_failed", Some(format!("{commit_key} failed")))
         }
     }
     #[cfg(not(windows))]
     {
-        let _ = (state, window, duration_ms);
+        let _ = (state, app_target, duration_ms, commit_key);
         Layer1Outcome::err("not_running", None)
     }
 }

@@ -10,6 +10,7 @@ use super::core::{emit_to_main_if_available, push_runtime_via_app};
 pub fn pause_listen(state: &Arc<AppState>, app: &AppHandle) {
     state.machine_pool.lock().reset_all();
     state.gesture.lock().reset();
+    state.scheme_gesture.lock().reset();
     state.record_gesture.lock().reset();
     *state.recording.lock() = false;
     *state.recording_target.lock() = None;

@@ -104,6 +104,7 @@ permissions = [
   "allow-cmd-voice-end-ui-end",
   "allow-cmd-voice-end-ui-cancel",
   "allow-cmd-voice-end-test-commit",
+  "allow-cmd-voice-command-session-toggle",
   "allow-cmd-input-aim-calibrate-begin",
   "allow-cmd-input-aim-calibrate-commit",
   "allow-cmd-input-aim-calibrate-cancel",

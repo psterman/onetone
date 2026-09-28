@@ -741,6 +741,17 @@
     return normalizeAgentBindings(list);
   }
 
+  function serializeGestureModes(gm){
+    if(!gm||typeof gm!=='object') return null;
+    function sch(v){
+      v=String(v||'off').toLowerCase();
+      if(v==='dictation'||v==='voiceinput'||v==='voice_input') return 'dictation';
+      if(v==='voicecommand'||v==='voice_command'||v==='oral') return 'voiceCommand';
+      return 'off';
+    }
+    return {tap:sch(gm.tap),double:sch(gm.double),long:sch(gm.long)};
+  }
+
   function normalizeInboundConfig(raw){
     if(!raw||typeof raw!=='object') return raw;
     const cfg=Object.assign({},raw);
@@ -1173,6 +1184,14 @@
     return source||'unknown';
   }
 
+  /** Persist oral arm key + whitelist — must keep triggerKey (else UI shows侧键 but Rust bindings stay empty). */
+  function serializeOralCommandScheme(scheme){
+    if(!scheme||typeof scheme!=='object') return {items:{},triggerKey:''};
+    return {
+      items:(scheme.items&&typeof scheme.items==='object')?scheme.items:{},
+      triggerKey:String(scheme.triggerKey||'').trim()
+    };
+  }
   function serializeCaptureHeroRef(ref){
     if(!ref||typeof ref!=='object') return null;
     var core=global.OneToneMappingCore;
@@ -1218,14 +1237,14 @@
         var tgt=isApp?String(m.targetKey||'').trim():hooks().editorTargetForMapping(m);
         var order=Number(m.order);
         if(!isFinite(order)) order=i;
-        return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'通用设置',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:order,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,cameraOverride:m.cameraOverride==null?null:m.cameraOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id),agentTemplateId:String(m.agentTemplateId||''),agentProviderId:String(m.agentProviderId||''),agentBindings:serializeAgentBindings(m.agentBindings),codexMicroPad:m.codexMicroPad==null?null:m.codexMicroPad,timeMachineWorkspace:String(m.timeMachineWorkspace||''),targetActions:serializeTargetActions(m.targetActions),captureHeroRef:serializeCaptureHeroRef(m.captureHeroRef)};
+        return {id:m.id,label:m.label||((trig&&tgt)?((trig||'?')+' → '+(tgt||'?')):''),group:m.group||'通用设置',triggerKey:trig,targetKey:tgt,enabled:!!m.enabled,order:order,triggerMode:m.triggerMode||'tap',gestureModes:serializeGestureModes(m.gestureModes),triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,cameraOverride:m.cameraOverride==null?null:m.cameraOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id),agentTemplateId:String(m.agentTemplateId||''),agentProviderId:String(m.agentProviderId||''),agentBindings:serializeAgentBindings(m.agentBindings),codexMicroPad:m.codexMicroPad==null?null:m.codexMicroPad,timeMachineWorkspace:String(m.timeMachineWorkspace||''),targetActions:serializeTargetActions(m.targetActions),captureHeroRef:serializeCaptureHeroRef(m.captureHeroRef),oralCommandScheme:serializeOralCommandScheme(m.oralCommandScheme)};
       }),
       trash:(st.config.trash||[]).map(function(m){
         hooks().ensureMappingExtras(m);
         if(global.OneToneAppBehaviorRules&&global.OneToneAppBehaviorRules.ensureRulesBeforeSave){
           global.OneToneAppBehaviorRules.ensureRulesBeforeSave(m);
         }
-        return {id:m.id,label:m.label||'',group:m.group||'通用设置',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:false,order:m.order||0,triggerMode:m.triggerMode||'tap',triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,cameraOverride:m.cameraOverride==null?null:m.cameraOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id),agentTemplateId:String(m.agentTemplateId||''),agentProviderId:String(m.agentProviderId||''),agentBindings:serializeAgentBindings(m.agentBindings),codexMicroPad:m.codexMicroPad==null?null:m.codexMicroPad,timeMachineWorkspace:String(m.timeMachineWorkspace||''),targetActions:serializeTargetActions(m.targetActions),captureHeroRef:serializeCaptureHeroRef(m.captureHeroRef)};
+        return {id:m.id,label:m.label||'',group:m.group||'通用设置',triggerKey:m.triggerKey||'',targetKey:m.targetKey||'',enabled:false,order:m.order||0,triggerMode:m.triggerMode||'tap',gestureModes:serializeGestureModes(m.gestureModes),triggerSource:m.triggerSource||null,sourceKey:m.sourceKey||'',sourceTime:m.sourceTime||'',intervalMs:m.intervalMs||1200,enterDelayMs:m.enterDelayMs||5000,cancelEnabled:m.cancelEnabled!==false,autoEnterEnabled:m.autoEnterEnabled!==false,switchKeys:m.switchKeys||[],nativeKeyRestore:!!m.nativeKeyRestore,imePresetId:String(m.imePresetId||''),appTargetId:String(m.appTargetId||''),appBehaviorRules:serializeAppBehaviorRules(m.appBehaviorRules),voiceOverride:m.voiceOverride==null?null:m.voiceOverride,cameraOverride:m.cameraOverride==null?null:m.cameraOverride,voiceCommands:serializeVoiceCommands(m.voiceCommands,m.id),acousticVoiceCommands:serializeAcousticVoiceCommands(m.acousticVoiceCommands,m.id),agentTemplateId:String(m.agentTemplateId||''),agentProviderId:String(m.agentProviderId||''),agentBindings:serializeAgentBindings(m.agentBindings),codexMicroPad:m.codexMicroPad==null?null:m.codexMicroPad,timeMachineWorkspace:String(m.timeMachineWorkspace||''),targetActions:serializeTargetActions(m.targetActions),captureHeroRef:serializeCaptureHeroRef(m.captureHeroRef),oralCommandScheme:serializeOralCommandScheme(m.oralCommandScheme)};
       }),
       intervalMs:st.config.intervalMs||1200,
       enterDelayMs:st.config.enterDelayMs||5000,

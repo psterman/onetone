@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>原型 · 一词注入绑到按键 / 手势 / Soft Pad</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #fff;
+      --wash: #f3f7fa;
+      --bg: #e4ebf1;
+      --cyan: #2a9cc4;
+      --cyan-ink: #0f5f7a;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #9bc6da;
+      --ok: #15803d;
+      --ok-soft: #ecfdf3;
+      --warn: #9a6700;
+      --warn-soft: #fff8e8;
+      --sans: "IBM Plex Sans", "Segoe UI", "PingFang SC", sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --ease: cubic-bezier(0.22, 1.2, 0.36, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(900px 380px at 10% -8%, rgba(42, 156, 196, 0.14), transparent 55%),
+        radial-gradient(700px 320px at 92% 0%, rgba(15, 95, 122, 0.07), transparent 50%),
+        var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    .bar {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+      padding: 10px 16px;
+      background: #0f1820; color: #a8b6c6; font-size: 12px;
+    }
+    .bar strong { color: #fff; font-weight: 650; }
+    .bar em { font-style: normal; color: #7dd3fc; font-weight: 650; }
+
+    .page {
+      width: min(1080px, 100%);
+      margin: 0 auto;
+      padding: 18px 14px 72px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .brief {
+      background: color-mix(in srgb, var(--paper) 94%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .brief h1 {
+      margin: 0 0 6px;
+      font-size: clamp(20px, 2.6vw, 26px);
+      font-weight: 750;
+      letter-spacing: -0.02em;
+    }
+    .brief p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--muted);
+      max-width: 72ch;
+    }
+    .chips {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-top: 10px;
+    }
+    .chips span {
+      font-size: 11px; font-weight: 700;
+      padding: 4px 9px; border-radius: 999px;
+      background: var(--wash); border: 1px solid var(--line); color: var(--muted);
+    }
+    .chips .hi {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+      color: var(--cyan-ink);
+    }
+    .chips .ok {
+      background: var(--ok-soft);
+      border-color: #86efac;
+      color: var(--ok);
+    }
+    .chips .todo {
+      background: var(--warn-soft);
+      border-color: #f0d48a;
+      color: var(--warn);
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 200px minmax(0, 1fr);
+      gap: 12px;
+      min-height: 560px;
+    }
+    @media (max-width: 760px) {
+      .stage { grid-template-columns: 1fr; }
+    }
+
+    .rail {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-self: start;
+    }
+    .rail__lbl {
+      font-size: 10.5px; font-weight: 750; color: var(--faint);
+      letter-spacing: 0.04em; padding: 4px 8px 8px;
+    }
+    .rail button {
+      appearance: none;
+      text-align: left;
+      border: 1px solid transparent;
+      background: transparent;
+      border-radius: 10px;
+      padding: 10px 11px;
+      font: inherit;
+      cursor: pointer;
+      color: var(--muted);
+      transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+    }
+    .rail button:hover { background: var(--wash); color: var(--ink); }
+    .rail button.is-on {
+      background: var(--cyan-soft);
+      border-color: var(--cyan-bd);
+      color: var(--cyan-ink);
+    }
+    .rail button strong {
+      display: block;
+      font-size: 13px; font-weight: 750;
+    }
+    .rail button small {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px; font-weight: 550; color: var(--faint);
+    }
+    .rail button.is-on small { color: color-mix(in srgb, var(--cyan-ink) 70%, var(--faint)); }
+    .rail .badge {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 10px; font-weight: 750;
+      padding: 1px 6px; border-radius: 6px;
+    }
+    .rail .badge.ok { background: var(--ok-soft); color: var(--ok); }
+    .rail .badge.todo { background: var(--warn-soft); color: var(--warn); }
+
+    .desk {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      animation: enter 220ms var(--ease) both;
+    }
+    @keyframes enter {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .desk__head {
+      display: flex; flex-wrap: wrap; align-items: flex-start;
+      justify-content: space-between; gap: 10px;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fafcfd, #fff);
+    }
+    .desk__head h2 {
+      margin: 0;
+      font-size: 15px; font-weight: 750;
+    }
+    .desk__head p {
+      margin: 4px 0 0;
+      font-size: 12.5px; color: var(--muted); line-height: 1.45;
+      max-width: 48ch;
+    }
+    .flow {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+      font-family: var(--mono); font-size: 11px; font-weight: 650;
+      color: var(--cyan-ink);
+    }
+    .flow span {
+      background: var(--cyan-soft);
+      border: 1px solid var(--cyan-bd);
+      border-radius: 7px;
+      padding: 4px 8px;
+    }
+    .flow i {
+      font-style: normal; color: var(--faint); font-weight: 550;
+    }
+
+    .desk__body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(220px, 0.85fr);
+      min-height: 420px;
+    }
+    @media (max-width: 860px) {
+      .desk__body { grid-template-columns: 1fr; }
+    }
+
+    .picker {
+      padding: 12px 14px 16px;
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    @media (max-width: 860px) {
+      .picker { border-right: 0; border-bottom: 1px solid var(--line); }
+    }
+    .picker__top {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    }
+    .picker__top strong {
+      font-size: 12px; font-weight: 750;
+    }
+    .picker__top em {
+      font-style: normal; font-size: 11px; color: var(--faint); font-weight: 550;
+    }
+    .list {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .tpl {
+      appearance: none;
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      background: var(--wash);
+      border-radius: 11px;
+      padding: 10px 12px;
+      font: inherit;
+      cursor: pointer;
+      transition: border-color 140ms ease, background 140ms ease, transform 120ms var(--ease);
+    }
+    .tpl:hover {
+      border-color: var(--cyan-bd);
+      background: #fff;
+    }
+    .tpl:active { transform: scale(0.985); }
+    .tpl.is-on {
+      border-color: var(--cyan-bd);
+      background: var(--cyan-soft);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cyan) 18%, transparent);
+    }
+    .tpl__name {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      font-size: 13px; font-weight: 750; color: var(--ink);
+    }
+    .tpl__name mark {
+      font-style: normal;
+      font-size: 10px; font-weight: 750;
+      padding: 1px 6px; border-radius: 6px;
+      background: #fff; color: var(--cyan-ink);
+      border: 1px solid var(--cyan-bd);
+    }
+    .tpl.is-on .tpl__name mark {
+      background: var(--ok-soft);
+      border-color: #86efac;
+      color: var(--ok);
+    }
+    .tpl__body {
+      margin-top: 4px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      line-height: 1.4;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tpl__meta {
+      margin-top: 6px;
+      font-size: 10.5px; color: var(--faint); font-weight: 550;
+    }
+
+    .side {
+      padding: 12px 14px 16px;
+      background: #fafcfd;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .side h3 {
+      margin: 0;
+      font-size: 12px; font-weight: 750; color: var(--faint);
+    }
+
+    .trigger {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+    }
+    .trigger__lbl {
+      font-size: 11px; font-weight: 750; color: var(--faint);
+      margin-bottom: 8px;
+    }
+    .keycap {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 72px; height: 44px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--cyan-bd);
+      background: linear-gradient(180deg, #fff, var(--cyan-soft));
+      font-family: var(--mono); font-size: 13px; font-weight: 700;
+      color: var(--cyan-ink);
+      box-shadow: 0 1px 0 rgba(15, 95, 122, 0.08);
+    }
+    .keycap.is-empty {
+      border-style: dashed;
+      border-color: var(--line);
+      background: var(--wash);
+      color: var(--faint);
+      font-weight: 550;
+      font-size: 12px;
+    }
+    .pad-mini {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      max-width: 180px;
+    }
+    .pad-mini button {
+      appearance: none;
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #fff;
+      font: inherit; font-size: 11px; font-weight: 650;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+    }
+    .pad-mini button.is-focus {
+      border-color: var(--cyan-bd);
+      background: var(--cyan-soft);
+      color: var(--cyan-ink);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cyan) 20%, transparent);
+    }
+    .pad-mini button.has-bind {
+      border-color: color-mix(in srgb, var(--ok) 35%, var(--line));
+      color: var(--ok);
+    }
+    .gesture {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .gesture button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font: inherit; font-size: 12px; font-weight: 650;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+    }
+    .gesture button.is-on {
+      border-color: var(--cyan-bd);
+      background: var(--cyan-soft);
+      color: var(--cyan-ink);
+    }
+
+    .result {
+      border: 1px solid var(--cyan-bd);
+      border-radius: 12px;
+      padding: 12px;
+      background: var(--cyan-soft);
+      flex: 1;
+    }
+    .result__lbl {
+      font-size: 11px; font-weight: 750; color: var(--cyan-ink);
+      margin-bottom: 6px;
+    }
+    .result__line {
+      font-size: 13px; font-weight: 650; line-height: 1.45;
+      color: var(--ink);
+    }
+    .result__line code {
+      font-family: var(--mono); font-size: 12px;
+      color: var(--cyan-ink);
+    }
+    .result__seq {
+      margin-top: 10px;
+      display: flex; flex-wrap: wrap; gap: 6px;
+      font-family: var(--mono); font-size: 11px; font-weight: 650;
+    }
+    .result__seq span {
+      background: #fff;
+      border: 1px solid var(--cyan-bd);
+      border-radius: 7px;
+      padding: 4px 8px;
+      color: var(--cyan-ink);
+    }
+    .result.is-empty {
+      border-color: var(--line);
+      background: var(--wash);
+    }
+    .result.is-empty .result__lbl { color: var(--faint); }
+    .result.is-empty .result__line { color: var(--muted); font-weight: 550; }
+
+    .act {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-top: auto;
+    }
+    .act button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 9px;
+      padding: 8px 12px;
+      font: inherit; font-size: 12px; font-weight: 650;
+      color: var(--muted);
+      cursor: pointer;
+      transition: transform 120ms var(--ease), background 140ms ease, color 140ms ease, border-color 140ms ease;
+    }
+    .act button:hover {
+      border-color: var(--cyan-bd);
+      color: var(--cyan-ink);
+    }
+    .act button:active { transform: scale(0.97); }
+    .act button.primary {
+      border-color: transparent;
+      background: var(--cyan);
+      color: #fff;
+    }
+    .act button.primary:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%) translateY(12px);
+      background: #13202c;
+      color: #fff;
+      font-size: 12.5px; font-weight: 650;
+      padding: 10px 16px;
+      border-radius: 999px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms var(--ease);
+      z-index: 60;
+      max-width: min(92vw, 420px);
+      text-align: center;
+    }
+    .toast.is-on {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .note {
+      font-size: 12px; color: var(--muted); line-height: 1.5;
+      padding: 0 2px;
+    }
+    .note b { color: var(--ink); font-weight: 650; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>原型</strong>
+    <span>一词注入 → 按键 / 手势 / Soft Pad</span>
+    <em>同一模板 · 三种触发</em>
+  </div>
+
+  <div class="page">
+    <header class="brief">
+      <h1>把「一词注入」当动作去绑</h1>
+      <p>
+        语音设置里写好模板；按键、手势、Soft Pad 只负责选模板并绑定触发器。
+        运行时统一：打字 → 短延迟 → Enter。不新造调用体系。
+      </p>
+      <div class="chips">
+        <span class="ok">Soft Pad · 已通</span>
+        <span class="todo">按键 · 待补入口</span>
+        <span class="todo">手势 · 待补入口</span>
+        <span class="hi">共享模板库</span>
+      </div>
+    </header>
+
+    <div class="stage">
+      <nav class="rail" aria-label="通道">
+        <div class="rail__lbl">绑到哪</div>
+        <button type="button" class="is-on" data-ch="keys" id="tabKeys">
+          <strong>按键</strong>
+          <small>录快捷键 → 注入模板</small>
+          <span class="badge todo">拟补</span>
+        </button>
+        <button type="button" data-ch="gesture" id="tabGesture">
+          <strong>手势</strong>
+          <small>选姿态 → 注入模板</small>
+          <span class="badge todo">拟补</span>
+        </button>
+        <button type="button" data-ch="softpad" id="tabPad">
+          <strong>Soft Pad</strong>
+          <small>点键帽 → 选模板</small>
+          <span class="badge ok">已通</span>
+        </button>
+      </nav>
+
+      <section class="desk" id="desk" aria-live="polite">
+        <header class="desk__head">
+          <div>
+            <h2 id="deskTitle">按键 · 绑一词注入</h2>
+            <p id="deskLead">在「我录的键」里直接选模板，再录触发键。不必手搓 Text + Enter。</p>
+          </div>
+          <div class="flow" id="deskFlow" aria-hidden="true">
+            <span>选模板</span><i>→</i><span>录触发键</span><i>→</i><span>注入并发送</span>
+          </div>
+        </header>
+
+        <div class="desk__body">
+          <div class="picker">
+            <div class="picker__top">
+              <strong>本应用 · 一词注入</strong>
+              <em>来自语音设置</em>
+            </div>
+            <div class="list" id="tplList" role="listbox" aria-label="一词注入模板"></div>
+          </div>
+
+          <aside class="side">
+            <div>
+              <h3 id="triggerTitle">触发器</h3>
+              <div class="trigger" id="triggerBox"></div>
+            </div>
+
+            <div class="result is-empty" id="resultBox">
+              <div class="result__lbl">绑定预览</div>
+              <div class="result__line" id="resultLine">先选左侧一条模板</div>
+              <div class="result__seq" id="resultSeq" hidden></div>
+            </div>
+
+            <div class="act">
+              <button type="button" class="primary" id="btnBind" disabled>确认绑定</button>
+              <button type="button" id="btnDemo">模拟触发一次</button>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </div>
+
+    <p class="note">
+      <b>和口头命令的差别：</b>口头命令是开麦说关键词调能力；这里是把已写好的 prompt 当成「动作序列」绑到物理/屏幕触发器。
+      Soft Pad 今天已在「口头命令」轨列出一词注入；本原型把同一选模板步骤扩到按键与手势。
+    </p>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var TEMPLATES = [
+        {
+          id: 'p1',
+          name: '继续修这个 bug',
+          body: '继续修当前这个 bug，先复现再给最小补丁。',
+          wake: '修 bug'
+        },
+        {
+          id: 'p2',
+          name: '总结并发送',
+          body: '请总结刚才的改动，用三条要点回复。',
+          wake: '总结发送'
+        },
+        {
+          id: 'p3',
+          name: '解释这段代码',
+          body: '用白话解释选中代码在做什么，指出风险。',
+          wake: '解释代码'
+        }
+      ];
+
+      var COPY = {
+        keys: {
+          title: '按键 · 绑一词注入',
+          lead: '在「我录的键」里直接选模板，再录触发键。不必手搓 Text + Enter。',
+          flow: ['选模板', '录触发键', '注入并发送'],
+          triggerTitle: '触发键',
+          bindLabel: '确认绑定'
+        },
+        gesture: {
+          title: '手势 · 绑一词注入',
+          lead: '摄像头动作里直接选模板，赋给一个姿态。触发即打字并 Enter。',
+          flow: ['选模板', '选手势', '注入并发送'],
+          triggerTitle: '手势',
+          bindLabel: '确认绑定'
+        },
+        softpad: {
+          title: 'Soft Pad · 绑一词注入',
+          lead: '点左侧键帽，再点模板。现状已通：写入动作序列 → 执行。',
+          flow: ['点键帽', '选模板', '注入并发送'],
+          triggerTitle: 'Soft Pad 键',
+          bindLabel: '绑到当前键'
+        }
+      };
+
+      var state = {
+        ch: 'keys',
+        tplId: 'p1',
+        keyLabel: '',
+        gesture: '握拳',
+        padKey: 'K3',
+        binds: { keys: null, gesture: null, softpad: null }
+      };
+
+      var $ = function (id) { return document.getElementById(id); };
+      var toastTimer = 0;
+
+      function tplById(id) {
+        for (var i = 0; i < TEMPLATES.length; i++) {
+          if (TEMPLATES[i].id === id) return TEMPLATES[i];
+        }
+        return TEMPLATES[0];
+      }
+
+      function showToast(msg) {
+        var el = $('toast');
+        el.textContent = msg;
+        el.classList.add('is-on');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+          el.classList.remove('is-on');
+        }, 2200);
+      }
+
+      function renderList() {
+        var host = $('tplList');
+        host.innerHTML = TEMPLATES.map(function (t) {
+          var on = t.id === state.tplId ? ' is-on' : '';
+          var mark = t.id === state.tplId ? '已选' : '可选';
+          return (
+            '<button type="button" class="tpl' + on + '" role="option" aria-selected="' +
+            (t.id === state.tplId) +
+            '" data-tpl="' + t.id + '">' +
+            '<div class="tpl__name"><span>' + t.name + '</span><mark>' + mark + '</mark></div>' +
+            '<div class="tpl__body">' + t.body + '</div>' +
+            '<div class="tpl__meta">唤醒词 · ' + t.wake + ' · 也可绑通道触发</div>' +
+            '</button>'
+          );
+        }).join('');
+      }
+
+      function renderTrigger() {
+        var box = $('triggerBox');
+        var c = state.ch;
+        if (c === 'keys') {
+          box.innerHTML =
+            '<div class="trigger__lbl">点一下开始录制（原型模拟）</div>' +
+            '<button type="button" class="keycap' + (state.keyLabel ? '' : ' is-empty') +
+            '" id="btnRecordKey">' +
+            (state.keyLabel || '录触发键') +
+            '</button>';
+          var rec = $('btnRecordKey');
+          if (rec) {
+            rec.addEventListener('click', function () {
+              var keys = ['Ctrl+Shift+1', 'Alt+Q', 'F8', 'Ctrl+.'];
+              state.keyLabel = keys[Math.floor(Math.random() * keys.length)];
+              renderAll();
+              showToast('已录：' + state.keyLabel);
+            });
+          }
+        } else if (c === 'gesture') {
+          var gestures = ['握拳', '张开', '点头', '摇头'];
+          box.innerHTML =
+            '<div class="trigger__lbl">选一个姿态</div>' +
+            '<div class="gesture" id="gestureRow">' +
+            gestures
+              .map(function (g) {
+                return (
+                  '<button type="button" class="' +
+                  (g === state.gesture ? 'is-on' : '') +
+                  '" data-g="' +
+                  g +
+                  '">' +
+                  g +
+                  '</button>'
+                );
+              })
+              .join('') +
+            '</div>';
+          box.querySelectorAll('[data-g]').forEach(function (b) {
+            b.addEventListener('click', function () {
+              state.gesture = b.getAttribute('data-g');
+              renderAll();
+            });
+          });
+        } else {
+          var keys = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'];
+          box.innerHTML =
+            '<div class="trigger__lbl">点 Soft Pad 上的键</div>' +
+            '<div class="pad-mini" id="padMini">' +
+            keys
+              .map(function (k) {
+                var focus = k === state.padKey ? ' is-focus' : '';
+                var has =
+                  state.binds.softpad && state.binds.softpad.padKey === k
+                    ? ' has-bind'
+                    : '';
+                return (
+                  '<button type="button" class="' +
+                  focus +
+                  has +
+                  '" data-pad="' +
+                  k +
+                  '">' +
+                  k +
+                  '</button>'
+                );
+              })
+              .join('') +
+            '</div>';
+          box.querySelectorAll('[data-pad]').forEach(function (b) {
+            b.addEventListener('click', function () {
+              state.padKey = b.getAttribute('data-pad');
+              renderAll();
+            });
+          });
+        }
+      }
+
+      function triggerReady() {
+        if (state.ch === 'keys') return !!state.keyLabel;
+        if (state.ch === 'gesture') return !!state.gesture;
+        return !!state.padKey;
+      }
+
+      function triggerText() {
+        if (state.ch === 'keys') return state.keyLabel || '（未录键）';
+        if (state.ch === 'gesture') return state.gesture;
+        return 'Soft Pad · ' + state.padKey;
+      }
+
+      function renderResult() {
+        var t = tplById(state.tplId);
+        var box = $('resultBox');
+        var line = $('resultLine');
+        var seq = $('resultSeq');
+        var ready = triggerReady();
+        box.classList.toggle('is-empty', !ready);
+        if (!ready) {
+          line.textContent =
+            state.ch === 'keys'
+              ? '选好模板后，录一个触发键'
+              : state.ch === 'gesture'
+                ? '选好模板后，点一个手势'
+                : '选好模板后，点一颗 Soft Pad 键';
+          seq.hidden = true;
+          return;
+        }
+        line.innerHTML =
+          '<code>' +
+          triggerText() +
+          '</code> → 注入「' +
+          t.name +
+          '」并发送';
+        seq.hidden = false;
+        seq.innerHTML =
+          '<span>Text</span><span>delay</span><span>Enter</span>';
+      }
+
+      function renderHead() {
+        var c = COPY[state.ch];
+        $('deskTitle').textContent = c.title;
+        $('deskLead').textContent = c.lead;
+        $('triggerTitle').textContent = c.triggerTitle;
+        $('btnBind').textContent = c.bindLabel;
+        $('deskFlow').innerHTML = c.flow
+          .map(function (s, i) {
+            return (
+              (i ? '<i>→</i>' : '') + '<span>' + s + '</span>'
+            );
+          })
+          .join('');
+        $('btnBind').disabled = !(state.tplId && triggerReady());
+      }
+
+      function renderTabs() {
+        document.querySelectorAll('.rail button[data-ch]').forEach(function (b) {
+          b.classList.toggle('is-on', b.getAttribute('data-ch') === state.ch);
+        });
+      }
+
+      function renderAll() {
+        var desk = $('desk');
+        desk.style.animation = 'none';
+        void desk.offsetWidth;
+        desk.style.animation = '';
+        renderTabs();
+        renderHead();
+        renderList();
+        renderTrigger();
+        renderResult();
+      }
+
+      document.querySelectorAll('.rail button[data-ch]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          state.ch = b.getAttribute('data-ch');
+          renderAll();
+        });
+      });
+
+      $('tplList').addEventListener('click', function (ev) {
+        var btn = ev.target.closest('[data-tpl]');
+        if (!btn) return;
+        state.tplId = btn.getAttribute('data-tpl');
+        renderAll();
+      });
+
+      $('btnBind').addEventListener('click', function () {
+        if (!triggerReady()) return;
+        var t = tplById(state.tplId);
+        state.binds[state.ch] = {
+          tplId: t.id,
+          keyLabel: state.keyLabel,
+          gesture: state.gesture,
+          padKey: state.padKey
+        };
+        showToast('已绑定：' + triggerText() + ' → ' + t.name);
+        renderAll();
+      });
+
+      $('btnDemo').addEventListener('click', function () {
+        var t = tplById(state.tplId);
+        if (!triggerReady()) {
+          showToast('先完成触发器');
+          return;
+        }
+        showToast(triggerText() + ' · 已注入并发送「' + t.name + '」');
+      });
+
+      renderAll();
+    })();
+  </script>
+</body>
+</html>

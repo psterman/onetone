@@ -123,6 +123,7 @@
         </span>
         <span class="overlay-mini-listen__body">
           <span class="overlay-mini-listen__text" id="miniBeginnerListenText"></span>
+          <span class="overlay-mini-listen__cmds" id="miniOralCmdStrip" hidden></span>
           <span class="overlay-mini-listen__flow" id="miniBeginnerListenFlow" hidden></span>
         </span>
         <span class="overlay-mini-listen__cd" id="miniHubCountdown" hidden aria-hidden="true">—</span>
@@ -222,7 +223,9 @@
               </div>
             </div>
             <button type="button" class="overlay-key-caption is-clickable" id="overlayKeyCaption" aria-live="polite" data-act="usage-caption">
+              <span class="overlay-key-caption__badge" data-cap-badge hidden>口头收听中</span>
               <span class="overlay-key-caption__name" data-cap-name>悬停按键查看名称</span>
+              <span class="overlay-key-caption__cmds" data-cap-cmds hidden></span>
               <span class="overlay-key-caption__chord" data-cap-chord></span>
             </button>
             <div class="overlay-minimax-key" id="overlayMinimaxKey" hidden>
@@ -451,6 +454,7 @@
     var miniBeginnerListenBanner=document.getElementById('miniBeginnerListenBanner');
     var miniBeginnerListenText=document.getElementById('miniBeginnerListenText');
     var miniBeginnerListenFlow=document.getElementById('miniBeginnerListenFlow');
+    var miniOralCmdStrip=document.getElementById('miniOralCmdStrip');
     var miniBeginnerListenChip=document.getElementById('miniBeginnerListenChip');
     var miniBeginnerListenChipText=document.getElementById('miniBeginnerListenChipText');
     var miniHubCountdown=document.getElementById('miniHubCountdown');
@@ -2090,6 +2094,73 @@
       applyMiniToolsRow(s);
     }
 
+    function oralCmdCardsHtml(s){
+      var cards=Array.isArray(s&&(s.oralListenCommands||s.oral_listen_commands))
+        ?(s.oralListenCommands||s.oral_listen_commands):[];
+      if(!cards.length) return '';
+      return cards.map(function(c){
+        var name=String((c&&(c.name||c.label))||'').trim();
+        var say=String((c&&c.say)||'').trim()||name;
+        if(!name&&!say) return '';
+        return '<span class="oral-cmd-chip" title="'+escHtml(name)+'"><b>'+escHtml(say)+'</b>'+(name&&name!==say?' <em>'+escHtml(name)+'</em>':'')+'</span>';
+      }).filter(Boolean).join('');
+    }
+
+    function applyOralListenMini(s){
+      var oralArmed=!!(s&&(s.oralListenArmed||s.oral_listen_armed));
+      wrap.classList.toggle('is-oral-listen', oralArmed);
+      var keys=Array.isArray(s&&(s.oralListenMicroKeys||s.oral_listen_micro_keys))
+        ?(s.oralListenMicroKeys||s.oral_listen_micro_keys):[];
+      document.querySelectorAll('.micro-hw__key.is-oral-voice').forEach(function(el){
+        el.classList.remove('is-oral-voice');
+      });
+      var cap=document.getElementById('overlayKeyCaption');
+      var capCmds=cap&&cap.querySelector('[data-cap-cmds]');
+      var capBadge=cap&&cap.querySelector('[data-cap-badge]');
+      if(!oralArmed){
+        if(cap){
+          cap.classList.remove('is-oral-arm-caption');
+          if(!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode)&&(s.cursorBeginnerArmed||s.cursor_beginner_armed))){
+            cap.classList.remove('is-beginner-arm-caption');
+          }
+        }
+        if(capCmds){ capCmds.hidden=true; capCmds.innerHTML=''; }
+        if(capBadge){ capBadge.hidden=true; }
+        if(miniOralCmdStrip){ miniOralCmdStrip.hidden=true; miniOralCmdStrip.innerHTML=''; }
+        return;
+      }
+      // Distinct listening chrome — Soft Pad on Cursor FG alone must not look the same.
+      wrap.setAttribute('data-light', 'listening');
+      keys.forEach(function(id){
+        var kid=String(id||'').trim();
+        if(!kid) return;
+        document.querySelectorAll('.micro-hw__key[data-micro-key="'+kid+'"]').forEach(function(el){
+          el.classList.add('is-oral-voice');
+        });
+      });
+      var armHint=String((s&&(s.oralListenHint||s.oral_listen_hint||s.cursorBeginnerArmHint||s.cursor_beginner_arm_hint))||'').trim();
+      if(!armHint) armHint='口头收听中 · 请说话令';
+      var flowHint=String((s&&(s.oralListenFlowHint||s.oral_listen_flow_hint||s.cursorBeginnerFlowHint||s.cursor_beginner_flow_hint))||'').trim();
+      if(!flowHint) flowHint='发送→右侧框+Enter · 侧键结束收听';
+      var chips=oralCmdCardsHtml(s);
+      if(cap&&!keyHoverActive){
+        var nameEl=cap.querySelector('[data-cap-name]');
+        var chordEl=cap.querySelector('[data-cap-chord]');
+        if(capBadge) capBadge.hidden=false;
+        if(nameEl) nameEl.textContent=armHint;
+        if(capCmds){
+          capCmds.innerHTML=chips;
+          capCmds.hidden=!chips;
+        }
+        if(chordEl){
+          chordEl.textContent=flowHint;
+          chordEl.hidden=!flowHint;
+          cap.classList.toggle('is-usage-sub', !!flowHint);
+        }
+        cap.classList.add('is-oral-arm-caption','is-beginner-arm-caption','is-active');
+      }
+    }
+
     function applyCursorBeginnerMini(s){
       var mode=!!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode));
       var probeOk=!!(s&&(s.cursorProbeOk||s.cursor_probe_ok));
@@ -2179,6 +2250,7 @@
       var mode=!!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode));
       var probeOk=!!(s&&(s.cursorProbeOk||s.cursor_probe_ok));
       var armed=!!(s&&(s.cursorBeginnerArmed||s.cursor_beginner_armed));
+      var oralOn=!!(s&&(s.oralListenArmed||s.oral_listen_armed));
       var beginnerOn=mode&&armed&&probeOk;
       wrap.classList.toggle('is-hub-active', hubOn);
 
@@ -2201,17 +2273,19 @@
       }
       wrap.setAttribute('data-hub-phase', hubOn?phase:'');
 
-      var showBand=hubOn||beginnerOn||(vMatched&&vFinal)||!!vHeard;
+      var showBand=hubOn||beginnerOn||oralOn||(vMatched&&vFinal)||!!vHeard;
       var chromeTx=miniChromeOf(s);
       applyMiniChromeVoiceChip(s);
       var chipOn=miniBeginnerListenChip&&!miniBeginnerListenChip.hidden;
-      /* 听音麦标并入条下预览卡：chip 亮或要显示转写时出同一条 */
-      if(chromeTx.textPreviewEnabled||chromeTx.voiceChipEnabled){
-        if(chromeTx.textPreviewWhen==='hasText'&&!vHeard&&!hubOn&&!beginnerOn&&!chipOn) showBand=false;
-        else if(!chromeTx.textPreviewEnabled&&!chipOn) showBand=false;
-        else if(chipOn) showBand=true;
-      } else {
-        showBand=false;
+      /* oral/beginner/hub always keep the listen band; chrome only gates transcript-only. */
+      if(!(hubOn||beginnerOn||oralOn)){
+        if(chromeTx.textPreviewEnabled||chromeTx.voiceChipEnabled){
+          if(chromeTx.textPreviewWhen==='hasText'&&!vHeard&&!chipOn) showBand=false;
+          else if(!chromeTx.textPreviewEnabled&&!chipOn) showBand=false;
+          else if(chipOn) showBand=true;
+        } else {
+          showBand=false;
+        }
       }
       if(!showBand){
         miniBeginnerListenBanner.hidden=true;
@@ -2220,6 +2294,7 @@
         if(miniHubCountdown){ miniHubCountdown.hidden=true; miniHubCountdown.textContent=''; }
         if(miniHubCancel) miniHubCancel.hidden=true;
         if(miniBeginnerListenFlow){ miniBeginnerListenFlow.hidden=true; miniBeginnerListenFlow.textContent=''; }
+        if(miniOralCmdStrip){ miniOralCmdStrip.hidden=true; miniOralCmdStrip.innerHTML=''; }
         return;
       }
 
@@ -2229,16 +2304,22 @@
       miniBeginnerListenBanner.classList.toggle('is-miss',!!(vHeard&&!vMatched&&vFinal&&beginnerOn));
       miniBeginnerListenBanner.classList.toggle('is-soft-close', softClose);
 
-      var armHint=String((s&&(s.cursorBeginnerArmHint||s.cursor_beginner_arm_hint))||'').trim();
-      if(!armHint&&beginnerOn) armHint='聆听中 · 可说：发送、继续、新建、麦克风、取消';
-      var flowHint=String((s&&(s.cursorBeginnerFlowHint||s.cursor_beginner_flow_hint))||'').trim();
+      var armHint=String((s&&(s.oralListenHint||s.oral_listen_hint||s.cursorBeginnerArmHint||s.cursor_beginner_arm_hint))||'').trim();
+      if(!armHint&&(beginnerOn||oralOn)) armHint=oralOn?'口头收听中':'聆听中 · 可说：发送、继续、新建、麦克风、取消';
+      var flowHint=String((s&&(s.oralListenFlowHint||s.oral_listen_flow_hint||s.cursorBeginnerFlowHint||s.cursor_beginner_flow_hint))||'').trim();
       if(!flowHint&&beginnerOn) flowHint='发送→右侧框+Enter · 取消→退出聆听并停生成';
-      var text=vHeard||(hubOn?hubPhaseLabel(phase, beginnerOn):(armHint||''));
+      if(!flowHint&&oralOn) flowHint='发送→右侧框+Enter · 取消→退出收听';
+      var text=vHeard||(hubOn?hubPhaseLabel(phase, beginnerOn):(oralOn?'口头收听中':(armHint||'')));
       if(miniBeginnerListenText) miniBeginnerListenText.textContent=text;
+      var chips=oralOn?oralCmdCardsHtml(s):'';
+      if(miniOralCmdStrip){
+        var showCmds=oralOn&&!vHeard&&!!chips;
+        miniOralCmdStrip.innerHTML=showCmds?chips:'';
+        miniOralCmdStrip.hidden=!showCmds;
+      }
       if(miniBeginnerListenFlow){
-        var showFlow=beginnerOn&&!vHeard&&!hubOn&&!!flowHint;
-        if(hubOn&&beginnerOn&&!vHeard&&flowHint){
-          // Hub active: keep flow as secondary under hub label when space allows.
+        var showFlow=(beginnerOn||oralOn)&&!vHeard&&!hubOn&&!!flowHint;
+        if(hubOn&&(beginnerOn||oralOn)&&!vHeard&&flowHint){
           showFlow=true;
         }
         miniBeginnerListenFlow.hidden=!showFlow;
@@ -2483,8 +2564,10 @@
       layoutPadAgentBar(s, byKind, focus);
       applyUsageCaptionIdle(s);
       applyMiniChromeChrome(s);
+      applyOralListenMini(s);
       if(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode)){
         applyCursorBeginnerMini(s);
+        applyOralListenMini(s);
         applyHubMini(s);
         applySoftPadConfirmBar(s);
         applyMiniChromeChrome(s);
@@ -2492,6 +2575,7 @@
       }
       if(miniBeginnerHint) miniBeginnerHint.hidden=true;
       wrap.classList.remove('is-cursor-beginner','is-cursor-beginner-armed','is-cursor-beginner-listen');
+      // is-oral-listen kept/cleared by applyOralListenMini above.
       applyMiniChromeVoiceChip(s);
       applyHubMini(s);
       applySoftPadConfirmBar(s);
@@ -2821,6 +2905,8 @@
         : '';
       // Soft RGB / chassis prefer ambient aggregate; chips still inform when richer.
       var light=fromAgents || (ambient&&ambient!=='idle' ? ambient : (appOn && appSt && appSt!=='idle' ? appSt : padSt));
+      // Oral command listen overrides — must read distinct from idle Soft Pad on Cursor FG.
+      if(s&&(s.oralListenArmed||s.oral_listen_armed)) light='listening';
       wrap.setAttribute('data-light', light);
       maybeNotifyAttention(light);
       // Soft Pad chassis stays static — breathing/flash lives on agent chips only.

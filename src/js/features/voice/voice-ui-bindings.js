@@ -1501,6 +1501,21 @@
         openDrawerPanel('keys','target');
       });
     }
+    var btnVoiceOralOpenKeys=$('btnVoiceOralOpenKeys');
+    if(btnVoiceOralOpenKeys&&!btnVoiceOralOpenKeys._oralBound){
+      btnVoiceOralOpenKeys._oralBound=true;
+      btnVoiceOralOpenKeys.addEventListener('click',function(e){
+        e.preventDefault();
+        openDrawerPanel('keys','target');
+        try{
+          var P=global.OneToneKeysChannelCommandPicker;
+          if(P&&typeof P.setActiveTab==='function') P.setActiveTab('voice');
+        }catch(_){}
+      });
+    }
+    var oralBridgeText=$('voiceOralKeysBridgeText');
+    if(oralBridgeText) oralBridgeText.textContent=t('voiceOralKeysBridgeText','看收听入口与可喊列表');
+    if(btnVoiceOralOpenKeys) btnVoiceOralOpenKeys.textContent=t('voiceOralKeysBridgeGo','去按键 · 口头命令 →');
     var finishPhraseOverlay=$('voiceFinishPhraseOverlay');
     if(finishPhraseOverlay&&!finishPhraseOverlay.dataset.bound){
       finishPhraseOverlay.dataset.bound='1';

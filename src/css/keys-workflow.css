@@ -2057,6 +2057,128 @@
   color: #b42828;
 }
 
+#settingsPanelKeys .keys-prompt-adopt,
+.keys-capture-popover .keys-prompt-adopt {
+  margin: 0 0 10px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 28%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 7%, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#settingsPanelKeys .keys-prompt-adopt.is-top,
+.keys-capture-popover .keys-prompt-adopt.is-top {
+  margin-top: 0;
+}
+#settingsPanelKeys .keys-prompt-adopt__head,
+.keys-capture-popover .keys-prompt-adopt__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px 2px;
+}
+#settingsPanelKeys .keys-prompt-adopt__head strong,
+.keys-capture-popover .keys-prompt-adopt__head strong {
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--primary-strong, #1a7a9c);
+}
+#settingsPanelKeys .keys-prompt-adopt__head span,
+.keys-capture-popover .keys-prompt-adopt__head span {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: #8494a6;
+  font-weight: 550;
+}
+#settingsPanelKeys .keys-prompt-adopt__empty,
+.keys-capture-popover .keys-prompt-adopt__empty {
+  margin: 0;
+  padding: 4px 2px;
+  font-size: 12px;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+#settingsPanelKeys .keys-prompt-adopt__go,
+.keys-capture-popover .keys-prompt-adopt__go {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 40%, transparent);
+  background: #fff;
+  color: var(--primary-strong, #1a7a9c);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+}
+#settingsPanelKeys .keys-prompt-adopt__go:hover,
+.keys-capture-popover .keys-prompt-adopt__go:hover {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, #fff);
+}
+#settingsPanelKeys .keys-prompt-adopt__row,
+.keys-capture-popover .keys-prompt-adopt__row {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 22%, transparent);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+#settingsPanelKeys .keys-prompt-adopt__row:hover,
+.keys-capture-popover .keys-prompt-adopt__row:hover {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 45%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 8%, #fff);
+}
+#settingsPanelKeys .keys-prompt-adopt__name,
+.keys-capture-popover .keys-prompt-adopt__name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--on-surface, #13202c);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#settingsPanelKeys .keys-prompt-adopt__cta,
+.keys-capture-popover .keys-prompt-adopt__cta {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 750;
+  color: var(--primary-strong, #1a7a9c);
+}
+#settingsPanelKeys .keys-custom-key-seq,
+.keys-capture-popover .keys-custom-key-seq {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#settingsPanelKeys .keys-custom-key-seq > .keys-channel-group-label,
+.keys-capture-popover .keys-custom-key-seq > .keys-channel-group-label {
+  margin: 4px 2px 2px;
+  opacity: 0.85;
+}
+#settingsPanelKeys .keys-custom-key-match-empty--compact,
+.keys-capture-popover .keys-custom-key-match-empty--compact {
+  margin: 4px 0 0;
+  padding: 10px 8px;
+  text-align: left;
+  font-size: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 #settingsPanelKeys .keys-custom-key-match-trig,
 .keys-capture-popover .keys-custom-key-match-trig {
   font-size: 12px;
@@ -3238,6 +3360,438 @@
   line-height: 1.4;
   color: var(--on-surface-muted, #5a7086);
 }
+#settingsPanelKeys .keys-voice-scheme {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#settingsPanelKeys .keys-voice-scheme-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--outline-variant, #d1d5db) 80%, transparent);
+  background: color-mix(in srgb, var(--surface-soft, #f3f4f6) 70%, transparent);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--on-surface-muted, #5a7086);
+}
+#settingsPanelKeys .keys-voice-scheme-status strong {
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--on-surface, #152238);
+}
+#settingsPanelKeys .keys-voice-scheme-status.is-on {
+  border-color: color-mix(in srgb, #7c6cf0 40%, transparent);
+  background: color-mix(in srgb, #7c6cf0 10%, transparent);
+}
+#settingsPanelKeys .keys-voice-scheme-status.is-on strong {
+  color: #4c3eb8;
+}
+#settingsPanelKeys .keys-voice-scheme-steps {
+  margin: 0;
+  padding: 0 0 0 1.2rem;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--on-surface, #152238);
+}
+#settingsPanelKeys .keys-voice-scheme-steps li + li {
+  margin-top: 4px;
+}
+#settingsPanelKeys .keys-voice-scheme-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#settingsPanelKeys .keys-voice-scheme-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 40%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, transparent);
+  color: var(--primary-strong, #0f5f7a);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+#settingsPanelKeys .keys-voice-scheme-btn:hover {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 16%, transparent);
+}
+
+/* 口头命令 · flat cyan */
+#settingsPanelKeys .keys-speak-tabs {
+  display: none !important;
+}
+
+#settingsPanelKeys .keys-work-tag__ch.is-oral {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 12%, transparent);
+  color: var(--primary-strong, #1a7a9c);
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 38%, transparent);
+}
+
+#settingsPanelKeys .keys-page-rail__item[data-channel="voice"].is-active {
+  color: var(--primary-strong, #1a7a9c);
+}
+
+#settingsPanelKeys .keys-oral-page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 0 4px;
+}
+
+#settingsPanelKeys .keys-oral-block {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant, #d5dee8);
+  background: var(--surface, #fff);
+}
+#settingsPanelKeys .keys-oral-block__title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface, #13202c);
+}
+#settingsPanelKeys .keys-oral-block__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+#settingsPanelKeys .keys-oral-block__line {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+#settingsPanelKeys .keys-oral-group td {
+  padding: 8px 6px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--on-surface-muted, #5a6b7c);
+  border-bottom: none;
+}
+#settingsPanelKeys .keys-oral-empty {
+  padding: 16px 8px;
+  text-align: center;
+  color: var(--ot-muted, #9aa8bc);
+  font-size: 12px;
+}
+#settingsPanelKeys .keys-oral-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#settingsPanelKeys .keys-oral-head__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+#settingsPanelKeys .keys-oral-head__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  color: var(--on-surface, #13202c);
+  letter-spacing: -0.01em;
+}
+
+#settingsPanelKeys .keys-oral-head__pill {
+  font-size: 11px;
+  font-weight: 650;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 32%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 8%, transparent);
+  color: var(--primary-strong, #1a7a9c);
+}
+
+#settingsPanelKeys .keys-oral-head__line {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+
+#settingsPanelKeys .keys-oral-head__acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#settingsPanelKeys .keys-oral-act {
+  appearance: none;
+  border: 1px solid var(--outline-variant, #d5dee8);
+  background: var(--surface, #fff);
+  color: var(--on-surface-muted, #5a6b7c);
+  border-radius: 8px;
+  padding: 6px 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 120ms var(--motion-ease-spring, cubic-bezier(0.22, 1.2, 0.36, 1));
+}
+
+#settingsPanelKeys .keys-oral-act:hover {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 40%, transparent);
+  color: var(--primary-strong, #1a7a9c);
+}
+
+#settingsPanelKeys .keys-oral-act:active {
+  transform: scale(0.97);
+}
+
+#settingsPanelKeys .keys-oral-act.is-primary {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 42%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, transparent);
+  color: var(--primary-strong, #1a7a9c);
+}
+
+#settingsPanelKeys .keys-oral-head__hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 650;
+  color: var(--on-surface, #13202c);
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 8%, #fff);
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 22%, transparent);
+}
+
+#settingsPanelKeys .keys-oral-dup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 28%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 6%, var(--surface, #fff));
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--on-surface, #13202c);
+  animation-name: ot-enter;
+  animation-duration: var(--motion-duration-enter, 200ms);
+  animation-timing-function: var(--motion-ease-spring, cubic-bezier(0.22, 1.2, 0.36, 1));
+  animation-fill-mode: both;
+}
+
+#settingsPanelKeys .keys-oral-dup__btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 35%, transparent);
+  background: var(--surface, #fff);
+  color: var(--primary-strong, #1a7a9c);
+  border-radius: 7px;
+  padding: 4px 9px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 140ms ease, transform 120ms ease;
+}
+
+#settingsPanelKeys .keys-oral-dup__btn:hover {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 8%, #fff);
+}
+
+#settingsPanelKeys .keys-oral-dup__btn:active {
+  transform: scale(0.97);
+}
+
+#settingsPanelKeys .keys-oral-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+#settingsPanelKeys .keys-oral-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto;
+}
+
+#settingsPanelKeys .keys-oral-filters button {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 7px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--on-surface-muted, #5a6b7c);
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+}
+
+#settingsPanelKeys .keys-oral-filters button:hover {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 6%, transparent);
+  color: var(--primary-strong, #1a7a9c);
+}
+
+#settingsPanelKeys .keys-oral-filters button.is-on {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 32%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, transparent);
+  color: var(--primary-strong, #1a7a9c);
+}
+
+#settingsPanelKeys .keys-oral-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+#settingsPanelKeys .keys-oral-table th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 750;
+  color: #8494a6;
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--outline-variant, #d5dee8);
+}
+
+#settingsPanelKeys .keys-oral-table td {
+  padding: 6px 6px;
+  border-bottom: 1px solid var(--outline-variant, #d5dee8);
+  vertical-align: middle;
+}
+
+#settingsPanelKeys .keys-oral-table tr:last-child td {
+  border-bottom: 0;
+}
+
+#settingsPanelKeys .keys-oral-row {
+  animation-name: ot-enter;
+  animation-duration: var(--motion-duration-enter, 200ms);
+  animation-timing-function: var(--motion-ease-spring, cubic-bezier(0.22, 1.2, 0.36, 1));
+  animation-delay: calc(var(--oral-i, 0) * 16ms);
+  animation-fill-mode: both;
+}
+
+#settingsPanelKeys .keys-oral-table tr.is-dup td {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 5%, transparent);
+}
+
+#settingsPanelKeys .keys-oral-name {
+  font-weight: 700;
+  color: var(--on-surface, #13202c);
+}
+
+#settingsPanelKeys .keys-oral-via {
+  margin-top: 1px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+
+#settingsPanelKeys .keys-oral-say {
+  width: 100%;
+  max-width: 280px;
+  border: 1px solid var(--outline-variant, #d5dee8);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--on-surface, #13202c);
+  background: var(--surface, #fff);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+#settingsPanelKeys .keys-oral-say:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 50%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #2a9cc4) 16%, transparent);
+}
+
+#settingsPanelKeys .keys-oral-table tr.is-dup .keys-oral-say {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 45%, transparent);
+}
+
+#settingsPanelKeys .keys-oral-tag {
+  display: inline-block;
+  margin-top: 4px;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, transparent);
+  color: var(--primary-strong, #1a7a9c);
+  border: 0;
+}
+
+#settingsPanelKeys .keys-oral-tag.is-edit {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, transparent);
+  color: var(--primary-strong, #1a7a9c);
+}
+
+#settingsPanelKeys .keys-oral-tog {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: #c5d0de;
+  border: 0;
+  position: relative;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+#settingsPanelKeys .keys-oral-tog.is-on {
+  background: var(--primary, #2a9cc4);
+}
+
+#settingsPanelKeys .keys-oral-tog::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 160ms var(--motion-ease-spring, cubic-bezier(0.22, 1.2, 0.36, 1));
+  box-shadow: 0 1px 2px rgba(19, 32, 44, 0.12);
+}
+
+#settingsPanelKeys .keys-oral-tog.is-on::after {
+  left: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #settingsPanelKeys .keys-oral-page,
+  #settingsPanelKeys .keys-oral-row,
+  #settingsPanelKeys .keys-oral-dup {
+    animation: none !important;
+  }
+  #settingsPanelKeys .keys-oral-act,
+  #settingsPanelKeys .keys-oral-act:active,
+  #settingsPanelKeys .keys-oral-dup__btn,
+  #settingsPanelKeys .keys-oral-tog,
+  #settingsPanelKeys .keys-oral-tog::after,
+  #settingsPanelKeys .keys-oral-say {
+    transition: none !important;
+  }
+}
+
 #settingsPanelKeys .keys-voice-pick-label,
 .keys-capture-popover .keys-voice-pick-label {
   font-size: 11px;
@@ -6339,6 +6893,89 @@
   border-radius: 8px;
   border: 1px solid color-mix(in srgb, #f59e0b 35%, var(--outline-variant));
   background: color-mix(in srgb, #f59e0b 8%, var(--surface-soft));
+}
+
+/* 按法 → 方案矩阵（语音输入 / 口头指令） */
+#settingsPanelKeys .keys-gesture-modes,
+.habit-scenario-keys-advanced .keys-gesture-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin: 0 0 4px;
+}
+#settingsPanelKeys .keys-gesture-modes__head,
+.habit-scenario-keys-advanced .keys-gesture-modes__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--ot-ink, #1f2937);
+}
+#settingsPanelKeys .keys-gesture-modes__head em,
+.habit-scenario-keys-advanced .keys-gesture-modes__head em {
+  font-style: normal;
+  font-weight: 500;
+  font-size: 0.68rem;
+  color: var(--ot-muted, #6b7280);
+}
+#settingsPanelKeys .keys-gesture-modes__row,
+.habit-scenario-keys-advanced .keys-gesture-modes__row {
+  display: grid;
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+#settingsPanelKeys .keys-gesture-modes__gest,
+.habit-scenario-keys-advanced .keys-gesture-modes__gest {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ot-muted, #6b7280);
+}
+#settingsPanelKeys .keys-gesture-modes__schemes,
+.habit-scenario-keys-advanced .keys-gesture-modes__schemes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+#settingsPanelKeys .keys-gesture-scheme,
+.habit-scenario-keys-advanced .keys-gesture-scheme {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--ot-line, #d1d5db) 90%, transparent);
+  background: var(--ot-paper, #fff);
+  color: var(--ot-ink, #1f2937);
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+#settingsPanelKeys .keys-gesture-scheme:hover,
+.habit-scenario-keys-advanced .keys-gesture-scheme:hover {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 45%, transparent);
+}
+#settingsPanelKeys .keys-gesture-scheme.is-on,
+.habit-scenario-keys-advanced .keys-gesture-scheme.is-on {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 55%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 14%, transparent);
+  color: var(--primary-strong, #0f5f7a);
+}
+#settingsPanelKeys .keys-gesture-scheme[data-gesture-scheme="voiceCommand"].is-on,
+.habit-scenario-keys-advanced .keys-gesture-scheme[data-gesture-scheme="voiceCommand"].is-on {
+  border-color: color-mix(in srgb, #7c6cf0 55%, transparent);
+  background: color-mix(in srgb, #7c6cf0 14%, transparent);
+  color: #4c3eb8;
+}
+#settingsPanelKeys .keys-gesture-scheme[data-gesture-scheme="off"].is-on,
+.habit-scenario-keys-advanced .keys-gesture-scheme[data-gesture-scheme="off"].is-on {
+  border-color: color-mix(in srgb, var(--ot-line, #d1d5db) 90%, transparent);
+  background: color-mix(in srgb, var(--ot-wash, #f3f4f6) 80%, transparent);
+  color: var(--ot-muted, #6b7280);
 }
 
 #settingsPanelKeys .keys-hold-risk-text,

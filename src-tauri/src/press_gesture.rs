@@ -31,6 +31,14 @@ impl RecordedGesture {
             RecordedGesture::Double => "double_click",
         }
     }
+
+    pub fn scheme_key(self) -> &'static str {
+        match self {
+            RecordedGesture::Tap => "tap",
+            RecordedGesture::LongPress => "long",
+            RecordedGesture::Double => "double",
+        }
+    }
 }
 
 const RECORD_LONG_PRESS_MS: u64 = gesture_timing::RECORD_LONG_PRESS_MS;

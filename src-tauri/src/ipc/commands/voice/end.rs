@@ -172,3 +172,28 @@ pub fn cmd_voice_end_test_commit(
 ) -> serde_json::Value {
     crate::voice_end_runtime::test_commit_key(&state, &window)
 }
+
+/// Camera / UI: same Soft Pad mic semantics — toggle on-demand oral listen session.
+#[tauri::command]
+pub fn cmd_voice_command_session_toggle(
+    state: tauri::State<Arc<AppState>>,
+    app: tauri::AppHandle,
+    mapping_id: Option<String>,
+) -> serde_json::Value {
+    let mid = {
+        let cfg = state.cfg.lock();
+        let raw = mapping_id.unwrap_or_default();
+        let t = raw.trim();
+        if t.is_empty() {
+            cfg.active_scene_id.clone()
+        } else {
+            t.to_string()
+        }
+    };
+    crate::voice_command_session::toggle_session(&state, &app, &mid);
+    serde_json::json!({
+        "ok": true,
+        "armed": crate::voice_command_session::is_armed(),
+        "mappingId": mid,
+    })
+}

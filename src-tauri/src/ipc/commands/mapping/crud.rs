@@ -110,6 +110,8 @@ pub fn cmd_mapping_duplicate(
                 codex_micro_pad: src.codex_micro_pad.clone(),
                 time_machine_workspace: src.time_machine_workspace.clone(),
                 capture_hero_ref: src.capture_hero_ref.clone(),
+                gesture_modes: src.gesture_modes.clone(),
+                oral_command_scheme: None,
                 target_actions: src.target_actions.clone(),
             });
             cfg.normalize();

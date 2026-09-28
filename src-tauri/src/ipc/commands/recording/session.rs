@@ -19,6 +19,7 @@ pub fn cmd_start_recording(
         "target" => RecordMode::Target,
         "agentBinding" | "agent_binding" => RecordMode::AgentBinding,
         "padBind" | "pad_bind" => RecordMode::PadBind,
+        "oralTrigger" | "oral_trigger" | "oral" => RecordMode::OralTrigger,
         _ => RecordMode::Trigger,
     };
     *state.recording_target.lock() = Some(RecordingTarget {

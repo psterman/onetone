@@ -360,7 +360,7 @@
     var name = names[app];
     if (name) {
       if (id === 'summonCodex') return isEnLocale() ? ('Focus ' + name.en) : ('聚焦 ' + name.zh);
-      if (id === 'pushToTalk') return isEnLocale() ? 'Voice input' : '语音输入';
+      if (id === 'pushToTalk') return isEnLocale() ? 'Oral command' : '口头指令';
       if (id === 'cancel' && app === 'cursor-chat') {
         return isEnLocale() ? 'Cancel generation' : '取消生成';
       }

@@ -344,7 +344,7 @@
         status: '查看状态',
         commandPalette: '命令菜单',
         openAgent: '打开助手',
-        pushToTalk: '语音输入',
+        pushToTalk: '口头指令',
         stopOrSend: '结束或发送'
       };
       if (known[tail]) return known[tail];
@@ -735,7 +735,14 @@
       ? primaryWakePhraseLabel() || t('keysSceneActionsVoiceLabel', '语音输入')
       : t('keysChannelTabIme', '听写方式');
     var bindLine = trigLine;
-    if (!onVoicePage() && tgt) {
+    if (!onVoicePage()) {
+      // Keys dock: show 01 trigger · 02 recognition so录键后右侧立即可见.
+      var tgtLabel = tgt ? friendlyTrigger(tgt) : '';
+      if (trigLine && tgtLabel) bindLine = trigLine + ' · ' + tgtLabel;
+      else if (tgtLabel) bindLine = tgtLabel;
+      else if (trigLine) bindLine = trigLine;
+      else bindLine = t('badgeNotRecorded', '未设置');
+    } else if (tgt) {
       bindLine = tgt;
     }
     return {
@@ -749,6 +756,34 @@
       ime: imeInfo(sm),
       summary: '',
       unset: !trig && !tgt
+    };
+  }
+
+  function oralArmRow(sm) {
+    if (!sm || !sm.id) return null;
+    var raw = '';
+    try {
+      var Picker = global.OneToneKeysChannelCommandPicker;
+      if (Picker && typeof Picker.oralTriggerKeyRaw === 'function') {
+        raw = String(Picker.oralTriggerKeyRaw(sm) || '').trim();
+      } else {
+        raw = String((sm.oralCommandScheme && sm.oralCommandScheme.triggerKey) || '').trim();
+      }
+    } catch (_) {
+      raw = String((sm.oralCommandScheme && sm.oralCommandScheme.triggerKey) || '').trim();
+    }
+    var line = raw ? friendlyTrigger(raw) : t('badgeNotRecorded', '未设置');
+    return {
+      key: 'oral-arm:' + String(sm.id),
+      mappingId: String(sm.id),
+      slotId: '',
+      actionId: '',
+      kind: 'oralArm',
+      label: t('keysChannelTabVoice', '口头命令'),
+      binds: { key: line },
+      ime: null,
+      summary: '',
+      unset: !raw
     };
   }
 
@@ -1121,6 +1156,27 @@
       var row = rowForLastScheme(sm, trigLine);
       if (row) rows.push(row);
     }
+    // Keys dock: always surface habit 听写 + 口头臂键，录完右侧立刻能看到键名。
+    if (!voicePage && m && m.id) {
+      var hasRec = false;
+      for (var ri = 0; ri < rows.length; ri++) {
+        if (rows[ri] && rows[ri].kind === 'recognition' && String(rows[ri].mappingId) === String(m.id)) {
+          hasRec = true;
+          break;
+        }
+      }
+      var habitTrig = String(m.triggerKey || '').trim();
+      var habitTrigLine = '';
+      if (global.OneToneKeyLabels && global.OneToneKeyLabels.triggerDisplayLabel) {
+        habitTrigLine = global.OneToneKeyLabels.triggerDisplayLabel(m, lang) || '';
+      }
+      if (!habitTrigLine && habitTrig) habitTrigLine = friendlyTrigger(habitTrig);
+      if (!hasRec && (hasRecognitionScheme(m) || habitTrig || String(m.targetKey || '').trim())) {
+        rows.unshift(recognitionRow(m, habitTrigLine || t('badgeNotRecorded', '未设置')));
+      }
+      var oral = oralArmRow(m);
+      if (oral) rows.push(oral);
+    }
     // Voice dock titles the matched command with the 口令 — skip bare wake chips
     // (they duplicated「一声」as a second card next to 听写/口头指令).
     return rows;
@@ -1447,11 +1503,12 @@
         return r && r.kind === 'camera';
       });
     } else {
-      // voice / 口头指令：口令 · 一词注入
+      // voice / 口头指令：口头触发键 + 口令 · 一词注入
       out = out.filter(function (r) {
         return (
           r &&
-          (r.kind === 'voicePhrase' ||
+          (r.kind === 'oralArm' ||
+            r.kind === 'voicePhrase' ||
             r.kind === 'wakePhrase' ||
             r.kind === 'prompt' ||
             (r.kind === 'voice' && String(r.key || '').indexOf('prompt:') === 0))

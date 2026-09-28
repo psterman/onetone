@@ -158,11 +158,14 @@
     const ipc=global.OneToneIpc;
     const invoke=ipc&&typeof ipc.invoke==='function'?ipc.invoke.bind(ipc):global.__vp_invoke__;
     if(!invoke) return Promise.resolve(false);
+    // Oral arm records with Rec.mode()==='trigger' + triggerSlot oral — backend needs oralTrigger.
+    var slot=(Rec().triggerSlot&&Rec().triggerSlot())||'';
+    var mode=slot==='oral'?'oralTrigger':(Rec().mode()||'trigger');
     const payload=global.__vp_tauri_args__?global.__vp_tauri_args__({
       key:physical,
       mappingId:Rec().mappingId()||'',
-      mode:Rec().mode()||'trigger'
-    }):{key:physical,mappingId:Rec().mappingId()||'',mode:Rec().mode()||'trigger'};
+      mode:mode
+    }):{key:physical,mappingId:Rec().mappingId()||'',mode:mode};
     return invoke('cmd_frontend_keydown',payload).then(function(){ return true; }).catch(function(err){
       hooks().pushLog('[record] cmd_frontend_keydown backup failed: '+String(err&&err.message||err||'unknown'));
       return false;
@@ -668,7 +671,10 @@
     if($('triggerState')) $('triggerState').textContent=t('triggerRecordDetected')+hooks().friendlyKeyName(btn);
     hooks().armTriggerPeripheralGuard(450);
     noteHardwarePressAwaitingAck(btn);
-    Rec().finishDetectedHardwareTrigger(btn);
+    // Side buttons often hit WebView before LL hook — push Rust while session is still live.
+    invokeFrontendKeydownBackup(btn).finally(function(){
+      if(Rec().mode()==='trigger') Rec().finishDetectedHardwareTrigger(btn);
+    });
     return;
     }
     if(isSpuriousGhostCombo(combo)) return;
@@ -875,14 +881,30 @@
     }
     return true;
     }
-    if(captureMode==='trigger'){
+    if(captureMode==='trigger'||captureMode==='oralTrigger'){
     if(Rec().mode()==='trigger'){
     if(rejectLeftMouseRecording('trigger', key, msg.sourceKey||'', msg.source||null)) return true;
     if(isRecognitionKeyEcho(key)) return true;
     if(Date.now()<hooks().triggerPeripheralGuardUntil()&&isTargetModifierToken(key)&&key!=='AutoTrigger'){
     return true;
     }
+    // oralTrigger must not fall through as habit.triggerKey when slot already cleared.
+    if(captureMode==='oralTrigger'&&(Rec().triggerSlot&&Rec().triggerSlot())!=='oral'){
+      var om=OneToneMappingCore.byId(msg.mappingId||'')||OneToneMappingCore.selected();
+      if(om&&global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.setOralTriggerKey){
+        global.OneToneKeysChannelCommandPicker.setOralTriggerKey(om, hooks().normalizeTriggerKey(key));
+      }
+      hooks().render();
+      return true;
+    }
     Rec().finishTrigger(key, msg.source||null, msg.sourceKey||'', msg.sourceTime||'', {backendCommitted:true, triggerMode:msg.triggerMode||''});
+    }else if(captureMode==='oralTrigger'){
+    // Orphan backend oral commit — apply oral field only, never habit.triggerKey.
+    var om=OneToneMappingCore.byId(msg.mappingId||'')||OneToneMappingCore.selected();
+    if(om&&global.OneToneKeysChannelCommandPicker&&global.OneToneKeysChannelCommandPicker.setOralTriggerKey){
+      global.OneToneKeysChannelCommandPicker.setOralTriggerKey(om, hooks().normalizeTriggerKey(key));
+    }
+    hooks().render();
     }else if(Rec().applyBackendKeyCapture(msg)){
     Rec().clearMappingGuard();
     Rec().clearTimer();

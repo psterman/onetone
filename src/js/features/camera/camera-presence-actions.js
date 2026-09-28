@@ -118,7 +118,8 @@
     lowPowerMode:1,
     privacyScreen:1,
     pauseVoice:1,
-    resumeVoice:1
+    resumeVoice:1,
+    toggleOralListen:1
   };
 
   function isAgentActionToken(action){
@@ -1811,7 +1812,7 @@
     }else if(key==='onReturn'){
       base=['none','resumeVoice','privacyScreen'];
     }else{
-      base=['none','pressEsc','pressCtrlI','privacyScreen','pauseVoice','resumeVoice','lowPowerMode'];
+      base=['none','pressEsc','pressCtrlI','privacyScreen','pauseVoice','resumeVoice','lowPowerMode','toggleOralListen'];
     }
     var store=global.OneToneSemanticActionStore;
     var A=global.OneToneAgentActions;
@@ -2242,6 +2243,19 @@
       setSkipReason(skipMsg('resume_manual'),source);
       emitRuntime();
       return Promise.resolve({ok:true,action:action,skipped:true});
+    }
+
+    if(action==='toggleOralListen'){
+      var mid='';
+      try{
+        var st0=global.OneToneState;
+        mid=String((st0&&st0.selectedMappingId)||'').trim();
+      }catch(_){}
+      return invokeIpc('cmd_voice_command_session_toggle',{mappingId:mid||null}).then(function(res){
+        emitRuntime();
+        recordCameraLocalHistory(action,'executed',!(res&&res.ok===false));
+        return res||{ok:true,action:action};
+      });
     }
 
     return Promise.resolve({ok:false,reason:'unknown',action:action,source:source});
@@ -3191,7 +3205,8 @@
     ['lowPowerMode','cameraPresenceActionLowPower','软件低消耗运行'],
     ['privacyScreen','cameraPresenceActionPrivacy','应用内遮罩'],
     ['pauseVoice','cameraPresenceActionPause','暂停语音'],
-    ['resumeVoice','cameraPresenceActionResume','恢复语音']
+    ['resumeVoice','cameraPresenceActionResume','恢复语音'],
+    ['toggleOralListen','cameraPresenceActionOralListen','开启口头收听']
   ];
 
   function buildActionOpts(){

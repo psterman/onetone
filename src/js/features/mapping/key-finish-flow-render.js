@@ -1204,6 +1204,38 @@
       refreshAfterGestureChange();
       return true;
     }
+    var schemeBtn=el.closest&&el.closest('[data-gesture-scheme]');
+    if(schemeBtn){
+      var sch=String(schemeBtn.getAttribute('data-gesture-scheme')||'off').toLowerCase();
+      var gest=String(schemeBtn.getAttribute('data-gesture')||'tap').toLowerCase();
+      var midSch=String(schemeBtn.getAttribute('data-mapping-id')||'').trim();
+      var rowSch=midSch?appState().config.mappings.find(function(x){return x.id===midSch;}):hooks().selectedMapping();
+      if(!rowSch) return false;
+      e.stopPropagation();
+      if(sch==='voiceinput'||sch==='voice_input') sch='dictation';
+      if(sch==='voice_command'||sch==='oral') sch='voiceCommand';
+      if(sch!=='dictation'&&sch!=='voiceCommand') sch='off';
+      if(gest!=='double'&&gest!=='long') gest='tap';
+      var modes=rowSch.gestureModes&&typeof rowSch.gestureModes==='object'
+        ?{tap:rowSch.gestureModes.tap,double:rowSch.gestureModes.double,long:rowSch.gestureModes.long}
+        :null;
+      if(!modes){
+        // Seed from legacy single triggerMode so other gestures stay off.
+        var ui=String(rowSch.triggerMode||'tap').toLowerCase();
+        if(ui==='hold'||ui==='longpress'||ui==='perpress') modes={tap:'off',double:'off',long:'dictation'};
+        else if(ui==='double') modes={tap:'off',double:'dictation',long:'off'};
+        else modes={tap:'dictation',double:'off',long:'off'};
+      }
+      modes[gest]=sch;
+      rowSch.gestureModes=modes;
+      // Keep triggerMode aligned with the primary non-off gesture for legacy readers.
+      if(modes.long&&modes.long!=='off') rowSch.triggerMode='longpress';
+      else if(modes.double&&modes.double!=='off') rowSch.triggerMode='double';
+      else rowSch.triggerMode='tap';
+      persistGestureChange();
+      refreshAfterGestureChange();
+      return true;
+    }
     var timingToggle=el.closest&&el.closest('[data-timing-toggle]');
     if(timingToggle){
       if(timingToggle.disabled) return true;

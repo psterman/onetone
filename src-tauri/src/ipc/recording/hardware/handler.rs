@@ -44,7 +44,10 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
         return;
     };
     let event = parse_physical_event(key_name);
-    let is_trigger = matches!(target.mode, RecordMode::Trigger | RecordMode::AgentBinding);
+    let is_trigger = matches!(
+        target.mode,
+        RecordMode::Trigger | RecordMode::AgentBinding | RecordMode::OralTrigger
+    );
     let is_pad_bind = matches!(target.mode, RecordMode::PadBind);
     let is_target = matches!(target.mode, RecordMode::Target);
     let is_keyup = event.is_keyup;

@@ -598,8 +598,12 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
     }
 
     let now = Instant::now();
-    *state.voice_vosk_cooldown_until.lock() =
-        Some(now + Duration::from_millis(crate::voice_end_runtime::wake_key_gap_ms(cooldown_ms)));
+    let gap = crate::voice_end_runtime::wake_key_gap_ms(cooldown_ms);
+    *state.voice_vosk_cooldown_until.lock() = Some(now + Duration::from_millis(gap));
+    // Arm the wake-key gap BEFORE spawning. Detected + Final for the same「说话」
+    // used to race two execute_start threads; Cursor Voice is a toggle, so the
+    // second pulse immediately ends dictation.
+    crate::voice_end_runtime::mark_voice_wake_key_sent(state.as_ref());
 
     let state2 = Arc::clone(state);
     let app2 = app.clone();

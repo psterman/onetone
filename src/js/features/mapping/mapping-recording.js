@@ -7,7 +7,7 @@
   var t=function(key){ return global.OneToneI18n.t(key); };
   function hooks(){ return global.__vp_mapping_recording_hooks__ || {}; }
   function recordingInput(){ return global.OneToneMappingRecordingInput; }
-var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,mappingWasEnabled:null,nativeRestoreSnapshot:null, schemeSwitchSnapshot:'',captureGen:0,suppressAutoEnableOnce:false,beforeFinishTargetHook:null,agentBindingCapture:null,previewKey:'',peripheralFinishing:false };
+var rec={ mode:'none',startPending:false,timer:0,mappingId:'',triggerSlot:'default', snapshot:null,mappingWasEnabled:null,nativeRestoreSnapshot:null, schemeSwitchSnapshot:'',captureGen:0,suppressAutoEnableOnce:false,beforeFinishTargetHook:null,agentBindingCapture:null,previewKey:'',peripheralFinishing:false };
   function acousticCalibrating(){
     var wake=global.OneToneVoiceWakeAcoustic;
     var control=global.OneToneVoiceControlAcoustic;
@@ -538,7 +538,21 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     if(rec.mode!=='none'||rec.startPending) return Promise.resolve(false);
     if(blockIfAcousticCalibrating()) return Promise.resolve(false);
     hooks().ensureConfig();
-    const pin=String(pinnedMappingId||'').trim();
+    var pin=String(pinnedMappingId||'').trim();
+    var triggerSlot='default';
+    try{
+      var P=global.OneToneKeysChannelCommandPicker;
+      if(P&&typeof P.activeTriggerSlot==='function'){
+        triggerSlot=String(P.activeTriggerSlot()||'default');
+      }
+      if(triggerSlot==='peer-empty'){
+        hooks().toast(t('keysRecordTriggerNeedPeer','请先在「我录的键」里选一条动作，再录触发键'));
+        return Promise.resolve(false);
+      }
+      if(!pin&&P&&typeof P.activeTriggerMappingId==='function'){
+        pin=String(P.activeTriggerMappingId()||'').trim();
+      }
+    }catch(_){}
     hooks().resetTargetCapture();
     const fallback=(OneToneMappingCore.selected()&&OneToneMappingCore.selected().id)
       ||(state.config&&state.config.mappings&&state.config.mappings[0]&&state.config.mappings[0].id)
@@ -556,25 +570,27 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
         String(pref.bindingRef||'').trim()===pin
       );
     }
-    if(pin&&!pinIsCustomKeyMatch){
+    if(pin&&!pinIsCustomKeyMatch&&triggerSlot!=='oral'){
       state.selectedMappingId=pin;
     }else if(!state.selectedMappingId&&fallback){
       state.selectedMappingId=fallback;
     }
+    rec.triggerSlot=triggerSlot==='oral'?'oral':'default';
     rec.mappingId=pin||state.selectedMappingId||fallback||'';
     beginRecordSnapshot();
     hooks().armTriggerLeftClickIgnore(900);
     rec.captureGen++;
     const captureGen=rec.captureGen;
     const m=OneToneMappingCore.recording();
-    if(m){
+    if(m&&rec.triggerSlot!=='oral'){
       m.triggerSource=null; m.sourceKey=''; m.sourceTime='';
     }
     rec.startPending=true;
     setRecording('trigger');
-    hooks().pushLog('[record] start trigger mapping='+String(rec.mappingId||''));
+    hooks().pushLog('[record] start trigger mapping='+String(rec.mappingId||'')+' slot='+rec.triggerSlot);
     hooks().pushLog(t('logStartTrigger'));
-    return invokeStartRecording(rec.mappingId,'trigger').then(function(ok){
+    var startMode=rec.triggerSlot==='oral'?'oralTrigger':'trigger';
+    return invokeStartRecording(rec.mappingId,startMode).then(function(ok){
       rec.startPending=false;
       if(!ok||captureGen!==rec.captureGen){
         if(captureGen===rec.captureGen){
@@ -582,6 +598,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
           restoreMappingEnabledAfterRecordCancel(m);
           rec.snapshot=null;
           rec.mappingId='';
+          rec.triggerSlot='default';
           renderRecordCancelBar();
         }
         return false;
@@ -763,6 +780,19 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     if(!m) return false;
     const mode=msg.mode||'trigger';
     const key=msg.key||'';
+    if(mode==='oralTrigger'||rec.triggerSlot==='oral'){
+      var trigOral=hooks().normalizeTriggerKey(key);
+      if(trigOral==='RAlt') trigOral='AutoTrigger';
+      if(!hooks().isAllowedTriggerKey(key||trigOral)) return false;
+      var Picker=global.OneToneKeysChannelCommandPicker;
+      if(Picker&&typeof Picker.setOralTriggerKey==='function'){
+        Picker.setOralTriggerKey(m,trigOral);
+      }else{
+        m.oralCommandScheme=m.oralCommandScheme&&typeof m.oralCommandScheme==='object'?m.oralCommandScheme:{items:{}};
+        m.oralCommandScheme.triggerKey=trigOral;
+      }
+      return true;
+    }
     if(mode==='target'){
       const combo=hooks().sanitizeTargetCombo(key);
       if(!combo) return false;
@@ -885,8 +915,14 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       }
     }
     if(rec.agentBindingCapture) return commitAgentBindingCapture(k, rawSourceKey, source);
-    var prevTrig=hooks().normalizeTriggerKey(m.triggerKey||'');
+    var isOralSlot=rec.triggerSlot==='oral';
+    var prevTrig=hooks().normalizeTriggerKey(
+      isOralSlot
+        ?(m.oralCommandScheme&&m.oralCommandScheme.triggerKey)||''
+        :(m.triggerKey||'')
+    );
     var appId=String(m.appTargetId||'').trim();
+    if(!isOralSlot){
     var existingOther=
       OneToneMappingCore.findMappingByAppAndTrigger
         ?OneToneMappingCore.findMappingByAppAndTrigger(appId,k,m.id)
@@ -908,6 +944,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
       armLocalCaptureGuard();
       rec.snapshot=null;
       rec.mappingId='';
+      rec.triggerSlot='default';
       clearRecordMappingGuard();
       clearRecTimer();
       setRecording('none');
@@ -938,6 +975,31 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
         }
       }
     }
+    }
+    if(isOralSlot){
+      // Backend used to stomp habit.triggerKey; restore dictation key before save/flush.
+      if(rec.snapshot&&rec.snapshot.mappingTrigger!=null){
+        m.triggerKey=String(rec.snapshot.mappingTrigger||'');
+      }
+      var Picker=global.OneToneKeysChannelCommandPicker;
+      if(Picker&&typeof Picker.setOralTriggerKey==='function'){
+        Picker.setOralTriggerKey(m,k);
+      }else{
+        m.oralCommandScheme=m.oralCommandScheme&&typeof m.oralCommandScheme==='object'?m.oralCommandScheme:{items:{}};
+        m.oralCommandScheme.triggerKey=k;
+      }
+      // Keep editor buffer on dictation key so flushAllEditor cannot overwrite 听写.
+      if(OneToneMappingCore.isSelected(m.id)){
+        hooks().setEditorTriggerKey(m.triggerKey||'');
+      }
+      var dictNow=hooks().normalizeTriggerKey(m.triggerKey||'');
+      if(dictNow&&dictNow===k){
+        hooks().toast(t(
+          'keysOralSameAsDictation',
+          '口头键与听写键相同（{key}）：按下会优先开口头收听。请在左上角改录一把不同的键。'
+        ).replace('{key}',hooks().friendlyKeyName?hooks().friendlyKeyName(k):k));
+      }
+    }else{
     m.triggerKey=k;
     if(source){
       m.triggerSource=source;
@@ -954,7 +1016,15 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     applyCapturedTriggerMode(m, opts&&opts.triggerMode);
     if(OneToneMappingCore.isSelected(m.id)) hooks().setEditorTriggerKey(k);
     m.label=k+' → '+(OneToneMappingCore.editorTarget(m)||'?');
-    if(!prevTrig&&!String(m.group||'').trim()){
+    var oralNow=String((m.oralCommandScheme&&m.oralCommandScheme.triggerKey)||'').trim();
+    if(oralNow&&hooks().normalizeTriggerKey(oralNow)===k){
+      hooks().toast(t(
+        'keysOralSameAsDictation',
+        '口头键与听写键相同（{key}）：按下会优先开口头收听。请在左上角改录一把不同的键。'
+      ).replace('{key}',hooks().friendlyKeyName?hooks().friendlyKeyName(k):k));
+    }
+    }
+    if(!isOralSlot&&!prevTrig&&!String(m.group||'').trim()){
       try{
         var appLabel=appId||'';
         if(appId){
@@ -972,6 +1042,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
     hooks().pushLog(t('logTriggerDone')+hooks().friendlyKeyName(k));
     rec.snapshot=null;
     rec.mappingId='';
+    rec.triggerSlot='default';
     clearRecordMappingGuard();
     clearRecTimer();
     setRecording('none');
@@ -1188,6 +1259,7 @@ var rec={ mode:'none',startPending:false,timer:0,mappingId:'', snapshot:null,map
 
   global.OneToneMappingRecording={
     mode:function(){ return rec.mode; }, setMode:function(v){ rec.mode=v; },
+    triggerSlot:function(){ return rec.triggerSlot||'default'; },
     previewKey:function(){ return rec.previewKey||''; },
     mappingId:function(){ return rec.mappingId; }, setMappingId:function(v){ rec.mappingId=v; },
     setSuppressAutoEnableOnce:function(v){ rec.suppressAutoEnableOnce=!!v; },

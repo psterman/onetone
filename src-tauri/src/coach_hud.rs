@@ -438,6 +438,8 @@ mod tests {
             codex_micro_pad: None,
             time_machine_workspace: String::new(),
         capture_hero_ref: None,
+        gesture_modes: None,
+        oral_command_scheme: None,
         target_actions: vec![],
         }
     }

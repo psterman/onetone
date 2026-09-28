@@ -382,6 +382,8 @@
     if(m.cameraOverride===undefined) m.cameraOverride=null;
     if(!Array.isArray(m.voiceCommands)) m.voiceCommands=[];
     if(!Array.isArray(m.acousticVoiceCommands)) m.acousticVoiceCommands=[];
+    if(!m.oralCommandScheme || typeof m.oralCommandScheme!=='object') m.oralCommandScheme={items:{}};
+    if(!m.oralCommandScheme.items || typeof m.oralCommandScheme.items!=='object') m.oralCommandScheme.items={};
     if(m.timeMachineWorkspace===undefined) m.timeMachineWorkspace='';
     if(m.captureHeroRef===undefined) m.captureHeroRef=null;
   }

@@ -15,8 +15,11 @@
     { id: '', zh: '全部', en: 'All' },
     { id: 'key', zh: '按键', en: 'Keys' },
     { id: 'voice', zh: '语音', en: 'Voice' },
-    { id: 'softPad', zh: '虚拟键盘', en: 'Soft Pad' }
+    { id: 'softPad', zh: '虚拟键盘', en: 'Soft Pad' },
+    { id: 'prompt', zh: '一词注入', en: 'Inject' }
   ];
+  var PROMPT_TOKEN_PREFIX = 'promptInject:';
+  var RUN_SEQ_TOKEN = 'agent:runTargetSequence';
   var BINDKEY_SCENE = {
     deliberateBlink: 'begin',
     openPalm: 'begin',
@@ -34,7 +37,8 @@
     privacyScreen: 'general',
     pauseVoice: 'general',
     resumeVoice: 'general',
-    lowPowerMode: 'general'
+    lowPowerMode: 'general',
+    toggleOralListen: 'begin'
   };
 
   var openOpts = null;
@@ -153,8 +157,67 @@
   }
 
   function actionLabel(token) {
+    var raw = String(token || '');
+    if (raw.indexOf(PROMPT_TOKEN_PREFIX) === 0) {
+      var peerId = raw.slice(PROMPT_TOKEN_PREFIX.length);
+      var Picker = global.OneToneKeysChannelCommandPicker;
+      try {
+        var maps = Array.isArray(cfg().mappings) ? cfg().mappings : [];
+        var peer = null;
+        for (var i = 0; i < maps.length; i++) {
+          if (maps[i] && String(maps[i].id) === peerId) {
+            peer = maps[i];
+            break;
+          }
+        }
+        if (peer) {
+          var name = String(peer.label || '').trim();
+          var body =
+            Picker && Picker.promptTextFromMapping
+              ? String(Picker.promptTextFromMapping(peer) || '').trim()
+              : '';
+          if (!name || name === body || name.length > 18) {
+            name = body.length > 18 ? body.slice(0, 18) + '…' : body || peerId;
+          }
+          return name;
+        }
+      } catch (_) {}
+      return t('voiceIntentPrompt', '一词注入');
+    }
     if (api() && api().actionLabel) return api().actionLabel(token);
     return String(token || 'none');
+  }
+
+  function listPromptInjectTokens(mappingId, query) {
+    var Picker = global.OneToneKeysChannelCommandPicker;
+    if (!Picker || typeof Picker.listPromptPeersForApp !== 'function') return [];
+    var habit = null;
+    var maps = Array.isArray(cfg().mappings) ? cfg().mappings : [];
+    for (var i = 0; i < maps.length; i++) {
+      if (maps[i] && String(maps[i].id) === String(mappingId || '')) {
+        habit = maps[i];
+        break;
+      }
+    }
+    var appId = habit ? String(habit.appTargetId || '').trim() : '';
+    if (!appId) return [];
+    var peers = Picker.listPromptPeersForApp(appId) || [];
+    var q = String(query || '')
+      .trim()
+      .toLowerCase();
+    var out = [];
+    for (var pi = 0; pi < peers.length; pi++) {
+      var pm = peers[pi];
+      if (!pm || !pm.id) continue;
+      if (Picker.isPromptInjectMapping && !Picker.isPromptInjectMapping(pm)) continue;
+      var text =
+        Picker.promptTextFromMapping ? String(Picker.promptTextFromMapping(pm) || '').trim() : '';
+      if (!text) continue;
+      var label = String(pm.label || '').trim() || text;
+      if (q && (label + ' ' + text).toLowerCase().indexOf(q) < 0) continue;
+      out.push(PROMPT_TOKEN_PREFIX + String(pm.id));
+    }
+    return out;
   }
 
   function normalizeChannel(ch) {
@@ -176,11 +239,12 @@
     if (ch === 'voice') return t('cameraPickerChVoice', '语音');
     if (ch === 'softPad') return t('cameraPickerChSoftPad', 'Soft Pad');
     if (ch === 'camera') return t('cameraPickerChCamera', '摄像头');
+    if (ch === 'prompt') return t('voiceIntentPrompt', '一词注入');
     return ch;
   }
 
   function channelIconSvg(ch) {
-    if (ch === 'voice')
+    if (ch === 'prompt' || ch === 'voice')
       return '<svg class="cap-channel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>';
     if (ch === 'softPad')
       return '<svg class="cap-channel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01M8 15h8"/></svg>';
@@ -381,14 +445,38 @@
   }
 
   function buildActionRows(bindKey, mappingId, sceneTab, query, currentToken, hintMap, showAll, options, channelTab) {
+    var ch = String(channelTab || '');
+    if (ch === 'prompt') {
+      var promptToks = listPromptInjectTokens(mappingId, query);
+      return {
+        rows: promptToks.map(function (tok) {
+          return {
+            token: tok,
+            label: actionLabel(tok),
+            scene: 'general',
+            requiresConfirm: false,
+            crossHint: t('cameraPickerPromptHint', '写入模板并发送'),
+            recency: 0
+          };
+        }),
+        total: promptToks.length,
+        showAll: true
+      };
+    }
     var uniq = collectCandidateTokens(bindKey, options, query);
+    // Surface 一词注入 in「全部」so users find the same templates as Keys / Soft Pad.
+    if (!ch) {
+      listPromptInjectTokens(mappingId, query).forEach(function (tok) {
+        if (uniq.indexOf(tok) < 0) uniq.unshift(tok);
+      });
+    }
     var q = String(query || '')
       .trim()
       .toLowerCase();
-    var ch = String(channelTab || '');
     var recent = recencyMap(bindKey);
     var filtered = uniq.filter(function (tok) {
       if (tok === 'none') return false;
+      if (String(tok).indexOf(PROMPT_TOKEN_PREFIX) === 0) return true;
       if (ch && !tokenBoundOnChannel(tok, hintMap, ch)) return false;
       if (q) {
         var hay = (actionLabel(tok) + ' ' + tok + ' ' + canonicalActionId(tok)).toLowerCase();
@@ -408,6 +496,7 @@
     function score(tok) {
       var s = 0;
       if (tokensMatch(tok, currentToken)) s += 1000;
+      if (String(tok).indexOf(PROMPT_TOKEN_PREFIX) === 0) s += 300;
       if (formatCrossHint(tok, hintMap)) s += 200;
       if (recommended.indexOf(tok) >= 0) s += 100;
       if (recencyOf(recent, tok)) s += 10;
@@ -426,12 +515,15 @@
     var slice = showAll || q || ch ? filtered : filtered.slice(0, DEFAULT_LIMIT);
     return {
       rows: slice.map(function (tok) {
+        var isPrompt = String(tok).indexOf(PROMPT_TOKEN_PREFIX) === 0;
         return {
           token: tok,
           label: actionLabel(tok),
-          scene: tokenScene(tok),
-          requiresConfirm: requiresConfirm(tok),
-          crossHint: formatCrossHint(tok, hintMap, channelTab),
+          scene: isPrompt ? 'general' : tokenScene(tok),
+          requiresConfirm: isPrompt ? false : requiresConfirm(tok),
+          crossHint: isPrompt
+            ? t('cameraPickerPromptHint', '写入模板并发送')
+            : formatCrossHint(tok, hintMap, channelTab),
           recency: recencyOf(recent, tok)
         };
       }),
@@ -464,6 +556,8 @@
       options,
       channelTab
     );
+    var counts = channelCounts(hintMap) || {};
+    counts.prompt = listPromptInjectTokens(mappingId, '').length;
     return {
       bindKey: bindKey,
       currentToken: currentToken,
@@ -474,7 +568,7 @@
       candidates: list.rows,
       totalCandidates: list.total,
       showAll: list.showAll,
-      channelCounts: channelCounts(hintMap),
+      channelCounts: counts,
       crossHints: hintMap,
       apps: opts.apps || uiState.apps || buildApps()
     };
@@ -838,7 +932,7 @@
   }
 
   function selectToken(token) {
-    token = api() && api().normalizeAction ? api().normalizeAction(token) : String(token || 'none');
+    token = String(token || 'none');
     var app = null;
     for (var i = 0; i < uiState.apps.length; i++) {
       if (uiState.apps[i].mappingId === uiState.mappingId) {
@@ -846,6 +940,33 @@
         break;
       }
     }
+    if (token.indexOf(PROMPT_TOKEN_PREFIX) === 0) {
+      var peerId = token.slice(PROMPT_TOKEN_PREFIX.length);
+      var Picker = global.OneToneKeysChannelCommandPicker;
+      var ok =
+        Picker &&
+        typeof Picker.applyPromptInjectToHabitSequence === 'function' &&
+        Picker.applyPromptInjectToHabitSequence(uiState.mappingId, peerId);
+      if (!ok) {
+        close();
+        return;
+      }
+      persistSelection(uiState.mappingId, !!(app && app.isBaseline), uiState.bindKey, RUN_SEQ_TOKEN)
+        .then(function () {
+          bumpRecency(uiState.bindKey, RUN_SEQ_TOKEN);
+          close();
+        })
+        .catch(function () {
+          if (api() && api().persist) {
+            var patch = {};
+            patch[uiState.bindKey] = RUN_SEQ_TOKEN;
+            api().persist(patch);
+          }
+          close();
+        });
+      return;
+    }
+    token = api() && api().normalizeAction ? api().normalizeAction(token) : token;
     persistSelection(uiState.mappingId, !!(app && app.isBaseline), uiState.bindKey, token)
       .then(function () {
         bumpRecency(uiState.bindKey, token);

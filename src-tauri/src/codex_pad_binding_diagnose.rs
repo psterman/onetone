@@ -506,6 +506,8 @@ mod tests {
             agent_bindings: crate::agent::bindings_build::build_codex_micro_13_bindings("zh-CN"),
             time_machine_workspace: String::new(),
         capture_hero_ref: None,
+        gesture_modes: None,
+        oral_command_scheme: None,
         target_actions: vec![],
         }
     }

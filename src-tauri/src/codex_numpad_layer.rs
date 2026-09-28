@@ -1957,6 +1957,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             });
         let result = ensure_codex_pad_ready(&mut cfg, "zh-CN");
@@ -2030,6 +2032,8 @@ mod tests {
             codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             };
         let (slot, route_changed) = {
@@ -2109,6 +2113,8 @@ mod tests {
             codex_micro_pad: Some(default_codex_micro_pad()),
             time_machine_workspace: String::new(),
         capture_hero_ref: None,
+        gesture_modes: None,
+        oral_command_scheme: None,
         target_actions: vec![],
         };
         let before = m.agent_bindings.len();
@@ -2175,6 +2181,8 @@ mod tests {
             codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             };
         let mut cfg = VoiceConfig {
@@ -2254,6 +2262,8 @@ mod tests {
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
         capture_hero_ref: None,
+        gesture_modes: None,
+        oral_command_scheme: None,
         target_actions: vec![],
         };
         assert!(heal_cursor_pad_ag_chrome(&mut m));
@@ -2315,6 +2325,8 @@ mod tests {
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
         capture_hero_ref: None,
+        gesture_modes: None,
+        oral_command_scheme: None,
         target_actions: vec![],
         };
         assert!(heal_cursor_pad_for_save(&mut m, "zh-CN"));
@@ -2371,6 +2383,8 @@ mod tests {
                     codex_micro_pad: Some(default_codex_micro_pad()),
                     time_machine_workspace: String::new(),
                 capture_hero_ref: None,
+                gesture_modes: None,
+                oral_command_scheme: None,
                 target_actions: vec![],
                 },
                 MappingEntry {
@@ -2420,6 +2434,8 @@ mod tests {
                     codex_micro_pad: Some(pad),
                     time_machine_workspace: String::new(),
                 capture_hero_ref: None,
+                gesture_modes: None,
+                oral_command_scheme: None,
                 target_actions: vec![],
                 },
             ],
@@ -2490,6 +2506,8 @@ mod tests {
                 codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             }],
             ..VoiceConfig::default()
@@ -2545,6 +2563,8 @@ mod tests {
                 codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             }],
             ..VoiceConfig::default()
@@ -2630,6 +2650,8 @@ mod tests {
             codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             }];
         sync_hook_cache(&cfg);
@@ -2687,6 +2709,8 @@ mod tests {
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
         capture_hero_ref: None,
+        gesture_modes: None,
+        oral_command_scheme: None,
         target_actions: vec![],
         }];
         sync_hook_cache(&cfg);

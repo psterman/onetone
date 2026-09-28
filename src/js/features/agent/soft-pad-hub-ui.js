@@ -1402,7 +1402,7 @@
     var map = {
       ime: ['keysChannelTabIme', '听写方式'],
       key: ['keysChannelTabKey', '我录的键'],
-      voice: ['keysChannelTabVoice', '口头指令'],
+      voice: ['keysChannelTabVoice', '口头命令'],
       cursor: ['keysChannelTabCursor', '软件自带'],
       softPad: ['keysChannelTabSoftPad', '屏幕按钮'],
       camera: ['keysChannelTabCamera', '手势']

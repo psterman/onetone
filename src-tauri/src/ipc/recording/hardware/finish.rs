@@ -30,48 +30,49 @@ pub(crate) fn finish_hardware_capture(
     };
 
     let is_trigger = matches!(target.mode, RecordMode::Trigger);
+    let is_oral_trigger = matches!(target.mode, RecordMode::OralTrigger);
     let is_target = matches!(target.mode, RecordMode::Target);
     let is_agent_binding = matches!(target.mode, RecordMode::AgentBinding);
     let is_pad_bind = matches!(target.mode, RecordMode::PadBind);
 
-    let key = if is_trigger || is_agent_binding || is_pad_bind {
+    let key = if is_trigger || is_oral_trigger || is_agent_binding || is_pad_bind {
         sanitize_trigger_capture(key)
     } else {
         key.to_string()
     };
 
-    if (is_trigger || is_agent_binding) && is_spurious_trigger_capture(&key) {
+    if (is_trigger || is_oral_trigger || is_agent_binding) && is_spurious_trigger_capture(&key) {
         emit_record_probe(window, "drop", &key, "spurious_trigger_capture");
         let ack = serde_json::json!({
             "type": "mvp_record_rejected",
             "reason": "spurious_trigger_capture",
             "key": key,
             "mappingId": target.mapping_id,
-            "mode": if is_agent_binding { "agentBinding" } else { "trigger" },
+            "mode": if is_agent_binding { "agentBinding" } else if is_oral_trigger { "oralTrigger" } else { "trigger" },
         });
         window.emit("to_js", &ack).ok();
         return;
     }
 
-    if is_trigger && is_recognition_key_echo(state, &target.mapping_id, &key) {
+    if (is_trigger || is_oral_trigger) && is_recognition_key_echo(state, &target.mapping_id, &key) {
         emit_record_probe(window, "drop", &key, "recognition_key_echo");
         let ack = serde_json::json!({
             "type": "mvp_record_echo",
             "key": key,
             "mappingId": target.mapping_id,
-            "mode": "trigger",
+            "mode": if is_oral_trigger { "oralTrigger" } else { "trigger" },
         });
         window.emit("to_js", &ack).ok();
         return;
     }
 
-    if is_trigger && crate::config::physical_key_owned_by_pads(&state.cfg.lock(), &key, &target.mapping_id) {
+    if (is_trigger || is_oral_trigger) && crate::config::physical_key_owned_by_pads(&state.cfg.lock(), &key, &target.mapping_id) {
         emit_record_probe(window, "drop", &key, "softpad_occupied");
         let ack = serde_json::json!({
             "type": "mvp_record_echo",
             "key": key,
             "mappingId": target.mapping_id,
-            "mode": "trigger",
+            "mode": if is_oral_trigger { "oralTrigger" } else { "trigger" },
             "reason": "softpad_occupied",
         });
         window.emit("to_js", &ack).ok();
@@ -105,13 +106,13 @@ pub(crate) fn finish_hardware_capture(
     }
 
     let physical_key = key.clone();
-    let captured = if is_trigger || is_agent_binding {
+    let captured = if is_trigger || is_oral_trigger || is_agent_binding {
         normalize_record_key(&key)
     } else {
         key.to_string()
     };
 
-    if is_trigger || is_agent_binding {
+    if is_trigger || is_oral_trigger || is_agent_binding {
         if !is_allowed_trigger(&captured) {
             let ack = serde_json::json!({
                 "type": "mvp_record_rejected",
@@ -146,6 +147,44 @@ pub(crate) fn finish_hardware_capture(
         });
         window.emit("to_js", &ack).ok();
         emit_record_probe(window, "commit", &physical_key, "padBind");
+        crate::tray::refresh_tray_visual_forced(window.app_handle());
+        return;
+    }
+
+    if is_oral_trigger {
+        {
+            let mut cfg = state.cfg.lock();
+            crate::ipc::recording::apply::apply_oral_trigger_capture(
+                &mut cfg,
+                &target.mapping_id,
+                &captured,
+                &physical_key,
+            );
+        }
+        if let Some(ref mgr) = *state.hotkey_mgr.lock() {
+            mgr.stop_recording();
+            let cfg = state.cfg.lock();
+            mgr.bind_all(&cfg.bindings());
+            mgr.bind_modifier_watches(&cfg.agent_modifier_watch_bindings());
+        }
+        persist_and_rebind(state, window, "oral_trigger_recorded");
+        let oral_key = {
+            let cfg = state.cfg.lock();
+            cfg.find_mapping_by_id(&target.mapping_id)
+                .map(|m| m.oral_trigger_key().to_string())
+                .unwrap_or_else(|| captured.clone())
+        };
+        let ack = serde_json::json!({
+            "type": "mvp_key_captured",
+            "key": oral_key,
+            "physicalKey": physical_key,
+            "mappingId": target.mapping_id,
+            "mode": "oralTrigger",
+            "triggerMode": "tap",
+            "backendCommitted": true,
+        });
+        window.emit("to_js", &ack).ok();
+        emit_record_probe(window, "commit", &oral_key, "oralTrigger");
         crate::tray::refresh_tray_visual_forced(window.app_handle());
         return;
     }

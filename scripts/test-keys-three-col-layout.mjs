@@ -30,7 +30,11 @@ assert.ok(html.includes('keys-work-tag__modes'), 'modes live in work-tag (not ra
   assert.ok(railStart > 0 && workTag > railStart, 'work tag after rail');
   const railBlock = html.slice(railStart, workTag);
   assert.ok(!railBlock.includes('keysTriggerModeHost'), 'modes host not inside rail');
-  assert.ok(html.slice(workTag, workTag + 800).includes('keysTriggerModeHost'), 'modes host in work tag');
+  assert.ok(html.slice(workTag, workTag + 1600).includes('keysTriggerModeHost'), 'modes host in work tag');
+  assert.ok(html.includes('id="keysChannelTabIme"'), 'dictation rail tab');
+  assert.ok(html.includes('id="keysChannelTabVoice"'), 'oral command rail tab');
+  assert.ok(!html.includes('id="keysChannelTabSpeak"'), 'no merged speak rail tab');
+  assert.ok(!html.includes('id="keysSpeakTabs"'), 'no speak sibling tabs');
 }
 assert.ok(
   /keys-scene-actions__foot[\s\S]*?id="keysSceneActionsAdd"/.test(html),

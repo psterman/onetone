@@ -185,6 +185,18 @@ pub(crate) fn overlay_runtime_gate_reason_flags(
 fn overlay_runtime_gate_reason(state: &AppState) -> Option<&'static str> {
     let (setup_open, settings_open, verify_active, recording_active) =
         overlay_runtime_gate_flags(state);
+    // Oral listen arms Soft Pad as the "I'm listening" chrome. Keys drawer must not
+    // hide it — otherwise 侧键 opens a session with zero visual (session_begin in logs,
+    // Soft Pad stays gone).
+    if crate::voice_command_session::is_armed() {
+        if setup_open {
+            return Some("setup_open");
+        }
+        if recording_active {
+            return Some("recording_active");
+        }
+        return None;
+    }
     overlay_runtime_gate_reason_flags(setup_open, settings_open, verify_active, recording_active)
 }
 
@@ -504,6 +516,13 @@ fn stable_overlay_host_at(raw: bool, now: Instant, force_hide_onetone: bool) -> 
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct OralListenCommandCard {
+    pub name: String,
+    pub say: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CodexMicroOverlayCell {
     pub micro_key_id: String,
     pub label: String,
@@ -679,6 +698,19 @@ pub struct CodexMicroOverlaySnapshot {
     /// Scheme A panel: short send/cancel flow under the listen hint.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub cursor_beginner_flow_hint: String,
+    /// Oral-command arm (侧键 / Soft Pad mic) — Soft Pad listen chrome.
+    #[serde(default)]
+    pub oral_listen_armed: bool,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub oral_listen_hint: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub oral_listen_flow_hint: String,
+    /// Soft 槽 micro keys that accept oral phrases while armed.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub oral_listen_micro_keys: Vec<String>,
+    /// Soft 槽 cards for listen strip: `{name, say}`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub oral_listen_commands: Vec<OralListenCommandCard>,
     /// Live Vosk partial (mirrors diagnostic / home).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub voice_heard_partial: String,
@@ -2524,12 +2556,42 @@ pub fn build_snapshot(state: &AppState) -> CodexMicroOverlaySnapshot {
     let mut snapshot = build_snapshot_from_cfg(&cfg);
     apply_voice_heard(&mut snapshot, state);
     apply_activation_hub(&mut snapshot, state, &cfg);
+    apply_oral_listen_chrome(&mut snapshot, &cfg);
     snapshot.pending_confirm = crate::soft_pad_voice_pending::public_snapshot();
     if let Some(reason) = overlay_runtime_gate_reason(state) {
         snapshot.visible = false;
         snapshot.visible_reason = reason.to_string();
     }
     snapshot
+}
+
+fn apply_oral_listen_chrome(snapshot: &mut CodexMicroOverlaySnapshot, cfg: &VoiceConfig) {
+    if !crate::voice_command_session::is_armed() {
+        snapshot.oral_listen_armed = false;
+        snapshot.oral_listen_hint.clear();
+        snapshot.oral_listen_flow_hint.clear();
+        snapshot.oral_listen_micro_keys.clear();
+        snapshot.oral_listen_commands.clear();
+        return;
+    }
+    snapshot.oral_listen_armed = true;
+    snapshot.oral_listen_hint = crate::voice_command_session::listen_hint(cfg);
+    snapshot.oral_listen_flow_hint = crate::voice_command_session::listen_flow_hint();
+    snapshot.oral_listen_micro_keys = crate::voice_command_session::listen_micro_keys(cfg);
+    snapshot.oral_listen_commands = crate::voice_command_session::listen_command_cards(cfg)
+        .into_iter()
+        .map(|(name, say)| OralListenCommandCard { name, say })
+        .collect();
+    // Drive Soft Pad listening skin (blue aura + ACT10 emphasize).
+    if snapshot.pad_status.trim().is_empty() || snapshot.pad_status == "idle" {
+        snapshot.pad_status = "listening".into();
+    }
+    // Prefer oral caption over beginner arm copy when both could show.
+    if !snapshot.oral_listen_hint.is_empty() {
+        snapshot.cursor_beginner_arm_hint = snapshot.oral_listen_hint.clone();
+        snapshot.cursor_beginner_flow_hint = snapshot.oral_listen_flow_hint.clone();
+        snapshot.cursor_beginner_armed = true;
+    }
 }
 
 fn apply_activation_hub(
@@ -2924,6 +2986,11 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             ),
             cursor_beginner_arm_hint: crate::cursor_beginner::arm_hint(cfg),
             cursor_beginner_flow_hint: crate::cursor_beginner::flow_hint(cfg),
+            oral_listen_armed: false,
+            oral_listen_hint: String::new(),
+            oral_listen_flow_hint: String::new(),
+            oral_listen_micro_keys: Vec::new(),
+            oral_listen_commands: Vec::new(),
             voice_heard_partial: String::new(),
             voice_heard_final: String::new(),
             voice_heard_matched: false,
@@ -3483,6 +3550,11 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         ),
         cursor_beginner_arm_hint: crate::cursor_beginner::arm_hint(cfg),
         cursor_beginner_flow_hint: crate::cursor_beginner::flow_hint(cfg),
+        oral_listen_armed: false,
+        oral_listen_hint: String::new(),
+        oral_listen_flow_hint: String::new(),
+        oral_listen_micro_keys: Vec::new(),
+        oral_listen_commands: Vec::new(),
         voice_heard_partial: String::new(),
         voice_heard_final: String::new(),
         voice_heard_matched: false,
@@ -3607,7 +3679,7 @@ fn act_context_for(micro_key_id: &str, ui_status: &str) -> (String, String) {
             _ => (String::new(), String::new()),
         },
         "listening" => match id {
-            "ACT10" => ("emphasize".into(), "听写中".into()),
+            "ACT10" => ("emphasize".into(), "收听中".into()),
             "ACT06" | "ACT07" | "ACT12" => ("dim".into(), String::new()),
             _ => (String::new(), String::new()),
         },
@@ -5037,6 +5109,17 @@ mod tests {
     }
 
     #[test]
+    fn oral_armed_clears_settings_gate_via_is_armed() {
+        // Flags helper still reports settings_open; runtime gate consults is_armed().
+        assert_eq!(
+            overlay_runtime_gate_reason_flags(false, true, false, false),
+            Some("settings_open")
+        );
+        // When not armed, settings still hide Soft Pad (regression lock).
+        assert!(!crate::voice_command_session::is_armed());
+    }
+
+    #[test]
     fn force_open_picks_non_codex_soft_pad_when_onetone_fg() {
         let _iso = isolate_status_globals();
         test_clear_fg_overrides();
@@ -5424,6 +5507,8 @@ mod tests {
             agent_bindings: vec![],
             time_machine_workspace: String::new(),
         capture_hero_ref: None,
+        gesture_modes: None,
+        oral_command_scheme: None,
         target_actions: vec![],
         }
     }

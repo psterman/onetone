@@ -1201,6 +1201,24 @@ pub fn fire_codex_micro_pad_key(
         return serde_json::json!({ "ok": false, "reason": "unbound" });
     };
 
+    // Soft Pad mic (pushToTalk) → on-demand 口头指令 listen, not vendor hold-to-talk.
+    if route.slot_id.eq_ignore_ascii_case("pushToTalk") {
+        if !key_down {
+            return serde_json::json!({
+                "ok": true,
+                "reason": "voice_command_keyup",
+                "slotId": route.slot_id,
+            });
+        }
+        crate::voice_command_session::toggle_session(state, &app, &route.mapping_id);
+        return serde_json::json!({
+            "ok": true,
+            "reason": "voice_command_toggle",
+            "slotId": route.slot_id,
+            "armed": crate::voice_command_session::is_armed(),
+        });
+    }
+
     if route.is_hold {
         let from_overlay = is_overlay_pad_window(window);
         if !key_down {
@@ -1520,6 +1538,121 @@ fn try_dispatch_agent_modifier_keyup(
     true
 }
 
+/// Dedicated oral arm key → toggle listen session (independent of 听写 triggerKey).
+fn try_dispatch_oral_trigger(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    event: &crate::press_gesture::PhysicalKeyEvent,
+) -> bool {
+    if event.is_keyup {
+        return false;
+    }
+    let mapping_id = {
+        let cfg = state.cfg.lock();
+        cfg.find_mapping_for_oral_event(event)
+            .map(|m| m.id.clone())
+    };
+    let Some(mapping_id) = mapping_id else {
+        return false;
+    };
+    let app = window.app_handle();
+    crate::voice_command_session::toggle_session(state, &app, &mapping_id);
+    true
+}
+
+/// Feed multi-scheme gesture classifier when mapping has `gestureModes`.
+/// Returns true if this event was consumed by the scheme path.
+fn try_feed_scheme_gesture(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    event: &crate::press_gesture::PhysicalKeyEvent,
+) -> bool {
+    let mapping_uses = {
+        let cfg = state.cfg.lock();
+        cfg.find_mapping_for_event(event)
+            .map(|m| m.uses_multi_gesture_schemes())
+            .unwrap_or(false)
+    };
+    if !mapping_uses {
+        return false;
+    }
+
+    let now = std::time::Instant::now();
+    let mut detector = state.scheme_gesture.lock();
+    let device = event.device.as_deref();
+    let result = if event.is_keyup {
+        detector.on_keyup(&event.key, device, now)
+    } else {
+        detector.on_keydown(&event.key, device, now)
+    };
+    drop(detector);
+
+    match result {
+        Ok(Some(done)) => {
+            dispatch_scheme_gesture(
+                state,
+                window,
+                &done.key,
+                done.device.as_deref(),
+                done.gesture,
+            );
+            true
+        }
+        Ok(None) | Err(_) => true, // consume while waiting / holding
+    }
+}
+
+/// Resolve a completed tap/double/long into dictation inject or 口头指令 session.
+pub fn dispatch_scheme_gesture(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    key: &str,
+    device: Option<&str>,
+    gesture: crate::press_gesture::RecordedGesture,
+) {
+    let (mapping_id, scheme) = {
+        let cfg = state.cfg.lock();
+        let event = crate::press_gesture::PhysicalKeyEvent {
+            is_keyup: false,
+            device: device.map(|d| d.to_string()),
+            key: key.to_string(),
+        };
+        let Some(mapping) = cfg.find_mapping_for_event(&event) else {
+            return;
+        };
+        (
+            mapping.id.clone(),
+            mapping.scheme_for_gesture(gesture.scheme_key()),
+        )
+    };
+
+    match scheme {
+        crate::config::GestureScheme::Off => {}
+        crate::config::GestureScheme::VoiceCommand => {
+            let app = window.app_handle();
+            crate::voice_command_session::toggle_session(
+                state,
+                &app,
+                &mapping_id,
+            );
+        }
+        crate::config::GestureScheme::Dictation => {
+            if *state.paused.lock() {
+                // Dictation still needs classic path; briefly allow via handle after resume? 
+                // Keep simple: inject only when not globally paused.
+                return;
+            }
+            let dispatch = match device {
+                Some(d) if !d.is_empty() => {
+                    crate::press_gesture::format_device_key(d, key)
+                }
+                _ => key.to_string(),
+            };
+            handle_physical_key(state, window, &dispatch);
+        }
+    }
+}
+
 /// 解析物理按键事件，处理长按/双击手势后触发语音。
 pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWindow, raw: &str) {
     if raw.starts_with("codexNumpad:") {
@@ -1538,12 +1671,23 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
     {
         return;
     }
-    if *state.paused.lock() || *state.recording.lock() {
+    if *state.recording.lock() {
         return;
     }
     let event = parse_physical_event(raw);
     if crate::send_guard::blocks_key(&event.key) {
         crate::send_guard::note_blocked();
+        return;
+    }
+    // Oral arm key is channel-private — check before 听写 gesture / dictation inject.
+    if try_dispatch_oral_trigger(state, window, &event) {
+        return;
+    }
+    // Multi-scheme press map can arm 口头指令 even while listen is paused.
+    if try_feed_scheme_gesture(state, window, &event) {
+        return;
+    }
+    if *state.paused.lock() {
         return;
     }
     if event.is_keyup {
@@ -1571,7 +1715,10 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
 
     track_agent_modifier_keydown(state, &event);
 
-    if crate::cursor_beginner::maybe_intercept_side_key_down(&event) {
+    if crate::cursor_beginner::maybe_intercept_side_key_down(
+        &state.cfg.lock(),
+        &event,
+    ) {
         return;
     }
 

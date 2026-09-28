@@ -10,6 +10,8 @@ pub use hardware::{finish_trigger_gesture_capture, handle_hardware_record_key};
 #[derive(Debug, Clone)]
 pub enum RecordMode {
     Trigger,
+    /// Record into `oralCommandScheme.triggerKey` — must not stomp dictation `trigger_key`.
+    OralTrigger,
     Target,
     AgentBinding,
     PadBind,

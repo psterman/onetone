@@ -309,6 +309,7 @@ pub fn profile_for(app_target_id: &str) -> Option<&'static AppChatProfile> {
 }
 
 /// Prefer user-calibrated scheme-B anchor; else built-in profile.
+/// Cursor: left-half calibrations hit the code editor — ignore them.
 pub fn composer_anchor_for_app(
     app: &AppHandle,
     app_target_id: &str,
@@ -322,12 +323,26 @@ pub fn composer_anchor_for_app(
         let cfg = state.cfg.lock();
         if let Some(a) = cfg.voice_end.composer_anchors.get(tid) {
             if let Some(p) = a.active_point() {
+                // Cursor Agent is on the RIGHT. A left/center mark is almost always the editor.
+                if tid == CURSOR_APP_TARGET_ID && p.x < CURSOR_AGENT_MIN_X_RATIO {
+                    crate::app_log::early_line(
+                        "input_aim",
+                        &format!(
+                            "ignore_left_cursor_anchor x={:.3} y={:.3} (use profile)",
+                            p.x, p.y
+                        ),
+                    );
+                    return profile.composer_anchor;
+                }
                 return (p.x, p.y);
             }
         }
     }
     profile.composer_anchor
 }
+
+/// Cursor Agent / chat composer sits on the right; below this is the code editor.
+pub const CURSOR_AGENT_MIN_X_RATIO: f32 = 0.55;
 
 /// Convert absolute screen pixels → client-relative ratios for the app window.
 #[cfg(windows)]
@@ -724,21 +739,31 @@ pub fn focus_composer_for_send(
             "focusedName": probe.focused_name,
             "focusedScore": probe.focused_score,
             "hasKeyboardFocus": probe.has_keyboard_focus,
+            "focusedXRatio": probe.focused_x_ratio,
         }),
     );
-    let mut uia_ok = probe.ok;
-    // Blind accept only when the click actually left keyboard focus on an Edit
-    // (empty-named Cursor Agent box scores ~10). Do not accept SCM / unfocused guesses.
+    // Empty-named Monaco Edit scores ~10 like Agent — only blind-accept if caret is on the RIGHT.
     let can_blind = |p: &UiaFocusProbe| {
-        allow_blind_after_right_click
+        if !(allow_blind_after_right_click
             && p.has_keyboard_focus
             && p.focused_score >= 10
             && !looks_like_scm_input(&p.focused_name)
             && !looks_like_scm_input(&p.best_name)
-            // Filename "input-*.html" scored as composer via substring "input".
             && !looks_like_editor_document(&p.focused_name)
-            && !looks_like_editor_document(&p.best_name)
+            && !looks_like_editor_document(&p.best_name))
+        {
+            return false;
+        }
+        if profile.id == CURSOR_APP_TARGET_ID {
+            return p
+                .focused_x_ratio
+                .is_some_and(|x| x >= CURSOR_AGENT_MIN_X_RATIO)
+                || name_looks_like_agent_composer(&p.focused_name)
+                || name_looks_like_agent_composer(&p.best_name);
+        }
+        true
     };
+    let mut uia_ok = probe.ok && cursor_focus_acceptable(profile.id, &probe);
     if !uia_ok && post_ok && can_blind(&probe) {
         uia_ok = true;
         click_via = "post_accept_edit";
@@ -756,17 +781,17 @@ pub fn focus_composer_for_send(
                 "focusedName": low.focused_name,
                 "focusedScore": low.focused_score,
                 "hasKeyboardFocus": low.has_keyboard_focus,
+                "focusedXRatio": low.focused_x_ratio,
             }),
         );
-        if low.ok || can_blind(&low) {
-            // uia_cursor_low SetFocus must not steal onto editor a11y / tab titles.
-            if !looks_like_editor_document(&low.focused_name)
-                && !looks_like_editor_document(&low.best_name)
-            {
-                probe = low;
-                uia_ok = true;
-                click_via = "post_cursor_low";
-            }
+        if (low.ok || can_blind(&low))
+            && !looks_like_editor_document(&low.focused_name)
+            && !looks_like_editor_document(&low.best_name)
+            && cursor_focus_acceptable(profile.id, &low)
+        {
+            probe = low;
+            uia_ok = true;
+            click_via = "post_cursor_low";
         }
     }
     if !uia_ok {
@@ -791,9 +816,10 @@ pub fn focus_composer_for_send(
                 "focusedName": probe.focused_name,
                 "focusedScore": probe.focused_score,
                 "hasKeyboardFocus": probe.has_keyboard_focus,
+                "focusedXRatio": probe.focused_x_ratio,
             }),
         );
-        uia_ok = probe.ok;
+        uia_ok = probe.ok && cursor_focus_acceptable(profile.id, &probe);
         if !uia_ok && screen_ok && can_blind(&probe) {
             uia_ok = true;
             click_via = "screen_accept_edit";
@@ -803,11 +829,35 @@ pub fn focus_composer_for_send(
             if (low.ok || can_blind(&low))
                 && !looks_like_editor_document(&low.focused_name)
                 && !looks_like_editor_document(&low.best_name)
+                && cursor_focus_acceptable(profile.id, &low)
             {
                 probe = low;
                 uia_ok = true;
                 click_via = "screen_cursor_low";
             }
+        }
+    }
+
+    // Last resort for Cursor: force profile right-side punch if still on editor.
+    if !uia_ok && profile.id == CURSOR_APP_TARGET_ID {
+        let forced = profile.composer_anchor;
+        let force_ok = crate::keyboard::click_client_relative_via_message(hwnd, forced.0, forced.1);
+        std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
+        let low = uia_focus_chat_input_probe(hwnd, 10);
+        crate::app_log::cursor_send_oplog(
+            "click_force_right",
+            serde_json::json!({
+                "ok": force_ok,
+                "anchor": [forced.0, forced.1],
+                "focusedXRatio": low.focused_x_ratio,
+                "focusedName": low.focused_name,
+                "uiaOk": low.ok,
+            }),
+        );
+        if force_ok && (can_blind(&low) || cursor_focus_acceptable(profile.id, &low)) {
+            probe = low;
+            uia_ok = true;
+            click_via = "force_right";
         }
     }
 
@@ -839,6 +889,7 @@ pub fn focus_composer_for_send(
             "bestScore": probe.best_score,
             "focusedName": probe.focused_name,
             "hasKeyboardFocus": probe.has_keyboard_focus,
+            "focusedXRatio": probe.focused_x_ratio,
         }),
     );
 
@@ -846,6 +897,41 @@ pub fn focus_composer_for_send(
         return Err(AppChatWorkflowError::FocusFailed);
     }
     Ok(())
+}
+
+#[cfg(windows)]
+fn name_looks_like_agent_composer(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.contains("agent")
+        || lower.contains("chat")
+        || lower.contains("composer")
+        || lower.contains("ask")
+        || lower.contains("prompt")
+}
+
+/// Cursor: reject focus that landed in the left/center editor pane.
+#[cfg(windows)]
+fn cursor_focus_acceptable(profile_id: &str, probe: &UiaFocusProbe) -> bool {
+    if profile_id != CURSOR_APP_TARGET_ID {
+        return probe.ok;
+    }
+    if !probe.ok && !probe.has_keyboard_focus {
+        return false;
+    }
+    if looks_like_editor_document(&probe.focused_name)
+        || looks_like_editor_document(&probe.best_name)
+    {
+        return false;
+    }
+    if name_looks_like_agent_composer(&probe.focused_name)
+        || name_looks_like_agent_composer(&probe.best_name)
+    {
+        return true;
+    }
+    // Empty Agent Edit has no name — require right-half geometry.
+    probe
+        .focused_x_ratio
+        .is_some_and(|x| x >= CURSOR_AGENT_MIN_X_RATIO)
 }
 
 #[cfg(windows)]
@@ -1154,7 +1240,10 @@ fn focus_chat_input(
 
     // Soft path first: click RIGHT panel, then UIA. Never Ctrl+I while editor has focus —
     // Cursor maps Ctrl+I to inline edit (selects text) when caret is in the code editor.
-    let allow_blind_click = profile.accept_click_without_uia && profile.open_key.is_none();
+    // Cursor open_key is also a toggle: if Agent is already open, Ctrl+I closes it.
+    let cursor_no_toggle = profile.id == CURSOR_APP_TARGET_ID;
+    let allow_blind_click =
+        profile.accept_click_without_uia && (profile.open_key.is_none() || cursor_no_toggle);
     if uia_focus_chat_input(hwnd, min_score) {
         return true;
     }
@@ -1165,6 +1254,10 @@ fn focus_chat_input(
     }
 
     // Hard open only after right-panel click stole focus from the editor.
+    // Skip for Cursor — Ctrl+I toggles the panel shut / opens inline edit.
+    if cursor_no_toggle {
+        return allow_blind_click && click_composer_anchor(hwnd, anchor);
+    }
     if let Some(open_key) = profile.open_key.filter(|k| !k.trim().is_empty()) {
         let _ = click_composer_anchor(hwnd, anchor);
         std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
@@ -1744,6 +1837,12 @@ mod editor_document_score_tests {
         assert!(!looks_like_editor_document("Agent"));
         assert!(!looks_like_editor_document(""));
     }
+
+    #[test]
+    fn cursor_agent_min_x_keeps_right_panel() {
+        assert!(super::CURSOR_AGENT_MIN_X_RATIO >= 0.5);
+        assert!(super::CURSOR_PROFILE.composer_anchor.0 >= super::CURSOR_AGENT_MIN_X_RATIO);
+    }
 }
 
 #[cfg(windows)]
@@ -1919,6 +2018,8 @@ struct UiaFocusProbe {
     focused_name: String,
     focused_score: i32,
     has_keyboard_focus: bool,
+    /// Client X ratio of the focused input (0=left … 1=right). Cursor Agent is ≥0.55.
+    focused_x_ratio: Option<f32>,
 }
 
 /// SetFocus on best Edit/Document, then confirm HasKeyboardFocus (or focused name scores high).
@@ -1947,6 +2048,7 @@ fn uia_focus_chat_input_probe(hwnd: winapi::shared::windef::HWND, min_score: i32
         focused_name: String::new(),
         focused_score: -1,
         has_keyboard_focus: false,
+        focused_x_ratio: None,
     };
 
     unsafe {
@@ -1982,7 +2084,15 @@ fn uia_focus_chat_input_probe(hwnd: winapi::shared::windef::HWND, min_score: i32
                     continue;
                 }
                 let name = element_name(&element).unwrap_or_default();
-                let score = score_input_name(&name, control_type.0 as i32);
+                let mut score = score_input_name(&name, control_type.0 as i32);
+                // Prefer right-panel Agent over left/center Monaco editor.
+                if let Some(xr) = element_client_x_ratio(hwnd, &element) {
+                    if xr >= CURSOR_AGENT_MIN_X_RATIO {
+                        score += 35;
+                    } else if xr < 0.50 {
+                        score -= 50;
+                    }
+                }
                 if score > best.as_ref().map(|(_, s, _)| *s).unwrap_or(-1) {
                     best = Some((element, score, name));
                 }
@@ -1995,7 +2105,8 @@ fn uia_focus_chat_input_probe(hwnd: winapi::shared::windef::HWND, min_score: i32
             .unwrap_or((-1, String::new()));
         let Some((element, score, best_name)) = best.filter(|(_, score, _)| *score >= min_score)
         else {
-            let (focused_name, focused_score) = focused_input_probe(&automation);
+            let (focused_name, focused_score, focused_x_ratio) =
+                focused_input_probe_full(&automation, hwnd);
             return UiaFocusProbe {
                 ok: false,
                 best_name: pre_best_name,
@@ -2003,10 +2114,12 @@ fn uia_focus_chat_input_probe(hwnd: winapi::shared::windef::HWND, min_score: i32
                 focused_name,
                 focused_score,
                 has_keyboard_focus: false,
+                focused_x_ratio,
             };
         };
         if element.SetFocus().is_err() {
-            let (focused_name, focused_score) = focused_input_probe(&automation);
+            let (focused_name, focused_score, focused_x_ratio) =
+                focused_input_probe_full(&automation, hwnd);
             return UiaFocusProbe {
                 ok: false,
                 best_name,
@@ -2014,6 +2127,7 @@ fn uia_focus_chat_input_probe(hwnd: winapi::shared::windef::HWND, min_score: i32
                 focused_name,
                 focused_score,
                 has_keyboard_focus: false,
+                focused_x_ratio,
             };
         }
         std::thread::sleep(Duration::from_millis(60));
@@ -2022,7 +2136,8 @@ fn uia_focus_chat_input_probe(hwnd: winapi::shared::windef::HWND, min_score: i32
             .ok()
             .and_then(|v| bool::try_from(&v).ok())
             .unwrap_or(false);
-        let (focused_name, focused_score) = focused_input_probe(&automation);
+        let (focused_name, focused_score, focused_x_ratio) =
+            focused_input_probe_full(&automation, hwnd);
         if has_focus {
             return UiaFocusProbe {
                 ok: true,
@@ -2031,6 +2146,7 @@ fn uia_focus_chat_input_probe(hwnd: winapi::shared::windef::HWND, min_score: i32
                 focused_name,
                 focused_score,
                 has_keyboard_focus: true,
+                focused_x_ratio,
             };
         }
         // Fallback: focused element elsewhere in tree may still be a high-score composer.
@@ -2042,22 +2158,68 @@ fn uia_focus_chat_input_probe(hwnd: winapi::shared::windef::HWND, min_score: i32
             focused_name,
             focused_score,
             has_keyboard_focus: false,
+            focused_x_ratio,
         }
     }
+}
+
+#[cfg(windows)]
+unsafe fn element_client_x_ratio(
+    hwnd: winapi::shared::windef::HWND,
+    element: &windows::Win32::UI::Accessibility::IUIAutomationElement,
+) -> Option<f32> {
+    use winapi::shared::windef::{POINT, RECT};
+    use winapi::um::winuser::{GetClientRect, ScreenToClient};
+    use windows::Win32::Foundation::POINT as WinPoint;
+
+    let mut pt = WinPoint { x: 0, y: 0 };
+    let got = element.GetClickablePoint(&mut pt as *mut _).ok()?;
+    if !got.as_bool() {
+        return None;
+    }
+    let mut cpt = POINT { x: pt.x, y: pt.y };
+    if ScreenToClient(hwnd, &mut cpt) == 0 {
+        return None;
+    }
+    let mut crect = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    if GetClientRect(hwnd, &mut crect) == 0 {
+        return None;
+    }
+    let cw = (crect.right - crect.left).max(1) as f32;
+    Some((cpt.x as f32 / cw).clamp(0.0, 1.0))
 }
 
 #[cfg(windows)]
 unsafe fn focused_input_probe(
     automation: &windows::Win32::UI::Accessibility::IUIAutomation,
 ) -> (String, i32) {
+    let (n, s, _) = focused_input_probe_full(automation, std::ptr::null_mut());
+    (n, s)
+}
+
+#[cfg(windows)]
+unsafe fn focused_input_probe_full(
+    automation: &windows::Win32::UI::Accessibility::IUIAutomation,
+    hwnd: winapi::shared::windef::HWND,
+) -> (String, i32, Option<f32>) {
     use windows::Win32::UI::Accessibility::{UIA_DocumentControlTypeId, UIA_EditControlTypeId};
     let Ok(focused) = automation.GetFocusedElement() else {
-        return (String::new(), -1);
+        return (String::new(), -1, None);
     };
     let name = element_name(&focused).unwrap_or_default();
     let fs = score_input_name(&name, UIA_EditControlTypeId.0 as i32)
         .max(score_input_name(&name, UIA_DocumentControlTypeId.0 as i32));
-    (name, fs)
+    let xr = if hwnd.is_null() {
+        None
+    } else {
+        element_client_x_ratio(hwnd, &focused)
+    };
+    (name, fs, xr)
 }
 
 #[cfg(windows)]

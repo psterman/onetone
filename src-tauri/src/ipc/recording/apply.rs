@@ -97,3 +97,30 @@ pub(crate) fn apply_trigger_capture(
     cfg.normalize();
     enable_mapping_if_complete(cfg, mapping_id);
 }
+
+/// Persist oral arm key without touching dictation `trigger_key`.
+pub(crate) fn apply_oral_trigger_capture(
+    cfg: &mut VoiceConfig,
+    mapping_id: &str,
+    captured: &str,
+    physical_key: &str,
+) {
+    if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == mapping_id) {
+        let raw = if physical_key.trim().is_empty() {
+            captured
+        } else {
+            physical_key
+        };
+        let mut canon = canonical_trigger(captured);
+        let raw_canon = canonical_trigger(raw);
+        // Same RAlt fold as dictation trigger — never store bare RAlt.
+        if canon == "RAlt" || raw_canon == "RAlt" {
+            canon = "AutoTrigger".into();
+        }
+        let scheme = m
+            .oral_command_scheme
+            .get_or_insert_with(crate::config::OralCommandScheme::default);
+        scheme.trigger_key = canon;
+    }
+    cfg.normalize();
+}

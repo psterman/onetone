@@ -529,11 +529,22 @@ pub fn is_side_key(key: &str) -> bool {
 }
 
 /// Side key down: defer IME until keyup unless held 1s → arm.
-pub fn maybe_intercept_side_key_down(event: &crate::press_gesture::PhysicalKeyEvent) -> bool {
+pub fn maybe_intercept_side_key_down(
+    cfg: &config::VoiceConfig,
+    event: &crate::press_gesture::PhysicalKeyEvent,
+) -> bool {
     if !cursor_process_running() {
         return false;
     }
     if !is_side_key(&event.key) {
+        return false;
+    }
+    // Oral arm key is owned by voice_command_session — never swallow into beginner hold.
+    let canon = config::canonical_trigger(&event.key);
+    if cfg.active_mappings().iter().any(|m| {
+        let oral = config::canonical_trigger(m.oral_trigger_key());
+        !oral.is_empty() && (oral == canon || m.oral_trigger_key() == event.key.as_str())
+    }) {
         return false;
     }
     let mut rt = runtime();
@@ -634,8 +645,21 @@ pub fn run_slot(
         }
         crate::codex_micro_overlay::note_micro_key(def.micro_key_id, true);
         let app = window.app_handle();
+        let duration_ms_pre = state.cfg.lock().key_press_duration_ms;
+        let _ = crate::voice_command_session::stop_ime_voice_if_active(state, duration_ms_pre);
+        if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
+            crate::voice_end_runtime::reset_voice_session(
+                state,
+                Some(&app),
+                "soft_slot cancel after speak",
+            );
+        }
         // Uncommon-command countdown: 「取消」clears pending without running it.
         let _ = crate::soft_pad_voice_pending::cancel_pending(state.as_ref(), &app);
+        if crate::voice_command_session::is_armed() {
+            let mid = crate::voice_command_session::armed_mapping_id();
+            crate::voice_command_session::end_session(state, &app, &mid, "cancel");
+        }
         disarm(state.as_ref(), &app);
         // Restore cancel-generation: beginner used to remap ACT08 away from this chord.
         let (duration_ms, mapping_id) = {
@@ -773,10 +797,17 @@ pub fn run_slot(
             }),
         );
         let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
+        // Close voice IME first so Enter lands in the composer, not the IME capture UI.
+        let _ = crate::voice_command_session::stop_ime_voice_if_active(state, duration_ms);
+        if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
+            crate::voice_end_runtime::reset_voice_session(
+                state,
+                Some(&app),
+                "soft_slot send after speak",
+            );
+        }
         let focus_res =
             app_chat_workflow::focus_composer_for_send(&app, CURSOR_APP_TARGET_ID, duration_ms);
-        // No fallback to focus_composer_only: that path may send Ctrl+I, which in the
-        // code editor opens Cursor inline edit (selects junk) instead of Agent send.
         let focused = focus_res.is_ok();
         if let Err(err) = &focus_res {
             crate::app_log::cursor_send_oplog(
@@ -860,6 +891,14 @@ pub fn run_slot(
             }),
         );
         let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
+        let _ = crate::voice_command_session::stop_ime_voice_if_active(state, duration_ms);
+        if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
+            crate::voice_end_runtime::reset_voice_session(
+                state,
+                Some(&app),
+                "soft_slot continue after speak",
+            );
+        }
         let focus_res =
             app_chat_workflow::focus_composer_for_send(&app, CURSOR_APP_TARGET_ID, duration_ms);
         let focused = focus_res.is_ok();
@@ -961,6 +1000,50 @@ pub fn run_slot(
                 format!("failed {commit_key} after {text}")
             }
         });
+    }
+    // 「说话」: execute_start owns mic release + composer punch + voice chord.
+    // Skip focus_composer_only here — a second focus/click races the IME and can
+    // look like "activates then immediately ends".
+    if def.slot_id == "pushToTalk" {
+        let (ok, reason, detail) = {
+            let result = crate::agent::dispatch::dispatch_semantic_action_ids(
+                state,
+                window,
+                &mapping_id,
+                def.action_id,
+                Some(def.slot_id),
+                if from_voice {
+                    ActionChannel::Voice
+                } else {
+                    ActionChannel::SoftPad
+                },
+            );
+            let ok = result.ok.unwrap_or(result.status == "executed");
+            let reason = if ok {
+                "executed".to_string()
+            } else {
+                result
+                    .reason_code
+                    .unwrap_or_else(|| "failed".to_string())
+            };
+            (ok, reason, result.detail)
+        };
+        if from_voice {
+            note_voice_activity();
+        }
+        crate::codex_micro_overlay::note_micro_key(def.micro_key_id, true);
+        crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+        let mut out = serde_json::json!({
+            "ok": ok,
+            "reason": reason,
+            "slotId": def.slot_id,
+            "microKeyId": def.micro_key_id,
+            "mappingId": mapping_id
+        });
+        if let Some(d) = detail.filter(|s| !s.is_empty()) {
+            out["message"] = serde_json::Value::String(d);
+        }
+        return out;
     }
     if let Err(err) = app_chat_workflow::focus_composer_only(&app, CURSOR_APP_TARGET_ID, duration_ms)
     {
@@ -1460,6 +1543,8 @@ mod tests {
             agent_bindings: vec![],
             time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
         };
         assert!(!heal_cursor_beginner_pad_slots(&mut m));

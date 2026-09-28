@@ -183,7 +183,18 @@
   // P12b-1：trigger/target 只读文案单一来源（供 React 岛 + renderEditor/录音预览共用）
   function buildEditorDisplayModel(){
     const d=OneToneI18n.dict();
-    const m=OneToneMappingCore.selected();
+    var m=OneToneMappingCore.selected();
+    var triggerSlot='habit';
+    try{
+      var P=global.OneToneKeysChannelCommandPicker;
+      if(P&&typeof P.activeTriggerSlot==='function'){
+        triggerSlot=String(P.activeTriggerSlot()||'habit');
+      }
+      if(P&&typeof P.activeTriggerMapping==='function'){
+        var am=P.activeTriggerMapping();
+        if(am) m=am;
+      }
+    }catch(_){}
     const lang=OneToneI18n.getLang?OneToneI18n.getLang():'zh';
     var trigRaw=hooks().selectedDisplayTriggerKey()||'';
     var tgt=hooks().selectedDisplayTargetKey()||'';
@@ -200,12 +211,11 @@
     var triggerLabel;
     if(recMode==='trigger'){
       triggerLabel=trigRaw?hooks().friendlyKeyName(trigRaw):d.triggerPlaceholder;
+    }else if(trigRaw){
+      // Channel display key (oral / peer / habit) — do not re-derive from mapping.triggerKey alone.
+      triggerLabel=hooks().friendlyKeyName(trigRaw);
     }else{
-      // Keycap shows base key; ×2 / 按住 lives in #triggerGestureBadge (prototype parity).
-      triggerLabel=m&&global.OneToneKeyLabels&&global.OneToneKeyLabels.triggerBaseLabel
-        ?global.OneToneKeyLabels.triggerBaseLabel(m,lang)
-        :(trigRaw?hooks().friendlyKeyName(trigRaw):'');
-      triggerLabel=triggerLabel||d.triggerPlaceholder;
+      triggerLabel=d.triggerPlaceholder;
     }
     var picker=global.OneToneKeysChannelCommandPicker;
     var cap=picker&&typeof picker.resolveHeroCapture==='function'?picker.resolveHeroCapture(m):null;
@@ -219,7 +229,7 @@
           targetRaw:tgt||cap.chord||'',
           triggerEmpty:!trigRaw,
           targetEmpty:!tgt&&!!cap.targetEmpty,
-          sig:String(triggerLabel)+'\0'+String(live)+'\0'+String(trigRaw)+'\0'+String(tgt||cap.actionId||'')+'\0'+String(recMode)+'\0capture-hero'
+          sig:String(triggerSlot)+'\0'+String(triggerLabel)+'\0'+String(live)+'\0'+String(trigRaw)+'\0'+String(tgt||cap.actionId||'')+'\0'+String(recMode)+'\0capture-hero'
         };
       }
       return {
@@ -229,7 +239,7 @@
         targetRaw:cap.chord||('capture:'+String(cap.actionId||cap.kind||'')),
         triggerEmpty:!trigRaw,
         targetEmpty:!!cap.targetEmpty,
-        sig:String(triggerLabel)+'\0'+String(cap.primaryLabel||'')+'\0'+String(trigRaw)+'\0'+String(cap.actionId||cap.kind||'')+'\0'+String(cap.chord||'')+'\0capture-hero'
+        sig:String(triggerSlot)+'\0'+String(triggerLabel)+'\0'+String(cap.primaryLabel||'')+'\0'+String(trigRaw)+'\0'+String(cap.actionId||cap.kind||'')+'\0'+String(cap.chord||'')+'\0capture-hero'
       };
     }
     var targetLabel=tgt?hooks().friendlyKeyName(tgt):d.targetPlaceholder;
@@ -240,14 +250,21 @@
       targetRaw:tgt,
       triggerEmpty:!trigRaw,
       targetEmpty:!tgt,
-      sig:String(triggerLabel)+'\0'+String(targetLabel)+'\0'+String(trigRaw)+'\0'+String(tgt)+'\0'+String(recMode)
+      sig:String(triggerSlot)+'\0'+String(triggerLabel)+'\0'+String(targetLabel)+'\0'+String(trigRaw)+'\0'+String(tgt)+'\0'+String(recMode)
     };
   }
 
   // P12c-6：triggerDisplay/targetDisplay empty/icon/recording/trace chrome（文案仍归 P12b-1）
   function buildKeysDisplayChromeModel(){
     const model=buildEditorDisplayModel();
-    const m=OneToneMappingCore.selected();
+    var m=OneToneMappingCore.selected();
+    try{
+      var P=global.OneToneKeysChannelCommandPicker;
+      if(P&&typeof P.activeTriggerMapping==='function'){
+        var am=P.activeTriggerMapping();
+        if(am) m=am;
+      }
+    }catch(_){}
     var recApi=global.OneToneMappingRecording;
     var recMode=recApi&&typeof recApi.mode==='function'?recApi.mode():'none';
     const trace=OneToneMappingCore.formatTriggerTrace?OneToneMappingCore.formatTriggerTrace(m):'';
@@ -255,7 +272,15 @@
     var lang=OneToneI18n.getLang?OneToneI18n.getLang():'zh';
     var gesture='tap';
     var gestureMark='';
-    if(recMode!=='trigger'&&m){
+    var triggerSlot='habit';
+    try{
+      var Pslot=global.OneToneKeysChannelCommandPicker;
+      if(Pslot&&typeof Pslot.activeTriggerSlot==='function'){
+        triggerSlot=String(Pslot.activeTriggerSlot()||'habit');
+      }
+    }catch(_){}
+    // Oral / peer 通道是独立物理键，不再用单击/双击/长按徽章暗示共用。
+    if(recMode!=='trigger'&&m&&triggerSlot!=='oral'&&triggerSlot!=='peer'&&triggerSlot!=='peer-empty'){
       var rawMode=String(m.triggerMode||'tap').toLowerCase();
       if(rawMode==='double') gesture='double';
       else if(rawMode==='longpress'||rawMode==='hold') gesture='hold';
@@ -277,7 +302,7 @@
       traceShow:!!trace,
       mappingId:mappingId,
       recMode:recMode,
-      sig:[mappingId,recMode,model.triggerRaw||'',model.targetRaw||'',trace||'',gesture,gestureMark].join('\0')
+      sig:[triggerSlot,mappingId,recMode,model.triggerRaw||'',model.targetRaw||'',trace||'',gesture,gestureMark].join('\0')
     };
   }
 

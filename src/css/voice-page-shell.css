@@ -3607,6 +3607,25 @@ html[data-theme="dark"] #settingsPanelVoiceWake.voice-page-desk .flow-desk-panel
   cursor: pointer;
 }
 .voice-finish-keys-bridge-go:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+.voice-oral-bridge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--ot-muted, #8a96a8);
+}
+.voice-oral-bridge__go {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--ot-accent, #5eb0ff);
+  cursor: pointer;
+}
+.voice-oral-bridge__go:hover { text-decoration: underline; text-underline-offset: 2px; }
 .voice-finish-card--c .voice-finish-auto-guard {
   margin: 0;
   font-size: 12px;

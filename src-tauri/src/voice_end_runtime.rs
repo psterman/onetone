@@ -329,6 +329,39 @@ fn dispatch_prompt_inject(
     }
 }
 
+/// Oral armed path: phrase → prompt peer Text+Enter (same as wake inject).
+pub(crate) fn try_dispatch_prompt_inject_for_phrase(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    matched_phrase: &str,
+    engine: &str,
+) -> Option<VoiceWakeDispatchResult> {
+    let duration_ms = state.cfg.lock().key_press_duration_ms;
+    let (mapping_id, app_tid, prompt) = {
+        let cfg = state.cfg.lock();
+        let peer = find_prompt_inject_peer_for_phrase(&cfg, matched_phrase)?;
+        (
+            peer.id.clone(),
+            peer.app_target_id.clone(),
+            prompt_text_from_mapping(peer),
+        )
+    };
+    if prompt.trim().is_empty() {
+        return None;
+    }
+    Some(dispatch_prompt_inject(
+        state,
+        app,
+        matched_phrase,
+        duration_ms,
+        engine,
+        mapping_id,
+        &app_tid,
+        &prompt,
+        "oral_armed",
+    ))
+}
+
 /// Wake + summon phrases that may start a voice session (routes differ in dispatch).
 pub fn idle_start_phrases(cfg: &VoiceConfig) -> Vec<String> {
     let global = crate::scene_config::global_summon_phrases(cfg);
@@ -707,7 +740,7 @@ pub struct VoiceWakeDispatchResult {
     pub runtime_label: String,
 }
 
-fn try_dispatch_agent_voice(
+pub(crate) fn try_dispatch_agent_voice(
     state: &Arc<AppState>,
     app: &AppHandle,
     matched_phrase: &str,
@@ -2375,6 +2408,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             }];
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());
@@ -2431,6 +2466,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             }];
         assert_eq!(

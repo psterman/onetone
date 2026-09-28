@@ -92,6 +92,7 @@ pub mod voice_acoustic_record;
 pub mod voice_acoustic_runtime;
 mod voice_bootstrap;
 mod voice_command_router;
+mod voice_command_session;
 mod voice_end_runtime;
 mod voice_keyword_dispatch;
 mod voice_kws;
@@ -252,6 +253,7 @@ pub struct AppState {
     pub update_installing: Mutex<bool>,
     pub gesture: Mutex<press_gesture::GestureTracker>,
     pub agent_modifier_tap: Mutex<Option<AgentModifierTapState>>,
+    pub scheme_gesture: Mutex<press_gesture::RecordGestureDetector>,
     pub record_gesture: Mutex<press_gesture::RecordGestureDetector>,
     pub trigger_compat_probe: Mutex<Option<ipc::TriggerCompatProbeSession>>,
     pub trigger_verify_listen: Mutex<Option<ipc::TriggerVerifyListenSession>>,
@@ -391,6 +393,7 @@ pub fn run() {
         update_installing: Mutex::new(false),
         gesture: Mutex::new(press_gesture::GestureTracker::new()),
         agent_modifier_tap: Mutex::new(None),
+        scheme_gesture: Mutex::new(press_gesture::RecordGestureDetector::new()),
         record_gesture: Mutex::new(press_gesture::RecordGestureDetector::new()),
         trigger_compat_probe: Mutex::new(None),
         trigger_verify_listen: Mutex::new(None),
@@ -805,6 +808,18 @@ pub fn run() {
                                 done.gesture,
                             );
                         }
+                    } else {
+                        let mut detector = state2.scheme_gesture.lock();
+                        if let Some(done) = detector.poll(std::time::Instant::now()) {
+                            drop(detector);
+                            ipc::dispatch_scheme_gesture(
+                                &state2,
+                                &win2,
+                                &done.key,
+                                done.device.as_deref(),
+                                done.gesture,
+                            );
+                        }
                     }
 
                     let (key_name, mouse_pendings) = {
@@ -894,22 +909,22 @@ pub fn run() {
                         continue;
                     }
 
-                    if *state2.paused.lock() {
-                        continue;
-                    }
-
                     if key_name == config::SCHEME_CYCLE_MARKER {
-                        ipc::handle_scheme_cycle(&state2, &app2);
+                        if !*state2.paused.lock() {
+                            ipc::handle_scheme_cycle(&state2, &app2);
+                        }
                         continue;
                     }
 
                     if let Some(mapping_id) = key_name.strip_prefix(config::SCHEME_SELECT_PREFIX) {
-                        if !mapping_id.is_empty() {
+                        if !mapping_id.is_empty() && !*state2.paused.lock() {
                             ipc::handle_scheme_select(&state2, &app2, mapping_id);
                         }
                         continue;
                     }
 
+                    // Always enter dispatch: oral arm / scheme voiceCommand must work
+                    // while engines are paused (dispatch_physical_event no-ops the rest).
                     ipc::dispatch_physical_event(&state2, &win2, &key_name);
                 }
             });
@@ -1087,6 +1102,7 @@ pub fn run() {
             ipc::cmd_voice_end_ui_end,
             ipc::cmd_voice_end_ui_cancel,
             ipc::cmd_voice_end_test_commit,
+            ipc::cmd_voice_command_session_toggle,
             input_aim_calibrate::cmd_input_aim_calibrate_begin,
             input_aim_calibrate::cmd_input_aim_calibrate_commit,
             input_aim_calibrate::cmd_input_aim_calibrate_cancel,

@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>原型 · 发现激活口头指令 · 是否预置命令</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --faint: #8494a6;
+      --line: #d5dee8;
+      --paper: #fff;
+      --wash: #f3f7fa;
+      --bg: #e4ebf1;
+      --rail: #eef3f7;
+      --cyan: #2a9cc4;
+      --cyan-ink: #0f5f7a;
+      --cyan-soft: #e4f2f9;
+      --cyan-bd: #8ec5d9;
+      --violet: #6b5ce0;
+      --violet-ink: #3d3499;
+      --violet-soft: #ece9ff;
+      --violet-bd: #b8adf5;
+      --ok: #15803d;
+      --ok-soft: #ecfdf3;
+      --ok-bd: #86efac;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --warn-bd: #fdba74;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+      --sans: "IBM Plex Sans", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(900px 420px at 12% -10%, #dceaf2 0%, transparent 55%),
+        radial-gradient(700px 380px at 90% 0%, #e4dff8 0%, transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    .top {
+      position: sticky; top: 0; z-index: 20;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      padding: 12px 20px;
+      background: color-mix(in srgb, var(--paper) 88%, transparent);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+    }
+    .top strong { font-size: 14px; font-weight: 750; }
+    .top em { font-style: normal; font-size: 12px; color: var(--muted); font-weight: 550; }
+    .tabs { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+    .tabs button {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font: 650 12px/1 var(--sans);
+      cursor: pointer;
+    }
+    .tabs button.is-on {
+      border-color: var(--cyan-bd);
+      background: var(--cyan-soft);
+      color: var(--cyan-ink);
+    }
+    .page { max-width: 1080px; margin: 0 auto; padding: 22px 20px 64px; }
+    .lede h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 3.2vw, 30px);
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .lede p {
+      margin: 0 0 18px;
+      max-width: 62ch;
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+    .lede b { color: var(--ink); font-weight: 650; }
+    .verdict {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 720px) { .verdict { grid-template-columns: 1fr; } }
+    .verdict article {
+      border-radius: 14px;
+      padding: 14px 16px;
+      border: 1.5px solid var(--line);
+      background: var(--paper);
+    }
+    .verdict article.rec {
+      border-color: var(--ok-bd);
+      background: linear-gradient(165deg, #fff 0%, var(--ok-soft) 100%);
+    }
+    .verdict .kicker {
+      font-size: 11px; font-weight: 750; letter-spacing: .04em;
+      text-transform: uppercase; color: var(--ok); margin-bottom: 4px;
+    }
+    .verdict h2 { margin: 0 0 6px; font-size: 16px; font-weight: 750; }
+    .verdict p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+    .stage { display: none; }
+    .stage.is-on { display: block; }
+    .board {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(19, 32, 44, .06);
+    }
+    .chrome {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px;
+      background: var(--rail);
+      border-bottom: 1px solid var(--line);
+      font-size: 12px; font-weight: 650;
+    }
+    .chrome .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 12px 0 0 #f5a524, 24px 0 0 #ef6a6a;
+      margin-right: 20px;
+    }
+    .chrome .pill {
+      margin-left: auto;
+      font-size: 11px; font-weight: 700;
+      padding: 3px 8px; border-radius: 999px;
+      background: var(--violet-soft); color: var(--violet-ink);
+    }
+    .desk { display: grid; grid-template-columns: 1.05fr .95fr; min-height: 420px; }
+    @media (max-width: 860px) { .desk { grid-template-columns: 1fr; } }
+    .col { padding: 16px; border-right: 1px solid var(--line); }
+    .col:last-child { border-right: 0; background: var(--wash); }
+    .lbl {
+      margin: 0 0 8px;
+      font-size: 11px; font-weight: 750;
+      letter-spacing: .04em; text-transform: uppercase;
+      color: var(--faint);
+    }
+    .path {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .moment {
+      text-align: left;
+      border: 1.5px solid var(--line);
+      background: var(--paper);
+      border-radius: 12px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .moment:hover { border-color: var(--cyan-bd); }
+    .moment.is-on {
+      border-color: var(--violet-bd);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--violet) 12%, transparent);
+      background: linear-gradient(165deg, #fff, var(--violet-soft));
+    }
+    .moment .who {
+      display: inline-block;
+      font-size: 10px; font-weight: 750;
+      padding: 2px 7px; border-radius: 999px;
+      background: var(--rail); color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .moment h3 { margin: 0 0 4px; font-size: 14px; font-weight: 750; }
+    .moment p { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+    .preview {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--paper);
+      overflow: hidden;
+      min-height: 360px;
+      display: flex; flex-direction: column;
+    }
+    .preview-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--rail);
+      font-size: 11px; font-weight: 650; color: var(--muted);
+    }
+    .preview-bar code {
+      font-family: var(--mono); font-size: 11px;
+      background: var(--paper); border: 1px solid var(--line);
+      border-radius: 6px; padding: 2px 6px; color: var(--cyan-ink);
+    }
+    .preview-body { flex: 1; padding: 16px; position: relative; }
+    .ui-keys, .ui-pad, .ui-session, .ui-coach { display: none; }
+    .ui-keys.is-on, .ui-pad.is-on, .ui-session.is-on, .ui-coach.is-on { display: block; }
+    .scheme-card {
+      border: 1.5px solid var(--violet-bd);
+      border-radius: 12px;
+      padding: 14px;
+      background: linear-gradient(165deg, #fff, var(--violet-soft));
+    }
+    .scheme-card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 750; }
+    .scheme-card .lead { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+    .status {
+      padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--warn-bd); background: var(--warn-soft);
+      font-size: 12.5px; margin-bottom: 12px;
+    }
+    .status strong { color: var(--warn); }
+    .status.is-bound {
+      border-color: var(--ok-bd); background: var(--ok-soft);
+    }
+    .status.is-bound strong { color: var(--ok); }
+    .cta-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .cta {
+      border: 1px solid color-mix(in srgb, var(--cyan) 40%, transparent);
+      background: var(--cyan-soft); color: var(--cyan-ink);
+      border-radius: 8px; padding: 7px 12px;
+      font: 650 12.5px/1 var(--sans); cursor: pointer;
+    }
+    .cta.pri {
+      border-color: var(--violet-bd);
+      background: var(--violet); color: #fff;
+    }
+    .hint-toast {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px dashed var(--violet-bd);
+      background: #fff;
+      font-size: 12.5px; line-height: 1.45;
+      color: var(--violet-ink);
+      animation: pop .35s ease;
+    }
+    @keyframes pop {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    /* Soft Pad mini */
+    .pad-desk {
+      min-height: 280px;
+      border-radius: 12px;
+      background: linear-gradient(165deg, #dce8f0, #b7c9d8);
+      padding: 28px 16px 16px;
+      position: relative;
+    }
+    .pad-desk .tag {
+      position: absolute; top: 10px; left: 12px;
+      font-size: 10px; font-weight: 700; color: rgba(19,32,44,.4);
+      letter-spacing: .04em; text-transform: uppercase;
+    }
+    .pad {
+      max-width: 280px; margin: 0 auto;
+      background: #fff;
+      border: 2px solid var(--cyan-bd);
+      border-radius: 14px;
+      padding: 10px 12px 12px;
+      box-shadow: 0 10px 28px rgba(15,40,60,.12);
+    }
+    .pad.is-voice { border-color: var(--violet-bd); }
+    .pad-keys { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+    .pk {
+      width: 36px; height: 36px; border-radius: 8px;
+      border: 1px solid var(--line); background: #f7fafc;
+      font-size: 11px; font-weight: 700; color: var(--faint);
+    }
+    .pk.mic {
+      width: 72px; border-color: var(--cyan-bd);
+      background: var(--cyan-soft); color: var(--cyan-ink);
+      cursor: pointer;
+    }
+    .pad.is-voice .pk.mic {
+      border-color: var(--violet-bd);
+      background: var(--violet-soft); color: var(--violet-ink);
+      animation: pulse 1.2s ease infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--violet) 35%, transparent); }
+      50% { box-shadow: 0 0 0 6px transparent; }
+    }
+    .strip {
+      margin: 10px auto 0; max-width: 280px;
+      border: 1.5px solid var(--line);
+      background: #fff; border-radius: 10px;
+      padding: 8px 12px; font-size: 12.5px; color: var(--muted);
+    }
+    .pad.is-voice + .strip, .strip.is-voice {
+      border-color: var(--violet-bd);
+      color: var(--violet-ink);
+      font-weight: 650;
+    }
+    /* Session + presets */
+    .session {
+      border: 1.5px solid var(--violet-bd);
+      border-radius: 12px;
+      padding: 14px;
+      background: #fff;
+    }
+    .session .live {
+      font-family: var(--mono);
+      font-size: 14px; font-weight: 650;
+      min-height: 28px;
+      color: var(--violet-ink);
+      margin-bottom: 12px;
+    }
+    .preset-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .preset {
+      text-align: left;
+      border: 1px solid var(--line);
+      background: var(--wash);
+      border-radius: 9px;
+      padding: 8px 10px;
+      font-size: 12px; font-weight: 650;
+      cursor: pointer;
+    }
+    .preset:hover { border-color: var(--violet-bd); background: var(--violet-soft); }
+    .preset em {
+      display: block; font-style: normal; font-weight: 500;
+      font-size: 10.5px; color: var(--faint); margin-top: 2px;
+    }
+    .preset .edit {
+      float: right; font-size: 10px; color: var(--cyan-ink); font-weight: 700;
+    }
+    /* Compare strategies */
+    .compare {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+    @media (max-width: 860px) { .compare { grid-template-columns: 1fr; } }
+    .opt {
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: var(--paper);
+      cursor: pointer;
+      text-align: left;
+    }
+    .opt.is-on {
+      border-color: var(--ok-bd);
+      background: linear-gradient(165deg, #fff, var(--ok-soft));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 12%, transparent);
+    }
+    .opt.is-bad.is-on {
+      border-color: var(--warn-bd);
+      background: linear-gradient(165deg, #fff, var(--warn-soft));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 12%, transparent);
+    }
+    .opt .badge {
+      display: inline-block;
+      font-size: 10px; font-weight: 750;
+      padding: 2px 7px; border-radius: 999px;
+      margin-bottom: 6px;
+    }
+    .opt .badge.yes { background: var(--ok-soft); color: var(--ok); }
+    .opt .badge.no { background: var(--warn-soft); color: var(--warn); }
+    .opt .badge.mid { background: var(--cyan-soft); color: var(--cyan-ink); }
+    .opt h3 { margin: 0 0 6px; font-size: 14px; font-weight: 750; }
+    .opt p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+    .opt ul { margin: 0; padding-left: 1.1rem; font-size: 12px; line-height: 1.5; color: var(--ink); }
+    .flow-note {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1.5px solid var(--ok-bd);
+      background: var(--ok-soft);
+      font-size: 13px; line-height: 1.5;
+    }
+    .flow-note b { color: var(--ok); }
+    .timeline {
+      display: flex; flex-direction: column; gap: 0;
+      margin-top: 8px;
+    }
+    .tl {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 10px;
+    }
+    .tl .dotline {
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .tl .dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--violet); margin-top: 4px;
+      flex-shrink: 0;
+    }
+    .tl .line {
+      flex: 1; width: 2px; background: var(--violet-bd); min-height: 18px;
+      margin: 4px 0;
+    }
+    .tl:last-child .line { display: none; }
+    .tl .card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: var(--paper);
+      margin-bottom: 10px;
+    }
+    .tl .card strong { display: block; font-size: 13px; margin-bottom: 2px; }
+    .tl .card span { font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .sim-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .sim-row button {
+      border: 1px solid var(--line); background: var(--paper);
+      border-radius: 8px; padding: 5px 10px;
+      font: 650 11.5px/1 var(--sans); color: var(--muted); cursor: pointer;
+    }
+    .sim-row button.is-on {
+      border-color: var(--violet-bd);
+      background: var(--violet-soft); color: var(--violet-ink);
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <strong>口头指令 · 发现激活 × 预置命令</strong>
+    <em>用户怎么知道能开语音管理 · 要不要提前放命令</em>
+    <div class="tabs">
+      <button type="button" class="is-on" data-stage="discover">如何发现激活</button>
+      <button type="button" data-stage="preset">预置命令决策</button>
+      <button type="button" data-stage="journey">一体旅程</button>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="lede">
+      <h1>让人一试就懂：点麦 / 绑按法 = 进入语音管理</h1>
+      <p>
+        <b>口头指令</b>不是「一堆口令词表」，而是<strong>语音管理模式</strong>：平时关麦，激活后才收听。
+        预置命令建议做<strong>可改的起步包</strong>——方便首测成功，也方便长期微调，而不是空壳，也不是全量词表。
+      </p>
+    </div>
+
+    <div class="verdict">
+      <article class="rec">
+        <div class="kicker">推荐 · 激活认知</div>
+        <h2>三处重复同一句话</h2>
+        <p>Keys 方案页、Soft Pad 待机底条、首次开麦教练条：都说「激活后才听 · 再说管理命令」。</p>
+      </article>
+      <article class="rec">
+        <div class="kicker">推荐 · 预置</div>
+        <h2>要预置，但只要 4～6 条</h2>
+        <p>起步包可测、可改、可关。首测不靠用户自己想词；长期不锁死在厂商目录。</p>
+      </article>
+    </div>
+
+    <!-- ═══ Discover ═══ -->
+    <section class="stage is-on" data-stage-panel="discover">
+      <div class="board">
+        <div class="chrome">
+          <span class="dot"></span>
+          <span>激活入口预览</span>
+          <span class="pill">点左侧时刻 · 右侧看界面</span>
+        </div>
+        <div class="desk">
+          <div class="col">
+            <p class="lbl">用户第一次「懂」的时刻</p>
+            <div class="path" id="moments">
+              <button type="button" class="moment is-on" data-ui="keys">
+                <span class="who">Keys · 口头指令页</span>
+                <h3>1. 方案页说清「这是模式」</h3>
+                <p>不要再列听写/发送/取消词表。一眼：尚未绑按法 → 去绑 / Soft Pad 麦键。</p>
+              </button>
+              <button type="button" class="moment" data-ui="pad">
+                <span class="who">Soft Pad · 待机</span>
+                <h3>2. 底条常驻邀请</h3>
+                <p>「未收听 · 点麦进入语音管理」——麦键本身就是开关，不必先读设置。</p>
+              </button>
+              <button type="button" class="moment" data-ui="coach">
+                <span class="who">首次激活 · 教练</span>
+                <h3>3. 开麦后立刻给可以说的词</h3>
+                <p>底条：试试「发送」「取消」「新建对话」。预置命令在这里亮相，而不是设置页堆列表。</p>
+              </button>
+              <button type="button" class="moment" data-ui="session">
+                <span class="who">会话中</span>
+                <h3>4. 收听窗 = 管理模式</h3>
+                <p>实时转写 + 起步命令芯片。用户感到「我在指挥 OneTone」，不是「在录听写」。</p>
+              </button>
+            </div>
+          </div>
+          <div class="col">
+            <p class="lbl">界面预览</p>
+            <div class="preview">
+              <div class="preview-bar">
+                <span>当前入口</span>
+                <code id="previewLabel">Keys · 口头指令页</code>
+              </div>
+              <div class="preview-body">
+                <div class="ui-keys is-on" id="uiKeys">
+                  <div class="scheme-card">
+                    <h4>口头指令 · 语音管理</h4>
+                    <p class="lead">平时不听。激活后开麦，把你说的话交给 OneTone 执行管理命令。</p>
+                    <div class="status" id="bindStatus">
+                      <strong>尚未绑按法</strong><br />
+                      双击音量减 / 点 Soft Pad 麦键，都能进入同一套管理会话。
+                    </div>
+                    <div class="cta-row">
+                      <button type="button" class="cta pri" id="simBind">模拟：绑双击 → 口头指令</button>
+                      <button type="button" class="cta" id="simGotoPad">看 Soft Pad 邀请</button>
+                    </div>
+                    <div class="hint-toast" id="bindToast" hidden>
+                      已绑：双击 → 口头指令。下次双击音量减即可开麦管理。
+                    </div>
+                  </div>
+                </div>
+
+                <div class="ui-pad" id="uiPad">
+                  <div class="pad-desk">
+                    <span class="tag">桌面 · Soft Pad</span>
+                    <div class="pad" id="padMain">
+                      <div style="font-size:11px;font-weight:700;color:var(--faint)">OneTone · Cursor</div>
+                      <div class="pad-keys">
+                        <span class="pk">↵</span>
+                        <button type="button" class="pk mic" id="padMicBtn" title="口头指令">🎙 麦</button>
+                        <span class="pk">×</span>
+                      </div>
+                    </div>
+                    <div class="strip" id="padStrip">未收听 · 点麦进入语音管理</div>
+                  </div>
+                  <p style="margin:10px 0 0;font-size:12px;color:var(--muted);line-height:1.45">
+                    待机时<strong>不</strong>显示命令列表。邀请只做一件事：告诉用户麦键 = 开管理模式。
+                  </p>
+                </div>
+
+                <div class="ui-coach" id="uiCoach">
+                  <div class="session">
+                    <div style="font-size:11px;font-weight:750;color:var(--violet-ink);margin-bottom:8px">首次开麦 · 教练条</div>
+                    <div class="live">正在听… 可以说：</div>
+                    <div class="preset-grid">
+                      <button type="button" class="preset">发送<em>把当前内容发出去</em></button>
+                      <button type="button" class="preset">取消<em>丢掉这一轮</em></button>
+                      <button type="button" class="preset">新建对话<em>开干净一局</em></button>
+                      <button type="button" class="preset">继续<em>让 AI 接着干</em></button>
+                    </div>
+                    <p style="margin:12px 0 0;font-size:12px;color:var(--muted)">
+                      芯片可点可说；角标「改」进编辑。空壳首测会卡死；全量词表会吓跑。
+                    </p>
+                  </div>
+                </div>
+
+                <div class="ui-session" id="uiSession">
+                  <div class="session">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                      <span style="font-size:11px;font-weight:750;color:var(--violet-ink)">语音管理 · 收听中</span>
+                      <span style="font-size:11px;color:var(--faint)">12s 后超时</span>
+                    </div>
+                    <div class="live" id="liveText">「发送」</div>
+                    <div class="preset-grid" id="sessionPresets">
+                      <button type="button" class="preset is-hit">发送 <span class="edit">改</span><em>匹配中</em></button>
+                      <button type="button" class="preset">取消 <span class="edit">改</span><em>丢掉这一轮</em></button>
+                      <button type="button" class="preset">新建对话 <span class="edit">改</span><em>开干净一局</em></button>
+                      <button type="button" class="preset">继续 <span class="edit">改</span><em>让 AI 接着干</em></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ Preset decision ═══ -->
+    <section class="stage" data-stage-panel="preset">
+      <div class="board">
+        <div class="chrome">
+          <span class="dot"></span>
+          <span>预置策略对照</span>
+          <span class="pill">点选一种 · 看推荐</span>
+        </div>
+        <div style="padding:16px">
+          <p class="lbl" style="margin-top:0">三种做法</p>
+          <div class="compare" id="presetOpts">
+            <button type="button" class="opt is-bad" data-opt="empty">
+              <span class="badge no">不推荐</span>
+              <h3>A. 完全空壳</h3>
+              <p>激活后只有转写框，命令全靠用户自己想、自己加。</p>
+              <ul>
+                <li>首测：不知道说什么</li>
+                <li>长期：高手才愿意配</li>
+                <li>支持成本高</li>
+              </ul>
+            </button>
+            <button type="button" class="opt is-on" data-opt="starter">
+              <span class="badge yes">推荐</span>
+              <h3>B. 起步包 4～6 条</h3>
+              <p>按场景预置高频管理命令；每条可改说法、可关、可加。</p>
+              <ul>
+                <li>首测：马上有可说的词</li>
+                <li>长期：按习惯微调</li>
+                <li>设置页不堆词表</li>
+              </ul>
+            </button>
+            <button type="button" class="opt is-bad" data-opt="catalog">
+              <span class="badge no">不推荐作主界面</span>
+              <h3>C. 全量命令目录</h3>
+              <p>听写/发送/取消/Agent/其它整页点选录键——旧口头指令页。</p>
+              <ul>
+                <li>和「方案」概念冲突</li>
+                <li>像词表管理，难测「模式」</li>
+                <li>可作高级「管理命令库」入口</li>
+              </ul>
+            </button>
+          </div>
+
+          <div class="flow-note" id="presetNote">
+            <b>结论：</b>应该预置。<br />
+            预置的是<strong>收听窗里的起步命令</strong>（发送 / 取消 / 新建 / 继续…），不是 Keys 左栏再摆一张大目录。
+            长期调整：芯片「改」→ 改说法；「＋」加自己的；场景切换可换另一套起步包。
+          </div>
+
+          <div style="margin-top:16px" class="session" id="presetDemo">
+            <div style="font-size:11px;font-weight:750;color:var(--violet-ink);margin-bottom:10px">起步包示例 · Cursor 场景</div>
+            <div class="preset-grid">
+              <button type="button" class="preset">发送 <span class="edit">改</span><em>默认说法 · 可测</em></button>
+              <button type="button" class="preset">取消 <span class="edit">改</span><em>默认说法 · 可测</em></button>
+              <button type="button" class="preset">新建对话 <span class="edit">改</span><em>默认说法 · 可测</em></button>
+              <button type="button" class="preset">继续 <span class="edit">改</span><em>默认说法 · 可测</em></button>
+              <button type="button" class="preset">接受 <span class="edit">改</span><em>Cursor 场景增强</em></button>
+              <button type="button" class="preset" style="border-style:dashed;color:var(--cyan-ink)">＋ 加自己的<em>长期扩展</em></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ Journey ═══ -->
+    <section class="stage" data-stage-panel="journey">
+      <div class="board">
+        <div class="chrome">
+          <span class="dot"></span>
+          <span>推荐一体旅程</span>
+          <span class="pill">发现 → 激活 → 首测 → 微调</span>
+        </div>
+        <div style="padding:16px">
+          <div class="sim-row" id="journeySim">
+            <button type="button" class="is-on" data-j="1">① 发现</button>
+            <button type="button" data-j="2">② 激活</button>
+            <button type="button" data-j="3">③ 首测预置</button>
+            <button type="button" data-j="4">④ 长期改</button>
+          </div>
+          <div class="timeline" id="journeyTl">
+            <div class="tl" data-j-row="1">
+              <div class="dotline"><span class="dot"></span><span class="line"></span></div>
+              <div class="card">
+                <strong>① 发现：三处同一句话</strong>
+                <span>Keys「口头指令」页 · Soft Pad 底条 · 绑按法后的轻提示 —— 都说「激活后进入语音管理」。</span>
+              </div>
+            </div>
+            <div class="tl" data-j-row="2">
+              <div class="dotline"><span class="dot"></span><span class="line"></span></div>
+              <div class="card">
+                <strong>② 激活：按法或麦键，同一会话</strong>
+                <span>不要求用户先配完词表。绑一次双击，或直接点麦，立刻开收听窗。</span>
+              </div>
+            </div>
+            <div class="tl" data-j-row="3">
+              <div class="dotline"><span class="dot"></span><span class="line"></span></div>
+              <div class="card">
+                <strong>③ 首测：窗内亮起步包</strong>
+                <span>4～6 条场景命令可说可点。第一次成功不靠灵感，靠预置。</span>
+              </div>
+            </div>
+            <div class="tl" data-j-row="4">
+              <div class="dotline"><span class="dot"></span><span class="line"></span></div>
+              <div class="card">
+                <strong>④ 长期：改说法 / 关 / 加，不回退成大目录首页</strong>
+                <span>高级「命令库」可从芯片「改」或设置深处进入；主路径始终是模式开关 + 起步包。</span>
+              </div>
+            </div>
+          </div>
+          <div class="flow-note" id="journeyNote">
+            <b>产品口径：</b>口头指令 = 语音管理模式（按需开麦）。
+            预置命令 = 模式内的起步工具，服务测试与日常，不重新变成 Keys 主列表。
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var labels = {
+        keys: "Keys · 口头指令页",
+        pad: "Soft Pad · 待机邀请",
+        coach: "首次开麦 · 教练",
+        session: "收听中 · 管理模式"
+      };
+      var uiMap = { keys: "uiKeys", pad: "uiPad", coach: "uiCoach", session: "uiSession" };
+
+      function showUi(id) {
+        Object.keys(uiMap).forEach(function (k) {
+          document.getElementById(uiMap[k]).classList.toggle("is-on", k === id);
+        });
+        document.getElementById("previewLabel").textContent = labels[id];
+        document.querySelectorAll("#moments .moment").forEach(function (btn) {
+          btn.classList.toggle("is-on", btn.getAttribute("data-ui") === id);
+        });
+      }
+
+      document.querySelectorAll("[data-stage]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.getAttribute("data-stage");
+          document.querySelectorAll("[data-stage]").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+          document.querySelectorAll("[data-stage-panel]").forEach(function (p) {
+            p.classList.toggle("is-on", p.getAttribute("data-stage-panel") === id);
+          });
+        });
+      });
+
+      document.querySelectorAll("#moments .moment").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          showUi(btn.getAttribute("data-ui"));
+        });
+      });
+
+      document.getElementById("simBind").addEventListener("click", function () {
+        var st = document.getElementById("bindStatus");
+        st.classList.add("is-bound");
+        st.innerHTML = "<strong>已绑按法 · 双击</strong><br />再双击音量减，或点 Soft Pad 麦键，进入语音管理。";
+        var toast = document.getElementById("bindToast");
+        toast.hidden = false;
+      });
+      document.getElementById("simGotoPad").addEventListener("click", function () {
+        showUi("pad");
+      });
+
+      var pad = document.getElementById("padMain");
+      var strip = document.getElementById("padStrip");
+      var micOn = false;
+      document.getElementById("padMicBtn").addEventListener("click", function () {
+        micOn = !micOn;
+        pad.classList.toggle("is-voice", micOn);
+        strip.classList.toggle("is-voice", micOn);
+        strip.textContent = micOn
+          ? "语音管理中 · 试试「发送」或「取消」"
+          : "未收听 · 点麦进入语音管理";
+        if (micOn) {
+          setTimeout(function () { showUi("coach"); }, 450);
+        }
+      });
+
+      var notes = {
+        empty:
+          "<b>A 空壳：</b>激活路径清楚，但首测失败率高——用户开麦后沉默。只适合极客自定义，不适合默认。",
+        starter:
+          "<b>结论：应该预置。</b><br />预置的是<strong>收听窗里的起步命令</strong>（发送 / 取消 / 新建 / 继续…），不是 Keys 左栏再摆一张大目录。长期调整：芯片「改」→ 改说法；「＋」加自己的；场景切换可换另一套起步包。",
+        catalog:
+          "<b>C 全量目录：</b>适合作为设置深处的「命令库」，不适合当口头指令主页——会让用户以为口头指令=词表，而不是语音管理模式。"
+      };
+      document.querySelectorAll("#presetOpts .opt").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll("#presetOpts .opt").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+          document.getElementById("presetNote").innerHTML = notes[btn.getAttribute("data-opt")];
+          document.getElementById("presetDemo").style.opacity =
+            btn.getAttribute("data-opt") === "starter" ? "1" : "0.4";
+        });
+      });
+
+      document.querySelectorAll("#journeySim button").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var j = btn.getAttribute("data-j");
+          document.querySelectorAll("#journeySim button").forEach(function (b) {
+            b.classList.toggle("is-on", b === btn);
+          });
+          document.querySelectorAll("#journeyTl .tl").forEach(function (row) {
+            var on = row.getAttribute("data-j-row") === j;
+            row.style.opacity = on ? "1" : "0.45";
+            row.querySelector(".card").style.borderColor = on ? "var(--violet-bd)" : "var(--line)";
+          });
+        });
+      });
+      document.querySelectorAll("#journeyTl .tl").forEach(function (row) {
+        row.style.opacity = row.getAttribute("data-j-row") === "1" ? "1" : "0.45";
+      });
+    })();
+  </script>
+</body>
+</html>

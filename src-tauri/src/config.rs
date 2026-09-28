@@ -22,6 +22,101 @@ pub enum TriggerMode {
     Double,
 }
 
+/// Execution scheme for a recorded press (tap / double / long).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum GestureScheme {
+    /// Inject target-app voice shortcut; vendor IME owns dictation UI.
+    #[serde(alias = "voiceInput")]
+    Dictation,
+    /// On-demand OneTone listen (oral command); engines off until activated.
+    #[serde(alias = "voiceCommand", alias = "oral")]
+    VoiceCommand,
+    #[default]
+    Off,
+}
+
+/// Per-gesture scheme map. When set, runtime classifies tap/double/long
+/// and dispatches by scheme instead of a single `triggerMode`.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GestureModes {
+    #[serde(default)]
+    pub tap: GestureScheme,
+    #[serde(default)]
+    pub double: GestureScheme,
+    #[serde(default)]
+    pub long: GestureScheme,
+}
+
+impl GestureModes {
+    pub fn is_inactive(&self) -> bool {
+        self.tap == GestureScheme::Off
+            && self.double == GestureScheme::Off
+            && self.long == GestureScheme::Off
+    }
+
+    pub fn scheme_for_gesture(&self, gesture: &str) -> GestureScheme {
+        match gesture {
+            "double" | "double_click" => self.double,
+            "long" | "longpress" | "long_press" => self.long,
+            _ => self.tap,
+        }
+    }
+
+    /// Legacy single `triggerMode` -> only that gesture runs dictation.
+    pub fn from_trigger_mode(mode: TriggerMode) -> Self {
+        match mode {
+            TriggerMode::Double => Self {
+                double: GestureScheme::Dictation,
+                ..Self::default()
+            },
+            TriggerMode::LongPress => Self {
+                long: GestureScheme::Dictation,
+                ..Self::default()
+            },
+            TriggerMode::Tap | TriggerMode::PerPress => Self {
+                tap: GestureScheme::Dictation,
+                ..Self::default()
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod gesture_modes_tests {
+    use super::*;
+
+    fn mapping_json(trigger: &str, modes: Option<serde_json::Value>) -> MappingEntry {
+        let mut v = serde_json::json!({
+            "id": "t",
+            "triggerMode": trigger,
+        });
+        if let Some(m) = modes {
+            v["gestureModes"] = m;
+        }
+        serde_json::from_value(v).expect("mapping")
+    }
+
+    #[test]
+    fn explicit_all_off_stays_off() {
+        let m = mapping_json(
+            "tap",
+            Some(serde_json::json!({ "tap": "off", "double": "off", "long": "off" })),
+        );
+        assert!(m.uses_multi_gesture_schemes());
+        assert_eq!(m.scheme_for_gesture("tap"), GestureScheme::Off);
+    }
+
+    #[test]
+    fn legacy_trigger_mode_when_no_gesture_modes() {
+        let m = mapping_json("double", None);
+        assert!(!m.uses_multi_gesture_schemes());
+        assert_eq!(m.scheme_for_gesture("double"), GestureScheme::Dictation);
+        assert_eq!(m.scheme_for_gesture("tap"), GestureScheme::Off);
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PhraseBundle {
@@ -1223,6 +1318,13 @@ pub struct MappingEntry {
     pub order: u32,
     #[serde(rename = "triggerMode", default)]
     pub trigger_mode: TriggerMode,
+    /// Optional multi-gesture scheme map. Empty/`None` => legacy `triggerMode` only.
+    #[serde(
+        rename = "gestureModes",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub gesture_modes: Option<GestureModes>,
     #[serde(rename = "triggerSource", default)]
     pub trigger_source: Option<TriggerSource>,
     #[serde(rename = "sourceKey", default)]
@@ -1301,11 +1403,39 @@ pub struct MappingEntry {
     /// Which capture-tab item is shown on Keys step-02 hero keycap.
     #[serde(rename = "captureHeroRef", default, skip_serializing_if = "Option::is_none")]
     pub capture_hero_ref: Option<CaptureHeroRef>,
+    /// Oral-command whitelist while Soft Pad mic / voiceCommand session is armed.
+    /// Soft slots may carry phrase overrides in `say`; prompt/bind say lives on peer/binding.
+    #[serde(
+        rename = "oralCommandScheme",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub oral_command_scheme: Option<OralCommandScheme>,
     /// Ordered action sequence executed when the trigger fires.  Empty ⇒ falls
     /// back to the legacy single `target_key` string via `effective_target_actions`.
     /// Serde tag = "type"; payload key is `value` (Key / Text) or `ms` (Delay).
     #[serde(rename = "targetActions", default)]
     pub target_actions: Vec<Action>,
+}
+
+/// Enabled whitelist (+ optional soft/key phrase overrides) for on-demand oral listen.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct OralCommandScheme {
+    /// Dedicated physical key that arms oral listen (independent of habit `triggerKey` / 听写).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub trigger_key: String,
+    #[serde(default)]
+    pub items: std::collections::HashMap<String, OralCommandItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct OralCommandItem {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub say: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
 }
 
 /// One step in a habit's target action sequence.
@@ -1359,6 +1489,32 @@ impl MappingEntry {
         vec![Action::Key {
             value: key.to_string(),
         }]
+    }
+
+    /// Active gesture->scheme map (explicit `gestureModes`, else derived from `triggerMode`).
+    /// Explicit `Some` (even all-off) wins so the Keys matrix can clear every gesture.
+    pub fn effective_gesture_modes(&self) -> GestureModes {
+        match &self.gesture_modes {
+            Some(m) => m.clone(),
+            None => GestureModes::from_trigger_mode(self.trigger_mode),
+        }
+    }
+
+    pub fn uses_multi_gesture_schemes(&self) -> bool {
+        self.gesture_modes.is_some()
+    }
+
+    pub fn scheme_for_gesture(&self, gesture: &str) -> GestureScheme {
+        self.effective_gesture_modes().scheme_for_gesture(gesture)
+    }
+
+    /// Dedicated oral-listen arm key (not the 听写 `trigger_key`).
+    pub fn oral_trigger_key(&self) -> &str {
+        self.oral_command_scheme
+            .as_ref()
+            .map(|s| s.trigger_key.as_str())
+            .unwrap_or("")
+            .trim()
     }
 }
 
@@ -3902,6 +4058,12 @@ pub fn hotkey_registration_bindings(m: &MappingEntry) -> Vec<String> {
             out.push(chord);
         }
     }
+    // Oral arm key is independent of dictation triggerKey — must still reach the
+    // mouse/keyboard hook (else XButton1 oral never hits dispatch_physical_event).
+    let oral = canonical_trigger(m.oral_trigger_key());
+    if !oral.is_empty() && is_allowed_trigger(&oral) && !out.contains(&oral) {
+        out.push(oral);
+    }
     out
 }
 
@@ -4272,6 +4434,8 @@ impl Default for VoiceConfig {
                 codex_micro_pad: None,
                 time_machine_workspace: String::new(),
                 capture_hero_ref: None,
+                gesture_modes: None,
+                oral_command_scheme: None,
                 target_actions: vec![],
             }],
             trash: vec![],
@@ -4834,6 +4998,8 @@ impl VoiceConfig {
                 codex_micro_pad: None,
                 time_machine_workspace: String::new(),
                 capture_hero_ref: None,
+                gesture_modes: None,
+                oral_command_scheme: None,
                 target_actions: vec![],
             });
         }
@@ -5316,6 +5482,62 @@ impl VoiceConfig {
         Some(candidates[0])
     }
 
+    /// Match habit by dedicated oral arm key (`oralCommandScheme.triggerKey`).
+    pub fn find_mapping_for_oral_event(
+        &self,
+        event: &crate::press_gesture::PhysicalKeyEvent,
+    ) -> Option<&MappingEntry> {
+        let canonical = canonical_trigger(&event.key);
+        if canonical.is_empty() {
+            return None;
+        }
+        let foreground = crate::app_identity::foreground_app_identity();
+        let mut candidates: Vec<&MappingEntry> = Vec::new();
+        for m in self.active_mappings() {
+            let oral = m.oral_trigger_key();
+            if oral.is_empty() {
+                continue;
+            }
+            // Oral arm is channel-private — do NOT gate on overlay_trigger_is_live.
+            // App scenarios often keep triggerKey empty (Soft Pad only); that gate
+            // made XButton1/2 oral never match while Soft Pad still auto-showed.
+            if canonical_trigger(oral) != canonical && oral != event.key.as_str() {
+                continue;
+            }
+            candidates.push(m);
+        }
+        if let Some(ref identity) = foreground {
+            if self.follow_foreground_app_scenario {
+                // Prefer FG-matching app habit, but never drop the only oral candidate.
+                let focused: Vec<&MappingEntry> = candidates
+                    .iter()
+                    .copied()
+                    .filter(|m| {
+                        !is_app_scenario_mapping(m)
+                            || mapping_matches_foreground_identity(m, identity)
+                    })
+                    .collect();
+                if !focused.is_empty() {
+                    candidates = focused;
+                }
+            }
+        }
+        if candidates.is_empty() {
+            return None;
+        }
+        if candidates.len() == 1 {
+            return Some(candidates[0]);
+        }
+        if let Some(ref identity) = foreground {
+            if let Some(hit) = candidates.iter().copied().find(|m| {
+                is_app_scenario_mapping(m) && mapping_matches_foreground_identity(m, identity)
+            }) {
+                return Some(hit);
+            }
+        }
+        Some(candidates[0])
+    }
+
     /// All modifier-only agent watch chords across live pack + baseline.
     pub fn agent_modifier_watch_bindings(&self) -> Vec<String> {
         let mut out = Vec::new();
@@ -5372,6 +5594,18 @@ impl VoiceConfig {
                 if !out.contains(&pb) {
                     out.push(pb);
                 }
+            }
+        }
+        // Oral arm keys must stay in the mouse/keyboard hook even when another
+        // app scenario is the live pack (or OneTone itself is focused). Otherwise
+        // XButton1/2 never reaches try_dispatch_oral_trigger after scene switch.
+        for m in self.active_mappings() {
+            let oral = canonical_trigger(m.oral_trigger_key());
+            if oral.is_empty() || !is_allowed_trigger(&oral) {
+                continue;
+            }
+            if !out.contains(&oral) {
+                out.push(oral);
             }
         }
         out
@@ -7032,6 +7266,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
@@ -7080,6 +7316,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             });
         cfg.enable_mapping("b");
@@ -7130,6 +7368,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             });
         cfg.normalize();
@@ -7299,6 +7539,70 @@ mod tests {
     }
 
     #[test]
+    fn oral_event_matches_even_when_app_trigger_key_empty() {
+        // Soft Pad Cursor habits often keep triggerKey empty; oral XButton must still arm.
+        let mut cfg = VoiceConfig::default();
+        let mut cursor = cfg.mappings[0].clone();
+        cursor.id = "cursor-oral-empty-trig".into();
+        cursor.app_target_id = "cursor-chat".into();
+        cursor.trigger_key = String::new();
+        cursor.enabled = true;
+        cursor.oral_command_scheme = Some(OralCommandScheme {
+            trigger_key: "XButton2".into(),
+            ..Default::default()
+        });
+        cfg.mappings.push(cursor);
+        let event = crate::press_gesture::PhysicalKeyEvent {
+            is_keyup: false,
+            device: None,
+            key: "XButton2".into(),
+        };
+        let hit = cfg.find_mapping_for_oral_event(&event);
+        assert!(
+            hit.is_some_and(|m| m.id == "cursor-oral-empty-trig"),
+            "empty triggerKey must not block oral XButton2: {hit:?}"
+        );
+    }
+
+    #[test]
+    fn hotkey_registration_includes_oral_side_button() {
+        let mut m = VoiceConfig::default().mappings.remove(0);
+        m.trigger_key = "RAlt".into();
+        m.oral_command_scheme = Some(OralCommandScheme {
+            trigger_key: "XButton1".into(),
+            ..Default::default()
+        });
+        let bindings = hotkey_registration_bindings(&m);
+        assert!(
+            bindings.iter().any(|b| b == "XButton1"),
+            "oral XButton1 must register so mouse_proc forwards it: {bindings:?}"
+        );
+        assert!(bindings.iter().any(|b| b == "RAlt"));
+    }
+
+    #[test]
+    fn bindings_keep_oral_side_button_when_other_pack_live() {
+        let mut cfg = VoiceConfig::default();
+        let mut cursor = cfg.mappings[0].clone();
+        cursor.id = "cursor-oral".into();
+        cursor.app_target_id = "cursor-chat".into();
+        cursor.trigger_key = "RShift".into();
+        cursor.enabled = true;
+        cursor.oral_command_scheme = Some(OralCommandScheme {
+            trigger_key: "XButton2".into(),
+            ..Default::default()
+        });
+        cfg.mappings.push(cursor);
+        // activeScene / live pack is the universal row — Cursor overlay not live.
+        cfg.active_scene_id = cfg.mappings[0].id.clone();
+        let bindings = cfg.bindings();
+        assert!(
+            bindings.iter().any(|b| b == "XButton2"),
+            "Cursor oral XButton2 must stay registered off-pack: {bindings:?}"
+        );
+    }
+
+    #[test]
     fn mapping_physical_bindings_drops_rbutton_raw_falls_back_to_trigger() {
         // Real bug: HID pedal mapping stored RButton in triggerSource; right-drag
         // long-press fired target RAlt. Blocked mouse tokens must fall through.
@@ -7368,6 +7672,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             });
         let result = cfg.cycle_scheme_same_trigger();
@@ -7419,6 +7725,8 @@ mod tests {
             codex_micro_pad: None,
             time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
         });
         cfg.ensure_active_scene_id();
@@ -7481,6 +7789,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             };
         let bindings = mapping_physical_bindings(&m);
@@ -7526,6 +7836,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
@@ -7702,6 +8014,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             });
         let result = cfg.select_scheme("b");
@@ -7752,6 +8066,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             });
         cfg.enable_mapping("b");
@@ -7798,6 +8114,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
@@ -7999,6 +8317,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             };
         let bindings = hotkey_registration_bindings(&m);
@@ -8048,6 +8368,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
@@ -8240,6 +8562,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
@@ -8320,6 +8644,8 @@ mod tests {
             codex_micro_pad: None,
                 time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
@@ -8376,6 +8702,8 @@ mod tests {
             codex_micro_pad: None,
             time_machine_workspace: String::new(),
         capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
         });
         let hit = find_preferred_workflow_scenario_for_dispatch(&cfg).expect("cursor scene");
@@ -8900,6 +9228,8 @@ mod tests {
             codex_micro_pad: None,
             time_machine_workspace: r"C:\work\demo".into(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions: vec![],
             };
         let json = serde_json::to_string(&mapping).expect("serialize");
@@ -9097,6 +9427,8 @@ mod tests {
             codex_micro_pad: None,
             time_machine_workspace: String::new(),
             capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
             target_actions,
         };
         m

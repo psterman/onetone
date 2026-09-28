@@ -107,6 +107,13 @@ pub fn handle_detection(
         detection.matched_phrase.trim()
     };
 
+    // On-demand oral session: match whitelist before global beginner / wake gates.
+    if crate::voice_command_session::is_armed() {
+        if let Some(result) = try_route_oral_armed(state, app, &detection.engine, phrase) {
+            return result;
+        }
+    }
+
     // Cursor beginner: route before Send/Cancel/Wake gates (「发送」等也是全局 send/cancel 词).
     if let Some(result) = try_route_cursor_beginner_voice(state, app, &detection.engine, phrase) {
         return result;
@@ -190,6 +197,273 @@ fn skip(reason: String) -> VoiceCommandRouterResult {
         skip_reason: reason,
         ..Default::default()
     }
+}
+
+fn oral_item_enabled(
+    scheme: Option<&crate::config::OralCommandScheme>,
+    id: &str,
+    default_on: bool,
+) -> bool {
+    match scheme.and_then(|s| s.items.get(id)) {
+        Some(it) => it.enabled.unwrap_or(default_on),
+        None => default_on,
+    }
+}
+
+fn oral_split_say(raw: &str) -> Vec<String> {
+    raw.split(|c: char| {
+        c.is_whitespace() || matches!(c, '、' | ',' | '，' | ';' | '；')
+    })
+    .map(|s| s.trim().to_string())
+    .filter(|s| !s.is_empty())
+    .collect()
+}
+
+fn oral_scheme_for_cfg(
+    cfg: &crate::config::VoiceConfig,
+) -> Option<crate::config::OralCommandScheme> {
+    let armed_id = crate::voice_command_session::armed_mapping_id();
+    if !armed_id.is_empty() {
+        if let Some(s) = cfg
+            .find_mapping_by_id(&armed_id)
+            .and_then(|m| m.oral_command_scheme.clone())
+        {
+            return Some(s);
+        }
+    }
+    if let Some(m) = cfg.find_mapping_by_id(&cfg.active_scene_id) {
+        if let Some(s) = m.oral_command_scheme.clone() {
+            return Some(s);
+        }
+    }
+    cfg.mappings
+        .iter()
+        .find_map(|m| m.oral_command_scheme.clone())
+}
+
+fn phrase_matches_any(phrase: &str, candidates: &[String]) -> bool {
+    candidates
+        .iter()
+        .any(|p| crate::config::phrases_fuzzy_match(phrase, p))
+}
+
+/// Armed Soft Pad mic / voiceCommand session: whitelist → Soft slot / prompt / voice bind / key.
+fn try_route_oral_armed(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    engine: &str,
+    phrase: &str,
+) -> Option<VoiceCommandRouterResult> {
+    let phrase = phrase.trim();
+    if phrase.is_empty() {
+        return None;
+    }
+    if *state.paused.lock() {
+        return Some(skip("监听已暂停，请先在上方点「恢复」。".into()));
+    }
+    if state
+        .voice_practice_hold_fg
+        .load(std::sync::atomic::Ordering::SeqCst)
+    {
+        return Some(skip("语音练习台中，仅本页听写测试，不发送快捷键。".into()));
+    }
+
+    // Soft Pad beginner slots (phrase overrides from scheme.say).
+    let soft_hit = {
+        let cfg = state.cfg.lock();
+        let scheme = oral_scheme_for_cfg(&cfg);
+        let scheme_ref = scheme.as_ref();
+        let mut hit = None;
+        for slot in crate::cursor_beginner::BEGINNER_SLOTS {
+            let id = format!("soft:{}", slot.slot_id);
+            if !oral_item_enabled(scheme_ref, &id, true) {
+                continue;
+            }
+            let phrases = scheme_ref
+                .and_then(|s| s.items.get(&id))
+                .and_then(|it| it.say.as_ref())
+                .map(|s| oral_split_say(s))
+                .filter(|v| !v.is_empty())
+                .unwrap_or_else(|| {
+                    slot.voice_phrases
+                        .iter()
+                        .map(|p| (*p).to_string())
+                        .collect()
+                });
+            if phrase_matches_any(phrase, &phrases)
+                || (slot.slot_id == "continue"
+                    && crate::config::phrases_fuzzy_match(phrase, "但是")
+                    && scheme_ref
+                        .and_then(|s| s.items.get(&id))
+                        .and_then(|it| it.say.as_ref())
+                        .is_none())
+            {
+                hit = Some(slot.slot_id);
+                break;
+            }
+        }
+        hit
+    };
+    if let Some(slot_id) = soft_hit {
+        // 「说话」while IME already up: do not re-pulse the toggle chord (would end voice).
+        if slot_id == "pushToTalk"
+            && (crate::voice_command_session::ime_voice_active()
+                || crate::voice_end_runtime::session_state(state.as_ref()) == "dictating")
+        {
+            return Some(VoiceCommandRouterResult {
+                handled: true,
+                trigger_label: format!("oral_soft:pushToTalk（已在听写）"),
+                ..Default::default()
+            });
+        }
+        // First-use aim still open: block composer-dependent slots until user finishes.
+        if crate::voice_command_session::need_composer_aim()
+            && matches!(
+                slot_id,
+                "stopOrSend" | "continue" | "newThread" | "pushToTalk"
+            )
+        {
+            return Some(skip(
+                "请先圈选 Agent 输入框完成首次对准，再说口令。".into(),
+            ));
+        }
+        let window = crate::ipc::get_main_window(app)?;
+        let out = crate::cursor_beginner::run_slot(state, &window, slot_id, true, true);
+        let ok = out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+        *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
+        *state.voice_vosk_last_final.lock() = phrase.to_string();
+        let label = format!("oral_soft:{}", slot_id);
+        if ok {
+            *state.voice_vosk_last_trigger.lock() = format!("{}（{}）", label, phrase);
+            crate::codex_micro_overlay::request_overlay_push(app, state.as_ref(), false);
+            return Some(VoiceCommandRouterResult {
+                handled: true,
+                trigger_label: format!("{}（{}）", label, phrase),
+                ..Default::default()
+            });
+        }
+        return Some(skip(format!("口头 Soft 槽未执行（{}）", slot_id)));
+    }
+
+    // 一词注入 peers (say on peer wake; scheme = enabled only).
+    {
+        let cfg = state.cfg.lock();
+        let scheme = oral_scheme_for_cfg(&cfg);
+        if let Some(peer) = crate::voice_end_runtime::find_prompt_inject_peer_for_phrase(&cfg, phrase)
+        {
+            let id = format!("prompt:{}", peer.id);
+            if oral_item_enabled(scheme.as_ref(), &id, true) {
+                drop(cfg);
+                if let Some(result) = crate::voice_end_runtime::try_dispatch_prompt_inject_for_phrase(
+                    state, app, phrase, engine,
+                ) {
+                    *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
+                    if result.ok {
+                        *state.voice_vosk_last_trigger.lock() =
+                            format!("{}（{}）", result.runtime_label, phrase);
+                        return Some(VoiceCommandRouterResult {
+                            handled: true,
+                            trigger_label: format!("{}（{}）", result.runtime_label, phrase),
+                            ..Default::default()
+                        });
+                    }
+                    return Some(skip(format!("一词注入失败（{}）", phrase)));
+                }
+            }
+        }
+    }
+
+    // Voice agentBindings (say on triggerBinding; scheme = enabled).
+    {
+        let cfg = state.cfg.lock();
+        let scheme = oral_scheme_for_cfg(&cfg);
+        let mut bind_ref = None;
+        for m in cfg.mappings.iter().filter(|m| m.enabled) {
+            if let Some(b) = crate::config::find_agent_voice_binding(m, phrase) {
+                let bref = if !b.slot_id.trim().is_empty() {
+                    b.slot_id.trim().to_string()
+                } else {
+                    b.trigger_binding.trim().to_string()
+                };
+                let id = format!("bind:{}", bref);
+                if oral_item_enabled(scheme.as_ref(), &id, true) {
+                    bind_ref = Some(bref);
+                    break;
+                }
+            }
+        }
+        drop(cfg);
+        if bind_ref.is_some() {
+            if let Some(result) =
+                crate::voice_end_runtime::try_dispatch_agent_voice(state, app, phrase)
+            {
+                *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
+                if result.ok {
+                    *state.voice_vosk_last_trigger.lock() =
+                        format!("{}（{}）", result.runtime_label, phrase);
+                    return Some(VoiceCommandRouterResult {
+                        handled: true,
+                        trigger_label: format!("{}（{}）", result.runtime_label, phrase),
+                        ..Default::default()
+                    });
+                }
+                return Some(skip(format!("语音绑定失败（{}）", phrase)));
+            }
+        }
+    }
+
+    // Explicit key:/seq: whitelist (say stored on scheme).
+    let key_hit = {
+        let cfg = state.cfg.lock();
+        if let Some(scheme) = oral_scheme_for_cfg(&cfg) {
+            let duration_ms = cfg.key_press_duration_ms;
+            let mut found: Option<(String, Vec<crate::config::Action>, u32)> = None;
+            for (id, item) in &scheme.items {
+                if item.enabled != Some(true) {
+                    continue;
+                }
+                if !(id.starts_with("key:") || id.starts_with("seq:") || id.starts_with("agent:")) {
+                    continue;
+                }
+                let say = item.say.as_deref().unwrap_or("");
+                let phrases = oral_split_say(say);
+                if phrases.is_empty() || !phrase_matches_any(phrase, &phrases) {
+                    continue;
+                }
+                if let Some(mid) = id.strip_prefix("key:") {
+                    if let Some(m) = cfg.find_mapping_by_id(mid) {
+                        let actions = m.effective_target_actions().to_vec();
+                        if actions.is_empty() {
+                            continue;
+                        }
+                        found = Some((mid.to_string(), actions, duration_ms));
+                        break;
+                    }
+                }
+            }
+            found
+        } else {
+            None
+        }
+    };
+    if let Some((mid, actions, duration_ms)) = key_hit {
+        let ok = crate::keyboard::run_action_sequence(&actions, duration_ms);
+        if ok {
+            if let Some(mk) = crate::cursor_beginner::slot_def("stopOrSend") {
+                crate::codex_micro_overlay::note_micro_key(mk.micro_key_id, true);
+                crate::codex_micro_overlay::request_overlay_push(app, state.as_ref(), false);
+            }
+            *state.voice_vosk_last_trigger.lock() = format!("oral_key:{}（{}）", mid, phrase);
+            return Some(VoiceCommandRouterResult {
+                handled: true,
+                trigger_label: format!("oral_key（{}）", phrase),
+                ..Default::default()
+            });
+        }
+        return Some(skip(format!("口头按键序列失败（{}）", mid)));
+    }
+
+    None
 }
 
 fn try_route_cursor_beginner_voice(
@@ -363,5 +637,28 @@ mod tests {
         assert_eq!(d.kind, VoiceDetectionKind::Wake);
         assert_eq!(d.matched_phrase, "开始输入");
         assert_eq!(d.confidence, Some(0.9));
+    }
+
+    #[test]
+    fn oral_split_say_splits_cn_and_ascii() {
+        assert_eq!(
+            oral_split_say("发送、发出去, submit"),
+            vec!["发送", "发出去", "submit"]
+        );
+    }
+
+    #[test]
+    fn oral_item_enabled_defaults() {
+        assert!(oral_item_enabled(None, "soft:stopOrSend", true));
+        let mut scheme = crate::config::OralCommandScheme::default();
+        scheme.items.insert(
+            "soft:stopOrSend".into(),
+            crate::config::OralCommandItem {
+                say: Some("发出去".into()),
+                enabled: Some(false),
+            },
+        );
+        assert!(!oral_item_enabled(Some(&scheme), "soft:stopOrSend", true));
+        assert!(oral_item_enabled(Some(&scheme), "soft:continue", true));
     }
 }

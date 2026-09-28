@@ -574,6 +574,60 @@
     return api.canUseHoldMode(m.id,{currentMode:m.triggerMode});
   }
 
+  function normalizeGestureScheme(raw){
+    var s=String(raw||'off').toLowerCase();
+    if(s==='dictation'||s==='voiceinput'||s==='voice_input') return 'dictation';
+    if(s==='voicecommand'||s==='voice_command'||s==='oral') return 'voiceCommand';
+    return 'off';
+  }
+
+  function effectiveGestureModes(m){
+    var gm=m&&m.gestureModes;
+    if(gm&&typeof gm==='object'){
+      return {
+        tap:normalizeGestureScheme(gm.tap),
+        double:normalizeGestureScheme(gm.double),
+        long:normalizeGestureScheme(gm.long)
+      };
+    }
+    var mode=normalizeTriggerModeUi(m&&m.triggerMode);
+    if(mode==='double') return {tap:'off',double:'dictation',long:'off'};
+    if(mode==='hold') return {tap:'off',double:'off',long:'dictation'};
+    return {tap:'dictation',double:'off',long:'off'};
+  }
+
+  function schemeLabel(scheme){
+    if(scheme==='dictation') return t('keysGestureSchemeDictation','语音输入');
+    if(scheme==='voiceCommand') return t('keysGestureSchemeVoiceCommand','口头指令');
+    return t('keysGestureSchemeOff','未绑定');
+  }
+
+  function buildGestureModesHtml(m){
+    var modes=effectiveGestureModes(m);
+    var rows=[
+      {id:'tap',label:t('keysGestureTap','单击')},
+      {id:'double',label:t('keysGestureDouble','双击')},
+      {id:'long',label:t('keysGestureLong','长按')}
+    ];
+    var html='<div class="keys-gesture-modes" data-mapping-id="'+esc(m.id)+'">';
+    html+='<div class="keys-gesture-modes__head"><span>'+esc(t('keysGestureModesTitle','按法 → 方案'))+'</span>'
+      +'<em>'+esc(t('keysGestureModesHint','自由绑定；口头指令按需开麦'))+'</em></div>';
+    rows.forEach(function(row){
+      var cur=modes[row.id]||'off';
+      html+='<div class="keys-gesture-modes__row" data-gesture="'+esc(row.id)+'">';
+      html+='<span class="keys-gesture-modes__gest">'+esc(row.label)+'</span>';
+      html+='<div class="keys-gesture-modes__schemes">';
+      ['dictation','voiceCommand','off'].forEach(function(sch){
+        html+='<button type="button" class="keys-gesture-scheme'+(cur===sch?' is-on':'')+'"'
+          +' data-gesture-scheme="'+esc(sch)+'" data-gesture="'+esc(row.id)+'" data-mapping-id="'+esc(m.id)+'">'
+          +esc(schemeLabel(sch))+'</button>';
+      });
+      html+='</div></div>';
+    });
+    html+='</div>';
+    return html;
+  }
+
   function buildKeysTriggerModeModel(m){
     if(arguments.length===0){
       m=core()&&core().selected?core().selected():null;
@@ -591,31 +645,10 @@
     var gate=holdGateFor(m);
     var trig=(core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim()));
     var hasKey=!!String(trig||'').trim();
-    var opt=current==='double'
-      ?{label:'keysTriggerModeDouble',desc:'keysTriggerModeDoubleDesc',tip:'keysTriggerModeDoubleTip'}
-      :(current==='hold'
-        ?{label:'keysTriggerModeHold',desc:'keysTriggerModeHoldDesc',tip:'keysTriggerModeHoldTip'}
-        :{label:'keysTriggerModeTap',desc:'keysTriggerModeTapDesc',tip:'keysTriggerModeTapTip'});
-    var descKey=opt.desc;
-    var title=t(opt.tip);
-    if(current==='hold'){
-      if(gate.ok) title=t('keysHoldGateSupported');
-      else if(gate.reason==='pulse_only'){
-        title=t('keysHoldGatePulseOnly');
-        descKey='keysTriggerModeHoldDescLocked';
-      }else{
-        title=t('keysHoldGateUntested');
-        descKey='keysTriggerModeHoldDescLocked';
-      }
-    }
+    var modes=effectiveGestureModes(m);
     var html='';
     if(hasKey){
-      html+='<div class="keys-trigger-modes keys-trigger-modes--detected" role="status" aria-label="'+esc(t('keysWorkflowFooterTrigger'))+'">'
-        +'<div class="keys-trigger-mode-seg is-active is-readonly" aria-current="true"'
-        +(title?' title="'+esc(title)+'"':'')+'>'
-        +'<span class="keys-trigger-mode-seg__title">'+esc(t(opt.label))+'</span>'
-        +'<span class="keys-trigger-mode-seg__desc">'+esc(t(descKey))+'</span>'
-        +'</div></div>';
+      html+=buildGestureModesHtml(m);
     }
     if(current==='hold'&&!gate.ok){
       html+='<div class="keys-hold-risk-hint" role="status">'
@@ -631,6 +664,9 @@
       hasKey?'1':'0',
       gate.ok?'1':'0',
       String(gate.reason||''),
+      modes.tap,
+      modes.double,
+      modes.long,
       html
     ].join('\0');
     return {
@@ -656,8 +692,15 @@
       var modeLbl='';
       var trigKey=m&&(core().editorTrigger?core().editorTrigger(m):((m.triggerKey||'').trim()));
       if(m&&String(trigKey||'').trim()){
-        var ui=normalizeTriggerModeUi(m.triggerMode);
-        modeLbl=t(ui==='double'?'keysTriggerModeDouble':(ui==='hold'?'keysTriggerModeHold':'keysTriggerModeTap'));
+        var modesSum=effectiveGestureModes(m);
+        var bits=[];
+        if(modesSum.tap!=='off') bits.push(t('keysGestureTap','单击')+'·'+schemeLabel(modesSum.tap));
+        if(modesSum.double!=='off') bits.push(t('keysGestureDouble','双击')+'·'+schemeLabel(modesSum.double));
+        if(modesSum.long!=='off') bits.push(t('keysGestureLong','长按')+'·'+schemeLabel(modesSum.long));
+        modeLbl=bits.length?bits.join(' · '):(function(){
+          var ui=normalizeTriggerModeUi(m.triggerMode);
+          return t(ui==='double'?'keysTriggerModeDouble':(ui==='hold'?'keysTriggerModeHold':'keysTriggerModeTap'));
+        })();
       }
       summary.textContent=modeLbl
         ? (t('keysRailModesSummary')+' · '+modeLbl)
@@ -1288,8 +1331,12 @@
   function syncKeysWorkChannelPill(){
     var pill=$('keysWorkChannelPill');
     if(!pill) return;
-    var active=document.querySelector('#keysChannelSubtabs [data-channel].is-active');
-    var ch=active&&active.getAttribute('data-channel');
+    var picker=global.OneToneKeysChannelCommandPicker;
+    var ch=picker&&picker.getActiveTab?picker.getActiveTab():'';
+    if(!ch){
+      var active=document.querySelector('#keysChannelSubtabs [data-channel].is-active');
+      ch=active&&active.getAttribute('data-channel');
+    }
     var keyMap={
       ime:'keysChannelTabIme',
       key:'keysChannelTabKey',
@@ -1300,6 +1347,7 @@
     };
     var k=keyMap[ch]||'keysChannelTabIme';
     pill.textContent=t(k);
+    pill.classList.toggle('is-oral', ch==='voice');
   }
 
   function renderStatusChips(){
@@ -1469,4 +1517,13 @@
     var m=core()&&core().selected?core().selected():null;
     return buildKeysStatusProps(m);
   };
+
+  // ponytail: gestureModes legacy→matrix self-check
+  try{
+    if(typeof global.__ONETONE_E2E__!=='undefined'||(global.location&&/[?&]otGestureCheck=1/.test(global.location.search||''))){
+      var d=effectiveGestureModes({triggerMode:'double'});
+      var ok=d.double==='dictation'&&d.tap==='off'&&normalizeGestureScheme('oral')==='voiceCommand';
+      if(!ok&&global.console&&console.warn) console.warn('[keys-gesture] effectiveGestureModes self-check failed');
+    }
+  }catch(_){}
 })((typeof window!=='undefined')?window:globalThis);
