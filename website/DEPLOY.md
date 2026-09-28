@@ -65,25 +65,18 @@ python -m http.server 8080
 
 `website/` 内链接与 `canonical` 已指向 `https://www.onetone.app`，绑域名后无需改 HTML。
 
-#### 部署失败：`libstdc++-6.dll` 超过 25 MiB
+#### 部署失败：单文件超过 25 MiB
 
-日志类似：
+Cloudflare Pages 限制：**输出目录内单个文件 ≤ 25 MiB**。
 
-```text
-Error: File .../src-tauri/resources/vosk/libstdc++-6.dll is 25.4 MiB which exceeds the 25 MiB limit
-```
+常见两种：
 
-**原因**：输出目录设成了仓库根目录，把整个 Tauri 桌面应用（含 Vosk DLL）一起上传了。官网 **不需要** 也 **不应** 部署 `src-tauri/`。
+1. **输出目录设成了仓库根目录** → 把 `src-tauri/`（含 Vosk DLL）一起上传  
+   - 处理：Build output directory 改成 **`website`**
+2. **`website/` 里放了过大视频**（如 `vibecoding-15s-hq.mp4` ≈ 26.8 MiB）  
+   - 处理：大视频放在仓库 `media/videos/`（不进 Pages 产物），页面用 jsDelivr 等 CDN 引用
 
-**处理**：
-
-1. Cloudflare → 你的 Pages 项目 → **Settings** → **Build**
-2. 把 **Build output directory** 改成 **`website`**，保存
-3. **Deployments** → **Retry deployment** 或 push 任意 `website/` 小改动触发重建
-
-确认成功后，部署日志里应只有 `website/*.html`、`website/css/` 等，不应出现 `src-tauri/`。
-
-**不要** 为绕过 25 MiB 限制去把 DLL 放进 R2——那是桌面端运行时依赖，与静态官网无关。
+确认成功后，部署日志里应只有 `website/*.html`、`website/css/` 等，不应出现 `src-tauri/` 或超大 mp4。
 
 ---
 

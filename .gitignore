@@ -99,3 +99,6 @@ CrashDumps/
 scripts/hang-dumps/procdump.exe
 scripts/hang-dumps/procdump64.exe
 
+
+# local ffmpeg download scratch
+.tmp-ffmpeg/
