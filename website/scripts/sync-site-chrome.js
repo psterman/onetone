@@ -122,11 +122,15 @@ function pageBundleKey(file) {
   return I18N_MANIFEST[base] ? base : "misc";
 }
 
+/** Bump when i18n string tables change so CDN/browsers don't keep stale bundles. */
+const I18N_ASSET_VER = "20260928b";
+
 function i18nScriptTags(file) {
   const bundles = I18N_MANIFEST[pageBundleKey(file)] || I18N_MANIFEST.misc;
+  const q = `?v=${I18N_ASSET_VER}`;
   return bundles
-    .map((b) => `  <script src="js/i18n-bundles/${b}.js"></script>`)
-    .concat('  <script src="js/i18n.js"></script>')
+    .map((b) => `  <script src="js/i18n-bundles/${b}.js${q}"></script>`)
+    .concat(`  <script src="js/i18n.js${q}"></script>`)
     .join("\n");
 }
 

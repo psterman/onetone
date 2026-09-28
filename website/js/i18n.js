@@ -30,6 +30,7 @@
   }
 
   function setLang(lang) {
+    mergeI18nBundles();
     localStorage.setItem(STORAGE_KEY, lang);
     applyLangContent(lang);
     applyStrings(lang);
@@ -48,6 +49,7 @@
   }
 
   function applyStrings(lang) {
+    mergeI18nBundles();
     document.querySelectorAll("[data-i18n]").forEach((el) => {
       const key = el.getAttribute("data-i18n");
       const val = t(lang, key);
@@ -70,10 +72,10 @@
   }
 
   function initLangToggle() {
-    const btn = document.getElementById("langToggle");
-    if (!btn) return;
     const lang = getLang();
     setLang(lang);
+    const btn = document.getElementById("langToggle");
+    if (!btn) return;
     btn.addEventListener("click", () => {
       const next = getLang() === "zh" ? "en" : "zh";
       setLang(next);
