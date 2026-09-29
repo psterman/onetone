@@ -302,6 +302,22 @@ pub fn vosk_grammar_phrases_for_cfg(cfg: &VoiceConfig) -> Vec<String> {
         }
     }
     crate::cursor_beginner::push_beginner_grammar_phrases(&mut out, &mut seen);
+    // Oral Soft Pad listen: inject exit + soft says (same as kws plan).
+    // Do not call `push` here — closure still borrows out/seen for NLL.
+    if crate::voice_command_session::is_armed() {
+        for p in crate::cursor_beginner::DISARM_PHRASES {
+            let t = p.trim();
+            if !t.is_empty() && seen.insert(t.to_string()) {
+                out.push(t.to_string());
+            }
+        }
+        for p in crate::voice_command_session::listen_say_list(cfg, 32) {
+            let t = p.trim();
+            if !t.is_empty() && seen.insert(t.to_string()) {
+                out.push(t.to_string());
+            }
+        }
+    }
     out
 }
 
@@ -412,6 +428,19 @@ pub fn kws_keyword_phrase_tiers(
 }
 
 pub fn kws_keyword_plan_for_cfg(cfg: &VoiceConfig, max_entries: usize) -> KwsKeywordPlan {
+    let mut seen = std::collections::HashSet::new();
+    let mut candidates = Vec::new();
+
+    // Oral Soft Pad listen: exit + soft says first, even without Cursor probe.
+    if crate::voice_command_session::is_armed() {
+        for p in crate::cursor_beginner::DISARM_PHRASES {
+            push_unique_phrase(&mut candidates, &mut seen, p);
+        }
+        for p in crate::voice_command_session::listen_say_list(cfg, 32) {
+            push_unique_phrase(&mut candidates, &mut seen, &p);
+        }
+    }
+
     let global_summon = global_summon_phrases(cfg);
     let tiers = if let Some(effective) = resolve_idle_effective_scene(cfg) {
         let mut tiers = kws_keyword_phrase_tiers(&effective, cfg.voice_end.enabled);
@@ -420,13 +449,11 @@ pub fn kws_keyword_plan_for_cfg(cfg: &VoiceConfig, max_entries: usize) -> KwsKey
             tiers.insert(1, global_summon);
         }
         tiers
-    } else if global_summon.is_empty() {
-        return KwsKeywordPlan::default();
-    } else {
+    } else if !global_summon.is_empty() {
         vec![global_summon]
+    } else {
+        Vec::new()
     };
-    let mut seen = std::collections::HashSet::new();
-    let mut candidates = Vec::new();
     if crate::cursor_beginner::probe_ok() {
         let mut beginner = Vec::new();
         let mut bseen = std::collections::HashSet::new();
@@ -439,6 +466,9 @@ pub fn kws_keyword_plan_for_cfg(cfg: &VoiceConfig, max_entries: usize) -> KwsKey
         for phrase in tier {
             push_unique_phrase(&mut candidates, &mut seen, &phrase);
         }
+    }
+    if candidates.is_empty() {
+        return KwsKeywordPlan::default();
     }
     if candidates.len() <= max_entries {
         return KwsKeywordPlan {
@@ -494,8 +524,9 @@ pub fn has_enabled_acoustic_commands(cfg: &VoiceConfig) -> bool {
 
 pub fn idle_desired_voice_engine(cfg: &VoiceConfig) -> DesiredVoiceEngine {
     match voice_listening_strategy(cfg) {
-        "auto" | "resourceSaver" => return DesiredVoiceEngine::Kws,
-        "enhanced" => return DesiredVoiceEngine::Vosk,
+        // auto = local free STT (home live text). resourceSaver = keyword mic only.
+        "auto" | "enhanced" => return DesiredVoiceEngine::Vosk,
+        "resourceSaver" => return DesiredVoiceEngine::Kws,
         "off" => return DesiredVoiceEngine::None,
         _ => {}
     }
@@ -1344,13 +1375,13 @@ mod tests {
     }
 
     #[test]
-    fn vosk_runtime_config_active_when_supervisor_falls_back_to_vosk() {
+    fn vosk_runtime_config_active_when_auto_strategy() {
         let mut cfg = base_cfg();
         cfg.voice_listening_strategy = "auto".into();
         cfg.voice_vosk.enabled = false;
         cfg.voice_kws.enabled = true;
-        assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Kws);
-        assert!(!resolve_effective_vosk_config(&cfg).enabled);
+        assert_eq!(idle_desired_voice_engine(&cfg), DesiredVoiceEngine::Vosk);
+        // Supervisor wants Vosk even if disk flags still say kws-only.
         assert!(vosk_config_for_runtime(&cfg, true).enabled);
     }
 }

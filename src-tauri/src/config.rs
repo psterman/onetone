@@ -3667,12 +3667,12 @@ pub fn apply_voice_listening_strategy(cfg: &mut VoiceConfig, strategy: &str) {
             cfg.desired_engine = "none".into();
             sync_enabled_flags_from_desired(cfg);
         }
-        "enhanced" => {
+        // auto + enhanced: free STT on home. resourceSaver keeps keyword-only mic.
+        "auto" | "enhanced" => {
             cfg.desired_engine = "vosk".into();
             sync_enabled_flags_from_desired(cfg);
         }
-        "auto" | "resourceSaver" => {
-            // Supervisor may still fall back to Vosk when KWS is not ready (auto only).
+        "resourceSaver" => {
             cfg.desired_engine = "kws".into();
             sync_enabled_flags_from_desired(cfg);
         }
@@ -4736,6 +4736,19 @@ pub fn overlay_trigger_is_live(
     identity.is_some_and(|id| mapping_matches_foreground_identity(m, id))
 }
 
+/// Oral arm is live when FG matches the app habit.
+/// Unlike [`overlay_trigger_is_live`], empty habit `triggerKey` does not block
+/// (Soft Pad–only habits still own a dedicated `oralCommandScheme.triggerKey`).
+pub fn oral_trigger_is_live(
+    m: &MappingEntry,
+    identity: Option<&crate::app_identity::AppIdentity>,
+) -> bool {
+    if !is_app_scenario_mapping(m) {
+        return true;
+    }
+    identity.is_some_and(|id| mapping_matches_foreground_identity(m, id))
+}
+
 fn live_dispatch_mappings<'a>(cfg: &'a VoiceConfig) -> Vec<&'a MappingEntry> {
     let pack_id = live_pack_mapping(cfg).map(|m| m.id.clone());
     cfg.active_mappings()
@@ -5433,7 +5446,7 @@ impl VoiceConfig {
         event: &crate::press_gesture::PhysicalKeyEvent,
     ) -> Option<&MappingEntry> {
         let canonical = canonical_trigger(&event.key);
-        let foreground = crate::app_identity::foreground_app_identity();
+        let foreground = crate::soft_pad_runtime::oral_arm_foreground_identity();
         let mut candidates: Vec<&MappingEntry> = Vec::new();
         for m in self.active_mappings() {
             if !overlay_trigger_is_live(m, foreground.as_ref()) {
@@ -5483,6 +5496,7 @@ impl VoiceConfig {
     }
 
     /// Match habit by dedicated oral arm key (`oralCommandScheme.triggerKey`).
+    /// App habits only match when the foreground app is that habit's target.
     pub fn find_mapping_for_oral_event(
         &self,
         event: &crate::press_gesture::PhysicalKeyEvent,
@@ -5491,36 +5505,22 @@ impl VoiceConfig {
         if canonical.is_empty() {
             return None;
         }
-        let foreground = crate::app_identity::foreground_app_identity();
+        let foreground = crate::soft_pad_runtime::oral_arm_foreground_identity();
         let mut candidates: Vec<&MappingEntry> = Vec::new();
         for m in self.active_mappings() {
             let oral = m.oral_trigger_key();
             if oral.is_empty() {
                 continue;
             }
-            // Oral arm is channel-private — do NOT gate on overlay_trigger_is_live.
-            // App scenarios often keep triggerKey empty (Soft Pad only); that gate
-            // made XButton1/2 oral never match while Soft Pad still auto-showed.
+            // Do NOT use overlay_trigger_is_live — Soft Pad–only habits keep
+            // triggerKey empty; oral_trigger_is_live still requires FG match.
+            if !oral_trigger_is_live(m, foreground.as_ref()) {
+                continue;
+            }
             if canonical_trigger(oral) != canonical && oral != event.key.as_str() {
                 continue;
             }
             candidates.push(m);
-        }
-        if let Some(ref identity) = foreground {
-            if self.follow_foreground_app_scenario {
-                // Prefer FG-matching app habit, but never drop the only oral candidate.
-                let focused: Vec<&MappingEntry> = candidates
-                    .iter()
-                    .copied()
-                    .filter(|m| {
-                        !is_app_scenario_mapping(m)
-                            || mapping_matches_foreground_identity(m, identity)
-                    })
-                    .collect();
-                if !focused.is_empty() {
-                    candidates = focused;
-                }
-            }
         }
         if candidates.is_empty() {
             return None;
@@ -5536,6 +5536,53 @@ impl VoiceConfig {
             }
         }
         Some(candidates[0])
+    }
+
+    /// Oral key matches a habit, but FG is not that app (caller should toast + refuse).
+    pub fn find_oral_mapping_wrong_fg(
+        &self,
+        event: &crate::press_gesture::PhysicalKeyEvent,
+    ) -> Option<&MappingEntry> {
+        let canonical = canonical_trigger(&event.key);
+        if canonical.is_empty() {
+            return None;
+        }
+        let foreground = crate::soft_pad_runtime::oral_arm_foreground_identity();
+        self.active_mappings().into_iter().find(|m| {
+            let oral = m.oral_trigger_key();
+            if oral.is_empty() {
+                return false;
+            }
+            if canonical_trigger(oral) != canonical && oral != event.key.as_str() {
+                return false;
+            }
+            !oral_trigger_is_live(m, foreground.as_ref())
+        })
+    }
+
+    /// Dictation / classic trigger key matches, but FG gate blocked it (toast + refuse).
+    pub fn find_mapping_wrong_fg_for_event(
+        &self,
+        event: &crate::press_gesture::PhysicalKeyEvent,
+    ) -> Option<&MappingEntry> {
+        let canonical = canonical_trigger(&event.key);
+        if canonical.is_empty() {
+            return None;
+        }
+        let foreground = crate::soft_pad_runtime::oral_arm_foreground_identity();
+        self.active_mappings().into_iter().find(|m| {
+            if !mapping_matches_device(m, event.device.as_deref()) {
+                return false;
+            }
+            let matches_trigger = canonical_trigger(&m.trigger_key) == canonical;
+            let matches_physical = mapping_physical_bindings(m)
+                .iter()
+                .any(|pb| pb == &event.key || pb == &canonical);
+            if !matches_trigger && !matches_physical {
+                return false;
+            }
+            !overlay_trigger_is_live(m, foreground.as_ref())
+        })
     }
 
     /// All modifier-only agent watch chords across live pack + baseline.
@@ -5596,10 +5643,22 @@ impl VoiceConfig {
                 }
             }
         }
-        // Oral arm keys must stay in the mouse/keyboard hook even when another
-        // app scenario is the live pack (or OneTone itself is focused). Otherwise
-        // XButton1/2 never reaches try_dispatch_oral_trigger after scene switch.
+        // App-habit mouse / peripheral triggers + oral arm keys must stay hooked even
+        // when Soft Pad / OneTone holds FG (live pack is None). Otherwise XButton1
+        // dictation disappears after entering Cursor with Soft Pad visible.
         for m in self.active_mappings() {
+            if is_app_scenario_mapping(m) {
+                for pb in mapping_physical_bindings(m) {
+                    let c = canonical_trigger(&pb);
+                    if c.is_empty() || !is_allowed_trigger(&c) {
+                        continue;
+                    }
+                    if (is_peripheral_trigger_key(&c) || is_volume_hotkey(&c)) && !out.contains(&c)
+                    {
+                        out.push(c);
+                    }
+                }
+            }
             let oral = canonical_trigger(m.oral_trigger_key());
             if oral.is_empty() || !is_allowed_trigger(&oral) {
                 continue;
@@ -6254,14 +6313,28 @@ pub fn save_config(cfg: &VoiceConfig) {
     let json = serde_json::to_string_pretty(cfg).unwrap();
     // Atomic-ish replace: write temp then swap. Avoids watcher reading a truncated
     // settings.json mid-write (parse fail → Default → voice restart storm).
+    // Windows: never `remove` then `rename` — if rename fails the live file is gone
+    // (only .bak left), and the watcher logs "unreadable/partial".
     let tmp = path.with_extension("json.tmp");
     if fs::write(&tmp, &json).is_ok() {
-        if path.exists() {
-            let _ = fs::remove_file(&path);
+        #[cfg(windows)]
+        {
+            if fs::copy(&tmp, &path).is_ok() {
+                let _ = fs::remove_file(&tmp);
+            } else {
+                let _ = fs::write(&path, &json);
+                let _ = fs::remove_file(&tmp);
+            }
         }
-        if fs::rename(&tmp, &path).is_err() {
-            let _ = fs::copy(&tmp, &path);
-            let _ = fs::remove_file(&tmp);
+        #[cfg(not(windows))]
+        {
+            if path.exists() {
+                let _ = fs::remove_file(&path);
+            }
+            if fs::rename(&tmp, &path).is_err() {
+                let _ = fs::copy(&tmp, &path);
+                let _ = fs::remove_file(&tmp);
+            }
         }
     } else {
         let _ = fs::write(&path, &json);
@@ -6680,7 +6753,9 @@ mod tests {
 
         apply_voice_listening_strategy(&mut cfg, "auto");
         assert_eq!(cfg.voice_listening_strategy, "auto");
-        assert_eq!(cfg.desired_engine, "kws");
+        assert_eq!(cfg.desired_engine, "vosk");
+        assert!(cfg.voice_vosk.enabled);
+        assert!(!cfg.voice_kws.enabled);
         assert!(cfg.voice_assist_enabled);
 
         apply_voice_listening_strategy(&mut cfg, "off");
@@ -7539,11 +7614,43 @@ mod tests {
     }
 
     #[test]
-    fn oral_event_matches_even_when_app_trigger_key_empty() {
-        // Soft Pad Cursor habits often keep triggerKey empty; oral XButton must still arm.
+    fn oral_trigger_live_ignores_empty_habit_trigger_key() {
+        // Soft Pad Cursor habits often keep triggerKey empty; oral still arms when FG matches.
         let mut cfg = VoiceConfig::default();
         let mut cursor = cfg.mappings[0].clone();
         cursor.id = "cursor-oral-empty-trig".into();
+        cursor.app_target_id = "cursor-chat".into();
+        cursor.trigger_key = String::new();
+        cursor.enabled = true;
+        cursor.oral_command_scheme = Some(OralCommandScheme {
+            trigger_key: "XButton2".into(),
+            ..Default::default()
+        });
+        cfg.mappings.push(cursor);
+        let m = cfg
+            .mappings
+            .iter()
+            .find(|row| row.id == "cursor-oral-empty-trig")
+            .expect("cursor oral row");
+        let cursor_fg = test_identity(Some("cursor-chat"), "Cursor.exe");
+        let codex_fg = test_identity(Some("codex-chat"), "Codex.exe");
+        assert!(
+            !overlay_trigger_is_live(m, Some(&cursor_fg)),
+            "empty triggerKey keeps dictation overlay dark"
+        );
+        assert!(
+            oral_trigger_is_live(m, Some(&cursor_fg)),
+            "oral must stay live with empty habit triggerKey when FG matches"
+        );
+        assert!(!oral_trigger_is_live(m, Some(&codex_fg)));
+        assert!(!oral_trigger_is_live(m, None));
+    }
+
+    #[test]
+    fn oral_wrong_fg_helper_finds_blocked_oral_key() {
+        let mut cfg = VoiceConfig::default();
+        let mut cursor = cfg.mappings[0].clone();
+        cursor.id = "cursor-oral-wrong-fg".into();
         cursor.app_target_id = "cursor-chat".into();
         cursor.trigger_key = String::new();
         cursor.enabled = true;
@@ -7557,11 +7664,18 @@ mod tests {
             device: None,
             key: "XButton2".into(),
         };
-        let hit = cfg.find_mapping_for_oral_event(&event);
-        assert!(
-            hit.is_some_and(|m| m.id == "cursor-oral-empty-trig"),
-            "empty triggerKey must not block oral XButton2: {hit:?}"
-        );
+        // Without Cursor FG, live match is None and wrong_fg helper should still see the key.
+        let live = cfg.find_mapping_for_oral_event(&event);
+        let wrong = cfg.find_oral_mapping_wrong_fg(&event);
+        if live.is_some() {
+            // Developer machine may have Cursor focused during `cargo test`.
+            assert!(wrong.is_none(), "live and wrong_fg must not both hit");
+        } else {
+            assert!(
+                wrong.is_some_and(|m| m.id == "cursor-oral-wrong-fg"),
+                "wrong_fg should surface oral XButton2 when FG ≠ Cursor: {wrong:?}"
+            );
+        }
     }
 
     #[test]
@@ -7596,6 +7710,32 @@ mod tests {
         // activeScene / live pack is the universal row — Cursor overlay not live.
         cfg.active_scene_id = cfg.mappings[0].id.clone();
         let bindings = cfg.bindings();
+        assert!(
+            bindings.iter().any(|b| b == "XButton2"),
+            "Cursor oral XButton2 must stay registered off-pack: {bindings:?}"
+        );
+    }
+
+    #[test]
+    fn bindings_keep_dictation_side_button_when_self_fg_pack_none() {
+        // Soft Pad / OneTone FG → live_pack is None; XButton1 dictation must still hook.
+        let mut cfg = VoiceConfig::default();
+        let mut cursor = cfg.mappings[0].clone();
+        cursor.id = "cursor-dictation-x1".into();
+        cursor.app_target_id = "cursor-chat".into();
+        cursor.trigger_key = "XButton1".into();
+        cursor.enabled = true;
+        cursor.oral_command_scheme = Some(OralCommandScheme {
+            trigger_key: "XButton2".into(),
+            ..Default::default()
+        });
+        cfg.mappings.push(cursor);
+        cfg.active_scene_id = cfg.mappings[0].id.clone();
+        let bindings = cfg.bindings();
+        assert!(
+            bindings.iter().any(|b| b == "XButton1"),
+            "Cursor dictation XButton1 must stay registered off-pack: {bindings:?}"
+        );
         assert!(
             bindings.iter().any(|b| b == "XButton2"),
             "Cursor oral XButton2 must stay registered off-pack: {bindings:?}"

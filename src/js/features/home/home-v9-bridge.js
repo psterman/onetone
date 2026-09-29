@@ -537,6 +537,20 @@
     return { matched:matched, miss:miss, trigger:trigger, skip:skip };
   }
 
+  function stripHeardLinePrefix(line){
+    var raw=String(line||'').trim();
+    if(!raw) return '';
+    var prefixes=[
+      t('voiceVoskPartial')+'：',
+      t('voiceVoskFinal')+'：',
+      t('voiceSapiHeard')+'：'
+    ];
+    for(var i=0;i<prefixes.length;i++){
+      if(raw.indexOf(prefixes[i])===0) return raw.slice(prefixes[i].length).trim();
+    }
+    return raw;
+  }
+
   function micHeardLiveParts(){
     var snap=global.OneToneVoiceUiState&&global.OneToneVoiceUiState.snapshot
       ?global.OneToneVoiceUiState.snapshot():{wake:{}};
@@ -563,7 +577,16 @@
         return attachLiveMatch({ finalized:'', pending:partial, placeholder:false },res,summary);
       }
     }
+    var fromSummary=stripHeardLinePrefix(summary.heardLine);
+    if(fromSummary){
+      return attachLiveMatch({ finalized:'', pending:fromSummary, placeholder:false },res||w.vosk||null,summary);
+    }
     return null;
+  }
+
+  function voskSnapLive(vosk){
+    var st=String((vosk&&vosk.state)||'').trim();
+    return st==='listening'||st==='starting'||st==='running'||st==='cooldown'||st==='triggered';
   }
 
   function micHeardIdleLabel(summary,live){
@@ -576,6 +599,20 @@
       var paused=!!(global.OneToneState&&global.OneToneState.runtime&&global.OneToneState.runtime.paused);
       if(paused) return t('homeWbLivePausedHint');
     }
+    var snap=global.OneToneVoiceUiState&&global.OneToneVoiceUiState.snapshot
+      ?global.OneToneVoiceUiState.snapshot():{wake:{}};
+    var voskSnap=snap.wake&&snap.wake.vosk;
+    var voskLive=voskSnapLive(voskSnap);
+    // KWS is listening for wake phrases only — never pretend free STT is coming.
+    if(summary.engine==='kws'
+      &&(summary.statusMode==='listening'||summary.statusMode==='ready'||summary.statusMode==='triggered')){
+      return t('homeWbLiveKwsNoSttHint');
+    }
+    // Vosk live but no partial yet — tell user to speak (not a blank "listening" void).
+    if((summary.engine==='vosk'||voskLive)
+      &&(summary.statusMode==='listening'||summary.statusMode==='ready'||summary.statusMode==='triggered'||voskLive)){
+      return t('homeWbLiveVoskSpeakHint','请对着麦克风说话…');
+    }
     if(summary.statusMode==='listening') return t('homeVoiceSimpleStatusListening');
     if(summary.statusMode==='ready') return t('homeVoiceSimpleStatusReady');
     if(summary.statusMode==='off'||!summary.voiceOn) return t('homeVoiceSimpleStatusOff');
@@ -585,6 +622,11 @@
   function paintMicHeardSurface(){
     var el=document.getElementById('wbHeroMicHeard');
     if(!el) return;
+    var liveHost=document.getElementById('wbLiveText');
+    function setHintAction(action){
+      el._liveHintAction=action||null;
+      if(liveHost) liveHost._liveHintAction=action||null;
+    }
     var parts=micHeardLiveParts();
     if(!parts){
       var summary=global.OneToneVoiceHomeSummary&&global.OneToneVoiceHomeSummary.compute
@@ -592,15 +634,32 @@
       var live=liveTextParts(summary,{});
       var idle=micHeardIdleLabel(summary,live);
       if(idle){
-        el.textContent=idle;
+        var action=live&&live.hintAction;
+        var actionLbl='';
+        if(action&&action.type==='enableLiveTranscription') actionLbl=t('homeWbAlertActionLiveStt','开启实时转写');
+        else if(action&&action.type==='enableAutoListening') actionLbl=t('homeWbAlertActionEnableAuto');
+        else if(action&&action.type==='retryVoskListening') actionLbl=t('homeWbAlertActionRetryVosk');
+        else if(action&&action.type==='resumeListening') actionLbl=t('homeWbAlertActionResume');
+        if(action&&actionLbl){
+          el.innerHTML=String(idle).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            +' <button type="button" class="wb-live-fix" data-wb-live-fix="1">'
+            +String(actionLbl).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            +'</button>';
+          setHintAction(action);
+        }else{
+          el.textContent=idle;
+          setHintAction(null);
+        }
         el.classList.remove('is-partial','is-matched','is-miss');
         el.classList.toggle('is-partial',summary.statusMode==='listening'||summary.statusMode==='ready');
         return;
       }
       el.textContent='';
+      setHintAction(null);
       el.classList.remove('is-partial','is-matched','is-miss');
       return;
     }
+    setHintAction(null);
     var finalText=String(parts.finalized||'');
     var pending=String(parts.pending||'');
     el.textContent=finalText+pending;
@@ -702,7 +761,10 @@
     }
     var hintKey='';
     var hintAction=null;
-    if(eng==='kws') hintKey='homeWbLiveKwsNoSttHint';
+    if(eng==='kws'){
+      hintKey='homeWbLiveKwsNoSttHint';
+      hintAction={ type:'enableLiveTranscription' };
+    }
     else if(eng==='off'||!eng){
       hintKey='homeWbLiveEngineOffHint';
       hintAction={ type:'enableAutoListening' };

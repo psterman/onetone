@@ -251,6 +251,15 @@ pub(super) fn dispatch_send_key(
     source_key: &str,
     key: &str,
 ) {
+    // Oral Soft Pad listen owns the mic — classic SendKey(RAlt) must not open IME.
+    if crate::voice_command_session::blocks_voice_ime_chord(state.as_ref(), key) {
+        crate::app_log::log_line(
+            state,
+            "voice_command",
+            &format!("SendKey skipped while oral armed key={key}"),
+        );
+        return;
+    }
     let mapping_snapshot = {
         let cfg = state.cfg.lock();
         cfg.find_mapping_by_id(mapping_id).map(|m| {

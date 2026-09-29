@@ -21,14 +21,33 @@ fn is_storable_position(x: f64, y: f64) -> bool {
 }
 
 pub fn ensure_on_screen(window: &WebviewWindow) {
-    if let Ok(pos) = window.outer_position() {
-        let scale = window.scale_factor().unwrap_or(1.0);
-        let logical = pos.to_logical::<f64>(scale);
-        if is_storable_position(logical.x, logical.y) {
-            return;
-        }
+    let Ok(pos) = window.outer_position() else {
+        let _ = window.center();
+        return;
+    };
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let logical = pos.to_logical::<f64>(scale);
+    if !is_storable_position(logical.x, logical.y) {
+        let _ = window.center();
+        return;
     }
-    let _ = window.center();
+    // Unplugged secondary left the window at e.g. x=-873 with no FE paint /
+    // no strategy IPC → homepage "listening" forever with empty text.
+    let on_a_monitor = window
+        .available_monitors()
+        .ok()
+        .into_iter()
+        .flatten()
+        .any(|m| {
+            let mpos = m.position().to_logical::<f64>(m.scale_factor());
+            let msize = m.size().to_logical::<f64>(m.scale_factor());
+            let mx2 = mpos.x + msize.width;
+            let my2 = mpos.y + msize.height;
+            logical.x < mx2 && logical.x + 40.0 > mpos.x && logical.y < my2 && logical.y + 40.0 > mpos.y
+        });
+    if !on_a_monitor {
+        let _ = window.center();
+    }
 }
 
 pub fn apply_on_startup(window: &WebviewWindow, cfg: &VoiceConfig) {

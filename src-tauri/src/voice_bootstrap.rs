@@ -28,6 +28,55 @@ use crate::AppState;
 
 pub use onetone_logic::voice_reload::DesiredVoiceEngine;
 
+/// Min gap between stomping activates (retry / oral force) to stop restart storms.
+const ACTIVATE_STOMP_DEBOUNCE_MS: u64 = 1500;
+static LAST_ACTIVATE_PROCEED_AT: Mutex<Option<Instant>> = Mutex::new(None);
+
+fn activate_reason_is_stomp(reason: &str) -> bool {
+    // force:oral_arm must NOT be here — Soft Pad Esc → oral_end then side-key re-arm
+    // lands inside the debounce window and left oral "armed" with no listening engine
+    // (voice exit dead; only Esc worked).
+    matches!(
+        reason,
+        "vosk_retry_start"
+            | "force:vosk_retry_start"
+            | "kws_retry_start"
+            | "force:kws_retry_start"
+    )
+}
+
+fn oral_blocks_home_retry(reason: &str) -> bool {
+    crate::voice_command_session::is_armed()
+        && matches!(
+            reason,
+            "vosk_retry_start"
+                | "force:vosk_retry_start"
+                | "kws_retry_start"
+                | "force:kws_retry_start"
+                | "force:kws_grammar_reload"
+        )
+}
+
+fn note_activate_proceeded() {
+    if let Ok(mut g) = LAST_ACTIVATE_PROCEED_AT.lock() {
+        *g = Some(Instant::now());
+    }
+}
+
+/// Skip stomping retries that land inside the debounce window after a Proceed.
+fn should_skip_stomp_activate(reason: &str) -> bool {
+    if !activate_reason_is_stomp(reason) {
+        return false;
+    }
+    let Ok(g) = LAST_ACTIVATE_PROCEED_AT.lock() else {
+        return false;
+    };
+    let Some(at) = *g else {
+        return false;
+    };
+    at.elapsed() < Duration::from_millis(ACTIVATE_STOMP_DEBOUNCE_MS)
+}
+
 /// Serialize activate across strategy IPC spawn + config watcher to avoid interleaved stop/start.
 static ACTIVATE_LOCK: Mutex<()> = Mutex::new(());
 
@@ -129,14 +178,9 @@ fn resolve_strategy_engine(
     advanced_engine: EffectiveVoiceEngine,
 ) -> EffectiveVoiceEngine {
     match strategy {
-        "auto" => {
-            if kws_ready {
-                EffectiveVoiceEngine::Kws
-            } else {
-                EffectiveVoiceEngine::Vosk
-            }
-        }
-        // KWS not ready → keep Vosk (same as auto). Desired=none stopped listening on every
+        // Home live text needs free STT — auto picks Vosk (not keyword-only KWS).
+        "auto" | "enhanced" => EffectiveVoiceEngine::Vosk,
+        // KWS not ready → keep Vosk. Desired=none stopped listening on every
         // 省电 click, then 增强 cold-started the model → UI_HB stall / 未响应.
         "resourceSaver" => {
             if kws_ready {
@@ -145,7 +189,6 @@ fn resolve_strategy_engine(
                 EffectiveVoiceEngine::Vosk
             }
         }
-        "enhanced" => EffectiveVoiceEngine::Vosk,
         "off" => EffectiveVoiceEngine::None,
         _ => advanced_engine,
     }
@@ -454,8 +497,9 @@ pub(crate) fn resolve_activate_gate_with_health(
     reason: &str,
 ) -> ActivateGate {
     let force_reload = reason.starts_with("force:");
-    let allow_while_starting =
-        force_reload || reason.starts_with("degrade:") || reason == "listen resume";
+    let allow_while_starting = force_reload || reason.starts_with("degrade:");
+    // listen resume used to Proceed while starting and force_stop'd a healthy open —
+    // oral arm then showed 口头收听中 with empty 听到 for the whole window.
 
     // Already listening: skip kill/restart unless caller forces a reload.
     // Stale handle + error/stopped must NOT noop — otherwise download/retry never recovers.
@@ -487,6 +531,12 @@ fn engine_running_healthy(state: &AppState, engine: EffectiveVoiceEngine) -> boo
         EffectiveVoiceEngine::None => return false,
     };
     matches!(s.as_str(), "listening" | "cooldown" | "triggered")
+}
+
+/// True when Vosk is already up for continuous homepage/oral listen (skip stomps).
+pub fn engine_observe_vosk_listening(state: &AppState) -> bool {
+    engine_running_healthy(state, EffectiveVoiceEngine::Vosk)
+        && state.voice_vosk.lock().is_some()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -637,6 +687,36 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
         }
         return;
     }
+
+    if oral_blocks_home_retry(reason) {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!(
+                "voice_bootstrap skip activate (oral armed — keep mic) reason={reason}"
+            ),
+        );
+        if phase_log {
+            log_bootstrap_phase(state, t0, "end", "action=skip_oral_armed");
+        }
+        return;
+    }
+
+    if should_skip_stomp_activate(reason) {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            &format!(
+                "voice_bootstrap skip activate (stomp debounce {}ms) reason={}",
+                ACTIVATE_STOMP_DEBOUNCE_MS, reason
+            ),
+        );
+        if phase_log {
+            log_bootstrap_phase(state, t0, "end", "action=skip_stomp_debounce");
+        }
+        return;
+    }
+    note_activate_proceeded();
 
     let busy = engine_transition_busy(state, from) || engine_transition_busy(state, desired);
     if busy {
@@ -937,10 +1017,42 @@ fn restart_active_engine_if_fingerprint_changed_locked(
     let old_fp = crate::scene_config::idle_voice_fingerprint(old_cfg);
     let new_fp = crate::scene_config::idle_voice_fingerprint(new_cfg);
     let fingerprint_changed = old_fp != new_fp;
-    let needs_restart = match (&old_fp, &new_fp) {
+    let mut needs_restart = match (&old_fp, &new_fp) {
         (Some(a), Some(b)) => a.requires_engine_restart(b),
         _ => fingerprint_changed,
     };
+    // Soft Pad scheme_select / follow-FG flipped active scene → wake phrase fingerprint
+    // thrash → stop/start Vosk every few seconds → homepage「正在监听」with empty 听到.
+    // Continuous free ASR (auto/enhanced, small model) does not need grammar reload.
+    if needs_restart {
+        let continuous = matches!(
+            crate::scene_config::voice_listening_strategy(new_cfg),
+            "auto" | "enhanced"
+        );
+        let same_model = match (&old_fp, &new_fp) {
+            (Some(a), Some(b)) => {
+                a.engine == b.engine
+                    && a.vosk_model_path == b.vosk_model_path
+                    && a.vosk_model_preset == b.vosk_model_preset
+                    && (a.min_confidence - b.min_confidence).abs() < f32::EPSILON
+            }
+            _ => false,
+        };
+        if continuous
+            && same_model
+            && desired == EffectiveVoiceEngine::Vosk
+            && engine_running_healthy(state, EffectiveVoiceEngine::Vosk)
+        {
+            crate::app_log::log_line(
+                state,
+                "voice",
+                &format!(
+                    "voice_bootstrap skip fingerprint restart (continuous ASR keep mic) reason={reason}"
+                ),
+            );
+            needs_restart = false;
+        }
+    }
 
     if !needs_restart {
         if fingerprint_changed {
@@ -1716,10 +1828,14 @@ mod activate_gate_tests {
     fn strategy_engine_prefers_function_or_saver_behavior() {
         assert_eq!(
             resolve_strategy_engine("auto", true, EffectiveVoiceEngine::Sapi),
-            EffectiveVoiceEngine::Kws
+            EffectiveVoiceEngine::Vosk
         );
         assert_eq!(
             resolve_strategy_engine("auto", false, EffectiveVoiceEngine::Sapi),
+            EffectiveVoiceEngine::Vosk
+        );
+        assert_eq!(
+            resolve_strategy_engine("enhanced", true, EffectiveVoiceEngine::Sapi),
             EffectiveVoiceEngine::Vosk
         );
         assert_eq!(

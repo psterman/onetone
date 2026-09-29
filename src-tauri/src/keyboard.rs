@@ -384,6 +384,26 @@ fn send_scancode(scan: u16, extended: bool, keyup: bool) {
     send_inputs(std::slice::from_mut(&mut input));
 }
 
+/// One SendInput matching AHK `{vkXXscYY}` — vk + scan in the same event.
+/// Sequential vk-then-scan pulses toggle Typeless/IME on then off in one wake.
+fn send_vk_scan(vk: u16, scan: u16, extended: bool, keyup: bool) {
+    let mut input = INPUT {
+        type_: INPUT_KEYBOARD,
+        u: unsafe { std::mem::zeroed() },
+    };
+    unsafe {
+        *input.u.ki_mut() = KEYBDINPUT {
+            wVk: vk,
+            wScan: scan,
+            dwFlags: (if extended { KEYEVENTF_EXTENDEDKEY } else { 0 })
+                | (if keyup { KEYEVENTF_KEYUP } else { 0 }),
+            time: 0,
+            dwExtraInfo: 0,
+        };
+    }
+    send_inputs(std::slice::from_mut(&mut input));
+}
+
 fn send_token_sequence(tokens: &[SendToken], hold_ms: u32) -> bool {
     if tokens.is_empty() {
         return false;
@@ -461,19 +481,17 @@ pub fn release_chord(combo: &str) -> bool {
     }
 }
 
-/// Match AHK's `{vkA5sc138}` as closely as possible.
+/// Match AHK's `{vkA5sc138}` as one down + one up (not two separate taps).
 pub fn send_right_alt(duration_ms: u32) {
     let hold_ms = duration_ms.max(250) as u64;
     let guard_ms = hold_ms + 80;
     send_guard::arm_keys(&send_guard::guard_keys_from_combo("RAlt"));
     send_guard::run_guarded(guard_ms, || {
-        send_vk(VK_RMENU as u16, true, false);
+        // VK_RMENU + scancode 0x38 + EXTENDED in one INPUT — a second scancode-only
+        // pulse used to toggle Typeless off immediately after opening.
+        send_vk_scan(VK_RMENU as u16, 0x38, true, false);
         std::thread::sleep(std::time::Duration::from_millis(hold_ms));
-        send_vk(VK_RMENU as u16, true, true);
-
-        send_scancode(0x38, true, false);
-        std::thread::sleep(std::time::Duration::from_millis(30));
-        send_scancode(0x38, true, true);
+        send_vk_scan(VK_RMENU as u16, 0x38, true, true);
     });
 }
 
@@ -482,13 +500,9 @@ pub fn send_left_alt(duration_ms: u32) {
     let guard_ms = hold_ms + 80;
     send_guard::arm_keys(&send_guard::guard_keys_from_combo("LAlt"));
     send_guard::run_guarded(guard_ms, || {
-        send_vk(0xA4, false, false);
+        send_vk_scan(0xA4, 0x38, false, false);
         std::thread::sleep(std::time::Duration::from_millis(hold_ms));
-        send_vk(0xA4, false, true);
-
-        send_scancode(0x38, false, false);
-        std::thread::sleep(std::time::Duration::from_millis(30));
-        send_scancode(0x38, false, true);
+        send_vk_scan(0xA4, 0x38, false, true);
     });
 }
 
@@ -802,5 +816,27 @@ mod tests {
         assert!(parse_chord("Ctrl+Shift").is_ok());
         assert!(parse_chord("Volume_Up").is_ok());
         assert!(parse_chord("XButton1").is_ok());
+    }
+
+    #[test]
+    fn send_right_alt_is_single_vk_scan_pulse() {
+        // Typeless treats each completed RAlt as toggle; two pulses = on then off.
+        let src = include_str!("keyboard.rs");
+        let start = src.find("pub fn send_right_alt").expect("send_right_alt");
+        let body = &src[start..start.saturating_add(900)];
+        let end = body.find("pub fn send_left_alt").unwrap_or(body.len());
+        let fn_body = &body[..end];
+        assert!(
+            fn_body.contains("send_vk_scan"),
+            "RAlt must use one vk+scan INPUT: {fn_body}"
+        );
+        assert!(
+            !fn_body.contains("send_scancode"),
+            "second scancode-only pulse must not follow vk pulse: {fn_body}"
+        );
+        assert!(
+            fn_body.matches("send_vk_scan").count() == 2,
+            "exactly one down + one up: {fn_body}"
+        );
     }
 }

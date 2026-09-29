@@ -73,19 +73,19 @@ pub const BEGINNER_SLOTS: &[BeginnerSlotDef] = &[
         micro_key_id: CANCEL_LISTEN_MICRO_KEY,
         icon_id: "reject",
         label_zh: "取消",
-        voice_phrases: &["取消"],
+        voice_phrases: &["取消", "退出", "退出收听", "停止收听"],
         tap_hold_ms: 0,
     },
 ];
 
-pub const DISARM_PHRASES: &[&str] = &["取消"];
+pub const DISARM_PHRASES: &[&str] = &["取消", "取消输入", "退出", "退出收听", "停止收听"];
 /// Default voice-only arm phrase (overridable via `cursorBeginnerArmPhrase`).
 pub const DEFAULT_ARM_PHRASE: &str = "一声";
 /// Legacy default — still accepted until user changes the setting away from it.
 pub const LEGACY_ARM_PHRASE: &str = "小助手";
-pub const ARM_HINT: &str = "聆听中 · 可说：发送、继续、新建、麦克风、取消";
+pub const ARM_HINT: &str = "聆听中 · 可说：发送、继续、新建、麦克风、取消、退出";
 /// Panel A secondary line — short operation flow (方案 A 次行).
-pub const FLOW_HINT: &str = "发送→右侧框+Enter · 取消→退出聆听并停生成";
+pub const FLOW_HINT: &str = "Esc / 说「取消」「退出」→ 退出收听 · 发送→右侧框+Enter";
 /// Soft Pad ACT08 / 口令「取消」also stop Cursor generation (same as provider cancel).
 pub const CANCEL_GENERATION_CHORD: &str = "Ctrl+Shift+Backspace";
 
@@ -279,9 +279,9 @@ pub fn ensure_beginner_overlay_ready(cfg: &mut VoiceConfig) -> bool {
         break;
     }
     if let Some(id) = cursor_mapping_id {
-        if cfg.set_active_scenario(&id) {
-            changed = true;
-        }
+        // Heal Soft Pad chrome only — do NOT steal active_scene_id.
+        // Stealing active scene fought Soft Pad scheme_select every 2s and
+        // flipped voice fingerprint → vosk restart → homepage empty 听到.
         crate::codex_micro_overlay::note_soft_pad_surface_for_mapping(
             &id,
             crate::soft_pad_runtime::AgentKind::Cursor,
@@ -539,8 +539,14 @@ pub fn maybe_intercept_side_key_down(
     if !is_side_key(&event.key) {
         return false;
     }
-    // Oral arm key is owned by voice_command_session — never swallow into beginner hold.
     let canon = config::canonical_trigger(&event.key);
+    // Mouse side buttons are pulse-only from WH_MOUSE_LL (keydown only). Intercepting
+    // them waits for a keyup that never arrives → short-press dictation looks dead.
+    // Volume_* still use hold-to-arm Soft Pad.
+    if matches!(canon.as_str(), "XButton1" | "XButton2") {
+        return false;
+    }
+    // Oral arm key is owned by voice_command_session — never swallow into beginner hold.
     if cfg.active_mappings().iter().any(|m| {
         let oral = config::canonical_trigger(m.oral_trigger_key());
         !oral.is_empty() && (oral == canon || m.oral_trigger_key() == event.key.as_str())
@@ -645,23 +651,9 @@ pub fn run_slot(
         }
         crate::codex_micro_overlay::note_micro_key(def.micro_key_id, true);
         let app = window.app_handle();
-        let duration_ms_pre = state.cfg.lock().key_press_duration_ms;
-        let _ = crate::voice_command_session::stop_ime_voice_if_active(state, duration_ms_pre);
-        if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
-            crate::voice_end_runtime::reset_voice_session(
-                state,
-                Some(&app),
-                "soft_slot cancel after speak",
-            );
-        }
-        // Uncommon-command countdown: 「取消」clears pending without running it.
-        let _ = crate::soft_pad_voice_pending::cancel_pending(state.as_ref(), &app);
-        if crate::voice_command_session::is_armed() {
-            let mid = crate::voice_command_session::armed_mapping_id();
-            crate::voice_command_session::end_session(state, &app, &mid, "cancel");
-        }
-        disarm(state.as_ref(), &app);
-        // Restore cancel-generation: beginner used to remap ACT08 away from this chord.
+        // End oral first — focus/chord must never gate exit.
+        let _ = crate::voice_command_session::force_cancel(state, &app, "cancelListen");
+        // Best-effort stop Cursor generation (ignore focus failures).
         let (duration_ms, mapping_id) = {
             let cfg = state.cfg.lock();
             (
@@ -691,6 +683,7 @@ pub fn run_slot(
         #[cfg(not(windows))]
         {
             let _ = duration_ms;
+            let _ = window;
         }
         crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
         return serde_json::json!({
@@ -1005,6 +998,8 @@ pub fn run_slot(
     // Skip focus_composer_only here — a second focus/click races the IME and can
     // look like "activates then immediately ends".
     if def.slot_id == "pushToTalk" {
+        // Oral armed: allow this intentional IME start (side-key dictation stays blocked).
+        crate::voice_command_session::allow_next_ime_start_while_oral();
         let (ok, reason, detail) = {
             let result = crate::agent::dispatch::dispatch_semantic_action_ids(
                 state,
@@ -1191,12 +1186,13 @@ pub fn dispatch_voice_phrase(
     let armed = effective_armed(&cfg);
     let habit_ok = cursor_habit_active(&cfg) && probe_ok();
     drop(cfg);
-    // 「取消」：已聆听时退出；未聆听也闪一下取消键，方便用户确认口令命中。
-    if is_disarm_phrase(phrase) || matches_beginner_phrase(phrase).is_some_and(|d| d.slot_id == "cancelListen")
+    // 「取消」：never require main WebviewWindow (tray / Soft Pad only).
+    if is_disarm_phrase(phrase)
+        || matches_beginner_phrase(phrase).is_some_and(|d| d.slot_id == "cancelListen")
     {
-        let window = crate::ipc::get_main_window(app)?;
-        let out = run_slot(state, &window, "cancelListen", true, true);
-        let ok = out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+        note_voice_activity();
+        crate::codex_micro_overlay::note_micro_key(CANCEL_LISTEN_MICRO_KEY, true);
+        let ok = crate::voice_command_session::force_cancel(state, app, "beginner_voice_cancel");
         return Some(crate::voice_end_runtime::VoiceWakeDispatchResult {
             ok,
             target_key: phrase.to_string(),
@@ -1426,7 +1422,11 @@ mod tests {
         assert!(src.contains("CANCEL_GENERATION_CHORD"));
         assert_eq!(CANCEL_GENERATION_CHORD, "Ctrl+Shift+Backspace");
         assert!(FLOW_HINT.contains("发送→"));
-        assert!(FLOW_HINT.contains("取消→"));
+        assert!(FLOW_HINT.contains("Esc"));
+        assert!(FLOW_HINT.contains("取消"));
+        assert!(FLOW_HINT.contains("退出收听"));
+        assert!(DISARM_PHRASES.iter().any(|p| *p == "退出"));
+        assert!(DISARM_PHRASES.iter().any(|p| *p == "退出收听"));
     }
 
     #[test]

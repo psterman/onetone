@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>口头命令 · 原型探索</title>
+  <style>
+    :root {
+      --bg: #e8eef4;
+      --surface: #fff;
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --line: #d5dee8;
+      --primary: #2a9cc4;
+      --primary-strong: #1a7a9c;
+      --soft: #f5f8fb;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); padding: 28px 20px 48px; }
+    .wrap { max-width: 920px; margin: 0 auto; }
+    h1 { margin: 0 0 6px; font-size: 20px; font-weight: 750; }
+    .lead { margin: 0 0 22px; font-size: 13px; color: var(--muted); line-height: 1.55; max-width: 56ch; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+    a.card {
+      display: block; text-decoration: none; color: inherit;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 14px; padding: 14px 14px 16px;
+      box-shadow: 0 6px 20px rgba(19, 32, 44, 0.05);
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    a.card:hover {
+      border-color: color-mix(in srgb, var(--primary) 40%, var(--line));
+      transform: translateY(-1px);
+    }
+    .tag {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 999px; margin-bottom: 8px;
+      background: rgba(42, 156, 196, 0.12); color: var(--primary-strong);
+    }
+    a.card h2 { margin: 0 0 6px; font-size: 15px; font-weight: 750; }
+    a.card p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .prev {
+      margin-top: 10px; height: 72px; border-radius: 8px;
+      border: 1px dashed var(--line); background: var(--soft);
+      display: grid; place-items: center; font-size: 11px; color: var(--muted);
+    }
+    .note {
+      margin-top: 22px; padding: 12px 14px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--line);
+      font-size: 12px; color: var(--muted); line-height: 1.55;
+    }
+    .note strong { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>口头命令 · 原型探索</h1>
+    <p class="lead">
+      共用约定：用法演示改为<strong>弹窗仿真</strong>（麦键 → 收听 → 识别气泡 → 执行反馈）。
+      待添加按来源/场景重新规划。点开各版对比视图。
+    </p>
+    <div class="grid">
+      <a class="card" href="a-sim-tabs.html">
+        <span class="tag">A · 推荐起步</span>
+        <h2>弹窗仿真 + 分类 Tab</h2>
+        <p>添加面板用 Soft / 一词注入 / 绑定 三个 Tab；每类有说明与前置提示。</p>
+        <div class="prev">三段 Tab · 勾选加入</div>
+      </a>
+      <a class="card" href="b-sim-catalog.html">
+        <span class="tag">B · 目录感</span>
+        <h2>弹窗仿真 + 双栏目录</h2>
+        <p>左栏分类（含「按场景」），右栏卡片列表；适合项多时扫一眼。</p>
+        <div class="prev">左分类 · 右卡片</div>
+      </a>
+      <a class="card" href="c-sim-journey.html">
+        <span class="tag">C · 场景优先</span>
+        <h2>弹窗仿真 + 场景旅程</h2>
+        <p>听写流 / Agent 流 / 自定义 三块旅程；每块推荐组合一键加入。</p>
+        <div class="prev">旅程卡片 · 推荐包</div>
+      </a>
+      <a class="card" href="d-sim-sheet.html">
+        <span class="tag">D · 底栏</span>
+        <h2>弹窗仿真 + 底栏挑选</h2>
+        <p>主列表保持干净；添加用底部 sheet，芯片筛选来源。</p>
+        <div class="prev">底部 sheet · 芯片筛选</div>
+      </a>
+      <a class="card" href="../voice-oral-compact/index.html">
+        <span class="tag">对照 · v2</span>
+        <h2>旧版内嵌演示条</h2>
+        <p>顶部 inline 演示，添加仅一行文案。作对比用。</p>
+        <div class="prev">inline demo</div>
+      </a>
+    </div>
+    <div class="note">
+      <strong>分类规划（四版共用数据）：</strong>
+      Soft 槽（继续、新建对话）· 一词注入（本 App 模板）· 语音绑定（Agent 动作）·
+      另标「需输入框 / 随时可用」。演示弹窗不占主布局，点「看演示」打开。
+      <br /><br />
+      <strong>更新：</strong>表格/开关已弃用方向 → 见
+      <a href="../voice-oral-cards/index.html" style="color:#1a7a9c;font-weight:650">卡片原型（E/F/G）</a>
+      ：名称·解释·关键词 · 无开关 · 可分类排序。
+    </div>
+  </div>
+</body>
+</html>

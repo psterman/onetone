@@ -1288,25 +1288,23 @@ pub fn fire_codex_micro_pad_key(
     }
     let inject_tid = soft_pad_inject_target_id(state, &route.mapping_id);
     // Soft Pad 「取消」while listening → exit listen (same as voice「取消」).
-    let beginner_cancel = inject_tid.trim() == app_chat_workflow::CURSOR_APP_TARGET_ID
-        && crate::cursor_beginner::probe_ok()
-        && (route.slot_id == "cancelListen"
-            || (micro_key_id == crate::cursor_beginner::CANCEL_LISTEN_MICRO_KEY
+    // Oral session (any app Soft Pad) must cancel even when Cursor probe is false.
+    let beginner_cancel = (route.slot_id == "cancelListen"
+        || micro_key_id == crate::cursor_beginner::CANCEL_LISTEN_MICRO_KEY)
+        && (crate::voice_command_session::is_armed()
+            || (inject_tid.trim() == app_chat_workflow::CURSOR_APP_TARGET_ID
+                && crate::cursor_beginner::probe_ok()
                 && crate::cursor_beginner::effective_armed(&state.cfg.lock())));
     if beginner_cancel {
-        crate::codex_micro_overlay::note_pad_run_status("running", micro_key_id);
+        // Sync force_cancel — never queue behind BUSY beginner-tap (that skipped exit).
+        let _ = exec_window;
+        crate::codex_micro_overlay::note_micro_key(micro_key_id, true);
+        crate::voice_command_session::force_cancel(state, &app, "pad_cancelListen");
+        crate::codex_micro_overlay::note_pad_run_status("idle", micro_key_id);
         crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
-        spawn_cursor_beginner_tap(
-            Arc::clone(state),
-            app.clone(),
-            exec_window.clone(),
-            "cancelListen".into(),
-            micro_key_id.to_string(),
-            true,
-        );
         return serde_json::json!({
             "ok": true,
-            "reason": "fired",
+            "reason": "disarmed",
             "slotId": "cancelListen",
             "actionId": "cursorBeginnerDisarm",
         });
@@ -1514,6 +1512,15 @@ fn try_dispatch_agent_modifier_keyup(
         action_id.as_str(),
         "startDictation" | "input.start"
     ) {
+        // Oral Soft Pad listen: do not pulse Cursor IME (steals mic from Vosk).
+        if crate::voice_command_session::is_armed() {
+            crate::app_log::log_line(
+                state,
+                "voice_command",
+                "agent modifier input.start skipped — oral listen holds mic",
+            );
+            return true;
+        }
         let voice_key = {
             let cfg = state.cfg.lock();
             crate::voice_end_runtime::resolve_voice_input_target_key(&cfg)
@@ -1547,16 +1554,98 @@ fn try_dispatch_oral_trigger(
     if event.is_keyup {
         return false;
     }
-    let mapping_id = {
+    let (live_id, wrong_id) = {
         let cfg = state.cfg.lock();
-        cfg.find_mapping_for_oral_event(event)
-            .map(|m| m.id.clone())
-    };
-    let Some(mapping_id) = mapping_id else {
-        return false;
+        if let Some(m) = cfg.find_mapping_for_oral_event(event) {
+            (Some(m.id.clone()), None)
+        } else if let Some(m) = cfg.find_oral_mapping_wrong_fg(event) {
+            (None, Some(m.id.clone()))
+        } else {
+            (None, None)
+        }
     };
     let app = window.app_handle();
-    crate::voice_command_session::toggle_session(state, &app, &mapping_id);
+    if let Some(mapping_id) = live_id {
+        crate::voice_command_session::toggle_session(state, &app, &mapping_id);
+        return true;
+    }
+    if let Some(mapping_id) = wrong_id {
+        // Not armed yet: toggle_session refuses + toasts when FG ≠ app.
+        crate::voice_command_session::toggle_session(state, &app, &mapping_id);
+        return true;
+    }
+    false
+}
+
+fn try_dispatch_oral_esc_exit(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    event: &crate::press_gesture::PhysicalKeyEvent,
+) -> bool {
+    if event.is_keyup {
+        return false;
+    }
+    let key = crate::config::canonical_trigger(&event.key);
+    if key != "Esc" && key != "Escape" {
+        return false;
+    }
+    // Armed, or sticky Soft Pad ACT10 listening after timeout raced SESSION_ARMED off.
+    if !crate::voice_command_session::wants_esc_exit() {
+        return false;
+    }
+    let app = window.app_handle();
+    let _ = window;
+    // Never call run_slot here — it used to depend on focus paths; Esc must only end oral.
+    // force_cancel always push_state (clears Soft Pad oral chrome even on races).
+    crate::voice_command_session::force_cancel(state, &app, "esc");
+    true
+}
+
+fn publish_physical_key_wrong_fg(
+    state: &Arc<AppState>,
+    window: &tauri::WebviewWindow,
+    event: &crate::press_gesture::PhysicalKeyEvent,
+) -> bool {
+    let snapshot = {
+        let cfg = state.cfg.lock();
+        cfg.find_mapping_wrong_fg_for_event(event).map(|m| {
+            let app_tid = m.app_target_id.trim().to_string();
+            let label = m.label.trim();
+            let target_name = if !label.is_empty() {
+                label.to_string()
+            } else {
+                app_tid.clone()
+            };
+            (m.id.clone(), app_tid, target_name)
+        })
+    };
+    let Some((mapping_id, app_tid, target_name)) = snapshot else {
+        return false;
+    };
+    if app_tid.is_empty() {
+        return false;
+    }
+    let app = window.app_handle();
+    let fg = crate::app_identity::foreground_effective_app_target_id();
+    crate::runtime_event::publish_runtime_event(
+        Some(&app),
+        state.as_ref(),
+        "voice",
+        crate::runtime_event::kind::VOICE_WAKE_REFUSED_WRONG_FG,
+        &format!(
+            "key wake refused wrong_fg want={app_tid} fg={:?}",
+            fg.as_deref().unwrap_or("")
+        ),
+        Some(serde_json::json!({
+            "appTargetId": app_tid,
+            "targetName": target_name,
+            "fgAppTargetId": fg,
+            "reason": "wrong_fg",
+            "source": "key",
+            "mappingId": mapping_id,
+            "key": event.key,
+        })),
+    );
     true
 }
 
@@ -1637,6 +1726,15 @@ pub fn dispatch_scheme_gesture(
             );
         }
         crate::config::GestureScheme::Dictation => {
+            // Oral listen holds mic — side-key dictation must not fire Cursor IME.
+            if crate::voice_command_session::is_armed() {
+                crate::app_log::log_line(
+                    state,
+                    "voice_command",
+                    "dictation gesture skipped — oral listen holds mic",
+                );
+                return;
+            }
             if *state.paused.lock() {
                 // Dictation still needs classic path; briefly allow via handle after resume? 
                 // Keep simple: inject only when not globally paused.
@@ -1675,12 +1773,29 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
         return;
     }
     let event = parse_physical_event(raw);
+    // Oral Esc must win over send_guard (empty-key arm blocks every key).
+    if try_dispatch_oral_esc_exit(state, window, &event) {
+        return;
+    }
     if crate::send_guard::blocks_key(&event.key) {
         crate::send_guard::note_blocked();
         return;
     }
     // Oral arm key is channel-private — check before 听写 gesture / dictation inject.
     if try_dispatch_oral_trigger(state, window, &event) {
+        return;
+    }
+    // Oral Soft Pad listen: swallow dictation side-key (XButton1 → SendKey RAlt) so
+    // Cursor/Typeless IME cannot steal WASAPI from Vosk.
+    if crate::voice_command_session::blocks_dictation_physical_key(state.as_ref(), &event) {
+        crate::app_log::log_line(
+            state,
+            "voice_command",
+            &format!(
+                "dictation side-key swallowed while oral armed key={}",
+                event.key
+            ),
+        );
         return;
     }
     // Multi-scheme press map can arm 口头指令 even while listen is paused.
@@ -1756,6 +1871,8 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
     let fire_key = {
         let cfg = state.cfg.lock();
         let Some(mapping) = cfg.find_mapping_for_event(&event) else {
+            drop(cfg);
+            let _ = publish_physical_key_wrong_fg(state, window, &event);
             return;
         };
         let mut gesture = state.gesture.lock();
@@ -1783,6 +1900,8 @@ pub fn handle_physical_key(state: &Arc<AppState>, window: &tauri::WebviewWindow,
     let (mapping_id, duration_ms, actions) = {
         let cfg = state.cfg.lock();
         let Some(mapping) = cfg.find_mapping_for_event(&event) else {
+            drop(cfg);
+            let _ = publish_physical_key_wrong_fg(state, window, &event);
             return;
         };
         let mapping_id = mapping.id.clone();

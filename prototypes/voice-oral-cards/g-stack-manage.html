@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>G · 分类抽屉 + 卡叠</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="cards.css" />
+  <style>
+    .stack-note {
+      margin: 0; font-size: 12px; color: var(--faint); line-height: 1.45;
+    }
+    .empty-cat {
+      padding: 36px 16px; text-align: center; border: 1px dashed var(--line);
+      border-radius: 16px; color: var(--muted); font-size: 13px; background: var(--surface);
+    }
+  </style>
+</head>
+<body>
+  <p class="back"><a href="index.html">← 卡片原型</a> · G · 左分类管理 · 右卡列 · ↑↓ 精排</p>
+  <div class="app g">
+    <nav class="rail">
+      <div class="sec">意图</div>
+      <button type="button">听写方式<span>IME</span></button>
+      <button type="button">一词注入<span>写模板</span></button>
+      <button type="button" class="is-on">口头命令<span>可喊</span></button>
+      <button type="button">屏幕按钮<span>Pad</span></button>
+    </nav>
+    <aside class="cat-pane" id="catPane"></aside>
+    <main class="main">
+      <header class="head">
+        <div>
+          <h1 id="catTitle">核心</h1>
+          <p id="catHint">默认可说 · 不建议删</p>
+        </div>
+        <div class="head-acts">
+          <span class="pill">Cursor</span>
+          <button type="button" class="btn primary" id="openAdd">+ 添加</button>
+        </div>
+      </header>
+
+      <div class="arm">
+        <span class="chip ok">收听 · Soft Pad 麦键</span>
+        <span class="chip muted">触发键 · 未录</span>
+      </div>
+
+      <p class="stack-note">本分类下用 ↑↓ 调整顺序。卡片只含名称、解释、关键词——没有开关。</p>
+      <div class="cards is-list" id="board"></div>
+    </main>
+  </div>
+
+  <div class="overlay" id="addOverlay" hidden>
+    <div class="modal">
+      <div class="modal-h">
+        <strong>添加到当前分类</strong>
+        <button type="button" class="btn tiny" data-close>关闭</button>
+      </div>
+      <div class="modal-body" id="addBody"></div>
+      <div class="modal-f">
+        <span style="margin-right:auto;font-size:11px;color:var(--muted)">只显示属于本类的可加项</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="cards-data.js"></script>
+  <script>
+    (function () {
+      var D = window.ORAL_CARDS;
+      var cat = 'core';
+      var board = document.getElementById('board');
+
+      function renderCats() {
+        document.getElementById('catPane').innerHTML =
+          '<div class="sec">分类</div>' +
+          D.cats.map(function (c) {
+            var n = D.items.filter(function (x) { return x.cat === c.id; }).length;
+            return (
+              '<button type="button" class="cat-btn' + (c.id === cat ? ' is-on' : '') + '" data-cat="' + c.id + '">' +
+              c.title + '<em>' + n + '</em></button>'
+            );
+          }).join('');
+      }
+
+      function render() {
+        var meta = D.cats.find(function (c) { return c.id === cat; });
+        document.getElementById('catTitle').textContent = meta ? meta.title : '';
+        document.getElementById('catHint').textContent = meta ? meta.hint : '';
+        renderCats();
+        var rows = D.items.filter(function (x) { return x.cat === cat; });
+        if (!rows.length) {
+          board.innerHTML = '<div class="empty-cat">这个分类还是空的<br/>点右上角添加</div>';
+          return;
+        }
+        board.innerHTML = rows.map(function (item, i) {
+          return D.cardHtml(item, {
+            canRemove: item.cat !== 'core',
+            drag: false,
+            sortButtons: true
+          });
+        }).join('');
+        // disable edge buttons
+        rows.forEach(function (item, i) {
+          var up = board.querySelector('[data-up="' + item.id + '"]');
+          var down = board.querySelector('[data-down="' + item.id + '"]');
+          if (up) up.disabled = i === 0;
+          if (down) down.disabled = i === rows.length - 1;
+        });
+      }
+
+      D.onChange = render;
+      D.wireKeys(board);
+
+      document.getElementById('catPane').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-cat]');
+        if (!b) return;
+        cat = b.getAttribute('data-cat');
+        render();
+      });
+
+      board.addEventListener('click', function (e) {
+        var up = e.target.closest('[data-up]');
+        var down = e.target.closest('[data-down]');
+        var rm = e.target.closest('[data-remove]');
+        if (up) {
+          D.shiftInCat(up.getAttribute('data-up'), -1);
+          render();
+        } else if (down) {
+          D.shiftInCat(down.getAttribute('data-down'), 1);
+          render();
+        } else if (rm) {
+          D.remove(rm.getAttribute('data-remove'));
+          render();
+        }
+      });
+
+      document.getElementById('openAdd').onclick = function () {
+        var body = document.getElementById('addBody');
+        var opts = D.pool.filter(function (p) { return p.cat === cat; });
+        if (cat === 'core') {
+          body.innerHTML = '<p style="text-align:center;color:var(--muted);margin:12px">核心固定三项，不能从池里加</p>';
+        } else if (!opts.length) {
+          body.innerHTML = '<p style="text-align:center;color:var(--muted);margin:12px">本类没有更多可加项</p>';
+        } else {
+          body.innerHTML = opts.map(function (p) {
+            return '<button type="button" class="add-opt" data-add="' + p.id + '"><div><strong>' +
+              p.name + '</strong><small>' + p.desc + '</small></div></button>';
+          }).join('');
+        }
+        document.getElementById('addOverlay').hidden = false;
+      };
+      document.getElementById('addBody').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-add]');
+        if (!b) return;
+        D.addFromPool(b.getAttribute('data-add'));
+        document.getElementById('addOverlay').hidden = true;
+        render();
+      });
+      document.querySelector('[data-close]').onclick = function () {
+        document.getElementById('addOverlay').hidden = true;
+      };
+
+      render();
+    })();
+  </script>
+</body>
+</html>

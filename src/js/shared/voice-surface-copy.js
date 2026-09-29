@@ -117,7 +117,18 @@
         wakeMode: wake,
       };
     }
-    if (wake && (strat === 'resourceSaver' || strat === 'auto' || strat === 'enhanced')) {
+    if (wake && (strat === 'auto' || strat === 'enhanced')) {
+      return {
+        phase: 'live',
+        voiceOn: true,
+        line1: t('homeWbLiveVoskSpeakHint', '请对着麦克风说话…'),
+        line2: t('voiceSurfaceLiveSttHint', '本地实时转写（Vosk）'),
+        switchOn: true,
+        switchDisabled: false,
+        wakeMode: true,
+      };
+    }
+    if (wake && strat === 'resourceSaver') {
       return {
         phase: 'wake',
         voiceOn: true,

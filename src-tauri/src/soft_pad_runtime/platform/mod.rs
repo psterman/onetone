@@ -7,7 +7,7 @@ pub mod windows;
 pub mod macos;
 
 #[cfg(windows)]
-pub use windows::read_foreground_evidence;
+pub use windows::{last_external_app_target_id, read_foreground_evidence};
 
 #[cfg(not(windows))]
-pub use macos::read_foreground_evidence;
+pub use macos::{last_external_app_target_id, read_foreground_evidence};

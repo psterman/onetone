@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>口头命令 · 紧凑原型 v2</title>
+  <style>
+    :root {
+      --bg: #eef2f6;
+      --surface: #fff;
+      --soft: #f5f8fb;
+      --line: #d5dee8;
+      --ink: #13202c;
+      --muted: #5a6b7c;
+      --primary: #2a9cc4;
+      --primary-soft: rgba(42, 156, 196, 0.12);
+      --primary-strong: #1a7a9c;
+      --ok: #15803d;
+      --ok-soft: rgba(21, 128, 61, 0.1);
+      --warn: #9a6b2f;
+      --warn-soft: rgba(245, 158, 11, 0.12);
+      --radius: 10px;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); padding: 20px; }
+    .frame {
+      max-width: 880px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 8px 28px rgba(19, 32, 44, 0.06);
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      overflow: hidden;
+    }
+    .rail {
+      background: var(--soft);
+      border-right: 1px solid var(--line);
+      padding: 10px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .rail .sec {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+      color: var(--muted); padding: 4px 8px 6px;
+    }
+    .rail button {
+      appearance: none; border: 0; background: transparent;
+      text-align: left; padding: 7px 9px; border-radius: 8px;
+      font: inherit; font-size: 12px; font-weight: 650;
+      color: var(--muted); cursor: pointer;
+    }
+    .rail button.is-on {
+      background: var(--surface); color: var(--primary-strong);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+    .rail button span { display: block; font-size: 10px; opacity: 0.65; margin-top: 1px; }
+
+    .main {
+      padding: 12px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .head {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    }
+    .head h1 { margin: 0; font-size: 15px; font-weight: 750; }
+    .head p { margin: 2px 0 0; font-size: 11px; color: var(--muted); }
+    .pill {
+      flex-shrink: 0; font-size: 11px; font-weight: 650;
+      padding: 3px 8px; border-radius: 999px;
+      background: var(--primary-soft); color: var(--primary-strong);
+    }
+
+    /* —— 演示条 —— */
+    .demo {
+      border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--line));
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 6%, #fff), var(--surface));
+      padding: 8px 10px;
+    }
+    .demo-h {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .demo-h strong { font-size: 11px; font-weight: 750; }
+    .demo-h button {
+      appearance: none; border: 0; background: none;
+      color: var(--primary-strong); font: inherit; font-size: 11px;
+      font-weight: 650; cursor: pointer;
+    }
+    .demo-flow {
+      display: grid;
+      grid-template-columns: auto 12px 1fr 12px 1fr;
+      align-items: center;
+      gap: 4px;
+      min-height: 36px;
+    }
+    .demo-step {
+      font-size: 11px; color: var(--muted); font-weight: 650;
+      opacity: 0.4; transition: opacity 0.25s ease, color 0.25s ease;
+      white-space: nowrap;
+    }
+    .demo-step.is-on { opacity: 1; color: var(--ink); }
+    .demo-arrow {
+      color: var(--line); font-size: 12px; text-align: center;
+      opacity: 0.5;
+    }
+    .demo-bubble {
+      display: inline-flex; align-items: center; gap: 6px;
+      min-height: 28px; padding: 0 10px; border-radius: 8px;
+      border: 1px solid var(--line); background: var(--soft);
+      font-size: 12px; font-weight: 700;
+      transition: border-color 0.25s, background 0.25s, transform 0.25s, box-shadow 0.25s;
+    }
+    .demo-bubble.is-say {
+      border-color: color-mix(in srgb, var(--primary) 45%, var(--line));
+      background: var(--primary-soft);
+      color: var(--primary-strong);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 12%, transparent);
+      transform: translateY(-1px);
+    }
+    .demo-bubble.is-done {
+      border-color: color-mix(in srgb, var(--ok) 35%, var(--line));
+      background: var(--ok-soft);
+      color: var(--ok);
+    }
+    .demo-mic {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #c5d0de; flex-shrink: 0;
+    }
+    .demo-mic.is-live {
+      background: var(--primary);
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.35); opacity: 0.7; }
+    }
+    .demo-progress {
+      margin-top: 6px; height: 2px; border-radius: 999px;
+      background: var(--line); overflow: hidden;
+    }
+    .demo-progress > i {
+      display: block; height: 100%; width: 0%;
+      background: var(--primary);
+      transition: width 0.35s ease;
+    }
+
+    .block {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px;
+    }
+    .block-h {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; margin-bottom: 8px;
+    }
+    .block-h h2 { margin: 0; font-size: 12px; font-weight: 750; }
+    .block-h .meta { font-size: 11px; color: var(--muted); }
+
+    .arm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .chip {
+      display: inline-flex; align-items: center; min-height: 26px;
+      padding: 0 9px; border-radius: 999px; border: 1px solid var(--line);
+      background: var(--soft); font-size: 11px; font-weight: 650;
+    }
+    .chip.is-ok {
+      border-color: color-mix(in srgb, var(--primary) 35%, var(--line));
+      background: var(--primary-soft); color: var(--primary-strong);
+    }
+    .chip.is-empty { color: var(--muted); font-weight: 600; }
+    .link {
+      appearance: none; border: 0; background: none;
+      color: var(--primary-strong); font: inherit; font-size: 11px;
+      font-weight: 650; cursor: pointer;
+    }
+
+    /* 默认：列表行，一词 → 动作，说法次之 */
+    .core-list { display: flex; flex-direction: column; gap: 6px; }
+    .core-row {
+      display: grid;
+      grid-template-columns: 72px 14px minmax(0, 1fr) minmax(100px, 1.1fr) 36px;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .core-row.is-demo-hit {
+      border-color: color-mix(in srgb, var(--primary) 50%, var(--line));
+      background: color-mix(in srgb, var(--primary) 8%, #fff);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 10%, transparent);
+    }
+    .core-word {
+      font-size: 14px; font-weight: 750; letter-spacing: -0.02em;
+    }
+    .core-arrow { color: var(--muted); font-size: 12px; text-align: center; opacity: 0.55; }
+    .core-act {
+      font-size: 12px; font-weight: 650; color: var(--ink);
+      min-width: 0;
+    }
+    .core-act small {
+      display: block; font-size: 10px; font-weight: 600;
+      color: var(--muted); margin-top: 1px;
+    }
+    .badge {
+      display: inline-block; margin-left: 4px; padding: 0 5px;
+      border-radius: 999px; font-size: 9px; font-weight: 700;
+      color: var(--warn); background: var(--warn-soft); vertical-align: 1px;
+    }
+    .core-row input {
+      width: 100%; border: 1px solid var(--line); border-radius: 6px;
+      background: var(--surface); padding: 4px 7px;
+      font: inherit; font-size: 11px; color: var(--ink);
+    }
+    .core-row input:focus {
+      outline: none;
+      border-color: color-mix(in srgb, var(--primary) 50%, var(--line));
+    }
+    .tog {
+      appearance: none; width: 32px; height: 18px; border: 0;
+      border-radius: 999px; background: #c5d0de; position: relative;
+      cursor: pointer; justify-self: end;
+    }
+    .tog.is-on { background: var(--primary); }
+    .tog::after {
+      content: ""; position: absolute; top: 2px; left: 2px;
+      width: 14px; height: 14px; border-radius: 50%; background: #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,.12);
+      transition: left 0.15s ease;
+    }
+    .tog.is-on::after { left: 16px; }
+
+    /* 已添加：有样例行 + 来源标签 */
+    .extra-list { display: flex; flex-direction: column; gap: 6px; }
+    .extra-row {
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr) minmax(90px, 1fr) 36px;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .via {
+      font-size: 10px; font-weight: 700; text-align: center;
+      padding: 3px 0; border-radius: 6px;
+      background: var(--soft); color: var(--muted);
+    }
+    .via.is-soft { background: var(--primary-soft); color: var(--primary-strong); }
+    .via.is-bind { background: #eef0f6; color: #4b5568; }
+    .extra-name { font-size: 12px; font-weight: 700; }
+    .extra-name span { display: block; font-size: 10px; font-weight: 600; color: var(--muted); margin-top: 1px; }
+    .extra-row input {
+      width: 100%; border: 1px solid var(--line); border-radius: 6px;
+      padding: 4px 7px; font: inherit; font-size: 11px; background: var(--soft);
+    }
+    .extra-tools {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; margin-top: 8px; padding-top: 8px;
+      border-top: 1px dashed var(--line);
+    }
+    .extra-tools p { margin: 0; font-size: 11px; color: var(--muted); }
+    .btn {
+      appearance: none; border: 1px solid var(--line); background: var(--surface);
+      border-radius: 8px; min-height: 28px; padding: 0 10px;
+      font: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .btn.primary { border-color: transparent; background: var(--primary); color: #fff; }
+
+    .foot { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.4; }
+    .anno {
+      max-width: 880px; margin: 12px auto 0;
+      font-size: 12px; color: var(--muted); line-height: 1.5;
+    }
+    .anno strong { color: var(--ink); }
+
+    @media (max-width: 720px) {
+      .frame { grid-template-columns: 1fr; }
+      .core-row, .extra-row { grid-template-columns: 1fr; gap: 4px; }
+      .demo-flow { grid-template-columns: 1fr; gap: 6px; }
+      .demo-arrow { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .demo-mic.is-live { animation: none; }
+      .demo-bubble, .core-row, .demo-step { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame" aria-label="口头命令原型">
+    <nav class="rail" aria-label="意图">
+      <div class="sec">意图</div>
+      <button type="button">听写方式<span>IME</span></button>
+      <button type="button">一词注入<span>写模板</span></button>
+      <button type="button" class="is-on" aria-current="page">口头命令<span>可喊</span></button>
+      <button type="button">软件自带<span>命令</span></button>
+      <button type="button">屏幕按钮<span>Pad</span></button>
+    </nav>
+
+    <main class="main">
+      <header class="head">
+        <div>
+          <h1>口头命令</h1>
+          <p>武装后说短词执行 · 一词 → 一个动作</p>
+        </div>
+        <span class="pill">正在用 · Cursor</span>
+      </header>
+
+      <!-- 演示 -->
+      <section class="demo" aria-label="用法演示">
+        <div class="demo-h">
+          <strong>用法演示</strong>
+          <button type="button" id="demoReplay" type="button">重播</button>
+        </div>
+        <div class="demo-flow">
+          <span class="demo-step" data-demo-step="0">① 开收听</span>
+          <span class="demo-arrow" aria-hidden="true">→</span>
+          <div class="demo-bubble" id="demoSay" data-demo-step="1">
+            <span class="demo-mic" id="demoMic" aria-hidden="true"></span>
+            <span id="demoSayText">…</span>
+          </div>
+          <span class="demo-arrow" aria-hidden="true">→</span>
+          <div class="demo-bubble" id="demoAct" data-demo-step="2">执行结果</div>
+        </div>
+        <div class="demo-progress" aria-hidden="true"><i id="demoBar"></i></div>
+      </section>
+
+      <section class="block">
+        <div class="block-h">
+          <h2>怎么开收听</h2>
+          <span class="meta">入口 · 不是命令</span>
+        </div>
+        <div class="arm">
+          <span class="chip is-ok" id="armChip">Soft Pad 麦键</span>
+          <span class="chip is-empty">口头触发键 · 未录</span>
+          <button type="button" class="link">去按键页录 →</button>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="block-h">
+          <h2>默认可说</h2>
+          <span class="meta">词 → 动作 · 说法可改</span>
+        </div>
+        <div class="core-list">
+          <div class="core-row" data-demo-word="说话" data-demo-result="开听写">
+            <div class="core-word">说话</div>
+            <div class="core-arrow" aria-hidden="true">→</div>
+            <div class="core-act">开听写<small>需输入框<span class="badge">前置</span></small></div>
+            <input type="text" value="说话、麦克风" aria-label="说话的说法" />
+            <button type="button" class="tog is-on" aria-pressed="true" aria-label="启用说话"></button>
+          </div>
+          <div class="core-row" data-demo-word="发送" data-demo-result="提交本轮">
+            <div class="core-word">发送</div>
+            <div class="core-arrow" aria-hidden="true">→</div>
+            <div class="core-act">提交本轮<small>需输入框<span class="badge">前置</span></small></div>
+            <input type="text" value="发送" aria-label="发送的说法" />
+            <button type="button" class="tog is-on" aria-pressed="true" aria-label="启用发送"></button>
+          </div>
+          <div class="core-row" data-demo-word="取消" data-demo-result="退出收听">
+            <div class="core-word">取消</div>
+            <div class="core-arrow" aria-hidden="true">→</div>
+            <div class="core-act">退出收听<small>随时可用</small></div>
+            <input type="text" value="取消、退出" aria-label="取消的说法" />
+            <button type="button" class="tog is-on" aria-pressed="true" aria-label="启用取消"></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="block-h">
+          <h2>已添加</h2>
+          <span class="meta">来源一眼可辨 · Soft / 绑定</span>
+        </div>
+        <div class="extra-list">
+          <div class="extra-row" data-demo-word="继续" data-demo-result="Agent 继续">
+            <div class="via is-soft">Soft</div>
+            <div class="extra-name">继续<span>Soft 槽 · 需输入框</span></div>
+            <input type="text" value="继续" aria-label="继续的说法" />
+            <button type="button" class="tog is-on" aria-pressed="true" aria-label="启用继续"></button>
+          </div>
+          <div class="extra-row" data-demo-word="撤销" data-demo-result="撤销上一步">
+            <div class="via is-bind">绑定</div>
+            <div class="extra-name">撤销<span>语音绑定 · Agent 动作</span></div>
+            <input type="text" value="撤销" aria-label="撤销的说法" />
+            <button type="button" class="tog is-on" aria-pressed="true" aria-label="启用撤销"></button>
+          </div>
+        </div>
+        <div class="extra-tools">
+          <p>还可加：新建对话、一词注入、其它绑定…</p>
+          <button type="button" class="btn primary">+ 添加</button>
+        </div>
+      </section>
+
+      <p class="foot">演示会轮流点亮「默认可说 / 已添加」对应行。冲突提示只在改词或添加时出现。</p>
+    </main>
+  </div>
+
+  <p class="anno">
+    <strong>v2（对照）：</strong>内嵌演示条。新版弹窗仿真 + 待添加分类见
+    <a href="../voice-oral-explore/index.html">prototypes/voice-oral-explore/</a>
+  </p>
+
+  <script>
+    (function () {
+      var steps = [
+        { arm: true, say: '（开收听）', act: '聆听中…', word: null, phase: 0 },
+        { arm: true, say: '「发送」', act: '提交本轮', word: '发送', phase: 1 },
+        { arm: true, say: '「继续」', act: 'Agent 继续', word: '继续', phase: 1 },
+        { arm: true, say: '「取消」', act: '退出收听', word: '取消', phase: 2 }
+      ];
+      var i = 0;
+      var timer = 0;
+      var armChip = document.getElementById('armChip');
+      var sayEl = document.getElementById('demoSay');
+      var sayText = document.getElementById('demoSayText');
+      var actEl = document.getElementById('demoAct');
+      var mic = document.getElementById('demoMic');
+      var bar = document.getElementById('demoBar');
+      var stepEls = document.querySelectorAll('.demo-step');
+
+      function clearHits() {
+        document.querySelectorAll('.core-row.is-demo-hit, .extra-row.is-demo-hit').forEach(function (el) {
+          el.classList.remove('is-demo-hit');
+        });
+      }
+
+      function hitWord(word) {
+        clearHits();
+        if (!word) return;
+        var rows = document.querySelectorAll('.core-row[data-demo-word], .extra-row[data-demo-word]');
+        rows.forEach(function (row) {
+          if (row.getAttribute('data-demo-word') === word) row.classList.add('is-demo-hit');
+        });
+      }
+
+      function paint(step) {
+        stepEls.forEach(function (el) {
+          var n = Number(el.getAttribute('data-demo-step'));
+          el.classList.toggle('is-on', n <= step.phase);
+        });
+        armChip.classList.toggle('is-ok', !!step.arm);
+        sayText.textContent = step.say;
+        sayEl.classList.toggle('is-say', step.phase >= 1 && step.word);
+        sayEl.classList.toggle('is-done', false);
+        mic.classList.toggle('is-live', step.phase >= 1 && !!step.word);
+        actEl.textContent = step.act;
+        actEl.classList.toggle('is-done', step.phase >= 2 || (step.phase >= 1 && !!step.word));
+        hitWord(step.word);
+        bar.style.width = ((i + 1) / steps.length) * 100 + '%';
+      }
+
+      function tick() {
+        paint(steps[i]);
+        i = (i + 1) % steps.length;
+        timer = setTimeout(tick, 1600);
+      }
+
+      function replay() {
+        clearTimeout(timer);
+        i = 0;
+        bar.style.width = '0%';
+        tick();
+      }
+
+      document.getElementById('demoReplay').addEventListener('click', replay);
+      document.querySelectorAll('.tog').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          btn.classList.toggle('is-on');
+          btn.setAttribute('aria-pressed', btn.classList.contains('is-on') ? 'true' : 'false');
+        });
+      });
+
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        tick();
+      } else {
+        paint(steps[1]);
+      }
+    })();
+  </script>
+</body>
+</html>

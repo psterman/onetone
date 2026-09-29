@@ -70,8 +70,20 @@
     var base = (vm && vm.engineLine) || '';
     var split = base.indexOf(' · ');
     if (split >= 0) base = base.slice(0, split);
-    var suffix =
-      summary.statusMode === 'listening' ? t('homeWbVoiceWaitingWake') : t('homeWbVoiceReady');
+    var suffix;
+    if (summary.engine === 'kws') {
+      suffix = summary.statusMode === 'listening'
+        ? t('homeWbVoiceKwsListening', '口令监听')
+        : t('homeWbVoiceReady');
+    } else if (summary.engine === 'vosk') {
+      suffix = summary.statusMode === 'listening'
+        ? t('homeWbVoiceLiveStt', '转写中')
+        : t('homeWbVoiceReady');
+    } else {
+      suffix = summary.statusMode === 'listening'
+        ? t('homeWbVoiceWaitingWake')
+        : t('homeWbVoiceReady');
+    }
     return (base || t('homeWbHeroEngineOnline')) + ' · ' + suffix;
   }
 

@@ -47,6 +47,40 @@ fn try_route_vosk_final_phrase(state: &Arc<AppState>, app: &AppHandle, text: &st
     {
         return;
     }
+    // Oral Soft Pad listen: route soft says / 退出 / scheme keys — not only beginner+probe.
+    if crate::voice_command_session::is_armed() {
+        if crate::cursor_beginner::is_disarm_phrase(text) {
+            *state.voice_vosk_last_detected_phrase.lock() = text.to_string();
+            process_detected(state, app, text);
+            return;
+        }
+        let (says, grammar) = {
+            let cfg = state.cfg.lock();
+            (
+                crate::voice_command_session::listen_say_list(&cfg, 32),
+                crate::scene_config::vosk_grammar_phrases_for_cfg(&cfg),
+            )
+        };
+        for say in &says {
+            if crate::config::phrases_fuzzy_match(text, say) {
+                *state.voice_vosk_last_detected_phrase.lock() = say.clone();
+                process_detected(state, app, say);
+                return;
+            }
+        }
+        if crate::cursor_beginner::is_beginner_voice_phrase(text)
+            || crate::cursor_beginner::matches_beginner_phrase(text).is_some()
+        {
+            *state.voice_vosk_last_detected_phrase.lock() = text.to_string();
+            process_detected(state, app, text);
+            return;
+        }
+        if let Some(phrase) = crate::voice_vosk::matches_final(text, &grammar) {
+            *state.voice_vosk_last_detected_phrase.lock() = phrase.clone();
+            process_detected(state, app, &phrase);
+        }
+        return;
+    }
     if crate::cursor_beginner::probe_ok() {
         let route = crate::cursor_beginner::is_arm_phrase(text)
             || crate::cursor_beginner::is_disarm_phrase(text)
@@ -532,7 +566,10 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
                     *state.voice_vosk_last_trigger.lock() = String::new();
                     continue;
                 }
-                let route = {
+                let oral = crate::voice_command_session::is_armed();
+                let route = if oral {
+                    true
+                } else {
                     let cfg = state.cfg.lock();
                     let is_start = crate::voice_end_runtime::is_start_phrase(&cfg, &phrase);
                     let is_beginner = crate::cursor_beginner::probe_ok()
@@ -568,13 +605,45 @@ pub fn drain_voice_vosk_events(state: &Arc<AppState>, app: &AppHandle) {
 }
 
 fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
+    // Oral Soft Pad listen: all soft says / 退出 — bypass wake-key cooldown.
+    // Side-key RAlt / 「说话」arms that gap and used to drop 继续/截图/退出.
+    if crate::voice_command_session::is_armed() {
+        *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
+        let state2 = Arc::clone(state);
+        let app2 = app.clone();
+        let kind = if crate::cursor_beginner::is_disarm_phrase(phrase) {
+            crate::voice_command_router::VoiceDetectionKind::Cancel
+        } else {
+            crate::voice_command_router::VoiceDetectionKind::Wake
+        };
+        let detection = crate::voice_command_router::VoiceDetection {
+            engine: "vosk".into(),
+            kind,
+            text: phrase.to_string(),
+            confidence: None,
+            matched_phrase: phrase.to_string(),
+            timestamp_ms: crate::voice_command_router::VoiceDetection::now_ms(),
+        };
+        std::thread::spawn(move || {
+            let result = crate::voice_command_router::handle_detection(&state2, &app2, &detection);
+            *state2.voice_vosk_last_skip.lock() = if result.skipped {
+                result.skip_reason
+            } else {
+                String::new()
+            };
+            *state2.voice_vosk_last_trigger.lock() = result.trigger_label;
+            *state2.voice_vosk_state.lock() = "listening".into();
+        });
+        return;
+    }
+
     let cooldown_ms = {
         let cfg = state.cfg.lock();
         cfg.voice_vosk.cooldown_ms
     };
 
     if *state.paused.lock() {
-        *state.voice_vosk_last_skip.lock() = "?????????????????".into();
+        *state.voice_vosk_last_skip.lock() = "监听已暂停，请先在上方点「恢复」。".into();
         *state.voice_vosk_last_trigger.lock() = String::new();
         return;
     }
@@ -591,7 +660,8 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
     if let Some(remain_ms) =
         crate::voice_end_runtime::wake_key_cooldown_remaining_ms(state, cooldown_ms)
     {
-        *state.voice_vosk_last_skip.lock() = format!("???????? {remain_ms} ms ????");
+        *state.voice_vosk_last_skip.lock() =
+            format!("防连按冷却中，请 {remain_ms} ms 后再说。");
         *state.voice_vosk_last_trigger.lock() = String::new();
         *state.voice_vosk_state.lock() = "cooldown".into();
         return;
@@ -610,7 +680,7 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
     let detection = crate::voice_command_router::VoiceDetection::wake("vosk", phrase, None);
     std::thread::spawn(move || {
         if crate::send_guard::is_active() {
-            *state2.voice_vosk_last_skip.lock() = "?????????????".into();
+            *state2.voice_vosk_last_skip.lock() = "快捷键发送通道忙".into();
         }
         let result = crate::voice_command_router::handle_detection(&state2, &app2, &detection);
         *state2.voice_vosk_state.lock() = if result.handled {
@@ -628,7 +698,7 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
                 *state2.voice_vosk_last_trigger.lock() = String::new();
             }
             if !result.handled && !result.skipped {
-                *state2.voice_vosk_last_error.lock() = "???????".into();
+                *state2.voice_vosk_last_error.lock() = "识别处理失败".into();
             }
         } else {
             *state2.voice_vosk_last_error.lock() = String::new();
@@ -673,6 +743,8 @@ pub fn voice_vosk_status(state: &AppState, resource_dir: Option<PathBuf>) -> ser
         "lastSkip": state.voice_vosk_last_skip.lock().clone(),
         "lastTrigger": state.voice_vosk_last_trigger.lock().clone(),
         "lastDetectedPhrase": state.voice_vosk_last_detected_phrase.lock().clone(),
+        "oralArmed": crate::voice_command_session::is_armed(),
+        "asrQuiet": state.settings_asr_quiet.load(Ordering::SeqCst),
         "phrases": phrases,
         "targetKey": target_key,
         "cooldownMs": cooldown_ms,
@@ -941,10 +1013,30 @@ pub fn voice_vosk_retry_start(
     resource_dir: Option<PathBuf>,
 ) -> serde_json::Value {
     refresh_vosk_probe_cache(state, resource_dir.as_deref());
+    // Oral Soft Pad listen must keep a stable WASAPI stream. Home "正在监听" poll
+    // used to force:vosk_retry every few seconds (state=starting / quiet) and
+    // stomped mic — Soft Pad showed 口头收听中 but never heard 继续/退出.
+    if crate::voice_command_session::is_armed() {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            "vosk_retry_start skipped (oral armed — keep engine)",
+        );
+        return voice_vosk_status(state, resource_dir);
+    }
+    // Side-key IME left on → homepage "正在监听" with empty text; reclaim then force reload.
+    let duration_ms = state.cfg.lock().key_press_duration_ms;
+    let reclaimed = crate::voice_command_session::reclaim_mic_from_voice_ime(
+        state,
+        Some(app),
+        duration_ms,
+        "vosk_retry",
+    );
     // Homepage can look "listening" while settings_asr_quiet still drops every chunk.
     let was_quiet = state.settings_asr_quiet.swap(false, Ordering::SeqCst);
     let st = state.voice_vosk_state.lock().clone();
     let healthy = !was_quiet
+        && !reclaimed
         && matches!(st.as_str(), "listening" | "cooldown" | "triggered")
         && state.voice_vosk.lock().is_some();
     // Already listening: soft activate (noop). Parked / stuck / error → force reload.

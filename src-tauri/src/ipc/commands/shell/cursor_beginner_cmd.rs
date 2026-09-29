@@ -30,7 +30,8 @@ pub fn cmd_cursor_beginner_disarm(
     app: AppHandle,
     state: State<'_, Arc<AppState>>,
 ) -> serde_json::Value {
-    cursor_beginner::disarm(state.inner().as_ref(), &app);
+    // Soft Pad Esc / 「取消」must end oral session too — disarm alone left 口头收听中 stuck.
+    let _ = crate::voice_command_session::force_cancel(state.inner(), &app, "overlay_disarm");
     serde_json::json!({ "ok": true, "armed": false })
 }
 

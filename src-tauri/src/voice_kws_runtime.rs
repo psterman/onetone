@@ -437,6 +437,36 @@ fn process_kws_detected(
         &format!("kws detected: phrase={phrase} kind={}", kind.as_str()),
     );
 
+    // Oral Soft Pad listen: every soft say / 退出 — never gate on pause/cooldown.
+    // Side-key RAlt arms wake cooldown and used to drop 继续/说话/截图 while armed.
+    if crate::voice_command_session::is_armed() {
+        let detection = crate::voice_command_router::VoiceDetection {
+            engine: "kws".into(),
+            kind: if crate::cursor_beginner::is_disarm_phrase(&phrase) {
+                crate::voice_command_router::VoiceDetectionKind::Cancel
+            } else {
+                crate::voice_command_router::VoiceDetectionKind::from_keyword_kind(kind)
+            },
+            text: phrase.clone(),
+            confidence: None,
+            matched_phrase: if keyword.trim().is_empty() {
+                phrase.clone()
+            } else {
+                keyword.clone()
+            },
+            timestamp_ms: crate::voice_command_router::VoiceDetection::now_ms(),
+        };
+        let result = crate::voice_command_router::handle_detection(state, app, &detection);
+        *state.voice_kws_last_skip.lock() = if result.skipped {
+            result.skip_reason
+        } else {
+            String::new()
+        };
+        *state.voice_kws_last_trigger.lock() = result.trigger_label;
+        *state.voice_kws_state.lock() = "listening".into();
+        return;
+    }
+
     if *state.paused.lock() {
         *state.voice_kws_last_skip.lock() = "监听已暂停，请先在上方点「恢复」。".into();
         *state.voice_kws_last_trigger.lock() = String::new();
@@ -452,6 +482,7 @@ fn process_kws_detected(
     }
 
     // Cooldown stays in runtime (M2); start gap before business dispatch for wake/summon.
+    // Cancel (incl. oral「取消」) must not share this gate — side-key RAlt arms the gap.
     if matches!(kind, VoiceKeywordKind::Wake | VoiceKeywordKind::Summon) {
         let cooldown_ms = state.cfg.lock().voice_kws.cooldown_ms;
         if let Some(remain_ms) =

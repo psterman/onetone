@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D · 弹窗仿真 + 底栏挑选</title>
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <p class="back"><a href="index.html">← 探索目录</a> · D · 底栏 sheet</p>
+  <div class="frame">
+    <nav class="rail">
+      <div class="sec">意图</div>
+      <button type="button">听写方式<span>IME</span></button>
+      <button type="button">一词注入<span>写模板</span></button>
+      <button type="button" class="is-on">口头命令<span>可喊</span></button>
+      <button type="button">软件自带<span>命令</span></button>
+      <button type="button">屏幕按钮<span>Pad</span></button>
+    </nav>
+    <main class="main">
+      <header class="head">
+        <div>
+          <h1>口头命令</h1>
+          <p>武装后说短词执行 · 一词 → 一个动作</p>
+        </div>
+        <div class="head-acts">
+          <button type="button" class="btn ghost" id="openDemo">看演示</button>
+          <span class="pill">正在用 · Cursor</span>
+        </div>
+      </header>
+      <section class="block">
+        <div class="block-h"><h2>怎么开收听</h2><span class="meta">入口</span></div>
+        <div class="arm">
+          <span class="chip is-ok">Soft Pad 麦键</span>
+          <span class="chip is-empty">口头触发键 · 未录</span>
+        </div>
+      </section>
+      <section class="block">
+        <div class="block-h"><h2>默认可说</h2><span class="meta">词 → 动作</span></div>
+        <div class="core-list" id="coreList"></div>
+      </section>
+      <section class="block">
+        <div class="block-h"><h2>已添加</h2><span class="meta" id="addedMeta">2 项</span></div>
+        <div class="extra-list" id="extraList"></div>
+        <div class="extra-tools">
+          <p>主列表保持干净 · 底栏加</p>
+          <button type="button" class="btn primary" id="openAdd">+ 添加</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="overlay" id="demoOverlay" hidden>
+    <div class="modal sim" role="dialog">
+      <div class="modal-h">
+        <strong>用法演示</strong>
+        <button type="button" class="icon-x" data-close="demo">×</button>
+      </div>
+      <div class="sim-stage">
+        <div class="sim-desk">
+          <div class="sim-cursor">
+            <div class="sim-cursor-bar">Cursor · Agent</div>
+            <div class="sim-cursor-body">
+              <div class="sim-composer" id="simComposer">输入框就绪</div>
+              <div class="sim-toast" id="simToast" hidden></div>
+            </div>
+          </div>
+          <div class="sim-pad">
+            <div class="sim-pad-label">Soft Pad</div>
+            <button type="button" class="sim-mic" id="simMic"><span class="sim-mic-ring"></span><span class="sim-mic-dot"></span></button>
+            <div class="sim-wave" id="simWave"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+        <div class="sim-bubble" id="simBubble" hidden><span class="sim-bubble-mic"></span><span id="simBubbleText"></span></div>
+        <p class="sim-caption" id="simCaption">点 Soft Pad 麦键开始收听</p>
+      </div>
+      <div class="modal-f">
+        <button type="button" class="btn" id="simReplay">重播</button>
+        <button type="button" class="btn primary" data-close="demo">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-overlay" id="addOverlay" hidden>
+    <div class="sheet" role="dialog">
+      <div class="sheet-handle"></div>
+      <div class="modal-h">
+        <strong>添加可喊命令</strong>
+        <button type="button" class="icon-x" data-close="add">×</button>
+      </div>
+      <div class="filters" id="filters">
+        <button type="button" class="filter is-on" data-f="all">全部</button>
+        <button type="button" class="filter" data-f="soft">Soft 槽</button>
+        <button type="button" class="filter" data-f="prompt">一词注入</button>
+        <button type="button" class="filter" data-f="bind">语音绑定</button>
+        <button type="button" class="filter" data-f="need">需输入框</button>
+        <button type="button" class="filter" data-f="ready">随时可用</button>
+      </div>
+      <div class="add-list" id="addList" style="max-height:42vh"></div>
+      <div class="modal-f">
+        <span class="sel-count" id="selCount">已选 0</span>
+        <button type="button" class="btn" data-close="add">取消</button>
+        <button type="button" class="btn primary" id="addConfirm">加入</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared-data.js"></script>
+  <script src="shared-sim.js"></script>
+  <script>
+    (function () {
+      var filter = 'all';
+      var selected = {};
+      var catalog = window.ORAL_PROTO.catalog;
+
+      function renderMain() {
+        document.getElementById('coreList').innerHTML = window.ORAL_PROTO.core.map(function (r) {
+          return window.ORAL_PROTO.rowHtml(r, 'core');
+        }).join('');
+        document.getElementById('extraList').innerHTML = window.ORAL_PROTO.added.map(function (r) {
+          return window.ORAL_PROTO.rowHtml(r, 'extra');
+        }).join('');
+        document.getElementById('addedMeta').textContent = window.ORAL_PROTO.added.length + ' 项';
+      }
+
+      function match(c) {
+        if (c.inList) return false;
+        if (filter === 'all') return true;
+        if (filter === 'need') return !!c.need;
+        if (filter === 'ready') return !c.need;
+        return c.kind === filter;
+      }
+
+      function renderAdd() {
+        document.querySelectorAll('.filter').forEach(function (b) {
+          b.classList.toggle('is-on', b.getAttribute('data-f') === filter);
+        });
+        var items = catalog.filter(match);
+        document.getElementById('addList').innerHTML = items.length
+          ? items.map(function (c) {
+              var on = !!selected[c.id];
+              return (
+                '<label class="add-row' + (on ? ' is-on' : '') + '">' +
+                '<input type="checkbox" data-id="' + c.id + '"' + (on ? ' checked' : '') + ' />' +
+                '<span class="add-main"><strong>' + c.name + '</strong>' +
+                '<small>' + c.viaLabel + ' · ' + c.desc + '</small></span>' +
+                '<span class="add-side">' +
+                (c.need ? '<em class="need">需输入框</em>' : '<em class="ok">随时</em>') +
+                '<span class="say">「' + c.say + '」</span></span></label>'
+              );
+            }).join('')
+          : '<p class="empty">没有可加项</p>';
+        document.getElementById('selCount').textContent = '已选 ' + Object.keys(selected).length;
+      }
+
+      renderMain();
+      document.getElementById('openDemo').onclick = function () { window.ORAL_SIM.open(); };
+      document.getElementById('simReplay').onclick = function () { window.ORAL_SIM.replay(); };
+      document.getElementById('openAdd').onclick = function () {
+        selected = {};
+        filter = 'all';
+        document.getElementById('addOverlay').hidden = false;
+        renderAdd();
+      };
+      document.querySelectorAll('[data-close]').forEach(function (btn) {
+        btn.onclick = function () {
+          if (btn.getAttribute('data-close') === 'demo') window.ORAL_SIM.close();
+          else document.getElementById('addOverlay').hidden = true;
+        };
+      });
+      document.getElementById('filters').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-f]');
+        if (!b) return;
+        filter = b.getAttribute('data-f');
+        renderAdd();
+      });
+      document.getElementById('addList').addEventListener('change', function (e) {
+        var t = e.target;
+        if (!t.matches('input[data-id]')) return;
+        if (t.checked) selected[t.getAttribute('data-id')] = true;
+        else delete selected[t.getAttribute('data-id')];
+        renderAdd();
+      });
+      document.getElementById('addConfirm').onclick = function () {
+        Object.keys(selected).forEach(function (id) {
+          var c = catalog.find(function (x) { return x.id === id; });
+          if (!c || c.inList) return;
+          c.inList = true;
+          window.ORAL_PROTO.added.push({
+            word: c.name, via: c.viaClass, viaLabel: c.viaLabel,
+            act: c.desc, say: c.say, need: c.need
+          });
+        });
+        document.getElementById('addOverlay').hidden = true;
+        renderMain();
+      });
+    })();
+  </script>
+</body>
+</html>

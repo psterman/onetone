@@ -366,10 +366,23 @@
     // Legacy alias: old UI used `hold`; runtime uses `longpress` for hold-to-talk.
     if((m.triggerMode||'').toLowerCase()==='hold') m.triggerMode='longpress';
     // Stuck RAlt trigger (BT volume echo) → AutoTrigger so keycap never shows「右 Alt」.
+    // Keep mouse-side habits: sourceKey already names the real trigger (Cursor XButton1).
     if(String(m.triggerKey||'').trim()==='RAlt'){
-      m.triggerKey='AutoTrigger';
-      var src=String(m.sourceKey||'').trim();
-      if(!src||src==='RAlt'||src==='AutoTrigger') m.sourceKey='Volume_Down';
+      var srcR=String(m.sourceKey||'').trim();
+      if(/^XButton/i.test(srcR)){
+        m.triggerKey=srcR;
+      }else{
+        m.triggerKey='AutoTrigger';
+        if(!srcR||srcR==='RAlt'||srcR==='AutoTrigger') m.sourceKey='Volume_Down';
+      }
+    }
+    // Peripheral AutoTrigger with wiped IME target → restore RAlt (unless custom targetActions).
+    if(String(m.triggerKey||'').trim()==='AutoTrigger'){
+      var srcA=String(m.sourceKey||'').trim();
+      var hasActions=Array.isArray(m.targetActions)&&m.targetActions.length>0;
+      if(/^XButton/i.test(srcA)&&!String(m.targetKey||'').trim()&&!hasActions){
+        m.targetKey='RAlt';
+      }
     }
     ensureMappingTiming(m);
     if(!Array.isArray(m.switchKeys)) m.switchKeys=[];

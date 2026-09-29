@@ -12,3 +12,7 @@ pub fn read_foreground_evidence() -> ForegroundEvidence {
         sequence: 0,
     }
 }
+
+pub fn last_external_app_target_id() -> Option<String> {
+    None
+}

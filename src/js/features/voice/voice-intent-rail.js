@@ -7,7 +7,7 @@
     return v&&v!==key?v:(fallback||key);
   };
 
-  var INTENTS=['ime','key','prompt','cursor','softpad','gesture'];
+  var INTENTS=['ime','key','prompt','oral','cursor','softpad','gesture'];
   var promptEditId='';
   var autosaveTimer=0;
   var saveHintPulseTimer=0;
@@ -608,6 +608,7 @@
   var PANE_BY_INTENT={
     ime:'voiceIntentPaneIme',
     prompt:'voiceIntentPanePrompt',
+    oral:'voiceIntentPaneOral',
     key:'voiceIntentPaneKeys',
     cursor:'voiceIntentPaneKeys',
     softpad:'voiceIntentPaneSoftPad',
@@ -675,6 +676,7 @@
   function intentFinishLabel(intent){
     if(intent==='ime') return t('voiceIntentIme','听写方式');
     if(intent==='prompt') return t('voiceIntentPrompt','口头指令');
+    if(intent==='oral') return t('voiceIntentOral','口头命令');
     if(intent==='key') return t('voiceIntentKey','我录的键');
     if(intent==='cursor') return t('voiceIntentCursor','软件自带');
     if(intent==='softpad') return t('voiceIntentSoftPad','屏幕按钮');
@@ -719,8 +721,7 @@
     }
 
     var showId=PANE_BY_INTENT[id]||'voiceIntentPaneIme';
-    INTENTS.forEach(function(){});
-    ['voiceIntentPaneIme','voiceIntentPanePrompt','voiceIntentPaneKeys','voiceIntentPaneSoftPad','voiceIntentPaneCamera'].forEach(function(paneId){
+    ['voiceIntentPaneIme','voiceIntentPanePrompt','voiceIntentPaneOral','voiceIntentPaneKeys','voiceIntentPaneSoftPad','voiceIntentPaneCamera'].forEach(function(paneId){
       var pane=$(paneId);
       if(pane) pane.hidden=paneId!==showId;
     });
@@ -729,6 +730,19 @@
     var wake=global.OneToneVoiceStepWake;
     if(wake&&wake.setVoiceFace) wake.setVoiceFace('dictate');
     parkBridges();
+    if(id==='oral'&&global.OneToneOralCommandUi&&global.OneToneOralCommandUi.mountEditor){
+      var oralHost=$('voiceIntentOralHost');
+      if(oralHost){
+        // ponytail: voice settings re-render calls setIntent often — remounting
+        // wipes .keys-oral-say focus (flicker, can't edit). Only mount when empty
+        // or caller asks forceRemount.
+        var live=oralHost.querySelector('[data-oral-page][data-oral-mode="editor"]');
+        var force=!!opts.forceRemount || !live;
+        if(force){
+          try{ global.OneToneOralCommandUi.mountEditor(oralHost,{}); }catch(_){}
+        }
+      }
+    }
     if(BRIDGE_MOUNT[id]){
       mountBridge(id);
       // Re-assert after setVoiceFace — later init/drawer calls must not leave face hidden.

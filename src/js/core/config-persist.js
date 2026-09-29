@@ -2036,6 +2036,15 @@
       var n=0;
       list.forEach(function(m){
         if(!m||!m.id||!isAppScopedMapping(m)) return;
+        // Drop wiped peripheral snaps (AutoTrigger + empty target, no source) — reinjecting
+        // these used to overwrite Cursor XButton1→RAlt after every boot heal.
+        var trig=String(m.triggerKey||'').trim();
+        var tgt=String(m.targetKey||'').trim();
+        var src=String(m.sourceKey||'').trim();
+        var preset=String(m.appTargetId||'').trim();
+        if(preset&&trig==='AutoTrigger'&&!tgt&&!src) return;
+        // Orphan heal stubs (no app, no trigger) thrash scheme_select — never restore.
+        if(!preset&&!trig&&!src) return;
         lastKnownAppScenarios[String(m.id)]=m;
         n++;
       });
@@ -2055,6 +2064,18 @@
     if(changed) persistAppScenarioBackup();
   }
 
+  function peripheralHabitScore(m){
+    if(!m) return 0;
+    var src=String(m.sourceKey||'').trim();
+    var trig=String(m.triggerKey||'').trim();
+    var tgt=String(m.targetKey||'').trim();
+    var score=0;
+    if(/^XButton/i.test(src)||/^XButton/i.test(trig)) score+=2;
+    if(tgt&&tgt!=='AutoTrigger') score+=1;
+    if(trig&&trig!=='AutoTrigger') score+=1;
+    return score;
+  }
+
   function rememberAppScenariosFromConfig(cfg){
     if(!cfg||typeof cfg!=='object') return;
     var maps=Array.isArray(cfg.mappings)?cfg.mappings:[];
@@ -2066,10 +2087,14 @@
         delete lastKnownAppScenarios[String(m.id)];
         return;
       }
+      var id=String(m.id);
+      var prev=lastKnownAppScenarios[id];
+      // Never let a weaker wipe replace a remembered peripheral habit.
+      if(prev&&peripheralHabitScore(m)<peripheralHabitScore(prev)) return;
       try{
-        lastKnownAppScenarios[String(m.id)]=JSON.parse(JSON.stringify(m));
+        lastKnownAppScenarios[id]=JSON.parse(JSON.stringify(m));
       }catch(_){
-        lastKnownAppScenarios[String(m.id)]=m;
+        lastKnownAppScenarios[id]=m;
       }
     });
     (cfg.trash||[]).forEach(function(m){
@@ -2109,6 +2134,13 @@
       }
       var preset=presetAppTargetId(snap);
       if(preset&&presentPresets[preset]){
+        forget.push(id);
+        return;
+      }
+      // No app + no physical trigger = noise row (empty AutoTrigger heal), never reinject.
+      if(!preset
+        &&!String(snap.triggerKey||'').trim()
+        &&!String(snap.sourceKey||'').trim()){
         forget.push(id);
         return;
       }

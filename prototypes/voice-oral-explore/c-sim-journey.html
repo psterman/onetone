@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>C · 弹窗仿真 + 场景旅程</title>
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <p class="back"><a href="index.html">← 探索目录</a> · C · 场景旅程</p>
+  <div class="frame">
+    <nav class="rail">
+      <div class="sec">意图</div>
+      <button type="button">听写方式<span>IME</span></button>
+      <button type="button">一词注入<span>写模板</span></button>
+      <button type="button" class="is-on">口头命令<span>可喊</span></button>
+      <button type="button">软件自带<span>命令</span></button>
+      <button type="button">屏幕按钮<span>Pad</span></button>
+    </nav>
+    <main class="main">
+      <header class="head">
+        <div>
+          <h1>口头命令</h1>
+          <p>武装后说短词执行 · 一词 → 一个动作</p>
+        </div>
+        <div class="head-acts">
+          <button type="button" class="btn ghost" id="openDemo">看演示</button>
+          <span class="pill">正在用 · Cursor</span>
+        </div>
+      </header>
+      <section class="block">
+        <div class="block-h"><h2>怎么开收听</h2><span class="meta">入口</span></div>
+        <div class="arm">
+          <span class="chip is-ok">Soft Pad 麦键</span>
+          <span class="chip is-empty">口头触发键 · 未录</span>
+        </div>
+      </section>
+      <section class="block">
+        <div class="block-h"><h2>默认可说</h2><span class="meta">词 → 动作</span></div>
+        <div class="core-list" id="coreList"></div>
+      </section>
+      <section class="block">
+        <div class="block-h"><h2>已添加</h2><span class="meta" id="addedMeta">2 项</span></div>
+        <div class="extra-list" id="extraList"></div>
+        <div class="extra-tools">
+          <p>按使用场景加 · 推荐组合</p>
+          <button type="button" class="btn primary" id="openAdd">+ 添加</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="overlay" id="demoOverlay" hidden>
+    <div class="modal sim" role="dialog">
+      <div class="modal-h">
+        <strong>用法演示</strong>
+        <button type="button" class="icon-x" data-close="demo">×</button>
+      </div>
+      <div class="sim-stage">
+        <div class="sim-desk">
+          <div class="sim-cursor">
+            <div class="sim-cursor-bar">Cursor · Agent</div>
+            <div class="sim-cursor-body">
+              <div class="sim-composer" id="simComposer">输入框就绪</div>
+              <div class="sim-toast" id="simToast" hidden></div>
+            </div>
+          </div>
+          <div class="sim-pad">
+            <div class="sim-pad-label">Soft Pad</div>
+            <button type="button" class="sim-mic" id="simMic"><span class="sim-mic-ring"></span><span class="sim-mic-dot"></span></button>
+            <div class="sim-wave" id="simWave"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+        <div class="sim-bubble" id="simBubble" hidden><span class="sim-bubble-mic"></span><span id="simBubbleText"></span></div>
+        <p class="sim-caption" id="simCaption">点 Soft Pad 麦键开始收听</p>
+      </div>
+      <div class="modal-f">
+        <button type="button" class="btn" id="simReplay">重播</button>
+        <button type="button" class="btn primary" data-close="demo">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="addOverlay" hidden>
+    <div class="modal wide" role="dialog">
+      <div class="modal-h">
+        <strong>按场景添加</strong>
+        <button type="button" class="icon-x" data-close="add">×</button>
+      </div>
+      <div class="journey" id="journey"></div>
+      <div class="modal-f">
+        <button type="button" class="btn" data-close="add">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared-data.js"></script>
+  <script src="shared-sim.js"></script>
+  <script>
+    (function () {
+      var catalog = window.ORAL_PROTO.catalog;
+      var journeys = [
+        {
+          id: 'dictation',
+          title: '听写流',
+          desc: '开麦 → 说话写入 → 用一词注入套模板 → 发送。默认三项已够；这里补模板口令。',
+          flow: ['说话', '注入模板', '发送'],
+          ids: ['prompt:review', 'prompt:explain', 'prompt:fix']
+        },
+        {
+          id: 'agent',
+          title: 'Agent 流',
+          desc: '发完一轮后：继续 / 接受 / 拒绝 / 停下。适合盯着 Cursor 跑任务时喊。',
+          flow: ['发送', '继续', '接受/拒绝', '停下'],
+          ids: ['soft:continue', 'soft:newThread', 'bind:accept', 'bind:reject', 'bind:stop']
+        },
+        {
+          id: 'custom',
+          title: '自定义绑定',
+          desc: '只加你在按键页已经配好的语音绑定（撤销已在列表里）。',
+          flow: ['录绑定', '口头启用'],
+          ids: ['bind:undo', 'bind:accept', 'bind:reject', 'bind:stop']
+        }
+      ];
+
+      function renderMain() {
+        document.getElementById('coreList').innerHTML = window.ORAL_PROTO.core.map(function (r) {
+          return window.ORAL_PROTO.rowHtml(r, 'core');
+        }).join('');
+        document.getElementById('extraList').innerHTML = window.ORAL_PROTO.added.map(function (r) {
+          return window.ORAL_PROTO.rowHtml(r, 'extra');
+        }).join('');
+        document.getElementById('addedMeta').textContent = window.ORAL_PROTO.added.length + ' 项';
+      }
+
+      function addIds(ids) {
+        ids.forEach(function (id) {
+          var c = catalog.find(function (x) { return x.id === id; });
+          if (!c || c.inList) return;
+          c.inList = true;
+          window.ORAL_PROTO.added.push({
+            word: c.name, via: c.viaClass, viaLabel: c.viaLabel,
+            act: c.desc, say: c.say, need: c.need
+          });
+        });
+        renderMain();
+        renderJourney();
+      }
+
+      function renderJourney() {
+        document.getElementById('journey').innerHTML = journeys.map(function (j) {
+          var picks = j.ids.map(function (id) {
+            var c = catalog.find(function (x) { return x.id === id; });
+            if (!c) return '';
+            return '<span class="j-pick' + (c.inList ? ' is-in' : '') + '">' +
+              (c.inList ? '✓ ' : '') + c.name + '</span>';
+          }).join('');
+          var pending = j.ids.filter(function (id) {
+            var c = catalog.find(function (x) { return x.id === id; });
+            return c && !c.inList;
+          });
+          var flow = j.flow.map(function (s, i) {
+            return (i ? '<span class="j-arrow">→</span>' : '') +
+              '<span class="j-step">' + s + '</span>';
+          }).join('');
+          return (
+            '<article class="j-card">' +
+            '<h3>' + j.title + '</h3>' +
+            '<p class="j-desc">' + j.desc + '</p>' +
+            '<div class="j-flow">' + flow + '</div>' +
+            '<div class="j-picks">' + picks + '</div>' +
+            (pending.length
+              ? '<button type="button" class="btn primary" data-pack="' + j.id + '">加入本场景（' + pending.length + '）</button>'
+              : '<button type="button" class="btn" disabled>本场景已齐</button>') +
+            '</article>'
+          );
+        }).join('');
+      }
+
+      renderMain();
+      document.getElementById('openDemo').onclick = function () { window.ORAL_SIM.open(); };
+      document.getElementById('simReplay').onclick = function () { window.ORAL_SIM.replay(); };
+      document.getElementById('openAdd').onclick = function () {
+        document.getElementById('addOverlay').hidden = false;
+        renderJourney();
+      };
+      document.querySelectorAll('[data-close]').forEach(function (btn) {
+        btn.onclick = function () {
+          if (btn.getAttribute('data-close') === 'demo') window.ORAL_SIM.close();
+          else document.getElementById('addOverlay').hidden = true;
+        };
+      });
+      document.getElementById('journey').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-pack]');
+        if (!b) return;
+        var j = journeys.find(function (x) { return x.id === b.getAttribute('data-pack'); });
+        if (j) addIds(j.ids);
+      });
+    })();
+  </script>
+</body>
+</html>

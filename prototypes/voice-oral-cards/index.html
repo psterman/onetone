@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>口头命令 · 卡片原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e4ebe8;
+      --ink: #14201c;
+      --muted: #5c6d66;
+      --line: #c9d5cf;
+      --surface: #f7faf8;
+      --card: #ffffff;
+      --accent: #0d8a7a;
+      --accent-soft: rgba(13, 138, 122, 0.1);
+      --accent-ink: #0a6b5e;
+      font-family: "Outfit", "Noto Sans SC", "PingFang SC", sans-serif;
+      color: var(--ink);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      background:
+        radial-gradient(900px 480px at 12% -10%, rgba(13, 138, 122, 0.12), transparent 55%),
+        radial-gradient(700px 400px at 90% 0%, rgba(40, 80, 70, 0.06), transparent 50%),
+        var(--bg);
+      padding: 36px 22px 64px;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    .kicker {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent-ink); margin: 0 0 8px;
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
+    .lead {
+      margin: 0 0 28px; font-size: 14px; color: var(--muted); line-height: 1.6; max-width: 48ch;
+    }
+    .rules {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px;
+    }
+    .rules span {
+      font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+      background: var(--card); border: 1px solid var(--line); color: var(--ink);
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+    a.card {
+      display: flex; flex-direction: column; gap: 10px;
+      text-decoration: none; color: inherit;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 18px; padding: 18px 18px 16px;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 28px rgba(20, 32, 28, 0.05);
+      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+    a.card:hover {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+      box-shadow: 0 14px 36px rgba(20, 32, 28, 0.1);
+    }
+    a.card:active { transform: scale(0.985); }
+    .tag {
+      align-self: flex-start; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 999px;
+      background: var(--accent-soft); color: var(--accent-ink);
+    }
+    a.card h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+    a.card p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; flex: 1; }
+    .mini {
+      margin-top: 4px; height: 64px; border-radius: 12px;
+      background: linear-gradient(145deg, #eef4f1, #e2ebe7);
+      border: 1px solid var(--line);
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px;
+    }
+    .mini i {
+      display: block; border-radius: 8px; background: #fff;
+      border: 1px solid #d5e0da; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    .note {
+      margin-top: 28px; padding: 16px 18px; border-radius: 14px;
+      background: rgba(255,255,255,0.55); border: 1px solid var(--line);
+      font-size: 13px; color: var(--muted); line-height: 1.55;
+    }
+    .note strong { color: var(--ink); }
+    .old { margin-top: 14px; font-size: 12px; }
+    .old a { color: var(--accent-ink); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="kicker">Oral · cards</p>
+    <h1>卡片原型</h1>
+    <p class="lead">
+      每张卡只留三件事：功能名、解释、关键词。没有开关——在列表里就是开着，去掉即关。
+      分类分区管理，支持排序。
+    </p>
+    <div class="rules">
+      <span>名称</span>
+      <span>解释</span>
+      <span>关键词可改</span>
+      <span>无开关</span>
+      <span>分类</span>
+      <span>可排序</span>
+    </div>
+    <div class="grid">
+      <a class="card" href="e-section-cards.html">
+        <span class="tag">E · 分区卡</span>
+        <h2>分类标题 + 卡网格</h2>
+        <p>核心 / Soft / 注入 / 绑定分节。节内拖动手柄排序，跨节不可拖。</p>
+        <div class="mini" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      </a>
+      <a class="card" href="f-board-sort.html">
+        <span class="tag">F · 看板</span>
+        <h2>统一卡板 · 全局排序</h2>
+        <p>一张板子排全部命令；分类是卡上标签。适合强调「喊的顺序 / 优先级」。</p>
+        <div class="mini" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      </a>
+      <a class="card" href="g-stack-manage.html">
+        <span class="tag">G · 叠层</span>
+        <h2>分类抽屉 + 卡叠</h2>
+        <p>左侧分类管理（重命名感），右侧该分类下的卡列，上下键精排。</p>
+        <div class="mini" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      </a>
+    </div>
+    <div class="note">
+      <strong>相对旧原型：</strong>去掉 Excel 行与 tog；关键词做成可点编辑的 chip；排序用拖动手柄或 ↑↓。
+      <div class="old">
+        旧探索：<a href="../voice-oral-explore/index.html">voice-oral-explore</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

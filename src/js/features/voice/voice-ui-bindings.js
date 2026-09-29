@@ -1506,16 +1506,20 @@
       btnVoiceOralOpenKeys._oralBound=true;
       btnVoiceOralOpenKeys.addEventListener('click',function(e){
         e.preventDefault();
-        openDrawerPanel('keys','target');
         try{
-          var P=global.OneToneKeysChannelCommandPicker;
-          if(P&&typeof P.setActiveTab==='function') P.setActiveTab('voice');
+          if(global.OneToneVoiceIntentRail&&typeof global.OneToneVoiceIntentRail.setIntent==='function'){
+            global.OneToneVoiceIntentRail.setIntent('oral',{persist:true});
+            return;
+          }
         }catch(_){}
+        if(global.OneToneOralCommandUi&&global.OneToneOralCommandUi.openVoiceOralSettings){
+          global.OneToneOralCommandUi.openVoiceOralSettings();
+        }
       });
     }
     var oralBridgeText=$('voiceOralKeysBridgeText');
-    if(oralBridgeText) oralBridgeText.textContent=t('voiceOralKeysBridgeText','看收听入口与可喊列表');
-    if(btnVoiceOralOpenKeys) btnVoiceOralOpenKeys.textContent=t('voiceOralKeysBridgeGo','去按键 · 口头命令 →');
+    if(oralBridgeText) oralBridgeText.textContent=t('voiceOralKeysBridgeText','可喊 Soft 槽与绑定（同页）');
+    if(btnVoiceOralOpenKeys) btnVoiceOralOpenKeys.textContent=t('voiceOralKeysBridgeGo','口头命令 →');
     var finishPhraseOverlay=$('voiceFinishPhraseOverlay');
     if(finishPhraseOverlay&&!finishPhraseOverlay.dataset.bound){
       finishPhraseOverlay.dataset.bound='1';
@@ -1665,8 +1669,18 @@
         if(kind==='voice_wake_refused_wrong_fg'){
           var payload=ev.payload||{};
           var target=String(payload.targetName||payload.appTargetId||'').trim()||'目标应用';
-          var msg=String((typeof t==='function'&&t('voiceWrongFgToast'))||'当前窗口不是「{target}」。请先切换，或到听写「高级」里打开自动拉起。')
-            .replace('{target}',target);
+          var source=String(payload.source||'').trim();
+          var msg;
+          if(source==='oral'){
+            msg=String((typeof t==='function'&&t('voiceOralWrongFgToast'))||'当前不是「{target}」，口头命令未开收听。请先切到该应用再按。')
+              .replace('{target}',target);
+          }else if(source==='key'){
+            msg=String((typeof t==='function'&&t('voiceKeyWrongFgToast'))||'当前不是「{target}」，快捷键未生效。请先切到该应用再按。')
+              .replace('{target}',target);
+          }else{
+            msg=String((typeof t==='function'&&t('voiceWrongFgToast'))||'当前窗口不是「{target}」。请先切换，或到听写「高级」里打开自动拉起。')
+              .replace('{target}',target);
+          }
           if(global.OneToneAppToast&&global.OneToneAppToast.show) global.OneToneAppToast.show(msg,'lite');
           else if(global.OneToneApp&&global.OneToneApp.toast) global.OneToneApp.toast(msg);
           if(global.OneToneVoiceStepWake&&global.OneToneVoiceStepWake.renderWrongFgStatus){

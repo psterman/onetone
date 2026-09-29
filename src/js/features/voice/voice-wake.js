@@ -657,12 +657,8 @@
     root.voiceListeningStrategy=strategy;
     // Keep FE desiredEngine mirrors aligned with product strategy (matches Rust apply_voice_listening_strategy).
     if(strategy==='off') syncDesiredEngineConfig('none');
-    else if(strategy==='enhanced') syncDesiredEngineConfig('vosk');
-    // auto/resourceSaver: Rust may keep Vosk when KWS keywords_empty — do NOT force kws.enabled
-    // (fought live vosk on every poll; auto switch → UI_HB_STALL_5S).
-    else if(strategy==='auto'||strategy==='resourceSaver'){
-      syncDesiredEngineConfig('kws');
-    }
+    else if(strategy==='auto'||strategy==='enhanced') syncDesiredEngineConfig('vosk');
+    else if(strategy==='resourceSaver') syncDesiredEngineConfig('kws');
     return true;
   }
 
@@ -1105,6 +1101,8 @@
 
   function voskListeningOk(res){
     if(!res) return false;
+    // Settings park drops every ASR chunk while state can still say listening.
+    if(res.asrQuiet===true||res.asr_quiet===true) return false;
     const st=String(res.state||'');
     const listening=st==='listening'||st==='running'||st==='cooldown'||st==='triggered';
     if(!listening) return false;
@@ -1999,6 +1997,8 @@
 
   function maybeNudgeVoskOnHome(voskRes){
     if(settingsVoiceParked()||runtime().paused) return;
+    // Soft Pad 口头收听中: home "正在监听" must not force-restart Vosk (kills mic).
+    if(voskRes&&(voskRes.oralArmed||voskRes.oral_armed)) return;
     if(!voskRes||voskListeningOk(voskRes)) return;
     var sup=voskRes.supervisor||{};
     var desired=String(voskRes.desiredEngine||sup.desiredEngine||'').trim().toLowerCase();
@@ -2020,6 +2020,9 @@
     if(settingsVoiceParked()||runtime().paused) return;
     var strategy=currentListeningStrategy();
     if(strategy==='off') return;
+    var wakeOral=(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
+    var voskOral=wakeOral.vosk||{};
+    if(voskOral.oralArmed||voskOral.oral_armed) return;
     var now=Date.now();
     if(!opts.force&&now-homeVoiceEnsureAt<8000) return;
     homeVoiceEnsureAt=now;

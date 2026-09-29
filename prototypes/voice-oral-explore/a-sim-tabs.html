@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>A · 弹窗仿真 + 分类 Tab</title>
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <p class="back"><a href="index.html">← 探索目录</a> · A · 分类 Tab</p>
+  <div class="frame" aria-label="口头命令">
+    <nav class="rail">
+      <div class="sec">意图</div>
+      <button type="button">听写方式<span>IME</span></button>
+      <button type="button">一词注入<span>写模板</span></button>
+      <button type="button" class="is-on">口头命令<span>可喊</span></button>
+      <button type="button">软件自带<span>命令</span></button>
+      <button type="button">屏幕按钮<span>Pad</span></button>
+    </nav>
+    <main class="main">
+      <header class="head">
+        <div>
+          <h1>口头命令</h1>
+          <p>武装后说短词执行 · 一词 → 一个动作</p>
+        </div>
+        <div class="head-acts">
+          <button type="button" class="btn ghost" id="openDemo">看演示</button>
+          <span class="pill">正在用 · Cursor</span>
+        </div>
+      </header>
+
+      <section class="block">
+        <div class="block-h">
+          <h2>怎么开收听</h2>
+          <span class="meta">入口 · 不是命令</span>
+        </div>
+        <div class="arm">
+          <span class="chip is-ok">Soft Pad 麦键</span>
+          <span class="chip is-empty">口头触发键 · 未录</span>
+          <button type="button" class="link">去按键页录 →</button>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="block-h">
+          <h2>默认可说</h2>
+          <span class="meta">词 → 动作</span>
+        </div>
+        <div class="core-list" id="coreList"></div>
+      </section>
+
+      <section class="block">
+        <div class="block-h">
+          <h2>已添加</h2>
+          <span class="meta" id="addedMeta">2 项</span>
+        </div>
+        <div class="extra-list" id="extraList"></div>
+        <div class="extra-tools">
+          <p>按来源挑选 · Soft / 注入 / 绑定</p>
+          <button type="button" class="btn primary" id="openAdd">+ 添加</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 仿真弹窗 -->
+  <div class="overlay" id="demoOverlay" hidden>
+    <div class="modal sim" role="dialog" aria-labelledby="simTitle">
+      <div class="modal-h">
+        <strong id="simTitle">用法演示</strong>
+        <button type="button" class="icon-x" data-close="demo" aria-label="关闭">×</button>
+      </div>
+      <div class="sim-stage">
+        <div class="sim-desk">
+          <div class="sim-cursor" id="simCursor">
+            <div class="sim-cursor-bar">Cursor · Agent</div>
+            <div class="sim-cursor-body">
+              <div class="sim-composer" id="simComposer">输入框就绪</div>
+              <div class="sim-toast" id="simToast" hidden></div>
+            </div>
+          </div>
+          <div class="sim-pad" id="simPad">
+            <div class="sim-pad-label">Soft Pad</div>
+            <button type="button" class="sim-mic" id="simMic" aria-label="麦键">
+              <span class="sim-mic-ring"></span>
+              <span class="sim-mic-dot"></span>
+            </button>
+            <div class="sim-wave" id="simWave" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </div>
+        </div>
+        <div class="sim-bubble" id="simBubble" hidden>
+          <span class="sim-bubble-mic"></span>
+          <span id="simBubbleText"></span>
+        </div>
+        <p class="sim-caption" id="simCaption">点 Soft Pad 麦键开始收听</p>
+      </div>
+      <div class="modal-f">
+        <button type="button" class="btn" id="simReplay">重播</button>
+        <button type="button" class="btn primary" data-close="demo">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 添加 · Tab -->
+  <div class="overlay" id="addOverlay" hidden>
+    <div class="modal add" role="dialog" aria-labelledby="addTitle">
+      <div class="modal-h">
+        <strong id="addTitle">添加可喊命令</strong>
+        <button type="button" class="icon-x" data-close="add" aria-label="关闭">×</button>
+      </div>
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab is-on" data-tab="soft" role="tab">Soft 槽<span>2</span></button>
+        <button type="button" class="tab" data-tab="prompt" role="tab">一词注入<span>3</span></button>
+        <button type="button" class="tab" data-tab="bind" role="tab">语音绑定<span>4</span></button>
+      </div>
+      <p class="tab-hint" id="tabHint"></p>
+      <div class="add-list" id="addList"></div>
+      <div class="modal-f">
+        <span class="sel-count" id="selCount">已选 0</span>
+        <button type="button" class="btn" data-close="add">取消</button>
+        <button type="button" class="btn primary" id="addConfirm">加入</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared-data.js"></script>
+  <script src="shared-sim.js"></script>
+  <script>
+    (function () {
+      var CATALOG = window.ORAL_PROTO.catalog;
+      var HINTS = {
+        soft: 'Soft 槽 · 跟屏幕按钮同一动作。继续 / 新建需输入框在前。',
+        prompt: '一词注入 · 说短词写入你在「一词注入」里配好的模板。',
+        bind: '语音绑定 · 已在按键/Agent 里配过的动作，口头再开一条捷径。'
+      };
+      var tab = 'soft';
+      var selected = {};
+
+      function renderCore() {
+        document.getElementById('coreList').innerHTML = window.ORAL_PROTO.core.map(function (r) {
+          return window.ORAL_PROTO.rowHtml(r, 'core');
+        }).join('');
+      }
+      function renderExtra() {
+        var rows = window.ORAL_PROTO.added;
+        document.getElementById('extraList').innerHTML = rows.map(function (r) {
+          return window.ORAL_PROTO.rowHtml(r, 'extra');
+        }).join('');
+        document.getElementById('addedMeta').textContent = rows.length + ' 项';
+      }
+      function renderAdd() {
+        document.getElementById('tabHint').textContent = HINTS[tab];
+        document.querySelectorAll('.tab').forEach(function (b) {
+          b.classList.toggle('is-on', b.getAttribute('data-tab') === tab);
+        });
+        var items = CATALOG.filter(function (c) { return c.kind === tab && !c.inList; });
+        document.getElementById('addList').innerHTML = items.map(function (c) {
+          var on = !!selected[c.id];
+          return (
+            '<label class="add-row' + (on ? ' is-on' : '') + '">' +
+            '<input type="checkbox" data-id="' + c.id + '"' + (on ? ' checked' : '') + ' />' +
+            '<span class="add-main">' +
+            '<strong>' + c.name + '</strong>' +
+            '<small>' + c.desc + '</small></span>' +
+            '<span class="add-side">' +
+            (c.need ? '<em class="need">需输入框</em>' : '<em class="ok">随时</em>') +
+            '<span class="say">「' + c.say + '」</span></span></label>'
+          );
+        }).join('') || '<p class="empty">这一类都已加入</p>';
+        var n = Object.keys(selected).length;
+        document.getElementById('selCount').textContent = '已选 ' + n;
+      }
+
+      renderCore();
+      renderExtra();
+
+      document.getElementById('openDemo').onclick = function () {
+        window.ORAL_SIM.open('demoOverlay');
+      };
+      document.getElementById('openAdd').onclick = function () {
+        selected = {};
+        document.getElementById('addOverlay').hidden = false;
+        renderAdd();
+      };
+      document.querySelectorAll('[data-close]').forEach(function (btn) {
+        btn.onclick = function () {
+          var id = btn.getAttribute('data-close') === 'demo' ? 'demoOverlay' : 'addOverlay';
+          if (id === 'demoOverlay') window.ORAL_SIM.close();
+          else document.getElementById(id).hidden = true;
+        };
+      });
+      document.querySelectorAll('.tab').forEach(function (b) {
+        b.onclick = function () {
+          tab = b.getAttribute('data-tab');
+          renderAdd();
+        };
+      });
+      document.getElementById('addList').addEventListener('change', function (e) {
+        var t = e.target;
+        if (!t.matches('input[data-id]')) return;
+        if (t.checked) selected[t.getAttribute('data-id')] = true;
+        else delete selected[t.getAttribute('data-id')];
+        renderAdd();
+      });
+      document.getElementById('addConfirm').onclick = function () {
+        Object.keys(selected).forEach(function (id) {
+          var c = CATALOG.find(function (x) { return x.id === id; });
+          if (!c || c.inList) return;
+          c.inList = true;
+          window.ORAL_PROTO.added.push({
+            word: c.name, via: c.viaClass, viaLabel: c.viaLabel,
+            act: c.desc, say: c.say, need: c.need
+          });
+        });
+        document.getElementById('addOverlay').hidden = true;
+        renderExtra();
+      };
+      document.getElementById('simReplay').onclick = function () {
+        window.ORAL_SIM.replay();
+      };
+    })();
+  </script>
+</body>
+</html>

@@ -2101,9 +2101,45 @@
       return cards.map(function(c){
         var name=String((c&&(c.name||c.label))||'').trim();
         var say=String((c&&c.say)||'').trim()||name;
+        var slotId=String((c&&(c.slotId||c.slot_id))||'').trim();
         if(!name&&!say) return '';
-        return '<span class="oral-cmd-chip" title="'+escHtml(name)+'"><b>'+escHtml(say)+'</b>'+(name&&name!==say?' <em>'+escHtml(name)+'</em>':'')+'</span>';
+        var isCancel=slotId==='cancelListen'||name==='取消'||say==='取消';
+        var tag=isCancel?'button':'span';
+        var typeAttr=isCancel?' type="button"':'';
+        var slotAttr=slotId?' data-oral-slot="'+escHtml(slotId)+'"':'';
+        var cancelClass=isCancel?' is-cancel':'';
+        return '<'+tag+typeAttr+' class="oral-cmd-chip'+cancelClass+'"'+slotAttr+' title="'+escHtml(name)+'"><b>'+escHtml(say)+'</b>'+(name&&name!==say?' <em>'+escHtml(name)+'</em>':'')+'</'+tag+'>';
       }).filter(Boolean).join('');
+    }
+
+    function bindOralCmdChipClicks(root){
+      if(!root||root.__oralChipBound) return;
+      root.__oralChipBound=true;
+      root.addEventListener('click',function(e){
+        var chip=e.target&&e.target.closest&&e.target.closest('[data-oral-slot="cancelListen"],.oral-cmd-chip.is-cancel');
+        if(!chip) return;
+        e.preventDefault();
+        e.stopPropagation();
+        exitOralListen('chip');
+      });
+    }
+
+    function exitOralListen(reason){
+      // Backend first — never clear chrome before force_cancel (that caused flash→stuck).
+      return invoke('cmd_cursor_beginner_disarm',{}).then(function(res){
+        clearOralListenChromeLocal();
+        if(res&&res.ok!==false) toast('已退出口头收听');
+        return res;
+      }).catch(function(err){
+        // Fallback: pad ACT08 path also force_cancels when oral armed.
+        return beginnerPadFire('ACT08','tap','cancelListen').then(function(res){
+          clearOralListenChromeLocal();
+          return res;
+        }).catch(function(){
+          toast(String(err||'退出失败'));
+          return null;
+        });
+      });
     }
 
     function applyOralListenMini(s){
@@ -2123,10 +2159,32 @@
           if(!(s&&(s.cursorBeginnerMode||s.cursor_beginner_mode)&&(s.cursorBeginnerArmed||s.cursor_beginner_armed))){
             cap.classList.remove('is-beginner-arm-caption');
           }
+          // Backend may already be disarmed while caption text still says「口头收听中」
+          // (skip_serializing + early return used to leave textContent sticky).
+          if(!keyHoverActive){
+            var nameEl=cap.querySelector('[data-cap-name]');
+            var chordEl=cap.querySelector('[data-cap-chord]');
+            var armTxt=String((nameEl&&nameEl.textContent)||'');
+            if(armTxt.indexOf('口头收听')>=0||armTxt.indexOf('可说：')>=0){
+              if(nameEl) nameEl.textContent='';
+              if(chordEl){ chordEl.textContent=''; chordEl.hidden=true; }
+              cap.classList.remove('is-active','is-usage-sub','is-oral-arm-caption','is-beginner-arm-caption');
+            }
+          }
         }
         if(capCmds){ capCmds.hidden=true; capCmds.innerHTML=''; }
         if(capBadge){ capBadge.hidden=true; }
         if(miniOralCmdStrip){ miniOralCmdStrip.hidden=true; miniOralCmdStrip.innerHTML=''; }
+        // Oral ACT10 listening must not keep Soft Pad hold-lock / blue listening skin.
+        if(localPadStatus==='listening'&&(localStatusMicro==='ACT10'||holdLockId==='ACT10')){
+          clearLocalTimer();
+          localPadStatus='idle';
+          localStatusMicro='';
+          holdLockId='';
+          holdSuppressCancel=false;
+          holdUiReleased=false;
+          if(typeof applyLocalStatusDom==='function') applyLocalStatusDom();
+        }
         return;
       }
       // Distinct listening chrome — Soft Pad on Cursor FG alone must not look the same.
@@ -2151,6 +2209,7 @@
         if(capCmds){
           capCmds.innerHTML=chips;
           capCmds.hidden=!chips;
+          bindOralCmdChipClicks(capCmds);
         }
         if(chordEl){
           chordEl.textContent=flowHint;
@@ -2316,6 +2375,7 @@
         var showCmds=oralOn&&!vHeard&&!!chips;
         miniOralCmdStrip.innerHTML=showCmds?chips:'';
         miniOralCmdStrip.hidden=!showCmds;
+        if(showCmds) bindOralCmdChipClicks(miniOralCmdStrip);
       }
       if(miniBeginnerListenFlow){
         var showFlow=(beginnerOn||oralOn)&&!vHeard&&!hubOn&&!!flowHint;
@@ -2431,6 +2491,91 @@
       return map[String(slotId||'')]||'';
     }
 
+    function clearOralListenChromeLocal(){
+      if(!lastSnap) lastSnap={};
+      lastSnap.oralListenArmed=false;
+      lastSnap.oral_listen_armed=false;
+      lastSnap.oralListenHint='';
+      lastSnap.oral_listen_hint='';
+      lastSnap.oralListenFlowHint='';
+      lastSnap.oral_listen_flow_hint='';
+      lastSnap.oralListenCommands=[];
+      lastSnap.oral_listen_commands=[];
+      lastSnap.oralListenMicroKeys=[];
+      lastSnap.oral_listen_micro_keys=[];
+      lastSnap.voiceHeardFinal='';
+      lastSnap.voice_heard_final='';
+      lastSnap.voiceHeardPartial='';
+      lastSnap.voice_heard_partial='';
+      lastSnap.voiceHeardMatched=false;
+      lastSnap.voice_heard_matched=false;
+      // Oral borrowed beginner captions — clear sticky skip_serializing leftovers.
+      var arm=String(lastSnap.cursorBeginnerArmHint||lastSnap.cursor_beginner_arm_hint||'');
+      if(arm.indexOf('口头收听')>=0||arm.indexOf('可说：')>=0){
+        lastSnap.cursorBeginnerArmHint='';
+        lastSnap.cursor_beginner_arm_hint='';
+        lastSnap.cursorBeginnerFlowHint='';
+        lastSnap.cursor_beginner_flow_hint='';
+        lastSnap.cursorBeginnerArmed=false;
+        lastSnap.cursor_beginner_armed=false;
+      }
+      if(String(lastSnap.padStatus||lastSnap.pad_status||'')==='listening'){
+        lastSnap.padStatus='idle';
+        lastSnap.pad_status='idle';
+      }
+      applyOralListenMini(lastSnap);
+      applyHubMini(lastSnap);
+      if(typeof applyLocalStatusDom==='function') applyLocalStatusDom();
+    }
+
+    /** Empty oral strings are skip_serializing — Object.assign would keep stale hints/chips. */
+    function normalizeOralSnapFields(snap, incoming){
+      if(!snap||!incoming) return;
+      var off=incoming.oralListenArmed===false||incoming.oral_listen_armed===false;
+      // Backend may omit false bools on partial merges — if we were armed and field absent, clear.
+      if(!off && (snap.oralListenArmed||snap.oral_listen_armed)
+          && !('oralListenArmed' in incoming) && !('oral_listen_armed' in incoming)
+          && ('padStatus' in incoming || 'pad_status' in incoming)){
+        var pst=String(incoming.padStatus||incoming.pad_status||'');
+        if(pst==='idle'||pst==='done'||pst==='failed') off=true;
+      }
+      if(!off) return;
+      snap.oralListenArmed=false;
+      snap.oral_listen_armed=false;
+      snap.oralListenHint='';
+      snap.oral_listen_hint='';
+      snap.oralListenFlowHint='';
+      snap.oral_listen_flow_hint='';
+      snap.oralListenCommands=[];
+      snap.oral_listen_commands=[];
+      snap.oralListenMicroKeys=[];
+      snap.oral_listen_micro_keys=[];
+      // Backend clears these but skip_serializing drops empty → FE kept「口头收听中」.
+      var arm=String(snap.cursorBeginnerArmHint||snap.cursor_beginner_arm_hint||'');
+      var flow=String(snap.cursorBeginnerFlowHint||snap.cursor_beginner_flow_hint||'');
+      if(arm.indexOf('口头收听')>=0||arm.indexOf('可说：')>=0||!('cursorBeginnerArmHint' in incoming||'cursor_beginner_arm_hint' in incoming)){
+        snap.cursorBeginnerArmHint='';
+        snap.cursor_beginner_arm_hint='';
+      }
+      if(flow.indexOf('退出收听')>=0||flow.indexOf('Esc')>=0||!('cursorBeginnerFlowHint' in incoming||'cursor_beginner_flow_hint' in incoming)){
+        snap.cursorBeginnerFlowHint='';
+        snap.cursor_beginner_flow_hint='';
+      }
+      if(incoming.cursorBeginnerArmed===false||incoming.cursor_beginner_armed===false){
+        snap.cursorBeginnerArmed=false;
+        snap.cursor_beginner_armed=false;
+      }
+      // Drop oral ACT10 listening lock so Esc / pull / side-key work after cancel.
+      if(localPadStatus==='listening'&&(localStatusMicro==='ACT10'||holdLockId==='ACT10'||!holdLockId)){
+        clearLocalTimer();
+        localPadStatus='idle';
+        localStatusMicro='';
+        holdLockId='';
+        holdSuppressCancel=false;
+        holdUiReleased=false;
+      }
+    }
+
     function handleBeginnerSlotResult(res, slotId, microKey){
       if(!res) return res;
       var reason=String(res.reason||'');
@@ -2444,7 +2589,8 @@
         setLocalStatus('listening', microKey||'ACT10');
         if(window.OneToneCursorBeginnerOnboard) window.OneToneCursorBeginnerOnboard.markDone();
       } else if(res.ok&&(slotId==='cancelListen'||reason==='disarmed')){
-        toast('已取消聆听');
+        clearOralListenChromeLocal();
+        toast('已退出口头收听');
       } else if(res.ok){
         toast('已触发 · '+String(slotId||''));
       } else if(!res.ok){
@@ -3532,8 +3678,9 @@
     function render(s){
       s=s||{};
       lastSnap=Object.assign({}, lastSnap, s);
+      normalizeOralSnapFields(lastSnap, s);
       syncOverlayTheme();
-      applyMiniAgentChips(s);
+      applyMiniAgentChips(lastSnap);
       applyMiniUsagePill(s);
       var padSkin=normalizeOverlaySkin(s.skin||s.padSkin);
       var rootEl=document.querySelector('.root');
@@ -3645,7 +3792,10 @@
             clearLocalTimer();
             localPadStatus=backendPadStatus;
             localStatusMicro=snapMicro;
-            if(snapMicro) holdLockId=snapMicro;
+            // Oral Soft Pad listen is not a hold chord — never latch holdLockId on ACT10
+            // or Esc/pull stay stuck after force_cancel while chrome still looks「口头收听中」.
+            var oralOn=!!(s.oralListenArmed||s.oral_listen_armed);
+            if(snapMicro && !oralOn) holdLockId=snapMicro;
           } else if(!localStatusTimer) {
             localPadStatus=backendPadStatus;
             localStatusMicro=snapMicro;
@@ -3661,20 +3811,29 @@
           localPadStatus=backendPadStatus;
           localStatusMicro=backendPadStatus==='idle' ? '' : snapMicro;
         }
-      } else if(backendPadStatus==='idle' && !localStatusTimer && localPadStatus!=='listening' && localPadStatus!=='running' && !activePtr){
-        localPadStatus='idle';
-        localStatusMicro='';
-        if(!holdSuppressCancel) holdLockId='';
+      } else if(backendPadStatus==='idle' && !localStatusTimer && !activePtr){
+        // Always clear local listening when backend idle — excluding listening left
+        // Soft Pad stuck「口头收听中」after oral timeout/Esc while pull() stayed blocked.
+        var oralOn=!!(s.oralListenArmed||s.oral_listen_armed);
+        if(!oralOn || localPadStatus!=='running'){
+          localPadStatus='idle';
+          localStatusMicro='';
+          if(!holdSuppressCancel) holdLockId='';
+        }
       }
       var sig=gridSignature(s,map,active);
       if(shouldDeferGridRebuild()){
         (s.cells||[]).forEach(function(c){ if(c&&c.microKeyId) boundKeys[c.microKeyId]=!!c.bound; });
         patchGridRunStates(map,active);
+        applyOralListenMini(lastSnap);
+        applyHubMini(lastSnap);
         applyLocalStatusDom();
         return;
       }
       if(sig===lastGridSig && !padGridEmpty()){
         patchGridRunStates(map,active);
+        applyOralListenMini(lastSnap);
+        applyHubMini(lastSnap);
         applyLocalStatusDom();
         return;
       }
@@ -4072,6 +4231,17 @@
     });
     document.addEventListener('keydown',function(e){
       if(e.key==='Escape'){
+        var oralOn=!!(lastSnap&&(lastSnap.oralListenArmed||lastSnap.oral_listen_armed));
+        var cap=document.getElementById('overlayKeyCaption');
+        var oralChrome=oralOn
+          ||wrap.classList.contains('is-oral-listen')
+          ||(cap&&(cap.classList.contains('is-oral-arm-caption')||(String(cap.textContent||'').indexOf('口头收听')>=0)));
+        if(oralChrome){
+          e.preventDefault();
+          e.stopPropagation();
+          exitOralListen('esc');
+          return;
+        }
         if(agentBarExpanded){
           setAgentBarExpanded(false);
           relayoutPadAgentBarFromSnap();
@@ -4095,6 +4265,7 @@
           var incomingMode=String(s.padMode||'')==='numpad'?'numpad':(s.enabled===false?'numpad':'codex');
           if(incomingMode===padMode){
             lastSnap=Object.assign({}, lastSnap, s);
+            normalizeOralSnapFields(lastSnap, s);
             padEnabled=!!s.enabled;
             joyArrowsLive=!!s.joyArrowsLive && padMode==='codex';
             joyContextHint=String(s.joyContextHint||s.joy_context_hint||'').trim();
@@ -4115,7 +4286,9 @@
       bootstrapOverlayState();
     }
     function pull(){
-      if(holdLockId||localPadStatus==='listening') return;
+      // Never block pull on oral ACT10 listening — that froze chrome after timeout/Esc.
+      if(holdLockId && holdLockId!=='ACT10') return;
+      if(localPadStatus==='listening' && localStatusMicro && localStatusMicro!=='ACT10') return;
       invoke('cmd_codex_micro_overlay_get_state',{}).then(function(s){ render(s); }).catch(function(){});
     }
     function refreshUsageFromOverlay(kind){

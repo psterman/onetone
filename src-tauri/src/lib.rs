@@ -680,6 +680,7 @@ pub fn run() {
             {
                 let cfg = app_state.cfg.lock().clone();
                 window_layout::apply_on_startup_logged(&window, &cfg, &app_state, "startup");
+                window_layout::ensure_on_screen(&window);
             }
             let win_layout = window.clone();
             let cfg_layout = app_state.cfg.lock().clone();
@@ -692,6 +693,7 @@ pub fn run() {
                     &state_layout,
                     "deferred",
                 );
+                window_layout::ensure_on_screen(&win_layout);
             });
 
             if first_launch {

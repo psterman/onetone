@@ -72,6 +72,12 @@ pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKi
         return VoiceKeywordKind::Custom;
     }
 
+    // Oral / Soft Pad exit must not share the Wake bucket — Wake hits RAlt/说话
+    // cooldown and silently drops「取消」「退出」.
+    if crate::cursor_beginner::is_disarm_phrase(text) {
+        return VoiceKeywordKind::Cancel;
+    }
+
     if crate::cursor_beginner::probe_ok() && crate::cursor_beginner::is_beginner_voice_phrase(text) {
         return VoiceKeywordKind::Wake;
     }

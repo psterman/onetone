@@ -13,3 +13,6 @@ sh uō h uà @说话
 m ài k è f ēng @麦克风
 x iǎo zh ù sh ǒu @小助手
 q ǔ x iāo @取消
+t ùi ch ū @退出
+t ùi ch ū sh ōu t īng @退出收听
+t íng zh ǐ sh ōu t īng @停止收听

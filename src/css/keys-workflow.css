@@ -3434,40 +3434,50 @@
   color: var(--primary-strong, #1a7a9c);
 }
 
-#settingsPanelKeys .keys-oral-page {
+#settingsPanelKeys .keys-oral-page, #voiceIntentPaneOral .keys-oral-page {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 0 0 4px;
+  min-width: 0;
+  overflow: visible;
 }
 
-#settingsPanelKeys .keys-oral-block {
+#voiceIntentPaneOral:not([hidden]),
+#voiceIntentOralHost,
+.voice-intent-oral-host {
+  min-width: 0;
+  overflow: auto;
+  pointer-events: auto;
+}
+
+#settingsPanelKeys .keys-oral-block, #voiceIntentPaneOral .keys-oral-block {
   margin: 0;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--outline-variant, #d5dee8);
   background: var(--surface, #fff);
 }
-#settingsPanelKeys .keys-oral-block__title {
+#settingsPanelKeys .keys-oral-block__title, #voiceIntentPaneOral .keys-oral-block__title {
   margin: 0 0 4px;
   font-size: 13px;
   font-weight: 700;
   color: var(--on-surface, #13202c);
 }
-#settingsPanelKeys .keys-oral-block__row {
+#settingsPanelKeys .keys-oral-block__row, #voiceIntentPaneOral .keys-oral-block__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 6px;
 }
-#settingsPanelKeys .keys-oral-block__line {
+#settingsPanelKeys .keys-oral-block__line, #voiceIntentPaneOral .keys-oral-block__line {
   margin: 0 0 6px;
   font-size: 12px;
   line-height: 1.4;
   color: var(--on-surface-muted, #5a6b7c);
 }
-#settingsPanelKeys .keys-oral-group td {
+#settingsPanelKeys .keys-oral-group, #voiceIntentPaneOral .keys-oral-group td {
   padding: 8px 6px 2px;
   font-size: 11px;
   font-weight: 700;
@@ -3475,26 +3485,26 @@
   color: var(--on-surface-muted, #5a6b7c);
   border-bottom: none;
 }
-#settingsPanelKeys .keys-oral-empty {
+#settingsPanelKeys .keys-oral-empty, #voiceIntentPaneOral .keys-oral-empty {
   padding: 16px 8px;
   text-align: center;
   color: var(--ot-muted, #9aa8bc);
   font-size: 12px;
 }
-#settingsPanelKeys .keys-oral-head {
+#settingsPanelKeys .keys-oral-head, #voiceIntentPaneOral .keys-oral-head {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-#settingsPanelKeys .keys-oral-head__row {
+#settingsPanelKeys .keys-oral-head__row, #voiceIntentPaneOral .keys-oral-head__row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
-#settingsPanelKeys .keys-oral-head__title {
+#settingsPanelKeys .keys-oral-head__title, #voiceIntentPaneOral .keys-oral-head__title {
   margin: 0;
   font-size: 15px;
   font-weight: 750;
@@ -3502,7 +3512,7 @@
   letter-spacing: -0.01em;
 }
 
-#settingsPanelKeys .keys-oral-head__pill {
+#settingsPanelKeys .keys-oral-head__pill, #voiceIntentPaneOral .keys-oral-head__pill {
   font-size: 11px;
   font-weight: 650;
   padding: 2px 8px;
@@ -3512,20 +3522,20 @@
   color: var(--primary-strong, #1a7a9c);
 }
 
-#settingsPanelKeys .keys-oral-head__line {
+#settingsPanelKeys .keys-oral-head__line, #voiceIntentPaneOral .keys-oral-head__line {
   margin: 0;
   font-size: 12.5px;
   line-height: 1.45;
   color: var(--on-surface-muted, #5a6b7c);
 }
 
-#settingsPanelKeys .keys-oral-head__acts {
+#settingsPanelKeys .keys-oral-head__acts, #voiceIntentPaneOral .keys-oral-head__acts {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-#settingsPanelKeys .keys-oral-act {
+#settingsPanelKeys .keys-oral-act, #voiceIntentPaneOral .keys-oral-act {
   appearance: none;
   border: 1px solid var(--outline-variant, #d5dee8);
   background: var(--surface, #fff);
@@ -3543,22 +3553,22 @@
     transform 120ms var(--motion-ease-spring, cubic-bezier(0.22, 1.2, 0.36, 1));
 }
 
-#settingsPanelKeys .keys-oral-act:hover {
+#settingsPanelKeys .keys-oral-act:hover, #voiceIntentPaneOral .keys-oral-act:hover {
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 40%, transparent);
   color: var(--primary-strong, #1a7a9c);
 }
 
-#settingsPanelKeys .keys-oral-act:active {
+#settingsPanelKeys .keys-oral-act:active, #voiceIntentPaneOral .keys-oral-act:active {
   transform: scale(0.97);
 }
 
-#settingsPanelKeys .keys-oral-act.is-primary {
+#settingsPanelKeys .keys-oral-act.is-primary, #voiceIntentPaneOral .keys-oral-act.is-primary {
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 42%, transparent);
   background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, transparent);
   color: var(--primary-strong, #1a7a9c);
 }
 
-#settingsPanelKeys .keys-oral-head__hint {
+#settingsPanelKeys .keys-oral-head__hint, #voiceIntentPaneOral .keys-oral-head__hint {
   margin: 6px 0 0;
   font-size: 12px;
   line-height: 1.45;
@@ -3570,7 +3580,7 @@
   border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 22%, transparent);
 }
 
-#settingsPanelKeys .keys-oral-dup {
+#settingsPanelKeys .keys-oral-dup, #voiceIntentPaneOral .keys-oral-dup {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3588,7 +3598,7 @@
   animation-fill-mode: both;
 }
 
-#settingsPanelKeys .keys-oral-dup__btn {
+#settingsPanelKeys .keys-oral-dup__btn, #voiceIntentPaneOral .keys-oral-dup__btn {
   appearance: none;
   border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 35%, transparent);
   background: var(--surface, #fff);
@@ -3602,29 +3612,29 @@
   transition: background 140ms ease, transform 120ms ease;
 }
 
-#settingsPanelKeys .keys-oral-dup__btn:hover {
+#settingsPanelKeys .keys-oral-dup__btn:hover, #voiceIntentPaneOral .keys-oral-dup__btn:hover {
   background: color-mix(in srgb, var(--primary, #2a9cc4) 8%, #fff);
 }
 
-#settingsPanelKeys .keys-oral-dup__btn:active {
+#settingsPanelKeys .keys-oral-dup__btn:active, #voiceIntentPaneOral .keys-oral-dup__btn:active {
   transform: scale(0.97);
 }
 
-#settingsPanelKeys .keys-oral-toolbar {
+#settingsPanelKeys .keys-oral-toolbar, #voiceIntentPaneOral .keys-oral-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
-#settingsPanelKeys .keys-oral-filters {
+#settingsPanelKeys .keys-oral-filters, #voiceIntentPaneOral .keys-oral-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   margin-left: auto;
 }
 
-#settingsPanelKeys .keys-oral-filters button {
+#settingsPanelKeys .keys-oral-filters, #voiceIntentPaneOral .keys-oral-filters button {
   appearance: none;
   border: 1px solid transparent;
   background: transparent;
@@ -3641,24 +3651,24 @@
     border-color 140ms ease;
 }
 
-#settingsPanelKeys .keys-oral-filters button:hover {
+#settingsPanelKeys .keys-oral-filters, #voiceIntentPaneOral .keys-oral-filters button:hover {
   background: color-mix(in srgb, var(--primary, #2a9cc4) 6%, transparent);
   color: var(--primary-strong, #1a7a9c);
 }
 
-#settingsPanelKeys .keys-oral-filters button.is-on {
+#settingsPanelKeys .keys-oral-filters, #voiceIntentPaneOral .keys-oral-filters button.is-on {
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 32%, transparent);
   background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, transparent);
   color: var(--primary-strong, #1a7a9c);
 }
 
-#settingsPanelKeys .keys-oral-table {
+#settingsPanelKeys .keys-oral-table, #voiceIntentPaneOral .keys-oral-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12.5px;
 }
 
-#settingsPanelKeys .keys-oral-table th {
+#settingsPanelKeys .keys-oral-table, #voiceIntentPaneOral .keys-oral-table th {
   text-align: left;
   font-size: 10.5px;
   font-weight: 750;
@@ -3667,17 +3677,17 @@
   border-bottom: 1px solid var(--outline-variant, #d5dee8);
 }
 
-#settingsPanelKeys .keys-oral-table td {
+#settingsPanelKeys .keys-oral-table, #voiceIntentPaneOral .keys-oral-table td {
   padding: 6px 6px;
   border-bottom: 1px solid var(--outline-variant, #d5dee8);
   vertical-align: middle;
 }
 
-#settingsPanelKeys .keys-oral-table tr:last-child td {
+#settingsPanelKeys .keys-oral-table, #voiceIntentPaneOral .keys-oral-table tr:last-child td {
   border-bottom: 0;
 }
 
-#settingsPanelKeys .keys-oral-row {
+#settingsPanelKeys .keys-oral-row, #voiceIntentPaneOral .keys-oral-row {
   animation-name: ot-enter;
   animation-duration: var(--motion-duration-enter, 200ms);
   animation-timing-function: var(--motion-ease-spring, cubic-bezier(0.22, 1.2, 0.36, 1));
@@ -3685,23 +3695,23 @@
   animation-fill-mode: both;
 }
 
-#settingsPanelKeys .keys-oral-table tr.is-dup td {
+#settingsPanelKeys .keys-oral-table, #voiceIntentPaneOral .keys-oral-table tr.is-dup td {
   background: color-mix(in srgb, var(--primary, #2a9cc4) 5%, transparent);
 }
 
-#settingsPanelKeys .keys-oral-name {
+#settingsPanelKeys .keys-oral-name, #voiceIntentPaneOral .keys-oral-name {
   font-weight: 700;
   color: var(--on-surface, #13202c);
 }
 
-#settingsPanelKeys .keys-oral-via {
+#settingsPanelKeys .keys-oral-via, #voiceIntentPaneOral .keys-oral-via {
   margin-top: 1px;
   font-size: 10.5px;
   font-weight: 600;
   color: var(--on-surface-muted, #5a6b7c);
 }
 
-#settingsPanelKeys .keys-oral-say {
+#settingsPanelKeys .keys-oral-say, #voiceIntentPaneOral .keys-oral-say {
   width: 100%;
   max-width: 280px;
   border: 1px solid var(--outline-variant, #d5dee8);
@@ -3715,17 +3725,17 @@
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
-#settingsPanelKeys .keys-oral-say:focus {
+#settingsPanelKeys .keys-oral-say:focus, #voiceIntentPaneOral .keys-oral-say:focus {
   outline: none;
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 50%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #2a9cc4) 16%, transparent);
 }
 
-#settingsPanelKeys .keys-oral-table tr.is-dup .keys-oral-say {
+#settingsPanelKeys .keys-oral-table, #voiceIntentPaneOral .keys-oral-table tr.is-dup .keys-oral-say {
   border-color: color-mix(in srgb, var(--primary, #2a9cc4) 45%, transparent);
 }
 
-#settingsPanelKeys .keys-oral-tag {
+#settingsPanelKeys .keys-oral-tag, #voiceIntentPaneOral .keys-oral-tag {
   display: inline-block;
   margin-top: 4px;
   margin-left: 6px;
@@ -3738,12 +3748,12 @@
   border: 0;
 }
 
-#settingsPanelKeys .keys-oral-tag.is-edit {
+#settingsPanelKeys .keys-oral-tag.is-edit, #voiceIntentPaneOral .keys-oral-tag.is-edit {
   background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, transparent);
   color: var(--primary-strong, #1a7a9c);
 }
 
-#settingsPanelKeys .keys-oral-tog {
+#settingsPanelKeys .keys-oral-tog, #voiceIntentPaneOral .keys-oral-tog {
   appearance: none;
   width: 36px;
   height: 20px;
@@ -3755,11 +3765,11 @@
   transition: background 160ms ease;
 }
 
-#settingsPanelKeys .keys-oral-tog.is-on {
+#settingsPanelKeys .keys-oral-tog.is-on, #voiceIntentPaneOral .keys-oral-tog.is-on {
   background: var(--primary, #2a9cc4);
 }
 
-#settingsPanelKeys .keys-oral-tog::after {
+#settingsPanelKeys .keys-oral-tog::after, #voiceIntentPaneOral .keys-oral-tog::after {
   content: "";
   position: absolute;
   top: 2px;
@@ -3772,22 +3782,318 @@
   box-shadow: 0 1px 2px rgba(19, 32, 44, 0.12);
 }
 
-#settingsPanelKeys .keys-oral-tog.is-on::after {
+#settingsPanelKeys .keys-oral-tog.is-on::after, #voiceIntentPaneOral .keys-oral-tog.is-on::after {
   left: 18px;
 }
 
+/* —— G: compact oral cards —— */
+#settingsPanelKeys .keys-oral-main--solo,
+#voiceIntentPaneOral .keys-oral-main--solo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#settingsPanelKeys .keys-oral-cats--row,
+#voiceIntentPaneOral .keys-oral-cats--row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+#settingsPanelKeys .keys-oral-cats--row .keys-oral-cat,
+#voiceIntentPaneOral .keys-oral-cats--row .keys-oral-cat {
+  appearance: none;
+  border: 1px solid var(--outline-variant, #d5dee8);
+  background: var(--surface, #fff);
+  text-align: left;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--on-surface-muted, #5a6b7c);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+#settingsPanelKeys .keys-oral-cats--row .keys-oral-cat em,
+#voiceIntentPaneOral .keys-oral-cats--row .keys-oral-cat em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 750;
+  color: var(--ot-muted, #9aa8bc);
+  background: color-mix(in srgb, var(--surface-container, #f5f8fb) 80%, #fff);
+  padding: 0 5px;
+  border-radius: 999px;
+}
+#settingsPanelKeys .keys-oral-cats--row .keys-oral-cat.is-on,
+#voiceIntentPaneOral .keys-oral-cats--row .keys-oral-cat.is-on {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 12%, #fff);
+  color: var(--primary-strong, #1a7a9c);
+  box-shadow: none;
+}
+#settingsPanelKeys .keys-oral-cats--row .keys-oral-cat.is-on em,
+#voiceIntentPaneOral .keys-oral-cats--row .keys-oral-cat.is-on em {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 16%, transparent);
+  color: var(--primary-strong, #1a7a9c);
+}
+#settingsPanelKeys .keys-oral-toolbar--end,
+#voiceIntentPaneOral .keys-oral-toolbar--end {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+#settingsPanelKeys .keys-oral-block--flush,
+#voiceIntentPaneOral .keys-oral-block--flush {
+  padding: 10px 10px 10px;
+}
+#settingsPanelKeys .keys-oral-cards,
+#voiceIntentPaneOral .keys-oral-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+#settingsPanelKeys .keys-oral-card,
+#voiceIntentPaneOral .keys-oral-card {
+  border: 1px solid var(--outline-variant, #d5dee8);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: var(--surface, #fff);
+  overflow: visible;
+  animation-name: ot-enter;
+  animation-duration: var(--motion-duration-enter, 200ms);
+  animation-timing-function: var(--motion-ease-spring, cubic-bezier(0.22, 1.2, 0.36, 1));
+  animation-delay: calc(var(--oral-i, 0) * 12ms);
+  animation-fill-mode: both;
+}
+#settingsPanelKeys .keys-oral-card.is-dup,
+#voiceIntentPaneOral .keys-oral-card.is-dup {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 42%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 4%, #fff);
+}
+#settingsPanelKeys .keys-oral-card__row,
+#voiceIntentPaneOral .keys-oral-card__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+#settingsPanelKeys .keys-oral-card__id,
+#voiceIntentPaneOral .keys-oral-card__id {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+#settingsPanelKeys .keys-oral-card__id .keys-oral-name,
+#voiceIntentPaneOral .keys-oral-card__id .keys-oral-name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+#settingsPanelKeys .keys-oral-desc,
+#voiceIntentPaneOral .keys-oral-desc {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--on-surface-muted, #5a6b7c);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#settingsPanelKeys .keys-oral-card__say,
+#voiceIntentPaneOral .keys-oral-card__say {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+#settingsPanelKeys .keys-oral-say-lb,
+#voiceIntentPaneOral .keys-oral-say-lb {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ot-muted, #9aa8bc);
+  cursor: pointer;
+  user-select: none;
+}
+#settingsPanelKeys .keys-oral-card__say .keys-oral-say,
+#voiceIntentPaneOral .keys-oral-card__say .keys-oral-say {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 2;
+  border: 1px solid var(--outline-variant, #d5dee8);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--on-surface, #13202c);
+  background: #fff;
+  cursor: text;
+}
+#settingsPanelKeys .keys-oral-card__say .keys-oral-say:hover,
+#voiceIntentPaneOral .keys-oral-card__say .keys-oral-say:hover {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 40%, transparent);
+}
+#settingsPanelKeys .keys-oral-card__say .keys-oral-say:focus,
+#voiceIntentPaneOral .keys-oral-card__say .keys-oral-say:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 55%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #2a9cc4) 16%, transparent);
+}
+#settingsPanelKeys .keys-oral-card__say .keys-oral-tag,
+#voiceIntentPaneOral .keys-oral-card__say .keys-oral-tag {
+  margin: 0;
+}
+#settingsPanelKeys .keys-oral-pre,
+#voiceIntentPaneOral .keys-oral-pre {
+  font-size: 10px;
+  font-weight: 750;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #9a6b2f;
+  white-space: nowrap;
+}
+#settingsPanelKeys .keys-oral-pre.is-ok,
+#voiceIntentPaneOral .keys-oral-pre.is-ok {
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 10%, transparent);
+  color: var(--primary-strong, #1a7a9c);
+}
+#settingsPanelKeys .keys-oral-card__acts,
+#voiceIntentPaneOral .keys-oral-card__acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+#settingsPanelKeys .keys-oral-remove,
+#voiceIntentPaneOral .keys-oral-remove {
+  appearance: none;
+  border: 1px solid var(--outline-variant, #d5dee8);
+  background: var(--surface, #fff);
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 650;
+  color: var(--ot-muted, #9aa8bc);
+  cursor: pointer;
+  padding: 0;
+}
+#settingsPanelKeys .keys-oral-remove:hover,
+#voiceIntentPaneOral .keys-oral-remove:hover {
+  color: #b42318;
+  border-color: color-mix(in srgb, #b42318 35%, transparent);
+}
+#settingsPanelKeys .keys-oral-sort__btn,
+#voiceIntentPaneOral .keys-oral-sort__btn {
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--outline-variant, #d5dee8);
+  background: var(--surface, #fff);
+  color: var(--on-surface-muted, #5a6b7c);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+#settingsPanelKeys .keys-oral-sort__btn:hover:not(:disabled),
+#voiceIntentPaneOral .keys-oral-sort__btn:hover:not(:disabled) {
+  color: var(--on-surface, #13202c);
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 35%, transparent);
+}
+#settingsPanelKeys .keys-oral-sort__btn:disabled,
+#voiceIntentPaneOral .keys-oral-sort__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+#settingsPanelKeys .keys-oral-empty-cat,
+#voiceIntentPaneOral .keys-oral-empty-cat {
+  margin-top: 4px;
+  padding: 18px 12px;
+  text-align: center;
+  border: 1px dashed var(--outline-variant, #d5dee8);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--on-surface-muted, #5a6b7c);
+  background: color-mix(in srgb, var(--surface-container, #f5f8fb) 70%, #fff);
+}
+#settingsPanelKeys .keys-oral-act:disabled,
+#voiceIntentPaneOral .keys-oral-act:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+#settingsPanelKeys .keys-oral-add-opt,
+#voiceIntentPaneOral .keys-oral-add-opt {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant, #d5dee8);
+  background: var(--surface, #fff);
+  cursor: pointer;
+  font: inherit;
+  margin: 0;
+}
+#settingsPanelKeys .keys-oral-add-opt:hover,
+#voiceIntentPaneOral .keys-oral-add-opt:hover {
+  border-color: color-mix(in srgb, var(--primary, #2a9cc4) 40%, transparent);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 6%, #fff);
+}
+#settingsPanelKeys .keys-oral-add-opt .keys-oral-add-name,
+#voiceIntentPaneOral .keys-oral-add-opt .keys-oral-add-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface, #13202c);
+}
+#settingsPanelKeys .keys-oral-add-opt .keys-oral-add-desc,
+#voiceIntentPaneOral .keys-oral-add-opt .keys-oral-add-desc {
+  grid-column: 1;
+  font-size: 11.5px;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+#settingsPanelKeys .keys-oral-add-opt .keys-oral-add-via,
+#voiceIntentPaneOral .keys-oral-add-opt .keys-oral-add-via {
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--on-surface-muted, #5a6b7c);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  #settingsPanelKeys .keys-oral-page,
-  #settingsPanelKeys .keys-oral-row,
-  #settingsPanelKeys .keys-oral-dup {
+  #settingsPanelKeys .keys-oral-page, #voiceIntentPaneOral .keys-oral-page,
+  #settingsPanelKeys .keys-oral-row, #voiceIntentPaneOral .keys-oral-row,
+  #settingsPanelKeys .keys-oral-card, #voiceIntentPaneOral .keys-oral-card,
+  #settingsPanelKeys .keys-oral-dup, #voiceIntentPaneOral .keys-oral-dup {
     animation: none !important;
   }
-  #settingsPanelKeys .keys-oral-act,
-  #settingsPanelKeys .keys-oral-act:active,
-  #settingsPanelKeys .keys-oral-dup__btn,
-  #settingsPanelKeys .keys-oral-tog,
-  #settingsPanelKeys .keys-oral-tog::after,
-  #settingsPanelKeys .keys-oral-say {
+  #settingsPanelKeys .keys-oral-act, #voiceIntentPaneOral .keys-oral-act,
+  #settingsPanelKeys .keys-oral-act:active, #voiceIntentPaneOral .keys-oral-act:active,
+  #settingsPanelKeys .keys-oral-dup__btn, #voiceIntentPaneOral .keys-oral-dup__btn,
+  #settingsPanelKeys .keys-oral-tog, #voiceIntentPaneOral .keys-oral-tog,
+  #settingsPanelKeys .keys-oral-tog::after, #voiceIntentPaneOral .keys-oral-tog::after,
+  #settingsPanelKeys .keys-oral-say, #voiceIntentPaneOral .keys-oral-say {
     transition: none !important;
   }
 }
@@ -9381,3 +9687,39 @@ html[data-theme="dark"] #settingsPanelKeys.keys-page-desk .flow-node-btn {
     grid-row: 3 !important;
   }
 }
+
+#voiceIntentPaneOral .keys-oral-prebanner,
+#settingsPanelKeys .keys-oral-prebanner {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--on-surface-muted, #5a6b7c);
+  background: color-mix(in srgb, var(--primary, #2a9cc4) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary, #2a9cc4) 18%, transparent);
+}
+.keys-oral-pre {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 650;
+  color: #9a6b2f;
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+}
+.keys-oral-add-panel {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--outline-variant, #d5dee8);
+  background: var(--surface-soft, #f7fafc);
+}
+.keys-oral-add-title { font-size: 13px; font-weight: 700; margin: 0 0 8px; }
+.keys-oral-add-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; max-height: 220px; overflow: auto; }
+.keys-oral-add-row { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; }
+.keys-oral-add-name { font-weight: 650; }
+.keys-oral-add-via { color: var(--on-surface-muted, #5a6b7c); margin-left: auto; }
+.keys-oral-add-empty { font-size: 12px; color: var(--on-surface-muted); margin-bottom: 8px; }
+#voiceIntentOralHost { min-height: 120px; }

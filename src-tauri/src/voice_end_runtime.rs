@@ -1407,6 +1407,8 @@ pub fn enter_dictating(
     *state.voice_session_mapping_id.lock() = scene_id.clone();
     *state.voice_session_last_end_phrase.lock() = String::new();
     *state.voice_session_last_action.lock() = reason.to_string();
+    // Classic SendKey(RAlt) must track IME ownership — Soft「说话」already notes via layer1.
+    crate::voice_command_session::note_ime_voice_active();
     if let Some(app) = app {
         crate::runtime_event::publish_runtime_event(
             Some(app),

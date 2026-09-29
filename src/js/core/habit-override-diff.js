@@ -183,7 +183,17 @@
     cfg=cfg||{};
     if(!Array.isArray(cfg.mappings)) cfg.mappings=[];
     var existing=findGlobalBaselineMapping(cfg,mappingCore);
-    if(existing) return {mapping:existing,created:false};
+    if(existing){
+      // Heal empty-trigger baseline stubs left by older ensure (thrash + no Soft Pad key).
+      if(!String(existing.triggerKey||'').trim()&&!String(existing.sourceKey||'').trim()){
+        var healKey=String(existing.targetKey||'').trim()||'RAlt';
+        existing.triggerKey='AutoTrigger';
+        existing.sourceKey='Volume_Down';
+        existing.targetKey=healKey;
+        if(!String(existing.label||'').trim()) existing.label='AutoTrigger → '+healKey;
+      }
+      return {mapping:existing,created:false};
+    }
     for(var hi=0;hi<cfg.mappings.length;hi++){
       var hid=cfg.mappings[hi];
       if(!hid||String(hid.id||'')==='soft-pad-global') continue;
@@ -195,17 +205,21 @@
       var sc=global.OneToneSceneConfig;
       if(sc&&sc.globalVoiceTargetKey) voiceKey=String(sc.globalVoiceTargetKey(cfg)||'').trim();
     }catch(_){}
+    if(!voiceKey) voiceKey='RAlt';
     var core=mappingCore||global.OneToneMappingCore;
     var id=core&&core.newMappingId?core.newMappingId():('m-'+Date.now()+'-'+Math.random().toString(36).slice(2,7));
     var m={
       id:id,
-      label:'',
+      label:'AutoTrigger → '+voiceKey,
       group:'通用设置',
-      triggerKey:'',
+      // Empty trigger used to be recreated every boot and looked like "junk" thrash.
+      // Soft Pad universal row: AutoTrigger + volume source (same as defaultConfig).
+      triggerKey:'AutoTrigger',
       targetKey:voiceKey,
       enabled:true,
       order:0,
       triggerMode:'tap',
+      sourceKey:'Volume_Down',
       intervalMs:cfg.intervalMs||1200,
       enterDelayMs:cfg.enterDelayMs||5000,
       cancelEnabled:cfg.cancelEnabled!==false,
@@ -292,6 +306,16 @@
 
   function normalizeKeyFieldsForSave(mapping,baseline,isAppScenario){
     if(!mapping||!isAppScenario||!baseline) return mapping;
+    var src=String(mapping.sourceKey||'').trim();
+    // AutoTrigger + mouse/volume source: empty targetKey means "inherit" in the UI,
+    // but SendKey treats empty as agent/workflow — not baseline RAlt. Keep IME key.
+    if(String(mapping.triggerKey||'').trim()==='AutoTrigger'
+      && (/^XButton/i.test(src)||/^Volume_/i.test(src))){
+      if(!String(mapping.targetKey||'').trim()){
+        mapping.targetKey=String(baseline.targetKey||'').trim()||'RAlt';
+      }
+      return mapping;
+    }
     if(String(mapping.triggerKey||'').trim()===String(baseline.triggerKey||'').trim()) mapping.triggerKey='';
     if(String(mapping.targetKey||'').trim()===String(baseline.targetKey||'').trim()) mapping.targetKey='';
     return mapping;

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>E · 分区卡</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="cards.css" />
+</head>
+<body>
+  <p class="back"><a href="index.html">← 卡片原型</a> · E · 分区卡网格 · 节内拖拽排序</p>
+  <div class="app">
+    <nav class="rail">
+      <div class="sec">意图</div>
+      <button type="button">听写方式<span>IME</span></button>
+      <button type="button">一词注入<span>写模板</span></button>
+      <button type="button" class="is-on">口头命令<span>可喊</span></button>
+      <button type="button">屏幕按钮<span>Pad</span></button>
+    </nav>
+    <main class="main">
+      <header class="head">
+        <div>
+          <h1>口头命令</h1>
+          <p>名称 · 解释 · 关键词 · 按分类管理 · 拖卡排序</p>
+        </div>
+        <div class="head-acts">
+          <span class="pill">Cursor</span>
+          <button type="button" class="btn primary" id="openAdd">+ 添加</button>
+        </div>
+      </header>
+
+      <div class="arm">
+        <span class="chip ok">收听 · Soft Pad 麦键</span>
+        <span class="chip muted">触发键 · 未录</span>
+        <button type="button" class="link">去按键页录 →</button>
+      </div>
+
+      <div id="board"></div>
+
+      <div class="foot-add">
+        <p>没有开关：卡在分区里即可喊；点「移除」离开列表。</p>
+      </div>
+    </main>
+  </div>
+
+  <div class="overlay" id="addOverlay" hidden>
+    <div class="modal">
+      <div class="modal-h">
+        <strong>添加命令</strong>
+        <button type="button" class="btn tiny" data-close>关闭</button>
+      </div>
+      <div class="modal-body" id="addBody"></div>
+    </div>
+  </div>
+
+  <script src="cards-data.js"></script>
+  <script>
+    (function () {
+      var D = window.ORAL_CARDS;
+      var board = document.getElementById('board');
+
+      function render() {
+        board.innerHTML = D.cats.map(function (cat) {
+          var rows = D.items.filter(function (x) { return x.cat === cat.id; });
+          if (!rows.length && cat.id === 'core') return '';
+          if (!rows.length) {
+            return (
+              '<section class="section" data-cat="' + cat.id + '">' +
+              '<div class="section-h"><h2>' + cat.title + '<em>0</em></h2>' +
+              '<span class="hint">' + cat.hint + '</span></div>' +
+              '<p class="hint" style="padding:8px 2px;margin:0">还没有 · 从添加里选</p></section>'
+            );
+          }
+          return (
+            '<section class="section" data-cat="' + cat.id + '">' +
+            '<div class="section-h"><h2>' + cat.title + '<em>' + rows.length + '</em></h2>' +
+            '<span class="hint">' + cat.hint + ' · 拖动排序</span></div>' +
+            '<div class="cards" data-cat-cards="' + cat.id + '">' +
+            rows.map(function (item) {
+              return D.cardHtml(item, { canRemove: item.cat !== 'core', drag: true });
+            }).join('') +
+            '</div></section>'
+          );
+        }).join('');
+        board.querySelectorAll('[data-cat-cards]').forEach(function (el) {
+          D.enableDrag(el, 'cat');
+        });
+      }
+
+      D.onChange = render;
+      D.wireKeys(board);
+      board.addEventListener('click', function (e) {
+        var rm = e.target.closest('[data-remove]');
+        if (!rm) return;
+        D.remove(rm.getAttribute('data-remove'));
+        render();
+      });
+
+      document.getElementById('openAdd').onclick = function () {
+        var body = document.getElementById('addBody');
+        if (!D.pool.length) {
+          body.innerHTML = '<p class="hint" style="margin:8px;text-align:center">没有更多可加项</p>';
+        } else {
+          body.innerHTML = D.pool.map(function (p) {
+            return (
+              '<button type="button" class="add-opt" data-add="' + p.id + '">' +
+              '<div><strong>' + p.name + '</strong><small>' + p.desc + ' · ' + p.viaLabel + '</small></div></button>'
+            );
+          }).join('');
+        }
+        document.getElementById('addOverlay').hidden = false;
+      };
+      document.getElementById('addBody').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-add]');
+        if (!b) return;
+        D.addFromPool(b.getAttribute('data-add'));
+        document.getElementById('addOverlay').hidden = true;
+        render();
+      });
+      document.querySelector('[data-close]').onclick = function () {
+        document.getElementById('addOverlay').hidden = true;
+      };
+
+      render();
+    })();
+  </script>
+</body>
+</html>

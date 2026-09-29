@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 use crate::voice_end_runtime::{
     handle_cancel_phrase, handle_end_phrase, handle_send_phrase, handle_voice_wake_detected,
@@ -210,6 +210,11 @@ fn oral_item_enabled(
     }
 }
 
+/// Soft core (说话/发送/取消) default on; continue/newThread require explicit enable.
+fn soft_oral_default_on(slot_id: &str) -> bool {
+    matches!(slot_id, "pushToTalk" | "stopOrSend" | "cancelListen")
+}
+
 fn oral_split_say(raw: &str) -> Vec<String> {
     raw.split(|c: char| {
         c.is_whitespace() || matches!(c, '、' | ',' | '，' | ';' | '；')
@@ -256,7 +261,28 @@ fn try_route_oral_armed(
 ) -> Option<VoiceCommandRouterResult> {
     let phrase = phrase.trim();
     if phrase.is_empty() {
-        return None;
+        return Some(skip("口头收听中未听到有效口令".into()));
+    }
+    // Hard exit: 「取消」「退出」… — never require main window (tray / Soft Pad only).
+    // Disarm ignores oral_engine_ready (Esc / cancel must work during warm-up).
+    if crate::cursor_beginner::is_disarm_phrase(phrase) {
+        crate::voice_command_session::force_cancel(state, app, "voice_cancel");
+        *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
+        *state.voice_vosk_last_final.lock() = phrase.to_string();
+        *state.voice_vosk_last_trigger.lock() = format!("oral_disarm（{}）", phrase);
+        crate::codex_micro_overlay::note_micro_key(
+            crate::cursor_beginner::CANCEL_LISTEN_MICRO_KEY,
+            true,
+        );
+        crate::codex_micro_overlay::request_overlay_push(app, state.as_ref(), false);
+        return Some(VoiceCommandRouterResult {
+            handled: true,
+            trigger_label: format!("oral_disarm（{}）", phrase),
+            ..Default::default()
+        });
+    }
+    if !crate::voice_command_session::is_oral_engine_ready(state.as_ref()) {
+        return Some(skip("引擎启动中，请稍后再说口令。".into()));
     }
     if *state.paused.lock() {
         return Some(skip("监听已暂停，请先在上方点「恢复」。".into()));
@@ -276,7 +302,7 @@ fn try_route_oral_armed(
         let mut hit = None;
         for slot in crate::cursor_beginner::BEGINNER_SLOTS {
             let id = format!("soft:{}", slot.slot_id);
-            if !oral_item_enabled(scheme_ref, &id, true) {
+            if !oral_item_enabled(scheme_ref, &id, soft_oral_default_on(slot.slot_id)) {
                 continue;
             }
             let phrases = scheme_ref
@@ -305,6 +331,23 @@ fn try_route_oral_armed(
         hit
     };
     if let Some(slot_id) = soft_hit {
+        // 「取消」must not depend on main WebviewWindow.
+        if slot_id == "cancelListen" {
+            crate::voice_command_session::force_cancel(state, app, "oral_soft_cancel");
+            *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
+            *state.voice_vosk_last_final.lock() = phrase.to_string();
+            *state.voice_vosk_last_trigger.lock() = format!("oral_soft:cancelListen（{}）", phrase);
+            crate::codex_micro_overlay::note_micro_key(
+                crate::cursor_beginner::CANCEL_LISTEN_MICRO_KEY,
+                true,
+            );
+            crate::codex_micro_overlay::request_overlay_push(app, state.as_ref(), false);
+            return Some(VoiceCommandRouterResult {
+                handled: true,
+                trigger_label: format!("oral_soft:cancelListen（{}）", phrase),
+                ..Default::default()
+            });
+        }
         // 「说话」while IME already up: do not re-pulse the toggle chord (would end voice).
         if slot_id == "pushToTalk"
             && (crate::voice_command_session::ime_voice_active()
@@ -327,7 +370,9 @@ fn try_route_oral_armed(
                 "请先圈选 Agent 输入框完成首次对准，再说口令。".into(),
             ));
         }
-        let window = crate::ipc::get_main_window(app)?;
+        let window = crate::ipc::get_main_window(app).or_else(|| {
+            app.get_webview_window(crate::overlay_window::CODEX_MICRO_OVERLAY.label)
+        })?;
         let out = crate::cursor_beginner::run_slot(state, &window, slot_id, true, true);
         let ok = out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
         *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
@@ -352,7 +397,7 @@ fn try_route_oral_armed(
         if let Some(peer) = crate::voice_end_runtime::find_prompt_inject_peer_for_phrase(&cfg, phrase)
         {
             let id = format!("prompt:{}", peer.id);
-            if oral_item_enabled(scheme.as_ref(), &id, true) {
+            if oral_item_enabled(scheme.as_ref(), &id, false) {
                 drop(cfg);
                 if let Some(result) = crate::voice_end_runtime::try_dispatch_prompt_inject_for_phrase(
                     state, app, phrase, engine,
@@ -386,7 +431,7 @@ fn try_route_oral_armed(
                     b.trigger_binding.trim().to_string()
                 };
                 let id = format!("bind:{}", bref);
-                if oral_item_enabled(scheme.as_ref(), &id, true) {
+                if oral_item_enabled(scheme.as_ref(), &id, false) {
                     bind_ref = Some(bref);
                     break;
                 }
@@ -463,7 +508,11 @@ fn try_route_oral_armed(
         return Some(skip(format!("口头按键序列失败（{}）", mid)));
     }
 
-    None
+    // Seal oral window: never fall through to Wake / pushToTalk IME.
+    Some(skip(format!(
+        "口头收听中未匹配口令「{}」（可说取消/退出）",
+        phrase
+    )))
 }
 
 fn try_route_cursor_beginner_voice(
@@ -650,6 +699,8 @@ mod tests {
     #[test]
     fn oral_item_enabled_defaults() {
         assert!(oral_item_enabled(None, "soft:stopOrSend", true));
+        assert!(!oral_item_enabled(None, "soft:continue", soft_oral_default_on("continue")));
+        assert!(oral_item_enabled(None, "soft:pushToTalk", soft_oral_default_on("pushToTalk")));
         let mut scheme = crate::config::OralCommandScheme::default();
         scheme.items.insert(
             "soft:stopOrSend".into(),
@@ -659,6 +710,20 @@ mod tests {
             },
         );
         assert!(!oral_item_enabled(Some(&scheme), "soft:stopOrSend", true));
-        assert!(oral_item_enabled(Some(&scheme), "soft:continue", true));
+        assert!(!oral_item_enabled(Some(&scheme), "soft:continue", soft_oral_default_on("continue")));
+        scheme.items.insert(
+            "soft:continue".into(),
+            crate::config::OralCommandItem {
+                say: None,
+                enabled: Some(true),
+            },
+        );
+        assert!(oral_item_enabled(
+            Some(&scheme),
+            "soft:continue",
+            soft_oral_default_on("continue")
+        ));
+        assert!(!oral_item_enabled(None, "bind:x", false));
+        assert!(!oral_item_enabled(None, "prompt:y", false));
     }
 }

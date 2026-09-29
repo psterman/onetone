@@ -101,6 +101,10 @@ assert.ok(/btnVoiceFaceDictate|voiceFaceTabs/.test(bindings), 'binds face tabs')
 assert.ok(/btnVoiceLandingKeysTarget/.test(bindings), 'binds landing CTA');
 assert.ok(/focus:'target'|focus,\"target\"|'target'/.test(bindings), 'landing CTA focuses keys target');
 assert.ok(/voice_wake_refused_wrong_fg/.test(bindings), 'listens for wrong-fg refuse toast');
+assert.ok(/source==='oral'/.test(bindings), 'oral wrong-fg uses dedicated toast copy');
+assert.ok(/source==='key'/.test(bindings), 'key wrong-fg uses dedicated toast copy');
+assert.ok(/voiceOralWrongFgToast/.test(bindings), 'oral wrong-fg toast key');
+assert.ok(/voiceKeyWrongFgToast/.test(bindings), 'key wrong-fg toast key');
 assert.ok(/btnVoiceDockTryMic/.test(bindings), 'binds dock try mic');
 assert.ok(/setFinishOutcome|voiceFinishOutcomes/.test(bindings), 'binds finish outcomes');
 assert.ok(/syncVoiceFinishHabitLayout/.test(bindings), 'syncs habit layout from sendMode');
@@ -215,6 +219,26 @@ assert.ok(/habitScenarioReturnId/.test(header), 'scope mapping reads habitScenar
 const rustGate = read('src-tauri/src/voice_end_runtime.rs');
 assert.ok(/should_refuse_wake_wrong_fg/.test(rustGate), 'rust wrong-fg gate helper');
 assert.ok(/VOICE_WAKE_REFUSED_WRONG_FG|voice_wake_refused_wrong_fg/.test(rustGate), 'emits refuse event');
+
+const oralCfg = read('src-tauri/src/config.rs');
+assert.ok(/pub fn oral_trigger_is_live/.test(oralCfg), 'oral_trigger_is_live helper');
+assert.ok(/find_oral_mapping_wrong_fg/.test(oralCfg), 'oral wrong-fg finder');
+assert.ok(/find_mapping_wrong_fg_for_event/.test(oralCfg), 'dictation wrong-fg finder');
+assert.ok(/!oral_trigger_is_live\(m, foreground/.test(oralCfg), 'oral match requires FG live');
+
+const oralSess = read('src-tauri/src/voice_command_session.rs');
+assert.ok(/fn refuse_wrong_fg/.test(oralSess), 'oral session refuses wrong FG');
+assert.ok(/"source": "oral"/.test(oralSess), 'oral refuse payload source');
+
+const beginner = read('src-tauri/src/cursor_beginner.rs');
+assert.ok(
+  /XButton1. \| .XButton2[\s\S]*return false/.test(beginner.replace(/\s+/g, ' ')),
+  'XButton skips beginner hold (pulse-only mouse hook)'
+);
+
+const oralI18n = read('src/js/core/i18n.js');
+assert.ok(/voiceOralWrongFgToast/.test(oralI18n), 'i18n oral wrong-fg toast');
+assert.ok(/voiceKeyWrongFgToast/.test(oralI18n), 'i18n key wrong-fg toast');
 
 const kind = read('src-tauri/crates/onetone-logic/src/runtime_event.rs');
 assert.ok(/VOICE_WAKE_REFUSED_WRONG_FG/.test(kind), 'runtime event kind defined');

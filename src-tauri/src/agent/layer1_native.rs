@@ -375,6 +375,17 @@ fn execute_start(
             );
         };
         let app = window.app_handle();
+        // Oral Soft Pad listen owns the mic for 继续/退出. Side-key dictation
+        // (XButton1 / RAlt → input.start) must not fire Cursor IME mid-window.
+        // Soft 槽「说话」calls allow_next_ime_start_while_oral() first.
+        if crate::voice_command_session::blocks_dictation_ime_start() {
+            crate::app_log::log_line(
+                state,
+                "voice_command",
+                "input.start skipped — oral listen holds mic",
+            );
+            return Layer1Outcome::ok_detail("input.start skipped (oral listen holds mic)");
+        }
         // Already in Soft 槽 speak / dictating: never re-pulse a toggle chord.
         if crate::voice_command_session::ime_voice_active()
             || crate::voice_end_runtime::session_state(state.as_ref()) == "dictating"

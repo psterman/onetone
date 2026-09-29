@@ -2197,6 +2197,7 @@
                       <button type="button" class="voice-intent-rail-item is-on" data-voice-intent="ime" role="tab" aria-selected="true" id="voiceIntentTabIme">听写方式<span class="n">IME</span></button>
                       <button type="button" class="voice-intent-rail-item" data-voice-intent="key" role="tab" aria-selected="false" id="voiceIntentTabKey">我录的键<span class="n">序列</span></button>
                       <button type="button" class="voice-intent-rail-item" data-voice-intent="prompt" role="tab" aria-selected="false" id="voiceIntentTabPrompt">一词注入<span class="n" data-i18n="voiceIntentPromptHintShort">写模板</span></button>
+                      <button type="button" class="voice-intent-rail-item" data-voice-intent="oral" role="tab" aria-selected="false" id="voiceIntentTabOral">口头命令<span class="n" data-i18n="voiceIntentOralHintShort">可喊</span></button>
                       <button type="button" class="voice-intent-rail-item" data-voice-intent="cursor" role="tab" aria-selected="false" id="voiceIntentTabCursor">软件自带<span class="n">命令</span></button>
                       <button type="button" class="voice-intent-rail-item" data-voice-intent="softpad" role="tab" aria-selected="false" id="voiceIntentTabSoftPad">屏幕按钮<span class="n">Pad</span></button>
                       <button type="button" class="voice-intent-rail-item" data-voice-intent="gesture" role="tab" aria-selected="false" id="voiceIntentTabGesture">手势<span class="n">摄像头</span></button>
@@ -2543,8 +2544,8 @@
                             <h4 class="voice-prompt-title" id="voiceIntentPromptTitle">说一词 · 写入 · 发送</h4>
                             <p class="voice-prompt-desc" id="voiceIntentPromptDesc">选一条指令，改标题和 prompt；左上口令负责唤醒。</p>
                             <p class="voice-oral-bridge" id="voiceOralKeysBridge">
-                              <button type="button" class="voice-oral-bridge__go" id="btnVoiceOralOpenKeys">去按键 · 口头命令 →</button>
-                              <span id="voiceOralKeysBridgeText">看收听入口与可喊列表</span>
+                              <button type="button" class="voice-oral-bridge__go" id="btnVoiceOralOpenKeys">口头命令 →</button>
+                              <span id="voiceOralKeysBridgeText">可喊 Soft 槽与绑定（同页）</span>
                             </p>
                           </div>
                           <div class="voice-prompt-armed" id="voicePromptArmed" aria-live="polite"></div>
@@ -2692,6 +2693,9 @@
                           </div>
                         </div>
                       </div>
+                    </div>
+                    <div class="voice-intent-pane" id="voiceIntentPaneOral" data-voice-intent-pane="oral" hidden>
+                      <div class="voice-intent-oral-host" id="voiceIntentOralHost"></div>
                     </div>
                     <div class="voice-intent-pane" id="voiceIntentPaneKeys" data-voice-intent-pane="key" hidden>
                       <p class="voice-intent-banner" id="voiceIntentBannerKeys">语音匹配按键动作。新建 / 改序列 → <button type="button" class="voice-mode-meta-link" id="btnVoiceIntentGoKeys">去按键页 →</button></p>
@@ -5558,6 +5562,7 @@
   <script src="js/features/voice/voice-step-wake-render.js"></script>
   <script src="js/features/voice/voice-bridge-softpad.js"></script>
   <script src="js/features/voice/voice-bridge-keys.js"></script>
+  <script src="js/features/voice/oral-command-ui.js?v=oral-1"></script>
   <script src="js/features/voice/voice-intent-rail.js?v=prompt-title-1"></script>
   <script src="js/features/voice/voice-bridge-camera.js"></script>
   <script src="js/features/voice/voice-step-recognize-render.js"></script>

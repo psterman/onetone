@@ -45,11 +45,9 @@
       return;
     }
     cfg.voiceAssistEnabled=true;
-    if(cfg.voiceWakeListeningOptIn){
-      Promise.resolve(vw.switchListeningStrategy('resourceSaver',{force:true})).then(persistVoiceAssistToggle).catch(persistVoiceAssistToggle);
-      return;
-    }
-    persistVoiceAssistToggle();
+    cfg.voiceWakeListeningOptIn=true;
+    // Home speak channel expects live text → auto (Vosk), not resourceSaver (KWS-only).
+    Promise.resolve(vw.switchListeningStrategy('auto',{force:true})).then(persistVoiceAssistToggle).catch(persistVoiceAssistToggle);
   }
 
   function toggleHomeKeyEnable(){

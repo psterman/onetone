@@ -233,6 +233,7 @@
     if(action.type==='dismissLastStall') return t('homeWbAlertLastStallDismiss','知道了');
     if(action.type==='resumeListening') return t('homeWbAlertActionResume');
     if(action.type==='enableAutoListening') return t('homeWbAlertActionEnableAuto');
+    if(action.type==='enableLiveTranscription') return t('homeWbAlertActionLiveStt','开启实时转写');
     if(action.type==='retryVoskListening') return t('homeWbAlertActionRetryVosk');
     if(action.type==='openSettings'){
       if(action.panel==='voiceWake') return t('homeWbAlertActionVoice');
@@ -256,6 +257,16 @@
       var wake=global.OneToneVoiceWake;
       if(wake&&typeof wake.switchListeningStrategy==='function'){
         Promise.resolve(wake.switchListeningStrategy('auto',{ force:true }))
+          .catch(function(){});
+      }else if(global.OneToneIpc){
+        global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{ strategy:'auto' }).catch(function(){});
+      }
+      return;
+    }
+    if(action.type==='enableLiveTranscription'){
+      var wakeLive=global.OneToneVoiceWake;
+      if(wakeLive&&typeof wakeLive.switchListeningStrategy==='function'){
+        Promise.resolve(wakeLive.switchListeningStrategy('auto',{ force:true }))
           .catch(function(){});
       }else if(global.OneToneIpc){
         global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{ strategy:'auto' }).catch(function(){});
@@ -1613,6 +1624,9 @@
         }
       }
       applyV3MicVisibility(hub,mode,vm);
+      if(global.OneToneHomeV9&&global.OneToneHomeV9.paintMicHeardSurface){
+        try{ global.OneToneHomeV9.paintMicHeardSurface(); }catch(_){}
+      }
     }
   }
 
@@ -3551,6 +3565,17 @@
         e.preventDefault();
         e.stopPropagation();
         handleAlertAction(liveHost._liveHintAction);
+      });
+    }
+    var heardHost=$('wbHeroMicHeard');
+    if(heardHost&&!heardHost._wbLiveFixBound){
+      heardHost._wbLiveFixBound=true;
+      heardHost.addEventListener('click',function(e){
+        var btn=e.target.closest&&e.target.closest('[data-wb-live-fix]');
+        if(!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        handleAlertAction(heardHost._liveHintAction||(liveHost&&liveHost._liveHintAction));
       });
     }
     var probeBtn=$('debugDiagProbeBtn');

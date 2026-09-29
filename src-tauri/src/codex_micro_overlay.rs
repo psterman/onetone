@@ -519,6 +519,8 @@ fn stable_overlay_host_at(raw: bool, now: Instant, force_hide_onetone: bool) -> 
 pub struct OralListenCommandCard {
     pub name: String,
     pub say: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub slot_id: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2572,6 +2574,17 @@ fn apply_oral_listen_chrome(snapshot: &mut CodexMicroOverlaySnapshot, cfg: &Voic
         snapshot.oral_listen_flow_hint.clear();
         snapshot.oral_listen_micro_keys.clear();
         snapshot.oral_listen_commands.clear();
+        // Oral arm temporarily sets cursor_beginner_armed/hints — wipe so Soft Pad
+        // does not keep「口头收听中」after session_end.
+        if snapshot.cursor_beginner_arm_hint.contains("口头收听")
+            || snapshot.cursor_beginner_flow_hint.contains("退出收听")
+        {
+            snapshot.cursor_beginner_arm_hint.clear();
+            snapshot.cursor_beginner_flow_hint.clear();
+            if !crate::cursor_beginner::is_armed() {
+                snapshot.cursor_beginner_armed = false;
+            }
+        }
         return;
     }
     snapshot.oral_listen_armed = true;
@@ -2580,7 +2593,11 @@ fn apply_oral_listen_chrome(snapshot: &mut CodexMicroOverlaySnapshot, cfg: &Voic
     snapshot.oral_listen_micro_keys = crate::voice_command_session::listen_micro_keys(cfg);
     snapshot.oral_listen_commands = crate::voice_command_session::listen_command_cards(cfg)
         .into_iter()
-        .map(|(name, say)| OralListenCommandCard { name, say })
+        .map(|(name, say, slot_id)| OralListenCommandCard {
+            name,
+            say,
+            slot_id,
+        })
         .collect();
     // Drive Soft Pad listening skin (blue aura + ACT10 emphasize).
     if snapshot.pad_status.trim().is_empty() || snapshot.pad_status == "idle" {
@@ -2646,6 +2663,12 @@ fn apply_voice_heard(snapshot: &mut CodexMicroOverlaySnapshot, state: &AppState)
 
 fn pad_run_status_slot() -> &'static ParkingMutex<(String, String, Instant)> {
     PAD_RUN_STATUS.get_or_init(|| ParkingMutex::new(("idle".into(), String::new(), Instant::now())))
+}
+
+/// Soft Pad still shows oral ACT10 listening (even if SESSION_ARMED already false).
+pub fn oral_pad_listening_chrome() -> bool {
+    let (status, micro, _) = pad_run_status_slot().lock().clone();
+    status == "listening" && (micro == "ACT10" || micro.is_empty())
 }
 
 /// Record pad run status for overlay / FE sync. Timers resolved in `effective_pad_run_status`.
@@ -4873,7 +4896,22 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
                         std::sync::atomic::AtomicBool::new(false)
                     });
                     let first = !reloaded.swap(true, std::sync::atomic::Ordering::Relaxed);
-                    if changed || first {
+                    // Oral listen already resumed the engine — another force reload
+                    // mid-window stomps mic and drops 继续/说话/退出 finals.
+                    // Continuous Vosk on homepage also must not restart on every Cursor FG edge.
+                    let skip_grammar_reload = {
+                        let cfg = state.cfg.lock();
+                        let continuous = matches!(
+                            crate::scene_config::voice_listening_strategy(&cfg),
+                            "auto" | "enhanced"
+                        );
+                        continuous
+                            && crate::voice_bootstrap::engine_observe_vosk_listening(state.as_ref())
+                    };
+                    if (changed || first)
+                        && !crate::voice_command_session::is_armed()
+                        && !skip_grammar_reload
+                    {
                         crate::voice_supervisor::enqueue_activate(
                             app.clone(),
                             Arc::clone(state),
@@ -4892,8 +4930,9 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
     }
 
     if is_fg || agent_process || agent_fg {
-        // Cursor beginner: heal pad when Cursor habit selected (incl. OneTone home FG).
-        let (cursor_heal, cursor_habit) = {
+        // Cursor beginner: heal pad when Cursor is FG / process (never while OneTone home FG —
+        // that path saved config every 2s and stomped homepage ASR).
+        let (cursor_heal, _cursor_habit) = {
             let cfg = state.cfg.lock();
             (
                 crate::cursor_beginner::should_prefer_cursor_soft_pad(&cfg),
@@ -4901,7 +4940,7 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
             )
         };
         if cursor_heal
-            && (!crate::app_identity::foreground_is_self() || cursor_habit)
+            && !crate::app_identity::foreground_is_self()
             && gate_reason.is_none()
         {
             static LAST_CURSOR_ENSURE: std::sync::OnceLock<parking_lot::Mutex<std::time::Instant>> =
@@ -4921,14 +4960,8 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
                     let snap = cfg.clone();
                     drop(cfg);
                     crate::soft_pad_runtime::request_soft_pad_recompute(&snap);
-                    // Soft-pad chrome heal only. Do NOT force-activate Vosk here —
-                    // every-2s force:kws_grammar_reload thrash left homepage
-                    // "listening" with flat mic bars and no partials.
-                    let _ = std::thread::Builder::new()
-                        .name("cursor-beginner-ensure-save".into())
-                        .spawn(move || {
-                            crate::config::save_config(&snap);
-                        });
+                    // In-memory heal only. save_config every 2s flooded the watcher,
+                    // fought scheme_select, and left homepage ASR dead.
                 }
             }
         }

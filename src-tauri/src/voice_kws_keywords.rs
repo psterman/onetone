@@ -245,7 +245,18 @@ mod tests {
     fn beginner_golden_phrases_encode() {
         let (vocab, golden) = vocab_and_golden();
         for p in [
-            "继续", "发送", "新建", "麦克风", "一声", "小助手", "说话", "新会话", "取消",
+            "继续",
+            "发送",
+            "新建",
+            "麦克风",
+            "一声",
+            "小助手",
+            "说话",
+            "新会话",
+            "取消",
+            "退出",
+            "退出收听",
+            "停止收听",
         ] {
             assert!(
                 phrase_to_kws_tokens(p, &vocab, &golden).is_some(),

@@ -62,6 +62,16 @@ pub fn read_foreground_evidence() -> ForegroundEvidence {
     }
     live
 }
+
+/// Last Soft Pad agent preset while OneTone/Soft Pad holds Win32 FG (Esc / click).
+/// Oral side-key re-arm must not treat Soft Pad FG as "wrong app".
+pub fn last_external_app_target_id() -> Option<String> {
+    let slot = last_external_fg().lock().ok()?;
+    let prev = slot.as_ref()?;
+    prev.app_target_id
+        .clone()
+        .or_else(|| prev.agent_kind.map(|k| k.app_target_id().to_string()))
+}
 pub(crate) fn resolve_terminal_child_agent(
     host_exe: &str,
     child_exes: &[&str],

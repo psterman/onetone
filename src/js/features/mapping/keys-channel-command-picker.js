@@ -4725,6 +4725,9 @@
   }
 
   function oralCommandRows(m) {
+    if (global.OneToneOralCommandUi && global.OneToneOralCommandUi.oralCommandRows) {
+      return global.OneToneOralCommandUi.oralCommandRows(m);
+    }
     var state = oralSchemeState(m);
     var items = state.items;
     var seen = {};
@@ -7270,6 +7273,9 @@
   function renderListChannelHtml(ch, opts) {
     opts = opts || {};
     if (ch === 'voice') {
+      if (global.OneToneOralCommandUi && global.OneToneOralCommandUi.renderOralLoaderHtml) {
+        return global.OneToneOralCommandUi.renderOralLoaderHtml(activeMapping());
+      }
       return renderVoicePickHtml();
     }
     var mid = selectedMappingId();
@@ -7845,10 +7851,14 @@
     syncSoftPadTargetChrome(false);
     var listWrap = document.createElement('div');
     listWrap.className = 'keys-channel-section';
-    listWrap.innerHTML = renderListChannelHtml('voice');
     panel.appendChild(listWrap);
-    wireOralPageEvents(listWrap.querySelector('[data-oral-page]'));
-    // 口头命令 channel is scheme + say table — do not hero-sync old phrase catalog picks.
+    // Keys oral = arm trigger + load scheme summary; edit says in Voice · 口头命令.
+    if (global.OneToneOralCommandUi && global.OneToneOralCommandUi.mountLoader) {
+      global.OneToneOralCommandUi.mountLoader(listWrap, { mappingId: selectedMappingId() });
+    } else {
+      listWrap.innerHTML = renderListChannelHtml('voice');
+      wireOralPageEvents(listWrap.querySelector('[data-oral-page]'));
+    }
   }
 
   function guideToFinish() {
