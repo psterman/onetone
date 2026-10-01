@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Now · 当前情景驾驶舱</title>
+<style>
+:root{
+  --pri:#0ea5e9;--pri-d:#0284c7;--pri-sf:#e0f2fe;--pri-bd:#bae6fd;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;--ink5:#e2e8f0;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f7f9fb;
+  --ok:#10b981;--ok-sf:#ecfdf5;--ok-bd:#a7f3d0;
+  --wa:#f59e0b;--wa-sf:#fffbeb;--wa-bd:#fde68a;
+  --rk:#ef4444;--rk-sf:#fef2f2;--rk-bd:#fecaca;
+  --vi:#8b5cf6;--vi-sf:#f5f3ff;--vi-bd:#ddd6fe;
+  --sh2:0 1px 3px rgba(15,23,42,.07);--sh3:0 12px 36px rgba(15,23,42,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+code{font-family:Consolas,monospace;font-size:11.5px;background:var(--line2);padding:1px 5px;border-radius:4px;color:#0369a1}
+
+.topbar{position:sticky;top:0;z-index:60;background:rgba(247,249,251,.95);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:0 24px}
+.topbar-in{max-width:1180px;margin:0 auto;height:56px;display:flex;align-items:center;gap:8px}
+.topbar .b{font-weight:800;font-size:14.5px;margin-right:16px}
+.tab{padding:7px 13px;border-radius:8px;font-size:12.5px;color:var(--ink2);border:0;background:none;font-weight:500}
+.tab:hover{background:var(--line2)}.tab.on{background:var(--ink);color:#fff}
+.topbar .sp{margin-left:auto;font-size:11px;color:var(--ink3)}
+.page{max-width:1180px;margin:0 auto;padding:26px 24px 80px}
+.view{display:none}.view.on{display:block}
+h1.ft{font-size:24px;margin:0 0 8px;letter-spacing:-.6px}
+.lead{font-size:14.5px;color:var(--ink2);max-width:920px;margin:0 0 22px;line-height:1.75}
+h2.sec{font-size:15.5px;margin:32px 0 6px}
+.secsub{font-size:12.5px;color:var(--ink2);margin:0 0 14px;max-width:900px;line-height:1.7}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.p-g{background:var(--ok-sf);color:#047857}.p-w{background:var(--wa-sf);color:#b45309}
+.p-n{background:var(--line2);color:var(--ink2)}.p-b{background:var(--pri-sf);color:var(--pri-d)}
+.btn{border:1px solid var(--ink5);background:#fff;border-radius:8px;padding:7px 13px;font-size:12.5px;
+  color:var(--ink2);font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--line2)}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.sm{padding:4px 10px;font-size:11.5px}
+.sw{width:38px;height:22px;border-radius:99px;background:var(--ink4);border:0;position:relative;transition:.2s;flex:none;padding:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);transition:.2s}
+.sw.on{background:var(--ok)}.sw.on::after{left:19px}
+
+.win{background:#fff;border:1px solid var(--ink5);border-radius:14px;overflow:hidden;box-shadow:var(--sh3)}
+.tbar{display:flex;align-items:center;gap:11px;padding:0 17px;height:50px;border-bottom:1px solid var(--line)}
+.tbar .logo{width:25px;height:25px;border-radius:8px;background:linear-gradient(135deg,#0c4a6e,#0ea5e9);
+  display:grid;place-items:center;color:#fff;font-size:12.5px;font-weight:800;flex:none}
+.tbar .ttl{font-size:14.5px;font-weight:700}
+.nav{display:flex;gap:2px;margin-left:10px}
+.nv{padding:5px 11px;border-radius:8px;font-size:12.5px;color:var(--ink3);border:0;background:none;font-weight:500}
+.nv.on{background:var(--line2);color:var(--ink);font-weight:600}
+.tbar .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.body{padding:20px 22px 0}
+
+/* ===== Hero ===== */
+.hero{background:linear-gradient(160deg,#0c4a6e 0%,#0369a1 100%);border-radius:16px;
+  padding:24px 26px;color:#fff;margin-bottom:16px}
+.hero.alt{background:linear-gradient(160deg,#4c1d95,#7c3aed)}
+.hero.creative{background:linear-gradient(160deg,#7c2d12,#c2410c)}
+.hero.write{background:linear-gradient(160deg,#134e4a,#0d9488)}
+.hero.meet{background:linear-gradient(160deg,#1e3a8a,#1d4ed8)}
+.sk{margin:0 0 11px;font-size:11.5px;letter-spacing:.7px;opacity:.7;font-weight:600}
+.hero h1{margin:0 0 6px;font-size:32px;letter-spacing:-.7px;line-height:1.2}
+.hero .app{margin:0 0 20px;font-size:13.5px;opacity:.8;display:flex;align-items:center;gap:8px}
+.hero .app .ic{font-size:14px}
+.hero .app .nm{font-weight:600;opacity:.95}
+
+.hlabel{margin:0 0 10px;font-size:12px;letter-spacing:.5px;opacity:.72;font-weight:600}
+.helps{list-style:none;margin:0 0 20px;padding:0}
+.helps li{font-size:15.5px;padding:6px 0 6px 26px;position:relative;line-height:1.5}
+.helps li::before{content:"✓";position:absolute;left:0;top:6px;width:16px;height:16px;border-radius:50%;
+  background:rgba(255,255,255,.2);font-size:10.5px;display:grid;place-items:center;font-weight:700}
+.hfoot{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hbtn{border:1px solid rgba(255,255,255,.38);background:rgba(255,255,255,.15);color:#fff;
+  border-radius:9px;padding:9px 17px;font-size:13px;font-weight:600}
+.hbtn:hover{background:rgba(255,255,255,.27)}
+.hwhy{margin-left:auto;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.2);
+  border-radius:99px;padding:5px 13px;font-size:12px;opacity:.8;display:flex;align-items:center;gap:6px}
+.hwhy:hover{background:rgba(255,255,255,.24);opacity:1}
+
+/* 为什么 · 二级展开 */
+.whybox{background:#fff;border:1px solid var(--ink5);border-radius:13px;box-shadow:var(--sh2);
+  margin-bottom:16px;overflow:hidden;display:none}
+.whybox.on{display:block}
+.wh{padding:13px 17px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:10px;background:#fcfdfe}
+.wh b{font-size:13px;font-weight:700}
+.wh .x{margin-left:auto;font-size:11.5px;color:var(--ink3);cursor:pointer;background:none;border:0}
+.wb{padding:14px 17px}
+.wrow{display:flex;align-items:center;gap:11px;padding:7px 0;border-bottom:1px solid var(--line2);font-size:12.5px}
+.wrow:last-child{border-bottom:none}
+.wrow .k{width:96px;flex:none;color:var(--ink2);font-weight:600}
+.wrow .v{flex:1;min-width:0;line-height:1.5}
+.wrow .v .fid{font-family:Consolas,monospace;font-size:10.5px;color:var(--ink3);display:block;margin-top:1px}
+.wrow .m{font-size:11px;color:var(--ink3);flex:none;white-space:nowrap}
+.wfoot{padding:11px 17px;background:#fcfdfe;border-top:1px solid var(--line2);font-size:11.5px;color:var(--ink3)}
+
+/* 可能正在 */
+.maybe{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:16px;
+  background:#fff;border:1px solid var(--ink5);border-radius:11px;padding:11px 14px;box-shadow:var(--sh2)}
+.maybe .k{font-size:12px;color:var(--ink3);font-weight:600}
+.maybe .c{border:1px dashed var(--ink4);background:#fff;border-radius:9px;padding:6px 12px;
+  font-size:12.5px;color:var(--ink2);font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px}
+.maybe .c:hover{border-color:var(--pri);color:var(--pri-d);background:var(--pri-sf)}
+
+/* 我的情景 */
+.scen{display:flex;gap:8px;flex-wrap:wrap;background:#fff;border:1px solid var(--ink5);
+  border-radius:12px;padding:13px 14px;box-shadow:var(--sh2);margin-bottom:10px}
+.sc{border:1px solid var(--ink5);background:#fff;border-radius:10px;padding:9px 13px;
+  display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer}
+.sc.on{border-color:var(--pri);background:var(--pri-sf);color:var(--pri-d)}
+.sc .ic{font-size:14px}
+.sc.nb{border-style:dashed;color:var(--ink3);font-weight:500}
+.empty-say{background:#fff;border:1px solid var(--ink5);border-radius:12px;padding:18px;
+  text-align:center;font-size:13px;color:var(--ink3);box-shadow:var(--sh2);margin-bottom:10px}
+.dock{display:flex;align-items:center;justify-content:center;gap:9px;padding:15px 0 17px;
+  margin-top:16px;border-top:1px solid var(--line2);font-size:12px;color:var(--ink3);flex-wrap:wrap}
+.dock .sep{opacity:.4}
+.dock .inl{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--ink5);
+  border-radius:99px;padding:3px 11px;font-size:11.5px}
+
+/* 调整帮助方式 */
+.adj{background:#fff;border:1px solid var(--ink5);border-radius:12px;box-shadow:var(--sh2);overflow:hidden;margin-bottom:12px}
+.arow{display:flex;align-items:center;gap:13px;padding:13px 17px;border-bottom:1px solid var(--line2)}
+.arow:last-child{border-bottom:none}
+.arow .tx{flex:1;min-width:0}
+.arow .tx b{font-size:13.5px;font-weight:600;display:block}
+.arow .tx s{text-decoration:none;font-size:11.5px;color:var(--ink3);display:block;margin-top:2px;line-height:1.5}
+.arow .tx s .fid{font-family:Consolas,monospace;font-size:10.5px;color:var(--ink4)}
+.arow.off .tx b{opacity:.45}
+
+.note{background:var(--pri-sf);border:1px solid var(--pri-bd);border-radius:12px;padding:15px 18px;
+  margin:18px 0;font-size:13px;line-height:1.75;max-width:1000px}
+.note b{color:var(--pri-d)}
+.note.rk{background:var(--rk-sf);border-color:var(--rk-bd)}.note.rk b{color:#b91c1c}
+.note.wa{background:var(--wa-sf);border-color:var(--wa-bd)}.note.wa b{color:#b45309}
+.note.ok{background:var(--ok-sf);border-color:var(--ok-bd)}.note.ok b{color:#047857}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;
+  box-shadow:var(--sh2);font-size:12.5px;margin:12px 0}
+th{background:#f8fafc;text-align:left;padding:10px 13px;font-weight:700;color:var(--ink2);
+  border-bottom:1px solid var(--line);font-size:11.5px}
+td{padding:10px 13px;border-bottom:1px solid var(--line2);vertical-align:top;line-height:1.6}
+tr:last-child td{border-bottom:none}
+.gals{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:4px 0 0}
+.gal{background:#fff;border:1px solid var(--ink5);border-radius:12px;padding:14px;box-shadow:var(--sh2)}
+.gal .hd{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;margin-bottom:7px}
+.gal .hd .ic{font-size:16px}
+.gal p{margin:0;font-size:12px;color:var(--ink2);line-height:1.6}
+@media(max-width:1000px){.gals{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="b">Now · 当前情景驾驶舱</span>
+    <button class="tab on" data-v="0">首页</button>
+    <button class="tab" data-v="1">不同情景</button>
+    <button class="tab" data-v="2">为什么？</button>
+    <button class="tab" data-v="3">调整帮助方式</button>
+    <button class="tab" data-v="4">三层文案规则</button>
+    <span class="sp">不限于编程 · 情景是结果不是选项</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ========== 0 首页 ========== -->
+<div class="view on" id="v0">
+  <h1 class="ft">当前情景驾驶舱</h1>
+  <p class="lead">
+    Hero 只有两句话：<strong>你在干什么</strong>，<strong>OneTone 正在帮你什么</strong>。
+    感知链路（前台应用、代码库状态）全部收进「<strong>为什么？</strong>」，默认不展开。
+  </p>
+
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav"><button class="nv on">现在</button><button class="nv">回顾</button><button class="nv">设置</button></div>
+      <div class="r"><span class="pill p-g"><span style="width:5px;height:5px;border-radius:50%;background:#10b981;display:inline-block"></span>正常</span></div>
+    </div>
+    <div class="body">
+
+      <div class="hero">
+        <p class="sk">当前情景</p>
+        <h1>正在开发</h1>
+        <p class="app"><span class="ic">🖥</span><span class="nm">Cursor</span></p>
+
+        <p class="hlabel">OneTone 正在帮你</p>
+        <ul class="helps">
+          <li>开始听写</li>
+          <li>回到当前 Agent</li>
+          <li>中断</li>
+        </ul>
+
+        <div class="hfoot">
+          <button class="hbtn" onclick="showView(3)">调整帮助方式</button>
+          <button class="hwhy" onclick="tw()">依据</button>
+        </div>
+      </div>
+
+      <div class="maybe">
+        <span class="k">可能正在</span>
+        <span class="c">🎨 创作</span>
+        <span class="c">📹 会议</span>
+      </div>
+
+      <div class="whybox" id="wy">
+        <div class="wh"><b>依据</b><span style="font-size:11.5px;color:var(--ink3)">为什么判断为「正在开发」</span><button class="x" onclick="tw()">收起</button></div>
+        <div class="wb">
+          <div class="wrow"><span class="k">前台应用</span><span class="v">Cursor<span class="fid">ForegroundEvidence.app_target_id</span></span><span class="m">实时</span></div>
+          <div class="wrow"><span class="k">项目状态</span><span class="v">3 个文件有未提交改动<span class="fid">TmStatus.dirty / changed_count</span></span><span class="m">实时</span></div>
+          <div class="wrow"><span class="k">AI 状态</span><span class="v">Codex 正在这个项目里<span class="fid">AttentionState.Working</span></span><span class="m">实时</span></div>
+          <div class="wrow"><span class="k">匹配方式</span><span class="v">跟随前台自动切换<span class="fid">calculateEffectiveScene() → auto</span></span><span class="m">—</span></div>
+        </div>
+        <div class="wfoot">这些是工程事实。首页只给结论，展开才给依据。</div>
+      </div>
+
+      <div class="empty-say">没有需要你处理的事</div>
+
+      <p class="sk" style="margin:20px 0 10px;font-size:14px;color:var(--ink);letter-spacing:0;opacity:1;font-weight:700">我的情景</p>
+      <div class="scen">
+        <span class="sc on"><span class="ic">💻</span>开发</span>
+        <span class="sc"><span class="ic">🎨</span>创作</span>
+        <span class="sc"><span class="ic">✍️</span>写作</span>
+        <span class="sc"><span class="ic">📹</span>会议</span>
+        <span class="sc nb">＋</span>
+      </div>
+
+      <div class="dock">
+        <span class="inl">🎤 语音</span><span class="sep">·</span>
+        <span class="inl">⌨️ RAlt</span><span class="sep">·</span>
+        <span class="inl">● Numpad 0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="note ok">
+    <b>Hero 里的「开始听写 / 回到当前 Agent / 中断」全部来自 <code>semantic.rs</code> 的 <code>label_zh</code>。</b>
+    它们是<strong>能力名</strong>（这个习惯能做什么），不是<strong>收益承诺</strong>（你会得到什么）。
+    改一个都不需要动 UI——动作目录是唯一真相。
+  </div>
+</div>
+
+<!-- ========== 1 不同情景 ========== -->
+<div class="view" id="v1">
+  <h1 class="ft">同一个壳，不同情景</h1>
+  <p class="lead">
+    情景不是「编程专属」。Cursor、Photoshop、Word、Chrome 进来，<strong>壳完全一样</strong>，
+    变的只有情景名、应用和那三条能力。
+  </p>
+  <div class="gals">
+    <div class="gal">
+      <div class="hd"><span class="ic">💻</span>正在开发</div>
+      <p>🖥 Cursor</p>
+      <p style="margin-top:8px;color:var(--ink3)">开始听写 · 回到当前 Agent · 中断</p>
+    </div>
+    <div class="gal">
+      <div class="hd"><span class="ic">🎨</span>正在创作</div>
+      <p>🖥 Photoshop</p>
+      <p style="margin-top:8px;color:var(--ink3)">（这个习惯配了什么就显示什么）</p>
+    </div>
+    <div class="gal">
+      <div class="hd"><span class="ic">✍️</span>正在写作</div>
+      <p>🖥 Word</p>
+      <p style="margin-top:8px;color:var(--ink3)">（同上）</p>
+    </div>
+    <div class="gal">
+      <div class="hd"><span class="ic">📹</span>正在开会</div>
+      <p>🖥 Zoom</p>
+      <p style="margin-top:8px;color:var(--ink3)">（同上）</p>
+    </div>
+  </div>
+
+  <h2 class="sec">第一层：情景类型（有限枚举）</h2>
+  <p class="secsub">
+    类型是<strong>有限</strong>的，情景不是。加第 50 个情景，配色规则不用改。
+  </p>
+  <div class="gals">
+    <div class="gal" style="border-color:#93c5fd;background:linear-gradient(135deg,#eff6ff,#fff)">
+      <div class="hd"><span class="ic">🎯</span>focus 专注</div>
+      <p style="color:var(--ink2)">Unity开发 · Web开发 · Python开发</p>
+      <p style="margin-top:6px;color:var(--ink3);font-size:11.5px">三个情景，共享一个蓝</p>
+    </div>
+    <div class="gal" style="border-color:#c4b5fd;background:linear-gradient(135deg,#f5f3ff,#fff)">
+      <div class="hd"><span class="ic">🎨</span>create 创造</div>
+      <p style="color:var(--ink2)">Photoshop · Premiere · Figma</p>
+      <p style="margin-top:6px;color:var(--ink3);font-size:11.5px">共享一个紫</p>
+    </div>
+    <div class="gal" style="border-color:#a5b4fc;background:linear-gradient(135deg,#eef2ff,#fff)">
+      <div class="hd"><span class="ic">💬</span>communicate 沟通</div>
+      <p style="color:var(--ink2)">微信 · Zoom · Slack</p>
+      <p style="margin-top:6px;color:var(--ink3);font-size:11.5px">共享一个靛</p>
+    </div>
+    <div class="gal" style="border-color:#86efac;background:linear-gradient(135deg,#f0fdf4,#fff)">
+      <div class="hd"><span class="ic">🌿</span>relax 休息</div>
+      <p style="color:var(--ink2)">久坐 · 休息一下</p>
+      <p style="margin-top:6px;color:var(--ink3);font-size:11.5px">共享一个绿</p>
+    </div>
+  </div>
+  <p style="font-size:12.5px;color:var(--ink3);margin-top:11px;line-height:1.7">
+    不填 → <code>unknown</code> → <strong>渲染成中性灰，不猜</strong>。
+    这是 <code>scenario_present.rs</code> 里 <code>ScenarioKind::parse()</code> 的实际行为。
+  </p>
+
+  <h2 class="sec">第二层：状态强度（覆盖色相）</h2>
+  <p class="secsub">
+    同一个情景，状态不同时颜色不同。<strong>用户不用读文字就知道现在能不能被打断。</strong>
+  </p>
+  <div class="gals">
+    <div class="gal" style="border-color:var(--ok-bd);background:linear-gradient(135deg,#f0fdf4,#fff)">
+      <div class="hd"><span class="ic">💻</span>正在开发</div>
+      <p>🖥 Cursor</p>
+      <p style="margin-top:7px;color:#047857;font-weight:600">绿 · 一切正常</p>
+    </div>
+    <div class="gal" style="border-color:#93c5fd;background:linear-gradient(135deg,#eff6ff,#fff)">
+      <div class="hd"><span class="ic">💻</span>正在开发</div>
+      <p>🖥 Cursor</p>
+      <p style="margin-top:7px;color:#1d4ed8;font-weight:600">蓝 · AI 正在跑</p>
+    </div>
+    <div class="gal" style="border-color:var(--wa-bd);background:linear-gradient(135deg,#fffbeb,#fff)">
+      <div class="hd"><span class="ic">💻</span>正在开发</div>
+      <p>🖥 Cursor</p>
+      <p style="margin-top:7px;color:#b45309;font-weight:600">黄 · 在等你决定</p>
+    </div>
+    <div class="gal" style="border-color:var(--rk-bd);background:linear-gradient(135deg,#fef2f2,#fff)">
+      <div class="hd"><span class="ic">💻</span>正在开发</div>
+      <p>🖥 Cursor</p>
+      <p style="margin-top:7px;color:#b91c1c;font-weight:600">红 · 出错了</p>
+    </div>
+  </div>
+
+  <div class="note ok">
+    <b>两层正交：</b>类型管「这是什么事」，状态管「现在急不急」。<br>
+    组合出来是 <code>color_key = "{kind}-{state}"</code>，比如 <code>focus-needsYou</code>。<br>
+    <strong>情景改名不影响颜色，状态变化才改颜色。</strong>
+  </div>
+
+  <h2 class="sec">情景名从哪来</h2>
+  <table>
+    <thead><tr><th style="width:170px">来源</th><th style="width:90px">状态</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><code>MappingEntry.displayName</code></td><td><span class="pill p-g">已加</span></td>
+        <td>字段已加。让用户自己起名。「开发」「创作」是<strong>用户起的</strong>，不是系统生成的</td></tr>
+      <tr><td>应用派生兜底</td><td><span class="pill p-g">已加</span></td>
+        <td><code>derive_display_name()</code>：<code>cursor-chat</code> → 「Cursor」。仅作临时显示，<code>nameIsDerived=true</code> 时 UI 应提示可改名</td></tr>
+      <tr><td><code>m.label</code></td><td><span class="pill p-r">永不显示</span></td>
+        <td>默认值 <code>「AutoTrigger → RAlt」</code>（<code>config-persist.js:993</code>）。<code>scenario_display_name()</code> 明确不读它，有单测守着</td></tr>
+      <tr><td>系统自动命名</td><td><span class="pill p-n">不建议</span></td>
+        <td>「Cursor 场景」这种命名把用户钉死在应用上。<strong>情景是跨应用的</strong>，名字该由用户定义</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ========== 2 为什么 ========== -->
+<div class="view" id="v2">
+  <h1 class="ft">为什么放二级</h1>
+  <p class="lead">
+    上一轮你批评「推理过程摊在首页」是对的。但这不代表要删——<strong>删掉的是位置，不是内容。</strong>
+  </p>
+  <div class="split" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div>
+      <h2 class="sec" style="margin-top:0">放在首页（错）</h2>
+      <div class="box" style="background:#fef2f2;border:1px solid var(--rk-bd);border-radius:12px;padding:15px">
+        <div style="font-size:12.5px;line-height:1.9;color:var(--ink2)">
+          <b>当前解析结果</b><br>
+          来源：前台窗口 <code>Cursor.exe</code><br>
+          活动：<code>Typing</code><br>
+          Presence：<code>Active</code><br>
+          决策：<code>Scene = Coding</code><br>
+          Actions：<code>[x] 禁止通知</code> …
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--ink3);margin-top:9px;line-height:1.6">
+        用户的反应：「所以呢？」——他在写代码，不是在看推理过程。
+      </p>
+    </div>
+    <div>
+      <h2 class="sec" style="margin-top:0">收进「为什么？」（对）</h2>
+      <div class="box" style="background:var(--ok-sf);border:1px solid var(--ok-bd);border-radius:12px;padding:15px">
+        <div style="font-size:12.5px;line-height:1.9;color:var(--ink2)">
+          <b>为什么判断为「正在开发」</b><br>
+          前台应用 · Cursor<br>
+          项目状态 · 3 个文件有改动<br>
+          AI 状态 · Codex 正在跑<br>
+          匹配方式 · 跟随前台自动切换
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--ink3);margin-top:9px;line-height:1.6">
+        同样的信息，但<strong>用户主动点开才看</strong>，而且用中文而非字段名。
+      </p>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>判断标准：</b>一个信息该不该在首页，看的是「<strong>用户没主动找它，它会不会帮他做决定</strong>」。
+    <br><br>
+    「Codex 在等你批准」——会（我要不要现在处理）→ 首页<br>
+    「前台是 Cursor」——不会（我早知道了）→ 二级<br>
+    「TmStatus.dirty=3」——不会（这是字段）→ 诊断页
+  </div>
+</div>
+
+<!-- ========== 3 调整帮助方式 ========== -->
+<div class="view" id="v3">
+  <h1 class="ft">「调整帮助方式」</h1>
+  <p class="lead">
+    按钮文案从「调整动作」改成<strong>「调整帮助方式」</strong>——
+    用户想的是「我希望 OneTone 怎么帮我」，不是「我要改哪个 action」。
+  </p>
+
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav"><button class="nv on">现在</button><button class="nv">回顾</button><button class="nv">设置</button></div>
+      <div class="r"><span class="pill p-b">正在调整 · 开发</span></div>
+    </div>
+    <div class="body">
+      <div class="hero" style="padding:18px 22px">
+        <p class="sk">正在调整</p>
+        <h1 style="font-size:24px">开发</h1>
+        <p class="app" style="margin-bottom:14px"><span class="ic">🖥</span><span class="nm">Cursor</span>
+          <button class="btn sm" style="background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.25);color:#fff">改名</button></p>
+      </div>
+
+      <p class="sk" style="margin:0 0 10px;font-size:13.5px;color:var(--ink);letter-spacing:0;opacity:1;font-weight:700">
+        它在什么时候帮你做这些</p>
+      <div class="adj">
+        <div class="arow"><div class="tx"><b>开始听写</b>
+          <s>我说「听写」或按 RAlt 时<span class="fid">input.start</span></s></div>
+          <span class="sw on"></span></div>
+        <div class="arow"><div class="tx"><b>回到当前 Agent</b>
+          <s>我把 Agent 窗口切走时，找回来<span class="fid">agent.focus</span></s></div>
+          <span class="sw on"></span></div>
+        <div class="arow"><div class="tx"><b>中断</b>
+          <s>我说「停」或摇头时，让它停下<span class="fid">agent.interrupt</span></s></div>
+          <span class="sw on"></span></div>
+        <div class="arow off"><div class="tx"><b>取消本轮</b>
+          <s>说错了要撤回时<span class="fid">input.cancel</span></s></div>
+          <span class="sw"></span></div>
+      </div>
+
+      <div class="note wa" style="max-width:none">
+        <b>注意这三行都有两栏：</b>能力名（来自 <code>label_zh</code>）+ <strong>触发条件</strong>（人话）。<br>
+        「我说「听写」或按 RAlt 时」——这是<strong>事实描述</strong>，不是营销话术。
+        用户改开关时改的是「要不要这个能力」，条件是系统事实，不用改。
+      </div>
+
+      <div class="note rk" style="max-width:none">
+        <b>这个入口现在还不可靠：</b>开关写的是中文 label（<code>now-model.js:276</code>），
+        改一次文案用户已存的开关会<strong>静默全关</strong>。
+        <br><br>
+        <strong>在修好之前，「调整帮助方式」不应该上线</strong>——一个会丢用户配置的入口比没有更糟。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 4 三层文案规则 ========== -->
+<div class="view" id="v4">
+  <h1 class="ft">文案分三层，各有唯一来源</h1>
+  <p class="lead">
+    这是这版最核心的约束。<strong>不再讨论「能不能写文案」，而是规定每层文案从哪来。</strong>
+  </p>
+
+  <table>
+    <thead><tr><th style="width:110px">层</th><th style="width:150px">长什么样</th><th style="width:230px">唯一来源</th><th>能否手写</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>能力名</b></td>
+        <td>开始听写<br>回到当前 Agent<br>中断</td>
+        <td><code>semantic.rs</code> 的 <code>SemanticActionMeta.label_zh</code></td>
+        <td class="pill p-r">禁止</td>
+      </tr>
+      <tr>
+        <td><b>触发条件</b></td>
+        <td>我说「听写」或按 RAlt 时</td>
+        <td>绑定关系的<strong>人话投影</strong>：<code>trigger_type</code> + <code>trigger_binding</code></td>
+        <td><span class="pill p-w">半自动</span> 需模板化</td>
+      </tr>
+      <tr>
+        <td><b>情景名</b></td>
+        <td>开发 / 创作 / 写作</td>
+        <td><code>MappingEntry.displayName</code>（<b>待新增</b>），用户自己起</td>
+        <td><span class="pill p-g">用户写</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="sec">被消灭的那一类</h2>
+  <div class="note rk">
+    <b>「收益承诺」类文案，全部删除。</b>
+    <br><br>
+    <span style="color:#b91c1c">✕ 「编程语音快捷键」</span> —— 不对应任何 action_id<br>
+    <span style="color:#b91c1c">✕ 「AI 工具入口已就位」</span> —— 编的<br>
+    <span style="color:#b91c1c">✕ 「终端操作优化」</span> —— 代码里没有终端配置项<br>
+    <span style="color:#b91c1c">✕ 「保持专注」「减少消息打扰」</span> —— <code>assists</code> 里的通用标签，跟情景无关
+    <br><br>
+    <strong>为什么它们必须死：</strong>它们在所有情景下长得一模一样。
+    用户切到 Photoshop 看到同样的「保持专注」，就知道这是假的。
+    <strong>一旦用户发现文案是模板，页面的可信度就归零了。</strong>
+  </div>
+
+  <h2 class="sec">现在还做不到的三件</h2>
+  <table>
+    <thead><tr><th style="width:150px">缺什么</th><th style="width:230px">需要什么</th><th>影响</th></tr></thead>
+    <tbody>
+      <tr><td>情景名</td><td><code>MappingEntry.displayName</code> 字段</td><td>现在只能显示技术串，<b>首页无法上线</b></td></tr>
+      <tr><td>触发条件文案</td><td>绑定 → 人话的模板化投影</td><td>「调整帮助方式」里那行现在是手写的</td></tr>
+      <tr><td>「可能正在」</td><td>建议算法（attention + foreground）</td><td>现在恒 false，那一行不该显示</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <b>所以现实一点说：这版首页今天还不能上线。</b>
+    <br><br>
+    差三件事：<strong>情景名字段</strong>、<strong>触发条件模板</strong>、<strong>assists ID 化</strong>。
+    三件都是后端小活，但缺一不可——<strong>因为它们全都卡在「假数据」上</strong>。
+    <br><br>
+    我可以现在就动手做第一件（加 <code>displayName</code> 字段 + 改名输入框），
+    做完你就有一个能真实跑起来的首页。
+  </div>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showView(+b.dataset.v));
+function showView(i){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab')[i].classList.add('on');
+  document.getElementById('v'+i).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function tw(){ document.getElementById('wy').classList.toggle('on'); }
+</script>
+</body>
+</html>

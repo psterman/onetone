@@ -1960,6 +1960,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             });
         let result = ensure_codex_pad_ready(&mut cfg, "zh-CN");
         assert!(result.changed);
@@ -2035,6 +2036,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             };
         let (slot, route_changed) = {
             let pad = m.codex_micro_pad.as_mut().unwrap();
@@ -2116,6 +2118,7 @@ mod tests {
         gesture_modes: None,
         oral_command_scheme: None,
         target_actions: vec![],
+        assists: vec![],
         };
         let before = m.agent_bindings.len();
         let _ = heal_slot_key_bindings(&mut m, "plan", "zh-CN");
@@ -2184,6 +2187,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             };
         let mut cfg = VoiceConfig {
             mappings: vec![m],
@@ -2265,6 +2269,7 @@ mod tests {
         gesture_modes: None,
         oral_command_scheme: None,
         target_actions: vec![],
+        assists: vec![],
         };
         assert!(heal_cursor_pad_ag_chrome(&mut m));
         let pad = m.codex_micro_pad.as_ref().unwrap();
@@ -2328,6 +2333,7 @@ mod tests {
         gesture_modes: None,
         oral_command_scheme: None,
         target_actions: vec![],
+        assists: vec![],
         };
         assert!(heal_cursor_pad_for_save(&mut m, "zh-CN"));
         let pad = m.codex_micro_pad.as_ref().unwrap();
@@ -2386,6 +2392,7 @@ mod tests {
                 gesture_modes: None,
                 oral_command_scheme: None,
                 target_actions: vec![],
+                assists: vec![],
                 },
                 MappingEntry {
                     id: "cursor-soft-pad".into(),
@@ -2437,6 +2444,7 @@ mod tests {
                 gesture_modes: None,
                 oral_command_scheme: None,
                 target_actions: vec![],
+                assists: vec![],
                 },
             ],
             ..VoiceConfig::default()
@@ -2509,6 +2517,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             }],
             ..VoiceConfig::default()
         };
@@ -2566,6 +2575,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             }],
             ..VoiceConfig::default()
         };
@@ -2653,6 +2663,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             }];
         sync_hook_cache(&cfg);
         assert!(pad_mapping_active());
@@ -2712,6 +2723,7 @@ mod tests {
         gesture_modes: None,
         oral_command_scheme: None,
         target_actions: vec![],
+        assists: vec![],
         }];
         sync_hook_cache(&cfg);
         crate::codex_micro_overlay::test_set_foreground_latch(true);

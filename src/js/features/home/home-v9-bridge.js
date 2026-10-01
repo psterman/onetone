@@ -670,6 +670,12 @@
 
   function paintHomeLiveTextImmediate(){
     paintMicHeardSurface();
+    try{
+      if(global.OneToneNowHome&&global.OneToneNowHome.isVisible&&global.OneToneNowHome.isVisible()
+        &&typeof global.OneToneNowHome.syncVoice==='function'){
+        global.OneToneNowHome.syncVoice();
+      }
+    }catch(_){}
   }
 
   function voskRawLiveParts(res){
@@ -714,6 +720,12 @@
     if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.updateScopeHint){
       try{ global.OneToneSoftPadHub.updateScopeHint(); }catch(_){}
     }
+    try{
+      if(global.OneToneNowHome&&global.OneToneNowHome.isVisible&&global.OneToneNowHome.isVisible()
+        &&typeof global.OneToneNowHome.syncVoice==='function'){
+        global.OneToneNowHome.syncVoice();
+      }
+    }catch(_){}
   }
 
   function liveTextParts(summary,hs){

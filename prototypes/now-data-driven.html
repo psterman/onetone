@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Now · 数据驱动版</title>
+<style>
+:root{
+  --pri:#0ea5e9;--pri-d:#0284c7;--pri-sf:#e0f2fe;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;--ink5:#e2e8f0;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f7f9fb;
+  --ok:#10b981;--ok-sf:#ecfdf5;--ok-bd:#a7f3d0;
+  --wa:#f59e0b;--wa-sf:#fffbeb;--wa-bd:#fde68a;
+  --rk:#ef4444;--rk-sf:#fef2f2;--rk-bd:#fecaca;
+  --sh2:0 1px 3px rgba(15,23,42,.07);--sh3:0 12px 36px rgba(15,23,42,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+code{font-family:Consolas,monospace;font-size:11.5px;background:var(--line2);padding:1px 5px;border-radius:4px;color:#0369a1}
+a.src{font-family:Consolas,monospace;font-size:10px;color:#0369a1;text-decoration:none;
+  border-bottom:1px dotted #7dd3fc;cursor:help}
+
+.topbar{position:sticky;top:0;z-index:60;background:rgba(247,249,251,.95);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:0 24px}
+.topbar-in{max-width:1200px;margin:0 auto;height:56px;display:flex;align-items:center;gap:8px}
+.topbar .b{font-weight:800;font-size:14.5px;margin-right:16px}
+.tab{padding:7px 13px;border-radius:8px;font-size:12.5px;color:var(--ink2);border:0;background:none;font-weight:500}
+.tab:hover{background:var(--line2)}.tab.on{background:var(--ink);color:#fff}
+.topbar .sp{margin-left:auto;font-size:11px;color:var(--ink3)}
+.page{max-width:1200px;margin:0 auto;padding:26px 24px 80px}
+.view{display:none}.view.on{display:block}
+h1.ft{font-size:24px;margin:0 0 8px;letter-spacing:-.6px}
+.lead{font-size:14.5px;color:var(--ink2);max-width:920px;margin:0 0 22px;line-height:1.75}
+h2.sec{font-size:15.5px;margin:32px 0 6px}
+.secsub{font-size:12.5px;color:var(--ink2);margin:0 0 14px;max-width:900px;line-height:1.7}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.p-g{background:var(--ok-sf);color:#047857}.p-w{background:var(--wa-sf);color:#b45309}
+.p-r{background:var(--rk-sf);color:#b91c1c}.p-n{background:var(--line2);color:var(--ink2)}
+.p-b{background:var(--pri-sf);color:var(--pri-d)}
+.btn{border:1px solid var(--ink5);background:#fff;border-radius:8px;padding:7px 13px;font-size:12.5px;
+  color:var(--ink2);font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--line2)}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.sm{padding:4px 10px;font-size:11.5px}
+.sw{width:38px;height:22px;border-radius:99px;background:var(--ink4);border:0;position:relative;transition:.2s;flex:none;padding:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);transition:.2s}
+.sw.on{background:var(--ok)}.sw.on::after{left:19px}
+
+.win{background:#fff;border:1px solid var(--ink5);border-radius:14px;overflow:hidden;box-shadow:var(--sh3)}
+.tbar{display:flex;align-items:center;gap:11px;padding:0 17px;height:50px;border-bottom:1px solid var(--line)}
+.tbar .logo{width:25px;height:25px;border-radius:8px;background:linear-gradient(135deg,#0c4a6e,#0ea5e9);
+  display:grid;place-items:center;color:#fff;font-size:12.5px;font-weight:800;flex:none}
+.tbar .ttl{font-size:14.5px;font-weight:700}
+.nav{display:flex;gap:2px;margin-left:10px}
+.nv{padding:5px 11px;border-radius:8px;font-size:12.5px;color:var(--ink3);border:0;background:none;font-weight:500}
+.nv.on{background:var(--line2);color:var(--ink);font-weight:600}
+.tbar .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.body{padding:20px 22px 0}
+
+/* 当前解析结果 */
+.res{border:1px solid var(--ink5);border-radius:14px;box-shadow:var(--sh2);overflow:hidden;margin-bottom:20px}
+.rh{padding:16px 18px;background:#fcfdfe;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.rh .k{font-size:12px;color:var(--ink3);font-weight:600}
+.rh .m{font-size:14px;font-weight:700}
+.rh .from{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink2);
+  background:#fff;border:1px solid var(--ink5);border-radius:99px;padding:4px 12px}
+.rh .r{margin-left:auto;display:flex;gap:7px}
+
+/* 动作槽位 */
+.slots{padding:0}
+.slot{display:flex;align-items:center;gap:13px;padding:13px 18px;border-bottom:1px solid var(--line2)}
+.slot:last-child{border-bottom:none}
+.slot.off{background:#fcfdfe}
+.slot .sx{width:26px;height:26px;border-radius:7px;background:var(--line2);display:grid;place-items:center;
+  font-size:13px;flex:none}
+.slot .tx{flex:1;min-width:0}
+.slot .tx b{font-size:13.5px;font-weight:600;display:block;line-height:1.4}
+.slot .tx s{text-decoration:none;font-size:11px;color:var(--ink3);display:block;margin-top:2px}
+.slot .tx s .fid{font-family:Consolas,monospace;font-size:10.5px;color:var(--ink4)}
+.slot .act{flex:none;display:flex;align-items:center;gap:9px}
+.slot .bind{font-size:11.5px;color:var(--pri-d);background:var(--pri-sf);border:1px solid #bae6fd;
+  border-radius:6px;padding:3px 9px;white-space:nowrap}
+.slot .bind.none{color:var(--ink3);background:var(--line2);border-color:var(--ink5)}
+.slot .cnt{font-size:11px;color:var(--ink3);font-variant-numeric:tabular-nums;min-width:30px;text-align:right}
+.slotfoot{padding:11px 18px;background:#fcfdfe;border-top:1px solid var(--line2);
+  font-size:11.5px;color:var(--ink3);line-height:1.65}
+
+/* 摄像头动作 */
+.cam{padding:0}
+.camrow{display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--line2)}
+.camrow:last-child{border-bottom:none}
+.camrow .sg{font-size:13px;font-weight:600;min-width:88px;display:flex;align-items:center;gap:6px}
+.camrow .ar{color:var(--ink4);flex:none}
+.camrow .arw{font-size:12.5px;color:var(--pri-d);font-weight:600;flex:1;min-width:0}
+.camrow .arw.none{color:var(--ink3);font-weight:400;font-style:italic}
+.camrow .n{font-size:11px;color:var(--ink3);flex:none;font-variant-numeric:tabular-nums}
+
+/* 需要决定 */
+.need{background:#fff;border:1px solid var(--ink5);border-radius:12px;box-shadow:var(--sh2);overflow:hidden}
+.nrow{display:flex;align-items:center;gap:13px;padding:13px 18px;border-bottom:1px solid var(--line2)}
+.nrow:last-child{border-bottom:none}
+.nrow.prim{background:linear-gradient(90deg,var(--pri-sf),#fff)}
+.nrow .tx{flex:1;min-width:0}
+.nrow .tx b{font-size:13px;font-weight:600;display:block}
+.nrow .tx s{text-decoration:none;font-size:11.5px;color:var(--ink3);display:block;margin-top:2px}
+.nrow .tx s .age{color:#b45309;font-weight:600}
+.empty-say{background:#fff;border:1px solid var(--ink5);border-radius:12px;padding:18px;
+  text-align:center;font-size:13px;color:var(--ink3);box-shadow:var(--sh2)}
+
+.dock{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px 0 17px;
+  margin-top:20px;border-top:1px solid var(--line2);font-size:12px;color:var(--ink3)}
+.dock .sep{opacity:.4}
+
+.note{background:var(--pri-sf);border:1px solid #bae6fd;border-radius:12px;padding:15px 18px;
+  margin:18px 0;font-size:13px;line-height:1.75;max-width:1020px}
+.note b{color:var(--pri-d)}
+.note.rk{background:var(--rk-sf);border-color:var(--rk-bd)}.note.rk b{color:#b91c1c}
+.note.wa{background:var(--wa-sf);border-color:var(--wa-bd)}.note.wa b{color:#b45309}
+.note.ok{background:var(--ok-sf);border-color:var(--ok-bd)}.note.ok b{color:#047857}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;
+  box-shadow:var(--sh2);font-size:12.5px;margin:12px 0}
+th{background:#f8fafc;text-align:left;padding:10px 13px;font-weight:700;color:var(--ink2);
+  border-bottom:1px solid var(--line);font-size:11.5px}
+td{padding:10px 13px;border-bottom:1px solid var(--line2);vertical-align:top;line-height:1.6}
+tr:last-child td{border-bottom:none}
+.mono{font-family:Consolas,monospace;font-size:11px;color:var(--ink2)}
+.hard{background:var(--rk-sf);color:#b91c1c;font-weight:700}
+.real{background:var(--ok-sf);color:#047857;font-weight:700}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="b">Now · 数据驱动版</span>
+    <button class="tab on" data-v="0">首页</button>
+    <button class="tab" data-v="1">真实数据源</button>
+    <button class="tab" data-v="2">删掉了什么</button>
+    <span class="sp">每行都能点开看字段来源</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ========== 0 首页 ========== -->
+<div class="view on" id="v0">
+  <h1 class="ft">把编的文案换成真数据</h1>
+  <p class="lead">
+    上一版首页写「编程语音快捷键」「AI 工具入口已就位」——<strong>这些词在代码里根本不存在</strong>，
+    是我编的。<code>assists</code> 里存的只有「保持专注 / 减少消息打扰」这种通用标签。<br>
+    这版只显示<strong>真实存在、实时变化、用户能改</strong>的东西。
+  </p>
+
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav">
+        <button class="nv on">现在</button>
+        <button class="nv">回顾</button>
+        <button class="nv">设置</button>
+      </div>
+      <div class="r">
+        <span class="pill p-g"><span style="width:5px;height:5px;border-radius:50%;background:#10b981;display:inline-block"></span>正常</span>
+        <span style="font-size:12px;color:var(--ink3)">22:41</span>
+      </div>
+    </div>
+    <div class="body">
+
+      <!-- 解析结果 -->
+      <div class="res">
+        <div class="rh">
+          <span class="k">当前</span>
+          <span class="m" style="cursor:pointer;border-bottom:1px dotted var(--ink4)">Cursor 开发</span>
+          <span class="from">
+            <span>🖥</span>Cursor
+            <span class="pill p-b">自动跟随</span>
+          </span>
+          <div class="r">
+            <button class="btn sm">临时用别的</button>
+            <button class="btn sm">固定</button>
+          </div>
+        </div>
+        <div class="slots">
+          <div class="slot">
+            <span class="sx">🤖</span>
+            <div class="tx"><b>回到当前 Agent</b><s><span class="fid">agent.focus</span> · 这个习惯配置的行为</s></div>
+            <div class="act"><span class="bind">RAlt + Ctrl+I</span><span class="cnt">今天 6</span></div>
+          </div>
+          <div class="slot">
+            <span class="sx">🎤</span>
+            <div class="tx"><b>开始听写</b><s><span class="fid">input.start</span> · 这个习惯配置的行为</s></div>
+            <div class="act"><span class="bind">RAlt</span><span class="cnt">今天 12</span></div>
+          </div>
+          <div class="slot">
+            <span class="sx">✋</span>
+            <div class="tx"><b>中断</b><s><span class="fid">agent.interrupt</span> · 这个习惯配置的行为</s></div>
+            <div class="act"><span class="bind none">未绑定</span><span class="cnt">—</span></div>
+          </div>
+          <div class="slot off">
+            <span class="sx">↩️</span>
+            <div class="tx"><b>恢复工作区布局</b><s><span class="fid">workspace.applyLayout</span> · 这个习惯配置的行为</s></div>
+            <div class="act"><span class="bind none">未绑定</span><span class="cnt">—</span></div>
+          </div>
+        </div>
+        <div class="slotfoot">
+          左边的名字来自 <code>semantic.rs</code> 的 <code>label_zh</code>，永远是当前动作的中文名，不会说错。<br>
+          中间的按键是<strong>真实绑定</strong>，未绑定就写「未绑定」——不编造。
+          右边是<strong>今天的真实使用次数</strong>，来自 <code>cmd_action_history_stats</code>。
+        </div>
+      </div>
+
+      <!-- 摄像头动作 -->
+      <div class="res">
+        <div class="rh">
+          <span class="k">摄像头动作</span>
+          <span class="m" style="font-size:13.5px">这一套习惯会用摄像头</span>
+          <div class="r"><button class="btn sm">去摄像头设置</button></div>
+        </div>
+        <div class="cam">
+          <div class="camrow">
+            <span class="sg">👤 离席</span><span class="ar">→</span>
+            <span class="arw">应用内遮罩</span><span class="n">今天 1 次</span>
+          </div>
+          <div class="camrow">
+            <span class="sg">👤 离席</span><span class="ar">→</span>
+            <span class="arw">暂停语音</span><span class="n">今天 1 次</span>
+          </div>
+          <div class="camrow">
+            <span class="sg">👤 回席</span><span class="ar">→</span>
+            <span class="arw">恢复语音</span><span class="n">今天 1 次</span>
+          </div>
+          <div class="camrow">
+            <span class="sg">🖐 摇头</span><span class="ar">→</span>
+            <span class="arw none">没配动作</span><span class="n">—</span>
+          </div>
+          <div class="camrow">
+            <span class="sg">🖐 挥手</span><span class="ar">→</span>
+            <span class="arw none">没配动作</span><span class="n">—</span>
+          </div>
+        </div>
+        <div class="slotfoot">
+          这五条是 <code>cameraPrefs.presenceActions</code> 里<strong>真实存在的 8 个键</strong>中的 5 个
+          （还有 OK / 握拳 / 五指张开）。右边「没配动作」是<strong>当前真实值</strong>，不是我编的。
+        </div>
+      </div>
+
+      <!-- 需要决定 -->
+      <div class="sec-lb" style="margin:22px 0 10px;display:flex;align-items:baseline;gap:9px">
+        <h3 style="margin:0;font-size:14px;font-weight:700">需要你决定</h3>
+        <span style="font-size:11.5px;color:var(--ink3)">来自 Agent 等待队列</span>
+      </div>
+      <div class="need">
+        <div class="nrow prim">
+          <div class="tx">
+            <b>批准 Codex 运行删除命令</b>
+            <s>cause: Permission · provider: codex · <span class="age">已等 2 分 14 秒</span></s>
+          </div>
+          <button class="btn p">查看</button>
+        </div>
+      </div>
+
+      <div class="dock"><span>🎤 语音</span><span class="sep">·</span><span>● OneTone</span><span class="sep">·</span><span>RAlt</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec">对比：上一版 vs 这版</h2>
+  <table>
+    <thead><tr><th style="width:150px">位置</th><th style="width:230px">上一版（我编的）</th><th>这版（真实字段）</th></tr></thead>
+    <tbody>
+      <tr><td>情景名</td><td class="hard">「💻 Cursor 开发中」<br><span style="font-size:11px">自造</span></td>
+        <td class="real">「Cursor 开发」<br><span style="font-size:11px">待重做名称投影（见下）</span></td></tr>
+      <tr><td>帮助列表</td><td class="hard">「编程语音快捷键」<br>「AI 工具入口已就位」<br>「终端操作优化」</td>
+        <td class="real">回到当前 Agent / 开始听写 / 中断 / 恢复工作区布局<br>
+          <span style="font-size:11px">来自 <code>semantic.rs</code> 的 13 个 slot</span></td></tr>
+      <tr><td>触发方式</td><td class="hard">无</td>
+        <td class="real">RAlt + Ctrl+I / RAlt / 未绑定<br><span style="font-size:11px">真实按键绑定</span></td></tr>
+      <tr><td>使用频次</td><td class="hard">无</td>
+        <td class="real">今天 6 / 12 / —<br><span style="font-size:11px">来自 action history</span></td></tr>
+      <tr><td>摄像头动作</td><td class="hard">无</td>
+        <td class="real">应用内遮罩 / 暂停语音 / 恢复语音 / 没配动作<br>
+          <span style="font-size:11px">来自 <code>presenceActions</code></span></td></tr>
+      <tr><td>来源标记</td><td class="hard">「来自 Cursor · 自动匹配」<br><span style="font-size:11px">文案是我写的</span></td>
+        <td class="real">「自动跟随」badge<br><span style="font-size:11px">来自 <code>mode==='auto'</code></span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="note rk">
+    <b>最严重的一条是「帮助列表」。</b>
+    我写「编程语音快捷键」，暗示这个习惯有编程专属能力——<strong>但 <code>assists</code> 里存的是
+    「保持专注 / 减少消息打扰」，跟 Cursor 没有任何关系</strong>。也就是说：
+    <br><br>
+    <strong>同一个习惯，切到不同应用会显示完全一样的四句话。</strong>这就是「营销化」的根源——
+    用文案制造了「因应用而异」的错觉，实际数据是一样的。
+  </div>
+
+  <div class="note ok">
+    <b>这版的原则：</b>宁可显示「没配动作」「未绑定」，也不编一句好听的。
+    空值是<strong>可操作信息</strong>（用户知道该配了），编出来的承诺是<strong>噪音</strong>。
+  </div>
+</div>
+
+<!-- ========== 1 真实数据源 ========== -->
+<div class="view" id="v1">
+  <h1 class="ft">每个字段从哪来</h1>
+  <p class="lead">这版没有任何一条文案是写死的。全部可以追到具体字段。</p>
+
+  <table>
+    <thead><tr><th style="width:130px">界面元素</th><th style="width:200px">字段</th><th style="width:110px">位置</th><th>性质</th></tr></thead>
+    <tbody>
+      <tr><td>动作中文名</td><td><code>SemanticActionMeta.label_zh</code></td>
+        <td><code>agent/semantic.rs</code></td>
+        <td class="real">权威 · 动作目录自带，不会过期</td></tr>
+      <tr><td>有哪些动作</td><td><code>CODEX_MICRO_13_SLOTS</code>（13 个）</td>
+        <td><code>agent/templates.rs:47</code></td>
+        <td class="real">权威 · 就是这个习惯真正能做的事</td></tr>
+      <tr><td>按键绑定</td><td><code>MappingEntry.target_key</code> / <code>switchKeys</code></td>
+        <td><code>config.rs:1310</code></td>
+        <td class="real">真实 · 空就是「未绑定」</td></tr>
+      <tr><td>今日次数</td><td><code>cmd_action_history_stats(hours)</code></td>
+        <td><code>action_history_cmd.rs:48</code></td>
+        <td class="real">实时 · 反映真实使用</td></tr>
+      <tr><td>摄像头动作</td><td><code>cameraPrefs.presenceActions</code><br>8 键：onAway / onReturn / shakeHead / deliberateBlink / openPalm / okHand / fist / wave</td>
+        <td><code>config-persist.js:999</code></td>
+        <td class="real">真实 · 摄像头不参与统一路由，是独立的一套</td></tr>
+      <tr><td>来源 badge</td><td><code>calculateEffectiveScene().mode</code><br>pinHabit / pinAppHabit / softOverride / auto / manual</td>
+        <td><code>runtime-habit-control.js:178</code></td>
+        <td class="real">实时 · 反映当前解析结果</td></tr>
+      <tr><td>前台应用</td><td><code>ForegroundEvidence.app_target_id</code></td>
+        <td><code>soft_pad_runtime/model.rs:262</code></td>
+        <td class="real">实时</td></tr>
+      <tr><td>等待项</td><td><code>AttentionCause</code> + <code>waiting_kinds</code> + Pending TTL</td>
+        <td><code>agent_attention/model.rs:38</code></td>
+        <td class="real">实时</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="sec">仍需解决的：名称投影</h2>
+  <div class="note wa">
+    <b>唯一还做不到位的是情景名「Cursor 开发」。</b><br>
+    <code>habit_profile.rs</code> 的 <code>habitDisplayName()</code> 返回 <code>m.label</code>，
+    而 label 默认是 <code>「AutoTrigger → xxx」</code> 这种技术串（<code>config-persist.js:993</code>）。<br><br>
+    <strong>需要新增一个字段</strong>，比如 <code>MappingEntry.displayName: Option&lt;String&gt;</code>，
+    由用户在「调整习惯」时自己起名：「Cursor 开发」「VS Code 开发」「PS 设计」。
+    <br><br>
+    在这之前，首页<strong>只能显示 label 原样</strong>——那就等于把技术串暴露给用户。
+    <strong>所以名称投影是首页能上线的硬前置。</strong>
+  </div>
+
+  <h2 class="sec">摄像头那两行为什么独立显示</h2>
+  <div class="note">
+    <b>因为摄像头动作不走统一路由。</b><br>
+    其他动作是 <code>targetActions</code>（语义动作，有 <code>label_zh</code>，走 <code>route_semantic_action</code>）；
+    摄像头动作是 <code>presenceActions</code> 里的<strong>本地 token</strong>（<code>privacyScreen</code> / <code>pauseVoice</code> / …），
+    由 <code>camera-presence-actions.js</code> 自己执行。<br><br>
+    这是我在前面几轮核验时发现的<strong>两套并行动作系统</strong>。
+    UI 上分开显示是诚实的做法——强行合并会让用户以为它们是同一种东西。
+  </div>
+</div>
+
+<!-- ========== 2 删掉了什么 ========== -->
+<div class="view" id="v2">
+  <h1 class="ft">这版删掉的东西</h1>
+  <p class="lead">每一项删除都有具体原因：要么是编的，要么不该在这一层。</p>
+
+  <div class="split">
+    <div>
+      <h2 class="sec" style="margin-top:0">删：编造的文案</h2>
+      <table>
+        <thead><tr><th style="width:180px">原文案</th><th>为什么删</th></tr></thead>
+        <tbody>
+          <tr><td>「编程语音快捷键」</td><td>assists 里没有这个值，是我按「Cursor」联想出来的</td></tr>
+          <tr><td>「AI 工具入口已就位」</td><td>同上。真实存在的是 <code>agent.focus</code>「回到当前 Agent」</td></tr>
+          <tr><td>「终端操作优化」</td><td>同上，代码里没有任何终端相关配置项</td></tr>
+          <tr><td>「降低非工作通知」</td><td>同上。assists 里是「减少消息打扰」，且和 Cursor 无关</td></tr>
+          <tr><td>「素材快捷键」</td><td>Photoshop 那屏同理，全部编的</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h2 class="sec" style="margin-top:0">删：不该在这一层</h2>
+      <table>
+        <thead><tr><th style="width:180px">原文案</th><th>去哪了</th></tr></thead>
+        <tbody>
+          <tr><td>「我看到的你」</td><td>设置 · 诊断。底层证据，不是用户心智</td></tr>
+          <tr><td>感知源清单</td><td>设置 · 诊断。首页放它会变成监控面板</td></tr>
+          <tr><td>「今天为你做了什么」</td><td>回顾页。成果中心的读者不是正在干活的人</td></tr>
+          <tr><td>因果链</td><td>设置 · 诊断。需跨源冻结快照，成本高</td></tr>
+          <tr><td>「可能需要会议中」</td><td>删。<code>suggested</code> 恒 false，算法还没有</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h2 class="sec">保留下来的，全部是实时数据</h2>
+  <div class="note ok">
+    <b>判断标准很简单：</b>这条信息<strong>能不能在不重启的情况下变</strong>。<br>
+    <ul style="margin:8px 0 0;padding-left:20px">
+      <li>能变 → 保留（绑定会改、次数会涨、mode 会切）</li>
+      <li>不能变 → 就是硬编码，删</li>
+    </ul>
+    按这个标准，「编程语音快捷键」在所有场景下都长得一模一样——<strong>它是文案，不是数据</strong>。
+  </div>
+
+  <div class="note">
+    <b>顺带解决的一个大问题：</b>数据驱动之后，<code>assists</code> 那套通用标签的问题会<strong>自己浮出来</strong>。
+    <br><br>
+    用户会看到「回到当前 Agent / 开始听写 / 中断」这些<strong>真实动作</strong>，而不是「保持专注」这种空泛承诺。
+    这时候 <code>assists</code> 就不再是首页的主角了——<strong>它变成了一层「我要不要开这个动作」的开关</strong>，
+    存中文 label 的问题也就自然解决了（因为不再需要翻译，它就是给人看的）。
+  </div>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showView(+b.dataset.v));
+function showView(i){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab')[i].classList.add('on');
+  document.getElementById('v'+i).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>

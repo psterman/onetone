@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>迷你栏 · 条上内容备选</title>
+<link rel="stylesheet" href="../css/soft-pad-hub.css">
+<link rel="stylesheet" href="../css/ot-switch.css">
+<style>
+:root {
+  --ink: #1a2d4a;
+  --mute: #64748b;
+  --faint: #94a3b8;
+  --line: rgba(26, 45, 74, 0.1);
+  --paper: #f4f7fa;
+  --accent: #2a9cc4;
+  --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 13px/1.45 var(--font);
+  color: var(--ink);
+  background: #dce4ee;
+}
+.page { max-width: 1080px; margin: 0 auto; padding: 16px 14px 48px; }
+.eyebrow { margin: 0 0 2px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+h1 { margin: 0 0 4px; font-size: 18px; font-weight: 750; }
+.lede { margin: 0 0 14px; color: var(--mute); font-size: 12.5px; max-width: 68ch; }
+
+.alt-nav {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+}
+.alt-nav button {
+  appearance: none; border: 1px solid var(--line); background: #fff;
+  border-radius: 999px; padding: 6px 12px; font: inherit;
+  font-size: 12px; font-weight: 650; color: var(--mute); cursor: pointer;
+}
+.alt-nav button.is-on {
+  border-color: rgba(42, 156, 196, 0.45);
+  background: rgba(62, 184, 220, 0.12);
+  color: var(--ink);
+}
+.alt-nav button .tag {
+  margin-left: 6px; font-size: 10px; font-weight: 700; color: var(--accent);
+}
+
+.shell {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 27, 42, 0.05);
+}
+.shell-h {
+  display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
+  padding: 10px 14px; background: #eef2f6; border-bottom: 1px solid var(--line);
+}
+.shell-h h2 { margin: 0; font-size: 14px; font-weight: 750; }
+.shell-h p { margin: 0; font-size: 11.5px; color: var(--mute); max-width: 52ch; }
+
+.face {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.05fr) minmax(300px, 0.95fr);
+  gap: 14px;
+  padding: 12px;
+  background: var(--paper);
+  min-height: 420px;
+}
+@media (max-width: 860px) { .face { grid-template-columns: 1fr; } }
+
+.preview {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: #f8fafc;
+}
+.preview__cap {
+  margin: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--faint);
+}
+.preview__hint { margin: 0; font-size: 11.5px; color: var(--mute); }
+.preview__hint b { color: var(--ink); }
+
+.soft-pad-agent-mini-bar-stage { padding: 4px 0 0; margin: 0; }
+.soft-pad-agent-mini-bar [data-zone] {
+  position: relative; border-radius: 8px; cursor: pointer; outline: none;
+}
+.soft-pad-agent-mini-bar [data-zone]:hover,
+.soft-pad-agent-mini-bar [data-zone]:focus-visible {
+  box-shadow: inset 0 0 0 1.5px rgba(42, 156, 196, 0.45);
+}
+.soft-pad-agent-mini-bar [data-zone].is-focus {
+  box-shadow: inset 0 0 0 2px rgba(42, 156, 196, 0.65);
+}
+.soft-pad-agent-mini-bar [data-zone].is-off,
+.soft-pad-agent-mini-bar__tool.is-off { opacity: 0.28; }
+.soft-pad-agent-bar__chip--preview { position: relative; }
+.soft-pad-agent-bar__dot {
+  position: absolute; right: 1px; bottom: 1px; width: 6px; height: 6px; border-radius: 50%;
+  background: #94a3b8; box-shadow: 0 0 0 1px #fff;
+}
+[data-status="running"] .soft-pad-agent-bar__dot { background: #3b82f6; }
+[data-status="needs_input"] .soft-pad-agent-bar__dot { background: #f59e0b; }
+[data-status="done"] .soft-pad-agent-bar__dot { background: #22c55e; }
+.bar-cap { margin: 6px 0 0; font-size: 11px; color: var(--faint); }
+
+.panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 2px; }
+.block { border-top: 1px solid var(--line); padding-top: 8px; }
+.block:first-child { border-top: 0; padding-top: 0; }
+.block__lab {
+  margin: 0 0 6px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint);
+}
+.win-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.win-row span { flex: 0 0 36px; font-size: 11.5px; font-weight: 650; color: var(--mute); }
+.seg { flex: 1; display: grid; gap: 3px; }
+.seg--2 { grid-template-columns: 1fr 1fr; }
+.seg--3 { grid-template-columns: 1fr 1fr 1fr; }
+.seg button, .mini-seg button, .tool-chip, .chip, .check, .preset button, .goto {
+  appearance: none; font: inherit; cursor: pointer;
+}
+.seg button, .mini-seg button {
+  border: 1px solid var(--line); background: #fff; border-radius: 6px;
+  padding: 6px 4px; font-size: 11.5px; font-weight: 650; color: var(--mute);
+}
+.seg button.is-active, .mini-seg button.is-active {
+  border-color: rgba(42, 156, 196, 0.45);
+  background: rgba(62, 184, 220, 0.1);
+  color: var(--ink);
+}
+
+/* Shared detail */
+.detail {
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fff;
+}
+.detail__title { margin: 0 0 6px; font-size: 11.5px; font-weight: 700; color: var(--mute); }
+.detail__note { margin: 0 0 6px; font-size: 11px; color: var(--faint); }
+.pill-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 5px 0;
+}
+.pill-row__lbl { font-size: 12px; font-weight: 650; }
+.mini-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.tool-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.tool-chip {
+  border: 1px solid var(--line); background: #fff; border-radius: 6px;
+  padding: 6px 2px; font-size: 10.5px; font-weight: 650; color: var(--mute); text-align: center;
+}
+.tool-chip.is-active {
+  color: var(--ink); border-color: rgba(42, 156, 196, 0.45); background: rgba(62, 184, 220, 0.1);
+}
+.roster { display: flex; flex-wrap: wrap; gap: 4px; }
+.roster span {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 7px; border-radius: 999px; border: 1px solid var(--line);
+  font-size: 11px; font-weight: 650; background: #f8fafc;
+}
+.roster img { width: 12px; height: 12px; }
+.goto {
+  border: 0; background: transparent; padding: 0;
+  font-size: 11.5px; font-weight: 700; color: #066a9c; align-self: flex-start;
+}
+
+/* —— Alt A: chips —— */
+.chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.chip {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 6px 11px; font-size: 12px; font-weight: 650; color: var(--mute);
+}
+.chip.is-on {
+  border-color: rgba(42, 156, 196, 0.45);
+  background: rgba(62, 184, 220, 0.12);
+  color: var(--ink);
+}
+.chip.is-focus {
+  box-shadow: 0 0 0 2px rgba(42, 156, 196, 0.25);
+}
+.chip__mark {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  margin-right: 5px; background: #cbd5e1; vertical-align: 1px;
+}
+.chip.is-on .chip__mark { background: var(--accent); }
+
+/* —— Alt B: checklist, select only —— */
+.checks {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff;
+}
+.check {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px;
+  width: 100%; padding: 8px 10px; border: 0; border-bottom: 1px solid var(--line);
+  background: #fff; text-align: left; color: inherit;
+}
+.check:last-child { border-bottom: 0; }
+.check:hover { background: #f8fafc; }
+.check.is-focus {
+  background: rgba(62, 184, 220, 0.08);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.check__name { font-size: 12.5px; font-weight: 700; }
+.check__meta { display: block; font-size: 10.5px; font-weight: 500; color: var(--faint); margin-top: 1px; }
+.check__state {
+  font-size: 11px; font-weight: 700; color: var(--faint);
+  min-width: 2.5em; text-align: right;
+}
+.check__state.is-on { color: var(--accent); }
+
+/* —— Alt C: preview-first —— */
+.preview-first .soft-pad-agent-mini-bar [data-zone]::after {
+  content: attr(data-hint);
+  position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%);
+  font-size: 10px; font-weight: 700; color: var(--mute);
+  background: #fff; border: 1px solid var(--line); border-radius: 4px;
+  padding: 2px 5px; white-space: nowrap; opacity: 0; pointer-events: none;
+}
+.preview-first .soft-pad-agent-mini-bar [data-zone]:hover::after,
+.preview-first .soft-pad-agent-mini-bar [data-zone].is-focus::after { opacity: 1; }
+.preview-first .panel-note {
+  margin: 0; padding: 8px 10px; border-radius: 8px; border: 1px dashed var(--line);
+  font-size: 12px; color: var(--mute); background: #fff;
+}
+.preview-first .panel-note b { color: var(--ink); }
+
+/* —— Alt D: presets —— */
+.preset {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 8px;
+}
+.preset button {
+  border: 1px solid var(--line); background: #fff; border-radius: 6px;
+  padding: 8px 4px; font-size: 11.5px; font-weight: 700; color: var(--mute);
+}
+.preset button small {
+  display: block; margin-top: 2px; font-size: 10px; font-weight: 500; color: var(--faint);
+}
+.preset button.is-active {
+  border-color: rgba(42, 156, 196, 0.45);
+  background: rgba(62, 184, 220, 0.1);
+  color: var(--ink);
+}
+.preset-fine {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.variant[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Prototype · content alternatives</p>
+  <h1>条上内容 · 备选组件</h1>
+  <p class="lede">同一预览、同一细节抽屉；只换「条上有什么」的主控件。点上方切换方案对比。</p>
+
+  <div class="alt-nav" id="altNav" role="tablist" aria-label="备选方案">
+    <button type="button" class="is-on" data-alt="chips" role="tab" aria-selected="true">A · 槽位 chip<span class="tag">荐</span></button>
+    <button type="button" data-alt="checks" role="tab" aria-selected="false">B · 清单无开关</button>
+    <button type="button" data-alt="preview" role="tab" aria-selected="false">C · 点预览</button>
+    <button type="button" data-alt="presets" role="tab" aria-selected="false">D · 预设</button>
+  </div>
+
+  <div class="shell">
+    <div class="shell-h">
+      <div>
+        <h2 id="altTitle">A · 槽位 chip</h2>
+        <p id="altBlurb">亮着 = 显示；点一下选中并展开细节。开关与选中合成一个手势。</p>
+      </div>
+      <span style="font-size:11px;color:var(--mute)">原型</span>
+    </div>
+
+    <div class="face" id="face">
+      <div class="preview" id="previewCol">
+        <p class="preview__cap">预览</p>
+        <p class="preview__hint">当前：<b id="focusLbl">忙闲</b> · <span id="hintTxt">槽位 chip</span></p>
+        <div class="soft-pad-agent-mini-bar-stage is-mini-rail-agents" id="miniStage">
+          <div class="soft-pad-agent-mini-bar" id="miniBar">
+            <div class="soft-pad-agent-mini-bar__row">
+              <div class="soft-pad-agent-mini-bar__busy" data-zone="agents" data-hint="忙闲" tabindex="0" role="button" aria-label="忙闲">
+                <div class="soft-pad-agent-bar soft-pad-agent-bar--preview soft-pad-agent-mini-bar__chips" id="busyChips">
+                  <span class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview" data-status="running"><img src="../icons/app-target/codex.svg" alt="" width="14" height="14"><i class="soft-pad-agent-bar__dot"></i></span>
+                  <span class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview" data-status="idle"><img src="../icons/app-target/claude.svg" alt="" width="14" height="14"><i class="soft-pad-agent-bar__dot"></i></span>
+                  <span class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview is-focused" data-status="needs_input"><img src="../icons/app-target/cursor.svg" alt="" width="14" height="14"><i class="soft-pad-agent-bar__dot"></i></span>
+                </div>
+              </div>
+              <span class="soft-pad-agent-mini-bar__pill" data-zone="pill" data-hint="用量" tabindex="0" role="button">Cu · 12次</span>
+              <span class="soft-pad-agent-mini-bar__win" data-zone="win" data-hint="右侧" tabindex="0" role="button">
+                <span class="soft-pad-agent-mini-bar__winbtn" id="btnExpand">⤢</span>
+                <span class="soft-pad-agent-mini-bar__winbtn" id="btnClose">×</span>
+              </span>
+            </div>
+            <div class="soft-pad-agent-mini-bar__speech" data-zone="speech" data-hint="说话" tabindex="0" role="button" id="speechBand">
+              <span class="soft-pad-agent-mini-bar__listen" id="micChip"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 11a7 7 0 0014 0M12 18v3"/></svg></span>
+              <span class="soft-pad-agent-mini-bar__speech-text">你说的话…</span>
+            </div>
+            <div class="soft-pad-agent-mini-bar__tools" data-zone="tools" data-hint="快捷" tabindex="0" role="button" id="toolsRow">
+              <span class="soft-pad-agent-mini-bar__tool" data-tool="pushToTalk">🎙</span>
+              <span class="soft-pad-agent-mini-bar__tool" data-tool="stopOrSend">⏎</span>
+              <span class="soft-pad-agent-mini-bar__tool" data-tool="continue">⚡</span>
+              <span class="soft-pad-agent-mini-bar__tool" data-tool="newThread">💬</span>
+              <span class="soft-pad-agent-mini-bar__tool" data-tool="cancelListen">⊘</span>
+            </div>
+          </div>
+          <p class="bar-cap" id="barCap">细条 · 一直挂着</p>
+        </div>
+      </div>
+
+      <aside class="panel" id="panel">
+        <div class="block">
+          <p class="block__lab">窗口</p>
+          <div class="win-row">
+            <span>形态</span>
+            <div class="seg seg--2" aria-hidden="true">
+              <button type="button" class="is-active">细条</button>
+              <button type="button">完整键盘</button>
+            </div>
+          </div>
+          <div class="win-row">
+            <span>浮出</span>
+            <div class="seg seg--3" aria-hidden="true">
+              <button type="button">跟前台</button>
+              <button type="button" class="is-active">一直挂</button>
+              <button type="button">不浮出</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- A chips -->
+        <div class="block variant" data-variant="chips">
+          <p class="block__lab">条上内容</p>
+          <div class="chips" id="chipRow" role="group" aria-label="条上槽位">
+            <button type="button" class="chip is-on is-focus" data-slot="agents"><i class="chip__mark"></i>忙闲</button>
+            <button type="button" class="chip is-on" data-slot="speech"><i class="chip__mark"></i>说话</button>
+            <button type="button" class="chip is-on" data-slot="tools"><i class="chip__mark"></i>快捷</button>
+            <button type="button" class="chip is-on" data-slot="pill"><i class="chip__mark"></i>用量</button>
+            <button type="button" class="chip is-on" data-slot="win"><i class="chip__mark"></i>右侧</button>
+          </div>
+        </div>
+
+        <!-- B checklist -->
+        <div class="block variant" data-variant="checks" hidden>
+          <p class="block__lab">条上内容</p>
+          <div class="checks" id="checkList">
+            <button type="button" class="check is-focus" data-slot="agents">
+              <span><span class="check__name">忙闲圆点</span><span class="check__meta">已装 Agent</span></span>
+              <span class="check__state is-on" data-state-for="agents">开</span>
+            </button>
+            <button type="button" class="check" data-slot="speech">
+              <span><span class="check__name">说话预览</span><span class="check__meta">条下转写</span></span>
+              <span class="check__state is-on" data-state-for="speech">开</span>
+            </button>
+            <button type="button" class="check" data-slot="tools">
+              <span><span class="check__name">快捷钮</span><span class="check__meta">悬停第二行</span></span>
+              <span class="check__state is-on" data-state-for="tools">开</span>
+            </button>
+            <button type="button" class="check" data-slot="pill">
+              <span><span class="check__name">用量</span><span class="check__meta">Cu · N次</span></span>
+              <span class="check__state is-on" data-state-for="pill">开</span>
+            </button>
+            <button type="button" class="check" data-slot="win">
+              <span><span class="check__name">右侧按钮</span><span class="check__meta">放大 / 关闭</span></span>
+              <span class="check__state is-on" data-state-for="win">开</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- C preview-first -->
+        <div class="block variant" data-variant="preview" hidden>
+          <p class="block__lab">条上内容</p>
+          <p class="panel-note">在左侧细条上<strong>点一块</strong>选中；再点一次<strong>关/开</strong>。右侧只改细节，没有总开关列表。</p>
+        </div>
+
+        <!-- D presets -->
+        <div class="block variant" data-variant="presets" hidden>
+          <p class="block__lab">条上内容</p>
+          <div class="preset" id="presetRow" role="radiogroup" aria-label="密度预设">
+            <button type="button" data-preset="lean">精简<small>忙闲+说话</small></button>
+            <button type="button" class="is-active" data-preset="usual">常用<small>再加快捷+用量</small></button>
+            <button type="button" data-preset="full">全开<small>含右侧钮</small></button>
+          </div>
+          <div class="preset-fine chips" id="presetFine" aria-label="微调">
+            <button type="button" class="chip is-on" data-slot="agents"><i class="chip__mark"></i>忙闲</button>
+            <button type="button" class="chip is-on" data-slot="speech"><i class="chip__mark"></i>说话</button>
+            <button type="button" class="chip is-on" data-slot="tools"><i class="chip__mark"></i>快捷</button>
+            <button type="button" class="chip is-on" data-slot="pill"><i class="chip__mark"></i>用量</button>
+            <button type="button" class="chip is-on" data-slot="win"><i class="chip__mark"></i>右侧</button>
+          </div>
+        </div>
+
+        <div class="block">
+          <p class="block__lab">细节 · <span id="detailLab">忙闲</span></p>
+          <div class="detail" id="detailBox">
+            <div data-detail="agents">
+              <div class="pill-row" data-show-in="checks,preview">
+                <span class="pill-row__lbl">显示忙闲</span>
+                <button type="button" class="toggle-switch is-on" role="switch" data-flag="agents" aria-checked="true"></button>
+              </div>
+              <p class="detail__note">只读名册，额度去配置。</p>
+              <div class="roster">
+                <span><img src="../icons/app-target/codex.svg" alt="">Codex</span>
+                <span><img src="../icons/app-target/claude.svg" alt="">Claude</span>
+                <span><img src="../icons/app-target/cursor.svg" alt="">Cursor</span>
+              </div>
+            </div>
+            <div data-detail="speech" hidden>
+              <div class="pill-row" data-show-in="checks,preview">
+                <span class="pill-row__lbl">显示说话预览</span>
+                <button type="button" class="toggle-switch is-on" role="switch" data-flag="speech" aria-checked="true"></button>
+              </div>
+              <div class="pill-row">
+                <span class="pill-row__lbl">麦标</span>
+                <button type="button" class="toggle-switch is-on" role="switch" data-flag="voiceChip" aria-checked="true"></button>
+              </div>
+              <p class="detail__title">何时出现</p>
+              <div class="mini-seg">
+                <button type="button" class="is-active" data-text-when="listening">说话时</button>
+                <button type="button" data-text-when="hasText">有字才出</button>
+              </div>
+            </div>
+            <div data-detail="tools" hidden>
+              <div class="pill-row" data-show-in="checks,preview">
+                <span class="pill-row__lbl">显示快捷</span>
+                <button type="button" class="toggle-switch is-on" role="switch" data-flag="tools" aria-checked="true"></button>
+              </div>
+              <p class="detail__note">全不选 = 关掉这一块。</p>
+              <div class="tool-grid" id="toolGrid">
+                <button type="button" class="tool-chip is-active" data-tool-id="pushToTalk">口令</button>
+                <button type="button" class="tool-chip is-active" data-tool-id="stopOrSend">发送</button>
+                <button type="button" class="tool-chip is-active" data-tool-id="continue">继续</button>
+                <button type="button" class="tool-chip is-active" data-tool-id="newThread">新建</button>
+                <button type="button" class="tool-chip is-active" data-tool-id="cancelListen">取消</button>
+              </div>
+            </div>
+            <div data-detail="pill" hidden>
+              <div class="pill-row" data-show-in="checks,preview">
+                <span class="pill-row__lbl">显示用量</span>
+                <button type="button" class="toggle-switch is-on" role="switch" data-flag="pill" aria-checked="true"></button>
+              </div>
+              <div class="pill-row">
+                <span class="pill-row__lbl">没数据时先藏</span>
+                <button type="button" class="toggle-switch" role="switch" data-flag="pillHideEmpty" aria-checked="false"></button>
+              </div>
+              <button type="button" class="goto">用量来源 →</button>
+            </div>
+            <div data-detail="win" hidden>
+              <div class="pill-row" data-show-in="checks,preview">
+                <span class="pill-row__lbl">显示右侧按钮</span>
+                <button type="button" class="toggle-switch is-on" role="switch" data-flag="win" aria-checked="true"></button>
+              </div>
+              <div class="pill-row">
+                <span class="pill-row__lbl">放大到完整键盘</span>
+                <button type="button" class="toggle-switch is-on" role="switch" data-flag="expand" aria-checked="true"></button>
+              </div>
+              <div class="pill-row">
+                <span class="pill-row__lbl">关掉浮窗</span>
+                <button type="button" class="toggle-switch is-on" role="switch" data-flag="close" aria-checked="true"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ALL = ['pushToTalk', 'stopOrSend', 'continue', 'newThread', 'cancelListen'];
+  var LABELS = { agents: '忙闲', speech: '说话', tools: '快捷', pill: '用量', win: '右侧' };
+  var META = {
+    chips: {
+      title: 'A · 槽位 chip',
+      blurb: '亮着 = 显示；点一下选中并展开细节。开关与选中合成一个手势。',
+      hint: '点 chip：亮=开，再点选中'
+    },
+    checks: {
+      title: 'B · 清单无开关',
+      blurb: '五行只负责选中；显隐放在细节里「显示这块」。主列表更干净。',
+      hint: '点行选中 · 细节里开关'
+    },
+    preview: {
+      title: 'C · 点预览',
+      blurb: '左侧细条分区可点：点选中，再点一次关/开。右侧只留细节。',
+      hint: '点左侧分区：选中 / 再点关开'
+    },
+    presets: {
+      title: 'D · 预设 + 微调',
+      blurb: '精简 / 常用 / 全开三段，下面再用 chip 微调。适合怕选项多的人。',
+      hint: '先选密度，再微调槽位'
+    }
+  };
+  var PRESETS = {
+    lean: { agents: true, speech: true, tools: false, pill: false, win: false },
+    usual: { agents: true, speech: true, tools: true, pill: true, win: false },
+    full: { agents: true, speech: true, tools: true, pill: true, win: true }
+  };
+  var state = {
+    alt: 'chips',
+    focus: 'agents',
+    agents: true,
+    speech: true,
+    tools: true,
+    pill: true,
+    win: true,
+    voiceChip: true,
+    pillHideEmpty: false,
+    expand: true,
+    close: true,
+    textWhen: 'listening',
+    toolsAll: true,
+    toolIds: [],
+    preset: 'usual'
+  };
+  var lastZoneClick = { z: '', t: 0 };
+
+  function toolOn(id) {
+    return state.toolsAll || state.toolIds.indexOf(id) >= 0;
+  }
+
+  function slotOn(z) {
+    if (z === 'tools') return state.tools && (state.toolsAll || state.toolIds.length);
+    if (z === 'win') return state.win && (state.expand || state.close);
+    return !!state[z];
+  }
+
+  function matchPreset() {
+    var keys = ['agents', 'speech', 'tools', 'pill', 'win'];
+    for (var name in PRESETS) {
+      var p = PRESETS[name];
+      var ok = true;
+      for (var i = 0; i < keys.length; i++) {
+        if (!!p[keys[i]] !== !!state[keys[i]]) { ok = false; break; }
+      }
+      if (ok) return name;
+    }
+    return null;
+  }
+
+  function setFocus(z) {
+    state.focus = z;
+    paint();
+  }
+
+  function toggleSlot(z) {
+    state[z] = !state[z];
+    if (z === 'win') {
+      if (state.win) {
+        if (!state.expand && !state.close) { state.expand = true; state.close = true; }
+      } else {
+        state.expand = false;
+        state.close = false;
+      }
+    }
+    if (z === 'tools' && state.tools && !state.toolsAll && !state.toolIds.length) {
+      state.toolsAll = true;
+    }
+    state.focus = z;
+    state.preset = matchPreset() || state.preset;
+    paint();
+  }
+
+  function paint() {
+    document.getElementById('face').classList.toggle('preview-first', state.alt === 'preview');
+    document.getElementById('altTitle').textContent = META[state.alt].title;
+    document.getElementById('altBlurb').textContent = META[state.alt].blurb;
+    document.getElementById('hintTxt').textContent = META[state.alt].hint;
+    document.getElementById('focusLbl').textContent = LABELS[state.focus] || state.focus;
+    document.getElementById('detailLab').textContent = LABELS[state.focus] || state.focus;
+
+    document.querySelectorAll('#altNav [data-alt]').forEach(function (b) {
+      var on = b.getAttribute('data-alt') === state.alt;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-variant]').forEach(function (el) {
+      el.hidden = el.getAttribute('data-variant') !== state.alt;
+    });
+
+    document.querySelectorAll('[data-zone]').forEach(function (el) {
+      var z = el.getAttribute('data-zone');
+      el.classList.toggle('is-focus', z === state.focus);
+      el.classList.toggle('is-off', !slotOn(z));
+      if (z === 'agents') document.getElementById('busyChips').hidden = !state.agents;
+      if (z === 'speech') el.hidden = !state.speech;
+      if (z === 'tools') el.hidden = !state.tools;
+      if (z === 'pill') el.hidden = !state.pill;
+    });
+    document.getElementById('micChip').hidden = !state.voiceChip;
+    document.getElementById('btnExpand').hidden = !(state.win && state.expand);
+    document.getElementById('btnClose').hidden = !(state.win && state.close);
+    document.querySelector('[data-zone="win"]').classList.toggle('is-off', !slotOn('win'));
+
+    document.querySelectorAll('#toolsRow [data-tool]').forEach(function (el) {
+      var on = toolOn(el.getAttribute('data-tool'));
+      el.classList.toggle('is-off', !on);
+      el.hidden = !on;
+    });
+    document.querySelectorAll('#toolGrid [data-tool-id]').forEach(function (btn) {
+      btn.classList.toggle('is-active', toolOn(btn.getAttribute('data-tool-id')));
+    });
+
+    document.querySelectorAll('[data-detail]').forEach(function (panel) {
+      panel.hidden = panel.getAttribute('data-detail') !== state.focus;
+    });
+    document.querySelectorAll('[data-show-in]').forEach(function (row) {
+      var ok = row.getAttribute('data-show-in').split(',').indexOf(state.alt) >= 0;
+      row.hidden = !ok;
+    });
+
+    document.querySelectorAll('#chipRow [data-slot], #presetFine [data-slot]').forEach(function (chip) {
+      var z = chip.getAttribute('data-slot');
+      chip.classList.toggle('is-on', slotOn(z));
+      chip.classList.toggle('is-focus', z === state.focus);
+    });
+    document.querySelectorAll('#checkList [data-slot]').forEach(function (row) {
+      var z = row.getAttribute('data-slot');
+      row.classList.toggle('is-focus', z === state.focus);
+    });
+    document.querySelectorAll('[data-state-for]').forEach(function (el) {
+      var on = slotOn(el.getAttribute('data-state-for'));
+      el.textContent = on ? '开' : '关';
+      el.classList.toggle('is-on', on);
+    });
+
+    var matched = matchPreset();
+    document.querySelectorAll('#presetRow [data-preset]').forEach(function (b) {
+      b.classList.toggle('is-active', b.getAttribute('data-preset') === (matched || state.preset));
+    });
+
+    document.querySelectorAll('[data-flag]').forEach(function (sw) {
+      var key = sw.getAttribute('data-flag');
+      var on = !!state[key];
+      if (key === 'agents' || key === 'speech' || key === 'tools' || key === 'pill' || key === 'win') on = slotOn(key);
+      sw.classList.toggle('is-on', on);
+      sw.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-text-when]').forEach(function (b) {
+      b.classList.toggle('is-active', b.getAttribute('data-text-when') === state.textWhen);
+    });
+
+    var stage = document.getElementById('miniStage');
+    var rail = { agents: 'agents', speech: 'speech', tools: 'tools', pill: 'display', win: 'display' };
+    stage.className = 'soft-pad-agent-mini-bar-stage is-mini-rail-' + (rail[state.focus] || 'agents');
+  }
+
+  document.querySelectorAll('#altNav [data-alt]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.alt = b.getAttribute('data-alt');
+      paint();
+    });
+  });
+
+  function onSlotActivate(z, mode) {
+    if (mode === 'toggle') toggleSlot(z);
+    else setFocus(z);
+  }
+
+  document.querySelectorAll('#chipRow [data-slot], #presetFine [data-slot]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var z = chip.getAttribute('data-slot');
+      if (chip.classList.contains('is-focus') && chip.classList.contains('is-on')) toggleSlot(z);
+      else if (!chip.classList.contains('is-on')) toggleSlot(z);
+      else setFocus(z);
+      if (state.alt === 'presets') state.preset = matchPreset() || 'usual';
+    });
+  });
+
+  document.querySelectorAll('#checkList [data-slot]').forEach(function (row) {
+    row.addEventListener('click', function () {
+      setFocus(row.getAttribute('data-slot'));
+    });
+  });
+
+  document.querySelectorAll('#presetRow [data-preset]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var name = b.getAttribute('data-preset');
+      var p = PRESETS[name];
+      state.preset = name;
+      Object.keys(p).forEach(function (k) { state[k] = p[k]; });
+      if (state.win) { state.expand = true; state.close = true; }
+      else { state.expand = false; state.close = false; }
+      if (state.tools) state.toolsAll = true;
+      paint();
+    });
+  });
+
+  document.querySelectorAll('[data-zone]').forEach(function (el) {
+    el.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      var z = el.getAttribute('data-zone');
+      var now = Date.now();
+      if (state.alt === 'preview') {
+        if (state.focus === z && now - lastZoneClick.t < 500 && lastZoneClick.z === z) {
+          toggleSlot(z);
+        } else {
+          setFocus(z);
+        }
+        lastZoneClick = { z: z, t: now };
+      } else {
+        setFocus(z);
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-flag]').forEach(function (sw) {
+    sw.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      var key = sw.getAttribute('data-flag');
+      if (key === 'agents' || key === 'speech' || key === 'tools' || key === 'pill' || key === 'win') {
+        toggleSlot(key);
+        return;
+      }
+      if (key === 'expand' || key === 'close') {
+        state[key] = !state[key];
+        state.win = !!(state.expand || state.close);
+        paint();
+        return;
+      }
+      state[key] = !state[key];
+      paint();
+    });
+  });
+
+  document.querySelectorAll('[data-text-when]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.textWhen = b.getAttribute('data-text-when');
+      setFocus('speech');
+    });
+  });
+  document.querySelectorAll('#toolGrid [data-tool-id]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var id = btn.getAttribute('data-tool-id');
+      var cur = state.toolsAll ? ALL.slice() : state.toolIds.slice();
+      var i = cur.indexOf(id);
+      if (i >= 0) cur.splice(i, 1); else cur.push(id);
+      cur = ALL.filter(function (x) { return cur.indexOf(x) >= 0; });
+      state.toolsAll = cur.length === ALL.length;
+      state.toolIds = state.toolsAll ? [] : cur;
+      state.tools = cur.length > 0;
+      setFocus('tools');
+    });
+  });
+
+  paint();
+})();
+</script>
+</body>
+</html>

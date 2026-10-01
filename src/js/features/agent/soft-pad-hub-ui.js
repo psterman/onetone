@@ -3289,7 +3289,6 @@
 
   function softPadShowModeLabelFallback(mode) {
     if (mode === 'front') return t('softPadShowModeFront', '保持在最前');
-    if (mode === 'mini') return t('softPadShowModeMini', '显示为迷你条');
     if (mode === 'hidden') return t('softPadShowModeHidden', '不显示浮窗');
     return t('softPadShowModeFollow', '跟随应用显示');
   }
@@ -4191,11 +4190,9 @@
       if (hint) {
         hint.textContent = mode === 'front'
           ? t('softPadShowModeFrontHint', '浮窗保持可见；按键动作仍发给对应应用，不会接管其它窗口。')
-          : mode === 'mini'
-            ? t('softPadShowModeMiniHint', '精简为状态灯条，适合少占屏幕。')
-            : mode === 'hidden'
-              ? t('softPadShowModeHiddenHint', '不显示悬浮键盘；你改过的键位配置会保留。')
-              : t('softPadShowModeFollowHint', '目标应用在前台时显示悬浮键盘。');
+          : mode === 'hidden'
+            ? t('softPadShowModeHiddenHint', '不显示悬浮键盘；你改过的键位配置会保留。')
+            : t('softPadShowModeFollowHint', '目标应用在前台时显示悬浮键盘。');
       }
       var scene = (previewPaint || body).querySelector('[data-show-scene]');
       if (scene) scene.setAttribute('data-show-scene', mode);

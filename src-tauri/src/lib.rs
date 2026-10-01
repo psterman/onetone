@@ -71,6 +71,7 @@ mod press_gesture;
 mod resource_monitor;
 mod runtime_event;
 mod scene_config;
+pub mod scenario_present;
 mod send_guard;
 mod soft_pad_purpose;
 mod agent_lane;
@@ -1223,6 +1224,10 @@ pub fn run() {
             ipc::cmd_action_history_stats,
             ipc::cmd_action_history_remap_mappings,
             ipc::cmd_action_history_forget_mappings,
+            ipc::cmd_context_presence_report,
+            ipc::cmd_context_presence_get,
+            ipc::cmd_context_presence_clear,
+            ipc::cmd_context_snapshot_get,
             ipc::cmd_action_history_analyze_summary,
             ipc::cmd_action_history_analyze_optimization,
             ipc::cmd_action_history_analyze_chat,

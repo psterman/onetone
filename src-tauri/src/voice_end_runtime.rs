@@ -2393,6 +2393,8 @@ mod tests {
             double_click_ms: 400,
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: Some(VoiceOverride {
@@ -2413,6 +2415,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             }];
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());
     }
@@ -2471,6 +2474,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             }];
         assert_eq!(
             resolve_voice_input_target_key(&cfg).as_deref(),

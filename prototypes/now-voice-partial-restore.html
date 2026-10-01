@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Now · 语音轻量还原 · 原型对比</title>
+<style>
+:root{
+  --pri:#0ea5e9;--pri-d:#0284c7;--pri-sf:#e0f2fe;--pri-bd:#bae6fd;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;--ink5:#e2e8f0;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#eef2f6;
+  --ok:#10b981;--ok-sf:#ecfdf5;--ok-bd:#a7f3d0;
+  --wa:#f59e0b;--wa-sf:#fffbeb;--wa-bd:#fde68a;
+  --rk:#ef4444;--rk-sf:#fef2f2;
+  --sh:0 1px 2px rgba(15,23,42,.05);
+  --sh2:0 8px 28px rgba(15,23,42,.08);
+  --sh3:0 16px 48px rgba(15,23,42,.12);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.55 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+.top{position:sticky;top:0;z-index:40;background:rgba(238,242,246,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);padding:14px 24px 12px}
+.top-in{max-width:1280px;margin:0 auto}
+.top h1{margin:0 0 4px;font-size:18px;letter-spacing:-.3px}
+.top p{margin:0 0 12px;font-size:13px;color:var(--ink2);max-width:72ch;line-height:1.55}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{border:1px solid var(--ink5);background:#fff;border-radius:999px;padding:7px 14px;
+  font-size:12.5px;font-weight:650;color:var(--ink2)}
+.tab:hover{background:var(--line2)}
+.tab.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.tab .tag{margin-left:6px;font-size:10.5px;font-weight:700;opacity:.72}
+.page{max-width:1280px;margin:0 auto;padding:22px 24px 64px}
+.view{display:none}.view.on{display:block}
+.note{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;
+  margin:0 0 16px;font-size:13px;color:var(--ink2);line-height:1.65;box-shadow:var(--sh)}
+.note b{color:var(--ink)}
+.note.ok{background:var(--ok-sf);border-color:var(--ok-bd)}
+.note.wa{background:var(--wa-sf);border-color:var(--wa-bd)}
+.note.rk{background:var(--rk-sf);border-color:#fecaca}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:980px){.grid2{grid-template-columns:1fr}}
+
+/* App chrome */
+.win{background:#fff;border:1px solid var(--ink5);border-radius:16px;overflow:hidden;box-shadow:var(--sh3)}
+.tbar{display:flex;align-items:center;gap:10px;padding:0 16px;height:48px;border-bottom:1px solid var(--line);background:#fcfdfe}
+.logo{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#0c4a6e,#0ea5e9);
+  display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800}
+.ttl{font-size:13.5px;font-weight:750}
+.nav{display:flex;gap:2px;margin-left:8px}
+.nv{padding:5px 10px;border-radius:7px;font-size:12px;color:var(--ink3);border:0;background:none;font-weight:550}
+.nv.on{background:var(--line2);color:var(--ink);font-weight:700}
+.body{padding:16px 18px 0;min-height:520px;position:relative}
+
+/* ===== Bug: workbench leak ===== */
+.leak-stage{
+  min-height:480px;border-radius:12px;position:relative;overflow:hidden;
+  background:
+    linear-gradient(180deg,rgba(224,242,254,.55),rgba(241,245,249,.9)),
+    repeating-linear-gradient(0deg,transparent,transparent 23px,rgba(148,163,184,.08) 24px),
+    repeating-linear-gradient(90deg,transparent,transparent 23px,rgba(148,163,184,.08) 24px),
+    #e8f4fc;
+}
+.leak-habit{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 4px 14px;opacity:.55}
+.leak-habit h2{margin:0;font-size:15px}
+.leak-habit p{margin:4px 0 0;font-size:12px;color:var(--ink3);max-width:42ch}
+.leak-habit a{font-size:12px;color:var(--pri-d);font-weight:650;text-decoration:none}
+.mic-card{
+  position:absolute;left:50%;top:28%;transform:translateX(-50%);
+  width:min(520px,86%);background:#fff;border-radius:18px;padding:28px 24px;
+  box-shadow:0 10px 40px rgba(15,23,42,.10);border:1px solid rgba(226,232,240,.9);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+.mic-wave{width:100%;height:36px;display:flex;align-items:center;justify-content:center;gap:0;opacity:.45}
+.mic-wave span{display:block;width:100%;height:1px;background:linear-gradient(90deg,transparent,#94a3b8,transparent)}
+.mic-btn{
+  width:72px;height:72px;border-radius:50%;border:0;background:#0284c7;color:#fff;
+  display:grid;place-items:center;font-size:28px;box-shadow:0 8px 24px rgba(2,132,199,.35);
+  margin:-28px 0;position:relative;z-index:1;
+}
+.mic-card .hint{font-size:12px;color:var(--ink3)}
+.float-bar{
+  position:absolute;right:18px;bottom:18px;display:flex;gap:2px;align-items:center;
+  background:rgba(248,250,252,.95);border:1px solid var(--ink5);border-radius:12px;
+  padding:6px 8px;box-shadow:var(--sh2);
+}
+.float-bar button{width:34px;height:34px;border:0;background:transparent;border-radius:8px;
+  color:var(--ink2);font-size:14px;position:relative}
+.float-bar button:hover{background:var(--line2)}
+.float-bar .dot::after{content:"";position:absolute;top:6px;right:7px;width:7px;height:7px;
+  border-radius:50%;background:#ef4444;border:1.5px solid #fff}
+
+/* ===== Now cockpit (shared) ===== */
+.now-shell{display:flex;flex-direction:column;min-height:500px}
+.cockpit{
+  background:linear-gradient(160deg,#0c4a6e 0%,#0369a1 100%);
+  color:#fff;border-radius:14px;padding:22px 24px 18px;min-height:168px;
+}
+.cockpit .sk{margin:0 0 8px;font-size:11px;letter-spacing:.6px;opacity:.7;font-weight:650}
+.cockpit h1{margin:0 0 6px;font-size:30px;letter-spacing:-.6px;font-weight:800;line-height:1.15}
+.cockpit .sub{margin:0 0 16px;font-size:13px;opacity:.82}
+.helps{list-style:none;margin:0 0 16px;padding:0}
+.helps li{font-size:14.5px;padding:5px 0 5px 24px;position:relative}
+.helps li::before{content:"✓";position:absolute;left:0;top:5px;width:15px;height:15px;border-radius:50%;
+  background:rgba(255,255,255,.2);font-size:10px;display:grid;place-items:center;font-weight:700}
+.cfoot{display:flex;align-items:center;gap:10px}
+.cbtn{border:1px solid rgba(255,255,255,.38);background:rgba(255,255,255,.14);color:#fff;
+  border-radius:8px;padding:8px 14px;font-size:12.5px;font-weight:650}
+.mgmt{margin-left:auto;background:none;border:0;color:rgba(255,255,255,.75);font-size:12px;font-weight:550}
+
+.today{margin-top:14px;background:#fff;border:1px solid var(--ink5);border-radius:12px;padding:14px 16px;box-shadow:var(--sh)}
+.today h3{margin:0 0 10px;font-size:13px;font-weight:750}
+.trow{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--line2);font-size:12.5px}
+.trow:first-of-type{border-top:0}
+.trow .tm{color:var(--ink3);width:42px;flex:none;font-variant-numeric:tabular-nums}
+.trow .tx{flex:1;color:var(--ink2)}
+.trow .ch{font-size:10.5px;color:var(--pri-d);background:var(--pri-sf);padding:2px 7px;border-radius:99px;font-weight:650}
+
+.scenes{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.sc{border:1px solid var(--ink5);background:#fff;border-radius:10px;padding:8px 12px;
+  font-size:12.5px;font-weight:650;color:var(--ink2)}
+.sc.on{border-color:var(--pri);background:var(--pri-sf);color:var(--pri-d)}
+
+.dock{margin-top:auto;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+  gap:8px;padding:14px 0 16px;border-top:1px solid var(--line2);margin-top:16px}
+.dock-v{justify-self:start;border:1px solid var(--ink5);background:#fff;border-radius:999px;
+  padding:8px 14px;font-size:12.5px;font-weight:650;color:var(--ink2)}
+.dock-v:hover{border-color:#7dd3fc;background:var(--pri-sf)}
+.dock-v.on{border-color:#0284c7;background:#0284c7;color:#fff;box-shadow:0 6px 18px rgba(2,132,199,.28)}
+.dock-c{font-size:12.5px;font-weight:800;letter-spacing:-.02em;color:var(--ink3);text-align:center}
+.dock-k{justify-self:end;font-size:11.5px;color:var(--ink3);background:var(--line2);
+  border-radius:6px;padding:4px 8px}
+
+/* Voice strip — proposed */
+.vstrip{
+  display:none;margin-top:12px;background:#fff;border:1px solid var(--pri-bd);
+  border-radius:12px;padding:12px 14px;box-shadow:0 8px 24px rgba(2,132,199,.08);
+  animation:in .22s ease;
+}
+.vstrip.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.vstrip-hd{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.pulse{
+  width:34px;height:34px;border-radius:50%;background:#0284c7;color:#fff;
+  display:grid;place-items:center;font-size:15px;position:relative;flex:none;
+}
+.pulse::after{
+  content:"";position:absolute;inset:-4px;border-radius:50%;
+  border:2px solid rgba(2,132,199,.35);animation:ping 1.4s ease infinite;
+}
+@keyframes ping{0%{transform:scale(.9);opacity:.8}70%{transform:scale(1.25);opacity:0}100%{opacity:0}}
+.vstrip-hd .st{font-size:12.5px;font-weight:750}
+.vstrip-hd .st s{display:block;text-decoration:none;font-size:11px;color:var(--ink3);font-weight:500;margin-top:1px}
+.vstrip-hd .acts{margin-left:auto;display:flex;gap:6px}
+.vstrip-hd .acts button{border:1px solid var(--ink5);background:#fff;border-radius:7px;
+  padding:5px 10px;font-size:11.5px;font-weight:650;color:var(--ink2)}
+.vstrip-hd .acts .stop{border-color:#fecaca;color:#b91c1c;background:var(--rk-sf)}
+.live{
+  font-size:14.5px;line-height:1.55;color:var(--ink);min-height:2.8em;
+  background:linear-gradient(180deg,#f8fbff,#fff);border:1px dashed var(--pri-bd);
+  border-radius:10px;padding:10px 12px;
+}
+.live .caret{display:inline-block;width:2px;height:1em;background:var(--pri-d);
+  margin-left:2px;vertical-align:-2px;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.bars{display:flex;gap:3px;align-items:flex-end;height:16px;margin-top:8px}
+.bars i{display:block;width:3px;border-radius:2px;background:#38bdf8;animation:bar .7s ease-in-out infinite alternate}
+.bars i:nth-child(1){height:4px;animation-delay:0s}
+.bars i:nth-child(2){height:10px;animation-delay:.1s}
+.bars i:nth-child(3){height:7px;animation-delay:.2s}
+.bars i:nth-child(4){height:14px;animation-delay:.05s}
+.bars i:nth-child(5){height:6px;animation-delay:.15s}
+.bars i:nth-child(6){height:11px;animation-delay:.25s}
+.bars i:nth-child(7){height:5px;animation-delay:.08s}
+@keyframes bar{to{transform:scaleY(1.55)}}
+
+.caption{margin-top:10px;font-size:11.5px;color:var(--ink3);text-align:center}
+.compare-label{font-size:12px;font-weight:750;color:var(--ink2);margin:0 0 8px;display:flex;align-items:center;gap:8px}
+.compare-label span{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:99px}
+.bad{background:var(--rk-sf);color:#b91c1c}
+.good{background:var(--ok-sf);color:#047857}
+.mid{background:var(--wa-sf);color:#b45309}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="top-in">
+      <h1>语音轻量还原 · 原型对比</h1>
+      <p>不整页还原旧 Workbench。修层泄漏 + 在 Now 驾驶舱内接回「听写反馈」。点下方标签切换三种状态。</p>
+      <div class="tabs" role="tablist">
+        <button class="tab on" data-view="bug">A · 刷新泄漏<span class="tag">现状问题</span></button>
+        <button class="tab" data-view="now">B · 当前驾驶舱<span class="tag">语音断线</span></button>
+        <button class="tab" data-view="fix">C · 建议方案<span class="tag">轻量听写</span></button>
+        <button class="tab" data-view="side">并排对照</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <!-- A -->
+    <div class="view on" id="v-bug">
+      <div class="note rk">
+        <b>问题复现：</b>刷新首页时，旧 Voice Workbench 层（淡蓝网格 + 悬浮麦卡）露出来，盖住或抢在 Now 驾驶舱之前。
+        这不是壁纸资源，是 <code>#wbDashboardStack</code> 未真正隐藏 / 启动竞态。
+      </div>
+      <div class="win">
+        <div class="tbar">
+          <div class="logo">O</div><div class="ttl">OneTone</div>
+          <div class="nav"><button class="nv on">首页</button><button class="nv">习惯</button><button class="nv">设置</button></div>
+        </div>
+        <div class="body">
+          <div class="leak-stage">
+            <div class="leak-habit">
+              <div>
+                <h2>当前习惯</h2>
+                <p>切换习惯时，各通道配置一起跟着变；开关请在托盘菜单调整。</p>
+              </div>
+              <a href="#">管理</a>
+            </div>
+            <div class="mic-card">
+              <div class="mic-wave"><span></span></div>
+              <button class="mic-btn" aria-label="麦克风">🎤</button>
+              <div class="mic-wave"><span></span></div>
+              <div class="hint">旧层 · 听写卡悬空，驾驶舱不见了</div>
+            </div>
+            <div class="float-bar" aria-label="浮动工具条">
+              <button title="钉住">📌</button>
+              <button class="dot" title="麦克风">🎤</button>
+              <button title="发送">✈</button>
+              <button title="对话">💬</button>
+              <button title="AI">Ai</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">对应截图：大片空蓝底 + 中间麦卡 + 右下浮动条 = 旧 Workbench，不是 Now。</p>
+    </div>
+
+    <!-- B -->
+    <div class="view" id="v-now">
+      <div class="note wa">
+        <b>当前设计方向（对）：</b>首页是习惯驾驶舱。但 dock「说点什么」误点进设置（点了隐藏的 orb），听写反馈也不在 Now 上出现 → 体感像「语音能力没了」。
+      </div>
+      <div class="win">
+        <div class="tbar">
+          <div class="logo">O</div><div class="ttl">OneTone</div>
+          <div class="nav"><button class="nv on">首页</button><button class="nv">习惯</button><button class="nv">设置</button></div>
+        </div>
+        <div class="body">
+          <div class="now-shell">
+            <section class="cockpit">
+              <p class="sk">当前情景</p>
+              <h1>编程专注</h1>
+              <p class="sub">保持专注 · 少打断 · 保护工作窗口</p>
+              <ul class="helps">
+                <li>已静音非紧急通知</li>
+                <li>Agent 会话保持在前</li>
+                <li>语音短指令可唤醒</li>
+              </ul>
+              <div class="cfoot">
+                <button class="cbtn">调整帮助方式</button>
+                <button class="mgmt">管理</button>
+              </div>
+            </section>
+            <div class="today">
+              <h3>今天帮了你 · 3 次</h3>
+              <div class="trow"><span class="tm">16:20</span><span class="tx">摄像头 · 创作中 · 回到当前 Agent</span><span class="ch">摄像头</span></div>
+              <div class="trow"><span class="tm">15:02</span><span class="tx">语音 · 暂停通知</span><span class="ch">语音</span></div>
+              <div class="trow"><span class="tm">11:40</span><span class="tx">SoftPad · 切到编程专注</span><span class="ch">SoftPad</span></div>
+            </div>
+            <div class="scenes">
+              <button class="sc on">💻 编程专注</button>
+              <button class="sc">✍ 写作</button>
+              <button class="sc">🎧 会议</button>
+              <button class="sc">＋</button>
+            </div>
+            <footer class="dock">
+              <button class="dock-v" id="dockBroken" title="实际会打开设置">🎤 说点什么</button>
+              <span class="dock-c">● OneTone</span>
+              <kbd class="dock-k">Ctrl+Shift+V</kbd>
+            </footer>
+          </div>
+        </div>
+      </div>
+      <p class="caption">点「说点什么」→ 原型里弹提示：当前实现会误开设置，而不是开始听写。</p>
+    </div>
+
+    <!-- C -->
+    <div class="view" id="v-fix">
+      <div class="note ok">
+        <b>建议：部分还原。</b>保留驾驶舱；听写时在「今天帮了你」上方弹出一条紧凑听写条（状态 + 实时字 + 停止）。
+        不恢复大空蓝底、不恢复悬浮大麦卡。
+      </div>
+      <div class="win">
+        <div class="tbar">
+          <div class="logo">O</div><div class="ttl">OneTone</div>
+          <div class="nav"><button class="nv on">首页</button><button class="nv">习惯</button><button class="nv">设置</button></div>
+        </div>
+        <div class="body">
+          <div class="now-shell">
+            <section class="cockpit">
+              <p class="sk">当前情景</p>
+              <h1>编程专注</h1>
+              <p class="sub">保持专注 · 少打断 · 保护工作窗口</p>
+              <ul class="helps">
+                <li>已静音非紧急通知</li>
+                <li>Agent 会话保持在前</li>
+                <li>语音短指令可唤醒</li>
+              </ul>
+              <div class="cfoot">
+                <button class="cbtn">调整帮助方式</button>
+                <button class="mgmt">管理</button>
+              </div>
+            </section>
+
+            <div class="vstrip on" id="vstrip">
+              <div class="vstrip-hd">
+                <div class="pulse">🎤</div>
+                <div class="st">正在听…<s>说完点停止，或按快捷键结束</s></div>
+                <div class="acts">
+                  <button type="button">暂停</button>
+                  <button type="button" class="stop" id="btnStop">停止</button>
+                </div>
+              </div>
+              <div class="live" id="liveText">帮我把当前窗口钉在前面，然后静音通知<span class="caret"></span></div>
+              <div class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+
+            <div class="today">
+              <h3>今天帮了你 · 3 次</h3>
+              <div class="trow"><span class="tm">16:20</span><span class="tx">摄像头 · 创作中 · 回到当前 Agent</span><span class="ch">摄像头</span></div>
+              <div class="trow"><span class="tm">15:02</span><span class="tx">语音 · 暂停通知</span><span class="ch">语音</span></div>
+              <div class="trow"><span class="tm">11:40</span><span class="tx">SoftPad · 切到编程专注</span><span class="ch">SoftPad</span></div>
+            </div>
+            <div class="scenes">
+              <button class="sc on">💻 编程专注</button>
+              <button class="sc">✍ 写作</button>
+              <button class="sc">🎧 会议</button>
+              <button class="sc">＋</button>
+            </div>
+            <footer class="dock">
+              <button class="dock-v on" id="dockListen">🎤 倾听中…</button>
+              <span class="dock-c">● OneTone</span>
+              <kbd class="dock-k">Ctrl+Shift+V</kbd>
+            </footer>
+          </div>
+        </div>
+      </div>
+      <p class="caption">交互：点 dock 开始/停止听写；听写条只在活跃时出现，结束后收起，今天列表可多一条「语音 · …」。</p>
+    </div>
+
+    <!-- Side by side -->
+    <div class="view" id="v-side">
+      <div class="note">左边是刷新泄漏（不该出现）；右边是建议方案（驾驶舱 + 轻量听写）。中间态 B 可切 tab 看。</div>
+      <div class="grid2">
+        <div>
+          <div class="compare-label">A 泄漏 <span class="bad">修掉</span></div>
+          <div class="win">
+            <div class="tbar"><div class="logo">O</div><div class="ttl">OneTone</div></div>
+            <div class="body" style="min-height:420px;padding-bottom:16px">
+              <div class="leak-stage" style="min-height:380px">
+                <div class="mic-card" style="top:34%;padding:20px">
+                  <button class="mic-btn" style="width:56px;height:56px;font-size:22px;margin:0">🎤</button>
+                  <div class="hint">旧麦卡漂在空蓝底上</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="compare-label">C 建议 <span class="good">保留驾驶舱</span></div>
+          <div class="win">
+            <div class="tbar"><div class="logo">O</div><div class="ttl">OneTone</div></div>
+            <div class="body" style="min-height:420px">
+              <div class="now-shell" style="min-height:380px">
+                <section class="cockpit" style="padding:16px 18px;min-height:0">
+                  <p class="sk">当前情景</p>
+                  <h1 style="font-size:22px">编程专注</h1>
+                  <p class="sub" style="margin-bottom:0">驾驶舱仍是主视觉</p>
+                </section>
+                <div class="vstrip on" style="margin-top:10px;padding:10px 12px">
+                  <div class="vstrip-hd" style="margin-bottom:6px">
+                    <div class="pulse" style="width:28px;height:28px;font-size:12px">🎤</div>
+                    <div class="st" style="font-size:12px">正在听…<s>紧凑听写条</s></div>
+                  </div>
+                  <div class="live" style="font-size:13px;min-height:0;padding:8px 10px">钉住窗口，静音通知<span class="caret"></span></div>
+                </div>
+                <footer class="dock" style="margin-top:12px;padding:10px 0">
+                  <button class="dock-v on" style="padding:6px 12px">🎤 倾听中…</button>
+                  <span class="dock-c">●</span>
+                  <kbd class="dock-k">V</kbd>
+                </footer>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var tabs = document.querySelectorAll('.tab');
+  var views = {
+    bug: document.getElementById('v-bug'),
+    now: document.getElementById('v-now'),
+    fix: document.getElementById('v-fix'),
+    side: document.getElementById('v-side')
+  };
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      tabs.forEach(function (x) { x.classList.remove('on'); });
+      t.classList.add('on');
+      Object.keys(views).forEach(function (k) {
+        views[k].classList.toggle('on', k === t.getAttribute('data-view'));
+      });
+    });
+  });
+
+  var broken = document.getElementById('dockBroken');
+  if (broken) {
+    broken.addEventListener('click', function () {
+      alert('现状：点这里会触发隐藏 orb → 打开设置，而不是开始听写。');
+    });
+  }
+
+  var listening = true;
+  var strip = document.getElementById('vstrip');
+  var dock = document.getElementById('dockListen');
+  var live = document.getElementById('liveText');
+  var phrases = [
+    '帮我把当前窗口钉在前面，然后静音通知',
+    '切换到写作情景',
+    '暂停通知半小时'
+  ];
+  var pi = 0;
+
+  function setListen(on) {
+    listening = on;
+    if (strip) strip.classList.toggle('on', on);
+    if (dock) {
+      dock.classList.toggle('on', on);
+      dock.textContent = on ? '🎤 倾听中…' : '🎤 说点什么';
+    }
+  }
+
+  if (dock) {
+    dock.addEventListener('click', function () {
+      setListen(!listening);
+      if (listening && live) {
+        pi = (pi + 1) % phrases.length;
+        live.innerHTML = phrases[pi] + '<span class="caret"></span>';
+      }
+    });
+  }
+  var stop = document.getElementById('btnStop');
+  if (stop) stop.addEventListener('click', function () { setListen(false); });
+})();
+</script>
+</body>
+</html>

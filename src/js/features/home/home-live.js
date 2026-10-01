@@ -1817,6 +1817,10 @@
       if(global.OneToneHomeV9){
         global.OneToneHomeV9.render();
       }
+      if(global.OneToneNowHome&&global.OneToneNowHome.isVisible&&global.OneToneNowHome.isVisible()
+        &&typeof global.OneToneNowHome.syncVoice==='function'){
+        global.OneToneNowHome.syncVoice();
+      }
     }catch(err){
       console.error('renderHomeLiveZone',err);
     }

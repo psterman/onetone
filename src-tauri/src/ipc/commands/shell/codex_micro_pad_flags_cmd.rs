@@ -352,10 +352,6 @@ pub fn cmd_codex_micro_pad_set_mini_chrome(
     }
 
     let mut chrome = chrome;
-    chrome.voice_chip_when = normalize_mini_when(&chrome.voice_chip_when, "listening");
-    if chrome.voice_chip_when == "hasText" {
-        chrome.voice_chip_when = "listening".into();
-    }
     chrome.text_preview_when = normalize_mini_when(&chrome.text_preview_when, "listening");
     if chrome.text_preview_when == "armed" {
         chrome.text_preview_when = "listening".into();
@@ -366,6 +362,12 @@ pub fn cmd_codex_micro_pad_set_mini_chrome(
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
+    // Normalize: always persist explicit bool so empty tool_ids + tools_all=false stays "none".
+    let all = chrome.tools_all_effective();
+    chrome.tools_all = Some(all);
+    if all {
+        chrome.tool_ids.clear();
+    }
 
     let cfg_to_save;
     {

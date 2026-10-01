@@ -2562,6 +2562,12 @@
     id=String(id||'').trim();
     if(!id) return;
     hideChipFlyout(true);
+    var hr=global.OneToneHabitRuntime;
+    if(hr&&hr.switch){
+      // Phase 4: override will stop also flipping activeSceneId (true soft override)
+      hr.switch(id,{source:'manual',mode:'override'});
+      return;
+    }
     var act=global.OneToneSceneActivate;
     var rt=global.OneToneRuntimeHabitControl;
     if(act&&act.applySoftOverride){

@@ -188,7 +188,8 @@
                 <div class="home-center" id="wbCenter">
                   <div class="wb-home-alert" id="wbHomeAlerts" hidden role="status"></div>
                   <div class="now-home" id="nowHomeRoot" hidden aria-hidden="true"></div>
-                  <div class="wb-dashboard-stack" id="wbDashboardStack">
+                  <!-- hidden until Now.hide(): avoids workbench flash before syncNowHomeSurface -->
+                  <div class="wb-dashboard-stack" id="wbDashboardStack" hidden aria-hidden="true">
                       <section class="wb-scope-top" id="wbScopeTop" aria-label="当前习惯">
                         <header class="wb-context-bound-head">
                           <div class="wb-context-bound-head-copy">
@@ -5608,6 +5609,7 @@
   <script src="js/features/camera/camera2-workbench.js"></script>
   <script src="js/features/scene/runtime-habit-control.js"></script>
   <script src="js/features/scene/scene-activate.js"></script>
+  <script src="js/features/scene/habit-runtime.js"></script>
   <script src="js/features/scene/scene-flow-summary.js"></script>
   <script src="js/features/scene/habit-layer-nav.js"></script>
   <script src="js/features/scene/scene-tabs.js"></script>
@@ -5712,6 +5714,7 @@
   <script src="js/features/home/home-action-history-card.js"></script>
   <script src="js/features/now/fixtures.js"></script>
   <script src="js/features/now/now-model.js"></script>
+  <script src="js/features/now/now-today.js"></script>
   <script src="js/features/now/now-home-ui.js"></script>
   <script src="js/features/now/now-home.js"></script>
   <script src="js/features/home/home-workbench.js"></script>

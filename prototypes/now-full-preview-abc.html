@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>OneTone 首页完整方案 · A/B/C</title>
+<style>
+:root{
+  --pri:#0ea5e9;--pri-d:#0284c7;--pri-sf:#e0f2fe;--pri-bd:#bae6fd;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;--ink5:#e2e8f0;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f7f9fb;
+  --ok:#10b981;--ok-sf:#ecfdf5;--ok-bd:#a7f3d0;
+  --wa:#f59e0b;--wa-sf:#fffbeb;--wa-bd:#fde68a;
+  --rk:#ef4444;--rk-sf:#fef2f2;--rk-bd:#fecaca;
+  --sh:0 1px 2px rgba(15,23,42,.05);--sh2:0 1px 3px rgba(15,23,42,.07);
+  --sh3:0 12px 36px rgba(15,23,42,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+code{font-family:Consolas,monospace;font-size:11.5px;background:var(--line2);padding:1px 5px;border-radius:4px;color:#0369a1}
+
+.topbar{position:sticky;top:0;z-index:60;background:rgba(247,249,251,.95);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:0 24px}
+.topbar-in{max-width:1320px;margin:0 auto;height:58px;display:flex;align-items:center;gap:8px}
+.topbar .b{font-weight:800;font-size:14.5px;margin-right:16px}
+.tab{padding:7px 13px;border-radius:8px;font-size:12.5px;color:var(--ink2);border:0;background:none;font-weight:500}
+.tab:hover{background:var(--line2)}.tab.on{background:var(--ink);color:#fff}
+.topbar .sp{margin-left:auto;font-size:11px;color:var(--ink3)}
+.page{max-width:1320px;margin:0 auto;padding:24px 24px 80px}
+.view{display:none}.view.on{display:block}
+h1.ft{font-size:24px;margin:0 0 8px;letter-spacing:-.6px}
+.lead{font-size:14.5px;color:var(--ink2);max-width:960px;margin:0 0 20px;line-height:1.75}
+h2.sec{font-size:15.5px;margin:30px 0 5px}
+.secsub{font-size:12.5px;color:var(--ink2);margin:0 0 14px;max-width:960px;line-height:1.7}
+
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.p-b{background:var(--pri-sf);color:var(--pri-d)}.p-g{background:var(--ok-sf);color:#047857}
+.p-w{background:var(--wa-sf);color:#b45309}.p-r{background:var(--rk-sf);color:#b91c1c}
+.p-n{background:var(--line2);color:var(--ink2)}
+.btn{border:1px solid var(--ink5);background:#fff;border-radius:8px;padding:7px 13px;font-size:12.5px;
+  color:var(--ink2);font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--line2)}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+.sw{width:42px;height:24px;border-radius:99px;background:var(--ink4);border:0;position:relative;transition:.2s;flex:none;padding:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);transition:.2s}
+.sw.on{background:var(--ok)}.sw.on::after{left:21px}
+
+.win{background:#fff;border:1px solid var(--ink5);border-radius:14px;overflow:hidden;box-shadow:var(--sh3)}
+.tbar{display:flex;align-items:center;gap:12px;padding:0 18px;height:54px;border-bottom:1px solid var(--line)}
+.tbar .logo{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0c4a6e,#0ea5e9);
+  display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800;flex:none}
+.tbar .ttl{font-size:15px;font-weight:700}
+.nav{display:flex;gap:2px;margin-left:12px}
+.nv{padding:6px 12px;border-radius:8px;font-size:12.5px;color:var(--ink3);border:0;background:none;font-weight:500}
+.nv.on{background:var(--line2);color:var(--ink);font-weight:600}
+.tbar .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.body{padding:20px 24px;min-height:640px;background:#fcfdfe}
+
+.bh{display:flex;align-items:baseline;gap:10px;margin:26px 0 10px;flex-wrap:wrap}
+.bh:first-child{margin-top:0}
+.bh h3{margin:0;font-size:14px;font-weight:700}
+.bh .s{font-size:11.5px;color:var(--ink3)}
+.bh .more{margin-left:auto;font-size:11.5px;color:var(--pri-d);font-weight:600;cursor:pointer;background:none;border:0}
+.tagA{background:#dbeafe;color:#1d4ed8}
+.tagB{background:#fce7f3;color:#be185d}
+.tagC{background:var(--ok-sf);color:#047857}
+
+/* A · 我看到的你 */
+.see{background:linear-gradient(135deg,#0c4a6e,#0369a1);border-radius:13px;padding:17px 19px;color:#fff}
+.see .hd{font-size:18.5px;font-weight:800;letter-spacing:-.4px;margin-bottom:13px;line-height:1.35}
+.urow2{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;overflow:hidden;margin-bottom:6px}
+.urow2.unk{opacity:.72}
+.uhead{display:flex;align-items:center;gap:11px;padding:10px 13px;cursor:pointer;transition:.15s}
+.uhead:hover{background:rgba(255,255,255,.09)}
+.uhead .ui{font-size:15px;flex:none}
+.uhead .ut{font-size:13.5px;font-weight:600;flex:none}
+.uhead .uv{font-size:11.5px;opacity:.68;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uhead .uq{font-size:10.5px;opacity:.55;flex:none;background:rgba(255,255,255,.12);padding:2px 8px;border-radius:99px;white-space:nowrap}
+.why{padding:0 13px 12px;display:none}
+.urow2.on .why{display:block}
+.why .wl{font-size:10.5px;opacity:.55;margin-bottom:6px}
+.witem{display:flex;align-items:flex-start;gap:9px;font-size:12px;padding:3.5px 0;opacity:.92;line-height:1.5}
+.witem .wd{width:5px;height:5px;border-radius:50%;background:#4ade80;flex:none;margin-top:6px}
+.witem.no .wd{background:#fbbf24}
+.witem .ws{margin-left:auto;font-size:10.5px;opacity:.6;flex:none;white-space:nowrap}
+
+/* 今日 */
+.todaybox{background:#fff;border:1px solid var(--ink5);border-radius:13px;box-shadow:var(--sh2);overflow:hidden}
+.tbh{padding:13px 17px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+.tbh .n1{font-size:28px;font-weight:800;letter-spacing:-1px;color:var(--pri-d);line-height:1}
+.tbh .n1 span{font-size:13px;font-weight:600;letter-spacing:0;margin-left:2px}
+.tbh .lb{font-size:12px;color:var(--ink2);line-height:1.4}
+.tbh .kpis{display:flex;gap:16px;margin-left:auto;flex-wrap:wrap}
+.kpi{text-align:right}
+.kpi b{display:block;font-size:16px;font-weight:700;line-height:1.2}
+.kpi s{text-decoration:none;font-size:10.5px;color:var(--ink3)}
+.ti{display:flex;align-items:flex-start;gap:12px;padding:11px 17px;border-bottom:1px solid var(--line2)}
+.ti:last-child{border-bottom:none}
+.ti .tm{font-size:11.5px;color:var(--ink3);min-width:44px;flex:none;padding-top:2px;font-variant-numeric:tabular-nums}
+.ti .ic{width:26px;height:26px;border-radius:7px;background:var(--line2);display:grid;place-items:center;font-size:13px;flex:none}
+.ti .tx{flex:1;min-width:0}
+.ti .tx b{font-size:12.5px;font-weight:600;display:block;line-height:1.5}
+.ti .ch{font-size:10.5px;color:var(--ink4);flex:none;padding-top:3px;display:flex;align-items:center;gap:3px}
+.ti .ch .dot{width:4px;height:4px;border-radius:50%;background:var(--ink4)}
+.tfoot{padding:10px 17px;background:#fcfdfe;border-top:1px solid var(--line2);font-size:11.5px;color:var(--ink3);line-height:1.6}
+.tempty{padding:24px;text-align:center;font-size:12.5px;color:var(--ink3);line-height:1.7}
+
+/* needs */
+.needbox{background:#fff;border:1px solid var(--ink5);border-radius:13px;box-shadow:var(--sh2);overflow:hidden}
+.nrow{display:flex;align-items:center;gap:13px;padding:13px 17px;border-bottom:1px solid var(--line2)}
+.nrow:last-child{border-bottom:none}
+.nrow.prim{background:linear-gradient(90deg,var(--pri-sf),#fff)}
+.nrow .tx{flex:1;min-width:0}
+.nrow .tx b{font-size:13px;font-weight:600;display:block}
+.nrow .tx s{text-decoration:none;font-size:11.5px;color:var(--ink3);display:block;margin-top:2px}
+
+/* B · 因果链 */
+.chainbox{background:#fff;border:1px solid var(--ink5);border-radius:13px;box-shadow:var(--sh2);overflow:hidden}
+.cstep{display:flex;gap:13px;padding:14px 17px;border-bottom:1px solid var(--line2)}
+.cstep:last-child{border-bottom:none}
+.cstep .cs{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;flex:none;
+  font-size:11.5px;font-weight:800}
+.cstep .ct{flex:1;min-width:0}
+.cstep .cl{font-size:10.5px;font-weight:800;letter-spacing:.5px;margin-bottom:3px}
+.cstep .cv{font-size:13px;font-weight:600;line-height:1.5}
+.cstep .cd{font-size:11.5px;color:var(--ink3);margin-top:2px;line-height:1.5}
+.cstep.fact .cs{background:var(--line2);color:var(--ink2)}.cstep.fact .cl{color:var(--ink3)}
+.cstep.judge .cs{background:var(--pri);color:#fff}.cstep.judge{background:linear-gradient(90deg,var(--pri-sf),#fff)}
+.cstep.judge .cl{color:var(--pri-d)}
+.cstep.act .cs{background:var(--ok);color:#fff}.cstep.act .cl{color:#047857}
+.cstep .ctime{font-size:11px;color:var(--ink3);flex:none;padding-top:2px;font-variant-numeric:tabular-nums}
+
+/* C · 工程状态 */
+.eng{background:#fff;border:1px solid var(--ink5);border-radius:13px;box-shadow:var(--sh2);overflow:hidden}
+.erow{display:flex;align-items:center;gap:13px;padding:12px 17px;border-bottom:1px solid var(--line2)}
+.erow:last-child{border-bottom:none}
+.erow .st{width:8px;height:8px;border-radius:50%;flex:none}
+.erow .st.ok{background:var(--ok)}.erow .st.no{background:var(--rk)}
+.erow .tx{flex:1;min-width:0}
+.erow .tx b{font-size:12.5px;font-weight:600;display:block}
+.erow .tx s{text-decoration:none;font-size:11px;color:var(--ink3);display:block;margin-top:2px;font-family:Consolas,monospace}
+.erow .act{flex:none}
+
+.note{background:var(--pri-sf);border:1px solid var(--pri-bd);border-radius:12px;padding:15px 18px;
+  margin:18px 0;font-size:13px;line-height:1.75;max-width:1100px}
+.note b{color:var(--pri-d)}
+.note.ok{background:var(--ok-sf);border-color:var(--ok-bd)}.note.ok b{color:#047857}
+.note.wa{background:var(--wa-sf);border-color:var(--wa-bd)}.note.wa b{color:#b45309}
+.note.rk{background:var(--rk-sf);border-color:var(--rk-bd)}.note.rk b{color:#b91c1c}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;
+  box-shadow:var(--sh2);font-size:12.5px;margin:12px 0}
+th{background:#f8fafc;text-align:left;padding:10px 13px;font-weight:700;color:var(--ink2);
+  border-bottom:1px solid var(--line);font-size:11.5px}
+td{padding:10px 13px;border-bottom:1px solid var(--line2);vertical-align:top;line-height:1.6}
+tr:last-child td{border-bottom:none}
+.mono{font-family:Consolas,monospace;font-size:11px;color:var(--ink2)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:1000px){.tbh .kpis{margin-left:0}.split{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="b">OneTone 首页 · A/B/C 完整方案</span>
+    <button class="tab on" data-v="0">完整首页</button>
+    <button class="tab" data-v="1">三块拆解</button>
+    <button class="tab" data-v="2">落地清单</button>
+    <span class="sp">沿用 now-home.css 现有视觉语言</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ========== 0 完整首页 ========== -->
+<div class="view on" id="v0">
+  <h1 class="ft">首页完整形态</h1>
+  <p class="lead">
+    这是把 A（我看到的你）、今日流水（已上线）、B（因果链）、C（工程状态）拼起来的完整首页。
+    视觉沿用 <code>now-home.css</code> 现有语言，交互真实可点。
+  </p>
+
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav">
+        <button class="nv on">现在</button>
+        <button class="nv">我的情景</button>
+        <button class="nv">帮助记录</button>
+      </div>
+      <div class="r">
+        <span class="pill p-g"><span style="width:5px;height:5px;border-radius:50%;background:#10b981;display:inline-block"></span>正常</span>
+        <span style="font-size:12px;color:var(--ink3)">22:41</span>
+        <button class="btn">⚙</button>
+      </div>
+    </div>
+    <div class="body">
+
+      <!-- A -->
+      <div class="bh">
+        <h3>我看到的你</h3>
+        <span class="s">点任意一行，看它凭什么这么判断</span>
+        <span class="pill tagA">A · 待建</span>
+      </div>
+      <div class="see">
+        <div class="hd">你在写代码，Codex 正在等你批准。<br>所以它把提示压着，没打扰你。</div>
+
+        <div class="urow2">
+          <div class="uhead" onclick="tw(this)"><span class="ui">💻</span><span class="ut">正在写代码</span>
+            <span class="uv">22 分钟前开始</span><span class="uq">为什么</span></div>
+          <div class="why"><div class="wl">它是这样知道的</div>
+            <div class="witem"><span class="wd"></span>Cursor 在前台<span class="ws">app_identity</span></div>
+            <div class="witem"><span class="wd"></span>这个项目有 3 个文件被改过<span class="ws">TmStatus.dirty</span></div>
+            <div class="witem"><span class="wd"></span>Codex 正在这个项目里跑<span class="ws">AttentionStore</span></div>
+          </div>
+        </div>
+
+        <div class="urow2">
+          <div class="uhead" onclick="tw(this)"><span class="ui">🤖</span><span class="ut">AI 正在等你</span>
+            <span class="uv">1 个请求需要确认 · 等了 2 分钟</span><span class="uq">为什么</span></div>
+          <div class="why"><div class="wl">它是这样知道的</div>
+            <div class="witem"><span class="wd"></span>Codex 要运行一条删除命令<span class="ws">AttentionCause.Permission</span></div>
+            <div class="witem no"><span class="wd"></span>这类操作不可逆，所以必须问<span class="ws">RiskLevel.Dangerous</span></div>
+          </div>
+        </div>
+
+        <div class="urow2">
+          <div class="uhead" onclick="tw(this)"><span class="ui">🖥</span><span class="ut">当前使用</span>
+            <span class="uv">Cursor · 主屏</span><span class="uq">为什么</span></div>
+          <div class="why"><div class="wl">它是这样知道的</div>
+            <div class="witem"><span class="wd"></span>前台窗口是 Cursor<span class="ws">ForegroundEvidence</span></div>
+            <div class="witem"><span class="wd"></span>系统识别为 3 屏布局，当前在主屏<span class="ws">MonitorTopology</span></div>
+          </div>
+        </div>
+
+        <div class="urow2 unk">
+          <div class="uhead" onclick="tw(this)"><span class="ui">👤</span><span class="ut">你在不在</span>
+            <span class="uv">不知道 —— 摄像头还没接入</span><span class="uq">为什么</span></div>
+          <div class="why"><div class="wl">它是这样知道的</div>
+            <div class="witem no"><span class="wd"></span>摄像头感知还在前端，没进仲裁层<span class="ws">camera2-workbench.js</span></div>
+            <div class="witem no"><span class="wd"></span>所以这行<strong>不猜</strong>，直接说不知道<span class="ws">presence = Unknown</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 今日（已上线） -->
+      <div class="bh">
+        <h3>它今天为你做了什么</h3>
+        <span class="s">全部来自真实执行记录</span>
+        <span class="pill p-g">✅ 已上线</span>
+        <button class="more">看全部 →</button>
+      </div>
+      <div class="todaybox">
+        <div class="tbh">
+          <div class="n1">12<span>次</span></div>
+          <div class="lb">主动帮你处理了事情<br><span style="font-size:11px;color:var(--ink3)">今天 00:00 至今</span></div>
+          <div class="kpis">
+            <div class="kpi"><b>5</b><s>减少打断</s></div>
+            <div class="kpi"><b>3</b><s>恢复环境</s></div>
+            <div class="kpi"><b>2</b><s>保护隐私</s></div>
+            <div class="kpi"><b>2</b><s>提醒状态</s></div>
+          </div>
+        </div>
+        <div class="ti"><span class="tm">16:40</span><span class="ic">🤖</span>
+          <div class="tx"><b>按键 · 创作中 · 中断</b></div>
+          <span class="ch"><span class="dot"></span>按键</span></div>
+        <div class="ti"><span class="tm">15:07</span><span class="ic">🔓</span>
+          <div class="tx"><b>摄像头 · 离开电脑 · 恢复</b></div>
+          <span class="ch"><span class="dot"></span>摄像头</span></div>
+        <div class="ti"><span class="tm">14:32</span><span class="ic">🔒</span>
+          <div class="tx"><b>摄像头 · 离开电脑 · 关闭遮罩</b></div>
+          <span class="ch"><span class="dot"></span>摄像头</span></div>
+        <div class="ti"><span class="tm">11:20</span><span class="ic">🎤</span>
+          <div class="tx"><b>语音 · 听写结束</b></div>
+          <span class="ch"><span class="dot"></span>语音</span></div>
+        <div class="tfoot">
+          文字直接来自 Rust 的 <code>entry.summary</code>，前端不翻译。右边小圆点 = 这次是<strong>哪个通道</strong>做的。
+        </div>
+      </div>
+
+      <!-- needsYou -->
+      <div class="bh">
+        <h3>需要你决定</h3>
+        <span class="s">每条都带具体行动</span>
+        <span class="pill p-w">⚠ 投影待建</span>
+      </div>
+      <div class="needbox">
+        <div class="nrow prim">
+          <div class="tx"><b>批准 Codex 删除命令？</b><s>运行 rm · 不可逆 · 已经等你 2 分钟</s></div>
+          <button class="btn p">查看并决定</button>
+        </div>
+        <div class="nrow">
+          <div class="tx"><b>继续别打扰我</b><s>保持当前情景，等我停下再问</s></div>
+          <button class="btn">继续别打扰</button>
+        </div>
+      </div>
+
+      <!-- B -->
+      <div class="bh">
+        <h3>它刚才为什么这么做</h3>
+        <span class="s">一次判断的完整过程</span>
+        <span class="pill tagB">B · 待建</span>
+        <button class="more">更多历史 →</button>
+      </div>
+      <div class="chainbox">
+        <div class="cstep fact"><span class="cs">1</span>
+          <div class="ct"><div class="cl">观察到的事实</div>
+            <div class="cv">摄像头 4 秒没看到你</div>
+            <div class="cd">画面里没有人脸</div></div>
+          <span class="ctime">14:32:04</span></div>
+        <div class="cstep fact"><span class="cs">2</span>
+          <div class="ct"><div class="cl">交叉验证</div>
+            <div class="cv">Cursor 空闲，没有 AI 在跑</div>
+            <div class="cd">两个独立来源都指向「你不在」，不是误判</div></div>
+          <span class="ctime">14:32:05</span></div>
+        <div class="cstep judge"><span class="cs">3</span>
+          <div class="ct"><div class="cl">得出判断</div>
+            <div class="cv">你离开了电脑</div>
+            <div class="cd">持续 4 秒，超过「多久算离开」的 3 秒设定</div></div>
+          <span class="ctime">14:32:07</span></div>
+        <div class="cstep act"><span class="cs">4</span>
+          <div class="ct"><div class="cl">触发的动作</div>
+            <div class="cv">挡住屏幕 · 停掉麦克风</div>
+            <div class="cd">来自「离开电脑」情景，这两条你都开着</div></div>
+          <span class="ctime">14:32:07</span></div>
+        <div class="cstep act"><span class="cs">5</span>
+          <div class="ct"><div class="cl">恢复</div>
+            <div class="cv">15:07 检测到你回来，全部还原</div>
+            <div class="cd">遮罩撤掉、麦克风恢复</div></div>
+          <span class="ctime">15:07:21</span></div>
+      </div>
+
+      <!-- C -->
+      <div class="bh">
+        <h3>它靠什么知道这些</h3>
+        <span class="s">只在这里查，首页不展示</span>
+        <span class="pill tagC">C · 低频</span>
+      </div>
+      <div class="eng">
+        <div class="erow"><span class="st ok"></span>
+          <div class="tx"><b>摄像头 · 正常</b><s>知道：在不在 / 离开多久 / 看哪块屏</s></div>
+          <span class="pill p-g">可用</span></div>
+        <div class="erow"><span class="st ok"></span>
+          <div class="tx"><b>窗口 · 正常</b><s>知道：前台是谁 / 几块屏 / 窗口怎么排</s></div>
+          <span class="pill p-g">可用</span></div>
+        <div class="erow"><span class="st ok"></span>
+          <div class="tx"><b>代码库 · 正常</b><s>知道：哪个项目 / 有没有未提交改动</s></div>
+          <span class="pill p-g">可用</span></div>
+        <div class="erow"><span class="st no"></span>
+          <div class="tx"><b>键盘 · 未聚合</b><s>按键流在采，但没算出「忙碌程度」</s></div>
+          <span class="pill p-w">待建</span></div>
+        <div class="erow"><span class="st no"></span>
+          <div class="tx"><b>AI 助手 · 部分连接</b><s>Codex 正常，Claude 还没连上</s></div>
+          <span class="pill p-w">去连接</span></div>
+      </div>
+
+      <div class="note ok">
+        <b>这版和现状的差别：</b>现状首页是「<strong>今天做了什么 + 我的情景 + 需要决定</strong>」——
+        证明了它「做了什么」，但没解释它「<strong>怎么理解你</strong>」。
+        补上 A 和 B 之后，链路才闭合：<strong>看到你 → 做了什么 → 为什么这么做 → 靠什么知道</strong>。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 1 三块拆解 ========== -->
+<div class="view" id="v1">
+  <h1 class="ft">三块分别解决什么</h1>
+  <p class="lead">A、B、C 的性质完全不同：A 和 B 是用户可感知的产品能力，C 是工程透明层。不能混为一谈。</p>
+
+  <div class="split">
+    <div>
+      <h2 class="sec" style="margin-top:0"><span class="pill tagA">A</span> 我看到的你</h2>
+      <p class="secsub">回答「它怎么理解我」。这是 Context Engine 的门面，也是整个状态中心的核心表达。</p>
+      <table>
+        <thead><tr><th style="width:96px">行</th><th style="width:180px">数据来源</th><th style="width:74px">状态</th></tr></thead>
+        <tbody>
+          <tr><td>正在写代码</td><td><span class="mono">TmStatus.dirty</span> + <span class="mono">ForegroundEvidence</span></td><td><span class="pill p-g">已就绪</span></td></tr>
+          <tr><td>AI 正在等你</td><td><span class="mono">AttentionPublicSnapshot</span></td><td><span class="pill p-g">已就绪</span></td></tr>
+          <tr><td>当前使用</td><td><span class="mono">ForegroundEvidence</span></td><td><span class="pill p-g">已就绪</span></td></tr>
+          <tr><td>你在不在</td><td><span class="mono">presence</span>（恒 Unknown）</td><td><span class="pill p-r">未接入</span></td></tr>
+        </tbody>
+      </table>
+      <div class="note">
+        <b>关键设计：最后一行我选择画成「不知道」而不是画成「你在电脑前」。</b>
+        <code>ContextSnapshot.resolver.rs:170</code> 的规则是「缺证据就不给结论」——
+        UI 必须诚实反映这一点，否则整个「它真的懂我」的叙事就塌了。
+      </div>
+    </div>
+
+    <div>
+      <h2 class="sec" style="margin-top:0"><span class="pill tagB">B</span> 因果链</h2>
+      <p class="secsub">回答「它刚才为什么这么做」。这是自动化软件和普通脚本的区别——普通脚本不解释自己。</p>
+      <table>
+        <thead><tr><th style="width:96px">步骤</th><th style="width:180px">数据来源</th><th style="width:74px">状态</th></tr></thead>
+        <tbody>
+          <tr><td>① 事实</td><td><span class="mono">entry.detail</span></td><td><span class="pill p-w">字段有，值缺</span></td></tr>
+          <tr><td>② 交叉验证</td><td>需要多源同时刻快照</td><td><span class="pill p-w">需新建</span></td></tr>
+          <tr><td>③ 判断</td><td><span class="mono">ContextSnapshot</span> 仲裁结果</td><td><span class="pill p-g">已就绪</span></td></tr>
+          <tr><td>④ 动作</td><td><span class="mono">ActionHistoryEntry</span></td><td><span class="pill p-g">已就绪</span></td></tr>
+        </tbody>
+      </table>
+      <div class="note wa">
+        <b>B 是三块里最贵的。</b>②「交叉验证」需要<strong>同一时刻的多个源快照</strong>——
+        而现在各源是各自 emit 的，没有统一时间点。这要求在 Context 层加「冻结快照」能力。
+        <strong>建议 A 做完再评估 B。</strong>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec"><span class="pill tagC">C</span> 工程状态（不可见层）</h2>
+  <p class="secsub">C 不在首页，在设置里。它解决的是「我不信你」——把每个来源能知道什么、不能知道什么摊开。</p>
+  <div class="note ok">
+    <b>C 的判据：每一行都要能回答「它凭什么这么说」。</b>
+    摄像头那行写「画面只在本机处理，不上传」——<strong>不说这句，用户就不敢开</strong>。
+    我在下面列了每行的隐私边界，这部分不能省。
+  </div>
+  <table>
+    <thead><tr><th style="width:96px">来源</th><th style="width:200px">它知道什么</th><th>隐私边界（必须写）</th></tr></thead>
+    <tbody>
+      <tr><td>👁 摄像头</td><td>在不在 / 离开多久 / 看哪块屏 / 有没有旁人</td><td>画面只在本机处理，不上传</td></tr>
+      <tr><td>🎤 麦克风</td><td>在不在说话 / 说了什么</td><td>只在你主动触发时录音</td></tr>
+      <tr><td>🖥 窗口</td><td>前台是谁 / 几块屏 / 窗口怎么排</td><td>只读窗口标题，不读内容</td></tr>
+      <tr><td>⌨️ 键鼠</td><td>最近有没有在敲 / 多久没动</td><td>只统计节奏，不记录按键内容</td></tr>
+      <tr><td>🤖 AI 助手</td><td>在不在工作 / 等不等你 / 做完没</td><td>只读状态接口，不读对话内容</td></tr>
+      <tr><td>📁 代码库</td><td>哪个项目 / 有没有未提交</td><td>只看文件列表，不读代码</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ========== 2 落地清单 ========== -->
+<div class="view" id="v2">
+  <h1 class="ft">落地顺序</h1>
+  <p class="lead">按「能不能立刻做」排。A 可以现在就做，C 几乎免费，B 建议押后。</p>
+
+  <h2 class="sec" style="margin-top:0">① 立即可做</h2>
+  <div class="note ok">
+    <b>A · 我看到的你</b>（推荐先做这个）<br>
+    数据三条已就绪，缺的是 UI。而且它能<strong>让 <code>src/context/resolver.rs</code> 第一次在真实界面露脸</strong>——
+    那段仲裁代码写完到现在还没被任何界面调用过。
+  </div>
+  <div class="note ok">
+    <b>C · 工程状态</b>（几乎免费）<br>
+    纯静态渲染 + 隐私说明文案。<strong>但价值不在 UI，在于逼自己想清楚每个源的边界</strong>。
+    建议和 A 一起做，因为它就是 A 里每个「为什么」展开后的完整版。
+  </div>
+
+  <h2 class="sec">② 需要先修地基</h2>
+  <div class="note wa">
+    <b>runtimeHabitControl 跨保存丢失</b><br>
+    <code>config-persist.js:1259</code> 认真序列化了，但 <code>config.rs</code> 里没有对应字段，serde 直接丢弃。
+    修法很简单：加 <code>Option&lt;serde_json::Value&gt;</code>（别上强类型，schema 还在演进）。
+  </div>
+  <div class="note wa">
+    <b>assists 存中文 label</b><br>
+    <code>now-model.js:276</code>。改一次文案，用户已存的开关<strong>静默全关</strong>。
+    Phase 3「assists 驱动执行层」前必须先 ID 化。
+  </div>
+
+  <h2 class="sec">③ 建议押后</h2>
+  <div class="note rk">
+    <b>B · 因果链</b><br>
+    依赖「同一时刻的跨源快照」，而现在各源各自 emit，没有统一时间点。
+    这不是 UI 工作，是 Context 层要加「冻结快照」——<strong>架构改动，不是界面改动</strong>。
+    <br><br>
+    在此之前，可以先做一个<strong>简化版</strong>：只显示 ① 事实 → ③ 判断 → ④ 动作（跳过 ② 交叉验证），
+    这三步的数据现在就有。等冻结快照能力有了再补中间那步。
+  </div>
+
+  <h2 class="sec">④ 需要你决策</h2>
+  <table>
+    <thead><tr><th style="width:60px">#</th><th style="width:230px">问题</th><th>我的倾向</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>presence 接入 A/B 方案</td>
+        <td><b>B</b>（Rust 维护状态 + 失效降级为 Unknown）。误报 <code>Here</code> 会漏掉隐私保护</td></tr>
+      <tr><td>2</td><td>「情景」是否入契约五词</td>
+        <td>建议入。它比「场景」更贴合 <code>activeSceneId</code> 的语义（处境而非地点）</td></tr>
+      <tr><td>3</td><td>四个价值桶的边界</td>
+        <td>「减少打断 / 恢复环境 / 保护隐私 / 提醒状态」是草案，需要你确认是否覆盖真实关注点</td></tr>
+      <tr><td>4</td><td>B 的简化版是否够用</td>
+        <td>建议先上简化版（跳过交叉验证），等冻结快照能力再补全</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showView(+b.dataset.v));
+function showView(i){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab')[i].classList.add('on');
+  document.getElementById('v'+i).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function tw(el){
+  var row=el.parentElement;
+  row.classList.toggle('on');
+  var q=el.querySelector('.uq');
+  if(q) q.textContent = row.classList.contains('on')?'收起':'为什么';
+}
+</script>
+</body>
+</html>

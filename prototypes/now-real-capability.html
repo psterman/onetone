@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>现在 · 真实能力版原型</title>
+<style>
+:root{
+  --pri:#0ea5e9;--pri-d:#0284c7;--pri-sf:#e0f2fe;--pri-bd:#bae6fd;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;--ink5:#e2e8f0;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f7f9fb;
+  --ok:#10b981;--ok-sf:#ecfdf5;--ok-bd:#a7f3d0;
+  --wa:#f59e0b;--wa-sf:#fffbeb;--wa-bd:#fde68a;
+  --rk:#ef4444;--rk-sf:#fef2f2;--rk-bd:#fecaca;
+  --vi:#8b5cf6;--vi-sf:#f5f3ff;
+  --sh:0 1px 2px rgba(15,23,42,.05);--sh2:0 1px 3px rgba(15,23,42,.07);
+  --sh3:0 12px 36px rgba(15,23,42,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+code{font-family:Consolas,monospace;font-size:11.5px;background:var(--line2);padding:1px 5px;border-radius:4px;color:#0369a1}
+a.ref{font-family:Consolas,monospace;font-size:10.5px;color:#0369a1;text-decoration:none;border-bottom:1px dotted #7dd3fc}
+
+.topbar{position:sticky;top:0;z-index:60;background:rgba(247,249,251,.95);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:0 24px}
+.topbar-in{max-width:1300px;margin:0 auto;height:58px;display:flex;align-items:center;gap:8px}
+.topbar .b{font-weight:800;font-size:14.5px;margin-right:16px}
+.tab{padding:7px 13px;border-radius:8px;font-size:12.5px;color:var(--ink2);border:0;background:none;font-weight:500}
+.tab:hover{background:var(--line2)}.tab.on{background:var(--ink);color:#fff}
+.topbar .sp{margin-left:auto;font-size:11px;color:var(--ink3)}
+.page{max-width:1300px;margin:0 auto;padding:24px 24px 80px}
+.view{display:none}.view.on{display:block}
+
+h1.ft{font-size:24px;margin:0 0 8px;letter-spacing:-.6px}
+.lead{font-size:14.5px;color:var(--ink2);max-width:940px;margin:0 0 20px;line-height:1.75}
+h2.sec{font-size:15.5px;margin:30px 0 5px;letter-spacing:-.2px;display:flex;align-items:center;gap:9px}
+h2.sec .n{font-size:11.5px;color:var(--ink3);font-weight:500}
+.secsub{font-size:12.5px;color:var(--ink2);margin:0 0 14px;max-width:920px;line-height:1.7}
+
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.p-b{background:var(--pri-sf);color:var(--pri-d)}.p-g{background:var(--ok-sf);color:#047857}
+.p-w{background:var(--wa-sf);color:#b45309}.p-r{background:var(--rk-sf);color:#b91c1c}
+.p-n{background:var(--line2);color:var(--ink2)}.p-v{background:var(--vi-sf);color:#6d28d9}
+.btn{border:1px solid var(--ink5);background:#fff;border-radius:8px;padding:7px 13px;font-size:12.5px;
+  color:var(--ink2);font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--line2)}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+.sw{width:42px;height:24px;border-radius:99px;background:var(--ink4);border:0;position:relative;transition:.2s;flex:none;padding:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);transition:.2s}
+.sw.on{background:var(--ok)}.sw.on::after{left:21px}
+
+/* 窗口 */
+.win{background:#fff;border:1px solid var(--ink5);border-radius:14px;overflow:hidden;box-shadow:var(--sh3)}
+.tbar{display:flex;align-items:center;gap:12px;padding:0 18px;height:54px;border-bottom:1px solid var(--line)}
+.tbar .logo{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0c4a6e,#0ea5e9);
+  display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800;flex:none}
+.tbar .ttl{font-size:15px;font-weight:700}
+.nav{display:flex;gap:2px;margin-left:12px}
+.nv{padding:6px 12px;border-radius:8px;font-size:12.5px;color:var(--ink3);border:0;background:none;font-weight:500}
+.nv.on{background:var(--line2);color:var(--ink);font-weight:600}
+.tbar .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.body{padding:22px 26px;min-height:600px}
+
+/* 区块标题 */
+.bh{display:flex;align-items:baseline;gap:10px;margin:0 0 11px}
+.bh h3{margin:0;font-size:14px;font-weight:700;letter-spacing:-.2px}
+.bh .s{font-size:11.5px;color:var(--ink3)}
+.bh .more{margin-left:auto;font-size:11.5px;color:var(--pri-d);font-weight:600;cursor:pointer;background:none;border:0}
+
+/* 我看到的你 */
+.see{background:linear-gradient(135deg,#0c4a6e,#0369a1);border-radius:13px;padding:18px 20px;color:#fff;margin-bottom:8px}
+.see .hd{font-size:19px;font-weight:800;letter-spacing:-.4px;margin-bottom:14px;line-height:1.35}
+.urow2{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;overflow:hidden;margin-bottom:6px}
+.uhead{display:flex;align-items:center;gap:11px;padding:10px 13px;cursor:pointer;transition:.15s}
+.uhead:hover{background:rgba(255,255,255,.09)}
+.uhead .ui{font-size:15px;flex:none}
+.uhead .ut{font-size:13.5px;font-weight:600;flex:none}
+.uhead .uv{font-size:11.5px;opacity:.65;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uhead .uq{font-size:10.5px;opacity:.5;flex:none;background:rgba(255,255,255,.1);padding:2px 8px;border-radius:99px}
+.why{padding:0 13px 12px;display:none}
+.urow2.on .why{display:block}
+.why .wl{font-size:10.5px;opacity:.55;margin-bottom:6px}
+.witem{display:flex;align-items:flex-start;gap:9px;font-size:12px;padding:3.5px 0;opacity:.92;line-height:1.5}
+.witem .wd{width:5px;height:5px;border-radius:50%;background:#4ade80;flex:none;margin-top:6px}
+.witem.no .wd{background:#fbbf24}
+.witem .ws{margin-left:auto;font-size:10.5px;opacity:.6;flex:none}
+
+/* ★ 今天为你做了什么 —— 核心新增 */
+.todaybox{background:#fff;border:1px solid var(--ink5);border-radius:13px;box-shadow:var(--sh2);overflow:hidden}
+.tbh{padding:14px 18px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.tbh .n1{font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--pri-d);line-height:1}
+.tbh .n1 span{font-size:13px;font-weight:600;letter-spacing:0;margin-left:2px}
+.tbh .lb{font-size:12px;color:var(--ink2);line-height:1.45}
+.tbh .kpis{display:flex;gap:18px;margin-left:auto;flex-wrap:wrap}
+.kpi{text-align:right}
+.kpi b{display:block;font-size:17px;font-weight:700;line-height:1.2}
+.kpi s{text-decoration:none;font-size:10.5px;color:var(--ink3)}
+.tlist{padding:4px 0}
+.ti{display:flex;align-items:flex-start;gap:13px;padding:12px 18px;border-bottom:1px solid var(--line2)}
+.ti:last-child{border-bottom:none}
+.ti .tm{font-size:11.5px;color:var(--ink3);min-width:46px;flex:none;padding-top:2px;font-variant-numeric:tabular-nums}
+.ti .ic{width:28px;height:28px;border-radius:8px;background:var(--line2);display:grid;place-items:center;font-size:14px;flex:none}
+.ti .tx{flex:1;min-width:0}
+.ti .tx b{font-size:13px;font-weight:600;display:block;line-height:1.5}
+.ti .tx s{text-decoration:none;font-size:11.5px;color:var(--ink3);display:block;margin-top:2px;line-height:1.45}
+.ti .ch{font-size:10.5px;color:var(--ink4);flex:none;padding-top:3px;display:flex;align-items:center;gap:4px}
+.ti .ch .dot{width:4px;height:4px;border-radius:50%;background:var(--ink4)}
+.tempty{padding:26px 18px;text-align:center;font-size:12.5px;color:var(--ink3);line-height:1.7}
+.tfoot{padding:11px 18px;background:#fcfdfe;border-top:1px solid var(--line2);font-size:11.5px;color:var(--ink3);line-height:1.6}
+
+/* needsYou */
+.needbox{background:#fff;border:1px solid var(--ink5);border-radius:13px;box-shadow:var(--sh2);overflow:hidden}
+.nrow{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line2)}
+.nrow:last-child{border-bottom:none}
+.nrow.prim{background:linear-gradient(90deg,var(--pri-sf),#fff)}
+.nrow .tx{flex:1;min-width:0}
+.nrow .tx b{font-size:13.5px;font-weight:600;display:block}
+.nrow .tx s{text-decoration:none;font-size:11.5px;color:var(--ink3);display:block;margin-top:2px}
+
+/* 建议卡 */
+.sugg{background:linear-gradient(135deg,#f0fdf4,#fff);border:1px solid var(--ok-bd);border-radius:13px;padding:16px 18px;display:flex;gap:15px;align-items:flex-start}
+.sugg .ic{width:38px;height:38px;border-radius:11px;background:var(--ok-sf);display:grid;place-items:center;font-size:18px;flex:none}
+.sugg .tx{flex:1;min-width:0}
+.sugg .tx b{font-size:14px;font-weight:700;display:block;margin-bottom:3px}
+.sugg .tx p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.6}
+.sugg .tx .why{margin-top:7px;font-size:11.5px;color:var(--ink3);line-height:1.55}
+.sugg .act{display:flex;gap:7px;flex:none;align-items:center}
+
+/* 能力标注 */
+.cap{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;padding:1.5px 7px;border-radius:5px}
+.cap.ready{background:var(--ok-sf);color:#047857}
+.cap.build{background:var(--wa-sf);color:#b45309}
+.cap.block{background:var(--rk-sf);color:#b91c1c}
+
+/* 真实数据映射表 */
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;
+  box-shadow:var(--sh2);font-size:12.5px;margin:12px 0}
+th{background:#f8fafc;text-align:left;padding:10px 13px;font-weight:700;color:var(--ink2);
+  border-bottom:1px solid var(--line);font-size:11.5px;white-space:nowrap}
+td{padding:10px 13px;border-bottom:1px solid var(--line2);vertical-align:top;line-height:1.6}
+tr:last-child td{border-bottom:none}
+.mono{font-family:Consolas,monospace;font-size:11px;color:var(--ink2)}
+
+.note{background:var(--pri-sf);border:1px solid var(--pri-bd);border-radius:12px;padding:15px 18px;
+  margin:18px 0;font-size:13px;line-height:1.75;max-width:1080px}
+.note b{color:var(--pri-d)}
+.note.wa{background:var(--wa-sf);border-color:var(--wa-bd)}.note.wa b{color:#b45309}
+.note.rk{background:var(--rk-sf);border-color:var(--rk-bd)}.note.rk b{color:#b91c1c}
+.note.ok{background:var(--ok-sf);border-color:var(--ok-bd)}.note.ok b{color:#047857}
+
+.sample{background:#1e293b;border-radius:10px;padding:14px 16px;margin:10px 0;
+  font-family:Consolas,monospace;font-size:11.5px;line-height:1.75;color:#cbd5e1;overflow:auto}
+.sample .k{color:#7dd3fc}.sample .s{color:#86efac}.sample .n{color:#fbbf24}.sample .c{color:#64748b}
+@media(max-width:1000px){.tbh .kpis{margin-left:0}.sugg{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="b">现在 · 真实能力版</span>
+    <button class="tab on" data-v="0">原型</button>
+    <button class="tab" data-v="1">数据从哪来</button>
+    <button class="tab" data-v="2">缺口与排期</button>
+    <span class="sp">每条数据都标了后端来源与状态</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ========== 0 原型 ========== -->
+<div class="view on" id="v0">
+  <h1 class="ft">首页：把「承诺」换成「事实」</h1>
+  <p class="lead">
+    现在的首页显示的是 <code>helping</code> —— 一个写死的静态数组（<code>fixtures.js:7</code>）。
+    它承诺「OneTone 正在帮你保持专注」，但不管有没有真的发生。<br>
+    这版把它换成 <b>ActionHistory 的真实记录</b>：今天真正发生了什么，替你挡掉了什么。
+  </p>
+
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav">
+        <button class="nv on">现在</button>
+        <button class="nv">我的情景</button>
+        <button class="nv">帮助记录</button>
+      </div>
+      <div class="r"><span class="pill p-g"><span style="width:5px;height:5px;border-radius:50%;background:#10b981;display:inline-block"></span>正常</span>
+        <span style="font-size:12px;color:var(--ink3)">22:41</span></div>
+    </div>
+    <div class="body">
+
+      <!-- ① 我看到的你 -->
+      <div class="bh"><h3>我看到的你</h3><span class="s">点任意一行看它怎么知道的</span></div>
+      <div class="see">
+        <div class="hd">你在写代码，Codex 正在等你批准。<br>所以它把提示压着，没打扰你。</div>
+        <div class="urow2">
+          <div class="uhead" onclick="tw(this)"><span class="ui">💻</span><span class="ut">正在写代码</span>
+            <span class="uv">22 分钟前开始</span><span class="uq">为什么</span></div>
+          <div class="why"><div class="wl">它是这样知道的</div>
+            <div class="witem"><span class="wd"></span>Cursor 在前台<span class="ws">app_identity</span></div>
+            <div class="witem"><span class="wd"></span>项目有 3 个文件被改过<span class="ws">TmStatus</span></div>
+            <div class="witem"><span class="wd"></span>Codex 正在这个项目里跑<span class="ws">AttentionStore</span></div>
+            <div class="witem no"><span class="wd"></span>键盘输入 —— 未接入<span class="ws">InputObs</span></div>
+          </div>
+        </div>
+        <div class="urow2">
+          <div class="uhead" onclick="tw(this)"><span class="ui">🤖</span><span class="ut">AI 正在等你</span>
+            <span class="uv">1 个请求需要确认</span><span class="uq">为什么</span></div>
+          <div class="why"><div class="wl">它是这样知道的</div>
+            <div class="witem"><span class="wd"></span>Codex 要运行一条删除命令<span class="ws">AttentionState</span></div>
+            <div class="witem no"><span class="wd"></span>这类操作不可逆，所以必须问<span class="ws">RiskLevel</span></div>
+          </div>
+        </div>
+        <div class="urow2">
+          <div class="uhead" onclick="tw(this)"><span class="ui">👤</span><span class="ut">你在不在</span>
+            <span class="uv">未知 —— 摄像头尚未接入</span><span class="uq">为什么</span></div>
+          <div class="why"><div class="wl">它是这样知道的</div>
+            <div class="witem no"><span class="wd"></span>presence 目前恒为 Unknown，不猜<span class="ws">ContextSnapshot</span></div>
+            <div class="witem no"><span class="wd"></span>摄像头感知仍在 FE，未进仲裁层<span class="ws">待 Phase 2</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ② ★ 今天为你做了什么 -->
+      <div class="bh" style="margin-top:24px">
+        <h3>它今天为你做了什么</h3>
+        <span class="s">全部来自真实执行记录，不是承诺</span>
+        <button class="more" onclick="showView(0)">看全部 →</button>
+        <span class="cap ready">✅ cmd_action_history_list 已就绪</span>
+      </div>
+      <div class="todaybox">
+        <div class="tbh">
+          <div class="n1">12<span>次</span></div>
+          <div class="lb">主动帮你处理了事情<br><span style="font-size:11px;color:var(--ink3)">今天 00:00 至今</span></div>
+          <div class="kpis">
+            <div class="kpi"><b>5</b><s>减少打断</s></div>
+            <div class="kpi"><b>3</b><s>恢复环境</s></div>
+            <div class="kpi"><b>2</b><s>保护隐私</s></div>
+            <div class="kpi"><b>2</b><s>提醒状态</s></div>
+          </div>
+        </div>
+        <div class="tlist">
+          <div class="ti"><span class="tm">16:40</span><span class="ic">🤖</span>
+            <div class="tx"><b>中断 · 回到当前 Agent</b><s>你让它停下，不要继续生成</s></div>
+            <span class="ch"><span class="dot"></span>按键</span></div>
+          <div class="ti"><span class="tm">15:07</span><span class="ic">🔓</span>
+            <div class="tx"><b>恢复工作现场</b><s>你回到座位后自动解除保护</s></div>
+            <span class="ch"><span class="dot"></span>摄像头</span></div>
+          <div class="ti"><span class="tm">14:32</span><span class="ic">🔒</span>
+            <div class="tx"><b>保护隐私 · 关闭遮罩</b><s>你离开时屏幕已遮挡</s></div>
+            <span class="ch"><span class="dot"></span>摄像头</span></div>
+          <div class="ti"><span class="tm">14:05</span><span class="ic">🧘</span>
+            <div class="tx"><b>温和提醒</b><s>连续使用较久，问你要不要歇一下</s></div>
+            <span class="ch"><span class="dot"></span>摄像头</span></div>
+          <div class="ti"><span class="tm">11:20</span><span class="ic">🎤</span>
+            <div class="tx"><b>听写结束</b><s>说完「就这样」</s></div>
+            <span class="ch"><span class="dot"></span>语音</span></div>
+          <div class="ti"><span class="tm">10:15</span><span class="ic">●</span>
+            <div class="tx"><b>开始说话</b><s>唤醒后开始听写</s></div>
+            <span class="ch"><span class="dot"></span>软垫</span></div>
+        </div>
+        <div class="tfoot">
+          右侧小圆点 = 这次帮助是<strong>哪个通道</strong>做的。这就是「摄像头只是六个感知器之一」在界面上的落点——
+          不强调摄像头，用户看到的是「它懂我」。
+        </div>
+      </div>
+
+      <!-- ③ 需要你决定 -->
+      <div class="bh" style="margin-top:24px">
+        <h3>需要你决定</h3><span class="s">每条都带具体行动，不是一句「有待处理」</span>
+        <span class="cap build">⚠ 需新建投影</span>
+      </div>
+      <div class="needbox">
+        <div class="nrow prim">
+          <div class="tx"><b>批准 Codex 删除命令？</b><s>运行 rm · 不可逆 · 已经等你 2 分钟</s></div>
+          <button class="btn p">查看并决定</button>
+        </div>
+        <div class="nrow">
+          <div class="tx"><b>继续别打扰我</b><s>保持当前情景，等我停下再问</s></div>
+          <button class="btn">继续别打扰</button>
+        </div>
+      </div>
+
+      <!-- ④ 建议 -->
+      <div class="bh" style="margin-top:24px">
+        <h3>它觉得你可能需要</h3><span class="s">系统建议，不是硬推</span>
+        <span class="cap build">⚠ 需新建算法</span>
+      </div>
+      <div class="sugg">
+        <span class="ic">🎤</span>
+        <div class="tx">
+          <b>你 3 小时都在 Cursor 里，要开「会议助手」吗？</b>
+          <p>它会在检测到旁边有人时提醒你，离开画面时自动静音。</p>
+          <div class="why">依据：Cursor 累计活跃 3 小时 12 分 · 今天 6 次在它面前调用 AI · 你手动加过 2 次麦克风相关操作</div>
+        </div>
+        <div class="act">
+          <button class="btn p">开一个</button>
+          <button class="btn">不用</button>
+        </div>
+      </div>
+
+      <div class="note ok" style="margin-top:22px">
+        <b>这版和上一版的关键差别：</b>
+        上一版首页所有「它帮你做的事」都是 <code>fixtures.js</code> 里写死的字符串。
+        这版的每一条都能追到 <code>ActionHistoryEntry</code> 的一条真实记录——
+        有 <code>ts_ms</code>（时间）、<code>channel</code>（哪个通道做的）、<code>status</code>（成功还是失败）。
+        <strong>它是证据，不是广告。</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 1 数据从哪来 ========== -->
+<div class="view" id="v1">
+  <h1 class="ft">每一条数据的后端来源</h1>
+  <p class="lead">原型上每个数字和每句话，都对应下面某个已存在的函数或字段。<strong>凡是标「需新建」的，目前是真没有。</strong></p>
+
+  <h2 class="sec">① 它今天为你做了什么 <span class="n">已完全就绪，只差 FE 接线</span></h2>
+  <table>
+    <thead><tr><th style="width:150px">界面元素</th><th style="width:230px">后端来源</th><th style="width:90px">状态</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>今日次数 12</td><td><span class="mono">cmd_action_history_list(hours=14)</span><br><a class="ref" href="#">ipc/commands/shell/action_history_cmd.rs:26</a></td>
+        <td><span class="cap ready">已就绪</span></td>
+        <td>传 <code>hours</code> 就能限定「今天」。返回 <code>{entries, hasMore}</code>，已按时间倒序</td></tr>
+      <tr><td>每条的时间</td><td><span class="mono">entry.ts_ms</span><br><a class="ref" href="#">action_history/model.rs:12</a></td>
+        <td><span class="cap ready">已就绪</span></td><td>毫秒时间戳，前端格式化</td></tr>
+      <tr><td>「中断 · 回到当前 Agent」</td><td><span class="mono">entry.summary</span><br><a class="ref" href="#">action_history/summary.rs:58</a></td>
+        <td><span class="cap ready">已就绪</span></td>
+        <td><b>关键</b>：summary 在 Rust 侧就已拼成用户语言，格式为「通道 · 习惯名 · 动作中文名」，前端不用再翻译</td></tr>
+      <tr><td>动作中文名</td><td><span class="mono">semantic_meta_by_id(id).label_zh</span><br><a class="ref" href="#">agent/semantic.rs</a></td>
+        <td><span class="cap ready">已就绪</span></td><td>动作目录已有 <code>label_zh</code>，所以「回到当前 Agent」这类文案是自动来的</td></tr>
+      <tr><td>右侧小圆点（哪个通道）</td><td><span class="mono">entry.channel</span><br><a class="ref" href="#">model.rs:13</a></td>
+        <td><span class="cap ready">已就绪</span></td>
+        <td>取值为 <code>key / voice / softPad / camera / system</code>，<code>summary.rs:34</code> 已有中文映射</td></tr>
+      <tr><td>成功还是失败</td><td><span class="mono">entry.status</span><br><a class="ref" href="#">model.rs:23</a></td>
+        <td><span class="cap ready">已就绪</span></td>
+        <td><code>executed / pendingConfirmation / failed</code> —— 「需确认」这个状态后端本来就分得清</td></tr>
+      <tr><td>分类统计（减少打断 5）</td><td colspan="2"><span class="cap build">需新建投影</span></td>
+        <td>后端有 <code>stats_by_mapping</code>（按习惯分组）和 <code>usage_counts_last_days</code>（按天计数），
+        但<strong>没有「按价值类型」分类</strong>。这层是纯 FE 逻辑，不难</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note ok">
+    <b>这一块的结论很干净：不需要写任何 Rust。</b>
+    一次 <code>invoke('cmd_action_history_list', {hours: 14})</code> 就能拿到今天全部记录。
+    我验证过 <code>src/js</code> 全目录<strong>零处消费 action history</strong> —— 数据一直在记，没人读。
+  </div>
+
+  <h2 class="sec">② 我看到的你 <span class="n">四条里两条已就绪，两条需新建</span></h2>
+  <table>
+    <thead><tr><th style="width:150px">界面行</th><th style="width:230px">后端来源</th><th style="width:90px">状态</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>正在写代码</td><td><span class="mono">TmStatus.dirty / changed_count</span><br><a class="ref" href="#">time_machine/types.rs:71</a> + <span class="mono">ForegroundEvidence</span><br><a class="ref" href="#">soft_pad_runtime/model.rs:260</a></td>
+        <td><span class="cap ready">已就绪</span></td>
+        <td>我已写过 <code>ContextSnapshot.activity</code> 仲裁：<code>is_git && (dirty || agent_busy)</code> → Coding</td></tr>
+      <tr><td>AI 正在等你</td><td><span class="mono">AttentionPublicSnapshot.waiting_kinds</span><br><a class="ref" href="#">agent_attention/model.rs:131</a></td>
+        <td><span class="cap ready">已就绪</span></td>
+        <td>五态齐全：NeedsInput / Working / Idle / Complete / Error，含 <code>confidence</code> 与 <code>source</code></td></tr>
+      <tr><td>你在不在</td><td><span class="mono">ContextSnapshot.presence</span><br><a class="ref" href="#">src/context/model.rs:54</a></td>
+        <td><span class="cap block">未接入</span></td>
+        <td>字段存在但<strong>恒为 Unknown</strong>。摄像头感知还在 FE（<code>camera2-workbench.js:76-88</code>）</td></tr>
+      <tr><td>你在看哪块屏</td><td>视线校准 + 多屏拓扑</td>
+        <td><span class="cap block">未接入</span></td><td>校准数据在 <code>cameraPrefs.gazeCalibration</code>，但没进 Context</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="sec">③ 需要你决定 <span class="n">数据都在，投影要新建</span></h2>
+  <table>
+    <thead><tr><th style="width:230px">后端来源</th><th style="width:90px">状态</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono">AttentionPublicSnapshot.rows[].cause</span><br><a class="ref" href="#">model.rs:38</a></td>
+        <td><span class="cap ready">已就绪</span></td>
+        <td><code>Permission → WaitingApproval</code>，<code>Elicitation → WaitingText</code>，cause 本身就够分派</td></tr>
+      <tr><td><span class="mono">pending_confirm::list_public</span><br><a class="ref" href="#">lib.rs:120</a></td>
+        <td><span class="cap ready">已就绪</span></td>
+        <td>「已等你 2 分钟」来自 Pending 的 TTL</td></tr>
+      <tr><td>cause → 中文标题 + 行动动词的映射</td>
+        <td><span class="cap build">需新建</span></td>
+        <td>原型里的 <code>ctaLabel{approve_rm:'查看并决定', keep_quiet:'继续别打扰'}</code> 就是这层，目前只存在于 fixtures</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="sec">④ 它觉得你可能需要 <span class="n">数据都有，算法要新建</span></h2>
+  <table>
+    <thead><tr><th style="width:230px">数据来源</th><th style="width:90px">状态</th><th>能推出什么</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono">ActivityTotals.turns_today / active_ms</span><br><a class="ref" href="#">cursor_local_activity.rs:462</a></td>
+        <td><span class="cap ready">已就绪</span></td>
+        <td>「你 3 小时都在 Cursor 里」</td></tr>
+      <tr><td><span class="mono">stats_by_mapping(hours)</span><br><a class="ref" href="#">action_history/log.rs</a></td>
+        <td><span class="cap ready">已就绪</span></td>
+        <td>「今天 6 次在它面前调用 AI」</td></tr>
+      <tr><td>「你手动加过 2 次麦克风相关操作」</td>
+        <td><span class="cap build">需新建</span></td>
+        <td>需要对 mapping 做主题分类（麦克风/通知/窗口），目前没有这层标注</td></tr>
+      <tr><td>建议算法 + 不重复提示的冷却</td>
+        <td><span class="cap build">需新建</span></td>
+        <td>建议「同类建议 7 天内不重复」，否则会变成骚扰</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ========== 2 缺口与排期 ========== -->
+<div class="view" id="v2">
+  <h1 class="ft">缺口清单与建议顺序</h1>
+  <p class="lead">按「能不能立刻做」排序，不按「重不重要」排序 —— 因为重要的那些，往往被挡在别的东西后面。</p>
+
+  <h2 class="sec">立刻能做，不需要写 Rust</h2>
+  <div class="note ok" style="margin-top:6px">
+    <b>① 接「它今天为你做了什么」</b><br>
+    一次 <code>invoke('cmd_action_history_list', {hours:14})</code>，把 <code>entries</code> 映射成时间线。
+    <code>summary</code> 已经是中文成品，<code>channel</code> 已经能区分来源。<br>
+    <strong>投入：FE 半天。收益：首页从「承诺」变成「证据」，这是整页可信度的基础。</strong>
+  </div>
+  <div class="note ok">
+    <b>② 把 helping 从静态数组换成「今日 + 空态」</b><br>
+    有记录 → 显示真实发生；今天还没发生 → 才显示 <code>helping</code> 那套引导文案（<code>fixtures.js:7</code> 那些）。
+    这样既保留了新手引导，又不让它冒充事实。
+  </div>
+
+  <h2 class="sec">需要新建投影层</h2>
+  <div class="note">
+    <b>③ 「减少打断 5 / 保护隐私 2」的价值分类</b><br>
+    后端有 <code>stats_by_mapping</code> 和 <code>usage_counts_last_days</code>，但没有按价值类型分。
+    建议在 FE 做：<code>channel + action_id + status</code> → 四个价值桶的映射表。<strong>纯 FE，不动契约。</strong>
+  </div>
+  <div class="note">
+    <b>④ needsYou 的 cause → 行动映射</b><br>
+    <code>AttentionCause</code>（Permission / Elicitation / UserInput / Failure）已经有语义，
+    缺的是「Permission → 标题『批准 X？』+ 动词『查看并决定』」这层文案投影。
+  </div>
+
+  <h2 class="sec">被挡住的（需要先修地基）</h2>
+  <div class="note rk">
+    <b>⑤ 「你在电脑前」这行现在还是假的</b><br>
+    <code>ContextSnapshot.presence</code> 恒为 <code>Unknown</code>。摄像头感知仍在 FE 内存，不进仲裁层。<br>
+    <strong>这也是我一直在问 A/B 方案的原因</strong>：presence 误报 <code>Here</code> 会漏掉隐私保护，
+    所以失效必须降级成 <code>Unknown</code> 而不是 <code>Here</code>。
+  </div>
+  <div class="note wa">
+    <b>⑥ runtimeHabitControl 跨保存丢失</b><br>
+    <code>config-persist.js:1259</code> 认真序列化了它，但整个 <code>config.rs</code> 里<strong>没有对应字段</strong>，
+    serde 直接丢弃。<br>
+    影响的是「临时选用 / 固定」徽标 —— 它们能显示，但活不过一次保存。Phase 3 要迁 badge 到 Now，建议先修这个。
+  </div>
+  <div class="note wa">
+    <b>⑦ assists 存中文 label</b><br>
+    <code>now-model.js:276</code> 存的是 <code>["保持专注","减少消息打扰"]</code>。
+    改一次文案，用户已存的开关就<strong>静默全关</strong>。Phase 3「assists 驱动执行层」前必须先 ID 化。
+  </div>
+
+  <h2 class="sec">建议顺序</h2>
+  <table>
+    <thead><tr><th style="width:60px">顺序</th><th style="width:230px">事项</th><th style="width:110px">依赖</th><th>解锁什么</th></tr></thead>
+    <tbody>
+      <tr><td><b>1</b></td><td>接今日时间线（①）</td><td>无</td><td>首页可信度；也是所有「AI 主动帮你」的呈现载体</td></tr>
+      <tr><td><b>2</b></td><td>修 runtimeHabitControl 持久化（⑥）</td><td>无</td><td>Phase 3 徽标迁移的前置</td></tr>
+      <tr><td><b>3</b></td><td>assists ID 化（⑦）</td><td>无</td><td>Phase 3「驱动执行层」的前置</td></tr>
+      <tr><td><b>4</b></td><td>价值分类 + needsYou 投影（③④）</td><td>1</td><td>让「12 次」不只是个数字</td></tr>
+      <tr><td><b>5</b></td><td>Phase 3 主体</td><td>2, 3</td><td>—</td></tr>
+      <tr><td><b>6</b></td><td>presence 接入（⑤）</td><td>需定 A/B</td><td>「你在电脑前」变真；离开保护变真</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sample">
+<span class="c">// 唯一需要写的新代码（约 30 行，纯 FE）</span>
+<span class="k">async function</span> <span class="s">loadToday</span>() {
+  <span class="k">const</span> res = <span class="k">await</span> invoke(<span class="s">'cmd_action_history_list'</span>, { hours: <span class="n">14</span> });
+  <span class="k">return</span> (res.entries || [])
+    .filter(e =&gt; e.status === <span class="s">'executed'</span> || e.status === <span class="s">'pendingConfirmation'</span>)
+    .map(e =&gt; ({
+      time:  fmtTime(e.tsMs),
+      text:  e.summary,        <span class="c">// Rust 已拼好的中文</span>
+      src:   CHANNEL_ICON[e.channel] || <span class="s">'•'</span>,
+      ok:    e.status === <span class="s">'executed'</span>
+    }));
+}
+  </div>
+
+  <div class="note">
+    <b>为什么这条排在最前：</b>它不需要任何前置，而且它是「AI 主动帮你」这件事<em>唯一能被用户看见的地方</em>。
+    首页的其他部分（状态、建议、场景）都还是在描述系统「打算做什么」；
+    只有这块在证明它「已经做了什么」。
+  </div>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showView(+b.dataset.v));
+function showView(i){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab')[i].classList.add('on');
+  document.getElementById('v'+i).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function tw(el){
+  var row=el.parentElement;
+  row.classList.toggle('on');
+  var q=el.querySelector('.uq');
+  if(q) q.textContent = row.classList.contains('on')?'收起':'为什么';
+}
+</script>
+</body>
+</html>

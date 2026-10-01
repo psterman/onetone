@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Now · 当前情景驾驶舱（修正版）</title>
+<style>
+:root{
+  --pri:#0ea5e9;--pri-d:#0284c7;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;--ink5:#e2e8f0;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f7f9fb;
+  --ok:#10b981;--ok-sf:#ecfdf5;--ok-bd:#a7f3d0;
+  --wa:#f59e0b;--wa-sf:#fffbeb;--wa-bd:#fde68a;
+  --sh2:0 1px 3px rgba(15,23,42,.07);--sh3:0 12px 36px rgba(15,23,42,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+code{font-family:Consolas,monospace;font-size:11.5px;background:var(--line2);padding:1px 5px;border-radius:4px;color:#0369a1}
+
+.topbar{position:sticky;top:0;z-index:60;background:rgba(247,249,251,.95);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:0 24px}
+.topbar-in{max-width:1180px;margin:0 auto;height:56px;display:flex;align-items:center;gap:8px}
+.topbar .b{font-weight:800;font-size:14.5px;margin-right:16px}
+.tab{padding:7px 13px;border-radius:8px;font-size:12.5px;color:var(--ink2);border:0;background:none;font-weight:500}
+.tab:hover{background:var(--line2)}.tab.on{background:var(--ink);color:#fff}
+.topbar .sp{margin-left:auto;font-size:11px;color:var(--ink3)}
+.page{max-width:1180px;margin:0 auto;padding:26px 24px 80px}
+.view{display:none}.view.on{display:block}
+h1.ft{font-size:24px;margin:0 0 8px;letter-spacing:-.6px}
+.lead{font-size:14.5px;color:var(--ink2);max-width:900px;margin:0 0 22px;line-height:1.75}
+h2.sec{font-size:15.5px;margin:32px 0 6px}
+.secsub{font-size:12.5px;color:var(--ink2);margin:0 0 14px;max-width:880px;line-height:1.7}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.p-g{background:var(--ok-sf);color:#047857}.p-w{background:var(--wa-sf);color:#b45309}
+.p-r{background:#fef2f2;color:#b91c1c}.p-n{background:var(--line2);color:var(--ink2)}
+.btn{border:1px solid var(--ink5);background:#fff;border-radius:8px;padding:7px 13px;font-size:12.5px;
+  color:var(--ink2);font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--line2)}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+
+/* ===== 应用窗口 ===== */
+.win{background:#fff;border:1px solid var(--ink5);border-radius:14px;overflow:hidden;box-shadow:var(--sh3)}
+.tbar{display:flex;align-items:center;gap:11px;padding:0 17px;height:50px;border-bottom:1px solid var(--line)}
+.tbar .logo{width:25px;height:25px;border-radius:8px;background:linear-gradient(135deg,#0c4a6e,#0ea5e9);
+  display:grid;place-items:center;color:#fff;font-size:12.5px;font-weight:800;flex:none}
+.tbar .ttl{font-size:14.5px;font-weight:700}
+.nav{display:flex;gap:2px;margin-left:10px}
+.nv{padding:5px 11px;border-radius:8px;font-size:12.5px;color:var(--ink3);border:0;background:none;font-weight:500}
+.nv.on{background:var(--line2);color:var(--ink);font-weight:600}
+.tbar .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.body{padding:20px 22px 0}
+
+/* cockpit —— 沿用 now-home.css 的渐变卡 */
+.cockpit{background:linear-gradient(160deg,#0c4a6e 0%,#0369a1 100%);border-radius:15px;
+  padding:24px 26px;color:#fff;margin-bottom:22px}
+.cockpit--idle{background:linear-gradient(160deg,#334155 0%,#475569 100%)}
+.ck{margin:0 0 8px;font-size:12px;letter-spacing:.6px;opacity:.72;font-weight:600}
+.cockpit h1{margin:0 0 6px;font-size:30px;letter-spacing:-.6px;line-height:1.2}
+.ckstance{margin:0 0 4px;font-size:14px;opacity:.85;line-height:1.6}
+.ckhelp{margin:18px 0 10px;font-size:12px;letter-spacing:.5px;opacity:.75;font-weight:600}
+.promises{list-style:none;margin:0 0 20px;padding:0}
+.promises li{font-size:15px;padding:5px 0 5px 24px;position:relative;line-height:1.5}
+.promises li::before{content:"✓";position:absolute;left:0;top:5px;width:15px;height:15px;
+  border-radius:50%;background:rgba(255,255,255,.2);font-size:10px;display:grid;place-items:center;font-weight:700}
+.ckfoot{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ckline{font-size:12.5px;opacity:.72;flex:1;min-width:0}
+.ckbtn{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.14);color:#fff;
+  border-radius:8px;padding:7px 15px;font-size:12.5px;font-weight:600}
+.ckbtn:hover{background:rgba(255,255,255,.24)}
+
+/* 需要你决定 */
+.sec-lb{display:flex;align-items:baseline;gap:9px;margin:0 0 10px}
+.sec-lb h3{margin:0;font-size:14px;font-weight:700}
+.sec-lb .s{font-size:11.5px;color:var(--ink3)}
+.empty-say{background:#fff;border:1px solid var(--ink5);border-radius:12px;padding:19px;
+  text-align:center;font-size:13px;color:var(--ink3);box-shadow:var(--sh2)}
+.empty-say .ic{font-size:20px;display:block;margin-bottom:6px;opacity:.55}
+
+/* 情景条 */
+.strip{background:#fff;border:1px solid var(--ink5);border-radius:12px;padding:14px 15px;box-shadow:var(--sh2)}
+.strip-h{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.strip-h b{font-size:13.5px;font-weight:700}
+.strip-h .more{margin-left:auto;font-size:11.5px;color:var(--pri-d);font-weight:600;cursor:pointer}
+.strip-row{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--ink5);background:#fff;border-radius:10px;padding:10px 14px;
+  font-size:13px;font-weight:600;color:var(--ink2);display:flex;align-items:center;gap:7px}
+.chip.on{border-color:var(--pri);background:#e0f2fe;color:var(--pri-d)}
+.chip .dot{width:6px;height:6px;border-radius:50%;background:var(--ink4)}
+.chip.on .dot{background:var(--pri)}
+.chip.maybe{border-style:dashed}
+.chip.add{border-style:dashed;color:var(--ink3);font-weight:500}
+
+/* dock */
+.dock{display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 0 18px;
+  margin-top:22px;border-top:1px solid var(--line2);font-size:12px;color:var(--ink3)}
+.dock .sep{opacity:.4}
+
+/* 调整面板 */
+.adjust{background:#fff;border:1px solid var(--ink5);border-radius:12px;padding:16px;box-shadow:var(--sh2);margin-bottom:22px}
+.arow{display:flex;align-items:center;gap:13px;padding:11px 0;border-bottom:1px solid var(--line2)}
+.arow:last-child{border-bottom:none}
+.arow .tx{flex:1;min-width:0}
+.arow .tx b{font-size:13px;font-weight:600;display:block}
+.arow .tx s{text-decoration:none;font-size:11.5px;color:var(--ink3);display:block;margin-top:2px}
+.sw{width:42px;height:24px;border-radius:99px;background:var(--ink4);border:0;position:relative;transition:.2s;flex:none;padding:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);transition:.2s}
+.sw.on{background:var(--ok)}.sw.on::after{left:21px}
+
+.note{background:#e0f2fe;border:1px solid #bae6fd;border-radius:12px;padding:15px 18px;
+  margin:18px 0;font-size:13px;line-height:1.75;max-width:1000px}
+.note b{color:var(--pri-d)}
+.note.ok{background:var(--ok-sf);border-color:var(--ok-bd)}.note.ok b{color:#047857}
+.note.rk{background:#fef2f2;border-color:#fecaca}.note.rk b{color:#b91c1c}
+.note.wa{background:var(--wa-sf);border-color:var(--wa-bd)}.note.wa b{color:#b45309}
+
+/* 下沉区示意 */
+.pushed{background:#fff;border:1px solid var(--ink5);border-radius:12px;box-shadow:var(--sh2);overflow:hidden;margin-bottom:14px}
+.ph{padding:13px 16px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:10px}
+.ph b{font-size:13.5px;font-weight:700}
+.ph .path{font-size:11px;color:var(--ink3);font-family:Consolas,monospace}
+.pb{padding:15px 16px}
+.tree{font-family:Consolas,monospace;font-size:12px;line-height:1.9;white-space:pre;color:var(--ink2)}
+.tree b{color:var(--pri-d)}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;
+  box-shadow:var(--sh2);font-size:12.5px;margin:12px 0}
+th{background:#f8fafc;text-align:left;padding:10px 13px;font-weight:700;color:var(--ink2);
+  border-bottom:1px solid var(--line);font-size:11.5px}
+td{padding:10px 13px;border-bottom:1px solid var(--line2);vertical-align:top;line-height:1.6}
+tr:last-child td{border-bottom:none}
+.mono{font-family:Consolas,monospace;font-size:11px;color:var(--ink2)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="b">Now · 驾驶舱（修正版）</span>
+    <button class="tab on" data-v="0">首页</button>
+    <button class="tab" data-v="1">调整态</button>
+    <button class="tab" data-v="2">A/B 下沉去哪</button>
+    <span class="sp">只保留 Resolver 输出</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ========== 0 首页 ========== -->
+<div class="view on" id="v0">
+  <h1 class="ft">当前情景驾驶舱</h1>
+  <p class="lead">
+    首页只回答一件事：<strong>现在是什么状态，它在帮我什么</strong>。
+    感知细节（它看到了什么、为什么这么判断）和历史成果（今天做了什么）全部下沉。
+  </p>
+
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav">
+        <button class="nv on">现在</button>
+        <button class="nv">回顾</button>
+        <button class="nv">设置</button>
+      </div>
+      <div class="r">
+        <span class="pill p-g"><span style="width:5px;height:5px;border-radius:50%;background:#10b981;display:inline-block"></span>正常</span>
+        <span style="font-size:12px;color:var(--ink3)">22:41</span>
+      </div>
+    </div>
+    <div class="body">
+
+      <!-- cockpit -->
+      <div class="cockpit">
+        <p class="ck">当前情景</p>
+        <h1>🎨 创作中</h1>
+        <p class="ckstance">正在电脑前写代码，AI 在旁边跑</p>
+
+        <p class="ckhelp">OneTone 正在帮你</p>
+        <ul class="promises">
+          <li>减少消息打扰</li>
+          <li>保持当前窗口</li>
+          <li>准备语音输入</li>
+        </ul>
+
+        <div class="ckfoot">
+          <span class="ckline">跟随前台自动切换 · Cursor</span>
+          <button class="ckbtn" onclick="showView(1)">调整</button>
+        </div>
+      </div>
+
+      <!-- 需要你决定 -->
+      <div class="sec-lb"><h3>需要你决定</h3><span class="s">有才出现，没有就这一句话</span></div>
+      <div class="empty-say">
+        <span class="ic">✓</span>
+        没有需要处理的事
+      </div>
+
+      <!-- 我的情景 -->
+      <div class="sec-lb" style="margin-top:22px"><h3>我的情景</h3><span class="s">点一下就切</span></div>
+      <div class="strip">
+        <div class="strip-h">
+          <b>4 个情景</b>
+          <span class="more">管理 →</span>
+        </div>
+        <div class="strip-row">
+          <span class="chip on"><span class="dot"></span>创作中</span>
+          <span class="chip"><span class="dot"></span>会议中</span>
+          <span class="chip"><span class="dot"></span>离开电脑</span>
+          <span class="chip"><span class="dot"></span>休息一下</span>
+          <span class="chip add">＋</span>
+        </div>
+      </div>
+
+      <!-- dock -->
+      <div class="dock">
+        <span>🎤 语音</span><span class="sep">·</span>
+        <span>● OneTone</span><span class="sep">·</span>
+        <span>RAlt</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 变体：有事要决定时 -->
+  <h2 class="sec">同一页面 · 有待决策时</h2>
+  <p class="secsub">这是首页唯一会「长出来」的区块。Agent 请求批准时才出现，且带具体动词。</p>
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav"><button class="nv on">现在</button><button class="nv">回顾</button><button class="nv">设置</button></div>
+      <div class="r"><span class="pill p-w">1 项待决定</span><span style="font-size:12px;color:var(--ink3)">22:43</span></div>
+    </div>
+    <div class="body">
+      <div class="cockpit">
+        <p class="ck">当前情景</p>
+        <h1>🎨 创作中</h1>
+        <p class="ckstance">AI 想让你确认一件事</p>
+        <p class="ckhelp">OneTone 正在帮你</p>
+        <ul class="promises">
+          <li>减少消息打扰</li>
+          <li>保持当前窗口</li>
+        </ul>
+        <div class="ckfoot">
+          <span class="ckline">等你 2 分钟了</span>
+          <button class="ckbtn" onclick="showView(1)">调整</button>
+        </div>
+      </div>
+
+      <div class="sec-lb"><h3>需要你决定</h3></div>
+      <div class="strip" style="padding:0;overflow:hidden">
+        <div class="arow" style="padding:14px 16px;border-bottom:1px solid var(--line2)">
+          <div class="tx"><b>批准 Codex 运行删除命令</b><s>运行 rm · 不可逆 · 已经等你 2 分钟</s></div>
+          <button class="btn p">查看并决定</button>
+        </div>
+        <div class="arow" style="padding:14px 16px;border-bottom:none">
+          <div class="tx"><b>继续别打扰我</b><s>保持当前情景，等我停下再问</s></div>
+          <button class="btn">继续别打扰</button>
+        </div>
+      </div>
+
+      <div class="sec-lb" style="margin-top:22px"><h3>我的情景</h3></div>
+      <div class="strip">
+        <div class="strip-row">
+          <span class="chip on"><span class="dot"></span>创作中</span>
+          <span class="chip"><span class="dot"></span>会议中</span>
+          <span class="chip"><span class="dot"></span>离开电脑</span>
+          <span class="chip add">＋</span>
+        </div>
+      </div>
+
+      <div class="dock"><span>🎤 语音</span><span class="sep">·</span><span>● OneTone</span><span class="sep">·</span><span>RAlt</span></div>
+    </div>
+  </div>
+
+  <!-- 变体：可能情景 -->
+  <h2 class="sec">同一页面 · 系统建议切换时</h2>
+  <p class="secsub">不弹窗、不打断，只在情景条上方多一行弱提示。用户不点就继续当前情景。</p>
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav"><button class="nv on">现在</button><button class="nv">回顾</button><button class="nv">设置</button></div>
+      <div class="r"><span class="pill p-g">正常</span><span style="font-size:12px;color:var(--ink3)">14:05</span></div>
+    </div>
+    <div class="body">
+      <div class="cockpit">
+        <p class="ck">当前情景</p>
+        <h1>🎨 创作中</h1>
+        <p class="ckstance">正在电脑前写代码</p>
+        <p class="ckhelp">OneTone 正在帮你</p>
+        <ul class="promises"><li>减少消息打扰</li><li>保持当前窗口</li></ul>
+        <div class="ckfoot">
+          <span class="ckline">跟随前台自动切换 · Cursor</span>
+          <button class="ckbtn" onclick="showView(1)">调整</button>
+        </div>
+      </div>
+
+      <div class="empty-say" style="padding:15px;font-size:12.5px">
+        <span style="color:var(--ink2)">你开会了吗？</span>&nbsp;
+        <span style="color:var(--pri-d);font-weight:600;cursor:pointer">切到「会议中」→</span>
+      </div>
+
+      <div class="sec-lb" style="margin-top:18px"><h3>我的情景</h3></div>
+      <div class="strip">
+        <div class="strip-row">
+          <span class="chip on"><span class="dot"></span>创作中</span>
+          <span class="chip maybe"><span class="dot"></span>会议中</span>
+          <span class="chip"><span class="dot"></span>离开电脑</span>
+          <span class="chip"><span class="dot"></span>休息一下</span>
+          <span class="chip add">＋</span>
+        </div>
+      </div>
+
+      <div class="dock"><span>🎤 语音</span><span class="sep">·</span><span>● OneTone</span><span class="sep">·</span><span>RAlt</span></div>
+    </div>
+  </div>
+
+  <div class="note ok">
+    <b>注意 cockpit 里已经没有「我看到的你」和「今天为你做了什么」。</b>
+    保留的只有：情景名（Resolver 的输出）+ 正在帮你（assists 承诺）+ 一个调整入口。
+    这三样都是<strong>用户能理解也能控制的</strong>。
+  </div>
+</div>
+
+<!-- ========== 1 调整态 ========== -->
+<div class="view" id="v1">
+  <h1 class="ft">调整当前情景</h1>
+  <p class="lead">
+    点「调整」展开。仍然只调<strong>结果</strong>（「少被打断」开不开），不碰触发器和传感器。
+    这符合 <code>HABIT_UNIFIED_CONTRACT.md</code> 里「动作策略随习惯，硬件底座留全局」的分工。
+  </p>
+
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav"><button class="nv on">现在</button><button class="nv">回顾</button><button class="nv">设置</button></div>
+      <div class="r"><span class="pill p-g">正常</span></div>
+    </div>
+    <div class="body">
+      <div class="cockpit" style="padding-bottom:20px">
+        <p class="ck">当前情景</p>
+        <h1>🎨 创作中</h1>
+        <p class="ckstance">调整这个情景会帮你做什么</p>
+        <div class="ckfoot" style="margin-top:16px">
+          <span class="ckline">改动会立即生效，并存到你的习惯里</span>
+          <button class="ckbtn" onclick="showView(0)">完成</button>
+        </div>
+      </div>
+
+      <div class="adjust">
+        <div class="arow">
+          <div class="tx"><b>减少消息打扰</b><s>非紧急通知压着，等我停下再弹</s></div>
+          <span class="sw on"></span>
+        </div>
+        <div class="arow">
+          <div class="tx"><b>保持当前窗口</b><s>回来时恢复到离开前的布局</s></div>
+          <span class="sw on"></span>
+        </div>
+        <div class="arow">
+          <div class="tx"><b>准备语音输入</b><s>按热键就能开始说，不用先唤醒</s></div>
+          <span class="sw on"></span>
+        </div>
+        <div class="arow">
+          <div class="tx"><b>离开时保护画面</b><s>我离开座位就挡住屏幕</s></div>
+          <span class="sw"></span>
+        </div>
+      </div>
+
+      <div class="note wa">
+        <b>这里有个已知问题要一起修：</b>开关目前写的是中文 label（<code>now-model.js:276</code>）。
+        改一次文案，用户已存的开关会<strong>静默全关</strong>。
+        建议在接这套 UI 之前先把 <code>assists</code> 改成稳定 ID —— 否则「调整」这个入口本身就是不可靠的。
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>为什么不在这里放「多久算离开 = 3 秒」这类参数？</b><br>
+    这是「时机」不是「结果」。放在「设置 → 情景默认值」里，或者更远的高级区。
+    首页调整只回答<b>「我要不要这个帮助」</b>，不回答<b>「怎么判定」</b>。
+  </div>
+</div>
+
+<!-- ========== 2 下沉 ========== -->
+<div class="view" id="v2">
+  <h1 class="ft">A 和 B 下沉去哪</h1>
+  <p class="lead">
+    不删除，<strong>换位置</strong>。它们对高级用户依然有价值，只是不该占据第一屏。
+  </p>
+
+  <div class="pushed">
+    <div class="ph">
+      <b>A「我看到的你」→ 诊断</b>
+      <span class="path">设置 / 隐私与诊断</span>
+      <span class="pill p-n" style="margin-left:auto">高级</span>
+    </div>
+    <div class="pb">
+      <div class="tree">设置
+├── 隐私与权限
+│    摄像头 · 麦克风 · 键盘 开关
+│    画面是否只在本机处理
+│
+└── <b>诊断</b>                        ← A 搬这里
+     ├── <b>它现在怎么理解你</b>
+     │    正在写代码   ← Cursor在前台 + 项目有改动
+     │    AI 正在等你  ← Codex 请求批准
+     │    你在不在     ← 摄像头未接入，显示"不知道"
+     │
+     ├── <b>它靠什么知道</b>
+     │    👁 摄像头  在不在 / 看哪块屏    只在本机处理
+     │    🎤 麦克风  在不在说话          只在主动触发时录音
+     │    🖥 窗口    前台是谁            只读标题
+     │    ⌨️ 键鼠    最近有无敲键盘       只统计节奏
+     │
+     └── <b>为什么它这样判断</b>         ← B 的因果链也在这</div>
+      <p style="margin:14px 0 0;font-size:12.5px;color:var(--ink2);line-height:1.7">
+        改名是关键：<code>它现在怎么理解你</code> 比 <code>我看到的你</code> 少一分窥视感，
+        多一分<strong>向用户求助</strong>的意味——「我判断错了？告诉我」。这把它从「监控面板」变成「设置项」。
+      </p>
+    </div>
+  </div>
+
+  <div class="pushed">
+    <div class="ph">
+      <b>B「今天为你做了什么」→ 回顾</b>
+      <span class="path">独立页 / 或未来的 Memory</span>
+      <span class="pill p-n" style="margin-left:auto">低频</span>
+    </div>
+    <div class="pb">
+      <div class="tree">回顾（独立页）
+├── 今天
+│    12 次主动帮助
+│    16:40  你摇了摇头 → AI 停下来了
+│    15:07  你回到座位 → 恢复工作现场
+│    14:32  你离开了 → 屏幕挡住了
+│
+├── 本周
+│    周报 / 趋势 / 哪些帮助真的有用
+│
+└── <span style="color:var(--ink3)">未来：OneTone Memory</span></div>
+      <p style="margin:14px 0 0;font-size:12.5px;color:var(--ink2);line-height:1.7">
+        这是<strong>成果中心</strong>，它的读者是「想回顾的我」，不是「正在工作时的我」。
+        放首页会让人分心——工作的人不想看昨天的统计。
+      </p>
+    </div>
+  </div>
+
+  <h2 class="sec">分层关系</h2>
+  <div class="note">
+    <b>每层只回答一个问题，不要混：</b>
+    <div class="tree" style="margin-top:12px;background:#fff;border-radius:9px;padding:14px;border:1px solid var(--line)">
+<b>现在（首页）</b>      现在是什么状态？→ Resolver 输出
+<b>回顾</b>            我今天得到了什么？→ ActionHistory
+<b>设置 · 隐私与权限</b>  它在用我的什么？→ 开关
+<b>设置 · 诊断</b>      它凭什么这么说？→ Context 明细
+<b>情景管理</b>         我想要什么状态？→ mappings</div>
+  </div>
+
+  <h2 class="sec">和现状代码的差异</h2>
+  <table>
+    <thead><tr><th style="width:200px">项目</th><th style="width:88px">现状</th><th>修正后</th></tr></thead>
+    <tbody>
+      <tr><td>cockpit 内容</td><td><span class="pill p-w">已正确</span></td>
+        <td>保持不变：情景名 + <code>promises</code>（正在帮你）+ 调整按钮</td></tr>
+      <tr><td>helping 回落逻辑</td><td><span class="pill p-g">已实现</span></td>
+        <td><code>now-home-ui.js:293-304</code> 已有「有今日记录则隐藏承诺」——<b>改造后应反过来</b>：承诺恒显示，今日记录移走</td></tr>
+      <tr><td>今日时间线</td><td><span class="pill p-r">位置错</span></td>
+        <td>从 <code>renderNowView</code> 移出，独立成「回顾」页。<code>now-today.js</code> 保留复用</td></tr>
+      <tr><td>「我看到的你」</td><td><span class="pill p-n">未做</span></td>
+        <td>不做了。移到设置 · 诊断</td></tr>
+      <tr><td>needsYou</td><td><span class="pill p-w">数据缺</span></td>
+        <td>保留在首页，但要接 <code>AttentionCause</code> 投影</td></tr>
+      <tr><td>可能情景</td><td><span class="pill p-n">恒 false</span></td>
+        <td>降级为一行弱提示（不弹窗），算法用 attention + foreground</td></tr>
+      <tr><td>assists 存储</td><td><span class="pill p-r">有 bug</span></td>
+        <td>必须在开放「调整」入口前改成稳定 ID</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note rk">
+    <b>一个必须先修的前置：</b>「调整」是首页唯一的写入口。如果 <code>assists</code> 还存中文 label，
+    这个入口就是不可靠的——用户改了开关，下次打开可能全没了。
+    <strong>建议顺序：assists ID 化 → 再做驾驶舱微调。</strong>
+  </div>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showView(+b.dataset.v));
+function showView(i){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab')[i].classList.add('on');
+  document.getElementById('v'+i).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>

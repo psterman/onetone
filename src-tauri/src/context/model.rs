@@ -44,6 +44,16 @@ impl PresenceEvidence {
     }
 }
 
+impl From<super::presence::Presence> for PresenceEvidence {
+    fn from(p: super::presence::Presence) -> Self {
+        match p {
+            super::presence::Presence::Here => Self::Here,
+            super::presence::Presence::Away => Self::Away,
+            super::presence::Presence::Unknown => Self::Unknown,
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // 上下文维度
 // ---------------------------------------------------------------------------

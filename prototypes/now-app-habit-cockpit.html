@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Now · 应用习惯驾驶舱</title>
+<style>
+:root{
+  --pri:#0ea5e9;--pri-d:#0284c7;--pri-sf:#e0f2fe;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;--ink5:#e2e8f0;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f7f9fb;
+  --ok:#10b981;--ok-sf:#ecfdf5;--ok-bd:#a7f3d0;
+  --wa:#f59e0b;--wa-sf:#fffbeb;--wa-bd:#fde68a;
+  --sh2:0 1px 3px rgba(15,23,42,.07);--sh3:0 12px 36px rgba(15,23,42,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+code{font-family:Consolas,monospace;font-size:11.5px;background:var(--line2);padding:1px 5px;border-radius:4px;color:#0369a1}
+
+.topbar{position:sticky;top:0;z-index:60;background:rgba(247,249,251,.95);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:0 24px}
+.topbar-in{max-width:1180px;margin:0 auto;height:56px;display:flex;align-items:center;gap:8px}
+.topbar .b{font-weight:800;font-size:14.5px;margin-right:16px}
+.tab{padding:7px 13px;border-radius:8px;font-size:12.5px;color:var(--ink2);border:0;background:none;font-weight:500}
+.tab:hover{background:var(--line2)}.tab.on{background:var(--ink);color:#fff}
+.topbar .sp{margin-left:auto;font-size:11px;color:var(--ink3)}
+.page{max-width:1180px;margin:0 auto;padding:26px 24px 80px}
+.view{display:none}.view.on{display:block}
+h1.ft{font-size:24px;margin:0 0 8px;letter-spacing:-.6px}
+.lead{font-size:14.5px;color:var(--ink2);max-width:900px;margin:0 0 22px;line-height:1.75}
+h2.sec{font-size:15.5px;margin:32px 0 6px}
+.secsub{font-size:12.5px;color:var(--ink2);margin:0 0 14px;max-width:880px;line-height:1.7}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.p-g{background:var(--ok-sf);color:#047857}.p-w{background:var(--wa-sf);color:#b45309}
+.p-r{background:#fef2f2;color:#b91c1c}.p-n{background:var(--line2);color:var(--ink2)}
+.p-b{background:var(--pri-sf);color:var(--pri-d)}
+.btn{border:1px solid var(--ink5);background:#fff;border-radius:8px;padding:7px 13px;font-size:12.5px;
+  color:var(--ink2);font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--line2)}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+.sw{width:42px;height:24px;border-radius:99px;background:var(--ink4);border:0;position:relative;transition:.2s;flex:none;padding:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);transition:.2s}
+.sw.on{background:var(--ok)}.sw.on::after{left:21px}
+
+.win{background:#fff;border:1px solid var(--ink5);border-radius:14px;overflow:hidden;box-shadow:var(--sh3)}
+.tbar{display:flex;align-items:center;gap:11px;padding:0 17px;height:50px;border-bottom:1px solid var(--line)}
+.tbar .logo{width:25px;height:25px;border-radius:8px;background:linear-gradient(135deg,#0c4a6e,#0ea5e9);
+  display:grid;place-items:center;color:#fff;font-size:12.5px;font-weight:800;flex:none}
+.tbar .ttl{font-size:14.5px;font-weight:700}
+.nav{display:flex;gap:2px;margin-left:10px}
+.nv{padding:5px 11px;border-radius:8px;font-size:12.5px;color:var(--ink3);border:0;background:none;font-weight:500}
+.nv.on{background:var(--line2);color:var(--ink);font-weight:600}
+.tbar .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.body{padding:20px 22px 0}
+
+/* cockpit */
+.cockpit{background:linear-gradient(160deg,#0c4a6e 0%,#0369a1 100%);border-radius:15px;
+  padding:22px 24px;color:#fff;margin-bottom:20px}
+.ck{margin:0 0 14px;font-size:12px;letter-spacing:.6px;opacity:.72;font-weight:600}
+.cockpit h1{margin:0 0 5px;font-size:29px;letter-spacing:-.6px;line-height:1.2}
+.ckfrom{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:4px 12px;
+  font-size:12px;margin-bottom:14px}
+.ckfrom .ai{font-size:13px}
+.ckhelp{margin:16px 0 9px;font-size:12px;letter-spacing:.5px;opacity:.75;font-weight:600}
+.promises{list-style:none;margin:0 0 18px;padding:0}
+.promises li{font-size:15px;padding:5px 0 5px 24px;position:relative;line-height:1.5}
+.promises li::before{content:"✓";position:absolute;left:0;top:5px;width:15px;height:15px;
+  border-radius:50%;background:rgba(255,255,255,.2);font-size:10px;display:grid;place-items:center;font-weight:700}
+.ckfoot{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.ckline{font-size:12.5px;opacity:.72;flex:1;min-width:0}
+.ckbtn{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.14);color:#fff;
+  border-radius:8px;padding:7px 15px;font-size:12.5px;font-weight:600}
+.ckbtn:hover{background:rgba(255,255,255,.24)}
+
+.sec-lb{display:flex;align-items:baseline;gap:9px;margin:22px 0 10px}
+.sec-lb h3{margin:0;font-size:14px;font-weight:700}
+.sec-lb .s{font-size:11.5px;color:var(--ink3)}
+.empty-say{background:#fff;border:1px solid var(--ink5);border-radius:12px;padding:18px;
+  text-align:center;font-size:13px;color:var(--ink3);box-shadow:var(--sh2)}
+
+.box{background:#fff;border:1px solid var(--ink5);border-radius:12px;box-shadow:var(--sh2);overflow:hidden}
+.arow{display:flex;align-items:center;gap:13px;padding:12px 15px;border-bottom:1px solid var(--line2)}
+.arow:last-child{border-bottom:none}
+.arow .tx{flex:1;min-width:0}
+.arow .tx b{font-size:13px;font-weight:600;display:block}
+.arow .tx s{text-decoration:none;font-size:11.5px;color:var(--ink3);display:block;margin-top:2px}
+
+/* 应用习惯 */
+.apps{display:flex;gap:8px;flex-wrap:wrap}
+.app{border:1px solid var(--ink5);background:#fff;border-radius:10px;padding:10px 13px;
+  display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink2)}
+.app.on{border-color:var(--pri);background:var(--pri-sf);color:var(--pri-d)}
+.app .ic{font-size:15px}
+.app .sub{font-size:10.5px;color:var(--ink3);font-weight:400}
+.app.on .sub{color:var(--pri-d);opacity:.75}
+.app.noborder{border-style:dashed;color:var(--ink3);font-weight:500}
+.recent{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line2)}
+.recent .r{font-size:11.5px;color:var(--ink3);display:flex;align-items:center;gap:5px}
+.recent .r .d{width:5px;height:5px;border-radius:50%;background:var(--ink4)}
+
+.dock{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px 0 17px;
+  margin-top:20px;border-top:1px solid var(--line2);font-size:12px;color:var(--ink3)}
+.dock .sep{opacity:.4}
+
+.note{background:var(--pri-sf);border:1px solid #bae6fd;border-radius:12px;padding:15px 18px;
+  margin:18px 0;font-size:13px;line-height:1.75;max-width:1000px}
+.note b{color:var(--pri-d)}
+.note.ok{background:var(--ok-sf);border-color:var(--ok-bd)}.note.ok b{color:#047857}
+.note.rk{background:#fef2f2;border-color:#fecaca}.note.rk b{color:#b91c1c}
+.note.wa{background:var(--wa-sf);border-color:var(--wa-bd)}.note.wa b{color:#b45309}
+.tree{font-family:Consolas,monospace;font-size:12px;line-height:1.9;white-space:pre;color:var(--ink2)}
+.tree b{color:var(--pri-d)}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;
+  box-shadow:var(--sh2);font-size:12.5px;margin:12px 0}
+th{background:#f8fafc;text-align:left;padding:10px 13px;font-weight:700;color:var(--ink2);
+  border-bottom:1px solid var(--line);font-size:11.5px}
+td{padding:10px 13px;border-bottom:1px solid var(--line2);vertical-align:top;line-height:1.6}
+tr:last-child td{border-bottom:none}
+.mono{font-family:Consolas,monospace;font-size:11px;color:var(--ink2)}
+.wide{width:100%;max-width:340px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="b">Now · 应用习惯驾驶舱</span>
+    <button class="tab on" data-v="0">首页</button>
+    <button class="tab" data-v="1">首次使用</button>
+    <button class="tab" data-v="2">调整习惯</button>
+    <button class="tab" data-v="3">模型对照</button>
+    <span class="sp">前台应用 → 自动匹配 → 行为配置</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ========== 0 首页 ========== -->
+<div class="view on" id="v0">
+  <h1 class="ft">Now：你正在做什么，OneTone 怎么配合</h1>
+  <p class="lead">
+    这不是「四个模式手动切换」，而是<strong>按前台应用自动适配</strong>。
+    你打开 Cursor，它就进入 Cursor 的习惯；你切到 Photoshop，它就切过去。<strong>你不需要记着切换。</strong>
+  </p>
+
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav">
+        <button class="nv on">现在</button>
+        <button class="nv">回顾</button>
+        <button class="nv">设置</button>
+      </div>
+      <div class="r">
+        <span class="pill p-g"><span style="width:5px;height:5px;border-radius:50%;background:#10b981;display:inline-block"></span>正常</span>
+        <span style="font-size:12px;color:var(--ink3)">22:41</span>
+      </div>
+    </div>
+    <div class="body">
+
+      <div class="cockpit">
+        <p class="ck">当前情景</p>
+        <h1>💻 Cursor 开发中</h1>
+        <div class="ckfrom"><span class="ai">🖥</span>来自 Cursor<span style="opacity:.6">· 自动匹配</span></div>
+
+        <p class="ckhelp">OneTone 正在帮你</p>
+        <ul class="promises">
+          <li>编程语音快捷键</li>
+          <li>AI 工具入口已就位</li>
+          <li>终端操作优化</li>
+          <li>降低非工作通知</li>
+        </ul>
+
+        <div class="ckfoot">
+          <span class="ckline">切到别的应用会自动跟着变</span>
+          <button class="ckbtn" onclick="showView(2)">调整 Cursor 习惯</button>
+        </div>
+      </div>
+
+      <div class="sec-lb"><h3>需要你决定</h3><span class="s">有才出现</span></div>
+      <div class="empty-say">没有需要处理的事</div>
+
+      <div class="sec-lb"><h3>我的应用习惯</h3><span class="s">每个应用一套</span></div>
+      <div class="box" style="padding:14px 15px">
+        <div class="apps">
+          <span class="app on"><span class="ic">🖥</span>Cursor<span class="sub">开发</span></span>
+          <span class="app"><span class="ic">🎨</span>Photoshop<span class="sub">设计</span></span>
+          <span class="app"><span class="ic">💬</span>微信<span class="sub">沟通</span></span>
+          <span class="app"><span class="ic">🌐</span>Chrome<span class="sub">学习</span></span>
+          <span class="app"><span class="ic">📹</span>会议<span class="sub">专注会议</span></span>
+          <span class="app noborder">＋</span>
+        </div>
+        <div class="recent">
+          <span class="s" style="font-size:11.5px;color:var(--ink3);width:100%">最近用过</span>
+          <span class="r"><span class="d"></span>Cursor</span>
+          <span class="r"><span class="d"></span>Chrome</span>
+          <span class="r"><span class="d"></span>微信</span>
+          <span class="r"><span class="d"></span>VS Code</span>
+          <span class="r"><span class="d"></span>终端</span>
+        </div>
+      </div>
+
+      <div class="dock"><span>🎤 语音</span><span class="sep">·</span><span>● OneTone</span><span class="sep">·</span><span>RAlt</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec">换个应用会长什么样</h2>
+  <p class="secsub">同一个 cockpit，内容跟着前台变。用户不需要做任何操作。</p>
+  <div class="split" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="win">
+      <div class="tbar"><span class="logo">O</span><span class="ttl">OneTone</span>
+        <div class="r"><span class="pill p-g">正常</span></div></div>
+      <div class="body">
+        <div class="cockpit" style="background:linear-gradient(160deg,#7c2d12 0%,#c2410c 100%)">
+          <p class="ck">当前情景</p>
+          <h1>🎨 Photoshop 设计中</h1>
+          <div class="ckfrom"><span class="ai">🖥</span>来自 Photoshop<span style="opacity:.6">· 自动匹配</span></div>
+          <p class="ckhelp">OneTone 正在帮你</p>
+          <ul class="promises">
+            <li>素材快捷键</li>
+            <li>保持创作窗口</li>
+            <li>不弹会议提醒</li>
+          </ul>
+          <div class="ckfoot">
+            <span class="ckline">切到别的应用会自动跟着变</span>
+            <button class="ckbtn">调整</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="win">
+      <div class="tbar"><span class="logo">O</span><span class="ttl">OneTone</span>
+        <div class="r"><span class="pill p-g">正常</span></div></div>
+      <div class="body">
+        <div class="cockpit" style="background:linear-gradient(160deg,#134e4a 0%,#0d9488 100%)">
+          <p class="ck">当前情景</p>
+          <h1>💬 微信沟通中</h1>
+          <div class="ckfrom"><span class="ai">🖥</span>来自 微信<span style="opacity:.6">· 自动匹配</span></div>
+          <p class="ckhelp">OneTone 正在帮你</p>
+          <ul class="promises">
+            <li>语音转文字快捷方式</li>
+            <li>不抢输入焦点</li>
+            <li>静音非紧急通知</li>
+          </ul>
+          <div class="ckfoot">
+            <span class="ckline">切到别的应用会自动跟着变</span>
+            <button class="ckbtn">调整</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note ok">
+    <b>关键差别：</b>旧方案让你在四个模式里<strong>选</strong>；新方案是应用一变，OneTone <strong>自己跟</strong>。
+    你唯一需要做的事，是长期微调某一个应用的习惯——「我希望 Cursor 下次打开就是这样」。
+  </div>
+</div>
+
+<!-- ========== 1 首次使用 ========== -->
+<div class="view" id="v1">
+  <h1 class="ft">第一次用某个应用</h1>
+  <p class="lead">
+    这是<strong>唯一一次打断</strong>：OneTone 发现你反复在某个应用里工作，问你要不要建个习惯。
+    确认之后，以后每次打开自动生效。
+  </p>
+
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav"><button class="nv on">现在</button><button class="nv">回顾</button><button class="nv">设置</button></div>
+      <div class="r"><span class="pill p-g">正常</span></div>
+    </div>
+    <div class="body">
+      <div class="cockpit">
+        <p class="ck">当前情景</p>
+        <h1>🖥 还没认识这个应用</h1>
+        <p class="ckstance" style="margin:6px 0 0;font-size:13.5px;opacity:.85">
+          这是 VS Code，你最近 5 天里打开过 18 次</p>
+        <div class="ckfoot" style="margin-top:18px">
+          <button class="ckbtn" style="background:rgba(255,255,255,.9);border-color:transparent;color:#0369a1">
+            为 VS Code 建个习惯</button>
+          <button class="ckbtn" style="background:transparent">先用通用设置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">确认后</h2>
+  <div class="box">
+    <div class="arow">
+      <div class="tx"><b>VS Code 开发</b><s>已创建 · 下次打开自动进入</s></div>
+      <span class="pill p-g">生效中</span>
+    </div>
+    <div class="arow">
+      <div class="tx"><b>要不要复制 Cursor 的习惯？</b><s>两个都是开发，配置很接近</s></div>
+      <button class="btn p">复制过来</button>
+      <button class="btn">从空白开始</button>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>为什么「复制 Cursor 的习惯」很关键：</b>用户配置的成本是<strong>最高的一次性成本</strong>。
+    复用已有习惯能把「建一个新应用习惯」从 5 分钟降到 10 秒。
+    这也是这套模型和 Apple Focus 的本质区别——<strong>Focus 是从零配置，这里是复制 + 微调</strong>。
+  </div>
+
+  <div class="note wa">
+    <b>实现依赖：</b>「最近 5 天打开过 18 次」需要应用使用历史。
+    仓库里 <code>CursorLocalActivity</code> 只统计了 Cursor，<code>runtime-habit-control.js</code> 的
+    <code>lastFgIdentity</code> 只在<strong>本次运行内</strong>有效。
+    <br><strong>所以这一屏现在做不出来</strong>——需要先把「前台应用历史」落盘（一个轻量表：appId + 时间戳）。
+  </div>
+</div>
+
+<!-- ========== 2 调整习惯 ========== -->
+<div class="view" id="v2">
+  <h1 class="ft">调整 Cursor 习惯</h1>
+  <p class="lead">
+    心智是「<strong>我希望 Cursor 下次打开就是这样</strong>」——所以按钮写「调整 Cursor 习惯」，不是「调整情景」。
+  </p>
+
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav"><button class="nv on">现在</button><button class="nv">回顾</button><button class="nv">设置</button></div>
+      <div class="r"><span class="pill p-g">正常</span></div>
+    </div>
+    <div class="body">
+      <div class="cockpit" style="padding-bottom:18px">
+        <p class="ck">正在调整</p>
+        <h1>🖥 Cursor 开发中</h1>
+        <p class="ckstance" style="margin:6px 0 0;font-size:13.5px;opacity:.85">
+          改动只影响 Cursor，不影响其他应用</p>
+        <div class="ckfoot" style="margin-top:16px">
+          <span class="ckline" style="font-size:12px">上次使用：今天 22:41</span>
+          <button class="ckbtn" onclick="showView(0)">完成</button>
+        </div>
+      </div>
+
+      <div class="box" style="margin-bottom:18px">
+        <div class="arow">
+          <div class="tx"><b>编程语音快捷键</b><s>说「下一行」就跳，不用看键盘</s></div>
+          <span class="sw on"></span>
+        </div>
+        <div class="arow">
+          <div class="tx"><b>AI 工具入口已就位</b><s>一键召唤 Codex，不切窗口</s></div>
+          <span class="sw on"></span>
+        </div>
+        <div class="arow">
+          <div class="tx"><b>终端操作优化</b><s>常用命令走语音，路径自动补全</s></div>
+          <span class="sw on"></span>
+        </div>
+        <div class="arow">
+          <div class="tx"><b>降低非工作通知</b><s>AI 消息留着，其他全压后</s></div>
+          <span class="sw on"></span>
+        </div>
+        <div class="arow">
+          <div class="tx"><b>离开时保护画面</b><s>我离开座位就挡住屏幕</s></div>
+          <span class="sw"></span>
+        </div>
+      </div>
+
+      <div class="sec-lb"><h3>这个习惯的触发</h3><span class="s">高级 · 一般不用改</span></div>
+      <div class="box" style="padding:14px 15px">
+        <div class="tree" style="font-size:11.5px;line-height:1.8">进入条件  前台应用 = Cursor
+覆盖规则  优先于通用设置
+例外      停在通用设置 → 自动跟随: <b>开</b>
+快捷键    临时切换到其他习惯: Ctrl+Space</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note rk">
+    <b>必须先修：</b>这些开关现在存的是中文 label（<code>now-model.js:276</code>）。
+    改一次文案，用户已存的开关<strong>静默全关</strong>。
+    「调整应用习惯」是首页唯一的写入口——它必须可靠，否则整个自动适配模型不可信。
+  </div>
+</div>
+
+<!-- ========== 3 模型对照 ========== -->
+<div class="view" id="v3">
+  <h1 class="ft">两种产品模型的差别</h1>
+  <p class="lead">我之前一直在用左边这个模型思考，所以首页越做越像仪表盘。代码其实一直是右边这个。</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+    <div class="box" style="border-color:#fecaca">
+      <div style="padding:13px 15px;border-bottom:1px solid var(--line2);background:#fef2f2;border-radius:12px 12px 0 0">
+        <b style="font-size:13.5px;color:#b91c1c">✕ 我之前在做的：情景模式</b>
+      </div>
+      <div style="padding:15px">
+        <div class="tree" style="font-size:11.5px;line-height:1.85">用户创建模式
+  ↓
+用户手动切换
+  ↓
+模式内做固定动作
+
+<span style="color:var(--ink3)">认知负担：记着切换</span>
+<span style="color:var(--ink3)">对标：Apple Focus</span>
+<span style="color:var(--ink3)">首页必然堆状态</span></div>
+      </div>
+    </div>
+    <div class="box" style="border-color:var(--ok-bd)">
+      <div style="padding:13px 15px;border-bottom:1px solid var(--line2);background:var(--ok-sf);border-radius:12px 12px 0 0">
+        <b style="font-size:13.5px;color:#047857">✓ 你的架构：应用自动适配</b>
+      </div>
+      <div style="padding:15px">
+        <div class="tree" style="font-size:11.5px;line-height:1.85">前台应用变化
+  ↓
+自动匹配对应习惯
+  ↓
+行为跟着环境走
+
+<span style="color:#047857">认知负担：不用记</span>
+<span style="color:#047857">对标：没有一个</span>
+<span style="color:#047857">首页只显示「当前」</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">代码里已经是右边这个了</h2>
+  <div class="note ok">
+    <b><code>runtime-habit-control.js:178</code> 的 <code>calculateEffectiveScene()</code> 优先级链：</b>
+    <div class="tree" style="margin-top:12px;background:#fff;border-radius:9px;padding:14px;border:1px solid var(--line)">
+<b>1</b>  pinHabit        固定某个习惯，所有应用都用
+<b>2</b>  pinAppHabit     只在某个应用里固定
+<b>3</b>  softOverride    临时选用，<span style="color:var(--ink3)">前台一变就失效</span>
+<b>4</b>  <b style="color:#047857">auto</b>            <span style="color:#047857">跟随前台自动匹配</span>  ← 常态
+<b>5</b>  baseline        通用设置兜底</div>
+  </div>
+
+  <p class="secsub" style="margin-top:14px">
+    也就是说 <code>mode</code> 字段（<code>pinHabit</code> / <code>softOverride</code> / <code>auto</code> / <code>manual</code>）
+    天然就是「当前处于哪种模式」——<strong>这个字段现在没在首页显示，白白浪费了</strong>。
+  </p>
+
+  <h2 class="sec">首页该怎么用这个字段</h2>
+  <table>
+    <thead><tr><th style="width:130px">mode</th><th style="width:180px">首页该显示</th><th>用户能不能理解</th></tr></thead>
+    <tbody>
+      <tr><td><code>auto</code></td><td>「来自 Cursor · 自动匹配」</td><td>能——这就是「它跟上了我」</td></tr>
+      <tr><td><code>pinAppHabit</code></td><td>「🔒 固定在 Cursor」+ 解除按钮</td><td>能——我钉死的</td></tr>
+      <tr><td><code>softOverride</code></td><td>「临时选用，切走就恢复」</td><td>能——我临时换的</td></tr>
+      <tr><td><code>manual</code></td><td>「手动选择 · 跟随前台已关」</td><td>能——我关掉了自动</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <b>把 mode 翻译成人话，首页就自动回答了「它为什么是这个状态」。</b>
+    不需要 A 的「我看到的你」——一个 badge 就够了，而且没有窥视感。
+    这也顺带解决了 <code>runtimeHabitControl</code> 丢数据那个 bug 的可见性：
+    <strong>它坏掉时用户会看到「自动匹配」莫名变成「手动选择」，这本身就是信号。</strong>
+  </div>
+
+  <h2 class="sec">与此相比，首页去掉了什么</h2>
+  <table>
+    <thead><tr><th style="width:190px">之前想加</th><th style="width:88px">现在</th><th>原因</th></tr></thead>
+    <tbody>
+      <tr><td>A · 我看到的你</td><td><span class="pill p-r">删除</span></td>
+        <td>底层证据，不是用户心智。用户只问「你跟上了吗」，mode badge 已回答</td></tr>
+      <tr><td>感知源清单</td><td><span class="pill p-r">不进首页</span></td>
+        <td>移到设置 · 诊断。首页放它会变成监控面板</td></tr>
+      <tr><td>今天为你做了什么</td><td><span class="pill p-w">移到回顾页</span></td>
+        <td>成果中心的读者是「想回顾的人」，不是「正在干活的人」</td></tr>
+      <tr><td>因果链</td><td><span class="pill p-w">移到诊断</span></td>
+        <td>需要跨源冻结快照，成本高；且工作时不查这个</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note rk">
+    <b>唯一的结构风险：</b>如果「我的应用习惯」列的是<strong>mapping</strong>，那用户会看到技术名。
+    必须做名称投影——Cursor 显示「Cursor 开发」，而不是 mapping id 或 label。
+    <code>habit_profile.rs</code> 已有 <code>habitDisplayName()</code>，但它返回的是 <code>m.label</code>，
+    而 label 默认是「AutoTrigger → xxx」这种<strong>技术串</strong>。<strong>这一层需要重做。</strong>
+  </div>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showView(+b.dataset.v));
+function showView(i){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab')[i].classList.add('on');
+  document.getElementById('v'+i).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>

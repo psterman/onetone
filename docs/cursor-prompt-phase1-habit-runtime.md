@@ -170,15 +170,29 @@ OneToneHabitRuntime = {
 ```
 
 - `source` 由 `mode` 映射：`pinHabit`/`pinAppHabit` → `pin`；`softOverride` → `override`；`auto` 且 `followForegroundAppScenario` 开 → `foreground`；`manual` → `manual`
-- `id` 用 `OneToneRuntimeHabitControl.resolveActiveSceneId(OneToneRuntimeHabitControl.foregroundIdentity())`
-- 每次 `getSnapshot()` 首次调用触发一次 `subscribe('change')`（`reason:'init'`）
+- `current.id` 用 `calculateEffectiveScene(foregroundIdentity()).resolvedId`（纯读；不要在 getSnapshot 里调会写 config 的 `resolveActiveSceneId`）
+- 每次 `getSnapshot()` **首次**调用触发一次 `subscribe('change')`（`reason:'init'`）
 - `hasHabits`：`config.mappings` 里存在至少一条已保存习惯（参考 `OneToneMappingCore.isSaved` / `OneToneHabitProfile.isLibraryHabit`）→ **无习惯时 Now 首页要能显示空态，这是 Phase 2 的前提**
+
+---
+
+### T1.5 — Now 芯片写入接 Facade（写路径；**本 Phase 不改驾驶舱 UI**）
+
+`src/js/features/now/now-home.js` 里凡调用 `OneToneSceneActivate.activateScene(...)` 的切换入口，改为：
+
+```js
+OneToneHabitRuntime.switch(id, { source: 'home_quick_switch' })
+```
+
+- 若返回 `requiresConfirm` / `requiresChoice`：本 Phase **只 toast 一句**（如「当前情景已锁定，请先解除」），**不**做 Confirm UI
+- 成功后依赖 `subscribe('change')`；本 Phase **保留**现有 fixtures/`live` 渲染，**不**把驾驶舱改成消费 snapshot（那是 Phase 2）
+- **禁止**在本 Phase 改 Now 文案、副标题、helping、调整展开等 UI
 
 ---
 
 ### T2 — `switch(id, opts)` 收口所有写操作
 
-`opts = { source, mode?, confirm? }`
+`opts = { source, mode?, confirm?, allowForegroundFollow? }`
 `source` 取值：`'home_quick_switch' | 'manual' | 'foreground'`
 `mode` 取值：`'auto' | 'override' | 'pin'`（默认 `'auto'`）
 
@@ -186,7 +200,8 @@ OneToneHabitRuntime = {
 
 | 情况 | 行为 | 返回 |
 |---|---|---|
-| 无 pin | `OneToneSceneActivate.activateScene(id, { source })` | `{ ok:true, snapshot }` |
+| 无 pin，且未开跟随前台（或 `allowForegroundFollow`） | `activateScene(id, { source })` | `{ ok:true, snapshot }` |
+| **跟随前台已开**且无 pin，且 `!opts.allowForegroundFollow` 且 `!opts.confirm` | **不写** | `{ ok:false, requiresChoice:true, reason:'follow_active', choices:['override','pin','disable_follow'], targetName }` |
 | 有 pin 且 `!opts.confirm` | **不执行任何写操作** | `{ ok:false, requiresConfirm:true, reason:'pin_active', pinnedName, targetName }` |
 | 有 pin 且 `opts.confirm` | 先 `clearPin()` 再 `activateScene(id,{source})` | `{ ok:true, snapshot }` |
 | 无 pin 且 `mode==='override'` | `setSoftOverride(id, foregroundIdentity())` | `{ ok:true, snapshot }` |
@@ -194,12 +209,13 @@ OneToneHabitRuntime = {
 | id 无效 / 非已保存习惯 | 透传 `activateScene` 的 toast 拒绝行为 | `{ ok:false, reason:'not_available' }` |
 
 注意：
-- 无 pin 时**不要**传 `force:true`（不需要，clearPin 分支已经先解除了 pin）
+- `requiresChoice` ≠ `requiresConfirm`：前者是「跟随开着时临时切 / 锁定 / 关跟随」三选一；后者是「已有 pin，确认是否解除」
+- 无 pin 时**不要**传 `force:true`
 - `mode==='override'` 时**不要**调 `OneToneSceneActivate.applySoftOverride`（它会同时改底座 `activeSceneId`；那是 Phase 4 才修的语义）
-- 成功后触发 `notify('manual' | 'override' | 'pin', { previous, current })`
+- 成功后触发 `notify(...)`（reason 随 mode/source：`manual`/`override`/`pin`/`home_quick_switch` 等）
 
-**收口要求**：Facade 是 `activateScene` / `setSoftOverride` / `setPinHabit` / `setPinAppHabit` / `clearPin` 的**唯一调用方**。
-把 `home-workbench.js:2561-2577 selectWorkbenchMapping()` 改为调 `OneToneHabitRuntime.switch()`：
+**收口要求**：Facade 是 `activateScene` / `setSoftOverride` / `setPinHabit` / `setPinAppHabit` / `clearPin` 的**唯一推荐调用方**（遗留直调逐步清）。
+把 `home-workbench.js` `selectWorkbenchMapping()` 改为调 `OneToneHabitRuntime.switch()`：
 - 原来走 `applySoftOverride` 的分支 → `switch(id, { source:'manual', mode:'override' })`，并加注释标注「Phase 4 会改其语义」
 
 ---
@@ -274,28 +290,25 @@ npm run test:habit-workspace             # 习惯相关既有测试仍通过
 npm run test:home-habit-channels         # 既有测试仍通过
 ```
 
-静态检查：
+静态检查（T0 已落地则只验证）：
 
 ```bash
-# Now 模块不应新增对 config / runtime / scene-activate 的直接依赖
-# 允许的既有例外只有 resolveHotkey 读 OneToneState.config
-grep -n "OneToneState\|OneToneRuntimeHabitControl\|OneToneSceneActivate" src/js/features/now/*.js
+# .wb-dashboard-stack[hidden]{display:none!important} 仍在 home-workbench.css
+grep -n "wb-dashboard-stack\[hidden\]" src/css/home-workbench.css
 ```
 
-手工验证（`npm run serve` → 浏览器打开 `http://127.0.0.1:5173`）：
+手工验证（`npm run serve` → `http://127.0.0.1:5173`）：
 
-- 首页只显示 Now 面板，旧 Dashboard 消失，且 Now 面板占满高度、无内部二次滚动
-- 控制台能查到 Facade 的返回值（Phase 1 还没有 UI，验证 `switch()` 在 pin 生效时**返回** `requiresConfirm` 而不是静默失败即可）
+- 首页只显示 Now；旧 Dashboard 隐藏
+- 控制台：`switch()` 在 pin 时返回 `requiresConfirm`；跟随前台开时返回 `requiresChoice`（本 Phase 不实现 Choice UI）
 
 ---
 
 ## 6. 提交要求
 
-- 2 个 commit：
-  1. `feat(habit-runtime): add OneToneHabitRuntime facade, split resolve/reconcile`
-  2. `fix(home-workbench): hide legacy dashboard when Now home is active`
-- 每个 commit 附上你实际跑过的命令与输出
-- 不要顺手改视觉、不要动 Now UI、不要重命名
+- **仅当用户要求 commit 时再提交**；默认不自动 commit
+- 建议信息：`feat(habit-runtime): add OneToneHabitRuntime facade, split resolve/reconcile`
+- 不要顺手改驾驶舱视觉/文案；T1.5 只改写路径
 
 ---
 
@@ -303,9 +316,9 @@ grep -n "OneToneState\|OneToneRuntimeHabitControl\|OneToneSceneActivate" src/js/
 
 | Phase | 内容 |
 |---|---|
-| Phase 2 | Now 改用 Facade；删除 `live` / `activateHabit`；`HABIT_CATALOG` 降级为 demo/空态；空态 UI；pin 分支与临时/锁定二选一 UI |
-| Phase 3 | 旧首页 badge / pin / override 组件迁移到 Now（**复用** `home-workbench-panels.js:1324-1333`，不要重写）；新增 `promise` 字段 |
-| Phase 4 | softOverride 加 `previousMappingId` 实现真回滚（方案 A 已定） |
-| Phase 5 | Context Decision 层 → candidate scene → `可能正在`（`mod context` 已注册但零调用，需先加 command + emit + 前端订阅；展示用 evidence，不用百分比） |
+| Phase 2 | Now 消费 Facade；Confirm/Choice；空态；`MappingEntry.assists`（Rust schema + merge 保留单测） |
+| Phase 3 | badge / pin / override 迁到 Now；新增 `promise` 字段 |
+| Phase 4 | softOverride 加 `previousMappingId` 真回滚（方案 A） |
+| Phase 5 | Context → `可能切换` |
 
 这些在 Facade 落地并验证后再单独开工。

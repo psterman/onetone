@@ -1190,6 +1190,9 @@
       st.enabled=!!basePresencePrefs().enabled;
       syncUiFromPrefs();
       syncDetectInterval();
+      // Turning the camera off is a presence change too: without this the
+      // Context layer would keep a stale `away` and keep suppressing.
+      if(!st.enabled) reportPresenceToContext('unknown',false);
       emitRuntime();
       syncLiveLandmarkerDeferred();
       if(touchedEnabled&&cur.enabled!==wasEnabled){
@@ -1611,6 +1614,29 @@
       if(global.OneToneDom&&global.OneToneDom.log) global.OneToneDom.log('presence '+line);
       else console.log('[onetone] presence '+line);
     }catch(_){}
+  }
+
+  /**
+   * Presence is evidence for the Context layer, never a decision.
+   * Only three scalars cross the IPC boundary — no frames, no upload.
+   *
+   * `enabled === false` must still report, so the runtime drops a stale
+   * `away` instead of leaving the user pinned in a leave scenario after the
+   * camera is switched off.
+   */
+  function reportPresenceToContext(next,enabled){
+    try{
+      if(enabled===false||isCalibrating()){
+        invokeIpc('cmd_context_presence_clear',{});
+        return;
+      }
+      var state=next==='away'?'away':(next==='present'?'here':'unknown');
+      invokeIpc('cmd_context_presence_report',{state:state,confidence:'mid'});
+    }catch(err){
+      // Deliberately not silent: a swallowed throw here once hid a real
+      // `p is undefined` regression that stopped presence reaching Rust.
+      logPresence('context report failed: '+((err&&err.message)||err));
+    }
   }
 
   function activeHabitMapping(){
@@ -2365,6 +2391,15 @@
     emitRuntime();
 
     var p=prefs();
+
+    // Report presence to the Context layer. Runs BEFORE the enabled /
+    // calibrated / trigger checks on purpose: the runtime must learn the user
+    // left even when no away-action is bound, and a disabled camera must still
+    // clear a stale `away` instead of leaving it pinned.
+    // NOTE: `p` must already be resolved above — reading `p.enabled` while `p`
+    // is still undefined throws, and the catch below would swallow it.
+    reportPresenceToContext(next,p.enabled);
+
     if(!p.enabled) return;
     if(isCalibrating()) return;
     if(!triggerEnabled('away',p)) return;

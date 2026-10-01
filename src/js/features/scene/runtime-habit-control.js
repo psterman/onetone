@@ -74,6 +74,14 @@
     return baselineMappingId();
   }
 
+  /** Read-only peek — no ensureRuntimeFields (calculate must not mutate cfg). */
+  function peekControl(){
+    var c=cfg();
+    var rh=c&&c.runtimeHabitControl;
+    if(!rh||typeof rh!=='object') return {softOverride:null,pin:null};
+    return rh;
+  }
+
   function getSoftOverride(){
     ensureRuntimeFields();
     var so=cfg().runtimeHabitControl.softOverride;
@@ -87,8 +95,18 @@
   }
 
   function noteForegroundIdentity(identity){
-    if(identity&&(identity.exeName||identity.exe_name||identity.fullPath||identity.full_path)){
-      lastFgIdentity=identity;
+    if(!(identity&&(identity.exeName||identity.exe_name||identity.fullPath||identity.full_path))){
+      return;
+    }
+    var nextSig=fgSignatureFromIdentity(identity);
+    var prevSig=fgSignatureFromIdentity(lastFgIdentity);
+    var same=!!lastFgIdentity&&nextSig===prevSig
+      &&fgAppTargetId(identity)===fgAppTargetId(lastFgIdentity);
+    lastFgIdentity=identity;
+    if(same) return;
+    var facade=global.OneToneHabitRuntime;
+    if(facade&&facade.notify){
+      try{ facade.notify('foreground',{}); }catch(_){}
     }
   }
 
@@ -96,8 +114,8 @@
     return lastFgIdentity;
   }
 
-  function isSoftOverrideValid(identity){
-    var so=getSoftOverride();
+  function isSoftOverrideValid(identity,so){
+    so=so||getSoftOverride();
     if(!so||!so.fgSignature) return false;
     return so.fgSignature===fgSignatureFromIdentity(identity);
   }
@@ -153,37 +171,108 @@
     return String(identity.matchedPresetAppId||identity.matched_preset_app_id||identity.appId||'').trim();
   }
 
-  function resolveActiveSceneId(identity,opts){
-    ensureRuntimeFields();
+  /**
+   * Pure effective-scene calculation. Does not mutate cfg / persist / clear override.
+   * @returns {{ resolvedId:string, mode:string, staleOverride:boolean, pin:object|null, softOverride:object|null }}
+   */
+  function calculateEffectiveScene(identity){
     identity=identity||lastFgIdentity;
-    var pin=getPin();
+    var c=cfg();
+    var rh=peekControl();
+    var pin=rh.pin||null;
+    var soRaw=rh.softOverride;
+    var so=(soRaw&&soRaw.mappingId)
+      ?{mappingId:String(soRaw.mappingId),fgSignature:String(soRaw.fgSignature||'')}
+      :null;
+    var activeId=String(c&&c.activeSceneId||'').trim();
 
     if(pin&&pin.kind==='habit'&&pin.mappingId){
       var pm=mappingById(pin.mappingId);
-      if(pm) return pin.mappingId;
+      if(pm){
+        return {
+          resolvedId:String(pin.mappingId),
+          mode:'pinHabit',
+          staleOverride:false,
+          pin:pin,
+          softOverride:so
+        };
+      }
     }
 
     if(pin&&pin.kind==='appHabit'&&pin.mappingId&&identity){
       if(fgAppTargetId(identity)===String(pin.appTargetId||'').trim()){
         var am=mappingById(pin.mappingId);
-        if(am) return pin.mappingId;
+        if(am){
+          return {
+            resolvedId:String(pin.mappingId),
+            mode:'pinAppHabit',
+            staleOverride:false,
+            pin:pin,
+            softOverride:so
+          };
+        }
       }
     }
 
-    if(isSoftOverrideValid(identity)){
-      return getSoftOverride().mappingId;
-    }
-    if(getSoftOverride()){
-      clearSoftOverride(Object.assign({},opts,{skipPersist:!!(opts&&opts.skipPersist)}));
-      if(!(opts&&opts.skipPersist)) persistQuiet();
+    if(so&&isSoftOverrideValid(identity,so)){
+      return {
+        resolvedId:so.mappingId,
+        mode:'softOverride',
+        staleOverride:false,
+        pin:pin,
+        softOverride:so
+      };
     }
 
-    var c=cfg();
+    var stale=!!(so&&so.mappingId&&!isSoftOverrideValid(identity,so));
+
     if(c&&c.followForegroundAppScenario&&identity){
-      return autoSceneIdForIdentity(identity)||String(c.activeSceneId||'').trim();
+      return {
+        resolvedId:autoSceneIdForIdentity(identity)||activeId,
+        mode:'auto',
+        staleOverride:stale,
+        pin:pin,
+        softOverride:so
+      };
     }
 
-    return String(c&&c.activeSceneId||'').trim();
+    return {
+      resolvedId:activeId,
+      mode:c&&c.followForegroundAppScenario?'auto':'manual',
+      staleOverride:stale,
+      pin:pin,
+      softOverride:so
+    };
+  }
+
+  /**
+   * Apply side effects from calculate (clear stale softOverride + persist).
+   * @returns {{ cleared:boolean }}
+   */
+  function reconcileRuntimeHabitState(opts){
+    ensureRuntimeFields();
+    var identity=opts&&opts.identity!==undefined?opts.identity:lastFgIdentity;
+    var calc=calculateEffectiveScene(identity);
+    if(!calc.staleOverride) return {cleared:false};
+    clearSoftOverride({skipPersist:true});
+    if(!(opts&&opts.skipPersist)) persistQuiet();
+    var facade=global.OneToneHabitRuntime;
+    if(facade&&facade.notify){
+      try{ facade.notify('override',{reason:'stale_cleared'}); }catch(_){}
+    }
+    return {cleared:true};
+  }
+
+  /** @deprecated Prefer OneToneHabitRuntime + calculateEffectiveScene / reconcileRuntimeHabitState */
+  function resolveActiveSceneId(identity,opts){
+    ensureRuntimeFields();
+    identity=identity||lastFgIdentity;
+    var calc=calculateEffectiveScene(identity);
+    if(calc.staleOverride){
+      reconcileRuntimeHabitState(Object.assign({},opts,{identity:identity}));
+      calc=calculateEffectiveScene(identity);
+    }
+    return calc.resolvedId;
   }
 
   function resolveRuntimeHabitDisplay(identity){
@@ -279,6 +368,8 @@
     setPinHabit:setPinHabit,
     setPinAppHabit:setPinAppHabit,
     clearPin:clearPin,
+    calculateEffectiveScene:calculateEffectiveScene,
+    reconcileRuntimeHabitState:reconcileRuntimeHabitState,
     resolveActiveSceneId:resolveActiveSceneId,
     resolveRuntimeHabitDisplay:resolveRuntimeHabitDisplay,
     autoSceneIdForIdentity:autoSceneIdForIdentity

@@ -44,6 +44,7 @@
   function normalizeSource(src){
     src=String(src||'').trim().toLowerCase();
     if(src==='foreground'||src==='follow'||src==='auto') return 'foreground';
+    if(src==='home_quick_switch') return 'home_quick_switch';
     return 'manual';
   }
 
@@ -60,6 +61,7 @@
   function scheduleManualSwitchPaint(){
     requestAnimationFrame(function(){
       try{
+        // Legacy panels (hidden under Now); keep cheap repaint until Phase 2 cleanup
         if(global.OneToneHomeWorkbenchPanels&&global.OneToneHomeWorkbenchPanels.renderScenarioPanel){
           global.OneToneHomeWorkbenchPanels.renderScenarioPanel();
         }
@@ -118,7 +120,7 @@
     if(global.OneToneHabitChannelStatusStrip&&global.OneToneHabitChannelStatusStrip.render){
       try{ global.OneToneHabitChannelStatusStrip.render(); }catch(_){}
     }
-    if(src==='manual'||src==='foreground') scheduleManualSwitchPaint();
+    if(src==='manual'||src==='foreground'||src==='home_quick_switch') scheduleManualSwitchPaint();
   }
 
   function applySoftOverride(id,identity){

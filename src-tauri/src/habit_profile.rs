@@ -215,6 +215,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             });
         id.to_string()
     }

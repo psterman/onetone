@@ -1959,14 +1959,19 @@
 
     function miniChromeOf(s){
       var c=(s&&(s.miniChrome||s.mini_chrome))||{};
+      var toolIds=Array.isArray(c.toolIds)?c.toolIds:(Array.isArray(c.tool_ids)?c.tool_ids:[]);
+      var hasToolsAll=('toolsAll' in c)||('tools_all' in c);
+      var toolsAll=hasToolsAll
+        ?(c.toolsAll!==false&&c.tools_all!==false)
+        :!toolIds.length;
       return {
         voiceChipEnabled: c.voiceChipEnabled!==false&&c.voice_chip_enabled!==false,
-        voiceChipWhen: (c.voiceChipWhen||c.voice_chip_when)==='armed'?'armed':'listening',
         agentsBarEnabled: c.agentsBarEnabled!==false&&c.agents_bar_enabled!==false,
         textPreviewEnabled: c.textPreviewEnabled!==false&&c.text_preview_enabled!==false,
         textPreviewWhen: (c.textPreviewWhen||c.text_preview_when)==='hasText'?'hasText':'listening',
         toolsBarEnabled: c.toolsBarEnabled!==false&&c.tools_bar_enabled!==false,
-        toolIds: Array.isArray(c.toolIds)?c.toolIds:(Array.isArray(c.tool_ids)?c.tool_ids:[]),
+        toolsAll: toolsAll,
+        toolIds: toolsAll?[]:toolIds,
         expandBtnEnabled: c.expandBtnEnabled!==false&&c.expand_btn_enabled!==false,
         closeBtnEnabled: c.closeBtnEnabled!==false&&c.close_btn_enabled!==false
       };
@@ -1983,12 +1988,7 @@
       var probeOk=!!(s&&(s.cursorProbeOk||s.cursor_probe_ok));
       var armed=!!(s&&(s.cursorBeginnerArmed||s.cursor_beginner_armed));
       var hubOn=!!(s&&(s.activationHubActive||s.activation_hub_active));
-      var show=false;
-      if(chromeV.voiceChipWhen==='armed'){
-        show=hubOn||(mode&&probeOk&&armed);
-      } else {
-        show=hubOn||(mode&&probeOk&&armed);
-      }
+      var show=hubOn||(mode&&probeOk&&armed);
       if(show){
         miniBeginnerListenChip.hidden=false;
         /* 图标在 HTML；不写「听」字，避免盖住相邻元素 */
@@ -2005,8 +2005,9 @@
         {slotId:'newThread',iconId:'messagePlus',labelZh:'新建',microKeyId:'AG01',holdMs:0},
         {slotId:'cancelListen',iconId:'reject',labelZh:'取消',microKeyId:'ACT08',holdMs:0}
       ];
-      var allow=Array.isArray(chrome&&chrome.toolIds)?chrome.toolIds:[];
-      if(!allow.length) return all;
+      if(!chrome||chrome.toolsAll!==false) return all;
+      var allow=Array.isArray(chrome.toolIds)?chrome.toolIds:[];
+      if(!allow.length) return [];
       return all.filter(function(row){ return allow.indexOf(row.slotId)>=0; });
     }
 
@@ -2028,12 +2029,14 @@
       var slotRows;
       if(useBeginner){
         slotRows=slots;
-        var allowIds=chromeT.toolIds||[];
-        if(allowIds.length){
-          slotRows=slots.filter(function(slot){
-            var sid=String(slot.slotId||slot.slot_id||'');
-            return allowIds.indexOf(sid)>=0;
-          });
+        if(chromeT.toolsAll===false){
+          var allowIds=chromeT.toolIds||[];
+          slotRows=allowIds.length
+            ?slots.filter(function(slot){
+              var sid=String(slot.slotId||slot.slot_id||'');
+              return allowIds.indexOf(sid)>=0;
+            })
+            :[];
         }
       } else {
         slotRows=defaultMiniToolSlots(chromeT);

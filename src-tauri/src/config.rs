@@ -1356,6 +1356,15 @@ pub struct MappingEntry {
     pub ime_preset_id: String,
     #[serde(rename = "appTargetId", default)]
     pub app_target_id: String,
+    /// User-facing scenario name for Now cockpit. Empty → FE derives a temporary
+    /// label from `app_target_id`; never surface `label` (technical "AutoTrigger → RAlt").
+    #[serde(rename = "displayName", default)]
+    pub display_name: String,
+    /// Scenario *type* drives the visual anchor (colour), not the scenario name.
+    /// Many scenarios may share one kind (Unity开发 / Web开发 / Python开发 → focus).
+    /// Empty → `unknown`, which renders neutral grey rather than guessing.
+    #[serde(rename = "scenarioKind", default)]
+    pub scenario_kind: String,
     /// When true (app-scene only), wrong-foreground wake may focus/launch target then dictate.
     /// Default true — say the phrase, bring the target app forward (user can turn off).
     #[serde(
@@ -1416,6 +1425,11 @@ pub struct MappingEntry {
     /// Serde tag = "type"; payload key is `value` (Key / Text) or `ms` (Delay).
     #[serde(rename = "targetActions", default)]
     pub target_actions: Vec<Action>,
+    /// Now cockpit result-assist IDs (`focus`|`quiet`|`protect`). Empty = FE defaults all ON.
+    /// Labels are FE-only (`ASSIST_CATALOG`); do not store Chinese copy here.
+    /// FE omits field → merge_save_payload preserves existing.
+    #[serde(default)]
+    pub assists: Vec<String>,
 }
 
 /// Enabled whitelist (+ optional soft/key phrase overrides) for on-demand oral listen.
@@ -1834,9 +1848,6 @@ pub struct MiniChromeConfig {
     /// Show listen chip on the mini bar.
     #[serde(default = "default_true")]
     pub voice_chip_enabled: bool,
-    /// `listening` = only while dictating; `armed` = also when beginner armed.
-    #[serde(default = "default_mini_voice_when")]
-    pub voice_chip_when: String,
     /// Master switch for agent status chips on the mini bar (coexists with tools).
     #[serde(default = "default_true")]
     pub agents_bar_enabled: bool,
@@ -1849,7 +1860,11 @@ pub struct MiniChromeConfig {
     /// Beginner / vibe tool icon row (coexists with agents).
     #[serde(default = "default_true")]
     pub tools_bar_enabled: bool,
-    /// Subset of tool slot ids; empty = show all slots from runtime.
+    /// Explicit all-tools flag. `None` = legacy: empty `tool_ids` means all.
+    /// `Some(false)` + empty `tool_ids` = show none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools_all: Option<bool>,
+    /// Subset of tool slot ids when not showing all.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tool_ids: Vec<String>,
     #[serde(default = "default_true")]
@@ -1858,24 +1873,27 @@ pub struct MiniChromeConfig {
     pub close_btn_enabled: bool,
 }
 
+impl MiniChromeConfig {
+    /// Resolve whether every tool slot should show.
+    pub fn tools_all_effective(&self) -> bool {
+        self.tools_all.unwrap_or(self.tool_ids.is_empty())
+    }
+}
+
 impl Default for MiniChromeConfig {
     fn default() -> Self {
         Self {
             voice_chip_enabled: true,
-            voice_chip_when: default_mini_voice_when(),
             agents_bar_enabled: true,
             text_preview_enabled: true,
             text_preview_when: default_mini_text_when(),
             tools_bar_enabled: true,
+            tools_all: Some(true),
             tool_ids: Vec::new(),
             expand_btn_enabled: true,
             close_btn_enabled: true,
         }
     }
-}
-
-fn default_mini_voice_when() -> String {
-    "listening".into()
 }
 
 fn default_mini_text_when() -> String {
@@ -2367,6 +2385,46 @@ pub struct SceneConfig {
     pub send_delay_ms: u32,
 }
 
+/// Soft override + pin for runtime habit selection (FE `runtimeHabitControl`).
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeHabitControl {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub soft_override: Option<RuntimeHabitSoftOverride>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pin: Option<RuntimeHabitPin>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeHabitSoftOverride {
+    #[serde(default)]
+    pub mapping_id: String,
+    #[serde(default)]
+    pub fg_signature: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeHabitPin {
+    #[serde(default)]
+    pub kind: String,
+    #[serde(default)]
+    pub mapping_id: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub app_target_id: String,
+}
+
+impl Default for RuntimeHabitPin {
+    fn default() -> Self {
+        Self {
+            kind: String::new(),
+            mapping_id: String::new(),
+            app_target_id: String::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoiceConfig {
     #[serde(default = "default_version")]
@@ -2429,6 +2487,9 @@ pub struct VoiceConfig {
     /// (keys + auto `activeSceneId` follow on the FE). Default false = stay on global / manual in-use.
     #[serde(default, rename = "followForegroundAppScenario")]
     pub follow_foreground_app_scenario: bool,
+    /// Pin / soft-override for Now cockpit + workbench habit chips. Survives cmd_save.
+    #[serde(default, rename = "runtimeHabitControl")]
+    pub runtime_habit_control: RuntimeHabitControl,
     /// Home debug switch: keep Soft Pad overlay visible even when OneTone is FG /
     /// target app is not. Still gated by settings/setup/recording overlays.
     #[serde(default, rename = "softPadForceOpen")]
@@ -4422,6 +4483,8 @@ impl Default for VoiceConfig {
                 double_click_ms: default_double_click_ms(),
                 ime_preset_id: String::new(),
                 app_target_id: String::new(),
+                display_name: String::new(),
+                scenario_kind: String::new(),
                voice_allow_bring_up_target: false,
                 app_behavior_rules: vec![],
                 voice_override: None,
@@ -4437,6 +4500,7 @@ impl Default for VoiceConfig {
                 gesture_modes: None,
                 oral_command_scheme: None,
                 target_actions: vec![],
+                assists: vec![],
             }],
             trash: vec![],
             interval_ms: default_interval_ms(),
@@ -4458,6 +4522,7 @@ impl Default for VoiceConfig {
             key_wake_sound_enabled: false,
             coach_hud_enabled: false,
             follow_foreground_app_scenario: false,
+            runtime_habit_control: RuntimeHabitControl::default(),
             soft_pad_force_open: false,
             soft_pad_focus_session_enabled: true,
             soft_pad_rgb_aggregate_enabled: true,
@@ -4999,6 +5064,8 @@ impl VoiceConfig {
                 double_click_ms: default_double_click_ms(),
                 ime_preset_id: String::new(),
                 app_target_id: String::new(),
+                display_name: String::new(),
+                scenario_kind: String::new(),
                voice_allow_bring_up_target: false,
                 app_behavior_rules: vec![],
                 voice_override: None,
@@ -5014,6 +5081,7 @@ impl VoiceConfig {
                 gesture_modes: None,
                 oral_command_scheme: None,
                 target_actions: vec![],
+                assists: vec![],
             });
         }
 
@@ -5917,6 +5985,16 @@ fn mapping_json_has_target_actions(raw: &serde_json::Value, arr_key: &str, id: &
     })
 }
 
+fn mapping_json_has_assists(raw: &serde_json::Value, arr_key: &str, id: &str) -> bool {
+    let Some(arr) = raw.get(arr_key).and_then(|v| v.as_array()) else {
+        return false;
+    };
+    arr.iter().any(|row| {
+        row.get("id").and_then(|v| v.as_str()) == Some(id)
+            && (row.get("assists").is_some())
+    })
+}
+
 /// Drop `navKeysEnabled` when `showNavigationPad` is also present (same serde field via alias).
 fn strip_codex_micro_pad_nav_alias_dupes(raw: &mut serde_json::Value) {
     let Some(mappings) = raw.get_mut("mappings").and_then(|v| v.as_array_mut()) else {
@@ -6001,6 +6079,13 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
             {
                 m.target_actions = prev.target_actions.clone();
             }
+            // Preserve Now assists when FE omits the field on partial save.
+            if m.assists.is_empty()
+                && !prev.assists.is_empty()
+                && !mapping_json_has_assists(&raw, "mappings", &m.id)
+            {
+                m.assists = prev.assists.clone();
+            }
         }
     }
     for m in &mut cfg.trash {
@@ -6026,6 +6111,12 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
                 && !mapping_json_has_target_actions(&raw, "trash", &m.id)
             {
                 m.target_actions = prev.target_actions.clone();
+            }
+            if m.assists.is_empty()
+                && !prev.assists.is_empty()
+                && !mapping_json_has_assists(&raw, "trash", &m.id)
+            {
+                m.assists = prev.assists.clone();
             }
         }
     }
@@ -6110,6 +6201,9 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
     }
     if raw.get("voiceWakeListeningOptIn").is_none() {
         cfg.voice_wake_listening_opt_in = existing.voice_wake_listening_opt_in;
+    }
+    if raw.get("runtimeHabitControl").is_none() {
+        cfg.runtime_habit_control = existing.runtime_habit_control.clone();
     }
     if raw.get("voiceWakeAcousticCommands").is_none() {
         cfg.voice_wake_acoustic_commands = existing.voice_wake_acoustic_commands.clone();
@@ -7329,6 +7423,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -7344,6 +7440,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
@@ -7379,6 +7476,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -7394,6 +7493,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
@@ -7428,6 +7528,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: Some(VoiceOverride {
@@ -7446,6 +7548,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             });
         cfg.normalize();
         let m = cfg
@@ -7800,6 +7903,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -7815,6 +7920,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
@@ -7853,6 +7959,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -7868,6 +7976,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
         });
         cfg.ensure_active_scene_id();
         let peek = cfg.peek_next_scheme_same_trigger();
@@ -7901,6 +8010,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -7932,6 +8043,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             };
         let bindings = mapping_physical_bindings(&m);
         assert_eq!(bindings, vec!["F1".to_string()]);
@@ -7964,6 +8076,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -7979,6 +8093,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
@@ -8142,6 +8257,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -8157,6 +8274,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
@@ -8194,6 +8312,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -8209,6 +8329,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             });
         cfg.enable_mapping("b");
         assert_eq!(cfg.active_scene_id, active_id);
@@ -8242,6 +8363,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -8257,6 +8380,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());
@@ -8297,6 +8421,84 @@ mod tests {
         assert_eq!(row.agent_provider_id, "codex");
         assert_eq!(row.agent_bindings.len(), 1);
         assert_eq!(row.agent_bindings[0].slot_id, "cancel");
+    }
+
+    #[test]
+    fn merge_save_payload_preserves_assists_when_omitted() {
+        let mut existing = VoiceConfig::default();
+        let id = existing.mappings[0].id.clone();
+        existing.mappings[0].assists = vec!["focus".into(), "quiet".into()];
+        let json = format!(
+            r#"{{"version":8,"mappings":[{{"id":"{id}","label":"x","group":"g","triggerKey":"AutoTrigger","targetKey":"RAlt","enabled":true}}],"trash":[]}}"#
+        );
+        let merged = merge_save_payload(&existing, &json).expect("merge");
+        let row = merged.mappings.iter().find(|m| m.id == id).expect("row");
+        assert_eq!(row.assists, vec!["focus".to_string(), "quiet".to_string()]);
+    }
+
+    #[test]
+    fn merge_save_payload_allows_clearing_assists_when_explicit() {
+        let mut existing = VoiceConfig::default();
+        let id = existing.mappings[0].id.clone();
+        existing.mappings[0].assists = vec!["focus".into()];
+        let json = format!(
+            r#"{{"version":8,"mappings":[{{"id":"{id}","label":"x","group":"g","triggerKey":"AutoTrigger","targetKey":"RAlt","enabled":true,"assists":[]}}],"trash":[]}}"#
+        );
+        let merged = merge_save_payload(&existing, &json).expect("merge");
+        let row = merged.mappings.iter().find(|m| m.id == id).expect("row");
+        assert!(row.assists.is_empty());
+    }
+
+    #[test]
+    fn merge_save_payload_preserves_runtime_habit_control_when_omitted() {
+        let mut existing = VoiceConfig::default();
+        existing.runtime_habit_control = RuntimeHabitControl {
+            soft_override: Some(RuntimeHabitSoftOverride {
+                mapping_id: "habit-b".into(),
+                fg_signature: "c:\\app.exe\0Cls".into(),
+            }),
+            pin: Some(RuntimeHabitPin {
+                kind: "habit".into(),
+                mapping_id: "habit-a".into(),
+                app_target_id: String::new(),
+                display_name: String::new(),
+                scenario_kind: String::new(),
+            }),
+        };
+        let json = r#"{"version":8,"mappings":[],"trash":[]}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        assert_eq!(
+            merged
+                .runtime_habit_control
+                .pin
+                .as_ref()
+                .map(|p| p.mapping_id.as_str()),
+            Some("habit-a")
+        );
+        assert_eq!(
+            merged
+                .runtime_habit_control
+                .soft_override
+                .as_ref()
+                .map(|s| s.mapping_id.as_str()),
+            Some("habit-b")
+        );
+    }
+
+    #[test]
+    fn merge_save_payload_accepts_runtime_habit_control_clear() {
+        let mut existing = VoiceConfig::default();
+        existing.runtime_habit_control.pin = Some(RuntimeHabitPin {
+            kind: "habit".into(),
+            mapping_id: "habit-a".into(),
+            app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
+        });
+        let json = r#"{"version":8,"mappings":[],"trash":[],"runtimeHabitControl":{"softOverride":null,"pin":null}}"#;
+        let merged = merge_save_payload(&existing, json).expect("merge");
+        assert!(merged.runtime_habit_control.pin.is_none());
+        assert!(merged.runtime_habit_control.soft_override.is_none());
     }
 
     #[test]
@@ -8445,6 +8647,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -8460,6 +8664,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             };
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.contains(&"Gamepad_A".to_string()));
@@ -8496,6 +8701,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -8511,6 +8718,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
             is_keyup: false,
@@ -8705,6 +8913,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         cfg.follow_foreground_app_scenario = true;
@@ -8787,6 +8996,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         cfg.follow_foreground_app_scenario = true;
@@ -8845,6 +9055,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
         });
         let hit = find_preferred_workflow_scenario_for_dispatch(&cfg).expect("cursor scene");
         assert_eq!(hit.id, "cursor-scene");
@@ -9371,6 +9582,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
             };
         let json = serde_json::to_string(&mapping).expect("serialize");
         assert!(json.contains("timeMachineWorkspace"));
@@ -9555,6 +9767,8 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
@@ -9570,6 +9784,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions,
+            assists: vec![],
         };
         m
     }

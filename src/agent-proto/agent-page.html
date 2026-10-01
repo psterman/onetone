@@ -537,6 +537,47 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 .leaf-page[data-tone="softPad"] .leaf-tabs button:focus-visible{outline:2px solid var(--lights);outline-offset:-2px}
 .leaf-pane{padding:0 2px 4px}
 .leaf-pane .pane-lead{margin:0 0 10px;font-size:12.5px;color:var(--mute)}
+
+/* 迷你栏 · D 预设 + 圆片 */
+.mini-d{display:flex;flex-direction:column;gap:12px;padding:2px 0 4px}
+.mini-d__block{border-top:1px solid var(--line);padding-top:10px}
+.mini-d__block:first-child{border-top:0;padding-top:0}
+.mini-d__lab{margin:0 0 4px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.mini-d__help{margin:0 0 8px;font-size:12px;color:var(--mute);line-height:1.4}
+.mini-d__preset{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px}
+.mini-d__preset button{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:10px;
+  padding:9px 8px;text-align:left;cursor:pointer;font:inherit;color:var(--mute);
+}
+.mini-d__preset button strong{display:block;font-size:12.5px;font-weight:800;color:inherit}
+.mini-d__preset button small{display:block;margin-top:3px;font-size:10.5px;font-weight:600;color:var(--faint);line-height:1.35}
+.mini-d__preset button.is-on{border-color:rgba(107,79,154,.45);background:var(--mini-soft);color:var(--mini)}
+.mini-d__preset button.is-on small{color:var(--mute)}
+.mini-d__fine{margin:0 0 6px;font-size:11.5px;font-weight:700;color:var(--mute)}
+.mini-d__slots{display:flex;flex-wrap:wrap;gap:6px}
+.mini-d__slot{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:999px;
+  padding:6px 11px;font:inherit;font-size:12px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.mini-d__slot i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;background:#cbd5e1;vertical-align:1px}
+.mini-d__slot.is-on{border-color:rgba(107,79,154,.45);background:var(--mini-soft);color:var(--mini)}
+.mini-d__slot.is-on i{background:var(--mini)}
+.mini-d__slot.is-focus{box-shadow:0 0 0 2px rgba(107,79,154,.22)}
+.mini-d__detail{
+  border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;
+}
+.mini-d__detail h5{margin:0 0 4px;font-size:13px;font-weight:800}
+.mini-d__detail .coach{margin:0 0 8px;font-size:12px;color:var(--mute);line-height:1.4}
+.mini-d__seg{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px}
+.mini-d__seg button{
+  appearance:none;border:1px solid var(--line);background:#fff;border-radius:8px;
+  padding:7px 6px;font:inherit;font-size:11.5px;font-weight:750;color:var(--mute);cursor:pointer;
+}
+.mini-d__seg button.is-on{border-color:rgba(107,79,154,.45);background:var(--mini-soft);color:var(--mini)}
+@media (max-width:520px){
+  .mini-d__preset{grid-template-columns:1fr}
+}
+
 @media (max-width:520px){
   .leaf-tabs.n3,.leaf-tabs.n4{grid-template-columns:1fr 1fr}
   .leaf-tabs.n4 button:nth-child(2){border-right:0}
@@ -722,7 +763,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
 <div class="page">
   <p class="eyebrow">Agent remodel · 三叶先懂再配</p>
   <h1>一叶一件事 · 浮窗 ≠ Soft Pad ≠ 迷你栏</h1>
-  <p class="lede"><b>浮窗</b>＝完整 Soft Pad 窗口何时出现、长什么样。<b>迷你栏</b>＝收成细条时的顶行 chrome。<b>Soft Pad</b>＝顶栏亮谁、灯效、接入 Agent，以及是否替换数字键盘。</p>
+  <p class="lede"><b>浮窗</b>＝完整 Soft Pad 窗口何时出现、长什么样。<b>迷你栏</b>＝收成细条时条上留什么。<b>Soft Pad</b>＝顶栏亮谁、灯效、接入 Agent，以及是否替换数字键盘。</p>
 
   <div class="guide" id="guide" role="navigation" aria-label="三叶导览">
     <button type="button" class="gcard is-on" data-jump="float">
@@ -733,7 +774,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     <button type="button" class="gcard" data-jump="mini">
       <div class="ix">02 · 细条</div>
       <h3>迷你栏</h3>
-      <p>收成细条：谁在忙 · 话术 · 快捷钮 · 形态。</p>
+      <p>先选留多少，再微调：谁在忙 · 你说的话 · 常用钮。</p>
     </button>
     <button type="button" class="gcard" data-jump="softPad">
       <div class="ix">03 · 键盘</div>
@@ -827,7 +868,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
           <div class="panel">
             <div class="subtabs" id="subs" role="tablist">
               <button type="button" class="is-on" data-sub="float" role="tab"><span class="t">浮窗</span><span class="s">何时 · 皮肤</span></button>
-              <button type="button" data-sub="mini" role="tab"><span class="t">迷你栏</span><span class="s">细条 chrome</span></button>
+              <button type="button" data-sub="mini" role="tab"><span class="t">迷你栏</span><span class="s">条上留什么</span></button>
               <button type="button" data-sub="softPad" role="tab"><span class="t">Soft Pad</span><span class="s">顶栏 · 灯 · 接入 · 数字键</span></button>
             </div>
             <div class="detail" id="detail"></div>
@@ -935,7 +976,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
 <script>
 (function(){
   var detail=document.getElementById('detail');
-  var state={sub:'float',show:'follow',skin:'default',ambient:true,usage:true,purpose:'sessions',digitOn:true,numpadOccupy:true,numpadWizardStep:0,numpadWizardDone:false,numpadSlots:['7','8','9'],zone:'ag',mini:'busy',float:'show',softPad:'topbar',app:'Cursor',miniChrome:{agentsBarEnabled:true,textPreviewEnabled:true,voiceChipEnabled:true,toolsBarEnabled:true,expandBtnEnabled:true,closeBtnEnabled:true},padEnabled:true,ambientMode:'status',ambientRgb:'#7c3aed',ambientOpacity:100,floatOpacity:82,keyLights:true,keyLightScheme:'single',keyLightPreset:'default',settingsSnap:null,hookMode:'watch',hookOpen:'',hookQuery:'',topbarOrder:[],topbarDemo:{},topbarShowFace:true};
+  var state={sub:'float',show:'follow',skin:'default',ambient:true,usage:true,purpose:'sessions',digitOn:true,numpadOccupy:true,numpadWizardStep:0,numpadWizardDone:false,numpadSlots:['7','8','9'],zone:'ag',mini:'agents',float:'show',softPad:'topbar',app:'Cursor',miniChrome:{agentsBarEnabled:true,textPreviewEnabled:true,voiceChipEnabled:true,toolsBarEnabled:true,pillEnabled:true,pillHideEmpty:false,expandBtnEnabled:false,closeBtnEnabled:false,textPreviewWhen:'listening'},padEnabled:true,ambientMode:'status',ambientRgb:'#7c3aed',ambientOpacity:100,floatOpacity:82,keyLights:true,keyLightScheme:'single',keyLightPreset:'default',settingsSnap:null,hookMode:'watch',hookOpen:'',hookQuery:'',topbarOrder:[],topbarDemo:{},topbarShowFace:true};
   var TOPBAR_DEMO_CYCLE=['idle','running','needs_input','done','failed'];
   var AGENT_ICON={
     codex:'../icons/app-target/codex.png',
@@ -1052,17 +1093,82 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     return '<span class="badge '+cls+'" data-connect-phase="'+(c.phase||'not_configured')+'">'+label+'</span>';
   }
 
-  var MINI_LEAF_TO_RAIL={busy:'agents',speech:'speech',tools:'tools',form:'display'};
+  var MINI_LEAF_TO_RAIL={
+    busy:'agents',agents:'agents',speech:'speech',tools:'tools',
+    form:'scene',pill:'pill',win:'win',scene:'scene',display:'scene'
+  };
 
   function postMiniPreview(){
     try{
       window.parent.postMessage({
         type:'ot-agent-preview-cmd',
         cmd:'setMiniPreview',
-        miniRail:MINI_LEAF_TO_RAIL[state.mini]||'agents',
+        miniRail:MINI_LEAF_TO_RAIL[state.mini]||state.mini||'agents',
         miniChrome:state.miniChrome
       },'*');
     }catch(_){}
+    /* Proto / no Soft Pad: still paint a concrete bar so slots have graphics. */
+    paintLocalMiniPreview();
+  }
+
+  function paintLocalMiniPreview(){
+    var host=document.getElementById('agentMiniPaint');
+    if(!host) return;
+    var c=state.miniChrome||{};
+    var rail=MINI_LEAF_TO_RAIL[state.mini]||state.mini||'agents';
+    var agentsOn=c.agentsBarEnabled!==false;
+    var speechOn=c.textPreviewEnabled!==false&&rail==='speech';
+    var toolsOn=c.toolsBarEnabled!==false;
+    var pillOn=c.pillEnabled!==false;
+    var winOn=!!(c.expandBtnEnabled||c.closeBtnEnabled);
+    var icons=[
+      {agent:'codex',st:'running'},
+      {agent:'claude',st:'idle'},
+      {agent:'cursor',st:'needs_input'}
+    ];
+    var chips=agentsOn?icons.map(function(ic,i){
+      var src=AGENT_ICON[ic.agent]||('../icons/app-target/'+ic.agent+'.svg');
+      var letter=String(ic.agent).charAt(0).toUpperCase();
+      return '<span class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview'+(i===0?' is-focused':'')+'" data-agent="'+ic.agent+'" data-status="'+ic.st+'"'+(i===0?' aria-current="true"':'')+'>'+
+        '<img src="'+src+'" alt="" width="16" height="16" decoding="async" onerror="this.style.display=\'none\';var n=this.nextElementSibling;if(n)n.hidden=false">'+
+        '<span class="chip-letter" hidden>'+letter+'</span>'+
+        '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></span>';
+    }).join(''):'';
+    var busy=agentsOn
+      ?'<div class="soft-pad-agent-mini-bar__busy" data-mini-zone="agents"><div class="soft-pad-agent-bar soft-pad-agent-bar--preview soft-pad-agent-mini-bar__chips">'+chips+'</div></div>'
+      :'';
+    var pill=pillOn
+      ?'<span class="soft-pad-agent-mini-bar__pill" data-mini-zone="pill">Cu · 12次</span>'
+      :'<span class="soft-pad-agent-mini-bar__pill" data-mini-zone="pill" hidden></span>';
+    var win=winOn
+      ?'<span class="soft-pad-agent-mini-bar__win" data-mini-zone="win">'+
+        (c.expandBtnEnabled?'<span class="soft-pad-agent-mini-bar__winbtn">⤢</span>':'')+
+        (c.closeBtnEnabled?'<span class="soft-pad-agent-mini-bar__winbtn">×</span>':'')+
+        '</span>'
+      :'';
+    var tools=toolsOn
+      ?'<div class="soft-pad-agent-mini-bar__tools" data-mini-zone="tools">'+
+        '<span class="soft-pad-agent-mini-bar__tool">🎙</span>'+
+        '<span class="soft-pad-agent-mini-bar__tool">⏎</span>'+
+        '<span class="soft-pad-agent-mini-bar__tool">⚡</span>'+
+        '<span class="soft-pad-agent-mini-bar__tool">💬</span>'+
+        '<span class="soft-pad-agent-mini-bar__tool">⊘</span></div>'
+      :'<div class="soft-pad-agent-mini-bar__tools" data-mini-zone="tools" hidden></div>';
+    var speech=speechOn
+      ?'<div class="soft-pad-agent-mini-bar__speech" data-mini-zone="speech">'+
+        (c.voiceChipEnabled!==false?'<span class="soft-pad-agent-mini-bar__listen"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 11a7 7 0 0014 0M12 18v3"/></svg></span>':'')+
+        '<span class="soft-pad-agent-mini-bar__speech-text">你说的话…</span></div>'
+      :'<div class="soft-pad-agent-mini-bar__speech" data-mini-zone="speech" hidden></div>';
+    var coach=MINI_SLOT_COACH[rail]||'条上内容';
+    host.innerHTML=
+      '<div class="soft-pad-agent-mini-bar-stage is-demo is-mini-rail-'+rail+'" data-agent-mini-bar="1" data-local-mini="1" data-mini-rail-focus="'+rail+'">'+
+        '<div class="soft-pad-agent-mini-demo-banner"><b>正在改</b> '+coach+'</div>'+
+        '<div class="soft-pad-agent-mini-bar">'+
+          '<div class="soft-pad-agent-mini-bar__row">'+busy+'<div class="soft-pad-agent-mini-bar__data">'+pill+win+'</div></div>'+
+          tools+
+        '</div>'+
+        speech+
+      '</div>';
   }
 
   function isNumpadLeaf(){
@@ -1127,20 +1233,17 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
         );
     },
     mini:function(){
-      var m=state.mini||'busy';
-      return job('mini','迷你栏 · 细条 chrome','浮窗收成细条时的顶行：忙闲圆点、话术、快捷钮。完整键盘顶栏请去 Soft Pad。')+
-        leafShell('mini','n4','miniRail','迷你栏分区',
-          tabBtn('data-mini','busy',m,'谁在忙','忙闲圆点')+
-          tabBtn('data-mini','speech',m,'听你说话','话术区')+
-          tabBtn('data-mini','tools',m,'快捷钮','悬停第二行')+
-          tabBtn('data-mini','form',m,'细条形态','细条 / 放大')
-        );
+      if(state.mini==='busy'||state.mini==='form') state.mini='agents';
+      if(state.mini==='speech'||state.mini==='tools'||state.mini==='pill'||state.mini==='win'||state.mini==='agents'){/* ok */}
+      else state.mini='agents';
+      return job('mini','迷你栏','写代码时一眼看到谁在忙、你说了什么、还剩多少。先挑留多少，再点圆片微调。')+
+        '<div class="leaf-page" data-tone="mini"><div class="mini-d" id="miniDRoot"></div></div>';
     },
     softPad:function(){
       var cur=state.softPad||'topbar';
       if(cur==='ambient'||cur==='keys') cur='lights';
       state.softPad=cur;
-      return job('softPad','Soft Pad · 键盘与接入','顶栏亮谁、灯效、各 Agent 接入，以及是否替换数字键盘。迷你栏细条不在这里。')+
+      return job('softPad','Soft Pad · 键盘与接入','顶栏亮谁、灯效、各 Agent 接入，以及是否替换数字键盘。条上留什么请去「迷你栏」。')+
         leafShell('softPad','n4','softPadRail','Soft Pad 分区',
           tabBtn('data-soft-pad','topbar',cur,'键盘顶栏','图标 · 顺序 · 灯')+
           tabBtn('data-soft-pad','lights',cur,'灯效','盘边 + 按键')+
@@ -1302,7 +1405,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
   function floatBodies(){
     var op=state.floatOpacity!=null?state.floatOpacity:82;
     return {
-      show:'<p class="pane-lead">决定 Soft Pad <b>完整窗口</b>何时出现。选「迷你条」只是出场形态，细条 chrome 去「迷你栏」叶改。</p>'+
+      show:'<p class="pane-lead">决定 Soft Pad <b>完整窗口</b>何时出现。选「出场为细条」后，条上留什么去「迷你栏」叶改。</p>'+
         '<div class="seg n4" id="showSeg">'+
           '<button type="button" data-show="follow">跟随应用</button>'+
           '<button type="button" data-show="top">保持最前</button>'+
@@ -1320,21 +1423,180 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     };
   }
 
-  var miniBodies={
-    busy:'<p class="pane-lead">顶行忙闲圆点：谁在跑、谁空闲。</p>'+
-      '<div class="row"><span>条上显示忙闲圆点</span><button type="button" class="tog on" data-mini-chrome="agentsBarEnabled"></button></div>'+
-      '<p class="lead" style="margin-top:8px">Agents 名单入口可从这里跳进配置。</p>',
-    speech:'<p class="pane-lead">条下话术区：你刚说的话、麦标预览。</p>'+
-      '<div class="row"><span>条下显示你说的话</span><button type="button" class="tog on" data-mini-chrome="textPreviewEnabled"></button></div>'+
-      '<div class="row"><span>预览卡带麦标</span><button type="button" class="tog on" data-mini-chrome="voiceChipEnabled"></button></div>',
-    tools:'<p class="pane-lead">悬停第二行：点亮的快捷钮会亮。绑具体命令仍在「虚拟键盘」。</p>'+
-      '<div class="row"><span>悬停时出现快捷钮</span><button type="button" class="tog on" data-mini-chrome="toolsBarEnabled"></button></div>'+
-      '<div class="tools" style="margin-top:8px"><div class="t">麦克风<em>ACT10</em></div><div class="t">发送<em>ACT12</em></div><div class="t">继续<em>AG02</em></div><div class="t">新建<em>AG01</em></div><div class="t">取消<em>ACT08</em></div></div>',
-    form:'<p class="pane-lead">细条还是完整键盘；右侧放大/关掉。</p>'+
-      '<div class="row"><span>呈现</span><strong>细条</strong></div>'+
-      '<div class="row"><span>细条右侧 · 放大</span><button type="button" class="tog on" data-mini-chrome="expandBtnEnabled"></button></div>'+
-      '<div class="row"><span>细条右侧 · 关掉</span><button type="button" class="tog on" data-mini-chrome="closeBtnEnabled"></button></div>'
+  var MINI_PRESETS={
+    lean:{agents:true,speech:true,tools:false,pill:false,win:false},
+    usual:{agents:true,speech:true,tools:true,pill:true,win:false},
+    full:{agents:true,speech:true,tools:true,pill:true,win:true}
   };
+  var MINI_SLOT_LAB={agents:'谁在忙',speech:'你说的话',tools:'常用钮',pill:'还剩多少',win:'放大关闭'};
+  var MINI_SLOT_COACH={
+    agents:'左边圆点 = 谁在忙',
+    speech:'左边条下：麦标 + 你说的话',
+    tools:'鼠标移上去才出现的一排小钮',
+    pill:'左边条上那句「还剩多少」',
+    win:'左边右侧：放大 / 关掉这条'
+  };
+
+  function miniSlotOn(slot){
+    var c=state.miniChrome||{};
+    if(slot==='agents') return c.agentsBarEnabled!==false;
+    if(slot==='speech') return c.textPreviewEnabled!==false;
+    if(slot==='tools') return c.toolsBarEnabled!==false;
+    if(slot==='pill') return c.pillEnabled!==false;
+    if(slot==='win') return c.expandBtnEnabled!==false||c.closeBtnEnabled!==false;
+    return false;
+  }
+
+  function matchMiniPreset(){
+    var keys=['agents','speech','tools','pill','win'];
+    for(var name in MINI_PRESETS){
+      if(!Object.prototype.hasOwnProperty.call(MINI_PRESETS,name)) continue;
+      var p=MINI_PRESETS[name],ok=true;
+      for(var i=0;i<keys.length;i++){
+        if(!!p[keys[i]]!==miniSlotOn(keys[i])){ok=false;break;}
+      }
+      if(ok) return name;
+    }
+    return null;
+  }
+
+  function applyMiniPreset(name){
+    var p=MINI_PRESETS[name];
+    if(!p) return;
+    var c=state.miniChrome;
+    c.agentsBarEnabled=!!p.agents;
+    c.textPreviewEnabled=!!p.speech;
+    c.toolsBarEnabled=!!p.tools;
+    c.pillEnabled=!!p.pill;
+    if(p.win){c.expandBtnEnabled=true;c.closeBtnEnabled=true;}
+    else{c.expandBtnEnabled=false;c.closeBtnEnabled=false;}
+  }
+
+  function setMiniSlot(slot,on){
+    var c=state.miniChrome;
+    on=!!on;
+    if(slot==='agents') c.agentsBarEnabled=on;
+    else if(slot==='speech') c.textPreviewEnabled=on;
+    else if(slot==='tools') c.toolsBarEnabled=on;
+    else if(slot==='pill') c.pillEnabled=on;
+    else if(slot==='win'){c.expandBtnEnabled=on;c.closeBtnEnabled=on;}
+  }
+
+  function miniDetailHtml(slot){
+    var c=state.miniChrome;
+    if(slot==='agents'){
+      return '<p class="coach">圆点颜色表示忙不忙。名单只读。</p>'+
+        '<div class="row"><span>显示「谁在忙」</span><button type="button" class="tog'+(c.agentsBarEnabled!==false?' on':'')+'" data-mini-chrome="agentsBarEnabled"></button></div>';
+    }
+    if(slot==='speech'){
+      return '<div class="row"><span>显示「你说的话」</span><button type="button" class="tog'+(c.textPreviewEnabled!==false?' on':'')+'" data-mini-chrome="textPreviewEnabled"></button></div>'+
+        '<div class="row"><span>旁边带个麦标</span><button type="button" class="tog'+(c.voiceChipEnabled!==false?' on':'')+'" data-mini-chrome="voiceChipEnabled"></button></div>'+
+        '<p class="coach" style="margin-top:8px">什么时候露出来</p>'+
+        '<div class="mini-d__seg" data-mini-text-when="1">'+
+          '<button type="button" data-text-when="listening"'+(c.textPreviewWhen!=='hasText'?' class="is-on"':'')+'>你一开口就出</button>'+
+          '<button type="button" data-text-when="hasText"'+(c.textPreviewWhen==='hasText'?' class="is-on"':'')+'>有字才出</button>'+
+        '</div>';
+    }
+    if(slot==='tools'){
+      return '<div class="row"><span>显示「常用钮」</span><button type="button" class="tog'+(c.toolsBarEnabled!==false?' on':'')+'" data-mini-chrome="toolsBarEnabled"></button></div>'+
+        '<p class="coach" style="margin-top:8px">点亮的会出现在悬停第二行。</p>'+
+        '<div class="tools"><div class="t">口令<em>ACT10</em></div><div class="t">发送<em>ACT12</em></div><div class="t">继续<em>AG02</em></div><div class="t">新建<em>AG01</em></div><div class="t">取消<em>ACT08</em></div></div>';
+    }
+    if(slot==='pill'){
+      return '<div class="row"><span>显示「还剩多少」</span><button type="button" class="tog'+(c.pillEnabled!==false?' on':'')+'" data-mini-chrome="pillEnabled"></button></div>'+
+        '<div class="row"><span>暂时没数字就先藏着</span><button type="button" class="tog'+(c.pillHideEmpty?' on':'')+'" data-mini-chrome="pillHideEmpty"></button></div>';
+    }
+    return '<div class="row"><span>一键放大成完整键盘</span><button type="button" class="tog'+(c.expandBtnEnabled?' on':'')+'" data-mini-chrome="expandBtnEnabled"></button></div>'+
+      '<div class="row"><span>关掉这条悬浮条</span><button type="button" class="tog'+(c.closeBtnEnabled?' on':'')+'" data-mini-chrome="closeBtnEnabled"></button></div>';
+  }
+
+  function paintMiniD(){
+    var root=detail.querySelector('#miniDRoot');
+    if(!root) return;
+    if(state.mini==='busy'||state.mini==='form') state.mini='agents';
+    var focus=state.mini||'agents';
+    if(['agents','speech','tools','pill','win'].indexOf(focus)<0) focus='agents';
+    state.mini=focus;
+    var matched=matchMiniPreset();
+    var presets=[
+      ['lean','够用就好','谁在忙 + 你说的话'],
+      ['usual','日常推荐','再加常用钮、还剩多少'],
+      ['full','全都要','再加上放大 / 关闭']
+    ];
+    var slots=[['agents','谁在忙'],['speech','你说的话'],['tools','常用钮'],['pill','还剩多少'],['win','放大关闭']];
+    root.innerHTML=
+      '<div class="mini-d__block">'+
+        '<p class="mini-d__lab">条上留什么</p>'+
+        '<p class="mini-d__help">先挑一档「多或少」，不够再点下面圆片微调。亮着的会留在条上。</p>'+
+        '<div class="mini-d__preset" role="radiogroup" aria-label="条上多少">'+
+          presets.map(function(p){
+            var on=(matched||'usual')===p[0];
+            return '<button type="button" data-mini-preset="'+p[0]+'"'+(on?' class="is-on"':'')+' role="radio" aria-checked="'+(on?'true':'false')+'"><strong>'+p[1]+'</strong><small>'+p[2]+'</small></button>';
+          }).join('')+
+        '</div>'+
+        '<p class="mini-d__fine">再微调（点亮 = 留在条上）</p>'+
+        '<div class="mini-d__slots" role="group" aria-label="条上项目">'+
+          slots.map(function(s){
+            var on=miniSlotOn(s[0]);
+            var foc=focus===s[0];
+            return '<button type="button" class="mini-d__slot'+(on?' is-on':'')+(foc?' is-focus':'')+'" data-mini-slot="'+s[0]+'" aria-pressed="'+(on?'true':'false')+'"><i aria-hidden="true"></i>'+s[1]+'</button>';
+          }).join('')+
+        '</div>'+
+      '</div>'+
+      '<div class="mini-d__block">'+
+        '<p class="mini-d__lab">这块再细调 · '+(MINI_SLOT_LAB[focus]||focus)+'</p>'+
+        '<div class="mini-d__detail">'+
+          '<h5>'+(MINI_SLOT_LAB[focus]||focus)+'</h5>'+
+          '<p class="coach">'+(MINI_SLOT_COACH[focus]||'')+'</p>'+
+          miniDetailHtml(focus)+
+        '</div>'+
+      '</div>';
+    var foot=document.getElementById('barFoot');
+    if(foot) foot.textContent=(MINI_SLOT_COACH[focus]||'条上内容')+' · 点圆片微调';
+  }
+
+  function wireMiniD(afterPaint){
+    var root=detail.querySelector('#miniDRoot');
+    if(!root) return;
+    if(!root.__miniDBound){
+      root.__miniDBound=true;
+      root.addEventListener('click',function(ev){
+        var presetBtn=ev.target.closest('[data-mini-preset]');
+        if(presetBtn){
+          applyMiniPreset(presetBtn.getAttribute('data-mini-preset')||'usual');
+          if(!miniSlotOn(state.mini)) state.mini='agents';
+          paintMiniD();
+          if(afterPaint) afterPaint(root);
+          postMiniPreview();
+          return;
+        }
+        var slotBtn=ev.target.closest('[data-mini-slot]');
+        if(slotBtn){
+          var slot=slotBtn.getAttribute('data-mini-slot')||'agents';
+          var on=miniSlotOn(slot);
+          var focused=state.mini===slot;
+          if(focused&&on) setMiniSlot(slot,false);
+          else if(!on) setMiniSlot(slot,true);
+          state.mini=slot;
+          paintMiniD();
+          if(afterPaint) afterPaint(root);
+          postMiniPreview();
+          return;
+        }
+        var whenBtn=ev.target.closest('[data-text-when]');
+        if(whenBtn){
+          state.miniChrome.textPreviewWhen=whenBtn.getAttribute('data-text-when')==='hasText'?'hasText':'listening';
+          state.mini='speech';
+          paintMiniD();
+          if(afterPaint) afterPaint(root);
+          postMiniPreview();
+        }
+      });
+    }
+    if(afterPaint) afterPaint(root);
+  }
+
+  var miniBodies={}; /* replaced by paintMiniD */
 
   function softPadBodies(){
     var mode=state.ambientMode==='solid'?'solid':'status';
@@ -1944,9 +2206,13 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
         paintKeysGain();
       }
     }
-    if(miniPaint&&payload.miniHtml){
+    /* Mini leaf: always paint locally — parent Soft Pad miniHtml uses root-relative
+       icons/ paths that 404 inside this iframe and overwrite good local chips. */
+    if(state.sub==='mini'&&miniPaint){
+      paintLocalMiniPreview();
+      highlightMiniZone(state.mini);
+    }else if(miniPaint&&payload.miniHtml){
       miniPaint.innerHTML=payload.miniHtml;
-      if(state.sub==='mini') highlightMiniZone(state.mini);
     }
     var padHost=document.getElementById('agentPadHost');
     if(padHost&&payload.leftKind){
@@ -2074,6 +2340,18 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
           var flag=t.getAttribute('data-mini-chrome');
           if(flag&&(flag in state.miniChrome)){
             state.miniChrome[flag]=on;
+            if(flag==='expandBtnEnabled'||flag==='closeBtnEnabled'){
+              state.mini='win';
+            }else if(flag==='agentsBarEnabled') state.mini='agents';
+            else if(flag==='textPreviewEnabled'||flag==='voiceChipEnabled') state.mini='speech';
+            else if(flag==='toolsBarEnabled') state.mini='tools';
+            else if(flag==='pillEnabled'||flag==='pillHideEmpty') state.mini='pill';
+            var miniRoot=detail.querySelector('#miniDRoot');
+            if(miniRoot){
+              paintMiniD();
+              wireTogs(miniRoot);
+              syncMiniChromeTogs(miniRoot);
+            }
             postMiniPreview();
             if(flag==='agentsBarEnabled') paintTopbarPreview();
           }
@@ -2500,13 +2778,15 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       paintFloatOpacity();
       postLeftPreview();
     });
-    bindLeaf('miniRail','data-mini','mini',miniBodies,function(id){
-      highlightMiniZone(id);
+    if(detail.querySelector('#miniDRoot')){
+      paintMiniD();
+      wireMiniD(function(root){
+        wireTogs(root);
+        syncMiniChromeTogs(root);
+      });
+      highlightMiniZone(state.mini);
       postMiniPreview();
-      var foot=document.getElementById('barFoot');
-      if(!foot) return;
-      foot.textContent=id==='form'?'细条形态 · 可切完整键盘':id==='busy'?'顶行忙闲圆点':id==='speech'?'条下话术区':id==='tools'?'悬停第二行快捷钮':'细条形态 · 悬停第二行出快捷钮';
-    });
+    }
     bindLeaf('softPadRail','data-soft-pad','softPad',softPadBodies,function(id){
       if(id==='ambient'||id==='keys'){
         state.softPad='lights';

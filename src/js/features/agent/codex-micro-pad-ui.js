@@ -1334,11 +1334,11 @@
   function defaultMiniChrome() {
     return {
       voiceChipEnabled: true,
-      voiceChipWhen: 'listening',
       agentsBarEnabled: true,
       textPreviewEnabled: true,
       textPreviewWhen: 'listening',
       toolsBarEnabled: true,
+      toolsAll: true,
       toolIds: [],
       expandBtnEnabled: true,
       closeBtnEnabled: true
@@ -1354,12 +1354,15 @@
       return pad.miniChrome;
     }
     if (c.voiceChipEnabled == null) c.voiceChipEnabled = d.voiceChipEnabled;
-    if (c.voiceChipWhen !== 'armed') c.voiceChipWhen = 'listening';
     if (c.agentsBarEnabled == null) c.agentsBarEnabled = d.agentsBarEnabled;
     if (c.textPreviewEnabled == null) c.textPreviewEnabled = d.textPreviewEnabled;
     if (c.textPreviewWhen !== 'hasText') c.textPreviewWhen = 'listening';
     if (c.toolsBarEnabled == null) c.toolsBarEnabled = d.toolsBarEnabled;
     if (!Array.isArray(c.toolIds)) c.toolIds = [];
+    // Legacy: missing toolsAll → empty toolIds meant "all", nonempty meant subset.
+    if (c.toolsAll == null) c.toolsAll = !c.toolIds.length;
+    else c.toolsAll = c.toolsAll !== false;
+    if (c.toolsAll) c.toolIds = [];
     if (c.expandBtnEnabled == null) c.expandBtnEnabled = d.expandBtnEnabled;
     if (c.closeBtnEnabled == null) c.closeBtnEnabled = d.closeBtnEnabled;
     pad.miniChrome = c;
@@ -6887,12 +6890,14 @@
       mappingId: String(m.id),
       chrome: {
         voiceChipEnabled: chrome.voiceChipEnabled !== false,
-        voiceChipWhen: chrome.voiceChipWhen === 'armed' ? 'armed' : 'listening',
         agentsBarEnabled: chrome.agentsBarEnabled !== false,
         textPreviewEnabled: chrome.textPreviewEnabled !== false,
         textPreviewWhen: chrome.textPreviewWhen === 'hasText' ? 'hasText' : 'listening',
         toolsBarEnabled: chrome.toolsBarEnabled !== false,
-        toolIds: Array.isArray(chrome.toolIds) ? chrome.toolIds.slice() : [],
+        toolsAll: chrome.toolsAll !== false,
+        toolIds: chrome.toolsAll !== false
+          ? []
+          : (Array.isArray(chrome.toolIds) ? chrome.toolIds.slice() : []),
         expandBtnEnabled: chrome.expandBtnEnabled !== false,
         closeBtnEnabled: chrome.closeBtnEnabled !== false
       }
@@ -11650,10 +11655,9 @@
     try { global.__otSoftPadPresentationMounted = true; } catch (_) {}
   }
 
-  /** Soft Pad show-mode for hub「何时显示」dropdown. */
+  /** Soft Pad show-mode for hub「何时显示」— timing only (not presentation). */
   function resolveSoftPadShowMode(pad) {
     if (!pad || !pad.overlayEnabled) return 'hidden';
-    if (pad.presentation === 'mini') return 'mini';
     if (pad.requireForeground === false) return 'front';
     return 'follow';
   }
@@ -11663,31 +11667,23 @@
     var pad = m.codexMicroPad;
     if (!pad) return;
     mode = String(mode || 'follow');
+    if (mode === 'mini') mode = 'follow'; // legacy packed enum → timing only
     if (mode === 'hidden') {
       pad.overlayEnabled = false;
-      // Do not change enabled / keys.
+      // Do not change enabled / keys / presentation.
       persistPadFlags(m);
       return;
     }
     pad.overlayEnabled = true;
     pad.enabled = true;
     ensurePhysicalNumpadOccupy(m, { quiet: true });
-    if (mode === 'mini') {
-      pad.presentation = 'mini';
-      pad.requireForeground = true;
-      persistPresentation(m);
-      persistPadFlags(m);
-      return;
-    }
-    pad.presentation = 'full';
     pad.requireForeground = mode !== 'front';
-    persistPresentation(m);
+    // Never touch presentation — 形态 is an orthogonal control.
     persistPadFlags(m);
   }
 
   function softPadShowModeLabel(mode) {
     if (mode === 'front') return t('softPadShowModeFront', '保持在最前');
-    if (mode === 'mini') return t('softPadShowModeMini', '显示为迷你条');
     if (mode === 'hidden') return t('softPadShowModeHidden', '不显示浮窗');
     return t('softPadShowModeFollow', '跟随应用显示');
   }
@@ -11695,9 +11691,6 @@
   function softPadShowModeHint(mode) {
     if (mode === 'front') {
       return t('softPadShowModeFrontHint', '浮窗保持可见；按键动作仍发给对应应用，不会接管其它窗口。');
-    }
-    if (mode === 'mini') {
-      return t('softPadShowModeMiniHint', '精简为状态灯条，适合少占屏幕。');
     }
     if (mode === 'hidden') {
       return t('softPadShowModeHiddenHint', '不显示悬浮键盘；你改过的键位配置会保留。');
@@ -11709,9 +11702,6 @@
     if (mode === 'front') {
       return t('softPadShowSceneFrontCap', '切到其它窗口，悬浮键盘仍在');
     }
-    if (mode === 'mini') {
-      return t('softPadShowSceneMiniCap', '变成迷你条，少占屏幕');
-    }
     if (mode === 'hidden') {
       return t('softPadShowSceneHiddenCap', '不显示浮窗 · 键位配置仍保留');
     }
@@ -11719,14 +11709,12 @@
   }
 
   function softPadShowObjName(mode) {
-    if (mode === 'mini') return t('softPadShowObjFormMini', '迷你条');
     if (mode === 'hidden') return t('softPadShowObjFormNone', '无浮窗');
     return t('softPadShowObjFormPad', 'Soft Pad');
   }
 
   function softPadShowModeShort(mode) {
     if (mode === 'front') return t('softPadShowModeFrontShort', 'Soft Pad 始终可见');
-    if (mode === 'mini') return t('softPadShowModeMiniShort', '收成迷你条，可再展开');
     if (mode === 'hidden') return t('softPadShowModeHiddenShort', '无 Soft Pad / 迷你条');
     return t('softPadShowModeFollowShort', '有目标应用才出 Soft Pad');
   }
@@ -11734,12 +11722,7 @@
   function softPadShowObjBodyHtml(mode) {
     mode = String(mode || 'follow');
     var pad = '<span class="soft-pad-show-obj__pad" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
-    var mini = '<span class="soft-pad-show-obj__mini" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>';
     var ghost = '<span class="soft-pad-show-obj__pad is-ghost" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
-    if (mode === 'mini') {
-      return '<span class="soft-pad-show-obj__pad is-faint" aria-hidden="true"><i></i><i></i><i></i><i></i></span>' +
-        '<span class="soft-pad-show-obj__arrow" aria-hidden="true">→</span>' + mini;
-    }
     if (mode === 'hidden') {
       return ghost + '<span class="soft-pad-show-obj__x" aria-hidden="true">×</span>';
     }
@@ -11765,6 +11748,7 @@
 
   function syncSoftPadShowModeChrome(root, mode, pad) {
     mode = String(mode || 'follow');
+    if (mode === 'mini') mode = 'follow';
     var roots = [];
     if (root) roots.push(root);
     var preview = document.getElementById('softPadPreviewHost');
@@ -11780,6 +11764,14 @@
         btn.classList.toggle('is-active', on);
         btn.setAttribute('aria-selected', on ? 'true' : 'false');
       });
+      if (pad) {
+        var pres = pad.presentation === 'mini' ? 'mini' : 'full';
+        scope.querySelectorAll('[data-pad-presentation]').forEach(function (btn) {
+          var on = btn.getAttribute('data-pad-presentation') === pres;
+          btn.classList.toggle('is-active', on);
+          btn.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+      }
       var obj = scope.querySelector('[data-show-obj]');
       if (obj) {
         obj.setAttribute('data-show-obj', mode);
@@ -11805,6 +11797,7 @@
 
   function renderShowModeTabsHtml(mode) {
     mode = String(mode || 'follow');
+    if (mode === 'mini') mode = 'follow';
     function tab(id, label) {
       var on = mode === id;
       return (
@@ -11821,7 +11814,6 @@
       esc(t('softPadShowModeLbl', '显示方式')) + '">' +
       tab('follow', t('softPadShowModeFollow', '跟随应用显示')) +
       tab('front', t('softPadShowModeFront', '保持在最前')) +
-      tab('mini', t('softPadShowModeMini', '显示为迷你条')) +
       tab('hidden', t('softPadShowModeHidden', '不显示浮窗')) +
       '</div>'
     );
@@ -12413,7 +12405,8 @@
     raw = String(raw || 'follow').trim();
     if (raw === 'top') return 'front';
     if (raw === 'off') return 'hidden';
-    if (raw === 'front' || raw === 'mini' || raw === 'hidden' || raw === 'follow') return raw;
+    if (raw === 'mini') return 'follow'; // legacy packed enum
+    if (raw === 'front' || raw === 'hidden' || raw === 'follow') return raw;
     return 'follow';
   }
 
@@ -14528,12 +14521,14 @@
   }
 
   function renderMiniChromeToggle(flag, on, label) {
+    var lblId = 'mini-chrome-lbl-' + String(flag || 'x').replace(/[^a-zA-Z0-9_-]/g, '-');
     return (
       '<div class="soft-pad-agent-mini-pill-row soft-pad-agent-data-toggle soft-pad-agent-mini-toggle">' +
-      '<span class="soft-pad-agent-data-toggle__lbl">' + esc(label) + '</span>' +
+      '<span class="soft-pad-agent-data-toggle__lbl" id="' + esc(lblId) + '">' + esc(label) + '</span>' +
       '<button type="button" class="toggle-switch' + (on ? ' is-on' : '') +
       '" data-act="mini-chrome" data-chrome-flag="' + esc(flag) +
-      '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '"></button></div>'
+      '" role="switch" aria-checked="' + (on ? 'true' : 'false') +
+      '" aria-labelledby="' + esc(lblId) + '"></button></div>'
     );
   }
 
@@ -14582,19 +14577,6 @@
     plus: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 5v14M5 12h14"/><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
     x: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M7 7l10 10M17 7L7 17"/></svg>'
   };
-
-  function renderAgentMiniPillCard(m, pad) {
-    var on = miniUsagePillOnPad(pad);
-    var hideEmpty = miniUsagePillHideEmptyOnPad(pad);
-    return (
-      '<div class="soft-pad-agent-mini-look-extras" data-agent-mini-pill-card="1">' +
-      '<span class="soft-pad-agent-mini-field__lbl">' +
-      esc(t('softPadMiniPillTitle', '条上用量')) + '</span>' +
-      renderMiniChromeToggle('__pillEnabled', on, t('softPadMiniPillShow', '显示当前前台用量')) +
-      renderMiniChromeToggle('__pillHideEmpty', hideEmpty, t('softPadMiniPillHideEmpty', '没数据时先藏着')) +
-      '</div>'
-    );
-  }
 
   function ensureAutoTopbarLights(pad) {
     if (!pad) return false;
@@ -14657,31 +14639,112 @@
     );
   }
 
-  var MINI_RAIL_ICO = {
-    agents: '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><circle cx="7" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="17" cy="12" r="2.2" fill="currentColor"/></svg>',
-    speech: '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
-    tools: '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="3" y="7" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="10" y="7" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="17" y="7" width="4" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 16h16"/></svg>',
-    display: '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="3" y="8" width="18" height="8" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M7 12h4M14 12h3"/></svg>'
+  var MINI_CONTENT_PRESETS = {
+    lean: { agents: true, speech: true, tools: false, pill: false, win: false },
+    usual: { agents: true, speech: true, tools: true, pill: true, win: false },
+    full: { agents: true, speech: true, tools: true, pill: true, win: true }
   };
 
+  function normalizeMiniRail(rail) {
+    rail = String(rail || 'agents');
+    if (rail === 'voice' || rail === 'text') return 'speech';
+    if (rail === 'display') return 'scene';
+    if (['agents', 'speech', 'tools', 'pill', 'win', 'scene'].indexOf(rail) < 0) return 'agents';
+    return rail;
+  }
+
+  function miniSlotOn(pad, slot) {
+    var chrome = ensureMiniChrome(pad);
+    if (slot === 'agents') return chrome.agentsBarEnabled !== false;
+    if (slot === 'speech') return chrome.textPreviewEnabled !== false;
+    if (slot === 'tools') {
+      if (chrome.toolsBarEnabled === false) return false;
+      return chrome.toolsAll !== false ||
+        (Array.isArray(chrome.toolIds) && chrome.toolIds.length > 0);
+    }
+    if (slot === 'pill') return miniUsagePillOnPad(pad);
+    if (slot === 'win') {
+      return chrome.expandBtnEnabled !== false || chrome.closeBtnEnabled !== false;
+    }
+    return false;
+  }
+
+  function matchMiniContentPreset(pad) {
+    var keys = ['agents', 'speech', 'tools', 'pill', 'win'];
+    for (var name in MINI_CONTENT_PRESETS) {
+      if (!Object.prototype.hasOwnProperty.call(MINI_CONTENT_PRESETS, name)) continue;
+      var p = MINI_CONTENT_PRESETS[name];
+      var ok = true;
+      for (var i = 0; i < keys.length; i++) {
+        if (!!p[keys[i]] !== miniSlotOn(pad, keys[i])) { ok = false; break; }
+      }
+      if (ok) return name;
+    }
+    return null;
+  }
+
+  function applyMiniContentPreset(pad, name) {
+    var p = MINI_CONTENT_PRESETS[name];
+    if (!p || !pad) return;
+    var chrome = ensureMiniChrome(pad);
+    chrome.agentsBarEnabled = !!p.agents;
+    chrome.textPreviewEnabled = !!p.speech;
+    chrome.toolsBarEnabled = !!p.tools;
+    if (p.tools) {
+      chrome.toolsAll = true;
+      chrome.toolIds = [];
+    }
+    pad.miniUsagePillEnabled = !!p.pill;
+    if (p.win) {
+      chrome.expandBtnEnabled = true;
+      chrome.closeBtnEnabled = true;
+    } else {
+      chrome.expandBtnEnabled = false;
+      chrome.closeBtnEnabled = false;
+    }
+  }
+
+  function setMiniSlotEnabled(pad, slot, on) {
+    var chrome = ensureMiniChrome(pad);
+    on = !!on;
+    if (slot === 'agents') chrome.agentsBarEnabled = on;
+    else if (slot === 'speech') chrome.textPreviewEnabled = on;
+    else if (slot === 'tools') {
+      chrome.toolsBarEnabled = on;
+      if (on && chrome.toolsAll === false &&
+          !(Array.isArray(chrome.toolIds) && chrome.toolIds.length)) {
+        chrome.toolsAll = true;
+        chrome.toolIds = [];
+      }
+    } else if (slot === 'pill') {
+      pad.miniUsagePillEnabled = on;
+    } else if (slot === 'win') {
+      chrome.expandBtnEnabled = on;
+      chrome.closeBtnEnabled = on;
+    }
+  }
+
   function miniRailCoach(rail) {
+    rail = normalizeMiniRail(rail);
     if (rail === 'speech') return t('softPadMiniCoachSpeech', '左边条下会亮：麦标 + 你说的话');
-    if (rail === 'tools') return t('softPadMiniCoachTools', '左边悬停第二行：点选的快捷钮会亮');
-    if (rail === 'display') return t('softPadMiniCoachDisplay', '左边对照细条 / 完整键盘；改完立刻换预览');
-    return t('softPadMiniCoachAgents', '左边第一行圆点 = 已装 Agent 的忙闲');
+    if (rail === 'tools') return t('softPadMiniCoachTools', '鼠标移上去才出现的一排小钮');
+    if (rail === 'pill') return t('softPadMiniCoachPill', '左边条上那句「还剩多少」');
+    if (rail === 'win') return t('softPadMiniCoachWin', '左边右侧：放大 / 关掉这条');
+    if (rail === 'scene') return t('softPadMiniCoachDisplay', '左边在演示：它长什么样、什么时候出现');
+    return t('softPadMiniCoachAgents', '左边圆点 = 谁在忙');
   }
 
   function renderMiniShowModeTabs(mode) {
     mode = String(mode || 'follow');
+    if (mode === 'mini') mode = 'follow';
     var opts = [
-      ['follow', t('softPadMiniShowFollow', '跟前台'), t('softPadMiniShowFollowHint', 'Agent 在前才出')],
-      ['front', t('softPadMiniShowFront', '一直挂着'), t('softPadMiniShowFrontHint', '不跟前台藏起')],
-      ['mini', t('softPadMiniShowForceMini', '强制细条'), t('softPadMiniShowForceMiniHint', '固定迷你栏形态')],
-      ['hidden', t('softPadMiniShowHidden', '不浮出'), t('softPadMiniShowHiddenHint', '关掉悬浮窗')]
+      ['follow', t('softPadMiniShowFollow', '跟当前软件'), t('softPadMiniShowFollowHint', '软件在前才出')],
+      ['front', t('softPadMiniShowFront', '一直浮着'), t('softPadMiniShowFrontHint', '切走也还在')],
+      ['hidden', t('softPadMiniShowHidden', '先不显示'), t('softPadMiniShowHiddenHint', '键位仍保留')]
     ];
     return (
       '<div class="soft-pad-show-mode-tabs soft-pad-agent-mini-show" role="tablist" aria-label="' +
-      esc(t('softPadMiniShowModeLbl', '何时浮出')) + '">' +
+      esc(t('softPadMiniShowModeLbl', '何时出现')) + '">' +
       opts.map(function (o) {
         var on = mode === o[0];
         return (
@@ -14701,46 +14764,55 @@
     var cur = (pad && pad.presentation) === 'mini' ? 'mini' : 'full';
     var showMode = resolveSoftPadShowMode(pad);
     var toolIds = Array.isArray(chrome.toolIds) ? chrome.toolIds : [];
-    var toolsAll = !toolIds.length;
-    var rail = softPadMiniRail;
-    if (rail === 'voice' || rail === 'text') rail = 'speech';
-    if (['agents', 'speech', 'tools', 'display'].indexOf(rail) < 0) rail = 'agents';
+    var toolsAll = chrome.toolsAll !== false;
+    var rail = normalizeMiniRail(softPadMiniRail);
     softPadMiniRail = rail;
-    var railItems = [
-      ['agents', t('softPadMiniRosterTitle', '谁在忙')],
-      ['speech', t('softPadMiniSpeechTitle', '听你说话')],
-      ['tools', t('softPadMiniToolsTitle', '快捷钮')],
-      ['display', t('softPadMiniDisplayTitle', '浮窗形态')]
-    ];
     var titles = {
-      agents: t('softPadMiniRosterTitle', '谁在忙'),
-      speech: t('softPadMiniSpeechTitle', '听你说话'),
-      tools: t('softPadMiniToolsTitle', '快捷钮'),
-      display: t('softPadMiniDisplayTitle', '浮窗形态')
+      agents: t('softPadMiniSlotAgents', '谁在忙'),
+      speech: t('softPadMiniSlotSpeech', '你说的话'),
+      tools: t('softPadMiniSlotTools', '常用钮'),
+      pill: t('softPadMiniSlotPill', '还剩多少'),
+      win: t('softPadMiniSlotWin', '放大关闭'),
+      scene: t('softPadMiniSceneTitle', '它怎么出现')
     };
     var head = titles[rail] || titles.agents;
+    var panelId = 'soft-pad-mini-panel-detail';
+    var matched = matchMiniContentPreset(pad);
+    var slots = [
+      ['agents', t('softPadMiniSlotAgents', '谁在忙')],
+      ['speech', t('softPadMiniSlotSpeech', '你说的话')],
+      ['tools', t('softPadMiniSlotTools', '常用钮')],
+      ['pill', t('softPadMiniSlotPill', '还剩多少')],
+      ['win', t('softPadMiniSlotWin', '放大关闭')]
+    ];
+    var presets = [
+      ['lean', t('softPadMiniPresetLean', '够用就好'), t('softPadMiniPresetLeanHint', '谁在忙 + 你说的话')],
+      ['usual', t('softPadMiniPresetUsual', '日常推荐'), t('softPadMiniPresetUsualHint', '再加常用钮、还剩多少')],
+      ['full', t('softPadMiniPresetFull', '全都要'), t('softPadMiniPresetFullHint', '再加上放大 / 关闭')]
+    ];
     var detailBody = '';
-    if (rail === 'agents') {
+    if (rail === 'scene') {
       detailBody =
-        renderMiniChromeToggle('agentsBarEnabled', chrome.agentsBarEnabled !== false,
-          t('softPadMiniAgentsShow', '条上显示忙闲圆点')) +
         '<p class="soft-pad-agent-mini-note">' +
-        esc(t('softPadMiniRosterNote', '已安装的会自动进条；要额度的点「去配置」。')) +
+        esc(t('softPadMiniSceneNote', '样子和何时出互不影响。改完看左边演示。')) +
+        '</p>';
+    } else if (rail === 'agents') {
+      detailBody =
+        '<p class="soft-pad-agent-mini-note">' +
+        esc(t('softPadMiniRosterNote', '圆点颜色表示忙不忙。名单只读，额度去「显示数据」里配。')) +
         '</p>' +
         renderMiniAutoRoster(pad);
     } else if (rail === 'speech') {
       detailBody =
-        renderMiniChromeToggle('textPreviewEnabled', chrome.textPreviewEnabled !== false,
-          t('softPadMiniSpeechShow', '条下显示你说的话')) +
         renderMiniChromeToggle('voiceChipEnabled', chrome.voiceChipEnabled !== false,
-          t('softPadMiniVoiceShow', '预览卡里带麦标')) +
+          t('softPadMiniVoiceShow', '旁边带个麦标')) +
         '<div class="soft-pad-agent-mini-field">' +
         '<span class="soft-pad-agent-mini-field__lbl">' +
-        esc(t('softPadMiniTextWhenLbl', '预览卡何时出现')) + '</span>' +
+        esc(t('softPadMiniTextWhenLbl', '什么时候露出来')) + '</span>' +
         renderMiniChromeSeg('textPreviewWhen', chrome.textPreviewWhen === 'hasText' ? 'hasText' : 'listening', [
           {
             id: 'listening',
-            title: t('softPadMiniTextWhenListening', '说话时'),
+            title: t('softPadMiniTextWhenListening', '你一开口就出'),
             hint: t('softPadMiniTextWhenListeningHint', '一开口就出'),
             icon: MINI_TOOL_SVG.mic
           },
@@ -14754,10 +14826,8 @@
         '</div>';
     } else if (rail === 'tools') {
       detailBody =
-        renderMiniChromeToggle('toolsBarEnabled', chrome.toolsBarEnabled !== false,
-          t('softPadMiniToolsShow', '悬停时出现快捷钮')) +
         '<p class="soft-pad-agent-mini-note">' +
-        esc(t('softPadMiniToolsNote', '点亮的会出现在左边第二行；关掉的不显示。')) +
+        esc(t('softPadMiniToolsNote', '全不选 = 这一块不出现。')) +
         '</p>' +
         '<div class="soft-pad-agent-mini-tools" data-mini-tools="1">' +
         MINI_TOOL_DEFS.map(function (td) {
@@ -14773,68 +14843,100 @@
           );
         }).join('') +
         '</div>';
+    } else if (rail === 'pill') {
+      detailBody =
+        renderMiniChromeToggle('__pillHideEmpty', miniUsagePillHideEmptyOnPad(pad),
+          t('softPadMiniPillHideEmpty', '暂时没数字就先藏着')) +
+        '<button type="button" class="codex-micro-pad__btn soft-pad-agent-mini-goto" data-act="goto-workbench" data-goto-tab="data">' +
+        esc(t('softPadMiniGotoData', '数字从哪来 →')) +
+        '</button>';
     } else {
       detailBody =
-        '<div class="soft-pad-agent-mini-look-seg" role="radiogroup" aria-label="' +
-        esc(t('codexMicroPadPresentationLbl', '长什么样')) + '">' +
-        '<button type="button" class="soft-pad-agent-mini-look' + (cur === 'mini' ? ' is-active' : '') +
-        '" data-pad-presentation="mini" role="radio" aria-checked="' + (cur === 'mini' ? 'true' : 'false') + '">' +
-        '<span class="soft-pad-agent-mini-look__sketch soft-pad-agent-mini-look__sketch--mini" aria-hidden="true">' +
-        '<i></i><i></i><b></b></span>' +
-        '<span class="soft-pad-agent-mini-look__title">' +
-        esc(t('codexMicroPadPresentationMini', '细条')) + '</span>' +
-        '<span class="soft-pad-agent-mini-look__hint">' +
-        esc(t('softPadMiniBarHint', '当前前台 · 省略数据')) + '</span></button>' +
-        '<button type="button" class="soft-pad-agent-mini-look' + (cur === 'full' ? ' is-active' : '') +
-        '" data-pad-presentation="full" role="radio" aria-checked="' + (cur === 'full' ? 'true' : 'false') + '">' +
-        '<span class="soft-pad-agent-mini-look__sketch soft-pad-agent-mini-look__sketch--full" aria-hidden="true">' +
-        '<span></span><span></span><span></span><span></span></span>' +
-        '<span class="soft-pad-agent-mini-look__title">' +
-        esc(t('codexMicroPadPresentationFull', '完整键盘')) + '</span>' +
-        '<span class="soft-pad-agent-mini-look__hint">' +
-        esc(t('softPadMiniFullHint', '全名单 · 全量数据')) + '</span></button>' +
-        '</div>' +
-        '<div class="soft-pad-agent-mini-field">' +
-        '<span class="soft-pad-agent-mini-field__lbl">' +
-        esc(t('softPadMiniShowModeLbl', '何时浮出')) + '</span>' +
-        renderMiniShowModeTabs(showMode) +
-        '</div>' +
-        renderAgentMiniPillCard(m, pad) +
-        '<div class="soft-pad-agent-mini-look-extras soft-pad-agent-mini-look-win">' +
-        '<span class="soft-pad-agent-mini-field__lbl">' +
-        esc(t('softPadMiniWinLbl', '细条右侧按钮')) + '</span>' +
         renderMiniChromeToggle('expandBtnEnabled', chrome.expandBtnEnabled !== false,
-          t('softPadMiniExpandShow', '显示「放大到完整键盘」')) +
+          t('softPadMiniExpandShow', '一键放大成完整键盘')) +
         renderMiniChromeToggle('closeBtnEnabled', chrome.closeBtnEnabled !== false,
-          t('softPadMiniCloseShow', '显示「关掉浮窗」')) +
-        '</div>';
+          t('softPadMiniCloseShow', '关掉这条悬浮条'));
     }
     return (
-      '<div class="soft-pad-agent-workbench__mini" data-agent-mini-panel="1" data-mini-five-chrome="1" data-mini-rail="' +
+      '<div class="soft-pad-agent-workbench__mini" data-agent-mini-panel="1" data-mini-preset-chrome="1" data-mini-rail="' +
       esc(rail) + '">' +
-      '<div class="soft-pad-agent-mini-rail-layout">' +
-      '<nav class="soft-pad-agent-mini-rail" aria-label="' +
-      esc(t('softPadMiniRailAria', '迷你栏分区')) + '">' +
-      railItems.map(function (it) {
+      '<header class="soft-pad-agent-mini-lead">' +
+      '<h4>' + esc(t('softPadMiniPanelTitle', '迷你栏')) + '</h4>' +
+      '<p>' + esc(t('softPadMiniPanelLead', '先定它怎么出现，再选条上留多少。')) + '</p>' +
+      '</header>' +
+      '<section class="soft-pad-agent-mini-block" data-mini-block="appear">' +
+      '<p class="soft-pad-agent-mini-block__lab">' +
+      esc(t('softPadMiniAppearLab', '① 它怎么出现')) + '</p>' +
+      '<p class="soft-pad-agent-mini-block__help">' +
+      esc(t('softPadMiniAppearHelp', '改这里，左边会跟着演示。')) + '</p>' +
+      '<div class="soft-pad-agent-mini-field">' +
+      '<span class="soft-pad-agent-mini-field__lbl">' +
+      esc(t('softPadMiniShapeLbl', '样子')) + '</span>' +
+      '<div class="soft-pad-agent-mini-look-seg" role="radiogroup" aria-label="' +
+      esc(t('softPadMiniShapeLbl', '样子')) + '">' +
+      '<button type="button" class="soft-pad-agent-mini-look' + (cur === 'mini' ? ' is-active' : '') +
+      '" data-pad-presentation="mini" role="radio" aria-checked="' + (cur === 'mini' ? 'true' : 'false') + '">' +
+      '<span class="soft-pad-agent-mini-look__sketch soft-pad-agent-mini-look__sketch--mini" aria-hidden="true">' +
+      '<i></i><i></i><b></b></span>' +
+      '<span class="soft-pad-agent-mini-look__title">' +
+      esc(t('codexMicroPadPresentationMini', '细条')) + '</span>' +
+      '<span class="soft-pad-agent-mini-look__hint">' +
+      esc(t('softPadMiniBarHint', '一条小条，信息精简')) + '</span></button>' +
+      '<button type="button" class="soft-pad-agent-mini-look' + (cur === 'full' ? ' is-active' : '') +
+      '" data-pad-presentation="full" role="radio" aria-checked="' + (cur === 'full' ? 'true' : 'false') + '">' +
+      '<span class="soft-pad-agent-mini-look__sketch soft-pad-agent-mini-look__sketch--full" aria-hidden="true">' +
+      '<span></span><span></span><span></span><span></span></span>' +
+      '<span class="soft-pad-agent-mini-look__title">' +
+      esc(t('codexMicroPadPresentationFull', '完整键盘')) + '</span>' +
+      '<span class="soft-pad-agent-mini-look__hint">' +
+      esc(t('softPadMiniFullHint', '整块虚拟键盘')) + '</span></button>' +
+      '</div></div>' +
+      '<div class="soft-pad-agent-mini-field">' +
+      '<span class="soft-pad-agent-mini-field__lbl">' +
+      esc(t('softPadMiniShowModeLbl', '何时出现')) + '</span>' +
+      renderMiniShowModeTabs(showMode) +
+      '</div></section>' +
+      '<section class="soft-pad-agent-mini-block" data-mini-block="content">' +
+      '<p class="soft-pad-agent-mini-block__lab">' +
+      esc(t('softPadMiniContentLab', '② 条上留什么')) + '</p>' +
+      '<p class="soft-pad-agent-mini-block__help">' +
+      esc(t('softPadMiniContentHelp', '先挑一档「多或少」，不够再点下面圆片微调。亮着的会留在条上。')) + '</p>' +
+      '<div class="soft-pad-agent-mini-preset" role="radiogroup" aria-label="' +
+      esc(t('softPadMiniContentLab', '② 条上留什么')) + '">' +
+      presets.map(function (p) {
+        var on = (matched || 'usual') === p[0];
         return (
-          '<button type="button" class="soft-pad-agent-mini-rail__btn' +
-          (it[0] === rail ? ' is-on' : '') + '" data-act="mini-rail" data-mini-rail-id="' +
-          esc(it[0]) + '" aria-pressed="' + (it[0] === rail ? 'true' : 'false') + '">' +
-          '<span class="soft-pad-agent-mini-rail__ico" aria-hidden="true">' + (MINI_RAIL_ICO[it[0]] || '') +
-          '</span>' +
-          '<span class="soft-pad-agent-mini-rail__txt">' + esc(it[1]) + '</span></button>'
+          '<button type="button" class="soft-pad-agent-mini-preset__btn' + (on ? ' is-active' : '') +
+          '" data-act="mini-preset" data-mini-preset="' + esc(p[0]) + '" role="radio" aria-checked="' +
+          (on ? 'true' : 'false') + '">' +
+          '<span class="soft-pad-agent-mini-preset__t">' + esc(p[1]) + '</span>' +
+          '<span class="soft-pad-agent-mini-preset__h">' + esc(p[2]) + '</span></button>'
         );
       }).join('') +
-      '</nav>' +
-      '<div class="soft-pad-agent-workbench__card soft-pad-agent-mini-detail' +
-      (rail === 'display' ? ' is-look' : '') + '" data-mini-block="' + esc(rail) + '">' +
-      '<div class="soft-pad-agent-mini-detail__head"><h4>' + esc(head) + '</h4>' +
+      '</div>' +
+      '<p class="soft-pad-agent-mini-fine-lab">' +
+      esc(t('softPadMiniFineLab', '再微调（点亮 = 留在条上）')) + '</p>' +
+      '<div class="soft-pad-agent-mini-slots" role="group" aria-label="' +
+      esc(t('softPadMiniSlotsAria', '条上项目')) + '">' +
+      slots.map(function (s) {
+        var on = miniSlotOn(pad, s[0]);
+        var focus = rail === s[0];
+        return (
+          '<button type="button" class="soft-pad-agent-mini-slot' + (on ? ' is-on' : '') +
+          (focus ? ' is-focus' : '') + '" data-act="mini-slot" data-mini-slot="' + esc(s[0]) +
+          '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+          '<i class="soft-pad-agent-mini-slot__mark" aria-hidden="true"></i>' +
+          esc(s[1]) + '</button>'
+        );
+      }).join('') +
+      '</div></section>' +
+      '<section class="soft-pad-agent-mini-block soft-pad-agent-workbench__card soft-pad-agent-mini-detail" id="' +
+      esc(panelId) + '" data-mini-block="' + esc(rail) + '">' +
+      '<div class="soft-pad-agent-mini-detail__head"><h4>' +
+      esc(t('softPadMiniDetailLab', '这块再细调')) + ' · ' + esc(head) + '</h4>' +
       '<p class="soft-pad-agent-mini-detail__coach">' + esc(miniRailCoach(rail)) + '</p></div>' +
       detailBody +
-      '</div></div>' +
-      '<button type="button" class="codex-micro-pad__btn" data-act="goto-workbench" data-goto-tab="data">' +
-      esc(t('softPadMiniGotoData', '用量来源 →')) +
-      '</button></div>'
+      '</section></div>'
     );
   }
 
@@ -15011,11 +15113,12 @@
           b.classList.toggle('is-active', on);
           b.setAttribute('aria-checked', on ? 'true' : 'false');
         });
+        softPadMiniRail = 'scene';
         persistPresentation(m);
+        // Timing tabs stay as-is; only refresh their selected state from real pad flags.
+        syncSoftPadShowModeChrome(body, resolveSoftPadShowMode(pad), pad);
+        applyAgentWorkbenchTab(body, m, pad, 'mini');
         softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
-        var Hub = global.OneToneSoftPadHub;
-        var previewHost = Hub && Hub.previewHostForFace ? Hub.previewHostForFace('agent') : null;
-        syncStatusLightsPreviewChrome(previewHost, m, pad, workbenchPreviewOpts('mini'));
       });
     });
     body.querySelectorAll('[data-act="mini-usage-pill"]').forEach(function (btn) {
@@ -15041,17 +15144,41 @@
         softPadPanelChanged(m, { panel: 'agent', refreshPreview: false });
       });
     });
-    body.querySelectorAll('[data-act="mini-rail"]').forEach(function (btn) {
-      if (btn.__wbMiniRailBound) return;
-      btn.__wbMiniRailBound = true;
+    body.querySelectorAll('[data-act="mini-preset"]').forEach(function (btn) {
+      if (btn.__wbMiniPresetBound) return;
+      btn.__wbMiniPresetBound = true;
       btn.addEventListener('click', function () {
-        var id = btn.getAttribute('data-mini-rail-id') || 'agents';
-        if (['agents', 'speech', 'tools', 'display', 'voice', 'text'].indexOf(id) < 0) id = 'agents';
-        if (id === 'voice' || id === 'text') id = 'speech';
-        if (id === softPadMiniRail) return;
-        softPadMiniRail = id;
+        var name = btn.getAttribute('data-mini-preset') || 'usual';
+        if (!MINI_CONTENT_PRESETS[name]) name = 'usual';
+        applyMiniContentPreset(pad, name);
+        if (softPadMiniRail === 'scene' || !miniSlotOn(pad, softPadMiniRail)) {
+          softPadMiniRail = 'agents';
+        }
+        persistMiniChrome(m);
+        persistMiniUsagePill(m);
         applyAgentWorkbenchTab(body, m, pad, 'mini');
         softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
+      });
+    });
+    body.querySelectorAll('[data-act="mini-slot"]').forEach(function (btn) {
+      if (btn.__wbMiniSlotBound) return;
+      btn.__wbMiniSlotBound = true;
+      btn.addEventListener('click', function () {
+        var slot = btn.getAttribute('data-mini-slot') || 'agents';
+        if (['agents', 'speech', 'tools', 'pill', 'win'].indexOf(slot) < 0) slot = 'agents';
+        var on = miniSlotOn(pad, slot);
+        var focused = softPadMiniRail === slot;
+        if (focused && on) setMiniSlotEnabled(pad, slot, false);
+        else if (!on) setMiniSlotEnabled(pad, slot, true);
+        softPadMiniRail = slot;
+        persistMiniChrome(m);
+        persistMiniUsagePill(m);
+        applyAgentWorkbenchTab(body, m, pad, 'mini');
+        softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
+        try {
+          var focusBtn = body.querySelector('[data-act="mini-slot"][data-mini-slot="' + slot + '"]');
+          if (focusBtn && focusBtn.focus) focusBtn.focus();
+        } catch (_) {}
       });
     });
     body.querySelectorAll('[data-act="mini-chrome"]').forEach(function (btn) {
@@ -15092,15 +15219,11 @@
           return;
         }
         chrome[flag] = !(chrome[flag] !== false);
-        var on = chrome[flag] !== false;
-        btn.classList.toggle('is-on', on);
-        btn.setAttribute('aria-checked', on ? 'true' : 'false');
-        persistMiniChrome(m);
-        var HubC = global.OneToneSoftPadHub;
-        var previewHostC = HubC && HubC.previewHostForFace ? HubC.previewHostForFace('agent') : null;
-        if (previewHostC) {
-          syncStatusLightsPreviewChrome(previewHostC, m, pad, workbenchPreviewOpts());
+        if (flag === 'expandBtnEnabled' || flag === 'closeBtnEnabled') {
+          softPadMiniRail = 'win';
         }
+        persistMiniChrome(m);
+        applyAgentWorkbenchTab(body, m, pad, 'mini');
         softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
       });
     });
@@ -15112,8 +15235,7 @@
           var key = seg.getAttribute('data-chrome-seg') || '';
           var val = btn.getAttribute('data-chrome-seg-val') || '';
           var chrome = ensureMiniChrome(pad);
-          if (key === 'voiceChipWhen') chrome.voiceChipWhen = val === 'armed' ? 'armed' : 'listening';
-          else if (key === 'textPreviewWhen') chrome.textPreviewWhen = val === 'hasText' ? 'hasText' : 'listening';
+          if (key === 'textPreviewWhen') chrome.textPreviewWhen = val === 'hasText' ? 'hasText' : 'listening';
           else return;
           seg.querySelectorAll('[data-chrome-seg-val]').forEach(function (b) {
             var on = b.getAttribute('data-chrome-seg-val') === chrome[key];
@@ -15138,22 +15260,19 @@
         if (!id) return;
         var chrome = ensureMiniChrome(pad);
         var allIds = MINI_TOOL_DEFS.map(function (x) { return x.id; });
-        var cur = Array.isArray(chrome.toolIds) ? chrome.toolIds.slice() : [];
-        if (!cur.length) cur = allIds.slice();
+        var cur = chrome.toolsAll !== false
+          ? allIds.slice()
+          : (Array.isArray(chrome.toolIds) ? chrome.toolIds.slice() : []);
         var i = cur.indexOf(id);
         if (i >= 0) cur.splice(i, 1);
         else cur.push(id);
         cur = allIds.filter(function (x) { return cur.indexOf(x) >= 0; });
-        chrome.toolIds = cur.length === allIds.length ? [] : cur;
-        var on = !chrome.toolIds.length || chrome.toolIds.indexOf(id) >= 0;
-        btn.classList.toggle('is-active', on);
-        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        chrome.toolsAll = cur.length === allIds.length;
+        chrome.toolIds = chrome.toolsAll ? [] : cur;
+        chrome.toolsBarEnabled = cur.length > 0;
+        softPadMiniRail = 'tools';
         persistMiniChrome(m);
-        var HubT = global.OneToneSoftPadHub;
-        var previewHostT = HubT && HubT.previewHostForFace ? HubT.previewHostForFace('agent') : null;
-        if (previewHostT) {
-          syncStatusLightsPreviewChrome(previewHostT, m, pad, workbenchPreviewOpts());
-        }
+        applyAgentWorkbenchTab(body, m, pad, 'mini');
         softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
       });
     });
@@ -15162,8 +15281,11 @@
       btn.__wbShowModeBound = true;
       btn.addEventListener('click', function () {
         var mode = btn.getAttribute('data-show-mode') || 'follow';
+        if (mode === 'mini') mode = 'follow';
+        softPadMiniRail = 'scene';
         applySoftPadShowMode(m, mode);
         syncSoftPadShowModeChrome(body, mode, pad);
+        applyAgentWorkbenchTab(body, m, pad, 'mini');
         softPadPanelChanged(m, { panel: 'agent', refreshPreview: true });
       });
     });
@@ -15387,13 +15509,21 @@
   }
 
   function demoMiniBarChipsHtml() {
-    return TOPBAR_LIGHT_CANDIDATES.slice(0, 4).map(function (c, i) {
+    var demo = [
+      { agent: 'codex', st: 'running' },
+      { agent: 'claude', st: 'idle' },
+      { agent: 'cursor', st: 'needs_input' }
+    ];
+    return demo.map(function (c, i) {
+      var letter = String(c.agent).charAt(0).toUpperCase();
       return (
         '<button type="button" class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview' +
         (i === 0 ? ' is-focused' : '') + '" data-agent="' + esc(c.agent) +
-        '" data-status="' + (i === 0 ? 'running' : 'idle') + '"' +
+        '" data-status="' + esc(c.st) + '"' +
         (i === 0 ? ' aria-current="true"' : '') + '>' +
-        '<img src="' + esc(agentLightIconSrc(c.agent)) + '" alt="" width="16" height="16" decoding="async" aria-hidden="true">' +
+        '<img src="' + esc(agentLightIconSrc(c.agent)) + '" alt="" width="16" height="16" decoding="async" aria-hidden="true" ' +
+        'onerror="this.style.display=\'none\';var n=this.nextElementSibling;if(n)n.hidden=false">' +
+        '<span class="chip-letter" hidden>' + letter + '</span>' +
         '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
       );
     }).join('');
@@ -15405,15 +15535,15 @@
     if (opts.chrome && typeof opts.chrome === 'object') {
       chrome = Object.assign({}, chrome, opts.chrome);
     }
-    var rail = opts.rail != null ? opts.rail : softPadMiniRail;
-    if (rail === 'voice' || rail === 'text') rail = 'speech';
-    if (['agents', 'speech', 'tools', 'display'].indexOf(rail) < 0) rail = 'agents';
-    var chips = buildTopbarPreviewChipsHtml(pad, Object.assign({}, opts, {
-      stripMode: opts.stripMode === 'full' ? 'full' : 'focus'
-    }));
-    // Agent settings / empty Soft Pad: keep busy strip readable (not win-only stub).
-    if (!chips && chrome.agentsBarEnabled !== false) chips = demoMiniBarChipsHtml();
-    var pillOn = miniUsagePillOnPad(pad);
+    var rail = normalizeMiniRail(opts.rail != null ? opts.rail : softPadMiniRail);
+    // Settings preview: always paint concrete agent icons (not a single focus habit chip).
+    var chips = chrome.agentsBarEnabled === false ? '' : demoMiniBarChipsHtml();
+    var pillOn = chrome.pillEnabled != null
+      ? chrome.pillEnabled !== false
+      : miniUsagePillOnPad(pad);
+    var hideEmpty = chrome.pillHideEmpty != null
+      ? !!chrome.pillHideEmpty
+      : miniUsagePillHideEmptyOnPad(pad);
     var copy = '';
     try {
       var Hub = global.OneToneSoftPadHub;
@@ -15421,21 +15551,23 @@
       var m = entry && entry.mapping ? entry.mapping : null;
       copy = resolveMiniUsagePillCopy(m, pad);
     } catch (_) {}
-    var showPill = pillOn && (!!copy || !miniUsagePillHideEmptyOnPad(pad));
-    if (showPill && !copy) copy = '--';
+    // Preview must keep a concrete pill graphic when the slot is on.
+    if (pillOn && (!copy || copy === '--')) copy = 'Cu · 12次';
+    var showPill = pillOn && (rail === 'pill' || !!copy || !hideEmpty);
+    if (showPill && !copy) copy = 'Cu · 12次';
     var pillHtml = showPill
       ? ('<span class="soft-pad-agent-mini-bar__pill" data-mini-usage-pill="1" data-mini-zone="pill">' + esc(copy) + '</span>')
       : '<span class="soft-pad-agent-mini-bar__pill" data-mini-usage-pill="1" data-mini-zone="pill" hidden></span>';
-    var winOn = rail === 'display' || chrome.expandBtnEnabled !== false || chrome.closeBtnEnabled !== false;
+    var winOn = chrome.expandBtnEnabled !== false || chrome.closeBtnEnabled !== false;
     var winHtml = winOn
       ? ('<span class="soft-pad-agent-mini-bar__win" data-mini-zone="win">' +
         (chrome.expandBtnEnabled !== false
           ? ('<span class="soft-pad-agent-mini-bar__winbtn" title="' +
-            esc(t('softPadMiniExpandShow', '显示「放大到完整键盘」')) + '">⤢</span>')
+            esc(t('softPadMiniExpandShow', '一键放大成完整键盘')) + '">⤢</span>')
           : '') +
         (chrome.closeBtnEnabled !== false
           ? ('<span class="soft-pad-agent-mini-bar__winbtn" title="' +
-            esc(t('softPadMiniCloseShow', '显示「关掉浮窗」')) + '">×</span>')
+            esc(t('softPadMiniCloseShow', '关掉这条悬浮条')) + '">×</span>')
           : '') +
         '</span>')
       : '';
@@ -15448,7 +15580,7 @@
         '</svg></span>')
       : '<span class="soft-pad-agent-mini-bar__listen" data-mini-listen-halo="1" hidden></span>';
     var toolIds = Array.isArray(chrome.toolIds) ? chrome.toolIds : [];
-    var toolsAll = !toolIds.length;
+    var toolsAll = chrome.toolsAll !== false;
     var toolsOn = chrome.toolsBarEnabled !== false;
     var toolsHtml = toolsOn
       ? ('<div class="soft-pad-agent-mini-bar__tools" data-mini-preview-tools="1" data-mini-zone="tools">' +
@@ -15483,7 +15615,9 @@
       (rail === 'tools' ? ' is-mini-rail-tools' : '') +
       (rail === 'speech' ? ' is-mini-rail-speech' : '') +
       (rail === 'agents' ? ' is-mini-rail-agents' : '') +
-      (rail === 'display' ? ' is-mini-rail-display' : '') +
+      (rail === 'pill' ? ' is-mini-rail-pill' : '') +
+      (rail === 'win' ? ' is-mini-rail-win' : '') +
+      (rail === 'scene' ? ' is-mini-rail-scene' : '') +
       '" data-agent-mini-bar="1" data-mini-rail-focus="' +
       esc(rail) + '" aria-label="' +
       esc(t('softPadMiniBarPreviewAria', '迷你栏预览')) + '">' +
@@ -16282,6 +16416,7 @@
           return;
         }
         var next = String(showModeEl.value || 'follow');
+        if (next === 'mini') next = 'follow';
         if (next === resolveSoftPadShowMode(pad)) return;
         markBusy(280);
         applySoftPadShowMode(m, next);
@@ -16294,6 +16429,7 @@
         if (isBusy()) return;
         var next = btn.getAttribute('data-show-mode');
         if (next) {
+          if (next === 'mini') next = 'follow';
           if (next === resolveSoftPadShowMode(pad)) return;
           markBusy(280);
           applySoftPadShowMode(m, next);

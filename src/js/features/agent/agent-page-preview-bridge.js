@@ -29,7 +29,10 @@
     text: 'speech',
     tools: 'tools',
     form: 'display',
-    display: 'display'
+    display: 'display',
+    pill: 'pill',
+    win: 'win',
+    scene: 'scene'
   };
 
   function frameEl() {
@@ -66,7 +69,9 @@
   function normalizeMiniRail(raw) {
     var key = String(raw || '').trim();
     var mapped = MINI_LEAF_TO_RAIL[key] || key;
-    if (['agents', 'speech', 'tools', 'display'].indexOf(mapped) < 0) return 'agents';
+    if (['agents', 'speech', 'tools', 'display', 'pill', 'win', 'scene'].indexOf(mapped) < 0) {
+      return 'agents';
+    }
     return mapped;
   }
 

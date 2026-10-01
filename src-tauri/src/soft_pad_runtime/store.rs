@@ -774,6 +774,7 @@ mod attention_feed_tests {
         gesture_modes: None,
         oral_command_scheme: None,
         target_actions: vec![],
+        assists: vec![],
         }
     }
 

@@ -154,11 +154,15 @@ pub fn resolve(bundle: &EvidenceBundle) -> ContextSnapshot {
     snap.focus = resolve_focus(&snap, bundle);
 
     // --- 7. 隐私与打断抑制 ---
+    // 单一护栏：负面判断只认「新鲜的 Away」。Unknown（摄像头关 / 超时 / 校准中）
+    // 一律不降级，避免双路径漂移。语义与 presence::may_treat_as_away() 一致，
+    // 但快照必须用自己的 presence 状态判定，不能读全局 store。
+    let treat_as_away = snap.presence == PresenceState::Away;
     snap.privacy = PrivacyState {
-        shielded: snap.presence == PresenceState::Away,
-        mic_muted: snap.presence == PresenceState::Away,
+        shielded: treat_as_away,
+        mic_muted: treat_as_away,
     };
-    snap.suppress_visible_interrupts = snap.presence == PresenceState::Away;
+    snap.suppress_visible_interrupts = treat_as_away;
 
     snap
 }

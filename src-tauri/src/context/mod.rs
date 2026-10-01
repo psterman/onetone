@@ -30,9 +30,11 @@
 //! - Phase 3：Decision 层（场景即规则组合）
 
 pub mod model;
+pub mod presence;
 pub mod resolver;
 
 pub use model::{ContextSnapshot, PresenceEvidence};
+pub use presence::{Presence, PresenceConfidence};
 pub use resolver::{
     attention_evidence_from_snapshot, resolve, ActivityEvidence, EvidenceBundle,
     ForegroundEvidenceInput, RepoEvidence,
@@ -45,18 +47,18 @@ static LAST: Mutex<Option<ContextSnapshot>> = Mutex::new(None);
 
 /// 用当前进程内可得的证据求值并缓存一份快照。
 ///
-/// Phase 1 接线范围：
+/// 接线范围：
+/// - **presence** ← `presence::read()`（摄像头，Phase 1 已接入）
 /// - AI 注意力 ← `agent_attention::store::public_snapshot()`
 /// - 代码库 ← 由调用方注入 TmStatus 投影
-/// - 说话中 ← `dictating`，同样由调用方传入（与
-///   `project_needs_input_kind(dictating)` 的既有约定一致，voice session
-///   不对外暴露全局读取口）
+/// - 说话中 ← `dictating`，与 `project_needs_input_kind(dictating)` 既有约定一致
 ///
-/// 摄像头 / 前台证据待 Phase 2 接入，届时 presence 才会真正生效。
+/// 前台应用证据仍为 Phase 2：摄像头已是证据源，但 `ForegroundEvidence`
+/// 要走另一条链路。
 pub fn snapshot_live(dictating: bool, repo: Option<RepoEvidence>) -> ContextSnapshot {
     let attention = crate::agent_attention::store::public_snapshot();
     let bundle = EvidenceBundle {
-        presence: PresenceEvidence::Unknown, // Phase 2
+        presence: presence::read().0.into(),
         attention: attention_evidence_from_snapshot(&attention),
         foreground: ForegroundEvidenceInput::default(), // Phase 2
         repo: repo.unwrap_or_default(),

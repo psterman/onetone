@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Now · Vibe Coding 首页</title>
+<style>
+:root{
+  --pri:#0ea5e9;--pri-d:#0284c7;--pri-sf:#e0f2fe;--pri-bd:#bae6fd;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;--ink5:#e2e8f0;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f7f9fb;
+  --ok:#10b981;--ok-sf:#ecfdf5;--ok-bd:#a7f3d0;
+  --wa:#f59e0b;--wa-sf:#fffbeb;--wa-bd:#fde68a;
+  --rk:#ef4444;--rk-sf:#fef2f2;--rk-bd:#fecaca;
+  --vi:#8b5cf6;--vi-sf:#f5f3ff;
+  --sh2:0 1px 3px rgba(15,23,42,.07);--sh3:0 12px 36px rgba(15,23,42,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+code{font-family:Consolas,monospace;font-size:11.5px;background:var(--line2);padding:1px 5px;border-radius:4px;color:#0369a1}
+
+.topbar{position:sticky;top:0;z-index:60;background:rgba(247,249,251,.95);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:0 24px}
+.topbar-in{max-width:1200px;margin:0 auto;height:56px;display:flex;align-items:center;gap:8px}
+.topbar .b{font-weight:800;font-size:14.5px;margin-right:16px}
+.tab{padding:7px 13px;border-radius:8px;font-size:12.5px;color:var(--ink2);border:0;background:none;font-weight:500}
+.tab:hover{background:var(--line2)}.tab.on{background:var(--ink);color:#fff}
+.topbar .sp{margin-left:auto;font-size:11px;color:var(--ink3)}
+.page{max-width:1200px;margin:0 auto;padding:26px 24px 80px}
+.view{display:none}.view.on{display:block}
+h1.ft{font-size:24px;margin:0 0 8px;letter-spacing:-.6px}
+.lead{font-size:14.5px;color:var(--ink2);max-width:920px;margin:0 0 22px;line-height:1.75}
+h2.sec{font-size:15.5px;margin:32px 0 6px}
+.secsub{font-size:12.5px;color:var(--ink2);margin:0 0 14px;max-width:900px;line-height:1.7}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.p-g{background:var(--ok-sf);color:#047857}.p-w{background:var(--wa-sf);color:#b45309}
+.p-r{background:var(--rk-sf);color:#b91c1c}.p-n{background:var(--line2);color:var(--ink2)}
+.p-b{background:var(--pri-sf);color:var(--pri-d)}.p-v{background:var(--vi-sf);color:#6d28d9}
+.btn{border:1px solid var(--ink5);background:#fff;border-radius:8px;padding:7px 13px;font-size:12.5px;
+  color:var(--ink2);font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--line2)}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.sm{padding:4px 10px;font-size:11.5px}
+.btn.voice{background:var(--vi-sf);border-color:var(--vi);color:#6d28d9;font-weight:600}
+
+.win{background:#fff;border:1px solid var(--ink5);border-radius:14px;overflow:hidden;box-shadow:var(--sh3)}
+.tbar{display:flex;align-items:center;gap:11px;padding:0 17px;height:50px;border-bottom:1px solid var(--line)}
+.tbar .logo{width:25px;height:25px;border-radius:8px;background:linear-gradient(135deg,#0c4a6e,#0ea5e9);
+  display:grid;place-items:center;color:#fff;font-size:12.5px;font-weight:800;flex:none}
+.tbar .ttl{font-size:14.5px;font-weight:700}
+.nav{display:flex;gap:2px;margin-left:10px}
+.nv{padding:5px 11px;border-radius:8px;font-size:12.5px;color:var(--ink3);border:0;background:none;font-weight:500}
+.nv.on{background:var(--line2);color:var(--ink);font-weight:600}
+.tbar .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.body{padding:20px 22px 0}
+
+/* 状态卡 */
+.stage{background:#fff;border:1px solid var(--ink5);border-radius:15px;box-shadow:var(--sh2);
+  overflow:hidden;margin-bottom:18px}
+.stage.wait{background:linear-gradient(160deg,#7c2d12,#c2410c);color:#fff;border:none}
+.stage.run{background:linear-gradient(160deg,#0c4a6e,#0369a1);color:#fff;border:none}
+.stage.idle{background:#fff}
+.sh{padding:18px 20px 15px}
+.sk{font-size:11.5px;letter-spacing:.6px;opacity:.72;font-weight:600;margin-bottom:9px;display:flex;align-items:center;gap:8px}
+.sh h1{margin:0 0 5px;font-size:24px;letter-spacing:-.5px;line-height:1.25}
+.stage.idle .sh h1{font-size:22px}
+.sdesc{margin:0;font-size:13.5px;opacity:.85;line-height:1.6}
+.sdesc.tight{font-size:12.5px;opacity:.7;margin-top:3px}
+
+/* 折叠的细节 */
+.sdet{padding:0 20px 15px;display:none}
+.sdet.on{display:block}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.dg{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);border-radius:9px;padding:10px 12px}
+.dg .k{font-size:10.5px;opacity:.6;margin-bottom:3px}
+.dg .v{font-size:12.5px;font-weight:600;line-height:1.4}
+.dg .v .m{font-family:Consolas,monospace;font-size:10.5px;opacity:.6;display:block;margin-top:2px}
+.whybtn{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:3px 10px;
+  font-size:11px;opacity:.8;margin-top:11px}
+.whybtn:hover{background:rgba(255,255,255,.24)}
+
+/* 动作区 */
+.sact{padding:0 20px 18px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.abtn{border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.16);color:inherit;
+  border-radius:9px;padding:10px 16px;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:7px}
+.abtn:hover{background:rgba(255,255,255,.28)}
+.abtn.main{background:#fff;border-color:transparent;color:#0c4a6e}
+.abtn.main:hover{background:#f1f5f9}
+.abtn.voice{border-color:#c4b5fd;background:rgba(139,92,246,.3);color:#fff}
+.abtn.voice:hover{background:rgba(139,92,246,.45)}
+.abtn .kb{font-size:10.5px;opacity:.65;font-weight:500}
+
+/* 静默证明 */
+.quiet{display:flex;align-items:center;gap:10px;padding:11px 20px;background:rgba(0,0,0,.14);
+  font-size:12.5px;line-height:1.5}
+.quiet .ic{font-size:15px;flex:none}
+.quiet b{font-weight:700}
+
+/* 极简行 */
+.mini{display:flex;align-items:center;gap:11px;padding:11px 13px;background:#fff;
+  border:1px solid var(--ink5);border-radius:11px;box-shadow:var(--sh2);margin-bottom:8px}
+.mini .tx{flex:1;min-width:0}
+.mini .tx b{font-size:13px;font-weight:600;display:block}
+.mini .tx s{text-decoration:none;font-size:11.5px;color:var(--ink3);display:block;margin-top:1px}
+.mini .none{color:var(--ink3);font-size:12.5px;flex:1;text-align:center;padding:14px;
+  background:#fff;border:1px solid var(--ink5);border-radius:11px;box-shadow:var(--sh2)}
+.dock{display:flex;align-items:center;justify-content:center;gap:9px;padding:15px 0 17px;
+  margin-top:18px;border-top:1px solid var(--line2);font-size:12px;color:var(--ink3);flex-wrap:wrap}
+.dock .sep{opacity:.4}
+.dock .inl{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--ink5);
+  border-radius:99px;padding:3px 11px;font-size:11.5px}
+
+/* 分级表 */
+.lvls{display:flex;flex-direction:column;gap:9px}
+.lvl{display:flex;align-items:flex-start;gap:14px;background:#fff;border:1px solid var(--ink5);
+  border-radius:12px;padding:15px 17px;box-shadow:var(--sh2)}
+.lvl .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  font-size:12px;font-weight:800;flex:none}
+.lvl.must{border-left:3px solid var(--pri)}
+.lvl.must .n{background:var(--pri);color:#fff}
+.lvl.optional{border-left:3px solid var(--ok)}
+.lvl.optional .n{background:var(--ok);color:#fff}
+.lvl.no{border-left:3px solid var(--ink4);opacity:.72}
+.lvl.no .n{background:var(--ink4);color:#fff}
+.lvl .tx{flex:1;min-width:0}
+.lvl .tx b{font-size:14px;font-weight:700;display:block;margin-bottom:3px}
+.lvl .tx p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.65}
+
+.note{background:var(--pri-sf);border:1px solid var(--pri-bd);border-radius:12px;padding:15px 18px;
+  margin:18px 0;font-size:13px;line-height:1.75;max-width:1020px}
+.note b{color:var(--pri-d)}
+.note.rk{background:var(--rk-sf);border-color:var(--rk-bd)}.note.rk b{color:#b91c1c}
+.note.wa{background:var(--wa-sf);border-color:var(--wa-bd)}.note.wa b{color:#b45309}
+.note.ok{background:var(--ok-sf);border-color:var(--ok-bd)}.note.ok b{color:#047857}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;
+  box-shadow:var(--sh2);font-size:12.5px;margin:12px 0}
+th{background:#f8fafc;text-align:left;padding:10px 13px;font-weight:700;color:var(--ink2);
+  border-bottom:1px solid var(--line);font-size:11.5px}
+td{padding:10px 13px;border-bottom:1px solid var(--line2);vertical-align:top;line-height:1.6}
+tr:last-child td{border-bottom:none}
+.mono{font-family:Consolas,monospace;font-size:11px;color:var(--ink2)}
+.flow9{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--ink5);
+  border-radius:12px;padding:15px 17px;box-shadow:var(--sh2);margin-bottom:14px}
+.fstep{display:flex;flex-direction:column;gap:2px;min-width:104px}
+.fstep .n{font-size:10.5px;color:var(--ink3);font-weight:600}
+.fstep .v{font-size:12.5px;font-weight:700;line-height:1.4}
+.fstep .s{font-size:10.5px;color:var(--ink3)}
+.farr{color:var(--ink4);font-size:15px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="b">Now · Vibe Coding 首页</span>
+    <button class="tab on" data-v="0">三种状态</button>
+    <button class="tab" data-v="1">首页该有什么</button>
+    <button class="tab" data-v="2">操作去哪了</button>
+    <button class="tab" data-v="3">数据缺口</button>
+    <span class="sp">首页更少可操作 · 更多可相信</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ========== 0 三种状态 ========== -->
+<div class="view on" id="v0">
+  <h1 class="ft">首页只回答一件事：现在能不能被打扰</h1>
+  <p class="lead">
+    Vibe coding 时你在 flow state 里，agent 跑着，眼睛盯着屏幕。
+    <strong>这个时刻唯一有用的信息是「现在能不能被打断」。</strong><br>
+    所以首页做成<strong>一个会变状态的卡</strong>，不是一堆板块。
+  </p>
+
+  <h2 class="sec" style="margin-top:0">状态 A · 它在等你（最高频）</h2>
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav"><button class="nv on">现在</button><button class="nv">回顾</button><button class="nv">设置</button></div>
+      <div class="r"><span class="pill p-w">它需要你</span></div>
+    </div>
+    <div class="body">
+      <div class="stage wait">
+        <div class="sh">
+          <p class="sk">⏸ Codex 要你批准</p>
+          <h1>删除 node_modules/cache</h1>
+          <p class="sdesc">在你项目 <code>onetone</code> 里 · 不可逆 · 已经等了你 2 分 14 秒</p>
+        </div>
+        <div class="sact">
+          <button class="abtn main">同意</button>
+          <button class="abtn">拒绝</button>
+          <button class="abtn voice">🎤 说「同意」<span class="kb">或按 Ctrl+J</span></button>
+        </div>
+        <div class="quiet">
+          <span class="ic">🤫</span>
+          <span>这 2 分钟里它<b>没有弹窗</b>——你在敲代码，它就等着。</span>
+        </div>
+      </div>
+      <div class="dock">
+        <span class="inl">🎤 语音</span><span class="sep">·</span>
+        <span class="inl">⌨️ RAlt</span><span class="sep">·</span>
+        <span class="inl">● Numpad 0</span>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">状态 B · 它在跑（你不需要任何东西）</h2>
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav"><button class="nv on">现在</button><button class="nv">回顾</button><button class="nv">设置</button></div>
+      <div class="r"><span class="pill p-g">运行中</span></div>
+    </div>
+    <div class="body">
+      <div class="stage run">
+        <div class="sh">
+          <p class="sk">▶ 正在写</p>
+          <h1>Codex 在改 config.rs</h1>
+          <p class="sdesc">已经跑了 1 分 40 秒 · 在你的 Cursor 习惯里</p>
+        </div>
+        <div class="sact">
+          <button class="abtn voice">🎤 说「停一下」</button>
+          <button class="abtn">查看进度</button>
+        </div>
+        <div class="quiet">
+          <span class="ic">🔕</span>
+          <span>做完了也不会立刻叫你。<b>它会等你停下打字。</b></span>
+        </div>
+      </div>
+      <div class="dock"><span class="inl">🎤 语音</span><span class="sep">·</span><span class="inl">⌨️ RAlt</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec">状态 C · 空闲（最常见，应该最安静）</h2>
+  <div class="win">
+    <div class="tbar">
+      <span class="logo">O</span><span class="ttl">OneTone</span>
+      <div class="nav"><button class="nv on">现在</button><button class="nv">回顾</button><button class="nv">设置</button></div>
+      <div class="r"><span class="pill p-g">正常</span></div>
+    </div>
+    <div class="body">
+      <div class="stage idle">
+        <div class="sh">
+          <p class="sk">● 就绪</p>
+          <h1>在 VS Code 里写代码</h1>
+          <p class="sdesc">没有事要你处理。按住 Ctrl+Space 随时叫它。</p>
+        </div>
+      </div>
+      <div class="dock"><span class="inl">🎤 语音</span><span class="sep">·</span><span class="inl">⌨️ RAlt</span><span class="sep">·</span><span class="inl">Ctrl+Space</span></div>
+    </div>
+  </div>
+
+  <div class="note ok">
+    <b>三个状态是互斥的，同一时刻只出现一个。</b>
+    这是和之前所有版本最大的区别——之前是「情景 + 承诺 + 统计 + 决定」四个板块同时在，
+    现在是<strong>一个卡在说话</strong>。<br><br>
+    <strong>状态 C（空闲）没有任何可点的东西</strong>——因为真的没什么要你做的。
+  </div>
+</div>
+
+<!-- ========== 1 首页该有什么 ========== -->
+<div class="view" id="v1">
+  <h1 class="ft">首页分级：什么必须，什么别放</h1>
+  <p class="lead">判据只有一条：<strong>在 vibe coding 的 flow state 里，这个信息会让我分心还是帮我？</strong></p>
+
+  <div class="lvls">
+    <div class="lvl must">
+      <span class="n">1</span>
+      <div class="tx">
+        <b>Agent 状态 + 能不能被打断</b>
+        <p>Codex 在跑 / 在等你 / 出错了。以及「现在弹窗会不会烦你」。这是唯一每分钟都可能变化的东西。</p>
+      </div>
+      <span class="pill p-b" style="margin-left:auto;flex:none">必须</span>
+    </div>
+    <div class="lvl must">
+      <span class="n">2</span>
+      <div class="tx">
+        <b>一个动作，或一个明确的「没有」</b>
+        <p>要么给出「同意/拒绝」，要么明说「没有需要处理的事」。<strong>绝不能是 0 0 0 3 这种看不懂的数字。</strong></p>
+      </div>
+      <span class="pill p-b" style="margin-left:auto;flex:none">必须</span>
+    </div>
+    <div class="lvl must">
+      <span class="n">3</span>
+      <div class="tx">
+        <b>它的克制</b>
+        <p>「做完了等你停下才叫你」「这 2 分钟没弹窗」。<strong>这是 OneTone 独有的价值，也是建立信任的唯一方式。</strong></p>
+      </div>
+      <span class="pill p-b" style="margin-left:auto;flex:none">必须</span>
+    </div>
+    <div class="lvl optional">
+      <span class="n">4</span>
+      <div class="tx">
+        <b>快捷键提示</b>
+        <p>底部一行，让你不用记。极简，不抢注意力。</p>
+      </div>
+      <span class="pill p-g" style="margin-left:auto;flex:none">可选</span>
+    </div>
+    <div class="lvl no">
+      <span class="n">✕</span>
+      <div class="tx">
+        <b>使用统计（今天 3 次）</b>
+        <p>这是你的操作日志，不是它帮你的忙。<strong>移到回顾页。</strong></p>
+      </div>
+      <span class="pill p-n" style="margin-left:auto;flex:none">别放</span>
+    </div>
+    <div class="lvl no">
+      <span class="n">✕</span>
+      <div class="tx">
+        <b>「正在帮你」承诺列表</b>
+        <p>静态承诺在 vibe coding 里没用——你要的是<strong>现在发生的事</strong>，不是配置摘要。</p>
+      </div>
+      <span class="pill p-n" style="margin-left:auto;flex:none">别放</span>
+    </div>
+    <div class="lvl no">
+      <span class="n">✕</span>
+      <div class="tx">
+        <b>「我看到的你」</b>
+        <p>你在写代码，不是在看监控面板。移到设置 · 诊断。</p>
+      </div>
+      <span class="pill p-n" style="margin-left:auto;flex:none">别放</span>
+    </div>
+    <div class="lvl no">
+      <span class="n">✕</span>
+      <div class="tx">
+        <b>情景切换条</b>
+        <p>自动切换已经在了，<strong>手动切换是失败时的兜底</strong>，不该占据首屏。</p>
+      </div>
+      <span class="pill p-n" style="margin-left:auto;flex:none">别放</span>
+    </div>
+  </div>
+
+  <h2 class="sec">和之前所有版本的差别</h2>
+  <table>
+    <thead><tr><th style="width:120px">版本</th><th style="width:190px">首页板块数</th><th>问题</th></tr></thead>
+    <tbody>
+      <tr><td>能力全景</td><td>6+</td><td>用户在 vibe coding，不是在做产品调研</td></tr>
+      <tr><td>数据驱动</td><td>4</td><td>调试工具，不是助手</td></tr>
+      <tr><td>分层版</td><td>3</td><td>还是「配置摘要」，不是「发生的事」</td></tr>
+      <tr style="background:var(--ok-sf)"><td><b>这版</b></td><td><b>1（+快捷键）</b></td>
+        <td><b>一个会变状态的卡，按「能不能被打断」组织</b></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ========== 2 操作去哪了 ========== -->
+<div class="view" id="v2">
+  <h1 class="ft">操作去哪了：不在这页</h1>
+  <p class="lead">
+    关键判断：<strong>vibe coding 时你不会去点 UI。</strong>
+    所以首页上的按钮都是<strong>兜底</strong>——给「我现在不方便说话」用的。
+  </p>
+
+  <h2 class="sec">vibe coding 循环里，操作应该在哪</h2>
+  <div class="flow9">
+    <div class="fstep"><span class="n">1</span><span class="v">说需求</span><span class="s">🎤 语音</span></div>
+    <span class="farr">→</span>
+    <div class="fstep"><span class="n">2</span><span class="v">等它跑</span><span class="s">不用管</span></div>
+    <span class="farr">→</span>
+    <div class="fstep"><span class="n">3</span><span class="v">批准 / 拒绝</span><span class="s">🎤 说，或手势</span></div>
+    <span class="farr">→</span>
+    <div class="fstep"><span class="n">4</span><span class="v">打断</span><span class="s">🎤 「停」或摇头</span></div>
+    <span class="farr">→</span>
+    <div class="fstep"><span class="n">5</span><span class="v">看结果</span><span class="s">👀 或 🎤 问</span></div>
+  </div>
+
+  <div class="note">
+    <b>五步里有四步不碰 UI。</b>
+    所以首页那三个按钮（同意 / 拒绝 / 停一下）<strong>不是主路径，是给手不方便时的备选</strong>。
+    <br><br>
+    这也解释了为什么按钮要写得这么朴素——它不需要好看，需要<strong>一秒钟认出来</strong>。
+  </div>
+
+  <h2 class="sec">每种操作该走的通道</h2>
+  <table>
+    <thead><tr><th style="width:130px">操作</th><th style="width:150px">首选</th><th style="width:150px">备选</th><th>为什么这么排</th></tr></thead>
+    <tbody>
+      <tr><td>同意 / 拒绝</td><td>🎤 说「同意」</td><td>Ctrl+J / Ctrl+K</td>
+        <td>你眼睛在代码上，嘴比手快。<b>这两个键要能和打字区分开</b></td></tr>
+      <tr><td>打断 agent</td><td>🎤 说「停」或摇头</td><td>—</td>
+        <td>打断需要<strong>最快</b>的反应。摇头是唯一不占用键盘的方式</td></tr>
+      <tr><td>切情景</td><td>自动（不用做）</td><td>Ctrl+Space</td>
+        <td>正常情况不需要手动切。手动切 = 自动切换没跟上</td></tr>
+      <tr><td>看它在干什么</td><td>🎤 问</td><td>点「查看进度」</td>
+        <td>问比点快，而且不打断你的视线</td></tr>
+      <tr><td>改习惯</td><td>设置页</td><td>—</td>
+        <td>这是低频配置，<b>不该出现在 vibe coding 时刻</b></td></tr>
+    </tbody>
+  </table>
+
+  <div class="note wa">
+    <b>一个现实约束：</b>你现在的主通道是 <code>RAlt</code>。
+    如果「同意」也用 RAlt 系，<b>你无法在打字时无误触</b>。
+    <br><br>
+    <code>Ctrl+J / Ctrl+K</code> 在编辑器里都是常用键（VS Code 里 Ctrl+K 是 chord 前缀）。
+    <strong>需要挑真正不冲突的键</strong>——或者干脆只留语音。
+  </div>
+</div>
+
+<!-- ========== 3 数据缺口 ========== -->
+<div class="view" id="v3">
+  <h1 class="ft">这版需要什么数据</h1>
+  <p class="lead">先说清楚哪些现在就有，哪些必须新建。<strong>不编造「它在等你」这种句子。</strong></p>
+
+  <h2 class="sec">已有数据</h2>
+  <table>
+    <thead><tr><th style="width:150px">首页元素</th><th style="width:220px">字段</th><th style="width:80px">状态</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>它在等你</td><td><code>AttentionCause::Permission</code> → <code>WaitingApproval</code></td>
+        <td><span class="pill p-g">有</span></td><td>五态齐全，含 provider / cause</td></tr>
+      <tr><td>做什么操作</td><td><code>SemanticActionMeta.label_zh</code> / <code>tool_name</code></td>
+        <td><span class="pill p-g">有</span></td><td>Agent 请求批准时会带工具名和参数</td></tr>
+      <tr><td>不可逆提示</td><td><code>RiskLevel::Dangerous</code></td>
+        <td><span class="pill p-g">有</span></td><td>动作目录里已标</td></tr>
+      <tr><td>在哪个项目</td><td><code>ForegroundEvidence.app_target_id</code> + <code>cwd</code></td>
+        <td><span class="pill p-g">有</span></td><td>CodexAppStateView 带 cwd</td></tr>
+      <tr><td>已完成 / 出错</td><td><code>AttentionState::Complete / Error</code></td>
+        <td><span class="pill p-g">有</span></td><td>但 TTL 只有 4s / 8s</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="sec">必须新建的数据</h2>
+  <table>
+    <thead><tr><th style="width:150px">首页元素</th><th style="width:80px">状态</th><th>为什么现在做不到</th></tr></thead>
+    <tbody>
+      <tr><td>「已经等了你 2 分 14 秒」</td><td><span class="pill p-w">缺</span></td>
+        <td>Pending 有 TTL，但没记录<strong>创建时间戳</strong>。需要加 <code>created_at_ms</code></td></tr>
+      <tr><td>「这 2 分钟没弹窗」</td><td><span class="pill p-r">缺</span></td>
+        <td><strong>完全没有「被抑制」的记录类型。</strong>需要新增 <code>kind: "suppressed"</code></td></tr>
+      <tr><td>「等你停下才叫你」</td><td><span class="pill p-r">缺</span></td>
+        <td>需要判断「你在不在打字」——<code>InputObs</code> 有原始流，但<strong>没聚合成专注度</strong></td></tr>
+      <tr><td>「在你的 Cursor 习惯里」</td><td><span class="pill p-g">有</span></td>
+        <td>但<strong>习惯名是技术串</strong>，需要 <code>displayName</code> 字段</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note rk">
+    <b>最关键的一条是「被抑制」记录。</b><br>
+    <code>AttentionState::Complete</code> 的 TTL 是 <strong>4 秒</strong>
+    （<code>agent_attention/model.rs:10</code>）——AI 做完后 4 秒状态就消失了。<br><br>
+    <strong>这意味着系统现在根本不知道「我本来可以叫你，但我没叫」。</strong>
+    <br><br>
+    而这恰恰是 OneTone 跟一个只会弹窗的助手<strong>唯一的区别</strong>。
+    建议优先做这个：给 AttentionStore 加一个「延后通知」队列，
+    记录<strong>本该通知但选择了不通知</strong>的事件，事后在首页汇总。
+  </div>
+
+  <div class="note">
+    <b>为什么「克制」比「做了什么」更值得放首页：</b>
+    <br><br>
+    「今天帮你挡了 5 次通知」——用户已经有感知了（他没被打断）。
+    <br>
+    「今天调用了 23 次 API」——用户不知道该高兴还是担心。
+    <br><br>
+    <strong>克制是可以炫耀的，功能调用不是。</strong>
+  </div>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showView(+b.dataset.v));
+function showView(i){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab')[i].classList.add('on');
+  document.getElementById('v'+i).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>

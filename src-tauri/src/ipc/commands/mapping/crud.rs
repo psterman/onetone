@@ -73,6 +73,10 @@ pub fn cmd_mapping_duplicate(
             cfg.mappings.push(MappingEntry {
                 id: new_id.clone(),
                 label: format!("{}    ", src.display_label()),
+                // A copy keeps the scenario's user-facing identity; the copy is
+                // disabled below and must be renamed before it shows in Now.
+                display_name: src.display_name,
+                scenario_kind: src.scenario_kind,
                 group: src.group,
                 trigger_key: src.trigger_key,
                 target_key: src.target_key,
@@ -113,6 +117,7 @@ pub fn cmd_mapping_duplicate(
                 gesture_modes: src.gesture_modes.clone(),
                 oral_command_scheme: None,
                 target_actions: src.target_actions.clone(),
+                assists: src.assists.clone(),
             });
             cfg.normalize();
         }

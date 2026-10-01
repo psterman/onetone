@@ -159,7 +159,14 @@ assert(/data-act="mini-chrome"/.test(padUi), 'mini chrome toggles');
 assert(/data-act="mini-tool-id"/.test(padUi), 'mini tool id toggles');
 assert(/soft-pad-agent-mini-tool__ico|MINI_TOOL_SVG/.test(padUi), 'mini tools show icon chips');
 assert(/soft-pad-agent-mini-rail__ico|MINI_RAIL_ICO/.test(padUi), 'mini rail shows section icons');
-assert(/softPadMiniDisplayTitle|浮窗形态/.test(padUi), 'display rail renamed away from 小条外观');
+assert(/softPadMiniDisplayTitle|细条形态/.test(padUi), 'display rail titled 细条形态');
+assert(/aria-labelledby=/.test(padUi), 'mini chrome toggles named via aria-labelledby');
+assert(/role="tablist"[\s\S]{0,200}?soft-pad-agent-mini-rail/.test(padUi) ||
+  /soft-pad-agent-mini-rail" role="tablist"/.test(padUi),
+  'mini rail is tablist');
+assert(!/voiceChipWhen/.test(padUi), 'no orphan voiceChipWhen in pad UI');
+assert(/toolsAll/.test(padUi), 'toolsAll flag for all-off shortcut state');
+assert(!/data-show-mode="mini"/.test(padUi), 'packed force-mini showMode tab gone');
 assert(/soft-pad-agent-mini-demo-banner|miniRailCoach/.test(padUi), 'left preview demo coach banner');
 assert(/data-mini-zone/.test(padUi), 'preview zones for rail linkage');
 assert(/soft-pad-agent-mini-look__sketch/.test(padUi), 'presentation has visual sketch compare');

@@ -2225,6 +2225,12 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar {
   max-width: 13px !important;
   max-height: 13px !important;
 }
+.soft-pad-agent-mini-bar__chips .chip-letter {
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  color: #1a2d4a;
+}
 .soft-pad-agent-mini-bar__listen {
   flex: 0 0 auto;
   width: 20px;
@@ -2568,6 +2574,136 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar__pill {
 }
 .soft-pad-agent-mini-rail__btn.is-on .soft-pad-agent-mini-rail__ico { color: #0284c7; }
 .soft-pad-agent-mini-rail__btn small { display: none; }
+
+/* D: preset + slot chips (no left rail) */
+.soft-pad-agent-mini-lead {
+  margin: 0 0 4px;
+}
+.soft-pad-agent-mini-lead h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 750;
+}
+.soft-pad-agent-mini-lead p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #64748b;
+}
+.soft-pad-agent-mini-block {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(26, 45, 74, 0.1);
+}
+.soft-pad-agent-mini-block:first-of-type {
+  margin-top: 8px;
+}
+.soft-pad-agent-mini-block__lab {
+  margin: 0 0 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+.soft-pad-agent-mini-block__help {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #64748b;
+}
+.soft-pad-agent-mini-preset {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.soft-pad-agent-mini-preset__btn {
+  appearance: none;
+  border: 1px solid rgba(26, 45, 74, 0.12);
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 7px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: #5a6b7c;
+}
+.soft-pad-agent-mini-preset__t {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 750;
+  color: inherit;
+}
+.soft-pad-agent-mini-preset__h {
+  display: block;
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #94a3b8;
+}
+.soft-pad-agent-mini-preset__btn.is-active {
+  border-color: rgba(42, 156, 196, 0.45);
+  background: rgba(62, 184, 220, 0.1);
+  color: #1a2d4a;
+}
+.soft-pad-agent-mini-preset__btn.is-active .soft-pad-agent-mini-preset__h {
+  color: #64748b;
+}
+.soft-pad-agent-mini-fine-lab {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: #64748b;
+}
+.soft-pad-agent-mini-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.soft-pad-agent-mini-slot {
+  appearance: none;
+  border: 1px solid rgba(26, 45, 74, 0.12);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: #64748b;
+  cursor: pointer;
+}
+.soft-pad-agent-mini-slot__mark {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 5px;
+  background: #cbd5e1;
+  vertical-align: 1px;
+}
+.soft-pad-agent-mini-slot.is-on {
+  border-color: rgba(42, 156, 196, 0.45);
+  background: rgba(62, 184, 220, 0.12);
+  color: #1a2d4a;
+}
+.soft-pad-agent-mini-slot.is-on .soft-pad-agent-mini-slot__mark {
+  background: #2a9cc4;
+}
+.soft-pad-agent-mini-slot.is-focus {
+  box-shadow: 0 0 0 2px rgba(42, 156, 196, 0.25);
+}
+.soft-pad-agent-mini-goto {
+  margin-top: 6px;
+  align-self: flex-start;
+}
+@media (max-width: 720px) {
+  .soft-pad-agent-mini-preset {
+    grid-template-columns: 1fr;
+  }
+}
+
 .soft-pad-agent-mini-detail {
   display: grid;
   gap: 10px;
@@ -2769,10 +2905,28 @@ html[data-theme="dark"] .soft-pad-agent-mini-bar__pill {
 .soft-pad-agent-mini-bar-stage.is-mini-rail-tools [data-mini-zone="tools"],
 .soft-pad-agent-mini-bar-stage.is-mini-rail-speech [data-mini-zone="speech"],
 .soft-pad-agent-mini-bar-stage.is-mini-rail-display [data-mini-zone="pill"],
-.soft-pad-agent-mini-bar-stage.is-mini-rail-display [data-mini-zone="win"] {
+.soft-pad-agent-mini-bar-stage.is-mini-rail-display [data-mini-zone="win"],
+.soft-pad-agent-mini-bar-stage.is-mini-rail-pill [data-mini-zone="pill"],
+.soft-pad-agent-mini-bar-stage.is-mini-rail-win [data-mini-zone="win"] {
   box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.45);
   border-radius: 8px;
   animation: soft-pad-mini-zone-pulse 1.1s ease-in-out infinite;
+}
+/* Agent proto iframe: status dots on local mini chips */
+.agent-mini-host [data-status="running"] .soft-pad-agent-bar__dot { background: #3b82f6; }
+.agent-mini-host [data-status="needs_input"] .soft-pad-agent-bar__dot { background: #f59e0b; }
+.agent-mini-host [data-status="done"] .soft-pad-agent-bar__dot { background: #22c55e; }
+.agent-mini-host [data-status="idle"] .soft-pad-agent-bar__dot { background: #94a3b8; }
+.agent-mini-host .soft-pad-agent-bar__chip--preview {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.agent-mini-host .soft-pad-agent-bar__dot {
+  position: absolute; right: 1px; bottom: 1px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #94a3b8; box-shadow: 0 0 0 1px #fff;
 }
 .soft-pad-agent-mini-bar-stage.is-mini-rail-tools .soft-pad-agent-mini-bar__tools:not([hidden]) {
   display: flex !important;

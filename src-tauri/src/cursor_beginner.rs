@@ -1546,6 +1546,7 @@ mod tests {
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
+            assists: vec![],
         };
         assert!(!heal_cursor_beginner_pad_slots(&mut m));
         let pad = m.codex_micro_pad.as_ref().unwrap();
