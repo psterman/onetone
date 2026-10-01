@@ -29,6 +29,11 @@
   var historyBound = false;
   // User armed listen from Now dock; show strip until pause/stop even if status is still ready.
   var voiceArmed = false;
+  var contextOpen = false;
+  var contextRows = [];
+  var contextFetchGen = 0;
+  var fgIdentityCache = null;
+  var needDismissKey = '';
 
   function $(id) {
     return document.getElementById(id);
@@ -158,6 +163,244 @@
     }, 200);
   }
 
+  function hasFgExe(identity) {
+    return !!(identity && String(identity.exeName || identity.exe_name || '').trim());
+  }
+
+  function isSelfFgIdentity(identity) {
+    if (!identity) return true;
+    var exe = String(identity.exeName || identity.exe_name || '').toLowerCase();
+    if (exe.indexOf('onetone') >= 0) return true;
+    var path = String(identity.fullPath || identity.full_path || '').toLowerCase();
+    return path.indexOf('onetone') >= 0 || path.indexOf('voice-pilot') >= 0;
+  }
+
+  function isTrayFgIdentity(identity) {
+    var exe = String((identity && (identity.exeName || identity.exe_name)) || '').toLowerCase();
+    return (
+      exe === 'explorer.exe' ||
+      exe === 'shellexperiencehost.exe' ||
+      exe === 'startmenuexperiencehost.exe' ||
+      exe === 'searchhost.exe' ||
+      exe === 'applicationframehost.exe' ||
+      exe === 'textinputhost.exe' ||
+      exe === 'lockapp.exe' ||
+      exe === 'systemsettings.exe'
+    );
+  }
+
+  function isUsableFg(identity) {
+    return hasFgExe(identity) && !isSelfFgIdentity(identity) && !isTrayFgIdentity(identity);
+  }
+
+  /** Prefer workbench-noted identity; never let empty IPC {} block a good one. */
+  function resolveFgIdentity() {
+    var rt =
+      global.OneToneRuntimeHabitControl &&
+      global.OneToneRuntimeHabitControl.foregroundIdentity
+        ? global.OneToneRuntimeHabitControl.foregroundIdentity()
+        : null;
+    if (isUsableFg(rt)) return rt;
+    if (isUsableFg(fgIdentityCache)) return fgIdentityCache;
+    return null;
+  }
+
+  function projectHintFromIdentity(identity) {
+    if (!isUsableFg(identity)) return { text: '未发现', inferred: false };
+    var exe = String(identity.exeName || identity.exe_name || '').toLowerCase();
+    var title = String(identity.windowTitle || identity.window_title || '').trim();
+    var editors =
+      /^(cursor|code|code - insiders|windsurf|trae|zed|webstorm|idea64|pycharm64|devenv)\.exe$/;
+    if (!editors.test(exe)) return { text: '未发现', inferred: false };
+    var parts = title.split(/\s+[—–\-]\s+/);
+    var cand = '';
+    if (parts.length >= 2) cand = parts[parts.length - 2] || parts[0];
+    else cand = parts[0] || '';
+    cand = String(cand || '')
+      .replace(/\s*[·|].*$/, '')
+      .replace(/\.(tsx?|jsx?|rs|py|md|json|html?)$/i, '')
+      .trim();
+    if (!cand || cand.length < 2 || cand.length > 48) return { text: '未发现', inferred: false };
+    if (/^(untitled|无标题|new folder|desktop)$/i.test(cand)) {
+      return { text: '未发现', inferred: false };
+    }
+    return { text: cand, inferred: true };
+  }
+
+  function agentFactFromAttention(attn, needs) {
+    var list = Array.isArray(needs) ? needs : [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && (list[i].id === 'approve_rm' || list[i].id === 'view_reply')) {
+        return { text: list[i].title || '在等你', waiting: true };
+      }
+    }
+    var kinds = (attn && (attn.waitingKinds || attn.waiting_kinds)) || [];
+    if (kinds.length) return { text: '在等你', waiting: true };
+    return { text: '空闲', waiting: false };
+  }
+
+  function displayAppName(identity) {
+    if (!isUsableFg(identity)) return '未发现';
+    var name = String(
+      identity.displayName ||
+        identity.exeName ||
+        identity.exe_name ||
+        identity.appId ||
+        ''
+    ).trim();
+    if (!name) return '未发现';
+    // Strip .exe for display when that's all we have
+    if (/\.exe$/i.test(name) && name.indexOf(' ') < 0) {
+      name = name.replace(/\.exe$/i, '');
+    }
+    return name;
+  }
+
+  function buildNowFacts(snap) {
+    var identity = resolveFgIdentity();
+    var app = displayAppName(identity);
+    var proj = projectHintFromIdentity(identity);
+    var ag = agentFactFromAttention(attentionCache, snap && snap.needsYou);
+    return {
+      hero: app,
+      app: app,
+      project: proj.text,
+      projectInferred: !!proj.inferred,
+      presence: '不知道',
+      agent: ag.text,
+      agentWaiting: !!ag.waiting
+    };
+  }
+
+  function criticalNeedOf(snap) {
+    var list = (snap && snap.needsYou) || [];
+    for (var i = 0; i < list.length; i++) {
+      var n = list[i];
+      if (!n) continue;
+      if (n.id === 'approve_rm' || n.id === 'view_reply') {
+        var key = String(n.id) + ':' + String(n.title || '') + ':' + String(n.detail || '');
+        if (needDismissKey && key === needDismissKey) continue;
+        return n;
+      }
+    }
+    return null;
+  }
+
+  function openNeedSurface() {
+    var ipc = global.OneToneIpc;
+    if (ipc && ipc.invoke) {
+      ipc.invoke('cmd_soft_pad_force_open', {}).catch(function () {});
+    }
+    try {
+      if (global.OneToneSoftPadHub && global.OneToneSoftPadHub.openPanel) {
+        global.OneToneSoftPadHub.openPanel();
+      }
+    } catch (_) {}
+  }
+
+  var fgPollTimer = 0;
+
+  function applyFgIdentity(res) {
+    if (!isUsableFg(res)) return false;
+    var prev = fgIdentityCache;
+    var prevKey =
+      (prev && (prev.exeName || prev.exe_name || '')) +
+      '|' +
+      (prev && (prev.windowTitle || prev.window_title || ''));
+    var nextKey =
+      (res.exeName || res.exe_name || '') +
+      '|' +
+      (res.windowTitle || res.window_title || '');
+    fgIdentityCache = res;
+    try {
+      var rt = global.OneToneRuntimeHabitControl;
+      if (rt && rt.noteForegroundIdentity) rt.noteForegroundIdentity(res);
+    } catch (_) {}
+    if (prevKey === nextKey) return false;
+    return true;
+  }
+
+  function refreshForeground() {
+    var ipc = global.OneToneIpc;
+    if (!ipc || !ipc.invoke) return;
+    ipc
+      .invoke('cmd_habit_foreground_app', {})
+      .catch(function () {
+        return null;
+      })
+      .then(function (held) {
+        if (isUsableFg(held)) return held;
+        return ipc.invoke('cmd_foreground_app', {}).catch(function () {
+          return held;
+        });
+      })
+      .then(function (res) {
+        var changed = applyFgIdentity(res);
+        // Even if IPC empty, runtime may already hold Cursor from workbench poll.
+        if (changed || resolveFgIdentity()) {
+          lastPaintHtml = '';
+          if (mounted && visible) paint();
+        }
+      })
+      .catch(function () {});
+  }
+
+  function startFgPoll() {
+    if (fgPollTimer) return;
+    refreshForeground();
+    fgPollTimer = setInterval(function () {
+      if (!visible) return;
+      refreshForeground();
+    }, 1200);
+  }
+
+  function stopFgPoll() {
+    if (!fgPollTimer) return;
+    clearInterval(fgPollTimer);
+    fgPollTimer = 0;
+  }
+
+  function openContextPanel() {
+    contextOpen = true;
+    var gen = ++contextFetchGen;
+    var ipc = global.OneToneIpc;
+    if (!ipc || !ipc.invoke) {
+      contextRows = [];
+      paint();
+      return;
+    }
+    ipc
+      .invoke('cmd_context_snapshot_get', {})
+      .then(function (dto) {
+        if (gen !== contextFetchGen) return;
+        var rows = [];
+        if (!dto) {
+          contextRows = [];
+          paint();
+          return;
+        }
+        function add(k, v) {
+          if (v == null || v === '') return;
+          rows.push({ k: k, v: String(v) });
+        }
+        add('你在不在', dto.presence);
+        add('摄像头数据', dto.presenceFresh ? '刚上报' : '未开或已超时');
+        add('说明', dto.presenceNote);
+        add('你在做什么', dto.activity);
+        add('专注程度', dto.focus);
+        add('Agent 状态', dto.agentState);
+        contextRows = rows;
+        lastPaintHtml = '';
+        paint();
+      })
+      .catch(function () {
+        if (gen !== contextFetchGen) return;
+        contextRows = [];
+        paint();
+      });
+    paint();
+  }
+
   function paint() {
     if (!root) return;
     var U = ui();
@@ -179,7 +422,12 @@
         needsExpanded: needsExpanded,
         adjustOpen: adjustOpen,
         pending: pending,
-        voice: voice
+        voice: voice,
+        facts: buildNowFacts(snap),
+        criticalNeed: criticalNeedOf(snap),
+        contextPanel: contextOpen
+          ? { open: true, rows: contextRows }
+          : { open: false, rows: [] }
       });
     }
     if (html === lastPaintHtml) {
@@ -570,6 +818,38 @@
       return;
     }
 
+    if (t.closest('[data-now-ctx-close]')) {
+      contextOpen = false;
+      lastPaintHtml = '';
+      paint();
+      return;
+    }
+    var ctxScr = t.closest('[data-now-ctx-scr]');
+    if (ctxScr && t === ctxScr) {
+      contextOpen = false;
+      lastPaintHtml = '';
+      paint();
+      return;
+    }
+    if (t.closest('[data-now-ctx-open]')) {
+      openContextPanel();
+      return;
+    }
+
+    var openNeed = t.closest('[data-now-open-need]');
+    if (openNeed) {
+      var snapNeed = snapshot();
+      var crit = criticalNeedOf(snapNeed);
+      if (crit) {
+        needDismissKey =
+          String(crit.id) + ':' + String(crit.title || '') + ':' + String(crit.detail || '');
+      }
+      openNeedSurface();
+      lastPaintHtml = '';
+      paint();
+      return;
+    }
+
     var bootstrap = t.closest('[data-now-bootstrap]');
     if (bootstrap) {
       var boot = model().bootstrapRecommendedHabit && model().bootstrapRecommendedHabit();
@@ -714,6 +994,7 @@
     if (useRuntime()) {
       fetchAttention();
       refreshToday();
+      startFgPoll();
     }
     paint();
   }
@@ -732,12 +1013,14 @@
     if (useRuntime()) {
       fetchAttention();
       refreshToday();
+      startFgPoll();
     }
     paint();
     syncVoiceStrip();
   }
 
   function hide() {
+    stopFgPoll();
     if (root) {
       root.hidden = true;
       root.setAttribute('aria-hidden', 'true');

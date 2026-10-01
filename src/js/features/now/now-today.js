@@ -1,6 +1,6 @@
 /**
  * Now home — today's real actions from action history.
- * Backend already ships user-language `summary`; do NOT re-translate here.
+ * Sanitize tech strings for UI; do not invent value-bucket marketing.
  */
 (function (global) {
   'use strict';
@@ -13,31 +13,36 @@
     system: '⚙'
   };
 
-  var BUCKET_LABEL = {
-    interrupt: '减少打断',
-    restore: '恢复环境',
-    privacy: '保护隐私',
-    status: '提醒状态'
+  var CHANNEL_ZH = {
+    camera: '摄像头',
+    voice: '语音',
+    key: '按键',
+    softPad: '软垫',
+    system: '系统'
   };
 
-  var INTERRUPT_IDS = {
-    'agent.interrupt': 1,
-    'onetone.pause': 1,
-    'input.cancel': 1,
-    'input.pause': 1
+  var KEY_ZH = {
+    NP_ENTER: '回车',
+    NUMPADENTER: '回车',
+    ENTER: '回车',
+    RETURN: '回车',
+    DOT: '句点',
+    PERIOD: '句点',
+    COMMA: '逗号',
+    SEMICOLON: '分号',
+    SPACE: '空格',
+    SPACEBAR: '空格',
+    TAB: '制表键',
+    ESC: 'Esc',
+    ESCAPE: 'Esc',
+    BS: '退格',
+    BACKSPACE: '退格',
+    DEL: '删除',
+    DELETE: '删除'
   };
 
-  var RESTORE_IDS = {
-    'onetone.resume': 1,
-    'agent.continue': 1,
-    'agent.focus': 1,
-    'workspace.applyLayout': 1
-  };
-
-  var STATUS_IDS = {
-    'status.read': 1,
-    'agent.status': 1
-  };
+  var TECH_DROP =
+    /\b(AutoTrigger|vosk|MediaPipe|Win32|NP_[A-Z0-9]+|VK_[A-Z0-9]+|RAlt|LAlt|Ctrl\+V)\b/gi;
 
   function invoke(cmd, args) {
     var ipc = global.OneToneIpc;
@@ -65,56 +70,62 @@
     return String(e.actionId || e.action_id || '').trim();
   }
 
-  function entrySummary(e) {
-    return String((e && e.summary) || '');
+  function zhKey(raw) {
+    var k = String(raw || '').trim();
+    if (!k) return '';
+    if (KEY_ZH[k]) return KEY_ZH[k];
+    var up = k.toUpperCase();
+    if (KEY_ZH[up]) return KEY_ZH[up];
+    var np = up.match(/^NP_?(ENTER|DOT|PERIOD|[0-9])$/);
+    if (np) {
+      if (np[1] === 'ENTER') return '回车';
+      if (np[1] === 'DOT' || np[1] === 'PERIOD') return '句点';
+      if (/^[0-9]$/.test(np[1])) return '数字 ' + np[1];
+    }
+    if (/^NP[0-9]$/i.test(k)) return '数字 ' + k.slice(-1);
+    return '';
   }
 
   /**
-   * channel + action_id + summary → value bucket.
-   * Unmatched → status (keeps four-bucket sum == entry count).
+   * Drop tech tokens; map SoftPad key codes; keep human phrases.
    */
-  function bucketOf(entry) {
-    var id = entryActionId(entry);
-    var sum = entrySummary(entry);
-    var ch = String((entry && entry.channel) || '');
-
-    if (INTERRUPT_IDS[id] || /打断|暂停|取消/.test(sum)) return 'interrupt';
-    if (RESTORE_IDS[id] || /恢复|还原/.test(sum)) return 'restore';
-    if (
-      /privacy|遮罩|离开保护|保护隐私/i.test(id + ' ' + sum) ||
-      (ch === 'camera' && /隐私|遮罩|离开|保护/.test(sum))
-    ) {
-      return 'privacy';
+  function sanitizeSummary(raw) {
+    var s = String(raw || '').trim();
+    if (!s) return '';
+    s = s.replace(/SoftPad/gi, '软垫');
+    s = s.replace(/→/g, '·');
+    // Replace known key codes as whole tokens
+    s = s.replace(/\b([A-Za-z][A-Za-z0-9_]*)\b/g, function (tok) {
+      var zh = zhKey(tok);
+      return zh || tok;
+    });
+    s = s.replace(TECH_DROP, '');
+    s = s.replace(/\s*·\s*·+/g, ' · ');
+    s = s.replace(/^\s*·\s*|\s*·\s*$/g, '');
+    s = s.replace(/\s{2,}/g, ' ').trim();
+    // vosk wake line → keep quoted phrase if any
+    var phrase = s.match(/「([^」]+)」/) || s.match(/phrase:\s*([^\s)]+)/i);
+    if (/唤醒|wake/i.test(String(raw || '')) && phrase) {
+      return '语音 · 说「' + phrase[1] + '」';
     }
-    if (STATUS_IDS[id]) return 'status';
-    return 'status';
-  }
-
-  function summarizeBuckets(entries) {
-    var out = { total: 0, interrupt: 0, restore: 0, privacy: 0, status: 0 };
-    var list = Array.isArray(entries) ? entries : [];
-    for (var i = 0; i < list.length; i++) {
-      var b = bucketOf(list[i]);
-      out.total += 1;
-      if (out[b] != null) out[b] += 1;
-      else out.status += 1;
-    }
-    return out;
+    return s;
   }
 
   function mapEntry(e) {
     var status = String((e && e.status) || '');
     var ch = String((e && e.channel) || '');
     var ts = Number((e && (e.tsMs != null ? e.tsMs : e.ts_ms)) || 0);
+    var text = sanitizeSummary(String((e && e.summary) || ''));
     return {
       id: e.id,
       time: fmtTime(ts),
-      text: entrySummary(e),
+      text: text,
       src: CHANNEL_ICON[ch] || '•',
       channel: ch,
+      channelLabel: CHANNEL_ZH[ch] || '',
       ok: status === 'executed',
       actionId: entryActionId(e) || null,
-      bucket: bucketOf(e)
+      proactive: ch === 'camera' || /camera_local/i.test(String(e.kind || ''))
     };
   }
 
@@ -129,7 +140,9 @@
           if (!e) continue;
           var st = String(e.status || '');
           if (st !== 'executed' && st !== 'pendingConfirmation') continue;
-          out.push(mapEntry(e));
+          var row = mapEntry(e);
+          if (!row.text) continue;
+          out.push(row);
         }
         return out;
       }
@@ -138,10 +151,10 @@
 
   global.OneToneNowToday = {
     loadToday: loadToday,
+    sanitizeSummary: sanitizeSummary,
+    zhKey: zhKey,
     CHANNEL_ICON: CHANNEL_ICON,
-    BUCKET_LABEL: BUCKET_LABEL,
-    bucketOf: bucketOf,
-    summarizeBuckets: summarizeBuckets,
+    CHANNEL_ZH: CHANNEL_ZH,
     mapEntry: mapEntry,
     fmtTime: fmtTime
   };

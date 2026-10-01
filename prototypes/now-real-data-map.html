@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>现在 · Hero + 情景条 + 今天数据真相</title>
+<style>
+:root{
+  --ink:#0f172a;--ink2:#475569;--ink3:#64748b;--ink4:#94a3b8;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f6f7f9;--card:#fff;
+  --pri:#0284c7;--pri-bg:#e0f2fe;
+  --ok:#047857;--ok-bg:#ecfdf5;--ok-bd:#a7f3d0;
+  --rk:#b91c1c;--rk-bg:#fef2f2;--rk-bd:#fecaca;
+  --wa:#b45309;--wa-bg:#fffbeb;--wa-bd:#fde68a;
+  --sh:0 1px 2px rgba(15,23,42,.06);--sh2:0 10px 30px rgba(15,23,42,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.55 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+button{font-family:inherit;cursor:pointer}
+code{font:11.5px Consolas,monospace;background:var(--line2);padding:1px 5px;border-radius:4px;color:#0369a1}
+
+.top{position:sticky;top:0;z-index:30;background:rgba(246,247,249,.94);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line)}
+.top-in{max-width:1200px;margin:0 auto;padding:12px 22px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.brand{font-weight:800;font-size:14.5px}
+.tabs{display:flex;gap:4px;background:var(--line2);padding:3px;border-radius:10px;flex-wrap:wrap}
+.tab{border:0;background:transparent;padding:6px 12px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--ink3)}
+.tab.on{background:#fff;color:var(--ink);box-shadow:var(--sh)}
+.hint{margin-left:auto;font-size:12px;color:var(--ink4)}
+
+.page{max-width:1200px;margin:0 auto;padding:20px 22px 72px}
+.lead{max-width:860px;margin:0 0 16px;font-size:14.5px;color:var(--ink2);line-height:1.75}
+.lead b{color:var(--ink)}
+
+.ans{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 22px}
+@media (max-width:860px){.ans{grid-template-columns:1fr}}
+.ac{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;box-shadow:var(--sh)}
+.ac .k{font-size:11px;font-weight:800;letter-spacing:.3px;margin-bottom:4px}
+.ac.ok .k{color:var(--ok)}.ac.bad .k{color:var(--rk)}.ac.wa .k{color:var(--wa)}
+.ac h3{margin:0 0 6px;font-size:14px;font-weight:800}
+.ac p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.65}
+.ac code{font-size:11px}
+
+/* today wrong vs right */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+@media (max-width:960px){.split{grid-template-columns:1fr}}
+.col h3{margin:0 0 8px;font-size:13px;font-weight:800;display:flex;gap:8px;align-items:center}
+.badge{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;border:1px solid}
+.badge.no{background:var(--rk-bg);color:var(--rk);border-color:var(--rk-bd)}
+.badge.yes{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-bd)}
+.badge.wa{background:var(--wa-bg);color:var(--wa);border-color:var(--wa-bd)}
+
+.today-box{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--sh)}
+.today-hd{padding:12px 14px 0;display:flex;align-items:baseline;gap:8px}
+.today-hd h4{margin:0;font-size:14px}
+.today-hd s{text-decoration:none;font-size:11.5px;color:var(--ink4)}
+.kpi{padding:12px 14px;display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;border-bottom:1px solid var(--line2)}
+.kpi .n{font-size:28px;font-weight:800;color:var(--pri);line-height:1}
+.kpi .n span{font-size:13px;font-weight:650;margin-left:2px}
+.kpi .lb{font-size:12px;color:var(--ink2);max-width:110px;line-height:1.35}
+.kpi .ks{display:flex;gap:16px;margin-left:auto}
+.kpi .ks b{display:block;font-size:16px;text-align:right}
+.kpi .ks s{text-decoration:none;font-size:10.5px;color:var(--ink4)}
+.ti{display:grid;grid-template-columns:46px 1fr 22px;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line2);align-items:center}
+.ti:last-child{border-bottom:0}
+.ti .tm{font-size:11.5px;color:var(--ink4);font-variant-numeric:tabular-nums}
+.ti .tx{font-size:13px;font-weight:600}
+.ti .tx.tech{color:#64748b;font-family:Consolas,monospace;font-size:12px;font-weight:500}
+.ti .tx.clean{font-weight:650}
+.ti .ic{text-align:right;font-size:13px}
+.note{margin-top:8px;font-size:12px;line-height:1.6}
+.note.bad{color:var(--rk)}.note.ok{color:var(--ok)}
+
+/* scene hero */
+.scene-hero{background:linear-gradient(160deg,#0c4a6e,#0369a1);color:#fff;border-radius:14px;padding:18px 18px 14px;
+  box-shadow:0 8px 24px rgba(3,105,161,.2)}
+.scene-hero .k{margin:0 0 8px;font-size:11px;letter-spacing:.6px;opacity:.72;font-weight:650}
+.scene-hero h2{margin:0 0 6px;font-size:26px;letter-spacing:-.5px}
+.scene-hero .stance{margin:0 0 14px;font-size:13.5px;opacity:.85}
+.scene-hero .stance i{font-style:normal;font-size:10.5px;font-weight:700;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:1px 8px;margin-right:8px}
+.scene-hero .foot{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.scene-hero .st{font-size:12px;opacity:.72}
+.scene-hero .btn{border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;
+  border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:650}
+
+/* my scenes strip — real cards */
+.mys{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0 0}
+.mys .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.mys .hd h3{margin:0;font-size:13px;font-weight:700;color:var(--ink3)}
+.mys .hd button{border:0;background:none;color:var(--ink3);font-size:12.5px;font-weight:650}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:0;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:650;background:#eef2f6;color:var(--ink)}
+.chip.on{background:#0f172a;color:#fff}
+.chip on,.chip .cur{font-size:10.5px;font-weight:700;opacity:.75;margin-left:6px;
+  background:rgba(255,255,255,.18);padding:1px 7px;border-radius:999px}
+.chip.on .cur{display:inline}
+
+.layout{display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:960px){.layout{grid-template-columns:1fr}}
+.home{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh2);overflow:hidden}
+.home-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.home-bar .dot{width:10px;height:10px;border-radius:50%;background:#cbd5e1}
+.home-bar .ttl{font-weight:700;font-size:13px}
+.home-body{padding:14px 16px 12px}
+
+.zk{margin:16px 0 2px;font-size:11px;font-weight:650;color:var(--ink4)}
+.zk span{font-weight:500;margin-left:6px;color:#94a3b8}
+.zh{margin:0 0 10px;font-size:22px;font-weight:800;letter-spacing:-.4px}
+.facts{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:6px}
+.fr{display:grid;grid-template-columns:88px 1fr;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line2)}
+.fr:last-child{border-bottom:0}
+.fr .k{font-size:12.5px;color:var(--ink3)}
+.fr .v{font-size:13.5px;font-weight:650}
+.fr .v.mute{color:var(--ink3);font-weight:500}
+.fr .v.inf{color:var(--ink2);font-weight:500}
+.fr .v.inf i{font-style:normal;font-size:10.5px;margin-left:6px;border:1px solid var(--line);border-radius:999px;padding:0 6px;color:var(--ink4);font-weight:650}
+.trust{font-size:11px;color:var(--ink4);margin:0}
+
+.crit{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;
+  background:linear-gradient(100deg,#f0f9ff,#fff);border:1px solid #bae6fd;border-radius:12px;padding:12px 13px;margin-bottom:10px}
+.crit b{display:block;font-size:14px}
+.crit s{text-decoration:none;display:block;font-size:12px;color:var(--ink3);margin-top:2px}
+.crit .go{border:0;background:var(--pri);color:#fff;border-radius:9px;padding:8px 12px;font-size:12.5px;font-weight:700}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pc{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fafbfc}
+.pc.dim{opacity:.55}
+.pc b{display:block;font-size:13px;margin:4px 0 3px}
+.pc s{text-decoration:none;font-size:11.5px;color:var(--ink3)}
+
+.dock{margin-top:12px;display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;
+  border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#f8fafc}
+.dock .say{color:var(--ink3)}
+.dock kbd{font:11.5px Consolas,monospace;background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 7px}
+
+.panel h2{margin:0 0 6px;font-size:15px;font-weight:800}
+.panel .sub{margin:0 0 12px;font-size:12.5px;color:var(--ink2);line-height:1.65}
+.blk{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:10px}
+.blk strong{font-size:13px}
+.blk ul{margin:6px 0 0;padding-left:16px;font-size:12.5px;color:var(--ink2);line-height:1.7}
+.pill{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;margin-right:6px}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.no{background:var(--rk-bg);color:var(--rk)}
+.pill.wa{background:var(--wa-bg);color:var(--wa)}
+
+.view{display:none}.view.on{display:block}
+.state-note{margin:0 0 12px;font-size:12.5px;color:var(--ink2);background:#fff;border:1px solid var(--line);
+  border-radius:10px;padding:10px 12px;line-height:1.6}
+.state-note b{color:var(--ink)}
+.foot{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink3);line-height:1.7;max-width:860px}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-in">
+    <div class="brand">数据真相 · 情景条回来</div>
+    <div class="tabs">
+      <button type="button" class="tab on" data-v="0">今天：准不准？</button>
+      <button type="button" class="tab" data-v="1">合成首页（全量）</button>
+    </div>
+    <div class="hint">列表真 · KPI 假准 · 情景卡可回</div>
+  </div>
+</div>
+
+<div class="page">
+  <p class="lead">
+    截图里两块 separately：<b>「5次 / 四价值桶」不是硬编码数字，但也不是精准价值统计</b>；
+    <b>「我的情景」多卡</b>代码里还在，保真改造把它从首页撤到二级了——合成稿把它加回 Hero 下方。
+  </p>
+
+  <div class="ans">
+    <div class="ac wa">
+      <div class="k">今天统计</div>
+      <h3>条目真 · 分类假准 · 文案在说谎</h3>
+      <p>
+        时间线来自 <code>cmd_action_history_list</code>（你截图 5 条都是真执行）。
+        但「主动帮你处理了事情」是营销句——这些是你按 SoftPad / 语音触发的。
+        四桶标签写死在 FE；匹配不上一律丢进「提醒状态」，所以才出现 0 / 0 / 0 / 5。
+      </p>
+    </div>
+    <div class="ac ok">
+      <div class="k">我的情景卡片</div>
+      <h3>不是丢数据 · 是首页不画了</h3>
+      <p>
+        <code>now-home-ui.js</code> 仍有「我的情景」strip，读的是真实 mappings（通用设置 / MiniMax / Cursor）。
+        保真 D3 把 chip 条赶出一级；合成稿：<b>Hero（画风）+ 情景条（真卡）都保留</b>。
+      </p>
+    </div>
+  </div>
+
+  <!-- ===== tab 0 ===== -->
+  <div class="view on" id="v0">
+    <div class="split">
+      <div class="col">
+        <h3><span class="badge no">现状问题</span> 你截到的那版</h3>
+        <div class="today-box">
+          <div class="today-hd">
+            <h4>它今天为你做了什么</h4>
+            <s>全部来自真实执行记录</s>
+          </div>
+          <div class="kpi">
+            <div>
+              <div class="n">5<span>次</span></div>
+              <div class="lb">主动帮你处理了事情</div>
+            </div>
+            <div class="ks">
+              <div><b>0</b><s>减少打断</s></div>
+              <div><b>0</b><s>恢复环境</s></div>
+              <div><b>0</b><s>保护隐私</s></div>
+              <div><b>5</b><s>提醒状态</s></div>
+            </div>
+          </div>
+          <div class="ti"><span class="tm">01:03</span><span class="tx tech">SoftPad · NP5</span><span class="ic">●</span></div>
+          <div class="ti"><span class="tm">20:05</span><span class="tx tech">语音 · AutoTrigger → RAlt · 开始听写</span><span class="ic">🎤</span></div>
+          <div class="ti"><span class="tm">17:08</span><span class="tx tech">SoftPad · NP_ENTER</span><span class="ic">●</span></div>
+          <div class="ti"><span class="tm">16:50</span><span class="tx tech">语音 · 唤醒 · vosk wake…</span><span class="ic">🎤</span></div>
+          <div class="ti"><span class="tm">11:32</span><span class="tx tech">SoftPad · DOT</span><span class="ic">●</span></div>
+        </div>
+        <p class="note bad">
+          <b>为什么不准：</b>5 条 SoftPad/语音键位，没有一条是「减少打断」。
+          <code>bucketOf()</code> 默认 <code>return 'status'</code> → 全进「提醒状态」。
+          数字跟着列表变（非写死 5），但<strong>价值分类是硬编码规则 + 兜底假准</strong>。
+          技术串（NP5 / RAlt / vosk）也不该出现在用户界面。
+        </p>
+      </div>
+      <div class="col">
+        <h3><span class="badge yes">建议画法</span> 能声称精准的部分</h3>
+        <div class="today-box">
+          <div class="today-hd">
+            <h4>今天你用了什么</h4>
+            <s>5 条真实操作</s>
+          </div>
+          <div class="ti"><span class="tm">01:03</span><span class="tx clean">软垫 · 数字 5</span><span class="ic">●</span></div>
+          <div class="ti"><span class="tm">20:05</span><span class="tx clean">语音 · 开始听写</span><span class="ic">🎤</span></div>
+          <div class="ti"><span class="tm">17:08</span><span class="tx clean">软垫 · 回车</span><span class="ic">●</span></div>
+          <div class="ti"><span class="tm">16:50</span><span class="tx clean">语音 · 说「下一步」</span><span class="ic">🎤</span></div>
+          <div class="ti"><span class="tm">11:32</span><span class="tx clean">软垫 · 句点</span><span class="ic">●</span></div>
+        </div>
+        <p class="note ok">
+          <b>可以精准的：</b>条数、时间、通道、消毒后的动作名（来自 action history）。
+          <b>不要装精准的：</b>「主动帮你 / 减少打断」——没有 suppressed 事件，四桶删掉。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== tab 1 full home ===== -->
+  <div class="view" id="v1">
+    <p class="state-note">
+      <b>合成首页：</b>Hero 画风（情景组件）→ 我的情景多卡（真 mappings）→ 现在 / 可以 / 今天（诚实时间线，无 KPI 桶）。
+    </p>
+    <div class="layout">
+      <div class="home">
+        <div class="home-bar"><span class="dot"></span><span class="ttl">OneTone · 现在</span></div>
+        <div class="home-body">
+
+          <section class="scene-hero" aria-label="当前情景">
+            <p class="k">当前情景</p>
+            <h2>通用设置</h2>
+            <p class="stance"><i>手动</i>你选中的情景</p>
+            <div class="foot">
+              <span class="st">与下方「当前」chip 同步</span>
+              <button type="button" class="btn">情景管理</button>
+            </div>
+          </section>
+
+          <div class="mys" aria-label="我的情景">
+            <div class="hd">
+              <h3>我的情景</h3>
+              <button type="button">情景管理</button>
+            </div>
+            <div class="chips">
+              <button type="button" class="chip on">通用设置 <span class="cur">当前</span></button>
+              <button type="button" class="chip">MiniMax 场景</button>
+              <button type="button" class="chip">Cursor 场景</button>
+            </div>
+          </div>
+
+          <p class="zk">现在<span>本机实时事实</span></p>
+          <h2 class="zh">Cursor</h2>
+          <div class="facts">
+            <div class="fr"><span class="k">前台应用</span><span class="v">Cursor</span></div>
+            <div class="fr"><span class="k">项目</span><span class="v inf">voice-pilot <i>推断</i></span></div>
+            <div class="fr"><span class="k">你在电脑前</span><span class="v mute">不知道</span></div>
+            <div class="fr"><span class="k">Agent</span><span class="v mute">空闲</span></div>
+          </div>
+          <p class="trust">Hero / chip 是情景配置态；这一区是设备事实，两者可以不一致（例如情景锁定时前台已变）。</p>
+
+          <p class="zk">可以</p>
+          <div class="pair" style="margin-top:8px">
+            <div class="pc"><b>查看上下文</b><s>读 snapshot</s></div>
+            <div class="pc dim"><b>交给 Agent</b><s>入口尚未接通</s></div>
+          </div>
+
+          <p class="zk">今天你用了什么<span>5 条 · 无价值桶</span></p>
+          <div class="today-box" style="margin-top:8px">
+            <div class="ti"><span class="tm">01:03</span><span class="tx clean">软垫 · 数字 5</span><span class="ic">●</span></div>
+            <div class="ti"><span class="tm">20:05</span><span class="tx clean">语音 · 开始听写</span><span class="ic">🎤</span></div>
+            <div class="ti"><span class="tm">17:08</span><span class="tx clean">软垫 · 回车</span><span class="ic">●</span></div>
+            <div class="ti"><span class="tm">16:50</span><span class="tx clean">语音 · 说「下一步」</span><span class="ic">🎤</span></div>
+            <div class="ti"><span class="tm">11:32</span><span class="tx clean">软垫 · 句点</span><span class="ic">●</span></div>
+          </div>
+
+          <div class="dock"><span class="say">说点什么</span><span class="brand" style="color:var(--ink4)">● OneTone</span><kbd>Ctrl+Space</kbd></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <h2>这页回了什么</h2>
+        <p class="sub">对照你两张截图的疑问。</p>
+        <div class="blk">
+          <span class="pill wa">今天</span><strong>不是硬编码 5</strong>
+          <ul>
+            <li>条数 = action history 实条数（会变）</li>
+            <li>四桶标签 + 兜底规则 = 硬编码逻辑</li>
+            <li>装不出「减少打断」精准统计 → 删桶</li>
+          </ul>
+        </div>
+        <div class="blk">
+          <span class="pill ok">情景卡</span><strong>加回「我的情景」条</strong>
+          <ul>
+            <li>数据：真实 mappings（你截图那三张）</li>
+            <li>Hero 显示当前名；chip 负责快切</li>
+            <li>不是 fixtures 写死</li>
+          </ul>
+        </div>
+        <div class="blk">
+          <span class="pill no">仍不要</span><strong></strong>
+          <ul>
+            <li>「主动帮你处理了 N 件事」</li>
+            <li>helping 承诺列表</li>
+            <li>技术串冒出用户界面</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <p class="foot">
+    一句话：<b>列表有真依据，价值 KPI 没有精准依据</b>；情景多卡有真数据，只是被保真稿从首页撤掉——合成稿加回 strip，不恢复四桶。
+  </p>
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(function (b) {
+  b.onclick = function () {
+    document.querySelectorAll('.tab').forEach(function (x) { x.classList.remove('on'); });
+    document.querySelectorAll('.view').forEach(function (x) { x.classList.remove('on'); });
+    b.classList.add('on');
+    document.getElementById('v' + b.dataset.v).classList.add('on');
+  };
+});
+</script>
+</body>
+</html>

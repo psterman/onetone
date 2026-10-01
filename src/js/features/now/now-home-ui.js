@@ -1,17 +1,18 @@
 /**
- * Now home UI — 当前情景驾驶舱（看 / 调 / 切）+ 情景管理子页。
+ * Now home UI — Hero 情景组件 + 我的情景条 + 现在/可以/今天。
  */
 (function (global) {
   'use strict';
 
   var NEED_CAP = 2;
-  var CTA = {
+  var NEED_CTA = {
     approve_rm: '查看并决定',
     view_reply: '查看请求',
     view_progress: '查看进度',
     keep_quiet: '继续别打扰',
     extra_demo: '确认'
   };
+  var CTA = NEED_CTA;
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -162,14 +163,11 @@
     return (
       '<div class="now-shell">' +
       '<div class="now-body">' +
-      '<section class="now-cockpit now-cockpit--idle" aria-label="当前情景">' +
-      '<p class="now-k">当前情景</p>' +
-      '<h1>还没有情景</h1>' +
-      '<p class="now-stance">先添加一个情景，OneTone 才能按情景帮你。</p>' +
-      '<div class="now-cockpit-foot now-cockpit-foot--stack">' +
+      renderHero({ active: null, status: { line: '' }, habits: [] }) +
+      '<p class="now-secsub" style="margin-top:14px">也可以用推荐情景快速开始。</p>' +
+      '<div class="now-cockpit-foot now-cockpit-foot--stack" style="max-width:28ch">' +
       '<button type="button" class="now-btn now-btn--p" data-now-bootstrap="recommended">用推荐情景开始</button>' +
-      '<button type="button" class="now-btn" data-now-scenes="new">自己建</button>' +
-      '</div></section>' +
+      '<button type="button" class="now-btn" data-now-scenes="new">自己建</button></div>' +
       renderVoiceStrip() +
       '</div>' +
       renderDock({ voiceOn: true, listening: false, hotkey: resolveHotkey(null) }) +
@@ -177,239 +175,54 @@
     );
   }
 
-  function renderTodayBox(today) {
-    var entries = Array.isArray(today) ? today : [];
-    var T = global.OneToneNowToday;
-    var buckets =
-      T && T.summarizeBuckets
-        ? T.summarizeBuckets(entries)
-        : { total: entries.length, interrupt: 0, restore: 0, privacy: 0, status: 0 };
-    var labels =
-      (T && T.BUCKET_LABEL) || {
-        interrupt: '减少打断',
-        restore: '恢复环境',
-        privacy: '保护隐私',
-        status: '提醒状态'
-      };
+  function sourcePill(line) {
+    var s = String(line || '');
+    if (/锁定/.test(s)) return { pill: '已锁定', rest: s };
+    if (/跟随前台/.test(s)) return { pill: '跟随前台', rest: s };
+    if (/临时|一会儿/.test(s)) return { pill: '先用一会儿', rest: s };
+    if (/手动/.test(s)) return { pill: '手动', rest: s };
+    return { pill: '', rest: s };
+  }
 
-    var head =
-      '<div class="now-today-hd">' +
-      '<div class="now-today-n">' +
-      esc(String(buckets.total)) +
-      '<span>次</span></div>' +
-      '<div class="now-today-lb">主动帮你处理了事情</div>' +
-      '<div class="now-today-kpis">' +
-      '<div class="now-today-kpi"><b>' +
-      esc(String(buckets.interrupt)) +
-      '</b><s>' +
-      esc(labels.interrupt) +
-      '</s></div>' +
-      '<div class="now-today-kpi"><b>' +
-      esc(String(buckets.restore)) +
-      '</b><s>' +
-      esc(labels.restore) +
-      '</s></div>' +
-      '<div class="now-today-kpi"><b>' +
-      esc(String(buckets.privacy)) +
-      '</b><s>' +
-      esc(labels.privacy) +
-      '</s></div>' +
-      '<div class="now-today-kpi"><b>' +
-      esc(String(buckets.status)) +
-      '</b><s>' +
-      esc(labels.status) +
-      '</s></div>' +
-      '</div></div>';
-
-    var body;
-    if (!entries.length) {
-      body = '<div class="now-today-empty">今天还没有记录</div>';
-    } else {
-      body =
-        '<div class="now-today-list">' +
-        entries
-          .map(function (e) {
-            return (
-              '<div class="now-today-item">' +
-              '<span class="now-today-tm">' +
-              esc(e.time || '') +
-              '</span>' +
-              '<div class="now-today-tx"><b>' +
-              esc(e.text || '') +
-              '</b></div>' +
-              '<span class="now-today-ch" title="' +
-              esc(e.channel || '') +
-              '">' +
-              esc(e.src || '•') +
-              '</span></div>'
-            );
-          })
-          .join('') +
-        '</div>';
+  function renderHero(s) {
+    var active = s && s.active;
+    if (!active) {
+      return (
+        '<section class="now-cockpit now-cockpit--idle" aria-label="当前情景">' +
+        '<p class="now-k">当前情景</p>' +
+        '<h1>还没有情景</h1>' +
+        '<p class="now-stance">先添加一个，才能按情景帮忙</p>' +
+        '<div class="now-cockpit-foot">' +
+        '<span class="now-status-line">空库</span>' +
+        '<button type="button" class="now-btn now-btn--p" data-now-scenes="new">去添加</button>' +
+        '</div></section>'
+      );
     }
-
+    var src = sourcePill((s.status && s.status.line) || '');
+    var stance =
+      (src.pill
+        ? '<i class="now-src-pill">' + esc(src.pill) + '</i>'
+        : '') + esc(src.rest || active.description || '');
     return (
-      '<section class="now-today" aria-label="它今天为你做了什么">' +
-      '<div class="now-today-bh"><h2>它今天为你做了什么</h2>' +
-      '<span class="now-today-s">全部来自真实执行记录</span></div>' +
-      '<div class="now-today-box">' +
-      head +
-      body +
+      '<section class="now-cockpit' +
+      (src.pill === '已锁定' ? ' now-cockpit--pin' : '') +
+      '" aria-label="当前情景">' +
+      '<p class="now-k">当前情景</p>' +
+      '<h1>' +
+      esc(active.name) +
+      '</h1>' +
+      (stance ? '<p class="now-stance">' + stance + '</p>' : '') +
+      '<div class="now-cockpit-foot">' +
+      '<span class="now-status-line">' +
+      esc((s.status && s.status.line) || '') +
+      '</span>' +
+      '<button type="button" class="now-btn" data-now-scenes="">情景管理</button>' +
       '</div></section>'
     );
   }
 
-  function renderNowView(opts) {
-    var s = opts.snapshot;
-    if (s && s.empty) return renderEmptyView();
-
-    var needsExpanded = !!opts.needsExpanded;
-    var adjustOpen = !!opts.adjustOpen;
-    var pending = opts.pending || null;
-    var active = s.active;
-    var maybe = s.habits.filter(function (h) {
-      return h.maybe && !h.active;
-    });
-    var canAdjust =
-      !!(active && ((active.actions && active.actions.length) || (active.ops && active.ops.length)));
-
-    var cockpit;
-    if (!active) {
-      cockpit =
-        '<section class="now-cockpit now-cockpit--idle" aria-label="当前情景">' +
-        '<p class="now-k">当前情景</p>' +
-        '<h1>待命</h1>' +
-        '<p class="now-stance">还没进入明确情景。点下方切换，或等发现后由你确认。</p>' +
-        '<div class="now-cockpit-foot">' +
-        '<span class="now-status-line">' +
-        esc(s.status.line) +
-        '</span></div></section>';
-    } else if (adjustOpen && canAdjust) {
-      var actions = active.actions || active.ops || [];
-      cockpit =
-        '<section class="now-cockpit now-cockpit--adjust" aria-label="当前情景">' +
-        '<p class="now-k">当前情景</p>' +
-        '<h1>' +
-        esc(active.name) +
-        '</h1>' +
-        '<p class="now-help-k">微调这个情景</p>' +
-        '<div class="now-adjust-list">' +
-        actions
-          .map(function (a) {
-            var label = a.label || a.title || '';
-            var enabled = !!a.enabled;
-            return (
-              '<div class="now-adjust-row">' +
-              '<div class="now-adjust-tx"><b>' +
-              esc(label) +
-              '</b>' +
-              (a.effect ? '<s>' + esc(a.effect) + '</s>' : '') +
-              '</div>' +
-              '<button type="button" class="now-sw now-sw--on-cockpit' +
-              (enabled ? ' on' : '') +
-              '" data-now-op="' +
-              esc(active.id) +
-              ':' +
-              esc(a.id) +
-              '" aria-label="' +
-              esc(label) +
-              '"></button></div>'
-            );
-          })
-          .join('') +
-        '</div>' +
-        '<div class="now-cockpit-foot">' +
-        '<span class="now-status-line">' +
-        esc(s.status.line) +
-        '</span>' +
-        '<button type="button" class="now-btn" data-now-adjust-done>完成</button>' +
-        '</div></section>';
-    } else {
-      var todayList = Array.isArray(s.today) ? s.today : [];
-      var showHelping = !todayList.length;
-      var helpingBlock = showHelping
-        ? '<p class="now-help-k">OneTone 正在帮你</p>' +
-          '<ul class="now-promises">' +
-          (active.helping || [])
-            .map(function (t) {
-              return '<li>' + esc(t) + '</li>';
-            })
-            .join('') +
-          '</ul>'
-        : '';
-      cockpit =
-        '<section class="now-cockpit" aria-label="当前情景">' +
-        '<p class="now-k">当前情景</p>' +
-        '<h1>' +
-        esc(active.name) +
-        '</h1>' +
-        (active.description
-          ? '<p class="now-stance">' + esc(active.description) + '</p>'
-          : '') +
-        helpingBlock +
-        '<div class="now-cockpit-foot">' +
-        '<span class="now-status-line">' +
-        esc(s.status.line) +
-        '</span>' +
-        (canAdjust
-          ? '<button type="button" class="now-btn" data-now-adjust>调整</button>'
-          : '') +
-        '</div></section>';
-    }
-
-    var maybeHtml = maybe.length
-      ? '<div class="now-maybe"><span class="now-maybe-k">可能切换</span>' +
-        maybe
-          .map(function (h) {
-            return (
-              '<button type="button" class="now-maybe-chip" data-now-activate="' +
-              esc(h.id) +
-              '">' +
-              esc(h.name) +
-              '</button>'
-            );
-          })
-          .join('') +
-        '</div>'
-      : '';
-
-    var todayHtml = renderTodayBox(s.today);
-
-    var allNeeds = s.needsYou || [];
-    var shown =
-      needsExpanded || allNeeds.length <= NEED_CAP
-        ? allNeeds
-        : allNeeds.slice(0, NEED_CAP);
-    var more = allNeeds.length - shown.length;
-    var needsHtml = allNeeds.length
-      ? '<ul class="now-need-list">' +
-        shown
-          .map(function (n) {
-            return (
-              '<li><div><p class="now-need-title">' +
-              esc(n.title) +
-              '</p><p class="now-need-detail">' +
-              esc(n.detail) +
-              '</p></div><div class="now-act-row">' +
-              '<button type="button" class="now-act' +
-              (n.primary ? ' now-act--primary' : '') +
-              '">' +
-              esc(CTA[n.id] || (n.primary ? '处理' : '好的')) +
-              '</button></div></li>'
-            );
-          })
-          .join('') +
-        '</ul>' +
-        (more > 0
-          ? '<button type="button" class="now-need-more" data-now-need-more>查看全部（' +
-            allNeeds.length +
-            '）</button>'
-          : needsExpanded && allNeeds.length > NEED_CAP
-            ? '<button type="button" class="now-need-more" data-now-need-more>收起</button>'
-            : '')
-      : '<p class="now-need-empty">没有需要你决定的事</p>';
-
-    var strip = s.habits
+  function renderScenesStrip(s) {
+    var strip = (s.habits || [])
       .map(function (h) {
         return (
           '<button type="button" class="now-scene-chip' +
@@ -428,7 +241,160 @@
         );
       })
       .join('');
+    return (
+      '<section class="now-scenes-strip" aria-label="我的情景">' +
+      '<div class="now-strip-head"><h2>我的情景</h2>' +
+      '<button type="button" class="now-mgmt-link" data-now-scenes="">情景管理</button></div>' +
+      '<div class="now-strip-row">' +
+      strip +
+      '</div></section>'
+    );
+  }
 
+  function renderFacts(facts) {
+    facts = facts || {};
+    function row(k, v, weak, inferred) {
+      return (
+        '<div class="now-fact-row"><span class="now-fact-k">' +
+        esc(k) +
+        '</span><span class="now-fact-v' +
+        (weak ? ' is-mute' : '') +
+        (inferred ? ' is-inferred' : '') +
+        '">' +
+        esc(v || '未发现') +
+        (inferred ? '<i>推断</i>' : '') +
+        '</span></div>'
+      );
+    }
+    return (
+      '<section class="now-zone now-zone--facts" aria-label="现在">' +
+      '<p class="now-zone-k">现在 <span>本机实时事实</span></p>' +
+      '<h2 class="now-zone-h">' +
+      esc(facts.hero || facts.app || '未发现') +
+      '</h2>' +
+      '<div class="now-facts">' +
+      row('前台应用', facts.app, !facts.app || facts.app === '未发现') +
+      row(
+        '项目',
+        facts.project || '未发现',
+        !facts.project || facts.project === '未发现',
+        !!facts.projectInferred
+      ) +
+      row('你在电脑前', facts.presence || '不知道', true) +
+      row('Agent', facts.agent || '未知', !facts.agentWaiting) +
+      '</div>' +
+      '<p class="now-trust">在场与前台来自本机；项目名由窗口标题推断。</p></section>'
+    );
+  }
+
+  function renderCanZone(opts) {
+    var need = opts.criticalNeed;
+    var needHtml = need
+      ? '<div class="now-crit">' +
+        '<div><b>' +
+        esc(need.title || '') +
+        '</b><s>' +
+        esc(need.detail || '') +
+        '</s></div>' +
+        '<button type="button" class="now-crit-go" data-now-open-need="' +
+        esc(need.id || '') +
+        '">' +
+        esc(NEED_CTA[need.id] || '查看') +
+        '</button></div>'
+      : '<div class="now-crit-empty">暂时没有需要你决定的事</div>';
+    return (
+      '<section class="now-zone now-zone--can" aria-label="可以">' +
+      '<p class="now-zone-k">可以 <span>有证据才给按钮</span></p>' +
+      needHtml +
+      '<div class="now-can-pair">' +
+      '<button type="button" class="now-can-card" data-now-ctx-open>' +
+      '<span class="now-can-ic">🔍</span><b>查看上下文</b>' +
+      '<s>看看 OneTone 到底知道什么</s></button>' +
+      '<div class="now-can-card is-disabled" aria-disabled="true">' +
+      '<span class="now-can-ic">🤖</span><b>交给 Agent</b>' +
+      '<s>入口尚未接通</s></div></div></section>'
+    );
+  }
+
+  function renderTodayBox(today) {
+    var entries = Array.isArray(today) ? today : [];
+    var sub =
+      entries.length > 0
+        ? entries.length + ' 条真实操作'
+        : '还没有记录';
+    var body;
+    if (!entries.length) {
+      body = '<div class="now-today-empty">今天还没有记录</div>';
+    } else {
+      body =
+        '<div class="now-today-list">' +
+        entries
+          .map(function (e) {
+            return (
+              '<div class="now-today-item">' +
+              '<span class="now-today-tm">' +
+              esc(e.time || '') +
+              '</span>' +
+              '<div class="now-today-tx"><b' +
+              (e.proactive ? ' class="is-proactive"' : '') +
+              '>' +
+              esc(e.text || '') +
+              '</b></div>' +
+              '<span class="now-today-ch" title="' +
+              esc(e.channel || '') +
+              '">' +
+              esc(e.src || '•') +
+              '</span></div>'
+            );
+          })
+          .join('') +
+        '</div>';
+    }
+    return (
+      '<section class="now-today" aria-label="今天你用了什么">' +
+      '<div class="now-today-bh"><h2>今天你用了什么</h2>' +
+      '<span class="now-today-s">' +
+      esc(sub) +
+      '</span></div>' +
+      '<div class="now-today-box">' +
+      body +
+      '</div></section>'
+    );
+  }
+
+  function renderContextPanel(ctx) {
+    if (!ctx || !ctx.open) return '';
+    var rows = Array.isArray(ctx.rows) ? ctx.rows : [];
+    var body = rows.length
+      ? '<ul class="now-ctx-list">' +
+        rows
+          .map(function (r) {
+            return (
+              '<li><span>' +
+              esc(r.k) +
+              '</span><b>' +
+              esc(r.v) +
+              '</b></li>'
+            );
+          })
+          .join('') +
+        '</ul>'
+      : '<p class="now-ctx-empty">它现在什么都不知道</p>';
+    return (
+      '<div class="now-ctx-scr" data-now-ctx-scr role="presentation">' +
+      '<div class="now-ctx-panel" role="dialog" aria-label="查看上下文">' +
+      '<div class="now-ctx-hd"><h3>它现在知道什么</h3>' +
+      '<button type="button" data-now-ctx-close>关闭</button></div>' +
+      body +
+      '</div></div>'
+    );
+  }
+
+  function renderNowView(opts) {
+    var s = opts.snapshot;
+    if (s && s.empty) return renderEmptyView();
+
+    var pending = opts.pending || null;
     var voice = !(s.input && s.input.voice === false);
     var hotkey = resolveHotkey(s.input);
     var listening = !!(opts.voice && opts.voice.listening);
@@ -436,23 +402,16 @@
     return (
       '<div class="now-shell">' +
       renderPending(pending) +
+      renderContextPanel(opts.contextPanel) +
       '<div class="now-body">' +
       '<div class="now-layout">' +
-      cockpit +
-      maybeHtml +
+      renderHero(s) +
+      renderScenesStrip(s) +
       renderVoiceStrip() +
-      todayHtml +
-      '<div class="now-below">' +
-      '<section class="now-scenes-strip" aria-label="我的情景">' +
-      '<div class="now-strip-head"><h2>我的情景</h2>' +
-      '<button type="button" class="now-mgmt-link" data-now-scenes="">情景管理</button></div>' +
-      '<div class="now-strip-row">' +
-      strip +
-      '</div></section>' +
-      '<section class="now-block now-block--need" aria-label="需要你决定">' +
-      '<h2>需要决定</h2>' +
-      needsHtml +
-      '</section></div></div></div>' +
+      renderFacts(opts.facts) +
+      renderCanZone({ criticalNeed: opts.criticalNeed }) +
+      renderTodayBox(s.today) +
+      '</div></div>' +
       renderDock({ voiceOn: voice, listening: listening, hotkey: hotkey }) +
       '</div>'
     );
@@ -581,6 +540,7 @@
 
   global.OneToneNowHomeUi = {
     NEED_CAP: NEED_CAP,
+    NEED_CTA: NEED_CTA,
     esc: esc,
     resolveHotkey: resolveHotkey,
     renderVoiceStrip: renderVoiceStrip,
