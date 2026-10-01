@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>C · 场景优先 · 摄像头</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .desk {
+      display: grid;
+      grid-template-columns: 200px minmax(0, 1fr);
+      min-height: 500px;
+    }
+    @media (max-width: 720px) { .desk { grid-template-columns: 1fr; } }
+    .scenes {
+      background: var(--rail); border-right: 1px solid var(--line);
+      padding: 10px 8px; overflow: auto;
+    }
+    .scene {
+      appearance: none; width: 100%; border: 0; background: transparent; text-align: left;
+      padding: 10px 10px; border-radius: 10px; font: inherit; cursor: pointer;
+      margin-bottom: 2px;
+    }
+    .scene:hover { background: rgba(255, 255, 255, 0.55); }
+    .scene.on { background: #fff; box-shadow: 0 1px 2px rgba(19, 32, 44, 0.06); }
+    .scene .name { display: block; font-size: 13px; font-weight: 750; color: var(--ink); }
+    .scene .meta { display: block; margin-top: 2px; font-size: 11px; font-weight: 550; color: var(--faint); }
+    .scene.on .name { color: var(--cyan-ink); }
+    .work { background: var(--wash); min-width: 0; }
+    .work-head {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 10px 14px; background: #fff; border-bottom: 1px solid var(--line);
+    }
+    .work-head h2 { margin: 0; font-size: 14px; font-weight: 750; }
+    .work-head .grow { flex: 1; }
+    .act-table { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .act-row {
+      display: grid; grid-template-columns: 28px 100px 1fr auto; gap: 10px; align-items: center;
+      padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    }
+    @media (max-width: 640px) {
+      .act-row { grid-template-columns: 28px 1fr; }
+      .act-row .then, .act-row .ops { grid-column: 2; }
+    }
+    .act-row .name { font-size: 13px; font-weight: 750; }
+    .act-row .then {
+      font-size: 12.5px; font-weight: 550; color: var(--muted);
+      font-family: var(--mono);
+    }
+    .act-row .ops { display: flex; gap: 6px; }
+    .lab-overlay {
+      display: none; padding: 14px 16px; background: var(--wash);
+      border-top: 1px solid var(--line);
+    }
+    .lab-overlay.on { display: block; }
+    .lab-banner {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 10px; font-size: 12px; font-weight: 650; color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <strong>C · 场景优先</strong>
+    <span>先选习惯，再编动作</span>
+    <span class="grow"></span>
+    <a href="b-rail-triad.html">← B</a>
+    <a href="index.html">索引</a>
+  </div>
+  <div class="page">
+    <div class="board">
+      <div class="trust">
+        <h1><span class="sub">摄像头 · </span>场景动作</h1>
+        <span class="fg"><i></i><span id="fgName">Cursor</span></span>
+        <button type="button" class="btn" id="btnLab">设置</button>
+        <div class="master">
+          <span id="masterLbl">识别已关</span>
+          <button type="button" class="toggle" id="masterToggle" role="switch" aria-checked="false"></button>
+        </div>
+      </div>
+
+      <div class="desk" id="deskMain">
+        <aside class="scenes" aria-label="场景列表">
+          <p class="sec" style="margin-top:0">习惯</p>
+          <button type="button" class="scene on" data-scene="cursor" data-binds="2">
+            <span class="name">Cursor</span>
+            <span class="meta">2 个动作 · 当前前台</span>
+          </button>
+          <button type="button" class="scene" data-scene="default" data-binds="0">
+            <span class="name">默认</span>
+            <span class="meta">兜底 · 0 个动作</span>
+          </button>
+          <button type="button" class="scene" data-scene="meet" data-binds="1">
+            <span class="name">会议</span>
+            <span class="meta">1 个动作</span>
+          </button>
+          <button type="button" class="scene" data-scene="browse" data-binds="0">
+            <span class="name">浏览器</span>
+            <span class="meta">0 个动作</span>
+          </button>
+        </aside>
+
+        <div class="work">
+          <div class="work-head">
+            <h2 id="workTitle">Cursor · 动作表</h2>
+            <span class="chip">可匹配其他通道</span>
+            <span class="grow"></span>
+            <button type="button" class="btn pri" id="btnAdd">加动作</button>
+          </div>
+          <div class="act-table" id="actTable"></div>
+          <p class="hint-row" style="border-top:1px solid var(--line);border-bottom:0">
+            设置在顶栏次入口 · <b>全局</b>，不随场景变、不混进本表
+          </p>
+        </div>
+      </div>
+
+      <div class="lab-overlay" id="labPanel" hidden>
+        <div class="lab-banner">
+          <span class="chip">全局设置</span>
+          <span>与场景动作表分离</span>
+          <span class="grow"></span>
+          <button type="button" class="btn" id="btnLabBack">← 回场景动作</button>
+        </div>
+        <div class="lab">
+          <div class="lab-grid">
+            <div class="card"><h4>设备</h4><p>默认摄像头 · 720p · 30fps</p></div>
+            <div class="card"><h4>视线校准</h4><p>未开始</p>
+              <div class="row-actions" style="margin-top:8px"><button type="button" class="btn pri">开始校准</button></div>
+            </div>
+            <div class="card"><h4>隐私 · 美颜</h4><p>本机实验室</p></div>
+          </div>
+          <details class="more">
+            <summary>其它（久坐 / 移窗 / 自动静音）</summary>
+            <div class="inner">
+              <div class="card"><h4>久坐 / 移窗 / 布局</h4><p>不进跨通道匹配</p></div>
+              <div class="card"><h4>自动静音</h4><p>独立产品线</p></div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <div class="wire">
+      <b>C</b>：左场景 → 中栏只显示该场景动作表（语义名与按键/口头/Soft Pad 对齐）。设置走顶栏，全局、不进表。
+    </div>
+    <div class="anno">
+      <span><b>先</b> 场景</span>
+      <span><b>再</b> 动作</span>
+      <span><b>设置</b> 次入口全局</span>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var DATA = {
+        cursor: [
+          { id: "away", name: "离席", then: "遮罩当前窗口", on: true },
+          { id: "back", name: "回席", then: "取消遮罩", on: true },
+          { id: "shake", name: "摇头", then: "—", on: false }
+        ],
+        default: [
+          { id: "away", name: "离席", then: "—", on: false },
+          { id: "back", name: "回席", then: "—", on: false }
+        ],
+        meet: [
+          { id: "away", name: "离席", then: "静音会议", on: true },
+          { id: "palm", name: "五指张开", then: "—", on: false }
+        ],
+        browse: [
+          { id: "away", name: "离席", then: "—", on: false }
+        ]
+      };
+      var NAMES = { cursor: "Cursor", default: "默认", meet: "会议", browse: "浏览器" };
+      var active = "cursor";
+
+      var master = document.getElementById("masterToggle");
+      master.addEventListener("click", function () {
+        var on = !master.classList.contains("on");
+        master.classList.toggle("on", on);
+        master.setAttribute("aria-checked", on ? "true" : "false");
+        document.getElementById("masterLbl").textContent = on ? "识别已开" : "识别已关";
+      });
+
+      function renderTable(sceneId) {
+        active = sceneId;
+        var rows = DATA[sceneId] || [];
+        document.getElementById("workTitle").textContent = NAMES[sceneId] + " · 动作表";
+        document.getElementById("fgName").textContent = NAMES[sceneId];
+        var html = rows.map(function (r) {
+          return (
+            '<div class="act-row" data-id="' + r.id + '">' +
+              '<button type="button" class="toggle' + (r.on ? " on" : "") + '" aria-label="启用"></button>' +
+              '<span class="name">' + r.name + "</span>" +
+              '<span class="then">→ ' + r.then + "</span>" +
+              '<div class="ops"><button type="button" class="btn">改结果</button></div>' +
+            "</div>"
+          );
+        }).join("");
+        if (!rows.length) {
+          html = '<div class="card"><p>此场景尚无摄像头动作 · 点「加动作」从目录选</p></div>';
+        }
+        document.getElementById("actTable").innerHTML = html;
+        document.querySelectorAll("#actTable .toggle").forEach(function (t) {
+          t.addEventListener("click", function () {
+            t.classList.toggle("on");
+          });
+        });
+      }
+
+      document.querySelectorAll(".scene").forEach(function (b) {
+        b.addEventListener("click", function () {
+          document.querySelectorAll(".scene").forEach(function (x) {
+            x.classList.toggle("on", x === b);
+          });
+          renderTable(b.getAttribute("data-scene"));
+          showLab(false);
+        });
+      });
+
+      function showLab(on) {
+        var lab = document.getElementById("labPanel");
+        var desk = document.getElementById("deskMain");
+        lab.classList.toggle("on", on);
+        lab.hidden = !on;
+        desk.style.display = on ? "none" : "";
+      }
+
+      document.getElementById("btnLab").addEventListener("click", function () {
+        showLab(true);
+      });
+      document.getElementById("btnLabBack").addEventListener("click", function () {
+        showLab(false);
+      });
+      document.getElementById("btnAdd").addEventListener("click", function () {
+        alert("原型：打开动作目录（与按键/口头同语义名）");
+      });
+
+      renderTable("cursor");
+    })();
+  </script>
+</body>
+</html>

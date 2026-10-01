@@ -28,6 +28,7 @@
   <link rel="stylesheet" href="css/habit-hub-table.css" />
   <link rel="stylesheet" href="css/home-v9.css" />
   <link rel="stylesheet" href="css/home-workbench.css" />
+  <link rel="stylesheet" href="css/now-home.css" />
   <link rel="stylesheet" href="css/agent-proto-panel.css" />
   <link rel="stylesheet" href="css/keys-workflow.css?v=keys-rail-plan-2" />
   <link rel="stylesheet" href="css/flow-desk.css" />
@@ -154,9 +155,9 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                 <span data-i18n="homeWbNavCamera">摄像头</span>
               </button>
-              <button type="button" class="wb-nav-item" data-wb-nav="camera2" id="wbNavCamera2" title="新 IA · 已接真实配置">
+              <button type="button" class="wb-nav-item" data-wb-nav="camera2" id="wbNavCamera2" title="目标管理 · 代管原子">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/><path d="M8 12h4"/></svg>
-                <span data-i18n="homeWbNavCamera2">摄像头 2</span>
+                <span data-i18n="homeWbNavCamera2">摄像头 · 目标</span>
               </button>
               <button type="button" class="wb-nav-item" data-wb-nav="tray" id="wbNavTray">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M9 5V3h6v2"/><path d="M8 12h8"/></svg>
@@ -186,7 +187,8 @@
               <div class="home-workbench-body">
                 <div class="home-center" id="wbCenter">
                   <div class="wb-home-alert" id="wbHomeAlerts" hidden role="status"></div>
-                  <div class="wb-dashboard-stack">
+                  <div class="now-home" id="nowHomeRoot" hidden aria-hidden="true"></div>
+                  <div class="wb-dashboard-stack" id="wbDashboardStack">
                       <section class="wb-scope-top" id="wbScopeTop" aria-label="当前习惯">
                         <header class="wb-context-bound-head">
                           <div class="wb-context-bound-head-copy">
@@ -572,9 +574,9 @@
                     <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                     <span id="settingsNavCameraLabel" data-i18n="settingsNavCamera">摄像头</span>
                   </button>
-                  <button type="button" class="settings-nav-item" data-panel="camera2" id="settingsNavCamera2" title="新 IA · 已接真实配置">
+                  <button type="button" class="settings-nav-item" data-panel="camera2" id="settingsNavCamera2" title="目标管理 · 代管原子">
                     <svg class="settings-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/><path d="M8 12h4"/></svg>
-                    <span id="settingsNavCamera2Label">摄像头 2</span>
+                    <span id="settingsNavCamera2Label" data-i18n="homeWbNavCamera2">摄像头 · 目标</span>
                   </button>
                 </div>
                 <div class="settings-nav-group" id="settingsNavTrayGroup">
@@ -4472,8 +4474,8 @@
 
 <section class="settings-panel drawer-section camera2-page" id="settingsPanelCamera2" hidden>
   <header class="pref-page-head" style="padding:12px 16px 8px;border-bottom:1px solid rgba(26,45,74,.08)">
-    <h3 class="pref-page-title" id="settingsPanelCamera2Title">摄像头 2</h3>
-    <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelCamera2Desc">新 IA 工作台 · 已接真实识别配置与预览；将逐步替换摄像头 1。</p>
+    <h3 class="pref-page-title" id="settingsPanelCamera2Title">摄像头 · 目标</h3>
+    <p class="pref-page-subtitle settings-panel-desc" id="settingsPanelCamera2Desc">我想要… · 目标代管原子 · 画面观感在右侧。</p>
   </header>
   <p id="camera2CompareStatus" class="camera2-compare-status" hidden style="margin:8px 16px;font-size:12px;color:#5a7086"></p>
   <div id="camera2Mount"></div>
@@ -5708,6 +5710,10 @@
   <script src="js/features/home/home-workbench-panels.js"></script>
   <script src="js/features/home/home-workbench-stats.js"></script>
   <script src="js/features/home/home-action-history-card.js"></script>
+  <script src="js/features/now/fixtures.js"></script>
+  <script src="js/features/now/now-model.js"></script>
+  <script src="js/features/now/now-home-ui.js"></script>
+  <script src="js/features/now/now-home.js"></script>
   <script src="js/features/home/home-workbench.js"></script>
   <script src="js/features/settings/channel-config-overview.js"></script>
   <script src="js/features/home/home-v9-bridge.js"></script>

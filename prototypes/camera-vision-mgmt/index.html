@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>摄像头 · 小白心智管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c; --muted: #5a6b7c; --faint: #8494a6; --line: #d5dee8;
+      --paper: #fff; --wash: #f3f7fa; --bg: #e4ebf1;
+      --cyan: #2a9cc4; --cyan-ink: #0f5f7a; --cyan-soft: #e4f2f9; --cyan-bd: #9bc6da;
+      --ok: #15803d; --ok-soft: #e8f7ee; --warn: #b45309; --warn-soft: #fff7ed;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; font-family: var(--font); color: var(--ink);
+      background:
+        radial-gradient(900px 360px at 8% -10%, rgba(42,156,196,.12), transparent 55%),
+        radial-gradient(700px 280px at 92% 0%, rgba(15,95,122,.06), transparent 50%),
+        var(--bg);
+      padding: 28px 20px 56px; -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    h1 { margin: 0 0 6px; font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
+    .lead { margin: 0 0 18px; font-size: 13.5px; color: var(--muted); line-height: 1.55; max-width: 70ch; }
+    .lead b { color: var(--ink); }
+
+    .system {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px;
+      padding: 16px 18px; margin-bottom: 18px;
+      box-shadow: 0 8px 24px rgba(19,32,44,.05);
+    }
+    .system h2 { margin: 0 0 10px; font-size: 14px; font-weight: 750; }
+    .layers {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    @media (max-width: 720px) { .layers { grid-template-columns: 1fr; } }
+    .layer {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 13px; background: var(--wash);
+    }
+    .layer .lv {
+      font-family: var(--mono); font-size: 10px; font-weight: 650; letter-spacing: .06em;
+      color: var(--cyan-ink); margin-bottom: 4px;
+    }
+    .layer .tt { font-size: 14px; font-weight: 750; margin-bottom: 4px; }
+    .layer .ds { font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .layer.primary { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+    .flow {
+      margin-top: 12px; font-size: 12px; color: var(--muted); line-height: 1.5;
+      padding-top: 10px; border-top: 1px dashed var(--line);
+    }
+    .flow code {
+      font-family: var(--mono); font-size: 11px; font-weight: 650; color: var(--cyan-ink);
+      background: var(--cyan-soft); padding: 1px 5px; border-radius: 4px;
+    }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    a.card {
+      display: block; text-decoration: none; color: inherit; background: var(--paper);
+      border: 1px solid var(--line); border-radius: 16px; padding: 16px;
+      box-shadow: 0 8px 24px rgba(19,32,44,.06); transition: border-color .15s, transform .15s;
+    }
+    a.card:hover { border-color: var(--cyan-bd); transform: translateY(-1px); }
+    a.card.rec { border-color: var(--cyan-bd); box-shadow: 0 0 0 1px rgba(42,156,196,.18); }
+    .tag {
+      display: inline-block; font-size: 10px; font-weight: 750; padding: 2px 8px; border-radius: 999px;
+      margin-bottom: 8px; background: var(--cyan-soft); color: var(--cyan-ink); border: 1px solid var(--cyan-bd);
+    }
+    .tag.hot { background: var(--ok-soft); color: var(--ok); border-color: #86efac; }
+    a.card h2 { margin: 0 0 6px; font-size: 16px; font-weight: 750; }
+    a.card p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+    .prev {
+      margin-top: 12px; height: 72px; border-radius: 10px; border: 1px dashed var(--line);
+      background: var(--wash); display: grid; place-items: center; padding: 10px;
+      font-size: 11px; color: var(--faint); font-weight: 550; text-align: center; line-height: 1.4;
+    }
+
+    .map {
+      margin-top: 20px; background: #fff; border: 1px solid var(--line); border-radius: 14px;
+      padding: 14px 16px; overflow: auto;
+    }
+    .map h2 { margin: 0 0 8px; font-size: 13px; font-weight: 750; }
+    .map p { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--faint); font-weight: 750; font-size: 11px; }
+    td b { font-weight: 650; }
+    .old {
+      margin-top: 16px; font-size: 12.5px; color: var(--muted); line-height: 1.55;
+    }
+    .old a { color: var(--cyan-ink); font-weight: 650; text-decoration: none; }
+    .cut {
+      margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .cut li {
+      font-size: 11px; font-weight: 650; padding: 3px 8px; border-radius: 999px;
+      background: var(--warn-soft); color: var(--warn); border: 1px solid #fdba74;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>摄像头 · 按小白心智管</h1>
+    <p class="lead">
+      问题不是缺功能，而是<strong>没有管理系统</strong>：10 个 Pro 标签、任务×触发矩阵、方案包/双模/层开关，
+      都还在「把原子一股脑摊开」。小白想的是「我想怎样」，不是「离席 onAway 绑什么」。
+    </p>
+
+    <div class="system">
+      <h2>管理系统 · 三层（强制）</h2>
+      <div class="layers">
+        <div class="layer primary">
+          <div class="lv">L1 · 默认可见</div>
+          <div class="tt">我想要…</div>
+          <div class="ds">5 个生活目标开关。一句话说明。默认只开 1～2 个推荐。</div>
+        </div>
+        <div class="layer">
+          <div class="lv">L2 · 点开才见</div>
+          <div class="tt">会发生什么</div>
+          <div class="ds">白话因果卡。每目标最多 3 条。可改「结果」进共享动作目录。</div>
+        </div>
+        <div class="layer">
+          <div class="lv">L3 · 默认收起</div>
+          <div class="tt">全部细节</div>
+          <div class="ds">原子开关、阈值、校准、设备。给要调参的人，不进首页。</div>
+        </div>
+      </div>
+      <p class="flow">
+        <b style="color:var(--ink)">画面好看</b>（美颜 / 布局）永远走侧门，<code>不进</code>「我想要」列表。
+        识别原子由目标<strong>代管</strong>：用户开「离开座位保护」，系统代开离席+回席；不必认识原子名。
+      </p>
+      <ul class="cut">
+        <li>砍首页原子罗列</li>
+        <li>砍任务×触发矩阵当主壳</li>
+        <li>砍美颜进自动行为</li>
+      </ul>
+    </div>
+
+    <div class="grid">
+      <a class="card rec" href="../onetone-now-home/index.html">
+        <span class="tag hot">新 · 现在</span>
+        <h2>Now · 理解闭环原型</h2>
+        <p>首页认知验证：Situation→Intent→Projection。摄像头降为视觉设置。</p>
+        <div class="prev">PC Action Surface · Dock 居中 · Phase A 接线</div>
+      </a>
+      <a class="card" href="j-manage-law.html">
+        <span class="tag">J · 决策稿</span>
+        <h2>管理法则落地</h2>
+        <p>四条法则前置 + 对齐 Camera2 CATALOG 的目标壳。砍 10 标签 / 矩阵当主页。</p>
+        <div class="prev">法则 · 真源映射 · 可点目标台</div>
+      </a>
+      <a class="card" href="h-goal-manage.html">
+        <span class="tag">H · 多目标壳</span>
+        <h2>目标管理台</h2>
+        <p>首页只有 5 个「我想要」；展开看白话因果；「全部细节」与「画面」侧门。</p>
+        <div class="prev">目标卡 · 展开因果 · 细节抽屉</div>
+      </a>
+      <a class="card" href="i-one-scene.html">
+        <span class="tag">I · 更省心</span>
+        <h2>一次只顾一件事</h2>
+        <p>同一管理系统，壳更狠：同时只激活一个主场景。可与 J 并存作强弱两档。</p>
+        <div class="prev">单场景运行 · 换场景向导</div>
+      </a>
+    </div>
+
+    <div class="map">
+      <h2>目标 ← 代管原子（真源映射）</h2>
+      <p>小白只看见左列；右列由系统代管，默认不露出名字。</p>
+      <table>
+        <thead>
+          <tr><th>我想要…</th><th>系统代管</th><th>默认白话结果</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>离开座位时保护隐私</b></td>
+            <td>离席 · 回席 ·（可选）隐私卫士</td>
+            <td>离开 → 应用内遮罩；回来 → 恢复</td>
+          </tr>
+          <tr>
+            <td><b>开会时别吵到别人</b></td>
+            <td>距离自动静音</td>
+            <td>人退远 / 无人 → 静音麦克风</td>
+          </tr>
+          <tr>
+            <td><b>用手势代替按键</b></td>
+            <td>摇头 · 故意眨眼 ·（细节里还有五指/OK/握拳/挥手）</td>
+            <td>摇头 → 取消；眨眼 → 激活输入</td>
+          </tr>
+          <tr>
+            <td><b>用眼睛帮忙操作</b></td>
+            <td>注视校准 · 鼠标追踪 · Snap 移窗</td>
+            <td>看哪块屏 · 鼠标/窗口跟上（需先校准）</td>
+          </tr>
+          <tr>
+            <td><b>坐久了提醒休息</b></td>
+            <td>20-20-20 · 眨眼/坐姿提醒</td>
+            <td>在座过久 → 温和提醒看远处</td>
+          </tr>
+          <tr>
+            <td style="color:var(--faint)">画面好看（侧门）</td>
+            <td>美颜 Look · 遮罩 · 窗口布局</td>
+            <td>只改预览/窗口，不触发命令</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="old">
+      前序探索（E 方案包 · F 双模 · G 预览台 · H/I 壳）仍可作对照；落地以 <a href="j-manage-law.html">J · 管理法则</a> 为准。
+      <a href="e-scheme-packs.html">E</a> ·
+      <a href="f-see-vs-do.html">F</a> ·
+      <a href="g-live-console.html">G</a> ·
+      <a href="h-goal-manage.html">H</a> ·
+      <a href="i-one-scene.html">I</a> ·
+      <a href="../camera-triad/index.html">旧 triad</a>
+    </p>
+  </div>
+</body>
+</html>

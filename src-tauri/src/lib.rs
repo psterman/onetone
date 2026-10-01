@@ -46,6 +46,7 @@ mod codex_numpad_layer;
 mod codex_pad_binding_diagnose;
 mod config;
 mod connector_health;
+mod context;
 mod cursor_hook_setup;
 mod cursor_keybindings_setup;
 mod shell_agent_hook_setup;

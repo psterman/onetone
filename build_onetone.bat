@@ -104,6 +104,7 @@ exit /b 0
 set "ONETONE_EXE="
 if exist "%EXE_PRIMARY%" set "ONETONE_EXE=%EXE_PRIMARY%"
 if not defined ONETONE_EXE if exist "%EXE_FALLBACK%" set "ONETONE_EXE=%EXE_FALLBACK%"
+if not defined ONETONE_EXE if exist "%TAURI%\target\debug\onetone.exe" set "ONETONE_EXE=%TAURI%\target\debug\onetone.exe"
 if defined ONETONE_EXE exit /b 0
 REM newest candidate from run_onetone.ps1 search order
 for %%P in (

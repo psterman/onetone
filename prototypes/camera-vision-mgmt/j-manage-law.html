@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>J · 管理法则落地</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c; --muted: #5a6b7c; --faint: #8494a6; --line: #d5dee8;
+      --paper: #fff; --wash: #f3f7fa; --bg: #e4ebf1;
+      --cyan: #2a9cc4; --cyan-ink: #0f5f7a; --cyan-soft: #e4f2f9; --cyan-bd: #9bc6da;
+      --ok: #15803d; --ok-soft: #e8f7ee; --warn: #b45309; --warn-soft: #fff7ed;
+      --bad: #b91c1c; --bad-soft: #fef2f2;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg);
+      -webkit-font-smoothing: antialiased; min-height: 100vh;
+    }
+    .bar {
+      position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center;
+      gap: 10px; padding: 10px 18px; background: #0f1820; color: #a8b6c6; font-size: 12.5px;
+    }
+    .bar strong { color: #fff; }
+    .bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; margin-left: auto; }
+    .bar .pill {
+      font-size: 10.5px; font-weight: 750; padding: 2px 8px; border-radius: 999px;
+      background: rgba(34,197,94,.2); color: #86efac; border: 1px solid rgba(134,239,172,.35);
+    }
+    .page { max-width: 760px; margin: 0 auto; padding: 16px 16px 56px; }
+
+    .law {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px;
+      padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 8px 24px rgba(19,32,44,.05);
+    }
+    .law h1 { margin: 0 0 4px; font-size: 18px; font-weight: 750; letter-spacing: -.02em; }
+    .law .lead { margin: 0 0 12px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .law .lead b { color: var(--ink); }
+    .rules { display: grid; gap: 8px; }
+    .rule {
+      display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: start;
+      padding: 10px 12px; border-radius: 12px; background: var(--wash); border: 1px solid var(--line);
+    }
+    .rule .k {
+      font-family: var(--mono); font-size: 11px; font-weight: 650; color: var(--cyan-ink);
+      letter-spacing: .04em;
+    }
+    .rule .t { font-size: 13.5px; font-weight: 750; }
+    .rule .d { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+
+    .cut {
+      margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    @media (max-width: 560px) { .cut { grid-template-columns: 1fr; } }
+    .cut .box {
+      border-radius: 12px; padding: 10px 12px; font-size: 12px; line-height: 1.45;
+      border: 1px solid var(--line);
+    }
+    .cut .old { background: var(--bad-soft); border-color: #fecaca; color: var(--bad); }
+    .cut .neu { background: var(--ok-soft); border-color: #86efac; color: var(--ok); }
+    .cut .box b { display: block; margin-bottom: 4px; font-size: 11px; font-weight: 750; letter-spacing: .04em; }
+    .cut ul { margin: 0; padding-left: 16px; }
+
+    .map {
+      margin: 14px 0; overflow: auto; background: #fff; border: 1px solid var(--line);
+      border-radius: 14px; padding: 12px 14px;
+    }
+    .map h2 { margin: 0 0 6px; font-size: 13px; font-weight: 750; }
+    .map p { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 7px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--faint); font-weight: 750; font-size: 11px; }
+    td code {
+      font-family: var(--mono); font-size: 10.5px; background: var(--cyan-soft);
+      color: var(--cyan-ink); padding: 1px 5px; border-radius: 4px; font-weight: 650;
+    }
+
+    .shell {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 16px 36px rgba(19,32,44,.08);
+    }
+    .chrome {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fbfdfe;
+    }
+    .chrome h2 { margin: 0; font-size: 15px; font-weight: 750; }
+    .chrome .sub { font-size: 12px; color: var(--muted); width: 100%; margin: -2px 0 0 52px; }
+    @media (max-width: 520px) { .chrome .sub { margin-left: 0; } }
+    .tog {
+      width: 42px; height: 24px; border: 0; border-radius: 999px; background: #c5d3de;
+      position: relative; cursor: pointer; flex: none;
+    }
+    .tog::after {
+      content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+      border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15);
+      transition: transform .15s;
+    }
+    .tog.on { background: var(--cyan); }
+    .tog.on::after { transform: translateX(18px); }
+    .tog.sm { width: 36px; height: 20px; }
+    .tog.sm::after { width: 14px; height: 14px; top: 3px; left: 3px; }
+    .tog.sm.on::after { transform: translateX(16px); }
+    .btn {
+      border: 1px solid var(--line); background: #fff; border-radius: 9px;
+      padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; color: var(--ink);
+    }
+    .btn.pri { background: var(--cyan); border-color: transparent; color: #fff; }
+    .btn.ghost { color: var(--muted); border-color: transparent; background: transparent; }
+    .btn.sm { padding: 4px 8px; font-size: 11px; }
+
+    .rec {
+      margin: 12px 14px 0; padding: 10px 12px; border-radius: 10px;
+      background: var(--ok-soft); border: 1px solid #86efac;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      font-size: 12.5px; color: var(--ok); line-height: 1.4;
+    }
+    .rec strong { color: #14532d; }
+    .rec .btn { margin-left: auto; }
+
+    .goals { padding: 12px 14px 8px; display: flex; flex-direction: column; gap: 8px; }
+    .goal {
+      border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden;
+    }
+    .goal.on { border-color: var(--cyan-bd); background: linear-gradient(180deg, #f7fbfe, #fff); }
+    .goal-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start;
+      padding: 12px 13px;
+    }
+    .goal-head {
+      appearance: none; border: 0; background: transparent; font: inherit; text-align: left;
+      color: inherit; cursor: pointer; padding: 0; width: 100%;
+    }
+    .goal-head .title { font-size: 14.5px; font-weight: 750; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .goal-head .one { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+    .badge {
+      font-size: 10px; font-weight: 750; padding: 1px 6px; border-radius: 999px;
+      background: var(--ok-soft); color: var(--ok); border: 1px solid #86efac;
+    }
+    .need {
+      font-size: 10px; font-weight: 750; padding: 1px 6px; border-radius: 999px;
+      background: var(--warn-soft); color: var(--warn); border: 1px solid #fdba74;
+    }
+    .chev { font-size: 11px; color: var(--faint); font-weight: 650; margin-top: 6px; }
+    .goal.open .chev { color: var(--cyan-ink); }
+    .goal-body {
+      display: none; padding: 0 13px 12px; border-top: 1px dashed var(--line);
+    }
+    .goal.open .goal-body { display: block; }
+    .story { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .cause { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .cause-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center;
+      padding: 8px 10px; border-radius: 10px; background: var(--wash); border: 1px solid var(--line);
+      font-size: 12.5px;
+    }
+    .cause-row .when { font-weight: 650; }
+    .cause-row .then { grid-column: 1; font-size: 12px; color: var(--muted); }
+    .cause-row .then b { color: var(--cyan-ink); font-weight: 650; }
+
+    .doors {
+      display: flex; gap: 8px; flex-wrap: wrap; padding: 8px 14px 14px;
+      border-top: 1px solid var(--line); background: var(--wash);
+    }
+    .doors .btn { flex: 1; min-width: 140px; }
+
+    .mask {
+      position: fixed; inset: 0; background: rgba(15,24,32,.42); z-index: 40;
+      display: none; align-items: flex-end; justify-content: center;
+    }
+    .mask.on { display: flex; }
+    .drawer {
+      width: min(520px, 100%); max-height: 82vh; overflow: auto;
+      background: #fff; border-radius: 16px 16px 0 0; padding: 16px 16px 24px;
+      box-shadow: 0 -12px 40px rgba(0,0,0,.18);
+    }
+    .drawer h3 { margin: 0 0 4px; font-size: 16px; font-weight: 750; }
+    .drawer .dsub { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+    .atom {
+      display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px;
+    }
+    .atom .an { font-weight: 650; }
+    .atom .ad { font-size: 11.5px; color: var(--muted); grid-column: 1; }
+    .look label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; font-weight: 550; padding: 9px 0; border-bottom: 1px solid var(--line);
+    }
+    .pick-list { display: flex; flex-direction: column; gap: 6px; }
+    .pick {
+      appearance: none; text-align: left; border: 1px solid var(--line); background: #fff;
+      border-radius: 10px; padding: 10px 12px; font: inherit; cursor: pointer;
+    }
+    .pick:hover, .pick.on { border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .pick .pn { font-size: 13px; font-weight: 650; display: block; }
+    .pick .pd { font-size: 11.5px; color: var(--muted); }
+
+    .foot {
+      margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.55;
+    }
+    .foot a { color: var(--cyan-ink); font-weight: 650; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>J · 管理法则落地</strong>
+    <span class="pill">决策稿 · 对齐 Camera2 真源</span>
+    <a href="index.html">← 索引</a>
+  </div>
+
+  <div class="page">
+    <section class="law">
+      <h1>摄像头怎么管：四条法则</h1>
+      <p class="lead">
+        不按「能力 taxonomy」摊开，按小白<strong>我想怎样</strong>代管。
+        下面可点壳就是落地形态；法则优先于壳。
+      </p>
+      <div class="rules">
+        <div class="rule">
+          <div class="k">LAW 1</div>
+          <div>
+            <div class="t">首页只问目标</div>
+            <div class="d">可见面 = 5 个「我想要…」开关。原子名（离席、摇头、Snap…）默认不出现。</div>
+          </div>
+        </div>
+        <div class="rule">
+          <div class="k">LAW 2</div>
+          <div>
+            <div class="t">目标代管原子</div>
+            <div class="d">开目标 = 系统按默认包打开背后能力；关目标 = 整包关。用户不必认识 bindKey。</div>
+          </div>
+        </div>
+        <div class="rule">
+          <div class="k">LAW 3</div>
+          <div>
+            <div class="t">展开才看因果</div>
+            <div class="d">「会发生什么」最多 3 条白话。改结果 → 共享动作目录（与按键/语音同一套）。</div>
+          </div>
+        </div>
+        <div class="rule">
+          <div class="k">LAW 4</div>
+          <div>
+            <div class="t">细节与画面走侧门</div>
+            <div class="d">阈值 / 校准 / 额外手势进「全部细节」。美颜·面具·布局进「画面好看」，永不进目标列表。</div>
+          </div>
+        </div>
+      </div>
+      <div class="cut">
+        <div class="box old">
+          <b>砍掉作一级壳</b>
+          <ul>
+            <li>Camera1 · 10 个 Pro 子标签</li>
+            <li>Camera2 · 任务×触发矩阵当主页</li>
+            <li>方案包 / 双模 / 层开关当主叙事</li>
+          </ul>
+        </div>
+        <div class="box neu">
+          <b>保留作实现</b>
+          <ul>
+            <li>CATALOG 原子仍是真源</li>
+            <li>D 派发挑选器只挂在「改结果」</li>
+            <li>画面观感抽屉独立存在</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div class="map">
+      <h2>真源映射（Camera2 CATALOG → 目标）</h2>
+      <p>小白只看见左列。右列由目标代管；久坐从「离开座位」任务拆出——心智上不是同一件事。</p>
+      <table>
+        <thead>
+          <tr><th>我想要…</th><th>代管原子</th><th>默认结果</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>离开座位时保护隐私</b></td>
+            <td><code>away</code> <code>back</code> ·（可选）<code>guard</code></td>
+            <td>遮罩 / 恢复语音</td>
+          </tr>
+          <tr>
+            <td><b>开会时别吵到别人</b></td>
+            <td><code>automute</code></td>
+            <td>退远静麦 · 靠近开麦</td>
+          </tr>
+          <tr>
+            <td><b>用手势代替按键</b></td>
+            <td>首页：<code>shake</code> <code>blink</code> · 细节：掌/OK/拳/挥</td>
+            <td>Esc / 激活输入</td>
+          </tr>
+          <tr>
+            <td><b>用眼睛帮忙操作</b></td>
+            <td>校准 · <code>track</code> · <code>snap</code></td>
+            <td>鼠标/窗口跟随（需校准）</td>
+          </tr>
+          <tr>
+            <td><b>坐久了提醒休息</b></td>
+            <td><code>wellness</code>（20-20-20 等）</td>
+            <td>本地温和提醒</td>
+          </tr>
+          <tr>
+            <td style="color:var(--faint)">画面好看（侧门）</td>
+            <td>Look / Mask / 微调 / 布局场景</td>
+            <td>只改预览，不派发命令</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="shell">
+      <div class="chrome">
+        <button type="button" class="tog on" id="master" aria-label="摄像头总开关"></button>
+        <h2>摄像头</h2>
+        <div class="sub" id="summary">本机识别 · 不上传</div>
+      </div>
+
+      <div class="rec" id="recBar">
+        <div><strong>新手推荐</strong> · 先开「离开保护」+「开会静音」。与现网「一键推荐」同包，换皮不换真源。</div>
+        <button type="button" class="btn pri sm" id="applyRec">一键照做</button>
+      </div>
+
+      <div class="goals" id="goals"></div>
+
+      <div class="doors">
+        <button type="button" class="btn" id="btnLook">画面好看…</button>
+        <button type="button" class="btn ghost" id="btnDetail">全部细节…</button>
+      </div>
+    </div>
+
+    <p class="foot">
+      相对 H：法则前置、映射对齐 CATALOG、L2 不再泄漏原子名、修掉开关嵌套按钮。
+      相对 I：允许多目标并开（会议静音 + 离开保护可同时）。
+      <b>已落地</b>：产品 Camera 2 主页已切到本壳（<code>camera2-workbench.js</code> v7）。
+      更省心的单场景壳仍见 <a href="i-one-scene.html">I</a>。
+    </p>
+  </div>
+
+  <div class="mask" id="maskDetail">
+    <div class="drawer">
+      <h3>全部细节</h3>
+      <p class="dsub">这里才露出 CATALOG 原子名。改这里会标记对应目标为「已自定义」。</p>
+      <div id="atomList"></div>
+      <button type="button" class="btn" style="margin-top:12px;width:100%" data-close="maskDetail">关闭</button>
+    </div>
+  </div>
+
+  <div class="mask" id="maskLook">
+    <div class="drawer look">
+      <h3>画面好看</h3>
+      <p class="dsub">对应现网「画面观感」：妆效 / 面具 / 微调。不触发离席、手势、静音。</p>
+      <label>妆效
+        <select style="font:inherit;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--line)">
+          <option>原图</option>
+          <option selected>自然</option>
+          <option>奶油肌</option>
+          <option>水光感</option>
+          <option>元气</option>
+        </select>
+      </label>
+      <label>隐私面具
+        <select style="font:inherit;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--line)">
+          <option selected>关闭</option>
+          <option>柔雾</option>
+          <option>元气</option>
+          <option>粉喵</option>
+        </select>
+      </label>
+      <label>美白
+        <select style="font:inherit;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--line)">
+          <option>关</option><option selected>轻</option><option>中</option><option>重</option>
+        </select>
+      </label>
+      <label>窗口布局
+        <select style="font:inherit;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--line)">
+          <option>不使用</option>
+          <option>会议专注</option>
+          <option>写码对照</option>
+          <option>单窗沉浸</option>
+        </select>
+      </label>
+      <button type="button" class="btn" style="margin-top:12px;width:100%" data-close="maskLook">关闭</button>
+    </div>
+  </div>
+
+  <div class="mask" id="maskAct">
+    <div class="drawer">
+      <h3 id="actTitle">改结果</h3>
+      <p class="dsub">共享动作目录（示意 · 同 presenceActions）</p>
+      <div class="pick-list" id="actPicks"></div>
+      <button type="button" class="btn" style="margin-top:12px;width:100%" data-close="maskAct">取消</button>
+    </div>
+  </div>
+
+  <script>
+    const ACTIONS = [
+      { id: "privacyScreen", name: "应用内遮罩", desc: "privacyScreen" },
+      { id: "resumeVoice", name: "恢复语音 / 取消遮罩", desc: "resumeVoice" },
+      { id: "pauseVoice", name: "暂停语音", desc: "pauseVoice" },
+      { id: "pressEsc", name: "取消 / Esc", desc: "pressEsc" },
+      { id: "pressCtrlI", name: "激活语音输入", desc: "pressCtrlI" },
+      { id: "lowPowerMode", name: "低功耗", desc: "lowPowerMode" },
+      { id: "toggleOralListen", name: "切换口头听写", desc: "toggleOralListen" },
+      { id: "none", name: "不绑定", desc: "none" },
+    ];
+
+    const GOALS = [
+      {
+        id: "privacy",
+        title: "离开座位时保护隐私",
+        one: "人不在电脑前时挡住画面；回来再恢复。",
+        recommend: true,
+        on: true,
+        need: null,
+        story: "对应 CATALOG：离席 / 回席。隐私卫士默认关，要开去「全部细节」。",
+        causes: [
+          { id: "away", when: "你离开座位一会儿", thenId: "privacyScreen" },
+          { id: "back", when: "你回到座位", thenId: "resumeVoice" },
+        ],
+        atoms: [
+          { id: "away", name: "离席", home: true },
+          { id: "back", name: "回席", home: true },
+          { id: "guard", name: "隐私卫士", home: false },
+        ],
+      },
+      {
+        id: "meeting",
+        title: "开会时别吵到别人",
+        one: "人退远或画面没人时，自动静音麦克风。",
+        recommend: true,
+        on: true,
+        need: null,
+        story: "对应 automute。与离开保护可同时开：一个管画面，一个管麦。",
+        causes: [
+          { id: "far", when: "你退远或画面无人", thenId: "pauseVoice", thenLabel: "静音麦克风" },
+          { id: "near", when: "你靠近回来", thenId: "resumeVoice", thenLabel: "取消静音" },
+        ],
+        atoms: [{ id: "automute", name: "开会静音", home: true }],
+      },
+      {
+        id: "gesture",
+        title: "用手势代替按键",
+        one: "摇头取消，故意眨眼开始输入。",
+        recommend: false,
+        on: false,
+        need: null,
+        story: "首页只代管脸部两个；手部四手势默认关，进细节。",
+        causes: [
+          { id: "shake", when: "你摇头", thenId: "pressEsc" },
+          { id: "blink", when: "你故意眨眼", thenId: "pressCtrlI" },
+        ],
+        atoms: [
+          { id: "shake", name: "摇头", home: true },
+          { id: "blink", name: "故意眨眼", home: true },
+          { id: "palm", name: "五指张开", home: false },
+          { id: "ok", name: "OK 手势", home: false },
+          { id: "fist", name: "握拳", home: false },
+          { id: "wave", name: "挥手", home: false },
+        ],
+      },
+      {
+        id: "gaze",
+        title: "用眼睛帮忙操作",
+        one: "看哪块屏幕，鼠标或窗口跟着过去。",
+        recommend: false,
+        on: false,
+        need: "需先校准",
+        story: "第一次打开引导校准。未校准前不能开。",
+        causes: [
+          { id: "track", when: "你看向某块屏", thenId: "none", thenLabel: "鼠标跟随（功能开关）" },
+          { id: "snap", when: "拖窗口时看向目标屏", thenId: "none", thenLabel: "Snap 移窗（功能开关）" },
+        ],
+        atoms: [
+          { id: "calib", name: "注视校准", home: true },
+          { id: "track", name: "鼠标追踪", home: true },
+          { id: "snap", name: "Snap 移窗", home: true },
+        ],
+        calibrated: false,
+      },
+      {
+        id: "wellness",
+        title: "坐久了提醒休息",
+        one: "在座过久时，提醒你看远处歇一会儿。",
+        recommend: false,
+        on: false,
+        need: null,
+        story: "从 Camera2「离开座位」任务拆出：心智上不是离开保护。",
+        causes: [
+          { id: "2020", when: "连续在座超过一段时间", thenId: "none", thenLabel: "温和提醒" },
+        ],
+        atoms: [{ id: "wellness", name: "久坐提醒", home: true }],
+      },
+    ];
+
+    let openId = "privacy";
+
+    function actName(id, fallback) {
+      if (fallback) return fallback;
+      return ACTIONS.find((a) => a.id === id)?.name || id;
+    }
+
+    function updateSummary() {
+      const n = GOALS.filter((g) => g.on).length;
+      document.getElementById("summary").textContent = `本机识别 · 不上传 · 已开 ${n} 个目标`;
+    }
+
+    function render() {
+      updateSummary();
+      const goalsEl = document.getElementById("goals");
+      goalsEl.innerHTML = GOALS.map((g) => {
+        const open = openId === g.id;
+        return `
+          <div class="goal ${g.on ? "on" : ""} ${open ? "open" : ""}" data-id="${g.id}">
+            <div class="goal-row">
+              <button type="button" class="goal-head" data-toggle="${g.id}">
+                <div class="title">
+                  ${g.title}
+                  ${g.recommend && g.on ? `<span class="badge">推荐</span>` : ""}
+                  ${g.need ? `<span class="need">${g.need}</span>` : ""}
+                </div>
+                <div class="one">${g.one}</div>
+                <div class="chev">${open ? "收起会发生什么 ▲" : "看看会发生什么 ▼"}</div>
+              </button>
+              <button type="button" class="tog sm ${g.on ? "on" : ""}" data-switch="${g.id}" aria-label="开关 ${g.title}"></button>
+            </div>
+            <div class="goal-body">
+              <p class="story">${g.story}</p>
+              <div class="cause">
+                ${g.causes.map((c) => `
+                  <div class="cause-row">
+                    <span class="when">${c.when}</span>
+                    <button type="button" class="btn sm" data-act="${g.id}:${c.id}">改结果</button>
+                    <span class="then">→ 系统会：<b>${actName(c.thenId, c.thenLabel)}</b></span>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      goalsEl.querySelectorAll("[data-toggle]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.toggle;
+          openId = openId === id ? null : id;
+          render();
+        });
+      });
+      goalsEl.querySelectorAll("[data-switch]").forEach((sw) => {
+        sw.addEventListener("click", () => {
+          const g = GOALS.find((x) => x.id === sw.dataset.switch);
+          if (g.id === "gaze" && !g.on && !g.calibrated) {
+            if (confirm("用眼睛帮忙需要先做一次约 30 秒的注视校准。现在开始？")) {
+              g.calibrated = true;
+              g.need = "已校准";
+              g.on = true;
+            }
+          } else {
+            g.on = !g.on;
+          }
+          render();
+        });
+      });
+      goalsEl.querySelectorAll("[data-act]").forEach((b) => {
+        b.addEventListener("click", () => {
+          const [goalId, causeId] = b.dataset.act.split(":");
+          openAct(goalId, causeId);
+        });
+      });
+    }
+
+    function openAct(goalId, causeId) {
+      const g = GOALS.find((x) => x.id === goalId);
+      const c = g.causes.find((x) => x.id === causeId);
+      document.getElementById("actTitle").textContent = `改结果 · ${c.when}`;
+      document.getElementById("actPicks").innerHTML = ACTIONS.map((a) => `
+        <button type="button" class="pick ${a.id === c.thenId ? "on" : ""}" data-aid="${a.id}">
+          <span class="pn">${a.name}</span>
+          <span class="pd">${a.desc}</span>
+        </button>
+      `).join("");
+      document.querySelectorAll("#actPicks .pick").forEach((p) => {
+        p.addEventListener("click", () => {
+          c.thenId = p.dataset.aid;
+          delete c.thenLabel;
+          document.getElementById("maskAct").classList.remove("on");
+          render();
+        });
+      });
+      document.getElementById("maskAct").classList.add("on");
+    }
+
+    function renderAtoms() {
+      const rows = [];
+      GOALS.forEach((g) => {
+        g.atoms.forEach((a) => {
+          rows.push({
+            goal: g.title,
+            name: a.name,
+            id: a.id,
+            on: g.on && a.home,
+            home: a.home,
+          });
+        });
+      });
+      document.getElementById("atomList").innerHTML = rows.map((r) => `
+        <div class="atom">
+          <span class="an">${r.name} <code style="font-family:var(--mono);font-size:10px;color:var(--faint)">${r.id}</code></span>
+          <button type="button" class="tog sm ${r.on ? "on" : ""}" disabled title="示意：由目标代管"></button>
+          <span class="ad">隶属 · ${r.goal}${r.home ? "" : " · 默认关（进阶）"}</span>
+        </div>
+      `).join("");
+    }
+
+    document.getElementById("applyRec").addEventListener("click", () => {
+      GOALS.forEach((g) => { g.on = !!g.recommend; });
+      openId = "privacy";
+      document.getElementById("recBar").style.display = "none";
+      render();
+    });
+    document.getElementById("master").addEventListener("click", (e) => e.currentTarget.classList.toggle("on"));
+    document.getElementById("btnLook").addEventListener("click", () => document.getElementById("maskLook").classList.add("on"));
+    document.getElementById("btnDetail").addEventListener("click", () => {
+      renderAtoms();
+      document.getElementById("maskDetail").classList.add("on");
+    });
+    document.querySelectorAll("[data-close]").forEach((b) => {
+      b.addEventListener("click", () => document.getElementById(b.dataset.close).classList.remove("on"));
+    });
+    ["maskDetail", "maskLook", "maskAct"].forEach((id) => {
+      document.getElementById(id).addEventListener("click", (e) => {
+        if (e.target.id === id) e.currentTarget.classList.remove("on");
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>

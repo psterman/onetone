@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>M · 动作中心 · 四通道列</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .chrome {
+      padding: 14px 16px; border-bottom: 1px solid var(--line); background: #fbfdfe;
+    }
+    .chrome h2 { margin: 0 0 4px; font-size: 16px; font-weight: 750; }
+    .chrome p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+    .filters {
+      display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--line);
+    }
+    .filters button {
+      appearance: none; border: 1px solid var(--line); background: #fff; border-radius: 999px;
+      padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 650; color: var(--muted); cursor: pointer;
+    }
+    .filters button.on { background: var(--cyan); border-color: transparent; color: #fff; }
+    .table-wrap { overflow: auto; padding: 8px 10px 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 640px; }
+    th {
+      text-align: left; padding: 10px 8px; font-size: 11px; font-weight: 750; color: var(--faint);
+      border-bottom: 1px solid var(--line); position: sticky; top: 0; background: #fff;
+    }
+    td { padding: 12px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    td.act-name { font-weight: 750; }
+    td.act-name .id { display: block; font-family: var(--mono); font-size: 10.5px; font-weight: 650; color: var(--faint); margin-top: 2px; }
+    .cell {
+      display: flex; flex-direction: column; gap: 4px; min-height: 36px;
+    }
+    .bind {
+      font-size: 11.5px; font-weight: 650; padding: 4px 8px; border-radius: 8px;
+      background: var(--ok-soft); color: var(--ok); border: 1px solid #86efac; cursor: pointer;
+    }
+    .bind.empty {
+      background: var(--wash); color: var(--faint); border: 1px dashed var(--line); font-weight: 550;
+    }
+    .bind:hover { filter: brightness(.97); }
+    .note {
+      margin: 0 14px 14px; padding: 10px 12px; border-radius: 10px; background: var(--violet-soft);
+      border: 1px solid #ddd6fe; font-size: 12px; color: var(--violet); line-height: 1.45;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>M · 动作中心</strong>
+    <span class="pill">动作优先 · 谁触发它</span>
+    <a href="index.html">← 索引</a>
+  </div>
+  <div class="page">
+    <p class="thesis">
+      <b>架构：</b>与通道页相反——以<strong>共享动作</strong>为行，四通道为列。
+      点空格 = 去该通道补绑定（深链）；已绑格显示触发名。这是「动作被其它页面调用」的总览台，
+      不是摄像头日常壳（日常仍用 K/L）。
+    </p>
+    <div class="shell">
+      <div class="chrome">
+        <h2>共享动作 · 跨通道调用表</h2>
+        <p>同一 action_id 可被多通道触发。摄像头列只出现 A 触发器；B/C 不占格。</p>
+      </div>
+      <div class="filters" id="filters">
+        <button type="button" class="on" data-f="all">全部</button>
+        <button type="button" data-f="cam">有摄像头绑定</button>
+        <button type="button" data-f="multi">多通道已共用</button>
+        <button type="button" data-f="orphan">仅一通道</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="min-width:160px">共享动作</th>
+              <th>按键</th>
+              <th>语音</th>
+              <th>SoftPad</th>
+              <th>摄像头 (A)</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <p class="note">
+        调用关系：运行时一律 <code style="font-family:var(--mono);font-size:11px">route_semantic_action(action_id)</code>。
+        通道只负责「何时触发」，不复制动作实现。
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const ROWS = [
+      {
+        id: "pressEsc", name: "取消 / Esc",
+        keys: "Esc 键", voice: "「取消」", soft: "—", cam: "摇头",
+      },
+      {
+        id: "pressCtrlI", name: "激活语音输入",
+        keys: "—", voice: "「开始听写」", soft: "听写键", cam: "故意眨眼 · 五指",
+      },
+      {
+        id: "privacyScreen", name: "应用内遮罩",
+        keys: "—", voice: "—", soft: "—", cam: "离席",
+      },
+      {
+        id: "resumeVoice", name: "恢复语音",
+        keys: "—", voice: "—", soft: "—", cam: "回席",
+      },
+      {
+        id: "agent.reject", name: "拒绝",
+        keys: "Ctrl+.", voice: "「拒绝」", soft: "拒绝键", cam: "—",
+      },
+      {
+        id: "agent.approve", name: "批准",
+        keys: "—", voice: "—", soft: "批准键", cam: "OK（Pending）",
+      },
+      {
+        id: "workspace.applyLayout", name: "恢复工作区布局",
+        keys: "F8", voice: "—", soft: "—", cam: "—",
+      },
+      {
+        id: "overlay.toggle", name: "显示/隐藏面板",
+        keys: "—", voice: "—", soft: "—", cam: "—",
+      },
+    ];
+
+    let filter = "all";
+
+    function filled(v) { return v && v !== "—"; }
+
+    function match(r) {
+      const n = [r.keys, r.voice, r.soft, r.cam].filter(filled).length;
+      if (filter === "cam") return filled(r.cam);
+      if (filter === "multi") return n >= 2;
+      if (filter === "orphan") return n === 1;
+      return true;
+    }
+
+    function cell(v, ch) {
+      if (filled(v)) return `<button type="button" class="bind" data-go="${ch}" title="在${ch}页查看">${v}</button>`;
+      return `<button type="button" class="bind empty" data-go="${ch}" title="去${ch}页绑定">＋ 绑定</button>`;
+    }
+
+    function render() {
+      const rows = ROWS.filter(match);
+      document.getElementById("tbody").innerHTML = rows.map((r) => `
+        <tr>
+          <td class="act-name">${r.name}<span class="id">${r.id}</span></td>
+          <td><div class="cell">${cell(r.keys, "按键")}</div></td>
+          <td><div class="cell">${cell(r.voice, "语音")}</div></td>
+          <td><div class="cell">${cell(r.soft, "SoftPad")}</div></td>
+          <td><div class="cell">${cell(r.cam, "摄像头")}</div></td>
+        </tr>`).join("");
+      document.querySelectorAll("[data-go]").forEach((b) => {
+        b.onclick = () => alert(`示意深链：打开「${b.dataset.go}」页并定位到此 action_id。\n摄像头只会列出 A 触发器可选。`);
+      });
+    }
+
+    document.querySelectorAll("#filters [data-f]").forEach((b) => {
+      b.onclick = () => {
+        filter = b.dataset.f;
+        document.querySelectorAll("#filters button").forEach((x) => x.classList.toggle("on", x === b));
+        render();
+      };
+    });
+    render();
+  </script>
+</body>
+</html>

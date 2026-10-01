@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>摄像头 · 场景自动化构建器（方案三）</title>
+<style>
+:root{
+  --primary:#0ea5e9;--primary-d:#0284c7;--primary-l:#38bdf8;--primary-soft:#e0f2fe;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f8fafc;--card:#fff;
+  --ok:#10b981;--ok-soft:#ecfdf5;--warn:#f59e0b;--warn-soft:#fffbeb;
+  --risk:#ef4444;--risk-soft:#fef2f2;--violet:#8b5cf6;--violet-soft:#f5f3ff;
+  --r:12px;--sh:0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04);
+  --sh2:0 4px 16px rgba(15,23,42,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+code{font-family:Consolas,monospace;font-size:12px;background:#f1f5f9;padding:1px 5px;border-radius:4px;color:#0369a1}
+
+/* ===== 视图切换器 ===== */
+.vbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);padding:0 24px}
+.vbar-in{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:6px;height:56px}
+.vbar .brand{font-weight:700;font-size:15px;margin-right:14px;letter-spacing:-.2px;white-space:nowrap}
+.vbtn{background:none;border:0;padding:7px 13px;border-radius:8px;font-size:13.5px;color:var(--ink2);font-weight:500}
+.vbtn:hover{background:var(--line2)}
+.vbtn.on{background:var(--primary);color:#fff}
+.vbar .sp{margin-left:auto;font-size:12px;color:var(--ink3)}
+.wrap{max-width:1400px;margin:0 auto;padding:26px 24px 70px}
+.view{display:none}.view.on{display:block}
+
+/* ===== 概览 ===== */
+.lead{font-size:15px;color:var(--ink2);max-width:900px;margin:0 0 22px}
+h2.sec{font-size:18px;margin:34px 0 12px;display:flex;align-items:center;gap:9px;letter-spacing:-.2px}
+h2.sec .n{font-size:12px;color:var(--ink3);font-weight:500}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:17px;box-shadow:var(--sh)}
+.card.bad{border-left:3px solid var(--ink4)}
+.card.good{border-left:3px solid var(--ok)}
+.card h4{margin:0 0 9px;font-size:14.5px}
+.card p{margin:0 0 8px;font-size:13px;color:var(--ink2)}
+.card ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink2)}
+.card li{margin:3px 0}
+.tagline{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;font-weight:600;margin-bottom:8px}
+.t-red{background:var(--risk-soft);color:var(--risk)}
+.t-amber{background:var(--warn-soft);color:#b45309}
+.t-green{background:var(--ok-soft);color:#047857}
+
+/* ===== 诊断 ===== */
+.fixbar{background:linear-gradient(135deg,#fef2f2,#fff);border:1px solid #fecaca;border-radius:var(--r);
+  padding:17px 20px;margin:18px 0}
+.fixbar h3{margin:0 0 10px;font-size:15px;color:#b91c1c}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:var(--r);overflow:hidden;
+  box-shadow:var(--sh);font-size:12.5px;margin:12px 0}
+th{background:#f8fafc;text-align:left;padding:10px 12px;font-weight:600;color:var(--ink2);
+  border-bottom:1px solid var(--line);font-size:12px;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.yes{color:var(--ok);font-weight:600}.no{color:var(--risk);font-weight:600}
+
+/* ===== 应用外壳 ===== */
+.app{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--card);box-shadow:var(--sh2)}
+.appbar{display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid var(--line);background:#fff}
+.appbar .t{font-weight:700;font-size:15px}
+.crumb{font-size:12.5px;color:var(--ink3)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:99px}
+.p-blue{background:var(--primary-soft);color:var(--primary-d)}
+.p-green{background:var(--ok-soft);color:#047857}
+.p-amber{background:var(--warn-soft);color:#b45309}
+.p-red{background:var(--risk-soft);color:#b91c1c}
+.p-gray{background:var(--line2);color:var(--ink2)}
+.appbar .r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 13px;font-size:13px;color:var(--ink2);font-weight:500}
+.btn:hover{background:var(--line2)}
+.btn-p{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn-p:hover{background:var(--primary-d)}
+.sw{width:40px;height:23px;border-radius:99px;background:var(--ink4);border:0;position:relative;transition:.18s;flex:none}
+.sw::after{content:"";position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.18s}
+.sw.on{background:var(--primary)}.sw.on::after{left:19.5px}
+
+.body{display:grid;grid-template-columns:212px 1fr 264px;min-height:640px}
+/* 左 */
+.rail{border-right:1px solid var(--line);padding:15px 12px;background:#fcfdfe}
+.rail h6{margin:0 0 9px 8px;font-size:11px;color:var(--ink3);font-weight:700;letter-spacing:.5px}
+.scn{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;margin-bottom:2px;
+  border:1px solid transparent;cursor:pointer;width:100%;background:none;text-align:left}
+.scn:hover{background:var(--line2)}
+.scn.on{background:var(--primary-soft);border-color:#bae6fd}
+.scn .ic{width:26px;height:26px;border-radius:8px;background:var(--line2);display:grid;place-items:center;font-size:14px;flex:none}
+.scn.on .ic{background:#fff}
+.scn .nm{font-size:13px;font-weight:600;flex:1;min-width:0}
+.scn.on .nm{color:var(--primary-d)}
+.scn .ct{font-size:11px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.rail .new{margin-top:9px;width:100%;border:1px dashed var(--ink4);background:none;border-radius:9px;
+  padding:8px;font-size:12.5px;color:var(--ink3)}
+.rail .new:hover{border-color:var(--primary);color:var(--primary-d);background:var(--primary-soft)}
+/* 中 */
+.main{padding:20px 24px;overflow:hidden}
+.scnhead{margin-bottom:18px}
+.scnhead h3{margin:0 0 5px;font-size:19px;letter-spacing:-.2px;display:flex;align-items:center;gap:9px}
+.scnhead p{margin:0;font-size:13px;color:var(--ink2)}
+.rules{display:flex;flex-direction:column;gap:9px}
+.rule{display:flex;align-items:center;gap:13px;padding:13px 15px;border:1px solid var(--line);
+  border-radius:11px;background:#fff;cursor:pointer;transition:.15s}
+.rule:hover{border-color:var(--primary-l);box-shadow:0 2px 10px rgba(14,165,233,.08)}
+.rule.off{opacity:.5}
+.sig{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.sig .dot{width:7px;height:7px;border-radius:50%;background:var(--primary);flex:none}
+.rule .cond{font-size:12px;color:var(--ink3);white-space:nowrap}
+.arrow{color:var(--ink4);font-size:15px;flex:none}
+.act{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;min-width:0}
+.act .bd{font-size:11.5px;font-weight:500;padding:2px 7px;border-radius:5px;background:var(--line2);color:var(--ink2);white-space:nowrap}
+.act .bd.safe{background:var(--ok-soft);color:#047857}
+.act .bd.pend{background:var(--warn-soft);color:#b45309}
+.rule .sp{flex:1}
+.rule .edit{opacity:0;font-size:12px;color:var(--primary-d);font-weight:600}
+.rule:hover .edit{opacity:1}
+.addrule{margin-top:11px;width:100%;border:1px dashed var(--ink4);background:none;border-radius:11px;
+  padding:12px;font-size:13px;color:var(--ink3);font-weight:500}
+.addrule:hover{border-color:var(--primary);color:var(--primary-d);background:var(--primary-soft)}
+.empty{text-align:center;padding:46px 20px;color:var(--ink3);font-size:13px}
+/* 右 */
+.side{border-left:1px solid var(--line);padding:15px 14px;background:#fcfdfe}
+.side h6{margin:0 0 10px;font-size:11px;color:var(--ink3);font-weight:700;letter-spacing:.5px}
+.preview{border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#0f172a;aspect-ratio:4/3;
+  display:grid;place-items:center;position:relative;margin-bottom:9px}
+.preview .live{position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;background:rgba(16,185,129,.9);
+  color:#fff;padding:2px 7px;border-radius:5px;letter-spacing:.4px}
+.preview .ph{color:#64748b;font-size:12px;text-align:center;padding:0 14px}
+.meter{margin-bottom:11px}
+.meter .mt{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.meter .mt b{font-weight:600}
+.meter .mt span{color:var(--ink3);font-size:11.5px}
+.bar{height:5px;background:var(--line2);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:99px}
+.bar i.w{background:var(--warn)}.bar i.g{background:var(--ink4)}
+.sbox{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:9px;background:#fff}
+.sbox.warn{background:var(--warn-soft);border-color:#fde68a}
+.sbox .sh{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;margin-bottom:5px}
+.sbox p{margin:0;font-size:11.5px;color:var(--ink2);line-height:1.55}
+.linkbtn{background:none;border:0;color:var(--primary-d);font-size:12px;font-weight:600;padding:6px 0 0}
+.eff{font-size:12px;line-height:1.75;color:var(--ink2)}
+.eff li{margin:5px 0;list-style:none;padding-left:15px;position:relative}
+.eff li::before{content:"→";position:absolute;left:0;color:var(--ink4)}
+
+/* ===== 弹层 ===== */
+.mask{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;place-items:center;z-index:100;padding:24px}
+.mask.on{display:grid}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:760px;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.mhead{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;position:sticky;top:0;background:#fff;z-index:2}
+.mhead h3{margin:0;font-size:17px;flex:1}
+.x{background:none;border:0;font-size:22px;color:var(--ink3);line-height:1;padding:0 4px}
+.mbody{padding:20px 22px}
+.step{display:flex;align-items:center;gap:8px;margin-bottom:18px;font-size:12.5px;color:var(--ink3)}
+.step .s{display:flex;align-items:center;gap:6px}
+.step .n{width:20px;height:20px;border-radius:50%;background:var(--line2);display:grid;place-items:center;font-size:11px;font-weight:700}
+.step.on .n{background:var(--primary);color:#fff}
+.step.on{color:var(--ink);font-weight:600}
+.step .bar2{flex:1;height:1px;background:var(--line)}
+.blib{display:grid;grid-template-columns:repeat(auto-fill,minmax(198px,1fr));gap:9px}
+.ci{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff;text-align:left;transition:.14s}
+.ci:hover:not(.dis){border-color:var(--primary);box-shadow:0 2px 10px rgba(14,165,233,.1)}
+.ci.sel{border-color:var(--primary);background:var(--primary-soft);box-shadow:0 0 0 2px rgba(14,165,233,.12)}
+.ci.dis{opacity:.45;cursor:not-allowed}
+.ci .cn{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.ci .cd{font-size:11.5px;color:var(--ink3);line-height:1.5}
+.ci .cb{margin-top:7px;display:flex;gap:5px;flex-wrap:wrap}
+.grp{margin-bottom:20px}
+.grp h5{margin:0 0 9px;font-size:12.5px;color:var(--ink2);font-weight:700;display:flex;align-items:center;gap:7px}
+.grp h5::after{content:"";flex:1;height:1px;background:var(--line)}
+.mfoot{padding:15px 22px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end;
+  position:sticky;bottom:0;background:#fff}
+.preview-line{background:var(--line2);border-radius:10px;padding:13px 15px;font-size:13.5px;margin-bottom:16px;line-height:1.7}
+.preview-line b{color:var(--primary-d)}
+.hint{font-size:11.5px;color:var(--ink3);margin-top:7px;line-height:1.5}
+.miss{background:var(--risk-soft);border:1px solid #fecaca;border-radius:10px;padding:12px 15px;margin:14px 0;font-size:12.5px;color:#b91c1c}
+.miss b{display:block;margin-bottom:4px}
+.miss ul{margin:6px 0 0;padding-left:18px}
+.scroll{overflow:auto}
+.lib-tbl{width:100%;font-size:12.5px}
+.lib-tbl th{position:sticky;top:0;background:#f8fafc;z-index:1}
+.no-badge{font-size:10.5px;font-weight:700;color:var(--ink3);background:var(--line2);padding:1px 6px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="vbar">
+  <div class="vbar-in">
+    <span class="brand">摄像头 · 方案三</span>
+    <button class="vbtn on" data-v="0">设计说明</button>
+    <button class="vbtn" data-v="1">主界面</button>
+    <button class="vbtn" data-v="2">加规则流程</button>
+    <button class="vbtn" data-v="3">感知库 / 动作库</button>
+    <button class="vbtn" data-v="4">迁移对照</button>
+    <span class="sp">交互原型 · 数据取自 semantic.rs 权威目录</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ============ 视图 0：设计说明 ============ -->
+<div class="view on" id="v0">
+  <p class="lead">
+    现状两版都在做<b>「设置页」</b>——让人逐项勾选。但用户真实的心理是<b>「我想让摄像头替我做一件事」</b>。
+    方案三改成<b>「自动化构建器」</b>：先选场景（什么时候），再配规则（做什么），动作从库里挑，且<b>只显示摄像头真能绑的</b>。
+  </p>
+
+  <h2 class="sec">① 两版各自的问题 <span class="n">对着截图逐条说</span></h2>
+  <div class="grid3">
+    <div class="card bad">
+      <span class="tagline t-red">Camera 2 · 场景能力</span>
+      <h4>方向对，但没落地</h4>
+      <ul>
+        <li><b>「接任务 / 按钮发」是双轨概念</b>，用户不知道区别，也不知道该选哪个</li>
+        <li><b>分类芯片只是计数不是导航</b>——离开座位2 / 开会1 / 手势2 / 视线，点进去没有预期</li>
+        <li>左侧仅 2 条规则，<b>右侧 60% 全是空白</b>，重心严重失衡</li>
+        <li>「别丢即使用中」「在列表 = 使用中」这类<b>元信息抢占注意力</b></li>
+        <li><b>关系搞反了</b>：离席/回席本身是「信号」，却被当成场景下的「类规则」</li>
+      </ul>
+    </div>
+    <div class="card bad">
+      <span class="tagline t-red">Camera 1 · Pro 确认与安全</span>
+      <h4>典型的设置页思维</h4>
+      <ul>
+        <li><b>10 个平级子标签零优先级</b>，用户得记住每格放了什么</li>
+        <li>每行是<b>「开关+长描述+动作下拉+时长下拉」控件墙</b>，主任务被稀释</li>
+        <li>描述被截断（"故意闭眼不算。故意闭眼达到「闭眼多久」所选秒数…开启「响…"）</li>
+        <li>动作下拉是裸的<b>「不执行动作」</b>，用户根本不知道能选什么</li>
+        <li>美颜 / 久坐 / 移窗 与 离席 / 握手 <b>同级</b>，性质完全不同</li>
+      </ul>
+    </div>
+    <div class="card bad">
+      <span class="tagline t-amber">共同根因</span>
+      <h4>两版都在犯同一个错</h4>
+      <ul>
+        <li>都是<b>静态设置页</b>，不是自动化构建器</li>
+        <li>都没回答进门第一个问题：<b>「摄像头能感知什么 / 能驱动什么」</b></li>
+        <li>都没把<b>适配与校准</b>（前置条件）当一等公民</li>
+        <li>都把<b>设备参数和规则混在同一层</b></li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="sec">② 顺带查出一个真 bug <span class="n">建议优先修</span></h2>
+  <div class="fixbar">
+    <h3>动作词表存在两套并行系统，且过滤不彻底</h3>
+    <table>
+      <thead><tr><th style="width:250px">问题</th><th style="width:100px">证据</th><th>后果</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>两套动作词表并存</b></td>
+          <td><code>camera-presence-actions.js:3202</code><br><code>semantic.rs:70-98</code></td>
+          <td>本地 token（<code>pauseVoice</code> / <code>privacyScreen</code>）与语义目录（<code>input.pause</code> / <code>input.start</code>）在同一个 Picker 里混用，<b>用户看到两套词汇</b></td>
+        </tr>
+        <tr>
+          <td><b>预设绑了摄像头用不了的动作</b></td>
+          <td><code>semantic-action-presets.js:64</code></td>
+          <td>预设写 <code>channel:'camera' → onetone.pause</code>，但 <code>semantic.rs:367</code> 中 <code>onetone.pause</code> 的 <code>channels</code> 是 <code>KEY_VOICE_PAD</code>，<b>不含 camera</b> → 规则能存但永远不执行</td>
+        </tr>
+        <tr>
+          <td><b>动作 Picker 未按通道过滤</b></td>
+          <td><code>camera-presence-actions.js:1811</code></td>
+          <td>离席只给 4 个动作、其余给 8 个，但<b>没有告知用户其余 16 个语义动作为何不可选</b></td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size:12.5px;color:#7f1d1d;margin:12px 0 0">
+      <b>方案三的对策：</b>动作库统一为一套中文词表，<b>只列出摄像头真正可绑的 9 个动作</b>，并把不可选的部分显式列出（见视图 3）——
+      让用户知道边界在哪，比让他面对一个下拉框猜要强。
+    </p>
+  </div>
+
+  <h2 class="sec">③ 方案三的四个关键改动</h2>
+  <div class="grid3">
+    <div class="card good">
+      <span class="tagline t-green">改动 1</span><h4>主轴换成「场景」</h4>
+      <p>用户想的是<b>「开会的时候 / 我离开的时候」</b>，不是「离席 / 回席 / 挥手」这些技术项。场景是用户脑中的时间切片，天然带上下文。</p>
+    </div>
+    <div class="card good">
+      <span class="tagline t-green">改动 2</span><h4>动作库只给「真能绑的」</h4>
+      <p>按 <code>semantic.rs</code> 的 <code>channels</code> 字段过滤，9 个可绑动作分组展示，<b>2 个需二次确认的显式打标</b>，不可选的明确列出原因。</p>
+    </div>
+    <div class="card good">
+      <span class="tagline t-green">改动 3</span><h4>就绪度升为一等公民</h4>
+      <p>眨眼需基线、视线需校准——这些<b>前置条件常驻右栏</b>，未就绪时对应规则直接置灰并给一键入口。用户不再遇到「为什么不准却找不到原因」。</p>
+    </div>
+    <div class="card good">
+      <span class="tagline t-green">改动 4</span><h4>设备参数与画面观感移出</h4>
+      <p>分辨率 / FPS / 抗闪烁收进<b>「设备」抽屉</b>；美颜 / 面具移出摄像头页——<b>装饰不是摄像头的能力</b>，混进来只会稀释主线。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 视图 1：主界面 ============ -->
+<div class="view" id="v1">
+  <div class="app">
+    <div class="appbar">
+      <span class="t">摄像头</span>
+      <span class="crumb">/ 场景自动化</span>
+      <span class="pill p-green"><span style="width:6px;height:6px;border-radius:50%;background:#10b981;display:inline-block"></span>识别中 · Integrated Camera</span>
+      <span class="pill p-amber">1 项待适配</span>
+      <div class="r">
+        <button class="btn">设备与校准</button>
+        <button class="btn">画面观感</button>
+        <button class="btn btn-p">一键推荐</button>
+      </div>
+    </div>
+    <div class="body">
+      <!-- 左 -->
+      <div class="rail">
+        <h6>场景</h6>
+        <div id="scnList"></div>
+        <button class="new">+ 新建场景</button>
+      </div>
+      <!-- 中 -->
+      <div class="main">
+        <div class="scnhead">
+          <h3><span id="scnIcon">🚶</span><span id="scnName">离开座位</span></h3>
+          <p id="scnDesc">我不在的时候，电脑自己进入「无人」状态。</p>
+        </div>
+        <div class="rules" id="ruleList"></div>
+        <button class="addrule" onclick="openModal('add')">+ 添加规则</button>
+      </div>
+      <!-- 右 -->
+      <div class="side">
+        <h6>预览</h6>
+        <div class="preview">
+          <span class="live">LIVE</span>
+          <div class="ph">摄像头画面<br><span style="font-size:11px">人脸已检测 · 置信度 94%</span></div>
+        </div>
+        <h6 style="margin-top:16px">就绪度</h6>
+        <div class="meter"><div class="mt"><b>人脸检测</b><span>良好</span></div><div class="bar"><i style="width:94%"></i></div></div>
+        <div class="meter"><div class="mt"><b>手势识别</b><span>良好</span></div><div class="bar"><i style="width:88%"></i></div></div>
+        <div class="meter"><div class="mt"><b>视线精度</b><span style="color:#b45309">未校准</span></div><div class="bar"><i class="w" style="width:18%"></i></div></div>
+        <div class="sbox warn">
+          <div class="sh">⚠️ 故意眨眼需要基线适配</div>
+          <p>未适配前，长眨眼规则会保持关闭状态，避免误触发。</p>
+          <button class="linkbtn">去适配 →</button>
+        </div>
+        <h6 style="margin-top:16px">这个场景实际会做</h6>
+        <ul class="eff" id="effList"></ul>
+      </div>
+    </div>
+  </div>
+  <p class="hint" style="margin-top:11px">提示：这是交互原型。点左栏场景可切换，点规则行或「添加规则」会打开选择器。</p>
+</div>
+
+<!-- ============ 视图 2：加规则流程 ============ -->
+<div class="view" id="v2">
+  <div class="app">
+    <div class="appbar">
+      <span class="t">添加规则</span>
+      <span class="crumb">/ 离开座位</span>
+      <div class="r"><button class="btn" onclick="showView(1)">返回</button></div>
+    </div>
+    <div class="body" style="grid-template-columns:1fr 300px">
+      <div class="main">
+        <div class="step"><span class="s on"><span class="n">1</span>选信号</span><span class="bar2"></span><span class="s"><span class="n">2</span>选动作</span><span class="bar2"></span><span class="s"><span class="n">3</span>调条件</span></div>
+        <div id="stepBody"></div>
+      </div>
+      <div class="side">
+        <h6>这条规则会变成</h6>
+        <div class="preview-line" id="ruleSentence">先选一个<b>信号</b>。</div>
+        <div class="sbox" id="guardBox" style="display:none;border-color:#fde68a;background:var(--warn-soft)">
+          <div class="sh">⚠️ 这个动作需要二次确认</div>
+          <p>摄像头触发后不会直接执行，而是等待你用<b>按键或语音</b>确认。这是防止误触内容的保护机制，无法关闭。</p>
+        </div>
+        <div class="sbox" id="readyBox" style="display:none;border-color:#fecaca;background:var(--risk-soft)">
+          <div class="sh" style="color:#b91c1c">⚠️ 信号尚未就绪</div>
+          <p id="readyTxt"></p>
+          <button class="linkbtn">去处理 →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 视图 3：感知库 / 动作库 ============ -->
+<div class="view" id="v3">
+  <h2 class="sec">感知库 <span class="n">摄像头能「看到」什么 · 8 个信号</span></h2>
+  <p class="lead">这是用户进门前应该先知道的事。关键改动：<b>每个信号都标注就绪状态</b>，未就绪的直接说清原因和前置动作。</p>
+  <table>
+    <thead><tr><th style="width:130px">信号</th><th style="width:150px">靠什么感知</th><th style="width:130px">判定条件</th><th style="width:100px">就绪状态</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><b>离席</b></td><td>人脸消失</td><td>持续 ≥ 3 秒</td><td><span class="pill p-green">就绪</span></td><td>离开座位的核心信号</td></tr>
+      <tr><td><b>回席</b></td><td>人脸回来</td><td>持续 ≥ 1 秒</td><td><span class="pill p-green">就绪</span></td><td>与离席成对，无需单独开关</td></tr>
+      <tr><td><b>旁人出现</b></td><td>第二张脸</td><td>即时</td><td><span class="pill p-green">就绪</span></td><td>只提醒，不自动遮罩</td></tr>
+      <tr><td><b>摇头</b></td><td>头部左右摆</td><td>3 拍</td><td><span class="pill p-green">就绪</span></td><td>瞬时动作，天然表达「不要」</td></tr>
+      <tr><td><b>挥手</b></td><td>手掌摆动</td><td>数次</td><td><span class="pill p-green">就绪</span></td><td>适合「等一下」</td></tr>
+      <tr><td><b>故意眨眼</b></td><td>闭眼保持</td><td>0.6 / 1 / 1.2 秒</td><td><span class="pill p-amber">需适配</span></td><td><b>需先采集个人基线</b>，否则无法区分普通眨眼</td></tr>
+      <tr><td><b>视线看某屏</b></td><td>视线方向估算</td><td>停留 &gt; 0.5 秒</td><td><span class="pill p-amber">需校准</span></td><td><b>需先做视线校准</b>，未校准无屏幕坐标</td></tr>
+      <tr><td><b>久坐超时</b></td><td>在席时长</td><td>20 分钟</td><td><span class="pill p-green">就绪</span></td><td>纯计时，不需适配</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="sec">动作库 <span class="n">摄像头能「驱动」什么 · 按 semantic.rs 的 channels 字段权威过滤</span></h2>
+  <p class="lead">这是方案三最重要的一处修正：<b>动作库只显示摄像头真能绑的</b>，并把「绑不了」的原因说清楚，让用户知道边界在哪。</p>
+
+  <h3 style="font-size:14px;margin:20px 0 9px;color:#047857">✅ 可直接执行（6 个）</h3>
+  <table>
+    <thead><tr><th style="width:150px">动作</th><th style="width:190px">语义 ID</th><th style="width:80px">风险</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><b>开始听写</b></td><td><code>input.start</code></td><td>确认</td><td>适合长眨眼 / 挥手这类「主动呼叫」</td></tr>
+      <tr><td><b>取消本轮</b></td><td><code>input.cancel</code></td><td>安全</td><td>适合摇头 —— 表达「我不要」最自然</td></tr>
+      <tr><td><b>显示 / 隐藏面板</b></td><td><code>overlay.toggle</code></td><td>安全</td><td>挥手即可收起浮层</td></tr>
+      <tr><td><b>回到当前 Agent</b></td><td><code>agent.focus</code></td><td>安全</td><td>看向屏幕时拉回 Agent 窗口</td></tr>
+      <tr><td><b>中断 Agent</b></td><td><code>agent.interrupt</code></td><td>安全</td><td>摇头中断正在跑的任务</td></tr>
+      <tr><td><b>拒绝</b></td><td><code>agent.reject</code></td><td>安全</td><td>Agent 请求批准时摇头拒绝</td></tr>
+      <tr><td><b>恢复工作区布局</b></td><td><code>workspace.applyLayout</code></td><td>安全</td><td>回席后一键还原窗口布局</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="font-size:14px;margin:22px 0 9px;color:#b45309">⚠️ 可绑定，但必须二次确认（2 个）</h3>
+  <table>
+    <thead><tr><th style="width:150px">动作</th><th style="width:190px">语义 ID</th><th style="width:80px">风险</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><b>完成并发送</b></td><td><code>input.send</code></td><td>危险</td><td>触发后进入 <b>Pending</b>，必须用按键或语音确认才真正发出</td></tr>
+      <tr><td><b>批准</b></td><td><code>agent.approve</code></td><td>危险</td><td>同上，Agent 批准必须人工确认</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="font-size:14px;margin:22px 0 9px;color:var(--ink3)">🚫 摄像头绑不了（16 个）· 显式告知，而不是让用户猜</h3>
+  <table>
+    <thead><tr><th style="width:150px">动作</th><th style="width:190px">语义 ID</th><th style="width:130px">原因</th><th>提示</th></tr></thead>
+    <tbody>
+      <tr><td>暂停听写 / 恢复语音</td><td><code>input.pause</code> <code>onetone.pause/resume</code></td><td><span class="no">仅 按键·语音·软垫</span></td><td>如果你需要「离席自动暂停」，走本地动作 <code>pauseVoice</code>（见下）</td></tr>
+      <tr><td>完成本轮</td><td><code>input.commit</code></td><td><span class="no">仅 按键·语音·软垫</span></td><td>与 <code>input.send</code> 不同，不含发送</td></tr>
+      <tr><td>打开应用 / 恢复布局</td><td><code>app.open</code></td><td><span class="no">仅 按键·语音·软垫</span></td><td>工作区布局可绑；单开应用暂不支持</td></tr>
+      <tr><td>应用快捷键</td><td><code>app.shortcut</code></td><td><span class="no">仅 按键·软垫</span></td><td>—</td></tr>
+      <tr><td>向 Agent 发「继续」</td><td><code>agent.continue</code></td><td><span class="no">仅 按键·语音·软垫</span></td><td>用 <code>agent.focus</code> + 语音更稳</td></tr>
+      <tr><td>回答 Agent / 选选项 / 新建会话 等</td><td><code>agent.respond</code> <code>choice.select</code> <code>session.new</code></td><td><span class="no">无 camera 通道</span></td><td>这类需要「说什么」的动作用语音更合适</td></tr>
+    </tbody>
+  </table>
+
+  <div class="fixbar" style="background:linear-gradient(135deg,#f0fdf4,#fff);border-color:#bbf7d0">
+    <h3 style="color:#047857">另一处：本地动作 token（与语义目录并存的第二套词表）</h3>
+    <p style="font-size:12.5px;margin:0">
+      摄像头还有一组<b>应用内本地动作</b>，不走语义目录，但当前 UI 实际用的就是这组：<br>
+      <code>privacyScreen</code> 应用内遮罩 · <code>pauseVoice</code> 暂停语音 · <code>resumeVoice</code> 恢复语音 ·
+      <code>pressEsc</code> 语音取消 · <code>pressCtrlI</code> 语音输入法激活 · <code>lowPowerMode</code> 低消耗运行 · <code>toggleOralListen</code> 口头收听<br>
+      <b>方案三的处理：</b>保留这组能力（它确实可用），但在 UI 上与语义动作<b>明确分区并统一中文命名</b>，标注「应用内」，
+      用户不必再分辨「暂停听写」和「暂停语音」哪个是哪个。
+    </p>
+  </div>
+</div>
+
+<!-- ============ 视图 4：迁移对照 ============ -->
+<div class="view" id="v4">
+  <h2 class="sec">10 个子标签 → 5 个场景 <span class="n">46 项能力去向</span></h2>
+  <table>
+    <thead><tr><th style="width:150px">现状子标签</th><th style="width:40px"></th><th>新归属</th></tr></thead>
+    <tbody>
+      <tr><td><b>视觉识别</b><br><span style="color:var(--ink3);font-size:11.5px">离席 / 回席 / 摇头 / 长眨</span></td><td>→</td><td>离席、回席归入 <b>离开座位</b> 场景；摇头、眨眼归入 <b>专注工作</b>（表达意图的动作不放进「我不在」）</td></tr>
+      <tr><td><b>校准</b></td><td>→</td><td>拆解：<b>视线校准</b>作为「视线看某屏」信号的就绪条件；<b>眨眼基线</b>作为「故意眨眼」的就绪条件 → 全部收进右栏<b>就绪度</b></td></tr>
+      <tr><td><b>隐私</b><br><span style="color:var(--ink3);font-size:11.5px">旁人提醒 / 隐私卫士 / 灵敏度 / 范围指示</span></td><td>→</td><td>归入 <b>开会</b> 场景（旁人出现）与 <b>离开座位</b> 场景（无人时遮罩）</td></tr>
+      <tr><td><b>美颜</b> 里的<b>隐私面具</b></td><td>→</td><td><b>移出摄像头页</b>，并入隐私/设备抽屉</td></tr>
+      <tr><td><b>美颜</b><br><span style="color:var(--ink3);font-size:11.5px">妆效 / 细调 / 设备参数</span></td><td>→</td><td>妆效细调 → <b>画面观感</b>抽屉；分辨率 / FPS / 抗闪烁 / 亮度对比度 → <b>设备</b>抽屉</td></tr>
+      <tr><td><b>手势</b><br><span style="color:var(--ink3);font-size:11.5px">五指 / OK / 握拳 / 挥手</span></td><td>→</td><td>归入 <b>专注工作</b> 与 <b>开会</b>（看需求）；<b>手势闸门</b>提到全局设置</td></tr>
+      <tr><td><b>鼠标追踪</b> + <b>移窗</b></td><td>→</td><td>合并为 <b>多屏</b> 场景；「屏幕与摄像头设置」收进设备抽屉</td></tr>
+      <tr><td><b>久坐提醒</b></td><td>→</td><td>归入 <b>久坐</b> 场景</td></tr>
+      <tr><td><b>自动静音</b></td><td>→</td><td>归入 <b>开会</b> 场景（麦克风是开会场景的核心诉求）</td></tr>
+      <tr><td><b>布局</b><br><span style="color:var(--ink3);font-size:11.5px">工作区保存 / 恢复</span></td><td>→</td><td>保存工作区 → 移出摄像头页到<b>工作区</b>页面；<b>恢复布局</b>作为动作留在动作库</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="sec">设备参数去哪</h2>
+  <div class="grid3">
+    <div class="card"><h4>设备抽屉</h4><p>分辨率 · FPS · 屏幕方向 · 抗闪烁 · 显示帧率 · 亮度对比度饱和度 · 屏幕与摄像头布局</p><p style="color:var(--ink3);font-size:12px">理由：这些是采集条件，不是能力。埋在「美颜」里最让用户困惑。</p></div>
+    <div class="card"><h4>画面观感抽屉</h4><p>妆效风格 · 美白柔肤气色瘦脸 · 隐私面具</p><p style="color:var(--ink3);font-size:12px">理由：纯装饰，不影响识别。独立出去后，摄像头页才只剩「自动化」这一条主线。</p></div>
+    <div class="card"><h4>就绪度（右栏常驻）</h4><p>视线校准 · 眨眼基线 · 实时识别质量（人脸/手势/视线）</p><p style="color:var(--ink3);font-size:12px">理由：这是「能不能用」的答案，必须随时可见，不能藏在标签里。</p></div>
+  </div>
+
+  <h2 class="sec">5 个场景的默认规则</h2>
+  <table>
+    <thead><tr><th style="width:110px">场景</th><th style="width:220px">默认规则（信号 → 动作）</th><th>设计理由</th></tr></thead>
+    <tbody>
+      <tr><td><b>离开座位</b></td><td>离席→应用内遮罩<br>离席→暂停语音<br>回席→关闭遮罩<br>回席→恢复语音</td><td>最高频、最刚需。用户离开电脑时最怕的是麦克风还在收</td></tr>
+      <tr><td><b>专注工作</b></td><td>摇头→取消本轮<br>挥手→隐藏面板<br>长眨→开始听写 <span class="pill p-amber">需适配</span></td><td>「不要 / 等一下 / 继续」三个最常用表达，用身体动作最省事</td></tr>
+      <tr><td><b>开会</b></td><td>旁人出现→温和提醒<br>离开视野→自动静音<br>回到视野→自动开麦</td><td>开会是麦克风隐私的痛点集中区，单独成场景最容易被记住</td></tr>
+      <tr><td><b>多屏</b></td><td>视线看某屏→光标跟随 <span class="pill p-amber">需校准</span><br>看向目标屏→窗口跳转</td><td>强依赖校准，独立成场景便于把校准入口做重</td></tr>
+      <tr><td><b>久坐</b></td><td>20 分钟→提醒看远处<br>坐姿偏离→温和提醒</td><td>纯提醒型，不驱动任何动作，性质与其他场景不同</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+<!-- ===== 加规则弹层 ===== -->
+<div class="mask" id="mask">
+  <div class="modal">
+    <div class="mhead"><h3 id="mTitle">添加规则</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mbody" id="mBody"></div>
+    <div class="mfoot" id="mFoot"></div>
+  </div>
+</div>
+
+<script>
+/* ---------- 数据 ---------- */
+const SCENES=[
+ {id:'leave',ic:'🚶',name:'离开座位',desc:'我不在的时候，电脑自己进入「无人」状态。',
+  rules:[
+   {sig:'离席',cond:'持续 3 秒',act:'应用内遮罩',tier:'app'},
+   {sig:'离席',cond:'持续 3 秒',act:'暂停语音',tier:'app'},
+   {sig:'回席',cond:'持续 1 秒',act:'关闭遮罩',tier:'app'},
+   {sig:'回席',cond:'持续 1 秒',act:'恢复语音',tier:'app'}
+  ]},
+ {id:'focus',ic:'🎯',name:'专注工作',desc:'我在，但别来打扰我。',
+  rules:[
+   {sig:'摇头',cond:'3 拍',act:'取消本轮',tier:'safe',bid:'input.cancel'},
+   {sig:'挥手',cond:'数次',act:'显示 / 隐藏面板',tier:'safe',bid:'overlay.toggle'},
+   {sig:'故意眨眼',cond:'闭眼 1 秒',act:'开始听写',tier:'safe',bid:'input.start',notReady:1}
+  ]},
+ {id:'meet',ic:'👥',name:'开会',desc:'别人在旁边的时候，麦克风要懂事。',
+  rules:[
+   {sig:'旁人出现',cond:'即时',act:'温和提醒',tier:'app'},
+   {sig:'离席',cond:'持续 3 秒',act:'自动静音',tier:'app'},
+   {sig:'回席',cond:'持续 1 秒',act:'自动开麦',tier:'app'}
+  ]},
+ {id:'screen',ic:'🖥️',name:'多屏',desc:'我在几块屏之间来回。',
+  rules:[
+   {sig:'视线看某屏',cond:'停留 0.5 秒',act:'光标跟随',tier:'app',notReady:2},
+   {sig:'视线看某屏',cond:'停留 0.5 秒',act:'窗口跳转到该屏',tier:'app',notReady:2}
+  ]},
+ {id:'rest',ic:'🧘',name:'久坐',desc:'坐太久了，身体提醒我一下。',
+  rules:[
+   {sig:'久坐超时',cond:'20 分钟',act:'提醒看远处',tier:'app'},
+   {sig:'坐姿粗检',cond:'持续偏离',act:'温和提醒',tier:'app'}
+  ]}
+];
+
+const SIGNALS=[
+ {n:'离席',d:'人脸消失',r:'就绪',ok:1},
+ {n:'回席',d:'人脸回来',r:'就绪',ok:1},
+ {n:'旁人出现',d:'检测到第二张脸',r:'就绪',ok:1},
+ {n:'摇头',d:'头部左右摆动',r:'就绪',ok:1},
+ {n:'挥手',d:'手掌来回摆动',r:'就绪',ok:1},
+ {n:'久坐超时',d:'在席累计计时',r:'就绪',ok:1},
+ {n:'故意眨眼',d:'闭眼保持',r:'需基线适配',ok:0,miss:'需要先采集你的个人眨眼基线，否则无法把它和普通眨眼区分开。'},
+ {n:'视线看某屏',d:'视线方向估算',r:'需视线校准',ok:0,miss:'需要先完成视线校准，未校准时无法得到屏幕坐标。'}
+];
+
+const ACTIONS=[
+ {g:'应用内动作',items:[
+  {n:'应用内遮罩',d:'打开隐私遮罩',t:'app'},
+  {n:'关闭遮罩',d:'关掉隐私遮罩',t:'app'},
+  {n:'暂停语音',d:'暂停听写（仅摄像头触发时可恢复）',t:'app'},
+  {n:'恢复语音',d:'只恢复摄像头造成的暂停',t:'app'},
+  {n:'自动静音',d:'把麦克风静音',t:'app'},
+  {n:'自动开麦',d:'把麦克风打开',t:'app'},
+  {n:'温和提醒',d:'只提示，不执行动作',t:'app'},
+  {n:'提醒看远处',d:'20-20-20 眼保健提醒',t:'app'},
+  {n:'光标跟随',d:'按视线移动鼠标',t:'app'},
+  {n:'窗口跳转到该屏',d:'把窗口移到看向的屏幕',t:'app'}
+ ]},
+ {g:'语义动作 · 可直接执行',items:[
+  {n:'开始听写',id:'input.start',r:'确认',t:'safe'},
+  {n:'取消本轮',id:'input.cancel',r:'安全',t:'safe'},
+  {n:'显示 / 隐藏面板',id:'overlay.toggle',r:'安全',t:'safe'},
+  {n:'回到当前 Agent',id:'agent.focus',r:'安全',t:'safe'},
+  {n:'中断 Agent',id:'agent.interrupt',r:'安全',t:'safe'},
+  {n:'拒绝',id:'agent.reject',r:'安全',t:'safe'},
+  {n:'恢复工作区布局',id:'workspace.applyLayout',r:'安全',t:'safe'}
+ ]},
+ {g:'语义动作 · 需二次确认',items:[
+  {n:'完成并发送',id:'input.send',r:'危险',t:'pend'},
+  {n:'批准',id:'agent.approve',r:'危险',t:'pend'}
+ ]}
+];
+
+let cur=0, pick={sig:null,act:null,step:1};
+
+/* ---------- 视图切换 ---------- */
+function showView(i){
+  document.querySelectorAll('.view').forEach((v,k)=>v.classList.toggle('on',k==i));
+  document.querySelectorAll('.vbtn').forEach((b,k)=>b.classList.toggle('on',k==i));
+  if(i===1) render();
+  if(i===2) renderStep();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.vbtn').forEach(b=>b.onclick=()=>showView(+b.dataset.v));
+
+/* ---------- 主界面 ---------- */
+function render(){
+  const s=SCENES[cur];
+  document.getElementById('scnList').innerHTML=SCENES.map((x,i)=>
+    `<button class="scn ${i===cur?'on':''}" onclick="pickScene(${i})">
+      <span class="ic">${x.ic}</span><span class="nm">${x.name}</span><span class="ct">${x.rules.length}</span>
+    </button>`).join('');
+  document.getElementById('scnIcon').textContent=s.ic;
+  document.getElementById('scnName').textContent=s.name;
+  document.getElementById('scnDesc').textContent=s.desc;
+  document.getElementById('ruleList').innerHTML=s.rules.map((r,i)=>{
+    const bd=r.tier==='pend'?'<span class="bd pend">需确认</span>'
+      :r.tier==='safe'?'<span class="bd safe">'+r.sig.length+'</span>':'';
+    const nr=r.notReady?' <span class="pill p-amber">信号未就绪</span>':'';
+    return `<div class="rule" onclick="openModal('edit',${i})">
+      <span class="sig"><span class="dot"></span>${r.sig}</span>
+      <span class="cond">${r.cond}</span>
+      <span class="arrow">→</span>
+      <span class="act">${r.act}${bd}</span>
+      ${nr}
+      <span class="sp"></span><span class="edit">编辑</span>
+    </div>`;
+  }).join('');
+  document.getElementById('effList').innerHTML=s.rules.map(r=>
+    `<li>${r.sig} → ${r.act}</li>`).join('');
+}
+function pickScene(i){cur=i;render();}
+
+/* ---------- 弹层：加/编规则 ---------- */
+let editIdx=-1;
+function openModal(mode,idx){
+  editIdx = mode==='edit'?idx:-1;
+  pick={sig:null,act:null,step:1};
+  if(mode==='edit'){const r=SCENES[cur].rules[idx];pick.sig=r.sig;pick.act=r.act;pick.step=2;}
+  document.getElementById('mask').classList.add('on');
+  document.getElementById('mTitle').textContent=mode==='edit'?'编辑规则':'添加规则';
+  paint();
+}
+function closeModal(){document.getElementById('mask').classList.remove('on');}
+function paint(){
+  const B=document.getElementById('mBody'),F=document.getElementById('mFoot');
+  const s=SIGNALS.find(x=>x.n===pick.sig);
+  const pend=ACTIONS.flatMap(g=>g.items).find(x=>x.n===pick.act&&x.t==='pend');
+  // 右侧提示
+  document.getElementById('guardBox').style.display=pend?'block':'none';
+  const rb=document.getElementById('readyBox');
+  rb.style.display=(s&&!s.ok)?'block':'none';
+  if(s&&!s.ok)document.getElementById('readyTxt').textContent=s.miss;
+  document.getElementById('ruleSentence').innerHTML=pick.sig
+    ? `当 <b>${pick.sig}</b> 时，OneTone 会 <b>${pick.act||'…'}</b>`
+    : '先选一个<b>信号</b>。';
+  if(pick.step===1){
+    B.innerHTML=`<h5 style="margin:0 0 4px;font-size:14px">摄像头能感知什么</h5>
+      <p style="font-size:12px;color:var(--ink3);margin:0 0 14px">灰色的是还没就绪的信号，规则会先存着，但不会真的触发。</p>
+      <div class="blib">${SIGNALS.map(x=>`
+        <button class="ci ${pick.sig===x.n?'sel':''} ${x.ok?'':'dis'}" onclick="pick.sig='${x.n}';paint()">
+          <div class="cn">${x.n} ${x.ok?'':'<span class="no-badge">未就绪</span>'}</div>
+          <div class="cd">${x.d}</div>
+          <div class="cb"><span class="pill ${x.ok?'p-green':'p-amber'}">${x.r}</span></div>
+        </button>`).join('')}</div>`;
+    F.innerHTML=`<button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-p" ${pick.sig?'':'disabled style="opacity:.4"'} onclick="pick.step=2;paint()">下一步</button>`;
+  }else{
+    B.innerHTML=ACTIONS.map(g=>`
+      <div class="grp"><h5>${g.g}</h5><div class="blib">${g.items.map(x=>`
+        <button class="ci ${pick.act===x.n?'sel':''}" onclick="pick.act='${x.n}';paint()">
+          <div class="cn">${x.n}</div><div class="cd">${x.d||''}</div>
+          <div class="cb">${x.id?`<code>${x.id}</code>`:''}
+            ${x.t==='pend'?'<span class="pill p-amber">需确认</span>':''}
+            ${x.r?`<span class="pill ${x.r==='安全'?'p-green':'p-blue'}">${x.r}</span>`:''}</div>
+        </button>`).join('')}</div></div>`).join('');
+    F.innerHTML=`<button class="btn" onclick="pick.step=1;paint()">上一步</button>
+      <button class="btn btn-p" ${pick.act?'':'disabled style="opacity:.4"'} onclick="saveRule()">保存规则</button>`;
+  }
+}
+function saveRule(){
+  const s=SIGNALS.find(x=>x.n===pick.sig);
+  const sc=SCENES[cur];
+  const t=(ACTIONS.flatMap(g=>g.items).find(x=>x.n===pick.act)||{}).t||'app';
+  const row={sig:pick.sig,cond:s.ok?'按默认判定':'待适配',act:pick.act,tier:t,notReady:s.ok?0:1};
+  if(editIdx>=0) sc.rules[editIdx]=row; else sc.rules.push(row);
+  closeModal();render();
+}
+</script>
+</body>
+</html>

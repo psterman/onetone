@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>跨通道架构 IA · 摄像头 × 按键/语音</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    h1 { margin: 0 0 6px; font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
+    .lead { margin: 0 0 16px; font-size: 13.5px; color: var(--muted); line-height: 1.55; max-width: 72ch; }
+    .arch {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px;
+      margin-bottom: 16px; box-shadow: 0 8px 24px rgba(19,32,44,.05);
+    }
+    .arch h2 { margin: 0 0 10px; font-size: 14px; font-weight: 750; }
+    .spine {
+      display: grid; grid-template-columns: 1fr; gap: 8px; font-size: 12.5px;
+    }
+    .spine .shared {
+      padding: 12px 14px; border-radius: 12px; background: var(--violet-soft);
+      border: 1px solid #ddd6fe; color: var(--violet); font-weight: 650; line-height: 1.45;
+    }
+    .spine .shared code { font-family: var(--mono); font-size: 11px; }
+    .chans {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    }
+    @media (max-width: 800px) { .chans { grid-template-columns: 1fr 1fr; } }
+    .chan {
+      padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line);
+      background: var(--wash); font-size: 12px; line-height: 1.45;
+    }
+    .chan.hi { background: var(--cyan-soft); border-color: var(--cyan-bd); }
+    .chan .n { font-weight: 750; margin-bottom: 4px; }
+    .chan .s { color: var(--muted); font-size: 11.5px; }
+    .chan .s b { color: var(--ink); font-weight: 650; }
+    .laws {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px;
+    }
+    @media (max-width: 720px) { .laws { grid-template-columns: 1fr; } }
+    .law {
+      padding: 10px 12px; border-radius: 10px; background: var(--wash);
+      border: 1px solid var(--line); font-size: 12px; line-height: 1.45;
+    }
+    .law .k { font-family: var(--mono); font-size: 10px; font-weight: 650; color: var(--cyan-ink); margin-bottom: 3px; }
+    .law b { font-weight: 750; display: block; margin-bottom: 2px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+    a.card {
+      display: block; text-decoration: none; color: inherit; background: var(--paper);
+      border: 1px solid var(--line); border-radius: 16px; padding: 16px;
+      box-shadow: 0 8px 24px rgba(19,32,44,.06); transition: border-color .15s, transform .15s;
+    }
+    a.card:hover { border-color: var(--cyan-bd); transform: translateY(-1px); }
+    a.card.rec { border-color: var(--cyan-bd); box-shadow: 0 0 0 1px rgba(42,156,196,.18); }
+    .tag {
+      display: inline-block; font-size: 10px; font-weight: 750; padding: 2px 8px; border-radius: 999px;
+      margin-bottom: 8px; background: var(--cyan-soft); color: var(--cyan-ink); border: 1px solid var(--cyan-bd);
+    }
+    .tag.hot { background: var(--ok-soft); color: var(--ok); border-color: #86efac; }
+    a.card h2 { margin: 0 0 6px; font-size: 15px; font-weight: 750; }
+    a.card p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+    .prev {
+      margin-top: 12px; height: 64px; border-radius: 10px; border: 1px dashed var(--line);
+      background: var(--wash); display: grid; place-items: center; padding: 8px;
+      font-size: 11px; color: var(--faint); font-weight: 550; text-align: center; line-height: 1.4;
+    }
+    .old { margin-top: 18px; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+    .old a { color: var(--cyan-ink); font-weight: 650; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>跨通道架构 IA</h1>
+    <p class="lead">
+      摄像头五层（A 触发 / B 持续 / C 画面 / D 基建 / E 布局）如何<strong>同构</strong>按键·语音·SoftPad：
+      页面只管本通道触发；命令结果进<strong>共享动作目录</strong>；其它页用同一 <code>action_id</code> 调用。
+    </p>
+
+    <div class="arch">
+      <h2>系统脊骨（四通道共用）</h2>
+      <div class="spine">
+        <div class="shared">
+          共享动作目录 · <code>semantic action_id</code> · BindingViews · <code>route_semantic_action</code><br />
+          一处定义，按键 / 语音 / SoftPad / 摄像头都能绑 · 互看「谁在用」
+        </div>
+        <div class="chans">
+          <div class="chan">
+            <div class="n">按键</div>
+            <div class="s"><b>01</b> 物理键 → <b>02</b> 选共享动作</div>
+          </div>
+          <div class="chan">
+            <div class="n">语音</div>
+            <div class="s"><b>01</b> 说法 → <b>02</b> 选共享动作</div>
+          </div>
+          <div class="chan">
+            <div class="n">SoftPad</div>
+            <div class="s"><b>01</b> 键帽 → <b>02</b> 选共享动作</div>
+          </div>
+          <div class="chan hi">
+            <div class="n">摄像头</div>
+            <div class="s"><b>01</b> 仅 A 触发器 → <b>02</b> 同一目录<br />B/C/D/E = 本页管理，不进匹配</div>
+          </div>
+        </div>
+      </div>
+      <div class="laws">
+        <div class="law">
+          <div class="k">LAW · BIND</div>
+          <b>绑定 = triggerType + action_id</b>
+          摄像头 <code>shakeHead → pressEsc</code> 与按键 Esc、语音「取消」可指向同一语义。
+        </div>
+        <div class="law">
+          <div class="k">LAW · OWN</div>
+          <b>页面拥有触发，不拥有动作</b>
+          深编动作进目录首页；通道页只匹配 / 深链。
+        </div>
+        <div class="law">
+          <div class="k">LAW · LAYER</div>
+          <b>五层里只有 A 进命令控制</b>
+          B 内置结果；C/E 侧门；D 基建。音频/声音不是绑定通道。
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <a class="card rec" href="../onetone-now-home/index.html">
+        <span class="tag hot">上游 · 现在</span>
+        <h2>Now 首页原型</h2>
+        <p>产品主叙事已转到「现在」。跨通道绑定仍作设置深链参考。</p>
+        <div class="prev">PC Action Surface · Dock 居中 · Phase A 接线</div>
+      </a>
+      <a class="card" href="k-isomorph-two-step.html">
+        <span class="tag hot">K · 推荐对照</span>
+        <h2>同构两步台</h2>
+        <p>完全对齐按键/语音：01 摄像头触发 → 02 共享识别目录。B/C/D 收进「本页管理」。</p>
+        <div class="prev">Hero 01→02 · 左触发 · 右目录轨</div>
+      </a>
+      <a class="card" href="l-goal-shared-sheet.html">
+        <span class="tag">L · 目标壳</span>
+        <h2>目标管理 + 共享改结果</h2>
+        <p>保留 J「我想要」；点改结果弹出与按键同构的目录，并显示「也被语音/按键使用」。</p>
+        <div class="prev">目标卡 · 因果 · 跨通道徽标</div>
+      </a>
+      <a class="card" href="m-action-hub.html">
+        <span class="tag">M · 动作中心</span>
+        <h2>动作优先 · 四通道列</h2>
+        <p>反过来：先看共享动作，再看谁触发它。适合「动作被其它页调用」的总览。</p>
+        <div class="prev">动作行 · 键/语/Pad/摄 列</div>
+      </a>
+      <a class="card" href="n-channel-spine.html">
+        <span class="tag">N · 统一脊</span>
+        <h2>四页同一条脊骨</h2>
+        <p>顶栏切换通道，中间永远是 01 触发 + 02 目录；摄像头多一层「本页能力」抽屉。</p>
+        <div class="prev">通道切换 · 同构工作台</div>
+      </a>
+    </div>
+
+    <p class="old">
+      前序：<a href="../camera-vision-mgmt/j-manage-law.html">J 管理法则</a> ·
+      <a href="../camera-triad/d-channel-match.html">D 通道匹配</a> ·
+      <a href="../voice-f-keys-action-reuse.html">语音 F</a> ·
+      <a href="../keys-trigger-two-step-hero.html">按键两步</a> ·
+      <a href="../app-designed-actions/shared-panel.html">四通道共享面板</a>
+    </p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>E · 视觉方案包</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c; --muted: #5a6b7c; --faint: #8494a6; --line: #d5dee8;
+      --paper: #fff; --wash: #f3f7fa; --bg: #e4ebf1; --rail: #eef3f7;
+      --cyan: #2a9cc4; --cyan-ink: #0f5f7a; --cyan-soft: #e4f2f9; --cyan-bd: #9bc6da;
+      --ok: #15803d; --ok-soft: #e8f7ee; --warn: #b45309; --warn-soft: #fff7ed;
+      --cam: #0f1724; --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg);
+      -webkit-font-smoothing: antialiased; min-height: 100vh;
+    }
+    .bar {
+      position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center;
+      gap: 10px; padding: 10px 18px; background: #0f1820; color: #a8b6c6; font-size: 12.5px;
+    }
+    .bar strong { color: #fff; }
+    .bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; margin-left: auto; }
+    .bar .pill {
+      font-size: 10.5px; font-weight: 750; padding: 2px 8px; border-radius: 999px;
+      background: rgba(42,156,196,.25); color: #7dd3fc; border: 1px solid rgba(125,211,252,.35);
+    }
+    .page { max-width: 1080px; margin: 0 auto; padding: 18px 16px 48px; }
+    .thesis {
+      margin: 0 0 14px; padding: 12px 14px; background: #fff; border: 1px solid var(--line);
+      border-radius: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.55;
+    }
+    .thesis b { color: var(--ink); }
+    .shell {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 18px 40px rgba(19,32,44,.08);
+    }
+    .chrome {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fbfdfe;
+    }
+    .chrome h2 { margin: 0; font-size: 14px; font-weight: 750; }
+    .tog {
+      width: 40px; height: 22px; border: 0; border-radius: 999px; background: #c5d3de;
+      position: relative; cursor: pointer; flex: none;
+    }
+    .tog::after {
+      content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+      border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    }
+    .tog.on { background: var(--cyan); }
+    .tog.on::after { transform: translateX(18px); }
+    .btn {
+      border: 1px solid var(--line); background: #fff; border-radius: 9px;
+      padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .btn.pri { background: var(--cyan); border-color: transparent; color: #fff; }
+    .btn.ghost { color: var(--muted); }
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); padding: 0 8px; background: var(--wash); }
+    .tabs button {
+      appearance: none; border: 0; background: transparent; font: inherit; font-size: 13px;
+      font-weight: 650; color: var(--muted); padding: 11px 14px; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .tabs button.on { color: var(--cyan-ink); border-bottom-color: var(--cyan); }
+    .pane { display: none; padding: 16px; }
+    .pane.on { display: block; }
+
+    /* —— 方案库 —— */
+    .live {
+      display: grid; grid-template-columns: 160px 1fr auto; gap: 12px; align-items: center;
+      padding: 12px 14px; border: 1px solid var(--cyan-bd); border-radius: 12px;
+      background: linear-gradient(135deg, var(--cyan-soft), #fff); margin-bottom: 14px;
+    }
+    @media (max-width: 640px) { .live { grid-template-columns: 1fr; } }
+    .live .cam {
+      height: 72px; border-radius: 8px; background:
+        linear-gradient(160deg, #1a2836, #0d1520),
+        repeating-linear-gradient(0deg, transparent, transparent 7px, rgba(255,255,255,.03) 8px);
+      border: 1px solid #334859; position: relative; overflow: hidden;
+    }
+    .live .cam::after {
+      content: "LIVE"; position: absolute; top: 6px; left: 6px;
+      font-size: 9px; font-weight: 750; color: #fff; background: #dc2626;
+      padding: 1px 5px; border-radius: 3px; letter-spacing: .04em;
+    }
+    .live .who { font-size: 14px; font-weight: 750; }
+    .live .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .live .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .chip {
+      font-size: 10.5px; font-weight: 650; padding: 2px 7px; border-radius: 999px;
+      background: #fff; border: 1px solid var(--line); color: var(--muted);
+    }
+    .chip.on { background: var(--ok-soft); color: var(--ok); border-color: #86efac; }
+
+    .schemes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .scheme {
+      appearance: none; text-align: left; font: inherit; cursor: pointer;
+      border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 12px 13px;
+      display: flex; flex-direction: column; gap: 6px; position: relative;
+    }
+    .scheme:hover { border-color: var(--cyan-bd); }
+    .scheme.active { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
+    .scheme .badge {
+      position: absolute; top: 10px; right: 10px; font-size: 10px; font-weight: 750;
+      padding: 2px 6px; border-radius: 999px; background: var(--ok-soft); color: var(--ok);
+      border: 1px solid #86efac; display: none;
+    }
+    .scheme.active .badge { display: block; }
+    .scheme .nm { font-size: 14px; font-weight: 750; padding-right: 52px; }
+    .scheme .ds { font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .scheme .bits { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
+    .bit {
+      font-size: 10px; font-weight: 650; padding: 1px 6px; border-radius: 4px;
+      background: var(--wash); color: var(--faint); border: 1px solid var(--line);
+    }
+
+    /* —— 编辑包 —— */
+    .editor { display: grid; grid-template-columns: 200px 1fr; gap: 0; min-height: 420px; margin: -16px; }
+    @media (max-width: 720px) { .editor { grid-template-columns: 1fr; } }
+    .elist { border-right: 1px solid var(--line); background: var(--rail); padding: 10px; }
+    .elist button {
+      appearance: none; width: 100%; text-align: left; border: 0; background: transparent;
+      font: inherit; font-size: 12.5px; font-weight: 650; color: var(--muted);
+      padding: 9px 10px; border-radius: 8px; cursor: pointer; margin-bottom: 2px;
+    }
+    .elist button.on { background: #fff; color: var(--cyan-ink); box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+    .edetail { padding: 16px; }
+    .edetail h3 { margin: 0 0 4px; font-size: 16px; font-weight: 750; }
+    .edetail .hint { margin: 0 0 14px; font-size: 12px; color: var(--muted); }
+    .cap {
+      border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+      display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center;
+    }
+    .cap .n { font-size: 13px; font-weight: 650; }
+    .cap .d { font-size: 11.5px; color: var(--muted); grid-column: 1; }
+    .cap .act {
+      grid-column: 1 / -1; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--line);
+      font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .cap .act code {
+      font-family: var(--mono); font-size: 11px; font-weight: 650; color: var(--cyan-ink);
+      background: var(--cyan-soft); padding: 2px 6px; border-radius: 4px;
+    }
+    .cap .act button { font-size: 11px; padding: 4px 8px; }
+
+    /* —— 画面配置 —— */
+    .lookgrid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 14px; }
+    @media (max-width: 720px) { .lookgrid { grid-template-columns: 1fr; } }
+    .lookcam {
+      aspect-ratio: 16/10; border-radius: 12px; background: var(--cam);
+      border: 1px solid #334859; position: relative;
+      background-image:
+        radial-gradient(ellipse 40% 50% at 50% 42%, rgba(255,220,180,.15), transparent 55%),
+        linear-gradient(160deg, #1a2836, #0d1520);
+    }
+    .lookcam .face {
+      position: absolute; left: 38%; top: 28%; width: 24%; height: 38%;
+      border: 1.5px solid rgba(42,156,196,.7); border-radius: 40% 40% 45% 45%;
+    }
+    .lookside label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 12.5px; font-weight: 550; padding: 8px 0; border-bottom: 1px solid var(--line);
+    }
+    .lookside input[type=range] { width: 110px; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>E · 视觉方案包</strong>
+    <span class="pill">管理模式 = 切换 / 编辑方案</span>
+    <a href="index.html">← 索引</a>
+  </div>
+  <div class="page">
+    <p class="thesis">
+      <b>核心命题：</b>用户管的不是「第 3 条手势绑了什么命令」，而是<strong>当前跑哪套视觉方案</strong>。
+      方案 = 一组视觉能力 + 各自派发动作的整包。切换方案一次换全；编辑只进包内。
+      通道动作挑选器只出现在「编辑包 → 某能力 → 派发」。
+    </p>
+
+    <div class="shell">
+      <div class="chrome">
+        <button type="button" class="tog on" id="master" aria-label="摄像头总开关"></button>
+        <h2>摄像头</h2>
+        <span style="font-size:12px;color:var(--muted);font-weight:550">方案驱动 · 非命令表</span>
+        <button type="button" class="btn ghost" style="margin-left:auto" data-tab="look">画面配置</button>
+      </div>
+      <div class="tabs" role="tablist">
+        <button type="button" class="on" data-tab="lib" role="tab">方案库</button>
+        <button type="button" data-tab="edit" role="tab">编辑当前方案</button>
+        <button type="button" data-tab="look" role="tab">画面配置</button>
+      </div>
+
+      <div class="pane on" id="pane-lib">
+        <div class="live">
+          <div class="cam" aria-hidden="true"></div>
+          <div>
+            <div class="who" id="liveName">会议专注</div>
+            <div class="sub">当前运行方案 · 切换下方卡片即换整包</div>
+            <div class="chips" id="liveChips"></div>
+          </div>
+          <button type="button" class="btn pri" data-tab="edit">编辑此方案</button>
+        </div>
+        <div class="schemes" id="schemeWall"></div>
+      </div>
+
+      <div class="pane" id="pane-edit">
+        <div class="editor">
+          <div class="elist" id="schemeList"></div>
+          <div class="edetail" id="schemeDetail"></div>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-look">
+        <div class="lookgrid">
+          <div class="lookcam"><div class="face"></div></div>
+          <div class="lookside">
+            <p style="margin:0 0 8px;font-size:12px;color:var(--muted)">与方案包无关 · 管画面怎么看</p>
+            <label>磨皮 <input type="range" min="0" max="100" value="35" /></label>
+            <label>美白 <input type="range" min="0" max="100" value="20" /></label>
+            <label>锐化 <input type="range" min="0" max="100" value="40" /></label>
+            <label>自动构图 <input type="checkbox" checked /></label>
+            <label>虚拟背景 <input type="checkbox" /></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SCHEMES = [
+      {
+        id: "meet", name: "会议专注",
+        desc: "人在座 · 暂时离开 · 回来 · 注意力偏离时提醒",
+        caps: [
+          { n: "人在座位", d: "检测到正脸落座", on: true, act: "presence.seat" },
+          { n: "暂时离开", d: "座位空旷超过阈值", on: true, act: "presence.leave" },
+          { n: "回到座位", d: "离开后再检测到人", on: true, act: "presence.return" },
+          { n: "视线偏离", d: "长时间看向屏外", on: true, act: "notify.gentle" },
+        ],
+      },
+      {
+        id: "away", name: "离开工位",
+        desc: "无人时静音 / 锁屏；有人接近再恢复",
+        caps: [
+          { n: "工位无人", d: "画面无人持续", on: true, act: "audio.mute" },
+          { n: "有人接近", d: "检测到人体入画", on: true, act: "audio.unmute" },
+          { n: "挥手唤醒", d: "远距招手", on: false, act: "app.wake" },
+        ],
+      },
+      {
+        id: "demo", name: "演示跟随",
+        desc: "讲解时跟手势指点 · 停讲时锁画面",
+        caps: [
+          { n: "指点跟随", d: "手指标注方向", on: true, act: "pointer.follow" },
+          { n: "张开掌停", d: "张开掌心 = 暂停跟随", on: true, act: "pointer.pause" },
+          { n: "点头确认", d: "轻点头触发确认", on: false, act: "ui.confirm" },
+        ],
+      },
+      {
+        id: "focus", name: "深度专注",
+        desc: "最少打扰 · 只保留离开与紧急招手",
+        caps: [
+          { n: "离开工位", d: "空座", on: true, act: "focus.away" },
+          { n: "紧急招手", d: "大幅挥手打断专注", on: true, act: "focus.break" },
+        ],
+      },
+    ];
+
+    let activeId = "meet";
+    let editId = "meet";
+
+    const wall = document.getElementById("schemeWall");
+    const liveName = document.getElementById("liveName");
+    const liveChips = document.getElementById("liveChips");
+    const list = document.getElementById("schemeList");
+    const detail = document.getElementById("schemeDetail");
+
+    function scheme(id) { return SCHEMES.find((s) => s.id === id); }
+
+    function renderLive() {
+      const s = scheme(activeId);
+      liveName.textContent = s.name;
+      liveChips.innerHTML = s.caps.filter((c) => c.on).map((c) =>
+        `<span class="chip on">${c.n}</span>`
+      ).join("") || `<span class="chip">包内无启用能力</span>`;
+    }
+
+    function renderWall() {
+      wall.innerHTML = SCHEMES.map((s) => `
+        <button type="button" class="scheme ${s.id === activeId ? "active" : ""}" data-id="${s.id}">
+          <span class="badge">运行中</span>
+          <span class="nm">${s.name}</span>
+          <span class="ds">${s.desc}</span>
+          <span class="bits">${s.caps.map((c) => `<span class="bit">${c.n}</span>`).join("")}</span>
+        </button>
+      `).join("");
+      wall.querySelectorAll(".scheme").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          activeId = btn.dataset.id;
+          editId = activeId;
+          renderAll();
+        });
+      });
+    }
+
+    function renderEdit() {
+      list.innerHTML = SCHEMES.map((s) =>
+        `<button type="button" class="${s.id === editId ? "on" : ""}" data-id="${s.id}">${s.name}${s.id === activeId ? " · 运行" : ""}</button>`
+      ).join("");
+      list.querySelectorAll("button").forEach((b) => {
+        b.addEventListener("click", () => { editId = b.dataset.id; renderEdit(); });
+      });
+      const s = scheme(editId);
+      detail.innerHTML = `
+        <h3>${s.name}</h3>
+        <p class="hint">${s.desc} · 开关管「看不看」；派发点进共享动作目录（示意）</p>
+        ${s.caps.map((c, i) => `
+          <div class="cap">
+            <span class="n">${c.n}</span>
+            <button type="button" class="tog ${c.on ? "on" : ""}" data-i="${i}" aria-label="开关"></button>
+            <span class="d">${c.d}</span>
+            <div class="act">
+              派发 → <code>${c.act}</code>
+              <button type="button" class="btn">换通道动作…</button>
+            </div>
+          </div>
+        `).join("")}
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button type="button" class="btn pri" id="applyRun">设为当前运行</button>
+          <button type="button" class="btn">另存为新方案</button>
+        </div>
+      `;
+      detail.querySelectorAll(".tog").forEach((t) => {
+        t.addEventListener("click", () => {
+          const i = +t.dataset.i;
+          s.caps[i].on = !s.caps[i].on;
+          renderAll();
+        });
+      });
+      detail.querySelector("#applyRun")?.addEventListener("click", () => {
+        activeId = editId;
+        renderAll();
+        showTab("lib");
+      });
+    }
+
+    function renderAll() {
+      renderLive();
+      renderWall();
+      renderEdit();
+    }
+
+    function showTab(id) {
+      document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === id));
+      document.querySelectorAll(".pane").forEach((p) => p.classList.toggle("on", p.id === "pane-" + id));
+    }
+    document.querySelectorAll("[data-tab]").forEach((el) => {
+      el.addEventListener("click", () => showTab(el.dataset.tab));
+    });
+    document.getElementById("master").addEventListener("click", (e) => {
+      e.currentTarget.classList.toggle("on");
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>

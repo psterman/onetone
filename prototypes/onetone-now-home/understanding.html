@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>情景管理 — OneTone</title>
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body class="pc">
+  <div class="page">
+    <div id="demoBar" class="demo" hidden></div>
+    <div class="win">
+      <header class="tbar">
+        <span class="logo">O</span>
+        <span class="brand">情景管理</span>
+        <nav class="nav">
+          <a class="nv" href="now.html" id="backNow">现在</a>
+          <a class="nv on" href="understanding.html">情景管理</a>
+          <a class="nv" href="vision-settings.html">设置</a>
+        </nav>
+        <div class="r"><a class="btn" href="now.html" id="backBtn">← 回到现在</a></div>
+      </header>
+      <div class="body">
+        <p class="secsub">
+          首页是「当前状态」入口。这里只微调你想要的结果，不是写自动化规则。
+        </p>
+        <div class="new-bar" id="newBar">
+          <input id="newName" type="text" placeholder="新状态名称，例如：深度写作" />
+          <button type="button" class="btn p" id="addBtn">＋ 添加</button>
+        </div>
+        <div class="mgmt-grid" id="grid"></div>
+        <div class="note">
+          首页只展示承诺（正在帮你什么）。这里才能微调「结果开关」——例如「不被消息打断」，而不是底层服务名。
+        </div>
+      </div>
+    </div>
+    <div class="foot-links">
+      <a id="demoLink" href="?demo=1">演示</a>
+      <a href="index.html">说明</a>
+    </div>
+  </div>
+  <script src="fixtures.js"></script>
+  <script>
+    const isDemo = new URLSearchParams(location.search).get("demo") === "1";
+    const demoLink = document.getElementById("demoLink");
+    if (isDemo) {
+      demoLink.textContent = "退出演示";
+      demoLink.href = "understanding.html";
+      document.getElementById("backNow").href = "now.html?demo=1";
+      document.getElementById("backBtn").href = "now.html?demo=1";
+    }
+
+    const ORDER = ["s1", "sWait", "sWork", "sAway", "s0"];
+    let demoBtns = [];
+    let live = JSON.parse(JSON.stringify(window.ONETONE_NOW_FIXTURES.s1.state));
+    let tier = "s1";
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function paint() {
+      const s = window.projectNowHome(live);
+      document.getElementById("grid").innerHTML = s.habits
+        .map(
+          (h) => `
+        <article class="mgmt-card ${h.active ? "on" : ""}" id="${esc(h.id)}">
+          <h3>${esc(h.name)}${h.active ? " · 当前" : ""}</h3>
+          <p class="blurb">${esc(h.description || h.blurb)}</p>
+          <p class="mgmt-sec">何时进入（参考）</p>
+          <ul class="mgmt-list">${(h.when || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+          <p class="mgmt-sec">自动协助</p>
+          <ul class="mgmt-list">${(h.does || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+          <p class="mgmt-sec">结果开关</p>
+          ${(h.ops || [])
+            .map(
+              (o) => `
+            <div class="op-row">
+              <div class="tx"><b>${esc(o.title)}</b><s>${esc(o.effect)}</s></div>
+              <button type="button" class="sw ${o.enabled ? "on" : ""}" data-op="${esc(h.id)}:${esc(o.id)}" aria-label="${esc(o.title)}"></button>
+            </div>`
+            )
+            .join("")}
+          <div class="mgmt-actions">
+            ${
+              h.active
+                ? ""
+                : `<button type="button" class="btn p" data-activate="${esc(h.id)}">切换到此状态</button>`
+            }
+            ${
+              h.active
+                ? ""
+                : `<button type="button" class="btn" data-remove="${esc(h.id)}">删除</button>`
+            }
+          </div>
+        </article>`
+        )
+        .join("");
+
+      document.querySelectorAll("[data-activate]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          live = window.activateHabit(live, btn.dataset.activate);
+          paint();
+        });
+      });
+      document.querySelectorAll("[data-remove]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          live = window.removeHabit(live, btn.dataset.remove);
+          paint();
+        });
+      });
+      document.querySelectorAll("[data-op]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const [hid, oid] = btn.dataset.op.split(":");
+          live = window.toggleHabitOp(live, hid, oid);
+          paint();
+        });
+      });
+
+      if (isDemo) {
+        demoBtns.forEach((b) => b.classList.toggle("on", b.dataset.tier === tier));
+      }
+
+      const hash = location.hash.replace("#", "");
+      if (hash === "new") {
+        document.getElementById("newName").focus();
+      } else if (hash && document.getElementById(hash)) {
+        document.getElementById(hash).scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+
+    document.getElementById("addBtn").addEventListener("click", () => {
+      const name = document.getElementById("newName").value.trim();
+      live = window.addHabit(live, name || "新情景");
+      document.getElementById("newName").value = "";
+      paint();
+    });
+
+    function loadTier(id) {
+      tier = id;
+      live = JSON.parse(JSON.stringify(window.ONETONE_NOW_FIXTURES[id].state));
+      paint();
+    }
+
+    if (isDemo) {
+      const bar = document.getElementById("demoBar");
+      bar.hidden = false;
+      bar.innerHTML = ORDER.map(
+        (id) =>
+          `<button type="button" data-tier="${id}">${window.ONETONE_NOW_FIXTURES[id].label}</button>`
+      ).join("");
+      demoBtns = [...bar.querySelectorAll("button")];
+      demoBtns.forEach((btn) =>
+        btn.addEventListener("click", () => loadTier(btn.dataset.tier))
+      );
+    }
+
+    paint();
+  </script>
+</body>
+</html>

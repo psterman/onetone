@@ -3113,6 +3113,16 @@
     }
   }
 
+  function syncNowHomeSurface(activeNav){
+    var api=global.OneToneNowHome;
+    if(!api) return;
+    if(activeNav==='home'){
+      if(api.show) api.show();
+    }else if(api.hide){
+      api.hide();
+    }
+  }
+
   function syncNavActiveState(panel,opts){
     var nav=$('wbLeftNav');
     if(!nav) return;
@@ -3133,6 +3143,7 @@
       btn.classList.toggle('is-active',btn.getAttribute('data-wb-nav')===activeNav);
     });
     syncSidebarFoot(activeNav);
+    syncNowHomeSurface(activeNav);
   }
 
   function eventTs(evt){
@@ -3448,6 +3459,9 @@
     }
     if(global.OneToneHomeWorkbenchPanels) global.OneToneHomeWorkbenchPanels.bindOnce();
     if(global.OneToneHomeWorkbenchCmdk) global.OneToneHomeWorkbenchCmdk.bindOnce();
+    syncNavActiveState(
+      (global.OneToneState&&global.OneToneState.ui&&global.OneToneState.ui.settingsPanel)||'home'
+    );
     var searchInput=$('wbCommandSearchInput');
     if(searchInput){
       searchInput.addEventListener('keydown',function(e){

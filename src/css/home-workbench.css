@@ -681,6 +681,8 @@ html[data-theme="dark"] .wb-dot-grid {
   flex: 1;
   min-height: 0;
 }
+/* [hidden] alone loses to display:flex above — Now home sets stack.hidden */
+.wb-dashboard-stack[hidden]{display:none !important}
 
 .wb-dashboard-main,
 .wb-dashboard-side {

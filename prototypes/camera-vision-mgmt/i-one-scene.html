@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>I · 一次只顾一件事</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c; --muted: #5a6b7c; --faint: #8494a6; --line: #d5dee8;
+      --paper: #fff; --wash: #f3f7fa; --bg: #e4ebf1;
+      --cyan: #2a9cc4; --cyan-ink: #0f5f7a; --cyan-soft: #e4f2f9; --cyan-bd: #9bc6da;
+      --ok: #15803d; --ok-soft: #e8f7ee; --warn: #b45309; --warn-soft: #fff7ed;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg);
+      -webkit-font-smoothing: antialiased; min-height: 100vh;
+    }
+    .bar {
+      position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center;
+      gap: 10px; padding: 10px 18px; background: #0f1820; color: #a8b6c6; font-size: 12.5px;
+    }
+    .bar strong { color: #fff; }
+    .bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; margin-left: auto; }
+    .bar .pill {
+      font-size: 10.5px; font-weight: 750; padding: 2px 8px; border-radius: 999px;
+      background: rgba(42,156,196,.25); color: #7dd3fc; border: 1px solid rgba(125,211,252,.35);
+    }
+    .page { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
+    .thesis {
+      margin: 0 0 12px; padding: 11px 13px; background: #fff; border: 1px solid var(--line);
+      border-radius: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.5;
+    }
+    .thesis b { color: var(--ink); }
+
+    .shell {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 16px 36px rgba(19,32,44,.08);
+    }
+    .chrome {
+      display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+      border-bottom: 1px solid var(--line); background: #fbfdfe;
+    }
+    .chrome h2 { margin: 0; font-size: 15px; font-weight: 750; }
+    .tog {
+      width: 42px; height: 24px; border: 0; border-radius: 999px; background: #c5d3de;
+      position: relative; cursor: pointer; flex: none;
+    }
+    .tog::after {
+      content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+      border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    }
+    .tog.on { background: var(--cyan); }
+    .tog.on::after { transform: translateX(18px); }
+    .btn {
+      border: 1px solid var(--line); background: #fff; border-radius: 9px;
+      padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer;
+    }
+    .btn.pri { background: var(--cyan); border-color: transparent; color: #fff; }
+    .btn.block { width: 100%; }
+    .btn.ghost { color: var(--muted); }
+
+    /* running view */
+    .hero {
+      padding: 20px 18px 16px;
+      background: linear-gradient(165deg, var(--cyan-soft), #fff 60%);
+      border-bottom: 1px solid var(--line);
+    }
+    .kicker {
+      font-family: var(--mono); font-size: 10px; font-weight: 650; letter-spacing: .08em;
+      color: var(--cyan-ink); text-transform: uppercase; margin-bottom: 6px;
+    }
+    .hero h3 { margin: 0 0 6px; font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
+    .hero .blurb { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.5; max-width: 36ch; }
+    .steps { padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; }
+    .step {
+      display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: start;
+      padding: 10px 12px; border-radius: 12px; background: var(--wash); border: 1px solid var(--line);
+    }
+    .step .n {
+      width: 24px; height: 24px; border-radius: 999px; background: var(--cyan);
+      color: #fff; font-size: 12px; font-weight: 750; display: grid; place-items: center;
+    }
+    .step .t { font-size: 13.5px; font-weight: 650; }
+    .step .d { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+    .foot {
+      padding: 12px 18px 18px; display: flex; flex-direction: column; gap: 8px;
+      border-top: 1px solid var(--line);
+    }
+    .foot .hint { font-size: 11.5px; color: var(--faint); text-align: center; }
+
+    /* picker */
+    .picker { display: none; padding: 16px 18px 20px; }
+    .picker.on { display: block; }
+    .running { display: block; }
+    .running.hide { display: none; }
+    .picker h3 { margin: 0 0 4px; font-size: 16px; font-weight: 750; }
+    .picker .sub { margin: 0 0 14px; font-size: 12.5px; color: var(--muted); }
+    .opt {
+      appearance: none; width: 100%; text-align: left; font: inherit; cursor: pointer;
+      border: 1px solid var(--line); background: #fff; border-radius: 12px;
+      padding: 12px 14px; margin-bottom: 8px;
+    }
+    .opt:hover { border-color: var(--cyan-bd); }
+    .opt.on { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); background: var(--cyan-soft); }
+    .opt .oname { font-size: 14.5px; font-weight: 750; display: block; }
+    .opt .odesc { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.4; display: block; }
+    .opt .ofor { font-size: 11px; color: var(--faint); margin-top: 6px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>I · 一次只顾一件事</strong>
+    <span class="pill">同管理系统 · 更狠的壳</span>
+    <a href="index.html">← 索引</a>
+  </div>
+  <div class="page">
+    <p class="thesis">
+      <b>同一套三层系统</b>（目标 → 代管 → 细节），壳改成：摄像头<strong>同时只跑一个主场景</strong>。
+      换场景 = 换整包代管；不并排 5 个开关。适合「选项一多就慌」的用户。可与 H 并存作强弱两档。
+    </p>
+
+    <div class="shell">
+      <div class="chrome">
+        <button type="button" class="tog on" id="master"></button>
+        <h2>摄像头</h2>
+        <button type="button" class="btn ghost" style="margin-left:auto;padding:6px 10px;font-size:12px" id="btnLook">画面好看</button>
+      </div>
+
+      <div class="running" id="running">
+        <div class="hero">
+          <div class="kicker">当前只顾这件事</div>
+          <h3 id="runTitle">离开座位时保护隐私</h3>
+          <p class="blurb" id="runBlurb">人不在时挡住画面；回来自动恢复。其它能力先不开，避免误触。</p>
+        </div>
+        <div class="steps" id="steps"></div>
+        <div class="foot">
+          <button type="button" class="btn pri block" id="btnChange">换一件事…</button>
+          <button type="button" class="btn ghost block" id="btnOff">先什么都不管</button>
+          <div class="hint">想并开多个目标 → 用 H · 目标管理台</div>
+        </div>
+      </div>
+
+      <div class="picker" id="picker">
+        <h3>现在最想解决哪一件？</h3>
+        <p class="sub">选一个即可。换掉当前场景后，上一个会自动关掉。</p>
+        <div id="opts"></div>
+        <button type="button" class="btn ghost block" id="btnCancel" style="margin-top:8px">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SCENES = [
+      {
+        id: "privacy",
+        name: "离开座位时保护隐私",
+        blurb: "人不在时挡住画面；回来自动恢复。其它能力先不开，避免误触。",
+        for: "接水、上厕所、临时离开",
+        steps: [
+          { t: "你离开座位", d: "系统挡住应用内画面" },
+          { t: "你回来入座", d: "自动取消遮罩，继续用" },
+        ],
+      },
+      {
+        id: "meeting",
+        name: "开会时别吵到别人",
+        blurb: "退远或画面没人时自动静麦；靠近再开。专心开这一件事。",
+        for: "站起来讲解、短暂离席开会",
+        steps: [
+          { t: "你退远或离开画面", d: "麦克风自动静音" },
+          { t: "你靠近回来", d: "麦克风恢复" },
+        ],
+      },
+      {
+        id: "gesture",
+        name: "用手势代替按键",
+        blurb: "摇头取消、故意眨眼确认。先只练这两个，别的手势不开。",
+        for: "听写时不想碰键盘",
+        steps: [
+          { t: "你摇头", d: "当作取消 / Esc" },
+          { t: "你故意眨眼", d: "激活语音输入" },
+        ],
+      },
+      {
+        id: "gaze",
+        name: "用眼睛帮忙操作",
+        blurb: "看哪块屏，鼠标或窗口跟上。第一次会先做短校准。",
+        for: "多屏办公",
+        steps: [
+          { t: "完成一次注视校准", d: "约 30 秒，只做一次" },
+          { t: "看向某块屏", d: "鼠标或窗口跟随" },
+        ],
+      },
+      {
+        id: "wellness",
+        name: "坐久了提醒休息",
+        blurb: "在座过久时温和提醒看远处。不叠加其它自动行为。",
+        for: "长时间对着屏幕",
+        steps: [
+          { t: "连续在座一段时间", d: "弹出休息提醒" },
+        ],
+      },
+    ];
+
+    let active = "privacy";
+    let idle = false;
+
+    const running = document.getElementById("running");
+    const picker = document.getElementById("picker");
+
+    function scene() { return SCENES.find((s) => s.id === active); }
+
+    function renderRun() {
+      if (idle) {
+        document.getElementById("runTitle").textContent = "暂时不管";
+        document.getElementById("runBlurb").textContent = "识别已暂停代管。需要时再选一件事。";
+        document.getElementById("steps").innerHTML = `
+          <div class="step">
+            <span class="n">–</span>
+            <div>
+              <div class="t">没有运行中的场景</div>
+              <div class="d">点下方「换一件事」开始</div>
+            </div>
+          </div>`;
+        return;
+      }
+      const s = scene();
+      document.getElementById("runTitle").textContent = s.name;
+      document.getElementById("runBlurb").textContent = s.blurb;
+      document.getElementById("steps").innerHTML = s.steps.map((st, i) => `
+        <div class="step">
+          <span class="n">${i + 1}</span>
+          <div>
+            <div class="t">${st.t}</div>
+            <div class="d">${st.d}</div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderOpts() {
+      document.getElementById("opts").innerHTML = SCENES.map((s) => `
+        <button type="button" class="opt ${!idle && s.id === active ? "on" : ""}" data-id="${s.id}">
+          <span class="oname">${s.name}</span>
+          <span class="odesc">${s.blurb}</span>
+          <span class="ofor">适合 · ${s.for}</span>
+        </button>
+      `).join("");
+      document.querySelectorAll(".opt").forEach((b) => {
+        b.addEventListener("click", () => {
+          active = b.dataset.id;
+          idle = false;
+          showRunning();
+          renderRun();
+        });
+      });
+    }
+
+    function showPicker() {
+      running.classList.add("hide");
+      picker.classList.add("on");
+      renderOpts();
+    }
+    function showRunning() {
+      picker.classList.remove("on");
+      running.classList.remove("hide");
+    }
+
+    document.getElementById("btnChange").addEventListener("click", showPicker);
+    document.getElementById("btnCancel").addEventListener("click", showRunning);
+    document.getElementById("btnOff").addEventListener("click", () => {
+      idle = true;
+      renderRun();
+    });
+    document.getElementById("master").addEventListener("click", (e) => {
+      e.currentTarget.classList.toggle("on");
+    });
+    document.getElementById("btnLook").addEventListener("click", () => {
+      alert("示意：画面好看（美颜 / 布局）侧门，与当前场景无关。");
+    });
+
+    renderRun();
+  </script>
+</body>
+</html>

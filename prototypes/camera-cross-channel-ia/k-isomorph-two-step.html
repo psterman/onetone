@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>K · 同构两步台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .hero {
+      display: flex; align-items: stretch; gap: 0; padding: 14px 16px;
+      border-bottom: 1px solid var(--line); background: #fbfdfe;
+    }
+    .node {
+      flex: 1; text-align: left; border: 1px solid var(--line); border-radius: 12px;
+      padding: 12px 14px; background: #fff; font: inherit; cursor: pointer;
+    }
+    .node.on { border-color: var(--cyan); box-shadow: inset 0 0 0 1px var(--cyan); }
+    .node .tag { display: block; font-size: 11px; font-weight: 650; color: var(--faint); margin-bottom: 4px; }
+    .node.on .tag { color: var(--cyan-ink); }
+    .node .val { display: block; font-size: 15px; font-weight: 750; }
+    .node .hint { display: block; margin-top: 3px; font-size: 11.5px; color: var(--faint); }
+    .flow-link { flex: 0 0 40px; display: flex; align-items: center; justify-content: center; }
+    .flow-link span { width: 100%; height: 2px; background: var(--cyan-bd); position: relative; }
+    .flow-link span::after {
+      content: ""; position: absolute; right: -1px; top: -4px;
+      border-left: 7px solid var(--cyan); border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+    }
+    .desk { display: grid; grid-template-columns: 220px 1fr; min-height: 420px; }
+    @media (max-width: 720px) { .desk { grid-template-columns: 1fr; } }
+    .trig {
+      border-right: 1px solid var(--line); background: var(--wash); padding: 12px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .trig h3 { margin: 0 0 4px; font-size: 12px; font-weight: 750; color: var(--faint); letter-spacing: .04em; }
+    .titem {
+      appearance: none; text-align: left; border: 1px solid var(--line); background: #fff;
+      border-radius: 10px; padding: 10px 11px; font: inherit; cursor: pointer;
+    }
+    .titem.on { border-color: var(--cyan); background: var(--cyan-soft); }
+    .titem .tn { font-size: 13px; font-weight: 750; display: block; }
+    .titem .td { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .recog { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+    .recog .head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .recog .head h3 { margin: 0; font-size: 14px; font-weight: 750; }
+    .picker { display: grid; grid-template-columns: 130px 1fr; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-height: 280px; }
+    .rail { background: #eef3f7; border-right: 1px solid var(--line); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+    .rail button {
+      appearance: none; border: 0; background: transparent; text-align: left; font: inherit;
+      font-size: 12px; font-weight: 650; color: var(--muted); padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    }
+    .rail button.on { background: #fff; color: var(--cyan-ink); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+    .list { padding: 8px; display: flex; flex-direction: column; gap: 4px; overflow: auto; max-height: 320px; }
+    .act {
+      appearance: none; text-align: left; border: 1px solid transparent; background: #fff;
+      border-radius: 10px; padding: 10px 12px; font: inherit; cursor: pointer;
+    }
+    .act:hover, .act.on { border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .act .an { font-size: 13px; font-weight: 750; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .act .ad { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .doors { padding: 10px 14px; border-top: 1px solid var(--line); background: var(--wash); display: flex; gap: 8px; flex-wrap: wrap; }
+    .doors .btn { flex: 1; min-width: 120px; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>K · 同构两步台</strong>
+    <span class="pill">对齐按键 / 语音 01→02</span>
+    <a href="index.html">← 索引</a>
+  </div>
+  <div class="page">
+    <p class="thesis">
+      <b>架构：</b>摄像头页 = 按键页同构。<code>01</code> 只列 <b>A 触发器</b>（离席/摇头…）；
+      <code>02</code> 打开与按键/语音同一套共享识别目录。点选 = 写入 <code>triggerType:camera + action_id</code>。
+      B 持续 / C 画面 / D 基建走底栏「本页管理」，<b>不进</b> 02。
+    </p>
+    <div class="shell">
+      <div class="hero">
+        <button type="button" class="node on" data-step="1">
+          <span class="tag">01 触发 · 本通道</span>
+          <span class="val" id="trigVal">摇头</span>
+          <span class="hint">摄像头拥有 · 其它页不可改校准</span>
+        </button>
+        <div class="flow-link"><span></span></div>
+        <button type="button" class="node" data-step="2">
+          <span class="tag">02 识别 · 共享目录</span>
+          <span class="val" id="actVal">取消 / Esc</span>
+          <span class="hint">与按键 Esc、语音「取消」同 action_id</span>
+        </button>
+      </div>
+      <div class="desk">
+        <aside class="trig" id="trigList"></aside>
+        <section class="recog">
+          <div class="head">
+            <h3>为「<span id="curTrig">摇头</span>」选择命令</h3>
+            <span class="chip vi">可被其它通道调用</span>
+          </div>
+          <div class="picker">
+            <div class="rail" id="rail"></div>
+            <div class="list" id="acts"></div>
+          </div>
+        </section>
+      </div>
+      <div class="doors">
+        <button type="button" class="btn" id="btnB">本页 · 持续能力 (B)</button>
+        <button type="button" class="btn ghost" id="btnC">画面好看 (C/E)</button>
+        <button type="button" class="btn ghost" id="btnD">设备校准 (D)</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="maskLocal">
+    <div class="drawer">
+      <h3 id="localTitle">本页管理</h3>
+      <p class="dsub" id="localSub"></p>
+      <div id="localBody"></div>
+      <button type="button" class="btn" style="margin-top:12px;width:100%" data-close>关闭</button>
+    </div>
+  </div>
+
+  <script>
+    const TRIGGERS = [
+      { id: "away", name: "离席", desc: "人脸消失", act: "privacyScreen" },
+      { id: "back", name: "回席", desc: "人脸回来", act: "resumeVoice" },
+      { id: "shake", name: "摇头", desc: "左右三拍", act: "pressEsc" },
+      { id: "blink", name: "故意眨眼", desc: "闭眼确认", act: "pressCtrlI" },
+      { id: "palm", name: "五指张开", desc: "手势 · SoftPad 门控", act: "pressCtrlI" },
+      { id: "ok", name: "OK", desc: "手势 · SoftPad 门控", act: "agent.approve" },
+      { id: "fist", name: "握拳", desc: "手势", act: "pressEsc" },
+      { id: "wave", name: "挥手", desc: "横向扫", act: "pressEsc" },
+    ];
+    const RAILS = [
+      { id: "builtin", label: "软件自带" },
+      { id: "dictation", label: "听写" },
+      { id: "oral", label: "口头命令" },
+      { id: "keys", label: "我录的键" },
+      { id: "gesture", label: "手势常用" },
+    ];
+    const ACTIONS = [
+      { id: "pressEsc", name: "取消 / Esc", rail: "builtin", desc: "input.cancel", used: ["按键", "语音"] },
+      { id: "pressCtrlI", name: "激活语音输入", rail: "dictation", desc: "input.start", used: ["SoftPad", "语音"] },
+      { id: "privacyScreen", name: "应用内遮罩", rail: "gesture", desc: "摄像头本地常用", used: ["摄像头"] },
+      { id: "resumeVoice", name: "恢复语音", rail: "gesture", desc: "仅恢复摄像暂停", used: ["摄像头"] },
+      { id: "agent.approve", name: "批准", rail: "builtin", desc: "Pending · 需第二通道", used: ["SoftPad"] },
+      { id: "agent.reject", name: "拒绝", rail: "builtin", desc: "agent.reject", used: ["按键", "语音"] },
+      { id: "workspace.applyLayout", name: "恢复工作区布局", rail: "builtin", desc: "四通道共享", used: ["按键"] },
+      { id: "overlay.toggle", name: "显示/隐藏面板", rail: "builtin", desc: "四通道共享", used: [] },
+    ];
+
+    let cur = "shake";
+    let rail = "builtin";
+
+    function trig() { return TRIGGERS.find((t) => t.id === cur); }
+    function actById(id) { return ACTIONS.find((a) => a.id === id); }
+
+    function renderTrigs() {
+      document.getElementById("trigList").innerHTML =
+        "<h3>01 · A 触发器</h3>" +
+        TRIGGERS.map((t) => `
+          <button type="button" class="titem ${t.id === cur ? "on" : ""}" data-t="${t.id}">
+            <span class="tn">${t.name}</span>
+            <span class="td">${t.desc} → ${actById(t.act)?.name || t.act}</span>
+          </button>`).join("");
+      document.querySelectorAll("[data-t]").forEach((b) => {
+        b.onclick = () => { cur = b.dataset.t; sync(); };
+      });
+    }
+
+    function renderRail() {
+      document.getElementById("rail").innerHTML = RAILS.map((r) =>
+        `<button type="button" class="${r.id === rail ? "on" : ""}" data-r="${r.id}">${r.label}</button>`
+      ).join("");
+      document.querySelectorAll("[data-r]").forEach((b) => {
+        b.onclick = () => { rail = b.dataset.r; renderActs(); };
+      });
+    }
+
+    function renderActs() {
+      const t = trig();
+      const list = ACTIONS.filter((a) => a.rail === rail);
+      document.getElementById("acts").innerHTML = list.map((a) => `
+        <button type="button" class="act ${a.id === t.act ? "on" : ""}" data-a="${a.id}">
+          <span class="an">${a.name}
+            ${a.used.map((u) => `<span class="chip cy">${u}也在用</span>`).join("")}
+          </span>
+          <span class="ad">${a.desc} · 绑上后其它通道可复用此 action_id</span>
+        </button>`).join("") || "<p style='padding:12px;color:var(--faint);font-size:12px'>此类暂无</p>";
+      document.querySelectorAll("[data-a]").forEach((b) => {
+        b.onclick = () => { trig().act = b.dataset.a; sync(); };
+      });
+    }
+
+    function sync() {
+      const t = trig();
+      const a = actById(t.act);
+      document.getElementById("trigVal").textContent = t.name;
+      document.getElementById("actVal").textContent = a?.name || t.act;
+      document.getElementById("curTrig").textContent = t.name;
+      renderTrigs();
+      renderRail();
+      renderActs();
+    }
+
+    function openLocal(kind) {
+      const map = {
+        B: {
+          title: "持续能力 (B)",
+          sub: "开着就跑，结果内置。不进入 02 共享目录。",
+          body: ["开会静音", "鼠标追踪", "Snap 移窗", "隐私卫士", "久坐提醒"].map(
+            (n) => `<label style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px;font-weight:650">${n}<button type="button" class="tog sm"></button></label>`
+          ).join(""),
+        },
+        C: {
+          title: "画面好看 (C/E)",
+          sub: "只改预览与窗口布局。永不进命令匹配。",
+          body: "<p style='font-size:13px;color:var(--muted)'>妆效 · 面具 · 微调 · 窗口布局快照</p>",
+        },
+        D: {
+          title: "设备与校准 (D)",
+          sub: "基建。视线目标未校准前不可开 track/snap。",
+          body: "<p style='font-size:13px;color:var(--muted)'>摄像头设备 · 分辨率 · 注视校准 · 眨眼基线</p>",
+        },
+      };
+      const m = map[kind];
+      document.getElementById("localTitle").textContent = m.title;
+      document.getElementById("localSub").textContent = m.sub;
+      document.getElementById("localBody").innerHTML = m.body;
+      document.getElementById("maskLocal").classList.add("on");
+    }
+
+    document.getElementById("btnB").onclick = () => openLocal("B");
+    document.getElementById("btnC").onclick = () => openLocal("C");
+    document.getElementById("btnD").onclick = () => openLocal("D");
+    document.querySelector("[data-close]").onclick = () => document.getElementById("maskLocal").classList.remove("on");
+    document.getElementById("maskLocal").onclick = (e) => {
+      if (e.target.id === "maskLocal") e.currentTarget.classList.remove("on");
+    };
+    sync();
+  </script>
+</body>
+</html>

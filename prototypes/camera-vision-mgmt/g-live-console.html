@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>G · 预览台管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c; --muted: #5a6b7c; --faint: #8494a6; --line: #d5dee8;
+      --paper: #fff; --wash: #f3f7fa; --bg: #e4ebf1;
+      --cyan: #2a9cc4; --cyan-ink: #0f5f7a; --cyan-soft: #e4f2f9; --cyan-bd: #9bc6da;
+      --ok: #15803d; --ok-soft: #e8f7ee; --warn: #b45309;
+      --cam: #0b1220; --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg);
+      -webkit-font-smoothing: antialiased; min-height: 100vh;
+    }
+    .bar {
+      position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center;
+      gap: 10px; padding: 10px 18px; background: #0f1820; color: #a8b6c6; font-size: 12.5px;
+    }
+    .bar strong { color: #fff; }
+    .bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; margin-left: auto; }
+    .bar .pill {
+      font-size: 10.5px; font-weight: 750; padding: 2px 8px; border-radius: 999px;
+      background: rgba(42,156,196,.25); color: #7dd3fc; border: 1px solid rgba(125,211,252,.35);
+    }
+    .page { max-width: 1120px; margin: 0 auto; padding: 18px 16px 48px; }
+    .thesis {
+      margin: 0 0 14px; padding: 12px 14px; background: #fff; border: 1px solid var(--line);
+      border-radius: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.55;
+    }
+    .thesis b { color: var(--ink); }
+    .shell {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 18px 40px rgba(19,32,44,.08);
+    }
+    .chrome {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fbfdfe;
+    }
+    .chrome h2 { margin: 0; font-size: 14px; font-weight: 750; }
+    .tog {
+      width: 40px; height: 22px; border: 0; border-radius: 999px; background: #c5d3de;
+      position: relative; cursor: pointer; flex: none;
+    }
+    .tog::after {
+      content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+      border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    }
+    .tog.on { background: var(--cyan); }
+    .tog.on::after { transform: translateX(18px); }
+    .btn {
+      border: 1px solid var(--line); background: #fff; border-radius: 9px;
+      padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .btn.pri { background: var(--cyan); border-color: transparent; color: #fff; }
+    .btn.sm { padding: 4px 8px; font-size: 11px; }
+
+    .desk {
+      display: grid; grid-template-columns: minmax(0, 1.35fr) 300px; min-height: 520px;
+    }
+    @media (max-width: 860px) {
+      .desk { grid-template-columns: 1fr; }
+      .side { border-left: 0; border-top: 1px solid var(--line); }
+    }
+
+    .stage {
+      background: #0a1018; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .preview {
+      flex: 1; min-height: 320px; border-radius: 12px; position: relative; overflow: hidden;
+      background:
+        radial-gradient(ellipse 42% 48% at 50% 40%, rgba(255,210,170,.18), transparent 58%),
+        linear-gradient(165deg, #1c2a3a 0%, #0b1220 55%, #080e18 100%);
+      border: 1px solid #2a3a4c;
+    }
+    .preview .live {
+      position: absolute; top: 10px; left: 10px; font-size: 10px; font-weight: 750;
+      letter-spacing: .06em; color: #fff; background: #dc2626; padding: 2px 7px; border-radius: 4px;
+    }
+    .preview .scheme-tag {
+      position: absolute; top: 10px; right: 10px; font-size: 11px; font-weight: 650;
+      color: #e2e8f0; background: rgba(15,24,32,.65); border: 1px solid rgba(255,255,255,.12);
+      padding: 4px 9px; border-radius: 8px; backdrop-filter: blur(6px);
+    }
+    .overlay {
+      position: absolute; border: 1.5px solid; border-radius: 8px; pointer-events: none;
+      transition: opacity .2s;
+    }
+    .overlay.face { left: 36%; top: 22%; width: 28%; height: 42%; border-color: rgba(42,156,196,.85); border-radius: 42% 42% 48% 48%; }
+    .overlay.hand { left: 62%; top: 48%; width: 14%; height: 18%; border-color: rgba(74,222,128,.8); }
+    .overlay.gaze { left: 44%; top: 30%; width: 12%; height: 6%; border-color: rgba(251,191,36,.9); border-radius: 999px; }
+    .overlay.off { opacity: 0; }
+    .hud {
+      position: absolute; left: 10px; bottom: 10px; right: 10px;
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .hud span {
+      font-size: 11px; font-weight: 650; padding: 3px 8px; border-radius: 6px;
+      background: rgba(15,24,32,.7); color: #cbd5e1; border: 1px solid rgba(255,255,255,.1);
+    }
+    .hud span.hit { color: #86efac; border-color: rgba(134,239,172,.35); }
+    .strip {
+      display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    }
+    .strip .lbl { font-size: 11px; font-weight: 650; color: #94a3b8; margin-right: 4px; }
+    .strip button {
+      appearance: none; border: 1px solid #334155; background: #1e293b; color: #e2e8f0;
+      border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 11.5px; font-weight: 650; cursor: pointer;
+    }
+    .strip button.on { background: var(--cyan); border-color: transparent; color: #fff; }
+
+    .side {
+      border-left: 1px solid var(--line); background: #fafcfd;
+      display: flex; flex-direction: column; max-height: 620px;
+    }
+    .side-tabs {
+      display: flex; border-bottom: 1px solid var(--line); background: var(--wash); flex: none;
+    }
+    .side-tabs button {
+      flex: 1; appearance: none; border: 0; background: transparent; font: inherit;
+      font-size: 12px; font-weight: 650; color: var(--muted); padding: 10px 6px; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .side-tabs button.on { color: var(--cyan-ink); border-bottom-color: var(--cyan); background: #fff; }
+    .side-body { flex: 1; overflow: auto; padding: 12px; }
+    .side-pane { display: none; }
+    .side-pane.on { display: block; }
+
+    .layer {
+      border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; margin-bottom: 8px; background: #fff;
+    }
+    .layer .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .layer .n { font-size: 13px; font-weight: 750; }
+    .layer .d { font-size: 11.5px; color: var(--muted); margin: 4px 0 0; line-height: 1.4; }
+    .layer .events { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+    .ev {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      font-size: 12px; padding: 5px 0; border-bottom: 1px solid var(--wash);
+    }
+    .ev:last-child { border-bottom: 0; }
+    .ev code {
+      font-family: var(--mono); font-size: 10.5px; font-weight: 650; color: var(--cyan-ink);
+      background: var(--cyan-soft); padding: 1px 5px; border-radius: 3px;
+    }
+
+    .preset {
+      appearance: none; width: 100%; text-align: left; font: inherit; cursor: pointer;
+      border: 1px solid var(--line); background: #fff; border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 8px;
+    }
+    .preset.on { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
+    .preset .pn { font-size: 13px; font-weight: 750; display: block; }
+    .preset .pd { font-size: 11.5px; color: var(--muted); margin-top: 2px; display: block; }
+
+    .look label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 12.5px; font-weight: 550; padding: 8px 0; border-bottom: 1px solid var(--line);
+    }
+    .look input[type=range] { width: 100px; }
+    .note {
+      margin-top: 10px; font-size: 11.5px; color: var(--faint); line-height: 1.45;
+      padding: 8px 10px; background: var(--wash); border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>G · 预览台管理</strong>
+    <span class="pill">管理模式 = 画面层 + 档位</span>
+    <a href="index.html">← 索引</a>
+  </div>
+  <div class="page">
+    <p class="thesis">
+      <b>核心命题：</b>视觉方案以<strong>画面上的识别层</strong>为管理对象（脸 / 手 / 视线），不是命令行。
+      大预览是主舞台——开层立刻在画上看到框；右侧用「层 / 档位 / 画面」三栏管。
+      派发动作挂在层下的事件行，点「换」才进共享目录。
+    </p>
+
+    <div class="shell">
+      <div class="chrome">
+        <button type="button" class="tog on" id="master"></button>
+        <h2>摄像头 · 预览台</h2>
+        <span style="font-size:12px;color:var(--muted)">点层开关 · 看框变</span>
+      </div>
+
+      <div class="desk">
+        <div class="stage">
+          <div class="preview" id="preview">
+            <span class="live">LIVE</span>
+            <span class="scheme-tag" id="schemeTag">档位 · 会议</span>
+            <div class="overlay face" id="ov-face"></div>
+            <div class="overlay hand" id="ov-hand"></div>
+            <div class="overlay gaze" id="ov-gaze"></div>
+            <div class="hud" id="hud"></div>
+          </div>
+          <div class="strip">
+            <span class="lbl">快捷层</span>
+            <button type="button" class="on" data-layer="face">脸 / 在座</button>
+            <button type="button" class="on" data-layer="hand">手势</button>
+            <button type="button" data-layer="gaze">视线</button>
+          </div>
+        </div>
+
+        <aside class="side">
+          <div class="side-tabs">
+            <button type="button" class="on" data-side="layers">识别层</button>
+            <button type="button" data-side="presets">方案档位</button>
+            <button type="button" data-side="look">画面</button>
+          </div>
+          <div class="side-body">
+            <div class="side-pane on" id="side-layers"></div>
+            <div class="side-pane" id="side-presets"></div>
+            <div class="side-pane" id="side-look">
+              <div class="look">
+                <p style="margin:0 0 6px;font-size:12px;color:var(--muted)">观感独立于识别层</p>
+                <label>磨皮 <input type="range" min="0" max="100" value="30" /></label>
+                <label>美白 <input type="range" min="0" max="100" value="18" /></label>
+                <label>锐化 <input type="range" min="0" max="100" value="45" /></label>
+                <label>自动构图 <input type="checkbox" checked /></label>
+                <label>虚拟背景 <input type="checkbox" /></label>
+              </div>
+              <p class="note">美颜参数不写入识别层；换档位时默认不改画面滑杆（可另设「档位带画面」）。</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LAYERS = {
+      face: {
+        n: "脸 / 在座",
+        d: "人脸落座、离开、回来",
+        on: true,
+        events: [
+          { n: "在座", act: "presence.seat" },
+          { n: "离开", act: "presence.leave" },
+          { n: "回来", act: "presence.return" },
+        ],
+      },
+      hand: {
+        n: "手势",
+        d: "掌心、招手、指点",
+        on: true,
+        events: [
+          { n: "张开掌", act: "pointer.pause" },
+          { n: "挥手", act: "app.wake" },
+        ],
+      },
+      gaze: {
+        n: "视线",
+        d: "注视方向 / 偏离提醒",
+        on: false,
+        events: [
+          { n: "偏离过久", act: "notify.gentle" },
+        ],
+      },
+    };
+
+    const PRESETS = [
+      { id: "meet", n: "会议", d: "脸开 · 手开 · 视线关", layers: { face: true, hand: true, gaze: false } },
+      { id: "away", n: "离开工位", d: "仅脸 · 无人静音", layers: { face: true, hand: false, gaze: false } },
+      { id: "demo", n: "演示", d: "脸 + 手 · 跟指点", layers: { face: true, hand: true, gaze: false } },
+      { id: "full", n: "全开观察", d: "三层全开（调试）", layers: { face: true, hand: true, gaze: true } },
+    ];
+
+    let preset = "meet";
+
+    function syncOverlay() {
+      ["face", "hand", "gaze"].forEach((k) => {
+        document.getElementById("ov-" + k).classList.toggle("off", !LAYERS[k].on);
+        document.querySelector(`.strip button[data-layer="${k}"]`).classList.toggle("on", LAYERS[k].on);
+      });
+      const hits = Object.values(LAYERS).filter((l) => l.on).map((l) => l.n);
+      document.getElementById("hud").innerHTML = hits.length
+        ? hits.map((h) => `<span class="hit">${h}</span>`).join("")
+        : `<span>无识别层</span>`;
+      document.getElementById("schemeTag").textContent =
+        "档位 · " + (PRESETS.find((p) => p.id === preset)?.n || "自定义");
+    }
+
+    function renderLayers() {
+      const el = document.getElementById("side-layers");
+      el.innerHTML = Object.entries(LAYERS).map(([id, L]) => `
+        <div class="layer">
+          <div class="row">
+            <span class="n">${L.n}</span>
+            <button type="button" class="tog ${L.on ? "on" : ""}" data-layer="${id}"></button>
+          </div>
+          <p class="d">${L.d}</p>
+          <div class="events">
+            ${L.events.map((e) => `
+              <div class="ev">
+                <span>${e.n} → <code>${e.act}</code></span>
+                <button type="button" class="btn sm" ${L.on ? "" : "disabled"}>换</button>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `).join("") + `<p class="note">「换」打开共享通道动作目录（与按键/语音同源，本原型省略面板）。</p>`;
+
+      el.querySelectorAll(".tog").forEach((t) => {
+        t.addEventListener("click", () => {
+          const id = t.dataset.layer;
+          LAYERS[id].on = !LAYERS[id].on;
+          preset = "custom";
+          syncOverlay();
+          renderLayers();
+          renderPresets();
+        });
+      });
+    }
+
+    function renderPresets() {
+      const el = document.getElementById("side-presets");
+      el.innerHTML = PRESETS.map((p) => `
+        <button type="button" class="preset ${p.id === preset ? "on" : ""}" data-id="${p.id}">
+          <span class="pn">${p.n}</span>
+          <span class="pd">${p.d}</span>
+        </button>
+      `).join("") + (preset === "custom"
+        ? `<p class="note">当前为自定义层组合 · 可选上方档位一键覆盖。</p>`
+        : `<p class="note">套用档位会改识别层开关，不改画面美颜。</p>`);
+
+      el.querySelectorAll(".preset").forEach((b) => {
+        b.addEventListener("click", () => {
+          const p = PRESETS.find((x) => x.id === b.dataset.id);
+          preset = p.id;
+          Object.entries(p.layers).forEach(([k, v]) => { LAYERS[k].on = v; });
+          syncOverlay();
+          renderLayers();
+          renderPresets();
+        });
+      });
+    }
+
+    document.querySelectorAll(".side-tabs button").forEach((b) => {
+      b.addEventListener("click", () => {
+        document.querySelectorAll(".side-tabs button").forEach((x) => x.classList.toggle("on", x === b));
+        document.querySelectorAll(".side-pane").forEach((p) => p.classList.toggle("on", p.id === "side-" + b.dataset.side));
+      });
+    });
+    document.querySelectorAll(".strip button").forEach((b) => {
+      b.addEventListener("click", () => {
+        const id = b.dataset.layer;
+        LAYERS[id].on = !LAYERS[id].on;
+        preset = "custom";
+        syncOverlay();
+        renderLayers();
+        renderPresets();
+      });
+    });
+    document.getElementById("master").addEventListener("click", (e) => e.currentTarget.classList.toggle("on"));
+
+    syncOverlay();
+    renderLayers();
+    renderPresets();
+  </script>
+</body>
+</html>

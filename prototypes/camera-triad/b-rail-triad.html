@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>B · 任务 / 触发 · 完善逻辑</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .desk {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 228px;
+      min-height: 520px;
+    }
+    @media (max-width: 800px) {
+      .desk { grid-template-columns: 1fr; }
+      .right { border-left: 0; border-top: 1px solid var(--line); }
+    }
+    .main {
+      min-width: 0; background: #f7fafc;
+      display: flex; flex-direction: column; border-right: 1px solid var(--line);
+    }
+    .head {
+      padding: 14px 16px 10px; background: #fff; border-bottom: 1px solid var(--line);
+    }
+    .head h2 { margin: 0 0 2px; font-size: 16px; font-weight: 750; letter-spacing: -0.02em; }
+    .head p { margin: 0; font-size: 12px; color: var(--muted); font-weight: 550; line-height: 1.4; }
+    .head-row { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+    .head-row .grow { flex: 1; min-width: 140px; }
+
+    .dim {
+      display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px;
+      background: var(--wash); border: 1px solid var(--line); margin-top: 10px;
+    }
+    .dim button {
+      appearance: none; border: 0; background: transparent; font: inherit;
+      font-size: 12px; font-weight: 650; color: var(--muted);
+      padding: 5px 10px; border-radius: 8px; cursor: pointer;
+    }
+    .dim button.on { background: #fff; color: var(--cyan-ink); box-shadow: 0 1px 2px rgba(19,32,44,.06); }
+
+    .cats {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;
+    }
+    .cat {
+      appearance: none; border: 1px solid var(--line); background: #fff;
+      border-radius: 999px; padding: 6px 12px; font: inherit;
+      font-size: 12.5px; font-weight: 650; color: var(--muted); cursor: pointer;
+    }
+    .cat em {
+      font-style: normal; margin-left: 4px; font-size: 11px; font-weight: 750; color: var(--faint);
+    }
+    .cat.on { border-color: transparent; background: var(--cyan); color: #fff; }
+    .cat.on em { color: rgba(255,255,255,.85); }
+
+    .rule {
+      margin-top: 8px; font-size: 11.5px; color: var(--faint); font-weight: 550; line-height: 1.4;
+    }
+    .rule b { color: var(--muted); font-weight: 650; }
+
+    .body {
+      flex: 1; overflow: auto; padding: 14px 16px 20px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .list { display: flex; flex-direction: column; gap: 8px; max-width: 440px; }
+    .card {
+      appearance: none; width: 100%; border: 1px solid var(--line); background: #fff;
+      border-radius: 12px; padding: 12px 14px; text-align: left; font: inherit;
+      cursor: pointer;
+      display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: start;
+    }
+    .card:hover { border-color: var(--cyan-bd); }
+    .card .name { font-size: 14px; font-weight: 750; color: var(--ink); }
+    .card .desc { font-size: 12px; font-weight: 550; color: var(--muted); grid-column: 1; }
+    .card .meta {
+      grid-column: 1; display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px;
+    }
+    .pill {
+      font-size: 10.5px; font-weight: 750; padding: 2px 7px; border-radius: 999px;
+      background: var(--wash); color: var(--muted); border: 1px solid var(--line);
+    }
+    .pill.trig { background: var(--cyan-soft); color: var(--cyan-ink); border-color: var(--cyan-bd); }
+    .pill.task { background: #f3f0ff; color: #5b21b6; border-color: #ddd6fe; }
+    .card .side {
+      grid-column: 2; grid-row: 1 / span 3; align-self: center;
+      font-family: var(--mono); font-size: 12px; font-weight: 550; color: var(--cyan-ink);
+      text-align: right;
+    }
+    .card .side.empty { color: var(--faint); }
+    .card .side.badge {
+      font-family: var(--font); font-size: 11px; font-weight: 750;
+      padding: 2px 8px; border-radius: 999px;
+      background: var(--ok-soft); color: var(--ok); border: 1px solid #86efac;
+    }
+
+    .empty {
+      max-width: 440px; padding: 28px 16px; text-align: center;
+      border: 1px dashed var(--line); border-radius: 14px; background: rgba(255,255,255,.6);
+    }
+    .empty p { margin: 0 0 10px; font-size: 13px; color: var(--muted); font-weight: 550; }
+    .foot { max-width: 440px; font-size: 11.5px; color: var(--faint); font-weight: 550; }
+
+    .sheet, .add-panel {
+      display: none; max-width: 440px; background: #fff; border: 1px solid var(--line);
+      border-radius: 14px; padding: 14px 16px;
+      box-shadow: 0 12px 32px rgba(19, 32, 44, 0.08);
+    }
+    .sheet.on, .add-panel.on { display: block; }
+    .sheet-back {
+      appearance: none; border: 0; background: transparent; font: inherit;
+      font-size: 12px; font-weight: 650; color: var(--cyan-ink); cursor: pointer;
+      padding: 0; margin-bottom: 10px;
+    }
+    .sheet-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+    .sheet-h h3 { margin: 0; flex: 1; font-size: 16px; font-weight: 750; }
+    .sheet .why { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+    .sheet .fields { display: flex; flex-direction: column; gap: 8px; }
+    .add-opt {
+      appearance: none; width: 100%; border: 1px solid var(--line); background: var(--wash);
+      border-radius: 10px; padding: 10px 12px; text-align: left; font: inherit;
+      cursor: pointer; margin-bottom: 6px;
+    }
+    .add-opt:hover { border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .add-opt strong { display: block; font-size: 13px; font-weight: 750; }
+    .add-opt small { font-size: 11.5px; color: var(--muted); font-weight: 550; }
+
+    .right {
+      background: #fbfdfe; padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .right .lbl {
+      margin: 0; font-size: 10px; font-weight: 750; letter-spacing: 0.04em; color: var(--faint);
+    }
+    .link-row {
+      appearance: none; width: 100%; border: 1px solid var(--line); background: #fff;
+      border-radius: 10px; padding: 9px 10px; text-align: left; font: inherit;
+      cursor: pointer; display: flex; align-items: center; gap: 8px;
+    }
+    .link-row:hover { border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .link-row .t { flex: 1; min-width: 0; }
+    .link-row .t strong { display: block; font-size: 12.5px; font-weight: 750; color: var(--ink); }
+    .link-row .t span { display: block; font-size: 11px; font-weight: 550; color: var(--faint); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .link-row .chev { font-size: 14px; color: var(--faint); font-weight: 650; }
+    .scope-btn {
+      appearance: none; border: 1px solid var(--line); background: #fff;
+      border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 11.5px;
+      font-weight: 650; color: var(--muted); cursor: pointer;
+    }
+    .list[hidden], .sheet[hidden], .add-panel[hidden], .empty[hidden] { display: none !important; }
+
+    /* 二级弹窗 */
+    .overlay {
+      position: fixed; inset: 0; z-index: 80;
+      background: rgba(15, 24, 32, 0.45);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.15s;
+    }
+    .overlay.on { opacity: 1; pointer-events: auto; }
+    .modal {
+      width: min(520px, 100%); max-height: min(88vh, 720px); overflow: auto;
+      background: #fff; border-radius: 16px; border: 1px solid var(--line);
+      box-shadow: 0 24px 60px rgba(15, 24, 32, 0.28);
+      display: flex; flex-direction: column;
+    }
+    .modal.wide { width: min(640px, 100%); }
+    .modal-h {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 14px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: #fff; z-index: 1;
+    }
+    .modal-h h3 { margin: 0; flex: 1; font-size: 15px; font-weight: 750; }
+    .modal-h .sub { width: 100%; margin: 0; font-size: 12px; color: var(--muted); font-weight: 550; }
+    .modal-b { padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+    .modal-f {
+      display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+      padding: 12px 16px; border-top: 1px solid var(--line); background: #fbfdfe;
+      position: sticky; bottom: 0;
+    }
+    .modal .field select { width: 100%; }
+
+    /* Rectangle 风格可视分栏 */
+    .snap-sec { margin: 0; }
+    .snap-sec h4 {
+      margin: 0 0 8px; font-size: 11px; font-weight: 750; letter-spacing: 0.04em; color: var(--faint);
+    }
+    .snap-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    }
+    @media (max-width: 520px) { .snap-grid { grid-template-columns: repeat(3, 1fr); } }
+    .snap {
+      appearance: none; border: 1px solid var(--line); background: var(--wash);
+      border-radius: 10px; padding: 8px 6px 6px; cursor: pointer; font: inherit;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .snap:hover, .snap.is-on {
+      border-color: var(--cyan-bd); background: var(--cyan-soft);
+    }
+    .snap .mini {
+      width: 64px; height: 40px; border-radius: 4px;
+      background: #dfe7ee; border: 1px solid #b8c7d4; position: relative; overflow: hidden;
+    }
+    .snap .mini i {
+      position: absolute; background: var(--cyan); opacity: 0.85; border-radius: 2px;
+    }
+    .snap span { font-size: 11px; font-weight: 650; color: var(--ink); }
+    /* footprints */
+    .fp-left i { inset: 3px 50% 3px 3px; }
+    .fp-right i { inset: 3px 3px 3px 50%; }
+    .fp-top i { inset: 3px 3px 50% 3px; }
+    .fp-bot i { inset: 50% 3px 3px 3px; }
+    .fp-max i { inset: 3px; }
+    .fp-tl i { inset: 3px 50% 50% 3px; }
+    .fp-tr i { inset: 3px 3px 50% 50%; }
+    .fp-bl i { inset: 50% 50% 3px 3px; }
+    .fp-br i { inset: 50% 3px 3px 50%; }
+    .fp-t1 i { inset: 3px 66% 3px 3px; }
+    .fp-t2 i { inset: 3px 33% 3px 33%; }
+    .fp-t3 i { inset: 3px 3px 3px 66%; }
+    .fp-l2 i { inset: 3px 33% 3px 3px; }
+    .fp-r2 i { inset: 3px 3px 3px 33%; }
+
+    .scene-list { display: flex; flex-direction: column; gap: 8px; }
+    .scene {
+      appearance: none; width: 100%; border: 1px solid var(--line); background: #fff;
+      border-radius: 12px; padding: 10px 12px; text-align: left; font: inherit; cursor: pointer;
+      display: grid; grid-template-columns: 88px 1fr auto; gap: 10px; align-items: center;
+    }
+    .scene:hover, .scene.is-on { border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .scene .scene-desk {
+      height: 52px; border-radius: 6px; background: #0f1724; position: relative; overflow: hidden;
+      border: 1px solid #334859;
+    }
+    .scene .scene-desk b {
+      position: absolute; border-radius: 3px; font-size: 8px; font-weight: 750;
+      color: #e8f4fa; display: grid; place-items: center; padding: 2px; text-align: center;
+      line-height: 1.15;
+    }
+    .scene .info strong { display: block; font-size: 13px; font-weight: 750; color: var(--ink); }
+    .scene .info span { display: block; font-size: 11.5px; color: var(--muted); font-weight: 550; margin-top: 2px; line-height: 1.35; }
+    .scene .go { font-size: 12px; font-weight: 750; color: var(--cyan-ink); }
+
+    .logic {
+      margin-top: 12px; padding: 12px 14px; border-radius: 12px;
+      background: rgba(255,255,255,.9); border: 1px solid var(--line);
+      font-size: 12px; color: var(--muted); line-height: 1.55;
+    }
+    .logic h3 { margin: 0 0 6px; font-size: 12.5px; font-weight: 750; color: var(--ink); }
+    .logic table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 8px; }
+    .logic th, .logic td {
+      text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top;
+    }
+    .logic th { color: var(--faint); font-weight: 750; }
+    .logic td b { color: var(--ink); font-weight: 650; }
+
+    .hub-gate {
+      display: flex; align-items: center; gap: 8px; margin-top: 8px;
+      font-size: 12px; font-weight: 550; color: var(--muted); cursor: pointer;
+    }
+    .hub-gate input { margin: 0; }
+    .sound-strip {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;
+      padding: 8px 10px; border-radius: 10px; background: var(--wash); border: 1px solid var(--line);
+      font-size: 12px; font-weight: 650; color: var(--muted);
+    }
+    .sound-strip select {
+      border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px;
+      font: inherit; font-size: 12px; font-weight: 650; background: #fff;
+    }
+    .look-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    }
+    .look {
+      appearance: none; border: 1px solid var(--line); background: var(--wash);
+      border-radius: 10px; padding: 10px 6px; font: inherit; font-size: 12px; font-weight: 650;
+      cursor: pointer; color: var(--ink);
+    }
+    .look.on { border-color: var(--cyan-bd); background: var(--cyan-soft); color: var(--cyan-ink); }
+    .quality {
+      margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--wash);
+      font-size: 11.5px; color: var(--muted); line-height: 1.5; font-weight: 550;
+    }
+    .quality b { color: var(--ink); }
+    .calib-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <strong>B · 维度 1 / 2</strong>
+    <span>任务为主 · 触发为辅（可切换）</span>
+    <span class="grow"></span>
+    <a href="index.html">索引</a>
+  </div>
+  <div class="page">
+    <div class="board">
+      <div class="trust">
+        <h1>摄像头</h1>
+        <span class="fg"><i></i>Cursor</span>
+        <button type="button" class="scope-btn">作用于 · Cursor ▾</button>
+        <span class="chip warn" id="trustWarn">不会自动开摄像头</span>
+        <div class="master">
+          <span id="masterLbl">识别已关</span>
+          <button type="button" class="toggle" id="masterToggle" role="switch" aria-checked="false"></button>
+        </div>
+      </div>
+
+      <div class="desk">
+        <div class="main">
+          <header class="head">
+            <div class="head-row">
+              <div class="grow">
+                <h2>摄像头命令</h2>
+                <p id="headLine">先问「我要干什么」；卡上标「怎么触发」。每条命令只进一个任务桶。</p>
+              </div>
+              <button type="button" class="btn" id="btnRecommend" title="离席→遮罩，回席→恢复，摇头→取消，眨眼→激活">一键推荐</button>
+              <button type="button" class="btn pri" id="btnAdd">+ 添加</button>
+            </div>
+
+            <div class="dim" role="group" aria-label="浏览维度">
+              <button type="button" class="on" data-dim="task" id="dimTask">按任务</button>
+              <button type="button" data-dim="trig" id="dimTrig">按触发</button>
+            </div>
+
+            <nav class="cats" id="cats" role="tablist"></nav>
+            <p class="rule" id="ruleLine"></p>
+            <label class="hub-gate" id="hubGateRow" hidden>
+              <input type="checkbox" id="hubGate" checked />
+              <span>仅在 Soft Pad 激活窗内触发手势（生产能力 · 推荐开）</span>
+            </label>
+            <div class="sound-strip" id="soundStrip">
+              <span>提示音</span>
+              <button type="button" class="toggle on" id="soundTog" role="switch" aria-checked="true"></button>
+              <select id="soundSel" aria-label="动作提示音">
+                <option>默认叮</option>
+                <option>轻敲</option>
+                <option>静默</option>
+              </select>
+              <button type="button" class="btn" id="soundPreview" style="padding:4px 8px">试听</button>
+            </div>
+          </header>
+
+          <div class="body">
+            <div class="list" id="list"></div>
+            <div class="empty" id="empty" hidden>
+              <p id="emptyTxt">这一类还是空的</p>
+              <button type="button" class="btn pri" id="emptyAdd">+ 添加</button>
+            </div>
+            <p class="foot" id="footMeta"></p>
+
+            <div class="sheet" id="sheet" hidden>
+              <button type="button" class="sheet-back" id="sheetBack">← 回列表</button>
+              <div class="sheet-h">
+                <h3 id="sheetTitle">—</h3>
+                <div class="master" style="margin:0">
+                  <span id="sheetEnLbl">使用中</span>
+                  <button type="button" class="toggle on" id="sheetEn" role="switch"></button>
+                </div>
+              </div>
+              <p class="why" id="sheetWhy"></p>
+              <div class="meta" id="sheetMeta" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+              <div class="fields" id="sheetFields"></div>
+              <div class="row-actions" style="margin-top:12px">
+                <button type="button" class="btn pri" id="sheetSave">保存</button>
+                <button type="button" class="btn" id="sheetRemove">从列表移除</button>
+              </div>
+            </div>
+
+            <div class="add-panel" id="addPanel" hidden>
+              <button type="button" class="sheet-back" id="addBack">← 取消</button>
+              <p class="rule" id="addHint" style="margin:0 0 10px">添加到当前分类</p>
+              <div id="addBody"></div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="right">
+          <p class="lbl">预览</p>
+          <div class="cam-stage" style="min-height:96px">
+            <span class="live" id="liveChip">关</span>
+            <span class="face">预览</span>
+          </div>
+          <button type="button" class="btn" style="width:100%">开启预览</button>
+
+          <p class="lbl">设备与配置 · 二级弹窗</p>
+          <button type="button" class="link-row" data-open="device">
+            <div class="t">
+              <strong>设备与校准</strong>
+              <span id="sumDevice">默认 · 横屏 · 720p30 · 未校准</span>
+            </div>
+            <span class="chev">›</span>
+          </button>
+          <button type="button" class="link-row" data-open="beauty">
+            <div class="t">
+              <strong>美颜方案</strong>
+              <span id="sumBeauty">自然 · 可对比原图</span>
+            </div>
+            <span class="chev">›</span>
+          </button>
+          <button type="button" class="link-row" data-open="layout">
+            <div class="t">
+              <strong>窗口布局</strong>
+              <span id="sumLayout">贴位 + 工作区快照</span>
+            </div>
+            <span class="chev">›</span>
+          </button>
+        </aside>
+      </div>
+    </div>
+
+    <!-- 设备弹窗 -->
+    <div class="overlay" id="ovDevice" hidden>
+      <div class="modal" role="dialog" aria-labelledby="ttlDevice">
+        <div class="modal-h">
+          <h3 id="ttlDevice">设备与校准</h3>
+          <button type="button" class="btn" data-close>关闭</button>
+          <p class="sub">对齐生产能力：设备 / 方向 / 分辨率 / FPS / 校准全家桶 / 运行摘要</p>
+        </div>
+        <div class="modal-b">
+          <div class="field"><label>摄像头</label>
+            <select id="selCam"><option>默认摄像头</option><option>USB Camera</option></select>
+          </div>
+          <div class="field"><label>屏幕方向</label>
+            <select id="selOrient"><option>横屏</option><option>竖屏</option></select>
+          </div>
+          <div class="field"><label>分辨率</label>
+            <select id="selRes"><option>720p</option><option>1080p</option><option>480p</option></select>
+          </div>
+          <div class="field"><label>帧率</label>
+            <select id="selFps"><option>30fps</option><option>24fps</option><option>15fps</option></select>
+          </div>
+          <p class="quality" id="qualitySum">运行摘要 · 人脸 <b>—</b> · 手势 <b>—</b> · 视线 <b>—</b> · 校准 <b>未开始</b></p>
+          <div class="field">
+            <label>视线校准</label>
+            <p style="margin:0 0 8px;font-size:12px;color:var(--muted)">「视线」类需要 · 状态：<b id="calibState">未校准</b> · 精度：<b id="calibAcc">—</b></p>
+            <div class="calib-row">
+              <button type="button" class="btn pri" id="btnCalib">快校</button>
+              <button type="button" class="btn" id="btnCalibFine">精细校准</button>
+              <button type="button" class="btn" id="btnCalibRecenter">重新居中</button>
+              <button type="button" class="btn" id="btnCalibClear">清除</button>
+            </div>
+            <label class="hub-gate" style="margin-top:10px">
+              <input type="checkbox" id="weakCalib" />
+              <span>允许点击微调校准（弱校准）</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-f">
+          <button type="button" class="btn pri" data-close data-save-device>完成</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 美颜弹窗 -->
+    <div class="overlay" id="ovBeauty" hidden>
+      <div class="modal" role="dialog" aria-labelledby="ttlBeauty">
+        <div class="modal-h">
+          <h3 id="ttlBeauty">美颜方案</h3>
+          <button type="button" class="btn" data-close>关闭</button>
+          <p class="sub">只改预览画面，不影响识别 · 对齐生产妆效入口</p>
+        </div>
+        <div class="modal-b">
+          <div class="snap-sec">
+            <h4>妆效</h4>
+            <div class="look-grid" id="lookGrid">
+              <button type="button" class="look" data-look="关">关</button>
+              <button type="button" class="look on" data-look="自然">自然</button>
+              <button type="button" class="look" data-look="清晰">清晰</button>
+              <button type="button" class="look" data-look="柔光">柔光</button>
+              <button type="button" class="look" data-look="冷调">冷调</button>
+              <button type="button" class="look" data-look="暖调">暖调</button>
+              <button type="button" class="look" data-look="自定义">自定义</button>
+            </div>
+          </div>
+          <div class="field"><label>磨皮</label>
+            <select id="beautySmooth"><option>关</option><option selected>轻</option><option>中</option></select>
+          </div>
+          <div class="field"><label>亮度</label>
+            <select id="beautyBright"><option selected>默认</option><option>略亮</option></select>
+          </div>
+          <button type="button" class="btn" id="btnCompare" style="align-self:flex-start">按住看原图</button>
+          <p class="rule" id="compareHint" style="margin:0" hidden>松手恢复妆效（原型）</p>
+        </div>
+        <div class="modal-f">
+          <button type="button" class="btn pri" data-close data-save-beauty>保存方案</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 窗口布局弹窗 · Rectangle 风格 -->
+    <div class="overlay" id="ovLayout" hidden>
+      <div class="modal wide" role="dialog" aria-labelledby="ttlLayout">
+        <div class="modal-h">
+          <h3 id="ttlLayout">窗口布局</h3>
+          <button type="button" class="btn" data-close>关闭</button>
+          <p class="sub">贴位（Rectangle）+ 工作区快照（现有生产能力）· 与「眼睛跳窗」不同</p>
+        </div>
+        <div class="modal-b">
+          <div class="snap-sec">
+            <h4>工作区快照 · 现有能力</h4>
+            <p class="rule" style="margin:0 0 8px">先排好 Cursor / 浏览器等窗口，再保存；恢复只移动已打开的窗（不对 FancyZones 混开）。</p>
+            <div class="calib-row" style="margin-bottom:8px">
+              <button type="button" class="btn pri" id="btnWsSave">保存当前工作区</button>
+              <button type="button" class="btn" id="btnWsRestore">立即恢复</button>
+            </div>
+            <p class="quality">锚点：<b id="wsAnchor">尚未保存</b></p>
+          </div>
+          <div class="snap-sec">
+            <h4>当前前台窗 · 一键贴位（Rectangle）</h4>
+            <div class="snap-grid" id="snapGrid">
+              <button type="button" class="snap fp-left" data-snap="左半"><div class="mini"><i></i></div><span>左半</span></button>
+              <button type="button" class="snap fp-right" data-snap="右半"><div class="mini"><i></i></div><span>右半</span></button>
+              <button type="button" class="snap fp-max" data-snap="最大化"><div class="mini"><i></i></div><span>最大化</span></button>
+              <button type="button" class="snap fp-top" data-snap="上半"><div class="mini"><i></i></div><span>上半</span></button>
+              <button type="button" class="snap fp-bot" data-snap="下半"><div class="mini"><i></i></div><span>下半</span></button>
+              <button type="button" class="snap fp-tl" data-snap="左上"><div class="mini"><i></i></div><span>左上</span></button>
+              <button type="button" class="snap fp-tr" data-snap="右上"><div class="mini"><i></i></div><span>右上</span></button>
+              <button type="button" class="snap fp-bl" data-snap="左下"><div class="mini"><i></i></div><span>左下</span></button>
+              <button type="button" class="snap fp-br" data-snap="右下"><div class="mini"><i></i></div><span>右下</span></button>
+              <button type="button" class="snap fp-t1" data-snap="左三分"><div class="mini"><i></i></div><span>左⅓</span></button>
+              <button type="button" class="snap fp-t2" data-snap="中三分"><div class="mini"><i></i></div><span>中⅓</span></button>
+              <button type="button" class="snap fp-t3" data-snap="右三分"><div class="mini"><i></i></div><span>右⅓</span></button>
+              <button type="button" class="snap fp-l2" data-snap="左三分二"><div class="mini"><i></i></div><span>左⅔</span></button>
+              <button type="button" class="snap fp-r2" data-snap="右三分二"><div class="mini"><i></i></div><span>右⅔</span></button>
+            </div>
+          </div>
+          <div class="snap-sec">
+            <h4>整桌场景 · 多 App 一次到位</h4>
+            <div class="scene-list" id="sceneList">
+              <button type="button" class="scene" data-scene="编码">
+                <div class="scene-desk">
+                  <b style="inset:4px 38% 4px 4px;background:#2a9cc4">Cursor</b>
+                  <b style="inset:4px 4px 4px 64%;background:#3d5a73">浏览器</b>
+                </div>
+                <div class="info">
+                  <strong>编码</strong>
+                  <span>Cursor 左⅔ · 浏览器 右⅓</span>
+                </div>
+                <span class="go">套用</span>
+              </button>
+              <button type="button" class="scene" data-scene="对照">
+                <div class="scene-desk">
+                  <b style="inset:4px 50% 4px 4px;background:#2a9cc4">Cursor</b>
+                  <b style="inset:4px 4px 4px 52%;background:#15803d">文档</b>
+                </div>
+                <div class="info">
+                  <strong>对照</strong>
+                  <span>左右对半 · IDE + 文档</span>
+                </div>
+                <span class="go">套用</span>
+              </button>
+              <button type="button" class="scene" data-scene="会议">
+                <div class="scene-desk">
+                  <b style="inset:4px 4px 42% 4px;background:#b45309">会议</b>
+                  <b style="inset:60% 50% 4px 4px;background:#2a9cc4">笔记</b>
+                  <b style="inset:60% 4px 4px 52%;background:#3d5a73">聊天</b>
+                </div>
+                <div class="info">
+                  <strong>会议</strong>
+                  <span>上会议 · 下笔记+聊天</span>
+                </div>
+                <span class="go">套用</span>
+              </button>
+              <button type="button" class="scene" data-scene="专注">
+                <div class="scene-desk">
+                  <b style="inset:6px 12% 6px 12%;background:#2a9cc4">专注窗</b>
+                </div>
+                <div class="info">
+                  <strong>专注</strong>
+                  <span>单窗居中放大 · 其余靠边</span>
+                </div>
+                <span class="go">套用</span>
+              </button>
+            </div>
+            <p class="rule" style="margin:4px 0 0">场景 = 多 App 预设一键套用；快照 = 记下你此刻真实窗口。二者可并存。</p>
+            <button type="button" class="btn" id="btnSaveScene" style="align-self:flex-start">从当前桌面另存场景…</button>
+          </div>
+        </div>
+        <div class="modal-f">
+          <span style="flex:1;font-size:12px;color:var(--muted);font-weight:550" id="layoutToast">点选上方即生效</span>
+          <button type="button" class="btn pri" data-close>完成</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="logic">
+      <h3>与生产对齐后的安置</h3>
+      <p>
+        左侧动作补齐<strong>挥手 / 隐私卫士 / 一键推荐 / 提示音 / SoftPad 门控</strong>。
+        右侧弹窗补齐<strong>方向·FPS·校准全家桶·妆效·工作区快照</strong>；Rectangle 贴位为增强，不替代快照。
+      </p>
+      <table>
+        <thead>
+          <tr><th>生产能力</th><th>原型位置</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>离席/回席/摇头/眨眼</b></td><td>离开座位 / 手势</td></tr>
+          <tr><td><b>五指/OK/握拳/挥手</b></td><td>手势 · SoftPad 门控在顶栏</td></tr>
+          <tr><td><b>遮屏 + 隐私卫士</b></td><td>离开座位</td></tr>
+          <tr><td><b>久坐 20-20-20</b></td><td>离开座位</td></tr>
+          <tr><td><b>自动静音</b></td><td>开会</td></tr>
+          <tr><td><b>鼠标追踪 / Snap 移窗</b></td><td>视线</td></tr>
+          <tr><td><b>设备·校准·美颜</b></td><td>二级弹窗</td></tr>
+          <tr><td><b>工作区保存/恢复</b></td><td>布局弹窗 · 快照区</td></tr>
+          <tr><td><b>Rectangle 贴位</b></td><td>布局弹窗 · 增强</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="anno" style="margin-top:10px">
+      <span><b>补</b> 挥手</span>
+      <span><b>补</b> 隐私卫士</span>
+      <span><b>补</b> 推荐/音效/门控</span>
+      <span><b>补</b> 快照+校准全家</span>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var TASKS = [
+        { id: "leave", title: "离开座位", rule: "离席 / 回席 / 遮屏 / 隐私卫士 / 久坐" },
+        { id: "meet", title: "开会", rule: "距离自动静音（Auto Mute）" },
+        { id: "act", title: "手势", rule: "摇头 / 眨眼 / 五指 / OK / 握拳 / 挥手 → 结果" },
+        { id: "eye", title: "视线", rule: "鼠标追踪 · Snap 移窗 · 需先校准" }
+      ];
+      var TRIGS = [
+        { id: "face", title: "脸", rule: "人脸在席 / 表情动作" },
+        { id: "hand", title: "手", rule: "手势入画" },
+        { id: "gaze", title: "视线", rule: "需校准" },
+        { id: "always", title: "持续", rule: "开着就跑 · 不是单次触发" }
+      ];
+
+      var TRIG_LABEL = { face: "脸", hand: "手", gaze: "视线", always: "持续" };
+      var TASK_LABEL = {
+        leave: "离开座位", meet: "开会", act: "手势", eye: "视线"
+      };
+
+      var ITEMS = {
+        away: {
+          task: "leave", trig: "face", name: "离席", desc: "人脸消失达时长 → 结果",
+          side: "→ 遮罩", inList: true, match: true,
+          why: "离开座位时的匹配命令。结果可与按键/口头同名。",
+          fields: [
+            { label: "判定时长", opts: ["1 秒", "2 秒", "3 秒", "5 秒"], val: 2 },
+            { label: "结果", opts: ["遮罩当前窗口", "静音", "无"], val: 0 }
+          ]
+        },
+        back: {
+          task: "leave", trig: "face", name: "回席", desc: "人脸回来 → 结果",
+          side: "→ 取消", inList: true, match: true,
+          why: "与离席成对，同属「离开座位」。",
+          fields: [
+            { label: "判定时长", opts: ["0.5 秒", "1 秒", "2 秒"], val: 1 },
+            { label: "结果", opts: ["取消遮罩", "恢复语音", "无"], val: 0 }
+          ]
+        },
+        privacy: {
+          task: "leave", trig: "always", name: "离席遮屏", desc: "遮罩样式 · 可给离席当结果",
+          side: "使用中", inList: true, match: false,
+          why: "遮屏是离开座位这件事的一部分。",
+          fields: [{ label: "样式", opts: ["模糊", "纯色", "像素化"], val: 0 }]
+        },
+        guard: {
+          task: "leave", trig: "always", name: "隐私卫士", desc: "多人入画提醒 · RGB 视觉",
+          side: "未用", inList: false, match: false,
+          why: "生产能力：隐私与范围面板。不依赖 Windows Hello。",
+          fields: [
+            { label: "多人提醒", opts: ["关", "提示", "自动遮罩"], val: 1 },
+            { label: "范围指示", opts: ["开", "关"], val: 0 }
+          ]
+        },
+        wellness: {
+          task: "leave", trig: "always", name: "久坐提醒", desc: "20-20-20 · 在席过久提示",
+          side: "未用", inList: false, match: false,
+          why: "本地状态机；与故意眨眼确认分流，无医疗宣称。",
+          fields: [
+            { label: "模式", opts: ["20-20-20", "自定义间隔"], val: 0 },
+            { label: "间隔", opts: ["20 分", "45 分", "60 分"], val: 0 }
+          ]
+        },
+        automute: {
+          task: "meet", trig: "always", name: "开会静音", desc: "后退超距静音 · 靠近开麦",
+          side: "使用中", inList: true, match: false,
+          why: "人脸大小估距 · 可按桌面自选阈值。",
+          fields: [
+            { label: "距离阈值", opts: ["近", "中", "远"], val: 1 },
+            { label: "恢复", opts: ["靠近自动开麦", "手动开麦"], val: 0 }
+          ]
+        },
+        shake: {
+          task: "act", trig: "face", name: "摇头", desc: "左右三拍 → 结果",
+          side: "→ —", inList: false, match: true,
+          why: "瞬时动作，不是离开座位；归入手势类。",
+          fields: [{ label: "结果", opts: ["按 Esc", "取消", "无"], val: 0 }]
+        },
+        blink: {
+          task: "act", trig: "face", name: "故意眨眼", desc: "闭眼达阈值 → 结果",
+          side: "→ —", inList: false, match: true,
+          why: "需基线适配；可选响声后眨眼确认（生产能力）。",
+          fields: [
+            { label: "闭眼多久", opts: ["0.6 秒", "1 秒", "2 秒"], val: 0 },
+            { label: "响声后确认", opts: ["开", "关"], val: 0 },
+            { label: "结果", opts: ["确认 / 激活", "无"], val: 0 }
+          ]
+        },
+        palm: {
+          task: "act", trig: "hand", name: "五指张开", desc: "手势 → 结果",
+          side: "→ —", inList: false, match: true,
+          why: "手势匹配 · 可与 Soft Pad / 口头同名。受 SoftPad 门控。",
+          fields: [{ label: "结果", opts: ["继续", "新建对话", "无"], val: 0 }]
+        },
+        ok: {
+          task: "act", trig: "hand", name: "OK 手势", desc: "拇食成圈 → 结果",
+          side: "→ —", inList: false, match: true,
+          why: "手势匹配 · SoftPad 门控。",
+          fields: [{ label: "结果", opts: ["确认", "无"], val: 0 }]
+        },
+        fist: {
+          task: "act", trig: "hand", name: "握拳", desc: "收拢五指 → 结果",
+          side: "→ —", inList: false, match: true,
+          why: "手势匹配 · SoftPad 门控。",
+          fields: [{ label: "结果", opts: ["停止", "无"], val: 0 }]
+        },
+        wave: {
+          task: "act", trig: "hand", name: "挥手", desc: "横向扫动 · 与五指可能互抢",
+          side: "→ —", inList: false, match: true,
+          why: "生产能力第四手势。挥手优先于五指短时互抢。",
+          fields: [{ label: "结果", opts: ["划走通知", "取消", "无"], val: 0 }]
+        },
+        track: {
+          task: "eye", trig: "gaze", name: "鼠标追踪", desc: "粗判看向哪块屏 · 可选移鼠",
+          side: "未用", inList: false, match: false,
+          why: "多屏视线 · 非像素级鼠标。需先校准。",
+          fields: [
+            { label: "移鼠", opts: ["关", "看向屏时移到该屏", "持续跟随"], val: 1 },
+            { label: "灵敏度", opts: ["低", "中", "高"], val: 1 }
+          ]
+        },
+        snap: {
+          task: "eye", trig: "gaze", name: "Snap 移窗", desc: "拖标题栏 + 看向目标屏跳转",
+          side: "未用", inList: false, match: false,
+          why: "只需摄像头。与右侧「窗口布局」规划/贴位不同。",
+          fields: [
+            { label: "启用", opts: ["关", "开"], val: 1 },
+            { label: "确认", opts: ["看向目标屏", "注视停留"], val: 0 }
+          ]
+        }
+      };
+
+      var dim = "task";
+      var cat = "leave";
+      var mode = "list";
+      var activeId = null;
+
+      var master = document.getElementById("masterToggle");
+      master.addEventListener("click", function () {
+        var on = !master.classList.contains("on");
+        master.classList.toggle("on", on);
+        document.getElementById("masterLbl").textContent = on ? "识别已开" : "识别已关";
+        document.getElementById("trustWarn").hidden = on;
+        document.getElementById("liveChip").textContent = on ? "待命" : "关";
+      });
+
+      function catDefs() {
+        return dim === "task" ? TASKS : TRIGS;
+      }
+
+      function itemCat(it) {
+        return dim === "task" ? it.task : it.trig;
+      }
+
+      function countIn(cid) {
+        return Object.keys(ITEMS).filter(function (id) {
+          return ITEMS[id].inList && itemCat(ITEMS[id]) === cid;
+        }).length;
+      }
+
+      function renderCats() {
+        var defs = catDefs();
+        if (!defs.some(function (d) { return d.id === cat; })) cat = defs[0].id;
+        var nav = document.getElementById("cats");
+        nav.innerHTML = defs.map(function (d) {
+          return (
+            '<button type="button" class="cat' + (d.id === cat ? " on" : "") +
+            '" data-cat="' + d.id + '" role="tab" aria-selected="' + (d.id === cat) + '">' +
+            d.title + "<em>" + countIn(d.id) + "</em></button>"
+          );
+        }).join("");
+        var cur = defs.find(function (d) { return d.id === cat; });
+        document.getElementById("ruleLine").innerHTML = cur
+          ? "<b>本类规则</b> · " + cur.rule
+          : "";
+        document.getElementById("headLine").textContent = dim === "task"
+          ? "先问「我要干什么」；卡上标「怎么触发」。每条命令只进一个任务桶。"
+          : "先问「靠什么触发」；卡上标「属于哪类任务」。与按键/口头对齐时更好找。";
+        var showHub = (dim === "task" && cat === "act") || (dim === "trig" && cat === "hand");
+        document.getElementById("hubGateRow").hidden = !showHub;
+      }
+
+      function visibleIds() {
+        return Object.keys(ITEMS).filter(function (id) {
+          var it = ITEMS[id];
+          return it.inList && itemCat(it) === cat;
+        });
+      }
+
+      function poolIds() {
+        return Object.keys(ITEMS).filter(function (id) {
+          var it = ITEMS[id];
+          return !it.inList && itemCat(it) === cat;
+        });
+      }
+
+      function setMode(m) {
+        mode = m;
+        document.getElementById("list").hidden = m !== "list";
+        document.getElementById("empty").hidden = true;
+        document.getElementById("footMeta").hidden = m !== "list";
+        document.getElementById("sheet").hidden = m !== "sheet";
+        document.getElementById("sheet").classList.toggle("on", m === "sheet");
+        document.getElementById("addPanel").hidden = m !== "add";
+        document.getElementById("addPanel").classList.toggle("on", m === "add");
+        document.getElementById("btnAdd").hidden = m !== "list";
+      }
+
+      function renderList() {
+        renderCats();
+        if (mode !== "list") return;
+        var ids = visibleIds();
+        var list = document.getElementById("list");
+        var empty = document.getElementById("empty");
+        if (!ids.length) {
+          list.hidden = true;
+          empty.hidden = false;
+          document.getElementById("emptyTxt").textContent = "这一类还没有项 · 点添加从本类池子里挑";
+          document.getElementById("footMeta").textContent = "";
+          return;
+        }
+        empty.hidden = true;
+        list.hidden = false;
+        list.innerHTML = ids.map(function (id) {
+          var it = ITEMS[id];
+          var side = it.match
+            ? '<span class="side' + (it.side.indexOf("—") >= 0 ? " empty" : "") + '">' + it.side + "</span>"
+            : '<span class="side badge">' + (it.inList ? "使用中" : "未用") + "</span>";
+          var secondary = dim === "task"
+            ? '<span class="pill trig">触发 · ' + TRIG_LABEL[it.trig] + "</span>"
+            : '<span class="pill task">任务 · ' + TASK_LABEL[it.task] + "</span>";
+          if (it.match) secondary += '<span class="pill">可匹配</span>';
+          return (
+            '<button type="button" class="card" data-id="' + id + '">' +
+            '<span class="name">' + it.name + "</span>" +
+            '<span class="desc">' + it.desc + "</span>" +
+            '<span class="meta">' + secondary + "</span>" +
+            side +
+            "</button>"
+          );
+        }).join("");
+        document.getElementById("footMeta").textContent =
+          ids.length + " 项 · 在列表 = 使用中 · 点开配置";
+      }
+
+      function showList() {
+        activeId = null;
+        setMode("list");
+        renderList();
+      }
+
+      function openSheet(id) {
+        var it = ITEMS[id];
+        if (!it) return;
+        activeId = id;
+        setMode("sheet");
+        document.getElementById("sheetTitle").textContent = it.name;
+        document.getElementById("sheetWhy").textContent = it.why;
+        document.getElementById("sheetMeta").innerHTML =
+          '<span class="pill task">任务 · ' + TASK_LABEL[it.task] + "</span>" +
+          '<span class="pill trig">触发 · ' + TRIG_LABEL[it.trig] + "</span>" +
+          (it.match ? '<span class="pill">可匹配其他通道</span>' : '<span class="pill">仅摄像头</span>');
+        var en = document.getElementById("sheetEn");
+        en.classList.toggle("on", !!it.inList);
+        document.getElementById("sheetEnLbl").textContent = it.inList ? "使用中" : "未使用";
+        document.getElementById("sheetFields").innerHTML = it.fields.map(function (f) {
+          return (
+            '<div class="field"><label>' + f.label + "</label><select>" +
+            f.opts.map(function (o, j) {
+              return '<option' + (j === f.val ? " selected" : "") + ">" + o + "</option>";
+            }).join("") +
+            "</select></div>"
+          );
+        }).join("");
+      }
+
+      function openAdd() {
+        setMode("add");
+        var defs = catDefs();
+        var cur = defs.find(function (d) { return d.id === cat; });
+        document.getElementById("addHint").textContent =
+          "只列出归属「" + (cur ? cur.title : "") + "」且尚未添加的项（一命令一桶）";
+        var pool = poolIds();
+        var body = document.getElementById("addBody");
+        body.innerHTML = pool.length
+          ? pool.map(function (id) {
+              var it = ITEMS[id];
+              return (
+                '<button type="button" class="add-opt" data-add="' + id + '">' +
+                "<strong>" + it.name + "</strong>" +
+                "<small>" + it.desc +
+                " · 触发 " + TRIG_LABEL[it.trig] +
+                " · 任务 " + TASK_LABEL[it.task] +
+                "</small></button>"
+              );
+            }).join("")
+          : '<p class="rule">本类没有更多可加项</p>';
+      }
+
+      document.getElementById("dimTask").addEventListener("click", function () {
+        dim = "task";
+        this.classList.add("on");
+        document.getElementById("dimTrig").classList.remove("on");
+        cat = "leave";
+        showList();
+      });
+      document.getElementById("dimTrig").addEventListener("click", function () {
+        dim = "trig";
+        this.classList.add("on");
+        document.getElementById("dimTask").classList.remove("on");
+        cat = "face";
+        showList();
+      });
+
+      document.getElementById("cats").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-cat]");
+        if (!b) return;
+        cat = b.getAttribute("data-cat");
+        showList();
+      });
+
+      document.getElementById("list").addEventListener("click", function (e) {
+        var c = e.target.closest("[data-id]");
+        if (c) openSheet(c.getAttribute("data-id"));
+      });
+      document.getElementById("btnAdd").addEventListener("click", openAdd);
+      document.getElementById("emptyAdd").addEventListener("click", openAdd);
+      document.getElementById("addBack").addEventListener("click", showList);
+      document.getElementById("sheetBack").addEventListener("click", showList);
+
+      document.getElementById("addBody").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-add]");
+        if (!b) return;
+        var id = b.getAttribute("data-add");
+        ITEMS[id].inList = true;
+        if (!ITEMS[id].match) ITEMS[id].side = "使用中";
+        showList();
+        openSheet(id);
+      });
+
+      document.getElementById("sheetEn").addEventListener("click", function () {
+        if (!activeId) return;
+        var on = !this.classList.contains("on");
+        this.classList.toggle("on", on);
+        document.getElementById("sheetEnLbl").textContent = on ? "使用中" : "未使用";
+        ITEMS[activeId].inList = on;
+      });
+
+      document.getElementById("sheetSave").addEventListener("click", function () {
+        if (!activeId) return;
+        var it = ITEMS[activeId];
+        it.inList = document.getElementById("sheetEn").classList.contains("on");
+        var sels = document.querySelectorAll("#sheetFields select");
+        if (it.match && sels.length) {
+          var last = sels[sels.length - 1];
+          var v = last.options[last.selectedIndex].text;
+          it.side = v === "无" ? "→ —" : "→ " + v;
+          if (v === "无") it.inList = false;
+        } else if (!it.match) {
+          it.side = it.inList ? "使用中" : "未用";
+        }
+        showList();
+      });
+
+      document.getElementById("sheetRemove").addEventListener("click", function () {
+        if (!activeId) return;
+        ITEMS[activeId].inList = false;
+        if (!ITEMS[activeId].match) ITEMS[activeId].side = "未用";
+        showList();
+      });
+
+      /* 二级弹窗 */
+      var OV = {
+        device: document.getElementById("ovDevice"),
+        beauty: document.getElementById("ovBeauty"),
+        layout: document.getElementById("ovLayout")
+      };
+
+      function openOv(name) {
+        Object.keys(OV).forEach(function (k) {
+          var el = OV[k];
+          var on = k === name;
+          el.hidden = !on;
+          el.classList.toggle("on", on);
+        });
+      }
+      function closeOv() {
+        Object.keys(OV).forEach(function (k) {
+          OV[k].hidden = true;
+          OV[k].classList.remove("on");
+        });
+      }
+
+      document.querySelectorAll("[data-open]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          openOv(b.getAttribute("data-open"));
+        });
+      });
+      document.querySelectorAll(".overlay").forEach(function (ov) {
+        ov.addEventListener("click", function (e) {
+          if (e.target === ov || e.target.closest("[data-close]")) {
+            if (e.target.closest("[data-save-device]")) {
+              document.getElementById("sumDevice").textContent =
+                document.getElementById("selCam").value.replace("摄像头", "") + " · " +
+                document.getElementById("selOrient").value + " · " +
+                document.getElementById("selRes").value +
+                document.getElementById("selFps").value.replace("fps", "") + " · " +
+                document.getElementById("calibState").textContent;
+              document.getElementById("qualitySum").innerHTML =
+                "运行摘要 · 人脸 <b>可见</b> · 手势 <b>—</b> · 视线 <b>—</b> · 校准 <b>" +
+                document.getElementById("calibState").textContent + "</b>";
+            }
+            if (e.target.closest("[data-save-beauty]")) {
+              var look = document.querySelector("#lookGrid .look.on");
+              document.getElementById("sumBeauty").textContent =
+                (look ? look.getAttribute("data-look") : "关") + " · 可对比原图";
+            }
+            closeOv();
+          }
+        });
+      });
+
+      function setCalib(state, acc) {
+        document.getElementById("calibState").textContent = state;
+        document.getElementById("calibAcc").textContent = acc || "—";
+      }
+      document.getElementById("btnCalib").addEventListener("click", function () {
+        setCalib("已快校", "中");
+      });
+      document.getElementById("btnCalibFine").addEventListener("click", function () {
+        setCalib("已精细校准", "高");
+      });
+      document.getElementById("btnCalibRecenter").addEventListener("click", function () {
+        setCalib(document.getElementById("calibState").textContent || "已校准", "已居中");
+      });
+      document.getElementById("btnCalibClear").addEventListener("click", function () {
+        setCalib("未校准", "—");
+      });
+
+      document.getElementById("lookGrid").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-look]");
+        if (!b) return;
+        document.querySelectorAll("#lookGrid .look").forEach(function (x) {
+          x.classList.toggle("on", x === b);
+        });
+      });
+      var cmp = document.getElementById("btnCompare");
+      cmp.addEventListener("mousedown", function () {
+        document.getElementById("compareHint").hidden = false;
+        document.getElementById("compareHint").textContent = "显示原图中…松手恢复妆效";
+      });
+      cmp.addEventListener("mouseup", function () {
+        document.getElementById("compareHint").textContent = "已恢复妆效";
+      });
+      cmp.addEventListener("mouseleave", function () {
+        document.getElementById("compareHint").hidden = true;
+      });
+
+      document.getElementById("snapGrid").addEventListener("click", function (e) {
+        var s = e.target.closest("[data-snap]");
+        if (!s) return;
+        document.querySelectorAll("#snapGrid .snap").forEach(function (x) {
+          x.classList.toggle("is-on", x === s);
+        });
+        document.querySelectorAll("#sceneList .scene").forEach(function (x) {
+          x.classList.remove("is-on");
+        });
+        var name = s.getAttribute("data-snap");
+        document.getElementById("layoutToast").textContent = "已贴位 · 前台窗 → " + name;
+        document.getElementById("sumLayout").textContent = "贴位 · " + name;
+      });
+      document.getElementById("sceneList").addEventListener("click", function (e) {
+        var s = e.target.closest("[data-scene]");
+        if (!s) return;
+        document.querySelectorAll("#sceneList .scene").forEach(function (x) {
+          x.classList.toggle("is-on", x === s);
+        });
+        document.querySelectorAll("#snapGrid .snap").forEach(function (x) {
+          x.classList.remove("is-on");
+        });
+        var name = s.getAttribute("data-scene");
+        document.getElementById("layoutToast").textContent = "已套用整桌场景 · " + name;
+        document.getElementById("sumLayout").textContent = "场景 · " + name;
+      });
+      document.getElementById("btnSaveScene").addEventListener("click", function () {
+        alert("原型：抓取当前各 App 窗口 → 另存为场景（Rectangle Pro 式）");
+      });
+      document.getElementById("btnWsSave").addEventListener("click", function () {
+        var now = new Date();
+        var label = "工作区 · " + now.getHours() + ":" + String(now.getMinutes()).padStart(2, "0");
+        document.getElementById("wsAnchor").textContent = label + "（已记打开窗位置）";
+        document.getElementById("layoutToast").textContent = "已保存工作区快照";
+        document.getElementById("sumLayout").textContent = "快照 · 已保存";
+      });
+      document.getElementById("btnWsRestore").addEventListener("click", function () {
+        var a = document.getElementById("wsAnchor").textContent;
+        document.getElementById("layoutToast").textContent =
+          a.indexOf("尚未") >= 0 ? "请先保存工作区" : "已恢复 · " + a;
+      });
+
+      document.getElementById("btnRecommend").addEventListener("click", function () {
+        var pack = {
+          away: { inList: true, side: "→ 遮罩", mapEmpty: false },
+          back: { inList: true, side: "→ 恢复语音" },
+          shake: { inList: true, side: "→ 取消" },
+          blink: { inList: true, side: "→ 激活" },
+          privacy: { inList: true, side: "使用中" }
+        };
+        Object.keys(pack).forEach(function (id) {
+          if (!ITEMS[id]) return;
+          ITEMS[id].inList = true;
+          ITEMS[id].side = pack[id].side;
+        });
+        cat = "leave";
+        dim = "task";
+        document.getElementById("dimTask").classList.add("on");
+        document.getElementById("dimTrig").classList.remove("on");
+        showList();
+        document.getElementById("footMeta").textContent =
+          "已套用推荐：离席→遮罩 · 回席→恢复 · 摇头→取消 · 眨眼→激活";
+      });
+
+      document.getElementById("soundTog").addEventListener("click", function () {
+        var on = !this.classList.contains("on");
+        this.classList.toggle("on", on);
+        this.setAttribute("aria-checked", on ? "true" : "false");
+      });
+      document.getElementById("soundPreview").addEventListener("click", function () {
+        this.textContent = "♪";
+        var t = this;
+        setTimeout(function () { t.textContent = "试听"; }, 600);
+      });
+
+      showList();
+    })();
+  </script>
+</body>
+</html>

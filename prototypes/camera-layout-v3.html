@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>摄像头 · 布局方案</title>
+<style>
+:root{
+  --pri:#0ea5e9;--pri-d:#0284c7;--pri-sf:#e0f2fe;--pri-bd:#bae6fd;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;--ink5:#e2e8f0;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f8fafc;
+  --ok:#10b981;--ok-sf:#ecfdf5;--ok-bd:#a7f3d0;
+  --wa:#f59e0b;--wa-sf:#fffbeb;--wa-bd:#fde68a;
+  --rk:#ef4444;--rk-sf:#fef2f2;--rk-bd:#fecaca;
+  --r:10px;--sh:0 1px 2px rgba(15,23,42,.05);--sh2:0 1px 3px rgba(15,23,42,.07);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:13.5px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+
+/* ---- 页面外壳（展示用） ---- */
+.page{max-width:1240px;margin:0 auto;padding:0 24px 90px}
+.topbar{position:sticky;top:0;z-index:60;background:rgba(248,250,252,.94);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:0 24px;margin-bottom:30px}
+.topbar-in{max-width:1240px;margin:0 auto;height:60px;display:flex;align-items:center;gap:8px}
+.topbar .b{font-weight:800;font-size:15px;margin-right:18px;letter-spacing:-.3px}
+.tab{padding:7px 14px;border-radius:8px;font-size:13px;color:var(--ink2);border:0;background:none;font-weight:500}
+.tab:hover{background:var(--line2)}
+.tab.on{background:var(--ink);color:#fff}
+.topbar .sp{margin-left:auto;font-size:11.5px;color:var(--ink3)}
+h1.ft{font-size:26px;margin:0 0 8px;letter-spacing:-.6px}
+.lead{font-size:15px;color:var(--ink2);max-width:860px;margin:0 0 26px}
+
+/* ---- 标注层 ---- */
+.mlayer{position:relative}
+.mnum{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;
+  background:var(--ink);color:#fff;font-size:11px;font-weight:800;margin-right:7px;
+  vertical-align:middle;flex:none;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.mnum.lg{width:23px;height:23px;font-size:12.5px}
+
+/* ---- 应用窗口 ---- */
+.win{background:#fff;border:1px solid var(--ink5);border-radius:12px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,.09)}
+.tbar{display:flex;align-items:center;gap:11px;padding:0 16px;height:52px;border-bottom:1px solid var(--line)}
+.tbar .ttl{font-size:14.5px;font-weight:700}
+.tbar .cr{font-size:12px;color:var(--ink3)}
+.tbar .r{margin-left:auto;display:flex;gap:7px;align-items:center}
+.btn{border:1px solid var(--ink5);background:#fff;border-radius:7px;padding:6px 12px;font-size:12.5px;
+  color:var(--ink2);font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--line2)}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.p:hover{background:var(--pri-d)}
+.btn.gh{border-color:transparent;background:transparent;color:var(--ink3)}
+.btn.gh:hover{background:var(--line2);color:var(--ink2)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.p-b{background:var(--pri-sf);color:var(--pri-d)}
+.p-g{background:var(--ok-sf);color:#047857}
+.p-w{background:var(--wa-sf);color:#b45309}
+.p-r{background:var(--rk-sf);color:#b91c1c}
+.p-n{background:var(--line2);color:var(--ink2)}
+.sw{width:38px;height:22px;border-radius:99px;background:var(--ink4);border:0;position:relative;transition:.18s;flex:none;padding:0}
+.sw::after{content:"";position:absolute;top:2.5px;left:2.5px;width:17px;height:17px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 2px rgba(0,0,0,.2);transition:.18s}
+.sw.on{background:var(--pri)}.sw.on::after{left:18.5px}
+
+.body{display:grid;grid-template-columns:206px 1fr 276px}
+/* 左栏 */
+.rail{border-right:1px solid var(--line);padding:14px 11px;background:#fcfdfe;min-height:660px}
+.rail h6{margin:0 0 9px 9px;font-size:10.5px;color:var(--ink3);font-weight:800;letter-spacing:.6px}
+.scn{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:8px;margin-bottom:1px;
+  border:1px solid transparent;background:none;width:100%;text-align:left}
+.scn:hover{background:var(--line2)}
+.scn.on{background:var(--pri-sf);border-color:var(--pri-bd)}
+.scn .ic{width:25px;height:25px;border-radius:7px;background:var(--line2);display:grid;place-items:center;
+  font-size:13.5px;flex:none}
+.scn.on .ic{background:#fff;box-shadow:var(--sh)}
+.scn .nm{font-size:12.5px;font-weight:600;flex:1;min-width:0;color:var(--ink)}
+.scn.on .nm{color:var(--pri-d)}
+.scn .ct{font-size:10.5px;color:var(--ink3);font-weight:600;background:var(--line2);border-radius:5px;
+  padding:1px 6px;min-width:20px;text-align:center}
+.scn.on .ct{background:#fff}
+.rail .div{height:1px;background:var(--line);margin:12px 9px}
+.rail .note{font-size:10.5px;color:var(--ink3);padding:0 9px;line-height:1.5}
+.newscn{margin-top:9px;width:100%;border:1px dashed var(--ink4);background:none;border-radius:8px;
+  padding:8px;font-size:12px;color:var(--ink3);font-weight:500}
+.newscn:hover{border-color:var(--pri);color:var(--pri-d);background:var(--pri-sf)}
+
+/* 中栏 */
+.main{padding:19px 22px;min-width:0}
+.mhead{margin-bottom:16px;display:flex;align-items:flex-start;gap:12px}
+.mhead h3{margin:0 0 4px;font-size:19px;letter-spacing:-.4px;display:flex;align-items:center;gap:9px}
+.mhead p{margin:0;font-size:12.5px;color:var(--ink2)}
+.mhead .rt{margin-left:auto;display:flex;gap:7px;align-items:center;flex:none}
+
+.rules{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.rule{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);
+  border-radius:10px;background:#fff;box-shadow:var(--sh)}
+.rule.off{background:#fafbfc;box-shadow:none}
+.rule.off .sig,.rule.off .act{color:var(--ink3)}
+.sigw{display:flex;align-items:center;gap:8px;flex:none;width:104px}
+.sigw .dot{width:7px;height:7px;border-radius:50%;background:var(--pri);flex:none}
+.rule.off .sigw .dot{background:var(--ink4)}
+.sig{font-size:13px;font-weight:700;white-space:nowrap}
+.cnd{font-size:11.5px;color:var(--ink3);background:var(--line2);border-radius:5px;padding:2px 7px;white-space:nowrap;flex:none}
+.arw{color:var(--ink4);font-size:14px;flex:none}
+.actw{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.act{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act .bd{font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:4px;background:var(--line2);color:var(--ink2)}
+.act .bd.a{background:var(--pri-sf);color:var(--pri-d)}
+.act .bd.s{background:var(--ok-sf);color:#047857}
+.act .bd.p{background:var(--wa-sf);color:#b45309}
+.rule .sp{flex:1}
+.rule .lock{margin-left:auto;display:flex;align-items:center;gap:6px;flex:none}
+.locktxt{font-size:10.5px;color:#b45309;background:var(--wa-sf);border:1px solid var(--wa-bd);
+  padding:2px 7px;border-radius:5px;white-space:nowrap}
+.go{background:none;border:0;font-size:11.5px;color:var(--pri-d);font-weight:700;padding:0;white-space:nowrap}
+.go:hover{text-decoration:underline}
+.add{margin-top:12px;width:100%;border:1px dashed var(--ink4);background:none;border-radius:10px;
+  padding:12px;font-size:12.5px;color:var(--ink3);font-weight:500}
+.add:hover{border-color:var(--pri);color:var(--pri-d);background:var(--pri-sf)}
+.blk{margin-top:22px;padding-top:18px;border-top:1px dashed var(--line)}
+.blk h5{margin:0 0 4px;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+.blk .sb{font-size:12px;color:var(--ink3);margin:0 0 11px}
+
+/* 右栏 */
+.side{border-left:1px solid var(--line);padding:14px 13px;background:#fcfdfe;min-height:660px}
+.side h6{margin:0 0 9px;font-size:10.5px;color:var(--ink3);font-weight:800;letter-spacing:.6px}
+.side h6+.h6,.side .sep{margin-top:17px}
+.feed{position:relative;border-radius:9px;overflow:hidden;border:1px solid var(--line);background:#0f172a;
+  aspect-ratio:16/10;margin-bottom:8px}
+.feed img{width:100%;height:100%;object-fit:cover;display:block}
+.feed .lv{position:absolute;top:7px;left:7px;font-size:9.5px;font-weight:800;background:rgba(16,185,129,.92);
+  color:#fff;padding:2px 6px;border-radius:4px;letter-spacing:.5px}
+.feed .hud{position:absolute;top:7px;right:7px;text-align:right;font-size:9.5px;color:#cbd5e1;line-height:1.5}
+.feed .hud b{color:#fff;font-weight:600}
+.feed .hud .ok{color:#4ade80}
+.feed .hud .no{color:#fbbf24}
+.feed .st{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.7));
+  padding:16px 9px 7px;color:#e2e8f0;font-size:10.5px;display:flex;align-items:center;gap:6px}
+.feed .st .lb{width:5px;height:5px;border-radius:50%;background:#4ade80;flex:none}
+.devsel{border:1px solid var(--ink5);border-radius:7px;padding:7px 10px;font-size:12px;background:#fff;
+  display:flex;align-items:center;gap:7px;margin-bottom:15px}
+.devsel .car{color:var(--ink3);font-size:12.5px}
+.devsel .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.meter{margin-bottom:10px}
+.meter .t{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px;align-items:center}
+.meter .t b{font-weight:600}
+.meter .t s{text-decoration:none;font-size:11px}
+.bar{height:4px;background:var(--line2);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--ok)}
+.bar i.w{background:var(--wa)}.bar i.g{background:var(--ink4)}
+
+.alrt{border:1px solid var(--wa-bd);background:var(--wa-sf);border-radius:9px;padding:11px 12px;margin:13px 0 4px}
+.alrt .h{font-size:11.5px;font-weight:700;color:#b45309;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.alrt p{margin:0 0 5px;font-size:11px;color:#92400e;line-height:1.5}
+.alrt .go{color:#b45309;font-size:11px}
+
+.eff{list-style:none;margin:0;padding:0}
+.eff li{font-size:11.5px;color:var(--ink2);padding:5px 0 5px 15px;position:relative;line-height:1.5}
+.eff li::before{content:"→";position:absolute;left:0;color:var(--ink4)}
+.eff li b{color:var(--ink);font-weight:600}
+.eff .grph{color:var(--ink4);font-size:10px;margin:7px 0 3px;font-weight:700;letter-spacing:.4px}
+
+/* 抽屉 */
+.dw{border:1px solid var(--line);border-radius:10px;margin-bottom:9px;background:#fff;box-shadow:var(--sh)}
+.dw .dh{display:flex;align-items:center;gap:9px;padding:11px 13px;width:100%;background:none;border:0;text-align:left}
+.dw .dh:hover{background:var(--line2)}
+.dw .dh .ic{width:26px;height:26px;border-radius:7px;background:var(--line2);display:grid;place-items:center;font-size:13px;flex:none}
+.dw .dh .tx{flex:1;min-width:0}
+.dw .dh .tx b{display:block;font-size:12.5px;font-weight:600}
+.dw .dh .tx s{text-decoration:none;display:block;font-size:10.5px;color:var(--ink3);margin-top:1px}
+.dw .dh .cv{font-size:11px;color:var(--ink3);flex:none}
+.dw .db{padding:0 13px 13px}
+.dw .cv.pri{color:var(--pri-d);font-weight:700}
+.dw .cv.wa{color:#b45309;font-weight:700}
+.frow{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line2);font-size:12px}
+.frow:first-child{border-top:0}
+.frow .fl{color:var(--ink2)}
+.seg{display:flex;background:var(--line2);border-radius:7px;padding:2px;gap:2px}
+.seg b{font-size:11px;padding:4px 9px;border-radius:5px;color:var(--ink3);font-weight:500}
+.seg b.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:var(--sh)}
+
+/* 注释卡 */
+.anno{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:13px;margin:22px 0 0}
+.ac{background:#fff;border:1px solid var(--line);border-radius:10px;padding:15px;box-shadow:var(--sh)}
+.ac .hd{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.ac .hd b{font-size:13px}
+.ac p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.65}
+.ac code{font-family:Consolas,monospace;font-size:11px;background:var(--line2);padding:1px 5px;border-radius:4px;color:var(--pri-d)}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:22px 0}
+.cmpc{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--sh)}
+.cmpc .h{padding:12px 15px;border-bottom:1px solid var(--line);font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+.cmpc .b{padding:15px;font-size:12.5px;color:var(--ink2);line-height:1.75}
+.cmpc .b b{color:var(--ink)}
+.cmpc .b code{font-family:Consolas,monospace;font-size:11px;background:var(--line2);padding:1px 5px;border-radius:4px}
+.cmpc.old .h{background:var(--rk-sf);color:#b91c1c}
+.cmpc.new .h{background:var(--ok-sf);color:#047857}
+
+/* 弹层 */
+.mask{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;place-items:center;z-index:100;padding:24px}
+.mask.on{display:grid}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:720px;max-height:88vh;overflow:auto;
+  box-shadow:0 24px 64px rgba(0,0,0,.3)}
+.mh{padding:17px 21px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;background:#fff;z-index:3}
+.mh h3{margin:0;font-size:16px;flex:1}
+.x{background:none;border:0;font-size:21px;color:var(--ink3);line-height:1;padding:0 4px}
+.mb{padding:19px 21px}
+.mf{padding:14px 21px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;
+  position:sticky;bottom:0;background:#fff}
+.step{display:flex;align-items:center;gap:8px;margin-bottom:17px;font-size:12px;color:var(--ink3)}
+.step .s{display:flex;align-items:center;gap:6px}
+.step .n{width:19px;height:19px;border-radius:50%;background:var(--line2);display:grid;place-items:center;
+  font-size:10.5px;font-weight:800}
+.step .on .n{background:var(--pri);color:#fff}
+.step .on{color:var(--ink);font-weight:700}
+.step .ln{flex:1;height:1px;background:var(--line)}
+.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:8px}
+.ci{border:1px solid var(--line);border-radius:9px;padding:11px 12px;background:#fff;text-align:left;transition:.14s}
+.ci:hover{box-shadow:0 2px 10px rgba(14,165,233,.1)}
+.ci.sel{border-color:var(--pri);background:var(--pri-sf);box-shadow:0 0 0 2px rgba(14,165,233,.12)}
+.ci.dis{opacity:.42;cursor:not-allowed}
+.ci .cn{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.ci .cd{font-size:11px;color:var(--ink3);line-height:1.45}
+.ci .cb{margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.ci .cb code{font-family:Consolas,monospace;font-size:10px;background:var(--line2);padding:1px 4px;border-radius:3px;color:var(--ink2)}
+.grp{margin-bottom:18px}
+.grp h5{margin:0 0 8px;font-size:12px;color:var(--ink2);font-weight:700;display:flex;align-items:center;gap:8px}
+.grp h5::after{content:"";flex:1;height:1px;background:var(--line)}
+.nb{font-size:10px;font-weight:800;color:var(--ink3);background:var(--line2);padding:1px 5px;border-radius:4px}
+.psl{background:var(--line2);border-radius:9px;padding:12px 14px;font-size:13px;margin-bottom:14px;line-height:1.7}
+.psl b{color:var(--pri-d)}
+.wbox{background:var(--wa-sf);border:1px solid var(--wa-bd);border-radius:9px;padding:11px 13px;margin-bottom:10px}
+.wbox .h{font-size:11.5px;font-weight:700;color:#b45309;margin-bottom:3px}
+.wbox p{margin:0;font-size:11px;color:#92400e;line-height:1.55}
+.rbox{background:var(--rk-sf);border:1px solid var(--rk-bd);border-radius:9px;padding:11px 13px;margin-bottom:10px}
+.rbox .h{font-size:11.5px;font-weight:700;color:#b91c1c;margin-bottom:3px}
+.rbox p{margin:0 0 5px;font-size:11px;color:#991b1b;line-height:1.55}
+.view{display:none}.view.on{display:block}
+@media(max-width:1080px){.body{grid-template-columns:1fr}.rail,.side{border:0;border-bottom:1px solid var(--line)}.cmp{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="b">摄像头 · 布局方案</span>
+    <button class="tab on" data-v="0">主界面</button>
+    <button class="tab" data-v="1">空状态 / 新用户</button>
+    <button class="tab" data-v="2">抽屉展开</button>
+    <button class="tab" data-v="3">改动对照</button>
+    <span class="sp">真实画面取自你的截图 · 数据依 semantic.rs 过滤</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ========== 视图 0：主界面 ========== -->
+<div class="view on" id="v0">
+  <h1 class="ft">方案三布局：场景自动化构建器</h1>
+  <p class="lead">左栏是用户脑中的<b>时间切片</b>（场景），中栏只放<b>信号 → 动作</b>的规则，右栏常驻<b>预览 + 就绪度 + 实际效果</b>。设备参数与美颜已移出摄像头页。</p>
+
+  <div class="mlayer">
+  <div class="win">
+    <div class="tbar">
+      <span class="ttl">摄像头</span>
+      <span class="cr">/ 场景自动化</span>
+      <span class="pill p-g"><span style="width:5px;height:5px;border-radius:50%;background:#10b981;display:inline-block"></span>识别中</span>
+      <div class="r">
+        <button class="btn gh">⚙ 设备与校准</button>
+        <button class="btn gh">◐ 画面观感</button>
+        <button class="btn p">✨ 一键推荐</button>
+      </div>
+    </div>
+    <div class="body">
+      <!-- 左 -->
+      <div class="rail">
+        <h6>场景</h6>
+        <button class="scn on"><span class="ic">🚶</span><span class="nm">离开座位</span><span class="ct">4</span></button>
+        <button class="scn"><span class="ic">🎯</span><span class="nm">专注工作</span><span class="ct">3</span></button>
+        <button class="scn"><span class="ic">👥</span><span class="nm">开会</span><span class="ct">3</span></button>
+        <button class="scn"><span class="ic">🖥️</span><span class="nm">多屏</span><span class="ct">2</span></button>
+        <button class="scn"><span class="ic">🧘</span><span class="nm">久坐</span><span class="ct">2</span></button>
+        <div class="div"></div>
+        <button class="newscn">+ 新建场景</button>
+        <div class="div"></div>
+        <p class="note">场景是「什么时候」。<br>规则写在场景里，开哪个场景就只跑它的规则。</p>
+      </div>
+      <!-- 中 -->
+      <div class="main">
+        <div class="mhead">
+          <div style="min-width:0">
+            <h3>🚶 离开座位</h3>
+            <p>我不在的时候，电脑自己进入「无人」状态。</p>
+          </div>
+          <div class="rt">
+            <span class="pill p-n">4 条规则</span>
+            <button class="btn">⋯</button>
+          </div>
+        </div>
+        <div class="rules">
+          <div class="rule">
+            <span class="sigw"><span class="dot"></span><span class="sig">离席</span></span>
+            <span class="cnd">持续 3 秒</span>
+            <span class="arw">→</span>
+            <span class="actw"><span class="act">应用内遮罩</span><span class="bd a">应用内</span></span>
+            <span class="sp"></span>
+            <span class="lock"><span class="go">编辑</span></span>
+          </div>
+          <div class="rule">
+            <span class="sigw"><span class="dot"></span><span class="sig">离席</span></span>
+            <span class="cnd">持续 3 秒</span>
+            <span class="arw">→</span>
+            <span class="actw"><span class="act">暂停语音</span><span class="bd a">应用内</span></span>
+            <span class="sp"></span>
+            <span class="lock"><span class="go">编辑</span></span>
+          </div>
+          <div class="rule">
+            <span class="sigw"><span class="dot"></span><span class="sig">回席</span></span>
+            <span class="cnd">持续 1 秒</span>
+            <span class="arw">→</span>
+            <span class="actw"><span class="act">关闭遮罩</span><span class="bd a">应用内</span></span>
+            <span class="sp"></span>
+            <span class="lock"><span class="go">编辑</span></span>
+          </div>
+          <div class="rule">
+            <span class="sigw"><span class="dot"></span><span class="sig">回席</span></span>
+            <span class="cnd">持续 1 秒</span>
+            <span class="arw">→</span>
+            <span class="actw"><span class="act">恢复语音</span><span class="bd a">应用内</span></span>
+            <span class="sp"></span>
+            <span class="lock"><span class="go">编辑</span></span>
+          </div>
+        </div>
+        <button class="add" onclick="openModal()">＋ 添加规则</button>
+
+        <div class="blk">
+          <h5><span class="mnum">5</span>往回找得到路</h5>
+          <p class="sb">离开这个场景不会让用户迷路：想找「久坐提醒」不用翻标签，右下有全量入口。</p>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="btn">🔍 找能力（全部 46 项）</button>
+            <button class="btn">⚙ 全局设置</button>
+            <button class="btn">⌨ 快捷键</button>
+          </div>
+        </div>
+      </div>
+      <!-- 右 -->
+      <div class="side">
+        <h6>预览</h6>
+        <div class="feed">
+          <img src="_ref/feed.png" alt="摄像头预览" />
+          <span class="lv">LIVE</span>
+          <div class="hud">人脸 <b class="ok">已检测</b><br>置信度 <b class="no">5%</b><br>位置 <b>0.50, 0.50</b></div>
+          <div class="st"><span class="lb"></span>离开座位 · 场景运行中</div>
+        </div>
+        <div class="devsel"><span class="car">🎥</span><span class="nm">Integrated Camera (174f:1812)</span><span style="color:var(--ink3)">▾</span></div>
+
+        <h6 class="sep">就绪度</h6>
+        <div class="meter"><div class="t"><b>人脸</b><s style="color:#047857">良好</s></div><div class="bar"><i style="width:88%"></i></div></div>
+        <div class="meter"><div class="t"><b>手势</b><s style="color:#047857">良好</s></div><div class="bar"><i style="width:82%"></i></div></div>
+        <div class="meter"><div class="t"><b>视线</b><s style="color:#b45309">未校准</s></div><div class="bar"><i class="w" style="width:15%"></i></div></div>
+
+        <div class="alrt">
+          <div class="h">⚠ 故意眨眼需要基线适配</div>
+          <p>未适配前该信号保持关闭，避免误触发。</p>
+          <button class="go">去适配 →</button>
+        </div>
+
+        <h6 class="sep">这个场景实际会做</h6>
+        <ul class="eff">
+          <li><b>打开</b>应用内遮罩</li>
+          <li><b>暂停</b>语音</li>
+          <li><b>关闭</b>应用内遮罩</li>
+          <li><b>恢复</b>语音</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div class="anno">
+    <div class="ac"><div class="hd"><span class="mnum">1</span><b>主轴是场景，不是技术项</b></div>
+      <p>5 个场景取代 10 个平级标签。用户想的是「我离开的时候」「开会的时候」，不是「离席 / 挥手 / 移窗」这些技术名词。点击数从 10 降到 5，且每个都能一句话说清。</p></div>
+    <div class="ac"><div class="hd"><span class="mnum">2</span><b>规则只有一种句式</b></div>
+      <p>全场统一 <code>信号 · 条件 → 动作</code>。没有「加个下拉框」这种需要心算的动作，每行都能一眼读完。动作右侧的小徽章标明是<b>应用内</b>还是<b>语义动作</b>。</p></div>
+    <div class="ac"><div class="hd"><span class="mnum">3</span><b>就绪度常驻，且能一键处理</b></div>
+      <p>「视线未校准」「眨眼未适配」这类前置条件放在右栏常驻，而不是藏进标签。未就绪时对应规则自动置灰 + 给入口——解决「不准却找不到原因」。</p></div>
+    <div class="ac"><div class="hd"><span class="mnum">4</span><b>右栏回答「这场景会怎样」</b></div>
+      <p>不是显示一堆技术参数，而是把规则翻译成人话。这是现状两版都缺的一环：用户配完不知道实际效果。</p></div>
+    <div class="ac"><div class="hd"><span class="mnum">5</span><b>不制造死胡同</b></div>
+      <p>场景化最大的风险是「我记不清某个能力在哪」。底部保留全量能力检索入口，46 项能力一个不丢，只是默认不让它们平铺。</p></div>
+    <div class="ac"><div class="hd"><span class="mnum">6</span><b>设备与观感移出摄像头页</b></div>
+      <p>分辨率 / FPS / 抗闪烁进「设备与校准」抽屉；妆效细调进「画面观感」抽屉。<b>装饰不是摄像头的能力</b>，移出后本页只剩自动化主线。</p></div>
+  </div>
+</div>
+
+<!-- ========== 视图 1：空状态 ========== -->
+<div class="view" id="v1">
+  <h1 class="ft">空状态：新用户第一次进来</h1>
+  <p class="lead">现状一上来就是 10 个标签和一堆空控件。新用户第一个问题是<b>「这玩意能干嘛」</b>，不是「我要填哪一栏」。</p>
+  <div class="win">
+    <div class="tbar">
+      <span class="ttl">摄像头</span><span class="cr">/ 场景自动化</span>
+      <div class="r"><button class="btn gh">⚙ 设备与校准</button><button class="btn gh">◐ 画面观感</button></div>
+    </div>
+    <div class="body">
+      <div class="rail">
+        <h6>场景</h6>
+        <button class="scn on"><span class="ic">🚶</span><span class="nm">离开座位</span><span class="ct">4</span></button>
+        <button class="scn"><span class="ic">🎯</span><span class="nm">专注工作</span><span class="ct">0</span></button>
+        <button class="scn"><span class="ic">👥</span><span class="nm">开会</span><span class="ct">0</span></button>
+        <button class="scn"><span class="ic">🖥️</span><span class="nm">多屏</span><span class="ct">0</span></button>
+        <button class="scn"><span class="ic">🧘</span><span class="nm">久坐</span><span class="ct">0</span></button>
+        <div class="div"></div>
+        <button class="newscn">+ 新建场景</button>
+      </div>
+      <div class="main">
+        <div class="mhead">
+          <div><h3>🎯 专注工作</h3><p>我在，但别来打扰我。</p></div>
+          <div class="rt"><span class="pill p-n">0 条规则</span></div>
+        </div>
+        <div style="text-align:center;padding:40px 20px;background:#fcfdfe;border:1px dashed var(--ink5);border-radius:12px">
+          <div style="font-size:34px;margin-bottom:12px">🎯</div>
+          <h4 style="margin:0 0 7px;font-size:16px">这个场景还是空的</h4>
+          <p style="margin:0 auto 18px;font-size:13px;color:var(--ink2);max-width:400px;line-height:1.7">
+            专注工作最常用的是：摇头表示「不要」、挥手表示「等一下」、长眨表示「继续说」。<br>
+            要不要直接套用这三条？</p>
+          <div style="display:flex;gap:8px;justify-content:center;margin-bottom:18px">
+            <button class="btn p">✨ 套用这三条</button>
+            <button class="btn">我自己挑</button>
+          </div>
+          <p style="margin:0;font-size:11.5px;color:var(--ink3)">长眨需要先适配基线，套用后会自动提醒你</p>
+        </div>
+        <div style="text-align:center;margin-top:12px">
+          <button class="add" style="width:auto;padding:10px 20px;border-style:solid;border-color:var(--ink5)" onclick="openModal()">＋ 添加规则</button>
+        </div>
+      </div>
+      <div class="side">
+        <h6>预览</h6>
+        <div class="feed" style="display:grid;place-items:center;background:#f1f5f9">
+          <div style="text-align:center;color:var(--ink3);font-size:11.5px;padding:0 16px;line-height:1.7">
+            摄像头未开启<br><span style="font-size:10.5px">识别用原始画面，不会自动开启</span>
+            <div style="margin-top:9px"><button class="btn" style="font-size:11.5px">开启预览</button></div>
+          </div>
+        </div>
+        <div class="devsel"><span class="car">🎥</span><span class="nm">Integrated Camera (174f:1812)</span><span style="color:var(--ink3)">▾</span></div>
+        <h6 class="sep">就绪度</h6>
+        <p style="font-size:11.5px;color:var(--ink3);line-height:1.7;margin:0">
+          开启预览后显示实时质量。<br>现在所有信号都可用，只是没配规则。
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="anno" style="margin-top:20px">
+    <div class="ac"><div class="hd"><b>空状态给方案，不给表单</b></div><p>直接告诉用户「这个场景最常用的是哪三条」，一键套用。比丢一个空列表 + 「添加」按钮有用得多——这正是现状 Camera 2「一键推荐」想做的事，但位置放错了。</p></div>
+    <div class="ac"><div class="hd"><b>预告前置依赖</b></div><p>套用含长眨的规则时提前说「需要先适配基线」，而不是让用户配完才发现不生效。</p></div>
+    <div class="ac"><div class="hd"><b>摄像头不自动开</b></div><p>保留现状这点做对的：默认关闭，并明说「识别用原始画面，不会自动开启」。这是隐私信任的底线。</p></div>
+  </div>
+</div>
+
+<!-- ========== 视图 2：抽屉 ========== -->
+<div class="view" id="v2">
+  <h1 class="ft">抽屉：把不该在主线的东西收走</h1>
+  <p class="lead">设备参数和画面观感<b>一个都没丢</b>，只是从 10 个平级标签里收进右上角两个抽屉。46 项能力全部可寻址。</p>
+  <div class="win" style="max-width:940px">
+    <div class="tbar">
+      <span class="ttl">摄像头</span><span class="cr">/ 设备与校准</span>
+      <div class="r"><button class="btn">关闭</button></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+      <div style="padding:20px 22px;border-right:1px solid var(--line)">
+        <h4 style="margin:0 0 3px;font-size:15px">⚙ 设备与校准</h4>
+        <p style="margin:0 0 15px;font-size:12px;color:var(--ink3)">采集条件与前置适配。原「美颜」页里那块。</p>
+        <div class="frow"><span class="fl">设备</span><div class="seg"><b class="on">Integrated Camera</b></div></div>
+        <div class="frow"><span class="fl">屏幕方向</span><div class="seg"><b class="on">横屏</b><b>竖屏</b></div></div>
+        <div class="frow"><span class="fl">分辨率</span><div class="seg"><b>720p</b><b class="on">全高清</b><b>2K</b></div></div>
+        <div class="frow"><span class="fl">采集帧率</span><div class="seg"><b class="on">Auto</b><b>25</b><b>30</b><b>60</b></div></div>
+        <div class="frow"><span class="fl">抗闪烁</span><div class="seg"><b class="on">Auto</b><b>50Hz</b><b>60Hz</b></div></div>
+        <div class="frow"><span class="fl">显示帧率</span><div class="seg"><b class="on">Auto</b><b>30</b><b>60</b></div></div>
+        <div class="frow"><span class="fl">亮度 / 对比度 / 饱和度</span><div class="seg"><b>0</b><b class="on">+8</b><b>+6</b></div></div>
+        <div class="frow"><span class="fl">屏幕布局</span><span style="font-size:11.5px;color:var(--ink3)">横向 3 屏 · 摄像头在中间屏上方</span></div>
+
+        <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line)">
+          <h5 style="margin:0 0 9px;font-size:13px;display:flex;align-items:center;gap:8px">🎯 视线校准 <span class="pill p-w">未校准</span></h5>
+          <p style="margin:0 0 11px;font-size:11.5px;color:var(--ink3);line-height:1.6">
+            校准是「多屏」场景的<b style="color:var(--ink2)">前置条件</b>。未校准时视线没有屏幕坐标，追踪与移窗无法生效。</p>
+          <div style="display:flex;gap:7px"><button class="btn p">开始校准</button><button class="btn">精细校准</button><button class="btn">清除</button></div>
+        </div>
+        <div style="margin-top:14px;padding-top:16px;border-top:1px solid var(--line)">
+          <h5 style="margin:0 0 9px;font-size:13px;display:flex;align-items:center;gap:8px">👁 眨眼基线 <span class="pill p-w">未适配</span></h5>
+          <p style="margin:0 0 11px;font-size:11.5px;color:var(--ink3);line-height:1.6">
+            采集你的自然眨眼，用来区分「普通眨眼」和「故意闭眼确认」。</p>
+          <div style="display:flex;gap:7px"><button class="btn p">去适配</button></div>
+        </div>
+      </div>
+      <div style="padding:20px 22px;background:#fcfdfe">
+        <h4 style="margin:0 0 3px;font-size:15px">◐ 画面观感</h4>
+        <p style="margin:0 0 15px;font-size:12px;color:var(--ink3)">只改你看到的预览，<b>不影响识别判断</b>。</p>
+        <div style="font-size:11.5px;color:var(--ink2);font-weight:700;margin-bottom:8px">今天想要的感觉</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:18px">
+          <div class="ci" style="text-align:center;padding:9px 4px"><div class="cd">原图</div></div>
+          <div class="ci sel" style="text-align:center;padding:9px 4px"><div class="cd" style="color:var(--pri-d);font-weight:700">自然</div><span class="nb" style="margin-top:4px;display:inline-block">推荐</span></div>
+          <div class="ci" style="text-align:center;padding:9px 4px"><div class="cd">奶油肌</div></div>
+          <div class="ci" style="text-align:center;padding:9px 4px"><div class="cd">水光感</div></div>
+          <div class="ci" style="text-align:center;padding:9px 4px"><div class="cd">元气</div></div>
+        </div>
+        <div style="font-size:11.5px;color:var(--ink2);font-weight:700;margin-bottom:8px">再微调</div>
+        <div class="frow"><span class="fl">美白</span><div class="seg"><b>关</b><b>轻</b><b class="on">中</b><b>重</b></div></div>
+        <div class="frow"><span class="fl">柔肤</span><div class="seg"><b>关</b><b class="on">轻</b><b>中</b><b>重</b></div></div>
+        <div class="frow"><span class="fl">气色</span><div class="seg"><b>关</b><b>轻</b><b class="on">中</b><b>重</b></div></div>
+        <div class="frow"><span class="fl">轻瘦脸</span><div class="seg"><b>关</b><b class="on">轻</b><b>中</b><b>重</b></div></div>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line)">
+          <h5 style="margin:0 0 9px;font-size:13px">🎭 隐私面具 <span class="pill p-b">从美颜移出</span></h5>
+          <p style="margin:0 0 10px;font-size:11.5px;color:var(--ink3);line-height:1.6">
+            这是<b style="color:var(--ink2)">安全功能</b>，不该埋在「美颜」里当装饰项。已归位到隐私语义下。</p>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+            <div class="ci sel" style="text-align:center;padding:9px 4px"><div class="cd" style="color:var(--pri-d);font-weight:700">关闭</div></div>
+            <div class="ci" style="text-align:center;padding:9px 4px"><div class="cd">柔雾</div></div>
+            <div class="ci" style="text-align:center;padding:9px 4px"><div class="cd">元气</div></div>
+            <div class="ci" style="text-align:center;padding:9px 4px"><div class="cd">粉喵</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="anno" style="margin-top:20px">
+    <div class="ac"><div class="hd"><b>抽屉不是垃圾桶</b></div><p>移出来的东西都有明确归类：采集条件、识别前置、纯装饰、安全功能。每一项都能一句话说清为什么在这。</p></div>
+    <div class="ac"><div class="hd"><b>校准和适配并列</b></div><p>两者都是「信号的就绪条件」，所以放在同一层级。这正是现状把「校准」当成第 2 个平级标签时丢失的语义。</p></div>
+    <div class="ac"><div class="hd"><b>隐私面具归位</b></div><p>从「美颜」移到安全语义下，并在原型上标出这一改动。它是防窥能力，不是妆效。</p></div>
+  </div>
+</div>
+
+<!-- ========== 视图 3：改动对照 ========== -->
+<div class="view" id="v3">
+  <h1 class="ft">改了什么，为什么</h1>
+  <p class="lead">每一处改动都对应一个具体问题，不是审美偏好。</p>
+
+  <div class="cmp">
+    <div class="cmpc old"><div class="h">✕ 现状 Camera 1（Pro 确认与安全）</div><div class="b">
+      <b>10 个平级子标签</b>，零优先级 —— 视觉识别 / 校准 / 隐私 / 美颜 / 手势 / 鼠标追踪 / 久坐提醒 / 移窗 / 布局 / 自动静音<br><br>
+      <b>每行是控件墙</b>：开关 + 长描述 + 动作下拉 + 时长下拉，描述还会被截断（"故意闭眼不算。故意闭眼达到「闭眼多久」…"）<br><br>
+      <b>动作下拉是裸的「不执行动作」</b>，用户不知道能选什么<br><br>
+      <b>美颜与离席同级</b>，但一个是装饰一个是自动化触发<br><br>
+      <b>「校准」是前置条件</b>，却和「隐私」「久坐」平级 → 「鼠标追踪为什么不准」没有答案入口
+    </div></div>
+    <div class="cmpc new"><div class="h">✓ 方案三（场景自动化）</div><div class="b">
+      <b>5 个场景</b>，每个都是用户脑中的时间切片，点击数减半且能一句话说清<br><br>
+      <b>规则只有一种句式</b>：<code>信号 · 条件 → 动作</code>，每行一眼读完<br><br>
+      <b>动作库只给真能绑的</b>，并显式列出 16 个绑不了的及原因（<code>semantic.rs</code> 的 <code>channels</code> 字段过滤）<br><br>
+      <b>美颜移出</b>摄像头页，装饰与自动化彻底分开<br><br>
+      <b>校准/适配升为右栏就绪度</b>，未就绪规则置灰 + 一键处理入口
+    </div></div>
+  </div>
+
+  <div class="cmp">
+    <div class="cmpc old"><div class="h">✕ 现状 Camera 2（场景能力）</div><div class="b">
+      <b>「接任务 / 按钮发」是双轨概念</b>，用户不知道区别，也不知道该选哪个<br><br>
+      <b>分类芯片只是计数不是导航</b>：离开座位 2 / 开会 1 / 手势 2 / 视线 —— 点进去没有预期<br><br>
+      <b>左侧仅 2 条规则，右侧 60% 空白</b>，重心严重失衡<br><br>
+      <b>「别丢即使用中」「在列表 = 使用中」</b>等元信息抢占注意力<br><br>
+      <b>关系搞反了</b>：离席/回席本身是「信号」，却被当成场景下的「类规则」
+    </div></div>
+    <div class="cmpc new"><div class="h">✓ 方案三怎么解决的</div><div class="b">
+      <b>删掉双轨开关</b>。只保留「场景是否启用」一件事需要判断<br><br>
+      <b>左栏是真导航</b>，5 个场景各自带规则数和图标，不是计数芯片<br><br>
+      <b>右栏填满且有用</b>：预览 + 设备 + 就绪度 + 实际效果，取代原来的大面积空白<br><br>
+      <b>元信息下沉</b>为状态徽章（4 条规则），不占标题层<br><br>
+      <b>关系摆正</b>：离席是<b>信号</b>，写在规则行左侧；场景在上，时间轴在下
+    </div></div>
+  </div>
+
+  <h2 style="font-size:16px;margin:30px 0 12px">保留现状做对的地方</h2>
+  <div class="grid3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px">
+    <div class="ac"><div class="hd"><b>摄像头默认不自动开启</b></div><p>现状明确写了「识别用原始画面，不会自动开启摄像头」。这是隐私信任的底线，方案三完整保留并在新用户空状态里再次说明。</p></div>
+    <div class="ac"><div class="hd"><b>美颜不影响识别</b></div><p>现状写明「只改你看到的预览，不影响识别判断」。这句话本身很好，方案三原样保留在画面观感抽屉里。</p></div>
+    <div class="ac"><div class="hd"><b>if-then 的产品语言</b></div><p>现状用「离席 → 应用内遮罩」这种条件句是符合直觉的。方案三不是推翻它，而是让它成为<b>全局唯一句式</b>，不再每页各有各的表达方式。</p></div>
+  </div>
+
+  <h2 style="font-size:16px;margin:30px 0 12px">需要你拍板的取舍</h2>
+  <div class="grid3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px">
+    <div class="ac" style="border-left:3px solid var(--wa)"><div class="hd"><b>① 5 个场景是不是太多</b></div><p>可以压到 3 个（把「多屏」并进「专注工作」、「久坐」并进「离开座位」），但会让场景语义变模糊。需要看你的用户实际会不会同时用到多屏和久坐。</p></div>
+    <div class="ac" style="border-left:3px solid var(--wa)"><div class="hd"><b>②「久坐」该不该独立</b></div><p>它是纯提醒、不驱动任何动作，性质和其他 4 个场景（都含 if-then 规则）不同。独立出来是为了心智清晰，但如果用户觉得场景太碎，可以并掉。</p></div>
+    <div class="ac" style="border-left:3px solid var(--wa)"><div class="hd"><b>③ 动作库只给 9 个会不会太少</b></div><p>这是安全的选择（只显示真能绑的），代价是用户会觉得「功能不够」。另一个选择是保留 25 个全量但把不可选的置灰+写明原因。</p></div>
+  </div>
+</div>
+
+</div>
+
+<!-- 加规则弹层 -->
+<div class="mask" id="mask">
+  <div class="modal">
+    <div class="mh"><h3>添加规则</h3><button class="x" onclick="closeModal()">×</button></div>
+    <div class="mb" id="mBody"></div>
+    <div class="mf" id="mFoot"></div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  document.getElementById('v'+b.dataset.v).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+const SIG=[
+ {n:'离席',d:'人脸消失',r:'就绪',ok:1},{n:'回席',d:'人脸回来',r:'就绪',ok:1},
+ {n:'旁人出现',d:'检测到第二张脸',r:'就绪',ok:1},{n:'摇头',d:'头部左右摆动',r:'就绪',ok:1},
+ {n:'挥手',d:'手掌来回摆动',r:'就绪',ok:1},{n:'久坐超时',d:'在席累计计时',r:'就绪',ok:1},
+ {n:'故意眨眼',d:'闭眼保持',r:'需基线适配',ok:0,m:'需要先采集你的个人眨眼基线，否则无法把它和普通眨眼区分开。规则会先存着，但不会真的触发。'},
+ {n:'视线看某屏',d:'视线方向估算',r:'需视线校准',ok:0,m:'需要先完成视线校准，未校准时拿不到屏幕坐标。规则会先存着，但不会真的触发。'}
+];
+const ACT=[
+ {g:'应用内动作',it:[{n:'应用内遮罩',d:'打开隐私遮罩',b:'应用内'},{n:'关闭遮罩',d:'关掉遮罩',b:'应用内'},
+   {n:'暂停语音',d:'暂停听写',b:'应用内'},{n:'恢复语音',d:'只恢复摄像头造成的暂停',b:'应用内'},
+   {n:'自动静音',d:'把麦克风静音',b:'应用内'},{n:'温和提醒',d:'只提示不执行',b:'应用内'},
+   {n:'光标跟随',d:'按视线移动鼠标',b:'应用内'},{n:'窗口跳转到该屏',d:'把窗口移到看向的屏',b:'应用内'}]},
+ {g:'语义动作 · 可直接执行',it:[{n:'开始听写',d:'input.start',id:1},{n:'取消本轮',d:'input.cancel',id:1},
+   {n:'显示 / 隐藏面板',d:'overlay.toggle',id:1},{n:'回到当前 Agent',d:'agent.focus',id:1},
+   {n:'中断 Agent',d:'agent.interrupt',id:1},{n:'拒绝',d:'agent.reject',id:1},
+   {n:'恢复工作区布局',d:'workspace.applyLayout',id:1}]},
+ {g:'语义动作 · 需二次确认',it:[{n:'完成并发送',d:'input.send',id:1,p:1},{n:'批准',d:'agent.approve',id:1,p:1}]}
+];
+let step=1,pS=null,pA=null;
+function openModal(){step=1;pS=null;pA=null;document.getElementById('mask').classList.add('on');paint();}
+function closeModal(){document.getElementById('mask').classList.remove('on');}
+function paint(){
+  const B=document.getElementById('mBody'),F=document.getElementById('mFoot');
+  const s=SIG.find(x=>x.n===pS);
+  const a=ACT.flatMap(g=>g.it).find(x=>x.n===pA);
+  const head=`<div class="step"><span class="s ${step===1?'on':''}"><span class="n">1</span>选信号</span>
+    <span class="ln"></span><span class="s ${step===2?'on':''}"><span class="n">2</span>选动作</span></div>
+    <div class="psl">${pS?`当 <b>${pS}</b> 时，OneTone 会 <b>${pA||'…'}</b>`:'先选一个<b>信号</b>。'}</div>`;
+  const wbox=(a&&a.p)?`<div class="wbox"><div class="h">⚠ 这个动作需要二次确认</div>
+    <p>摄像头触发后不会直接执行，而是等你用<b>按键或语音</b>确认。这是防误触内容的保护机制，无法关闭。</p></div>`:'';
+  const rbox=(s&&!s.ok)?`<div class="rbox"><div class="h">⚠ 这个信号还没就绪</div>
+    <p>${s.m}</p><button class="go">去处理 →</button></div>`:'';
+  if(step===1){
+    B.innerHTML=head+wbox+rbox+`<h5 style="font-size:13px;margin:0 0 4px">摄像头能感知什么</h5>
+      <p style="font-size:11.5px;color:var(--ink3);margin:0 0 12px">灰色的是未就绪信号——规则可以先存，但不会真的触发。</p>
+      <div class="lib">${SIG.map(x=>`<button class="ci ${pS===x.n?'sel':''} ${x.ok?'':'dis'}" onclick="pS='${x.n}';paint()">
+        <div class="cn">${x.n}${x.ok?'':'<span class="nb">未就绪</span>'}</div>
+        <div class="cd">${x.d}</div><div class="cb"><span class="pill ${x.ok?'p-g':'p-w'}">${x.r}</span></div></button>`).join('')}</div>`;
+    F.innerHTML=`<button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn p" ${pS?'':'style="opacity:.4"'} onclick="step=2;paint()">下一步</button>`;
+  }else{
+    B.innerHTML=head+wbox+rbox+ACT.map(g=>`<div class="grp"><h5>${g.g}</h5><div class="lib">${g.it.map(x=>`
+      <button class="ci ${pA===x.n?'sel':''}" onclick="pA='${x.n}';paint()">
+        <div class="cn">${x.n}${x.p?'<span class="nb">需确认</span>':''}</div>
+        <div class="cd">${x.d}</div>
+        ${x.id?`<div class="cb"><code>${x.d}</code></div>`:''}
+        ${x.b?`<div class="cb"><span class="pill p-n">${x.b}</span></div>`:''}</button>`).join('')}</div></div>`).join('');
+    F.innerHTML=`<button class="btn" onclick="step=1;paint()">上一步</button>
+      <button class="btn p" ${pA?'':'style="opacity:.4"'} onclick="closeModal()">保存规则</button>`;
+  }
+}
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@
   'use strict';
 
   var NAV = {
-    home: { panel: null, home: true, deep: false, pro: false, note: 'closeDrawer' },
+    home: { panel: null, home: true, deep: false, pro: false, note: 'now-cockpit' },
     schemes: { panel: 'habits', home: false, deep: false, pro: false, note: 'primary' },
     triggers: { panel: 'keys', home: false, deep: true, pro: false, note: 'mid' },
     // Soft Pad = 绑键动作面；Agent / 数据 = 独立配置目录（见 design-mock/agent-settings-dir-proto）
@@ -15,7 +15,7 @@
     agentData: { panel: 'agentData', home: false, deep: true, pro: false, note: 'agent-data' },
     voice: { panel: 'voiceWake', home: false, deep: true, pro: false, note: 'mid' },
     camera: { panel: 'camera', home: false, deep: true, pro: true, note: 'pro-no-home-cta' },
-    camera2: { panel: 'camera2', home: false, deep: true, pro: false, note: 'compare-proto' },
+    camera2: { panel: 'camera2', home: false, deep: true, pro: false, note: 'goal-mgmt' },
     tray: { panel: 'tray', home: false, deep: true, pro: false, note: 'mid' },
     sounds: { panel: 'sounds', home: false, deep: false, pro: false, note: 'shallow' },
     general: { panel: 'basic', home: false, deep: false, pro: false, note: 'shallow' },

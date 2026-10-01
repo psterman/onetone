@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>N · 四页同一条脊骨</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .tabs {
+      display: flex; gap: 2px; padding: 8px 10px; background: #0f1820; border-bottom: 1px solid #1e2a36;
+    }
+    .tabs button {
+      appearance: none; border: 0; background: transparent; color: #8494a6;
+      font: inherit; font-size: 12.5px; font-weight: 650; padding: 8px 14px; border-radius: 8px; cursor: pointer;
+    }
+    .tabs button.on { background: rgba(42,156,196,.28); color: #fff; }
+    .spine-bar {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 14px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg,#fbfdfe,var(--wash));
+      font-size: 12px; color: var(--muted);
+    }
+    .spine-bar b { color: var(--ink); }
+    .hero {
+      display: flex; gap: 0; padding: 12px 14px; border-bottom: 1px solid var(--line);
+    }
+    .node {
+      flex: 1; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff;
+    }
+    .node .tag { font-size: 10.5px; font-weight: 750; color: var(--faint); letter-spacing: .04em; }
+    .node .val { font-size: 15px; font-weight: 750; margin-top: 2px; }
+    .arrow { flex: 0 0 36px; display: grid; place-items: center; color: var(--cyan); font-weight: 750; }
+    .body {
+      display: grid; grid-template-columns: 200px 1fr; min-height: 340px;
+    }
+    @media (max-width: 700px) { .body { grid-template-columns: 1fr; } }
+    .left {
+      border-right: 1px solid var(--line); background: var(--wash); padding: 12px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .left h3 { margin: 0 0 4px; font-size: 11px; font-weight: 750; color: var(--faint); letter-spacing: .05em; }
+    .item {
+      appearance: none; text-align: left; border: 1px solid var(--line); background: #fff;
+      border-radius: 10px; padding: 9px 11px; font: inherit; cursor: pointer;
+    }
+    .item.on { border-color: var(--cyan); background: var(--cyan-soft); }
+    .item .n { font-size: 13px; font-weight: 750; }
+    .item .d { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .right { padding: 12px 14px; }
+    .right h3 { margin: 0 0 8px; font-size: 13px; font-weight: 750; }
+    .catalog {
+      border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    }
+    .cat-row {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 13px; cursor: pointer;
+    }
+    .cat-row:last-child { border-bottom: 0; }
+    .cat-row:hover, .cat-row.on { background: var(--cyan-soft); }
+    .cat-row .nm { font-weight: 650; }
+    .cat-row .meta { font-size: 11px; color: var(--faint); }
+    .extra {
+      display: none; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--wash);
+    }
+    .extra.show { display: block; }
+    .extra h4 { margin: 0 0 6px; font-size: 12px; font-weight: 750; color: var(--cyan-ink); }
+    .extra p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>N · 统一脊骨</strong>
+    <span class="pill">四通道同一工作台骨架</span>
+    <a href="index.html">← 索引</a>
+  </div>
+  <div class="page">
+    <p class="thesis">
+      <b>架构：</b>设置里四个通道页共用同一条脊：顶栏切通道 → 永远 <code>01 触发 → 02 共享目录</code>。
+      摄像头多出一层「本页能力」条（B/C/D），其它通道没有。证明命令控制同构、动作可互调。
+    </p>
+    <div class="shell">
+      <div class="tabs" id="tabs">
+        <button type="button" data-ch="keys">按键</button>
+        <button type="button" data-ch="voice">语音</button>
+        <button type="button" data-ch="soft">SoftPad</button>
+        <button type="button" class="on" data-ch="cam">摄像头</button>
+      </div>
+      <div class="spine-bar">
+        脊骨固定：<b>本通道触发</b> → <b>共享动作目录</b>
+        <span class="chip vi" style="margin-left:auto">action_id 跨页可调用</span>
+      </div>
+      <div class="hero">
+        <div class="node">
+          <div class="tag">01 触发 · <span id="ownLabel">本通道拥有</span></div>
+          <div class="val" id="trigName">摇头</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="node">
+          <div class="tag">02 识别 · 共享</div>
+          <div class="val" id="actName">取消 / Esc</div>
+        </div>
+      </div>
+      <div class="body">
+        <aside class="left">
+          <h3 id="leftTitle">触发列表</h3>
+          <div id="trigList"></div>
+        </aside>
+        <section class="right">
+          <h3>共享目录 · 点选即绑定</h3>
+          <div class="catalog" id="catalog"></div>
+        </section>
+      </div>
+      <div class="extra" id="extra">
+        <h4>摄像头专属 · 本页能力（不进 02）</h4>
+        <p>B 持续：开会静音 · 追踪 · 移窗 · 卫士 · 久坐　|　C/E 画面与布局　|　D 设备校准</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CHANNELS = {
+      keys: {
+        own: "物理键",
+        left: "按键",
+        trigs: [
+          { id: "esc", name: "Esc", act: "pressEsc" },
+          { id: "f8", name: "F8", act: "workspace.applyLayout" },
+          { id: "dot", name: "Ctrl+.", act: "agent.reject" },
+        ],
+      },
+      voice: {
+        own: "说法",
+        left: "口令",
+        trigs: [
+          { id: "cancel", name: "「取消」", act: "pressEsc" },
+          { id: "start", name: "「开始听写」", act: "pressCtrlI" },
+          { id: "reject", name: "「拒绝」", act: "agent.reject" },
+        ],
+      },
+      soft: {
+        own: "键帽",
+        left: "Soft 键",
+        trigs: [
+          { id: "dict", name: "听写键", act: "pressCtrlI" },
+          { id: "ok", name: "批准键", act: "agent.approve" },
+          { id: "no", name: "拒绝键", act: "agent.reject" },
+        ],
+      },
+      cam: {
+        own: "A 触发器",
+        left: "视觉触发",
+        trigs: [
+          { id: "away", name: "离席", act: "privacyScreen" },
+          { id: "shake", name: "摇头", act: "pressEsc" },
+          { id: "blink", name: "故意眨眼", act: "pressCtrlI" },
+          { id: "ok", name: "OK", act: "agent.approve" },
+        ],
+      },
+    };
+
+    const CATALOG = [
+      { id: "pressEsc", name: "取消 / Esc" },
+      { id: "pressCtrlI", name: "激活语音输入" },
+      { id: "privacyScreen", name: "应用内遮罩" },
+      { id: "agent.reject", name: "拒绝" },
+      { id: "agent.approve", name: "批准" },
+      { id: "workspace.applyLayout", name: "恢复工作区布局" },
+    ];
+
+    let ch = "cam";
+    let cur = "shake";
+
+    function state() { return CHANNELS[ch]; }
+    function trig() { return state().trigs.find((t) => t.id === cur) || state().trigs[0]; }
+    function actLabel(id) { return CATALOG.find((a) => a.id === id)?.name || id; }
+
+    function render() {
+      const t = trig();
+      document.getElementById("ownLabel").textContent = state().own;
+      document.getElementById("leftTitle").textContent = "01 · " + state().left;
+      document.getElementById("trigName").textContent = t.name;
+      document.getElementById("actName").textContent = actLabel(t.act);
+      document.getElementById("extra").classList.toggle("show", ch === "cam");
+
+      document.getElementById("trigList").innerHTML = state().trigs.map((x) => `
+        <button type="button" class="item ${x.id === t.id ? "on" : ""}" data-t="${x.id}">
+          <div class="n">${x.name}</div>
+          <div class="d">→ ${actLabel(x.act)}</div>
+        </button>`).join("");
+      document.querySelectorAll("[data-t]").forEach((b) => {
+        b.onclick = () => { cur = b.dataset.t; render(); };
+      });
+
+      document.getElementById("catalog").innerHTML = CATALOG.map((a) => `
+        <div class="cat-row ${a.id === t.act ? "on" : ""}" data-a="${a.id}">
+          <span class="nm">${a.name}</span>
+          <span class="meta">${a.id}</span>
+        </div>`).join("");
+      document.querySelectorAll("[data-a]").forEach((b) => {
+        b.onclick = () => { trig().act = b.dataset.a; render(); };
+      });
+    }
+
+    document.querySelectorAll("#tabs [data-ch]").forEach((b) => {
+      b.onclick = () => {
+        ch = b.dataset.ch;
+        cur = CHANNELS[ch].trigs[0].id;
+        document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("on", x === b));
+        render();
+      };
+    });
+    render();
+  </script>
+</body>
+</html>

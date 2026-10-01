@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>摄像头 · 能力全景与通道联动</title>
+<style>
+:root{
+  --pri:#0ea5e9;--pri-d:#0284c7;--pri-sf:#e0f2fe;--pri-bd:#bae6fd;--pri-g:#7dd3fc;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;--ink5:#e2e8f0;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f8fafc;
+  --ok:#10b981;--ok-sf:#ecfdf5;--ok-bd:#a7f3d0;
+  --wa:#f59e0b;--wa-sf:#fffbeb;--wa-bd:#fde68a;
+  --rk:#ef4444;--rk-sf:#fef2f2;--rk-bd:#fecaca;
+  --vi:#8b5cf6;--vi-sf:#f5f3ff;--vi-bd:#ddd6fe;
+  --am:#f59e0b;--am-sf:#fffbeb;--am-bd:#fde68a;
+  --r:10px;--sh:0 1px 2px rgba(15,23,42,.05);--sh2:0 1px 3px rgba(15,23,42,.07);
+  --sh3:0 12px 40px rgba(15,23,42,.09);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:13.5px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+code{font-family:Consolas,monospace;font-size:11.5px;background:var(--line2);padding:1px 5px;border-radius:4px;color:#0369a1}
+
+.topbar{position:sticky;top:0;z-index:60;background:rgba(248,250,252,.95);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:0 24px}
+.topbar-in{max-width:1320px;margin:0 auto;height:60px;display:flex;align-items:center;gap:7px}
+.topbar .b{font-weight:800;font-size:15px;margin-right:16px;letter-spacing:-.3px;white-space:nowrap}
+.tab{padding:7px 14px;border-radius:8px;font-size:13px;color:var(--ink2);border:0;background:none;font-weight:500;white-space:nowrap}
+.tab:hover{background:var(--line2)}.tab.on{background:var(--ink);color:#fff}
+.topbar .sp{margin-left:auto;font-size:11.5px;color:var(--ink3);white-space:nowrap}
+.page{max-width:1320px;margin:0 auto;padding:26px 24px 90px}
+.view{display:none}.view.on{display:block}
+
+h1.ft{font-size:25px;margin:0 0 8px;letter-spacing:-.6px}
+.lead{font-size:14.5px;color:var(--ink2);max-width:900px;margin:0 0 22px;line-height:1.7}
+.lead b{color:var(--ink)}
+h2.sec{font-size:16px;margin:32px 0 4px;display:flex;align-items:center;gap:9px;letter-spacing:-.2px}
+h2.sec .n{font-size:11.5px;color:var(--ink3);font-weight:500}
+.secsub{font-size:12.5px;color:var(--ink2);margin:0 0 14px;max-width:860px;line-height:1.65}
+
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.p-b{background:var(--pri-sf);color:var(--pri-d)}.p-g{background:var(--ok-sf);color:#047857}
+.p-w{background:var(--wa-sf);color:#b45309}.p-r{background:var(--rk-sf);color:#b91c1c}
+.p-v{background:var(--vi-sf);color:#6d28d9}.p-a{background:var(--am-sf);color:#b45309}
+.p-n{background:var(--line2);color:var(--ink2)}
+
+/* ============ 一、能力全景 ============ */
+.map{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:18px 0 0}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh2);overflow:hidden}
+.panel>.ph{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:11px}
+.panel>.ph .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:16px;flex:none}
+.panel>.ph h3{margin:0;font-size:15px;letter-spacing:-.2px}
+.panel>.ph p{margin:2px 0 0;font-size:11.5px;color:var(--ink3)}
+.panel>.ph .rt{margin-left:auto}
+.siggrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:15px 18px}
+.sig{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:#fff;transition:.14s;text-align:left;width:100%}
+.sig:hover{border-color:var(--pri-g);box-shadow:0 2px 10px rgba(14,165,233,.09)}
+.sig .r1{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+.sig .r1 b{font-size:13px;font-weight:700}
+.sig .r1 .d{margin-left:auto;flex:none}
+.sig .r2{font-size:11px;color:var(--ink3);line-height:1.5}
+.sig.wa{border-color:var(--wa-bd);background:#fffdf7}
+.actgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:15px 18px}
+.ag{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:#fff;transition:.14s;text-align:left;width:100%}
+.ag:hover{border-color:var(--pri-g);box-shadow:0 2px 10px rgba(14,165,233,.09)}
+.ag .r1{display:flex;align-items:center;gap:7px;margin-bottom:3px;flex-wrap:wrap}
+.ag .r1 b{font-size:12.5px;font-weight:700}
+.ag .r2{font-size:10.5px;color:var(--ink3);font-family:Consolas,monospace}
+.ag.lock{opacity:.62;background:#fcfdfe}
+.core{background:linear-gradient(135deg,#0c4a6e,#0369a1);color:#fff}
+.core .ph{background:linear-gradient(135deg,#0c4a6e,#0369a1);border-bottom-color:rgba(255,255,255,.16)}
+.core .ph h3{color:#fff}.core .ph p{color:rgba(255,255,255,.75)}
+.core .ag{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.09)}
+.core .ag:hover{background:rgba(255,255,255,.16)}
+.core .ag .r1 b{color:#fff}.core .ag .r2{color:rgba(255,255,255,.6)}
+.core .ag .p-b{background:rgba(255,255,255,.2);color:#e0f2fe}
+.foot{padding:11px 18px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink3);background:#fcfdfe;line-height:1.6}
+.core .foot{background:transparent;border-top-color:rgba(255,255,255,.16);color:rgba(255,255,255,.75)}
+
+/* ============ 二、方案卡 ============ */
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:13px;margin-top:6px}
+.plan{background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--sh2);overflow:hidden;display:flex;flex-direction:column}
+.plan .ph{padding:14px 16px 12px;border-bottom:1px solid var(--line2)}
+.plan .ph .t{display:flex;align-items:center;gap:9px;margin-bottom:4px}
+.plan .ph .t b{font-size:14.5px;letter-spacing:-.2px}
+.plan .ph .w{font-size:12px;color:var(--ink2);line-height:1.6;margin:0}
+.plan .rb{padding:11px 16px;flex:1;background:#fcfdfe}
+.flowline{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11.5px;flex-wrap:wrap}
+.flowline .sg{font-weight:600;color:var(--ink);background:#fff;border:1px solid var(--ink5);border-radius:6px;padding:2px 7px}
+.flowline .ar{color:var(--ink4)}
+.flowline .ac{font-weight:600;color:var(--pri-d);background:var(--pri-sf);border:1px solid var(--pri-bd);border-radius:6px;padding:2px 7px}
+.plan .pf{padding:11px 16px;border-top:1px solid var(--line2);display:flex;align-items:center;gap:8px}
+.btn{border:1px solid var(--ink5);background:#fff;border-radius:7px;padding:6px 12px;font-size:12.5px;
+  color:var(--ink2);font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--line2)}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.p:hover{background:var(--pri-d)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ============ 三、动作流程 ============ */
+.flow{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh2);padding:22px;margin-top:6px}
+.chans{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:6px}
+.chan{border:1px solid var(--ink5);border-radius:10px;padding:11px 13px;background:#fff;position:relative}
+.chan .cn{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;margin-bottom:3px}
+.chan .cd{font-size:11px;color:var(--ink3);line-height:1.5}
+.chan.cam{border-color:var(--pri);background:var(--pri-sf);box-shadow:0 0 0 3px rgba(14,165,233,.09)}
+.chan.key .cn{color:#b45309}.chan.voice .cn{color:#6d28d9}
+.chan.pad .cn{color:#047857}.chan.cam .cn{color:var(--pri-d)}
+.converge{display:flex;flex-direction:column;align-items:center;padding:8px 0}
+.conv-l{height:20px;width:2px;background:linear-gradient(var(--pri),var(--ink4));position:relative}
+.conv-t{background:var(--ink);color:#fff;border-radius:9px;padding:7px 15px;font-size:12.5px;font-weight:700;
+  display:flex;align-items:center;gap:8px;box-shadow:0 3px 10px rgba(15,23,42,.16)}
+.conv-t code{background:rgba(255,255,255,.16);color:#bae6fd;padding:1px 5px;border-radius:4px}
+.conv-l.dn{height:20px;background:var(--ink4)}
+.stages{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:6px 0}
+.stage{border:1px solid var(--ink5);border-radius:10px;padding:11px 12px;background:#fff;position:relative}
+.stage .sn{font-size:10px;font-weight:800;color:var(--ink3);letter-spacing:.6px;margin-bottom:4px}
+.stage h5{margin:0 0 4px;font-size:12.5px;display:flex;align-items:center;gap:6px}
+.stage p{margin:0;font-size:10.5px;color:var(--ink3);line-height:1.5}
+.stage.gate{border-color:var(--wa-bd);background:var(--wa-sf)}
+.stage.gate h5{color:#b45309}
+.stage.term{border-color:var(--ok-bd);background:var(--ok-sf)}
+.stage.term h5{color:#047857}
+.stage .arw{position:absolute;right:-9px;top:50%;transform:translateY(-50%);color:var(--ink4);font-size:13px;z-index:2}
+.branch{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.br{border:1px solid var(--ink5);border-radius:11px;padding:14px}
+.br .h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:8px}
+.br.pend{border-color:var(--wa-bd);background:var(--wa-sf)}
+.br.exec{border-color:var(--ok-bd);background:var(--ok-sf)}
+.br p{margin:0;font-size:11.5px;color:var(--ink2);line-height:1.65}
+.br .path{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:9px;font-size:11px;font-weight:600}
+.br .path .n{background:#fff;border:1px solid var(--ink5);border-radius:6px;padding:3px 8px}
+.br .path .no{color:#b91c1c;text-decoration:line-through;opacity:.6}
+.br .path .yes{color:#047857;border-color:var(--ok-bd)}
+.br .path .ar{color:var(--ink4)}
+.note{background:var(--pri-sf);border:1px solid var(--pri-bd);border-radius:11px;padding:13px 16px;margin-top:14px;font-size:12.5px;line-height:1.7}
+.note b{color:var(--pri-d)}
+.note.wa{background:var(--wa-sf);border-color:var(--wa-bd)}.note.wa b{color:#b45309}
+
+/* ============ 四、跨通道矩阵 ============ */
+.mxwrap{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh2);overflow:hidden;margin-top:6px}
+.mx{width:100%;border-collapse:collapse;font-size:12.5px}
+.mx th{padding:10px 12px;background:#f8fafc;border-bottom:1px solid var(--line);font-size:11.5px;
+  font-weight:700;color:var(--ink2);text-align:center;white-space:nowrap;position:sticky;top:60px;z-index:5}
+.mx th:first-child{text-align:left;min-width:210px}
+.mx th .chi{font-size:10.5px;font-weight:600;color:var(--ink3);display:block;margin-top:1px}
+.mx th.camh{background:var(--pri-sf);color:var(--pri-d);box-shadow:inset 0 -2px 0 var(--pri)}
+.mx td{padding:9px 12px;border-bottom:1px solid var(--line2);text-align:center}
+.mx td:first-child{text-align:left}
+.mx tr:last-child td{border-bottom:none}
+.mx .aid{font-family:Consolas,monospace;font-size:10.5px;color:var(--ink3);display:block;margin-top:1px}
+.mx .an{font-weight:600}
+.yes{color:#047857;font-weight:700;font-size:14px}
+.pend{color:#b45309;font-weight:700;font-size:12.5px;white-space:nowrap}
+.pend::before{content:"◷ ";font-size:11px}
+.no{color:var(--ink4);font-size:15px}
+.mxhint{padding:12px 16px;background:#fcfdfe;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink2);line-height:1.7}
+
+/* 关键结论条 */
+.callout{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:13px;margin-top:18px}
+.co{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px;box-shadow:var(--sh2)}
+.co .h{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;margin-bottom:7px}
+.co p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.7}
+.co.hi{background:linear-gradient(135deg,#f0f9ff,#fff);border-color:var(--pri-bd)}
+.co.warn{border-left:3px solid var(--wa)}
+.co.rk{border-left:3px solid var(--rk)}
+.anno{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px;margin-top:18px}
+.ac{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--sh2)}
+.ac .h{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.ac .h b{font-size:13.5px}
+.ac p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.7}
+@media(max-width:1000px){.map{grid-template-columns:1fr}.chans,.stages{grid-template-columns:1fr 1fr}.branch{grid-template-columns:1fr}.mx th{position:static}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="b">摄像头 · 能力全景</span>
+    <button class="tab on" data-v="0">能力地图</button>
+    <button class="tab" data-v="1">使用方案</button>
+    <button class="tab" data-v="2">动作流程</button>
+    <button class="tab" data-v="3">跨通道矩阵</button>
+    <button class="tab" data-v="4">配置入口</button>
+    <span class="sp">数据取自 semantic.rs · 权威 channels 字段</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ============ 视图 0：能力地图 ============ -->
+<div class="view on" id="v0">
+  <h1 class="ft">摄像头能做什么</h1>
+  <p class="lead">
+    这一页不给你表单，先把三件事说清楚：<b>摄像头能感知什么</b>、<b>它能驱动哪些动作</b>、
+    以及这些动作<b>和按键、语音、软垫是同一套</b>。看懂这三件事，才知道该往哪配。
+  </p>
+
+  <div class="map">
+    <!-- 左：感知 -->
+    <div class="panel">
+      <div class="ph">
+        <span class="ic" style="background:var(--pri-sf)">👁</span>
+        <div><h3>摄像头能感知什么</h3><p>8 个信号 · 6 个现在就能用</p></div>
+        <div class="rt"><span class="pill p-g">6 就绪</span></div>
+      </div>
+      <div class="siggrid">
+        <button class="sig"><div class="r1"><b>离席</b><span class="d pill p-g">就绪</span></div><div class="r2">人脸消失持续 3 秒</div></button>
+        <button class="sig"><div class="r1"><b>回席</b><span class="d pill p-g">就绪</span></div><div class="r2">人脸回来持续 1 秒</div></button>
+        <button class="sig"><div class="r1"><b>旁人出现</b><span class="d pill p-g">就绪</span></div><div class="r2">检测到第二张脸，只提醒</div></button>
+        <button class="sig"><div class="r1"><b>摇头</b><span class="d pill p-g">就绪</span></div><div class="r2">左右摆头 3 拍，表达「不要」</div></button>
+        <button class="sig"><div class="r1"><b>挥手</b><span class="d pill p-g">就绪</span></div><div class="r2">手掌来回摆动，表达「等一下」</div></button>
+        <button class="sig"><div class="r1"><b>久坐超时</b><span class="d pill p-g">就绪</span></div><div class="r2">在席累计 20 分钟</div></button>
+        <button class="sig wa"><div class="r1"><b>故意眨眼</b><span class="d pill p-w">需适配</span></div><div class="r2">需先采集个人眨眼基线</div></button>
+        <button class="sig wa"><div class="r1"><b>视线看某屏</b><span class="d pill p-w">需校准</span></div><div class="r2">需先做视线校准</div></button>
+      </div>
+      <div class="foot">⚠ 两个未就绪信号不影响其他能力。适配和校准在「设备与校准」抽屉里，各需一步。</div>
+    </div>
+
+    <!-- 右：动作 -->
+    <div class="panel core">
+      <div class="ph">
+        <span class="ic" style="background:rgba(255,255,255,.16)">⚡</span>
+        <div><h3>能驱动哪些动作</h3><p>7 个可直接执行 · 2 个需二次确认</p></div>
+        <div class="rt"><span class="pill p-b">9 个</span></div>
+      </div>
+      <div class="actgrid">
+        <button class="ag"><div class="r1"><b>开始听写</b><span class="pill p-b">安全</span></div><div class="r2">input.start</div></button>
+        <button class="ag"><div class="r1"><b>取消本轮</b><span class="pill p-b">安全</span></div><div class="r2">input.cancel</div></button>
+        <button class="ag"><div class="r1"><b>显示 / 隐藏面板</b><span class="pill p-b">安全</span></div><div class="r2">overlay.toggle</div></button>
+        <button class="ag"><div class="r1"><b>回到当前 Agent</b><span class="pill p-b">安全</span></div><div class="r2">agent.focus</div></button>
+        <button class="ag"><div class="r1"><b>中断 Agent</b><span class="pill p-b">安全</span></div><div class="r2">agent.interrupt</div></button>
+        <button class="ag"><div class="r1"><b>拒绝</b><span class="pill p-b">安全</span></div><div class="r2">agent.reject</div></button>
+        <button class="ag"><div class="r1"><b>恢复工作区布局</b><span class="pill p-b">安全</span></div><div class="r2">workspace.applyLayout</div></button>
+        <button class="ag" style="border-color:#fde68a;background:rgba(253,230,138,.14)">
+          <div class="r1"><b>完成并发送</b><span class="pill p-w">需确认</span></div>
+          <div class="r2" style="color:rgba(255,255,255,.7)">input.send</div></button>
+        <button class="ag" style="border-color:#fde68a;background:rgba(253,230,138,.14)">
+          <div class="r1"><b>批准</b><span class="pill p-w">需确认</span></div>
+          <div class="r2" style="color:rgba(255,255,255,.7)">agent.approve</div></button>
+      </div>
+      <div class="foot">还有一组<b>应用内动作</b>（遮罩、暂停语音、自动静音、光标跟随…），不走上层路由，由摄像头自己执行。</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="co hi">
+      <div class="h">🔗 最关键的一件事</div>
+      <p>这 9 个动作<b>不是摄像头专属</b>。按键、语音、软垫触发的是<b>同一组动作</b>。所以「摇头 → 中断 Agent」和「按某键 → 中断 Agent」最终效果完全一样，只是触发方式不同。</p>
+    </div>
+    <div class="co warn">
+      <div class="h">🛡 有 2 个动作摄像头不能自己完成</div>
+      <p><b>完成并发送</b>和<b>批准</b>触发后只会进入「等待确认」，必须你用<b>按键或语音</b>再确认一次。这是防止摄像头误发内容、误批操作的保护，<b>关不掉</b>。</p>
+    </div>
+    <div class="co rk">
+      <div class="h">🚫 另外 16 个动作摄像头绑不了</div>
+      <p>比如「暂停听写」「打开应用」「向 Agent 发继续」——这些只开放给按键/语音/软垫。原因和完整清单见<b>跨通道矩阵</b>页。</p>
+    </div>
+  </div>
+
+  <h2 class="sec">下一页：这些能力怎么用 <span class="n">4 个现成方案，一键套用</span></h2>
+  <p class="secsub">不用从零配。以下方案都是已验证可用的组合，点一下就能套上，之后随时能改。</p>
+  <div style="display:flex;gap:8px;margin-top:14px">
+    <button class="btn p" onclick="showView(1)">去看使用方案 →</button>
+  </div>
+</div>
+
+<!-- ============ 视图 1：使用方案 ============ -->
+<div class="view" id="v1">
+  <h1 class="ft">四套现成方案</h1>
+  <p class="lead">每套方案都是<b>已经验证过的信号-动作组合</b>，直接套用即可。你可以只套一部分，也可以把它们混着改——场景只是给规则分组，不是限制。</p>
+
+  <div class="plans">
+    <div class="plan">
+      <div class="ph">
+        <div class="t"><span style="font-size:18px">🚶</span><b>离开座位</b><span class="pill p-g" style="margin-left:auto">推荐起步</span></div>
+        <p class="w">你离开电脑时，麦克风还开着、屏幕还亮着。这套把它收干净。</p>
+      </div>
+      <div class="rb">
+        <div class="flowline"><span class="sg">离席 · 3秒</span><span class="ar">→</span><span class="ac">应用内遮罩</span></div>
+        <div class="flowline"><span class="sg">离席 · 3秒</span><span class="ar">→</span><span class="ac">暂停语音</span></div>
+        <div class="flowline"><span class="sg">回席 · 1秒</span><span class="ar">→</span><span class="ac">关闭遮罩</span></div>
+        <div class="flowline"><span class="sg">回席 · 1秒</span><span class="ar">→</span><span class="ac">恢复语音</span></div>
+      </div>
+      <div class="pf"><span style="font-size:11px;color:var(--ink3)">4 条 · 全部即配即用</span>
+        <button class="btn p" style="margin-left:auto">套用</button></div>
+    </div>
+
+    <div class="plan">
+      <div class="ph">
+        <div class="t"><span style="font-size:18px">🎯</span><b>专注工作</b></div>
+        <p class="w">Agent 跑偏了、说错了话，用身体动作打断，比重新敲键盘快。</p>
+      </div>
+      <div class="rb">
+        <div class="flowline"><span class="sg">摇头</span><span class="ar">→</span><span class="ac">取消本轮</span></div>
+        <div class="flowline"><span class="sg">挥手</span><span class="ar">→</span><span class="ac">显示 / 隐藏面板</span></div>
+        <div class="flowline" style="opacity:.5"><span class="sg">故意眨眼</span><span class="ar">→</span><span class="ac">开始听写</span><span class="pill p-w">需先适配</span></div>
+        <div class="flowline"><span class="sg">摇头</span><span class="ar">→</span><span class="ac">中断 Agent</span></div>
+      </div>
+      <div class="pf"><span style="font-size:11px;color:#b45309">3 条即用 · 1 条需适配</span>
+        <button class="btn p" style="margin-left:auto">套用 3 条</button></div>
+    </div>
+
+    <div class="plan">
+      <div class="ph">
+        <div class="t"><span style="font-size:18px">👥</span><b>开会</b></div>
+        <p class="w">视频会议时最怕的：人走开了麦克风还在收，旁边有人被录进去。</p>
+      </div>
+      <div class="rb">
+        <div class="flowline"><span class="sg">旁人出现</span><span class="ar">→</span><span class="ac">温和提醒</span></div>
+        <div class="flowline"><span class="sg">离席 · 3秒</span><span class="ar">→</span><span class="ac">自动静音</span></div>
+        <div class="flowline"><span class="sg">回席 · 1秒</span><span class="ar">→</span><span class="ac">自动开麦</span></div>
+        <div class="flowline"><span class="sg">离席 · 3秒</span><span class="ar">→</span><span class="ac">应用内遮罩</span></div>
+      </div>
+      <div class="pf"><span style="font-size:11px;color:var(--ink3)">4 条 · 静音阈值可调 30–180cm</span>
+        <button class="btn p" style="margin-left:auto">套用</button></div>
+    </div>
+
+    <div class="plan">
+      <div class="ph">
+        <div class="t"><span style="font-size:18px">🖥️</span><b>多屏 + 久坐</b><span class="pill p-w" style="margin-left:auto">需校准</span></div>
+        <p class="w">三块屏来回切时不用找鼠标；坐久了身体会提醒你。</p>
+      </div>
+      <div class="rb">
+        <div class="flowline"><span class="sg">视线看某屏 · 0.5秒</span><span class="ar">→</span><span class="ac">光标跟随</span><span class="pill p-w">需校准</span></div>
+        <div class="flowline"><span class="sg">视线看某屏</span><span class="ar">→</span><span class="ac">窗口跳转到该屏</span></div>
+        <div class="flowline"><span class="sg">久坐 · 20分钟</span><span class="ar">→</span><span class="ac">提醒看远处</span></div>
+        <div class="flowline"><span class="sg">坐姿偏离</span><span class="ar">→</span><span class="ac">温和提醒</span></div>
+      </div>
+      <div class="pf"><span style="font-size:11px;color:var(--ink3)">2 条即用 · 2 条需校准</span>
+        <button class="btn p" style="margin-left:auto">套用即用部分</button></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>关于「应用内动作」和「语义动作」的区别：</b>
+    前者（遮罩、暂停语音、自动静音、光标跟随）是摄像头自己完成的小动作，执行快、不走统一路由；
+    后者（开始听写、取消本轮、中断 Agent…）走的是<b>和按键、语音、软垫共用</b>的统一动作层，所以能和其他通道组合使用。
+    套用方案时两者可以混着来。
+  </div>
+
+  <h2 class="sec">配置时你实际会看到什么 <span class="n">规则行只有一种句式</span></h2>
+  <div class="flow" style="margin-top:6px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fff">
+        <span style="font-weight:700;font-size:13px;min-width:104px">离席</span>
+        <span class="pill p-n">持续 3 秒</span>
+        <span style="color:var(--ink4)">→</span>
+        <span style="font-weight:700;font-size:13px">应用内遮罩</span>
+        <span class="pill p-b">应用内</span>
+        <button class="btn" style="margin-left:auto;font-size:11.5px;padding:4px 10px">编辑</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fff">
+        <span style="font-weight:700;font-size:13px;min-width:104px">摇头</span>
+        <span class="pill p-n">3 拍</span>
+        <span style="color:var(--ink4)">→</span>
+        <span style="font-weight:700;font-size:13px">取消本轮</span>
+        <span class="pill p-v">语义</span>
+        <button class="btn" style="margin-left:auto;font-size:11.5px;padding:4px 10px">编辑</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--wa-bd);border-radius:10px;background:var(--wa-sf)">
+        <span style="font-weight:700;font-size:13px;min-width:104px;opacity:.6">故意眨眼</span>
+        <span class="pill p-n">闭眼 1 秒</span>
+        <span style="color:var(--ink4)">→</span>
+        <span style="font-weight:700;font-size:13px;opacity:.6">开始听写</span>
+        <span class="pill p-w">信号未就绪</span>
+        <button class="btn" style="margin-left:auto;font-size:11.5px;padding:4px 10px">去适配 →</button>
+      </div>
+    </div>
+  </div>
+  <p style="font-size:12px;color:var(--ink3);margin:11px 0 0;line-height:1.7">
+    第三行是重点：<b>信号没就绪时规则照样能存，但会明确置灰并给一键处理入口</b>——不会出现「配了却没反应又不知道原因」。
+  </p>
+</div>
+
+<!-- ============ 视图 2：动作流程 ============ -->
+<div class="view" id="v2">
+  <h1 class="ft">一个动作从识别到执行</h1>
+  <p class="lead">这是摄像头动作的完整链路。<b>注意第 2 步</b>：摄像头、按键、语音、软垫在这里汇合成同一条路——所以同一个动作，用哪种方式触发都可以。</p>
+
+  <div class="flow">
+    <div class="chans">
+      <div class="chan cam"><div class="cn">📷 摄像头</div><div class="cd">人脸 / 手势 / 视线识别出的信号</div></div>
+      <div class="chan key"><div class="cn">⌨️ 按键</div><div class="cd">你配置的实体快捷键</div></div>
+      <div class="chan voice"><div class="cn">🎤 语音</div><div class="cd">说出唤醒词或指令</div></div>
+      <div class="chan pad"><div class="cn">🟦 软垫</div><div class="cd">屏幕上的自定义按键</div></div>
+    </div>
+
+    <div class="converge">
+      <div class="conv-l"></div>
+      <div class="conv-t">🔀 统一动作路由 <code>route_semantic_action</code></div>
+      <div class="conv-l dn"></div>
+    </div>
+
+    <div class="stages">
+      <div class="stage"><div class="sn">STEP 1</div><h5>解析与定位</h5><p>认动作属于哪个习惯场景、当前上下文是否允许执行</p><span class="arw">›</span></div>
+      <div class="stage"><div class="sn">STEP 2</div><h5>上下文判定</h5><p>检查 <code>availableWhen</code>：空闲 / 正在听写 / 等批准 / 运行中</p><span class="arw">›</span></div>
+      <div class="stage gate"><div class="sn">STEP 3</div><h5>⚠ 风险闸门</h5><p>高风险动作在此分流，摄像头触发会转成「等待确认」</p><span class="arw">›</span></div>
+      <div class="stage"><div class="sn">STEP 4</div><h5>跨通道确认</h5><p>需要确认时，由按键 / 语音 / 软垫完成第二次确认</p><span class="arw">›</span></div>
+      <div class="stage term"><div class="sn">STEP 5</div><h5>执行</h5><p>真正执行动作，并记录到动作历史</p></div>
+    </div>
+
+    <div class="branch">
+      <div class="br exec">
+        <div class="h">✅ 直执路径（7 个安全动作）</div>
+        <p>摄像头识别 → 路由 → 判定 → <b>直接执行</b>。全程无感，不打断你。</p>
+        <div class="path">
+          <span class="n">离席</span><span class="ar">→</span><span class="n">路由</span><span class="ar">→</span>
+          <span class="n yes">直接执行</span><span class="ar">·</span><span class="n">取消本轮</span>
+        </div>
+      </div>
+      <div class="br pend">
+        <div class="h">⏸ 等待确认路径（2 个危险动作）</div>
+        <p>摄像头识别 → 路由 → <b>生成待确认项</b> → 等你用<b>按键或语音</b>确认 → 才真正执行。<b>摄像头不能自己确认</b>。</p>
+        <div class="path">
+          <span class="n">长眨</span><span class="ar">→</span><span class="n">待确认</span><span class="ar">→</span>
+          <span class="n">你按一下</span><span class="ar">→</span><span class="n yes">才发送</span>
+        </div>
+        <div class="path" style="margin-top:7px">
+          <span class="n no">摄像头自己确认</span><span style="color:var(--rk);font-size:10.5px">← 被禁止</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="note wa">
+      <b>为什么摄像头不能自己确认？</b>
+      因为「完成并发送」会把内容发出去、「批准」会放行操作——这两件事一旦误触，代价不可逆。
+      所以摄像头只能<b>提出请求</b>，不能<b>自己拍板</b>。这条约束是写死在代码里的，任何 UI 都不应该让它看起来可以绕过。
+    </div>
+
+    <div class="note">
+      <b>组合能力：</b>
+      因为四个通道走同一条路，你可以自由混搭——
+      比如「挥手 → 隐藏面板」（摄像头），同时「按某键 → 打开应用」（按键），两者互不干扰。
+      甚至同一个动作被多个通道绑定也很正常，比如「摇头 → 取消本轮」和「拍某键 → 取消本轮」同时存在，效果一样。
+    </div>
+  </div>
+</div>
+
+<!-- ============ 视图 3：跨通道矩阵 ============ -->
+<div class="view" id="v3">
+  <h1 class="ft">哪些动作摄像头能用，哪些不能</h1>
+  <p class="lead">
+    这是按代码里 <code>semantic.rs</code> 的 <code>channels</code> 字段逐条核对出来的<b>权威结果</b>。
+    摄像头这一列决定了你在这页能选什么。
+  </p>
+
+  <div class="mxwrap">
+    <table class="mx">
+      <thead>
+        <tr>
+          <th>动作<span class="chi">语义 ID</span></th>
+          <th class="camh">📷 摄像头<span class="chi">本页可绑</span></th>
+          <th>⌨️ 按键</th><th>🎤 语音</th><th>🟦 软垫</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="an">开始听写</span><span class="aid">input.start</span></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td><span class="an">取消本轮</span><span class="aid">input.cancel</span></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td><span class="an">显示 / 隐藏面板</span><span class="aid">overlay.toggle</span></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td><span class="an">回到当前 Agent</span><span class="aid">agent.focus</span></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td><span class="an">中断 Agent</span><span class="aid">agent.interrupt</span></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td><span class="an">拒绝</span><span class="aid">agent.reject</span></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td><span class="an">恢复工作区布局</span><span class="aid">workspace.applyLayout</span></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr style="background:var(--wa-sf)"><td><span class="an">完成并发送</span><span class="aid">input.send</span></td><td><span class="pend">需确认</span></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr style="background:var(--wa-sf)"><td><span class="an">批准</span><span class="aid">agent.approve</span></td><td><span class="pend">需确认</span></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      </tbody>
+    </table>
+    <div class="mxhint" style="border-top:1px solid var(--line)">
+      <b style="color:#b45309">◷ 需确认</b> = 可以绑定，但摄像头触发后只生成「待确认」，必须你用按键/语音/软垫再确认一次才执行。摄像头自己不能确认。
+    </div>
+  </div>
+
+  <h2 class="sec">摄像头绑不了的动作 <span class="n">16 个 · 完整清单</span></h2>
+  <p class="secsub">列出来不是为了好看，而是让你<b>知道边界在哪</b>，别在一个下拉框里猜为什么选不到。</p>
+  <div class="mxwrap">
+    <table class="mx">
+      <thead>
+        <tr><th>动作<span class="chi">语义 ID</span></th><th>开放给</th><th style="text-align:left">为什么摄像头用不了 / 替代做法</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="an">暂停听写</span><span class="aid">input.pause</span></td><td><span class="pill p-a">按键·语音·软垫</span></td><td style="text-align:left">走的是统一路由但未开放 camera。要「离席自动暂停」请用<b>应用内动作</b> <code>pauseVoice</code>，效果相同</td></tr>
+        <tr><td><span class="an">完成本轮</span><span class="aid">input.commit</span></td><td><span class="pill p-a">按键·语音·软垫</span></td><td style="text-align:left">与「完成并发送」不同，不含发送动作</td></tr>
+        <tr><td><span class="an">暂停 / 恢复 OneTone</span><span class="aid">onetone.pause / resume</span></td><td><span class="pill p-a">按键·语音·软垫</span></td><td style="text-align:left">⚠ 现有预设里摄像头曾绑过 <code>resume</code>，但该动作 channels 不含 camera，属配置错误</td></tr>
+        <tr><td><span class="an">打开应用</span><span class="aid">app.open</span></td><td><span class="pill p-a">按键·语音·软垫</span></td><td style="text-align:left">「恢复工作区布局」摄像头可用，但单独打开某个应用不行</td></tr>
+        <tr><td><span class="an">应用快捷键</span><span class="aid">app.shortcut</span></td><td><span class="pill p-a">按键·软垫</span></td><td style="text-align:left">语音也不开放</td></tr>
+        <tr><td><span class="an">打开正在等我的 Agent</span><span class="aid">agent.focus_waiting</span></td><td><span class="pill p-a">按键·语音·软垫</span></td><td style="text-align:left">暂未实现</td></tr>
+        <tr><td><span class="an">向 Agent 发「继续」</span><span class="aid">agent.continue</span></td><td><span class="pill p-a">按键·语音·软垫</span></td><td style="text-align:left">需要「说什么」的动作，建议用语音或键盘</td></tr>
+        <tr><td><span class="an">重试上一步</span><span class="aid">agent.retry</span></td><td><span class="pill p-a">按键·语音·软垫</span></td><td style="text-align:left">暂未实现</td></tr>
+        <tr><td><span class="an">回答 Agent</span><span class="aid">agent.respond</span></td><td><span class="pill p-a">语音·软垫</span></td><td style="text-align:left">要回答内容，语音天然更合适</td></tr>
+        <tr><td><span class="an">选择第几个选项</span><span class="aid">choice.select</span></td><td><span class="pill p-a">按键·语音·软垫</span></td><td style="text-align:left">暂未实现</td></tr>
+        <tr><td><span class="an">新建 / 下一个会话</span><span class="aid">session.new / next</span></td><td><span class="pill p-a">按键·语音·软垫</span></td><td style="text-align:left">误触代价高，不适合无意识触发</td></tr>
+        <tr><td><span class="an">告诉我当前状态</span><span class="aid">status.read</span></td><td><span class="pill p-a">语音·软垫</span></td><td style="text-align:left">结果需要「说出来」，语音是输出通道</td></tr>
+        <tr><td><span class="an">Agent 在做什么</span><span class="aid">agent.status</span></td><td><span class="pill p-a">语音·软垫</span></td><td style="text-align:left">同上</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <div class="co hi">
+      <div class="h">💡 怎么用这张表</div>
+      <p>看到摄像头能用的动作 → 配成规则；看到只能用语音的 → 就用语音做。<b>四个通道是互补的，不是竞争关系</b>。摄像头强在「无意识状态感知」（人走没走、在不在看），语音强在「有意识的内容输入」。</p>
+    </div>
+    <div class="co warn">
+      <div class="h">🔧 发现一个配置错误</div>
+      <p>现有预设把摄像头绑到了 <code>onetone.resume</code>，但该动作的 <code>channels</code> 不含 camera。这条规则能存进配置却<b>永远不执行</b>，建议修掉——要么换成应用内 <code>resumeVoice</code>，要么把 <code>resume</code> 开放给 camera。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 视图 4：配置入口 ============ -->
+<div class="view" id="v4">
+  <h1 class="ft">配置从哪进</h1>
+  <p class="lead">看懂了能力和方案，再来配置。下面是摄像头页的<b>全部入口</b>，一共 5 个，没有隐藏的第六个。</p>
+
+  <div class="map" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="panel">
+      <div class="ph"><span class="ic" style="background:var(--pri-sf)">✍️</span>
+        <div><h3>配规则</h3><p>摄像头触发什么 → 做什么</p></div></div>
+      <div style="padding:15px 18px">
+        <p style="margin:0 0 11px;font-size:12.5px;color:var(--ink2);line-height:1.7">
+          5 个场景分组，每条规则是「信号 → 动作」。这是摄像头页的<b>主线</b>，默认打开就是它。</p>
+        <button class="btn p" style="width:100%">进入配置 →</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ic" style="background:var(--wa-sf)">⚙️</span>
+        <div><h3>设备与校准</h3><p>采集条件 + 识别前置</p></div></div>
+      <div style="padding:15px 18px">
+        <p style="margin:0 0 11px;font-size:12.5px;color:var(--ink2);line-height:1.7">
+          分辨率、帧率、抗闪烁、亮度对比度、屏幕布局；外加<b>视线校准</b>和<b>眨眼基线</b>两个适配入口。</p>
+        <button class="btn" style="width:100%">打开 →</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ic" style="background:var(--vi-sf)">🎨</span>
+        <div><h3>画面观感</h3><p>美颜 + 隐私面具</p></div></div>
+      <div style="padding:15px 18px">
+        <p style="margin:0 0 11px;font-size:12.5px;color:var(--ink2);line-height:1.7">
+          只改你看到的预览，<b>不影响识别判断</b>。隐私面具已从「美颜」移到这里——它是安全功能不是妆效。</p>
+        <button class="btn" style="width:100%">打开 →</button>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">46 项能力都在哪 <span class="n">一个都没丢，只是重新归位</span></h2>
+  <div class="mxwrap">
+    <table class="mx">
+      <thead><tr><th style="text-align:left;min-width:170px">入口</th><th style="text-align:left">包含的能力</th><th style="text-align:left;min-width:90px">项数</th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:left"><b>配规则 · 场景</b></td><td style="text-align:left">离席、回席、摇头、故意眨眼、五指张开、OK、握拳、挥手、旁人出现、隐私卫士、久坐、20-20-20、坐姿、鼠标追踪、移窗、自动静音、开关手势闸门</td><td style="text-align:left">18</td></tr>
+        <tr><td style="text-align:left"><b>设备与校准</b></td><td style="text-align:left">设备选择、屏幕方向、分辨率、采集帧率、抗闪烁、显示帧率、亮度/对比度/饱和度、视线校准（开始/精细/居中/清除/点击微调）、眨眼基线适配、屏幕与摄像头布局、追踪模式、响应手感、落点偏好</td><td style="text-align:left">16</td></tr>
+        <tr><td style="text-align:left"><b>画面观感</b></td><td style="text-align:left">妆效风格 5 种、美白/柔肤/气色/轻瘦脸各 4 档、按住看原图、隐私面具 4 种</td><td style="text-align:left">10</td></tr>
+        <tr><td style="text-align:left"><b>工作区</b>（移出摄像头页）</td><td style="text-align:left">保存当前工作区、恢复锚点、锚点列表</td><td style="text-align:left">2</td></tr>
+        <tr style="background:var(--pri-sf)"><td style="text-align:left"><b>合计</b></td><td style="text-align:left"><b>全部可寻址，无隐藏项</b></td><td style="text-align:left"><b>46</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <b>为什么把「工作区布局」移出摄像头页？</b>
+    它既不是摄像头感知，也不是摄像头动作——是一套独立的「窗口存档」功能。放在摄像头页里既没有上下文，也会让人误以为它跟摄像头有关。移出去后，摄像头页只留自动化主线。
+  </div>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showView(+b.dataset.v));
+function showView(i){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab')[i].classList.add('on');
+  document.getElementById('v'+i).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>

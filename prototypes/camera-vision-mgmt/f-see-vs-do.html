@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>F · 看什么 / 派什么</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c; --muted: #5a6b7c; --faint: #8494a6; --line: #d5dee8;
+      --paper: #fff; --wash: #f3f7fa; --bg: #e4ebf1;
+      --cyan: #2a9cc4; --cyan-ink: #0f5f7a; --cyan-soft: #e4f2f9; --cyan-bd: #9bc6da;
+      --ok: #15803d; --ok-soft: #e8f7ee; --warn: #b45309; --warn-soft: #fff7ed;
+      --teal: #0f766e; --teal-soft: #ecfdf8; --teal-bd: #99f6e4;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg);
+      -webkit-font-smoothing: antialiased; min-height: 100vh;
+    }
+    .bar {
+      position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center;
+      gap: 10px; padding: 10px 18px; background: #0f1820; color: #a8b6c6; font-size: 12.5px;
+    }
+    .bar strong { color: #fff; }
+    .bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; margin-left: auto; }
+    .bar .pill {
+      font-size: 10.5px; font-weight: 750; padding: 2px 8px; border-radius: 999px;
+      background: rgba(15,118,110,.35); color: #5eead4; border: 1px solid rgba(94,234,212,.35);
+    }
+    .page { max-width: 1040px; margin: 0 auto; padding: 18px 16px 48px; }
+    .thesis {
+      margin: 0 0 14px; padding: 12px 14px; background: #fff; border: 1px solid var(--line);
+      border-radius: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.55;
+    }
+    .thesis b { color: var(--ink); }
+    .shell {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 18px 40px rgba(19,32,44,.08);
+    }
+    .chrome {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fbfdfe;
+    }
+    .chrome h2 { margin: 0; font-size: 14px; font-weight: 750; }
+    .tog {
+      width: 40px; height: 22px; border: 0; border-radius: 999px; background: #c5d3de;
+      position: relative; cursor: pointer; flex: none;
+    }
+    .tog::after {
+      content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+      border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    }
+    .tog.on { background: var(--cyan); }
+    .tog.on::after { transform: translateX(18px); }
+    .mode {
+      display: inline-flex; padding: 3px; border-radius: 11px; background: var(--wash);
+      border: 1px solid var(--line); margin-left: 4px;
+    }
+    .mode button {
+      appearance: none; border: 0; background: transparent; font: inherit;
+      font-size: 12.5px; font-weight: 650; color: var(--muted);
+      padding: 7px 14px; border-radius: 9px; cursor: pointer;
+    }
+    .mode button.on.see { background: #fff; color: var(--cyan-ink); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+    .mode button.on.do { background: #fff; color: var(--teal); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+    .btn {
+      border: 1px solid var(--line); background: #fff; border-radius: 9px;
+      padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .btn.pri { background: var(--cyan); border-color: transparent; color: #fff; }
+    .btn.teal { background: var(--teal); border-color: transparent; color: #fff; }
+
+    .body { padding: 16px; }
+    .banner {
+      display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px;
+      border-radius: 10px; margin-bottom: 14px; font-size: 12.5px; line-height: 1.45;
+    }
+    .banner.see { background: var(--cyan-soft); border: 1px solid var(--cyan-bd); color: var(--cyan-ink); }
+    .banner.do { background: var(--teal-soft); border: 1px solid var(--teal-bd); color: var(--teal); }
+    .banner strong { display: block; margin-bottom: 2px; font-size: 13px; }
+
+    .groups { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .groups button {
+      appearance: none; border: 1px solid var(--line); background: #fff; border-radius: 999px;
+      padding: 5px 11px; font: inherit; font-size: 12px; font-weight: 650; color: var(--muted); cursor: pointer;
+    }
+    .groups button.on { background: var(--ink); color: #fff; border-color: transparent; }
+
+    .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+    .tile {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 13px; background: #fff;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .tile.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .tile .n { font-size: 13.5px; font-weight: 750; }
+    .tile .d { font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .tile .meta { font-size: 11px; color: var(--faint); font-weight: 550; }
+    .tile.see-off { opacity: .55; }
+    .tile .link {
+      margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--line);
+      font-size: 12px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .tile .link code {
+      font-family: var(--mono); font-size: 11px; font-weight: 650;
+      background: var(--teal-soft); color: var(--teal); padding: 2px 6px; border-radius: 4px;
+    }
+    .tile .warn {
+      font-size: 11px; font-weight: 650; color: var(--warn); background: var(--warn-soft);
+      padding: 4px 8px; border-radius: 6px; border: 1px solid #fdba74;
+    }
+    .footer {
+      margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+      font-size: 12px; color: var(--muted);
+    }
+    .drawer {
+      position: fixed; inset: 0; background: rgba(15,24,32,.4); z-index: 40;
+      display: none; align-items: stretch; justify-content: flex-end;
+    }
+    .drawer.on { display: flex; }
+    .sheet {
+      width: min(360px, 100%); background: #fff; padding: 18px 16px; box-shadow: -12px 0 40px rgba(0,0,0,.15);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .sheet h3 { margin: 0 0 4px; font-size: 15px; font-weight: 750; }
+    .sheet p { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+    .pick {
+      appearance: none; text-align: left; border: 1px solid var(--line); background: #fff;
+      border-radius: 10px; padding: 10px 12px; font: inherit; cursor: pointer;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .pick:hover, .pick.on { border-color: var(--teal-bd); background: var(--teal-soft); }
+    .pick .pn { font-size: 13px; font-weight: 650; }
+    .pick .pd { font-size: 11.5px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>F · 看什么 / 派什么</strong>
+    <span class="pill">管理模式 = 双模切换</span>
+    <a href="index.html">← 索引</a>
+  </div>
+  <div class="page">
+    <p class="thesis">
+      <b>核心命题：</b>视觉方案拆成两套管理职责，用顶栏<strong>模式开关</strong>显式切换——
+      「看什么」只管感知能力开没开；「派什么」才进通道动作目录。
+      同一组能力，两种壳；禁止在一张表里同时开关 + 改绑定。
+    </p>
+
+    <div class="shell">
+      <div class="chrome">
+        <button type="button" class="tog on" id="master"></button>
+        <h2>摄像头</h2>
+        <div class="mode" role="group" aria-label="管理模式">
+          <button type="button" class="on see" id="modeSee">看什么</button>
+          <button type="button" class="do" id="modeDo">派什么</button>
+        </div>
+        <button type="button" class="btn" style="margin-left:auto" id="lookBtn">画面配置…</button>
+      </div>
+
+      <div class="body">
+        <div class="banner see" id="banner">
+          <div>
+            <strong id="bannerTitle">管理模式 · 看什么</strong>
+            <span id="bannerText">只决定摄像头要识别哪些事件。派发动作在「派什么」里单独管。</span>
+          </div>
+        </div>
+
+        <div class="groups" id="groups"></div>
+        <div class="board" id="board"></div>
+
+        <div class="footer">
+          <span id="footStat"></span>
+          <span>画面美颜 / 构图不进此双模 · 点右上角</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer" id="drawer" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <h3 id="sheetTitle">选通道动作</h3>
+      <p>与按键 / 语音同一动作目录（示意）</p>
+      <div id="picks"></div>
+      <button type="button" class="btn" style="margin-top:8px" id="closeSheet">取消</button>
+    </div>
+  </div>
+
+  <script>
+    const GROUPS = [
+      { id: "all", label: "全部" },
+      { id: "seat", label: "在座" },
+      { id: "hand", label: "手势" },
+      { id: "eye", label: "视线" },
+      { id: "feat", label: "增强" },
+    ];
+
+    const CATALOG = [
+      { id: "presence.seat", name: "标记在座", desc: "状态 · 在座" },
+      { id: "presence.leave", name: "标记离开", desc: "状态 · 离开" },
+      { id: "audio.mute", name: "静音麦克风", desc: "音频" },
+      { id: "audio.unmute", name: "取消静音", desc: "音频" },
+      { id: "notify.gentle", name: "轻提醒", desc: "通知" },
+      { id: "pointer.follow", name: "指针跟随", desc: "演示" },
+      { id: "app.wake", name: "唤醒应用", desc: "系统" },
+      { id: "none", name: "不派发", desc: "仅识别，不动作" },
+    ];
+
+    const ITEMS = [
+      { id: "1", g: "seat", n: "人在座位", d: "正脸落座稳定", on: true, act: "presence.seat" },
+      { id: "2", g: "seat", n: "暂时离开", d: "空座超过阈值", on: true, act: "presence.leave" },
+      { id: "3", g: "seat", n: "回到座位", d: "离开后再出现", on: true, act: "presence.seat" },
+      { id: "4", g: "hand", n: "张开掌停", d: "掌心朝镜头", on: true, act: "pointer.follow" },
+      { id: "5", g: "hand", n: "挥手唤醒", d: "大幅招手", on: false, act: "app.wake" },
+      { id: "6", g: "eye", n: "视线偏离", d: "长时间看屏外", on: true, act: "notify.gentle" },
+      { id: "7", g: "feat", n: "智能指点", d: "指尖跟踪叠加", on: true, act: "pointer.follow" },
+      { id: "8", g: "feat", n: "自动静音", d: "无人时静麦", on: false, act: "audio.mute" },
+    ];
+
+    let mode = "see"; // see | do
+    let group = "all";
+    let pickTarget = null;
+
+    const board = document.getElementById("board");
+    const groupsEl = document.getElementById("groups");
+    const banner = document.getElementById("banner");
+    const bannerTitle = document.getElementById("bannerTitle");
+    const bannerText = document.getElementById("bannerText");
+    const footStat = document.getElementById("footStat");
+    const drawer = document.getElementById("drawer");
+
+    function actName(id) {
+      return CATALOG.find((c) => c.id === id)?.name || id;
+    }
+
+    function renderGroups() {
+      groupsEl.innerHTML = GROUPS.map((g) =>
+        `<button type="button" class="${g.id === group ? "on" : ""}" data-g="${g.id}">${g.label}</button>`
+      ).join("");
+      groupsEl.querySelectorAll("button").forEach((b) => {
+        b.addEventListener("click", () => { group = b.dataset.g; render(); });
+      });
+    }
+
+    function render() {
+      const isSee = mode === "see";
+      document.getElementById("modeSee").className = isSee ? "on see" : "see";
+      document.getElementById("modeDo").className = !isSee ? "on do" : "do";
+      banner.className = "banner " + mode;
+      bannerTitle.textContent = isSee ? "管理模式 · 看什么" : "管理模式 · 派什么";
+      bannerText.textContent = isSee
+        ? "只决定摄像头要识别哪些事件。派发动作在「派什么」里单独管。"
+        : "只改识别结果派到哪条通道动作。开关感知请回到「看什么」。";
+
+      const list = ITEMS.filter((it) => group === "all" || it.g === group);
+      const onCount = ITEMS.filter((i) => i.on).length;
+      footStat.textContent = `感知开启 ${onCount} / ${ITEMS.length} · 当前筛选 ${list.length} 项`;
+
+      board.innerHTML = list.map((it) => {
+        if (isSee) {
+          return `
+            <div class="tile ${it.on ? "" : "see-off"}">
+              <div class="head">
+                <span class="n">${it.n}</span>
+                <button type="button" class="tog ${it.on ? "on" : ""}" data-id="${it.id}"></button>
+              </div>
+              <span class="d">${it.d}</span>
+              <span class="meta">派发在「派什么」· 当前 ${actName(it.act)}</span>
+            </div>`;
+        }
+        const unbound = it.act === "none" || !it.on;
+        return `
+          <div class="tile">
+            <div class="head"><span class="n">${it.n}</span></div>
+            <span class="d">${it.d}</span>
+            ${!it.on ? `<span class="warn">感知已关 · 先到「看什么」打开</span>` : ""}
+            <div class="link">
+              派发 → <code>${actName(it.act)}</code>
+              <button type="button" class="btn teal" data-pick="${it.id}" ${!it.on ? "disabled" : ""}>换动作…</button>
+            </div>
+          </div>`;
+      }).join("");
+
+      board.querySelectorAll(".tog").forEach((t) => {
+        t.addEventListener("click", () => {
+          const it = ITEMS.find((i) => i.id === t.dataset.id);
+          it.on = !it.on;
+          render();
+        });
+      });
+      board.querySelectorAll("[data-pick]").forEach((b) => {
+        b.addEventListener("click", () => openSheet(b.dataset.pick));
+      });
+    }
+
+    function openSheet(id) {
+      pickTarget = id;
+      const it = ITEMS.find((i) => i.id === id);
+      document.getElementById("sheetTitle").textContent = `派发 · ${it.n}`;
+      document.getElementById("picks").innerHTML = CATALOG.map((c) => `
+        <button type="button" class="pick ${c.id === it.act ? "on" : ""}" data-act="${c.id}">
+          <span class="pn">${c.name}</span>
+          <span class="pd">${c.desc}</span>
+        </button>
+      `).join("");
+      document.querySelectorAll(".pick").forEach((p) => {
+        p.addEventListener("click", () => {
+          it.act = p.dataset.act;
+          drawer.classList.remove("on");
+          render();
+        });
+      });
+      drawer.classList.add("on");
+    }
+
+    document.getElementById("modeSee").addEventListener("click", () => { mode = "see"; render(); });
+    document.getElementById("modeDo").addEventListener("click", () => { mode = "do"; render(); });
+    document.getElementById("master").addEventListener("click", (e) => e.currentTarget.classList.toggle("on"));
+    document.getElementById("closeSheet").addEventListener("click", () => drawer.classList.remove("on"));
+    drawer.addEventListener("click", (e) => { if (e.target === drawer) drawer.classList.remove("on"); });
+    document.getElementById("lookBtn").addEventListener("click", () => alert("示意：画面配置独立面板（美颜 / 构图），不进看什么/派什么。"));
+
+    renderGroups();
+    render();
+  </script>
+</body>
+</html>

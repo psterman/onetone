@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>现在 — OneTone</title>
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body class="pc">
+  <div class="page">
+    <div id="demoBar" class="demo" hidden></div>
+
+    <div class="win">
+      <header class="tbar">
+        <span class="logo">O</span>
+        <span class="brand">OneTone</span>
+        <nav class="nav" aria-label="主导航">
+          <a class="nv on" href="now.html">现在</a>
+          <a class="nv" href="understanding.html" id="scenesLink">情景管理</a>
+          <a class="nv" href="vision-settings.html">设置</a>
+        </nav>
+        <div class="r">
+          <span class="pill" id="topPill">正常</span>
+          <span class="clock" id="clock"></span>
+          <a class="gear" href="vision-settings.html" aria-label="设置">⚙</a>
+        </div>
+      </header>
+      <main class="body" id="app"></main>
+      <footer class="dock" id="invoke"></footer>
+    </div>
+
+    <div class="foot-links">
+      <a id="demoLink" href="?demo=1">演示</a>
+      <a href="index.html">说明</a>
+    </div>
+  </div>
+
+  <script src="fixtures.js"></script>
+  <script>
+    const isDemo = new URLSearchParams(location.search).get("demo") === "1";
+    const demoLink = document.getElementById("demoLink");
+    const scenesLink = document.getElementById("scenesLink");
+    if (isDemo) {
+      demoLink.textContent = "退出演示";
+      demoLink.href = "now.html";
+      scenesLink.href = "understanding.html?demo=1";
+    }
+
+    const ORDER = ["s1", "sWait", "sWork", "sAway", "s0"];
+    const NEED_CAP = 2;
+    let demoBtns = [];
+    let live = null;
+    let tier = "s1";
+    let needsExpanded = false;
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    const ctaLabel = {
+      approve_rm: "查看并决定",
+      view_reply: "查看请求",
+      view_progress: "查看进度",
+      keep_quiet: "继续别打扰",
+      extra_demo: "确认"
+    };
+
+    function paint() {
+      const s = window.projectNowHome(live);
+      document.title = `现在 · ${s.active ? s.active.name : "待命"} — OneTone`;
+      document.getElementById("clock").textContent = s.time;
+
+      const pill = document.getElementById("topPill");
+      pill.textContent = s.system.label;
+      pill.className = "pill" + (s.system.ok ? "" : " warn");
+
+      const active = s.active;
+      const maybe = s.habits.filter((h) => h.maybe && !h.active);
+      const mgmt = `understanding.html${isDemo ? "?demo=1" : ""}`;
+
+      const cockpit = active
+        ? `
+        <section class="cockpit" aria-label="当前状态">
+          <p class="k">当前状态</p>
+          <h1>${esc(active.name)}</h1>
+          <p class="help-k">OneTone 正在帮你</p>
+          <ul class="promises">
+            ${active.helping.map((t) => `<li>${esc(t)}</li>`).join("")}
+          </ul>
+          <div class="cockpit-foot">
+            <span class="status-line">${esc(s.status.line)}</span>
+            <a class="btn" href="${mgmt}#${esc(active.id)}">调整</a>
+          </div>
+        </section>`
+        : `
+        <section class="cockpit cockpit--idle" aria-label="当前状态">
+          <p class="k">当前状态</p>
+          <h1>待命</h1>
+          <p class="stance">还没进入明确状态。点右侧切换，或等发现后由你确认。</p>
+          <div class="cockpit-foot">
+            <span class="status-line">${esc(s.status.line)}</span>
+          </div>
+        </section>`;
+
+      const maybeHtml = maybe.length
+        ? `<div class="maybe">
+            <span class="maybe-k">可能正在</span>
+            ${maybe
+              .map(
+                (h) =>
+                  `<button type="button" class="maybe-chip" data-activate="${esc(h.id)}">${esc(h.name)}</button>`
+              )
+              .join("")}
+          </div>`
+        : "";
+
+      const allNeeds = s.needsYou;
+      const shown =
+        needsExpanded || allNeeds.length <= NEED_CAP
+          ? allNeeds
+          : allNeeds.slice(0, NEED_CAP);
+      const more = allNeeds.length - shown.length;
+
+      const needsHtml = allNeeds.length
+        ? `<ul class="need-list">${shown
+            .map(
+              (n) => `
+            <li>
+              <div>
+                <p class="need-title">${esc(n.title)}</p>
+                <p class="need-detail">${esc(n.detail)}</p>
+              </div>
+              <div class="act-row">
+                <button type="button" class="act ${n.primary ? "act--primary" : ""}">${esc(ctaLabel[n.id] || (n.primary ? "处理" : "好的"))}</button>
+              </div>
+            </li>`
+            )
+            .join("")}</ul>
+          ${
+            more > 0
+              ? `<button type="button" class="need-more" id="needMore">查看全部（${allNeeds.length}）</button>`
+              : needsExpanded && allNeeds.length > NEED_CAP
+                ? `<button type="button" class="need-more" id="needMore">收起</button>`
+                : ""
+          }`
+        : `<p class="need-empty">没有需要你决定的事</p>`;
+
+      const strip = s.habits
+        .map(
+          (h) => `
+        <button type="button" class="scene-chip ${h.active ? "on" : ""} ${h.maybe ? "maybe" : ""}" data-activate="${esc(h.id)}">
+          <span class="sc-name">${esc(h.short || h.name)}</span>
+          ${h.active ? `<span class="sc-tag">当前</span>` : ""}
+          ${h.maybe && !h.active ? `<span class="sc-tag soft">可能</span>` : ""}
+        </button>`
+        )
+        .join("");
+
+      document.getElementById("app").innerHTML = `
+        <div class="layout layout--home">
+          ${cockpit}
+          ${maybeHtml}
+          <div class="below">
+            <section class="scenes-strip" aria-label="我的状态">
+              <div class="strip-head">
+                <h2>我的状态</h2>
+                <a class="mgmt-link" href="${mgmt}">情景管理</a>
+              </div>
+              <div class="strip-row">
+                ${strip}
+              </div>
+            </section>
+            <section class="block block--need" aria-label="需要你决定">
+              <h2>需要决定</h2>
+              ${needsHtml}
+            </section>
+          </div>
+        </div>
+      `;
+
+      document.querySelectorAll("[data-activate]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          live = window.activateHabit(live, btn.dataset.activate);
+          needsExpanded = false;
+          paint();
+        });
+      });
+
+      const moreBtn = document.getElementById("needMore");
+      if (moreBtn) {
+        moreBtn.addEventListener("click", () => {
+          needsExpanded = !needsExpanded;
+          paint();
+        });
+      }
+
+      const voice = s.input.voice !== false;
+      document.getElementById("invoke").innerHTML = `
+        <button type="button" class="dock-voice"${voice ? "" : " disabled"}>🎤 说点什么</button>
+        <span class="dock-center">● OneTone</span>
+        <kbd class="dock-key">${esc(s.input.hotkey || "Ctrl+Space")}</kbd>
+      `;
+
+      if (isDemo) {
+        demoBtns.forEach((b) => b.classList.toggle("on", b.dataset.tier === tier));
+      }
+    }
+
+    function loadTier(id) {
+      tier = id;
+      needsExpanded = false;
+      live = JSON.parse(JSON.stringify(window.ONETONE_NOW_FIXTURES[id].state));
+      paint();
+    }
+
+    if (isDemo) {
+      const bar = document.getElementById("demoBar");
+      bar.hidden = false;
+      bar.innerHTML = ORDER.map(
+        (id) =>
+          `<button type="button" data-tier="${id}">${window.ONETONE_NOW_FIXTURES[id].label}</button>`
+      ).join("");
+      demoBtns = [...bar.querySelectorAll("button")];
+      demoBtns.forEach((btn) =>
+        btn.addEventListener("click", () => loadTier(btn.dataset.tier))
+      );
+    }
+
+    loadTier("s1");
+  </script>
+</body>
+</html>

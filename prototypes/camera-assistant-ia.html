@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>摄像头 · 助手化 IA 重设计</title>
+<style>
+:root{
+  --pri:#0ea5e9;--pri-d:#0284c7;--pri-sf:#e0f2fe;--pri-bd:#bae6fd;
+  --ink:#0f172a;--ink2:#475569;--ink3:#94a3b8;--ink4:#cbd5e1;--ink5:#e2e8f0;
+  --line:#e2e8f0;--line2:#f1f5f9;--bg:#f8fafc;
+  --ok:#10b981;--ok-sf:#ecfdf5;--ok-bd:#a7f3d0;
+  --wa:#f59e0b;--wa-sf:#fffbeb;--wa-bd:#fde68a;
+  --rk:#ef4444;--rk-sf:#fef2f2;--rk-bd:#fecaca;
+  --sh:0 1px 2px rgba(15,23,42,.05);--sh2:0 1px 3px rgba(15,23,42,.07);
+  --sh3:0 14px 44px rgba(15,23,42,.10);
+  --r:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+code{font-family:Consolas,monospace;font-size:11.5px;background:var(--line2);padding:1px 5px;border-radius:4px;color:#0369a1}
+
+.topbar{position:sticky;top:0;z-index:60;background:rgba(248,250,252,.95);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:0 24px}
+.topbar-in{max-width:1300px;margin:0 auto;height:60px;display:flex;align-items:center;gap:8px}
+.topbar .b{font-weight:800;font-size:15px;margin-right:18px;letter-spacing:-.3px;white-space:nowrap}
+.tab{padding:7px 14px;border-radius:8px;font-size:13px;color:var(--ink2);border:0;background:none;font-weight:500;white-space:nowrap}
+.tab:hover{background:var(--line2)}.tab.on{background:var(--ink);color:#fff}
+.topbar .sp{margin-left:auto;font-size:11.5px;color:var(--ink3);white-space:nowrap}
+.page{max-width:1300px;margin:0 auto;padding:26px 24px 90px}
+.view{display:none}.view.on{display:block}
+
+h1.ft{font-size:25px;margin:0 0 8px;letter-spacing:-.6px}
+.lead{font-size:14.5px;color:var(--ink2);max-width:900px;margin:0 0 22px;line-height:1.7}
+h2.sec{font-size:16px;margin:32px 0 5px;letter-spacing:-.2px}
+.secsub{font-size:12.5px;color:var(--ink2);margin:0 0 15px;max-width:880px;line-height:1.65}
+
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.p-b{background:var(--pri-sf);color:var(--pri-d)}.p-g{background:var(--ok-sf);color:#047857}
+.p-w{background:var(--wa-sf);color:#b45309}.p-r{background:var(--rk-sf);color:#b91c1c}
+.p-n{background:var(--line2);color:var(--ink2)}
+.btn{border:1px solid var(--ink5);background:#fff;border-radius:8px;padding:7px 13px;font-size:12.5px;
+  color:var(--ink2);font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--line2)}
+.btn.p{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.p:hover{background:var(--pri-d)}
+.btn.lg{padding:10px 18px;font-size:13.5px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.sw{width:42px;height:24px;border-radius:99px;background:var(--ink4);border:0;position:relative;transition:.2s;flex:none;padding:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);transition:.2s}
+.sw.on{background:var(--ok)}.sw.on::after{left:21px}
+
+/* ===== 应用窗口 ===== */
+.win{background:#fff;border:1px solid var(--ink5);border-radius:14px;overflow:hidden;box-shadow:var(--sh3)}
+.tbar{display:flex;align-items:center;gap:11px;padding:0 18px;height:54px;border-bottom:1px solid var(--line)}
+.tbar .ttl{font-size:15px;font-weight:700;letter-spacing:-.2px}
+.nav{display:flex;gap:2px;margin-left:14px}
+.nv{padding:6px 12px;border-radius:8px;font-size:12.5px;color:var(--ink3);border:0;background:none;font-weight:500}
+.nv:hover{background:var(--line2);color:var(--ink2)}
+.nv.on{background:var(--line2);color:var(--ink);font-weight:600}
+.tbar .r{margin-left:auto;display:flex;gap:7px;align-items:center}
+.trust{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#047857;background:var(--ok-sf);
+  border:1px solid var(--ok-bd);padding:4px 10px;border-radius:99px;font-weight:600}
+
+.body{padding:26px 30px;min-height:600px;background:var(--bg)}
+
+/* 顶部问候 */
+.hello{margin-bottom:22px}
+.hello h2{margin:0 0 4px;font-size:21px;letter-spacing:-.4px}
+.hello p{margin:0;font-size:13.5px;color:var(--ink2)}
+.hello .r{margin-left:auto;display:flex;align-items:center;gap:10px}
+.stat{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);
+  border-radius:99px;padding:7px 15px;font-size:12.5px;box-shadow:var(--sh);font-weight:600}
+.stat .d{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(16,185,129,.18)}
+
+/* 今天帮你 */
+.today{background:linear-gradient(135deg,#0c4a6e,#0369a1);border-radius:13px;padding:17px 20px;margin-bottom:22px;color:#fff}
+.today .h{font-size:11.5px;font-weight:800;letter-spacing:.7px;opacity:.72;margin-bottom:11px}
+.today .it{display:flex;align-items:center;gap:10px;font-size:13.5px;padding:5px 0;opacity:.95}
+.today .it .tm{font-size:11px;opacity:.6;font-variant-numeric:tabular-nums;min-width:52px}
+.today .it .ic{font-size:14px}
+.today .empty{font-size:13px;opacity:.7}
+
+/* 助手卡 */
+.assistants{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.ast{background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--sh);
+  overflow:hidden;display:flex;flex-direction:column;transition:.16s}
+.ast:hover{box-shadow:var(--sh3);border-color:var(--ink4)}
+.ast.off{background:#fcfdfe}
+.ast.off .ah .ttl,.ast.off .do{opacity:.5}
+.ah{display:flex;align-items:center;gap:12px;padding:16px 18px 13px}
+.ah .ic{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-size:21px;flex:none}
+.ast.a-guard .ic{background:#dbeafe}.ast.a-meet .ic{background:var(--wa-sf)}
+.ast.a-focus .ic{background:#ede9fe}.ast.a-health .ic{background:#ffe4e6}
+.ast.a-guard.on{border-color:#93c5fd}.ast.a-meet.on{border-color:var(--wa-bd)}
+.ast.a-focus.on{border-color:#c4b5fd}.ast.a-health.on{border-color:#fecdd3}
+.ah .tx{flex:1;min-width:0}
+.ah .ttl{font-size:16.5px;font-weight:700;letter-spacing:-.2px;margin-bottom:2px}
+.ah .sub{font-size:12px;color:var(--ink3);line-height:1.45}
+.ah .sw{flex:none}
+.dops{padding:0 18px 14px;flex:1}
+.dop{font-size:12.5px;color:var(--ink2);display:flex;align-items:flex-start;gap:8px;padding:3.5px 0;line-height:1.5}
+.dop .ck{color:var(--ok);font-weight:800;flex:none;font-size:11px;margin-top:2px}
+.ast.off .dop .ck{color:var(--ink4)}
+.dop.pend .ck{color:var(--wa)}
+.af{display:flex;align-items:center;gap:9px;padding:11px 18px;border-top:1px solid var(--line2);background:#fcfdfe}
+.af .meta{font-size:11px;color:var(--ink3);flex:1;line-height:1.4}
+.af .meta b{color:var(--ink2);font-weight:600}
+.addast{grid-column:1/-1;border:1px dashed var(--ink4);background:none;border-radius:13px;padding:20px;
+  font-size:13.5px;color:var(--ink3);font-weight:500}
+.addast:hover{border-color:var(--pri);color:var(--pri-d);background:var(--pri-sf)}
+
+/* 详情 */
+.det{display:grid;grid-template-columns:1fr 300px;gap:18px}
+.dcard{background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--sh);overflow:hidden}
+.dhead{padding:20px 22px 16px;display:flex;align-items:flex-start;gap:14px;border-bottom:1px solid var(--line2)}
+.dhead .ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:23px;flex:none}
+.dhead .tx{flex:1;min-width:0}
+.dhead .ttl{font-size:19px;font-weight:700;letter-spacing:-.3px;margin-bottom:3px}
+.dhead .sub{font-size:13px;color:var(--ink2);line-height:1.55}
+.dsec{padding:17px 22px;border-bottom:1px solid var(--line2)}
+.dsec:last-child{border-bottom:none}
+.dsec h5{margin:0 0 4px;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+.dsec .sb{font-size:12px;color:var(--ink3);margin:0 0 12px;line-height:1.6}
+.dops2{display:flex;flex-direction:column;gap:8px}
+.doprow{display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid var(--line);border-radius:9px}
+.doprow .ck{width:19px;height:19px;border-radius:5px;background:var(--ok);color:#fff;display:grid;
+  place-items:center;font-size:11px;font-weight:800;flex:none}
+.doprow.off .ck{background:var(--line2);color:var(--ink4)}
+.doprow .t{flex:1;font-size:13px;font-weight:600}
+.doprow .d{font-size:11px;color:var(--ink3);display:block;font-weight:400;margin-top:1px}
+.fine{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line2);font-size:12.5px}
+.fine:first-of-type{border-top:0}
+.fine .fl{color:var(--ink2)}
+.seg{display:flex;background:var(--line2);border-radius:7px;padding:2px;gap:2px}
+.seg b{font-size:11.5px;padding:4px 10px;border-radius:5px;color:var(--ink3);font-weight:500}
+.seg b.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:var(--sh)}
+.side2{display:flex;flex-direction:column;gap:12px}
+.sb2{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--sh);padding:15px}
+.sb2 h6{margin:0 0 10px;font-size:11px;color:var(--ink3);font-weight:800;letter-spacing:.6px}
+.sb2 .big{font-size:23px;font-weight:800;letter-spacing:-.5px;margin-bottom:1px}
+.sb2 .sm{font-size:11.5px;color:var(--ink3)}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{font-size:11.5px;color:var(--ink2);padding:6px 0 6px 16px;position:relative;line-height:1.5}
+.hist li::before{content:"●";position:absolute;left:0;top:7px;font-size:6px;color:var(--ink4)}
+.hist li b{color:var(--ink);font-weight:600}
+.hist .tm{color:var(--ink4);font-size:10.5px;display:block}
+
+/* 自动化列表（工程层） */
+.auto{display:flex;flex-direction:column;gap:9px}
+.arow{display:flex;align-items:center;gap:12px;padding:12px 15px;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:var(--sh)}
+.arow .who{font-size:10.5px;font-weight:800;color:#fff;background:var(--ink3);border-radius:5px;
+  padding:2px 7px;flex:none;letter-spacing:.3px}
+.arow .who.g{background:#3b82f6}.arow .who.m{background:var(--wa)}
+.arow .who.f{background:#8b5cf6}.arow .who.h{background:#f43f5e}
+.arow .cond{font-size:12.5px;font-weight:700;min-width:96px}
+.arow .desc{font-size:11.5px;color:var(--ink3)}
+.arow .ar{color:var(--ink4)}
+.arow .res{font-size:12.5px;font-weight:600;color:var(--pri-d);background:var(--pri-sf);
+  border:1px solid var(--pri-bd);border-radius:6px;padding:3px 9px;white-space:nowrap}
+.arow .sp{flex:1}
+.arow .st{font-size:11px;color:var(--ink3)}
+.hidden{opacity:.42}
+
+/* 视觉状态 */
+.vgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}
+.vc{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--sh);padding:17px;display:flex;gap:14px}
+.vc .ic{width:40px;height:40px;border-radius:11px;background:var(--line2);display:grid;place-items:center;font-size:19px;flex:none}
+.vc.warn .ic{background:var(--wa-sf)}
+.vc .tx{flex:1;min-width:0}
+.vc .ttl{font-size:14.5px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.vc .sub{font-size:12px;color:var(--ink2);line-height:1.55;margin-bottom:3px}
+.vc .why{font-size:11.5px;color:var(--ink3);line-height:1.5}
+.meter{margin-top:9px}
+.meter .t{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;color:var(--ink3)}
+.bar{height:4px;background:var(--line2);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:99px}
+.bar i.w{background:var(--wa)}.bar i.g{background:var(--ink4)}
+.preview{border-radius:11px;overflow:hidden;border:1px solid var(--line);background:#0f172a;aspect-ratio:16/9;position:relative}
+.preview img{width:100%;height:100%;object-fit:cover;display:block}
+.preview .lv{position:absolute;top:8px;left:8px;font-size:10px;font-weight:800;background:rgba(16,185,129,.92);
+  color:#fff;padding:2px 7px;border-radius:4px;letter-spacing:.5px}
+.preview .hud{position:absolute;top:8px;right:8px;font-size:10px;color:#cbd5e1;text-align:right;line-height:1.55}
+.preview .hud b{color:#fff}
+.preview .st{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.72));
+  padding:18px 10px 8px;color:#e2e8f0;font-size:11px}
+
+/* 动作词表 */
+.vocab{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.vg{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--sh);overflow:hidden}
+.vg .h{padding:12px 15px;border-bottom:1px solid var(--line2);font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.vg .b{padding:9px 15px}
+.vg .it{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12.5px;border-bottom:1px solid var(--line2)}
+.vg .it:last-child{border-bottom:none}
+.vg .it .nm{font-weight:600}
+.vg .it .ok{color:var(--ok);font-weight:800}
+.vg .it .pend{color:#b45309;font-size:11px;font-weight:700}
+.vg .it .noid{margin-left:auto;font-size:11px;color:var(--ink3)}
+
+/* 架构图 */
+.arch{background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--sh2);padding:26px;margin-top:8px}
+.archrow{display:flex;justify-content:center;gap:14px;margin-bottom:6px}
+.anode{border:1.5px solid var(--ink5);border-radius:11px;padding:12px 20px;text-align:center;background:#fff;min-width:130px}
+.anode .t{font-size:13.5px;font-weight:700}
+.anode .s{font-size:11px;color:var(--ink3);margin-top:2px}
+.anode.voice{border-color:var(--vi-bd);background:var(--vi-sf)}
+.anode.gest{border-color:#fbcfe8;background:#fdf2f8}
+.anode.vis{border-color:var(--pri);background:var(--pri-sf)}
+.arrowdown{text-align:center;color:var(--ink4);font-size:17px;padding:5px 0}
+.abox{border:2px solid var(--ink);border-radius:12px;padding:15px 26px;text-align:center;background:#fff;margin:0 auto;max-width:420px}
+.abox .t{font-size:15px;font-weight:800}
+.abox .s{font-size:12px;color:var(--ink2);margin-top:3px}
+.abox.ctx{border-color:var(--pri);background:linear-gradient(135deg,#0c4a6e,#0369a1);color:#fff;border-color:#0369a1}
+.abox.ctx .s{color:rgba(255,255,255,.78)}
+.abox.eng{border-color:var(--ink3)}
+.lvl{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.6px;padding:2px 9px;border-radius:99px;margin-bottom:7px}
+.lvl.l1{background:var(--pri);color:#fff}
+.lvl.l2{background:var(--ink3);color:#fff}
+.lvl.l3{background:var(--ink);color:#fff}
+.lvl.l0{background:var(--ok);color:#fff}
+
+/* 对照 */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.cmpc{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--sh)}
+.cmpc .h{padding:13px 16px;border-bottom:1px solid var(--line);font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.cmpc .b{padding:15px 16px;font-size:12.5px;color:var(--ink2);line-height:1.8}
+.cmpc .b b{color:var(--ink)}
+.cmpc.old .h{background:var(--rk-sf);color:#b91c1c}
+.cmpc.new .h{background:var(--ok-sf);color:#047857}
+.tree{background:#fcfdfe;border:1px solid var(--line);border-radius:11px;padding:15px 18px;
+  font-family:Consolas,monospace;font-size:12.5px;line-height:1.85;white-space:pre;overflow:auto}
+.tree b{color:var(--pri-d)}
+.anno{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:13px;margin-top:18px}
+.ac{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--sh)}
+.ac .h{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.ac .h b{font-size:13.5px}
+.ac p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.7}
+@media(max-width:1000px){.assistants,.det,.vgrid,.vocab,.cmp{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <span class="b">摄像头 · 助手化 IA</span>
+    <button class="tab on" data-v="0">助手首页</button>
+    <button class="tab" data-v="1">助手详情</button>
+    <button class="tab" data-v="2">全部自动化</button>
+    <button class="tab" data-v="3">视觉状态</button>
+    <button class="tab" data-v="4">动作词表</button>
+    <button class="tab" data-v="5">设计说明</button>
+    <span class="sp">用户意图层优先 · 工程概念全部下沉</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ========== 0 助手首页 ========== -->
+<div class="view on" id="v0">
+  <div class="win">
+    <div class="tbar">
+      <span class="ttl">摄像头</span>
+      <div class="nav">
+        <button class="nv on">我的助手</button>
+        <button class="nv" onclick="showView(2)">自动化</button>
+        <button class="nv" onclick="showView(3)">视觉状态</button>
+        <button class="nv" onclick="showView(3)">设置</button>
+      </div>
+      <div class="r"><span class="trust">🔒 画面只在本机处理</span><button class="btn">⚙</button></div>
+    </div>
+    <div class="body">
+      <div class="hello">
+        <h2>摄像头助手</h2>
+        <p>让电脑看懂你在做什么，然后主动帮你。</p>
+        <div class="r"><div class="stat"><span class="d"></span>一切正常</div></div>
+      </div>
+
+      <div class="today">
+        <div class="h">今天它帮你做了</div>
+        <div class="it"><span class="tm">14:32</span><span class="ic">🛡</span>离开保护启动 · 遮住屏幕、暂停语音</div>
+        <div class="it"><span class="tm">15:07</span><span class="ic">🛡</span>检测到你回来了 · 恢复语音</div>
+        <div class="it"><span class="tm">16:40</span><span class="ic">🧠</span>你摇头 · 中断了 Agent 的运行</div>
+      </div>
+
+      <div class="assistants">
+        <div class="ast a-guard on">
+          <div class="ah">
+            <span class="ic">🛡️</span>
+            <div class="tx"><div class="ttl">离开保护</div><div class="sub">你离开电脑时，帮你看住隐私</div></div>
+            <button class="sw on" onclick="tg(this)"></button>
+          </div>
+          <div class="dops">
+            <div class="dop"><span class="ck">✓</span>遮住屏幕，旁人看不到</div>
+            <div class="dop"><span class="ck">✓</span>暂停语音输入，不录你说话</div>
+            <div class="dop"><span class="ck">✓</span>你回来时自动恢复</div>
+          </div>
+          <div class="af"><span class="meta">上次触发 <b>15:07</b> · 持续 <b>35 分钟</b></span>
+            <button class="btn" onclick="showView(1)">查看</button></div>
+        </div>
+
+        <div class="ast a-meet off">
+          <div class="ah">
+            <span class="ic">🎤</span>
+            <div class="tx"><div class="ttl">会议助手</div><div class="sub">开会时，别让你忘记关麦</div></div>
+            <button class="sw" onclick="tg(this)"></button>
+          </div>
+          <div class="dops">
+            <div class="dop"><span class="ck">✓</span>发现旁边有人，提醒你一下</div>
+            <div class="dop"><span class="ck">✓</span>你离开画面就自动静音</div>
+            <div class="dop"><span class="ck">✓</span>回来后自动开麦</div>
+          </div>
+          <div class="af"><span class="meta">已关闭 · 开启后立即生效</span>
+            <button class="btn" onclick="showView(1)">查看</button></div>
+        </div>
+
+        <div class="ast a-focus on">
+          <div class="ah">
+            <span class="ic">🧠</span>
+            <div class="tx"><div class="ttl">工作助手</div><div class="sub">写代码时，别让 AI 打扰你</div></div>
+            <button class="sw on" onclick="tg(this)"></button>
+          </div>
+          <div class="dops">
+            <div class="dop"><span class="ck">✓</span>你摇头，它就停下</div>
+            <div class="dop"><span class="ck">✓</span>你挥手，它收起浮层</div>
+            <div class="dop pend"><span class="ck">✓</span>你故意眨眼，它开始听写
+              <button class="btn" style="padding:1px 7px;font-size:10.5px;margin-left:4px">还没适配</button></div>
+          </div>
+          <div class="af"><span class="meta">上次触发 <b>16:40</b></span>
+            <button class="btn" onclick="showView(1)">查看</button></div>
+        </div>
+
+        <div class="ast a-health on">
+          <div class="ah">
+            <span class="ic">❤️</span>
+            <div class="tx"><div class="ttl">健康助手</div><div class="sub">累了、坐久了，提醒你一下</div></div>
+            <button class="sw on" onclick="tg(this)"></button>
+          </div>
+          <div class="dops">
+            <div class="dop"><span class="ck">✓</span>坐满 20 分钟，提醒看远处</div>
+            <div class="dop"><span class="ck">✓</span>低头久了，温和提醒你抬头</div>
+            <div class="dop"><span class="ck">✓</span>眨眼偏少时提醒休息</div>
+          </div>
+          <div class="af"><span class="meta">上次提醒 <b>11:20</b></span>
+            <button class="btn" onclick="showView(1)">查看</button></div>
+        </div>
+
+        <button class="addast">＋ 告诉我你想要什么，我帮你配一个助手</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno">
+    <div class="ac"><div class="h"><b>这一屏没有一个工程名词</b></div>
+      <p>没有「信号」「通道」「语义动作」「校准」。用户只看到四个<b>自己</b>，以及打开后会得到什么。</p></div>
+    <div class="ac"><div class="h"><b>开关是唯一的决策</b></div>
+      <p>「为什么我要配两条规则」的问题消失了——用户只决定<b>要不要这个助手</b>，具体怎么实现是系统的事。</p></div>
+    <div class="ac"><div class="h"><b>「今天帮你做了」放在最上面</b></div>
+      <p>让用户先看到<b>它已经在工作</b>，而不是先面对一张配置表。这是助手和设置页最本质的区别。</p></div>
+    <div class="ac"><div class="h"><b>未就绪能力不隐藏，但温和提示</b></div>
+      <p>「故意眨眼」照常显示，只在末尾挂一个小小的「还没适配」按钮——不假装能用，也不让用户以为自己漏了什么。</p></div>
+  </div>
+</div>
+
+<!-- ========== 1 助手详情 ========== -->
+<div class="view" id="v1">
+  <div class="win">
+    <div class="tbar">
+      <button class="btn gh" onclick="showView(0)">← 返回</button>
+      <span class="ttl">离开保护</span>
+      <div class="r"><span style="font-size:12.5px;color:var(--ink2);margin-right:4px">已开启</span>
+        <button class="sw on" onclick="tg(this)"></button></div>
+    </div>
+    <div class="body">
+      <div class="det">
+        <div class="dcard">
+          <div class="dhead">
+            <span class="ic" style="background:#dbeafe">🛡️</span>
+            <div class="tx">
+              <div class="ttl">离开保护</div>
+              <div class="sub">你离开电脑超过 3 秒，它就帮你遮住屏幕、停掉麦克风。你回来时自动恢复。</div>
+            </div>
+          </div>
+          <div class="dsec">
+            <h5>它会帮你做这些</h5>
+            <p class="sb">这些都是开箱就用的，不需要额外设置。点右侧开关可以单独关掉某一项。</p>
+            <div class="dops2">
+              <div class="doprow"><span class="ck">✓</span><span class="t">遮住屏幕
+                <span class="d">你离开时挡住画面，旁人看不到你在做什么</span></span>
+                <button class="sw on" onclick="tg(this)"></button></div>
+              <div class="doprow"><span class="ck">✓</span><span class="t">暂停语音输入
+                <span class="d">不再听你说话，也不出现在会议里</span></span>
+                <button class="sw on" onclick="tg(this)"></button></div>
+              <div class="doprow"><span class="ck">✓</span><span class="t">你回来时自动恢复
+                <span class="d">不用手动解除，检测到人回来就恢复</span></span>
+                <button class="sw on" onclick="tg(this)"></button></div>
+            </div>
+          </div>
+          <div class="dsec">
+            <h5>想微调？<span class="pill p-n">高级</span></h5>
+            <p class="sb">一般不需要动这里。只有当默认行为不符合你的习惯时才调。</p>
+            <div class="fine"><span class="fl">多久算离开</span>
+              <div class="seg"><b>1秒</b><b class="on">3秒</b><b>10秒</b><b>30秒</b></div></div>
+            <div class="fine"><span class="fl">多久算回来</span>
+              <div class="seg"><b class="on">1秒</b><b>2秒</b><b>5秒</b></div></div>
+            <div class="fine"><span class="fl">回来后也恢复布局</span>
+              <div class="seg"><b>关</b><b class="on">开</b></div></div>
+            <div class="fine"><span class="fl">有人靠近时也遮</span>
+              <div class="seg"><b class="on">开</b><b>关</b></div></div>
+          </div>
+        </div>
+
+        <div class="side2">
+          <div class="sb2">
+            <h6>这周它工作了</h6>
+            <div class="big">6 次</div>
+            <div class="sm">累计保护 2 小时 14 分</div>
+          </div>
+          <div class="sb2">
+            <h6>最近</h6>
+            <ul class="hist">
+              <li><span class="tm">今天 16:02</span>离开 <b>35 分钟</b> → 已恢复</li>
+              <li><span class="tm">今天 15:07</span>离开 <b>2 小时</b> → 已恢复</li>
+              <li><span class="tm">今天 14:32</span>离开 <b>21 分钟</b> → 已恢复</li>
+              <li><span class="tm">昨天 19:40</span>离开 <b>48 分钟</b> → 已恢复</li>
+            </ul>
+          </div>
+          <div class="sb2">
+            <h6>需要帮忙</h6>
+            <div style="font-size:12.5px;color:var(--ink2);line-height:1.7;margin-bottom:11px">
+              这个助手工作正常，不需要任何额外设置。</div>
+            <button class="btn" style="width:100%">查看全部自动化 →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="anno">
+    <div class="ac"><div class="h"><b>从「结果」倒推「设置」</b></div>
+      <p>先列它做了什么，再给微调入口。用户读完就知道这套行为长什么样，<b>不会被一排下拉框拦住</b>。</p></div>
+    <div class="ac"><div class="h"><b>微调明确标注「高级」</b></div>
+      <p>「多久算离开」这类参数对多数用户是噪音。标注为高级 + 默认值合理，就不必每次都让用户做决定。</p></div>
+    <div class="ac"><div class="h"><b>用「工作时间」证明价值</b></div>
+      <p>「这周 6 次，累计保护 2 小时 14 分」比任何功能描述都有说服力，也回应了「装它干嘛」的疑虑。</p></div>
+  </div>
+</div>
+
+<!-- ========== 2 全部自动化 ========== -->
+<div class="view" id="v2">
+  <div class="win">
+    <div class="tbar">
+      <span class="ttl">自动化</span>
+      <span style="font-size:12.5px;color:var(--ink3)">全部规则</span>
+      <div class="r"><button class="btn">筛选</button><button class="btn">＋ 新建</button></div>
+    </div>
+    <div class="body">
+      <h2 class="sec" style="margin-top:0">离开保护 <span class="pill p-b">已开启</span></h2>
+      <div class="auto">
+        <div class="arow"><span class="who g">离开保护</span><span class="cond">离开座位</span>
+          <span class="desc">持续 3 秒</span><span class="ar">→</span><span class="res">遮住屏幕</span>
+          <span class="sp"></span><span class="st">上次 16:02</span></div>
+        <div class="arow"><span class="who g">离开保护</span><span class="cond">离开座位</span>
+          <span class="desc">持续 3 秒</span><span class="ar">→</span><span class="res">暂停语音</span>
+          <span class="sp"></span><span class="st">上次 16:02</span></div>
+        <div class="arow"><span class="who g">离开保护</span><span class="cond">回到座位</span>
+          <span class="desc">持续 1 秒</span><span class="ar">→</span><span class="res">关闭遮罩</span>
+          <span class="sp"></span><span class="st">上次 16:03</span></div>
+        <div class="arow"><span class="who g">离开保护</span><span class="cond">回到座位</span>
+          <span class="desc">持续 1 秒</span><span class="ar">→</span><span class="res">恢复语音</span>
+          <span class="sp"></span><span class="st">上次 16:03</span></div>
+      </div>
+
+      <h2 class="sec">工作助手 <span class="pill p-b">已开启</span></h2>
+      <div class="auto">
+        <div class="arow"><span class="who f">工作助手</span><span class="cond">摇头</span>
+          <span class="desc">左右 3 拍</span><span class="ar">→</span><span class="res">取消本轮</span>
+          <span class="sp"></span><span class="st">上次 16:40</span></div>
+        <div class="arow"><span class="who f">工作助手</span><span class="cond">挥手</span>
+          <span class="desc">手掌摆动</span><span class="ar">→</span><span class="res">隐藏面板</span>
+          <span class="sp"></span><span class="st">上次 15:22</span></div>
+        <div class="arow hidden"><span class="who f">工作助手</span><span class="cond">故意眨眼</span>
+          <span class="desc">闭眼 1 秒</span><span class="ar">→</span><span class="res">开始听写</span>
+          <span class="sp"></span><span class="pill p-w">等适配，先不生效</span></div>
+        <div class="arow"><span class="who f">工作助手</span><span class="cond">摇头</span>
+          <span class="desc">左右 3 拍</span><span class="ar">→</span><span class="res">中断 Agent</span>
+          <span class="sp"></span><span class="st">上次 16:40</span></div>
+      </div>
+
+      <h2 class="sec">健康助手 <span class="pill p-b">已开启</span></h2>
+      <div class="auto">
+        <div class="arow"><span class="who h">健康助手</span><span class="cond">久坐 20 分钟</span>
+          <span class="desc">在席累计</span><span class="ar">→</span><span class="res">提醒看远处</span>
+          <span class="sp"></span><span class="st">上次 11:20</span></div>
+        <div class="arow"><span class="who h">健康助手</span><span class="cond">低头过久</span>
+          <span class="desc">头部俯仰偏离</span><span class="ar">→</span><span class="res">温和提醒</span>
+          <span class="sp"></span><span class="st">上次 14:05</span></div>
+        <div class="arow"><span class="who h">健康助手</span><span class="cond">眨眼偏少</span>
+          <span class="desc">长时间少眨眼</span><span class="ar">→</span><span class="res">提醒休息</span>
+          <span class="sp"></span><span class="st">上次 10:15</span></div>
+      </div>
+
+      <h2 class="sec">会议助手 <span class="pill p-n">已关闭</span></h2>
+      <div class="auto">
+        <div class="arow hidden"><span class="who m">会议助手</span><span class="cond">旁边有人</span>
+          <span class="desc">第二张脸</span><span class="ar">→</span><span class="res">温和提醒</span></div>
+        <div class="arow hidden"><span class="who m">会议助手</span><span class="cond">离开画面</span>
+          <span class="desc">超过 55cm</span><span class="ar">→</span><span class="res">自动静音</span></div>
+        <div class="arow hidden"><span class="who m">会议助手</span><span class="cond">回到画面</span>
+          <span class="desc">回到 55cm 内</span><span class="ar">→</span><span class="res">自动开麦</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="note" style="max-width:1300px;margin:16px auto 0;background:var(--pri-sf);border:1px solid var(--pri-bd);border-radius:11px;padding:13px 16px;font-size:12.5px;line-height:1.7">
+    <b>这一页仍然是「工程视图」，但它被降到了第二级。</b>
+    它服务于「我的规则要整体查看/批量关停」的需求，而不是入门路径。已关闭的助手规则<b>变灰但不隐藏</b>——用户需要知道它们存在、需要时能直接开。
+  </div>
+</div>
+
+<!-- ========== 3 视觉状态 ========== -->
+<div class="view" id="v3">
+  <div class="win">
+    <div class="tbar">
+      <span class="ttl">视觉状态</span>
+      <span style="font-size:12.5px;color:var(--ink3)">摄像头现在能看到什么</span>
+      <div class="r"><span class="pill p-n">高级视图</span><button class="btn">⚙ 设备</button></div>
+    </div>
+    <div class="body">
+      <div style="display:grid;grid-template-columns:340px 1fr;gap:18px">
+        <div>
+          <div class="preview">
+            <img src="_ref/feed.png" alt="摄像头预览" />
+            <span class="lv">LIVE</span>
+            <div class="hud">人脸 <b>已检测</b><br>置信度 <b>5%</b></div>
+            <div class="st">Integrated Camera (174f:1812)</div>
+          </div>
+          <div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap">
+            <div class="seg"><b class="on">横屏</b><b>竖屏</b></div>
+            <div class="seg"><b>720p</b><b class="on">全高清</b><b>2K</b></div>
+            <div class="seg"><b class="on">Auto</b><b>50Hz</b><b>60Hz</b></div>
+          </div>
+        </div>
+
+        <div class="vgrid">
+          <div class="vc">
+            <span class="ic">👤</span>
+            <div class="tx">
+              <div class="ttl">人脸 <span class="pill p-g">正常</span></div>
+              <div class="sub">能判断你在不在、旁边有没有别人。</div>
+              <div class="why">这是离开保护和会议助手的基础，不需要额外设置。</div>
+              <div class="meter"><div class="t"><span>识别质量</span><span>良好</span></div>
+                <div class="bar"><i style="width:88%"></i></div></div>
+            </div>
+          </div>
+          <div class="vc">
+            <span class="ic">✋</span>
+            <div class="tx">
+              <div class="ttl">手势 <span class="pill p-g">已开启</span></div>
+              <div class="sub">能看懂摇头、挥手、握拳等动作。</div>
+              <div class="why">工作助手的基础。建议只在软垫窗口激活时才响应，避免误触。</div>
+              <div class="meter"><div class="t"><span>识别质量</span><span>良好</span></div>
+                <div class="bar"><i style="width:82%"></i></div></div>
+            </div>
+          </div>
+          <div class="vc warn">
+            <span class="ic">👁</span>
+            <div class="tx">
+              <div class="ttl">视线 <span class="pill p-w">需要校准</span></div>
+              <div class="sub">能看出你在看哪块屏幕。</div>
+              <div class="why">还没做视线校准，所以只能大致判断，看不准具体位置。</div>
+              <button class="btn p" style="margin-top:9px;padding:5px 12px;font-size:12px">开始校准</button>
+            </div>
+          </div>
+          <div class="vc warn">
+            <span class="ic">😌</span>
+            <div class="tx">
+              <div class="ttl">眨眼 <span class="pill p-w">未建立个人模型</span></div>
+              <div class="sub">能分辨普通眨眼和故意闭眼。</div>
+              <div class="why">需要先采集你自己的眨眼习惯，不然分不清你是不是故意的。</div>
+              <button class="btn p" style="margin-top:9px;padding:5px 12px;font-size:12px">去适配</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="note" style="max-width:1300px;margin:16px auto 0;background:#fff8ec;border:1px solid #fde68a;border-radius:11px;padding:13px 16px;font-size:12.5px;line-height:1.7;color:#92400e">
+    <b style="color:#b45309">这一页是「摄像头体检表」。</b>
+    它回答的是「为什么某个助手没按我预期工作」，属于排障入口，不是日常入口。所以放在第三级。
+    未就绪的能力用<b>人话解释影响</b>（「只能大致判断」）而不是术语（「未标定」）——用户要的是后果，不是原理。
+  </div>
+</div>
+
+<!-- ========== 4 动作词表 ========== -->
+<div class="view" id="v4">
+  <h1 class="ft">动作词表：用户看到的名字</h1>
+  <p class="lead">用户永远不该看到 <code>input.start</code> 这种东西。但代码里必须对得上，所以做一张<b>用户语言 ↔ 内部 ID</b> 的映射表，由界面负责翻译。</p>
+
+  <div class="vocab">
+    <div class="vg">
+      <div class="h">🔒 隐私</div>
+      <div class="b">
+        <div class="it"><span class="nm">遮住屏幕</span><span class="ok">✓</span><span class="noid">privacy.mask</span></div>
+        <div class="it"><span class="nm">关闭遮罩</span><span class="ok">✓</span><span class="noid">privacy.unmask</span></div>
+        <div class="it"><span class="nm">静音麦克风</span><span class="ok">✓</span><span class="noid">mic.mute</span></div>
+        <div class="it"><span class="nm">打开麦克风</span><span class="ok">✓</span><span class="noid">mic.unmute</span></div>
+        <div class="it"><span class="nm">暂停语音输入</span><span class="ok">✓</span><span class="noid">voice.pause</span></div>
+        <div class="it"><span class="nm">恢复语音输入</span><span class="ok">✓</span><span class="noid">voice.resume</span></div>
+      </div>
+    </div>
+    <div class="vg">
+      <div class="h">💼 工作</div>
+      <div class="b">
+        <div class="it"><span class="nm">回到 AI 助手</span><span class="ok">✓</span><span class="noid">agent.focus</span></div>
+        <div class="it"><span class="nm">打断 AI</span><span class="ok">✓</span><span class="noid">agent.interrupt</span></div>
+        <div class="it"><span class="nm">拒绝请求</span><span class="ok">✓</span><span class="noid">agent.reject</span></div>
+        <div class="it"><span class="nm">恢复窗口布局</span><span class="ok">✓</span><span class="noid">workspace.applyLayout</span></div>
+        <div class="it"><span class="nm">显示 / 隐藏面板</span><span class="ok">✓</span><span class="noid">overlay.toggle</span></div>
+        <div class="it"><span class="nm">看着另一块屏</span><span class="ok">✓</span><span class="noid">screen.follow</span></div>
+        <div class="it"><span class="nm">窗口跳过去</span><span class="ok">✓</span><span class="noid">window.snap</span></div>
+      </div>
+    </div>
+    <div class="vg">
+      <div class="h">🎛 控制</div>
+      <div class="b">
+        <div class="it"><span class="nm">开始听写</span><span class="ok">✓</span><span class="noid">input.start</span></div>
+        <div class="it"><span class="nm">取消本轮</span><span class="ok">✓</span><span class="noid">input.cancel</span></div>
+        <div class="it"><span class="nm">发出去</span><span class="pend">需确认</span><span class="noid">input.send</span></div>
+        <div class="it"><span class="nm">同意</span><span class="pend">需确认</span><span class="noid">agent.approve</span></div>
+        <div class="it"><span class="nm">温和提醒</span><span class="ok">✓</span><span class="noid">notify.soft</span></div>
+        <div class="it"><span class="nm">提醒休息</span><span class="ok">✓</span><span class="noid">notify.rest</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cmp" style="margin-top:22px">
+    <div class="cmpc old">
+      <div class="h">✕ 用户看到的（问题）</div>
+      <div class="b">
+        <code>input.start</code> · <code>agent.focus</code> · <code>overlay.toggle</code><br><br>
+        「不执行动作」<br><br>
+        <b>问题：</b>用户不知道这堆 ID 对应什么好处，也不知道该选哪个。下拉框里 20 个选项，全靠猜。
+      </div>
+    </div>
+    <div class="cmpc new">
+      <div class="h">✓ 用户看到的</div>
+      <div class="b">
+        <b>隐私</b> → 遮住屏幕 / 静音麦克风<br>
+        <b>工作</b> → 打断 AI / 恢复窗口布局<br>
+        <b>控制</b> → 开始听写 / 取消本轮<br><br>
+        <b>做法：</b>按<b>用户的目的</b>分组，不按技术域分组。「我想保护隐私」和「我想管住 AI」是两种真实意图，技术上却可能同属一个 category。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 5 设计说明 ========== -->
+<div class="view" id="v5">
+  <h1 class="ft">IA 重新规划</h1>
+  <p class="lead">核心转变：<b>从「摄像头有什么能力」改成「我希望电脑什么时候主动帮我」</b>。摄像头不是功能，是 <b>Context Engine</b>。</p>
+
+  <h2 class="sec">三级结构：意图 → 场景 → 工程</h2>
+  <div class="arch">
+    <div class="archrow">
+      <div class="anode voice"><div class="t">🎤 语音</div><div class="s">输入意图</div></div>
+      <div class="anode gest"><div class="t">✋ 手势</div><div class="s">动作指令</div></div>
+      <div class="anode vis"><div class="t">👁 视觉</div><div class="s">环境状态</div></div>
+    </div>
+    <div class="arrowdown">↓</div>
+    <div class="abox ctx"><div class="t">🧠 Context Engine</div>
+      <div class="s">我在哪 · 在不在电脑前 · 需不需要帮助 · 环境安不安全</div></div>
+    <div class="arrowdown">↓</div>
+    <div class="abox eng"><div class="t">⚙️ Automation Engine</div>
+      <div class="s">把「环境判断」翻译成「该做什么」</div></div>
+    <div class="arrowdown">↓</div>
+    <div class="anode" style="margin:0 auto"><div class="t">🎯 Actions</div>
+      <div class="s">用户语言的动作词表</div></div>
+  </div>
+
+  <h2 class="sec">页面结构</h2>
+  <div class="tree">摄像头
+├── <b>首页 · 我的助手</b>          ← 唯一需要日常打开的地方
+│    ├── 🛡️ 离开保护    "你离开电脑时，帮你看住隐私"
+│    ├── 🎤 会议助手    "开会时，别让你忘记关麦"
+│    ├── 🧠 工作助手    "写代码时，别让 AI 打扰你"
+│    └── ❤️ 健康助手    "累了、坐久了，提醒你一下"
+│
+├── <b>自动化</b>                ← 整体查看 / 批量管理
+│    ├── 我的规则（按助手分组）
+│    └── 创建自动化
+│
+├── <b>视觉状态</b>              ← 排障：摄像头体检表
+│    ├── 人脸 · 手势 · 视线 · 眨眼
+│    └── 设备 / 校准 / 适配
+│
+└── <b>设置</b>
+     ├── 摄像头设备
+     ├── 隐私（画面只在本机）
+     └── 权限</div>
+
+  <h2 class="sec">对比上一版方案三</h2>
+  <div class="cmp">
+    <div class="cmpc old">
+      <div class="h">✕ 方案三（能力优先）</div>
+      <div class="b">
+        <b>感知库</b>作为入口 —— 用户要先理解「信号」是什么<br><br>
+        <b>动作库</b>作为入口 —— 25 个技术 ID 平铺<br><br>
+        <b>场景 = 规则容器</b> —— 「离开座位」里放两条离席规则，用户仍需理解规则<br><br>
+        首页回答：<b>摄像头能感知什么</b><br><br>
+        <b>问题：</b>每一层都要求用户先懂技术概念，才能往下走。
+      </div>
+    </div>
+    <div class="cmpc new">
+      <div class="h">✓ 助手化（意图优先）</div>
+      <div class="b">
+        <b>感知库</b>降为内部实现 → 只在「视觉状态」里以体检表形式出现<br><br>
+        <b>动作库</b>换成用户语言 → 按目的分组（隐私/工作/控制）<br><br>
+        <b>场景升为「助手」</b> → 一个开关对应一个完整承诺，用户不碰规则<br><br>
+        首页回答：<b>它能帮我什么</b><br><br>
+        <b>做法：</b>意图在前，工程在后。工程概念不是删掉，是<b>推迟到需要时再出现</b>。
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">具体删了什么</h2>
+  <div class="anno" style="margin-top:10px">
+    <div class="ac"><div class="h"><b>❌ 感知库作为入口</b></div>
+      <p>「人脸/手势/视线」不再是用户要选的东西，而是「视觉状态」里的体检项。用户在助手页只想知道「离开保护能不能开」，不想知道它靠人脸还是靠红外。</p></div>
+    <div class="ac"><div class="h"><b>❌ 动作库作为入口</b></div>
+      <p>25 个语义动作平铺是给开发者的。换成隐私/工作/控制三组用户语言，需要精确 ID 时才在「视觉状态」或开发者模式里露出。</p></div>
+    <div class="ac"><div class="h"><b>❌ 场景 = 规则集合</b></div>
+      <p>「离开座位」在旧结构里是装规则的口袋。现在它是<b>离开保护助手</b>——一个用户能理解其行为后果的整体。规则是它的实现，不是它的定义。</p></div>
+    <div class="ac"><div class="h"><b>✅ 保留的</b></div>
+      <p>能力一点没少：14 项摄像头能力、46 项总能力全部还在。只是<b>从「让你配置」变成「让它替你决定」</b>，需要微调时仍能下钻。</p></div>
+  </div>
+
+  <h2 class="sec">这版和前几版的差别</h2>
+  <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--sh2);font-size:12.5px;margin-top:10px">
+    <thead><tr><th style="text-align:left;padding:10px 13px;background:#f8fafc;border-bottom:1px solid var(--line)">版本</th>
+      <th style="text-align:left;padding:10px 13px;background:#f8fafc;border-bottom:1px solid var(--line)">首页回答的问题</th>
+      <th style="text-align:left;padding:10px 13px;background:#f8fafc;border-bottom:1px solid var(--line)">用户要懂的第一个概念</th></tr></thead>
+    <tbody>
+      <tr><td style="padding:9px 13px;border-bottom:1px solid var(--line2)">现状 1 · Pro 10 标签</td>
+        <td style="padding:9px 13px;border-bottom:1px solid var(--line2)">每个功能怎么调</td><td style="padding:9px 13px;border-bottom:1px solid var(--line2)">这 10 个标签分别是什么</td></tr>
+      <tr><td style="padding:9px 13px;border-bottom:1px solid var(--line2)">现状 2 · 场景能力</td>
+        <td style="padding:9px 13px;border-bottom:1px solid var(--line2)">规则怎么连</td><td style="padding:9px 13px;border-bottom:1px solid var(--line2)">「接任务」和「按钮发」的区别</td></tr>
+      <tr><td style="padding:9px 13px;border-bottom:1px solid var(--line2)">方案三 · 能力地图</td>
+        <td style="padding:9px 13px;border-bottom:1px solid var(--line2)">能感知什么、能驱动什么</td><td style="padding:9px 13px;border-bottom:1px solid var(--line2)">信号 / 语义动作 / 通道</td></tr>
+      <tr style="background:var(--ok-sf)"><td style="padding:9px 13px"><b>本版 · 助手化</b></td>
+        <td style="padding:9px 13px"><b>它能帮我什么</b></td><td style="padding:9px 13px"><b>不需要懂任何概念</b></td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showView(+b.dataset.v));
+function showView(i){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tab')[i].classList.add('on');
+  document.getElementById('v'+i).classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function tg(el){ el.classList.toggle('on'); }
+</script>
+</body>
+</html>

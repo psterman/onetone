@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>L · 目标壳 + 共享改结果</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .chrome {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fbfdfe;
+    }
+    .chrome h2 { margin: 0; font-size: 15px; font-weight: 750; }
+    .goals { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .goal {
+      border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden;
+    }
+    .goal.on { border-color: var(--cyan-bd); background: linear-gradient(180deg, #f7fbfe, #fff); }
+    .goal-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 12px 13px; align-items: start;
+    }
+    .goal-head {
+      appearance: none; border: 0; background: transparent; font: inherit; text-align: left;
+      color: inherit; cursor: pointer; padding: 0; width: 100%;
+    }
+    .goal-head .title { font-size: 14px; font-weight: 750; }
+    .goal-head .one { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+    .chev { font-size: 11px; color: var(--faint); font-weight: 650; margin-top: 6px; }
+    .body { display: none; padding: 0 13px 12px; border-top: 1px dashed var(--line); }
+    .goal.open .body { display: block; }
+    .cause {
+      margin-top: 8px; display: grid; grid-template-columns: 1fr auto; gap: 6px 10px;
+      padding: 8px 10px; border-radius: 10px; background: var(--wash); border: 1px solid var(--line);
+      font-size: 12.5px; align-items: center;
+    }
+    .cause .when { font-weight: 650; }
+    .cause .then { grid-column: 1; font-size: 12px; color: var(--muted); }
+    .cause .then b { color: var(--cyan-ink); }
+    .doors {
+      display: flex; gap: 8px; flex-wrap: wrap; padding: 8px 14px 14px;
+      border-top: 1px solid var(--line); background: var(--wash);
+    }
+    .doors .btn { flex: 1; min-width: 130px; }
+    .pick {
+      appearance: none; width: 100%; text-align: left; border: 1px solid var(--line);
+      background: #fff; border-radius: 10px; padding: 10px 12px; font: inherit; cursor: pointer; margin-bottom: 6px;
+    }
+    .pick.on, .pick:hover { border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .pick .pn { font-size: 13px; font-weight: 750; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .pick .pd { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .bridge {
+      margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--violet-soft);
+      border: 1px solid #ddd6fe; font-size: 12px; color: var(--violet); line-height: 1.45;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>L · 目标壳 + 共享改结果</strong>
+    <span class="pill">J 管理 × 跨通道调用</span>
+    <a href="index.html">← 索引</a>
+  </div>
+  <div class="page">
+    <p class="thesis">
+      <b>架构：</b>首页仍按「我想要」管五层代管；<b>命令控制</b>只发生在因果行的「改结果」。
+      弹层 = 共享目录（同 K 的 02）。徽标展示该 <code>action_id</code> 已被哪些通道绑定——证明可被其它页调用。
+    </p>
+    <div class="shell">
+      <div class="chrome">
+        <button type="button" class="tog on" id="master"></button>
+        <h2>摄像头 · 目标</h2>
+        <span class="chip ok" style="margin-left:auto">A→共享目录 · B 代管</span>
+      </div>
+      <div class="goals" id="goals"></div>
+      <div class="doors">
+        <button type="button" class="btn" data-door="look">画面好看 (C/E)</button>
+        <button type="button" class="btn ghost" data-door="detail">全部细节 (A+/B/D)</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="maskAct">
+    <div class="drawer">
+      <h3 id="actTitle">改结果</h3>
+      <p class="dsub">共享动作目录 · 写入后按键 / 语音 / SoftPad 可用同一 ID 匹配</p>
+      <div id="picks"></div>
+      <div class="bridge" id="bridge"></div>
+      <button type="button" class="btn" style="margin-top:12px;width:100%" data-close="maskAct">取消</button>
+    </div>
+  </div>
+
+  <script>
+    const ACTIONS = [
+      { id: "privacyScreen", name: "应用内遮罩", used: ["摄像头"] },
+      { id: "resumeVoice", name: "恢复语音", used: ["摄像头"] },
+      { id: "pressEsc", name: "取消 / Esc", used: ["按键 Esc", "语音「取消」"] },
+      { id: "pressCtrlI", name: "激活语音输入", used: ["SoftPad", "语音听写"] },
+      { id: "agent.reject", name: "拒绝", used: ["按键", "语音"] },
+      { id: "pauseVoice", name: "暂停语音", used: ["摄像头"] },
+    ];
+    const GOALS = [
+      {
+        id: "privacy", title: "离开座位时保护隐私", one: "人不在时挡住画面；回来恢复。",
+        on: true, open: true,
+        causes: [
+          { id: "away", when: "你离开座位", act: "privacyScreen" },
+          { id: "back", when: "你回到座位", act: "resumeVoice" },
+        ],
+      },
+      {
+        id: "meeting", title: "开会时别吵到别人", one: "退远自动静麦（B · 内置，不改结果）。",
+        on: true, open: false, builtin: true,
+        causes: [{ id: "mute", when: "你退远或无人", act: null, label: "内置静麦 · 非匹配表" }],
+      },
+      {
+        id: "gesture", title: "用手势代替按键", one: "摇头取消 · 眨眼开始输入。",
+        on: false, open: false,
+        causes: [
+          { id: "shake", when: "你摇头", act: "pressEsc" },
+          { id: "blink", when: "你故意眨眼", act: "pressCtrlI" },
+        ],
+      },
+    ];
+
+    let actTarget = null;
+    function actName(id) { return ACTIONS.find((a) => a.id === id)?.name || id; }
+
+    function render() {
+      document.getElementById("goals").innerHTML = GOALS.map((g) => `
+        <div class="goal ${g.on ? "on" : ""} ${g.open ? "open" : ""}">
+          <div class="goal-row">
+            <button type="button" class="goal-head" data-open="${g.id}">
+              <div class="title">${g.title}</div>
+              <div class="one">${g.one}</div>
+              <div class="chev">${g.open ? "收起会发生什么 ▲" : "看看会发生什么 ▼"}</div>
+            </button>
+            <button type="button" class="tog sm ${g.on ? "on" : ""}" data-sw="${g.id}"></button>
+          </div>
+          <div class="body">
+            ${g.causes.map((c) => `
+              <div class="cause">
+                <span class="when">${c.when}</span>
+                ${c.act
+                  ? `<button type="button" class="btn sm" data-act="${g.id}:${c.id}">改结果</button>
+                     <span class="then">→ <b>${actName(c.act)}</b>
+                       ${(ACTIONS.find((a) => a.id === c.act)?.used || []).slice(0, 2).map((u) =>
+                         `<span class="chip cy">${u}</span>`).join("")}
+                     </span>`
+                  : `<span class="chip">B 持续</span><span class="then">→ <b>${c.label}</b></span>`}
+              </div>`).join("")}
+          </div>
+        </div>`).join("");
+
+      document.querySelectorAll("[data-open]").forEach((b) => {
+        b.onclick = () => {
+          const g = GOALS.find((x) => x.id === b.dataset.open);
+          GOALS.forEach((x) => { if (x !== g) x.open = false; });
+          g.open = !g.open;
+          render();
+        };
+      });
+      document.querySelectorAll("[data-sw]").forEach((b) => {
+        b.onclick = () => {
+          const g = GOALS.find((x) => x.id === b.dataset.sw);
+          g.on = !g.on;
+          render();
+        };
+      });
+      document.querySelectorAll("[data-act]").forEach((b) => {
+        b.onclick = () => openAct(b.dataset.act);
+      });
+    }
+
+    function openAct(key) {
+      const [gid, cid] = key.split(":");
+      const g = GOALS.find((x) => x.id === gid);
+      const c = g.causes.find((x) => x.id === cid);
+      actTarget = c;
+      document.getElementById("actTitle").textContent = `改结果 · ${c.when}`;
+      document.getElementById("picks").innerHTML = ACTIONS.map((a) => `
+        <button type="button" class="pick ${a.id === c.act ? "on" : ""}" data-aid="${a.id}">
+          <span class="pn">${a.name} ${a.used.map((u) => `<span class="chip cy">${u}</span>`).join("")}</span>
+          <span class="pd">action_id · ${a.id}</span>
+        </button>`).join("");
+      document.querySelectorAll("[data-aid]").forEach((p) => {
+        p.onclick = () => {
+          c.act = p.dataset.aid;
+          document.getElementById("maskAct").classList.remove("on");
+          render();
+        };
+      });
+      const cur = ACTIONS.find((a) => a.id === c.act);
+      document.getElementById("bridge").innerHTML = cur
+        ? `当前结果也被：<b>${cur.used.join(" · ") || "仅摄像头"}</b>。在按键/语音页选同一 ID 即完成跨通道调用。`
+        : "";
+      document.getElementById("maskAct").classList.add("on");
+    }
+
+    document.getElementById("master").onclick = (e) => e.currentTarget.classList.toggle("on");
+    document.querySelectorAll("[data-door]").forEach((b) => {
+      b.onclick = () => alert(b.dataset.door === "look"
+        ? "侧门：妆效 / 布局（C/E），不进命令目录"
+        : "侧门：原子名 / 阈值 / 校准（A+ · B · D）");
+    });
+    document.querySelector("[data-close]").onclick = () => document.getElementById("maskAct").classList.remove("on");
+    document.getElementById("maskAct").onclick = (e) => {
+      if (e.target.id === "maskAct") e.currentTarget.classList.remove("on");
+    };
+    render();
+  </script>
+</body>
+</html>

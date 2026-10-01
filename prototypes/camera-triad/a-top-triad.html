@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>A · 顶层三 Tab · 摄像头三分</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <div class="topbar">
+    <strong>A · 顶层三 Tab</strong>
+    <span>动作 | 设置 | 场景</span>
+    <span class="grow"></span>
+    <a href="index.html">← 索引</a>
+    <a href="b-rail-triad.html">B →</a>
+  </div>
+  <div class="page">
+    <div class="board">
+      <div class="trust">
+        <h1><span class="sub">摄像头 · </span>前台自动</h1>
+        <span class="fg"><i></i>Cursor</span>
+        <span class="chip" id="sceneChip" hidden>场景 · Cursor</span>
+        <div class="master">
+          <span id="masterLbl">识别已关</span>
+          <button type="button" class="toggle" id="masterToggle" role="switch" aria-checked="false" aria-label="识别总开关"></button>
+        </div>
+      </div>
+
+      <nav class="tabs" role="tablist" aria-label="三分">
+        <button type="button" class="on" role="tab" aria-selected="true" data-tab="act">动作</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="set">设置</button>
+        <button type="button" role="tab" aria-selected="false" data-tab="scn">场景</button>
+      </nav>
+      <p class="hint-row" id="hintAct">与按键 / 口头 / Soft Pad <b>同名动作</b>可精准匹配 · 无教学页</p>
+      <p class="hint-row" id="hintSet" hidden>本机实验室 · <b>不进</b>跨通道匹配目录</p>
+      <p class="hint-row" id="hintScn" hidden>动作挂在习惯下 · 设置仍全局</p>
+
+      <!-- 动作 -->
+      <section class="pane on" id="paneAct" role="tabpanel">
+        <div class="pair">
+          <aside class="dir" aria-label="识别动作">
+            <p class="sec">常用反应</p>
+            <button type="button" class="fn on" data-fn="away"><span>离席</span><span class="map">遮罩</span></button>
+            <button type="button" class="fn" data-fn="back"><span>回席</span><span class="map">取消</span></button>
+            <button type="button" class="fn" data-fn="shake"><span>摇头</span><span class="map">—</span></button>
+            <button type="button" class="fn" data-fn="blink"><span>故意眨眼</span><span class="map">—</span></button>
+            <p class="sec">高级 · 手势</p>
+            <button type="button" class="fn" data-fn="palm"><span>五指张开</span><span class="map">—</span></button>
+            <button type="button" class="fn" data-fn="ok"><span>OK</span><span class="map">—</span></button>
+            <button type="button" class="fn" data-fn="fist"><span>握拳</span><span class="map">—</span></button>
+          </aside>
+          <div class="detail" id="actDetail">
+            <h3><span class="type">反应</span> <span id="actTitle">离席</span></h3>
+            <p class="sub" id="actSub">人脸消失达时长 → 执行一次</p>
+            <div class="arrow">
+              <span id="actIf">离席</span>
+              <span class="sep">→</span>
+              <span id="actThen">遮罩当前窗口</span>
+            </div>
+            <div class="field">
+              <label for="actMs">判定时长</label>
+              <select id="actMs">
+                <option value="1000">1 秒</option>
+                <option value="2000">2 秒</option>
+                <option value="3000" selected>3 秒</option>
+                <option value="5000">5 秒</option>
+              </select>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="btn pri">改结果</button>
+              <button type="button" class="btn" id="actEn">启用</button>
+            </div>
+            <details>
+              <summary style="cursor:pointer;font-size:12px;font-weight:650;color:var(--muted)">测试画面</summary>
+              <div class="cam-stage" style="margin-top:8px">
+                <span class="live">折叠 · 需要时开</span>
+                <span class="face">预览</span>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- 设置 -->
+      <section class="pane" id="paneSet" role="tabpanel" hidden>
+        <div class="lab">
+          <div class="lab-grid">
+            <div class="card">
+              <h4>设备</h4>
+              <p>默认摄像头 · 720p · 30fps</p>
+              <p class="meta">点此切换设备（原型占位）</p>
+            </div>
+            <div class="card">
+              <h4>视线校准</h4>
+              <p>未开始 · 注视点跟踪前需校准</p>
+              <div class="row-actions" style="margin-top:8px">
+                <button type="button" class="btn pri">开始校准</button>
+              </div>
+            </div>
+            <div class="card">
+              <h4>隐私屏</h4>
+              <p>离席遮罩样式 · 本机</p>
+            </div>
+            <div class="card">
+              <h4>美颜</h4>
+              <p>视频增强 · 默认关</p>
+            </div>
+          </div>
+          <details class="more">
+            <summary>其它能力（默认收起）</summary>
+            <div class="inner">
+              <div class="card"><h4>久坐提醒</h4><p>不进动作匹配</p></div>
+              <div class="card"><h4>移窗 / 布局</h4><p>不进动作匹配</p></div>
+              <div class="card"><h4>自动静音</h4><p>会议距离静音 · 独立线</p></div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- 场景 -->
+      <section class="pane" id="paneScn" role="tabpanel" hidden>
+        <div class="scene-box">
+          <div class="scene-card">
+            <div class="head">
+              <h3>当前习惯 · Cursor</h3>
+              <span class="chip">应用规则</span>
+            </div>
+            <p class="sub" style="margin:0;font-size:12.5px;color:var(--muted)">本场景已绑 2 个摄像头动作 · 与按键/口头同语义名</p>
+            <div class="bind-list">
+              <div class="bind-row"><span class="k">离席</span><span class="grow">→ 遮罩</span><button type="button" class="btn" data-goto-act="away">改动作</button></div>
+              <div class="bind-row"><span class="k">回席</span><span class="grow">→ 取消遮罩</span><button type="button" class="btn" data-goto-act="back">改动作</button></div>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="btn pri" data-goto-act="away">去动作 Tab</button>
+            </div>
+          </div>
+          <div class="card">
+            <h4>默认习惯</h4>
+            <p>无应用匹配时使用 · 0 个摄像头动作</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wire">
+      <b>A</b>：顶层只三 Tab。动作 = 匹配工作台；设置 = 实验室；场景 = 作用域摘要并可跳回动作（带 chip）。
+    </div>
+    <div class="anno">
+      <span><b>砍</b> 教学 / 双入口</span>
+      <span><b>砍</b> 10 平级 subtab</span>
+      <span><b>留</b> 弱 hint 一行</span>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var FNS = {
+        away: { title: "离席", sub: "人脸消失达时长 → 执行一次", then: "遮罩当前窗口", ms: true },
+        back: { title: "回席", sub: "跟随离席识别 · 无独立开关", then: "取消遮罩", ms: true },
+        shake: { title: "摇头", sub: "左右三拍", then: "未绑定", ms: false },
+        blink: { title: "故意眨眼", sub: "普通眨眼不算", then: "未绑定", ms: false },
+        palm: { title: "五指张开", sub: "手需进入画面", then: "未绑定", ms: false },
+        ok: { title: "OK", sub: "拇指食指成圈", then: "未绑定", ms: false },
+        fist: { title: "握拳", sub: "收拢五指", then: "未绑定", ms: false }
+      };
+
+      var master = document.getElementById("masterToggle");
+      var masterLbl = document.getElementById("masterLbl");
+      master.addEventListener("click", function () {
+        var on = !master.classList.contains("on");
+        master.classList.toggle("on", on);
+        master.setAttribute("aria-checked", on ? "true" : "false");
+        masterLbl.textContent = on ? "识别已开" : "识别已关";
+      });
+
+      function showTab(name, withChip) {
+        ["act", "set", "scn"].forEach(function (k) {
+          var pane = document.getElementById("pane" + k.charAt(0).toUpperCase() + k.slice(1));
+          var hint = document.getElementById("hint" + k.charAt(0).toUpperCase() + k.slice(1));
+          var on = k === name;
+          pane.classList.toggle("on", on);
+          pane.hidden = !on;
+          if (hint) hint.hidden = !on;
+        });
+        document.querySelectorAll(".tabs [data-tab]").forEach(function (b) {
+          var on = b.getAttribute("data-tab") === name;
+          b.classList.toggle("on", on);
+          b.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        var chip = document.getElementById("sceneChip");
+        chip.hidden = !withChip;
+      }
+
+      document.querySelectorAll(".tabs [data-tab]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          showTab(b.getAttribute("data-tab"), false);
+        });
+      });
+
+      function selectFn(id) {
+        var row = FNS[id] || FNS.away;
+        document.querySelectorAll(".fn").forEach(function (b) {
+          b.classList.toggle("on", b.getAttribute("data-fn") === id);
+        });
+        document.getElementById("actTitle").textContent = row.title;
+        document.getElementById("actSub").textContent = row.sub;
+        document.getElementById("actIf").textContent = row.title;
+        document.getElementById("actThen").textContent = row.then;
+        document.getElementById("actMs").closest(".field").style.display = row.ms ? "" : "none";
+      }
+
+      document.querySelectorAll(".fn").forEach(function (b) {
+        b.addEventListener("click", function () {
+          selectFn(b.getAttribute("data-fn"));
+        });
+      });
+
+      document.querySelectorAll("[data-goto-act]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          showTab("act", true);
+          selectFn(b.getAttribute("data-goto-act"));
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

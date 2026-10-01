@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>设置 — OneTone</title>
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body class="pc">
+  <div class="page">
+    <div class="win">
+      <header class="tbar">
+        <span class="logo">O</span>
+        <span class="brand">设置</span>
+        <nav class="nav">
+          <a class="nv" href="now.html">现在</a>
+          <a class="nv" href="understanding.html">情景管理</a>
+          <a class="nv on" href="vision-settings.html">设置</a>
+        </nav>
+        <div class="r"><a class="btn" href="now.html">← 回到现在</a></div>
+      </header>
+      <div class="body">
+        <p class="secsub">感知源平级。首页不展示它们；只有助手不对时才来查。</p>
+        <div class="know" id="know"></div>
+        <p class="secsub" style="margin-top:22px">画面相关（用你的问题问）</p>
+        <div class="checks">
+          <div class="chk">
+            <div>
+              <div class="q">它看到我了吗？</div>
+              <div class="a">识别良好</div>
+            </div>
+            <span class="pill p-g">正常</span>
+          </div>
+          <div class="chk warn">
+            <div>
+              <div class="q">它看到动作了吗？</div>
+              <div class="a">挥手偏低</div>
+            </div>
+            <span class="pill p-w">偏低</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot-links">
+      <a href="now.html">现在</a>
+      <a href="index.html">说明</a>
+    </div>
+  </div>
+  <script src="fixtures.js"></script>
+  <script>
+    const sources = window.projectNowHome(window.ONETONE_NOW_FIXTURES.s1.state).sources;
+    document.getElementById("know").innerHTML = sources
+      .map(
+        (k) => `
+      <div class="ks${k.status === "warn" ? " warn" : ""}">
+        <div class="kh">
+          <span class="ic">${k.icon}</span>
+          <span class="nm">${k.name}</span>
+          <span class="pill ${k.status === "warn" ? "p-w" : "p-g"}">${k.statusLabel}</span>
+        </div>
+        <div class="kb">
+          <div class="kt">它靠这个知道</div>
+          ${k.knows.map((t) => `<div class="ki">${t}</div>`).join("")}
+        </div>
+        <div class="kf">
+          <span>${k.note}</span>
+          ${k.action ? `<button type="button" class="btn">${k.action}</button>` : ""}
+        </div>
+      </div>`
+      )
+      .join("");
+  </script>
+</body>
+</html>

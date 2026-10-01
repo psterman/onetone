@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>D · 摄像头命令匹配 · 对齐按键 / 语音</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .contract {
+      margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
+      background: #fff; font-size: 12.5px; line-height: 1.55; color: var(--muted);
+    }
+    .contract b { color: var(--ink); font-weight: 650; }
+    .contract code {
+      font-family: var(--mono); font-size: 11.5px; font-weight: 650; color: var(--cyan-ink);
+      background: var(--cyan-soft); border-radius: 4px; padding: 1px 5px;
+    }
+    .rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    @media (max-width: 800px) { .rules { grid-template-columns: 1fr; } }
+    .rule { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--wash); font-size: 11.5px; }
+    .rule .k { font-weight: 750; margin-bottom: 3px; }
+    .rule.ok .k { color: var(--ok); }
+    .rule.bad .k { color: var(--warn); }
+
+    .desk {
+      display: grid; grid-template-columns: minmax(0, 1fr) 220px; min-height: 540px;
+    }
+    @media (max-width: 860px) {
+      .desk { grid-template-columns: 1fr; }
+      .right { border-left: 0; border-top: 1px solid var(--line); }
+    }
+    .main { min-width: 0; background: #f7fafc; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+    .head { padding: 14px 16px 10px; background: #fff; border-bottom: 1px solid var(--line); }
+    .head h2 { margin: 0 0 2px; font-size: 16px; font-weight: 750; letter-spacing: -0.02em; }
+    .head p { margin: 0; font-size: 12px; color: var(--muted); font-weight: 550; line-height: 1.4; }
+    .dim {
+      display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px;
+      background: var(--wash); border: 1px solid var(--line); margin-top: 10px;
+    }
+    .dim button {
+      appearance: none; border: 0; background: transparent; font: inherit;
+      font-size: 12px; font-weight: 650; color: var(--muted);
+      padding: 5px 10px; border-radius: 8px; cursor: pointer;
+    }
+    .dim button.on { background: #fff; color: var(--cyan-ink); box-shadow: 0 1px 2px rgba(19,32,44,.06); }
+    .cats { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .cat {
+      appearance: none; border: 1px solid var(--line); background: #fff;
+      border-radius: 999px; padding: 6px 12px; font: inherit;
+      font-size: 12.5px; font-weight: 650; color: var(--muted); cursor: pointer;
+    }
+    .cat em { font-style: normal; margin-left: 4px; font-size: 11px; font-weight: 750; color: var(--faint); }
+    .cat.on { border-color: transparent; background: var(--cyan); color: #fff; }
+    .cat.on em { color: rgba(255,255,255,.85); }
+    .hub {
+      display: flex; align-items: center; gap: 8px; margin-top: 10px;
+      font-size: 12px; font-weight: 550; color: var(--muted); cursor: pointer;
+    }
+    .hub[hidden] { display: none !important; }
+
+    .body { flex: 1; overflow: auto; padding: 14px 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+    .list { display: flex; flex-direction: column; gap: 8px; max-width: 480px; }
+    .card {
+      appearance: none; width: 100%; border: 1px solid var(--line); background: #fff;
+      border-radius: 12px; padding: 12px 14px; text-align: left; font: inherit; cursor: pointer;
+      display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: start;
+    }
+    .card:hover { border-color: var(--cyan-bd); }
+    .card.on { border-color: var(--cyan-bd); box-shadow: 0 0 0 1px var(--cyan-bd); }
+    .card .name { font-size: 14px; font-weight: 750; }
+    .card .desc { font-size: 12px; font-weight: 550; color: var(--muted); grid-column: 1; }
+    .card .meta { grid-column: 1; display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+    .pill {
+      font-size: 10.5px; font-weight: 750; padding: 2px 7px; border-radius: 999px;
+      background: var(--wash); color: var(--muted); border: 1px solid var(--line);
+    }
+    .pill.trig { background: var(--cyan-soft); color: var(--cyan-ink); border-color: var(--cyan-bd); }
+    .pill.match { background: #f3e8ff; color: #6d28d9; border-color: #ddd6fe; }
+    .card .side {
+      grid-column: 2; grid-row: 1 / span 3; align-self: center;
+      font-family: var(--mono); font-size: 12px; font-weight: 550; color: var(--cyan-ink); text-align: right;
+      max-width: 140px;
+    }
+    .card .side.empty { color: var(--faint); }
+    .card .side .tap {
+      display: block; margin-top: 4px; font-family: var(--font); font-size: 11px; font-weight: 750;
+      color: var(--cyan); text-decoration: underline; text-underline-offset: 2px;
+    }
+
+    .detail {
+      max-width: 480px; background: #fff; border: 1px solid var(--line); border-radius: 14px;
+      padding: 14px 16px; display: none; flex-direction: column; gap: 12px;
+    }
+    .detail.on { display: flex; }
+    .back {
+      appearance: none; border: 0; background: transparent; font: inherit;
+      font-size: 12px; font-weight: 650; color: var(--cyan-ink); cursor: pointer; padding: 0; align-self: flex-start;
+    }
+    .causal {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 14px; border-radius: 12px; background: var(--cyan-soft); border: 1px solid var(--cyan-bd);
+    }
+    .causal .if, .causal .then {
+      font-size: 15px; font-weight: 750; color: var(--cyan-ink);
+      padding: 6px 12px; border-radius: 8px; background: #fff; border: 1px solid var(--cyan-bd);
+    }
+    .causal .then { cursor: pointer; }
+    .causal .then:hover { box-shadow: 0 0 0 2px rgba(42,156,196,.25); }
+    .causal .arrow { color: var(--cyan); font-weight: 750; font-size: 18px; }
+    .causal .hint { width: 100%; margin: 0; font-size: 11.5px; color: var(--muted); font-weight: 550; }
+    .tune {
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 10px 12px; border-radius: 10px; background: var(--wash); border: 1px solid var(--line);
+    }
+    .tune .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; font-weight: 650; }
+    .tune label { color: var(--muted); font-weight: 550; min-width: 72px; }
+    .tune select {
+      flex: 1; min-width: 120px; border: 1px solid var(--line); border-radius: 8px;
+      padding: 5px 8px; font: inherit; font-size: 12px; font-weight: 650; background: #fff;
+    }
+    .xchan {
+      margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45;
+      padding: 8px 10px; border-radius: 8px; background: #f8f5ff; border: 1px solid #ddd6fe;
+    }
+    .xchan b { color: #5b21b6; }
+
+    .right { background: #fbfdfe; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .lbl { margin: 0; font-size: 10px; font-weight: 750; letter-spacing: .04em; color: var(--faint); }
+    .preview {
+      background: var(--cam); border-radius: 12px; min-height: 110px; position: relative;
+      overflow: hidden; display: grid; place-items: center; color: #9fb2c3; font-size: 12px; font-weight: 650;
+    }
+    .preview .face {
+      width: 48px; height: 48px; border-radius: 50%; border: 2px dashed #4a6174;
+      display: grid; place-items: center; font-size: 11px;
+    }
+    .link {
+      appearance: none; width: 100%; border: 1px solid var(--line); background: #fff; border-radius: 10px;
+      padding: 9px 10px; text-align: left; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    }
+    .link:hover { border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .link .t { flex: 1; min-width: 0; }
+    .link .t strong { display: block; font-size: 12.5px; font-weight: 750; }
+    .link .t span { display: block; font-size: 11px; font-weight: 550; color: var(--faint); margin-top: 1px; }
+    .link .chev { font-size: 14px; color: var(--faint); font-weight: 650; }
+
+    /* Shared action picker — Keys / Voice rail pattern */
+    .ov {
+      position: fixed; inset: 0; z-index: 80; background: rgba(15,24,32,.45);
+      display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    .ov.on { display: flex; }
+    .picker {
+      width: min(720px, 100%); max-height: min(88vh, 680px); background: #fff; border-radius: 16px;
+      border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(15,24,32,.28);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .picker-h {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 14px 16px; border-bottom: 1px solid var(--line);
+    }
+    .picker-h h3 { margin: 0; flex: 1; font-size: 15px; font-weight: 750; }
+    .picker-h .sub { width: 100%; margin: 0; font-size: 12px; color: var(--muted); font-weight: 550; }
+    .picker-body {
+      display: grid; grid-template-columns: 148px minmax(0, 1fr); flex: 1; min-height: 360px; overflow: hidden;
+    }
+    @media (max-width: 640px) { .picker-body { grid-template-columns: 1fr; } }
+    .rail {
+      display: flex; flex-direction: column; gap: 2px; padding: 8px; background: #eef3f7;
+      border-right: 1px solid var(--line); overflow: auto;
+    }
+    .rail-item {
+      appearance: none; border: 0; background: transparent; text-align: left; width: 100%;
+      padding: 9px 10px; border-radius: 8px; font: inherit; font-size: 12.5px; font-weight: 650;
+      color: var(--muted); cursor: pointer; line-height: 1.25;
+    }
+    .rail-item:hover { background: rgba(255,255,255,.55); color: var(--ink); }
+    .rail-item.on { background: #fff; color: var(--cyan-ink); box-shadow: 0 1px 2px rgba(19,32,44,.06); }
+    .rail-item .n { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 550; color: var(--faint); }
+    .rail-item.on .n { color: var(--cyan); }
+    .pane { padding: 12px 14px; overflow: auto; background: #fff; display: flex; flex-direction: column; gap: 8px; }
+    .pane-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+    .pane-head h4 { margin: 0; font-size: 13.5px; font-weight: 650; }
+    .pane-head .hint { font-size: 11.5px; color: var(--faint); }
+    .act {
+      appearance: none; width: 100%; border: 1px solid var(--line); background: var(--wash);
+      border-radius: 10px; padding: 10px 12px; text-align: left; font: inherit; cursor: pointer;
+      display: grid; grid-template-columns: 1fr auto; gap: 2px 10px;
+    }
+    .act:hover, .act.on { border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .act strong { font-size: 13px; font-weight: 750; }
+    .act small { grid-column: 1; font-size: 11.5px; color: var(--muted); font-weight: 550; }
+    .act .ch {
+      grid-column: 2; grid-row: 1 / span 2; align-self: center;
+      font-size: 10.5px; font-weight: 750; color: var(--faint); text-align: right; max-width: 110px;
+    }
+    .act .ch b { display: block; color: var(--cyan-ink); font-weight: 650; }
+    .picker-f {
+      display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+      padding: 12px 16px; border-top: 1px solid var(--line); background: #fbfdfe;
+    }
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(8px);
+      padding: 10px 14px; border-radius: 10px; background: #13202c; color: #e8f0f6;
+      font-size: 12.5px; font-weight: 650; opacity: 0; pointer-events: none; transition: .18s; z-index: 90;
+    }
+    .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .empty {
+      max-width: 480px; padding: 28px 16px; text-align: center; border: 1px dashed var(--line);
+      border-radius: 14px; background: rgba(255,255,255,.6);
+    }
+    .empty p { margin: 0 0 10px; font-size: 13px; color: var(--muted); font-weight: 550; }
+    .add-panel {
+      display: none; max-width: 480px; background: #fff; border: 1px solid var(--line);
+      border-radius: 14px; padding: 14px 16px;
+    }
+    .add-panel.on { display: block; }
+    .add-opt {
+      appearance: none; width: 100%; border: 1px solid var(--line); background: var(--wash);
+      border-radius: 10px; padding: 10px 12px; text-align: left; font: inherit; cursor: pointer; margin-bottom: 6px;
+    }
+    .add-opt:hover { border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .add-opt strong { display: block; font-size: 13px; font-weight: 750; }
+    .add-opt small { font-size: 11.5px; color: var(--muted); font-weight: 550; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <strong>D · 通道命令匹配</strong>
+    <span>触发固定 · 结果 = 共享动作目录（对齐按键 / 语音）</span>
+    <span class="grow"></span>
+    <a href="index.html">← 索引</a>
+    <a href="../voice-f-keys-action-reuse.html">语音 F</a>
+    <a href="../keys-trigger-two-step-hero.html">按键 01/02</a>
+  </div>
+
+  <div class="page">
+    <div class="contract">
+      <b>约定（对照按键「02 / 识别」· 语音「02 / 意图效果」）</b><br />
+      摄像头只提供<strong>触发</strong>（离席 / 摇头 / 五指…）。点「结果」打开与按键 / 语音同一套
+      <code>共享动作目录</code>，按分类轨筛选；<strong>禁止</strong>每条手势再挂本地二级
+      <code>&lt;select&gt;</code>（Esc / 静音 / 无…）。美颜 · 布局 · 设备走右侧配置，不进匹配。
+      <div class="rules">
+        <div class="rule ok"><div class="k">要做</div>卡片 <code>离席 → Typeless 右 Alt</code>；改结果 = 打开共享目录</div>
+        <div class="rule bad"><div class="k">砍掉</div>详情里「结果」下拉本地枚举；每手势一份假选项</div>
+        <div class="rule"><div class="k">可匹配</div>同一动作 id 可在按键 / 口头 / Soft Pad / 摄像头复用</div>
+      </div>
+    </div>
+
+    <div class="board">
+      <div class="trust">
+        <h1>摄像头 <span class="sub">· 识别匹配</span></h1>
+        <span class="fg"><i></i>Cursor</span>
+        <span class="chip">可匹配其他通道</span>
+        <div class="master">
+          <span id="masterLbl">识别已开</span>
+          <button type="button" class="toggle on" id="masterToggle" role="switch" aria-checked="true"></button>
+        </div>
+      </div>
+
+      <div class="desk">
+        <div class="main">
+          <div class="head">
+            <h2 id="headTitle">离开座位</h2>
+            <p id="headDesc">先定触发；结果从共享目录挑，与按键 / 语音同名可精准匹配。</p>
+            <div class="dim" role="tablist">
+              <button type="button" class="on" data-dim="task">按任务</button>
+              <button type="button" data-dim="trig">按触发</button>
+            </div>
+            <div class="cats" id="cats"></div>
+            <label class="hub" id="hubRow" hidden>
+              <input type="checkbox" id="hubGate" checked /> 手势需 SoftPad 激活窗
+            </label>
+          </div>
+
+          <div class="body">
+            <div class="list" id="list"></div>
+            <div class="empty" id="empty" hidden>
+              <p>这一类还没有启用项</p>
+              <button type="button" class="btn pri" id="btnEmptyAdd">添加触发</button>
+            </div>
+            <div class="detail" id="detail"></div>
+            <div class="add-panel" id="addPanel"></div>
+            <p class="foot" id="foot" style="margin:0;font-size:11.5px;color:var(--faint);font-weight:550;max-width:480px"></p>
+          </div>
+        </div>
+
+        <aside class="right">
+          <p class="lbl">预览</p>
+          <div class="preview"><div class="face">人脸</div></div>
+          <p class="lbl">配置 · 不进匹配</p>
+          <button type="button" class="link" data-cfg="device"><span class="t"><strong>设备与校准</strong><span>摄像头 · 注视校准</span></span><span class="chev">›</span></button>
+          <button type="button" class="link" data-cfg="beauty"><span class="t"><strong>画面观感</strong><span>妆效 · 面具</span></span><span class="chev">›</span></button>
+          <button type="button" class="link" data-cfg="layout"><span class="t"><strong>窗口布局</strong><span>快照 · 贴位</span></span><span class="chev">›</span></button>
+        </aside>
+      </div>
+    </div>
+
+    <div class="wire" style="margin-top:12px;padding:12px 14px;border-radius:12px;background:#fff;border:1px solid var(--line);font-size:12.5px;color:var(--muted);line-height:1.55">
+      <b style="color:var(--ink)">相对 B 的改法</b>：B 在 sheet 里用「结果」本地下拉；D 改为点结果 →
+      与 <a href="../voice-f-keys-action-reuse.html" style="color:var(--cyan-ink);font-weight:650">语音 F</a> /
+      <a href="../keys-trigger-two-step-hero.html" style="color:var(--cyan-ink);font-weight:650">按键 01→02</a>
+      同构的<strong>左轨分类 + 共享动作行</strong>。触发调参（时长 / SoftPad 门控）仍留在详情，不混进动作菜单。
+    </div>
+  </div>
+
+  <div class="ov" id="pickerOv" hidden>
+    <div class="picker" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+      <div class="picker-h">
+        <h3 id="pickerTitle">选匹配动作</h3>
+        <button type="button" class="btn" id="pickerClose">关闭</button>
+        <p class="sub">与按键 / 语音 / Soft Pad 共用目录 · 同一动作可跨通道复用</p>
+      </div>
+      <div class="picker-body">
+        <nav class="rail" id="pickerRail" aria-label="动作分类"></nav>
+        <div class="pane" id="pickerPane"></div>
+      </div>
+      <div class="picker-f">
+        <button type="button" class="btn" id="pickerNone">仅识别 · 无动作</button>
+        <button type="button" class="btn pri" id="pickerDone">完成</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var TASKS = [
+        { id: "leave", title: "离开座位", rule: "离席 / 回席" },
+        { id: "act", title: "手势", rule: "摇头 / 眨眼 / 五指 / OK / 握拳 / 挥手" },
+        { id: "eye", title: "视线触发", rule: "需校准 · 仍绑共享动作" }
+      ];
+      var TRIGS = [
+        { id: "face", title: "脸", rule: "在席 / 表情" },
+        { id: "hand", title: "手", rule: "手势 · SoftPad 门控" },
+        { id: "gaze", title: "视线", rule: "需校准" }
+      ];
+      var TASK_LABEL = { leave: "离开座位", act: "手势", eye: "视线触发" };
+      var TRIG_LABEL = { face: "脸", hand: "手", gaze: "视线" };
+
+      /* Shared catalog — same IA as Keys 识别 / Voice 意图 */
+      var RAILS = [
+        { id: "builtin", title: "软件自带", sub: "语义动作目录" },
+        { id: "keys", title: "我录的键", sub: "按键页序列" },
+        { id: "oral", title: "口头命令", sub: "可喊命令" },
+        { id: "pad", title: "Soft Pad", sub: "格子动作" },
+        { id: "dictation", title: "听写收尾", sub: "输入链路" }
+      ];
+
+      var CATALOG = {
+        builtin: [
+          { id: "privacyScreen", name: "应用内遮罩", desc: "盖住当前内容", also: "按键 · 语音可同绑" },
+          { id: "pauseVoice", name: "暂停语音", desc: "停听写 / 口令", also: "语音通道已用" },
+          { id: "resumeVoice", name: "恢复语音", desc: "继续听写", also: "" },
+          { id: "pressEsc", name: "语音取消", desc: "等价 Esc 语义", also: "按键：Esc" },
+          { id: "pressCtrlI", name: "激活输入法", desc: "Ctrl+I 语义", also: "按键：Ctrl+I" },
+          { id: "lowPowerMode", name: "低消耗运行", desc: "降载", also: "" },
+          { id: "toggleOralListen", name: "开启口头收听", desc: "进口头命令窗", also: "口头 / Soft Pad" },
+          { id: "agent.continue", name: "Agent · 继续", desc: "确认继续", also: "Soft Pad 格" },
+          { id: "agent.cancel", name: "Agent · 取消", desc: "拒绝 / 取消", also: "口头「取消」" }
+        ],
+        keys: [
+          { id: "keys.seq.typeless", name: "Typeless · 右 Alt", desc: "我录的键 · 激活", also: "语音口令已匹配" },
+          { id: "keys.seq.send", name: "发送组合", desc: "自定义序列", also: "" }
+        ],
+        oral: [
+          { id: "oral.start", name: "开始输入", desc: "口头核心命令", also: "关键词：开始" },
+          { id: "oral.stop", name: "停止", desc: "口头核心命令", also: "" }
+        ],
+        pad: [
+          { id: "pad.slot.send", name: "Pad · 发送", desc: "屏幕按钮格", also: "语音可匹配同格" },
+          { id: "pad.slot.new", name: "Pad · 新建对话", desc: "屏幕按钮格", also: "" }
+        ],
+        dictation: [
+          { id: "dict.stopOrSend", name: "停录或发送", desc: "听写收尾", also: "按键收尾同语义" }
+        ]
+      };
+
+      var ITEMS = {
+        away: {
+          task: "leave", trig: "face", name: "离席", desc: "人脸消失达时长",
+          inList: true, actionId: "privacyScreen", hubGate: false,
+          why: "摄像头触发 · 结果来自共享目录。",
+          tune: [{ label: "判定时长", opts: ["1 秒", "2 秒", "3 秒", "5 秒"], val: 2 }]
+        },
+        back: {
+          task: "leave", trig: "face", name: "回席", desc: "人脸回来",
+          inList: true, actionId: "resumeVoice", hubGate: false,
+          why: "与离席成对。",
+          tune: [{ label: "判定时长", opts: ["0.5 秒", "1 秒", "2 秒"], val: 1 }]
+        },
+        shake: {
+          task: "act", trig: "face", name: "摇头", desc: "左右三拍",
+          inList: false, actionId: "", hubGate: false,
+          why: "瞬时手势 · 结果勿用本地下拉。",
+          tune: []
+        },
+        blink: {
+          task: "act", trig: "face", name: "故意眨眼", desc: "闭眼达阈值",
+          inList: false, actionId: "", hubGate: false,
+          why: "可绑激活输入法等同语义动作。",
+          tune: [{ label: "闭眼多久", opts: ["0.6 秒", "1 秒", "2 秒"], val: 0 }]
+        },
+        palm: {
+          task: "act", trig: "hand", name: "五指张开", desc: "手势入画",
+          inList: false, actionId: "", hubGate: true,
+          why: "SoftPad 门控 · 结果仍从共享目录选。",
+          tune: []
+        },
+        ok: {
+          task: "act", trig: "hand", name: "OK 手势", desc: "拇食成圈",
+          inList: false, actionId: "", hubGate: true,
+          why: "可匹配 Agent 继续。",
+          tune: []
+        },
+        fist: {
+          task: "act", trig: "hand", name: "握拳", desc: "收拢五指",
+          inList: false, actionId: "", hubGate: true,
+          why: "可匹配停止 / 取消类动作。",
+          tune: []
+        },
+        wave: {
+          task: "act", trig: "hand", name: "挥手", desc: "横向扫动",
+          inList: false, actionId: "", hubGate: true,
+          why: "生产能力手势 · 与五指短时互抢。",
+          tune: []
+        },
+        gazeZone: {
+          task: "eye", trig: "gaze", name: "注视热区", desc: "看向预设区",
+          inList: false, actionId: "", hubGate: false,
+          why: "需先校准；结果同样走共享目录。",
+          tune: [{ label: "热区", opts: ["左", "中", "右"], val: 1 }]
+        }
+      };
+
+      var dim = "task";
+      var cat = "leave";
+      var mode = "list";
+      var activeId = null;
+      var pickFor = null;
+      var railId = "builtin";
+      var pendingAction = "";
+
+      function toast(msg) {
+        var el = document.getElementById("toast");
+        el.textContent = msg;
+        el.classList.add("on");
+        clearTimeout(toast._t);
+        toast._t = setTimeout(function () { el.classList.remove("on"); }, 1800);
+      }
+
+      function actionMeta(id) {
+        if (!id) return null;
+        for (var r in CATALOG) {
+          for (var i = 0; i < CATALOG[r].length; i++) {
+            if (CATALOG[r][i].id === id) return CATALOG[r][i];
+          }
+        }
+        return null;
+      }
+
+      function actionLabel(id) {
+        var m = actionMeta(id);
+        return m ? m.name : (id || "—");
+      }
+
+      function catDefs() { return dim === "trig" ? TRIGS : TASKS; }
+      function itemCat(it) { return dim === "trig" ? it.trig : it.task; }
+
+      function countIn(cid) {
+        return Object.keys(ITEMS).filter(function (id) {
+          return ITEMS[id].inList && itemCat(ITEMS[id]) === cid;
+        }).length;
+      }
+
+      function renderCats() {
+        var defs = catDefs();
+        if (!defs.some(function (d) { return d.id === cat; })) cat = defs[0].id;
+        document.getElementById("cats").innerHTML = defs.map(function (d) {
+          return '<button type="button" class="cat' + (d.id === cat ? " on" : "") +
+            '" data-cat="' + d.id + '">' + d.title + "<em>" + countIn(d.id) + "</em></button>";
+        }).join("");
+        var cur = defs.find(function (d) { return d.id === cat; });
+        document.getElementById("headTitle").textContent = cur ? cur.title : "";
+        document.getElementById("headDesc").textContent = dim === "trig"
+          ? "先问靠什么触发；结果仍从共享目录匹配。"
+          : "先问要干什么；卡上「→」点开改匹配动作。";
+        var showHub = (dim === "task" && cat === "act") || (dim === "trig" && cat === "hand");
+        document.getElementById("hubRow").hidden = !showHub;
+      }
+
+      function visibleIds() {
+        return Object.keys(ITEMS).filter(function (id) {
+          return ITEMS[id].inList && itemCat(ITEMS[id]) === cat;
+        });
+      }
+
+      function poolIds() {
+        return Object.keys(ITEMS).filter(function (id) {
+          return !ITEMS[id].inList && itemCat(ITEMS[id]) === cat;
+        });
+      }
+
+      function setMode(m) {
+        mode = m;
+        document.getElementById("list").hidden = m !== "list";
+        document.getElementById("empty").hidden = true;
+        document.getElementById("detail").classList.toggle("on", m === "detail");
+        document.getElementById("addPanel").classList.toggle("on", m === "add");
+        document.getElementById("foot").hidden = m !== "list";
+      }
+
+      function renderList() {
+        renderCats();
+        if (mode !== "list") return;
+        var ids = visibleIds();
+        var list = document.getElementById("list");
+        var empty = document.getElementById("empty");
+        if (!ids.length) {
+          list.hidden = true;
+          empty.hidden = false;
+          document.getElementById("foot").textContent = "";
+          return;
+        }
+        empty.hidden = true;
+        list.hidden = false;
+        list.innerHTML = ids.map(function (id) {
+          var it = ITEMS[id];
+          var label = actionLabel(it.actionId);
+          var side = it.actionId
+            ? '<span class="side">→ ' + label + '<span class="tap">改结果</span></span>'
+            : '<span class="side empty">→ 未匹配<span class="tap">选动作</span></span>';
+          var secondary = dim === "task"
+            ? '<span class="pill trig">触发 · ' + TRIG_LABEL[it.trig] + "</span>"
+            : '<span class="pill">任务 · ' + TASK_LABEL[it.task] + "</span>";
+          secondary += '<span class="pill match">可匹配</span>';
+          return (
+            '<button type="button" class="card" data-id="' + id + '">' +
+            '<span class="name">' + it.name + "</span>" +
+            '<span class="desc">' + it.desc + "</span>" +
+            '<span class="meta">' + secondary + "</span>" +
+            side +
+            "</button>"
+          );
+        }).join("") +
+          '<button type="button" class="btn" id="btnAdd" style="align-self:flex-start;margin-top:4px">添加触发</button>';
+        document.getElementById("foot").textContent =
+          ids.length + " 项启用 · 点卡片看触发调参 · 点「改结果」打开共享目录";
+      }
+
+      function openDetail(id) {
+        var it = ITEMS[id];
+        if (!it) return;
+        activeId = id;
+        setMode("detail");
+        var label = actionLabel(it.actionId);
+        var tune = (it.tune || []).map(function (f) {
+          return (
+            '<div class="row"><label>' + f.label + "</label><select>" +
+            f.opts.map(function (o, j) {
+              return "<option" + (j === f.val ? " selected" : "") + ">" + o + "</option>";
+            }).join("") +
+            "</select></div>"
+          );
+        }).join("");
+        var meta = actionMeta(it.actionId);
+        var xchan = meta && meta.also
+          ? '<p class="xchan"><b>跨通道</b> · ' + meta.also + "</p>"
+          : (it.actionId
+            ? '<p class="xchan"><b>可匹配</b> · 同一动作可在按键 / 语音 / Soft Pad 复用</p>'
+            : '<p class="xchan"><b>未匹配</b> · 点下方结果打开共享目录</p>');
+        document.getElementById("detail").innerHTML =
+          '<button type="button" class="back" id="btnBack">← 返回列表</button>' +
+          "<h3 style=\"margin:0;font-size:16px;font-weight:750\">" + it.name + "</h3>" +
+          '<p style="margin:0;font-size:12.5px;color:var(--muted)">' + it.why + "</p>" +
+          '<div class="causal">' +
+          '<span class="if">' + it.name + "</span>" +
+          '<span class="arrow">→</span>' +
+          '<button type="button" class="then" id="btnPick">' + (it.actionId ? label : "选匹配动作…") + "</button>" +
+          '<p class="hint">结果 = 共享动作 · 不是摄像头本地二级菜单</p>' +
+          "</div>" +
+          xchan +
+          (tune ? '<div class="tune"><p class="lbl" style="margin:0 0 4px">触发调参 · 仅本通道</p>' + tune + "</div>" : "") +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<button type="button" class="btn pri" id="btnPick2">改结果</button>' +
+          '<button type="button" class="btn" id="btnRemove">从列表移除</button>' +
+          "</div>";
+      }
+
+      function openAdd() {
+        setMode("add");
+        var cur = catDefs().find(function (d) { return d.id === cat; });
+        var pool = poolIds();
+        document.getElementById("addPanel").innerHTML =
+          '<button type="button" class="back" id="btnAddBack">← 返回列表</button>' +
+          "<h3 style=\"margin:8px 0;font-size:15px;font-weight:750\">添加触发 · " + (cur ? cur.title : "") + "</h3>" +
+          '<p style="margin:0 0 10px;font-size:12px;color:var(--muted)">只加摄像头触发；进列表后再从共享目录匹配结果。</p>' +
+          (pool.length
+            ? pool.map(function (id) {
+                var it = ITEMS[id];
+                return (
+                  '<button type="button" class="add-opt" data-add="' + id + '">' +
+                  "<strong>" + it.name + "</strong><small>" + it.desc + "</small></button>"
+                );
+              }).join("")
+            : '<p style="color:var(--muted);font-size:13px">这一类已全部启用。</p>');
+      }
+
+      function openPicker(id) {
+        pickFor = id;
+        pendingAction = ITEMS[id] ? ITEMS[id].actionId : "";
+        railId = "builtin";
+        document.getElementById("pickerOv").hidden = false;
+        document.getElementById("pickerOv").classList.add("on");
+        renderPicker();
+      }
+
+      function closePicker() {
+        document.getElementById("pickerOv").hidden = true;
+        document.getElementById("pickerOv").classList.remove("on");
+        pickFor = null;
+      }
+
+      function renderPicker() {
+        document.getElementById("pickerRail").innerHTML = RAILS.map(function (r) {
+          return (
+            '<button type="button" class="rail-item' + (railId === r.id ? " on" : "") +
+            '" data-rail="' + r.id + '">' + r.title +
+            '<span class="n">' + r.sub + "</span></button>"
+          );
+        }).join("");
+        var rail = RAILS.find(function (r) { return r.id === railId; });
+        var rows = CATALOG[railId] || [];
+        document.getElementById("pickerPane").innerHTML =
+          '<div class="pane-head"><h4>' + (rail ? rail.title : "") + "</h4>" +
+          '<span class="hint">点一行即匹配到当前摄像头触发</span></div>' +
+          rows.map(function (a) {
+            return (
+              '<button type="button" class="act' + (pendingAction === a.id ? " on" : "") +
+              '" data-action="' + a.id + '">' +
+              "<strong>" + a.name + "</strong>" +
+              "<small>" + a.desc + "</small>" +
+              '<span class="ch">' + (a.also ? "<b>他通道</b>" + a.also : "可复用") + "</span>" +
+              "</button>"
+            );
+          }).join("");
+      }
+
+      function commitPick(actionId) {
+        if (!pickFor || !ITEMS[pickFor]) return;
+        ITEMS[pickFor].actionId = actionId || "";
+        ITEMS[pickFor].inList = true;
+        closePicker();
+        toast(actionId ? ("已匹配 · " + actionLabel(actionId)) : "已设为仅识别");
+        if (mode === "detail") openDetail(pickFor);
+        else { setMode("list"); renderList(); }
+      }
+
+      document.getElementById("masterToggle").addEventListener("click", function () {
+        var on = !this.classList.contains("on");
+        this.classList.toggle("on", on);
+        this.setAttribute("aria-checked", on ? "true" : "false");
+        document.getElementById("masterLbl").textContent = on ? "识别已开" : "识别已关";
+      });
+
+      document.querySelectorAll("[data-dim]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          dim = btn.getAttribute("data-dim");
+          document.querySelectorAll("[data-dim]").forEach(function (b) {
+            b.classList.toggle("on", b === btn);
+          });
+          setMode("list");
+          renderList();
+        });
+      });
+
+      document.getElementById("cats").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-cat]");
+        if (!b) return;
+        cat = b.getAttribute("data-cat");
+        setMode("list");
+        renderList();
+      });
+
+      document.getElementById("list").addEventListener("click", function (e) {
+        if (e.target.id === "btnAdd" || e.target.closest("#btnAdd")) {
+          openAdd();
+          return;
+        }
+        var card = e.target.closest(".card[data-id]");
+        if (!card) return;
+        var id = card.getAttribute("data-id");
+        if (e.target.closest(".side") || e.target.classList.contains("tap")) {
+          openPicker(id);
+          return;
+        }
+        openDetail(id);
+      });
+
+      document.getElementById("btnEmptyAdd").addEventListener("click", openAdd);
+
+      document.getElementById("detail").addEventListener("click", function (e) {
+        if (e.target.id === "btnBack") {
+          activeId = null;
+          setMode("list");
+          renderList();
+          return;
+        }
+        if (e.target.id === "btnPick" || e.target.id === "btnPick2") {
+          openPicker(activeId);
+          return;
+        }
+        if (e.target.id === "btnRemove") {
+          ITEMS[activeId].inList = false;
+          ITEMS[activeId].actionId = "";
+          activeId = null;
+          setMode("list");
+          renderList();
+          toast("已移除");
+        }
+      });
+
+      document.getElementById("addPanel").addEventListener("click", function (e) {
+        if (e.target.id === "btnAddBack") {
+          setMode("list");
+          renderList();
+          return;
+        }
+        var opt = e.target.closest("[data-add]");
+        if (!opt) return;
+        var id = opt.getAttribute("data-add");
+        var it = ITEMS[id];
+        if (!it) return;
+        if (it.hubGate && !document.getElementById("hubGate").checked) {
+          toast("请先打开 SoftPad 激活窗门控");
+          return;
+        }
+        it.inList = true;
+        openPicker(id);
+      });
+
+      document.getElementById("pickerClose").addEventListener("click", closePicker);
+      document.getElementById("pickerDone").addEventListener("click", function () {
+        commitPick(pendingAction);
+      });
+      document.getElementById("pickerNone").addEventListener("click", function () {
+        commitPick("");
+      });
+      document.getElementById("pickerOv").addEventListener("click", function (e) {
+        if (e.target === this) closePicker();
+      });
+      document.getElementById("pickerRail").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-rail]");
+        if (!b) return;
+        railId = b.getAttribute("data-rail");
+        renderPicker();
+      });
+      document.getElementById("pickerPane").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-action]");
+        if (!b) return;
+        pendingAction = b.getAttribute("data-action");
+        renderPicker();
+        commitPick(pendingAction);
+      });
+
+      document.querySelectorAll("[data-cfg]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          toast("配置项 · 不进匹配目录（" + btn.getAttribute("data-cfg") + "）");
+        });
+      });
+
+      setMode("list");
+      renderList();
+    })();
+  </script>
+</body>
+</html>

@@ -274,14 +274,51 @@ function Start-OnetoneExe {
   Write-LaunchLog "launched onetone.exe from $ExePath"
 }
 
+function Resolve-PythonCmd {
+  # Prefer real interpreters; WindowsApps python stubs often open the Store.
+  $candidates = @(
+    @{ File = 'py.exe'; Args = @('-3') },
+    @{ File = 'py.exe'; Args = @() },
+    @{ File = 'python.exe'; Args = @() },
+    @{ File = 'python3.exe'; Args = @() }
+  )
+  foreach ($c in $candidates) {
+    $cmd = Get-Command $c.File -ErrorAction SilentlyContinue
+    if (-not $cmd) { continue }
+    $src = [string]$cmd.Source
+    if ($src -match '\\WindowsApps\\') { continue }
+    return @{ File = $src; Args = $c.Args }
+  }
+  return $null
+}
+
 function Sync-OnetoneIcons {
   $iconScript = Join-Path $root 'scripts\gen-logo-icons.py'
+  $iconIco = Join-Path $tauri 'icons\icon.ico'
   if (-not (Test-Path $iconScript)) {
+    if (Test-Path $iconIco) {
+      Write-LaunchLog 'icon generator missing; keep existing icons'
+      return
+    }
     throw "missing icon generator: $iconScript"
   }
-  Write-LaunchLog 'generating icons (tray + ico + in-app)...'
-  py -3 $iconScript
+
+  $py = Resolve-PythonCmd
+  if (-not $py) {
+    if (Test-Path $iconIco) {
+      Write-LaunchLog 'python/py missing; skip icon regen (icons already present)'
+      return
+    }
+    throw 'python/py not found; install Python or keep src-tauri/icons/icon.ico'
+  }
+
+  Write-LaunchLog "generating icons with $($py.File)..."
+  & $py.File @($py.Args + @($iconScript))
   if ($LASTEXITCODE -ne 0) {
+    if (Test-Path $iconIco) {
+      Write-LaunchLog "icon regen failed (exit $LASTEXITCODE); keep existing icons"
+      return
+    }
     throw "gen-logo-icons.py failed with exit code $LASTEXITCODE"
   }
 }
@@ -356,7 +393,9 @@ function Test-DevBuildStale {
 function Get-LaunchCandidates {
   $candidates = @(
     $releaseExe,
-    (Join-Path $tauri 'target\release\onetone.exe')
+    (Join-Path $tauri 'target\release\onetone.exe'),
+    (Join-Path $tauri 'target\debug\onetone.exe'),
+    (Join-Path $tauri 'target-release-live\release\onetone.exe')
   )
 
   $localApp = [Environment]::GetFolderPath('LocalApplicationData')
@@ -424,6 +463,24 @@ function Stop-AppProcessGracefully {
 try {
   $stale = Test-DevBuildStale
   $needBuild = $Rebuild -or ($stale -and -not $LaunchOnly)
+
+  # Instant path: unless -Rebuild, prefer any existing binary (incl. debug).
+  # Avoids dead shortcuts when release is missing or python/py is unavailable.
+  if (-not $Rebuild) {
+    $existing = Resolve-LaunchExe
+    if ($existing) {
+      if ($stale -or -not (Test-Path $releaseExe)) {
+        Write-LaunchLog "launch existing (skip rebuild): $existing — use rebuild_onetone.bat to refresh release"
+      } else {
+        Write-LaunchLog "launch: $existing"
+      }
+      $releaseDir = Split-Path -Parent $existing
+      Sync-VoskBundleResources -ReleaseDir $releaseDir
+      Sync-KwsBundleResources -ReleaseDir $releaseDir
+      Start-OnetoneExe -ExePath $existing -Safe:$Safe -CodexMicroProtocol:$CodexMicroProtocol
+      exit 0
+    }
+  }
 
   if (-not $needBuild -and (Test-Path $releaseExe)) {
     Sync-VoskBundleResources -ReleaseDir (Split-Path -Parent $releaseExe)

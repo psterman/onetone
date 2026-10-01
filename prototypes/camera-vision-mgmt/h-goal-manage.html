@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>H · 目标管理台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@450;550;650;750&family=IBM+Plex+Mono:wght@500;650&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #13202c; --muted: #5a6b7c; --faint: #8494a6; --line: #d5dee8;
+      --paper: #fff; --wash: #f3f7fa; --bg: #e4ebf1;
+      --cyan: #2a9cc4; --cyan-ink: #0f5f7a; --cyan-soft: #e4f2f9; --cyan-bd: #9bc6da;
+      --ok: #15803d; --ok-soft: #e8f7ee; --warn: #b45309; --warn-soft: #fff7ed;
+      --font: "IBM Plex Sans", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg);
+      -webkit-font-smoothing: antialiased; min-height: 100vh;
+    }
+    .bar {
+      position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center;
+      gap: 10px; padding: 10px 18px; background: #0f1820; color: #a8b6c6; font-size: 12.5px;
+    }
+    .bar strong { color: #fff; }
+    .bar a { color: #7dd3fc; font-weight: 650; text-decoration: none; margin-left: auto; }
+    .bar .pill {
+      font-size: 10.5px; font-weight: 750; padding: 2px 8px; border-radius: 999px;
+      background: rgba(34,197,94,.2); color: #86efac; border: 1px solid rgba(134,239,172,.35);
+    }
+    .page { max-width: 720px; margin: 0 auto; padding: 16px 16px 48px; }
+    .thesis {
+      margin: 0 0 12px; padding: 11px 13px; background: #fff; border: 1px solid var(--line);
+      border-radius: 12px; font-size: 12.5px; color: var(--muted); line-height: 1.5;
+    }
+    .thesis b { color: var(--ink); }
+
+    .shell {
+      background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 16px 36px rgba(19,32,44,.08);
+    }
+    .chrome {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fbfdfe;
+    }
+    .chrome h2 { margin: 0; font-size: 15px; font-weight: 750; }
+    .chrome .sub { font-size: 12px; color: var(--muted); font-weight: 550; width: 100%; margin: -2px 0 0 50px; }
+    @media (max-width: 520px) { .chrome .sub { margin-left: 0; } }
+    .tog {
+      width: 42px; height: 24px; border: 0; border-radius: 999px; background: #c5d3de;
+      position: relative; cursor: pointer; flex: none;
+    }
+    .tog::after {
+      content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+      border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15);
+      transition: transform .15s;
+    }
+    .tog.on { background: var(--cyan); }
+    .tog.on::after { transform: translateX(18px); }
+    .tog.sm { width: 36px; height: 20px; }
+    .tog.sm::after { width: 14px; height: 14px; top: 3px; left: 3px; }
+    .tog.sm.on::after { transform: translateX(16px); }
+    .btn {
+      border: 1px solid var(--line); background: #fff; border-radius: 9px;
+      padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; color: var(--ink);
+    }
+    .btn.pri { background: var(--cyan); border-color: transparent; color: #fff; }
+    .btn.ghost { color: var(--muted); border-color: transparent; background: transparent; }
+    .btn.sm { padding: 4px 8px; font-size: 11px; }
+
+    .rec {
+      margin: 12px 14px 0; padding: 10px 12px; border-radius: 10px;
+      background: var(--ok-soft); border: 1px solid #86efac;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      font-size: 12.5px; color: var(--ok); line-height: 1.4;
+    }
+    .rec strong { color: #14532d; }
+    .rec .btn { margin-left: auto; }
+
+    .goals { padding: 12px 14px 8px; display: flex; flex-direction: column; gap: 8px; }
+    .goal {
+      border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden;
+    }
+    .goal.on { border-color: var(--cyan-bd); background: linear-gradient(180deg, #f7fbfe, #fff); }
+    .goal-head {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start;
+      padding: 12px 13px; cursor: pointer; width: 100%; appearance: none; border: 0;
+      background: transparent; font: inherit; text-align: left; color: inherit;
+    }
+    .goal-head .title { font-size: 14.5px; font-weight: 750; display: flex; align-items: center; gap: 7px; }
+    .goal-head .one { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+    .goal-head .badge {
+      font-size: 10px; font-weight: 750; padding: 1px 6px; border-radius: 999px;
+      background: var(--ok-soft); color: var(--ok); border: 1px solid #86efac;
+    }
+    .goal-head .need {
+      font-size: 10px; font-weight: 750; padding: 1px 6px; border-radius: 999px;
+      background: var(--warn-soft); color: var(--warn); border: 1px solid #fdba74;
+    }
+    .goal-head .chev {
+      grid-column: 1; font-size: 11px; color: var(--faint); font-weight: 650; margin-top: 6px;
+    }
+    .goal.open .chev { color: var(--cyan-ink); }
+    .goal-body {
+      display: none; padding: 0 13px 12px; border-top: 1px dashed var(--line);
+    }
+    .goal.open .goal-body { display: block; }
+    .story {
+      margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.45;
+    }
+    .cause {
+      margin-top: 8px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .cause-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center;
+      padding: 8px 10px; border-radius: 10px; background: var(--wash); border: 1px solid var(--line);
+      font-size: 12.5px;
+    }
+    .cause-row .when { font-weight: 650; }
+    .cause-row .then {
+      grid-column: 1; font-size: 12px; color: var(--muted);
+    }
+    .cause-row .then b { color: var(--cyan-ink); font-weight: 650; }
+    .hint {
+      margin-top: 8px; font-size: 11.5px; color: var(--faint); line-height: 1.4;
+    }
+
+    .doors {
+      display: flex; gap: 8px; flex-wrap: wrap; padding: 8px 14px 14px;
+      border-top: 1px solid var(--line); background: var(--wash);
+    }
+    .doors .btn { flex: 1; min-width: 140px; }
+
+    /* drawers */
+    .mask {
+      position: fixed; inset: 0; background: rgba(15,24,32,.42); z-index: 40;
+      display: none; align-items: flex-end; justify-content: center;
+    }
+    .mask.on { display: flex; }
+    .drawer {
+      width: min(520px, 100%); max-height: 82vh; overflow: auto;
+      background: #fff; border-radius: 16px 16px 0 0; padding: 16px 16px 24px;
+      box-shadow: 0 -12px 40px rgba(0,0,0,.18);
+    }
+    .drawer h3 { margin: 0 0 4px; font-size: 16px; font-weight: 750; }
+    .drawer .dsub { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+    .atom {
+      display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px;
+    }
+    .atom .an { font-weight: 650; }
+    .atom .ad { font-size: 11.5px; color: var(--muted); grid-column: 1; }
+    .look label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; font-weight: 550; padding: 9px 0; border-bottom: 1px solid var(--line);
+    }
+    .look input[type=range] { width: 120px; }
+    .pick-list { display: flex; flex-direction: column; gap: 6px; }
+    .pick {
+      appearance: none; text-align: left; border: 1px solid var(--line); background: #fff;
+      border-radius: 10px; padding: 10px 12px; font: inherit; cursor: pointer;
+    }
+    .pick:hover, .pick.on { border-color: var(--cyan-bd); background: var(--cyan-soft); }
+    .pick .pn { font-size: 13px; font-weight: 650; display: block; }
+    .pick .pd { font-size: 11.5px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>H · 目标管理台</strong>
+    <span class="pill">L1 目标 · L2 因果 · L3 细节</span>
+    <a href="index.html">← 索引</a>
+  </div>
+  <div class="page">
+    <p class="thesis">
+      <b>管理系统：</b>首页只问「我想要什么」。打开目标 = 系统代管背后原子。
+      点开卡片才看「会发生什么」。原子名、阈值、校准进「全部细节」。美颜进「画面好看」。
+    </p>
+
+    <div class="shell">
+      <div class="chrome">
+        <button type="button" class="tog on" id="master" aria-label="摄像头总开关"></button>
+        <h2>摄像头</h2>
+        <div class="sub" id="summary">本机识别 · 不上传</div>
+      </div>
+
+      <div class="rec" id="recBar">
+        <div><strong>新手推荐</strong> · 先开「离开保护」+「开会静音」，其它先关，不一下子全开。</div>
+        <button type="button" class="btn pri sm" id="applyRec">一键照做</button>
+      </div>
+
+      <div class="goals" id="goals"></div>
+
+      <div class="doors">
+        <button type="button" class="btn" id="btnLook">画面好看…</button>
+        <button type="button" class="btn ghost" id="btnDetail">全部细节…</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="maskDetail">
+    <div class="drawer">
+      <h3>全部细节</h3>
+      <p class="dsub">这里才露出系统代管的原子。改这里会标记对应目标为「已自定义」。</p>
+      <div id="atomList"></div>
+      <button type="button" class="btn" style="margin-top:12px;width:100%" data-close="maskDetail">关闭</button>
+    </div>
+  </div>
+
+  <div class="mask" id="maskLook">
+    <div class="drawer look">
+      <h3>画面好看</h3>
+      <p class="dsub">只改预览观感与窗口摆放，不会触发「离开/手势」那些自动行为。</p>
+      <label>磨皮 <input type="range" min="0" max="100" value="30" /></label>
+      <label>美白 <input type="range" min="0" max="100" value="18" /></label>
+      <label>锐化 <input type="range" min="0" max="100" value="40" /></label>
+      <label>自动构图 <input type="checkbox" checked /></label>
+      <label>窗口布局
+        <select style="font:inherit;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--line)">
+          <option>不使用</option>
+          <option>会议专注</option>
+          <option>写码对照</option>
+          <option>单窗沉浸</option>
+        </select>
+      </label>
+      <button type="button" class="btn" style="margin-top:12px;width:100%" data-close="maskLook">关闭</button>
+    </div>
+  </div>
+
+  <div class="mask" id="maskAct">
+    <div class="drawer">
+      <h3 id="actTitle">改结果</h3>
+      <p class="dsub">与按键 / 语音同一动作目录（示意）</p>
+      <div class="pick-list" id="actPicks"></div>
+      <button type="button" class="btn" style="margin-top:12px;width:100%" data-close="maskAct">取消</button>
+    </div>
+  </div>
+
+  <script>
+    const ACTIONS = [
+      { id: "mask", name: "应用内遮罩", desc: "挡住画面内容" },
+      { id: "unmask", name: "取消遮罩 / 恢复", desc: "回到正常画面" },
+      { id: "mute", name: "静音麦克风", desc: "系统麦克风" },
+      { id: "unmute", name: "取消静音", desc: "恢复麦克风" },
+      { id: "esc", name: "取消 / Esc", desc: "语音取消等" },
+      { id: "ime", name: "激活语音输入", desc: "开始听写" },
+      { id: "notify", name: "温和提醒", desc: "本地提示" },
+      { id: "pointer", name: "鼠标跟随注视", desc: "需校准" },
+      { id: "snap", name: "窗口跟注视移屏", desc: "需校准" },
+    ];
+
+    const GOALS = [
+      {
+        id: "privacy",
+        title: "离开座位时保护隐私",
+        one: "人不在电脑前时，自动挡住画面；回来再恢复。",
+        recommend: true,
+        on: true,
+        need: null,
+        story: "适合离开接水、上厕所。系统会代管「离席 / 回席」。",
+        causes: [
+          { id: "away", when: "你离开座位一会儿", thenId: "mask", thenFallback: "应用内遮罩" },
+          { id: "back", when: "你回到座位", thenId: "unmask", thenFallback: "取消遮罩" },
+        ],
+        atoms: ["离席判定", "回席判定", "隐私卫士（多人入画）"],
+      },
+      {
+        id: "meeting",
+        title: "开会时别吵到别人",
+        one: "人退远或画面没人时，自动静音麦克风。",
+        recommend: true,
+        on: true,
+        need: null,
+        story: "适合站起来指白板、暂时离席开会。靠近后自动恢复。",
+        causes: [
+          { id: "far", when: "你退远或画面无人", thenId: "mute", thenFallback: "静音麦克风" },
+          { id: "near", when: "你靠近回来", thenId: "unmute", thenFallback: "取消静音" },
+        ],
+        atoms: ["距离自动静音", "无人也静音"],
+      },
+      {
+        id: "gesture",
+        title: "用手势代替按键",
+        one: "摇头表示取消，故意眨眼表示确认 / 开始输入。",
+        recommend: false,
+        on: false,
+        need: null,
+        story: "首页只留两个最常用的；五指 / OK / 握拳 / 挥手在「全部细节」。",
+        causes: [
+          { id: "shake", when: "你摇头", thenId: "esc", thenFallback: "取消 / Esc" },
+          { id: "blink", when: "你故意眨眼", thenId: "ime", thenFallback: "激活语音输入" },
+        ],
+        atoms: ["摇头", "故意眨眼", "五指张开", "OK", "握拳", "挥手"],
+      },
+      {
+        id: "gaze",
+        title: "用眼睛帮忙操作",
+        one: "看哪块屏幕，鼠标或窗口跟着过去。",
+        recommend: false,
+        on: false,
+        need: "需先校准",
+        story: "第一次打开会引导 9 点校准。没校准前目标保持关闭。",
+        causes: [
+          { id: "track", when: "你看向某块屏", thenId: "pointer", thenFallback: "鼠标跟随" },
+          { id: "win", when: "拖窗口时看向目标屏", thenId: "snap", thenFallback: "窗口移屏" },
+        ],
+        atoms: ["注视校准", "鼠标追踪", "Snap 移窗"],
+        calibrated: false,
+      },
+      {
+        id: "wellness",
+        title: "坐久了提醒休息",
+        one: "在座过久时，提醒你看远处歇一会儿。",
+        recommend: false,
+        on: false,
+        need: null,
+        story: "本地温和提醒，不是医疗监测。",
+        causes: [
+          { id: "2020", when: "连续在座超过一段时间", thenId: "notify", thenFallback: "温和提醒" },
+        ],
+        atoms: ["20-20-20", "眨眼频率提醒", "坐姿提醒"],
+      },
+    ];
+
+    let openId = "privacy";
+    let actTarget = null; // { goalId, causeId }
+
+    const goalsEl = document.getElementById("goals");
+    const summary = document.getElementById("summary");
+
+    function actName(id) {
+      return ACTIONS.find((a) => a.id === id)?.name || id;
+    }
+
+    function updateSummary() {
+      const n = GOALS.filter((g) => g.on).length;
+      summary.textContent = `本机识别 · 不上传 · 已开 ${n} 个目标`;
+    }
+
+    function render() {
+      updateSummary();
+      goalsEl.innerHTML = GOALS.map((g) => {
+        const open = openId === g.id;
+        return `
+          <div class="goal ${g.on ? "on" : ""} ${open ? "open" : ""}" data-id="${g.id}">
+            <button type="button" class="goal-head" data-toggle="${g.id}">
+              <div>
+                <div class="title">
+                  ${g.title}
+                  ${g.recommend && g.on ? `<span class="badge">推荐</span>` : ""}
+                  ${g.need ? `<span class="need">${g.need}</span>` : ""}
+                </div>
+                <div class="one">${g.one}</div>
+                <div class="chev">${open ? "收起会发生什么 ▲" : "看看会发生什么 ▼"}</div>
+              </div>
+              <button type="button" class="tog sm ${g.on ? "on" : ""}" data-switch="${g.id}" aria-label="开关 ${g.title}"></button>
+            </button>
+            <div class="goal-body">
+              <p class="story">${g.story}</p>
+              <div class="cause">
+                ${g.causes.map((c) => `
+                  <div class="cause-row">
+                    <span class="when">${c.when}</span>
+                    <button type="button" class="btn sm" data-act="${g.id}:${c.id}">改结果</button>
+                    <span class="then">→ 系统会：<b>${actName(c.thenId)}</b></span>
+                  </div>
+                `).join("")}
+              </div>
+              <p class="hint">背后原子（日常不用记）：${g.atoms.join(" · ")}</p>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // rebind: head toggle (but not when clicking switch)
+      goalsEl.querySelectorAll("[data-toggle]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          if (e.target.closest("[data-switch]")) return;
+          const id = btn.dataset.toggle;
+          openId = openId === id ? null : id;
+          render();
+        });
+      });
+      goalsEl.querySelectorAll("[data-switch]").forEach((sw) => {
+        sw.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const g = GOALS.find((x) => x.id === sw.dataset.switch);
+          if (g.id === "gaze" && !g.on && !g.calibrated) {
+            if (confirm("用眼睛帮忙需要先做一次约 30 秒的注视校准。现在开始？")) {
+              g.calibrated = true;
+              g.need = "已校准";
+              g.on = true;
+            }
+          } else {
+            g.on = !g.on;
+          }
+          render();
+        });
+      });
+      goalsEl.querySelectorAll("[data-act]").forEach((b) => {
+        b.addEventListener("click", () => {
+          const [goalId, causeId] = b.dataset.act.split(":");
+          openAct(goalId, causeId);
+        });
+      });
+    }
+
+    function openAct(goalId, causeId) {
+      const g = GOALS.find((x) => x.id === goalId);
+      const c = g.causes.find((x) => x.id === causeId);
+      actTarget = { goalId, causeId };
+      document.getElementById("actTitle").textContent = `改结果 · ${c.when}`;
+      document.getElementById("actPicks").innerHTML = ACTIONS.map((a) => `
+        <button type="button" class="pick ${a.id === c.thenId ? "on" : ""}" data-aid="${a.id}">
+          <span class="pn">${a.name}</span>
+          <span class="pd">${a.desc}</span>
+        </button>
+      `).join("");
+      document.querySelectorAll("#actPicks .pick").forEach((p) => {
+        p.addEventListener("click", () => {
+          c.thenId = p.dataset.aid;
+          document.getElementById("maskAct").classList.remove("on");
+          render();
+        });
+      });
+      document.getElementById("maskAct").classList.add("on");
+    }
+
+    function renderAtoms() {
+      const rows = [];
+      GOALS.forEach((g) => {
+        g.atoms.forEach((name) => {
+          rows.push({ goal: g.title, name, on: g.on });
+        });
+      });
+      document.getElementById("atomList").innerHTML = rows.map((r) => `
+        <div class="atom">
+          <span class="an">${r.name}</span>
+          <button type="button" class="tog sm ${r.on ? "on" : ""}" disabled title="示意：由目标代管"></button>
+          <span class="ad">隶属目标 · ${r.goal}</span>
+        </div>
+      `).join("");
+    }
+
+    document.getElementById("applyRec").addEventListener("click", () => {
+      GOALS.forEach((g) => { g.on = !!g.recommend; });
+      openId = "privacy";
+      document.getElementById("recBar").style.display = "none";
+      render();
+    });
+    document.getElementById("master").addEventListener("click", (e) => e.currentTarget.classList.toggle("on"));
+    document.getElementById("btnLook").addEventListener("click", () => document.getElementById("maskLook").classList.add("on"));
+    document.getElementById("btnDetail").addEventListener("click", () => {
+      renderAtoms();
+      document.getElementById("maskDetail").classList.add("on");
+    });
+    document.querySelectorAll("[data-close]").forEach((b) => {
+      b.addEventListener("click", () => document.getElementById(b.dataset.close).classList.remove("on"));
+    });
+    ["maskDetail", "maskLook", "maskAct"].forEach((id) => {
+      document.getElementById(id).addEventListener("click", (e) => {
+        if (e.target.id === id) e.currentTarget.classList.remove("on");
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>
