@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OneTone 首页方向比较</title>
+  <link rel="stylesheet" href="styles/shell.css" />
+  <link rel="stylesheet" href="styles/variants.css" />
+</head>
+<body>
+  <div class="review-shell" data-prototype-app>
+    <header class="review-bar">
+      <div class="review-brand"><span class="brand-mark">一</span><strong>OneTone 首页实验室</strong><span>桌面控制中心</span></div>
+      <div class="state-nav" data-state-nav aria-label="演示状态"></div>
+      <div class="review-actions">
+        <button type="button" class="review-button" data-toggle-notes>评审</button>
+        <button type="button" class="review-button" data-show-summary>比较结果</button>
+      </div>
+    </header>
+    <main id="stage" class="variant-stage" data-variant-stage tabindex="-1"></main>
+    <aside class="evaluation-panel" data-evaluation-panel hidden></aside>
+    <div class="feedback" data-prototype-feedback role="status" aria-live="polite"></div>
+  </div>
+
+  <nav class="proto-picker" aria-label="Prototype variants" data-variant-nav>
+    <span class="proto-picker-highlight" aria-hidden="true"></span>
+    <button class="proto-picker-item" data-active aria-current="true">Vibe</button>
+    <button class="proto-picker-item">小白</button>
+    <button class="proto-picker-item">Vision</button>
+    <button class="proto-picker-item">Quest</button>
+    <button class="proto-picker-item">搜索</button>
+    <button class="proto-picker-item">Agents</button>
+    <button class="proto-picker-item">Notion</button>
+    <button class="proto-picker-item">Raycast</button>
+    <span class="proto-picker-divider" aria-hidden="true"></span>
+    <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+  </nav>
+
+  <script src="scripts/fixtures.js"></script>
+  <script src="scripts/variants.js"></script>
+  <script src="scripts/evaluation.js"></script>
+  <script src="scripts/app.js"></script>
+</body>
+</html>
