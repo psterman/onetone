@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const file=path.join(root,'prototypes','checkup-summary-360','index.html');
+assert.ok(fs.existsSync(file),'checkup summary prototype HTML is missing');
+const html=fs.readFileSync(file,'utf8');
+for(const state of ['全部正常','可以使用，但有补强项','存在阻塞问题']) assert.ok(html.includes(state),`missing ${state}`);
+for(const label of ['立即开始','补齐摄像头能力','立即修复']) assert.ok(html.includes(label),`missing ${label}`);
+for(const channel of ['语音','按键','Soft Pad','摄像头']) assert.ok(html.includes(channel),`missing ${channel}`);
+assert.match(html,/data-action="primary"/); assert.match(html,/data-action="details"/); assert.match(html,/prefers-reduced-motion/);
+assert.doesNotMatch(html,/Lorem ipsum|href=["']#["']/);
+console.log('checkup summary prototype: three result states ok');
