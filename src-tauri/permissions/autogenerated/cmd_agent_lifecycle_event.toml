@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-lifecycle-event"
+description = "Enables the cmd_agent_lifecycle_event command without any pre-configured scope."
+commands.allow = ["cmd_agent_lifecycle_event"]
+
+[[permission]]
+identifier = "deny-cmd-agent-lifecycle-event"
+description = "Denies the cmd_agent_lifecycle_event command without any pre-configured scope."
+commands.deny = ["cmd_agent_lifecycle_event"]

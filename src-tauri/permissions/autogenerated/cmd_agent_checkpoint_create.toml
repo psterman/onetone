@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-checkpoint-create"
+description = "Enables the cmd_agent_checkpoint_create command without any pre-configured scope."
+commands.allow = ["cmd_agent_checkpoint_create"]
+
+[[permission]]
+identifier = "deny-cmd-agent-checkpoint-create"
+description = "Denies the cmd_agent_checkpoint_create command without any pre-configured scope."
+commands.deny = ["cmd_agent_checkpoint_create"]

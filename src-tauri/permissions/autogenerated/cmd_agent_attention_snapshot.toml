@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-attention-snapshot"
+description = "Enables the cmd_agent_attention_snapshot command without any pre-configured scope."
+commands.allow = ["cmd_agent_attention_snapshot"]
+
+[[permission]]
+identifier = "deny-cmd-agent-attention-snapshot"
+description = "Denies the cmd_agent_attention_snapshot command without any pre-configured scope."
+commands.deny = ["cmd_agent_attention_snapshot"]

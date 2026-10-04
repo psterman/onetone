@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity
+    type="win32"
+    name="OneTone.TestHarness"
+    version="1.0.0.0"
+    processorArchitecture="*"/>
+  <!--
+    Binds comctl32 to the SxS v6 assembly instead of the v5 copy in System32.
+    v5 does not export TaskDialogIndirect, which `muda` (pulled in by tauri)
+    imports; without this dependency the loader resolves v5 and the test
+    harness dies before main() with STATUS_ENTRYPOINT_NOT_FOUND (0xc0000139).
+
+    Only embedded into test binaries — onetone.exe already gets an equivalent
+    manifest from tauri-build, and embedding a second one there would collide
+    on resource type 24 / id 1.
+  -->
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity
+        type="win32"
+        name="Microsoft.Windows.Common-Controls"
+        version="6.0.0.0"
+        processorArchitecture="*"
+        publicKeyToken="6595b64144ccf1df"
+        language="*"/>
+    </dependentAssembly>
+  </dependency>
+</assembly>

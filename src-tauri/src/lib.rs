@@ -1,5 +1,6 @@
 mod agent;
 mod agent_attention;
+pub mod agent_memory;
 pub mod action_history;
 mod agent_catalog;
 mod agent_install_inventory;
@@ -41,6 +42,8 @@ mod codex_app_state;
 mod codex_micro_overlay;
 mod overlay_window;
 mod codex_micro_protocol_server;
+mod codex_smoke_task;
+mod claude_smoke_task;
 mod codex_micro_vendor;
 mod codex_numpad_layer;
 mod codex_pad_binding_diagnose;
@@ -1011,6 +1014,7 @@ pub fn run() {
             ipc::cmd_debug_effective_scene,
             ipc::cmd_foreground_app,
             ipc::cmd_habit_foreground_app,
+            ipc::cmd_foreground_context_snapshot,
             ipc::cmd_running_apps,
             ipc::cmd_app_icon,
             ipc::cmd_set_setup_interaction_active,
@@ -1195,6 +1199,22 @@ pub fn run() {
             ipc::cmd_tm_diff_summary,
             ipc::cmd_tm_undo_restore,
             ipc::cmd_agent_attention_snapshot,
+            ipc::cmd_agent_home_snapshot,
+            ipc::cmd_agent_session_events,
+            ipc::cmd_agent_lifecycle_event,
+            ipc::cmd_agent_checkpoint_resume,
+            ipc::cmd_agent_checkpoint_create,
+            ipc::cmd_agent_memory_query,
+            ipc::cmd_agent_memory_upsert,
+            ipc::cmd_agent_context_for_provider,
+            ipc::cmd_agent_mcp_project_context,
+            ipc::cmd_agent_mcp_memory_search,
+            ipc::cmd_agent_mcp_session_history,
+            ipc::cmd_agent_mcp_checkpoint_preview,
+            ipc::cmd_home_focus_snapshot,
+            ipc::cmd_home_focus_retry,
+            ipc::cmd_home_confirm_project,
+            ipc::cmd_home_list_known_projects,
             ipc::cmd_cursor_soft_pad_capabilities,
             ipc::cmd_cursor_set_needs_input_gate,
             ipc::cmd_cursor_hook_ingest,

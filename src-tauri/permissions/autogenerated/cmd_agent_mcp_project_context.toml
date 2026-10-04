@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-mcp-project-context"
+description = "Enables the cmd_agent_mcp_project_context command without any pre-configured scope."
+commands.allow = ["cmd_agent_mcp_project_context"]
+
+[[permission]]
+identifier = "deny-cmd-agent-mcp-project-context"
+description = "Denies the cmd_agent_mcp_project_context command without any pre-configured scope."
+commands.deny = ["cmd_agent_mcp_project_context"]

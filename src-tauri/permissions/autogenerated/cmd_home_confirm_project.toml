@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-home-confirm-project"
+description = "Enables the cmd_home_confirm_project command without any pre-configured scope."
+commands.allow = ["cmd_home_confirm_project"]
+
+[[permission]]
+identifier = "deny-cmd-home-confirm-project"
+description = "Denies the cmd_home_confirm_project command without any pre-configured scope."
+commands.deny = ["cmd_home_confirm_project"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-habit-foreground-app"
+description = "Enables the cmd_habit_foreground_app command without any pre-configured scope."
+commands.allow = ["cmd_habit_foreground_app"]
+
+[[permission]]
+identifier = "deny-cmd-habit-foreground-app"
+description = "Denies the cmd_habit_foreground_app command without any pre-configured scope."
+commands.deny = ["cmd_habit_foreground_app"]

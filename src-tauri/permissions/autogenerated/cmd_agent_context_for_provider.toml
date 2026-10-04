@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-context-for-provider"
+description = "Enables the cmd_agent_context_for_provider command without any pre-configured scope."
+commands.allow = ["cmd_agent_context_for_provider"]
+
+[[permission]]
+identifier = "deny-cmd-agent-context-for-provider"
+description = "Denies the cmd_agent_context_for_provider command without any pre-configured scope."
+commands.deny = ["cmd_agent_context_for_provider"]

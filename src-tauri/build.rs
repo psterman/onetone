@@ -13,6 +13,8 @@ const VOSK_RUNTIME_DLLS: &[&str] = &[
 
 fn main() {
     ensure_icons_exist();
+    #[cfg(windows)]
+    embed_common_controls_manifest();
     for name in [
         "icons/icon.ico",
         "icons/icon.png",
@@ -46,6 +48,8 @@ fn main() {
         "cmd_request_runtime",
         "cmd_debug_effective_scene",
         "cmd_foreground_app",
+        "cmd_habit_foreground_app",
+        "cmd_foreground_context_snapshot",
         "cmd_running_apps",
         "cmd_app_icon",
         "cmd_set_settings_drawer_open",
@@ -190,6 +194,7 @@ fn main() {
         "cmd_soft_pad_agent_lights_set",
         "cmd_soft_pad_agent_lights_batch_set",
         "cmd_agent_install_inventory",
+        "cmd_agent_attention_snapshot",
         "cmd_semantic_action_catalog",
         "cmd_semantic_action_route",
         "cmd_semantic_action_options",
@@ -229,6 +234,22 @@ fn main() {
         "cmd_claude_cli_inject_pref_set",
         "cmd_cursor_activity_pref_get",
         "cmd_cursor_activity_pref_set",
+        "cmd_agent_home_snapshot",
+        "cmd_agent_session_events",
+        "cmd_agent_lifecycle_event",
+        "cmd_agent_checkpoint_resume",
+        "cmd_agent_checkpoint_create",
+        "cmd_agent_memory_query",
+        "cmd_agent_memory_upsert",
+        "cmd_agent_context_for_provider",
+        "cmd_agent_mcp_project_context",
+        "cmd_agent_mcp_memory_search",
+        "cmd_agent_mcp_session_history",
+        "cmd_agent_mcp_checkpoint_preview",
+        "cmd_home_focus_snapshot",
+        "cmd_home_focus_retry",
+        "cmd_home_confirm_project",
+        "cmd_home_list_known_projects",
         "cmd_minimax_coding_key_get",
         "cmd_minimax_coding_key_set",
         "cmd_claude_cli_inject",
@@ -261,11 +282,116 @@ fn main() {
     println!("cargo:rerun-if-changed=../src/js/core/agent-status-edge.js");
     println!("cargo:rerun-if-changed=../src/js/core/panel-reveal.js");
 
-    tauri_build::try_build(
-        tauri_build::Attributes::new()
-            .app_manifest(tauri_build::AppManifest::new().commands(COMMANDS)),
-    )
-    .expect("failed to run tauri build");
+    // When vosk-engine is off (cargo test --no-default-features), strip Vosk DLL
+    // bundle resources so tauri-build does not overwrite DLLs locked by a running
+    // onetone.exe in target/debug (os error 32). Models/scripts stay.
+    let vosk_on = std::env::var_os("CARGO_FEATURE_VOSK_ENGINE").is_some();
+    if !vosk_on {
+        strip_vosk_dll_bundle_resources();
+    }
+
+    let attrs = tauri_build::Attributes::new()
+        // We embed Common Controls v6 ourselves via compile_for_everything so the
+        // `cargo test --lib` harness also gets it. Tauri's default bin-only embed
+        // would duplicate RT_MANIFEST id 1 under rust-lld.
+        .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest())
+        .app_manifest(tauri_build::AppManifest::new().commands(COMMANDS));
+
+    match tauri_build::try_build(attrs) {
+        Ok(()) => {}
+        Err(e) if is_sharing_violation(&e) => {
+            println!(
+                "cargo:warning=tauri-build hit file lock ({e}); retrying without Vosk DLL resources"
+            );
+            strip_vosk_dll_bundle_resources();
+            tauri_build::try_build(
+                tauri_build::Attributes::new()
+                    .windows_attributes(
+                        tauri_build::WindowsAttributes::new_without_app_manifest(),
+                    )
+                    .app_manifest(tauri_build::AppManifest::new().commands(COMMANDS)),
+            )
+            .expect("failed to run tauri build after stripping locked Vosk DLLs");
+        }
+        Err(e) => panic!("failed to run tauri build: {e}"),
+    }
+}
+
+const VOSK_BUNDLE_DLL_KEYS: &[&str] = &[
+    "resources/vosk/libvosk.dll",
+    "resources/vosk/libgcc_s_seh-1.dll",
+    "resources/vosk/libstdc++-6.dll",
+    "resources/vosk/libwinpthread-1.dll",
+];
+
+/// Redirect Vosk DLL bundle outputs away from exe-dir names that a running
+/// `onetone.exe` may hold open (os error 32). TAURI_CONFIG is deep-merged, so we
+/// override destinations instead of trying to delete keys.
+fn strip_vosk_dll_bundle_resources() {
+    let mut resources = serde_json::Map::new();
+    for key in VOSK_BUNDLE_DLL_KEYS {
+        let name = key.rsplit('/').next().unwrap_or(key);
+        resources.insert(
+            (*key).into(),
+            serde_json::Value::String(format!(".__onetone_build_skip/{name}")),
+        );
+    }
+    let patch = serde_json::json!({ "bundle": { "resources": resources } });
+    std::env::set_var("TAURI_CONFIG", patch.to_string());
+    println!(
+        "cargo:warning=TAURI_CONFIG: redirected Vosk DLL bundle outputs to .__onetone_build_skip/"
+    );
+}
+
+fn is_sharing_violation(err: &dyn std::fmt::Display) -> bool {
+    let s = err.to_string();
+    s.contains("os error 32") || s.contains("正在使用") || s.contains("Sharing violation")
+}
+
+/// RT_MANIFEST is type 24; the loader only ever reads **id 1**, so the
+/// generated .rc must use it. See `embed_test_manifest`.
+#[cfg(windows)]
+const RESOURCE_ID: u32 = 1;
+
+/// Embed a Common Controls v6 manifest into **all** linkable artifacts.
+///
+/// `tauri-build`'s default Windows app manifest is bin-only (`rustc-link-arg-bins`).
+/// The `cargo test --lib` harness is a library `--test` binary and never receives
+/// that flag — without CC v6 it dies before `main()` with STATUS_ENTRYPOINT_NOT_FOUND
+/// (0xc0000139) when resolving `TaskDialogIndirect` from muda/comctl32.
+///
+/// `compile_for_everything` uses unsuffixed `cargo:rustc-link-arg`, which reaches
+/// the lib unit-test harness. Pair with `WindowsAttributes::new_without_app_manifest`
+/// so `onetone.exe` does not get a second RT_MANIFEST id 1.
+#[cfg(windows)]
+fn embed_common_controls_manifest() {
+    use std::io::Write;
+
+    let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    let manifest = manifest_dir.join("windows/common-controls-v6.manifest");
+    if !manifest.is_file() {
+        println!(
+            "cargo:warning=CommonControls: {} missing — test harness will not load on Windows",
+            manifest.display()
+        );
+        return;
+    }
+    println!("cargo:rerun-if-changed=windows/common-controls-v6.manifest");
+
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    // rc.exe resolves a file token against the process CWD, not the script's
+    // directory, so bake the absolute path into a generated .rc.
+    let rc = out_dir.join("common-controls-v6.rc");
+    let mut script = fs::File::create(&rc).expect("create rc script");
+    writeln!(script, "{RESOURCE_ID} 24 \"{}\"", manifest.display().to_string().replace('\\', "/"))
+        .expect("write rc script");
+    drop(script);
+
+    if let Err(e) =
+        embed_resource::compile_for_everything(&rc, embed_resource::NONE).manifest_optional()
+    {
+        println!("cargo:warning=CommonControls: manifest not embedded: {e}");
+    }
 }
 
 fn link_vosk_if_present() {

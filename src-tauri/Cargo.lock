@@ -3431,6 +3431,7 @@ dependencies = [
  "cpal",
  "crossbeam-channel",
  "directories",
+ "embed-resource",
  "enigo",
  "image",
  "notify",

@@ -349,6 +349,20 @@ pub fn raise(mut signal: AgentAttentionSignal) -> RaiseOutcome {
     if outcome.accepted {
         notify_if_waiting_changed();
         maybe_emit_from_signal(&emit_snapshot, &outcome);
+        // Plan B: persist OneTone lifecycle (status projection). Best-effort.
+        let should_persist = match emit_snapshot.state {
+            AttentionState::NeedsInput => outcome.signal_inserted,
+            AttentionState::Idle => false,
+            _ => outcome.state_changed,
+        };
+        if should_persist {
+            crate::agent_memory::note_attention(
+                emit_snapshot.agent,
+                emit_snapshot.session_id.as_deref(),
+                emit_snapshot.state.as_str(),
+                emit_snapshot.sequence,
+            );
+        }
     }
     outcome
 }

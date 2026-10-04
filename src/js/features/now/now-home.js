@@ -26,6 +26,8 @@
   var lastAttentionKey = '';
   var todayEntries = [];
   var todayFetchGen = 0;
+  var todayPaintKey = '';
+  var todayRefreshTimer = 0;
   var historyBound = false;
   // User armed listen from Now dock; show strip until pause/stop even if status is still ready.
   var voiceArmed = false;
@@ -33,7 +35,26 @@
   var contextRows = [];
   var contextFetchGen = 0;
   var fgIdentityCache = null;
+  var fgContextCache = null;
   var needDismissKey = '';
+  var agentTask = null;
+  var agentRows = null;
+  var agentFixtureIndex = 0;
+  var agentDemo = false;
+  var agentHomeCache = null;
+  var agentHomeFetchTimer = 0;
+  var lastAgentHomeKey = '';
+  var inventoryCache = null;
+  var inventoryFetchTimer = 0;
+  var lastInventoryKey = '';
+  /** Home Focus surface: focus | history | memory | connections | settings */
+  var hfView = 'focus';
+  var homeFocusCache = null;
+  var homeFocusUnsub = null;
+  var hfOverlay = ''; // pick | progress | ''
+  var hfPickHtml = '';
+  var hfProgressHtml = '';
+  var useLegacyNow = false;
 
   function $(id) {
     return document.getElementById(id);
@@ -61,10 +82,193 @@
 
   function detectDemo() {
     try {
-      return new URLSearchParams(location.search).get('nowDemo') === '1';
+      var q = new URLSearchParams(location.search);
+      return q.get('nowDemo') === '1' || q.get('agentHome') === '1';
     } catch (_) {
       return false;
     }
+  }
+
+  function detectAgentDemo() {
+    try {
+      var q = new URLSearchParams(location.search);
+      return q.get('nowDemo') === '1' || q.get('agentHome') === '1';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function agentHomeApi() {
+    return global.OneToneNowAgentHome;
+  }
+
+  function projectHintForHome() {
+    // Prefer Home Focus confirmed/exact root — never pass display-name tokens as PathBuf.
+    try {
+      var p =
+        (homeFocusCache && homeFocusCache.project) ||
+        (global.OneToneHomeFocusStore &&
+          global.OneToneHomeFocusStore.get &&
+          global.OneToneHomeFocusStore.get() &&
+          global.OneToneHomeFocusStore.get().project);
+      var root = p && (p.root || p.workspacePath || p.workspace_path);
+      if (!root || typeof root !== 'string') return null;
+      root = String(root).trim();
+      // Windows canonicalize often prefixes \\?\ — strip for PathBuf round-trip.
+      if (root.indexOf('\\\\?\\') === 0) root = root.slice(4);
+      else if (root.indexOf('//?/') === 0) root = root.slice(4);
+      if (root.length < 2) return null;
+      if (root.indexOf('/') < 0 && root.indexOf('\\') < 0 && root.indexOf(':') < 0) {
+        return null;
+      }
+      return root;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function fetchAgentHomeSnapshot() {
+    var ipc = global.OneToneIpc;
+    if (!ipc || !ipc.invoke) return;
+    var hint = projectHintForHome();
+    var args = hint ? { projectHint: hint } : {};
+    ipc
+      .invoke('cmd_agent_home_snapshot', args)
+      .then(function (dto) {
+        var key = '';
+        try {
+          // Do NOT key on asOf — it is "now" on every call and forces flicker.
+          key = JSON.stringify({
+            s: dto && dto.syncStatus,
+            p: dto && dto.probeStatus,
+            pid: dto && dto.project && dto.project.projectId,
+            aid: dto && dto.activeSession && dto.activeSession.sessionId,
+            ast: dto && dto.activeSession && dto.activeSession.status,
+            at: dto && dto.activeSession && dto.activeSession.title,
+            ck: dto && dto.checkpoint && dto.checkpoint.checkpointId,
+            le: dto && dto.latestEvent && dto.latestEvent.eventId,
+            n: dto && dto.recentSessions && dto.recentSessions.length,
+            m: dto && dto.memories && dto.memories.length,
+            h: hint || '',
+            sa: Math.floor(Number((dto && dto.staleAgeMs) || 0) / 60000)
+          });
+        } catch (_) {
+          key = String(Date.now());
+        }
+        if (key === lastAgentHomeKey) return;
+        lastAgentHomeKey = key;
+        agentHomeCache = dto || null;
+        agentTask = null;
+        agentRows = null;
+        if (mounted) paint();
+      })
+      .catch(function () {});
+  }
+
+  function scheduleAgentHomeRefresh() {
+    if (agentHomeFetchTimer) return;
+    agentHomeFetchTimer = setTimeout(function () {
+      agentHomeFetchTimer = 0;
+      fetchAgentHomeSnapshot();
+    }, 400);
+  }
+
+  function formatSessionWhen(ts) {
+    var n = Number(ts) || 0;
+    if (!n) return '';
+    var d = Math.max(0, Date.now() - n);
+    if (d < 60_000) return '刚刚';
+    if (d < 3600_000) return Math.floor(d / 60_000) + ' 分钟前';
+    if (d < 86400_000) return Math.floor(d / 3600_000) + ' 小时前';
+    return Math.floor(d / 86400_000) + ' 天前';
+  }
+
+  function ensureAgentRows() {
+    var AH = agentHomeApi();
+    var out = [];
+    if (AH && AH.rowsFromAttention) {
+      out = AH.rowsFromAttention(attentionCache) || [];
+    }
+    // Append recent sessions as ledger rows (not CTA). Skip duplicates by provider+kind overload.
+    var recent =
+      (agentHomeCache && (agentHomeCache.recentSessions || agentHomeCache.recent_sessions)) || [];
+    for (var i = 0; i < recent.length && out.length < 12; i++) {
+      var s = recent[i];
+      var sid = String(s.sessionId || s.session_id || '');
+      var already = out.some(function (r) {
+        return r.row && String(r.row.sessionId || r.row.session_id || '') === sid;
+      });
+      if (already) continue;
+      var prov = String(s.provider || 'Agent');
+      out.push({
+        kind: s.isActive || s.is_active || s.status === 'running' ? 'living' : 'recent',
+        provider: prov,
+        title: s.title || prov + ' 会话',
+        when: formatSessionWhen(s.updatedAt || s.updated_at),
+        confidence: s.matchConfidence != null ? s.matchConfidence : s.match_confidence,
+        evidenceTier: s.projectMatch || s.project_match || '',
+        probeStatus: (agentHomeCache && (agentHomeCache.probeStatus || agentHomeCache.probe_status)) || '',
+        sessionId: sid,
+        row: s
+      });
+    }
+    agentRows = out;
+    return out;
+  }
+
+  function ensureAgentTask() {
+    var AH = agentHomeApi();
+    if (!AH) return null;
+    if (agentDemo) {
+      if (!agentTask || agentTask._fxIndex !== agentFixtureIndex) {
+        agentTask = AH.cloneFixture(agentFixtureIndex);
+        agentTask.demo = true;
+        agentTask._fxIndex = agentFixtureIndex;
+      }
+      return agentTask;
+    }
+    var snap = snapshot();
+    var attnKey = '';
+    try {
+      attnKey = JSON.stringify({
+        w: attentionCache && (attentionCache.waitingKinds || attentionCache.waiting_kinds),
+        r: attentionCache && attentionCache.revision,
+        n: (snap.needsYou || []).map(function (x) {
+          return x && x.id;
+        }),
+        h: lastAgentHomeKey
+      });
+    } catch (_) {
+      attnKey = String(Date.now());
+    }
+    if (agentTask && agentTask._attnKey === attnKey) return agentTask;
+
+    var fromAttn = AH.taskFromAttention(attentionCache, snap.needsYou, { demo: false });
+    // Soft Pad waiting/working still wins until Plan B lifecycle events exist.
+    if (fromAttn && fromAttn.snapshot && fromAttn.snapshot.status !== 'idle') {
+      agentTask = fromAttn;
+      agentTask._attnKey = attnKey;
+      return agentTask;
+    }
+    if (agentHomeCache && AH.taskFromHomeSnapshot) {
+      agentTask = AH.taskFromHomeSnapshot(agentHomeCache, { demo: false });
+      agentTask._attnKey = attnKey;
+      return agentTask;
+    }
+    agentTask = fromAttn;
+    agentTask._attnKey = attnKey;
+    return agentTask;
+  }
+
+  function buildAgentHomeView() {
+    var AH = agentHomeApi();
+    if (!AH || !AH.buildHomeView) return null;
+    var task = ensureAgentTask();
+    var view = task ? AH.buildHomeView(task) : null;
+    if (view) {
+      view.agentRows = ensureAgentRows();
+    }
+    return view;
   }
 
   function useRuntime() {
@@ -163,6 +367,39 @@
     }, 200);
   }
 
+  function fetchInventory() {
+    var ipc = global.OneToneIpc;
+    if (!ipc || !ipc.invoke) return;
+    ipc
+      .invoke('cmd_agent_install_inventory', {})
+      .then(function (inv) {
+        var key = '';
+        try {
+          var agents = (inv && inv.agents) || [];
+          key = JSON.stringify(
+            agents.map(function (a) {
+              return [a.kind, a.running, a.presence, a.confidence];
+            })
+          );
+        } catch (_) {
+          key = String(Date.now());
+        }
+        if (key === lastInventoryKey) return;
+        lastInventoryKey = key;
+        inventoryCache = inv || null;
+        if (mounted) paint();
+      })
+      .catch(function () {});
+  }
+
+  function scheduleInventoryRefresh() {
+    if (inventoryFetchTimer) return;
+    inventoryFetchTimer = setTimeout(function () {
+      inventoryFetchTimer = 0;
+      fetchInventory();
+    }, 800);
+  }
+
   function hasFgExe(identity) {
     return !!(identity && String(identity.exeName || identity.exe_name || '').trim());
   }
@@ -256,23 +493,73 @@
     return name;
   }
 
-  function buildNowFacts(snap) {
+  function buildNowFacts(snap, agentView) {
+    var ctx = fgContextCache;
     var identity = resolveFgIdentity();
-    var app = displayAppName(identity);
-    var proj = projectHintFromIdentity(identity);
-    var ag = agentFactFromAttention(attentionCache, snap && snap.needsYou);
+    var app =
+      (ctx && ctx.appName) ||
+      (ctx && ctx.selfForeground ? 'OneTone' : '') ||
+      displayAppName(identity);
+    var proj = { text: '未发现', inferred: false };
+    if (ctx && ctx.projectName) {
+      proj = {
+        text: String(ctx.projectName),
+        inferred: !!ctx.projectInferred
+      };
+    } else {
+      proj = projectHintFromIdentity(identity);
+    }
+    if (!agentView) {
+      try {
+        agentView = buildAgentHomeView();
+      } catch (_) {}
+    }
+    var match = (ctx && ctx.match) || '';
+    var matchLabel =
+      match === 'exact'
+        ? '已匹配'
+        : match === 'probable'
+          ? '可能匹配'
+          : match === 'unknown'
+            ? '未匹配专属习惯'
+            : '';
     return {
       hero: app,
-      app: app,
+      app: app || '未发现',
       project: proj.text,
       projectInferred: !!proj.inferred,
+      processName:
+        (ctx && ctx.processName) ||
+        (identity ? String(identity.exeName || identity.exe_name || '') : ''),
+      habitName: (ctx && ctx.habitName) || '',
+      habitId: (ctx && ctx.habitId) || '',
+      match: match,
+      matchLabel: matchLabel,
+      selfForeground: !!(ctx && ctx.selfForeground),
+      detectedAt: (ctx && ctx.detectedAt) || 0,
       presence: '不知道',
-      agent: ag.text,
-      agentWaiting: !!ag.waiting
+      agentLine: agentView ? agentView.contextLine : '',
+      agentWaiting: !!(agentView && agentView.status === 'waiting_approval')
     };
   }
 
-  function criticalNeedOf(snap) {
+  function criticalNeedOf(snap, agentView) {
+    if (!agentView) {
+      try {
+        var AH = agentHomeApi();
+        agentView = AH && AH.buildHomeView ? buildAgentHomeView() : null;
+      } catch (_) {}
+    }
+    // Agent home owns waiting / running UX; skip Soft Pad duplicate need cards.
+    if (
+      agentView &&
+      (agentView.status === 'waiting_approval' ||
+        agentView.status === 'running' ||
+        agentView.status === 'failed')
+    ) {
+      return null;
+    }
+
     var list = (snap && snap.needsYou) || [];
     for (var i = 0; i < list.length; i++) {
       var n = list[i];
@@ -284,6 +571,129 @@
       }
     }
     return null;
+  }
+
+  // Plan B: persist lifecycle via IPC; checkpoint resume stays Plan C no-op.
+  function persistLifecycle(task, eventType, summary) {
+    var ipc = global.OneToneIpc;
+    if (!ipc || !ipc.invoke || !task || !task.snapshot) return Promise.resolve(null);
+    var sessionId = task.snapshot.runId;
+    if (!sessionId || sessionId === 'home_idle') return Promise.resolve(null);
+    var provider = String(task.profileId || 'cursor')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+    if (provider === 'cursorcli' || provider === 'cursor') provider = 'cursor';
+    return ipc
+      .invoke('cmd_agent_lifecycle_event', {
+        sessionId: sessionId,
+        provider: provider || 'cursor',
+        eventType: eventType,
+        summary: summary || eventType
+      })
+      .then(function (res) {
+        scheduleAgentHomeRefresh();
+        return res;
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  function resumeCheckpoint(task) {
+    var ipc = global.OneToneIpc;
+    if (!ipc || !ipc.invoke || !task || !task.snapshot) return Promise.resolve(null);
+    var sessionId = task.snapshot.runId;
+    if (!sessionId || sessionId === 'home_idle') return Promise.resolve(null);
+    return ipc
+      .invoke('cmd_agent_checkpoint_resume', { sessionId: sessionId })
+      .then(function (res) {
+        if (res && res.ok && res.brief) {
+          var brief = res.brief.brief || '';
+          if (brief) {
+            task.context = task.context || [];
+            task.context.unshift({ label: brief });
+          }
+          if (res.brief.checkpoint && res.brief.checkpoint.checkpointId) {
+            task.snapshot.checkpointId = res.brief.checkpoint.checkpointId;
+          }
+        }
+        scheduleAgentHomeRefresh();
+        return res;
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  function handleAgentAct(act) {
+    var AH = agentHomeApi();
+    var task = ensureAgentTask();
+    if (!AH || !task) return;
+
+    if (act === 'pause' || act === 'pause-task') {
+      AH.applyLocalStatus(task, 'paused');
+      lastPaintHtml = '';
+      paint();
+      if (!agentDemo) persistLifecycle(task, 'task_paused', '已暂停状态更新');
+      return;
+    }
+    if (act === 'abort') {
+      AH.applyLocalStatus(task, 'cancelled');
+      lastPaintHtml = '';
+      paint();
+      if (!agentDemo) persistLifecycle(task, 'session_aborted', '已停止这次处理');
+      return;
+    }
+    if (act === 'resume' || act === 'approve') {
+      if (agentDemo) {
+        AH.applyLocalStatus(task, 'running');
+        lastPaintHtml = '';
+        paint();
+      } else if (
+        act === 'resume' &&
+        task.snapshot &&
+        (task.snapshot.status === 'paused' ||
+          task.snapshot.status === 'failed' ||
+          task.snapshot.checkpointId)
+      ) {
+        AH.applyLocalStatus(task, 'running');
+        lastPaintHtml = '';
+        paint();
+        var resumeP = task.snapshot.checkpointId
+          ? resumeCheckpoint(task)
+          : persistLifecycle(task, 'task_resumed', '已继续');
+        resumeP.then(function () {
+          lastPaintHtml = '';
+          paint();
+        });
+      } else {
+        openNeedSurface();
+      }
+      return;
+    }
+    if (act === 'continue-last') {
+      if (agentDemo) {
+        openNeedSurface();
+        return;
+      }
+      resumeCheckpoint(task).then(function (res) {
+        lastPaintHtml = '';
+        paint();
+        if (!(res && res.ok)) openNeedSurface();
+      });
+      return;
+    }
+    if (act === 'detail') {
+      openNeedSurface();
+      return;
+    }
+    if (act === 'hand') {
+      // Voice dock is the real handoff; nudge listen if available.
+      try {
+        var dock = root && root.querySelector('[data-now-voice]');
+        if (dock) dock.click();
+      } catch (_) {}
+    }
   }
 
   function openNeedSurface() {
@@ -300,23 +710,95 @@
 
   var fgPollTimer = 0;
 
+  function applyFgContext(ctx) {
+    if (!ctx || typeof ctx !== 'object') return false;
+    var prev = fgContextCache;
+    var prevKey = prev
+      ? [
+          prev.appName || '',
+          prev.processName || '',
+          prev.fullPath || '',
+          prev.projectName || '',
+          prev.habitId || '',
+          prev.match || '',
+          prev.selfForeground ? '1' : '0'
+        ].join('|')
+      : '';
+    var nextKey = [
+      ctx.appName || '',
+      ctx.processName || '',
+      ctx.fullPath || '',
+      ctx.projectName || '',
+      ctx.habitId || '',
+      ctx.match || '',
+      ctx.selfForeground ? '1' : '0'
+    ].join('|');
+    fgContextCache = ctx;
+    // Only note runtime identity when we have a stable path/class signature.
+    // Incomplete identity (exe-only) would flip fgSignature and flicker the page.
+    if (
+      !ctx.selfForeground &&
+      (ctx.fullPath || ctx.windowClass) &&
+      (ctx.processName || ctx.appName)
+    ) {
+      applyFgIdentity({
+        exeName: ctx.processName || '',
+        fullPath: ctx.fullPath || '',
+        windowClass: ctx.windowClass || '',
+        windowTitle: ctx.windowTitle || '',
+        displayName: ctx.appName || '',
+        appId: ctx.appId || null,
+        matchedPresetAppId: ctx.appId || null
+      });
+    }
+    return prevKey !== nextKey;
+  }
+
   function applyFgIdentity(res) {
     if (!isUsableFg(res)) return false;
     var prev = fgIdentityCache;
+    // Title changes constantly in editors — do not treat as FG identity change.
     var prevKey =
       (prev && (prev.exeName || prev.exe_name || '')) +
       '|' +
-      (prev && (prev.windowTitle || prev.window_title || ''));
+      (prev && (prev.fullPath || prev.full_path || '')) +
+      '|' +
+      (prev && (prev.windowClass || prev.window_class || '')) +
+      '|' +
+      (prev && (prev.appId || prev.matchedPresetAppId || prev.matched_preset_app_id || ''));
     var nextKey =
       (res.exeName || res.exe_name || '') +
       '|' +
-      (res.windowTitle || res.window_title || '');
+      (res.fullPath || res.full_path || '') +
+      '|' +
+      (res.windowClass || res.window_class || '') +
+      '|' +
+      (res.appId || res.matchedPresetAppId || res.matched_preset_app_id || '');
+    // Keep newest title for project hint, but only repaint when stable fields change.
+    var titleOnly =
+      !!prev &&
+      prevKey === nextKey &&
+      String(prev.windowTitle || prev.window_title || '') !==
+        String(res.windowTitle || res.window_title || '');
     fgIdentityCache = res;
     try {
       var rt = global.OneToneRuntimeHabitControl;
       if (rt && rt.noteForegroundIdentity) rt.noteForegroundIdentity(res);
     } catch (_) {}
-    if (prevKey === nextKey) return false;
+    if (prevKey === nextKey) {
+      // Update project hint quietly when only the window title changed.
+      if (titleOnly && fgContextCache && !fgContextCache.selfForeground) {
+        var proj = projectHintFromIdentity(res);
+        var prevProj = String(fgContextCache.projectName || '');
+        var nextProj = proj.text === '未发现' ? '' : String(proj.text || '');
+        if (prevProj !== nextProj) {
+          fgContextCache.projectName = nextProj || null;
+          fgContextCache.projectInferred = !!proj.inferred && !!nextProj;
+          return true;
+        }
+      }
+      return false;
+    }
     return true;
   }
 
@@ -324,25 +806,49 @@
     var ipc = global.OneToneIpc;
     if (!ipc || !ipc.invoke) return;
     ipc
-      .invoke('cmd_habit_foreground_app', {})
-      .catch(function () {
-        return null;
-      })
-      .then(function (held) {
-        if (isUsableFg(held)) return held;
-        return ipc.invoke('cmd_foreground_app', {}).catch(function () {
-          return held;
-        });
-      })
-      .then(function (res) {
-        var changed = applyFgIdentity(res);
-        // Even if IPC empty, runtime may already hold Cursor from workbench poll.
-        if (changed || resolveFgIdentity()) {
-          lastPaintHtml = '';
-          if (mounted && visible) paint();
+      .invoke('cmd_foreground_context_snapshot', {})
+      .then(function (ctx) {
+        if (ctx && (ctx.appName || ctx.processName || ctx.habitId || ctx.selfForeground)) {
+          var changed = applyFgContext(ctx);
+          // Do not clear lastPaintHtml — paint() already skips identical HTML.
+          if (changed && mounted && visible) paint();
+          return null;
         }
+        // Fall back to older FG cmds if snapshot is empty.
+        return ipc
+          .invoke('cmd_habit_foreground_app', {})
+          .catch(function () {
+            return null;
+          })
+          .then(function (held) {
+            if (isUsableFg(held)) return held;
+            return ipc.invoke('cmd_foreground_app', {}).catch(function () {
+              return held;
+            });
+          })
+          .then(function (res) {
+            var changed = applyFgIdentity(res);
+            if (changed && mounted && visible) paint();
+          });
       })
-      .catch(function () {});
+      .catch(function () {
+        // Snapshot IPC unavailable — legacy path.
+        return ipc
+          .invoke('cmd_habit_foreground_app', {})
+          .catch(function () {
+            return null;
+          })
+          .then(function (held) {
+            if (isUsableFg(held)) return held;
+            return ipc.invoke('cmd_foreground_app', {}).catch(function () {
+              return held;
+            });
+          })
+          .then(function (res) {
+            var changed = applyFgIdentity(res);
+            if (changed && mounted && visible) paint();
+          });
+      });
   }
 
   function startFgPoll() {
@@ -351,7 +857,7 @@
     fgPollTimer = setInterval(function () {
       if (!visible) return;
       refreshForeground();
-    }, 1200);
+    }, 2000);
   }
 
   function stopFgPoll() {
@@ -401,15 +907,280 @@
     paint();
   }
 
+  function detectLegacyNow() {
+    try {
+      var q = new URLSearchParams(location.search);
+      return q.get('legacyNow') === '1';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Thin Agent desk (Home Focus) is the default home. Opt out with ?now=0
+  // or localStorage onetone.nowHome=0. Workbench trigger channels remain via
+  // ?now=0 / legacy preferences.
+  function isEnabled() {
+    try {
+      var q = new URLSearchParams(location.search);
+      if (q.get('now') === '0') return false;
+      if (q.get('now') === '1') return true;
+      var ls = global.localStorage && global.localStorage.getItem('onetone.nowHome');
+      if (ls === '0') return false;
+      if (ls === '1') return true;
+      return true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  function smokeFeedbackNodes() {
+    var out = [];
+    var a = $('codexSmokeFeedback');
+    var b = $('claudeSmokeFeedback');
+    if (a) out.push(a);
+    if (b) out.push(b);
+    return out;
+  }
+
+  function setSmokeFeedbackHidden(hidden) {
+    smokeFeedbackNodes().forEach(function (el) {
+      el.hidden = !!hidden;
+      if (hidden) el.setAttribute('aria-hidden', 'true');
+      else el.removeAttribute('aria-hidden');
+    });
+  }
+
+  function useHomeFocusSurface() {
+    return !useLegacyNow && !isDemo && !agentDemo && view !== 'scenes';
+  }
+
+  function ensureHomeFocusStore() {
+    var S = global.OneToneHomeFocusStore;
+    if (!S) return;
+    if (homeFocusUnsub) return;
+    homeFocusUnsub = S.subscribe(function (dto) {
+      homeFocusCache = dto || null;
+      if (mounted && useHomeFocusSurface()) {
+        lastPaintHtml = '';
+        // Project root may become available after confirm — refresh home snapshot filter.
+        scheduleAgentHomeRefresh();
+        paint();
+      }
+    });
+    S.fetch();
+    S.startPolling(5000);
+  }
+
+  function buildHomeFocusVm() {
+    var A = global.OneToneHomeFocusAdapter;
+    if (!A || !A.toViewModel) return null;
+    var vm = A.toViewModel(
+      homeFocusCache || (global.OneToneHomeFocusStore && global.OneToneHomeFocusStore.get())
+    );
+    if (vm && A.enrichFromAttention) {
+      vm = A.enrichFromAttention(vm, attentionCache);
+    }
+    if (vm && A.enrichFromHomeSnapshot) {
+      vm = A.enrichFromHomeSnapshot(vm, agentHomeCache);
+    }
+    if (vm && A.enrichFromInventory) {
+      vm = A.enrichFromInventory(vm, inventoryCache, attentionCache);
+    }
+    return vm;
+  }
+
+  function renderHomeFocusHtml(voice) {
+    var V = global.OneToneHomeFocusView;
+    var Sec = global.OneToneHomeSecondaryViews;
+    var vm = buildHomeFocusVm() || {
+      mode: 'degraded',
+      headline: '正在准备当前情境…',
+      assistance: '正在读取前台应用与项目依据。',
+      presence: { line: '未发现应用 · 未知项目', note: '不会用猜测填充首页' },
+      evidence: [],
+      primary: { id: 'retry', label: '重试' },
+      appName: '未发现应用',
+      projectName: '未知项目',
+      title: '正在准备',
+      copy: '正在读取当前工作…'
+    };
+
+    if (hfView === 'habits') {
+      return Sec && Sec.renderHabits ? Sec.renderHabits() : '';
+    }
+    if (hfView === 'history') {
+      var sessions = [];
+      try {
+        var snapHist = agentHomeCache;
+        var list = (snapHist && snapHist.recentSessions) || [];
+        sessions = list.map(function (s) {
+          return {
+            title: s.title || '未命名工作',
+            when: formatSessionWhen(s.updatedAt || s.updated_at)
+          };
+        });
+      } catch (_) {}
+      return Sec && Sec.renderHistory
+        ? Sec.renderHistory({ sessions: sessions })
+        : '';
+    }
+    if (hfView === 'memory') {
+      var memories = [];
+      try {
+        var mems = (agentHomeCache && agentHomeCache.memories) || [];
+        memories = mems.map(function (m) {
+          return { content: m.content || '', when: m.memoryType || '项目记忆' };
+        });
+      } catch (_) {}
+      return Sec && Sec.renderMemory
+        ? Sec.renderMemory({ memories: memories })
+        : '';
+    }
+    if (hfView === 'connections') {
+      return Sec && Sec.renderConnections
+        ? Sec.renderConnections({
+            source: (homeFocusCache && homeFocusCache.source) || {},
+            provider: (homeFocusCache && homeFocusCache.provider) || {}
+          })
+        : '';
+    }
+    if (hfView === 'settings') {
+      return Sec && Sec.renderSettings
+        ? Sec.renderSettings({ legacyNote: '也可使用演示参数 ?legacyNow=1 查看旧首页。' })
+        : '';
+    }
+
+    var html =
+      V && V.renderFocus
+        ? V.renderFocus(vm, {
+            voiceHtml: (function () {
+              var U = ui();
+              if (!U || !U.renderDock) return '';
+              var snap = snapshot();
+              return (
+                '<div class="hn-dock-wrap">' +
+                U.renderDock({
+                  voiceOn: !(snap.input && snap.input.voice === false),
+                  listening: !!(voice && voice.listening),
+                  hotkey:
+                    (snap.input && (snap.input.hotkeyLabel || snap.input.hotkey)) || ''
+                }) +
+                '</div>'
+              );
+            })()
+          })
+        : '';
+    if (hfOverlay === 'pick' && hfPickHtml) html += hfPickHtml;
+    if (hfOverlay === 'progress' && hfProgressHtml) html += hfProgressHtml;
+    return html;
+  }
+
+  function handleHomeFocusAct(kind) {
+    var vm = buildHomeFocusVm() || {};
+    var Policy = global.OneToneHomeActionPolicy;
+    var S = global.OneToneHomeFocusStore;
+
+    if (kind === 'close_pick' || kind === 'close_progress' || kind === 'close_drawer') {
+      if (kind === 'close_drawer' && root) {
+        var drawer = root.querySelector('#hnRecallDrawer');
+        if (drawer) drawer.hidden = true;
+        return;
+      }
+      hfOverlay = '';
+      hfPickHtml = '';
+      hfProgressHtml = '';
+      lastPaintHtml = '';
+      paint();
+      return;
+    }
+    if (kind === 'open_scenes') {
+      setView('scenes');
+      return;
+    }
+    // Prototype act aliases → existing policy kinds
+    if (kind === 'decide') kind = 'view_progress';
+    if (kind === 'continue') kind = 'resume';
+    if (kind === 'restore') kind = (vm.primary && vm.primary.id) || 'confirm_project';
+
+    if (!Policy || !Policy.execute) return;
+    Policy.execute(kind, vm, {
+      openVoice: function () {
+        var btn = root && root.querySelector('[data-now-voice]');
+        if (btn) btn.click();
+      },
+      openProgress: function () {
+        var CW = global.OneToneCursorWorkView;
+        hfOverlay = 'progress';
+        hfProgressHtml = CW
+          ? CW.render({
+              title: vm.title,
+              copy: vm.copy,
+              events: []
+            })
+          : '';
+        lastPaintHtml = '';
+        paint();
+      },
+      openPick: function () {
+        if (!S) return;
+        S.listProjects(20).then(function (res) {
+          var projects = (res && res.projects) || [];
+          var V = global.OneToneHomeFocusView;
+          hfOverlay = 'pick';
+          hfPickHtml = V ? V.renderPickPanel(projects) : '';
+          lastPaintHtml = '';
+          paint();
+        });
+      },
+      openReason: function () {
+        hfView = 'connections';
+        lastPaintHtml = '';
+        paint();
+      }
+    }).then(function () {
+      if (S) S.fetch();
+      lastPaintHtml = '';
+      paint();
+    });
+  }
+
   function paint() {
     if (!root) return;
     var U = ui();
+    var voice = readVoiceUi();
+    var html = '';
+    // Home Focus thin desk: do not hard-depend on legacy Now model/ui.
+    // Missing model used to early-return with an empty root while smoke/dashboard were hidden → blank home.
+    if (useHomeFocusSurface()) {
+      ensureHomeFocusStore();
+      if (isDemo && U && U.renderDemoBar) {
+        html += U.renderDemoBar({
+          tier: tier,
+          agentDemo: agentDemo,
+          agentFixtureIndex: agentFixtureIndex
+        });
+      }
+      html += renderHomeFocusHtml(voice);
+      if (html === lastPaintHtml) {
+        syncVoiceStrip(voice);
+        return;
+      }
+      lastPaintHtml = html;
+      root.innerHTML = html;
+      syncVoiceStrip(voice);
+      return;
+    }
     if (!U || !model()) return;
     var snap = snapshot();
     snap.today = todayEntries;
-    var voice = readVoiceUi();
-    var html = '';
-    if (isDemo) html += U.renderDemoBar({ tier: tier });
+    var agentHome = buildAgentHomeView();
+    if (isDemo) {
+      html += U.renderDemoBar({
+        tier: tier,
+        agentDemo: agentDemo,
+        agentFixtureIndex: agentFixtureIndex
+      });
+    }
     if (view === 'scenes') {
       html += U.renderScenesView({
         snapshot: snap,
@@ -417,14 +1188,24 @@
         runtimeMode: useRuntime()
       });
     } else {
+      // Keep dock listening out of paint HTML — syncVoiceStrip patches it live.
+      // Otherwise voice flaps force full innerHTML replace and reset scroll.
+      var paintVoice = {
+        listening: false,
+        liveText: '',
+        isHint: false,
+        statusLine: '',
+        hintLine: ''
+      };
       html += U.renderNowView({
         snapshot: snap,
         needsExpanded: needsExpanded,
         adjustOpen: adjustOpen,
         pending: pending,
-        voice: voice,
-        facts: buildNowFacts(snap),
-        criticalNeed: criticalNeedOf(snap),
+        voice: paintVoice,
+        facts: buildNowFacts(snap, agentHome),
+        agentHome: agentHome,
+        criticalNeed: criticalNeedOf(snap, agentHome),
         contextPanel: contextOpen
           ? { open: true, rows: contextRows }
           : { open: false, rows: [] }
@@ -614,10 +1395,31 @@
     var gen = ++todayFetchGen;
     api.loadToday(14).then(function (rows) {
       if (gen !== todayFetchGen) return;
-      todayEntries = Array.isArray(rows) ? rows : [];
+      var next = Array.isArray(rows) ? rows : [];
+      var key = '';
+      try {
+        key = JSON.stringify(
+          next.map(function (e) {
+            return [e.time || '', e.text || '', e.src || '', e.proactive ? 1 : 0];
+          })
+        );
+      } catch (_) {
+        key = String(next.length);
+      }
+      if (key === todayPaintKey) return;
+      todayPaintKey = key;
+      todayEntries = next;
       lastPaintHtml = '';
       if (mounted) paint();
     });
+  }
+
+  function scheduleTodayRefresh() {
+    if (todayRefreshTimer) return;
+    todayRefreshTimer = setTimeout(function () {
+      todayRefreshTimer = 0;
+      refreshToday();
+    }, 1200);
   }
 
   function bindHistoryEvents() {
@@ -739,6 +1541,63 @@
     var t = e.target;
     if (!t || !t.closest) return;
 
+    var hfViewBtn = t.closest('[data-hf-view]');
+    if (hfViewBtn) {
+      var nextView = hfViewBtn.getAttribute('data-hf-view') || 'focus';
+      if (nextView === 'habits') {
+        // Prefer dedicated habits page; scenes remains behind CTA.
+        hfView = 'habits';
+      } else {
+        hfView = nextView;
+      }
+      hfOverlay = '';
+      lastPaintHtml = '';
+      if (hfView !== 'focus' && !agentHomeCache) scheduleAgentHomeRefresh();
+      paint();
+      return;
+    }
+    var recallBtn = t.closest('[data-hn-recall]');
+    if (recallBtn && useHomeFocusSurface()) {
+      var recallId = recallBtn.getAttribute('data-hn-recall') || '';
+      var V = global.OneToneHomeFocusView;
+      var drawer = root && root.querySelector('#hnRecallDrawer');
+      var titleEl = root && root.querySelector('#hnRecallTitle');
+      var bodyEl = root && root.querySelector('#hnRecallBody');
+      if (drawer && titleEl && bodyEl && V && V.drawerHtml) {
+        var titles = { history: '最近工作', memory: '项目要点', evidence: '判断依据' };
+        titleEl.textContent = titles[recallId] || '详情';
+        bodyEl.innerHTML = V.drawerHtml(recallId, buildHomeFocusVm() || {});
+        drawer.hidden = false;
+      } else if (recallId === 'history' || recallId === 'memory') {
+        hfView = recallId;
+        lastPaintHtml = '';
+        paint();
+      }
+      return;
+    }
+    var hfAct = t.closest('[data-hf-act]');
+    if (hfAct) {
+      handleHomeFocusAct(hfAct.getAttribute('data-hf-act') || '');
+      return;
+    }
+    var hfPick = t.closest('[data-hf-pick-id]');
+    if (hfPick) {
+      var S = global.OneToneHomeFocusStore;
+      if (S) {
+        S.confirmProject({
+          projectId: hfPick.getAttribute('data-hf-pick-id') || null,
+          projectRoot: hfPick.getAttribute('data-hf-pick-root') || null
+        }).then(function () {
+          hfOverlay = '';
+          hfPickHtml = '';
+          hfView = 'focus';
+          lastPaintHtml = '';
+          paint();
+        });
+      }
+      return;
+    }
+
     if (t.classList && t.classList.contains('now-gate-scr')) {
       clearPending();
       paint();
@@ -789,6 +1648,22 @@
     var tierBtn = t.closest('[data-now-tier]');
     if (tierBtn) {
       loadTier(tierBtn.getAttribute('data-now-tier'));
+      return;
+    }
+
+    var agentFx = t.closest('[data-now-agent-fx]');
+    if (agentFx) {
+      agentFixtureIndex = Number(agentFx.getAttribute('data-now-agent-fx')) || 0;
+      agentTask = null;
+      agentRows = null;
+      lastPaintHtml = '';
+      paint();
+      return;
+    }
+
+    var agentAct = t.closest('[data-now-agent-act]');
+    if (agentAct) {
+      handleAgentAct(agentAct.getAttribute('data-now-agent-act'));
       return;
     }
 
@@ -866,6 +1741,14 @@
       var hid = scenes.getAttribute('data-now-scenes') || '';
       adjustOpen = false;
       setView('scenes', hid || '');
+      return;
+    }
+
+    var fgRefresh = t.closest('[data-now-fg-refresh]');
+    if (fgRefresh) {
+      lastPaintHtml = '';
+      refreshForeground();
+      paint();
       return;
     }
 
@@ -963,6 +1846,7 @@
     lastPaintHtml = '';
     if (view === 'now') {
       needsExpanded = false;
+      hfView = 'focus';
     } else {
       adjustOpen = false;
     }
@@ -976,7 +1860,10 @@
     unsubRuntime = hr.subscribe('change', function () {
       if (!useRuntime()) return;
       scheduleAttentionRefresh();
-      refreshToday();
+      scheduleInventoryRefresh();
+      scheduleTodayRefresh();
+      scheduleAgentHomeRefresh();
+      // paint() already no-ops when HTML is unchanged; avoid forcing lastPaintHtml clear.
       if (mounted) paint();
     });
   }
@@ -986,6 +1873,13 @@
     root = $(ROOT_ID);
     if (!root) return;
     isDemo = detectDemo();
+    agentDemo = detectAgentDemo();
+    useLegacyNow = detectLegacyNow();
+    if (agentDemo) {
+      agentFixtureIndex = 0;
+      agentTask = null;
+      agentRows = null;
+    }
     if (!useRuntime()) ensureLive();
     root.addEventListener('click', onRootClick);
     bindRuntime();
@@ -993,9 +1887,12 @@
     mounted = true;
     if (useRuntime()) {
       fetchAttention();
+      fetchInventory();
       refreshToday();
       startFgPoll();
+      fetchAgentHomeSnapshot();
     }
+    if (useHomeFocusSurface()) ensureHomeFocusStore();
     paint();
   }
 
@@ -1009,11 +1906,21 @@
       stack.hidden = true;
       stack.setAttribute('aria-hidden', 'true');
     }
+    setSmokeFeedbackHidden(true);
     visible = true;
     if (useRuntime()) {
       fetchAttention();
+      fetchInventory();
       refreshToday();
       startFgPoll();
+      scheduleAgentHomeRefresh();
+    }
+    if (useHomeFocusSurface()) {
+      ensureHomeFocusStore();
+      var S = global.OneToneHomeFocusStore;
+      if (S && S.fetch) S.fetch();
+      // Continue/Recent come from agent_home_snapshot — refresh even if already mounted.
+      scheduleAgentHomeRefresh();
     }
     paint();
     syncVoiceStrip();
@@ -1030,6 +1937,7 @@
       stack.hidden = false;
       stack.removeAttribute('aria-hidden');
     }
+    setSmokeFeedbackHidden(false);
     visible = false;
   }
 
@@ -1044,8 +1952,24 @@
     setView: setView,
     loadTier: loadTier,
     isVisible: isVisible,
+    isEnabled: isEnabled,
     paint: paint,
-    syncVoice: syncVoiceStrip
+    syncVoice: syncVoiceStrip,
+    lastAgentSessionId: function () {
+      try {
+        return (
+          (agentHomeCache &&
+            agentHomeCache.activeSession &&
+            agentHomeCache.activeSession.sessionId) ||
+          (agentHomeCache &&
+            agentHomeCache.checkpoint &&
+            agentHomeCache.checkpoint.sessionId) ||
+          ''
+        );
+      } catch (_) {
+        return '';
+      }
+    }
   };
 
   function bootHomeSurface() {

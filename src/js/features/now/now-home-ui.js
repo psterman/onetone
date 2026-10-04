@@ -184,39 +184,66 @@
     return { pill: '', rest: s };
   }
 
-  function renderHero(s) {
+  function renderHero(s, facts) {
+    facts = facts || {};
     var active = s && s.active;
-    if (!active) {
-      return (
-        '<section class="now-cockpit now-cockpit--idle" aria-label="当前情景">' +
-        '<p class="now-k">当前情景</p>' +
-        '<h1>还没有情景</h1>' +
-        '<p class="now-stance">先添加一个，才能按情景帮忙</p>' +
-        '<div class="now-cockpit-foot">' +
-        '<span class="now-status-line">空库</span>' +
-        '<button type="button" class="now-btn now-btn--p" data-now-scenes="new">去添加</button>' +
-        '</div></section>'
-      );
+    var app = facts.app || '未发现';
+    var project = facts.project || '未发现';
+    var habitName =
+      (facts.habitName && String(facts.habitName).trim()) ||
+      (active ? active.name : '还没有情景');
+    var statusLine = (s && s.status && s.status.line) || '';
+    var src = sourcePill(statusLine);
+    var matchLabel =
+      facts.matchLabel ||
+      (src.pill === '已锁定'
+        ? '已锁定'
+        : src.pill === '跟随前台'
+          ? '已匹配前台'
+          : src.pill || (active ? '当前配置' : '未配置'));
+    var isOnetone =
+      !!facts.selfForeground ||
+      /onetone|一声/i.test(String(app)) ||
+      /onetone\.exe/i.test(String(facts.processName || ''));
+
+    var hint = '';
+    if (!active && !facts.habitId) {
+      hint = '先添加一个情景，才能按应用帮忙。';
+    } else if (isOnetone) {
+      hint = '正在查看 OneTone，不切换应用习惯。';
+    } else if (facts.match === 'probable' || (/通用设置/.test(habitName) && app && app !== '未发现')) {
+      hint = '还没有为此应用配置专属习惯。';
+    } else {
+      hint = src.rest || (active && active.description) || '';
     }
-    var src = sourcePill((s.status && s.status.line) || '');
-    var stance =
-      (src.pill
-        ? '<i class="now-src-pill">' + esc(src.pill) + '</i>'
-        : '') + esc(src.rest || active.description || '');
+
     return (
-      '<section class="now-cockpit' +
-      (src.pill === '已锁定' ? ' now-cockpit--pin' : '') +
-      '" aria-label="当前情景">' +
-      '<p class="now-k">当前情景</p>' +
+      '<section class="now-cockpit now-cockpit--fg" aria-label="当前前台上下文">' +
+      '<p class="now-k">当前前台</p>' +
       '<h1>' +
-      esc(active.name) +
+      esc(app) +
       '</h1>' +
-      (stance ? '<p class="now-stance">' + stance + '</p>' : '') +
+      '<div class="now-fg-grid" role="list">' +
+      '<div class="now-fg-cell" role="listitem"><span class="now-fg-k">项目</span><span class="now-fg-v' +
+      (!project || project === '未发现' ? ' is-mute' : '') +
+      (facts.projectInferred ? ' is-inferred' : '') +
+      '">' +
+      esc(project) +
+      (facts.projectInferred ? '<i>推断</i>' : '') +
+      '</span></div>' +
+      '<div class="now-fg-cell" role="listitem"><span class="now-fg-k">正在使用</span><span class="now-fg-v">' +
+      esc(habitName) +
+      '</span></div>' +
+      '<div class="now-fg-cell" role="listitem"><span class="now-fg-k">状态</span><span class="now-fg-v">' +
+      esc(matchLabel) +
+      '</span></div>' +
+      '</div>' +
+      (hint ? '<p class="now-stance">' + esc(hint) + '</p>' : '') +
       '<div class="now-cockpit-foot">' +
-      '<span class="now-status-line">' +
-      esc((s.status && s.status.line) || '') +
-      '</span>' +
-      '<button type="button" class="now-btn" data-now-scenes="">情景管理</button>' +
+      '<button type="button" class="now-btn" data-now-fg-refresh="">刷新</button>' +
+      (active || facts.habitId
+        ? '<button type="button" class="now-btn" data-now-scenes="">切换配置</button>'
+        : '<button type="button" class="now-btn now-btn--p" data-now-scenes="new">去添加</button>') +
       '</div></section>'
     );
   }
@@ -242,48 +269,215 @@
       })
       .join('');
     return (
+      '<details class="now-fold now-scenes-fold">' +
+      '<summary>切换情景</summary>' +
       '<section class="now-scenes-strip" aria-label="我的情景">' +
       '<div class="now-strip-head"><h2>我的情景</h2>' +
       '<button type="button" class="now-mgmt-link" data-now-scenes="">情景管理</button></div>' +
       '<div class="now-strip-row">' +
       strip +
-      '</div></section>'
+      '</div></section></details>'
     );
   }
 
-  function renderFacts(facts) {
-    facts = facts || {};
-    function row(k, v, weak, inferred) {
-      return (
-        '<div class="now-fact-row"><span class="now-fact-k">' +
-        esc(k) +
-        '</span><span class="now-fact-v' +
-        (weak ? ' is-mute' : '') +
-        (inferred ? ' is-inferred' : '') +
-        '">' +
-        esc(v || '未发现') +
-        (inferred ? '<i>推断</i>' : '') +
-        '</span></div>'
-      );
-    }
-    return (
-      '<section class="now-zone now-zone--facts" aria-label="现在">' +
-      '<p class="now-zone-k">现在 <span>本机实时事实</span></p>' +
-      '<h2 class="now-zone-h">' +
-      esc(facts.hero || facts.app || '未发现') +
-      '</h2>' +
-      '<div class="now-facts">' +
-      row('前台应用', facts.app, !facts.app || facts.app === '未发现') +
-      row(
-        '项目',
-        facts.project || '未发现',
-        !facts.project || facts.project === '未发现',
-        !!facts.projectInferred
-      ) +
-      row('你在电脑前', facts.presence || '不知道', true) +
-      row('Agent', facts.agent || '未知', !facts.agentWaiting) +
+  function renderFacts(_facts) {
+    // First screen: foreground facts live in the cockpit. Keep stub for callers.
+    return '';
+  }
+
+  function renderAgentHome(view) {
+    if (!view) return '';
+    var actions =
+      '<div class="now-agent-actions">' +
+      (view.actions || [])
+        .map(function (a) {
+          var cls = 'now-btn';
+          if (a.kind === 'primary') cls += ' now-btn--p';
+          if (a.kind === 'ghost') cls += ' now-btn--ghost';
+          return (
+            '<button type="button" class="' +
+            cls +
+            '" data-now-agent-act="' +
+            esc(a.id) +
+            '">' +
+            esc(a.label) +
+            '</button>'
+          );
+        })
+        .join('') +
+      '</div>';
+
+    var step = view.stepText
+      ? '<div class="now-agent-step"><span>当前正在</span><b>' +
+        esc(view.stepText) +
+        '</b></div>'
+      : '';
+
+    var progress = view.progress
+      ? '<div class="now-agent-progress">' +
+        '<div class="now-agent-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+        esc(String(view.progress.pct)) +
+        '"><i style="width:' +
+        esc(String(view.progress.pct)) +
+        '%"></i></div>' +
+        '<strong>' +
+        esc(view.progress.text) +
+        '</strong></div>'
+      : '';
+
+    var need = view.needYou
+      ? '<p class="now-agent-need">' + esc(view.needYou) + '</p>'
+      : '';
+
+    var note = view.controlNote
+      ? '<p class="now-agent-note">' + esc(view.controlNote) + '</p>'
+      : '';
+
+    var acts = view.activity || [];
+    var firstAct = acts[0];
+    var latestOne = firstAct
+      ? '<div class="now-agent-act-item">' +
+        '<span class="now-agent-mark ' +
+        esc((firstAct.mark && firstAct.mark.cls) || '') +
+        '" aria-hidden="true">' +
+        esc((firstAct.mark && firstAct.mark.mark) || '·') +
+        '</span>' +
+        '<div><div class="tx">' +
+        esc(firstAct.text) +
+        '</div>' +
+        (firstAct.time ? '<div class="sub">' + esc(firstAct.time) + '</div>' : '') +
+        '</div></div>'
+      : '<div class="now-agent-empty">' + esc(view.activityEmpty || '还没有新动静') + '</div>';
+
+    var activityItems = acts
+      .map(function (a) {
+        return (
+          '<div class="now-agent-act-item">' +
+          '<span class="now-agent-mark ' +
+          esc((a.mark && a.mark.cls) || '') +
+          '" aria-hidden="true">' +
+          esc((a.mark && a.mark.mark) || '·') +
+          '</span>' +
+          '<div><div class="tx">' +
+          esc(a.text) +
+          '</div>' +
+          (a.time ? '<div class="sub">' + esc(a.time) + '</div>' : '') +
+          '</div></div>'
+        );
+      })
+      .join('');
+
+    var memHtml = (view.refs && view.refs.memLines ? view.refs.memLines : [])
+      .map(function (m) {
+        return (
+          '<span class="now-agent-mem" title="' +
+          esc(m.body || '') +
+          '">' +
+          esc(m.title) +
+          '</span>'
+        );
+      })
+      .join('');
+
+    var moreBody =
+      '<div class="now-agent-activity" aria-label="最近活动">' +
+      '<p class="now-sec-k">最近活动</p>' +
+      (activityItems ||
+        '<div class="now-agent-empty">' + esc(view.activityEmpty || '还没有新动静') + '</div>') +
       '</div>' +
-      '<p class="now-trust">在场与前台来自本机；项目名由窗口标题推断。</p></section>'
+      '<div class="now-agent-refs" aria-label="上下文摘要">' +
+      '<p class="now-sec-k">上下文摘要</p>' +
+      '<p class="now-agent-stats">' +
+      esc((view.refs && view.refs.statsLine) || '') +
+      '</p>' +
+      (memHtml ? '<div class="now-agent-mems">' + memHtml + '</div>' : '') +
+      '</div>';
+
+    var rows = Array.isArray(view.agentRows) ? view.agentRows : [];
+    var kindLabel = {
+      needsYou: '需要你',
+      living: '进行中',
+      error: '异常',
+      recent: '最近'
+    };
+    var ledger =
+      rows.length > 1
+        ? rows
+            .map(function (r) {
+              var badges = '';
+              if (r.evidenceTier || r.confidence) {
+                badges +=
+                  '<span class="now-agent-badge">' +
+                  esc(String(r.evidenceTier || r.confidence || '')) +
+                  '</span>';
+              }
+              if (r.probeStatus && /stale|read_locked|consent/i.test(String(r.probeStatus))) {
+                badges +=
+                  '<span class="now-agent-badge now-agent-badge--warn">' +
+                  esc(String(r.probeStatus)) +
+                  '</span>';
+              }
+              return (
+                '<div class="now-agent-ledger-row" data-kind="' +
+                esc(String(r.kind || '')) +
+                '">' +
+                '<span class="now-agent-ledger-kind">' +
+                esc(kindLabel[r.kind] || r.kind || '') +
+                '</span>' +
+                '<span class="now-agent-ledger-prov">' +
+                esc(r.provider || 'Agent') +
+                '</span>' +
+                '<span class="now-agent-ledger-title">' +
+                esc(r.title || r.cause || '') +
+                '</span>' +
+                (r.when
+                  ? '<span class="now-agent-ledger-when">' + esc(r.when) + '</span>'
+                  : '') +
+                (badges ? '<span class="now-agent-ledger-badges">' + badges + '</span>' : '') +
+                '</div>'
+              );
+            })
+            .join('')
+        : '';
+
+    return (
+      '<section class="now-zone now-zone--agent" aria-label="Agent 台账" data-now-agent-home>' +
+      (ledger
+        ? '<div class="now-agent-ledger" aria-label="多个 Agent">' +
+          '<p class="now-help-k">Agent 台账 · ' +
+          esc(String(rows.length)) +
+          ' 条</p>' +
+          ledger +
+          '</div>'
+        : '') +
+      '<div class="now-agent-card' +
+      (view.idle ? ' is-idle' : '') +
+      '">' +
+      '<p class="now-help-k">' +
+      esc(view.helpK) +
+      '</p>' +
+      '<h3 class="now-agent-title">' +
+      esc(view.title) +
+      '</h3>' +
+      '<p class="now-agent-blurb">' +
+      view.blurb +
+      '</p>' +
+      step +
+      progress +
+      need +
+      actions +
+      note +
+      (view.demo
+        ? '<p class="now-agent-demo">演示数据 · 尚未连接 Provider</p>'
+        : '') +
+      '</div>' +
+      '<div class="now-agent-latest" aria-label="最近一条活动">' +
+      latestOne +
+      '</div>' +
+      '<details class="now-fold now-agent-more"><summary>更多信息</summary>' +
+      moreBody +
+      '</details>' +
+      '</section>'
     );
   }
 
@@ -309,10 +503,7 @@
       '<div class="now-can-pair">' +
       '<button type="button" class="now-can-card" data-now-ctx-open>' +
       '<span class="now-can-ic">🔍</span><b>查看上下文</b>' +
-      '<s>看看 OneTone 到底知道什么</s></button>' +
-      '<div class="now-can-card is-disabled" aria-disabled="true">' +
-      '<span class="now-can-ic">🤖</span><b>交给 Agent</b>' +
-      '<s>入口尚未接通</s></div></div></section>'
+      '<s>看看 OneTone 到底知道什么</s></button></div></section>'
     );
   }
 
@@ -405,12 +596,14 @@
       renderContextPanel(opts.contextPanel) +
       '<div class="now-body">' +
       '<div class="now-layout">' +
-      renderHero(s) +
-      renderScenesStrip(s) +
-      renderVoiceStrip() +
-      renderFacts(opts.facts) +
+      renderHero(s, opts.facts) +
+      renderAgentHome(opts.agentHome) +
       renderCanZone({ criticalNeed: opts.criticalNeed }) +
+      renderScenesStrip(s) +
+      '<details class="now-fold now-today-fold"><summary>今天</summary>' +
       renderTodayBox(s.today) +
+      '</details>' +
+      renderVoiceStrip() +
       '</div></div>' +
       renderDock({ voiceOn: voice, listening: listening, hotkey: hotkey }) +
       '</div>'
@@ -518,6 +711,28 @@
     if (!fixtures) return '';
     var order = fixtures.DEMO_ORDER || [];
     var tier = opts.tier || 's1';
+    var agentBar = '';
+    var AH = global.OneToneNowAgentHome;
+    if (AH && AH.fixtureLabels && opts.agentDemo) {
+      var labels = AH.fixtureLabels();
+      var ai = opts.agentFixtureIndex != null ? opts.agentFixtureIndex : 0;
+      agentBar =
+        '<div class="now-demo now-demo--agent" id="nowAgentDemoBar">' +
+        labels
+          .map(function (row) {
+            return (
+              '<button type="button" data-now-agent-fx="' +
+              esc(String(row.index)) +
+              '"' +
+              (row.index === ai ? ' class="on"' : '') +
+              '>' +
+              esc(row.label) +
+              '</button>'
+            );
+          })
+          .join('') +
+        '</div>';
+    }
     return (
       '<div class="now-demo" id="nowDemoBar">' +
       order
@@ -534,7 +749,8 @@
           );
         })
         .join('') +
-      '</div>'
+      '</div>' +
+      agentBar
     );
   }
 
@@ -545,6 +761,7 @@
     resolveHotkey: resolveHotkey,
     renderVoiceStrip: renderVoiceStrip,
     renderDock: renderDock,
+    renderAgentHome: renderAgentHome,
     renderNowView: renderNowView,
     renderScenesView: renderScenesView,
     renderDemoBar: renderDemoBar

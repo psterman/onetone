@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-home-snapshot"
+description = "Enables the cmd_agent_home_snapshot command without any pre-configured scope."
+commands.allow = ["cmd_agent_home_snapshot"]
+
+[[permission]]
+identifier = "deny-cmd-agent-home-snapshot"
+description = "Denies the cmd_agent_home_snapshot command without any pre-configured scope."
+commands.deny = ["cmd_agent_home_snapshot"]

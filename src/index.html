@@ -29,6 +29,7 @@
   <link rel="stylesheet" href="css/home-v9.css" />
   <link rel="stylesheet" href="css/home-workbench.css" />
   <link rel="stylesheet" href="css/now-home.css" />
+  <link rel="stylesheet" href="css/codex-smoke-feedback.css" />
   <link rel="stylesheet" href="css/agent-proto-panel.css" />
   <link rel="stylesheet" href="css/keys-workflow.css?v=keys-rail-plan-2" />
   <link rel="stylesheet" href="css/flow-desk.css" />
@@ -188,6 +189,18 @@
                 <div class="home-center" id="wbCenter">
                   <div class="wb-home-alert" id="wbHomeAlerts" hidden role="status"></div>
                   <div class="now-home" id="nowHomeRoot" hidden aria-hidden="true"></div>
+                  <div class="codex-smoke-feedback" id="codexSmokeFeedback" aria-live="polite">
+                    <label class="codex-smoke-feedback__label" for="codexSmokePrompt">向 Codex 提问</label>
+                    <textarea class="codex-smoke-feedback__input" id="codexSmokePrompt" rows="3" placeholder="例如：这个项目的首页现在负责什么？只读回答一句。"></textarea>
+                    <button type="button" class="codex-smoke-feedback__btn" id="codexSmokeTestBtn">发送并回流到卡片</button>
+                    <div class="codex-smoke-feedback__card" id="codexSmokeTaskCard" hidden></div>
+                  </div>
+                  <div class="codex-smoke-feedback" id="claudeSmokeFeedback" aria-live="polite">
+                    <label class="codex-smoke-feedback__label" for="claudeSmokePrompt">向 Claude 提问</label>
+                    <textarea class="codex-smoke-feedback__input" id="claudeSmokePrompt" rows="3" placeholder="例如：用一句话说明 OneTone 首页职责（只读）。"></textarea>
+                    <button type="button" class="codex-smoke-feedback__btn codex-smoke-feedback__btn--claude" id="claudeSmokeTestBtn">发送并回流到卡片</button>
+                    <div class="codex-smoke-feedback__card" id="claudeSmokeTaskCard" hidden></div>
+                  </div>
                   <!-- hidden until Now.hide(): avoids workbench flash before syncNowHomeSurface -->
                   <div class="wb-dashboard-stack" id="wbDashboardStack" hidden aria-hidden="true">
                       <section class="wb-scope-top" id="wbScopeTop" aria-label="当前习惯">
@@ -4485,8 +4498,9 @@
 <section class="settings-panel drawer-section agent-proto-page" id="settingsPanelAgent" hidden>
   <iframe class="agent-proto-frame" id="agentProtoFrame" title="Agent" src="agent-proto/agent-page?embed=1" loading="lazy"></iframe>
 </section>
-<section class="settings-panel drawer-section agent-proto-page" id="settingsPanelAgentData" hidden>
-  <iframe class="agent-proto-frame" id="agentDataProtoFrame" title="数据" src="agent-proto/agent-data?embed=1" loading="lazy"></iframe>
+<section class="settings-panel drawer-section agent-proto-page" id="settingsPanelAgentData" hidden aria-hidden="true">
+  <!-- 别名壳：真实数据叶嵌在 Agent 面板 #agentDataNestFrame；此帧停用避免双桥 -->
+  <iframe class="agent-proto-frame" id="agentDataProtoFrame" title="数据（已并入 Agent）" src="about:blank" hidden></iframe>
 </section>
           </div>
         </div>
@@ -5715,8 +5729,19 @@
   <script src="js/features/now/fixtures.js"></script>
   <script src="js/features/now/now-model.js"></script>
   <script src="js/features/now/now-today.js"></script>
+  <script src="js/features/agent/agent-home-pulse.js"></script>
+  <script src="js/features/now/now-agent-home.js"></script>
+  <script src="js/features/now/home-focus-store.js"></script>
+  <script src="js/features/now/home-focus-adapter.js"></script>
+  <script src="js/features/now/home-action-policy.js"></script>
+  <script src="js/features/now/home-focus-view.js"></script>
+  <script src="js/features/now/cursor-work-view.js"></script>
+  <script src="js/features/now/history-view.js"></script>
+  <script src="js/features/now/memory-view.js"></script>
   <script src="js/features/now/now-home-ui.js"></script>
   <script src="js/features/now/now-home.js"></script>
+  <script src="js/features/home/codex-smoke-feedback.js"></script>
+  <script src="js/features/home/claude-smoke-feedback.js"></script>
   <script src="js/features/home/home-workbench.js"></script>
   <script src="js/features/settings/channel-config-overview.js"></script>
   <script src="js/features/home/home-v9-bridge.js"></script>

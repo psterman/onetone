@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-checkpoint-resume"
+description = "Enables the cmd_agent_checkpoint_resume command without any pre-configured scope."
+commands.allow = ["cmd_agent_checkpoint_resume"]
+
+[[permission]]
+identifier = "deny-cmd-agent-checkpoint-resume"
+description = "Denies the cmd_agent_checkpoint_resume command without any pre-configured scope."
+commands.deny = ["cmd_agent_checkpoint_resume"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-mcp-checkpoint-preview"
+description = "Enables the cmd_agent_mcp_checkpoint_preview command without any pre-configured scope."
+commands.allow = ["cmd_agent_mcp_checkpoint_preview"]
+
+[[permission]]
+identifier = "deny-cmd-agent-mcp-checkpoint-preview"
+description = "Denies the cmd_agent_mcp_checkpoint_preview command without any pre-configured scope."
+commands.deny = ["cmd_agent_mcp_checkpoint_preview"]
