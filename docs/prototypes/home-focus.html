@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 当前工作</title>
+  <style>
+    :root { --bg:#f4f7f7; --paper:#fff; --ink:#123331; --muted:#536764; --line:#dbe7e5; --teal:#08756d; --teal-dark:#075e58; --teal-soft:#e2f5f1; --orange:#c2410c; --orange-soft:#fff1e9; --blue:#2563eb; --shadow:0 12px 30px rgba(15,23,42,.07); }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.55 "Segoe UI", "Microsoft YaHei", sans-serif; }
+    button { font:inherit; cursor:pointer; }
+    .app { max-width:1160px; margin:0 auto; padding:28px 34px 48px; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:34px; }
+    .brand { display:flex; align-items:center; gap:10px; font-weight:750; letter-spacing:-.02em; font-size:18px; }
+    .brand-mark { width:28px; height:28px; border-radius:9px; background:var(--teal); display:grid; place-items:center; color:white; font-size:15px; }
+    .nav { display:flex; align-items:center; gap:8px; }
+    .nav button, .quiet { border:0; background:transparent; color:var(--muted); padding:8px 12px; border-radius:8px; }
+    .nav button:hover, .quiet:hover { background:#e8f1ef; color:var(--ink); }
+    .eyebrow { color:var(--teal-dark); font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; }
+    h1 { margin:8px 0 8px; font-size:clamp(30px,4vw,48px); line-height:1.08; letter-spacing:-.045em; }
+    .lead { margin:0; color:var(--muted); max-width:560px; font-size:16px; }
+    .hero { display:flex; justify-content:space-between; align-items:flex-end; gap:32px; margin-bottom:26px; }
+    .hero-note { color:var(--muted); font-size:12px; white-space:nowrap; }
+    .environment { background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:15px 18px; display:flex; align-items:center; justify-content:space-between; gap:18px; box-shadow:var(--shadow); margin-bottom:18px; }
+    .env-left { display:flex; align-items:center; gap:13px; min-width:0; }
+    .app-icon { width:40px; height:40px; border-radius:11px; background:#162238; color:white; display:grid; place-items:center; font-weight:800; }
+    .env-title { font-weight:750; }
+    .env-sub { color:var(--muted); font-size:12px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .status { display:inline-flex; align-items:center; gap:6px; color:var(--teal-dark); background:var(--teal-soft); border-radius:999px; padding:5px 9px; font-size:12px; font-weight:650; }
+    .dot { width:7px; height:7px; border-radius:50%; background:#16a34a; }
+    .focus-card { background:var(--paper); border:1px solid var(--line); border-radius:18px; padding:25px; box-shadow:var(--shadow); }
+    .focus-head { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
+    .focus-label { color:var(--muted); font-size:13px; }
+    .focus-title { font-size:25px; font-weight:760; letter-spacing:-.03em; margin:6px 0 7px; }
+    .focus-copy { color:var(--muted); margin:0; max-width:640px; }
+    .state { color:var(--teal-dark); background:var(--teal-soft); padding:7px 11px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap; }
+    .focus-grid { display:grid; grid-template-columns:1fr 280px; gap:24px; margin-top:24px; }
+    .next { border-left:3px solid var(--orange); padding:14px 16px; background:var(--orange-soft); border-radius:0 12px 12px 0; }
+    .next small { color:#9a3412; font-weight:700; }
+    .next strong { display:block; margin:5px 0 12px; font-size:17px; }
+    .primary { border:0; background:var(--orange); color:white; border-radius:9px; padding:10px 15px; font-weight:750; box-shadow:0 4px 0 #c2410c; transition:transform .15s, box-shadow .15s; }
+    .primary:hover { transform:translateY(-1px); box-shadow:0 5px 0 #c2410c; }
+    .secondary { border:1px solid var(--line); color:var(--ink); background:white; border-radius:9px; padding:9px 13px; font-weight:650; }
+    .secondary:hover { background:#f0f8f6; }
+    .facts { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .fact { border:1px solid var(--line); border-radius:11px; padding:12px; }
+    .fact small { display:block; color:var(--muted); margin-bottom:3px; }
+    .fact b { font-size:13px; }
+    .below { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px; }
+    .panel { background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:20px; }
+    .panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+    .panel h2 { margin:0; font-size:15px; }
+    .panel a { color:var(--teal-dark); font-size:12px; text-decoration:none; }
+    .session { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-top:1px solid #edf2f1; }
+    .session:first-of-type { border-top:0; padding-top:0; }
+    .session-title { font-weight:650; }
+    .session-meta { color:var(--muted); font-size:12px; margin-top:2px; }
+    .session-time { color:var(--muted); font-size:12px; }
+    .memory { display:flex; gap:10px; align-items:flex-start; padding:12px 0; border-top:1px solid #edf2f1; }
+    .memory:first-of-type { border-top:0; padding-top:0; }
+    .memory-mark { color:var(--teal); font-size:18px; line-height:1; }
+    .memory p { margin:0; font-size:13px; }
+    .memory small { color:var(--muted); display:block; margin-top:3px; }
+    .footer { margin-top:24px; color:var(--muted); font-size:12px; display:flex; justify-content:space-between; }
+    .say-card { margin-top:18px; background:#153b38; color:white; border-radius:18px; padding:22px 24px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+    .say-card h2 { margin:0 0 4px; font-size:20px; letter-spacing:-.02em; }
+    .say-card p { margin:0; color:#c9e4df; }
+    .say-button { border:0; background:#fff; color:#075e58; border-radius:11px; padding:12px 18px; font-weight:800; white-space:nowrap; }
+    .say-button:hover { background:#e7faf5; }
+    .simple-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:18px; }
+    .simple-action { border:1px solid var(--line); background:var(--paper); color:var(--ink); border-radius:13px; text-align:left; padding:15px; font-weight:700; }
+    .simple-action small { display:block; color:var(--muted); font-weight:400; margin-top:3px; }
+    .simple-action:hover { border-color:var(--teal); background:#f1fbf8; }
+    .modes { display:none; gap:7px; margin:0 0 15px; }
+    .mode { border:1px solid var(--line); background:transparent; border-radius:999px; padding:6px 10px; color:var(--muted); font-size:12px; }
+    .mode.active { background:#153b38; color:white; border-color:#153b38; }
+    @media (max-width:760px) { .app{padding:20px 16px 36px}.topbar{margin-bottom:25px}.nav button{padding:6px}.hero{display:block}.hero-note{display:block;margin-top:15px}.environment{align-items:flex-start}.environment .status{display:none}.focus-grid,.below{grid-template-columns:1fr}.facts{grid-template-columns:1fr 1fr}.facts .fact:last-child{grid-column:1/-1}.focus-head{display:block}.state{display:inline-block;margin-top:12px}.footer{display:block}.footer span{display:block;margin-top:5px} }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none!important; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">◌</span> OneTone</div>
+      <nav class="nav" aria-label="主导航"><button>当前工作</button><button>历史</button><button>设置</button></nav>
+    </header>
+
+    <section class="hero">
+      <div><h1>你想让我现在帮你做什么？</h1><p class="lead">不用找设置，也不用理解 Agent 状态。直接说一句话就可以开始。</p></div>
+      <div class="hero-note">本地数据 · 不上传会话内容</div>
+    </section>
+
+    <div class="modes" aria-label="原型状态切换">
+      <button class="mode active" data-mode="resume">可恢复</button>
+      <button class="mode" data-mode="running">正在运行</button>
+      <button class="mode" data-mode="empty">没有会话</button>
+    </div>
+
+    <section class="environment" aria-label="当前环境">
+      <div class="env-left"><div class="app-icon">C</div><div><div class="env-title">你现在正在使用 Cursor</div><div class="env-sub">项目：voice-pilot</div></div></div>
+      <div class="status"><span class="dot"></span>已准备好</div>
+    </section>
+
+    <section class="focus-card" id="focusCard" aria-live="polite">
+      <div class="focus-head"><div><div class="focus-label">上次做到这里</div><div class="focus-title" id="focusTitle">首页 Agent 原型设计</div><p class="focus-copy" id="focusCopy">我记得你正在整理首页，让它更容易理解和操作。</p></div><div class="state" id="state">可以继续</div></div>
+      <div class="focus-grid"><div class="facts"><div class="fact"><small>我可以接着做</small><b id="fact1">继续整理首页</b></div><div class="fact"><small>相关内容</small><b id="fact2">已经记住了</b></div><div class="fact"><small>上次使用</small><b id="fact3">今天 12:55</b></div></div><div class="next"><small>建议</small><strong id="nextText">接着刚才的工作</strong><button class="primary" id="primary">继续帮我做</button></div></div>
+    </section>
+
+    <section class="say-card"><div><h2>直接说一句话</h2><p>例如：“帮我看看首页为什么没有显示 Cursor 数据”</p></div><button class="say-button">开始说话</button></section>
+    <section class="simple-actions" aria-label="常用操作"><button class="simple-action">继续刚才的工作<small>从上次停下的地方开始</small></button><button class="simple-action">看看刚才发生了什么<small>用简单的方式查看进展</small></button><button class="simple-action">我想做点别的<small>告诉 Agent 新任务</small></button></section>
+
+    <div class="below" hidden>
+      <section class="panel"><div class="panel-head"><h2>最近会话</h2><a href="#">查看全部 →</a></div><div class="session"><div><div class="session-title">首页 Agent prototype design</div><div class="session-meta">Cursor · 可恢复</div></div><span class="session-time">12:55</span></div><div class="session"><div><div class="session-title">修复 snapshot event sync</div><div class="session-meta">Cursor · 已完成</div></div><span class="session-time">昨天</span></div><div class="session"><div><div class="session-title">Agent Session Store Plan C</div><div class="session-meta">Cursor · 已完成</div></div><span class="session-time">周一</span></div></section>
+      <section class="panel"><div class="panel-head"><h2>项目记忆</h2><a href="#">管理记忆 →</a></div><div class="memory"><span class="memory-mark">⌁</span><div><p>首页应该优先展示当前应用、当前任务和下一步。</p><small>项目记忆 · 刚刚使用</small></div></div><div class="memory"><span class="memory-mark">⌁</span><div><p>Cursor session 需要按 workspace / project root 定位。</p><small>Observation · 今天</small></div></div><div class="memory"><span class="memory-mark">⌁</span><div><p>Agent 数据必须标明实时、缓存或推断来源。</p><small>项目记忆 · 昨天</small></div></div></section>
+    </div>
+    <footer class="footer"><span>OneTone 会根据你正在使用的应用自动准备好</span><span>更多设置</span></footer>
+  </main>
+  <script>
+    const states={resume:{title:'继续上次的 Agent 任务',copy:'上次在首页 Agent 原型设计这里暂停，已经保存了上下文和修改文件。',state:'可恢复',f1:'整理首页信息层级',f2:'3 个文件',f3:'今天 12:55',next:'继续实现 Cursor 首页布局',button:'继续任务'},running:{title:'Agent 正在处理首页',copy:'Cursor 正在根据当前项目上下文整理首页结构，你可以继续工作。',state:'正在运行',f1:'生成首页原型',f2:'正在读取',f3:'刚刚',next:'查看当前进展',button:'查看进展'},empty:{title:'还没有找到可继续的会话',copy:'已经识别到 Cursor 和 voice-pilot，但当前项目没有可恢复的 Agent 会话。',state:'没有会话',f1:'voice-pilot',f2:'未发现',f3:'刚刚',next:'开始一个新的 Agent 任务',button:'开始任务'}};
+    document.querySelectorAll('.mode').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.mode').forEach(x=>x.classList.remove('active'));btn.classList.add('active');const s=states[btn.dataset.mode];for(const [id,val] of [['focusTitle',s.title],['focusCopy',s.copy],['state',s.state],['fact1',s.f1],['fact2',s.f2],['fact3',s.f3],['nextText',s.next],['primary',s.button]])document.getElementById(id).textContent=val;}));
+  </script>
+</body>
+</html>

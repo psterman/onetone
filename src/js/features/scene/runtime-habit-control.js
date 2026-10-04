@@ -94,10 +94,29 @@
     return cfg().runtimeHabitControl.pin||null;
   }
 
+  function isSelfOrTrayNoise(identity){
+    if(!identity) return true;
+    var exe=String(identity.exeName||identity.exe_name||'').toLowerCase();
+    if(exe.indexOf('onetone')>=0) return true;
+    var path=String(identity.fullPath||identity.full_path||'').toLowerCase();
+    if(path.indexOf('onetone')>=0||path.indexOf('voice-pilot')>=0) return true;
+    return exe==='explorer.exe'
+      ||exe==='shellexperiencehost.exe'
+      ||exe==='startmenuexperiencehost.exe'
+      ||exe==='searchhost.exe'
+      ||exe==='applicationframehost.exe'
+      ||exe==='textinputhost.exe'
+      ||exe==='lockapp.exe'
+      ||exe==='systemsettings.exe';
+  }
+
   function noteForegroundIdentity(identity){
     if(!(identity&&(identity.exeName||identity.exe_name||identity.fullPath||identity.full_path))){
       return;
     }
+    // Keep last real external app while OneTone itself (or tray shell) is focused.
+    // Noting self would flip habit runtime every poll and flicker the homepage.
+    if(isSelfOrTrayNoise(identity)) return;
     var nextSig=fgSignatureFromIdentity(identity);
     var prevSig=fgSignatureFromIdentity(lastFgIdentity);
     var same=!!lastFgIdentity&&nextSig===prevSig

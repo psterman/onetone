@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent 工作记录 · 原型图</title>
+  <style>
+    :root {
+      --bg: #eef1f6;
+      --ink: #1a2233;
+      --mute: #5b6578;
+      --line: #d5dbe6;
+      --card: #fff;
+      --accent: #3a4580;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14px/1.45 "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 420px at 10% -10%, #dfe6ff 0%, transparent 60%),
+        radial-gradient(700px 380px at 100% 0%, #e8f0ea 0%, transparent 55%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    header {
+      padding: 28px 28px 12px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      letter-spacing: -0.02em;
+    }
+    header p { margin: 0; color: var(--mute); max-width: 54ch; }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .actions a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .actions a.sec {
+      background: #fff;
+      color: var(--accent);
+      border: 1px solid var(--line);
+    }
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: 1280px;
+      margin: 8px auto 0;
+      padding: 0 28px;
+    }
+    .tabs button {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-weight: 700;
+      color: var(--mute);
+      cursor: pointer;
+    }
+    .tabs button.is-on {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    main {
+      max-width: 1280px;
+      margin: 16px auto 40px;
+      padding: 0 28px;
+    }
+    figure {
+      margin: 0;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 18px 40px rgba(26, 34, 51, 0.08);
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #f7f8fb;
+    }
+    figcaption {
+      padding: 12px 16px 14px;
+      border-top: 1px solid var(--line);
+      color: var(--mute);
+      font-size: 13px;
+    }
+    figcaption strong { color: var(--ink); }
+    .grid {
+      display: none;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .grid.is-on { display: grid; }
+    .grid figure { box-shadow: 0 10px 24px rgba(26, 34, 51, 0.06); }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      header, .tabs, main { padding-left: 16px; padding-right: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Agent 工作记录 · 原型图</h1>
+    <p>把 Agent 当「帮手」。先「你现在可以」，再「最近帮过」。用量无源不造假。</p>
+    <div class="actions">
+      <a href="./index.html?variant=timeline&amp;mode=quiet" target="_blank" rel="noopener">打开可交互原型</a>
+      <a class="sec" href="./index.html?variant=attention&amp;mode=attention&amp;canvas=1" target="_blank" rel="noopener">需注意 · 画布</a>
+      <a class="sec" href="./index.html?variant=resume&amp;mode=return&amp;canvas=1" target="_blank" rel="noopener">返回 · 画布</a>
+      <a class="sec" href="./index.html?mode=degraded&amp;canvas=1" target="_blank" rel="noopener">受限 · 画布</a>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="原型态">
+    <button type="button" class="is-on" data-tab="quiet">安静</button>
+    <button type="button" data-tab="attention">需注意</button>
+    <button type="button" data-tab="return">返回</button>
+    <button type="button" data-tab="degraded">受限</button>
+    <button type="button" data-tab="all">四态对照</button>
+  </div>
+
+  <main>
+    <figure id="hero">
+      <img id="heroImg" src="./screenshots/01-quiet-canvas.png" alt="安静态画布" />
+      <figcaption id="heroCap"><strong>安静</strong> · 进行中 · 状态正常 · 进度来自 checkpoint</figcaption>
+    </figure>
+
+    <div class="grid" id="gridAll" aria-hidden="true">
+      <figure>
+        <img src="./screenshots/01-quiet-canvas.png" alt="安静" />
+        <figcaption><strong>安静</strong> · 进行中</figcaption>
+      </figure>
+      <figure>
+        <img src="./screenshots/02-attention-canvas.png" alt="需注意" />
+        <figcaption><strong>需注意</strong> · 需你处理 · 去决定</figcaption>
+      </figure>
+      <figure>
+        <img src="./screenshots/03-return-canvas.png" alt="返回" />
+        <figcaption><strong>返回</strong> · 已暂停 · 可继续</figcaption>
+      </figure>
+      <figure>
+        <img src="./screenshots/04-degraded-canvas.png" alt="受限" />
+        <figcaption><strong>受限</strong> · 来源不稳 · 确认项目</figcaption>
+      </figure>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var meta = {
+        quiet: {
+          src: './screenshots/01-quiet-canvas.png',
+          cap: '<strong>安静</strong> · 进行中 · 状态正常 · 进度来自 checkpoint'
+        },
+        attention: {
+          src: './screenshots/02-attention-canvas.png',
+          cap: '<strong>需注意</strong> · Claude · 状态「需你处理」· CTA「去决定」'
+        },
+        return: {
+          src: './screenshots/03-return-canvas.png',
+          cap: '<strong>返回</strong> · 已暂停 · 「能接着上次帮你」'
+        },
+        degraded: {
+          src: './screenshots/04-degraded-canvas.png',
+          cap: '<strong>受限</strong> · 来源不稳 · 无假额度 · 「确认项目」'
+        }
+      };
+      var tabs = document.querySelectorAll('.tabs button');
+      var hero = document.getElementById('hero');
+      var heroImg = document.getElementById('heroImg');
+      var heroCap = document.getElementById('heroCap');
+      var grid = document.getElementById('gridAll');
+
+      tabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          tabs.forEach(function (b) { b.classList.remove('is-on'); });
+          btn.classList.add('is-on');
+          var id = btn.getAttribute('data-tab');
+          if (id === 'all') {
+            hero.hidden = true;
+            grid.classList.add('is-on');
+            grid.setAttribute('aria-hidden', 'false');
+            return;
+          }
+          hero.hidden = false;
+          grid.classList.remove('is-on');
+          grid.setAttribute('aria-hidden', 'true');
+          heroImg.src = meta[id].src;
+          heroImg.alt = id;
+          heroCap.innerHTML = meta[id].cap;
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

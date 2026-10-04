@@ -603,6 +603,9 @@
     var cmd = data.cmd;
     if (cmd === 'selectAgent') {
       selectAgent(data.app || data.kind);
+      if (root.OneToneAgentDataBridge && typeof root.OneToneAgentDataBridge.refresh === 'function') {
+        try { root.OneToneAgentDataBridge.refresh({ kind: 'cursor' }); } catch (_) {}
+      }
       return;
     }
     if (cmd === 'setPadEnabled') {

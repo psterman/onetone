@@ -1,4 +1,5 @@
 mod action_history_cmd;
+mod agent_center_cmd;
 mod agent_home_cmd;
 mod context_presence_cmd;
 mod context_snapshot_cmd;
@@ -23,6 +24,7 @@ mod update;
 mod window;
 
 pub use action_history_cmd::*;
+pub use agent_center_cmd::*;
 pub use agent_home_cmd::*;
 pub use context_presence_cmd::*;
 pub use context_snapshot_cmd::*;

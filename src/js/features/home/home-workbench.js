@@ -2381,7 +2381,10 @@
       if(!isFollowFgEnabled()) return;
       var identity=habitIdentityFrom(res);
       var rt=global.OneToneRuntimeHabitControl;
-      if(rt&&rt.noteForegroundIdentity) rt.noteForegroundIdentity(identity||res);
+      // Never note OneTone/tray as the habit FG — keeps homepage from flickering.
+      if(rt&&rt.noteForegroundIdentity&&identity&&!isSelfFgIdentity(identity)&&!isTrayFgIdentity(identity)){
+        rt.noteForegroundIdentity(identity);
+      }
       try{
         var noted=identity||res;
         var appId=noted&&(noted.matchedPresetAppId||noted.matched_preset_app_id||noted.appId)||'';
@@ -3123,7 +3126,11 @@
     var api=global.OneToneNowHome;
     if(!api) return;
     if(activeNav==='home'){
-      if(api.show) api.show();
+      if(api.isEnabled&&api.isEnabled()){
+        if(api.show) api.show();
+      }else if(api.hide){
+        api.hide();
+      }
     }else if(api.hide){
       api.hide();
     }
@@ -3141,6 +3148,8 @@
         activeNav='runtime';
       }else if(panel==='general'){
         activeNav='runtime';
+      }else if(panel==='agent'&&(opts.agentSub==='data'||(ui&&ui.agentSub==='data'))){
+        activeNav='agentData';
       }else{
         activeNav=NAV_PANEL_MAP[panel||'']||'general';
       }
@@ -3442,6 +3451,7 @@
         var opts={panel:row.panel};
         if(row.debugMode) opts.debugMode=row.debugMode;
         if(row.focus) opts.focus=row.focus;
+        if(row.agentSub) opts.agentSub=row.agentSub;
         openSettings(opts);
       }
     });

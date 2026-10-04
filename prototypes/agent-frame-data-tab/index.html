@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>方案原型 · Agent 壳内第 4 叶「数据」</title>
+  <style>
+    :root {
+      --ink: #0f1b2a;
+      --mute: #5a6c80;
+      --line: rgba(15, 27, 42, 0.12);
+      --agent: #3a4580;
+      --data: #066a9c;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+      color: var(--ink);
+      background: #d5dde8;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100%;
+    }
+    .scheme-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      align-items: center;
+      padding: 10px 14px;
+      background: #e8eef5;
+      border-bottom: 1px solid var(--line);
+    }
+    .scheme-bar strong { font-size: 13px; }
+    .scheme-bar span { font-size: 12px; color: var(--mute); max-width: 52ch; line-height: 1.35; }
+    .scheme-bar .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+    .scheme-bar button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 11px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--mute);
+      cursor: pointer;
+    }
+    .scheme-bar button[aria-pressed="true"] {
+      background: var(--agent);
+      border-color: var(--agent);
+      color: #fff;
+    }
+    .scheme-bar button[data-go="data"][aria-pressed="true"] {
+      background: var(--data);
+      border-color: var(--data);
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #f3f6fa;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <header class="scheme-bar" aria-label="方案说明">
+    <strong>基于生产 Agent 页</strong>
+    <span>数据叶左栏：上 Agent Dock · 下 Soft Pad；点图标切换右侧数据。</span>
+    <div class="acts">
+      <button type="button" data-go="data" aria-pressed="true">数据叶（默认）</button>
+      <button type="button" data-go="float" aria-pressed="false">配置叶 · 浮窗</button>
+      <button type="button" data-go="open">单独打开画布</button>
+    </div>
+  </header>
+  <iframe id="frame" title="Agent 方案原型" src="./agent-page.html"></iframe>
+  <script>
+    (function () {
+      var frame = document.getElementById('frame');
+      var buttons = document.querySelectorAll('.scheme-bar [data-go]');
+      function press(id) {
+        buttons.forEach(function (b) {
+          if (b.getAttribute('data-go') === 'open') return;
+          b.setAttribute('aria-pressed', b.getAttribute('data-go') === id ? 'true' : 'false');
+        });
+      }
+      function callSetSub(id) {
+        try {
+          var w = frame.contentWindow;
+          if (w && typeof w.setSub === 'function') w.setSub(id);
+          else if (w && w.document) {
+            var btn = w.document.querySelector('#subs [data-sub="' + id + '"]');
+            if (btn) btn.click();
+          }
+        } catch (e) {}
+      }
+      document.querySelector('.scheme-bar').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-go]');
+        if (!b) return;
+        var go = b.getAttribute('data-go');
+        if (go === 'open') {
+          window.open('./agent-page.html', '_blank', 'noopener');
+          return;
+        }
+        press(go);
+        callSetSub(go);
+      });
+      frame.addEventListener('load', function () {
+        try {
+          var w = frame.contentWindow;
+          if (!w) return;
+          // expose for scheme bar
+          var orig = null;
+          var poll = setInterval(function () {
+            var btn = w.document.querySelector('#subs [data-sub="data"]');
+            if (!btn) return;
+            clearInterval(poll);
+            // wrap clicks inside frame to sync scheme bar
+            w.document.querySelectorAll('#subs [data-sub]').forEach(function (el) {
+              el.addEventListener('click', function () {
+                var id = el.getAttribute('data-sub');
+                press(id === 'data' ? 'data' : 'float');
+              });
+            });
+            var go = w.document.getElementById('gotoStats');
+            if (go) go.addEventListener('click', function () { press('data'); });
+          }, 50);
+          setTimeout(function () { clearInterval(poll); }, 3000);
+        } catch (e) {}
+      });
+    })();
+  </script>
+</body>
+</html>

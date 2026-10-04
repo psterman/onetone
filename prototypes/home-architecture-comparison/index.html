@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>OneTone 首页架构 · 四版比较</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%232a9cc4'/%3E%3Cpath d='M10 16h12M16 10v12' stroke='white' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="stage" aria-live="polite"></div>
+
+  <aside class="app-drawer" id="appDrawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden>
+    <button class="drawer-scrim" type="button" data-close="drawer" aria-label="关闭抽屉"></button>
+    <section class="drawer-panel">
+      <header class="drawer-head">
+        <div>
+          <p class="overline" id="drawerEyebrow">OneTone</p>
+          <h2 id="drawerTitle">详情</h2>
+        </div>
+        <button class="icon-button" type="button" data-close="drawer" aria-label="关闭抽屉">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+      <div class="drawer-body" id="drawerBody"></div>
+    </section>
+  </aside>
+
+  <section class="confirm-dialog" data-confirmation="cross-channel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" hidden>
+    <button class="confirm-scrim" type="button" data-close="confirmation" aria-label="取消确认"></button>
+    <div class="confirm-card">
+      <div class="confirm-glyph" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3v5M4.2 7.5l4.3 2.5M19.8 7.5L15.5 10M4 16.5l4.5-2.6M20 16.5l-4.5-2.6"/><circle cx="12" cy="13" r="3"/></svg>
+      </div>
+      <p class="overline">跨通道安全确认</p>
+      <h2 id="confirmTitle">摄像头不能独自批准</h2>
+      <p id="confirmMessage">摄像头只能发起批准请求，请再用按键、语音或 Soft Pad 确认。</p>
+      <div class="confirm-actions">
+        <button class="button button--quiet" type="button" data-close="confirmation">取消</button>
+        <button class="button button--primary" type="button" data-cross-confirm="keys">模拟按键确认</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <nav class="proto-picker" aria-label="Prototype variants">
+    <span class="proto-picker-highlight" aria-hidden="true"></span>
+    <button class="proto-picker-item" data-active aria-current="true">续作</button>
+    <button class="proto-picker-item">一句话</button>
+    <button class="proto-picker-item">动作桌</button>
+    <button class="proto-picker-item">双栏舱</button>
+    <span class="proto-picker-divider" aria-hidden="true"></span>
+    <button class="proto-picker-item proto-picker-replay" aria-label="Replay animation (R)">↻</button>
+  </nav>
+
+  <script src="./shared.js"></script>
+  <script src="./variant-resume-desk.js"></script>
+  <script src="./variant-intent-stage.js"></script>
+  <script src="./variant-action-table.js"></script>
+  <script src="./variant-split-cockpit.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

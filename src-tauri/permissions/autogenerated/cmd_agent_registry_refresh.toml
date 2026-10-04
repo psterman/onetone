@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-agent-registry-refresh"
+description = "Enables the cmd_agent_registry_refresh command without any pre-configured scope."
+commands.allow = ["cmd_agent_registry_refresh"]
+
+[[permission]]
+identifier = "deny-cmd-agent-registry-refresh"
+description = "Denies the cmd_agent_registry_refresh command without any pre-configured scope."
+commands.deny = ["cmd_agent_registry_refresh"]

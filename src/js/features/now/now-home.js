@@ -1053,6 +1053,7 @@
     var html =
       V && V.renderFocus
         ? V.renderFocus(vm, {
+            listening: !!(voice && voice.listening),
             voiceHtml: (function () {
               var U = ui();
               if (!U || !U.renderDock) return '';
@@ -1163,11 +1164,17 @@
       html += renderHomeFocusHtml(voice);
       if (html === lastPaintHtml) {
         syncVoiceStrip(voice);
+        // Do not remount/refresh Agent roster on every paint — that IPC path was freezing home.
         return;
       }
       lastPaintHtml = html;
       root.innerHTML = html;
       syncVoiceStrip(voice);
+      if (global.OneToneAgentCenter && global.OneToneAgentCenter.ensureHomeMounted) {
+        try {
+          global.OneToneAgentCenter.ensureHomeMounted(projectHintForHome());
+        } catch (_) {}
+      }
       return;
     }
     if (!U || !model()) return;
@@ -1306,7 +1313,12 @@
     }
     if (dock && !dock.disabled) {
       dock.classList.toggle('is-on', !!voice.listening);
-      dock.textContent = voice.listening ? '🎤 倾听中…' : '🎤 说点什么';
+      dock.textContent = voice.listening ? '🎤 倾听中…' : '🎤 开始听写';
+    }
+    var dictate = root && root.querySelector('.hn-cta--dictate[data-now-voice]');
+    if (dictate && !dictate.disabled) {
+      dictate.textContent = voice.listening ? '倾听中…' : '开始听写';
+      dictate.setAttribute('aria-pressed', voice.listening ? 'true' : 'false');
     }
   }
 

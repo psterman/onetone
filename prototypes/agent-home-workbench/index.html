@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone · 首页 Agent 去重预览</title>
+<style>
+:root {
+  --ink: #0f172a;
+  --ink2: #334155;
+  --ink3: #64748b;
+  --ink4: #94a3b8;
+  --line: #e2e8f0;
+  --line2: #f1f5f9;
+  --paper: #fff;
+  --bg: #f4f6f8;
+  --pri: #0284c7;
+  --pri-sf: #e0f2fe;
+  --pri-d: #0369a1;
+  --ok: #059669;
+  --ok-sf: #ecfdf5;
+  --wa: #b45309;
+  --wa-sf: #fffbeb;
+  --fail: #be123c;
+  --fail-sf: #fff1f2;
+  --run: #2563eb;
+  --run-sf: #eff6ff;
+  --agent: #3a4580;
+  --agent-sf: #e4e7f5;
+  --mem: #0f766e;
+  --git: #7c3aed;
+  --rail: #f8fafc;
+  --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", system-ui, sans-serif;
+  --mono: Consolas, "Cascadia Mono", ui-monospace, monospace;
+  --sh: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --sh2: 0 10px 36px rgba(15, 23, 42, 0.07);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  background:
+    radial-gradient(720px 380px at 50% -12%, #dbeafe 0%, transparent 55%),
+    var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--pri); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+.proto {
+  position: sticky; top: 0; z-index: 70;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 9px 14px; background: #0f1b2a; color: #9eb0c2; font-size: 12px;
+}
+.proto strong { color: #fff; }
+.proto em { font-style: normal; color: #7dd3fc; font-weight: 700; }
+.proto .tag {
+  font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 999px; background: rgba(125,211,252,.15);
+  color: #7dd3fc; border: 1px solid rgba(125,211,252,.35);
+}
+.proto .hint { flex: 1; min-width: 140px; }
+.proto .tog {
+  border: 1px solid rgba(125,211,252,.4); background: rgba(14,165,233,.15);
+  color: #7dd3fc; border-radius: 9px; padding: 5px 10px; font-weight: 700; font-size: 12px;
+}
+.proto .tog[aria-pressed="true"] { background: #0284c7; color: #fff; border-color: transparent; }
+
+.page { width: min(1180px, 100%); margin: 0 auto; padding: 12px 10px 40px; }
+.brief {
+  background: rgba(255,255,255,.94); border: 1px solid var(--line);
+  border-radius: 14px; padding: 11px 14px; margin-bottom: 10px;
+}
+.brief h1 { margin: 0 0 4px; font-size: 16px; letter-spacing: -.02em; }
+.brief p { margin: 0; color: var(--ink3); font-size: 12.5px; max-width: 95ch; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chips span {
+  font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+  background: var(--agent-sf); color: var(--agent); border: 1px solid rgba(58,69,128,.25);
+}
+
+.shell {
+  display: grid; grid-template-columns: 200px minmax(0, 1fr);
+  min-height: 740px; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 16px; overflow: hidden; box-shadow: var(--sh2);
+}
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .nav { display: none; }
+}
+
+.nav {
+  background: var(--rail); border-right: 1px solid var(--line);
+  padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto;
+}
+.brand { display: flex; align-items: center; gap: 8px; padding: 4px 8px 12px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.brand-mark {
+  width: 32px; height: 32px; border-radius: 9px;
+  background: linear-gradient(135deg, #0c4a6e, #0ea5e9);
+  color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 13px;
+}
+.brand-name { font-size: 12px; font-weight: 800; display: block; }
+.brand-sub { font-size: 9.5px; color: var(--ink4); }
+.search {
+  display: flex; align-items: center; gap: 6px; height: 36px; margin: 0 0 8px;
+  padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff;
+  color: var(--ink4); font-size: 12px;
+}
+.nav-sec {
+  margin: 8px 8px 3px; font-size: 10px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ink4);
+}
+.nav-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  border: 0; background: transparent; color: var(--ink3);
+  border-radius: 999px; padding: 8px 12px; text-align: left; font-weight: 650; font-size: 13px;
+}
+.nav-item.is-active { background: var(--pri-sf); color: var(--pri-d); }
+.nav-item:disabled { opacity: .55; cursor: default; }
+.nav-foot { margin-top: auto; padding-top: 10px; }
+.nav-foot button {
+  width: 100%; border: 1px solid var(--line); background: #fff;
+  border-radius: 9px; padding: 8px; font-weight: 700; color: var(--ink3);
+}
+
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.topbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 10px 16px; border-bottom: 1px solid var(--line); background: #fff;
+}
+.topbar h2 { margin: 0; font-size: 13px; font-weight: 800; color: var(--ink2); }
+.top-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill.is-run { background: var(--run-sf); color: var(--run); border-color: rgba(37,99,235,.25); }
+.pill.is-wa { background: var(--wa-sf); color: var(--wa); border-color: rgba(180,83,9,.3); }
+.pill.is-fail { background: var(--fail-sf); color: var(--fail); border-color: rgba(190,18,60,.25); }
+.pill.is-ok { background: var(--ok-sf); color: var(--ok); border-color: rgba(5,150,105,.25); }
+.pill.is-idle { background: var(--line2); color: var(--ink3); }
+.pill.is-pulse .dot { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.now-body { flex: 1; overflow: auto; padding: 16px 18px 14px; }
+.now-layout { display: flex; flex-direction: column; gap: 12px; max-width: 680px; }
+
+.demo-bar {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  padding: 8px 10px; border-radius: 10px; background: #0f1b2a; color: #9eb0c2; font-size: 11.5px;
+}
+.demo-bar strong { color: #7dd3fc; font-size: 11px; margin-right: 4px; }
+.demo-chip {
+  border: 1px solid rgba(255,255,255,.14); background: transparent; color: #c5d4e2;
+  border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 650;
+}
+.demo-chip[aria-pressed="true"] { background: var(--pri); border-color: transparent; color: #fff; }
+
+/* 1. 当前工作上下文 — 合并情景+前台+Agent 一句话 */
+.ctx {
+  background: linear-gradient(160deg, #0c4a6e 0%, #0369a1 100%);
+  color: #fff; border-radius: 14px; padding: 18px 20px 16px; box-shadow: var(--sh2);
+}
+.ctx .k {
+  margin: 0 0 8px; font-size: 11px; font-weight: 650; opacity: .7;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.ctx .env {
+  margin: 0 0 6px; font-size: 22px; font-weight: 800; letter-spacing: -.03em; line-height: 1.2;
+}
+.ctx .agent-line {
+  margin: 0 0 12px; font-size: 14px; font-weight: 650; opacity: .95; line-height: 1.4;
+}
+.ctx .agent-line[data-idle="true"] { opacity: .72; font-weight: 500; }
+.ctx-foot {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+}
+.src-pill {
+  font-size: 10.5px; font-weight: 700;
+  background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.28);
+  border-radius: 999px; padding: 2px 8px;
+}
+.ctx .scene { font-size: 12.5px; opacity: .78; }
+.ctx .btn {
+  margin-left: auto; border-color: rgba(255,255,255,.35);
+  background: rgba(255,255,255,.12); color: #fff;
+}
+.ctx .btn:hover { background: rgba(255,255,255,.22); }
+
+.scenes {
+  background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 12px; box-shadow: var(--sh);
+}
+.strip-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.strip-head h2 {
+  margin: 0; font-size: 11px; font-weight: 750; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--ink3);
+}
+.mgmt { margin-left: auto; border: 0; background: none; color: var(--ink3); font-size: 12px; font-weight: 550; }
+.mgmt:hover { color: var(--pri); }
+.strip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.scene-chip {
+  appearance: none; border: 1px solid var(--line); background: var(--line2);
+  border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 700; color: var(--ink);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.scene-chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.scene-chip .tag {
+  font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px;
+  background: rgba(255,255,255,.18);
+}
+.scene-chip:not(.on) .tag { background: var(--ok-sf); color: #047857; }
+
+.sec-k {
+  margin: 2px 0 8px; font-size: 11px; font-weight: 750; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--ink3);
+}
+
+/* 2. Agent 主卡 — 唯一完整状态源 */
+.help-card {
+  border: 1px solid rgba(2,132,199,.2);
+  background: linear-gradient(165deg, #f0f9ff 0%, #fff 42%);
+  border-radius: 16px; padding: 16px 16px 14px; display: grid; gap: 12px;
+  box-shadow: var(--sh);
+}
+.help-card.is-idle-empty {
+  background: #fafbfc; border-style: dashed; border-color: var(--line);
+}
+.help-k {
+  margin: 0; font-size: 12px; font-weight: 650; color: var(--pri-d); letter-spacing: .02em;
+}
+.help-title {
+  margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.02em; line-height: 1.3;
+}
+.help-blurb {
+  margin: 0; font-size: 13.5px; color: var(--ink2); line-height: 1.45;
+}
+.help-blurb b { color: var(--ink); font-weight: 750; }
+.help-step {
+  padding: 10px 12px; border-radius: 12px; background: #fff;
+  border: 1px solid var(--line);
+}
+.help-step .lbl {
+  font-size: 11px; font-weight: 700; color: var(--ink4); margin-bottom: 3px;
+}
+.help-step .val { font-size: 14px; font-weight: 700; color: var(--ink); }
+.help-progress {
+  display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--ink3);
+}
+.help-progress .bar { flex: 1; }
+.help-progress strong { color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.need-you {
+  padding: 10px 12px; border-radius: 12px;
+  background: var(--wa-sf); border: 1px solid rgba(180,83,9,.28);
+  color: var(--wa); font-size: 13px; font-weight: 650;
+}
+.happened .item {
+  display: grid; grid-template-columns: 22px 1fr; gap: 8px;
+  padding: 8px 2px; align-items: start;
+}
+.happened .mark {
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 11px; font-weight: 800; background: var(--line2); color: var(--ink3);
+}
+.happened .mark.is-done { background: var(--ok-sf); color: var(--ok); }
+.happened .mark.is-now { background: var(--run-sf); color: var(--run); }
+.happened .mark.is-wait { background: var(--wa-sf); color: var(--wa); }
+.happened .mark.is-fail { background: var(--fail-sf); color: var(--fail); }
+.happened .tx { font-size: 13.5px; font-weight: 650; color: var(--ink); }
+.happened .sub { font-size: 11.5px; color: var(--ink4); margin-top: 1px; }
+.ref-box {
+  background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+}
+.ref-stats { margin: 0 0 8px; font-size: 13.5px; color: var(--ink2); font-weight: 600; }
+.topbar .soft {
+  font-size: 12px; color: var(--ink3); font-weight: 550;
+}
+.agent-card {
+  border: 1px solid rgba(58,69,128,.28);
+  background: linear-gradient(165deg, #eef0f8 0%, #fff 48%);
+  border-radius: 14px; padding: 14px; display: grid; gap: 11px;
+  box-shadow: var(--sh);
+}
+.agent-card.is-idle-empty {
+  background: #fafbfc; border-style: dashed; border-color: var(--line);
+}
+.agent-card .row1 {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; justify-content: space-between;
+}
+.agent-card h3 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: -.02em; max-width: 40ch; }
+.agent-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 5px; font-size: 12px; color: var(--ink3); }
+.agent-meta b { color: var(--ink); font-weight: 700; }
+.agent-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: 7px; background: var(--agent-sf); color: var(--agent);
+  font-weight: 750; font-size: 11px;
+}
+.agent-badge .av {
+  width: 16px; height: 16px; border-radius: 5px; background: var(--agent);
+  color: #fff; display: grid; place-items: center; font-size: 8px; font-weight: 800;
+}
+.progress { display: grid; gap: 5px; }
+.progress-top { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink3); }
+.progress-top strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.bar { height: 7px; border-radius: 999px; background: var(--line2); overflow: hidden; }
+.bar > i {
+  display: block; height: 100%; border-radius: inherit;
+  background: linear-gradient(90deg, #3a4580, #0284c7); width: 0; transition: width .3s ease;
+}
+.step-now {
+  padding: 8px 10px; border-radius: 9px; background: #f8fafc; border: 1px solid var(--line); font-size: 12.5px;
+}
+.step-now .lbl {
+  font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--ink4); margin-bottom: 2px;
+}
+.wait-reason {
+  margin-top: 6px; padding: 7px 9px; border-radius: 8px;
+  background: var(--wa-sf); border: 1px solid rgba(180,83,9,.28);
+  color: var(--wa); font-size: 12px; font-weight: 650;
+}
+.idle-hint { margin: 0; font-size: 13px; color: var(--ink3); }
+
+/* 3. 动作入口 — 只动作，不再复述状态 */
+.actions-row {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.btn {
+  border: 1px solid var(--line); background: #fff; color: var(--ink2);
+  border-radius: 9px; padding: 8px 12px; font-size: 12.5px; font-weight: 700;
+}
+.btn:hover { background: var(--line2); color: var(--ink); }
+.btn--p { background: var(--agent); border-color: var(--agent); color: #fff; }
+.btn--p:hover { filter: brightness(1.05); color: #fff; }
+.btn--wa { background: var(--wa-sf); border-color: rgba(180,83,9,.35); color: var(--wa); }
+.btn--ghost {
+  border: 0; background: transparent; color: var(--ink4); font-weight: 650;
+  padding: 8px 6px; text-decoration: underline; text-underline-offset: 2px;
+}
+.btn--ghost:hover { color: var(--ink2); background: transparent; }
+.actions-row .btn--ghost { margin-left: auto; }
+.drawer-note {
+  margin: 0 0 12px; padding: 8px 10px; border-radius: 8px;
+  background: var(--line2); font-size: 11.5px; color: var(--ink3); line-height: 1.45;
+}
+.btn--pri { background: var(--pri-d); border-color: var(--pri-d); color: #fff; }
+.btn--pri:hover { filter: brightness(1.05); color: #fff; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* 4. 最近活动 — 最多 3 条 */
+.activity {
+  background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+}
+.activity-item {
+  display: grid; grid-template-columns: 20px minmax(0,1fr) auto;
+  gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line2); align-items: start;
+}
+.activity-item:last-child { border-bottom: 0; }
+.act-ico {
+  width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center;
+  font-size: 10px; font-weight: 800; color: #fff; margin-top: 1px;
+}
+.act-ico.tool { background: var(--run); }
+.act-ico.file { background: var(--pri); }
+.act-ico.memory { background: var(--mem); }
+.act-ico.checkpoint { background: var(--git); }
+.act-ico.agent { background: var(--agent); }
+.act-ico.done { background: var(--ok); }
+.act-ico.fail { background: var(--fail); }
+.act-ico.wait { background: var(--wa); }
+.act-title { margin: 0; font-size: 13px; font-weight: 700; }
+.act-sum { margin: 2px 0 0; font-size: 11.5px; color: var(--ink3); }
+.act-time { font-size: 11px; color: var(--ink4); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.link-more {
+  display: inline; border: 0; background: none; padding: 0;
+  font-size: 12px; font-weight: 650; color: var(--ink4); text-decoration: underline;
+  text-underline-offset: 2px; cursor: pointer;
+}
+.link-more:hover { color: var(--pri); }
+.sec-foot {
+  display: flex; justify-content: flex-end; padding: 8px 12px 2px; margin: 0;
+}
+.activity-empty { padding: 16px; text-align: center; color: var(--ink3); font-size: 12.5px; }
+
+/* 5. 关键上下文 — 统计 + 一行摘要 */
+.context-sum {
+  background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+}
+.ctx-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ctx-chips span {
+  font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: 8px;
+  background: #f0fdfa; border: 1px solid rgba(15,118,110,.2); color: #0f4c47;
+}
+.mem-hits { display: grid; gap: 4px; margin-bottom: 8px; }
+.mem-hit {
+  display: flex; align-items: baseline; gap: 8px; width: 100%;
+  font-size: 12.5px; padding: 6px 8px; border-radius: 8px;
+  background: transparent; border: 0; text-align: left; color: inherit;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mem-hit:hover { background: var(--line2); }
+.mem-hit .kind {
+  flex: none; font-size: 10px; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--ink4); min-width: 74px;
+}
+.mem-hit .one-line {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--ink2); font-weight: 550;
+}
+.mem-hits .mem-hit {
+  padding-left: 0;
+}
+.mem-hits .mem-hit::before {
+  content: "·";
+  color: var(--ink4);
+  margin-right: 6px;
+  font-weight: 800;
+}
+.mem-hit[data-kind="observation"] .kind { color: var(--run); }
+.mem-hit[data-kind="reasoning"] .kind { color: var(--agent); }
+.mem-hit[data-kind="git"] .kind { color: var(--git); }
+.mem-hit[data-kind="session"] .kind { color: var(--mem); }
+
+/* 来源标识 */
+.src-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+  background: var(--line2); color: var(--ink3); border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.src-tag[data-tier="provider"] { background: var(--pri-sf); color: var(--pri-d); border-color: #bae6fd; }
+.src-tag[data-tier="runner"] { background: var(--agent-sf); color: var(--agent); border-color: rgba(58,69,128,.25); }
+.src-tag[data-tier="observe"] { background: #f0fdfa; color: var(--mem); border-color: rgba(15,118,110,.22); }
+.src-tag[data-tier="infer"] { background: var(--wa-sf); color: var(--wa); border-color: rgba(180,83,9,.28); }
+.provenance-row {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  margin-top: 2px;
+}
+.field-src {
+  font-size: 10.5px; color: var(--ink4); font-weight: 550;
+}
+.field-src b { color: var(--ink3); font-weight: 700; }
+.act-sum .src-mini {
+  margin-left: 6px; font-size: 10px; color: var(--ink4); font-weight: 650;
+}
+.ctrl-note {
+  margin: 0; font-size: 11px; color: var(--ink4); line-height: 1.4;
+}
+
+.dock {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; border-top: 1px solid var(--line); background: #fafbfc;
+}
+.dock-voice {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 8px 14px; font-weight: 650; font-size: 13px; color: var(--ink2);
+}
+.dock-center { margin: 0 auto; font-size: 12px; color: var(--ink4); font-weight: 650; }
+.dock-key {
+  font-size: 11px; padding: 4px 8px; border-radius: 6px;
+  background: var(--line2); color: var(--ink3); border: 1px solid var(--line);
+}
+
+/* drawer = 处理详情页 */
+.drawer-scr {
+  position: fixed; inset: 0; z-index: 90; background: rgba(15,23,42,.35);
+  display: none; justify-content: flex-end;
+}
+.drawer-scr.is-on { display: flex; }
+.drawer {
+  width: min(460px, 100%); height: 100%; background: #fff;
+  box-shadow: -12px 0 40px rgba(15,23,42,.12);
+  display: flex; flex-direction: column;
+}
+.drawer-hd {
+  display: flex; align-items: center; gap: 10px; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fafcfe;
+}
+.drawer-hd h3 { margin: 0; font-size: 14px; font-weight: 800; }
+.drawer-tabs { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.drawer-tab {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 5px 11px; font-size: 12px; font-weight: 700; color: var(--ink3);
+}
+.drawer-tab[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.drawer-body { flex: 1; overflow: auto; padding: 12px 14px; }
+.drawer-panel[hidden] { display: none !important; }
+
+.steps { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.steps li {
+  display: grid; grid-template-columns: 26px minmax(0,1fr); gap: 10px;
+  position: relative; padding-bottom: 12px;
+}
+.steps li:last-child { padding-bottom: 0; }
+.steps li::before {
+  content: ""; position: absolute; left: 12px; top: 22px; bottom: 0;
+  width: 2px; background: var(--line2);
+}
+.steps li:last-child::before { display: none; }
+.step-ico {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 11px; font-weight: 800; border: 2px solid var(--line); background: #fff;
+  color: var(--ink4); z-index: 1;
+}
+.step-body h4 { margin: 0 0 2px; font-size: 13px; font-weight: 750; }
+.step-body p { margin: 0; font-size: 11.5px; color: var(--ink3); }
+.steps li[data-st="done"] .step-ico { background: var(--ok-sf); border-color: var(--ok); color: var(--ok); }
+.steps li[data-st="running"] .step-ico {
+  background: var(--run-sf); border-color: var(--run); color: var(--run);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+.steps li[data-st="waiting_approval"] .step-ico { background: var(--wa-sf); border-color: var(--wa); color: var(--wa); }
+.steps li[data-st="failed"] .step-ico { background: var(--fail-sf); border-color: var(--fail); color: var(--fail); }
+
+.tl { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.tl-item { border-bottom: 1px solid var(--line2); }
+.tl-item:last-child { border-bottom: 0; }
+.tl-btn {
+  width: 100%; display: grid; grid-template-columns: 20px minmax(0,1fr) auto;
+  gap: 10px; align-items: start; border: 0; background: transparent;
+  padding: 10px 2px; text-align: left; color: inherit; border-radius: 8px;
+}
+.tl-btn:hover { background: var(--line2); }
+.tl-title { font-size: 12.5px; font-weight: 700; margin: 0 0 2px; }
+.tl-sum { margin: 0; font-size: 11.5px; color: var(--ink3); }
+.tl-time { font-size: 10.5px; color: var(--ink4); font-variant-numeric: tabular-nums; }
+.tl-detail {
+  display: none; margin: 0 0 10px 30px; padding: 8px 10px;
+  background: var(--line2); border: 1px solid var(--line); border-radius: 8px;
+  font-size: 11.5px; color: var(--ink3); font-family: var(--mono); white-space: pre-wrap;
+}
+.tl-item.is-open .tl-detail { display: block; }
+.tl-item.is-open .tl-btn { background: var(--agent-sf); }
+
+.mem-grid { display: grid; gap: 8px; }
+.mem-card {
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px;
+  background: #fff; text-align: left; width: 100%; color: inherit;
+}
+.mem-card:hover { border-color: rgba(58,69,128,.35); }
+.mem-card .kind {
+  font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 4px;
+}
+.mem-card[data-kind="observation"] .kind { color: var(--run); }
+.mem-card[data-kind="reasoning"] .kind { color: var(--agent); }
+.mem-card[data-kind="git"] .kind { color: var(--git); }
+.mem-card[data-kind="session"] .kind { color: var(--mem); }
+.mem-card h4 { margin: 0 0 4px; font-size: 12.5px; font-weight: 750; }
+.mem-card p { margin: 0; font-size: 11.5px; color: var(--ink3); }
+.mem-card .meta { margin-top: 6px; font-size: 10.5px; color: var(--ink4); }
+.ctx-box {
+  margin-top: 10px; padding: 10px; border-radius: 10px;
+  background: #f0fdfa; border: 1px solid rgba(15,118,110,.22);
+}
+.ctx-box .lbl {
+  font-size: 10px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--mem); margin-bottom: 6px;
+}
+
+/* 开发者页：Snapshot JSON，默认折叠 */
+.dev {
+  display: none; margin-top: 12px;
+  background: #0f1b2a; color: #c5d4e2; border-radius: 14px; padding: 14px; font-size: 12px;
+}
+.dev.is-on { display: block; }
+.dev h3 {
+  margin: 0 0 8px; font-size: 11px; font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase; color: #7dd3fc;
+}
+.dev p { margin: 0 0 10px; color: #94a3b8; line-height: 1.5; }
+.dev pre {
+  margin: 0; padding: 10px; border-radius: 10px; background: rgba(0,0,0,.35);
+  overflow: auto; font-family: var(--mono); font-size: 11px; color: #e2e8f0; max-height: 280px;
+}
+
+.toast {
+  position: fixed; bottom: 18px; right: 18px; z-index: 100;
+  background: #0f1b2a; color: #fff; padding: 10px 14px; border-radius: 10px;
+  font-size: 12.5px; font-weight: 650; box-shadow: var(--sh2);
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity .2s, transform .2s;
+}
+.toast.is-on { opacity: 1; transform: none; }
+
+.dialog-backdrop {
+  position: fixed; inset: 0; z-index: 110; background: rgba(15,27,42,.45);
+  display: none; align-items: center; justify-content: center; padding: 16px;
+}
+.dialog-backdrop.is-on { display: flex; }
+.dialog {
+  width: min(440px, 100%); background: #fff; border-radius: 14px;
+  border: 1px solid var(--line); box-shadow: var(--sh2); overflow: hidden;
+}
+.dialog-h {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fafcfe;
+}
+.dialog-h h3 { margin: 0; font-size: 14px; }
+.dialog-b { padding: 14px; font-size: 12.5px; color: var(--ink3); }
+.dialog-b dt { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--ink4); }
+.dialog-b dd { margin: 0 0 8px; color: var(--ink); }
+.dialog-f { padding: 10px 14px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; }
+</style>
+</head>
+<body>
+  <header class="proto" role="banner">
+    <strong>OneTone · 助手首页</strong>
+    <span class="tag">独立原型</span>
+    <span class="hint">用户层亲切表达 · 技术字段在抽屉 / 开发者面板 · Snapshot 模型不变</span>
+    <button type="button" class="tog" id="btnDev" aria-pressed="false">开发者 · Snapshot</button>
+  </header>
+
+  <div class="page">
+    <div class="brief">
+      <h1>统一首页 + Agent 能力 Profile</h1>
+      <p>同一套亲切骨架；OpenCode / Cursor / Claude 用 Capability Profile 决定进度、按钮与活动降级。首页只读 homeViewModel，不伪造 3/6，不堆不可用按钮。</p>
+      <div class="chips">
+        <span>同一骨架</span>
+        <span>Profile 降级</span>
+        <span>无虚假进度</span>
+        <span>控制质量标注</span>
+      </div>
+    </div>
+
+    <div class="shell">
+      <aside class="nav" aria-label="主导航">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">一</div>
+          <div>
+            <span class="brand-name">一声 OneTone</span>
+            <span class="brand-sub">言出即行，万象成形</span>
+          </div>
+        </div>
+        <div class="search" aria-hidden="true">🔍 搜索功能或设置…</div>
+        <div class="nav-sec">主面板</div>
+        <button type="button" class="nav-item is-active" aria-current="page">首页</button>
+        <button type="button" class="nav-item" disabled>我的习惯</button>
+        <button type="button" class="nav-item" disabled>按键设置</button>
+        <button type="button" class="nav-item" disabled>虚拟键盘</button>
+        <div class="nav-sec">Agent</div>
+        <button type="button" class="nav-item" disabled>Agent</button>
+        <button type="button" class="nav-item" disabled>数据</button>
+        <div class="nav-sec">系统</div>
+        <button type="button" class="nav-item" disabled>语音设置</button>
+        <button type="button" class="nav-item" disabled>通用设置</button>
+        <div class="nav-foot"><button type="button" disabled>快速入门</button></div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <h2>现在</h2>
+          <span class="soft" id="topSoftHint">先看它在帮你做什么</span>
+          <div class="top-pills" id="topPills" aria-live="polite"></div>
+        </header>
+
+        <div class="now-body">
+          <div class="now-layout">
+            <div class="demo-bar" role="group" aria-label="原型：切换 Snapshot">
+              <strong>DEMO</strong>
+              <span id="taskSwitch"></span>
+            </div>
+
+            <section class="ctx" aria-label="当前状态">
+              <p class="k">你好</p>
+              <p class="env" id="ctxEnv">Cursor · voice-pilot</p>
+              <p class="agent-line" id="ctxAgentLine" data-idle="false">—</p>
+              <div class="ctx-foot">
+                <span class="src-pill" id="ctxFollow">跟随前台</span>
+                <span class="scene">情景 · <b id="ctxScene">通用设置</b></span>
+                <button type="button" class="btn" id="btnScenes">情景管理</button>
+              </div>
+            </section>
+
+            <section class="scenes" aria-label="我的情景">
+              <div class="strip-head">
+                <h2>我的情景</h2>
+                <button type="button" class="mgmt" id="btnScenes2">管理</button>
+              </div>
+              <div class="strip-row">
+                <button type="button" class="scene-chip on"><span>通用设置</span><span class="tag">当前</span></button>
+                <button type="button" class="scene-chip"><span>MiniMax</span></button>
+                <button type="button" class="scene-chip"><span>Cursor</span></button>
+              </div>
+            </section>
+
+            <!-- 用户层：正在帮你处理 -->
+            <section aria-label="正在帮你处理">
+              <div class="help-card" id="agentCard">
+                <p class="help-k" id="helpK">正在帮你处理</p>
+                <h3 class="help-title" id="taskTitle">—</h3>
+                <p class="help-blurb" id="helpBlurb">—</p>
+                <div class="help-step" id="stepBlock">
+                  <div class="lbl">当前正在</div>
+                  <div class="val" id="currentStepText">—</div>
+                  <div class="need-you" id="waitReason" hidden style="margin-top:8px"></div>
+                </div>
+                <div class="help-progress" id="progressBlock">
+                  <div class="bar" role="progressbar" id="progressBar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="progressFill"></i></div>
+                  <strong id="progressText">已完成 0 个步骤</strong>
+                </div>
+                <p class="idle-hint" id="idleHint" hidden>现在没有正在处理的事。可以说一句话，让 Agent 帮你做。</p>
+                <div class="actions-row" id="actionRow"></div>
+                <p class="ctrl-note" id="ctrlNote" hidden></p>
+                <!-- technical fields kept in DOM for drawer/dev, hidden on home -->
+                <span id="agentAv" hidden></span>
+                <span id="agentName" hidden></span>
+                <span id="checkpointLabel" hidden></span>
+                <span id="statusPill" hidden><span id="statusPillText"></span></span>
+                <span id="provenanceRow" hidden></span>
+                <span id="progressSrc" hidden></span>
+                <span id="ckptSrc" hidden></span>
+                <span id="stepSrc" hidden></span>
+              </div>
+            </section>
+
+            <section aria-label="刚刚发生">
+              <p class="sec-k">刚刚发生</p>
+              <div class="activity happened" id="activityBox"></div>
+            </section>
+
+            <section aria-label="它参考了这些内容">
+              <p class="sec-k">它参考了这些内容</p>
+              <div class="ref-box">
+                <p class="ref-stats" id="contextChips">—</p>
+                <div class="mem-hits" id="memHits"></div>
+                <div class="sec-foot"><button type="button" class="link-more" id="btnCtxDetail">看看它为什么这样做</button></div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <footer class="dock">
+          <button type="button" class="dock-voice" id="btnVoice">🎤 说点什么</button>
+          <span class="dock-center">● OneTone</span>
+          <kbd class="dock-key">Ctrl+Space</kbd>
+        </footer>
+      </div>
+    </div>
+
+    <aside class="dev" id="devPanel" aria-label="开发者 Snapshot">
+      <h3>开发者页 · AgentSnapshot / 事件归一化</h3>
+      <p>首页不展示此面板。正式版进调试/开发者入口。第一批 Provider：Cursor · Claude Code · OpenCode。</p>
+      <pre id="snapJson"></pre>
+    </aside>
+  </div>
+
+  <div class="drawer-scr" id="drawer" hidden>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+      <div class="drawer-hd">
+        <h3 id="drawerTitle">处理详情</h3>
+        <button type="button" class="btn" id="drawerClose">关闭</button>
+      </div>
+      <div class="drawer-tabs" role="tablist">
+        <button type="button" class="drawer-tab" role="tab" data-tab="steps" aria-selected="true">处理过程</button>
+        <button type="button" class="drawer-tab" role="tab" data-tab="timeline" aria-selected="false">全部过程</button>
+        <button type="button" class="drawer-tab" role="tab" data-tab="memory" aria-selected="false">参考内容</button>
+      </div>
+      <div class="drawer-body">
+        <div class="drawer-panel" id="panelSteps" role="tabpanel"><ol class="steps" id="stepTrack"></ol></div>
+        <div class="drawer-panel" id="panelTimeline" role="tabpanel" hidden><ul class="tl" id="timeline"></ul></div>
+        <div class="drawer-panel" id="panelMemory" role="tabpanel" hidden>
+          <div class="mem-grid" id="memoryList"></div>
+          <div class="ctx-box">
+            <div class="lbl">本次注入上下文</div>
+            <div class="ctx-chips" id="contextChipsFull"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="dialog-backdrop" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" hidden>
+    <div class="dialog">
+      <div class="dialog-h">
+        <h3 id="dialogTitle">详情</h3>
+        <button type="button" class="btn" id="dialogClose">关闭</button>
+      </div>
+      <div class="dialog-b" id="dialogBody"></div>
+      <div class="dialog-f"><button type="button" class="btn btn--pri" id="dialogOk">知道了</button></div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STATUS_UI = {
+    idle: { label: "待命", pill: "is-idle", pulse: false },
+    planning: { label: "在想办法", pill: "is-run", pulse: true },
+    running: { label: "正在工作", pill: "is-run", pulse: true },
+    waiting_approval: { label: "需要你确认", pill: "is-wa", pulse: false },
+    paused: { label: "已暂停更新", pill: "is-wa", pulse: false },
+    failed: { label: "遇到问题", pill: "is-fail", pulse: false },
+    completed: { label: "做完了", pill: "is-ok", pulse: false },
+    cancelled: { label: "已停止", pill: "is-idle", pulse: false }
+  };
+
+  var STEP_MARK = { done: "✓", running: "▶", waiting_approval: "?", failed: "!", pending: "·" };
+
+  var EVENT_ICO = {
+    task_started: { cls: "agent", mark: "S" },
+    agent_selected: { cls: "agent", mark: "A" },
+    context_loaded: { cls: "memory", mark: "C" },
+    tool_called: { cls: "tool", mark: "T" },
+    file_changed: { cls: "file", mark: "F" },
+    memory_recalled: { cls: "memory", mark: "M" },
+    checkpoint_created: { cls: "checkpoint", mark: "K" },
+    waiting_approval: { cls: "wait", mark: "?" },
+    task_paused: { cls: "wait", mark: "Ⅱ" },
+    task_resumed: { cls: "agent", mark: "▶" },
+    task_completed: { cls: "done", mark: "✓" },
+    task_failed: { cls: "fail", mark: "!" },
+    session_aborted: { cls: "fail", mark: "×" }
+  };
+
+  var TIER_LABEL = {
+    provider: "Agent 原生",
+    runner: "OneTone Runner",
+    observe: "系统观察",
+    infer: "系统推断"
+  };
+
+  var WORKSPACE = { app: "Cursor", project: "voice-pilot", scene: "通用设置", follow: true };
+
+  var PROFILES = {
+    opencode: {
+      provider: "OpenCode",
+      level: 3,
+      voiceLine: "正在执行任务步骤",
+      supports: {
+        liveEvents: true, toolEvents: true, fileChanges: true,
+        taskSteps: true, progress: true,
+        pause: false, abort: true, resume: true,
+        approval: false, subAgents: false, memoryInjection: true
+      },
+      controlQuality: { pause: "monitor", abort: "request", resume: "local" },
+      sourceQuality: { status: "native", progress: "runner" }
+    },
+    cursor: {
+      provider: "Cursor CLI",
+      level: 2,
+      voiceLine: "正在修改项目文件",
+      supports: {
+        liveEvents: true, toolEvents: true, fileChanges: true,
+        taskSteps: false, progress: false,
+        pause: false, abort: true, resume: false,
+        approval: false, subAgents: false, memoryInjection: true
+      },
+      controlQuality: { pause: "monitor", abort: "request", resume: "none" },
+      sourceQuality: { status: "native", progress: "inferred" }
+    },
+    "claude-code": {
+      provider: "Claude Hook",
+      level: 2,
+      voiceLine: "正在协作处理任务",
+      supports: {
+        liveEvents: true, toolEvents: true, fileChanges: false,
+        taskSteps: false, progress: false,
+        pause: false, abort: true, resume: false,
+        approval: true, subAgents: true, memoryInjection: true
+      },
+      controlQuality: { pause: "none", abort: "request", resume: "none" },
+      sourceQuality: { status: "native", progress: "none" }
+    }
+  };
+
+  var EVENT_VISIBILITY = {
+    tool_called: "toolEvents",
+    file_changed: "fileChanges",
+    subagent_started: "subAgents",
+    memory_recalled: "memoryInjection",
+    checkpoint_created: "taskSteps",
+    task_step: "taskSteps"
+  };
+
+  function canShowEvent(event, profile) {
+    var required = EVENT_VISIBILITY[event.type];
+    return !required || !!(profile.supports && profile.supports[required]);
+  }
+
+  /** Demo fixtures: profileId + profile + snapshot (run state separate from capability). */
+  var TASKS = [
+    {
+      profileId: "opencode",
+      profile: PROFILES.opencode,
+      snapshot: {
+        runId: "run_oc_01", taskId: "task_pad_bind", status: "running",
+        title: "修复 Soft Pad 绑定在 Cursor 丢失",
+        currentStep: { id: "s3", title: "写入绑定诊断补丁", index: 3 },
+        progress: { completed: 2, total: 6 },
+        activeAgent: { id: "opencode", name: "OpenCode", short: "OC" },
+        latestEvent: { type: "file_changed", summary: "修改诊断模块" },
+        resumable: true, checkpointId: "ckpt_19",
+        source: { provider: "OpenCode Event Stream", freshness: "实时", tier: "provider", demo: true }
+      },
+      waitReason: "",
+      steps: [
+        { id: "s1", title: "读取项目 Todo", detail: "整理待办", status: "done" },
+        { id: "s2", title: "定位绑定丢失", detail: "前台切换对比", status: "done" },
+        { id: "s3", title: "写入绑定诊断补丁", detail: "补齐会话恢复", status: "running" },
+        { id: "s4", title: "跑绑定冒烟", detail: "灯态与会话", status: "pending" },
+        { id: "s5", title: "等待确认改动", detail: "是否保留日志", status: "pending" },
+        { id: "s6", title: "记下可继续位置", detail: "checkpoint", status: "pending" }
+      ],
+      events: [
+        { id: "e1", type: "task_started", time: "11:02:04", summary: "开始处理", detail: "", tier: "runner" },
+        { id: "e2", type: "task_step", time: "11:02:20", summary: "读取项目 Todo", detail: "todo", tier: "runner" },
+        { id: "e3", type: "tool_called", time: "11:03:18", summary: "读取 diagnose.rs", detail: "", tier: "provider" },
+        { id: "e4", type: "file_changed", time: "11:04:41", summary: "修改诊断模块", detail: "+37 -4", tier: "provider" },
+        { id: "e5", type: "checkpoint_created", time: "11:04:52", summary: "创建 ckpt_19", detail: "", tier: "runner" }
+      ],
+      memories: [
+        { id: "m1", kind: "observation", title: "切前台后绑定表被重置", body: "会话未挂载", meta: "0.91" },
+        { id: "m2", kind: "reasoning", title: "优先修会话恢复", body: "不重写 UI", meta: "0.84" }
+      ],
+      context: [{ label: "代码 8 个文件" }, { label: "最近改动 12 行" }, { label: "记忆 3 条" }]
+    },
+    {
+      profileId: "cursor",
+      profile: PROFILES.cursor,
+      snapshot: {
+        runId: "run_cr_01", taskId: "task_cursor_edit", status: "running",
+        title: "修复 Soft Pad 绑定在 Cursor 丢失",
+        currentStep: { id: "s0", title: "正在修改相关文件", index: 0 },
+        progress: { completed: 0, total: 0 },
+        activeAgent: { id: "cursor", name: "Cursor", short: "CR" },
+        latestEvent: { type: "file_changed", summary: "修改诊断模块" },
+        resumable: false, checkpointId: "",
+        source: { provider: "Cursor CLI", freshness: "实时", tier: "provider", demo: true }
+      },
+      waitReason: "",
+      steps: [],
+      events: [
+        { id: "e1", type: "task_started", time: "11:10:01", summary: "开始处理", detail: "", tier: "runner" },
+        { id: "e2", type: "tool_called", time: "11:10:18", summary: "读取相关文件", detail: "read_file", tier: "provider" },
+        { id: "e3", type: "file_changed", time: "11:11:02", summary: "修改了诊断模块", detail: "+12", tier: "provider" },
+        { id: "e4", type: "tool_called", time: "11:11:40", summary: "正在查看调用处", detail: "grep", tier: "provider" }
+      ],
+      memories: [
+        { id: "m1", kind: "observation", title: "相关文件已打开", body: "diagnose.rs", meta: "" },
+        { id: "m2", kind: "git", title: "工作区有未提交改动", body: "+12", meta: "" }
+      ],
+      context: [{ label: "代码文件若干" }, { label: "最近改动" }, { label: "记忆 2 条" }]
+    },
+    {
+      profileId: "claude-code",
+      profile: PROFILES["claude-code"],
+      snapshot: {
+        runId: "run_cc_01", taskId: "task_voice_end", status: "waiting_approval",
+        title: "优化语音结束判定误触发",
+        currentStep: { id: "s4", title: "等待你批准下一步", index: 4 },
+        progress: { completed: 0, total: 0 },
+        activeAgent: { id: "claude-code", name: "Claude Code", short: "CC" },
+        latestEvent: { type: "waiting_approval", summary: "确认阈值方案" },
+        resumable: true, checkpointId: "",
+        source: { provider: "Claude Hook", freshness: "12 秒前", tier: "provider", demo: true }
+      },
+      waitReason: "是否将静音阈值从 820ms 调整为 640ms？",
+      steps: [],
+      events: [
+        { id: "e1", type: "task_started", time: "10:41:12", summary: "开始协作", detail: "", tier: "runner" },
+        { id: "e2", type: "tool_called", time: "10:42:03", summary: "刚刚请求执行命令", detail: "bash", tier: "provider" },
+        { id: "e3", type: "subagent_started", time: "10:43:10", summary: "子 Agent 正在检查测试", detail: "", tier: "provider" },
+        { id: "e4", type: "waiting_approval", time: "10:44:18", summary: "等待你的确认", detail: "640ms", tier: "provider" }
+      ],
+      memories: [
+        { id: "m1", kind: "observation", title: "短停顿会被误判为结束", body: "500–700ms", meta: "" },
+        { id: "m2", kind: "reasoning", title: "先改阈值再谈模型", body: "可回退", meta: "" }
+      ],
+      context: [{ label: "代码 3 个文件" }, { label: "日志片段" }, { label: "记忆 2 条" }]
+    },
+    {
+      profileId: "opencode",
+      profile: PROFILES.opencode,
+      snapshot: {
+        runId: "run_oc_done", taskId: "task_coach_hud", status: "completed",
+        title: "更新 Coach HUD 进度文案",
+        currentStep: { id: "s4", title: "任务完成", index: 4 },
+        progress: { completed: 4, total: 4 },
+        activeAgent: { id: "opencode", name: "OpenCode", short: "OC" },
+        latestEvent: { type: "task_completed", summary: "做完了" },
+        resumable: false, checkpointId: "ckpt_22",
+        source: { provider: "OpenCode Event Stream", freshness: "3 分钟前", tier: "provider", demo: true }
+      },
+      waitReason: "",
+      steps: [
+        { id: "s1", title: "定位文案", detail: "", status: "done" },
+        { id: "s2", title: "改写句式", detail: "", status: "done" },
+        { id: "s3", title: "冒烟检查", detail: "", status: "done" },
+        { id: "s4", title: "完成", detail: "", status: "done" }
+      ],
+      events: [
+        { id: "e1", type: "task_started", time: "08:55:01", summary: "开始", detail: "", tier: "runner" },
+        { id: "e2", type: "file_changed", time: "08:57:22", summary: "更新了文案文件", detail: "", tier: "provider" },
+        { id: "e3", type: "task_completed", time: "08:58:12", summary: "这件事做完了", detail: "", tier: "provider" }
+      ],
+      memories: [{ id: "m1", kind: "observation", title: "文案过长会被截断", body: "", meta: "" }],
+      context: [{ label: "代码 1 个文件" }, { label: "记忆 1 条" }]
+    },
+    {
+      profileId: "cursor",
+      profile: PROFILES.cursor,
+      snapshot: {
+        runId: "run_cr_idle", taskId: "task_idle", status: "idle",
+        title: "",
+        currentStep: null,
+        progress: { completed: 0, total: 0 },
+        activeAgent: { id: "cursor", name: "Cursor", short: "CR" },
+        latestEvent: null,
+        resumable: false, checkpointId: "",
+        source: { provider: "Cursor CLI", freshness: "—", tier: "provider", demo: true }
+      },
+      waitReason: "",
+      steps: [],
+      events: [],
+      memories: [],
+      context: []
+    }
+  ];
+
+  var state = { taskIndex: 0, openEventId: null, drawerTab: "steps", drawerOpen: false };
+
+  var el = {
+    taskSwitch: document.getElementById("taskSwitch"),
+    topPills: document.getElementById("topPills"),
+    ctxEnv: document.getElementById("ctxEnv"),
+    ctxAgentLine: document.getElementById("ctxAgentLine"),
+    ctxFollow: document.getElementById("ctxFollow"),
+    ctxScene: document.getElementById("ctxScene"),
+    agentCard: document.getElementById("agentCard"),
+    taskTitle: document.getElementById("taskTitle"),
+    agentAv: document.getElementById("agentAv"),
+    agentName: document.getElementById("agentName"),
+    progressText: document.getElementById("progressText"),
+    checkpointLabel: document.getElementById("checkpointLabel"),
+    statusPill: document.getElementById("statusPill"),
+    statusPillText: document.getElementById("statusPillText"),
+    progressBlock: document.getElementById("progressBlock"),
+    progressBar: document.getElementById("progressBar"),
+    progressFill: document.getElementById("progressFill"),
+    stepBlock: document.getElementById("stepBlock"),
+    currentStepText: document.getElementById("currentStepText"),
+    waitReason: document.getElementById("waitReason"),
+    idleHint: document.getElementById("idleHint"),
+    actionRow: document.getElementById("actionRow"),
+    provenanceRow: document.getElementById("provenanceRow"),
+    progressSrc: document.getElementById("progressSrc"),
+    ckptSrc: document.getElementById("ckptSrc"),
+    stepSrc: document.getElementById("stepSrc"),
+    ctrlNote: document.getElementById("ctrlNote"),
+    helpBlurb: document.getElementById("helpBlurb"),
+    activityBox: document.getElementById("activityBox"),
+    contextChips: document.getElementById("contextChips"),
+    memHits: document.getElementById("memHits"),
+    btnCtxDetail: document.getElementById("btnCtxDetail"),
+    stepTrack: document.getElementById("stepTrack"),
+    timeline: document.getElementById("timeline"),
+    memoryList: document.getElementById("memoryList"),
+    contextChipsFull: document.getElementById("contextChipsFull"),
+    drawer: document.getElementById("drawer"),
+    drawerClose: document.getElementById("drawerClose"),
+    drawerTitle: document.getElementById("drawerTitle"),
+    devPanel: document.getElementById("devPanel"),
+    snapJson: document.getElementById("snapJson"),
+    btnDev: document.getElementById("btnDev"),
+    toast: document.getElementById("toast"),
+    dialog: document.getElementById("dialog"),
+    dialogTitle: document.getElementById("dialogTitle"),
+    dialogBody: document.getElementById("dialogBody"),
+    dialogClose: document.getElementById("dialogClose"),
+    dialogOk: document.getElementById("dialogOk")
+  };
+
+  function current() { return TASKS[state.taskIndex]; }
+
+  function srcTag(tier, label) {
+    return '<span class="src-tag" data-tier="' + esc(tier || "infer") + '">' + esc(label) + '</span>';
+  }
+
+  /** Keep snapshot fields aligned with events + steps (single source for home regions). */
+  function syncSnapshotFromEvents(task) {
+    var snap = task.snapshot;
+    if (task.steps && task.steps.length) {
+      var done = task.steps.filter(function (s) { return s.status === "done"; }).length;
+      snap.progress = { completed: done, total: task.steps.length };
+      var active = task.steps.find(function (s) {
+        return s.status === "running" || s.status === "waiting_approval" || s.status === "failed";
+      }) || task.steps[task.steps.length - 1];
+      if (active) {
+        snap.currentStep = { id: active.id, title: active.title, index: task.steps.indexOf(active) + 1 };
+      }
+    }
+    var last = task.events[task.events.length - 1];
+    if (last) snap.latestEvent = { type: last.type, summary: last.summary };
+    var ck = null;
+    for (var i = task.events.length - 1; i >= 0; i--) {
+      if (task.events[i].type === "checkpoint_created") {
+        var m = String(task.events[i].summary || "").match(/ckpt_\w+/);
+        if (m) ck = m[0];
+        else if (task.events[i].detail) {
+          var m2 = String(task.events[i].detail).match(/ckpt_\w+/);
+          if (m2) ck = m2[0];
+        }
+        break;
+      }
+    }
+    if (ck) snap.checkpointId = ck;
+    return snap;
+  }
+
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function toast(msg) {
+    el.toast.textContent = msg;
+    el.toast.classList.add("is-on");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.toast.classList.remove("is-on"); }, 1800);
+  }
+
+  function openDialog(title, html) {
+    el.dialogTitle.textContent = title;
+    el.dialogBody.innerHTML = html;
+    el.dialog.hidden = false;
+    el.dialog.classList.add("is-on");
+    el.dialogClose.focus();
+  }
+  function closeDialog() {
+    el.dialog.classList.remove("is-on");
+    el.dialog.hidden = true;
+  }
+
+  function openDrawer(tab) {
+    state.drawerOpen = true;
+    if (tab) state.drawerTab = tab;
+    el.drawer.hidden = false;
+    el.drawer.classList.add("is-on");
+    syncDrawerTabs();
+    renderDrawerPanels();
+  }
+  function closeDrawer() {
+    state.drawerOpen = false;
+    el.drawer.classList.remove("is-on");
+    el.drawer.hidden = true;
+  }
+  function syncDrawerTabs() {
+    document.querySelectorAll(".drawer-tab").forEach(function (t) {
+      t.setAttribute("aria-selected", t.getAttribute("data-tab") === state.drawerTab ? "true" : "false");
+    });
+    document.getElementById("panelSteps").hidden = state.drawerTab !== "steps";
+    document.getElementById("panelTimeline").hidden = state.drawerTab !== "timeline";
+    document.getElementById("panelMemory").hidden = state.drawerTab !== "memory";
+  }
+
+  function appendEvent(task, type, summary, detail, tier) {
+    var ev = {
+      id: "e_local_" + Date.now(),
+      type: type,
+      time: new Date().toLocaleTimeString("zh-CN", { hour12: false }),
+      summary: summary,
+      detail: detail || "",
+      tier: tier || "runner"
+    };
+    task.events.push(ev);
+    task.snapshot.latestEvent = { type: type, summary: summary };
+    return ev;
+  }
+
+  function profileOf(task) {
+    return task.profile || PROFILES[task.profileId] || PROFILES.cursor;
+  }
+
+  function friendlyEvent(ev) {
+    var map = {
+      task_started: "开始处理这件事",
+      task_step: "推进了一步",
+      agent_selected: "选好了帮手",
+      context_loaded: "读完相关材料",
+      tool_called: "查看了相关代码",
+      file_changed: "改好了一些文件",
+      memory_recalled: "想起以前类似的处理",
+      checkpoint_created: "记好了可继续的位置",
+      waiting_approval: "等待你的确认",
+      subagent_started: "子 Agent 正在帮忙检查",
+      task_paused: "已暂停状态更新",
+      task_resumed: "继续处理",
+      task_completed: "这件事做完了",
+      task_failed: "碰到问题，先停一下",
+      session_aborted: "已停止这次处理"
+    };
+    return map[ev.type] || ev.summary || ev.type;
+  }
+
+  function eventMark(ev, isLatest) {
+    if (ev.type === "task_failed" || ev.type === "session_aborted") return { cls: "is-fail", mark: "!" };
+    if (ev.type === "waiting_approval" || ev.type === "task_paused") return { cls: "is-wait", mark: "…" };
+    if (isLatest && (ev.type === "tool_called" || ev.type === "file_changed" || ev.type === "task_resumed" || ev.type === "subagent_started"))
+      return { cls: "is-now", mark: "●" };
+    return { cls: "is-done", mark: "✓" };
+  }
+
+  function buildHomeView(task) {
+    syncSnapshotFromEvents(task);
+    var snap = task.snapshot;
+    var profile = profileOf(task);
+    var st = snap.status;
+    var name = (snap.activeAgent && snap.activeAgent.name) || profile.provider;
+    var idle = st === "idle" || st === "cancelled";
+    var pq = profile.sourceQuality.progress;
+    var cq = profile.controlQuality || {};
+    var supports = profile.supports || {};
+
+    var helpK =
+      st === "completed" ? "刚刚帮你做完"
+        : st === "failed" ? "处理时遇到问题"
+          : st === "waiting_approval" ? "需要你确认一下"
+            : st === "paused" ? "先停一下状态更新"
+              : idle ? "现在"
+                : "正在帮你处理";
+
+    var title = idle ? "还没有正在处理的事" : snap.title;
+    var blurb;
+    if (idle) blurb = "说一句你想做的，或点下面让 Agent 帮你。";
+    else if (st === "completed") blurb = "<b>" + esc(name) + "</b> 已经帮你做完了";
+    else if (st === "failed") blurb = "<b>" + esc(name) + "</b> 做到一半卡住了";
+    else if (st === "waiting_approval") blurb = "<b>" + esc(name) + "</b> 在等你拍板 · " + esc(profile.voiceLine);
+    else if (st === "paused") blurb = "<b>" + esc(name) + "</b> · 状态更新已暂停";
+    else blurb = "<b>" + esc(name) + "</b> · " + esc(profile.voiceLine);
+
+    var stepText = null;
+    if (!idle) {
+      if (supports.taskSteps && snap.currentStep) stepText = snap.currentStep.title;
+      else if (st === "waiting_approval") stepText = "等待你确认下一步";
+      else if (pq === "inferred" || !supports.progress) stepText = "正在工作";
+      else if (snap.currentStep) stepText = snap.currentStep.title;
+    }
+
+    var progress = null;
+    if (!idle && supports.progress && (pq === "native" || pq === "runner") && snap.progress && snap.progress.total > 0) {
+      var doneN = snap.progress.completed;
+      var total = snap.progress.total;
+      progress = {
+        text: "已完成 " + doneN + " / " + total + " 步",
+        pct: Math.round((doneN / total) * 100)
+      };
+    }
+
+    var actions = [];
+    function addAct(id, label, kind) {
+      actions.push({ id: id, label: label, kind: kind || "default" });
+    }
+
+    if (idle) {
+      addAct("hand", "让 Agent 帮我做", "primary");
+    } else if (st === "running" || st === "planning") {
+      addAct("detail", "查看进度", "primary");
+      if (supports.abort && cq.abort !== "none") addAct("abort", "停止这次处理", "default");
+      if (supports.pause === true) addAct("pause-task", "暂停任务", "default");
+      else if (cq.pause === "monitor") addAct("pause", "暂停状态更新", "ghost");
+    } else if (st === "paused") {
+      addAct("resume", "继续处理", "primary");
+      addAct("detail", "查看进度", "default");
+    } else if (st === "waiting_approval") {
+      if (supports.approval) {
+        addAct("approve", "确认并继续", "primary");
+        addAct("detail", "查看会话", "default");
+      } else {
+        addAct("detail", "查看会话", "primary");
+      }
+    } else if (st === "failed") {
+      if (cq.resume === "local" || cq.resume === "provider" || supports.resume)
+        addAct("resume", "从上次进度继续", "primary");
+      addAct("detail", "看看哪里出了问题", "default");
+    } else if (st === "completed") {
+      addAct("continue-last", "再做一件相关的事", "primary");
+      addAct("detail", "回顾这次处理", "default");
+    } else if (st === "cancelled") {
+      addAct("hand", "让 Agent 帮我做", "primary");
+    }
+
+    var visibleEvents = (task.events || []).filter(function (ev) {
+      return canShowEvent(ev, profile);
+    }).slice().reverse().slice(0, 3);
+
+    var activity = visibleEvents.map(function (ev, idx) {
+      var mk = eventMark(ev, idx === 0);
+      return { text: friendlyEvent(ev), time: ev.time, mark: mk };
+    });
+
+    var refs = {
+      statsLine: (task.context && task.context.length)
+        ? task.context.map(function (c) { return c.label; }).join(" · ")
+        : (supports.memoryInjection ? "这一次还没有记下参考内容" : "这一次主要靠会话上下文"),
+      memLines: (supports.memoryInjection ? (task.memories || []).slice(0, 2) : []).map(function (m) {
+        return { id: m.id, kind: m.kind, title: m.title, body: m.body || "" };
+      })
+    };
+
+    var contextLine;
+    if (idle) contextLine = "现在很安静。需要时，让 Agent 帮你做一件事。";
+    else if (st === "completed") contextLine = "刚帮你做完：「" + snap.title + "」";
+    else if (st === "failed") contextLine = "处理「" + snap.title + "」时遇到问题。";
+    else if (st === "waiting_approval") contextLine = "处理到关键一步了，需要你看一眼再继续。";
+    else if (st === "paused") contextLine = "状态更新已暂停。随时可以继续。";
+    else contextLine = "OneTone 正在帮你处理这件事。";
+
+    return {
+      helpK: helpK,
+      title: title,
+      blurb: blurb,
+      voiceLine: profile.voiceLine,
+      statusText: (STATUS_UI[st] || STATUS_UI.idle).label,
+      stepText: stepText,
+      progress: progress,
+      actions: actions,
+      activity: activity,
+      activityEmpty: supports.liveEvents ? "还没有新动静" : "暂无实时活动",
+      needYou: (!idle && task.waitReason) ? task.waitReason : null,
+      refs: refs,
+      idle: idle,
+      status: st,
+      busy: st === "running" || st === "planning" || st === "waiting_approval",
+      contextLine: contextLine,
+      agentShort: snap.activeAgent ? snap.activeAgent.short : "—",
+      agentName: snap.activeAgent ? snap.activeAgent.name : "—",
+      checkpointId: snap.checkpointId || "",
+      controlNote:
+        (st === "running" || st === "planning") && cq.pause === "monitor"
+          ? "「暂停状态更新」只影响 OneTone 显示刷新，不会假装已控制外部 Agent。"
+          : (st === "paused" ? "页面不再追新事件。点「继续处理」恢复更新。" : ""),
+      demo: true
+    };
+  }
+
+  function renderSwitch() {
+    el.taskSwitch.innerHTML = TASKS.map(function (t, i) {
+      var st = t.snapshot.status;
+      var label =
+        st === "running" || st === "planning" ? "正在工作"
+          : st === "waiting_approval" ? "等你确认"
+            : st === "paused" ? "已暂停"
+              : st === "failed" ? "遇到问题"
+                : st === "completed" ? "做完了"
+                  : "待命";
+      var who = (t.profile && t.profile.provider) || t.profileId || "";
+      var short = (t.snapshot.title || "空闲").length > 10
+        ? (t.snapshot.title || "空闲").slice(0, 10) + "…"
+        : (t.snapshot.title || "空闲");
+      return (
+        '<button type="button" class="demo-chip" data-i="' + i + '" aria-pressed="' +
+        (i === state.taskIndex ? "true" : "false") + '">' +
+        esc(who) + " · " + esc(short) + " · " + esc(label) + "</button>"
+      );
+    }).join("");
+  }
+
+  function renderTop(task) {
+    var view = buildHomeView(task);
+    var ui = STATUS_UI[view.status] || STATUS_UI.idle;
+    el.topPills.innerHTML =
+      '<span class="pill is-ok"><span class="dot"></span>麦克风已就绪</span>' +
+      '<span class="pill is-idle"><span class="dot"></span>正在用 Cursor</span>' +
+      '<span class="pill ' + ui.pill + (ui.pulse ? " is-pulse" : "") + '">' +
+      '<span class="dot"></span>' +
+      (view.busy ? "正在帮你处理" : view.statusText) +
+      "</span>";
+  }
+
+  function renderWorkspace(task) {
+    var view = buildHomeView(task);
+    el.ctxEnv.textContent = WORKSPACE.app + " · " + WORKSPACE.project;
+    el.ctxScene.textContent = WORKSPACE.scene;
+    el.ctxFollow.hidden = !WORKSPACE.follow;
+    el.ctxAgentLine.textContent = view.contextLine;
+    el.ctxAgentLine.setAttribute("data-idle", view.idle || view.status === "completed" ? "true" : "false");
+  }
+
+  function renderActionsFromView(view) {
+    el.actionRow.innerHTML = view.actions.map(function (a) {
+      var cls = "btn";
+      if (a.kind === "primary") cls += " btn--p";
+      else if (a.kind === "ghost") cls += " btn--ghost";
+      return '<button type="button" class="' + cls + '" data-act="' + esc(a.id) + '">' + esc(a.label) + "</button>";
+    }).join("");
+  }
+
+  function renderAgentCard(task) {
+    var view = buildHomeView(task);
+
+    el.agentCard.classList.toggle("is-idle-empty", view.idle);
+    el.idleHint.hidden = !view.idle;
+    el.progressBlock.hidden = !view.progress;
+    el.stepBlock.hidden = !view.stepText;
+
+    document.getElementById("helpK").textContent = view.helpK;
+    el.taskTitle.textContent = view.title;
+    el.helpBlurb.innerHTML = view.blurb;
+
+    if (view.stepText) el.currentStepText.textContent = view.stepText;
+    if (view.progress) {
+      el.progressText.textContent = view.progress.text;
+      el.progressBar.setAttribute("aria-valuenow", String(view.progress.pct));
+      el.progressFill.style.width = view.progress.pct + "%";
+    }
+
+    el.agentAv.textContent = view.agentShort;
+    el.agentName.textContent = view.agentName;
+    el.checkpointLabel.textContent = view.checkpointId || "—";
+    el.statusPillText.textContent = view.statusText;
+
+    if (view.needYou) {
+      el.waitReason.hidden = false;
+      el.waitReason.textContent = view.needYou;
+    } else {
+      el.waitReason.hidden = true;
+    }
+
+    el.ctrlNote.hidden = !view.controlNote;
+    el.ctrlNote.textContent = view.controlNote || "";
+
+    renderActionsFromView(view);
+  }
+
+  function renderActivity(task) {
+    var view = buildHomeView(task);
+    if (!view.activity.length) {
+      el.activityBox.innerHTML =
+        '<div class="activity-empty">' + esc(view.activityEmpty) + '</div>' +
+        '<div class="sec-foot"><button type="button" class="link-more" id="btnMoreActivity">查看全部过程</button></div>';
+      return;
+    }
+    var items = view.activity.map(function (a) {
+      return (
+        '<div class="item">' +
+        '<span class="mark ' + a.mark.cls + '" aria-hidden="true">' + a.mark.mark + "</span>" +
+        '<div><div class="tx">' + esc(a.text) + '</div>' +
+        '<div class="sub">' + esc(a.time) + '</div></div></div>'
+      );
+    }).join("");
+    el.activityBox.innerHTML =
+      items +
+      '<div class="sec-foot"><button type="button" class="link-more" id="btnMoreActivity">查看全部过程</button></div>';
+  }
+
+  function renderContextSum(task) {
+    var view = buildHomeView(task);
+    el.contextChips.textContent = view.refs.statsLine;
+    el.memHits.innerHTML = view.refs.memLines.map(function (m) {
+      return (
+        '<button type="button" class="mem-hit" data-kind="' + esc(m.kind) + '" data-id="' + esc(m.id) + '" title="' + esc(m.body) + '">' +
+        '<span class="one-line">' + esc(m.title) + "</span></button>"
+      );
+    }).join("");
+  }
+
+  function renderDrawerPanels() {
+    var task = current();
+    var profile = profileOf(task);
+    var cq = profile.controlQuality || {};
+    el.drawerTitle.textContent = task.snapshot.title || "处理详情";
+    var note =
+      '<p class="drawer-note">演示数据 · 尚未连接 Provider<br>' +
+      "控制质量：pause=" + esc(cq.pause || "none") +
+      " · abort=" + esc(cq.abort || "none") +
+      " · resume=" + esc(cq.resume || "none") +
+      (cq.abort === "request" ? "<br>停止这次处理：只更新本地状态，尚未向 Provider 发送真实中止。" : "") +
+      "</p>";
+    if (!task.steps.length) {
+      el.stepTrack.innerHTML = note + '<p class="activity-empty">此 Provider 未提供任务步骤（按 Profile 降级）</p>';
+    } else {
+    el.stepTrack.innerHTML = note + task.steps.map(function (s) {
+      return (
+        '<li data-st="' + esc(s.status) + '">' +
+        '<div class="step-ico">' + esc(STEP_MARK[s.status] || "·") + "</div>" +
+        '<div class="step-body"><h4>' + esc(s.title) + "</h4><p>" + esc(s.detail) + "</p></div></li>"
+      );
+    }).join("");
+    }
+
+    var events = task.events.slice().reverse();
+    el.timeline.innerHTML = events.map(function (ev) {
+      var ico = EVENT_ICO[ev.type] || { cls: "agent", mark: "·" };
+      var open = state.openEventId === ev.id;
+      return (
+        '<li class="tl-item' + (open ? " is-open" : "") + '" data-id="' + esc(ev.id) + '">' +
+        '<button type="button" class="tl-btn" aria-expanded="' + (open ? "true" : "false") + '">' +
+        '<span class="act-ico ' + ico.cls + '">' + ico.mark + "</span>" +
+        "<span><p class=\"tl-title\">" + esc(typeof friendlyEvent === "function" ? friendlyEvent(ev) : ev.summary) + '</p><p class="tl-sum">' + esc(ev.type) + (ev.tier ? " · " + esc(ev.tier) : "") + "</p></span>" +
+        '<span class="tl-time">' + esc(ev.time) + "</span></button>" +
+        '<div class="tl-detail">' + esc(ev.detail) + "</div></li>"
+      );
+    }).join("");
+
+    el.memoryList.innerHTML = task.memories.map(function (m) {
+      return (
+        '<button type="button" class="mem-card" data-kind="' + esc(m.kind) + '" data-id="' + esc(m.id) + '">' +
+        '<div class="kind">' + esc(m.kind) + "</div><h4>" + esc(m.title) + "</h4>" +
+        "<p>" + esc(m.body) + "</p><div class=\"meta\">" + esc(m.meta) + "</div></button>"
+      );
+    }).join("");
+
+    el.contextChipsFull.innerHTML = task.context
+      .map(function (c) { return "<span>" + esc(c.label) + "</span>"; })
+      .join("");
+  }
+
+  function renderDev(task) {
+    var view = buildHomeView(task);
+    el.snapJson.textContent = JSON.stringify({
+      note: "演示数据 · 尚未连接 Provider。首页只消费 homeViewModel。",
+      profileId: task.profileId,
+      profile: profileOf(task),
+      homeView: {
+        title: view.title,
+        statusText: view.statusText,
+        stepText: view.stepText,
+        progress: view.progress,
+        actions: view.actions,
+        activity: view.activity.map(function (a) { return a.text; })
+      },
+      AgentSnapshot: task.snapshot,
+      recentEvents: task.events.slice(-3).map(function (e) {
+        return { type: e.type, summary: e.summary, tier: e.tier || "runner", visible: canShowEvent(e, profileOf(task)) };
+      }),
+      later: ["Codex", "DeepSeek+OneToneRunner"]
+    }, null, 2);
+  }
+
+  function render() {
+    var task = current();
+    renderSwitch();
+    renderTop(task);
+    renderWorkspace(task);
+    renderAgentCard(task);
+    renderActivity(task);
+    renderContextSum(task);
+    renderDev(task);
+    if (state.drawerOpen) renderDrawerPanels();
+  }
+
+  function setStatus(next) {
+    var task = current();
+    var snap = task.snapshot;
+    var prev = snap.status;
+    var ck = snap.checkpointId || "—";
+    snap.status = next;
+
+    if (next === "paused") {
+      task.waitReason = "状态更新已暂停。外部 Agent 未必停住；点「继续处理」再追新进展。";
+      appendEvent(task, "task_paused", "已暂停状态更新", "scope=onetone_monitor\ncheckpointId=" + ck + "\nprev=" + prev + "\ntier=runner");
+      var last = task.events[task.events.length - 1];
+      if (last) last.tier = "runner";
+      toast("已暂停状态更新");
+    } else if (next === "cancelled") {
+      task.waitReason = "";
+      appendEvent(task, "session_aborted", "已停止这次处理", "scope=onetone_request_abort\ncheckpointId=" + ck + "\nprev=" + prev);
+      var lastA = task.events[task.events.length - 1];
+      if (lastA) lastA.tier = "runner";
+      toast("已停止这次处理");
+    } else if (next === "running") {
+      task.waitReason = "";
+      task.steps.forEach(function (s) {
+        if ((s.status === "waiting_approval" || s.status === "failed") &&
+            snap.currentStep && s.id === snap.currentStep.id) {
+          s.status = "running";
+        }
+      });
+      var summary =
+        prev === "failed" ? "从检查点重试"
+          : prev === "waiting_approval" ? "确认并继续"
+            : prev === "paused" ? "继续处理"
+              : "任务已恢复";
+      appendEvent(task, "task_resumed", summary, "checkpointId=" + ck + "\nprev=" + prev);
+      var lastR = task.events[task.events.length - 1];
+      if (lastR) lastR.tier = "runner";
+      toast(summary);
+    }
+
+    state.openEventId = null;
+    render();
+  }
+
+  el.taskSwitch.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-i]");
+    if (!btn) return;
+    state.taskIndex = Number(btn.getAttribute("data-i"));
+    state.openEventId = null;
+    render();
+    toast("已切换 Provider 样例");
+  });
+
+  el.actionRow.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    var act = btn.getAttribute("data-act");
+    if (act === "pause" || act === "pause-task") setStatus("paused");
+    else if (act === "abort") setStatus("cancelled");
+    else if (act === "resume" || act === "approve") setStatus("running");
+    else if (act === "detail" || act === "continue-last") openDrawer("steps");
+    else if (act === "hand") toast("让 Agent 帮我做 · 正式版接语音入口");
+  });
+
+  el.activityBox.addEventListener("click", function (e) {
+    if (e.target.closest("#btnMoreActivity")) openDrawer("timeline");
+  });
+
+  el.btnCtxDetail.addEventListener("click", function () { openDrawer("memory"); });
+
+  el.memHits.addEventListener("click", function (e) {
+    var hit = e.target.closest(".mem-hit");
+    if (!hit) return;
+    var mem = current().memories.find(function (m) { return m.id === hit.getAttribute("data-id"); });
+    if (!mem) return;
+    openDialog("Memory · " + mem.kind, [
+      "<dl>",
+      "<dt>标题</dt><dd>" + esc(mem.title) + "</dd>",
+      "<dt>内容</dt><dd>" + esc(mem.body) + "</dd>",
+      "<dt>元数据</dt><dd>" + esc(mem.meta) + "</dd>",
+      "</dl>"
+    ].join(""));
+  });
+
+  el.drawerClose.addEventListener("click", closeDrawer);
+  el.drawer.addEventListener("click", function (e) {
+    if (e.target === el.drawer) closeDrawer();
+  });
+  document.querySelectorAll(".drawer-tab").forEach(function (t) {
+    t.addEventListener("click", function () {
+      state.drawerTab = t.getAttribute("data-tab");
+      syncDrawerTabs();
+    });
+  });
+
+  el.timeline.addEventListener("click", function (e) {
+    var btn = e.target.closest(".tl-btn");
+    if (!btn) return;
+    var item = btn.closest(".tl-item");
+    var id = item && item.getAttribute("data-id");
+    state.openEventId = state.openEventId === id ? null : id;
+    renderDrawerPanels();
+  });
+
+  el.memoryList.addEventListener("click", function (e) {
+    var card = e.target.closest(".mem-card");
+    if (!card) return;
+    var mem = current().memories.find(function (m) { return m.id === card.getAttribute("data-id"); });
+    if (!mem) return;
+    openDialog("Memory · " + mem.kind, [
+      "<dl>",
+      "<dt>标题</dt><dd>" + esc(mem.title) + "</dd>",
+      "<dt>内容</dt><dd>" + esc(mem.body) + "</dd>",
+      "<dt>元数据</dt><dd>" + esc(mem.meta) + "</dd>",
+      "</dl>"
+    ].join(""));
+  });
+
+  el.btnDev.addEventListener("click", function () {
+    var on = !el.devPanel.classList.contains("is-on");
+    el.devPanel.classList.toggle("is-on", on);
+    el.btnDev.setAttribute("aria-pressed", on ? "true" : "false");
+    if (on) el.devPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+
+  el.dialogClose.addEventListener("click", closeDialog);
+  el.dialogOk.addEventListener("click", closeDialog);
+  el.dialog.addEventListener("click", function (e) {
+    if (e.target === el.dialog) closeDialog();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    if (el.dialog.classList.contains("is-on")) closeDialog();
+    else if (state.drawerOpen) closeDrawer();
+  });
+
+  document.getElementById("btnScenes").addEventListener("click", function () {
+    toast("情景管理 · 正式版入口");
+  });
+  document.getElementById("btnScenes2").addEventListener("click", function () {
+    toast("情景管理 · 正式版入口");
+  });
+  document.getElementById("btnVoice").addEventListener("click", function () {
+    toast("说点什么 · 保留现有语音入口");
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

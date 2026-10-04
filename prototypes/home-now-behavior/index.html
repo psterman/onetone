@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>OneTone · 首页 Now（v1 基线）</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%230d7a72'/%3E%3Ccircle cx='16' cy='16' r='5' fill='white'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="review">
+  <aside class="chrome" id="chrome" aria-label="原型审阅工具">
+    <div>
+      <h1>OneTone · 情境陈述</h1>
+      <p class="blurb">v1 基线。审阅栏与画布并排，互不遮挡。正式比较请「单独打开画布」。</p>
+    </div>
+
+    <div class="chrome-section">
+      <p class="chrome-label">首页模式</p>
+      <div class="mode-bar" id="modeBar" aria-label="首页模式"></div>
+    </div>
+
+    <div class="chrome-section chrome-body">
+      <p class="chrome-label">版本结论</p>
+      <ul class="chrome-notes">
+        <li><strong>v1 情境陈述 · 基线</strong>完整句子说明情境与具体帮助。</li>
+        <li><strong class="gone">v2 注意力接管</strong>放弃：偏系统状态页。</li>
+        <li><strong>v3 进程轻显</strong>并入基线：准入后以内联细线出现。</li>
+        <li><strong>v4 依据召回</strong>并入「判断依据」展开层，不常驻按钮。</li>
+      </ul>
+    </div>
+
+    <div class="chrome-actions chrome-body">
+      <a id="canvasOnlyLink" href="?mode=quiet&amp;canvas=1" target="_blank" rel="noopener">单独打开画布</a>
+      <button type="button" id="toggleChrome" aria-pressed="false">收起说明</button>
+    </div>
+  </aside>
+
+  <div class="viewport">
+    <div class="frame-wrap">
+      <p class="frame-label">
+        产品画布
+        <span class="size" id="frameSizeLabel">640 × 680</span>
+        <span class="hint" id="frameSizeHint">· 真尺寸</span>
+      </p>
+      <div class="frame" id="productFrame" role="region" aria-label="OneTone 产品窗口 640×680 真尺寸">
+        <div id="stage" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <section class="confirm" id="confirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" hidden>
+    <div class="confirm-card">
+      <p class="hn-muted" style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--warn)">跨通道安全</p>
+      <h2 id="confirmTitle">摄像头不能独自批准</h2>
+      <p>摄像头只能发起批准请求。请再用按键、语音或 Soft Pad 确认。</p>
+      <div class="confirm-actions">
+        <button type="button" data-close-confirm>取消</button>
+        <button type="button" class="ok" data-cross-confirm="keys">模拟按键确认</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="./shared.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

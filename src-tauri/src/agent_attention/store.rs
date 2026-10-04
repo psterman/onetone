@@ -7,7 +7,7 @@ use super::model::{
 };
 use crate::soft_pad_runtime::AgentKind;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -15,12 +15,53 @@ static SEQUENCE: AtomicU64 = AtomicU64::new(1);
 static STORE: Mutex<Option<AttentionStoreInner>> = Mutex::new(None);
 static LAST_WAITING_SIG: Mutex<Vec<AgentKind>> = Mutex::new(Vec::new());
 static REVISION: AtomicU64 = AtomicU64::new(0);
+/// Set after adapters register + first collection pass (not merely first event).
+static INITIALIZED: AtomicBool = AtomicBool::new(false);
+static LAST_SUCCESSFUL_COLLECTION_MS: AtomicU64 = AtomicU64::new(0);
 
 static RECOMPUTE_HOOK: Mutex<Option<Arc<dyn Fn() + Send + Sync>>> = Mutex::new(None);
 static SOUND_HOOK: Mutex<Option<Arc<dyn Fn(&str, &str) + Send + Sync>>> = Mutex::new(None);
 static WORKING_SINCE: Mutex<Option<HashMap<AgentKind, Instant>>> = Mutex::new(None);
 
+/// Attention facts older than this without refresh -> stale for Agent Center.
+pub const ATTENTION_STALE_AFTER_MS: u64 = 30 * 60 * 1000;
+
 pub const MIN_AGENT_TASK_MS: u64 = 3000;
+
+/// Call after attention adapters are registered and the first collection pass finishes
+/// (empty waiting set is a valid finished collection).
+pub fn mark_initialized() {
+    INITIALIZED.store(true, Ordering::Release);
+    LAST_SUCCESSFUL_COLLECTION_MS.store(now_ms_wall(), Ordering::Release);
+}
+
+pub fn is_initialized() -> bool {
+    INITIALIZED.load(Ordering::Acquire)
+}
+
+/// initializing | ready | stale — for Agent Center cold-start honesty.
+pub fn attention_lifecycle_state() -> &'static str {
+    if !INITIALIZED.load(Ordering::Acquire) {
+        return "initializing";
+    }
+    let last = LAST_SUCCESSFUL_COLLECTION_MS.load(Ordering::Acquire);
+    if last == 0 {
+        return "initializing";
+    }
+    let age = now_ms_wall().saturating_sub(last);
+    if age > ATTENTION_STALE_AFTER_MS {
+        "stale"
+    } else {
+        "ready"
+    }
+}
+
+/// Touch successful collection timestamp (call when snapshot/poll reads store).
+pub fn note_successful_collection() {
+    if INITIALIZED.load(Ordering::Acquire) {
+        LAST_SUCCESSFUL_COLLECTION_MS.store(now_ms_wall(), Ordering::Release);
+    }
+}
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct RaiseOutcome {
@@ -444,6 +485,7 @@ pub fn clear(
 pub fn public_snapshot() -> AttentionPublicSnapshot {
     let now = Instant::now();
     let (waiting, _) = project_waiting_kinds();
+    note_successful_collection();
     with_store(|inner| {
         prune_expired(inner, now);
         let mut rows = Vec::new();
@@ -559,6 +601,8 @@ pub fn reset_for_test() {
     }
     REVISION.store(0, Ordering::Release);
     SEQUENCE.store(1, Ordering::Release);
+    INITIALIZED.store(false, Ordering::Release);
+    LAST_SUCCESSFUL_COLLECTION_MS.store(0, Ordering::Release);
 }
 
 /// Helper: build NeedsInput raise from official hook.

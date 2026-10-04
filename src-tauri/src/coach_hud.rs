@@ -404,6 +404,8 @@ mod tests {
         MappingEntry {
             id: id.into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "默认".into(),
             trigger_key: trigger.into(),
             target_key: target.into(),

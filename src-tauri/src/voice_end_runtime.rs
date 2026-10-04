@@ -2430,6 +2430,8 @@ mod tests {
         cfg.mappings = vec![MappingEntry {
             id: new_mapping_id(),
             label: "cursor".into(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "???".into(),
             trigger_key: "F13".into(),
             target_key: "Ctrl+L".into(),

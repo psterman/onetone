@@ -1,6 +1,12 @@
 /**
- * Agent registry SSOT for Soft Pad agent face (v12b).
- * Mirrors agent_catalog/mod.rs capability honesty — update both when adding agents.
+ * Soft Pad face/routing catalog ONLY (kind / appId / connectKind / face caps for pad UI).
+ *
+ * NOT authoritative for Agent Center install status, version, data path, health,
+ * or resolvedCapabilities — those come from cmd_agent_center_snapshot / agent_registry.
+ * Do not turn this file into an async IPC registry (Soft Pad boot depends on sync SSOT).
+ * Agent Center must not read `caps` from here.
+ *
+ * Mirrors agent_catalog/mod.rs Soft Pad face rows — update both when adding Soft Pad agents.
  */
 (function (global) {
   'use strict';

@@ -13,11 +13,15 @@
 
 > 现有左侧 Agent 入口下的 Agent 工作记录首页。
 
-页面要回答三个问题：
+页面要回答五个问题（用户不会关心代码细节）：
 
-1. Agent 最近替用户做了什么？
-2. 当前工作停在哪里，用户下一步是否需要处理？
-3. 用户下次回来，能否快速找到并继续这项工作？
+1. Agent 实时在干什么？
+2. 现在能不能帮我？
+3. 是否正常，要不要我处理？
+4. 额度还剩多少、怎么规划？
+5. 当前事项做到哪了（数据进度）？
+
+因此首页主内容是「动态 / 帮你 / 状态 / 额度 / 进度」五信号 +「帮过你」结果时间线；文件名、路由链、诊断明细默认不进首屏。
 
 因此，“历史记录”不是一个需要另开标签的附属功能，而是 Agent 首页的主内容；“当前工作”与“恢复工作”是历史记录的两个重点视图。
 
@@ -157,12 +161,12 @@ voice-pilot · Agent 会话 14:32
 
 首页至少支持四种数据状态，但它们共享同一信息架构：
 
-| 状态 | 视觉重点 | 必须保留 |
-|---|---|---|
-| 安静 quiet | 当前身份与最近记录 | 历史、项目、来源状态 |
-| 需要注意 attention | 一条需要用户处理的事项 | 历史和上下文 |
-| 返回工作 return | 上次停点与继续动作 | 最近会话记录 |
-| 数据受限 degraded | 缺失原因与可恢复动作 | 已知的历史，不伪造未知数据 |
+| 状态             | 视觉重点        | 必须保留          |
+| -------------- | ----------- | ------------- |
+| 安静 quiet       | 当前身份与最近记录   | 历史、项目、来源状态    |
+| 需要注意 attention | 一条需要用户处理的事项 | 历史和上下文        |
+| 返回工作 return    | 上次停点与继续动作   | 最近会话记录        |
+| 数据受限 degraded  | 缺失原因与可恢复动作  | 已知的历史，不伪造未知数据 |
 
 安静模式不能通过大面积空白表达。数据受限时要区分“尚未获取”“来源不可用”“尚未确认”和“确实没有记录”。
 
@@ -175,6 +179,7 @@ AgentHomeSnapshot {
   currentProject
   activeSession
   attention
+  pulse { dynamic, help, health, quota, progress }
   recentEvents[]
   recentSessions[]
   resumeCheckpoint
@@ -184,6 +189,8 @@ AgentHomeSnapshot {
   freshness
 }
 ```
+
+`pulse` 是首屏五信号；`contextEvidence` 默认不渲染在首页，仅健康异常时展示或跳转「数据」。
 
 每个字段必须带有来源、时间和可信度或可用性状态。页面只对真实快照做呈现，不能因为组件需要内容而创建假数据。
 
@@ -233,3 +240,184 @@ AgentHomeSnapshot {
 ## 11. 阶段边界
 
 本规格批准前，不修改 `src/`、`src-tauri/` 或现有生产原型。用户批准本规格后，下一步才写原型制作计划，再制作四个 HTML 原型并进行对比评审。
+
+---
+
+## 12. 稳定数据链 × 用户需求优先级（P0–P2）
+
+首页只能消费**已能稳定产出**的信号。对用户说话用**小白话术**；字段名、探针、lifecycle 只留在工程层。
+
+### 12.-1 小白心里的 Agent（话术层，必须先对齐）
+
+小白不理解「会话 / 探针 / checkpoint / Soft Pad」。他们心里的 Agent 更像：
+
+> 一个会帮我干活的帮手。我只想知道：它在忙吗？要不要我点一下？出没出事？上次帮我做了啥？
+
+| 小白会问的   | 首页上怎么说（对用户）                      | 工程师映射到（不对用户说）                               |
+| ------- | -------------------------------- | ------------------------------------------- |
+| 它在忙吗？   | **它现在** · 正在帮你 / 在等你 / 先停住了 / 闲着 | attention / session.status / homeFocus.work |
+| 要我点一下吗？ | **要你吗** · 要你拍板 / 不用管 / 暂时接不上     | waiting / matchKind / checkpoint            |
+| 出问题了吗？  | **顺不顺** · 顺利 / 要你点一下 / 暂时连不上     | probe/sync + failed + project               |
+| 还能用多久？  | **用量**（默认进「数据」，首页不硬编）            | overlay remainingPercent 等弱信号               |
+| 做到哪了？   | **做到哪** · 一句话下一步（有才显示）           | checkpoint.nextAction / currentTask         |
+| 最近帮过我啥？ | **最近帮过** · 短列表，人话状态句             | recentEvents → 归类                           |
+| 我现在干嘛？  | **你现在可以** · 一个大按钮                | 上列派生 CTA                                    |
+
+禁止出现在首屏文案里的词（除非进「数据 / 高级」）：探针、同步、lifecycle、checkpoint、event、sessionId、observed、schema、consent、投影、归类键。
+
+### 12.0 需求 × 稳定供给 · 对照清单
+
+#### A. 用户要求（按小白问题写）
+
+| # | 小白问题    | 首页标签  | 能否进首页            |
+| - | ------- | ----- | ---------------- |
+| 1 | 它在忙吗？   | 它现在   | 要稳妥源             |
+| 2 | 要我点一下吗？ | 要你吗   | 要稳妥源             |
+| 3 | 出问题了吗？  | 顺不顺   | 要稳妥源             |
+| 4 | 还能用多久？  | 用量    | P2，默认进数据         |
+| 5 | 做到哪了？   | 做到哪   | 有 checkpoint 才显示 |
+| 6 | 最近帮过我啥？ | 最近帮过  | 状态归类，非正文摘要       |
+| 7 | 我现在干嘛？  | 你现在可以 | 由 1–3 派生一个 CTA   |
+
+#### B. Agent / 系统今天能稳定获取的数据（供给侧 · 工程）
+
+| 源                          | 稳定字段（camelCase）                                                                                 | 出口                                      | 门控 / 缺口                                       |
+| -------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------- | --------------------------------------------- |
+| Soft Pad `agent_attention` | `Working` / `NeedsInput` / `Complete` / `Error` / `Idle`（TTL 内）                                 | 内存 store + `note_attention` → lifecycle | 偏 Cursor；TTL 外不可用                             |
+| `agent_sessions`           | `sessionId` `provider` `title` `status` `isActive` `updatedAt` `projectMatch` `matchConfidence` | `cmd_agent_home_snapshot`               | `status` 仅 lifecycle 写入才可信；observed 不改 status |
+| `agent_events`             | `eventId` `eventType` `eventClass` `summary` `timestamp` `sessionId`                            | 同上 / `cmd_agent_session_events`         | observed 多为英文模板；**不读对话正文**                    |
+| `provider_cursors`         | `probeStatus` → `syncStatus` `staleAgeMs`                                                       | snapshot                                | consent_off / read_locked / schema_unknown    |
+| `projects`                 | `displayName` `matchKind` `userConfirmed`                                                       | snapshot / confirm IPC                  | 未确认时 unknown/probable                         |
+| `agent_checkpoints`        | `currentTask` `nextAction` `pendingQuestions`                                                   | snapshot                                | 有写入才有；非自动进度条                                  |
+| Soft Pad overlay usage     | `remainingPercent` `localTodayRequests`…                                                        | overlay → **数据页**                       | 未进 home snapshot；非账单级额度                       |
+| Home Focus                 | `work.status` `freshness` `actions[]`                                                           | `cmd_home_focus_snapshot`               | 合成投影                                          |
+
+#### C. 匹配结果
+
+| 小白问题    | 等级    | 稳妥字段 → 人话                       | 禁止         |
+| ------- | ----- | ------------------------------- | ---------- |
+| 它在忙吗？   | P0    | status → 正在帮你 / 在等你 / 先停住了 / 闲着 | 文件级细节      |
+| 要我点一下吗？ | P0    | waiting / 项目未确认 → 要你拍板 / 先认一下项目 | 无源智能建议     |
+| 出问题了吗？  | P0    | probe/error → 顺利 / 暂时连不上        | 健康度百分比装饰   |
+| 还能用多久？  | P2    | 不上首页                            | 假「额度余 62%」 |
+| 做到哪了？   | P0 定性 | nextAction 原文或「还没记下下一步」         | 3/5 假进度    |
+| 最近帮过我啥？ | P0 骨架 | events 归类成人话                    | 英文观测句直出    |
+| 我现在干嘛？  | P0    | 一个按钮：去拍板 / 接着帮我 / 打开帮手键盘        | 一堆并列主按钮    |
+
+#### D. 结论
+
+- **能撑小白首页的**：它在忙吗、要不要我点、顺不顺、做到哪（有记下时）、最近帮过、你现在可以。
+- **不能当首页事实的**：用量规划、分母进度、对话正文级「帮你做了什么」。
+- **工程词只留在规格 B 与数据页**；首屏只说帮手在干嘛。
+
+```text
+[A] Soft Pad / agent_attention
+    Working | NeedsInput | Complete | Error | Idle
+         │ note_attention / bridge
+         ▼
+[B] lifecycle → agent_events (onetone_lifecycle)
+    + agent_sessions.status  (running|waiting_approval|paused|completed|failed|…)
+
+[C] Cursor 本地库扫描 cursor_adapter
+    （不读对话正文）
+         │ append_observed_event
+         ▼
+    agent_events (provider_observed)
+    + agent_sessions 候选 / is_active / title / project_match
+
+[D] UI / IPC checkpoint·memory
+    agent_checkpoints (currentTask, nextAction, pendingQuestions, changedFiles)
+    memory_records (observation|decision|gotcha|task|…)
+
+[E] 项目解析 project + user_confirmed
+    projects / ProjectIdentity
+
+读出口（首页应消费的投影，不是原始表）：
+  cmd_agent_home_snapshot  → AgentHomeSnapshot
+  cmd_home_focus_snapshot  → HomeFocusSnapshot（work.status / freshness / actions）
+  cmd_agent_session_events → 分页 events
+  agent_attention.primary_state_for → 实时态（TTL 内有效）
+```
+
+约束：
+
+- `provider_observed` **不改** `session.status`；生命周期态只认 lifecycle / attention。
+- 活动指标受 consent 门控（`consent_off` 时只见缓存）。
+- Cursor 事件 summary 现多为英文模板（`User turn observed` 等），前端已有一层中文映射（`now-agent-home.js`），但仍是**状态句**，不是「帮你做了什么」结果句。
+
+### 12.2 今天能稳定产出的原子信号
+
+| 原子字段 / 信号                                                      | 链条                    | 稳定条件                       | 可支撑的用户问题           |
+| -------------------------------------------------------------- | --------------------- | -------------------------- | ------------------ |
+| `activeSession.status` + attention TTL                         | B + A                 | Soft Pad 有信号或 lifecycle 已写 | 动态、能否帮、是否正常        |
+| `HomeFocusWork.status` = running|waiting|error|resumable|idle… | A+B+C+E               | `cmd_home_focus_snapshot`  | 同上（推荐首屏投影）         |
+| `syncStatus` / `probeStatus` / `staleAgeMs`                    | C → provider_cursors  | 每次 snapshot                | 是否正常（来源健康）         |
+| `project.displayName` + `matchKind` / `userConfirmed`          | E                     | 有路径或确认                     | 身份；异常时「要你处理」       |
+| `recentEvents[]`（type/class/summary/ts）                        | B+C                   | 有会话                        | 「帮过你」骨架（需投影，勿直出英文） |
+| `recentSessions[]` title / updatedAt                           | C                     | 扫描到 composer               | 最近做过什么（弱）          |
+| `checkpoint.currentTask` / `nextAction` / `pendingQuestions`   | D                     | 有人创建过 checkpoint           | 进度（定性）、可继续帮你       |
+| `memories[]`                                                   | D                     | 有写入                        | 次级上下文，不进首屏主线       |
+| 倾听 transcript / hotkey                                         | 语音运行时（非 agent_memory） | 正在听                        | 实时动态（旁路）           |
+
+### 12.3 今天不能稳定产出（禁止伪造成首页事实）
+
+| 缺口               | 原因                                   | 在需求里暂放             |
+| ---------------- | ------------------------------------ | ------------------ |
+| 额度余量 / 规划（quota） | 无 provider 账单或计划 API 入库              | P2                 |
+| 进度 3/5、完成率 %     | 无任务分解事实源；checkpoint 只有定性 next        | P2（P0 只用定性「下一步」）   |
+| 「帮你理清首页…」级结果摘要   | 事件 summary 是观测/状态模板，不读正文             | P1 投影规则 → 远期可加摘要管道 |
+| 费用 / 效率 / 回合大盘   | 非 agent_memory 契约；属「数据」页             | 不进 Agent 首页 P0     |
+| 跨 Agent 统一实时态    | attention 已分 AgentKind，首页投影仍偏 Cursor | P1 扩面              |
+
+### 12.4 用户需求 × 优先级
+
+| 用户问题 | P0（有稳妥源就上首页） | P1（投影 / 归类层） | P2（要新源才做） |
+
+
+|---|---|---|---|
+| **动态** | `work.status` 或 session+attention → 进行中 / 等你定 / 已暂停 / 待命 | 多 Agent 合并；标题用 `session.title` 或 `checkpoint.currentTask` | 流式工具步骤明细 |
+| **能否帮你** | waiting →「差你一句确认」；resumable+exact 项目 →「能接着帮」；idle+consent 正常 →「开口就能帮」；degraded →「暂时接不住」 | CTA 与 Soft Pad 动作绑定 | 主动建议下一项任务 |
+| **是否正常** | probe/sync 健康；error/failed；project unknown/probable | 诊断链默认进「数据」，仅 degraded 露一条 | 更深 Cursor schema 诊断 UI |
+| **额度规划** | **不上首页**（无源） | — | 接 provider 用量后再进脉冲条 |
+| **进度** | 有 checkpoint：展示 `currentTask` / `nextAction`（定性） | 无 checkpoint 时隐藏，不写「—%」 | 真 · 分母进度、用量规划 |
+| **帮过你** | 最近 N 条 `recentEvents`，按 `eventType`/`eventClass` **归类**成中文状态行；lifecycle 优先于 observed | 去重 session_discovered/updated；合并同会话连续观测；映射表见下 | LLM/规则生成结果向摘要 |
+
+### 12.5 「帮过你」归类表（P0 必须落地的投影）
+
+原始 `eventType` → 首页类别（category）→ 默认文案（无更好摘要时）：
+
+| eventType | category | 默认文案 | 结果态 hint |
+|---|---|---|---|
+| `task_started` / `task_resumed` | dynamic | Agent 开始/继续处理 | 进行中 |
+| `waiting_approval` | need_you | Agent 在等你确认 | 等你定 |
+| `task_paused` | paused | 工作已暂停 | 已暂停 |
+| `task_completed` | done | Agent 已完成一段工作 | 完成 |
+| `task_failed` | problem | Agent 碰到问题 | 异常 |
+| `session_discovered` | weak | 发现了新的对话 | 记录 |
+| `session_updated` | weak | 对话有了新进展 | 记录 |
+| `user_turn_observed` | weak | 你刚发了一条消息 | 记录 |
+
+规则：
+
+1. **P0 时间线**：同会话内 lifecycle 类事件优先展示；连续 weak observed 可折叠为一条「这段时间有活动」。
+2. **禁止**把英文 raw `summary` 直接上首页；走映射表；已有更好文案（checkpoint / memory）时替换默认句。
+3. **归类键**供后续筛选：`category` ∈ {dynamic, need_you, paused, done, problem, weak}；首页默认滤掉过旧 weak，或压到「查看全部」。
+4. **动作**：`need_you` → 去决定；`paused`+checkpoint → 继续；其余 → 查看（进数据/详情）。
+
+### 12.6 首页脉冲条字段契约（由稳妥源合成，不是新表）
+
+```text
+pulse.dynamic  ← HomeFocusWork.status | attention | session.status
+pulse.help     ← 派生自 dynamic + project.matchKind + checkpoint?
+pulse.health   ← probe/sync + error/failed + project 确认态
+pulse.quota    ← null（P2；UI 隐藏或「数据」入口）
+pulse.progress ← checkpoint.nextAction | currentTask | null
+```
+
+`null` 字段不渲染占位百分比。原型 fixture 仅用于审阅布局。
+
+### 12.7 实现顺序（数据侧）
+
+1. **P0（已落地投影模块）**：`src/js/features/agent/agent-home-pulse.js` — `projectPulse` + `projectHelpedYou` + `fromHomeSnapshot`；原型与 `now-agent-home.taskFromHomeSnapshot` 已接入。额度字段恒为 `null`，进度只取 checkpoint 文案。
+2. **P1（原型实况已接）**：工作记录原型 `?live=1` / 「实况快照」→ `cmd_agent_home_snapshot` → `fromHomeSnapshot`；无 IPC 回退 fixture。下一步：生产 Agent 页同一入口换掉 fixture 壳。
+3. **P2**：额度源、结果向摘要管道；未就绪前规格与原型不得暗示已有。

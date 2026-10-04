@@ -823,7 +823,8 @@
 
   /**
    * Fourth ledger source: install inventory × Soft Pad attention.
-   * One row per installed/running agent — not OneTone session history.
+   * Home Focus desk no longer renders these as the work authority —
+   * Agent Center Snapshot → #homeAgentRoster does. Kept for degraded/legacy paths only.
    * Merges into desk.ledgerAgents + rebuilds desk.ledger for the view.
    */
   function enrichFromInventory(vm, inv, attn) {

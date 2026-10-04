@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="../css/codex-micro-pad.css">
 <link rel="stylesheet" href="../css/codex-micro-pad-skins.css">
 <link rel="stylesheet" href="../css/soft-pad-hub.css">
+<link rel="stylesheet" href="../css/agent-center.css">
 <style>
 :root{
   --bg:#c9d4e2;--ink:#0f1b2a;--mute:#5a6c80;--faint:#8496a8;--line:rgba(15,27,42,.12);
@@ -307,11 +308,42 @@ h1{margin:0 0 6px;font-family:var(--display);font-size:25px;font-weight:700;lett
 }
 .subtabs button .t{font-size:12.5px;font-weight:800}
 .subtabs button .s{font-size:10px;font-weight:650;opacity:.85;line-height:1.25}
+.subtabs button.is-on[data-sub="data"]{background:var(--agent);border-color:var(--agent);color:#fff}
+.subtabs button.is-on[data-sub="data"]{background:#066a9c;border-color:#066a9c;color:#fff}
 .subtabs button.is-on[data-sub="float"]{background:var(--float);border-color:var(--float);color:#fff}
 .subtabs button.is-on[data-sub="mini"]{background:var(--mini);border-color:var(--mini);color:#fff}
 .subtabs button.is-on[data-sub="softPad"]{background:var(--lights);border-color:var(--lights);color:#fff}
-.subtabs button.is-on[data-sub="softPad"]{background:var(--lights);border-color:var(--lights);color:#fff}
 .detail{padding:12px;overflow:auto;flex:1}
+
+/* 数据叶：左 Soft Pad 对照；右嵌真实 agent-data（覆盖条在中栏可换行，不做左 Dock） */
+.workspace.is-data #detail{display:none !important}
+.workspace.is-data #dataHost{
+  display:flex !important;flex:1;min-height:0;flex-direction:column;background:#f3f6fa;
+}
+#dataHost{display:none;min-height:0}
+#dataHost iframe{
+  flex:1;width:100%;min-height:0;border:0;background:#f3f6fa;display:block;
+}
+.workspace.is-data #sceneBox,
+.workspace.is-data #modeBar,
+.workspace.is-data #modeConnect,
+.workspace.is-data #padPlaceRail,
+.workspace.is-data #padLegend,
+.workspace.is-data #keysGain{display:none !important}
+.workspace.is-data #modePad{display:flex !important;flex-direction:column;flex:1;min-height:0}
+.workspace.is-data #padCap{
+  margin:0 0 8px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);
+}
+.workspace.is-data #padNote{
+  display:block !important;margin:8px 0 0;font-size:11px;color:var(--mute);font-weight:650;
+}
+.workspace.is-data #agentPadHost{
+  display:flex;flex-direction:column;flex:1;min-height:0;
+  background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+}
+.workspace.is-data #agentPadPaint{flex:1;min-height:0;padding:8px 6px 10px}
+.workspace.is-data .head .app-pick,
+.workspace.is-data .head .app span[style]{display:none}
 
 .job{
   margin:0 0 12px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);
@@ -867,11 +899,16 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
           </aside>
           <div class="panel">
             <div class="subtabs" id="subs" role="tablist">
-              <button type="button" class="is-on" data-sub="float" role="tab"><span class="t">浮窗</span><span class="s">何时 · 皮肤</span></button>
-              <button type="button" data-sub="mini" role="tab"><span class="t">迷你栏</span><span class="s">条上留什么</span></button>
-              <button type="button" data-sub="softPad" role="tab"><span class="t">Soft Pad</span><span class="s">顶栏 · 灯 · 接入 · 数字键</span></button>
+              <button type="button" data-sub="data" role="tab" aria-selected="false" aria-controls="dataHost"><span class="t">数据</span><span class="s">今日盘点 · 来源</span></button>
+              <button type="button" data-sub="float" role="tab" aria-selected="false"><span class="t">浮窗</span><span class="s">何时 · 皮肤</span></button>
+              <button type="button" data-sub="mini" role="tab" aria-selected="false"><span class="t">迷你栏</span><span class="s">条上留什么</span></button>
+              <button type="button" class="is-on" data-sub="softPad" role="tab" aria-selected="true"><span class="t">Soft Pad</span><span class="s">顶栏 · 灯 · 接入 · 数字键</span></button>
             </div>
             <div class="detail" id="detail"></div>
+            <div id="workHost" aria-label="Agent 工作（已迁首页）" hidden></div>
+            <div id="dataHost" aria-label="Agent 数据板" hidden>
+              <iframe id="agentDataNestFrame" title="Agent 数据" src="agent-data?embed=1&amp;nest=1" loading="lazy"></iframe>
+            </div>
           </div>
         </div>
       </div>
@@ -973,6 +1010,7 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
   </div>
 </div>
 
+<script src="../js/features/agent/agent-center.js"></script>
 <script>
 (function(){
   var detail=document.getElementById('detail');
@@ -1921,6 +1959,15 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       var liveOff=padHost.querySelector('[data-agent-topbar-live]');
       if(liveOff) liveOff.remove();
     }
+    if(sub==='data'){
+      padCap.textContent='Soft Pad · 你的 Agent';
+      if(sceneBox) sceneBox.style.display='none';
+      if(padNote) padNote.textContent='点 Soft Pad 图标切数据 focus · 中栏可看全部源';
+      if(padHost) padHost.removeAttribute('data-pad-mode-preview');
+      highlightPadZone(null);
+      paintTopbarPreview();
+      return;
+    }
     if(sub==='softPad'){
       if(leaf==='hook'){
         padCap.textContent='接入对照 · Soft Pad';
@@ -1987,10 +2034,12 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     if(!padHost) return;
     var onTopbarLeaf=state.sub==='softPad'&&state.softPad==='topbar';
     var onHookLeaf=state.sub==='softPad'&&state.softPad==='hook';
-    var showFace=(onTopbarLeaf&&state.topbarShowFace!==false)||onHookLeaf;
+    var onDataLeaf=state.sub==='data';
+    var showFace=(onTopbarLeaf&&state.topbarShowFace!==false)||onHookLeaf||onDataLeaf;
     var showBusy=state.miniChrome.agentsBarEnabled!==false;
     var showPill=onTopbarLeaf&&state.usage!==false;
-    var faceLive=onTopbarLeaf||onHookLeaf;
+    /* 数据叶也亮 Soft Pad 用户 Agent 图标，与中栏源条互补切 focus */
+    var faceLive=onTopbarLeaf||onHookLeaf||onDataLeaf;
 
     /* 清掉旧的外壳外挂条 */
     padHost.querySelectorAll('[data-agent-topbar-live]').forEach(function(el){ el.remove(); });
@@ -2001,20 +2050,27 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     else padHost.removeAttribute('data-busy-off');
 
     if(faceLive&&showFace&&padPaint){
-      var appKindMap={Cursor:'cursor',Claude:'claude',Codex:'codex',MiniMax:'minimax'};
-      var focus=onHookLeaf?(state.hookOpen||''):(appKindMap[state.app]||'');
+      var appKindMap={Cursor:'cursor',Claude:'claude',Codex:'codex',MiniMax:'minimax',Qoder:'qoder',Trae:'trae',Gemini:'gemini'};
+      var kindToApp={cursor:'Cursor',claude:'Claude',codex:'Codex',minimax:'MiniMax',qoder:'Qoder',trae:'Trae',gemini:'Gemini'};
+      var focus=onHookLeaf?(state.hookOpen||''):(appKindMap[state.app]||String(state.app||'').toLowerCase());
       var enabled=agentsOrdered().filter(function(r){ return r.enabled; });
       var chips=enabled.map(function(row){
         var st=state.topbarDemo[row.agent]||'idle';
         var focused=focus&&row.agent===focus;
+        var tip=onDataLeaf
+          ?(row.label+' · 切数据 focus')
+          :(row.label+' · 点按演示灯色');
         return (
           '<button type="button" class="soft-pad-agent-bar__chip soft-pad-agent-bar__chip--preview'+(focused?' is-focused':'')+'" '+
-          'data-topbar-chip="'+row.agent+'" data-agent="'+row.agent+'" data-status="'+st+'" title="'+row.label+' · 点按演示灯色">'+
+          'data-topbar-chip="'+row.agent+'" data-agent="'+row.agent+'" data-status="'+st+'" title="'+tip+'">'+
           agentIconHtml(row.agent,row.label)+
           '<i class="soft-pad-agent-bar__dot" aria-hidden="true"></i></button>'
         );
       }).join('');
-      var html=chips||'<span class="topbar-preview-empty">'+(onHookLeaf?'监视名单为空 — 去「添加」':'未添加 — 顶栏无图标')+'</span>';
+      var emptyMsg=onDataLeaf
+        ?'未添加 Agent — 去 Soft Pad 顶栏打开灯/图标'
+        :(onHookLeaf?'监视名单为空 — 去「添加」':'未添加 — 顶栏无图标');
+      var html=chips||'<span class="topbar-preview-empty">'+emptyMsg+'</span>';
       var face=padPaint.querySelector('.micro-hw__face');
       var faceTop=padPaint.querySelector('.micro-hw__face-top');
       var faceBar=padPaint.querySelector('.soft-pad-agent-bar--face');
@@ -2038,6 +2094,10 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
             e.stopPropagation();
             var id=btn.getAttribute('data-topbar-chip');
             if(!id) return;
+            if(onDataLeaf){
+              setApp(kindToApp[id]||id);
+              return;
+            }
             var cur=state.topbarDemo[id]||'idle';
             var i=TOPBAR_DEMO_CYCLE.indexOf(cur);
             state.topbarDemo[id]=TOPBAR_DEMO_CYCLE[(i+1)%TOPBAR_DEMO_CYCLE.length];
@@ -2048,6 +2108,10 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
             }
           };
         });
+      }
+      if(onDataLeaf){
+        var titles=padPaint.querySelectorAll('.micro-hw__face-title');
+        titles.forEach(function(t){ t.textContent='数据 · '+(state.app||'Agent'); });
       }
     }else if(padPaint){
       var barOff=padPaint.querySelector('.soft-pad-agent-bar--face');
@@ -2235,6 +2299,18 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     if(payload.topbar&&Array.isArray(payload.topbar.agents)) syncTopbarOrder(payload.topbar.agents);
     /* Soft Pad 默认开：接入页不再暴露总开关 */
     state.padEnabled=true;
+    if(payload.app||payload.selectedApp||payload.agentName){
+      var nextApp=String(payload.app||payload.selectedApp||payload.agentName);
+      if(nextApp&&nextApp!==state.app){
+        state.app=nextApp;
+        var appNameEl=document.getElementById('appName');
+        if(appNameEl) appNameEl.textContent=nextApp;
+        document.querySelectorAll('.app-pick').forEach(function(b){
+          b.classList.toggle('is-on',b.getAttribute('data-app')===nextApp);
+        });
+        paintSnap(nextApp);
+      }
+    }
     if(payload.screenOpacity!=null){
       var fo=Math.round(Number(payload.screenOpacity));
       if(fo>=40&&fo<=100) state.floatOpacity=fo;
@@ -2276,6 +2352,20 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     if(!data) return;
     if(data.type==='ot-agent-preview') applyPreviewPayload(data.payload);
     if(data.type==='ot-agent-settings') applySettingsPayload(data.payload);
+    if(data.type==='ot-agent-page-cmd'){
+      if(data.cmd==='setSub'&&data.sub) setSub(String(data.sub));
+      if(data.cmd==='selectAgent'&&(data.app||data.kind)){
+        var map={cursor:'Cursor',claude:'Claude',codex:'Codex',minimax:'MiniMax'};
+        var raw=String(data.app||data.kind);
+        setApp(map[raw.toLowerCase()]||raw, true);
+      }
+    }
+    /* nest 帧命令上抛到顶层（bridge 在父页） */
+    if(data.type==='ot-agent-data-cmd'||data.type==='ot-nav'){
+      if(ev.source&&ev.source!==window.parent){
+        try{ window.parent.postMessage(data, '*'); }catch(_){}
+      }
+    }
   });
   try{ window.parent.postMessage({ type:'ot-agent-preview-cmd', cmd:'refresh' }, '*'); }catch(_){}
   try{ window.parent.postMessage({ type:'ot-agent-settings-cmd', cmd:'refresh' }, '*'); }catch(_){}
@@ -2821,13 +2911,9 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     b.addEventListener('click',function(){setNav(b.getAttribute('data-nav'));});
   });
   document.getElementById('gotoStats').addEventListener('click',function(){
-    if(document.documentElement.classList.contains('ot-embed') && window.parent && window.parent !== window){
-      window.parent.postMessage({ type:'ot-nav', panel:'agentData' }, '*');
-      return;
-    }
-    setNav('stats');
+    setSub('data');
   });
-  document.getElementById('snapBody').addEventListener('click',function(){setNav('stats');});
+  document.getElementById('snapBody').addEventListener('click',function(){setSub('data');});
 
   /* 当前应用 · 简约摘要（不是数据大盘） */
   var APP_SNAP={
@@ -2848,17 +2934,39 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       {l:'费用',v:'—',miss:true},
       {l:'高峰',v:'—',miss:true},
       {l:'效率',v:'—',miss:true}
+    ],
+    MiniMax:[
+      {l:'费用',v:'—',miss:true},
+      {l:'Token',v:'—',miss:true},
+      {l:'效率',v:'—',miss:true},
+      {l:'活跃',v:'—',miss:true}
     ]
   };
+  var APP_TO_KIND={Cursor:'cursor',Claude:'claude',Codex:'codex',MiniMax:'minimax',Qoder:'qoder',Trae:'trae',Gemini:'gemini'};
+
+  function postDataNestCmd(cmd,extra){
+    var frame=document.getElementById('agentDataNestFrame');
+    if(!frame||!frame.contentWindow) return;
+    try{
+      frame.contentWindow.postMessage(Object.assign({type:'ot-agent-data-host-cmd',cmd:cmd},extra||{}), '*');
+    }catch(_){}
+  }
+
   function paintSnap(name){
     document.getElementById('snapApp').textContent=name;
-    var mets=APP_SNAP[name]||APP_SNAP.Cursor;
+    var mets=APP_SNAP[name]||[
+      {l:'效率',v:'—',miss:true},
+      {l:'活跃',v:'—',miss:true},
+      {l:'信号',v:'弱',miss:true},
+      {l:'费用',v:'—',miss:true}
+    ];
     document.getElementById('snapMets').innerHTML=mets.map(function(m){
       return '<span class="met'+(m.miss?' miss':'')+'">'+m.l+' <em>'+m.v+'</em></span>';
     }).join('');
   }
 
-  function setApp(name){
+  function setApp(name, skipPost){
+    if(!name) return;
     state.app=name;
     document.getElementById('appName').textContent=name;
     document.getElementById('connectCap').textContent='接入 Agent';
@@ -2868,7 +2976,12 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
       b.classList.toggle('is-on',b.getAttribute('data-app')===name);
     });
     paintSnap(name);
-    postSettingsCmd('selectAgent',{ app:name });
+    paintTopbarPreview();
+    if(!skipPost){
+      postSettingsCmd('selectAgent',{ app:name });
+      var kind=APP_TO_KIND[name]||name.toLowerCase();
+      postDataNestCmd('selectAgent',{ kind:kind, app:kind });
+    }
     if(state.sub==='softPad'||state.sub==='mini'){
       detail.innerHTML=pages[state.sub]();
       bindDetail();
@@ -2878,7 +2991,20 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     b.addEventListener('click',function(){setApp(b.getAttribute('data-app'));});
   });
 
+  function notifyParentSub(id){
+    try{ window.parent.postMessage({ type:'ot-agent-page', event:'sub', sub:id }, '*'); }catch(_){}
+  }
+
   function setSub(id){
+    // Work roster lives on software home; old deep-links fall through to Soft Pad.
+    if(id==='work'||id==='homeRoster'){
+      try{
+        if(window.parent&&window.parent!==window){
+          window.parent.postMessage({type:'ot-agent-page',event:'goto-home-roster'},'*');
+        }
+      }catch(_){}
+      id='softPad';
+    }
     if(id==='connect'){ state.softPad='hook'; id='softPad'; }
     else if(id==='keys'){ state.softPad='numpad'; id='softPad'; }
     else if(id==='lights'){ id='softPad'; }
@@ -2889,12 +3015,35 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     if(state.float==='voice') state.float='show';
     state.sub=id;
     if(isNumpadLeaf()&&!state.zone) state.zone='ag';
-    document.querySelectorAll('#subs [data-sub]').forEach(function(b){b.classList.toggle('is-on',b.getAttribute('data-sub')===id);});
-    detail.innerHTML=pages[id]();
+    var workspace=document.querySelector('#viewAgent .workspace');
+    if(workspace){
+      workspace.classList.toggle('is-data',id==='data');
+      workspace.classList.toggle('is-work',id==='work');
+    }
+    document.querySelectorAll('#subs [data-sub]').forEach(function(b){
+      var on=b.getAttribute('data-sub')===id;
+      b.classList.toggle('is-on',on);
+      b.setAttribute('aria-selected',on?'true':'false');
+    });
+    var workHost=document.getElementById('workHost');
+    var dataHost=document.getElementById('dataHost');
+    if(workHost) workHost.hidden = true;
+    if(dataHost) dataHost.hidden = id!=='data';
+    if(id==='data'){
+      detail.innerHTML='';
+      setPreviewMode(id);
+      syncPreview();
+      syncGuide();
+      notifyParentSub(id);
+      setNav('agent');
+      return;
+    }
+    detail.innerHTML=pages[id]?pages[id]():'';
     setPreviewMode(id);
     bindDetail();
     syncPreview();
     syncGuide();
+    notifyParentSub(id);
     setNav('agent');
   }
   document.querySelectorAll('#subs [data-sub]').forEach(function(b){
@@ -2904,8 +3053,14 @@ html.ot-embed #viewAgent.is-on,html.ot-embed #viewAgent{display:flex!important}
     c.addEventListener('click',function(){setSub(c.getAttribute('data-jump'));});
   });
 
-  setApp('Cursor');
-  setSub('float');
+  setApp('Cursor', true);
+  var deepSub=(/[&?]sub=([^&]+)/.exec(location.search)||[])[1];
+  var allowedDeep={data:1,float:1,mini:1,softPad:1,homeRoster:1,work:1};
+  setSub(allowedDeep[deepSub]?deepSub:'softPad');
+  document.getElementById('detail').addEventListener('click',function(ev){
+    var j=ev.target.closest('[data-sub-jump]');
+    if(j) setSub(j.getAttribute('data-sub-jump'));
+  });
   setNav('agent');
 
   (function(){

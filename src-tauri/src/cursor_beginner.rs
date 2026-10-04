@@ -1509,6 +1509,8 @@ mod tests {
         let mut m = MappingEntry {
             id: "cursor".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "默认".into(),
             app_target_id: CURSOR_APP_TARGET_ID.into(),
             voice_allow_bring_up_target: false,

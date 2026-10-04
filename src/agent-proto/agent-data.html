@@ -284,10 +284,20 @@ html.ot-embed .snav{display:none!important}
 html.ot-embed .data{min-height:100vh;height:100vh}
 html.ot-embed .mid{padding:12px 14px 18px}
 html.ot-embed .app-snap{margin:0 0 10px;border-radius:10px}
+/* nest：嵌在 Agent 数据叶内 — 相对 host 高度，收右侧 Soft Pad 预览 */
+html.ot-nest,html.ot-nest body{height:100%;min-height:0!important;overflow:hidden}
+html.ot-nest .page,html.ot-nest .frame,html.ot-nest .layout,html.ot-nest .data{
+  min-height:0!important;height:100%!important;max-height:100%;
+}
+html.ot-nest .preview{display:none!important}
+html.ot-nest .mid{flex:1;min-width:0;min-height:0;overflow:auto}
+html.ot-nest .strip-row{flex-wrap:wrap;max-width:100%}
+html.ot-nest .lens-rail{width:72px}
 </style>
 <script>
 (function(){
   if(/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('ot-embed');
+  if(/[?&]nest=1/.test(location.search)) document.documentElement.classList.add('ot-nest');
 })();
 </script>
 </head>
@@ -569,8 +579,21 @@ html.ot-embed .app-snap{margin:0 0 10px;border-radius:10px}
       setTimeout(function(){ el.textContent=prev; },1600);
   }
 
-  function selectSource(id){
-    if(state.previewId===id&&state.layout==='single'){
+  function postToHost(msg){
+    try{
+      var isNest=document.documentElement.classList.contains('ot-nest') && window.top && window.top !== window;
+      var target=window.parent;
+      /* 命令给顶层 bridge（selectAgent / enableCursorActivity / ot-nav） */
+      if(isNest && msg && (msg.type==='ot-agent-data-cmd'||msg.type==='ot-nav')){
+        target=window.top;
+      }
+      target.postMessage(msg, '*');
+    }catch(_){}
+  }
+
+  function selectSource(id,opts){
+    opts=opts||{};
+    if(!opts.force&&state.previewId===id&&state.layout==='single'){
       state.layout='overview';
     }else{
       state.previewId=id;
@@ -578,6 +601,7 @@ html.ot-embed .app-snap{margin:0 0 10px;border-radius:10px}
       state.layout='single';
     }
     render();
+    postToHost({ type:'ot-agent-data-cmd', cmd:'selectAgent', kind:id, app:id });
   }
 
   function renderStrip(){
@@ -749,7 +773,7 @@ html.ot-embed .app-snap{margin:0 0 10px;border-radius:10px}
     if(en){
       en.addEventListener('click',function(){
         en.disabled=true; en.textContent='启用中…';
-        try{ window.parent.postMessage({ type:'ot-agent-data-cmd', cmd:'enableCursorActivity' }, '*'); }catch(_){}
+        try{ postToHost({ type:'ot-agent-data-cmd', cmd:'enableCursorActivity' }); }catch(_){}
       });
     }
   }
@@ -840,7 +864,7 @@ html.ot-embed .app-snap{margin:0 0 10px;border-radius:10px}
       '<div class="pv-actions">'+(s.group==='offline'?'<button type="button" class="pri" id="pvConnect">去接通</button>':'')+
         '<button type="button" class="sec" id="pvExport">导出此源</button></div>';
     var c=document.getElementById('pvConnect');
-    if(c) c.onclick=function(){ toast('打开 Agent · 接通'); try{ window.parent.postMessage({type:'ot-nav',panel:'agent'},'*'); }catch(_){} };
+    if(c) c.onclick=function(){ toast('打开 Agent · 接通'); try{ postToHost({type:'ot-nav',panel:'agent'}); }catch(_){} };
     document.getElementById('pvExport').onclick=function(){ toast('即将支持 · 导出 '+s.name); };
   }
 
@@ -1005,8 +1029,17 @@ html.ot-embed .app-snap{margin:0 0 10px;border-radius:10px}
 
   window.addEventListener('message',function(ev){
     var data=ev&&ev.data;
-    if(!data||data.type!==MSG_TYPE) return;
-    applyPayload(data.payload);
+    if(!data) return;
+    if(data.type===MSG_TYPE){
+      applyPayload(data.payload);
+      return;
+    }
+    if(data.type==='ot-agent-data-host-cmd'){
+      if(data.cmd==='selectAgent'){
+        var id=String(data.kind||data.app||'');
+        if(id) selectSource(id,{force:true});
+      }
+    }
   });
 
   render();

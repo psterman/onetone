@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>OneTone · Agent 检测首页</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='10' fill='%230b6b56'/%3E%3Ctext x='16' y='21' text-anchor='middle' fill='white' font-size='14' font-family='sans-serif'%3E一%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="review">
+  <aside class="chrome" aria-label="原型审阅">
+    <div>
+      <h1>Agent 检测首页</h1>
+      <p class="blurb"><strong>左右台</strong>：左 Dock + Soft Pad，右完整数据板（五镜头 / 筛选 / 账本 / single）。Dock 是唯一全局 focus。不做工作记录。</p>
+    </div>
+
+    <div class="chrome-section">
+      <p class="chrome-label">视图</p>
+      <div class="scene-bar" id="viewBar" aria-label="视图切换"></div>
+    </div>
+
+    <div class="chrome-section">
+      <p class="chrome-label">场景</p>
+      <div class="scene-bar" id="sceneBar" aria-label="检测场景"></div>
+    </div>
+
+    <div class="chrome-section" id="filterSection">
+      <p class="chrome-label">列表过滤</p>
+      <div class="filter-bar" id="filterBar" aria-label="列表过滤"></div>
+    </div>
+
+    <div class="chrome-section">
+      <p class="chrome-label">数据边界</p>
+      <ul class="chrome-notes">
+        <li>来源：install inventory · 进程 · Soft Pad · Hook · attention 灯</li>
+        <li>OneTone 今日通道用量可附带显示</li>
+        <li>禁止：任务摘要、进度条、假额度、可编辑时间线</li>
+      </ul>
+    </div>
+
+    <div class="chrome-actions">
+      <a id="canvasLink" href="?view=split&amp;scene=mixed&amp;canvas=1" target="_blank" rel="noopener">单独打开画布</a>
+    </div>
+  </aside>
+
+  <div class="viewport">
+    <p class="frame-label" id="frameLabel">Agent 检测 · 扫描表 · 1080 × 720</p>
+    <div class="frame" id="productFrame" role="region" aria-label="OneTone Agent 检测首页">
+      <div id="stage" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="./fixtures.js"></script>
+  <script src="./board-dto.js"></script>
+  <script src="./data-board.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

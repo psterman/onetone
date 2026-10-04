@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone · 融合方案 A–G</title>
+<style>
+  :root {
+    --bg: #e6ebe7;
+    --paper: #f6f8f5;
+    --ink: #12231e;
+    --ink2: #3c514a;
+    --muted: #687c74;
+    --line: rgba(18, 35, 30, 0.1);
+    --teal: #0f6e62;
+    --teal-deep: #0a5249;
+    --teal-soft: #d6eee8;
+    --warn: #8a4b12;
+    --ok: #1a7a4c;
+    --shadow: 0 18px 44px rgba(18, 35, 30, 0.08);
+    --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    --display: "Segoe UI Semibold", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    --frame-w: 640px;
+    --frame-h: 720px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font: 14px/1.5 var(--font);
+    color: var(--ink);
+    background:
+      radial-gradient(ellipse 55% 40% at 12% 0%, #d7e6df, transparent 60%),
+      radial-gradient(ellipse 45% 35% at 95% 100%, #dde5db, transparent 55%),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  button, textarea, select, input { font: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  .page {
+    width: min(1160px, 100%);
+    margin: 0 auto;
+    padding: 16px 12px 36px;
+    display: grid;
+    grid-template-columns: 268px var(--frame-w);
+    gap: 16px;
+    justify-content: center;
+    align-items: start;
+  }
+  @media (max-width: 940px) {
+    .page { grid-template-columns: 1fr; }
+    .frame { width: min(100%, var(--frame-w)); margin: 0 auto; }
+  }
+
+  .chrome {
+    background: color-mix(in srgb, var(--paper) 94%, white);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 8px 22px rgba(18, 35, 30, 0.05);
+    position: sticky;
+    top: 12px;
+  }
+  .chrome h1 { margin: 0 0 4px; font: 650 15px/1.3 var(--display); letter-spacing: -.02em; }
+  .chrome .lead { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+  .tabs { display: flex; flex-direction: column; gap: 5px; }
+  .tabs button {
+    text-align: left;
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 11px;
+    padding: 9px 10px;
+    color: var(--ink2);
+  }
+  .tabs button[aria-selected="true"] {
+    background: var(--teal-soft);
+    border-color: color-mix(in srgb, var(--teal) 30%, transparent);
+    color: var(--teal-deep);
+  }
+  .tabs .code {
+    display: inline-grid;
+    place-items: center;
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    background: rgba(15, 110, 98, .12);
+    color: var(--teal-deep);
+    font-size: 11px;
+    font-weight: 800;
+    margin-right: 7px;
+  }
+  .tabs button[aria-selected="true"] .code { background: var(--teal); color: #f4fffb; }
+  .tabs .name { font-weight: 700; font-size: 13px; }
+  .tabs small { display: block; margin: 3px 0 0 27px; color: var(--muted); font-size: 11px; font-weight: 400; }
+  .meta {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink2);
+  }
+  .meta b { color: var(--teal-deep); }
+  .meta p { margin: 0 0 8px; }
+  .hint { color: var(--muted); font-size: 11px; }
+
+  .frame {
+    width: var(--frame-w);
+    height: var(--frame-h);
+    background: linear-gradient(165deg, #fbfcfa, var(--paper) 45%, #eef3ef);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .frame::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 160px;
+    background: radial-gradient(ellipse 70% 100% at 50% -20%, rgba(15,110,98,.08), transparent 70%);
+    pointer-events: none;
+  }
+  .top {
+    position: relative; z-index: 1;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px 6px;
+  }
+  .brand { display: flex; gap: 8px; align-items: center; font-weight: 750; letter-spacing: -.03em; }
+  .mark {
+    width: 25px; height: 25px; border-radius: 8px;
+    border: 1.5px solid var(--teal); color: var(--teal);
+    display: grid; place-items: center; font-size: 12px;
+  }
+  .ctx { font-size: 12px; color: var(--muted); }
+  .ctx b { color: var(--ink2); font-weight: 600; }
+  .stage {
+    position: relative; z-index: 1;
+    flex: 1; min-height: 0;
+    padding: 6px 20px 16px;
+    overflow: auto;
+  }
+  .toast {
+    position: absolute; left: 50%; bottom: 14px;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--ink); color: #f4faf8;
+    padding: 8px 13px; border-radius: 999px;
+    font-size: 12px; font-weight: 650; opacity: 0;
+    pointer-events: none; transition: .2s ease; z-index: 6; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .eyebrow { font-size: 11px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; color: var(--teal); margin-bottom: 8px; }
+  .headline { margin: 0; font: 650 26px/1.18 var(--display); letter-spacing: -.035em; }
+  .sub { margin: 8px 0 0; color: var(--ink2); font-size: 14px; max-width: 34em; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .btn {
+    border: 0; border-radius: 11px; padding: 10px 14px;
+    background: var(--teal); color: #f4fffb; font-weight: 700;
+    box-shadow: 0 8px 18px rgba(15,110,98,.2);
+  }
+  .btn.alt { background: transparent; color: var(--ink2); border: 1px solid var(--line); box-shadow: none; font-weight: 600; }
+  .btn.ghost { background: #fff; color: var(--ink2); border: 1px solid var(--line); box-shadow: none; }
+  .panel {
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.7);
+    border-radius: 14px;
+    padding: 12px;
+  }
+  .ask textarea, .composer input, .c-composer textarea {
+    width: 100%; border: 0; resize: none; background: transparent;
+    color: var(--ink); outline: none; padding: 2px 0 6px;
+  }
+  .ask-row, .composer-row {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .ask-row select, .chip-select {
+    border: 1px solid var(--line); background: var(--paper);
+    border-radius: 8px; padding: 5px 8px; color: var(--ink2); font-size: 12px;
+  }
+  .send {
+    border: 0; border-radius: 9px; padding: 8px 12px;
+    background: var(--ink); color: #f5faf8; font-weight: 700; font-size: 12px;
+  }
+  .strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+  .ch {
+    border: 1px solid var(--line); background: rgba(255,255,255,.55);
+    border-radius: 12px; padding: 9px 8px; text-align: left; min-height: 68px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .ch .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .ch.off .dot { background: #a7b5af; }
+  .ch.warn .dot { background: var(--warn); }
+  .ch .n { font-size: 12px; font-weight: 750; }
+  .ch .m { font-size: 11px; color: var(--muted); }
+  details.fold > summary {
+    list-style: none; cursor: pointer; font-weight: 650; color: var(--ink2);
+    display: flex; justify-content: space-between; padding: 2px 0 8px; font-size: 13px;
+  }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  .muted { color: var(--muted); }
+  .rise { animation: rise .42s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* B startline */
+  .got { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .got .item {
+    border: 1px solid var(--line); background: rgba(255,255,255,.65);
+    border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 650;
+  }
+  .got .item small { display: block; margin-top: 4px; font-weight: 400; color: var(--muted); font-size: 11px; }
+  .next-card {
+    margin-top: 12px; border: 1px solid color-mix(in srgb, var(--teal) 28%, var(--line));
+    background: linear-gradient(160deg, #fff, var(--teal-soft));
+    border-radius: 14px; padding: 14px;
+  }
+  .routes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .routes .item {
+    border: 1px solid var(--line); background: rgba(255,255,255,.55);
+    border-radius: 12px; padding: 12px; text-align: left;
+  }
+  .routes .item b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .routes .item span { font-size: 11px; color: var(--muted); }
+
+  /* C intent */
+  .c-center { margin-top: 8vh; text-align: center; }
+  .c-center .headline { font-size: 30px; }
+  .c-composer {
+    margin: 22px auto 0; max-width: 520px; text-align: left;
+    border: 1px solid var(--line); background: #fff; border-radius: 16px;
+    padding: 14px; box-shadow: 0 14px 36px rgba(18,35,30,.07);
+  }
+  .c-suggestions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 14px; }
+  .pill {
+    border: 1px solid var(--line); background: rgba(255,255,255,.7);
+    border-radius: 999px; padding: 6px 11px; font-size: 12px; color: var(--ink2);
+  }
+  .c-channels { display: flex; justify-content: center; gap: 8px; margin-top: 24px; flex-wrap: wrap; }
+  .c-channels .chip {
+    border: 1px solid var(--line); background: rgba(255,255,255,.55);
+    border-radius: 999px; padding: 6px 10px; font-size: 12px; color: var(--ink2);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .c-channels .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+  .c-channels .off .dot { background: #a7b5af; }
+
+  /* D softpad */
+  .d-stage { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 10px; align-items: center; margin-top: 12px; }
+  .d-pad {
+    aspect-ratio: 1; border-radius: 22px;
+    border: 1px solid color-mix(in srgb, var(--teal) 28%, var(--line));
+    background: linear-gradient(160deg, #12352f, #0f6e62 55%, #1a8f7d);
+    color: #e8fff8; padding: 14px;
+    box-shadow: 0 18px 40px rgba(15,110,98,.28);
+    display: grid; grid-template-rows: auto 1fr auto;
+  }
+  .d-pad .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; align-content: center; }
+  .d-pad .key {
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+    border-radius: 10px; padding: 10px 4px; text-align: center; font-size: 11px; font-weight: 650;
+  }
+  .d-orbit {
+    border: 1px solid var(--line); background: rgba(255,255,255,.6);
+    border-radius: 14px; padding: 12px; min-height: 88px;
+  }
+  .d-orbit h4 { margin: 0 0 4px; font-size: 13px; }
+  .d-orbit p { margin: 0; font-size: 12px; color: var(--muted); }
+
+  /* E resume */
+  .e-card {
+    margin-top: 10px; border: 1px solid var(--line); background: #fff;
+    border-radius: 16px; padding: 16px; box-shadow: 0 10px 28px rgba(18,35,30,.05);
+  }
+  .e-steps { margin: 12px 0 0; padding: 0; list-style: none; }
+  .e-steps li {
+    display: grid; grid-template-columns: 16px 1fr; gap: 8px;
+    padding: 7px 0; border-top: 1px solid var(--line); font-size: 13px;
+  }
+  .e-steps .mark-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; background: var(--teal); }
+  .e-steps .done { background: #a7b5af; }
+
+  /* F agent */
+  .f-band { display: grid; grid-template-columns: 1.1fr .9fr; gap: 10px; margin-top: 8px; }
+  .f-signal {
+    border: 1px solid var(--line); background: rgba(255,255,255,.65);
+    border-radius: 14px; padding: 12px;
+  }
+  .f-signal .k { font-size: 11px; color: var(--muted); font-weight: 650; letter-spacing: .04em; }
+  .f-signal .v { margin-top: 4px; font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
+  .f-signal .s { margin-top: 4px; font-size: 12px; color: var(--ink2); }
+  .f-timeline .row {
+    display: grid; grid-template-columns: 54px 1fr; gap: 8px;
+    padding: 8px 0; border-top: 1px solid var(--line); font-size: 12px;
+  }
+  .f-timeline .t { color: var(--muted); }
+
+  .situations { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .situations.show { display: block; }
+  .situations .label {
+    font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .situations .row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .situations button {
+    border: 1px solid var(--line); background: #fff; border-radius: 999px;
+    padding: 5px 10px; font-size: 11px; color: var(--ink2);
+  }
+  .situations button[aria-pressed="true"] {
+    background: var(--ink); color: #f4faf8; border-color: transparent;
+  }
+  .recipe {
+    display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0;
+  }
+  .recipe span {
+    font-size: 11px; border-radius: 999px; padding: 4px 8px;
+    background: var(--teal-soft); color: var(--teal-deep); font-weight: 650;
+  }
+  .tabs button.rec .code { background: var(--ink); color: #f4fffb; }
+  .tabs button.rec[aria-selected="true"] {
+    background: #e8f2ef;
+    border-color: color-mix(in srgb, var(--ink) 18%, transparent);
+  }
+
+  .scorebox {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+  }
+  .scorebox .label {
+    font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .score-row {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: var(--ink2);
+  }
+  .score-row .stars { display: flex; gap: 3px; }
+  .score-row .stars button {
+    width: 22px; height: 22px; border-radius: 6px;
+    border: 1px solid var(--line); background: #fff;
+    color: var(--muted); font-size: 11px; padding: 0; font-weight: 700;
+  }
+  .score-row .stars button[aria-pressed="true"] {
+    background: var(--teal-soft); border-color: color-mix(in srgb, var(--teal) 35%, transparent);
+    color: var(--teal-deep);
+  }
+  .scorebox textarea {
+    width: 100%;
+    min-height: 52px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px;
+    background: #fff;
+    color: var(--ink);
+    resize: vertical;
+    margin-top: 4px;
+  }
+  .score-sum {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+  .score-sum b { color: var(--ink2); font-weight: 700; }
+  .priority {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--ink2);
+    line-height: 1.5;
+    padding: 8px 9px;
+    background: rgba(255,255,255,.65);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .priority ol { margin: 4px 0 0; padding-left: 18px; }
+
+  .launch-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 14px 0 12px;
+  }
+  .launch-bar .ch { min-height: 78px; }
+  .launch-bar .ch.primary-ch {
+    border-color: color-mix(in srgb, var(--teal) 35%, var(--line));
+    background: linear-gradient(160deg, #fff, var(--teal-soft));
+  }
+  .extra-link {
+    border: 0; background: transparent; color: var(--muted);
+    font-size: 12px; padding: 4px 0; text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .detect-banner {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--teal) 28%, var(--line));
+    background: rgba(214, 238, 232, 0.55);
+    font-size: 12px;
+    color: var(--ink2);
+  }
+  .detect-banner b { color: var(--teal-deep); }
+  .a-demos { display: none; margin-top: 8px; }
+  .a-demos.show { display: block; }
+  .a-demos .row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .a-demos button {
+    border: 1px solid var(--line); background: #fff; border-radius: 999px;
+    padding: 5px 10px; font-size: 11px; color: var(--ink2);
+  }
+  .a-demos button[aria-pressed="true"] {
+    background: var(--teal-soft); border-color: color-mix(in srgb, var(--teal) 30%, transparent);
+    color: var(--teal-deep); font-weight: 650;
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <aside class="chrome">
+      <h1>融合方案 A–G</h1>
+      <p class="lead">A–F 比主轴；G 是第二轮推荐融合。规格：<code>docs/superpowers/specs/2026-10-04-home-fusion-g-design.md</code></p>
+      <div class="tabs" role="tablist" aria-label="融合方案">
+        <button type="button" role="tab" aria-selected="true" data-v="a"><span class="code">A</span><span class="name">编码启动页</span><small>当前工作 · 听写/按键 · 单提问</small></button>
+        <button type="button" role="tab" aria-selected="false" data-v="b"><span class="code">B</span><span class="name">能力起跑线</span><small>先验证能说话 · 再探索通道</small></button>
+        <button type="button" role="tab" aria-selected="false" data-v="c"><span class="code">C</span><span class="name">意图入口</span><small>一个问题打开一切</small></button>
+        <button type="button" role="tab" aria-selected="false" data-v="d"><span class="code">D</span><span class="name">Soft Pad 中心</span><small>屏幕按钮作视觉锚点</small></button>
+        <button type="button" role="tab" aria-selected="false" data-v="e"><span class="code">E</span><span class="name">继续上次</span><small>checkpoint 恢复优先</small></button>
+        <button type="button" role="tab" aria-selected="false" data-v="f"><span class="code">F</span><span class="name">Agent 工作带</span><small>动态/帮你 + 单提问</small></button>
+        <button type="button" role="tab" class="rec" aria-selected="false" data-v="g"><span class="code">G</span><span class="name">推荐融合</span><small>裁决：处理→修复→冷启动→继续→安静</small></button>
+      </div>
+      <div class="situations" id="situations">
+        <div class="label">G 的情境</div>
+        <div class="row" role="group" aria-label="情境">
+          <button type="button" data-sit="cold" aria-pressed="true">冷启动</button>
+          <button type="button" data-sit="resume" aria-pressed="false">可继续</button>
+          <button type="button" data-sit="quiet" aria-pressed="false">安静</button>
+          <button type="button" data-sit="attention" aria-pressed="false">要你处理</button>
+          <button type="button" data-sit="repair" aria-pressed="false">需修复</button>
+        </div>
+      </div>
+      <div class="a-demos" id="aDemos">
+        <div class="label" style="font-size:10px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">A 演示开关</div>
+        <div class="row" role="group" aria-label="A 演示">
+          <button type="button" data-ademo="explore" aria-pressed="false">主动探索更多</button>
+          <button type="button" data-ademo="softpad" aria-pressed="false">检测到 Soft Pad 场景</button>
+          <button type="button" data-ademo="camera" aria-pressed="false">检测到摄像头场景</button>
+        </div>
+      </div>
+      <div class="meta" id="meta"></div>
+      <div class="priority" id="priority" hidden>
+        <b>G 裁决顺序</b>（高优先先匹配）
+        <ol>
+          <li>要你处理</li>
+          <li>需修复</li>
+          <li>冷启动（未过起跑线）</li>
+          <li>可继续（有 checkpoint）</li>
+          <li>安静（默认）</li>
+        </ol>
+      </div>
+      <div class="scorebox" id="scorebox">
+        <div class="label">给当前方案打分（本地保存）</div>
+        <div class="score-row"><span>小白易懂</span><div class="stars" data-dim="ease"></div></div>
+        <div class="score-row"><span>发起效率</span><div class="stars" data-dim="start"></div></div>
+        <div class="score-row"><span>OneTone味</span><div class="stars" data-dim="unique"></div></div>
+        <textarea id="scoreNote" placeholder="备注：喜欢什么 / 丢掉什么…"></textarea>
+        <div class="score-sum" id="scoreSum"></div>
+      </div>
+    </aside>
+
+    <section class="frame" aria-label="首页预览">
+      <header class="top">
+        <div class="brand"><span class="mark">一</span>OneTone</div>
+        <div class="ctx" id="ctx">当前 · <b>Cursor</b> · <b>voice-pilot</b></div>
+      </header>
+      <div class="stage" id="stage"></div>
+      <div class="toast" id="toast" role="status"></div>
+    </section>
+  </div>
+
+<script>
+(function () {
+  var stage = document.getElementById('stage');
+  var meta = document.getElementById('meta');
+  var toast = document.getElementById('toast');
+  var ctx = document.getElementById('ctx');
+  var situations = document.getElementById('situations');
+  var priority = document.getElementById('priority');
+  var scoreSum = document.getElementById('scoreSum');
+  var scoreNote = document.getElementById('scoreNote');
+  var aDemos = document.getElementById('aDemos');
+  var toastTimer = 0;
+  var startlineDone = false;
+  var sit = 'cold';
+  var current = 'a';
+  var exploreExtra = false;
+  var detectSoftPad = false;
+  var detectCamera = false;
+  var SCORE_KEY = 'onetone.homeFusion.scores.v1';
+  var DIMS = ['ease', 'start', 'unique'];
+  var DIM_LABEL = { ease: '小白', start: '发起', unique: '独特性' };
+
+  var META = {
+    a: ['当前编码工作启动页（非能力探索墙）', '日常在 Cursor/Agent 里写代码', '默认只露语音+按键；Soft Pad/摄像头隐藏，探索或场景检出才出现'],
+    b: ['先验证「能说话」起跑线，再渐进探索', '真正的初学者第一次打开', '已获得能力可见；下一步只推一个'],
+    c: ['统一意图框召回动作 / Agent / 修复', '不想先学信息架构', '靠示例提问撑发现性'],
+    d: ['Soft Pad 中央锚点，其他通道环绕', '习惯点屏幕按钮', '语音/按键/摄像头作卫星'],
+    e: ['恢复 checkpoint 为唯一主线', '回桌面接着干', '提问与通道沉到次级'],
+    f: ['Agent 信号精简版 + 帮过你', '要看见 Agent 事实', '提问仍只有一个入口'],
+    g: ['A 为安静底座，按情境拼装', '默认生产候选', '安静=编码启动页；冷启动取 B；可继续取 E；要你处理取 F；修复替换主 CTA']
+  };
+
+  var SIT_LABEL = {
+    cold: '冷启动',
+    resume: '可继续',
+    quiet: '安静',
+    attention: '要你处理',
+    repair: '需修复'
+  };
+
+  function loadScores() {
+    try { return JSON.parse(localStorage.getItem(SCORE_KEY) || '{}') || {}; }
+    catch (_) { return {}; }
+  }
+  function saveScores(all) {
+    try { localStorage.setItem(SCORE_KEY, JSON.stringify(all)); } catch (_) {}
+  }
+  function getScore(v) {
+    var all = loadScores();
+    return all[v] || { ease: 0, start: 0, unique: 0, note: '' };
+  }
+  function setScore(v, patch) {
+    var all = loadScores();
+    all[v] = Object.assign({}, getScore(v), patch);
+    saveScores(all);
+    paintScores();
+  }
+  function buildStars() {
+    document.querySelectorAll('.stars[data-dim]').forEach(function (row) {
+      if (row.childElementCount) return;
+      var dim = row.getAttribute('data-dim');
+      for (var i = 1; i <= 5; i++) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = String(i);
+        b.setAttribute('data-val', String(i));
+        b.addEventListener('click', function (val) {
+          return function () {
+            var patch = {};
+            patch[dim] = val;
+            setScore(current, patch);
+          };
+        }(i));
+        row.appendChild(b);
+      }
+    });
+  }
+  function paintScores() {
+    var s = getScore(current);
+    document.querySelectorAll('.stars[data-dim]').forEach(function (row) {
+      var dim = row.getAttribute('data-dim');
+      var val = s[dim] || 0;
+      row.querySelectorAll('button').forEach(function (b) {
+        b.setAttribute('aria-pressed', Number(b.getAttribute('data-val')) <= val ? 'true' : 'false');
+      });
+    });
+    if (document.activeElement !== scoreNote) scoreNote.value = s.note || '';
+    var all = loadScores();
+    var lines = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(function (v) {
+      var x = all[v];
+      if (!x) return null;
+      var tot = (x.ease || 0) + (x.start || 0) + (x.unique || 0);
+      if (!tot) return null;
+      return '<b>' + v.toUpperCase() + '</b> ' + tot + '/15';
+    }).filter(Boolean);
+    scoreSum.innerHTML = lines.length
+      ? '汇总：' + lines.join(' · ')
+      : '还没有评分。给 A–G 各打三项分，便于选型。';
+  }
+
+  scoreNote.addEventListener('input', function () {
+    setScore(current, { note: scoreNote.value });
+  });
+  buildStars();
+
+  function tip(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 1500);
+  }
+
+  function ch(name, metaText, state, cls) {
+    return '<button type="button" class="ch ' + (cls || '') + ' ' + (state || '') + '" data-tip="打开通道 · ' + name + '">' +
+      '<span class="dot"></span><span class="n">' + name + '</span><span class="m">' + metaText + '</span></button>';
+  }
+
+  /** Coding-core: voice+keys always; Soft Pad/camera only if explore or scene detect. */
+  function codingChannels(opts) {
+    opts = opts || {};
+    var showPad = !!(opts.explore || opts.detectPad);
+    var showCam = !!(opts.explore || opts.detectCam);
+    var voiceMeta = opts.repairVoice ? '麦克风缺失' : '按习惯键开始听写';
+    var voiceState = opts.repairVoice ? 'warn' : '';
+    var html = '<div class="launch-bar">' +
+      ch('语音', voiceMeta, voiceState, 'primary-ch') +
+      ch('按键', '侧键已绑定 · 启动/结束', '', 'primary-ch') +
+      '</div>';
+    if (opts.detectPad && !opts.explore) {
+      html += '<div class="detect-banner">检测到 <b>Cursor 会话进行中</b> — Soft Pad 可用来暂停 / 确认 / 取消。<button type="button" class="btn ghost" style="padding:4px 8px;margin-left:6px" data-tip="打开 Soft Pad">打开 Soft Pad</button></div>';
+    }
+    if (opts.detectCam && !opts.explore) {
+      html += '<div class="detect-banner">检测到摄像头可用 — 可把手势用作确认通道。<button type="button" class="btn ghost" style="padding:4px 8px;margin-left:6px" data-tip="打开摄像头">设置手势</button></div>';
+    }
+    if (showPad || showCam) {
+      html += '<div class="strip" style="margin-bottom:8px">';
+      if (showPad) html += ch('Soft Pad', '浮层可用 · Agent 控制');
+      if (showCam) html += ch('摄像头', opts.detectCam ? '可作确认通道' : '未开启', opts.detectCam ? '' : 'off');
+      html += '</div>';
+    } else {
+      html += '<button type="button" class="extra-link" id="exploreMore">探索 Soft Pad / 摄像头…</button>';
+    }
+    if (opts.explore) {
+      html += '<p class="muted" style="margin:6px 0 0;font-size:11px"><button type="button" class="extra-link" id="collapseExtra">收起额外通道</button></p>';
+    }
+    return html;
+  }
+
+  function channelFold(open) {
+    return '<details class="fold"' + (open ? ' open' : '') + '>' +
+      '<summary><span>编码通道 · 语音 / 按键</span><span class="muted">' + (open ? '收起' : '展开') + '</span></summary>' +
+      codingChannels({ explore: false, detectPad: false, detectCam: false, repairVoice: open && sit === 'repair' }) +
+      '</details>';
+  }
+
+  function askBlock(ph, disabled) {
+    return '<div class="panel ask" style="' + (disabled ? 'opacity:.55;pointer-events:none' : '') + '">' +
+      '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:650;color:var(--ink2);margin-bottom:6px">' +
+      '<span>向当前编码目标提问</span><span class="muted" style="font-weight:400">单一入口</span></div>' +
+      '<textarea rows="2" placeholder="' + (ph || '例如：这段函数在干什么？只读回答。') + '"' + (disabled ? ' disabled' : '') + '></textarea>' +
+      '<div class="ask-row"><select aria-label="目标"' + (disabled ? ' disabled' : '') + '><option>当前前台 · Cursor</option><option>Codex</option><option>Claude</option></select>' +
+      '<button type="button" class="send" data-tip="已发送提问"' + (disabled ? ' disabled' : '') + '>发送</button></div></div>';
+  }
+
+  function viewA() {
+    return '<div class="rise">' +
+      '<div class="eyebrow">当前编码工作</div>' +
+      '<h2 class="headline">在 Cursor 里推进 voice-pilot</h2>' +
+      '<p class="sub">按键或语音开始听写；文字进当前输入框。提问发到编码目标，不在这里逛能力目录。</p>' +
+      '<div class="cta-row">' +
+      '<button type="button" class="btn" data-tip="开始听写到 Cursor">开始听写</button>' +
+      '<button type="button" class="btn alt" data-tip="查看当前会话">当前会话</button>' +
+      '</div>' +
+      codingChannels({
+        explore: exploreExtra,
+        detectPad: detectSoftPad,
+        detectCam: detectCamera
+      }) +
+      '<div style="margin-top:12px">' + askBlock() + '</div></div>';
+  }
+
+  function recipe(bits) {
+    return '<div class="recipe">' + bits.map(function (b) { return '<span>取自 ' + b + '</span>'; }).join('') + '</div>';
+  }
+
+  function viewB() {
+    if (!startlineDone) {
+      return '<div class="rise">' +
+        '<div class="eyebrow">还没有验证起跑线</div>' +
+        '<h2 class="headline">少两步，直接开始说话</h2>' +
+        '<p class="sub">OneTone 会找到真实输入框；按习惯键启动语音，文字默认安全留在输入框里。</p>' +
+        '<div class="cta-row"><button type="button" class="btn" id="detectStart">检测我的起跑线</button></div>' +
+        '<div style="height:16px"></div>' +
+        '<div class="panel"><div style="font-weight:700;font-size:13px;margin-bottom:8px">起跑线包含</div>' +
+        '<div class="got">' +
+        '<div class="item">按键触发<small>按下习惯键启动输入</small></div>' +
+        '<div class="item">悬浮栏反馈<small>知道正在定位或输入</small></div>' +
+        '<div class="item">安全保留文字<small>默认不自动发送</small></div>' +
+        '</div></div></div>';
+    }
+    return '<div class="rise">' +
+      '<div class="eyebrow">起跑线已通过</div>' +
+      '<h2 class="headline">已经能说话了</h2>' +
+      '<p class="sub">当前习惯：全局方案 · 目标 Cursor。下一步只推一个最值得探索的能力。</p>' +
+      '<div class="got">' +
+      '<div class="item">✓ 按键触发<small>习惯键可启动</small></div>' +
+      '<div class="item">✓ 悬浮栏反馈<small>状态看得见</small></div>' +
+      '<div class="item">✓ 安全保留文字<small>不会误发送</small></div>' +
+      '</div>' +
+      '<div class="next-card">' +
+      '<div class="eyebrow">最值得探索</div>' +
+      '<div style="font:650 18px/1.25 var(--display);letter-spacing:-.02em">Soft Pad 管理 Agent</div>' +
+      '<p class="sub" style="margin-top:6px">查看状态，并点暂停、继续、确认、取消。</p>' +
+      '<div class="cta-row"><button type="button" class="btn" data-tip="探索 Soft Pad">探索 Soft Pad</button>' +
+      '<button type="button" class="btn alt" data-tip="快速配置并试跑">再试跑一次</button></div></div>' +
+      '<div style="margin-top:14px;font-size:12px;font-weight:700;color:var(--ink2)">其他能力路线</div>' +
+      '<div class="routes">' +
+      '<button type="button" class="item" data-tip="语音控制"><b>语音控制</b><span>口令暂停 / 继续 / 确认</span></button>' +
+      '<button type="button" class="item" data-tip="实体控制"><b>实体控制</b><span>额外按键或外设</span></button>' +
+      '<button type="button" class="item" data-tip="摄像头手势"><b>摄像头手势</b><span>检测到再推荐</span></button>' +
+      '</div>' +
+      '<p class="muted" style="margin-top:12px;font-size:12px">最近验证：刚刚通过　<button type="button" class="btn ghost" id="resetStart" style="padding:5px 9px;margin-left:6px">重新完整检测</button></p>' +
+      '</div>';
+  }
+
+  function viewG() {
+    var head = recipe({
+      cold: ['B 起跑线'],
+      resume: ['E 继续', 'A 提问', '通道折叠'],
+      quiet: ['A 编码启动', '语音+按键', '单提问'],
+      attention: ['F 要你处理', 'A 提问', '通道折叠'],
+      repair: ['A 修复主 CTA', '通道展开']
+    }[sit]);
+
+    if (sit === 'cold') {
+      return '<div class="rise">' + head +
+        '<div class="eyebrow" style="margin-top:10px">冷启动 · 推荐融合</div>' +
+        '<h2 class="headline">少两步，直接开始说话</h2>' +
+        '<p class="sub">先验证起跑线，不先摊四通道或双 Agent 提问框。</p>' +
+        '<div class="cta-row"><button type="button" class="btn" id="detectStart">检测我的起跑线</button></div>' +
+        '<div style="height:12px"></div>' +
+        '<div class="got">' +
+        '<div class="item">按键触发<small>习惯键启动</small></div>' +
+        '<div class="item">悬浮栏反馈<small>看得见状态</small></div>' +
+        '<div class="item">安全保留<small>默认不发送</small></div>' +
+        '</div></div>';
+    }
+    if (sit === 'resume') {
+      return '<div class="rise">' + head +
+        '<div class="eyebrow" style="margin-top:10px">可继续 · 推荐融合</div>' +
+        '<h2 class="headline">停在：融合首页信息架构</h2>' +
+        '<p class="sub">有 checkpoint 时，恢复优先于提问和通道。</p>' +
+        '<div class="e-card">' +
+        '<div style="font-weight:700">下一步：选出生产主轴并落地</div>' +
+        '<div class="cta-row"><button type="button" class="btn" data-tip="恢复 checkpoint">继续这项工作</button>' +
+        '<button type="button" class="btn alt" data-tip="查看会话">查看会话</button></div></div>' +
+        '<div style="margin-top:12px">' + askBlock('在这个会话上追加一句…') + '</div>' +
+        '<div style="margin-top:10px">' + channelFold(false) + '</div></div>';
+    }
+    if (sit === 'attention') {
+      return '<div class="rise">' + head +
+        '<div class="eyebrow" style="margin-top:10px">要你处理 · 推荐融合</div>' +
+        '<h2 class="headline">Claude 正等你确认文件修改</h2>' +
+        '<p class="sub">有明确等待时，一个主 CTA 接管；提问与通道让路。</p>' +
+        '<div class="cta-row"><button type="button" class="btn" data-tip="查看并决定">查看并决定</button>' +
+        '<button type="button" class="btn alt" data-tip="稍后再说">稍后再说</button></div>' +
+        '<div class="f-band" style="margin-top:12px">' +
+        '<div class="f-signal"><div class="k">动态</div><div class="v">等你定</div><div class="s">PermissionRequest</div></div>' +
+        '<div class="f-signal"><div class="k">要不要你</div><div class="v">需要</div><div class="s">确认文件修改</div></div>' +
+        '</div>' +
+        '<div style="margin-top:12px">' + askBlock('补充说明给 Claude…') + '</div>' +
+        '<div style="margin-top:10px">' + channelFold(false) + '</div></div>';
+    }
+    if (sit === 'repair') {
+      return '<div class="rise">' + head +
+        '<div class="eyebrow" style="margin-top:10px;color:var(--warn)">需修复 · 推荐融合</div>' +
+        '<h2 class="headline">麦克风不可用，暂时不能听写</h2>' +
+        '<p class="sub">修复替换主 CTA；按键和 Soft Pad 仍可用。</p>' +
+        '<div class="cta-row"><button type="button" class="btn" style="background:var(--warn)" data-tip="去检查麦克风">去检查麦克风</button>' +
+        '<button type="button" class="btn alt" data-tip="先用按键">先用按键</button></div>' +
+        '<div style="margin-top:12px">' + askBlock('修好后再提问…', true) + '</div>' +
+        '<div style="margin-top:10px">' + channelFold(true) + '</div></div>';
+    }
+    // quiet = A coding launch foundation
+    return '<div class="rise">' + head +
+      '<div class="eyebrow" style="margin-top:10px">安静 · 推荐融合（A 底座）</div>' +
+      '<h2 class="headline">在 Cursor 里推进 voice-pilot</h2>' +
+      '<p class="sub">编码启动页：听写/按键开工；Soft Pad 与摄像头默认隐藏。</p>' +
+      '<div class="cta-row">' +
+      '<button type="button" class="btn" data-tip="开始听写到 Cursor">开始听写</button>' +
+      '<button type="button" class="btn alt" data-tip="查看当前会话">当前会话</button>' +
+      '</div>' +
+      codingChannels({ explore: exploreExtra, detectPad: detectSoftPad, detectCam: detectCamera }) +
+      '<div style="margin-top:12px">' + askBlock() + '</div></div>';
+  }
+
+  var views = {
+    a: viewA,
+    b: viewB,
+    c: function () {
+      return '<div class="rise c-center">' +
+        '<div class="eyebrow">你想让电脑做什么</div>' +
+        '<h2 class="headline">用一句话说下一步</h2>' +
+        '<div class="c-composer">' +
+        '<textarea rows="2" placeholder="继续上次首页工作 / 打开 Soft Pad / 检查麦克风…"></textarea>' +
+        '<div class="composer-row">' +
+        '<select class="chip-select"><option>自动选择目标</option><option>Cursor</option><option>Codex</option><option>Claude</option></select>' +
+        '<button type="button" class="send" data-tip="按意图召回">开始</button></div></div>' +
+        '<div class="c-suggestions">' +
+        '<button type="button" class="pill" data-tip="继续上次">继续上次工作</button>' +
+        '<button type="button" class="pill" data-tip="打开 Soft Pad">打开 Soft Pad</button>' +
+        '<button type="button" class="pill" data-tip="修复麦克风">麦克风打不开</button>' +
+        '<button type="button" class="pill" data-tip="问 Claude">问 Claude 首页职责</button>' +
+        '</div>' +
+        '<div class="c-channels">' +
+        '<span class="chip"><i class="dot"></i>语音就绪</span>' +
+        '<span class="chip"><i class="dot"></i>按键就绪</span>' +
+        '<span class="chip"><i class="dot"></i>Soft Pad</span>' +
+        '<span class="chip off"><i class="dot"></i>摄像头关</span>' +
+        '</div></div>';
+    },
+    d: function () {
+      return '<div class="rise">' +
+        '<div class="eyebrow">屏幕按钮为中心</div>' +
+        '<h2 class="headline">Soft Pad 在手边，其他通道环绕</h2>' +
+        '<div class="d-stage">' +
+        '<div style="display:flex;flex-direction:column;gap:8px">' +
+        '<button type="button" class="d-orbit" data-tip="打开语音"><h4>语音</h4><p>听写就绪</p></button>' +
+        '<button type="button" class="d-orbit" data-tip="打开按键"><h4>按键</h4><p>侧键已绑定</p></button>' +
+        '</div>' +
+        '<div class="d-pad" data-tip="展开 Soft Pad">' +
+        '<div style="font-size:11px;opacity:.75;letter-spacing:.08em;text-transform:uppercase">Soft Pad · Cursor</div>' +
+        '<div class="keys"><div class="key">听写</div><div class="key">发送</div><div class="key">取消</div>' +
+        '<div class="key">Plan</div><div class="key">Agent</div><div class="key">更多</div></div>' +
+        '<div style="font-size:11px;opacity:.8;text-align:center">点按即可，无需记快捷键</div></div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px">' +
+        '<button type="button" class="d-orbit" data-tip="打开摄像头"><h4>摄像头</h4><p>未开启</p></button>' +
+        '<button type="button" class="d-orbit" data-tip="提问"><h4>提问</h4><p>发到 Cursor / Codex</p></button>' +
+        '</div></div>' +
+        '<p class="sub" style="margin-top:14px">适合「先伸手点一下」；四通道仍是同一习惯上的入口。</p></div>';
+    },
+    e: function () {
+      return '<div class="rise">' +
+        '<div class="eyebrow">继续上次工作</div>' +
+        '<h2 class="headline">停在：融合首页信息架构</h2>' +
+        '<p class="sub">项目 voice-pilot · 会话今天 07:40 · 可恢复 checkpoint</p>' +
+        '<div class="e-card">' +
+        '<div style="font-size:12px;color:var(--muted);font-weight:650">上次完成</div>' +
+        '<div style="font-weight:700;margin-top:2px">确认四通道 + 工作台可融合</div>' +
+        '<ul class="e-steps">' +
+        '<li><span class="mark-dot done"></span><span>已完成：纠正四标签定义</span></li>' +
+        '<li><span class="mark-dot"></span><span>下一步：选出 A–F 主轴并做第二轮原型</span></li>' +
+        '</ul>' +
+        '<div class="cta-row">' +
+        '<button type="button" class="btn" data-tip="恢复 checkpoint">继续：整理融合方案</button>' +
+        '<button type="button" class="btn alt" data-tip="查看会话">查看会话</button>' +
+        '</div></div>' +
+        '<div style="margin-top:12px">' + askBlock('在这个会话上追加一句…') + '</div>' +
+        '<div style="margin-top:10px">' + channelFold(false) + '</div></div>';
+    },
+    f: function () {
+      return '<div class="rise">' +
+        '<div class="eyebrow">Agent 工作带</div>' +
+        '<h2 class="headline">Cursor 进行中 · 额度稍后</h2>' +
+        '<div class="f-band">' +
+        '<div class="f-signal"><div class="k">动态</div><div class="v">进行中</div><div class="s">正在整理融合方案对比</div></div>' +
+        '<div class="f-signal"><div class="k">要不要你</div><div class="v">暂不需要</div><div class="s">无等待确认</div></div>' +
+        '<div class="f-signal"><div class="k">顺不顺</div><div class="v">正常</div><div class="s">来源：前台 + session</div></div>' +
+        '<div class="f-signal"><div class="k">做到哪</div><div class="v">下一步</div><div class="s">选出 A–F 主轴</div></div>' +
+        '</div>' +
+        '<div class="f-timeline panel" style="margin-top:10px">' +
+        '<div style="font-weight:700;font-size:13px;margin-bottom:2px">帮过你</div>' +
+        '<div class="row"><span class="t">07:52</span><span>纠正「四标签」= 四通道</span></div>' +
+        '<div class="row"><span class="t">07:56</span><span>给出可融合骨架</span></div>' +
+        '<div class="row"><span class="t">08:01</span><span>画出 A–F 对比原型</span></div>' +
+        '</div>' +
+        '<div style="height:10px"></div>' + askBlock('接着问 Cursor / Codex / Claude…') +
+        '<div style="margin-top:10px">' + channelFold(false) + '</div></div>';
+    },
+    g: viewG
+  };
+
+  function setMeta(v) {
+    var m = META[v];
+    var extra = v === 'g'
+      ? '<p><b>当前情境</b>：' + SIT_LABEL[sit] + '</p><p class="hint">按 1–7 / A–G 切方案；在 G 里点情境按钮</p>'
+      : '<p class="hint">数字键 1–7 或 A–G · B/G 冷启动可点「检测起跑线」</p>';
+    meta.innerHTML = '<p><b>主轴</b>：' + m[0] + '</p><p><b>适合</b>：' + m[1] + '</p><p><b>取舍</b>：' + m[2] + '</p>' + extra;
+  }
+
+  function syncSitButtons() {
+    situations.querySelectorAll('button[data-sit]').forEach(function (btn) {
+      btn.setAttribute('aria-pressed', btn.getAttribute('data-sit') === sit ? 'true' : 'false');
+    });
+  }
+
+  function setView(v) {
+    if (!views[v]) return;
+    current = v;
+    document.querySelectorAll('.tabs [role="tab"]').forEach(function (btn) {
+      btn.setAttribute('aria-selected', btn.getAttribute('data-v') === v ? 'true' : 'false');
+    });
+    situations.classList.toggle('show', v === 'g');
+    aDemos.classList.toggle('show', v === 'a' || (v === 'g' && sit === 'quiet'));
+    priority.hidden = v !== 'g';
+    syncSitButtons();
+    syncADemoButtons();
+    setMeta(v);
+    paintScores();
+    ctx.innerHTML = (v === 'b' || (v === 'g' && sit === 'cold'))
+      ? '当前使用：<b>全局方案</b> · <b>Cursor</b> · <b>voice-pilot</b>'
+      : '当前编码 · <b>Cursor</b> · <b>voice-pilot</b>';
+    stage.innerHTML = views[v]();
+    var q = '?v=' + v + (v === 'g' ? '&sit=' + sit : '');
+    history.replaceState(null, '', q);
+  }
+
+  function syncADemoButtons() {
+    aDemos.querySelectorAll('button[data-ademo]').forEach(function (btn) {
+      var k = btn.getAttribute('data-ademo');
+      var on = k === 'explore' ? exploreExtra : k === 'softpad' ? detectSoftPad : detectCamera;
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  document.querySelectorAll('.tabs [role="tab"]').forEach(function (btn) {
+    btn.addEventListener('click', function () { setView(btn.getAttribute('data-v')); });
+  });
+
+  situations.querySelectorAll('button[data-sit]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      sit = btn.getAttribute('data-sit');
+      setView('g');
+    });
+  });
+
+  aDemos.querySelectorAll('button[data-ademo]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var k = btn.getAttribute('data-ademo');
+      if (k === 'explore') exploreExtra = !exploreExtra;
+      if (k === 'softpad') detectSoftPad = !detectSoftPad;
+      if (k === 'camera') detectCamera = !detectCamera;
+      setView(current);
+    });
+  });
+
+  stage.addEventListener('click', function (e) {
+    if (e.target.id === 'exploreMore') {
+      exploreExtra = true;
+      tip('已展开 Soft Pad / 摄像头');
+      setView(current);
+      return;
+    }
+    if (e.target.id === 'collapseExtra') {
+      exploreExtra = false;
+      tip('已收起额外通道');
+      setView(current);
+      return;
+    }
+    if (e.target.id === 'detectStart') {
+      startlineDone = true;
+      tip('检测完成：还可以更顺手');
+      if (current === 'g') {
+        sit = 'quiet';
+        setView('g');
+      } else {
+        setView('b');
+      }
+      return;
+    }
+    if (e.target.id === 'resetStart') {
+      startlineDone = false;
+      tip('已重置起跑线');
+      setView(current === 'g' ? 'g' : 'b');
+      return;
+    }
+    var t = e.target.closest('[data-tip]');
+    if (t) tip(t.getAttribute('data-tip'));
+  });
+
+  window.addEventListener('keydown', function (e) {
+    if (e.target.matches('textarea, input, select')) return;
+    var map = {
+      Digit1: 'a', Digit2: 'b', Digit3: 'c', Digit4: 'd', Digit5: 'e', Digit6: 'f', Digit7: 'g',
+      KeyA: 'a', KeyB: 'b', KeyC: 'c', KeyD: 'd', KeyE: 'e', KeyF: 'f', KeyG: 'g'
+    };
+    var v = map[e.code];
+    if (v) { e.preventDefault(); setView(v); }
+  });
+
+  var params = new URLSearchParams(location.search);
+  var init = (params.get('v') || 'g').toLowerCase();
+  var initSit = (params.get('sit') || 'cold').toLowerCase();
+  if (SIT_LABEL[initSit]) sit = initSit;
+  if (!views[init]) init = 'g';
+  setView(init);
+})();
+</script>
+</body>
+</html>

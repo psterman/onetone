@@ -161,7 +161,7 @@ fn read_sessions(project_id: &str, limit: usize) -> Vec<HomeSessionDto> {
         let mut stmt = conn
             .prepare(
                 "SELECT session_id, provider, external_session_id, title, updated_at_ms,
-                        status, project_match, match_reason, match_confidence,
+                        status, project_id, project_match, match_reason, match_confidence,
                         is_active, activity_source, active_confidence
                  FROM agent_sessions
                  WHERE project_id = ?1
@@ -187,7 +187,7 @@ fn read_recent_sessions_any(limit: usize) -> Vec<HomeSessionDto> {
         let mut stmt = conn
             .prepare(
                 "SELECT session_id, provider, external_session_id, title, updated_at_ms,
-                        status, project_match, match_reason, match_confidence,
+                        status, project_id, project_match, match_reason, match_confidence,
                         is_active, activity_source, active_confidence
                  FROM agent_sessions
                  ORDER BY COALESCE(updated_at_ms, 0) DESC
@@ -212,12 +212,13 @@ fn map_home_session_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<HomeSessionDt
         status: r
             .get::<_, Option<String>>(5)?
             .unwrap_or_else(|| "discovered".into()),
-        project_match: r.get(6)?,
-        match_reason: r.get(7)?,
-        match_confidence: r.get(8)?,
-        is_active: r.get::<_, i64>(9)? != 0,
-        activity_source: r.get(10)?,
-        active_confidence: r.get(11)?,
+        project_id: r.get(6)?,
+        project_match: r.get(7)?,
+        match_reason: r.get(8)?,
+        match_confidence: r.get(9)?,
+        is_active: r.get::<_, i64>(10)? != 0,
+        activity_source: r.get(11)?,
+        active_confidence: r.get(12)?,
     })
 }
 

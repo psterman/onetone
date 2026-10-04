@@ -1923,6 +1923,8 @@ mod tests {
         cfg.mappings.push(MappingEntry {
             id: "codex-1".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "???".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
             voice_allow_bring_up_target: false,
@@ -1989,6 +1991,8 @@ mod tests {
         let mut m = MappingEntry {
             id: "codex-heal".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "???".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
             voice_allow_bring_up_target: false,
@@ -2064,6 +2068,8 @@ mod tests {
         let mut m = MappingEntry {
             id: "cursor-heal-once".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "???".into(),
             app_target_id: CURSOR_APP_TARGET_ID.into(),
             voice_allow_bring_up_target: false,
@@ -2150,6 +2156,8 @@ mod tests {
         let m = MappingEntry {
             id: "codex-heal-all".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "???".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
             voice_allow_bring_up_target: false,
@@ -2232,6 +2240,8 @@ mod tests {
         let mut m = MappingEntry {
             id: "cursor-mode".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "???".into(),
             app_target_id: CURSOR_APP_TARGET_ID.into(),
             voice_allow_bring_up_target: false,
@@ -2296,6 +2306,8 @@ mod tests {
         let mut m = MappingEntry {
             id: "cursor-apps".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "???".into(),
             app_target_id: CURSOR_APP_TARGET_ID.into(),
             voice_allow_bring_up_target: false,
@@ -2355,6 +2367,8 @@ mod tests {
                 MappingEntry {
                     id: "codex-first".into(),
                     label: String::new(),
+                    display_name: String::new(),
+                    scenario_kind: String::new(),
                     group: "???".into(),
                     app_target_id: CODEX_APP_TARGET_ID.into(),
                     voice_allow_bring_up_target: false,
@@ -2397,6 +2411,8 @@ mod tests {
                 MappingEntry {
                     id: "cursor-soft-pad".into(),
                     label: String::new(),
+                    display_name: String::new(),
+                    scenario_kind: String::new(),
                     group: "???".into(),
                     app_target_id: CURSOR_APP_TARGET_ID.into(),
                     voice_allow_bring_up_target: false,
@@ -2470,6 +2486,8 @@ mod tests {
             mappings: vec![MappingEntry {
                 id: "cursor-soft-pad".into(),
                 label: String::new(),
+                display_name: String::new(),
+                scenario_kind: String::new(),
                 group: "???".into(),
                 app_target_id: CURSOR_APP_TARGET_ID.into(),
                 voice_allow_bring_up_target: false,
@@ -2538,6 +2556,8 @@ mod tests {
             mappings: vec![MappingEntry {
                 id: "codex-ptt-hold".into(),
                 label: String::new(),
+                display_name: String::new(),
+                scenario_kind: String::new(),
                 group: "???".into(),
                 app_target_id: CODEX_APP_TARGET_ID.into(),
                 voice_allow_bring_up_target: false,
@@ -2626,6 +2646,8 @@ mod tests {
         cfg.mappings = vec![MappingEntry {
             id: "codex-arrows".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "???".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
             voice_allow_bring_up_target: false,
@@ -2686,6 +2708,8 @@ mod tests {
         cfg.mappings = vec![MappingEntry {
             id: "codex-arrows-capture".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "???".into(),
             app_target_id: CODEX_APP_TARGET_ID.into(),
             voice_allow_bring_up_target: false,

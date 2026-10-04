@@ -96,7 +96,11 @@
       title: t('homeWbNavAgentData'),
       keywords: ['数据', '额度', 'usage', '读数', '账号', 'data'],
       group: group,
-      run: function () { openPanel('agentData'); },
+      run: function () {
+        var drawer = window.OneToneSettingsDrawer;
+        if (drawer && drawer.open) drawer.open({ panel: 'agent', agentSub: 'data' });
+        else openPanel('agentData');
+      },
     },
 
     // --- habits panel ---

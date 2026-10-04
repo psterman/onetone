@@ -1783,9 +1783,9 @@ fn send_json_line(stdin: &mut impl Write, value: Value) -> Result<(), String> {
 }
 
 #[derive(Debug, Clone)]
-struct CodexCommandSpec {
-    program: OsString,
-    prefix_args: Vec<OsString>,
+pub(crate) struct CodexCommandSpec {
+    pub(crate) program: OsString,
+    pub(crate) prefix_args: Vec<OsString>,
 }
 
 fn candidate_exists(path: PathBuf) -> Option<PathBuf> {
@@ -1801,7 +1801,7 @@ fn path_candidates(name: &str) -> Vec<PathBuf> {
 }
 
 #[cfg(windows)]
-fn codex_command_spec() -> Result<CodexCommandSpec, String> {
+pub(crate) fn codex_command_spec() -> Result<CodexCommandSpec, String> {
     if let Some(bin) = std::env::var_os(ENV_CODEX_BIN) {
         return Ok(CodexCommandSpec {
             program: bin,
@@ -1851,7 +1851,7 @@ fn codex_command_spec() -> Result<CodexCommandSpec, String> {
 }
 
 #[cfg(not(windows))]
-fn codex_command_spec() -> Result<CodexCommandSpec, String> {
+pub(crate) fn codex_command_spec() -> Result<CodexCommandSpec, String> {
     if let Some(bin) = std::env::var_os(ENV_CODEX_BIN) {
         return Ok(CodexCommandSpec {
             program: bin,

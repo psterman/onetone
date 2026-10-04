@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · Agent 工作首页原型</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #77818d;
+      --line: #e4e8ec;
+      --paper: #fbfcfd;
+      --panel: #ffffff;
+      --blue: #2f6df6;
+      --blue-soft: #edf3ff;
+      --green: #2a9565;
+      --amber: #bd7a22;
+      --red: #c95f54;
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button { font: inherit; }
+    .app { min-height: 100vh; }
+    .topbar {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(18px, 4vw, 58px);
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.92);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.02em; }
+    .brand-mark { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; background: #17202a; color: white; font-size: 13px; }
+    .nav { display: flex; gap: 5px; }
+    .nav button { border: 0; background: transparent; color: var(--muted); padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+    .nav button.active { color: var(--ink); background: #f0f3f6; font-weight: 700; }
+    .profile { color: var(--muted); font-size: 12px; }
+
+    main { width: min(100% - 36px, 1020px); margin: 0 auto; padding: 48px 0 72px; }
+    .hero { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 34px; }
+    .eyebrow { margin: 0 0 8px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .05em; }
+    h1 { margin: 0; font-size: clamp(27px, 4vw, 42px); line-height: 1.08; letter-spacing: -.045em; }
+    .hero-copy { margin: 12px 0 0; color: var(--muted); max-width: 480px; }
+    .voice-cta { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 10px; border: 0; border-radius: 12px; padding: 13px 18px; background: var(--blue); color: white; font-weight: 800; box-shadow: 0 8px 18px rgba(47,109,246,.18); cursor: pointer; }
+    .voice-cta:hover { background: #225bd4; }
+    .voice-dot { width: 9px; height: 9px; border-radius: 99px; background: #bcd0ff; }
+
+    .section { margin-top: 26px; }
+    .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+    .section-heading h2 { margin: 0; font-size: 15px; letter-spacing: -.01em; }
+    .section-heading span { color: var(--muted); font-size: 12px; }
+    .roster { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+    .agent-row { border-top: 1px solid var(--line); }
+    .agent-row:first-child { border-top: 0; }
+    .agent-toggle { width: 100%; display: grid; grid-template-columns: 10px minmax(96px, 1.1fr) minmax(0, 2fr) auto auto; align-items: center; gap: 14px; padding: 16px 18px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+    .agent-toggle:hover, .agent-row.open .agent-toggle { background: #fafbfd; }
+    .agent-toggle:focus-visible, .action:focus-visible, .voice-cta:focus-visible { outline: 3px solid rgba(47,109,246,.28); outline-offset: -2px; }
+    .status { width: 9px; height: 9px; border-radius: 99px; background: var(--green); box-shadow: 0 0 0 4px #e8f6ef; }
+    .status.idle { background: #9ba5ae; box-shadow: 0 0 0 4px #f0f2f4; }
+    .status.warn { background: var(--amber); box-shadow: 0 0 0 4px #fff4df; }
+    .agent-name { font-weight: 800; }
+    .agent-name small { display: block; color: var(--muted); font-size: 11px; font-weight: 500; }
+    .work-line { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #3f4c58; }
+    .work-line strong { color: var(--ink); font-weight: 650; }
+    .time, .chevron { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .chevron { transition: transform .18s ease; }
+    .agent-row.open .chevron { transform: rotate(180deg); }
+    .detail { display: none; padding: 0 18px 18px 60px; background: #fafbfd; }
+    .agent-row.open .detail { display: block; }
+    .detail-grid { display: grid; grid-template-columns: 1.2fr repeat(3, 1fr); gap: 8px; padding: 14px 0; border-top: 1px dashed #dce2e8; }
+    .metric { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: white; }
+    .metric span { display: block; color: var(--muted); font-size: 11px; }
+    .metric strong { display: block; margin-top: 2px; font-size: 15px; }
+    .detail-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+    .detail-note { margin: 0; color: var(--muted); font-size: 12px; }
+    .actions { display: flex; gap: 7px; flex-wrap: wrap; }
+    .action { border: 1px solid #d8dee5; border-radius: 8px; padding: 7px 10px; background: white; color: #33404c; cursor: pointer; }
+    .action.primary { border-color: var(--blue); background: var(--blue); color: white; }
+    .attention { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 16px; border: 1px solid #f0dfc3; border-radius: 12px; background: #fffaf0; }
+    .attention strong { color: #805417; }
+    .attention span { color: #97764b; font-size: 12px; }
+    .demo-toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; padding: 10px 14px; border-radius: 10px; background: #17202a; color: white; font-size: 12px; transition: .2s ease; }
+    .demo-toast.show { transform: translate(-50%, 0); opacity: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      .chevron, .demo-toast { transition: none; }
+    }
+
+    @media (max-width: 680px) {
+      .topbar { height: auto; min-height: 60px; padding: 10px 18px; }
+      .nav button { padding: 6px 7px; font-size: 12px; }
+      .profile { display: none; }
+      main { width: min(100% - 28px, 560px); padding-top: 32px; }
+      .hero { display: block; }
+      .voice-cta { margin-top: 20px; width: 100%; justify-content: center; }
+      .agent-toggle { grid-template-columns: 10px minmax(100px, 1fr) auto 16px; gap: 10px; padding: 14px 13px; }
+      .work-line { grid-column: 2 / 4; grid-row: 2; font-size: 12px; }
+      .time { grid-column: 3; grid-row: 1; }
+      .detail { padding: 0 13px 15px 32px; }
+      .detail-grid { grid-template-columns: repeat(2, 1fr); }
+      .detail-grid .metric:first-child { grid-column: 1 / -1; }
+      .detail-footer { display: block; }
+      .actions { margin-top: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">O</span><span>OneTone</span></div>
+      <nav class="nav" aria-label="主导航">
+        <button class="active" type="button">现在</button>
+        <button type="button">我的习惯</button>
+        <button type="button">设置</button>
+      </nav>
+      <span class="profile">原型 · 静态数据</span>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">今天 · 周日 10 月 4 日</p>
+          <h1 id="page-title">你上次停在 Codex。</h1>
+          <p class="hero-copy">可以从停下的地方继续，也可以直接说出下一件事。</p>
+        </div>
+        <button class="voice-cta" type="button" data-toast="听写入口已准备好"><span class="voice-dot"></span>开始听写</button>
+      </section>
+
+      <section class="section" aria-labelledby="roster-title">
+        <div class="section-heading"><h2 id="roster-title">Agent 名册</h2><span>7 个已记录 · 点击查看最近工作</span></div>
+        <div class="roster">
+          <article class="agent-row open">
+            <button class="agent-toggle" type="button" aria-expanded="true"><span class="status"></span><span class="agent-name">Codex<small>CLI · 0.160.0</small></span><span class="work-line"><strong>voice-pilot 首页验收</strong> · 等待你的确认</span><span class="time">12 分钟前</span><span class="chevron">⌄</span></button>
+            <div class="detail"><div class="detail-grid"><div class="metric"><span>今天的工作</span><strong>3 个会话</strong></div><div class="metric"><span>成本</span><strong>$1.42</strong></div><div class="metric"><span>成功率</span><strong>100%</strong></div><div class="metric"><span>平均用时</span><strong>18m</strong></div></div><div class="detail-footer"><p class="detail-note">最近同步：刚刚 · 可恢复当前工作</p><div class="actions"><button class="action primary" type="button" data-toast="已准备继续 Codex 工作">继续</button><button class="action" type="button" data-toast="打开工作详情">查看</button><button class="action" type="button" data-toast="进入 Agent 设置">配置</button></div></div></div>
+          </article>
+          <article class="agent-row"><button class="agent-toggle" type="button" aria-expanded="false"><span class="status"></span><span class="agent-name">Cursor<small>IDE · 0.48</small></span><span class="work-line"><strong>重构 settings drawer</strong> · 正在运行</span><span class="time">4 分钟前</span><span class="chevron">⌄</span></button><div class="detail"><div class="detail-grid"><div class="metric"><span>今天的工作</span><strong>5 个会话</strong></div><div class="metric"><span>成本</span><strong>不可用</strong></div><div class="metric"><span>成功率</span><strong>92%</strong></div><div class="metric"><span>平均用时</span><strong>24m</strong></div></div><div class="detail-footer"><p class="detail-note">最近同步：4 分钟前 · 历史可读，恢复受限</p><div class="actions"><button class="action" type="button" data-toast="打开 Cursor 工作详情">查看</button><button class="action" type="button" data-toast="进入 Agent 设置">配置</button></div></div></div></article>
+          <article class="agent-row"><button class="agent-toggle" type="button" aria-expanded="false"><span class="status idle"></span><span class="agent-name">Claude Code<small>CLI · 2.1.288</small></span><span class="work-line"><strong>整理录音流程说明</strong> · 已完成</span><span class="time">昨天</span><span class="chevron">⌄</span></button><div class="detail"><div class="detail-grid"><div class="metric"><span>今天的工作</span><strong>2 个会话</strong></div><div class="metric"><span>成本</span><strong>$0.86</strong></div><div class="metric"><span>成功率</span><strong>100%</strong></div><div class="metric"><span>平均用时</span><strong>11m</strong></div></div><div class="detail-footer"><p class="detail-note">最近同步：昨天 · 有可查看的工作记录</p><div class="actions"><button class="action" type="button" data-toast="打开 Claude 工作详情">查看</button><button class="action" type="button" data-toast="进入 Agent 设置">配置</button></div></div></div></article>
+          <article class="agent-row"><button class="agent-toggle" type="button" aria-expanded="false"><span class="status idle"></span><span class="agent-name">WorkBuddy<small>桌面应用 · 2.147.0</small></span><span class="work-line"><strong>暂无项目内工作</strong> · 可以开始新的任务</span><span class="time">2 天前</span><span class="chevron">⌄</span></button><div class="detail"><div class="detail-grid"><div class="metric"><span>今天的工作</span><strong>0 个会话</strong></div><div class="metric"><span>成本</span><strong>不可用</strong></div><div class="metric"><span>成功率</span><strong>不可用</strong></div><div class="metric"><span>平均用时</span><strong>不可用</strong></div></div><div class="detail-footer"><p class="detail-note">最近同步：2 天前 · 仅有基础元数据</p><div class="actions"><button class="action" type="button" data-toast="进入 Agent 设置">配置</button></div></div></div></article>
+          <article class="agent-row"><button class="agent-toggle" type="button" aria-expanded="false"><span class="status warn"></span><span class="agent-name">Qoder<small>IDE · 已发现</small></span><span class="work-line"><strong>历史数据受限</strong> · 仅有元数据</span><span class="time">时间未知</span><span class="chevron">⌄</span></button><div class="detail"><div class="detail-grid"><div class="metric"><span>数据来源</span><strong>本机目录</strong></div><div class="metric"><span>会话</span><strong>受限</strong></div><div class="metric"><span>恢复</span><strong>不可用</strong></div><div class="metric"><span>最近同步</span><strong>未知</strong></div></div><div class="detail-footer"><p class="detail-note">发现了 Agent，但还没有可读的工作历史</p><div class="actions"><button class="action" type="button" data-toast="进入 Agent 设置">配置</button></div></div></div></article>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="attention-title">
+        <div class="section-heading"><h2 id="attention-title">需要处理 <span style="color:var(--amber)">2</span></h2><span>只在有事项时提醒</span></div>
+        <div class="attention"><div><strong>Codex 等待你的确认</strong><br><span>首页改造验收 · 12 分钟前</span></div><button class="action" type="button" data-toast="已定位到需要处理的工作">查看</button></div>
+      </section>
+    </main>
+  </div>
+  <div class="demo-toast" role="status" aria-live="polite"></div>
+  <script>
+    (() => {
+      const toast = document.querySelector('.demo-toast');
+      let timer;
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(timer);
+        timer = setTimeout(() => toast.classList.remove('show'), 1800);
+      }
+      document.querySelectorAll('.agent-toggle').forEach((button) => {
+        button.addEventListener('click', () => {
+          const row = button.closest('.agent-row');
+          const open = row.classList.toggle('open');
+          button.setAttribute('aria-expanded', String(open));
+        });
+      });
+      document.querySelectorAll('[data-toast]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          showToast(button.dataset.toast);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

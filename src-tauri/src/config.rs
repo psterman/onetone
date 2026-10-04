@@ -8461,8 +8461,6 @@ mod tests {
                 kind: "habit".into(),
                 mapping_id: "habit-a".into(),
                 app_target_id: String::new(),
-                display_name: String::new(),
-                scenario_kind: String::new(),
             }),
         };
         let json = r#"{"version":8,"mappings":[],"trash":[]}"#;
@@ -8492,8 +8490,6 @@ mod tests {
             kind: "habit".into(),
             mapping_id: "habit-a".into(),
             app_target_id: String::new(),
-            display_name: String::new(),
-            scenario_kind: String::new(),
         });
         let json = r#"{"version":8,"mappings":[],"trash":[],"runtimeHabitControl":{"softOverride":null,"pin":null}}"#;
         let merged = merge_save_payload(&existing, json).expect("merge");
@@ -8876,6 +8872,8 @@ mod tests {
         cfg.mappings.push(MappingEntry {
             id: "codex-scene".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "Codex".into(),
             trigger_key: "PageDown".into(),
             target_key: "Ctrl+Shift+D".into(),
@@ -8949,6 +8947,8 @@ mod tests {
         cfg.mappings.push(MappingEntry {
             id: "codex-scene".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "Codex".into(),
             trigger_key: String::new(),
             target_key: String::new(),
@@ -9018,6 +9018,8 @@ mod tests {
         cfg.mappings.push(MappingEntry {
             id: "cursor-scene".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "Cursor".into(),
             trigger_key: String::new(),
             target_key: String::new(),
@@ -9545,6 +9547,8 @@ mod tests {
         let mapping = MappingEntry {
             id: "sc1".into(),
             label: "test".into(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: default_group(),
             trigger_key: String::new(),
             target_key: "RAlt".into(),

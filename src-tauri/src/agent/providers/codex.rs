@@ -119,6 +119,27 @@ impl CodexProviderAdapter {
             // Explicit input.commit / input.send must go through Layer1 native (Never/Force).
             // Do not accept them here — would reintroduce AutoConfig confusion.
             "cancel" | "input.cancel" | "agent.interrupt" | "agent.reject" => {
+                // Confirm Codex window → focus → verify FG → Esc → caller records lifecycle only on ok.
+                let focus = Self::focus_only(state, window, duration_ms, mode);
+                if !focus.ok {
+                    return focus;
+                }
+                std::thread::sleep(Duration::from_millis(80));
+                let fg = app_chat_workflow::foreground_app_target_id();
+                if fg.as_deref() != Some(CODEX_APP_TARGET_ID) {
+                    return ProviderActionOutcome::err(
+                        "wrong_app_context",
+                        Some("Codex is not foreground after focus".into()),
+                        mode,
+                    );
+                }
+                if crate::app_identity::foreground_is_self() {
+                    return ProviderActionOutcome::err(
+                        "inject_self_fg",
+                        Some("refused Esc: OneTone owns foreground".into()),
+                        mode,
+                    );
+                }
                 Self::send_hotkey("Esc", duration_ms, mode)
             }
             "newThread" | "session.new" => {

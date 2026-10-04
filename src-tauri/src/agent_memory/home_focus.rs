@@ -283,7 +283,7 @@ fn read_best_session(project_id: &str) -> Option<HomeSessionDto> {
         let mut stmt = conn
             .prepare(
                 "SELECT session_id, provider, external_session_id, title, updated_at_ms, status,
-                        project_match, match_reason, match_confidence, is_active,
+                        project_id, project_match, match_reason, match_confidence, is_active,
                         activity_source, active_confidence
                  FROM agent_sessions
                  WHERE project_id = ?1
@@ -292,22 +292,7 @@ fn read_best_session(project_id: &str) -> Option<HomeSessionDto> {
             )
             .map_err(|e| e.to_string())?;
         let row = stmt
-            .query_row(params![project_id], |r| {
-                Ok(HomeSessionDto {
-                    session_id: r.get(0)?,
-                    provider: r.get(1)?,
-                    external_session_id: r.get(2)?,
-                    title: r.get(3)?,
-                    updated_at: r.get::<_, Option<i64>>(4)?.map(|x| x as u64),
-                    status: r.get(5)?,
-                    project_match: r.get(6)?,
-                    match_reason: r.get(7)?,
-                    match_confidence: r.get(8)?,
-                    is_active: r.get::<_, i64>(9)? != 0,
-                    activity_source: r.get(10)?,
-                    active_confidence: r.get(11)?,
-                })
-            })
+            .query_row(params![project_id], map_home_session_dto)
             .ok();
         if row.is_some() {
             return Ok(row);
@@ -316,7 +301,7 @@ fn read_best_session(project_id: &str) -> Option<HomeSessionDto> {
         let mut stmt2 = conn
             .prepare(
                 "SELECT session_id, provider, external_session_id, title, updated_at_ms, status,
-                        project_match, match_reason, match_confidence, is_active,
+                        project_id, project_match, match_reason, match_confidence, is_active,
                         activity_source, active_confidence
                  FROM agent_sessions
                  WHERE provider = ?1
@@ -325,25 +310,28 @@ fn read_best_session(project_id: &str) -> Option<HomeSessionDto> {
             )
             .map_err(|e| e.to_string())?;
         Ok(stmt2
-            .query_row(params![PROVIDER_CURSOR], |r| {
-                Ok(HomeSessionDto {
-                    session_id: r.get(0)?,
-                    provider: r.get(1)?,
-                    external_session_id: r.get(2)?,
-                    title: r.get(3)?,
-                    updated_at: r.get::<_, Option<i64>>(4)?.map(|x| x as u64),
-                    status: r.get(5)?,
-                    project_match: r.get(6)?,
-                    match_reason: r.get(7)?,
-                    match_confidence: r.get(8)?,
-                    is_active: r.get::<_, i64>(9)? != 0,
-                    activity_source: r.get(10)?,
-                    active_confidence: r.get(11)?,
-                })
-            })
+            .query_row(params![PROVIDER_CURSOR], map_home_session_dto)
             .ok())
     })
     .unwrap_or(None)
+}
+
+fn map_home_session_dto(r: &rusqlite::Row<'_>) -> rusqlite::Result<HomeSessionDto> {
+    Ok(HomeSessionDto {
+        session_id: r.get(0)?,
+        provider: r.get(1)?,
+        external_session_id: r.get(2)?,
+        title: r.get(3)?,
+        updated_at: r.get::<_, Option<i64>>(4)?.map(|x| x as u64),
+        status: r.get(5)?,
+        project_id: r.get(6)?,
+        project_match: r.get(7)?,
+        match_reason: r.get(8)?,
+        match_confidence: r.get(9)?,
+        is_active: r.get::<_, i64>(10)? != 0,
+        activity_source: r.get(11)?,
+        active_confidence: r.get(12)?,
+    })
 }
 
 fn provider_status(refreshing: bool, probe: &str, consent: bool) -> String {

@@ -1,6 +1,9 @@
 ﻿//! Agent memory store — Plan A discovery + Plan B lifecycle + Plan C checkpoint/memory.
 
+mod agent_center;
 mod checkpoint;
+mod claude_background;
+mod codex_work_meta;
 mod context;
 mod cursor_adapter;
 mod events;
@@ -12,12 +15,20 @@ mod model;
 mod paths;
 mod project;
 mod project_confirm;
+pub mod registry;
 mod session_events;
 mod snapshot;
 mod store;
 mod worker;
 mod workspace_evidence;
 
+pub use agent_center::{
+    build_agent_center_snapshot, build_agent_center_snapshot_with_hints, collect_resolve_hints,
+    execute_agent_center_action, parse_project_hint, refresh_and_snapshot,
+    refresh_and_snapshot_with_hints, registry_refresh_is_fresh, ResolveHints, AgentCenterActionArgs,
+    AgentCenterActionResult, AgentCenterSnapshot, AgentCenterSnapshotArgs,
+};
+pub use claude_background::{ClaudeBackgroundProbe, ClaudeProbeCache, ProbePolicy};
 pub use checkpoint::{
     create_checkpoint, latest_checkpoint_for_project, latest_checkpoint_for_session,
     maybe_auto_checkpoint, resume_checkpoint,
@@ -44,6 +55,11 @@ pub use model::{
     PROVIDER_CURSOR, UNKNOWN_PROJECT_ID,
 };
 pub use project_confirm::{confirm_project, list_known_projects, KnownProjectDto};
+pub use registry::{
+    canonicalize_discovery_label, discovered_agent_id, kind_agent_id, list_registry,
+    parse_runtime_kind, refresh_registry, sniff_version, upsert_registry_row, CanonicalTarget,
+    RegistryRow, ALL_AGENT_KINDS,
+};
 pub use session_events::list_session_events;
 pub use snapshot::{build_agent_home_snapshot, AgentHomeSnapshot};
 pub use store::{with_read_path, with_write};

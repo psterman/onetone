@@ -28,6 +28,12 @@
     opts=opts||{};
     if(panel==='voiceEnd') panel='voiceWake';
     if(panel==='actionHistory') panel='habits';
+    if(panel==='agentData'){
+      return {
+        panel:'agent',
+        opts:Object.assign({},opts,{agentSub:'data'})
+      };
+    }
     if(panel==='general'){
       return {
         panel:'debug',
@@ -570,7 +576,16 @@
 
   function navHighlightPanel(panel){
     if(panel==='scenes') return 'habits';
+    if(panel==='agent'&&ui.agentSub==='data') return 'agentData';
     return panel;
+  }
+
+  function postAgentPageCmd(cmd,extra){
+    var frame=$('agentProtoFrame');
+    if(!frame||!frame.contentWindow) return;
+    try{
+      frame.contentWindow.postMessage(Object.assign({type:'ot-agent-page-cmd',cmd:cmd},extra||{}), '*');
+    }catch(_){}
   }
 
   function openScenarioDetail(id,opts){
@@ -747,6 +762,9 @@
       }
     }
     if(panelChanged&&lastPanel==='agent'&&panel!=='agent'){
+      if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
+        try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
+      }
       if(global.OneToneAgentPagePreviewBridge&&global.OneToneAgentPagePreviewBridge.stop){
         try{ global.OneToneAgentPagePreviewBridge.stop(); }catch(_){}
       }
@@ -774,6 +792,11 @@
     }
 
     ui.settingsPanel=panel;
+    if(panel==='agent'){
+      ui.agentSub=opts.agentSub==='data'?'data':(opts.agentSub||null);
+    }else{
+      ui.agentSub=null;
+    }
 
     if(ui.drawerOpen){
       setSettingsDrawerGate(true,{panel:panel});
@@ -931,17 +954,7 @@
       });
 
     }else if(panel==='agentData'){
-      requestAnimationFrame(function(){
-        setTimeout(function(){
-          if(normalizePanel(ui.settingsPanel)!=='agentData') return;
-          if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.start){
-            try{ global.OneToneAgentDataBridge.start(); }catch(err){
-              console.error('agentData bridge start',err);
-            }
-          }
-        },0);
-      });
-
+      /* 别名：resolveSettingsPanelRequest 已把 agentData → agent+data；此处不再独立 start */
     }else if(panel==='agent'){
       requestAnimationFrame(function(){
         setTimeout(function(){
@@ -955,6 +968,14 @@
             try{ global.OneToneAgentPageSettingsBridge.start(); }catch(err){
               console.error('agent settings bridge start',err);
             }
+          }
+          if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.start){
+            try{ global.OneToneAgentDataBridge.start(); }catch(err){
+              console.error('agent data bridge start',err);
+            }
+          }
+          if(opts.agentSub==='data'||ui.agentSub==='data'){
+            postAgentPageCmd('setSub',{sub:'data'});
           }
         },0);
       });
@@ -1496,6 +1517,8 @@
       var navOpts={};
       if((opts.panel||'basic')==='debug'&&opts.debugMode) navOpts.debugMode=opts.debugMode;
       if(opts.focus) navOpts.focus=opts.focus;
+      if(ui.agentSub) navOpts.agentSub=ui.agentSub;
+      else if(opts.agentSub) navOpts.agentSub=opts.agentSub;
       syncWorkbenchNav(ui.settingsPanel,navOpts);
     }
 
@@ -1662,11 +1685,36 @@
     global.__otAgentProtoNavBound=true;
     window.addEventListener('message',function(ev){
       var data=ev&&ev.data;
+      if(data&&data.type==='ot-agent-page'&&data.event==='goto-home-roster'){
+        try{
+          if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.close){
+            global.OneToneSettingsDrawer.close();
+          }
+        }catch(_){}
+        return;
+      }
+      if(data&&data.type==='ot-agent-page'&&data.event==='sub'){
+        ui.agentSub=data.sub==='data'?'data':null;
+        if(ui.drawerOpen&&normalizePanel(ui.settingsPanel)==='agent'){
+          try{ syncWorkbenchNav('agent',{agentSub:ui.agentSub}); }catch(_){}
+          try{
+            Object.keys(PANEL_IDS).forEach(function(key){
+              var nav=document.querySelector('.settings-nav-item[data-panel="'+key+'"]');
+              if(nav) nav.classList.toggle('is-active',navHighlightPanel('agent')===key);
+            });
+          }catch(_){}
+        }
+        return;
+      }
       if(!data||data.type!=='ot-nav'||!data.panel) return;
       if(data.panel!=='agent'&&data.panel!=='agentData'&&data.panel!=='softPad') return;
       try{
         if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
-          global.OneToneSettingsDrawer.open({panel:String(data.panel)});
+          if(data.panel==='agentData'){
+            global.OneToneSettingsDrawer.open({panel:'agent',agentSub:'data'});
+          }else{
+            global.OneToneSettingsDrawer.open({panel:String(data.panel)});
+          }
         }
       }catch(_){}
     });

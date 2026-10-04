@@ -29,6 +29,7 @@ mod bfinal_e2e;
 mod browser_bookmarks;
 mod builtin_app_catalog;
 mod camera_capability_probe;
+mod claude_cli_cmd;
 mod claude_cli_session;
 mod claude_hook_setup;
 mod copilot_cli_hook_setup;
@@ -467,6 +468,12 @@ pub fn run() {
                 app_state.clone(),
             );
             crate::pad_status::start_codex_session_scan_poll();
+            // First attention collection pass complete once adapters are registered —
+            // empty waiting set is valid; do not wait for the first NeedsInput event.
+            std::thread::spawn(|| {
+                std::thread::sleep(std::time::Duration::from_millis(800));
+                crate::agent_attention::mark_initialized();
+            });
 
             {
                 let state_for_attention = app_state.clone();
@@ -1200,6 +1207,9 @@ pub fn run() {
             ipc::cmd_tm_undo_restore,
             ipc::cmd_agent_attention_snapshot,
             ipc::cmd_agent_home_snapshot,
+            ipc::cmd_agent_center_snapshot,
+            ipc::cmd_agent_registry_refresh,
+            ipc::cmd_agent_center_action,
             ipc::cmd_agent_session_events,
             ipc::cmd_agent_lifecycle_event,
             ipc::cmd_agent_checkpoint_resume,

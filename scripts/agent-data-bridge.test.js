@@ -64,11 +64,35 @@ var snap = {
 
 var board = bridge.projectBoardFromOverlay(snap);
 assert.strictEqual(board.range, 'day');
-assert.strictEqual(board.history, false);
+assert.ok(Array.isArray(board.history), 'history is projection array (may be empty)');
+assert.strictEqual(board.history.length, 0, 'no homeSnap => empty history, not false');
 assert.ok(Array.isArray(board.agents));
 assert.strictEqual(board.agents.length, 3, 'core agents + lights/ready; ghost dropped');
 assert.strictEqual(board.agents[0].id, 'cursor');
 assert.ok(board.agents.some(function (a) { return a.id === 'codex'; }), 'codex always kept');
+
+var boardWithHome = bridge.projectBoardFromOverlay(snap, {
+  recentSessions: [
+    {
+      sessionId: 's1',
+      externalSessionId: 'ext1',
+      provider: 'cursor',
+      title: 'wire Plan A',
+      updatedAt: 1,
+      projectMatch: 'exact',
+      isActive: true
+    }
+  ],
+  project: { displayName: 'voice-pilot' },
+  probeStatus: 'ok',
+  syncStatus: 'fresh'
+});
+assert.strictEqual(boardWithHome.history.length, 1);
+assert.strictEqual(boardWithHome.history[0].title, 'wire Plan A');
+assert.strictEqual(boardWithHome.history[0].projectMatch, 'exact');
+assert.strictEqual(boardWithHome.homeProject.displayName, 'voice-pilot');
+assert.strictEqual(boardWithHome.homeProbeStatus, 'ok');
+assert.strictEqual(boardWithHome.homeSyncStatus, 'fresh');
 
 var cursor = board.agents.find(function (a) { return a.id === 'cursor'; });
 assert.ok(cursor);
@@ -187,6 +211,12 @@ assert.ok(html.includes('data-layout="ledger"'), 'cost ledger layout');
 assert.ok(html.includes('id="previewBody"'), 'right preview');
 assert.ok(html.includes('aside class="preview"') || html.includes("aside class='preview'"), 'preview aside');
 assert.ok(/ot-embed[\s\S]*?\.preview[\s\S]*?width:\s*var\(--preview\)/.test(html) || html.includes('html.ot-embed .preview'), 'embed keeps right preview');
+assert.ok(html.includes('ot-nest') && html.includes('html.ot-nest .preview{display:none'), 'nest hides right preview');
+assert.ok(html.includes('nest=1') || html.includes("classList.add('ot-nest')"), 'nest query activates ot-nest');
+assert.ok(html.includes("cmd:'selectAgent'") || html.includes('cmd:\'selectAgent\''), 'strip posts selectAgent');
+assert.ok(html.includes('ot-agent-data-host-cmd'), 'nest accepts host selectAgent');
+assert.ok(html.includes('flex-wrap:wrap') && html.includes('strip-row'), 'strip wraps for many agents');
+assert.ok(!html.includes('publishStrip') && !html.includes('ot-agent-data-strip'), 'no left-dock strip mirror');
 assert.ok(html.includes('id="focusRank"'), 'focus triple rank');
 assert.ok(html.includes('id="appSnap"') && html.includes('id="snapMets"'), 'current-app snap');
 assert.ok(html.includes('AGENT_ICON') && html.includes('icons/app-target/'), 'agent icons');
@@ -195,5 +225,31 @@ assert.ok(html.includes('需日桶'), 'period disabled honesty');
 assert.ok(html.includes('较上周'), 'compare shell');
 assert.ok(!html.includes('id="subtabs"'), 'old 4 subtabs removed');
 assert.ok(!html.includes('pane-rank'), 'old rank pane removed');
+
+// Agent shell: data first leaf + nest host + no dual agentData start
+var pageHtml = fs.readFileSync(path.join(__dirname, '../src/agent-proto/agent-page.html'), 'utf8');
+assert.ok(/data-sub="data"[\s\S]*?data-sub="float"/.test(pageHtml), 'data tab before float');
+assert.ok(pageHtml.includes('id="agentDataNestFrame"') && pageHtml.includes('nest=1'), 'nests agent-data');
+assert.ok(!pageHtml.includes('mac-dock-track') && !pageHtml.includes('macDockTogAll'), 'left Mac dock abandoned');
+assert.ok(!pageHtml.includes('applyStripPayload') && !pageHtml.includes('paintDataDock'), 'no left strip mirror');
+assert.ok(pageHtml.includes('agentPadPaint') && pageHtml.includes("setSub('data')"), 'data leaf keeps Soft Pad + setSub data');
+assert.ok(pageHtml.includes('onDataLeaf') && pageHtml.includes('切数据 focus'), 'data leaf Soft Pad icons switch data focus');
+assert.ok(pageHtml.includes("workspace.classList.toggle('is-data'"), 'data leaf toggles is-data');
+assert.ok(/getElementById\('gotoStats'\)[\s\S]{0,120}setSub\('data'\)/.test(pageHtml), 'gotoStats stays in-page');
+assert.ok(!/getElementById\('gotoStats'\)[\s\S]{0,200}ot-nav/.test(pageHtml), 'gotoStats does not ot-nav away');
+
+var bridgeSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/agent/agent-data-bridge.js'), 'utf8');
+assert.ok(bridgeSrc.includes('agentDataNestFrame'), 'bridge targets nest frame');
+assert.ok(bridgeSrc.includes('setTargetFrame'), 'bridge setTargetFrame export');
+assert.ok(bridgeSrc.includes("cmd === 'selectAgent'"), 'bridge handles selectAgent');
+
+var drawerSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/settings/settings-drawer.js'), 'utf8');
+assert.ok(drawerSrc.includes("panel==='agentData'") && drawerSrc.includes("agentSub:'data'"), 'agentData aliases to agent+data');
+assert.ok(!/panel==='agentData'[\s\S]{0,200}OneToneAgentDataBridge\.start/.test(drawerSrc), 'no independent agentData bridge start');
+assert.ok(/panel==='agent'[\s\S]*?OneToneAgentDataBridge\.start/.test(drawerSrc), 'data bridge starts with agent panel');
+assert.ok(/lastPanel==='agent'[\s\S]*?OneToneAgentDataBridge\.stop/.test(drawerSrc), 'data bridge stops leaving agent');
+
+var indexHtml = fs.readFileSync(path.join(__dirname, '../src/index.html'), 'utf8');
+assert.ok(indexHtml.includes('id="agentDataProtoFrame"') && /agentDataProtoFrame[\s\S]*?about:blank/.test(indexHtml), 'legacy data frame blanked');
 
 console.log('ok agent-data-bridge');

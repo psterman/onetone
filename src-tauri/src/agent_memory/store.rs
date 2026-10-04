@@ -119,7 +119,7 @@ fn open_rw(path: &Path) -> Result<Connection, String> {
     Ok(conn)
 }
 
-fn migrate(conn: &Connection) -> Result<(), String> {
+pub(crate) fn migrate(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(MIGRATION_V1)
         .map_err(|e| format!("migrate v1: {e}"))?;
     let applied_v1: i64 = conn
@@ -183,9 +183,11 @@ fn migrate(conn: &Connection) -> Result<(), String> {
         .unwrap_or(0);
     if applied_v4 == 0 {
         // Additive: project user confirmation for Home Focus.
-        // Columns may already exist on partial runs — ignore duplicate errors.
-        let _ = conn.execute_batch(MIGRATION_V4);
+        // Prefer idempotent column ensure over batch ALTER — partial prior runs
+        // may already have columns (duplicate column must not be swallowed silently
+        // for unrelated failures; ensure_* propagates real errors).
         ensure_projects_confirm_columns(conn)?;
+        let _ = MIGRATION_V4; // documented SQL; applied via ensure_projects_confirm_columns
         let now = now_ms() as i64;
         conn.execute(
             "INSERT INTO schema_migrations(version, applied_at_ms) VALUES (4, ?1)",
@@ -194,6 +196,24 @@ fn migrate(conn: &Connection) -> Result<(), String> {
         .map_err(|e| format!("record migration v4: {e}"))?;
     } else {
         ensure_projects_confirm_columns(conn)?;
+    }
+
+    let applied_v5: i64 = conn
+        .query_row(
+            "SELECT COUNT(1) FROM schema_migrations WHERE version = 5",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    if applied_v5 == 0 {
+        conn.execute_batch(MIGRATION_V5)
+            .map_err(|e| format!("migrate v5: {e}"))?;
+        let now = now_ms() as i64;
+        conn.execute(
+            "INSERT INTO schema_migrations(version, applied_at_ms) VALUES (5, ?1)",
+            [now],
+        )
+        .map_err(|e| format!("record migration v5: {e}"))?;
     }
     Ok(())
 }
@@ -217,7 +237,7 @@ fn ensure_projects_confirm_columns(conn: &Connection) -> Result<(), String> {
     Ok(())
 }
 
-fn table_columns(conn: &Connection, table: &str) -> Result<Vec<String>, String> {
+pub(crate) fn table_columns(conn: &Connection, table: &str) -> Result<Vec<String>, String> {
     let mut stmt = conn
         .prepare(&format!("PRAGMA table_info({table})"))
         .map_err(|e| format!("pragma table_info: {e}"))?;
@@ -286,6 +306,32 @@ ALTER TABLE projects ADD COLUMN user_confirmed INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE projects ADD COLUMN confirmed_at_ms INTEGER;
 "#;
 
+/// Agent Center: durable per-agent probe facts (not Soft Pad capability catalog).
+const MIGRATION_V5: &str = r#"
+CREATE TABLE IF NOT EXISTS agent_registry (
+  agent_id TEXT PRIMARY KEY,
+  runtime_kind TEXT NULL,
+  display_name TEXT NOT NULL,
+  form_factor TEXT NOT NULL DEFAULT 'unknown',
+  presence_state TEXT NOT NULL DEFAULT 'not_found',
+  version TEXT NULL,
+  data_path TEXT NULL,
+  adapter_state TEXT NOT NULL DEFAULT 'unknown',
+  limitation_reason TEXT NULL,
+  capability_evidence_json TEXT NOT NULL DEFAULT '{}',
+  evidence_json TEXT NOT NULL DEFAULT '[]',
+  last_probe_at_ms INTEGER NULL,
+  last_successful_probe_at_ms INTEGER NULL,
+  last_sync_at_ms INTEGER NULL,
+  created_at_ms INTEGER NOT NULL,
+  updated_at_ms INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_agent_registry_runtime_kind
+  ON agent_registry(runtime_kind);
+CREATE INDEX IF NOT EXISTS idx_agent_registry_presence
+  ON agent_registry(presence_state);
+"#;
+
 pub fn now_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -326,5 +372,101 @@ mod tests {
             cols2.iter().filter(|c| *c == "user_confirmed").count(),
             1
         );
+    }
+
+    #[test]
+    fn migration_v5_creates_agent_registry() {
+        let conn = Connection::open_in_memory().unwrap();
+        migrate(&conn).unwrap();
+        let n: i64 = conn
+            .query_row(
+                "SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name='agent_registry'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(n, 1);
+        let cols = table_columns(&conn, "agent_registry").unwrap();
+        for required in [
+            "agent_id",
+            "runtime_kind",
+            "display_name",
+            "form_factor",
+            "presence_state",
+            "version",
+            "data_path",
+            "adapter_state",
+            "limitation_reason",
+            "capability_evidence_json",
+            "evidence_json",
+            "last_probe_at_ms",
+            "last_successful_probe_at_ms",
+            "last_sync_at_ms",
+            "created_at_ms",
+            "updated_at_ms",
+        ] {
+            assert!(
+                cols.iter().any(|c| c == required),
+                "missing column {required}"
+            );
+        }
+        let v5: i64 = conn
+            .query_row(
+                "SELECT COUNT(1) FROM schema_migrations WHERE version = 5",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(v5, 1);
+        migrate(&conn).unwrap();
+    }
+
+    #[test]
+    fn migration_v4_to_v5_upgrade() {
+        let conn = Connection::open_in_memory().unwrap();
+        // Apply through v4 only by running migrate then deleting v5 marker + table
+        // isn't needed — fresh migrate is v1–v5. Simulate prior v4 DB:
+        conn.execute_batch(MIGRATION_V1).unwrap();
+        let now = now_ms() as i64;
+        conn.execute(
+            "INSERT INTO schema_migrations(version, applied_at_ms) VALUES (1, ?1)",
+            [now],
+        )
+        .unwrap();
+        conn.execute_batch(MIGRATION_V2).unwrap();
+        conn.execute(
+            "INSERT INTO schema_migrations(version, applied_at_ms) VALUES (2, ?1)",
+            [now],
+        )
+        .unwrap();
+        conn.execute_batch(MIGRATION_V3).unwrap();
+        conn.execute(
+            "INSERT INTO schema_migrations(version, applied_at_ms) VALUES (3, ?1)",
+            [now],
+        )
+        .unwrap();
+        ensure_projects_confirm_columns(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO schema_migrations(version, applied_at_ms) VALUES (4, ?1)",
+            [now],
+        )
+        .unwrap();
+        let before: i64 = conn
+            .query_row(
+                "SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name='agent_registry'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(before, 0);
+        migrate(&conn).unwrap();
+        let after: i64 = conn
+            .query_row(
+                "SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name='agent_registry'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(after, 1);
     }
 }

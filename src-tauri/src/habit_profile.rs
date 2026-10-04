@@ -178,6 +178,8 @@ mod tests {
         cfg.mappings.push(MappingEntry {
             id: id.into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "  ".into(),
             trigger_key: "AutoTrigger".into(),
             target_key: "F2".into(),

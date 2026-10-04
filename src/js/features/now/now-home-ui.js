@@ -150,7 +150,7 @@
       '" data-now-voice' +
       (voiceOn ? '' : ' disabled') +
       '>' +
-      (listening ? '🎤 倾听中…' : '🎤 说点什么') +
+      (listening ? '🎤 倾听中…' : '🎤 开始听写') +
       '</button>' +
       '<span class="now-dock-center">● OneTone</span>' +
       '<kbd class="now-dock-key">' +

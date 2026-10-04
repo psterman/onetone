@@ -198,7 +198,7 @@ mod tests {
 
     #[test]
     fn falls_back_to_app_not_label() {
-        let m = stub();
+        let mut m = stub();
         m.label = "AutoTrigger → RAlt".into();
         let d = project_scenario_header(&m, ScenarioState::Normal);
         assert_eq!(d.name, "Cursor");

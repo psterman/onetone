@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OneTone · Agent 台面（诚实双模式）</title>
+<style>
+  :root {
+    --bg: #e4ebe6;
+    --paper: #f5f8f4;
+    --ink: #12231e;
+    --ink2: #3c514a;
+    --muted: #4f635c;
+    --line: rgba(18, 35, 30, 0.1);
+    --teal: #0f6e62;
+    --teal-deep: #0a5249;
+    --teal-soft: #d6eee8;
+    --warn: #8a4b12;
+    --warn-soft: #f6e6d4;
+    --danger: #8b2e2e;
+    --danger-soft: #f5e0e0;
+    --idle: #84948e;
+    --preview: #5a4a2a;
+    --preview-soft: #f3ead7;
+    --shadow: 0 18px 44px rgba(18, 35, 30, 0.08);
+    --font: "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    --mono: Consolas, "Cascadia Mono", "SF Mono", monospace;
+    --frame-w: 640px;
+    --frame-h: 720px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font: 14px/1.5 var(--font);
+    color: var(--ink);
+    background:
+      radial-gradient(ellipse 55% 40% at 12% 0%, #d4e4dc, transparent 60%),
+      radial-gradient(ellipse 45% 35% at 95% 100%, #dce5da, transparent 55%),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  ::selection { background: color-mix(in srgb, var(--teal) 28%, white); color: var(--ink); }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  .page {
+    width: min(1480px, 100%);
+    margin: 0 auto;
+    padding: 16px 12px 40px;
+    display: grid;
+    grid-template-columns: 268px var(--frame-w) 320px;
+    gap: 16px;
+    justify-content: center;
+    align-items: start;
+  }
+  @media (max-width: 1320px) {
+    .page { grid-template-columns: 268px var(--frame-w); }
+    .notes { grid-column: 1 / -1; }
+  }
+  @media (max-width: 940px) {
+    .page { grid-template-columns: 1fr; }
+    .frame { width: min(100%, var(--frame-w)); margin: 0 auto; }
+  }
+
+  .chrome, .notes {
+    background: color-mix(in srgb, var(--paper) 94%, white);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 8px 22px rgba(18, 35, 30, 0.05);
+    position: sticky;
+    top: 12px;
+  }
+  .chrome h1 { margin: 0 0 4px; font: 650 15px/1.3 var(--font); letter-spacing: -.02em; }
+  .chrome .lead { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+
+  .mode-switch {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+    margin-bottom: 12px;
+  }
+  .mode-switch button {
+    border: 1px solid var(--line); background: rgba(255,255,255,.7);
+    border-radius: 10px; padding: 8px 8px; color: var(--ink2);
+    font-size: 12px; font-weight: 700;
+  }
+  .mode-switch button[aria-pressed="true"] {
+    background: var(--teal-soft);
+    border-color: color-mix(in srgb, var(--teal) 35%, transparent);
+    color: var(--teal-deep);
+  }
+  .mode-switch button[data-mode="p0a"][aria-pressed="true"] {
+    background: var(--preview-soft);
+    border-color: color-mix(in srgb, var(--preview) 35%, transparent);
+    color: var(--preview);
+  }
+  .mode-switch small { display: block; margin-top: 2px; font-weight: 500; font-size: 10.5px; opacity: .85; }
+
+  .tabs { display: flex; flex-direction: column; gap: 5px; }
+  .tabs button {
+    text-align: left; border: 1px solid transparent; background: transparent;
+    border-radius: 11px; padding: 9px 10px; color: var(--ink2);
+  }
+  .tabs button:hover { background: rgba(15, 110, 98, .06); }
+  .tabs button[aria-selected="true"] {
+    background: var(--teal-soft);
+    border-color: color-mix(in srgb, var(--teal) 30%, transparent);
+    color: var(--teal-deep);
+  }
+  .tabs .code {
+    display: inline-grid; place-items: center; width: 20px; height: 20px;
+    border-radius: 6px; background: rgba(15, 110, 98, .12); color: var(--teal-deep);
+    font-size: 11px; font-weight: 800; margin-right: 7px;
+  }
+  .tabs button[aria-selected="true"] .code { background: var(--teal); color: #f4fffb; }
+  .tabs .name { font-weight: 700; font-size: 13px; }
+  .tabs small { display: block; margin: 3px 0 0 27px; color: var(--muted); font-size: 11px; font-weight: 400; }
+  .meta { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink2); }
+  .meta b { color: var(--teal-deep); }
+  .meta p { margin: 0 0 8px; }
+  .hint { color: var(--muted); font-size: 11px; }
+  .kbd {
+    font: 600 11px/1 var(--mono); padding: 2px 5px; border-radius: 4px;
+    border: 1px solid var(--line); background: rgba(255,255,255,.7); color: var(--ink2);
+  }
+
+  .frame {
+    width: var(--frame-w); height: var(--frame-h);
+    background: linear-gradient(165deg, #fbfcfa, var(--paper) 45%, #eef3ef);
+    border: 1px solid var(--line); border-radius: 18px;
+    box-shadow: var(--shadow); overflow: hidden; position: relative;
+    display: flex; flex-direction: column;
+  }
+  .preview-banner {
+    display: none; flex: 0 0 auto;
+    padding: 7px 12px; font-size: 12px; font-weight: 700;
+    color: var(--preview); background: var(--preview-soft);
+    border-bottom: 1px solid color-mix(in srgb, var(--preview) 22%, transparent);
+  }
+  .frame.mode-p0a .preview-banner { display: block; }
+  .topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px; border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,.55); flex: 0 0 auto;
+  }
+  .topbar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); }
+  .topbar .brand { font-weight: 700; font-size: 12px; letter-spacing: -.01em; }
+  .topbar .sep { color: var(--line); }
+  .topbar .proj { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .topbar .cmd {
+    margin-left: auto;
+    border: 1px solid var(--line); background: rgba(255,255,255,.75);
+    color: var(--ink2); border-radius: 8px; padding: 4px 8px; font-size: 11px; font-weight: 600;
+  }
+  .topbar .cmd:hover { border-color: color-mix(in srgb, var(--teal) 40%, transparent); color: var(--teal-deep); }
+
+  .scroll {
+    flex: 1 1 auto; overflow: auto; padding: 14px;
+    display: flex; flex-direction: column; gap: 11px;
+  }
+
+  .head { display: flex; flex-direction: column; gap: 8px; }
+  .head .sit {
+    align-self: flex-start; font-size: 11px; font-weight: 700; color: var(--teal-deep);
+    background: var(--teal-soft); border-radius: 999px; padding: 3px 9px;
+  }
+  .head .sit.warn { color: var(--warn); background: var(--warn-soft); }
+  .head .sit.repair { color: var(--danger); background: var(--danger-soft); }
+  .head h2 { margin: 0; font: 650 21px/1.28 var(--font); letter-spacing: -.02em; }
+  .head .sub { margin: 0; color: var(--ink2); font-size: 13px; max-width: 54ch; }
+  .cta {
+    align-self: flex-start; border: 1px solid var(--teal); background: var(--teal);
+    color: #f4fffb; border-radius: 11px; padding: 9px 15px; font-weight: 700; font-size: 13px;
+  }
+  .cta:hover { background: var(--teal-deep); border-color: var(--teal-deep); }
+  .head .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+
+  .zone {
+    border: 1px solid var(--line); border-radius: 14px;
+    background: rgba(255,255,255,.66); overflow: hidden;
+  }
+  .zone.needs { border-color: color-mix(in srgb, var(--warn) 32%, var(--line)); }
+  .zone.reconfirm { border-style: dashed; opacity: .92; }
+  .zone > header {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .zone > header .h { font-weight: 700; font-size: 13px; }
+  .zone > header .zmeta {
+    margin-left: auto; color: var(--muted); font-size: 11px; font-weight: 600;
+  }
+
+  .live-summary {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 11px 12px; text-align: left; border: 0; background: transparent;
+    color: inherit; font: inherit; cursor: pointer;
+  }
+  .live-summary:hover { background: rgba(15,110,98,.05); }
+  .live-summary .bead {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 1.5px solid var(--teal);
+    background: linear-gradient(90deg, var(--teal) 50%, transparent 50%);
+    flex: 0 0 auto;
+  }
+  .live-summary .t { font-weight: 700; font-size: 13px; }
+  .live-summary .s { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  .row {
+    display: grid; grid-template-columns: 14px 1fr auto; gap: 9px;
+    align-items: start; padding: 10px 12px;
+    border-top: 1px solid rgba(18,35,30,.055);
+    width: 100%; text-align: left; background: transparent;
+    border-left: 0; border-right: 0; border-bottom: 0;
+    color: inherit; font: inherit; cursor: pointer;
+  }
+  .zone > header + .row { border-top: 0; }
+  .row:hover, .row[aria-current="true"] { background: rgba(15,110,98,.05); }
+  .row.expired { background: color-mix(in srgb, var(--warn-soft) 45%, transparent); }
+  .bead {
+    width: 11px; height: 11px; border-radius: 50%; margin-top: 4px;
+    border: 1.5px solid var(--teal); flex: 0 0 auto;
+  }
+  .bead.auth { background: var(--teal); }
+  .bead.corr { background: linear-gradient(90deg, var(--teal) 50%, transparent 50%); }
+  .bead.inf { background: transparent; border-style: dashed; border-color: var(--idle); }
+  .bead.wait { background: var(--warn); border-color: var(--warn); }
+  .title { font-weight: 700; font-size: 13px; letter-spacing: -.01em; }
+  .subline { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 800;
+    padding: 1px 5px; border-radius: 5px; margin-left: 6px; vertical-align: 1px;
+  }
+  .tag.wait { color: var(--warn); background: var(--warn-soft); }
+  .tag.warn { color: var(--warn); background: var(--warn-soft); }
+  .tag.exp { color: var(--idle); border: 1px solid color-mix(in srgb, var(--idle) 45%, transparent); }
+  .tag.hook { color: var(--teal-deep); background: rgba(15,110,98,.1); }
+  .act {
+    border: 1px solid color-mix(in srgb, var(--teal) 45%, transparent);
+    background: var(--teal-soft); color: var(--teal-deep);
+    border-radius: 9px; padding: 5px 10px; font-size: 11.5px; font-weight: 700;
+    white-space: nowrap;
+  }
+  .act.ghost { background: transparent; color: var(--ink2); border-color: var(--line); }
+
+  .checkpoint-card, .project-card {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+    width: 100%; padding: 12px; text-align: left; border: 0; background: transparent;
+    color: inherit; font: inherit; cursor: pointer;
+  }
+  .checkpoint-card:hover, .project-card:hover { background: rgba(15,110,98,.05); }
+  .checkpoint-card .cname, .project-card .pname { font-weight: 750; font-size: 14px; letter-spacing: -.01em; }
+  .checkpoint-card .cmeta, .project-card .pmeta { color: var(--ink2); font-size: 12px; margin-top: 3px; }
+  .checkpoint-card .cwhen, .project-card .plast { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  .recent-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline;
+    width: 100%; padding: 9px 12px; text-align: left; border: 0;
+    border-top: 1px solid rgba(18,35,30,.055); background: transparent;
+    color: inherit; font: inherit; cursor: pointer;
+  }
+  .recent-row:hover { background: rgba(15,110,98,.05); }
+  .recent-row .rt { font-weight: 700; font-size: 12.5px; }
+  .recent-row .rs { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .recent-row .rcap { color: var(--teal-deep); font-size: 11.5px; font-weight: 700; }
+
+  .repair {
+    padding: 11px 12px;
+    border: 1px solid color-mix(in srgb, var(--warn) 34%, transparent);
+    background: var(--warn-soft); border-radius: 13px;
+  }
+  .repair .tx { font-size: 12.5px; color: #5d330d; }
+  .repair .tx b { display: block; margin-bottom: 2px; }
+
+  .skel {
+    padding: 11px 12px; border-top: 1px solid rgba(18,35,30,.055);
+    display: flex; gap: 9px; align-items: center;
+  }
+  .skel:first-of-type { border-top: 0; }
+  .skel i {
+    display: block; height: 9px; border-radius: 5px;
+    background: rgba(18,35,30,.1); animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: .45 } 50% { opacity: .9 } }
+  .skel .a { width: 11px; border-radius: 50%; height: 11px; }
+  .skel .b { flex: 1; }
+  .skel .c { width: 48px; }
+  .skel-cap { padding: 0 12px 10px; color: var(--muted); font-size: 12px; }
+
+  .ask-hint {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 11px; border-radius: 11px;
+    border: 1px dashed color-mix(in srgb, var(--teal) 28%, transparent);
+    background: rgba(255,255,255,.35); color: var(--muted); font-size: 12px;
+  }
+  .ask-hint b { color: var(--ink2); font-weight: 650; }
+
+  .frame > .bar {
+    flex: 0 0 auto; padding: 7px 14px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 11px; background: rgba(255,255,255,.42);
+  }
+
+  .toast {
+    position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%) translateY(8px);
+    max-width: 90%; padding: 8px 12px; border-radius: 10px;
+    background: var(--ink); color: #f4fffb; font-size: 12.5px; font-weight: 650;
+    opacity: 0; pointer-events: none; z-index: 8;
+    transition: opacity .16s ease, transform .16s ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .drawer-scrim {
+    position: absolute; inset: 0; background: rgba(18, 35, 30, .28);
+    opacity: 0; pointer-events: none; transition: opacity .18s ease; z-index: 4;
+  }
+  .drawer-scrim.open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: absolute; top: 0; right: 0; bottom: 0; width: min(360px, 92%);
+    background: #fbfcfa; border-left: 1px solid var(--line);
+    box-shadow: -12px 0 32px rgba(18, 35, 30, .1);
+    transform: translateX(104%); transition: transform .2s cubic-bezier(.2,.8,.2,1);
+    z-index: 5; display: flex; flex-direction: column;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer header {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 14px 14px 12px; border-bottom: 1px solid var(--line);
+  }
+  .drawer header .titles { flex: 1; min-width: 0; }
+  .drawer header h3 { margin: 0; font: 700 15px/1.3 var(--font); }
+  .drawer header p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+  .drawer .close {
+    border: 1px solid var(--line); background: white; border-radius: 8px;
+    width: 30px; height: 30px; color: var(--ink2); font-size: 16px; line-height: 1;
+  }
+  .drawer .body { flex: 1; overflow: auto; padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .drawer .block h4 {
+    margin: 0 0 6px; font-size: 11px; font-weight: 800;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
+  }
+  .drawer .block p, .drawer .block li { margin: 0; font-size: 12.5px; color: var(--ink2); }
+  .drawer .block ul { margin: 0; padding-left: 16px; }
+  .drawer .block li { margin-bottom: 4px; }
+  .evbox {
+    border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px;
+    background: rgba(15,110,98,.04); font: 11.5px/1.5 var(--mono); color: var(--ink2);
+    word-break: break-all;
+  }
+  .evbox b { font-family: var(--font); color: var(--teal-deep); }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill {
+    font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 999px;
+    background: rgba(18,35,30,.05); color: var(--ink2);
+  }
+  .pill.good { background: var(--teal-soft); color: var(--teal-deep); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.plan { background: var(--preview-soft); color: var(--preview); }
+  .bounds .k { font-weight: 700; color: var(--ink); }
+  .drawer .actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+  .drawer .unavailable {
+    margin: 0; font-size: 12px; color: var(--muted);
+    padding: 8px 10px; border-radius: 9px; background: rgba(18,35,30,.04);
+  }
+  .drawer .ask-link {
+    border: 0; background: transparent; color: var(--teal-deep);
+    font-size: 12px; font-weight: 700; padding: 0; text-align: left;
+  }
+
+  .pal-scrim {
+    position: absolute; inset: 0; background: rgba(18, 35, 30, .34);
+    opacity: 0; pointer-events: none; transition: opacity .16s ease; z-index: 6;
+    display: grid; place-items: start center; padding-top: 72px;
+  }
+  .pal-scrim.open { opacity: 1; pointer-events: auto; }
+  .palette {
+    width: min(460px, 92%); background: #fbfcfa; border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: 0 18px 40px rgba(18,35,30,.16);
+    overflow: hidden; transform: translateY(-6px) scale(.98); opacity: 0;
+    transition: transform .16s ease, opacity .16s ease;
+  }
+  .pal-scrim.open .palette { transform: none; opacity: 1; }
+  .palette input {
+    width: 100%; border: 0; border-bottom: 1px solid var(--line);
+    padding: 14px 14px; background: transparent; color: var(--ink); font-size: 14px;
+  }
+  .palette input::placeholder { color: var(--muted); }
+  .palette .hint-row {
+    padding: 10px 12px 12px; color: var(--muted); font-size: 12px;
+    display: flex; justify-content: space-between; gap: 8px;
+  }
+
+  .notes h2 { margin: 0 0 8px; font: 650 14px/1.3 var(--font); }
+  .notes section { margin-bottom: 14px; }
+  .notes section > h3 {
+    margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .notes ol, .notes ul { margin: 0; padding-left: 17px; }
+  .notes li { margin-bottom: 6px; font-size: 12px; color: var(--ink2); }
+  .notes li b { color: var(--ink); }
+  .notes .box {
+    border: 1px solid var(--line); border-radius: 11px; padding: 9px 10px;
+    background: rgba(255,255,255,.6); font-size: 12px; color: var(--ink2);
+  }
+  .notes .box p { margin: 0 0 7px; }
+  .notes .box p:last-child { margin: 0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <aside class="chrome">
+    <h1>诚实双模式 · desk</h1>
+    <p class="lead">默认 = 现有能力瘦首页。P0a 预览必须戴帽，避免把示意当已上线。</p>
+
+    <div class="mode-switch" role="group" aria-label="原型模式">
+      <button type="button" data-mode="now" aria-pressed="true" id="modeNow">
+        现有能力
+        <small>默认 · 可落地蓝本</small>
+      </button>
+      <button type="button" data-mode="p0a" aria-pressed="false" id="modeP0a">
+        P0a 预览
+        <small>部分数据为示意</small>
+      </button>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="首页情境">
+      <button role="tab" aria-selected="true" data-sit="attention">
+        <span class="code">1</span><span class="name">要你处理</span>
+        <small>Needs You 优先</small>
+      </button>
+      <button role="tab" aria-selected="false" data-sit="quiet">
+        <span class="code">2</span><span class="name">安静</span>
+        <small>Live 一行摘要</small>
+      </button>
+      <button role="tab" aria-selected="false" data-sit="resume">
+        <span class="code">3</span><span class="name">可继续</span>
+        <small>checkpoint 主 CTA</small>
+      </button>
+      <button role="tab" aria-selected="false" data-sit="repair">
+        <span class="code">4</span><span class="name">需修复</span>
+        <small>主通道接管</small>
+      </button>
+      <button role="tab" aria-selected="false" data-sit="cold">
+        <span class="code">5</span><span class="name">冷启动</span>
+        <small>缓存首屏</small>
+      </button>
+    </div>
+    <div class="meta">
+      <p><b>now</b>：Codex/Claude/WorkBuddy attention + checkpoint；无 Marvis / 无项目聚合 / 无查找。</p>
+      <p><b>p0a</b>：Marvis、过期降级、项目卡、任务叙事 —— 横幅强制可见。</p>
+      <p class="hint" id="dataSourceHint">默认 fixtures。App 内打开自动接三 IPC；或 <code>?live=1</code>。</p>
+      <p style="margin-top:8px">
+        <button type="button" id="btnLive" style="width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px;font-weight:700;font-size:12px;color:var(--teal-deep)">接真实数据</button>
+      </p>
+    </div>
+  </aside>
+
+  <div class="frame mode-now" id="frame" aria-label="OneTone 首页预览 640×720">
+    <div class="preview-banner" id="previewBanner" role="status">
+      P0a 目标预览 · 部分数据为示意
+    </div>
+    <div class="topbar">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="brand">OneTone</span>
+      <span class="sep" aria-hidden="true">·</span>
+      <span class="proj" id="topProj">工作台</span>
+      <button type="button" class="cmd" id="openPal" title="提问">提问 <span class="kbd">⌘K</span></button>
+    </div>
+
+    <div class="scroll" id="scroll">
+      <section class="head" aria-labelledby="headline">
+        <span class="sit" id="sitChip">需要你处理</span>
+        <h2 id="headline"></h2>
+        <p class="sub" id="subhead"></p>
+        <div class="actions" id="ctas"></div>
+      </section>
+      <div id="repairSlot"></div>
+      <div id="zones"></div>
+      <div class="ask-hint" id="askHint">
+        <b>⌘K</b>
+        <span id="askHintText">提问 · 非跨 Agent 检索</span>
+      </div>
+    </div>
+
+    <div class="bar" id="frameFoot"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="drawer-scrim" id="drawerScrim" hidden></div>
+    <aside class="drawer" id="drawer" aria-hidden="true" aria-label="任务详情">
+      <header>
+        <div class="titles">
+          <h3 id="dTitle">—</h3>
+          <p id="dSub">—</p>
+        </div>
+        <button type="button" class="close" id="drawerClose" aria-label="关闭详情">×</button>
+      </header>
+      <div class="body" id="drawerBody"></div>
+    </aside>
+
+    <div class="pal-scrim" id="palScrim" hidden>
+      <div class="palette" role="dialog" aria-label="提问" aria-modal="true">
+        <input id="palInput" type="text" placeholder="问一句…（默认当前编码前台）" autocomplete="off" />
+        <div class="hint-row">
+          <span>示意入口 · FTS 查找尚未实现</span>
+          <span><span class="kbd">Esc</span> 关闭</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="notes">
+    <section>
+      <h2>数据源</h2>
+      <div class="box">
+        <p><b>fixtures</b>：file:// 直接打开，演示数据。</p>
+        <p><b>live</b>：App WebView 内打开，或 <code>?live=1</code>。</p>
+        <p>attention → Needs You / Living；home → Continue / Recent；focus → 顶栏项目。</p>
+        <p>无数据区折叠；无 Marvis / 无跨 Agent 聚合。</p>
+      </div>
+    </section>
+    <section>
+      <h2>now 必须没有</h2>
+      <ul>
+        <li>Marvis / approvals / fingerprint</li>
+        <li>「第 7 轮」类任务叙事</li>
+        <li>跨 Provider「N 个会话参与」</li>
+        <li>查找 / 可用导出 / Git 块</li>
+      </ul>
+    </section>
+    <section>
+      <h2>验收</h2>
+      <div class="box">
+        <p>默认 now；Needs You 只有可处理 waiting。</p>
+        <p>过期只在 p0a「需重新确认」区。</p>
+        <p>focus / resume / 听写 / 了解限制 → toast（live resume 走真实 IPC）。</p>
+        <p>切 p0a 必见横幅。</p>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<script src="./live.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+let mode = params.get('mode') === 'p0a' ? 'p0a' : 'now';
+let currentSit = 'attention';
+let selectedId = null;
+let recentOpen = false;
+let toastTimer = null;
+/** null = fixtures; object from OneToneHomeAgentDeskLive.project */
+let liveBundle = null;
+let liveError = '';
+let livePoll = 0;
+
+function wantLive() {
+  if (params.get('fixture') === '1' || params.get('live') === '0') return false;
+  if (params.get('live') === '1') return true;
+  var L = window.OneToneHomeAgentDeskLive;
+  return !!(L && L.hasIpc && L.hasIpc());
+}
+
+function ledger() {
+  return liveBundle && liveBundle.S ? liveBundle.S : S;
+}
+
+/** Ledger fixtures tagged by availability */
+const S = {
+  'codex-wait': {
+    id: 'codex-wait', provider: 'Codex', project: 'voice-pilot',
+    title: '允许运行测试命令',
+    waiting: true, conf: 'auth', when: '3 分钟前', act: '查看', actKind: 'detail',
+    sourceNote: 'hook',
+    detail: {
+      title: '允许运行测试命令',
+      sub: 'Codex · PermissionRequest · Soft Pad hook',
+      state: 'NeedsInput / Permission',
+      conf: 'authoritative',
+      stability: 'official_hook',
+      caps: [
+        { id: 'detail', ok: true, label: '查看详情' },
+        { id: 'focus', ok: true, label: '聚焦窗口' },
+        { id: 'resume', ok: true, label: '恢复会话' },
+        { id: 'approve', ok: false, reason: 'P0 不开放；请在 Codex 内处理' },
+      ],
+      bullets: [
+        '现有能力：Soft Pad / agent_attention 可投影',
+        '明确事件 PermissionRequest，非 task_complete',
+      ],
+      evidence: {
+        path: 'OneTone Soft Pad hook → agent_attention',
+        event: 'PermissionRequest',
+        at: '3 分钟前',
+        fingerprint: 'codex-hook-v1',
+        summary: 'tool=Bash · requestId=pr_8f2a',
+      },
+    },
+  },
+  'claude-live': {
+    id: 'claude-live', provider: 'Claude Code', project: 'voice-pilot',
+    titleNow: 'Claude Code 正在活动',
+    titleP0a: '正在修改首页布局',
+    waiting: false, conf: 'auth',
+    whenNow: '最近事件 1 分钟前',
+    whenP0a: '第 7 轮',
+    act: '聚焦', actKind: 'focus',
+    detail: {
+      title: 'Claude Code 正在活动',
+      sub: '可信活跃 · 非 waiting',
+      state: 'Working',
+      conf: 'authoritative',
+      stability: 'official_hook',
+      caps: [
+        { id: 'detail', ok: true, label: '查看详情' },
+        { id: 'focus', ok: true, label: '聚焦窗口' },
+        { id: 'resume', ok: false, reason: '会话仍在运行' },
+      ],
+      bullets: [
+        'now：通用活跃文案（正文默认关闭）',
+        'p0a 才展示更细任务叙事（示意）',
+      ],
+      evidence: {
+        path: 'Soft Pad lifecycle / Notification',
+        event: 'working',
+        at: '1 分钟前',
+        fingerprint: 'claude-hook-v1',
+        summary: 'working · not permission',
+      },
+    },
+  },
+  'wb-live': {
+    id: 'wb-live', provider: 'WorkBuddy', project: 'onetone',
+    title: 'WorkBuddy 正在活动',
+    waiting: false, conf: 'corr', when: '1 分钟前', act: '查看', actKind: 'detail',
+    note: '仅活跃信号',
+    detail: {
+      title: 'WorkBuddy 正在活动',
+      sub: '心跳 / session status · 非 waiting',
+      state: 'Working',
+      conf: 'corroborated',
+      stability: 'observed_schema',
+      caps: [
+        { id: 'detail', ok: true, label: '查看详情' },
+        { id: 'focus', ok: true, label: '聚焦窗口' },
+      ],
+      bullets: ['活跃 ≠ 等待你', '无 permission 事件不进 Needs You'],
+      evidence: {
+        path: 'shell hook / lease（示意）',
+        event: 'heartbeat',
+        at: '1 分钟前',
+        fingerprint: 'workbuddy-lease@obs',
+        summary: 'sessions.status=running',
+      },
+    },
+  },
+  'codex-cp': {
+    id: 'codex-cp', provider: 'Codex', project: 'voice-pilot',
+    title: '继续上次工作',
+    waiting: false, conf: 'auth', when: '2 小时前', act: '继续', actKind: 'resume',
+    detail: {
+      title: '继续上次工作',
+      sub: 'Codex checkpoint · voice-pilot',
+      state: 'paused / resumable',
+      conf: 'authoritative',
+      stability: 'official_api (OneTone store)',
+      caps: [
+        { id: 'detail', ok: true, label: '查看详情' },
+        { id: 'resume', ok: true, label: '继续这个 checkpoint' },
+        { id: 'focus', ok: true, label: '聚焦 Codex' },
+      ],
+      bullets: [
+        '现有能力：cmd_agent_checkpoint_resume',
+        'now 用单条 checkpoint，不作跨 Provider 项目卡',
+      ],
+      gitP0a: { branch: 'master', commit: 'a3f2c1e · desk IA', files: 'prototypes/home-agent-desk/index.html' },
+      evidence: {
+        path: 'agent-memory.sqlite3 → checkpoints',
+        event: 'checkpoint_created',
+        at: '2 小时前',
+        fingerprint: 'onetone-checkpoint-v1',
+        summary: '真实 resumeTarget 示意',
+      },
+    },
+  },
+  'cursor-exp': {
+    id: 'cursor-exp', provider: 'Cursor', project: null,
+    title: '暂无实时信号',
+    waiting: false, conf: 'inf', experimental: true,
+    when: '实验性', act: '了解限制', actKind: 'limits',
+    detail: {
+      title: 'Cursor · 实验性来源',
+      sub: '已发现 · 不进冷启动主路径',
+      state: 'discovered',
+      conf: 'inferred',
+      stability: 'heuristic',
+      bounds: {
+        readable: '项目、最近打开时间、OneTone 操作记录',
+        unreadable: '完整会话正文（state.vscdb 过大且含凭据风险）',
+        unactionable: '恢复、批准；历史导出尚未启用',
+      },
+      caps: [
+        { id: 'limits', ok: true, label: '了解限制' },
+        { id: 'export', ok: false, reason: '历史导出尚未启用' },
+        { id: 'resume', ok: false, reason: '无可靠 resumeTarget' },
+      ],
+      bullets: ['不计入运行中', '发现清单 ≠ Living Now'],
+      evidence: {
+        path: 'agent_install_inventory',
+        event: 'discovered',
+        at: '—',
+        fingerprint: 'n/a',
+        summary: 'skipped_on_startup',
+      },
+    },
+  },
+  'marvis-wait': {
+    id: 'marvis-wait', provider: 'Marvis', project: 'voice-pilot',
+    title: '确认是否清理扫描结果',
+    waiting: true, conf: 'auth', when: '刚刚', act: '查看', actKind: 'detail',
+    p0aOnly: true,
+    detail: {
+      title: '确认是否清理扫描结果',
+      sub: 'P0a 示意 · approvals.pending',
+      state: 'NeedsInput / Permission',
+      conf: 'authoritative',
+      stability: 'observed_schema',
+      caps: [
+        { id: 'detail', ok: true, label: '查看详情' },
+        { id: 'focus', ok: true, label: '聚焦 Marvis' },
+        { id: 'approve', ok: false, reason: 'P0 不开放' },
+      ],
+      bullets: ['当前代码无 Marvis Adapter / AgentKind', '仅 P0a 预览展示'],
+      evidence: {
+        path: '~/.marvis/database/data.db → approvals',
+        event: 'approvals.status=pending',
+        at: '刚刚',
+        fingerprint: 'marvis-approvals@v3',
+        summary: '示意 · 尚未接入',
+      },
+    },
+  },
+  'marvis-expired': {
+    id: 'marvis-expired', provider: 'Marvis', project: 'onetone',
+    title: '确认是否应用优化建议',
+    waiting: false, expired: true, conf: 'auth', when: '已过期', act: '查看', actKind: 'detail',
+    p0aOnly: true,
+    detail: {
+      title: '确认是否应用优化建议',
+      sub: 'P0a 示意 · 需重新确认',
+      state: 'NeedsInput / expired',
+      conf: 'authoritative',
+      stability: 'observed_schema',
+      caps: [
+        { id: 'detail', ok: true, label: '查看详情' },
+        { id: 'approve', ok: false, reason: '审批已过期 · 需在 Marvis 重新确认' },
+      ],
+      bullets: ['不进 Needs You', '不得伪装可操作'],
+      evidence: {
+        path: '~/.marvis/database/data.db → approvals',
+        event: 'pending (stale)',
+        at: 'freshUntil 已过',
+        fingerprint: 'marvis-approvals@v3',
+        summary: '示意降级',
+      },
+    },
+  },
+};
+
+const PROJECT = {
+  id: 'voice-pilot',
+  name: 'voice-pilot',
+  sessions: 4,
+  lastTitle: '重构首页布局',
+  when: '2 小时前',
+};
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function bead(s) {
+  if (s.waiting) return 'wait';
+  if (s.expired || s.conf === 'inf') return 'inf';
+  if (s.conf === 'auth') return 'auth';
+  return 'corr';
+}
+
+function displayTitle(s) {
+  if (s.titleNow && mode === 'now') return s.titleNow;
+  if (s.titleP0a && mode === 'p0a') return s.titleP0a;
+  return s.title;
+}
+
+function displayWhen(s) {
+  if (s.whenNow && mode === 'now') return s.whenNow;
+  if (s.whenP0a && mode === 'p0a') return s.whenP0a;
+  return s.when;
+}
+
+function subline(s) {
+  const bits = [s.provider];
+  if (s.project) bits.push(s.project);
+  bits.push(displayWhen(s));
+  return bits.join(' · ');
+}
+
+function sitData() {
+  if (liveBundle && mode === 'now' && liveBundle.sit) {
+    var sit = Object.assign({}, liveBundle.sit);
+    // Expand liveSummary → attention layout when user clicks expand.
+    if (currentSit === 'attention' && sit.layout && sit.layout.liveSummary) {
+      var L = sit.layout;
+      sit.layout = {
+        needs: L.needs,
+        living: L.living,
+        continue: L.continue,
+        recent: L.recent,
+      };
+    }
+    return sit;
+  }
+  const isNow = mode === 'now';
+  const base = {
+    attention: {
+      chip: '需要你处理', chipClass: 'warn',
+      topProj: 'voice-pilot',
+      headline: isNow
+        ? '2 个会话正在活动 · 1 个需要你处理'
+        : '2 个会话正在运行 · 2 个需要你处理',
+      subhead: isNow
+        ? '现有能力：Codex waiting 来自 Soft Pad hook；Living 为通用活跃文案。'
+        : 'P0a 预览：含 Marvis 与更细任务叙事 · 非现网能力。',
+      ctas: [{ l: '处理第一个', open: 'codex-wait' }],
+      foot: isNow
+        ? 'now：Needs You(Codex) · Living 通用 · checkpoint Continue · 无 Marvis'
+        : 'p0a：Needs You(+Marvis) · 需重新确认独立 · 项目卡 Continue',
+      layout: isNow ? {
+        needs: { ids: ['codex-wait'] },
+        living: { ids: ['claude-live', 'wb-live'], max: 2 },
+        continue: { kind: 'checkpoint', id: 'codex-cp' },
+        signal: { ids: ['cursor-exp'] },
+      } : {
+        needs: { ids: ['codex-wait', 'marvis-wait'] },
+        living: { ids: ['claude-live', 'wb-live'], max: 2 },
+        reconfirm: { ids: ['marvis-expired'] },
+        continue: { kind: 'project' },
+        recent: { ids: ['codex-cp'], max: 1 },
+        signal: { ids: ['cursor-exp'] },
+      },
+    },
+    quiet: {
+      chip: '安静', chipClass: '',
+      topProj: 'voice-pilot',
+      headline: '在 voice-pilot 继续',
+      subhead: isNow
+        ? '无人在等你。有活动则一行摘要；有 checkpoint 可继续。'
+        : 'P0a：摘要可含实验性来源计数（示意）。',
+      ctas: [{ l: '开始听写', action: 'dictation' }],
+      foot: 'quiet：Live 折叠 · 非监控面板',
+      layout: {
+        liveSummary: {
+          text: isNow ? '无人等待 · 2 个会话有活动' : '无人等待 · 2 个会话有活动 · 1 个实验性',
+          hint: '展开看 Needs You / Living Now',
+        },
+        continue: { kind: 'checkpoint', id: 'codex-cp' },
+        recent: isNow ? null : { ids: ['codex-cp'], collapsed: true },
+      },
+    },
+    resume: {
+      chip: '可继续', chipClass: '',
+      topProj: 'voice-pilot',
+      headline: '接着上次那步做',
+      subhead: '主 CTA 绑定 checkpoint · 非双计数模板。',
+      ctas: [{ l: '继续这个 checkpoint', open: 'codex-cp', action: 'resume' }],
+      foot: 'resume：现有 cmd_agent_checkpoint_resume 路径',
+      layout: {
+        continue: isNow
+          ? { kind: 'checkpoint', id: 'codex-cp' }
+          : { kind: 'project' },
+      },
+    },
+    repair: {
+      chip: '需修复', chipClass: 'repair',
+      topProj: null,
+      headline: '麦克风不可用',
+      subhead: '主通道缺口接管头条；不展开双计数。',
+      ctas: [{ l: '修复麦克风', action: 'repair-mic' }],
+      foot: 'repair：情境优先',
+      repair: true,
+      layout: {
+        living: { ids: ['claude-live'], max: 1 },
+      },
+    },
+    cold: {
+      chip: '冷启动', chipClass: '',
+      topProj: null,
+      headline: '先显示缓存',
+      subhead: '首屏只读 OneTone SQLite；Cursor 主库跳过。',
+      ctas: [],
+      foot: 'cold：无双计数 · 无 Marvis 细节承诺',
+      layout: { skeleton: true },
+    },
+  };
+  return base[currentSit];
+}
+
+function openDrawer(detail, id) {
+  selectedId = id || null;
+  const drawer = document.getElementById('drawer');
+  const scrim = document.getElementById('drawerScrim');
+  const s = id ? ledger()[id] : null;
+  const title = s ? displayTitle(s) : detail.title;
+  document.getElementById('dTitle').textContent = mode === 'p0a' && s?.titleP0a ? s.titleP0a : title;
+  document.getElementById('dSub').textContent = detail.sub;
+
+  const okCaps = (detail.caps || []).filter(c => c.ok);
+  const badCaps = (detail.caps || []).filter(c => !c.ok);
+  const ev = detail.evidence || {};
+  const showGit = mode === 'p0a' && detail.gitP0a;
+
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="block">
+      <h4>状态</h4>
+      <div class="pill-row">
+        <span class="pill good">${detail.state || '—'}</span>
+        <span class="pill">${detail.conf || '—'}</span>
+        <span class="pill ${String(detail.stability || '').includes('observed') ? 'warn' : ''}">${detail.stability || '—'}</span>
+        ${mode === 'p0a' && s?.p0aOnly ? '<span class="pill plan">P0a 示意</span>' : ''}
+      </div>
+    </div>
+    ${detail.bounds ? `
+    <div class="block">
+      <h4>能力边界</h4>
+      <ul class="bounds">
+        <li><span class="k">可读</span>：${detail.bounds.readable}</li>
+        <li><span class="k">不可读</span>：${detail.bounds.unreadable}</li>
+        <li><span class="k">不可执行</span>：${detail.bounds.unactionable}</li>
+      </ul>
+    </div>` : ''}
+    <div class="block">
+      <h4>任务要点</h4>
+      <ul>${(detail.bullets || []).map(b => `<li>${b}</li>`).join('')}</ul>
+    </div>
+    ${showGit ? `
+    <div class="block">
+      <h4>关联 Git</h4>
+      <p><span class="pill plan">规划能力 · 尚未接入</span></p>
+      <ul>
+        <li>分支 ${detail.gitP0a.branch}</li>
+        <li>commit ${detail.gitP0a.commit}</li>
+        <li>变更 ${detail.gitP0a.files}</li>
+      </ul>
+    </div>` : ''}
+    <div class="block">
+      <h4>Evidence</h4>
+      <div class="evbox">
+        <div><b>path</b> ${ev.path || '—'}</div>
+        <div><b>event</b> ${ev.event || '—'}</div>
+        <div><b>observed</b> ${ev.at || '—'}</div>
+        <div><b>fingerprint</b> ${ev.fingerprint || '—'}</div>
+        <div><b>summary</b> ${ev.summary || '—'}</div>
+      </div>
+    </div>
+    <div class="block">
+      <h4>可用动作</h4>
+      <div class="actions">
+        ${okCaps.map(c => `<button type="button" class="act" data-cap="${c.id}">${c.label}</button>`).join('') || '<span class="unavailable">无可执行动作</span>'}
+      </div>
+      ${badCaps.map(c => `<p class="unavailable">${c.id}：${c.reason}</p>`).join('')}
+    </div>
+    <div class="block">
+      <button type="button" class="ask-link" id="askFromDrawer">就此任务提问…</button>
+    </div>
+  `;
+
+  scrim.hidden = false;
+  requestAnimationFrame(() => {
+    scrim.classList.add('open');
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+  });
+  document.getElementById('askFromDrawer')?.addEventListener('click', openPalette);
+  document.querySelectorAll('#drawerBody [data-cap]').forEach(btn => {
+    btn.addEventListener('click', () => handleCap(btn.getAttribute('data-cap')));
+  });
+  highlight();
+}
+
+function handleCap(cap) {
+  const map = {
+    detail: '已在详情中',
+    focus: '示意：将聚焦原 Agent 窗口',
+    resume: '示意：将恢复 checkpoint / 会话',
+    limits: '历史导出尚未启用 · 仅说明限制',
+    export: '历史导出尚未启用',
+    dictation: '示意：开始听写',
+    'repair-mic': '示意：打开麦克风修复',
+  };
+  if (cap === 'resume' && liveBundle) {
+    const s = selectedId ? ledger()[selectedId] : null;
+    const sid = s && s.sessionId;
+    const L = window.OneToneHomeAgentDeskLive;
+    if (sid && L && L.resumeCheckpoint) {
+      L.resumeCheckpoint(sid)
+        .then(function () { toast('已请求 resume checkpoint'); })
+        .catch(function (err) { toast('resume 失败：' + (err && err.message ? err.message : 'error')); });
+      return;
+    }
+  }
+  toast(map[cap] || `示意：${cap}`);
+}
+
+function closeDrawer() {
+  selectedId = null;
+  const drawer = document.getElementById('drawer');
+  const scrim = document.getElementById('drawerScrim');
+  drawer.classList.remove('open');
+  scrim.classList.remove('open');
+  drawer.setAttribute('aria-hidden', 'true');
+  setTimeout(() => { scrim.hidden = true; }, 180);
+  highlight();
+}
+
+function openPalette() {
+  const scrim = document.getElementById('palScrim');
+  scrim.hidden = false;
+  requestAnimationFrame(() => {
+    scrim.classList.add('open');
+    document.getElementById('palInput').focus();
+  });
+}
+
+function closePalette() {
+  const scrim = document.getElementById('palScrim');
+  scrim.classList.remove('open');
+  setTimeout(() => { scrim.hidden = true; }, 160);
+}
+
+function highlight() {
+  document.querySelectorAll('[data-id]').forEach(el => {
+    el.setAttribute('aria-current', el.dataset.id === selectedId ? 'true' : 'false');
+  });
+}
+
+function sessionRow(id, opts = {}) {
+  const s = ledger()[id];
+  if (!s) return '';
+  if (s.p0aOnly && mode !== 'p0a') return '';
+  const tags = [];
+  if (s.waiting) tags.push('<span class="tag wait">等你</span>');
+  if (s.expired) tags.push('<span class="tag warn">需重新确认</span>');
+  if (s.experimental) tags.push('<span class="tag exp">实验性</span>');
+  if (s.sourceNote === 'hook' && mode === 'now') tags.push('<span class="tag hook">hook</span>');
+  const title = opts.expiredPrefix ? `需重新确认：${displayTitle(s)}` : displayTitle(s);
+  const ghost = s.actKind === 'limits' || s.actKind === 'export';
+  return `
+    <button type="button" class="row ${s.expired ? 'expired' : ''}" data-id="${s.id}" aria-label="${title}">
+      <span class="bead ${bead(s)}" aria-hidden="true"></span>
+      <div>
+        <div class="title">${title}${tags.join('')}</div>
+        <div class="subline">${subline(s)}${s.note || opts.note ? ` · ${s.note || opts.note}` : ''}</div>
+      </div>
+      <span class="act ${ghost ? 'ghost' : ''}">${s.act}</span>
+    </button>`;
+}
+
+function checkpointCard(id) {
+  const s = ledger()[id];
+  if (!s) return '';
+  return `
+    <button type="button" class="checkpoint-card" data-id="${s.id}" data-action="resume" aria-label="继续 checkpoint">
+      <div>
+        <div class="cname">${s.title}</div>
+        <div class="cmeta">${s.provider} checkpoint${s.project ? ' · ' + s.project : ''}</div>
+        <div class="cwhen">${s.when}</div>
+      </div>
+      <span class="act">继续</span>
+    </button>`;
+}
+
+function projectCard() {
+  return `
+    <button type="button" class="project-card" data-id="codex-cp" aria-label="继续项目">
+      <div>
+        <div class="pname">${PROJECT.name}</div>
+        <div class="pmeta">${PROJECT.sessions} 个会话参与 · ${PROJECT.when}</div>
+        <div class="plast">上次做到：${PROJECT.lastTitle}</div>
+      </div>
+      <span class="act">继续</span>
+    </button>`;
+}
+
+function renderZones(layout) {
+  if (!layout) return '';
+  if (layout.skeleton) {
+    const lines = mode === 'now'
+      ? ['Codex / Claude / WorkBuddy（现有 hook）', 'checkpoint 缓存', 'Cursor state.vscdb — 跳过']
+      : ['Marvis approvals（P0a 示意）', 'Codex 增量游标', 'WorkBuddy lease', 'Claude 元数据', 'Cursor — 跳过'];
+    return `
+      <section class="zone" aria-label="后台刷新">
+        <header><span class="h">后台刷新</span><span class="zmeta">缓存首屏</span></header>
+        ${lines.map(label => `
+          <div class="skel" aria-hidden="true"><i class="a"></i><i class="b" style="${label.includes('跳过')?'opacity:.4':''}"></i><i class="c"></i></div>
+          <div class="skel-cap">${label}</div>`).join('')}
+      </section>`;
+  }
+
+  let html = '';
+
+  if (layout.liveSummary) {
+    html += `
+      <section class="zone" aria-label="现在">
+        <button type="button" class="live-summary" id="expandLive">
+          <span class="bead" aria-hidden="true"></span>
+          <div>
+            <div class="t">${layout.liveSummary.text}</div>
+            <div class="s">${layout.liveSummary.hint}</div>
+          </div>
+        </button>
+      </section>`;
+  }
+
+  if (layout.needs && (layout.needs.ids || []).length) {
+    const ids = layout.needs.ids || [];
+    html += `
+      <section class="zone needs" aria-label="Needs You">
+        <header>
+          <span class="h">Needs You</span>
+          <span class="zmeta">${ids.length} 个可处理</span>
+        </header>
+        ${ids.map(id => sessionRow(id)).join('')}
+      </section>`;
+  }
+
+  if (layout.living && (layout.living.ids || []).length) {
+    const ids = (layout.living.ids || []).slice(0, layout.living.max ?? 2);
+    html += `
+      <section class="zone" aria-label="Living Now">
+        <header>
+          <span class="h">Living Now</span>
+          <span class="zmeta">可信活跃 · 非等待</span>
+        </header>
+        ${ids.map(id => sessionRow(id)).join('')}
+      </section>`;
+  }
+
+  if (layout.reconfirm && (layout.reconfirm.ids || []).length) {
+    html += `
+      <section class="zone reconfirm" aria-label="需重新确认">
+        <header>
+          <span class="h">需重新确认</span>
+          <span class="zmeta">不可操作 · 不进 Needs You</span>
+        </header>
+        ${(layout.reconfirm.ids || []).map(id => sessionRow(id, { expiredPrefix: true })).join('')}
+      </section>`;
+  }
+
+  if (layout.continue && (layout.continue.kind === 'project' || layout.continue.id)) {
+    html += `
+      <section class="zone" aria-label="Continue">
+        <header>
+          <span class="h">Continue</span>
+          <span class="zmeta">${layout.continue.kind === 'project' ? '按项目 · P0a' : 'checkpoint'}</span>
+        </header>
+        ${layout.continue.kind === 'project' ? projectCard() : checkpointCard(layout.continue.id)}
+      </section>`;
+  }
+
+  if (layout.recent && (layout.recent.ids || []).length) {
+    const ids = (layout.recent.ids || []).slice(0, layout.recent.max ?? 99);
+    const collapsed = !!layout.recent.collapsed && !recentOpen;
+    html += `
+      <section class="zone" aria-label="最近工作">
+        <header><span class="h">最近工作</span></header>
+        ${collapsed
+          ? `<button type="button" id="expandRecent" style="width:100%;padding:10px 12px;border:0;background:transparent;text-align:left;color:var(--teal-deep);font-weight:700;font-size:12px;">展开最近工作（${ids.length}）</button>`
+          : ids.map(id => {
+              const s = ledger()[id];
+              if (!s) return '';
+              return `<button type="button" class="recent-row" data-id="${s.id}">
+                <div><div class="rt">${displayTitle(s)}</div><div class="rs">${subline(s)}</div></div>
+                <span class="rcap">${s.act}</span>
+              </button>`;
+            }).join('')}
+      </section>`;
+  }
+
+  if (layout.signal && (layout.signal.ids || []).length) {
+    html += `
+      <section class="zone" aria-label="信号不足">
+        <header>
+          <span class="h">信号不足</span>
+          <span class="zmeta">不计入运行中</span>
+        </header>
+        ${layout.signal.ids.map(id => sessionRow(id)).join('')}
+      </section>`;
+  }
+
+  return html;
+}
+
+function bindZoneClicks() {
+  document.querySelectorAll('[data-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      const s = ledger()[el.dataset.id];
+      if (!s) return;
+      openDrawer(s.detail, s.id);
+    });
+  });
+  document.getElementById('expandLive')?.addEventListener('click', () => selectSit('attention'));
+  document.getElementById('expandRecent')?.addEventListener('click', () => {
+    recentOpen = true;
+    render();
+  });
+}
+
+function applyModeChrome() {
+  const frame = document.getElementById('frame');
+  frame.classList.toggle('mode-p0a', mode === 'p0a');
+  frame.classList.toggle('mode-now', mode === 'now');
+  document.getElementById('modeNow').setAttribute('aria-pressed', mode === 'now' ? 'true' : 'false');
+  document.getElementById('modeP0a').setAttribute('aria-pressed', mode === 'p0a' ? 'true' : 'false');
+  const url = new URL(location.href);
+  if (mode === 'p0a') url.searchParams.set('mode', 'p0a');
+  else url.searchParams.delete('mode');
+  history.replaceState(null, '', url);
+}
+
+function render() {
+  applyModeChrome();
+  const sit = sitData();
+  const chip = document.getElementById('sitChip');
+  chip.textContent = sit.chip;
+  chip.className = 'sit' + (sit.chipClass ? ' ' + sit.chipClass : '');
+  document.getElementById('headline').textContent = sit.headline;
+  document.getElementById('subhead').textContent = sit.subhead;
+  document.getElementById('frameFoot').textContent = sit.foot;
+  document.getElementById('topProj').textContent = sit.topProj || '工作台';
+  document.getElementById('askHintText').textContent =
+    mode === 'now' ? '提问 · 非跨 Agent 检索' : '提问 · 查找为 P0a 之后能力';
+
+  const hint = document.getElementById('dataSourceHint');
+  const btn = document.getElementById('btnLive');
+  if (liveBundle) {
+    hint.textContent = '实况：attention + home + focus · 无数据区已折叠' + (liveError ? ' · ' + liveError : '');
+    if (btn) btn.textContent = '切回 fixtures';
+  } else {
+    hint.textContent = liveError
+      ? 'fixtures（实况失败：' + liveError + '）。App 内打开或 ?live=1'
+      : '默认 fixtures。App 内打开自动接三 IPC；或 ?live=1。';
+    if (btn) btn.textContent = '接真实数据';
+  }
+
+  document.getElementById('ctas').innerHTML = (sit.ctas || []).map(c =>
+    `<button type="button" class="cta" data-open="${c.open || ''}" data-action="${c.action || ''}">${c.l}</button>`
+  ).join('');
+  document.querySelectorAll('#ctas .cta').forEach(btnCta => {
+    btnCta.addEventListener('click', () => {
+      const action = btnCta.getAttribute('data-action');
+      const id = btnCta.getAttribute('data-open');
+      if (action && !id) { handleCap(action); return; }
+      if (id && ledger()[id]) {
+        openDrawer(ledger()[id].detail, id);
+        if (action === 'resume') handleCap('resume');
+      }
+    });
+  });
+
+  document.getElementById('repairSlot').innerHTML = sit.repair
+    ? `<div class="repair" role="status"><div class="tx"><b>主通道缺口：麦克风</b>语音是当前编码主路径，但现在听不到。</div></div>`
+    : '';
+
+  document.getElementById('zones').innerHTML = renderZones(sit.layout);
+  document.getElementById('askHint').style.display = currentSit === 'cold' && !liveBundle ? 'none' : '';
+  bindZoneClicks();
+  highlight();
+}
+
+function selectSit(name) {
+  currentSit = name;
+  recentOpen = false;
+  document.querySelectorAll('.tabs [role="tab"]').forEach(t => {
+    t.setAttribute('aria-selected', t.dataset.sit === name ? 'true' : 'false');
+  });
+  closeDrawer();
+  render();
+}
+
+function setMode(next) {
+  mode = next;
+  recentOpen = false;
+  closeDrawer();
+  render();
+}
+
+document.getElementById('modeNow').addEventListener('click', () => setMode('now'));
+document.getElementById('modeP0a').addEventListener('click', () => setMode('p0a'));
+document.querySelectorAll('.tabs [role="tab"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    // Live now-mode is data-driven; tabs only force fixture sits.
+    if (liveBundle && mode === 'now') {
+      toast('实况中由三 IPC 决定情境；切回 fixtures 可预览示意页');
+      return;
+    }
+    selectSit(btn.dataset.sit);
+  });
+});
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+document.getElementById('drawerScrim').addEventListener('click', closeDrawer);
+document.getElementById('openPal').addEventListener('click', openPalette);
+document.getElementById('palScrim').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closePalette();
+});
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    openPalette();
+  }
+  if (e.key === 'Escape') {
+    if (!document.getElementById('palScrim').hidden) closePalette();
+    else if (document.getElementById('drawer').classList.contains('open')) closeDrawer();
+  }
+});
+
+function stopLivePoll() {
+  if (livePoll) {
+    clearInterval(livePoll);
+    livePoll = 0;
+  }
+}
+
+function applyLiveBundle(bundle) {
+  liveBundle = bundle;
+  liveError = '';
+  if (bundle && bundle.sitName) currentSit = bundle.sitName;
+  document.querySelectorAll('.tabs [role="tab"]').forEach(t => {
+    t.setAttribute('aria-selected', t.dataset.sit === currentSit ? 'true' : 'false');
+  });
+  render();
+}
+
+function refreshLive() {
+  var L = window.OneToneHomeAgentDeskLive;
+  if (!L || !L.fetchAll) {
+    liveError = 'no_bridge';
+    liveBundle = null;
+    render();
+    return Promise.resolve(null);
+  }
+  return L.fetchAll()
+    .then(function (bundle) {
+      applyLiveBundle(bundle);
+      return bundle;
+    })
+    .catch(function (err) {
+      liveBundle = null;
+      liveError = err && err.message ? String(err.message) : 'fetch_failed';
+      render();
+      return null;
+    });
+}
+
+function startLive() {
+  var url = new URL(location.href);
+  url.searchParams.set('live', '1');
+  url.searchParams.delete('fixture');
+  history.replaceState(null, '', url);
+  params.set('live', '1');
+  params.delete('fixture');
+  return refreshLive().then(function () {
+    stopLivePoll();
+    livePoll = setInterval(refreshLive, 5000);
+  });
+}
+
+function stopLive() {
+  stopLivePoll();
+  liveBundle = null;
+  liveError = '';
+  var url = new URL(location.href);
+  url.searchParams.delete('live');
+  url.searchParams.set('fixture', '1');
+  history.replaceState(null, '', url);
+  params.delete('live');
+  params.set('fixture', '1');
+  render();
+}
+
+document.getElementById('btnLive').addEventListener('click', () => {
+  if (liveBundle) stopLive();
+  else startLive();
+});
+
+render();
+if (wantLive()) startLive();
+</script>
+</body>
+</html>

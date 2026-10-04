@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 个人习惯周期</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0d1110; --panel:#151b18; --line:#2b3530; --ink:#f1f4eb; --muted:#91a097; --lime:#c9f25f; --mint:#5fd5b4; --amber:#f1bd62; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100dvh; font-family:"Segoe UI","Microsoft YaHei",sans-serif; color:var(--ink); background:radial-gradient(circle at 68% 15%,#1b2a20 0,transparent 34%),var(--bg); }
+    button { font:inherit; color:inherit; }
+    .shell { min-height:100dvh; display:grid; grid-template-columns:248px 1fr; }
+    aside { border-right:1px solid var(--line); padding:28px 22px; display:flex; flex-direction:column; gap:34px; }
+    .brand { display:flex; align-items:center; gap:11px; font-weight:650; letter-spacing:.02em; }
+    .brand-mark { width:31px; height:31px; border:1px solid #425047; border-radius:50%; display:grid; place-items:center; color:var(--lime); }
+    .nav { display:grid; gap:7px; }
+    .nav button { text-align:left; border:0; background:transparent; color:var(--muted); padding:11px 12px; border-radius:10px; cursor:pointer; }
+    .nav button.active { color:var(--ink); background:#202822; }
+    .note { margin-top:auto; color:var(--muted); font-size:12px; line-height:1.6; }
+    main { padding:30px clamp(24px,4vw,64px) 44px; }
+    header { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; margin-bottom:34px; }
+    .eyebrow { margin:0 0 8px; color:var(--lime); font-size:12px; letter-spacing:.15em; }
+    h1 { margin:0; font-size:clamp(30px,4vw,54px); font-weight:520; letter-spacing:-.045em; }
+    .date { color:var(--muted); font-size:14px; padding-top:10px; }
+    .grid { display:grid; grid-template-columns:minmax(430px,1.35fr) minmax(300px,.85fr); gap:18px; }
+    .panel { border:1px solid var(--line); background:color-mix(in srgb,var(--panel) 92%,transparent); border-radius:20px; padding:22px; }
+    .panel-title { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+    .panel-title h2 { margin:0; font-size:15px; font-weight:580; }
+    .panel-title span { color:var(--muted); font-size:12px; }
+    .clock-wrap { display:grid; grid-template-columns:minmax(280px,1fr) 176px; align-items:center; min-height:440px; }
+    .clock { position:relative; width:min(39vw,390px); aspect-ratio:1; margin:auto; border-radius:50%; background:conic-gradient(from -90deg,var(--lime) 0 23%,#364038 23% 31%,var(--mint) 31% 59%,#364038 59% 68%,var(--amber) 68% 82%,#252e29 82% 100%); box-shadow:0 0 0 14px #101512,0 0 0 15px var(--line); }
+    .clock::before { content:""; position:absolute; inset:24px; border-radius:50%; background:var(--panel); border:1px solid #3b463f; }
+    .clock::after { content:""; position:absolute; left:50%; top:50%; width:3px; height:33%; background:linear-gradient(var(--ink),var(--lime)); transform-origin:50% 100%; transform:translate(-50%,-100%) rotate(48deg); border-radius:5px; box-shadow:0 0 15px #c9f25f77; }
+    .center { position:absolute; inset:31%; z-index:2; display:grid; place-content:center; text-align:center; border-radius:50%; background:#111613; border:1px solid #303a34; }
+    .center strong { font-size:30px; font-weight:540; }
+    .center small { color:var(--muted); margin-top:5px; }
+    .tick { position:absolute; z-index:3; font-size:11px; color:#b7c1b9; }
+    .t1{top:7%;left:47%}.t2{right:7%;top:48%}.t3{bottom:7%;left:47%}.t4{left:7%;top:48%}
+    .legend { display:grid; gap:16px; }
+    .legend-row { display:grid; grid-template-columns:10px 1fr auto; gap:10px; align-items:start; }
+    .dot { width:8px; height:8px; border-radius:50%; margin-top:5px; background:var(--lime); }
+    .legend-row:nth-child(2) .dot{background:var(--mint)} .legend-row:nth-child(3) .dot{background:var(--amber)}
+    .legend-row strong { font-size:13px; font-weight:560; }
+    .legend-row p { grid-column:2/-1; margin:2px 0 0; color:var(--muted); font-size:12px; line-height:1.5; }
+    .score { color:var(--muted); font-size:12px; }
+    .start { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:18px; border-color:#536441; background:linear-gradient(100deg,#1d281d,#171d19); }
+    .start h2 { margin:0 0 7px; font-size:20px; font-weight:540; }
+    .start p { margin:0; color:var(--muted); font-size:13px; }
+    .start button { border:0; background:var(--lime); color:#16200d; font-weight:700; padding:13px 19px; border-radius:12px; cursor:pointer; white-space:nowrap; }
+    .history { display:grid; gap:11px; }
+    .day { display:grid; grid-template-columns:44px 1fr 42px; gap:12px; align-items:center; font-size:12px; color:var(--muted); }
+    .bar { height:8px; border-radius:9px; background:#29312c; overflow:hidden; }
+    .bar i { display:block; height:100%; background:linear-gradient(90deg,var(--mint),var(--lime)); border-radius:inherit; }
+    .insight { display:grid; gap:12px; }
+    .insight article { padding:14px 15px; border-radius:14px; background:#101512; border:1px solid #28322c; }
+    .insight strong { font-size:13px; font-weight:560; }
+    .insight p { margin:5px 0 0; color:var(--muted); font-size:12px; line-height:1.55; }
+    @media (max-width:900px){.shell{grid-template-columns:1fr}aside{display:none}.grid{grid-template-columns:1fr}.clock-wrap{grid-template-columns:1fr;gap:28px}.clock{width:min(76vw,370px)}.legend{grid-template-columns:repeat(3,1fr)}.start{grid-column:auto}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand"><span class="brand-mark">一</span> OneTone</div>
+      <nav class="nav" aria-label="首页视图">
+        <button class="active">今天的周期</button><button>习惯地图</button><button>回顾</button><button>设置</button>
+      </nav>
+      <p class="note">原型 A<br>把一天看成可恢复、可调整的个人循环，而不是待办事项列表。</p>
+    </aside>
+    <main>
+      <header><div><p class="eyebrow">PERSONAL RHYTHM</p><h1>今天，不必重新开始。</h1></div><div class="date">10 月 3 日 · 周六</div></header>
+      <section class="grid">
+        <div class="panel">
+          <div class="panel-title"><h2>今日习惯时钟</h2><span>现在 10:24</span></div>
+          <div class="clock-wrap">
+            <div class="clock"><span class="tick t1">06</span><span class="tick t2">12</span><span class="tick t3">18</span><span class="tick t4">00</span><div class="center"><strong>专注</strong><small>第 2 轮 · 34 分钟</small></div></div>
+            <div class="legend">
+              <div class="legend-row"><i class="dot"></i><strong>启动</strong><span class="score">完成</span><p>唤醒、整理桌面、确认今天唯一目标</p></div>
+              <div class="legend-row"><i class="dot"></i><strong>投入</strong><span class="score">进行中</span><p>写作与构建，中断后可从最近节点恢复</p></div>
+              <div class="legend-row"><i class="dot"></i><strong>收束</strong><span class="score">待开始</span><p>记录结果，为下一轮留下清楚的起点</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><h2>最近七天</h2><span>稳定度 78%</span></div>
+          <div class="history">
+            <div class="day"><span>今天</span><div class="bar"><i style="width:64%"></i></div><b>64</b></div>
+            <div class="day"><span>周五</span><div class="bar"><i style="width:87%"></i></div><b>87</b></div>
+            <div class="day"><span>周四</span><div class="bar"><i style="width:72%"></i></div><b>72</b></div>
+            <div class="day"><span>周三</span><div class="bar"><i style="width:91%"></i></div><b>91</b></div>
+            <div class="day"><span>周二</span><div class="bar"><i style="width:58%"></i></div><b>58</b></div>
+          </div>
+          <div class="panel-title" style="margin-top:28px"><h2>周期洞察</h2><span>本地推断</span></div>
+          <div class="insight"><article><strong>你的最佳起跑时间提前了</strong><p>近三天在 09:40 前进入第一轮，完成率提升 18%。</p></article><article><strong>下午不是失败，是换挡</strong><p>14:00 后更适合整理、沟通与低负担动作。</p></article></div>
+        </div>
+        <div class="panel start"><div><h2>万能起跑线：继续首页循环设计</h2><p>已找到昨天的最后节点、关联资料与可执行的下一步。</p></div><button id="resume">从这里继续</button></div>
+      </section>
+    </main>
+  </div>
+  <script>document.querySelector('#resume').addEventListener('click',e=>{e.currentTarget.textContent='已进入专注轮';e.currentTarget.style.background='#5fd5b4'});</script>
+</body>
+</html>

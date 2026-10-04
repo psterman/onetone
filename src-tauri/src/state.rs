@@ -182,6 +182,8 @@ mod tests {
         MappingEntry {
             id: "m1".into(),
             label: String::new(),
+            display_name: String::new(),
+            scenario_kind: String::new(),
             group: "默认".into(),
             trigger_key: "Volume_Down".into(),
             target_key: "LAlt".into(),

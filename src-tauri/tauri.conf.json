@@ -41,10 +41,10 @@
       "icons/icon.icns"
     ],
     "resources": {
-      "resources/vosk/libvosk.dll": "libvosk.dll",
-      "resources/vosk/libgcc_s_seh-1.dll": "libgcc_s_seh-1.dll",
-      "resources/vosk/libstdc++-6.dll": "libstdc++-6.dll",
-      "resources/vosk/libwinpthread-1.dll": "libwinpthread-1.dll",
+      "resources/vosk/libvosk.dll": "resources/vosk/libvosk.dll",
+      "resources/vosk/libgcc_s_seh-1.dll": "resources/vosk/libgcc_s_seh-1.dll",
+      "resources/vosk/libstdc++-6.dll": "resources/vosk/libstdc++-6.dll",
+      "resources/vosk/libwinpthread-1.dll": "resources/vosk/libwinpthread-1.dll",
       "resources/vosk/vosk-model-small-cn-0.22/": "resources/vosk/vosk-model-small-cn-0.22/",
       "resources/vosk/vosk-model-small-en-us-0.15/": "resources/vosk/vosk-model-small-en-us-0.15/",
       "../scripts/cursor-hook-probe.js": "scripts/cursor-hook-probe.js",

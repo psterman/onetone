@@ -103,6 +103,7 @@ pub struct HomeSessionDto {
     pub title: Option<String>,
     pub updated_at: Option<u64>,
     pub status: String,
+    pub project_id: String,
     pub project_match: String,
     pub match_reason: String,
     pub match_confidence: f32,

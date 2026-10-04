@@ -72,7 +72,7 @@
   var pollTimer = 0;
   var inFlight = false;
   var lastPayload = null;
-  var frameBound = false;
+  var _targetFrame = null;
 
   function usageVal(usage, camel, snake) {
     if (!usage) return null;
@@ -275,7 +275,8 @@
 
   /**
    * @param {object} snap CodexMicroOverlaySnapshot-like
-   * @returns {{ asOf: string, range: 'day', agents: object[], history: false }}
+   * @param {object} [homeSnap] cmd_agent_home_snapshot projection
+   * @returns {{ asOf: string, range: 'day', agents: object[], history: array }}
    */
   function coreRank(id) {
     var k = kindKey(id);
@@ -285,7 +286,21 @@
     return 10;
   }
 
-  function projectBoardFromOverlay(snap) {
+  function projectHistoryFromHome(homeSnap) {
+    if (!homeSnap || !Array.isArray(homeSnap.recentSessions)) return [];
+    return homeSnap.recentSessions.map(function (s) {
+      return {
+        id: s.sessionId || s.externalSessionId,
+        provider: s.provider || 'cursor',
+        title: s.title || s.externalSessionId || 'session',
+        updatedAt: s.updatedAt || null,
+        projectMatch: s.projectMatch || 'unknown',
+        isActive: !!s.isActive
+      };
+    });
+  }
+
+  function projectBoardFromOverlay(snap, homeSnap) {
     var rows = snap && Array.isArray(snap.agents) ? snap.agents : [];
     var agents = [];
     for (var i = 0; i < rows.length; i++) {
@@ -313,10 +328,11 @@
       source: cursor.source,
       confidence: cursor.confidence
     }));
+    var history = projectHistoryFromHome(homeSnap);
     return {
       asOf: asOf,
       range: 'day',
-      history: false,
+      history: history,
       agents: agents,
       focusId: resolveFocusId(agents),
       cursorReady: cursorReady,
@@ -324,13 +340,53 @@
         cursor &&
         !cursorReady &&
         /未启用|活动统计/.test(String(cursor.message || cursor.note || ''))
-      )
+      ),
+      homeProject: homeSnap && homeSnap.project ? homeSnap.project : null,
+      homeProbeStatus: homeSnap && homeSnap.probeStatus ? homeSnap.probeStatus : null,
+      homeSyncStatus: homeSnap && homeSnap.syncStatus ? homeSnap.syncStatus : null
     };
   }
 
   function frameEl() {
     if (typeof document === 'undefined') return null;
+    if (_targetFrame && _targetFrame.isConnected !== false) return _targetFrame;
+    var agent = document.getElementById('agentProtoFrame');
+    try {
+      var doc = agent && agent.contentDocument;
+      if (doc) {
+        var inner = doc.getElementById('agentDataNestFrame');
+        if (inner) return inner;
+      }
+    } catch (_) {}
+    var nest = document.getElementById('agentDataNestFrame');
+    if (nest) return nest;
     return document.getElementById(FRAME_ID);
+  }
+
+  function setTargetFrame(el) {
+    _targetFrame = el || null;
+  }
+
+  function bindOneFrameLoad(frame) {
+    if (!frame || frame.__otAgentDataLoadBound) return;
+    frame.__otAgentDataLoadBound = true;
+    frame.addEventListener('load', function () {
+      if (lastPayload) postPayload(lastPayload);
+      else refresh({ kind: 'cursor' });
+    });
+  }
+
+  function bindFrameLoad() {
+    bindOneFrameLoad(frameEl());
+    var agent = typeof document !== 'undefined' ? document.getElementById('agentProtoFrame') : null;
+    if (agent && !agent.__otAgentDataNestWatch) {
+      agent.__otAgentDataNestWatch = true;
+      agent.addEventListener('load', function () {
+        bindOneFrameLoad(frameEl());
+        if (lastPayload) postPayload(lastPayload);
+        else refresh({ kind: 'cursor' });
+      });
+    }
   }
 
   function postPayload(payload) {
@@ -368,9 +424,13 @@
         return invoke('cmd_codex_micro_overlay_get_state', {});
       })
       .then(function (snap) {
-        var payload = projectBoardFromOverlay(snap || {});
-        postPayload(payload);
-        return payload;
+        return invoke('cmd_agent_home_snapshot', {})
+          .catch(function () { return null; })
+          .then(function (homeSnap) {
+            var payload = projectBoardFromOverlay(snap || {}, homeSnap);
+            postPayload(payload);
+            return payload;
+          });
       })
       .catch(function () {
         return lastPayload;
@@ -379,17 +439,6 @@
         inFlight = false;
         return payload;
       });
-  }
-
-  function bindFrameLoad() {
-    if (frameBound) return;
-    var frame = frameEl();
-    if (!frame) return;
-    frameBound = true;
-    frame.addEventListener('load', function () {
-      if (lastPayload) postPayload(lastPayload);
-      else refresh({ kind: 'cursor' });
-    });
   }
 
   function stop() {
@@ -418,6 +467,16 @@
     }
     if (data.cmd === 'enableCursorActivity') {
       enableCursorActivity();
+      return;
+    }
+    if (data.cmd === 'selectAgent') {
+      var settings = root.OneToneAgentPageSettingsBridge;
+      if (settings && typeof settings.selectAgent === 'function') {
+        try {
+          settings.selectAgent(data.app || data.kind);
+        } catch (_) {}
+      }
+      refresh({ kind: 'cursor' });
     }
   }
 
@@ -445,7 +504,9 @@
     refresh: refresh,
     start: start,
     stop: stop,
-    postPayload: postPayload
+    postPayload: postPayload,
+    setTargetFrame: setTargetFrame,
+    frameEl: frameEl
   };
 
   if (typeof module !== 'undefined' && module.exports) {

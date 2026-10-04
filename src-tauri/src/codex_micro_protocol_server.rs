@@ -29,6 +29,10 @@ pub const CLAUDE_APPROVAL_PATH: &str = "/api/claude-approval";
 pub const CLAUDE_OTEL_METRICS_PATH: &str = "/v1/metrics";
 pub const CLAUDE_STATUSLINE_PATH: &str = "/api/claude-statusline";
 pub const TEST_PULSE_PATH: &str = "/api/soft-pad/test-pulse";
+pub const CODEX_HEALTH_PATH: &str = crate::codex_smoke_task::HEALTH_PATH;
+pub const CODEX_SMOKE_CREATE_PATH: &str = crate::codex_smoke_task::CREATE_PATH;
+pub const CLAUDE_HEALTH_PATH: &str = crate::claude_smoke_task::HEALTH_PATH;
+pub const CLAUDE_SMOKE_CREATE_PATH: &str = crate::claude_smoke_task::CREATE_PATH;
 pub const MAX_OTEL_BODY_BYTES: usize = 512 * 1024;
 
 /// Env flag: Labs/验收 only. When set to `1`/`true`/`yes`, setup may auto-start the listener.
@@ -350,11 +354,22 @@ fn handle_client(
     }
 
     if method.eq_ignore_ascii_case("OPTIONS") {
+        let cors = if path == CODEX_HEALTH_PATH
+            || path == CODEX_SMOKE_CREATE_PATH
+            || path == CLAUDE_HEALTH_PATH
+            || path == CLAUDE_SMOKE_CREATE_PATH
+            || crate::codex_smoke_task::parse_task_path(path).is_some()
+            || crate::claude_smoke_task::parse_task_path(path).is_some()
+        {
+            smoke_cors_headers()
+        } else {
+            cors_headers_get()
+        };
         write_raw(
             &mut stream,
             204,
             "No Content",
-            &format!("{}\r\nAllow: GET, POST, OPTIONS\r\n", cors_headers_get()),
+            &format!("{cors}\r\nAllow: GET, POST, OPTIONS\r\n"),
             b"",
         )?;
         return Ok(());
@@ -366,18 +381,39 @@ fn handle_client(
     let is_claude_otel = path == CLAUDE_OTEL_METRICS_PATH;
     let is_claude_statusline = path == CLAUDE_STATUSLINE_PATH;
     let is_test_pulse = path == TEST_PULSE_PATH;
+    let is_codex_health = path == CODEX_HEALTH_PATH;
+    let is_codex_smoke_create = path == CODEX_SMOKE_CREATE_PATH;
+    let is_claude_health = path == CLAUDE_HEALTH_PATH;
+    let is_claude_smoke_create = path == CLAUDE_SMOKE_CREATE_PATH;
+    let smoke_task_id = crate::codex_smoke_task::parse_task_path(path)
+        .or_else(|| crate::claude_smoke_task::parse_task_path(path));
+    let is_codex_smoke_task = smoke_task_id.is_some();
     if !is_protocol
         && !is_app_state
         && !is_claude_approval
         && !is_claude_otel
         && !is_claude_statusline
         && !is_test_pulse
+        && !is_codex_health
+        && !is_codex_smoke_create
+        && !is_claude_health
+        && !is_claude_smoke_create
+        && !is_codex_smoke_task
     {
         write_error(&mut stream, 404, "not_found")?;
         return Ok(());
     }
 
     if method.eq_ignore_ascii_case("GET") {
+        if is_codex_health {
+            return handle_codex_health_get(&mut stream);
+        }
+        if is_claude_health {
+            return handle_claude_health_get(&mut stream);
+        }
+        if let Some(task_id) = smoke_task_id {
+            return handle_smoke_task_get(&mut stream, task_id);
+        }
         if is_app_state {
             let Some(state) = state else {
                 write_error(&mut stream, 503, "app_unavailable")?;
@@ -395,6 +431,33 @@ fn handle_client(
     if !method.eq_ignore_ascii_case("POST") {
         write_error(&mut stream, 405, "not_found")?;
         return Ok(());
+    }
+
+    // Codex/Claude smoke create: loopback + Host only (no token); rate-limited.
+    if is_codex_smoke_create || is_claude_smoke_create {
+        if !rate_limit_allow(path) {
+            write_error(&mut stream, 429, "rate_limited")?;
+            return Ok(());
+        }
+        let content_length = parse_content_length(header).unwrap_or(0);
+        if content_length > MAX_BODY_BYTES {
+            write_error(&mut stream, 413, "body_too_large")?;
+            return Ok(());
+        }
+        let mut body = buf[header_end..].to_vec();
+        while body.len() < content_length {
+            let n = stream.read(&mut tmp).map_err(|e| e.to_string())?;
+            if n == 0 {
+                break;
+            }
+            body.extend_from_slice(&tmp[..n]);
+        }
+        body.truncate(content_length);
+        let raw = String::from_utf8(body).unwrap_or_default();
+        if is_claude_smoke_create {
+            return handle_claude_smoke_create_post(&mut stream, &raw);
+        }
+        return handle_codex_smoke_create_post(&mut stream, &raw);
     }
 
     // Authenticated connector POSTs: no wildcard CORS.
@@ -863,6 +926,7 @@ fn rate_limit_allow(path: &str) -> bool {
     use std::sync::atomic::AtomicU64;
     static LAST_MS: AtomicU64 = AtomicU64::new(0);
     static STATUSLINE_LAST_MS: AtomicU64 = AtomicU64::new(0);
+    static SMOKE_LAST_MS: AtomicU64 = AtomicU64::new(0);
     static OTEL_WINDOW_START: AtomicU64 = AtomicU64::new(0);
     static OTEL_COUNT: AtomicU64 = AtomicU64::new(0);
     let now = now_ms();
@@ -881,8 +945,105 @@ fn rate_limit_allow(path: &str) -> bool {
         let prev = STATUSLINE_LAST_MS.swap(now, Ordering::Relaxed);
         return now.saturating_sub(prev) >= 50;
     }
+    if path == CODEX_SMOKE_CREATE_PATH || path == CLAUDE_SMOKE_CREATE_PATH {
+        let prev = SMOKE_LAST_MS.swap(now, Ordering::Relaxed);
+        return now.saturating_sub(prev) >= 1000;
+    }
     let prev = LAST_MS.swap(now, Ordering::Relaxed);
     now.saturating_sub(prev) >= 20
+}
+
+fn smoke_cors_headers() -> String {
+    // Loopback smoke MVP: allow Tauri/dev origins (CSP already limits connect-src).
+    "Access-Control-Allow-Origin: *\r\n\
+     Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n\
+     Access-Control-Allow-Headers: Content-Type\r\n"
+        .to_string()
+}
+
+fn write_smoke_json(stream: &mut TcpStream, status: u16, reason: &str, body: &[u8]) -> Result<(), String> {
+    write_raw(
+        stream,
+        status,
+        reason,
+        &format!(
+            "{}Content-Type: application/json; charset=utf-8\r\n",
+            smoke_cors_headers()
+        ),
+        body,
+    )
+}
+
+fn handle_claude_health_get(stream: &mut TcpStream) -> Result<(), String> {
+    let health = crate::claude_smoke_task::health();
+    let body = serde_json::to_vec(&health).map_err(|e| e.to_string())?;
+    write_smoke_json(stream, 200, "OK", &body)
+}
+
+fn handle_claude_smoke_create_post(stream: &mut TcpStream, raw: &str) -> Result<(), String> {
+    let value: serde_json::Value = serde_json::from_str(raw).unwrap_or(serde_json::json!({}));
+    let prompt = value
+        .get("prompt")
+        .or_else(|| value.get("goal"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    match crate::claude_smoke_task::start_smoke_test(prompt) {
+        Ok(task_id) => {
+            let body = serde_json::to_vec(&serde_json::json!({ "taskId": task_id }))
+                .map_err(|e| e.to_string())?;
+            write_smoke_json(stream, 200, "OK", &body)
+        }
+        Err(err) => {
+            let body = serde_json::to_vec(&serde_json::json!({
+                "ok": false,
+                "error": err,
+            }))
+            .map_err(|e| e.to_string())?;
+            write_smoke_json(stream, 500, "Error", &body)
+        }
+    }
+}
+
+fn handle_smoke_task_get(stream: &mut TcpStream, task_id: &str) -> Result<(), String> {
+    if let Some(task) = crate::codex_smoke_task::get_task(task_id) {
+        let body = serde_json::to_vec(&task).map_err(|e| e.to_string())?;
+        return write_smoke_json(stream, 200, "OK", &body);
+    }
+    if let Some(task) = crate::claude_smoke_task::get_task(task_id) {
+        let body = serde_json::to_vec(&task).map_err(|e| e.to_string())?;
+        return write_smoke_json(stream, 200, "OK", &body);
+    }
+    write_error(stream, 404, "task_not_found")
+}
+
+fn handle_codex_health_get(stream: &mut TcpStream) -> Result<(), String> {
+    let health = crate::codex_smoke_task::health();
+    let body = serde_json::to_vec(&health).map_err(|e| e.to_string())?;
+    write_smoke_json(stream, 200, "OK", &body)
+}
+
+fn handle_codex_smoke_create_post(stream: &mut TcpStream, raw: &str) -> Result<(), String> {
+    let value: serde_json::Value = serde_json::from_str(raw).unwrap_or(serde_json::json!({}));
+    let prompt = value
+        .get("prompt")
+        .or_else(|| value.get("goal"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    match crate::codex_smoke_task::start_smoke_test(prompt) {
+        Ok(task_id) => {
+            let body = serde_json::to_vec(&serde_json::json!({ "taskId": task_id }))
+                .map_err(|e| e.to_string())?;
+            write_smoke_json(stream, 200, "OK", &body)
+        }
+        Err(err) => {
+            let body = serde_json::to_vec(&serde_json::json!({
+                "ok": false,
+                "error": err,
+            }))
+            .map_err(|e| e.to_string())?;
+            write_smoke_json(stream, 500, "Error", &body)
+        }
+    }
 }
 
 fn handle_test_pulse_post(stream: &mut TcpStream, raw: &str) -> Result<(), String> {
@@ -914,8 +1075,8 @@ fn handle_test_pulse_post(stream: &mut TcpStream, raw: &str) -> Result<(), Strin
 }
 
 fn cors_headers_get() -> String {
-    // GET allowlist for Tauri/dev origins only — never wildcard on connector POSTs.
-    "Access-Control-Allow-Origin: http://localhost:5173\r\n\
+    // GET allowlist for Tauri/dev origins (localhost AND 127.0.0.1).
+    "Access-Control-Allow-Origin: *\r\n\
      Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n\
      Access-Control-Allow-Headers: Content-Type, X-Onetone-Token, Authorization\r\n\
      Vary: Origin\r\n"
@@ -1069,6 +1230,10 @@ mod tests {
         assert_eq!(CLAUDE_OTEL_METRICS_PATH, "/v1/metrics");
         assert_eq!(CLAUDE_STATUSLINE_PATH, "/api/claude-statusline");
         assert_eq!(TEST_PULSE_PATH, "/api/soft-pad/test-pulse");
+        assert_eq!(CODEX_HEALTH_PATH, "/api/agents/codex/health");
+        assert_eq!(CODEX_SMOKE_CREATE_PATH, "/api/tasks/codex-smoke-test");
+        assert_eq!(CLAUDE_HEALTH_PATH, "/api/agents/claude/health");
+        assert_eq!(CLAUDE_SMOKE_CREATE_PATH, "/api/tasks/claude-smoke-test");
         assert!(codex_app_state::validate_app_state_body(
             r#"{"source":"codex_hook","event":"UserPromptSubmit"}"#
         )

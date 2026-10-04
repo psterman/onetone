@@ -1,0 +1,240 @@
+/* Agent Center — work sub-page inside agent-page.html */
+.ac-root {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  gap: 10px;
+  min-height: 280px;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+.ac-roster {
+  border: 1px solid rgba(15, 27, 42, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+  max-height: min(70vh, 560px);
+  overflow: auto;
+}
+.ac-roster h3 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5a6c80;
+}
+.ac-group {
+  margin: 0 0 8px;
+}
+.ac-group-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 750;
+  font-size: 12px;
+  color: #0f1b2a;
+  cursor: pointer;
+  padding: 4px 2px;
+  text-align: left;
+}
+.ac-group-hd:focus-visible {
+  outline: 2px solid #0088cc;
+  outline-offset: 2px;
+}
+.ac-agent-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  padding: 6px 8px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+.ac-agent-btn:hover {
+  background: #f0f4f8;
+}
+.ac-agent-btn.is-selected {
+  border-color: rgba(58, 69, 128, 0.35);
+  background: #e4e7f5;
+}
+.ac-agent-btn:focus-visible {
+  outline: 2px solid #0088cc;
+  outline-offset: 1px;
+}
+.ac-agent-name {
+  font-weight: 750;
+  font-size: 13px;
+}
+.ac-agent-meta {
+  font-size: 11px;
+  color: #5a6c80;
+}
+.ac-detail {
+  border: 1px solid rgba(15, 27, 42, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px;
+  min-width: 0;
+  overflow-x: hidden;
+}
+.ac-identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+.ac-identity strong {
+  font-size: 16px;
+  font-weight: 800;
+}
+.ac-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.ac-actions button {
+  appearance: none;
+  border: 1px solid rgba(15, 27, 42, 0.14);
+  border-radius: 8px;
+  background: #f7f9fc;
+  padding: 6px 10px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ac-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ac-actions button:focus-visible {
+  outline: 2px solid #0088cc;
+}
+.ac-timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ac-timeline li {
+  padding: 8px 0;
+  border-top: 1px solid rgba(15, 27, 42, 0.08);
+  font-size: 12px;
+}
+.ac-banner {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff6e0;
+  color: #9a6700;
+  font-size: 12px;
+  font-weight: 650;
+}
+.ac-banner-error {
+  background: #fde8e8;
+  color: #8b1e1e;
+}
+.ac-actions .ac-action-primary,
+.ac-actions button.ac-action-primary {
+  background: #3a4580;
+  border-color: #3a4580;
+  color: #fff;
+}
+.ac-narrow-picker {
+  display: none;
+  width: 100%;
+  margin: 0 0 10px;
+  appearance: none;
+  border: 1px solid rgba(15, 27, 42, 0.16);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+.ac-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: none;
+}
+.ac-drawer.is-open {
+  display: block;
+}
+.ac-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 27, 42, 0.35);
+}
+.ac-drawer-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: min(78vh, 520px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 12px 12px 20px;
+  box-shadow: 0 -8px 28px rgba(15, 27, 42, 0.18);
+}
+.ac-drawer-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(15, 27, 42, 0.14);
+  border-radius: 8px;
+  font: inherit;
+}
+html.ot-embed .ac-drawer-panel {
+  max-height: min(72vh, 480px);
+}
+@media (max-width: 680px) {
+  .ac-root {
+    grid-template-columns: 1fr;
+  }
+  .ac-roster {
+    display: none;
+  }
+  .ac-narrow-picker {
+    display: block;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ac-drawer-panel {
+    transition: none;
+  }
+}
+.ac-show-all {
+  margin-top: 6px;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #0088cc;
+  font: inherit;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+#workHost[hidden],
+#dataHost[hidden] {
+  display: none !important;
+}

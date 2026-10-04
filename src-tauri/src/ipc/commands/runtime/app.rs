@@ -1,8 +1,10 @@
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use tauri::{Manager, WebviewWindow};
 
 use crate::app_identity::{self, AppIdentity};
+use crate::config::{self, MappingEntry};
 use crate::AppState;
 
 #[tauri::command]
@@ -38,6 +40,203 @@ pub fn cmd_habit_foreground_app() -> serde_json::Value {
         );
     }
     value
+}
+
+/// Homepage foreground context — separate from AgentHomeSnapshot.
+/// Light read: Win32 FG + config habit match. No Cursor DB scan.
+#[tauri::command]
+pub fn cmd_foreground_context_snapshot(
+    state: tauri::State<'_, Arc<AppState>>,
+) -> serde_json::Value {
+    let detected_at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+
+    let live = app_identity::foreground_app_identity();
+    let self_fg = live
+        .as_ref()
+        .is_some_and(|id| app_identity::is_self_identity(id));
+    let habit_identity = app_identity::capture_tray_foreground_identity();
+
+    // Display row follows the live window (including OneTone itself).
+    let display = live.as_ref();
+    let app_id = display
+        .and_then(|id| id.matched_preset_app_id.clone())
+        .or_else(|| {
+            habit_identity
+                .as_ref()
+                .and_then(|id| id.matched_preset_app_id.clone())
+        });
+    let app_name = display
+        .map(app_identity::identity_display_name)
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| {
+            habit_identity
+                .as_ref()
+                .map(app_identity::identity_display_name)
+                .filter(|s| !s.trim().is_empty())
+        });
+    let process_name = display
+        .map(|id| id.exe_name.clone())
+        .or_else(|| habit_identity.as_ref().map(|id| id.exe_name.clone()));
+    let full_path = display
+        .and_then(|id| id.full_path.clone())
+        .or_else(|| habit_identity.as_ref().and_then(|id| id.full_path.clone()));
+    let window_class = display
+        .and_then(|id| id.window_class.clone())
+        .or_else(|| habit_identity.as_ref().and_then(|id| id.window_class.clone()));
+    let window_title = display
+        .map(|id| id.window_title.clone())
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| {
+            habit_identity
+                .as_ref()
+                .map(|id| id.window_title.clone())
+                .filter(|s| !s.trim().is_empty())
+        });
+
+    let (project_name, project_inferred) =
+        project_hint_from_title(process_name.as_deref(), window_title.as_deref());
+
+    let cfg = state.cfg.lock();
+    let pack = habit_identity
+        .as_ref()
+        .and_then(|id| config::live_pack_mapping_for(&cfg, Some(id)));
+    let baseline = config::find_global_baseline_mapping(&cfg);
+
+    let (habit, match_kind): (Option<&MappingEntry>, &str) = if let Some(m) = pack {
+        (Some(m), "exact")
+    } else if let Some(m) = baseline {
+        if app_id.is_some() {
+            (Some(m), "probable")
+        } else {
+            (Some(m), "unknown")
+        }
+    } else {
+        (None, "unknown")
+    };
+
+    let habit_id = habit.map(|m| m.id.clone());
+    let habit_name = habit.map(habit_label);
+
+    serde_json::json!({
+        "appId": app_id,
+        "appName": app_name,
+        "processName": process_name,
+        "fullPath": full_path,
+        "windowClass": window_class,
+        "windowTitle": window_title,
+        "projectPath": serde_json::Value::Null,
+        "projectName": project_name,
+        "projectInferred": project_inferred,
+        "habitId": habit_id,
+        "habitName": habit_name,
+        "match": match_kind,
+        "selfForeground": self_fg,
+        "detectedAt": detected_at,
+    })
+}
+
+fn habit_label(m: &MappingEntry) -> String {
+    let dn = m.display_name.trim();
+    if !dn.is_empty() {
+        return dn.to_string();
+    }
+    let group = m.group.trim();
+    if !group.is_empty() {
+        return group.to_string();
+    }
+    let label = m.label.trim();
+    if !label.is_empty() {
+        return label.to_string();
+    }
+    m.id.clone()
+}
+
+/// ponytail: title-split heuristic only; ceiling = wrong project on odd titles.
+/// Upgrade: workspace_evidence / git root when available without DB scan.
+fn project_hint_from_title(
+    process_name: Option<&str>,
+    window_title: Option<&str>,
+) -> (Option<String>, bool) {
+    let exe = process_name.unwrap_or("").to_ascii_lowercase();
+    let editors = [
+        "cursor.exe",
+        "code.exe",
+        "code - insiders.exe",
+        "windsurf.exe",
+        "trae.exe",
+        "zed.exe",
+        "webstorm64.exe",
+        "idea64.exe",
+        "pycharm64.exe",
+        "devenv.exe",
+    ];
+    if !editors.iter().any(|e| exe == *e) {
+        return (None, false);
+    }
+    let title = window_title.unwrap_or("").trim();
+    if title.is_empty() {
+        return (None, false);
+    }
+    // Match FE: split on " — " / " - " style separators, not bare hyphens in names.
+    let parts: Vec<&str> = {
+        let mut out = Vec::new();
+        let mut rest = title;
+        loop {
+            let lower = rest;
+            let idx = [" — ", " – ", " - "]
+                .iter()
+                .filter_map(|sep| lower.find(sep).map(|i| (i, sep.len())))
+                .min_by_key(|(i, _)| *i);
+            match idx {
+                Some((i, sep_len)) => {
+                    let (head, tail) = rest.split_at(i);
+                    if !head.trim().is_empty() {
+                        out.push(head.trim());
+                    }
+                    rest = tail[sep_len..].trim_start();
+                }
+                None => {
+                    if !rest.trim().is_empty() {
+                        out.push(rest.trim());
+                    }
+                    break;
+                }
+            }
+        }
+        out
+    };
+    let cand = if parts.len() >= 2 {
+        parts[parts.len() - 2]
+    } else {
+        parts.first().copied().unwrap_or("")
+    };
+    let mut cand = cand
+        .split(['·', '|'])
+        .next()
+        .unwrap_or(cand)
+        .trim()
+        .to_string();
+    for ext in [".tsx", ".ts", ".jsx", ".js", ".rs", ".py", ".md", ".json", ".html", ".htm"] {
+        if cand.to_ascii_lowercase().ends_with(ext) {
+            cand.truncate(cand.len() - ext.len());
+            break;
+        }
+    }
+    cand = cand.trim().to_string();
+    if cand.len() < 2 || cand.len() > 48 {
+        return (None, false);
+    }
+    let lower = cand.to_ascii_lowercase();
+    if matches!(
+        lower.as_str(),
+        "untitled" | "无标题" | "new folder" | "desktop"
+    ) {
+        return (None, false);
+    }
+    (Some(cand), true)
 }
 
 #[tauri::command]
