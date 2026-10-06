@@ -1,0 +1,26 @@
+# Desktop gate — 2026-10-05
+# Local enter-CUA prerequisites only. A4–A7 NOT verified by diagnose.
+
+time: 2026-10-05 16:30:24
+pid: 22140
+hwnd: 13436546
+title: OneTone
+responding: True
+exe: E:\voice-pilot\src-tauri\target\debug\onetone.exe
+port_5173: True
+ENTER_CUA_READY: True
+DIAGNOSTIC_ONLY: true
+CUA_A4_A7: unchecked (script) / FAIL once in session (see a1-a7-gates.md)
+
+A1–A3: PASS
+A4–A7: FAIL once → 立即人工（不再重试）
+
+diagnose:
+  docs/acceptance-artifacts/20261005/diagnose-desktop.txt
+  docs/acceptance-artifacts/20261005/diagnose-desktop-strict.txt  (STRICT_EXIT=0; ≠ real accept)
+gates: docs/acceptance-artifacts/20261005/a1-a7-gates.md
+scenarios: docs/acceptance-artifacts/20261005/scenario-prep.md
+
+Fixed launch (Hidden serve via launcher only):
+  Get-Process onetone -ErrorAction SilentlyContinue | Stop-Process
+  .\run_onetone.ps1 -LaunchOnly

@@ -10,7 +10,7 @@ use std::sync::Mutex;
 use parking_lot::Mutex as ParkingMutex;
 use serde::Serialize;
 
-use super::model::{ActionHistoryEntry, RING_CAPACITY, MAX_TAIL_LIMIT};
+use super::model::{ActionHistoryEntry, MAX_TAIL_LIMIT, RING_CAPACITY};
 
 pub const UNMAPPED_KEY: &str = "_unmapped";
 
@@ -148,7 +148,10 @@ fn read_jsonl_entries() -> Vec<ActionHistoryEntry> {
     out
 }
 
-fn merge_entries(jsonl: Vec<ActionHistoryEntry>, ring: Vec<ActionHistoryEntry>) -> Vec<ActionHistoryEntry> {
+fn merge_entries(
+    jsonl: Vec<ActionHistoryEntry>,
+    ring: Vec<ActionHistoryEntry>,
+) -> Vec<ActionHistoryEntry> {
     let mut seen = HashSet::new();
     let mut merged = Vec::new();
     for e in ring.into_iter().chain(jsonl) {
@@ -303,7 +306,12 @@ pub fn remap_mapping_ids(pairs: &[(String, String)]) -> u64 {
     let disk = read_jsonl_entries();
     let mut kept = Vec::with_capacity(disk.len());
     for mut entry in disk {
-        if let Some(mid) = entry.mapping_id.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        if let Some(mid) = entry
+            .mapping_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
             if let Some(to) = map.get(mid) {
                 entry.mapping_id = Some(to.clone());
                 remapped += 1;
@@ -393,9 +401,7 @@ pub fn entries_for_analysis(
     let cutoff = crate::runtime_event::now_ms().saturating_sub(hours.saturating_mul(3600_000));
     cached_merged_entries()
         .into_iter()
-        .filter(|e| {
-            is_usage_entry(e) && e.ts_ms >= cutoff && mapping_matches(e, mapping_id)
-        })
+        .filter(|e| is_usage_entry(e) && e.ts_ms >= cutoff && mapping_matches(e, mapping_id))
         .take(limit)
         .collect()
 }
@@ -548,13 +554,15 @@ pub fn stats_by_mapping(hours: Option<u64>) -> ActionHistoryStatsResult {
     rows.sort_by(|a, b| b.count.cmp(&a.count).then(b.last_ts_ms.cmp(&a.last_ts_ms)));
     let mut key_presses: Vec<SoftPadKeyPressStat> = key_acc
         .into_iter()
-        .map(|((mapping_id, micro_key_id), (count, last_ts_ms, slot_id))| SoftPadKeyPressStat {
-            mapping_id,
-            micro_key_id,
-            slot_id,
-            count,
-            last_ts_ms,
-        })
+        .map(
+            |((mapping_id, micro_key_id), (count, last_ts_ms, slot_id))| SoftPadKeyPressStat {
+                mapping_id,
+                micro_key_id,
+                slot_id,
+                count,
+                last_ts_ms,
+            },
+        )
         .collect();
     key_presses.sort_by(|a, b| b.count.cmp(&a.count).then(b.last_ts_ms.cmp(&a.last_ts_ms)));
     ActionHistoryStatsResult {
@@ -573,7 +581,10 @@ pub fn usage_counts_last_days(days: u64) -> Vec<u64> {
     let cutoff = start_day.saturating_mul(86_400_000);
     let mut buckets = vec![0u64; days];
     let merged = cached_merged_entries();
-    for e in merged.into_iter().filter(|e| e.ts_ms >= cutoff && is_usage_entry(e)) {
+    for e in merged
+        .into_iter()
+        .filter(|e| e.ts_ms >= cutoff && is_usage_entry(e))
+    {
         let d = day_bucket(e.ts_ms);
         if d < start_day || d > today {
             continue;
@@ -702,7 +713,10 @@ mod tests {
         assert_eq!(ag.count, 2);
         assert_eq!(ag.slot_id, "toggleSidebar");
         assert_eq!(ag.mapping_id, "map-a");
-        assert!(presses.key_presses.iter().any(|k| k.micro_key_id == "SEARCH" && k.count == 1));
+        assert!(presses
+            .key_presses
+            .iter()
+            .any(|k| k.micro_key_id == "SEARCH" && k.count == 1));
         assert!(tail(50, None, None, None, None)
             .entries
             .iter()

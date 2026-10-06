@@ -3,14 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Lamp / workflow state (UI may map `error` → 「失败」 copy).
-pub const STATES: &[&str] = &[
-    "idle",
-    "running",
-    "needs_input",
-    "done",
-    "error",
-    "offline",
-];
+pub const STATES: &[&str] = &["idle", "running", "needs_input", "done", "error", "offline"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

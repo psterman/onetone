@@ -38,10 +38,7 @@ fn activate_reason_is_stomp(reason: &str) -> bool {
     // (voice exit dead; only Esc worked).
     matches!(
         reason,
-        "vosk_retry_start"
-            | "force:vosk_retry_start"
-            | "kws_retry_start"
-            | "force:kws_retry_start"
+        "vosk_retry_start" | "force:vosk_retry_start" | "kws_retry_start" | "force:kws_retry_start"
     )
 }
 
@@ -535,8 +532,7 @@ fn engine_running_healthy(state: &AppState, engine: EffectiveVoiceEngine) -> boo
 
 /// True when Vosk is already up for continuous homepage/oral listen (skip stomps).
 pub fn engine_observe_vosk_listening(state: &AppState) -> bool {
-    engine_running_healthy(state, EffectiveVoiceEngine::Vosk)
-        && state.voice_vosk.lock().is_some()
+    engine_running_healthy(state, EffectiveVoiceEngine::Vosk) && state.voice_vosk.lock().is_some()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -593,8 +589,11 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
             reason,
             now,
         );
-        if !matches!(prev, onetone_logic::mic_owner::MicOwner::WakeEngine | onetone_logic::mic_owner::MicOwner::None)
-        {
+        if !matches!(
+            prev,
+            onetone_logic::mic_owner::MicOwner::WakeEngine
+                | onetone_logic::mic_owner::MicOwner::None
+        ) {
             crate::app_log::log_line(
                 state,
                 "voice",
@@ -692,9 +691,7 @@ fn activate_desired_engine_locked(app: &AppHandle, state: &Arc<AppState>, reason
         crate::app_log::log_line(
             state,
             "voice",
-            &format!(
-                "voice_bootstrap skip activate (oral armed — keep mic) reason={reason}"
-            ),
+            &format!("voice_bootstrap skip activate (oral armed — keep mic) reason={reason}"),
         );
         if phase_log {
             log_bootstrap_phase(state, t0, "end", "action=skip_oral_armed");
@@ -1555,7 +1552,16 @@ impl Drop for MicLease {
 /// Startup entry. Safe mode starts nothing.
 pub fn bootstrap_voice_engines(app: &AppHandle, state: &Arc<AppState>, safe_mode: bool) {
     let t0 = Instant::now();
-    log_bootstrap_phase(state, t0, "entry", if safe_mode { "safe_mode=1" } else { "safe_mode=0" });
+    log_bootstrap_phase(
+        state,
+        t0,
+        "entry",
+        if safe_mode {
+            "safe_mode=1"
+        } else {
+            "safe_mode=0"
+        },
+    );
     if safe_mode {
         crate::app_log::log_line(state, "voice", "voice bootstrap skipped (safe mode)");
         crate::runtime_event::publish_runtime_event(
@@ -1678,16 +1684,11 @@ pub fn maybe_idle_downgrade_wake(app: &AppHandle, state: &Arc<AppState>) {
         Some(t) => t,
         None => return,
     };
-    if Instant::now().saturating_duration_since(at)
-        < Duration::from_millis(WAKE_IDLE_DOWNGRADE_MS)
+    if Instant::now().saturating_duration_since(at) < Duration::from_millis(WAKE_IDLE_DOWNGRADE_MS)
     {
         return;
     }
-    crate::app_log::log_line(
-        state.as_ref(),
-        "voice",
-        "idle_downgrade resourceSaver→off",
-    );
+    crate::app_log::log_line(state.as_ref(), "voice", "idle_downgrade resourceSaver→off");
     *state.voice_wake_last_activity_at.lock() = None;
     let parked = voice_settings_parked(state.as_ref());
     let cfg_snapshot = {

@@ -153,10 +153,7 @@ pub fn find_monitor_for_point<'a>(
     monitors.iter().find(|m| point_in_monitor(x, y, m))
 }
 
-pub fn find_monitor_by_id<'a>(
-    monitors: &'a [MonitorInfo],
-    id: &str,
-) -> Option<&'a MonitorInfo> {
+pub fn find_monitor_by_id<'a>(monitors: &'a [MonitorInfo], id: &str) -> Option<&'a MonitorInfo> {
     monitors.iter().find(|m| m.id == id)
 }
 
@@ -188,9 +185,7 @@ pub fn resolve_move_target(m: &MonitorInfo, preferred: Option<&PointXy>) -> Poin
     clamp_point_to_monitor(raw.x, raw.y, m)
 }
 
-pub fn list_monitors_from_tauri(
-    app: &tauri::AppHandle,
-) -> Result<MonitorTopology, String> {
+pub fn list_monitors_from_tauri(app: &tauri::AppHandle) -> Result<MonitorTopology, String> {
     let raw = app
         .available_monitors()
         .map_err(|_| "no_monitors".to_string())?;
@@ -310,8 +305,8 @@ pub fn flash_cursor_hint(x: i32, y: i32) {
     std::thread::spawn(move || unsafe {
         use std::ptr;
         use winapi::um::wingdi::{
-            CreatePen, DeleteObject, Ellipse, GetStockObject, SelectObject, SetROP2, PS_SOLID,
-            NULL_BRUSH, R2_NOTXORPEN,
+            CreatePen, DeleteObject, Ellipse, GetStockObject, SelectObject, SetROP2, NULL_BRUSH,
+            PS_SOLID, R2_NOTXORPEN,
         };
         use winapi::um::winuser::{GetDC, ReleaseDC};
 
@@ -463,10 +458,7 @@ fn parse_hwnd(s: &str) -> Result<isize, String> {
     if t.is_empty() {
         return Err("invalid_hwnd".into());
     }
-    if let Some(hex) = t
-        .strip_prefix("0x")
-        .or_else(|| t.strip_prefix("0X"))
-    {
+    if let Some(hex) = t.strip_prefix("0x").or_else(|| t.strip_prefix("0X")) {
         return isize::from_str_radix(hex, 16).map_err(|_| "invalid_hwnd".into());
     }
     t.parse::<isize>().map_err(|_| "invalid_hwnd".into())
@@ -479,13 +471,13 @@ fn point_to_lparam(x: i32, y: i32) -> isize {
     ((hi << 16) | lo) as isize
 }
 
-  #[cfg(windows)]
+#[cfg(windows)]
 pub fn get_drag_state(topology: &MonitorTopology) -> Result<DragState, String> {
     use winapi::shared::windef::{HWND, POINT, RECT};
     use winapi::um::winuser::{
-        GetAncestor, GetAsyncKeyState, GetCapture, GetCursorPos, GetForegroundWindow, GetWindowRect,
-        IsWindow, SendMessageW, WindowFromPoint, GA_ROOT, HTCAPTION, HTCLIENT, HTSYSMENU,
-        VK_LBUTTON, WM_NCHITTEST,
+        GetAncestor, GetAsyncKeyState, GetCapture, GetCursorPos, GetForegroundWindow,
+        GetWindowRect, IsWindow, SendMessageW, WindowFromPoint, GA_ROOT, HTCAPTION, HTCLIENT,
+        HTSYSMENU, VK_LBUTTON, WM_NCHITTEST,
     };
 
     let lmb_down = unsafe { GetAsyncKeyState(VK_LBUTTON) as u16 & 0x8000 != 0 };
@@ -614,8 +606,8 @@ pub fn move_window_to_monitor(
 ) -> Result<PointXy, String> {
     use winapi::shared::windef::RECT;
     use winapi::um::winuser::{
-        GetAsyncKeyState, GetWindowRect, IsIconic, IsWindow, IsZoomed, ReleaseCapture, SetWindowPos,
-        ShowWindow, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, SW_RESTORE, VK_LBUTTON,
+        GetAsyncKeyState, GetWindowRect, IsIconic, IsWindow, IsZoomed, ReleaseCapture,
+        SetWindowPos, ShowWindow, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, SW_RESTORE, VK_LBUTTON,
     };
 
     let m = find_monitor_by_id(&topology.monitors, &args.monitor_id)
@@ -761,22 +753,10 @@ mod tests {
     #[test]
     fn resolve_preferred_when_inside_else_center() {
         let m = mon("monitor-2", 1920, 0, 1920, 1080, 1.0, false);
-        let inside = resolve_move_target(
-            &m,
-            Some(&PointXy {
-                x: 2400,
-                y: 520,
-            }),
-        );
+        let inside = resolve_move_target(&m, Some(&PointXy { x: 2400, y: 520 }));
         assert_eq!(inside, PointXy { x: 2400, y: 520 });
 
-        let outside = resolve_move_target(
-            &m,
-            Some(&PointXy {
-                x: 100,
-                y: 100,
-            }),
-        );
+        let outside = resolve_move_target(&m, Some(&PointXy { x: 100, y: 100 }));
         assert_eq!(outside, monitor_center(&m));
         assert_eq!(outside.x, 1920 + 960);
         assert_eq!(outside.y, 540);
@@ -807,21 +787,15 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(
-            find_monitor_for_point(&topo.monitors, -100, 10)
-                .unwrap()
-                .id,
+            find_monitor_for_point(&topo.monitors, -100, 10).unwrap().id,
             "monitor-0"
         );
         assert_eq!(
-            find_monitor_for_point(&topo.monitors, 100, 10)
-                .unwrap()
-                .id,
+            find_monitor_for_point(&topo.monitors, 100, 10).unwrap().id,
             "monitor-1"
         );
         assert_eq!(
-            find_monitor_for_point(&topo.monitors, 2000, 10)
-                .unwrap()
-                .id,
+            find_monitor_for_point(&topo.monitors, 2000, 10).unwrap().id,
             "monitor-2"
         );
     }

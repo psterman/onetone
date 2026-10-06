@@ -5,9 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 
-use crate::codex_micro_overlay::{
-    resolve_claude_agent_light_hosts, ClaudeOverflowItem,
-};
+use crate::codex_micro_overlay::{resolve_claude_agent_light_hosts, ClaudeOverflowItem};
 use crate::config::CodexMicroPadConfig;
 use crate::pad_status::{
     self, log_path, plan_hid_output, short_agent_type, tail_events, ClaudeHookPayload,
@@ -149,7 +147,7 @@ fn pad_for_diagnose(cfg: &crate::config::VoiceConfig) -> CodexMicroPadConfig {
         roo_status_lights_enabled: false,
         opencode_status_lights_enabled: false,
         aider_status_lights_enabled: false,
-            windsurf_status_lights_enabled: false,
+        windsurf_status_lights_enabled: false,
         ambient_mode: "status".into(),
         ambient_solid_rgb: String::new(),
         ambient_opacity: 100,
@@ -353,8 +351,7 @@ fn build_claude_issues(
             severity: "error".into(),
             title: "?? Claude Hook ??".into(),
             reason: "scripts/claude-hook-probe.js ????".into(),
-            action: "????????? scripts/claude-hooks.example.json ?? Claude Code hooks?"
-                .into(),
+            action: "????????? scripts/claude-hooks.example.json ?? Claude Code hooks?".into(),
             related: "scripts/claude-hook-probe.js".into(),
         });
     }
@@ -367,8 +364,7 @@ fn build_claude_issues(
             } else {
                 "?? 5 ???? claude_hook ?????? probe ???".into()
             },
-            action: "? Soft Pad?Claude Activity ?????????????? Claude CLI ??? prompt?"
-                .into(),
+            action: "? Soft Pad?Claude Activity ?????????????? Claude CLI ??? prompt?".into(),
             related: "scripts/claude-hooks.example.json ? /api/codex-app/state".into(),
         });
     }
@@ -377,8 +373,7 @@ fn build_claude_issues(
             severity: "warn".into(),
             title: "????".into(),
             reason: "Hook ??????????? claude_hook?".into(),
-            action: "?? Claude Code ??? prompt???????????????"
-                .into(),
+            action: "?? Claude Code ??? prompt???????????????".into(),
             related: "scripts/claude-hook-probe.js ? SessionStart".into(),
         });
     }
@@ -395,8 +390,7 @@ fn build_claude_issues(
         out.push(ClaudeActivityIssue {
             severity: "info".into(),
             title: "Probe ?? ? Endpoint ??".into(),
-            reason: "claude-hook-probe.jsonl ??????? /api/codex-app/state ???????"
-                .into(),
+            reason: "claude-hook-probe.jsonl ??????? /api/codex-app/state ???????".into(),
             action: "?? OneTone ??????/Labs listener ???".into(),
             related: "logs/claude-hook-probe.jsonl".into(),
         });
@@ -414,8 +408,7 @@ fn build_claude_issues(
         out.push(ClaudeActivityIssue {
             severity: "info".into(),
             title: "??????".into(),
-            reason: "Hook ???? Core?overlay ?? Codex status ???Claude Activity ??????"
-                .into(),
+            reason: "Hook ???? Core?overlay ?? Codex status ???Claude Activity ??????".into(),
             action: "?? Soft Pad ???????????Codex ?????".into(),
             related: "codexStatusLightsEnabled".into(),
         });
@@ -434,8 +427,7 @@ fn build_claude_issues(
             severity: "warn".into(),
             title: "Claude ??? overflow".into(),
             reason: format!("? {overflow_count} ? agent ????AG ????? ACT/NAV??"),
-            action: "???????????? status ??????? agentLightId???? UI??"
-                .into(),
+            action: "???????????? status ??????? agentLightId???? UI??".into(),
             related: "agentLightsOverflowItems".into(),
         });
     }
@@ -950,8 +942,8 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
-        capture_physical_arrows: false,
-        overlay_enabled: true,
+            capture_physical_arrows: false,
+            overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
             software_enhance_enabled: false,
@@ -964,7 +956,7 @@ mod tests {
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
-        copilot_vscode_status_lights_enabled: false,
+            copilot_vscode_status_lights_enabled: false,
             gemini_status_lights_enabled: false,
             cline_status_lights_enabled: false,
             roo_status_lights_enabled: false,
@@ -984,9 +976,9 @@ mod tests {
             mini_usage_pill_hide_empty: true,
             mini_chrome: Default::default(),
             skin: "default".into(),
-        screen_opacity: 82,
-        pinned_lane_preferences: Vec::new(),
-        navigation_layout_migrated: false,
+            screen_opacity: 82,
+            pinned_lane_preferences: Vec::new(),
+            navigation_layout_migrated: false,
             common_slot_ids: None,
             custom_shortcuts: Vec::new(),
             keys: vec![
@@ -1000,9 +992,9 @@ mod tests {
                     enabled: true,
                     advanced: false,
                     agent_light_id: String::new(),
-                light_rgb: String::new(),
-                key_role: None,
-                auto_assignable: None,
+                    light_rgb: String::new(),
+                    key_role: None,
+                    auto_assignable: None,
                 },
                 crate::config::CodexMicroPadKeyRoute {
                     micro_key_id: "AG01".into(),
@@ -1014,9 +1006,9 @@ mod tests {
                     enabled: true,
                     advanced: false,
                     agent_light_id: String::new(),
-                light_rgb: String::new(),
-                key_role: None,
-                auto_assignable: None,
+                    light_rgb: String::new(),
+                    key_role: None,
+                    auto_assignable: None,
                 },
             ],
         };
@@ -1050,8 +1042,8 @@ mod tests {
             require_foreground: true,
             require_num_lock_off: false,
             nav_keys_enabled: true,
-        capture_physical_arrows: false,
-        overlay_enabled: true,
+            capture_physical_arrows: false,
+            overlay_enabled: true,
             layout_profile: "standard".into(),
             purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts,
             software_enhance_enabled: false,
@@ -1064,7 +1056,7 @@ mod tests {
             qoder_status_lights_enabled: false,
             minimax_status_lights_enabled: false,
             copilot_status_lights_enabled: false,
-        copilot_vscode_status_lights_enabled: false,
+            copilot_vscode_status_lights_enabled: false,
             gemini_status_lights_enabled: false,
             cline_status_lights_enabled: false,
             roo_status_lights_enabled: false,
@@ -1084,9 +1076,9 @@ mod tests {
             mini_usage_pill_hide_empty: true,
             mini_chrome: Default::default(),
             skin: "default".into(),
-        screen_opacity: 82,
-        pinned_lane_preferences: Vec::new(),
-        navigation_layout_migrated: false,
+            screen_opacity: 82,
+            pinned_lane_preferences: Vec::new(),
+            navigation_layout_migrated: false,
             common_slot_ids: None,
             custom_shortcuts: Vec::new(),
             keys: vec![],
@@ -1103,10 +1095,7 @@ mod tests {
             compute_claude_hook_phase(Some(1_000), true, true),
             "connected"
         );
-        assert_eq!(
-            compute_claude_hook_phase(Some(60_000), true, true),
-            "stale"
-        );
+        assert_eq!(compute_claude_hook_phase(Some(60_000), true, true), "stale");
         assert_eq!(
             compute_claude_hook_phase(Some(400_000), true, true),
             "offline"
@@ -1217,7 +1206,7 @@ pub fn cmd_pad_status_clear_errors(
         AgentKind::Codex,
         AgentKind::Claude,
         AgentKind::Cursor,
-            AgentKind::CopilotCli,
+        AgentKind::CopilotCli,
         AgentKind::CopilotVscode,
         AgentKind::Gemini,
         AgentKind::Cline,
@@ -1231,11 +1220,8 @@ pub fn cmd_pad_status_clear_errors(
         AgentKind::Qoder,
         AgentKind::MiniMax,
     ] {
-        cleared_attention += crate::agent_attention::store::clear(
-            kind,
-            sid.as_deref(),
-            None,
-        ) as u32;
+        cleared_attention +=
+            crate::agent_attention::store::clear(kind, sid.as_deref(), None) as u32;
         // Also force idle lifecycle when clearing all
         if sid.is_none() && lid.is_none() {
             crate::agent_attention::store::raise_lifecycle(

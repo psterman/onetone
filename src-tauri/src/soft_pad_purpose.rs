@@ -416,11 +416,9 @@ pub fn auto_heal_session_nav_mapping(
     let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == mapping_id) else {
         return Ok(false);
     };
-    let kind = crate::agent_catalog::kind_from_mapping(
-        m.app_target_id.trim(),
-        m.agent_provider_id.trim(),
-    )
-    .unwrap_or(AgentKind::Codex);
+    let kind =
+        crate::agent_catalog::kind_from_mapping(m.app_target_id.trim(), m.agent_provider_id.trim())
+            .unwrap_or(AgentKind::Codex);
     if !purpose_sessions_allowed(kind) {
         return Ok(false);
     }
@@ -446,10 +444,7 @@ pub fn auto_heal_claude_session_nav_if_stuck(
 }
 
 /// Keys that would lose a custom shortcut when applying recommended navigation slots.
-pub fn navigation_slot_conflicts(
-    pad: &CodexMicroPadConfig,
-    slots: &[&str],
-) -> Vec<String> {
+pub fn navigation_slot_conflicts(pad: &CodexMicroPadConfig, slots: &[&str]) -> Vec<String> {
     let mut out = Vec::new();
     for s in slots {
         let Some(route) = pad.keys.iter().find(|k| k.enabled && k.micro_key_id == *s) else {
@@ -574,12 +569,9 @@ mod tests {
                 .collect(),
             ..Default::default()
         };
-        let slots = apply_navigation_slots(
-            AgentKind::Codex,
-            &mut pad,
-            &["AG00".into(), "AG01".into()],
-        )
-        .unwrap();
+        let slots =
+            apply_navigation_slots(AgentKind::Codex, &mut pad, &["AG00".into(), "AG01".into()])
+                .unwrap();
         assert_eq!(slots, vec!["AG00".to_string(), "AG01".to_string()]);
         assert_eq!(pad.keys[0].slot_id, "slot0");
         assert_eq!(pad.keys[2].key_role, Some(SoftPadKeyRole::Action));
@@ -614,11 +606,9 @@ mod tests {
 
         assert!(navigation_slots_for(AgentKind::Claude, &pad).is_empty());
 
-        let applied = seed_recommended_navigation_slots_for_sessions_if_missing(
-            AgentKind::Claude,
-            &mut pad,
-        )
-        .unwrap();
+        let applied =
+            seed_recommended_navigation_slots_for_sessions_if_missing(AgentKind::Claude, &mut pad)
+                .unwrap();
         assert!(applied);
 
         assert_eq!(
@@ -632,8 +622,7 @@ mod tests {
         );
 
         assert!(pad.keys.iter().all(|k| {
-            k.micro_key_id.starts_with("AG")
-                && k.key_role == Some(SoftPadKeyRole::AgentLane)
+            k.micro_key_id.starts_with("AG") && k.key_role == Some(SoftPadKeyRole::AgentLane)
         }));
     }
 

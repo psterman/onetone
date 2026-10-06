@@ -2,14 +2,19 @@
 
 use crate::agent_memory::lifecycle::transition_allowed;
 use crate::agent_memory::model::{
-    EVENT_CLASS_LIFECYCLE, EVENT_CLASS_OBSERVED, PROVIDER_CURSOR, ProjectMatch, SessionCandidate,
+    ProjectMatch, SessionCandidate, EVENT_CLASS_LIFECYCLE, EVENT_CLASS_OBSERVED, PROVIDER_CURSOR,
     UNKNOWN_PROJECT_ID,
 };
 use crate::agent_memory::store::{now_ms, with_write};
 use rusqlite::params;
 use sha2::{Digest, Sha256};
 
-pub fn source_ref_for_turn(composer_id: &str, bubble_id: Option<&str>, ts: Option<u64>, kind: &str) -> String {
+pub fn source_ref_for_turn(
+    composer_id: &str,
+    bubble_id: Option<&str>,
+    ts: Option<u64>,
+    kind: &str,
+) -> String {
     if let Some(b) = bubble_id.filter(|s| !s.is_empty()) {
         return format!("{composer_id}:{b}");
     }
@@ -36,6 +41,29 @@ pub fn append_observed_event(
         source_ref,
         timestamp_ms,
         summary,
+        None,
+    )
+}
+
+/// Same as [`append_observed_event`] but persists `detail_json` (no schema migration).
+pub fn append_observed_event_with_detail(
+    session_id: &str,
+    provider: &str,
+    event_type: &str,
+    source_ref: &str,
+    timestamp_ms: u64,
+    summary: &str,
+    detail_json: Option<&str>,
+) -> Result<bool, String> {
+    append_event(
+        EVENT_CLASS_OBSERVED,
+        session_id,
+        provider,
+        event_type,
+        source_ref,
+        timestamp_ms,
+        summary,
+        detail_json,
     )
 }
 
@@ -57,6 +85,7 @@ pub fn append_lifecycle_event(
         source_ref,
         timestamp_ms,
         summary,
+        None,
     )?;
     if inserted {
         crate::agent_memory::checkpoint::maybe_auto_checkpoint(
@@ -76,6 +105,7 @@ fn append_event(
     source_ref: &str,
     timestamp_ms: u64,
     summary: &str,
+    detail_json: Option<&str>,
 ) -> Result<bool, String> {
     with_write(|conn| {
         let lifecycle_target = if event_class == EVENT_CLASS_LIFECYCLE {
@@ -100,7 +130,7 @@ fn append_event(
                 "INSERT OR IGNORE INTO agent_events(
                    event_id, session_id, provider, event_class, event_type,
                    source_ref, timestamp_ms, summary, detail_json
-                 ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,NULL)",
+                 ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
                 params![
                     event_id,
                     session_id,
@@ -109,7 +139,8 @@ fn append_event(
                     event_type,
                     source_ref,
                     timestamp_ms as i64,
-                    summary
+                    summary,
+                    detail_json
                 ],
             )
             .map_err(|e| format!("insert event: {e}"))?;
@@ -145,8 +176,14 @@ fn append_event(
     })
 }
 
-fn make_session_id(provider: &str, project_id: &str, external_id: &str) -> String {
-    let raw = format!("{provider}|{project_id}|{external_id}");
+/// Canonical `agent_sessions.session_id` — shared by upsert + PromptJournal.
+pub fn agent_session_id(provider: &str, project_id: &str, external_id: &str) -> String {
+    let raw = format!(
+        "{}|{}|{}",
+        provider.trim(),
+        project_id.trim(),
+        external_id.trim()
+    );
     format!("{:x}", Sha256::digest(raw.as_bytes()))
 }
 
@@ -172,7 +209,9 @@ pub fn upsert_session_candidate(c: &SessionCandidate) -> Result<String, String> 
             let old_m = ProjectMatch::from_str_loose(&old_match);
             let should_migrate = old_project == UNKNOWN_PROJECT_ID
                 || c.project_match.rank() > old_m.rank()
-                || (c.project_match.rank() == old_m.rank() && c.project_id != old_project && old_project == UNKNOWN_PROJECT_ID);
+                || (c.project_match.rank() == old_m.rank()
+                    && c.project_id != old_project
+                    && old_project == UNKNOWN_PROJECT_ID);
 
             if should_migrate && c.project_id != old_project {
                 // Re-key unique (provider, project_id, external) by updating project fields.
@@ -244,7 +283,7 @@ pub fn upsert_session_candidate(c: &SessionCandidate) -> Result<String, String> 
             return Ok(sid);
         }
 
-        let sid = make_session_id(&c.provider, &c.project_id, &c.external_session_id);
+        let sid = agent_session_id(&c.provider, &c.project_id, &c.external_session_id);
         conn.execute(
             "INSERT INTO agent_sessions(
                session_id, provider, project_id, external_session_id, title,
@@ -277,7 +316,12 @@ pub fn upsert_session_candidate(c: &SessionCandidate) -> Result<String, String> 
     })
 }
 
-pub fn upsert_project(project_id: &str, display_name: &str, workspace: Option<&str>, git_root: Option<&str>) -> Result<(), String> {
+pub fn upsert_project(
+    project_id: &str,
+    display_name: &str,
+    workspace: Option<&str>,
+    git_root: Option<&str>,
+) -> Result<(), String> {
     with_write(|conn| {
         let now = now_ms() as i64;
         conn.execute(
@@ -310,6 +354,19 @@ mod tests {
         let a = source_ref_for_turn("c1", None, Some(42), "session_updated");
         let b = source_ref_for_turn("c1", None, Some(42), "session_updated");
         assert_eq!(a, b);
-        assert_ne!(a, source_ref_for_turn("c1", None, Some(43), "session_updated"));
+        assert_ne!(
+            a,
+            source_ref_for_turn("c1", None, Some(43), "session_updated")
+        );
+    }
+
+    #[test]
+    fn agent_session_id_stable_and_uses_provider_project() {
+        let a = agent_session_id("claude", "proj-a", "ext-1");
+        let b = agent_session_id("claude", "proj-a", "ext-1");
+        assert_eq!(a, b);
+        assert_ne!(a, agent_session_id("codex", "proj-a", "ext-1"));
+        assert_ne!(a, agent_session_id("claude", "proj-b", "ext-1"));
+        assert_ne!(a, "ext-1");
     }
 }

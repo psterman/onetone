@@ -57,9 +57,7 @@ impl CursorProviderAdapter {
         let duration_ms = state.cfg.lock().key_press_duration_ms;
 
         match action_id {
-            "openAgent" | "focusComposer" | "agent.focus" => {
-                focus_only(window, duration_ms, mode)
-            }
+            "openAgent" | "focusComposer" | "agent.focus" => focus_only(window, duration_ms, mode),
             "cancel" | "agent.interrupt" => guard_target_then_hotkey(
                 state,
                 window,
@@ -134,11 +132,7 @@ fn map_layer1_err(
     out: crate::agent::layer1_native::Layer1Outcome,
     mode: ExecutionMode,
 ) -> ProviderActionOutcome {
-    ProviderActionOutcome::err(
-        out.reason.as_deref().unwrap_or("failed"),
-        out.detail,
-        mode,
-    )
+    ProviderActionOutcome::err(out.reason.as_deref().unwrap_or("failed"), out.detail, mode)
 }
 
 fn workflow_reason(err: AppChatWorkflowError) -> &'static str {

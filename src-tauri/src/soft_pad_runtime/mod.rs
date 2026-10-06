@@ -17,8 +17,9 @@ pub use dispatch::{
     lookup_agent_ticket_by_physical, ActivePressLease, AgentDispatchTicket, SystemDispatchTicket,
 };
 pub use model::{
-    AgentKind, ApplyError, CandidateDecision, FollowMode, ForegroundEvidence, RuntimeAvailability,
-    RuntimeHealth, SelectionReason, ShadowDecision, SoftPadPublicSnapshot, AppliedSoftPadDecision,
+    AgentKind, AppliedSoftPadDecision, ApplyError, CandidateDecision, FollowMode,
+    ForegroundEvidence, RuntimeAvailability, RuntimeHealth, SelectionReason, ShadowDecision,
+    SoftPadPublicSnapshot,
 };
 pub use platform::last_external_app_target_id;
 pub use resolver::{resolve_candidate, CandidateInput, DispatchReadyEntry};

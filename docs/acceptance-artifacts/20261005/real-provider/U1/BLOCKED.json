@@ -1,0 +1,18 @@
+{
+  "scenario": "U1",
+  "status": "blocked",
+  "executedAt": "2026-10-06T12:22:00+08:00",
+  "harness": "real_provider_e2e + scripts/run-real-provider-scenario.ps1",
+  "gate": "ONETONE_AGENT_REAL_INTERRUPT_E2E=1",
+  "result": "fail:interrupt_not_enabled",
+  "agentId": "kind:cursor",
+  "reason": "not_running",
+  "observedStatus": "unknown",
+  "expectedWhenUnblocked": "attemptedUnverified_never_verified",
+  "evidence": [
+    "snapshot-before.json",
+    "action-result.json",
+    "e2e-done.txt"
+  ],
+  "note": "Honest block: Cursor present and interrupt supported=hotkey, but observedStatus not working so interrupt.enabled=false. Not a pass. Re-run after Cursor Agent is actively working and OneTone observes it."
+}

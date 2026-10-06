@@ -1,7 +1,7 @@
 //! Multi-evidence project resolver (Plan A + Home Focus Exact gate).
 
 use crate::agent_memory::model::{
-    EvidenceTier, ProjectIdentity, ProjectMatch, UNKNOWN_PROJECT_ID, WorkspaceEvidence,
+    EvidenceTier, ProjectIdentity, ProjectMatch, WorkspaceEvidence, UNKNOWN_PROJECT_ID,
 };
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
@@ -216,7 +216,10 @@ mod tests {
     fn recent_without_exact_is_not_active() {
         let mut sessions = vec![cand("a", "p1", ProjectMatch::Unknown, 999)];
         mark_active_sessions(&mut sessions, "p1");
-        assert!(!sessions[0].is_active, "recent must not pretend to be active");
+        assert!(
+            !sessions[0].is_active,
+            "recent must not pretend to be active"
+        );
         assert!(sessions[0].active_confidence < 0.5);
     }
 
@@ -249,10 +252,7 @@ mod tests {
 
     #[test]
     fn existing_dir_high_evidence_is_exact() {
-        let dir = std::env::temp_dir().join(format!(
-            "onetone_proj_exact_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("onetone_proj_exact_{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let ev = WorkspaceEvidence {
@@ -270,10 +270,8 @@ mod tests {
 
     #[test]
     fn existing_dir_path_valid_is_probable_not_exact() {
-        let dir = std::env::temp_dir().join(format!(
-            "onetone_proj_probable_{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("onetone_proj_probable_{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let ev = WorkspaceEvidence {
@@ -288,10 +286,7 @@ mod tests {
 
     #[test]
     fn path_traversal_nonexistent_is_unknown() {
-        let dir = std::env::temp_dir().join(format!(
-            "onetone_proj_base_{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("onetone_proj_base_{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let bogus = dir.join("..").join("definitely-missing-onetone-xyz");

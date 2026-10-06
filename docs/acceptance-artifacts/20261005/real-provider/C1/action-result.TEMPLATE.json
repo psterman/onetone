@@ -1,0 +1,13 @@
+{
+    "actionId":  "agent.interrupt",
+    "note":  "Replace this file after real interrupt. Do not invent outcome.",
+    "toast":  null,
+    "expectedOutcome":  "verified_only_after_post_stop_probe",
+    "attemptId":  "",
+    "scenario":  "C1",
+    "error":  null,
+    "ok":  null,
+    "verified":  null,
+    "status":  "pending_manual",
+    "outcome":  null
+}

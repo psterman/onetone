@@ -3,9 +3,7 @@
 use std::sync::{Mutex, OnceLock};
 
 use super::arbiter::{self, ProposeResult};
-use super::model::{
-    Confidence, PadSource, PadState, PadStatus, PadStatusCandidate,
-};
+use super::model::{Confidence, PadSource, PadState, PadStatus, PadStatusCandidate};
 
 /// Busy if shell-agent tree mtime newer than this.
 /// AI agent output can be slow (long LLM streams / large commits often 1–2 min between writes).
@@ -49,18 +47,15 @@ pub fn fresh_signal_at(now: u64) -> Option<(String, String)> {
     if pad.updated_at == 0 {
         return None;
     }
-    let sticky = pad.is_sticky_active(now)
-        || matches!(pad.state.as_str(), "needs_input" | "running");
+    let sticky =
+        pad.is_sticky_active(now) || matches!(pad.state.as_str(), "needs_input" | "running");
     if !sticky {
         let age = now.saturating_sub(pad.updated_at);
         if age > arbiter::STALE_MS {
             return None;
         }
     }
-    Some((
-        pad.display_source_label().to_string(),
-        pad.state.clone(),
-    ))
+    Some((pad.display_source_label().to_string(), pad.state.clone()))
 }
 
 /// Apply a candidate through the arbiter; returns the post-arbiter snapshot.
@@ -132,7 +127,9 @@ pub fn apply_native_slot(state: &str, agent: Option<&str>) -> PadStatus {
             source: PadSource::Native.as_str().into(),
             confidence: Confidence::Medium.as_str().into(),
             updated_at: now,
-            agent: agent.map(|a| a.to_string()).or_else(|| Some("codex".into())),
+            agent: agent
+                .map(|a| a.to_string())
+                .or_else(|| Some("codex".into())),
             task_id: None,
             session_id: None,
             message: None,

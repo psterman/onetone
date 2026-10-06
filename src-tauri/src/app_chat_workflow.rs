@@ -469,7 +469,11 @@ impl MainWindowHideGuard {
             });
             std::thread::sleep(Duration::from_millis(80));
             if let Some(state) = app.try_state::<Arc<AppState>>() {
-                crate::app_log::log_line(state.inner(), "window", "main window hidden source=workflow");
+                crate::app_log::log_line(
+                    state.inner(),
+                    "window",
+                    "main window hidden source=workflow",
+                );
             }
             true
         } else {
@@ -532,18 +536,11 @@ pub fn run_for_target_id(
             cfg.find_mapping_by_id(mapping_id)
                 .is_some_and(|m| m.app_target_id.trim() == app_target_id)
         };
-        let foreground_matches =
-            foreground_app_target_id().as_deref() == Some(app_target_id);
+        let foreground_matches = foreground_app_target_id().as_deref() == Some(app_target_id);
         if crate::voice_end_runtime::is_hold_to_talk_voice_key(&voice_key)
             && (mapping_targets_app || foreground_matches)
         {
-            return run_hold_voice_foreground(
-                state,
-                window,
-                mapping_id,
-                &voice_key,
-                profile,
-            );
+            return run_hold_voice_foreground(state, window, mapping_id, &voice_key, profile);
         }
     }
     run_app_chat_workflow(state, window, mapping_id, profile, duration_ms)
@@ -574,7 +571,11 @@ pub fn run_hold_voice_foreground(
 
     if crate::voice_end_runtime::session_state(state.as_ref()) == "dictating" {
         crate::voice_end_runtime::handle_trigger_press_while_dictating(state, &app, mapping_id);
-        crate::app_log::log_line(state.as_ref(), "hold", &format!("{prefix} hold toggle {mapping_id}"));
+        crate::app_log::log_line(
+            state.as_ref(),
+            "hold",
+            &format!("{prefix} hold toggle {mapping_id}"),
+        );
         return Ok(format!("{prefix}_hold_toggle"));
     }
 
@@ -715,11 +716,7 @@ pub fn focus_composer_for_send(
     // Click RIGHT panel composer first. Do NOT send Ctrl+I here: with editor focus,
     // Cursor treats Ctrl+I as inline edit (selects text) instead of Agent composer.
     let mut click_via = "post";
-    let post_ok = crate::keyboard::click_client_relative_via_message(
-        hwnd,
-        anchor.0,
-        anchor.1,
-    );
+    let post_ok = crate::keyboard::click_client_relative_via_message(hwnd, anchor.0, anchor.1);
     crate::app_log::cursor_send_oplog(
         "click_post",
         serde_json::json!({
@@ -872,11 +869,7 @@ pub fn focus_composer_for_send(
         "other"
     };
     // Soft Pad / settings can still report FG=self; trust composer keyboard focus.
-    let result = if !uia_ok {
-        "FocusFailed"
-    } else {
-        "Ok"
-    };
+    let result = if !uia_ok { "FocusFailed" } else { "Ok" };
     crate::app_log::cursor_send_oplog(
         "focus_result",
         serde_json::json!({
@@ -1008,10 +1001,9 @@ pub fn open_or_focus_target(
 ) -> Result<String, (String, AppChatWorkflowError)> {
     let (app_target_id, custom_rule) = {
         let cfg = state.cfg.lock();
-        let mapping = cfg.find_mapping_by_id(mapping_id).ok_or((
-            "no_mapping".to_string(),
-            AppChatWorkflowError::NotFound,
-        ))?;
+        let mapping = cfg
+            .find_mapping_by_id(mapping_id)
+            .ok_or(("no_mapping".to_string(), AppChatWorkflowError::NotFound))?;
         let tid = mapping.app_target_id.trim().to_string();
         if tid.is_empty() {
             return Err(("no_app_target".to_string(), AppChatWorkflowError::NotFound));
@@ -1033,22 +1025,25 @@ pub fn open_or_focus_target(
     let _hide_guard = MainWindowHideGuard::maybe_hide(&app);
 
     if let Some(profile) = profile_for(&app_target_id) {
-        let (hwnd, freshly_launched) =
-            ensure_app_window(profile).ok_or((profile.error_prefix.to_string(), AppChatWorkflowError::NotFound))?;
+        let (hwnd, freshly_launched) = ensure_app_window(profile).ok_or((
+            profile.error_prefix.to_string(),
+            AppChatWorkflowError::NotFound,
+        ))?;
         if freshly_launched {
             std::thread::sleep(Duration::from_millis(1200));
         }
         if !crate::keyboard::focus_window(hwnd) {
-            return Err((profile.error_prefix.to_string(), AppChatWorkflowError::FocusFailed));
+            return Err((
+                profile.error_prefix.to_string(),
+                AppChatWorkflowError::FocusFailed,
+            ));
         }
         return Ok(format!("{}_open", profile.error_prefix));
     }
 
     if let Some(rule) = custom_rule {
-        let (hwnd, freshly_launched) = ensure_custom_rule_window(&rule).ok_or((
-            "custom".to_string(),
-            AppChatWorkflowError::NotFound,
-        ))?;
+        let (hwnd, freshly_launched) = ensure_custom_rule_window(&rule)
+            .ok_or(("custom".to_string(), AppChatWorkflowError::NotFound))?;
         if freshly_launched {
             std::thread::sleep(Duration::from_millis(1200));
         }
@@ -1063,7 +1058,10 @@ pub fn open_or_focus_target(
         return Ok(format!("{label}_open"));
     }
 
-    Err(("unknown_app_target".to_string(), AppChatWorkflowError::NotFound))
+    Err((
+        "unknown_app_target".to_string(),
+        AppChatWorkflowError::NotFound,
+    ))
 }
 
 #[cfg(not(windows))]
@@ -1513,7 +1511,10 @@ fn expected_exe_names(profile: &AppChatProfile) -> &[&'static str] {
 
 #[cfg(windows)]
 fn validate_launch_exe(path: &std::path::Path, profile: &AppChatProfile) -> bool {
-    if path.extension().and_then(|e| e.to_str()).map(|e| e.eq_ignore_ascii_case("lnk"))
+    if path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.eq_ignore_ascii_case("lnk"))
         == Some(true)
     {
         return path.is_file();
@@ -1560,10 +1561,7 @@ fn find_running_process_exe(profile: &AppChatProfile) -> Option<std::path::PathB
                         .position(|&c| c == 0)
                         .unwrap_or(entry.szExeFile.len())],
                 );
-                if needles
-                    .iter()
-                    .any(|n| exe_name.to_ascii_lowercase() == *n)
-                {
+                if needles.iter().any(|n| exe_name.to_ascii_lowercase() == *n) {
                     if let Some(full) = crate::app_identity::process_image_path(entry.th32ProcessID)
                     {
                         let path = std::path::PathBuf::from(full);
@@ -1605,10 +1603,7 @@ fn known_install_exe_candidates(profile: &AppChatProfile) -> Vec<std::path::Path
             "TRAE SOLO\\TRAE SOLO.exe",
         ],
         TRAE_CODE_APP_TARGET_ID => &["Programs\\Trae\\Trae.exe", "Trae\\Trae.exe"],
-        WINDSURF_APP_TARGET_ID => &[
-            "Programs\\Windsurf\\Windsurf.exe",
-            "Windsurf\\Windsurf.exe",
-        ],
+        WINDSURF_APP_TARGET_ID => &["Programs\\Windsurf\\Windsurf.exe", "Windsurf\\Windsurf.exe"],
         _ => &[],
     };
     for rel in rels {
@@ -1645,14 +1640,20 @@ fn probe_uninstall_exe(profile: &AppChatProfile) -> Option<std::path::PathBuf> {
                     continue;
                 };
                 let display: String = sub.get_value("DisplayName").unwrap_or_default();
-                if !display_needles
-                    .iter()
-                    .any(|n| display.to_ascii_lowercase().contains(&n.to_ascii_lowercase()))
-                {
+                if !display_needles.iter().any(|n| {
+                    display
+                        .to_ascii_lowercase()
+                        .contains(&n.to_ascii_lowercase())
+                }) {
                     continue;
                 }
                 if let Ok(icon) = sub.get_value::<String, _>("DisplayIcon") {
-                    let cleaned = icon.split(',').next().unwrap_or("").trim().trim_matches('"');
+                    let cleaned = icon
+                        .split(',')
+                        .next()
+                        .unwrap_or("")
+                        .trim()
+                        .trim_matches('"');
                     let path = std::path::PathBuf::from(cleaned);
                     if validate_launch_exe(&path, profile) {
                         return Some(path);
@@ -1698,11 +1699,7 @@ fn launch_from_localappdata(profile: &AppChatProfile) -> bool {
 /// Codex is a Store/AppX package — do not ShellExecute WindowsApps\...\ChatGPT.exe directly.
 #[cfg(windows)]
 fn launch_codex_store_app() -> bool {
-    if launch_start_menu_shortcut(&[
-        "Codex",
-        "OpenAI Codex",
-        "ChatGPT Codex",
-    ]) {
+    if launch_start_menu_shortcut(&["Codex", "OpenAI Codex", "ChatGPT Codex"]) {
         return true;
     }
     if let Some(aumid) = discover_codex_aumid() {
@@ -1719,14 +1716,12 @@ fn launch_start_menu_shortcut(name_needles: &[&str]) -> bool {
     let mut roots = Vec::new();
     if let Ok(appdata) = std::env::var("APPDATA") {
         roots.push(
-            std::path::PathBuf::from(appdata)
-                .join("Microsoft\\Windows\\Start Menu\\Programs"),
+            std::path::PathBuf::from(appdata).join("Microsoft\\Windows\\Start Menu\\Programs"),
         );
     }
     if let Ok(program_data) = std::env::var("ProgramData") {
         roots.push(
-            std::path::PathBuf::from(program_data)
-                .join("Microsoft\\Windows\\Start Menu\\Programs"),
+            std::path::PathBuf::from(program_data).join("Microsoft\\Windows\\Start Menu\\Programs"),
         );
     }
     for root in roots {
@@ -1804,10 +1799,8 @@ mod ensure_launch_tests {
     #[test]
     fn package_family_name_from_codex_folder() {
         assert_eq!(
-            package_family_name_from_folder(
-                "OpenAI.Codex_26.715.7063.0_x64__2p2nqsd0c76g0"
-            )
-            .as_deref(),
+            package_family_name_from_folder("OpenAI.Codex_26.715.7063.0_x64__2p2nqsd0c76g0")
+                .as_deref(),
             Some("OpenAI.Codex_2p2nqsd0c76g0")
         );
     }
@@ -2295,10 +2288,7 @@ fn score_input_name(name: &str, control_type: i32) -> i32 {
         score -= 45;
     }
     // Git SCM commit box also contains "message" — never treat as Agent composer.
-    if lower.contains("commit")
-        || lower.contains("source control")
-        || lower.contains("scm")
-    {
+    if lower.contains("commit") || lower.contains("source control") || lower.contains("scm") {
         score -= 80;
     }
     // Empty Document is usually the code editor — never prefer it over Chat/Agent Edit.

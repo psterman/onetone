@@ -6,17 +6,18 @@ use std::sync::{Mutex, OnceLock};
 
 use serde::Serialize;
 
-use crate::agent::bindings_build::{build_scenario_bindings, build_codex_micro_13_bindings};
+use crate::agent::bindings_build::{build_codex_micro_13_bindings, build_scenario_bindings};
 use crate::agent::templates::{
-    CODEX_MICRO_13_TEMPLATE_ID, CODEX_PROVIDER_ID, CURSOR_PROVIDER_ID,
-    QODER_PROVIDER_ID, TRAE_PROVIDER_ID, WORKBUDDY_PROVIDER_ID,
+    CODEX_MICRO_13_TEMPLATE_ID, CODEX_PROVIDER_ID, CURSOR_PROVIDER_ID, QODER_PROVIDER_ID,
+    TRAE_PROVIDER_ID, WORKBUDDY_PROVIDER_ID,
 };
 use crate::app_chat_workflow::{
     CODEX_APP_TARGET_ID, CURSOR_APP_TARGET_ID, QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID,
     WORKBUDDY_APP_TARGET_ID,
 };
 use crate::config::{
-    agent_key_binding_for_slot, CodexMicroPadConfig, CodexMicroPadKeyRoute, MappingEntry, VoiceConfig,
+    agent_key_binding_for_slot, CodexMicroPadConfig, CodexMicroPadKeyRoute, MappingEntry,
+    VoiceConfig,
 };
 
 const EVENT_PREFIX: &str = "codexNumpad:";
@@ -104,7 +105,11 @@ pub struct NumpadSourceKey {
 
 impl NumpadSourceKey {
     pub fn id(&self) -> String {
-        format!("sc{:02X}:ext{}", self.scan, if self.extended { 1 } else { 0 })
+        format!(
+            "sc{:02X}:ext{}",
+            self.scan,
+            if self.extended { 1 } else { 0 }
+        )
     }
 
     pub fn from_id(raw: &str) -> Option<Self> {
@@ -155,9 +160,15 @@ fn hook_gate() -> &'static Mutex<HookGate> {
 pub fn normalize_numpad_physical(scan: u16, extended: bool) -> Option<NumpadSourceKey> {
     match scan {
         0x45 => None,
-        0x1C if extended => Some(NumpadSourceKey { scan, extended: true }),
+        0x1C if extended => Some(NumpadSourceKey {
+            scan,
+            extended: true,
+        }),
         0x1C => None,
-        0x35 if extended => Some(NumpadSourceKey { scan, extended: true }),
+        0x35 if extended => Some(NumpadSourceKey {
+            scan,
+            extended: true,
+        }),
         0x35 if !extended => None,
         // Numpad 8/2/4/6 (same scans as ????????????). Extended = dedicated arrows ???not Soft Pad.
         0x48 | 0x50 | 0x4B | 0x4D if extended => None,
@@ -216,9 +227,7 @@ pub fn pad_should_capture_arrow(nav_micro_key_id: &str) -> bool {
         return false;
     }
     let gate = hook_gate().lock().unwrap();
-    gate.pad_active
-        && gate.capture_physical_arrows
-        && gate.routes_by_micro.contains_key(id)
+    gate.pad_active && gate.capture_physical_arrows && gate.routes_by_micro.contains_key(id)
 }
 
 /// True if any physical arrow would currently be captured (live indicator).
@@ -253,8 +262,22 @@ pub fn numpad_mode_allows_fire(micro_key_id: &str) -> bool {
 pub fn is_overlay_numpad_key(micro_key_id: &str) -> bool {
     matches!(
         micro_key_id.trim(),
-        "NP0" | "NP1" | "NP2" | "NP3" | "NP4" | "NP5" | "NP6" | "NP7" | "NP8" | "NP9"
-            | "NP_DOT" | "NP_ENTER" | "NP_DIV" | "NP_MUL" | "NP_SUB" | "NP_ADD"
+        "NP0"
+            | "NP1"
+            | "NP2"
+            | "NP3"
+            | "NP4"
+            | "NP5"
+            | "NP6"
+            | "NP7"
+            | "NP8"
+            | "NP9"
+            | "NP_DOT"
+            | "NP_ENTER"
+            | "NP_DIV"
+            | "NP_MUL"
+            | "NP_SUB"
+            | "NP_ADD"
     )
 }
 
@@ -271,12 +294,7 @@ pub fn lookup_route_by_micro_key(micro_key_id: &str) -> Option<CodexNumpadRouteS
     if id.is_empty() {
         return None;
     }
-    hook_gate()
-        .lock()
-        .unwrap()
-        .routes_by_micro
-        .get(id)
-        .cloned()
+    hook_gate().lock().unwrap().routes_by_micro.get(id).cloned()
 }
 
 /// Resolve ENC ???summonCodex from config even when `pad.enabled=false` (numpad-mode exception).
@@ -349,13 +367,7 @@ pub fn software_enhance_enabled() -> bool {
 pub fn is_software_enhance_micro_key(micro_key_id: &str) -> bool {
     matches!(
         micro_key_id.trim(),
-        "ENC_CW"
-            | "ENC_CC"
-            | "NAV_UP"
-            | "NAV_DOWN"
-            | "NAV_LEFT"
-            | "NAV_RIGHT"
-            | "NAV_PRESS"
+        "ENC_CW" | "ENC_CC" | "NAV_UP" | "NAV_DOWN" | "NAV_LEFT" | "NAV_RIGHT" | "NAV_PRESS"
     )
 }
 
@@ -435,7 +447,11 @@ pub fn codex_foreground_for_micro() -> bool {
 /// Soft Pad steals the key only when「数字键占用」is on **and** NumLock is off.
 /// - NumLock on → always type the digit (never Soft Pad), even if occupy is on.
 /// - Occupy off → pass through (digit or system Home/End); Soft Pad stays overlay-only.
-pub fn should_swallow_bound_numpad(has_route: bool, require_num_lock_off: bool, num_lock_off: bool) -> bool {
+pub fn should_swallow_bound_numpad(
+    has_route: bool,
+    require_num_lock_off: bool,
+    num_lock_off: bool,
+) -> bool {
     has_route && require_num_lock_off && num_lock_off
 }
 
@@ -469,10 +485,7 @@ pub fn sync_hook_cache(cfg: &VoiceConfig) {
 
 /// Pre-cutover merge of all enabled pads (Phase 1A legacy path only).
 fn sync_hook_cache_legacy(cfg: &VoiceConfig) {
-    let prev_joy = hook_gate()
-        .lock()
-        .unwrap()
-        .joy_nav_panel_open;
+    let prev_joy = hook_gate().lock().unwrap().joy_nav_panel_open;
     let mut gate = HookGate::default();
     gate.joy_nav_panel_open = prev_joy;
     for m in cfg.active_mappings() {
@@ -525,7 +538,10 @@ pub fn install_hook_gate(install: HookGateInstall) {
 
 pub fn peek_first_route_mapping_id() -> Option<String> {
     let g = hook_gate().lock().unwrap();
-    g.routes_by_micro.values().next().map(|r| r.mapping_id.clone())
+    g.routes_by_micro
+        .values()
+        .next()
+        .map(|r| r.mapping_id.clone())
 }
 
 /// Soft Pad user preference: allow Claude CLI key inject when latch is high.
@@ -665,13 +681,13 @@ fn cursor_push_to_talk_needs_rewrite(m: &MappingEntry, slot: &str, chord: &str) 
 }
 
 /// True when pad route + agent key binding exist (same gate as hook merge / fire).
-pub fn micro_key_routable(mapping: &MappingEntry, pad: &CodexMicroPadConfig, micro_key_id: &str) -> bool {
+pub fn micro_key_routable(
+    mapping: &MappingEntry,
+    pad: &CodexMicroPadConfig,
+    micro_key_id: &str,
+) -> bool {
     let id = micro_key_id.trim();
-    let Some(route) = pad
-        .keys
-        .iter()
-        .find(|k| k.micro_key_id == id && k.enabled)
-    else {
+    let Some(route) = pad.keys.iter().find(|k| k.micro_key_id == id && k.enabled) else {
         return false;
     };
     let slot = route.slot_id.trim();
@@ -744,13 +760,15 @@ fn heal_slot_key_bindings(m: &mut MappingEntry, slot_id: &str, locale: &str) -> 
     let mut changed = false;
     let app_tid = m.app_target_id.trim().to_string();
     let seeds = build_scenario_bindings(locale, &app_tid);
-    let seed_key = seeds.into_iter().find(|s| {
-        s.slot_id == slot_id && s.trigger_type.eq_ignore_ascii_case("key")
-    });
+    let seed_key = seeds
+        .into_iter()
+        .find(|s| s.slot_id == slot_id && s.trigger_type.eq_ignore_ascii_case("key"));
     if let Some(seed) = seed_key {
-        match m.agent_bindings.iter_mut().find(|b| {
-            b.slot_id == slot_id && b.trigger_type.eq_ignore_ascii_case("key")
-        }) {
+        match m
+            .agent_bindings
+            .iter_mut()
+            .find(|b| b.slot_id == slot_id && b.trigger_type.eq_ignore_ascii_case("key"))
+        {
             Some(existing) => {
                 if !existing.enabled {
                     existing.enabled = true;
@@ -1032,7 +1050,9 @@ pub fn try_heal_micro_route(state: &crate::AppState, micro_key_id: &str, locale:
                 changed = true;
             }
             let slot_id = {
-                let pad = m.codex_micro_pad.get_or_insert_with(default_codex_micro_pad);
+                let pad = m
+                    .codex_micro_pad
+                    .get_or_insert_with(default_codex_micro_pad);
                 // Heal routes without forcing Codex mode back on.
                 let Some((slot_id, route_changed)) = heal_pad_route_for_micro_key(pad, id) else {
                     continue;
@@ -1097,7 +1117,9 @@ pub fn heal_codex_pad_bindings(
             changed = true;
         }
         {
-            let pad = m.codex_micro_pad.get_or_insert_with(default_codex_micro_pad);
+            let pad = m
+                .codex_micro_pad
+                .get_or_insert_with(default_codex_micro_pad);
             if pad.layout_profile.trim().is_empty() {
                 pad.layout_profile = "standard".into();
                 changed = true;
@@ -1200,7 +1222,8 @@ fn heal_scan_conflicts_to_defaults(pad: &mut CodexMicroPadConfig) -> bool {
             continue;
         };
         if let Some(route) = pad.keys.iter_mut().find(|k| k.micro_key_id == id) {
-            if route.source_scan != def.source_scan || route.source_extended != def.source_extended {
+            if route.source_scan != def.source_scan || route.source_extended != def.source_extended
+            {
                 route.source_scan = def.source_scan;
                 route.source_extended = def.source_extended;
                 changed = true;
@@ -1529,7 +1552,12 @@ fn merge_pad_routes(gate: &mut HookGate, mapping: &MappingEntry, pad: &CodexMicr
 }
 
 pub fn lookup_route(source: &NumpadSourceKey) -> Option<CodexNumpadRouteSnapshot> {
-    hook_gate().lock().unwrap().routes.get(&source.id()).cloned()
+    hook_gate()
+        .lock()
+        .unwrap()
+        .routes
+        .get(&source.id())
+        .cloned()
 }
 
 pub fn lookup_named_pad_route(name: &str) -> Option<CodexNumpadRouteSnapshot> {
@@ -1957,13 +1985,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            });
+        });
         let result = ensure_codex_pad_ready(&mut cfg, "zh-CN");
         assert!(result.changed);
         assert!(result.readiness.mapping_found);
@@ -2024,8 +2052,8 @@ mod tests {
             agent_template_id: String::new(),
             agent_provider_id: String::new(),
             agent_bindings: vec![AgentBinding {
-            action_instance_id: String::new(),
-            action_args: None,
+                action_instance_id: String::new(),
+                action_args: None,
                 slot_id: "pushToTalk".into(),
                 action_id: "startDictation".into(),
                 trigger_type: "key".into(),
@@ -2035,13 +2063,13 @@ mod tests {
                 activation_scope: "global".into(),
             }],
             codex_micro_pad: Some(pad),
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            };
+        };
         let (slot, route_changed) = {
             let pad = m.codex_micro_pad.as_mut().unwrap();
             heal_pad_route_for_micro_key(pad, "ACT10").unwrap()
@@ -2120,11 +2148,11 @@ mod tests {
             ],
             codex_micro_pad: Some(default_codex_micro_pad()),
             time_machine_workspace: String::new(),
-        capture_hero_ref: None,
-        gesture_modes: None,
-        oral_command_scheme: None,
-        target_actions: vec![],
-        assists: vec![],
+            capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
+            target_actions: vec![],
+            assists: vec![],
         };
         let before = m.agent_bindings.len();
         let _ = heal_slot_key_bindings(&mut m, "plan", "zh-CN");
@@ -2190,13 +2218,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: bindings,
             codex_micro_pad: Some(pad),
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            };
+        };
         let mut cfg = VoiceConfig {
             mappings: vec![m],
             ..VoiceConfig::default()
@@ -2275,11 +2303,11 @@ mod tests {
             agent_bindings: crate::agent::bindings_build::build_cursor_chord_bindings("zh-CN"),
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
-        capture_hero_ref: None,
-        gesture_modes: None,
-        oral_command_scheme: None,
-        target_actions: vec![],
-        assists: vec![],
+            capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
+            target_actions: vec![],
+            assists: vec![],
         };
         assert!(heal_cursor_pad_ag_chrome(&mut m));
         let pad = m.codex_micro_pad.as_ref().unwrap();
@@ -2341,11 +2369,11 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
-        capture_hero_ref: None,
-        gesture_modes: None,
-        oral_command_scheme: None,
-        target_actions: vec![],
-        assists: vec![],
+            capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
+            target_actions: vec![],
+            assists: vec![],
         };
         assert!(heal_cursor_pad_for_save(&mut m, "zh-CN"));
         let pad = m.codex_micro_pad.as_ref().unwrap();
@@ -2402,11 +2430,11 @@ mod tests {
                     agent_bindings: build_codex_micro_13_bindings("zh-CN"),
                     codex_micro_pad: Some(default_codex_micro_pad()),
                     time_machine_workspace: String::new(),
-                capture_hero_ref: None,
-                gesture_modes: None,
-                oral_command_scheme: None,
-                target_actions: vec![],
-                assists: vec![],
+                    capture_hero_ref: None,
+                    gesture_modes: None,
+                    oral_command_scheme: None,
+                    target_actions: vec![],
+                    assists: vec![],
                 },
                 MappingEntry {
                     id: "cursor-soft-pad".into(),
@@ -2456,11 +2484,11 @@ mod tests {
                     }],
                     codex_micro_pad: Some(pad),
                     time_machine_workspace: String::new(),
-                capture_hero_ref: None,
-                gesture_modes: None,
-                oral_command_scheme: None,
-                target_actions: vec![],
-                assists: vec![],
+                    capture_hero_ref: None,
+                    gesture_modes: None,
+                    oral_command_scheme: None,
+                    target_actions: vec![],
+                    assists: vec![],
                 },
             ],
             ..VoiceConfig::default()
@@ -2471,7 +2499,11 @@ mod tests {
         assert_eq!(result.mapping_id.as_deref(), Some("cursor-soft-pad"));
         let ptt = agent_key_binding_for_slot(&cfg.mappings[1], "pushToTalk").unwrap();
         assert_eq!(ptt.trigger_binding, "RAlt");
-        assert!(micro_key_routable(&cfg.mappings[1], cfg.mappings[1].codex_micro_pad.as_ref().unwrap(), "ACT10"));
+        assert!(micro_key_routable(
+            &cfg.mappings[1],
+            cfg.mappings[1].codex_micro_pad.as_ref().unwrap(),
+            "ACT10"
+        ));
     }
 
     #[test]
@@ -2531,11 +2563,11 @@ mod tests {
                 }],
                 codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
-            capture_hero_ref: None,
-            gesture_modes: None,
-            oral_command_scheme: None,
-            target_actions: vec![],
-            assists: vec![],
+                capture_hero_ref: None,
+                gesture_modes: None,
+                oral_command_scheme: None,
+                target_actions: vec![],
+                assists: vec![],
             }],
             ..VoiceConfig::default()
         };
@@ -2591,11 +2623,11 @@ mod tests {
                 agent_bindings: build_codex_micro_13_bindings("zh-CN"),
                 codex_micro_pad: Some(pad),
                 time_machine_workspace: String::new(),
-            capture_hero_ref: None,
-            gesture_modes: None,
-            oral_command_scheme: None,
-            target_actions: vec![],
-            assists: vec![],
+                capture_hero_ref: None,
+                gesture_modes: None,
+                oral_command_scheme: None,
+                target_actions: vec![],
+                assists: vec![],
             }],
             ..VoiceConfig::default()
         };
@@ -2680,20 +2712,23 @@ mod tests {
             agent_provider_id: CODEX_PROVIDER_ID.into(),
             agent_bindings: build_codex_micro_13_bindings("zh-CN"),
             codex_micro_pad: Some(pad),
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            }];
+        }];
         sync_hook_cache(&cfg);
         assert!(pad_mapping_active());
         // Capture depends on Soft Pad session (Codex/overlay FG latch) + pad_active.
         set_joy_nav_panel_open(false);
         assert!(!pad_should_capture_arrows(), "no Soft Pad session ???false");
         set_joy_nav_panel_open(true);
-        assert!(!pad_should_capture_arrows(), "rail open still needs Soft Pad session");
+        assert!(
+            !pad_should_capture_arrows(),
+            "rail open still needs Soft Pad session"
+        );
     }
 
     #[test]
@@ -2743,11 +2778,11 @@ mod tests {
             agent_bindings: build_codex_micro_13_bindings("zh-CN"),
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
-        capture_hero_ref: None,
-        gesture_modes: None,
-        oral_command_scheme: None,
-        target_actions: vec![],
-        assists: vec![],
+            capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
+            target_actions: vec![],
+            assists: vec![],
         }];
         sync_hook_cache(&cfg);
         crate::codex_micro_overlay::test_set_foreground_latch(true);

@@ -228,7 +228,9 @@ pub fn reclaim_mic_from_voice_ime(
     crate::app_log::log_line(
         state,
         "voice_command",
-        &format!("reclaim mic from voice IME reason={reason} pulsed={pulsed} was_dictating={dictating}"),
+        &format!(
+            "reclaim mic from voice IME reason={reason} pulsed={pulsed} was_dictating={dictating}"
+        ),
     );
     true
 }
@@ -240,7 +242,9 @@ pub fn armed_mapping_id() -> String {
         .unwrap_or_default()
 }
 
-fn armed_mapping<'a>(cfg: &'a crate::config::VoiceConfig) -> Option<&'a crate::config::MappingEntry> {
+fn armed_mapping<'a>(
+    cfg: &'a crate::config::VoiceConfig,
+) -> Option<&'a crate::config::MappingEntry> {
     let mid = armed_mapping_id();
     cfg.find_mapping_by_id(&mid).or_else(|| {
         cfg.active_mappings()
@@ -417,12 +421,17 @@ pub fn listen_say_list(cfg: &crate::config::VoiceConfig, limit: usize) -> Vec<St
             if item.enabled != Some(true) {
                 continue;
             }
-            let Some(raw) = item.say.as_ref().map(|x| x.trim()).filter(|x| !x.is_empty()) else {
+            let Some(raw) = item
+                .say
+                .as_ref()
+                .map(|x| x.trim())
+                .filter(|x| !x.is_empty())
+            else {
                 continue;
             };
-            for part in raw.split(|c: char| {
-                c.is_whitespace() || matches!(c, '、' | ',' | '，' | ';' | '；')
-            }) {
+            for part in raw
+                .split(|c: char| c.is_whitespace() || matches!(c, '、' | ',' | '，' | ';' | '；'))
+            {
                 let p = part.trim();
                 if p.is_empty() {
                     continue;
@@ -515,12 +524,9 @@ pub fn begin_session(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str, w
 
     // Side-key SendKey / Soft「说话」may leave Cursor IME on WASAPI — reclaim before Vosk.
     let duration_ms = state.cfg.lock().key_press_duration_ms;
-    let reclaimed_ime =
-        reclaim_mic_from_voice_ime(state, Some(app), duration_ms, "oral_arm");
+    let reclaimed_ime = reclaim_mic_from_voice_ime(state, Some(app), duration_ms, "oral_arm");
     // Home poll can leave quiet=true while UI says listening — drops every ASR chunk.
-    state
-        .settings_asr_quiet
-        .store(false, Ordering::SeqCst);
+    state.settings_asr_quiet.store(false, Ordering::SeqCst);
 
     crate::runtime_event::publish_runtime_event(
         Some(app),
@@ -537,7 +543,10 @@ pub fn begin_session(state: &Arc<AppState>, app: &AppHandle, mapping_id: &str, w
     crate::app_log::log_line(
         state,
         "voice_command",
-        &format!("session_begin mapping={mapping_id} window_ms={}", window_ms.max(3_000)),
+        &format!(
+            "session_begin mapping={mapping_id} window_ms={}",
+            window_ms.max(3_000)
+        ),
     );
 
     // Soft Pad / floating overlay must surface for oral listen (same as mic arm).

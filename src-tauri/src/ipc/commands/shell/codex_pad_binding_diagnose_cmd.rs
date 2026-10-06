@@ -56,8 +56,7 @@ pub fn cmd_codex_pad_binding_heal(
             config::save_config(&cfg);
             codex_numpad_layer::sync_hook_cache(&cfg);
         }
-        let diagnose =
-            diagnose_codex_pad_bindings_for_cfg(&cfg, result.mapping_id.as_deref());
+        let diagnose = diagnose_codex_pad_bindings_for_cfg(&cfg, result.mapping_id.as_deref());
         (result, diagnose)
     };
     let (heal, diagnose) = result;

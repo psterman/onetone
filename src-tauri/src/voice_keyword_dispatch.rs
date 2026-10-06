@@ -78,7 +78,8 @@ pub fn classify_voice_keyword(cfg: &VoiceConfig, phrase: &str) -> VoiceKeywordKi
         return VoiceKeywordKind::Cancel;
     }
 
-    if crate::cursor_beginner::probe_ok() && crate::cursor_beginner::is_beginner_voice_phrase(text) {
+    if crate::cursor_beginner::probe_ok() && crate::cursor_beginner::is_beginner_voice_phrase(text)
+    {
         return VoiceKeywordKind::Wake;
     }
 
@@ -177,14 +178,8 @@ mod tests {
         let cfg = VoiceConfig::default();
         // ponytail: probe_ok needs Cursor.exe; when false, skip — golden/KWS path tested elsewhere
         if crate::cursor_beginner::probe_ok() {
-            assert_eq!(
-                classify_voice_keyword(&cfg, "继续"),
-                VoiceKeywordKind::Wake
-            );
-            assert_eq!(
-                classify_voice_keyword(&cfg, "发送"),
-                VoiceKeywordKind::Wake
-            );
+            assert_eq!(classify_voice_keyword(&cfg, "继续"), VoiceKeywordKind::Wake);
+            assert_eq!(classify_voice_keyword(&cfg, "发送"), VoiceKeywordKind::Wake);
         }
     }
 

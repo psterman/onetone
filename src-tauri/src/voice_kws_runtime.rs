@@ -73,10 +73,7 @@ pub fn kws_readiness(
 }
 
 /// Status / supervisor hot path — never FS-probe (AV scan hung voice_*_status ~60s).
-pub fn kws_readiness_cached(
-    state: &AppState,
-    cfg: &crate::config::VoiceConfig,
-) -> KwsReadiness {
+pub fn kws_readiness_cached(state: &AppState, cfg: &crate::config::VoiceConfig) -> KwsReadiness {
     let probe = cached_kws_probe(state, &cfg.voice_kws, None, false);
     kws_readiness_from_probe(state, cfg, &probe)
 }
@@ -92,20 +89,21 @@ fn kws_readiness_from_probe(
     let model_complete = probe.model_exists;
     let encoded_non_empty = !build.encoded.is_empty();
     let strategy_allows_kws = matches!(strategy, "auto" | "resourceSaver" | "advanced");
-    let (ready, reason) = if probe.resolved_model_path.is_empty() && !probe.model_exists && probe.stub_mode {
-        // Cache miss on hot path — not ready until ensure-probe fills cache.
-        (false, "probe_pending")
-    } else if !strategy_allows_kws {
-        (false, "strategy_disallows_kws")
-    } else if !native {
-        (false, "stub")
-    } else if !model_complete {
-        (false, "model_missing")
-    } else if !encoded_non_empty {
-        (false, "keywords_empty")
-    } else {
-        (true, "ready")
-    };
+    let (ready, reason) =
+        if probe.resolved_model_path.is_empty() && !probe.model_exists && probe.stub_mode {
+            // Cache miss on hot path — not ready until ensure-probe fills cache.
+            (false, "probe_pending")
+        } else if !strategy_allows_kws {
+            (false, "strategy_disallows_kws")
+        } else if !native {
+            (false, "stub")
+        } else if !model_complete {
+            (false, "model_missing")
+        } else if !encoded_non_empty {
+            (false, "keywords_empty")
+        } else {
+            (true, "ready")
+        };
     KwsReadiness {
         ready,
         native,

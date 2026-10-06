@@ -1,0 +1,4197 @@
+{
+  "agents": [
+    {
+      "agentId": "kind:aider",
+      "runtimeKind": "aider",
+      "displayName": "Aider",
+      "formFactor": "cli",
+      "presenceState": "not_found",
+      "presence": {
+        "installation": "notFound",
+        "dataSource": "unknown",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668575,
+        "freshUntil": 1791260728575,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\.aider",
+      "lastProbeAt": 1791260668565,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668575
+        },
+        "sessionMetadata": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668575
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668575
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668575
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668575
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668575
+        },
+        "focus": {
+          "state": "unavailable",
+          "source": "executor",
+          "reason": "no_focus_executor",
+          "updatedAt": 1791260668575
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "aider",
+        "freshUntil": 1791260728575,
+        "observedAt": 1791260668575,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:aider",
+          "confidence": "low",
+          "detail": "missing:C:\\Users\\pstem\\.aider",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110804,
+          "rawName": "Aider",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_focus_executor",
+          "state": "unavailable",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "discovered:antigravity",
+      "displayName": "Antigravity",
+      "formFactor": "ide",
+      "presenceState": "detected",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "degraded",
+        "runtime": "unknown",
+        "integration": "unknown"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "none",
+        "observedAt": 1791260668575,
+        "freshUntil": 1791260668575,
+        "confidence": "low"
+      },
+      "dataPath": "C:\\Users\\pstem\\.gemini\\antigravity",
+      "lastProbeAt": 1791260668570,
+      "lastSyncAt": 1790874022751,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668575
+        },
+        "sessionMetadata": {
+          "state": "limited",
+          "source": "adapter",
+          "reason": "discovered_only",
+          "updatedAt": 1791260668575
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668575
+        },
+        "realtimeStatus": {
+          "state": "unknown",
+          "source": "discovered",
+          "updatedAt": 1791260668575
+        },
+        "hooks": {
+          "state": "unknown",
+          "source": "discovered",
+          "reason": "no_runtime_kind",
+          "updatedAt": 1791260668575
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "discovered",
+          "reason": "no_runtime_kind",
+          "updatedAt": 1791260668575
+        },
+        "focus": {
+          "state": "unavailable",
+          "source": "discovered",
+          "reason": "no_runtime_kind",
+          "updatedAt": 1791260668575
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "discovered:antigravity",
+          "confidence": "medium",
+          "detail": "C:\\Users\\pstem\\.gemini\\antigravity",
+          "mappingBasis": "discovered_path",
+          "probedAtMs": 1791114110808,
+          "rawName": "Antigravity",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "discovered_only",
+          "detail": "discovered_only"
+        },
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_focus",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unknown",
+          "source": "none",
+          "confidence": "low"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "none"
+    },
+    {
+      "agentId": "kind:claude",
+      "runtimeKind": "claude",
+      "displayName": "Claude Code",
+      "formFactor": "cli",
+      "presenceState": "detected",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "degraded",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668575,
+        "freshUntil": 1791260728575,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\.claude",
+      "lastProbeAt": 1791260668543,
+      "lastSyncAt": 1791123756273,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668575
+        },
+        "sessionMetadata": {
+          "state": "limited",
+          "source": "adapter",
+          "updatedAt": 1791260668575
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668575
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668575
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668575
+        },
+        "resume": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668575
+        },
+        "focus": {
+          "state": "available",
+          "source": "executor",
+          "updatedAt": 1791260668575
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "claude",
+        "freshUntil": 1791260728575,
+        "observedAt": 1791260668575,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:claude",
+          "confidence": "high",
+          "detail": "C:\\Users\\pstem\\.claude",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110782,
+          "rawName": "Claude Code",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "workflow",
+          "supported": true,
+          "enabled": true,
+          "executor": "focusApp:claude-code",
+          "state": "available",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "native",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_external_session",
+          "state": "unavailable",
+          "source": "inferred",
+          "confidence": "low",
+          "observedAt": 1791260668575,
+          "freshUntil": 1791260728575
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "native",
+          "supported": true,
+          "enabled": false,
+          "reason": "stale_observation",
+          "state": "unavailable",
+          "source": "inferred",
+          "confidence": "medium",
+          "observedAt": 1791260668575,
+          "freshUntil": 1791260728575
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:cline",
+      "runtimeKind": "cline",
+      "displayName": "Cline",
+      "formFactor": "cli",
+      "presenceState": "not_found",
+      "presence": {
+        "installation": "notFound",
+        "dataSource": "unknown",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668575,
+        "freshUntil": 1791260728575,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\.cline",
+      "lastProbeAt": 1791260668560,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668575
+        },
+        "sessionMetadata": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668575
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668575
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668575
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668575
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668575
+        },
+        "focus": {
+          "state": "unavailable",
+          "source": "executor",
+          "reason": "no_focus_executor",
+          "updatedAt": 1791260668575
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "cline",
+        "freshUntil": 1791260728575,
+        "observedAt": 1791260668575,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:cline",
+          "confidence": "low",
+          "detail": "missing:C:\\Users\\pstem\\.cline",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110799,
+          "rawName": "Cline",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_focus_executor",
+          "state": "unavailable",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:codex",
+      "runtimeKind": "codex",
+      "displayName": "Codex",
+      "formFactor": "cli",
+      "presenceState": "detected",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "degraded",
+        "runtime": "running",
+        "integration": "connected"
+      },
+      "status": "working",
+      "observedStatus": {
+        "value": "working",
+        "source": "appServer",
+        "observedAt": 1791260658489,
+        "freshUntil": 1791260778489,
+        "confidence": "high"
+      },
+      "version": "codex-cli 0.160.0",
+      "dataPath": "C:\\Users\\pstem\\.codex",
+      "lastProbeAt": 1791260668431,
+      "lastSyncAt": 1791259242514,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668575
+        },
+        "sessionMetadata": {
+          "state": "limited",
+          "source": "adapter",
+          "updatedAt": 1791260668575
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668575
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668575
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668575
+        },
+        "resume": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668575
+        },
+        "focus": {
+          "state": "available",
+          "source": "executor",
+          "updatedAt": 1791260668575
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "codex",
+        "freshUntil": 1791260778489,
+        "observedAt": 1791260658489,
+        "source": "appServer",
+        "state": "working"
+      },
+      "recentWork": [
+        {
+          "agentKind": "codex",
+          "externalSessionId": "01a10ed2-a69d-7990-9c3d-1e05add61333",
+          "fromCrossProjectFallback": true,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "codexSessionIndex",
+          "projectId": "",
+          "projectLabel": null,
+          "projectUnknown": true,
+          "provider": "codex",
+          "sessionId": "codex-meta:01a10ed2-a69d-7990-9c3d-1e05add61333",
+          "status": "discovered",
+          "title": null,
+          "updatedAtMs": null,
+          "workId": "codex-meta:01a10ed2-a69d-7990-9c3d-1e05add61333"
+        },
+        {
+          "agentKind": "codex",
+          "externalSessionId": "01a10c25-50c6-7d32-b876-89433cc80305",
+          "fromCrossProjectFallback": true,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "codexSessionIndex",
+          "projectId": "",
+          "projectLabel": null,
+          "projectUnknown": true,
+          "provider": "codex",
+          "sessionId": "codex-meta:01a10c25-50c6-7d32-b876-89433cc80305",
+          "status": "discovered",
+          "title": null,
+          "updatedAtMs": null,
+          "workId": "codex-meta:01a10c25-50c6-7d32-b876-89433cc80305"
+        },
+        {
+          "agentKind": "codex",
+          "externalSessionId": "01a10b0c-ff9c-71e0-85b9-c41f58801e7e",
+          "fromCrossProjectFallback": true,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "codexSessionIndex",
+          "projectId": "",
+          "projectLabel": null,
+          "projectUnknown": true,
+          "provider": "codex",
+          "sessionId": "codex-meta:01a10b0c-ff9c-71e0-85b9-c41f58801e7e",
+          "status": "discovered",
+          "title": null,
+          "updatedAtMs": null,
+          "workId": "codex-meta:01a10b0c-ff9c-71e0-85b9-c41f58801e7e"
+        },
+        {
+          "agentKind": "codex",
+          "externalSessionId": "01a10ad3-6de3-74c2-98f1-5764a94d3a69",
+          "fromCrossProjectFallback": true,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "codexSessionIndex",
+          "projectId": "",
+          "projectLabel": null,
+          "projectUnknown": true,
+          "provider": "codex",
+          "sessionId": "codex-meta:01a10ad3-6de3-74c2-98f1-5764a94d3a69",
+          "status": "discovered",
+          "title": null,
+          "updatedAtMs": null,
+          "workId": "codex-meta:01a10ad3-6de3-74c2-98f1-5764a94d3a69"
+        },
+        {
+          "agentKind": "codex",
+          "externalSessionId": "01a1072d-3b74-7231-a940-876274d3642a",
+          "fromCrossProjectFallback": true,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "codexSessionIndex",
+          "projectId": "",
+          "projectLabel": null,
+          "projectUnknown": true,
+          "provider": "codex",
+          "sessionId": "codex-meta:01a1072d-3b74-7231-a940-876274d3642a",
+          "status": "discovered",
+          "title": null,
+          "updatedAtMs": null,
+          "workId": "codex-meta:01a1072d-3b74-7231-a940-876274d3642a"
+        },
+        {
+          "agentKind": "codex",
+          "externalSessionId": "01a10670-cdd1-7a71-a766-83c091b3e295",
+          "fromCrossProjectFallback": true,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "codexSessionIndex",
+          "projectId": "",
+          "projectLabel": null,
+          "projectUnknown": true,
+          "provider": "codex",
+          "sessionId": "codex-meta:01a10670-cdd1-7a71-a766-83c091b3e295",
+          "status": "discovered",
+          "title": null,
+          "updatedAtMs": null,
+          "workId": "codex-meta:01a10670-cdd1-7a71-a766-83c091b3e295"
+        }
+      ],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:codex",
+          "confidence": "high",
+          "detail": "C:\\Users\\pstem\\.codex",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110776,
+          "rawName": "Codex",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "workflow",
+          "supported": true,
+          "enabled": true,
+          "executor": "focusApp:codex-chat",
+          "state": "available",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "native",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_external_session",
+          "state": "unavailable",
+          "source": "appServer",
+          "confidence": "low",
+          "observedAt": 1791260658489,
+          "freshUntil": 1791260778489
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unavailable",
+          "source": "codexBackground",
+          "confidence": "low",
+          "observedAt": 1791260667925,
+          "freshUntil": 1791260667925
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "high",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:appServer",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:copilotCli",
+      "runtimeKind": "copilotCli",
+      "displayName": "Copilot CLI",
+      "formFactor": "cli",
+      "presenceState": "not_found",
+      "presence": {
+        "installation": "notFound",
+        "dataSource": "absent",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668576,
+        "freshUntil": 1791260728576,
+        "confidence": "medium"
+      },
+      "lastProbeAt": 1791260668548,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668576
+        },
+        "sessionMetadata": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668576
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668576
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668576
+        },
+        "focus": {
+          "state": "unavailable",
+          "source": "executor",
+          "reason": "no_focus_executor",
+          "updatedAt": 1791260668576
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "copilotCli",
+        "freshUntil": 1791260728576,
+        "observedAt": 1791260668576,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_focus_executor",
+          "state": "unavailable",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:copilotVscode",
+      "runtimeKind": "copilotVscode",
+      "displayName": "Copilot VS Code",
+      "formFactor": "ide",
+      "presenceState": "not_found",
+      "presence": {
+        "installation": "notFound",
+        "dataSource": "absent",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668576,
+        "freshUntil": 1791260728576,
+        "confidence": "medium"
+      },
+      "lastProbeAt": 1791260668550,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668576
+        },
+        "sessionMetadata": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668576
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668576
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668576
+        },
+        "focus": {
+          "state": "unavailable",
+          "source": "executor",
+          "reason": "no_focus_executor",
+          "updatedAt": 1791260668576
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "copilotVscode",
+        "freshUntil": 1791260728576,
+        "observedAt": 1791260668576,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_focus_executor",
+          "state": "unavailable",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:cursor",
+      "runtimeKind": "cursor",
+      "displayName": "Cursor",
+      "formFactor": "ide",
+      "presenceState": "limited",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "degraded",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668576,
+        "freshUntil": 1791260728576,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\AppData\\Roaming\\Cursor\\User\\globalStorage\\state.vscdb",
+      "lastProbeAt": 1791260668546,
+      "lastSyncAt": 1791260657176,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668576
+        },
+        "sessionMetadata": {
+          "state": "available",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668576
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668576
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668576
+        },
+        "focus": {
+          "state": "available",
+          "source": "executor",
+          "updatedAt": 1791260668576
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 12.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "currentWork": {
+        "agentKind": "cursor",
+        "externalSessionId": "6189fc90-03cc-472d-9298-917c2e063af7",
+        "fromCrossProjectFallback": false,
+        "isActive": true,
+        "laneId": null,
+        "metaSource": "cursorAdapter",
+        "projectId": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+        "projectLabel": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+        "projectUnknown": false,
+        "provider": "cursor",
+        "sessionId": "313300b9c16c726da93eee2096774eae44e58d891582db8520c681ea6d5dfdff",
+        "status": "running",
+        "title": "Home Agent Roster v2 E2E",
+        "updatedAtMs": 1791260264274,
+        "workId": "313300b9c16c726da93eee2096774eae44e58d891582db8520c681ea6d5dfdff"
+      },
+      "attention": {
+        "agent": "cursor",
+        "freshUntil": 1791260728576,
+        "observedAt": 1791260668576,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [
+        {
+          "agentKind": "cursor",
+          "externalSessionId": "6189fc90-03cc-472d-9298-917c2e063af7",
+          "fromCrossProjectFallback": false,
+          "isActive": true,
+          "laneId": null,
+          "metaSource": "cursorAdapter",
+          "projectId": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectLabel": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectUnknown": false,
+          "provider": "cursor",
+          "sessionId": "313300b9c16c726da93eee2096774eae44e58d891582db8520c681ea6d5dfdff",
+          "status": "running",
+          "title": "Home Agent Roster v2 E2E",
+          "updatedAtMs": 1791260264274,
+          "workId": "313300b9c16c726da93eee2096774eae44e58d891582db8520c681ea6d5dfdff"
+        },
+        {
+          "agentKind": "cursor",
+          "externalSessionId": "f9ee3e80-62a0-43ef-b7ac-a58a95b15802",
+          "fromCrossProjectFallback": false,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "cursorAdapter",
+          "projectId": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectLabel": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectUnknown": false,
+          "provider": "cursor",
+          "sessionId": "05426fd60f6ff950ead2e426ca29ed026d297cba2bfc1b8fd9f3d3e104bab81d",
+          "status": "discovered",
+          "title": "Visual acceptance exploration",
+          "updatedAtMs": 1791213438674,
+          "workId": "05426fd60f6ff950ead2e426ca29ed026d297cba2bfc1b8fd9f3d3e104bab81d"
+        },
+        {
+          "agentKind": "cursor",
+          "externalSessionId": "050a5bbd-8c45-4163-986a-03872bf50b51",
+          "fromCrossProjectFallback": false,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "cursorAdapter",
+          "projectId": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectLabel": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectUnknown": false,
+          "provider": "cursor",
+          "sessionId": "9e4a5710598c3e143bb39a3789d96e21fd127cc925c1c83866feace076e2b557",
+          "status": "discovered",
+          "title": "Agent control acceptance analysis",
+          "updatedAtMs": 1791213436427,
+          "workId": "9e4a5710598c3e143bb39a3789d96e21fd127cc925c1c83866feace076e2b557"
+        },
+        {
+          "agentKind": "cursor",
+          "externalSessionId": "b6b8c697-26d6-4d4c-ae17-eef041bc46bc",
+          "fromCrossProjectFallback": false,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "cursorAdapter",
+          "projectId": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectLabel": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectUnknown": false,
+          "provider": "cursor",
+          "sessionId": "7057051086a059f800352c3372aa0b37107b9c4259efe49c6c11d819557b0f97",
+          "status": "discovered",
+          "title": "Cursor projection logic",
+          "updatedAtMs": 1791213435394,
+          "workId": "7057051086a059f800352c3372aa0b37107b9c4259efe49c6c11d819557b0f97"
+        },
+        {
+          "agentKind": "cursor",
+          "externalSessionId": "078f3cd4-5623-48b3-8883-4044d3abb344",
+          "fromCrossProjectFallback": false,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "cursorAdapter",
+          "projectId": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectLabel": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectUnknown": false,
+          "provider": "cursor",
+          "sessionId": "f86ca5d6178e64e877cf0648a0ffc24ee8dc4cecbaf1ffc1ae0df1df2e53ee91",
+          "status": "discovered",
+          "title": "Audit agent-center home UI",
+          "updatedAtMs": 1791202153627,
+          "workId": "f86ca5d6178e64e877cf0648a0ffc24ee8dc4cecbaf1ffc1ae0df1df2e53ee91"
+        },
+        {
+          "agentKind": "cursor",
+          "externalSessionId": "acbd742b-3dbf-43c3-bddf-ffefdc215b5f",
+          "fromCrossProjectFallback": false,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "cursorAdapter",
+          "projectId": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectLabel": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectUnknown": false,
+          "provider": "cursor",
+          "sessionId": "321b8f2c4d99d6648da9b229631957ce8fd1eedfe930769a7a6c6ae57032dd1e",
+          "status": "discovered",
+          "title": "Explore data_root + AgentCenter",
+          "updatedAtMs": 1791192483120,
+          "workId": "321b8f2c4d99d6648da9b229631957ce8fd1eedfe930769a7a6c6ae57032dd1e"
+        },
+        {
+          "agentKind": "cursor",
+          "externalSessionId": "057b891d-62e0-479b-a759-0d599793c1e5",
+          "fromCrossProjectFallback": false,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "cursorAdapter",
+          "projectId": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectLabel": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectUnknown": false,
+          "provider": "cursor",
+          "sessionId": "dc8c82f09c8e355316f7242a8414b87cfe898c7ffb9a30f933d819d117b29e84",
+          "status": "discovered",
+          "title": "Explore E2E harness",
+          "updatedAtMs": 1791192480659,
+          "workId": "dc8c82f09c8e355316f7242a8414b87cfe898c7ffb9a30f933d819d117b29e84"
+        },
+        {
+          "agentKind": "cursor",
+          "externalSessionId": "64ba49d2-6268-4944-8635-fee2ce6dd082",
+          "fromCrossProjectFallback": false,
+          "isActive": false,
+          "laneId": null,
+          "metaSource": "cursorAdapter",
+          "projectId": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectLabel": "proj_3e6e31125ddf198ae84dce300b62a3c5684b29a8f4a1ce272c1d22ffb5da5773",
+          "projectUnknown": false,
+          "provider": "cursor",
+          "sessionId": "ed26fe44db7b4253c7dd00f9bc5cd9197998b206bab0d4592b197ef94c3ce063",
+          "status": "completed",
+          "title": "Temp 文件夹大文件",
+          "updatedAtMs": 1791191689397,
+          "workId": "ed26fe44db7b4253c7dd00f9bc5cd9197998b206bab0d4592b197ef94c3ce063"
+        }
+      ],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:cursor",
+          "confidence": "high",
+          "detail": "C:\\Users\\pstem\\AppData\\Roaming\\Cursor\\User\\globalStorage\\state.vscdb",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110783,
+          "rawName": "Cursor",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "oversized_db",
+          "detail": "oversized_db"
+        },
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "workflow",
+          "supported": true,
+          "enabled": true,
+          "executor": "focusApp:cursor-chat",
+          "state": "available",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "checkpointPreview:313300b9c16c726da93eee2096774eae44e58d891582db8520c681ea6d5dfdff"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "hotkey",
+          "supported": true,
+          "enabled": false,
+          "reason": "not_running",
+          "state": "unavailable",
+          "source": "inferred",
+          "confidence": "medium",
+          "observedAt": 1791260668576,
+          "freshUntil": 1791260728576
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot · running",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "sessionMeta",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:gemini",
+      "runtimeKind": "gemini",
+      "displayName": "Gemini CLI",
+      "formFactor": "cli",
+      "presenceState": "detected",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "degraded",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668576,
+        "freshUntil": 1791260728576,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\.gemini",
+      "lastProbeAt": 1791260668551,
+      "lastSyncAt": 1790873991753,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668576
+        },
+        "sessionMetadata": {
+          "state": "limited",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668576
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668576
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668576
+        },
+        "focus": {
+          "state": "unavailable",
+          "source": "executor",
+          "reason": "no_focus_executor",
+          "updatedAt": 1791260668576
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "gemini",
+        "freshUntil": 1791260728576,
+        "observedAt": 1791260668576,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:gemini",
+          "confidence": "high",
+          "detail": "C:\\Users\\pstem\\.gemini",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110788,
+          "rawName": "Gemini CLI",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_focus_executor",
+          "state": "unavailable",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "discovered:marvis",
+      "displayName": "Marvis",
+      "formFactor": "desktop",
+      "presenceState": "detected",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "degraded",
+        "runtime": "unknown",
+        "integration": "unknown"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "none",
+        "observedAt": 1791260668576,
+        "freshUntil": 1791260668576,
+        "confidence": "low"
+      },
+      "dataPath": "C:\\Users\\pstem\\.marvis",
+      "lastProbeAt": 1791260668569,
+      "lastSyncAt": 1790609561625,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668576
+        },
+        "sessionMetadata": {
+          "state": "limited",
+          "source": "adapter",
+          "reason": "discovered_only",
+          "updatedAt": 1791260668576
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "realtimeStatus": {
+          "state": "unknown",
+          "source": "discovered",
+          "updatedAt": 1791260668576
+        },
+        "hooks": {
+          "state": "unknown",
+          "source": "discovered",
+          "reason": "no_runtime_kind",
+          "updatedAt": 1791260668576
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "discovered",
+          "reason": "no_runtime_kind",
+          "updatedAt": 1791260668576
+        },
+        "focus": {
+          "state": "unavailable",
+          "source": "discovered",
+          "reason": "no_runtime_kind",
+          "updatedAt": 1791260668576
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "discovered:marvis",
+          "confidence": "medium",
+          "detail": "C:\\Users\\pstem\\.marvis",
+          "mappingBasis": "discovered_path",
+          "probedAtMs": 1791114110807,
+          "rawName": "Marvis",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "discovered_only",
+          "detail": "discovered_only"
+        },
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_focus",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unknown",
+          "source": "none",
+          "confidence": "low"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "none"
+    },
+    {
+      "agentId": "kind:minimax",
+      "runtimeKind": "minimax",
+      "displayName": "MiniMax",
+      "formFactor": "desktop",
+      "presenceState": "detected",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "degraded",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668576,
+        "freshUntil": 1791260728576,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\.minimax",
+      "lastProbeAt": 1791260668547,
+      "lastSyncAt": 1791258032643,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668576
+        },
+        "sessionMetadata": {
+          "state": "limited",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668576
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668576
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668576
+        },
+        "focus": {
+          "state": "available",
+          "source": "executor",
+          "updatedAt": 1791260668576
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "minimax",
+        "freshUntil": 1791260728576,
+        "observedAt": 1791260668576,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:minimax",
+          "confidence": "high",
+          "detail": "C:\\Users\\pstem\\.minimax",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110785,
+          "rawName": "MiniMax",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "workflow",
+          "supported": true,
+          "enabled": true,
+          "executor": "focusApp:minimax-chat",
+          "state": "available",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "discovered:openclaw",
+      "displayName": "OpenClaw",
+      "formFactor": "desktop",
+      "presenceState": "detected",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "degraded",
+        "runtime": "unknown",
+        "integration": "unknown"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "none",
+        "observedAt": 1791260668576,
+        "freshUntil": 1791260668576,
+        "confidence": "low"
+      },
+      "dataPath": "C:\\Users\\pstem\\.openclaw",
+      "lastProbeAt": 1791260668568,
+      "lastSyncAt": 1789759356693,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668576
+        },
+        "sessionMetadata": {
+          "state": "limited",
+          "source": "adapter",
+          "reason": "discovered_only",
+          "updatedAt": 1791260668576
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "realtimeStatus": {
+          "state": "unknown",
+          "source": "discovered",
+          "updatedAt": 1791260668576
+        },
+        "hooks": {
+          "state": "unknown",
+          "source": "discovered",
+          "reason": "no_runtime_kind",
+          "updatedAt": 1791260668576
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "discovered",
+          "reason": "no_runtime_kind",
+          "updatedAt": 1791260668576
+        },
+        "focus": {
+          "state": "unavailable",
+          "source": "discovered",
+          "reason": "no_runtime_kind",
+          "updatedAt": 1791260668576
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "discovered:openclaw",
+          "confidence": "medium",
+          "detail": "C:\\Users\\pstem\\.openclaw",
+          "mappingBasis": "discovered_path",
+          "probedAtMs": 1791114110805,
+          "rawName": "OpenClaw",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "discovered_only",
+          "detail": "discovered_only"
+        },
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_focus",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unknown",
+          "source": "none",
+          "confidence": "low"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "none"
+    },
+    {
+      "agentId": "kind:opencode",
+      "runtimeKind": "opencode",
+      "displayName": "OpenCode",
+      "formFactor": "cli",
+      "presenceState": "not_found",
+      "presence": {
+        "installation": "notFound",
+        "dataSource": "unknown",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668576,
+        "freshUntil": 1791260728576,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\AppData\\Local\\opencode",
+      "lastProbeAt": 1791260668563,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668576
+        },
+        "sessionMetadata": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668576
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668576
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668576
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668576
+        },
+        "focus": {
+          "state": "unavailable",
+          "source": "executor",
+          "reason": "no_focus_executor",
+          "updatedAt": 1791260668576
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "opencode",
+        "freshUntil": 1791260728576,
+        "observedAt": 1791260668576,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:opencode",
+          "confidence": "low",
+          "detail": "missing:C:\\Users\\pstem\\AppData\\Local\\opencode",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110802,
+          "rawName": "OpenCode",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_focus_executor",
+          "state": "unavailable",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:qoder",
+      "runtimeKind": "qoder",
+      "displayName": "Qoder",
+      "formFactor": "ide",
+      "presenceState": "detected",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "readable",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668577,
+        "freshUntil": 1791260728577,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\AppData\\Roaming\\com.qodercn.app.stable\\main.sqlite",
+      "lastProbeAt": 1791260668559,
+      "lastSyncAt": 1790818274043,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668577
+        },
+        "sessionMetadata": {
+          "state": "available",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668577
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668577
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668577
+        },
+        "focus": {
+          "state": "available",
+          "source": "executor",
+          "updatedAt": 1791260668577
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "qoder",
+        "freshUntil": 1791260728577,
+        "observedAt": 1791260668577,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:qoder",
+          "confidence": "high",
+          "detail": "C:\\Users\\pstem\\AppData\\Roaming\\com.qodercn.app.stable\\main.sqlite",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110797,
+          "rawName": "Qoder",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "workflow",
+          "supported": true,
+          "enabled": true,
+          "executor": "focusApp:qoder-chat",
+          "state": "available",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:roo",
+      "runtimeKind": "roo",
+      "displayName": "Roo",
+      "formFactor": "cli",
+      "presenceState": "not_found",
+      "presence": {
+        "installation": "notFound",
+        "dataSource": "unknown",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668577,
+        "freshUntil": 1791260728577,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\.roo",
+      "lastProbeAt": 1791260668561,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668577
+        },
+        "sessionMetadata": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668577
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668577
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668577
+        },
+        "focus": {
+          "state": "unavailable",
+          "source": "executor",
+          "reason": "no_focus_executor",
+          "updatedAt": 1791260668577
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "roo",
+        "freshUntil": 1791260728577,
+        "observedAt": 1791260668577,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:roo",
+          "confidence": "low",
+          "detail": "missing:C:\\Users\\pstem\\.roo",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110801,
+          "rawName": "Roo",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_focus_executor",
+          "state": "unavailable",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:traeCode",
+      "runtimeKind": "traeCode",
+      "displayName": "Trae Code",
+      "formFactor": "ide",
+      "presenceState": "detected",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "readable",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668577,
+        "freshUntil": 1791260728577,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\AppData\\Roaming\\Trae CN\\User\\globalStorage\\state.vscdb",
+      "lastProbeAt": 1791260668556,
+      "lastSyncAt": 1789745343986,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668577
+        },
+        "sessionMetadata": {
+          "state": "available",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668577
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668577
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668577
+        },
+        "focus": {
+          "state": "available",
+          "source": "executor",
+          "updatedAt": 1791260668577
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "traeCode",
+        "freshUntil": 1791260728577,
+        "observedAt": 1791260668577,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:traeCode",
+          "confidence": "high",
+          "detail": "C:\\Users\\pstem\\AppData\\Roaming\\Trae CN\\User\\globalStorage\\state.vscdb",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110793,
+          "rawName": "Trae Code",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "workflow",
+          "supported": true,
+          "enabled": true,
+          "executor": "focusApp:trae-code",
+          "state": "available",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:trae",
+      "runtimeKind": "trae",
+      "displayName": "Trae Work",
+      "formFactor": "desktop",
+      "presenceState": "detected",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "readable",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668577,
+        "freshUntil": 1791260728577,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\AppData\\Roaming\\TRAE SOLO CN\\User\\globalStorage\\state.vscdb",
+      "lastProbeAt": 1791260668555,
+      "lastSyncAt": 1790859083732,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668577
+        },
+        "sessionMetadata": {
+          "state": "available",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668577
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668577
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668577
+        },
+        "focus": {
+          "state": "available",
+          "source": "executor",
+          "updatedAt": 1791260668577
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "trae",
+        "freshUntil": 1791260728577,
+        "observedAt": 1791260668577,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:trae",
+          "confidence": "high",
+          "detail": "C:\\Users\\pstem\\AppData\\Roaming\\TRAE SOLO CN\\User\\globalStorage\\state.vscdb",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110791,
+          "rawName": "Trae Work",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "workflow",
+          "supported": true,
+          "enabled": true,
+          "executor": "focusApp:trae-work",
+          "state": "available",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:windsurf",
+      "runtimeKind": "windsurf",
+      "displayName": "Windsurf",
+      "formFactor": "ide",
+      "presenceState": "not_found",
+      "presence": {
+        "installation": "notFound",
+        "dataSource": "unknown",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668577,
+        "freshUntil": 1791260728577,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\AppData\\Roaming\\Windsurf",
+      "lastProbeAt": 1791260668558,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668577
+        },
+        "sessionMetadata": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668577
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668577
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668577
+        },
+        "focus": {
+          "state": "unavailable",
+          "source": "executor",
+          "reason": "no_focus_executor",
+          "updatedAt": 1791260668577
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "windsurf",
+        "freshUntil": 1791260728577,
+        "observedAt": 1791260668577,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:windsurf",
+          "confidence": "low",
+          "detail": "missing:C:\\Users\\pstem\\AppData\\Roaming\\Windsurf",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110795,
+          "rawName": "Windsurf",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_focus_executor",
+          "state": "unavailable",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    },
+    {
+      "agentId": "kind:workbuddy",
+      "runtimeKind": "workbuddy",
+      "displayName": "WorkBuddy",
+      "formFactor": "desktop",
+      "presenceState": "detected",
+      "presence": {
+        "installation": "installed",
+        "dataSource": "readable",
+        "runtime": "unknown",
+        "integration": "partial"
+      },
+      "status": "unknown",
+      "observedStatus": {
+        "value": "unknown",
+        "source": "inferred",
+        "observedAt": 1791260668577,
+        "freshUntil": 1791260728577,
+        "confidence": "medium"
+      },
+      "dataPath": "C:\\Users\\pstem\\.workbuddy\\workbuddy.db",
+      "lastProbeAt": 1791260668553,
+      "lastSyncAt": 1791221781108,
+      "resolvedCapabilities": {
+        "usage": {
+          "state": "unknown",
+          "source": "probe",
+          "updatedAt": 1791260668577
+        },
+        "sessionMetadata": {
+          "state": "available",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "transcript": {
+          "state": "unknown",
+          "source": "adapter",
+          "updatedAt": 1791260668577
+        },
+        "realtimeStatus": {
+          "state": "limited",
+          "source": "attention",
+          "reason": "memory_process_state",
+          "updatedAt": 1791260668577
+        },
+        "hooks": {
+          "state": "available",
+          "source": "catalog",
+          "updatedAt": 1791260668577
+        },
+        "resume": {
+          "state": "unavailable",
+          "source": "catalog",
+          "reason": "no_resume",
+          "updatedAt": 1791260668577
+        },
+        "focus": {
+          "state": "available",
+          "source": "executor",
+          "updatedAt": 1791260668577
+        }
+      },
+      "metrics": {
+        "todaySessions": {
+          "value": 0.0,
+          "basis": "local",
+          "source": "agent_home_snapshot"
+        },
+        "todayCostUsd": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_official_cost_source"
+        },
+        "tokens": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_token_aggregate"
+        },
+        "averageDurationMs": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_duration_source"
+        },
+        "successRate": {
+          "value": null,
+          "basis": "unavailable",
+          "unavailableReason": "no_stable_success_source"
+        }
+      },
+      "attention": {
+        "agent": "workbuddy",
+        "freshUntil": 1791260728577,
+        "observedAt": 1791260668577,
+        "source": "inferred",
+        "state": "unknown"
+      },
+      "recentWork": [],
+      "unscopedRecentWork": [],
+      "evidence": [
+        {
+          "canonicalAgentId": "kind:workbuddy",
+          "confidence": "high",
+          "detail": "C:\\Users\\pstem\\.workbuddy\\workbuddy.db",
+          "mappingBasis": "known_data_path",
+          "probedAtMs": 1791114110790,
+          "rawName": "WorkBuddy",
+          "source": "config_dir"
+        }
+      ],
+      "limitations": [
+        {
+          "code": "center_pad_may_diverge",
+          "detail": "Agent Center action outcome is independent of Soft Pad lights"
+        }
+      ],
+      "actions": [
+        {
+          "id": "agent.focus",
+          "label": "View",
+          "scope": "externalAgent",
+          "support": "workflow",
+          "supported": true,
+          "enabled": true,
+          "executor": "focusApp:workbuddy-chat",
+          "state": "available",
+          "source": "focusExecutor",
+          "confidence": "high"
+        },
+        {
+          "id": "session.resume",
+          "label": "Resume",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "no_resume",
+          "state": "unsupported",
+          "source": "catalog",
+          "confidence": "high"
+        },
+        {
+          "id": "checkpoint.preview",
+          "label": "Continuation brief",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": false,
+          "reason": "no_checkpoint"
+        },
+        {
+          "id": "agent.interrupt",
+          "label": "Interrupt",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "provider_unsupported",
+          "state": "unsupported",
+          "source": "inferred",
+          "confidence": "high"
+        },
+        {
+          "id": "ui.open_config",
+          "label": "Open config",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:softPad"
+        },
+        {
+          "id": "ui.open_data",
+          "label": "View data",
+          "scope": "oneToneUi",
+          "support": "unsupported",
+          "supported": true,
+          "enabled": true,
+          "executor": "clientNavigation:data"
+        },
+        {
+          "id": "export_history",
+          "label": "Export history",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        },
+        {
+          "id": "disable_source",
+          "label": "Disable source",
+          "scope": "externalAgent",
+          "support": "unsupported",
+          "supported": false,
+          "enabled": false,
+          "reason": "not_wired"
+        }
+      ],
+      "title": "voice-pilot",
+      "titleSource": "derived",
+      "titleConfidence": "medium",
+      "titleDerivedFrom": "project",
+      "statusSource": "observedStatus:inferred",
+      "integrationLabel": "observed"
+    }
+  ],
+  "recommendedAgentId": "kind:claude",
+  "recommendationReason": "needs_attention_or_connected",
+  "recommendationConfidence": "medium",
+  "recommendationFreshUntil": 1791260788431,
+  "groups": {
+    "needsAttention": [],
+    "connected": [
+      "kind:claude",
+      "kind:codex",
+      "kind:gemini",
+      "kind:minimax",
+      "kind:qoder",
+      "kind:traeCode",
+      "kind:trae",
+      "kind:workbuddy"
+    ],
+    "discoveredLimited": [
+      "discovered:antigravity",
+      "kind:cursor",
+      "discovered:marvis",
+      "discovered:openclaw"
+    ],
+    "supportedNotFound": [
+      "kind:aider",
+      "kind:cline",
+      "kind:copilotCli",
+      "kind:copilotVscode",
+      "kind:opencode",
+      "kind:roo",
+      "kind:windsurf"
+    ]
+  },
+  "attentionState": "ready",
+  "asOf": 1791260668577,
+  "homeSessionIds": [
+    "313300b9c16c726da93eee2096774eae44e58d891582db8520c681ea6d5dfdff",
+    "05426fd60f6ff950ead2e426ca29ed026d297cba2bfc1b8fd9f3d3e104bab81d",
+    "9e4a5710598c3e143bb39a3789d96e21fd127cc925c1c83866feace076e2b557",
+    "7057051086a059f800352c3372aa0b37107b9c4259efe49c6c11d819557b0f97",
+    "f86ca5d6178e64e877cf0648a0ffc24ee8dc4cecbaf1ffc1ae0df1df2e53ee91",
+    "321b8f2c4d99d6648da9b229631957ce8fd1eedfe930769a7a6c6ae57032dd1e",
+    "dc8c82f09c8e355316f7242a8414b87cfe898c7ffb9a30f933d819d117b29e84",
+    "ed26fe44db7b4253c7dd00f9bc5cd9197998b206bab0d4592b197ef94c3ce063",
+    "ce40c5f91a382d2622f2492499a7789969f133da0ccac8e4b56f501f021d2a3d",
+    "e8840b9465fc9a33b31669f089cd179965d551ffe9706abc45fdeee73ae09f53",
+    "0cf4ffc57080b3e04600a931af421c2375f1b879b8064cea61763d2c9f58730c",
+    "695b6a492959440320319e7e17103b05887caadbe03c98332b8e73744f9ea883"
+  ],
+  "referencedSessionIds": [
+    "05426fd60f6ff950ead2e426ca29ed026d297cba2bfc1b8fd9f3d3e104bab81d",
+    "313300b9c16c726da93eee2096774eae44e58d891582db8520c681ea6d5dfdff",
+    "321b8f2c4d99d6648da9b229631957ce8fd1eedfe930769a7a6c6ae57032dd1e",
+    "7057051086a059f800352c3372aa0b37107b9c4259efe49c6c11d819557b0f97",
+    "9e4a5710598c3e143bb39a3789d96e21fd127cc925c1c83866feace076e2b557",
+    "dc8c82f09c8e355316f7242a8414b87cfe898c7ffb9a30f933d819d117b29e84",
+    "ed26fe44db7b4253c7dd00f9bc5cd9197998b206bab0d4592b197ef94c3ce063",
+    "f86ca5d6178e64e877cf0648a0ffc24ee8dc4cecbaf1ffc1ae0df1df2e53ee91"
+  ]
+}

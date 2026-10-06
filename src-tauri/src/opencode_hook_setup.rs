@@ -53,9 +53,7 @@ fn node_available() -> bool {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    cmd.output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    cmd.output().map(|o| o.status.success()).unwrap_or(false)
 }
 
 fn backup_path_for(settings: &Path) -> PathBuf {
@@ -137,10 +135,12 @@ pub fn setup_status() -> Result<ShellHookSetupStatus, String> {
     let plugin = plugin_absolute_path();
     let plugin_abs = plugin.to_string_lossy().replace('\\', "/");
     let paths = config_paths();
-    let primary = paths
-        .first()
-        .cloned()
-        .unwrap_or_else(|| home_dir().join(".config").join("opencode").join("opencode.json"));
+    let primary = paths.first().cloned().unwrap_or_else(|| {
+        home_dir()
+            .join(".config")
+            .join("opencode")
+            .join("opencode.json")
+    });
     let mut exists = false;
     let mut parse_ok = true;
     let mut configured = false;
@@ -190,7 +190,12 @@ pub fn install_confirm() -> ShellHookWriteResult {
     let target = config_paths()
         .into_iter()
         .find(|p| p.is_file())
-        .unwrap_or_else(|| home_dir().join(".config").join("opencode").join("opencode.json"));
+        .unwrap_or_else(|| {
+            home_dir()
+                .join(".config")
+                .join("opencode")
+                .join("opencode.json")
+        });
     if let Some(parent) = target.parent() {
         let _ = fs::create_dir_all(parent);
     }
@@ -224,7 +229,11 @@ pub fn install_confirm() -> ShellHookWriteResult {
             message: "installed".into(),
             backup_path: backup,
             added: if added { vec!["plugin".into()] } else { vec![] },
-            refreshed: if refreshed { vec!["plugin".into()] } else { vec![] },
+            refreshed: if refreshed {
+                vec!["plugin".into()]
+            } else {
+                vec![]
+            },
             removed: 0,
         },
         Err(e) => ShellHookWriteResult {

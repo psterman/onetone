@@ -27,15 +27,16 @@ const NORMAL_HEADER: [u8; 6] = [116, 99, 5, 16, 0, 0];
 const PRIVATE_HEADER: [u8; 6] = [18, 57, 32, 32, 2, 3];
 
 const NORMAL_LEFT: [u8; 64] = [
-    82, 9, 106, 213, 48, 54, 165, 56, 191, 64, 163, 158, 129, 243, 215, 251, 124, 227, 57, 130, 155,
-    47, 255, 135, 52, 142, 67, 68, 196, 222, 233, 203, 84, 123, 148, 50, 166, 194, 35, 61, 238, 76,
-    149, 11, 66, 250, 195, 78, 8, 46, 161, 102, 40, 217, 36, 178, 118, 91, 162, 73, 109, 139, 209,
-    37,
+    82, 9, 106, 213, 48, 54, 165, 56, 191, 64, 163, 158, 129, 243, 215, 251, 124, 227, 57, 130,
+    155, 47, 255, 135, 52, 142, 67, 68, 196, 222, 233, 203, 84, 123, 148, 50, 166, 194, 35, 61,
+    238, 76, 149, 11, 66, 250, 195, 78, 8, 46, 161, 102, 40, 217, 36, 178, 118, 91, 162, 73, 109,
+    139, 209, 37,
 ];
 const NORMAL_RIGHT: [u8; 64] = [
-    31, 221, 168, 51, 136, 7, 199, 49, 177, 18, 16, 89, 39, 128, 236, 95, 96, 81, 127, 169, 25, 181,
-    74, 13, 45, 229, 122, 159, 147, 201, 156, 239, 160, 224, 59, 77, 174, 42, 245, 176, 200, 235,
-    187, 60, 131, 83, 153, 97, 23, 43, 4, 126, 186, 119, 214, 38, 225, 105, 20, 99, 85, 33, 12, 125,
+    31, 221, 168, 51, 136, 7, 199, 49, 177, 18, 16, 89, 39, 128, 236, 95, 96, 81, 127, 169, 25,
+    181, 74, 13, 45, 229, 122, 159, 147, 201, 156, 239, 160, 224, 59, 77, 174, 42, 245, 176, 200,
+    235, 187, 60, 131, 83, 153, 97, 23, 43, 4, 126, 186, 119, 214, 38, 225, 105, 20, 99, 85, 33,
+    12, 125,
 ];
 const PRIVATE_LEFT: [u8; 64] = [
     191, 192, 216, 250, 122, 246, 220, 97, 31, 254, 98, 27, 8, 72, 71, 176, 135, 99, 96, 18, 127,
@@ -46,8 +47,8 @@ const PRIVATE_LEFT: [u8; 64] = [
 const PRIVATE_RIGHT: [u8; 64] = [
     246, 204, 26, 232, 232, 70, 129, 109, 223, 146, 169, 242, 23, 241, 105, 145, 50, 196, 165, 42,
     254, 120, 3, 54, 244, 207, 209, 85, 53, 6, 138, 106, 175, 148, 31, 204, 186, 186, 165, 182, 87,
-    142, 49, 10, 39, 110, 26, 154, 86, 56, 173, 125, 18, 64, 198, 225, 99, 99, 83, 82, 191, 134, 76,
-    170,
+    142, 49, 10, 39, 110, 26, 154, 86, 56, 173, 125, 18, 64, 198, 225, 99, 99, 83, 82, 191, 134,
+    76, 170,
 ];
 
 fn trae_roots() -> Vec<PathBuf> {
@@ -55,13 +56,7 @@ fn trae_roots() -> Vec<PathBuf> {
     if let Ok(appdata) = std::env::var("APPDATA") {
         let base = PathBuf::from(appdata);
         // TRAE SOLO first — most users on Soft Pad are Solo; then IDE / CN variants.
-        for name in [
-            "TRAE SOLO",
-            "TRAE SOLO CN",
-            "Trae CN",
-            "Trae",
-            "Trae IDE",
-        ] {
+        for name in ["TRAE SOLO", "TRAE SOLO CN", "Trae CN", "Trae", "Trae IDE"] {
             out.push(base.join(name));
         }
     }
@@ -72,10 +67,7 @@ fn find_storage() -> Option<PathBuf> {
     // Newest login wins when both Trae Work (SOLO) and Trae Code are installed.
     let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
     for root in trae_roots() {
-        let p = root
-            .join("User")
-            .join("globalStorage")
-            .join("storage.json");
+        let p = root.join("User").join("globalStorage").join("storage.json");
         let Ok(meta) = fs::metadata(&p) else {
             continue;
         };
@@ -88,7 +80,11 @@ fn find_storage() -> Option<PathBuf> {
         let Ok(storage) = serde_json::from_slice::<Value>(&raw) else {
             continue;
         };
-        if !storage.get(STORAGE_KEY).and_then(Value::as_str).is_some_and(|s| !s.is_empty()) {
+        if !storage
+            .get(STORAGE_KEY)
+            .and_then(Value::as_str)
+            .is_some_and(|s| !s.is_empty())
+        {
             continue;
         }
         let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
@@ -224,7 +220,10 @@ fn active_pack(pack: &Value) -> bool {
     let Some(end_time) = pack
         .get("expire_time")
         .or_else(|| pack.pointer("/entitlement_base_info/end_time"))
-        .and_then(|v| v.as_i64().or_else(|| v.as_str().and_then(|t| t.parse().ok())))
+        .and_then(|v| {
+            v.as_i64()
+                .or_else(|| v.as_str().and_then(|t| t.parse().ok()))
+        })
     else {
         return true;
     };
@@ -328,9 +327,12 @@ pub fn parse_trae_entitlement(value: &Value) -> Result<AgentUsageSnapshot, Strin
             _ => {}
         }
 
-        let fast_limit =
-            number(quota.get("premium_model_fast_request_limit").unwrap_or(&Value::Null))
-                .unwrap_or(0.0);
+        let fast_limit = number(
+            quota
+                .get("premium_model_fast_request_limit")
+                .unwrap_or(&Value::Null),
+        )
+        .unwrap_or(0.0);
         if fast_limit > 0.0 {
             fast_total += fast_limit;
             fast_used += number(
@@ -440,7 +442,12 @@ pub fn parse_trae_entitlement(value: &Value) -> Result<AgentUsageSnapshot, Strin
     // If we have rem_pct from basic/fast, set windows.
     let mut windows = Vec::new();
     if let Some(pct) = rem_pct {
-        windows.push(window_from_remaining_pct("plan_credits", "primary", pct, None));
+        windows.push(window_from_remaining_pct(
+            "plan_credits",
+            "primary",
+            pct,
+            None,
+        ));
     }
 
     let now = now_ms();
@@ -582,7 +589,11 @@ mod tests {
             }]
         });
         let snap = parse_trae_entitlement(&v).expect("parse");
-        assert!(snap.message.contains("速通请求 10 / 10"), "{}", snap.message);
+        assert!(
+            snap.message.contains("速通请求 10 / 10"),
+            "{}",
+            snap.message
+        );
     }
 
     #[test]

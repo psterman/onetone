@@ -154,7 +154,9 @@ pub fn probe_script_path() -> PathBuf {
 }
 
 pub fn statusline_probe_script_path() -> PathBuf {
-    repo_root().join("scripts").join("claude-statusline-probe.js")
+    repo_root()
+        .join("scripts")
+        .join("claude-statusline-probe.js")
 }
 
 pub fn probe_script_abs_slash() -> String {
@@ -227,16 +229,17 @@ pub fn statusline_ownership(root: &Value) -> &'static str {
 
 /// Install or refresh OneTone statusLine. Returns Ok(action) where action is
 /// added | refreshed | skipped_foreign | skipped_malformed | unchanged.
-pub fn merge_onetone_statusline(root: &mut Value, probe_abs: &str) -> Result<&'static str, &'static str> {
+pub fn merge_onetone_statusline(
+    root: &mut Value,
+    probe_abs: &str,
+) -> Result<&'static str, &'static str> {
     let ownership = statusline_ownership(root);
     match ownership {
         "foreign" => Ok("skipped_foreign"),
         "malformed" => Ok("skipped_malformed"),
         "missing" | "onetone_owned" => {
             let cmd = build_onetone_statusline_command(probe_abs);
-            let obj = root
-                .as_object_mut()
-                .ok_or("settings_not_object")?;
+            let obj = root.as_object_mut().ok_or("settings_not_object")?;
             let already = obj
                 .get("statusLine")
                 .and_then(|v| v.get("command"))
@@ -339,7 +342,11 @@ fn walk_commands_mut(event_val: &mut Value, mut f: impl FnMut(&mut String) -> bo
             continue;
         };
         for hook in hooks.iter_mut() {
-            let Some(cmd) = hook.get_mut("command").and_then(|c| c.as_str()).map(|s| s.to_string()) else {
+            let Some(cmd) = hook
+                .get_mut("command")
+                .and_then(|c| c.as_str())
+                .map(|s| s.to_string())
+            else {
                 continue;
             };
             if !command_has_onetone_id(&cmd) {
@@ -496,12 +503,10 @@ pub fn merge_onetone_hooks(root: &mut Value, probe_abs: &str) -> MergeStats {
             // Also refresh timeout on PermissionRequest etc.
             if let Some(arr) = entry.as_array_mut() {
                 for matcher in arr.iter_mut() {
-                    if let Some(hooks_arr) = matcher.get_mut("hooks").and_then(|h| h.as_array_mut()) {
+                    if let Some(hooks_arr) = matcher.get_mut("hooks").and_then(|h| h.as_array_mut())
+                    {
                         for hook in hooks_arr.iter_mut() {
-                            let cmd = hook
-                                .get("command")
-                                .and_then(|c| c.as_str())
-                                .unwrap_or("");
+                            let cmd = hook.get("command").and_then(|c| c.as_str()).unwrap_or("");
                             if command_has_onetone_id(cmd) {
                                 hook.as_object_mut()
                                     .map(|o| o.insert("timeout".into(), json!(timeout)));
@@ -633,8 +638,7 @@ fn civil_from_days(days: i64) -> (i32, u32, u32) {
 pub fn backup_path_for(settings: &Path) -> PathBuf {
     let parent = settings.parent().unwrap_or_else(|| Path::new("."));
     let stamp = now_stamp();
-    let mut candidate =
-        parent.join(format!("settings.json.onetone-backup-{stamp}"));
+    let mut candidate = parent.join(format!("settings.json.onetone-backup-{stamp}"));
     let mut n = 0u32;
     while candidate.exists() {
         n += 1;
@@ -683,7 +687,9 @@ fn read_settings_value(path: &Path) -> Result<Option<Value>, String> {
     if raw.trim().is_empty() {
         return Ok(Some(json!({})));
     }
-    serde_json::from_str(&raw).map(Some).map_err(|e| format!("invalid_json:{e}"))
+    serde_json::from_str(&raw)
+        .map(Some)
+        .map_err(|e| format!("invalid_json:{e}"))
 }
 
 fn human_diff(stats: &MergeStats, onetone_before: bool) -> String {
@@ -934,8 +940,10 @@ pub fn setup_status(inputs: StatusInputs) -> ClaudeHookSetupStatus {
             "foreign" => issues.push(ClaudeHookIssue {
                 severity: "warn".into(),
                 title: "statusLine 已被占用".into(),
-                reason: "Claude settings.statusLine 已有第三方或自定义命令；OneTone 不会覆盖。".into(),
-                action: "手动把 statusLine.command 改为 OneTone relay，或先移除现有 statusLine。".into(),
+                reason: "Claude settings.statusLine 已有第三方或自定义命令；OneTone 不会覆盖。"
+                    .into(),
+                action: "手动把 statusLine.command 改为 OneTone relay，或先移除现有 statusLine。"
+                    .into(),
             }),
             "malformed" => issues.push(ClaudeHookIssue {
                 severity: "warn".into(),
@@ -1106,8 +1114,10 @@ pub fn install_confirm() -> ClaudeHookWriteResult {
         reason: if stats.added.is_empty()
             && stats.refreshed.is_empty()
             && otel_added == 0
-            && matches!(statusline_action, "unchanged" | "skipped_foreign" | "skipped_malformed")
-        {
+            && matches!(
+                statusline_action,
+                "unchanged" | "skipped_foreign" | "skipped_malformed"
+            ) {
             if statusline_action == "skipped_foreign" {
                 "statusline_foreign".into()
             } else if statusline_action == "skipped_malformed" {
@@ -1243,10 +1253,8 @@ mod tests {
 
     fn with_temp_settings<F: FnOnce(&Path)>(f: F) {
         let _g = TEST_LOCK.lock().unwrap();
-        let dir = std::env::temp_dir().join(format!(
-            "onetone-claude-hook-test-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("onetone-claude-hook-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let settings = dir.join("settings.json");
@@ -1289,9 +1297,11 @@ mod tests {
             .unwrap()
             .iter()
             .any(|m| {
-                m["hooks"].as_array().unwrap().iter().any(|h| {
-                    h["command"].as_str() == Some("echo user")
-                })
+                m["hooks"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|h| h["command"].as_str() == Some("echo user"))
             });
         assert!(user_still);
         let s2 = merge_onetone_hooks(&mut root, "C:/repo/scripts/claude-hook-probe.js");
@@ -1345,10 +1355,7 @@ mod tests {
         let n = uninstall_onetone_hooks(&mut root);
         assert_eq!(n, 1);
         assert_eq!(root["hooks"]["Stop"].as_array().unwrap().len(), 1);
-        assert_eq!(
-            root["hooks"]["Stop"][0]["hooks"][0]["command"],
-            "echo mine"
-        );
+        assert_eq!(root["hooks"]["Stop"][0]["hooks"][0]["command"], "echo mine");
     }
 
     #[test]
@@ -1360,7 +1367,8 @@ mod tests {
             if probe_script_path().is_file() && probe_node_available() {
                 assert!(r.ok, "{}", r.reason);
                 assert!(settings.is_file());
-                let v: Value = serde_json::from_str(&fs::read_to_string(settings).unwrap()).unwrap();
+                let v: Value =
+                    serde_json::from_str(&fs::read_to_string(settings).unwrap()).unwrap();
                 assert!(onetone_configured(&v));
                 // Second install idempotent
                 let r2 = install_confirm();
@@ -1407,7 +1415,8 @@ mod tests {
         let mut root = json!({ "theme": "dark" });
         assert_eq!(statusline_ownership(&root), "missing");
         assert_eq!(
-            merge_onetone_statusline(&mut root, "C:/repo/scripts/claude-statusline-probe.js").unwrap(),
+            merge_onetone_statusline(&mut root, "C:/repo/scripts/claude-statusline-probe.js")
+                .unwrap(),
             "added"
         );
         assert_eq!(statusline_ownership(&root), "onetone_owned");

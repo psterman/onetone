@@ -78,10 +78,7 @@ pub fn note_ipc_exit(name: &str) {
 }
 
 pub fn ipc_inflight_snapshot() -> (String, u64) {
-    let name = IPC_INFLIGHT
-        .lock()
-        .map(|g| g.clone())
-        .unwrap_or_default();
+    let name = IPC_INFLIGHT.lock().map(|g| g.clone()).unwrap_or_default();
     let since = IPC_INFLIGHT_MS.load(Ordering::Acquire);
     let held = if since == 0 || name.is_empty() {
         0
@@ -256,10 +253,7 @@ pub fn last_ping_age_ms() -> u64 {
 }
 
 pub fn activity_tag_snapshot() -> String {
-    ACTIVITY_TAG
-        .lock()
-        .map(|g| g.clone())
-        .unwrap_or_default()
+    ACTIVITY_TAG.lock().map(|g| g.clone()).unwrap_or_default()
 }
 
 pub fn last_seq() -> u64 {

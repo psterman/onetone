@@ -31,7 +31,12 @@ pub fn hook_dirs() -> Vec<PathBuf> {
     let home = home_dir();
     let mut out = vec![home.join(".cline").join("hooks")];
     if let Ok(doc) = std::env::var("USERPROFILE") {
-        out.push(PathBuf::from(doc).join("Documents").join("Cline").join("Hooks"));
+        out.push(
+            PathBuf::from(doc)
+                .join("Documents")
+                .join("Cline")
+                .join("Hooks"),
+        );
     } else {
         out.push(home.join("Documents").join("Cline").join("Hooks"));
     }
@@ -64,9 +69,7 @@ fn node_available() -> bool {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    cmd.output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    cmd.output().map(|o| o.status.success()).unwrap_or(false)
 }
 
 fn build_cmd_body(probe_abs: &str, event: &str) -> String {

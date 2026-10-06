@@ -2,9 +2,7 @@
 
 use crate::codex_app_state::{map_event_to_status, CodexAppStatePayload};
 use crate::pad_status::arbiter::DONE_SETTLE_MS;
-use crate::pad_status::model::{
-    Confidence, PadSource, PadState, PadStatus, PadStatusCandidate,
-};
+use crate::pad_status::model::{Confidence, PadSource, PadState, PadStatus, PadStatusCandidate};
 use crate::pad_status::store;
 
 /// Map Codex lifecycle event → core state string.
@@ -48,10 +46,7 @@ pub fn ingest_codex_app_payload_at(payload: &CodexAppStatePayload, now: u64) -> 
     }
 
     let cur = store::snapshot_at(now);
-    let sticky = matches!(
-        cur.state_enum(),
-        PadState::NeedsInput | PadState::Running
-    );
+    let sticky = matches!(cur.state_enum(), PadState::NeedsInput | PadState::Running);
     let foreign = !incoming_session.is_empty()
         && cur
             .session_id

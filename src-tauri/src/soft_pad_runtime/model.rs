@@ -87,7 +87,9 @@ impl AgentKind {
             "claude" => Some(AgentKind::Claude),
             "cursor" => Some(AgentKind::Cursor),
             "minimax" => Some(AgentKind::MiniMax),
-            "copilotCli" | "copilotcli" | "copilot_cli" | "copilot-cli" => Some(AgentKind::CopilotCli),
+            "copilotCli" | "copilotcli" | "copilot_cli" | "copilot-cli" => {
+                Some(AgentKind::CopilotCli)
+            }
             "copilotVscode" | "copilotvscode" | "copilot_vscode" | "copilot-vscode" => {
                 Some(AgentKind::CopilotVscode)
             }

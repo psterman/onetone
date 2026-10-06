@@ -131,9 +131,11 @@ pub fn diagnose_codex_pad_bindings(mapping: &MappingEntry) -> CodexPadBindingDia
 
         let trigger = if slot.is_empty() {
             String::new()
-        } else if let Some(b) = mapping.agent_bindings.iter().find(|b| {
-            b.slot_id == slot && b.trigger_type.eq_ignore_ascii_case("key")
-        }) {
+        } else if let Some(b) = mapping
+            .agent_bindings
+            .iter()
+            .find(|b| b.slot_id == slot && b.trigger_type.eq_ignore_ascii_case("key"))
+        {
             b.trigger_binding.trim().to_string()
         } else {
             String::new()
@@ -207,9 +209,10 @@ pub fn diagnose_codex_pad_bindings(mapping: &MappingEntry) -> CodexPadBindingDia
             continue;
         }
 
-        let key_bind = mapping.agent_bindings.iter().find(|b| {
-            b.slot_id == slot && b.trigger_type.eq_ignore_ascii_case("key")
-        });
+        let key_bind = mapping
+            .agent_bindings
+            .iter()
+            .find(|b| b.slot_id == slot && b.trigger_type.eq_ignore_ascii_case("key"));
         match key_bind {
             None => {
                 if expected {
@@ -304,9 +307,7 @@ pub fn diagnose_codex_pad_bindings(mapping: &MappingEntry) -> CodexPadBindingDia
                 r.slot_id.trim(),
                 format!(
                     "与 {} 共享 scan 0x{:02X} ext={}",
-                    other,
-                    r.source_scan,
-                    r.source_extended as u8
+                    other, r.source_scan, r.source_extended as u8
                 ),
             ));
         } else {
@@ -369,15 +370,17 @@ pub fn diagnose_codex_pad_bindings(mapping: &MappingEntry) -> CodexPadBindingDia
     }
 
     for ess in ESSENTIAL_SLOT_IDS {
-        let has_route = pad.keys.iter().any(|r| r.enabled && r.slot_id.trim() == *ess);
+        let has_route = pad
+            .keys
+            .iter()
+            .any(|r| r.enabled && r.slot_id.trim() == *ess);
         let has_bind = if *ess == "summonCodex" {
-            pad.keys.iter().any(|r| {
-                r.micro_key_id == "ENC" && r.enabled && r.slot_id.trim() == "summonCodex"
-            }) || mapping.agent_bindings.iter().any(|b| {
-                b.enabled
-                    && b.slot_id == *ess
-                    && b.trigger_type.eq_ignore_ascii_case("key")
-            })
+            pad.keys
+                .iter()
+                .any(|r| r.micro_key_id == "ENC" && r.enabled && r.slot_id.trim() == "summonCodex")
+                || mapping.agent_bindings.iter().any(|b| {
+                    b.enabled && b.slot_id == *ess && b.trigger_type.eq_ignore_ascii_case("key")
+                })
         } else {
             agent_key_binding_for_slot(mapping, ess).is_some()
         };
@@ -409,10 +412,7 @@ pub fn diagnose_codex_pad_bindings(mapping: &MappingEntry) -> CodexPadBindingDia
         }
     }
 
-    let error_count = issues
-        .iter()
-        .filter(|i| i.severity == "error")
-        .count() as u32;
+    let error_count = issues.iter().filter(|i| i.severity == "error").count() as u32;
     CodexPadBindingDiagnoseView {
         mapping_id: mapping.id.clone(),
         layout_profile: pad.layout_profile.clone(),
@@ -507,11 +507,11 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: crate::agent::bindings_build::build_codex_micro_13_bindings("zh-CN"),
             time_machine_workspace: String::new(),
-        capture_hero_ref: None,
-        gesture_modes: None,
-        oral_command_scheme: None,
-        target_actions: vec![],
-        assists: vec![],
+            capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
+            target_actions: vec![],
+            assists: vec![],
         }
     }
 
@@ -578,6 +578,10 @@ mod tests {
             "issues={:?}",
             view.issues
         );
-        assert!(view.ok, "warn-only should keep ok=true; issues={:?}", view.issues);
+        assert!(
+            view.ok,
+            "warn-only should keep ok=true; issues={:?}",
+            view.issues
+        );
     }
 }

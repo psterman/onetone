@@ -36,6 +36,10 @@ pub struct CodexAppStatePayload {
     pub agent_type: String,
     #[serde(default)]
     pub ts: u64,
+    /// Optional prompt text — production hook probes omit this (privacy).
+    /// Rust fixtures / future trusted paths may set it.
+    #[serde(default)]
+    pub prompt: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -332,6 +336,7 @@ mod tests {
             agent_id: String::new(),
             agent_type: String::new(),
             ts: 0,
+            prompt: String::new(),
         }
     }
 

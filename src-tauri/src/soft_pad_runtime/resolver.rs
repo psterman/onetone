@@ -1,7 +1,8 @@
 //! Pure Soft Pad lane resolver. No HWND / HookGate.
 
 use super::model::{
-    AgentKind, CandidateDecision, FollowMode, ForegroundEvidence, SelectionReason, FG_EVIDENCE_TTL_MS,
+    AgentKind, CandidateDecision, FollowMode, ForegroundEvidence, SelectionReason,
+    FG_EVIDENCE_TTL_MS,
 };
 use std::time::Instant;
 

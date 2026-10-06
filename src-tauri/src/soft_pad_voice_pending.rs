@@ -42,12 +42,7 @@ static GEN: LazyLock<Mutex<u64>> = LazyLock::new(|| Mutex::new(0));
 pub fn is_instant_voice_slot(slot_id: &str) -> bool {
     matches!(
         slot_id.trim(),
-        "pushToTalk"
-            | "stopOrSend"
-            | "continue"
-            | "newThread"
-            | "cancel"
-            | "cancelListen"
+        "pushToTalk" | "stopOrSend" | "continue" | "newThread" | "cancel" | "cancelListen"
     )
 }
 

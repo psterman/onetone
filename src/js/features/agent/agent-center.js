@@ -38,16 +38,32 @@
       encrypted: '加密不可读',
       limited: '受限',
       notFound: '未发现',
-      loadFailed: '暂时无法读取 Agent 状态',
+      loadFailed: '暂时无法读取状态',
       loadFailedHint: '检查应用是否在 Tauri 环境运行，或点击重试。',
-      showingStale: '显示上次成功快照（可能过期）',
+      showingStale: '正在展示上次成功快照，可能已经过期',
       sessions: '今日会话',
       cost: '成本',
       success: '成功率',
       avgDuration: '平均耗时',
       work: '工作记录',
       actionOk: '已执行',
-      actionFail: '执行失败',
+      actionFail: '操作失败',
+      actionAttemptedUnverified: '已发送停止指令，请自行确认',
+      actionVerifiedStop: '已确认 Agent 停止',
+      actionStopFail: '停止失败',
+      oneToneInitiated: '由 OneTone 发起',
+      managedLabel: '托管',
+      integratedLabel: '已接入',
+      observedLabel: '已观察',
+      detectedLabel: '已检测',
+      probeNotImplemented: '本机检测尚未接入',
+      centerPadDiverged: 'Agent Center 状态与 Soft Pad 灯可能不一致',
+      evidenceStale: '控制证据已过期',
+      titleSource: '标题来源',
+      statusSource: '状态来源',
+      cwdLabel: '工作目录',
+      integrationSummary: '接入摘要',
+      observedAt: '最近状态',
       openConfigFail: '无法打开 Agent 配置',
       openDataFail: '无法打开数据页',
       viewFail: '无法打开工作',
@@ -60,32 +76,117 @@
       completed: '已完成',
       limitedHist: '历史数据受限',
       noProjectWork: '暂无项目内工作',
+      recentPrompt: '最近提问',
+      recommend: '推荐',
       continueWork: '继续',
       previewBrief: '续作摘要',
-      viewWork: '查看',
-      interruptWork: '中断',
+      viewWork: '聚焦',
+      interruptWork: '停止',
       configWork: '配置',
       dataWork: '查看数据',
       exportWork: '导出',
       syncLabel: '最近同步',
-      resumable: '可恢复当前工作',
-      notResumable: '当前工作不可恢复',
-      controlPlaneUnavailable: '暂无后台控制面证据',
+      resumable: '可以继续',
+      notResumable: '当前不可继续',
+      controlPlaneUnavailable: '当前没有可用的控制证据',
       probeTimeout: 'Claude 探测超时',
       probeCommandFailed: 'Claude 探测失败',
       probeParseError: 'Claude 状态无法解析',
-      staleControlEvidence: '控制面证据已过期',
+      staleControlEvidence: '控制证据已过期',
       backgroundSessionNotFound: '未找到可中断的后台会话',
       backgroundSessionNotActive: '后台会话未在运行',
       staleObservation: '工作状态已过期',
-      stopCommandFailed: '中断命令失败',
-      stopTimeout: '中断命令超时',
-      stopNotVerified: '中断未得到确认',
-      postStopProbeFailed: '中断后状态无法确认',
+      stopCommandFailed: '停止命令失败',
+      stopTimeout: '停止命令超时',
+      stopNotVerified: '停止未得到确认',
+      postStopProbeFailed: '停止后状态无法确认',
+      noWindowTarget: '窗口不可定位',
+      ambiguousSession: '存在多个可能的会话，无法安全操作',
+      sessionNotFound: '找不到可操作的会话',
+      noMappingTarget: '没有可定位的 Cursor 控制目标',
+      noInterruptSession: '缺少可停止的会话目标',
+      supportNative: '可确认已停止',
+      supportHotkey: '尽力停止',
+      supportBestEffort: '尽力停止',
+      supportUnsupported: '不支持此操作',
+      providerUnsupportedInterrupt: '不支持',
+      notWired: '尚未接入',
+      presenceAxes: '存在轴',
+      actionEvidence: '动作证据',
+      evidenceBlock: '状态详情',
       capAvailable: '可用',
       capLimited: '受限',
       capUnavailable: '不可用',
-      capUnknown: '未知'
+      capUnknown: '未知',
+      overviewAria: 'Agent 总览',
+      overviewDiscovered: '已发现',
+      overviewWorking: '当前工作中',
+      overviewVerifiable: '可确认控制',
+      overviewBestEffort: '尽力控制',
+      overviewUnsupported: '不支持',
+      overviewUnknown: '尚未接入',
+      overviewByInterrupt: '按控制能力统计',
+      overviewConfirmable: '可确认控制',
+      overviewBestOnly: '尽力控制',
+      overviewSummaryLine: '另有 {notWired} 个尚未接入、{unsupported} 个不支持、{stale} 个状态已过期',
+      filterLabel: '筛选',
+      filterAll: '全部',
+      filterWorking: '正在工作',
+      filterVerifiable: '可确认控制',
+      filterBestEffort: '尽力控制',
+      filterUnsupported: '不支持',
+      filterUnknown: '尚未接入',
+      filterNotWired: '尚未接入',
+      filterStale: '状态过期',
+      legendInterrupt: '可确认控制具备后验通道；尽力控制需自行确认；尚未接入≠不支持',
+      interruptVerifiable: '可确认停止',
+      interruptConfirmablePending: '支持结果确认',
+      interruptBestEffort: '尽力停止',
+      interruptBestEffortHint: '发送后需要自行确认',
+      interruptUnsupported: '不支持',
+      interruptUnknown: '本机检测尚未接入',
+      interruptUnavailablePrefix: '不可控制',
+      interruptNotWiredDetail: '已发现安装，但无法判断工作状态',
+      acceptancePendingNote: '当前版本尚未完成真实 Provider 验收',
+      acceptanceRealNote: '本版本已完成真实 Provider 验收',
+      acceptanceNANote: '尽力控制 — 不适用后验验收',
+      detailWhy: '能力依据',
+      detailControlMode: '控制方式',
+      detailEvidenceSource: '证据来源',
+      detailResultConfirm: '结果确认方式',
+      detailUnavailableReason: '不可用原因',
+      detailAcceptance: '版本验收状态',
+      detailConfirmableChannel: '具备后验确认通道',
+      detailBestEffortChannel: '热键或窗口命令；无可靠后验确认',
+      detailNotWiredExplain: '这不代表 Provider 不支持，只是本机检测尚未接入',
+      notWiredCaps: '尚未接入能力',
+      evidenceStillValid: '仍然新鲜',
+      evidenceExpired: '证据已过期',
+      statusInfoExpired: '状态信息已过期',
+      evidenceUnconfirmable: '暂时无法确认',
+      evidenceRemaining: '还有效约 {n} 秒',
+      evidenceSource: '证据来源',
+      evidenceConfidence: '置信度',
+      evidenceValid: '信息是否新鲜',
+      capsBadges: '可以做什么',
+      detailWhere: '当前所在项目',
+      detailRecent: '最近状态',
+      detailFresh: '信息是否新鲜',
+      detailStopConfirm: '停止后的确认方式',
+      stopConfirmVerified: '停止后会显示确认结果',
+      stopConfirmBestEffort: '需要你自己确认',
+      stopConfirmUnknown: '接入检测后才能判断',
+      canFocus: '可以聚焦',
+      cannotFocus: '不能聚焦',
+      canContinue: '可以继续',
+      cannotContinue: '不能继续',
+      canStop: '可以停止',
+      cannotStop: '不能停止',
+      bestEffortStop: '尽力停止',
+      expandAgent: '展开详情',
+      collapseAgent: '收起详情',
+      rosterIntroInfo: '这里显示电脑上发现的 Agent，以及它们当前能做什么。',
+      rosterIntroWarn: '有些 Agent 只能尽力停止，完成后需要你自己确认。'
     },
     en: {
       groupNeeds: 'Needs attention',
@@ -113,16 +214,32 @@
       encrypted: 'Encrypted / unreadable',
       limited: 'Limited',
       notFound: 'Not found',
-      loadFailed: 'Unable to read Agent status',
+      loadFailed: 'Unable to read status right now',
       loadFailedHint: 'Ensure the app is running under Tauri, then retry.',
-      showingStale: 'Showing last successful snapshot (may be stale)',
+      showingStale: 'Showing last successful snapshot; it may be outdated',
       sessions: 'Sessions today',
       cost: 'Cost',
       success: 'Success rate',
       avgDuration: 'Avg duration',
       work: 'Work',
       actionOk: 'Done',
-      actionFail: 'Failed',
+      actionFail: 'Action failed',
+      actionAttemptedUnverified: 'Stop sent — please confirm yourself',
+      actionVerifiedStop: 'Agent stop confirmed',
+      actionStopFail: 'Stop failed',
+      oneToneInitiated: 'OneTone initiated',
+      managedLabel: 'Managed',
+      integratedLabel: 'Integrated',
+      observedLabel: 'Observed',
+      detectedLabel: 'Detected',
+      probeNotImplemented: 'Local detection not wired yet',
+      centerPadDiverged: 'Agent Center and Soft Pad lights may disagree',
+      evidenceStale: 'Control evidence expired',
+      titleSource: 'Title source',
+      statusSource: 'Status source',
+      cwdLabel: 'Working directory',
+      integrationSummary: 'Integration',
+      observedAt: 'Recent status',
       openConfigFail: 'Could not open Agent config',
       openDataFail: 'Could not open data page',
       viewFail: 'Could not open work',
@@ -135,21 +252,23 @@
       completed: 'Done',
       limitedHist: 'History limited',
       noProjectWork: 'No in-project work',
+      recentPrompt: 'Recent prompt',
+      recommend: 'Recommended',
       continueWork: 'Continue',
       previewBrief: 'Continuation brief',
-      viewWork: 'View',
+      viewWork: 'Focus',
       interruptWork: 'Stop',
       configWork: 'Configure',
       dataWork: 'View data',
       exportWork: 'Export',
       syncLabel: 'Last sync',
-      resumable: 'Current work is resumable',
-      notResumable: 'Current work is not resumable',
-      controlPlaneUnavailable: 'No background control-plane evidence',
+      resumable: 'Can continue',
+      notResumable: 'Cannot continue now',
+      controlPlaneUnavailable: 'No usable control evidence',
       probeTimeout: 'Claude probe timed out',
       probeCommandFailed: 'Claude probe failed',
       probeParseError: 'Claude status could not be parsed',
-      staleControlEvidence: 'Control-plane evidence is stale',
+      staleControlEvidence: 'Control evidence expired',
       backgroundSessionNotFound: 'No interruptible background session found',
       backgroundSessionNotActive: 'Background session is not active',
       staleObservation: 'Work observation is stale',
@@ -157,10 +276,96 @@
       stopTimeout: 'Stop command timed out',
       stopNotVerified: 'Stop was not verified',
       postStopProbeFailed: 'Could not confirm status after stop',
+      noWindowTarget: 'Window not addressable',
+      ambiguousSession: 'Multiple sessions match; cannot operate safely',
+      sessionNotFound: 'No operable session found',
+      noMappingTarget: 'No addressable Cursor control target',
+      noInterruptSession: 'No interruptible session target',
+      supportNative: 'Stop can be confirmed',
+      supportHotkey: 'Best-effort stop',
+      supportBestEffort: 'Best-effort stop',
+      supportUnsupported: 'This action is unsupported',
+      providerUnsupportedInterrupt: 'Unsupported',
+      notWired: 'Not wired yet',
+      presenceAxes: 'Presence',
+      actionEvidence: 'Action evidence',
+      evidenceBlock: 'Status details',
       capAvailable: 'available',
       capLimited: 'limited',
       capUnavailable: 'unavailable',
-      capUnknown: 'unknown'
+      capUnknown: 'unknown',
+      overviewAria: 'Agent overview',
+      overviewDiscovered: 'Discovered',
+      overviewWorking: 'Working now',
+      overviewVerifiable: 'Confirmable control',
+      overviewBestEffort: 'Best-effort control',
+      overviewUnsupported: 'Unsupported',
+      overviewUnknown: 'Not wired',
+      overviewByInterrupt: 'Counted by control capability',
+      overviewConfirmable: 'Confirmable control',
+      overviewBestOnly: 'Best-effort control',
+      overviewSummaryLine:
+        '{notWired} not wired, {unsupported} unsupported, {stale} stale',
+      filterLabel: 'Filter',
+      filterAll: 'All',
+      filterWorking: 'Working now',
+      filterVerifiable: 'Confirmable control',
+      filterBestEffort: 'Best-effort control',
+      filterUnsupported: 'Unsupported',
+      filterUnknown: 'Not wired',
+      filterNotWired: 'Not wired',
+      filterStale: 'Stale',
+      legendInterrupt:
+        'Confirmable has post-check; best-effort needs your confirm; not wired ≠ unsupported',
+      interruptVerifiable: 'Stop can be confirmed',
+      interruptConfirmablePending: 'Supports result confirmation',
+      interruptBestEffort: 'Best-effort stop',
+      interruptBestEffortHint: 'Confirm yourself after sending',
+      interruptUnsupported: 'Unsupported',
+      interruptUnknown: 'Local detection not wired yet',
+      interruptUnavailablePrefix: 'Not controllable',
+      interruptNotWiredDetail: 'Installed, but work status cannot be judged',
+      acceptancePendingNote: 'This release has not completed real Provider acceptance',
+      acceptanceRealNote: 'Real Provider acceptance completed for this release',
+      acceptanceNANote: 'Best-effort only — post-check N/A',
+      detailWhy: 'Capability basis',
+      detailControlMode: 'Control mode',
+      detailEvidenceSource: 'Evidence source',
+      detailResultConfirm: 'How results are confirmed',
+      detailUnavailableReason: 'Unavailable reason',
+      detailAcceptance: 'Release acceptance',
+      detailConfirmableChannel: 'Post-check channel available',
+      detailBestEffortChannel: 'Hotkey/window command; no reliable post-check',
+      detailNotWiredExplain:
+        'Does not mean the provider is unsupported — detection is not wired yet',
+      notWiredCaps: 'Not-wired capabilities',
+      evidenceStillValid: 'Still fresh',
+      evidenceExpired: 'Evidence expired',
+      statusInfoExpired: 'Status info expired',
+      evidenceUnconfirmable: 'Cannot confirm yet',
+      evidenceRemaining: 'About {n}s still valid',
+      evidenceSource: 'Evidence source',
+      evidenceConfidence: 'Confidence',
+      evidenceValid: 'Is this info fresh',
+      capsBadges: 'What you can do',
+      detailWhere: 'Current project',
+      detailRecent: 'Recent status',
+      detailFresh: 'Is this info fresh',
+      detailStopConfirm: 'How stop is confirmed',
+      stopConfirmVerified: 'Result will be confirmed after stop',
+      stopConfirmBestEffort: 'Please confirm yourself',
+      stopConfirmUnknown: 'Available after local detection is wired',
+      canFocus: 'Can focus',
+      cannotFocus: 'Cannot focus',
+      canContinue: 'Can continue',
+      cannotContinue: 'Cannot continue',
+      canStop: 'Can stop',
+      cannotStop: 'Cannot stop',
+      bestEffortStop: 'Best-effort stop',
+      expandAgent: 'Expand details',
+      collapseAgent: 'Collapse details',
+      rosterIntroInfo: 'Agents discovered on this machine and what you can do with them.',
+      rosterIntroWarn: 'Some agents can only best-effort stop — please confirm yourself afterward.'
     }
   };
 
@@ -170,6 +375,7 @@
     expandedId: null,
     mountMode: 'page',
     showNotFound: false,
+    homeFilter: 'all',
     groupOpen: {
       needsAttention: true,
       connected: true,
@@ -576,9 +782,11 @@
   }
 
   function byId(id) {
+    var want = String(id || '');
+    if (!want) return null;
     var agents = (state.snap && state.snap.agents) || [];
     for (var i = 0; i < agents.length; i++) {
-      if (agents[i].agentId === id) return agents[i];
+      if (String(agents[i].agentId || '') === want) return agents[i];
     }
     return null;
   }
@@ -888,21 +1096,28 @@
     if (c === 'probe_timeout') return t('probeTimeout');
     if (c === 'probe_command_failed') return t('probeCommandFailed');
     if (c === 'probe_parse_error') return t('probeParseError');
-    if (c === 'stale_control_evidence') return t('staleControlEvidence');
+    if (c === 'evidence_stale' || c === 'stale_control_evidence') return t('evidenceStale');
     if (c === 'background_session_not_found') return t('backgroundSessionNotFound');
     if (c === 'background_session_not_active') return t('backgroundSessionNotActive');
     if (c === 'stop_command_failed') return t('stopCommandFailed');
     if (c === 'stop_timeout') return t('stopTimeout');
     if (c === 'stop_not_verified') return t('stopNotVerified');
     if (c === 'post_stop_probe_failed') return t('postStopProbeFailed');
+    if (c === 'ProbeNotImplemented' || c === 'probe_not_implemented') return t('probeNotImplemented');
+    if (c === 'center_pad_may_diverge') return t('centerPadDiverged');
+    if (c === 'ambiguous_session') return t('ambiguousSession');
+    if (c === 'session_not_found') return t('sessionNotFound');
+    if (c === 'no_window_target') return t('noWindowTarget');
+    if (c === 'no_mapping_target') return t('noMappingTarget');
+    if (c === 'not_wired') return t('notWired');
+    if (c === 'provider_unsupported') return t('providerUnsupportedInterrupt');
     if (
-      c === 'not_wired' ||
-      c === 'provider_unsupported' ||
       c === 'no_focus_executor' ||
-      c === 'no_mapping_target' ||
       c === 'action_not_enabled' ||
       c === 'no_executor' ||
-      c === 'unknown_action'
+      c === 'unknown_action' ||
+      c === 'no_instance_evidence' ||
+      c === 'no_focus_target'
     )
       return t('actionUnavailable');
     if (c === 'no_focus' || c === 'no_resume') return t('actionUnavailable');
@@ -912,6 +1127,54 @@
     if (c.indexOf('encrypt') >= 0) return t('encrypted');
     if (c === 'discovered_only') return t('limitedHist');
     return c;
+  }
+
+  function humanActionReason(code, actionId) {
+    var c = String(code || '');
+    var id = String(actionId || '');
+    if (c === 'no_external_session') {
+      if (id === 'session.resume' || id === 'resume') return t('notResumable');
+      if (id === 'agent.interrupt' || id === 'interrupt') return t('noInterruptSession');
+    }
+    if (c === 'no_window_target') return t('noWindowTarget');
+    if (c === 'ambiguous_session') return t('ambiguousSession');
+    if (c === 'session_not_found') return t('sessionNotFound');
+    if (c === 'no_mapping_target') return t('noMappingTarget');
+    if (c === 'control_plane_unavailable') return t('controlPlaneUnavailable');
+    if (c === 'evidence_stale' || c === 'stale_control_evidence') return t('evidenceStale');
+    if (c === 'not_running') return t('idle');
+    if (c === 'stale_observation') return t('staleObservation');
+    if (c === 'probe_timeout') return t('probeTimeout');
+    if (c === 'probe_command_failed') return t('probeCommandFailed');
+    if (c === 'probe_parse_error') return t('probeParseError');
+    if (c === 'background_session_not_found') return t('backgroundSessionNotFound');
+    if (c === 'background_session_not_active') return t('backgroundSessionNotActive');
+    if (c === 'provider_unsupported') return t('providerUnsupportedInterrupt');
+    if (c === 'ProbeNotImplemented' || c === 'probe_not_implemented') return t('probeNotImplemented');
+    if (c === 'not_wired') return t('notWired');
+    if (c === 'no_focus_executor' || c === 'no_focus_target' || c === 'no_focus') return t('actionUnavailable');
+    if (c === 'no_lane' || c === 'no_resume') return t('notResumable');
+    if (c === 'no_checkpoint') return t('actionUnavailable');
+    var mapped = humanReason(c);
+    // Never surface raw snake_case for action UI.
+    if (mapped === c && /_/.test(c)) return t('actionUnavailable');
+    return mapped;
+  }
+
+  function supportLabel(support, enabled, state) {
+    var s = String(support || '').toLowerCase();
+    if (s === 'native' && enabled && state === 'available') return t('supportNative');
+    if (s === 'hotkey') return t('supportHotkey');
+    if (s === 'workflow' || s === 'deeplink' || s === 'insertonly') return t('supportBestEffort');
+    if (s === 'unsupported' || !support) return t('supportUnsupported');
+    return t('supportBestEffort');
+  }
+
+  function formatEvidenceField(v) {
+    if (v == null || v === '') return '';
+    if (typeof v === 'number' && isFinite(v)) return String(v);
+    if (typeof v === 'string' && v.trim()) return v.trim();
+    return '';
   }
 
   function formatMetricHome(m) {
@@ -946,6 +1209,8 @@
   }
 
   function workLine(agent) {
+    if (agent.recentPrompt) return agent.recentPrompt;
+    if (agent.title) return agent.title;
     var w = agent.currentWork || (agent.recentWork && agent.recentWork[0]);
     if (!w) {
       if (agent.presenceState === 'limited' || (agent.limitations && agent.limitations.length)) {
@@ -962,23 +1227,407 @@
     return relativeWhen(w.updatedAt || w.updated_at || agent.lastSyncAt) || '—';
   }
 
-  function orderedHomeAgents() {
-    if (!state.snap) return [];
-    var g = state.snap.groups || {};
+  /** Interrupt capability bucket — NOT action outcome. Missing evidence → unknown. */
+  function findInterruptAction(agent) {
+    var acts = (agent && agent.actions) || [];
+    for (var i = 0; i < acts.length; i++) {
+      if (acts[i] && acts[i].id === 'agent.interrupt') return acts[i];
+    }
+    return null;
+  }
+
+  function classifyInterrupt(act) {
+    if (!act || act.id !== 'agent.interrupt') return null;
+    var reason = String(act.reason || '');
+    if (reason === 'provider_unsupported') return 'unsupported';
+    if (reason === 'ProbeNotImplemented' || reason === 'probe_not_implemented') return 'unknown';
+    var support = String(act.support || '').toLowerCase();
+    var st = String(act.state || '').toLowerCase();
+    if (support === 'unsupported') return 'unsupported';
+    if (support === 'native' && st === 'available') return 'verifiable';
+    if (support === 'hotkey' && st === 'available') return 'bestEffort';
+    return 'unknown';
+  }
+
+  function isWorkingObserved(agent, asOf) {
+    var obs = agent && agent.observedStatus;
+    if (!obs || obs.value !== 'working') return false;
+    var base = Number(asOf);
+    var freshUntil = Number(obs.freshUntil);
+    if (!isFinite(base) || base <= 0) return false;
+    if (!isFinite(freshUntil) || freshUntil <= 0) return false;
+    return freshUntil >= base;
+  }
+
+  function getAcceptanceManifest() {
+    return (
+      state._acceptanceManifest ||
+      global.OneToneAgentControlAcceptance || {
+        schemaVersion: 1,
+        release: 'fallback',
+        providers: {
+          claude: { status: 'pending' },
+          codex: { status: 'pending' },
+          cursor: { status: 'notApplicable', reason: 'bestEffortOnly' }
+        }
+      }
+    );
+  }
+
+  function setAcceptanceManifest(m) {
+    state._acceptanceManifest = m || null;
+  }
+
+  function providerKeyOf(agent) {
+    var raw = String(
+      (agent && (agent.runtimeKind || agent.agentId || agent.displayName)) || ''
+    ).toLowerCase();
+    if (raw.indexOf('claude') >= 0) return 'claude';
+    if (raw.indexOf('codex') >= 0) return 'codex';
+    if (raw.indexOf('cursor') >= 0) return 'cursor';
+    return 'other';
+  }
+
+  function freshnessOf(agent, act, asOf) {
+    var fu = Number(
+      (act && act.freshUntil) ||
+        (agent && agent.observedStatus && agent.observedStatus.freshUntil)
+    );
+    var base = Number(asOf);
+    if (!isFinite(fu) || fu <= 0 || !isFinite(base) || base <= 0) return 'unknown';
+    return fu >= base ? 'fresh' : 'stale';
+  }
+
+  function availabilityReasonOf(act, freshness) {
+    if (!act) return 'notWired';
+    var reason = String(act.reason || '');
+    if (reason === 'provider_unsupported') return 'unsupported';
+    if (reason === 'ProbeNotImplemented' || reason === 'probe_not_implemented') return 'notWired';
+    if (reason === 'evidence_stale' || reason === 'stale_control_evidence') return 'stale';
+    if (reason === 'no_window_target') return 'noTarget';
+    if (reason === 'no_mapping_target') return 'noMapping';
+    if (freshness === 'stale') return 'stale';
+    var support = String(act.support || '').toLowerCase();
+    if (support === 'unsupported') return 'unsupported';
+    var bucket = classifyInterrupt(act);
+    if (bucket === 'unknown' || bucket === null) return 'notWired';
+    return null;
+  }
+
+  function acceptanceOf(providerKey, manifest) {
+    var m = manifest || getAcceptanceManifest();
+    var entry = (m.providers && m.providers[providerKey]) || null;
+    if (!entry) return 'notApplicable';
+    var st = String(entry.status || '');
+    if (st === 'realVerified' || st === 'verified') return 'realVerified';
+    if (st === 'pending' || st === 'pendingRealVerify') return 'pendingRealVerify';
+    return 'notApplicable';
+  }
+
+  function reasonUserLabel(reason) {
+    if (reason === 'notWired') return t('interruptUnknown');
+    if (reason === 'unsupported') return t('providerUnsupportedInterrupt');
+    if (reason === 'stale') return t('statusInfoExpired');
+    if (reason === 'noTarget') return t('noWindowTarget');
+    if (reason === 'noMapping') return t('noMappingTarget');
+    return '';
+  }
+
+  /**
+   * Single UI projection — overview / filter / row / detail must all use this.
+   * Acceptance never changes controlMode; only primaryLabel / detail copy.
+   */
+  function projectAgentControl(agent, snap, acceptanceManifest) {
+    var asOf = snap && snap.asOf;
+    var act = findInterruptAction(agent);
+    var pk = providerKeyOf(agent);
+    var fres = freshnessOf(agent, act, asOf);
+    var bucket = classifyInterrupt(act);
+    var controlMode = 'unavailable';
+    if (pk === 'cursor') {
+      // Only a real usable Cursor interrupt is bestEffort — never inflate the card
+      // for no action / unsupported / no mapping / stale / disabled.
+      var cursorUsable =
+        act &&
+        act.supported !== false &&
+        act.enabled &&
+        bucket === 'bestEffort' &&
+        fres !== 'stale' &&
+        String(act.reason || '') !== 'evidence_stale' &&
+        String(act.reason || '') !== 'stale_control_evidence';
+      controlMode = cursorUsable ? 'bestEffort' : 'unavailable';
+    } else if (bucket === 'verifiable') {
+      controlMode = 'confirmable';
+    } else if (bucket === 'bestEffort') {
+      controlMode = 'bestEffort';
+    } else {
+      controlMode = 'unavailable';
+    }
+    var reason =
+      controlMode === 'unavailable'
+        ? availabilityReasonOf(act, fres)
+        : fres === 'stale' && act && (act.reason === 'evidence_stale' || act.reason === 'stale_control_evidence')
+          ? 'stale'
+          : null;
+    // Stale evidence on an otherwise confirmable/bestEffort action → still show mode but reason for disable paths
+    if (
+      controlMode !== 'unavailable' &&
+      (String((act && act.reason) || '') === 'evidence_stale' ||
+        String((act && act.reason) || '') === 'stale_control_evidence' ||
+        fres === 'stale')
+    ) {
+      // Keep controlMode; expose stale as reason for filter 'stale'
+      if (!reason) reason = 'stale';
+    }
+    if (controlMode === 'unavailable' && !reason) reason = 'notWired';
+
+    var acceptance = acceptanceOf(pk, acceptanceManifest || getAcceptanceManifest());
+    if (pk === 'cursor') acceptance = 'notApplicable';
+
+    var primaryLabel = '';
+    var supportingText = '';
+    if (controlMode === 'confirmable') {
+      if (acceptance === 'pendingRealVerify') {
+        primaryLabel = t('interruptConfirmablePending');
+        supportingText = t('detailConfirmableChannel');
+      } else {
+        primaryLabel = t('interruptVerifiable');
+        supportingText = t('detailConfirmableChannel');
+      }
+    } else if (controlMode === 'bestEffort') {
+      primaryLabel = t('interruptBestEffort');
+      supportingText = t('interruptBestEffortHint');
+    } else {
+      primaryLabel = t('interruptUnavailablePrefix') + ' · ' + reasonUserLabel(reason);
+      if (reason === 'notWired') supportingText = t('interruptNotWiredDetail');
+      else if (reason === 'unsupported') supportingText = t('providerUnsupportedInterrupt');
+      else supportingText = reasonUserLabel(reason);
+    }
+
+    return {
+      controlMode: controlMode,
+      reason: reason,
+      working: isWorkingObserved(agent, asOf),
+      freshness: fres,
+      acceptance: acceptance,
+      primaryLabel: primaryLabel,
+      supportingText: supportingText,
+      providerKey: pk
+    };
+  }
+
+  function agentsFromSnap(snap, includeNotFound) {
+    if (!snap) return [];
+    var map = {};
+    (snap.agents || []).forEach(function (a) {
+      if (a && a.agentId) map[a.agentId] = a;
+    });
+    var g = snap.groups || {};
     var ids = []
       .concat(g.needsAttention || [])
       .concat(g.connected || [])
       .concat(g.discoveredLimited || [])
-      .concat(state.showNotFound ? g.supportedNotFound || [] : []);
+      .concat(includeNotFound ? g.supportedNotFound || [] : []);
     var seen = {};
     var out = [];
     ids.forEach(function (id) {
       if (seen[id]) return;
       seen[id] = 1;
-      var a = byId(id);
-      if (a) out.push(a);
+      if (map[id]) out.push(map[id]);
     });
     return out;
+  }
+
+  /**
+   * Overview — four cards; unsupported/notWired/stale only in summary line.
+   * Never merge bestEffort with unknown.
+   */
+  function computeHomeOverview(snap, opts) {
+    opts = opts || {};
+    var agents = agentsFromSnap(snap, !!opts.includeNotFound);
+    var overview = {
+      discovered: agents.length,
+      working: 0,
+      confirmable: 0,
+      bestEffort: 0,
+      notWired: 0,
+      unsupported: 0,
+      stale: 0,
+      // compat aliases for older tests
+      verifiableInterrupt: 0,
+      bestEffortInterrupt: 0,
+      unsupportedInterrupt: 0,
+      unknownInterrupt: 0
+    };
+    agents.forEach(function (a) {
+      var p = projectAgentControl(a, snap);
+      if (p.working) overview.working += 1;
+      if (p.controlMode === 'confirmable') {
+        overview.confirmable += 1;
+        overview.verifiableInterrupt += 1;
+      } else if (p.controlMode === 'bestEffort') {
+        overview.bestEffort += 1;
+        overview.bestEffortInterrupt += 1;
+      } else if (p.reason === 'unsupported') {
+        overview.unsupported += 1;
+        overview.unsupportedInterrupt += 1;
+      } else if (p.reason === 'stale') {
+        overview.stale += 1;
+        overview.unknownInterrupt += 1;
+      } else {
+        overview.notWired += 1;
+        overview.unknownInterrupt += 1;
+      }
+      if (
+        p.reason === 'stale' &&
+        (p.controlMode === 'confirmable' || p.controlMode === 'bestEffort')
+      ) {
+        overview.stale += 1;
+      }
+    });
+    return overview;
+  }
+
+  function matchesHomeFilter(agent, filter, snap) {
+    var f = String(filter || 'all');
+    if (f === 'all') return true;
+    var p = projectAgentControl(agent, snap);
+    if (f === 'working') return p.working;
+    if (f === 'verifiable' || f === 'confirmable') return p.controlMode === 'confirmable';
+    if (f === 'bestEffort') return p.controlMode === 'bestEffort';
+    if (f === 'unsupported') return p.reason === 'unsupported';
+    if (f === 'unknown' || f === 'notWired') {
+      return p.controlMode === 'unavailable' && p.reason === 'notWired';
+    }
+    if (f === 'stale') return p.reason === 'stale';
+    return true;
+  }
+
+  function formatEvidenceFreshness(opts) {
+    opts = opts || {};
+    var unconfirmable = t('evidenceUnconfirmable');
+    var expired = t('evidenceExpired');
+    var base = Number(opts.asOf);
+    var obsN = Number(opts.observedAt);
+    var fuN = Number(opts.freshUntil);
+    var hasBase = isFinite(base) && base > 0;
+    var hasObs = isFinite(obsN) && obsN > 0;
+    var hasFu = isFinite(fuN) && fuN > 0;
+    var result = {
+      observedLabel: hasObs ? relativeWhen(obsN) : unconfirmable,
+      validLabel: unconfirmable,
+      remainingLabel: unconfirmable,
+      sourceLabel: opts.source ? String(opts.source) : unconfirmable,
+      confidenceLabel: opts.confidence ? String(opts.confidence) : unconfirmable,
+      expired: false
+    };
+    if (!hasBase || !hasFu) return result;
+    if (fuN <= base) {
+      result.validLabel = expired;
+      result.remainingLabel = expired;
+      result.expired = true;
+      return result;
+    }
+    var secs = Math.max(0, Math.floor((fuN - base) / 1000));
+    result.validLabel = t('evidenceStillValid');
+    result.remainingLabel = String(t('evidenceRemaining') || '').replace('{n}', String(secs));
+    return result;
+  }
+
+  function interruptCapabilityLabel(bucket) {
+    if (bucket === 'verifiable') return t('interruptVerifiable');
+    if (bucket === 'bestEffort') return t('interruptBestEffort');
+    if (bucket === 'unsupported') return t('interruptUnsupported');
+    return t('interruptUnknown');
+  }
+
+  function projectNameOf(agent) {
+    var cw = agent && agent.currentWork;
+    if (cw) {
+      var project = String(cw.projectName || cw.project || cw.displayName || '').trim();
+      if (project) return project;
+    }
+    if (agent && agent.cwd) {
+      var parts = String(agent.cwd).replace(/[\\/]+$/, '').split(/[\\/]/);
+      var leaf = parts[parts.length - 1];
+      if (leaf) return leaf;
+    }
+    return '';
+  }
+
+  function interruptSubline(agent) {
+    var p = projectAgentControl(agent, state.snap);
+    return p.primaryLabel;
+  }
+
+  function stopConfirmCopy(bucket) {
+    if (bucket === 'verifiable') return t('stopConfirmVerified');
+    if (bucket === 'bestEffort') return t('stopConfirmBestEffort');
+    if (bucket === 'unsupported') return t('supportUnsupported');
+    return t('stopConfirmUnknown');
+  }
+
+  function actionBadgeTone(act) {
+    var reason = String((act && act.reason) || '');
+    if (reason === 'evidence_stale' || reason === 'stale_control_evidence') return 'stale';
+    if (act && act.id === 'agent.interrupt') {
+      var b = classifyInterrupt(act);
+      if (b === 'verifiable') return 'verifiable';
+      if (b === 'bestEffort') return 'bestEffort';
+      if (b === 'unsupported') return 'unsupported';
+      return 'unknown';
+    }
+    var support = String((act && act.support) || '').toLowerCase();
+    var st = String((act && act.state) || '').toLowerCase();
+    if (support === 'native' && st === 'available') return 'verifiable';
+    if (support === 'hotkey' && st === 'available') return 'bestEffort';
+    if (reason === 'provider_unsupported' || support === 'unsupported') return 'unsupported';
+    return 'unknown';
+  }
+
+  function actionBadgeText(act) {
+    var reason = String((act && act.reason) || '');
+    if (act && act.id === 'agent.interrupt') {
+      var bucket = classifyInterrupt(act);
+      if (reason === 'evidence_stale' || reason === 'stale_control_evidence') {
+        return t('bestEffortStop') + ' · ' + t('evidenceStale');
+      }
+      if (bucket === 'verifiable') return t('supportNative');
+      if (bucket === 'bestEffort') return t('bestEffortStop');
+      if (bucket === 'unsupported') return t('supportUnsupported');
+      if (reason === 'ProbeNotImplemented' || reason === 'probe_not_implemented') {
+        return t('probeNotImplemented');
+      }
+      return t('interruptUnknown');
+    }
+    var label = actionLabel(act);
+    if (reason === 'evidence_stale' || reason === 'stale_control_evidence') {
+      return label + ' · ' + t('evidenceStale');
+    }
+    if (reason === 'no_window_target') return label + ' · ' + t('noWindowTarget');
+    if (reason === 'no_mapping_target') return label + ' · ' + t('noMappingTarget');
+    if (reason === 'provider_unsupported') return label + ' · ' + t('supportUnsupported');
+    if (reason === 'ProbeNotImplemented' || reason === 'probe_not_implemented') {
+      return label + ' · ' + t('probeNotImplemented');
+    }
+    if (act && act.enabled) {
+      if (act.id === 'agent.focus' || act.id === 'view' || act.id === 'focus') return t('canFocus');
+      if (act.id === 'session.resume' || act.id === 'resume') return t('canContinue');
+      return label;
+    }
+    if (act && act.id === 'agent.focus') return t('cannotFocus');
+    if (act && act.id === 'session.resume') return t('cannotContinue');
+    return label + ' · ' + t('capUnknown');
+  }
+
+  function orderedHomeAgents() {
+    if (!state.snap) return [];
+    var fromGroups = agentsFromSnap(state.snap, !!state.showNotFound);
+    if (fromGroups.length) return fromGroups;
+    // Fallback: groups empty/mismatched but agents payload present.
+    return ((state.snap.agents || []) || []).filter(function (a) {
+      return !!(a && a.agentId);
+    });
   }
 
   function actionLabel(act) {
@@ -993,99 +1642,307 @@
     return act.label || act.id;
   }
 
-  function homeActionButtons(agent) {
-    var acts = agent.actions || [];
+  function homeActionButtons(agent, opts) {
+    opts = opts || {};
+    var rowOnly = !!opts.rowOnly;
+    var acts = Array.isArray(agent && agent.actions) ? agent.actions : [];
     function find(id) {
-      return acts.filter(function (x) {
-        return x.id === id;
-      })[0];
+      for (var i = 0; i < acts.length; i++) {
+        if (acts[i] && acts[i].id === id) return acts[i];
+      }
+      return null;
     }
-    var order = [
-      'session.resume',
-      'checkpoint.preview',
-      'agent.focus',
-      'agent.interrupt',
-      'ui.open_config',
-      'ui.open_data',
-      'export_history'
-    ];
+    var order = rowOnly
+      ? ['agent.focus', 'session.resume', 'agent.interrupt']
+      : [
+          'session.resume',
+          'checkpoint.preview',
+          'agent.focus',
+          'agent.interrupt',
+          'ui.open_config',
+          'ui.open_data'
+        ];
     var html = '';
     order.forEach(function (id) {
       var act = find(id);
-      if (!act) return;
-      if (id === 'agent.interrupt' && !act.supported) return;
+      if (!act) {
+        if (!rowOnly) return;
+        html +=
+          '<button type="button" class="har-action' +
+          (id === 'agent.interrupt' ? ' har-action--stop' : '') +
+          '" disabled title="' +
+          escapeAttr(t('actionUnavailable')) +
+          '">' +
+          escapeHtml(
+            id === 'agent.focus'
+              ? t('viewWork')
+              : id === 'session.resume'
+                ? t('continueWork')
+                : t('interruptWork')
+          ) +
+          '</button>';
+        return;
+      }
+      if (id === 'agent.interrupt' && !act.supported && !rowOnly) return;
       var pending = state.pendingAction === id + ':' + agent.agentId;
-      var disabled = !act.enabled || pending;
-      var title = act.enabled ? '' : humanReason(act.reason) || t('actionUnavailable');
+      var disabled = !act.enabled || pending || (id === 'agent.interrupt' && !act.supported);
+      var title = act.enabled
+        ? ''
+        : humanActionReason(act.reason, act.id) || t('actionUnavailable');
+      var reasonLine = act.enabled
+        ? ''
+        : humanActionReason(act.reason, act.id) || '';
       html +=
         '<button type="button" class="har-action' +
-        (id === 'session.resume' && act.enabled ? ' is-primary' : '') +
+        (id === 'session.resume' && act.enabled && !rowOnly ? ' is-primary' : '') +
+        (id === 'agent.interrupt' ? ' har-action--stop' : '') +
         '" data-action="' +
         escapeAttr(id) +
         '" data-agent-id="' +
         escapeAttr(agent.agentId) +
         '"' +
         (disabled ? ' disabled' : '') +
-        (title ? ' title="' + escapeAttr(title) + '"' : '') +
+        (title
+          ? ' title="' +
+            escapeAttr(title) +
+            '" aria-label="' +
+            escapeAttr(actionLabel(act) + '：' + title) +
+            '"'
+          : '') +
         '>' +
         escapeHtml(pending ? t('pending') : actionLabel(act)) +
         '</button>';
+      if (reasonLine && !rowOnly) {
+        html +=
+          '<span class="har-action-reason" data-action-reason="' +
+          escapeAttr(id) +
+          '">' +
+          escapeHtml(reasonLine) +
+          '</span>';
+      }
     });
     return html;
   }
 
   function renderHomeDetail(agent) {
-    var m = agent.metrics || {};
-    var resumeAct = (agent.actions || []).filter(function (x) {
-      return x.id === 'session.resume' || x.id === 'resume';
+    var interruptAct = findInterruptAction(agent);
+    var bucket = classifyInterrupt(interruptAct);
+    var proj = projectAgentControl(agent, state.snap);
+    var focusAct = (agent.actions || []).filter(function (x) {
+      return x && (x.id === 'agent.focus' || x.id === 'focus' || x.id === 'view');
     })[0];
-    var canResume = !!(resumeAct && resumeAct.enabled);
+    var resumeAct = (agent.actions || []).filter(function (x) {
+      return x && (x.id === 'session.resume' || x.id === 'resume');
+    })[0];
+    var asOf = state.snap && state.snap.asOf;
+    var fres = formatEvidenceFreshness({
+      observedAt:
+        (interruptAct && interruptAct.observedAt) ||
+        (agent.observedStatus && agent.observedStatus.observedAt),
+      freshUntil:
+        (interruptAct && interruptAct.freshUntil) ||
+        (agent.observedStatus && agent.observedStatus.freshUntil),
+      asOf: asOf
+    });
+    var project = projectNameOf(agent) || t('noProjectWork');
     var html = '<div class="har-detail">';
     html += '<div class="har-metrics">';
     html +=
       '<div class="har-metric"><span>' +
-      escapeHtml(t('sessions')) +
+      escapeHtml(t('detailWhere')) +
       '</span><strong>' +
-      escapeHtml(formatMetricHome(m.todaySessions)) +
+      escapeHtml(project) +
       '</strong></div>';
     html +=
       '<div class="har-metric"><span>' +
-      escapeHtml(t('cost')) +
+      escapeHtml(t('detailRecent')) +
       '</span><strong>' +
-      escapeHtml(formatMetricHome(m.todayCostUsd)) +
+      escapeHtml(statusLabel(agent) + (fres.observedLabel ? ' · ' + fres.observedLabel : '')) +
       '</strong></div>';
     html +=
       '<div class="har-metric"><span>' +
-      escapeHtml(t('success')) +
+      escapeHtml(t('detailFresh')) +
       '</span><strong>' +
-      escapeHtml(formatMetricHome(m.successRate)) +
-      '</strong></div>';
-    html +=
-      '<div class="har-metric"><span>' +
-      escapeHtml(t('avgDuration')) +
-      '</span><strong>' +
-      escapeHtml(formatMetricHome(m.averageDurationMs)) +
+      escapeHtml(fres.remainingLabel) +
       '</strong></div>';
     html += '</div>';
+
+    if (agent.recentPrompt) {
+      html +=
+        '<p class="har-note"><strong>' +
+        escapeHtml(t('recentPrompt')) +
+        '</strong>：' +
+        escapeHtml(agent.recentPrompt) +
+        '</p>';
+    }
+
+    var badgeActs = (agent.actions || []).filter(function (act) {
+      return (
+        act &&
+        (act.id === 'agent.interrupt' || act.id === 'agent.focus' || act.id === 'session.resume')
+      );
+    });
+    if (badgeActs.length) {
+      html += '<h3 class="har-detail-h">' + escapeHtml(t('capsBadges')) + '</h3>';
+      html += '<div class="har-badges">';
+      badgeActs.forEach(function (act) {
+        html +=
+          '<span class="har-badge har-badge--' +
+          escapeAttr(actionBadgeTone(act)) +
+          '">' +
+          escapeHtml(actionBadgeText(act)) +
+          '</span>';
+      });
+      html += '</div>';
+    }
+
+    // Capability basis ("为什么") — user-facing; no raw enums
+    var controlModeLabel =
+      proj.controlMode === 'confirmable'
+        ? t('overviewConfirmable')
+        : proj.controlMode === 'bestEffort'
+          ? t('overviewBestOnly')
+          : t('interruptUnavailablePrefix');
+    var resultConfirmLabel =
+      proj.controlMode === 'confirmable'
+        ? t('detailConfirmableChannel')
+        : proj.controlMode === 'bestEffort'
+          ? t('detailBestEffortChannel')
+          : reasonUserLabel(proj.reason) || t('cannotStop');
+    var acceptanceLabel =
+      proj.acceptance === 'realVerified'
+        ? t('acceptanceRealNote')
+        : proj.acceptance === 'pendingRealVerify'
+          ? t('acceptancePendingNote')
+          : t('acceptanceNANote');
+    var srcLabel =
+      (interruptAct && interruptAct.source) ||
+      (agent.observedStatus && agent.observedStatus.source) ||
+      (agent.statusSource || '') ||
+      '—';
+    html += '<h3 class="har-detail-h">' + escapeHtml(t('detailWhy')) + '</h3>';
+    html += '<table class="har-evidence har-why"><tbody>';
     html +=
-      '<p class="har-note">' +
-      escapeHtml(t('syncLabel') + '：' + formatSync(agent.lastSyncAt)) +
-      ' · ' +
-      escapeHtml(canResume ? t('resumable') : t('notResumable')) +
-      '</p>';
-    if (agent.recentWork && agent.recentWork.length) {
-      html += '<ul class="har-work-list">';
-      agent.recentWork.slice(0, 5).forEach(function (w) {
+      '<tr><td>' +
+      escapeHtml(t('detailControlMode')) +
+      '</td><td>' +
+      escapeHtml(controlModeLabel) +
+      '</td></tr>';
+    html +=
+      '<tr><td>' +
+      escapeHtml(t('detailEvidenceSource')) +
+      '</td><td>' +
+      escapeHtml(String(srcLabel)) +
+      '</td></tr>';
+    html +=
+      '<tr><td>' +
+      escapeHtml(t('detailRecent')) +
+      '</td><td>' +
+      escapeHtml(fres.observedLabel || '—') +
+      '</td></tr>';
+    html +=
+      '<tr><td>' +
+      escapeHtml(t('detailFresh')) +
+      '</td><td>' +
+      escapeHtml(fres.remainingLabel) +
+      '</td></tr>';
+    html +=
+      '<tr><td>' +
+      escapeHtml(t('detailResultConfirm')) +
+      '</td><td>' +
+      escapeHtml(resultConfirmLabel) +
+      '</td></tr>';
+    if (proj.controlMode === 'unavailable' && proj.reason) {
+      html +=
+        '<tr><td>' +
+        escapeHtml(t('detailUnavailableReason')) +
+        '</td><td>' +
+        escapeHtml(reasonUserLabel(proj.reason)) +
+        '</td></tr>';
+    }
+    html +=
+      '<tr><td>' +
+      escapeHtml(t('detailAcceptance')) +
+      '</td><td>' +
+      escapeHtml(acceptanceLabel) +
+      '</td></tr>';
+    if (proj.reason === 'notWired') {
+      html +=
+        '<tr><td colspan="2">' +
+        escapeHtml(t('detailNotWiredExplain')) +
+        '</td></tr>';
+    }
+    html += '</tbody></table>';
+
+    html += '<h3 class="har-detail-h">' + escapeHtml(t('evidenceBlock')) + '</h3>';
+    html += '<table class="har-evidence"><tbody>';
+    html +=
+      '<tr><td>' +
+      escapeHtml(t('canFocus')) +
+      '</td><td>' +
+      escapeHtml(
+        focusAct && focusAct.enabled
+          ? t('canFocus')
+          : humanActionReason(focusAct && focusAct.reason, 'agent.focus') || t('cannotFocus')
+      ) +
+      '</td></tr>';
+    html +=
+      '<tr><td>' +
+      escapeHtml(t('canContinue')) +
+      '</td><td>' +
+      escapeHtml(
+        resumeAct && resumeAct.enabled
+          ? t('canContinue')
+          : humanActionReason(resumeAct && resumeAct.reason, 'session.resume') || t('cannotContinue')
+      ) +
+      '</td></tr>';
+    html +=
+      '<tr><td>' +
+      escapeHtml(t('canStop')) +
+      '</td><td>' +
+      escapeHtml(proj.primaryLabel) +
+      '</td></tr>';
+    html += '</tbody></table>';
+
+    // not_wired capabilities — read-only list, no clickable buttons
+    var notWiredActs = (agent.actions || []).filter(function (act) {
+      return (
+        act &&
+        (act.id === 'export_history' || act.id === 'disable_source') &&
+        String(act.reason || '') === 'not_wired'
+      );
+    });
+    if (notWiredActs.length) {
+      html += '<h3 class="har-detail-h">' + escapeHtml(t('notWiredCaps')) + '</h3>';
+      html += '<ul class="har-not-wired">';
+      notWiredActs.forEach(function (act) {
         html +=
           '<li>' +
-          escapeHtml((w.title || w.sessionId || '') + (w.status ? ' · ' + w.status : '')) +
+          escapeHtml(actionLabel(act) || act.id) +
+          ' · ' +
+          escapeHtml(t('notWired')) +
           '</li>';
       });
       html += '</ul>';
-    } else {
-      html += '<p class="har-note">' + escapeHtml(t('noWork')) + '</p>';
     }
-    html += '<div class="har-actions">' + homeActionButtons(agent) + '</div></div>';
+
+    if (agent.limitations && agent.limitations.length) {
+      var lim = agent.limitations
+        .map(function (x) {
+          return humanReason((x && (x.code || x.detail)) || '') || '';
+        })
+        .filter(Boolean)
+        .slice(0, 3);
+      if (lim.length) {
+        html += '<p class="har-note">' + escapeHtml(lim.join(' · ')) + '</p>';
+      }
+    }
+
+    html +=
+      '<div class="har-detail-foot"><span>' +
+      escapeHtml(proj.supportingText || stopConfirmCopy(bucket)) +
+      '</span></div>';
+    html += '</div>';
     return html;
   }
 
@@ -1105,9 +1962,15 @@
         escapeHtml(t('refresh')) +
         '</button></div>' +
         '<div class="har-banners" data-har-banners></div>' +
+        '<div class="har-overview" data-har-overview aria-label="' +
+        escapeAttr(t('overviewAria')) +
+        '"></div>' +
+        '<div class="har-toolbar" data-har-toolbar></div>' +
         '<div class="har-list" data-har-list role="list"></div></div>';
     }
     var banners = root.querySelector('[data-har-banners]');
+    var overviewEl = root.querySelector('[data-har-overview]');
+    var toolbarEl = root.querySelector('[data-har-toolbar]');
     var list = root.querySelector('[data-har-list]');
     if (!banners || !list) return;
 
@@ -1136,56 +1999,179 @@
         escapeHtml(first ? first.displayName + ' · ' + statusLabel(first) : '') +
         '</span></button>';
     }
+    if (!state.error && state.snap) {
+      bhtml +=
+        '<div class="har-banner har-banner--info" role="status">' +
+        escapeHtml(t('rosterIntroInfo')) +
+        '</div>' +
+        '<div class="har-banner har-banner--warn" role="status">' +
+        escapeHtml(t('rosterIntroWarn')) +
+        '</div>';
+    }
     banners.innerHTML = bhtml;
 
     if (!state.snap) {
+      if (overviewEl) overviewEl.innerHTML = '';
+      if (toolbarEl) toolbarEl.innerHTML = '';
       list.innerHTML = state.error
         ? ''
         : '<p class="har-empty">' + escapeHtml(t('initializing')) + '</p>';
       return;
     }
 
-    var agents = orderedHomeAgents();
+    var overview = computeHomeOverview(state.snap, { includeNotFound: state.showNotFound });
+    if (overviewEl) {
+      var summary = String(t('overviewSummaryLine') || '')
+        .replace('{notWired}', String(overview.notWired || 0))
+        .replace('{unsupported}', String(overview.unsupported || 0))
+        .replace('{stale}', String(overview.stale || 0));
+      overviewEl.innerHTML =
+        '<div class="har-stat"><strong>' +
+        escapeHtml(String(overview.discovered)) +
+        '</strong><span>' +
+        escapeHtml(t('overviewDiscovered')) +
+        '</span></div>' +
+        '<div class="har-stat har-stat--working"><strong>' +
+        escapeHtml(String(overview.working)) +
+        '</strong><span>' +
+        escapeHtml(t('overviewWorking')) +
+        '</span></div>' +
+        '<div class="har-stat har-stat--confirmable"><strong>' +
+        escapeHtml(String(overview.confirmable)) +
+        '</strong><span>' +
+        escapeHtml(t('overviewConfirmable')) +
+        '<small>' +
+        escapeHtml(t('overviewByInterrupt')) +
+        '</small></span></div>' +
+        '<div class="har-stat har-stat--best"><strong>' +
+        escapeHtml(String(overview.bestEffort)) +
+        '</strong><span>' +
+        escapeHtml(t('overviewBestOnly')) +
+        '<small>' +
+        escapeHtml(t('interruptBestEffortHint')) +
+        '</small></span></div>' +
+        '<p class="har-overview-summary" data-har-summary>' +
+        escapeHtml(summary) +
+        '</p>';
+    }
+
+    if (toolbarEl) {
+      var f = state.homeFilter || 'all';
+      toolbarEl.innerHTML =
+        '<div class="har-legend">' +
+        escapeHtml(t('legendInterrupt')) +
+        '</div>' +
+        '<label class="har-filter"><span>' +
+        escapeHtml(t('filterLabel')) +
+        '</span><select data-har-filter>' +
+        '<option value="all"' +
+        (f === 'all' ? ' selected' : '') +
+        '>' +
+        escapeHtml(t('filterAll') + ' (' + overview.discovered + ')') +
+        '</option>' +
+        '<option value="working"' +
+        (f === 'working' ? ' selected' : '') +
+        '>' +
+        escapeHtml(t('filterWorking') + ' (' + overview.working + ')') +
+        '</option>' +
+        '<option value="confirmable"' +
+        (f === 'confirmable' || f === 'verifiable' ? ' selected' : '') +
+        '>' +
+        escapeHtml(t('filterVerifiable') + ' (' + overview.confirmable + ')') +
+        '</option>' +
+        '<option value="bestEffort"' +
+        (f === 'bestEffort' ? ' selected' : '') +
+        '>' +
+        escapeHtml(t('filterBestEffort') + ' (' + overview.bestEffort + ')') +
+        '</option>' +
+        '<option value="notWired"' +
+        (f === 'notWired' || f === 'unknown' ? ' selected' : '') +
+        '>' +
+        escapeHtml(t('filterNotWired') + ' (' + overview.notWired + ')') +
+        '</option>' +
+        '<option value="unsupported"' +
+        (f === 'unsupported' ? ' selected' : '') +
+        '>' +
+        escapeHtml(t('filterUnsupported') + ' (' + overview.unsupported + ')') +
+        '</option>' +
+        '<option value="stale"' +
+        (f === 'stale' ? ' selected' : '') +
+        '>' +
+        escapeHtml(t('filterStale') + ' (' + overview.stale + ')') +
+        '</option>' +
+        '</select></label>';
+    }
+
+    var agents = orderedHomeAgents().filter(function (a) {
+      return matchesHomeFilter(a, state.homeFilter, state.snap);
+    });
     if (!agents.length) {
       list.innerHTML = '<p class="har-empty">' + escapeHtml(t('readyEmpty')) + '</p>';
       return;
     }
     var html = '';
     agents.forEach(function (a) {
-      var open = state.expandedId === a.agentId;
-      var needsMark = needs.indexOf(a.agentId) >= 0;
-      html +=
-        '<article class="har-row' +
-        (open ? ' is-open' : '') +
-        '" data-agent-row="' +
-        escapeAttr(a.agentId) +
-        '" role="listitem">' +
-        '<button type="button" class="har-toggle" data-expand-agent="' +
-        escapeAttr(a.agentId) +
-        '" aria-expanded="' +
-        (open ? 'true' : 'false') +
-        '">' +
-        '<span class="har-dot har-dot--' +
-        statusTone(a) +
-        '" aria-hidden="true"></span>' +
-        '<span class="har-name">' +
-        escapeHtml(a.displayName || a.agentId) +
-        (needsMark ? '<i class="har-flag">!</i>' : '') +
-        '<small>' +
-        escapeHtml(statusLabel(a)) +
-        '</small></span>' +
-        '<span class="har-work"><strong>' +
-        escapeHtml(workLine(a)) +
-        '</strong></span>' +
-        '<span class="har-time">' +
-        escapeHtml(workWhen(a)) +
-        '</span>' +
-        '<span class="har-chevron" aria-hidden="true">⌄</span></button>';
-      if (open) html += renderHomeDetail(a);
-      html += '</article>';
+      try {
+        var open = state.expandedId === a.agentId;
+        var needsMark = needs.indexOf(a.agentId) >= 0;
+        var project = projectNameOf(a) || workLine(a) || '—';
+        var proj = projectAgentControl(a, state.snap);
+        html +=
+          '<article class="har-row' +
+          (open ? ' is-open' : '') +
+          '" data-agent-row="' +
+          escapeAttr(a.agentId) +
+          '" data-control-mode="' +
+          escapeAttr(proj.controlMode) +
+          '" role="listitem">' +
+          '<div class="har-row-main">' +
+          '<div class="har-identity">' +
+          '<span class="har-dot har-dot--' +
+          statusTone(a) +
+          '" aria-hidden="true"></span>' +
+          '<span class="har-name">' +
+          escapeHtml(a.displayName || a.agentId) +
+          (needsMark ? '<i class="har-flag">!</i>' : '') +
+          '<small>' +
+          escapeHtml(proj.primaryLabel) +
+          (proj.supportingText
+            ? '<span class="har-support">' + escapeHtml(proj.supportingText) + '</span>'
+            : '') +
+          '</small></span></div>' +
+          '<div class="har-project">' +
+          escapeHtml(project) +
+          '</div>' +
+          '<div class="har-time">' +
+          escapeHtml(workWhen(a)) +
+          '</div>' +
+          '<div class="har-row-actions">' +
+          homeActionButtons(a, { rowOnly: true }) +
+          '</div>' +
+          '<button type="button" class="har-toggle" data-expand-agent="' +
+          escapeAttr(a.agentId) +
+          '" aria-expanded="' +
+          (open ? 'true' : 'false') +
+          '" aria-label="' +
+          escapeAttr(open ? t('collapseAgent') : t('expandAgent')) +
+          '"><span class="har-chevron" aria-hidden="true">' +
+          (open ? '⌃' : '⌄') +
+          '</span></button></div>';
+        if (open) html += renderHomeDetail(a);
+        html += '</article>';
+      } catch (rowErr) {
+        try {
+          console.warn('[AgentCenter] row render failed', a && a.agentId, rowErr);
+        } catch (_) {}
+        html +=
+          '<article class="har-row" data-agent-row="' +
+          escapeAttr((a && a.agentId) || '') +
+          '" role="listitem"><div class="har-row-main"><div class="har-name">' +
+          escapeHtml((a && (a.displayName || a.agentId)) || 'Agent') +
+          '</div><div class="har-project">—</div><div class="har-time">—</div></div></article>';
+      }
     });
     if (!state.showNotFound) {
-      var nf = (state.snap.groups.supportedNotFound || []).length;
+      var nf = ((state.snap.groups && state.snap.groups.supportedNotFound) || []).length;
       if (nf) {
         html +=
           '<button type="button" class="har-show-all" data-toggle-notfound="1">' +
@@ -1257,6 +2243,64 @@
     else paint();
   }
 
+  function outcomeMessage(res, act, agent) {
+    var outcome = resolveActionOutcome(res, act, agent);
+    if (outcome === 'attemptedUnverified') return t('actionAttemptedUnverified');
+    if (outcome === 'verified') {
+      if (act && act.id === 'agent.interrupt') return t('actionVerifiedStop');
+      return t('actionOk') + ' · ' + actionLabel(act);
+    }
+    var failPrefix =
+      act && act.id === 'agent.interrupt' ? t('actionStopFail') : t('actionFail');
+    return (
+      failPrefix +
+      ' · ' +
+      (humanActionReason(
+        (res && (res.error || res.detail)) || (act && act.reason),
+        act && act.id
+      ) ||
+        t('actionUnavailable'))
+    );
+  }
+
+  /**
+   * Fail-closed outcome resolution.
+   * Missing outcome must never invent Verified.
+   * Cursor never Verified — force attemptedUnverified.
+   */
+  function resolveActionOutcome(res, act, agent) {
+    if (!res || typeof res !== 'object') return 'failed';
+    var outcome = res.outcome;
+    var ok = res.ok;
+    var verified = res.verified;
+    if (ok === false && verified === true) return 'failed';
+    var resolved = 'failed';
+    if (outcome === 'verified') {
+      if (ok === false || verified === false) resolved = 'failed';
+      else resolved = 'verified';
+    } else if (outcome === 'attemptedUnverified') {
+      resolved = ok === false ? 'failed' : 'attemptedUnverified';
+    } else if (outcome === 'failed') {
+      resolved = 'failed';
+    } else if (ok === false) {
+      resolved = 'failed';
+    } else {
+      resolved = 'failed';
+    }
+    if (resolved === 'verified' && providerKeyOf(agent || {}) === 'cursor') {
+      return 'attemptedUnverified';
+    }
+    if (
+      resolved === 'verified' &&
+      act &&
+      act.id === 'agent.interrupt' &&
+      providerKeyOf(agent || {}) === 'cursor'
+    ) {
+      return 'attemptedUnverified';
+    }
+    return resolved;
+  }
+
   function applyClientEffect(effect, agent) {
     if (!effect || effect.type !== 'navigate') return false;
     var dest = effect.destination === 'data' ? 'data' : 'softPad';
@@ -1280,7 +2324,7 @@
       return x.id === actionId;
     })[0];
     if (act && !act.enabled) {
-      toast(humanReason(act.reason) || t('actionUnavailable'));
+      toast(humanActionReason(act.reason, act.id) || t('actionUnavailable'));
       return;
     }
     state.pendingAction = actionId + ':' + agent.agentId;
@@ -1300,26 +2344,30 @@
       }
     } catch (_) {}
 
+    var attemptId =
+      'attempt-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1e6).toString(36);
+
     invoke('cmd_agent_center_action', {
       args: {
         agentId: agent.agentId,
         actionId: actionId,
-        projectHint: hint || null
+        projectHint: hint || null,
+        attemptId: attemptId
       }
     })
       .then(function (res) {
-        if (!res || res.ok === false) {
-          fail(
-            t('actionFail') +
-              ' · ' +
-              humanReason((res && (res.error || res.detail)) || act && act.reason) ||
-              t('actionUnavailable')
-          );
+        if (!res) {
+          fail(t('actionFail'));
+          return;
+        }
+        var outcome = resolveActionOutcome(res, act, agent);
+        if (outcome === 'failed') {
+          fail(outcomeMessage(Object.assign({}, res, { outcome: 'failed' }), act, agent));
           return;
         }
         if (res.clientEffect) {
           if (applyClientEffect(res.clientEffect, agent)) {
-            ok(t('actionOk') + ' · ' + actionLabel(act));
+            ok(outcomeMessage(Object.assign({}, res, { outcome: 'verified' }), act, agent));
           } else {
             fail(
               actionId.indexOf('data') >= 0 ? t('openDataFail') : t('openConfigFail')
@@ -1327,7 +2375,7 @@
           }
           return;
         }
-        ok(t('actionOk') + ' · ' + actionLabel(act));
+        ok(outcomeMessage(Object.assign({}, res, { outcome: outcome }), act, agent));
       })
       .catch(function (e) {
         fail(t('actionFail') + ' · ' + (e && e.message ? e.message : String(e)));
@@ -1389,6 +2437,12 @@
     if (!root || root.getAttribute('data-ac-bound') === '1') return;
     root.setAttribute('data-ac-bound', '1');
     root.addEventListener('click', onHostClick);
+    root.addEventListener('change', function (ev) {
+      var sel = ev.target && ev.target.closest ? ev.target.closest('[data-har-filter]') : null;
+      if (!sel) return;
+      state.homeFilter = sel.value || 'all';
+      paint();
+    });
     var search = root.querySelector('[data-ac-search]');
     if (search && search.getAttribute('data-ac-search-bound') !== '1') {
       search.setAttribute('data-ac-search-bound', '1');
@@ -1458,6 +2512,10 @@
    */
   function refresh(projectHint, opts) {
     opts = opts || {};
+    if (typeof window !== 'undefined' && window.__ONETONE_E2E_HOME_FIXTURE__ && !opts.force) {
+      paint();
+      return Promise.resolve(state.snap);
+    }
     state.feedback = null;
     var hintKey = projectHint ? String(projectHint) : '';
     var now = Date.now();
@@ -1513,6 +2571,7 @@
   }
 
   function scheduleHomeRefresh(projectHint) {
+    if (typeof window !== 'undefined' && window.__ONETONE_E2E_HOME_FIXTURE__) return;
     if (homeRefreshTimer) {
       clearTimeout(homeRefreshTimer);
       homeRefreshTimer = 0;
@@ -1593,6 +2652,10 @@
         escapeHtml(t('refresh')) +
         '</button></div>' +
         '<div class="har-banners" data-har-banners></div>' +
+        '<div class="har-overview" data-har-overview aria-label="' +
+        escapeAttr(t('overviewAria')) +
+        '"></div>' +
+        '<div class="har-toolbar" data-har-toolbar></div>' +
         '<div class="har-list" data-har-list role="list"></div></div>';
     }
     bind(host);
@@ -1634,7 +2697,32 @@
     ensureWorkHostVisible: ensureWorkHostVisible,
     _fixture: fixtureSnap,
     _humanReason: humanReason,
+    _humanActionReason: humanActionReason,
+    _classifyInterrupt: classifyInterrupt,
+    _projectAgentControl: projectAgentControl,
+    _setAcceptanceManifest: setAcceptanceManifest,
+    _getAcceptanceManifest: getAcceptanceManifest,
+    _computeHomeOverview: computeHomeOverview,
+    _matchesHomeFilter: matchesHomeFilter,
+    _formatEvidenceFreshness: formatEvidenceFreshness,
+    _interruptSubline: interruptSubline,
+    _findInterruptAction: findInterruptAction,
+    _outcomeMessage: outcomeMessage,
+    _resolveActionOutcome: resolveActionOutcome,
     _state: state,
+    __test: {
+      mountHome: mountHome,
+      applySnap: applySnap,
+      paint: paint,
+      dispatchAction: dispatchAction,
+      refresh: refresh,
+      resolveActionOutcome: resolveActionOutcome,
+      outcomeMessage: outcomeMessage,
+      projectAgentControl: projectAgentControl,
+      setAcceptanceManifest: setAcceptanceManifest,
+      computeHomeOverview: computeHomeOverview,
+      matchesHomeFilter: matchesHomeFilter
+    },
     t: t
   };
 })(typeof window !== 'undefined' ? window : globalThis);

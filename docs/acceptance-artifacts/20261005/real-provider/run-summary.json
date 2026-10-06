@@ -1,0 +1,18 @@
+{
+    "gateValue":  "1",
+    "startedAt":  "2026-10-06T12:19:13.4466036+08:00",
+    "outDir":  "E:\\voice-pilot\\docs\\acceptance-artifacts\\20261005\\real-provider",
+    "scenarios":  {
+                      "X4":  "pending_manual",
+                      "X2":  "pending_manual",
+                      "X1":  "pending_manual",
+                      "C1":  "pending_manual",
+                      "U1":  "pending_manual",
+                      "X3":  "pending_manual"
+                  },
+    "endedAt":  "2026-10-06T12:19:13.5053527+08:00",
+    "exe":  "E:\\voice-pilot\\src-tauri\\target\\debug\\onetone.exe",
+    "phase":  "scaffolded",
+    "gate":  "ONETONE_AGENT_REAL_INTERRUPT_E2E",
+    "note":  "Checklists + templates only. Scenarios remain pending_manual until real action-result evidence exists."
+}

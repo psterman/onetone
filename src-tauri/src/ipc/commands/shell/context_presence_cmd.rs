@@ -20,17 +20,17 @@ pub fn cmd_context_presence_report(state: String, confidence: String) -> serde_j
         _ => PresenceConfidence::Low,
     };
     presence::report(parsed, conf);
-    serde_json::to_value(presence::snapshot()).unwrap_or_else(|_| {
-        serde_json::json!({ "state": "unknown", "confidence": "low", "fresh": false })
-    })
+    serde_json::to_value(presence::snapshot()).unwrap_or_else(
+        |_| serde_json::json!({ "state": "unknown", "confidence": "low", "fresh": false }),
+    )
 }
 
 /// Read current evidence. Stale → `unknown` with `fresh: false`.
 #[tauri::command]
 pub fn cmd_context_presence_get() -> serde_json::Value {
-    serde_json::to_value(presence::snapshot()).unwrap_or_else(|_| {
-        serde_json::json!({ "state": "unknown", "confidence": "low", "fresh": false })
-    })
+    serde_json::to_value(presence::snapshot()).unwrap_or_else(
+        |_| serde_json::json!({ "state": "unknown", "confidence": "low", "fresh": false }),
+    )
 }
 
 /// Camera stopped / user turned it off. Drop the sample immediately so the

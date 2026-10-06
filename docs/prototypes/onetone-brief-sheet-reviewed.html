@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>OneTone 思路简报 - Vibecoding</title>
+    <style>
+        :root {
+            --bg: #edf0ed;
+            --paper: #fffefa;
+            --panel: #f8f9f7;
+            --ink: #17201d;
+            --muted: #68736e;
+            --line: #d5dcd7;
+            --green: #287562;
+            --green-soft: #e5f2ed;
+            --blue: #236a8c;
+            --blue-soft: #e5f1f7;
+            --amber: #a6641c;
+            --amber-soft: #fff1dc;
+            --red: #a5453f;
+            --red-soft: #fae9e7;
+            --shadow: 0 20px 60px #1b302718;
+        }
+
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0;
+            height: 100vh;
+            min-width: 1120px;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--ink);
+            font: 14px/1.55 "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+        }
+
+        button, input, textarea, select { font: inherit; color: inherit; }
+        button { cursor: pointer; }
+        button:focus-visible, [contenteditable]:focus-visible { 
+            outline: 3px solid #236a8c31; 
+            outline-offset: 2px; 
+        }
+
+        .top {
+            height: 64px;
+            display: flex;
+            align-items: center;
+            gap: 17px;
+            padding: 0 22px;
+            background: #ffffffed;
+            border-bottom: 1px solid var(--line);
+        }
+        
+        .brand { font-weight: 760; font-size: 20px; letter-spacing: -.5px; }
+        .brand span { font-weight: 450; color: var(--muted); }
+        .brief-name { padding-left: 17px; border-left: 1px solid var(--line); font-weight: 650; }
+        .version { border: 1px solid var(--line); background: white; border-radius: 8px; padding: 6px 9px; }
+        
+        .saved { margin-left: auto; color: var(--muted); font-size: 12px; }
+        .saved::before, .sensing i {
+            content: "";
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #419578;
+            margin-right: 7px;
+        }
+        
+        .sensing { border: 1px solid var(--line); background: white; border-radius: 9px; padding: 8px 10px; color: var(--muted); }
+        .deliver { border: 0; background: var(--ink); color: white; border-radius: 10px; padding: 10px 15px; font-weight: 670; }
+
+        .layout {
+            height: calc(100vh - 64px);
+            display: grid;
+            grid-template-columns: 285px minmax(530px, 1fr) 285px;
+        }
+
+        .tray {
+            border-right: 1px solid var(--line);
+            background: var(--panel);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        .tray-head { padding: 20px 17px 13px; display: flex; align-items: start; }
+        .tray-head h2 { font-size: 15px; margin: 0; }
+        .tray-head p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+        
+        .pause { margin-left: auto; border: 0; background: transparent; color: var(--blue); padding: 2px; }
+        
+        .source-tabs { display: flex; margin: 0 17px 11px; padding: 3px; background: #e6eae7; border-radius: 9px; }
+        .source-tabs button { flex: 1; border: 0; background: transparent; padding: 6px; border-radius: 7px; color: var(--muted); font-size: 12px; }
+        .source-tabs .active { background: white; color: var(--ink); box-shadow: 0 1px 4px #00000013; }
+        
+        .candidate-list { padding: 0 11px 100px; overflow: auto; }
+        .time-label { margin: 13px 7px 6px; color: var(--muted); font-size: 11px; }
+        
+        .candidate { border: 1px solid var(--line); background: white; border-radius: 11px; padding: 10px; margin: 6px 0; }
+        .candidate-row { display: grid; grid-template-columns: 32px 1fr auto; gap: 8px; align-items: center; }
+        .c-icon { width: 32px; height: 32px; border-radius: 8px; background: #edf1ef; display: grid; place-items: center; color: var(--muted); }
+        .candidate b { font-size: 12px; display: block; }
+        .candidate small { font-size: 10px; color: var(--muted); display: block; }
+        .new { width: 7px; height: 7px; border-radius: 50%; background: #3e9877; }
+        
+        .candidate-actions { display: flex; gap: 5px; margin-top: 9px; padding-top: 8px; border-top: 1px solid #e8ebe9; }
+        .candidate-actions button { flex: 1; border: 1px solid var(--line); background: white; border-radius: 7px; padding: 5px; font-size: 10px; }
+        .candidate-actions .add { background: var(--ink); color: white; border-color: var(--ink); }
+        
+        .tray-foot { position: absolute; left: 0; bottom: 0; width: 285px; padding: 17px; background: linear-gradient(#f8f9f700, #f8f9f7 30%); padding-top: 32px; }
+        .tray-status { background: #202825; color: #dbe3df; border-radius: 10px; padding: 10px 12px; font-size: 11px; display: flex; justify-content: space-between; }
+
+        .workspace { overflow: auto; padding: 25px 30px 100px; }
+        .workspace-inner { max-width: 800px; margin: auto; }
+        
+        .work-head { height: 46px; display: flex; align-items: center; }
+        .work-head h1 { font-size: 16px; margin: 0; }
+        .work-head small { color: var(--muted); margin-left: 8px; }
+        .perspectives { margin-left: auto; border: 1px solid var(--line); background: white; border-radius: 9px; padding: 7px 10px; color: var(--muted); }
+        
+        .sheet { background: var(--paper); border: 1px solid #d0d7d3; border-radius: 7px; box-shadow: var(--shadow); min-height: 780px; padding: 48px 55px; }
+        .sheet-title { font-size: 27px; font-weight: 760; letter-spacing: -.6px; margin: 0; }
+        
+        .title-origin { display: inline-flex; gap: 6px; align-items: center; margin-top: 7px; color: var(--muted); font-size: 11px; }
+        .title-origin i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+        
+        .thought { margin: 29px -12px 18px; padding: 12px; border: 1px solid transparent; border-radius: 11px; font-size: 16px; line-height: 1.85; min-height: 115px; }
+        .thought:hover { border-color: var(--line); }
+        .thought-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+        .thought[contenteditable=true]:focus { background: #f7f9f7; }
+        
+        .hint-line { display: flex; align-items: center; gap: 9px; background: var(--blue-soft); color: #285e78; border-radius: 9px; padding: 9px 11px; font-size: 12px; margin-bottom: 25px; }
+        .hint-line button { margin-left: auto; border: 0; background: transparent; color: var(--blue); font-weight: 650; }
+        
+        .refs-title { display: flex; align-items: center; border-top: 1px solid var(--line); padding-top: 24px; margin-bottom: 10px; }
+        .refs-title h2 { font-size: 15px; margin: 0; }
+        .refs-title span { color: var(--muted); font-size: 11px; margin-left: 7px; }
+        
+        .ref-card { border: 1px solid var(--line); background: white; border-radius: 12px; margin: 9px 0; overflow: hidden; }
+        .ref-source { display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; padding: 12px; }
+        .ref-icon { width: 38px; height: 38px; border-radius: 9px; background: #eef2ef; display: grid; place-items: center; }
+        .ref-source b { display: block; font-size: 13px; }
+        .ref-source small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+        
+        .readonly { font-size: 10px; color: var(--green); background: var(--green-soft); border-radius: 6px; padding: 4px 7px; }
+        .protected { color: #87500f; background: var(--amber-soft); }
+        
+        .user-note { border-top: 1px solid var(--line); background: #fbfcfb; padding: 10px 12px; }
+        .user-note label { display: block; font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+        .user-note div { min-height: 23px; outline: 0; }
+        
+        .ref-foot { display: flex; align-items: center; gap: 6px; border-top: 1px solid #e7ebe8; padding: 8px 12px; }
+        .mini-chip { border: 1px solid var(--line); background: white; color: var(--muted); border-radius: 7px; padding: 4px 7px; font-size: 10px; transition: all 0.2s; }
+        .mini-chip.on { background: var(--blue-soft); color: var(--blue); border-color: #b4d3e2; }
+        .mini-chip.guard.on { background: var(--amber-soft); color: #8b5414; border-color: #e7c795; }
+        .mode { margin-left: auto; border: 0; background: transparent; color: var(--muted); font-size: 10px; }
+        
+        .add-ref { width: 100%; border: 1px dashed #aebbb4; background: transparent; border-radius: 10px; padding: 10px; color: var(--muted); margin-top: 8px; }
+
+        .side { border-left: 1px solid var(--line); background: var(--panel); padding: 19px 16px; overflow: auto; }
+        .side section { padding: 0 0 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+        .side h2 { font-size: 13px; margin: 0 0 10px; }
+        
+        .budget-top { display: flex; justify-content: space-between; }
+        .budget-top b { font-size: 12px; }
+        .unknown { color: var(--amber); font-size: 10px; }
+        .budget-track { height: 8px; background: #dfe5e1; border-radius: 5px; margin: 9px 0 7px; overflow: hidden; }
+        .budget-fill { width: 42%; height: 100%; background: var(--green); }
+        .budget-numbers { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
+        .budget-breakdown { margin-top: 10px; font-size: 11px; color: var(--muted); }
+        .budget-breakdown div { display: flex; justify-content: space-between; margin: 4px 0; }
+        .compress { width: 100%; border: 1px solid var(--line); background: white; border-radius: 8px; padding: 7px; margin-top: 9px; font-size: 11px; }
+        
+        .guard-list { font-size: 11px; }
+        .guard-item { display: flex; gap: 8px; align-items: start; margin: 9px 0; }
+        .lock { width: 25px; height: 25px; border-radius: 7px; background: var(--amber-soft); display: grid; place-items: center; flex: none; }
+        .guard-item b, .guard-item small { display: block; }
+        .guard-item small { color: var(--muted); }
+        
+        .violation { background: var(--red-soft); border: 1px solid #e7bbb7; border-radius: 10px; padding: 11px; }
+        .violation-head { display: flex; gap: 7px; color: var(--red); font-weight: 680; font-size: 12px; }
+        .violation p { font-size: 11px; margin: 7px 0; color: #70403c; }
+        .violation-actions { display: flex; gap: 5px; }
+        .violation-actions button { border: 1px solid #dfb5b1; background: white; border-radius: 7px; padding: 5px 7px; font-size: 10px; }
+        
+        .deliveries { font-size: 11px; }
+        .delivery { display: grid; grid-template-columns: 8px 1fr auto; gap: 7px; margin: 8px 0; }
+        .delivery i { width: 7px; height: 7px; border-radius: 50%; background: #479479; margin-top: 5px; }
+        .delivery span, .delivery time { color: var(--muted); }
+        .delivery time { font-size: 10px; }
+        .side-deliver { width: 100%; border: 0; background: var(--ink); color: white; border-radius: 9px; padding: 10px; font-weight: 650; }
+
+        .drawer {
+            position: fixed;
+            z-index: 40;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 470px;
+            background: #fafbf9;
+            box-shadow: -25px 0 65px #17201d30;
+            transform: translateX(105%);
+            transition: .28s;
+            display: flex;
+            flex-direction: column;
+        }
+        .drawer.open { transform: translateX(0); }
+        
+        .scrim {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            background: #17201d55;
+            opacity: 0;
+            pointer-events: none;
+            transition: .2s;
+        }
+        .scrim.show { opacity: 1; pointer-events: auto; }
+        
+        .drawer-head { padding: 23px 24px 18px; border-bottom: 1px solid var(--line); display: flex; }
+        .drawer-head h2 { margin: 0; font-size: 20px; }
+        .drawer-head p { margin: 3px 0 0; color: var(--muted); }
+        .close { margin-left: auto; width: 34px; height: 34px; border: 1px solid var(--line); background: white; border-radius: 50%; display: grid; place-items: center; font-size: 18px; }
+        
+        .drawer-body { padding: 20px 24px; overflow: auto; flex: 1; }
+        .angle { border: 1px solid var(--line); background: white; border-radius: 11px; padding: 12px; margin: 8px 0; }
+        .angle b { display: block; }
+        .angle p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+        .optional { color: var(--blue); font-size: 10px; }
+        
+        .delivery-targets { display: flex; gap: 7px; }
+        .delivery-targets button { flex: 1; border: 1px solid var(--line); background: white; border-radius: 9px; padding: 9px; transition: all 0.2s; }
+        .delivery-targets .active { background: var(--ink); color: white; border-color: var(--ink); }
+        
+        .transfer-list { margin-top: 18px; }
+        .transfer-row { display: grid; grid-template-columns: 20px 1fr auto; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+        .transfer-row small { display: block; color: var(--muted); }
+        
+        .drawer-foot { padding: 16px 24px; border-top: 1px solid var(--line); background: white; }
+        .drawer-foot button { width: 100%; border: 0; background: var(--ink); color: white; border-radius: 10px; padding: 11px; font-weight: 650; }
+
+        .toast {
+            position: fixed;
+            z-index: 60;
+            left: 50%;
+            bottom: 22px;
+            transform: translate(-50%, 12px);
+            opacity: 0;
+            background: var(--ink);
+            color: white;
+            border-radius: 9px;
+            padding: 10px 14px;
+            transition: .2s;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+        .anno { display: none; }
+        body.anno-on .anno { display: block; }
+        .anno-tip {
+            background: #fff8e6; border: 1px solid #e7c795; border-radius: 8px;
+            padding: 8px 10px; font-size: 11px; color: #7a4a10; margin: 7px 0; line-height: 1.5;
+        }
+        .anno-tip b { display: block; margin-bottom: 2px; font-size: 11px; }
+        .anno-ok { background: var(--green-soft); border-color: #b6dccd; color: #1f5f4e; }
+        .anno-bad { background: var(--red-soft); border-color: #e7bbb7; color: #8a3b35; }
+        .fix-only { display: none; }
+        body.fix-on .fix-only { display: block; }
+        body.fix-on span.fix-only, body.fix-on b.fix-only { display: inline; }
+        body.fix-on button.fix-only { display: inline-block; }
+        body.fix-on .orig-only { display: none; }
+        .review-bar {
+            padding: 7px 22px; background: #202825; color: #dbe3df; font-size: 11px;
+            display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #000;
+        }
+        .review-bar b { color: #fff; font-weight: 650; }
+        .review-bar button {
+            border: 1px solid #47504b; background: transparent; color: #dbe3df;
+            border-radius: 7px; padding: 4px 9px; font-size: 11px;
+        }
+        .review-bar button.on { background: #3e9877; border-color: #3e9877; color: #fff; }
+        .restore-btn { border-color: #b6dccd !important; background: var(--green-soft) !important; color: #1f5f4e !important; font-weight: 650; }
+        .src-tag { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+
+        @media(max-width: 1240px) {
+            .layout { grid-template-columns: 265px minmax(500px, 1fr) 260px; }
+            .tray-foot { width: 265px; }
+            .sheet { padding-inline: 40px; }
+        }
+        @media(prefers-reduced-motion: reduce) {
+            *, *::before, *::after { transition: none !important; animation: none !important; }
+        }
+    </style>
+</head>
+<body class="anno-on fix-on">
+    <div class="review-bar">
+        <b>建议批注版</b>
+        <span>原设计未改动，叠加一层可开关的修正标注</span>
+        <button id="tgAnno" class="on">显示评估标注</button>
+        <button id="tgFix" class="on">应用建议修正</button>
+        <span style="margin-left:auto; color:#9aa5a0">绿 = 已核实可落地 · 红 = 无 LLM 时做不到</span>
+    </div>
+    <header class="top">
+        <div class="brand">OneTone <span>思路简报</span></div>
+        <div class="brief-name">首页方案简报 · v3</div>
+        <select class="version">
+            <option>v3 当前版本</option>
+            <option>v2 加入参考方案</option>
+            <option>v1 初始想法</option>
+        </select>
+        <span class="saved">已保存到本地</span>
+        <button class="sensing" data-toast="感知：剪贴板文字与图片"><i></i>正在感知</button>
+        <button class="deliver" data-open="delivery">形成首次沟通</button>
+    </header>
+
+    <main class="layout">
+        <aside class="tray">
+            <div class="tray-head">
+                <div>
+                    <h2>候选素材</h2>
+                    <p>自动收下，是否使用由你决定。</p>
+                </div>
+                <button class="pause" data-toast="感知已暂停">暂停</button>
+            </div>
+            <div class="source-tabs">
+                <button class="active">刚刚发生</button>
+                <button>已使用</button>
+                <button>历史</button>
+            </div>
+            
+            <div class="candidate-list">
+                <div class="time-label">刚刚 · 4</div>
+                
+                <!-- Candidate Item: Image -->
+                <div class="candidate">
+                    <div class="candidate-row">
+                        <span class="c-icon">▧</span>
+                        <span><b>current-home.png</b><small>剪贴板图片 · 14:21</small></span>
+                        <i class="new"></i>
+                    </div>
+                    <div class="candidate-actions">
+                        <button class="add" data-toast="已加入简报，原素材保持只读">加入简报</button>
+                        <button data-toast="已忽略">忽略</button>
+                    </div>
+                </div>
+
+                <!-- Candidate Item: Text -->
+                <div class="candidate">
+                    <div class="candidate-row">
+                        <span class="c-icon">¶</span>
+                        <span><b>“首页不是 Agent 控制台…”</b><small>剪贴板文字 · 14:20</small></span>
+                        <i class="new"></i>
+                    </div>
+                    <div class="candidate-actions">
+                        <button class="add" data-toast="已追加到自由思路">加入思路</button>
+                        <button data-toast="已留在托盘">稍后</button>
+                    </div>
+                </div>
+
+                <!-- Candidate Item: Agent Return (Reflection) -->
+                <div class="candidate">
+                    <div class="candidate-row">
+                        <span class="c-icon">±</span>
+                        <span><b>Codex 修改了 3 个文件</b><small>Agent 返回 · 14:18</small></span>
+                        <i class="new"></i>
+                    </div>
+                    <div class="candidate-actions">
+                        <button class="add" data-toast="已作为返回证据保留">查看变化</button>
+                        <button data-toast="已留在托盘">稍后</button>
+                    </div>
+                </div>
+
+                <!-- Candidate Item: URL -->
+                <div class="candidate">
+                    <div class="candidate-row">
+                        <span class="c-icon">↗</span>
+                        <span><b>Gemini 首页参考</b><small>Chrome 网址 · 14:12</small></span>
+                        <i class="new"></i>
+                    </div>
+                    <div class="candidate-actions">
+                        <button class="add" data-toast="已加入简报，只传网址">加入简报</button>
+                        <button data-toast="已忽略">忽略</button>
+                    </div>
+                </div>
+
+                <div class="time-label">今天早些时候</div>
+                
+                <!-- Candidate Item: History -->
+                <div class="candidate">
+                    <div class="candidate-row">
+                        <span class="c-icon">C</span>
+                        <span><b>Codex 首页方案回应</b><small>会话引用 · 11:42</small></span>
+                    </div>
+                    <div class="candidate-actions">
+                        <button data-toast="已打开原会话">打开来源</button>
+                        <button data-toast="已作为参考加入">引用</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tray-foot">
+                <div class="tray-status">
+                    <span>● 剪贴板监听中</span>
+                    <span>仅本地</span>
+                </div>
+            </div>
+        </aside>
+
+        <section class="workspace">
+            <div class="workspace-inner">
+                <div class="work-head">
+                    <h1>连续思路</h1>
+                    <small>不需要先分类</small>
+                    <button class="perspectives" data-open="angles">换个角度看</button>
+                </div>
+                
+                <article class="sheet">
+                    <h1 class="sheet-title">我想让首页帮助用户准备和 Agent 的第一次沟通</h1>
+                    <div class="title-origin">
+                        <i></i>
+                        <span>用户第一句原话 · 未经总结</span>
+                        <span hidden id="titleSource">UserOpening</span>
+                    </div>
+                    <div class="anno anno-tip">
+                        <b>⑥ 「第一句原话」要定义清楚，否则落不了地</b>
+                        如果这句话是用户在首页亲手写的第一句 → 规则成立（取正文首个句子/首段），零成本。
+                        如果它来自剪贴板或语音采集 → <b>落不了地</b>：<code>observe_prompt()</code> 在生产侧零调用方，
+                        hook 桥只接收 event 与 session_id，不携带文本。
+                        建议先只支持「用户手写」，把采集来源留到接通 <code>observe_prompt</code> 之后。
+                    </div>
+                    <div class="anno anno-tip">
+                        <b>⑦ 素材与正文之间是「附件」关系，不是「引用」关系</b>
+                        上一版素材挂在目标/背景/细节/计划下，能表达「这句话对应这张图」；本版正文是一整段，
+                        素材挂在整篇下面，精确对应关系丢失了。
+                        <b>建议先接受附件模式</b>（简单且够用），但导出时把每项素材的「你的话」内联排在正文之后，
+                        而不是另起一节——Agent 真正要读的是：你的话 → 材料清单。
+                    </div>
+                    
+                    <div class="thought-label">你的话 · 可以自由写下、粘贴或继续说</div>
+                    <div class="thought" contenteditable="true">现在的问题不是没有工具，而是想法、截图、项目路径和过去的讨论散在不同地方。用户需要先把这些材料和自己的主线放在一起，说明它们为什么重要，再带着比较完整的上下文进入 Agent。第一次沟通越具体，Agent 需要猜的事情就越少。</div>
+                    
+                    <div class="hint-line">
+                        <span>提示</span>
+                        <span>你已经说了想做什么和为什么。也可以补一句哪些内容绝对不能动。</span>
+                        <button data-toast="已定位到保护规则">设置边界</button>
+                    </div>
+                    
+                    <div class="refs-title">
+                        <h2>和这段思路有关的材料</h2>
+                        <span>3 项 · 原始素材不可编辑</span>
+                    </div>
+                    <div class="anno anno-tip">
+                        <b>⑧ role chip 与「不需要先分类」互相冲突</b>
+                        卡片底部要求用户选「背景 / 细节 / 计划」，而页头写着「不需要先分类」。
+                        建议：<b>role chip 默认全部关闭</b>，角度视图里显示「未归类 3 项 · 点此归到某一格」——
+                        这样「不分类」是默认，「分类」才是补丁，和你上一轮定的原则一致。
+                        另外「保护边界」那两个 chip（NoTouch / KeepStyle）与 role 混在同一排，
+                        语义完全不同，建议分到两排或用分隔线——保护是约束，role 是归类。
+                    </div>
+                    
+                    <!-- Reference: Local File -->
+                    <article class="ref-card">
+                        <div class="ref-source">
+                            <span class="ref-icon">⌂</span>
+                            <span>
+                                <b>E:\voice-pilot\src\index.html</b>
+                                <small>来源：本地文件 · 指纹 8c2f… · 14:08</small>
+                            </span>
+                            <span class="readonly protected">🔒 原始素材 · 只读</span>
+                        </div>
+                        <div class="user-note">
+                            <label>你的话 · 可编辑</label>
+                            <div contenteditable="true">首页可以重新组织，但这个入口文件不要修改。</div>
+                        </div>
+                        <div class="ref-foot">
+                            <button class="mini-chip on" data-role="背景">背景</button>
+                            <button class="mini-chip" data-role="细节">细节</button>
+                            <button class="mini-chip guard on" data-guard="NoTouch">NoTouch</button>
+                            <button class="mini-chip guard" data-guard="ReadOnly">ReadOnly</button>
+                            <button class="mode" data-toast="引用方式：只保存地址">只保存地址⌄</button>
+                        </div>
+                    </article>
+                    
+                    <!-- Reference: Clipboard Image -->
+                    <article class="ref-card">
+                        <div class="ref-source">
+                            <span class="ref-icon">▧</span>
+                            <span>
+                                <b>current-home.png</b>
+                                <small>来源：剪贴板 · 1920×1080 · 指纹 a17d…</small>
+                            </span>
+                            <span class="readonly protected">🔒 原始素材 · 只读</span>
+                        </div>
+                        <div class="user-note">
+                            <label>你的话 · 可编辑</label>
+                            <div contenteditable="true">用于说明现在的配色和文案。可以调整布局，但保持这两部分的感觉。</div>
+                        </div>
+                        <div class="ref-foot">
+                            <button class="mini-chip on" data-role="背景">背景</button>
+                            <button class="mini-chip on" data-role="细节">细节</button>
+                            <button class="mini-chip guard on" data-guard="KeepStyle">KeepStyle</button>
+                            <button class="mode" data-toast="图片将附带用户说明">图片＋说明⌄</button>
+                        </div>
+                    </article>
+                    
+                    <!-- Reference: Web Link -->
+                    <article class="ref-card">
+                        <div class="ref-source">
+                            <span class="ref-icon">↗</span>
+                            <span>
+                                <b>Gemini 首页参考方案</b>
+                                <small>来源：Chrome · https://example.com/reference</small>
+                            </span>
+                            <span class="readonly">原始素材 · 只读</span>
+                        </div>
+                        <div class="user-note">
+                            <label>你的话 · 可编辑</label>
+                            <div contenteditable="true">参考它把材料、事实和判断分开的方式，不要照搬内部思考和虚构进度。</div>
+                        </div>
+                        <div class="ref-foot">
+                            <button class="mini-chip on" data-role="背景">背景</button>
+                            <button class="mini-chip" data-role="计划">计划</button>
+                            <button class="mode" data-toast="只发送网址和你的话">网址＋说明⌄</button>
+                        </div>
+                    </article>
+                    
+                    <button class="add-ref" data-toast="从左侧托盘选择素材">＋ 关联更多只读素材</button>
+                </article>
+            </div>
+        </section>
+
+        <aside class="side">
+            <section>
+                <h2>上下文预算</h2>
+                <div class="budget-top">
+                    <b>Codex · 当前简报</b>
+                    <span class="unknown">目标上限未知</span>
+                </div>
+                <div class="budget-track">
+                    <div class="budget-fill"></div>
+                </div>
+                <div class="budget-numbers">
+                    <span>约 8.4k tokens</span>
+                    <span>估算值</span>
+                </div>
+                <div class="budget-breakdown">
+                    <div><span>你的话</span><b>1.2k</b></div>
+                    <div><span>全文素材 · 1</span><b>3.8k</b></div>
+                    <div><span>摘要素材 · 2</span><b>2.6k</b></div>
+                    <div><span>图片估算 · 1</span><b class="orig-only">0.8k</b><b class="fix-only">0 · 该 Agent 收不到</b></div>
+                </div>
+                <button class="compress" data-toast="已展开全文、摘要和不发送选项">调整引用方式</button>
+                <div class="anno anno-tip">
+                    <b>② 预算条把收不到的东西算进去了</b>
+                    投递面板明确写了「图片 · 手动上传」，说明 Codex 拿不到这张图；但预算仍计 0.8k。
+                    收不到就应计 0，并标注「该 Agent 收不到」——否则预算条会在唯一该准的地方说谎。
+                </div>
+                <div class="anno anno-tip anno-ok">
+                    <b>「目标上限未知」这一处改对了</b>
+                    上一版写 18k / 32k，但全仓库零 tokenizer（<code>tiktoken</code>、<code>count_token</code> 均无命中），
+                    32k 这个分母本来是编的。本版改成「目标上限未知 + 估算值」，是诚实的。
+                </div>
+            </section>
+            
+            <section>
+                <h2>保护边界 · 2</h2>
+                <div class="guard-list">
+                    <div class="guard-item">
+                        <span class="lock">🔒</span>
+                        <span>
+                            <b>src/index.html</b>
+                            <small>NoTouch · 完全不许动</small>
+                        </span>
+                    </div>
+                    <div class="guard-item">
+                        <span class="lock">◈</span>
+                        <span>
+                            <b>current-home.png</b>
+                            <small>KeepStyle · 保持配色与文案</small>
+                        </span>
+                    </div>
+                </div>
+            </section>
+            
+            <section>
+                <h2>本轮返回</h2>
+                <div class="violation">
+                    <div class="violation-head">
+                        <span>!</span>
+                        <span>保护范围发生变化</span>
+                    </div>
+                    <div class="src-tag fix-only">来自 v3 · 投递 Codex · 14:02</div>
+                    <p>Codex 修改了被标记为 NoTouch 的 <b>src/index.html</b>。这是依据文件 Diff 检出的疑似违规。</p>
+                    <div class="violation-actions">
+                        <button class="fix-only restore-btn" data-toast="已还原到投递前状态（cmd_tm_restore）">还原这次修改</button>
+                        <button data-toast="正在打开 Diff">查看 Diff</button>
+                        <button data-toast="已确认为违规，下次会主动提醒">确认违规</button>
+                        <button data-toast="已标记为本次允许">本次允许</button>
+                    </div>
+                </div>
+                <div class="anno anno-tip anno-ok">
+                    <b>③ 这是整份稿子最有价值的新机制，而且落地极便宜</b>
+                    「不改什么」从一句自然语言变成了<b>可机检的结构化约束</b>，并且接上了反哺：确认违规 / 本次允许 = 用户判断 → 沉淀为下一轮约束。
+                    检出这一步几乎不用写：<code>dirty_fingerprint</code> 已经在跑 <code>git status --porcelain=v1 -uno</code>，
+                    只是把全文拿去算哈希；<code>count_porcelain_changes</code> 也只是数行。
+                    把它<b>解析成路径列表</b>再与 guard 列表求交集，就是这条检出——约三行改动。
+                    文件列表结构 <code>DiffSummary.files: Vec&lt;DiffFile{path,status}&gt;</code> 也已存在。
+                </div>
+                <div class="anno anno-tip anno-bad">
+                    <b>④ 缺了最关键的那个动作：还原</b>
+                    NoTouch 的含义是「这件事不该发生」。它既然发生了，用户第一想要的是<b>退回去</b>，而不是先去看 Diff。
+                    而 <code>cmd_tm_restore</code> 已经存在（时光机恢复点），这是零成本的一个按钮——已补在第一位。
+                    另：原稿没标这次返回来自哪次投递，违规判定需要 delivery → return 的关联，已补来源行。
+                </div>
+            </section>
+            
+            <section>
+                <h2>投递记录 · v3</h2>
+                <div class="deliveries">
+                    <div class="delivery">
+                        <i></i>
+                        <span><b>Codex</b><br><span>正文已复制 · 图片待上传</span></span>
+                        <time>14:02</time>
+                    </div>
+                    <div class="delivery">
+                        <i></i>
+                        <span><b>Cursor</b><br><span>同一版本 · 已打开项目</span></span>
+                        <time>13:46</time>
+                    </div>
+                </div>
+            </section>
+            
+            <button class="side-deliver orig-only" data-open="delivery">检查并形成首次沟通</button>
+            <button class="side-deliver fix-only" data-toast="客观完整性：2 项待确认 · 未声明不能改什么 / 图片需手动上传">首次沟通检查 · 2 项</button>
+            <div class="anno anno-tip anno-bad">
+                <b>① 两个主 CTA 重复且文案不一</b>
+                顶部是「形成首次沟通」，右栏是「检查并形成首次沟通」——同一动作、两个名字、两处入口。
+                修正后右栏降为「首次沟通检查」，只报客观完整性（参照你定的事实口径：只查有没有说，不查好不好），不再重复投递入口。
+            </div>
+        </aside>
+    </main>
+
+    <div class="scrim" id="scrim"></div>
+    
+    <!-- Perspectives / Angles Drawer -->
+    <aside class="drawer" id="anglesDrawer" aria-hidden="true">
+        <div class="drawer-head">
+            <div>
+                <h2>换个角度看</h2>
+                <p>这些不是必填项，只帮助你观察已有内容。</p>
+            </div>
+            <button class="close" data-close aria-label="关闭观察面板">×</button>
+        </div>
+        <div class="drawer-body">
+            <div class="angle">
+                <span class="optional">可选视图</span>
+                <b>目标</b>
+                <p>你已经表达：帮助用户准备和 Agent 的第一次沟通。</p>
+            </div>
+            <div class="angle">
+                <span class="optional">可选视图</span>
+                <b>目标</b>
+                <p class="orig-only">你已经表达：帮助用户准备和 Agent 的第一次沟通。</p>
+                <p class="fix-only">直接取用标题（用户第一句原话），无需提取。</p>
+                <div class="anno anno-tip anno-ok" style="margin-top:8px">
+                    <b>数据来源：标题</b>
+                    零成本，规则可复现。
+                </div>
+            </div>
+            <div class="angle">
+                <span class="optional">可选视图</span>
+                <b>背景</b>
+                <p class="orig-only">你已经说明：材料与讨论散落，Agent 容易依赖猜测。</p>
+                <p class="fix-only">已归类为「背景」的素材共 1 项，及其你的话。</p>
+                <div class="anno anno-tip anno-bad" style="margin-top:8px">
+                    <b>⑤ 这一格在无 LLM 时做不到</b>
+                    原稿写「你已经说明：材料与讨论散落」——这是<b>对正文的语义转述</b>，规则提取不出来，
+                    除非调用模型，而那违反「不推断语义」。
+                    可行做法：这一格 = 所有 role=背景 的素材 + 它们的「你的话」（纯投影，非提取）。已按此改写。
+                </div>
+            </div>
+            <div class="angle">
+                <span class="optional">可选视图</span>
+                <b>细节</b>
+                <p>当前关联了 3 项材料，其中 2 项设置了保护规则。</p>
+                <div class="anno anno-tip anno-ok" style="margin-top:8px">
+                    <b>数据来源：素材与 guard 统计</b>
+                    零成本，规则可复现。
+                </div>
+            </div>
+            <div class="angle">
+                <span class="optional">可选视图</span>
+                <b>计划</b>
+                <p>没有显式计划也可以继续投递。</p>
+                <div class="anno anno-tip" style="margin-top:8px">
+                    <b>数据来源：无</b>
+                    这一格本来就该空着——保持「没有计划也能发」是对的，别为了填满而生成。
+                </div>
+            </div>
+        </div>
+    </aside>
+    
+    <!-- Delivery / Transfer Drawer -->
+    <aside class="drawer" id="deliveryDrawer" aria-hidden="true">
+        <div class="drawer-head">
+            <div>
+                <h2>形成首次沟通</h2>
+                <p>同一份 v3 可以投递给多个 Agent，不创建新版本。</p>
+            </div>
+            <button class="close" data-close aria-label="关闭投递面板">×</button>
+        </div>
+        <div class="drawer-body">
+            <div class="delivery-targets">
+                <button class="active">Codex</button>
+                <button>Cursor</button>
+                <button>Claude</button>
+                <button>剪贴板</button>
+            </div>
+            <div class="transfer-list">
+                <div class="transfer-row">
+                    <span>✓</span>
+                    <span><b>你的连续思路</b><small>使用用户原话</small></span>
+                    <span>全文</span>
+                </div>
+                <div class="transfer-row">
+                    <span>✓</span>
+                    <span><b>项目地址</b><small>E:\voice-pilot</small></span>
+                    <span>引用</span>
+                </div>
+                <div class="transfer-row">
+                    <span>○</span>
+                    <span><b>当前首页截图</b><small>KeepStyle · 带用户说明</small></span>
+                    <span>手动上传</span>
+                </div>
+                <div class="transfer-row">
+                    <span>🔒</span>
+                    <span><b>src/index.html</b><small>NoTouch</small></span>
+                    <span>保护对象</span>
+                </div>
+            </div>
+        </div>
+        <div class="drawer-foot">
+            <button data-toast="已复制沟通稿；打开 Agent 后发送状态未知">复制说明并打开 Codex</button>
+        </div>
+    </aside>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <div class="anno" style="position:fixed; right:18px; bottom:18px; z-index:50; width:330px; max-height:62vh; overflow:auto; background:#fffefa; border:1px solid #d0d7d3; border-radius:12px; box-shadow:0 20px 60px #1b302726; padding:15px 16px;">
+        <div style="font-size:13px; font-weight:650; margin-bottom:9px;">建议清单 · 按落地成本排序</div>
+
+        <div style="font-size:11px; margin:11px 0 5px; color:var(--green); font-weight:650;">零成本 · 直接做</div>
+        <div style="font-size:11px; line-height:1.6; margin-bottom:7px;">
+            <b>③</b> 违规检出：把 <code>git status --porcelain</code> 从「数行」改成「解析路径列表」，与 guard 求交集。<br>
+            <b>④</b> 补「还原这次修改」按钮，接已有 <code>cmd_tm_restore</code>。<br>
+            <b>②</b> 收不到的素材在预算计 0 并标注。
+        </div>
+
+        <div style="font-size:11px; margin:11px 0 5px; color:var(--blue); font-weight:650;">低成本 · 本阶段做</div>
+        <div style="font-size:11px; line-height:1.6; margin-bottom:7px;">
+            <b>①⑧</b> CTA 去重；role chip 默认关闭，保护 chip 与归类 chip 分行。<br>
+            <b>⑥</b> 标题先只支持用户手写，采集来源等 <code>observe_prompt</code> 接通后再说。
+        </div>
+
+        <div style="font-size:11px; margin:11px 0 5px; color:var(--amber); font-weight:650;">需要定夺</div>
+        <div style="font-size:11px; line-height:1.6; margin-bottom:7px;">
+            <b>⑤</b> 「背景」视角：接受 rule-based 投影（素材归类），还是彻底留空？<br>
+            <b>⑦</b> 附件模式够用，还是要在正文里做 <code>[[素材]]</code> 锚点？<br>
+            <b>⑨</b> 检查环节放在哪——本版它消失了，只剩一句 hint。
+        </div>
+
+        <div style="font-size:11px; margin:11px 0 5px; color:var(--muted); font-weight:650;">这版相对上一版的实质进步</div>
+        <div style="font-size:11px; line-height:1.6;">
+            连续思路取代四字段（分类降为可选视图）；保护边界成为一等公民；
+            预算条不再编造分母；投递不创建新版本（投递是动作不是版本）。
+        </div>
+    </div>
+
+    <script>
+        let toastTimer;
+        const scrim = document.getElementById('scrim');
+        
+        // Simple Toast Notification Logic
+        function toast(message) {
+            const el = document.getElementById('toast');
+            el.textContent = message;
+            el.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+        }
+        
+        // Drawer Open Logic
+        function openDrawer(name) {
+            const el = document.getElementById(name === 'angles' ? 'anglesDrawer' : 'deliveryDrawer');
+            el.classList.add('open');
+            el.setAttribute('aria-hidden', 'false');
+            scrim.classList.add('show');
+        }
+        
+        // Drawer Close Logic
+        function closeDrawers() {
+            document.querySelectorAll('.drawer').forEach(el => {
+                el.classList.remove('open');
+                el.setAttribute('aria-hidden', 'true');
+            });
+            scrim.classList.remove('show');
+        }
+        
+        // Toggle interaction for role chips
+        function toggleRole(button) {
+            button.classList.toggle('on');
+            toast(`${button.textContent}视图${button.classList.contains('on') ? '已关联' : '已取消'}`);
+        }
+        
+        // Toggle interaction for guard chips
+        function toggleGuard(button) {
+            button.classList.toggle('on');
+            toast(`${button.textContent} ${button.classList.contains('on') ? '已启用' : '已取消'}`);
+        }
+        
+        // Event Listeners Initialization
+        document.querySelectorAll('[data-open]').forEach(el => el.onclick = () => openDrawer(el.dataset.open));
+        document.querySelectorAll('[data-close]').forEach(el => el.onclick = closeDrawers);
+        scrim.onclick = closeDrawers;
+        
+        // Press Escape to close drawers
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeDrawers();
+        });
+        
+        // Attach toast to generic actionable buttons
+        document.querySelectorAll('[data-toast]').forEach(el => el.onclick = () => toast(el.dataset.toast));
+        
+        // Attach chip toggles
+        document.querySelectorAll('[data-role]').forEach(el => el.onclick = () => toggleRole(el));
+        document.querySelectorAll('[data-guard]').forEach(el => el.onclick = () => toggleGuard(el));
+        
+        // Review toggles
+        const tgAnno = document.getElementById('tgAnno');
+        const tgFix = document.getElementById('tgFix');
+        tgAnno.onclick = () => {
+            document.body.classList.toggle('anno-on');
+            tgAnno.classList.toggle('on', document.body.classList.contains('anno-on'));
+        };
+        tgFix.onclick = () => {
+            document.body.classList.toggle('fix-on');
+            tgFix.classList.toggle('on', document.body.classList.contains('fix-on'));
+        };
+
+        // Delivery targets selection state
+        document.querySelectorAll('.delivery-targets button').forEach(button => {
+            button.onclick = () => {
+                document.querySelectorAll('.delivery-targets button').forEach(el => el.classList.remove('active'));
+                button.classList.add('active');
+                toast(`投递目标：${button.textContent}`);
+            };
+        });
+    </script>
+</body>
+</html>

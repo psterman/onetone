@@ -1,13 +1,15 @@
 //! Cursor state.vscdb session discovery — headers + user-turn observed (no message body).
 
-use crate::agent_memory::events::{append_observed_event, source_ref_for_turn, upsert_project, upsert_session_candidate};
+use crate::agent_memory::events::{
+    append_observed_event, source_ref_for_turn, upsert_project, upsert_session_candidate,
+};
 use crate::agent_memory::model::{
-    ProbeStatus, ProjectMatch, PROVIDER_CURSOR, SessionCandidate, WorkspaceEvidence,
+    ProbeStatus, ProjectMatch, SessionCandidate, WorkspaceEvidence, PROVIDER_CURSOR,
 };
 use crate::agent_memory::project::{mark_active_sessions, resolve_project};
 use crate::agent_memory::store::{now_ms, with_write};
 use crate::cursor_local_activity;
-use rusqlite::{Connection, OpenFlags, params};
+use rusqlite::{params, Connection, OpenFlags};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -137,7 +139,11 @@ fn list_headers(conn: &Connection) -> Result<(Vec<HeaderHit>, String), ProbeStat
         let Some(list_field) = list_field else {
             continue;
         };
-        let list = obj.get(list_field).and_then(|x| x.as_array()).cloned().unwrap_or_default();
+        let list = obj
+            .get(list_field)
+            .and_then(|x| x.as_array())
+            .cloned()
+            .unwrap_or_default();
         if list.is_empty() {
             return Ok((Vec::new(), format!("headers:{key}:empty")));
         }
@@ -186,7 +192,10 @@ fn list_headers(conn: &Connection) -> Result<(Vec<HeaderHit>, String), ProbeStat
                 updated_at: updated.or(created),
             });
         }
-        let schema_hash = format!("{:x}", Sha256::digest(format!("{key}|{list_field}|{}", out.len()).as_bytes()));
+        let schema_hash = format!(
+            "{:x}",
+            Sha256::digest(format!("{key}|{list_field}|{}", out.len()).as_bytes())
+        );
         return Ok((out, schema_hash));
     }
     Err(ProbeStatus::SchemaUnknown)
@@ -203,7 +212,8 @@ fn load_cursor_row(db_path: &str) -> Option<(FileMarks, String, Option<u64>, Val
                 params![PROVIDER_CURSOR, db_path],
                 |r| {
                     let raw: String = r.get(8).unwrap_or_else(|_| "{}".into());
-                    let cursor_json = serde_json::from_str(&raw).unwrap_or(Value::Object(Default::default()));
+                    let cursor_json =
+                        serde_json::from_str(&raw).unwrap_or(Value::Object(Default::default()));
                     Ok((
                         FileMarks {
                             db_size: r.get::<_, i64>(0).unwrap_or(0) as u64,
@@ -235,9 +245,13 @@ fn emit_user_turns_for_composer(
     let key = format!("composerData:{composer_id}");
     let data = kv_get(conn, "cursorDiskKV", &key)?;
     let obj = data.as_object()?;
-    let headers_field = ["fullConversationHeadersOnly", "conversationHeaders", "headers"]
-        .into_iter()
-        .find(|f| obj.get(*f).and_then(|x| x.as_array()).is_some())?;
+    let headers_field = [
+        "fullConversationHeadersOnly",
+        "conversationHeaders",
+        "headers",
+    ]
+    .into_iter()
+    .find(|f| obj.get(*f).and_then(|x| x.as_array()).is_some())?;
     let hdrs = obj.get(headers_field)?.as_array()?;
     let mut newest_ref = String::new();
     let mut emitted = 0usize;
@@ -289,7 +303,13 @@ fn emit_user_turns_for_composer(
     }
 }
 
-fn save_cursor_row(db_path: &str, marks: &FileMarks, schema_hash: &str, status: ProbeStatus, cursor_json: &str) {
+fn save_cursor_row(
+    db_path: &str,
+    marks: &FileMarks,
+    schema_hash: &str,
+    status: ProbeStatus,
+    cursor_json: &str,
+) {
     let now = now_ms() as i64;
     let _ = with_write(|conn| {
         conn.execute(
@@ -332,7 +352,9 @@ fn save_cursor_row(db_path: &str, marks: &FileMarks, schema_hash: &str, status: 
 }
 
 /// Discover Cursor sessions; persist observed events. Non-blocking caller should run on worker.
-pub fn discover_cursor_sessions(project_hint: Option<&Path>) -> Result<Vec<SessionCandidate>, String> {
+pub fn discover_cursor_sessions(
+    project_hint: Option<&Path>,
+) -> Result<Vec<SessionCandidate>, String> {
     let Some(db_path) = cursor_local_activity_vscdb_path() else {
         save_probe_not_found();
         return Ok(Vec::new());
@@ -342,7 +364,13 @@ pub fn discover_cursor_sessions(project_hint: Option<&Path>) -> Result<Vec<Sessi
 
     if !cursor_local_activity::consent_enabled() {
         // Consent off: do not scan; leave cache. Probe marked consent_off.
-        save_cursor_row(&db_s, &marks, "", ProbeStatus::ConsentOff, "{\"version\":1}");
+        save_cursor_row(
+            &db_s,
+            &marks,
+            "",
+            ProbeStatus::ConsentOff,
+            "{\"version\":1}",
+        );
         return Ok(Vec::new());
     }
 
@@ -384,7 +412,13 @@ pub fn discover_cursor_sessions(project_hint: Option<&Path>) -> Result<Vec<Sessi
     let (headers, schema_hash) = match list_headers(&conn) {
         Ok(x) => x,
         Err(ProbeStatus::SchemaUnknown) => {
-            save_cursor_row(&db_s, &marks, "", ProbeStatus::SchemaUnknown, "{\"version\":1}");
+            save_cursor_row(
+                &db_s,
+                &marks,
+                "",
+                ProbeStatus::SchemaUnknown,
+                "{\"version\":1}",
+            );
             return Ok(Vec::new());
         }
         Err(st) => {
@@ -394,7 +428,13 @@ pub fn discover_cursor_sessions(project_hint: Option<&Path>) -> Result<Vec<Sessi
     };
 
     if headers.is_empty() {
-        save_cursor_row(&db_s, &marks, &schema_hash, ProbeStatus::EmptyValid, "{\"version\":1,\"lastComposerUpdatedAt\":0}");
+        save_cursor_row(
+            &db_s,
+            &marks,
+            &schema_hash,
+            ProbeStatus::EmptyValid,
+            "{\"version\":1,\"lastComposerUpdatedAt\":0}",
+        );
         return Ok(Vec::new());
     }
 
@@ -482,7 +522,12 @@ pub fn discover_cursor_sessions(project_hint: Option<&Path>) -> Result<Vec<Sessi
             ts,
             "Cursor session updated",
         );
-        let dref = source_ref_for_turn(&h.composer_id, None, h.created_at.or(Some(ts)), "session_discovered");
+        let dref = source_ref_for_turn(
+            &h.composer_id,
+            None,
+            h.created_at.or(Some(ts)),
+            "session_discovered",
+        );
         let _ = append_observed_event(
             &sid,
             PROVIDER_CURSOR,
@@ -494,7 +539,8 @@ pub fn discover_cursor_sessions(project_hint: Option<&Path>) -> Result<Vec<Sessi
 
         // User turns: newest composers only. Bodies never read. UNIQUE ignores dupes.
         let should_scan_turns = turn_scan_set.contains(&h.composer_id)
-            && (prev_last_composer_updated == 0 || ts >= prev_last_composer_updated.saturating_sub(1));
+            && (prev_last_composer_updated == 0
+                || ts >= prev_last_composer_updated.saturating_sub(1));
         if should_scan_turns {
             if let Some(bref) = emit_user_turns_for_composer(&conn, &sid, &h.composer_id, ts) {
                 last_bubble_ref = bref;

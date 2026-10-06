@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>右栏选型对照 · OneTone 首页三分栏</title>
+<style>
+:root{
+  --bg:#f4f7fc; --sf:#fff; --pn:#f8fbff;
+  --ink:#1f1f1f; --mu:#444746; --dim:#8e918f;
+  --ln:#e0e2e0;
+  --pri:#0b57d0; --pri-s:#d3e3fd;
+  --sec:#00639b; --sec-s:#c2e7ff;
+  --red:#b3261e; --red-s:#f9dedc;
+  --grn:#146c2e; --grn-s:#c4eed0;
+  --amb:#8a5100; --amb-s:#fff1dc;
+}
+*{box-sizing:border-box}
+body{margin:0;height:100vh;min-width:1280px;overflow:hidden;background:var(--bg);color:var(--ink);
+  font:13.5px/1.55 "Segoe UI","Microsoft YaHei UI",system-ui,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+
+.top{height:56px;display:flex;align-items:center;gap:12px;padding:0 20px;background:var(--sf);border-bottom:1px solid var(--ln)}
+.top b{font-size:17px;font-weight:500}
+.top small{color:var(--mu)}
+.switch{margin-left:auto;display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:22px}
+.switch button{padding:7px 13px;border-radius:18px;font-size:12.5px;color:var(--mu)}
+.switch button.on{background:var(--sf);color:var(--pri);font-weight:500;box-shadow:0 1px 3px #00000014}
+
+.layout{height:calc(100vh - 56px);display:grid;grid-template-columns:300px 1fr 366px}
+.left{background:var(--pn);border-right:1px solid var(--ln);padding:16px;overflow:auto}
+.mid{background:var(--bg);padding:24px 30px;overflow:auto}
+.right{background:var(--sf);border-left:1px solid var(--ln);padding:16px;overflow:auto;display:flex;flex-direction:column}
+
+h3{font-size:12.5px;font-weight:500;margin:0 0 9px;color:var(--ink);display:flex;gap:6px;align-items:center}
+h3 em{font-style:normal;color:var(--dim);font-size:11px;font-weight:400}
+
+/* left & mid are deliberately plain to keep focus on the right column */
+.ch{border:1px solid var(--ln);background:var(--sf);border-radius:9px;padding:9px 10px;margin-bottom:6px;font-size:12px}
+.ch small{display:block;color:var(--dim);font-size:10.5px}
+.cd{border:1px solid var(--ln);background:var(--sf);border-radius:9px;padding:9px 10px;margin-bottom:6px;font-size:12px}
+.cd small{display:block;color:var(--dim);font-size:10.5px}
+.blk{background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:26px 30px;max-width:660px;margin:0 auto}
+.blk .t{font-size:23px;border:0;width:100%;outline:0;margin-bottom:4px}
+.blk .m{font-size:11.5px;color:var(--dim);margin-bottom:14px}
+.blk .b{font-size:14.5px;line-height:1.85;outline:0}
+.blk .b.sel{background:var(--pri-s);border-radius:7px;margin:0 -8px;padding:2px 8px}
+
+/* right column blocks */
+.rp{border:1px solid var(--ln);border-radius:11px;padding:12px;margin-bottom:11px}
+.rp h4{font-size:12px;font-weight:500;margin:0 0 9px;color:var(--ink)}
+.lbl{font-size:10.5px;color:var(--dim);display:block;margin:9px 0 4px}
+.pill{border:1px solid var(--ln);background:#fff;border-radius:14px;padding:4px 9px;font-size:11px;color:var(--mu);display:inline-block;margin:0 4px 5px 0}
+.pill.on{background:var(--pri-s);color:var(--pri);border-color:var(--pri-s)}
+.pill.na{background:#f2f2f2;color:#adadad;text-decoration:line-through}
+.row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--mu);margin:4px 0}
+.big{width:100%;background:var(--pri);color:#fff;border-radius:12px;padding:12px;font-weight:500;font-size:13.5px}
+.line{display:flex;gap:7px;align-items:center;font-size:11.5px;color:var(--mu);margin:6px 0}
+.ok{color:var(--grn)} .no{color:var(--red)} .wa{color:var(--amb)}
+.sp{margin-top:auto}
+
+/* verdict */
+.verdict{border-radius:11px;padding:12px;font-size:11.5px;line-height:1.65;margin-bottom:11px}
+.v-red{background:var(--red-s);border:1px solid #f0c4c0;color:#8a3b35}
+.v-amb{background:var(--amb-s);border:1px solid #e7c795;color:#7a4a10}
+.v-grn{background:var(--grn-s);border:1px solid #b6dccd;color:#1f5f4e}
+.verdict b{display:block;font-size:12.5px;margin-bottom:5px}
+.verdict code{background:#ffffffaa;border-radius:4px;padding:0 3px;font-size:10.5px}
+
+.toast{position:fixed;bottom:26px;left:50%;transform:translate(-50%,14px);background:#323232;color:#fff;padding:10px 18px;border-radius:20px;font-size:12.5px;opacity:0;visibility:hidden;transition:.25s;z-index:99}
+.toast.show{opacity:1;visibility:visible;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <b>右栏选型对照</b>
+  <small>左栏与中栏固定，只切换右栏方案</small>
+  <div class="switch">
+    <button data-v="a">A · 目标综合规划</button>
+    <button data-v="b">B · 系统自动排版综合</button>
+    <button data-v="c">C · 编辑工具</button>
+    <button data-v="d" class="on">D · 三层上下文面板</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <aside class="left">
+    <h3>本机能力 <em>固定</em></h3>
+    <div class="ch"><b>按键</b><small>热键和弦 · Ctrl+Shift+C</small></div>
+    <div class="ch"><b>语音</b><small>vosk · “收下这个”</small></div>
+    <div class="ch"><b>SoftPad</b><small>AG01 · 指向 Codex</small></div>
+    <div class="ch"><b>摄像头</b><small>仅手势控制</small></div>
+    <h3 style="margin-top:16px">候选托盘 <em>4</em></h3>
+    <div class="cd"><b>current-home.png</b><small>剪贴板 · 14:21</small></div>
+    <div class="cd"><b>src/index.html 已变更</b><small>文件变化 · 14:18</small></div>
+    <div class="cd"><b>Codex 修改了 3 个文件</b><small>Agent 返回 · 14:12</small></div>
+    <div class="cd"><b>“首页不是控制台”</b><small>语音 · 14:08</small></div>
+  </aside>
+
+  <section class="mid">
+    <div class="blk">
+      <input class="t" value="我想让首页帮助用户准备和 Agent 的第一次沟通">
+      <div class="m">主线思路 · 编辑于刚刚</div>
+      <div class="b">现在的问题不是没有工具，而是想法、截图、项目路径和过去的讨论散在不同地方。<span class="b sel">用户需要先把这些材料和自己的主线放在一起，说明它们为什么重要</span>，再带着比较完整的上下文进入 Agent。第一次沟通越具体，Agent 需要猜的事情就越少。</div>
+      <div style="margin-top:22px;border-top:1px dashed var(--ln);padding-top:16px;font-size:11.5px;color:var(--dim)">
+        已选中中间那一句 —— 右栏的「上下文层」正是为它服务
+      </div>
+    </div>
+  </section>
+
+  <aside class="right" id="rp"></aside>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var tt;
+function toast(m){var e=document.getElementById('toast');e.textContent=m;e.classList.add('show');
+  clearTimeout(tt);tt=setTimeout(function(){e.classList.remove('show')},2200);}
+
+var V = {
+
+a:`
+<div class="verdict v-red"><b>A · Google Studio 式目标综合规划 —— 不建议</b>
+它假设你在<b>操作一个模型</b>：目标类型、输出要求、附加能力，全是 prompt 工程的旋钮。
+而 OneTone 不调模型，它是<b>把东西递给别的 Agent</b>——这一栏应该是交付配置，不是模型配置。
+<code>temperature</code>、<code>system instruction</code> 之类在这里根本不存在。
+</div>
+
+<div class="rp">
+  <h4>目标类型</h4>
+  <span class="pill on">规划方案</span><span class="pill">代码任务</span><span class="pill">文档写作</span><span class="pill">分析</span>
+  <span class="lbl">目标声明</span>
+  <div style="border:1px solid var(--ln);border-radius:8px;padding:8px;font-size:11.5px;color:var(--dim)">你要解决什么…</div>
+  <span class="lbl">输出要求</span>
+  <span class="pill on">结构化</span><span class="pill">分步骤</span><span class="pill">带代码</span>
+  <span class="lbl">附加能力</span>
+  <div class="line"><span class="ok">✓</span><span>允许引用文件</span></div>
+  <div class="line"><span class="ok">✓</span><span>允许看图</span></div>
+  <div class="line"><span class="no">×</span><span>允许联网</span></div>
+</div>
+
+<div class="rp">
+  <h4>约束</h4>
+  <div class="line"><span class="ok">✓</span><span>不改 src/index.html</span></div>
+  <div class="line"><span class="ok">✓</span><span>保持配色与文案</span></div>
+</div>
+
+<button class="big">生成并发送</button>
+
+<div class="verdict v-amb" style="margin-top:11px"><b>其中唯一值得留下的是「约束」</b>
+它本质就是保护边界（NoTouch / KeepStyle），是确定性的、可机检的 —— 但那不必长成 prompt 面板的样子，
+它属于常驻层。</div>
+`,
+
+b:`
+<div class="verdict v-red"><b>B · 系统自动排版与综合 —— 不建议，「综合」做不到</b>
+「综合」「提取关键句」「生成摘要」「建立大纲」全部是<b>语义操作</b>。
+没有 LLM 时只能靠字符串相似，产出物不可核验 —— 而这恰恰是这个项目唯一有满分潜质的维度。
+它会诱导产品<b>假装有</b>，这是三个方案里最危险的一个。
+</div>
+
+<div class="rp">
+  <h4>自动整理</h4>
+  <button class="big" style="margin-bottom:10px">一键整理</button>
+  <span class="lbl">整理规则</span>
+  <div class="line"><span class="ok">✓</span><span>按来源分组</span></div>
+  <div class="line"><span class="no">×</span><span>提取关键句（需语义）</span></div>
+  <div class="line"><span class="no">×</span><span>生成摘要（需语义）</span></div>
+  <div class="line"><span class="no">×</span><span>建立大纲（需语义）</span></div>
+</div>
+
+<div class="rp">
+  <h4>预览</h4>
+  <div style="font-size:11.5px;color:var(--dim);line-height:1.7">
+    一、背景<br>
+    　· 系统认为这段在讲材料散落<br>
+    二、目标<br>
+    　· 系统认为这段在讲首次沟通<br>
+    <span style="color:var(--red)">↑ 全为推断，不可回跳，不可核验</span>
+  </div>
+</div>
+
+<div class="verdict v-grn" style="margin-top:11px"><b>但「按确定性规则重排」是可以的</b>
+按时间、按来源、按类型、按引用次数 —— 这些是 JOIN 与排序，不是综合。
+项目里已有现成范式：<code>reorderMapping</code> + <code>cmd_mapping_reorder { orderedIds }</code>。
+做法是把「综合」换成「<b>视图</b>」：同一批素材的另一种确定性排列，规则写在明处。</div>
+`,
+
+c:`
+<div class="verdict v-amb"><b>C · 编辑工具 —— 方向对，但停在表面</b>
+它是三个方案里唯一不撒谎的，但<b>排版对投递的价值很低</b>：
+Agent 收到的是 Markdown 文本，加粗、字号、缩进对它没有意义。
+真正有价值的是它下面那几个<b>结构操作</b>——插入素材、上移下移 —— 而它们被埋在格式工具栏底下了。
+</div>
+
+<div class="rp">
+  <h4>格式</h4>
+  <span class="pill">B</span><span class="pill">I</span><span class="pill">H1</span><span class="pill">H2</span><span class="pill">列表</span><span class="pill">代码</span><span class="pill">引用</span>
+  <span class="lbl">插入</span>
+  <span class="pill">素材</span><span class="pill">分割线</span><span class="pill">目录</span>
+</div>
+
+<div class="rp">
+  <h4>操作</h4>
+  <span class="pill">上移</span><span class="pill">下移</span><span class="pill">复制</span><span class="pill">删除</span>
+</div>
+
+<div class="rp">
+  <h4>这一段绑定通道</h4>
+  <div style="font-size:11.5px;color:var(--dim)">（通常没有）</div>
+</div>
+
+<button class="big">保存草稿</button>
+
+<div class="verdict v-grn" style="margin-top:11px"><b>把它翻过来就对了</b>
+结构操作在上、格式工具在下（甚至默认隐藏）。
+而每个结构操作旁边都应该有一个「绑到通道」的入口 —— 那才是 OneTone 相对浏览器产品唯一的不可替代性。</div>
+`,
+
+d:`
+<div class="verdict v-grn"><b>D · 三层上下文面板 —— 建议采用</b>
+右栏不是“第三块信息”，而是<b>作用于中栏的操作面板</b>。
+三层：常驻（永远在）、上下文（选中才出现）、视图（按需）。全部确定性，无一处需要 LLM。
+</div>
+
+<div class="rp">
+  <h4>常驻层 <em style="font-weight:400;color:var(--dim);font-size:10.5px">永远显示</em></h4>
+  <div class="row"><span>预算 · Codex</span><b>约 8.4k / 上限未知</b></div>
+  <div class="row"><span>保护边界</span><b>2 条</b></div>
+  <div class="row"><span>本轮返回</span><b>1 项待判</b></div>
+</div>
+
+<div class="rp" style="border-color:var(--pri-s);background:#fbfdff">
+  <h4>上下文层 <em style="font-weight:400;color:var(--dim);font-size:10.5px">选中那一句才出现</em></h4>
+  <span class="lbl">这一段的操作</span>
+  <span class="pill on">关联素材</span><span class="pill">标记保护</span><span class="pill">上移</span><span class="pill">下移</span><span class="pill">转为清单</span>
+  <span class="lbl">绑到通道 · 高级用户在这里</span>
+  <span class="pill">按键 —</span><span class="pill on">语音 “加素材”</span><span class="pill na">摄像头</span>
+</div>
+
+<div class="rp">
+  <h4>视图层 <em style="font-weight:400;color:var(--dim);font-size:10.5px">按需展开</em></h4>
+  <span class="pill on">按时间</span><span class="pill">按来源</span><span class="pill">按类型</span><span class="pill">按引用次数</span>
+  <div style="font-size:10.5px;color:var(--dim);margin-top:7px">规则写在明处，可回跳，可还原</div>
+</div>
+
+<div class="rp">
+  <h4>交付</h4>
+  <div class="line"><span class="ok">✓</span><span>聚焦输入框</span></div>
+  <div class="line"><span class="ok">✓</span><span>填入正文</span></div>
+  <div class="line"><span class="no">×</span><span>确认已发送（不发 Enter）</span></div>
+</div>
+
+<button class="big sp">打包并投递</button>
+
+<div class="verdict v-grn" style="margin-top:11px"><b>小白与高级的分界在这里</b>
+不是“高级用户看到更多按钮”，而是<b>高级用户把按钮绑到通道上</b>。
+小白点一下「关联素材」；高级把它绑到 SoftPad 的某个键，从此不用打开首页。
+<code>runTargetSequence</code> 已是一等动作，一串操作可以压成一次按键。</div>
+`
+};
+
+var rp = document.getElementById('rp');
+function paint(v){
+  rp.innerHTML = V[v];
+  rp.querySelectorAll('.pill').forEach(function(p){
+    p.onclick=function(){
+      if(p.classList.contains('na')){toast('摄像头是控制通道，不能承载需要传内容的动作');return;}
+      if(p.textContent.indexOf('—')>=0||p.textContent.indexOf('“')>=0||p.classList.contains('on')||/按键|语音|SoftPad/.test(p.textContent)){
+        p.classList.toggle('on');
+        toast(p.textContent+(p.classList.contains('on')?' 已绑定':' 已解绑'));
+      } else { toast(p.textContent); }
+    };
+  });
+  rp.querySelectorAll('.big').forEach(function(b){b.onclick=function(){toast('已复制并打开 Codex · 发送状态未知')}});
+}
+
+document.querySelectorAll('.switch button').forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll('.switch button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on');
+    paint(b.dataset.v);
+  };
+});
+
+paint('d');
+</script>
+</body>
+</html>

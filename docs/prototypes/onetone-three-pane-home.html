@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OneTone · 首次沟通准备台</title>
+  <style>
+    :root{--ink:#17211e;--muted:#6d7773;--line:#dfe5e1;--soft:#f3f6f4;--paper:#fffefa;--blue:#1769aa;--green:#18775d;--amber:#9c6419;--shadow:0 14px 36px rgba(35,54,47,.09)}
+    *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:#edf1ef;color:var(--ink);font:14px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;overflow:hidden}button{font:inherit;color:inherit}button:focus-visible,[contenteditable]:focus-visible{outline:3px solid #91bfe4;outline-offset:2px}
+    .topbar{height:62px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid var(--line)}
+    .brand{display:flex;align-items:baseline;gap:10px}.brand strong{font:700 20px Georgia,serif}.brand span{color:var(--muted)}
+    .agent{display:flex;align-items:center;gap:10px}.agent-state{border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px 11px;color:#4f5b57}.agent-state i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:7px}.primary{border:0;border-radius:10px;background:var(--ink);color:white;padding:10px 15px;font-weight:700;cursor:pointer}
+    .workbench{height:calc(100vh - 62px);display:grid;grid-template-columns:238px minmax(460px,1fr) 340px}
+    .rail{background:#f8faf9;border-right:1px solid var(--line);padding:20px 16px;overflow:auto}.section-title{font-size:15px;margin:0}.hint{color:var(--muted);font-size:12px;margin:4px 0 14px}
+    .add-wrap{position:relative}.add-main{width:100%;height:44px;border:0;border-radius:10px;background:var(--ink);color:#fff;font-weight:700;cursor:pointer}.add-menu{position:absolute;z-index:3;top:50px;left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;display:none}.add-menu.open{display:grid;grid-template-columns:1fr 1fr}.feed{border:0;border-radius:7px;background:white;cursor:pointer;text-align:left;padding:10px}.feed:hover{background:var(--soft)}.feed b{margin-right:7px;font-weight:400;color:var(--green)}
+    .source-head{display:flex;justify-content:space-between;align-items:center;margin:24px 2px 9px}.source-head span{font-weight:700}.quiet{border:0;background:none;color:var(--blue);cursor:pointer;padding:3px}
+    .source{position:relative;display:grid;grid-template-columns:34px 1fr;gap:9px;align-items:center;border-radius:9px;padding:9px 8px;margin-bottom:4px;cursor:pointer}.source:hover{background:#eef3f0}.source.active{background:#e8f2ee}.source-icon{width:34px;height:34px;border-radius:8px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;color:var(--green)}.source strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.meta{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dot{position:absolute;right:7px;top:9px;width:7px;height:7px;border-radius:50%;background:var(--amber)}
+    .canvas{padding:26px 30px;overflow:auto}.canvas-head{max-width:760px;margin:0 auto 10px;display:flex;justify-content:space-between;align-items:end}.canvas-head h1{font-size:16px;margin:0}.canvas-head span{font-size:12px;color:var(--muted)}
+    .paper{max-width:760px;min-height:calc(100vh - 125px);margin:auto;background:var(--paper);border:1px solid #dddeda;box-shadow:var(--shadow);padding:46px 54px 70px}
+    .title{font:700 29px/1.25 Georgia,"Microsoft YaHei",serif;margin:0 0 9px}.under-title{color:var(--muted);font-size:12px;margin-bottom:34px}.draft{min-height:108px;font-size:16px;line-height:1.9;border:0;border-bottom:1px solid var(--line);padding:0 0 25px}.draft:empty:before{content:"自由写下你想做的事。不需要先分类。";color:#9aa29f}.draft:focus{outline:none;border-color:#84a99a}
+    .reference-label{margin:26px 0 12px;font-weight:700}.ref{display:grid;grid-template-columns:76px 1fr auto;gap:14px;align-items:center;border-top:1px solid var(--line);padding:15px 0;cursor:pointer}.thumb{height:56px;border-radius:6px;background:linear-gradient(145deg,#cbd9e2,#e8ded2);display:grid;place-items:center;color:#486071;font-size:11px}.ref h3{font-size:14px;margin:0 0 4px}.ref p{margin:0;color:var(--muted);font-size:12px}.mode{font-size:11px;border:1px solid #cad5d0;border-radius:999px;padding:4px 8px;background:#fff}
+    .preview{background:white;border-left:1px solid var(--line);display:flex;flex-direction:column;min-width:0}.cap-head{padding:22px 24px 16px;border-bottom:1px solid var(--line)}.cap-head h2{font-size:16px;margin:0}.cap-head p{font-size:12px;color:var(--muted);margin:4px 0 0}.cap-body{padding:20px 24px;overflow:auto}.eyebrow{font-size:12px;color:var(--muted);margin-bottom:9px}.channel-name{display:flex;align-items:center;gap:10px}.channel-logo{width:38px;height:38px;border-radius:9px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700}.channel-name h3{font-size:17px;margin:0}.channel-name p{font-size:12px;color:var(--muted);margin:1px 0}.match{font-size:12px;color:var(--green);margin:12px 0 22px}.ability-group{border-top:1px solid var(--line);padding:16px 0}.ability-group h4{font-size:12px;margin:0 0 10px}.ability{display:flex;gap:9px;margin:9px 0}.ability i{font-style:normal;color:var(--green)}.ability.manual i{color:var(--amber)}.ability small{display:block;color:var(--muted)}.channel-action{width:100%;margin-top:8px}.switcher{margin:15px 0 0;text-align:center}.switcher button{border:0;background:none;color:var(--blue);cursor:pointer}.return-line{margin-top:23px;padding:13px;border-radius:9px;background:var(--soft);font-size:12px}.return-line b{display:block;margin-bottom:3px}.return-line span{color:var(--muted)}.bottom-status{margin-top:auto;padding:14px 24px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+    .scrim{position:fixed;inset:0;background:rgba(16,28,24,.32);opacity:0;pointer-events:none;transition:.18s}.drawer{position:fixed;right:0;top:0;width:390px;max-width:100%;height:100%;background:#fff;box-shadow:-20px 0 60px rgba(20,35,30,.15);transform:translateX(102%);transition:.22s;z-index:2;padding:26px;display:flex;flex-direction:column}.scrim.open{opacity:1;pointer-events:auto}.drawer.open{transform:none}.drawer-head{display:flex;justify-content:space-between;align-items:start}.drawer h2{margin:0}.close{border:1px solid var(--line);background:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer}.drawer p{color:var(--muted)}.choice{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 22px}.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 10px;cursor:pointer}.chip.on{background:#eaf4f0;border-color:#68a28c;color:#145c46}.drawer .primary{margin-top:auto;width:100%}.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:10px 15px;border-radius:8px;opacity:0;pointer-events:none;transition:.18s}.toast.show{opacity:1;transform:translate(-50%,0)}
+    @media(max-width:1100px){.workbench{grid-template-columns:215px minmax(430px,1fr) 300px}.paper{padding:38px}.cap-body{padding:18px}}
+    @media(max-width:900px){body{overflow:auto}.topbar{position:sticky;top:0;z-index:4}.workbench{height:auto;grid-template-columns:190px 1fr}.preview{grid-column:1/-1;min-height:520px;border-left:0;border-top:1px solid var(--line)}.paper{min-height:680px}.agent-state{display:none}}
+    @media(max-width:620px){.brand span{display:none}.workbench{display:block}.rail{border-right:0}.canvas{padding:16px}.paper{padding:28px 24px}.source-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}.source{margin:0}.title{font-size:24px}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><strong>OneTone</strong><span>首次沟通准备台</span></div>
+    <div class="agent"><button class="agent-state" id="agentBtn"><i></i>Codex · voice-pilot</button><button class="primary" id="deliverBtn">准备交给 Codex</button></div>
+  </header>
+  <main class="workbench">
+    <aside class="rail">
+      <h2 class="section-title">素材</h2><p class="hint">加入后会出现在草稿本中。</p>
+      <div class="add-wrap">
+        <button class="add-main" id="addMaterial">＋ 添加素材</button>
+        <div class="add-menu" id="addMenu">
+          <button class="feed" data-add="剪贴板内容"><b>⌘</b>粘贴</button><button class="feed" data-add="本地文件"><b>＋</b>文件</button>
+          <button class="feed" data-add="图片"><b>▧</b>图片</button><button class="feed" data-add="文件夹"><b>⌁</b>文件夹</button>
+          <button class="feed" data-add="网页"><b>↗</b>网址</button><button class="feed" data-add="语音记录"><b>◉</b>说话</button>
+        </div>
+      </div>
+      <div class="source-head"><span>已添加 · 5</span><button class="quiet">整理</button></div>
+      <div class="source-list" id="materialList">
+        <article class="source active" data-setting><span class="source-icon">▧</span><div><strong>current-home.png</strong><div class="meta">现有首页截图，用于比较布局</div></div></article>
+        <article class="source" data-setting><span class="source-icon">T</span><div><strong>首页为什么太复杂.md</strong><div class="meta">关于信息密度与操作路径的说明</div></div></article>
+        <article class="source" data-setting><span class="source-icon">⌁</span><div><strong>E:\voice-pilot</strong><div class="meta">当前项目目录，已绑定</div></div></article>
+        <article class="source" data-setting><i class="dot"></i><span class="source-icon">⌘</span><div><strong>刚复制的一段报错</strong><div class="meta">系统发现 · 等你确认是否加入</div></div></article>
+        <article class="source" data-setting><i class="dot"></i><span class="source-icon">↺</span><div><strong>Codex 修改了 3 个文件</strong><div class="meta">会话返回 · 等你确认是否加入</div></div></article>
+      </div>
+    </aside>
+
+    <section class="canvas">
+      <div class="canvas-head"><h1>即时排版</h1><span>自动保存 · 2 项引用</span></div>
+      <article class="paper">
+        <h2 class="title">让首页成为进入 Agent 前的准备台</h2>
+        <div class="under-title">第一句话就是标题，不做 AI 改写</div>
+        <div class="draft" contenteditable="true">我希望用户只需要把手边的材料放进来，在同一张纸上补充自己的想法，然后看清这些内容最终会怎样交给 Agent。首页不替用户思考，也不假装已经发送。</div>
+        <div class="reference-label">当前引用</div>
+        <div id="refs">
+          <article class="ref" data-setting><div class="thumb">界面截图</div><div><h3>current-home.png</h3><p>用于说明现有首页的信息密度与布局问题。</p></div><span class="mode">全文</span></article>
+          <article class="ref" data-setting><div class="thumb">MD</div><div><h3>首页为什么太复杂.md</h3><p>只带入关键段落，原文保持只读并可回跳。</p></div><span class="mode">摘要</span></article>
+        </div>
+      </article>
+    </section>
+
+    <aside class="preview">
+      <header class="cap-head"><h2>系统能力</h2><p>OneTone 能把草稿带到哪里、带到哪一步。</p></header>
+      <section class="cap-body">
+        <div class="eyebrow">当前通道</div>
+        <div class="channel-name"><span class="channel-logo">C</span><div><h3>Codex</h3><p>voice-pilot · 当前会话</p></div></div>
+        <div class="match">● 项目一致 · 18 秒前活跃</div>
+        <div class="ability-group"><h4>OneTone 可以</h4><div class="ability"><i>✓</i><div>准确回到当前会话<small>session thread_abc123</small></div></div><div class="ability"><i>✓</i><div>填入草稿<small>正文与材料引用</small></div></div></div>
+        <div class="ability-group"><h4>需要你</h4><div class="ability manual"><i>○</i><div>上传 1 张图片<small>当前通道不能代传附件</small></div></div><div class="ability manual"><i>○</i><div>检查并发送<small>OneTone 不会替你点击发送</small></div></div></div>
+        <button class="primary channel-action" id="channelAction">准备并填入</button>
+        <div class="switcher"><button id="switchChannel">换个去处</button></div>
+        <div class="return-line"><b>返回感知</b><span>可记录文件变化和命令结果</span></div>
+      </section>
+      <div class="bottom-status">尚未发送 · 当前绑定 Codex / voice-pilot</div>
+    </aside>
+  </main>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="settings" aria-hidden="true"><div class="drawer-head"><div><h2>素材设置</h2><p>素材本身只读，只调整如何引用。</p></div><button class="close" aria-label="关闭">×</button></div><strong>带入方式</strong><div class="choice"><button class="chip on">全文</button><button class="chip">摘要</button><button class="chip">片段</button><button class="chip">只引用</button><button class="chip">不发送</button></div><strong>保护边界</strong><div class="choice"><button class="chip">不许修改</button><button class="chip">只读参考</button><button class="chip">保持风格</button></div><button class="primary close-action">保存设置</button></aside>
+  <aside class="drawer" id="delivery" aria-hidden="true"><div class="drawer-head"><div><h2>准备交给 Codex</h2><p>OneTone 只执行当前可核验的动作。</p></div><button class="close" aria-label="关闭">×</button></div><div class="document"><p>✓ 已绑定 E:\voice-pilot</p><p>✓ 可聚焦 session thread_abc123</p><p>✓ 可填入总成正文</p><p>○ 图片需要手动上传</p><p>? 最终发送由你确认</p></div><button class="primary" id="prepare">聚焦会话并填入</button></aside>
+  <aside class="drawer" id="channels" aria-hidden="true"><div class="drawer-head"><div><h2>选择通道</h2><p>同一份草稿可以换一个去处。</p></div><button class="close" aria-label="关闭">×</button></div><div class="document"><p><b>Cursor</b><br>可打开项目，准确会话未知</p><p><b>Claude Code</b><br>项目未匹配</p><p><b>剪贴板</b><br>随时可用，复制完整草稿</p><p><b>Markdown</b><br>保存为本地文档</p></div></aside>
+  <div class="toast" id="toast">已加入并排版</div>
+  <script>
+    const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s); const scrim=$('#scrim');
+    function openDrawer(el){scrim.classList.add('open');el.classList.add('open');el.setAttribute('aria-hidden','false')}
+    function closeAll(){scrim.classList.remove('open');$$('.drawer').forEach(x=>{x.classList.remove('open');x.setAttribute('aria-hidden','true')})}
+    scrim.onclick=closeAll; $$('.close,.close-action').forEach(x=>x.onclick=closeAll); document.onkeydown=e=>{if(e.key==='Escape')closeAll()};
+    $$('[data-setting]').forEach(x=>x.onclick=()=>openDrawer($('#settings'))); $('#deliverBtn').onclick=()=>openDrawer($('#delivery')); $('#agentBtn').onclick=()=>openDrawer($('#delivery')); $('#channelAction').onclick=()=>openDrawer($('#delivery')); $('#switchChannel').onclick=()=>openDrawer($('#channels'));
+    $('#addMaterial').onclick=e=>{e.stopPropagation();$('#addMenu').classList.toggle('open')}; document.body.addEventListener('click',()=>$('#addMenu').classList.remove('open')); $('#addMenu').onclick=e=>e.stopPropagation();
+    $$('.chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
+    $$('[data-add]').forEach(b=>b.onclick=()=>{const n=document.createElement('article');n.className='ref';n.setAttribute('data-setting','');n.innerHTML=`<div class="thumb">新素材</div><div><h3>${b.dataset.add}</h3><p>刚刚加入，点击设置带入方式。</p></div><span class="mode">全文</span>`;n.onclick=()=>openDrawer($('#settings'));$('#refs').append(n);$('#addMenu').classList.remove('open');const t=$('#toast');t.textContent=`${b.dataset.add}已加入并排版`;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1600)});
+    $('#prepare').onclick=()=>{closeAll();const t=$('#toast');t.textContent='已聚焦会话并准备正文，尚未发送';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)};
+  </script>
+</body>
+</html>

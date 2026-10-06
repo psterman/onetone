@@ -2,9 +2,7 @@
 
 use crate::codex_app_state::CodexAppStatePayload;
 use crate::pad_status::arbiter::DONE_SETTLE_MS;
-use crate::pad_status::model::{
-    Confidence, PadSource, PadState, PadStatus, PadStatusCandidate,
-};
+use crate::pad_status::model::{Confidence, PadSource, PadState, PadStatus, PadStatusCandidate};
 use crate::pad_status::store;
 
 /// Map Cursor lifecycle hook event → core state string.
@@ -67,10 +65,7 @@ pub fn ingest_cursor_payload_at(payload: &CodexAppStatePayload, now: u64) -> Pad
     crate::agent_attention::ingest_cursor_hook_event(event, incoming_session);
 
     let cur = store::snapshot_at(now);
-    let sticky = matches!(
-        cur.state_enum(),
-        PadState::NeedsInput | PadState::Running
-    );
+    let sticky = matches!(cur.state_enum(), PadState::NeedsInput | PadState::Running);
     let foreign = !incoming_session.is_empty()
         && cur
             .session_id
@@ -151,6 +146,7 @@ mod tests {
             agent_id: String::new(),
             agent_type: String::new(),
             ts: 0,
+            prompt: String::new(),
         };
         let st = ingest_cursor_payload(&p);
         assert_eq!(st.state, "running");
@@ -167,6 +163,7 @@ mod tests {
             agent_id: String::new(),
             agent_type: String::new(),
             ts: 0,
+            prompt: String::new(),
         };
         let st2 = ingest_cursor_payload(&p2);
         assert_eq!(st2.state, "done");

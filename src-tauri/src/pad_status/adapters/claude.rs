@@ -5,9 +5,7 @@
 
 use crate::pad_status::arbiter::DONE_SETTLE_MS;
 use crate::pad_status::claude_lights::{self, affects_primary_pad_status};
-use crate::pad_status::model::{
-    Confidence, PadSource, PadState, PadStatus, PadStatusCandidate,
-};
+use crate::pad_status::model::{Confidence, PadSource, PadState, PadStatus, PadStatusCandidate};
 use crate::pad_status::store;
 
 /// Map Claude Code hook lifecycle event → core UI state for primary PadStatus.
@@ -186,10 +184,7 @@ pub fn ingest_claude_payload_at(payload: &ClaudeHookPayload, now: u64) -> PadSta
     }
 
     let cur = store::snapshot_at(now);
-    let sticky = matches!(
-        cur.state_enum(),
-        PadState::NeedsInput | PadState::Running
-    );
+    let sticky = matches!(cur.state_enum(), PadState::NeedsInput | PadState::Running);
     let foreign = !incoming_session.is_empty()
         && cur
             .session_id
@@ -273,9 +268,18 @@ mod tests {
 
     #[test]
     fn maps_core_claude_events() {
-        assert_eq!(map_claude_event_to_state("UserPromptSubmit"), Some("running"));
-        assert_eq!(map_claude_event_to_state("PermissionRequest"), Some("needs_input"));
-        assert_eq!(map_claude_event_to_state("Notification"), Some("needs_input"));
+        assert_eq!(
+            map_claude_event_to_state("UserPromptSubmit"),
+            Some("running")
+        );
+        assert_eq!(
+            map_claude_event_to_state("PermissionRequest"),
+            Some("needs_input")
+        );
+        assert_eq!(
+            map_claude_event_to_state("Notification"),
+            Some("needs_input")
+        );
         assert_eq!(map_claude_event_to_state("Stop"), Some("done"));
         assert_eq!(map_claude_event_to_state("StopFailure"), Some("error"));
         assert_eq!(map_claude_event_to_state("SubagentStart"), None);
@@ -355,7 +359,11 @@ mod tests {
             50,
         );
         assert_eq!(after.state, "idle");
-        assert!(after.agent.is_none() || after.agent.as_deref() != Some("claude") || after.last_event.as_deref() != Some("SubagentStart"));
+        assert!(
+            after.agent.is_none()
+                || after.agent.as_deref() != Some("claude")
+                || after.last_event.as_deref() != Some("SubagentStart")
+        );
         let lights = claude_lights::snapshot_active(50);
         assert_eq!(lights.len(), 1);
         assert_eq!(lights[0].agent_id, "agent-a");

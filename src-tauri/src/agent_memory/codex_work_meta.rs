@@ -71,14 +71,11 @@ fn read_session_index(path: &Path, limit: usize) -> Vec<CodexSessionMeta> {
             .and_then(|x| x.as_str())
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
-        let updated_at_ms = v
-            .get("updated_at_ms")
-            .and_then(|x| x.as_u64())
-            .or_else(|| {
-                v.get("updated_at")
-                    .and_then(|x| x.as_str())
-                    .and_then(parse_iso_ms)
-            });
+        let updated_at_ms = v.get("updated_at_ms").and_then(|x| x.as_u64()).or_else(|| {
+            v.get("updated_at")
+                .and_then(|x| x.as_str())
+                .and_then(parse_iso_ms)
+        });
         rows.push(CodexSessionMeta {
             external_id: id,
             title,
@@ -162,10 +159,7 @@ mod tests {
 
     #[test]
     fn reads_synthetic_session_index() {
-        let dir = std::env::temp_dir().join(format!(
-            "onetone-codex-meta-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("onetone-codex-meta-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let codex = dir.join(".codex");
         std::fs::create_dir_all(&codex).unwrap();
@@ -176,11 +170,7 @@ mod tests {
             r#"{{"id":"abc","title":"home accept","updated_at_ms":100}}"#
         )
         .unwrap();
-        writeln!(
-            f,
-            r#"{{"id":"def","title":"later","updated_at_ms":200}}"#
-        )
-        .unwrap();
+        writeln!(f, r#"{{"id":"def","title":"later","updated_at_ms":200}}"#).unwrap();
         std::env::set_var("ONETONE_AGENT_HOME", &dir);
         let rows = list_recent_codex_meta(10);
         std::env::remove_var("ONETONE_AGENT_HOME");

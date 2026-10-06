@@ -179,9 +179,7 @@ pub fn aggregate_actionable_state(states: &[HealthState]) -> Option<HealthState>
     } else {
         &non_unsupported
     };
-    pool.iter()
-        .copied()
-        .min_by_key(|s| s.aggregate_rank())
+    pool.iter().copied().min_by_key(|s| s.aggregate_rank())
 }
 
 pub fn actionable_badge_label(state: HealthState, agent: AgentKind) -> &'static str {

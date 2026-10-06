@@ -90,13 +90,31 @@ fn project_presence(
     }
     let t = &pa.triggers;
     push_camera_gesture(
-        out, mapping_id, "onAway", &pa.on_away, t.away, source_storage, finish,
+        out,
+        mapping_id,
+        "onAway",
+        &pa.on_away,
+        t.away,
+        source_storage,
+        finish,
     );
     push_camera_gesture(
-        out, mapping_id, "onReturn", &pa.on_return, true, source_storage, finish,
+        out,
+        mapping_id,
+        "onReturn",
+        &pa.on_return,
+        true,
+        source_storage,
+        finish,
     );
     push_camera_gesture(
-        out, mapping_id, "shakeHead", &pa.shake_head, t.shake, source_storage, finish,
+        out,
+        mapping_id,
+        "shakeHead",
+        &pa.shake_head,
+        t.shake,
+        source_storage,
+        finish,
     );
     push_camera_gesture(
         out,
@@ -108,16 +126,40 @@ fn project_presence(
         finish,
     );
     push_camera_gesture(
-        out, mapping_id, "openPalm", &pa.open_palm, t.open_palm, source_storage, finish,
+        out,
+        mapping_id,
+        "openPalm",
+        &pa.open_palm,
+        t.open_palm,
+        source_storage,
+        finish,
     );
     push_camera_gesture(
-        out, mapping_id, "okHand", &pa.ok_hand, t.ok_hand, source_storage, finish,
+        out,
+        mapping_id,
+        "okHand",
+        &pa.ok_hand,
+        t.ok_hand,
+        source_storage,
+        finish,
     );
     push_camera_gesture(
-        out, mapping_id, "fist", &pa.fist, t.fist, source_storage, finish,
+        out,
+        mapping_id,
+        "fist",
+        &pa.fist,
+        t.fist,
+        source_storage,
+        finish,
     );
     push_camera_gesture(
-        out, mapping_id, "wave", &pa.wave, t.wave, source_storage, finish,
+        out,
+        mapping_id,
+        "wave",
+        &pa.wave,
+        t.wave,
+        source_storage,
+        finish,
     );
 }
 
@@ -136,13 +178,37 @@ fn project_camera_override(
     let fist_on = t.and_then(|x| x.fist).unwrap_or(true);
     let wave_on = t.and_then(|x| x.wave).unwrap_or(true);
     if let Some(ref a) = ov.on_away {
-        push_camera_gesture(out, mapping_id, "onAway", a, away_on, "cameraOverride", finish);
+        push_camera_gesture(
+            out,
+            mapping_id,
+            "onAway",
+            a,
+            away_on,
+            "cameraOverride",
+            finish,
+        );
     }
     if let Some(ref a) = ov.on_return {
-        push_camera_gesture(out, mapping_id, "onReturn", a, true, "cameraOverride", finish);
+        push_camera_gesture(
+            out,
+            mapping_id,
+            "onReturn",
+            a,
+            true,
+            "cameraOverride",
+            finish,
+        );
     }
     if let Some(ref a) = ov.shake_head {
-        push_camera_gesture(out, mapping_id, "shakeHead", a, shake_on, "cameraOverride", finish);
+        push_camera_gesture(
+            out,
+            mapping_id,
+            "shakeHead",
+            a,
+            shake_on,
+            "cameraOverride",
+            finish,
+        );
     }
     if let Some(ref a) = ov.deliberate_blink {
         push_camera_gesture(
@@ -156,20 +222,57 @@ fn project_camera_override(
         );
     }
     if let Some(ref a) = ov.open_palm {
-        push_camera_gesture(out, mapping_id, "openPalm", a, palm_on, "cameraOverride", finish);
+        push_camera_gesture(
+            out,
+            mapping_id,
+            "openPalm",
+            a,
+            palm_on,
+            "cameraOverride",
+            finish,
+        );
     }
     if let Some(ref a) = ov.ok_hand {
-        push_camera_gesture(out, mapping_id, "okHand", a, ok_on, "cameraOverride", finish);
+        push_camera_gesture(
+            out,
+            mapping_id,
+            "okHand",
+            a,
+            ok_on,
+            "cameraOverride",
+            finish,
+        );
     }
     if let Some(ref a) = ov.fist {
-        push_camera_gesture(out, mapping_id, "fist", a, fist_on, "cameraOverride", finish);
+        push_camera_gesture(
+            out,
+            mapping_id,
+            "fist",
+            a,
+            fist_on,
+            "cameraOverride",
+            finish,
+        );
     }
     if let Some(ref a) = ov.wave {
-        push_camera_gesture(out, mapping_id, "wave", a, wave_on, "cameraOverride", finish);
+        push_camera_gesture(
+            out,
+            mapping_id,
+            "wave",
+            a,
+            wave_on,
+            "cameraOverride",
+            finish,
+        );
     }
 }
 
-fn trigger_already_projected(out: &[ActionBindingView], mapping_id: &str, channel: &str, trigger: &str) -> bool {
+fn trigger_already_projected(
+    out: &[ActionBindingView],
+    mapping_id: &str,
+    channel: &str,
+    trigger: &str,
+) -> bool {
     let t = trigger.trim();
     if t.is_empty() {
         return false;
@@ -182,7 +285,11 @@ fn trigger_already_projected(out: &[ActionBindingView], mapping_id: &str, channe
     })
 }
 
-fn project_acoustic_voice(out: &mut Vec<ActionBindingView>, m: &MappingEntry, finish: FinishPolicy) {
+fn project_acoustic_voice(
+    out: &mut Vec<ActionBindingView>,
+    m: &MappingEntry,
+    finish: FinishPolicy,
+) {
     let mapping_id = m.id.as_str();
     for cmd in &m.acoustic_voice_commands {
         if !cmd.enabled {
@@ -378,8 +485,8 @@ mod tests {
         let mid = cfg.mappings[0].id.clone();
         if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == mid) {
             m.agent_bindings = vec![AgentBinding {
-            action_instance_id: String::new(),
-            action_args: None,
+                action_instance_id: String::new(),
+                action_args: None,
                 slot_id: "pushToTalk".into(),
                 action_id: "startDictation".into(),
                 trigger_type: "key".into(),

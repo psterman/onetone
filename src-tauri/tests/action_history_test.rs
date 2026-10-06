@@ -95,11 +95,28 @@ fn tail_hours_window() {
         .unwrap()
         .as_millis() as u64;
     let old = now.saturating_sub(10 * 24 * 3600_000);
-    record(ActionHistoryEntry::new(0, old, "key", "semantic_action", "executed", "old"));
-    record(ActionHistoryEntry::new(0, now, "key", "semantic_action", "executed", "new"));
+    record(ActionHistoryEntry::new(
+        0,
+        old,
+        "key",
+        "semantic_action",
+        "executed",
+        "old",
+    ));
+    record(ActionHistoryEntry::new(
+        0,
+        now,
+        "key",
+        "semantic_action",
+        "executed",
+        "new",
+    ));
 
     assert_eq!(tail(50, None, None, None, Some(168)).entries.len(), 1);
-    assert_eq!(tail(50, None, None, None, Some(168)).entries[0].summary, "new");
+    assert_eq!(
+        tail(50, None, None, None, Some(168)).entries[0].summary,
+        "new"
+    );
     assert_eq!(tail(50, None, None, None, None).entries.len(), 2);
 
     finish(path);

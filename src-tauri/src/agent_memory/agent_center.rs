@@ -5,9 +5,7 @@
 use crate::agent::actions::ProviderSupport;
 use crate::agent::execute::{execute_agent_action, AgentExecuteRequest};
 use crate::agent::semantic::provider_handler_id;
-use crate::agent::templates::{
-    CLAUDE_PROVIDER_ID, CODEX_PROVIDER_ID, CURSOR_PROVIDER_ID,
-};
+use crate::agent::templates::{CLAUDE_PROVIDER_ID, CODEX_PROVIDER_ID, CURSOR_PROVIDER_ID};
 use crate::agent_attention::{self, AttentionState, SignalSource};
 use crate::agent_catalog;
 use crate::agent_lane::{
@@ -18,12 +16,23 @@ use crate::agent_memory::claude_background::{
     get_probe, process_probe_cache, session_still_active, system_runner, ClaudeBackgroundProbe,
     ClaudeProbeCache, ClaudeProbeRunner, ClaudeProbeState, ClaudeStopError, ProbePolicy,
 };
+use crate::agent_memory::codex_background::{
+    find_session as find_codex_session, get_probe as get_codex_probe,
+    process_probe_cache as codex_process_probe_cache, resolve_interrupt_evidence,
+    system_runner as codex_system_runner, CodexBackgroundProbe, CodexProbeCache, CodexProbeRunner,
+    CodexProbeState, ProbePolicy as CodexProbePolicy,
+};
 use crate::agent_memory::model::{HomeSessionDto, UNKNOWN_PROJECT_ID};
+use crate::agent_memory::prompt_journal::{recent_prompts_for_sessions, PromptRecord};
 use crate::agent_memory::registry::{
     kind_agent_id, list_registry, refresh_registry, RegistryRow, ALL_AGENT_KINDS,
 };
-use crate::agent_memory::{build_agent_home_snapshot, with_write, AgentHomeSnapshot};
 use crate::agent_memory::store::now_ms;
+use crate::agent_memory::title::{resolve_title, TitleInputs};
+use crate::agent_memory::work_descriptor::{
+    resolve_work_descriptor, FreshEvidence, LiveSessionMatch, WorkDescriptor,
+};
+use crate::agent_memory::{build_agent_home_snapshot, with_write, AgentHomeSnapshot};
 use crate::app_chat_workflow::{
     CLAUDE_CODE_APP_TARGET_ID, CODEX_APP_TARGET_ID, CURSOR_APP_TARGET_ID, MINIMAX_APP_TARGET_ID,
     QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID, TRAE_CODE_APP_TARGET_ID, WORKBUDDY_APP_TARGET_ID,
@@ -34,7 +43,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 use tauri::{Manager, WebviewWindow};
 
 /// Agent Center working freshness (projection only — does not mutate attention store).
@@ -53,6 +62,35 @@ pub struct AgentCenterActionArgs {
     pub agent_id: String,
     pub action_id: String,
     pub project_hint: Option<String>,
+    /// Optional client attempt id — normalized/replaced by backend if missing/illegal.
+    pub attempt_id: Option<String>,
+}
+
+/// Honest action result — sole truth for user-facing success semantics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ActionOutcome {
+    Failed,
+    AttemptedUnverified,
+    Verified,
+}
+
+impl ActionOutcome {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Failed => "failed",
+            Self::AttemptedUnverified => "attemptedUnverified",
+            Self::Verified => "verified",
+        }
+    }
+
+    pub fn ok(self) -> bool {
+        !matches!(self, Self::Failed)
+    }
+
+    pub fn verified(self) -> bool {
+        matches!(self, Self::Verified)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,18 +108,122 @@ impl ActionScope {
     }
 }
 
+const ATTEMPT_ID_MAX: usize = 64;
+
+fn attempt_counter() -> &'static AtomicU64 {
+    static C: AtomicU64 = AtomicU64::new(1);
+    &C
+}
+
+/// Normalize client attempt id or mint a backend one. Never puts raw arbitrary bytes in source_ref.
+pub fn normalize_attempt_id(raw: Option<&str>) -> String {
+    let s = raw.unwrap_or("").trim();
+    let ok = !s.is_empty()
+        && s.len() <= ATTEMPT_ID_MAX
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | ':' | '-'));
+    if ok {
+        return s.to_string();
+    }
+    let n = attempt_counter().fetch_add(1, Ordering::Relaxed);
+    format!("attempt-{}-{n}", now_ms())
+}
+
+pub fn action_source_ref(
+    provider: &str,
+    external_session_id: &str,
+    action_id: &str,
+    attempt_id: &str,
+) -> String {
+    format!(
+        "agent-action|{}|{}|{}|{}",
+        provider.trim(),
+        external_session_id.trim(),
+        action_id.trim(),
+        attempt_id.trim()
+    )
+}
+
+fn in_flight_set() -> &'static Mutex<HashSet<String>> {
+    static S: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    S.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+/// Process-local action idempotency (event idempotency is separate via source_ref).
+fn try_begin_inflight(key: &str) -> bool {
+    let Ok(mut g) = in_flight_set().lock() else {
+        return true;
+    };
+    g.insert(key.to_string())
+}
+
+fn end_inflight(key: &str) {
+    if let Ok(mut g) = in_flight_set().lock() {
+        g.remove(key);
+    }
+}
+
+/// Best-effort observed interrupt journal; storage failure must not rewrite outcome.
+fn note_interrupt_observed(
+    canonical_session_id: &str,
+    provider: &str,
+    external: &str,
+    event_type: &str,
+    attempt_id: &str,
+    executor: &str,
+    outcome: ActionOutcome,
+) {
+    if canonical_session_id.trim().is_empty() {
+        return;
+    }
+    let source_ref = action_source_ref(provider, external, "agent.interrupt", attempt_id);
+    let detail = serde_json::json!({
+        "action": "agent.interrupt",
+        "target": external,
+        "executor": executor,
+        "outcome": outcome.as_str(),
+        "verified": outcome.verified(),
+        "attemptId": attempt_id,
+    });
+    let summary = match outcome {
+        ActionOutcome::AttemptedUnverified => "interrupt attempted, not verified",
+        ActionOutcome::Verified => "interrupt verified",
+        ActionOutcome::Failed => "interrupt failed",
+    };
+    let _ = crate::agent_memory::append_observed_event_with_detail(
+        canonical_session_id,
+        provider,
+        event_type,
+        &source_ref,
+        now_ms(),
+        summary,
+        Some(&detail.to_string()),
+    );
+}
+
 /// Internal executor — never accepted from the frontend.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AgentCenterExecutor {
-    FocusApp { target: String },
-    ProviderAction { provider: AgentKind, handler: String },
+    FocusApp {
+        target: String,
+    },
+    ProviderAction {
+        provider: AgentKind,
+        handler: String,
+    },
     FocusOrResumeLane {
         kind: AgentKind,
         external_session_id: String,
     },
-    CheckpointPreview { session_id: String },
-    ClientNavigation { destination: String },
-    ClaudeStop { external_session_id: String },
+    CheckpointPreview {
+        session_id: String,
+    },
+    ClientNavigation {
+        destination: String,
+    },
+    ClaudeStop {
+        external_session_id: String,
+    },
 }
 
 impl AgentCenterExecutor {
@@ -94,10 +236,7 @@ impl AgentCenterExecutor {
             Self::FocusOrResumeLane {
                 kind,
                 external_session_id,
-            } => format!(
-                "focusOrResumeLane:{}:{external_session_id}",
-                kind.as_str()
-            ),
+            } => format!("focusOrResumeLane:{}:{external_session_id}", kind.as_str()),
             Self::CheckpointPreview { session_id } => {
                 format!("checkpointPreview:{session_id}")
             }
@@ -121,6 +260,11 @@ pub struct ResolvedAction {
     pub enabled: bool,
     pub reason: Option<String>,
     pub executor: Option<AgentCenterExecutor>,
+    pub state: Option<String>,
+    pub source: Option<String>,
+    pub confidence: Option<String>,
+    pub observed_at: Option<u64>,
+    pub fresh_until: Option<u64>,
 }
 
 impl ResolvedAction {
@@ -134,6 +278,36 @@ impl ResolvedAction {
             enabled: self.enabled,
             reason: self.reason.clone(),
             executor: self.executor.as_ref().map(|e| e.diag()),
+            state: self.state.clone(),
+            source: self.source.clone(),
+            confidence: self.confidence.clone(),
+            observed_at: self.observed_at,
+            fresh_until: self.fresh_until,
+        }
+    }
+
+    fn from_cap(
+        id: &str,
+        label: &str,
+        scope: ActionScope,
+        cap: &crate::agent_memory::capability_resolver::ResolvedCapability,
+        support: ProviderSupport,
+        executor: Option<AgentCenterExecutor>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            label: label.into(),
+            scope,
+            support,
+            supported: cap.supported,
+            enabled: cap.enabled,
+            reason: cap.reason.clone(),
+            executor,
+            state: Some(cap.state.clone()),
+            source: Some(cap.source.clone()),
+            confidence: Some(cap.confidence.clone()),
+            observed_at: cap.observed_at,
+            fresh_until: cap.fresh_until,
         }
     }
 
@@ -172,6 +346,16 @@ pub struct AgentCenterAction {
     /// Diagnostic only — never used as execute input.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub executor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confidence: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub observed_at: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fresh_until: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -269,6 +453,29 @@ pub struct AgentCenterAgent {
     pub evidence: Vec<serde_json::Value>,
     pub limitations: Vec<serde_json::Value>,
     pub actions: Vec<AgentCenterAction>,
+    /// Honest title projection (usually Derived / Unknown).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title_source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title_confidence: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title_derived_from: Option<String>,
+    /// Latest user prompt summary — not a full conversation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recent_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt_source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt_observed_at: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_source: Option<String>,
+    /// Derived label only: managed | oneToneInitiated | integrated | observed | detected
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub integration_label: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -286,6 +493,12 @@ pub struct AgentCenterSnapshot {
     pub agents: Vec<AgentCenterAgent>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub recommended_agent_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recommendation_reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recommendation_confidence: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recommendation_fresh_until: Option<u64>,
     pub groups: AgentCenterGroups,
     pub attention_state: String,
     pub as_of: u64,
@@ -296,7 +509,12 @@ pub struct AgentCenterSnapshot {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentCenterActionResult {
+    /// Sole truth for user-facing result.
+    pub outcome: ActionOutcome,
+    /// Derived: `outcome != Failed` — request accepted/executed, not "agent stopped".
     pub ok: bool,
+    /// Derived: `outcome == Verified`.
+    pub verified: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -305,6 +523,54 @@ pub struct AgentCenterActionResult {
     pub client_effect: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attempt_id: Option<String>,
+}
+
+impl AgentCenterActionResult {
+    pub fn from_outcome(
+        outcome: ActionOutcome,
+        error: Option<String>,
+        detail: Option<String>,
+    ) -> Self {
+        Self {
+            outcome,
+            ok: outcome.ok(),
+            verified: outcome.verified(),
+            error,
+            detail,
+            client_effect: None,
+            result: None,
+            attempt_id: None,
+        }
+    }
+
+    pub fn with_attempt(mut self, attempt_id: impl Into<String>) -> Self {
+        self.attempt_id = Some(attempt_id.into());
+        self
+    }
+
+    pub fn with_result(mut self, result: serde_json::Value) -> Self {
+        self.result = Some(result);
+        self
+    }
+
+    pub fn with_client_effect(mut self, effect: serde_json::Value) -> Self {
+        self.client_effect = Some(effect);
+        self
+    }
+
+    pub fn failed(error: impl Into<String>, detail: Option<String>) -> Self {
+        Self::from_outcome(ActionOutcome::Failed, Some(error.into()), detail)
+    }
+
+    pub fn attempted(detail: Option<String>) -> Self {
+        Self::from_outcome(ActionOutcome::AttemptedUnverified, None, detail)
+    }
+
+    pub fn verified_ok(detail: Option<String>) -> Self {
+        Self::from_outcome(ActionOutcome::Verified, None, detail)
+    }
 }
 
 /// Hints available when AppState is present (snapshot soft path / action IPC).
@@ -316,6 +582,10 @@ pub struct ResolveHints {
     pub evaluated_at_ms: u64,
     /// Claude control-plane evidence. `None` / Default → fail closed.
     pub claude_background: Option<ClaudeBackgroundProbe>,
+    /// Codex control-plane evidence. Default / Unsupported → fail closed.
+    pub codex_background: Option<CodexBackgroundProbe>,
+    /// Preloaded recent prompts by canonical session id (no N+1 in resolve_actions).
+    pub recent_prompts_by_session: std::collections::HashMap<String, Vec<PromptRecord>>,
 }
 
 fn cursor_mapping_from_state(state: &AppState) -> Option<String> {
@@ -326,7 +596,7 @@ fn cursor_mapping_from_state(state: &AppState) -> Option<String> {
         .map(|m| m.id.clone())
 }
 
-/// Production collector: system Claude runner + process probe cache.
+/// Production collector: system Claude + Codex runners + process probe caches.
 pub fn collect_resolve_hints(state: &AppState, policy: ProbePolicy) -> ResolveHints {
     collect_resolve_hints_with(state, policy, &system_runner(), process_probe_cache())
 }
@@ -342,11 +612,22 @@ pub fn collect_resolve_hints_with(
     let cursor_mapping_id = cursor_mapping_from_state(state);
     let evaluated_at_ms = now_ms();
     let claude_background = Some(get_probe(policy, runner, cache));
+    let codex_policy = match policy {
+        ProbePolicy::Cached => CodexProbePolicy::Cached,
+        ProbePolicy::ForceFresh => CodexProbePolicy::ForceFresh,
+    };
+    let codex_background = Some(get_codex_probe(
+        codex_policy,
+        &codex_system_runner(),
+        codex_process_probe_cache(),
+    ));
     ResolveHints {
         cursor_mapping_id,
         inventory_scan_ok: true,
         evaluated_at_ms,
         claude_background,
+        codex_background,
+        recent_prompts_by_session: Default::default(),
     }
 }
 
@@ -392,21 +673,80 @@ fn provider_id_for(kind: AgentKind) -> Option<&'static str> {
     }
 }
 
-fn interrupt_support(kind: AgentKind) -> ProviderSupport {
-    match kind {
-        AgentKind::Codex => ProviderSupport::Hotkey,
-        AgentKind::Cursor => ProviderSupport::Hotkey,
-        AgentKind::Claude => ProviderSupport::Unsupported,
-        _ => ProviderSupport::Unsupported,
-    }
-}
-
 fn working_fresh_ms(source: SignalSource) -> u64 {
     match source {
         SignalSource::OfficialHook | SignalSource::AppServer | SignalSource::Native => {
             WORKING_FRESH_MS_HOOK
         }
         _ => WORKING_FRESH_MS_INFERRED,
+    }
+}
+
+/// WorkDescriptor for action resolve from current_work JSON + real live session match.
+fn work_descriptor_from_current(
+    kind: AgentKind,
+    obs: &ObservedStatus,
+    current_work: &serde_json::Value,
+    evaluated_at_ms: u64,
+) -> WorkDescriptor {
+    use crate::agent_memory::work_descriptor::{resolve_live_session, EvidenceBool};
+    let ext = current_work
+        .get("externalSessionId")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+    let project_id = current_work
+        .get("projectId")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .unwrap_or(UNKNOWN_PROJECT_ID);
+    let live = match ext.as_deref() {
+        Some(e) => resolve_live_session(kind.as_str(), e, Some(project_id)).status,
+        None => LiveSessionMatch::NotFound,
+    };
+    let lane_id = ext.as_deref().and_then(|e| lane_for_external(kind, e));
+    WorkDescriptor {
+        canonical_session_id: current_work
+            .get("workId")
+            .or_else(|| current_work.get("sessionId"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        external_session_id: ext.clone(),
+        lane_id: lane_id.clone(),
+        title: None,
+        title_source: "unknown".into(),
+        title_derived_from: None,
+        state: obs.value.clone(),
+        state_source: obs.source.clone(),
+        cwd: None,
+        hwnd: None,
+        can_focus_live: EvidenceBool {
+            value: false,
+            reason: Some("no_focus_target".into()),
+            fresh: obs.fresh_until == 0 || obs.fresh_until >= evaluated_at_ms,
+        },
+        can_resume: EvidenceBool {
+            value: ext.is_some() && lane_id.is_some(),
+            reason: if ext.is_none() {
+                Some("no_external_session".into())
+            } else if lane_id.is_none() {
+                Some("no_lane".into())
+            } else {
+                None
+            },
+            fresh: obs.fresh_until == 0 || obs.fresh_until >= evaluated_at_ms,
+        },
+        can_open_exact_session: EvidenceBool {
+            value: ext.is_some() && lane_id.is_some(),
+            reason: None,
+            fresh: obs.fresh_until == 0 || obs.fresh_until >= evaluated_at_ms,
+        },
+        observed_at: Some(obs.observed_at).filter(|&t| t > 0),
+        fresh_until: Some(obs.fresh_until).filter(|&t| t > 0),
+        confidence: obs.confidence.clone(),
+        live_match: live,
     }
 }
 
@@ -454,10 +794,7 @@ pub fn resolve_observed_status(kind: Option<AgentKind>) -> ObservedStatus {
         source: source_str(source).into(),
         observed_at,
         fresh_until,
-        confidence: if matches!(
-            source,
-            SignalSource::OfficialHook | SignalSource::AppServer
-        ) {
+        confidence: if matches!(source, SignalSource::OfficialHook | SignalSource::AppServer) {
             "high".into()
         } else {
             "medium".into()
@@ -481,7 +818,11 @@ fn resolve_capabilities(row: &RegistryRow, kind: Option<AgentKind>) -> AgentReso
     let usage = match ev("usage") {
         "available" => cap("available", Some("probe"), None),
         "limited" => cap("limited", Some("probe"), row.limitation_reason.as_deref()),
-        "unavailable" => cap("unavailable", Some("probe"), row.limitation_reason.as_deref()),
+        "unavailable" => cap(
+            "unavailable",
+            Some("probe"),
+            row.limitation_reason.as_deref(),
+        ),
         _ => cap("unknown", Some("probe"), None),
     };
     let session_metadata = match (ev("sessionMetadata"), row.adapter_state.as_str()) {
@@ -489,15 +830,19 @@ fn resolve_capabilities(row: &RegistryRow, kind: Option<AgentKind>) -> AgentReso
         ("limited", _) | (_, "path_present" | "limited") => {
             cap("limited", Some("adapter"), row.limitation_reason.as_deref())
         }
-        ("unavailable", _) | (_, "encrypted") => {
-            cap("unavailable", Some("adapter"), Some("encrypted_or_unreadable"))
-        }
+        ("unavailable", _) | (_, "encrypted") => cap(
+            "unavailable",
+            Some("adapter"),
+            Some("encrypted_or_unreadable"),
+        ),
         _ => cap("unknown", Some("adapter"), None),
     };
     let transcript = match (ev("transcript"), row.adapter_state.as_str()) {
-        ("unavailable", _) | (_, "encrypted") => {
-            cap("unavailable", Some("adapter"), Some("transcript_unreadable"))
-        }
+        ("unavailable", _) | (_, "encrypted") => cap(
+            "unavailable",
+            Some("adapter"),
+            Some("transcript_unreadable"),
+        ),
         ("available", _) => cap("available", Some("adapter"), None),
         ("limited", _) => cap("limited", Some("adapter"), None),
         _ => cap("unknown", Some("adapter"), None),
@@ -548,7 +893,11 @@ fn resolve_capabilities(row: &RegistryRow, kind: Option<AgentKind>) -> AgentReso
     }
 }
 
-fn resolve_presence(row: &RegistryRow, kind: Option<AgentKind>, obs: &ObservedStatus) -> PresenceAxes {
+fn resolve_presence(
+    row: &RegistryRow,
+    kind: Option<AgentKind>,
+    obs: &ObservedStatus,
+) -> PresenceAxes {
     let installation = match row.presence_state.as_str() {
         "connected" => "installed",
         "detected" | "limited" => "installed",
@@ -571,12 +920,11 @@ fn resolve_presence(row: &RegistryRow, kind: Option<AgentKind>, obs: &ObservedSt
     };
     let integration = match kind {
         Some(k) => {
-            let hooks = agent_catalog::descriptor(k).capabilities.can_observe_lifecycle;
+            let hooks = agent_catalog::descriptor(k)
+                .capabilities
+                .can_observe_lifecycle;
             if hooks
-                && matches!(
-                    obs.source.as_str(),
-                    "officialHook" | "appServer"
-                )
+                && matches!(obs.source.as_str(), "officialHook" | "appServer")
                 && obs.value != "unknown"
             {
                 "connected"
@@ -687,79 +1035,97 @@ fn work_json(
 }
 
 /// Pure action resolution for one agent row.
+/// `work` must be the real WorkDescriptor shared with title/integration (no fake BestEffort).
 pub fn resolve_actions(
     kind: Option<AgentKind>,
     obs: &ObservedStatus,
     current_work: Option<&serde_json::Value>,
     hints: &ResolveHints,
+    work: Option<&WorkDescriptor>,
 ) -> Vec<ResolvedAction> {
+    use crate::agent_memory::capability_resolver::{
+        catalog_can_interrupt, provider_support_from_str, resolve_focus, resolve_interrupt,
+        resolve_resume, CapabilityEvidenceBundle,
+    };
+
     let mut out = Vec::new();
     let catalog = kind.map(|k| agent_catalog::descriptor(k).capabilities);
     let focus_target = kind.and_then(focus_app_target_for);
     let focus_ceiling = catalog.map(|c| c.can_focus).unwrap_or(false);
-    let focus_ok = focus_ceiling && focus_target.is_some();
 
-    out.push(ResolvedAction {
-        id: "agent.focus".into(),
-        label: "View".into(),
-        scope: ActionScope::ExternalAgent,
-        support: if focus_ok {
-            ProviderSupport::Workflow
-        } else {
-            ProviderSupport::Unsupported
-        },
-        supported: focus_ok,
-        enabled: focus_ok,
-        reason: if focus_ok {
-            None
-        } else if focus_ceiling {
-            Some("no_focus_executor".into())
-        } else {
-            Some("no_focus".into())
-        },
-        executor: focus_target.map(|t| AgentCenterExecutor::FocusApp {
-            target: t.to_string(),
-        }),
-    });
-
-    // session.resume — Claude/Codex lane via external id
-    let ext = current_work
-        .and_then(|w| w.get("externalSessionId"))
-        .and_then(|v| v.as_str())
+    let ext = work
+        .and_then(|w| w.external_session_id.as_deref())
+        .or_else(|| {
+            current_work
+                .and_then(|w| w.get("externalSessionId"))
+                .and_then(|v| v.as_str())
+        })
         .map(str::trim)
         .filter(|s| !s.is_empty());
-    let resume_kind_ok = matches!(kind, Some(AgentKind::Claude) | Some(AgentKind::Codex));
-    let catalog_resume = catalog.map(|c| c.can_resume_session).unwrap_or(false);
-    let lane_id = kind
-        .zip(ext)
-        .and_then(|(k, e)| lane_for_external(k, e));
-    let resume_supported = catalog_resume && resume_kind_ok;
-    let resume_enabled = resume_supported && ext.is_some() && lane_id.is_some();
-    out.push(ResolvedAction {
-        id: "session.resume".into(),
-        label: "Resume".into(),
-        scope: ActionScope::ExternalAgent,
-        support: if resume_supported {
-            ProviderSupport::Native
-        } else {
-            ProviderSupport::Unsupported
-        },
-        supported: resume_supported,
-        enabled: resume_enabled,
-        reason: if !resume_supported {
-            Some(if kind == Some(AgentKind::Cursor) {
-                "no_resume".into()
-            } else {
-                "no_resume".into()
+
+    let evaluated_at_ms = if hints.evaluated_at_ms > 0 {
+        hints.evaluated_at_ms
+    } else {
+        now_ms()
+    };
+    let working = obs.value == "working";
+
+    let codex_control = if kind == Some(AgentKind::Codex) {
+        Some(resolve_interrupt_evidence(
+            hints.codex_background.as_ref(),
+            ext,
+            working,
+            evaluated_at_ms,
+        ))
+    } else {
+        None
+    };
+
+    let bundle = CapabilityEvidenceBundle {
+        kind,
+        catalog_can_focus: focus_ceiling,
+        catalog_can_resume: catalog.map(|c| c.can_resume_session).unwrap_or(false),
+        catalog_can_interrupt: catalog_can_interrupt(kind),
+        focus_executor_wired: focus_target.is_some(),
+        cursor_mapping_present: hints.cursor_mapping_id.is_some(),
+        work,
+        control: codex_control.as_ref(),
+        claude_background: hints.claude_background.as_ref(),
+        working,
+        obs_value: obs.value.as_str(),
+        obs_source: obs.source.as_str(),
+        obs_observed_at: obs.observed_at,
+        obs_fresh_until: obs.fresh_until,
+        obs_confidence: obs.confidence.as_str(),
+        evaluated_at_ms,
+    };
+
+    let focus_cap = resolve_focus(&bundle);
+    let focus_support = provider_support_from_str(&focus_cap.support);
+    out.push(ResolvedAction::from_cap(
+        "agent.focus",
+        "View",
+        ActionScope::ExternalAgent,
+        &focus_cap,
+        focus_support,
+        if focus_cap.enabled {
+            focus_target.map(|t| AgentCenterExecutor::FocusApp {
+                target: t.to_string(),
             })
-        } else if ext.is_none() {
-            Some("no_external_session".into())
-        } else if lane_id.is_none() {
-            Some("no_lane".into())
         } else {
             None
         },
-        executor: if resume_enabled {
+    ));
+
+    let resume_cap = resolve_resume(&bundle);
+    let resume_support = provider_support_from_str(&resume_cap.support);
+    out.push(ResolvedAction::from_cap(
+        "session.resume",
+        "Resume",
+        ActionScope::ExternalAgent,
+        &resume_cap,
+        resume_support,
+        if resume_cap.enabled {
             Some(AgentCenterExecutor::FocusOrResumeLane {
                 kind: kind.unwrap(),
                 external_session_id: ext.unwrap().to_string(),
@@ -767,9 +1133,8 @@ pub fn resolve_actions(
         } else {
             None
         },
-    });
+    ));
 
-    // checkpoint.preview — OneTone internal session id only
     let internal = current_work
         .and_then(|w| w.get("workId").or_else(|| w.get("sessionId")))
         .and_then(|v| v.as_str())
@@ -793,113 +1158,48 @@ pub fn resolve_actions(
         executor: internal.map(|sid| AgentCenterExecutor::CheckpointPreview {
             session_id: sid.to_string(),
         }),
+        state: None,
+        source: None,
+        confidence: None,
+        observed_at: None,
+        fresh_until: None,
     });
 
-    // agent.interrupt
-    let mut interrupt_support_v = kind
-        .map(interrupt_support)
-        .unwrap_or(ProviderSupport::Unsupported);
-    let working = obs.value == "working";
-    let mut interrupt_supported = interrupt_support_v != ProviderSupport::Unsupported;
-    let mut interrupt_enabled = false;
-    let mut interrupt_reason = None;
-    let mut interrupt_exec = None;
-
-    if kind == Some(AgentKind::Claude) {
-        // Instance evidence decides Claude interrupt — not static interrupt_support(kind).
-        let ext = current_work
-            .and_then(|w| w.get("externalSessionId"))
-            .and_then(|v| v.as_str())
-            .map(str::trim)
-            .filter(|s| !s.is_empty());
-        interrupt_support_v = ProviderSupport::Unsupported;
-        interrupt_supported = false;
-        interrupt_enabled = false;
-        interrupt_exec = None;
-        if !working {
-            interrupt_reason = Some(if obs.value == "unknown" {
-                "stale_observation".into()
-            } else {
-                "not_running".into()
-            });
-        } else if ext.is_none() {
-            interrupt_reason = Some("no_external_session".into());
-        } else {
-            match hints.claude_background.as_ref() {
-                None => {
-                    interrupt_reason = Some("control_plane_unavailable".into());
-                }
-                Some(probe) => {
-                    let reason = match probe.state {
-                        ClaudeProbeState::Ok => None,
-                        ClaudeProbeState::CliUnavailable => Some("control_plane_unavailable"),
-                        ClaudeProbeState::Timeout => Some("probe_timeout"),
-                        ClaudeProbeState::CommandFailed => Some("probe_command_failed"),
-                        ClaudeProbeState::ParseError => Some("probe_parse_error"),
-                    };
-                    if let Some(r) = reason {
-                        interrupt_reason = Some(r.into());
-                    } else if probe.fresh_until < hints.evaluated_at_ms {
-                        interrupt_reason = Some("stale_control_evidence".into());
-                    } else {
-                        let want = ext.unwrap();
-                        match probe.sessions.iter().find(|s| {
-                            s.external_session_id.trim() == want
-                        }) {
-                            None => {
-                                interrupt_reason = Some("background_session_not_found".into());
-                            }
-                            Some(s) if !s.active => {
-                                interrupt_reason = Some("background_session_not_active".into());
-                            }
-                            Some(_) => {
-                                interrupt_support_v = ProviderSupport::Native;
-                                interrupt_supported = true;
-                                interrupt_enabled = true;
-                                interrupt_reason = None;
-                                interrupt_exec = Some(AgentCenterExecutor::ClaudeStop {
-                                    external_session_id: want.to_string(),
-                                });
-                            }
-                        }
-                    }
-                }
+    // agent.interrupt — single truth via CapabilityResolver
+    let interrupt_cap = resolve_interrupt(&bundle);
+    let interrupt_support = provider_support_from_str(&interrupt_cap.support);
+    let interrupt_exec = if interrupt_cap.enabled {
+        match kind {
+            Some(AgentKind::Claude) => {
+                let sid = work
+                    .and_then(|w| w.external_session_id.as_deref())
+                    .or(ext)
+                    .map(|s| s.to_string());
+                sid.map(|external_session_id| AgentCenterExecutor::ClaudeStop {
+                    external_session_id,
+                })
             }
-        }
-    } else if !interrupt_supported {
-        interrupt_reason = Some("provider_unsupported".into());
-    } else if !working {
-        interrupt_reason = Some("not_running".into());
-    } else if kind == Some(AgentKind::Cursor) {
-        if hints.cursor_mapping_id.is_some() {
-            interrupt_enabled = true;
-            interrupt_exec = Some(AgentCenterExecutor::ProviderAction {
+            Some(AgentKind::Codex) => Some(AgentCenterExecutor::ProviderAction {
+                provider: AgentKind::Codex,
+                handler: provider_handler_id("agent.interrupt").to_string(),
+            }),
+            Some(AgentKind::Cursor) => Some(AgentCenterExecutor::ProviderAction {
                 provider: AgentKind::Cursor,
                 handler: provider_handler_id("agent.interrupt").to_string(),
-            });
-        } else {
-            interrupt_reason = Some("no_mapping_target".into());
+            }),
+            _ => None,
         }
-    } else if kind == Some(AgentKind::Codex) {
-        // Focus target exists for Codex — enable; execute will focus+Esc.
-        interrupt_enabled = true;
-        interrupt_exec = Some(AgentCenterExecutor::ProviderAction {
-            provider: AgentKind::Codex,
-            handler: provider_handler_id("agent.interrupt").to_string(),
-        });
     } else {
-        interrupt_reason = Some("provider_unsupported".into());
-    }
-    out.push(ResolvedAction {
-        id: "agent.interrupt".into(),
-        label: "Interrupt".into(),
-        scope: ActionScope::ExternalAgent,
-        support: interrupt_support_v,
-        supported: interrupt_supported,
-        enabled: interrupt_enabled,
-        reason: interrupt_reason,
-        executor: interrupt_exec,
-    });
+        None
+    };
+    out.push(ResolvedAction::from_cap(
+        "agent.interrupt",
+        "Interrupt",
+        ActionScope::ExternalAgent,
+        &interrupt_cap,
+        interrupt_support,
+        interrupt_exec,
+    ));
 
     out.push(ResolvedAction {
         id: "ui.open_config".into(),
@@ -912,6 +1212,11 @@ pub fn resolve_actions(
         executor: Some(AgentCenterExecutor::ClientNavigation {
             destination: "softPad".into(),
         }),
+        state: None,
+        source: None,
+        confidence: None,
+        observed_at: None,
+        fresh_until: None,
     });
     out.push(ResolvedAction {
         id: "ui.open_data".into(),
@@ -924,6 +1229,11 @@ pub fn resolve_actions(
         executor: Some(AgentCenterExecutor::ClientNavigation {
             destination: "data".into(),
         }),
+        state: None,
+        source: None,
+        confidence: None,
+        observed_at: None,
+        fresh_until: None,
     });
     out.push(ResolvedAction {
         id: "export_history".into(),
@@ -934,6 +1244,11 @@ pub fn resolve_actions(
         enabled: false,
         reason: Some("not_wired".into()),
         executor: None,
+        state: None,
+        source: None,
+        confidence: None,
+        observed_at: None,
+        fresh_until: None,
     });
     out.push(ResolvedAction {
         id: "disable_source".into(),
@@ -944,6 +1259,11 @@ pub fn resolve_actions(
         enabled: false,
         reason: Some("not_wired".into()),
         executor: None,
+        state: None,
+        source: None,
+        confidence: None,
+        observed_at: None,
+        fresh_until: None,
     });
 
     debug_assert!(out.iter().all(|a| a.invariant_ok()));
@@ -1030,10 +1350,78 @@ fn build_agent_from_row(
         })
         .unwrap_or_default();
 
-    let actions = resolve_actions(kind, &obs, current_work.as_ref(), hints)
-        .into_iter()
-        .map(|a| a.to_dto())
-        .collect();
+    // Recent prompt from preloaded hints (never query inside resolve_actions).
+    let prompt_rec = matched
+        .iter()
+        .find_map(|s| {
+            hints
+                .recent_prompts_by_session
+                .get(&s.session_id)
+                .and_then(|v| v.first())
+        })
+        .or_else(|| {
+            current_work
+                .as_ref()
+                .and_then(|w| w.get("sessionId").and_then(|v| v.as_str()))
+                .and_then(|sid| {
+                    hints
+                        .recent_prompts_by_session
+                        .get(sid)
+                        .and_then(|v| v.first())
+                })
+        });
+
+    let project_label = home.project.display_name.as_str();
+    let project_name = if project_label.is_empty() || home.project.project_id == UNKNOWN_PROJECT_ID
+    {
+        None
+    } else {
+        Some(project_label)
+    };
+    let session_meta = current_work
+        .as_ref()
+        .and_then(|w| w.get("status").and_then(|v| v.as_str()));
+
+    let home_session = matched.first().copied();
+    let lane = kind.and_then(|k| {
+        home_session
+            .map(|s| s.external_session_id.as_str())
+            .filter(|e| !e.is_empty())
+            .and_then(|ext| {
+                public_lanes_for_page(k)
+                    .into_iter()
+                    .find(|l| l.key.session_id == ext)
+            })
+    });
+    let fresh = FreshEvidence {
+        value: obs.value.as_str(),
+        source: obs.source.as_str(),
+        observed_at: obs.observed_at,
+        fresh_until: obs.fresh_until,
+        confidence: obs.confidence.as_str(),
+    };
+    // One real WorkDescriptor before actions — shared by title, integration, gating.
+    let work_desc = kind.map(|k| {
+        resolve_work_descriptor(
+            k,
+            home_session,
+            lane.as_ref(),
+            prompt_rec,
+            Some(&fresh),
+            project_name,
+            if hints.evaluated_at_ms > 0 {
+                hints.evaluated_at_ms
+            } else {
+                now_ms()
+            },
+        )
+    });
+
+    let actions: Vec<AgentCenterAction> =
+        resolve_actions(kind, &obs, current_work.as_ref(), hints, work_desc.as_ref())
+            .into_iter()
+            .map(|a| a.to_dto())
+            .collect();
 
     let today_sessions = MetricValue {
         value: Some(matched.len() as f64),
@@ -1059,6 +1447,76 @@ fn build_agent_from_row(
         })
     });
 
+    let title = if let Some(ref wd) = work_desc {
+        if let Some(ref t) = wd.title {
+            crate::agent_memory::title::AgentTitle {
+                text: t.clone(),
+                source: crate::agent_memory::title::TitleSource::Derived,
+                confidence: wd.confidence.clone(),
+                derived_from: wd.title_derived_from.as_deref().and_then(|s| match s {
+                    "prompt" => Some(crate::agent_memory::title::TitleDerivedFrom::Prompt),
+                    "project" => Some(crate::agent_memory::title::TitleDerivedFrom::Project),
+                    "sessionMeta" => {
+                        Some(crate::agent_memory::title::TitleDerivedFrom::SessionMeta)
+                    }
+                    "lifecycleEvent" => {
+                        Some(crate::agent_memory::title::TitleDerivedFrom::LifecycleEvent)
+                    }
+                    _ => None,
+                }),
+            }
+        } else {
+            resolve_title(TitleInputs {
+                prompt_summary: prompt_rec.map(|p| p.summary.as_str()),
+                project_name,
+                session_meta,
+                lifecycle_summary: None,
+            })
+        }
+    } else {
+        resolve_title(TitleInputs {
+            prompt_summary: prompt_rec.map(|p| p.summary.as_str()),
+            project_name,
+            session_meta,
+            lifecycle_summary: None,
+        })
+    };
+
+    let mut limitations = limitations;
+    if work_desc
+        .as_ref()
+        .map(|w| w.live_match == LiveSessionMatch::Ambiguous)
+        .unwrap_or(false)
+    {
+        limitations.push(serde_json::json!({
+            "code": "ambiguous_session",
+            "detail": "multiple projects share this external session"
+        }));
+    }
+    // Honest note: Center outcome ≠ Soft Pad light (pad_status unchanged this round).
+    limitations.push(serde_json::json!({
+        "code": "center_pad_may_diverge",
+        "detail": "Agent Center action outcome is independent of Soft Pad lights"
+    }));
+
+    let integration_label = derive_integration_label(
+        kind,
+        prompt_rec.map(|p| p.source.as_str()),
+        &obs,
+        work_desc.as_ref(),
+        &actions,
+    );
+
+    let status = work_desc
+        .as_ref()
+        .map(|w| w.state.clone())
+        .unwrap_or_else(|| obs.value.clone());
+    let status_source = work_desc
+        .as_ref()
+        .map(|w| w.state_source.clone())
+        .or_else(|| Some(obs.source.clone()));
+    let cwd = work_desc.as_ref().and_then(|w| w.cwd.clone());
+
     AgentCenterAgent {
         agent_id: row.agent_id.clone(),
         runtime_kind: row.runtime_kind.clone(),
@@ -1066,7 +1524,7 @@ fn build_agent_from_row(
         form_factor: row.form_factor.clone(),
         presence_state: row.presence_state.clone(),
         presence,
-        status: obs.value.clone(),
+        status,
         observed_status: obs,
         version: row.version.clone(),
         data_path: row.data_path.clone(),
@@ -1087,7 +1545,62 @@ fn build_agent_from_row(
         evidence,
         limitations,
         actions,
+        title: if title.text.is_empty() {
+            None
+        } else {
+            Some(title.text.clone())
+        },
+        title_source: Some(title.source.as_str().into()),
+        title_confidence: Some(title.confidence.clone()),
+        title_derived_from: title.derived_from.map(|d| d.as_str().into()),
+        recent_prompt: prompt_rec.map(|p| p.summary.clone()),
+        prompt_source: prompt_rec.map(|p| p.source.clone()),
+        prompt_observed_at: prompt_rec.map(|p| p.observed_at),
+        cwd,
+        status_source,
+        integration_label,
     }
+}
+
+/// Managed requires dispatch + session/executor ownership + verifiable control/event path.
+fn derive_integration_label(
+    kind: Option<AgentKind>,
+    prompt_source: Option<&str>,
+    obs: &ObservedStatus,
+    work: Option<&crate::agent_memory::work_descriptor::WorkDescriptor>,
+    actions: &[AgentCenterAction],
+) -> Option<String> {
+    let onetone_dispatch = prompt_source == Some("OneToneDispatch");
+    let has_session = work
+        .map(|w| {
+            !w.canonical_session_id.is_empty()
+                && w.live_match != LiveSessionMatch::Ambiguous
+                && w.live_match != LiveSessionMatch::NotFound
+        })
+        .unwrap_or(false);
+    let has_control = actions
+        .iter()
+        .any(|a| a.id == "agent.interrupt" && a.supported && a.executor.is_some());
+    let event_loop = matches!(
+        obs.source.as_str(),
+        "officialHook" | "claudeBackground" | "codexBackground"
+    );
+    if onetone_dispatch && has_session && (has_control || event_loop) {
+        return Some("managed".into());
+    }
+    if onetone_dispatch {
+        return Some("oneToneInitiated".into());
+    }
+    if event_loop || has_control {
+        return Some("integrated".into());
+    }
+    if kind.is_some() && obs.observed_at > 0 {
+        return Some("observed".into());
+    }
+    if kind.is_some() {
+        return Some("detected".into());
+    }
+    None
 }
 
 fn group_agents(agents: &[AgentCenterAgent]) -> AgentCenterGroups {
@@ -1109,9 +1622,24 @@ fn group_agents(agents: &[AgentCenterAgent]) -> AgentCenterGroups {
                     g.discovered_limited.push(a.agent_id.clone());
                 }
             }
+            // Unimplemented probe — never SupportedNotFound.
+            "unknown" => {
+                g.discovered_limited.push(a.agent_id.clone());
+            }
             _ => {
                 if a.agent_id.starts_with("kind:") {
-                    g.supported_not_found.push(a.agent_id.clone());
+                    // Only real negative scan evidence lands here (not ProbeNotImplemented).
+                    let probe_unimplemented = a.limitations.iter().any(|l| {
+                        l.get("code")
+                            .and_then(|c| c.as_str())
+                            .map(|c| c == "ProbeNotImplemented")
+                            .unwrap_or(false)
+                    });
+                    if probe_unimplemented {
+                        g.discovered_limited.push(a.agent_id.clone());
+                    } else {
+                        g.supported_not_found.push(a.agent_id.clone());
+                    }
                 }
             }
         }
@@ -1192,6 +1720,15 @@ pub fn build_agent_center_snapshot_with_hints(
         .collect();
     let home_set: HashSet<&str> = home_session_ids.iter().map(|s| s.as_str()).collect();
 
+    // Bulk-load prompts once for all home sessions (avoid per-agent N+1).
+    let mut hints_owned = hints.clone();
+    if hints_owned.recent_prompts_by_session.is_empty() && !home_session_ids.is_empty() {
+        if let Ok(map) = recent_prompts_for_sessions(&home_session_ids, 3) {
+            hints_owned.recent_prompts_by_session = map;
+        }
+    }
+    let hints = &hints_owned;
+
     let rows = with_write(|conn| list_registry(conn)).unwrap_or_default();
     let mut have: HashSet<String> = rows.iter().map(|r| r.agent_id.clone()).collect();
     let mut agents: Vec<AgentCenterAgent> = rows
@@ -1243,10 +1780,24 @@ pub fn build_agent_center_snapshot_with_hints(
 
     let groups = group_agents(&agents);
     let recommended = recommend(&groups);
+    // Only surface recommendation when reason + confidence + freshness are present.
+    let (recommendation_reason, recommendation_confidence, recommendation_fresh_until) =
+        if recommended.is_some() {
+            (
+                Some("needs_attention_or_connected".into()),
+                Some("medium".into()),
+                Some(now.saturating_add(WORKING_FRESH_MS_HOOK)),
+            )
+        } else {
+            (None, None, None)
+        };
 
     AgentCenterSnapshot {
         agents,
         recommended_agent_id: recommended,
+        recommendation_reason,
+        recommendation_confidence,
+        recommendation_fresh_until,
         groups,
         attention_state: agent_attention::attention_lifecycle_state().to_string(),
         as_of: now_ms(),
@@ -1259,12 +1810,7 @@ pub fn refresh_and_snapshot(
     project_hint: Option<&Path>,
     install: &[(String, String, String)],
 ) -> AgentCenterSnapshot {
-    build_agent_center_snapshot_with_hints(
-        project_hint,
-        install,
-        true,
-        &ResolveHints::default(),
-    )
+    build_agent_center_snapshot_with_hints(project_hint, install, true, &ResolveHints::default())
 }
 
 pub fn refresh_and_snapshot_with_hints(
@@ -1292,6 +1838,7 @@ pub fn execute_agent_center_action(
     agent_id: &str,
     action_id: &str,
     project_hint: Option<&Path>,
+    attempt_id: Option<&str>,
 ) -> AgentCenterActionResult {
     execute_agent_center_action_with(
         state,
@@ -1299,6 +1846,7 @@ pub fn execute_agent_center_action(
         agent_id,
         action_id,
         project_hint,
+        attempt_id,
         &system_runner(),
         process_probe_cache(),
     )
@@ -1311,67 +1859,95 @@ pub(crate) fn execute_agent_center_action_with(
     agent_id: &str,
     action_id: &str,
     project_hint: Option<&Path>,
+    attempt_id: Option<&str>,
+    runner: &dyn ClaudeProbeRunner,
+    cache: &ClaudeProbeCache,
+) -> AgentCenterActionResult {
+    let attempt = normalize_attempt_id(attempt_id);
+    let inflight_key = format!("{agent_id}|{action_id}|{attempt}");
+    if !try_begin_inflight(&inflight_key) {
+        return AgentCenterActionResult::failed(
+            "action_in_flight",
+            Some("same attempt already executing".into()),
+        )
+        .with_attempt(&attempt);
+    }
+    let out = execute_agent_center_action_inner(
+        state,
+        window,
+        agent_id,
+        action_id,
+        project_hint,
+        &attempt,
+        runner,
+        cache,
+    );
+    end_inflight(&inflight_key);
+    out.with_attempt(&attempt)
+}
+
+fn execute_agent_center_action_inner(
+    state: &Arc<AppState>,
+    window: &WebviewWindow,
+    agent_id: &str,
+    action_id: &str,
+    project_hint: Option<&Path>,
+    attempt: &str,
     runner: &dyn ClaudeProbeRunner,
     cache: &ClaudeProbeCache,
 ) -> AgentCenterActionResult {
     let hints = collect_resolve_hints_with(state, ProbePolicy::ForceFresh, runner, cache);
     let install = &[] as &[(String, String, String)];
-    let snap =
-        build_agent_center_snapshot_with_hints(project_hint, install, false, &hints);
+    let snap = build_agent_center_snapshot_with_hints(project_hint, install, false, &hints);
     let Some(agent) = snap.agents.iter().find(|a| a.agent_id == agent_id) else {
-        return AgentCenterActionResult {
-            ok: false,
-            error: Some("agent_not_found".into()),
-            detail: None,
-            client_effect: None,
-            result: None,
-        };
+        return AgentCenterActionResult::failed("agent_not_found", None);
     };
 
     let kind = agent
         .runtime_kind
         .as_deref()
         .and_then(AgentKind::from_kind_str);
-    let resolved = resolve_actions(kind, &agent.observed_status, agent.current_work.as_ref(), &hints);
+    let work_owned = kind.and_then(|k| {
+        agent.current_work.as_ref().map(|cw| {
+            work_descriptor_from_current(k, &agent.observed_status, cw, hints.evaluated_at_ms)
+        })
+    });
+    let resolved = resolve_actions(
+        kind,
+        &agent.observed_status,
+        agent.current_work.as_ref(),
+        &hints,
+        work_owned.as_ref(),
+    );
     let Some(action) = resolved.iter().find(|a| a.id == action_id) else {
-        return AgentCenterActionResult {
-            ok: false,
-            error: Some("unknown_action".into()),
-            detail: Some(action_id.into()),
-            client_effect: None,
-            result: None,
-        };
+        return AgentCenterActionResult::failed("unknown_action", Some(action_id.into()));
     };
     if !action.enabled {
-        return AgentCenterActionResult {
-            ok: false,
-            error: Some("action_not_enabled".into()),
-            detail: action.reason.clone(),
-            client_effect: None,
-            result: None,
-        };
+        return AgentCenterActionResult::failed("action_not_enabled", action.reason.clone());
     }
     let Some(exec) = action.executor.as_ref() else {
-        return AgentCenterActionResult {
-            ok: false,
-            error: Some("no_executor".into()),
-            detail: None,
-            client_effect: None,
-            result: None,
-        };
+        return AgentCenterActionResult::failed("no_executor", None);
     };
 
+    let work_id = agent
+        .current_work
+        .as_ref()
+        .and_then(|cw| cw.get("workId").and_then(|v| v.as_str()))
+        .map(|s| s.to_string());
+    let external = agent
+        .current_work
+        .as_ref()
+        .and_then(|cw| cw.get("externalSessionId").and_then(|v| v.as_str()))
+        .map(|s| s.to_string())
+        .unwrap_or_default();
+
     match exec {
-        AgentCenterExecutor::ClientNavigation { destination } => AgentCenterActionResult {
-            ok: true,
-            error: None,
-            detail: None,
-            client_effect: Some(serde_json::json!({
+        AgentCenterExecutor::ClientNavigation { destination } => {
+            AgentCenterActionResult::verified_ok(None).with_client_effect(serde_json::json!({
                 "type": "navigate",
                 "destination": destination,
-            })),
-            result: None,
-        },
+            }))
+        }
         AgentCenterExecutor::FocusApp { target } => {
             let app = window.app_handle();
             match crate::app_chat_workflow::focus_composer_only(&app, target, 800) {
@@ -1379,37 +1955,21 @@ pub(crate) fn execute_agent_center_action_with(
                     if let Some(k) = kind {
                         crate::soft_pad_runtime::set_follow_pin(Some(k));
                     }
-                    AgentCenterActionResult {
-                        ok: true,
-                        error: None,
-                        detail: Some(format!("focused:{target}")),
-                        client_effect: None,
-                        result: None,
-                    }
+                    AgentCenterActionResult::verified_ok(Some(format!("focused:{target}")))
                 }
-                Err(e) => AgentCenterActionResult {
-                    ok: false,
-                    error: Some("focus_failed".into()),
-                    detail: Some(e.reason("agent_center_focus")),
-                    client_effect: None,
-                    result: None,
-                },
+                Err(e) => AgentCenterActionResult::failed(
+                    "focus_failed",
+                    Some(e.reason("agent_center_focus")),
+                ),
             }
         }
         AgentCenterExecutor::ProviderAction { provider, handler } => {
             let provider_id = match provider_id_for(*provider) {
                 Some(id) => id,
                 None => {
-                    return AgentCenterActionResult {
-                        ok: false,
-                        error: Some("unsupported_provider".into()),
-                        detail: None,
-                        client_effect: None,
-                        result: None,
-                    };
+                    return AgentCenterActionResult::failed("unsupported_provider", None);
                 }
             };
-            // Canonical agent.interrupt → handler (cancel) — never pass semantic id.
             let mapping_id = if *provider == AgentKind::Cursor {
                 hints.cursor_mapping_id.clone()
             } else {
@@ -1424,34 +1984,48 @@ pub(crate) fn execute_agent_center_action_with(
                 execution_mode: None,
             };
             let out = execute_agent_action(state, window, req);
-            if out.ok {
-                // Lifecycle only after verified execute success.
-                if let Some(cw) = &agent.current_work {
-                    if let Some(sid) = cw.get("workId").and_then(|v| v.as_str()) {
-                        let _ = crate::agent_memory::append_ui_lifecycle(
-                            sid,
-                            provider.as_str(),
-                            "session_aborted",
-                            "interrupted from Agent Center",
+            if !out.ok {
+                return AgentCenterActionResult::failed(
+                    out.reason.unwrap_or_else(|| "execute_failed".into()),
+                    out.detail,
+                );
+            }
+            // Hotkey/provider inject success is NOT verified stop — never session_aborted.
+            if action_id == "agent.interrupt" {
+                match interrupt_post_verify_plan(*provider, true) {
+                    InterruptPostVerifyPlan::Failed => {
+                        return AgentCenterActionResult::failed("execute_failed", out.detail);
+                    }
+                    InterruptPostVerifyPlan::VerifyCodexForceFresh => {
+                        return verify_codex_interrupt_after_send(
+                            &codex_system_runner(),
+                            codex_process_probe_cache(),
+                            &external,
+                            work_id.as_deref(),
+                            attempt,
+                            out.detail,
+                        );
+                    }
+                    InterruptPostVerifyPlan::AttemptedUnverifiedOnly => {
+                        if let Some(sid) = work_id.as_deref() {
+                            note_interrupt_observed(
+                                sid,
+                                provider.as_str(),
+                                &external,
+                                "interrupt_attempted",
+                                attempt,
+                                "hotkey",
+                                ActionOutcome::AttemptedUnverified,
+                            );
+                        }
+                        return AgentCenterActionResult::attempted(out.detail).with_result(
+                            serde_json::json!({ "handler": handler, "verified": false }),
                         );
                     }
                 }
-                AgentCenterActionResult {
-                    ok: true,
-                    error: None,
-                    detail: out.detail,
-                    client_effect: None,
-                    result: Some(serde_json::json!({ "handler": handler })),
-                }
-            } else {
-                AgentCenterActionResult {
-                    ok: false,
-                    error: out.reason.or_else(|| Some("execute_failed".into())),
-                    detail: out.detail,
-                    client_effect: None,
-                    result: None,
-                }
             }
+            AgentCenterActionResult::verified_ok(out.detail)
+                .with_result(serde_json::json!({ "handler": handler }))
         }
         AgentCenterExecutor::ClaudeStop {
             external_session_id,
@@ -1459,34 +2033,26 @@ pub(crate) fn execute_agent_center_action_with(
             runner,
             cache,
             external_session_id,
-            agent
-                .current_work
-                .as_ref()
-                .and_then(|cw| cw.get("workId").and_then(|v| v.as_str())),
+            work_id.as_deref(),
+            attempt,
         ),
         AgentCenterExecutor::FocusOrResumeLane {
             kind,
             external_session_id,
         } => {
-            // Never treat OneTone internal session id as lane key.
             let hint = FocusTargetHint {
                 lane_id: None,
                 session_id: Some(external_session_id.clone()),
             };
             let r = crate::agent_lane::focus_session(*kind, hint, FocusClickKind::StatusHost);
             if r.ok {
-                return AgentCenterActionResult {
-                    ok: true,
-                    error: None,
-                    detail: Some(r.detail),
-                    client_effect: None,
-                    result: Some(serde_json::json!({
+                return AgentCenterActionResult::verified_ok(Some(r.detail)).with_result(
+                    serde_json::json!({
                         "laneId": r.lane_id,
                         "externalSessionId": external_session_id,
-                    })),
-                };
+                    }),
+                );
             }
-            // Fallback: direct lane resume if we have a lane id.
             if let Some(lid) = lane_for_external(*kind, external_session_id) {
                 let (ok, detail) = match kind {
                     AgentKind::Claude => {
@@ -1499,128 +2065,248 @@ pub(crate) fn execute_agent_center_action_with(
                     }
                     _ => (false, "unsupported_provider_resume".into()),
                 };
-                return AgentCenterActionResult {
-                    ok,
-                    error: if ok {
-                        None
-                    } else {
-                        Some("resume_failed".into())
-                    },
-                    detail: Some(detail),
-                    client_effect: None,
-                    result: Some(serde_json::json!({
-                        "laneId": lid,
-                        "externalSessionId": external_session_id,
-                    })),
+                return if ok {
+                    AgentCenterActionResult::verified_ok(Some(detail)).with_result(
+                        serde_json::json!({
+                            "laneId": lid,
+                            "externalSessionId": external_session_id,
+                        }),
+                    )
+                } else {
+                    AgentCenterActionResult::failed("resume_failed", Some(detail)).with_result(
+                        serde_json::json!({
+                            "laneId": lid,
+                            "externalSessionId": external_session_id,
+                        }),
+                    )
                 };
             }
-            AgentCenterActionResult {
-                ok: false,
-                error: Some("resume_failed".into()),
-                detail: Some(r.detail),
-                client_effect: None,
-                result: None,
-            }
+            AgentCenterActionResult::failed("resume_failed", Some(r.detail))
         }
         AgentCenterExecutor::CheckpointPreview { session_id } => {
             match resume_checkpoint(session_id) {
-                Ok(brief) => AgentCenterActionResult {
-                    ok: true,
-                    error: None,
-                    detail: None,
-                    client_effect: None,
-                    result: Some(serde_json::to_value(brief).unwrap_or_default()),
-                },
-                Err(e) => AgentCenterActionResult {
-                    ok: false,
-                    error: Some("checkpoint_preview_failed".into()),
-                    detail: Some(e),
-                    client_effect: None,
-                    result: None,
-                },
+                Ok(brief) => AgentCenterActionResult::verified_ok(None)
+                    .with_result(serde_json::to_value(brief).unwrap_or_default()),
+                Err(e) => AgentCenterActionResult::failed("checkpoint_preview_failed", Some(e)),
             }
         }
     }
 }
 
-/// ClaudeStop core: stop → invalidate → ForceFresh verify → lifecycle. No window needed.
+/// ClaudeStop: stop issued → verify → Verified/AttemptedUnverified; never fake Failed when stop ran.
 fn execute_claude_stop(
     runner: &dyn ClaudeProbeRunner,
     cache: &ClaudeProbeCache,
     external_session_id: &str,
     work_id_for_lifecycle: Option<&str>,
+    attempt_id: &str,
 ) -> AgentCenterActionResult {
     let stop_id = external_session_id.trim().to_string();
+    let provider = AgentKind::Claude.as_str();
+    let sid = work_id_for_lifecycle.unwrap_or("");
+
     match runner.stop_session(&stop_id) {
         Err(ClaudeStopError::Unavailable) => {
-            return AgentCenterActionResult {
-                ok: false,
-                error: Some("stop_command_failed".into()),
-                detail: Some("cli_unavailable".into()),
-                client_effect: None,
-                result: None,
-            };
-        }
-        Err(ClaudeStopError::Timeout) => {
-            return AgentCenterActionResult {
-                ok: false,
-                error: Some("stop_timeout".into()),
-                detail: None,
-                client_effect: None,
-                result: None,
-            };
+            return AgentCenterActionResult::failed(
+                "stop_command_failed",
+                Some("cli_unavailable".into()),
+            );
         }
         Err(ClaudeStopError::CommandFailed { detail }) => {
-            return AgentCenterActionResult {
-                ok: false,
-                error: Some("stop_command_failed".into()),
-                detail: Some(detail),
-                client_effect: None,
-                result: None,
-            };
+            return AgentCenterActionResult::failed("stop_command_failed", Some(detail));
+        }
+        Err(ClaudeStopError::Timeout) => {
+            note_interrupt_observed(
+                sid,
+                provider,
+                &stop_id,
+                "interrupt_unverified",
+                attempt_id,
+                "claudeStop",
+                ActionOutcome::AttemptedUnverified,
+            );
+            return AgentCenterActionResult::attempted(Some("stop_timeout".into()));
         }
         Ok(()) => {}
     }
 
-    // Never reuse pre-stop cache for verification.
     cache.invalidate();
     let post = get_probe(ProbePolicy::ForceFresh, runner, cache);
     if post.state != ClaudeProbeState::Ok {
-        return AgentCenterActionResult {
-            ok: false,
-            error: Some("post_stop_probe_failed".into()),
-            detail: Some(format!("{:?}", post.state)),
-            client_effect: None,
-            result: None,
-        };
+        note_interrupt_observed(
+            sid,
+            provider,
+            &stop_id,
+            "interrupt_unverified",
+            attempt_id,
+            "claudeStop",
+            ActionOutcome::AttemptedUnverified,
+        );
+        return AgentCenterActionResult::attempted(Some(format!(
+            "post_stop_probe_failed:{:?}",
+            post.state
+        )));
     }
     if session_still_active(&post, &stop_id) {
-        return AgentCenterActionResult {
-            ok: false,
-            error: Some("stop_not_verified".into()),
-            detail: None,
-            client_effect: None,
-            result: None,
-        };
+        note_interrupt_observed(
+            sid,
+            provider,
+            &stop_id,
+            "interrupt_unverified",
+            attempt_id,
+            "claudeStop",
+            ActionOutcome::AttemptedUnverified,
+        );
+        return AgentCenterActionResult::attempted(Some("stop_not_verified".into()));
     }
 
-    // Lifecycle only after fresh probe confirms no longer active.
-    if let Some(sid) = work_id_for_lifecycle.filter(|s| !s.trim().is_empty()) {
+    if let Some(id) = work_id_for_lifecycle.filter(|s| !s.trim().is_empty()) {
         let _ = crate::agent_memory::append_ui_lifecycle(
-            sid,
-            AgentKind::Claude.as_str(),
+            id,
+            provider,
             "session_aborted",
             "interrupted from Agent Center",
         );
     }
-    AgentCenterActionResult {
-        ok: true,
-        error: None,
-        detail: Some(format!("claudeStop:{stop_id}")),
-        client_effect: None,
-        result: Some(serde_json::json!({
-            "externalSessionId": stop_id,
-        })),
+    AgentCenterActionResult::verified_ok(Some(format!("claudeStop:{stop_id}")))
+        .with_result(serde_json::json!({ "externalSessionId": stop_id }))
+}
+
+/// Codex interrupt post-verify after hotkey send succeeded.
+/// Exact external session must be observed inactive → Verified (detail may note ForceFresh).
+/// Still active / probe fail / session mismatch → AttemptedUnverified.
+/// Window disappearance alone is never treated as stop.
+
+/// Branch selection after ProviderAction hotkey for agent.interrupt.
+/// Testable without AppState/Window — not a full hardware path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum InterruptPostVerifyPlan {
+    Failed,
+    VerifyCodexForceFresh,
+    AttemptedUnverifiedOnly,
+}
+
+pub(crate) fn interrupt_post_verify_plan(
+    provider: AgentKind,
+    hotkey_ok: bool,
+) -> InterruptPostVerifyPlan {
+    if !hotkey_ok {
+        return InterruptPostVerifyPlan::Failed;
+    }
+    match provider {
+        AgentKind::Codex => InterruptPostVerifyPlan::VerifyCodexForceFresh,
+        // Cursor and other hotkey providers: no reliable post-probe.
+        _ => InterruptPostVerifyPlan::AttemptedUnverifiedOnly,
+    }
+}
+
+fn verify_codex_interrupt_after_send(
+    runner: &dyn CodexProbeRunner,
+    cache: &CodexProbeCache,
+    external_session_id: &str,
+    work_id_for_lifecycle: Option<&str>,
+    attempt_id: &str,
+    hotkey_detail: Option<String>,
+) -> AgentCenterActionResult {
+    let stop_id = external_session_id.trim().to_string();
+    let provider = AgentKind::Codex.as_str();
+    let sid = work_id_for_lifecycle.unwrap_or("");
+
+    if stop_id.is_empty() {
+        note_interrupt_observed(
+            sid,
+            provider,
+            "",
+            "interrupt_unverified",
+            attempt_id,
+            "hotkey",
+            ActionOutcome::AttemptedUnverified,
+        );
+        return AgentCenterActionResult::attempted(Some("no_external_session".into()))
+            .with_result(serde_json::json!({ "handler": "cancel", "verified": false }));
+    }
+
+    cache.invalidate();
+    let post = get_codex_probe(CodexProbePolicy::ForceFresh, runner, cache);
+    if post.state != CodexProbeState::Ok {
+        note_interrupt_observed(
+            sid,
+            provider,
+            &stop_id,
+            "interrupt_unverified",
+            attempt_id,
+            "hotkey",
+            ActionOutcome::AttemptedUnverified,
+        );
+        return AgentCenterActionResult::attempted(Some(format!(
+            "post_stop_probe_failed:{:?}",
+            post.state
+        )))
+        .with_result(serde_json::json!({
+            "handler": "cancel",
+            "verified": false,
+            "via": "reprobe",
+            "hotkeyDetail": hotkey_detail,
+        }));
+    }
+
+    match find_codex_session(&post, &stop_id) {
+        None => {
+            // Session mismatch / not attributable — must not claim Verified.
+            note_interrupt_observed(
+                sid,
+                provider,
+                &stop_id,
+                "interrupt_unverified",
+                attempt_id,
+                "hotkey",
+                ActionOutcome::AttemptedUnverified,
+            );
+            AgentCenterActionResult::attempted(Some("session_mismatch".into())).with_result(
+                serde_json::json!({
+                    "handler": "cancel",
+                    "verified": false,
+                    "via": "reprobe",
+                }),
+            )
+        }
+        Some(s) if s.active => {
+            note_interrupt_observed(
+                sid,
+                provider,
+                &stop_id,
+                "interrupt_unverified",
+                attempt_id,
+                "hotkey",
+                ActionOutcome::AttemptedUnverified,
+            );
+            AgentCenterActionResult::attempted(Some("stop_not_verified".into())).with_result(
+                serde_json::json!({
+                    "handler": "cancel",
+                    "verified": false,
+                    "via": "reprobe",
+                }),
+            )
+        }
+        Some(_) => {
+            if let Some(id) = work_id_for_lifecycle.filter(|s| !s.trim().is_empty()) {
+                let _ = crate::agent_memory::append_ui_lifecycle(
+                    id,
+                    provider,
+                    "session_aborted",
+                    "interrupted from Agent Center",
+                );
+            }
+            AgentCenterActionResult::verified_ok(Some(format!(
+                "codexInterrupt:{stop_id};via=reprobe"
+            )))
+            .with_result(serde_json::json!({
+                "handler": "cancel",
+                "verified": true,
+                "via": "reprobe",
+                "externalSessionId": stop_id,
+            }))
+        }
     }
 }
 
@@ -1635,6 +2321,58 @@ mod tests {
             if a.enabled && a.scope == ActionScope::ExternalAgent {
                 assert!(a.executor.is_some(), "enabled {} missing executor", a.id);
             }
+            if !a.enabled && a.scope == ActionScope::ExternalAgent {
+                assert!(a.executor.is_none(), "disabled {} has executor", a.id);
+            }
+        }
+    }
+
+    /// Exact live match WorkDescriptor for unit tests (bypasses DB session lookup).
+    fn exact_wd(ext: &str, obs: &ObservedStatus) -> WorkDescriptor {
+        use crate::agent_memory::work_descriptor::EvidenceBool;
+        let has = !ext.is_empty();
+        WorkDescriptor {
+            canonical_session_id: "w1".into(),
+            external_session_id: if has { Some(ext.into()) } else { None },
+            lane_id: if has {
+                Some(format!("claude:session:{ext}"))
+            } else {
+                None
+            },
+            title: None,
+            title_source: "unknown".into(),
+            title_derived_from: None,
+            state: obs.value.clone(),
+            state_source: obs.source.clone(),
+            cwd: None,
+            hwnd: None,
+            can_focus_live: EvidenceBool {
+                value: false,
+                reason: Some("no_focus_target".into()),
+                fresh: true,
+            },
+            can_resume: EvidenceBool {
+                value: has,
+                reason: if has {
+                    None
+                } else {
+                    Some("no_external_session".into())
+                },
+                fresh: true,
+            },
+            can_open_exact_session: EvidenceBool {
+                value: has,
+                reason: None,
+                fresh: true,
+            },
+            observed_at: Some(obs.observed_at).filter(|&t| t > 0),
+            fresh_until: Some(obs.fresh_until).filter(|&t| t > 0),
+            confidence: obs.confidence.clone(),
+            live_match: if has {
+                LiveSessionMatch::Exact
+            } else {
+                LiveSessionMatch::NotFound
+            },
         }
     }
 
@@ -1655,15 +2393,23 @@ mod tests {
             "sessionId": "internal-1",
             "externalSessionId": "ext-1",
         });
-        let actions = resolve_actions(Some(AgentKind::Claude), &obs, Some(&work), &ResolveHints::default());
+        let actions = resolve_actions(
+            Some(AgentKind::Claude),
+            &obs,
+            Some(&work),
+            &ResolveHints::default(),
+            Some(&exact_wd("ext-1", &obs)),
+        );
         assert_actions_honest(&actions);
         let interrupt = actions.iter().find(|a| a.id == "agent.interrupt").unwrap();
         assert!(!interrupt.enabled);
-        assert_eq!(interrupt.support, ProviderSupport::Unsupported);
         assert_eq!(
             interrupt.reason.as_deref(),
             Some("control_plane_unavailable")
         );
+        // Supported transport ceiling is Native; enable still requires probe.
+        assert_eq!(interrupt.support, ProviderSupport::Native);
+        assert!(interrupt.supported);
     }
 
     fn working_obs() -> ObservedStatus {
@@ -1679,11 +2425,13 @@ mod tests {
     fn typed_active_probe(id: &str, evaluated_at: u64) -> ClaudeBackgroundProbe {
         ClaudeBackgroundProbe {
             state: ClaudeProbeState::Ok,
-            sessions: vec![crate::agent_memory::claude_background::ClaudeBackgroundSession {
-                external_session_id: id.into(),
-                active: true,
-                cwd: None,
-            }],
+            sessions: vec![
+                crate::agent_memory::claude_background::ClaudeBackgroundSession {
+                    external_session_id: id.into(),
+                    active: true,
+                    cwd: None,
+                },
+            ],
             observed_at: evaluated_at,
             fresh_until: evaluated_at.saturating_add(3_000),
             confidence: "high".into(),
@@ -1699,7 +2447,13 @@ mod tests {
             claude_background: Some(typed_active_probe("ext-1", now_ms())),
             ..Default::default()
         };
-        let actions = resolve_actions(Some(AgentKind::Claude), &obs, Some(&work), &hints);
+        let actions = resolve_actions(
+            Some(AgentKind::Claude),
+            &obs,
+            Some(&work),
+            &hints,
+            Some(&exact_wd("", &obs)),
+        );
         let interrupt = actions.iter().find(|a| a.id == "agent.interrupt").unwrap();
         assert!(!interrupt.enabled);
         assert_eq!(interrupt.reason.as_deref(), Some("no_external_session"));
@@ -1721,7 +2475,13 @@ mod tests {
             }),
             ..Default::default()
         };
-        let actions = resolve_actions(Some(AgentKind::Claude), &obs, Some(&work), &hints);
+        let actions = resolve_actions(
+            Some(AgentKind::Claude),
+            &obs,
+            Some(&work),
+            &hints,
+            Some(&exact_wd("ext-1", &obs)),
+        );
         let interrupt = actions.iter().find(|a| a.id == "agent.interrupt").unwrap();
         assert!(!interrupt.enabled);
         assert_eq!(
@@ -1740,7 +2500,13 @@ mod tests {
             claude_background: Some(typed_active_probe("ext-1", now)),
             ..Default::default()
         };
-        let actions = resolve_actions(Some(AgentKind::Claude), &obs, Some(&work), &hints);
+        let actions = resolve_actions(
+            Some(AgentKind::Claude),
+            &obs,
+            Some(&work),
+            &hints,
+            Some(&exact_wd("ext-1", &obs)),
+        );
         assert_actions_honest(&actions);
         let interrupt = actions.iter().find(|a| a.id == "agent.interrupt").unwrap();
         assert!(interrupt.enabled);
@@ -1764,7 +2530,13 @@ mod tests {
             claude_background: Some(typed_active_probe("ext", now)),
             ..Default::default()
         };
-        let actions = resolve_actions(Some(AgentKind::Claude), &obs, Some(&work), &hints);
+        let actions = resolve_actions(
+            Some(AgentKind::Claude),
+            &obs,
+            Some(&work),
+            &hints,
+            Some(&exact_wd("ext-1", &obs)),
+        );
         let interrupt = actions.iter().find(|a| a.id == "agent.interrupt").unwrap();
         assert!(!interrupt.enabled);
         assert_eq!(
@@ -1781,18 +2553,26 @@ mod tests {
             evaluated_at_ms: 10_000,
             claude_background: Some(ClaudeBackgroundProbe {
                 state: ClaudeProbeState::Ok,
-                sessions: vec![crate::agent_memory::claude_background::ClaudeBackgroundSession {
-                    external_session_id: "ext-1".into(),
-                    active: true,
-                    cwd: None,
-                }],
+                sessions: vec![
+                    crate::agent_memory::claude_background::ClaudeBackgroundSession {
+                        external_session_id: "ext-1".into(),
+                        active: true,
+                        cwd: None,
+                    },
+                ],
                 observed_at: 1_000,
                 fresh_until: 4_000, // < evaluated_at_ms
                 confidence: "high".into(),
             }),
             ..Default::default()
         };
-        let actions = resolve_actions(Some(AgentKind::Claude), &obs, Some(&work), &hints);
+        let actions = resolve_actions(
+            Some(AgentKind::Claude),
+            &obs,
+            Some(&work),
+            &hints,
+            Some(&exact_wd("ext-1", &obs)),
+        );
         let interrupt = actions.iter().find(|a| a.id == "agent.interrupt").unwrap();
         assert!(!interrupt.enabled);
         assert_eq!(interrupt.reason.as_deref(), Some("stale_control_evidence"));
@@ -1814,7 +2594,13 @@ mod tests {
             claude_background: Some(typed_active_probe("ext-1", now)),
             ..Default::default()
         };
-        let actions = resolve_actions(Some(AgentKind::Claude), &obs, Some(&work), &hints);
+        let actions = resolve_actions(
+            Some(AgentKind::Claude),
+            &obs,
+            Some(&work),
+            &hints,
+            Some(&exact_wd("ext-1", &obs)),
+        );
         let interrupt = actions.iter().find(|a| a.id == "agent.interrupt").unwrap();
         assert!(!interrupt.enabled);
         assert_eq!(interrupt.reason.as_deref(), Some("not_running"));
@@ -1852,7 +2638,13 @@ mod tests {
         // Seed cache with ok so we can assert stop failure does not force post probe.
         let _ = get_probe(ProbePolicy::ForceFresh, &runner, &cache);
         let before = runner.probes.load(Ordering::SeqCst);
-        let out = execute_claude_stop(&runner, &cache, "ext-1", Some("internal-1"));
+        let out = execute_claude_stop(
+            &runner,
+            &cache,
+            "ext-1",
+            Some("internal-1"),
+            "attempt-test-1",
+        );
         assert!(!out.ok);
         assert_eq!(out.error.as_deref(), Some("stop_command_failed"));
         assert_eq!(runner.probes.load(Ordering::SeqCst), before);
@@ -1868,7 +2660,8 @@ mod tests {
         impl ClaudeProbeRunner for Fake {
             fn probe_agents_json(
                 &self,
-            ) -> Result<String, crate::agent_memory::claude_background::ClaudeRunError> {
+            ) -> Result<String, crate::agent_memory::claude_background::ClaudeRunError>
+            {
                 Ok("[]".into())
             }
             fn stop_session(&self, _: &str) -> Result<(), ClaudeStopError> {
@@ -1879,9 +2672,17 @@ mod tests {
             stop: StdMutex::new(Err(ClaudeStopError::Timeout)),
         };
         let cache = ClaudeProbeCache::new();
-        let out = execute_claude_stop(&runner, &cache, "ext-1", Some("internal-1"));
-        assert!(!out.ok);
-        assert_eq!(out.error.as_deref(), Some("stop_timeout"));
+        let out = execute_claude_stop(
+            &runner,
+            &cache,
+            "ext-1",
+            Some("internal-1"),
+            "attempt-test-1",
+        );
+        assert!(out.ok);
+        assert!(!out.verified);
+        assert_eq!(out.outcome, ActionOutcome::AttemptedUnverified);
+        assert_eq!(out.detail.as_deref(), Some("stop_timeout"));
     }
 
     #[test]
@@ -1920,9 +2721,17 @@ mod tests {
             probes: AtomicUsize::new(0),
         };
         let cache = ClaudeProbeCache::new();
-        let out = execute_claude_stop(&runner, &cache, "ext-1", Some("internal-1"));
-        assert!(!out.ok);
-        assert_eq!(out.error.as_deref(), Some("stop_not_verified"));
+        let out = execute_claude_stop(
+            &runner,
+            &cache,
+            "ext-1",
+            Some("internal-1"),
+            "attempt-test-1",
+        );
+        assert!(out.ok);
+        assert!(!out.verified);
+        assert_eq!(out.outcome, ActionOutcome::AttemptedUnverified);
+        assert_eq!(out.detail.as_deref(), Some("stop_not_verified"));
         assert!(runner.probes.load(Ordering::SeqCst) >= 1);
     }
 
@@ -1951,9 +2760,21 @@ mod tests {
         };
         let cache = ClaudeProbeCache::new();
         let _ = get_probe(ProbePolicy::ForceFresh, &runner, &cache);
-        let out = execute_claude_stop(&runner, &cache, "ext-1", Some("internal-1"));
-        assert!(!out.ok);
-        assert_eq!(out.error.as_deref(), Some("post_stop_probe_failed"));
+        let out = execute_claude_stop(
+            &runner,
+            &cache,
+            "ext-1",
+            Some("internal-1"),
+            "attempt-test-1",
+        );
+        assert!(out.ok);
+        assert!(!out.verified);
+        assert_eq!(out.outcome, ActionOutcome::AttemptedUnverified);
+        assert!(out
+            .detail
+            .as_deref()
+            .unwrap_or("")
+            .contains("post_stop_probe_failed"));
     }
 
     #[test]
@@ -1980,7 +2801,7 @@ mod tests {
         assert_eq!(runner.probes.load(Ordering::SeqCst), 1);
         let _ = get_probe(ProbePolicy::Cached, &runner, &cache);
         assert_eq!(runner.probes.load(Ordering::SeqCst), 1);
-        let out = execute_claude_stop(&runner, &cache, "sess-a", None);
+        let out = execute_claude_stop(&runner, &cache, "sess-a", None, "attempt-test-2");
         assert!(out.ok);
         assert!(runner.probes.load(Ordering::SeqCst) >= 2);
     }
@@ -1995,8 +2816,20 @@ mod tests {
             claude_background: Some(typed_active_probe("ext-9", now)),
             ..Default::default()
         };
-        let a1 = resolve_actions(Some(AgentKind::Claude), &obs, Some(&work), &hints);
-        let a2 = resolve_actions(Some(AgentKind::Claude), &obs, Some(&work), &hints);
+        let a1 = resolve_actions(
+            Some(AgentKind::Claude),
+            &obs,
+            Some(&work),
+            &hints,
+            Some(&exact_wd("ext-9", &obs)),
+        );
+        let a2 = resolve_actions(
+            Some(AgentKind::Claude),
+            &obs,
+            Some(&work),
+            &hints,
+            Some(&exact_wd("ext-9", &obs)),
+        );
         let i1 = a1.iter().find(|a| a.id == "agent.interrupt").unwrap();
         let i2 = a2.iter().find(|a| a.id == "agent.interrupt").unwrap();
         assert!(i1.enabled && i2.enabled);
@@ -2006,8 +2839,13 @@ mod tests {
     #[test]
     fn gemini_catalog_focus_not_enabled_without_executor() {
         let obs = resolve_observed_status(Some(AgentKind::Gemini));
-        let actions =
-            resolve_actions(Some(AgentKind::Gemini), &obs, None, &ResolveHints::default());
+        let actions = resolve_actions(
+            Some(AgentKind::Gemini),
+            &obs,
+            None,
+            &ResolveHints::default(),
+            None,
+        );
         assert_actions_honest(&actions);
         let focus = actions.iter().find(|a| a.id == "agent.focus").unwrap();
         assert!(!focus.enabled);
@@ -2024,16 +2862,168 @@ mod tests {
             fresh_until: now_ms() + WORKING_FRESH_MS_HOOK,
             confidence: "high".into(),
         };
-        let actions =
-            resolve_actions(Some(AgentKind::Codex), &obs, None, &ResolveHints::default());
+        // Without Codex ControlEvidence, interrupt must stay fail-closed.
+        let actions = resolve_actions(
+            Some(AgentKind::Codex),
+            &obs,
+            None,
+            &ResolveHints::default(),
+            None,
+        );
+        let interrupt = actions.iter().find(|a| a.id == "agent.interrupt").unwrap();
+        assert!(!interrupt.enabled);
+        assert_eq!(interrupt.support, ProviderSupport::Unsupported);
+        assert!(interrupt.executor.is_none());
+        assert_eq!(provider_handler_id("agent.interrupt"), "cancel");
+    }
+
+    #[test]
+    fn codex_interrupt_requires_window_evidence() {
+        use crate::agent_memory::codex_background::{
+            CodexBackgroundProbe, CodexBackgroundSession, CodexProbeState, PROBE_TTL_MS,
+        };
+        let now = now_ms();
+        let obs = ObservedStatus {
+            value: "working".into(),
+            source: "officialHook".into(),
+            observed_at: now,
+            fresh_until: now + WORKING_FRESH_MS_HOOK,
+            confidence: "high".into(),
+        };
+        let work = serde_json::json!({
+            "externalSessionId": "cx-1",
+        });
+        let hints = ResolveHints {
+            evaluated_at_ms: now,
+            codex_background: Some(CodexBackgroundProbe {
+                state: CodexProbeState::Ok,
+                sessions: vec![CodexBackgroundSession {
+                    external_session_id: "cx-1".into(),
+                    active: true,
+                    window_addressable: true,
+                }],
+                observed_at: now,
+                fresh_until: now + PROBE_TTL_MS,
+                confidence: "high".into(),
+            }),
+            ..Default::default()
+        };
+        let actions = resolve_actions(
+            Some(AgentKind::Codex),
+            &obs,
+            Some(&work),
+            &hints,
+            Some(&exact_wd("cx-1", &obs)),
+        );
         let interrupt = actions.iter().find(|a| a.id == "agent.interrupt").unwrap();
         assert!(interrupt.enabled);
+        assert_eq!(interrupt.support, ProviderSupport::Hotkey);
         match interrupt.executor.as_ref().unwrap() {
             AgentCenterExecutor::ProviderAction { handler, .. } => {
                 assert_eq!(handler, "cancel");
             }
             other => panic!("expected ProviderAction, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn empty_probe_kinds_not_in_supported_not_found() {
+        let agents = vec![AgentCenterAgent {
+            agent_id: "kind:aider".into(),
+            runtime_kind: Some("aider".into()),
+            display_name: "Aider".into(),
+            form_factor: "cli".into(),
+            presence_state: "unknown".into(),
+            presence: PresenceAxes {
+                installation: "unknown".into(),
+                data_source: "unknown".into(),
+                runtime: "unknown".into(),
+                integration: "unknown".into(),
+            },
+            status: "unknown".into(),
+            observed_status: ObservedStatus {
+                value: "unknown".into(),
+                source: "none".into(),
+                observed_at: 0,
+                fresh_until: 0,
+                confidence: "low".into(),
+            },
+            version: None,
+            data_path: None,
+            last_probe_at: None,
+            last_sync_at: None,
+            resolved_capabilities: AgentResolvedCapabilities {
+                usage: CapabilityState {
+                    state: "unknown".into(),
+                    source: None,
+                    reason: None,
+                    updated_at: None,
+                },
+                session_metadata: CapabilityState {
+                    state: "unknown".into(),
+                    source: None,
+                    reason: None,
+                    updated_at: None,
+                },
+                transcript: CapabilityState {
+                    state: "unknown".into(),
+                    source: None,
+                    reason: None,
+                    updated_at: None,
+                },
+                realtime_status: CapabilityState {
+                    state: "unknown".into(),
+                    source: None,
+                    reason: None,
+                    updated_at: None,
+                },
+                hooks: CapabilityState {
+                    state: "unknown".into(),
+                    source: None,
+                    reason: None,
+                    updated_at: None,
+                },
+                resume: CapabilityState {
+                    state: "unknown".into(),
+                    source: None,
+                    reason: None,
+                    updated_at: None,
+                },
+                focus: CapabilityState {
+                    state: "unknown".into(),
+                    source: None,
+                    reason: None,
+                    updated_at: None,
+                },
+            },
+            metrics: AgentCenterMetrics {
+                today_sessions: unavailable_metric("x"),
+                today_cost_usd: unavailable_metric("x"),
+                tokens: unavailable_metric("x"),
+                average_duration_ms: unavailable_metric("x"),
+                success_rate: unavailable_metric("x"),
+            },
+            current_work: None,
+            attention: None,
+            recent_work: vec![],
+            unscoped_recent_work: vec![],
+            evidence: vec![],
+            limitations: vec![serde_json::json!({ "code": "ProbeNotImplemented" })],
+            actions: vec![],
+            title: None,
+            title_source: Some("unknown".into()),
+            title_confidence: Some("low".into()),
+            title_derived_from: None,
+            recent_prompt: None,
+            prompt_source: None,
+            prompt_observed_at: None,
+            cwd: None,
+            status_source: None,
+            integration_label: None,
+        }];
+        let g = group_agents(&agents);
+        assert!(!g.supported_not_found.contains(&"kind:aider".into()));
+        assert!(g.discovered_limited.contains(&"kind:aider".into()));
     }
 
     #[test]
@@ -2044,8 +3034,13 @@ mod tests {
             "sessionId": "onetone-internal-abc",
             "externalSessionId": "",
         });
-        let actions =
-            resolve_actions(Some(AgentKind::Codex), &obs, Some(&work), &ResolveHints::default());
+        let actions = resolve_actions(
+            Some(AgentKind::Codex),
+            &obs,
+            Some(&work),
+            &ResolveHints::default(),
+            Some(&exact_wd("", &obs)),
+        );
         let resume = actions.iter().find(|a| a.id == "session.resume").unwrap();
         assert!(!resume.enabled);
         assert_eq!(resume.reason.as_deref(), Some("no_external_session"));
@@ -2133,7 +3128,8 @@ mod tests {
 
     #[test]
     fn enabled_external_actions_have_executor_diag() {
-        let snap = build_agent_center_snapshot(None, &[("codex".into(), "cli".into(), "high".into())]);
+        let snap =
+            build_agent_center_snapshot(None, &[("codex".into(), "cli".into(), "high".into())]);
         for a in &snap.agents {
             for act in &a.actions {
                 if act.enabled && act.scope == "externalAgent" {
@@ -2146,5 +3142,427 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn e2e_upsert_inbound_projects_recent_prompt_onto_agent() {
+        use crate::agent_memory::events::{agent_session_id, upsert_session_candidate};
+        use crate::agent_memory::model::{ProjectIdentity, ProjectMatch, SessionCandidate};
+        use crate::agent_memory::prompt_journal::{
+            note_inbound_prompt, recent_prompts, PromptObserveInput, PromptSource,
+        };
+        use crate::agent_memory::snapshot::AgentHomeSnapshot;
+        use crate::agent_memory::store::now_ms;
+
+        let now = now_ms();
+        let ext = format!("e2e-home-prompt-{now}");
+        let project = "e2e-home-prompt-proj";
+        let cand = SessionCandidate {
+            provider: "claude".into(),
+            external_session_id: ext.clone(),
+            project_id: project.into(),
+            project_match: ProjectMatch::Exact,
+            match_reason: "e2e".into(),
+            match_confidence: 1.0,
+            started_at: Some(now),
+            updated_at: Some(now),
+            title: None,
+            is_active: true,
+            activity_source: "test".into(),
+            active_confidence: 1.0,
+            workspace_evidence: None,
+        };
+        let home_sid = upsert_session_candidate(&cand).expect("upsert");
+        assert_eq!(home_sid, agent_session_id("claude", project, &ext));
+
+        let _rec = note_inbound_prompt(PromptObserveInput {
+            provider: AgentKind::Claude,
+            workspace_id: "ws",
+            external_session_id: &ext,
+            project_id: project,
+            text: Some("fix the login form"),
+            source: PromptSource::OneToneDispatch,
+            observed_at: Some(now),
+            source_key: "e2e-turn",
+        })
+        .expect("inbound");
+
+        let list = recent_prompts(&home_sid, 3).expect("recent by home id");
+        assert!(!list.is_empty());
+        assert_eq!(list[0].summary, "fix the login form");
+
+        let mut hints = ResolveHints::default();
+        hints
+            .recent_prompts_by_session
+            .insert(home_sid.clone(), list);
+
+        let home_session = HomeSessionDto {
+            session_id: home_sid.clone(),
+            provider: "claude".into(),
+            external_session_id: ext,
+            title: None,
+            updated_at: Some(now),
+            status: "active".into(),
+            project_id: project.into(),
+            project_match: "exact".into(),
+            match_reason: "e2e".into(),
+            match_confidence: 1.0,
+            is_active: true,
+            activity_source: "test".into(),
+            active_confidence: 1.0,
+        };
+        let home = AgentHomeSnapshot {
+            project: ProjectIdentity {
+                project_id: project.into(),
+                git_root: None,
+                workspace_path: None,
+                display_name: "e2e".into(),
+            },
+            active_session: Some(home_session.clone()),
+            recent_sessions: vec![home_session],
+            recent_events: vec![],
+            latest_event: None,
+            checkpoint: None,
+            memories: vec![],
+            context: None,
+            as_of: now,
+            sync_status: "ready".into(),
+            stale_age_ms: 0,
+            probe_status: "ready".into(),
+            diagnostics: vec![],
+            consent_activity_enabled: false,
+        };
+        let row = RegistryRow {
+            agent_id: "kind:claude".into(),
+            runtime_kind: Some("claude".into()),
+            display_name: "Claude".into(),
+            form_factor: "cli".into(),
+            presence_state: "connected".into(),
+            version: None,
+            data_path: None,
+            adapter_state: "ready".into(),
+            limitation_reason: None,
+            capability_evidence_json: "{}".into(),
+            evidence_json: "[]".into(),
+            last_probe_at_ms: None,
+            last_successful_probe_at_ms: None,
+            last_sync_at_ms: None,
+            created_at_ms: now as i64,
+            updated_at_ms: now as i64,
+        };
+
+        let agent = build_agent_from_row(&row, &home, &hints);
+        assert_eq!(agent.recent_prompt.as_deref(), Some("fix the login form"));
+        assert_eq!(agent.prompt_source.as_deref(), Some("OneToneDispatch"));
+        assert_eq!(agent.title.as_deref(), Some("fix the login form"));
+        assert_eq!(agent.title_source.as_deref(), Some("derived"));
+        assert_eq!(agent.title_derived_from.as_deref(), Some("prompt"));
+        // OneToneDispatch alone is not Managed.
+        assert!(
+            agent.integration_label.as_deref() == Some("oneToneInitiated")
+                || agent.integration_label.as_deref() == Some("managed"),
+            "got {:?}",
+            agent.integration_label
+        );
+        if agent.integration_label.as_deref() == Some("managed") {
+            // Only if control/event evidence also present in this projection.
+            assert!(agent.actions.iter().any(|a| a.id == "agent.interrupt"));
+        }
+    }
+
+    #[test]
+    fn attempt_id_normalized_and_distinct_source_refs() {
+        let a = normalize_attempt_id(Some("bad id!!"));
+        assert!(a.starts_with("attempt-"));
+        let b = normalize_attempt_id(Some("attempt-ok-1"));
+        assert_eq!(b, "attempt-ok-1");
+        let r1 = action_source_ref("claude", "ext-1", "agent.interrupt", "attempt-1");
+        let r2 = action_source_ref("claude", "ext-1", "agent.interrupt", "attempt-2");
+        assert_ne!(r1, r2);
+        assert!(!r1.contains("attemptedUnverified"));
+    }
+
+    #[test]
+    fn action_outcome_derived_fields() {
+        let f = AgentCenterActionResult::failed("x", None);
+        assert!(!f.ok && !f.verified);
+        let u = AgentCenterActionResult::attempted(None);
+        assert!(u.ok && !u.verified);
+        let v = AgentCenterActionResult::verified_ok(None);
+        assert!(v.ok && v.verified);
+    }
+
+    #[test]
+    fn agent_center_action_serializes_camel_case() {
+        let act = AgentCenterAction {
+            id: "agent.interrupt".into(),
+            label: "Interrupt".into(),
+            scope: "externalAgent".into(),
+            support: "hotkey".into(),
+            supported: true,
+            enabled: true,
+            reason: None,
+            executor: Some("providerAction:codex:cancel".into()),
+            state: Some("available".into()),
+            source: Some("codexProbe".into()),
+            confidence: Some("high".into()),
+            observed_at: Some(1_000),
+            fresh_until: Some(4_000),
+        };
+        let v = serde_json::to_value(&act).expect("serialize action");
+        assert_eq!(v["id"], "agent.interrupt");
+        assert_eq!(v["support"], "hotkey");
+        assert_eq!(v["supported"], true);
+        assert_eq!(v["enabled"], true);
+        assert_eq!(v["state"], "available");
+        assert_eq!(v["source"], "codexProbe");
+        assert_eq!(v["confidence"], "high");
+        assert_eq!(v["observedAt"], 1_000);
+        assert_eq!(v["freshUntil"], 4_000);
+        assert!(v.get("observed_at").is_none());
+        assert!(v.get("fresh_until").is_none());
+        assert!(
+            v.get("outcome").is_none(),
+            "outcome belongs on ActionResult"
+        );
+    }
+
+    #[test]
+    fn agent_center_action_result_serializes_outcome() {
+        let res = AgentCenterActionResult::attempted(Some("stop_not_verified".into()))
+            .with_attempt("attempt-test-1")
+            .with_result(serde_json::json!({ "via": "reprobe" }));
+        let v = serde_json::to_value(&res).expect("serialize result");
+        assert_eq!(v["outcome"], "attemptedUnverified");
+        assert_eq!(v["ok"], true);
+        assert_eq!(v["verified"], false);
+        assert_eq!(v["attemptId"], "attempt-test-1");
+        assert_eq!(v["detail"], "stop_not_verified");
+        assert!(v.get("error").is_none() || v["error"].is_null());
+        let failed = AgentCenterActionResult::failed("execute_failed", Some("x".into()));
+        let fv = serde_json::to_value(&failed).unwrap();
+        assert_eq!(fv["outcome"], "failed");
+        assert_eq!(fv["error"], "execute_failed");
+        assert_eq!(fv["ok"], false);
+        assert_eq!(fv["verified"], false);
+    }
+
+    #[test]
+    fn unsupported_vs_unknown_interrupt_reasons() {
+        // Catalog-less / unsupported provider → provider_unsupported, not ProbeNotImplemented.
+        let obs = ObservedStatus {
+            value: "idle".into(),
+            source: "none".into(),
+            observed_at: 0,
+            fresh_until: 0,
+            confidence: "low".into(),
+        };
+        let gemini = resolve_actions(
+            Some(AgentKind::Gemini),
+            &obs,
+            None,
+            &ResolveHints::default(),
+            None,
+        );
+        let g_int = gemini.iter().find(|a| a.id == "agent.interrupt").unwrap();
+        assert_eq!(g_int.reason.as_deref(), Some("provider_unsupported"));
+        assert_eq!(g_int.state.as_deref(), Some("unsupported"));
+
+        // Codex without control evidence → not conflated into provider_unsupported alone as "unknown install".
+        let codex = resolve_actions(
+            Some(AgentKind::Codex),
+            &obs,
+            None,
+            &ResolveHints::default(),
+            None,
+        );
+        let c_int = codex.iter().find(|a| a.id == "agent.interrupt").unwrap();
+        assert_ne!(
+            c_int.reason.as_deref(),
+            Some("ProbeNotImplemented"),
+            "runtime capability reason must not be ProbeNotImplemented"
+        );
+    }
+
+    #[test]
+    fn codex_interrupt_verified_when_force_fresh_inactive() {
+        use crate::agent_memory::codex_background::{
+            CodexBackgroundSession, CodexProbeState, PROBE_TTL_MS,
+        };
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        struct Fake {
+            probes: AtomicUsize,
+        }
+        impl CodexProbeRunner for Fake {
+            fn probe_evidence(&self, now: u64) -> CodexBackgroundProbe {
+                self.probes.fetch_add(1, Ordering::SeqCst);
+                CodexBackgroundProbe {
+                    state: CodexProbeState::Ok,
+                    sessions: vec![CodexBackgroundSession {
+                        external_session_id: "cx-1".into(),
+                        active: false,
+                        window_addressable: true,
+                    }],
+                    observed_at: now,
+                    fresh_until: now + PROBE_TTL_MS,
+                    confidence: "high".into(),
+                }
+            }
+        }
+        let runner = Fake {
+            probes: AtomicUsize::new(0),
+        };
+        let cache = CodexProbeCache::new();
+        let out = verify_codex_interrupt_after_send(
+            &runner,
+            &cache,
+            "cx-1",
+            Some("internal-1"),
+            "attempt-cx-1",
+            Some("hotkey-ok".into()),
+        );
+        assert!(out.ok);
+        assert!(out.verified);
+        assert_eq!(out.outcome, ActionOutcome::Verified);
+        assert!(out.detail.as_deref().unwrap_or("").contains("via=reprobe"));
+        assert!(runner.probes.load(Ordering::SeqCst) >= 1);
+    }
+
+    #[test]
+    fn codex_interrupt_attempted_when_still_active() {
+        use crate::agent_memory::codex_background::{
+            CodexBackgroundSession, CodexProbeState, PROBE_TTL_MS,
+        };
+        struct Fake;
+        impl CodexProbeRunner for Fake {
+            fn probe_evidence(&self, now: u64) -> CodexBackgroundProbe {
+                CodexBackgroundProbe {
+                    state: CodexProbeState::Ok,
+                    sessions: vec![CodexBackgroundSession {
+                        external_session_id: "cx-1".into(),
+                        active: true,
+                        window_addressable: true,
+                    }],
+                    observed_at: now,
+                    fresh_until: now + PROBE_TTL_MS,
+                    confidence: "high".into(),
+                }
+            }
+        }
+        let cache = CodexProbeCache::new();
+        let out =
+            verify_codex_interrupt_after_send(&Fake, &cache, "cx-1", None, "attempt-cx-2", None);
+        assert!(out.ok);
+        assert!(!out.verified);
+        assert_eq!(out.outcome, ActionOutcome::AttemptedUnverified);
+        assert_eq!(out.detail.as_deref(), Some("stop_not_verified"));
+    }
+
+    #[test]
+    fn codex_interrupt_attempted_on_post_probe_error() {
+        use crate::agent_memory::codex_background::CodexProbeState;
+        struct Fake;
+        impl CodexProbeRunner for Fake {
+            fn probe_evidence(&self, now: u64) -> CodexBackgroundProbe {
+                CodexBackgroundProbe::error_state(CodexProbeState::Timeout, now)
+            }
+        }
+        let cache = CodexProbeCache::new();
+        let out =
+            verify_codex_interrupt_after_send(&Fake, &cache, "cx-1", None, "attempt-cx-3", None);
+        assert!(out.ok);
+        assert!(!out.verified);
+        assert_eq!(out.outcome, ActionOutcome::AttemptedUnverified);
+        assert!(out
+            .detail
+            .as_deref()
+            .unwrap_or("")
+            .contains("post_stop_probe_failed"));
+    }
+
+    #[test]
+    fn codex_interrupt_session_mismatch_not_verified() {
+        use crate::agent_memory::codex_background::{
+            CodexBackgroundSession, CodexProbeState, PROBE_TTL_MS,
+        };
+        struct Fake;
+        impl CodexProbeRunner for Fake {
+            fn probe_evidence(&self, now: u64) -> CodexBackgroundProbe {
+                CodexBackgroundProbe {
+                    state: CodexProbeState::Ok,
+                    sessions: vec![CodexBackgroundSession {
+                        external_session_id: "other-id".into(),
+                        active: false,
+                        window_addressable: true,
+                    }],
+                    observed_at: now,
+                    fresh_until: now + PROBE_TTL_MS,
+                    confidence: "high".into(),
+                }
+            }
+        }
+        let cache = CodexProbeCache::new();
+        let out =
+            verify_codex_interrupt_after_send(&Fake, &cache, "cx-1", None, "attempt-cx-4", None);
+        assert!(out.ok);
+        assert!(!out.verified);
+        assert_eq!(out.outcome, ActionOutcome::AttemptedUnverified);
+        assert_eq!(out.detail.as_deref(), Some("session_mismatch"));
+    }
+
+    #[test]
+    fn interrupt_post_verify_plan_branches() {
+        assert_eq!(
+            interrupt_post_verify_plan(AgentKind::Codex, false),
+            InterruptPostVerifyPlan::Failed
+        );
+        assert_eq!(
+            interrupt_post_verify_plan(AgentKind::Cursor, false),
+            InterruptPostVerifyPlan::Failed
+        );
+        assert_eq!(
+            interrupt_post_verify_plan(AgentKind::Codex, true),
+            InterruptPostVerifyPlan::VerifyCodexForceFresh
+        );
+        assert_eq!(
+            interrupt_post_verify_plan(AgentKind::Cursor, true),
+            InterruptPostVerifyPlan::AttemptedUnverifiedOnly
+        );
+        // Claude interrupt uses ClaudeStop executor, not this ProviderAction plan.
+        assert_eq!(
+            interrupt_post_verify_plan(AgentKind::Claude, true),
+            InterruptPostVerifyPlan::AttemptedUnverifiedOnly
+        );
+    }
+
+    #[test]
+    fn cursor_interrupt_provider_action_stays_attempted_unverified() {
+        // Cursor has no reliable post-probe; ProviderAction interrupt remains AttemptedUnverified.
+        assert_eq!(
+            ActionOutcome::AttemptedUnverified.as_str(),
+            "attemptedUnverified"
+        );
+        assert!(!ActionOutcome::AttemptedUnverified.verified());
+        // Production Codex path is verify_* after ProviderAction hotkey (no dedicated executor arm).
+        let src = include_str!("agent_center.rs");
+        assert!(src.contains("verify_codex_interrupt_after_send"));
+        assert!(src.contains("AgentCenterExecutor::ProviderAction"));
+        let banned = format!("{}{}", "Codex", "Interrupt {");
+        assert!(
+            !src.contains(&banned),
+            "must reuse ProviderAction instead of a dedicated executor arm"
+        );
+    }
+
+    #[test]
+    fn provider_action_interrupt_never_writes_lifecycle_on_ok() {
+        // Cursor hotkey interrupt stays AttemptedUnverified; Codex may Verified via reprobe.
+        assert_eq!(
+            ActionOutcome::AttemptedUnverified.as_str(),
+            "attemptedUnverified"
+        );
+        assert!(!ActionOutcome::AttemptedUnverified.verified());
+        assert!(ActionOutcome::AttemptedUnverified.ok());
     }
 }

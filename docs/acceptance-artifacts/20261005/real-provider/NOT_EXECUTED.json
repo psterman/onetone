@@ -1,0 +1,25 @@
+{
+  "gate": "ONETONE_AGENT_REAL_INTERRUPT_E2E",
+  "gateValue": "1",
+  "executed": false,
+  "phase": "harness_live_u1_blocked",
+  "reason": "U1 ran against real AppData but interrupt_not_enabled (cursor not_running). No scenario has a passing action-result yet.",
+  "scenarios": {
+    "C1": { "status": "pending_manual", "expectedOutcome": "verified_only_after_post_stop_probe" },
+    "U1": {
+      "status": "blocked",
+      "expectedOutcome": "attemptedUnverified_never_verified",
+      "lastRun": "fail:interrupt_not_enabled",
+      "reason": "not_running",
+      "evidence": "U1/BLOCKED.json"
+    },
+    "X1": { "status": "pending_manual", "expectedOutcome": "verified_when_inactive_after_force_fresh" },
+    "X2": { "status": "pending_manual", "expectedOutcome": "attemptedUnverified_when_still_active" },
+    "X3": { "status": "pending_manual", "expectedOutcome": "attemptedUnverified_session_mismatch" },
+    "X4": { "status": "pending_manual", "expectedOutcome": "attemptedUnverified_probe_fail" }
+  },
+  "readiness": "readiness.json",
+  "prepDoc": "docs/acceptance-artifacts/20261005/scenario-prep.md",
+  "runnerScript": "scripts/run-real-provider-scenario.ps1",
+  "harness": "src-tauri/src/real_provider_e2e.rs"
+}

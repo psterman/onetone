@@ -183,7 +183,10 @@ pub fn navigate_lane(ticket: &LaneDispatchTicket) -> NavigateLaneResult {
             ok: true,
             action: "resume_available".into(),
             lane_id: ticket.lane_id.clone(),
-            detail: format!("cwd={} session={}", lane.navigation.cwd, lane.key.session_id),
+            detail: format!(
+                "cwd={} session={}",
+                lane.navigation.cwd, lane.key.session_id
+            ),
         };
     }
     acknowledge_lane(&ticket.lane_id);

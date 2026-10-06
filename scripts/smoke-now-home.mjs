@@ -825,6 +825,13 @@ if (!nowHomeSrc.includes('fgContextCache')) {
 if (!nowHomeSrc.includes('cmd_home_focus_snapshot') && !nowHomeSrc.includes('OneToneHomeFocusStore')) {
   throw new Error('now-home must wire HomeFocusStore');
 }
+const homeStoreSrc = fs.readFileSync(path.join(dir, 'home-focus-store.js'), 'utf8');
+if (!/cmd_home_confirm_project[\s\S]{0,120}args:\s*\{/.test(homeStoreSrc)) {
+  throw new Error('confirmProject must pass Tauri { args: { projectRoot, projectId } }');
+}
+if (!/cmd_home_list_known_projects[\s\S]{0,80}args:\s*\{/.test(homeStoreSrc)) {
+  throw new Error('listProjects must pass Tauri { args: { limit } }');
+}
 if (!/never pass display-name|Prefer Home Focus confirmed|Do not pass title-derived/i.test(nowHomeSrc)) {
   throw new Error('now-home must document cut of title PathBuf hint');
 }

@@ -97,10 +97,7 @@ pub fn collect_inventory(cfg: &VoiceConfig) -> AgentInstallInventory {
     for kind in KINDS {
         agents.push(probe_kind(*kind, &running_ids, minimax_exe_running, cfg));
     }
-    let high_confidence_count = agents
-        .iter()
-        .filter(|a| a.confidence == "high")
-        .count() as u32;
+    let high_confidence_count = agents.iter().filter(|a| a.confidence == "high").count() as u32;
     AgentInstallInventory {
         agents,
         high_confidence_count,
@@ -139,35 +136,50 @@ fn probe_kind(
             &["WorkBuddy", "CodeBuddy"],
             &[".codebuddy/settings.json"],
         ),
-        AgentKind::Trae => probe_shell(
-            &mut evidence,
-            TRAE_APP_TARGET_ID,
-            &["TRAE SOLO"],
-            &[],
-        ),
+        AgentKind::Trae => probe_shell(&mut evidence, TRAE_APP_TARGET_ID, &["TRAE SOLO"], &[]),
         AgentKind::TraeCode => probe_shell(
             &mut evidence,
             TRAE_CODE_APP_TARGET_ID,
             &["Trae"],
             &[".trae/hooks.json", ".trae-cn/hooks.json"],
         ),
-        AgentKind::Windsurf => probe_shell(
-            &mut evidence,
-            WINDSURF_APP_TARGET_ID,
-            &["Windsurf"],
-            &[],
-        ),
+        AgentKind::Windsurf => {
+            probe_shell(&mut evidence, WINDSURF_APP_TARGET_ID, &["Windsurf"], &[])
+        }
         AgentKind::Qoder => probe_shell(
             &mut evidence,
             QODER_APP_TARGET_ID,
             &["Qoder", "QoderCN"],
             &[".qoder/settings.json", ".qoder-cn/settings.json"],
         ),
-        AgentKind::CopilotCli | AgentKind::CopilotVscode | AgentKind::Gemini | AgentKind::Cline
-        | AgentKind::Roo | AgentKind::OpenCode | AgentKind::Aider => {}
+        AgentKind::CopilotCli
+        | AgentKind::CopilotVscode
+        | AgentKind::Gemini
+        | AgentKind::Cline
+        | AgentKind::Roo
+        | AgentKind::OpenCode
+        | AgentKind::Aider => {
+            // Empty probe — do not claim "scanned and absent".
+            evidence.push(AgentInstallEvidence {
+                kind: "probe_not_implemented".into(),
+                detail: "ProbeNotImplemented".into(),
+            });
+        }
     }
 
-    let (presence, confidence) = classify_evidence(&evidence, running);
+    let (presence, confidence) = if evidence.iter().any(|e| e.kind == "probe_not_implemented")
+        && !evidence.iter().any(|e| {
+            matches!(
+                e.kind.as_str(),
+                "desktop" | "cli" | "config" | "package" | "embedded"
+            )
+        })
+        && !running
+    {
+        ("unknown".into(), "low".into())
+    } else {
+        classify_evidence(&evidence, running)
+    };
     let (prepared, light_enabled) = mapping_flags(cfg, kind);
 
     AgentInstallRow {
@@ -277,10 +289,7 @@ fn probe_codex(evidence: &mut Vec<AgentInstallEvidence>) {
 
 fn probe_claude(evidence: &mut Vec<AgentInstallEvidence>) {
     if let Some(cli) = find_cli_on_path("claude") {
-        let name = cli
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or_default();
+        let name = cli.file_name().and_then(|n| n.to_str()).unwrap_or_default();
         // Reject lookalikes like "Claude Code Haha".
         if is_claude_cli_exe(name) && !looks_like_claude_false_positive(&cli) {
             evidence.push(AgentInstallEvidence {
@@ -434,7 +443,9 @@ fn electron_root_exists(names: &[&str]) -> bool {
         return false;
     };
     let base = PathBuf::from(appdata);
-    names.iter().any(|name| base.join(name).join("Local State").is_file())
+    names
+        .iter()
+        .any(|name| base.join(name).join("Local State").is_file())
 }
 
 fn find_cli_on_path(cmd: &str) -> Option<PathBuf> {
@@ -501,7 +512,10 @@ mod tests {
             kind: "desktop".into(),
             detail: "x".into(),
         }];
-        assert_eq!(classify_evidence(&ev, false), ("desktop".into(), "high".into()));
+        assert_eq!(
+            classify_evidence(&ev, false),
+            ("desktop".into(), "high".into())
+        );
     }
 
     #[test]
@@ -538,9 +552,7 @@ mod tests {
 
     #[test]
     fn embedded_codex_path_detect() {
-        let p = PathBuf::from(
-            r"C:\Users\me\.cursor\extensions\openai.chatgpt-0.1.0\bin\codex.exe",
-        );
+        let p = PathBuf::from(r"C:\Users\me\.cursor\extensions\openai.chatgpt-0.1.0\bin\codex.exe");
         assert!(is_embedded_codex_path(&p));
         let standalone = PathBuf::from(r"C:\Users\me\AppData\Roaming\npm\codex.cmd");
         assert!(!is_embedded_codex_path(&standalone));

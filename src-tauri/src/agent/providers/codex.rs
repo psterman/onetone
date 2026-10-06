@@ -156,9 +156,7 @@ impl CodexProviderAdapter {
                 Self::focus_then_hotkey(state, window, "Ctrl+Alt+B", duration_ms, mode)
             }
             "toggleSidebar" => Self::focus_then_hotkey(state, window, "Ctrl+B", duration_ms, mode),
-            "openSettings" => {
-                Self::focus_then_settings(state, window, duration_ms, mode)
-            }
+            "openSettings" => Self::focus_then_settings(state, window, duration_ms, mode),
             "navBack" => Self::focus_then_hotkey(state, window, "Ctrl+[", duration_ms, mode),
             "navForward" => Self::focus_then_hotkey(state, window, "Ctrl+]", duration_ms, mode),
             "openTerminal" => Self::focus_then_hotkey(state, window, "Ctrl+`", duration_ms, mode),
@@ -169,14 +167,8 @@ impl CodexProviderAdapter {
             "focusBrowserAddressBar" => {
                 Self::focus_then_hotkey(state, window, "Ctrl+L", duration_ms, mode)
             }
-            "status"
-            | "agent.status"
-            | "plan"
-            | "review"
-            | "permissions"
-            | "switchAgent"
-            | "switchModel"
-            | "appsOrPlugins" => {
+            "status" | "agent.status" | "plan" | "review" | "permissions" | "switchAgent"
+            | "switchModel" | "appsOrPlugins" => {
                 let slash_id = if action_id == "agent.status" {
                     "status"
                 } else {
@@ -347,7 +339,9 @@ impl CodexProviderAdapter {
         if crate::app_identity::foreground_is_self() {
             return ProviderActionOutcome::err(
                 "inject_self_fg",
-                Some(format!("refused {chord}: OneTone owns foreground after focus")),
+                Some(format!(
+                    "refused {chord}: OneTone owns foreground after focus"
+                )),
                 mode,
             );
         }

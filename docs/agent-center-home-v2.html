@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · Agent Home v2 Preview</title>
+  <style>
+    :root { --ink:#17324d; --muted:#718398; --line:#dbe6ec; --paper:#f7fafb; --panel:#fff; --blue:#168bc2; --teal:#0c8d83; --amber:#c9892f; --red:#c35b55; --shadow:0 18px 50px rgba(35,72,96,.10); }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:#eaf3f7; font:14px/1.55 Inter, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    button { font:inherit; color:inherit; }
+    .shell { min-height:100vh; display:grid; grid-template-columns:230px minmax(0,1fr); }
+    aside { padding:24px 16px; background:#fff; border-right:1px solid var(--line); }
+    .brand { display:flex; align-items:center; gap:10px; padding:0 8px 22px; border-bottom:1px solid var(--line); font-weight:800; }
+    .mark { width:32px; height:32px; display:grid; place-items:center; border-radius:10px; color:#fff; background:var(--ink); }
+    .brand small { display:block; color:var(--muted); font-size:10px; font-weight:500; }
+    nav { margin-top:26px; display:grid; gap:6px; }
+    nav a { padding:10px 12px; border-radius:11px; color:#607991; text-decoration:none; }
+    nav a.active { color:#087aa8; background:#e1f3fb; font-weight:700; }
+    main { max-width:1260px; width:100%; margin:auto; padding:40px 48px 70px; }
+    .eyebrow { color:var(--teal); font-size:12px; font-weight:800; letter-spacing:.08em; }
+    h1 { margin:8px 0 6px; font-size:34px; letter-spacing:-.04em; }
+    .lede { max-width:680px; margin:0; color:#6b7f91; font-size:15px; }
+    .head { display:flex; justify-content:space-between; gap:24px; align-items:end; margin-bottom:28px; }
+    .head-actions { display:flex; gap:9px; }
+    .btn { border:1px solid var(--line); background:#fff; border-radius:9px; padding:9px 14px; cursor:pointer; }
+    .btn.primary { border-color:var(--teal); color:#fff; background:var(--teal); }
+    .btn:focus-visible, .row-toggle:focus-visible, select:focus-visible { outline:3px solid #9edcf0; outline-offset:2px; }
+    .metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:22px; }
+    .metric { padding:17px 18px; background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:0 5px 18px rgba(41,79,96,.04); }
+    .metric strong { display:block; font-size:27px; line-height:1; }
+    .metric span { display:block; margin-top:7px; color:var(--muted); font-size:12px; }
+    .metric i { display:inline-block; width:8px; height:8px; margin-right:6px; border-radius:50%; background:var(--teal); }
+    .metric.amber i { background:var(--amber); } .metric.blue i { background:var(--blue); } .metric.gray i { background:#9aaabd; }
+    .toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin:28px 0 12px; }
+    .toolbar h2 { margin:0; font-size:17px; }
+    .filters { display:flex; gap:8px; align-items:center; }
+    select { border:1px solid var(--line); border-radius:9px; padding:8px 30px 8px 10px; background:#fff; }
+    .legend { color:var(--muted); font-size:12px; }
+    .roster { overflow:hidden; background:#fff; border:1px solid var(--line); border-radius:15px; box-shadow:var(--shadow); }
+    .row { border-bottom:1px solid var(--line); } .row:last-child { border-bottom:0; }
+    .row-toggle { width:100%; display:grid; grid-template-columns:190px minmax(180px,1fr) 180px 28px; align-items:center; gap:18px; padding:18px 20px; border:0; background:#fff; text-align:left; cursor:pointer; }
+    .row-toggle:hover, .row.open .row-toggle { background:#fbfefe; }
+    .agent-name { display:flex; align-items:center; gap:10px; font-weight:750; }
+    .dot { width:9px; height:9px; flex:none; border-radius:50%; background:#35a875; box-shadow:0 0 0 4px #e5f6ee; }
+    .dot.warn { background:#d39b3b; box-shadow:0 0 0 4px #fff2d9; } .dot.off { background:#9babb9; box-shadow:0 0 0 4px #eef2f5; }
+    .sub { display:block; margin-top:2px; color:var(--muted); font-size:12px; font-weight:500; }
+    .work { min-width:0; } .work strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
+    .work small { color:var(--muted); } .time { color:var(--muted); text-align:right; font-size:12px; }
+    .chev { color:#93a4b2; font-size:18px; transition:transform .18s ease; } .row.open .chev { transform:rotate(180deg); }
+    .detail { display:none; padding:0 20px 20px 48px; background:#fbfefe; } .row.open .detail { display:block; }
+    .detail-grid { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; padding-top:2px; }
+    .detail h3 { margin:0 0 8px; font-size:12px; color:#7890a0; font-weight:700; }
+    .summary { padding:14px; border-left:3px solid #b9e4e0; background:#f0faf9; border-radius:0 10px 10px 0; }
+    .summary p { margin:0; } .summary small { color:var(--muted); }
+    .badges { display:flex; flex-wrap:wrap; gap:7px; }
+    .badge { padding:5px 8px; border-radius:6px; color:#35616e; background:#e7f3f4; font-size:12px; }
+    .badge.amber { color:#815c24; background:#fff2d8; } .badge.gray { color:#6b7c89; background:#edf1f4; }
+    .evidence { width:100%; border-collapse:collapse; font-size:12px; } .evidence td { padding:7px 0; border-bottom:1px solid #e7eef1; } .evidence td:last-child { text-align:right; color:#5d7685; }
+    .actions { display:flex; gap:8px; margin-top:15px; } .action { padding:7px 10px; border:1px solid #b8d8df; border-radius:7px; background:#fff; cursor:pointer; font-size:12px; } .action:disabled { opacity:.45; cursor:not-allowed; }
+    .note { margin-top:24px; padding:12px 14px; color:#6d7e8d; background:#edf5f7; border-radius:9px; font-size:12px; }
+    .toast { position:fixed; right:28px; bottom:26px; max-width:360px; padding:13px 16px; color:#fff; background:#173d55; border-radius:10px; box-shadow:var(--shadow); transform:translateY(20px); opacity:0; pointer-events:none; transition:.2s; } .toast.show { transform:none; opacity:1; }
+    @media (max-width:850px) { .shell { grid-template-columns:1fr; } aside { display:none; } main { padding:26px 18px 50px; } .head { align-items:start; flex-direction:column; } .metrics { grid-template-columns:repeat(2,1fr); } .row-toggle { grid-template-columns:1fr 28px; } .work,.time { grid-column:1; text-align:left; } .chev { grid-column:2; grid-row:1; } .detail { padding-left:20px; } .detail-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand"><div class="mark">◒</div><div>一声 OneTone<small>言出即行，万象成形</small></div></div>
+      <nav><a href="#">首页</a><a href="#">我的习惯</a><a class="active" href="#">Agent</a><a href="#">数据</a><a href="#">语音设置</a><a href="#">通用设置</a></nav>
+    </aside>
+    <main>
+      <section class="head"><div><div class="eyebrow">AGENT / WORKSPACE</div><h1>现在，Agent 在哪里？</h1><p class="lede">只展示已经被真实证据支持的工作状态。展开一行，可以看到它为什么可用、何时更新，以及下一步能做什么。</p></div><div class="head-actions"><button class="btn" id="refresh">刷新证据</button><button class="btn primary" id="export">导出记录</button></div></section>
+      <section class="metrics" aria-label="Agent 总览"><div class="metric"><strong>7</strong><span><i></i>已发现 Agent</span></div><div class="metric blue"><strong>2</strong><span><i></i>当前工作中</span></div><div class="metric"><strong>2</strong><span><i></i>可验证中断</span></div><div class="metric amber"><strong>1</strong><span><i></i>尽力控制</span></div></section>
+      <div class="toolbar"><div><h2>Agent 名册</h2><div class="legend">能力统计按 agent.interrupt 计算；未知不等于不支持</div></div><div class="filters"><label for="filter">筛选</label><select id="filter"><option value="all">全部（7）</option><option value="working">当前工作中（2）</option><option value="verified">可验证中断（2）</option><option value="best">尽力控制（1）</option><option value="unknown">未知 / 尚未接入（2）</option></select></div></div>
+      <section class="roster" id="roster" aria-label="Agent 名册">
+        <article class="row" data-state="working verified"><button class="row-toggle" aria-expanded="false"><span><span class="agent-name"><i class="dot"></i>Claude Code</span><span class="sub">可验证中断 · voice-pilot</span></span><span class="work"><strong>整理首页 Agent 能力徽章</strong><small>最近提示：继续完成证据状态展示</small></span><span class="time">刚刚</span><span class="chev">⌄</span></button><div class="detail"><div class="detail-grid"><div><h3>当前工作</h3><div class="summary"><p>正在整理首页 Agent 能力徽章</p><small>项目 voice-pilot · 标题来源：recent prompt</small></div><h3 style="margin-top:15px">可用能力</h3><div class="badges"><span class="badge">中断 · 可验证</span><span class="badge">聚焦 · 尽力控制</span><span class="badge">恢复 · 可用</span></div></div><div><h3>证据</h3><table class="evidence"><tr><td>会话</td><td>精确匹配</td></tr><tr><td>最近观测</td><td>刚刚</td></tr><tr><td>证据有效期</td><td>还有 38 秒</td></tr><tr><td>置信度</td><td>高</td></tr></table><div class="actions"><button class="action" data-result="verified">中断</button><button class="action">聚焦</button><button class="action">恢复</button></div></div></div></div></article>
+        <article class="row" data-state="working best"><button class="row-toggle" aria-expanded="false"><span><span class="agent-name"><i class="dot"></i>Codex</span><span class="sub">尽力控制 · voice-pilot</span></span><span class="work"><strong>修复支付回调重试逻辑</strong><small>项目仍在运行，停止结果需重新探测</small></span><span class="time">8 分钟前</span><span class="chev">⌄</span></button><div class="detail"><div class="detail-grid"><div><h3>当前工作</h3><div class="summary"><p>正在修复支付回调重试逻辑</p><small>项目 voice-pilot · 标题来源：session metadata</small></div><h3 style="margin-top:15px">可用能力</h3><div class="badges"><span class="badge amber">中断 · 尽力控制</span><span class="badge">聚焦 · 可用</span><span class="badge gray">恢复 · 未知</span></div></div><div><h3>证据</h3><table class="evidence"><tr><td>窗口目标</td><td>已定位</td></tr><tr><td>最近观测</td><td>8 分钟前</td></tr><tr><td>证据有效期</td><td>还有 12 秒</td></tr><tr><td>置信度</td><td>中</td></tr></table><div class="actions"><button class="action" data-result="attempted">中断</button><button class="action">聚焦</button><button class="action" disabled>恢复</button></div></div></div></div></article>
+        <article class="row" data-state="unknown"><button class="row-toggle" aria-expanded="false"><span><span class="agent-name"><i class="dot warn"></i>Gemini CLI</span><span class="sub">检测已接入 · 中断不支持</span></span><span class="work"><strong>还没有可识别的工作</strong><small>未发现活动会话</small></span><span class="time">昨天</span><span class="chev">⌄</span></button><div class="detail"><div class="detail-grid"><div><h3>工作状态</h3><div class="summary"><p>当前没有可识别的活动工作</p><small>不要根据安装信息推断 Agent 正在运行</small></div><h3 style="margin-top:15px">能力</h3><div class="badges"><span class="badge gray">中断 · 不支持</span><span class="badge gray">恢复 · 不支持</span><span class="badge">记录 · 可用</span></div></div><div><h3>为什么</h3><table class="evidence"><tr><td>检测状态</td><td>已发现</td></tr><tr><td>中断能力</td><td>provider 不支持</td></tr><tr><td>证据来源</td><td>安装清单</td></tr><tr><td>置信度</td><td>中</td></tr></table><div class="actions"><button class="action" disabled>中断不可用</button></div></div></div></div></article>
+        <article class="row" data-state="unknown"><button class="row-toggle" aria-expanded="false"><span><span class="agent-name"><i class="dot off"></i>MiniMax</span><span class="sub">本机检测尚未接入</span></span><span class="work"><strong>状态未知</strong><small>尚未实现该 provider 的活动探测</small></span><span class="time">—</span><span class="chev">⌄</span></button><div class="detail"><div class="detail-grid"><div><h3>工作状态</h3><div class="summary"><p>已识别 Agent 类型，但不能确认是否正在工作</p><small>未知不等于不支持</small></div></div><div><h3>证据</h3><table class="evidence"><tr><td>接入状态</td><td>检测尚未接入</td></tr><tr><td>能力状态</td><td>未知</td></tr><tr><td>下一步</td><td>等待 provider probe</td></tr></table></div></div></div></article>
+      </section>
+      <div class="note">这是静态信息架构预览，不连接真实 Agent。它验证的是生产页的展开式布局、能力语义和证据呈现，不代表原型数据已经接入。</div>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script>
+    const toast = document.querySelector('#toast'); let toastTimer;
+    function showToast(text) { toast.textContent = text; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 3000); }
+    document.querySelectorAll('.row-toggle').forEach(btn => btn.addEventListener('click', () => { const row = btn.closest('.row'); const open = row.classList.toggle('open'); btn.setAttribute('aria-expanded', open); }));
+    document.querySelector('#filter').addEventListener('change', e => document.querySelectorAll('.row').forEach(row => { row.hidden = e.target.value !== 'all' && !row.dataset.state.split(' ').includes(e.target.value); }));
+    document.querySelectorAll('[data-result]').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); showToast(btn.dataset.result === 'verified' ? '已确认 Agent 停止 · outcome=Verified' : '已发送中断，尚未确认 Agent 已停止 · outcome=AttemptedUnverified'); }));
+    document.querySelector('#refresh').addEventListener('click', () => showToast('预览：证据刷新完成')); document.querySelector('#export').addEventListener('click', () => showToast('预览：导出记录尚未接入')); 
+  </script>
+</body>
+</html>

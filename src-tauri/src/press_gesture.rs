@@ -750,10 +750,7 @@ mod tests {
             "modifier double wait cleared"
         );
         assert!(
-            tracker
-                .double_wait
-                .values()
-                .any(|p| p.dispatch_key == "F8"),
+            tracker.double_wait.values().any(|p| p.dispatch_key == "F8"),
             "non-modifier double wait kept"
         );
     }

@@ -5,7 +5,10 @@ use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, WebviewWindow};
 
-use crate::config::{agent_key_binding_for_slot, canonical_trigger, is_app_scenario_mapping, MappingEntry, VoiceConfig};
+use crate::config::{
+    agent_key_binding_for_slot, canonical_trigger, is_app_scenario_mapping, MappingEntry,
+    VoiceConfig,
+};
 use crate::voice_vosk::{matches_final, normalize_phrase};
 use crate::AppState;
 
@@ -161,9 +164,7 @@ pub fn is_prompt_inject_mapping(m: &MappingEntry) -> bool {
     let Some(href) = m.capture_hero_ref.as_ref() else {
         return false;
     };
-    href.kind.eq_ignore_ascii_case("prompt")
-        && href.binding_ref.trim() == m.id.trim()
-        && m.enabled
+    href.kind.eq_ignore_ascii_case("prompt") && href.binding_ref.trim() == m.id.trim() && m.enabled
 }
 
 /// First Text action on a prompt peer (inject body).
@@ -642,16 +643,11 @@ pub fn run_mapping_target_sequence(
         {
             let strategy = {
                 let cfg = state.cfg.lock();
-                crate::input_focus_aim::InputAimStrategy::parse(
-                    &cfg.voice_end.input_aim_strategy,
-                )
+                crate::input_focus_aim::InputAimStrategy::parse(&cfg.voice_end.input_aim_strategy)
             };
-            if let Err(err) = crate::input_focus_aim::aim_input_focus(
-                app,
-                &app_target,
-                strategy,
-                duration_ms,
-            ) {
+            if let Err(err) =
+                crate::input_focus_aim::aim_input_focus(app, &app_target, strategy, duration_ms)
+            {
                 let reason = format!("focus_failed:{}", err.as_str());
                 crate::app_log::log_line(
                     state.as_ref(),
@@ -720,10 +716,7 @@ pub fn send_wake_to_practice(
         crate::app_log::log_line(
             s,
             "send",
-            &format!(
-                "send_wake practice_local key={target_key} ok={}",
-                sent
-            ),
+            &format!("send_wake practice_local key={target_key} ok={}", sent),
         );
         if sent {
             mark_voice_wake_key_sent(s);
@@ -746,7 +739,15 @@ pub(crate) fn try_dispatch_agent_voice(
     matched_phrase: &str,
 ) -> Option<VoiceWakeDispatchResult> {
     let window = crate::ipc::get_main_window(app)?;
-    let (mapping_id, action_id, slot_id, _provider_id, _execution_mode, _activation_scope, is_cursor) = {
+    let (
+        mapping_id,
+        action_id,
+        slot_id,
+        _provider_id,
+        _execution_mode,
+        _activation_scope,
+        is_cursor,
+    ) = {
         let cfg = state.cfg.lock();
         let mut found = None;
         for m in cfg.mappings.iter().filter(|m| m.enabled) {
@@ -756,8 +757,8 @@ pub(crate) fn try_dispatch_agent_voice(
                 } else {
                     m.agent_provider_id.clone()
                 };
-                let is_cursor = m.app_target_id.trim()
-                    == crate::app_chat_workflow::CURSOR_APP_TARGET_ID;
+                let is_cursor =
+                    m.app_target_id.trim() == crate::app_chat_workflow::CURSOR_APP_TARGET_ID;
                 found = Some((
                     m.id.clone(),
                     b.action_id.clone(),
@@ -773,9 +774,7 @@ pub(crate) fn try_dispatch_agent_voice(
         found?
     };
     // Cursor Soft Pad uncommon voice → 3s countdown confirm (not Soft Pad key taps).
-    if is_cursor
-        && crate::soft_pad_voice_pending::should_defer_voice(&slot_id, &action_id)
-    {
+    if is_cursor && crate::soft_pad_voice_pending::should_defer_voice(&slot_id, &action_id) {
         crate::soft_pad_voice_pending::insert_pending(
             state,
             app,
@@ -786,9 +785,7 @@ pub(crate) fn try_dispatch_agent_voice(
         crate::app_log::log_line(
             state.as_ref(),
             "soft_pad_voice_pending",
-            &format!(
-                "deferred phrase={matched_phrase} slot={slot_id} action={action_id}"
-            ),
+            &format!("deferred phrase={matched_phrase} slot={slot_id} action={action_id}"),
         );
         return Some(VoiceWakeDispatchResult {
             ok: true,
@@ -890,7 +887,8 @@ pub fn handle_voice_wake_detected(
 
     // Generic wake (开始输入…): global IME voice shortcut — never Soft Pad pushToTalk / app PTT.
     if !is_generic_wake {
-        if let Some(result) = crate::cursor_beginner::dispatch_voice_phrase(state, app, matched_phrase)
+        if let Some(result) =
+            crate::cursor_beginner::dispatch_voice_phrase(state, app, matched_phrase)
         {
             return result;
         }
@@ -1983,6 +1981,8 @@ fn finish_dictation_session(
         if *state2.voice_session_commit_token.lock() == token {
             *state2.voice_session_state.lock() = "idle".into();
             *state2.voice_session_started_at.lock() = None;
+            // PromptJournal OneToneDispatch — only when pad has a known external session.
+            maybe_note_onetone_dictation_prompt(&state2, &mapping_snapshot, &phrase2);
             if let Some(ref app) = app2 {
                 crate::runtime_event::publish_runtime_event(
                     Some(app),
@@ -1996,8 +1996,71 @@ fn finish_dictation_session(
                 refresh_coach_hud(Some(app), state2.as_ref());
             }
         }
-        let _ = phrase2;
     });
+}
+
+/// Fail-open: journal known dictation text when Soft Pad reports an active session.
+fn maybe_note_onetone_dictation_prompt(state: &Arc<AppState>, mapping_id: &str, phrase: &str) {
+    let text = phrase.trim();
+    if text.is_empty() {
+        return;
+    }
+    let pad = crate::pad_status::snapshot();
+    let Some(ext) = pad
+        .session_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+    else {
+        return;
+    };
+    let kind = {
+        let cfg = state.cfg.lock();
+        cfg.mappings
+            .iter()
+            .find(|m| m.id == mapping_id)
+            .and_then(|m| {
+                crate::soft_pad_runtime::AgentKind::from_app_target(m.app_target_id.trim()).or_else(
+                    || {
+                        let p = m.agent_provider_id.trim();
+                        if p.is_empty() {
+                            None
+                        } else {
+                            crate::soft_pad_runtime::AgentKind::from_kind_str(p)
+                        }
+                    },
+                )
+            })
+            .or_else(|| {
+                pad.agent
+                    .as_deref()
+                    .and_then(crate::soft_pad_runtime::AgentKind::from_kind_str)
+            })
+    };
+    let Some(kind) = kind else {
+        return;
+    };
+    let source_key = format!(
+        "onetone-dictation-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0)
+    );
+    if let Err(e) = crate::agent_memory::note_onetone_dispatch_prompt(
+        kind,
+        &ext,
+        crate::agent_memory::UNKNOWN_PROJECT_ID,
+        text,
+        &source_key,
+    ) {
+        crate::app_log::log_line(
+            state.as_ref(),
+            "prompt_journal",
+            &format!("onetone_dispatch_prompt failed: {e}"),
+        );
+    }
 }
 
 pub fn test_stop_dictation(state: &Arc<AppState>, _window: &WebviewWindow) -> serde_json::Value {
@@ -2395,7 +2458,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: Some(VoiceOverride {
                 target_key: Some("Win+H".into()),
@@ -2410,13 +2473,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            }];
+        }];
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "Win+H".to_string());
     }
 
@@ -2454,7 +2517,7 @@ mod tests {
             double_click_ms: 400,
             ime_preset_id: String::new(),
             app_target_id: "cursor-chat".into(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -2471,13 +2534,13 @@ mod tests {
                 ..Default::default()
             }],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            }];
+        }];
         assert_eq!(
             resolve_voice_input_target_key(&cfg).as_deref(),
             Some("RAlt")
@@ -2485,11 +2548,7 @@ mod tests {
         assert_eq!(resolve_wake_target_key(&cfg, "RAlt"), "RAlt".to_string());
         // Soft Pad / app workflow still uses native PTT; generic wake uses global key above.
         assert_eq!(
-            resolve_voice_key_for_mapping(
-                &cfg,
-                cfg.mappings.first(),
-            )
-            .as_deref(),
+            resolve_voice_key_for_mapping(&cfg, cfg.mappings.first(),).as_deref(),
             Some("Ctrl+Shift+Space")
         );
     }

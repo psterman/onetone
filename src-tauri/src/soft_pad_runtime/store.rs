@@ -3,9 +3,9 @@
 use crate::codex_numpad_layer::{self, CodexNumpadRouteSnapshot, HookGateInstall};
 use crate::config::{agent_key_binding_for_slot, MappingEntry, VoiceConfig};
 use crate::soft_pad_runtime::model::{
-    now_ms, AgentKind, ApplyError, AppliedDecisionInternal, AppliedSoftPadDecision, CandidateDecision,
-    FollowMode, RuntimeAvailability, RuntimeHealth, SelectionReason, ShadowDecision,
-    SoftPadPublicSnapshot,
+    now_ms, AgentKind, AppliedDecisionInternal, AppliedSoftPadDecision, ApplyError,
+    CandidateDecision, FollowMode, RuntimeAvailability, RuntimeHealth, SelectionReason,
+    ShadowDecision, SoftPadPublicSnapshot,
 };
 use crate::soft_pad_runtime::platform::read_foreground_evidence;
 use crate::soft_pad_runtime::resolver::{
@@ -127,11 +127,7 @@ pub fn get_shadow_decision() -> Option<ShadowDecision> {
 pub fn get_public_snapshot() -> SoftPadPublicSnapshot {
     let attention = crate::agent_attention::public_snapshot();
     with_runtime(|rt| SoftPadPublicSnapshot {
-        decision_revision: rt
-            .applied
-            .as_ref()
-            .map(|a| a.public.revision)
-            .unwrap_or(0),
+        decision_revision: rt.applied.as_ref().map(|a| a.public.revision).unwrap_or(0),
         status_revision: rt.status_revision,
         cutover: soft_pad_cutover_enabled(),
         availability: rt.availability,
@@ -191,8 +187,7 @@ fn request_soft_pad_recompute_body(cfg: &VoiceConfig) {
             .or_else(|| rt.shadow.as_ref().and_then(|s| s.lane_kind))
     });
 
-    let (waiting_kinds, waiting_observed_at) =
-        crate::agent_attention::project_waiting_kinds();
+    let (waiting_kinds, waiting_observed_at) = crate::agent_attention::project_waiting_kinds();
 
     let input = CandidateInput {
         entries: entries.clone(),
@@ -207,16 +202,14 @@ fn request_soft_pad_recompute_body(cfg: &VoiceConfig) {
     };
     let candidate = resolve_candidate(&input);
 
-    let (agent_routes, agent_by_micro, flags) =
-        build_agent_routes_for_candidate(cfg, &candidate);
+    let (agent_routes, agent_by_micro, flags) = build_agent_routes_for_candidate(cfg, &candidate);
 
     let legacy_mapping = peek_legacy_dispatch_mapping();
     let candidate_valid = candidate_page_valid(cfg, &candidate);
 
     let mut discard = false;
     runtime_mut(|rt| {
-        if based_on != current_config_revision()
-            || generation != GENERATION.load(Ordering::Acquire)
+        if based_on != current_config_revision() || generation != GENERATION.load(Ordering::Acquire)
         {
             discard = true;
             return;
@@ -379,11 +372,7 @@ fn apply_build_locked(
         return;
     }
 
-    let prev_rev = rt
-        .applied
-        .as_ref()
-        .map(|a| a.public.revision)
-        .unwrap_or(0);
+    let prev_rev = rt.applied.as_ref().map(|a| a.public.revision).unwrap_or(0);
     let changed = rt
         .applied
         .as_ref()
@@ -430,7 +419,9 @@ fn candidate_page_valid(cfg: &VoiceConfig, candidate: &CandidateDecision) -> boo
     match (&candidate.lane_kind, &candidate.mapping_id) {
         (None, None) => true,
         (Some(_), Some(id)) => cfg.find_mapping_by_id(id).is_some_and(is_dispatch_ready),
-        (None, Some(id)) => cfg.find_mapping_by_id(id).is_some_and(is_app_or_universal_page),
+        (None, Some(id)) => cfg
+            .find_mapping_by_id(id)
+            .is_some_and(is_app_or_universal_page),
         _ => false,
     }
 }
@@ -467,10 +458,13 @@ fn collect_app_pages(cfg: &VoiceConfig) -> Vec<AppPage> {
             .codex_micro_pad
             .as_ref()
             .is_some_and(|p| p.overlay_enabled);
-        if let Some(slot) = best.iter_mut().find(|(cur, _)| cur.app_target_id.trim() == tid) {
+        if let Some(slot) = best
+            .iter_mut()
+            .find(|(cur, _)| cur.app_target_id.trim() == tid)
+        {
             let cur_overlay = slot.1;
-            let replace = (overlay && !cur_overlay)
-                || (overlay == cur_overlay && m.order < slot.0.order);
+            let replace =
+                (overlay && !cur_overlay) || (overlay == cur_overlay && m.order < slot.0.order);
             if replace {
                 *slot = (m, overlay);
             }
@@ -492,10 +486,9 @@ pub fn collect_dispatch_ready(cfg: &VoiceConfig) -> Vec<DispatchReadyEntry> {
         if !is_dispatch_ready(m) {
             continue;
         }
-        let Some(kind) = crate::agent_catalog::kind_from_mapping(
-            &m.app_target_id,
-            &m.agent_provider_id,
-        ) else {
+        let Some(kind) =
+            crate::agent_catalog::kind_from_mapping(&m.app_target_id, &m.agent_provider_id)
+        else {
             continue;
         };
         let pad = m.codex_micro_pad.as_ref().unwrap();
@@ -612,8 +605,8 @@ fn build_agent_routes_for_candidate(
             if action_id.is_empty() {
                 continue;
             }
-            let is_hold = action_id == "startDictation"
-                || route.slot_id.eq_ignore_ascii_case("pushToTalk");
+            let is_hold =
+                action_id == "startDictation" || route.slot_id.eq_ignore_ascii_case("pushToTalk");
             let snapshot = CodexNumpadRouteSnapshot {
                 mapping_id: m.id.clone(),
                 slot_id: route.slot_id.clone(),
@@ -772,11 +765,11 @@ mod attention_feed_tests {
             agent_bindings: vec![],
             codex_micro_pad: Some(pad),
             time_machine_workspace: String::new(),
-        capture_hero_ref: None,
-        gesture_modes: None,
-        oral_command_scheme: None,
-        target_actions: vec![],
-        assists: vec![],
+            capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
+            target_actions: vec![],
+            assists: vec![],
         }
     }
 

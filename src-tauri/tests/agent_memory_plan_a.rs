@@ -13,10 +13,8 @@ static INIT: Once = Once::new();
 
 fn ensure_temp_db() {
     INIT.call_once(|| {
-        let dir = std::env::temp_dir().join(format!(
-            "onetone-agent-mem-plan-a-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("onetone-agent-mem-plan-a-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let db = dir.join("agent-memory.sqlite3");
         std::env::set_var("ONETONE_AGENT_MEMORY_DB", &db);
@@ -58,9 +56,8 @@ fn plan_a_acceptance_core() {
     assert_eq!(a, b);
 
     // unknown → exact merge
-    let sid1 =
-        upsert_session_candidate(&cand("ext-E", UNKNOWN_PROJECT_ID, ProjectMatch::Unknown))
-            .expect("insert unknown");
+    let sid1 = upsert_session_candidate(&cand("ext-E", UNKNOWN_PROJECT_ID, ProjectMatch::Unknown))
+        .expect("insert unknown");
     let sid2 = upsert_session_candidate(&cand("ext-E", "proj_X", ProjectMatch::Exact))
         .expect("migrate exact");
     assert_eq!(sid1, sid2, "must update in place, not insert duplicate");
@@ -87,8 +84,8 @@ fn plan_a_acceptance_core() {
     assert_eq!(project_id, "proj_X");
 
     // observed does not change status + idempotent turn
-    let sid = upsert_session_candidate(&cand("ext-O", "proj_O", ProjectMatch::Exact))
-        .expect("session");
+    let sid =
+        upsert_session_candidate(&cand("ext-O", "proj_O", ProjectMatch::Exact)).expect("session");
     let sref = source_ref_for_turn("ext-O", Some("bub1"), Some(99), "user_turn_observed");
     assert!(append_observed_event(
         &sid,
@@ -127,7 +124,10 @@ fn plan_a_acceptance_core() {
         Ok((status, event_n))
     })
     .expect("read observed");
-    assert_eq!(status, "discovered", "observed must not mutate lifecycle status");
+    assert_eq!(
+        status, "discovered",
+        "observed must not mutate lifecycle status"
+    );
     assert_eq!(event_n, 1);
 
     let snap = build_agent_home_snapshot(None);

@@ -32,9 +32,8 @@ fn normalize_status(status: &str) -> &str {
 
 /// Validate lifecycle edge. Returns target status or `illegal_transition:from->to`.
 pub fn transition_allowed(from_status: &str, event_type: &str) -> Result<&'static str, String> {
-    let to = status_for_lifecycle_event(event_type).ok_or_else(|| {
-        format!("unknown lifecycle event_type: {event_type}")
-    })?;
+    let to = status_for_lifecycle_event(event_type)
+        .ok_or_else(|| format!("unknown lifecycle event_type: {event_type}"))?;
     let from = normalize_status(from_status);
     let ok = match from {
         "discovered" => matches!(event_type, "task_started" | "task_resumed"),
@@ -262,6 +261,9 @@ mod tests {
     #[test]
     fn summary_truncates() {
         let long: String = (0..300).map(|_| 'x').collect();
-        assert_eq!(truncate_summary(&long).chars().count(), LIFECYCLE_SUMMARY_MAX);
+        assert_eq!(
+            truncate_summary(&long).chars().count(),
+            LIFECYCLE_SUMMARY_MAX
+        );
     }
 }

@@ -66,9 +66,14 @@
   function confirmProject(opts) {
     opts = opts || {};
     return invoke('cmd_home_confirm_project', {
-      projectRoot: opts.projectRoot || null,
-      projectId: opts.projectId || null
+      args: {
+        projectRoot: opts.projectRoot || null,
+        projectId: opts.projectId || null
+      }
     }).then(function (res) {
+      if (res && res.ok === false) {
+        return Promise.reject(new Error(res.error || 'confirm failed'));
+      }
       return fetchSnapshot().then(function () {
         return res;
       });
@@ -76,11 +81,15 @@
   }
 
   function listProjects(limit) {
-    return invoke('cmd_home_list_known_projects', { limit: limit || 20 });
+    return invoke('cmd_home_list_known_projects', {
+      args: { limit: limit || 20 }
+    });
   }
 
   function resumeCheckpoint(sessionId) {
-    return invoke('cmd_agent_checkpoint_resume', { sessionId: sessionId });
+    return invoke('cmd_agent_checkpoint_resume', {
+      args: { sessionId: sessionId }
+    });
   }
 
   function startPolling(ms) {

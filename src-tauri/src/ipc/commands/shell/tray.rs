@@ -42,7 +42,10 @@ pub fn cmd_tray_usage_summary(state: tauri::State<Arc<AppState>>) -> serde_json:
 }
 
 #[tauri::command]
-pub fn cmd_tray_subscribe_segment(window: tauri::WebviewWindow, segment: String) -> Result<(), String> {
+pub fn cmd_tray_subscribe_segment(
+    window: tauri::WebviewWindow,
+    segment: String,
+) -> Result<(), String> {
     crate::tray_state::subscribe_segment(window.label().to_string(), segment);
     Ok(())
 }

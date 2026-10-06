@@ -14,7 +14,8 @@ pub const CMD_AGENT: &str = "composerMode.agent";
 pub const KEY_PLAN: &str = "ctrl+alt+shift+p";
 pub const KEY_AGENT: &str = "ctrl+alt+.";
 
-const HEADER: &str = "// OneTone Soft Pad: composerMode.plan / composerMode.agent (do not delete)\n";
+const HEADER: &str =
+    "// OneTone Soft Pad: composerMode.plan / composerMode.agent (do not delete)\n";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnsureResult {
@@ -268,10 +269,7 @@ mod tests {
             json!({ "key": "ctrl+k", "command": "workbench.action.quickOpen" }),
         ];
         assert!(merge_composer_mode_bindings(&mut arr));
-        let plan = arr
-            .iter()
-            .find(|v| v["command"] == CMD_PLAN)
-            .expect("plan");
+        let plan = arr.iter().find(|v| v["command"] == CMD_PLAN).expect("plan");
         assert_eq!(plan["key"], KEY_PLAN);
         assert!(arr.iter().any(|v| v["command"] == CMD_AGENT));
         assert!(arr
@@ -281,10 +279,7 @@ mod tests {
 
     #[test]
     fn ensure_writes_under_cursor_user_dir() {
-        let dir = std::env::temp_dir().join(format!(
-            "onetone-cursor-kb-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("onetone-cursor-kb-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         std::env::set_var("CURSOR_USER_DIR", &dir);

@@ -123,10 +123,8 @@ fn paint_agent_ring(img: &mut RgbaImage, agent_light: &str) {
     let thickness = 2_i32;
     for y in 0..h {
         for x in 0..w {
-            let on_edge = x < thickness
-                || y < thickness
-                || x >= w - thickness
-                || y >= h - thickness;
+            let on_edge =
+                x < thickness || y < thickness || x >= w - thickness || y >= h - thickness;
             if on_edge {
                 blend_pixel(img, x as u32, y as u32, color);
             }

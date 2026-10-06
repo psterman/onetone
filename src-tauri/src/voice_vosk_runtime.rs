@@ -22,7 +22,8 @@ static OVERLAY_VOICE_NUDGE: std::sync::OnceLock<parking_lot::Mutex<(Instant, Str
 
 fn maybe_nudge_overlay_for_voice(app: &AppHandle, state: &AppState, text: &str) {
     const MIN: Duration = Duration::from_millis(120);
-    let slot = OVERLAY_VOICE_NUDGE.get_or_init(|| parking_lot::Mutex::new((Instant::now() - MIN, String::new())));
+    let slot = OVERLAY_VOICE_NUDGE
+        .get_or_init(|| parking_lot::Mutex::new((Instant::now() - MIN, String::new())));
     let mut gate = slot.lock();
     if gate.1 == text && gate.0.elapsed() < MIN {
         return;
@@ -97,8 +98,8 @@ fn try_route_vosk_final_phrase(state: &Arc<AppState>, app: &AppHandle, text: &st
     };
     let cfg = state.cfg.lock();
     let is_start = crate::voice_end_runtime::is_start_phrase(&cfg, &phrase);
-    let is_beginner =
-        crate::cursor_beginner::probe_ok() && crate::cursor_beginner::is_beginner_voice_phrase(&phrase);
+    let is_beginner = crate::cursor_beginner::probe_ok()
+        && crate::cursor_beginner::is_beginner_voice_phrase(&phrase);
     drop(cfg);
     if !is_start && !is_beginner {
         return;
@@ -350,7 +351,10 @@ pub fn spawn_voice_vosk_start(
                     );
                 }
                 Err(e) => {
-                    crate::app_log::sync_emergency_line("rs", &format!("voice_vosk background start failed: {e}"));
+                    crate::app_log::sync_emergency_line(
+                        "rs",
+                        &format!("voice_vosk background start failed: {e}"),
+                    );
                     let code = {
                         let err = state.voice_vosk_last_error.lock().clone();
                         if err.contains("model_missing") {
@@ -660,8 +664,7 @@ fn process_detected(state: &Arc<AppState>, app: &AppHandle, phrase: &str) {
     if let Some(remain_ms) =
         crate::voice_end_runtime::wake_key_cooldown_remaining_ms(state, cooldown_ms)
     {
-        *state.voice_vosk_last_skip.lock() =
-            format!("防连按冷却中，请 {remain_ms} ms 后再说。");
+        *state.voice_vosk_last_skip.lock() = format!("防连按冷却中，请 {remain_ms} ms 后再说。");
         *state.voice_vosk_last_trigger.lock() = String::new();
         *state.voice_vosk_state.lock() = "cooldown".into();
         return;

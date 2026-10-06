@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OneTone 工作说明</title>
+  <style>
+    :root{--bg:#eef0ed;--paper:#fffefa;--ink:#18201e;--muted:#6a746f;--line:#d7dcd8;--blue:#236889;--blue-soft:#e6f1f6;--green:#287563;--green-soft:#e6f2ed;--amber:#a8671e;--amber-soft:#fff2df;--red:#a34740;--shadow:0 20px 60px rgba(25,40,34,.11)}
+    *{box-sizing:border-box}body{margin:0;height:100vh;min-width:980px;overflow:hidden;background:var(--bg);color:var(--ink);font:14px/1.55 "Segoe UI","Microsoft YaHei UI",system-ui,sans-serif}button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #23688933;outline-offset:2px}
+    .topbar{height:64px;display:flex;align-items:center;gap:18px;padding:0 24px;background:#ffffffea;border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}
+    .brand{font-size:20px;font-weight:750;letter-spacing:-.4px}.brand span{font-weight:450;color:var(--muted)}.project{display:flex;align-items:center;gap:7px;padding-left:18px;border-left:1px solid var(--line);color:var(--muted)}.project i{width:8px;height:8px;border-radius:50%;background:#419474}.project b{color:var(--ink)}
+    .save-state{margin-left:auto;color:var(--muted);font-size:12px}.save-state::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#449778;margin-right:7px}
+    .target{height:36px;border:1px solid var(--line);border-radius:9px;background:white;padding:0 10px}.handoff-btn{height:38px;border:0;border-radius:10px;background:var(--ink);color:white;padding:0 15px;font-weight:650}
+
+    .workspace{height:calc(100vh - 64px);display:grid;grid-template-columns:250px 1fr}.sources{border-right:1px solid var(--line);background:#f7f8f6;padding:22px 17px;overflow:auto}.source-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:17px}.source-head h2{font-size:15px;margin:0}.source-head button{border:0;background:transparent;color:var(--blue)}
+    .source-label{font-size:12px;color:var(--muted);font-weight:650;margin:20px 6px 8px}.source-card{width:100%;display:grid;grid-template-columns:32px 1fr;gap:10px;text-align:left;border:1px solid transparent;background:transparent;border-radius:11px;padding:9px 7px;margin-bottom:3px}.source-card:hover{background:white;border-color:var(--line)}.source-card.added{background:var(--blue-soft);border-color:#b6d4e2}.source-icon{width:32px;height:32px;border:1px solid var(--line);background:white;border-radius:8px;display:grid;place-items:center;color:var(--muted)}.source-card b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.source-card small{display:block;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.add-source{width:100%;border:1px dashed #abb8b1;background:transparent;border-radius:10px;padding:10px;margin-top:12px;color:var(--muted)}
+    .legend{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}.legend div{margin:6px 0}.cap{display:inline-block;width:16px;font-weight:700}.yes{color:var(--green)}.manual{color:var(--amber)}.no{color:var(--red)}
+
+    .editor-area{overflow:auto;padding:27px 34px 80px}.editor-shell{max-width:880px;margin:0 auto}.editor-tools{height:45px;display:flex;align-items:center;margin-bottom:10px}.doc-name{font-weight:680}.unsent{margin-left:9px;background:var(--amber-soft);color:#8a551c;padding:4px 7px;border-radius:6px;font-size:11px}.view-toggle{margin-left:auto;display:flex;padding:3px;background:#e1e5e2;border-radius:9px}.view-toggle button{border:0;background:transparent;color:var(--muted);padding:6px 11px;border-radius:7px}.view-toggle .active{background:white;color:var(--ink);box-shadow:0 1px 4px #00000014}.more{margin-left:8px;border:1px solid var(--line);background:white;border-radius:9px;padding:7px 10px}
+    .paper{background:var(--paper);border:1px solid #d1d7d3;border-radius:5px;box-shadow:var(--shadow);min-height:760px;padding:54px 66px;position:relative}.paper::before{content:"工作说明";position:absolute;right:24px;top:20px;color:#9aa39f;font-size:11px}.title-input{border:0;background:transparent;width:100%;font-size:30px;font-weight:760;letter-spacing:-.8px;padding:0;margin:0 0 8px;outline:0}.meta{color:var(--muted);font-size:12px;padding-bottom:23px;border-bottom:1px solid var(--line);margin-bottom:26px}
+    .brief-section{position:relative;margin:0 -14px 28px;padding:8px 14px;border:1px solid transparent;border-radius:10px}.brief-section:hover{border-color:#d9dfdb;background:#fff}.section-head{display:flex;align-items:center;margin-bottom:9px}.section-head h2{font-size:17px;margin:0}.section-head button{margin-left:auto;border:0;background:transparent;color:var(--blue);opacity:0}.brief-section:hover .section-head button{opacity:1}.editable{margin:0;outline:0;min-height:25px}.editable:focus{background:#f5f8f6;border-radius:6px;box-shadow:0 0 0 7px #f5f8f6}.hint{color:var(--muted)}
+    .asset{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;background:#fff}.asset-icon{width:33px;height:33px;border-radius:8px;background:#edf1ef;display:grid;place-items:center}.asset-main{flex:1}.asset-main b{display:block;font-size:13px}.asset-main small{display:block;color:var(--muted);margin-top:2px}.asset-status{font-size:11px;padding:4px 7px;border-radius:6px;background:var(--green-soft);color:var(--green)}.asset-status.manual{background:var(--amber-soft);color:var(--amber)}.asset-status.none{background:#f6e8e6;color:var(--red)}
+    .rules{margin:0;padding-left:20px}.rules li{margin:7px 0}.plan{margin:0;padding-left:22px}.plan li{margin:7px 0}.insert-bar{border-top:1px solid var(--line);padding-top:19px;display:flex;gap:8px}.insert-bar button{border:1px solid var(--line);background:white;border-radius:9px;padding:8px 11px}.insert-bar .voice{background:var(--ink);color:white;border-color:var(--ink)}
+    .raw-editor{display:none;width:100%;min-height:650px;border:0;resize:none;outline:0;background:transparent;font:13px/1.7 Consolas,"SFMono-Regular",monospace;color:#25312d}
+    .paper.raw .visual-editor{display:none}.paper.raw .raw-editor{display:block}
+
+    .scrim{position:fixed;z-index:30;inset:0;background:#17201d55;opacity:0;pointer-events:none;transition:.2s}.scrim.show{opacity:1;pointer-events:auto}.handoff{position:fixed;z-index:40;right:0;top:0;bottom:0;width:520px;background:#fafbf9;box-shadow:-25px 0 70px #17201d2c;transform:translateX(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}.handoff.open{transform:translateX(0)}
+    .handoff-head{padding:24px 26px 20px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start}.handoff-head h2{margin:0;font-size:21px}.handoff-head p{margin:4px 0 0;color:var(--muted)}.close{margin-left:auto;width:34px;height:34px;border:1px solid var(--line);background:white;border-radius:50%}.handoff-body{padding:22px 26px;overflow:auto;flex:1}.target-card{display:flex;align-items:center;gap:11px;padding:13px;border:1px solid var(--line);background:white;border-radius:12px;margin-bottom:20px}.target-logo{width:38px;height:38px;background:var(--ink);color:white;border-radius:10px;display:grid;place-items:center;font-weight:700}.target-card b,.target-card small{display:block}.target-card small{color:var(--muted)}
+    .handoff h3{font-size:13px;margin:19px 0 9px}.transfer-row{display:grid;grid-template-columns:22px 1fr auto;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line)}.transfer-row b{font-size:13px}.transfer-row small{display:block;color:var(--muted)}.transfer-tag{font-size:11px;color:var(--muted)}
+    .method{width:100%;display:grid;grid-template-columns:24px 1fr auto;gap:8px;align-items:start;text-align:left;border:1px solid var(--line);background:white;border-radius:11px;padding:12px;margin:8px 0}.method.selected{border-color:#82ad9f;background:var(--green-soft)}.method input{margin-top:4px}.method b,.method small{display:block}.method small{color:var(--muted);margin-top:2px}.method em{font-style:normal;font-size:11px;color:var(--muted)}.method.disabled{opacity:.55;cursor:not-allowed}
+    .handoff-foot{padding:17px 26px;border-top:1px solid var(--line);background:white}.warning{font-size:12px;color:#86551d;background:var(--amber-soft);padding:10px;border-radius:9px;margin-bottom:11px}.go{width:100%;border:0;background:var(--ink);color:white;border-radius:10px;padding:12px;font-weight:680}.receipt{display:none;margin-top:13px;border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff}.receipt.show{display:block}.receipt b{display:block}.receipt span{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+    .toast{position:fixed;z-index:60;left:50%;bottom:25px;transform:translate(-50%,12px);opacity:0;background:#17201d;color:white;padding:10px 14px;border-radius:9px;transition:.2s;pointer-events:none}.toast.show{opacity:1;transform:translate(-50%,0)}
+    @media(max-width:1100px){.workspace{grid-template-columns:220px 1fr}.paper{padding-inline:45px}.handoff{width:480px}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">OneTone <span>工作说明</span></div>
+    <div class="project"><i></i><span>项目</span><b>voice-pilot</b></div>
+    <div class="save-state">已保存到本地</div>
+    <select class="target" id="targetSelect" aria-label="目标 Agent"><option>Codex</option><option>Cursor</option><option>Claude</option></select>
+    <button class="handoff-btn" id="openHandoff">预览交接</button>
+  </header>
+
+  <main class="workspace">
+    <aside class="sources">
+      <div class="source-head"><h2>可用材料</h2><button data-toast="整理材料">整理</button></div>
+      <div class="source-label">当前项目</div>
+      <button class="source-card added" data-toast="项目目录已在背景中"><span class="source-icon">⌂</span><span><b>voice-pilot</b><small>项目目录 · 可传递</small></span></button>
+      <div class="source-label">图片与文件</div>
+      <button class="source-card added" data-toast="参考图片已在背景中"><span class="source-icon">▧</span><span><b>current-home.png</b><small>参考图片 · 需手动上传</small></span></button>
+      <button class="source-card" data-toast="已加入背景"><span class="source-icon">MD</span><span><b>vibe-workflow.md</b><small>本地文件 · 可传递</small></span></button>
+      <div class="source-label">地址与网址</div>
+      <button class="source-card added" data-toast="页面地址已在背景中"><span class="source-icon">↗</span><span><b>Gemini 参考方案</b><small>网址 · 只传地址</small></span></button>
+      <button class="source-card" data-toast="文件地址已加入背景"><span class="source-icon">⌘</span><span><b>now-home-ui.js</b><small>本地地址 · 可传递</small></span></button>
+      <div class="source-label">过去记录</div>
+      <button class="source-card" data-toast="该会话无法直接传递"><span class="source-icon">◷</span><span><b>Cursor 会话</b><small>无法传递 · 可以打开</small></span></button>
+      <button class="add-source" data-toast="选择图片、文件或网址">＋ 添加材料</button>
+      <div class="legend"><div><span class="cap yes">✓</span>可直接传递</div><div><span class="cap manual">○</span>需要手动操作</div><div><span class="cap no">×</span>无法传递</div></div>
+    </aside>
+
+    <section class="editor-area">
+      <div class="editor-shell">
+        <div class="editor-tools"><span class="doc-name">homepage-redesign.md</span><span class="unsent">尚未发送</span><div class="view-toggle"><button class="active" data-view="visual">文档</button><button data-view="raw">Markdown</button></div><button class="more" data-toast="更多文档操作">•••</button></div>
+        <article class="paper" id="paper">
+          <div class="visual-editor">
+            <input class="title-input" value="调整 OneTone 首页" aria-label="工作说明标题">
+            <div class="meta">创建于今天 14:20 · 5 项材料 · 保留用户原话</div>
+            <section class="brief-section"><div class="section-head"><h2>目标</h2><button data-toast="使用语音补充目标">● 说话补充</button></div><p class="editable" contenteditable="true">让首页成为 Agent 工作的上下文交接台，而不是替代 Agent 的真实操作。</p></section>
+            <section class="brief-section"><div class="section-head"><h2>背景</h2><button data-toast="添加背景材料">＋ 添加材料</button></div>
+              <div class="asset"><span class="asset-icon">⌂</span><span class="asset-main"><b>项目目录</b><small>E:\voice-pilot</small></span><span class="asset-status">可传递</span></div>
+              <div class="asset"><span class="asset-icon">▧</span><span class="asset-main"><b>参考图片</b><small>attachments/current-home.png · 用户上传</small></span><span class="asset-status manual">需要手动上传</span></div>
+              <div class="asset"><span class="asset-icon">↗</span><span class="asset-main"><b>参考网址</b><small>https://example.com/gemini-home-reference</small></span><span class="asset-status manual">只传网址</span></div>
+              <div class="asset"><span class="asset-icon">◷</span><span class="asset-main"><b>过去的 Cursor 会话</b><small>可以从 OneTone 打开，但不能附加到 Codex</small></span><span class="asset-status none">无法传递</span></div>
+            </section>
+            <section class="brief-section"><div class="section-head"><h2>细节</h2><button data-toast="使用语音添加一条细节">● 添加细节</button></div><ul class="rules" contenteditable="true"><li>不虚构 Agent 的任务进度。</li><li>发送前明确显示文本、图片和文件能否传递。</li><li>结果必须能够回到原 Agent 会话中查看。</li></ul></section>
+            <section class="brief-section"><div class="section-head"><h2>计划</h2><button data-toast="添加一个手动步骤">＋ 添加步骤</button></div><ol class="plan" contenteditable="true"><li>先制作独立 HTML 原型。</li><li>人工检查编辑与交接流程。</li><li>确认后再连接真实 Agent 适配器。</li></ol></section>
+            <section class="brief-section"><div class="section-head"><h2>希望 Agent 完成</h2><button data-toast="使用语音补充任务要求">● 说话补充</button></div><p class="editable" contenteditable="true">请根据以上材料制作新的首页原型，不修改正式首页。遇到无法读取的材料时明确告诉我。</p></section>
+            <div class="insert-bar"><button class="voice" data-toast="选择要补充的章节：目标、背景、细节或计划">● 继续说</button><button data-toast="选择材料">＋ 材料</button><button data-toast="插入网址">↗ 网址</button><button data-toast="插入文件地址">⌘ 地址</button></div>
+          </div>
+          <textarea class="raw-editor" aria-label="Markdown 原文"># 调整 OneTone 首页
+
+## 目标
+
+让首页成为 Agent 工作的上下文交接台，而不是替代 Agent 的真实操作。
+
+## 背景
+
+- 项目目录：`E:\voice-pilot`
+- [参考图片](./attachments/current-home.png)
+- [参考网址](https://example.com/gemini-home-reference)
+- Cursor 会话：无法传递，可以从 OneTone 打开
+
+## 细节
+
+- 不虚构 Agent 的任务进度。
+- 发送前明确显示文本、图片和文件能否传递。
+- 结果必须能够回到原 Agent 会话中查看。
+
+## 计划
+
+1. 先制作独立 HTML 原型。
+2. 人工检查编辑与交接流程。
+3. 确认后再连接真实 Agent 适配器。
+
+## 希望 Agent 完成
+
+请根据以上材料制作新的首页原型，不修改正式首页。</textarea>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="handoff" id="handoff" aria-hidden="true">
+    <div class="handoff-head"><div><h2>交接预览</h2><p>确认 Codex 实际能够收到什么。</p></div><button class="close" id="closeHandoff" aria-label="关闭">×</button></div>
+    <div class="handoff-body">
+      <div class="target-card"><span class="target-logo">C</span><span><b>发送到 Codex</b><small>目标 Agent · 当前没有直接上传适配器</small></span></div>
+      <h3>交接内容</h3>
+      <div class="transfer-row"><span class="yes">✓</span><span><b>Markdown 正文</b><small>完整复制到剪贴板</small></span><span class="transfer-tag">可传递</span></div>
+      <div class="transfer-row"><span class="yes">✓</span><span><b>项目目录</b><small>E:\voice-pilot</small></span><span class="transfer-tag">可以打开</span></div>
+      <div class="transfer-row"><span class="manual">○</span><span><b>参考图片</b><small>current-home.png</small></span><span class="transfer-tag">需要手动上传</span></div>
+      <div class="transfer-row"><span class="manual">○</span><span><b>参考网址</b><small>只传递地址，未读取网页正文</small></span><span class="transfer-tag">只传网址</span></div>
+      <div class="transfer-row"><span class="no">×</span><span><b>Cursor 历史会话</b><small>Codex 无法访问另一 Agent 的会话</small></span><span class="transfer-tag">无法传递</span></div>
+      <h3>交接方式</h3>
+      <label class="method selected"><input type="radio" name="method" checked><span><b>复制说明并打开 Codex</b><small>复制 Markdown，打开项目；图片仍需手动上传。</small></span><em>当前可用</em></label>
+      <label class="method"><input type="radio" name="method"><span><b>导出上下文包</b><small>生成 context.md、attachments 和材料清单。</small></span><em>当前可用</em></label>
+      <label class="method disabled"><input type="radio" name="method" disabled><span><b>直接交接</b><small>自动填入文字并上传附件。</small></span><em>适配器不可用</em></label>
+      <div class="receipt" id="receipt"><b>交接动作已准备</b><span>正文：已复制 · 项目：准备打开 · 图片：等待手动上传</span><span>发送状态未知：OneTone 无法确认你是否在 Codex 中点击了发送。</span></div>
+    </div>
+    <div class="handoff-foot"><div class="warning">打开 Codex 后仍需手动上传 1 张图片。OneTone 不会把“已打开”标记为“已发送”。</div><button class="go" id="startHandoff">复制说明并打开 Codex</button></div>
+  </aside>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    const handoff=document.getElementById('handoff');const scrim=document.getElementById('scrim');const paper=document.getElementById('paper');const toast=document.getElementById('toast');let toastTimer;
+    function openHandoff(){handoff.classList.add('open');handoff.setAttribute('aria-hidden','false');scrim.classList.add('show')}
+    function closeHandoff(){handoff.classList.remove('open');handoff.setAttribute('aria-hidden','true');scrim.classList.remove('show')}
+    function showToast(message){toast.textContent=message;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),1700)}
+    document.getElementById('openHandoff').addEventListener('click',openHandoff);document.getElementById('closeHandoff').addEventListener('click',closeHandoff);scrim.addEventListener('click',closeHandoff);document.addEventListener('keydown',e=>{if(e.key==='Escape')closeHandoff()});
+    document.querySelectorAll('[data-toast]').forEach(el=>el.addEventListener('click',()=>showToast(el.dataset.toast)));
+    document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-view]').forEach(el=>el.classList.remove('active'));button.classList.add('active');paper.classList.toggle('raw',button.dataset.view==='raw')}));
+    document.querySelectorAll('.method:not(.disabled)').forEach(method=>method.addEventListener('click',()=>{document.querySelectorAll('.method').forEach(el=>el.classList.remove('selected'));method.classList.add('selected');const title=method.querySelector('b').textContent;document.getElementById('startHandoff').textContent=title}));
+    document.getElementById('startHandoff').addEventListener('click',()=>{document.getElementById('receipt').classList.add('show');showToast('说明已复制，准备打开 Codex')});
+  </script>
+</body>
+</html>

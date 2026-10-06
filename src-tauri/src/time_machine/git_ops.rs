@@ -357,7 +357,11 @@ fn snapshot_worktree_tree(
                 if path.is_empty() || is_heavy_untracked_path(path) {
                     continue;
                 }
-                let _ = git_env(workspace, &tmp_index, &["add", "--", path.trim_end_matches('/')]);
+                let _ = git_env(
+                    workspace,
+                    &tmp_index,
+                    &["add", "--", path.trim_end_matches('/')],
+                );
             }
         }
         Ok(git_env(workspace, &tmp_index, &["write-tree"])?

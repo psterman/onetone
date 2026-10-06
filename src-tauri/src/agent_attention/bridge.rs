@@ -54,13 +54,7 @@ pub fn ingest_lifecycle_hook_event(
         return;
     }
     if matches!(ev, "Elicitation" | "elicitation_dialog") || lower == "elicitation_dialog" {
-        raise_needs_input(
-            agent,
-            session,
-            request,
-            AttentionCause::Elicitation,
-            source,
-        );
+        raise_needs_input(agent, session, request, AttentionCause::Elicitation, source);
         return;
     }
     if matches!(

@@ -46,7 +46,11 @@ pub fn cmd_start_trigger_verify_listen(
     mapping_id: String,
 ) -> serde_json::Value {
     let id = mapping_id.trim();
-    crate::app_log::log_line(state.inner(), "verify", &format!("cmd_start_trigger_verify_listen mapping={}", id));
+    crate::app_log::log_line(
+        state.inner(),
+        "verify",
+        &format!("cmd_start_trigger_verify_listen mapping={}", id),
+    );
     if id.is_empty() {
         return serde_json::json!({ "ok": false, "reason": "empty_mapping" });
     }

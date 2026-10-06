@@ -1,0 +1,78 @@
+﻿=== OneTone desktop acceptance diagnose ===
+time: 2026-10-05 16:30:24
+root: E:\voice-pilot
+
+A1 OneTone process exists: True
+  PID=22140 MainWindowHandle=13436546 Responding=True Path=E:\voice-pilot\src-tauri\target\debug\onetone.exe
+A2 MainWindowHandle != 0: True
+A3 window title readable: True
+  title='OneTone' visible=True hwnd=13436546
+port 5173 listening: True
+launch.log: E:\voice-pilot\logs\launch.log
+--- launch.log tail ---
+  2026-10-04 16:57:56 starting frontend serve on :5173 (required for webview)
+  2026-10-04 16:57:58 frontend serve ready on :5173
+  2026-10-04 16:57:58 runtime log: E:\voice-pilot\logs\runtime-live.log
+  2026-10-04 16:57:58 cleared webview cache: C:\Users\pstem\AppData\Local\com.onetone.app\EBWebView
+  2026-10-04 16:57:58 launched onetone.exe from E:\voice-pilot\src-tauri\target\debug\onetone.exe
+  2026-10-04 17:16:21 launch existing (skip rebuild): E:\voice-pilot\src-tauri\target\debug\onetone.exe 鈥?use rebuild_onetone.bat to refresh release
+  2026-10-04 17:16:22 kws model missing at E:\voice-pilot\src-tauri\resources\kws\sherpa-kws-zh-small (download via app or place sherpa-kws-zh-small)
+  2026-10-04 17:16:22 kws model missing at E:\voice-pilot\src-tauri\resources\kws\sherpa-kws-zh-small (download via app or place sherpa-kws-zh-small)
+  2026-10-04 17:16:22 frontend serve already on :5173
+  2026-10-04 17:16:22 runtime log: E:\voice-pilot\logs\runtime-live.log
+  2026-10-04 17:16:22 cleared webview cache: C:\Users\pstem\AppData\Local\com.onetone.app\EBWebView
+  2026-10-04 17:16:22 launched onetone.exe from E:\voice-pilot\src-tauri\target\debug\onetone.exe
+  2026-10-05 16:12:10 launch existing (skip rebuild): E:\voice-pilot\src-tauri\target\release\onetone.exe 鈥?use rebuild_onetone.bat to refresh release
+  2026-10-05 16:12:10 kws model missing at E:\voice-pilot\src-tauri\resources\kws\sherpa-kws-zh-small (download via app or place sherpa-kws-zh-small)
+  2026-10-05 16:12:10 kws model missing at E:\voice-pilot\src-tauri\resources\kws\sherpa-kws-zh-small (download via app or place sherpa-kws-zh-small)
+  2026-10-05 16:12:11 starting frontend serve on :5173 (required for webview)
+  2026-10-05 16:12:13 frontend serve ready on :5173
+  2026-10-05 16:12:13 runtime log: E:\voice-pilot\logs\runtime-live.log
+  2026-10-05 16:12:14 cleared webview cache: C:\Users\pstem\AppData\Local\com.onetone.app\EBWebView
+  2026-10-05 16:12:15 launched onetone.exe from E:\voice-pilot\src-tauri\target\release\onetone.exe
+runtime-live.log: C:\Users\pstem\AppData\Roaming\oneTone\app\config\logs\runtime-live.log
+--- runtime-live.log tail ---
+  [1791189010] [ui_hb] recovered blocked_ms=401 seq=1894
+  [1791189010] [ui_hb] warning gap>529ms (500ms) seq=1894
+  [1791189011] [ui_hb] recovered blocked_ms=401 seq=1895
+  [1791189012] [ui_hb] warning gap>534ms (500ms) seq=1903
+  [1791189014] [ui_hb] recovered blocked_ms=1487 seq=1912
+  [1791189015] [ui_hb] warning gap>639ms (500ms) seq=1917
+  [1791189015] [ui_hb] recovered blocked_ms=477 seq=1921
+  [1791189017] [ui_hb] warning gap>533ms (500ms) seq=1927
+  [1791189018] [ui_hb] recovered blocked_ms=624 seq=1933
+  [1791189018] [voice] voice_bootstrap switch desired=vosk from=vosk to=vosk reason=vosk_retry_start fingerprintChanged=false
+  [1791189018] [voice] voice_bootstrap acoustic sync done
+  [1791189019] [ui_hb] warning gap>598ms (500ms) seq=1936
+  [1791189019] [ui_hb] recovered blocked_ms=411 seq=1938
+  [1791189021] [ui_hb] warning gap>726ms (500ms) seq=1945
+  [1791189021] [ui_hb] recovered blocked_ms=624 seq=1952
+  [1791189023] [ui_hb] warning gap>655ms (500ms) seq=1956
+  [1791189023] [ui_hb] recovered blocked_ms=609 seq=1962
+  [1791189025] [ui_hb] warning gap>677ms (500ms) seq=1966
+  [1791189025] [ui_hb] recovered blocked_ms=401 seq=1971
+  [1791189026] [ui_hb] warning gap>672ms (500ms) seq=1974
+runtime-live.log lastWrite=2026-10-05T16:30:26 ageMin=0 recent30m=True
+
+local enter-CUA prerequisites:
+  MainWindowHandle!=0: True
+  Responding: True
+  5173 listening: True
+  runtime recent OR launch.log present: True
+  ENTER_CUA_READY: True
+
+DIAGNOSTIC_ONLY=true
+CUA_A4_A7=unchecked
+
+=== CUA-only checks (this script CANNOT verify) ===
+A4 CUA lists Windows app surface 鈥?confirm in cua_repl / desktop plugin
+A5 CUA can bind OneTone window
+A6 screenshot works
+A7 click + AX/UI read works
+If A1鈥揂3 pass but A4 fails: likely missing Windows native surface or CUA plugin fault (not OneTone launch).
+NOTE: exit 0 != real desktop acceptance passed; A4鈥揂7 stay unchecked_by_this_script.
+
+JSON_SUMMARY_BEGIN
+{"time":"2026-10-05 16:30:24","diagnostic_only":true,"a1_process":true,"a2_main_hwnd":true,"a3_title":true,"title":"OneTone","visible":true,"pid":22140,"hwnd":13436546,"responding":true,"exe":"E:\\voice-pilot\\src-tauri\\target\\debug\\onetone.exe","port_5173":true,"runtime_log":"C:\\Users\\pstem\\AppData\\Roaming\\oneTone\\app\\config\\logs\\runtime-live.log","runtime_recent":true,"enter_cua_ready":true,"cua_a4_a7":"unchecked_by_this_script","strict":true}
+JSON_SUMMARY_END
+STRICT_EXIT=0 (local A1鈥揂3 + 5173 OK; A4鈥揂7 still unchecked)

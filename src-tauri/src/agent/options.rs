@@ -5,8 +5,8 @@ use serde::Serialize;
 use super::actions::ProviderSupport;
 use super::providers::{ClaudeProviderAdapter, CodexProviderAdapter, CursorProviderAdapter};
 use super::semantic::{
-    all_semantic_metas, channel_allowed, route_disposition, ActionChannel,
-    ActionLayer, RouteDisposition,
+    all_semantic_metas, channel_allowed, route_disposition, ActionChannel, ActionLayer,
+    RouteDisposition,
 };
 use super::templates::{CLAUDE_PROVIDER_ID, CODEX_PROVIDER_ID, CURSOR_PROVIDER_ID};
 use crate::agent_attention::project_needs_input_kind;
@@ -171,13 +171,22 @@ mod tests {
             m.agent_provider_id = "claude".into();
         }
         let opts = semantic_action_options(&cfg, &mid, ActionChannel::Key, false).unwrap();
-        let approve = opts.iter().find(|o| o.action_id == "agent.approve").unwrap();
+        let approve = opts
+            .iter()
+            .find(|o| o.action_id == "agent.approve")
+            .unwrap();
         assert!(approve.bindable, "claude approve should bind");
         let focus = opts.iter().find(|o| o.action_id == "agent.focus").unwrap();
         assert!(focus.bindable, "claude focus should bind");
-        let interrupt = opts.iter().find(|o| o.action_id == "agent.interrupt").unwrap();
+        let interrupt = opts
+            .iter()
+            .find(|o| o.action_id == "agent.interrupt")
+            .unwrap();
         assert!(!interrupt.bindable, "claude interrupt unverified");
-        assert_eq!(interrupt.reason_code.as_deref(), Some("provider_unsupported"));
+        assert_eq!(
+            interrupt.reason_code.as_deref(),
+            Some("provider_unsupported")
+        );
         let status = opts.iter().find(|o| o.action_id == "agent.status").unwrap();
         assert!(!status.bindable);
         assert_eq!(status.reason_code.as_deref(), Some("provider_unsupported"));
@@ -194,12 +203,30 @@ mod tests {
             m.agent_provider_id = "cursor".into();
         }
         let opts = semantic_action_options(&cfg, &mid, ActionChannel::Key, false).unwrap();
-        assert!(opts.iter().find(|o| o.action_id == "agent.focus").unwrap().bindable);
-        assert!(opts.iter().find(|o| o.action_id == "agent.interrupt").unwrap().bindable);
-        assert!(opts.iter().find(|o| o.action_id == "agent.reject").unwrap().bindable);
+        assert!(
+            opts.iter()
+                .find(|o| o.action_id == "agent.focus")
+                .unwrap()
+                .bindable
+        );
+        assert!(
+            opts.iter()
+                .find(|o| o.action_id == "agent.interrupt")
+                .unwrap()
+                .bindable
+        );
+        assert!(
+            opts.iter()
+                .find(|o| o.action_id == "agent.reject")
+                .unwrap()
+                .bindable
+        );
         let session_new = opts.iter().find(|o| o.action_id == "session.new").unwrap();
         assert!(!session_new.bindable);
-        assert_eq!(session_new.reason_code.as_deref(), Some("provider_unsupported"));
+        assert_eq!(
+            session_new.reason_code.as_deref(),
+            Some("provider_unsupported")
+        );
     }
 
     #[test]
@@ -211,9 +238,25 @@ mod tests {
             m.agent_provider_id = "claude".into();
         }
         let opts = semantic_action_options(&cfg, &mid, ActionChannel::SoftPad, false).unwrap();
-        assert!(opts.iter().find(|o| o.action_id == "agent.respond").unwrap().bindable);
-        assert!(opts.iter().find(|o| o.action_id == "agent.continue").unwrap().bindable);
-        assert!(!opts.iter().find(|o| o.action_id == "session.next").unwrap().bindable);
+        assert!(
+            opts.iter()
+                .find(|o| o.action_id == "agent.respond")
+                .unwrap()
+                .bindable
+        );
+        assert!(
+            opts.iter()
+                .find(|o| o.action_id == "agent.continue")
+                .unwrap()
+                .bindable
+        );
+        assert!(
+            !opts
+                .iter()
+                .find(|o| o.action_id == "session.next")
+                .unwrap()
+                .bindable
+        );
     }
 
     #[test]
@@ -228,10 +271,19 @@ mod tests {
         let send = opts.iter().find(|o| o.action_id == "input.send").unwrap();
         assert!(send.bindable);
         assert!(!send.executable_now); // not dictating
-        assert_eq!(send.route_disposition, RouteDisposition::PendingConfirmation);
-        let approve = opts.iter().find(|o| o.action_id == "agent.approve").unwrap();
+        assert_eq!(
+            send.route_disposition,
+            RouteDisposition::PendingConfirmation
+        );
+        let approve = opts
+            .iter()
+            .find(|o| o.action_id == "agent.approve")
+            .unwrap();
         assert!(approve.bindable);
-        assert_eq!(approve.route_disposition, RouteDisposition::PendingConfirmation);
+        assert_eq!(
+            approve.route_disposition,
+            RouteDisposition::PendingConfirmation
+        );
         let cancel = opts.iter().find(|o| o.action_id == "input.cancel").unwrap();
         assert_eq!(cancel.route_disposition, RouteDisposition::Execute);
     }

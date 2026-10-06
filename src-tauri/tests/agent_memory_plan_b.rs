@@ -13,10 +13,8 @@ static INIT: Once = Once::new();
 
 fn ensure_temp_db() {
     INIT.call_once(|| {
-        let dir = std::env::temp_dir().join(format!(
-            "onetone-agent-mem-plan-b-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("onetone-agent-mem-plan-b-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let db = dir.join("agent-memory.sqlite3");
         std::env::set_var("ONETONE_AGENT_MEMORY_DB", &db);
@@ -227,8 +225,8 @@ fn plan_b_acceptance_core() {
     // append_ui_lifecycle truncates then accepts.
     assert!(append_ui_lifecycle(&sid2, PROVIDER_CURSOR, "task_paused", &long).is_ok());
     // missing session
-    let miss = append_ui_lifecycle("no-such-session", PROVIDER_CURSOR, "task_started", "x")
-        .unwrap_err();
+    let miss =
+        append_ui_lifecycle("no-such-session", PROVIDER_CURSOR, "task_started", "x").unwrap_err();
     assert!(miss.contains("session_not_found"));
 
     // Plan C fields are present in the live tree; Plan B only cares that lifecycle

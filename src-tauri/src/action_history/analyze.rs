@@ -95,7 +95,10 @@ fn call_deepseek(user_prompt: &str) -> AnalyzeResult {
             ok: false,
             text: None,
             reason: Some("no_api_key".into()),
-            detail: Some("请在 Claude Code settings 中配置 DeepSeek API（ANTHROPIC_BASE_URL + AUTH_TOKEN）".into()),
+            detail: Some(
+                "请在 Claude Code settings 中配置 DeepSeek API（ANTHROPIC_BASE_URL + AUTH_TOKEN）"
+                    .into(),
+            ),
         };
     };
     if key.trim().is_empty() {

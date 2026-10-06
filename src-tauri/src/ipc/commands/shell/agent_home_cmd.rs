@@ -42,8 +42,7 @@ pub fn cmd_agent_session_events(
     let _ = state;
     agent_memory::ensure_started();
     let lim = args.limit.unwrap_or(50).min(200) as usize;
-    let (events, complete) =
-        agent_memory::list_session_events(&args.session_id, lim, args.before);
+    let (events, complete) = agent_memory::list_session_events(&args.session_id, lim, args.before);
     serde_json::json!({
         "sessionId": args.session_id,
         "events": events,
@@ -253,7 +252,10 @@ pub fn cmd_agent_mcp_project_context(
     let _ = state;
     agent_memory::ensure_started();
     let args = args.unwrap_or_default();
-    let root = args.project_root.filter(|s| !s.trim().is_empty()).map(PathBuf::from);
+    let root = args
+        .project_root
+        .filter(|s| !s.trim().is_empty())
+        .map(PathBuf::from);
     agent_memory::tool_project_context(args.project_id.as_deref(), root.as_deref())
 }
 
@@ -314,9 +316,7 @@ pub fn cmd_agent_mcp_checkpoint_preview(
 // --- Home Focus (user-facing projection) ---
 
 #[tauri::command]
-pub fn cmd_home_focus_snapshot(
-    state: State<'_, Arc<AppState>>,
-) -> agent_memory::HomeFocusSnapshot {
+pub fn cmd_home_focus_snapshot(state: State<'_, Arc<AppState>>) -> agent_memory::HomeFocusSnapshot {
     let _ = state;
     agent_memory::build_home_focus_snapshot()
 }
@@ -342,10 +342,7 @@ pub fn cmd_home_confirm_project(
     let _ = state;
     agent_memory::ensure_started();
     let args = args.unwrap_or_default();
-    match agent_memory::confirm_project(
-        args.project_root.as_deref(),
-        args.project_id.as_deref(),
-    ) {
+    match agent_memory::confirm_project(args.project_root.as_deref(), args.project_id.as_deref()) {
         Ok(p) => serde_json::json!({ "ok": true, "project": p }),
         Err(e) => serde_json::json!({ "ok": false, "error": e }),
     }

@@ -10,7 +10,8 @@ use crate::ipc::recording::apply::{
     apply_trigger_capture, enable_mapping_if_complete, normalize_record_key,
 };
 use crate::ipc::recording::gesture::{
-    gesture_mode_label, is_recognition_key_echo, is_spurious_trigger_capture, sanitize_trigger_capture,
+    gesture_mode_label, is_recognition_key_echo, is_spurious_trigger_capture,
+    sanitize_trigger_capture,
 };
 use crate::ipc::recording::RecordMode;
 
@@ -66,7 +67,9 @@ pub(crate) fn finish_hardware_capture(
         return;
     }
 
-    if (is_trigger || is_oral_trigger) && crate::config::physical_key_owned_by_pads(&state.cfg.lock(), &key, &target.mapping_id) {
+    if (is_trigger || is_oral_trigger)
+        && crate::config::physical_key_owned_by_pads(&state.cfg.lock(), &key, &target.mapping_id)
+    {
         emit_record_probe(window, "drop", &key, "softpad_occupied");
         let ack = serde_json::json!({
             "type": "mvp_record_echo",
@@ -92,7 +95,13 @@ pub(crate) fn finish_hardware_capture(
         return;
     }
 
-    if is_pad_bind && crate::config::physical_key_owned_by_triggers(&state.cfg.lock(), &key, &target.mapping_id) {
+    if is_pad_bind
+        && crate::config::physical_key_owned_by_triggers(
+            &state.cfg.lock(),
+            &key,
+            &target.mapping_id,
+        )
+    {
         emit_record_probe(window, "drop", &key, "trigger_occupied");
         let ack = serde_json::json!({
             "type": "mvp_record_rejected",

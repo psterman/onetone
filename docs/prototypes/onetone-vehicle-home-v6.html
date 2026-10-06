@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OneTone · 乘客 / 方向盘 / 发动机和目的地</title>
+<style>
+:root{
+  --bg:#f2f4f2; --paper:#fffefa; --panel:#f8f9f7;
+  --ink:#18252d; --muted:#6f7c82; --faint:#9aa5aa; --line:#e0e6e3;
+  --accent:#127c75; --accent-soft:#e7f5f2;
+  --blue:#256fa8; --blue-soft:#edf5fb;
+  --amber:#a76819; --amber-soft:#fff5e5;
+  --red:#a5453f; --red-soft:#fbeceb;
+  --violet:#6b5aa8; --violet-soft:#f0edf9;
+  --shadow:0 16px 40px rgba(22,42,51,.07);
+  --r-lg:20px; --r-md:12px; --r-sm:9px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.55 "Segoe UI","Microsoft YaHei UI",system-ui,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid #2f9e94;outline-offset:2px}
+code{font:11px/1.5 ui-monospace,Consolas,monospace;background:#eef2f1;border-radius:5px;padding:1px 5px}
+
+.top{height:58px;display:flex;align-items:center;gap:14px;padding:0 20px;
+  background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.brand{font-weight:760;font-size:18px;letter-spacing:-.4px;white-space:nowrap}
+.brand small{font-weight:450;color:var(--muted);font-size:12.5px;margin-left:7px}
+.fg{border-left:1px solid var(--line);padding-left:14px;font-weight:620;font-size:13px;white-space:nowrap}
+.fg small{display:block;font-weight:450;color:var(--muted);font-size:11px}
+.aim{margin-left:auto;display:flex;gap:8px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:640;white-space:nowrap}
+.pill.ok{background:var(--accent-soft);color:var(--accent)}
+.pill i{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+.layout{display:grid;grid-template-columns:274px minmax(0,1fr) 352px;gap:15px;
+  max-width:1560px;margin:0 auto;padding:16px 18px 40px;align-items:start}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:15px 17px;box-shadow:var(--shadow)}
+.card+.card{margin-top:13px}
+h2{font-size:13px;margin:0 0 3px}
+h2 .cnt{color:var(--faint);font-weight:400;font-size:11.5px;margin-left:5px}
+.sub{color:var(--muted);font-size:11.5px;margin:0 0 11px;line-height:1.6}
+
+/* ========== 左 · 乘客 ========== */
+.cand{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;
+  border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 9px;margin-bottom:7px;background:#fff}
+.cand .ic{width:26px;height:26px;border-radius:7px;background:#eef1ef;display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.cand b{font-size:12px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cand small{font-size:10.5px;color:var(--muted);display:block}
+.cand .ops{display:flex;gap:4px}
+.cand .ops button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:3px 7px;font-size:10px}
+.cand .ops button.p{background:var(--ink);color:#fff;border-color:var(--ink)}
+.loaded{border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;margin-bottom:7px;background:#fff}
+.loaded .t{display:flex;align-items:center;gap:7px}
+.loaded .t b{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.loaded .t .ic{width:20px;height:20px;border-radius:6px;background:#eef1ef;display:grid;place-items:center;font-size:10.5px;color:var(--muted);flex:none}
+.loaded small{display:block;color:var(--muted);font-size:10.5px;margin:4px 0 0 27px}
+.guard{display:inline-block;background:var(--amber-soft);color:var(--amber);border-radius:5px;
+  padding:1px 6px;font-size:10px;font-weight:700;margin-left:5px}
+
+/* ========== 中 · 方向盘 ========== */
+.wheel-h{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.wheel-h .badge{font-size:10px;font-weight:750;letter-spacing:.06em;color:var(--accent);
+  background:var(--accent-soft);border-radius:5px;padding:2px 7px}
+.draft-title{font-size:23px;font-weight:760;letter-spacing:-.5px;margin:10px 0 6px;line-height:1.3}
+.origin{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:18px}
+.origin i{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.layer{border-radius:var(--r-md);padding:15px 17px;margin-bottom:12px}
+.layer-mine{background:#fff;border:1px solid var(--line);box-shadow:0 1px 3px rgba(22,42,51,.04)}
+.layer-sys{background:var(--panel);border:1px dashed #cdd6d2}
+.layer-h{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:750;
+  letter-spacing:.06em;margin-bottom:10px}
+.layer-mine .layer-h{color:var(--accent)}
+.layer-sys .layer-h{color:var(--muted)}
+.tag{font-size:10px;font-weight:700;border-radius:5px;padding:2px 6px;background:#fff;
+  border:1px solid var(--line);color:var(--muted);letter-spacing:0}
+.prose{font-size:15px;line-height:1.95;outline:0;min-height:96px}
+.prose:focus{background:#f7f9f7;border-radius:8px}
+.sysrow{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-top:1px solid #e6ebe8;font-size:12.5px}
+.sysrow:first-of-type{border-top:0;padding-top:0}
+.sysrow .ic{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:11px;flex:none;background:#fff;border:1px solid var(--line)}
+.sysrow .tx{flex:1;line-height:1.5}
+.sysrow .tx b{font-weight:640}
+.sysrow .tx small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+
+/* ========== 右 · 发动机 + 目的地 ========== */
+.rhead{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.rhead .lbl{font-size:10px;font-weight:800;letter-spacing:.08em;border-radius:5px;padding:2px 7px}
+.rhead .lbl.eng{background:var(--blue-soft);color:var(--blue)}
+.rhead .lbl.dest{background:var(--accent-soft);color:var(--accent)}
+.divider{height:1px;background:var(--line);margin:16px -17px 14px;position:relative}
+.divider span{position:absolute;right:0;top:-8px;background:var(--paper);padding-left:8px;
+  font-size:10px;color:var(--faint)}
+
+.slotc{border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;margin-bottom:7px;background:#fff}
+.slotc.hot{border-color:#b9dcd7;background:linear-gradient(#f4fbf9,#fff 65%)}
+.slotc .t{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.slotc .t b{font-size:13px}
+.slotc .t .id{font:10px/1.4 ui-monospace,Consolas,monospace;color:#7b8a90;background:#f2f5f4;border-radius:5px;padding:1px 5px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.ch{display:inline-flex;align-items:center;gap:4px;border-radius:7px;padding:2px 6px;
+  font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+.ch .who{font-size:9px;opacity:.7;font-weight:700}
+.ch-key{background:#eef2f3;color:#42585c;border-color:#dbe2e4}
+.ch-voice{background:var(--violet-soft);color:#4f4091;border-color:#ddd5f2}
+.ch-pad{background:var(--blue-soft);color:var(--blue);border-color:#cfe2ef}
+.ch-off{background:#f3f5f4;color:#98a3a8;border-color:#e8ecea}
+.states{display:flex;gap:5px;margin-bottom:11px;flex-wrap:wrap}
+.states button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 9px;font-size:11.5px;color:var(--muted)}
+.states button.on{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:650}
+
+details.more{margin-top:9px}
+details.more summary{cursor:pointer;font-size:11.5px;color:var(--blue);font-weight:650;list-style:none}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::before{content:"▸ ";}
+details.more[open] summary::before{content:"▾ ";}
+
+.tgts{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.tgt{border:1px solid var(--line);background:#fff;border-radius:var(--r-sm);padding:8px 9px;text-align:left;font-size:12.5px;font-weight:620}
+.tgt:hover{border-color:#9bcfc8}
+.tgt.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tgt small{display:block;font-weight:450;font-size:10.5px;opacity:.72;margin-top:1px}
+
+.guess{background:var(--amber-soft);border:1px solid #ecd7b2;border-radius:var(--r-md);padding:11px 12px;margin-bottom:12px}
+.guess-h{display:flex;align-items:baseline;gap:6px;font-weight:750;font-size:12.5px;color:var(--amber)}
+.guess-h b{font-size:19px;line-height:1}
+.gitem{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px solid #ecd7b255;margin-top:7px;font-size:11.5px;line-height:1.6}
+.gitem .n{width:17px;height:17px;border-radius:5px;background:#fff;border:1px solid #e0c89c;color:var(--amber);
+  display:grid;place-items:center;font-size:10px;font-weight:800;flex:none;margin-top:1px}
+.gitem .tx{flex:1}
+.fix{border:1px solid #d9bd85;background:#fff;color:#8b5c15;border-radius:6px;padding:3px 8px;
+  font-size:10.5px;font-weight:680;white-space:nowrap;flex:none;align-self:flex-start}
+.fix:hover{background:#fff8e8}
+
+.blk{display:flex;align-items:center;gap:7px;margin:13px 0 3px;font-size:10.5px;font-weight:750;letter-spacing:.05em}
+.blk .b{background:var(--red-soft);color:var(--red);border-radius:5px;padding:2px 6px}
+.blk .w{background:var(--amber-soft);color:var(--amber);border-radius:5px;padding:2px 6px}
+.blk .k{background:var(--accent-soft);color:var(--accent);border-radius:5px;padding:2px 6px}
+.ck{display:flex;align-items:flex-start;gap:7px;font-size:12px;line-height:1.55;padding:6px 0}
+.ck .m{flex:none;font-weight:800;font-size:11.5px;width:13px;text-align:center}
+.ck.y .m{color:var(--accent)} .ck.n .m{color:var(--amber)} .ck.x .m{color:var(--red)}
+.ck.x .tx{color:#7d4340}
+.ck .tx small{display:block;color:var(--muted);font-size:10.5px;margin-top:2px}
+.okline{display:flex;flex-wrap:wrap;gap:5px;padding:4px 0}
+
+.budget{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;font-size:11.5px;color:var(--muted)}
+.budget .r{display:flex;justify-content:space-between;padding:2px 0}
+.budget .r b{color:var(--ink);font-weight:640}
+.budget .note{color:var(--amber);font-size:10.5px;margin-top:5px;line-height:1.6}
+
+.deliver{width:100%;border:0;background:var(--ink);color:#fff;border-radius:var(--r-md);padding:11px;font-weight:700;font-size:13px;margin-top:12px}
+.deliver2{width:100%;border:1px solid var(--line);background:#fff;border-radius:var(--r-md);padding:8px;font-weight:640;font-size:12px;color:#5e7079;margin-top:6px}
+
+.receipt{margin-top:10px;border:1px solid var(--line);background:var(--panel);border-radius:var(--r-md);padding:10px 11px;font-size:11px}
+.receipt .h{font-weight:750;font-size:11.5px;margin-bottom:6px;color:var(--ink)}
+.receipt .row{display:flex;justify-content:space-between;padding:2.5px 0;color:var(--muted)}
+.receipt .row b{color:var(--ink);font-weight:640}
+.receipt .row b.unk{color:var(--amber)}
+.receipt time{float:right;font-weight:450;color:var(--faint)}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:var(--ink);color:#fff;
+  padding:10px 15px;border-radius:11px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:82vw}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media(max-width:1150px){ .layout{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">OneTone<small>乘客 · 方向盘 · 发动机和目的地</small></div>
+  <div class="fg">Cursor · 首页方案简报<small>v2 · 草稿</small></div>
+  <div class="aim"><span class="pill ok"><i></i>输入瞄准可用</span></div>
+</header>
+
+<main class="layout">
+
+  <!-- ================= 左 · 乘客 ================= -->
+  <aside>
+    <section class="card">
+      <h2>乘客 <span class="cnt">· 证据</span></h2>
+      <p class="sub">这些是被带着走的，不是你说的。它们只增不减。</p>
+
+      <div class="states">
+        <button class="on">候选托盘 5</button>
+        <button>已装车 3</button>
+      </div>
+
+      <div class="cand">
+        <span class="ic">▧</span>
+        <span><b>current-home.png</b><small>剪贴板图片 · 14:21</small></span>
+        <span class="ops"><button class="p" data-toast="已装车">装车</button><button data-toast="已忽略">忽略</button></span>
+      </div>
+      <div class="cand">
+        <span class="ic">¶</span>
+        <span><b>"首页不能代替 Agent……"</b><small>剪贴板文字 · 14:20</small></span>
+        <span class="ops"><button class="p" data-toast="已装车">装车</button><button data-toast="已留到稍后">稍后</button></span>
+      </div>
+      <div class="cand">
+        <span class="ic">±</span>
+        <span><b>Codex 改了 3 个文件</b><small>Agent 返回 · 14:18</small></span>
+        <span class="ops"><button class="p" data-toast="正在打开 diff">看变化</button></span>
+      </div>
+      <div class="cand">
+        <span class="ic">↗</span>
+        <span><b>Gemini 首页参考</b><small>Chrome 网址 · 14:12</small></span>
+        <span class="ops"><button class="p" data-toast="已装车">装车</button><button data-toast="已忽略">忽略</button></span>
+      </div>
+      <div class="cand">
+        <span class="ic">C</span>
+        <span><b>Codex 首页方案回应</b><small>会话引用 · 11:42</small></span>
+        <span class="ops"><button data-toast="已打开原会话">回来源</button></span>
+      </div>
+
+      <div class="divider"><span>已装车</span></div>
+      <div class="loaded">
+        <div class="t"><span class="ic">▧</span><b>current-home.png</b><span class="guard">KeepStyle</span></div>
+        <small>图片＋你的话 · 指纹 a17d… · 14:21</small>
+      </div>
+      <div class="loaded">
+        <div class="t"><span class="ic">⌂</span><b>src\index.html</b><span class="guard">NoTouch</span></div>
+        <small>只保存地址 · 指纹 8c2f… · 14:08</small>
+      </div>
+      <div class="loaded">
+        <div class="t"><span class="ic">↗</span><b>Gemini 首页参考</b></div>
+        <small>只传标题 + 网址 · Chrome · 14:12</small>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ================= 中 · 方向盘 ================= -->
+  <section>
+    <section class="card">
+      <div class="wheel-h">
+        <span class="badge">方向盘</span>
+        <h2 style="margin:0">你只动这一块</h2>
+      </div>
+      <p class="sub" style="margin-bottom:0">左边是证据，右边是手段。中间只有你的话，编译时不改写它。</p>
+
+      <div class="draft-title">把首页改成四通道控制台，别让用户学四套东西</div>
+      <div class="origin"><i></i><span>标题取你第一句原话 · 未经总结</span></div>
+
+      <div class="layer layer-mine">
+        <div class="layer-h">你写的 <span class="tag">可编辑 · 原样发送</span></div>
+        <div class="prose" contenteditable="true">
+          现在首页把语音、按键、Pad、摄像头讲成四个并列功能，用户以为要分别学四套。
+          实际它们指向同一组 slotId，只是叫法不同。首页应该先讲这件事，再讲别的。
+        </div>
+      </div>
+
+      <div class="layer layer-sys">
+        <div class="layer-h">系统加的 <span class="tag">只读 · 投递时写进正文</span></div>
+        <div class="sysrow">
+          <span class="ic">▧</span>
+          <span class="tx"><b>current-home.png</b>
+            <small>引用方式：图片＋你的话 · KeepStyle：保持配色与文案</small></span>
+        </div>
+        <div class="sysrow">
+          <span class="ic">⌂</span>
+          <span class="tx"><b>src\index.html</b>
+            <small>引用方式：只保存地址 · NoTouch：完全不许动</small></span>
+        </div>
+        <div class="sysrow">
+          <span class="ic">◆</span>
+          <span class="tx"><b>本次不动响应式断点</b>
+            <small>你声明的边界，写进正文而不是藏在附件里</small></span>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ================= 右 · 发动机 + 目的地 ================= -->
+  <aside>
+    <section class="card">
+
+      <div class="rhead"><span class="lbl eng">发动机</span><h2 style="margin:0">此刻真的能叫的</h2></div>
+      <p class="sub" style="margin-bottom:9px">反映的是当下真实状态，<b>不会因为你选了目的地而变化</b>。</p>
+
+      <div class="states" id="engStates">
+        <button class="on" data-st="need">Codex 等确认</button>
+        <button data-st="working">正在写</button>
+        <button data-st="idle">空闲</button>
+      </div>
+
+      <div id="engine"></div>
+
+      <details class="more">
+        <summary>展开完整通道表（键 / 令 / Pad / 手）</summary>
+        <div id="engineAll" style="margin-top:8px"></div>
+        <p style="font-size:10.5px;color:var(--faint);margin:8px 0 0;line-height:1.6">
+          全量通道随时可达的地方是托盘菜单和悬浮栏，首页只放此刻相关的几条。</p>
+      </details>
+
+      <div class="divider"><span>目的地</span></div>
+
+      <div class="rhead"><span class="lbl dest">目的地</span><h2 style="margin:0">这份草稿投给谁</h2></div>
+      <p class="sub" style="margin-bottom:9px">来自 17+ AppChatProfile，不是自由输入。</p>
+
+      <div class="tgts">
+        <button class="tgt on" data-agent="Codex">Codex<small>正文可自动填入</small></button>
+        <button class="tgt" data-agent="Cursor">Cursor<small>不能聚焦历史会话</small></button>
+        <button class="tgt" data-agent="Claude">Claude<small>Hook 33 事件</small></button>
+        <button class="tgt" data-agent="Trae">Trae<small>历史不可读</small></button>
+      </div>
+
+      <div class="guess">
+        <div class="guess-h"><b>2</b> 件 · Agent 还需要猜</div>
+        <div class="gitem">
+          <span class="n">1</span>
+          <span class="tx">简报引用了 <b>1 条历史会话</b>，Codex 接不住正文。</span>
+          <button class="fix" data-toast="已改为「口述补一句」">改引用</button>
+        </div>
+        <div class="gitem">
+          <span class="n">2</span>
+          <span class="tx"><b>src\page.tsx</b> 没有标保护边界。</span>
+          <button class="fix" data-toast="已标为 NoTouch">标边界</button>
+        </div>
+      </div>
+
+      <div class="blk"><span class="b">✗ 阻断</span> 不可折叠</div>
+      <div class="ck x"><span class="m">✗</span><span class="tx">
+        历史会话正文无法传给 Codex
+        <small>依据 AppChatProfile 的能力位 · 非人工判断</small></span></div>
+
+      <div class="blk"><span class="w">○ 提示</span> 不阻断，只是要多做一步</div>
+      <details class="more">
+        <summary>展开 3 条</summary>
+        <div class="ck n"><span class="m">○</span><span class="tx">2 张图片需你手动上传<small>OneTone 能复制，不能代传</small></span></div>
+        <div class="ck n"><span class="m">○</span><span class="tx">网页只传标题 + 网址<small>默认不抓正文</small></span></div>
+        <div class="ck n"><span class="m">○</span><span class="tx">Token 上限未知<small>所以下面不画比例条</small></span></div>
+      </details>
+
+      <div class="blk"><span class="k">✓ 可达</span> 已经就绪</div>
+      <div class="okline">
+        <span class="ch ch-off" style="background:var(--accent-soft);color:var(--accent);border-color:#cfe7e2">✓ 正文可填入 composer</span>
+        <span class="ch ch-off" style="background:var(--accent-soft);color:var(--accent);border-color:#cfe7e2">✓ 项目可打开</span>
+        <span class="ch ch-off" style="background:var(--accent-soft);color:var(--accent);border-color:#cfe7e2">✓ 可回传状态</span>
+      </div>
+
+      <div class="budget">
+        <div class="r"><span>正文（你写的）</span><b>1.2k</b></div>
+        <div class="r"><span>材料引用</span><b>2.6k</b></div>
+        <div class="r"><span>图片估算</span><b>0.8k</b></div>
+        <div class="r" style="border-top:1px solid var(--line);margin-top:4px;padding-top:5px">
+          <span>合计 · 估算值</span><b>约 8.4k tokens</b></div>
+        <div class="note">上限未知 —— 不知道分母就不画比例。</div>
+      </div>
+
+      <button class="deliver" data-toast="已复制并聚焦 Codex composer；发送状态未知">复制并聚焦 Codex</button>
+      <button class="deliver2" data-toast="已导出 context.md + manifest.json">导出上下文包</button>
+
+      <div class="receipt">
+        <div class="h">投递记录 · v2 <time>14:02</time></div>
+        <div class="row"><span>正文</span><b>已复制</b></div>
+        <div class="row"><span>composer</span><b>已聚焦</b></div>
+        <div class="row"><span>图片</span><b class="unk">待你手动上传</b></div>
+        <div class="row"><span>发送</span><b class="unk">未知</b></div>
+      </div>
+
+      <details class="more" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px">
+        <summary>这个 Agent 在这个项目里，你踩过什么</summary>
+        <div style="font-size:11.5px;color:var(--muted);line-height:1.7;margin-top:8px">
+          · 2026-09-28 你标了 <code>NoTouch</code> 的 <code>home-focus.rs</code> 被改了 14 行，依据 diff 检出的疑似违规。<br>
+          · 2026-09-14 你标了 <code>KeepStyle</code> 的 <code>now-home-ui.js</code> 里配色被改，裁决：本次允许。
+        </div>
+      </details>
+
+    </section>
+  </aside>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var $ = function(s){return document.querySelector(s);};
+  var $$ = function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+  /* Pad 一列只使用 codex-micro-pad-layout.json 中真实存在的绑定 */
+  var SLOTS = {
+    need: [
+      {id:'stopOrSend', n:'批准并继续', hot:1, ch:{k:'Enter', v:'「说完」', p:'AG04 · ACT12', c:null}},
+      {id:'cancel', n:'取消', hot:1, ch:{k:'Esc', v:'「取消」', p:'AG05 · ACT08', c:'摇头'}},
+      {id:'pushToTalk', n:'开始说话', hot:1, ch:{k:'Ctrl+Shift+D', v:'按住说话', p:'ACT10', c:null}},
+      {id:'quickSearch', n:'搜索', ch:{k:'Ctrl+P', v:null, p:'AG03 · SEARCH', c:null}},
+      {id:'commandPalette', n:'命令菜单', ch:{k:'Ctrl+K', v:null, p:'AG00 · ACT07', c:null}},
+      {id:'newThread', n:'新建会话', ch:{k:'Ctrl+N', v:null, p:'AG01 · ACT09', c:null}}
+    ],
+    working: [
+      {id:'stopOrSend', n:'发送', hot:1, ch:{k:'Enter', v:'「说完」', p:'AG04 · ACT12', c:null}},
+      {id:'cancel', n:'取消', hot:1, ch:{k:'Esc', v:'「取消」', p:'AG05 · ACT08', c:'摇头'}},
+      {id:'pushToTalk', n:'开始说话', hot:1, ch:{k:'Ctrl+Shift+D', v:'按住说话', p:'ACT10', c:null}},
+      {id:'commandPalette', n:'命令菜单', ch:{k:'Ctrl+K', v:null, p:'AG00 · ACT07', c:null}},
+      {id:'quickSearch', n:'搜索', ch:{k:'Ctrl+P', v:null, p:'AG03 · SEARCH', c:null}}
+    ],
+    idle: [
+      {id:'summonCodex', n:'召唤 Codex', hot:1, ch:{k:'RAlt', v:null, p:'ENC', c:null}},
+      {id:'pushToTalk', n:'开始说话', hot:1, ch:{k:'Ctrl+Shift+D', v:'按住说话', p:'ACT10', c:null}},
+      {id:'quickSearch', n:'搜索', ch:{k:'Ctrl+P', v:null, p:'AG03 · SEARCH', c:null}},
+      {id:'newThread', n:'新建会话', ch:{k:'Ctrl+N', v:null, p:'AG01 · ACT09', c:null}}
+    ]
+  };
+
+  var WHO = {k:'键', v:'令', p:'Pad', c:'手'};
+  var CAM_ON = false;   /* 摄像头默认未启用 */
+
+  function chips(ch){
+    return [['k',ch.k],['v',ch.v],['p',ch.p],['c',ch.c]].map(function(pair){
+      var key = pair[0], val = pair[1];
+      var who = '<span class="who">' + WHO[key] + '</span>';
+      if (key === 'c' && !CAM_ON) return '<span class="ch ch-off">' + who + '未启用</span>';
+      if (val == null) return '<span class="ch ch-off">' + who + '本态不可叫</span>';
+      return '<span class="ch ch-' + key + '">' + who + esc(val) + '</span>';
+    }).join('');
+  }
+  function card(s){
+    return '<div class="slotc' + (s.hot ? ' hot' : '') + '">' +
+      '<div class="t"><b>' + esc(s.n) + '</b><span class="id">' + esc(s.id) + '</span></div>' +
+      '<div class="chips">' + chips(s.ch) + '</div></div>';
+  }
+
+  function renderEngine(st){
+    var all = SLOTS[st] || SLOTS.need;
+    /* 发动机区只常显 hot 的前 3 条，其余进展开 —— 收敛但不收没「四种叫法」 */
+    var top = all.filter(function(s){return s.hot;}).slice(0,3);
+    $('#engine').innerHTML = top.map(card).join('');
+    $('#engineAll').innerHTML = all.map(card).join('');
+    $$('#engStates button').forEach(function(b){ b.classList.toggle('on', b.dataset.st === st); });
+  }
+
+  var tt;
+  function toast(m){ var e=$('#toast'); e.textContent=m; e.classList.add('show');
+    clearTimeout(tt); tt=setTimeout(function(){e.classList.remove('show');},2200); }
+
+  document.addEventListener('click', function(e){
+    var sb = e.target.closest('#engStates button');
+    if (sb) { renderEngine(sb.dataset.st); return; }
+    var ag = e.target.closest('[data-agent]');
+    if (ag) { $$('[data-agent]').forEach(function(x){x.classList.remove('on');});
+      ag.classList.add('on'); toast('目的地：' + ag.textContent.replace(/[^A-Za-z]/g,'')); return; }
+    var t = e.target.closest('[data-toast]');
+    if (t) toast(t.dataset.toast);
+  });
+
+  renderEngine('need');
+})();
+</script>
+</body>
+</html>

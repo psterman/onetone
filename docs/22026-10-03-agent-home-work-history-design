@@ -1,0 +1,423 @@
+# OneTone Agent 工作记录首页架构设计
+
+日期：2026-10-03  
+状态：待用户审阅  
+范围：Agent 首页的信息架构、数据边界、状态模型、视觉层级与原型方向  
+约束：本阶段只定义架构与原型验收标准，不修改生产代码
+
+## 1. 定位
+
+新的首页不是 OneTone 的第二套应用壳，也不是独立的“现在 / 我的习惯 / 设置”产品。
+
+它的唯一定位是：
+
+> 现有左侧 Agent 入口下的 Agent 工作记录首页。
+
+页面要回答五个问题（用户不会关心代码细节）：
+
+1. Agent 实时在干什么？
+2. 现在能不能帮我？
+3. 是否正常，要不要我处理？
+4. 额度还剩多少、怎么规划？
+5. 当前事项做到哪了（数据进度）？
+
+因此首页主内容是「动态 / 帮你 / 状态 / 额度 / 进度」五信号 +「帮过你」结果时间线；文件名、路由链、诊断明细默认不进首屏。
+
+因此，“历史记录”不是一个需要另开标签的附属功能，而是 Agent 首页的主内容；“当前工作”与“恢复工作”是历史记录的两个重点视图。
+
+## 2. 现有应用边界与依据
+
+当前产品已经有全局左侧导航，且其中已经存在：
+
+- Agent：Agent 工作入口；
+- 数据：Agent 数据、诊断和来源查看入口；
+- 我的习惯：已有的习惯配置入口；
+- 按键设置、语音设置、摄像头等 OneTone 能力入口；
+- 通用设置、声音与反馈等软件级设置入口；
+- 全局功能或设置搜索。
+
+这意味着新首页不能再创建一组平行的顶部导航，也不能把既有入口改名后重复呈现。左侧导航是全局信息架构的唯一来源，新页面只负责 Agent 这一入口内部的工作记录与当前工作状态。
+
+## 3. 目标与非目标
+
+### 目标
+
+1. 让 Agent 的历史、当前会话、暂停点和恢复动作在同一个连续工作区内可见。
+2. 让用户明确区分“Agent 正在处理什么”和“OneTone 软件怎么配置”。
+3. 只有存在真实来源时才展示项目、前台应用、Agent、会话和判断依据；未知信息明确显示未知，不用默认值伪装。
+4. 安静模式仍然保留工作记录、上下文和最近活动；安静只表示不主动打扰，不表示页面空白。
+5. 正在倾听时，实时识别文字必须是主要反馈，不得只显示一个“倾听中”按钮。
+6. 页面在窄窗口中仍有明确主线，不依靠大量卡片填充空间。
+
+### 非目标
+
+- 不在 Agent 首页复制“我的习惯”。
+- 不在 Agent 首页复制 OneTone 的软件设置。
+- 不把“连接与数据”做成首页主要模块；它属于来源、诊断和数据入口。
+- 不把首页做成 LLM 对话页、聊天记录页或卡片仪表盘。
+- 不展示未被真实数据支持的 Agent 进度、完成率、智能建议或快捷键。
+
+## 4. 信息架构
+
+```text
+OneTone 左侧全局导航
+└── Agent（选中）
+    └── Agent 工作记录首页
+        ├── 当前工作上下文
+        ├── 需要用户注意的事项（有才显示）
+        ├── 最近工作记录 / 会话时间线
+        ├── 当前项目与恢复点（有依据才显示）
+        ├── 判断依据（按需展开）
+        ├── Agent 设置（上下文动作，不是全局设置）
+        └── 实时倾听栏（仅倾听时出现）
+```
+
+左侧全局导航仍然负责：Agent、数据、我的习惯、按键设置、语音设置以及软件设置。首页不再出现“现在 / 我的习惯 / 设置”这组本地标签。
+
+## 5. 页面结构
+
+### 5.1 页面头部：当前工作身份
+
+头部只表达当前 Agent 工作身份，不做品牌欢迎页：
+
+```text
+Agent
+Cursor · voice-pilot
+当前会话：今天 14:32 开始 · 进行中 / 已暂停 / 已结束
+```
+
+项目、前台应用、Agent 名称和会话状态均来自快照。缺少哪一项就隐藏该项或显示“未确认”，不能用固定文案填充。
+
+头部动作最多保留一个主要动作，例如“继续工作”或“查看会话”；其余动作使用次级按钮或溢出菜单。
+
+### 5.2 当前工作与注意事项
+
+这是页面顶部的工作状态区，不是泛化的 AI 建议卡片。只展示用户现在需要知道的事实：
+
+- Agent 最近一次实际动作；
+- 当前会话是否等待用户；
+- 是否存在可恢复的检查点；
+- 是否发生需要用户确认的项目切换、输入目标变化或来源不确定。
+
+没有待处理事项时，这一段可以收缩成一句状态，不制造空任务。
+
+### 5.3 工作记录时间线
+
+历史是首页主区域，采用连续的时间线而非多个卡片网格。每条记录包含：
+
+- 时间；
+- 来源应用 / 项目 / Agent；
+- 用户输入或 Agent 行为的简短摘要；
+- 结果：完成、暂停、等待用户、失败或仅记录；
+- 可执行动作：继续、查看详情、重新打开项目。
+
+时间线至少显示最近几条真实记录，并提供“查看全部 Agent 记录”入口跳转到既有 Agent 数据/历史入口。没有记录时要说明“还没有 Agent 工作记录”，同时提供一个真实可执行的开始入口，而不是渲染空白卡片。
+
+### 5.4 项目上下文与恢复点
+
+项目记忆不作为独立首页标签。只有当当前会话存在项目和恢复点时，在时间线附近显示一个轻量上下文段：
+
+```text
+上次停在
+voice-pilot · Agent 会话 14:32
+已完成：确认首页定位
+待继续：整理历史记录的呈现方式
+[继续这项工作]
+```
+
+这段内容服务于“回来继续工作”，而不是展示所有记忆。完整项目记忆进入 Agent 数据或会话详情。
+
+### 5.5 判断依据
+
+“查看判断依据”不能再是原始键值表。展开后使用可读的来源链：
+
+```text
+前台应用 Cursor
+      ↓
+工作区 voice-pilot
+      ↓
+当前 Agent Cursor
+      ↓
+输入优先发送到 Cursor
+```
+
+每个节点显示来源、更新时间和状态标签：已确认 / 推断 / 不可用。链条底部说明“这条依据影响了什么”，例如“决定本次输入发送到 Cursor”。原始字段和诊断信息仍放在左侧“数据”入口。
+
+### 5.6 实时倾听栏
+
+只有正在倾听时才显示底部实时栏，并使用整页底部的稳定区域：
+
+```text
+正在倾听 · Cursor
+“我想把首页的历史记录放到主区域……”
+实时识别中……
+[暂停] [结束并查看] [取消]
+快捷键：Ctrl+Shift+D
+```
+
+快捷键必须读取真实配置；没有配置时显示“快捷键未设置”，不得硬编码一个无效快捷键。实时文本应持续更新，结束后进入一条新的 Agent 工作记录或待确认草稿。未倾听时，右下角只保留真实存在的全局入口或隐藏，不显示无效的“倾听中”假状态。
+
+## 6. 状态模型
+
+首页至少支持四种数据状态，但它们共享同一信息架构：
+
+| 状态             | 视觉重点        | 必须保留          |
+| -------------- | ----------- | ------------- |
+| 安静 quiet       | 当前身份与最近记录   | 历史、项目、来源状态    |
+| 需要注意 attention | 一条需要用户处理的事项 | 历史和上下文        |
+| 返回工作 return    | 上次停点与继续动作   | 最近会话记录        |
+| 数据受限 degraded  | 缺失原因与可恢复动作  | 已知的历史，不伪造未知数据 |
+
+安静模式不能通过大面积空白表达。数据受限时要区分“尚未获取”“来源不可用”“尚未确认”和“确实没有记录”。
+
+## 7. 数据契约方向
+
+页面消费一个统一的 `AgentHomeSnapshot`，而不是从多个 UI 组件各自猜测状态：
+
+```text
+AgentHomeSnapshot {
+  currentProject
+  activeSession
+  attention
+  pulse { dynamic, help, health, quota, progress }
+  recentEvents[]
+  recentSessions[]
+  resumeCheckpoint
+  contextEvidence[]
+  inputState
+  agentSettingsSummary
+  freshness
+}
+```
+
+`pulse` 是首屏五信号；`contextEvidence` 默认不渲染在首页，仅健康异常时展示或跳转「数据」。
+
+每个字段必须带有来源、时间和可信度或可用性状态。页面只对真实快照做呈现，不能因为组件需要内容而创建假数据。
+
+数据职责边界：
+
+- Agent 首页：当前工作、工作记录、恢复点、与当前判断相关的上下文；
+- Agent 数据入口：完整历史、原始事件、诊断、连接和数据源；
+- 我的习惯：用户行为偏好、场景规则和绑定关系；
+- OneTone 设置：按键、语音、摄像头、声音、通用设置等软件配置；
+- Agent 设置：当前 Agent 的提供方、目标和 Agent 特有行为，作为 Agent 页面内的次级动作进入。
+
+## 8. 视觉与交互原则
+
+1. 保留现有 OneTone 左侧导航，不另起一套顶部应用导航。
+2. 主线只有一条：当前工作身份 → 需要注意 → 工作记录 → 恢复动作。
+3. 时间线优先于卡片；能用连续内容表达，就不拆成卡片墙。
+4. 右侧空间用于上下文、来源链或详情，不放无关的连接状态和装饰性统计。
+5. 首屏最多一个主要 CTA；次级动作靠近对应记录或通过溢出菜单呈现。
+6. 不使用泛化的 AI 光晕、机器人装饰、无依据的百分比和“智能建议”占位。
+7. 重要状态依赖文字与结构，不只依赖颜色或图标。
+8. 文字和按钮必须描述真实动作；无效快捷键、无效入口和虚假的实时状态不得出现。
+
+## 9. 原型比较方向
+
+下一步原型仍做四个，但比较的是同一 Agent 工作记录架构下的主次关系，而不是四套孤立产品壳：
+
+1. **时间线优先**：最近工作记录占最大视觉权重，适合高频回看和追溯。
+2. **当前会话优先**：当前工作与实时状态占最大权重，历史作为连续记录承接。
+3. **恢复工作优先**：围绕“上次停在哪里、现在继续什么”组织首屏。
+4. **待处理优先**：先突出确实需要用户处理的事项，无事项时自然回到历史时间线。
+
+四个原型必须共用：现有左侧 Agent 入口、时间线历史、项目/会话身份、判断依据展开、真实快捷键占位和实时倾听栏。不得再次加入“我的习惯”“设置”“连接与数据”三个重复一级入口。
+
+## 10. 验收标准
+
+- 用户能从现有左侧导航明确知道自己在 Agent 入口内，而不是进入了另一个应用。
+- 首屏不空白，且第一眼能看见当前 Agent 工作身份与最近工作记录。
+- 用户不需要进入单独的“历史”标签即可看到最近记录。
+- “我的习惯”和 OneTone 设置不会在首页重复出现。
+- Agent 设置与软件设置有明确名称、位置和职责边界。
+- 判断依据能看懂来源链，并知道它影响了什么。
+- 倾听时能看到实时文字、真实控制动作和真实快捷键；未倾听时不显示假状态。
+- 没有数据时能看见缺失原因和下一步，而不是大片空白或默认数据。
+- 页面没有与当前 Agent 工作无关的连接与数据主模块。
+- 四个原型能比较优先级与交互行为，最终可选出一个进入实现规划。
+
+## 11. 阶段边界
+
+本规格批准前，不修改 `src/`、`src-tauri/` 或现有生产原型。用户批准本规格后，下一步才写原型制作计划，再制作四个 HTML 原型并进行对比评审。
+
+---
+
+## 12. 稳定数据链 × 用户需求优先级（P0–P2）
+
+首页只能消费**已能稳定产出**的信号。对用户说话用**小白话术**；字段名、探针、lifecycle 只留在工程层。
+
+### 12.-1 小白心里的 Agent（话术层，必须先对齐）
+
+小白不理解「会话 / 探针 / checkpoint / Soft Pad」。他们心里的 Agent 更像：
+
+> 一个会帮我干活的帮手。我只想知道：它在忙吗？要不要我点一下？出没出事？上次帮我做了啥？
+
+| 小白会问的   | 首页上怎么说（对用户）                      | 工程师映射到（不对用户说）                               |
+| ------- | -------------------------------- | ------------------------------------------- |
+| 它在忙吗？   | **它现在** · 正在帮你 / 在等你 / 先停住了 / 闲着 | attention / session.status / homeFocus.work |
+| 要我点一下吗？ | **要你吗** · 要你拍板 / 不用管 / 暂时接不上     | waiting / matchKind / checkpoint            |
+| 出问题了吗？  | **顺不顺** · 顺利 / 要你点一下 / 暂时连不上     | probe/sync + failed + project               |
+| 还能用多久？  | **用量**（默认进「数据」，首页不硬编）            | overlay remainingPercent 等弱信号               |
+| 做到哪了？   | **做到哪** · 一句话下一步（有才显示）           | checkpoint.nextAction / currentTask         |
+| 最近帮过我啥？ | **最近帮过** · 短列表，人话状态句             | recentEvents → 归类                           |
+| 我现在干嘛？  | **你现在可以** · 一个大按钮                | 上列派生 CTA                                    |
+
+禁止出现在首屏文案里的词（除非进「数据 / 高级」）：探针、同步、lifecycle、checkpoint、event、sessionId、observed、schema、consent、投影、归类键。
+
+### 12.0 需求 × 稳定供给 · 对照清单
+
+#### A. 用户要求（按小白问题写）
+
+| # | 小白问题    | 首页标签  | 能否进首页            |
+| - | ------- | ----- | ---------------- |
+| 1 | 它在忙吗？   | 它现在   | 要稳妥源             |
+| 2 | 要我点一下吗？ | 要你吗   | 要稳妥源             |
+| 3 | 出问题了吗？  | 顺不顺   | 要稳妥源             |
+| 4 | 还能用多久？  | 用量    | P2，默认进数据         |
+| 5 | 做到哪了？   | 做到哪   | 有 checkpoint 才显示 |
+| 6 | 最近帮过我啥？ | 最近帮过  | 状态归类，非正文摘要       |
+| 7 | 我现在干嘛？  | 你现在可以 | 由 1–3 派生一个 CTA   |
+
+#### B. Agent / 系统今天能稳定获取的数据（供给侧 · 工程）
+
+| 源                          | 稳定字段（camelCase）                                                                                 | 出口                                      | 门控 / 缺口                                       |
+| -------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------- | --------------------------------------------- |
+| Soft Pad `agent_attention` | `Working` / `NeedsInput` / `Complete` / `Error` / `Idle`（TTL 内）                                 | 内存 store + `note_attention` → lifecycle | 偏 Cursor；TTL 外不可用                             |
+| `agent_sessions`           | `sessionId` `provider` `title` `status` `isActive` `updatedAt` `projectMatch` `matchConfidence` | `cmd_agent_home_snapshot`               | `status` 仅 lifecycle 写入才可信；observed 不改 status |
+| `agent_events`             | `eventId` `eventType` `eventClass` `summary` `timestamp` `sessionId`                            | 同上 / `cmd_agent_session_events`         | observed 多为英文模板；**不读对话正文**                    |
+| `provider_cursors`         | `probeStatus` → `syncStatus` `staleAgeMs`                                                       | snapshot                                | consent_off / read_locked / schema_unknown    |
+| `projects`                 | `displayName` `matchKind` `userConfirmed`                                                       | snapshot / confirm IPC                  | 未确认时 unknown/probable                         |
+| `agent_checkpoints`        | `currentTask` `nextAction` `pendingQuestions`                                                   | snapshot                                | 有写入才有；非自动进度条                                  |
+| Soft Pad overlay usage     | `remainingPercent` `localTodayRequests`…                                                        | overlay → **数据页**                       | 未进 home snapshot；非账单级额度                       |
+| Home Focus                 | `work.status` `freshness` `actions[]`                                                           | `cmd_home_focus_snapshot`               | 合成投影                                          |
+
+#### C. 匹配结果
+
+| 小白问题    | 等级    | 稳妥字段 → 人话                       | 禁止         |
+| ------- | ----- | ------------------------------- | ---------- |
+| 它在忙吗？   | P0    | status → 正在帮你 / 在等你 / 先停住了 / 闲着 | 文件级细节      |
+| 要我点一下吗？ | P0    | waiting / 项目未确认 → 要你拍板 / 先认一下项目 | 无源智能建议     |
+| 出问题了吗？  | P0    | probe/error → 顺利 / 暂时连不上        | 健康度百分比装饰   |
+| 还能用多久？  | P2    | 不上首页                            | 假「额度余 62%」 |
+| 做到哪了？   | P0 定性 | nextAction 原文或「还没记下下一步」         | 3/5 假进度    |
+| 最近帮过我啥？ | P0 骨架 | events 归类成人话                    | 英文观测句直出    |
+| 我现在干嘛？  | P0    | 一个按钮：去拍板 / 接着帮我 / 打开帮手键盘        | 一堆并列主按钮    |
+
+#### D. 结论
+
+- **能撑小白首页的**：它在忙吗、要不要我点、顺不顺、做到哪（有记下时）、最近帮过、你现在可以。
+- **不能当首页事实的**：用量规划、分母进度、对话正文级「帮你做了什么」。
+- **工程词只留在规格 B 与数据页**；首屏只说帮手在干嘛。
+
+```text
+[A] Soft Pad / agent_attention
+    Working | NeedsInput | Complete | Error | Idle
+         │ note_attention / bridge
+         ▼
+[B] lifecycle → agent_events (onetone_lifecycle)
+    + agent_sessions.status  (running|waiting_approval|paused|completed|failed|…)
+
+[C] Cursor 本地库扫描 cursor_adapter
+    （不读对话正文）
+         │ append_observed_event
+         ▼
+    agent_events (provider_observed)
+    + agent_sessions 候选 / is_active / title / project_match
+
+[D] UI / IPC checkpoint·memory
+    agent_checkpoints (currentTask, nextAction, pendingQuestions, changedFiles)
+    memory_records (observation|decision|gotcha|task|…)
+
+[E] 项目解析 project + user_confirmed
+    projects / ProjectIdentity
+
+读出口（首页应消费的投影，不是原始表）：
+  cmd_agent_home_snapshot  → AgentHomeSnapshot
+  cmd_home_focus_snapshot  → HomeFocusSnapshot（work.status / freshness / actions）
+  cmd_agent_session_events → 分页 events
+  agent_attention.primary_state_for → 实时态（TTL 内有效）
+```
+
+约束：
+
+- `provider_observed` **不改** `session.status`；生命周期态只认 lifecycle / attention。
+- 活动指标受 consent 门控（`consent_off` 时只见缓存）。
+- Cursor 事件 summary 现多为英文模板（`User turn observed` 等），前端已有一层中文映射（`now-agent-home.js`），但仍是**状态句**，不是「帮你做了什么」结果句。
+
+### 12.2 今天能稳定产出的原子信号
+
+| 原子字段 / 信号                                                      | 链条                    | 稳定条件                       | 可支撑的用户问题           |
+| -------------------------------------------------------------- | --------------------- | -------------------------- | ------------------ |
+| `activeSession.status` + attention TTL                         | B + A                 | Soft Pad 有信号或 lifecycle 已写 | 动态、能否帮、是否正常        |
+| `HomeFocusWork.status` = running|waiting|error|resumable|idle… | A+B+C+E               | `cmd_home_focus_snapshot`  | 同上（推荐首屏投影）         |
+| `syncStatus` / `probeStatus` / `staleAgeMs`                    | C → provider_cursors  | 每次 snapshot                | 是否正常（来源健康）         |
+| `project.displayName` + `matchKind` / `userConfirmed`          | E                     | 有路径或确认                     | 身份；异常时「要你处理」       |
+| `recentEvents[]`（type/class/summary/ts）                        | B+C                   | 有会话                        | 「帮过你」骨架（需投影，勿直出英文） |
+| `recentSessions[]` title / updatedAt                           | C                     | 扫描到 composer               | 最近做过什么（弱）          |
+| `checkpoint.currentTask` / `nextAction` / `pendingQuestions`   | D                     | 有人创建过 checkpoint           | 进度（定性）、可继续帮你       |
+| `memories[]`                                                   | D                     | 有写入                        | 次级上下文，不进首屏主线       |
+| 倾听 transcript / hotkey                                         | 语音运行时（非 agent_memory） | 正在听                        | 实时动态（旁路）           |
+
+### 12.3 今天不能稳定产出（禁止伪造成首页事实）
+
+| 缺口               | 原因                                   | 在需求里暂放             |
+| ---------------- | ------------------------------------ | ------------------ |
+| 额度余量 / 规划（quota） | 无 provider 账单或计划 API 入库              | P2                 |
+| 进度 3/5、完成率 %     | 无任务分解事实源；checkpoint 只有定性 next        | P2（P0 只用定性「下一步」）   |
+| 「帮你理清首页…」级结果摘要   | 事件 summary 是观测/状态模板，不读正文             | P1 投影规则 → 远期可加摘要管道 |
+| 费用 / 效率 / 回合大盘   | 非 agent_memory 契约；属「数据」页             | 不进 Agent 首页 P0     |
+| 跨 Agent 统一实时态    | attention 已分 AgentKind，首页投影仍偏 Cursor | P1 扩面              |
+
+### 12.4 用户需求 × 优先级
+
+| 用户问题 | P0（有稳妥源就上首页） | P1（投影 / 归类层） | P2（要新源才做） |
+
+
+|---|---|---|---|
+| **动态** | `work.status` 或 session+attention → 进行中 / 等你定 / 已暂停 / 待命 | 多 Agent 合并；标题用 `session.title` 或 `checkpoint.currentTask` | 流式工具步骤明细 |
+| **能否帮你** | waiting →「差你一句确认」；resumable+exact 项目 →「能接着帮」；idle+consent 正常 →「开口就能帮」；degraded →「暂时接不住」 | CTA 与 Soft Pad 动作绑定 | 主动建议下一项任务 |
+| **是否正常** | probe/sync 健康；error/failed；project unknown/probable | 诊断链默认进「数据」，仅 degraded 露一条 | 更深 Cursor schema 诊断 UI |
+| **额度规划** | **不上首页**（无源） | — | 接 provider 用量后再进脉冲条 |
+| **进度** | 有 checkpoint：展示 `currentTask` / `nextAction`（定性） | 无 checkpoint 时隐藏，不写「—%」 | 真 · 分母进度、用量规划 |
+| **帮过你** | 最近 N 条 `recentEvents`，按 `eventType`/`eventClass` **归类**成中文状态行；lifecycle 优先于 observed | 去重 session_discovered/updated；合并同会话连续观测；映射表见下 | LLM/规则生成结果向摘要 |
+
+### 12.5 「帮过你」归类表（P0 必须落地的投影）
+
+原始 `eventType` → 首页类别（category）→ 默认文案（无更好摘要时）：
+
+| eventType | category | 默认文案 | 结果态 hint |
+|---|---|---|---|
+| `task_started` / `task_resumed` | dynamic | Agent 开始/继续处理 | 进行中 |
+| `waiting_approval` | need_you | Agent 在等你确认 | 等你定 |
+| `task_paused` | paused | 工作已暂停 | 已暂停 |
+| `task_completed` | done | Agent 已完成一段工作 | 完成 |
+| `task_failed` | problem | Agent 碰到问题 | 异常 |
+| `session_discovered` | weak | 发现了新的对话 | 记录 |
+| `session_updated` | weak | 对话有了新进展 | 记录 |
+| `user_turn_observed` | weak | 你刚发了一条消息 | 记录 |
+
+规则：
+
+1. **P0 时间线**：同会话内 lifecycle 类事件优先展示；连续 weak observed 可折叠为一条「这段时间有活动」。
+2. **禁止**把英文 raw `summary` 直接上首页；走映射表；已有更好文案（checkpoint / memory）时替换默认句。
+3. **归类键**供后续筛选：`category` ∈ {dynamic, need_you, paused, done, problem, weak}；首页默认滤掉过旧 weak，或压到「查看全部」。
+4. **动作**：`need_you` → 去决定；`paused`+checkpoint → 继续；其余 → 查看（进数据/详情）。
+
+### 12.6 首页脉冲条字段契约（由稳妥源合成，不是新表）
+
+```text
+pulse.dynamic  ← HomeFocusWork.status | attention | session.status
+pulse.help     ← 派生自 dynamic + project.matchKind + checkpoint?
+pulse.health   ← probe/sync + error/failed + project 确认态
+pulse.quota    ← null（P2；UI 隐藏或「数据」入口）
+pulse.progress ← checkpoint.nextAction | currentTask | null
+```
+
+`null` 字段不渲染占位百分比。原型 fixture 仅用于审阅布局。
+
+### 12.7 实现顺序（数据侧）
+
+1. **P0（已落地投影模块）**：`src/js/features/agent/agent-home-pulse.js` — `projectPulse` + `projectHelpedYou` + `fromHomeSnapshot`；原型与 `now-agent-home.taskFromHomeSnapshot` 已接入。额度字段恒为 `null`，进度只取 checkpoint 文案。
+2. **P1（原型实况已接）**：工作记录原型 `?live=1` / 「实况快照」→ `cmd_agent_home_snapshot` → `fromHomeSnapshot`；无 IPC 回退 fixture。下一步：生产 Agent 页同一入口换掉 fixture 壳。
+3. **P2**：额度源、结果向摘要管道；未就绪前规格与原型不得暗示已有。

@@ -181,7 +181,11 @@ fn chrono_lite_parse(s: &str) -> Result<u64, ()> {
     }
     let mut frac_ms: u64 = 0;
     if !frac_s.is_empty() {
-        let mut digits: String = frac_s.chars().filter(|c| c.is_ascii_digit()).take(3).collect();
+        let mut digits: String = frac_s
+            .chars()
+            .filter(|c| c.is_ascii_digit())
+            .take(3)
+            .collect();
         while digits.len() < 3 {
             digits.push('0');
         }
@@ -195,7 +199,9 @@ fn chrono_lite_parse(s: &str) -> Result<u64, ()> {
     if utc_secs < 0 {
         return Err(());
     }
-    Ok((utc_secs as u64).saturating_mul(1000).saturating_add(frac_ms))
+    Ok((utc_secs as u64)
+        .saturating_mul(1000)
+        .saturating_add(frac_ms))
 }
 
 fn parse_rfc3339_offset(time_and_off: &str) -> Result<(&str, i64), ()> {
@@ -344,9 +350,13 @@ fn detect_composer_data(conn: &Connection, headers: &HeadersLayout) -> Option<Co
     let key = format!("{prefix}{sample_id}");
     let data = kv_get(conn, "cursorDiskKV", &key)?;
     let obj = data.as_object()?;
-    let headers_field = ["fullConversationHeadersOnly", "conversationHeaders", "headers"]
-        .into_iter()
-        .find(|f| obj.get(*f).and_then(|x| x.as_array()).is_some())?;
+    let headers_field = [
+        "fullConversationHeadersOnly",
+        "conversationHeaders",
+        "headers",
+    ]
+    .into_iter()
+    .find(|f| obj.get(*f).and_then(|x| x.as_array()).is_some())?;
     let hdrs = obj.get(headers_field)?.as_array()?;
     let sample = hdrs.iter().find_map(|h| h.as_object())?;
     let bubble_id_field = ["bubbleId", "id"]
@@ -453,13 +463,21 @@ fn session_ts(c: &Value, layout: &HeadersLayout) -> u64 {
     0
 }
 
-fn bubble_created_at(conn: &Connection, layout: &BubbleLayout, cid: &str, bid: &str) -> Option<u64> {
+fn bubble_created_at(
+    conn: &Connection,
+    layout: &BubbleLayout,
+    cid: &str,
+    bid: &str,
+) -> Option<u64> {
     let key = format!("{}{cid}:{bid}", layout.key_prefix);
     let v = kv_get(conn, &layout.table, &key)?;
     as_ms(v.get(&layout.created_at_field)?)
 }
 
-pub fn aggregate_activity(conn: &Connection, schema: &SchemaBundle) -> Result<ActivityTotals, String> {
+pub fn aggregate_activity(
+    conn: &Connection,
+    schema: &SchemaBundle,
+) -> Result<ActivityTotals, String> {
     let index = kv_get(conn, &schema.headers.table, &schema.headers.key)
         .ok_or_else(|| "headers missing".to_string())?;
     let list = index
@@ -486,10 +504,7 @@ pub fn aggregate_activity(conn: &Connection, schema: &SchemaBundle) -> Result<Ac
         if active_today {
             totals.sessions_today = totals.sessions_today.saturating_add(1);
         }
-        let cid = match c
-            .get(&schema.headers.id_field)
-            .and_then(|x| x.as_str())
-        {
+        let cid = match c.get(&schema.headers.id_field).and_then(|x| x.as_str()) {
             Some(s) => s,
             None => continue,
         };
@@ -624,7 +639,8 @@ pub fn refresh_once() {
                         "refresh: schema detect failed (keeping prior snapshot if ready)",
                     );
                     // Don't clobber a recent ready pill with a false "结构无法识别".
-                    if let prev = agent_usage::snapshot(crate::soft_pad_runtime::AgentKind::Cursor) {
+                    if let prev = agent_usage::snapshot(crate::soft_pad_runtime::AgentKind::Cursor)
+                    {
                         if prev.status == "ready" && prev.source == SRC_CURSOR_LOCAL {
                             return;
                         }
@@ -647,10 +663,7 @@ pub fn refresh_once() {
                     t.turns_today, t.sessions_today, t.active_ms
                 ),
             );
-            agent_usage::put_snapshot(
-                crate::soft_pad_runtime::AgentKind::Cursor,
-                ready_snap(&t),
-            );
+            agent_usage::put_snapshot(crate::soft_pad_runtime::AgentKind::Cursor, ready_snap(&t));
         }
         Err(e) => {
             agent_usage::put_snapshot(

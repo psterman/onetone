@@ -83,8 +83,11 @@ pub fn cmd_codex_status_lights_set(
 
     let mut loopback_error: Option<String> = None;
     if enabled {
-        match crate::codex_micro_protocol_server::start(app.clone(), Arc::clone(state.inner()), None)
-        {
+        match crate::codex_micro_protocol_server::start(
+            app.clone(),
+            Arc::clone(state.inner()),
+            None,
+        ) {
             Ok(_) => {}
             Err(e) => {
                 loopback_error = Some(classify_loopback_error(&e));
@@ -148,8 +151,7 @@ pub fn cmd_codex_hook_setup_status(
     let probe_script = resolve_probe_script_path();
     let probe_configured = hooks_file_exists
         && (hooks_raw.contains("codex-hook-probe.js")
-            || (!probe_script.is_empty()
-                && hooks_raw.contains(&probe_script.replace('\\', "/"))));
+            || (!probe_script.is_empty() && hooks_raw.contains(&probe_script.replace('\\', "/"))));
 
     let app_view = crate::codex_app_state::snapshot();
     let pad = crate::pad_status::snapshot();
@@ -157,7 +159,11 @@ pub fn cmd_codex_hook_setup_status(
     let srv = crate::codex_micro_protocol_server::status();
     let app_state_enabled = {
         let cfg = state.cfg.lock();
-        if let Some(id) = mapping_id.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        if let Some(id) = mapping_id
+            .as_ref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+        {
             cfg.mappings
                 .iter()
                 .find(|m| m.id == id)
@@ -174,7 +180,11 @@ pub fn cmd_codex_hook_setup_status(
     } else if (pad.source_enum() == crate::pad_status::PadSource::Hook
         || app_view.last_source == "codex_hook"
         || app_view.last_source == "claude_hook")
-        && (!pad.last_event.as_ref().map(|e| e.is_empty()).unwrap_or(true)
+        && (!pad
+            .last_event
+            .as_ref()
+            .map(|e| e.is_empty())
+            .unwrap_or(true)
             || !app_view.last_event.is_empty())
     {
         "connected"
@@ -185,10 +195,7 @@ pub fn cmd_codex_hook_setup_status(
     let app_state_url = if srv.url.is_empty() {
         "http://127.0.0.1:8796/api/codex-app/state".into()
     } else {
-        format!(
-            "{}/api/codex-app/state",
-            srv.url.trim_end_matches('/')
-        )
+        format!("{}/api/codex-app/state", srv.url.trim_end_matches('/'))
     };
 
     CodexHookSetupStatus {
@@ -344,10 +351,8 @@ pub fn cmd_codex_hook_install_confirm() -> CodexHookWriteResult {
         };
     }
     // Codex 0.142+: root may only contain "hooks"
-    let draft: serde_json::Value =
-        serde_json::from_str(&build_hooks_draft_json(&probe)).unwrap_or_else(|_| {
-            serde_json::json!({ "hooks": {} })
-        });
+    let draft: serde_json::Value = serde_json::from_str(&build_hooks_draft_json(&probe))
+        .unwrap_or_else(|_| serde_json::json!({ "hooks": {} }));
     let Some(draft_hooks) = draft.get("hooks").and_then(|h| h.as_object()) else {
         return CodexHookWriteResult {
             ok: false,

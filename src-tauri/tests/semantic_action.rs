@@ -16,7 +16,10 @@ use onetone::semantic_action::{
 #[test]
 fn soft_pad_is_formal_channel() {
     assert!(ALL_CHANNELS.iter().any(|c| *c == ActionChannel::SoftPad));
-    assert!(public_catalog_dto().channels.iter().any(|c| *c == "softPad"));
+    assert!(public_catalog_dto()
+        .channels
+        .iter()
+        .any(|c| *c == "softPad"));
 }
 
 #[test]
@@ -100,8 +103,8 @@ fn projects_four_storages_including_camera_local() {
     if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == mid) {
         m.agent_bindings = vec![
             AgentBinding {
-            action_instance_id: String::new(),
-            action_args: None,
+                action_instance_id: String::new(),
+                action_args: None,
                 slot_id: "pushToTalk".into(),
                 action_id: "startDictation".into(),
                 trigger_type: "key".into(),
@@ -111,8 +114,8 @@ fn projects_four_storages_including_camera_local() {
                 activation_scope: "global".into(),
             },
             AgentBinding {
-            action_instance_id: String::new(),
-            action_args: None,
+                action_instance_id: String::new(),
+                action_args: None,
                 slot_id: "cancel".into(),
                 action_id: "cancel".into(),
                 trigger_type: "voice".into(),
@@ -149,9 +152,7 @@ fn projects_four_storages_including_camera_local() {
     );
     assert!(
         views.iter().any(|v| {
-            v.source_storage == "agentBindings"
-                && v.channel == "voice"
-                && !v.binding_ref.is_empty()
+            v.source_storage == "agentBindings" && v.channel == "voice" && !v.binding_ref.is_empty()
         }),
         "{views:?}"
     );
@@ -173,9 +174,7 @@ fn projects_four_storages_including_camera_local() {
     );
     assert!(
         views.iter().any(|v| {
-            v.source_storage == "codexMicroPad"
-                && v.channel == "softPad"
-                && v.binding_ref == "D1"
+            v.source_storage == "codexMicroPad" && v.channel == "softPad" && v.binding_ref == "D1"
         }),
         "{views:?}"
     );
@@ -238,10 +237,19 @@ fn pending_confirmation_lifecycle() {
 fn camera_route_pending_before_channel_gate() {
     // Camera bindable + Pending disposition (requiresSecondChannelFrom), not direct execute.
     assert!(camera_pending_eligible(ActionChannel::Camera, "input.send"));
-    assert!(camera_pending_eligible(ActionChannel::Camera, "agent.approve"));
+    assert!(camera_pending_eligible(
+        ActionChannel::Camera,
+        "agent.approve"
+    ));
     assert!(!camera_pending_eligible(ActionChannel::Key, "input.send"));
-    assert!(!camera_pending_eligible(ActionChannel::Voice, "agent.approve"));
-    assert!(!camera_pending_eligible(ActionChannel::Camera, "input.start"));
+    assert!(!camera_pending_eligible(
+        ActionChannel::Voice,
+        "agent.approve"
+    ));
+    assert!(!camera_pending_eligible(
+        ActionChannel::Camera,
+        "input.start"
+    ));
     let send = semantic_meta_by_id("input.send").unwrap();
     let approve = semantic_meta_by_id("agent.approve").unwrap();
     assert!(channel_allowed(send, ActionChannel::Camera));
@@ -263,7 +271,10 @@ fn camera_cannot_complete_pending_confirm() {
         take_valid(&row.id, "camera").unwrap_err(),
         "camera_cannot_complete_confirmation"
     );
-    assert!(peek_public(&row.id).is_some(), "camera self-confirm leaves row");
+    assert!(
+        peek_public(&row.id).is_some(),
+        "camera self-confirm leaves row"
+    );
     assert!(take_valid(&row.id, "voice").is_ok());
 }
 
@@ -301,12 +312,8 @@ fn input_start_provider_scope_current_target() {
 
     // Soft Pad lane wins when no explicit mapping.
     let lane_mid = mid.clone();
-    let t2 = resolve_input_start_target_from_parts(
-        &cfg,
-        None,
-        Some((AgentKind::Claude, lane_mid)),
-    )
-    .unwrap();
+    let t2 = resolve_input_start_target_from_parts(&cfg, None, Some((AgentKind::Claude, lane_mid)))
+        .unwrap();
     assert_eq!(t2.provider_id, "claude");
 }
 
@@ -321,10 +328,18 @@ fn catalog_b0_meta_fields_stable() {
     let send = dto.entries.iter().find(|e| e.id == "input.send").unwrap();
     assert_eq!(send.requires_second_channel_from, vec!["camera"]);
     assert_eq!(send.available_when, vec!["dictating"]);
-    let approve = dto.entries.iter().find(|e| e.id == "agent.approve").unwrap();
+    let approve = dto
+        .entries
+        .iter()
+        .find(|e| e.id == "agent.approve")
+        .unwrap();
     assert_eq!(approve.category, "decision");
     assert_eq!(approve.requires_second_channel_from, vec!["camera"]);
-    let overlay = dto.entries.iter().find(|e| e.id == "overlay.toggle").unwrap();
+    let overlay = dto
+        .entries
+        .iter()
+        .find(|e| e.id == "overlay.toggle")
+        .unwrap();
     assert_eq!(overlay.provider_scope, "none");
     assert_eq!(overlay.category, "system");
 }
@@ -354,7 +369,10 @@ fn app_open_and_shortcut_catalogue_contract() {
     assert_eq!(open_e.risk, "safe");
     let short_e = dto.entries.iter().find(|e| e.id == "app.shortcut").unwrap();
     assert_eq!(short_e.risk, "confirm");
-    assert!(!short_e.channels.iter().any(|c| c == "voice" || c == "camera"));
+    assert!(!short_e
+        .channels
+        .iter()
+        .any(|c| c == "voice" || c == "camera"));
     assert!(LAYER1_ACTION_IDS.contains(&"app.open"));
     assert!(LAYER1_ACTION_IDS.contains(&"app.shortcut"));
 }
@@ -377,9 +395,11 @@ fn pending_unique_match_and_scope() {
         .unwrap()
         .expect("unique");
     assert_eq!(taken.action_id, "input.send");
-    assert!(take_unique_match("input.send", "key", Some("m1"), Some("codex"))
-        .unwrap()
-        .is_none());
+    assert!(
+        take_unique_match("input.send", "key", Some("m1"), Some("codex"))
+            .unwrap()
+            .is_none()
+    );
 }
 
 #[test]
@@ -482,8 +502,19 @@ fn claude_cursor_layer2_basic_bindable_no_fallback() {
         m.agent_provider_id = "claude".into();
     }
     let opts = semantic_action_options(&cfg, &mid, ActionChannel::Key, false).unwrap();
-    assert!(opts.iter().find(|o| o.action_id == "agent.focus").unwrap().bindable);
-    assert!(!opts.iter().find(|o| o.action_id == "agent.interrupt").unwrap().bindable);
+    assert!(
+        opts.iter()
+            .find(|o| o.action_id == "agent.focus")
+            .unwrap()
+            .bindable
+    );
+    assert!(
+        !opts
+            .iter()
+            .find(|o| o.action_id == "agent.interrupt")
+            .unwrap()
+            .bindable
+    );
     assert_eq!(
         opts.iter()
             .find(|o| o.action_id == "agent.interrupt")
@@ -492,9 +523,20 @@ fn claude_cursor_layer2_basic_bindable_no_fallback() {
             .as_deref(),
         Some("provider_unsupported")
     );
-    assert!(opts.iter().find(|o| o.action_id == "agent.approve").unwrap().bindable);
+    assert!(
+        opts.iter()
+            .find(|o| o.action_id == "agent.approve")
+            .unwrap()
+            .bindable
+    );
     let voice = semantic_action_options(&cfg, &mid, ActionChannel::Voice, false).unwrap();
-    assert!(!voice.iter().find(|o| o.action_id == "agent.status").unwrap().bindable);
+    assert!(
+        !voice
+            .iter()
+            .find(|o| o.action_id == "agent.status")
+            .unwrap()
+            .bindable
+    );
     assert_eq!(
         voice
             .iter()
@@ -510,16 +552,40 @@ fn claude_cursor_layer2_basic_bindable_no_fallback() {
         m.agent_provider_id = "cursor".into();
     }
     let opts2 = semantic_action_options(&cfg, &mid, ActionChannel::Key, false).unwrap();
-    assert!(opts2.iter().find(|o| o.action_id == "agent.focus").unwrap().bindable);
-    assert!(opts2.iter().find(|o| o.action_id == "agent.interrupt").unwrap().bindable);
-    assert!(!opts2.iter().find(|o| o.action_id == "session.new").unwrap().bindable);
+    assert!(
+        opts2
+            .iter()
+            .find(|o| o.action_id == "agent.focus")
+            .unwrap()
+            .bindable
+    );
+    assert!(
+        opts2
+            .iter()
+            .find(|o| o.action_id == "agent.interrupt")
+            .unwrap()
+            .bindable
+    );
+    assert!(
+        !opts2
+            .iter()
+            .find(|o| o.action_id == "session.new")
+            .unwrap()
+            .bindable
+    );
 
     if let Some(m) = cfg.mappings.iter_mut().find(|m| m.id == mid) {
         m.app_target_id = "".into();
         m.agent_provider_id = "nope".into();
     }
     let opts3 = semantic_action_options(&cfg, &mid, ActionChannel::Key, false).unwrap();
-    assert!(!opts3.iter().find(|o| o.action_id == "agent.focus").unwrap().bindable);
+    assert!(
+        !opts3
+            .iter()
+            .find(|o| o.action_id == "agent.focus")
+            .unwrap()
+            .bindable
+    );
     assert_eq!(
         opts3
             .iter()
@@ -542,11 +608,25 @@ fn respond_continue_options_and_risk_gate() {
         m.agent_provider_id = "cursor".into();
     }
     let opts = semantic_action_options(&cfg, &mid, ActionChannel::SoftPad, false).unwrap();
-    let respond = opts.iter().find(|o| o.action_id == "agent.respond").unwrap();
+    let respond = opts
+        .iter()
+        .find(|o| o.action_id == "agent.respond")
+        .unwrap();
     assert!(respond.bindable);
     assert!(!respond.executable_now); // idle — needs waitingText
-    assert!(opts.iter().find(|o| o.action_id == "agent.continue").unwrap().bindable);
-    assert!(!opts.iter().find(|o| o.action_id == "session.next").unwrap().bindable);
+    assert!(
+        opts.iter()
+            .find(|o| o.action_id == "agent.continue")
+            .unwrap()
+            .bindable
+    );
+    assert!(
+        !opts
+            .iter()
+            .find(|o| o.action_id == "session.next")
+            .unwrap()
+            .bindable
+    );
 
     assert_eq!(
         context_risk_gate("agent.respond", "voice", "waitingApproval", false, false),

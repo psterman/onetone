@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OneTone 语音编程桌面</title>
+  <style>
+    :root {
+      --desk:#e9ece8; --paper:#fffefb; --ink:#17201d; --muted:#69736f;
+      --line:#d4dad6; --blue:#23698b; --blue-soft:#e5f1f7; --green:#2c7867;
+      --green-soft:#e4f1ec; --amber:#a86820; --red:#aa4941; --drawer:#202825;
+      --shadow:0 24px 70px rgba(26,40,34,.13);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-width:940px;height:100vh;overflow:hidden;background:var(--desk);color:var(--ink);font:14px/1.5 "Segoe UI","Microsoft YaHei UI",system-ui,sans-serif}
+    button,input,textarea{font:inherit} button{color:inherit}
+    button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid rgba(35,105,139,.25);outline-offset:2px}
+
+    .topbar{height:64px;padding:0 25px;display:flex;align-items:center;gap:18px;background:rgba(255,255,255,.85);border-bottom:1px solid var(--line);backdrop-filter:blur(18px)}
+    .brand{font-size:20px;font-weight:750;letter-spacing:-.5px}.brand span{font-weight:450;color:var(--muted)}
+    .project{padding-left:18px;border-left:1px solid var(--line);display:flex;align-items:center;gap:8px;color:var(--muted)}
+    .project i,.agent-dot{width:8px;height:8px;border-radius:50%;background:#3d9274;display:inline-block}.project b{color:var(--ink)}
+    .time{margin-left:auto;display:flex;padding:3px;border-radius:10px;background:#e5e9e6}.time button{border:0;background:transparent;color:var(--muted);padding:7px 14px;border-radius:8px;cursor:pointer}.time .active{background:#fff;color:var(--ink);box-shadow:0 1px 4px #00000015}
+    .agent-summary{display:flex;align-items:center;gap:8px;padding-left:4px;color:var(--muted)}
+
+    .desktop{height:calc(100vh - 64px);padding:34px 34px 96px;position:relative;overflow:auto}
+    .desktop-inner{width:min(860px,calc(100vw - 120px));margin:0 auto}
+    .desk-heading{display:flex;justify-content:space-between;align-items:end;margin-bottom:19px}
+    .desk-heading h1{margin:0;font-size:24px;letter-spacing:-.6px}.desk-heading p{margin:5px 0 0;color:var(--muted)}
+    .quiet-status{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}.quiet-status i{width:7px;height:7px;border-radius:50%;background:#4d9a7f}
+
+    .intent-sheet{background:var(--paper);border:1px solid #d1d8d4;border-radius:19px;box-shadow:var(--shadow);overflow:hidden}
+    .intent-head{padding:24px 26px 19px;display:flex;gap:18px;align-items:flex-start;border-bottom:1px solid var(--line)}
+    .voice-button{flex:none;width:48px;height:48px;border:0;border-radius:50%;background:var(--ink);color:white;cursor:pointer;display:grid;place-items:center;font-size:20px;box-shadow:0 0 0 7px #edf0ee}
+    .intent-title{flex:1}.intent-title small{display:block;color:var(--muted);margin-bottom:5px}.intent-title h2{margin:0;font-size:19px;letter-spacing:-.2px}.intent-title p{margin:7px 0 0;color:var(--muted)}
+    .edit{border:1px solid var(--line);background:white;padding:7px 11px;border-radius:9px;cursor:pointer;color:var(--muted)}
+
+    .four{display:grid;grid-template-columns:1fr 1fr}.element{padding:19px 25px;min-height:112px;border-bottom:1px solid var(--line)}.element:nth-child(odd){border-right:1px solid var(--line)}.element:nth-child(n+3){border-bottom:0}
+    .element-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.element-head b{font-size:13px}.element-head span{font-size:11px;color:var(--muted)}
+    .element p{margin:0;line-height:1.65}.element.empty p{color:var(--muted)}.element button{margin-top:9px;border:0;background:transparent;color:var(--blue);padding:0;cursor:pointer}
+    .material-pills{display:flex;gap:6px;flex-wrap:wrap}.pill{background:var(--blue-soft);color:#285f7a;padding:5px 8px;border-radius:7px;font-size:12px}
+
+    .work-surface{margin-top:17px;min-height:150px;border:1px dashed #bcc6c1;border-radius:16px;display:grid;place-items:center;text-align:center;padding:26px;color:var(--muted);background:rgba(255,255,255,.28)}
+    .work-surface strong{display:block;color:var(--ink);font-size:15px;margin-bottom:6px}.work-surface .primary{margin-top:14px;border:0;background:var(--ink);color:#fff;padding:10px 15px;border-radius:10px;cursor:pointer}
+    .work-surface.result{display:block;text-align:left;background:var(--paper);border-style:solid;box-shadow:var(--shadow);padding:0;overflow:hidden}
+    .result-preview{height:120px;background:#dce8e3;display:grid;place-items:center}.browser{width:68%;height:80px;background:white;border-radius:8px;box-shadow:0 10px 25px #233a3025;padding:17px}.browser b{font-size:15px}.browser i{display:block;width:65%;height:6px;background:#e2e7e4;border-radius:4px;margin-top:10px}
+    .result-info{display:flex;align-items:center;gap:18px;padding:15px 18px}.result-info strong{margin:0}.result-info span{color:var(--muted)}.result-info .pass{color:var(--green)}.result-actions{margin-left:auto;display:flex;gap:7px}.result-actions button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 10px;cursor:pointer}
+
+    .drawer-dock{position:fixed;z-index:30;left:0;right:0;bottom:0;height:72px;background:var(--drawer);display:grid;grid-template-columns:repeat(6,1fr);padding:0 22px;border-top:1px solid #43504b;box-shadow:0 -8px 30px #24322c20}
+    .drawer-handle{border:0;border-right:1px solid #3b4642;background:transparent;color:#d4ddd9;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;position:relative}.drawer-handle:last-child{border-right:0}.drawer-handle:hover,.drawer-handle.active{background:#2a3531;color:#fff}.drawer-handle .icon{font-size:17px}.drawer-handle small{color:#8fa099}.drawer-handle .notice{position:absolute;top:12px;margin-left:52px;width:7px;height:7px;border-radius:50%;background:#6fc0a3}
+
+    .drawer-panel{position:fixed;z-index:25;left:0;right:0;bottom:72px;height:min(430px,55vh);background:#f9faf8;border-top:1px solid #cbd3ce;box-shadow:0 -22px 65px #17211d2b;transform:translateY(calc(100% + 75px));transition:transform .28s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+    .drawer-panel.open{transform:translateY(0)}
+    .drawer-top{height:66px;padding:0 max(28px,calc((100vw - 980px)/2));display:flex;align-items:center;border-bottom:1px solid var(--line)}.drawer-top h2{font-size:18px;margin:0}.drawer-top p{margin:2px 0 0 13px;color:var(--muted)}.close{margin-left:auto;width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:white;cursor:pointer}
+    .drawer-body{width:min(980px,calc(100vw - 56px));margin:0 auto;overflow:auto;padding:22px 0 28px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .drawer-item{border:1px solid var(--line);background:white;border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;min-height:70px}.drawer-item .item-icon{width:34px;height:34px;border-radius:9px;background:#edf1ef;display:grid;place-items:center;flex:none}.drawer-item b{display:block}.drawer-item small{display:block;color:var(--muted);margin-top:2px}.drawer-item button{margin-left:auto;border:1px solid var(--line);background:white;border-radius:8px;padding:7px 9px;cursor:pointer}.drawer-item.selected{background:var(--blue-soft);border-color:#afd0e0}.drawer-item.warning{background:#fff6e8;border-color:#edcf9f}
+    .drawer-wide{grid-column:span 2}.facts{grid-column:1/-1;background:white;border:1px solid var(--line);border-radius:12px;overflow:hidden}.fact{display:grid;grid-template-columns:75px 1fr 150px;padding:12px 15px;border-bottom:1px solid var(--line)}.fact:last-child{border:0}.fact time,.fact span{color:var(--muted)}
+    .judge{grid-column:1/-1;display:flex;gap:8px}.judge button{flex:1;border:1px solid var(--line);background:white;border-radius:10px;padding:12px;cursor:pointer}.judge .keep{background:var(--green-soft);color:#1f6557;border-color:#92beaf}
+    .input-zone{grid-column:1/-1;background:white;border:1px solid var(--line);border-radius:13px;padding:16px;display:flex;gap:10px}.input-zone input{flex:1;border:0;outline:0}.input-zone button{border:0;background:var(--ink);color:white;border-radius:9px;padding:9px 14px;cursor:pointer}
+
+    .scrim{position:fixed;z-index:20;inset:64px 0 72px;background:#17201d36;opacity:0;pointer-events:none;transition:opacity .2s}.scrim.show{opacity:1;pointer-events:auto}
+    .toast{position:fixed;z-index:50;left:50%;bottom:88px;transform:translate(-50%,12px);opacity:0;background:#17201d;color:white;border-radius:9px;padding:10px 14px;transition:.2s;pointer-events:none}.toast.show{opacity:1;transform:translate(-50%,0)}
+    @media(max-height:760px){.desktop{padding-top:20px}.four .element{min-height:95px;padding-block:14px}.work-surface{min-height:105px}.intent-head{padding-block:18px}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">OneTone <span>工作桌</span></div>
+    <div class="project"><i></i><span>当前项目</span><b>voice-pilot</b></div>
+    <nav class="time" aria-label="时间范围"><button>过去</button><button class="active">现在</button><button>接下来</button></nav>
+    <div class="agent-summary"><i class="agent-dot"></i>1 个 Agent 正在工作</div>
+  </header>
+
+  <main class="desktop">
+    <div class="desktop-inner">
+      <div class="desk-heading"><div><h1>今天要做的事</h1><p>把目的说清楚，把需要的东西拿到桌面。</p></div><span class="quiet-status"><i></i>自动保存</span></div>
+      <article class="intent-sheet">
+        <div class="intent-head">
+          <button class="voice-button" data-toast="开始说话" aria-label="开始说话">●</button>
+          <div class="intent-title"><small>你的原话</small><h2>重新设计 OneTone 首页，让人能和工具、数据、Agent 一起工作。</h2><p>刚刚说过 · 可以继续补充，不会覆盖原话</p></div>
+          <button class="edit" data-toast="编辑原话">编辑</button>
+        </div>
+        <div class="four">
+          <section class="element"><div class="element-head"><b>目标</b><span>已确认</span></div><p>首页成为语音编程的共同工作桌。</p></section>
+          <section class="element"><div class="element-head"><b>背景</b><span>3 项材料</span></div><div class="material-pills"><span class="pill">voice-pilot</span><span class="pill">参考图</span><span class="pill">过去会话</span></div><button data-open="materials">查看材料</button></section>
+          <section class="element"><div class="element-head"><b>细节</b><span>2 条约束</span></div><p>桌面保持干净；不虚构 Agent 进度。</p><button data-open="input">继续补充</button></section>
+          <section class="element empty"><div class="element-head"><b>计划</b><span>等待确认</span></div><p>先完成 HTML 原型，再决定如何连接真实数据。</p><button data-toast="采用当前计划">采用这个计划</button></section>
+        </div>
+      </article>
+
+      <section class="work-surface" id="workSurface">
+        <div><strong>桌面已经准备好</strong><span>从下面的抽屉取出材料或工具，或者直接继续说。</span><br><button class="primary" data-open="input">● 继续说</button></div>
+      </section>
+    </div>
+  </main>
+
+  <div class="scrim" id="scrim"></div>
+  <section class="drawer-panel" id="drawerPanel" aria-hidden="true" aria-label="工作抽屉">
+    <div class="drawer-top"><h2 id="drawerTitle">材料</h2><p id="drawerSubtitle">选择要拿到桌面的内容</p><button class="close" id="closeDrawer" aria-label="关闭抽屉">×</button></div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </section>
+
+  <nav class="drawer-dock" aria-label="工作抽屉">
+    <button class="drawer-handle" data-drawer="materials"><span class="icon">▱</span><span>材料 <small>3</small></span></button>
+    <button class="drawer-handle" data-drawer="input"><span class="icon">●</span><span>输入</span></button>
+    <button class="drawer-handle" data-drawer="tools"><span class="icon">⌘</span><span>工具</span></button>
+    <button class="drawer-handle" data-drawer="agents"><span class="icon">⌁</span><span>Agent <small>1</small></span></button>
+    <button class="drawer-handle" data-drawer="records"><span class="icon">◷</span><span>记录</span></button>
+    <button class="drawer-handle" data-drawer="results"><span class="icon">▣</span><span>结果 <small>1</small></span><i class="notice"></i></button>
+  </nav>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    const drawers = {
+      materials:{title:'材料',sub:'选择要拿到桌面的内容',html:`
+        <div class="drawer-item selected"><span class="item-icon">⌂</span><span><b>voice-pilot</b><small>当前项目</small></span><button data-toast="已在桌面">已选择</button></div>
+        <div class="drawer-item selected"><span class="item-icon">▧</span><span><b>首页参考图.png</b><small>用户上传 · 10:21</small></span><button data-toast="已在桌面">已选择</button></div>
+        <div class="drawer-item"><span class="item-icon">⌘</span><span><b>now-home-ui.js</b><small>项目文件 · 08:42</small></span><button data-toast="已拿到桌面">拿取</button></div>
+        <div class="drawer-item"><span class="item-icon">◷</span><span><b>昨天的 Codex 会话</b><small>通道记录 · 18:36</small></span><button data-toast="已作为背景">作为背景</button></div>
+        <div class="drawer-item"><span class="item-icon">＋</span><span><b>添加新材料</b><small>图片、文件、文字或目录</small></span><button data-toast="选择文件">添加</button></div>`},
+      input:{title:'输入',sub:'选择最自然的表达方式',html:`
+        <div class="drawer-item"><span class="item-icon">●</span><span><b>说话</b><small>保留语音原话</small></span><button data-toast="语音输入已准备">开始</button></div>
+        <div class="drawer-item"><span class="item-icon">⌨</span><span><b>输入文字</b><small>补充目标、背景、细节或计划</small></span><button data-toast="文字输入已准备">使用</button></div>
+        <div class="drawer-item"><span class="item-icon">▣</span><span><b>粘贴内容</b><small>加入当前材料</small></span><button data-toast="等待粘贴">粘贴</button></div>
+        <div class="input-zone"><input aria-label="补充内容" placeholder="补充一句，例如：预览必须能一键打开"><button data-toast="已加入细节">加入当前工作</button></div>`},
+      tools:{title:'工具',sub:'只显示当前真正可用的动作',html:`
+        <div class="drawer-item"><span class="item-icon">◫</span><span><b>打开预览</b><small>已有一个页面结果</small></span><button data-bring="result">拿到桌面</button></div>
+        <div class="drawer-item"><span class="item-icon">±</span><span><b>查看 Diff</b><small>3 个文件有变化</small></span><button data-toast="打开 Diff">打开</button></div>
+        <div class="drawer-item"><span class="item-icon">✓</span><span><b>运行测试</b><small>验证可以确认的结果</small></span><button data-toast="测试请求已发出">运行</button></div>
+        <div class="drawer-item"><span class="item-icon">⌘</span><span><b>打开编辑器</b><small>继续手动修改</small></span><button data-toast="正在打开编辑器">打开</button></div>
+        <div class="drawer-item"><span class="item-icon">⌁</span><span><b>交给 Agent</b><small>带入当前 3 项材料</small></span><button data-toast="请确认目标和材料">开始</button></div>`},
+      agents:{title:'Agent',sub:'通道事实与控制，不推测任务进度',html:`
+        <div class="drawer-item drawer-wide selected"><span class="item-icon">C</span><span><b>Codex · 正在工作</b><small>最近活动 8 秒前 · 修改了 1 个文件</small></span><button data-toast="正在打开 Codex">打开</button><button data-toast="暂停请求已发送">暂停</button></div>
+        <div class="drawer-item"><span class="item-icon">Cu</span><span><b>Cursor · 未运行</b><small>通道可用</small></span><button data-toast="启动 Cursor">启动</button></div>
+        <div class="drawer-item"><span class="item-icon">Cl</span><span><b>Claude · 未连接</b><small>没有可用状态</small></span><button data-toast="打开连接设置">连接</button></div>`},
+      records:{title:'记录',sub:'机器留下事实，人留下判断',html:`
+        <div class="facts"><div class="fact"><time>14:28:12</time><b>Codex 会话开始</b><span>来源：Codex 通道</span></div><div class="fact"><time>14:29:03</time><b>修改首页原型文件</b><span>来源：文件系统</span></div><div class="fact"><time>14:29:26</time><b>打开浏览器预览</b><span>来源：浏览器记录</span></div><div class="fact"><time>14:31:08</time><b>保留“抽屉”设计方向</b><span>来源：你的判断</span></div></div>`},
+      results:{title:'结果',sub:'先看实际变化，再由你作判断',html:`
+        <div class="drawer-item drawer-wide selected"><span class="item-icon">◫</span><span><b>首页抽屉原型</b><small>预览可用 · 3 个文件变化</small></span><button data-bring="result">拿到桌面</button></div>
+        <div class="drawer-item"><span class="item-icon">✓</span><span><b>构建检查通过</b><small>这不代表结果一定正确</small></span></div>
+        <div class="judge"><button class="keep" data-toast="已记录：保留结果">保留结果</button><button data-toast="已记录：继续调整">继续调整</button><button data-toast="撤销前需要再次确认">撤销变化</button></div>`}
+    };
+
+    const panel=document.getElementById('drawerPanel');
+    const body=document.getElementById('drawerBody');
+    const scrim=document.getElementById('scrim');
+    const toast=document.getElementById('toast');
+    let activeDrawer=''; let timer;
+
+    function wireActions(){
+      body.querySelectorAll('[data-toast]').forEach(el=>el.addEventListener('click',()=>showToast(el.dataset.toast)));
+      body.querySelectorAll('[data-bring]').forEach(el=>el.addEventListener('click',()=>bringToDesk(el.dataset.bring)));
+    }
+    function openDrawer(name){
+      const data=drawers[name]; if(!data)return;
+      activeDrawer=name; document.getElementById('drawerTitle').textContent=data.title; document.getElementById('drawerSubtitle').textContent=data.sub;
+      body.innerHTML=data.html; panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); scrim.classList.add('show');
+      document.querySelectorAll('.drawer-handle').forEach(el=>el.classList.toggle('active',el.dataset.drawer===name)); wireActions();
+    }
+    function closeDrawer(){
+      activeDrawer=''; panel.classList.remove('open'); panel.setAttribute('aria-hidden','true'); scrim.classList.remove('show');
+      document.querySelectorAll('.drawer-handle').forEach(el=>el.classList.remove('active'));
+    }
+    function showToast(message){toast.textContent=message;toast.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>toast.classList.remove('show'),1700)}
+    function bringToDesk(kind){
+      if(kind==='result')document.getElementById('workSurface').outerHTML=`<section class="work-surface result" id="workSurface"><div class="result-preview"><div class="browser"><b>共同工作桌</b><i></i><i style="width:45%"></i></div></div><div class="result-info"><strong>首页抽屉原型</strong><span>3 个文件变化</span><span class="pass">构建检查通过</span><div class="result-actions"><button data-toast="打开实际预览">打开预览</button><button data-open="results">作出判断</button></div></div></section>`;
+      closeDrawer(); bindPageActions(); showToast('结果已拿到桌面');
+    }
+    function bindPageActions(){
+      document.querySelectorAll('[data-open]').forEach(el=>{if(!el.dataset.bound){el.dataset.bound='1';el.addEventListener('click',()=>openDrawer(el.dataset.open))}});
+      document.querySelectorAll('body > :not(.drawer-panel) [data-toast]').forEach(el=>{if(!el.dataset.bound){el.dataset.bound='1';el.addEventListener('click',()=>showToast(el.dataset.toast))}});
+    }
+    document.querySelectorAll('.drawer-handle').forEach(el=>el.addEventListener('click',()=>activeDrawer===el.dataset.drawer?closeDrawer():openDrawer(el.dataset.drawer)));
+    document.getElementById('closeDrawer').addEventListener('click',closeDrawer); scrim.addEventListener('click',closeDrawer);
+    document.addEventListener('keydown',event=>{if(event.key==='Escape')closeDrawer()}); bindPageActions();
+  </script>
+</body>
+</html>

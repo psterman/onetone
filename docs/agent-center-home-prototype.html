@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · Agent Center Prototype</title>
+  <style>
+    :root {
+      --bg: #0b1014;
+      --bg-2: #11181e;
+      --panel: #151e25;
+      --panel-2: #1a252d;
+      --line: #2b3943;
+      --line-soft: rgba(157, 180, 190, .14);
+      --text: #ecf4f3;
+      --muted: #91a4ab;
+      --faint: #60737c;
+      --mint: #8de4c1;
+      --mint-2: #46cda0;
+      --amber: #f5bf68;
+      --red: #ff8b83;
+      --blue: #8fc9ff;
+      --radius: 14px;
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      --sans: "Segoe UI Variable", "Noto Sans SC", "Microsoft YaHei UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 80% -20%, rgba(70, 205, 160, .10), transparent 30rem),
+        linear-gradient(135deg, #0b1014 0%, #10171d 55%, #0b1014 100%);
+      font-family: var(--sans);
+      letter-spacing: .01em;
+    }
+
+    button { font: inherit; }
+    button:focus-visible, [tabindex]:focus-visible {
+      outline: 2px solid var(--mint);
+      outline-offset: 3px;
+    }
+
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: 224px minmax(0, 1fr); }
+    .sidebar {
+      border-right: 1px solid var(--line-soft);
+      padding: 24px 16px;
+      background: rgba(8, 13, 17, .64);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 30px; }
+    .brand-mark {
+      width: 28px; height: 28px; border: 1px solid var(--mint);
+      display: grid; place-items: center; color: var(--mint); font-weight: 800;
+      transform: rotate(45deg); border-radius: 7px;
+    }
+    .brand-mark span { transform: rotate(-45deg); }
+    .brand-name { font-weight: 700; letter-spacing: .08em; }
+    .brand-sub { color: var(--faint); font-size: 10px; margin-top: 2px; }
+    .nav-label { color: var(--faint); font-size: 10px; letter-spacing: .14em; margin: 14px 10px 8px; }
+    .nav-item {
+      width: 100%; border: 0; color: var(--muted); background: transparent;
+      display: flex; align-items: center; gap: 10px; padding: 11px 12px;
+      border-radius: 9px; cursor: pointer; text-align: left;
+    }
+    .nav-item:hover, .nav-item.active { color: var(--text); background: rgba(141, 228, 193, .09); }
+    .nav-item.active { box-shadow: inset 2px 0 var(--mint); }
+    .nav-icon { width: 18px; color: var(--mint); font-family: var(--mono); font-size: 12px; }
+    .sidebar-foot { position: fixed; bottom: 20px; width: 190px; color: var(--faint); font-size: 11px; line-height: 1.6; }
+    .pulse { display: inline-block; width: 7px; height: 7px; background: var(--mint-2); border-radius: 50%; margin-right: 6px; box-shadow: 0 0 0 4px rgba(70, 205, 160, .10); }
+
+    .main { min-width: 0; padding: 26px 34px 48px; }
+    .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 28px; }
+    .eyebrow { color: var(--mint); font-family: var(--mono); font-size: 11px; letter-spacing: .12em; }
+    h1 { font-size: clamp(28px, 4vw, 42px); line-height: 1.08; margin: 8px 0 10px; letter-spacing: -.035em; }
+    .intro { color: var(--muted); max-width: 570px; margin: 0; line-height: 1.65; font-size: 14px; }
+    .top-actions { display: flex; gap: 9px; align-items: center; }
+    .ghost-btn, .icon-btn {
+      color: var(--muted); background: rgba(255,255,255,.035); border: 1px solid var(--line);
+      border-radius: 9px; cursor: pointer; min-height: 38px; padding: 0 13px;
+    }
+    .ghost-btn:hover, .icon-btn:hover { color: var(--text); border-color: var(--mint-2); }
+
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 25px; }
+    .stat { padding: 15px 16px; border: 1px solid var(--line-soft); background: rgba(21,30,37,.75); border-radius: 11px; }
+    .stat-label { color: var(--muted); font-size: 12px; }
+    .stat-value { font-size: 25px; font-weight: 650; margin-top: 7px; }
+    .stat-note { color: var(--faint); font-size: 11px; margin-top: 4px; }
+    .stat-value.mint { color: var(--mint); }
+    .stat-value.amber { color: var(--amber); }
+
+    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 15px; flex-wrap: wrap; }
+    .filters { display: flex; gap: 7px; flex-wrap: wrap; }
+    .filter {
+      border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 99px;
+      padding: 7px 12px; cursor: pointer; font-size: 12px;
+    }
+    .filter:hover, .filter.active { border-color: var(--mint-2); color: var(--text); background: rgba(70,205,160,.09); }
+    .sync { color: var(--faint); font: 11px var(--mono); }
+
+    .agent-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+    .agent-card {
+      background: linear-gradient(145deg, rgba(25,36,44,.96), rgba(16,24,30,.96));
+      border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; min-width: 0;
+      transition: border-color .18s ease, transform .18s ease;
+    }
+    .agent-card:hover { border-color: rgba(141,228,193,.47); transform: translateY(-1px); }
+    .agent-card[data-state="attention"] { border-left: 3px solid var(--amber); }
+    .agent-card[data-state="unknown"] { opacity: .78; }
+    .agent-head { display: flex; align-items: flex-start; gap: 12px; }
+    .agent-avatar { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-weight: 750; color: #07100d; flex: 0 0 auto; }
+    .avatar-claude { background: var(--mint); }
+    .avatar-codex { background: var(--blue); }
+    .avatar-cursor { background: var(--amber); }
+    .avatar-aider { background: #64737a; color: #e7edef; }
+    .agent-title { min-width: 0; flex: 1; }
+    .agent-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .agent-name { font-weight: 700; }
+    .status { color: var(--muted); font-size: 11px; display: inline-flex; gap: 5px; align-items: center; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+    .status-dot.working { background: var(--mint-2); box-shadow: 0 0 0 3px rgba(70,205,160,.12); }
+    .status-dot.waiting { background: var(--amber); }
+    .status-dot.unknown { background: var(--faint); }
+    .integration { color: var(--mint); font-size: 10px; border: 1px solid rgba(141,228,193,.28); padding: 3px 7px; border-radius: 99px; white-space: nowrap; }
+    .integration.observed { color: var(--blue); border-color: rgba(143,201,255,.28); }
+    .integration.detected { color: var(--muted); border-color: var(--line); }
+    .work-title { margin: 17px 0 3px; font-size: 16px; line-height: 1.35; }
+    .derived { color: var(--faint); font-size: 10px; }
+    .project { color: var(--muted); font: 11px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 10px; }
+    .prompt { margin: 15px 0; padding: 11px 12px; border-left: 2px solid var(--mint-2); background: rgba(70,205,160,.055); color: #d0dfdc; font-size: 12px; line-height: 1.55; }
+    .prompt-label { color: var(--faint); font-size: 10px; display: block; margin-bottom: 4px; }
+    .cap-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; min-height: 28px; }
+    .cap-badge { font-size: 10px; padding: 4px 7px; border-radius: 5px; background: rgba(255,255,255,.055); color: var(--muted); }
+    .cap-badge.verified { color: var(--mint); background: rgba(70,205,160,.12); }
+    .cap-badge.best-effort { color: var(--amber); background: rgba(245,191,104,.10); }
+    .cap-badge.readonly { color: var(--blue); background: rgba(143,201,255,.10); }
+    .cap-badge.unknown { color: var(--faint); }
+    .card-footer { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-top: 18px; padding-top: 13px; border-top: 1px solid var(--line-soft); }
+    .fresh { color: var(--faint); font: 10px var(--mono); }
+    .fresh.ok { color: var(--mint-2); }
+    .fresh.stale { color: var(--amber); }
+    .card-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .action-btn { border: 1px solid var(--line); background: rgba(255,255,255,.035); color: var(--muted); border-radius: 7px; padding: 7px 9px; font-size: 11px; cursor: pointer; }
+    .action-btn:hover:not(:disabled) { color: var(--text); border-color: var(--mint-2); }
+    .action-btn.primary { color: #07100d; background: var(--mint); border-color: var(--mint); font-weight: 700; }
+    .action-btn:disabled { color: var(--faint); cursor: not-allowed; opacity: .7; }
+    .reason { color: var(--amber); font-size: 10px; margin-top: 9px; }
+
+    .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.42); opacity: 0; pointer-events: none; transition: opacity .18s ease; z-index: 10; }
+    .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+    .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 100vw); background: #111a20; border-left: 1px solid var(--line); transform: translateX(100%); transition: transform .22s ease; z-index: 11; overflow-y: auto; padding: 25px; }
+    .drawer.open { transform: translateX(0); }
+    .drawer-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .drawer h2 { margin: 7px 0 4px; font-size: 25px; letter-spacing: -.025em; }
+    .drawer-sub { color: var(--muted); font-size: 12px; }
+    .drawer-section { padding: 22px 0; border-bottom: 1px solid var(--line-soft); }
+    .drawer-section:last-child { border-bottom: 0; }
+    .section-title { color: var(--faint); font: 10px var(--mono); letter-spacing: .12em; margin-bottom: 12px; }
+    .evidence-list { display: grid; gap: 8px; }
+    .evidence { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding: 9px 10px; background: rgba(255,255,255,.035); border-radius: 7px; font-size: 11px; }
+    .evidence-key { color: var(--muted); }
+    .evidence-value { color: var(--text); font-family: var(--mono); font-size: 10px; word-break: break-word; }
+    .matrix { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .matrix th { text-align: left; color: var(--faint); font-weight: 500; padding: 0 0 8px; }
+    .matrix td { border-top: 1px solid var(--line-soft); padding: 10px 0; }
+    .matrix td:last-child { text-align: right; font-family: var(--mono); font-size: 10px; }
+    .state-good { color: var(--mint); }
+    .state-warn { color: var(--amber); }
+    .state-muted { color: var(--faint); }
+    .timeline { position: relative; display: grid; gap: 13px; }
+    .event { display: grid; grid-template-columns: 9px 1fr; gap: 10px; }
+    .event-mark { width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: var(--mint-2); }
+    .event-mark.warn { background: var(--amber); }
+    .event-main { font-size: 12px; }
+    .event-time { color: var(--faint); font: 10px var(--mono); margin-top: 3px; }
+    .notice { padding: 11px 12px; border: 1px solid rgba(245,191,104,.25); background: rgba(245,191,104,.065); color: #e9c98e; font-size: 11px; line-height: 1.55; border-radius: 8px; }
+    .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 18px); opacity: 0; pointer-events: none; background: #e8f6f1; color: #0c2119; padding: 11px 15px; border-radius: 8px; font-size: 12px; box-shadow: 0 12px 30px rgba(0,0,0,.35); z-index: 20; transition: opacity .18s, transform .18s; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .demo-note { color: var(--faint); text-align: center; margin-top: 28px; font-size: 11px; }
+
+    @media (max-width: 980px) {
+      .app-shell { grid-template-columns: 70px minmax(0, 1fr); }
+      .sidebar { padding: 18px 10px; }
+      .brand { padding: 0 0 30px; justify-content: center; }
+      .brand-copy, .nav-label, .nav-item span:not(.nav-icon), .sidebar-foot { display: none; }
+      .nav-item { justify-content: center; padding: 12px 8px; }
+      .main { padding: 24px; }
+    }
+    @media (max-width: 700px) {
+      .main { padding: 20px 15px 35px; }
+      .topbar { display: block; }
+      .top-actions { margin-top: 18px; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .agent-grid { grid-template-columns: 1fr; }
+      .card-footer { align-items: flex-start; flex-direction: column; }
+      .card-actions { justify-content: flex-start; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="主导航">
+      <div class="brand">
+        <div class="brand-mark"><span>O</span></div>
+        <div class="brand-copy"><div class="brand-name">ONETONE</div><div class="brand-sub">agent operations</div></div>
+      </div>
+      <div class="nav-label">WORKSPACE</div>
+      <button class="nav-item active"><span class="nav-icon">01</span><span>Agent Center</span></button>
+      <button class="nav-item"><span class="nav-icon">02</span><span>项目记忆</span></button>
+      <button class="nav-item"><span class="nav-icon">03</span><span>事件时间线</span></button>
+      <div class="nav-label">SYSTEM</div>
+      <button class="nav-item"><span class="nav-icon">↗</span><span>配置与来源</span></button>
+      <div class="sidebar-foot"><span class="pulse"></span>本机证据同步中<br />Center 状态独立于 Soft Pad 灯</div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">AGENT CENTER / LOCAL CONTROL PLANE</div>
+          <h1>今天，Agent 在哪里？</h1>
+          <p class="intro">先看当前工作，再决定是否介入。每个按钮都标明控制方式和证据状态，不把“已发送”伪装成“已完成”。</p>
+        </div>
+        <div class="top-actions">
+          <button class="ghost-btn" id="refreshBtn">↻ 刷新证据</button>
+          <button class="icon-btn" id="compactBtn" aria-label="切换紧凑视图">⋯</button>
+        </div>
+      </header>
+
+      <section class="stats" aria-label="Agent 总览">
+        <div class="stat"><div class="stat-label">当前工作中</div><div class="stat-value mint">2</div><div class="stat-note">来自新鲜状态证据</div></div>
+        <div class="stat"><div class="stat-label">可验证控制</div><div class="stat-value mint">1</div><div class="stat-note">目标与后验 probe 均存在</div></div>
+        <div class="stat"><div class="stat-label">尽力控制</div><div class="stat-value amber">1</div><div class="stat-note">Hotkey / Workflow，结果需确认</div></div>
+        <div class="stat"><div class="stat-label">尚未接入</div><div class="stat-value">1</div><div class="stat-note">不是“不支持”，而是还没接</div></div>
+      </section>
+
+      <div class="toolbar">
+        <div class="filters" role="tablist" aria-label="Agent 筛选">
+          <button class="filter active" data-filter="all">全部 <span>4</span></button>
+          <button class="filter" data-filter="attention">需要处理 <span>1</span></button>
+          <button class="filter" data-filter="verified">可验证控制 <span>1</span></button>
+          <button class="filter" data-filter="observed">仅观察 <span>1</span></button>
+          <button class="filter" data-filter="unknown">尚未接入 <span>1</span></button>
+        </div>
+        <div class="sync">last evidence sync 14:32:08</div>
+      </div>
+
+      <section class="agent-grid" id="agentGrid" aria-label="Agent 列表">
+        <article class="agent-card" data-kind="verified" data-state="working" data-agent="claude">
+          <div class="agent-head">
+            <div class="agent-avatar avatar-claude">C</div>
+            <div class="agent-title">
+              <div class="agent-name-row"><span class="agent-name">Claude Code</span><span class="status"><i class="status-dot working"></i>工作中</span><span class="integration">由 OneTone 发起</span></div>
+              <div class="project">voice-pilot / src-tauri</div>
+            </div>
+          </div>
+          <h2 class="work-title">修复支付回调重试逻辑</h2>
+          <div class="derived">推断标题 · 来自最近提问</div>
+          <div class="prompt"><span class="prompt-label">最近提问 · ClaudeHook · 14:31</span>请先检查 webhook 重试为什么会产生重复订单，再给出最小修复。</div>
+          <div class="cap-row"><span class="cap-badge verified">中断 · 可验证</span><span class="cap-badge verified">恢复 · 已接线</span><span class="cap-badge readonly">最近提问 · 可读</span></div>
+          <div class="card-footer"><span class="fresh ok">● evidence fresh 还有 41s</span><div class="card-actions"><button class="action-btn" data-open="claude">查看详情</button><button class="action-btn primary" data-action="verified" data-agent="Claude Code">中断</button></div></div>
+        </article>
+
+        <article class="agent-card" data-kind="observed" data-state="attention" data-agent="codex">
+          <div class="agent-head">
+            <div class="agent-avatar avatar-codex">X</div>
+            <div class="agent-title">
+              <div class="agent-name-row"><span class="agent-name">Codex</span><span class="status"><i class="status-dot working"></i>工作中</span><span class="integration observed">已观察</span></div>
+              <div class="project">onetone / src/js/features</div>
+            </div>
+          </div>
+          <h2 class="work-title">整理首页 Agent 能力徽章</h2>
+          <div class="derived">推断标题 · 来自项目与事件</div>
+          <div class="prompt"><span class="prompt-label">最近提问 · OneToneDispatch · 14:27</span>把能力状态放到卡片上，但不要把 hotkey 写成 native。</div>
+          <div class="cap-row"><span class="cap-badge best-effort">中断 · 尽力控制</span><span class="cap-badge readonly">状态 · 已观察</span><span class="cap-badge readonly">最近提问 · 可读</span></div>
+          <div class="reason">中断原因：通过窗口证据定位，但当前没有后验停止 probe。</div>
+          <div class="card-footer"><span class="fresh ok">● evidence fresh 还有 18s</span><div class="card-actions"><button class="action-btn" data-open="codex">查看详情</button><button class="action-btn" data-action="unverified" data-agent="Codex">发送中断</button></div></div>
+        </article>
+
+        <article class="agent-card" data-kind="observed" data-state="waiting" data-agent="cursor">
+          <div class="agent-head">
+            <div class="agent-avatar avatar-cursor">Cu</div>
+            <div class="agent-title">
+              <div class="agent-name-row"><span class="agent-name">Cursor</span><span class="status"><i class="status-dot waiting"></i>等待输入</span><span class="integration observed">已观察</span></div>
+              <div class="project">dashboard / web</div>
+            </div>
+          </div>
+          <h2 class="work-title">等待确认筛选器交互</h2>
+          <div class="derived">项目上下文 · 非 Agent 自报标题</div>
+          <div class="prompt"><span class="prompt-label">最近提问 · 内容未知 · 13:58</span>已观察到用户回合，但当前数据源未提供正文。</div>
+          <div class="cap-row"><span class="cap-badge best-effort">中断 · 仅热键</span><span class="cap-badge readonly">焦点 · 可用</span><span class="cap-badge unknown">历史 · 未知</span></div>
+          <div class="reason">限制：Cursor 当前没有可验证的实例级中断接口。</div>
+          <div class="card-footer"><span class="fresh stale">● evidence stale</span><div class="card-actions"><button class="action-btn" data-open="cursor">查看详情</button><button class="action-btn" disabled title="证据已过期">中断</button></div></div>
+        </article>
+
+        <article class="agent-card" data-kind="unknown" data-state="unknown" data-agent="aider">
+          <div class="agent-head">
+            <div class="agent-avatar avatar-aider">A</div>
+            <div class="agent-title">
+              <div class="agent-name-row"><span class="agent-name">Aider</span><span class="status"><i class="status-dot unknown"></i>未知</span><span class="integration detected">尚未接入</span></div>
+              <div class="project">本机库存扫描</div>
+            </div>
+          </div>
+          <h2 class="work-title">还没有可识别的工作</h2>
+          <div class="derived">Unknown · 不推断 Agent 标题</div>
+          <div class="prompt"><span class="prompt-label">数据源状态</span>已检测到 Agent 类型，但本机 probe 尚未实现。</div>
+          <div class="cap-row"><span class="cap-badge unknown">控制 · 未知</span><span class="cap-badge unknown">会话 · 未知</span><span class="cap-badge unknown">历史 · 未知</span></div>
+          <div class="reason">这表示“还没接入”，不是确认“不支持”。</div>
+          <div class="card-footer"><span class="fresh">○ no fresh evidence</span><div class="card-actions"><button class="action-btn" data-open="aider">查看详情</button><button class="action-btn" disabled>暂不可控</button></div></div>
+        </article>
+      </section>
+
+      <p class="demo-note">静态交互原型 · 动作按钮只模拟 Failed / AttemptedUnverified / Verified，不会启动真实 Agent。</p>
+    </main>
+  </div>
+
+  <div class="drawer-backdrop" id="backdrop"></div>
+  <aside class="drawer" id="drawer" aria-label="Agent 详情" aria-hidden="true">
+    <div class="drawer-top">
+      <div><div class="eyebrow">EVIDENCE / SESSION DETAIL</div><h2 id="drawerTitle">Claude Code</h2><div class="drawer-sub" id="drawerSub">voice-pilot · session 8f2a…</div></div>
+      <button class="icon-btn" id="closeDrawer" aria-label="关闭详情">×</button>
+    </div>
+    <div class="drawer-section">
+      <div class="section-title">CURRENT WORK</div>
+      <div class="evidence-list">
+        <div class="evidence"><span class="evidence-key">工作标题</span><span class="evidence-value">修复支付回调重试逻辑 · Derived</span></div>
+        <div class="evidence"><span class="evidence-key">工作目录</span><span class="evidence-value">E:\\voice-pilot\\src-tauri</span></div>
+        <div class="evidence"><span class="evidence-key">External session</span><span class="evidence-value">claude-session-8f2a…</span></div>
+        <div class="evidence"><span class="evidence-key">fresh until</span><span class="evidence-value state-good">14:32:49 · 41s remaining</span></div>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="section-title">CAPABILITY MATRIX</div>
+      <table class="matrix">
+        <thead><tr><th>能力</th><th>状态</th><th>证据</th></tr></thead>
+        <tbody>
+          <tr><td>Interrupt</td><td class="state-good">可验证控制</td><td>Native / fresh</td></tr>
+          <tr><td>Focus</td><td class="state-good">可用</td><td>HWND / fresh</td></tr>
+          <tr><td>Resume</td><td class="state-good">可用</td><td>Lane / wired</td></tr>
+          <tr><td>Transcript</td><td class="state-warn">有限</td><td>Prompt only</td></tr>
+          <tr><td>History FTS</td><td class="state-muted">未知</td><td>not wired</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="drawer-section">
+      <div class="section-title">RECENT EVENTS</div>
+      <div class="timeline">
+        <div class="event"><span class="event-mark"></span><div><div class="event-main">UserPromptSubmit · 最近提问已观察</div><div class="event-time">14:31:08 · ClaudeHook</div></div></div>
+        <div class="event"><span class="event-mark"></span><div><div class="event-main">task_started · 状态进入 working</div><div class="event-time">14:30:42 · officialHook</div></div></div>
+        <div class="event"><span class="event-mark warn"></span><div><div class="event-main">title_derived · 标题来自 prompt 摘要</div><div class="event-time">14:30:43 · OneTone projection</div></div></div>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="section-title">LIMITATIONS</div>
+      <div class="notice">Agent Center 的动作结果独立于 Soft Pad 灯。当前原型不把“Center 已确认停止”投影成 Soft Pad 的停止状态。</div>
+    </div>
+  </aside>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      var grid = document.getElementById('agentGrid');
+      var cards = Array.prototype.slice.call(grid.querySelectorAll('.agent-card'));
+      var toast = document.getElementById('toast');
+      var drawer = document.getElementById('drawer');
+      var backdrop = document.getElementById('backdrop');
+      var drawerTitle = document.getElementById('drawerTitle');
+      var drawerSub = document.getElementById('drawerSub');
+      var toastTimer;
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2600);
+      }
+
+      function closeDrawer() {
+        drawer.classList.remove('open');
+        backdrop.classList.remove('open');
+        drawer.setAttribute('aria-hidden', 'true');
+      }
+
+      function openDrawer(agent) {
+        var card = cards.filter(function (c) { return c.dataset.agent === agent; })[0];
+        if (!card) return;
+        var title = card.querySelector('.agent-name').textContent;
+        drawerTitle.textContent = title;
+        drawerSub.textContent = card.querySelector('.project').textContent + ' · session 8f2a…';
+        drawer.classList.add('open');
+        backdrop.classList.add('open');
+        drawer.setAttribute('aria-hidden', 'false');
+      }
+
+      document.querySelectorAll('[data-filter]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          document.querySelectorAll('[data-filter]').forEach(function (b) { b.classList.remove('active'); });
+          button.classList.add('active');
+          var filter = button.dataset.filter;
+          cards.forEach(function (card) {
+            card.hidden = filter !== 'all' && card.dataset.kind !== filter;
+          });
+        });
+      });
+
+      document.querySelectorAll('[data-open]').forEach(function (button) {
+        button.addEventListener('click', function () { openDrawer(button.dataset.open); });
+      });
+
+      document.querySelectorAll('[data-action]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var mode = button.dataset.action;
+          button.disabled = true;
+          button.textContent = '处理中…';
+          setTimeout(function () {
+            if (mode === 'verified') {
+              button.textContent = '已确认停止';
+              button.classList.remove('primary');
+              showToast('已确认 Agent 停止 · outcome=Verified');
+            } else {
+              button.textContent = '尚未确认';
+              button.classList.remove('primary');
+              showToast('已发送中断，尚未确认 Agent 已停止 · outcome=AttemptedUnverified');
+            }
+          }, 480);
+        });
+      });
+
+      document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
+      backdrop.addEventListener('click', closeDrawer);
+      document.addEventListener('keydown', function (event) { if (event.key === 'Escape') closeDrawer(); });
+      document.getElementById('refreshBtn').addEventListener('click', function () { showToast('证据已刷新 · prototype only'); });
+      document.getElementById('compactBtn').addEventListener('click', function () { showToast('紧凑视图将在生产首页接入'); });
+    })();
+  </script>
+</body>
+</html>

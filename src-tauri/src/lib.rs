@@ -1,22 +1,14 @@
+pub mod action_history;
 mod agent;
 mod agent_attention;
-pub mod agent_memory;
-pub mod action_history;
 mod agent_catalog;
 mod agent_install_inventory;
+mod agent_lane;
+pub mod agent_memory;
 mod agent_model_metadata;
 mod agent_usage;
-mod provider_usage;
-mod soft_pad_quota;
-mod shell_agent_usage;
-#[cfg(windows)]
-mod cursor_local_activity;
-#[cfg(not(windows))]
-#[path = "cursor_local_activity_stub.rs"]
-mod cursor_local_activity;
+mod aider_hook_setup;
 mod app_chat_workflow;
-mod input_focus_aim;
-mod input_aim_calibrate;
 mod app_exe_icon;
 mod app_icon;
 mod app_identity;
@@ -27,41 +19,44 @@ mod backdrop;
 #[cfg(feature = "bfinal_e2e")]
 mod bfinal_e2e;
 mod browser_bookmarks;
+mod real_provider_e2e;
 mod builtin_app_catalog;
 mod camera_capability_probe;
 mod claude_cli_cmd;
 mod claude_cli_session;
 mod claude_hook_setup;
-mod copilot_cli_hook_setup;
-mod gemini_hook_setup;
+mod claude_smoke_task;
 mod cline_hook_setup;
-mod roo_hook_setup;
-mod opencode_hook_setup;
-mod aider_hook_setup;
 mod coach_hud;
 mod codex_app_state;
 mod codex_micro_overlay;
-mod overlay_window;
 mod codex_micro_protocol_server;
-mod codex_smoke_task;
-mod claude_smoke_task;
 mod codex_micro_vendor;
 mod codex_numpad_layer;
 mod codex_pad_binding_diagnose;
+mod codex_smoke_task;
 mod config;
 mod connector_health;
 mod context;
+mod copilot_cli_hook_setup;
+mod cursor_beginner;
 mod cursor_hook_setup;
 mod cursor_keybindings_setup;
-mod shell_agent_hook_setup;
+#[cfg(windows)]
+mod cursor_local_activity;
+#[cfg(not(windows))]
+#[path = "cursor_local_activity_stub.rs"]
+mod cursor_local_activity;
 mod cursor_workflow;
-mod cursor_beginner;
 mod data_root;
 mod device_identity;
 mod gaze_monitor;
+mod gemini_hook_setup;
 mod gesture_timing;
 mod habit_profile;
+mod input_aim_calibrate;
 mod input_ext;
+mod input_focus_aim;
 mod input_obs;
 mod integration_token;
 mod ipc;
@@ -69,16 +64,22 @@ mod key_chord;
 mod keyboard;
 mod kws_model_download;
 mod native_dll;
+mod opencode_hook_setup;
+mod overlay_window;
 mod pad_status;
 mod policy_config;
 mod press_gesture;
+mod provider_usage;
 mod resource_monitor;
+mod roo_hook_setup;
 mod runtime_event;
-mod scene_config;
 pub mod scenario_present;
+mod scene_config;
 mod send_guard;
+mod shell_agent_hook_setup;
+mod shell_agent_usage;
 mod soft_pad_purpose;
-mod agent_lane;
+mod soft_pad_quota;
 mod soft_pad_runtime;
 mod soft_pad_voice_pending;
 mod state;
@@ -86,10 +87,10 @@ mod test_pulse;
 pub mod time_machine;
 mod tray;
 mod tray_agent_bridge;
-mod tray_icon_render;
-mod tray_state;
 mod tray_customization;
+mod tray_icon_render;
 mod tray_runtime;
+mod tray_state;
 mod ui_heartbeat;
 mod update;
 mod vendor_hid;
@@ -121,6 +122,7 @@ pub mod semantic_action {
     pub use crate::agent::binding_view::{
         project_action_bindings_for_mapping, project_all_action_bindings, ActionBindingView,
     };
+    pub use crate::agent::context_risk::context_risk_gate;
     pub use crate::agent::layer1_native::{
         commit_policy_for_raw_action, resolve_input_start_target_from_parts, InputStartTarget,
     };
@@ -131,18 +133,17 @@ pub mod semantic_action {
         take_valid_if_action_matches, test_lock as pending_test_lock, PENDING_TTL_SECS,
     };
     pub use crate::agent::route::camera_pending_eligible;
-    pub use crate::agent::context_risk::context_risk_gate;
     pub use crate::agent::semantic::{
         all_semantic_metas, camera_may_execute_directly, channel_allowed, public_catalog_dto,
         resolve_canonical_action_id, route_disposition, semantic_meta_by_id, ActionChannel,
         FinishPolicy, RouteDisposition, ALL_CHANNELS, FEATURE_ACTION_PICKER_UI,
         FEATURE_DYNAMIC_CONTEXT_ACTIONS, LAYER1_ACTION_IDS, LAYER2_CORE_ACTION_IDS,
     };
+    pub use crate::agent_attention::bridge::ingest_codex_app_server_event;
     pub use crate::agent_attention::{
         kind_from_attention_cause, project_needs_input_kind, raise_needs_input, reset_for_test,
         test_lock, AttentionCause, NeedsInputKind, SignalSource,
     };
-    pub use crate::agent_attention::bridge::ingest_codex_app_server_event;
     pub use crate::config::{
         AgentBinding, CameraOverride, CodexMicroPadConfig, CodexMicroPadKeyRoute, VoiceConfig,
     };
@@ -444,8 +445,14 @@ pub fn run() {
             app_log::log_line(&app_state, "startup", "setup begin");
 
             crate::agent_usage::start_codex_account_poll(app.handle().clone(), app_state.clone());
-            crate::agent_usage::start_deepseek_balance_poll(app.handle().clone(), app_state.clone());
-            crate::provider_usage::start_provider_usage_poll(app.handle().clone(), app_state.clone());
+            crate::agent_usage::start_deepseek_balance_poll(
+                app.handle().clone(),
+                app_state.clone(),
+            );
+            crate::provider_usage::start_provider_usage_poll(
+                app.handle().clone(),
+                app_state.clone(),
+            );
             crate::shell_agent_usage::start_shell_agent_usage_poll(
                 app.handle().clone(),
                 app_state.clone(),
@@ -553,6 +560,7 @@ pub fn run() {
             );
             #[cfg(feature = "bfinal_e2e")]
             bfinal_e2e::maybe_spawn(app.handle().clone(), app_state.clone(), window.clone());
+            real_provider_e2e::maybe_spawn(app.handle().clone(), app_state.clone(), window.clone());
 
             if let Err(err) = app_icon::apply_window_icon(&window) {
                 app_log::log_line(&app_state, "startup", &format!("window icon: {err}"));
@@ -894,7 +902,9 @@ pub fn run() {
                                     | "Browser_Back"
                                     | "Browser_Forward"
                             ) && now.duration_since(at)
-                                < Duration::from_millis(crate::gesture_timing::RECORD_GUARD_COOLDOWN_MS)
+                                < Duration::from_millis(
+                                    crate::gesture_timing::RECORD_GUARD_COOLDOWN_MS,
+                                )
                             {
                                 app_log::log_line(
                                     &state2,

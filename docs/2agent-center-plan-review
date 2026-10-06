@@ -1,0 +1,132 @@
+# 《首页 Agent Center 生产化改造》方案评审
+
+> 评审日期：2026-10-04 ｜ 评审人：基于代码库实勘  
+> 结论：**后端设计可采纳（A-），首页落点必须重定（D）**  
+> 一句话：**`agent_registry` 表是好设计，但"改主首页 + 顶层 Tab"与项目既有两份首页设计正面冲突，且"指挥台"内容生产代码里已经存在。建议拆成「Registry 先落地 / 首页位置等 fusion-g 选型」。**
+
+---
+
+## 一、前提核验：方案做对了功课的部分 ✅
+
+| 方案声称                                                     | 实勘结果                                                                                                                                                                     | 判定                     |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| 现有 `agent-memory` SQLite                                 | `src-tauri/src/agent_memory/store.rs`，已有 `schema_migrations`(v1/v2) + `projects`/`agent_sessions`/`agent_events`/`provider_cursors`/`agent_checkpoints`/`memory_records` | ✅ 成立，加 migration v3 合理 |
+| 现有 16 个 `AgentKind`                                      | `src-tauri/src/soft_pad_runtime/model.rs:8`，实测正好 16 个                                                                                                                    | ✅ 精确                   |
+| Hermes/OpenClaw/Marvis/Antigravity/Kimi 不在枚举内            | 16 个成员为 Codex/Claude/Cursor/MiniMax/CopilotCli/Gemini/WorkBuddy/Trae/TraeCode/Windsurf/Qoder/Cline/Roo/OpenCode/Aider/CopilotVscode —— **确实不含**这 5 个                     | ✅ "仅发现实体、不扩展枚举"决策正确    |
+| 现有 usage / session-event / connector health              | `provider_usage.rs`、`shell_agent_usage/official/{trae,workbuddy,qoder}.rs`、`agent_usage.rs`(含 connector health)、`agent_memory/session_events.rs` 均在                      | ✅ 成立                   |
+| 回归命令 `npm run typecheck` / `test:islands` / `cargo test` | 三者均存在于 `package.json`                                                                                                                                                    | ✅ 成立                   |
+
+**方案的"诚实可用集"原则（`supported/enabled/reason`、缺数据返回 `null + unavailableReason`、不伪造按钮）与项目 10-03 设计文档的价值取向完全一致——这部分应完整保留。**
+
+---
+
+## 二、致命问题：四处冲突与重复
+
+### ❌ C1 与今天的 `2026-10-04-home-fusion-g-design.md` 正面冲突
+
+今日文档明确写：
+
+> 约束：本阶段定义架构与验收；**不直接改生产 `#homeWorkbench`**，除非另开实施计划  
+> 第 146 行：**选型前不改生产默认面。**
+
+而首页 G 的定位是「情境拼装」，安静态底座是 **A：编码启动页**（我在哪个编码上下文 / 怎么马上开工 / 单一提问），且 Soft Pad 默认 `hidden`。
+
+**方案要「主首页顶层加入 Tab，默认进入 Agent 中心」**：
+
+- 直接改生产默认面 → 违反今日约束
+- 把首页从「编码启动页」变成「agent 仪表盘」→ 与 G/A 定位相反
+- 违反"选型前不改生产默认面"的流程
+
+### ❌ C2 与 `2026-10-03-agent-home-work-history-design.md` 的明确非目标冲突
+
+该文档 §3「非目标」逐条列出：
+
+> - **不把首页做成 LLM 对话页、聊天记录页或卡片仪表盘。**
+> - 不展示未被真实数据支持的 Agent 进度、完成率、智能建议或快捷键。
+
+方案的三块主体——**Agent 网格 + 7 维对比表 + 未接入区**——正是典型卡片仪表盘。
+
+同文档 §1 还说：
+
+> "历史记录"不是一个需要另开标签的附属功能，而是 Agent 首页的**主内容**。
+
+方案却把这块主内容降为「第二视图 Tab」。**方向反了。**
+
+### ❌ C3 违反「左侧导航是全局 IA 唯一来源」
+
+10-03 §2 明确：
+
+> 新首页**不能再创建一组平行的顶部导航**，也不能把既有入口改名后重复呈现。
+
+方案的「顶层 `Agent 中心 / 指挥台` Tab」正是一组平行顶部导航。
+
+### ❌ C4 指挥台的内容，生产代码里已经有了
+
+| 方案要"完整保留"的 | 生产代码现状                                                                                                                                                                      |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 运行中        | `cmd_agent_home_snapshot`（`ipc/commands/shell/agent_home_cmd.rs:17`）→ `agent-home-pulse.js:353` 映射为 work-history snap → `home-focus-adapter.js:611` 合并为 **Living (active)** |
+| 需要你        | 同上 DTO 的 attention 分支；`src-tauri/src/agent_attention/` 独立模块                                                                                                                 |
+| 项目续跑       | 同上 DTO → **Continue + Recent**                                                                                                                                              |
+| 时间线        | `agent_memory/session_events.rs` + `agent_events` 表                                                                                                                         |
+
+**即「Living + Continue + Recent」三件套已在 `home-focus-adapter.js` 落地。**  
+方案把它复刻成第二个 Tab，不是"保留"，是**制造第二套平行实现**——后续任何改动都要同步两处，这是明确的维护债。
+
+---
+
+## 三、技术风险点（需修正，非阻塞）
+
+| #      | 风险                                 | 说明                                                                                             | 建议                                                                                                                          |
+| ------ | ---------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **R1** | **`runtime_kind` 可空 vs Rust enum** | `AgentKind` 是编译期 `pub enum`，**不可空**。若 DB 列反序列化为 `AgentKind`，"仅发现实体"会 panic 或静默丢弃               | DB 列用 `TEXT NULL`；Rust 侧 `Option<AgentKind>`；未知值只落 `agent_id` 开放字符串，**禁止** `serde` 直接到 enum。方案写了"开放字符串"但没写清 DB→Rust 的反序列化边界 |
+| **R2** | **Trae 会被误标为"不可读"**                | 项目已有 `shell_agent_usage/official/trae.rs` —— 说明 **Trae 用量可读**。（我昨日实勘的"SQLCipher 不可读"指**会话正文**） | 未接入/受限区必须区分 **「用量可读」vs「会话正文不可读」** 两种 capability，否则会抹掉已有的 `trae.rs` 能力                                                       |
+| **R3** | **成本 vs 成功率/均时的来源要分开**             | `provider_usage.rs` / `shell_agent_usage` / `agent_usage.rs` 已有用量 → **成本有真实来源**；成功率/均时**无来源**  | 成本走现有 usage 源（不该返回 null）；成功率/均时才 `null + unavailableReason`。方案未区分，可能浪费已有能力                                                  |
+| **R4** | **`probe-agent-dbs.py` 覆盖率不足**     | 该脚本只探 SQLite，**未覆盖 JSONL**（Claude/Codex/Gemini 主存储）                                            | 若作测试参考，需补 JSONL 探测，否则"已接入"清单会漏掉 3 个主力源                                                                                      |
+| **R5** | **测试未挂到现有专项**                      | 项目已有 `test:agent-detect-home`、`test:agent-home-pulse`、`test:agent-memory-plan-a/b/c`           | 新 smoke 应挂靠或新增 `test:agent-center`，否则 CI 无覆盖                                                                                |
+| **R6** | **Trae 命名映射**                      | 枚举是 `Trae` / `TraeCode`，本机实勘目录是 `Trae CN` / `TRAE SOLO CN`                                     | 需在 Registry 里存目录名↔枚举的映射证据，否则探测会对不上                                                                                          |
+
+---
+
+## 四、建议：拆成两件事，顺序做
+
+### ✅ P0（现在就能做，无争议）：`agent_registry` 落 Rust
+
+这部分方案写得对，**与首页改造解耦，独立落地**：
+
+1. `agent_memory` 加 migration v3 → `agent_registry` 表（按方案字段，`runtime_kind TEXT NULL`）
+2. 合并现有安装清单 / catalog / usage / session-event / connector health 为运行时投影
+3. 新增 `cmd_agent_center_snapshot` / `cmd_agent_registry_refresh` IPC
+4. Rust 侧探测逻辑（`probe-agent-dbs.py` 降级为只读取证）
+5. 测试：`cargo test` + 挂 `test:agent-center`
+
+**这一步无论首页怎么改都有价值，且不与任何既有设计冲突。**
+
+### ⏸ P1（等 fusion-g 选型后再定）：首页落点
+
+方案当前的"主首页顶层 Tab"建议**暂缓**。三个可选落点，按推荐度排序：
+
+| 选项        | 落点                                         | 合规性                               | 说明                             |
+| --------- | ------------------------------------------ | --------------------------------- | ------------------------------ |
+| **A（推荐）** | **左侧 Agent 入口内的子视图**，与"工作记录 / 数据"并列        | ✅ 符合 10-03 "Agent 这一入口内部"定位；不动主首页 | Agent 中心是 Agent 域的实体清单，天然属于该入口 |
+| **B**     | 作为 fusion-g 的**一个情境**（如 `agents`），而非平行 Tab | ✅ 不破坏 G 的裁决顺序                     | 需等 G 选型通过后再加情境                 |
+| **C**     | 设置 → Agent 的增强                             | ✅ 方案自己也提到，但标为"非本轮落点"              | 偏配置向，弱于 A                      |
+
+### 🔧 若坚持做双视图，必须先满足三个前置
+
+1. 拿到 fusion-g 的选型结论，并**明确 G 与 Agent 中心的裁决关系**（谁覆盖 `quiet`）
+2. 指挥台**直接复用** `cmd_agent_home_snapshot` 的 Living/Continue/Recent，**不新建第二套**
+3. Tab 改为**左侧 Agent 入口内的子导航**，不是主首页顶层
+
+---
+
+## 五、评审结论
+
+| 维度       | 评分     | 说明                                                      |
+| -------- | ------ | ------------------------------------------------------- |
+| 前提准确性    | **A**  | 16 个 AgentKind、agent_memory、usage 源、测试命令全部核实无误          |
+| 后端设计     | **A-** | Registry 表 + capability gate + 投影合并，思路正确；R1/R2/R3 需修正   |
+| 数据诚实原则   | **A**  | `supported/enabled/reason`、缺数据 `null + reason` 与项目价值观一致 |
+| **首页落点** | **D**  | 违反今日 fusion-g 约束、撞 10-03 三条非目标、复刻已存在的指挥台                |
+| 测试计划     | **B**  | 命令存在但未挂专项（R5），缺 JSONL 覆盖（R4）                            |
+
+**总评：后端方案采纳，首页改造部分需重做落点设计。建议按「P0 Registry 先落地 / P1 首页位置等 fusion-g 选型」拆分执行。**

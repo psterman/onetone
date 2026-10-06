@@ -8,10 +8,10 @@ use tauri::{
 };
 
 use crate::audio_win::MicMuteState;
-use crate::tray_agent_bridge::{read_tray_agent_visual, TrayAgentVisual};
-use crate::tray_icon_render;
 use crate::config::{mapping_is_complete, MappingEntry, TriggerMode, VoiceConfig};
 use crate::ipc;
+use crate::tray_agent_bridge::{read_tray_agent_visual, TrayAgentVisual};
+use crate::tray_icon_render;
 use crate::AppState;
 
 pub const TRAY_ID: &str = "onetone-tray";
@@ -208,15 +208,9 @@ pub fn refresh_tray_tooltip(app: &AppHandle, state: &AppState) {
             agent.agent_name, agent.status_label, mic_status
         )
     } else if voice_on {
-        format!(
-            "一声 · 监听中（按键 + 语音唤醒） · 麦克风{}",
-            mic_status
-        )
+        format!("一声 · 监听中（按键 + 语音唤醒） · 麦克风{}", mic_status)
     } else {
-        format!(
-            "一声 · 仅按键（语音已关，省内存） · 麦克风{}",
-            mic_status
-        )
+        format!("一声 · 仅按键（语音已关，省内存） · 麦克风{}", mic_status)
     };
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         let _ = tray.set_tooltip(Some(tip));
@@ -350,7 +344,8 @@ pub fn tray_menu_init_json(state: &AppState) -> String {
             can_resume = b;
         }
         if status_token.is_empty() {
-            status_token = tray_derive_status_token(paused, voice_engine, &voice_state, &voice_error);
+            status_token =
+                tray_derive_status_token(paused, voice_engine, &voice_state, &voice_error);
         }
         status_tone = match status_token.as_str() {
             "paused" => "paused",
@@ -1094,7 +1089,9 @@ fn update_tray_icon_if_needed(
     agent_light: &str,
 ) -> tauri::Result<()> {
     let cache_key = visual_cache_key(mic_key, agent_light);
-    let mut last = LAST_TRAY_VISUAL_KEY.lock().unwrap_or_else(|e| e.into_inner());
+    let mut last = LAST_TRAY_VISUAL_KEY
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     if last.as_deref() == Some(cache_key.as_str()) {
         return Ok(());
     }

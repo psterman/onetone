@@ -15,7 +15,7 @@ use std::time::{Duration, Instant, SystemTime};
 use crate::agent_attention::store::{self, raise_lifecycle};
 use crate::agent_attention::{AttentionState, SignalSource};
 use crate::app_identity::{
-    process_running_by_exe, preset_process_names, QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID,
+    preset_process_names, process_running_by_exe, QODER_APP_TARGET_ID, TRAE_APP_TARGET_ID,
     TRAE_CODE_APP_TARGET_ID, WINDSURF_APP_TARGET_ID, WORKBUDDY_APP_TARGET_ID,
 };
 use crate::pad_status::SHELL_AGENT_MTIME_BUSY_MS;
@@ -137,11 +137,7 @@ fn trae_solo_activity_roots() -> Vec<PathBuf> {
             let root = base.join(name);
             roots.push(root.join("logs"));
             roots.push(root.join("ModularData").join("ai-agent"));
-            roots.push(
-                root.join("User")
-                    .join("globalStorage")
-                    .join("state.vscdb"),
-            );
+            roots.push(root.join("User").join("globalStorage").join("state.vscdb"));
         }
     }
     if let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) {
@@ -165,11 +161,7 @@ fn trae_code_activity_roots() -> Vec<PathBuf> {
             let root = base.join(name);
             roots.push(root.join("logs"));
             roots.push(root.join("ModularData").join("ai-agent"));
-            roots.push(
-                root.join("User")
-                    .join("globalStorage")
-                    .join("state.vscdb"),
-            );
+            roots.push(root.join("User").join("globalStorage").join("state.vscdb"));
         }
     }
     roots
@@ -180,11 +172,7 @@ fn windsurf_activity_roots() -> Vec<PathBuf> {
     if let Ok(appdata) = std::env::var("APPDATA") {
         let root = PathBuf::from(appdata).join("Windsurf");
         roots.push(root.join("logs"));
-        roots.push(
-            root.join("User")
-                .join("globalStorage")
-                .join("state.vscdb"),
-        );
+        roots.push(root.join("User").join("globalStorage").join("state.vscdb"));
         roots.push(root.join("User").join("workspaceStorage"));
     }
     if let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) {
@@ -306,7 +294,8 @@ fn apply_inferred(kind: AgentKind, busy: InferredBusy) {
             // WorkBuddy / Qoder: no realtime motion lamp from process/mtime chatter.
             // Trae Work / Windsurf + Trae Code: Cursor-style inferred Working (OfficialHook still wins above).
             if matches!(kind, AgentKind::WorkBuddy | AgentKind::Qoder) {
-                if prev == Some(AttentionState::Working) && prev_src == Some(SignalSource::Inferred) {
+                if prev == Some(AttentionState::Working) && prev_src == Some(SignalSource::Inferred)
+                {
                     raise_lifecycle(kind, None, AttentionState::Idle, SignalSource::Inferred);
                 }
                 return;
@@ -495,7 +484,9 @@ mod tests {
         assert!(infer_busy_from_mtime_age(0));
         assert!(infer_busy_from_mtime_age(SHELL_AGENT_MTIME_BUSY_MS - 1));
         assert!(!infer_busy_from_mtime_age(SHELL_AGENT_MTIME_BUSY_MS));
-        assert!(!infer_busy_from_mtime_age(SHELL_AGENT_MTIME_BUSY_MS + 5_000));
+        assert!(!infer_busy_from_mtime_age(
+            SHELL_AGENT_MTIME_BUSY_MS + 5_000
+        ));
     }
 
     #[test]

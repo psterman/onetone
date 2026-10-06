@@ -64,7 +64,11 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
             window,
             "unknown",
             &normalized,
-            if note.is_empty() { "unknown_hid" } else { &note },
+            if note.is_empty() {
+                "unknown_hid"
+            } else {
+                &note
+            },
         );
         return;
     }
@@ -130,9 +134,10 @@ pub fn handle_hardware_record_key(state: &AppState, window: &tauri::WebviewWindo
                         // Keydown never armed the detector (e.g. older path) —
                         // still wait for a possible double before Tap.
                         let now = std::time::Instant::now();
-                        state.record_gesture.lock().begin_waiting_double(
-                            &pending, device, now,
-                        );
+                        state
+                            .record_gesture
+                            .lock()
+                            .begin_waiting_double(&pending, device, now);
                         let payload = serde_json::json!({
                             "type": "mvp_record_gesture",
                             "phase": "waiting_double",

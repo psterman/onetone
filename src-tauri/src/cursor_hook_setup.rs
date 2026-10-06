@@ -137,18 +137,14 @@ fn inspect_hooks_file(scope: &str, path: &Path, expected_probe: &Path) -> Cursor
             continue;
         };
         for entry in arr {
-            let cmd = entry
-                .get("command")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let cmd = entry.get("command").and_then(|v| v.as_str()).unwrap_or("");
             if command_has_sentinel(cmd) {
                 status.has_sentinel = true;
                 status.probe_path = extract_probe_from_command(cmd);
                 let expected = expected_probe.to_string_lossy().replace('/', "\\");
                 let got = status.probe_path.replace('/', "\\");
                 status.path_matches = !got.is_empty()
-                    && (got.eq_ignore_ascii_case(&expected)
-                        || Path::new(&got) == expected_probe);
+                    && (got.eq_ignore_ascii_case(&expected) || Path::new(&got) == expected_probe);
             }
         }
     }
@@ -156,11 +152,7 @@ fn inspect_hooks_file(scope: &str, path: &Path, expected_probe: &Path) -> Cursor
 }
 
 pub fn build_merge_preview(probe_abs: &Path) -> String {
-    let cmd = format!(
-        "node \"{}\" {}",
-        probe_abs.display(),
-        CURSOR_HOOK_SENTINEL
-    );
+    let cmd = format!("node \"{}\" {}", probe_abs.display(), CURSOR_HOOK_SENTINEL);
     let draft = json!({
         "version": 1,
         "hooks": {
@@ -182,7 +174,11 @@ pub fn setup_status(workspace: Option<&Path>) -> CursorHookSetupStatus {
     };
     let mut scopes = vec![inspect_hooks_file("user", &user_hooks_path(), &probe)];
     if let Some(ws) = workspace {
-        scopes.push(inspect_hooks_file("project", &project_hooks_path(ws), &probe));
+        scopes.push(inspect_hooks_file(
+            "project",
+            &project_hooks_path(ws),
+            &probe,
+        ));
     }
     let configured: Vec<String> = scopes
         .iter()
@@ -228,7 +224,8 @@ pub fn setup_status(workspace: Option<&Path>) -> CursorHookSetupStatus {
     } else {
         HealthState::ConfiguredWaiting
     };
-    let mut row = connector_health::CapabilityHealth::new(AgentKind::Cursor, CapabilityKind::Lifecycle);
+    let mut row =
+        connector_health::CapabilityHealth::new(AgentKind::Cursor, CapabilityKind::Lifecycle);
     row.state = state.as_str().into();
     row.value_state = ValueState::Absent.as_str().into();
     row.value_present = false;
@@ -280,11 +277,7 @@ pub fn merge_onetone_hooks(existing: &str, probe_abs: &Path) -> Result<String, S
     if !root.is_object() {
         return Err("invalid_json".into());
     }
-    let cmd = format!(
-        "node \"{}\" {}",
-        probe_abs.display(),
-        CURSOR_HOOK_SENTINEL
-    );
+    let cmd = format!("node \"{}\" {}", probe_abs.display(), CURSOR_HOOK_SENTINEL);
     let hooks = root
         .as_object_mut()
         .unwrap()
@@ -318,9 +311,7 @@ pub fn merge_onetone_hooks(existing: &str, probe_abs: &Path) -> Result<String, S
 /// Write only after explicit user confirm. Atomic write + backup.
 pub fn install_to_path(target: &Path, probe_abs: &Path) -> Result<(), String> {
     detect_node()?;
-    let parent = target
-        .parent()
-        .ok_or_else(|| "invalid_path".to_string())?;
+    let parent = target.parent().ok_or_else(|| "invalid_path".to_string())?;
     fs::create_dir_all(parent).map_err(|e| format!("mkdir:{e}"))?;
     let existing = fs::read_to_string(target).unwrap_or_default();
     if !existing.trim().is_empty() {
@@ -343,8 +334,7 @@ pub fn uninstall_preview(existing: &str) -> Result<(String, usize), String> {
     if existing.trim().is_empty() {
         return Ok((String::new(), 0));
     }
-    let mut root: Value =
-        serde_json::from_str(existing).map_err(|_| "invalid_json".to_string())?;
+    let mut root: Value = serde_json::from_str(existing).map_err(|_| "invalid_json".to_string())?;
     let Some(hooks) = root.get_mut("hooks").and_then(|v| v.as_object_mut()) else {
         return Ok((existing.to_string(), 0));
     };
@@ -415,15 +405,10 @@ mod tests {
             .parent()
             .unwrap()
             .join(PROBE_RESOURCE);
-        assert!(
-            probe.is_file(),
-            "missing repo probe at {}",
-            probe.display()
-        );
-        let conf = fs::read_to_string(
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tauri.conf.json"),
-        )
-        .expect("tauri.conf.json");
+        assert!(probe.is_file(), "missing repo probe at {}", probe.display());
+        let conf =
+            fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tauri.conf.json"))
+                .expect("tauri.conf.json");
         assert!(
             conf.contains("scripts/cursor-hook-probe.js"),
             "packaged resource mapping missing for cursor-hook-probe.js"

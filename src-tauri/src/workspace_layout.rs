@@ -100,7 +100,10 @@ fn match_anchor(anchor: &WorkspaceAnchorMatch, fg: &AppIdentity) -> bool {
     title_need.is_empty() || fg.window_title.to_ascii_lowercase().contains(&title_need)
 }
 
-fn monitor_rect_for_slot(slot: &WorkspaceLayoutSlot, monitor: &MonitorInfo) -> (i32, i32, i32, i32) {
+fn monitor_rect_for_slot(
+    slot: &WorkspaceLayoutSlot,
+    monitor: &MonitorInfo,
+) -> (i32, i32, i32, i32) {
     let width = ((monitor.width as f64) * clamp_pct(slot.w_pct, 0.5)).round() as i32;
     let height = ((monitor.height as f64) * clamp_pct(slot.h_pct, 0.5)).round() as i32;
     let width = width.max(80);
@@ -109,7 +112,12 @@ fn monitor_rect_for_slot(slot: &WorkspaceLayoutSlot, monitor: &MonitorInfo) -> (
     let y = monitor.y + ((monitor.height as f64) * clamp_pct(slot.y_pct, 0.0)).round() as i32;
     let max_x = monitor.x + monitor.width as i32 - width;
     let max_y = monitor.y + monitor.height as i32 - height;
-    (x.clamp(monitor.x, max_x.max(monitor.x)), y.clamp(monitor.y, max_y.max(monitor.y)), width, height)
+    (
+        x.clamp(monitor.x, max_x.max(monitor.x)),
+        y.clamp(monitor.y, max_y.max(monitor.y)),
+        width,
+        height,
+    )
 }
 
 fn exe_basename(name: &str) -> String {
@@ -522,7 +530,13 @@ pub fn snapshot_current_layout(
 }
 
 #[cfg(windows)]
-fn move_resize_window(hwnd: winapi::shared::windef::HWND, x: i32, y: i32, width: i32, height: i32) -> Result<(), String> {
+fn move_resize_window(
+    hwnd: winapi::shared::windef::HWND,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+) -> Result<(), String> {
     use winapi::um::winuser::{
         IsIconic, IsWindow, IsZoomed, SetWindowPos, ShowWindow, SWP_NOACTIVATE, SWP_NOZORDER,
         SW_RESTORE,
@@ -551,7 +565,13 @@ fn move_resize_window(hwnd: winapi::shared::windef::HWND, x: i32, y: i32, width:
 }
 
 #[cfg(not(windows))]
-fn move_resize_window(_hwnd: isize, _x: i32, _y: i32, _width: i32, _height: i32) -> Result<(), String> {
+fn move_resize_window(
+    _hwnd: isize,
+    _x: i32,
+    _y: i32,
+    _width: i32,
+    _height: i32,
+) -> Result<(), String> {
     Err("unsupported_platform".into())
 }
 
@@ -643,7 +663,11 @@ fn apply_layout_config_inner(
         let mut best_idx: Option<usize> = None;
         let mut best_score: i32 = -1;
         if !slot.hwnd.trim().is_empty() {
-            if let Some((i, w)) = available.iter().enumerate().find(|(_, w)| w.hwnd == slot.hwnd) {
+            if let Some((i, w)) = available
+                .iter()
+                .enumerate()
+                .find(|(_, w)| w.hwnd == slot.hwnd)
+            {
                 if !used.contains(&w.hwnd)
                     && process_names_equal(&w.process_name, &slot.process_name)
                 {
@@ -722,7 +746,9 @@ fn apply_layout_config_inner(
         let launchable: Vec<&WorkspaceLayoutSlot> = unmatched
             .iter()
             .copied()
-            .filter(|s| !is_noise_workspace_process(&s.process_name) && !s.full_path.trim().is_empty())
+            .filter(|s| {
+                !is_noise_workspace_process(&s.process_name) && !s.full_path.trim().is_empty()
+            })
             .collect();
         let mut launched_any = false;
         for slot in &launchable {
@@ -786,7 +812,10 @@ pub fn apply_for_foreground_anchor(
     apply_layout_config(app, state, &layout, true)
 }
 
-pub fn upsert_layout(state: &Arc<AppState>, mut layout: WorkspaceLayoutConfig) -> WorkspaceLayoutConfig {
+pub fn upsert_layout(
+    state: &Arc<AppState>,
+    mut layout: WorkspaceLayoutConfig,
+) -> WorkspaceLayoutConfig {
     {
         let mut cfg = state.cfg.lock();
         if layout.id.trim().is_empty() {
@@ -803,11 +832,7 @@ pub fn upsert_layout(state: &Arc<AppState>, mut layout: WorkspaceLayoutConfig) -
                 }
             }
         }
-        if let Some(existing) = cfg
-            .workspace_layouts
-            .iter_mut()
-            .find(|x| x.id == layout.id)
-        {
+        if let Some(existing) = cfg.workspace_layouts.iter_mut().find(|x| x.id == layout.id) {
             *existing = layout.clone();
         } else {
             cfg.workspace_layouts.push(layout.clone());
@@ -835,7 +860,11 @@ pub fn delete_layout(state: &Arc<AppState>, layout_id: &str) -> bool {
     changed
 }
 
-pub fn set_auto_apply(state: &Arc<AppState>, layout_id: &str, enabled: bool) -> Result<WorkspaceLayoutConfig, String> {
+pub fn set_auto_apply(
+    state: &Arc<AppState>,
+    layout_id: &str,
+    enabled: bool,
+) -> Result<WorkspaceLayoutConfig, String> {
     let mut cfg = state.cfg.lock();
     let Some(idx) = cfg.workspace_layouts.iter().position(|x| x.id == layout_id) else {
         return Err("layout_not_found".into());
@@ -910,10 +939,10 @@ pub fn maybe_auto_apply_for_foreground(app: &AppHandle, state: &Arc<AppState>) {
         if rt.pending_since.elapsed() < Duration::from_millis(layout.debounce_ms as u64) {
             return;
         }
-        if rt
-            .last_apply_at
-            .is_some_and(|at| rt.last_layout_id == layout.id && at.elapsed() < Duration::from_millis(layout.cooldown_ms as u64))
-        {
+        if rt.last_apply_at.is_some_and(|at| {
+            rt.last_layout_id == layout.id
+                && at.elapsed() < Duration::from_millis(layout.cooldown_ms as u64)
+        }) {
             return;
         }
         if dragging {
@@ -942,7 +971,9 @@ mod tests {
     #[test]
     fn noise_shell_processes_filtered() {
         assert!(is_noise_workspace_process("TextInputHost.exe"));
-        assert!(is_noise_workspace_process("C:\\Windows\\SystemSettings.exe"));
+        assert!(is_noise_workspace_process(
+            "C:\\Windows\\SystemSettings.exe"
+        ));
         assert!(is_noise_workspace_process("ApplicationFrameHost.exe"));
         assert!(is_noise_workspace_process("Taskmgr.exe"));
         assert!(!is_noise_workspace_process("Cursor.exe"));

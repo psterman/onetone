@@ -44,10 +44,7 @@ pub fn cursor_workspace_storage_root() -> Option<PathBuf> {
 
 /// Scan workspaceStorage; classify by current window title + mtime.
 /// Hard rule: scanned json alone never becomes Exact — only High (title-aligned current) can.
-pub fn select_workspace_evidence(
-    window_title: Option<&str>,
-    now_ms: u64,
-) -> EvidenceSelection {
+pub fn select_workspace_evidence(window_title: Option<&str>, now_ms: u64) -> EvidenceSelection {
     let root = match cursor_workspace_storage_root() {
         Some(r) => r,
         None => return EvidenceSelection::None,
@@ -343,10 +340,7 @@ mod tests {
         fs::create_dir_all(&ws).unwrap();
         let project = root.join("my-app");
         fs::create_dir_all(&project).unwrap();
-        let folder_uri = format!(
-            "file:///{}",
-            project.to_string_lossy().replace('\\', "/")
-        );
+        let folder_uri = format!("file:///{}", project.to_string_lossy().replace('\\', "/"));
         fs::write(
             ws.join("workspace.json"),
             format!(r#"{{"folder":"{}"}}"#, folder_uri),

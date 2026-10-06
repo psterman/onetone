@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>汇 Converge · 多 Agent 会话整合台</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --line:#e6e8ec; --line-soft:#f0f1f4;
+  --t1:#12141a; --t2:#5b6270; --t3:#8b93a1;
+  --brand:#4f46e5; --brand-soft:#eef0ff;
+  --green:#0f9d58; --green-soft:#e8f6ee;
+  --amber:#d98600; --amber-soft:#fdf3e2;
+  --red:#d93a3a; --red-soft:#fdecec;
+  --blue:#2563eb; --blue-soft:#eaf1fe;
+  --r:12px; --r-sm:8px;
+  --sh:0 1px 2px rgba(16,20,32,.05), 0 1px 3px rgba(16,20,32,.04);
+  --sh-h:0 4px 14px rgba(16,20,32,.09);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif;
+  background:var(--bg); color:var(--t1); font-size:14px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.app{max-width:1440px;margin:0 auto;padding:0 24px 56px}
+
+/* ---------- 顶栏 ---------- */
+.top{position:sticky;top:0;z-index:30;background:rgba(246,247,249,.88);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);padding:12px 0;margin-bottom:20px}
+.top-in{display:flex;align-items:center;gap:16px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:16px;letter-spacing:-.2px;flex-shrink:0}
+.logo .mk{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#6366f1,#4f46e5);
+  display:grid;place-items:center;color:#fff;font-size:14px;font-weight:700}
+.logo small{font-weight:500;font-size:12px;color:var(--t3);letter-spacing:.4px}
+
+.search{flex:1;max-width:520px;position:relative}
+.search input{width:100%;height:36px;border:1px solid var(--line);background:var(--panel);
+  border-radius:var(--r-sm);padding:0 12px 0 34px;font-size:13px;color:var(--t1);outline:none;
+  transition:border-color .15s,box-shadow .15s}
+.search input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.search input::placeholder{color:var(--t3)}
+.search .ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:13px}
+.kbd{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--t3);
+  border:1px solid var(--line);border-radius:5px;padding:1px 5px;background:var(--bg)}
+
+.srcs{display:flex;align-items:center;gap:7px;margin-left:auto}
+.srcs .lbl{font-size:11px;color:var(--t3);margin-right:2px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot.ok{background:var(--green)} .dot.warn{background:var(--amber)} .dot.off{background:#c9ccd4}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);
+  background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:3px 9px;cursor:default}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--brand-soft);color:var(--brand);
+  display:grid;place-items:center;font-size:12px;font-weight:600;border:1px solid #e0e2ff}
+
+/* ---------- KPI ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh)}
+.kpi .k{font-size:11.5px;color:var(--t3);display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.kpi .v{font-size:25px;font-weight:700;letter-spacing:-.6px;line-height:1.1}
+.kpi .v small{font-size:13px;font-weight:600;color:var(--t2);margin-left:2px}
+.kpi .s{font-size:11px;color:var(--t3);margin-top:3px}
+.kpi.alert .v{color:var(--red)} .kpi.live .v{color:var(--green)}
+
+/* ---------- 主栅格 ---------- */
+.grid{display:grid;grid-template-columns:1.62fr 1fr;gap:16px;margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--sh);overflow:hidden}
+.card-h{display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--line-soft)}
+.card-h h3{font-size:13.5px;font-weight:650;letter-spacing:-.1px}
+.card-h .cnt{font-size:11px;color:var(--t3);background:var(--bg);border-radius:10px;padding:1px 7px}
+.card-h .more{margin-left:auto;font-size:11.5px;color:var(--brand);cursor:pointer}
+.card-b{padding:14px 16px}
+
+/* 运行中 */
+.live{display:flex;flex-direction:column;gap:10px}
+.live-item{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 13px;position:relative;
+  overflow:hidden;transition:box-shadow .16s,border-color .16s}
+.live-item:hover{box-shadow:var(--sh-h);border-color:#d3d6dd}
+.live-item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green)}
+.live-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ag{font-size:10.5px;font-weight:650;padding:2px 7px;border-radius:5px;letter-spacing:.2px}
+.ag.claude{background:#f3ede4;color:#9a5b1f}
+.ag.codex{background:#e8eef7;color:#1d4e89}
+.ag.cursor{background:#eaeef2;color:#3b4250}
+.ag.wb{background:var(--brand-soft);color:var(--brand)}
+.proj{font-size:11.5px;color:var(--t3);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.pulse{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green);font-weight:600}
+.pulse i{width:6px;height:6px;border-radius:50%;background:var(--green);animation:p 1.6s infinite}
+@keyframes p{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+.live-title{font-size:13.5px;font-weight:600;margin-bottom:5px;letter-spacing:-.1px}
+.live-meta{font-size:11.5px;color:var(--t2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.live-meta .sep{color:var(--line)}
+.acts{display:flex;gap:6px;margin-top:10px}
+.btn{font-size:11.5px;padding:4px 11px;border-radius:6px;border:1px solid var(--line);
+  background:var(--panel);color:var(--t2);cursor:pointer;transition:.14s;font-weight:500}
+.btn:hover{border-color:#c8ccd4;color:var(--t1)}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.pri:hover{background:#4338ca}
+
+/* 需要你 */
+.need{display:flex;flex-direction:column;gap:2px}
+.need-item{display:flex;gap:10px;padding:11px 12px;border-radius:var(--r-sm);cursor:pointer;
+  transition:background .14s;align-items:flex-start}
+.need-item:hover{background:var(--bg)}
+.need-ic{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:12px;flex-shrink:0;margin-top:1px}
+.n-red{background:var(--red-soft);color:var(--red)}
+.n-amber{background:var(--amber-soft);color:var(--amber)}
+.n-blue{background:var(--blue-soft);color:var(--blue)}
+.need-txt{flex:1;min-width:0}
+.need-t{font-size:12.8px;font-weight:550;line-height:1.45}
+.need-d{font-size:11.5px;color:var(--t3);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.need-d code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.need-time{font-size:10.5px;color:var(--t3);flex-shrink:0;margin-top:2px}
+.tag{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--bg);color:var(--t3);
+  border:1px solid var(--line);margin-left:5px}
+
+/* 时间线 */
+.tl{display:flex;align-items:flex-end;gap:5px;height:96px;margin-bottom:8px}
+.tl-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%}
+.tl-bar{background:linear-gradient(180deg,#a5b4fc,#6366f1);border-radius:3px;min-height:3px;
+  transition:opacity .15s;cursor:pointer}
+.tl-bar:hover{opacity:.72}
+.tl-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--t3);
+  border-top:1px solid var(--line-soft);padding-top:7px}
+.legend{display:flex;gap:12px;font-size:11px;color:var(--t3);margin-top:10px;flex-wrap:wrap}
+.legend i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:4px}
+.agent-rows{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:11px}
+.arow{display:flex;align-items:center;gap:9px;margin-bottom:8px;font-size:11.5px}
+.arow .nm{width:66px;color:var(--t2);flex-shrink:0}
+.arow .track{flex:1;height:6px;background:var(--line-soft);border-radius:3px;overflow:hidden}
+.arow .fill{height:100%;border-radius:3px}
+.arow .num{width:34px;text-align:right;color:var(--t3);font-variant-numeric:tabular-nums}
+
+/* 成本 */
+.cost-top{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+.cost-v{font-size:27px;font-weight:700;letter-spacing:-.7px}
+.cost-d{font-size:11.5px;color:var(--green);font-weight:600}
+.spark{display:flex;align-items:flex-end;gap:3px;height:36px;margin:10px 0 6px}
+.spark i{flex:1;background:var(--brand-soft);border-radius:2px;min-height:3px}
+.spark i.hi{background:var(--brand)}
+.budget{margin-top:10px}
+.bud-t{display:flex;justify-content:space-between;font-size:11.5px;color:var(--t2);margin-bottom:5px}
+.bud-bar{height:7px;background:var(--line-soft);border-radius:4px;overflow:hidden}
+.bud-fill{height:100%;background:linear-gradient(90deg,#6366f1,#818cf8);border-radius:4px}
+.cost-note{font-size:11px;color:var(--t3);margin-top:10px;padding-top:9px;border-top:1px solid var(--line-soft)}
+
+/* 项目卡 */
+.sec-t{display:flex;align-items:center;gap:9px;margin:22px 0 12px}
+.sec-t h2{font-size:15px;font-weight:680;letter-spacing:-.2px}
+.sec-t .hint{font-size:11.5px;color:var(--t3)}
+.sec-t .ln{flex:1;height:1px;background:var(--line)}
+.projs{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.proj-c{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;
+  box-shadow:var(--sh);cursor:pointer;transition:.16s;display:flex;flex-direction:column;min-height:152px}
+.proj-c:hover{box-shadow:var(--sh-h);transform:translateY(-2px);border-color:#d3d6dd}
+.proj-n{font-size:13px;font-weight:650;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:7px}
+.proj-ags{display:flex;gap:4px;margin-bottom:9px;flex-wrap:wrap}
+.proj-ags .ag{font-size:10px;padding:1.5px 6px}
+.proj-last{font-size:11.5px;color:var(--t2);flex:1;line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.proj-f{display:flex;align-items:center;justify-content:space-between;margin-top:11px;
+  padding-top:9px;border-top:1px solid var(--line-soft)}
+.proj-time{font-size:11px;color:var(--t3)}
+.resume{font-size:11.5px;color:var(--brand);font-weight:600;display:flex;align-items:center;gap:3px}
+
+/* 上下文包 */
+.ctx{display:grid;grid-template-columns:1.62fr 1fr;gap:16px}
+.ctx-list{display:flex;flex-direction:column;gap:8px}
+.ctx-i{display:flex;gap:10px;padding:10px 11px;border:1px solid var(--line);border-radius:var(--r-sm);
+  transition:.14s}
+.ctx-i:hover{background:var(--bg)}
+.ctx-dot{width:6px;height:6px;border-radius:50%;background:var(--brand);margin-top:6px;flex-shrink:0}
+.ctx-t{font-size:12.5px;font-weight:550;margin-bottom:2px}
+.ctx-m{font-size:11px;color:var(--t3)}
+.ctx-acts{display:flex;flex-direction:column;gap:8px}
+.big-btn{width:100%;padding:9px;border-radius:var(--r-sm);border:1px solid var(--line);
+  background:var(--panel);font-size:12.5px;color:var(--t1);cursor:pointer;text-align:left;
+  display:flex;align-items:center;gap:8px;transition:.14s;font-weight:500}
+.big-btn:hover{border-color:var(--brand);background:var(--brand-soft)}
+.big-btn .e{font-size:14px}
+.big-btn .sub{font-size:10.5px;color:var(--t3);font-weight:400}
+
+/* 源状态条 */
+.foot{margin-top:22px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  padding:13px 16px;box-shadow:var(--sh);display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--t2)}
+.foot .it{display:flex;align-items:center;gap:6px}
+.foot .warn-t{color:var(--amber)}
+.foot .r{margin-left:auto;color:var(--t3);font-size:11px}
+@media(max-width:1180px){
+  .grid,.ctx{grid-template-columns:1fr}
+  .kpis,.projs{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ① 顶栏 -->
+  <div class="top"><div class="top-in">
+    <div class="logo"><span class="mk">汇</span>Converge<small>多 Agent 会话整合台</small></div>
+    <div class="search">
+      <span class="ico">⌕</span>
+      <input id="q" placeholder="跨 agent 搜索会话、提示词、文件、工具调用…">
+      <span class="kbd">⌘K</span>
+    </div>
+    <div class="srcs">
+      <span class="lbl">数据源</span>
+      <span class="chip"><i class="dot ok"></i>Claude</span>
+      <span class="chip"><i class="dot ok"></i>Codex</span>
+      <span class="chip"><i class="dot ok"></i>WorkBuddy</span>
+      <span class="chip"><i class="dot warn"></i>Cursor 7.6GB</span>
+      <span class="chip"><i class="dot off"></i>Trae 加密</span>
+      <span class="avatar">P</span>
+    </div>
+  </div></div>
+
+  <!-- ② KPI -->
+  <div class="kpis">
+    <div class="kpi live">
+      <div class="k"><i class="dot ok"></i>运行中会话</div>
+      <div class="v">2</div>
+      <div class="s">Claude · Codex 各 1</div>
+    </div>
+    <div class="kpi alert">
+      <div class="k"><i class="dot warn"></i>等你处理</div>
+      <div class="v">3</div>
+      <div class="s">1 项授权阻塞 · 2 项提醒</div>
+    </div>
+    <div class="kpi">
+      <div class="k">今日花费</div>
+      <div class="v"><small>¥</small>18.4</div>
+      <div class="s">较昨日 +12%</div>
+    </div>
+    <div class="kpi">
+      <div class="k">本周会话</div>
+      <div class="v">47</div>
+      <div class="s">覆盖 6 个项目</div>
+    </div>
+  </div>
+
+  <!-- ③ ④ | ⑤ ⑥ -->
+  <div class="grid">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <!-- ③ Living Now -->
+      <div class="card">
+        <div class="card-h"><h3>正在运行</h3><span class="cnt">2</span>
+          <span class="more">全部会话 →</span></div>
+        <div class="card-b"><div class="live">
+          <div class="live-item">
+            <div class="live-top">
+              <span class="ag claude">Claude Code</span>
+              <span class="proj">E:\voice-pilot</span>
+              <span class="pulse"><i></i>运行中</span>
+            </div>
+            <div class="live-title">梳理多 agent 首页方案并落地 P0-P2 策略</div>
+            <div class="live-meta">
+              <span>第 7 轮</span><span class="sep">·</span>
+              <span>正在写入 <code>docs/agent-console-plan.md</code></span><span class="sep">·</span>
+              <span>已用 4m12s</span><span class="sep">·</span>
+              <span>上下文 38%</span>
+            </div>
+            <div class="acts">
+              <button class="btn pri">查看实时输出</button>
+              <button class="btn">接管终端</button>
+              <button class="btn">中断</button>
+            </div>
+          </div>
+          <div class="live-item" style="--green:#2563eb">
+            <div class="live-top">
+              <span class="ag codex">Codex CLI</span>
+              <span class="proj">C:\Users\pstem</span>
+              <span class="pulse" style="color:var(--blue)"><i style="background:var(--blue)"></i>思考中</span>
+            </div>
+            <div class="live-title">归档 rollout 会话并压缩为 zstd</div>
+            <div class="live-meta">
+              <span>第 3 轮</span><span class="sep">·</span>
+              <span>等待模型响应</span><span class="sep">·</span>
+              <span>已用 1m48s</span><span class="sep">·</span>
+              <span>上下文 <b style="color:var(--amber)">92%</b></span>
+            </div>
+            <div class="acts">
+              <button class="btn pri">查看实时输出</button>
+              <button class="btn">建议 compact</button>
+            </div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ④ Needs You -->
+      <div class="card">
+        <div class="card-h"><h3>需要你处理</h3><span class="cnt">3</span>
+          <span class="more">全部提醒 →</span></div>
+        <div class="card-b"><div class="need">
+          <div class="need-item">
+            <div class="need-ic n-red">!</div>
+            <div class="need-txt">
+              <div class="need-t">Cursor 正在等待授权高危命令<span class="tag">PermissionRequest</span></div>
+              <div class="need-d"><code>rm -rf node_modules</code> · 来自会话「清理依赖重装」· E:\voice-pilot</div>
+            </div>
+            <div class="need-time">2 分钟前</div>
+          </div>
+          <div class="need-item">
+            <div class="need-ic n-amber">▲</div>
+            <div class="need-txt">
+              <div class="need-t">Codex 上下文占用 92%，即将自动压缩</div>
+              <div class="need-d">建议在 compact 前先归档，否则推理细节会丢失</div>
+            </div>
+            <div class="need-time">刚刚</div>
+          </div>
+          <div class="need-item">
+            <div class="need-ic n-blue">◷</div>
+            <div class="need-txt">
+              <div class="need-t">12 个 Claude 会话将在 27 天后被自动清理</div>
+              <div class="need-d">Claude Code 默认保留 30 天 · 已归档 9 个，剩余 3 个未归档</div>
+            </div>
+            <div class="need-time">今天</div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <!-- ⑤ 时间线 -->
+      <div class="card">
+        <div class="card-h"><h3>今日活动</h3><span class="more">按周查看 →</span></div>
+        <div class="card-b">
+          <div class="tl" id="tl"><div class="tl-col"><div class="tl-bar" title="8:00 · 0 个会话活动" style="height: 0%;"></div></div><div class="tl-col"><div class="tl-bar" title="9:00 · 0 个会话活动" style="height: 0%;"></div></div><div class="tl-col"><div class="tl-bar" title="10:00 · 1 个会话活动" style="height: 11.1111%;"></div></div><div class="tl-col"><div class="tl-bar" title="11:00 · 2 个会话活动" style="height: 22.2222%;"></div></div><div class="tl-col"><div class="tl-bar" title="12:00 · 4 个会话活动" style="height: 44.4444%;"></div></div><div class="tl-col"><div class="tl-bar" title="13:00 · 7 个会话活动" style="height: 77.7778%;"></div></div><div class="tl-col"><div class="tl-bar" title="14:00 · 5 个会话活动" style="height: 55.5556%;"></div></div><div class="tl-col"><div class="tl-bar" title="15:00 · 3 个会话活动" style="height: 33.3333%;"></div></div><div class="tl-col"><div class="tl-bar" title="16:00 · 6 个会话活动" style="height: 66.6667%;"></div></div><div class="tl-col"><div class="tl-bar" title="17:00 · 9 个会话活动" style="height: 100%;"></div></div><div class="tl-col"><div class="tl-bar" title="18:00 · 4 个会话活动" style="height: 44.4444%;"></div></div><div class="tl-col"><div class="tl-bar" title="19:00 · 2 个会话活动" style="height: 22.2222%;"></div></div><div class="tl-col"><div class="tl-bar" title="20:00 · 0 个会话活动" style="height: 0%;"></div></div><div class="tl-col"><div class="tl-bar" title="21:00 · 0 个会话活动" style="height: 0%;"></div></div></div>
+          <div class="tl-lbl"><span>08:00</span><span>12:15 现在</span><span>20:00</span></div>
+          <div class="legend">
+            <span><i style="background:#6366f1"></i>Claude 8</span>
+            <span><i style="background:#2563eb"></i>Codex 5</span>
+            <span><i style="background:#4f46e5"></i>WorkBuddy 3</span>
+            <span><i style="background:#8b93a1"></i>Cursor 6</span>
+          </div>
+          <div class="agent-rows">
+            <div class="arow"><span class="nm">Claude</span>
+              <span class="track"><span class="fill" style="width:62%;background:#6366f1"></span></span><span class="num">8</span></div>
+            <div class="arow"><span class="nm">Cursor</span>
+              <span class="track"><span class="fill" style="width:46%;background:#8b93a1"></span></span><span class="num">6</span></div>
+            <div class="arow"><span class="nm">Codex</span>
+              <span class="track"><span class="fill" style="width:38%;background:#2563eb"></span></span><span class="num">5</span></div>
+            <div class="arow"><span class="nm">WorkBuddy</span>
+              <span class="track"><span class="fill" style="width:23%;background:#4f46e5"></span></span><span class="num">3</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑥ 成本 -->
+      <div class="card">
+        <div class="card-h"><h3>成本</h3><span class="more">明细 →</span></div>
+        <div class="card-b">
+          <div class="cost-top"><span class="cost-v">¥18.4</span><span class="cost-d">今日</span></div>
+          <div class="spark" id="spark"><i style="height: 33.3333%;"></i><i style="height: 50%;"></i><i style="height: 25%;"></i><i style="height: 66.6667%;"></i><i style="height: 41.6667%;"></i><i style="height: 75%;"></i><i class="hi" style="height: 100%;"></i><i style="height: 58.3333%;"></i><i class="hi" style="height: 83.3333%;"></i><i style="height: 50%;"></i><i class="hi" style="height: 91.6667%;"></i><i style="height: 66.6667%;"></i></div>
+          <div class="budget">
+            <div class="bud-t"><span>本月预算</span><span>¥412 / ¥600</span></div>
+            <div class="bud-bar"><span class="bud-fill" style="width:68.7%"></span></div>
+          </div>
+          <div class="cost-note">按当前速率，预计 10 月 26 日用尽 · 口径已对齐 cached token 重复计入问题</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑦ 继续上次 -->
+  <div class="sec-t"><h2>继续上次的工作</h2><span class="hint">按项目聚合，跨 agent</span><span class="ln"></span>
+    <span class="hint">共 6 个项目</span></div>
+  <div class="projs">
+    <div class="proj-c">
+      <div class="proj-n">voice-pilot</div>
+      <div class="proj-ags"><span class="ag claude">Claude</span><span class="ag codex">Codex</span><span class="ag cursor">Cursor</span></div>
+      <div class="proj-last">梳理多 agent 首页方案并落地 P0-P2 落地策略</div>
+      <div class="proj-f"><span class="proj-time">2 小时前 · 3 个 agent</span><span class="resume">续跑 ▸</span></div>
+    </div>
+    <div class="proj-c">
+      <div class="proj-n">WorkBuddy-0919</div>
+      <div class="proj-ags"><span class="ag wb">WorkBuddy</span></div>
+      <div class="proj-last">bcdboot C:\Windows /s S: /f UEFI 会重启电脑吗？</div>
+      <div class="proj-f"><span class="proj-time">昨天 · 1 个 agent</span><span class="resume">续跑 ▸</span></div>
+    </div>
+    <div class="proj-c">
+      <div class="proj-n">dsh-market</div>
+      <div class="proj-ags"><span class="ag claude">Claude</span></div>
+      <div class="proj-last">选品数据清洗与竞品价格对比分析</div>
+      <div class="proj-f"><span class="proj-time">3 天前 · 1 个 agent</span><span class="resume">续跑 ▸</span></div>
+    </div>
+    <div class="proj-c">
+      <div class="proj-n">C:\Users\pstem</div>
+      <div class="proj-ags"><span class="ag codex">Codex</span><span class="ag claude">Claude</span></div>
+      <div class="proj-last">C 盘空间清理：定位无效大文件与编译缓存</div>
+      <div class="proj-f"><span class="proj-time">10 月 2 日 · 2 个 agent</span><span class="resume">续跑 ▸</span></div>
+    </div>
+  </div>
+
+  <!-- ⑧ 上下文包 -->
+  <div class="sec-t"><h2>上下文与记忆</h2><span class="hint">可一键注入任意 agent</span><span class="ln"></span></div>
+  <div class="ctx">
+    <div class="card"><div class="card-h"><h3>最近沉淀的结论</h3><span class="more">全部记忆 →</span></div>
+      <div class="card-b"><div class="ctx-list">
+        <div class="ctx-i"><span class="ctx-dot"></span><div>
+          <div class="ctx-t">Cursor state.vscdb 达 7.6 GB，禁止全表扫描</div>
+          <div class="ctx-m">来自 Claude · voice-pilot · 2 小时前 · 已关联 1 个文件</div></div></div>
+        <div class="ctx-i"><span class="ctx-dot"></span><div>
+          <div class="ctx-t">Trae 两个版本均为 SQLCipher 加密，正文不可本地读取</div>
+          <div class="ctx-m">来自 Claude · voice-pilot · 2 小时前 · 实测文件头非 SQLite</div></div></div>
+        <div class="ctx-i"><span class="ctx-dot"></span><div>
+          <div class="ctx-t">Claude Code 历史默认 30 天清理，cleanupPeriodDays=0 表示不写盘</div>
+          <div class="ctx-m">来自 Codex · C:\Users\pstem · 10 月 2 日</div></div></div>
+      </div></div></div>
+    <div class="card"><div class="card-h"><h3>打包注入</h3></div>
+      <div class="card-b"><div class="ctx-acts">
+        <button class="big-btn"><span class="e">◎</span><div>生成 CLAUDE.md<div class="sub">把选中结论写入项目记忆</div></div></button>
+        <button class="big-btn"><span class="e">⎘</span><div>复制为上下文包<div class="sub">粘贴到任意 agent 的首条提示</div></div></button>
+        <button class="big-btn"><span class="e">⇪</span><div>导出证据包（已脱敏）<div class="sub">移除密钥、home 路径、内网地址</div></div></button>
+      </div></div></div>
+  </div>
+
+  <!-- 源状态 -->
+  <div class="foot">
+    <span class="it"><i class="dot ok"></i>Claude Code · 62 会话</span>
+    <span class="it"><i class="dot ok"></i>Codex · 27 线程</span>
+    <span class="it"><i class="dot ok"></i>WorkBuddy · 3 会话 + 审计链完整</span>
+    <span class="it warn-t"><i class="dot warn"></i>Cursor · 已限流（7.6 GB，仅索引扫描）</span>
+    <span class="it"><i class="dot off"></i>Trae · 正文加密，仅提问时间线</span>
+    <span class="r">全部数据源只读访问 · 上次同步 12:14:58 · 首次索引已完成</span>
+  </div>
+
+</div>
+
+<script>
+// 今日活动时间线（示意数据：8:00-20:00，每小时活跃度）
+const hours=[0,0,1,2,4,7,5,3,6,9,4,2,0,0];
+const tl=document.getElementById('tl');
+hours.forEach((v,i)=>{
+  const c=document.createElement('div');c.className='tl-col';
+  const b=document.createElement('div');b.className='tl-bar';
+  b.style.height=(v/9*100)+'%';
+  b.title=`${8+i}:00 · ${v} 个会话活动`;
+  c.appendChild(b);tl.appendChild(c);
+});
+// 成本迷你柱状
+const sp=[4,6,3,8,5,9,12,7,10,6,11,8];
+const s=document.getElementById('spark');
+sp.forEach(v=>{const i=document.createElement('i');
+  i.style.height=(v/12*100)+'%';if(v>=10)i.className='hi';s.appendChild(i);});
+// 搜索聚焦
+const qi=document.getElementById('q');
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();qi.focus();}
+});
+</script>
+
+
+</body></html>

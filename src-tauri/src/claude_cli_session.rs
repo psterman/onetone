@@ -328,10 +328,7 @@ pub fn claude_cli_inject(action: &str) -> ClaudeCliInjectResult {
 
 /// Soft Pad fire intercept for ACT12/ACT08. Returns Some(json) when handled.
 /// Only when Applied lane is Claude (or cutover off / no ticket gate).
-pub fn try_softpad_fire(
-    micro_key_id: &str,
-    lane_is_claude: bool,
-) -> Option<serde_json::Value> {
+pub fn try_softpad_fire(micro_key_id: &str, lane_is_claude: bool) -> Option<serde_json::Value> {
     if !lane_is_claude {
         return None;
     }

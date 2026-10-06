@@ -189,10 +189,7 @@ fn highest_priority_lane(kind: AgentKind) -> Option<AgentLane> {
 }
 
 /// Priority: recent Attention needs_input/error → explicit laneId → sessionId → highest rank.
-pub fn resolve_focus_target(
-    kind: AgentKind,
-    hint: &FocusTargetHint,
-) -> Option<LaneDispatchTicket> {
+pub fn resolve_focus_target(kind: AgentKind, hint: &FocusTargetHint) -> Option<LaneDispatchTicket> {
     // 1. Recent Attention session (why the light lit)
     if let Some(session) =
         crate::agent_attention::store::recent_attention_session(kind, RECENT_ATTENTION_MS)
@@ -257,10 +254,7 @@ fn resume_for_lane(lane_id: &str, kind: AgentKind) -> (bool, String) {
         AgentKind::Claude => resume_claude_lane(lane_id),
         AgentKind::Codex => resume_codex_lane(lane_id),
         _ => {
-            return (
-                false,
-                "unsupported_provider_resume".into(),
-            );
+            return (false, "unsupported_provider_resume".into());
         }
     };
     (r.ok, r.detail)

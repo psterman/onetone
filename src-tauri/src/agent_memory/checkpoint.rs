@@ -1,9 +1,7 @@
 //! Plan C: session checkpoints + continuation brief (not Time Machine git).
 
 use crate::agent_memory::events::append_lifecycle_event;
-use crate::agent_memory::model::{
-    CheckpointDto, ContinuationBrief, EVENT_CLASS_LIFECYCLE,
-};
+use crate::agent_memory::model::{CheckpointDto, ContinuationBrief, EVENT_CLASS_LIFECYCLE};
 use crate::agent_memory::store::{now_ms, with_read_path, with_write};
 use rusqlite::{params, Connection, OptionalExtension};
 use sha2::{Digest, Sha256};
@@ -28,10 +26,7 @@ fn clip_list(items: Option<&[String]>) -> Result<Option<Vec<String>>, String> {
         return Err(format!("list too long (max {MAX_LIST_ITEMS})"));
     }
     Ok(Some(
-        items
-            .iter()
-            .map(|s| clip(s, MAX_ITEM_CHARS))
-            .collect(),
+        items.iter().map(|s| clip(s, MAX_ITEM_CHARS)).collect(),
     ))
 }
 
@@ -42,7 +37,10 @@ fn parse_json_list(raw: Option<&str>) -> Vec<String> {
 
 fn map_checkpoint_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<CheckpointDto> {
     let created = r.get::<_, i64>(9)? as u64;
-    let updated = r.get::<_, Option<i64>>(10)?.map(|x| x as u64).unwrap_or(created);
+    let updated = r
+        .get::<_, Option<i64>>(10)?
+        .map(|x| x as u64)
+        .unwrap_or(created);
     Ok(CheckpointDto {
         checkpoint_id: r.get(0)?,
         session_id: r.get(1)?,
@@ -112,11 +110,7 @@ fn insert_checkpoint_row(
     let current_task = title.map(|t| clip(&t, MAX_SUMMARY));
     let next = next_action
         .map(|s| clip(s, MAX_SUMMARY))
-        .or_else(|| {
-            current_task
-                .as_ref()
-                .map(|t| format!("继续：「{t}」"))
-        })
+        .or_else(|| current_task.as_ref().map(|t| format!("继续：「{t}」")))
         .unwrap_or_else(|| "从上次进度继续".into());
     let pending = clip_list(pending_questions)?;
     let files = clip_list(changed_files)?;
@@ -311,9 +305,7 @@ pub fn resume_checkpoint(session_id: &str) -> Result<ContinuationBrief, String> 
         "task_resumed",
         &source_ref,
         ts,
-        ckpt.next_action
-            .as_deref()
-            .unwrap_or("从上次进度继续"),
+        ckpt.next_action.as_deref().unwrap_or("从上次进度继续"),
     );
 
     Ok(ContinuationBrief {

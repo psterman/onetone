@@ -187,11 +187,8 @@ fn route_semantic_action_inner(
 
     let provider_id = {
         let cfg = state.cfg.lock();
-        match resolve_provider_for_request(
-            &cfg,
-            mapping_id.as_deref(),
-            req.provider_id.as_deref(),
-        ) {
+        match resolve_provider_for_request(&cfg, mapping_id.as_deref(), req.provider_id.as_deref())
+        {
             Ok(p) => p,
             Err(code) => {
                 return SemanticRouteResult::base(
@@ -224,9 +221,9 @@ fn route_semantic_action_inner(
     let action_trim = req.action_id.trim();
     let slot_trim = req.slot_id.as_deref().map(str::trim).unwrap_or("");
     if action_trim == "runTargetSequence" || slot_trim == "runTargetSequence" {
-        let mid = mapping_id.clone().unwrap_or_else(|| {
-            state.cfg.lock().active_scene_id.clone()
-        });
+        let mid = mapping_id
+            .clone()
+            .unwrap_or_else(|| state.cfg.lock().active_scene_id.clone());
         if mid.trim().is_empty() {
             return SemanticRouteResult::base(
                 RouteStatus::Failed,
@@ -278,11 +275,7 @@ fn route_semantic_action_inner(
     {
         let finish = finish_policy_from_state(state);
         let req_canonical = resolve_canonical_action_id(req.action_id.trim(), finish);
-        match pending_confirm::take_valid_if_action_matches(
-            cid,
-            channel.as_str(),
-            &req_canonical,
-        ) {
+        match pending_confirm::take_valid_if_action_matches(cid, channel.as_str(), &req_canonical) {
             Ok(pending) => {
                 let exec_req = SemanticActionRequest {
                     action_id: pending.action_id.clone(),
@@ -373,13 +366,7 @@ fn route_semantic_action_inner(
 
     // Camera pending create with ContextRiskGate.
     if camera_pending_eligible(channel, &canonical) {
-        if let Some(code) = context_risk_gate(
-            &canonical,
-            channel.as_str(),
-            &kind,
-            true,
-            false,
-        ) {
+        if let Some(code) = context_risk_gate(&canonical, channel.as_str(), &kind, true, false) {
             return SemanticRouteResult::base(
                 RouteStatus::Unavailable,
                 canonical,
@@ -431,9 +418,13 @@ fn route_semantic_action_inner(
         };
     }
 
-    if let Some(code) =
-        context_risk_gate(&canonical, channel.as_str(), &kind, false, completing_pending)
-    {
+    if let Some(code) = context_risk_gate(
+        &canonical,
+        channel.as_str(),
+        &kind,
+        false,
+        completing_pending,
+    ) {
         return SemanticRouteResult::base(
             RouteStatus::Unavailable,
             canonical,
@@ -504,7 +495,8 @@ fn route_semantic_action_inner(
     }
 
     // Require provider for adapter-scoped actions.
-    if provider_str.is_empty() && semantic_meta_by_id(&canonical).is_some_and(|m| m.provider_scope != "none")
+    if provider_str.is_empty()
+        && semantic_meta_by_id(&canonical).is_some_and(|m| m.provider_scope != "none")
     {
         return SemanticRouteResult::base(
             RouteStatus::Unavailable,
@@ -530,7 +522,13 @@ fn route_semantic_action_inner(
         },
     );
 
-    map_execute_result(exec, &canonical, channel.as_str(), mapping_id, &provider_str)
+    map_execute_result(
+        exec,
+        &canonical,
+        channel.as_str(),
+        mapping_id,
+        &provider_str,
+    )
 }
 
 fn map_layer_outcome(

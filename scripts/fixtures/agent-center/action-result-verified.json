@@ -1,0 +1,11 @@
+{
+  "outcome": "verified",
+  "ok": true,
+  "verified": true,
+  "attemptId": "attempt-fixture-verified-1",
+  "detail": "codexInterrupt:cx-1;via=reprobe",
+  "result": {
+    "handler": "cancel",
+    "verified": true
+  }
+}

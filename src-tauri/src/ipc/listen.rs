@@ -93,28 +93,26 @@ pub fn silence_listen_for(state: &Arc<AppState>, app: &AppHandle, duration_ms: u
 fn schedule_silence_resume(state: &Arc<AppState>, app: &AppHandle, until_ms: u64) {
     let state_h = Arc::clone(state);
     let app_h = app.clone();
-    std::thread::spawn(move || {
-        loop {
-            let now = crate::runtime_event::now_ms();
-            let target = *state_h.listen_silence_until_ms.lock();
-            let Some(until) = target else {
-                return;
-            };
-            if until != until_ms {
-                return;
-            }
-            if now >= until {
-                *state_h.listen_silence_until_ms.lock() = None;
-                if *state_h.paused.lock() {
-                    resume_listen(&state_h, &app_h);
-                } else {
-                    crate::tray::refresh_menu_data(&app_h);
-                }
-                return;
-            }
-            let wait = (until - now).min(500);
-            std::thread::sleep(std::time::Duration::from_millis(wait));
+    std::thread::spawn(move || loop {
+        let now = crate::runtime_event::now_ms();
+        let target = *state_h.listen_silence_until_ms.lock();
+        let Some(until) = target else {
+            return;
+        };
+        if until != until_ms {
+            return;
         }
+        if now >= until {
+            *state_h.listen_silence_until_ms.lock() = None;
+            if *state_h.paused.lock() {
+                resume_listen(&state_h, &app_h);
+            } else {
+                crate::tray::refresh_menu_data(&app_h);
+            }
+            return;
+        }
+        let wait = (until - now).min(500);
+        std::thread::sleep(std::time::Duration::from_millis(wait));
     });
 }
 

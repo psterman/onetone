@@ -1,0 +1,9 @@
+{
+  "actionId": "input.send",
+  "confirmationId": "confirm-1",
+  "gesturePath": "FE Cam.dispatchAction 鈫?routeSemanticAction IPC 鈫?Rust route (real production path)",
+  "mappingId": "e2e-bfinal-mapping-1",
+  "providerId": "codex",
+  "sourceChannel": "camera",
+  "status": "pendingConfirmation"
+}

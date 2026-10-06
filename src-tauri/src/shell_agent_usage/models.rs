@@ -68,7 +68,12 @@ pub fn credits_message(remaining: f64, unit: &str) -> String {
     }
 }
 
-pub fn manual_snap(source: &str, account: &str, console: &str, message: &str) -> AgentUsageSnapshot {
+pub fn manual_snap(
+    source: &str,
+    account: &str,
+    console: &str,
+    message: &str,
+) -> AgentUsageSnapshot {
     let now = now_ms();
     AgentUsageSnapshot {
         source: source.into(),

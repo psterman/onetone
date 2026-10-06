@@ -18,7 +18,11 @@ fn save_source_label(value: &serde_json::Value) -> &'static str {
             _ => {}
         }
     }
-    if value.get("quickStart").and_then(|v| v.as_bool()).unwrap_or(false) {
+    if value
+        .get("quickStart")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+    {
         return "quickStart";
     }
     if value.get("cameraPrefs").is_some() || value.get("camera_prefs").is_some() {

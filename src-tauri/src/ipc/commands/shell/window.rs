@@ -10,10 +10,11 @@ pub fn cmd_window_close(window: tauri::WebviewWindow) {
 
 /// Pin / unpin the calling window (hang-diag live session wants main always-on-top).
 #[tauri::command]
-pub fn cmd_window_set_always_on_top(window: tauri::WebviewWindow, enabled: bool) -> Result<(), String> {
-    window
-        .set_always_on_top(enabled)
-        .map_err(|e| e.to_string())
+pub fn cmd_window_set_always_on_top(
+    window: tauri::WebviewWindow,
+    enabled: bool,
+) -> Result<(), String> {
+    window.set_always_on_top(enabled).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

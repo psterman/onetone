@@ -64,9 +64,7 @@ fn map_event(event: &str) -> Option<LaneState> {
             Some(LaneState::NeedsInput)
         }
         "Stop" | "stop" | "TaskCompleted" | "turn/completed" | "afterAgentResponse" | "done"
-        | "SubagentStop" | "subagentStop" => {
-            Some(LaneState::DoneUnread)
-        }
+        | "SubagentStop" | "subagentStop" => Some(LaneState::DoneUnread),
         "StopFailure" | "PostToolUseFailure" | "error" | "failed" => Some(LaneState::ErrorUnread),
         "SessionEnd" | "sessionEnd" | "disconnected" => Some(LaneState::Disconnected),
         "SessionStart" | "sessionStart" | "idle" | "interrupted" => Some(LaneState::Idle),

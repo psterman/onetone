@@ -1,0 +1,8 @@
+{
+  "outcome": "failed",
+  "ok": false,
+  "verified": false,
+  "attemptId": "attempt-fixture-failed-1",
+  "error": "execute_failed",
+  "detail": "hotkey_send_failed"
+}

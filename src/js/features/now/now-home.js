@@ -1138,11 +1138,33 @@
         lastPaintHtml = '';
         paint();
       }
-    }).then(function () {
-      if (S) S.fetch();
-      lastPaintHtml = '';
-      paint();
-    });
+    })
+      .then(function (res) {
+        if (res && res.ok === false && res.error) {
+          try {
+            if (global.parent && global.parent.OneToneToast && global.parent.OneToneToast.show) {
+              global.parent.OneToneToast.show(String(res.error));
+            }
+          } catch (_) {}
+        }
+        if (S) S.fetch();
+        lastPaintHtml = '';
+        paint();
+      })
+      .catch(function (err) {
+        var msg =
+          (err && err.message) ||
+          (typeof err === 'string' ? err : '') ||
+          '确认失败';
+        try {
+          if (global.parent && global.parent.OneToneToast && global.parent.OneToneToast.show) {
+            global.parent.OneToneToast.show(msg);
+          }
+        } catch (_) {}
+        if (S) S.fetch();
+        lastPaintHtml = '';
+        paint();
+      });
   }
 
   function paint() {

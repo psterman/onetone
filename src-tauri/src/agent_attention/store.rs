@@ -95,20 +95,14 @@ where
 fn fire_recompute_hook() {
     // Drop RECOMPUTE_HOOK before calling — hook locks cfg; holding both deadlocks
     // against build_snapshot / set_purpose paths.
-    let hook = RECOMPUTE_HOOK
-        .lock()
-        .ok()
-        .and_then(|g| g.as_ref().cloned());
+    let hook = RECOMPUTE_HOOK.lock().ok().and_then(|g| g.as_ref().cloned());
     if let Some(hook) = hook {
         hook();
     }
 }
 
 fn fire_sound_hook(event_id: &str, dedupe_key: &str) {
-    let hook = SOUND_HOOK
-        .lock()
-        .ok()
-        .and_then(|g| g.as_ref().cloned());
+    let hook = SOUND_HOOK.lock().ok().and_then(|g| g.as_ref().cloned());
     if let Some(hook) = hook {
         hook(event_id, dedupe_key);
     }
@@ -285,9 +279,7 @@ fn agent_allows_waiting_row(agent: AgentKind, source: SignalSource) -> bool {
 fn notify_if_waiting_changed() {
     let (kinds, _) = project_waiting_kinds();
     let changed = {
-        let mut last = LAST_WAITING_SIG
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let mut last = LAST_WAITING_SIG.lock().unwrap_or_else(|e| e.into_inner());
         if *last == kinds {
             false
         } else {
@@ -467,11 +459,7 @@ fn clear_matching_locked(
 }
 
 /// Clear NeedsInput by request_id (preferred) or session. Empty ids → no-op.
-pub fn clear(
-    agent: AgentKind,
-    session_id: Option<&str>,
-    request_id: Option<&str>,
-) -> usize {
+pub fn clear(agent: AgentKind, session_id: Option<&str>, request_id: Option<&str>) -> usize {
     let n = with_store(|inner| {
         prune_expired(inner, Instant::now());
         clear_matching_locked(inner, agent, session_id, request_id)
@@ -533,7 +521,12 @@ pub fn recent_attention_session(agent: AgentKind, within_ms: u64) -> Option<Stri
             if !matches!(s.state, AttentionState::NeedsInput | AttentionState::Error) {
                 continue;
             }
-            let Some(sid) = s.session_id.as_ref().map(|x| x.trim()).filter(|x| !x.is_empty()) else {
+            let Some(sid) = s
+                .session_id
+                .as_ref()
+                .map(|x| x.trim())
+                .filter(|x| !x.is_empty())
+            else {
                 continue;
             };
             if now.saturating_duration_since(s.observed_at) > window {
@@ -576,9 +569,10 @@ pub fn lifecycle_age_ms(agent: AgentKind) -> Option<u64> {
     let now = Instant::now();
     with_store(|inner| {
         prune_expired(inner, now);
-        inner.lifecycle.get(&agent).map(|s| {
-            now.saturating_duration_since(s.observed_at).as_millis() as u64
-        })
+        inner
+            .lifecycle
+            .get(&agent)
+            .map(|s| now.saturating_duration_since(s.observed_at).as_millis() as u64)
     })
 }
 

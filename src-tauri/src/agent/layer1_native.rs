@@ -25,11 +25,7 @@ pub fn resolve_input_start_target(
     mapping_id: Option<&str>,
 ) -> Option<InputStartTarget> {
     let cfg = state.cfg.lock();
-    resolve_input_start_target_from_parts(
-        &cfg,
-        mapping_id,
-        crate::soft_pad_runtime::applied_lane(),
-    )
+    resolve_input_start_target_from_parts(&cfg, mapping_id, crate::soft_pad_runtime::applied_lane())
 }
 
 /// Pure resolver for tests / shared use (no Soft Pad store read beyond `applied_lane` arg).
@@ -65,16 +61,14 @@ fn target_from_mapping(
 ) -> Option<InputStartTarget> {
     let m = cfg.find_mapping_by_id(mapping_id)?;
     let kind = kind_from_mapping(&m.app_target_id, &m.agent_provider_id);
-    let provider_id = kind
-        .map(|k| k.as_str().to_string())
-        .or_else(|| {
-            let p = m.agent_provider_id.trim();
-            if p.is_empty() {
-                None
-            } else {
-                Some(p.to_string())
-            }
-        })?;
+    let provider_id = kind.map(|k| k.as_str().to_string()).or_else(|| {
+        let p = m.agent_provider_id.trim();
+        if p.is_empty() {
+            None
+        } else {
+            Some(p.to_string())
+        }
+    })?;
     let app_target = {
         let t = m.app_target_id.trim();
         if t.is_empty() {
@@ -156,8 +150,13 @@ pub fn execute_layer1(
         "status.read" => execute_status_read(state),
         "app.open" => execute_app_open(state, window, mapping_id),
         "app.shortcut" => execute_app_shortcut(state, mapping_id, args),
-        "workspace.applyLayout" => execute_workspace_apply_layout(state, window, raw_action_id, args),
-        _ => Layer1Outcome::err("not_implemented", Some(format!("no layer1 handler for {canonical}"))),
+        "workspace.applyLayout" => {
+            execute_workspace_apply_layout(state, window, raw_action_id, args)
+        }
+        _ => Layer1Outcome::err(
+            "not_implemented",
+            Some(format!("no layer1 handler for {canonical}")),
+        ),
     }
 }
 
@@ -448,12 +447,7 @@ fn execute_start(
         };
         crate::voice_end_runtime::mark_voice_wake_key_sent(state.as_ref());
         crate::voice_command_session::note_ime_voice_active();
-        crate::voice_end_runtime::enter_dictating(
-            state,
-            Some(&app),
-            &mid,
-            "soft_slot speak",
-        );
+        crate::voice_end_runtime::enter_dictating(state, Some(&app), &mid, "soft_slot speak");
         if crate::voice_command_session::is_armed() {
             crate::voice_command_session::extend_armed_window(
                 &app,
@@ -467,13 +461,7 @@ fn execute_start(
             format!("input.start cursor voice {voice_key}")
         });
     }
-    match crate::app_chat_workflow::run_for_target_id(
-        state,
-        window,
-        &mid,
-        app_target,
-        duration,
-    ) {
+    match crate::app_chat_workflow::run_for_target_id(state, window, &mid, app_target, duration) {
         Ok(detail) => Layer1Outcome::ok_detail(format!("input.start {detail}")),
         Err((reason, _)) => Layer1Outcome::err("input_failed", Some(reason)),
     }
@@ -531,10 +519,11 @@ pub fn ensure_mapping_target_foreground(
     match ensure_mapping_foreground(state, mapping_id) {
         Ok(t) => return Ok(t),
         Err(e) if !try_focus => return Err(e),
-        Err(e) if matches!(
-            e.reason.as_deref(),
-            Some("target_not_foreground") | Some("inject_self_fg")
-        ) => {}
+        Err(e)
+            if matches!(
+                e.reason.as_deref(),
+                Some("target_not_foreground") | Some("inject_self_fg")
+            ) => {}
         Err(e) => return Err(e),
     }
     let Some(mid) = mapping_id.map(str::trim).filter(|s| !s.is_empty()) else {
@@ -657,9 +646,7 @@ pub fn execute_agent_continue(
             .and_then(|mid| cfg.find_mapping_by_id(mid))
             .map(|m| m.app_target_id.trim().to_string())
             .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| {
-                crate::app_chat_workflow::CURSOR_APP_TARGET_ID.to_string()
-            });
+            .unwrap_or_else(|| crate::app_chat_workflow::CURSOR_APP_TARGET_ID.to_string());
         let commit = {
             let k = cfg.voice_end.commit_key.trim();
             if k.is_empty() {
@@ -680,11 +667,9 @@ pub fn execute_agent_continue(
         }
         // Same punch as Soft Pad 「继续」/发送 — uses voiceEnd.composerAnchors (框选).
         let _pad_pass = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app);
-        if let Err(err) = crate::app_chat_workflow::focus_composer_for_send(
-            &app,
-            &app_target,
-            duration_ms,
-        ) {
+        if let Err(err) =
+            crate::app_chat_workflow::focus_composer_for_send(&app, &app_target, duration_ms)
+        {
             let reason = match err {
                 crate::app_chat_workflow::AppChatWorkflowError::NotFound => "not_running",
                 crate::app_chat_workflow::AppChatWorkflowError::FocusFailed
@@ -739,8 +724,8 @@ fn execute_commit_or_send(
     raw_action_id: &str,
     canonical: &str,
 ) -> Layer1Outcome {
-    let policy = commit_policy_for_raw_action(raw_action_id, canonical)
-        .unwrap_or(CommitPolicy::AutoConfig);
+    let policy =
+        commit_policy_for_raw_action(raw_action_id, canonical).unwrap_or(CommitPolicy::AutoConfig);
     let app = window.app_handle();
     let dictating = voice_end_runtime::session_state(state.as_ref()) == "dictating";
 
@@ -756,9 +741,7 @@ fn execute_commit_or_send(
 
     // Not dictating
     match policy {
-        CommitPolicy::Never => {
-            Layer1Outcome::ok_detail("input.commit noop (not dictating)")
-        }
+        CommitPolicy::Never => Layer1Outcome::ok_detail("input.commit noop (not dictating)"),
         CommitPolicy::Force | CommitPolicy::AutoConfig => {
             let (commit_key, duration_ms) = {
                 let cfg = state.cfg.lock();

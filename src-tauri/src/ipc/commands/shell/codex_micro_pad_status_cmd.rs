@@ -11,7 +11,11 @@ fn locale_from_cfg(_cfg: &config::VoiceConfig) -> &str {
     "zh-CN"
 }
 
-fn apply_ensure_result(state: &Arc<AppState>, app: &AppHandle, result: codex_numpad_layer::CodexPadEnsureResult) {
+fn apply_ensure_result(
+    state: &Arc<AppState>,
+    app: &AppHandle,
+    result: codex_numpad_layer::CodexPadEnsureResult,
+) {
     if !result.changed {
         return;
     }
@@ -55,8 +59,7 @@ pub fn cmd_codex_micro_pad_ensure_ready(
             && result.mapping_id.as_ref().is_some_and(|mid| {
                 cfg.mappings.iter().any(|m| {
                     m.id == *mid
-                        && m.app_target_id.trim()
-                            == crate::app_chat_workflow::CURSOR_APP_TARGET_ID
+                        && m.app_target_id.trim() == crate::app_chat_workflow::CURSOR_APP_TARGET_ID
                 })
             });
         let cfg_to_save = if result.changed {
@@ -83,9 +86,7 @@ pub fn cmd_codex_micro_pad_ensure_ready(
 
 /// Live readiness for recognition UI (foreground / NumLock / hook routes).
 #[tauri::command]
-pub fn cmd_codex_micro_pad_get_readiness(
-    state: State<'_, Arc<AppState>>,
-) -> serde_json::Value {
+pub fn cmd_codex_micro_pad_get_readiness(state: State<'_, Arc<AppState>>) -> serde_json::Value {
     let cfg = state.cfg.lock();
     let readiness = codex_numpad_layer::readiness_snapshot(&cfg);
     serde_json::to_value(readiness).unwrap_or_else(|_| serde_json::json!({ "ready": false }))

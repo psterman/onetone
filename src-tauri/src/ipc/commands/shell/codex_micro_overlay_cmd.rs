@@ -102,11 +102,9 @@ pub async fn cmd_codex_micro_overlay_dismiss(
 ) -> Result<bool, String> {
     // push_state / HWND work must not run as a sync command on the UI thread.
     let state = Arc::clone(state.inner());
-    tauri::async_runtime::spawn_blocking(move || {
-        codex_micro_overlay::dismiss_overlay(&app, &state)
-    })
-    .await
-    .map_err(|e| format!("overlay dismiss failed: {e}"))
+    tauri::async_runtime::spawn_blocking(move || codex_micro_overlay::dismiss_overlay(&app, &state))
+        .await
+        .map_err(|e| format!("overlay dismiss failed: {e}"))
 }
 
 #[tauri::command]
@@ -187,9 +185,7 @@ pub async fn cmd_soft_pad_focus_agent(
         "minimax" => MINIMAX_APP_TARGET_ID,
         "workbuddy" => WORKBUDDY_APP_TARGET_ID,
         "trae" => TRAE_APP_TARGET_ID,
-        "traecode" | "trae_code" | "trae-code" => {
-            crate::app_chat_workflow::TRAE_CODE_APP_TARGET_ID
-        }
+        "traecode" | "trae_code" | "trae-code" => crate::app_chat_workflow::TRAE_CODE_APP_TARGET_ID,
         "qoder" => QODER_APP_TARGET_ID,
         _ => return Err("unknown_agent".into()),
     };
@@ -226,9 +222,7 @@ pub async fn cmd_soft_pad_focus_session(
     session_id: Option<String>,
     click_kind: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    use crate::agent_lane::{
-        focus_session, FocusClickKind, FocusTargetHint,
-    };
+    use crate::agent_lane::{focus_session, FocusClickKind, FocusTargetHint};
     use crate::soft_pad_runtime::AgentKind;
 
     let kind_l = kind.trim().to_ascii_lowercase();

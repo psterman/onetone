@@ -31,11 +31,7 @@ pub fn short_agent_type(agent_type: &str) -> String {
         return mapped.into();
     }
     // Last segment after / or -
-    let seg = raw
-        .rsplit(['/', '-'])
-        .next()
-        .unwrap_or(raw)
-        .trim();
+    let seg = raw.rsplit(['/', '-']).next().unwrap_or(raw).trim();
     let seg = if seg.is_empty() { raw } else { seg };
     let mut out = String::new();
     for (i, ch) in seg.chars().enumerate() {
@@ -218,11 +214,7 @@ pub fn apply_claude_light(
         g.last_activity_at = at;
         g.last_activity_source = src.to_string();
     }
-    let first_seen = g
-        .by_key
-        .get(&key)
-        .map(|e| e.first_seen_at)
-        .unwrap_or(at);
+    let first_seen = g.by_key.get(&key).map(|e| e.first_seen_at).unwrap_or(at);
     let entry = ClaudeAgentLightState {
         agent_key: key.clone(),
         agent_id: agent_id.trim().to_string(),
@@ -398,16 +390,7 @@ mod tests {
     fn missing_agent_goes_to_main() {
         let _g = test_lock();
         reset_for_test();
-        apply_claude_light(
-            "UserPromptSubmit",
-            "",
-            "",
-            "claude_hook",
-            "s",
-            "",
-            1,
-            1,
-        );
+        apply_claude_light("UserPromptSubmit", "", "", "claude_hook", "s", "", 1, 1);
         let snap = snapshot_active(1);
         assert_eq!(snap.len(), 1);
         assert_eq!(snap[0].agent_key, CLAUDE_MAIN_KEY);

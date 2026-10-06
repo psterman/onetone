@@ -213,9 +213,7 @@ pub fn window_display_label(window: &UsageWindow) -> String {
 fn parse_window_entry(id: &str, kind: &str, node: &Value) -> Option<UsageWindow> {
     let used = as_f64(node.get("usedPercent"));
     let remaining = used.map(|u| (100.0 - u).clamp(0.0, 100.0));
-    if used.is_none()
-        && node.get("windowDurationMins").is_none()
-        && node.get("resetsAt").is_none()
+    if used.is_none() && node.get("windowDurationMins").is_none() && node.get("resetsAt").is_none()
     {
         return None;
     }
@@ -279,9 +277,7 @@ fn apply_compat_scalars(snap: &mut AgentUsageSnapshot) {
 }
 
 fn sync_codex_usage_health(snap: &AgentUsageSnapshot) {
-    use crate::connector_health::{
-        upsert, CapabilityKind, HealthState, ValueState,
-    };
+    use crate::connector_health::{upsert, CapabilityKind, HealthState, ValueState};
     let value_state = if snap.windows.iter().any(|w| w.remaining_percent.is_some())
         || snap.lifetime_tokens.is_some()
     {
@@ -320,7 +316,9 @@ fn sync_codex_usage_health(snap: &AgentUsageSnapshot) {
 
 fn friendly_codex_usage_message(message: &str) -> String {
     let lower = message.to_ascii_lowercase();
-    if lower.contains("timed out") || lower.contains("timeout") || lower.contains("token usage profile")
+    if lower.contains("timed out")
+        || lower.contains("timeout")
+        || lower.contains("token usage profile")
     {
         return "同步超时，稍后重试".into();
     }
@@ -359,7 +357,11 @@ fn selected_rate_limit(result: &Value) -> Option<&Value> {
         .or_else(|| result.get("rateLimits"))
 }
 
-fn apply_account_identity(snap: &mut AgentUsageSnapshot, account: &Value, rate_root: Option<&Value>) {
+fn apply_account_identity(
+    snap: &mut AgentUsageSnapshot,
+    account: &Value,
+    rate_root: Option<&Value>,
+) {
     let account_node = account.get("account").unwrap_or(account);
     let account_type = account_node
         .get("type")
@@ -401,9 +403,8 @@ fn apply_account_identity(snap: &mut AgentUsageSnapshot, account: &Value, rate_r
         .filter(|s| !s.is_empty());
     // ChatGPT: prefer account.planType. Never invent a plan for API-key-only identity.
     if let Some(plan) = plan_from_account.or(plan_from_rate) {
-        let api_key_only = snap.account_label == "API Key"
-            && email.is_none()
-            && plan_from_account.is_none();
+        let api_key_only =
+            snap.account_label == "API Key" && email.is_none() && plan_from_account.is_none();
         if !api_key_only {
             snap.plan_type = plan.to_string();
         }
@@ -456,7 +457,10 @@ pub fn ingest_codex_account_results(
         apply_account_identity(&mut current, &serde_json::json!({}), rate_result);
     }
 
-    let has_data = current.windows.iter().any(|w| w.remaining_percent.is_some())
+    let has_data = current
+        .windows
+        .iter()
+        .any(|w| w.remaining_percent.is_some())
         || current.lifetime_tokens.is_some()
         || current.remaining_percent.is_some();
 
@@ -499,7 +503,9 @@ pub fn ingest_codex_account_results(
             }
         }
         current.status = "stale".into();
-        current.message = error.unwrap_or("Codex 刷新失败，显示上次成功值").to_string();
+        current.message = error
+            .unwrap_or("Codex 刷新失败，显示上次成功值")
+            .to_string();
     } else if account_result.is_some() {
         // Account-only: identity saved, usage still unavailable.
         current.status = "unavailable".into();
@@ -656,7 +662,10 @@ fn rebuild_claude_otel_state(series: &mut HashMap<OtelSeriesKey, OtelSeriesValue
     // because the caller already holds `otel_series()` lock.
     series.retain(|_, v| now.saturating_sub(v.observed_at) <= OTEL_SESSION_TTL_MS);
     if series.len() > OTEL_SERIES_CAP {
-        let mut rows: Vec<_> = series.iter().map(|(k, v)| (k.clone(), v.observed_at)).collect();
+        let mut rows: Vec<_> = series
+            .iter()
+            .map(|(k, v)| (k.clone(), v.observed_at))
+            .collect();
         rows.sort_by_key(|(_, at)| *at);
         let drop_n = rows.len().saturating_sub(OTEL_SERIES_CAP);
         for (key, _) in rows.into_iter().take(drop_n) {
@@ -730,13 +739,15 @@ fn parse_statusline_resets_at(node: &Value, now_secs: u64) -> Option<u64> {
     let resets = raw.as_u64().or_else(|| {
         raw.as_i64()
             .and_then(|n| u64::try_from(n).ok())
-            .or_else(|| raw.as_f64().and_then(|f| {
-                if f.is_finite() && f > 0.0 && f < 1e12 {
-                    Some(f as u64)
-                } else {
-                    None
-                }
-            }))
+            .or_else(|| {
+                raw.as_f64().and_then(|f| {
+                    if f.is_finite() && f > 0.0 && f < 1e12 {
+                        Some(f as u64)
+                    } else {
+                        None
+                    }
+                })
+            })
     })?;
     if resets == 0 {
         return None;
@@ -809,8 +820,7 @@ pub fn ingest_claude_statusline_json(raw: &str) -> Result<usize, &'static str> {
         .get("context_window")
         .or_else(|| root.get("contextWindow"))
         .and_then(|cw| {
-            as_f64(cw.get("used_percentage"))
-                .or_else(|| as_f64(cw.get("usedPercentage")))
+            as_f64(cw.get("used_percentage")).or_else(|| as_f64(cw.get("usedPercentage")))
         })
         .filter(|p| p.is_finite() && (0.0..=100.0).contains(p));
 
@@ -847,10 +857,7 @@ pub fn ingest_claude_statusline_json(raw: &str) -> Result<usize, &'static str> {
         // Missing rate_limits key leaves prior state untouched (partial/diagnostic payload).
         if saw_rate_limits {
             // Session change: do not glue old windows onto a new session.
-            if !session_id.is_empty()
-                && !sl.session_id.is_empty()
-                && session_id != sl.session_id
-            {
+            if !session_id.is_empty() && !sl.session_id.is_empty() && session_id != sl.session_id {
                 sl.windows.clear();
                 sl.context_used_percent = None;
             }
@@ -1058,7 +1065,10 @@ fn fetch_deepseek_user_balance(api_key: &str) -> Result<(String, String), String
     let status = resp.status();
     let body = resp.text().map_err(|e| e.to_string())?;
     if !status.is_success() {
-        return Err(format!("HTTP {status}: {}", body.chars().take(120).collect::<String>()));
+        return Err(format!(
+            "HTTP {status}: {}",
+            body.chars().take(120).collect::<String>()
+        ));
     }
     parse_deepseek_balance_json(&body)
 }
@@ -1106,9 +1116,7 @@ pub fn ingest_deepseek_balance_result(
     } else {
         // No prior balance: still surface the reason (missing key / HTTP) as waiting copy.
         st.status = "waiting".into();
-        st.message = error
-            .unwrap_or("DeepSeek 余额同步中")
-            .to_string();
+        st.message = error.unwrap_or("DeepSeek 余额同步中").to_string();
         st.caption.clear();
         st.currency.clear();
         st.total_balance.clear();
@@ -1145,15 +1153,13 @@ fn refresh_deepseek_balance_once() {
         }
     }
     if key.trim().is_empty() {
-        ingest_deepseek_balance_result(
-            true,
-            None,
-            Some("DeepSeek 已配置，缺少 API Key"),
-        );
+        ingest_deepseek_balance_result(true, None, Some("DeepSeek 已配置，缺少 API Key"));
         return;
     }
     match fetch_deepseek_user_balance(&key) {
-        Ok((currency, total)) => ingest_deepseek_balance_result(true, Some((currency, total)), None),
+        Ok((currency, total)) => {
+            ingest_deepseek_balance_result(true, Some((currency, total)), None)
+        }
         Err(err) => ingest_deepseek_balance_result(true, None, Some(&err)),
     }
 }
@@ -1285,13 +1291,12 @@ fn compose_claude_snapshot() {
     // Multi-provider adapter (Ark / GLM / Kimi / MiniMax / bailian / mimo).
     let pv = crate::provider_usage::active_view();
     if pv.detected {
-        let target = if pv.provider.eq_ignore_ascii_case("minimax")
-            || pv.source.starts_with("minimax")
-        {
-            AgentKind::MiniMax
-        } else {
-            AgentKind::Claude
-        };
+        let target =
+            if pv.provider.eq_ignore_ascii_case("minimax") || pv.source.starts_with("minimax") {
+                AgentKind::MiniMax
+            } else {
+                AgentKind::Claude
+            };
         let otel = claude_otel_state()
             .lock()
             .unwrap_or_else(|e| e.into_inner())
@@ -1306,8 +1311,16 @@ fn compose_claude_snapshot() {
                 pv.status.clone()
             },
             session_tokens: if use_otel { otel.session_tokens } else { None },
-            auxiliary_tokens: if use_otel { otel.auxiliary_tokens } else { None },
-            estimated_cost_usd: if use_otel { otel.estimated_cost_usd } else { None },
+            auxiliary_tokens: if use_otel {
+                otel.auxiliary_tokens
+            } else {
+                None
+            },
+            estimated_cost_usd: if use_otel {
+                otel.estimated_cost_usd
+            } else {
+                None
+            },
             windows: pv.windows.clone(),
             account_type: pv.provider.clone(),
             account_label: pv.account_label.clone(),
@@ -1473,7 +1486,8 @@ fn sync_usage_health(agent: AgentKind, snap: &AgentUsageSnapshot, has_windows: b
         || snap.session_tokens.is_some()
         || snap.estimated_cost_usd.is_some()
         || (!snap.windows.is_empty() && snap.source.starts_with("minimax"))
-        || (snap.source.starts_with("minimax") && (!snap.message.is_empty() || snap.last_success_at > 0));
+        || (snap.source.starts_with("minimax")
+            && (!snap.message.is_empty() || snap.last_success_at > 0));
     let value_state = if has_value {
         ValueState::Present
     } else {
@@ -1561,7 +1575,11 @@ pub fn ingest_claude_otel_json(raw: &str) -> Result<usize, &'static str> {
                 };
                 let is_delta = match sum.get("aggregationTemporality") {
                     Some(v) if v.as_u64() == Some(1) => true,
-                    Some(v) if v.as_str().map(|s| s.eq_ignore_ascii_case("delta")).unwrap_or(false) => {
+                    Some(v)
+                        if v.as_str()
+                            .map(|s| s.eq_ignore_ascii_case("delta"))
+                            .unwrap_or(false) =>
+                    {
                         true
                     }
                     Some(v) if v.as_u64() == Some(2) => false,
@@ -1694,7 +1712,10 @@ pub fn onetone_otel_env_pairs() -> &'static [(&'static str, &'static str)] {
         ("OTEL_METRICS_EXPORTER", "otlp"),
         ("OTEL_LOGS_EXPORTER", "none"),
         ("OTEL_EXPORTER_OTLP_METRICS_PROTOCOL", "http/json"),
-        ("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "http://127.0.0.1:8796/v1/metrics"),
+        (
+            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+            "http://127.0.0.1:8796/v1/metrics",
+        ),
         ("OTEL_METRIC_EXPORT_INTERVAL", "10000"),
         ("OTEL_LOG_USER_PROMPTS", "0"),
         ("OTEL_LOG_ASSISTANT_RESPONSES", "0"),
@@ -2027,7 +2048,9 @@ fn refresh_codex_account_once() -> Result<(), String> {
             Some(5) => {
                 threads_settled = true;
                 if let Some(result) = message.get("result") {
-                    let _ = crate::agent_lane::app_server_bridge::discover_threads_from_list_result(result);
+                    let _ = crate::agent_lane::app_server_bridge::discover_threads_from_list_result(
+                        result,
+                    );
                 }
                 // Discovery is best-effort and must not poison usage health.
             }
@@ -2190,7 +2213,10 @@ mod tests {
         let got = snapshot(AgentKind::Codex);
         assert_eq!(got.account_type, "api_key");
         assert_eq!(got.account_label, "API Key");
-        assert!(got.plan_type.is_empty(), "API Key must not inherit rate planType");
+        assert!(
+            got.plan_type.is_empty(),
+            "API Key must not inherit rate planType"
+        );
         assert_eq!(got.status, "ready");
     }
 
@@ -2262,7 +2288,11 @@ mod tests {
         ingest_codex_account_results(Some(&rate), None, None, None);
         let got = snapshot(AgentKind::Codex);
         assert!(got.windows.iter().any(|w| w.kind == "secondary"));
-        let unknown = got.windows.iter().find(|w| w.kind == "unknown").expect("unknown");
+        let unknown = got
+            .windows
+            .iter()
+            .find(|w| w.kind == "unknown")
+            .expect("unknown");
         assert_eq!(window_display_label(unknown), "42min窗口余");
     }
 
@@ -2327,7 +2357,10 @@ mod tests {
         });
         assert_eq!(merge_onetone_otel_env(&mut settings), Ok(8));
         let env = settings.get("env").unwrap();
-        assert_eq!(env.get("ANTHROPIC_MODEL").and_then(|v| v.as_str()), Some("keep-me"));
+        assert_eq!(
+            env.get("ANTHROPIC_MODEL").and_then(|v| v.as_str()),
+            Some("keep-me")
+        );
         assert_eq!(
             env.get("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT")
                 .and_then(|v| v.as_str()),
@@ -2345,7 +2378,10 @@ mod tests {
                 "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "http://127.0.0.1:4318/v1/metrics"
             }
         });
-        assert_eq!(merge_onetone_otel_env(&mut settings), Err("otel_endpoint_conflict"));
+        assert_eq!(
+            merge_onetone_otel_env(&mut settings),
+            Err("otel_endpoint_conflict")
+        );
     }
 
     #[test]
@@ -2479,7 +2515,10 @@ mod tests {
     fn statusline_and_otel_do_not_clear_each_other() {
         let _g = test_lock();
         reset_for_test();
-        assert_eq!(ingest_claude_statusline_json(&statusline_payload(Some(24.0), Some(41.0))), Ok(2));
+        assert_eq!(
+            ingest_claude_statusline_json(&statusline_payload(Some(24.0), Some(41.0))),
+            Ok(2)
+        );
         let after_sl = snapshot(AgentKind::Claude);
         let sl_updated = after_sl.updated_at;
         assert_eq!(after_sl.windows.len(), 2);
@@ -2501,7 +2540,10 @@ mod tests {
         // OTel must not refresh statusLine window freshness.
         assert_eq!(after_otel.updated_at, sl_updated);
 
-        assert_eq!(ingest_claude_statusline_json(&statusline_payload(Some(30.0), None)), Ok(1));
+        assert_eq!(
+            ingest_claude_statusline_json(&statusline_payload(Some(30.0), None)),
+            Ok(1)
+        );
         let after_sl2 = snapshot(AgentKind::Claude);
         assert_eq!(after_sl2.session_tokens, Some(100));
         assert_eq!(after_sl2.windows.len(), 1);
@@ -2512,7 +2554,10 @@ mod tests {
     fn statusline_empty_rate_limits_clears_windows() {
         let _g = test_lock();
         reset_for_test();
-        assert_eq!(ingest_claude_statusline_json(&statusline_payload(Some(24.0), Some(41.0))), Ok(2));
+        assert_eq!(
+            ingest_claude_statusline_json(&statusline_payload(Some(24.0), Some(41.0))),
+            Ok(2)
+        );
         assert_eq!(snapshot(AgentKind::Claude).windows.len(), 2);
         let empty = serde_json::json!({ "session_id": "s1", "rate_limits": {} }).to_string();
         assert_eq!(ingest_claude_statusline_json(&empty), Ok(0));
@@ -2523,7 +2568,10 @@ mod tests {
     fn statusline_ages_to_stale_then_drops() {
         let _g = test_lock();
         reset_for_test();
-        assert_eq!(ingest_claude_statusline_json(&statusline_payload(Some(24.0), None)), Ok(1));
+        assert_eq!(
+            ingest_claude_statusline_json(&statusline_payload(Some(24.0), None)),
+            Ok(1)
+        );
         assert_eq!(snapshot(AgentKind::Claude).status, "ready");
 
         statusline_age_for_test(STATUSLINE_READY_MS + 1);
@@ -2589,10 +2637,13 @@ mod tests {
         // Leave DeepSeek → statusLine can return.
         ingest_deepseek_balance_result(false, None, None);
         // Isolate from developer ~/.claude/settings.json (may already be DeepSeek).
-        set_deepseek_settings_path_override_for_test(Some(std::env::temp_dir().join(
-            format!("onetone-ds-miss-{}", std::process::id()),
-        )));
-        assert_eq!(ingest_claude_statusline_json(&statusline_payload(Some(10.0), None)), Ok(1));
+        set_deepseek_settings_path_override_for_test(Some(
+            std::env::temp_dir().join(format!("onetone-ds-miss-{}", std::process::id())),
+        ));
+        assert_eq!(
+            ingest_claude_statusline_json(&statusline_payload(Some(10.0), None)),
+            Ok(1)
+        );
         let back = snapshot(AgentKind::Claude);
         assert_eq!(back.source, "claude_statusline");
         assert_eq!(back.windows.len(), 1);
@@ -2603,10 +2654,7 @@ mod tests {
     fn deepseek_settings_pending_beats_otel_only() {
         let _g = test_lock();
         reset_for_test();
-        let dir = std::env::temp_dir().join(format!(
-            "onetone-ds-pending-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("onetone-ds-pending-{}", std::process::id()));
         let _ = std::fs::create_dir_all(&dir);
         let path = dir.join("settings.json");
         std::fs::write(

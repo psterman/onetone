@@ -10,7 +10,6 @@ mod log;
 mod model;
 mod store;
 
-pub use adapters::cursor::map_cursor_event_to_state;
 pub use adapters::claude::{
     ingest_claude_event, ingest_claude_payload, ingest_claude_payload_at,
     map_claude_event_to_state, ClaudeHookPayload,
@@ -18,9 +17,8 @@ pub use adapters::claude::{
 pub use adapters::codex::{
     ingest_codex_app_payload, ingest_codex_app_payload_at, map_codex_event_to_state,
 };
-pub use adapters::codex_session_scan::{
-    session_scan_corrupt, start_codex_session_scan_poll,
-};
+pub use adapters::codex_session_scan::{session_scan_corrupt, start_codex_session_scan_poll};
+pub use adapters::cursor::map_cursor_event_to_state;
 pub use adapters::hid::{plan_from_pad as plan_hid_output, HidOutputIntent};
 pub use adapters::shell_agent::{agent_kind_from_hook_source, ingest_shell_agent_payload};
 pub use adapters::shell_agent_process::{
@@ -70,6 +68,17 @@ pub fn ingest_codex_payload(payload: &CodexAppStatePayload) -> PadStatus {
             &payload.session_id,
             &payload.model,
             payload.ts,
+        );
+        // PromptJournal: fail-open. Production probes omit prompt text.
+        crate::agent_memory::maybe_note_from_hook_payload(
+            agent,
+            &payload.event,
+            &payload.session_id,
+            &payload.turn_id,
+            &payload.cwd,
+            &payload.prompt,
+            payload.ts,
+            source,
         );
     }
 

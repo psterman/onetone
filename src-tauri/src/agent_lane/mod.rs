@@ -14,8 +14,7 @@ pub mod store;
 
 pub use dispatch_lane::{
     begin_lane_press_lease, end_lane_press_lease, lookup_lane_ticket_by_micro,
-    lookup_lane_ticket_by_physical, navigate_lane, physical_lane_micro_key,
-    LaneDispatchTicket,
+    lookup_lane_ticket_by_physical, navigate_lane, physical_lane_micro_key, LaneDispatchTicket,
 };
 pub use focus_session::{
     ambient_ui_status, focus_session, focus_session_enabled, kpi_snapshot, resolve_focus_target,

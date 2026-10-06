@@ -1,7 +1,9 @@
 //! Plan C Phase 4: read-only query surface (MCP-ready IPC).
 //! No writes, no SQL passthrough, project-scoped limits.
 
-use crate::agent_memory::checkpoint::{latest_checkpoint_for_project, latest_checkpoint_for_session};
+use crate::agent_memory::checkpoint::{
+    latest_checkpoint_for_project, latest_checkpoint_for_session,
+};
 use crate::agent_memory::context::project_context;
 use crate::agent_memory::memory::query_memory;
 use crate::agent_memory::session_events::list_session_events;
@@ -13,7 +15,9 @@ const MAX_LIMIT: usize = 30;
 
 fn reject_sqlish(q: &str) -> Result<(), String> {
     let lower = q.to_ascii_lowercase();
-    for bad in ["select ", "insert ", "update ", "delete ", "drop ", ";", "--", "/*"] {
+    for bad in [
+        "select ", "insert ", "update ", "delete ", "drop ", ";", "--", "/*",
+    ] {
         if lower.contains(bad) {
             return Err("sql_rejected".into());
         }
@@ -30,7 +34,10 @@ fn clamp_query(q: &str) -> Result<String, String> {
 }
 
 /// MCP tool: agent_project_context
-pub fn tool_project_context(project_id: Option<&str>, project_root: Option<&Path>) -> serde_json::Value {
+pub fn tool_project_context(
+    project_id: Option<&str>,
+    project_root: Option<&Path>,
+) -> serde_json::Value {
     let ctx = if let Some(root) = project_root {
         project_context(Some(root), 8)
     } else {
@@ -135,7 +142,8 @@ pub fn tool_checkpoint_preview(
 ) -> serde_json::Value {
     let ckpt = if let Some(sid) = session_id.filter(|s| !s.trim().is_empty()) {
         latest_checkpoint_for_session(sid)
-    } else if let Some(pid) = project_id.filter(|s| !s.trim().is_empty() && *s != UNKNOWN_PROJECT_ID)
+    } else if let Some(pid) =
+        project_id.filter(|s| !s.trim().is_empty() && *s != UNKNOWN_PROJECT_ID)
     {
         latest_checkpoint_for_project(pid)
     } else {

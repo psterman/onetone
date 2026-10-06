@@ -146,7 +146,8 @@ fn read_probe() -> (String, Option<u64>) {
             params![PROVIDER_CURSOR],
             |r| {
                 Ok((
-                    r.get::<_, String>(0).unwrap_or_else(|_| ProbeStatus::NotFound.as_str().into()),
+                    r.get::<_, String>(0)
+                        .unwrap_or_else(|_| ProbeStatus::NotFound.as_str().into()),
                     r.get::<_, Option<i64>>(1)?.map(|x| x as u64),
                 ))
             },

@@ -1,0 +1,19 @@
+# Real Provider session log 鈥?fill during each scenario
+# Do not mark any scenario passed without action-result.json
+
+probedAt: 2026-10-06T12:19:13.3627607+08:00
+onetone: running=True pids=9160
+claude:  running=False pids=
+codex:   running=True pids=23964
+cursor:  running=True pids=3312,6048,6272,8364,8956,9484,14032,16772,18448,18868,19860,21044,24916,26660,28024,28668,29316,31288,33396,34768,36872,37992,38076
+
+--- per scenario ---
+# provider:
+# sessionId / externalSessionId:
+# projectRoot: E:\voice-pilot
+# projectId:
+# pid:
+# hwnd:
+# startedAt:
+# interruptedAt:
+# outcome / ok / verified / attemptId:

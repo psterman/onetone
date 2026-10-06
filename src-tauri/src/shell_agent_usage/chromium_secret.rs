@@ -51,10 +51,9 @@ fn decrypt_dpapi(input: &[u8]) -> Result<Vec<u8>, String> {
 }
 
 pub fn encryption_key(root: &Path) -> Result<Vec<u8>, String> {
-    let state: Value = serde_json::from_slice(
-        &fs::read(root.join("Local State")).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| e.to_string())?;
+    let state: Value =
+        serde_json::from_slice(&fs::read(root.join("Local State")).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
     let encoded = state
         .pointer("/os_crypt/encrypted_key")
         .and_then(Value::as_str)

@@ -6,9 +6,7 @@ use serde::Deserialize;
 use tauri::WebviewWindow;
 
 use crate::agent::actions::{action_by_id, ActivationScope, ExecutionMode};
-use crate::agent::providers::{
-    ClaudeProviderAdapter, CodexProviderAdapter, CursorProviderAdapter,
-};
+use crate::agent::providers::{ClaudeProviderAdapter, CodexProviderAdapter, CursorProviderAdapter};
 use crate::agent::templates::{
     slot_by_id, CLAUDE_PROVIDER_ID, CODEX_PROVIDER_ID, CURSOR_PROVIDER_ID,
 };

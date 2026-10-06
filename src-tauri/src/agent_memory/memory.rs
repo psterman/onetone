@@ -149,7 +149,10 @@ pub fn upsert_memory(
         )
         .map_err(|e| format!("upsert memory: {e}"))?;
 
-        let _ = conn.execute("DELETE FROM memory_fts WHERE memory_id = ?1", params![memory_id]);
+        let _ = conn.execute(
+            "DELETE FROM memory_fts WHERE memory_id = ?1",
+            params![memory_id],
+        );
         conn.execute(
             "INSERT INTO memory_fts(memory_id, project_id, memory_type, content)
              VALUES (?1,?2,?3,?4)",
@@ -174,7 +177,11 @@ pub fn upsert_memory(
 }
 
 /// FTS query scoped to project_id (hard filter — no cross-project leak).
-pub fn query_memory(project_id: &str, query: &str, limit: usize) -> Result<Vec<MemoryRecordDto>, String> {
+pub fn query_memory(
+    project_id: &str,
+    query: &str,
+    limit: usize,
+) -> Result<Vec<MemoryRecordDto>, String> {
     if project_id.trim().is_empty() {
         return Err("project_id required".into());
     }
@@ -214,7 +221,10 @@ pub fn query_memory(project_id: &str, query: &str, limit: usize) -> Result<Vec<M
             )
             .map_err(|e| e.to_string())?;
         let mapped = stmt
-            .query_map(params![project_id, safe.as_str(), lim as i64], map_memory_row)
+            .query_map(
+                params![project_id, safe.as_str(), lim as i64],
+                map_memory_row,
+            )
             .map_err(|e| e.to_string())?;
         Ok(mapped.flatten().collect())
     })?;
@@ -303,9 +313,7 @@ pub fn rebuild_memory_fts() -> Result<usize, String> {
         conn.execute_batch("DELETE FROM memory_fts;")
             .map_err(|e| format!("clear fts: {e}"))?;
         let mut stmt = conn
-            .prepare(
-                "SELECT memory_id, project_id, memory_type, content FROM memory_records",
-            )
+            .prepare("SELECT memory_id, project_id, memory_type, content FROM memory_records")
             .map_err(|e| e.to_string())?;
         let rows = stmt
             .query_map([], |r| {

@@ -57,7 +57,10 @@ pub fn start_trigger_verify_listen(state: &AppState, mapping_id: &str) -> bool {
         crate::app_log::log_line(
             state,
             "verify",
-            &format!("start verify failed mapping={} reason=empty_bindings", mapping_id),
+            &format!(
+                "start verify failed mapping={} reason=empty_bindings",
+                mapping_id
+            ),
         );
         return false;
     }
@@ -67,7 +70,10 @@ pub fn start_trigger_verify_listen(state: &AppState, mapping_id: &str) -> bool {
             crate::app_log::log_line(
                 state,
                 "verify",
-                &format!("start verify noop mapping={} reason=same_session", mapping_id),
+                &format!(
+                    "start verify noop mapping={} reason=same_session",
+                    mapping_id
+                ),
             );
             return true;
         }
@@ -75,7 +81,11 @@ pub fn start_trigger_verify_listen(state: &AppState, mapping_id: &str) -> bool {
     crate::app_log::log_line(
         state,
         "verify",
-        &format!("start verify mapping={} bindings={}", mapping_id, bindings.join(",")),
+        &format!(
+            "start verify mapping={} bindings={}",
+            mapping_id,
+            bindings.join(",")
+        ),
     );
     state.trigger_verify_listen.lock().take();
     state.gesture.lock().reset();

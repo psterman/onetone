@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent × 通道关联 · 三个瞬间（首页零改动版）</title>
+<style>
+  :root{
+    --line:#e4e8ec;
+    --line-soft:#f0f3f5;
+    --ink:#17324d;
+    --ink2:#5a6c80;
+    --ink3:#718398;
+    --ink4:#93a4b2;
+    --blue:#0088cc;
+    --deep:#3a4580;
+    --working:#168bc2;
+    --stale:#c9892f;
+    --idle:#cfd8de;
+    /* banner — 取自 home-agent-roster.css */
+    --bn-bg:#f8fafc; --bn-bd:#e2e8f0; --bn-fg:#334155;
+    --bn-warn-bg:#fff6e7; --bn-warn-bd:#f0dfc3; --bn-warn-fg:#8c652d;
+    --bn-info-bg:#edf7fc; --bn-info-bd:#cfe8f5; --bn-info-fg:#38728f;
+    --bn-err-bg:#fef2f2; --bn-err-bd:#fecaca; --bn-err-fg:#991b1b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:#f4f6f8;color:var(--ink);
+    font:13px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    padding:36px 40px 72px;
+  }
+  .wrap{max-width:880px;margin:0 auto}
+
+  .page-hd{margin-bottom:26px}
+  .page-hd h1{margin:0 0 6px;font-size:17px;font-weight:700;letter-spacing:-0.01em;color:#0f1b2a}
+  .page-hd p{margin:0;max-width:660px;font-size:12.5px;line-height:1.65;color:var(--ink3)}
+  .bump{
+    display:inline-block;margin-top:10px;
+    font-size:11px;color:var(--ink4);
+  }
+
+  h2{
+    margin:30px 0 4px;font-size:13px;font-weight:700;color:#0f1b2a;
+  }
+  h2 em{
+    font-style:normal;margin-left:8px;
+    font-weight:500;font-size:11.5px;color:var(--ink4);
+  }
+  .lede2{margin:0 0 12px;font-size:12px;line-height:1.6;color:var(--ink3)}
+
+  .stage{
+    border:1px solid var(--line);border-radius:10px;background:#fff;
+    padding:16px;
+  }
+
+  /* ---------- 首页主行 ---------- */
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--working)}
+  .dot.is-stale{background:var(--stale)}
+  .nm{font-size:13.5px;font-weight:700;color:#0f1b2a}
+  .nm small{display:block;margin-top:2px;font-weight:500;font-size:11px;color:var(--ink3)}
+  .proj{font-size:12px;color:var(--ink2)}
+  .when{font-size:12px;color:var(--ink3)}
+  .grow{flex:1 1 auto}
+  .act{
+    font:inherit;font-size:12px;font-weight:650;
+    border:1px solid #d8dee5;border-radius:7px;padding:7px 10px;
+    background:#fff;color:#487087;cursor:pointer;
+  }
+  .act.is-stop{border-color:#f0c9c9;background:#fdf2f2;color:#8b1e1e}
+  .act[aria-disabled="true"]{opacity:.45;cursor:pointer}
+  .chev{font-size:11px;color:var(--ink4)}
+
+  .verdict{
+    margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft);
+    font-size:12px;color:var(--ink3);
+  }
+  .verdict b{color:var(--ink);font-weight:650}
+
+  /* ---------- toast（app.css .toast-item 真实结构） ---------- */
+  .toast{
+    display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:10px;
+    width:360px;max-width:100%;
+    padding:12px 12px 14px;border-radius:12px;
+    background:#fff;border:1px solid var(--bn-bd);
+    box-shadow:0 12px 28px rgba(15,23,42,.12);
+    position:relative;overflow:hidden;
+  }
+  .toast::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ink4);
+  }
+  .toast.is-warn::before{background:#f59e0b}
+  .toast.is-ok::before{background:#16a34a}
+  .toast.is-err::before{background:#dc2626}
+  .t-icon{
+    width:28px;height:28px;border-radius:999px;flex:none;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:#f1f5f9;color:#64748b;font-size:13px;
+  }
+  .toast.is-warn .t-icon{background:rgba(249,115,22,.12);color:#c2410c}
+  .toast.is-ok .t-icon{background:rgba(22,163,74,.12);color:#15803d}
+  .toast.is-err .t-icon{background:rgba(220,38,38,.12);color:#b91c1c}
+  .t-body{min-width:0;display:grid;gap:2px;padding-top:2px}
+  .t-title{font-size:12px;font-weight:800;line-height:1.3;color:#1f2937}
+  .t-msg{font-size:13px;font-weight:600;line-height:1.45;color:#1f2937}
+  .t-detail{font-size:12px;font-weight:500;line-height:1.4;color:#6b7280}
+  .t-action{
+    align-self:center;height:30px;padding:0 10px;border-radius:10px;
+    border:1px solid var(--bn-bd);background:#f1f5f9;
+    color:#0369a1;font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+  }
+
+  /* ---------- banner（home-agent-roster.css 真实值） ---------- */
+  .bn{
+    margin:0;border-radius:8px;border:1px solid var(--bn-bd);
+    background:var(--bn-bg);color:var(--bn-fg);
+    padding:10px 12px;font-size:12px;line-height:1.55;
+  }
+  .bn.is-warn{border-color:var(--bn-warn-bd);background:var(--bn-warn-bg);color:var(--bn-warn-fg)}
+  .bn.is-info{border-color:var(--bn-info-bd);background:var(--bn-info-bg);color:var(--bn-info-fg)}
+  .bn.is-err{border-color:var(--bn-err-bd);background:var(--bn-err-bg);color:var(--bn-err-fg)}
+  .bn button{
+    margin-left:8px;border:1px solid #d1d5db;border-radius:6px;
+    background:#fff;font:inherit;font-size:12px;padding:3px 8px;cursor:pointer;color:#334155;
+  }
+
+  .now{
+    margin-top:10px;padding:0 2px;
+    font-size:11.5px;line-height:1.6;color:var(--ink4);
+  }
+  .now b{color:var(--ink2);font-weight:650}
+
+  /* ---------- 落地 ---------- */
+  .fixes{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
+  .fix{padding:13px 16px;border-top:1px solid var(--line-soft)}
+  .fix:first-child{border-top:0}
+  .fx-where{
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;
+    font-size:11px;color:var(--ink4);margin-bottom:4px;
+  }
+  .fx-what{font-size:12.5px;font-weight:650;color:#0f1b2a}
+  .fx-why{margin-top:5px;font-size:11.5px;line-height:1.6;color:var(--ink3)}
+  .tag{
+    display:inline-block;margin-left:8px;
+    font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px;
+    background:#f1f5f9;color:#64748b;
+  }
+  .tag.is-easy{background:#edf7f2;color:#167d5e}
+  .tag.is-new{background:#fff6e7;color:#8c652d}
+
+  .foot{margin-top:26px;padding:0 2px;font-size:11.5px;line-height:1.7;color:var(--ink4)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-hd">
+    <h1>通道信息只在三个瞬间出现</h1>
+    <p>
+      首页主行一个字节都不加。通道是实现细节，用户在首页能做的只有「点按钮」。
+      它真正该露面的时刻是：动作之后、按钮为什么灰、通道打架。
+    </p>
+    <span class="bump">v2 · 首页零改动版　—　v1 的「四标签 / 聚合入口」对照已否决：通道状态在首页没有对应用户任务</span>
+  </header>
+
+  <!-- ============ 首页主行 ============ -->
+  <h2>首页主行 <em>零改动</em></h2>
+  <p class="lede2">状态点 · 名称 · 控制态 · 项目 · 时间 · 三个动作 —— 到此为止。</p>
+  <div class="stage">
+    <div class="row">
+      <span class="dot"></span>
+      <span class="nm">Cursor
+        <small>正在工作 · 5 分钟前</small>
+      </span>
+      <span class="grow"></span>
+      <span class="proj">voice-pilot</span>
+      <span class="when">5 分钟前</span>
+      <span class="act">聚焦</span>
+      <span class="act">继续</span>
+      <span class="act is-stop">停止</span>
+      <span class="chev">▾</span>
+    </div>
+    <p class="verdict">
+      <b>不加通道信息。</b>用户触发 Cursor 的方式就是这三个按钮，按钮已经在这儿了 —— 再告诉他「按键已绑定」，看完没有下一步动作。
+    </p>
+  </div>
+
+  <!-- ============ 瞬间一 ============ -->
+  <h2>瞬间一 · 点了「停止」之后 <em>回执里说清走的哪条路</em></h2>
+  <p class="lede2">尽力而为的 Agent，回执必须告诉用户「去哪儿看结果」。</p>
+  <div class="stage">
+    <div class="toast is-warn">
+      <span class="t-icon">!</span>
+      <span class="t-body">
+        <span class="t-title">已发送停止指令</span>
+        <span class="t-msg">已通过按键发送停止指令</span>
+        <span class="t-detail">Cursor 可能还在运行 —— 请到 Cursor 窗口确认是否真的停了</span>
+      </span>
+      <button class="t-action" type="button">打开 Cursor</button>
+    </div>
+    <p class="now">
+      <b>现在：</b>一行 toast「已发送停止指令，请自行确认」，没说走的是按键还是别的，也没说去哪儿确认；首页不留痕，消失即忘。
+      另两态文案：成功 →「已确认 Agent 停止」；失败 →「停止失败 · 没有可定位的 Cursor 控制目标」。
+    </p>
+  </div>
+
+  <!-- ============ 瞬间二 ============ -->
+  <h2>瞬间二 · 「停止」为什么是灰的 <em>让已有的原因逻辑跑起来</em></h2>
+  <p class="lede2">灰按钮现在只能靠悬停 tooltip 猜。改成可点，点击就说出原因。</p>
+  <div class="stage">
+    <div class="row">
+      <span class="dot is-stale"></span>
+      <span class="nm">Cursor
+        <small>状态已过期</small>
+      </span>
+      <span class="grow"></span>
+      <span class="act">聚焦</span>
+      <span class="act" aria-disabled="true">继续</span>
+      <span class="act is-stop" aria-disabled="true">停止</span>
+    </div>
+
+    <div class="toast" style="margin-top:14px">
+      <span class="t-icon">?</span>
+      <span class="t-body">
+        <span class="t-msg">现在还不能用停止</span>
+        <span class="t-detail">没有可定位的 Cursor 控制目标 —— 先打开 Cursor 并让它处于前台</span>
+      </span>
+      <button class="t-action" type="button">去配置</button>
+    </div>
+
+    <p class="now">
+      <b>现在：</b>按钮是 <code>disabled</code>，点击根本不触发，<code>dispatchAction</code> 里那段「toast 出原因」的代码永远走不到；
+      原因只剩 <code>title</code> 悬停可见，触屏和键盘用户看不到。
+    </p>
+  </div>
+
+  <!-- ============ 瞬间三 ============ -->
+  <h2>瞬间三 · 通道打架 <em>唯一值得在首页常驻的通道信息</em></h2>
+  <p class="lede2">同一个按键绑给了两个应用 —— 这事用户只会在首页撞见，而且只在打架时才需要知道。</p>
+  <div class="stage">
+    <div class="bn is-warn">
+      按键 F13 同时绑给了 Cursor 和 Windsurf，触发时以当前前台应用为准
+      <button type="button">去调整</button>
+    </div>
+    <p class="now">
+      <b>现在：</b>没有这条。用户按了键，结果落在另一个应用上，只会以为「停止没生效」。
+      形态是告警不是清单 —— 不打架时首页什么都不显示。
+    </p>
+  </div>
+
+  <!-- ============ 落地 ============ -->
+  <h2>落地 <em>4 处</em></h2>
+  <div class="fixes">
+    <div class="fix">
+      <div class="fx-where">agent-center.js · outcomeMessage() 2246-2264</div>
+      <div class="fx-what">回执改成结构化：message + detail + action，带上通道名<span class="tag is-new">需新数据</span></div>
+      <div class="fx-why">通道名要后端带回。Codex 侧 <code>resolve_interrupt_evidence</code> 已能区分 Hotkey / emulated，其余 Provider 需补。</div>
+    </div>
+    <div class="fix">
+      <div class="fx-where">agent-center.js · toast() 481-490</div>
+      <div class="fx-what">支持透传 options 给 OneToneAppToast<span class="tag is-easy">小改</span></div>
+      <div class="fx-why">现在只传 msg 字符串。而 toast 组件本身已支持 title / detail / action 三个字段，不用新造 UI。</div>
+    </div>
+    <div class="fix">
+      <div class="fx-where">agent-center.js · homeActionButtons() 1688</div>
+      <div class="fx-what">rowOnly 时把 disabled 换成 aria-disabled="true"<span class="tag is-easy">小改</span></div>
+      <div class="fx-why">一行改动就能让 2326-2328 已有的「toast 出原因」生效。CSS 补一个 <code>.har-action[aria-disabled="true"]</code> 复用灰态即可。</div>
+    </div>
+    <div class="fix">
+      <div class="fx-where">agent-center.js · paintHomeBanners() 1977-2011</div>
+      <div class="fx-what">加 feedback 条；冲突检测前端聚合<span class="tag is-new">新建</span></div>
+      <div class="fx-why">首页目前不渲染 state.feedback（Agent Center 页才有）。冲突用 <code>cmd_action_binding_views_all</code> 的结果判断：同一个 key 出现在 ≥2 个 mapping。</div>
+    </div>
+  </div>
+
+  <p class="foot">
+    原型仅表达形态与文案，未改动生产代码。首屏三段视觉分别取自 <code>home-agent-roster.css</code>（banner / 动作按钮）与
+    <code>app.css</code>（.toast-item 的 icon / title / message / detail / action 结构）。
+  </p>
+
+</div>
+</body>
+</html>

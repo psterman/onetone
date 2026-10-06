@@ -102,3 +102,7 @@ scripts/hang-dumps/procdump64.exe
 
 # local ffmpeg download scratch
 .tmp-ffmpeg/
+
+# Local test scratch (do NOT ignore whole output/ — 81 tracked files live there)
+/test-output/
+/output/test-output/

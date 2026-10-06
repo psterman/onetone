@@ -7,10 +7,7 @@ use serde_json::Value;
 
 /// Map an App Server JSON-RPC notification/response fragment into a lane ingest.
 pub fn ingest_app_server_message(message: &Value) -> bool {
-    let method = message
-        .get("method")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let method = message.get("method").and_then(|v| v.as_str()).unwrap_or("");
     let params = message.get("params").cloned().unwrap_or(Value::Null);
 
     let (event, thread_id, request_id, cwd) = match method {

@@ -45,9 +45,9 @@ pub fn cmd_agent_action_execute(
 /// Rust-authoritative semantic action catalog (FE must not long-term hand-mirror).
 #[tauri::command]
 pub fn cmd_semantic_action_catalog() -> serde_json::Value {
-    serde_json::to_value(public_catalog_dto()).unwrap_or_else(|_| {
-        serde_json::json!({ "version": 0, "entries": [], "error": "serialize failed" })
-    })
+    serde_json::to_value(public_catalog_dto()).unwrap_or_else(
+        |_| serde_json::json!({ "version": 0, "entries": [], "error": "serialize failed" }),
+    )
 }
 
 #[tauri::command]

@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>思路整合器 · 参考案例与 OneTone 原型</title>
+<style>
+:root{
+  --bg:#F7F7F5; --surface:#FFFFFF; --line:rgba(0,0,0,0.12); --line2:rgba(0,0,0,0.22);
+  --tx:#1F1F1E; --tx2:#5F5E5A; --tx3:#8A8983;
+  --green-bg:#EAF3DE; --green-ln:#639922; --green-tx:#27500A;
+  --amber-bg:#FAEEDA; --amber-ln:#BA7517; --amber-tx:#633806;
+  --red-bg:#FCEBEB; --red-ln:#E24B4A; --red-tx:#791F1F;
+  --blue-bg:#E6F1FB; --blue-ln:#378ADD; --blue-tx:#0C447C;
+  --gray-bg:#F1EFE8; --gray-ln:#888780;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  font-size:14px;line-height:1.65;}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 28px 80px;}
+h1{font-size:22px;font-weight:500;margin:0 0 6px;}
+h2{font-size:16px;font-weight:500;margin:44px 0 4px;padding-top:20px;border-top:1px solid var(--line);}
+h3{font-size:14px;font-weight:500;margin:24px 0 8px;color:var(--tx2);}
+p.lead{color:var(--tx2);margin:0 0 4px;max-width:760px;}
+.note{color:var(--tx3);font-size:13px;}
+table{width:100%;border-collapse:collapse;margin:12px 0;background:var(--surface);
+  border:0.5px solid var(--line);border-radius:12px;overflow:hidden;font-size:13px;}
+th{text-align:left;font-weight:500;color:var(--tx2);background:#FAFAF8;padding:10px 14px;
+  border-bottom:0.5px solid var(--line);white-space:nowrap;}
+td{padding:10px 14px;border-bottom:0.5px solid var(--line);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+td.mono{font-family:"SFMono-Regular",Consolas,monospace;font-size:12px;color:var(--tx2);}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:20px;border:0.5px solid;white-space:nowrap;}
+.t-green{background:var(--green-bg);border-color:var(--green-ln);color:var(--green-tx);}
+.t-amber{background:var(--amber-bg);border-color:var(--amber-ln);color:var(--amber-tx);}
+.t-red{background:var(--red-bg);border-color:var(--red-ln);color:var(--red-tx);}
+.t-blue{background:var(--blue-bg);border-color:var(--blue-ln);color:var(--blue-tx);}
+.t-gray{background:var(--gray-bg);border-color:var(--gray-ln);color:var(--tx2);}
+
+/* 三形态对照 */
+.forms{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:16px 0;}
+.form{background:var(--surface);border:0.5px solid var(--line);border-radius:12px;padding:16px 18px;}
+.form.feat{border:2px solid var(--blue-ln);}
+.form .ft{font-weight:500;margin-bottom:2px;}
+.form .fs{font-size:13px;color:var(--tx2);margin-bottom:10px;}
+.form ul{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--tx2);}
+.form li{margin:2px 0;}
+
+/* 原型 */
+.proto{background:var(--surface);border:0.5px solid var(--line);border-radius:12px;
+  padding:18px 20px 20px;margin-top:14px;}
+.proto-hd{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px;}
+.ctrl{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+button{font:inherit;font-size:13px;padding:5px 11px;border-radius:8px;
+  border:0.5px solid var(--line2);background:transparent;color:var(--tx);cursor:pointer;}
+button:hover{background:#F2F1EE;}
+button.on{background:var(--blue-bg);border-color:var(--blue-ln);color:var(--blue-tx);}
+button.primary{background:#1F1F1E;color:#fff;border-color:#1F1F1E;}
+button.primary:hover{background:#000;}
+button.primary:disabled{background:#C9C8C3;border-color:#C9C8C3;color:#fff;cursor:not-allowed;}
+
+.grid3{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;}
+@media(max-width:860px){.grid3{grid-template-columns:1fr;}}
+
+.tray h4,.doc h4{font-size:13px;font-weight:500;color:var(--tx2);margin:0 0 8px;}
+.tray-list{display:flex;flex-direction:column;gap:6px;max-height:520px;overflow:auto;padding-right:2px;}
+.item{display:flex;align-items:center;gap:8px;padding:7px 9px;border:0.5px solid var(--line);
+  border-radius:9px;background:var(--surface);cursor:pointer;text-align:left;width:100%;}
+.item:hover{background:#F7F6F3;border-color:var(--line2);}
+.item .ic{width:22px;height:22px;border-radius:6px;flex:0 0 22px;display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:500;background:var(--gray-bg);color:var(--tx2);}
+.item .nm{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.item .tk{font-size:11px;color:var(--tx3);flex:0 0 auto;}
+.item[data-supply="red"]{opacity:.62;}
+.dot{width:7px;height:7px;border-radius:50%;flex:0 0 7px;}
+.dot.g{background:var(--green-ln);} .dot.a{background:var(--amber-ln);} .dot.r{background:var(--red-ln);}
+
+.editor{min-height:420px;border:0.5px solid var(--line);border-radius:10px;background:#FCFCFB;
+  padding:16px 18px;outline:none;font-size:14px;line-height:1.8;}
+.editor:focus{border-color:var(--blue-ln);}
+.doc .hint{font-size:12px;color:var(--tx3);margin:8px 0 0;}
+.blk{display:inline-flex;align-items:center;gap:7px;margin:3px 2px;padding:3px 9px 3px 8px;
+  border-radius:7px;background:var(--blue-bg);border:0.5px solid var(--blue-ln);
+  color:var(--blue-tx);font-size:13px;vertical-align:baseline;user-select:none;}
+.blk .bt{font-weight:500;}
+.blk .bmeta{font-size:11px;opacity:.75;}
+.blk .bx{cursor:pointer;opacity:.5;font-size:14px;line-height:1;padding:0 2px;}
+.blk .bx:hover{opacity:1;}
+.blk.folded{background:var(--gray-bg);border-color:var(--gray-ln);color:var(--tx2);}
+.blk.editable{background:#fff;border-color:var(--line2);color:var(--tx);}
+.provenance{display:inline-block;font-size:11px;color:var(--green-tx);background:var(--green-bg);
+  border:0.5px solid var(--green-ln);border-radius:5px;padding:0 6px;margin-left:4px;}
+.provenance.dead{color:var(--red-tx);background:var(--red-bg);border-color:var(--red-ln);}
+
+.bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  margin-top:14px;padding-top:14px;border-top:0.5px solid var(--line);}
+.budget{flex:1;min-width:220px;}
+.budget .bl{display:flex;justify-content:space-between;font-size:12px;color:var(--tx2);margin-bottom:5px;}
+.track{height:6px;border-radius:4px;background:#E9E8E3;overflow:hidden;}
+.fill{height:100%;background:var(--green-ln);width:0%;transition:width .2s;}
+.fill.warn{background:var(--amber-ln);} .fill.over{background:var(--red-ln);}
+select{font:inherit;font-size:13px;padding:5px 9px;border-radius:8px;border:0.5px solid var(--line2);
+  background:var(--surface);color:var(--tx);}
+.risks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:14px;}
+.risk{background:var(--surface);border:0.5px solid var(--line);border-radius:12px;padding:14px 16px;}
+.risk .rt{font-weight:500;margin-bottom:4px;}
+.risk .rd{font-size:13px;color:var(--tx2);}
+.kbd{font-family:"SFMono-Regular",Consolas,monospace;font-size:12px;background:var(--gray-bg);
+  border:0.5px solid var(--line);border-radius:5px;padding:1px 5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>思路整合器 · 参考案例与 OneTone 原型</h1>
+<p class="lead">把首页从"状态看板"改成"上下文装配台"：用户点选各类元素，在编辑框里拼成一份简报，一次性发给 agent。
+本文件收录同类产品做法、核对 OneTone 的元素数据供给，并给出一版可交互原型。</p>
+
+<h2>〇、定位纠正：这是「首次沟通准备器」，不是上下文装配器</h2>
+<p class="lead">用户纠正：<b>首页是帮用户规划思路，不是代替 agent 整理</b>——提前做好进入 vibe coding 的准备，最终反哺下一次操作，
+<b>避免因抽象导致 AI 理解偏差</b>，通过前期对材料的精准投喂和规范，让各种思路融合进主体思维，和 agent 形成一次有效的首次沟通。</p>
+
+<h3>这个纠正换了三件事</h3>
+<table>
+<thead><tr><th style="width:120px">维度</th><th style="width:260px">我上一轮的理解（错）</th><th>纠正后</th></tr></thead>
+<tbody>
+<tr><td>对标物</td><td>VS Code Copilot / Continue 的上下文装配</td><td><b>不是"装多少上下文"，是"消除多少歧义"</b></td></tr>
+<tr><td>度量</td><td>装了几类元素、多少 token</td><td><b>首次沟通一次就对的概率</b>；抽象词有几个、悬空指称有几处、验收判据是否可观察</td></tr>
+<tr><td>方向</td><td>面向 agent 的投喂工具</td><td>面向<b>用户自己想清楚</b>的工具，投喂是副产品</td></tr>
+</tbody>
+</table>
+
+<h3>推论一：MD 编辑器恰恰是抽象的温床，容器必须是模板</h3>
+<p class="note">空白页没有约束力，用户在空白页上会写"把首页优化一下，好看点"。<b>要避免抽象，靠的不是让用户多写，而是让字段逼他把话说具体。</b>
+所以主体不该是自由 MD 编辑器，而是「结构化字段 + 素材引用」——MD 只是导出格式。</p>
+
+<h3>推论二：五种偏差，对应五个强制字段</h3>
+<table>
+<thead><tr><th style="width:130px">偏差机制</th><th style="width:200px">抽象长什么样</th><th style="width:150px">强制字段</th><th>检测规则（纯规则，不用 LLM）</th></tr></thead>
+<tbody>
+<tr><td>目标无边界</td><td>"优化一下""改进""完善"</td><td><b>目标</b></td><td>抽象动词词表命中即告警</td></tr>
+<tr><td>现状不明</td><td>AI 不知道现在什么样，只能猜</td><td><b>现状与证据</b></td><td>字段为空、或未挂任何素材 → 告警</td></tr>
+<tr><td>范围不明</td><td>"首页"是哪些文件？</td><td><b>范围</b></td><td>无路径/文件名/模块词 → 告警</td></tr>
+<tr><td>验收不可观察</td><td>"好看点""合理一些"</td><td><b>验收</b></td><td>无数字/文件名/命令/步骤词 → 告警</td></tr>
+<tr><td>约束未声明</td><td>AI 顺手改了不该改的</td><td><b>不改什么</b></td><td>无否定词（不要/别/除了/保持）→ 告警</td></tr>
+<tr><td>指称悬空</td><td>"这个""那个""跟上次一样"</td><td>素材引用</td><td>代词语料 + 无引用 → 告警</td></tr>
+</tbody>
+</table>
+<p class="note"><b>分歧点值得单独说：LLM 绝不能用来"润色"这份简报。</b>润色就是重新引入抽象——把用户刚逼自己说具体的话，又抹平回"优化一下"。
+模型在这里唯一被允许的角色是"检查完整性"，不是"代写"。这也让上一轮"不用 LLM"的结论有了更强的理由：不是省成本，是<b>模板的强制性不能被模型软化</b>。</p>
+
+<h3>推论三：反哺这条回路，数据层已经预留了位置，只差写入</h3>
+<table>
+<thead><tr><th style="width:230px">已存在的字段</th><th>在闭环里的角色</th></tr></thead>
+<tbody>
+<tr><td class="mono">memory_records.user_authored</td><td><b>MIGRATION_V3 专门加的</b>——区分"用户自己写的"和"系统推断的"。这就是"不代替 agent 整理"这条边界在数据层的对应物：所有 <span class="kbd">user_authored = 0</span> 的内容在 UI 上必须标"系统观察"，不能混进"我的判断"</td></tr>
+<tr><td class="mono">memory_records.supersedes_id</td><td>记忆可修订而非堆积。反哺时覆盖旧约束，不会留下一堆互相矛盾的历史</td></tr>
+<tr><td class="mono">memory_fts（FTS5 · unicode61）</td><td><b>中文全文检索已有</b>。下次写简报时回填历史约束 = 一条 SQL，不需要任何模型</td></tr>
+<tr><td class="mono">agent_checkpoints.next_action / pending_questions_json</td><td>前者就是"下一次的起点"；后者是"未决问题"——恰好是歧义的残留物</td></tr>
+<tr><td class="mono">agent_checkpoints.current_task / changed_files_json</td><td>上次做到哪、改了什么 → 下次简报"现状"字段的现成素材</td></tr>
+</tbody>
+</table>
+
+<h3>闭环</h3>
+<div class="proto" style="padding:14px 16px">
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;font-size:13px">
+  <div style="flex:1 1 150px;background:var(--blue-bg);border:0.5px solid var(--blue-ln);border-radius:10px;padding:10px 12px">
+    <div style="font-weight:500;color:var(--blue-tx)">① 简报</div><div style="color:var(--tx2);font-size:12px">你填五个字段</div></div>
+  <div style="flex:0 0 auto;align-self:center;color:var(--tx3)">→</div>
+  <div style="flex:1 1 150px;background:var(--blue-bg);border:0.5px solid var(--blue-ln);border-radius:10px;padding:10px 12px">
+    <div style="font-weight:500;color:var(--blue-tx)">② 首次沟通</div><div style="color:var(--tx2);font-size:12px">一次说清，不来回</div></div>
+  <div style="flex:0 0 auto;align-self:center;color:var(--tx3)">→</div>
+  <div style="flex:1 1 150px;background:var(--gray-bg);border:0.5px solid var(--gray-ln);border-radius:10px;padding:10px 12px">
+    <div style="font-weight:500">③ agent 执行</div><div style="color:var(--tx2);font-size:12px">我们<b>不</b>替它整理</div></div>
+  <div style="flex:0 0 auto;align-self:center;color:var(--tx3)">→</div>
+  <div style="flex:1 1 150px;background:var(--green-bg);border:0.5px solid var(--green-ln);border-radius:10px;padding:10px 12px">
+    <div style="font-weight:500;color:var(--green-tx)">④ 验收判定</div><div style="color:var(--tx2);font-size:12px">保留 / 放弃 + <b>为什么</b></div></div>
+</div>
+<div style="margin-top:12px;padding:9px 12px;background:var(--amber-bg);border:0.5px solid var(--amber-ln);border-radius:10px;font-size:13px;color:var(--amber-tx)">
+  ↻ <b>反哺</b>：「为什么放弃」沉淀为 <span class="kbd">memory_records</span>（<span class="kbd">user_authored = 1</span>）→ 下次写简报时由 <span class="kbd">memory_fts</span> 检索出来，预填进「不改什么」字段。
+  <b>来自验收台的判定，正是反哺的输入</b>——上一份验收台原型在这里接上了。
+</div>
+</div>
+
+<h3>决策：填空题，还是简约直发？</h3>
+<p class="note">答案是<b>默认简约，按需填空</b>——但"按需"的依据不是用户想不想填，而是<b>素材本身有没有把歧义消掉</b>。素材越充分，一句话的容忍度越高；左下角那一格（素材少 + 话抽象）才是填空题唯一该出现的地方。</p>
+<table>
+<thead><tr><th style="width:170px">原则</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><b>默认简约</b></td><td>主界面就是"扔素材 + 一句话"，零字段、零仪式感。五个字段<b>不是默认界面，是被触发的补丁</b>。</td></tr>
+<tr><td><b>只问一句，就地问</b></td><td>检测到问题时不要弹表单，只在输入框旁问<b>风险最高的那一句</b>：「"优化"具体指什么？截个图圈出来」。问一个比填五个有效得多。</td></tr>
+<tr><td><b>门禁必须是软的</b></td><td><b>这一条是我上一版的错，已改。</b>原型的红灯硬门禁（有硬伤禁用发送）本质上就是变相填空题——它强迫一个还没想清楚的人假装想清楚。改成：允许发，但诚实告知哪条最可能跑偏。</td></tr>
+<tr><td><b>填空的价值在发送后</b></td><td>用户填过的东西必须沉淀（接上一节的反哺回路）。于是老用户看到的补丁越来越少——历史约束已被自动回填。<b>不要让新用户填空，让老用户的填空自动消失。</b></td></tr>
+<tr><td><b>判断题优于填空题</b></td><td>人在"识别错误"时远比"回忆需求"时准确。所以另一条解法是：<b>让 agent 先复述它的理解，用户来纠正</b>——纠正一个具体的错误描述，比从空白开始描述容易得多。这不违背"不用 LLM"：那个模型是目标 agent，不是 OneTone 自己调的。</td></tr>
+</tbody>
+</table>
+
+<h3>原型 · 五个字段 + 歧义检测（实时、纯规则、不用 LLM）</h3>
+<p class="note">左边填，右边实时体检。两个示例可载入：<b>「抽象示例」</b>是典型的一句模糊话，<b>「规范示例」</b>是同一件事说清楚后的样子。<br>
+<b>注意：这五个字段不是默认界面。</b>默认应该是"粘贴 + 一句话"，这五个探针只在检测到问题时<b>就地问一句</b>，而且只问风险最高的那一句——右下角面板演示的就是这个"先问这一句"。</p>
+<div class="proto">
+  <div class="proto-hd">
+    <div><b>首次沟通简报</b></div>
+    <div class="ctrl">
+      <button id="loadBad">载入抽象示例</button>
+      <button id="loadGood">载入规范示例</button>
+      <button id="clearF">清空</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:18px">
+    <div id="fields"></div>
+    <div>
+      <h4 style="font-size:13px;font-weight:500;color:var(--tx2);margin:0 0 8px">歧义体检</h4>
+      <div id="diag" style="border:0.5px solid var(--line);border-radius:10px;padding:12px 14px;min-height:200px;font-size:13px"></div>
+      <div id="gate" style="margin-top:10px;padding:9px 12px;border-radius:10px;font-size:13px"></div>
+      <button id="exportMd" class="primary" style="margin-top:10px;width:100%">导出为 Markdown</button>
+    </div>
+  </div>
+</div>
+
+<h3>方案 A：思考工作流模板（第一性原理 / 逆向思考 / …）</h3>
+<p class="note">先纠一个前提：<b>flomo 的「AI 洞察」不是模板库</b>。它是一个<b>读过你所有笔记的 LLM</b>——输入一个主题，从历史记录里提炼你没意识到的模式。官方边界写得很明确：「AI 洞察是一面镜子，只会基于已有笔记进行分析」，且要满 50 条笔记才开放试用。<br>
+<b>这条边界在这里是致命的</b>：洞察的价值 = f(已积累的记录量)，而简报恰恰发生在<b>历史为零的那一次</b>——flomo 在你最需要它的地方失效。<br>
+真正能借的是它的<b>「回顾」机制</b>（每日回顾 / 随机漫步 / 相关笔记：让旧记录主动回到当前语境）。那一层在 OneTone 的对应物就是<b>反哺</b>（<span class="kbd">memory_fts</span> 检索 + 自动预填）。<b>flomo 教的不是"做模板库"，而是"让历史来敲门"。</b></p>
+
+<table>
+<thead><tr><th style="width:130px">候选</th><th style="width:170px">产物落到</th><th style="width:110px">判定</th><th>说明 / 改造办法</th></tr></thead>
+<tbody>
+<tr><td><b>逆向思考</b><br><span style="font-size:12px;color:var(--tx3)">这怎么会失败</span></td><td>验收 + 不改什么</td><td style="color:var(--green-tx)">直接可用</td><td>唯一天然产出<b>可观察失败判据</b>的模板——失败的样子反过来写就是验收标准。四个候选里优先级最高。</td></tr>
+<tr><td><b>第一性原理</b></td><td>现状与证据</td><td style="color:var(--amber-tx)">需强制产物格式</td><td>极易滑向"回归本质"这种<b>更大的抽象词</b>。必须规定产物 = 「我现在能确定的事实只有 N 条」（N ≤ 5，每条要能挂素材）。否则它比不填更糟。</td></tr>
+<tr><td><b>价值取舍</b></td><td>不改什么（限本次）</td><td style="color:var(--amber-tx)">需限定作用域</td><td>限定成"这次改动里哪两件事冲突时先保哪个" → 可用；一旦滑到人生价值观 → 失去可执行性。</td></tr>
+<tr><td><b>MBTI 分析</b></td><td>不进任务字段</td><td style="color:var(--red-tx)">类别错误</td><td>产物是<b>自我认知</b>，不是任务规格。agent 拿到"我是 INFJ"执行不了任何动作。它<b>有位置</b>：长期记忆层 <span class="kbd">memory_records</span>（<span class="kbd">user_authored = 1</span>），导出时作为「关于我」附在末尾、可选开关。</td></tr>
+</tbody>
+</table>
+
+<h3>四条约束——否则模板会变成新的抽象来源</h3>
+<table>
+<thead><tr><th style="width:170px">约束</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><b>模板不是清单，是补丁</b></td><td>不做"模板库"。默认不出现，只在检测到缺口时递上<b>一个</b>（验收缺失 → 递"逆向思考"）。这与上一节"只问一句"是同一条原则，不是两套设计。</td></tr>
+<tr><td><b>模板不豁免检测</b></td><td>选了模板照样过歧义体检。第一性原理写出"回归本质"照样亮灯——这正是"模板的强制性不能被软化"的延续。</td></tr>
+<tr><td><b>过程提示与产物分离</b></td><td>思考工作流是<b>过程</b>，简报要的是<b>产物</b>。模板 UI = 过程提示 + 产物框，<b>导出时只带产物框</b>。否则你发给 agent 的是一篇随笔。（民间 LeanPrompts 的 <span class="kbd">%%注释%%</span> 注入前剥离，正是这个机制。）</td></tr>
+<tr><td><b>让数据淘汰模板</b></td><td>记录每个模板产出的简报，用验收台上"保留 / 放弃"的结果回流统计命中率。跑三个月，留下的不超过三个。<b>不是你设计模板库，是数据替你筛出模板库。</b></td></tr>
+</tbody>
+</table>
+
+<h3>原型 · 模板抽屉（选一个 → 填空 → 照样过检测）</h3>
+<p class="note">点一个模板，看它问什么、产物落进哪个字段。<b>「按提示写」</b>会让上面的体检归零，<b>「写成空话」</b>会照样亮灯——<b>选了模板不等于免检</b>。<br>
+MBTI 那一格演示的是<b>第二种失败</b>：它能通过检测，但 agent 拿它执行不了任何动作。所以准入标准必须是"能否映射到字段"，而不是"能不能过检测"。</p>
+<div class="proto">
+  <div class="proto-hd">
+    <div><b>模板抽屉</b></div>
+    <div class="ctrl"><span id="tmplStat" style="font-size:12px;color:var(--tx3)"></span></div>
+  </div>
+  <div id="tmplChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
+  <div id="tmplBody" style="border:0.5px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;min-height:160px"></div>
+  <div id="tmplNote" style="margin-top:10px;font-size:12px;color:var(--tx2)"></div>
+</div>
+
+<h2>一、参考案例矩阵</h2>
+<p class="note">按"上下文是怎么被装配起来的"分类，而不是按产品分类。同类问题在不同行业被解了不下六次。</p>
+<table>
+<thead><tr><th style="width:150px">产品</th><th style="width:110px">形态</th><th>它怎么装配上下文</th><th style="width:230px">对你这个方案的启发</th></tr></thead>
+<tbody>
+<tr><td><b>NotebookLM</b></td><td>来源面板</td>
+<td>左栏加来源（PDF / 网页 / YouTube / 粘贴文本 / Drive），可逐个开关，中栏提问，答案带行内引用可回跳原文</td>
+<td>唯一把"来源集合"做成一级对象的产品。<b>刻意不让你编辑来源正文</b>——这是它可核验性的根基</td></tr>
+<tr><td><b>VS Code Copilot</b></td><td>内联 chip</td>
+<td><span class="kbd">Add Context</span> 选择器 + <span class="kbd">#</span> 提及：文件、符号、终端选区、问题面板、源码管理改动、Issue/PR、网页 <span class="kbd">#fetch</span>、图片拖入</td>
+<td>元素清单与你列的几乎 1:1；输入框自带 <b>token 预算条</b>，超了自动压缩</td></tr>
+<tr><td><b>Continue</b></td><td>内联 chip</td>
+<td><span class="kbd">@</span> 下拉式 context provider 插件体系：file / code / diff / terminal / clipboard / tree / problems / repo-map / url / issue</td>
+<td><b>provider 插件化</b>——你那 10 类元素就该是这个结构，逐个可插拔、可缺失</td></tr>
+<tr><td><b>Cursor Notepads</b></td><td>草稿板</td>
+<td>可复用的 markdown 文档，可附带文件，在 chat / composer 里用 <span class="kbd">@</span> 引用，一次注入全文</td>
+<td><b>最接近你描述的形态</b>。注意：官方标注为 beta 且"将来可能弃用"，说明纯文本便签这条路被验证得并不顺</td></tr>
+<tr><td><b>Dia 浏览器</b></td><td>环境即上下文</td>
+<td>不去 @，而是把"打开的标签页"直接变成可 @ 的对象；跨标签对比；可保存为可复用的 Skills</td>
+<td><b>关键反转：不是你去收集上下文，而是上下文已经在那里等你。</b>桌面应用可以做到 OS 级版本</td></tr>
+<tr><td><b>v0 / Bolt / Lovable</b></td><td>多模态单行</td>
+<td>一个框 + 一张截图 + 一句话 → 生成应用。<b>截图进 prompt 是这个领域的主流交互</b></td>
+<td>vibe coding 语境下最直接的前例；也说明"截图"这一类元素的价值最高</td></tr>
+<tr><td><b>LeanPrompts Studio</b></td><td>模板 + 变量</td>
+<td><span class="kbd">{{变量}}</span> 生成侧栏表单、<span class="kbd">{{file:}}</span> 生成拖放区、<span class="kbd">@片段</span> 全局复用、<span class="kbd">%%注释%%</span> 在注入前剥离</td>
+<td>民间实现里有几个妙招：<b>"写给自己的注释不发给 AI"</b>、变量必填校验、版本 diff</td></tr>
+</tbody>
+</table>
+
+<h2>二、三种 UI 形态，以及为什么多数人不做"完整编辑器"</h2>
+<div class="forms">
+  <div class="form">
+    <div class="ft">A · 内联 chip</div>
+    <div class="fs">一行输入框 + 若干 chip</div>
+    <ul><li>成本最低，token 天然可控</li><li>但装不下"一段思路"——超过 5 个 chip 就糊</li><li>代表：VS Code、Continue、Cursor @</li></ul>
+  </div>
+  <div class="form">
+    <div class="ft">B · 来源面板</div>
+    <div class="fs">侧栏集合，整包开关</div>
+    <ul><li>可核验性最强，溯源不断</li><li>但用户不能在里面"写想法"，只能问</li><li>代表：NotebookLM、Projects</li></ul>
+  </div>
+  <div class="form feat">
+    <div class="ft">C · 草稿板</div>
+    <div class="fs">可编辑文档，素材成块嵌入</div>
+    <ul><li>唯一能承载"思路整合"的形态</li><li>代价：token 失控 + 溯源易断</li><li>代表：Cursor Notepads（beta）</li></ul>
+  </div>
+</div>
+<p class="note">行业里<b>刻意不做</b>完整 MD 正文编辑，有三条真实理由：① 可编辑 = 可失真，引用不再指向真实来源；② 正文让人容易塞过量内容，而 chip 有天然预算；③ 编辑器成本比 chip 高一个数量级。
+你要做的是形态 C，就必须主动把前两条代价补回来 —— 这就是下面原型里"素材只读"和"预算条"两个设计的由来。</p>
+
+<h2>三、OneTone 元素供给核对</h2>
+<table>
+<thead><tr><th style="width:110px">元素</th><th style="width:70px">供给</th><th style="width:300px">依据（生产代码实勘）</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>项目</td><td><span class="tag t-green">绿</span></td><td class="mono">agent_memory / projects 表</td><td>首页快照已有 project 字段，直接可引</td></tr>
+<tr><td>会话</td><td><span class="tag t-green">绿</span></td><td class="mono">agent_sessions 表 · cmd_soft_pad_focus_session</td><td>可列出近 N 轮会话并引用</td></tr>
+<tr><td>历史</td><td><span class="tag t-green">绿</span></td><td class="mono">agent_events 表 · cmd_tm_list</td><td>事件流 + 时光机快照，两条都能用</td></tr>
+<tr><td>数据 / 表格</td><td><span class="tag t-green">绿</span></td><td class="mono">memory_records · agent_checkpoints · cmd_agent_memory_query</td><td>已有 IPC，表格类渲染即可</td></tr>
+<tr><td>链接</td><td><span class="tag t-green">绿</span></td><td class="mono">cmd_list_browser_bookmarks（prefs.rs）</td><td><b>现成的浏览器书签读取</b>，最容易漏的一条</td></tr>
+<tr><td>文件</td><td><span class="tag t-amber">橙</span></td><td class="mono">cmd_pick_path</td><td>选文件有；"最近改过的文件"要靠 diff 组合出来</td></tr>
+<tr><td>改动 / diff</td><td><span class="tag t-amber">橙</span></td><td class="mono">count_porcelain_changes · cmd_tm_diff_summary</td><td>文件级有，<b>行级 diff 无</b>，需新增解析</td></tr>
+<tr><td>图片</td><td><span class="tag t-amber">橙</span></td><td class="mono">insert_text.rs 等 clipboard 写入侧</td><td>读图片进 prompt 未见现成链路</td></tr>
+<tr><td>截图</td><td><span class="tag t-red">红</span></td><td class="mono">无自动截屏能力</td><td><b>价值最高、供给为 0 的一类</b>；Windows 侧新增不难</td></tr>
+<tr><td>文本</td><td><span class="tag t-green">绿</span></td><td>—</td><td>用户自己输入，即"你的话"部分</td></tr>
+</tbody>
+</table>
+<p class="note">结论：你列的 10 类里 <b>7 类绿或近绿</b>，唯一完全缺的是截图 —— 而它恰恰是 vibe coding 语境下价值最高的一类。</p>
+
+<h2>四、原型 · 工作简报（Brief Composer）</h2>
+<p class="note">左侧托盘点选插入 → 中间编辑 → 底栏选目标 agent 并看 token 预算。可切换"素材只读 / 可编辑"对比溯源后果，可切换冷启动空态。</p>
+
+<div class="proto">
+  <div class="proto-hd">
+    <div><b>工作简报</b> <span class="note" id="stateLabel">· 有素材</span></div>
+    <div class="ctrl">
+      <button id="btnLock" class="on">素材只读（推荐）</button>
+      <button id="btnEdit">素材可编辑</button>
+      <button id="btnEmpty">切换冷启动空态</button>
+      <button id="btnReset">重置</button>
+    </div>
+  </div>
+
+  <div class="grid3">
+    <div class="tray">
+      <h4>素材托盘</h4>
+      <div class="tray-list" id="tray"></div>
+    </div>
+    <div class="doc">
+      <h4>简报正文</h4>
+      <div class="editor" id="editor" contenteditable="true" spellcheck="false"></div>
+      <div class="hint" id="hint">光标停在正文里，点左侧素材即插入。卡片是<b>只读引用</b>，正文文字随便改。</div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="budget">
+      <div class="bl"><span>Token 预算</span><span id="tkText">0 / 8000</span></div>
+      <div class="track"><div class="fill" id="tkFill"></div></div>
+    </div>
+    <div class="ctrl">
+      <span class="note">发给</span>
+      <select id="agent">
+        <option>Codex · 当前会话</option>
+        <option>Claude Code · 新会话</option>
+        <option>Cursor · 前台窗口</option>
+        <option>仅保存为简报</option>
+      </select>
+      <button class="primary" id="btnSend">发送简报</button>
+    </div>
+  </div>
+</div>
+
+<h2>五、系统能力核对（这条链路能不能真的调系统）</h2>
+<table>
+<thead><tr><th style="width:150px">能力</th><th style="width:80px">现状</th><th style="width:300px">代码依据</th><th>要做的</th></tr></thead>
+<tbody>
+<tr><td>选本地文件 / 文件夹</td><td><span class="tag t-amber">橙</span></td><td class="mono">data_root.rs:226 pick_folder_dialog / :250 pick_file_dialog</td>
+<td><b>能用，但是 PowerShell WinForms 绕路实现</b>（源码注释原话："avoids new crate / COM glue"）。每次弹窗起一个 PowerShell 进程，有数百毫秒延迟。建议换 <span class="kbd">rfd</span> 或 tauri-plugin-dialog</td></tr>
+<tr><td>目录监听</td><td><span class="tag t-green">绿</span></td><td class="mono">Cargo.toml:36 notify = "6"</td><td>依赖已装，但<b>尚未用于文件监听</b>。写个 watcher 即可实现"素材自己来敲门"</td></tr>
+<tr><td>窗口拖放</td><td><span class="tag t-red">红</span></td><td class="mono">tauri.conf.json 无 dragDrop 配置</td><td>Tauri 2 默认关闭 webview 拖放，需在配置里显式开启并监听 drag-drop 事件（字段名按你当前 Tauri 版本确认）</td></tr>
+<tr><td>剪贴板 · 文本</td><td><span class="tag t-green">绿</span></td><td class="mono">insert_text.rs:106 read_clipboard_unicode</td><td>自写 winapi，已成熟</td></tr>
+<tr><td>剪贴板 · 图片</td><td><span class="tag t-red">红</span></td><td class="mono">仅有 CF_UNICODETEXT 通路</td><td>需处理 CF_DIB / CF_PNG 格式，或加 <span class="kbd">arboard</span>。<b>这是"粘贴各种数据"真正的缺口</b></td></tr>
+<tr><td>发给指定 agent</td><td><span class="tag t-green">绿</span></td><td class="mono">cmd_soft_pad_focus_agent + insert_text_no_enter</td>
+<td><b>两条现成</b>：聚焦目标 agent → 写入剪贴板 → Ctrl+V → 恢复原剪贴板。注意它<b>不发 Enter</b>（注释：Does not send Enter）</td></tr>
+<tr><td>进剪贴板</td><td><span class="tag t-green">绿</span></td><td class="mono">同上，去掉最后一步粘贴即可</td><td><b>与"发给 agent"是同一条底层通道</b>，差别只在按不按 Ctrl+V</td></tr>
+</tbody>
+</table>
+<p class="note">一个容易踩的坑：<span class="mono">insert_text</span> 的实现是「备份剪贴板 → 写入 → Ctrl+V → 恢复」。如果用户正靠剪贴板攒素材，发送动作会短暂占用剪贴板。素材落库要在本地，别依赖剪贴板当舞台。</p>
+
+<h2>六、原型 · 一键生成归类文档（全程不用 LLM）</h2>
+<p class="note">下面这个按钮跑的是纯规则引擎：分桶靠已有数据关系，相似聚类靠本地字符串相似度（Jaccard + 时间邻近）。点「生成」后右侧出文档，切视图看三种确定性布局，每条都标出<b>为什么被分到这里</b>。</p>
+
+<div class="proto">
+  <div class="proto-hd">
+    <div><b>素材池</b> <span class="note">· 10 条已收集</span></div>
+    <div class="ctrl">
+      <button id="btnGen" class="primary">自动归类并生成文档</button>
+      <button id="btnCluster">相似聚类：关</button>
+      <button id="btnWhy" class="on">显示归类依据</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px">
+    <div>
+      <h4 style="font-size:13px;font-weight:500;color:var(--tx2);margin:0 0 8px">已收集的素材</h4>
+      <div id="pool" class="tray-list"></div>
+    </div>
+    <div>
+      <div class="ctrl" style="margin-bottom:10px">
+        <span class="note">视图</span>
+        <button class="vbtn on" data-v="type">按类型</button>
+        <button class="vbtn" data-v="project">按项目</button>
+        <button class="vbtn" data-v="time">按时间线</button>
+      </div>
+      <pre id="doc" style="margin:0;background:#FCFCFB;border:0.5px solid var(--line);border-radius:10px;
+        padding:14px 16px;font-family:'SFMono-Regular',Consolas,monospace;font-size:12.5px;
+        line-height:1.75;white-space:pre-wrap;min-height:340px;color:var(--tx)">点「自动归类并生成文档」开始。</pre>
+      <div class="bar" style="margin-top:12px">
+        <span class="note" id="docMeta">—</span>
+        <div class="ctrl">
+          <button id="btnCopy">复制为 Markdown</button>
+          <button id="btnSend2">发给指定 agent</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>七、必须现在就定的四个决策</h2>
+<div class="risks">
+  <div class="risk"><div class="rt">1 · 素材只读，只有"你的话"可编辑</div>
+    <div class="rd">这是这个方案最容易翻车的地方。一旦允许改素材内容，NotebookLM 那种"可回跳原文"就断了，而<b>诚实可核验是你目前唯一有满分潜质的维度</b>。原型里切到"素材可编辑"，你会看到溯源标签变红。</div></div>
+  <div class="risk"><div class="rt">2 · 预算条必须可见，且能"折叠为摘要"</div>
+    <div class="rd">VS Code 的做法是可以抄的：每个素材有 <b>全文 / 摘要</b> 两档。会话历史这类元素动辄几千 token，默认只能进摘要档。</div></div>
+  <div class="risk"><div class="rt">3 · 托盘要能自动攒，不能只靠手点</div>
+    <div class="rd">冷启动空托盘是这个方案的第二大风险（第一是上面那条）。OneTone 是桌面应用，可以常驻感知剪贴板、前台窗口、文件变更，做到 Dia 在浏览器里做的那件事：<b>不是你去收集上下文，而是上下文来敲门</b>。</div></div>
+  <div class="risk"><div class="rt">4 · 简报要持久化，别发完就散</div>
+    <div class="rd">这是市面上没有的一维：别人是单一 agent 的上下文装配，你是<b>多 agent 编排</b>。所以简报应成为对象——可复用、可改投别的 agent、可版本化。否则它就只是一次性输入框，白做了编辑器。</div></div>
+</div>
+
+<p class="note" style="margin-top:28px">未决：截图这一类（红）要不要做。它价值最高但需要从零新增 OS 截屏能力；建议先做"从剪贴板读图片"（已有写入侧基础设施，成本远低），验证用户真的会往里塞截图之后，再决定要不要做自动截屏。</p>
+
+</div>
+
+<script>
+const ITEMS = [
+  {ic:'截',nm:'截图 · 首页错位',meta:'刚刚',tk:620,supply:'r',kind:'截图'},
+  {ic:'图',nm:'图片 · 设计稿 v3.png',meta:'2.1 MB',tk:480,supply:'a',kind:'图片'},
+  {ic:'会',nm:'会话 · Codex 上一轮',meta:'14 轮',tk:2400,supply:'g',kind:'会话'},
+  {ic:'史',nm:'历史 · 今天改过的文件',meta:'4 个',tk:210,supply:'g',kind:'历史'},
+  {ic:'差',nm:'改动 · 未提交的 diff',meta:'+31/-8',tk:900,supply:'a',kind:'改动'},
+  {ic:'项',nm:'项目 · voice-pilot',meta:'E:/',tk:60,supply:'g',kind:'项目'},
+  {ic:'表',nm:'数据 · Agent 活跃度',meta:'9 行',tk:340,supply:'g',kind:'数据'},
+  {ic:'链',nm:'链接 · 参考实现（书签）',meta:'已存',tk:520,supply:'g',kind:'链接'},
+  {ic:'文',nm:'文件 · home-workbench.js',meta:'3120 行',tk:1500,supply:'a',kind:'文件'},
+  {ic:'记',nm:'记忆 · Tailwind 偏好',meta:'memory_records',tk:120,supply:'g',kind:'记忆'}
+];
+
+const tray = document.getElementById('tray');
+const editor = document.getElementById('editor');
+const tkText = document.getElementById('tkText');
+const tkFill = document.getElementById('tkFill');
+const hint = document.getElementById('hint');
+const BUDGET = 8000;
+
+function seedEditor(){
+  editor.innerHTML =
+    '<div>我把这几件事整理一下：</div>' +
+    '<div>&nbsp;</div>' +
+    '<div>按这个方向改，别动 other 文件。</div><div>&nbsp;</div>';
+}
+function seedEmpty(){
+  editor.innerHTML = '<div>说一句你想让 agent 做什么 —— 素材会自己出现在左边。</div>';
+}
+
+function renderTray(empty){
+  tray.innerHTML='';
+  if(empty){
+    const d=document.createElement('div');
+    d.style.cssText='font-size:13px;color:var(--tx3);padding:6px 2px;line-height:1.7';
+    d.innerHTML='托盘是空的。<br>复制一张图、切到一个项目、或者等下一个 agent 事件 —— 素材会自己出现。';
+    tray.appendChild(d); return;
+  }
+  ITEMS.forEach((it,i)=>{
+    const b=document.createElement('button');
+    b.className='item'; b.dataset.supply=it.supply;
+    b.innerHTML='<span class="dot '+(it.supply==='g'?'g':it.supply==='a'?'a':'r')+'"></span>'+
+      '<span class="ic">'+it.ic+'</span>'+
+      '<span class="nm">'+it.nm+'</span>'+
+      '<span class="tk">'+it.tk+'</span>';
+    b.onclick=()=>insert(it);
+    tray.appendChild(b);
+  });
+}
+
+let locked = true;
+function insert(it){
+  const emptyHint = editor.textContent.indexOf('说一句你想让') === 0 || editor.textContent.indexOf('素材会自己出现') >= 0;
+  if(emptyHint) editor.innerHTML='<div>&nbsp;</div>';
+  const blk=document.createElement('span');
+  blk.className='blk'+(locked?'':' editable');
+  blk.contentEditable = locked ? 'false' : 'true';
+  blk.dataset.tk=it.tk;
+  const meta=document.createElement('span'); meta.className='bmeta'; meta.textContent=it.meta;
+  const title=document.createElement('span'); title.className='bt'; title.textContent=it.kind;
+  const prov=document.createElement('span'); prov.className='provenance'; prov.textContent='可溯源';
+  const fold=document.createElement('span'); fold.className='bmeta'; fold.style.cursor='pointer'; fold.textContent='折叠';
+  fold.onclick=(e)=>{e.stopPropagation(); blk.classList.toggle('folded');
+    fold.textContent = blk.classList.contains('folded') ? '展开' : '折叠'; recalc();};
+  const x=document.createElement('span'); x.className='bx'; x.textContent='×';
+  x.onclick=(e)=>{e.stopPropagation(); blk.remove(); recalc();};
+  blk.append(title, meta, prov, fold, x);
+  editor.focus();
+  const sel=window.getSelection();
+  let node=editor;
+  if(sel && sel.rangeCount){
+    const r=sel.getRangeAt(0);
+    if(editor.contains(r.commonAncestorContainer)){ r.deleteContents(); r.insertNode(blk); r.setStartAfter(blk); r.collapse(true); recalc(); return; }
+  }
+  node.appendChild(blk); recalc();
+}
+
+function recalc(){
+  let sum=0;
+  editor.querySelectorAll('.blk').forEach(b=>{
+    const raw=Number(b.dataset.tk||0);
+    sum += b.classList.contains('folded') ? Math.round(raw*0.08) : raw;
+  });
+  sum += Math.round(editor.innerText.replace(/\s+/g,'').length*0.6);
+  const pct=Math.min(100,Math.round(sum/BUDGET*100));
+  tkText.textContent = sum+' / '+BUDGET + (sum>BUDGET?' 已超预算':'');
+  tkFill.style.width=pct+'%';
+  tkFill.className='fill'+(sum>BUDGET?' over':sum>BUDGET*0.7?' warn':'');
+  const send=document.getElementById('btnSend');
+  send.disabled = sum>BUDGET;
+  send.textContent = sum>BUDGET ? '超出预算，先折叠' : '发送简报';
+}
+
+function setLock(v){
+  locked=v;
+  document.getElementById('btnLock').classList.toggle('on',v);
+  document.getElementById('btnEdit').classList.toggle('on',!v);
+  editor.querySelectorAll('.blk').forEach(b=>{
+    b.classList.toggle('editable',!v);
+    b.contentEditable = v ? 'false' : 'true';
+    const p=b.querySelector('.provenance');
+    if(p){ p.classList.toggle('dead',!v); p.textContent = v?'可溯源':'已失去溯源'; }
+  });
+  hint.innerHTML = v
+    ? '卡片是<b>只读引用</b>，正文文字随便改 —— 引用始终能回跳到原始来源。'
+    : '卡片现在可编辑了：一旦改过，它就不再是那份真实数据，<b>溯源标签变红</b>。这正是 NotebookLM 不让你编辑来源的原因。';
+}
+
+let emptyState=false;
+document.getElementById('btnEmpty').onclick=()=>{
+  emptyState=!emptyState;
+  renderTray(emptyState);
+  if(emptyState) seedEmpty(); else seedEditor();
+  document.getElementById('stateLabel').textContent = emptyState?'· 冷启动':'· 有素材';
+  recalc();
+};
+document.getElementById('btnLock').onclick=()=>setLock(true);
+document.getElementById('btnEdit').onclick=()=>setLock(false);
+document.getElementById('btnReset').onclick=()=>{
+  emptyState=false; document.getElementById('stateLabel').textContent='· 有素材';
+  renderTray(false); seedEditor(); setLock(true); recalc();
+};
+document.getElementById('btnSend').onclick=()=>{
+  const a=document.getElementById('agent').value;
+  hint.innerHTML='已把这份简报发往 <b>'+a+'</b>（演示）。真实实现里，简报应落库为可复用对象，而不是发完就散。';
+};
+editor.addEventListener('input',recalc);
+['cut','paste','drop'].forEach(ev=>editor.addEventListener(ev,()=>setTimeout(recalc,0)));
+
+renderTray(false); seedEditor(); recalc();
+
+/* ---------- 原型三：五字段简报 + 歧义检测 ---------- */
+const FIELDS=[
+ {k:'goal',   n:'目标',       ph:'一句话，动词开头：把首页主行第二列换成「在干什么」'},
+ {k:'now',    n:'现状与证据', ph:'现在是什么样 / 哪里不对（建议挂上截图、diff、日志）'},
+ {k:'scope',  n:'范围',       ph:'改哪些文件、模块（写具体路径或文件名）'},
+ {k:'accept', n:'验收',       ph:'怎样算完成——可观察的判据（命令通过 / 截图对比 / 行数变化）'},
+ {k:'not',    n:'不改什么',   ph:'明确禁止项：不要动其他文件、保持现有样式'}
+];
+const VAGUE=['优化','改进','完善','调整','好看','更好','合理','一些','差不多','老样子','整一下','弄一下','稍微','尽量','适当','相关','那种','处理下'];
+const PRON=['这个','那个','它','这边','那边','上面','下面','前者','后者','上次','之前那样','同上'];
+const NEG=['不要','别','除了','保持','不动','禁止','避免','仅限','只改'];
+const fwrap=document.getElementById('fields'), diag=document.getElementById('diag'), gate=document.getElementById('gate');
+let evid=0;
+FIELDS.forEach(f=>{
+  const d=document.createElement('div'); d.style.marginBottom='10px';
+  d.innerHTML='<div style="font-size:13px;font-weight:500;margin-bottom:4px">'+f.n+
+    (f.k==='now'?' <button id="addEv" style="padding:1px 8px;font-size:12px">＋挂素材（'+evid+'）</button>':'')+'</div>'+
+    '<textarea id="f_'+f.k+'" rows="'+(f.k==='now'?3:2)+'" placeholder="'+f.ph+
+    '" style="width:100%;font:inherit;font-size:13px;padding:8px 10px;border-radius:8px;border:0.5px solid var(--line2);background:var(--surface);color:var(--tx);resize:vertical"></textarea>';
+  fwrap.appendChild(d);
+});
+const V=k=>document.getElementById('f_'+k).value.trim();
+const hit=(t,arr)=>arr.filter(w=>t.includes(w));
+const ASK={
+  goal_abs:k=>'「'+k+'」具体指什么？给个例子，或者截个图圈出来',
+  goal_pro:k=>'「'+k+'」是哪个？指个文件名，或把素材挂上来',
+  goal_empty:'你最想让它做成什么？一句话就行',
+  now_none:'能给我一张"现在是什么样"的截图吗？',
+  now_only:'补一句"哪里不对"——素材不会自己说话',
+  scope_empty:'要不要限定改哪些文件？不限定的话它可能会动别的',
+  scope_vague:'「'+'首页'+'」具体是哪几个文件？写路径或文件名',
+  acc_empty:'改完之后，怎么一眼看出算成功？',
+  acc_vague:'这个标准不可测量——换成能一眼确认的判据',
+  not_empty:'有什么是绝对不能动的吗？',
+  not_vague:'用"不要 / 保持"这类明确的词再写一遍'
+};
+function check(){
+  const g=V('goal'),nw=V('now'),sc=V('scope'),ac=V('accept'),nt=V('not');
+  const out=[];
+  if(!g) out.push(['red','目标为空','没有目标，agent 只能猜你要什么','goal_empty']);
+  else{const v=hit(g,VAGUE); if(v.length) out.push(['amber','目标含抽象词：'+v.join('、'),'"'+v[0]+'"不可验证','goal_abs',v[0]]);
+        const p=hit(g,PRON); if(p.length) out.push(['amber','指称悬空：'+p.join('、'),'agent 看不到你说的"'+p[0]+'"','goal_pro',p[0]]);}
+  if(!nw&&evid===0) out.push(['red','现状未给证据','agent 不知道现在什么样，只能靠猜','now_none']);
+  else if(!nw&&evid>0) out.push(['amber','现状只有素材没有说明','补一句"哪里不对"','now_only']);
+  if(!sc) out.push(['red','范围未限定','"改哪里"没说清，agent 会自己扩大战场','scope_empty']);
+  else if(!/[\/\\.]|\.js|\.ts|\.rs|\.css|\.html|文件|模块|目录|组件/.test(sc)) out.push(['amber','范围没有具体落点','写文件名或路径，别写统称','scope_vague',sc.slice(0,8)]);
+  if(!ac) out.push(['red','验收标准缺失','没有判据就无法判断成功','acc_empty']);
+  else if(!/\d|命令|通过|截图|显示|出现|等于|行数|测试|npm|cargo|步骤/.test(ac)) out.push(['amber','验收不可观察','不可测量','acc_vague',ac.slice(0,12)]);
+  if(!nt) out.push(['amber','未声明禁止项','没说不能碰什么，agent 大概率顺手改别的','not_empty']);
+  else if(!NEG.some(w=>nt.includes(w))) out.push(['amber','禁止项语气不明确','否定语气不够明确','not_vague']);
+
+  diag.innerHTML = out.length? '' : '<div style="color:var(--green-tx)">没有检出歧义，直接发。</div>';
+  out.forEach(o=>{
+    const d=document.createElement('div'); d.style.cssText='margin-bottom:9px;padding-left:9px;border-left:3px solid '+
+      (o[0]==='red'?'var(--red-ln)':'var(--amber-ln)');
+    d.innerHTML='<div style="font-weight:500">'+o[1]+'</div><div style="color:var(--tx2);font-size:12px">'+o[2]+'</div>';
+    diag.appendChild(d);
+  });
+  const bad=out.filter(o=>o[0]==='red').length;
+  gate.style.background = bad? 'var(--amber-bg)' : out.length? 'var(--blue-bg)' : 'var(--green-bg)';
+  gate.style.border='0.5px solid '+(bad?'var(--amber-ln)':out.length?'var(--blue-ln)':'var(--green-ln)');
+  gate.style.color = bad? 'var(--amber-tx)' : out.length? 'var(--blue-tx)' : 'var(--green-tx)';
+  const pri=['scope_empty','scope_vague','not_empty','not_vague','acc_empty','acc_vague','now_none','now_only','goal_empty','goal_abs','goal_pro'];
+  let top=null;
+  pri.forEach(k=>{ if(!top){ const f=out.find(o=>o[3]===k); if(f){ const fn=ASK[k]; top=fn? (k==='goal_abs'||k==='goal_pro'||k==='scope_vague'||k==='acc_vague'? fn(f[4]||'这里') : fn()) : null; } } });
+  gate.innerHTML = (top? '<div style="font-weight:500">先问这一句就够了：</div><div style="margin-top:3px">'+top+'</div>' : '说得很清楚，直接发。')
+    + '<div style="margin-top:6px;font-size:12px;opacity:.85">不拦你 —— 想直接发就发，只是告诉你哪条最可能跑偏。</div>';
+  document.getElementById('exportMd').textContent = bad? '仍然发送并导出' : '导出为 Markdown';
+}
+FIELDS.forEach(f=>document.getElementById('f_'+f.k).addEventListener('input',check));
+document.getElementById('addEv').onclick=function(){
+  evid++; this.textContent='＋挂素材（'+evid+'）'; check();
+};
+const BAD={goal:'把首页优化一下，好看点',now:'',scope:'首页',accept:'看起来合理一些就行',not:''};
+const GOOD={goal:'把首页主行第二列从项目名换成「在干什么」',now:'现在第二列固定显示项目名（home-workbench.js 主行渲染），看不到 agent 当前在做什么；截图已挂',scope:'只改 src/js/features/home/home-workbench.js 与 src/js/features/agent/agent-center.js 的渲染分支',accept:'打开首页，主行第二列显示"正在改首页渲染"而不是项目名；npm run typecheck 通过',not:'不要动控制按钮与展开详情，保持现有样式与文案'};
+function load(o){FIELDS.forEach(f=>document.getElementById('f_'+f.k).value=o[f.k]||'');evid=0;
+  document.getElementById('addEv').textContent='＋挂素材（0）';check();}
+document.getElementById('loadBad').onclick=()=>load(BAD);
+document.getElementById('loadGood').onclick=()=>load(GOOD);
+document.getElementById('clearF').onclick=()=>load({});
+document.getElementById('exportMd').onclick=()=>{
+  let md='# 首次沟通简报\n\n';
+  FIELDS.forEach(f=>{const v=V(f.k); if(v) md+='## '+f.n+'\n'+v+'\n\n';});
+  if(evid) md+='## 已挂素材\n'+evid+' 项（截图 / diff / 会话）\n';
+  navigator.clipboard.writeText(md); gate.textContent='已导出为 Markdown 并复制（纯模板渲染，未经任何模型改写）';
+};
+load(BAD);
+
+/* ---------- 原型二：不用 LLM 的自动归类与文档生成 ---------- */
+const POOL=[
+ {id:1,kind:'截图',title:'首页错位截图',project:'voice-pilot',ts:'16:20',tokens:['home','workbench','layout']},
+ {id:2,kind:'图片',title:'设计稿 v3.png',project:'voice-pilot',ts:'15:40',tokens:['design','home','layout']},
+ {id:3,kind:'改动',title:'home-workbench.js',project:'voice-pilot',ts:'16:05',tokens:['home','workbench','js']},
+ {id:4,kind:'会话',title:'Codex 上一轮对话',project:'voice-pilot',ts:'15:30',tokens:['home','workbench','layout','fix']},
+ {id:5,kind:'历史',title:'今天改过的文件',project:'voice-pilot',ts:'16:10',tokens:['home','workbench','file']},
+ {id:6,kind:'数据',title:'Agent 活跃度表',project:'voice-pilot',ts:'16:12',tokens:['agent','usage']},
+ {id:7,kind:'记忆',title:'偏好 Tailwind',project:'voice-pilot',ts:'11:00',tokens:['tailwind','style']},
+ {id:8,kind:'链接',title:'Tailwind 文档',project:null,ts:'14:20',tokens:['tailwind','docs','style']},
+ {id:9,kind:'文件',title:'dsh-market/README.md',project:'dsh-market',ts:'09:30',tokens:['readme','market','login']},
+ {id:10,kind:'会话',title:'登录页改版讨论',project:'dsh-market',ts:'10:15',tokens:['login','market','page','style']}
+];
+const pool=document.getElementById('pool'), doc=document.getElementById('doc'), docMeta=document.getElementById('docMeta');
+POOL.forEach(it=>{
+  const d=document.createElement('div');
+  d.className='item'; d.style.cursor='default';
+  d.innerHTML='<span class="ic">'+it.kind[0]+'</span><span class="nm">'+it.title+'</span><span class="tk">'+it.ts+'</span>';
+  pool.appendChild(d);
+});
+
+let view='type', clusterOn=false, whyOn=true;
+function toMin(t){const [h,m]=t.split(':').map(Number);return h*60+m;}
+function jaccard(a,b){const A=new Set(a),B=new Set(b);let i=0;A.forEach(x=>{if(B.has(x))i++});
+  const u=A.size+B.size-i; return u? i/u : 0;}
+function cluster(items,th){
+  const cs=[];
+  items.forEach(it=>{
+    let best=null,bs=0;
+    cs.forEach(c=>c.items.forEach(o=>{const s=jaccard(it.tokens,o.tokens);if(s>bs){bs=s;best=c;}}));
+    if(bs>=th&&best) best.items.push(it); else cs.push({items:[it]});
+  });
+  cs.forEach(c=>{
+    const f={}; c.items.forEach(i=>i.tokens.forEach(t=>f[t]=(f[t]||0)+1));
+    c.label=Object.keys(f).sort((a,b)=>f[b]-f[a])[0]||'素材';
+  });
+  return cs.sort((a,b)=>b.items.length-a.items.length);
+}
+function buckets(items){
+  if(view==='type'){const m={};items.forEach(i=>{(m[i.kind]=m[i.kind]||[]).push(i)});
+    return Object.keys(m).map(k=>({name:k,items:m[k],why:'剪贴板格式 / 扩展名 / magic bytes 识别，非推断'}));}
+  if(view==='project'){const m={};items.forEach(i=>{const k=i.project||'未归属';(m[k]=m[k]||[]).push(i)});
+    return Object.keys(m).map(k=>({name:k,items:m[k],why:k==='未归属'?'无 project_id 外键，归入未归属':'agent_sessions.project_id 外键，非推断'}));}
+  const s=[...items].sort((a,b)=>toMin(a.ts)-toMin(b.ts)), out=[];let cur=[s[0]],prev=toMin(s[0].ts);
+  for(let i=1;i<s.length;i++){const t=toMin(s[i].ts);
+    if(t-prev>30){out.push(cur);cur=[];}cur.push(s[i]);prev=t;}
+  out.push(cur);
+  return out.map(g=>({name:g[0].ts+' – '+g[g.length-1].ts,items:g,why:'相邻间隔 ≤30 分钟归为一段（时间切片阈值）'}));
+}
+function render(){
+  const t0=performance.now();
+  let md='# 工作简报 · 2026-10-06\n\n';
+  let groups;
+  if(clusterOn){
+    const cs=cluster(POOL,0.25);
+    groups=cs.map(c=>({name:'主题 · '+c.label,items:c.items.sort((a,b)=>toMin(a.ts)-toMin(b.ts)),
+      why:'token Jaccard ≥ 0.25 单链接聚类（本地计算，无模型）'}));
+  } else groups=buckets(POOL);
+  md+='> 共 '+POOL.length+' 条素材 · 归类方式：'+(clusterOn?'主题聚类（相似聚类开）':
+      view==='type'?'按类型':view==='project'?'按项目':'按时间线')+'\n\n';
+  groups.forEach(g=>{
+    md+='## '+g.name+'（'+g.items.length+'）\n';
+    g.items.forEach(i=>{md+='- ['+i.kind+'] '+i.title+' · '+i.ts+(i.project?' · '+i.project:'')+'\n';});
+    if(whyOn) md+='\n  ·· 归类依据：'+g.why+'\n';
+    md+='\n';
+  });
+  const ms=(performance.now()-t0).toFixed(2);
+  if(whyOn) md+='---\n\n归类依据全部来自数据库外键与本地字符串相似度，**未调用任何模型**。\n';
+  doc.textContent=md;
+  docMeta.textContent='生成 '+groups.length+' 组 · '+POOL.length+' 条 · 耗时 '+ms+'ms · 未调用 LLM';
+}
+document.getElementById('btnGen').onclick=render;
+document.getElementById('btnCluster').onclick=function(){
+  clusterOn=!clusterOn; this.classList.toggle('on',clusterOn);
+  this.textContent='相似聚类：'+(clusterOn?'开':'关'); render();
+};
+document.getElementById('btnWhy').onclick=function(){
+  whyOn=!whyOn; this.classList.toggle('on',whyOn); render();
+};
+document.querySelectorAll('.vbtn').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.vbtn').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); view=b.dataset.v;
+  if(clusterOn){clusterOn=false;const c=document.getElementById('btnCluster');c.classList.remove('on');c.textContent='相似聚类：关';}
+  render();
+});
+document.getElementById('btnCopy').onclick=()=>{
+  navigator.clipboard.writeText(doc.textContent).then(()=>{docMeta.textContent='已复制为 Markdown（纯文本，不含任何模型生成内容）';});
+};
+document.getElementById('btnSend2').onclick=()=>{
+  docMeta.textContent='已发往 Codex · 当前会话（实现 = focus_agent → 写剪贴板 → Ctrl+V → 恢复，不发 Enter）';
+};
+
+/* ---------- 原型四：思考工作流模板抽屉 ---------- */
+const TPL=[
+ {k:'inv',n:'逆向思考',field:['accept','not'],verdict:'直接可用',tone:'green',
+  why:'唯一天然产出「可观察失败判据」的模板 —— 失败的样子反过来写就是验收标准。',
+  ask:['这次改动最可能以什么方式失败？','失败的时候，屏幕上能看到的具体是什么？','为了不让它失败，哪些东西绝对不能动？'],
+  out:'产物：失败判据（可观察） + 禁止项',
+  good:{accept:'失败的样子：主行第二列仍显示项目名；或展开详情里的工作描述消失；npm run typecheck 报错。三条任意一条出现即判定未成功。',
+        not:'不要为了显示"在干什么"去改后端 DTO，只改前端渲染分支。'},
+  bad:{accept:'如果没抓住本质，用户会觉得不对。',not:'不要跑偏。'},
+  badNote:'两栏都"看起来填了"，但都不可观察 —— 上方体检照样亮灯。选了模板不等于免检。'},
+ {k:'fp',n:'第一性原理',field:['now'],verdict:'需强制产物格式',tone:'amber',
+  why:'极易滑向"回归本质"这种更大的抽象词。必须规定产物 = 「我现在能确定的事实只有 N 条」，N ≤ 5，每条可挂素材。',
+  ask:['关于这件事，我能确定的事实有哪些？','哪些只是我的推测？','哪些事实能挂上素材（截图 / diff / 日志）？'],
+  out:'产物：N 条确定的事实（N ≤ 5，每条可挂素材）',
+  good:{now:'我能确定的事实只有三条：1) 主行第二列现在渲染的是 projectNameOf(a)（agent-center.js:2117）；2) workLine() 已在同函数算出但没进主行；3) 最近一次改动的 diff 已挂。除此之外我不确定。'},
+  bad:{now:'回归本质，首页的价值是让用户一眼知道发生了什么。'},
+  badNote:'"回归本质"比"优化一下"更抽象、更长 —— 这正是第一性原理最典型的失效方式。'},
+ {k:'val',n:'价值取舍',field:['not'],verdict:'需限定作用域',tone:'amber',
+  why:'限定成"这次改动里哪两件事冲突时先保哪个"才有用；滑到人生价值观就失去可执行性。',
+  ask:['这次改动里，哪两件事会互相冲突？','冲突的时候先保哪个？','为了保住它，可以牺牲什么？'],
+  out:'产物：一条取舍声明（仅本次有效）',
+  good:{not:'这次优先保"信息密度"，可以牺牲视觉留白。不要为了好看删掉新鲜度标签。'},
+  bad:{not:'要平衡用户体验和开发效率。'},
+  badNote:'"平衡"是不可执行词 —— agent 无法据此做出任何决定。'},
+ {k:'mbti',n:'MBTI 分析',field:[],verdict:'类别错误',tone:'red',
+  why:'产物是自我认知，不是任务规格。它能通过歧义检测，但 agent 执行不了任何动作 —— 所以准入标准必须是"能否映射到字段"。',
+  ask:['（这一格不该出现在任务模板里）'],
+  out:'正确位置：长期记忆层 memory_records（user_authored = 1），导出时作为「关于我」附在末尾、可选开关',
+  good:null,
+  bad:{goal:'我是 INFJ 型，希望你能从整体上把握这次改动的意图。'},
+  badLabel:'误当任务写（示例）',
+  badNote:'这一句能过检测（无抽象动词、无悬空指称），但 agent 拿它执行不了任何动作 —— 这是检测器的盲区：它只查"有没有说具体"，查不出"说了但没用"。'}
+];
+const tChips=document.getElementById('tmplChips'), tBody=document.getElementById('tmplBody');
+const tNote=document.getElementById('tmplNote'), tStat=document.getElementById('tmplStat');
+const TONE={green:['var(--green-bg)','var(--green-ln)','var(--green-tx)'],
+            amber:['var(--amber-bg)','var(--amber-ln)','var(--amber-tx)'],
+            red:['var(--red-bg)','var(--red-ln)','var(--red-tx)']};
+let curT=null;
+TPL.forEach(t=>{
+  const b=document.createElement('button');
+  b.textContent=t.n; b.style.cssText='padding:5px 12px;font-size:13px';
+  b.onclick=()=>{curT=t;
+    Array.prototype.forEach.call(tChips.children,x=>x.classList.remove('on'));
+    b.classList.add('on'); renderT();};
+  tChips.appendChild(b);
+});
+function renderT(){
+  const t=curT, c=TONE[t.tone];
+  const fname=t.field.map(k=>FIELDS.filter(f=>f.k===k)[0].n).join(' + ')||'—— 不进任务字段';
+  tBody.innerHTML=
+    '<div style="display:flex;gap:8px;align-items:center;margin-bottom:9px"><b>'+t.n+'</b>'+
+    '<span style="padding:2px 8px;border-radius:6px;font-size:12px;background:'+c[0]+';border:0.5px solid '+c[1]+';color:'+c[2]+'">'+t.verdict+'</span>'+
+    '<span style="font-size:12px;color:var(--tx2)">产物落到：'+fname+'</span></div>'+
+    '<div style="color:var(--tx2);font-size:12px;margin-bottom:10px">'+t.why+'</div>'+
+    '<div style="font-weight:500;margin-bottom:4px">它问什么（过程提示 · <span style="color:var(--tx3);font-weight:400">导出时不带</span>）</div>'+
+    '<div style="color:var(--tx2);margin-bottom:10px">'+t.ask.map(a=>'· '+a).join('<br>')+'</div>'+
+    '<div style="font-weight:500;margin-bottom:4px">'+t.out+'<span style="color:var(--tx3);font-weight:400">（只有这一框会发给 agent）</span></div>'+
+    '<div style="display:flex;gap:8px;margin-top:12px">'+
+      (t.good?'<button id="tGood" class="primary">按提示写（示例）</button>':'')+
+      '<button id="tBad">'+(t.badLabel||'写成空话（示例）')+'</button></div>';
+  tStat.textContent=''; tNote.textContent='';
+  if(t.good) document.getElementById('tGood').onclick=()=>applyT(t.good,'已按产物格式写入 —— 上方体检应归零。');
+  document.getElementById('tBad').onclick=()=>applyT(t.bad,t.badNote);
+}
+function applyT(o,note){
+  FIELDS.forEach(f=>{ if(Object.prototype.hasOwnProperty.call(o,f.k)) document.getElementById('f_'+f.k).value=o[f.k]; });
+  check();
+  tNote.textContent=note||'';
+  tStat.textContent = curT.k==='mbti' ? '这一格本该进长期记忆层，而不是任务字段' : '';
+}
+tChips.firstChild.onclick();
+</script>
+</body>
+</html>

@@ -90,10 +90,13 @@ pub fn shutdown_sync(mut handle: VoiceVoskHandle) {
             Ok(()) => {}
             Err(_) => {
                 // Detached join continues in the helper thread; do not block supervisor.
-                crate::app_log::sync_emergency_line("rs", &format!(
-                    "[voice] vosk shutdown_sync timed out after {}ms ??? detaching join",
-                    JOIN_TIMEOUT.as_millis()
-                ));
+                crate::app_log::sync_emergency_line(
+                    "rs",
+                    &format!(
+                        "[voice] vosk shutdown_sync timed out after {}ms ??? detaching join",
+                        JOIN_TIMEOUT.as_millis()
+                    ),
+                );
             }
         }
     }
@@ -305,13 +308,27 @@ pub fn start_voice_vosk(
 ) -> Result<VoiceVoskHandle, String> {
     #[cfg(not(windows))]
     {
-        let _ = (cfg, resource_dir, grammar_phrases, frame_tx, asr_quiet, continuous_asr);
+        let _ = (
+            cfg,
+            resource_dir,
+            grammar_phrases,
+            frame_tx,
+            asr_quiet,
+            continuous_asr,
+        );
         return Err("Vosk is Windows-only".into());
     }
 
     #[cfg(all(windows, vosk_disabled))]
     {
-        let _ = (cfg, resource_dir, grammar_phrases, frame_tx, asr_quiet, continuous_asr);
+        let _ = (
+            cfg,
+            resource_dir,
+            grammar_phrases,
+            frame_tx,
+            asr_quiet,
+            continuous_asr,
+        );
         return Err(
             "Vosk native library not linked: place libvosk.lib and libvosk.dll in src-tauri/resources/vosk/ and rebuild"
                 .into(),
@@ -497,7 +514,8 @@ fn run_worker(
     let channels = stream_config.channels as usize;
 
     let (audio_tx, audio_rx) = bounded(AUDIO_CHANNEL_CAP);
-    let err_fn = |err| crate::app_log::sync_emergency_line("rs", &format!("vosk cpal stream error: {err}"));
+    let err_fn =
+        |err| crate::app_log::sync_emergency_line("rs", &format!("vosk cpal stream error: {err}"));
 
     let stream = match sample_format {
         SampleFormat::F32 => {
@@ -688,7 +706,8 @@ fn run_dual_worker(
     let channels = stream_config.channels as usize;
 
     let (audio_tx, audio_rx) = bounded(AUDIO_CHANNEL_CAP);
-    let err_fn = |err| crate::app_log::sync_emergency_line("rs", &format!("vosk cpal stream error: {err}"));
+    let err_fn =
+        |err| crate::app_log::sync_emergency_line("rs", &format!("vosk cpal stream error: {err}"));
 
     let stream = match sample_format {
         SampleFormat::F32 => {
@@ -1816,7 +1835,10 @@ fn emit_level_if_due_level(event_tx: &Sender<VoiceVoskEvent>, level: u32, last_a
 }
 
 #[cfg(all(windows, not(vosk_disabled)))]
-fn publish_i16_pcm_to_bus(frame_tx: &Option<crate::audio_frame_bus::AudioFramePublisher>, pcm: &[i16]) {
+fn publish_i16_pcm_to_bus(
+    frame_tx: &Option<crate::audio_frame_bus::AudioFramePublisher>,
+    pcm: &[i16],
+) {
     let Some(tx) = frame_tx else {
         return;
     };
@@ -1911,7 +1933,10 @@ mod tests {
     #[test]
     fn matches_final_exact() {
         let phrases = vec!["?????????".into()];
-        assert_eq!(matches_final("?????????", &phrases), Some("?????????".into()));
+        assert_eq!(
+            matches_final("?????????", &phrases),
+            Some("?????????".into())
+        );
     }
 
     #[test]
@@ -2054,7 +2079,10 @@ mod tests {
     fn matches_final_rejects_cross_script() {
         let phrases = vec!["start dictation".into(), "?????????".into()];
         assert_eq!(matches_final("kaisersure", &phrases), None);
-        assert_eq!(matches_final("?????????", &phrases), Some("?????????".into()));
+        assert_eq!(
+            matches_final("?????????", &phrases),
+            Some("?????????".into())
+        );
         assert_eq!(
             matches_final("start dictation", &phrases),
             Some("start dictation".into())
@@ -2112,6 +2140,9 @@ mod tests {
 
     #[test]
     fn sanitize_keeps_chinese() {
-        assert_eq!(sanitize_vosk_text("?????????").as_deref(), Some("?????????"));
+        assert_eq!(
+            sanitize_vosk_text("?????????").as_deref(),
+            Some("?????????")
+        );
     }
 }

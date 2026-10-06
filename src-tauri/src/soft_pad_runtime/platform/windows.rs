@@ -108,7 +108,9 @@ mod tests {
 
     #[test]
     fn terminal_host_exe_classification() {
-        assert!(crate::app_identity::is_terminal_host_exe("WindowsTerminal.exe"));
+        assert!(crate::app_identity::is_terminal_host_exe(
+            "WindowsTerminal.exe"
+        ));
         assert!(crate::app_identity::is_terminal_host_exe("pwsh.exe"));
         assert!(crate::app_identity::is_terminal_host_exe("powershell.exe"));
         assert!(crate::app_identity::is_terminal_host_exe("cmd.exe"));

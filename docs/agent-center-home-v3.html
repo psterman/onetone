@@ -1,0 +1,844 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home Agent Roster · Fragment Prototype</title>
+  <style>
+    :root {
+      --ink: #17324d;
+      --muted: #718398;
+      --muted-2: #93a4b2;
+      --line: #e4e8ec;
+      --panel: #fff;
+      --panel-2: #fafbfd;
+      --bg: #edf2f8;
+      --cyan: #168bc2;
+      --amber: #c9892f;
+      --rose: #b74d50;
+      --violet: #6553a7;
+      --focus: rgba(47, 109, 246, 0.28);
+    }
+    * { box-sizing: border-box; }
+    body.proto-preview {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 24px 16px 48px;
+      color: var(--ink);
+      background: var(--bg);
+      font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, select { font: inherit; cursor: pointer; }
+    .proto-foot {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .proto-foot button {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 6px 10px;
+      color: var(--muted);
+    }
+
+    /* Mount root — aligned with production .har-root */
+    #homeAgentRoster.har-root {
+      width: min(720px, 100%);
+      margin-top: 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      overflow: hidden;
+      max-width: 100%;
+      position: relative;
+    }
+
+    .har-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px 8px;
+      min-width: 0;
+    }
+    .har-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      min-width: 0;
+    }
+    .har-lede {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 400;
+    }
+    .har-refresh {
+      border: 0;
+      background: transparent;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 650;
+      padding: 4px 6px;
+      flex: 0 0 auto;
+    }
+
+    .har-overview {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 4px 14px 10px;
+      min-width: 0;
+    }
+    .har-stat {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      min-width: 0;
+    }
+    .har-stat strong {
+      display: block;
+      font-size: 18px;
+      line-height: 1.1;
+      color: var(--ink);
+    }
+    .har-stat span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .har-stat small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted-2);
+      font-size: 10px;
+    }
+    .har-stat--working strong { color: var(--cyan); }
+    .har-stat--best strong { color: var(--amber); }
+    .har-stat--unsupported strong,
+    .har-stat--unknown strong { color: #6b7c89; }
+
+    .har-banners {
+      padding: 0 14px 4px;
+      min-width: 0;
+    }
+    .har-banner {
+      margin: 0 0 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      font-size: 12px;
+      color: #334155;
+      overflow-wrap: anywhere;
+    }
+    .har-banner[hidden] { display: none; }
+    .har-banner--error {
+      border-color: #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+    }
+    .har-banner--error button {
+      margin-left: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 12px;
+      padding: 3px 8px;
+    }
+    .har-attention {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      margin: 0 0 8px;
+      padding: 11px 12px;
+      border: 1px solid #f0dfc3;
+      border-radius: 10px;
+      background: #fffaf0;
+      text-align: left;
+      font: inherit;
+      box-sizing: border-box;
+      min-width: 0;
+      cursor: pointer;
+    }
+    .har-attention[hidden] { display: none; }
+    .har-attention strong { color: #805417; font-size: 13px; }
+    .har-attention span { color: #97764b; font-size: 12px; }
+    .har-banner-demo {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 0 0 8px;
+      padding: 0;
+    }
+    .har-banner-demo button {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-2);
+      padding: 4px 8px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .har-banner-demo button[aria-pressed="true"] {
+      border-color: #2f6df6;
+      color: #2f6df6;
+      background: #edf3ff;
+    }
+
+    .har-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      padding: 0 14px 10px;
+      min-width: 0;
+    }
+    .har-legend {
+      color: var(--muted);
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+    .har-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #607991;
+      font-size: 12px;
+    }
+    .har-filter select {
+      border: 1px solid #dbe6ec;
+      border-radius: 8px;
+      padding: 6px 28px 6px 8px;
+      background: var(--panel);
+      font-size: 12px;
+      max-width: 100%;
+    }
+
+    .har-rows {
+      border-top: 1px solid var(--line);
+      display: grid;
+      gap: 0;
+      min-width: 0;
+    }
+    .agent {
+      border-top: 1px solid var(--line);
+      background: var(--panel);
+      overflow: hidden;
+      min-width: 0;
+    }
+    .agent:first-child { border-top: 0; }
+    .agent[hidden] { display: none; }
+    .agent-main {
+      display: grid;
+      grid-template-columns: 42px minmax(120px, 1fr) auto auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      min-width: 0;
+    }
+    .mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 15px;
+    }
+    .mark.claude { background: var(--amber); color: #31210c; }
+    .mark.codex { background: #167f82; }
+    .mark.cursor { background: var(--violet); }
+    .mark.unknown { background: #71808d; }
+    .name { font-weight: 700; font-size: 14px; }
+    .meta { color: var(--muted); font-size: 11px; margin-top: 2px; overflow-wrap: anywhere; }
+    .status {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .status i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #9ba5ae;
+    }
+    .status.working i {
+      background: #2a9565;
+      box-shadow: 0 0 0 4px #e8f6ef;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .badge.verifiable { color: #1f5f6e; background: #e1f3f0; }
+    .badge.bestEffort { color: #815c24; background: #fff2d8; }
+    .badge.unknown { color: #6b7c89; background: #edf1f4; }
+    .expand {
+      width: 34px;
+      height: 34px;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-radius: 8px;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .expand[aria-expanded="true"] { transform: rotate(180deg); color: var(--cyan); }
+    .stop {
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      background: #fef2f2;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .stop:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .har-detail {
+      display: none;
+      padding: 0 14px 14px 56px;
+      background: var(--panel-2);
+      border-top: 1px dashed #dce2e8;
+      min-width: 0;
+    }
+    .agent.open .har-detail { display: block; }
+    .har-detail-h {
+      margin: 12px 0 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #7890a0;
+    }
+    .har-detail-h:first-child { margin-top: 8px; }
+    .har-detail p {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: #3f4c58;
+      overflow-wrap: anywhere;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+    .detail-grid div {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      min-width: 0;
+    }
+    .detail-grid span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+    .detail-grid strong {
+      font-size: 12px;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+    .har-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      align-items: flex-start;
+      margin-top: 10px;
+    }
+    .har-action {
+      border: 1px solid #d8dee5;
+      border-radius: 8px;
+      padding: 7px 10px;
+      background: var(--panel);
+      color: #33404c;
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .har-action.is-primary {
+      border-color: #2f6df6;
+      background: #2f6df6;
+      color: #fff;
+    }
+    .har-action:disabled { opacity: 0.45; cursor: not-allowed; }
+    .har-action-reason {
+      flex: 1 1 100%;
+      margin: 0 0 2px;
+      color: #8a5a3a;
+      font-size: 11px;
+    }
+
+    .har-toast {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 8px 24px rgba(42, 61, 77, 0.12);
+      font-size: 13px;
+      color: var(--ink);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 2;
+    }
+    .har-toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .har-toast.ok { border-color: rgba(42, 149, 101, 0.45); background: #f0fdf4; }
+    .har-toast.warn { border-color: rgba(201, 137, 47, 0.45); background: #fffbeb; }
+    .har-toast.fail { border-color: rgba(183, 77, 80, 0.45); background: #fef2f2; }
+
+    :focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    @media (max-width: 680px) {
+      body.proto-preview { padding: 16px 12px 40px; }
+      .har-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .har-toolbar { flex-direction: column; align-items: stretch; }
+      .har-filter { width: 100%; }
+      .har-filter select { flex: 1; width: 100%; }
+      .agent-main {
+        grid-template-columns: 38px minmax(0, 1fr) auto;
+        gap: 10px;
+        padding: 12px;
+      }
+      .mark { width: 38px; height: 38px; border-radius: 9px; font-size: 14px; }
+      .status, .agent-main > .badge { grid-column: 2; }
+      .stop {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+        align-self: center;
+        padding: 7px 8px;
+        font-size: 11px;
+      }
+      .expand {
+        grid-column: 3;
+        grid-row: 3;
+        justify-self: end;
+      }
+      .har-detail { padding: 0 12px 12px; }
+      .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .har-attention { display: block; }
+      .har-attention span { display: block; margin-top: 4px; }
+      #homeAgentRoster.har-root,
+      .har-rows, .agent, .agent-main, .har-detail, .detail-grid, .har-overview {
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: hidden;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; }
+    }
+
+    html[data-theme="dark"] {
+      --ink: #e8edf2;
+      --muted: #8b98a5;
+      --muted-2: #6f7d89;
+      --line: rgba(220, 231, 240, 0.12);
+      --panel: #141d26;
+      --panel-2: #17232e;
+      --bg: #0c1218;
+      --cyan: #79d4d0;
+      --amber: #efb968;
+    }
+    html[data-theme="dark"] .har-banner { background: #1a2430; border-color: var(--line); color: var(--ink); }
+    html[data-theme="dark"] .har-attention { background: #2a2218; border-color: #4a3a20; }
+    html[data-theme="dark"] .har-attention strong { color: #efb968; }
+    html[data-theme="dark"] .har-attention span { color: #c9a86a; }
+    html[data-theme="dark"] .stop { background: #2a1a1a; border-color: #5a3030; color: #ffc2bd; }
+    html[data-theme="dark"] .har-toast.ok { background: #142820; }
+    html[data-theme="dark"] .har-toast.warn { background: #2a2218; }
+    html[data-theme="dark"] .badge.verifiable { background: rgba(121, 212, 208, 0.15); color: #79d4d0; }
+    html[data-theme="dark"] .badge.bestEffort { background: rgba(239, 185, 104, 0.15); color: #efb968; }
+  </style>
+</head>
+<body class="proto-preview">
+  <section id="homeAgentRoster" class="har-root" aria-labelledby="agent-roster-title">
+    <header class="har-head">
+      <div>
+        <h2 class="har-title" id="agent-roster-title">Agent 名册</h2>
+        <p class="har-lede">当前工作、可用动作与证据状态。未知不等于不支持。</p>
+      </div>
+      <button type="button" class="har-refresh" id="refresh" aria-label="刷新 Agent 状态">刷新</button>
+    </header>
+
+    <section class="har-overview" aria-label="Agent 总览">
+      <div class="har-stat"><strong id="countAll">4</strong><span>已发现</span><small>当前快照</small></div>
+      <div class="har-stat har-stat--working"><strong id="countWorking">2</strong><span>当前工作中</span><small>新鲜证据</small></div>
+      <div class="har-stat"><strong id="countVerifiable">1</strong><span>可验证中断</span><small>按中断能力统计</small></div>
+      <div class="har-stat har-stat--best"><strong id="countBest">2</strong><span>尽力中断</span><small>按中断能力统计</small></div>
+      <div class="har-stat har-stat--unsupported"><strong id="countUnsupported">0</strong><span>不支持中断</span><small>按中断能力统计</small></div>
+      <div class="har-stat har-stat--unknown"><strong id="countUnknown">1</strong><span>未知 / 尚未接入</span><small>按中断能力统计</small></div>
+    </section>
+
+    <section class="har-banners" aria-label="状态提示">
+      <div class="har-banner-demo" role="group" aria-label="演示 banner 状态">
+        <button type="button" data-banner-preset="default" aria-pressed="true">默认（两条）</button>
+        <button type="button" data-banner-preset="loadFail" aria-pressed="false">加载失败</button>
+        <button type="button" data-banner-preset="ready" aria-pressed="false">已准备好</button>
+        <button type="button" data-banner-preset="notWired" aria-pressed="false">尚未接入检测</button>
+      </div>
+      <!-- data-banner-key used for demo toggle only -->
+      <div class="har-banner" data-banner-key="stale" role="status">正在展示上次成功快照，可能已经过期</div>
+      <button type="button" class="har-attention" data-banner-key="attention" aria-label="展开 Claude 待处理项">
+        <strong>1 项需要处理</strong>
+        <span>Claude · 等待确认</span>
+      </button>
+      <div class="har-banner har-banner--error" data-banner-key="error" role="alert" hidden>
+        无法加载最新状态
+        <button type="button" aria-label="重试加载">重试</button>
+      </div>
+      <div class="har-banner" data-banner-key="ready" role="status" hidden>已准备好</div>
+      <div class="har-banner" data-banner-key="notWired" role="status" hidden>部分 Agent 尚未接入本机检测</div>
+    </section>
+
+    <section class="har-toolbar">
+      <div class="har-legend">统计按中断能力分类，不代表 Agent 是否正在工作。</div>
+      <label class="har-filter">
+        <span>筛选</span>
+        <select id="filter" aria-label="筛选 Agent">
+          <option value="all">全部 (4)</option>
+          <option value="working">当前工作中 (2)</option>
+          <option value="verifiable">可验证中断 (1)</option>
+          <option value="bestEffort">尽力中断 (2)</option>
+          <option value="unsupported">不支持 (0)</option>
+          <option value="unknown">未知 (1)</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="har-rows" id="rows" aria-label="Agent 列表">
+      <!-- Claude: verifiable, all actions enabled -->
+      <article class="agent" data-status="working" data-cap="verifiable" data-name="Claude">
+        <div class="agent-main">
+          <div class="mark claude" aria-hidden="true">C</div>
+          <div>
+            <div class="name">Claude</div>
+            <div class="meta">精确会话 · Claude Desktop</div>
+          </div>
+          <span class="status working"><i aria-hidden="true"></i>工作中</span>
+          <span class="badge verifiable">可验证中断</span>
+          <button class="stop" type="button" data-stop-kind="verified" aria-label="停止 Claude">停止</button>
+          <button class="expand har-toggle" type="button" aria-expanded="false" aria-label="展开 Claude 详情">⌄</button>
+        </div>
+        <div class="har-detail">
+          <h3 class="har-detail-h">当前状态</h3>
+          <p>工作中，控制证据仍然新鲜。</p>
+          <h3 class="har-detail-h">最近工作 / 提示</h3>
+          <p>整理 onboarding 文案，等待用户确认下一步。</p>
+          <h3 class="har-detail-h">来源与可信度</h3>
+          <div class="detail-grid">
+            <div><span>来源</span><strong>OneTone 托管观测</strong></div>
+            <div><span>可信度</span><strong>高</strong></div>
+          </div>
+          <h3 class="har-detail-h">最近观测与有效期</h3>
+          <div class="detail-grid">
+            <div><span>最近观测</span><strong>16:41:32</strong></div>
+            <div><span>有效期</span><strong>16:42:32</strong></div>
+          </div>
+          <h3 class="har-detail-h">能力限制</h3>
+          <p>无额外限制；可验证后验可用。</p>
+          <h3 class="har-detail-h">接入摘要</h3>
+          <p>OneTone 托管 · 已观测精确会话。</p>
+          <h3 class="har-detail-h">动作状态与失败原因</h3>
+          <p>聚焦、继续与会话停止均可使用。</p>
+          <h3 class="har-detail-h">会话 / 窗口目标</h3>
+          <p>Claude Desktop 扩展会话（<!-- data-session-id: claude-ext-7a2 -->当前窗口）</p>
+          <h3 class="har-detail-h">聚焦窗口 / 继续会话 / 中断</h3>
+          <div class="har-actions">
+            <button type="button" class="har-action" aria-label="聚焦 Claude 窗口">聚焦窗口</button>
+            <button type="button" class="har-action is-primary" aria-label="继续 Claude 会话">继续会话</button>
+            <button type="button" class="har-action stop" data-stop-kind="verified" aria-label="停止 Claude">停止</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Codex: bestEffort, resume disabled -->
+      <article class="agent" data-status="working" data-cap="bestEffort" data-name="Codex">
+        <div class="agent-main">
+          <div class="mark codex" aria-hidden="true">X</div>
+          <div>
+            <div class="name">Codex</div>
+            <div class="meta">窗口证据 · 外部会话</div>
+          </div>
+          <span class="status working"><i aria-hidden="true"></i>工作中</span>
+          <span class="badge bestEffort">尽力中断</span>
+          <button class="stop" type="button" data-stop-kind="attempted" aria-label="尝试停止 Codex">尝试停止</button>
+          <button class="expand har-toggle" type="button" aria-expanded="false" aria-label="展开 Codex 详情">⌄</button>
+        </div>
+        <div class="har-detail">
+          <h3 class="har-detail-h">当前状态</h3>
+          <p>工作中，但控制证据已过期。</p>
+          <h3 class="har-detail-h">最近工作 / 提示</h3>
+          <p>重构 API 路由，等待窗口焦点确认。</p>
+          <h3 class="har-detail-h">来源与可信度</h3>
+          <div class="detail-grid">
+            <div><span>来源</span><strong>窗口活动映射</strong></div>
+            <div><span>可信度</span><strong>中</strong></div>
+          </div>
+          <h3 class="har-detail-h">最近观测与有效期</h3>
+          <div class="detail-grid">
+            <div><span>最近观测</span><strong>16:40:58</strong></div>
+            <div><span>有效期</span><strong>16:41:28 · 已过期</strong></div>
+          </div>
+          <h3 class="har-detail-h">能力限制</h3>
+          <p>无精确会话后验；停止结果需重新探测确认。</p>
+          <h3 class="har-detail-h">接入摘要</h3>
+          <p>已集成 · 窗口证据可用。</p>
+          <h3 class="har-detail-h">动作状态与失败原因</h3>
+          <p>继续会话不可用：证据已过期。</p>
+          <h3 class="har-detail-h">会话 / 窗口目标</h3>
+          <p>Codex 外部终端会话（<!-- data-session-id: codex-ext-19f -->当前窗口）</p>
+          <h3 class="har-detail-h">聚焦窗口 / 继续会话 / 中断</h3>
+          <div class="har-actions">
+            <button type="button" class="har-action" aria-label="聚焦 Codex 窗口">聚焦窗口</button>
+            <button type="button" class="har-action" disabled aria-label="继续 Codex 会话：证据已过期">继续会话</button>
+            <p class="har-action-reason">继续会话不可用：证据已过期</p>
+            <button type="button" class="har-action stop" data-stop-kind="attempted" aria-label="尝试停止 Codex">尝试停止</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Cursor: bestEffort, resume disabled -->
+      <article class="agent" data-status="idle" data-cap="bestEffort" data-name="Cursor">
+        <div class="agent-main">
+          <div class="mark cursor" aria-hidden="true">Cu</div>
+          <div>
+            <div class="name">Cursor</div>
+            <div class="meta">窗口映射 · 本地活动</div>
+          </div>
+          <span class="status"><i aria-hidden="true"></i>空闲</span>
+          <span class="badge bestEffort">尽力中断</span>
+          <button class="stop" type="button" data-stop-kind="attempted" aria-label="尝试停止 Cursor">尝试停止</button>
+          <button class="expand har-toggle" type="button" aria-expanded="false" aria-label="展开 Cursor 详情">⌄</button>
+        </div>
+        <div class="har-detail">
+          <h3 class="har-detail-h">当前状态</h3>
+          <p>空闲，最近活动证据仍然新鲜。</p>
+          <h3 class="har-detail-h">最近工作 / 提示</h3>
+          <p>Agent Roster 原型样式调整。</p>
+          <h3 class="har-detail-h">来源与可信度</h3>
+          <div class="detail-grid">
+            <div><span>来源</span><strong>本地活动</strong></div>
+            <div><span>可信度</span><strong>中</strong></div>
+          </div>
+          <h3 class="har-detail-h">最近观测与有效期</h3>
+          <div class="detail-grid">
+            <div><span>最近观测</span><strong>16:39:12</strong></div>
+            <div><span>有效期</span><strong>16:44:12</strong></div>
+          </div>
+          <h3 class="har-detail-h">能力限制</h3>
+          <p>无可靠后验探测；停止只能尽力发送。</p>
+          <h3 class="har-detail-h">接入摘要</h3>
+          <p>已观测 · 窗口映射可用。</p>
+          <h3 class="har-detail-h">动作状态与失败原因</h3>
+          <p>继续会话不可用：当前不可继续。</p>
+          <h3 class="har-detail-h">会话 / 窗口目标</h3>
+          <p>Cursor 编辑器窗口（当前窗口 2）</p>
+          <h3 class="har-detail-h">聚焦窗口 / 继续会话 / 中断</h3>
+          <div class="har-actions">
+            <button type="button" class="har-action" aria-label="聚焦 Cursor 窗口">聚焦窗口</button>
+            <button type="button" class="har-action" disabled aria-label="继续 Cursor 会话：当前不可继续">继续会话</button>
+            <p class="har-action-reason">继续会话不可用：当前不可继续</p>
+            <button type="button" class="har-action stop" data-stop-kind="attempted" aria-label="尝试停止 Cursor">尝试停止</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Aider: unknown, all disabled -->
+      <article class="agent" data-status="unknown" data-cap="unknown" data-name="Aider">
+        <div class="agent-main">
+          <div class="mark unknown" aria-hidden="true">A</div>
+          <div>
+            <div class="name">Aider</div>
+            <div class="meta">已发现 · 尚未接入检测</div>
+          </div>
+          <span class="status"><i aria-hidden="true"></i>未知</span>
+          <span class="badge unknown">尚未接入检测</span>
+          <button class="stop" type="button" disabled aria-label="停止 Aider：尚未接入检测">暂不可用</button>
+          <button class="expand har-toggle" type="button" aria-expanded="false" aria-label="展开 Aider 详情">⌄</button>
+        </div>
+        <div class="har-detail">
+          <h3 class="har-detail-h">当前状态</h3>
+          <p>未知，尚未接入本机检测。</p>
+          <h3 class="har-detail-h">最近工作 / 提示</h3>
+          <p>—</p>
+          <h3 class="har-detail-h">来源与可信度</h3>
+          <div class="detail-grid">
+            <div><span>来源</span><strong>已发现</strong></div>
+            <div><span>可信度</span><strong>未知</strong></div>
+          </div>
+          <h3 class="har-detail-h">最近观测与有效期</h3>
+          <div class="detail-grid">
+            <div><span>最近观测</span><strong>—</strong></div>
+            <div><span>有效期</span><strong>—</strong></div>
+          </div>
+          <h3 class="har-detail-h">能力限制</h3>
+          <p>尚未接入检测，无法判断中断能力。</p>
+          <h3 class="har-detail-h">接入摘要</h3>
+          <p>已发现，等待接入检测。</p>
+          <h3 class="har-detail-h">动作状态与失败原因</h3>
+          <p>所有控制动作不可用：尚未接入检测。</p>
+          <h3 class="har-detail-h">会话 / 窗口目标</h3>
+          <p>—</p>
+          <h3 class="har-detail-h">聚焦窗口 / 继续会话 / 中断</h3>
+          <div class="har-actions">
+            <button type="button" class="har-action" disabled aria-label="聚焦 Aider 窗口：尚未接入检测">聚焦窗口</button>
+            <p class="har-action-reason">聚焦窗口不可用：尚未接入检测</p>
+            <button type="button" class="har-action" disabled aria-label="继续 Aider 会话：尚未接入检测">继续会话</button>
+            <p class="har-action-reason">继续会话不可用：尚未接入检测</p>
+            <button type="button" class="har-action stop" disabled aria-label="停止 Aider：尚未接入检测">暂不可用</button>
+            <p class="har-action-reason">中断不可用：尚未接入检测</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <div class="har-toast" id="toast" role="status" aria-live="polite" hidden></div>
+  </section>
+
+  <footer class="proto-foot">
+    <button type="button" id="themeToggle" aria-label="切换浅色/暗色主题">切换暗色主题</button>
+  </footer>
+
+  <script>
+    (function () {
+      var rows = [].slice.call(document.querySelectorAll('.agent'));
+      var filter = document.getElementById('filter');
+      var toast = document.getElementById('toast');
+      var toastTimer;
+
+      var bannerPresets = {
+        default: ['stale', 'attention'],
+        loadFail: ['error'],
+        ready: ['ready'],
+        notWired: ['notWired']
+      };
+
+      function showToast(text, kind) {
+        clearTimeout(toastTimer);
+        toast.hidden = false;
+        toast.textContent = text;
+        toast.className = 'har-toast show ' + (kind || 'ok');
+        toastTimer = setTimeout(function () {
+          toast.className = 'har-toast';
+          toast.hidden = true;
+        }, 2600);
+      }
+
+      function applyFilter() {
+        var value = filter.value;
+        var count = 0;
+        rows.forEach(function (row) {
+          var show = value === 'all'
+            || row.dataset.cap === value
+            || (value === 'working' && row.dataset.status === 'working');
+          row.hidden = !show;
+          if (show) count++;
+        });
+        var opt = filter.options[filter.selectedIndex];
+        if (opt && opt.textContent.indexOf('(') > 0) {
+          /* keep count in parentheses updated on filter label if needed */
+        }
+      }
+
+      function setBannerPreset(name) {
+        var keys = bannerPresets[name] || bannerPresets.default;
+        [].slice.call(document.querySelectorAll('[data-banner-key]')).forEach(function (el) {
+          el.hidden = keys.indexOf(el.dataset.bannerKey) < 0;
+        });
+        [].slice.call(document.querySelectorAll('[data-banner-preset]')).forEach(function (btn) {
+          btn.setAttribute('aria-pressed', String(btn.dataset.bannerPreset === name));
+        });
+      }
+
+      document.querySelectorAll('.expand').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var row = button.closest('.agent');
+          var open = row.classList.toggle('open');
+          button.setAttribute('aria-expanded', String(open));
+        });
+      });
+
+      document.querySelectorAll('.stop, .har-action.stop').forEach(function (button) {
+        button.addEventListener('click', function () {
+          if (button.disabled) return;
+          var kind = button.dataset.stopKind;
+          if (kind === 'verified') showToast('已确认 Agent 已停止', 'ok');
+          else if (kind === 'attempted') showToast('已请求停止，但尚未确认', 'warn');
+          else showToast('操作失败', 'fail');
+        });
+      });
+
+      document.querySelectorAll('[data-banner-preset]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          setBannerPreset(btn.dataset.bannerPreset);
+        });
+      });
+
+      document.getElementById('refresh').addEventListener('click', function () {
+        showToast('状态已更新', 'ok');
+      });
+
+      document.querySelector('.har-attention').addEventListener('click', function () {
+        var claude = document.querySelector('.agent[data-name="Claude"]');
+        if (!claude) return;
+        claude.classList.add('open');
+        var btn = claude.querySelector('.expand');
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+        claude.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      });
+
+      filter.addEventListener('change', applyFilter);
+
+      document.getElementById('themeToggle').addEventListener('click', function () {
+        var root = document.documentElement;
+        var dark = root.getAttribute('data-theme') === 'dark';
+        root.setAttribute('data-theme', dark ? 'light' : 'dark');
+        this.textContent = dark ? '切换暗色主题' : '切换浅色主题';
+        this.setAttribute('aria-label', this.textContent);
+      });
+
+      /* Self-check: visible text must not contain internal terms */
+      var forbidden = /source|confidence|observedAt|freshUntil|sessionId|ProbeNotImplemented|AttemptedUnverified|provider_unsupported|\bVerified\b|\bFailed\b/i;
+      var visible = document.getElementById('homeAgentRoster').innerText;
+      if (forbidden.test(visible)) {
+        console.error('Prototype self-check failed: forbidden term in visible text');
+      }
+    })();
+  </script>
+</body>
+</html>

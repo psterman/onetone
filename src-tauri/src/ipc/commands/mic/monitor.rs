@@ -96,7 +96,9 @@ pub fn cmd_mic_monitor_start(
             let claim = onetone_logic::mic_owner::MicOwner::LevelMonitor {
                 generation: start_gen,
             };
-            if let Err(err) = state.mic_owner.try_claim(claim.clone(), "mic_monitor_start", now)
+            if let Err(err) = state
+                .mic_owner
+                .try_claim(claim.clone(), "mic_monitor_start", now)
             {
                 crate::app_log::log_line(
                     state.as_ref(),
@@ -113,7 +115,9 @@ pub fn cmd_mic_monitor_start(
                 &state.mic_monitor,
                 &state.mic_level,
             ) {
-                let _ = state.mic_owner.release(&claim, now, "mic_monitor_start_err");
+                let _ = state
+                    .mic_owner
+                    .release(&claim, now, "mic_monitor_start_err");
                 crate::app_log::sync_emergency_line(
                     "mic_monitor",
                     &format!("mic monitor start: {err}"),

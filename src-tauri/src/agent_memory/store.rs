@@ -93,7 +93,9 @@ where
         migrate(&conn).expect("migrate agent-memory");
         Mutex::new(conn)
     });
-    let conn = mutex.lock().map_err(|_| "agent_memory write lock poisoned".to_string())?;
+    let conn = mutex
+        .lock()
+        .map_err(|_| "agent_memory write lock poisoned".to_string())?;
     f(&conn)
 }
 
@@ -111,7 +113,9 @@ fn open_rw(path: &Path) -> Result<Connection, String> {
     }
     let conn = Connection::open_with_flags(
         path,
-        OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_FULL_MUTEX,
+        OpenFlags::SQLITE_OPEN_READ_WRITE
+            | OpenFlags::SQLITE_OPEN_CREATE
+            | OpenFlags::SQLITE_OPEN_FULL_MUTEX,
     )
     .map_err(|e| format!("open agent-memory: {e}"))?;
     let _ = conn.busy_timeout(Duration::from_millis(5000));
@@ -368,10 +372,7 @@ mod tests {
         // Idempotent second migrate.
         migrate(&conn).unwrap();
         let cols2 = table_columns(&conn, "projects").unwrap();
-        assert_eq!(
-            cols2.iter().filter(|c| *c == "user_confirmed").count(),
-            1
-        );
+        assert_eq!(cols2.iter().filter(|c| *c == "user_confirmed").count(), 1);
     }
 
     #[test]

@@ -1,0 +1,59 @@
+{
+    "onetoneRunning":  true,
+    "note":  "Process/dir presence != active interruptible session. Operator must prepare waiting sessions per scenario-prep.md.",
+    "exe":  "E:\\voice-pilot\\src-tauri\\target\\debug\\onetone.exe",
+    "dirs":  {
+                 "codexHome":  true,
+                 "claudeHome":  true,
+                 "cursorHome":  true
+             },
+    "probedAt":  "2026-10-06T12:19:13.3627607+08:00",
+    "providers":  {
+                      "onetone":  {
+                                      "pids":  [
+                                                   9160
+                                               ],
+                                      "running":  true
+                                  },
+                      "Cursor":  {
+                                     "pids":  [
+                                                  3312,
+                                                  6048,
+                                                  6272,
+                                                  8364,
+                                                  8956,
+                                                  9484,
+                                                  14032,
+                                                  16772,
+                                                  18448,
+                                                  18868,
+                                                  19860,
+                                                  21044,
+                                                  24916,
+                                                  26660,
+                                                  28024,
+                                                  28668,
+                                                  29316,
+                                                  31288,
+                                                  33396,
+                                                  34768,
+                                                  36872,
+                                                  37992,
+                                                  38076
+                                              ],
+                                     "running":  true
+                                 },
+                      "claude":  {
+                                     "pids":  [
+
+                                              ],
+                                     "running":  false
+                                 },
+                      "codex":  {
+                                    "pids":  [
+                                                 23964
+                                             ],
+                                    "running":  true
+                                }
+                  }
+}

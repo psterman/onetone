@@ -333,8 +333,9 @@ pub fn soft_pad_agent_process_running() -> bool {
 
 /// True when process AUMID / path belongs to the Store Codex package (not consumer ChatGPT).
 fn looks_like_codex_package(path: Option<&str>, aumid: Option<&str>) -> bool {
-    if path.is_some_and(|p| path_has_marker(p, "OpenAI.ChatGPT") && !path_has_marker(p, "OpenAI.Codex"))
-    {
+    if path.is_some_and(|p| {
+        path_has_marker(p, "OpenAI.ChatGPT") && !path_has_marker(p, "OpenAI.Codex")
+    }) {
         return false;
     }
     if path.is_some_and(|p| path_has_marker(p, "OpenAI.Codex")) {
@@ -349,7 +350,11 @@ fn looks_like_codex_package(path: Option<&str>, aumid: Option<&str>) -> bool {
 /// Fallback when full path is unavailable (common for some packaged-app queries):
 /// ChatGPT.exe / Codex.exe + Codex package path/AUMID, or title mentioning Codex.
 /// Store Codex UI currently titles itself "ChatGPT" (no "codex" substring).
-pub fn preset_app_id_for_exe_title(exe_name: &str, window_title: &str, full_path: Option<&str>) -> Option<String> {
+pub fn preset_app_id_for_exe_title(
+    exe_name: &str,
+    window_title: &str,
+    full_path: Option<&str>,
+) -> Option<String> {
     preset_app_id_for_exe_title_with_aumid(exe_name, window_title, full_path, None)
 }
 
@@ -422,12 +427,8 @@ pub fn process_image_path(pid: u32) -> Option<String> {
         if vm.is_null() {
             return None;
         }
-        let len = GetModuleFileNameExW(
-            vm,
-            std::ptr::null_mut(),
-            buf.as_mut_ptr(),
-            buf.len() as u32,
-        );
+        let len =
+            GetModuleFileNameExW(vm, std::ptr::null_mut(), buf.as_mut_ptr(), buf.len() as u32);
         CloseHandle(vm);
         if len == 0 {
             return None;
@@ -901,7 +902,9 @@ pub fn foreground_terminal_cli_target_id() -> Option<String> {
         }
     }
     // Single-flight: Claude SessionStart herds must not N× CreateToolhelp32Snapshot.
-    let _walk = terminal_cli_walk_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _walk = terminal_cli_walk_lock()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     if let Ok(guard) = terminal_cli_cache().lock() {
         if let Some(c) = guard.as_ref() {
             if c.pid == fg.pid && c.exe_key == exe_key && c.at.elapsed() < TERMINAL_CLI_CACHE_TTL {
@@ -1289,10 +1292,8 @@ mod tests {
     #[test]
     fn preset_path_matches_workbuddy_desktop_install() {
         assert_eq!(
-            preset_app_id_for_path(
-                r"C:\Users\Administrator\Desktop\WorkBuddy\WorkBuddy.exe"
-            )
-            .as_deref(),
+            preset_app_id_for_path(r"C:\Users\Administrator\Desktop\WorkBuddy\WorkBuddy.exe")
+                .as_deref(),
             Some(WORKBUDDY_APP_TARGET_ID)
         );
     }
@@ -1411,7 +1412,9 @@ mod tests {
             preset_app_id_for_exe_title(
                 "ChatGPT.exe",
                 "New chat",
-                Some(r"C:\Program Files\WindowsApps\OpenAI.ChatGPT_1.0.0.0_x64__xxxxx\app\ChatGPT.exe")
+                Some(
+                    r"C:\Program Files\WindowsApps\OpenAI.ChatGPT_1.0.0.0_x64__xxxxx\app\ChatGPT.exe"
+                )
             ),
             None
         );

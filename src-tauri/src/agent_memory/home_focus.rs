@@ -5,7 +5,7 @@ use crate::agent_memory::checkpoint::{
     latest_checkpoint_for_project, latest_checkpoint_for_session,
 };
 use crate::agent_memory::model::{
-    CheckpointDto, HomeSessionDto, ProjectMatch, ProbeStatus, PROVIDER_CURSOR, UNKNOWN_PROJECT_ID,
+    CheckpointDto, HomeSessionDto, ProbeStatus, ProjectMatch, PROVIDER_CURSOR, UNKNOWN_PROJECT_ID,
 };
 use crate::agent_memory::project::{project_id_from_path, validate_workspace_path};
 use crate::agent_memory::project_confirm::{is_project_confirmed, KnownProjectDto};
@@ -171,10 +171,7 @@ fn read_foreground() -> HomeFocusForeground {
     }
 }
 
-fn resolve_focus_project(
-    fg: &HomeFocusForeground,
-    now: u64,
-) -> (HomeFocusProject, bool) {
+fn resolve_focus_project(fg: &HomeFocusForeground, now: u64) -> (HomeFocusProject, bool) {
     let title = fg.window_title.as_deref();
     let selection = select_workspace_evidence(title, now);
 
@@ -196,7 +193,8 @@ fn resolve_focus_project(
         }
         EvidenceSelection::Ambiguous(cands) => {
             let candidates: Vec<_> = cands.iter().map(candidate_dto).collect();
-            let title_name = title_project_token(title.unwrap_or("")).unwrap_or_else(|| "未知项目".into());
+            let title_name =
+                title_project_token(title.unwrap_or("")).unwrap_or_else(|| "未知项目".into());
             (
                 HomeFocusProject {
                     id: UNKNOWN_PROJECT_ID.into(),
@@ -264,8 +262,7 @@ fn read_probe_meta() -> (String, Option<u64>, bool) {
                 ))
             },
         );
-        let (probe, last) =
-            row.unwrap_or_else(|_| (ProbeStatus::NotFound.as_str().into(), None));
+        let (probe, last) = row.unwrap_or_else(|_| (ProbeStatus::NotFound.as_str().into(), None));
         let n: i64 = conn
             .query_row(
                 "SELECT COUNT(1) FROM agent_sessions WHERE provider = ?1",
@@ -422,17 +419,19 @@ fn derive_work(
         );
     }
 
-    let attn_running =
-        attn == Some(AttentionState::Working) && attn_age <= LIFECYCLE_TTL_MS;
-    let life_running =
-        matches!(sess_status, "running" | "resumed") && sess_age <= LIFECYCLE_TTL_MS;
+    let attn_running = attn == Some(AttentionState::Working) && attn_age <= LIFECYCLE_TTL_MS;
+    let life_running = matches!(sess_status, "running" | "resumed") && sess_age <= LIFECYCLE_TTL_MS;
     if attn_running || life_running {
         return (
             HomeFocusWork {
                 status: "running".into(),
                 title: title_default,
                 description: "正在处理中。".into(),
-                updated_at: if life_running { sess_updated } else { now.saturating_sub(attn_age) },
+                updated_at: if life_running {
+                    sess_updated
+                } else {
+                    now.saturating_sub(attn_age)
+                },
             },
             HomeFocusSource {
                 freshness,
@@ -441,8 +440,7 @@ fn derive_work(
         );
     }
 
-    let attn_waiting =
-        attn == Some(AttentionState::NeedsInput) && attn_age <= LIFECYCLE_TTL_MS;
+    let attn_waiting = attn == Some(AttentionState::NeedsInput) && attn_age <= LIFECYCLE_TTL_MS;
     let life_waiting = sess_status == "waiting_approval" && sess_age <= LIFECYCLE_TTL_MS;
     if attn_waiting || life_waiting {
         return (
@@ -706,7 +704,10 @@ mod tests {
                 updated_at: 1,
             }),
         );
-        assert_eq!(act.as_ref().map(|a| a.kind.as_str()), Some("confirm_project"));
+        assert_eq!(
+            act.as_ref().map(|a| a.kind.as_str()),
+            Some("confirm_project")
+        );
     }
 
     #[test]

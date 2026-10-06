@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OneTone 全局收集层</title>
+<style>
+:root{--bg:#e6eae7;--panel:#f8f9f7;--paper:#fffefa;--ink:#18201e;--muted:#6c7671;--line:#d6dcd8;--line2:#e7ebe8;--blue:#276b8c;--blue-soft:#e6f2f7;--green:#287663;--green-soft:#e4f2ec;--amber:#a5661c;--amber-soft:#fff1dd;--red:#a44840}
+*{box-sizing:border-box}
+body{margin:0;height:100vh;min-width:1120px;overflow:hidden;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI","Microsoft YaHei UI",system-ui,sans-serif;user-select:none}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid #276b8c32;outline-offset:2px}
+
+.howto{height:58px;display:flex;align-items:center;gap:9px;padding:0 20px;background:#ffffffed;border-bottom:1px solid var(--line)}
+.howto b{font-size:15px}
+.howto .sp{width:1px;height:22px;background:var(--line);margin:0 6px}
+.entry{border:1px solid var(--line);background:white;border-radius:9px;padding:6px 11px;font-size:12px}
+.entry.on{background:var(--ink);color:white;border-color:var(--ink)}
+.metric{margin-left:auto;font-size:12px;color:var(--muted)}
+.metric b{color:var(--green)}
+
+.stage{height:calc(100vh - 58px - 46px);position:relative;padding:22px 92px 22px 320px}
+
+.browser{height:100%;background:white;border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 50px #1c2c2518;display:flex;flex-direction:column;overflow:hidden}
+.btab{height:40px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 14px;background:#f4f6f4}
+.dots{display:flex;gap:5px}.dots i{width:9px;height:9px;border-radius:50%;background:#dbe0dc}
+.urlbar{flex:1;height:24px;border:1px solid var(--line);border-radius:7px;background:white;display:flex;align-items:center;padding:0 9px;font-size:12px;color:var(--muted)}
+.urlbar.sel{border-color:var(--blue);background:var(--blue-soft);color:#285f79}
+.bbody{padding:24px 34px;overflow:auto;font-size:13px;line-height:1.8;color:#3a4340}
+.bbody h2{font-size:19px;margin:0 0 10px}
+.bbody p{margin:0 0 14px}
+.sel{background:#d8e9f2;border-radius:3px;box-shadow:0 0 0 1px #a9cfe2}
+.filecard{margin-top:16px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:240px;background:#fbfcfb;cursor:grab;display:flex;gap:9px;align-items:center}
+.filecard:active{cursor:grabbing}
+.filecard .fi{width:30px;height:30px;border-radius:7px;background:#eef2ef;display:grid;place-items:center;font-size:13px;color:var(--muted)}
+.filecard b{font-size:12px}
+.filecard small{display:block;color:var(--muted);font-size:11px}
+.hintline{margin-top:14px;color:var(--muted);font-size:12px}
+
+.tray{position:absolute;left:22px;top:22px;bottom:22px;width:280px;background:var(--panel);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
+.tray-h{padding:13px 15px 8px}
+.tray-h b{font-size:14px}
+.tray-h em{font-style:normal;margin-left:6px;background:#e2e7e4;border-radius:9px;padding:1px 7px;font-size:11px}
+.tray-n{padding:0 15px 8px;color:var(--muted);font-size:11px}
+.tray-l{flex:1;overflow:auto;padding:0 12px 12px}
+.item{border:1px solid var(--line);background:white;border-radius:10px;padding:9px 10px;margin:7px 0}
+.item b{font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item small{color:var(--muted);font-size:11px}
+.lay{font-size:10px;border-radius:6px;padding:2px 5px;background:var(--blue-soft);color:#285f79}
+.lay.l2{background:var(--amber-soft);color:var(--amber)}
+.lay.l3{background:var(--green-soft);color:var(--green)}
+.item-a{display:flex;gap:6px;margin-top:8px}
+.item-a button{flex:1;border:1px solid var(--line);background:white;border-radius:7px;padding:4px;font-size:11px}
+.item-a .go{border-color:transparent;background:var(--green-soft);color:var(--green)}
+.empty{padding:22px 14px;text-align:center;color:var(--muted);font-size:12px}
+
+.pill{position:absolute;right:26px;top:50%;transform:translateY(-50%);width:46px;height:210px;border:1px solid var(--line);background:#ffffffee;border-radius:23px;box-shadow:0 12px 34px #1c2c2522;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;transition:.18s}
+.pill .pt{font-size:13px;font-weight:700;writing-mode:vertical-rl;letter-spacing:3px}
+.pill .pc{width:22px;height:22px;border-radius:50%;background:#e2e7e4;display:grid;place-items:center;font-size:11px}
+.pill.over{width:132px;background:var(--green-soft);border-color:#8fbfae;box-shadow:0 12px 34px #28766333}
+.pill.over .pt{writing-mode:horizontal-tb;letter-spacing:0}
+.pillmenu{position:absolute;right:82px;top:50%;transform:translateY(-50%);width:186px;background:white;border:1px solid var(--line);border-radius:11px;box-shadow:0 14px 40px #1c2c2522;padding:6px;display:none}
+.pillmenu.show{display:block}
+.pillmenu button{display:block;width:100%;text-align:left;border:0;background:transparent;border-radius:8px;padding:8px 10px;font-size:12px}
+.pillmenu button:hover{background:#f1f4f2}
+.pillmenu .sep{height:1px;background:var(--line);margin:5px 8px}
+.pillmenu .d{color:var(--muted);font-size:11px;padding:6px 10px}
+
+.toast{position:fixed;right:96px;bottom:74px;background:var(--ink);color:white;padding:11px 15px;border-radius:11px;font-size:13px;opacity:0;transform:translateY(10px);transition:.2s;box-shadow:0 12px 34px #1c2c2533}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast i{font-style:normal;color:#7fd4b3;margin-right:6px}
+
+.foot{height:46px;border-top:1px solid var(--line);background:#ffffffed;display:flex;align-items:center;gap:10px;padding:0 20px;font-size:12px}
+.foot .dot{width:8px;height:8px;border-radius:50%;background:#429579}
+.foot.off .dot{background:#b6beba}
+.foot .src{color:var(--muted)}
+.foot button{margin-left:2px;border:1px solid var(--line);background:white;border-radius:8px;padding:4px 10px;font-size:11px}
+.foot .right{margin-left:auto;color:var(--muted)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="howto">
+  <b>全局收集层</b>
+  <span style="color:var(--muted);font-size:12px">收集在你正在工作的地方发生，不用来首页</span>
+  <span class="sp"></span>
+  <button class="entry" data-e="1">① 复制即收集</button>
+  <button class="entry" data-e="2">② 全局热键</button>
+  <button class="entry" data-e="3">③ 拖入浮标</button>
+  <button class="entry" data-e="4">④ 点击收取</button>
+  <span class="metric" id="metric">本次动作：<b>—</b> · 未离开当前窗口：<b>—</b></span>
+</header>
+
+<div class="stage">
+  <aside class="tray">
+    <div class="tray-h"><b>刚刚发生</b><em id="cnt">0</em></div>
+    <div class="tray-n">未经你确认，不会进入任何简报</div>
+    <div class="tray-l" id="list"><div class="empty" id="empty">还没有候选。<br>用上面四种方式之一收一件试试。</div></div>
+  </aside>
+
+  <div class="browser">
+    <div class="btab"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="urlbar" id="urlbar">https://gemini.google.com/…/home-redesign-ref</div>
+      <span style="font-size:11px;color:var(--muted)">Chrome</span>
+    </div>
+    <div class="bbody">
+      <h2>首页参考方案 · 多 Agent 编排</h2>
+      <p>这一段是你在浏览器里正在看的内容。传统做法要求你切回 OneTone、点开输入框、粘贴、填网址——<span class="sel">而这整段操作里没有任何一步是必要的</span>。</p>
+      <p>选中上面这段高亮文字，它就已经是"当前选区"；按一次热键即可收下，屏幕不会跳转。</p>
+      <div class="filecard" id="fcard" draggable="true">
+        <div class="fi">▣</div>
+        <div><b>current-home.png</b><small>本地文件 · 可拖到右侧浮标</small></div>
+      </div>
+      <div class="hintline">试着把它拖到右边的浮标上 —— 全程鼠标不离开这个窗口。</div>
+    </div>
+  </div>
+
+  <div class="pill" id="pill"><div class="pt">收</div><div class="pc" id="pcount">0</div></div>
+  <div class="pillmenu" id="pmenu">
+    <div class="d">收下当前……</div>
+    <button data-p="clip">剪贴板内容</button>
+    <button data-p="win">当前窗口与选区</button>
+    <button data-p="shot">截取屏幕</button>
+    <div class="sep"></div>
+    <button data-p="file">打开文件 / 文件夹</button>
+    <button data-p="home">打开首页整理</button>
+  </div>
+</div>
+
+<footer class="foot" id="foot">
+  <span class="dot"></span><b>正在感知</b>
+  <span class="src" id="fsrc">剪贴板 · voice-pilot · Chrome</span>
+  <button id="fpause">暂停</button>
+  <button id="fclear">清空候选</button>
+  <span class="right">所有内容只在本地 · 敏感应用已排除（密码管理器 / 隐私窗口 / 其他项目目录）</span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var items=[]; var t0=0; var sensing=true;
+var listEl=document.getElementById('list'), emptyEl=document.getElementById('empty');
+var toastEl=document.getElementById('toast'), pill=document.getElementById('pill');
+var metric=document.getElementById('metric');
+
+function toast(t){toastEl.innerHTML='<i>✓</i>'+t;toastEl.classList.add('show');
+  clearTimeout(toastEl._t);toastEl._t=setTimeout(function(){toastEl.classList.remove('show')},2300);}
+
+function layName(l){return l===1?'仅感知':l===2?'本地暂存':'自动加入';}
+
+function render(){
+  if(!items.length){emptyEl.style.display='block';}else{emptyEl.style.display='none';}
+  listEl.querySelectorAll('.item').forEach(function(n){n.remove()});
+  items.forEach(function(it,idx){
+    var d=document.createElement('div'); d.className='item';
+    d.innerHTML='<div style="display:flex;gap:8px;align-items:start"><div style="flex:1"><b>'+it.name+'</b>'+
+      '<small>'+it.meta+'</small></div><span class="lay l'+it.layer+'">'+layName(it.layer)+'</span></div>'+
+      '<div class="item-a"><button class="go" data-go="'+idx+'">加入简报</button><button data-ig="'+idx+'">忽略</button></div>';
+    listEl.appendChild(d);
+  });
+  document.getElementById('cnt').textContent=items.length;
+  document.getElementById('pcount').textContent=items.length;
+  listEl.querySelectorAll('[data-go]').forEach(function(b){b.onclick=function(){
+    var i=+b.getAttribute('data-go'); toast('已加入简报 · 归位与引用方式等你到首页再定');
+    items.splice(i,1); render();}});
+  listEl.querySelectorAll('[data-ig]').forEach(function(b){b.onclick=function(){
+    items.splice(+b.getAttribute('data-ig'),1); render(); toast('已忽略');}});
+}
+
+function done(ms,leave){
+  metric.innerHTML='本次动作：<b>'+ms+'</b> · 未离开当前窗口：<b>'+(leave?'否':'是')+'</b>';
+}
+
+function begin(){t0=performance.now();}
+
+function capture(name,meta,layer,note){
+  var ms=Math.max(120,Math.round(performance.now()-t0));
+  items.unshift({name:name,meta:meta+(note?' · '+note:''),layer:layer});
+  render();
+  toast('已收下：'+name+' —— 进候选托盘，等你有空再整理');
+  done((ms/1000).toFixed(2)+'s',false);
+}
+
+document.querySelectorAll('[data-e]').forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll('.entry').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on');
+    var e=b.getAttribute('data-e');
+    if(e==='1'){
+      begin();
+      var u=document.getElementById('urlbar'); u.classList.add('sel');
+      setTimeout(function(){u.classList.remove('sel')},900);
+      setTimeout(function(){capture(u.textContent,'剪贴板 · 刚刚',2,'零额外动作')},420);
+    }
+    if(e==='2'){
+      begin();
+      toast('按下 Ctrl + Space（全局热键，已有 RegisterHotKey 基础设施）');
+      setTimeout(function(){capture('选中的一段文字','Chrome · 当前选区',2,'热键触发')},520);
+    }
+    if(e==='3'){ begin(); toast('把左边的文件卡拖到右侧浮标上'); }
+    if(e==='4'){ begin(); document.getElementById('pmenu').classList.toggle('show'); }
+  };
+});
+
+var fc=document.getElementById('fcard');
+fc.ondragstart=function(e){e.dataTransfer.setData('text/plain','current-home.png');e.dataTransfer.effectAllowed='copy';begin();};
+pill.ondragover=function(e){e.preventDefault();e.dataTransfer.dropEffect='copy';pill.classList.add('over');
+  pill.firstChild.textContent='松手即收下';};
+pill.ondragleave=function(){pill.classList.remove('over');pill.firstChild.textContent='收';};
+pill.ondrop=function(e){e.preventDefault();pill.classList.remove('over');pill.firstChild.textContent='收';
+  capture(e.dataTransfer.getData('text/plain')||'拖入的文件','拖放 · 本地文件',3,'落入浮标');};
+
+pill.onclick=function(){begin();document.getElementById('pmenu').classList.toggle('show');};
+document.getElementById('pmenu').querySelectorAll('[data-p]').forEach(function(b){
+  b.onclick=function(){
+    var p=b.getAttribute('data-p');
+    document.getElementById('pmenu').classList.remove('show');
+    if(p==='clip')capture('剪贴板内容','剪贴板 · 刚刚',2,'点击收取');
+    if(p==='win')capture('Chrome · 首页参考方案','当前窗口与选区',2,'点击收取');
+    if(p==='shot')capture('屏幕截图','截图 · 刚刚',3,'点击收取');
+    if(p==='file'){toast('打开系统文件选择器（data_root.rs 已有，建议换成 rfd）');done('—',false);}
+    if(p==='home'){toast('打开首页 · 现在才开始整理');done('—',true);}
+  };
+});
+
+document.getElementById('fpause').onclick=function(){
+  sensing=!sensing;
+  document.getElementById('foot').className='foot'+(sensing?'':' off');
+  document.querySelector('.foot b').textContent=sensing?'正在感知':'已暂停';
+  document.getElementById('fsrc').textContent=sensing?'剪贴板 · voice-pilot · Chrome':'（不采集任何内容）';
+  this.textContent=sensing?'暂停':'恢复';
+};
+document.getElementById('fclear').onclick=function(){items=[];render();toast('候选托盘已清空');};
+
+render();
+</script>
+</body>
+</html>

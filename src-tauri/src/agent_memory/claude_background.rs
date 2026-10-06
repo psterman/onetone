@@ -3,8 +3,8 @@
 //! Production parser: `[]` → Ok+empty; any non-empty array → ParseError until a verified
 //! active fixture lands. Resolver consumes typed `ClaudeBackgroundProbe` only (no IO).
 
-use crate::claude_cli_cmd::claude_command_spec;
 use crate::agent_memory::store::now_ms;
+use crate::claude_cli_cmd::claude_command_spec;
 use std::io::Read;
 use std::process::{Command, Stdio};
 use std::sync::{Mutex, OnceLock};
@@ -264,9 +264,10 @@ pub fn session_still_active(probe: &ClaudeBackgroundProbe, external_session_id: 
     if want.is_empty() {
         return false;
     }
-    probe.sessions.iter().any(|s| {
-        s.external_session_id.trim() == want && s.active
-    })
+    probe
+        .sessions
+        .iter()
+        .any(|s| s.external_session_id.trim() == want && s.active)
 }
 
 pub struct ClaudeProbeCache {
@@ -438,9 +439,7 @@ mod tests {
             get_probe(ProbePolicy::ForceFresh, &runner, &cache).state,
             ClaudeProbeState::Timeout
         );
-        *runner.probe.lock().unwrap() = Err(ClaudeRunError::CommandFailed {
-            detail: "x".into(),
-        });
+        *runner.probe.lock().unwrap() = Err(ClaudeRunError::CommandFailed { detail: "x".into() });
         assert_eq!(
             get_probe(ProbePolicy::ForceFresh, &runner, &cache).state,
             ClaudeProbeState::CommandFailed

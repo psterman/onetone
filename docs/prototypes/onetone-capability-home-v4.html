@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OneTone · 此刻能叫的事</title>
+<style>
+:root{
+  --bg:#f2f4f2; --paper:#fffefa; --panel:#f8f9f7;
+  --ink:#18252d; --muted:#6f7c82; --faint:#9aa5aa; --line:#e0e6e3;
+  --accent:#127c75; --accent-soft:#e7f5f2;
+  --blue:#256fa8; --blue-soft:#edf5fb;
+  --amber:#a76819; --amber-soft:#fff5e5;
+  --violet:#6b5aa8; --violet-soft:#f0edf9;
+  --shadow:0 18px 45px rgba(22,42,51,.07);
+  --r-lg:20px; --r-md:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.55 "Segoe UI","Microsoft YaHei UI",system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit} button{cursor:pointer}
+button:focus-visible{outline:2px solid #2f9e94;outline-offset:2px}
+code{font:11px/1.5 ui-monospace,Consolas,monospace;background:#eef2f1;border-radius:5px;padding:1px 5px}
+
+.top{height:60px;display:flex;align-items:center;gap:14px;padding:0 20px;
+  background:#fffefa;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.brand{font-weight:760;font-size:19px;letter-spacing:-.4px;white-space:nowrap}
+.brand small{font-weight:450;color:var(--muted);font-size:13px;margin-left:7px}
+.fg{border-left:1px solid var(--line);padding-left:14px;font-weight:620;font-size:13px;white-space:nowrap}
+.fg small{display:block;font-weight:450;color:var(--muted);font-size:11px;margin-top:1px}
+.aim{margin-left:auto;display:flex;gap:8px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:640;white-space:nowrap}
+.pill.ok{background:var(--accent-soft);color:var(--accent)}
+.pill.wait{background:var(--blue-soft);color:var(--blue)}
+.pill i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.deliver{border:0;background:var(--ink);color:#fff;border-radius:10px;padding:9px 15px;font-weight:670;white-space:nowrap}
+
+.layout{display:grid;grid-template-columns:252px minmax(0,1fr) 272px;gap:16px;
+  max-width:1480px;margin:0 auto;padding:18px 20px 40px;align-items:start}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:16px 18px;box-shadow:var(--shadow)}
+.card + .card{margin-top:14px}
+h2{font-size:13px;margin:0 0 3px}
+.sub{color:var(--muted);font-size:11.5px;margin:0 0 12px}
+
+.agent{display:grid;grid-template-columns:9px 1fr auto;gap:9px;align-items:center;
+  padding:9px 0;border-top:1px solid var(--line)}
+.agent:first-of-type{border-top:0}
+.dot{width:8px;height:8px;border-radius:50%;background:#c6d0d4}
+.agent.need .dot{background:#e09a3c;box-shadow:0 0 0 3px rgba(224,154,60,.16)}
+.agent.run .dot{background:#4b93c9;box-shadow:0 0 0 3px rgba(75,147,201,.15)}
+.agent.idle .dot{background:#b9c4c8}
+.agent b{font-size:13px;display:block}
+.agent small{font-size:11px;color:var(--muted)}
+.st{font-size:10.5px;border-radius:999px;padding:3px 8px;white-space:nowrap}
+.st.need{background:var(--amber-soft);color:var(--amber)}
+.st.run{background:var(--blue-soft);color:var(--blue)}
+.st.idle{background:#eef1f0;color:#78858a}
+.anchor{margin-top:11px;padding-top:11px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted)}
+.anchor .row{display:flex;justify-content:space-between;padding:3px 0}
+.anchor b{color:var(--ink);font-weight:620}
+
+.why{background:var(--accent-soft);color:#0e5d58;border-radius:var(--r-md);
+  padding:11px 14px;font-size:12.5px;margin-bottom:14px;line-height:1.65}
+.why b{font-weight:750}
+.why code{background:#ffffffaa}
+
+.slot{border:1px solid var(--line);border-radius:var(--r-md);padding:13px 15px;margin-bottom:10px;background:#fff}
+.slot.hot{border-color:#b9dcd7;background:linear-gradient(#f4fbf9,#fff 60%)}
+.slot-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.slot-name{font-weight:700;font-size:15px}
+.slot-id{font:11px/1.4 ui-monospace,Consolas,monospace;color:#7b8a90;
+  background:#f2f5f4;border-radius:6px;padding:2px 6px}
+.slot-note{font-size:12px;color:var(--muted);margin-left:auto;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.ch{display:inline-flex;align-items:center;gap:5px;border-radius:8px;padding:4px 8px;
+  font-size:11.5px;border:1px solid transparent;white-space:nowrap}
+.ch .who{font-size:10px;opacity:.72;font-weight:700}
+.ch-key{background:#eef2f3;color:#42585c;border-color:#dbe2e4}
+.ch-voice{background:var(--violet-soft);color:#4f4091;border-color:#ddd5f2}
+.ch-pad{background:var(--blue-soft);color:var(--blue);border-color:#cfe2ef}
+.ch-cam{background:var(--amber-soft);color:var(--amber);border-color:#f0dcb8}
+.ch-off{background:#f3f5f4;color:#98a3a8;border-color:#e8ecea}
+
+.gap{margin-top:12px;border:1px dashed #d9c9a8;background:#fdfaf4;border-radius:var(--r-md);padding:12px 14px}
+.gap .t{font-size:12.5px;font-weight:700;color:var(--amber)}
+.gap .d{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.7}
+
+.chan{border:1px solid var(--line);border-radius:var(--r-md);padding:11px 13px;margin-bottom:9px;background:#fff}
+.chan-h{display:flex;align-items:center;gap:8px;font-weight:680;font-size:13px}
+.chan-h .on{margin-left:auto;font-size:10.5px;border-radius:999px;padding:3px 8px;background:var(--accent-soft);color:var(--accent)}
+.chan-h .off{margin-left:auto;font-size:10.5px;border-radius:999px;padding:3px 8px;background:#f0f2f2;color:#8b969c}
+.chan .how{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.7}
+.chan .note{font-size:11px;color:var(--amber);margin-top:7px;line-height:1.6}
+
+.switch{display:flex;gap:7px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.switch .lbl{font-size:11px;color:var(--faint);font-weight:700;letter-spacing:.05em}
+.switch button{border:1px solid var(--line);background:#fff;border-radius:9px;padding:6px 11px;font-size:12.5px;color:var(--muted)}
+.switch button.on{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:650}
+
+.scrim{position:fixed;inset:0;background:#18252d55;opacity:0;pointer-events:none;transition:.2s;z-index:30}
+.scrim.show{opacity:1;pointer-events:auto}
+.drawer{position:fixed;right:0;top:0;bottom:0;width:460px;background:var(--bg);z-index:40;
+  box-shadow:-24px 0 60px #18252d2e;transform:translateX(105%);transition:.26s;display:flex;flex-direction:column}
+.drawer.open{transform:none}
+.drawer-h{padding:22px 24px 16px;border-bottom:1px solid var(--line);display:flex}
+.drawer-h h2{font-size:18px;margin:0}
+.drawer-h p{margin:3px 0 0;font-size:11.5px;color:var(--muted)}
+.drawer-h .x{margin-left:auto;width:32px;height:32px;border:1px solid var(--line);background:#fff;border-radius:50%;font-size:17px}
+.drawer-b{padding:18px 24px;overflow:auto;flex:1}
+.blk{margin-bottom:18px}
+.blk h3{font-size:13px;margin:0 0 7px}
+.blk ul{margin:0;padding-left:18px;font-size:12px;color:var(--muted);line-height:1.9}
+.truth{background:#fffdf5;border:1px solid #efe1c0;border-radius:var(--r-md);padding:11px 13px;font-size:11.5px;color:#7a6329;line-height:1.7}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,10px);background:var(--ink);color:#fff;
+  padding:10px 15px;border-radius:11px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:82vw}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media(max-width:1180px){ .layout{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">OneTone<small>此刻能叫的事</small></div>
+  <div class="fg">Cursor · 首页方案<small>前台应用 · composer 已锚定</small></div>
+  <div class="aim">
+    <span class="pill ok"><i></i>输入瞄准可用</span>
+    <span class="pill wait"><i></i>Hook 已连接</span>
+    <button class="deliver" data-open="send">形成首次沟通</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <aside class="side">
+    <section class="card">
+      <h2>本地 Agent</h2>
+      <p class="sub">17+ AppChatProfile · 状态来自 PadStatus 与 Hook</p>
+
+      <div class="agent need">
+        <span class="dot"></span>
+        <span><b>Codex</b><small>首页方案 · 2 分钟前</small></span>
+        <span class="st need">需要你</span>
+      </div>
+      <div class="agent run">
+        <span class="dot"></span>
+        <span><b>Cursor</b><small>前台 · composer 已聚焦</small></span>
+        <span class="st run">进行中</span>
+      </div>
+      <div class="agent run">
+        <span class="dot"></span>
+        <span><b>Claude</b><small>重构官网导航 · 14 分钟</small></span>
+        <span class="st run">进行中</span>
+      </div>
+      <div class="agent idle">
+        <span class="dot"></span>
+        <span><b>Trae</b><small>上次 2 小时前</small></span>
+        <span class="st idle">空闲</span>
+      </div>
+      <div class="agent idle">
+        <span class="dot"></span>
+        <span><b>Aider</b><small>未连接 Hook</small></span>
+        <span class="st idle">读不到</span>
+      </div>
+
+      <div class="anchor">
+        <div class="row"><span>Cursor composer</span><b>已锚定</b></div>
+        <div class="row"><span>Codex composer</span><b>已锚定</b></div>
+        <div class="row"><span>Trae</span><b style="color:var(--faint)">未探测</b></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>这次要说的是</h2>
+      <p class="sub">标题取你第一句原话，未经总结</p>
+      <p style="font-size:14.5px;font-weight:640;margin:0 0 9px;line-height:1.45">
+        把首页从材料面板改成四通道控制台，别再让用户学四套东西</p>
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.75">
+        现在的问题不是没有材料，是四通道被讲成四个功能，用户以为要分别学。
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:11px">
+        <span class="ch ch-pad">简报 v2</span>
+        <span class="ch ch-key">Ctrl+Space</span>
+        <span class="ch ch-voice">开始说话</span>
+      </div>
+    </section>
+  </aside>
+
+  <section>
+    <div class="switch">
+      <span class="lbl">Agent 状态</span>
+      <button class="on" data-state="need">Codex 等你确认</button>
+      <button data-state="working">正在写代码</button>
+      <button data-state="idle">全部空闲</button>
+      <button data-state="cam">摄像头已开启</button>
+    </div>
+
+    <div class="why">
+      <b>同一件事，四种叫法。</b>
+      下面每一条都指向同一个 <code>slotId</code> —— 按实体键、喊口令、点 Pad 卡、做手势，
+      走的是同一段 dispatch。你不需要学四套东西，挑最顺手的那种叫法就行。
+    </div>
+
+    <div id="slots"></div>
+
+    <div class="gap">
+      <div class="t">◌ 一个真实存在的空位</div>
+      <div class="d">
+        硬件 Pad 上有 <code>UNDO</code> 键（<code>microKeyId: UNDO</code>），
+        但它的 <code>slotId</code> 现在是空的 —— 撤销这件事有硬件入口，没有能力绑定。
+        vibecoding 里「撤回刚才的改动」是高频动作，这里本该有一张卡。
+      </div>
+    </div>
+  </section>
+
+  <aside class="side">
+    <section class="card">
+      <h2>通道就绪</h2>
+      <p class="sub">四通道共用同一组 slot，不占用彼此的 decoder</p>
+
+      <div class="chan">
+        <div class="chan-h">⌨ 按键<span class="on">就绪</span></div>
+        <div class="how">低级钩子 + Raw Input + RegisterHotKey。键目录含字母键 / 功能键 / 标点 /
+          <code>Volume_Down</code> / 修饰键。</div>
+      </div>
+
+      <div class="chan">
+        <div class="chan-h">🎙 语音<span class="on">就绪</span></div>
+        <div class="how"><b style="color:var(--ink)">两条独立的链</b>：<br>
+          听写 PTT <code>Ctrl+Shift+D</code> → 字进 composer；<br>
+          闭集口令（Vosk KWS）→ 控制 agent。</div>
+        <div class="note">grammar 按 Hook 态过滤 —— 所以下面的可用项会随 agent 状态变化。</div>
+      </div>
+
+      <div class="chan">
+        <div class="chan-h">▦ Soft Pad<span class="on">就绪</span></div>
+        <div class="how">数字键盘真实布局：<code>ENC</code> / <code>AG00–AG05</code> /
+          <code>ACT06–ACT12</code>。Pad 键帽、迷你栏 chip 与实体键共享 <code>slotId</code>。</div>
+      </div>
+
+      <div class="chan">
+        <div class="chan-h">◉ 摄像头<span class="off" id="camState">未启用</span></div>
+        <div class="how">MediaPipe face landmarker，本机推理。真实可用动作只有四个：
+          <b>离席</b>（暂停语音 + 隐私屏）、<b>摇头</b>（取消）、<b>长眨</b>（激活）、<b>OK</b>（确认）。</div>
+        <div class="note">摄像头不是精确鼠标。区域停留运行时本轮不接，界面不会假装它是。</div>
+      </div>
+
+      <button class="deliver" style="width:100%" data-open="chan">看每条通道到底能做什么</button>
+    </section>
+  </aside>
+</main>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="drawer" id="chanDrawer">
+  <div class="drawer-h">
+    <div><h2>通道的真实边界</h2><p>能做 / 不能做，都写在这里</p></div>
+    <button class="x" data-close>×</button>
+  </div>
+  <div class="drawer-b">
+    <div class="blk">
+      <h3>⌨ 按键</h3>
+      <ul>
+        <li>键盘、鼠标侧键、音量键、组合键、手柄、轨迹球、蓝牙戒指</li>
+        <li>目录已排除：LButton、AutoTrigger、Launch_App1/2</li>
+      </ul>
+    </div>
+    <div class="blk">
+      <h3>🎙 语音</h3>
+      <ul>
+        <li>听写与口令<strong>不共用同一个 decoder</strong>：触发器融合、引擎不融合</li>
+        <li>声学命令：取消词、结束词、说完、丢本轮</li>
+        <li>本地引擎：Windows SAPI / 离线 Vosk / KWS，不上传</li>
+      </ul>
+      <div class="truth" style="margin-top:9px">
+        不做：与宿主自带麦克风并行双麦。两把麦意味着两套结束键，收益不抵成本。
+      </div>
+    </div>
+    <div class="blk">
+      <h3>▦ Soft Pad</h3>
+      <ul>
+        <li>真实已绑 slot：<code>summonCodex</code> / <code>quickChat</code> / <code>commandPalette</code> /
+          <code>newThread</code> / <code>quickSearch</code> / <code>stopOrSend</code> /
+          <code>cancel</code> / <code>pushToTalk</code></li>
+        <li>空 slot：<code>UNDO</code> / <code>PLUS</code> / <code>DOT</code> / <code>NAV_*</code></li>
+      </ul>
+    </div>
+    <div class="blk">
+      <h3>◉ 摄像头</h3>
+      <ul>
+        <li>MediaPipe 本地推理，触发：离席/回席、摇头、长眨、OK 手势、五指摊开、握拳、双眨</li>
+        <li>默认关闭，未启用不影响其他通道，也不降低总体可用判断</li>
+      </ul>
+      <div class="truth" style="margin-top:9px">
+        不做：把摄像头当精确鼠标。区域停留运行时本轮不接 —— 界面上不会出现「视线九宫格点击」这种承诺。
+      </div>
+    </div>
+    <div class="blk">
+      <h3>◎ 本地 Agent</h3>
+      <ul>
+        <li>17+ AppChatProfile：Cursor / Codex / Claude / MiniMax / Workbuddy / Trae / Windsurf /
+          Qoder / Gemini CLI / Cline / Roo / OpenCode / Copilot / Aider</li>
+        <li>每个 profile 记进程名、路径标记、激活键、composer 锚点、UIA 兼容性</li>
+        <li>新增一个应用 = 新增一个 profile，不改 dispatch 主体</li>
+      </ul>
+    </div>
+  </div>
+</aside>
+
+<aside class="drawer" id="sendDrawer">
+  <div class="drawer-h">
+    <div><h2>形成首次沟通</h2><p>同一份 v2 可以投多个 Agent，不创建新版本</p></div>
+    <button class="x" data-close>×</button>
+  </div>
+  <div class="drawer-b">
+    <div class="blk">
+      <h3>目标</h3>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <span class="ch ch-pad" data-tgt>Codex</span>
+        <span class="ch ch-pad" data-tgt>Cursor</span>
+        <span class="ch ch-pad" data-tgt>Claude</span>
+        <span class="ch ch-key" data-tgt>剪贴板</span>
+      </div>
+    </div>
+    <div class="blk">
+      <h3>这次会带过去什么</h3>
+      <ul>
+        <li>标题 + 你的话，原文发送，不改写</li>
+        <li>材料引用 3 项，按各自引用方式</li>
+        <li>保护边界 2 条，写进正文而不是藏在附件里</li>
+      </ul>
+    </div>
+    <div class="truth">
+      投递后 OneTone 只能确认「已复制」「已聚焦 composer」「已打开项目」。
+      真正的发送状态保持<strong>未知</strong>，除非 Codex 回 Hook。
+    </div>
+  </div>
+  <div style="padding:0 24px 22px">
+    <button class="deliver" style="width:100%" data-toast="已复制并聚焦 Codex composer；发送状态未知">
+      复制并聚焦 Codex
+    </button>
+  </div>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var $ = function(s,r){return (r||document).querySelector(s);};
+  var $$ = function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+  /* ---- slot 数据 ----
+     Pad 一列只使用 src/data/codex-micro-pad-layout.json 中真实存在的绑定：
+       summonCodex→ENC · quickChat→ACT06/AG02 · commandPalette→ACT07/AG00
+       cancel→ACT08/AG05 · newThread→AG01/ACT09 · quickSearch→AG03/SEARCH
+       stopOrSend→AG04/ACT12 · pushToTalk→ACT10
+     值为 null = 该通道在当前态下确实没有这个触发方式，不做虚构绑定。
+  */
+  var STATES = {
+    need: {
+      hook:'Codex 在等你确认 · grammar 已切到确认态',
+      rows:[
+        {id:'stopOrSend', name:'批准并继续', note:'Enter = 批准 Codex 的请求', hot:true,
+         ch:{keys:'Enter', voice:'「说完」', pad:'AG04 · ACT12', cam:null}},
+        {id:'cancel', name:'取消', note:'放弃这一轮', hot:true,
+         ch:{keys:'Esc', voice:'「取消」', pad:'AG05 · ACT08', cam:'摇头'}},
+        {id:'pushToTalk', name:'开始说话', note:'听写链 · 字进 composer', hot:false,
+         ch:{keys:'Ctrl+Shift+D', voice:'按住说话', pad:'ACT10', cam:null}},
+        {id:'quickSearch', name:'搜索', note:'项目内查找', hot:false,
+         ch:{keys:'Ctrl+P', voice:null, pad:'AG03 · SEARCH', cam:null}}
+      ]
+    },
+    working: {
+      hook:'Codex 正在写 · grammar 已切到执行态',
+      rows:[
+        {id:'stopOrSend', name:'发送', note:'结束这一轮输入', hot:true,
+         ch:{keys:'Enter', voice:'「说完」', pad:'AG04 · ACT12', cam:null}},
+        {id:'cancel', name:'取消', note:'打断当前执行', hot:true,
+         ch:{keys:'Esc', voice:'「取消」', pad:'AG05 · ACT08', cam:'摇头'}},
+        {id:'pushToTalk', name:'开始说话', note:'听写链 · 口述下一步', hot:true,
+         ch:{keys:'Ctrl+Shift+D', voice:'按住说话', pad:'ACT10', cam:null}},
+        {id:'commandPalette', name:'命令菜单', note:'Codex 官方 Ctrl+K', hot:false,
+         ch:{keys:'Ctrl+K', voice:null, pad:'AG00 · ACT07', cam:null}}
+      ]
+    },
+    idle: {
+      hook:'没有 Hook 活动 · grammar 回到空态',
+      rows:[
+        {id:'summonCodex', name:'召唤 Codex', note:'聚焦它的 composer', hot:true,
+         ch:{keys:'RAlt', voice:null, pad:'ENC', cam:null}},
+        {id:'pushToTalk', name:'开始说话', note:'没有任务时也能听写', hot:true,
+         ch:{keys:'Ctrl+Shift+D', voice:'按住说话', pad:'ACT10', cam:null}},
+        {id:'quickSearch', name:'搜索', note:'项目内查找', hot:false,
+         ch:{keys:'Ctrl+P', voice:null, pad:'AG03 · SEARCH', cam:null}},
+        {id:'newThread', name:'新建会话', note:'Codex 官方 Ctrl+N', hot:false,
+         ch:{keys:'Ctrl+N', voice:null, pad:'AG01 · ACT09', cam:null}}
+      ]
+    },
+    cam: {
+      hook:'摄像头已开启 · 手势并入同一组 slot',
+      rows:[
+        {id:'pushToTalk', name:'开始说话', note:'长眨即可激活', hot:true,
+         ch:{keys:'Ctrl+Shift+D', voice:'按住说话', pad:'ACT10', cam:'长眨'}},
+        {id:'cancel', name:'取消', note:'摇头丢弃本轮', hot:true,
+         ch:{keys:'Esc', voice:'「取消」', pad:'AG05 · ACT08', cam:'摇头'}},
+        {id:'(无 slotId)', name:'离席暂停', note:'摄像头专属 · 暂停语音 + 隐私屏', hot:false,
+         ch:{keys:null, voice:null, pad:null, cam:'离席'}},
+        {id:'quickSearch', name:'搜索', note:'项目内查找', hot:false,
+         ch:{keys:'Ctrl+P', voice:null, pad:'AG03 · SEARCH', cam:null}}
+      ]
+    }
+  };
+
+  var CH_LABEL = {keys:'键', voice:'令', pad:'Pad', cam:'手'};
+  var CAM_ON = {need:false, working:false, idle:false, cam:true};
+
+  /* 三种互不重叠的状态：可用 / 该通道未启用 / 本态确实没有 */
+  function chip(kind, val, channelOn){
+    var who = '<span class="who">' + CH_LABEL[kind] + '</span>';
+    if (!channelOn) return '<span class="ch ch-off">' + who + '未启用</span>';
+    if (val == null)  return '<span class="ch ch-off">' + who + '本态不可叫</span>';
+    return '<span class="ch ch-' + kind + '">' + who + esc(val) + '</span>';
+  }
+
+  function render(state){
+    var s = STATES[state];
+    var camOn = CAM_ON[state];
+    var html = s.rows.map(function(r){
+      var chips = ['keys','voice','pad','cam'].map(function(k){
+        return chip(k, r.ch[k], k === 'cam' ? camOn : true);
+      }).join('');
+      return '<div class="slot' + (r.hot ? ' hot' : '') + '">' +
+        '<div class="slot-top">' +
+          '<span class="slot-name">' + esc(r.name) + '</span>' +
+          '<span class="slot-id">' + esc(r.id) + '</span>' +
+          '<span class="slot-note">' + esc(r.note) + '</span>' +
+        '</div>' +
+        '<div class="chips">' + chips + '</div>' +
+      '</div>';
+    }).join('');
+    $('#slots').innerHTML =
+      '<section class="card"><h2>此刻能叫的事</h2>' +
+      '<p class="sub">' + esc(s.hook) + '</p>' + html + '</section>';
+
+    $('#camState').textContent = camOn ? '已启用' : '未启用';
+    $('#camState').className = camOn ? 'on' : 'off';
+    $$('.switch button').forEach(function(b){ b.classList.toggle('on', b.dataset.state === state); });
+  }
+
+  var tt;
+  function toast(m){ var e=$('#toast'); e.textContent=m; e.classList.add('show');
+    clearTimeout(tt); tt=setTimeout(function(){e.classList.remove('show');},2000); }
+
+  function open(k){ $('#' + k + 'Drawer').classList.add('open'); $('#scrim').classList.add('show'); }
+  function closeAll(){ $$('.drawer').forEach(function(d){d.classList.remove('open');});
+    $('#scrim').classList.remove('show'); }
+
+  document.addEventListener('click', function(e){
+    var sw = e.target.closest('[data-state]');
+    if (sw) { render(sw.dataset.state); return; }
+    var op = e.target.closest('[data-open]');
+    if (op) { open(op.dataset.open); return; }
+    if (e.target.closest('[data-close]') || e.target.id === 'scrim') { closeAll(); return; }
+    var tg = e.target.closest('[data-tgt]');
+    if (tg) { $$('[data-tgt]').forEach(function(x){x.style.outline='';});
+      tg.style.outline='2px solid #127c75'; toast('目标：' + tg.textContent); return; }
+    var t = e.target.closest('[data-toast]');
+    if (t) toast(t.dataset.toast);
+  });
+
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeAll(); });
+
+  render('need');
+})();
+</script>
+</body>
+</html>

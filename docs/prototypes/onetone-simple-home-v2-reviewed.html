@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 当前工作（评估批注版）</title>
+  <style>
+    :root{--bg:#f5f7f8;--paper:#fff;--ink:#18252d;--muted:#73818a;--line:#e1e7e9;--accent:#127c75;--accent-soft:#e7f5f2;--blue:#256fa8;--blue-soft:#edf5fb;--warn:#a76819;--warn-soft:#fff5e5;--shadow:0 18px 45px rgba(22,42,51,.08)}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "Segoe UI","Microsoft YaHei",sans-serif}
+    button,input{font:inherit}button{cursor:pointer}.shell{min-height:100vh;display:grid;grid-template-columns:210px minmax(0,1fr)}
+    aside{padding:24px 14px;background:#fbfcfc;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:28px}.brand{display:flex;align-items:center;gap:10px;padding:0 8px}.mark{width:32px;height:32px;border-radius:10px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:800}.brand b{display:block;font-size:15px}.brand small{display:block;color:var(--muted);font-size:11px}.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;text-align:left;border-radius:10px;padding:10px 12px;color:#66757d}.nav button.active,.nav button:hover{background:var(--accent-soft);color:var(--accent);font-weight:700}.nav .muted{margin-top:14px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#a0abb0;padding:8px 12px 3px}.aside-foot{margin-top:auto;color:#a0abb0;font-size:12px;padding:8px}
+    main{width:min(920px,100%);margin:0 auto;padding:38px 34px 60px}.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;gap:14px}.kicker{font-size:12px;color:var(--accent);font-weight:800;letter-spacing:.08em}.top h1{font-size:28px;letter-spacing:-.03em;margin:6px 0}.top p{margin:0;color:var(--muted)}.ghost{border:1px solid var(--line);border-radius:10px;background:var(--paper);color:#5e7079;padding:9px 12px}.ghost.on{background:var(--warn-soft);border-color:#e8d3a8;color:var(--warn);font-weight:700}.toggles{display:flex;gap:8px;flex-wrap:wrap}
+    .focus{background:var(--ink);color:#fff;border-radius:20px;padding:26px 28px;box-shadow:var(--shadow);margin-bottom:16px}.focus-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.focus h2{font-size:21px;line-height:1.3;margin:0 0 7px}.focus p{margin:0;color:#c2d0d5}.state{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.1);color:#d5ece8;font-size:12px;white-space:nowrap}.state i{width:7px;height:7px;border-radius:50%;background:#6ed0a4}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}.btn{border:1px solid transparent;border-radius:10px;padding:9px 14px;background:#fff;color:var(--ink);font-weight:700}.btn.primary{background:#78d2c4;color:#103a37}.btn.dark{background:rgba(255,255,255,.1);color:#e8f5f3;border-color:rgba(255,255,255,.22)}
+    .section{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin-top:14px;position:relative}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.section h3{font-size:14px;margin:0}.link{border:0;background:transparent;color:var(--blue);font-weight:700;padding:0}.result{display:grid;grid-template-columns:1fr auto;gap:15px;align-items:center}.result-title{font-weight:750}.result-meta{color:var(--muted);font-size:12px;margin-top:4px}.checks{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}.check{border-radius:999px;padding:5px 9px;background:#f1f5f5;color:#5b7373;font-size:12px}.check.ok{background:var(--accent-soft);color:var(--accent)}.check.warn{background:var(--warn-soft);color:var(--warn)}
+    .prompt{display:flex;gap:10px;align-items:center}.prompt input{min-width:0;flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 13px;outline:none;background:#fcfdfd}.prompt input:focus{border-color:#8ccbc3;box-shadow:0 0 0 3px var(--accent-soft)}.mic{border:0;background:var(--accent);color:#fff;border-radius:11px;padding:11px 15px;font-weight:800}.hint{font-size:12px;color:var(--muted);margin:9px 0 0}.controls{display:flex;gap:8px;flex-wrap:wrap}.control{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 11px;color:#5e7079}.control:hover{border-color:#9bcfc8;color:var(--accent)}
+    details{margin-top:14px;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:15px 18px}summary{cursor:pointer;color:#60727b;font-weight:700}.agent-row{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}.agent-row:last-child{border-bottom:0;padding-bottom:2px}.agent-name{font-weight:750}.agent-sub{font-size:12px;color:var(--muted);margin-top:3px}.agent-state{font-size:12px;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:5px 9px;white-space:nowrap}.footer-note{font-size:12px;color:#9aa5aa;margin-top:18px;text-align:center}
+
+    .supply{display:none;align-items:center;gap:5px;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:700;white-space:nowrap}
+    .supply.abs{position:absolute;top:14px;right:16px}
+    .supply.inline{display:none;vertical-align:middle;margin-left:8px}
+    .shell.ann .supply{display:inline-flex}
+    .supply.ok{background:#EAF3DE;color:#3B6D11}
+    .supply.wire{background:#FAEEDA;color:#854F0B}
+    .supply.fake{background:#FCEBEB;color:#A32D2D}
+    .shell.ann .has-badge{padding-right:150px}
+    .note{display:none;margin-top:12px;background:#fbfcfc;border:1px dashed #cfd8dc;border-radius:10px;padding:10px 12px;font-size:12px;color:#5e7079;line-height:1.6}
+    .shell.ann .note{display:block}
+    .note b{color:var(--ink);font-weight:700}
+    .note code{font-family:Consolas,monospace;font-size:11px;background:#eef2f3;padding:1px 4px;border-radius:4px}
+    .review{display:none;margin-top:22px;background:#fffdf7;border:1px solid #ecdcb8;border-radius:16px;padding:18px 20px}
+    .shell.ann .review{display:block}
+    .review h3{margin:0 0 12px;font-size:14px}
+    .rv{display:grid;gap:10px}
+    .rv-row{border-top:1px solid #f0e6d2;padding-top:10px}
+    .rv-row:first-child{border-top:0;padding-top:0}
+    .rv-tag{font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px;margin-right:8px}
+    .rv-tag.p0{background:#FCEBEB;color:#A32D2D}
+    .rv-tag.p1{background:#FAEEDA;color:#854F0B}
+    .rv-tag.p2{background:var(--blue-soft);color:var(--blue)}
+    .rv-from{color:#93a4b2;text-decoration:line-through}
+    .rv-to{font-weight:700}
+    .rv-why{color:var(--muted);font-size:12px;margin-top:3px}
+    @media(max-width:720px){.shell{grid-template-columns:1fr}aside{padding:14px 16px;border-right:0;border-bottom:1px solid var(--line);gap:12px}.nav{display:flex;overflow:auto}.nav .muted{display:none}.nav button{white-space:nowrap}.aside-foot{display:none}main{padding:24px 16px 40px}.top{flex-direction:column}.top h1{font-size:24px}.focus-head{display:block}.state{margin-top:16px}.result{grid-template-columns:1fr}.result .btn{width:100%}.prompt{align-items:stretch;flex-direction:column}.prompt input,.mic{width:100%}.supply.abs{position:static;margin-bottom:10px}}
+  </style>
+</head>
+<body>
+  <div class="shell" id="shell">
+    <aside>
+      <div class="brand"><div class="mark">一</div><div><b>一声 OneTone</b><small>让工作继续下去</small></div></div>
+      <nav class="nav" aria-label="主导航">
+        <button class="active">现在</button><button>工作记录</button><button>Agent</button><span class="muted">其他</span><button>设置</button>
+      </nav>
+      <div class="aside-foot">Ctrl + Space · 说话</div>
+    </aside>
+    <main>
+      <header class="top">
+        <div><div class="kicker">ONE TONE</div><h1>当前工作</h1><p>把想法变成可以确认的结果。</p></div>
+        <div class="toggles">
+          <button class="ghost" id="modeBtn">切换：有工作</button>
+          <button class="ghost" id="annBtn">显示评估标注</button>
+        </div>
+      </header>
+
+      <div id="scWorking">
+        <section class="focus" aria-labelledby="focus-title">
+          <div class="focus-head">
+            <div>
+              <h2 id="focus-title">正在继续：修复 voice-pilot 首页<span class="supply inline fake">零数据</span></h2>
+              <p>代码已经修改，还没有看预览。</p>
+            </div>
+            <span class="state"><i></i>等你确认</span>
+          </div>
+          <div class="actions"><button class="btn primary" data-toast="打开结果">查看结果</button><button class="btn dark" data-toast="进入下一轮修改">继续修改</button></div>
+          <div class="note"><b>标题这一行今天显示不出来。</b> <code>prompt_journal.observe_prompt</code> 无生产调用方，<code>bridge.rs:217</code> 只接收 event + session_id，不带文本；<code>title.rs:93</code> 因此退化为「项目 · 会话meta」。落地时这条必须带来源标记（估算/派生/观测），或直接写成「上一个已知动作」而不是假装知道任务名。</div>
+        </section>
+
+        <section class="section has-badge" aria-labelledby="result-title">
+          <span class="supply abs wire">能力已有，未接线</span>
+          <div class="section-head"><h3 id="result-title">刚刚完成</h3><button class="link" data-toast="打开全部改动">查看全部</button></div>
+          <div class="result">
+            <div>
+              <div class="result-title">修改了 4 个文件</div>
+              <div class="result-meta">首页状态展示 · 2 分钟前</div>
+              <div class="checks"><span class="check ok">✓ 检查通过</span><span class="check warn">⚠ 尚未预览</span></div>
+            </div>
+            <button class="btn" data-toast="打开预览">打开预览</button>
+          </div>
+          <div class="note"><b>文件数可以实现，检查通过不能。</b> <code>time_machine/git_ops.rs:64 count_porcelain_changes</code> 已经能数出改动文件数，只是没接到首页；但全仓库<b>没有任何测试/校验结果采集</b>（grep test_result / check_result 零命中），「✓ 检查通过」目前是纯虚构，是这份原型里唯一会打破诚实契约的元素。建议改成「未检查」或干脆不渲染，直到有真数据源。</div>
+        </section>
+
+        <section class="section has-badge" aria-labelledby="ask-title">
+          <span class="supply abs ok">今天就能给真数据</span>
+          <div class="section-head"><h3 id="ask-title">你还想让我做什么？</h3></div>
+          <div class="prompt"><input id="prompt" type="text" placeholder="输入下一步，或说出来……" aria-label="输入下一步" /><button class="mic" data-toast="开始听写">🎙 开始说</button></div>
+          <p class="hint">你可以说：把按钮改得更简单、运行测试、撤回刚才的修改。</p>
+          <div class="note"><b>这一块是整份原型最值钱的部分</b>，也是唯一不需要新数据源就能上线的地方。语音被降级成输入框旁边的一种方式，而不是页面主体 —— 这正好是「通道=执行手段」应有的位置。</div>
+        </section>
+
+        <section class="section has-badge" aria-labelledby="control-title">
+          <span class="supply abs ok">今天就能给真数据</span>
+          <div class="section-head"><h3 id="control-title">当前控制方式</h3></div>
+          <div class="controls"><button class="control" data-toast="已暂停 Agent">暂停</button><button class="control" data-toast="已继续 Agent">继续</button><button class="control" data-toast="已打开确认">确认</button><button class="control" data-toast="已取消操作">取消</button></div>
+          <p class="hint">快捷键 Ctrl + Space · Soft Pad 可用于确认和暂停。</p>
+          <div class="note"><b>四个按钮没有宾语，而且同屏出现三个「继续」</b>（这里是「继续」、焦点卡是「继续修改」、Agent 行是「可继续」）。控制动作应当挂在焦点那个会话上，例如「暂停 Codex 的这个任务」；独立的控制条只留「确认 / 撤销」两个跨场景动作。</div>
+        </section>
+
+        <details>
+          <summary>查看当前 Agent<span class="supply inline wire">能力已有，仅两家</span></summary>
+          <div class="agent-row"><div><div class="agent-name">Codex</div><div class="agent-sub">正在处理 voice-pilot 首页</div></div><span class="agent-state">可继续</span></div>
+          <div class="agent-row"><div><div class="agent-name">Claude</div><div class="agent-sub">没有需要你处理的事项</div></div><span class="agent-state">空闲</span></div>
+          <div class="note"><b>折叠方向对，但摘要要给出圈层计数。</b> 产品定位是「监视 + 控制」双支柱，收起后用户就失去了「圈里还有谁」的一眼可见。建议 summary 写「查看 9 个 Agent · 2 个在跑」；另外 <code>can_resume</code> 实际只有 Claude + Codex 通过，其余 7 家会落到「不可继续」，需要提前设计它们的行样式。</div>
+        </details>
+        <p class="footer-note">通道是控制方式，结果才是首页要关注的事情。</p>
+      </div>
+
+      <div id="scEmpty" hidden>
+        <section class="focus" aria-labelledby="empty-title">
+          <div class="focus-head">
+            <div>
+              <h2 id="empty-title">还没有正在进行的工作</h2>
+              <p>说出你想做成的事，或者直接接着上一次继续。</p>
+            </div>
+            <span class="state"><i style="background:#9bb4b8"></i>空闲</span>
+          </div>
+          <div class="actions"><button class="btn primary" data-toast="开始听写">说出想法</button><button class="btn dark" data-toast="打开工作记录">从工作记录继续</button></div>
+          <div class="note"><b>这份原稿没画空态，而冷启动大概率落在空态。</b> 原因：<code>agent_attention/store.rs</code> 是内存态（<code>Instant::now()</code> + <code>prune_expired</code>），应用重启后 lifecycle 全空，直到下一个事件进来；保鲜期也只有 1–2 分钟。空态因此不是边缘场景，是每天第一次打开的常态，必须作为一等公民设计。</div>
+        </section>
+
+        <section class="section has-badge">
+          <span class="supply abs wire">能力已有，未接线</span>
+          <div class="section-head"><h3>可以继续的工作</h3><button class="link" data-toast="打开工作记录">查看全部</button></div>
+          <div class="result">
+            <div><div class="result-title">voice-pilot · 2 小时前</div><div class="result-meta">最后一个已知动作已记录，会话活动信息在重启后不可复原</div></div>
+            <button class="btn" data-toast="恢复会话">继续</button>
+          </div>
+          <div class="note">这一句是<b>诚实降级</b>的标准语气，参考现有 <code>limitationReason</code> 的表达方式：不要因为读不到就说成「空闲」，要说清楚「读不到」。</div>
+        </section>
+
+        <section class="section has-badge" aria-labelledby="ask-title2">
+          <span class="supply abs ok">今天就能给真数据</span>
+          <div class="section-head"><h3 id="ask-title2">你想让我做什么？</h3></div>
+          <div class="prompt"><input type="text" placeholder="输入想法，或说出来……" aria-label="输入想法" /><button class="mic" data-toast="开始听写">🎙 开始说</button></div>
+          <p class="hint">不需要先选 Agent，也不需要懂 OneTone 的分类。</p>
+        </section>
+        <p class="footer-note">空态也要能立刻开工，这是原稿里最重要的一块缺口。</p>
+      </div>
+
+      <div class="review">
+        <h3>落地前必改（按优先级）</h3>
+        <div class="rv">
+          <div class="rv-row">
+            <div><span class="rv-tag p0">P0</span><span class="rv-from">✓ 检查通过</span> → <span class="rv-to">「未检查」或不渲染</span></div>
+            <div class="rv-why">全仓库无校验结果采集，这是原型里唯一会打破诚实契约的元素。</div>
+          </div>
+          <div class="rv-row">
+            <div><span class="rv-tag p0">P0</span><span class="rv-from">正在继续：修复首页</span> → <span class="rv-to">「上一个已知动作」+ 来源标记</span></div>
+            <div class="rv-why">先接 <code>observe_prompt</code> 的水源（hook 带 prompt 文本），否则标题恒为派生值。</div>
+          </div>
+          <div class="rv-row">
+            <div><span class="rv-tag p1">P1</span><span class="rv-from">暂停 / 继续 / 确认 / 取消（无宾语）</span> → <span class="rv-to">挂到当前会话；控制条只留确认 / 撤销</span></div>
+            <div class="rv-why">同屏三个「继续」并列，语义互相打架。</div>
+          </div>
+          <div class="rv-row">
+            <div><span class="rv-tag p1">P1</span><span class="rv-from">查看当前 Agent</span> → <span class="rv-to">查看 9 个 Agent · 2 个在跑</span></div>
+            <div class="rv-why">双支柱定位要求监视层一眼可见，折叠不等于消失。</div>
+          </div>
+          <div class="rv-row">
+            <div><span class="rv-tag p2">P2</span><span class="rv-from">只画有工作的情境</span> → <span class="rv-to">补齐冷启动空态为一等公民</span></div>
+            <div class="rv-why">lifecycle 是内存态，重启即空，空态是每日首开的常态。</div>
+          </div>
+          <div class="rv-row">
+            <div><span class="rv-tag p2">P2</span><span class="rv-from">页脚「通道是控制方式…」</span> → <span class="rv-to">移出 UI</span></div>
+            <div class="rv-why">立场正确，但写在页脚等于对用户讲道理，应当只留在设计文档里。</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const toast = document.createElement('div'); toast.style.cssText='position:fixed;right:20px;bottom:20px;background:#18252d;color:#fff;padding:11px 14px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none;max-width:70vw'; document.body.appendChild(toast);
+    let timer; function show(msg){ toast.textContent=msg; toast.style.opacity=1; clearTimeout(timer); timer=setTimeout(()=>{toast.style.opacity=0},1800); }
+    document.addEventListener('click', e => { const el=e.target.closest('[data-toast]'); if(!el)return; show(el.dataset.toast); });
+    document.querySelectorAll('input[type=text]').forEach(inp=>{ inp.addEventListener('keydown', e => { if(e.key==='Enter' && e.currentTarget.value.trim()){ show('已记录：'+e.currentTarget.value.trim()); e.currentTarget.value=''; } }); });
+    const annBtn=document.getElementById('annBtn'), modeBtn=document.getElementById('modeBtn');
+    annBtn.addEventListener('click',()=>{ const on=document.getElementById('shell').classList.toggle('ann'); annBtn.classList.toggle('on',on); annBtn.textContent=on?'隐藏评估标注':'显示评估标注'; });
+    let empty=false; modeBtn.addEventListener('click',()=>{ empty=!empty; document.getElementById('scWorking').hidden=empty; document.getElementById('scEmpty').hidden=!empty; modeBtn.textContent=empty?'切换：冷启动空态':'切换：有工作'; modeBtn.classList.toggle('on',empty); });
+  </script>
+</body>
+</html>

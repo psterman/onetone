@@ -46,7 +46,8 @@ pub fn ensure_token() -> Result<String, String> {
     let path = token_path();
     if let Ok(existing) = fs::read_to_string(&path) {
         let trimmed = existing.trim().to_string();
-        if trimmed.starts_with(TOKEN_VERSION_PREFIX) && trimmed.len() > TOKEN_VERSION_PREFIX.len() + 8
+        if trimmed.starts_with(TOKEN_VERSION_PREFIX)
+            && trimmed.len() > TOKEN_VERSION_PREFIX.len() + 8
         {
             *cached().lock().unwrap_or_else(|e| e.into_inner()) = Some(trimmed.clone());
             return Ok(trimmed);

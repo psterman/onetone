@@ -25,8 +25,7 @@ pub struct DataRootStatus {
 }
 
 static EFFECTIVE_ROOT: OnceLock<PathBuf> = OnceLock::new();
-static PENDING_RESTART: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
+static PENDING_RESTART: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Canonical AppData config dir (always the pointer home), e.g. %APPDATA%\com.onetone\app
 pub fn canonical_app_dir() -> PathBuf {
@@ -64,10 +63,45 @@ fn validate_root(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Resolve once per process: pointer if valid, else default AppData dir.
+/// Pure parse for E2E data-root override (no OnceLock / no env reads).
+/// Active only when `bfinal_flag == "1"` and `raw_path` is a non-empty absolute path.
+pub fn parse_e2e_data_root_override(bfinal_flag: Option<&str>, raw_path: Option<&str>) -> Option<PathBuf> {
+    if bfinal_flag != Some("1") {
+        return None;
+    }
+    let raw = raw_path?.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    let root = PathBuf::from(raw);
+    if validate_root(&root).is_err() {
+        return None;
+    }
+    Some(root)
+}
+
+#[cfg(feature = "bfinal_e2e")]
+fn e2e_data_root_override() -> Option<PathBuf> {
+    let bfinal = std::env::var("ONETONE_BFINAL_E2E").ok();
+    let raw = std::env::var("ONETONE_E2E_DATA_ROOT").ok();
+    parse_e2e_data_root_override(bfinal.as_deref(), raw.as_deref())
+}
+
+#[cfg(not(feature = "bfinal_e2e"))]
+fn e2e_data_root_override() -> Option<PathBuf> {
+    // Production builds ignore ONETONE_E2E_DATA_ROOT even if set.
+    let _ = std::env::var("ONETONE_E2E_DATA_ROOT");
+    None
+}
+
+/// Resolve once per process: E2E override (feature+gate) → pointer if valid → default AppData.
 pub fn effective_data_root() -> PathBuf {
     EFFECTIVE_ROOT
         .get_or_init(|| {
+            if let Some(e2e) = e2e_data_root_override() {
+                let _ = fs::create_dir_all(&e2e);
+                return e2e;
+            }
             if let Some(custom) = read_pointer() {
                 if validate_root(&custom).is_ok() {
                     let _ = fs::create_dir_all(&custom);
@@ -324,5 +358,49 @@ mod tests {
         let err = migrate_into(&t).unwrap_err();
         assert!(err.contains("settings.json"));
         let _ = fs::remove_dir_all(&t);
+    }
+
+    #[test]
+    fn e2e_override_ignored_without_bfinal_gate() {
+        let abs = if cfg!(windows) {
+            r"E:\voice-pilot\logs\b-acceptance\data-root"
+        } else {
+            "/tmp/onetone-e2e-data-root"
+        };
+        assert!(parse_e2e_data_root_override(None, Some(abs)).is_none());
+        assert!(parse_e2e_data_root_override(Some("0"), Some(abs)).is_none());
+        assert!(parse_e2e_data_root_override(Some(""), Some(abs)).is_none());
+    }
+
+    #[test]
+    fn e2e_override_ignores_relative_or_empty() {
+        assert!(parse_e2e_data_root_override(Some("1"), Some("relative/path")).is_none());
+        assert!(parse_e2e_data_root_override(Some("1"), Some("")).is_none());
+        assert!(parse_e2e_data_root_override(Some("1"), Some("   ")).is_none());
+        assert!(parse_e2e_data_root_override(Some("1"), None).is_none());
+    }
+
+    #[test]
+    fn e2e_override_accepts_absolute_with_dual_gate() {
+        let abs = if cfg!(windows) {
+            r"E:\voice-pilot\logs\b-acceptance\data-root"
+        } else {
+            "/tmp/onetone-e2e-data-root"
+        };
+        let got = parse_e2e_data_root_override(Some("1"), Some(abs)).expect("absolute+gate");
+        assert_eq!(got, PathBuf::from(abs));
+        assert!(got.is_absolute());
+    }
+
+    #[test]
+    fn validate_root_requires_absolute() {
+        assert!(validate_root(Path::new("")).is_err());
+        assert!(validate_root(Path::new("relative")).is_err());
+        let abs = if cfg!(windows) {
+            Path::new(r"E:\voice-pilot\logs\b-acceptance\data-root")
+        } else {
+            Path::new("/tmp/onetone-e2e-data-root")
+        };
+        assert!(validate_root(abs).is_ok());
     }
 }

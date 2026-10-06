@@ -10,10 +10,8 @@ use serde_json::Value;
 const WB_ENDPOINT: &str = "https://copilot.tencent.com";
 const WB_ENDPOINT_INTL: &str = "https://copilot.tencent.com";
 const WB_PRODUCT: &str = "p_tcaca";
-const WB_SECRET_KEY: &str =
-    r#"secret://{"extensionId":"tencent-cloud.coding-copilot","key":"planning-genie.new.accessTokencn"}"#;
-const WB_SECRET_KEY_ALT: &str =
-    r#"secret://{"extensionId":"tencent-cloud.coding-copilot","key":"planning-genie.new.accessToken"}"#;
+const WB_SECRET_KEY: &str = r#"secret://{"extensionId":"tencent-cloud.coding-copilot","key":"planning-genie.new.accessTokencn"}"#;
+const WB_SECRET_KEY_ALT: &str = r#"secret://{"extensionId":"tencent-cloud.coding-copilot","key":"planning-genie.new.accessToken"}"#;
 
 /// Official PackageCode constants (CodeBuddy / WorkBuddy web client).
 const PKG_FREE: &str = "TCACA_code_001_PqouKr6QWV";
@@ -367,17 +365,17 @@ fn classify_package(code: &str, name: &str) -> (PkgKind, &'static str) {
 
 fn wb_membership_label(account_type: Option<&str>, groups: &[PkgAgg]) -> String {
     let at = account_type.unwrap_or("").to_ascii_lowercase();
-    if at.contains("ultimate") || at.contains("exclusive") || at.contains("enterprise") || at.contains("premise")
+    if at.contains("ultimate")
+        || at.contains("exclusive")
+        || at.contains("enterprise")
+        || at.contains("premise")
     {
         return "企业".into();
     }
     if groups.iter().any(|g| matches!(g.kind, PkgKind::Pro)) {
         return "Pro".into();
     }
-    if groups
-        .iter()
-        .any(|g| matches!(g.kind, PkgKind::Trial))
-    {
+    if groups.iter().any(|g| matches!(g.kind, PkgKind::Trial)) {
         return "体验版".into();
     }
     if groups.iter().any(|g| matches!(g.kind, PkgKind::Free)) {
@@ -577,8 +575,7 @@ pub fn parse_workbuddy_checkin(
         .unwrap_or(0.0)
         .round() as i64;
     let daily = number(data.get("daily_credit").unwrap_or(&Value::Null)).unwrap_or(0.0);
-    let today_credit =
-        number(data.get("today_credit").unwrap_or(&Value::Null)).unwrap_or(daily);
+    let today_credit = number(data.get("today_credit").unwrap_or(&Value::Null)).unwrap_or(daily);
     let period_total = number(data.get("total_credits").unwrap_or(&Value::Null));
     let week_days = number(data.get("week_checkin_days").unwrap_or(&Value::Null))
         .map(|n| n.round() as i64)
@@ -746,10 +743,7 @@ fn workbuddy_from_disk_and_api() -> Result<AgentUsageSnapshot, String> {
         .ok_or_else(|| "WorkBuddy login expired".to_string())?;
     let user_id = string_at(&value, &["/account/uid", "/uid"])
         .ok_or_else(|| "WorkBuddy user id missing".to_string())?;
-    let account_type = string_at(
-        &value,
-        &["/account/type", "/account/accountType", "/type"],
-    );
+    let account_type = string_at(&value, &["/account/type", "/account/accountType", "/type"]);
     let nickname = string_at(&value, &["/account/nickname", "/nickname"]);
     let enterprise_id = string_at(&value, &["/account/enterpriseId", "/enterpriseId"]);
     let domain = string_at(&value, &["/auth/domain", "/domain"]);
@@ -1037,10 +1031,18 @@ mod tests {
         assert!(snap.message.contains("今日 +100"), "{}", snap.message);
         assert!(snap.message.contains("本期 300"), "{}", snap.message);
         assert!(snap.message.contains("本周 3/7"), "{}", snap.message);
-        assert!(snap.message.contains("活动 Buddy加油站"), "{}", snap.message);
+        assert!(
+            snap.message.contains("活动 Buddy加油站"),
+            "{}",
+            snap.message
+        );
         assert!(snap.message.contains("截止 9/29"), "{}", snap.message);
         assert!(snap.message.contains("账号 小白"), "{}", snap.message);
-        assert!(snap.message.contains("类型 personal/free"), "{}", snap.message);
+        assert!(
+            snap.message.contains("类型 personal/free"),
+            "{}",
+            snap.message
+        );
         assert!(
             !snap.message.contains(" · free"),
             "payment must not nest · separator: {}",
@@ -1075,7 +1077,11 @@ mod tests {
         assert!(snap.message.contains("签到 未签"), "{}", snap.message);
         assert!(snap.message.contains("可领 100"), "{}", snap.message);
         assert!(snap.message.contains("连签 2 天"), "{}", snap.message);
-        assert!(snap.message.contains("类型 personal/free"), "{}", snap.message);
+        assert!(
+            snap.message.contains("类型 personal/free"),
+            "{}",
+            snap.message
+        );
     }
 
     #[test]

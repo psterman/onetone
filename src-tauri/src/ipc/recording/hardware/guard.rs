@@ -41,12 +41,7 @@ pub(crate) fn emit_record_seen(
     window.emit("to_js", &payload).ok();
 }
 
-pub(crate) fn emit_record_probe(
-    window: &tauri::WebviewWindow,
-    stage: &str,
-    key: &str,
-    note: &str,
-) {
+pub(crate) fn emit_record_probe(window: &tauri::WebviewWindow, stage: &str, key: &str, note: &str) {
     window
         .emit(
             "to_js",

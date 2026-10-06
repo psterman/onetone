@@ -39,9 +39,9 @@ pub fn cmd_action_history_list(
         before_ts,
         hours,
     );
-    serde_json::to_value(result).unwrap_or_else(|_| {
-        serde_json::json!({ "entries": [], "hasMore": false, "error": "serialize failed" })
-    })
+    serde_json::to_value(result).unwrap_or_else(
+        |_| serde_json::json!({ "entries": [], "hasMore": false, "error": "serialize failed" }),
+    )
 }
 
 #[tauri::command]
@@ -102,9 +102,8 @@ pub fn cmd_action_history_analyze_summary(
     mapping_id: Option<String>,
 ) -> serde_json::Value {
     let mid = opt_str(mapping_id);
-    serde_json::to_value(analyze_summary(hours, limit, mid.as_deref())).unwrap_or_else(|_| {
-        serde_json::json!({ "ok": false, "reason": "serialize_failed" })
-    })
+    serde_json::to_value(analyze_summary(hours, limit, mid.as_deref()))
+        .unwrap_or_else(|_| serde_json::json!({ "ok": false, "reason": "serialize_failed" }))
 }
 
 #[tauri::command]
@@ -114,9 +113,8 @@ pub fn cmd_action_history_analyze_optimization(
     mapping_id: Option<String>,
 ) -> serde_json::Value {
     let mid = opt_str(mapping_id);
-    serde_json::to_value(analyze_optimization(hours, limit, mid.as_deref())).unwrap_or_else(|_| {
-        serde_json::json!({ "ok": false, "reason": "serialize_failed" })
-    })
+    serde_json::to_value(analyze_optimization(hours, limit, mid.as_deref()))
+        .unwrap_or_else(|_| serde_json::json!({ "ok": false, "reason": "serialize_failed" }))
 }
 
 #[tauri::command]
@@ -127,7 +125,6 @@ pub fn cmd_action_history_analyze_chat(
     mapping_id: Option<String>,
 ) -> serde_json::Value {
     let mid = opt_str(mapping_id);
-    serde_json::to_value(analyze_chat(&question, hours, limit, mid.as_deref())).unwrap_or_else(
-        |_| serde_json::json!({ "ok": false, "reason": "serialize_failed" }),
-    )
+    serde_json::to_value(analyze_chat(&question, hours, limit, mid.as_deref()))
+        .unwrap_or_else(|_| serde_json::json!({ "ok": false, "reason": "serialize_failed" }))
 }

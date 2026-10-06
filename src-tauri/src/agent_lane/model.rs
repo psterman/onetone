@@ -31,7 +31,11 @@ impl LaneKey {
             // A provider session id is the stable identity; workspace is metadata.
             return format!("{}:session:{}", self.provider.as_str(), session);
         }
-        format!("{}:workspace:{}", self.provider.as_str(), self.workspace_id.trim())
+        format!(
+            "{}:workspace:{}",
+            self.provider.as_str(),
+            self.workspace_id.trim()
+        )
     }
 }
 

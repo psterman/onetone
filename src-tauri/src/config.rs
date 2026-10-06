@@ -1407,10 +1407,18 @@ pub struct MappingEntry {
     )]
     pub codex_micro_pad: Option<CodexMicroPadConfig>,
     /// Soft Pad → Time Machine folder bind (absolute workspace path). Capsules stay folder-scoped.
-    #[serde(rename = "timeMachineWorkspace", default, skip_serializing_if = "String::is_empty")]
+    #[serde(
+        rename = "timeMachineWorkspace",
+        default,
+        skip_serializing_if = "String::is_empty"
+    )]
     pub time_machine_workspace: String,
     /// Which capture-tab item is shown on Keys step-02 hero keycap.
-    #[serde(rename = "captureHeroRef", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "captureHeroRef",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub capture_hero_ref: Option<CaptureHeroRef>,
     /// Oral-command whitelist while Soft Pad mic / voiceCommand session is armed.
     /// Soft slots may carry phrase overrides in `say`; prompt/bind say lives on peer/binding.
@@ -1777,10 +1785,18 @@ pub struct CodexMicroPadConfig {
     #[serde(default)]
     pub keys: Vec<CodexMicroPadKeyRoute>,
     /// Cursor Soft Pad「我的常见」slot ids. `None` = use FE defaults; `Some([])` = user cleared.
-    #[serde(default, rename = "commonSlotIds", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "commonSlotIds",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub common_slot_ids: Option<Vec<String>>,
     /// User-created Soft Pad shortcuts (`custom_*`), shown in「我的常见」; not Soft Pad key routes by themselves.
-    #[serde(default, rename = "customShortcuts", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        rename = "customShortcuts",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub custom_shortcuts: Vec<CodexMicroPadCustomShortcut>,
     /// User-pinned lane preferences (not runtime slot assignments).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -2913,12 +2929,7 @@ impl ComposerAnchor {
             self.slots[slot] = None;
         }
         if self.active_point().is_none() {
-            if let Some((i, _)) = self
-                .slots
-                .iter()
-                .enumerate()
-                .find(|(_, s)| s.is_some())
-            {
+            if let Some((i, _)) = self.slots.iter().enumerate().find(|(_, s)| s.is_some()) {
                 self.active = i;
             } else {
                 self.active = 0;
@@ -3422,10 +3433,7 @@ impl SoundsConfig {
                 _ => fallback.into(),
             };
         }
-        norm_policy(
-            &mut self.categories.need_attention.policy,
-            "when_unseen",
-        );
+        norm_policy(&mut self.categories.need_attention.policy, "when_unseen");
         norm_policy(&mut self.categories.task_failed.policy, "when_unseen");
         norm_policy(&mut self.categories.task_done.policy, "when_unseen");
         norm_policy(&mut self.categories.confirm.policy, "always");
@@ -4485,7 +4493,7 @@ impl Default for VoiceConfig {
                 app_target_id: String::new(),
                 display_name: String::new(),
                 scenario_kind: String::new(),
-               voice_allow_bring_up_target: false,
+                voice_allow_bring_up_target: false,
                 app_behavior_rules: vec![],
                 voice_override: None,
                 camera_override: None,
@@ -4664,8 +4672,7 @@ pub fn effective_mapping_for_trigger(
 /// Mirrors JS `findGlobalBaselineMapping` — not an app-scenario mapping.
 pub fn find_global_baseline_mapping<'a>(cfg: &'a VoiceConfig) -> Option<&'a MappingEntry> {
     fn is_baseline(m: &MappingEntry) -> bool {
-        m.id != crate::codex_numpad_layer::SOFT_PAD_GLOBAL_MAPPING_ID
-            && !is_app_scenario_mapping(m)
+        m.id != crate::codex_numpad_layer::SOFT_PAD_GLOBAL_MAPPING_ID && !is_app_scenario_mapping(m)
     }
     let active = cfg.active_scene_id.trim();
     if !active.is_empty() {
@@ -4865,9 +4872,11 @@ pub fn find_preferred_workflow_scenario_for_dispatch<'a>(
         if !is_workflow_app_target(app_id) {
             continue;
         }
-        if let Some(m) = cfg.active_mappings().into_iter().find(|m| {
-            is_app_scenario_mapping(m) && m.app_target_id.trim() == *app_id
-        }) {
+        if let Some(m) = cfg
+            .active_mappings()
+            .into_iter()
+            .find(|m| is_app_scenario_mapping(m) && m.app_target_id.trim() == *app_id)
+        {
             return Some(m);
         }
     }
@@ -5066,7 +5075,7 @@ impl VoiceConfig {
                 app_target_id: String::new(),
                 display_name: String::new(),
                 scenario_kind: String::new(),
-               voice_allow_bring_up_target: false,
+                voice_allow_bring_up_target: false,
                 app_behavior_rules: vec![],
                 voice_override: None,
                 camera_override: None,
@@ -5308,8 +5317,7 @@ impl VoiceConfig {
         if self.voice_end.commit_key.trim().is_empty() {
             self.voice_end.commit_key = default_voice_end_commit_key();
         } else {
-            self.voice_end.commit_key =
-                normalize_voice_end_commit_key(&self.voice_end.commit_key);
+            self.voice_end.commit_key = normalize_voice_end_commit_key(&self.voice_end.commit_key);
         }
         if self.voice_end.target_key.trim().is_empty() {
             self.voice_end.target_key = default_voice_end_target_key();
@@ -5533,7 +5541,8 @@ impl VoiceConfig {
         }
         if let Some(ref identity) = foreground {
             if self.follow_foreground_app_scenario {
-                candidates.retain(|m| !mapping_shadowed_by_foreground_app_scenario(self, m, identity));
+                candidates
+                    .retain(|m| !mapping_shadowed_by_foreground_app_scenario(self, m, identity));
             }
         }
         if candidates.is_empty() {
@@ -5550,7 +5559,11 @@ impl VoiceConfig {
             }
         }
         if self.follow_foreground_app_scenario {
-            if let Some(hit) = candidates.iter().copied().find(|m| is_app_scenario_mapping(m)) {
+            if let Some(hit) = candidates
+                .iter()
+                .copied()
+                .find(|m| is_app_scenario_mapping(m))
+            {
                 return Some(hit);
             }
         } else if let Some(hit) = candidates
@@ -5744,8 +5757,9 @@ impl VoiceConfig {
         };
         let canonical = canonical_trigger(&entry.trigger_key);
         let physical: HashSet<String> = mapping_physical_bindings(entry).into_iter().collect();
-        let target_physical: HashSet<String> =
-            mapping_target_physical_bindings(entry).into_iter().collect();
+        let target_physical: HashSet<String> = mapping_target_physical_bindings(entry)
+            .into_iter()
+            .collect();
         let mut conflicts = Vec::new();
 
         for other in self.mappings.iter().filter(|m| m.enabled && m.id != id) {
@@ -5990,8 +6004,7 @@ fn mapping_json_has_assists(raw: &serde_json::Value, arr_key: &str, id: &str) ->
         return false;
     };
     arr.iter().any(|row| {
-        row.get("id").and_then(|v| v.as_str()) == Some(id)
-            && (row.get("assists").is_some())
+        row.get("id").and_then(|v| v.as_str()) == Some(id) && (row.get("assists").is_some())
     })
 }
 
@@ -6166,9 +6179,10 @@ pub fn merge_save_payload(existing: &VoiceConfig, json: &str) -> Option<VoiceCon
             // FE already kept another row for this preset app — do not resurrect a sibling.
             let preset = prev.app_target_id.trim();
             if !preset.is_empty() && preset != "custom" {
-                let same_app_on_incoming = cfg.mappings.iter().any(|m| {
-                    m.app_target_id.trim() == preset
-                });
+                let same_app_on_incoming = cfg
+                    .mappings
+                    .iter()
+                    .any(|m| m.app_target_id.trim() == preset);
                 if same_app_on_incoming {
                     continue;
                 }
@@ -6336,10 +6350,7 @@ pub fn load_config() -> VoiceConfig {
         Ok(raw) => serde_json::from_str::<VoiceConfig>(&raw).unwrap_or_default(),
         Err(_) => VoiceConfig::default(),
     };
-    let bloated = cfg
-        .mappings
-        .iter()
-        .any(|m| m.agent_bindings.len() > 512);
+    let bloated = cfg.mappings.iter().any(|m| m.agent_bindings.len() > 512);
     let wl_before = serde_json::to_string(&cfg.workspace_layouts).unwrap_or_default();
     cfg.migrate();
     let wl_after = serde_json::to_string(&cfg.workspace_layouts).unwrap_or_default();
@@ -7425,7 +7436,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -7435,13 +7446,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            });
+        });
         let conflicts = cfg.conflicts_on_enable(&cfg.mappings[0].id);
         assert!(!conflicts.is_empty());
         assert!(matches!(conflicts[0].kind, ConflictKind::PhysicalKey));
@@ -7478,7 +7489,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -7488,13 +7499,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            });
+        });
         cfg.enable_mapping("b");
         assert!(!cfg.mappings.iter().find(|m| m.id == id_a).unwrap().enabled);
         assert!(cfg.mappings.iter().find(|m| m.id == "b").unwrap().enabled);
@@ -7530,7 +7541,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: Some(VoiceOverride {
                 wake_phrases: Some(vec!["????".into()]),
@@ -7543,13 +7554,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            });
+        });
         cfg.normalize();
         let m = cfg
             .mappings
@@ -7591,7 +7602,9 @@ mod tests {
         });
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.iter().any(|b| b == "PageDown"));
-        assert!(!bindings.iter().any(|b| crate::key_chord::is_hold_to_talk_chord(b)));
+        assert!(!bindings
+            .iter()
+            .any(|b| crate::key_chord::is_hold_to_talk_chord(b)));
     }
 
     #[test]
@@ -7630,8 +7643,8 @@ mod tests {
             ("pushToTalk", "Ctrl+Shift+D"),
         ] {
             m.agent_bindings.push(AgentBinding {
-            action_instance_id: String::new(),
-            action_args: None,
+                action_instance_id: String::new(),
+                action_args: None,
                 slot_id: slot.into(),
                 action_id: slot.into(),
                 trigger_type: "key".into(),
@@ -7669,7 +7682,9 @@ mod tests {
         assert!(crate::key_chord::is_pass_through_app_key("Enter"));
         assert!(crate::key_chord::is_pass_through_app_key("Escape"));
         assert!(!crate::key_chord::is_pass_through_app_key("Ctrl+Alt+N"));
-        assert!(crate::key_chord::is_app_synthesize_target_chord("Ctrl+Alt+N"));
+        assert!(crate::key_chord::is_app_synthesize_target_chord(
+            "Ctrl+Alt+N"
+        ));
     }
 
     #[test]
@@ -7691,7 +7706,9 @@ mod tests {
         });
         let bindings = hotkey_registration_bindings(&m);
         assert!(
-            !bindings.iter().any(|b| crate::key_chord::chords_equivalent(b, "Ctrl+V")),
+            !bindings
+                .iter()
+                .any(|b| crate::key_chord::chords_equivalent(b, "Ctrl+V")),
             "Ctrl+V custom Soft Pad shortcut must not RegisterHotKey: {bindings:?}"
         );
     }
@@ -7905,7 +7922,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -7915,13 +7932,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            });
+        });
         let result = cfg.cycle_scheme_same_trigger();
         assert!(result.is_some());
         let (_, to_id) = result.unwrap();
@@ -7961,7 +7978,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -8012,7 +8029,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -8038,13 +8055,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            };
+        };
         let bindings = mapping_physical_bindings(&m);
         assert_eq!(bindings, vec!["F1".to_string()]);
     }
@@ -8078,7 +8095,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -8088,13 +8105,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            };
+        };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         let bindings = mapping_physical_bindings(&m);
         assert_eq!(
@@ -8259,7 +8276,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -8269,13 +8286,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            });
+        });
         let result = cfg.select_scheme("b");
         assert!(result.is_some());
         assert_eq!(cfg.active_scene_id, "b");
@@ -8314,7 +8331,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -8324,13 +8341,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            });
+        });
         cfg.enable_mapping("b");
         assert_eq!(cfg.active_scene_id, active_id);
         assert!(cfg.mappings.iter().find(|m| m.id == "b").unwrap().enabled);
@@ -8365,7 +8382,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -8375,13 +8392,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            };
+        };
         apply_peripheral_autotrigger(&mut m, "Volume_Down");
         assert!(!mapping_physical_bindings(&m).is_empty());
         assert!(effective_physical_bindings(&m).is_empty());
@@ -8645,7 +8662,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -8655,13 +8672,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            };
+        };
         let bindings = hotkey_registration_bindings(&m);
         assert!(bindings.contains(&"Gamepad_A".to_string()));
         assert!(bindings.contains(&"dev:xinput:0::Gamepad_A".to_string()));
@@ -8699,7 +8716,7 @@ mod tests {
             app_target_id: String::new(),
             display_name: String::new(),
             scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -8709,13 +8726,13 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            });
+        });
         let hit0 = cfg.find_mapping_for_event(&crate::press_gesture::PhysicalKeyEvent {
             is_keyup: false,
             device: Some("xinput:0".into()),
@@ -8896,7 +8913,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: "codex-chat".into(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -8906,13 +8923,13 @@ mod tests {
             agent_provider_id: "codex".into(),
             agent_bindings: vec![],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            });
+        });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         cfg.follow_foreground_app_scenario = true;
         assert!(mapping_shadowed_by_foreground_app_scenario(
@@ -8971,7 +8988,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: "codex-chat".into(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -8980,8 +8997,8 @@ mod tests {
             agent_template_id: "codex-micro-13".into(),
             agent_provider_id: "codex".into(),
             agent_bindings: vec![AgentBinding {
-            action_instance_id: String::new(),
-            action_args: None,
+                action_instance_id: String::new(),
+                action_args: None,
                 slot_id: "pushToTalk".into(),
                 action_id: "startDictation".into(),
                 trigger_type: "key".into(),
@@ -8991,13 +9008,13 @@ mod tests {
                 activation_scope: "foregroundApp".into(),
             }],
             codex_micro_pad: None,
-                time_machine_workspace: String::new(),
+            time_machine_workspace: String::new(),
             capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            });
+        });
         let fg = test_identity(Some("codex-chat"), "Codex.exe");
         cfg.follow_foreground_app_scenario = true;
         let hit = find_app_scenario_for_foreground(&cfg, &fg).expect("codex scenario");
@@ -9008,7 +9025,8 @@ mod tests {
         assert_eq!(workflow, "codex-chat");
         cfg.follow_foreground_app_scenario = false;
         assert!(find_app_scenario_for_foreground(&cfg, &fg).is_none());
-        let dispatch_hit = find_app_scenario_for_dispatch(&cfg, &fg).expect("dispatch still finds scene");
+        let dispatch_hit =
+            find_app_scenario_for_dispatch(&cfg, &fg).expect("dispatch still finds scene");
         assert_eq!(dispatch_hit.id, "codex-scene");
     }
 
@@ -9042,7 +9060,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: "cursor-chat".into(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -9053,7 +9071,7 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
             time_machine_workspace: String::new(),
-        capture_hero_ref: None,
+            capture_hero_ref: None,
             gesture_modes: None,
             oral_command_scheme: None,
             target_actions: vec![],
@@ -9571,7 +9589,7 @@ mod tests {
             double_click_ms: default_double_click_ms(),
             ime_preset_id: String::new(),
             app_target_id: "wechat".into(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -9587,7 +9605,7 @@ mod tests {
             oral_command_scheme: None,
             target_actions: vec![],
             assists: vec![],
-            };
+        };
         let json = serde_json::to_string(&mapping).expect("serialize");
         assert!(json.contains("timeMachineWorkspace"));
         let back: MappingEntry = serde_json::from_str(&json).expect("deserialize");
@@ -9728,257 +9746,292 @@ mod tests {
         assert_eq!(kept.preview_pcm_b64.as_deref(), Some(even_b64.as_str()));
     }
 }
-    #[test]
-    fn mapping_channel_mode_flags_default_true_and_round_trip() {
-        let legacy: MappingEntry = serde_json::from_str(r#"{"id":"legacy"}"#).expect("legacy mapping");
-        assert!(legacy.key_mode_enabled);
-        assert!(legacy.voice_mode_enabled);
+#[test]
+fn mapping_channel_mode_flags_default_true_and_round_trip() {
+    let legacy: MappingEntry = serde_json::from_str(r#"{"id":"legacy"}"#).expect("legacy mapping");
+    assert!(legacy.key_mode_enabled);
+    assert!(legacy.voice_mode_enabled);
 
-        let edited: MappingEntry = serde_json::from_str(
-            r#"{"id":"edited","keyModeEnabled":false,"voiceModeEnabled":false}"#,
-        )
-        .expect("edited mapping");
-        let json = serde_json::to_value(&edited).expect("serialize mapping");
-        assert_eq!(json["keyModeEnabled"], false);
-        assert_eq!(json["voiceModeEnabled"], false);
+    let edited: MappingEntry =
+        serde_json::from_str(r#"{"id":"edited","keyModeEnabled":false,"voiceModeEnabled":false}"#)
+            .expect("edited mapping");
+    let json = serde_json::to_value(&edited).expect("serialize mapping");
+    assert_eq!(json["keyModeEnabled"], false);
+    assert_eq!(json["voiceModeEnabled"], false);
+}
+
+// ────────── target action sequence (added 2026-09) ──────────
+
+fn fixture_mapping(target_key: &str, target_actions: Vec<Action>) -> MappingEntry {
+    let mut m = MappingEntry {
+        id: "test".into(),
+        label: String::new(),
+        group: default_group(),
+        trigger_key: "Ctrl+Shift+D".into(),
+        target_key: target_key.into(),
+        enabled: true,
+        key_mode_enabled: true,
+        voice_mode_enabled: true,
+        order: 0,
+        trigger_mode: TriggerMode::Tap,
+        trigger_source: None,
+        source_key: String::new(),
+        source_time: String::new(),
+        interval_ms: default_interval_ms(),
+        enter_delay_ms: default_enter_delay_ms(),
+        cancel_enabled: true,
+        auto_enter_enabled: true,
+        switch_keys: vec![],
+        native_key_restore: false,
+        trigger_device: String::new(),
+        long_press_ms: default_long_press_ms(),
+        double_click_ms: default_double_click_ms(),
+        ime_preset_id: String::new(),
+        app_target_id: String::new(),
+        display_name: String::new(),
+        scenario_kind: String::new(),
+        voice_allow_bring_up_target: false,
+        app_behavior_rules: vec![],
+        voice_override: None,
+        camera_override: None,
+        voice_commands: vec![],
+        acoustic_voice_commands: vec![],
+        agent_template_id: String::new(),
+        agent_provider_id: String::new(),
+        agent_bindings: vec![],
+        codex_micro_pad: None,
+        time_machine_workspace: String::new(),
+        capture_hero_ref: None,
+        gesture_modes: None,
+        oral_command_scheme: None,
+        target_actions,
+        assists: vec![],
+    };
+    m
+}
+
+#[test]
+fn effective_target_actions_legacy_target_key_folds_to_single_key() {
+    let m = fixture_mapping("Ctrl+Enter", vec![]);
+    let acts = m.effective_target_actions();
+    assert_eq!(acts.len(), 1, "legacy single key should fold");
+    match &acts[0] {
+        Action::Key { value } => assert_eq!(value, "Ctrl+Enter"),
+        _ => panic!("expected Key, got {:?}", acts[0]),
     }
+}
 
-    // ────────── target action sequence (added 2026-09) ──────────
-
-    fn fixture_mapping(target_key: &str, target_actions: Vec<Action>) -> MappingEntry {
-        let mut m = MappingEntry {
-            id: "test".into(),
-            label: String::new(),
-            group: default_group(),
-            trigger_key: "Ctrl+Shift+D".into(),
-            target_key: target_key.into(),
-            enabled: true,
-            key_mode_enabled: true,
-            voice_mode_enabled: true,
-            order: 0,
-            trigger_mode: TriggerMode::Tap,
-            trigger_source: None,
-            source_key: String::new(),
-            source_time: String::new(),
-            interval_ms: default_interval_ms(),
-            enter_delay_ms: default_enter_delay_ms(),
-            cancel_enabled: true,
-            auto_enter_enabled: true,
-            switch_keys: vec![],
-            native_key_restore: false,
-            trigger_device: String::new(),
-            long_press_ms: default_long_press_ms(),
-            double_click_ms: default_double_click_ms(),
-            ime_preset_id: String::new(),
-            app_target_id: String::new(),
-            display_name: String::new(),
-            scenario_kind: String::new(),
-           voice_allow_bring_up_target: false,
-            app_behavior_rules: vec![],
-            voice_override: None,
-            camera_override: None,
-            voice_commands: vec![],
-            acoustic_voice_commands: vec![],
-            agent_template_id: String::new(),
-            agent_provider_id: String::new(),
-            agent_bindings: vec![],
-            codex_micro_pad: None,
-            time_machine_workspace: String::new(),
-            capture_hero_ref: None,
-            gesture_modes: None,
-            oral_command_scheme: None,
-            target_actions,
-            assists: vec![],
-        };
-        m
-    }
-
-    #[test]
-    fn effective_target_actions_legacy_target_key_folds_to_single_key() {
-        let m = fixture_mapping("Ctrl+Enter", vec![]);
-        let acts = m.effective_target_actions();
-        assert_eq!(acts.len(), 1, "legacy single key should fold");
-        match &acts[0] {
-            Action::Key { value } => assert_eq!(value, "Ctrl+Enter"),
-            _ => panic!("expected Key, got {:?}", acts[0]),
-        }
-    }
-
-    #[test]
-    fn effective_target_actions_explicit_list_wins_over_legacy() {
-        let m = fixture_mapping(
-            "Ctrl+Enter",
-            vec![
-                Action::Key { value: "Ctrl+Shift+D".into() },
-                Action::Text { value: "继续".into() },
-                Action::Delay { ms: 200 },
-                Action::Key { value: "Enter".into() },
-            ],
-        );
-        let acts = m.effective_target_actions();
-        assert_eq!(acts.len(), 4);
-        assert_eq!(acts[0].display(), "Key(Ctrl+Shift+D)");
-        assert_eq!(acts[1].display(), "Text(继续)");
-        assert_eq!(acts[2].display(), "Delay(200ms)");
-        assert_eq!(acts[3].display(), "Key(Enter)");
-    }
-
-    #[test]
-    fn effective_target_actions_empty_when_nothing_set() {
-        let m = fixture_mapping("", vec![]);
-        assert!(m.effective_target_actions().is_empty());
-    }
-
-    #[test]
-    fn effective_target_actions_trims_whitespace_target_key() {
-        let m = fixture_mapping("   Ctrl+Enter   ", vec![]);
-        let acts = m.effective_target_actions();
-        assert_eq!(acts.len(), 1);
-        match &acts[0] {
-            Action::Key { value } => assert_eq!(value, "Ctrl+Enter"),
-            _ => panic!("expected Key"),
-        }
-    }
-
-    #[test]
-    fn action_serde_roundtrip_text_and_delay() {
-        let original = vec![
-            Action::Key { value: "Ctrl+Enter".into() },
-            Action::Text { value: "继续 + more".into() },
-            Action::Delay { ms: 1500 },
-            Action::Open {
-                kind: "url".into(),
-                value: "https://example.com".into(),
+#[test]
+fn effective_target_actions_explicit_list_wins_over_legacy() {
+    let m = fixture_mapping(
+        "Ctrl+Enter",
+        vec![
+            Action::Key {
+                value: "Ctrl+Shift+D".into(),
             },
-            Action::Open {
-                kind: "folder".into(),
-                value: r"C:\Users".into(),
+            Action::Text {
+                value: "继续".into(),
             },
-        ];
-        let json = serde_json::to_string(&original).expect("serialize");
-        // Tagged form: each entry has a "type" discriminator.
-        assert!(json.contains(r#""type":"key""#));
-        assert!(json.contains(r#""type":"text""#));
-        assert!(json.contains(r#""type":"delay""#));
-        assert!(json.contains(r#""type":"open""#));
-        assert!(json.contains(r#""kind":"url""#));
-        let back: Vec<Action> = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(back, original);
-    }
+            Action::Delay { ms: 200 },
+            Action::Key {
+                value: "Enter".into(),
+            },
+        ],
+    );
+    let acts = m.effective_target_actions();
+    assert_eq!(acts.len(), 4);
+    assert_eq!(acts[0].display(), "Key(Ctrl+Shift+D)");
+    assert_eq!(acts[1].display(), "Text(继续)");
+    assert_eq!(acts[2].display(), "Delay(200ms)");
+    assert_eq!(acts[3].display(), "Key(Enter)");
+}
 
-    #[test]
-    fn mapping_legacy_json_without_target_actions_loads_cleanly() {
-        // Pre-2026-09 config shape: only `targetKey`, no `targetActions` field.
-        let json = r#"{
+#[test]
+fn effective_target_actions_empty_when_nothing_set() {
+    let m = fixture_mapping("", vec![]);
+    assert!(m.effective_target_actions().is_empty());
+}
+
+#[test]
+fn effective_target_actions_trims_whitespace_target_key() {
+    let m = fixture_mapping("   Ctrl+Enter   ", vec![]);
+    let acts = m.effective_target_actions();
+    assert_eq!(acts.len(), 1);
+    match &acts[0] {
+        Action::Key { value } => assert_eq!(value, "Ctrl+Enter"),
+        _ => panic!("expected Key"),
+    }
+}
+
+#[test]
+fn action_serde_roundtrip_text_and_delay() {
+    let original = vec![
+        Action::Key {
+            value: "Ctrl+Enter".into(),
+        },
+        Action::Text {
+            value: "继续 + more".into(),
+        },
+        Action::Delay { ms: 1500 },
+        Action::Open {
+            kind: "url".into(),
+            value: "https://example.com".into(),
+        },
+        Action::Open {
+            kind: "folder".into(),
+            value: r"C:\Users".into(),
+        },
+    ];
+    let json = serde_json::to_string(&original).expect("serialize");
+    // Tagged form: each entry has a "type" discriminator.
+    assert!(json.contains(r#""type":"key""#));
+    assert!(json.contains(r#""type":"text""#));
+    assert!(json.contains(r#""type":"delay""#));
+    assert!(json.contains(r#""type":"open""#));
+    assert!(json.contains(r#""kind":"url""#));
+    let back: Vec<Action> = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(back, original);
+}
+
+#[test]
+fn mapping_legacy_json_without_target_actions_loads_cleanly() {
+    // Pre-2026-09 config shape: only `targetKey`, no `targetActions` field.
+    let json = r#"{
             "id":"legacy",
             "triggerKey":"Ctrl+Shift+D",
             "targetKey":"Ctrl+Enter"
         }"#;
-        let m: MappingEntry = serde_json::from_str(json).expect("legacy json");
-        assert_eq!(m.target_key, "Ctrl+Enter");
-        assert!(m.target_actions.is_empty(), "new field defaults to empty");
-        let acts = m.effective_target_actions();
-        assert_eq!(acts.len(), 1);
-        assert_eq!(acts[0].display(), "Key(Ctrl+Enter)");
-    }
+    let m: MappingEntry = serde_json::from_str(json).expect("legacy json");
+    assert_eq!(m.target_key, "Ctrl+Enter");
+    assert!(m.target_actions.is_empty(), "new field defaults to empty");
+    let acts = m.effective_target_actions();
+    assert_eq!(acts.len(), 1);
+    assert_eq!(acts[0].display(), "Key(Ctrl+Enter)");
+}
 
-    #[test]
-    fn mapping_new_json_with_target_actions_survives_roundtrip() {
-        let mut m = fixture_mapping("", vec![
-            Action::Key { value: "Ctrl+Enter".into() },
+#[test]
+fn mapping_new_json_with_target_actions_survives_roundtrip() {
+    let mut m = fixture_mapping(
+        "",
+        vec![
+            Action::Key {
+                value: "Ctrl+Enter".into(),
+            },
             Action::Delay { ms: 200 },
-        ]);
-        m.label = "roundtrip".into();
-        let json = serde_json::to_string(&m).expect("serialize mapping");
-        let back: MappingEntry = serde_json::from_str(&json).expect("deserialize mapping");
-        assert_eq!(back.target_actions.len(), 2);
-        assert_eq!(back.effective_target_actions(), m.effective_target_actions());
-    }
+        ],
+    );
+    m.label = "roundtrip".into();
+    let json = serde_json::to_string(&m).expect("serialize mapping");
+    let back: MappingEntry = serde_json::from_str(&json).expect("deserialize mapping");
+    assert_eq!(back.target_actions.len(), 2);
+    assert_eq!(
+        back.effective_target_actions(),
+        m.effective_target_actions()
+    );
+}
 
-    #[test]
-    fn is_mapping_complete_accepts_text_only_sequence() {
-        let mut m = fixture_mapping("", vec![Action::Text {
+#[test]
+fn is_mapping_complete_accepts_text_only_sequence() {
+    let mut m = fixture_mapping(
+        "",
+        vec![Action::Text {
             value: "继续".into(),
-        }]);
-        m.trigger_key = "F13".into();
-        m.target_key.clear();
-        assert!(is_mapping_complete(&m));
-        m.target_actions.clear();
-        assert!(!is_mapping_complete(&m));
-    }
+        }],
+    );
+    m.trigger_key = "F13".into();
+    m.target_key.clear();
+    assert!(is_mapping_complete(&m));
+    m.target_actions.clear();
+    assert!(!is_mapping_complete(&m));
+}
 
-    #[test]
-    fn target_physical_bindings_expands_actions_and_skips_text_delay() {
-        let m = fixture_mapping("", vec![
-            Action::Key { value: "Ctrl+Enter".into() },
-            Action::Text { value: "继续".into() },
+#[test]
+fn target_physical_bindings_expands_actions_and_skips_text_delay() {
+    let m = fixture_mapping(
+        "",
+        vec![
+            Action::Key {
+                value: "Ctrl+Enter".into(),
+            },
+            Action::Text {
+                value: "继续".into(),
+            },
             Action::Delay { ms: 200 },
-            Action::Key { value: "Ctrl+Enter".into() }, // dedupe within mapping
-        ]);
-        let pbs = mapping_target_physical_bindings(&m);
-        assert_eq!(pbs, vec!["Ctrl".to_string(), "Enter".to_string()]);
-    }
+            Action::Key {
+                value: "Ctrl+Enter".into(),
+            }, // dedupe within mapping
+        ],
+    );
+    let pbs = mapping_target_physical_bindings(&m);
+    assert_eq!(pbs, vec!["Ctrl".to_string(), "Enter".to_string()]);
+}
 
-    #[test]
-    fn target_physical_bindings_falls_back_to_legacy_target_key() {
-        let m = fixture_mapping("Ctrl+Shift+D", vec![]);
-        let pbs = mapping_target_physical_bindings(&m);
-        assert_eq!(
-            pbs,
-            vec!["Ctrl".to_string(), "Shift".to_string(), "D".to_string()]
-        );
-    }
+#[test]
+fn target_physical_bindings_falls_back_to_legacy_target_key() {
+    let m = fixture_mapping("Ctrl+Shift+D", vec![]);
+    let pbs = mapping_target_physical_bindings(&m);
+    assert_eq!(
+        pbs,
+        vec!["Ctrl".to_string(), "Shift".to_string(), "D".to_string()]
+    );
+}
 
-    #[test]
-    fn conflicts_on_enable_detects_cross_mapping_target_chord_collision() {
-        let mut cfg = VoiceConfig::default();
-        // Mapping A: trigger RAlt, target Ctrl+Enter (single legacy form)
-        cfg.mappings[0].id = "a".into();
-        cfg.mappings[0].trigger_key = "RAlt".into();
-        cfg.mappings[0].target_key = "Ctrl+Enter".into();
-        cfg.mappings[0].enabled = true;
-        // Mapping B: trigger RCtrl, target_actions contains Ctrl+Enter at step 2
-        let mut b = cfg.mappings[0].clone();
-        b.id = "b".into();
-        b.trigger_key = "RCtrl".into();
-        b.target_key.clear();
-        b.target_actions = vec![
-            Action::Key { value: "F1".into() },
-            Action::Key { value: "Ctrl+Enter".into() },
-            Action::Text { value: "x".into() },
-        ];
-        cfg.mappings.push(b);
-        let conflicts = cfg.conflicts_on_enable("a");
-        let kinds: Vec<&str> = conflicts.iter().map(|c| c.kind.as_str()).collect();
-        assert!(
-            kinds.contains(&"targetPhysical"),
-            "expected targetPhysical conflict, got {:?}",
-            kinds
-        );
-    }
+#[test]
+fn conflicts_on_enable_detects_cross_mapping_target_chord_collision() {
+    let mut cfg = VoiceConfig::default();
+    // Mapping A: trigger RAlt, target Ctrl+Enter (single legacy form)
+    cfg.mappings[0].id = "a".into();
+    cfg.mappings[0].trigger_key = "RAlt".into();
+    cfg.mappings[0].target_key = "Ctrl+Enter".into();
+    cfg.mappings[0].enabled = true;
+    // Mapping B: trigger RCtrl, target_actions contains Ctrl+Enter at step 2
+    let mut b = cfg.mappings[0].clone();
+    b.id = "b".into();
+    b.trigger_key = "RCtrl".into();
+    b.target_key.clear();
+    b.target_actions = vec![
+        Action::Key { value: "F1".into() },
+        Action::Key {
+            value: "Ctrl+Enter".into(),
+        },
+        Action::Text { value: "x".into() },
+    ];
+    cfg.mappings.push(b);
+    let conflicts = cfg.conflicts_on_enable("a");
+    let kinds: Vec<&str> = conflicts.iter().map(|c| c.kind.as_str()).collect();
+    assert!(
+        kinds.contains(&"targetPhysical"),
+        "expected targetPhysical conflict, got {:?}",
+        kinds
+    );
+}
 
-    #[test]
-    fn conflicts_on_enable_no_target_conflict_for_disjoint_actions() {
-        let mut cfg = VoiceConfig::default();
-        cfg.mappings[0].id = "a".into();
-        cfg.mappings[0].trigger_key = "RAlt".into();
-        cfg.mappings[0].target_key = "Ctrl+Enter".into();
-        cfg.mappings[0].enabled = true;
-        let mut b = cfg.mappings[0].clone();
-        b.id = "b".into();
-        b.trigger_key = "RCtrl".into();
-        b.target_key.clear();
-        b.target_actions = vec![
-            Action::Key { value: "F1".into() },
-            Action::Text { value: "继续".into() },
-            Action::Key { value: "Enter".into() },
-        ];
-        cfg.mappings.push(b);
-        let conflicts = cfg.conflicts_on_enable("a");
-        let kinds: Vec<&str> = conflicts.iter().map(|c| c.kind.as_str()).collect();
-        assert!(
-            !kinds.contains(&"targetPhysical"),
-            "Ctrl+Enter vs F1/Enter must not collide (Enter ≠ Ctrl+Enter in this rule); got {:?}",
-            kinds
-        );
-    }
+#[test]
+fn conflicts_on_enable_no_target_conflict_for_disjoint_actions() {
+    let mut cfg = VoiceConfig::default();
+    cfg.mappings[0].id = "a".into();
+    cfg.mappings[0].trigger_key = "RAlt".into();
+    cfg.mappings[0].target_key = "Ctrl+Enter".into();
+    cfg.mappings[0].enabled = true;
+    let mut b = cfg.mappings[0].clone();
+    b.id = "b".into();
+    b.trigger_key = "RCtrl".into();
+    b.target_key.clear();
+    b.target_actions = vec![
+        Action::Key { value: "F1".into() },
+        Action::Text {
+            value: "继续".into(),
+        },
+        Action::Key {
+            value: "Enter".into(),
+        },
+    ];
+    cfg.mappings.push(b);
+    let conflicts = cfg.conflicts_on_enable("a");
+    let kinds: Vec<&str> = conflicts.iter().map(|c| c.kind.as_str()).collect();
+    assert!(
+        !kinds.contains(&"targetPhysical"),
+        "Ctrl+Enter vs F1/Enter must not collide (Enter ≠ Ctrl+Enter in this rule); got {:?}",
+        kinds
+    );
+}

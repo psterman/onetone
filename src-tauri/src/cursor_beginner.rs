@@ -7,8 +7,8 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, WebviewWindow};
 
-use crate::app_chat_workflow::{self, CURSOR_APP_TARGET_ID};
 use crate::agent::semantic::ActionChannel;
+use crate::app_chat_workflow::{self, CURSOR_APP_TARGET_ID};
 use crate::config::{self, VoiceConfig};
 use crate::AppState;
 
@@ -207,9 +207,8 @@ pub fn cursor_habit_active(cfg: &VoiceConfig) -> bool {
     if id.is_empty() {
         return false;
     }
-    cfg.find_mapping_by_id(id).is_some_and(|m| {
-        m.enabled && m.app_target_id.trim() == CURSOR_APP_TARGET_ID
-    })
+    cfg.find_mapping_by_id(id)
+        .is_some_and(|m| m.enabled && m.app_target_id.trim() == CURSOR_APP_TARGET_ID)
 }
 
 pub fn should_prefer_cursor_soft_pad(cfg: &VoiceConfig) -> bool {
@@ -359,7 +358,10 @@ pub fn is_beginner_voice_phrase(text: &str) -> bool {
 }
 
 /// All beginner phrases for KWS grammar (static inject when Cursor is detected).
-pub fn push_beginner_grammar_phrases(out: &mut Vec<String>, seen: &mut std::collections::HashSet<String>) {
+pub fn push_beginner_grammar_phrases(
+    out: &mut Vec<String>,
+    seen: &mut std::collections::HashSet<String>,
+) {
     if !probe_ok() {
         return;
     }
@@ -616,7 +618,8 @@ fn chord_for_beginner_slot(cfg: &config::VoiceConfig, mapping_id: &str, slot_id:
             return b.trigger_binding.trim().to_string();
         }
     }
-    crate::agent::bindings_build::default_key_for_scenario(CURSOR_APP_TARGET_ID, slot_id).to_string()
+    crate::agent::bindings_build::default_key_for_scenario(CURSOR_APP_TARGET_ID, slot_id)
+        .to_string()
 }
 
 fn inject_beginner_hotkey(
@@ -671,10 +674,7 @@ pub fn run_slot(
                 Some(mapping_id.as_str())
             };
             let _ = crate::agent::layer1_native::ensure_mapping_target_foreground(
-                state,
-                window,
-                mid,
-                true,
+                state, window, mid, true,
             );
             std::thread::sleep(std::time::Duration::from_millis(80));
             chord_ok = crate::keyboard::send_chord(CANCEL_GENERATION_CHORD, duration_ms);
@@ -1017,9 +1017,7 @@ pub fn run_slot(
             let reason = if ok {
                 "executed".to_string()
             } else {
-                result
-                    .reason_code
-                    .unwrap_or_else(|| "failed".to_string())
+                result.reason_code.unwrap_or_else(|| "failed".to_string())
             };
             (ok, reason, result.detail)
         };
@@ -1040,7 +1038,8 @@ pub fn run_slot(
         }
         return out;
     }
-    if let Err(err) = app_chat_workflow::focus_composer_only(&app, CURSOR_APP_TARGET_ID, duration_ms)
+    if let Err(err) =
+        app_chat_workflow::focus_composer_only(&app, CURSOR_APP_TARGET_ID, duration_ms)
     {
         crate::app_log::log_line(
             state.as_ref(),
@@ -1071,9 +1070,7 @@ pub fn run_slot(
         let reason = if ok {
             "executed".to_string()
         } else {
-            result
-                .reason_code
-                .unwrap_or_else(|| "failed".to_string())
+            result.reason_code.unwrap_or_else(|| "failed".to_string())
         };
         (ok, reason, result.detail)
     };
@@ -1352,10 +1349,22 @@ mod tests {
 
     #[test]
     fn voice_aliases_match_slots() {
-        assert_eq!(matches_beginner_phrase("麦克风").map(|d| d.slot_id), Some("pushToTalk"));
-        assert_eq!(matches_beginner_phrase("新建").map(|d| d.slot_id), Some("newThread"));
-        assert_eq!(matches_beginner_phrase("但是").map(|d| d.slot_id), Some("continue"));
-        assert_eq!(matches_beginner_phrase("取消").map(|d| d.slot_id), Some("cancelListen"));
+        assert_eq!(
+            matches_beginner_phrase("麦克风").map(|d| d.slot_id),
+            Some("pushToTalk")
+        );
+        assert_eq!(
+            matches_beginner_phrase("新建").map(|d| d.slot_id),
+            Some("newThread")
+        );
+        assert_eq!(
+            matches_beginner_phrase("但是").map(|d| d.slot_id),
+            Some("continue")
+        );
+        assert_eq!(
+            matches_beginner_phrase("取消").map(|d| d.slot_id),
+            Some("cancelListen")
+        );
         assert!(is_disarm_phrase("取消"));
     }
 

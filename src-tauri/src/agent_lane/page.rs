@@ -25,7 +25,11 @@ struct Inner {
 
 fn store() -> &'static Mutex<Inner> {
     static STORE: OnceLock<Mutex<Inner>> = OnceLock::new();
-    STORE.get_or_init(|| Mutex::new(Inner { pages: HashMap::new() }))
+    STORE.get_or_init(|| {
+        Mutex::new(Inner {
+            pages: HashMap::new(),
+        })
+    })
 }
 
 fn map_key(kind: AgentKind, mapping_id: &str) -> (String, String) {
@@ -55,10 +59,7 @@ pub fn get_page_state(
     page.overflow = overflow;
     // Keep selected if still present
     if let Some(sel) = page.selected_lane_id.clone() {
-        if !page
-            .slot_assignments
-            .iter()
-            .any(|a| a.lane_id == sel)
+        if !page.slot_assignments.iter().any(|a| a.lane_id == sel)
             && !page.overflow.iter().any(|id| id == &sel)
         {
             page.selected_lane_id = page.slot_assignments.first().map(|a| a.lane_id.clone());
@@ -91,15 +92,19 @@ pub fn selected_lane_id_for_applied() -> Option<String> {
 }
 
 pub fn reset_for_test() {
-    store().lock().unwrap_or_else(|e| e.into_inner()).pages.clear();
+    store()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .pages
+        .clear();
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::agent_lane::store::{ingest_lane_event, reset_for_test as reset_lanes, LaneIngest};
-    use crate::soft_pad_purpose::{SoftPadKeyRole, SoftPadPurpose};
     use crate::config::CodexMicroPadKeyRoute;
+    use crate::soft_pad_purpose::{SoftPadKeyRole, SoftPadPurpose};
 
     fn sessions_pad() -> CodexMicroPadConfig {
         let mut pad = CodexMicroPadConfig {
@@ -137,7 +142,11 @@ mod tests {
         });
         let pad = sessions_pad();
         let a = get_page_state(AgentKind::Claude, "map-a", &pad);
-        select_lane(AgentKind::Claude, "map-a", a.selected_lane_id.as_deref().unwrap_or(""));
+        select_lane(
+            AgentKind::Claude,
+            "map-a",
+            a.selected_lane_id.as_deref().unwrap_or(""),
+        );
         let b = get_page_state(AgentKind::Claude, "map-b", &pad);
         assert_ne!(a.page_key.mapping_id, b.page_key.mapping_id);
     }

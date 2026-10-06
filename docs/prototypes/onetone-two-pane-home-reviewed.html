@@ -1,0 +1,196 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OneTone · 两栏准备台</title>
+<style>
+:root{--ink:#17211e;--muted:#6b7672;--line:#dce3df;--soft:#f1f5f3;--paper:#fffefa;--green:#14775b;--blue:#176aa6;--amber:#a76818;--shadow:0 18px 45px rgba(28,45,39,.09)}*{box-sizing:border-box}html,body{height:100%}body{margin:0;overflow:hidden;background:#edf1ef;color:var(--ink);font:14px/1.5 "Microsoft YaHei","PingFang SC",sans-serif}button{font:inherit;color:inherit}button:focus-visible,[contenteditable]:focus-visible{outline:3px solid #8abbe0;outline-offset:2px}.top{height:62px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 22px}.brand{display:flex;align-items:baseline;gap:10px}.brand b{font:700 21px Georgia,serif}.brand span,.saved{color:var(--muted)}.saved{font-size:12px}.app{height:calc(100vh - 62px);display:grid;grid-template-columns:258px minmax(0,1fr)}
+.materials{background:#f9fbfa;border-right:1px solid var(--line);padding:21px 16px;overflow:auto}.materials h2{font-size:15px;margin:0}.sub{font-size:12px;color:var(--muted);margin:4px 0 15px}.add-wrap{position:relative}.add{width:100%;height:45px;border:0;border-radius:10px;background:var(--ink);color:#fff;font-weight:700;cursor:pointer}.add-menu{position:absolute;z-index:4;left:0;right:0;top:51px;display:none;grid-template-columns:1fr 1fr;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:var(--shadow)}.add-menu.open{display:grid}.add-menu button{border:0;background:#fff;border-radius:7px;padding:9px;text-align:left;cursor:pointer}.add-menu button:hover{background:var(--soft)}.list-head{display:flex;justify-content:space-between;margin:25px 3px 9px;font-weight:700}.list-head button{border:0;background:none;color:var(--blue);cursor:pointer}.item{position:relative;display:grid;grid-template-columns:36px 1fr;gap:9px;align-items:center;padding:9px 8px;border-radius:9px;cursor:pointer}.item:hover,.item.active{background:#e8f2ee}.ico{width:36px;height:36px;border:1px solid var(--line);background:#fff;border-radius:8px;display:grid;place-items:center;color:var(--green)}.item strong,.item small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.item strong{font-size:13px}.item small{color:var(--muted)}.new:after{content:"";position:absolute;right:7px;top:9px;width:7px;height:7px;border-radius:50%;background:var(--amber)}
+.workspace{min-width:0;display:flex;flex-direction:column}.worktop{height:57px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:end;justify-content:space-between;padding:0 30px}.tabs{display:flex;height:57px}.tabs button{height:57px;border:0;border-bottom:2px solid transparent;background:none;padding:0 17px;color:var(--muted);cursor:pointer}.tabs button.active{border-color:var(--blue);color:var(--ink);font-weight:700}.work-meta{font-size:12px;color:var(--muted);padding-bottom:17px}.stage{flex:1;min-height:0;overflow:auto;padding:27px 38px 100px}.sheet{max-width:860px;min-height:calc(100vh - 190px);margin:auto;background:var(--paper);border:1px solid #daddd8;box-shadow:var(--shadow);padding:50px 62px}.sheet h1{font:700 31px/1.3 Georgia,"Microsoft YaHei",serif;margin:0 0 8px}.origin{font-size:12px;color:var(--muted);margin-bottom:34px}.writing{min-height:140px;font-size:17px;line-height:1.95;padding-bottom:27px;border-bottom:1px solid var(--line)}.writing:focus{outline:0;border-color:#78a494}.ref-title{margin:28px 0 9px;font-weight:700}.ref{display:grid;grid-template-columns:76px 1fr auto;gap:15px;align-items:center;padding:15px 0;border-top:1px solid var(--line);cursor:pointer}.thumb{height:56px;border-radius:7px;background:linear-gradient(145deg,#d4dfe4,#e8dfd4);display:grid;place-items:center;color:#436170;font-size:11px}.ref h3{font-size:14px;margin:0 0 4px}.ref p{font-size:12px;color:var(--muted);margin:0}.pill{border:1px solid #cbd6d0;background:#fff;border-radius:999px;padding:4px 8px;font-size:11px}.preview-sheet{display:none}.preview-sheet.active{display:block}.edit-sheet.hidden{display:none}.notice{font-size:12px;color:#45675a;background:#eaf4ef;border-radius:8px;padding:10px 12px;margin-bottom:24px}.md{font-family:Georgia,"Microsoft YaHei",serif;line-height:1.85}.md h2{font-size:22px;margin:25px 0 10px}.md code{font-family:Consolas,monospace;background:var(--soft);padding:2px 5px;border-radius:4px}.source-box{background:var(--soft);border-radius:8px;padding:14px;margin-top:13px;font-family:"Microsoft YaHei",sans-serif;font-size:12px}
+.delivery-bar{position:absolute;left:258px;right:0;bottom:0;height:70px;border-top:1px solid var(--line);background:rgba(255,255,255,.96);display:flex;align-items:center;justify-content:space-between;padding:0 28px;backdrop-filter:blur(10px)}.delivery-summary{display:flex;align-items:center;gap:20px}.delivery-summary b{display:block}.delivery-summary span{font-size:12px;color:var(--muted)}.bar-actions{display:flex;gap:8px}.secondary,.primary{height:40px;border-radius:9px;padding:0 14px;cursor:pointer}.secondary{border:1px solid var(--line);background:#fff}.primary{border:0;background:var(--ink);color:#fff;font-weight:700;padding:0 18px}
+.scrim{position:fixed;inset:0;background:rgba(17,29,25,.34);opacity:0;pointer-events:none;transition:.18s;z-index:5}.scrim.open{opacity:1;pointer-events:auto}.drawer{position:fixed;z-index:6;right:0;top:0;width:410px;max-width:100%;height:100%;background:#fff;box-shadow:-20px 0 60px rgba(20,35,29,.17);transform:translateX(102%);transition:.22s;display:flex;flex-direction:column}.drawer.open{transform:none}.drawer-head{padding:25px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}.drawer-head h2{font-size:21px;margin:0}.drawer-head p{color:var(--muted);margin:4px 0 0}.close{width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:#fff;cursor:pointer}.drawer-body{padding:22px 25px;overflow:auto}.destination{display:flex;gap:11px;align-items:center;margin:7px 0 19px}.logo{width:40px;height:40px;border-radius:9px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700}.destination h3{margin:0}.destination p{font-size:12px;color:var(--muted);margin:1px 0}.group{border-top:1px solid var(--line);padding:17px 0}.group h4{font-size:12px;margin:0 0 10px}.ability{display:flex;gap:9px;margin:11px 0}.yes{color:var(--green)}.manual{color:var(--amber)}.ability small{display:block;color:var(--muted)}.drawer-foot{margin-top:auto;border-top:1px solid var(--line);padding:17px 25px}.drawer-foot .primary{width:100%}.fallback{display:flex;gap:8px;margin-top:14px}.fallback button{flex:1}.toast{position:fixed;z-index:8;bottom:22px;left:50%;transform:translate(-50%,15px);background:var(--ink);color:#fff;padding:10px 15px;border-radius:8px;opacity:0;pointer-events:none;transition:.18s}.toast.show{opacity:1;transform:translate(-50%,0)}
+/* ---- 评估批注层 ---- */
+.revbar{position:sticky;top:0;z-index:9;display:flex;gap:10px;align-items:center;padding:8px 22px;background:#1d2a25;color:#e8efec;font-size:12px}
+.revbar b{font-size:13px;letter-spacing:.3px}
+.revbar .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.revbar button{border:1px solid #3c4f47;background:#243330;color:#e8efec;border-radius:7px;padding:5px 11px;cursor:pointer;font-size:12px}
+.revbar button.on{background:#8fd3b6;color:#12211b;font-weight:700;border-color:#8fd3b6}
+.anno{display:none;margin:12px 0;padding:10px 12px;border-left:3px solid;border-radius:0 8px 8px 0;font-size:12px;line-height:1.65}
+.anno.show{display:block}
+.anno b{display:block;font-size:12.5px;margin-bottom:3px}
+.anno code{background:rgba(0,0,0,.05);padding:1px 4px;border-radius:3px;font-family:Consolas,monospace}
+.a-red{background:#fdf1ef;border-color:#d9705f;color:#7b3227}
+.a-amber{background:#fdf6ea;border-color:#d9a44e;color:#7a5312}
+.a-green{background:#eef7f2;border-color:#5aa886;color:#1f5c45}
+.a-blue{background:#eef4fa;border-color:#5d90c4;color:#1d4871}
+.tag{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:999px;border:1px solid currentColor;margin-right:6px;vertical-align:1px}
+.fix-only{display:none}.orig-only{display:block}
+body.fix .fix-only{display:block}body.fix .orig-only{display:none}
+body.fix .fix-inline{display:inline}body .fix-inline{display:none}
+.prov{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;font-size:11px;color:var(--muted)}
+.prov span{border:1px solid var(--line);background:#fff;border-radius:5px;padding:2px 6px}
+.prov button{border:1px solid var(--line);background:#fff;border-radius:5px;padding:2px 6px;font-size:11px;cursor:pointer}
+.note-self{color:#1f5c45;background:#eef7f2;border-radius:5px;padding:1px 6px;display:inline-block}
+.briefid{font-size:12px;color:var(--muted)}
+.sense{display:none;align-items:center;gap:8px;background:#eef7f2;border:1px solid #cfe5da;border-radius:9px;padding:9px 11px;margin-top:14px;font-size:11.5px;color:#1f5c45}
+body.fix .sense{display:flex}
+.sense button{border:1px solid #cfe5da;background:#fff;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:#1f5c45}
+.confirm{display:none;gap:6px;margin-top:6px}body.fix .confirm{display:flex}
+.confirm button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer}
+.destsw{display:none;gap:6px;margin-bottom:6px}body.fix .destsw{display:flex}
+.destsw button{flex:1;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 4px;font-size:12px;cursor:pointer}
+.destsw button.on{border-color:var(--ink);background:var(--ink);color:#fff;font-weight:700}
+.sheetnote{position:fixed;z-index:10;right:0;top:0;width:520px;max-width:100%;height:100%;background:#fff;overflow:auto;box-shadow:-20px 0 60px rgba(20,35,29,.17);transform:translateX(102%);transition:.22s;padding:26px 28px 40px}
+.sheetnote.open{transform:none}
+.sheetnote h3{margin:22px 0 8px;font-size:14px}
+.sheetnote li{font-size:12.5px;line-height:1.75;margin-bottom:7px}
+.sheetnote .sticky-x{position:sticky;top:0;background:#fff;padding:0 0 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);margin-bottom:14px}
+@media(max-width:900px){.app{grid-template-columns:225px minmax(0,1fr)}.delivery-bar{left:225px}.sheet{padding:42px}.stage{padding:22px 24px 100px}}
+@media(max-width:760px){body{overflow:auto}.top{position:sticky;top:0;z-index:3}.app{height:auto;display:block}.materials{border:0}.item-list{display:grid;grid-template-columns:1fr 1fr}.workspace{min-height:750px}.worktop{padding:0 16px}.stage{padding:15px 15px 95px}.sheet{padding:30px 24px;min-height:620px}.sheet h1{font-size:25px}.delivery-bar{position:fixed;left:0;height:66px;padding:0 13px}.delivery-summary span{display:none}.secondary{display:none}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
+</style></head><body>
+<div class="revbar"><b>评估批注</b><span style="color:#9fb3aa">原稿未改动 · 叠加一层可开关的核对标注</span><div class="sp"><button id="tgAnno">显示评估标注</button><button id="tgFix">应用建议修正</button><button id="tgList">修改清单</button></div></div>
+<header class="top"><div class="brand"><b>OneTone</b><span>首次沟通准备台</span><span class="briefid fix-inline">· 首页方案 · v1 · 3 次投递</span></div><span class="saved">已保存到本地</span></header>
+<main class="app"><aside class="materials"><h2>材料</h2><p class="sub">把手边的东西放进来。</p><div class="add-wrap"><button class="add" id="addMaterial">＋ 添加素材</button><div class="add-menu" id="addMenu"><button data-add="文件">＋ 文件</button><button data-add="图片">▧ 图片</button><button data-add="粘贴">⌘ 粘贴</button><button data-add="文件夹">⌁ 文件夹</button><button data-add="网址">↗ 网址</button><button data-add="说话">◉ 说话</button></div></div>
+<div class="anno a-green" data-anno><span class="tag">✓ 正确</span><b>菜单缺「截图」是对的，别补</b>全仓库零截图实现（仅 <code>codex_numpad_layer.rs:796</code>、<code>bindings_build.rs:77</code> 两处注释在<b>规避</b>系统截图快捷键）。不列是诚实的。建议在设置里写一句"截图暂不支持"，否则以后会被当成遗漏，补成一个假的。</div>
+<div class="sense"><span>●</span><span>正在感知 · 剪贴板 · voice-pilot · Codex</span><button>暂停</button></div>
+<div class="list-head"><span>已添加 · 5</span><button class="orig-only">整理</button><span class="fix-inline" style="font-size:11.5px;color:var(--blue);cursor:pointer">排序 ▾</span></div>
+<div class="anno a-amber" data-anno><span class="tag">③ 越界</span><b>「整理」这个名字违反了锁定原则</b>已锁定：<b>OneTone 不代替用户整理</b>。而且无 LLM 时它只能做确定性排序。建议改名「排序」，并在展开里写明规则（按加入时间 / 按类型 / 按来源），<b>规则写在明处</b>——否则用户会期待它"看懂"这些材料。</div><div class="item-list"><article class="item active"><span class="ico">▧</span><div><strong>current-home.png</strong><small>当前首页截图</small></div></article><article class="item"><span class="ico">T</span><div><strong>首页问题说明.md</strong><small>布局与操作路径</small></div></article><article class="item"><span class="ico">⌁</span><div><strong>E:\voice-pilot</strong><small>当前项目目录</small></div></article><article class="item new"><span class="ico">⌘</span><div><strong>刚复制的一段报错</strong><small>系统发现 · 待确认</small><div class="confirm"><button data-confirm>加入</button><button data-confirm>忽略</button></div></div></article><article class="item new"><span class="ico">↺</span><div><strong>Codex 修改了 3 个文件</strong><small>会话返回 · 待确认</small><div class="confirm"><button data-confirm>加入</button><button data-confirm>忽略</button></div></div></article></div>
+<div class="anno a-red" data-anno><span class="tag">② 缺失</span><b>候选与已用混排，只靠一个琥珀点区分</b>已锁定：未经确认不进简报。但这里两者在同一列表、同一样式，且<b>没有「忽略」「撤销批次」「暂停感知」</b>。决策三要求的常驻感知状态也不在页面上。</div>
+<div class="anno a-red" data-anno><span class="tag">④ 死控件</span><b>两条「待确认」点不动</b>它们是这份稿子里<b>唯一</b>体现决策三的地方，却没有任何行为。点「应用建议修正」后会出现「加入 / 忽略」——这才是候选托盘该有的最小闭环。</div>
+</aside>
+<section class="workspace"><header class="worktop"><nav class="tabs"><button class="active" data-view="edit" aria-selected="true">编辑</button><button data-view="preview" aria-selected="false">交付预览</button></nav><span class="work-meta">自动保存 · 2 项引用</span></header><div class="stage"><article class="sheet edit-sheet"><h1>让首页成为进入 Agent 前的准备台</h1><div class="origin">第一句话就是标题，不做 AI 改写</div><div class="writing" contenteditable="true">我希望用户只需要把手边的材料放进来，在同一张纸上补充自己的想法，然后把完整内容交给 Agent。OneTone 负责收集、装订和搬运，不替用户规划，也不替 Agent 理解。</div><div class="ref-title">当前引用</div><div id="refs"><article class="ref" data-src="剪贴板" data-time="今天 14:21" data-fp="8c2f41ab"><div class="thumb">界面截图</div><div><h3>current-home.png</h3><p><span class="fix-inline note-self">你的话 · </span>说明现有首页的信息密度与布局问题。</p></div><span class="pill">全文</span><div class="prov fix-only"><span>来源：剪贴板</span><span>14:21</span><span>指纹 8c2f…</span><button data-mode="全文">全文</button><button data-mode="摘要">摘要</button><button data-mode="不发送">不发送</button><button data-jump>回到来源</button></div></article><article class="ref" data-src="本地文件" data-time="今天 14:18" data-fp="3e90c7d2"><div class="thumb">MD</div><div><h3>首页问题说明.md</h3><p><span class="fix-inline note-self">你的话 · </span>原文保持只读，可随时回跳。</p></div><span class="pill">摘要</span><div class="prov fix-only"><span>来源：本地文件</span><span>14:18</span><span>指纹 3e90…</span><button data-mode="全文">全文</button><button data-mode="摘要">摘要</button><button data-mode="不发送">不发送</button><button data-jump>回到来源</button></div></article><article class="ref fix-only" data-src="本地目录" data-time="今天 14:15" data-fp="—"><div class="thumb">⌁</div><div><h3>E:\voice-pilot</h3><p><span class="fix-inline note-self">你的话 · </span>本次要改的项目根目录。</p></div><span class="pill">只保存地址</span><div class="prov fix-only"><span>来源：本地目录</span><span>14:15</span><span>指纹 —</span><button data-mode="只保存地址">只保存地址</button><button data-mode="文件清单">文件清单</button><button data-mode="不发送">不发送</button><button data-jump>回到来源</button></div></article></div>
+<div class="anno a-red" data-anno><span class="tag">⑤ 缺失</span><b>素材块缺溯源三件套</b>决策一要求：<b>来源 / 采集时间 / 内容指纹 / 可否回跳</b>，外加「原文未修改」状态。现在只有文件名 + 一句话，<code>[查看原图][回到来源]</code> 也没有。指纹零成本——<code>sha2 = "0.10"</code> 已在 Cargo.toml:55。</div>
+<div class="anno a-red" data-anno><span class="tag">⑥ 混淆</span><b>「你的话」和素材没分开</b>那句"说明现有首页的信息密度……"是<b>用户说明</b>，现在和文件名挤在一行，读的人分不清哪句是原文、哪句是你说的。决策一要求最终简报里<b>两者必须分栏</b>。点「应用建议修正」可看到分离后的样子。</div>
+<div class="anno a-amber" data-anno><span class="tag">ⓘ 死控件</span><b>「全文 / 摘要」这两个 pill 点不动</b>决策二要求每项素材三档可调。修正模式下它们变成真按钮，切换会<b>同时</b>改写底栏预算与交付预览——这是「一个动作、整屏响应」该有的样子。</div></article>
+<article class="sheet preview-sheet"><div class="notice">按当前设置机械装订，没有使用 LLM 改写或总结。</div><div class="md" id="mdOut"><h1>让首页成为进入 Agent 前的准备台</h1><h2>用户说明</h2><p>我希望用户只需要把手边的材料放进来，在同一张纸上补充自己的想法，然后把完整内容交给 Agent。</p><h2>相关材料</h2><div class="source-box"><b>current-home.png</b><br>来源：本地图片 · 全文<br><br><b>首页问题说明.md</b><br>来源：本地文件 · 摘要<br><br><b>项目目录</b><br><code>E:\voice-pilot</code></div><h2>操作边界</h2><p>不替用户规划；不伪造发送结果。</p></div>
+<div class="anno a-red" data-anno><span class="tag">⑦ 最严重</span><b>预览内容 ≠ 当前引用</b>引用区 <b>2</b> 项、底栏写 <b>2</b> 项，但这里的 source-box 里出现了 <b>3</b> 项——多出「项目目录 E:\voice-pilot」。在一个以<b>可核验</b>为核心价值的产品里，这是致命的：用户以为发出去 2 项，实际 3 项。修正模式下预览由引用区<b>实时编译</b>，数字永远一致。</div>
+<div class="anno a-red" data-anno><span class="tag">⑧ 隐患</span><b>预览是手写副本，不是编译产物</b>现在改正文，预览不变。它必须是同一份数据的机械装订，否则会变成<b>第二份内容源</b>——而第二份内容源迟早和第一份不一致，且无从发现。修正模式下预览由 <code>#refs</code> + 正文实时生成。</div>
+<div class="anno a-amber" data-anno><span class="tag">⑨ 回退</span><b>保护边界在这一版消失了</b>上一版有 <code>NoTouch · src/index.html</code> / <code>KeepStyle</code>，这一版没有。它是全套约束里<b>唯一能被机器检出</b>的：git status 路径列表 ∩ guard 列表，<code>DiffSummary.files: Vec&lt;DiffFile{path,status}&gt;</code> 已在 <code>time_machine/types.rs:152</code>。修正后预览会带上它。</div>
+</article></div></section></main>
+<footer class="delivery-bar"><div class="delivery-summary"><div><b id="budText">2 项材料 · 约 1.4k tokens</b><span id="budSub">Codex · voice-pilot · 当前会话<span class="fix-inline"> · 上限未知 · 无 tokenizer</span></span></div></div><div class="bar-actions"><button class="secondary copy">复制</button><button class="primary" id="prepare">准备到 Codex</button></div></footer>
+<div class="scrim" id="scrim"></div><aside class="drawer" id="deliveryDrawer" aria-hidden="true"><header class="drawer-head"><div><h2>准备到 Codex</h2><p>确认 OneTone 能做到哪一步。</p></div><button class="close" aria-label="关闭">×</button></header><div class="drawer-body"><div class="destsw fix-only"><button data-dest="Codex" class="on">Codex</button><button data-dest="Cursor">Cursor</button><button data-dest="剪贴板">剪贴板</button></div><div class="destination"><span class="logo" id="destLogo">C</span><div><h3 id="destName">Codex · 当前会话</h3><p id="destSub">voice-pilot · thread_abc123</p></div></div><div class="group"><h4>OneTone 将会</h4><div class="ability"><i class="yes">✓</i><div>准确回到当前会话<small>项目和 session 均匹配</small></div></div><div class="ability"><i class="yes">✓</i><div>填入草稿正文<small>包含材料路径和引用说明</small></div></div></div><div class="group"><h4>还需要你</h4><div id="manualList"><div class="ability"><i class="manual">○</i><div>上传 current-home.png</div></div><div class="ability"><i class="manual">○</i><div>检查内容并发送</div></div></div><div class="sense" style="margin-top:10px"><span>装载</span><b id="loadTxt">约 1.4k · 上限未知</b><span>· 无 tokenizer，仅估算</span></div></div>
+<div class="anno a-amber" data-anno><span class="tag">⑪ 回退</span><b>抽屉不能改投，也不显示装载</b>决策四要求简报可改投其他 Agent；决策六把预算归到「目的地」。这里目的地是写死的。点上面的 Codex / Cursor / 剪贴板（修正模式下）可以看到联动：Cursor 能附加图片 →「上传图片」这条待办直接消失。</div>
+<div class="anno a-red" data-anno><span class="tag">⑩ 隐缺</span><b>预算只算材料，没说正文和上限</b>底栏「约 1.4k」只覆盖材料。应写成「正文 0.2k + 材料 1.4k ≈ 1.6k · 上限未知 · 无 tokenizer」——<b>没有上限就不能画比例条</b>，画了就是编的。</div>
+<div class="fallback"><button class="secondary copy">复制草稿</button><button class="secondary save">保存 Markdown</button></div></div><footer class="drawer-foot"><button class="primary" id="focus">聚焦会话并填入</button></footer></aside><aside class="sheetnote" id="noteSheet">
+  <div class="sticky-x"><b style="font-size:15px">评估结论与修改清单</b><button class="close" id="closeNote" aria-label="关闭">×</button></div>
+  <p style="font-size:12.5px;color:#45675a;background:#eaf4ef;border-radius:8px;padding:10px 12px;margin:0 0 6px"><b>总体：这是目前最干净的一版，方向锁定，可以进入实现。</b>两栏 + 底部发送条 + 抽屉，正是决策七；「第一句话就是标题，不做 AI 改写」「机械装订，没有使用 LLM」「已准备填入，尚未发送」这三句文案是全套稿子里最诚实的部分，一个字都别改。</p>
+  <h3>必须改（P0）</h3>
+  <ol>
+    <li><b>⑦ 预览 ≠ 引用（3 项 vs 2 项）。</b>在可核验产品里这是致命缺陷。改为：预览由引用区实时编译，不存在第二份手写副本（同时也解掉 ⑧）。</li>
+    <li><b>⑤ 素材补溯源三件套。</b>来源 / 采集时间 / 指纹 / [回到来源] / 原文未修改。<code>sha2</code> 已在依赖里，零成本。</li>
+    <li><b>⑥ 「你的话」与素材分栏。</b>现在是同一行，读者分不清哪句是原文。</li>
+  </ol>
+  <h3>应该改（P1）</h3>
+  <ol start="4">
+    <li><b>⑨ 把保护边界加回来。</b>上一版有 NoTouch / KeepStyle，这版掉了；它是唯一可机检的约束。</li>
+    <li><b>⑪ 抽屉可改投 + 显示装载。</b>换目的地要联动待办与预算。</li>
+    <li><b>② 候选与已用分流。</b>加忽略、撤销批次、常驻「● 正在感知 / 暂停」。</li>
+    <li><b>① 顶部给简报身份。</b>名称 · 版本 · 投递次数。H1 当标题导致两份简报无法区分。</li>
+  </ol>
+  <h3>小修（P2）</h3>
+  <ol start="8">
+    <li><b>③ 「整理」改名「排序」</b>并写明规则——它违反「不代替用户整理」。</li>
+    <li><b>⑩ 预算写全：</b>正文 + 材料 ≈ 总数 · 上限未知 · 无 tokenizer。<b>不画比例条</b>。</li>
+    <li><b>④ 两条「待确认」要能点</b>（加入 / 忽略）。</li>
+  </ol>
+  <h3>别动的三个亮点</h3>
+  <ul>
+    <li><b>「已准备填入，尚未发送」</b>——事实口径。实现上 <code>insert_text_no_enter</code> 确实不发 Enter。</li>
+    <li><b>「第一句话就是标题，不做 AI 改写」</b>——且 <code>observe_prompt</code> 至今零写入方，标题只能手写，这句恰好是对的。</li>
+    <li><b>添加菜单里的「◉ 说话」</b>——语音通道入口，浏览器产品做不到的东西，改版时别丢。</li>
+  </ul>
+  <h3>落地代价（已核实）</h3>
+  <ul>
+    <li>指纹：<code>sha2 = "0.10"</code> 已在 Cargo.toml:55 → <b>零成本</b></li>
+    <li>保护边界检出：<code>DiffSummary.files</code> 已在 <code>time_machine/types.rs:152</code>，只需把已有的 <code>git status --porcelain</code> 全文解析成路径列表 → <b>三行</b></li>
+    <li>tokenizer：<b>全仓库零</b> → 只能显示估算值，这正是「上限未知」的依据</li>
+    <li>截图：全仓库零实现 → 菜单里不列是<b>对的</b>，建议在设置中标一句</li>
+  </ul>
+</aside>
+<div class="toast" id="toast">已完成</div>
+<script>
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s),menu=$('#addMenu'),scrim=$('#scrim'),drawer=$('#deliveryDrawer'),toast=$('#toast');function say(t){toast.textContent=t;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1700)}function openDrawer(){scrim.classList.add('open');drawer.classList.add('open');drawer.setAttribute('aria-hidden','false')}function closeDrawer(){scrim.classList.remove('open');drawer.classList.remove('open');drawer.setAttribute('aria-hidden','true')}$('#addMaterial').onclick=e=>{e.stopPropagation();menu.classList.toggle('open')};document.body.onclick=()=>menu.classList.remove('open');menu.onclick=e=>e.stopPropagation();$$('[data-add]').forEach(b=>b.onclick=()=>{menu.classList.remove('open');say(b.dataset.add+'已加入草稿')});$$('[data-view]').forEach(b=>b.onclick=()=>{$$('[data-view]').forEach(x=>{x.classList.remove('active');x.setAttribute('aria-selected','false')});b.classList.add('active');b.setAttribute('aria-selected','true');const preview=b.dataset.view==='preview';$('.edit-sheet').classList.toggle('hidden',preview);$('.preview-sheet').classList.toggle('active',preview)});$('#prepare').onclick=openDrawer;$('.close').onclick=closeDrawer;scrim.onclick=closeDrawer;document.onkeydown=e=>{if(e.key==='Escape')closeDrawer()};$$('.copy').forEach(b=>b.onclick=()=>say('草稿已复制，尚未发送'));$('.save').onclick=()=>say('Markdown 已准备保存');$('#focus').onclick=()=>{closeDrawer();say('已准备填入，尚未发送')};
+</script>
+<script>
+/* ---------- 评估批注层 ---------- */
+(function(){
+  const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
+  const ORIG_MD=$('#mdOut').innerHTML;
+  const WEIGHT={'current-home.png':{full:800,sum:300},'首页问题说明.md':{full:2400,sum:500},'E:\\voice-pilot':{full:0,sum:0}};
+  let DEST='Codex';
+
+  $('#tgAnno').onclick=e=>{const on=e.currentTarget.classList.toggle('on');$$('[data-anno]').forEach(a=>a.classList.toggle('show',on));};
+  $('#tgFix').onclick=e=>{
+    const on=e.currentTarget.classList.toggle('on');
+    document.body.classList.toggle('fix',on);
+    if(on) compile(); else { $('#mdOut').innerHTML=ORIG_MD; $('#budText').textContent='2 项材料 · 约 1.4k tokens'; $('#loadTxt').textContent='约 1.4k · 上限未知'; }
+  };
+  $('#tgList').onclick=()=>$('#noteSheet').classList.add('open');
+  $('#closeNote').onclick=()=>$('#noteSheet').classList.remove('open');
+
+  function refs(){
+    return $$('#refs .ref').filter(r=>!r.classList.contains('fix-only')||document.body.classList.contains('fix'))
+      .map(r=>({el:r,name:r.querySelector('h3').textContent.trim(),
+        note:r.querySelector('p').textContent.replace('你的话 · ','').trim(),
+        mode:r.querySelector('.pill').textContent.trim(),
+        src:r.dataset.src,time:r.dataset.time,fp:r.dataset.fp}));
+  }
+  function est(list){
+    let t=0,miss=[];
+    list.forEach(r=>{
+      if(r.mode==='不发送')return;
+      const w=WEIGHT[r.name]||{full:600,sum:250};
+      if(r.mode==='只保存地址'){t+=60;return;}
+      if(r.mode==='文件清单'){t+=400;return;}
+      const v=r.mode==='全文'?w.full:w.sum;
+      if(r.name.indexOf('.png')>0&&DEST==='Codex'){miss.push(r.name);return;}
+      t+=v;
+    });
+    const body=Math.max(1,Math.round(document.querySelector('.writing').textContent.trim().length/2));
+    return {mat:t,body:body,miss:miss};
+  }
+  function fmt(n){return n>=1000?(n/1000).toFixed(1)+'k':n+'';}
+  function compile(){
+    const list=refs(),e=est(list),sent=list.filter(r=>r.mode!=='不发送');
+    let h='<h1>'+document.querySelector('.edit-sheet h1').textContent.trim()+'</h1>';
+    h+='<h2>用户说明</h2><p>'+document.querySelector('.writing').textContent.trim()+'</p>';
+    h+='<h2>相关材料 · '+sent.length+' 项</h2>';
+    sent.forEach(r=>{
+      h+='<div class="source-box"><b>'+r.name+'</b> · '+r.mode+'<br>来源：'+r.src+' · '+r.time+' · 指纹 '+r.fp+'<br>用户说明：'+r.note+'</div>';
+    });
+    h+='<h2>保护边界</h2><p><code>NoTouch · src/index.html</code> —— 改了即违规；检出方式：git status 路径列表 ∩ guard 列表。</p><p><code>KeepStyle · 首页配色与文案</code> —— 可改布局，配色与文案保持。</p>';
+    $('#mdOut').innerHTML=h;
+    const miss=e.miss.length?' · '+e.miss.length+' 项该目标收不到':'';
+    $('#budText').textContent=sent.length+' 项材料 · 正文约 '+fmt(e.body)+' · 合计约 '+fmt(e.mat+e.body)+' tokens'+miss;
+    $('#loadTxt').textContent='约 '+fmt(e.mat+e.body)+' · 上限未知';
+  }
+  function setDest(d){
+    DEST=d;
+    $$('[data-dest]').forEach(b=>b.classList.toggle('on',b.dataset.dest===d));
+    const M={Codex:['C','Codex · 当前会话','voice-pilot · thread_abc123',['上传 current-home.png','检查内容并发送'],'聚焦会话并填入'],
+             Cursor:['U','Cursor · 当前会话','voice-pilot · 新建会话',['检查内容并发送'],'打开 Cursor 并填入'],
+             '剪贴板':['⌘','剪贴板 · 本机','不再经过任何 Agent',[],'复制到剪贴板']};
+    const m=M[d];
+    $('#destLogo').textContent=m[0];$('#destName').textContent=m[1];$('#destSub').textContent=m[2];
+    $('#manualList').innerHTML=m[3].length?m[3].map(t=>'<div class="ability"><i class="manual">○</i><div>'+t+'</div></div>').join(''):'<div class="ability"><i class="yes">✓</i><div>没有需要你做的事</div></div>';
+    $('#focus').textContent=m[4];
+    $('.drawer-head h2').textContent='准备到 '+d;
+    $('#budSub').innerHTML=(d==='剪贴板'?'剪贴板 · 本机':'Codex · voice-pilot · 当前会话')+(document.body.classList.contains('fix')?'<span class="fix-inline"> · 上限未知 · 无 tokenizer</span>':'');
+    if(document.body.classList.contains('fix'))compile();
+  }
+  $$('[data-dest]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();setDest(b.dataset.dest);});
+  $$('[data-mode]').forEach(b=>b.onclick=ev=>{
+    ev.stopPropagation();
+    b.closest('.ref').querySelector('.pill').textContent=b.dataset.mode;
+    if(document.body.classList.contains('fix'))compile();
+    else toast2('（切到「应用建议修正」可看到预算与预览联动）');
+  });
+  $$('[data-jump]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();toast2('已打开来源位置');});
+  $$('[data-confirm]').forEach(b=>b.onclick=ev=>{
+    ev.stopPropagation();const it=b.closest('.item');
+    if(b.textContent==='忽略'){it.style.display='none';toast2('已从候选忽略');}
+    else{it.classList.remove('new');b.closest('.confirm').style.display='none';toast2('已加入草稿 · 可整批撤销');}
+  });
+  const sort=$('.list-head .fix-inline'); if(sort) sort.onclick=()=>toast2('排序规则：按加入时间 / 按类型 / 按来源 —— 确定性排序，不做语义整理');
+  const pause=document.querySelector('.sense button'); if(pause) pause.onclick=()=>toast2('已暂停感知 · 候选托盘保留');
+  document.querySelector('.writing').addEventListener('input',()=>{if(document.body.classList.contains('fix'))compile();});
+  function toast2(t){const el=$('#toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1900);}
+})();
+</script></body></html>

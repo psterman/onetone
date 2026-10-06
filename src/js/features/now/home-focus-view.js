@@ -274,15 +274,30 @@
       '">' +
       '<p class="hn-brand">OneTone</p>' +
       navHtml('focus') +
-      '<h1 class="hn-headline">' +
+      '<section class="hn-hero" aria-label="当前工作摘要">' +
+      '<div class="hn-focus-card"><div class="hn-kicker">' +
+      esc(mode === 'return' ? '上次工作可以继续' : '当前工作上下文') +
+      '</div><h1 class="hn-headline">' +
       esc(vm.headline || '') +
       '</h1>' +
       '<p class="hn-assist">' +
       esc(vm.assistance || '') +
-      '</p>' +
+      '</p><div class="hn-hero-actions">' +
       dictateCtaHtml(opts) +
       secondaryCta +
       secondary +
+      '</div></div>' +
+      '<aside class="hn-context-card"><div class="hn-context-head"><h2>当前上下文</h2><span class="hn-context-state">' +
+      esc(vm.mode === 'degraded' ? '需检查' : vm.mode === 'return' ? '可继续' : '已读取') +
+      '</span></div><strong>' +
+      esc(vm.projectName || '未确认项目') +
+      '</strong><p>' +
+      esc((vm.evidence && vm.evidence[0] && vm.evidence[0].value) || vm.appName || '本机工作区') +
+      '</p><div class="hn-context-meta"><span>来源</span><b>' +
+      esc((vm.evidence && vm.evidence[2] && vm.evidence[2].value) || '本地窗口与工作记录') +
+      '</b></div><div class="hn-context-meta"><span>新鲜度</span><b>' +
+      esc((vm.evidence && vm.evidence[3] && vm.evidence[3].value) || '时间未知') +
+      '</b></div></aside></section>' +
       presence +
       desk +
       progress +

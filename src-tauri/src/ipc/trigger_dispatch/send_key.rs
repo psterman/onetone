@@ -12,7 +12,12 @@ use crate::config::{
 use crate::ipc::core::push_runtime_with_cue;
 use crate::AppState;
 
-fn push_soft_pad_success(app: &tauri::AppHandle, state: &AppState, mapping_id: &str, app_target: &str) {
+fn push_soft_pad_success(
+    app: &tauri::AppHandle,
+    state: &AppState,
+    mapping_id: &str,
+    app_target: &str,
+) {
     let Some(kind) = crate::soft_pad_runtime::AgentKind::from_app_target(app_target) else {
         return;
     };
@@ -113,12 +118,7 @@ fn finish_send_key_dispatch(
     } else {
         crate::coach_hud::push_state(&window.app_handle(), state.as_ref());
     }
-    let entry = crate::action_history::record_send_key(
-        state.as_ref(),
-        mapping_id,
-        target_key,
-        ok,
-    );
+    let entry = crate::action_history::record_send_key(state.as_ref(), mapping_id, target_key, ok);
     crate::action_history::emit_record_with_app(state.as_ref(), &window.app_handle(), entry);
 }
 
@@ -156,8 +156,8 @@ fn try_dispatch_app_scenario_agent(
     let _ = (execution_mode, activation_scope, provider_id);
     // Build a minimal binding view for unified router ingress.
     let binding = crate::config::AgentBinding {
-            action_instance_id: String::new(),
-            action_args: None,
+        action_instance_id: String::new(),
+        action_args: None,
         slot_id: slot_id.clone(),
         action_id: action_id.clone(),
         trigger_type: "key".into(),
@@ -410,9 +410,8 @@ pub(super) fn dispatch_send_key(
     if try_fallback_workflow {
         let fallback = {
             let cfg = state.cfg.lock();
-            find_preferred_workflow_scenario_for_dispatch(&cfg).map(|m| {
-                (m.id.clone(), m.app_target_id.trim().to_string())
-            })
+            find_preferred_workflow_scenario_for_dispatch(&cfg)
+                .map(|m| (m.id.clone(), m.app_target_id.trim().to_string()))
         };
         if let Some((scenario_id, target)) = fallback {
             if app_chat_workflow::profile_for(&target).is_some() {
@@ -486,7 +485,12 @@ pub(super) fn dispatch_send_key(
             duration_ms,
         ) {
             Ok(label) => {
-                push_soft_pad_success(&window.app_handle(), state.as_ref(), mapping_id, &app_target_id);
+                push_soft_pad_success(
+                    &window.app_handle(),
+                    state.as_ref(),
+                    mapping_id,
+                    &app_target_id,
+                );
                 finish_send_key_dispatch(
                     state,
                     window,

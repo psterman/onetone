@@ -9,7 +9,9 @@ use tauri::Manager;
 use crate::app_chat_workflow::{self, CODEX_APP_TARGET_ID};
 use crate::app_identity;
 use crate::config::{effective_mapping_for_trigger, is_app_scenario_mapping};
-use crate::key_chord::{build_pressed_chord, chord_parts, is_modifier_name, is_modifier_only_chord};
+use crate::key_chord::{
+    build_pressed_chord, chord_parts, is_modifier_name, is_modifier_only_chord,
+};
 use crate::press_gesture::parse_physical_event;
 use crate::runtime_event;
 use crate::AgentModifierTapState;
@@ -213,9 +215,9 @@ fn spawn_overlay_hold_start(
                 }
                 return;
             };
-            let exec_window = app
-                .get_webview_window("main")
-                .or_else(|| app.get_webview_window(crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL));
+            let exec_window = app.get_webview_window("main").or_else(|| {
+                app.get_webview_window(crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL)
+            });
             let Some(exec_window) = exec_window else {
                 return;
             };
@@ -246,8 +248,7 @@ fn spawn_overlay_hold_start(
             // Cursor Voice Mode needs Cursor to stay FG; stealing Soft Pad focus cancels it.
             // Codex hold-to-talk can keep chord down while Soft Pad is refocused.
             let toggle_voice = crate::key_chord::is_toggle_voice_chord(&trigger_binding);
-            let keep_target_fg =
-                toggle_voice || tid == app_chat_workflow::CURSOR_APP_TARGET_ID;
+            let keep_target_fg = toggle_voice || tid == app_chat_workflow::CURSOR_APP_TARGET_ID;
             if !keep_target_fg {
                 crate::codex_micro_overlay::refocus_overlay(&app);
             }
@@ -305,7 +306,10 @@ pub fn handle_input_obs_event(
     );
 }
 
-fn track_agent_modifier_keydown(state: &Arc<AppState>, event: &crate::press_gesture::PhysicalKeyEvent) {
+fn track_agent_modifier_keydown(
+    state: &Arc<AppState>,
+    event: &crate::press_gesture::PhysicalKeyEvent,
+) {
     if event.is_keyup {
         return;
     }
@@ -330,10 +334,7 @@ fn track_agent_modifier_keydown(state: &Arc<AppState>, event: &crate::press_gest
 
 fn clear_agent_modifier_tap(state: &Arc<AppState>, key: &str) {
     let mut pending = state.agent_modifier_tap.lock();
-    if pending
-        .as_ref()
-        .is_some_and(|p| p.key == key)
-    {
+    if pending.as_ref().is_some_and(|p| p.key == key) {
         *pending = None;
     }
 }
@@ -357,8 +358,7 @@ fn run_overlay_tap_action(
     }
     // Soft Pad 发送键 confirms pending uncommon voice action first.
     if crate::soft_pad_voice_pending::has_pending()
-        && (route.slot_id.trim() == "stopOrSend"
-            || route.action_id.trim() == "stopOrSendDictation")
+        && (route.slot_id.trim() == "stopOrSend" || route.action_id.trim() == "stopOrSendDictation")
     {
         return crate::soft_pad_voice_pending::confirm_and_run(state, &app);
     }
@@ -383,9 +383,7 @@ fn run_overlay_tap_action(
     }
 
     // Cursor Soft Pad: paste clipboard into Agent composer then Enter.
-    if route.slot_id.trim() == "pasteAndSend"
-        || route.action_id.trim() == "pasteAndSend"
-    {
+    if route.slot_id.trim() == "pasteAndSend" || route.action_id.trim() == "pasteAndSend" {
         let target_id = soft_pad_inject_target_id(state, &route.mapping_id);
         if target_id.trim() == crate::app_chat_workflow::CURSOR_APP_TARGET_ID {
             return crate::cursor_beginner::run_paste_and_send(state, exec_window);
@@ -393,8 +391,7 @@ fn run_overlay_tap_action(
     }
 
     // Soft Pad / overlay: run the mapping's configured targetActions sequence.
-    if route.slot_id.trim() == "runTargetSequence"
-        || route.action_id.trim() == "runTargetSequence"
+    if route.slot_id.trim() == "runTargetSequence" || route.action_id.trim() == "runTargetSequence"
     {
         let mid = route.mapping_id.trim();
         let mid = if mid.is_empty() {
@@ -417,11 +414,8 @@ fn run_overlay_tap_action(
     let target_id = soft_pad_inject_target_id(state, &route.mapping_id);
     let mut chord = route.trigger_binding.trim().to_string();
     if chord.is_empty() {
-        chord = crate::agent::bindings_build::default_key_for_scenario(
-            &target_id,
-            &route.slot_id,
-        )
-        .to_string();
+        chord = crate::agent::bindings_build::default_key_for_scenario(&target_id, &route.slot_id)
+            .to_string();
     }
     let hotkey_action = matches!(
         route.action_id.as_str(),
@@ -594,8 +588,7 @@ fn spawn_overlay_heal_and_fire(
             );
             if !healed {
                 let mut cfg = state.cfg.lock();
-                let result =
-                    crate::codex_numpad_layer::ensure_codex_pad_ready(&mut cfg, "zh-CN");
+                let result = crate::codex_numpad_layer::ensure_codex_pad_ready(&mut cfg, "zh-CN");
                 if result.changed {
                     crate::codex_numpad_layer::sync_hook_cache(&cfg);
                     healed = true;
@@ -821,7 +814,8 @@ fn try_dispatch_codex_micro_key(
     window: &tauri::WebviewWindow,
     raw: &str,
 ) -> bool {
-    let Some((micro_key_id, key_down)) = crate::codex_numpad_layer::parse_micro_key_event(raw) else {
+    let Some((micro_key_id, key_down)) = crate::codex_numpad_layer::parse_micro_key_event(raw)
+    else {
         return false;
     };
     let _ = fire_codex_micro_pad_key(state, window, &micro_key_id, key_down, true);
@@ -878,33 +872,33 @@ pub fn fire_codex_micro_pad_key(
                         if let Some(lane_ticket) =
                             crate::agent_lane::lookup_lane_ticket_by_micro(micro_key_id)
                         {
-                                if !key_down {
-                                    let consumed =
-                                        crate::agent_lane::end_lane_press_lease(micro_key_id);
-                                    return serde_json::json!({
-                                        "ok": true,
-                                        "reason": if consumed { "lane_keyup" } else { "lane_keyup_orphan" },
-                                        "microKeyId": micro_key_id,
-                                        "laneId": lane_ticket.lane_id,
-                                    });
-                                }
-                                crate::agent_lane::begin_lane_press_lease(&lane_ticket);
-                                let nav = crate::agent_lane::navigate_lane(&lane_ticket);
-                                let entry = crate::action_history::record_lane_nav(
-                                    state.as_ref(),
-                                    &lane_ticket.mapping_id,
-                                    micro_key_id,
-                                    &nav.action,
-                                    nav.ok,
-                                    &nav.detail,
-                                );
-                                crate::action_history::emit_record_with_app(
-                                    state.as_ref(),
-                                    &app,
-                                    entry,
-                                );
-                                crate::codex_micro_overlay::note_micro_key(micro_key_id, true);
-                                crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
+                            if !key_down {
+                                let consumed =
+                                    crate::agent_lane::end_lane_press_lease(micro_key_id);
+                                return serde_json::json!({
+                                    "ok": true,
+                                    "reason": if consumed { "lane_keyup" } else { "lane_keyup_orphan" },
+                                    "microKeyId": micro_key_id,
+                                    "laneId": lane_ticket.lane_id,
+                                });
+                            }
+                            crate::agent_lane::begin_lane_press_lease(&lane_ticket);
+                            let nav = crate::agent_lane::navigate_lane(&lane_ticket);
+                            let entry = crate::action_history::record_lane_nav(
+                                state.as_ref(),
+                                &lane_ticket.mapping_id,
+                                micro_key_id,
+                                &nav.action,
+                                nav.ok,
+                                &nav.detail,
+                            );
+                            crate::action_history::emit_record_with_app(
+                                state.as_ref(),
+                                &app,
+                                entry,
+                            );
+                            crate::codex_micro_overlay::note_micro_key(micro_key_id, true);
+                            crate::codex_micro_overlay::push_overlay_status(&app, state.as_ref());
                             return serde_json::json!({
                                 "ok": nav.ok,
                                 "reason": "lane_navigate",
@@ -962,10 +956,7 @@ pub fn fire_codex_micro_pad_key(
         r.provider_id.eq_ignore_ascii_case("claude")
     } else {
         match &agent_ticket {
-            Some(t) => matches!(
-                t.lane_kind,
-                crate::soft_pad_runtime::AgentKind::Claude
-            ),
+            Some(t) => matches!(t.lane_kind, crate::soft_pad_runtime::AgentKind::Claude),
             None => !crate::soft_pad_runtime::soft_pad_cutover_enabled(),
         }
     };
@@ -1048,8 +1039,7 @@ pub fn fire_codex_micro_pad_key(
     // (Sync SendInput into the overlay webview + status push every 140ms caused UI freeze.)
     if is_nav_micro_key(micro_key_id)
         && crate::codex_numpad_layer::lookup_route_by_micro_key(micro_key_id).is_none()
-        && (crate::codex_numpad_layer::software_enhance_enabled()
-            || is_overlay_pad_window(window))
+        && (crate::codex_numpad_layer::software_enhance_enabled() || is_overlay_pad_window(window))
     {
         if key_down {
             spawn_nav_arrow_inject(micro_key_id.to_string());
@@ -1169,7 +1159,13 @@ pub fn fire_codex_micro_pad_key(
                 crate::codex_numpad_layer::sync_hook_cache(&cfg);
             }
             if crate::codex_numpad_layer::lookup_route_by_micro_key(micro_key_id).is_some() {
-                return fire_codex_micro_pad_key(state, window, micro_key_id, key_down, emit_pad_event);
+                return fire_codex_micro_pad_key(
+                    state,
+                    window,
+                    micro_key_id,
+                    key_down,
+                    emit_pad_event,
+                );
             }
             let mut healed = crate::codex_numpad_layer::try_heal_micro_route(
                 state.as_ref(),
@@ -1178,8 +1174,7 @@ pub fn fire_codex_micro_pad_key(
             );
             if !healed {
                 let mut cfg = state.cfg.lock();
-                let result =
-                    crate::codex_numpad_layer::ensure_codex_pad_ready(&mut cfg, "zh-CN");
+                let result = crate::codex_numpad_layer::ensure_codex_pad_ready(&mut cfg, "zh-CN");
                 if result.changed {
                     crate::codex_numpad_layer::sync_hook_cache(&cfg);
                     healed = true;
@@ -1193,7 +1188,13 @@ pub fn fire_codex_micro_pad_key(
                     let cfg = state_bg.cfg.lock();
                     crate::config::save_config(&cfg);
                 });
-                return fire_codex_micro_pad_key(state, window, micro_key_id, key_down, emit_pad_event);
+                return fire_codex_micro_pad_key(
+                    state,
+                    window,
+                    micro_key_id,
+                    key_down,
+                    emit_pad_event,
+                );
             }
             crate::codex_micro_overlay::note_pad_run_status("failed", micro_key_id);
         }
@@ -1460,8 +1461,7 @@ fn try_end_hold_voice_on_keyup(
     };
     let key = event.key.trim();
     let ends_hold = chord_parts(&held).iter().any(|part| {
-        key.eq_ignore_ascii_case(part)
-            || crate::key_chord::chord_token_matches(part, key)
+        key.eq_ignore_ascii_case(part) || crate::key_chord::chord_token_matches(part, key)
     });
     if !ends_hold {
         return false;
@@ -1508,10 +1508,7 @@ fn try_dispatch_agent_modifier_keyup(
     };
     // RAlt (etc.) is observed but never swallowed — IME already saw the physical tap.
     // startDictation would send the same chord again and toggle dictation off.
-    if matches!(
-        action_id.as_str(),
-        "startDictation" | "input.start"
-    ) {
+    if matches!(action_id.as_str(), "startDictation" | "input.start") {
         // Oral Soft Pad listen: do not pulse Cursor IME (steals mic from Vosk).
         if crate::voice_command_session::is_armed() {
             crate::app_log::log_line(
@@ -1719,11 +1716,7 @@ pub fn dispatch_scheme_gesture(
         crate::config::GestureScheme::Off => {}
         crate::config::GestureScheme::VoiceCommand => {
             let app = window.app_handle();
-            crate::voice_command_session::toggle_session(
-                state,
-                &app,
-                &mapping_id,
-            );
+            crate::voice_command_session::toggle_session(state, &app, &mapping_id);
         }
         crate::config::GestureScheme::Dictation => {
             // Oral listen holds mic — side-key dictation must not fire Cursor IME.
@@ -1736,14 +1729,12 @@ pub fn dispatch_scheme_gesture(
                 return;
             }
             if *state.paused.lock() {
-                // Dictation still needs classic path; briefly allow via handle after resume? 
+                // Dictation still needs classic path; briefly allow via handle after resume?
                 // Keep simple: inject only when not globally paused.
                 return;
             }
             let dispatch = match device {
-                Some(d) if !d.is_empty() => {
-                    crate::press_gesture::format_device_key(d, key)
-                }
+                Some(d) if !d.is_empty() => crate::press_gesture::format_device_key(d, key),
                 _ => key.to_string(),
             };
             handle_physical_key(state, window, &dispatch);
@@ -1830,10 +1821,7 @@ pub fn dispatch_physical_event(state: &Arc<AppState>, window: &tauri::WebviewWin
 
     track_agent_modifier_keydown(state, &event);
 
-    if crate::cursor_beginner::maybe_intercept_side_key_down(
-        &state.cfg.lock(),
-        &event,
-    ) {
+    if crate::cursor_beginner::maybe_intercept_side_key_down(&state.cfg.lock(), &event) {
         return;
     }
 
@@ -1933,7 +1921,11 @@ pub fn handle_physical_key(state: &Arc<AppState>, window: &tauri::WebviewWindow,
                         crate::ipc::core::push_runtime_with_cue(
                             state.as_ref(),
                             window,
-                            if ok { "codex_hold_start" } else { "codex_hold_failed" },
+                            if ok {
+                                "codex_hold_start"
+                            } else {
+                                "codex_hold_failed"
+                            },
                             &mapping_id,
                             cue.as_deref(),
                         );

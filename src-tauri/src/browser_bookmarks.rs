@@ -167,10 +167,7 @@ fn walk_node(
     if out.len() >= MAX_BOOKMARKS {
         return;
     }
-    let typ = node
-        .get("type")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let typ = node.get("type").and_then(|v| v.as_str()).unwrap_or("");
     if typ == "url" {
         let url = node
             .get("url")
@@ -266,10 +263,7 @@ mod tests {
 
     #[test]
     fn discover_profiles_reads_local_state_order() {
-        let dir = std::env::temp_dir().join(format!(
-            "onetone-bm-profiles-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("onetone-bm-profiles-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("Profile 2")).unwrap();
         fs::create_dir_all(dir.join("Default")).unwrap();

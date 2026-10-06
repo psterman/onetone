@@ -913,12 +913,13 @@ fn header_value<'a>(header: &'a str, name: &str) -> Option<&'a str> {
 }
 
 fn require_integration_token(header: &str) -> Result<(), &'static str> {
-    let presented = header_value(header, crate::integration_token::TOKEN_HEADER)
-        .or_else(|| header_value(header, "authorization").and_then(|v| {
+    let presented = header_value(header, crate::integration_token::TOKEN_HEADER).or_else(|| {
+        header_value(header, "authorization").and_then(|v| {
             let v = v.trim();
             v.strip_prefix("Bearer ")
                 .or_else(|| v.strip_prefix("bearer "))
-        }));
+        })
+    });
     crate::integration_token::validate_presented(presented)
 }
 
@@ -961,7 +962,12 @@ fn smoke_cors_headers() -> String {
         .to_string()
 }
 
-fn write_smoke_json(stream: &mut TcpStream, status: u16, reason: &str, body: &[u8]) -> Result<(), String> {
+fn write_smoke_json(
+    stream: &mut TcpStream,
+    status: u16,
+    reason: &str,
+    body: &[u8],
+) -> Result<(), String> {
     write_raw(
         stream,
         status,
@@ -1273,9 +1279,7 @@ mod tests {
 
     fn http_exchange(port: u16, req: &str) -> String {
         let mut stream = TcpStream::connect(("127.0.0.1", port)).expect("connect");
-        stream
-            .set_read_timeout(Some(Duration::from_secs(2)))
-            .ok();
+        stream.set_read_timeout(Some(Duration::from_secs(2))).ok();
         stream.write_all(req.as_bytes()).expect("write");
         let _ = stream.shutdown(Shutdown::Write);
         let mut buf = Vec::new();

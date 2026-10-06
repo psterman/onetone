@@ -1,0 +1,18 @@
+{
+  "actionId": "input.send",
+  "cameraSelfConfirm": {
+    "reasonCode": "camera_cannot_complete_confirmation",
+    "status": "unavailable"
+  },
+  "completeChannel": "softPad",
+  "completedAt": "2026-10-05T17:21:13.960Z",
+  "completionEvidence": "dom_click_cleared_pending",
+  "confirmationId": "confirm-1",
+  "createChannel": "camera",
+  "gesturePath": "FE Cam.dispatchAction (production camera path) + DOM #wbPendConfirm click",
+  "mappingId": "e2e-bfinal-mapping-1",
+  "note": "Real Tauri window + Rust Pending Store. PrintWindow shots paired via e2e-step.txt.",
+  "result": "cleared",
+  "source": "onetone-bfinal-e2e",
+  "triggeredAt": "2026-10-05T17:21:07.150Z"
+}

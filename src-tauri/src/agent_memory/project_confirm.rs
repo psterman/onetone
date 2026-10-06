@@ -36,37 +36,37 @@ pub fn confirm_project(
     project_root: Option<&str>,
     project_id: Option<&str>,
 ) -> Result<KnownProjectDto, String> {
-    let (id, name, root, git) = if let Some(root_s) = project_root.map(str::trim).filter(|s| !s.is_empty())
-    {
-        let path = std::path::PathBuf::from(root_s);
-        let canon = validate_workspace_path(&path)
-            .ok_or_else(|| "project root invalid or missing".to_string())?;
-        let id = project_id_from_path(&canon);
-        let name = display_name_from_path(&canon);
-        let git = find_git_root(&canon).map(|p| p.to_string_lossy().to_string());
-        let root = canon.to_string_lossy().to_string();
-        (id, name, Some(root), git)
-    } else if let Some(pid) = project_id.map(str::trim).filter(|s| !s.is_empty()) {
-        let row = with_read_path(|conn| {
-            conn.query_row(
-                "SELECT project_id, display_name, workspace_path, git_root
+    let (id, name, root, git) =
+        if let Some(root_s) = project_root.map(str::trim).filter(|s| !s.is_empty()) {
+            let path = std::path::PathBuf::from(root_s);
+            let canon = validate_workspace_path(&path)
+                .ok_or_else(|| "project root invalid or missing".to_string())?;
+            let id = project_id_from_path(&canon);
+            let name = display_name_from_path(&canon);
+            let git = find_git_root(&canon).map(|p| p.to_string_lossy().to_string());
+            let root = canon.to_string_lossy().to_string();
+            (id, name, Some(root), git)
+        } else if let Some(pid) = project_id.map(str::trim).filter(|s| !s.is_empty()) {
+            let row = with_read_path(|conn| {
+                conn.query_row(
+                    "SELECT project_id, display_name, workspace_path, git_root
                  FROM projects WHERE project_id = ?1",
-                params![pid],
-                |r| {
-                    Ok((
-                        r.get::<_, String>(0)?,
-                        r.get::<_, String>(1)?,
-                        r.get::<_, Option<String>>(2)?,
-                        r.get::<_, Option<String>>(3)?,
-                    ))
-                },
-            )
-            .map_err(|e| format!("project not found: {e}"))
-        })?;
-        row
-    } else {
-        return Err("projectRoot or projectId required".into());
-    };
+                    params![pid],
+                    |r| {
+                        Ok((
+                            r.get::<_, String>(0)?,
+                            r.get::<_, String>(1)?,
+                            r.get::<_, Option<String>>(2)?,
+                            r.get::<_, Option<String>>(3)?,
+                        ))
+                    },
+                )
+                .map_err(|e| format!("project not found: {e}"))
+            })?;
+            row
+        } else {
+            return Err("projectRoot or projectId required".into());
+        };
 
     upsert_project(&id, &name, root.as_deref(), git.as_deref())?;
     let confirmed_at = now_ms() as i64;
@@ -127,4 +127,3 @@ pub fn probable_name_from_title(title: Option<&str>) -> Option<String> {
 pub fn project_root_exists(root: &Path) -> bool {
     validate_workspace_path(root).is_some()
 }
-

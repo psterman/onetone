@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex};
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 const DEBOUNCE_MS: u64 = 1000;
@@ -128,10 +128,7 @@ pub fn flush_now() -> Result<(), String> {
         return Ok(());
     }
     let lanes = all_lanes_snapshot();
-    let file = PersistFile {
-        version: 1,
-        lanes,
-    };
+    let file = PersistFile { version: 1, lanes };
     let body = serde_json::to_string_pretty(&file).map_err(|e| e.to_string())?;
     atomic_write(&store_path(), &body)
 }

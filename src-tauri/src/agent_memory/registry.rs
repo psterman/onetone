@@ -84,7 +84,8 @@ pub fn canonicalize_discovery_label(raw: &str) -> Option<CanonicalTarget> {
         || lower.contains("traecn")
         || lower.contains("trae-ide")
         || lower == "trae"
-        || (lower.contains("trae") && (lower.contains("code") || lower.contains("ide") || lower.contains("cn")))
+        || (lower.contains("trae")
+            && (lower.contains("code") || lower.contains("ide") || lower.contains("cn")))
     {
         return Some(CanonicalTarget::Kind(AgentKind::TraeCode));
     }
@@ -169,9 +170,9 @@ pub fn data_path_for_kind(kind: AgentKind) -> Option<PathBuf> {
                 .join("globalStorage")
                 .join("state.vscdb")
         }),
-        AgentKind::Qoder => appdata_dir().map(|a| {
-            a.join("com.qodercn.app.stable").join("main.sqlite")
-        }),
+        AgentKind::Qoder => {
+            appdata_dir().map(|a| a.join("com.qodercn.app.stable").join("main.sqlite"))
+        }
         AgentKind::Trae => appdata_dir().map(|a| {
             a.join("TRAE SOLO CN")
                 .join("User")
@@ -187,9 +188,9 @@ pub fn data_path_for_kind(kind: AgentKind) -> Option<PathBuf> {
         AgentKind::MiniMax => home_dir().map(|h| h.join(".minimax")),
         AgentKind::Gemini => home_dir().map(|h| h.join(".gemini")),
         AgentKind::Windsurf => appdata_dir().map(|a| a.join("Windsurf")),
-        AgentKind::OpenCode => {
-            local_appdata_dir().map(|a| a.join("opencode")).or_else(|| home_dir().map(|h| h.join(".opencode")))
-        }
+        AgentKind::OpenCode => local_appdata_dir()
+            .map(|a| a.join("opencode"))
+            .or_else(|| home_dir().map(|h| h.join(".opencode"))),
         AgentKind::Aider => home_dir().map(|h| h.join(".aider")),
         AgentKind::Cline => home_dir().map(|h| h.join(".cline")),
         AgentKind::Roo => home_dir().map(|h| h.join(".roo")),
@@ -285,9 +286,7 @@ fn sqlite_header_ok(path: &Path) -> Option<bool> {
 fn path_mtime_ms(path: &Path) -> Option<i64> {
     let meta = std::fs::metadata(path).ok()?;
     let modified = meta.modified().ok()?;
-    let dur = modified
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()?;
+    let dur = modified.duration_since(std::time::UNIX_EPOCH).ok()?;
     Some(dur.as_millis() as i64)
 }
 
@@ -726,7 +725,8 @@ pub fn apply_install_presence(row: &mut RegistryRow, presence: &str, confidence:
                 }
             }
             "detected" => {
-                if row.adapter_state != "encrypted" && row.limitation_reason.as_deref() != Some("oversized_db")
+                if row.adapter_state != "encrypted"
+                    && row.limitation_reason.as_deref() != Some("oversized_db")
                 {
                     row.presence_state = "connected".into();
                 }
@@ -739,7 +739,12 @@ pub fn apply_install_presence(row: &mut RegistryRow, presence: &str, confidence:
     }
 }
 
-fn probe_discovered(slug: &str, display: &str, form: &str, paths: &[PathBuf]) -> Option<RegistryRow> {
+fn probe_discovered(
+    slug: &str,
+    display: &str,
+    form: &str,
+    paths: &[PathBuf],
+) -> Option<RegistryRow> {
     let now = now_ms() as i64;
     let found: Vec<&PathBuf> = paths.iter().filter(|p| path_exists(p)).collect();
     if found.is_empty() {
@@ -817,7 +822,16 @@ pub fn refresh_registry(
     for kind in ALL_AGENT_KINDS {
         let mut row = probe_kind_facts(*kind);
         if let Some((presence, confidence)) = install_map.get(kind.as_str()) {
-            apply_install_presence(&mut row, presence, confidence);
+            if *presence == "unknown" {
+                // Unimplemented inventory probe — not SupportedNotFound.
+                row.presence_state = "unknown".into();
+                row.limitation_reason = Some("ProbeNotImplemented".into());
+                if row.adapter_state == "unknown" || row.adapter_state.is_empty() {
+                    row.adapter_state = "probe_not_implemented".into();
+                }
+            } else {
+                apply_install_presence(&mut row, presence, confidence);
+            }
         }
         // Probe failure must not abort - already isolated per kind
         if let Err(e) = upsert_registry_row(conn, &row) {
@@ -896,8 +910,8 @@ pub fn refresh_registry_from_inventory(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::store::migrate;
+    use super::*;
     use rusqlite::Connection;
 
     #[test]
@@ -983,7 +997,10 @@ mod tests {
     fn unknown_runtime_kind_stays_none() {
         assert!(parse_runtime_kind(Some("notARealAgent")).is_none());
         assert!(parse_runtime_kind(None).is_none());
-        assert_eq!(parse_runtime_kind(Some("workbuddy")), Some(AgentKind::WorkBuddy));
+        assert_eq!(
+            parse_runtime_kind(Some("workbuddy")),
+            Some(AgentKind::WorkBuddy)
+        );
     }
 
     #[test]
@@ -994,8 +1011,16 @@ mod tests {
         refresh_registry(&conn, &[]).unwrap();
         let rows = list_registry(&conn).unwrap();
         // All 16 kinds always present
-        assert!(rows.iter().filter(|r| r.agent_id.starts_with("kind:")).count() >= 16);
-        for r in rows.iter().filter(|r| r.agent_id.starts_with("discovered:")) {
+        assert!(
+            rows.iter()
+                .filter(|r| r.agent_id.starts_with("kind:"))
+                .count()
+                >= 16
+        );
+        for r in rows
+            .iter()
+            .filter(|r| r.agent_id.starts_with("discovered:"))
+        {
             let ev: Vec<Value> = serde_json::from_str(&r.evidence_json).unwrap_or_default();
             assert!(
                 !ev.is_empty(),

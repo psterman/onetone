@@ -92,7 +92,10 @@ struct IndexEntry {
 /// Pure: rollout `payload.type` → pad/attention event name (hook-shaped for Pad map).
 pub fn map_rollout_payload_type(payload_type: &str) -> Option<&'static str> {
     match payload_type.trim() {
-        "task_started" | "reasoning" | "function_call" | "custom_tool_call"
+        "task_started"
+        | "reasoning"
+        | "function_call"
+        | "custom_tool_call"
         | "function_call_output" => Some("UserPromptSubmit"),
         "task_complete" | "final_answer" | "turn_aborted" => Some("Stop"),
         "stream_error" | "error" => Some("StopFailure"),
@@ -233,10 +236,7 @@ fn advance_rollout(path: &Path, cursor: &mut SessionCursor) -> &'static str {
         cursor.offset = 0;
         cursor.status = "idle";
     }
-    if size == cursor.offset
-        && cursor.rollout.as_deref() == Some(path)
-        && mt == cursor.mtime_ms
-    {
+    if size == cursor.offset && cursor.rollout.as_deref() == Some(path) && mt == cursor.mtime_ms {
         return cursor.status;
     }
     cursor.mtime_ms = mt;
@@ -282,10 +282,7 @@ fn advance_rollout(path: &Path, cursor: &mut SessionCursor) -> &'static str {
         if ev.get("type").and_then(|t| t.as_str()) != Some("event_msg") {
             continue;
         }
-        let Some(payload_type) = ev
-            .pointer("/payload/type")
-            .and_then(|t| t.as_str())
-        else {
+        let Some(payload_type) = ev.pointer("/payload/type").and_then(|t| t.as_str()) else {
             continue;
         };
         if let Some(event) = map_rollout_payload_type(payload_type) {
@@ -364,6 +361,7 @@ fn tick_once() {
         agent_id: String::new(),
         agent_type: primary_title,
         ts: now,
+        prompt: String::new(),
     });
 }
 
@@ -386,16 +384,28 @@ mod tests {
 
     #[test]
     fn map_rollout_payload_types() {
-        assert_eq!(map_rollout_payload_type("task_started"), Some("UserPromptSubmit"));
-        assert_eq!(map_rollout_payload_type("function_call"), Some("UserPromptSubmit"));
+        assert_eq!(
+            map_rollout_payload_type("task_started"),
+            Some("UserPromptSubmit")
+        );
+        assert_eq!(
+            map_rollout_payload_type("function_call"),
+            Some("UserPromptSubmit")
+        );
         assert_eq!(map_rollout_payload_type("task_complete"), Some("Stop"));
-        assert_eq!(map_rollout_payload_type("stream_error"), Some("StopFailure"));
+        assert_eq!(
+            map_rollout_payload_type("stream_error"),
+            Some("StopFailure")
+        );
         assert_eq!(map_rollout_payload_type("other"), None);
     }
 
     #[test]
     fn aggregate_prefers_running_then_failed_then_done() {
-        assert_eq!(aggregate_pad_event(&["done", "running"]), "UserPromptSubmit");
+        assert_eq!(
+            aggregate_pad_event(&["done", "running"]),
+            "UserPromptSubmit"
+        );
         assert_eq!(aggregate_pad_event(&["done", "failed"]), "StopFailure");
         assert_eq!(aggregate_pad_event(&["done", "idle"]), "Stop");
         assert_eq!(aggregate_pad_event(&["idle"]), "SessionEnd");
@@ -404,7 +414,10 @@ mod tests {
     #[test]
     fn stale_task_started_without_complete_settles() {
         let now = 10 * 60 * 1000;
-        assert_eq!(settle_stale_running("running", now - 60_000, now), "running");
+        assert_eq!(
+            settle_stale_running("running", now - 60_000, now),
+            "running"
+        );
         assert_eq!(
             settle_stale_running("running", now - RUNNING_STALE_MS - 1, now),
             "done"

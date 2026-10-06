@@ -216,12 +216,10 @@ fn soft_oral_default_on(slot_id: &str) -> bool {
 }
 
 fn oral_split_say(raw: &str) -> Vec<String> {
-    raw.split(|c: char| {
-        c.is_whitespace() || matches!(c, '、' | ',' | '，' | ';' | '；')
-    })
-    .map(|s| s.trim().to_string())
-    .filter(|s| !s.is_empty())
-    .collect()
+    raw.split(|c: char| c.is_whitespace() || matches!(c, '、' | ',' | '，' | ';' | '；'))
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
 }
 
 fn oral_scheme_for_cfg(
@@ -366,13 +364,10 @@ fn try_route_oral_armed(
                 "stopOrSend" | "continue" | "newThread" | "pushToTalk"
             )
         {
-            return Some(skip(
-                "请先圈选 Agent 输入框完成首次对准，再说口令。".into(),
-            ));
+            return Some(skip("请先圈选 Agent 输入框完成首次对准，再说口令。".into()));
         }
-        let window = crate::ipc::get_main_window(app).or_else(|| {
-            app.get_webview_window(crate::overlay_window::CODEX_MICRO_OVERLAY.label)
-        })?;
+        let window = crate::ipc::get_main_window(app)
+            .or_else(|| app.get_webview_window(crate::overlay_window::CODEX_MICRO_OVERLAY.label))?;
         let out = crate::cursor_beginner::run_slot(state, &window, slot_id, true, true);
         let ok = out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
         *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
@@ -394,14 +389,17 @@ fn try_route_oral_armed(
     {
         let cfg = state.cfg.lock();
         let scheme = oral_scheme_for_cfg(&cfg);
-        if let Some(peer) = crate::voice_end_runtime::find_prompt_inject_peer_for_phrase(&cfg, phrase)
+        if let Some(peer) =
+            crate::voice_end_runtime::find_prompt_inject_peer_for_phrase(&cfg, phrase)
         {
             let id = format!("prompt:{}", peer.id);
             if oral_item_enabled(scheme.as_ref(), &id, false) {
                 drop(cfg);
-                if let Some(result) = crate::voice_end_runtime::try_dispatch_prompt_inject_for_phrase(
-                    state, app, phrase, engine,
-                ) {
+                if let Some(result) =
+                    crate::voice_end_runtime::try_dispatch_prompt_inject_for_phrase(
+                        state, app, phrase, engine,
+                    )
+                {
                     *state.voice_vosk_last_detected_phrase.lock() = phrase.to_string();
                     if result.ok {
                         *state.voice_vosk_last_trigger.lock() =
@@ -565,13 +563,7 @@ fn try_route_cursor_beginner_voice(
     if result.ok {
         *state.voice_vosk_last_trigger.lock() = format!("{}（{}）", label, phrase);
         let sound_cue = crate::config::runtime_sound_cue(&state.cfg.lock(), "voice_wake");
-        crate::ipc::push_runtime_via_app(
-            app,
-            state.as_ref(),
-            &label,
-            "",
-            sound_cue.as_deref(),
-        );
+        crate::ipc::push_runtime_via_app(app, state.as_ref(), &label, "", sound_cue.as_deref());
         crate::codex_micro_overlay::request_overlay_push(app, state.as_ref(), false);
         Some(VoiceCommandRouterResult {
             handled: true,
@@ -699,8 +691,16 @@ mod tests {
     #[test]
     fn oral_item_enabled_defaults() {
         assert!(oral_item_enabled(None, "soft:stopOrSend", true));
-        assert!(!oral_item_enabled(None, "soft:continue", soft_oral_default_on("continue")));
-        assert!(oral_item_enabled(None, "soft:pushToTalk", soft_oral_default_on("pushToTalk")));
+        assert!(!oral_item_enabled(
+            None,
+            "soft:continue",
+            soft_oral_default_on("continue")
+        ));
+        assert!(oral_item_enabled(
+            None,
+            "soft:pushToTalk",
+            soft_oral_default_on("pushToTalk")
+        ));
         let mut scheme = crate::config::OralCommandScheme::default();
         scheme.items.insert(
             "soft:stopOrSend".into(),
@@ -710,7 +710,11 @@ mod tests {
             },
         );
         assert!(!oral_item_enabled(Some(&scheme), "soft:stopOrSend", true));
-        assert!(!oral_item_enabled(Some(&scheme), "soft:continue", soft_oral_default_on("continue")));
+        assert!(!oral_item_enabled(
+            Some(&scheme),
+            "soft:continue",
+            soft_oral_default_on("continue")
+        ));
         scheme.items.insert(
             "soft:continue".into(),
             crate::config::OralCommandItem {

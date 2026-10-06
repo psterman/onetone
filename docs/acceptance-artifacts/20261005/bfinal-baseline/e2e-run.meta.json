@@ -1,0 +1,23 @@
+﻿{
+    "startedAt":  "2026-10-05T18:05:16.5018763+08:00",
+    "completedAt":  "2026-10-05T18:05:53.9602334+08:00",
+    "durationMs":  37458,
+    "lastStep":  "PASS",
+    "capturedCount":  8,
+    "capturedSteps":  [
+                          "camera-picker-pending",
+                          "habit-actions-detail",
+                          "key-picker-chord",
+                          "pending-complete",
+                          "pending-confirm",
+                          "pending-expire",
+                          "softpad-picker-key",
+                          "voice-picker-phrase"
+                      ],
+    "pid":  18348,
+    "exe":  "E:\\voice-pilot\\src-tauri\\target\\e2e\\release\\onetone.exe",
+    "outDir":  "E:\\voice-pilot\\logs\\b-acceptance",
+    "dataRoot":  "E:\\voice-pilot\\logs\\b-acceptance\\data-root",
+    "timeoutMinutes":  10,
+    "status":  "pass"
+}

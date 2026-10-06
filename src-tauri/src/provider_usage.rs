@@ -269,19 +269,11 @@ fn http_get(url: &str, api_key: &str, bearer: bool) -> Result<String, String> {
 
 fn parse_iso_or_epoch_to_secs(v: &Value) -> Option<u64> {
     if let Some(n) = v.as_u64() {
-        return Some(if n > 1_000_000_000_000 {
-            n / 1000
-        } else {
-            n
-        });
+        return Some(if n > 1_000_000_000_000 { n / 1000 } else { n });
     }
     if let Some(n) = v.as_i64() {
         let n = n.max(0) as u64;
-        return Some(if n > 1_000_000_000_000 {
-            n / 1000
-        } else {
-            n
-        });
+        return Some(if n > 1_000_000_000_000 { n / 1000 } else { n });
     }
     let s = v.as_str()?.trim();
     if s.is_empty() {
@@ -356,18 +348,15 @@ pub fn parse_arkcli_usage_plan_json(raw: &str) -> Result<(Vec<UsageWindow>, Stri
             .and_then(|x| x.as_str())
             .unwrap_or("")
             .to_ascii_lowercase();
-        let used_pct = p
-            .get("percent")
-            .and_then(|x| x.as_f64())
-            .or_else(|| {
-                let used = p.get("used").and_then(|x| x.as_f64())?;
-                let total = p.get("total").and_then(|x| x.as_f64())?;
-                if total > 0.0 {
-                    Some(used / total * 100.0)
-                } else {
-                    None
-                }
-            });
+        let used_pct = p.get("percent").and_then(|x| x.as_f64()).or_else(|| {
+            let used = p.get("used").and_then(|x| x.as_f64())?;
+            let total = p.get("total").and_then(|x| x.as_f64())?;
+            if total > 0.0 {
+                Some(used / total * 100.0)
+            } else {
+                None
+            }
+        });
         let Some(used_pct) = used_pct else { continue };
         let rem = (100.0 - used_pct).clamp(0.0, 100.0);
         let resets = p
@@ -440,19 +429,19 @@ pub fn parse_glm_quota_json(raw: &str) -> Result<Vec<UsageWindow>, String> {
             .and_then(|x| x.as_str())
             .unwrap_or("")
             .to_ascii_uppercase();
-        let used_pct = lim
-            .get("percentage")
-            .and_then(|x| x.as_f64())
-            .or_else(|| {
-                let usage = lim.get("usage").or_else(|| lim.get("currentValue"))?.as_f64()?;
-                let remaining = lim.get("remaining")?.as_f64()?;
-                let total = usage + remaining;
-                if total > 0.0 {
-                    Some(usage / total * 100.0)
-                } else {
-                    None
-                }
-            });
+        let used_pct = lim.get("percentage").and_then(|x| x.as_f64()).or_else(|| {
+            let usage = lim
+                .get("usage")
+                .or_else(|| lim.get("currentValue"))?
+                .as_f64()?;
+            let remaining = lim.get("remaining")?.as_f64()?;
+            let total = usage + remaining;
+            if total > 0.0 {
+                Some(usage / total * 100.0)
+            } else {
+                None
+            }
+        });
         let Some(used_pct) = used_pct else { continue };
         let rem = (100.0 - used_pct).clamp(0.0, 100.0);
         let resets = lim
@@ -621,10 +610,7 @@ fn fetch_kimi(api_key: &str, base: &str) -> Result<(Option<Vec<UsageWindow>>, St
 
 pub fn parse_minimax_remains_json(raw: &str) -> Result<Vec<UsageWindow>, String> {
     let v: Value = serde_json::from_str(raw).map_err(|e| e.to_string())?;
-    if let Some(code) = v
-        .pointer("/base_resp/status_code")
-        .and_then(|x| x.as_i64())
-    {
+    if let Some(code) = v.pointer("/base_resp/status_code").and_then(|x| x.as_i64()) {
         if code != 0 {
             let msg = v
                 .pointer("/base_resp/status_msg")
@@ -645,9 +631,7 @@ pub fn parse_minimax_remains_json(raw: &str) -> Result<Vec<UsageWindow>, String>
     let weekly = remains
         .get("current_weekly_remaining_percent")
         .and_then(|x| x.as_f64());
-    let end = remains
-        .get("end_time")
-        .and_then(parse_iso_or_epoch_to_secs);
+    let end = remains.get("end_time").and_then(parse_iso_or_epoch_to_secs);
     let week_end = remains
         .get("weekly_end_time")
         .and_then(parse_iso_or_epoch_to_secs);
@@ -883,9 +867,7 @@ pub fn refresh_once() {
             (Some(t), _) if t > 0 => format!("本机今日 {t} tok"),
             _ => "本机暂无记录".into(),
         };
-        view.message = format!(
-            "官方剩余请到控制台 · {local_bit}"
-        );
+        view.message = format!("官方剩余请到控制台 · {local_bit}");
         view.plan_type = "Token Plan".into();
         if view.coding_plan_warning {
             view.message = format!("{} · {}", view.message, CODING_PLAN_WARNING);
@@ -964,14 +946,21 @@ pub fn refresh_once() {
             view.status = "stale".into();
             view.confidence = "stale".into();
             view.observed_at = now_ms();
-            view.message = format!("{}（刷新失败：{}）", view.message, e.chars().take(80).collect::<String>());
+            view.message = format!(
+                "{}（刷新失败：{}）",
+                view.message,
+                e.chars().take(80).collect::<String>()
+            );
             attach_local(&mut view, pid);
         } else {
             view.source = format!("{}_error", pid.as_str());
             view.status = "waiting".into();
             if view.local_today_tokens.unwrap_or(0) > 0 {
                 view.confidence = "local_only".into();
-                view.message = format!("官方额度未同步 · 本机今日 {} tok · {e}", view.local_today_tokens.unwrap_or(0));
+                view.message = format!(
+                    "官方额度未同步 · 本机今日 {} tok · {e}",
+                    view.local_today_tokens.unwrap_or(0)
+                );
             } else {
                 view.confidence = "local_only".into();
                 view.message = format!("额度未同步：{}", e.chars().take(100).collect::<String>());
@@ -1007,10 +996,8 @@ pub fn start_provider_usage_poll(app: AppHandle, state: std::sync::Arc<crate::Ap
 
 fn is_plausible_minimax_api_key(key: &str) -> bool {
     let k = key.trim();
-    k.len() >= 20
-        && !k.eq_ignore_ascii_case("sk-xxx")
-        && !k.contains(' ')
-        && !k.starts_with("eyJ") // JWT is login cookie, not Coding Plan key
+    k.len() >= 20 && !k.eq_ignore_ascii_case("sk-xxx") && !k.contains(' ') && !k.starts_with("eyJ")
+    // JWT is login cookie, not Coding Plan key
 }
 
 /// Soft Pad–saved Coding Plan key (not Claude settings / MiniMax Code JWT).
@@ -1075,11 +1062,7 @@ fn read_minimax_api_key_from_yaml(raw: &str) -> Option<String> {
         else {
             continue;
         };
-        let k = rest
-            .trim()
-            .trim_matches('"')
-            .trim_matches('\'')
-            .trim();
+        let k = rest.trim().trim_matches('"').trim_matches('\'').trim();
         if is_plausible_minimax_api_key(k) {
             return Some(k.to_string());
         }
@@ -1104,15 +1087,21 @@ fn minimax_config_yaml_paths() -> Vec<PathBuf> {
 
 fn minimax_desktop_logged_in() -> bool {
     let candidates = [
-        std::env::var("APPDATA")
-            .ok()
-            .map(|p| PathBuf::from(p).join("MiniMax").join("minimax-agent-cn-config.json")),
-        std::env::var("USERPROFILE")
-            .ok()
-            .map(|p| PathBuf::from(p).join(".minimax").join("local-runtime.auth.json")),
-        std::env::var("HOME")
-            .ok()
-            .map(|p| PathBuf::from(p).join(".minimax").join("local-runtime.auth.json")),
+        std::env::var("APPDATA").ok().map(|p| {
+            PathBuf::from(p)
+                .join("MiniMax")
+                .join("minimax-agent-cn-config.json")
+        }),
+        std::env::var("USERPROFILE").ok().map(|p| {
+            PathBuf::from(p)
+                .join(".minimax")
+                .join("local-runtime.auth.json")
+        }),
+        std::env::var("HOME").ok().map(|p| {
+            PathBuf::from(p)
+                .join(".minimax")
+                .join("local-runtime.auth.json")
+        }),
     ];
     for path in candidates.into_iter().flatten() {
         let Ok(raw) = std::fs::read_to_string(&path) else {
@@ -1141,12 +1130,17 @@ fn discover_minimax_coding_key() -> Option<(String, String)> {
         return Some((k, "https://api.minimaxi.com".into()));
     }
     if let Some((base, key)) = read_base_key() {
-        if detect_provider_from_base(&base) == ProviderId::MiniMax && is_plausible_minimax_api_key(&key)
+        if detect_provider_from_base(&base) == ProviderId::MiniMax
+            && is_plausible_minimax_api_key(&key)
         {
             return Some((key, base));
         }
     }
-    for env_key in ["MINIMAX_API_KEY", "MINIMAX_CODING_API_KEY", "MINIMAX_AUTH_TOKEN"] {
+    for env_key in [
+        "MINIMAX_API_KEY",
+        "MINIMAX_CODING_API_KEY",
+        "MINIMAX_AUTH_TOKEN",
+    ] {
         if let Ok(k) = std::env::var(env_key) {
             if is_plausible_minimax_api_key(&k) {
                 return Some((k, "https://api.minimaxi.com".into()));

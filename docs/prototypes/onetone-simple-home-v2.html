@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 当前工作</title>
+  <style>
+    :root{--bg:#f5f7f8;--paper:#fff;--ink:#18252d;--muted:#73818a;--line:#e1e7e9;--accent:#127c75;--accent-soft:#e7f5f2;--blue:#256fa8;--blue-soft:#edf5fb;--warn:#a76819;--warn-soft:#fff5e5;--shadow:0 18px 45px rgba(22,42,51,.08)}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "Segoe UI","Microsoft YaHei",sans-serif}
+    button,input{font:inherit}button{cursor:pointer}.shell{min-height:100vh;display:grid;grid-template-columns:210px minmax(0,1fr)}
+    aside{padding:24px 14px;background:#fbfcfc;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:28px}.brand{display:flex;align-items:center;gap:10px;padding:0 8px}.mark{width:32px;height:32px;border-radius:10px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:800}.brand b{display:block;font-size:15px}.brand small{display:block;color:var(--muted);font-size:11px}.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;text-align:left;border-radius:10px;padding:10px 12px;color:#66757d}.nav button.active,.nav button:hover{background:var(--accent-soft);color:var(--accent);font-weight:700}.nav .muted{margin-top:14px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#a0abb0;padding:8px 12px 3px}.aside-foot{margin-top:auto;color:#a0abb0;font-size:12px;padding:8px}
+    main{width:min(920px,100%);margin:0 auto;padding:38px 34px 60px}.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px}.kicker{font-size:12px;color:var(--accent);font-weight:800;letter-spacing:.08em}.top h1{font-size:28px;letter-spacing:-.03em;margin:6px 0}.top p{margin:0;color:var(--muted)}.ghost{border:1px solid var(--line);border-radius:10px;background:var(--paper);color:#5e7079;padding:9px 12px}
+    .focus{background:var(--ink);color:#fff;border-radius:20px;padding:26px 28px;box-shadow:var(--shadow);margin-bottom:16px}.focus-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.focus h2{font-size:21px;line-height:1.3;margin:0 0 7px}.focus p{margin:0;color:#c2d0d5}.state{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.1);color:#d5ece8;font-size:12px;white-space:nowrap}.state i{width:7px;height:7px;border-radius:50%;background:#6ed0a4}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}.btn{border:1px solid transparent;border-radius:10px;padding:9px 14px;background:#fff;color:var(--ink);font-weight:700}.btn.primary{background:#78d2c4;color:#103a37}.btn.dark{background:rgba(255,255,255,.1);color:#e8f5f3;border-color:rgba(255,255,255,.22)}
+    .section{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin-top:14px}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.section h3{font-size:14px;margin:0}.link{border:0;background:transparent;color:var(--blue);font-weight:700;padding:0}.result{display:grid;grid-template-columns:1fr auto;gap:15px;align-items:center}.result-title{font-weight:750}.result-meta{color:var(--muted);font-size:12px;margin-top:4px}.checks{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}.check{border-radius:999px;padding:5px 9px;background:#f1f5f5;color:#5b7373;font-size:12px}.check.ok{background:var(--accent-soft);color:var(--accent)}.check.warn{background:var(--warn-soft);color:var(--warn)}
+    .prompt{display:flex;gap:10px;align-items:center}.prompt input{min-width:0;flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 13px;outline:none;background:#fcfdfd}.prompt input:focus{border-color:#8ccbc3;box-shadow:0 0 0 3px var(--accent-soft)}.mic{border:0;background:var(--accent);color:#fff;border-radius:11px;padding:11px 15px;font-weight:800}.hint{font-size:12px;color:var(--muted);margin:9px 0 0}.controls{display:flex;gap:8px;flex-wrap:wrap}.control{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 11px;color:#5e7079}.control:hover{border-color:#9bcfc8;color:var(--accent)}
+    details{margin-top:14px;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:15px 18px}summary{cursor:pointer;color:#60727b;font-weight:700}.agent-row{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}.agent-row:last-child{border-bottom:0;padding-bottom:2px}.agent-name{font-weight:750}.agent-sub{font-size:12px;color:var(--muted);margin-top:3px}.agent-state{font-size:12px;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:5px 9px;white-space:nowrap}.footer-note{font-size:12px;color:#9aa5aa;margin-top:18px;text-align:center}
+    @media(max-width:720px){.shell{grid-template-columns:1fr}aside{padding:14px 16px;border-right:0;border-bottom:1px solid var(--line);gap:12px}.nav{display:flex;overflow:auto}.nav .muted{display:none}.nav button{white-space:nowrap}.aside-foot{display:none}main{padding:24px 16px 40px}.top{gap:12px}.top h1{font-size:24px}.focus-head{display:block}.state{margin-top:16px}.result{grid-template-columns:1fr}.result .btn{width:100%}.prompt{align-items:stretch;flex-direction:column}.prompt input,.mic{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand"><div class="mark">一</div><div><b>一声 OneTone</b><small>让工作继续下去</small></div></div>
+      <nav class="nav" aria-label="主导航">
+        <button class="active">现在</button><button>工作记录</button><button>Agent</button><span class="muted">其他</span><button>设置</button>
+      </nav>
+      <div class="aside-foot">Ctrl + Space · 说话</div>
+    </aside>
+    <main>
+      <header class="top"><div><div class="kicker">ONE TONE</div><h1>当前工作</h1><p>把想法变成可以确认的结果。</p></div><button class="ghost" data-toast="这是一个首页原型">原型说明</button></header>
+
+      <section class="focus" aria-labelledby="focus-title">
+        <div class="focus-head"><div><h2 id="focus-title">正在继续：修复 voice-pilot 首页</h2><p>代码已经修改，还没有看预览。</p></div><span class="state"><i></i>等你确认</span></div>
+        <div class="actions"><button class="btn primary" data-toast="打开结果">查看结果</button><button class="btn dark" data-toast="进入下一轮修改">继续修改</button></div>
+      </section>
+
+      <section class="section" aria-labelledby="result-title"><div class="section-head"><h3 id="result-title">刚刚完成</h3><button class="link" data-toast="打开全部改动">查看全部</button></div><div class="result"><div><div class="result-title">修改了 4 个文件</div><div class="result-meta">首页状态展示 · 2 分钟前</div><div class="checks"><span class="check ok">✓ 检查通过</span><span class="check warn">⚠ 尚未预览</span></div></div><button class="btn" data-toast="打开预览">打开预览</button></div></section>
+
+      <section class="section" aria-labelledby="ask-title"><div class="section-head"><h3 id="ask-title">你还想让我做什么？</h3></div><div class="prompt"><input id="prompt" type="text" placeholder="输入下一步，或说出来……" aria-label="输入下一步" /><button class="mic" data-toast="开始听写">🎙 开始说</button></div><p class="hint">你可以说：把按钮改得更简单、运行测试、撤回刚才的修改。</p></section>
+
+      <section class="section" aria-labelledby="control-title"><div class="section-head"><h3 id="control-title">当前控制方式</h3></div><div class="controls"><button class="control" data-toast="已暂停 Agent">暂停</button><button class="control" data-toast="已继续 Agent">继续</button><button class="control" data-toast="已打开确认">确认</button><button class="control" data-toast="已取消操作">取消</button></div><p class="hint">快捷键 Ctrl + Space · Soft Pad 可用于确认和暂停。</p></section>
+
+      <details><summary>查看当前 Agent</summary><div class="agent-row"><div><div class="agent-name">Codex</div><div class="agent-sub">正在处理 voice-pilot 首页</div></div><span class="agent-state">可继续</span></div><div class="agent-row"><div><div class="agent-name">Claude</div><div class="agent-sub">没有需要你处理的事项</div></div><span class="agent-state">空闲</span></div></details>
+      <p class="footer-note">通道是控制方式，结果才是首页要关注的事情。</p>
+    </main>
+  </div>
+  <script>
+    const toast = document.createElement('div'); toast.style.cssText='position:fixed;right:20px;bottom:20px;background:#18252d;color:#fff;padding:11px 14px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none'; document.body.appendChild(toast);
+    let timer; document.addEventListener('click', e => { const el=e.target.closest('[data-toast]'); if(!el)return; toast.textContent=el.dataset.toast; toast.style.opacity=1; clearTimeout(timer); timer=setTimeout(()=>toast.style.opacity=0,1800); });
+    document.getElementById('prompt').addEventListener('keydown', e => { if(e.key==='Enter' && e.currentTarget.value.trim()){ toast.textContent='已记录下一步：'+e.currentTarget.value.trim(); toast.style.opacity=1; e.currentTarget.value=''; clearTimeout(timer); timer=setTimeout(()=>toast.style.opacity=0,1800); } });
+  </script>
+</body>
+</html>

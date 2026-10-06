@@ -48,9 +48,7 @@ fn node_available() -> bool {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    cmd.output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    cmd.output().map(|o| o.status.success()).unwrap_or(false)
 }
 
 fn build_command(probe_abs: &str) -> String {
@@ -253,7 +251,11 @@ pub fn uninstall() -> ShellHookWriteResult {
     let backup = backup_path_for(&path);
     let _ = fs::copy(&path, &backup);
     let out = kept.join("\n");
-    let out = if out.is_empty() { out } else { format!("{out}\n") };
+    let out = if out.is_empty() {
+        out
+    } else {
+        format!("{out}\n")
+    };
     match fs::write(&path, out) {
         Ok(()) => ShellHookWriteResult {
             ok: true,

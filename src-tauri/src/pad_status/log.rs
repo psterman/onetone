@@ -163,11 +163,9 @@ pub fn tail_events(limit: usize) -> Vec<PadStatusLogRow> {
             .and_then(|n| n.get("agent"))
             .and_then(|x| x.as_str())
             .map(|s| s.to_string());
-        let source_legacy = crate::pad_status::PadStatus::display_source_label_for(
-            &source,
-            agent.as_deref(),
-        )
-        .to_string();
+        let source_legacy =
+            crate::pad_status::PadStatus::display_source_label_for(&source, agent.as_deref())
+                .to_string();
         let row = PadStatusLogRow {
             ts: v.get("ts").and_then(|x| x.as_u64()).unwrap_or(0),
             raw: v
@@ -287,7 +285,11 @@ mod tests {
             Some("low_confidence_vs_sticky"),
         );
         let rows = tail_events(10);
-        assert_eq!(rows.len(), 2, "isolated temp log must contain only this test's lines");
+        assert_eq!(
+            rows.len(),
+            2,
+            "isolated temp log must contain only this test's lines"
+        );
         let last = rows.last().unwrap();
         assert!(!last.accepted);
         assert_eq!(

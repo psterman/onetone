@@ -240,7 +240,13 @@ const AW_APPROVAL: &[&str] = &["waitingApproval"];
 const AW_TEXT: &[&str] = &["waitingText"];
 const AW_RUNNING: &[&str] = &["agentRunning"];
 const AW_IDLE_OR_TEXT: &[&str] = &["none", "waitingText"];
-const AW_ANY_V1: &[&str] = &["none", "waitingText", "waitingApproval", "agentRunning", "dictating"];
+const AW_ANY_V1: &[&str] = &[
+    "none",
+    "waitingText",
+    "waitingApproval",
+    "agentRunning",
+    "dictating",
+];
 const REQ_NONE: &[&str] = &[];
 const REQ_CAMERA: &[&str] = &["camera"];
 
@@ -765,7 +771,8 @@ fn legacy_entry_dto(a: &AgentActionDef) -> CatalogEntryDto {
 
 /// Known in semantic meta OR legacy execute catalog (after alias resolve).
 pub fn is_known_action_id(canonical_or_legacy: &str) -> bool {
-    semantic_meta_by_id(canonical_or_legacy).is_some() || action_by_id(canonical_or_legacy).is_some()
+    semantic_meta_by_id(canonical_or_legacy).is_some()
+        || action_by_id(canonical_or_legacy).is_some()
 }
 
 #[cfg(test)]
@@ -844,9 +851,10 @@ mod tests {
     fn no_choice_select_explosion() {
         let dto = public_catalog_dto();
         assert!(dto.entries.iter().any(|e| e.id == "choice.select"));
-        assert!(!dto.entries.iter().any(|e| {
-            e.id.starts_with("choice.select") && e.id != "choice.select"
-        }));
+        assert!(!dto
+            .entries
+            .iter()
+            .any(|e| { e.id.starts_with("choice.select") && e.id != "choice.select" }));
         for i in 1..10 {
             let bogus = format!("choice.select{i}");
             assert!(

@@ -21,8 +21,5 @@ pub fn consent_enabled() -> bool {
 
 pub fn refresh_once() {}
 
-pub fn start_cursor_activity_poll(
-    _app: tauri::AppHandle,
-    _state: std::sync::Arc<crate::AppState>,
-) {
+pub fn start_cursor_activity_poll(_app: tauri::AppHandle, _state: std::sync::Arc<crate::AppState>) {
 }

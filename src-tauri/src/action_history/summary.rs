@@ -56,11 +56,7 @@ pub fn from_semantic_route(
     let map_label = mapping_label(&cfg, mapping_id);
     let act_label = action_label(action_id);
     let summary = if map_label.is_empty() {
-        format!(
-            "{} · {}",
-            channel_label(source_channel),
-            act_label
-        )
+        format!("{} · {}", channel_label(source_channel), act_label)
     } else {
         format!(
             "{} · {} · {}",

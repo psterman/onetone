@@ -1,0 +1,296 @@
+{
+  "version": 8,
+  "mappings": [
+    {
+      "id": "e2e-bfinal-mapping-1",
+      "label": "E2E Mapping",
+      "group": "default",
+      "triggerKey": "AutoTrigger",
+      "targetKey": "RAlt",
+      "enabled": false,
+      "keyModeEnabled": true,
+      "voiceModeEnabled": true,
+      "order": 0,
+      "triggerMode": "tap",
+      "triggerSource": {
+        "id": "source_peripheral_mixed",
+        "label": "      ",
+        "mode": "single_press",
+        "grouping": "same_source_group",
+        "rawEvents": [
+          {
+            "device": "keyboard",
+            "key": "AudioVolumeDown",
+            "code": "AudioVolumeDown",
+            "location": 0,
+            "type": "keydown",
+            "hotkey": "Volume_Down",
+            "label": "Volume Down",
+            "button": null
+          },
+          {
+            "device": "keyboard",
+            "key": "AudioVolumeUp",
+            "code": "AudioVolumeUp",
+            "location": 0,
+            "type": "keydown",
+            "hotkey": "Volume_Up",
+            "label": "Volume Up",
+            "button": null
+          }
+        ]
+      },
+      "sourceKey": "Volume_Down",
+      "sourceTime": "",
+      "intervalMs": 200,
+      "enterDelayMs": 1000,
+      "cancelEnabled": true,
+      "autoEnterEnabled": true,
+      "switchKeys": [],
+      "nativeKeyRestore": false,
+      "triggerDevice": "",
+      "longPressMs": 500,
+      "doubleClickMs": 400,
+      "imePresetId": "",
+      "appTargetId": "",
+      "displayName": "E2E Codex",
+      "scenarioKind": "focus",
+      "voiceAllowBringUpTarget": true,
+      "appBehaviorRules": [],
+      "voiceCommands": [],
+      "acousticVoiceCommands": [],
+      "agentTemplateId": "",
+      "agentProviderId": "codex",
+      "agentBindings": [],
+      "targetActions": [],
+      "assists": []
+    }
+  ],
+  "trash": [],
+  "intervalMs": 200,
+  "enterDelayMs": 1000,
+  "cancelEnabled": true,
+  "autoEnterEnabled": true,
+  "debounceMs": 80,
+  "keyPressDurationMs": 250,
+  "voiceSapi": {
+    "enabled": true,
+    "phrases": [
+      "开始输入",
+      "开始听写",
+      "开启输入",
+      "开始说话"
+    ],
+    "targetKey": "RAlt",
+    "cooldownMs": 2000,
+    "minConfidence": 0.35
+  },
+  "voiceVosk": {
+    "enabled": false,
+    "phrases": [
+      "开始输入",
+      "开始听写",
+      "打开听写",
+      "语音输入",
+      "开启输入"
+    ],
+    "targetKey": "RAlt",
+    "cooldownMs": 2000,
+    "modelPath": "resources/vosk/vosk-model-small-cn-0.22",
+    "modelPreset": "cn-light"
+  },
+  "voiceKws": {
+    "enabled": false,
+    "phrases": [
+      "开始输入",
+      "开始听写",
+      "打开听写",
+      "语音输入",
+      "开启输入"
+    ],
+    "targetKey": "RAlt",
+    "cooldownMs": 2000,
+    "modelPath": "resources/kws/sherpa-kws-zh-small",
+    "modelPreset": "cn-light"
+  },
+  "voiceEnd": {
+    "enabled": true,
+    "phrasesZh": [
+      "结束输入",
+      "就这样",
+      "停止听写"
+    ],
+    "phrasesEn": [
+      "end dictation",
+      "that's it",
+      "stop dictation"
+    ],
+    "cancelPhrasesZh": [
+      "取消输入",
+      "不要了",
+      "撤掉"
+    ],
+    "cancelPhrasesEn": [
+      "cancel input",
+      "never mind"
+    ],
+    "sendPhrasesZh": [
+      "发送",
+      "发出去",
+      "提交"
+    ],
+    "sendPhrasesEn": [
+      "send it",
+      "send",
+      "submit"
+    ],
+    "sendMode": "confirm",
+    "commitDelayMs": 4000,
+    "commitKey": "Enter",
+    "dictationTimeoutMs": 60000,
+    "autoSendEnabled": false,
+    "targetKey": "RAlt",
+    "intent": "ime",
+    "promptInjectText": "",
+    "inputAimStrategy": "none",
+    "aimDefaultRev": 0
+  },
+  "desiredEngine": "sapi",
+  "voiceListeningStrategy": "off",
+  "voiceAssistEnabled": true,
+  "voiceWakeListeningOptIn": false,
+  "schemeSwitchKey": "",
+  "keyWakeSoundEnabled": false,
+  "coachHudEnabled": false,
+  "followForegroundAppScenario": false,
+  "runtimeHabitControl": {},
+  "softPadForceOpen": false,
+  "softPadFocusSessionEnabled": true,
+  "softPadRgbAggregateEnabled": true,
+  "softPadSessionPersistEnabled": true,
+  "softPadStatusNotifyEnabled": false,
+  "cursorBeginnerArmPhrase": "一声",
+  "cameraPrefs": {
+    "enabled": true,
+    "selectedDeviceId": "",
+    "previewEnabled": false,
+    "selectedWidth": 0,
+    "selectedHeight": 0,
+    "selectedFrameRate": 0,
+    "gazeCalibration": null,
+    "blinkBaseline": null,
+    "presenceActions": {
+      "enabled": true,
+      "triggers": {
+        "away": false,
+        "shake": true,
+        "blink": false,
+        "openPalm": false,
+        "okHand": false,
+        "fist": false,
+        "wave": false
+      },
+      "onAway": "none",
+      "onReturn": "none",
+      "shakeHead": "agent:input.send",
+      "deliberateBlink": "none",
+      "openPalm": "none",
+      "okHand": "none",
+      "fist": "none",
+      "wave": "none",
+      "awayMs": 3000,
+      "presentMs": 1000,
+      "shakeHow": "normal",
+      "shakeConfirmCue": true,
+      "blinkCloseSec": 0.6,
+      "blinkConfirmCue": true
+    },
+    "videoEnhancement": {
+      "enabled": false,
+      "look": "off",
+      "faceMask": "off",
+      "preset": "natural",
+      "beautyEnabled": false,
+      "whiten": 0,
+      "smooth": 0,
+      "rosy": 0,
+      "slim": 0,
+      "beauty": 18,
+      "brightness": 0,
+      "contrast": 8,
+      "saturation": 6,
+      "sharpen": 8,
+      "denoise": 8,
+      "lowLight": 0,
+      "antiFlicker": "auto",
+      "displayFrameRate": 0
+    },
+    "smartPointer": null,
+    "snapWindow": null,
+    "autoMute": null
+  },
+  "workspaceLayouts": [],
+  "sounds": {
+    "masterEnabled": true,
+    "masterVolume": 0.65,
+    "record": {
+      "enabled": true,
+      "id": "tiny-tick"
+    },
+    "voiceWake": {
+      "enabled": true,
+      "id": "voice-open-signal"
+    },
+    "keyWake": {
+      "enabled": false,
+      "id": "input-ready-soft"
+    },
+    "sendSuccess": {
+      "enabled": true,
+      "id": "send-confirm-click"
+    },
+    "sendFail": {
+      "enabled": true,
+      "id": "error-subtle"
+    },
+    "cameraAction": {
+      "enabled": false,
+      "id": "input-ready-soft"
+    },
+    "categories": {
+      "needAttention": {
+        "policy": "when_unseen",
+        "id": "input-ready-soft"
+      },
+      "taskFailed": {
+        "policy": "when_unseen",
+        "id": "error-subtle"
+      },
+      "taskDone": {
+        "policy": "when_unseen",
+        "id": "send-confirm-click"
+      },
+      "confirm": {
+        "policy": "always",
+        "id": "tiny-tick"
+      },
+      "deviceAlert": {
+        "policy": "when_unseen",
+        "id": "error-subtle"
+      }
+    },
+    "recordingMuteEnabled": false,
+    "recordingMuteStrength": "balanced"
+  },
+  "startMinimizedToTray": false,
+  "windowLayoutSeen": true,
+  "windowMaximized": false,
+  "windowWidth": 640.0,
+  "windowHeight": 680.0,
+  "windowX": 208.0,
+  "windowY": 208.0,
+  "imePresetId": "",
+  "activeSceneId": "e2e-bfinal-mapping-1",
+  "voiceWakeAcousticCommands": [],
+  "cursorActivityStatsEnabled": false
+}

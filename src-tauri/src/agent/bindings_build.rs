@@ -281,7 +281,9 @@ mod tests {
     #[test]
     fn builds_thirteen_slots_key_all_voice_essentials() {
         let rows = build_codex_micro_13_bindings("zh-CN");
-        let slot_count = crate::agent::templates::codex_micro_13_template().slots.len();
+        let slot_count = crate::agent::templates::codex_micro_13_template()
+            .slots
+            .len();
         assert_eq!(rows.len(), slot_count * 2);
 
         let key_enabled: HashSet<_> = rows
@@ -289,7 +291,11 @@ mod tests {
             .filter(|b| b.trigger_type == "key" && b.enabled)
             .map(|b| b.slot_id.as_str())
             .collect();
-        assert_eq!(key_enabled.len(), slot_count, "all template key bindings enabled");
+        assert_eq!(
+            key_enabled.len(),
+            slot_count,
+            "all template key bindings enabled"
+        );
 
         let voice_enabled: HashSet<_> = rows
             .iter()
@@ -297,7 +303,10 @@ mod tests {
             .map(|b| b.slot_id.as_str())
             .collect();
         for id in ESSENTIAL_SLOT_IDS {
-            assert!(voice_enabled.contains(id), "essential voice {id} not enabled");
+            assert!(
+                voice_enabled.contains(id),
+                "essential voice {id} not enabled"
+            );
         }
         assert_eq!(voice_enabled.len(), ESSENTIAL_SLOT_IDS.len());
 
@@ -305,14 +314,10 @@ mod tests {
             .iter()
             .any(|b| b.trigger_type == "voice" && !b.trigger_binding.is_empty()));
         assert!(rows.iter().any(|b| {
-            b.trigger_type == "key"
-                && b.slot_id == "summonCodex"
-                && b.trigger_binding.is_empty()
+            b.trigger_type == "key" && b.slot_id == "summonCodex" && b.trigger_binding.is_empty()
         }));
         assert!(rows.iter().any(|b| {
-            b.trigger_type == "key"
-                && b.slot_id == "claudeModel"
-                && b.trigger_binding.is_empty()
+            b.trigger_type == "key" && b.slot_id == "claudeModel" && b.trigger_binding.is_empty()
         }));
         assert!(rows.iter().any(|b| {
             b.trigger_type == "key"
@@ -320,16 +325,12 @@ mod tests {
                 && b.trigger_binding == "Ctrl+Shift+D"
         }));
         assert!(rows.iter().any(|b| {
-            b.trigger_type == "key"
-                && b.slot_id == "openTerminal"
-                && b.trigger_binding == "Ctrl+`"
+            b.trigger_type == "key" && b.slot_id == "openTerminal" && b.trigger_binding == "Ctrl+`"
         }));
         assert!(rows
             .iter()
             .filter(|b| {
-                b.trigger_type == "key"
-                    && b.slot_id != "summonCodex"
-                    && b.slot_id != "claudeModel"
+                b.trigger_type == "key" && b.slot_id != "summonCodex" && b.slot_id != "claudeModel"
             })
             .all(|b| !b.trigger_binding.is_empty()));
         assert_eq!(default_key_for_slot("summonCodex"), "");
@@ -353,7 +354,10 @@ mod tests {
         assert!(is_chordless_soft_pad_slot("summonCodex"));
         assert!(is_chordless_soft_pad_slot("custom_abc"));
         assert!(!is_chordless_soft_pad_slot("stopOrSend"));
-        assert_eq!(default_vscode_key_for_slot("commandPalette"), "Ctrl+Shift+P");
+        assert_eq!(
+            default_vscode_key_for_slot("commandPalette"),
+            "Ctrl+Shift+P"
+        );
         assert_eq!(default_vscode_key_for_slot("cancel"), "Escape");
         assert_eq!(default_vscode_key_for_slot("quickChat"), "");
         assert_eq!(
@@ -364,18 +368,9 @@ mod tests {
             default_key_for_scenario("workbuddy-chat", "newThread"),
             "Ctrl+N"
         );
-        assert_eq!(
-            default_key_for_scenario("trae-work", "quickChat"),
-            "Ctrl+U"
-        );
-        assert_eq!(
-            default_key_for_scenario("trae-code", "quickChat"),
-            "Ctrl+U"
-        );
-        assert_eq!(
-            default_key_for_scenario("trae-chat", "quickChat"),
-            "Ctrl+U"
-        );
+        assert_eq!(default_key_for_scenario("trae-work", "quickChat"), "Ctrl+U");
+        assert_eq!(default_key_for_scenario("trae-code", "quickChat"), "Ctrl+U");
+        assert_eq!(default_key_for_scenario("trae-chat", "quickChat"), "Ctrl+U");
         assert_eq!(
             default_key_for_scenario("qoder-chat", "cancel"),
             "Ctrl+Backspace"

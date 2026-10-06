@@ -40,8 +40,14 @@ pub fn parse_qoder_local_session(
         Some((rem / t * 100.0).clamp(0.0, 100.0))
     } else if exceeded || (total == Some(0.0) && rem == 0.0) {
         Some(0.0)
-    } else if let Some(used_pct) = number(uq.get("percentage").unwrap_or(&Value::Null))
-        .or_else(|| number(credit_usage.get("totalUsagePercentage").unwrap_or(&Value::Null)))
+    } else if let Some(used_pct) =
+        number(uq.get("percentage").unwrap_or(&Value::Null)).or_else(|| {
+            number(
+                credit_usage
+                    .get("totalUsagePercentage")
+                    .unwrap_or(&Value::Null),
+            )
+        })
     {
         Some((100.0 - used_pct).clamp(0.0, 100.0))
     } else {
@@ -369,10 +375,7 @@ pub fn refresh(local: (Option<u64>, Option<u64>)) {
                         );
                         stale.updated_at = now_ms();
                         attach_local(&mut stale, local.0, local.1);
-                        agent_usage::put_snapshot(
-                            crate::soft_pad_runtime::AgentKind::Qoder,
-                            stale,
-                        );
+                        agent_usage::put_snapshot(crate::soft_pad_runtime::AgentKind::Qoder, stale);
                         return;
                     }
                     if e.contains("not installed") {
@@ -433,8 +436,14 @@ mod tests {
         let snap = parse_qoder_local_session(&credit, Some(&user), Some(&plan)).expect("parse");
         assert_eq!(snap.plan_type, "免费");
         assert_eq!(snap.account_label, "pster man");
-        assert_eq!(snap.message, "免费 · 套餐额度 0 / 0 · 已用尽 · 开通自2025年9月22日");
-        assert!(snap.resets_at.is_none(), "sentinel expiresAt must not surface");
+        assert_eq!(
+            snap.message,
+            "免费 · 套餐额度 0 / 0 · 已用尽 · 开通自2025年9月22日"
+        );
+        assert!(
+            snap.resets_at.is_none(),
+            "sentinel expiresAt must not surface"
+        );
     }
 
     #[test]

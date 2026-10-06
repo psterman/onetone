@@ -54,9 +54,7 @@ impl ClaudeProviderAdapter {
         let duration_ms = state.cfg.lock().key_press_duration_ms;
 
         match action_id {
-            "openAgent" | "focusComposer" | "agent.focus" => {
-                focus_only(window, duration_ms, mode)
-            }
+            "openAgent" | "focusComposer" | "agent.focus" => focus_only(window, duration_ms, mode),
             _ => ProviderActionOutcome::err(
                 "unsupported_action",
                 Some(format!("no claude handler for {action_id}")),

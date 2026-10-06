@@ -29,7 +29,11 @@ pub fn update_tray_mic_cache(st: &crate::audio_win::MicMuteState) {
     let mic = MicState {
         available: st.available,
         muted: st.muted,
-        device: if st.available { "默认".into() } else { "—".into() },
+        device: if st.available {
+            "默认".into()
+        } else {
+            "—".into()
+        },
         level: None,
     };
     if let Ok(mut g) = TRAY_MIC_CACHE.lock() {
@@ -448,7 +452,8 @@ pub fn segment_payload(state: &AppState, segment: &str) -> Option<serde_json::Va
         "global" => {
             let open_fg = crate::tray::tray_open_foreground();
             let channels = assemble_channels(state);
-            serde_json::to_value(assemble_global_with_fg(state, open_fg.as_ref(), &channels)).ok()?
+            serde_json::to_value(assemble_global_with_fg(state, open_fg.as_ref(), &channels))
+                .ok()?
         }
         "mic" => serde_json::to_value(assemble_mic(state)).ok()?,
         "channels" => serde_json::to_value(assemble_channels(state)).ok()?,
@@ -492,7 +497,10 @@ pub fn channel_id_from_kind(source: &str, kind_str: &str) -> Option<&'static str
     }
     if source == "input_ext"
         || kind_str.starts_with("input_")
-        || matches!(kind_str, kind::INPUT_CAPTURED | kind::INPUT_IGNORED | kind::INPUT_PARSE_MISS)
+        || matches!(
+            kind_str,
+            kind::INPUT_CAPTURED | kind::INPUT_IGNORED | kind::INPUT_PARSE_MISS
+        )
     {
         return Some("keys");
     }
@@ -634,7 +642,11 @@ fn assemble_camera_channel(state: &AppState) -> Channel {
         id: "camera".into(),
         name: "摄像头".into(),
         enabled,
-        state: if enabled { "standby".into() } else { "off".into() },
+        state: if enabled {
+            "standby".into()
+        } else {
+            "off".into()
+        },
         meta: if enabled {
             "已启用".into()
         } else {
@@ -719,9 +731,7 @@ fn tray_soft_pad_mapping<'a>(cfg: &'a VoiceConfig) -> Option<&'a crate::config::
             return Some(m);
         }
     }
-    cfg.mappings
-        .iter()
-        .find(|m| m.codex_micro_pad.is_some())
+    cfg.mappings.iter().find(|m| m.codex_micro_pad.is_some())
 }
 
 fn tray_user_label(mapping: Option<&crate::config::MappingEntry>) -> String {
@@ -1002,14 +1012,11 @@ fn assemble_keys_stats(
 
 fn assemble_soft_pad_stats(cfg: &VoiceConfig, overlay_visible: bool) -> Vec<ChannelStat> {
     let m = tray_soft_pad_mapping(cfg);
-    let (key_count, agent, overlay_on) = match m.and_then(|m| m.codex_micro_pad.as_ref().map(|p| (m, p))) {
-        Some((mapping, pad)) => (
-            pad.keys.len(),
-            mapping.display_label(),
-            pad.overlay_enabled,
-        ),
-        None => (0, "—".into(), false),
-    };
+    let (key_count, agent, overlay_on) =
+        match m.and_then(|m| m.codex_micro_pad.as_ref().map(|p| (m, p))) {
+            Some((mapping, pad)) => (pad.keys.len(), mapping.display_label(), pad.overlay_enabled),
+            None => (0, "—".into(), false),
+        };
     vec![
         channel_stat(
             "键位",
@@ -1061,7 +1068,14 @@ fn assemble_camera_stats(prefs: &crate::config::CameraPrefs, enabled: bool) -> V
         channel_stat("设备", device),
         channel_stat("Presence", presence),
         channel_stat("自动静音", auto_mute),
-        channel_stat("权限", if enabled { String::from("已授权") } else { String::from("—") }),
+        channel_stat(
+            "权限",
+            if enabled {
+                String::from("已授权")
+            } else {
+                String::from("—")
+            },
+        ),
     ]
 }
 
@@ -1209,7 +1223,10 @@ mod tests {
     #[test]
     fn assemble_deep_links_has_habits_entry() {
         let links = assemble_deep_links();
-        let habits = links.iter().find(|l| l.id == "habits").expect("habits link");
+        let habits = links
+            .iter()
+            .find(|l| l.id == "habits")
+            .expect("habits link");
         assert_eq!(habits.label, "我的习惯");
         assert_eq!(habits.href, "main:habits");
         assert!(!links.iter().any(|l| l.href == "main:diagnose"));

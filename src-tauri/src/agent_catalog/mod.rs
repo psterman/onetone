@@ -510,13 +510,31 @@ mod tests {
 
     #[test]
     fn codex_and_claude_observe_session_lanes() {
-        assert!(descriptor(AgentKind::Codex).capabilities.can_observe_session_lanes);
-        assert!(descriptor(AgentKind::Claude).capabilities.can_observe_session_lanes);
-        assert!(descriptor(AgentKind::Claude).capabilities.can_multi_agent_lights);
-        assert!(!descriptor(AgentKind::Codex).capabilities.can_multi_agent_lights);
-        assert!(!descriptor(AgentKind::Codex)
-            .capabilities
-            .can_open_exact_app_conversation);
+        assert!(
+            descriptor(AgentKind::Codex)
+                .capabilities
+                .can_observe_session_lanes
+        );
+        assert!(
+            descriptor(AgentKind::Claude)
+                .capabilities
+                .can_observe_session_lanes
+        );
+        assert!(
+            descriptor(AgentKind::Claude)
+                .capabilities
+                .can_multi_agent_lights
+        );
+        assert!(
+            !descriptor(AgentKind::Codex)
+                .capabilities
+                .can_multi_agent_lights
+        );
+        assert!(
+            !descriptor(AgentKind::Codex)
+                .capabilities
+                .can_open_exact_app_conversation
+        );
     }
 
     #[test]

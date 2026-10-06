@@ -21,8 +21,8 @@ use tauri::AppHandle;
 
 use crate::agent::route::SemanticRouteResult;
 use crate::ipc::emit_to_main_if_available;
-use crate::AppState;
 use crate::runtime_event;
+use crate::AppState;
 pub fn should_record_runtime_kind(kind: &str) -> bool {
     // Habit "usage" only — scheme switches are navigation noise, not using the habit.
     matches!(
@@ -55,7 +55,12 @@ pub fn record_semantic_route(
     record(entry)
 }
 
-pub fn record_send_key(state: &AppState, mapping_id: &str, target_key: &str, ok: bool) -> ActionHistoryEntry {
+pub fn record_send_key(
+    state: &AppState,
+    mapping_id: &str,
+    target_key: &str,
+    ok: bool,
+) -> ActionHistoryEntry {
     let entry = from_send_key(state, mapping_id, target_key, ok);
     record(entry)
 }

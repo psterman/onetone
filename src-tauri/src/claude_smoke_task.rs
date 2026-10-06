@@ -161,9 +161,7 @@ fn summarize_stdout(stdout: &str) -> String {
 
 fn build_command_display(workspace: &str, prompt: &str) -> String {
     let shown = truncate(prompt, 120).replace('\n', " ");
-    format!(
-        "claude -p --permission-mode plan --output-format text (cwd={workspace}) \"{shown}\""
-    )
+    format!("claude -p --permission-mode plan --output-format text (cwd={workspace}) \"{shown}\"")
 }
 
 pub fn normalize_prompt(user: Option<&str>) -> String {
@@ -335,13 +333,7 @@ fn run_claude_print(task_id: &str, workspace: PathBuf, prompt: String) {
     let mut command = Command::new(&spec.program);
     command
         .args(&spec.prefix_args)
-        .args([
-            "-p",
-            "--permission-mode",
-            "plan",
-            "--output-format",
-            "text",
-        ])
+        .args(["-p", "--permission-mode", "plan", "--output-format", "text"])
         .arg(&prompt)
         .current_dir(&workspace)
         .stdin(Stdio::null())

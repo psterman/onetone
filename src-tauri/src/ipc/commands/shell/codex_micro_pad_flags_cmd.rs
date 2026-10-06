@@ -116,8 +116,9 @@ pub fn cmd_codex_micro_pad_set_layout(
         let Some(idx) = cfg.mappings.iter().position(|m| m.id == mapping_id) else {
             return Err("mapping_not_found".into());
         };
-        pin_kind =
-            crate::soft_pad_runtime::AgentKind::from_app_target(cfg.mappings[idx].app_target_id.trim());
+        pin_kind = crate::soft_pad_runtime::AgentKind::from_app_target(
+            cfg.mappings[idx].app_target_id.trim(),
+        );
         {
             let mapping = &mut cfg.mappings[idx];
             let pad = mapping

@@ -206,7 +206,7 @@ mod tests {
             double_click_ms: 400,
             ime_preset_id: String::new(),
             app_target_id: String::new(),
-           voice_allow_bring_up_target: false,
+            voice_allow_bring_up_target: false,
             app_behavior_rules: vec![],
             voice_override: None,
             camera_override: None,
@@ -217,11 +217,11 @@ mod tests {
             agent_bindings: vec![],
             codex_micro_pad: None,
             time_machine_workspace: String::new(),
-        capture_hero_ref: None,
-        gesture_modes: None,
-        oral_command_scheme: None,
-        target_actions: vec![],
-        assists: vec![],
+            capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
+            target_actions: vec![],
+            assists: vec![],
         }
     }
 

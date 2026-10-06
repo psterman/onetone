@@ -1,0 +1,13 @@
+{
+  "id": "agent.interrupt",
+  "label": "Interrupt",
+  "scope": "externalAgent",
+  "support": "hotkey",
+  "supported": true,
+  "enabled": true,
+  "state": "available",
+  "source": "codexProbe",
+  "confidence": "high",
+  "observedAt": 1000,
+  "freshUntil": 4000
+}

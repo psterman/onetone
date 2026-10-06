@@ -1191,9 +1191,7 @@ pub fn resolve_overlay_pad_micro_route(
         });
     // pasteAndSend / runTargetSequence / summonCodex are Soft Pad workflows —
     // they intentionally have no app chord; empty trigger must still resolve.
-    if trigger.is_empty()
-        && !crate::agent::bindings_build::is_chordless_soft_pad_slot(slot)
-    {
+    if trigger.is_empty() && !crate::agent::bindings_build::is_chordless_soft_pad_slot(slot) {
         return None;
     }
     let action_id = binding
@@ -1624,13 +1622,15 @@ fn sticky_mapping_id_for_tid(tid: &str) -> Option<String> {
     last_soft_pad_surface()
         .lock()
         .as_ref()
-        .and_then(|(t, _, mid)| {
-            if t.trim() == tid {
-                mid.clone()
-            } else {
-                None
-            }
-        })
+        .and_then(
+            |(t, _, mid)| {
+                if t.trim() == tid {
+                    mid.clone()
+                } else {
+                    None
+                }
+            },
+        )
 }
 
 fn mapping_for_soft_pad_target<'a>(
@@ -1640,9 +1640,11 @@ fn mapping_for_soft_pad_target<'a>(
     let tid = tid.trim();
     // Prefer Hub/set_layout pinned mappingId when it still matches this app target.
     if let Some(mid) = sticky_mapping_id_for_tid(tid) {
-        if let Some(m) = cfg.mappings.iter().find(|m| {
-            m.enabled && m.id == mid && m.app_target_id.trim() == tid
-        }) {
+        if let Some(m) = cfg
+            .mappings
+            .iter()
+            .find(|m| m.enabled && m.id == mid && m.app_target_id.trim() == tid)
+        {
             if let Some(pad) = m.codex_micro_pad.as_ref() {
                 return Some((m, pad));
             }
@@ -1693,10 +1695,9 @@ fn active_codex_mapping_with_overlay(
     }
     // Beginner MVP: Cursor habit / FG / alive → cursor-chat Soft Pad (not sticky Codex).
     if crate::cursor_beginner::should_prefer_cursor_soft_pad(cfg) {
-        if let Some(hit) = mapping_for_soft_pad_target(
-            cfg,
-            crate::app_chat_workflow::CURSOR_APP_TARGET_ID,
-        ) {
+        if let Some(hit) =
+            mapping_for_soft_pad_target(cfg, crate::app_chat_workflow::CURSOR_APP_TARGET_ID)
+        {
             return Some(hit);
         }
         if crate::cursor_beginner::cursor_habit_active(cfg)
@@ -1996,8 +1997,7 @@ fn build_ag_light_gates(
         } else if lane_n_preview > 0 {
             format!("LaneStore {lane_n_preview} 条 · 等下一次 PermissionRequest 刷新主状态")
         } else {
-            "未收到 claude_hook / claude_app（重启会清空内存；在 Claude 里再触发一次确认）"
-                .into()
+            "未收到 claude_hook / claude_app（重启会清空内存；在 Claude 里再触发一次确认）".into()
         },
     });
 
@@ -2131,9 +2131,7 @@ fn build_ag_light_gates(
     let active_lane_cells: Vec<_> = cells
         .iter()
         .filter(|c| {
-            !c.lane_id.is_empty()
-                && !c.run_status.trim().is_empty()
-                && c.run_status != "idle"
+            !c.lane_id.is_empty() && !c.run_status.trim().is_empty() && c.run_status != "idle"
         })
         .map(|c| format!("{}={}", c.micro_key_id, c.run_status))
         .collect();
@@ -2163,9 +2161,7 @@ fn build_ag_light_gates(
         detail: if status_host.is_empty() {
             "无 status host".into()
         } else {
-            let st = status_cell
-                .map(|c| c.run_status.as_str())
-                .unwrap_or("—");
+            let st = status_cell.map(|c| c.run_status.as_str()).unwrap_or("—");
             format!(
                 "{status_host}={st}{}",
                 if multi_agent_lights {
@@ -2298,9 +2294,7 @@ fn resolve_claude_main_light_host_only(
     }
     lights
         .iter()
-        .find(|l| {
-            l.agent_key == crate::pad_status::CLAUDE_MAIN_KEY && l.state != "idle"
-        })
+        .find(|l| l.agent_key == crate::pad_status::CLAUDE_MAIN_KEY && l.state != "idle")
         .map(|l| vec![(main_host, l.clone())])
         .unwrap_or_default()
 }
@@ -2593,11 +2587,7 @@ fn apply_oral_listen_chrome(snapshot: &mut CodexMicroOverlaySnapshot, cfg: &Voic
     snapshot.oral_listen_micro_keys = crate::voice_command_session::listen_micro_keys(cfg);
     snapshot.oral_listen_commands = crate::voice_command_session::listen_command_cards(cfg)
         .into_iter()
-        .map(|(name, say, slot_id)| OralListenCommandCard {
-            name,
-            say,
-            slot_id,
-        })
+        .map(|(name, say, slot_id)| OralListenCommandCard { name, say, slot_id })
         .collect();
     // Drive Soft Pad listening skin (blue aura + ACT10 emphasize).
     if snapshot.pad_status.trim().is_empty() || snapshot.pad_status == "idle" {
@@ -2912,14 +2902,8 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             &status_light_micro_key_id,
             &claude_hosts,
         );
-        let (nav_cta_mapping_id, nav_cta_agent, nav_cta_slots) = resolve_nav_enable_cta(
-            cfg,
-            None,
-            None,
-            None,
-            &app_agent,
-            &app_last_source,
-        );
+        let (nav_cta_mapping_id, nav_cta_agent, nav_cta_slots) =
+            resolve_nav_enable_cta(cfg, None, None, None, &app_agent, &app_last_source);
         let ag_light_gates = build_ag_light_gates(
             cfg,
             None,
@@ -2961,13 +2945,17 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             mini_chrome: Default::default(),
             skin: normalize_skin("").to_string(),
             screen_opacity: 82,
-            purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts.as_str().to_string(),
+            purpose: crate::soft_pad_purpose::SoftPadPurpose::Shortcuts
+                .as_str()
+                .to_string(),
             mapping_id: String::new(),
             applied_agent: String::new(),
             nav_cta_mapping_id,
             nav_cta_agent,
             nav_cta_slots,
-            ag_surface: crate::soft_pad_purpose::AgSurface::Actions.as_str().to_string(),
+            ag_surface: crate::soft_pad_purpose::AgSurface::Actions
+                .as_str()
+                .to_string(),
             navigation_slots: Vec::new(),
             navigation_overflow: 0,
             multi_agent_lights: false,
@@ -3028,13 +3016,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
     // Runtime expand/minimize is sticky; pad.presentation only seeds on mapping switch.
     let minimized = sync_minimized_for_mapping(&mapping.id, pad);
     let applied_kind = crate::soft_pad_runtime::applied_lane()
-        .map(|(k, mid)| {
-            if mid == mapping.id {
-                Some(k)
-            } else {
-                None
-            }
-        })
+        .map(|(k, mid)| if mid == mapping.id { Some(k) } else { None })
         .flatten()
         .or_else(|| {
             crate::agent_catalog::kind_from_mapping(
@@ -3058,7 +3040,11 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             .any(|k| k.enabled && k.slot_id.trim() == "status");
         if !explicit_status_host
             && !status_light_micro_key_id.is_empty()
-            && crate::soft_pad_purpose::is_navigation_micro_key(kind, pad, &status_light_micro_key_id)
+            && crate::soft_pad_purpose::is_navigation_micro_key(
+                kind,
+                pad,
+                &status_light_micro_key_id,
+            )
         {
             // Keep app status host on an Action key in mixed nav mode.
             for candidate in ["AG04", "AG05", "ACT12", "ACT08"] {
@@ -3187,7 +3173,9 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
             key_role = crate::soft_pad_purpose::SoftPadKeyRole::Action;
         }
         let nav_lane = applied_kind
-            .map(|kind| crate::soft_pad_purpose::is_navigation_micro_key(kind, pad, def.micro_key_id))
+            .map(|kind| {
+                crate::soft_pad_purpose::is_navigation_micro_key(kind, pad, def.micro_key_id)
+            })
             .unwrap_or(false);
         // Session lanes / status host have no chord binding — still must paint lights.
         // Without bound, overlay FE adds is-route-disabled and greys needs_input away.
@@ -3469,9 +3457,7 @@ fn build_snapshot_from_cfg(cfg: &VoiceConfig) -> CodexMicroOverlaySnapshot {
         {
             true
         } else if overlay_hwnd_is_foreground() {
-            *last_visible().lock()
-                && !is_overlay_session_dismissed()
-                && agent_show_reason_recent()
+            *last_visible().lock() && !is_overlay_session_dismissed() && agent_show_reason_recent()
         } else {
             // Other app focused — keep-on-top.
             true
@@ -3942,84 +3928,84 @@ fn agent_chip_snapshots(cfg: &VoiceConfig) -> Vec<CodexMicroAgentSnapshot> {
         AgentKind::Windsurf,
         AgentKind::Qoder,
     ]
-        .into_iter()
-        .map(|kind| {
-            let lights_on = agent_status_light_enabled(cfg, kind);
-            // ponytail: Claude has a dedicated hook source (claude_hook / pad_status).
-            // Chips should reflect real attention state regardless of lights_on so the
-            // top-bar and pad agent bar stay in sync with CLI lifecycle. Codex and Cursor
-            // retain the gate — they have no always-on hook equivalent.
-            let raw_state = match crate::agent_attention::store::primary_state_for(kind) {
-                Some(AttentionState::NeedsInput) => "needs_input",
-                Some(AttentionState::Working) => "running",
-                Some(AttentionState::Complete) => "done",
-                Some(AttentionState::Error) => "failed",
-                Some(AttentionState::Idle) | None => "idle",
-            };
-            let state = if kind == AgentKind::MiniMax {
-                // Quota lamp only — never report running/done from process guess.
-                "idle"
-            } else if matches!(kind, AgentKind::WorkBuddy | AgentKind::Qoder) {
-                // Hook-only motion lamp — process/mtime must not impersonate Cursor running.
-                // Trae Work + Trae Code use Cursor-style inferred activity (OfficialHook still wins).
-                match crate::agent_attention::store::lifecycle_source_for(kind) {
-                    Some(crate::agent_attention::SignalSource::OfficialHook) => raw_state,
-                    _ => "idle",
-                }
-            } else if kind == AgentKind::Claude {
-                // For Claude: show real state when hook is live (pad_status has a recent
-                // entry for claude_hook or claude_app), even if the lights toggle is off.
-                let pad = crate::pad_status::snapshot();
-                let source = pad.display_source_label();
-                let hook_live = (source == "claude_hook" || source == "claude_app")
-                    && pad.updated_at > 0;
-                if hook_live || lights_on {
-                    raw_state
-                } else {
-                    "idle"
-                }
-            } else if !lights_on {
-                "idle"
-            } else {
-                raw_state
-            };
-            let metadata = crate::agent_model_metadata::snapshot(kind);
-            let usage = crate::agent_usage::snapshot(kind);
-            let health = crate::connector_health::snapshot_agent(kind);
-            let (headline, headline_label) = crate::connector_health::headline_for_agent(kind);
-            let updated_at = public
-                .rows
-                .iter()
-                .filter(|row| row.agent == kind.as_str())
-                .map(|row| row.observed_at_ms)
-                .max()
-                .unwrap_or(0)
-                .max(metadata.updated_at)
-                .max(usage.updated_at);
-            let hook_configured = match kind {
-                AgentKind::WorkBuddy | AgentKind::TraeCode | AgentKind::Qoder => {
-                    crate::pad_status::shell_hook_configured(kind)
-                }
-                AgentKind::Trae | AgentKind::Windsurf => crate::pad_status::shell_hook_configured(kind),
-                _ => None,
-            };
-            let signal_health = compute_signal_health(kind, hook_configured.as_ref(), state);
-            CodexMicroAgentSnapshot {
-                kind: kind.as_str().to_string(),
-                state: state.to_string(),
-                model: metadata.model,
-                model_confidence: metadata.confidence,
-                usage,
-                health,
-                headline_state: headline.as_str().to_string(),
-                headline_label: headline_label.to_string(),
-                updated_at,
-                lights_enabled: lights_on,
-                hook_configured,
-                signal_health: signal_health.to_string(),
+    .into_iter()
+    .map(|kind| {
+        let lights_on = agent_status_light_enabled(cfg, kind);
+        // ponytail: Claude has a dedicated hook source (claude_hook / pad_status).
+        // Chips should reflect real attention state regardless of lights_on so the
+        // top-bar and pad agent bar stay in sync with CLI lifecycle. Codex and Cursor
+        // retain the gate — they have no always-on hook equivalent.
+        let raw_state = match crate::agent_attention::store::primary_state_for(kind) {
+            Some(AttentionState::NeedsInput) => "needs_input",
+            Some(AttentionState::Working) => "running",
+            Some(AttentionState::Complete) => "done",
+            Some(AttentionState::Error) => "failed",
+            Some(AttentionState::Idle) | None => "idle",
+        };
+        let state = if kind == AgentKind::MiniMax {
+            // Quota lamp only — never report running/done from process guess.
+            "idle"
+        } else if matches!(kind, AgentKind::WorkBuddy | AgentKind::Qoder) {
+            // Hook-only motion lamp — process/mtime must not impersonate Cursor running.
+            // Trae Work + Trae Code use Cursor-style inferred activity (OfficialHook still wins).
+            match crate::agent_attention::store::lifecycle_source_for(kind) {
+                Some(crate::agent_attention::SignalSource::OfficialHook) => raw_state,
+                _ => "idle",
             }
-        })
-        .collect()
+        } else if kind == AgentKind::Claude {
+            // For Claude: show real state when hook is live (pad_status has a recent
+            // entry for claude_hook or claude_app), even if the lights toggle is off.
+            let pad = crate::pad_status::snapshot();
+            let source = pad.display_source_label();
+            let hook_live =
+                (source == "claude_hook" || source == "claude_app") && pad.updated_at > 0;
+            if hook_live || lights_on {
+                raw_state
+            } else {
+                "idle"
+            }
+        } else if !lights_on {
+            "idle"
+        } else {
+            raw_state
+        };
+        let metadata = crate::agent_model_metadata::snapshot(kind);
+        let usage = crate::agent_usage::snapshot(kind);
+        let health = crate::connector_health::snapshot_agent(kind);
+        let (headline, headline_label) = crate::connector_health::headline_for_agent(kind);
+        let updated_at = public
+            .rows
+            .iter()
+            .filter(|row| row.agent == kind.as_str())
+            .map(|row| row.observed_at_ms)
+            .max()
+            .unwrap_or(0)
+            .max(metadata.updated_at)
+            .max(usage.updated_at);
+        let hook_configured = match kind {
+            AgentKind::WorkBuddy | AgentKind::TraeCode | AgentKind::Qoder => {
+                crate::pad_status::shell_hook_configured(kind)
+            }
+            AgentKind::Trae | AgentKind::Windsurf => crate::pad_status::shell_hook_configured(kind),
+            _ => None,
+        };
+        let signal_health = compute_signal_health(kind, hook_configured.as_ref(), state);
+        CodexMicroAgentSnapshot {
+            kind: kind.as_str().to_string(),
+            state: state.to_string(),
+            model: metadata.model,
+            model_confidence: metadata.confidence,
+            usage,
+            health,
+            headline_state: headline.as_str().to_string(),
+            headline_label: headline_label.to_string(),
+            updated_at,
+            lights_enabled: lights_on,
+            hook_configured,
+            signal_health: signal_health.to_string(),
+        }
+    })
+    .collect()
 }
 
 fn compute_signal_health(
@@ -4032,7 +4018,11 @@ fn compute_signal_health(
 
     if matches!(
         kind,
-        AgentKind::WorkBuddy | AgentKind::Trae | AgentKind::TraeCode | AgentKind::Windsurf | AgentKind::Qoder
+        AgentKind::WorkBuddy
+            | AgentKind::Trae
+            | AgentKind::TraeCode
+            | AgentKind::Windsurf
+            | AgentKind::Qoder
     ) && hook_configured == Some(&false)
     {
         return "unconfigured";
@@ -4086,16 +4076,14 @@ fn resolve_overlay_rgb(
         return None;
     }
     if ambient_mode.trim().eq_ignore_ascii_case("solid") {
-        if let Some(rgb) =
-            crate::pad_status::rgb_for_ambient_full(
-                app_status,
-                "solid",
-                ambient_solid,
-                ambient_opacity,
-                key_preset,
-                Some(status_colors),
-            )
-        {
+        if let Some(rgb) = crate::pad_status::rgb_for_ambient_full(
+            app_status,
+            "solid",
+            ambient_solid,
+            ambient_opacity,
+            key_preset,
+            Some(status_colors),
+        ) {
             return Some(CodexMicroOverlayRgb {
                 r: rgb.0,
                 g: rgb.1,
@@ -4304,9 +4292,7 @@ fn active_codex_mapping_with_overlay_mut(
             })
             .or_else(|| {
                 cfg.mappings.iter().position(|m| {
-                    m.enabled
-                        && m.app_target_id.trim() == tid.trim()
-                        && m.codex_micro_pad.is_some()
+                    m.enabled && m.app_target_id.trim() == tid.trim() && m.codex_micro_pad.is_some()
                 })
             })
     } else {
@@ -4349,10 +4335,18 @@ pub fn presentation_is_mini(pad: &CodexMicroPadConfig) -> bool {
 }
 
 /// Soft Pad visual skins. Unknown / empty ? `"default"`.
-fn default_screen_opacity_snap() -> u8 { 82 }
+fn default_screen_opacity_snap() -> u8 {
+    82
+}
 
 fn clamp_screen_opacity(v: u8) -> u8 {
-    if v < 40 { 40 } else if v > 100 { 100 } else { v }
+    if v < 40 {
+        40
+    } else if v > 100 {
+        100
+    } else {
+        v
+    }
 }
 
 pub fn normalize_skin(raw: &str) -> &'static str {
@@ -4449,25 +4443,25 @@ fn apply_overlay_payload(
             let _ = win.set_skip_taskbar(true);
             // Already-on Soft Pad: geometry only — re-show causes FG flash on mapping switch.
             if !already_visible {
-            #[cfg(windows)]
-            {
-                use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-                if let Ok(handle) = win.window_handle() {
-                    if let RawWindowHandle::Win32(platform) = handle.as_raw() {
-                        let hwnd = platform.hwnd.get() as winapi::shared::windef::HWND;
-                        let _ = crate::keyboard::show_window_no_activate(hwnd);
+                #[cfg(windows)]
+                {
+                    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+                    if let Ok(handle) = win.window_handle() {
+                        if let RawWindowHandle::Win32(platform) = handle.as_raw() {
+                            let hwnd = platform.hwnd.get() as winapi::shared::windef::HWND;
+                            let _ = crate::keyboard::show_window_no_activate(hwnd);
+                        } else {
+                            let _ = win.show();
+                        }
                     } else {
                         let _ = win.show();
                     }
-                } else {
+                    apply_overlay_no_activate();
+                }
+                #[cfg(not(windows))]
+                {
                     let _ = win.show();
                 }
-                apply_overlay_no_activate();
-            }
-            #[cfg(not(windows))]
-            {
-                let _ = win.show();
-            }
             }
         }
     } else if !visible {
@@ -4583,8 +4577,12 @@ fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnaps
             // Tip「懂了」and listen banner share the band under the bar.
             || (snapshot.cursor_beginner_mode && snapshot.cursor_probe_ok));
     let tools_row = snapshot.minimized && snapshot.mini_chrome.tools_bar_enabled;
-    let (logical_w, logical_h) =
-        overlay_logical_size(minimized, snapshot.joy_nav_panel_open, listen_band, tools_row);
+    let (logical_w, logical_h) = overlay_logical_size(
+        minimized,
+        snapshot.joy_nav_panel_open,
+        listen_band,
+        tools_row,
+    );
     let width_key = logical_w.round() as i32;
     let height_key = logical_h.round() as i32;
     let want = (minimized, width_key, height_key);
@@ -4809,8 +4807,9 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
 
     // Soft Pad lane follows the live app, including non-agent windows (Chrome → 通用).
     {
-        static LAST_RECOMPUTE: std::sync::OnceLock<parking_lot::Mutex<(String, std::time::Instant)>> =
-            std::sync::OnceLock::new();
+        static LAST_RECOMPUTE: std::sync::OnceLock<
+            parking_lot::Mutex<(String, std::time::Instant)>,
+        > = std::sync::OnceLock::new();
         let slot = LAST_RECOMPUTE.get_or_init(|| {
             parking_lot::Mutex::new((
                 String::new(),
@@ -4820,10 +4819,7 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
         let ev = crate::soft_pad_runtime::platform::read_foreground_evidence();
         let fg_token = match (ev.agent_kind, ev.foreign_host) {
             (Some(kind), _) => kind.as_str().to_string(),
-            (None, true) => format!(
-                "foreign:{}",
-                ev.app_target_id.as_deref().unwrap_or("")
-            ),
+            (None, true) => format!("foreign:{}", ev.app_target_id.as_deref().unwrap_or("")),
             (None, false) => "idle".to_string(),
         };
         let mut changed = false;
@@ -4831,7 +4827,8 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
             let mut g = slot.lock();
             let prev_token = g.0.clone();
             let last_at = g.1;
-            if prev_token != fg_token && last_at.elapsed() >= std::time::Duration::from_millis(400) {
+            if prev_token != fg_token && last_at.elapsed() >= std::time::Duration::from_millis(400)
+            {
                 *g = (fg_token, std::time::Instant::now());
                 changed = true;
             }
@@ -4847,10 +4844,7 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
     // Clear soft dismiss whenever a Soft Pad agent is FG (rising or steady) or process
     // is alive — do not wait for the host latch (`is_fg`), which lags two ticks and
     // used to leave Soft Pad hidden after settings until restart.
-    if is_overlay_session_dismissed()
-        && (agent_fg || agent_process)
-        && gate_reason.is_none()
-    {
+    if is_overlay_session_dismissed() && (agent_fg || agent_process) && gate_reason.is_none() {
         *overlay_session_dismissed().lock() = false;
     }
 
@@ -4892,9 +4886,8 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
                     // 250ms maybe_tick tokio worker and storm vosk → UI_HB_STALL_5S.
                     static KWS_BEGINNER_RELOAD: std::sync::OnceLock<std::sync::atomic::AtomicBool> =
                         std::sync::OnceLock::new();
-                    let reloaded = KWS_BEGINNER_RELOAD.get_or_init(|| {
-                        std::sync::atomic::AtomicBool::new(false)
-                    });
+                    let reloaded = KWS_BEGINNER_RELOAD
+                        .get_or_init(|| std::sync::atomic::AtomicBool::new(false));
                     let first = !reloaded.swap(true, std::sync::atomic::Ordering::Relaxed);
                     // Oral listen already resumed the engine — another force reload
                     // mid-window stomps mic and drops 继续/说话/退出 finals.
@@ -4939,10 +4932,7 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
                 crate::cursor_beginner::cursor_habit_active(&cfg),
             )
         };
-        if cursor_heal
-            && !crate::app_identity::foreground_is_self()
-            && gate_reason.is_none()
-        {
+        if cursor_heal && !crate::app_identity::foreground_is_self() && gate_reason.is_none() {
             static LAST_CURSOR_ENSURE: std::sync::OnceLock<parking_lot::Mutex<std::time::Instant>> =
                 std::sync::OnceLock::new();
             let slot = LAST_CURSOR_ENSURE.get_or_init(|| {
@@ -4968,9 +4958,7 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
         // Auto-ensure Soft Pad routes when a supported agent is FG or its process is running.
         // Skip while OneTone itself is FG (home / settings): Cursor.exe alive used to
         // take cfg.lock every 250ms for readiness+heal, which 假死'd the homepage.
-        let result = if (agent_fg || agent_process)
-            && !crate::app_identity::foreground_is_self()
-        {
+        let result = if (agent_fg || agent_process) && !crate::app_identity::foreground_is_self() {
             let mut cfg = state.cfg.lock();
             let blocker = crate::codex_numpad_layer::readiness_snapshot(&cfg).blocker;
             let needs_mapping = blocker == "no_routes" || blocker == "no_mapping";
@@ -4989,15 +4977,9 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
             if !should_ensure {
                 None
             } else {
-                let prefer = if agent_fg {
-                    fg_tid.as_deref()
-                } else {
-                    None
-                };
+                let prefer = if agent_fg { fg_tid.as_deref() } else { None };
                 let result = crate::codex_numpad_layer::ensure_codex_pad_ready_for(
-                    &mut cfg,
-                    "zh-CN",
-                    prefer,
+                    &mut cfg, "zh-CN", prefer,
                 );
                 let ensure_cursor_keys = result.changed
                     && result.mapping_id.as_ref().is_some_and(|mid| {
@@ -5174,7 +5156,10 @@ mod tests {
         assert_eq!(picked.0.app_target_id, "minimax-chat");
         assert!(picked.1.overlay_enabled);
         let snap = build_snapshot_from_cfg(&cfg);
-        assert!(snap.visible, "force open must show Soft Pad without agent FG");
+        assert!(
+            snap.visible,
+            "force open must show Soft Pad without agent FG"
+        );
         test_clear_fg_overrides();
     }
 
@@ -5358,10 +5343,22 @@ mod tests {
     #[test]
     fn codex_native_ag_lights_gated_to_codex_soft_pad() {
         use crate::soft_pad_runtime::AgentKind;
-        assert!(allow_codex_native_ag_lights(Some(AgentKind::Codex), "codex"));
-        assert!(allow_codex_native_ag_lights(Some(AgentKind::Codex), "cursor"));
-        assert!(!allow_codex_native_ag_lights(Some(AgentKind::Cursor), "codex"));
-        assert!(!allow_codex_native_ag_lights(Some(AgentKind::Cursor), "cursor"));
+        assert!(allow_codex_native_ag_lights(
+            Some(AgentKind::Codex),
+            "codex"
+        ));
+        assert!(allow_codex_native_ag_lights(
+            Some(AgentKind::Codex),
+            "cursor"
+        ));
+        assert!(!allow_codex_native_ag_lights(
+            Some(AgentKind::Cursor),
+            "codex"
+        ));
+        assert!(!allow_codex_native_ag_lights(
+            Some(AgentKind::Cursor),
+            "cursor"
+        ));
         assert!(!allow_codex_native_ag_lights(Some(AgentKind::Claude), ""));
         assert!(!allow_codex_native_ag_lights(None, "cursor"));
     }
@@ -5541,11 +5538,11 @@ mod tests {
             agent_provider_id: String::new(),
             agent_bindings: vec![],
             time_machine_workspace: String::new(),
-        capture_hero_ref: None,
-        gesture_modes: None,
-        oral_command_scheme: None,
-        target_actions: vec![],
-        assists: vec![],
+            capture_hero_ref: None,
+            gesture_modes: None,
+            oral_command_scheme: None,
+            target_actions: vec![],
+            assists: vec![],
         }
     }
 
@@ -5828,9 +5825,9 @@ mod tests {
                     enabled: true,
                     advanced: false,
                     agent_light_id: String::new(),
-                light_rgb: String::new(),
-                key_role: None,
-                auto_assignable: None,
+                    light_rgb: String::new(),
+                    key_role: None,
+                    auto_assignable: None,
                 },
                 CodexMicroPadKeyRoute {
                     micro_key_id: "ACT07".into(),
@@ -5842,16 +5839,16 @@ mod tests {
                     enabled: true,
                     advanced: false,
                     agent_light_id: String::new(),
-                light_rgb: String::new(),
-                key_role: None,
-                auto_assignable: None,
+                    light_rgb: String::new(),
+                    key_role: None,
+                    auto_assignable: None,
                 },
             ],
         });
         mapping.agent_bindings = vec![
             AgentBinding {
-            action_instance_id: String::new(),
-            action_args: None,
+                action_instance_id: String::new(),
+                action_args: None,
                 slot_id: "plan".into(),
                 action_id: "plan".into(),
                 trigger_type: "key".into(),
@@ -5861,8 +5858,8 @@ mod tests {
                 activation_scope: "foregroundApp".into(),
             },
             AgentBinding {
-            action_instance_id: String::new(),
-            action_args: None,
+                action_instance_id: String::new(),
+                action_args: None,
                 slot_id: "commandPalette".into(),
                 action_id: "commandPalette".into(),
                 trigger_type: "key".into(),
@@ -6092,9 +6089,9 @@ mod tests {
                 enabled: true,
                 advanced: false,
                 agent_light_id: String::new(),
-            light_rgb: String::new(),
-            key_role: None,
-            auto_assignable: None,
+                light_rgb: String::new(),
+                key_role: None,
+                auto_assignable: None,
             }],
         });
         let mut cfg = VoiceConfig::default();
@@ -6552,9 +6549,9 @@ mod tests {
             enabled: true,
             advanced: false,
             agent_light_id: String::new(),
-        light_rgb: String::new(),
-        key_role: None,
-        auto_assignable: None,
+            light_rgb: String::new(),
+            key_role: None,
+            auto_assignable: None,
         }
     }
 
@@ -6685,7 +6682,11 @@ mod tests {
             at: Some(30),
         });
         let snap2 = build_snapshot_from_cfg(&cfg);
-        let lane2: Vec<_> = snap2.cells.iter().filter(|c| !c.lane_id.is_empty()).collect();
+        let lane2: Vec<_> = snap2
+            .cells
+            .iter()
+            .filter(|c| !c.lane_id.is_empty())
+            .collect();
         assert_eq!(lane2.len(), 1);
         assert_eq!(lane2[0].lane_id, lane_cells[0].lane_id);
         assert_eq!(lane2[0].subagent_count, 1);
@@ -7215,9 +7216,9 @@ mod tests {
             enabled: true,
             advanced: false,
             agent_light_id: String::new(),
-        light_rgb: String::new(),
-        key_role: None,
-        auto_assignable: None,
+            light_rgb: String::new(),
+            key_role: None,
+            auto_assignable: None,
         }
     }
 
@@ -7334,9 +7335,9 @@ mod tests {
                 enabled: true,
                 advanced: false,
                 agent_light_id: String::new(),
-            light_rgb: String::new(),
-            key_role: None,
-            auto_assignable: None,
+                light_rgb: String::new(),
+                key_role: None,
+                auto_assignable: None,
             }],
             |id| id != "GHOST",
         );
@@ -7967,9 +7968,9 @@ mod tests {
             enabled: true,
             advanced: true,
             agent_light_id: String::new(),
-        light_rgb: String::new(),
-        key_role: None,
-        auto_assignable: None,
+            light_rgb: String::new(),
+            key_role: None,
+            auto_assignable: None,
         });
         assert!(pad.keys.iter().any(|k| k.micro_key_id == "NAV_UP"));
         cfg.mappings = vec![codex_mapping(pad.clone())];
@@ -8564,18 +8565,43 @@ mod tests {
     fn expand_sticky_across_same_mapping_snapshots() {
         let mut last = String::new();
         let mut runtime = true; // currently mini
-        // First attach: seed from presentation mini
-        assert!(resolve_minimized_on_mapping_change("A", true, &mut last, &mut runtime));
+                                // First attach: seed from presentation mini
+        assert!(resolve_minimized_on_mapping_change(
+            "A",
+            true,
+            &mut last,
+            &mut runtime
+        ));
         // User expands (runtime false); same mapping still presentation mini must NOT force back
         runtime = false;
-        assert!(!resolve_minimized_on_mapping_change("A", true, &mut last, &mut runtime));
+        assert!(!resolve_minimized_on_mapping_change(
+            "A",
+            true,
+            &mut last,
+            &mut runtime
+        ));
         // Switch to MiniMax (or any) mapping that still prefers mini — keep user expand
-        assert!(!resolve_minimized_on_mapping_change("B", true, &mut last, &mut runtime));
+        assert!(!resolve_minimized_on_mapping_change(
+            "B",
+            true,
+            &mut last,
+            &mut runtime
+        ));
         // Switch again; presentation full must not fight sticky expand either
-        assert!(!resolve_minimized_on_mapping_change("C", false, &mut last, &mut runtime));
+        assert!(!resolve_minimized_on_mapping_change(
+            "C",
+            false,
+            &mut last,
+            &mut runtime
+        ));
         // User minimizes; sticky across further mapping switches
         runtime = true;
-        assert!(resolve_minimized_on_mapping_change("A", false, &mut last, &mut runtime));
+        assert!(resolve_minimized_on_mapping_change(
+            "A",
+            false,
+            &mut last,
+            &mut runtime
+        ));
     }
 
     #[test]
@@ -8597,7 +8623,9 @@ mod tests {
             overlay_logical_size(true, false, true, true),
             (400.0, 156.0)
         );
-        assert!(overlay_logical_size(true, false, true, true).1
-            > overlay_logical_size(true, false, false, true).1);
+        assert!(
+            overlay_logical_size(true, false, true, true).1
+                > overlay_logical_size(true, false, false, true).1
+        );
     }
 }

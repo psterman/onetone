@@ -33,12 +33,7 @@ pub fn cmd_agent_center_snapshot(
     } else {
         install_rows_from_state(state.inner())
     };
-    agent_memory::build_agent_center_snapshot_with_hints(
-        hint.as_deref(),
-        &install,
-        false,
-        &hints,
-    )
+    agent_memory::build_agent_center_snapshot_with_hints(hint.as_deref(), &install, false, &hints)
 }
 
 #[tauri::command]
@@ -73,5 +68,6 @@ pub fn cmd_agent_center_action(
         args.agent_id.trim(),
         args.action_id.trim(),
         hint.as_deref(),
+        args.attempt_id.as_deref(),
     )
 }

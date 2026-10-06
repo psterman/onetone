@@ -309,9 +309,7 @@ fn main() {
             strip_vosk_dll_bundle_resources();
             tauri_build::try_build(
                 tauri_build::Attributes::new()
-                    .windows_attributes(
-                        tauri_build::WindowsAttributes::new_without_app_manifest(),
-                    )
+                    .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest())
                     .app_manifest(tauri_build::AppManifest::new().commands(COMMANDS)),
             )
             .expect("failed to run tauri build after stripping locked Vosk DLLs");
@@ -386,8 +384,12 @@ fn embed_common_controls_manifest() {
     // directory, so bake the absolute path into a generated .rc.
     let rc = out_dir.join("common-controls-v6.rc");
     let mut script = fs::File::create(&rc).expect("create rc script");
-    writeln!(script, "{RESOURCE_ID} 24 \"{}\"", manifest.display().to_string().replace('\\', "/"))
-        .expect("write rc script");
+    writeln!(
+        script,
+        "{RESOURCE_ID} 24 \"{}\"",
+        manifest.display().to_string().replace('\\', "/")
+    )
+    .expect("write rc script");
     drop(script);
 
     if let Err(e) =

@@ -1,0 +1,11 @@
+{
+  "outcome": "attemptedUnverified",
+  "ok": true,
+  "verified": false,
+  "attemptId": "attempt-fixture-attempted-1",
+  "detail": "stop_not_verified",
+  "result": {
+    "handler": "cancel",
+    "verified": false
+  }
+}

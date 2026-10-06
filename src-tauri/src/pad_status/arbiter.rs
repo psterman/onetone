@@ -1,9 +1,7 @@
 //! Priority + TTL + transition constraints.
 
 use super::log;
-use super::model::{
-    Confidence, PadSource, PadState, PadStatus, PadStatusCandidate,
-};
+use super::model::{Confidence, PadSource, PadState, PadStatus, PadStatusCandidate};
 
 /// Non-sticky sources expire after this window (hook/app sticky states use stickyUntil / implicit sticky).
 pub const STALE_MS: u64 = 3000;
@@ -26,9 +24,7 @@ pub fn settle(status: &mut PadStatus, now: u64) {
                 status.sticky_until = None;
                 status.message = None;
             }
-        } else if status.updated_at > 0
-            && now.saturating_sub(status.updated_at) >= DONE_SETTLE_MS
-        {
+        } else if status.updated_at > 0 && now.saturating_sub(status.updated_at) >= DONE_SETTLE_MS {
             status.state = PadState::Idle.as_str().into();
             status.phase = None;
             status.message = None;
@@ -114,12 +110,7 @@ pub fn propose(current: &PadStatus, candidate: &PadStatusCandidate, now: u64) ->
 
     match beats_current(&cur, &cand, now) {
         Ok(()) => {
-            log::append_event(
-                &candidate.raw_tag,
-                &cand,
-                true,
-                None,
-            );
+            log::append_event(&candidate.raw_tag, &cand, true, None);
             ProposeResult {
                 accepted: true,
                 winner: cand,
@@ -127,12 +118,7 @@ pub fn propose(current: &PadStatus, candidate: &PadStatusCandidate, now: u64) ->
             }
         }
         Err(reason) => {
-            log::append_event(
-                &candidate.raw_tag,
-                &cand,
-                false,
-                Some(reason),
-            );
+            log::append_event(&candidate.raw_tag, &cand, false, Some(reason));
             ProposeResult {
                 accepted: false,
                 winner: cur,
@@ -193,7 +179,12 @@ mod tests {
 
     #[test]
     fn offline_to_done_rejected() {
-        let current = base(PadState::Offline, PadSource::Native, Confidence::Medium, 1000);
+        let current = base(
+            PadState::Offline,
+            PadSource::Native,
+            Confidence::Medium,
+            1000,
+        );
         let cand = PadStatusCandidate {
             status: base(PadState::Done, PadSource::Inferred, Confidence::Low, 2000),
             raw_tag: "bad".into(),

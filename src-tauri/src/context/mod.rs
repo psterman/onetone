@@ -86,7 +86,10 @@ mod tests {
     fn live_snapshot_is_valid_without_presence() {
         let s = snapshot_live(false, None);
         assert_eq!(s.presence, PresenceState::Unknown);
-        assert!(!s.suppress_visible_interrupts, "Phase 1 不应因缺摄像头就压制");
+        assert!(
+            !s.suppress_visible_interrupts,
+            "Phase 1 不应因缺摄像头就压制"
+        );
     }
 
     #[test]

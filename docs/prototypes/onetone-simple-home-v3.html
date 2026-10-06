@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 当前工作 v3</title>
+  <style>
+    :root{
+      --bg:#f5f7f8;--paper:#fff;--ink:#18252d;--muted:#73818a;--faint:#9aa5aa;--line:#e1e7e9;
+      --accent:#127c75;--accent-soft:#e7f5f2;--blue:#256fa8;--blue-soft:#edf5fb;
+      --warn:#a76819;--warn-soft:#fff5e5;--stop:#a33a3a;
+      --shadow:0 18px 45px rgba(22,42,51,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "Segoe UI","Microsoft YaHei",sans-serif}
+    button,input{font:inherit}button{cursor:pointer}
+    .shell{min-height:100vh;display:grid;grid-template-columns:216px minmax(0,1fr)}
+
+    /* ---------- sidebar ---------- */
+    aside{padding:24px 14px;background:#fbfcfc;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:26px}
+    .brand{display:flex;align-items:center;gap:10px;padding:0 8px}
+    .mark{width:32px;height:32px;border-radius:10px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:800}
+    .brand b{display:block;font-size:15px}
+    .brand small{display:block;color:var(--muted);font-size:11px}
+    .nav{display:grid;gap:4px}
+    .nav button{border:0;background:transparent;text-align:left;border-radius:10px;padding:10px 12px;color:#66757d;display:flex;align-items:center;gap:9px}
+    .nav button.active,.nav button:hover{background:var(--accent-soft);color:var(--accent);font-weight:700}
+    .nav .muted{margin-top:14px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#a0abb0;padding:8px 12px 3px}
+    .nav .more{border:1px solid var(--line);background:#fff;justify-content:space-between;margin-top:6px}
+    .nav .more:hover{border-color:#9bcfc8}
+    .nav .more .caret{color:#a0abb0;font-size:10px}
+    .more-panel{border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px;display:grid;gap:2px;margin-top:2px}
+    .more-panel[hidden]{display:none}
+    .more-panel button{border:0;background:transparent;text-align:left;padding:7px 9px;border-radius:8px;color:#5e7079;font-size:13px}
+    .more-panel button:hover{background:var(--accent-soft);color:var(--accent)}
+    .aside-foot{margin-top:auto;color:#a0abb0;font-size:12px;padding:8px;display:grid;gap:5px}
+    .aside-foot kbd{background:#eef2f3;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font:11px/1.4 inherit}
+
+    /* ---------- main ---------- */
+    main{width:min(960px,100%);margin:0 auto;padding:34px 34px 60px}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:18px}
+    .kicker{font-size:12px;color:var(--accent);font-weight:800;letter-spacing:.08em}
+    .top h1{font-size:28px;letter-spacing:-.03em;margin:6px 0}
+    .top p{margin:0;color:var(--muted)}
+
+    /* prototype state switcher */
+    .demo-bar{display:flex;align-items:center;gap:8px;background:#fffdf5;border:1px solid #f0e4c4;border-radius:12px;padding:8px 12px;margin-bottom:18px}
+    .demo-bar .lbl{font-size:11px;color:#9a7b2f;font-weight:800;letter-spacing:.06em;margin-right:2px}
+    .demo-bar button{border:1px solid #e6d9b0;background:#fff;color:#7a6a3c;border-radius:8px;padding:5px 11px;font-size:12.5px}
+    .demo-bar button.on{background:#f6ecd0;border-color:#d9c68a;color:#6a5620;font-weight:700}
+
+    /* ---------- hero queue ---------- */
+    .focus{background:var(--ink);color:#fff;border-radius:20px;padding:22px 24px 18px;box-shadow:var(--shadow);margin-bottom:14px}
+    .focus-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:4px}
+    .focus h2{font-size:17px;line-height:1.3;margin:0}
+    .focus-head .link{color:#7fb8f0}
+    .focus .sub{color:#9fb2b9;font-size:12.5px;margin:2px 0 14px}
+
+    .q{border-top:1px solid rgba(255,255,255,.11)}
+    .q-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 0}
+    .q-row:first-of-type{border-top:0}
+    .q-dot{width:9px;height:9px;border-radius:50%;background:#5d6f77}
+    .q-row[data-p="need"] .q-dot{background:#f0a44a;box-shadow:0 0 0 4px rgba(240,164,74,.18)}
+    .q-row[data-p="review"] .q-dot{background:#6ed0a4;box-shadow:0 0 0 4px rgba(110,208,164,.18)}
+    .q-row[data-p="run"] .q-dot{background:#7fb8f0;box-shadow:0 0 0 4px rgba(127,184,240,.16)}
+    .q-title{font-weight:700;font-size:14.5px;line-height:1.35}
+    .q-meta{color:#9fb2b9;font-size:12px;margin-top:3px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+    .q-meta .sep{color:#54666e}
+    .q-right{display:flex;align-items:center;gap:10px}
+    .q-state{font-size:11.5px;border-radius:999px;padding:4px 9px;background:rgba(255,255,255,.1);color:#cfe0e5;white-space:nowrap}
+    .q-row[data-p="need"] .q-state{background:rgba(240,164,74,.17);color:#f6cd97}
+    .q-row[data-p="review"] .q-state{background:rgba(110,208,164,.16);color:#a6e6cb}
+
+    .btn{border:1px solid transparent;border-radius:10px;padding:9px 14px;background:#fff;color:var(--ink);font-weight:700}
+    .btn.primary{background:#78d2c4;color:#103a37}
+    .btn.dark{background:rgba(255,255,255,.1);color:#e8f5f3;border-color:rgba(255,255,255,.22)}
+    .btn.ghost{background:transparent;border-color:var(--line);color:#5e7079}
+    .btn.soft{background:#f1f5f5;color:#41605f}
+    .btn.sm{padding:6px 11px;font-size:13px;border-radius:9px}
+    .btn:focus-visible,.control:focus-visible,.nav button:focus-visible,input:focus-visible{outline:2px solid #2f9e94;outline-offset:2px}
+
+    .focus-foot{border-top:1px solid rgba(255,255,255,.11);padding-top:12px;margin-top:2px}
+    .focus-foot button{border:0;background:transparent;color:#8fb6c9;font-weight:700;padding:0;font-size:13px}
+    .focus-foot button:hover{color:#bcdcf0}
+
+    /* ---------- calm / empty hero states ---------- */
+    .focus.calm{display:flex;gap:18px;align-items:center}
+    .focus.calm .ring{width:44px;height:44px;border-radius:50%;border:2px solid rgba(110,208,164,.5);display:grid;place-items:center;color:#a6e6cb;flex:none}
+    .focus.calm h3{margin:0 0 4px;font-size:16px}
+    .focus.calm p{margin:0;color:#9fb2b9;font-size:13px}
+
+    /* ---------- cards ---------- */
+    .section{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-top:14px}
+    .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+    .section h3{font-size:14px;margin:0}
+    .section .count{color:var(--faint);font-weight:400;font-size:12.5px}
+    .link{border:0;background:transparent;color:var(--blue);font-weight:700;padding:0;font-size:13px}
+    .link:hover{text-decoration:underline}
+
+    /* done / result */
+    .done{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}
+    .done-who{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+    .who-mark{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex:none}
+    .who-mark.codex{background:#2f5d8c}.who-mark.claude{background:#a25b32}.who-mark.cursor{background:#33383f}
+    .who-name{font-weight:700;font-size:13px}
+    .who-proj{color:var(--faint);font-size:12px}
+    .done-title{font-weight:700;font-size:14.5px}
+    .done-meta{color:var(--muted);font-size:12px;margin-top:3px}
+    .checks{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+    .check{border-radius:999px;padding:4px 9px;background:#f1f5f5;color:#5b7373;font-size:12px}
+    .check.ok{background:var(--accent-soft);color:var(--accent)}
+    .check.warn{background:var(--warn-soft);color:var(--warn)}
+    .check.off{background:#f3f4f5;color:#8b969c}
+    .done-actions{display:flex;flex-direction:column;gap:7px;align-items:stretch}
+    .fresh{font-size:11px;color:var(--faint);margin-top:8px}
+
+    /* roster */
+    .roster-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}
+    .roster-row:first-of-type{border-top:0;padding-top:2px}
+    .r-dot{width:8px;height:8px;border-radius:50%;background:#c3ced2}
+    .roster-row[data-s="run"] .r-dot{background:#4b93c9;box-shadow:0 0 0 3px rgba(75,147,201,.15)}
+    .roster-row[data-s="need"] .r-dot{background:#e09a3c;box-shadow:0 0 0 3px rgba(224,154,60,.16)}
+    .roster-row[data-s="idle"] .r-dot{background:#b9c4c8}
+    .r-work{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .r-sub{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .r-state{font-size:11.5px;border-radius:999px;padding:4px 9px;white-space:nowrap}
+    .r-state.run{background:var(--blue-soft);color:var(--blue)}
+    .r-state.need{background:var(--warn-soft);color:var(--warn)}
+    .r-state.idle{background:#f1f5f5;color:#7c8b91}
+
+    /* prompt */
+    .prompt{display:flex;gap:10px;align-items:center}
+    .prompt input{min-width:0;flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 13px;outline:none;background:#fcfdfd}
+    .prompt input:focus{border-color:#8ccbc3;box-shadow:0 0 0 3px var(--accent-soft)}
+    .mic{border:0;background:var(--accent);color:#fff;border-radius:11px;padding:11px 15px;font-weight:800;white-space:nowrap}
+    .hint{font-size:12px;color:var(--muted);margin:9px 0 0}
+
+    /* controls, scoped */
+    .scope{display:flex;align-items:center;gap:7px;background:#f7f9fa;border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:12.5px;color:#5e7079;margin-bottom:11px}
+    .scope b{color:var(--ink)}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .control{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 11px;color:#5e7079}
+    .control:hover{border-color:#9bcfc8;color:var(--accent)}
+    .control.danger:hover{border-color:#e0b4b4;color:var(--stop);background:#fdf6f6}
+
+    /* empty state */
+    .boot{text-align:center;padding:14px 8px 6px}
+    .boot .steps{display:grid;gap:9px;margin:18px auto 0;max-width:430px;text-align:left}
+    .boot-step{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:11px;align-items:center;border:1px solid var(--line);border-radius:11px;padding:11px 13px}
+    .boot-step .n{width:20px;height:20px;border-radius:50%;background:#eef2f3;color:#87949a;display:grid;place-items:center;font-size:11px;font-weight:800}
+    .boot-step.done .n{background:var(--accent-soft);color:var(--accent)}
+    .boot-step .t{font-size:13.5px;font-weight:600}
+    .boot-step .s{font-size:12px;color:var(--muted);margin-top:2px}
+
+    .footer-note{font-size:12px;color:var(--faint);margin-top:20px;text-align:center}
+    .toast{position:fixed;right:20px;bottom:20px;background:var(--ink);color:#fff;padding:11px 14px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none;z-index:9;max-width:300px}
+    .toast.on{opacity:1}
+
+    @media(max-width:760px){
+      .shell{grid-template-columns:1fr}
+      aside{padding:14px 16px;border-right:0;border-bottom:1px solid var(--line);gap:12px}
+      .nav{display:flex;overflow:auto}.nav .muted{display:none}.nav button{white-space:nowrap}
+      .aside-foot{display:none}
+      main{padding:22px 16px 40px}
+      .top{display:block}.focus-head{display:block}
+      .q-row{grid-template-columns:10px minmax(0,1fr)}
+      .q-right{grid-column:2;justify-content:flex-start;flex-wrap:wrap}
+      .done{grid-template-columns:1fr}
+      .done-actions{flex-direction:row}
+      .prompt{flex-direction:column;align-items:stretch}
+      .prompt input,.mic{width:100%}
+      .roster-row{grid-template-columns:10px minmax(0,1fr) auto}
+      .roster-row .control{display:none}
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside>
+    <div class="brand"><div class="mark">一</div><div><b>一声 OneTone</b><small>让工作继续下去</small></div></div>
+    <nav class="nav" aria-label="主导航">
+      <button class="active">现在</button>
+      <button>工作记录</button>
+      <button>Agent</button>
+      <button>探索能力</button>
+      <span class="muted">其他</span>
+      <button class="more" data-more-toggle aria-expanded="false">全部设置 <span class="caret">▾</span></button>
+      <div class="more-panel" data-more-panel hidden>
+        <button>按键设置</button>
+        <button>语音设置</button>
+        <button>摄像头</button>
+        <button>数据与用量</button>
+        <button>通用与声音</button>
+      </div>
+    </nav>
+    <div class="aside-foot">
+      <div><kbd>Ctrl</kbd> + <kbd>Space</kbd> · 说话</div>
+      <div><kbd>Ctrl</kbd> + <kbd>K</kbd> · 搜索功能</div>
+    </div>
+  </aside>
+
+  <main>
+    <header class="top">
+      <div>
+        <div class="kicker">ONE TONE</div>
+        <h1>当前工作</h1>
+        <p>把想法变成可以确认的结果。</p>
+      </div>
+    </header>
+
+    <div class="demo-bar" role="group" aria-label="原型状态切换">
+      <span class="lbl">原型</span>
+      <button class="on" data-state="busy">有事要管</button>
+      <button data-state="calm">一切顺利</button>
+      <button data-state="empty">首次使用</button>
+    </div>
+
+    <div id="view"></div>
+
+    <p class="footer-note">通道是控制方式，结果才是首页要关注的事情。</p>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  var view = document.getElementById('view');
+  var toastEl = document.getElementById('toast');
+  var timer;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('on');
+    clearTimeout(timer);
+    timer = setTimeout(function () { toastEl.classList.remove('on'); }, 1800);
+  }
+
+  var MARK = { codex: 'C', claude: 'C', cursor: '⌘', aider: 'A' };
+
+  /* ---------- queue ---------- */
+  var QUEUE = [
+    { p: 'need',   title: '修复 voice-pilot 首页',   who: 'Codex',  cls: 'codex',  proj: 'voice-pilot', when: '刚刚',        state: '等你确认',       act: '查看结果', primary: true },
+    { p: 'review', title: '补齐 Agent 会话标题',      who: 'Codex',  cls: 'codex',  proj: 'voice-pilot', when: '8 分钟前',   state: '有结果 · 未预览', act: '打开预览', primary: true },
+    { p: 'run',    title: '重构官网导航层级',         who: 'Claude', cls: 'claude', proj: 'website2',    when: '进行中 14 分钟', state: '进行中', act: '暂停', primary: false }
+  ];
+
+  function renderQueue(rows) {
+    if (!rows.length) {
+      return '<section class="focus calm">' +
+        '<div class="ring">✓</div>' +
+        '<div><h3>现在没有需要你决定的事</h3>' +
+        '<p>1 个 Agent 还在跑，完成后会自动回到这里排队，不打断你。</p></div>' +
+        '</section>';
+    }
+    return '<section class="focus" aria-labelledby="q-title">' +
+      '<div class="focus-head"><h2 id="q-title">现在有 ' + rows.length + ' 件事</h2>' +
+      '<button class="link" data-toast="按：需要你 → 有结果未验证 → 进行中">排序说明</button></div>' +
+      '<p class="sub">按需要你处理的程度排序，不按时间。</p>' +
+      rows.map(function (r) {
+        return '<div class="q-row" data-p="' + r.p + '">' +
+          '<span class="q-dot"></span>' +
+          '<div><div class="q-title">' + esc(r.title) + '</div>' +
+          '<div class="q-meta"><span>' + esc(r.who) + '</span><span class="sep">·</span>' +
+          '<span>' + esc(r.proj) + '</span><span class="sep">·</span><span>' + esc(r.when) + '</span></div></div>' +
+          '<div class="q-right"><span class="q-state">' + esc(r.state) + '</span>' +
+          '<button class="btn ' + (r.primary ? 'primary' : 'dark') + ' sm" data-toast="' + esc(r.who + ' · ' + r.title + ' → ' + r.act) + '">' + esc(r.act) + '</button>' +
+          '</div></div>';
+      }).join('') +
+      '<div class="focus-foot"><button data-toast="打开工作记录">查看全部 5 件事 ›</button></div>' +
+      '</section>';
+  }
+
+  /* ---------- recently done, attributed to a session ---------- */
+  function renderDone(clean) {
+    var warn = !clean;
+    return '<section class="section" aria-labelledby="done-title">' +
+      '<div class="section-head"><h3 id="done-title">刚刚完成</h3>' +
+      '<button class="link" data-toast="打开全部改动">查看全部 ›</button></div>' +
+      '<div class="done">' +
+        '<div>' +
+          '<div class="done-who">' +
+            '<span class="who-mark ' + (clean ? 'claude' : 'codex') + '">' + (clean ? 'C' : 'C') + '</span>' +
+            '<span class="who-name">' + (clean ? 'Claude' : 'Codex') + '</span>' +
+            '<span class="who-proj">' + (clean ? 'website2 · 分支 feat/nav' : 'voice-pilot · 分支 feat/desk') + '</span>' +
+          '</div>' +
+          '<div class="done-title">' + (clean ? '官网导航层级重构' : '修复 voice-pilot 首页状态展示') + '</div>' +
+          '<div class="done-meta">' + (clean ? '修改了 7 个文件 · 9 分钟前' : '修改了 4 个文件 · 2 分钟前') + '</div>' +
+          '<div class="checks">' +
+            (warn ? '<span class="check ok">✓ 检查通过</span>' : '<span class="check ok">✓ 检查通过</span>') +
+            (warn ? '<span class="check warn">⚠ 尚未预览</span>' : '<span class="check ok">✓ 已预览</span>') +
+            (warn ? '<span class="check off">2 个测试未跑</span>' : '<span class="check ok">✓ 测试通过</span>') +
+          '</div>' +
+          '<p class="fresh">' + (clean ? '证据：Claude 报告 · 刚刚同步 · 你已确认' : '证据：Codex 报告 · 刚刚同步 · 预览结果读不到') + '</p>' +
+        '</div>' +
+        '<div class="done-actions">' +
+          '<button class="btn ' + (warn ? 'primary' : 'soft') + '" data-toast="打开预览">' + (warn ? '打开预览' : '查看改动') + '</button>' +
+          '<button class="btn ghost" data-toast="已回到检查点">回到上一个检查点</button>' +
+        '</div>' +
+      '</div></section>';
+  }
+
+  /* ---------- roster, always visible ---------- */
+  var ROSTER = [
+    { s: 'need',  who: 'Codex',  cls: 'codex',  work: '修复 voice-pilot 首页',   sub: 'voice-pilot · 等你确认',   state: '需要你', act: '查看' },
+    { s: 'run',   who: 'Codex',  cls: 'codex',  work: '补齐 Agent 会话标题',      sub: 'voice-pilot · 结果未预览', state: '有结果', act: '预览' },
+    { s: 'run',   who: 'Claude', cls: 'claude', work: '重构官网导航层级',         sub: 'website2 · 已运行 14 分钟', state: '进行中', act: '暂停' },
+    { s: 'run',   who: 'Cursor', cls: 'cursor', work: '补 README 的快速上手',      sub: 'onetone · 已运行 6 分钟',   state: '进行中', act: '暂停' },
+    { s: 'idle',  who: 'Aider',  cls: 'aider',  work: '没有需要你处理的事项',       sub: '空闲 · 上次 2 小时前',      state: '空闲',   act: '打开' }
+  ];
+
+  /* 首次使用：只报真实检测结果，未连接的明确说未连接 */
+  var ROSTER_FIRST = [
+    { s: 'idle',  who: 'Codex',   cls: 'codex',  work: '已检测到 · 尚未连接',   sub: '缺少 Hook · 读不到状态',  state: '未连接', act: '连接' },
+    { s: 'idle',  who: 'Claude',  cls: 'claude', work: '已检测到 · 尚未连接',   sub: '缺少 Hook · 读不到状态',  state: '未连接', act: '连接' },
+    { s: 'idle',  who: 'Cursor',  cls: 'cursor', work: '未发现会话文件',        sub: '可能没在用 · 可隐藏',    state: '未发现', act: '检查' }
+  ];
+
+  /* 一切顺利：没有待你决策的项，1 个在跑，其余空闲 */
+  var ROSTER_CALM = [
+    { s: 'run',   who: 'Claude', cls: 'claude', work: '重构官网导航层级',   sub: 'website2 · 已运行 21 分钟', state: '进行中', act: '暂停' },
+    { s: 'idle',  who: 'Codex',  cls: 'codex',  work: '没有需要你处理的事项', sub: '空闲 · 上次 1 小时前',      state: '空闲',   act: '打开' },
+    { s: 'idle',  who: 'Cursor', cls: 'cursor', work: '没有需要你处理的事项', sub: '空闲 · 上次 3 小时前',      state: '空闲',   act: '打开' }
+  ];
+
+  function renderRoster(rows) {
+    var list = rows || ROSTER;
+    return '<section class="section" aria-labelledby="roster-title">' +
+      '<div class="section-head"><h3 id="roster-title">Agent 台账 <span class="count">· ' + list.length + ' 个</span></h3>' +
+      '<button class="link" data-toast="打开 Agent 中心">全部 ›</button></div>' +
+      list.map(function (r) {
+        return '<div class="roster-row" data-s="' + r.s + '">' +
+          '<span class="r-dot"></span>' +
+          '<div><div class="r-work">' + esc(r.who) + ' · ' + esc(r.work) + '</div>' +
+          '<div class="r-sub">' + esc(r.sub) + '</div></div>' +
+          '<span class="r-state ' + r.s + '">' + esc(r.state) + '</span>' +
+          '<button class="control" data-toast="' + esc(r.who + ' → ' + r.act) + '">' + esc(r.act) + '</button>' +
+          '</div>';
+      }).join('') +
+      '</section>';
+  }
+
+  /* ---------- ask ---------- */
+  function renderAsk() {
+    return '<section class="section" aria-labelledby="ask-title">' +
+      '<div class="section-head"><h3 id="ask-title">你还想让我做什么？</h3></div>' +
+      '<div class="prompt"><input id="prompt" type="text" placeholder="输入下一步，或说出来……" aria-label="输入下一步" />' +
+      '<button class="mic" data-toast="开始听写">🎙 开始说</button></div>' +
+      '<p class="hint">你可以说：把首页再简化一点、跑一遍测试、撤回刚才的修改。</p>' +
+      '</section>';
+  }
+
+  /* ---------- controls, scoped to a named target ---------- */
+  function renderControls(target) {
+    return '<section class="section" aria-labelledby="ctl-title">' +
+      '<div class="section-head"><h3 id="ctl-title">控制当前这件事</h3>' +
+      '<button class="link" data-toast="Ctrl + Space · Soft Pad 也可控制同一组动作">通道说明</button></div>' +
+      '<div class="scope">作用对象：<b>' + esc(target) + '</b></div>' +
+      '<div class="controls">' +
+        '<button class="control" data-toast="已暂停 ' + esc(target) + '">暂停</button>' +
+        '<button class="control" data-toast="已继续 ' + esc(target) + '">继续</button>' +
+        '<button class="control" data-toast="已打开确认：' + esc(target) + '">确认</button>' +
+        '<button class="control" data-toast="已取消操作">取消</button>' +
+        '<button class="control danger" data-toast="已撤回刚才的修改（可恢复）">撤回刚才的修改</button>' +
+      '</div>' +
+      '<p class="hint">确认和取消会先看影响；撤回之后仍能恢复。</p>' +
+      '</section>';
+  }
+
+  /* ---------- empty / first run ---------- */
+  function renderBoot() {
+    return '<section class="focus" aria-labelledby="boot-title">' +
+      '<div class="boot">' +
+        '<h2 id="boot-title" style="font-size:19px;margin:6px 0 8px">先看看你已经能做什么</h2>' +
+        '<p style="color:#9fb2b9;margin:0">不是安装清单，只判断哪几步已经通了。</p>' +
+        '<div class="steps">' +
+          '<div class="boot-step done"><span class="n">✓</span><div><div class="t">按键唤起</div><div class="s">已录入 Ctrl + Space</div></div><span class="check ok">已获得</span></div>' +
+          '<div class="boot-step"><span class="n">2</span><div><div class="t">自动找到输入框</div><div class="s">需要一次试跑确认</div></div><button class="btn primary sm" data-toast="开始试跑">试跑</button></div>' +
+          '<div class="boot-step"><span class="n">3</span><div><div class="t">Agent 状态灯</div><div class="s">检测到 Codex · 未连接</div></div><button class="btn dark sm" data-toast="安装 Codex Hook">连接</button></div>' +
+        '</div>' +
+      '</div></section>' +
+      renderRoster(ROSTER_FIRST) +
+      renderAsk();
+  }
+
+  var STATES = {
+    busy: function () {
+      return renderQueue(QUEUE) + renderDone() + renderRoster() + renderAsk() +
+        renderControls('修复 voice-pilot 首页');
+    },
+    calm: function () {
+      return renderQueue([]) + renderDone(true) + renderRoster(ROSTER_CALM) + renderAsk() +
+        renderControls('重构官网导航层级');
+    },
+    empty: renderBoot
+  };
+
+  function show(state) {
+    view.innerHTML = STATES[state]();
+    document.querySelectorAll('.demo-bar button').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.state === state);
+    });
+    bindPrompt();
+    window.scrollTo(0, 0);
+  }
+
+  function initialState() {
+    var h = (location.hash || '').replace('#', '');
+    return STATES[h] ? h : 'busy';
+  }
+
+  function bindPrompt() {
+    var el = document.getElementById('prompt');
+    if (!el) return;
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && el.value.trim()) {
+        toast('已记录下一步：' + el.value.trim());
+        el.value = '';
+      }
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    var sw = e.target.closest('[data-state]');
+    if (sw) {
+      show(sw.dataset.state);
+      try { history.replaceState(null, '', '#' + sw.dataset.state); } catch (err) {}
+      return;
+    }
+
+    var more = e.target.closest('[data-more-toggle]');
+    if (more) {
+      var panel = document.querySelector('[data-more-panel]');
+      var open = panel.hidden;
+      panel.hidden = !open;
+      more.setAttribute('aria-expanded', String(open));
+      return;
+    }
+
+    var t = e.target.closest('[data-toast]');
+    if (t) toast(t.dataset.toast);
+  });
+
+  show(initialState());
+})();
+</script>
+</body>
+</html>

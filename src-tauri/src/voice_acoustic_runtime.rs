@@ -204,7 +204,10 @@ pub fn record_session_start(
     // Reuse parked lease between takes — avoids Vosk reclaiming the device.
     let lease = match take_calibration_lease(&state.acoustic_voice) {
         Some(l) => {
-            crate::app_log::sync_emergency_line("rs", &format!("acoustic record_start: reusing calibration mic lease"));
+            crate::app_log::sync_emergency_line(
+                "rs",
+                &format!("acoustic record_start: reusing calibration mic lease"),
+            );
             crate::app_log::log_line(
                 state.as_ref(),
                 "voice",
@@ -227,10 +230,13 @@ pub fn record_session_start(
     let capture = match ManualCaptureSession::start(MANUAL_MAX_MS, on_level) {
         Ok(c) => c,
         Err(err) => {
-            crate::app_log::sync_emergency_line("rs", &format!(
-                "acoustic record_start failed kind={:?} detail={}",
-                err.kind, err.detail
-            ));
+            crate::app_log::sync_emergency_line(
+                "rs",
+                &format!(
+                    "acoustic record_start failed kind={:?} detail={}",
+                    err.kind, err.detail
+                ),
+            );
             crate::app_log::log_line(
                 state.as_ref(),
                 "voice",
@@ -570,11 +576,7 @@ fn capture_sample_once(
 }
 
 /// One-shot open-app test: global margin scoring, execute only if top hit is target scenario.
-pub fn test_once(
-    state: &Arc<AppState>,
-    app: &AppHandle,
-    scenario_id: &str,
-) -> serde_json::Value {
+pub fn test_once(state: &Arc<AppState>, app: &AppHandle, scenario_id: &str) -> serde_json::Value {
     let scenario_id = scenario_id.trim();
     if scenario_id.is_empty() {
         return serde_json::json!({
@@ -777,7 +779,10 @@ fn process_pcm_with_extractor(pcm: &[f32], manual: bool) -> serde_json::Value {
                 "rms": debug.rms,
                 "featureFrames": debug.feature_frames,
             })) {
-                crate::app_log::sync_emergency_line("rs", &format!("acoustic record process debugSummary: {line}"));
+                crate::app_log::sync_emergency_line(
+                    "rs",
+                    &format!("acoustic record process debugSummary: {line}"),
+                );
             }
             let truncated = debug.speech_ms > MAX_SPEECH_MS;
             let mut out = serde_json::json!({
@@ -1088,11 +1093,10 @@ fn run_acoustic_match_loop(
         match frame_rx.recv_timeout(Duration::from_millis(120)) {
             Ok(chunk) => {
                 let n = chunk.len() as u64;
-                let _ = buffered_samples.fetch_update(
-                    Ordering::Relaxed,
-                    Ordering::Relaxed,
-                    |cur| Some(cur.saturating_sub(n)),
-                );
+                let _ =
+                    buffered_samples.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |cur| {
+                        Some(cur.saturating_sub(n))
+                    });
                 if !match_worker_alive(
                     my_gen,
                     rt.match_generation.load(Ordering::Relaxed),
@@ -1176,7 +1180,10 @@ fn try_emit_acoustic_match(
 ) {
     if !match_worker_alive(
         my_gen,
-        state.acoustic_voice.match_generation.load(Ordering::Relaxed),
+        state
+            .acoustic_voice
+            .match_generation
+            .load(Ordering::Relaxed),
         stop.load(Ordering::Relaxed),
     ) {
         return;

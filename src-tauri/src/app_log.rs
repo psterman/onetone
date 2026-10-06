@@ -148,7 +148,9 @@ fn log_queues() -> &'static std::sync::Arc<LogQueues> {
     LOG_Q.get_or_init(|| {
         std::sync::Arc::new(LogQueues {
             high: std::sync::Mutex::new(std::collections::VecDeque::with_capacity(HIGH_QUEUE_CAP)),
-            normal: std::sync::Mutex::new(std::collections::VecDeque::with_capacity(NORMAL_QUEUE_CAP)),
+            normal: std::sync::Mutex::new(std::collections::VecDeque::with_capacity(
+                NORMAL_QUEUE_CAP,
+            )),
             wake: std::sync::Condvar::new(),
             shutdown: AtomicBool::new(false),
         })

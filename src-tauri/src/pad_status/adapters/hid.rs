@@ -93,7 +93,10 @@ mod tests {
         assert_eq!(intent.sink, "soft_rgb");
         assert!(!intent.emit_enabled);
         assert_eq!(intent.ui_status, "running");
-        assert_eq!((intent.r, intent.g, intent.b), (Some(48), Some(83), Some(254)));
+        assert_eq!(
+            (intent.r, intent.g, intent.b),
+            (Some(48), Some(83), Some(254))
+        );
         assert!(intent.note.contains("Soft RGB"));
     }
 

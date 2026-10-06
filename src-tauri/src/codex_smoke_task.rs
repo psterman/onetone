@@ -161,9 +161,7 @@ fn summarize_stdout(stdout: &str) -> String {
 fn build_command_display(workspace: &str, prompt: &str) -> String {
     // Prompt goes on stdin (`-`) so Windows .cmd shims don't choke on Unicode argv.
     let shown = truncate(prompt, 120).replace('\n', " ");
-    format!(
-        "codex exec --sandbox read-only -o <last-message.txt> -C {workspace} -  << '{shown}'"
-    )
+    format!("codex exec --sandbox read-only -o <last-message.txt> -C {workspace} -  << '{shown}'")
 }
 
 /// Prefer node + codex.js over .cmd/.bat — CreateProcess rejects many Unicode batch args.
@@ -380,8 +378,8 @@ fn run_codex_exec(task_id: &str, workspace: PathBuf, prompt: String) {
         }
     };
 
-        if let Some(mut stdin) = child.stdin.take() {
-            if let Err(e) = stdin.write_all(prompt.as_bytes()) {
+    if let Some(mut stdin) = child.stdin.take() {
+        if let Err(e) = stdin.write_all(prompt.as_bytes()) {
             let _ = child.kill();
             let _ = child.wait();
             fail_task(task_id, &format!("写入 Codex Prompt 失败: {e}"), None);
@@ -566,10 +564,7 @@ mod tests {
     #[test]
     fn summarize_prefers_last_plain_line() {
         let out = "thinking...\n{{\"ok\":true}}\nOneTone is a Tauri desktop app.\n";
-        assert_eq!(
-            summarize_stdout(out),
-            "OneTone is a Tauri desktop app."
-        );
+        assert_eq!(summarize_stdout(out), "OneTone is a Tauri desktop app.");
     }
 
     #[test]

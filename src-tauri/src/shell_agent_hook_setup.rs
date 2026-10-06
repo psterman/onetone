@@ -305,7 +305,10 @@ fn event_has_hook_id(event_val: &Value, hook_id: &str) -> bool {
             }
         }
         // Flat Cursor-style: { "command": "..." }
-        let cmd = matcher.get("command").and_then(|c| c.as_str()).unwrap_or("");
+        let cmd = matcher
+            .get("command")
+            .and_then(|c| c.as_str())
+            .unwrap_or("");
         if command_has_hook_id(cmd, hook_id) {
             return true;
         }
@@ -339,14 +342,12 @@ pub fn merge_hooks(profile: &ShellHookProfile, root: &mut Value, probe_abs: &str
                     if let Some(hooks_arr) = matcher.get_mut("hooks").and_then(|h| h.as_array_mut())
                     {
                         for hook in hooks_arr.iter_mut() {
-                            let cmd = hook
-                                .get("command")
-                                .and_then(|c| c.as_str())
-                                .unwrap_or("");
+                            let cmd = hook.get("command").and_then(|c| c.as_str()).unwrap_or("");
                             if command_has_hook_id(cmd, profile.hook_id) {
                                 if cmd.trim() != desired.trim() {
-                                    hook.as_object_mut()
-                                        .map(|o| o.insert("command".into(), json!(desired.clone())));
+                                    hook.as_object_mut().map(|o| {
+                                        o.insert("command".into(), json!(desired.clone()))
+                                    });
                                     refreshed = true;
                                 }
                                 hook.as_object_mut()
@@ -398,7 +399,10 @@ pub fn uninstall_hooks(profile: &ShellHookProfile, root: &mut Value) -> usize {
                     new_matchers.push(matcher);
                 }
             } else {
-                let cmd = matcher.get("command").and_then(|c| c.as_str()).unwrap_or("");
+                let cmd = matcher
+                    .get("command")
+                    .and_then(|c| c.as_str())
+                    .unwrap_or("");
                 if command_has_hook_id(cmd, profile.hook_id) {
                     removed += 1;
                 } else {
@@ -451,9 +455,7 @@ fn node_available() -> bool {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    cmd.output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    cmd.output().map(|o| o.status.success()).unwrap_or(false)
 }
 
 fn backup_path_for(settings: &Path) -> PathBuf {
@@ -556,7 +558,9 @@ pub fn setup_status(kind_str: &str) -> Result<ShellHookSetupStatus, String> {
     let probe_abs = probe.to_string_lossy().replace('\\', "/");
     let exists = settings.is_file();
     let (parse_ok, configured) = if exists {
-        match fs::read_to_string(&settings).ok().and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        match fs::read_to_string(&settings)
+            .ok()
+            .and_then(|s| serde_json::from_str::<Value>(&s).ok())
         {
             Some(root) => {
                 let hooks = if profile.hooks_at_root {
@@ -565,10 +569,7 @@ pub fn setup_status(kind_str: &str) -> Result<ShellHookSetupStatus, String> {
                     root.get("hooks").and_then(|h| h.as_object())
                 };
                 let configured = hooks
-                    .map(|h| {
-                        h.values()
-                            .any(|ev| event_has_hook_id(ev, profile.hook_id))
-                    })
+                    .map(|h| h.values().any(|ev| event_has_hook_id(ev, profile.hook_id)))
                     .unwrap_or(false);
                 (true, configured)
             }
@@ -645,7 +646,10 @@ pub fn install_confirm(kind_str: &str) -> ShellHookWriteResult {
         let _ = fs::create_dir_all(parent);
     }
     let mut root = if settings.is_file() {
-        match fs::read_to_string(&settings).ok().and_then(|s| serde_json::from_str(&s).ok()) {
+        match fs::read_to_string(&settings)
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+        {
             Some(v) => v,
             None => {
                 return ShellHookWriteResult {
@@ -698,13 +702,13 @@ pub fn install_confirm(kind_str: &str) -> ShellHookWriteResult {
                 }
             }
             ShellHookWriteResult {
-            ok: true,
-            message: "installed".into(),
-            backup_path: backup,
-            added: stats.added,
-            refreshed: stats.refreshed,
-            removed: 0,
-        }
+                ok: true,
+                message: "installed".into(),
+                backup_path: backup,
+                added: stats.added,
+                refreshed: stats.refreshed,
+                removed: 0,
+            }
         }
         Err(e) => ShellHookWriteResult {
             ok: false,
@@ -824,12 +828,21 @@ mod tests {
                 }]
             }
         });
-        let s1 = merge_hooks(&WORKBUDDY, &mut root, "C:/repo/scripts/agent-shell-hook-probe.js");
+        let s1 = merge_hooks(
+            &WORKBUDDY,
+            &mut root,
+            "C:/repo/scripts/agent-shell-hook-probe.js",
+        );
         assert!(s1.added.contains(&"UserPromptSubmit".into()));
-        assert!(s1.added.contains(&"Stop".into()) || s1.skipped.contains(&"Stop".into()) || {
-            // Stop already had user hook — we append OneTone matcher
-            root["hooks"]["Stop"].as_array().map(|a| a.len() >= 2).unwrap_or(false)
-        });
+        assert!(
+            s1.added.contains(&"Stop".into()) || s1.skipped.contains(&"Stop".into()) || {
+                // Stop already had user hook — we append OneTone matcher
+                root["hooks"]["Stop"]
+                    .as_array()
+                    .map(|a| a.len() >= 2)
+                    .unwrap_or(false)
+            }
+        );
         let stop = root["hooks"]["Stop"].as_array().unwrap();
         assert!(stop.iter().any(|m| {
             m.get("hooks")
@@ -844,7 +857,11 @@ mod tests {
                 })
                 .unwrap_or(false)
         }));
-        let s2 = merge_hooks(&WORKBUDDY, &mut root, "C:/repo/scripts/agent-shell-hook-probe.js");
+        let s2 = merge_hooks(
+            &WORKBUDDY,
+            &mut root,
+            "C:/repo/scripts/agent-shell-hook-probe.js",
+        );
         assert!(s2.added.is_empty());
         let removed = uninstall_hooks(&WORKBUDDY, &mut root);
         assert!(removed > 0);
@@ -935,19 +952,37 @@ mod tests {
 
     #[test]
     fn profiles_resolve() {
-        assert_eq!(profile_from_str("workbuddy").unwrap().hook_id, "workbuddy-activity-v1");
-        assert_eq!(profile_from_str("codebuddy").unwrap().source_arg, "workbuddy");
+        assert_eq!(
+            profile_from_str("workbuddy").unwrap().hook_id,
+            "workbuddy-activity-v1"
+        );
+        assert_eq!(
+            profile_from_str("codebuddy").unwrap().source_arg,
+            "workbuddy"
+        );
         assert_eq!(profile_from_str("traeCode").unwrap().hooks_at_root, false);
-        assert_eq!(profile_from_str("traeCode").unwrap().source_arg, "trae_code");
-        assert_eq!(profile_from_str("traeCode").unwrap().kind, AgentKind::TraeCode);
+        assert_eq!(
+            profile_from_str("traeCode").unwrap().source_arg,
+            "trae_code"
+        );
+        assert_eq!(
+            profile_from_str("traeCode").unwrap().kind,
+            AgentKind::TraeCode
+        );
         assert!(profile_from_str("trae").is_none());
         assert_eq!(profile_from_str("qoder").unwrap().kind, AgentKind::Qoder);
         assert_eq!(
             profile_from_str("copilotCli").unwrap().hook_id,
             "copilot-cli-activity-v1"
         );
-        assert_eq!(profile_from_str("copilot_cli").unwrap().source_arg, "copilot_cli");
-        assert_eq!(profile_from_str("gemini").unwrap().hook_id, "gemini-activity-v1");
+        assert_eq!(
+            profile_from_str("copilot_cli").unwrap().source_arg,
+            "copilot_cli"
+        );
+        assert_eq!(
+            profile_from_str("gemini").unwrap().hook_id,
+            "gemini-activity-v1"
+        );
         assert_eq!(profile_from_str("gemini").unwrap().source_arg, "gemini");
         assert!(profile_from_str("gemini")
             .unwrap()

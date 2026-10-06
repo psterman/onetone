@@ -34,10 +34,7 @@ pub fn cmd_habit_foreground_app() -> serde_json::Value {
     };
     let mut value = identity_to_json(&identity);
     if let Some(obj) = value.as_object_mut() {
-        obj.insert(
-            "selfForeground".to_string(),
-            serde_json::json!(self_fg),
-        );
+        obj.insert("selfForeground".to_string(), serde_json::json!(self_fg));
     }
     value
 }
@@ -83,9 +80,11 @@ pub fn cmd_foreground_context_snapshot(
     let full_path = display
         .and_then(|id| id.full_path.clone())
         .or_else(|| habit_identity.as_ref().and_then(|id| id.full_path.clone()));
-    let window_class = display
-        .and_then(|id| id.window_class.clone())
-        .or_else(|| habit_identity.as_ref().and_then(|id| id.window_class.clone()));
+    let window_class = display.and_then(|id| id.window_class.clone()).or_else(|| {
+        habit_identity
+            .as_ref()
+            .and_then(|id| id.window_class.clone())
+    });
     let window_title = display
         .map(|id| id.window_title.clone())
         .filter(|s| !s.trim().is_empty())
@@ -219,7 +218,9 @@ fn project_hint_from_title(
         .unwrap_or(cand)
         .trim()
         .to_string();
-    for ext in [".tsx", ".ts", ".jsx", ".js", ".rs", ".py", ".md", ".json", ".html", ".htm"] {
+    for ext in [
+        ".tsx", ".ts", ".jsx", ".js", ".rs", ".py", ".md", ".json", ".html", ".htm",
+    ] {
         if cand.to_ascii_lowercase().ends_with(ext) {
             cand.truncate(cand.len() - ext.len());
             break;
@@ -284,20 +285,11 @@ pub fn cmd_set_setup_interaction_active(
 /// Practice stage only: block *external* wake inject (`send_wake_to_target`) while on-stage.
 /// Local IME activate still goes through `cmd_voice_practice_activate_ime`.
 #[tauri::command]
-pub fn cmd_voice_set_practice_hold_fg(
-    state: tauri::State<Arc<AppState>>,
-    enabled: bool,
-) {
+pub fn cmd_voice_set_practice_hold_fg(state: tauri::State<Arc<AppState>>, enabled: bool) {
     use std::sync::atomic::Ordering;
-    let prev = state
-        .voice_practice_hold_fg
-        .swap(enabled, Ordering::SeqCst);
+    let prev = state.voice_practice_hold_fg.swap(enabled, Ordering::SeqCst);
     if prev != enabled {
-        crate::app_log::log_line(
-            &state,
-            "voice",
-            &format!("practice_hold_fg={enabled}"),
-        );
+        crate::app_log::log_line(&state, "voice", &format!("practice_hold_fg={enabled}"));
     }
 }
 
@@ -343,11 +335,7 @@ pub fn cmd_voice_wake_phrase_test_begin(
     state.settings_asr_quiet.store(false, Ordering::SeqCst);
     state.voice_practice_hold_fg.store(true, Ordering::SeqCst);
     crate::app_log::log_line(state.as_ref(), "voice", "wake_phrase_test begin");
-    crate::voice_bootstrap::activate_desired_engine(
-        &app,
-        state.inner(),
-        "force:wake_phrase_test",
-    );
+    crate::voice_bootstrap::activate_desired_engine(&app, state.inner(), "force:wake_phrase_test");
     serde_json::json!({ "ok": true })
 }
 
@@ -356,8 +344,7 @@ pub fn cmd_voice_wake_phrase_test_end(
     state: tauri::State<Arc<AppState>>,
     app: tauri::AppHandle,
     park_voice: Option<bool>,
-    #[allow(non_snake_case)]
-    parkVoice: Option<bool>,
+    #[allow(non_snake_case)] parkVoice: Option<bool>,
 ) -> serde_json::Value {
     use std::sync::atomic::Ordering;
     state.voice_practice_hold_fg.store(false, Ordering::SeqCst);
@@ -381,8 +368,7 @@ pub fn cmd_set_settings_drawer_open(
     window: WebviewWindow,
     open: bool,
     park_voice: Option<bool>,
-    #[allow(non_snake_case)]
-    parkVoice: Option<bool>,
+    #[allow(non_snake_case)] parkVoice: Option<bool>,
 ) {
     use std::sync::atomic::Ordering;
     let want_park = open && park_voice.or(parkVoice).unwrap_or(false);
@@ -404,7 +390,8 @@ pub fn cmd_set_settings_drawer_open(
             &format!("settings drawer open={open} park={want_park}"),
         );
         if open {
-            let _ = crate::codex_micro_overlay::dismiss_overlay(&window.app_handle(), state.inner());
+            let _ =
+                crate::codex_micro_overlay::dismiss_overlay(&window.app_handle(), state.inner());
         } else {
             crate::codex_micro_overlay::clear_overlay_session_dismissed();
             crate::codex_micro_overlay::push_state(&window.app_handle(), state.inner());

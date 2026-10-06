@@ -146,9 +146,7 @@ impl ReportReassembler {
             buffer.clear();
             return vec![];
         }
-        buffer.push_str(&String::from_utf8_lossy(
-            &normalized[2..2 + payload_size],
-        ));
+        buffer.push_str(&String::from_utf8_lossy(&normalized[2..2 + payload_size]));
         extract_json_objects(buffer)
     }
 
@@ -292,7 +290,9 @@ pub fn test_force_last_update_ms(ms: u64) {
 #[cfg(test)]
 pub fn test_protocol_lock() -> std::sync::MutexGuard<'static, ()> {
     static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
-    LOCK.get_or_init(|| std::sync::Mutex::new(())).lock().unwrap()
+    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+        .lock()
+        .unwrap()
 }
 
 pub fn protocol_snapshot() -> CodexMicroProtocolState {
@@ -436,11 +436,11 @@ fn apply_rad_rpc(json: &str) -> Vec<CodexMicroVendorKeyEvent> {
 
 fn apply_device_status(json: &str) {
     let mut state = protocol_state().lock().unwrap();
-    if let Some(p) = extract_json_object_field(json, "p")
-        .or_else(|| extract_json_object_field(json, "params"))
+    if let Some(p) =
+        extract_json_object_field(json, "p").or_else(|| extract_json_object_field(json, "params"))
     {
-        if let Some(s) = extract_json_string_field(&p, "s")
-            .or_else(|| extract_json_string_field(&p, "status"))
+        if let Some(s) =
+            extract_json_string_field(&p, "s").or_else(|| extract_json_string_field(&p, "status"))
         {
             state.device_status = s;
             mark_native_touch(&mut state);
@@ -459,11 +459,11 @@ fn apply_device_status(json: &str) {
 
 fn apply_sys_version(json: &str) {
     let mut state = protocol_state().lock().unwrap();
-    if let Some(p) = extract_json_object_field(json, "p")
-        .or_else(|| extract_json_object_field(json, "params"))
+    if let Some(p) =
+        extract_json_object_field(json, "p").or_else(|| extract_json_object_field(json, "params"))
     {
-        if let Some(v) = extract_json_string_field(&p, "v")
-            .or_else(|| extract_json_string_field(&p, "version"))
+        if let Some(v) =
+            extract_json_string_field(&p, "v").or_else(|| extract_json_string_field(&p, "version"))
         {
             state.version = v;
             mark_native_touch(&mut state);
@@ -482,8 +482,8 @@ fn apply_thstatus(json: &str) {
         .map(|arr| parse_thstatus_slots(&arr))
         .filter(|slots| !slots.is_empty());
 
-    let payload = extract_json_object_field(json, "p")
-        .or_else(|| extract_json_object_field(json, "params"));
+    let payload =
+        extract_json_object_field(json, "p").or_else(|| extract_json_object_field(json, "params"));
     let raw = payload
         .as_ref()
         .and_then(|p| {
@@ -563,7 +563,10 @@ pub fn map_agent_slot_state(raw: &str) -> String {
         "done" | "success" | "complete" | "completed" => "done".into(),
         "failed" | "error" | "fail" => "failed".into(),
         _ => {
-            if s.contains("need") || s.contains("wait") || s.contains("approv") || s.contains("listen")
+            if s.contains("need")
+                || s.contains("wait")
+                || s.contains("approv")
+                || s.contains("listen")
             {
                 "needs_input".into()
             } else if s.contains("run") || s.contains("work") || s.contains("think") {
@@ -693,8 +696,8 @@ fn apply_rgbcfg(json: &str) {
 }
 
 fn apply_lights_preview(json: &str) {
-    let payload = extract_json_object_field(json, "p")
-        .or_else(|| extract_json_object_field(json, "params"));
+    let payload =
+        extract_json_object_field(json, "p").or_else(|| extract_json_object_field(json, "params"));
     let on = payload
         .as_ref()
         .and_then(|p| extract_json_bool_or_u8(p, "on"))
@@ -753,7 +756,9 @@ fn extract_json_f64_field(json: &str, field: &str) -> Option<f64> {
     let start = json.find(&needle)? + needle.len();
     let rest = json.get(start..)?.trim_start();
     let end = rest
-        .find(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-' || c == '+' || c == 'e' || c == 'E'))
+        .find(|c: char| {
+            !(c.is_ascii_digit() || c == '.' || c == '-' || c == '+' || c == 'e' || c == 'E')
+        })
         .unwrap_or(rest.len());
     rest[..end].parse().ok()
 }
@@ -838,7 +843,9 @@ fn iter_json_array_objects(array_json: &str) -> Vec<String> {
     }
     i += 1;
     while i < bytes.len() {
-        while i < bytes.len() && (bytes[i] == b' ' || bytes[i] == b'\n' || bytes[i] == b'\t' || bytes[i] == b',') {
+        while i < bytes.len()
+            && (bytes[i] == b' ' || bytes[i] == b'\n' || bytes[i] == b'\t' || bytes[i] == b',')
+        {
             i += 1;
         }
         if i >= bytes.len() || bytes[i] == b']' {
@@ -1038,13 +1045,19 @@ mod tests {
             r#"{"m":"v.oai.thstatus","p":{"slots":[{"i":0,"s":"running"},{"index":2,"state":"needs_input"},{"slot":"AG05","s":"failed"}]}}"#,
         );
         let snap = protocol_snapshot();
-        assert_eq!(snap.agent_slots[0].as_ref().map(|s| s.state.as_str()), Some("running"));
+        assert_eq!(
+            snap.agent_slots[0].as_ref().map(|s| s.state.as_str()),
+            Some("running")
+        );
         assert!(snap.agent_slots[1].is_none());
         assert_eq!(
             snap.agent_slots[2].as_ref().map(|s| s.state.as_str()),
             Some("needs_input")
         );
-        assert_eq!(snap.agent_slots[5].as_ref().map(|s| s.state.as_str()), Some("failed"));
+        assert_eq!(
+            snap.agent_slots[5].as_ref().map(|s| s.state.as_str()),
+            Some("failed")
+        );
         assert!(native_fresh(&snap));
     }
 
@@ -1052,7 +1065,9 @@ mod tests {
     fn thstatus_unknown_does_not_panic() {
         let _g = test_lock();
         reset_protocol_state();
-        let _ = apply_rpc_json(r#"{"m":"v.oai.thstatus","p":{"slots":[{"i":9,"s":"weird"},{"foo":1}]}}"#);
+        let _ = apply_rpc_json(
+            r#"{"m":"v.oai.thstatus","p":{"slots":[{"i":9,"s":"weird"},{"foo":1}]}}"#,
+        );
         let snap = protocol_snapshot();
         assert!(snap.agent_slots.iter().all(|s| s.is_none()));
         assert_eq!(map_agent_slot_state("thinking"), "running");

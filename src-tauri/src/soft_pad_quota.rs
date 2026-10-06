@@ -264,8 +264,7 @@ pub fn parse_openrouter_auth_key_json(raw: &str) -> Result<ParsedQuota, String> 
         if x.is_null() {
             None
         } else {
-            x.as_f64()
-                .or_else(|| x.as_i64().map(|n| n as f64))
+            x.as_f64().or_else(|| x.as_i64().map(|n| n as f64))
         }
     });
     let remaining = data
@@ -274,8 +273,7 @@ pub fn parse_openrouter_auth_key_json(raw: &str) -> Result<ParsedQuota, String> 
             if x.is_null() {
                 None
             } else {
-                x.as_f64()
-                    .or_else(|| x.as_i64().map(|n| n as f64))
+                x.as_f64().or_else(|| x.as_i64().map(|n| n as f64))
             }
         })
         .or_else(|| match (usage, limit) {
@@ -381,10 +379,7 @@ pub fn parse_kimi_soft_pad_balance_json(raw: &str) -> Result<ParsedQuota, String
         .ok_or_else(|| "missing available_balance".to_string())?;
     let cash = data.get("cash_balance").and_then(|x| x.as_f64());
     let voucher = data.get("voucher_balance").and_then(|x| x.as_f64());
-    let total = cash
-        .unwrap_or(0.0)
-        .max(0.0)
-        + voucher.unwrap_or(0.0).max(0.0);
+    let total = cash.unwrap_or(0.0).max(0.0) + voucher.unwrap_or(0.0).max(0.0);
     let limit = if total > 0.0 { Some(total) } else { None };
     Ok(ParsedQuota {
         caption: format!("Ki · ¥{available}"),
@@ -401,19 +396,30 @@ pub fn parse_siliconflow_user_info_json(raw: &str) -> Result<ParsedQuota, String
     let data = v.get("data").unwrap_or(&v);
     let balance = data
         .get("balance")
-        .and_then(|x| x.as_f64().or_else(|| x.as_str().and_then(|s| s.parse().ok())))
+        .and_then(|x| {
+            x.as_f64()
+                .or_else(|| x.as_str().and_then(|s| s.parse().ok()))
+        })
         .or_else(|| {
-            data.get("totalBalance")
-                .and_then(|x| x.as_f64().or_else(|| x.as_str().and_then(|s| s.parse().ok())))
+            data.get("totalBalance").and_then(|x| {
+                x.as_f64()
+                    .or_else(|| x.as_str().and_then(|s| s.parse().ok()))
+            })
         })
         .unwrap_or(0.0);
     let charge = data
         .get("chargeBalance")
-        .and_then(|x| x.as_f64().or_else(|| x.as_str().and_then(|s| s.parse().ok())))
+        .and_then(|x| {
+            x.as_f64()
+                .or_else(|| x.as_str().and_then(|s| s.parse().ok()))
+        })
         .unwrap_or(0.0);
     let voucher = data
         .get("voucherBalance")
-        .and_then(|x| x.as_f64().or_else(|| x.as_str().and_then(|s| s.parse().ok())))
+        .and_then(|x| {
+            x.as_f64()
+                .or_else(|| x.as_str().and_then(|s| s.parse().ok()))
+        })
         .unwrap_or(0.0);
     let remaining = balance.max(charge + voucher);
     Ok(ParsedQuota {
@@ -426,40 +432,27 @@ pub fn parse_siliconflow_user_info_json(raw: &str) -> Result<ParsedQuota, String
     })
 }
 
-fn fetch_one(
-    p: SoftPadQuotaProvider,
-    key: &str,
-) -> Result<ParsedQuota, (FetchErrKind, String)> {
+fn fetch_one(p: SoftPadQuotaProvider, key: &str) -> Result<ParsedQuota, (FetchErrKind, String)> {
     match p {
         SoftPadQuotaProvider::OpenRouter => {
-            let body = http_get_bearer_for(
-                p,
-                "https://openrouter.ai/api/v1/auth/key",
-                key,
-            )?;
-            parse_openrouter_auth_key_json(&body)
-                .map_err(|e| (FetchErrKind::Unexpected, e))
+            let body = http_get_bearer_for(p, "https://openrouter.ai/api/v1/auth/key", key)?;
+            parse_openrouter_auth_key_json(&body).map_err(|e| (FetchErrKind::Unexpected, e))
         }
         SoftPadQuotaProvider::DeepSeek => {
             let body = http_get_bearer_for(p, "https://api.deepseek.com/user/balance", key)?;
-            parse_deepseek_soft_pad_balance_json(&body)
-                .map_err(|e| (FetchErrKind::Unexpected, e))
+            parse_deepseek_soft_pad_balance_json(&body).map_err(|e| (FetchErrKind::Unexpected, e))
         }
         SoftPadQuotaProvider::Kimi => {
-            let body =
-                http_get_bearer_for(p, "https://api.moonshot.cn/v1/users/me/balance", key)?;
+            let body = http_get_bearer_for(p, "https://api.moonshot.cn/v1/users/me/balance", key)?;
             // Non-JSON HTML → Unexpected
             if body.trim_start().starts_with('<') {
                 return Err((FetchErrKind::Unexpected, "non_json_html".into()));
             }
-            parse_kimi_soft_pad_balance_json(&body)
-                .map_err(|e| (FetchErrKind::Unexpected, e))
+            parse_kimi_soft_pad_balance_json(&body).map_err(|e| (FetchErrKind::Unexpected, e))
         }
         SoftPadQuotaProvider::SiliconFlow => {
-            let body =
-                http_get_bearer_for(p, "https://api.siliconflow.cn/v1/user/info", key)?;
-            parse_siliconflow_user_info_json(&body)
-                .map_err(|e| (FetchErrKind::Unexpected, e))
+            let body = http_get_bearer_for(p, "https://api.siliconflow.cn/v1/user/info", key)?;
+            parse_siliconflow_user_info_json(&body).map_err(|e| (FetchErrKind::Unexpected, e))
         }
     }
 }
@@ -565,8 +558,7 @@ fn verify_and_refresh_one(p: SoftPadQuotaProvider) {
         Err((FetchErrKind::RateLimited, _)) => {
             let mut c = cache().lock().unwrap_or_else(|e| e.into_inner());
             c.verify.insert(p, "rate_limited".into());
-            c.cooldown_until
-                .insert(p, Instant::now() + COOLDOWN_429);
+            c.cooldown_until.insert(p, Instant::now() + COOLDOWN_429);
             let prior = c.by_provider.get(&p).map(|x| x.row.clone());
             let row = row_from_err(p, FetchErrKind::RateLimited, prior.as_ref(), "rate_limited");
             c.by_provider.insert(
@@ -645,8 +637,7 @@ fn refresh_provider_blocking(p: SoftPadQuotaProvider) {
         }
         Err((FetchErrKind::RateLimited, _)) => {
             let mut c = cache().lock().unwrap_or_else(|e| e.into_inner());
-            c.cooldown_until
-                .insert(p, Instant::now() + COOLDOWN_429);
+            c.cooldown_until.insert(p, Instant::now() + COOLDOWN_429);
             let prior = c.by_provider.get(&p).map(|x| x.row.clone());
             let row = row_from_err(p, FetchErrKind::RateLimited, prior.as_ref(), "rate_limited");
             c.by_provider.insert(
@@ -784,7 +775,8 @@ mod tests {
 
     #[test]
     fn openrouter_paid_with_remaining() {
-        let raw = r#"{"data":{"usage":100,"limit":200,"limit_remaining":100,"is_free_tier":false}}"#;
+        let raw =
+            r#"{"data":{"usage":100,"limit":200,"limit_remaining":100,"is_free_tier":false}}"#;
         let q = parse_openrouter_auth_key_json(raw).unwrap();
         assert_eq!(q.remaining, Some(100.0));
         assert_eq!(q.limit, Some(200.0));

@@ -1,13 +1,11 @@
-﻿//! WorkBuddy / Trae / Qoder / Copilot CLI / Gemini shell hooks → primary PadStatus + attention.
+//! WorkBuddy / Trae / Qoder / Copilot CLI / Gemini shell hooks → primary PadStatus + attention.
 //!
 //! Shares map with Claude intentionally. If Claude map evolves, re-verify Copilot / Gemini match.
 //! Reuses Claude event→state map; no multi-lights, lanes, or approval decide.
 
 use crate::pad_status::adapters::claude::{map_claude_event_to_state, ClaudeHookPayload};
 use crate::pad_status::arbiter::DONE_SETTLE_MS;
-use crate::pad_status::model::{
-    Confidence, PadSource, PadState, PadStatus, PadStatusCandidate,
-};
+use crate::pad_status::model::{Confidence, PadSource, PadState, PadStatus, PadStatusCandidate};
 use crate::pad_status::store;
 use crate::soft_pad_runtime::AgentKind;
 
@@ -43,7 +41,10 @@ pub fn ingest_shell_agent_payload_at(payload: &ClaudeHookPayload, now: u64) -> P
     let src_label = payload.source.trim();
 
     // SessionStart/End: no primary light (same as Claude).
-    if matches!(event, "SessionStart" | "SessionEnd" | "sessionStart" | "sessionEnd") {
+    if matches!(
+        event,
+        "SessionStart" | "SessionEnd" | "sessionStart" | "sessionEnd"
+    ) {
         return store::snapshot_at(now);
     }
     // Subagent*: catalog can_multi_agent_lights=false — ignore for primary.

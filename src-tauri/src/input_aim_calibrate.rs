@@ -4,8 +4,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use tauri::{
-    AppHandle, Manager, PhysicalPosition, PhysicalSize, Position, Size, WebviewUrl,
-    WebviewWindow, WebviewWindowBuilder,
+    AppHandle, Manager, PhysicalPosition, PhysicalSize, Position, Size, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder,
 };
 
 use crate::config::{ComposerAnchor, ComposerPoint, VoiceConfig};
@@ -160,10 +160,7 @@ fn open_calibrate_overlay(app: &AppHandle) {
         Ok(w) => w,
         Err(err) => {
             restore_main_after_calibrate(app);
-            crate::app_log::early_line(
-                "input_aim",
-                &format!("calibrate_open_fail err={err}"),
-            );
+            crate::app_log::early_line("input_aim", &format!("calibrate_open_fail err={err}"));
             return;
         }
     };
@@ -292,25 +289,18 @@ pub fn cmd_input_aim_calibrate_commit(
             .name("oral-aim-focus".into())
             .spawn(move || {
                 let _pad = crate::codex_micro_overlay::SoftPadSendPassGuard::engage(&app_h);
-                let _ = crate::app_chat_workflow::focus_composer_for_send(
-                    &app_h,
-                    &tid_h,
-                    duration_ms,
-                );
+                let _ =
+                    crate::app_chat_workflow::focus_composer_for_send(&app_h, &tid_h, duration_ms);
             });
     }
 
     let payload = status_payload(&tid, Some(&bank));
-    let _ = crate::ipc::emit_to_main_if_available(
-        &app,
-        Some(state.inner().as_ref()),
-        {
-            let mut p = payload.clone();
-            p["type"] = serde_json::json!("input_aim_calibrated");
-            p["ok"] = serde_json::json!(true);
-            p
-        },
-    );
+    let _ = crate::ipc::emit_to_main_if_available(&app, Some(state.inner().as_ref()), {
+        let mut p = payload.clone();
+        p["type"] = serde_json::json!("input_aim_calibrated");
+        p["ok"] = serde_json::json!(true);
+        p
+    });
 
     Ok(payload)
 }
@@ -369,16 +359,12 @@ pub fn cmd_input_aim_calibrate_clear(
         }
     };
     let payload = status_payload(&tid, bank.as_ref());
-    let _ = crate::ipc::emit_to_main_if_available(
-        &app,
-        Some(state.inner().as_ref()),
-        {
-            let mut p = payload.clone();
-            p["type"] = serde_json::json!("input_aim_calibrated");
-            p["ok"] = serde_json::json!(true);
-            p
-        },
-    );
+    let _ = crate::ipc::emit_to_main_if_available(&app, Some(state.inner().as_ref()), {
+        let mut p = payload.clone();
+        p["type"] = serde_json::json!("input_aim_calibrated");
+        p["ok"] = serde_json::json!(true);
+        p
+    });
     Ok(payload)
 }
 
@@ -422,16 +408,12 @@ pub fn cmd_input_aim_calibrate_set_active(
         bank
     };
     let payload = status_payload(&tid, Some(&bank));
-    let _ = crate::ipc::emit_to_main_if_available(
-        &app,
-        Some(state.inner().as_ref()),
-        {
-            let mut p = payload.clone();
-            p["type"] = serde_json::json!("input_aim_calibrated");
-            p["ok"] = serde_json::json!(true);
-            p
-        },
-    );
+    let _ = crate::ipc::emit_to_main_if_available(&app, Some(state.inner().as_ref()), {
+        let mut p = payload.clone();
+        p["type"] = serde_json::json!("input_aim_calibrated");
+        p["ok"] = serde_json::json!(true);
+        p
+    });
     Ok(payload)
 }
 

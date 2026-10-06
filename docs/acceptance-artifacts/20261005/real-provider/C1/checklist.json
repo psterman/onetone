@@ -1,0 +1,22 @@
+{
+    "hint":  {
+                 "note":  "Claude active -\u003e verified only after post-stop probe",
+                 "expectedOutcome":  "verified_only_after_post_stop_probe",
+                 "agentKind":  "claude"
+             },
+    "status":  "pending_manual",
+    "requiredEvidence":  [
+                             "snapshot-before.json",
+                             "action-result.json",
+                             "snapshot-after.png",
+                             "toast-or-roster.png"
+                         ],
+    "id":  "C1",
+    "steps":  [
+                  "1. Prepare session per scenario-prep.md",
+                  "2. cmd_agent_center_snapshot -\u003e save snapshot-before.json",
+                  "3. cmd_agent_center_action agent.interrupt -\u003e save action-result.json",
+                  "4. Refresh snapshot -\u003e save snapshot-after.json",
+                  "5. Capture screenshot of toast + roster row"
+              ]
+}

@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OneTone 思路简报系统 · 锁定版</title>
+<style>
+:root{--bg:#edf0ed;--panel:#f8f9f7;--paper:#fffefa;--ink:#18201e;--muted:#6c7671;--line:#d6dcd8;--line2:#e7ebe8;--blue:#276b8c;--blue-soft:#e6f2f7;--green:#287663;--green-soft:#e4f2ec;--amber:#a5661c;--amber-soft:#fff1dd;--red:#a44840;--red-soft:#fbeceb;--shadow:0 22px 65px #1c2c2520}
+*{box-sizing:border-box}
+body{margin:0;height:100vh;min-width:1120px;overflow:hidden;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI","Microsoft YaHei UI",system-ui,sans-serif}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,textarea:focus-visible{outline:3px solid #276b8c32;outline-offset:2px}
+
+.top{height:62px;padding:0 20px;display:flex;align-items:center;gap:14px;background:#ffffffed;border-bottom:1px solid var(--line)}
+.brand{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.ver{margin-left:2px;padding:2px 7px;border-radius:7px;background:#e2e7e4;font-size:12px}
+.saved{font-size:12px;color:var(--green)}
+.saved::before{content:"";display:inline-block;width:7px;height:7px;background:#429579;border-radius:50%;margin-right:6px}
+.agentpick{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:13px}
+.agentpick select{border:1px solid var(--line);background:white;border-radius:9px;padding:7px 9px}
+.localchip{font-size:12px;color:var(--muted)}
+.deliver{border:0;background:var(--ink);color:white;padding:10px 16px;border-radius:10px;font-weight:600}
+
+.layout{height:calc(100vh - 62px - 92px);display:grid;grid-template-columns:330px 1fr}
+.collector{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.sense{padding:12px 16px;border-bottom:1px solid var(--line);background:white}
+.sense-top{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}
+.sense-top .dot{width:8px;height:8px;border-radius:50%;background:#429579}
+.sense.off .dot{background:#b6beba}
+.sense-src{color:var(--muted);font-size:12px;margin-top:4px}
+.sense-ctl{margin-top:9px;display:flex;gap:7px}
+.sense-ctl button{border:1px solid var(--line);background:white;border-radius:8px;padding:5px 10px;font-size:12px}
+.pane-head{padding:13px 16px 7px;display:flex;align-items:center}
+.pane-head b{font-size:13px}
+.count{margin-left:6px;background:#e2e7e4;border-radius:9px;padding:1px 6px;font-size:11px}
+.pane-note{padding:0 16px 6px;color:var(--muted);font-size:11px}
+.inbox{padding:0 12px 20px;overflow:auto;flex:1}
+.cand{border:1px solid var(--line);background:white;border-radius:11px;padding:9px 10px;margin:7px 0}
+.cand-top{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center}
+.ico{width:26px;height:26px;background:#edf1ef;border-radius:7px;display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.cand b{font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cand small{color:var(--muted);display:block;font-size:11px}
+.layer{font-size:10px;border-radius:6px;padding:2px 5px;background:var(--blue-soft);color:#285f79}
+.layer.l2{background:var(--amber-soft);color:var(--amber)}
+.layer.l3{background:var(--green-soft);color:var(--green)}
+.cand-act{display:flex;gap:6px;margin-top:8px}
+.cand-act button{flex:1;border:1px solid var(--line);background:white;border-radius:7px;padding:4px;font-size:11px}
+.cand-act .go{border-color:transparent;background:var(--green-soft);color:var(--green)}
+
+.canvas{overflow:auto;padding:22px 30px 40px}
+.inner{max-width:880px;margin:auto}
+.doc-head{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+.doc-head h1{font-size:24px;margin:0;letter-spacing:-.5px}
+.doc-head span{color:var(--muted);font-size:12px}
+.sec{margin:18px 0}
+.sec-h{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sec-h b{font-size:15px}
+.sec-h em{font-style:normal;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.yours{border:1px solid var(--line);background:var(--paper);border-radius:11px;padding:11px 12px}
+.yours .lbl{font-size:11px;color:var(--muted);margin-bottom:5px}
+.yours textarea{width:100%;border:0;background:transparent;resize:vertical;outline:0;font:inherit;font-size:13px;line-height:1.6}
+.refs{margin-top:8px}
+.ref{border:1px solid var(--line);background:white;border-radius:10px;padding:9px 11px;margin:6px 0}
+.ref-top{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start}
+.ref b{font-size:13px}
+.ref .meta{color:var(--muted);font-size:11px;margin-top:3px;line-height:1.7}
+.ref .meta code{font-family:Consolas,monospace;background:#f1f4f2;border-radius:4px;padding:0 4px}
+.lockbtn{border:1px solid var(--line);background:white;border-radius:7px;font-size:11px;padding:3px 8px;color:var(--muted)}
+.ref-act{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ref-act button{border:1px solid var(--line);background:white;border-radius:7px;font-size:11px;padding:3px 8px}
+.modes{display:flex;gap:4px;margin-left:auto;background:#eef2ef;border-radius:8px;padding:3px}
+.modes button{border:0;background:transparent;color:var(--muted);border-radius:6px;padding:3px 8px;font-size:11px}
+.modes button.on{background:white;color:var(--ink);box-shadow:0 1px 3px #00000014}
+.derived{margin-top:8px;padding-top:7px;border-top:1px dashed var(--line2);font-size:11px;color:var(--muted)}
+.derived div{margin:3px 0}
+.stype{font-size:10px;border-radius:5px;padding:1px 5px;background:var(--blue-soft);color:#285f79;margin-left:5px}
+.stype.user{background:var(--green-soft);color:var(--green)}
+.stype.agent{background:var(--amber-soft);color:var(--amber)}
+.changed{border-left:3px solid #d5a45f;background:#fffaf1}
+.changed .chg{font-size:12px;color:#815218;margin-top:6px}
+.changed .chg-btns{margin-top:7px;display:flex;gap:6px}
+.changed .chg-btns button{border:1px solid var(--line);background:white;border-radius:7px;font-size:11px;padding:4px 8px}
+.deny{margin-top:7px;font-size:11px;color:var(--red);display:none}
+
+.bottom{height:92px;border-top:1px solid var(--line);background:#ffffffed;padding:10px 22px;display:flex;flex-direction:column;gap:7px}
+.bud-top{display:flex;align-items:center;gap:10px;font-size:12px}
+.bar{flex:1;height:9px;background:#e2e7e4;border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--green);border-radius:6px}
+.bar i.warn{background:var(--amber)}
+.bar i.over{background:var(--red)}
+.bud-br{color:var(--muted);font-size:11px}
+.est{font-size:10px;border-radius:5px;padding:1px 6px;background:var(--amber-soft);color:var(--amber)}
+.bud-act{display:flex;align-items:center;gap:8px}
+.mix{color:var(--muted);font-size:11px;margin-right:auto}
+.bud-act button{border:1px solid var(--line);background:white;border-radius:9px;padding:8px 13px;font-size:12px;font-weight:600}
+.bud-act .primary{background:var(--ink);color:white;border-color:var(--ink)}
+
+.scrim{position:fixed;inset:0;z-index:30;background:#16201c5a;opacity:0;pointer-events:none;transition:.2s}
+.scrim.show{opacity:1;pointer-events:auto}
+.sheet{position:fixed;z-index:40;right:0;top:0;bottom:0;width:520px;background:#fafbf9;box-shadow:-25px 0 70px #17201d30;transform:translateX(105%);transition:.3s;display:flex;flex-direction:column}
+.sheet.open{transform:translateX(0)}
+.sheet-head{padding:22px 24px 16px;border-bottom:1px solid var(--line);display:flex}
+.sheet-head h2{margin:0;font-size:20px}
+.sheet-head p{margin:3px 0 0;color:var(--muted);font-size:12px}
+.close{margin-left:auto;width:32px;height:32px;border:1px solid var(--line);background:white;border-radius:50%}
+.sheet-body{padding:18px 24px;overflow:auto;flex:1;font-size:13px}
+.row{border-bottom:1px solid var(--line);padding:10px 0}
+.row b{font-size:13px}
+.row .m{color:var(--muted);font-size:11px;margin-top:2px}
+.vlist .v{display:grid;grid-template-columns:auto 1fr auto;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12px}
+.vlist .v .vk{background:#e2e7e4;border-radius:6px;padding:1px 7px;font-weight:600}
+.vlist .v .vm{color:var(--muted)}
+.sheet-foot{padding:14px 24px;background:white;border-top:1px solid var(--line)}
+.toast{position:fixed;z-index:60;left:50%;bottom:22px;transform:translate(-50%,12px);opacity:0;background:var(--ink);color:white;padding:11px 17px;border-radius:11px;font-size:13px;transition:.2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.warnbox{padding:9px 11px;background:var(--amber-soft);color:#815218;border-radius:9px;font-size:12px;margin-bottom:12px}
+.okbox{padding:9px 11px;background:var(--green-soft);color:var(--green);border-radius:9px;font-size:12px;margin-bottom:12px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">首页方案简报 <span class="ver" id="verTag">v3</span></div>
+  <div class="saved" id="savedTag">已保存</div>
+  <div class="localchip">本地处理 · 不使用大模型</div>
+  <div class="agentpick">
+    <span style="color:var(--muted)">目标 Agent</span>
+    <select id="agentSel">
+      <option value="codex">Codex</option>
+      <option value="cursor">Cursor</option>
+      <option value="claude">Claude</option>
+    </select>
+  </div>
+  <button class="deliver" id="btnDeliver">投递</button>
+</header>
+
+<main class="layout">
+  <aside class="collector">
+    <div class="sense" id="sense">
+      <div class="sense-top"><span class="dot"></span>正在感知</div>
+      <div class="sense-src" id="senseSrc">剪贴板 · voice-pilot · Codex</div>
+      <div class="sense-ctl">
+        <button id="btnPause">暂停感知</button>
+        <button id="btnClear">清空候选</button>
+        <button id="btnPrivacy">隐私设置</button>
+      </div>
+    </div>
+    <div class="pane-head"><b>刚刚发生</b><span class="count" id="candCount">5</span>
+      <span style="margin-left:auto;color:var(--muted);font-size:11px">未经确认不进简报</span></div>
+    <div class="inbox" id="candList"></div>
+    <div class="pane-head" style="border-top:1px solid var(--line)"><b>已使用素材</b><span class="count" id="usedCount">6</span></div>
+    <div class="pane-note">原始素材只读 · 可编辑的只有「你的话」</div>
+    <div class="inbox" id="usedList" style="flex:0 0 auto;max-height:230px"></div>
+  </aside>
+
+  <section class="canvas">
+    <div class="inner">
+      <div class="doc-head">
+        <h1>主体思维</h1>
+        <span id="docMeta">4 段「你的话」 · 6 项只读素材引用 · 目标 Codex</span>
+      </div>
+      <div id="secs"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="bottom">
+  <div class="bud-top">
+    <b id="budTitle" style="font-size:12px">Codex 上下文预算</b>
+    <div class="bar"><i id="budFill" style="width:50%"></i></div>
+    <span id="budNum" style="font-size:12px">约 16.2k / 32k tokens</span>
+    <span class="est">估算值</span>
+  </div>
+  <div class="bud-br" id="budBr"></div>
+  <div class="bud-act">
+    <span class="mix" id="mixText"></span>
+    <button id="btnCompress">压缩内容</button>
+    <button id="btnSave">保存新版本</button>
+    <button id="btnCheck">检查首次沟通</button>
+    <button class="primary" id="btnDeliver2">投递</button>
+  </div>
+</footer>
+
+<div class="scrim" id="scrim"></div>
+<aside class="sheet" id="sheet">
+  <div class="sheet-head"><div><h2 id="shTitle">面板</h2><p id="shSub"></p></div><button class="close" id="shClose">×</button></div>
+  <div class="sheet-body" id="shBody"></div>
+  <div class="sheet-foot" id="shFoot"></div>
+</aside>
+<div class="toast" id="toast"></div>
+
+<script>
+var TOK={codex:32000,cursor:128000,claude:200000};
+var NAME={codex:'Codex',cursor:'Cursor',claude:'Claude'};
+var agent='codex';
+var TEXT_TOK=2.4;
+
+var MATS=[
+ {id:'m1',sec:'background',name:'current-home.png',kind:'图片',src:'剪贴板',time:'今天 14:21',fp:'8c2f41ab',full:2.7,sum:0.6,mode:'全文',stype:'结构提取',changed:false},
+ {id:'m2',sec:'background',name:'home-workbench.js',kind:'大型文件',src:'本地文件',time:'今天 14:26',fp:'1d90c77e',full:7.8,sum:1.4,mode:'摘要',stype:'结构提取',changed:false},
+ {id:'m3',sec:'detail',name:'过去的 Codex 会话',kind:'历史会话',src:'Codex',time:'今天 11:02',fp:'4ab2f0d3',full:12.4,sum:1.2,mode:'摘要',stype:'结构提取',changed:false},
+ {id:'m4',sec:'detail',name:'首页设计稿 v3.png',kind:'图片',src:'本地文件',time:'今天 15:08',fp:'77e5b1c9',full:3.1,sum:0.7,mode:'全文',stype:'结构提取',changed:true},
+ {id:'m5',sec:'plan',name:'Claude 关于首页的回复',kind:'历史会话',src:'Claude',time:'今天 15:41',fp:'2c88ae10',full:5.1,sum:1.1,mode:'全文',stype:'Agent 生成',changed:false},
+ {id:'m6',sec:'goal',name:'Gemini 首页参考方案',kind:'网页',src:'浏览器',time:'今天 13:55',fp:'9f3d20ba',full:4.2,sum:0.3,mode:'摘要',stype:'结构提取',changed:false}
+];
+
+var CANDS=[
+ {id:'c1',ico:'▤',name:'“首页不能代替 Agent 操作……”',meta:'剪贴板 · 2 分钟前',layer:2},
+ {id:'c2',ico:'◧',name:'Codex · voice-pilot',meta:'前台窗口 · 刚刚',layer:1},
+ {id:'c3',ico:'◇',name:'now-home-ui.js',meta:'文件变化 · 2 分钟前修改',layer:2},
+ {id:'c4',ico:'◈',name:'Gemini 首页参考方案',meta:'浏览器网址 · 今天 13:55',layer:2},
+ {id:'c5',ico:'▣',name:'刚刚截取的屏幕',meta:'截图 · 刚刚',layer:3}
+];
+
+var SECS=[
+ {k:'goal',n:'目标',note:'可编辑 · 你的话',v:'把首页从一次性上下文编辑器，改成可复用的思路简报系统；这次只改原型，不动生产首页。'},
+ {k:'background',n:'背景',note:'可编辑 · 你的话',v:'现在的首页要用户从空白开始描述，抽象词进到 Agent 那里会放大偏差。已锁定四项约束：素材只读、预算常驻、托盘自动积累、简报持久。'},
+ {k:'detail',n:'细节',note:'可编辑 · 你的话',v:'素材进入后保留原始内容、来源、来源位置、采集时间、文件状态、内容指纹；变化时不静默替换，而是生成新版本。'},
+ {k:'plan',n:'计划',note:'可编辑 · 你的话',v:'先做锁定版原型，人工验证编辑与交接流程，再接真实 Agent 适配器。'}
+];
+
+var VAGUE=['优化','改进','完善','调整','好看','更好','合理','一些','差不多','整一下','弄一下','稍微','尽量','平衡','本质','用户体验'];
+var versions=[{v:'v1',d:'初始想法'},{v:'v2',d:'加入 Gemini 参考'},{v:'v3',d:'根据 Codex 回应修改'}];
+var sensing=true, ver='v3', saveTimer=null;
+
+function toast(t){var e=document.getElementById('toast');e.textContent=t;e.classList.add('show');
+  clearTimeout(e._t);e._t=setTimeout(function(){e.classList.remove('show')},2200);}
+
+function layerName(l){return l===1?'仅感知':l===2?'本地暂存':'自动加入';}
+
+function renderCands(){
+  var box=document.getElementById('candList'); box.innerHTML='';
+  CANDS.forEach(function(c){
+    var d=document.createElement('div'); d.className='cand';
+    d.innerHTML='<div class="cand-top"><div class="ico">'+c.ico+'</div><div><b>'+c.name+'</b>'+
+      '<small>'+c.meta+'</small></div><span class="layer l'+c.layer+'">'+layerName(c.layer)+'</span></div>'+
+      '<div class="cand-act"><button class="go" data-add="'+c.id+'">加入简报</button><button data-ign="'+c.id+'">忽略</button></div>';
+    box.appendChild(d);
+  });
+  document.getElementById('candCount').textContent=CANDS.length;
+  box.querySelectorAll('[data-add]').forEach(function(b){b.onclick=function(){addCand(b.getAttribute('data-add'))}});
+  box.querySelectorAll('[data-ign]').forEach(function(b){b.onclick=function(){ignCand(b.getAttribute('data-ign'))}});
+}
+
+function addCand(id){
+  var i=CANDS.map(function(c){return c.id}).indexOf(id); if(i<0)return;
+  var c=CANDS.splice(i,1)[0];
+  MATS.push({id:c.id,name:c.name.replace(/[“”]/g,''),kind:'候选',src:c.meta.split(' · ')[0],time:'刚刚',fp:'a1'+Math.random().toString(16).slice(2,8),
+    full:1.8,sum:0.5,mode:'摘要',stype:'结构提取',changed:false,sec:'detail'});
+  renderCands(); renderSecs(); recalc();
+  toast('已加入简报 · 你自己决定加在哪、怎么引用');
+}
+function ignCand(id){
+  CANDS=CANDS.filter(function(c){return c.id!==id});
+  renderCands(); toast('已忽略 · 不会进入任何简报');
+}
+
+function renderUsed(){
+  var box=document.getElementById('usedList'); box.innerHTML='';
+  MATS.forEach(function(m){
+    var d=document.createElement('div'); d.className='cand';
+    d.innerHTML='<div class="cand-top"><div class="ico">◧</div><div><b>'+m.name+'</b>'+
+      '<small>'+m.src+' · '+m.time+'</small></div><span class="layer">'+(m.mode==='不发送'?'不发送':m.mode+' '+tok(m)+'k')+'</span></div>';
+    box.appendChild(d);
+  });
+  document.getElementById('usedCount').textContent=MATS.length;
+}
+
+function tok(m){return m.mode==='全文'?m.full:m.sum;}
+
+function renderSecs(){
+  var box=document.getElementById('secs'); box.innerHTML='';
+  SECS.forEach(function(s){
+    var d=document.createElement('div'); d.className='sec';
+    var refs=MATS.filter(function(m){return m.sec===s.k});
+    var h='<div class="sec-h"><b>'+s.n+'</b><em>'+s.note+'</em></div>'+
+      '<div class="yours"><div class="lbl">你的话（唯一可编辑的部分）</div>'+
+      '<textarea rows="3" data-sec="'+s.k+'">'+s.v+'</textarea></div><div class="refs">';
+    refs.forEach(function(m){
+      h+='<div class="ref'+(m.changed?' changed':'')+'">'+
+        '<div class="ref-top"><div><b>'+m.name+'</b>'+
+        '<div class="meta">来源：'+m.src+' · '+m.time+'<br>内容指纹：<code>'+m.fp+'</code> · 状态：原始素材，未修改'+
+        '<br>可否回跳：<span style="color:var(--green)">可</span></div></div>'+
+        '<button class="lockbtn" data-lock="'+m.id+'">✎ 编辑</button></div>'+
+        '<div class="ref-act"><button data-act="view">查看原图</button><button data-act="back">回到来源</button>'+
+        '<div class="modes">'+['摘要','全文','不发送'].map(function(md){
+          return '<button data-mode="'+md+'" data-id="'+m.id+'" class="'+(m.mode===md?'on':'')+'">'+md+' '+mdTok(m,md)+'</button>';
+        }).join('')+'</div></div>'+
+        '<div class="derived">派生视图（每个都保留到原素材的关系）'+
+          '<div>· 全文视图 <span class="stype">'+m.full+'k</span></div>'+
+          '<div>· 摘要视图 <span class="stype '+stypeCls(m.stype)+'">摘要类型：'+m.stype+'</span></div>'+
+          '<div>· 用户摘录 <span class="stype user">摘要类型：用户编写</span></div>'+
+          '<div>· OCR 结果 <span class="stype">结构提取</span></div>'+
+          '<div>· Agent 生成摘要 <span class="stype agent">摘要类型：Agent 生成</span></div>'+
+        '</div>'+
+        '<div class="deny" data-deny="'+m.id+'">原始素材只读。请在上方「你的话」里写你的判断 —— 素材一旦可编辑，它就不再是那份真实数据。</div>'+
+        (m.changed?'<div class="chg">这个文件自加入简报后发生了变化。<br>简报引用：14:21 版本 · 磁盘当前：15:08 版本</div>'+
+          '<div class="chg-btns"><button data-chg="keep" data-id="'+m.id+'">继续使用原版本</button>'+
+          '<button data-chg="update" data-id="'+m.id+'">更新为当前版本</button>'+
+          '<button data-chg="diff" data-id="'+m.id+'">查看差异</button></div>':'')+
+        '</div>';
+    });
+    h+='</div>';
+    d.innerHTML=h;
+    box.appendChild(d);
+  });
+  box.querySelectorAll('textarea').forEach(function(t){
+    t.oninput=function(){
+      var k=t.getAttribute('data-sec');
+      SECS.filter(function(s){return s.k===k})[0].v=t.value;
+      if(saveTimer)clearTimeout(saveTimer);
+      document.getElementById('savedTag').textContent='正在保存…';
+      saveTimer=setTimeout(function(){document.getElementById('savedTag').textContent='已保存';},700);
+    };
+  });
+  box.querySelectorAll('[data-lock]').forEach(function(b){b.onclick=function(){
+    var id=b.getAttribute('data-lock');
+    var el=box.querySelector('[data-deny="'+id+'"]');
+    el.style.display= el.style.display==='block'?'none':'block';
+  }});
+  box.querySelectorAll('[data-mode]').forEach(function(b){b.onclick=function(){
+    var id=b.getAttribute('data-id'), md=b.getAttribute('data-mode');
+    MATS.filter(function(m){return m.id===id})[0].mode=md;
+    renderSecs(); renderUsed(); recalc();
+  }});
+  box.querySelectorAll('[data-chg]').forEach(function(b){b.onclick=function(){
+    var id=b.getAttribute('data-id'), a=b.getAttribute('data-chg');
+    var m=MATS.filter(function(x){return x.id===id})[0];
+    if(a==='keep'){toast('继续使用 14:21 版本 · 指纹 '+m.fp)}
+    if(a==='update'){m.changed=false;m.time='今天 15:08';m.fp='c30'+Math.random().toString(16).slice(2,6);m.name=m.name.replace('.png','')+'（v2）.png';
+      renderSecs();renderUsed();toast('已生成新的素材版本 v2 · 旧版本保留未覆盖')}
+    if(a==='diff'){openSheet('差异','14:21 版本 → 15:08 版本',
+      '<div class="row"><b>新增 3 行</b><div class="m">+ 中间主体区增加「你的话」编辑层</div></div>'+
+      '<div class="row"><b>删除 1 行</b><div class="m">- 材料卡片的自由文本编辑框</div></div>'+
+      '<div class="row"><b>未变更</b><div class="m">左侧托盘结构、预算条位置</div></div>','')}
+  }});
+  document.getElementById('docMeta').textContent=SECS.length+' 段「你的话」 · '+MATS.length+' 项只读素材引用 · 目标 '+NAME[agent];
+}
+
+function stypeCls(s){return s==='用户编写'?'user':s==='Agent 生成'?'agent':'';}
+function mdTok(m,md){return md==='不发送'?'0':(md==='全文'?m.full+'k':m.sum+'k');}
+
+function recalc(){
+  var sum=TEXT_TOK; var br={正文:TEXT_TOK,文件:0,会话摘要:0,图片估算:0};
+  MATS.forEach(function(m){
+    if(m.mode==='不发送')return;
+    var t=tok(m); sum+=t;
+    if(m.kind==='图片')br['图片估算']+=t;
+    else if(m.kind==='历史会话')br['会话摘要']+=t;
+    else br['文件']+=t;
+  });
+  var cap=TOK[agent];
+  var pct=Math.min(100,(sum*1000)/cap*100);
+  var fill=document.getElementById('budFill');
+  fill.style.width=Math.max(3,pct)+'%';
+  fill.className = pct>90?'over':pct>70?'warn':'';
+  document.getElementById('budTitle').textContent=NAME[agent]+' 上下文预算';
+  document.getElementById('budNum').textContent='约 '+sum.toFixed(1)+'k / '+(cap/1000)+'k tokens';
+  document.getElementById('budBr').innerHTML='正文 '+br['正文'].toFixed(1)+'k · 文件 '+br['文件'].toFixed(1)+'k · 会话摘要 '+br['会话摘要'].toFixed(1)+'k · 图片估算 '+br['图片估算'].toFixed(1)+'k';
+  var f=MATS.filter(function(m){return m.mode==='全文'}).length;
+  var s=MATS.filter(function(m){return m.mode==='摘要'}).length;
+  var n=MATS.filter(function(m){return m.mode==='不发送'}).length;
+  document.getElementById('mixText').textContent=f+' 项全文 · '+s+' 项摘要 · '+n+' 项不发送';
+}
+
+function openSheet(t,sub,body,foot){
+  document.getElementById('shTitle').textContent=t;
+  document.getElementById('shSub').textContent=sub||'';
+  document.getElementById('shBody').innerHTML=body;
+  document.getElementById('shFoot').innerHTML=foot||'';
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('scrim').classList.add('show');
+}
+function closeSheet(){
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('scrim').classList.remove('show');
+}
+document.getElementById('shClose').onclick=closeSheet;
+document.getElementById('scrim').onclick=closeSheet;
+
+document.getElementById('btnPrivacy').onclick=function(){
+  openSheet('感知与隐私','三个权限层级 · 常驻感知不能默认无限采集',
+   '<div class="warnbox">未经用户确认，候选素材不会进入任何简报。</div>'+
+   '<div class="row"><b>仅感知</b><div class="m">只知道发生过什么：应用名、窗口标题、文件变化、剪贴板类型、Agent 会话活动 —— 不读正文</div></div>'+
+   '<div class="row"><b>本地暂存</b><div class="m">读取并短暂保存在本机候选区（剪贴板文字、截图、文件路径、网页地址），可设自动过期</div></div>'+
+   '<div class="row"><b>自动加入</b><div class="m">只对明确授权的规则生效</div></div>'+
+   '<div class="row"><b>授权规则</b><div class="m" style="line-height:1.9">'+
+     '<span style="color:var(--green)">✓</span> voice-pilot 目录内的新截图<br>'+
+     '<span style="color:var(--green)">✓</span> Codex 当前会话产生的 Diff<br>'+
+     '<span style="color:var(--red)">×</span> 密码管理器剪贴板<br>'+
+     '<span style="color:var(--red)">×</span> 隐私窗口<br>'+
+     '<span style="color:var(--red)">×</span> 其他项目文件</div></div>'+
+   '<div class="row"><b>其余控制</b><div class="m">暂停感知 · 清空候选托盘 · 应用排除列表 · 目录白名单 · 敏感字段过滤 · 候选自动过期 · 明确显示正在监听什么 · 默认只在本地</div></div>','');
+};
+
+document.getElementById('btnPause').onclick=function(){
+  sensing=!sensing;
+  document.getElementById('sense').className='sense'+(sensing?'':' off');
+  document.querySelector('.sense-top').innerHTML='<span class="dot"></span>'+(sensing?'正在感知':'已暂停');
+  this.textContent=sensing?'暂停感知':'恢复感知';
+  document.getElementById('senseSrc').textContent=sensing?'剪贴板 · voice-pilot · Codex':'（不采集任何内容）';
+};
+document.getElementById('btnClear').onclick=function(){CANDS=[];renderCands();toast('候选托盘已清空 · 已使用素材不受影响')};
+
+document.getElementById('agentSel').onchange=function(){
+  agent=this.value; renderSecs(); recalc();
+  toast('目标改为 '+NAME[agent]+' · 预算上限 '+(TOK[agent]/1000)+'k · 已重新计算');
+};
+
+document.getElementById('btnCompress').onclick=function(){
+  var n=0; MATS.forEach(function(m){if(m.mode==='全文'&&m.full>3){m.mode='摘要';n++}});
+  renderSecs();renderUsed();recalc();
+  toast(n?('已把 '+n+' 项全文压为摘要 —— 摘要为结构提取，不是语义总结'):'没有可压缩的全文项');
+};
+
+document.getElementById('btnSave').onclick=function(){
+  var nv='v'+(versions.length+1);
+  versions.push({v:nv,d:'手动保存 · '+new Date().toTimeString().slice(0,5)});
+  ver=nv; document.getElementById('verTag').textContent=nv;
+  document.getElementById('savedTag').textContent='已保存';
+  toast('已创建 '+nv+' · v3 保留可回溯');
+};
+
+document.getElementById('btnCheck').onclick=function(){
+  var out=[];
+  SECS.forEach(function(s){
+    VAGUE.forEach(function(w){ if(s.v.indexOf(w)>=0) out.push([s.n,'「'+w+'」不可观察'])});
+  });
+  var noAcc=MATS.filter(function(m){return m.mode==='不发送'}).length;
+  var body = out.length
+    ? '<div class="warnbox">检出 '+out.length+' 处可能跑偏 —— 不拦你发送，只告诉你最可能偏的那一条。</div>'+
+      out.map(function(o){return '<div class="row"><b>'+o[0]+'</b><div class="m">'+o[1]+' —— 换成能一眼确认的判据</div></div>'}).join('')
+    : '<div class="okbox">没有检出抽象词。首次沟通可以发了。</div>';
+  body+='<div class="row"><b>素材引用检查</b><div class="m">'+MATS.length+' 项引用 · '+noAcc+' 项不发送 · 全部保留指纹与回跳</div></div>';
+  body+='<div class="row"><b>预算检查</b><div class="m">面向 '+NAME[agent]+' · '+document.getElementById('budNum').textContent+'（估算值）</div></div>';
+  openSheet('检查首次沟通','纯规则检测 · 不调用任何模型',body,'');
+};
+
+function deliver(){
+  var t=new Date().toTimeString().slice(0,5);
+  openSheet('投递到 '+NAME[agent],'主体简报不变 · 投递配置形成分支',
+    '<div class="row"><b>正文</b><div class="m">全文</div></div>'+
+    '<div class="row"><b>会话</b><div class="m">'+(agent==='codex'?'结构摘要':'全文')+'</div></div>'+
+    '<div class="row"><b>图片</b><div class="m">'+(agent==='codex'?'手动上传':'可以附加')+'</div></div>'+
+    '<div class="warnbox">不同 Agent 能力不同 —— 改投不是换下拉框，而是创建新的投递版本。</div>'+
+    '<div class="row"><b>交付记录</b><div class="m">'+ver+' · '+t+' · 目标会话 Codex · voice-pilot</div></div>'+
+    '<div class="row"><b>Agent 返回材料</b><div class="m">已重新进入「刚刚发生」托盘 —— 由你决定是否进入下一版简报</div></div>',
+    '<button class="deliver" style="width:100%" id="doDeliver">确认投递</button>');
+  document.getElementById('doDeliver').onclick=function(){
+    CANDS.push({id:'r'+Date.now(),ico:'◈',name:NAME[agent]+' 的回应与改动文件',meta:'交付返回 · '+t,layer:2});
+    renderCands(); closeSheet();
+    toast('已投递 · Agent 返回材料进入候选托盘，等你确认');
+  };
+}
+document.getElementById('btnDeliver').onclick=deliver;
+document.getElementById('btnDeliver2').onclick=deliver;
+
+renderCands(); renderUsed(); renderSecs(); recalc();
+</script>
+</body>
+</html>

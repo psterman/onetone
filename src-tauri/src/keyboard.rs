@@ -8,9 +8,8 @@ use winapi::um::winuser::{
     SendInput, INPUT, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
     KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, MOUSEEVENTF_LEFTDOWN,
     MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN,
-    MOUSEEVENTF_RIGHTUP,
-    MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, MOUSEINPUT, VK_ESCAPE, VK_RETURN, VK_RMENU, XBUTTON1,
-    XBUTTON2,
+    MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, MOUSEINPUT, VK_ESCAPE, VK_RETURN,
+    VK_RMENU, XBUTTON1, XBUTTON2,
 };
 
 static OUR_HWND: OnceLock<Mutex<isize>> = OnceLock::new();
@@ -150,7 +149,8 @@ pub fn focus_any_external_top_level() -> bool {
         let mut class_buf = [0u16; 256];
         let class_len = GetClassNameW(hwnd, class_buf.as_mut_ptr(), class_buf.len() as i32);
         if class_len > 0 {
-            let class = String::from_utf16_lossy(&class_buf[..class_len as usize]).to_ascii_lowercase();
+            let class =
+                String::from_utf16_lossy(&class_buf[..class_len as usize]).to_ascii_lowercase();
             if class.contains("chrome_widgetwin")
                 || class.contains("chrome_renderwidget")
                 || class.contains("intermediate d3d")

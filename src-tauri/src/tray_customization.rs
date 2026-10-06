@@ -202,7 +202,8 @@ fn normalize_scheme_a(cfg: &mut TrayCustomization) -> bool {
         if matches!(
             b.id.as_str(),
             "block:hero" | "block:event" | "block:habit" | "block:quick"
-        ) && b.visible {
+        ) && b.visible
+        {
             b.visible = false;
             dirty = true;
         }
@@ -236,10 +237,7 @@ fn normalize_scheme_a(cfg: &mut TrayCustomization) -> bool {
         if !block_visible(cfg, &block_id) {
             continue;
         }
-        let has_visible = cfg
-            .controls
-            .iter()
-            .any(|c| c.channel == ch && c.visible);
+        let has_visible = cfg.controls.iter().any(|c| c.channel == ch && c.visible);
         if has_visible {
             continue;
         }

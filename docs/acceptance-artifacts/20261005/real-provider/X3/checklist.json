@@ -1,0 +1,22 @@
+{
+    "hint":  {
+                 "note":  "Session mismatch -\u003e attemptedUnverified",
+                 "expectedOutcome":  "attemptedUnverified_session_mismatch",
+                 "agentKind":  "codex"
+             },
+    "status":  "pending_manual",
+    "requiredEvidence":  [
+                             "snapshot-before.json",
+                             "action-result.json",
+                             "snapshot-after.png",
+                             "toast-or-roster.png"
+                         ],
+    "id":  "X3",
+    "steps":  [
+                  "1. Prepare session per scenario-prep.md",
+                  "2. cmd_agent_center_snapshot -\u003e save snapshot-before.json",
+                  "3. cmd_agent_center_action agent.interrupt -\u003e save action-result.json",
+                  "4. Refresh snapshot -\u003e save snapshot-after.json",
+                  "5. Capture screenshot of toast + roster row"
+              ]
+}

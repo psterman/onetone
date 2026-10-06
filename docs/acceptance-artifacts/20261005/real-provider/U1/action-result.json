@@ -1,0 +1,26 @@
+{
+  "agentId": "kind:cursor",
+  "error": "interrupt_not_enabled",
+  "interrupt": {
+    "confidence": "medium",
+    "enabled": false,
+    "freshUntil": 1791260728576,
+    "id": "agent.interrupt",
+    "label": "Interrupt",
+    "observedAt": 1791260668576,
+    "reason": "not_running",
+    "scope": "externalAgent",
+    "source": "inferred",
+    "state": "unavailable",
+    "support": "hotkey",
+    "supported": true
+  },
+  "observedStatus": {
+    "confidence": "medium",
+    "freshUntil": 1791260728576,
+    "observedAt": 1791260668576,
+    "source": "inferred",
+    "value": "unknown"
+  },
+  "status": "blocked"
+}

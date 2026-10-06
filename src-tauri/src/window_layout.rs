@@ -43,7 +43,10 @@ pub fn ensure_on_screen(window: &WebviewWindow) {
             let msize = m.size().to_logical::<f64>(m.scale_factor());
             let mx2 = mpos.x + msize.width;
             let my2 = mpos.y + msize.height;
-            logical.x < mx2 && logical.x + 40.0 > mpos.x && logical.y < my2 && logical.y + 40.0 > mpos.y
+            logical.x < mx2
+                && logical.x + 40.0 > mpos.x
+                && logical.y < my2
+                && logical.y + 40.0 > mpos.y
         });
     if !on_a_monitor {
         let _ = window.center();
@@ -165,7 +168,10 @@ fn read_window_geo(window: &WebviewWindow) -> WindowGeo {
         .ok()
         .map(|size| {
             let logical = size.to_logical::<f64>(scale);
-            (Some(logical.width.max(MIN_W)), Some(logical.height.max(MIN_H)))
+            (
+                Some(logical.width.max(MIN_W)),
+                Some(logical.height.max(MIN_H)),
+            )
         })
         .unwrap_or((None, None));
     let (x, y) = window

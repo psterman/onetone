@@ -61,16 +61,20 @@ fn tokens_from_jsonl_line(line: &str) -> Option<u64> {
         .or_else(|| v.pointer("/tokenUsage"))
         .or_else(|| v.pointer("/data/token_info"))
         .unwrap_or(&v);
-    let prompt = number(tip.get("prompt_tokens").or(tip.get("input_tokens")).unwrap_or(&Value::Null))
-        .unwrap_or(0.0);
+    let prompt = number(
+        tip.get("prompt_tokens")
+            .or(tip.get("input_tokens"))
+            .unwrap_or(&Value::Null),
+    )
+    .unwrap_or(0.0);
     let completion = number(
         tip.get("completion_tokens")
             .or(tip.get("output_tokens"))
             .unwrap_or(&Value::Null),
     )
     .unwrap_or(0.0);
-    let total = number(tip.get("total_tokens").unwrap_or(&Value::Null))
-        .unwrap_or(prompt + completion);
+    let total =
+        number(tip.get("total_tokens").unwrap_or(&Value::Null)).unwrap_or(prompt + completion);
     let n = total.max(0.0).round() as u64;
     if n == 0 {
         None

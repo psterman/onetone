@@ -6,7 +6,8 @@ use tauri::{AppHandle, State};
 use crate::agent_attention::{self, AttentionPublicSnapshot};
 use crate::agent_catalog::{self, AgentCapabilities};
 use crate::soft_pad_runtime::{
-    get_public_snapshot, request_soft_pad_recompute, set_follow_pin, AgentKind, SoftPadPublicSnapshot,
+    get_public_snapshot, request_soft_pad_recompute, set_follow_pin, AgentKind,
+    SoftPadPublicSnapshot,
 };
 use crate::AppState;
 use std::sync::Arc;
@@ -49,9 +50,7 @@ pub fn cmd_soft_pad_set_follow(
 }
 
 #[tauri::command]
-pub fn cmd_agent_attention_snapshot(
-    state: State<'_, Arc<AppState>>,
-) -> AttentionPublicSnapshot {
+pub fn cmd_agent_attention_snapshot(state: State<'_, Arc<AppState>>) -> AttentionPublicSnapshot {
     let _ = state;
     agent_attention::public_snapshot()
 }
@@ -94,10 +93,7 @@ pub fn cmd_cursor_hook_ingest(
     session_id: Option<String>,
 ) -> AttentionPublicSnapshot {
     let _ = state;
-    agent_attention::ingest_cursor_hook_event(
-        event.trim(),
-        session_id.as_deref().unwrap_or(""),
-    );
+    agent_attention::ingest_cursor_hook_event(event.trim(), session_id.as_deref().unwrap_or(""));
     agent_attention::public_snapshot()
 }
 
@@ -154,7 +150,6 @@ pub fn cmd_onetone_attention_clear(
     agent_attention::public_snapshot()
 }
 
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SoftPadLanePageView {
@@ -173,10 +168,12 @@ pub struct SoftPadLanePageView {
 pub fn cmd_soft_pad_lane_page(
     state: State<'_, Arc<AppState>>,
 ) -> Result<SoftPadLanePageView, String> {
-    use crate::soft_pad_purpose::{ag_surface_for, multi_agent_lights_allowed, navigation_slots_for};
+    use crate::soft_pad_purpose::{
+        ag_surface_for, multi_agent_lights_allowed, navigation_slots_for,
+    };
     let cfg = state.cfg.lock().clone();
-    let (kind, mid) = crate::soft_pad_runtime::applied_lane()
-        .ok_or_else(|| "no_applied_lane".to_string())?;
+    let (kind, mid) =
+        crate::soft_pad_runtime::applied_lane().ok_or_else(|| "no_applied_lane".to_string())?;
     let pad = cfg
         .mappings
         .iter()
@@ -263,9 +260,7 @@ pub fn cmd_soft_pad_agent_lights_set(
             "minimax" => pad.minimax_status_lights_enabled = enabled,
             "workbuddy" => pad.workbuddy_status_lights_enabled = enabled,
             "trae" => pad.trae_status_lights_enabled = enabled,
-            "traecode" | "trae_code" | "trae-code" => {
-                pad.trae_code_status_lights_enabled = enabled
-            }
+            "traecode" | "trae_code" | "trae-code" => pad.trae_code_status_lights_enabled = enabled,
             "windsurf" | "windsurf-chat" => pad.windsurf_status_lights_enabled = enabled,
             "qoder" => pad.qoder_status_lights_enabled = enabled,
             "copilotcli" | "copilot_cli" | "copilot-cli" => {
@@ -315,27 +310,32 @@ pub fn cmd_soft_pad_agent_lights_set(
         );
     let mut loopback_error: Option<String> = None;
     if needs_loopback {
-        match crate::codex_micro_protocol_server::start(app.clone(), Arc::clone(state.inner()), None)
-        {
+        match crate::codex_micro_protocol_server::start(
+            app.clone(),
+            Arc::clone(state.inner()),
+            None,
+        ) {
             Ok(_) => {}
             Err(e) => {
                 let lower = e.to_ascii_lowercase();
-                loopback_error = Some(if lower.contains("address already in use")
-                    || lower.contains("only one usage of each socket")
-                    || lower.contains("os error 10048")
-                    || lower.contains("port_in_use")
-                {
-                    "port_in_use".into()
-                } else if lower.contains("bind")
-                    || lower.contains("permission")
-                    || lower.contains("os error")
-                {
-                    "bind_failed".into()
-                } else if e.trim().is_empty() {
-                    "bind_failed".into()
-                } else {
-                    e.clone()
-                });
+                loopback_error = Some(
+                    if lower.contains("address already in use")
+                        || lower.contains("only one usage of each socket")
+                        || lower.contains("os error 10048")
+                        || lower.contains("port_in_use")
+                    {
+                        "port_in_use".into()
+                    } else if lower.contains("bind")
+                        || lower.contains("permission")
+                        || lower.contains("os error")
+                    {
+                        "bind_failed".into()
+                    } else if e.trim().is_empty() {
+                        "bind_failed".into()
+                    } else {
+                        e.clone()
+                    },
+                );
                 crate::app_log::log_line(
                     state.inner(),
                     "config",
@@ -484,22 +484,27 @@ pub fn cmd_soft_pad_agent_lights_batch_set(
 
     let mut loopback_error: Option<String> = None;
     if needs_loopback {
-        match crate::codex_micro_protocol_server::start(app.clone(), Arc::clone(state.inner()), None)
-        {
+        match crate::codex_micro_protocol_server::start(
+            app.clone(),
+            Arc::clone(state.inner()),
+            None,
+        ) {
             Ok(_) => {}
             Err(e) => {
                 let lower = e.to_ascii_lowercase();
-                loopback_error = Some(if lower.contains("address already in use")
-                    || lower.contains("only one usage of each socket")
-                    || lower.contains("os error 10048")
-                    || lower.contains("port_in_use")
-                {
-                    "port_in_use".into()
-                } else if e.trim().is_empty() {
-                    "bind_failed".into()
-                } else {
-                    e.clone()
-                });
+                loopback_error = Some(
+                    if lower.contains("address already in use")
+                        || lower.contains("only one usage of each socket")
+                        || lower.contains("os error 10048")
+                        || lower.contains("port_in_use")
+                    {
+                        "port_in_use".into()
+                    } else if e.trim().is_empty() {
+                        "bind_failed".into()
+                    } else {
+                        e.clone()
+                    },
+                );
                 crate::app_log::log_line(
                     state.inner(),
                     "config",
@@ -554,10 +559,7 @@ pub fn cmd_soft_pad_set_purpose(
         )
         .unwrap_or(AgentKind::Codex);
         if want.is_sessions() && !purpose_sessions_allowed(kind) {
-            return Err(format!(
-                "sessions_not_supported:{}",
-                kind.as_str()
-            ));
+            return Err(format!("sessions_not_supported:{}", kind.as_str()));
         }
         let Some(pad) = m.codex_micro_pad.as_mut() else {
             return Err("no_pad".into());
@@ -568,8 +570,10 @@ pub fn cmd_soft_pad_set_purpose(
             // Backend guard-rail: if callers only flip `purpose=sessions` but never
             // seeded AG navigation roles, then `navigation_slots_for(...)` stays empty
             // and physical session lights will not project.
-            let _ = crate::soft_pad_purpose::
-                seed_recommended_navigation_slots_for_sessions_if_missing(kind, pad)?;
+            let _ =
+                crate::soft_pad_purpose::seed_recommended_navigation_slots_for_sessions_if_missing(
+                    kind, pad,
+                )?;
         }
     }
     let cfg = state.cfg.lock().clone();

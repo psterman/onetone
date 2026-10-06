@@ -228,9 +228,10 @@ fn is_modifier_watch_key(name: &str) -> bool {
         return false;
     }
     let chord = crate::key_chord::build_pressed_chord(name);
-    watches
-        .iter()
-        .any(|w| crate::key_chord::chords_equivalent(w, &chord) || crate::key_chord::chords_equivalent(w, name))
+    watches.iter().any(|w| {
+        crate::key_chord::chords_equivalent(w, &chord)
+            || crate::key_chord::chords_equivalent(w, name)
+    })
 }
 
 fn active_sender() -> &'static Mutex<Option<mpsc::Sender<String>>> {
@@ -803,7 +804,10 @@ fn dispatch_physical_payload(payload: &str, source: &str, report_hex: &str) -> b
 
     if RECORDING_SESSION.load(Ordering::SeqCst) && !ev.is_keyup {
         if is_peripheral_trigger_key(&ev.key) || is_volume_hotkey(&ev.key) {
-            pending_recording_mouse().lock().unwrap().push(ev.key.clone());
+            pending_recording_mouse()
+                .lock()
+                .unwrap()
+                .push(ev.key.clone());
             emit_input_obs(
                 onetone_logic::runtime_event::kind::INPUT_CAPTURED,
                 &ev.key,
@@ -1098,7 +1102,10 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
                             sender.send(name.to_string()).ok();
                         }
                     } else {
-                        pending_recording_mouse().lock().unwrap().push(name.to_string());
+                        pending_recording_mouse()
+                            .lock()
+                            .unwrap()
+                            .push(name.to_string());
                     }
                 }
                 return 1;
@@ -1182,14 +1189,7 @@ fn note_volume_for_ghost_suppress(key: &str, is_keyup: bool) {
 fn is_ghost_media_key_token(name: &str) -> bool {
     matches!(
         name,
-        "LCtrl"
-            | "RCtrl"
-            | "Ctrl"
-            | "Control"
-            | "LShift"
-            | "RShift"
-            | "Shift"
-            | "Space"
+        "LCtrl" | "RCtrl" | "Ctrl" | "Control" | "LShift" | "RShift" | "Shift" | "Space"
     )
 }
 
@@ -1254,8 +1254,7 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                 if should_swallow_ghost_media_key(&inj_name) {
                     return 1;
                 }
-                if is_volume_hotkey(&inj_name)
-                    && resolve_active_binding(&inj_name, None).is_some()
+                if is_volume_hotkey(&inj_name) && resolve_active_binding(&inj_name, None).is_some()
                 {
                     note_volume_for_ghost_suppress(&inj_name, is_key_up);
                 }
@@ -1270,10 +1269,9 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
             }
         }
         let extended = kb.flags & 0x01 != 0;
-        if let Some(source) = crate::codex_numpad_layer::normalize_numpad_physical(
-            kb.scanCode as u16,
-            extended,
-        ) {
+        if let Some(source) =
+            crate::codex_numpad_layer::normalize_numpad_physical(kb.scanCode as u16, extended)
+        {
             if recording {
                 if is_key_down {
                     if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
@@ -1303,7 +1301,8 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                     if crate::codex_numpad_layer::pad_should_capture_arrow(nav_id) {
                         if let Some(sender) = active_sender().lock().unwrap().as_ref() {
                             let payload = crate::codex_numpad_layer::format_micro_key_event(
-                                nav_id, is_key_down,
+                                nav_id,
+                                is_key_down,
                             );
                             sender.send(payload).ok();
                         }
@@ -1317,11 +1316,8 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
                 // VK_RMENU. We surface it as a Volume_Up event so the handler's
                 // Volume fast-path catches it; the source device tag is set by
                 // the handler when it sees the bridge tag in the payload.
-                let bridged = bridge_injected_ralt_to_volume(
-                    kb.flags & LLKHF_INJECTED != 0,
-                    &name,
-                )
-                .to_string();
+                let bridged = bridge_injected_ralt_to_volume(kb.flags & LLKHF_INJECTED != 0, &name)
+                    .to_string();
                 if is_key_down {
                     if let Some(sender) = recording_sender().lock().unwrap().as_ref() {
                         sender.send(bridged.clone()).ok();
@@ -1935,12 +1931,17 @@ mod tests {
     #[test]
     fn bridge_injected_ralt_to_volume_during_recording() {
         assert_eq!(bridge_injected_ralt_to_volume(true, "RAlt"), "Volume_Up");
-        assert!(is_volume_hotkey(bridge_injected_ralt_to_volume(true, "RAlt")));
+        assert!(is_volume_hotkey(bridge_injected_ralt_to_volume(
+            true, "RAlt"
+        )));
         RECORDING_SESSION.store(true, Ordering::SeqCst);
         assert_eq!(bridge_injected_ralt_to_volume(false, "RAlt"), "Volume_Up");
         RECORDING_SESSION.store(false, Ordering::SeqCst);
         assert_eq!(bridge_injected_ralt_to_volume(false, "RAlt"), "RAlt");
-        assert_eq!(bridge_injected_ralt_to_volume(true, "Volume_Up"), "Volume_Up");
+        assert_eq!(
+            bridge_injected_ralt_to_volume(true, "Volume_Up"),
+            "Volume_Up"
+        );
     }
 
     #[test]

@@ -37,7 +37,7 @@ INTERESTING = ("session", "chat", "thread", "conversation", "message", "turn",
 
 
 def safe_copy(src: Path) -> Path | None:
-    """复制主库 + WAL + SHM 到临时目录，避免锁与半写状态"""
+    """复制主库 + WAL + SHM 到临时目录，避免锁与半写状态。调用方必须 cleanup_copy。"""
     if not src.exists():
         return None
     tmp = Path(tempfile.mkdtemp(prefix="agentprobe_")) / src.name
@@ -50,7 +50,14 @@ def safe_copy(src: Path) -> Path | None:
         return tmp
     except Exception as e:
         print(f"    [copy-fail] {e}")
+        shutil.rmtree(tmp.parent, ignore_errors=True)
         return None
+
+
+def cleanup_copy(tmp: Path | None) -> None:
+    if tmp is None:
+        return
+    shutil.rmtree(tmp.parent, ignore_errors=True)
 
 
 def is_sqlcipher(path: Path) -> bool:
@@ -68,39 +75,41 @@ def probe(name, src, grade, sample=2, max_tables=40):
     tmp = safe_copy(src)
     if not tmp:
         return
-
-    if is_sqlcipher(tmp):
-        print("  !! 文件头非 SQLite —— SQLCipher 加密，第三方无法直接解析")
-        return
-
     try:
-        con = sqlite3.connect(f"file:{tmp.as_posix()}?mode=ro&immutable=1", uri=True)
-    except Exception as e:
-        print(f"  [open-fail] {e}")
-        return
+        if is_sqlcipher(tmp):
+            print("  !! 文件头非 SQLite —— SQLCipher 加密，第三方无法直接解析")
+            return
 
-    try:
-        rows = con.execute(
-            "SELECT name, type FROM sqlite_master WHERE type IN ('table','view') "
-            "AND name NOT LIKE 'sqlite_%' ORDER BY type, name"
-        ).fetchall()
-    except Exception as e:
-        print(f"  [schema-fail] {e}  (可能加密或损坏)")
-        con.close()
-        return
-
-    print(f"  对象数: {len(rows)}")
-    for tname, ttype in rows[:max_tables]:
-        mark = "*" if any(k in tname.lower() for k in INTERESTING) else " "
         try:
-            n = con.execute(f'SELECT COUNT(*) FROM "{tname}"').fetchone()[0]
-        except Exception:
-            n = "?"
-        cols = [r[1] for r in con.execute(f'PRAGMA table_info("{tname}")').fetchall()]
-        print(f"  {mark}[{ttype[0]}] {tname:<42} rows={n}")
-        if cols:
-            print(f"       cols: {', '.join(cols[:16])}{' …' if len(cols) > 16 else ''}")
-    con.close()
+            con = sqlite3.connect(f"file:{tmp.as_posix()}?mode=ro&immutable=1", uri=True)
+        except Exception as e:
+            print(f"  [open-fail] {e}")
+            return
+
+        try:
+            rows = con.execute(
+                "SELECT name, type FROM sqlite_master WHERE type IN ('table','view') "
+                "AND name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            ).fetchall()
+        except Exception as e:
+            print(f"  [schema-fail] {e}  (可能加密或损坏)")
+            con.close()
+            return
+
+        print(f"  对象数: {len(rows)}")
+        for tname, ttype in rows[:max_tables]:
+            mark = "*" if any(k in tname.lower() for k in INTERESTING) else " "
+            try:
+                n = con.execute(f'SELECT COUNT(*) FROM "{tname}"').fetchone()[0]
+            except Exception:
+                n = "?"
+            cols = [r[1] for r in con.execute(f'PRAGMA table_info("{tname}")').fetchall()]
+            print(f"  {mark}[{ttype[0]}] {tname:<42} rows={n}")
+            if cols:
+                print(f"       cols: {', '.join(cols[:16])}{' …' if len(cols) > 16 else ''}")
+        con.close()
+    finally:
+        cleanup_copy(tmp)
 
 
 def kv_peek():
@@ -110,17 +119,20 @@ def kv_peek():
     tmp = safe_copy(src)
     if not tmp:
         return
-    con = sqlite3.connect(f"file:{tmp.as_posix()}?mode=ro&immutable=1", uri=True)
-    for table in ("ItemTable", "cursorDiskKV"):
-        try:
-            rs = con.execute(f"SELECT key, length(value) FROM {table} ORDER BY 2 DESC LIMIT 12").fetchall()
-        except Exception as e:
-            print(f"  {table}: {e}")
-            continue
-        print(f"  -- {table} --")
-        for k, ln in rs:
-            print(f"     {k[:70]:<72} {ln/1024:.1f} KB")
-    con.close()
+    try:
+        con = sqlite3.connect(f"file:{tmp.as_posix()}?mode=ro&immutable=1", uri=True)
+        for table in ("ItemTable", "cursorDiskKV"):
+            try:
+                rs = con.execute(f"SELECT key, length(value) FROM {table} ORDER BY 2 DESC LIMIT 12").fetchall()
+            except Exception as e:
+                print(f"  {table}: {e}")
+                continue
+            print(f"  -- {table} --")
+            for k, ln in rs:
+                print(f"     {k[:70]:<72} {ln/1024:.1f} KB")
+        con.close()
+    finally:
+        cleanup_copy(tmp)
 
 
 def main():

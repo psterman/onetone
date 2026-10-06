@@ -149,22 +149,14 @@ pub fn parse_minimax_config_model_label(contents: &str) -> Option<String> {
             continue;
         }
         if let Some(rest) = t.strip_prefix("defaultModel:") {
-            let v = rest
-                .trim()
-                .trim_matches('"')
-                .trim_matches('\'')
-                .trim();
+            let v = rest.trim().trim_matches('"').trim_matches('\'').trim();
             if !v.is_empty() {
                 default_model = Some(normalize_minimax_model_label(v));
             }
             continue;
         }
         if let Some(rest) = t.strip_prefix("modelID:") {
-            let v = rest
-                .trim()
-                .trim_matches('"')
-                .trim_matches('\'')
-                .trim();
+            let v = rest.trim().trim_matches('"').trim_matches('\'').trim();
             if !v.is_empty() {
                 nexus_model_id = Some(v.to_string());
             }
@@ -216,9 +208,7 @@ pub fn ingest_hook_model(
         | AgentKind::Trae
         | AgentKind::TraeCode
         | AgentKind::Windsurf
-        | AgentKind::Qoder => {
-            (raw.to_string(), "low")
-        }
+        | AgentKind::Qoder => (raw.to_string(), "low"),
     };
     let mut g = store().lock().unwrap_or_else(|e| e.into_inner());
     g.insert(
@@ -371,10 +361,7 @@ mod tests {
     #[test]
     fn claude_snapshot_falls_back_to_settings_env() {
         reset_for_test();
-        let dir = std::env::temp_dir().join(format!(
-            "onetone-claude-model-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("onetone-claude-model-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let settings = dir.join("settings.json");
@@ -419,10 +406,7 @@ model = "ignored-in-table"
     #[test]
     fn codex_snapshot_falls_back_to_config_when_hook_empty() {
         reset_for_test();
-        let dir = std::env::temp_dir().join(format!(
-            "onetone-codex-model-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("onetone-codex-model-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let cfg = dir.join("config.toml");
@@ -442,10 +426,8 @@ model = "ignored-in-table"
     #[test]
     fn minimax_snapshot_falls_back_to_config_default_model() {
         reset_for_test();
-        let dir = std::env::temp_dir().join(format!(
-            "onetone-minimax-model-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("onetone-minimax-model-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let cfg = dir.join("config.yaml");
@@ -470,10 +452,8 @@ model = "ignored-in-table"
     #[test]
     fn codex_hook_model_wins_over_config() {
         reset_for_test();
-        let dir = std::env::temp_dir().join(format!(
-            "onetone-codex-model-hook-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("onetone-codex-model-hook-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let cfg = dir.join("config.toml");

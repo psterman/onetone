@@ -161,11 +161,7 @@ pub(super) fn is_spurious_trigger_capture(key: &str) -> bool {
 }
 
 fn is_ghost_media_modifier(part: &str) -> bool {
-    is_modifier_token(part)
-        || matches!(
-            part,
-            "Ctrl" | "Control" | "Shift" | "Alt" | "Win" | "Meta"
-        )
+    is_modifier_token(part) || matches!(part, "Ctrl" | "Control" | "Shift" | "Alt" | "Win" | "Meta")
 }
 
 pub(super) fn recognition_key_echo(target_key: &str, key: &str) -> bool {

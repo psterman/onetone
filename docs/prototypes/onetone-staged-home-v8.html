@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OneTone · 分步准备台</title>
+<style>
+:root{
+  --ink:#17211e;--muted:#6b7672;--faint:#9aa5aa;--line:#dce3df;--soft:#f1f5f3;--paper:#fffefa;
+  --green:#14775b;--green-soft:#eaf4ef;--blue:#176aa6;--blue-soft:#e9f2f9;
+  --amber:#a76818;--amber-soft:#fdf3e2;--red:#a5453f;--red-soft:#fbeceb;
+  --shadow:0 18px 45px rgba(28,45,39,.09);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;overflow:hidden;background:#edf1ef;color:var(--ink);
+  font:14px/1.5 "Microsoft YaHei","PingFang SC",sans-serif}
+button{font:inherit;color:inherit}
+button:focus-visible,[contenteditable]:focus-visible{outline:3px solid #8abbe0;outline-offset:2px}
+
+.top{height:60px;background:#fff;border-bottom:1px solid var(--line);display:flex;
+  align-items:center;justify-content:space-between;padding:0 22px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand b{font:700 21px Georgia,serif}
+.brand span{color:var(--muted)}
+.saved{color:var(--muted);font-size:12px}
+
+/* 阶段指示 */
+.steps{display:flex;gap:2px;align-items:center}
+.steps .s{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--faint);padding:3px 10px;border-radius:999px}
+.steps .s .n{width:17px;height:17px;border-radius:50%;background:var(--soft);
+  display:grid;place-items:center;font-size:10px;font-weight:800;color:var(--faint)}
+.steps .s.on{color:var(--green);font-weight:700;background:var(--green-soft)}
+.steps .s.on .n{background:var(--green);color:#fff}
+.steps .s.done{color:var(--green)}
+.steps .s.done .n{background:var(--green);color:#fff}
+.steps .sep{color:#c6cfcb;font-size:11px}
+
+.app{height:calc(100vh - 60px);display:grid;grid-template-columns:258px minmax(0,1fr)}
+
+/* 左：材料 */
+.materials{background:#f9fbfa;border-right:1px solid var(--line);padding:20px 16px;overflow:auto}
+.materials h2{font-size:15px;margin:0}
+.sub{font-size:12px;color:var(--muted);margin:4px 0 14px;line-height:1.6}
+.add-wrap{position:relative}
+.add{width:100%;height:44px;border:0;border-radius:10px;background:var(--ink);color:#fff;font-weight:700;cursor:pointer}
+.add-menu{position:absolute;z-index:4;left:0;right:0;top:50px;display:none;
+  grid-template-columns:1fr 1fr;background:#fff;border:1px solid var(--line);border-radius:10px;
+  padding:6px;box-shadow:var(--shadow)}
+.add-menu.open{display:grid}
+.add-menu button{border:0;background:#fff;border-radius:7px;padding:9px;text-align:left;cursor:pointer;font-size:12.5px}
+.add-menu button:hover{background:var(--soft)}
+.list-head{display:flex;justify-content:space-between;align-items:center;margin:22px 3px 9px;font-weight:700;font-size:13px}
+.list-head button{border:0;background:none;color:var(--blue);cursor:pointer;font-size:12px}
+.item{display:grid;grid-template-columns:34px 1fr;gap:9px;align-items:center;padding:9px 8px;
+  border-radius:9px;cursor:pointer;position:relative}
+.item:hover{background:#e8f2ee}
+.item.used{background:var(--green-soft)}
+.item.unused .ico{opacity:.45}
+.item .ico{width:34px;height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;
+  display:grid;place-items:center;color:var(--green);font-size:14px}
+.item strong,.item small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item strong{font-size:12.5px}
+.item small{color:var(--muted);font-size:11px}
+.item .pending:after{content:"";position:absolute;right:8px;top:10px;width:7px;height:7px;
+  border-radius:50%;background:var(--amber)}
+
+/* 右：纸 */
+.workspace{min-width:0;display:flex;flex-direction:column}
+.worktop{height:54px;background:#fff;border-bottom:1px solid var(--line);display:flex;
+  align-items:flex-end;justify-content:space-between;padding:0 30px}
+.tabs{display:flex;height:54px}
+.tabs button{height:54px;border:0;border-bottom:2px solid transparent;background:none;
+  padding:0 16px;color:var(--muted);cursor:pointer}
+.tabs button.active{border-color:var(--blue);color:var(--ink);font-weight:700}
+.tabs button[disabled]{opacity:.35;cursor:not-allowed}
+.work-meta{font-size:12px;color:var(--muted);padding-bottom:15px}
+
+.stage{flex:1;min-height:0;overflow:auto;padding:26px 38px 96px}
+.sheet{max-width:820px;min-height:calc(100vh - 185px);margin:auto;background:var(--paper);
+  border:1px solid #daddd8;box-shadow:var(--shadow);padding:46px 58px}
+.sheet h1{font:700 29px/1.3 Georgia,"Microsoft YaHei",serif;margin:0 0 8px}
+.origin{font-size:12px;color:var(--muted);margin-bottom:30px}
+
+/* 纸上的阶段区块：随阶段长出来 */
+.grow{overflow:hidden;max-height:0;opacity:0;transition:max-height .3s ease,opacity .25s ease,margin .3s ease;margin:0}
+.grow.on{max-height:520px;opacity:1;margin-top:26px}
+
+/* 第三步才出现 */
+.engine{border:1px solid #cfe0d8;background:#f4faf7;border-radius:12px;padding:13px 15px}
+.engine .t{font-size:11px;font-weight:750;color:var(--green);letter-spacing:.05em;margin-bottom:9px}
+.engine .act{font-size:16px;font-weight:700;margin-bottom:9px}
+.ways{display:flex;flex-wrap:wrap;gap:6px}
+.way{display:inline-flex;align-items:center;gap:6px;border:1px solid #cfded7;background:#fff;
+  border-radius:9px;padding:6px 11px;font-size:12px}
+.way i{font-style:normal;font-size:10px;color:var(--faint);font-weight:700}
+.way kbd{font-family:Consolas,monospace;font-size:12px;font-weight:700;background:#f1f5f3;
+  border-radius:4px;padding:1px 5px}
+.way.off{opacity:.5}
+.gapline{margin-top:11px;border-top:1px dashed #d3e2db;padding-top:11px;font-size:12.5px;
+  display:flex;gap:10px;align-items:flex-start;color:#7d4340}
+.gapline .fix{margin-left:auto;border:1px solid #e0b3af;background:#fff;color:#95443e;
+  border-radius:8px;padding:5px 11px;font-size:11.5px;font-weight:640;cursor:pointer;flex:none}
+
+/* 第二步 */
+.writing{min-height:120px;font-size:16.5px;line-height:1.95;padding-bottom:24px;
+  border-bottom:1px solid var(--line);outline:0}
+.ref-title{margin:26px 0 4px;font-weight:700;font-size:14px}
+.ref{display:grid;grid-template-columns:70px 1fr auto;gap:14px;align-items:center;
+  padding:14px 0;border-top:1px solid var(--line)}
+.thumb{height:52px;border-radius:7px;background:linear-gradient(145deg,#d4dfe4,#e8dfd4);
+  display:grid;place-items:center;color:#436170;font-size:11px}
+.ref h3{font-size:13.5px;margin:0 0 3px}
+.ref p{font-size:12px;color:var(--muted);margin:0}
+.refctl{display:flex;gap:6px;align-items:center}
+.mode{border:1px solid #cbd6d0;background:#fff;border-radius:999px;padding:4px 9px;font-size:11px;cursor:pointer}
+.lock{border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 9px;
+  font-size:11px;color:var(--muted);cursor:pointer}
+.lock.on{background:var(--amber-soft);border-color:#e2c79a;color:var(--amber);font-weight:700}
+
+/* 第一步的空纸 */
+.empty-paper{text-align:center;padding:52px 20px;color:var(--muted)}
+.empty-paper .big{font:400 20px/1.5 Georgia,"Microsoft YaHei",serif;color:var(--ink);margin-bottom:12px}
+
+/* 预览 */
+.preview{display:none}
+.preview.on{display:block}
+.edit.off{display:none}
+.notice{font-size:12px;color:#45675a;background:#eaf4ef;border-radius:8px;padding:10px 12px;margin-bottom:22px}
+.md{font-family:Georgia,"Microsoft YaHei",serif;line-height:1.85}
+.md h2{font-size:20px;margin:24px 0 9px}
+.md code{font-family:Consolas,monospace;background:var(--soft);padding:2px 5px;border-radius:4px}
+
+/* 底栏 */
+.bar{position:absolute;left:258px;right:0;bottom:0;height:72px;border-top:1px solid var(--line);
+  background:rgba(255,255,255,.97);display:flex;align-items:center;justify-content:space-between;
+  padding:0 26px;backdrop-filter:blur(10px);gap:20px}
+.bar .info b{display:block;font-size:13.5px}
+.bar .info span{font-size:12px;color:var(--muted)}
+.bar .info .warn{color:var(--amber)}
+.bar .acts{display:flex;gap:8px;flex:none}
+.sec,.pri{height:40px;border-radius:9px;padding:0 15px;cursor:pointer}
+.sec{border:1px solid var(--line);background:#fff}
+.pri{border:0;background:var(--ink);color:#fff;font-weight:700;padding:0 20px}
+.pri[disabled]{background:#cfd6d3;cursor:not-allowed}
+
+/* 抽屉 */
+.scrim{position:fixed;inset:0;background:rgba(17,29,25,.34);opacity:0;pointer-events:none;transition:.18s;z-index:5}
+.scrim.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;z-index:6;right:0;top:0;width:410px;max-width:100%;height:100%;
+  background:#fff;box-shadow:-20px 0 60px rgba(20,35,29,.17);transform:translateX(102%);
+  transition:.22s;display:flex;flex-direction:column}
+.drawer.open{transform:none}
+.drawer-head{padding:24px 25px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+.drawer-head h2{font-size:20px;margin:0}
+.drawer-head p{color:var(--muted);margin:4px 0 0;font-size:12px}
+.close{width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:#fff;cursor:pointer;font-size:17px}
+.drawer-body{padding:20px 25px;overflow:auto;flex:1}
+.destination{display:flex;gap:11px;align-items:center;margin:6px 0 16px}
+.logo{width:40px;height:40px;border-radius:9px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:700}
+.destination h3{margin:0;font-size:15px}
+.destination p{font-size:12px;color:var(--muted);margin:1px 0}
+.group{border-top:1px solid var(--line);padding:15px 0}
+.group h4{font-size:12px;margin:0 0 8px}
+.ability{display:flex;gap:9px;margin:9px 0;font-size:13px}
+.ability i{font-style:normal;font-weight:800}
+.ability .y{color:var(--green)}
+.ability .m{color:var(--amber)}
+.ability small{display:block;color:var(--muted);font-size:11px;margin-top:1px}
+.block{background:var(--red-soft);border:1px solid #eccbc8;border-radius:11px;padding:11px 13px;
+  font-size:12.5px;color:#7d4340;line-height:1.6;margin-top:8px}
+.drawer-foot{margin-top:auto;border-top:1px solid var(--line);padding:16px 25px}
+.drawer-foot .pri{width:100%}
+.receipt{margin-top:12px;border-top:1px solid var(--line);padding-top:12px;font-size:12px;display:none}
+.receipt.on{display:block}
+.receipt .r{display:flex;justify-content:space-between;padding:3px 0;color:var(--muted)}
+.receipt .r b{color:var(--ink);font-weight:660}
+.receipt .r b.unk{color:var(--amber)}
+
+.toast{position:fixed;z-index:8;bottom:84px;left:50%;transform:translate(-50%,12px);
+  background:var(--ink);color:#fff;padding:10px 15px;border-radius:8px;opacity:0;
+  pointer-events:none;transition:.18s;font-size:13px}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media(max-width:900px){.app{grid-template-columns:222px minmax(0,1fr)}.bar{left:222px}.sheet{padding:38px}.stage{padding:20px 22px 96px}}
+@media(max-width:760px){body{overflow:auto}.app{height:auto;display:block}.materials{border:0}
+  .sheet{padding:28px 22px;min-height:600px}.stage{padding:14px 14px 92px}
+  .bar{position:fixed;left:0;padding:0 13px;gap:10px}.bar .info span{display:none}.steps{display:none}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><b>OneTone</b><span>首次沟通准备台</span></div>
+  <nav class="steps" id="steps" aria-label="进度">
+    <span class="s on" data-stp="1"><span class="n">1</span>放材料</span><span class="sep">›</span>
+    <span class="s" data-stp="2"><span class="n">2</span>完成排版</span><span class="sep">›</span>
+    <span class="s" data-stp="3"><span class="n">3</span>看还缺什么</span><span class="sep">›</span>
+    <span class="s" data-stp="4"><span class="n">4</span>交给 Agent</span>
+  </nav>
+  <span class="saved">已保存到本地</span>
+</header>
+
+<main class="app">
+
+  <!-- ================= 左：材料 ================= -->
+  <aside class="materials">
+    <h2>材料</h2>
+    <p class="sub" id="matSub">把手边的东西放进来。</p>
+    <div class="add-wrap">
+      <button class="add" id="addBtn">＋ 添加素材</button>
+      <div class="add-menu" id="addMenu">
+        <button data-add="文件">＋ 文件</button>
+        <button data-add="图片">▧ 图片</button>
+        <button data-add="粘贴">⌘ 粘贴</button>
+        <button data-add="文件夹">⌁ 文件夹</button>
+        <button data-add="网址">↗ 网址</button>
+        <button data-add="说话">◉ 说话</button>
+      </div>
+    </div>
+
+    <div class="list-head"><span id="matCount">还没有材料</span><button data-t="按类型、时间、项目分组">分组</button></div>
+    <div id="items"></div>
+  </aside>
+
+  <!-- ================= 右：纸 ================= -->
+  <section class="workspace">
+    <header class="worktop">
+      <nav class="tabs">
+        <button class="active" data-view="edit" aria-selected="true">编辑</button>
+        <button data-view="preview" id="previewTab" disabled>交付预览</button>
+      </nav>
+      <span class="work-meta" id="workMeta">—</span>
+    </header>
+
+    <div class="stage">
+      <!-- 编辑态 -->
+      <article class="sheet edit" id="editSheet">
+        <!-- 第 1 步：空纸 -->
+        <div class="empty-paper" id="emptyPaper">
+          <div class="big">先把材料放进来</div>
+          <p>左边有 6 种来源：文件、图片、粘贴、文件夹、网址、说话。</p>
+          <p style="margin-top:18px;color:var(--faint)">放够了，下面那个按钮就会亮。</p>
+        </div>
+
+        <!-- 第 2 步起 -->
+        <div id="grown" style="display:none">
+          <h1 id="docTitle">让首页成为进入 Agent 前的准备台</h1>
+          <div class="origin">这句是你第一句话，一个字都没改。</div>
+
+          <!-- 第 3 步才出现：通道 + 缺口 -->
+          <div class="grow" id="gEngine">
+            <div class="engine">
+              <div class="t">现在能叫的</div>
+              <div class="act">取消这一轮 —— Codex 改完了，在等你点头。</div>
+              <div class="ways">
+                <span class="way"><i>按</i><kbd>Esc</kbd></span>
+                <span class="way"><i>说</i>「取消」</span>
+                <span class="way"><i>点</i>小键盘 · 取消</span>
+                <span class="way off"><i>做</i>摇头（摄像头没开）</span>
+              </div>
+              <div class="gapline">
+                <span>⚠</span>
+                <span>有 <b>1 件</b> Codex 接不住：历史记录。那部分得你自己补一句话。</span>
+                <button class="fix" data-t="改成"我自己说一句"">换个方式</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="writing" contenteditable="true" id="writing">
+            我希望用户只需要把手边的材料放进来，在同一张纸上补充自己的想法，然后把完整内容交给 Agent。OneTone 负责收集、装订和搬运，不替用户规划，也不替 Agent 理解。
+          </div>
+
+          <div class="ref-title">会一起交出去的</div>
+          <div id="refs"></div>
+
+          <p class="grow" id="leftOver" style="margin-top:20px;font-size:12.5px;color:var(--amber);line-height:1.65">
+            ⚠ 左边还有 2 项没有带上：刚复制的一段报错、Codex 修改了 3 个文件。它们在等你决定要不要带上。
+          </p>
+        </div>
+      </article>
+
+      <!-- 预览态 -->
+      <article class="sheet preview" id="previewSheet">
+        <div class="notice">按当前设置机械装订，没有使用 LLM 改写或总结。</div>
+        <div class="md" id="mdOut"></div>
+      </article>
+    </section>
+  </section>
+</main>
+
+<!-- ================= 底栏 ================= -->
+<footer class="bar">
+  <div class="info">
+    <b id="barTitle">还没有材料</b>
+    <span id="barSub">左边添加至少 1 项</span>
+  </div>
+  <div class="acts">
+    <button class="sec" id="barSec" style="display:none">复制</button>
+    <button class="pri" id="barNext" disabled>完成排版</button>
+  </div>
+</footer>
+
+<!-- ================= 抽屉 ================= -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <header class="drawer-head">
+    <div><h2>准备到 Codex</h2><p>确认 OneTone 能做到哪一步。</p></div>
+    <button class="close" id="closeBtn" aria-label="关闭">×</button>
+  </header>
+  <div class="drawer-body">
+    <div class="destination">
+      <span class="logo">C</span>
+      <div><h3>Codex · 当前会话</h3><p>voice-pilot</p></div>
+    </div>
+
+    <div class="group">
+      <h4>OneTone 将会</h4>
+      <div class="ability"><i class="y">✓</i><div>回到当前会话<small>项目和 session 都对得上</small></div></div>
+      <div class="ability"><i class="y">✓</i><div>填入草稿正文<small>带材料路径和引用说明</small></div></div>
+    </div>
+
+    <div class="group">
+      <h4>还需要你</h4>
+      <div class="ability"><i class="m">○</i><div>上传 current-home.png</div></div>
+      <div class="ability"><i class="m">○</i><div>历史记录接不住，得你自己补一句</div></div>
+      <div class="ability"><i class="m">○</i><div>检查内容并发送</div></div>
+      <div class="block">网页只给标题和网址，不抓正文。上限查不到，所以不显示百分比。</div>
+    </div>
+
+    <div class="receipt" id="receipt">
+      <div class="r"><span>正文</span><b>已复制</b></div>
+      <div class="r"><span>输入框</span><b>已对好</b></div>
+      <div class="r"><span>图片</span><b class="unk">还没传，等你</b></div>
+      <div class="r"><span>有没有发出去</span><b class="unk">不知道</b></div>
+    </div>
+  </div>
+  <footer class="drawer-foot">
+    <button class="pri" id="doIt">帮我对好输入框</button>
+  </footer>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var $ = function(s){return document.querySelector(s);};
+  var $$ = function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+
+  /* 真实材料：前 3 项会被装订，后 2 项留在左边（诚实：明说没带上） */
+  var ITEMS = [
+    {ic:'▧', n:'current-home.png',  s:'当前首页截图',        used:1},
+    {ic:'T', n:'首页问题说明.md',   s:'布局与操作路径',      used:1},
+    {ic:'⌁', n:'E:\\voice-pilot',  s:'当前项目目录',        used:1},
+    {ic:'⌘', n:'刚复制的一段报错',  s:'系统发现 · 待确认',   used:0, pending:1},
+    {ic:'↺', n:'Codex 修改了 3 个文件', s:'会话返回 · 待确认', used:0, pending:1}
+  ];
+  var GUARDS = {
+    'current-home.png':{mode:'连图带你写的话', lock:'配色和文案别改', on:1},
+    '首页问题说明.md' :{mode:'只给标题和结构', lock:'不许动', on:0},
+    'E:\\voice-pilot' :{mode:'只给路径',       lock:'',            on:0}
+  };
+
+  var stage = 1;
+  var locked = {'current-home.png':1, '首页问题说明.md':0, 'E:\\voice-pilot':0};
+
+  var toastT;
+  function say(t){ var e=$('#toast'); e.textContent=t; e.classList.add('show');
+    clearTimeout(toastT); toastT=setTimeout(function(){e.classList.remove('show');},2000); }
+
+  function renderItems(){
+    $('#matCount').textContent = ITEMS.length ? ('已添加 · ' + ITEMS.length) : '还没有材料';
+    $('#items').innerHTML = ITEMS.map(function(it){
+      var g = GUARDS[it.n] || {};
+      var on = it.used && stage >= 2;
+      return '<div class="item ' + (on ? 'used' : 'unused') + (it.pending ? ' pending' : '') + '"' +
+             ' data-t="' + (on ? '已装订' : (it.pending ? '还没决定要不要带上' : '还没用上')) + '">' +
+             '<span class="ico">' + it.ic + '</span>' +
+             '<span><strong>' + it.n + '</strong><small>' + it.s + '</small></span></div>';
+    }).join('');
+  }
+
+  function renderRefs(){
+    $('#refs').innerHTML = ITEMS.filter(function(i){return i.used;}).map(function(it){
+      var g = GUARDS[it.n];
+      return '<div class="ref">' +
+        '<div class="thumb">' + (it.ic === '▧' ? '界面截图' : it.ic === 'T' ? 'MD' : '目录') + '</div>' +
+        '<div><h3>' + it.n + '</h3><p>' +
+          (it.ic === '▧' ? '说明现有首页的信息密度与布局问题。' :
+           it.ic === 'T'  ? '原文只读，随时可以跳回原处。' : '只给路径，不带内容。') + '</p></div>' +
+        '<div class="refctl">' +
+          '<button class="mode" data-t="引用方式：' + g.mode + '">' + g.mode + ' ▾</button>' +
+          '<button class="lock' + (locked[it.n] ? ' on' : '') + '" data-lock="' + it.n + '">' +
+            (locked[it.n] ? '🔒 ' + g.lock : '不许动') + '</button>' +
+        '</div></div>';
+    }).join('');
+
+    var miss = ITEMS.filter(function(i){return !i.used;}).length;
+    var el = $('#leftOver');
+    if (miss) {
+      el.classList.add('on');
+      el.innerHTML = '⚠ 左边还有 ' + miss + ' 项没有带上：' +
+        ITEMS.filter(function(i){return !i.used;}).map(function(i){return i.n;}).join('、') +
+        '。它们在等你决定。';
+    } else { el.classList.remove('on'); }
+  }
+
+  function renderMd(){
+    var refs = ITEMS.filter(function(i){return i.used;});
+    $('#mdOut').innerHTML =
+      '<h1>' + $('#docTitle').textContent + '</h1>' +
+      '<h2>用户说明</h2><p>' + $('#writing').textContent.trim() + '</p>' +
+      '<h2>会一起交出去的</h2><div style="background:var(--soft);border-radius:8px;padding:14px;font-size:13.5px">' +
+      refs.map(function(it){ var g = GUARDS[it.n];
+        return '<b>' + it.n + '</b><br>来源：本机 · ' + g.mode +
+          (locked[it.n] ? ' · 🔒 ' + g.lock : '') + '<br><br>'; }).join('') +
+      '</div><h2>操作边界</h2><p>不替用户规划；不伪造发送结果。</p>';
+  }
+
+  function setStage(n){
+    stage = n;
+    $$('#steps .s').forEach(function(s){
+      var i = +s.dataset.stp;
+      s.classList.toggle('on', i === n);
+      s.classList.toggle('done', i < n);
+    });
+
+    $('#emptyPaper').style.display = n === 1 ? 'block' : 'none';
+    $('#grown').style.display      = n === 1 ? 'none' : 'block';
+    $('#gEngine').classList.toggle('on', n >= 3);
+    $('#previewTab').disabled = n < 2;
+
+    if (n === 1) {
+      $('#matSub').textContent = '把手边的东西放进来。';
+      $('#workMeta').textContent = '—';
+      $('#barTitle').textContent = ITEMS.length ? ('已有 ' + ITEMS.length + ' 项') : '还没有材料';
+      $('#barSub').textContent = ITEMS.length ? '可以开始排版了' : '左边添加至少 1 项';
+      $('#barNext').textContent = '完成排版';
+      $('#barNext').disabled = !ITEMS.length;
+      $('#barSec').style.display = 'none';
+    } else if (n === 2) {
+      $('#matSub').textContent = '已装订的会标绿。';
+      $('#workMeta').textContent = '机械装订 · 你的话没被改';
+      $('#barTitle').textContent = ITEMS.filter(function(i){return i.used;}).length + ' 项会交出去';
+      $('#barSub').textContent = '还有 ' + ITEMS.filter(function(i){return !i.used;}).length + ' 项没带上';
+      $('#barNext').textContent = '看看还缺什么';
+      $('#barNext').disabled = false;
+      $('#barSec').style.display = '';
+    } else if (n === 3) {
+      $('#matSub').textContent = '已装订的会标绿。';
+      $('#workMeta').textContent = '自动保存 · ' + ITEMS.filter(function(i){return i.used;}).length + ' 项引用';
+      $('#barTitle').textContent = ITEMS.filter(function(i){return i.used;}).length + ' 项材料 · 约 1.4k tokens';
+      $('#barSub').innerHTML = '上限查不到，不显示百分比 · <span class="warn">有 1 件 Codex 接不住</span>';
+      $('#barNext').textContent = '准备到 Codex';
+      $('#barNext').disabled = false;
+      $('#barSec').style.display = '';
+    } else {
+      $('#barTitle').textContent = '3 项材料 · 约 1.4k tokens';
+      $('#barSub').textContent = 'Codex · voice-pilot';
+      $('#barNext').textContent = '准备到 Codex';
+    }
+
+    renderItems(); renderRefs(); if (n >= 2) renderMd();
+  }
+
+  /* 底栏主行动 */
+  $('#barNext').onclick = function(){
+    if (stage === 1) { say('已排版。东西照你设的方式摆好了。'); setStage(2); }
+    else if (stage === 2) { say('通道和缺口都出来了'); setStage(3); }
+    else { openDrawer(); }
+  };
+  $('#barSec').onclick = function(){ say('已复制，尚未发送'); };
+
+  /* 抽屉 */
+  function openDrawer(){ $('#scrim').classList.add('open'); $('#drawer').classList.add('open');
+    $('#drawer').setAttribute('aria-hidden','false'); setStage(4); }
+  function closeD(){ $('#scrim').classList.remove('open'); $('#drawer').classList.remove('open');
+    $('#drawer').setAttribute('aria-hidden','true'); setStage(3); }
+  $('#closeBtn').onclick = closeD; $('#scrim').onclick = closeD;
+  $('#doIt').onclick = function(){ $('#receipt').classList.add('on'); say('对好了。至于有没有发出去 —— 不知道'); };
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeD(); });
+
+  /* 添加素材 */
+  $('#addBtn').onclick = function(e){ e.stopPropagation(); $('#addMenu').classList.toggle('open'); };
+  document.body.onclick = function(){ $('#addMenu').classList.remove('open'); };
+  $('#addMenu').onclick = function(e){ e.stopPropagation(); };
+  $$('[data-add]').forEach(function(b){
+    b.onclick = function(){
+      $('#addMenu').classList.remove('open');
+      ITEMS.push({ic:'＋', n:b.dataset.add + '（新）', s:'刚加进来的', used:0, pending:1});
+      say(b.dataset.add + '已放进左边');
+      setStage(1);
+    };
+  });
+
+  /* 预览 tab */
+  $$('[data-view]').forEach(function(b){
+    b.onclick = function(){
+      if (b.disabled) return;
+      $$('[data-view]').forEach(function(x){ x.classList.remove('active'); x.setAttribute('aria-selected','false'); });
+      b.classList.add('active'); b.setAttribute('aria-selected','true');
+      var pv = b.dataset.view === 'preview';
+      $('#editSheet').classList.toggle('off', pv);
+      $('#previewSheet').classList.toggle('on', pv);
+      if (pv) renderMd();
+    };
+  });
+
+  /* 其余点击 */
+  document.addEventListener('click', function(e){
+    var lk = e.target.closest('[data-lock]');
+    if (lk) {
+      var n = lk.dataset.lock;
+      locked[n] = locked[n] ? 0 : 1;
+      renderRefs(); renderMd();
+      say(locked[n] ? (n + '：不许动') : (n + '：取消不许动'));
+      return;
+    }
+    var t = e.target.closest('[data-t]');
+    if (t) say(t.dataset.t);
+  });
+
+  setStage(1);
+})();
+</script>
+</body>
+</html>

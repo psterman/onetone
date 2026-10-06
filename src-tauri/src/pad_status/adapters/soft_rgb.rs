@@ -42,10 +42,7 @@ fn preset_hex(preset: &str, status: &str) -> Option<&'static str> {
         "error" => "failed",
         other => other,
     };
-    table
-        .iter()
-        .find(|(k, _)| *k == key)
-        .map(|(_, hex)| *hex)
+    table.iter().find(|(k, _)| *k == key).map(|(_, hex)| *hex)
 }
 
 fn override_hex<'a>(colors: Option<&'a SoftPadStatusColors>, status: &str) -> Option<&'a str> {
@@ -209,10 +206,7 @@ mod tests {
 
     #[test]
     fn opacity_scales_rgb() {
-        assert_eq!(
-            apply_rgb_opacity((100, 200, 50), 50),
-            (50, 100, 25)
-        );
+        assert_eq!(apply_rgb_opacity((100, 200, 50), 50), (50, 100, 25));
         assert_eq!(
             rgb_for_ambient_full("running", "solid", "#640000", 50, "default", None),
             Some((50, 0, 0))

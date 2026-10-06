@@ -43,9 +43,10 @@ fn assignable_keys(kind: AgentKind, pad: &CodexMicroPadConfig) -> Vec<String> {
         }
         let role = SoftPadKeyRole::AgentLane;
         // Pinned preferences always include the key even if auto_assignable false
-        let pinned = pad.pinned_lane_preferences.iter().any(|p| {
-            p.micro_key_id.trim() == mid && p.assignment_mode == AssignmentMode::Pinned
-        });
+        let pinned = pad
+            .pinned_lane_preferences
+            .iter()
+            .any(|p| p.micro_key_id.trim() == mid && p.assignment_mode == AssignmentMode::Pinned);
         let auto = effective_auto_assignable(kind, pad.purpose, mid, role, r.auto_assignable);
         if auto || pinned {
             out.push(mid.to_string());
@@ -128,7 +129,10 @@ pub fn assign_slots(
     }
 
     // 3) Fill remaining by priority (stable: don't reshuffle existing)
-    let mut rest: Vec<&AgentLane> = lanes.iter().filter(|l| !placed.contains(&l.lane_id)).collect();
+    let mut rest: Vec<&AgentLane> = lanes
+        .iter()
+        .filter(|l| !placed.contains(&l.lane_id))
+        .collect();
     rest.sort_by(|a, b| {
         rank(a.state)
             .cmp(&rank(b.state))

@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OneTone · 右栏 · 可送达性检查</title>
+<style>
+:root{
+  --bg:#f2f4f2; --paper:#fffefa; --panel:#f8f9f7;
+  --ink:#18252d; --muted:#6f7c82; --faint:#9aa5aa; --line:#e0e6e3;
+  --accent:#127c75; --accent-soft:#e7f5f2;
+  --blue:#256fa8; --blue-soft:#edf5fb;
+  --amber:#a76819; --amber-soft:#fff5e5;
+  --red:#a5453f; --red-soft:#fbeceb;
+  --violet:#6b5aa8; --violet-soft:#f0edf9;
+  --shadow:0 18px 45px rgba(22,42,51,.07);
+  --r-lg:20px; --r-md:12px; --r-sm:9px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.55 "Segoe UI","Microsoft YaHei UI",system-ui,sans-serif}
+button,input,textarea{font:inherit;color:inherit}button{cursor:pointer}
+button:focus-visible{outline:2px solid #2f9e94;outline-offset:2px}
+code{font:11px/1.5 ui-monospace,Consolas,monospace;background:#eef2f1;border-radius:5px;padding:1px 5px}
+
+.top{height:58px;display:flex;align-items:center;gap:14px;padding:0 20px;
+  background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.brand{font-weight:760;font-size:18px;letter-spacing:-.4px;white-space:nowrap}
+.brand small{font-weight:450;color:var(--muted);font-size:12.5px;margin-left:7px}
+.fg{border-left:1px solid var(--line);padding-left:14px;font-weight:620;font-size:13px;white-space:nowrap}
+.fg small{display:block;font-weight:450;color:var(--muted);font-size:11px}
+.aim{margin-left:auto;display:flex;gap:8px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:640;white-space:nowrap}
+.pill.ok{background:var(--accent-soft);color:var(--accent)}
+.pill.wait{background:var(--blue-soft);color:var(--blue)}
+.pill i{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+.layout{display:grid;grid-template-columns:246px minmax(0,1fr) 330px;gap:15px;
+  max-width:1520px;margin:0 auto;padding:16px 18px 40px;align-items:start}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:15px 17px;box-shadow:var(--shadow)}
+.card+.card{margin-top:13px}
+h2{font-size:13px;margin:0 0 3px}
+.sub{color:var(--muted);font-size:11.5px;margin:0 0 11px}
+
+/* ---------- 左：本机能力 ---------- */
+.slot{border:1px solid var(--line);border-radius:var(--r-md);padding:11px 13px;margin-bottom:9px;background:#fff}
+.slot.hot{border-color:#b9dcd7;background:linear-gradient(#f4fbf9,#fff 60%)}
+.slot-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.slot-name{font-weight:700;font-size:14px}
+.slot-id{font:10.5px/1.4 ui-monospace,Consolas,monospace;color:#7b8a90;background:#f2f5f4;border-radius:5px;padding:2px 5px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)}
+.ch{display:inline-flex;align-items:center;gap:5px;border-radius:8px;padding:3px 7px;font-size:11px;border:1px solid transparent;white-space:nowrap}
+.ch .who{font-size:9.5px;opacity:.72;font-weight:700}
+.ch-key{background:#eef2f3;color:#42585c;border-color:#dbe2e4}
+.ch-voice{background:var(--violet-soft);color:#4f4091;border-color:#ddd5f2}
+.ch-pad{background:var(--blue-soft);color:var(--blue);border-color:#cfe2ef}
+.ch-off{background:#f3f5f4;color:#98a3a8;border-color:#e8ecea}
+
+/* ---------- 中：草稿两层 ---------- */
+.draft-title{font-size:22px;font-weight:760;letter-spacing:-.4px;margin:2px 0 5px;line-height:1.3}
+.origin{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:16px}
+.origin i{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.layer{border-radius:var(--r-md);padding:14px 16px;margin-bottom:12px}
+.layer-mine{background:#fff;border:1px solid var(--line)}
+.layer-sys{background:var(--panel);border:1px dashed #cdd6d2}
+.layer-h{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:750;
+  letter-spacing:.06em;margin-bottom:10px;text-transform:uppercase}
+.layer-mine .layer-h{color:var(--accent)}
+.layer-sys .layer-h{color:var(--muted)}
+.tag{font-size:10px;font-weight:700;border-radius:5px;padding:2px 6px;background:#fff;border:1px solid var(--line);color:var(--muted);letter-spacing:0}
+.prose{font-size:14px;line-height:1.85;outline:0}
+.prose:focus{background:#f7f9f7;border-radius:8px}
+.sysrow{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-top:1px solid #e6ebe8;font-size:12.5px}
+.sysrow:first-of-type{border-top:0;padding-top:0}
+.sysrow .ic{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:11px;flex:none;background:#fff;border:1px solid var(--line)}
+.sysrow .tx b{font-weight:640}
+.sysrow .tx small{display:block;color:var(--muted);font-size:11px;margin-top:1px}
+.guard{display:inline-block;background:var(--amber-soft);color:var(--amber);border-radius:5px;padding:1px 6px;font-size:10.5px;font-weight:700;margin-left:5px}
+
+/* ---------- 右：可送达性 ---------- */
+.tgts{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.tgt{border:1px solid var(--line);background:#fff;border-radius:var(--r-sm);padding:8px 9px;text-align:left;font-size:12.5px;font-weight:620}
+.tgt:hover{border-color:#9bcfc8}
+.tgt.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tgt small{display:block;font-weight:450;font-size:10.5px;opacity:.72;margin-top:1px}
+
+.guess{background:var(--amber-soft);border:1px solid #ecd7b2;border-radius:var(--r-md);padding:12px 13px;margin-bottom:12px}
+.guess-h{display:flex;align-items:baseline;gap:7px;font-weight:750;font-size:13px;color:var(--amber)}
+.guess-h b{font-size:20px;line-height:1}
+.guess-item{display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-top:1px solid #ecd7b255;margin-top:8px;font-size:12px}
+.guess-item .n{width:18px;height:18px;border-radius:5px;background:#fff;border:1px solid #e0c89c;color:var(--amber);
+  display:grid;place-items:center;font-size:10.5px;font-weight:800;flex:none}
+.guess-item .tx{flex:1;line-height:1.6}
+.fix{border:1px solid #d9bd85;background:#fff;color:#8b5c15;border-radius:7px;padding:4px 9px;font-size:11px;font-weight:680;white-space:nowrap}
+.fix:hover{background:#fff8e8}
+
+.check{border-top:1px solid var(--line);padding:9px 0}
+.check:first-of-type{border-top:0}
+.ck{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;line-height:1.55}
+.ck .m{flex:none;font-weight:800;font-size:12px;width:14px;text-align:center}
+.ck.y .m{color:var(--accent)} .ck.n .m{color:var(--blue)} .ck.x .m{color:var(--red)}
+.ck.x .tx{color:#7d4340}
+.ck .tx small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+
+.blockhd{display:flex;align-items:center;gap:7px;margin:13px 0 4px;font-size:11px;font-weight:750;letter-spacing:.05em}
+.blockhd .b{background:var(--red-soft);color:var(--red);border-radius:5px;padding:2px 7px}
+.blockhd .w{background:var(--amber-soft);color:var(--amber);border-radius:5px;padding:2px 7px}
+
+details.more{margin-top:11px;border-top:1px solid var(--line);padding-top:10px}
+details.more summary{cursor:pointer;font-size:12px;color:var(--blue);font-weight:650;list-style:none}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::before{content:"▸ ";}
+details.more[open] summary::before{content:"▾ ";}
+
+.budget{margin-top:12px;border-top:1px solid var(--line);padding-top:11px;font-size:11.5px;color:var(--muted)}
+.budget .r{display:flex;justify-content:space-between;padding:3px 0}
+.budget .r b{color:var(--ink);font-weight:640}
+.budget .note{color:var(--amber);font-size:11px;margin-top:5px}
+
+.deliver{width:100%;border:0;background:var(--ink);color:#fff;border-radius:var(--r-md);
+  padding:12px;font-weight:700;font-size:13.5px;margin-top:12px}
+.deliver2{width:100%;border:1px solid var(--line);background:#fff;border-radius:var(--r-md);
+  padding:9px;font-weight:640;font-size:12.5px;color:#5e7079;margin-top:7px}
+
+.receipt{margin-top:11px;border:1px solid var(--line);background:var(--panel);border-radius:var(--r-md);padding:11px 12px;font-size:11.5px}
+.receipt .h{font-weight:750;font-size:12px;margin-bottom:7px;color:var(--ink)}
+.receipt .row{display:flex;justify-content:space-between;padding:3px 0;color:var(--muted)}
+.receipt .row b{color:var(--ink);font-weight:640}
+.receipt .row b.unk{color:var(--amber)}
+.receipt time{font-size:10.5px;color:var(--faint)}
+
+.past{margin-top:13px;border-top:1px solid var(--line);padding-top:11px}
+.past .t{font-size:11px;font-weight:750;letter-spacing:.05em;color:var(--muted);margin-bottom:7px}
+.past .row{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;padding:7px 0;border-top:1px solid #eef1f0;line-height:1.55}
+.past .row:first-of-type{border-top:0}
+.past .row .ic{width:18px;height:18px;border-radius:5px;background:var(--red-soft);color:var(--red);
+  display:grid;place-items:center;font-size:10px;flex:none}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:var(--ink);color:#fff;
+  padding:10px 15px;border-radius:11px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:60;max-width:82vw}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media(max-width:1240px){ .layout{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">OneTone<small>右栏 · 可送达性检查</small></div>
+  <div class="fg">Cursor · 首页方案简报<small>v2 · 草稿</small></div>
+  <div class="aim">
+    <span class="pill ok"><i></i>输入瞄准可用</span>
+    <button class="deliver" style="margin:0;padding:8px 14px;font-size:13px" data-toast="已复制并聚焦；发送状态未知">
+      投递
+    </button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ========== 左：本机能力（v4 核心，收窄） ========== -->
+  <aside>
+    <section class="card">
+      <h2>本机能力</h2>
+      <p class="sub">Codex 在等你确认 · grammar 已切到确认态</p>
+      <div class="slot hot">
+        <div class="slot-top"><span class="slot-name">批准并继续</span><span class="slot-id">stopOrSend</span></div>
+        <div class="chips">
+          <span class="ch ch-key"><span class="who">键</span>Enter</span>
+          <span class="ch ch-voice"><span class="who">令</span>「说完」</span>
+          <span class="ch ch-pad"><span class="who">Pad</span>AG04 · ACT12</span>
+          <span class="ch ch-off"><span class="who">手</span>未启用</span>
+        </div>
+      </div>
+      <div class="slot hot">
+        <div class="slot-top"><span class="slot-name">取消</span><span class="slot-id">cancel</span></div>
+        <div class="chips">
+          <span class="ch ch-key"><span class="who">键</span>Esc</span>
+          <span class="ch ch-voice"><span class="who">令</span>「取消」</span>
+          <span class="ch ch-pad"><span class="who">Pad</span>AG05 · ACT08</span>
+          <span class="ch ch-off"><span class="who">手</span>未启用</span>
+        </div>
+      </div>
+      <div class="slot">
+        <div class="slot-top"><span class="slot-name">开始说话</span><span class="slot-id">pushToTalk</span></div>
+        <div class="chips">
+          <span class="ch ch-key"><span class="who">键</span>Ctrl+Shift+D</span>
+          <span class="ch ch-voice"><span class="who">令</span>按住说话</span>
+          <span class="ch ch-pad"><span class="who">Pad</span>ACT10</span>
+          <span class="ch ch-off"><span class="who">手</span>未启用</span>
+        </div>
+      </div>
+      <div class="slot">
+        <div class="slot-top"><span class="slot-name">搜索</span><span class="slot-id">quickSearch</span></div>
+        <div class="chips">
+          <span class="ch ch-key"><span class="who">键</span>Ctrl+P</span>
+          <span class="ch ch-off"><span class="who">令</span>本态不可叫</span>
+          <span class="ch ch-pad"><span class="who">Pad</span>AG03 · SEARCH</span>
+          <span class="ch ch-off"><span class="who">手</span>未启用</span>
+        </div>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ========== 中：草稿本（两层） ========== -->
+  <section>
+    <section class="card">
+      <h2>草稿本</h2>
+      <p class="sub">编译目标：markdown</p>
+
+      <div class="draft-title">把首页改成四通道控制台，别让用户学四套东西</div>
+      <div class="origin"><i></i><span>标题取你第一句原话 · 未经总结</span></div>
+
+      <!-- 层一：你写的 -->
+      <div class="layer layer-mine">
+        <div class="layer-h">你写的 <span class="tag">可编辑</span></div>
+        <div class="prose" contenteditable="true">
+          现在首页把语音、按键、Pad、摄像头讲成四个并列功能，用户以为要分别学四套。
+          实际它们指向同一组 slotId，只是叫法不同。首页应该先讲这件事，再讲别的。
+        </div>
+      </div>
+
+      <!-- 层二：系统加的 -->
+      <div class="layer layer-sys">
+        <div class="layer-h">系统加的 <span class="tag">只读 · 投递时注入正文</span></div>
+        <div class="sysrow">
+          <span class="ic">▧</span>
+          <span class="tx"><b>current-home.png</b>
+            <small>剪贴板 · 1920×1080 · 指纹 a17d… · 引用方式：图片＋你的话</small></span>
+        </div>
+        <div class="sysrow">
+          <span class="ic">⌂</span>
+          <span class="tx"><b>E:\voice-pilot\src\index.html</b>
+            <small>本地文件 · 只保存地址 · 引用方式：清单</small></span>
+          <span class="guard">NoTouch</span>
+        </div>
+        <div class="sysrow">
+          <span class="ic">↗</span>
+          <span class="tx"><b>Gemini 首页参考</b>
+            <small>Chrome · 只传标题 + 网址</small></span>
+        </div>
+        <div class="sysrow">
+          <span class="ic">◆</span>
+          <span class="tx"><b>保护边界：本次不动响应式断点</b>
+            <small>由你在简报里声明 · 投递时写进正文，不是附件</small></span>
+          <span class="guard">KeepStyle</span>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ========== 右：可送达性检查 ========== -->
+  <aside>
+    <section class="card">
+
+      <!-- ① 选目标 -->
+      <h2>投给谁</h2>
+      <p class="sub">来自 17+ AppChatProfile，不是自由输入</p>
+      <div class="tgts" id="tgts">
+        <button class="tgt on" data-agent="Codex">Codex<small>正文可自动填入</small></button>
+        <button class="tgt" data-agent="Cursor">Cursor<small>不能聚焦历史会话</small></button>
+        <button class="tgt" data-agent="Claude">Claude<small>Hook 33 事件</small></button>
+        <button class="tgt" data-agent="Trae">Trae<small>历史不可读</small></button>
+      </div>
+
+      <!-- 核心指标 -->
+      <div class="guess">
+        <div class="guess-h"><b id="guessN">2</b> 件 · Agent 还需要猜</div>
+        <div class="guess-item">
+          <span class="n">1</span>
+          <span class="tx">简报里引用了 <b>1 条历史会话</b>，Codex 接不住正文 —— 这部分只能靠你口述补一句。</span>
+          <button class="fix" data-toast="已切换为「口述补一句」引用方式">改引用</button>
+        </div>
+        <div class="guess-item">
+          <span class="n">2</span>
+          <span class="tx"><b>src\page.tsx</b> 没有标保护边界 —— agent 不知道能不能改它。</span>
+          <button class="fix" data-toast="已标为 NoTouch">标边界</button>
+        </div>
+      </div>
+
+      <!-- ② 送达前检查 -->
+      <div class="blockhd"><span class="b">✗ 阻断</span> 不可折叠 · 影响这次能不能成立</div>
+      <div class="check">
+        <div class="ck x"><span class="m">✗</span><span class="tx">
+          历史会话正文无法传递给 Codex
+          <small>来源：AppChatProfile 的 can_transfer_history = false</small></span></div>
+      </div>
+
+      <div class="blockhd"><span class="w">○ 提示</span> 默认收起 · 不阻断，只是要多做一步</div>
+      <details class="more">
+        <summary>展开 3 条提示</summary>
+        <div class="check"><div class="ck n"><span class="m">○</span><span class="tx">
+          2 张图片需你手动上传到 Codex<small>OneTone 能复制，不能代你上传</small></span></div></div>
+        <div class="check"><div class="ck n"><span class="m">○</span><span class="tx">
+          网页只传标题 + 网址，不抓正文<small>默认只存 URL，不发送抓取结果</small></span></div></div>
+        <div class="check"><div class="ck n"><span class="m">○</span><span class="tx">
+          Token 上限未知<small>系统不知道 Codex 这条链路上限是多少，不显示比例</small></span></div></div>
+      </details>
+
+      <!-- 能做的 -->
+      <div class="blockhd"><span class="b" style="background:var(--accent-soft);color:var(--accent)">✓ 可达</span> 已经就绪</div>
+      <div class="check"><div class="ck y"><span class="m">✓</span><span class="tx">
+        正文可自动填入 composer<small>focus_composer_only + input_focus_aim，瞄准失败会拒绝</small></span></div></div>
+      <div class="check"><div class="ck y"><span class="m">✓</span><span class="tx">
+        项目目录可打开<small>E:\voice-pilot 路径已匹配</small></span></div></div>
+      <div class="check"><div class="ck y"><span class="m">✓</span><span class="tx">
+        投递后可回传状态<small>Loopback 127.0.0.1:8796</small></span></div></div>
+
+      <!-- 预算：不画比例 -->
+      <div class="budget">
+        <div class="r"><span>正文（你写的）</span><b>1.2k</b></div>
+        <div class="r"><span>材料引用</span><b>2.6k</b></div>
+        <div class="r"><span>图片估算</span><b>0.8k</b></div>
+        <div class="r" style="border-top:1px solid var(--line);margin-top:5px;padding-top:6px">
+          <span>合计 · 估算值</span><b>约 8.4k tokens</b></div>
+        <div class="note">上限未知，所以这里不画进度条 —— 不知道分母就不画比例。</div>
+      </div>
+
+      <!-- ③ 投递 -->
+      <button class="deliver" data-toast="已复制并聚焦 Codex composer；发送状态未知">
+        复制并聚焦 Codex
+      </button>
+      <button class="deliver2" data-toast="已导出上下文包 context.md + manifest.json">
+        导出上下文包
+      </button>
+
+      <div class="receipt">
+        <div class="h">投递记录 · v2 <time style="float:right;font-weight:450">14:02</time></div>
+        <div class="row"><span>正文</span><b>已复制</b></div>
+        <div class="row"><span>composer</span><b>已聚焦</b></div>
+        <div class="row"><span>图片</span><b class="unk">待你手动上传</b></div>
+        <div class="row"><span>发送</span><b class="unk">未知</b></div>
+      </div>
+
+      <!-- 反哺 -->
+      <div class="past">
+        <div class="t">这个 Agent 在这个项目里，你踩过什么</div>
+        <div class="row">
+          <span class="ic">!</span>
+          <span>2026-09-28 你标了 <code>NoTouch</code> 的 <code>home-focus.rs</code>
+            被改了 14 行。依据 diff 检出的疑似违规。</span>
+        </div>
+        <div class="row">
+          <span class="ic">!</span>
+          <span>2026-09-14 你标了 <code>KeepStyle</code> 的 <code>now-home-ui.js</code>
+            里配色被改。裁决：本次允许。</span>
+        </div>
+      </div>
+
+    </section>
+  </aside>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var $ = function(s){return document.querySelector(s);};
+  var $$ = function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+  var tt;
+  function toast(m){ var e=$('#toast'); e.textContent=m; e.classList.add('show');
+    clearTimeout(tt); tt=setTimeout(function(){e.classList.remove('show');},2200); }
+
+  $$('[data-agent]').forEach(function(b){
+    b.onclick = function(){
+      $$('[data-agent]').forEach(function(x){x.classList.remove('on');});
+      b.classList.add('on');
+      toast('目标：' + b.querySelector('*').textContent);
+    };
+  });
+
+  document.addEventListener('click', function(e){
+    var f = e.target.closest('.fix');
+    if (f) { toast(f.dataset.toast); return; }
+    var t = e.target.closest('[data-toast]');
+    if (t && !t.classList.contains('fix')) toast(t.dataset.toast);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="zh-CN" data-page-node-id="eV54q7C3l8KHuXQrkg1OSO">
+<head data-page-node-id="kC6oWfY1W2uHkQJAG5mA2F">
+<meta charset="utf-8" data-page-node-id="9RqBfIwK7AB1Qi7BwGYc6g">
+<meta name="viewport" content="width=device-width,initial-scale=1" data-page-node-id="pKgWoaKXmgWHtgHqsUbjKu">
+<title>OneTone · 通道原生的思路简报首页</title>
+<style>
+:root{
+  --bg:#f4f7fc; --surface:#fff; --panel:#f8fbff;
+  --ink:#1f1f1f; --muted:#444746; --dim:#8e918f;
+  --line:#e0e2e0; --focus:#72b7ea;
+  --pri:#0b57d0; --pri-soft:#d3e3fd;
+  --sec:#00639b; --sec-soft:#c2e7ff;
+  --warn:#b3261e; --warn-soft:#f9dedc;
+  --safe:#146c2e; --safe-soft:#c4eed0;
+  --amber:#8a5100; --amber-soft:#fff1dc;
+  --r:12px; --rl:24px;
+}
+*{box-sizing:border-box}
+body{margin:0;height:100vh;min-width:1200px;overflow:hidden;background:var(--bg);color:var(--ink);
+  font:14px/1.55 "Segoe UI","Microsoft YaHei UI",system-ui,sans-serif}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,[contenteditable]:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+[contenteditable]:empty:before{content:attr(data-ph);color:var(--dim)}
+
+.top{height:60px;display:flex;align-items:center;gap:14px;padding:0 22px;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{font-size:18px;font-weight:500;letter-spacing:-.4px}
+.brand span{color:var(--muted);font-weight:400}
+.doc{border-left:1px solid var(--line);padding-left:14px;margin-left:6px;color:var(--muted)}
+.doc input{border:0;background:transparent;font-weight:500;color:var(--ink);width:190px}
+.doc input:focus{outline:0;border-bottom:2px solid var(--pri)}
+.right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.badge{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);background:var(--bg);padding:6px 11px;border-radius:20px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--safe)}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--pri);padding:8px 15px;border-radius:20px;font-weight:500}
+.btn:hover{background:var(--pri-soft)}
+.btn-s{background:var(--pri);color:#fff;border:0;padding:9px 17px;border-radius:20px;font-weight:500}
+.btn-s:hover{background:#0842a0}
+
+.layout{height:calc(100vh - 60px);display:grid;grid-template-columns:326px 1fr 340px}
+.col{padding:18px 16px;overflow:auto}
+.left{background:var(--panel);border-right:1px solid var(--line)}
+.mid{background:var(--bg)}
+.side{background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;gap:22px}
+
+h2.sec{font-size:13px;font-weight:500;margin:0 0 10px;color:var(--ink);display:flex;align-items:center;gap:7px}
+h2.sec small{color:var(--dim);font-weight:400;font-size:11px}
+
+.chan{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 11px;margin-bottom:7px}
+.chan-row{display:grid;grid-template-columns:26px 1fr auto;gap:9px;align-items:center}
+.chan-ico{width:26px;height:26px;border-radius:7px;background:var(--bg);display:grid;place-items:center;font-size:13px;color:var(--muted)}
+.chan b{font-size:12.5px;display:block}
+.chan small{font-size:10.5px;color:var(--dim);display:block}
+.chip{border:1px solid var(--line);background:#fff;border-radius:12px;padding:3px 8px;font-size:10.5px;color:var(--dim)}
+.chip.on{background:var(--pri-soft);color:var(--pri);border-color:var(--pri-soft)}
+.chip.warn{background:var(--amber-soft);color:var(--amber);border-color:#e7c795}
+.chip.off{background:#f1f1f1}
+.chan-note{font-size:10.5px;color:var(--dim);margin-top:7px;padding-top:7px;border-top:1px solid #eef0ee;line-height:1.5}
+
+.cand{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 10px;margin-bottom:6px}
+.cand-row{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:center}
+.cand-ico{width:28px;height:28px;border-radius:7px;background:var(--bg);display:grid;place-items:center;color:var(--muted);font-size:13px}
+.cand b{font-size:12px;display:block}
+.cand small{font-size:10px;color:var(--dim);display:block}
+.cand-act{display:flex;gap:5px;margin-top:8px;padding-top:7px;border-top:1px solid #eef0ee}
+.cand-act button{flex:1;border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px;font-size:10px;color:var(--muted)}
+.cand-act .go{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tlabel{font-size:10.5px;color:var(--dim);margin:11px 4px 5px}
+
+.inner{max-width:820px;margin:0 auto}
+
+.bar{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:16px}
+.bar-head{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.bar-head b{font-size:13px;font-weight:500}
+.bar-head span{font-size:11px;color:var(--dim)}
+.acts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.act{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 9px;text-align:left}
+.act:hover{border-color:var(--focus);background:#f7faff}
+.act b{display:block;font-size:12.5px;font-weight:500;margin-bottom:6px}
+.binds{display:flex;flex-wrap:wrap;gap:4px}
+.bind{border:1px solid var(--line);background:#fff;border-radius:10px;padding:2px 6px;font-size:10px;color:var(--dim)}
+.bind.on{background:var(--pri-soft);color:var(--pri);border-color:var(--pri-soft)}
+.bind.na{background:#f5f5f5;color:#b0b0b0;text-decoration:line-through}
+
+.note{background:var(--surface);border:1px solid var(--line);border-radius:var(--rl);padding:34px 38px;box-shadow:0 1px 2px #0000000d}
+.nt{font-size:27px;border:0;width:100%;outline:0;margin-bottom:6px}
+.nm{font-size:12px;color:var(--dim);display:flex;gap:11px;margin-bottom:18px}
+.nc{font-size:15px;line-height:1.85;min-height:120px;outline:0}
+.refs{margin-top:30px;border-top:1px dashed var(--line);padding-top:20px}
+.refs-t{font-size:12px;color:var(--muted);margin-bottom:12px;letter-spacing:.4px}
+.ref{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px;margin-bottom:11px;display:grid;grid-template-columns:38px 1fr auto;gap:12px}
+.ref-ico{width:38px;height:38px;border-radius:9px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted)}
+.ref b{font-size:12.5px;display:block}
+.ref .src{font-size:10.5px;color:var(--dim);margin:2px 0 7px}
+.un{border:1px solid transparent;background:#fff;border-radius:7px;padding:7px 8px;font-size:12.5px;outline:0;min-height:34px}
+.un:focus{border-color:var(--pri-soft)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{border:1px solid var(--line);background:#fff;border-radius:12px;padding:3px 9px;font-size:10.5px;color:var(--muted)}
+.tag.on{background:var(--sec-soft);color:var(--sec);border-color:var(--sec-soft)}
+.tag.g.on{background:var(--warn-soft);color:var(--warn);border-color:#f8c9c7}
+.x{border:0;background:transparent;color:var(--dim);font-size:14px}
+
+.bud{font-size:12px}
+.bud-top{display:flex;justify-content:space-between;margin-bottom:7px}
+.bud-top b{font-size:12px}
+.track{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.fill{height:100%;background:var(--pri);width:0}
+.bud-n{display:flex;justify-content:space-between;font-size:10.5px;color:var(--dim);margin-bottom:9px}
+.bd{background:var(--bg);border-radius:10px;padding:10px;font-size:11px;color:var(--muted)}
+.bd div{display:flex;justify-content:space-between;margin:3px 0}
+
+.rule{display:flex;gap:9px;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:7px;font-size:11.5px}
+.rule .ic{color:var(--warn);font-size:14px}
+.rule b{display:block;font-size:12px;margin-bottom:2px}
+.rule p{margin:0;color:var(--muted);font-size:11px}
+
+.seq{border:1px dashed var(--line);background:var(--panel);border-radius:10px;padding:11px;font-size:11.5px}
+.seq b{display:block;font-size:12px;margin-bottom:6px}
+.seq ol{margin:6px 0 8px;padding-left:18px;color:var(--muted);line-height:1.7}
+.seq code{background:#fff;border:1px solid var(--line);border-radius:4px;padding:1px 4px;font-size:10.5px}
+
+.cap{background:var(--bg);border-radius:10px;padding:11px;font-size:11px;color:var(--muted);line-height:1.75}
+.cap div{display:flex;gap:6px}
+.cap .ok{color:var(--safe)}
+.cap .no{color:var(--warn)}
+.deliver{margin-top:auto}
+
+.scrim{position:fixed;inset:0;background:#00000066;z-index:50;opacity:0;pointer-events:none;transition:.2s}
+.scrim.show{opacity:1;pointer-events:auto}
+.modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-45%);background:var(--surface);border-radius:var(--rl);width:520px;z-index:60;opacity:0;pointer-events:none;transition:.2s;padding:28px;box-shadow:0 10px 15px #0000001a}
+.modal.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+.modal h3{margin:0 0 6px;font-size:19px;font-weight:500}
+.modal p.d{color:var(--muted);font-size:13px;margin:0 0 18px}
+.agents{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+.agent{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;font-size:12.5px;background:#fff}
+.agent.on{border-color:var(--pri);background:var(--pri-soft);color:var(--pri);font-weight:500}
+.facts{background:var(--bg);border-radius:9px;padding:11px;font-size:11.5px;color:var(--muted);line-height:1.8;margin-bottom:16px}
+.mfoot{display:flex;gap:9px;justify-content:flex-end}
+.toast{position:fixed;bottom:28px;left:50%;transform:translate(-50%,14px);background:#323232;color:#fff;padding:11px 20px;border-radius:20px;font-size:13px;opacity:0;visibility:hidden;transition:.25s;z-index:100}
+.toast.show{opacity:1;visibility:visible;transform:translate(-50%,0)}
+.hint{font-size:10.5px;color:var(--dim);line-height:1.6;margin-top:7px}
+
+.roleline{font-size:10.5px;color:var(--dim);border:1px dashed var(--line);border-radius:10px;padding:7px 10px;margin-bottom:12px;line-height:1.5}
+.roleline b{font-weight:600;color:var(--muted)}
+.roleline.pass{background:#f2f6fc;border-color:#cfdff2}
+.roleline.wheel{background:#fff6ea;border-color:#ecd6ae}
+
+.engbox,.destbox{border:1px solid var(--line);border-radius:var(--r);padding:13px}
+.engbox{background:#fbfefb;border-color:#cfe3d3}
+.destbox{background:var(--panel);border-color:#cddaee}
+.engbox>h2.sec,.destbox>h2.sec{margin-bottom:9px}
+.sub{font-size:11px;color:var(--muted);margin:14px 0 7px;font-weight:500;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sub small{color:var(--dim);font-weight:400}
+.idle{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--dim);background:#fff;border:1px solid #cfe3d3;border-radius:9px;padding:7px 9px;margin-bottom:11px}
+.idle .dot{flex:none;background:var(--safe)}
+.idle .chip{margin-left:auto}
+.brow{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;padding:8px 9px;background:#fff;border:1px solid var(--line);border-radius:9px;margin-bottom:5px}
+.brow .n{font-size:11.5px;white-space:nowrap}
+.brow .binds{gap:3px;justify-content:flex-end}
+.brow .bind{font-size:9.5px;padding:1px 5px}
+.lane{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 10px;margin-bottom:11px;font-size:11.5px}
+.lane .src{font-size:10px;color:var(--dim);display:block}
+.lane button{margin-left:auto;border:1px solid var(--line);background:#fff;border-radius:14px;padding:3px 9px;font-size:10.5px;color:var(--pri);flex:none}
+</style>
+</head>
+<body data-page-node-id="oaCavoKtKwCiyiABSkjivC">
+
+<header class="top" data-page-node-id="UHaI2h01YfnlojAqFOOANh">
+  <div class="brand" data-page-node-id="nG5UiiQdeoQoR5nbAG08PN">OneTone <span data-page-node-id="ODvx0ny2x45M5dRlyY4htR">通道面板</span></div>
+  <div class="doc" data-page-node-id="1GAPVnd9QuFlnsEppIcaSm">主线 <input value="首页重构方案" data-page-node-id="BRp877Ma5wq0JEYVkHartz"></div>
+  <div class="right" data-page-node-id="DOLH8fzfFH1EUcAhrARiYH">
+    <div class="badge" data-t="正在感知：剪贴板文字与图片 · voice-pilot 目录文件变化" data-page-node-id="AXilHGYfSgl99H48hogTps"><i class="dot" data-page-node-id="4vvcNQ45lbDPcuZnVLKn2Y"></i>感知中</div>
+    <button class="btn" data-t="草稿已保存到本地" data-page-node-id="KmXWw6nYtnoPLRPe2HKkCU">保存草稿</button>
+    <button class="btn-s" data-open data-page-node-id="rR2CTtydd6Y85yKeZ3ujfN">形成首次沟通</button>
+  </div>
+</header>
+
+<main class="layout" data-page-node-id="V7XEOWFKvmqaG0uzoV6pKq">
+
+  <aside class="col left" data-page-node-id="oKhZiyPB5qm9oVwqdoQO0B">
+    <div class="roleline pass" data-page-node-id="yePqOXMsPRrmtFBaG2zSR3"><b data-page-node-id="soHtSceFygxysafqH0jia3">乘客 / 原材料</b> —— 被运送、被引用；不产生动力，也不决定方向</div>
+    <h2 class="sec" data-page-node-id="TIVF9YpdKlSHoPIwSWRuRG">通道 <small data-page-node-id="MyXs5oa9IT0U7rRP38h1Vk">四条真实触发方式</small></h2>
+
+    <div class="chan" data-page-node-id="A0ujMt9E1K6CxFwGIijjOT">
+      <div class="chan-row" data-page-node-id="EDbgDdNXNF0eWlGMelOh6V">
+        <span class="chan-ico" data-page-node-id="ruMpPE3KYDGCgEad7DY5yv">⌨</span>
+        <span data-page-node-id="mwiixyEuEmgkBjIfIW7185"><b data-page-node-id="uix9uVcdB9DV5abHsIqBmn">按键</b><small data-page-node-id="2GoQBJ7eLChaYRIObaD260">全局热键和弦 · 可绑任意动作</small></span>
+        <span class="chip on" data-page-node-id="CwKVQiAIcandLuLYG3m2hC">Ctrl+Shift+C</span>
+      </div>
+      <div class="chan-note" data-page-node-id="NL0OE7z3WMhCsUY7nYcxaB">当前绑定：收下剪贴板。依据 hotkey_win.rs · RegisterHotKey 多键和弦</div>
+    </div>
+
+    <div class="chan" data-page-node-id="vyYhbbVHnOHBrIwAba8a0I">
+      <div class="chan-row" data-page-node-id="JJGZZhOrLdXelHmwIKqoZv">
+        <span class="chan-ico" data-page-node-id="S28YZwLHrAbhO9Gv2dLqmt">⌙</span>
+        <span data-page-node-id="SeW0LpBbbyKsDVwHxCpziv"><b data-page-node-id="M7bkkMGjDgkXrpGGh5hY5E">语音</b><small data-page-node-id="8D8UVf58FMBwBmyQzFM7Oj">本地 vosk · 可输入文本与触发短语</small></span>
+        <span class="chip on" data-page-node-id="8NHoQiV8o4whGxHICMAjJI">“收下这个”</span>
+      </div>
+      <div class="chan-note" data-page-node-id="X61VZzM330ubCNC1KBA8iK">语音是文本输入通道，不是素材采集器：它能口述进正文，也能用短语触发动作</div>
+    </div>
+
+    <div class="chan" data-page-node-id="HsIrRoFmHnbDcg8Lz9hJya">
+      <div class="chan-row" data-page-node-id="sXo492CnlXVo0aemb75tmx">
+        <span class="chan-ico" data-page-node-id="kNZoGQTvj0ARclCagGicup">◫</span>
+        <span data-page-node-id="ZAAI9fwwEyin5P6IFiSBWT"><b data-page-node-id="lQc20oAI9kV9kVjcakZ8Yo">SoftPad</b><small data-page-node-id="SIA0uMGakLZOQnQGdxNJ0r">微动按键与槽位 · 直达 16 类 Agent</small></span>
+        <span class="chip on" data-page-node-id="Myos0I3wQHzbsdUtHqtIMw">AG01</span>
+      </div>
+      <div class="chan-note" data-page-node-id="oyh96oTENEvnhIbLqVrkPV">槽位可指向具体 Agent，这是唯一能“指定给谁”的物理通道</div>
+    </div>
+
+    <div class="chan" data-page-node-id="EW96RunbYF3bcZBAK1EX3b">
+      <div class="chan-row" data-page-node-id="hiOE0C4DhhblDmoqrRaTC3">
+        <span class="chan-ico" data-page-node-id="SdUYISLFcSjjTbKijJP4Pb">◉</span>
+        <span data-page-node-id="YQHvBrFF1NEkuksrxolwvL"><b data-page-node-id="tJga815H95zTaMdz3dFE6z">摄像头</b><small data-page-node-id="rpmXVaEKy2tCnqTBDxaUET">手势与注视 · 仅控制</small></span>
+        <span class="chip warn" data-page-node-id="svzZOsj3hRrAbgPmHlTUgn">无手势</span>
+      </div>
+      <div class="chan-note" data-page-node-id="5HiftA3NMz23ZN8GGhm3Pf">只能触发控制动作（pressEsc / pressCtrlI / pauseVoice / privacyScreen 等）。
+        全仓库无视频采集设备枚举，camera_capability_probe.rs 仅 77 行注册表启发式，
+        windows_hello_confirm 为占位符且始终失败关闭 —— 不能拍图当素材</div>
+    </div>
+
+    <div class="tlabel" data-page-node-id="PnyeLYOW5Hn6TsIl8VwwWp">候选托盘 · 4</div>
+
+    <div class="cand" data-page-node-id="0HbS1T5l1DGLDGBTLIu9gb">
+      <div class="cand-row" data-page-node-id="xHvHkKgAGwr8GXW2BPWpWj">
+        <span class="cand-ico" data-page-node-id="mMCxyK0lRN9BZEHoIUgkg4">▧</span>
+        <span data-page-node-id="q8Gsx3I89XAep1KIqYsRq5"><b data-page-node-id="5PX9aMxsAq2cepLXaTqqCG">current-home.png</b><small data-page-node-id="IBMco48388aasDN9Dq7SlX">剪贴板 · 14:21</small></span>
+        <span class="chip on" data-page-node-id="Fgr4QD8SMmtwjcvOXAZNZ4">新</span>
+      </div>
+      <div class="cand-act" data-page-node-id="Evst6iULoGSHyctseZNFNT"><button class="go" data-t="已加入简报 · 原素材保持只读" data-page-node-id="IlLKrfM7p0y0vNt3s2wxWZ">加入简报</button><button data-t="已忽略" data-page-node-id="SalC0EgGx0SAx6ysKvlxHu">忽略</button></div>
+    </div>
+
+    <div class="cand" data-page-node-id="brepsSGbYQaRciVDgKZDdE">
+      <div class="cand-row" data-page-node-id="upGdDoAmSdGi4ZgVtGIZMz">
+        <span class="cand-ico" data-page-node-id="FmYHpgYoJzN3RWUBkSL5hh">⌄</span>
+        <span data-page-node-id="4DgVlT7bpA5hNt3x0a040q"><b data-page-node-id="eDP7Y9VpjzUWklscl7xJo8">src/index.html 已变更</b><small data-page-node-id="oXy9z7VprHMltg887f1CtZ">文件变化 · 14:18</small></span>
+        <span class="chip off" data-page-node-id="VGcJFwgQAvsG0Sigezb2zT">未读</span>
+      </div>
+      <div class="cand-act" data-page-node-id="Uy7Ikg6lgKH40tAcAEki9t"><button class="go" data-t="已作为证据保留 · 来源与指纹已记录" data-page-node-id="SfKobEcChCKrEBMUhYihHA">留作证据</button><button data-t="已忽略" data-page-node-id="ZEa4tUHKzDSIR845rGw8EC">忽略</button></div>
+    </div>
+
+    <div class="cand" data-page-node-id="nIN0biq9olQBD2RvycWXNA">
+      <div class="cand-row" data-page-node-id="viDVHAyI1NUTAz9kT0wXfQ">
+        <span class="cand-ico" data-page-node-id="61jB27RakgFHEilxkx8IHW">±</span>
+        <span data-page-node-id="BjBPeFlj9JTCbBfii7a4Na"><b data-page-node-id="czt8LRFRo82uEPkGwxAb26">Codex 修改了 3 个文件</b><small data-page-node-id="4LESk1L3mrGuaMRVWJAOFQ">Agent 返回 · 14:12</small></span>
+        <span class="chip off" data-page-node-id="9AtsCi59yKJG8now7Ou93F">未读</span>
+      </div>
+      <div class="cand-act" data-page-node-id="7QCRc2W1A8n7FbslhsYhF0"><button class="go" data-t="已比对保护边界：src/index.html 命中 NoTouch" data-page-node-id="7oqTr2svbVn9qRSihuiuqN">检查保护边界</button><button data-t="稍后" data-page-node-id="XdUpKaDJfH4sZ2zA0dQMAq">稍后</button></div>
+    </div>
+
+    <div class="cand" data-page-node-id="HiOE2l06sCbzsvv1vNtvaz">
+      <div class="cand-row" data-page-node-id="PYw08l8hspzOQsqqidNOSU">
+        <span class="cand-ico" data-page-node-id="ebsBJ3DG0nCQdWrA5NWP5I">¶</span>
+        <span data-page-node-id="v7D9tAMm7F7LspvsogoT8O"><b data-page-node-id="GCz5FpGX0e1rHc3fZYm3O4">“首页不是 Agent 控制台”</b><small data-page-node-id="yIFkeG4G2xALzN7ckNnkta">语音 · 14:08</small></span>
+        <span class="chip off" data-page-node-id="g8m3V5mv1q41B2gmSLxqVj">未读</span>
+      </div>
+      <div class="cand-act" data-page-node-id="IEUvlcAx0nTnKyUhcMmoyc"><button class="go" data-t="已追加到主线思路末尾" data-page-node-id="tB8mpPrGGK6BqP0ehUK89u">追加到主线</button><button data-t="稍后" data-page-node-id="hzBPUcObGf5y4vXOwIAoI5">稍后</button></div>
+    </div>
+  </aside>
+
+  <section class="col mid" data-page-node-id="dxpCJS4fqWrMnK8jmUWUyp">
+    <div class="inner" data-page-node-id="WtyVw4NjoBxpv1Wt6rLMpH">
+      <div class="roleline wheel" data-page-node-id="zDl5QG3gHHUYKHkC50DHDG"><b data-page-node-id="h2tCLFr3tC55tafDqpx3Dt">方向盘 / 锅</b> —— 用户唯一直接掌控的地方：写什么、先往哪走，都在这里定</div>
+
+      <div class="bar" data-page-node-id="40JZL5tfaWy2cCJASvTVN8">
+        <div class="bar-head" data-page-node-id="ATmAw4hsBzgMMZcIERYPH4">
+          <b data-page-node-id="AZiXwdabHeWJaMK2HSUcJf">快捷动作</b>
+          <span data-page-node-id="Z5umTCJAZ1DrZPs64078ye">每个动作都可改绑到任一通道 · 点 chip 切换</span>
+        </div>
+        <div class="acts" data-page-node-id="lli73UtWxuLfJpZfuifLfV">
+          <button class="act" data-page-node-id="I4vowNsRggP1ylFGjNniH6">
+            <b data-page-node-id="HfllzBssm3BKB3xlGbOL9r">收下剪贴板</b>
+            <span class="binds" data-page-node-id="35iqBZmJBEVZftrRJshV68">
+              <span class="bind on" data-b="key" data-page-node-id="QG4nzfz74EbfGA3YhGZzR2">按键</span>
+              <span class="bind on" data-b="voice" data-page-node-id="zsL5a9DkuTi6DPF2hNgPC8">语音</span>
+              <span class="bind" data-b="pad" data-page-node-id="MZhqrutsvxG1ZUzJmXqqdD">SoftPad</span>
+              <span class="bind na" data-b="cam" data-page-node-id="8fEV3rQtR2piDv7YhKDCJU">摄像头</span>
+            </span>
+          </button>
+          <button class="act" data-page-node-id="WeWXic1gOvbDPVe0tpiGD6">
+            <b data-page-node-id="2yskRWe95UyqrUQOiNnJ70">追加到主线</b>
+            <span class="binds" data-page-node-id="wWuHEs9r9102TGuJsrDz9Y">
+              <span class="bind" data-b="key" data-page-node-id="3WQGJXm37ivHSoWPw8m3ZE">按键</span>
+              <span class="bind on" data-b="voice" data-page-node-id="8L9pr6oAHKXQs2VNqaS8ZE">语音</span>
+              <span class="bind on" data-b="pad" data-page-node-id="ZZwq8hHOOnGxWcINqjxYLN">SoftPad</span>
+              <span class="bind na" data-b="cam" data-page-node-id="rHkqRHrGDvcwNAlOSEytPJ">摄像头</span>
+            </span>
+          </button>
+          <button class="act" data-page-node-id="oMU8VPiXe9UFOnO0V1wQU3">
+            <b data-page-node-id="TdYeXuoOEMSI8agEDw3SFd">打开 Agent 并聚焦输入框</b>
+            <span class="binds" data-page-node-id="DdOskfHrot8VW2LfGOZChU">
+              <span class="bind on" data-b="key" data-page-node-id="IqOeNNzwHHTS1rxkCFUtvZ">按键</span>
+              <span class="bind" data-b="voice" data-page-node-id="DHYenTy0etbllhyV1PMWYF">语音</span>
+              <span class="bind on" data-b="pad" data-page-node-id="jJkA4mcpQykmBdwljDQEVR">SoftPad</span>
+              <span class="bind na" data-b="cam" data-page-node-id="PCVUGuETM4lp9M7lA0FCAE">摄像头</span>
+            </span>
+          </button>
+          <button class="act" data-page-node-id="V37MGAbaDOVhpRZzlnEvrR">
+            <b data-page-node-id="qinMvN3OGlCigyBIFsY8Bz">执行动作序列</b>
+            <span class="binds" data-page-node-id="AraNV41uBY1LCCJUSMS4kv">
+              <span class="bind on" data-b="key" data-page-node-id="skf1OpNcOHMSlNV1xRgwKb">按键</span>
+              <span class="bind on" data-b="voice" data-page-node-id="qYYajyTZAR8YM48yC51rLg">语音</span>
+              <span class="bind on" data-b="pad" data-page-node-id="ppJqyZ2szPwHOFanCN25ZB">SoftPad</span>
+              <span class="bind na" data-b="cam" data-page-node-id="eW7rQpce15V3AlGSGAcDvM">摄像头</span>
+            </span>
+          </button>
+        </div>
+        <div class="hint" data-page-node-id="UXSmkBvXlMEq1gcZamdCC7">摄像头一列全部划掉：它只能触发控制类手势，
+          不能承载“收下素材”这类需要传内容的动作 —— 这是本页唯一一条硬边界。</div>
+      </div>
+
+      <article class="note" data-page-node-id="D0GckeD9l9vBS28RYbkDC4">
+        <input class="nt" value="我想让首页帮助用户准备和 Agent 的第一次沟通" data-page-node-id="CJGXmN1wHRvLBIIm508yQ1">
+        <div class="nm" data-page-node-id="11LFpkfuhzNQRSKPM0FNMa"><span data-page-node-id="HDDEBOjAJJqDAkr60rZPnU">编辑于 刚刚</span><span data-page-node-id="3zHFFF6CWdwA6fCLxyLGrn">由你创建的主线思路</span></div>
+        <div class="nc" contenteditable="true" data-ph="在这里自由写下你的想法，或者说明你想要 Agent 做什么…" data-page-node-id="HuGwAEu7UJjHQIfoeBnDfW">现在的问题不是没有工具，而是想法、截图、项目路径和过去的讨论散在不同地方。用户需要先把这些材料和自己的主线放在一起，说明它们为什么重要，再带着比较完整的上下文进入 Agent。第一次沟通越具体，Agent 需要猜的事情就越少。</div>
+
+        <div class="refs" data-page-node-id="SheOA8qPkmA0Ddfhv7xChU">
+          <div class="refs-t" data-page-node-id="WtvWkcJKesYnRXkesWzdYR">已钉选的上下文 · 原始素材只读</div>
+
+          <div class="ref" data-page-node-id="RJ39rFJFz58Cam58eB8bvC">
+            <span class="ref-ico" data-page-node-id="ZGyxN3hmgOmzPkR8y06YcB">⌄</span>
+            <div data-page-node-id="Hd76DOV5ByYkFFJZIP8wor">
+              <b data-page-node-id="E6DQ03UETpKDA6zHLrT5la">src/index.html</b>
+              <div class="src" data-page-node-id="z46ZKMVrIjP8I2kQVTm40k">本地文件 · 指纹 8c2f… · 14:08</div>
+              <div class="un" contenteditable="true" data-ph="添加说明…" data-page-node-id="C2U5l8WiJmCMC375J0Dzrb">首页可以重新组织，但这个入口文件本身不要修改，请基于此结构扩展。</div>
+              <div class="tags" data-page-node-id="puzcfkn0UzlA0Xg2wCwxIB">
+                <button class="tag on" data-tag data-page-node-id="JpmgQ50yNHKCJGLrRufXUE">背景信息</button>
+                <button class="tag g on" data-tag data-page-node-id="NfcSDpXRJyqgMT8fuxEJoD">NoTouch · 不可修改</button>
+              </div>
+            </div>
+            <button class="x" data-t="取消钉选" data-page-node-id="fDam3ui3rHqoD4tDQFe00x">×</button>
+          </div>
+
+          <div class="ref" data-page-node-id="pnTsEtWIDxUwBFcKwHMRta">
+            <span class="ref-ico" data-page-node-id="H3EitcKLrKgzaBTxGLLTYX">▧</span>
+            <div data-page-node-id="NttuTzzjw0fFr3j1u0R4eg">
+              <b data-page-node-id="eUAoBDVZ3fVb4xnMdrBPd2">current-home.png</b>
+              <div class="src" data-page-node-id="EOF6rWAvWYcOdPg9KDVJta">剪贴板 · 1920×1080 · 指纹 a17d…</div>
+              <div class="un" contenteditable="true" data-ph="添加说明…" data-page-node-id="kimlTvbMhExddWI0KuwPCG">用于说明现在的配色和文案。可以调整布局，但保持这两部分的感觉。</div>
+              <div class="tags" data-page-node-id="hBnUB7pZQaA4KTV4Tsk4Iz">
+                <button class="tag on" data-tag data-page-node-id="Jw3Qucmdc5bFImDsgzwSxD">视觉参考</button>
+                <button class="tag g on" data-tag data-page-node-id="qGClouD8pIGl3RHgZuiG3r">KeepStyle · 保持风格</button>
+              </div>
+            </div>
+            <button class="x" data-t="取消钉选" data-page-node-id="1CDZS7EEicnPWE4EJJvvvD">×</button>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <aside class="col side" data-page-node-id="uFFBf6N7DNOOhwqpow8iJR">
+
+    <div class="engbox" data-page-node-id="XVZu5ni9aGEeeRMgZ5AawI">
+      <h2 class="sec" data-page-node-id="VTa54A0ia2mE7CxJgAgsbm">发动机舱 <small data-page-node-id="agqnKvsglD5rmkiBwnX8J0">动力 · 可绑定 · 常驻</small></h2>
+      <div class="idle" data-page-node-id="4cVVLtMBjLSxf3v00LxGL6"><i class="dot" data-page-node-id="wRRcAEIzN7giqenT5QyZxe"></i>怠速运转 · 不打开首页也生效<span class="chip" data-page-node-id="UqJgU6cGEhLBVjdKIBiJwo">autostart 已装</span></div>
+
+      <div class="seq" data-page-node-id="t8AlaTohkdvBl6AGBGjyAE">
+        <b data-page-node-id="GAGAA3KqALmXj3WaG6BbGQ">收集 → 归位 → 投递</b>
+        <ol data-page-node-id="7yUohpdkc1Lfe9vFm8Cmek">
+          <li data-page-node-id="QdiyKI8KbvbEYiYLUtyJ5U">收下剪贴板</li>
+          <li data-page-node-id="uvlW7k3eNwGBgW5grm5ZQM">加入当前简报候选</li>
+          <li data-page-node-id="sBE7vuQkJZWK9Ofa67EaBW">打开 Codex 并聚焦输入框</li>
+        </ol>
+        <div class="binds" data-page-node-id="Gdjqfg0uOtv6GeGV7Blf3M">
+          <span class="bind on" data-b="key" data-page-node-id="tR0tha0C9KD54PmFH1S5Ee">按键 Ctrl+Alt+S</span>
+          <span class="bind" data-b="voice" data-page-node-id="5V8ArTkH3mZFvDCySxBnrE">语音</span>
+          <span class="bind" data-b="pad" data-page-node-id="Rt1KcqMKtMCJgeF6lAgAy8">SoftPad</span>
+          <span class="bind na" data-b="cam" data-page-node-id="Byj8YXnIdw0eE5TuCE1bFO">摄像头</span>
+        </div>
+        <div class="hint" data-page-node-id="f8sEbKX7DmiE3BNqcYrAEh">runTargetSequence 已是一等动作（actions.rs:256），可被任一通道触发 —— 整套流程压成一次触发，不需要新建机制。</div>
+      </div>
+
+      <div class="sub" data-page-node-id="G5kRI5CuyCnC5ci8RIpAbJ">通道占用表 <small data-page-node-id="FXysU9IkfHKimHiPa8ES2j">点 chip 改绑</small></div>
+      <div class="brow" data-page-node-id="a9RzKQdLQzW7hkB2ZQSjuO"><span class="n" data-page-node-id="bi9stex5yxV0jmL25uvpC0">收下剪贴板</span><span class="binds" data-page-node-id="k0E7lEqHhzCHAsdQfwd5kb">
+        <span class="bind on" data-page-node-id="4jbwJ7BJ6bTuBxMYgeuPzb">按键</span><span class="bind on" data-page-node-id="CxtjinYH8zHv1OEfi0vpXM">语音</span><span class="bind" data-page-node-id="p0SUCVmzcgcR6uyxfFXTQW">SoftPad</span><span class="bind na" data-page-node-id="91CCYYiENCwc8eB0GniPTq">摄像头</span></span></div>
+      <div class="brow" data-page-node-id="aYqMaeNaUezKwdDYpjl8vP"><span class="n" data-page-node-id="qZM2fAMoGFH6VA3zTpyfaD">追加到主线</span><span class="binds" data-page-node-id="jnkQbBB8ybGvpUCUbIpTay">
+        <span class="bind" data-page-node-id="bKIdOde1TAXdLMBD50tiBm">按键</span><span class="bind on" data-page-node-id="lIgVzgC0EAI4DYi6vJWESX">语音</span><span class="bind on" data-page-node-id="ma1pnbm7IFkp19iF3zWI0Z">SoftPad</span><span class="bind na" data-page-node-id="M4jwfiSCgkhmDONhyZl7FK">摄像头</span></span></div>
+      <div class="brow" data-page-node-id="JdzGsyqPy4Fz3JmCUHdOVM"><span class="n" data-page-node-id="QLahkDQtdHKlvfJlf0Mvjb">聚焦并填入</span><span class="binds" data-page-node-id="uqOMAEAFBg7GuCuzvG0yVA">
+        <span class="bind" data-page-node-id="DEBKPEsfAOjq8B4SoPwKat">按键</span><span class="bind" data-page-node-id="1lKjBMMcH1NAvhG7XkfCmW">语音</span><span class="bind on" data-page-node-id="dUd5fJjvkWy81GRYvZ2nS0">SoftPad</span><span class="bind na" data-page-node-id="SYwMC5JGraELdOZ95p6OHU">摄像头</span></span></div>
+      <div class="brow" data-page-node-id="B15AeKSRvIYdREY5JgwqfG"><span class="n" data-page-node-id="RwPeuShl8KOotJp6Pr87vR">打包并投递</span><span class="binds" data-page-node-id="2v9xmAzgOVZ4SwVuUVnsyq">
+        <span class="bind on" data-page-node-id="xqkYS0D5lvqegG971zvc6k">按键</span><span class="bind" data-page-node-id="4pzWKSbyU9GgaAiZEBUlHp">语音</span><span class="bind" data-page-node-id="yNBeA4okNJZU8EiZS6cM3z">SoftPad</span><span class="bind na" data-page-node-id="vlISMFjlubGZjYrwtiTlnp">摄像头</span></span></div>
+      <div class="hint" data-page-node-id="3b86lwawDPq0qOIQaayFGX">结构已存在：ActionBindingView{ channel, trigger, availability, risk }，前端 semantic-action-store 已在按通道取选项。摄像头整列划掉 —— 它是控制通道，承载不了需要传内容的动作。</div>
+    </div>
+
+    <div class="destbox" data-page-node-id="Y13HHbMcFWMDxBJ9hfx3Sf">
+      <h2 class="sec" data-page-node-id="0fKrBciPseD1SGweCGAevk">目的地 <small data-page-node-id="i3KO5wQHEIf04nQXVuDlEW">状态与事实 · 不是操作</small></h2>
+
+      <div class="lane" data-page-node-id="BAAwRYBloR816pI1IWpDPF">
+        <span style="color:var(--sec)" data-page-node-id="k81PmfSMNIgVGlMrTrnA6b">◈</span>
+        <div data-page-node-id="wBES3sjYPHKyZz1PyyalCY"><b data-page-node-id="Ivd2NcS12Bp846amCukyyY">Codex</b><span class="src" data-page-node-id="rKcTteDtDJCcFTROqR5N9W">lane_8f21 · applied_lane()</span></div>
+        <button data-t="改投只换投递配置，不换简报：正文、素材与保护规则不变" data-page-node-id="IQjCWDWEfyUN0w0Cz790KQ">切换</button>
+      </div>
+
+      <div class="bud" data-page-node-id="RcB90i8SF2DPk1f2mFNI8W">
+        <div class="bud-top" data-page-node-id="0bZPCUovA9car6oFQ2a3Ph"><b data-page-node-id="SscKJw4b1t5ELHj526E5YA">约 8.4k tokens</b><span style="color:var(--dim);font-size:10.5px" data-page-node-id="siSVohLnXQGICbqmjtczq4">估算值</span></div>
+        <div class="track" data-page-node-id="wfTKHciV9E47dpB3HMRlir"><div class="fill" style="width:38%" data-page-node-id="VRNhxFAPxoAdeamwcEHnDA"></div></div>
+        <div class="bud-n" data-page-node-id="O5EumE57WfPr8SswomyZVR"><span data-page-node-id="hBR7IVclx2Fe8goaXk9fiM">目标上限未知</span><span data-page-node-id="6KeBrykzzktQ9XOyyU0QKA">无 tokenizer</span></div>
+        <div class="bd" data-page-node-id="kSLK1MwNMvnMohuQ5XOH7L">
+          <div data-page-node-id="6RSJ5TZddgTdjgYoxswk2p"><span data-page-node-id="auceNIMr8JYVQOZtYXG0rk">你的话</span><b data-page-node-id="kgv65cZH5AR0KSjEZzWgGo">1.2k</b></div>
+          <div data-page-node-id="3HYVe2mAGhEM2gEF0vhDA3"><span data-page-node-id="7bXXzkNmy2Es5D6qhMqyPx">源文件 · 1</span><b data-page-node-id="zFPYZW7N3zBpdGumYdbDmP">3.8k</b></div>
+          <div data-page-node-id="edNg5BTaZLPLurVFiJ5dlY"><span data-page-node-id="WGuQKxI2mVybCdBmWLDs5z">图片 · 1</span><b data-page-node-id="tI2qVJmOIY4HzNd5DJ3N2I">0 · 收不到</b></div>
+        </div>
+      </div>
+      <div class="hint" data-page-node-id="0achIXA6f51jixgWV3mSQy">容量是目的地的属性：换 Agent 就换分母（Codex 32k / Cursor 128k / Claude 200k），所以预算属于这里，不属于页面底部。</div>
+
+      <div class="sub" data-page-node-id="7DoWLUfCLuvr0ym9NMxlHz">路况 <small data-page-node-id="2nDiBym2cmveNtPPxdbGZ8">该 Agent 真实能收什么</small></div>
+      <div class="cap" data-page-node-id="0nrlMH0OLBa3dQPMiGVuMb">
+        <div data-page-node-id="YX81On64zCxgd2lxWV45Xf"><span class="ok" data-page-node-id="DCFqoO1fVpbHt52nYnidvN">✓</span><span data-page-node-id="6QluOKWRWl2BidRcUlQ0ys">聚焦输入框 focusComposer</span></div>
+        <div data-page-node-id="uNBWz38CtHtMCtjaeUMa9H"><span class="ok" data-page-node-id="GxCa4xqeNBYNm4OzisMHix">✓</span><span data-page-node-id="vLOMJVHVzS2vELMhhtamv6">打开 Agent openAgent</span></div>
+        <div data-page-node-id="eAejFmQgUVZE748ULW9Jxo"><span class="ok" data-page-node-id="oEXTqvAb9NkQWk73KTO5Rl">✓</span><span data-page-node-id="V84Lm3rDJYipXF1AE8Sajj">填入正文 insert_text_no_enter</span></div>
+        <div data-page-node-id="Fahts57K14kBejHVdLAsK8"><span class="no" data-page-node-id="HfCuxGRgA8riNoOQAP9CMr">×</span><span data-page-node-id="vJha7xzesZVMuAvaiHGAVL">图片自动上传</span></div>
+        <div data-page-node-id="HeWyIp1FbNA9sFBeHoZw2U"><span class="no" data-page-node-id="atjcKxQbvfrvElHD0ftq2L">×</span><span data-page-node-id="7lzJTuPnyacgeqmcYzc4Sv">确认已发送（不发 Enter）</span></div>
+      </div>
+
+      <div class="sub" data-page-node-id="QyRjgf9m9kdJWwR2D8XblS">护栏 <small data-page-node-id="Yq97NeWhVs3jFgtViOXecG">随正文一起送出</small></div>
+      <div class="rule" style="background:var(--warn-soft);border-color:#f8c9c7" data-page-node-id="hHFeESQ814fXFTLgmeDyaX">
+        <span class="ic" data-page-node-id="D2bou7C2hL7UhiRStA4m0X">🔒</span>
+        <div data-page-node-id="CwVQvfxmWXK4wHUPzcdznH"><b data-page-node-id="IRqa5punTazloiB6YEad1n">NoTouch · src/index.html</b><p data-page-node-id="xWT5Dl8nOMFjpgVqAVDQed">git status 路径列表与 guard 求交集即检出</p></div>
+      </div>
+      <div class="rule" data-page-node-id="DkhoCujYhu5pAc8wF5c3Cr">
+        <span class="ic" style="color:var(--sec)" data-page-node-id="Q6mybWdSgtrJ2aNw1nRYEY">◈</span>
+        <div data-page-node-id="CAkPWPUHWoNGQdC2GwHr8x"><b data-page-node-id="nQk8rsgKduIzv8KZE7Ax8m">KeepStyle · current-home.png</b><p data-page-node-id="BU8IewRpusWcEmJGcYn6fH">可改布局，配色与文案保持</p></div>
+      </div>
+
+      <button class="btn-s" style="width:100%;padding:13px;margin-top:12px" data-open data-page-node-id="ATk5zrkKzMnCIYfxYGLRcg">打包并投递</button>
+      <div class="hint" data-page-node-id="tInyMZq1gdTzJEPUhFUUjg">回执只报事实：已复制 / 已打开 / 已填入 / 发送状态未知。</div>
+    </div>
+  </aside>
+</main>
+
+<div class="scrim" id="scrim" data-page-node-id="qol9cBz0Cs2WhPebJdPaau"></div>
+<div class="modal" id="modal" data-page-node-id="M098ZTNsBAM8qpSxUzOstt">
+  <h3 data-page-node-id="IXclIUK9QJEgUQkqJwTfYZ">准备首次沟通</h3>
+  <p class="d" data-page-node-id="9s3ENkgveCQFgoDwHikJs9">选择目标。OneTone 只做它能确认的动作，做不到会明确降级。</p>
+  <div class="agents" data-page-node-id="rO6G4hFDm8jyIKp2YQ6rXG">
+    <div class="agent on" data-a data-page-node-id="zap9hmAxfQmswxz0hiTDND">Codex</div>
+    <div class="agent" data-a data-page-node-id="dugCwLH3P04KdjlHxjAQI7">Cursor</div>
+    <div class="agent" data-a data-page-node-id="JdwXfZU6JooHglGD4JGDB4">Claude</div>
+    <div class="agent" data-a data-page-node-id="fdlv4ItWppgToPOS1ovzJa">复制到剪贴板</div>
+  </div>
+  <div class="facts" data-page-node-id="Y3KWEowDe4Cw8QjmEGXbMU">
+    ✓ 1 份主线思路（你的话，未经总结）<br data-page-node-id="sb3Gd4Bcjo0JcrSYIgbbAd">
+    ✓ 2 项只读素材 · 来源与指纹已记录<br data-page-node-id="9aKb8zN9QGstiGUscAp9RZ">
+    ✓ 2 条保护规则随正文一起送出<br data-page-node-id="qabgvcfTqEUOg4I2SUidUm">
+    ○ 图片无法自动上传 —— 将提示手动上传<br data-page-node-id="PKQYCeJUaUD7TeQhMnxVPr">
+    ○ 发送需你在 Agent 侧确认 —— 系统不代按 Enter
+  </div>
+  <div class="mfoot" data-page-node-id="f3TsVNkrfqJO5SrADHGUrk">
+    <button class="btn" data-close data-page-node-id="VpAijwH7lTHTl0y6fhg74W">取消</button>
+    <button class="btn-s" id="go" data-page-node-id="9dWQWrA7YS3HWpR6YC0onZ">确认投递</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" data-page-node-id="tQez4KpnkBBFTrCT7oP2Ya"></div>
+
+<script>
+var tt;
+function toast(m){var e=document.getElementById('toast');e.textContent=m;e.classList.add('show');
+  clearTimeout(tt);tt=setTimeout(function(){e.classList.remove('show')},2400);}
+
+var scrim=document.getElementById('scrim'),modal=document.getElementById('modal');
+function openM(){modal.classList.add('show');scrim.classList.add('show');}
+function closeM(){modal.classList.remove('show');scrim.classList.remove('show');}
+document.querySelectorAll('[data-open]').forEach(function(el){el.onclick=openM});
+document.querySelectorAll('[data-close]').forEach(function(el){el.onclick=closeM});
+scrim.onclick=closeM;
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeM()});
+
+document.querySelectorAll('[data-t]').forEach(function(el){
+  el.onclick=function(e){e.stopPropagation();toast(el.dataset.t)};});
+
+document.querySelectorAll('.bind').forEach(function(el){
+  el.onclick=function(e){
+    e.stopPropagation();
+    if(el.classList.contains('na')){toast('摄像头是控制通道，不能承载需要传内容的动作');return;}
+    el.classList.toggle('on');
+    toast(el.textContent+(el.classList.contains('on')?' 已绑定':' 已解绑'));
+  };
+});
+
+document.querySelectorAll('[data-tag]').forEach(function(el){
+  el.onclick=function(){el.classList.toggle('on');
+    var n=el.textContent.split(' ')[0];
+    toast(n+(el.classList.contains('on')?' 已启用':' 已停用'));};
+});
+
+document.querySelectorAll('[data-a]').forEach(function(el){
+  el.onclick=function(){
+    document.querySelectorAll('[data-a]').forEach(function(x){x.classList.remove('on')});
+    el.classList.add('on');};
+});
+
+document.getElementById('go').onclick=function(){
+  var a=document.querySelector('.agent.on').textContent;
+  closeM();
+  toast(a==='复制到剪贴板'?'已复制到剪贴板':'已复制并打开 '+a+' · 发送状态未知');
+};
+</script>
+</body>
+</html>
