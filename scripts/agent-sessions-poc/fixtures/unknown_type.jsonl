@@ -1,0 +1,3 @@
+{"type":"user","message":{"content":"fixture-known"},"timestamp":"2026-09-25T00:00:00Z","sessionId":"poc-unknown"}
+{"type":"future_unknown_record","payload":{"x":1}}
+{"type":"assistant","message":{"content":"fixture-ok","id":"msg-u","model":"model-a","usage":{"input_tokens":1,"output_tokens":1}},"timestamp":"2026-09-25T00:00:01Z","sessionId":"poc-unknown"}

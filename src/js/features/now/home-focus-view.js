@@ -127,7 +127,7 @@
     );
   }
 
-  /** Agent living/continue/ledger moved to #homeAgentRoster (Agent Center snapshot). Keep project gate + non-agent attention only. */
+  /** Agent living/continue/ledger live on Agent → 总览. Keep project gate + non-agent attention only. */
   function deskZonesHtml(vm, mode) {
     var desk = (vm && vm.desk) || {};
     var parts = [];
@@ -210,12 +210,12 @@
     );
   }
 
-  function agentRosterHostHtml() {
-    return (
-      '<section class="hn-agent-roster-wrap" aria-label="Agent 名册">' +
-      '<div id="homeAgentRoster" class="home-agent-roster" data-home-agent-roster></div>' +
-      '</section>'
-    );
+  function agentStatusHostHtml() {
+    return '<div id="homeAgentStatusHost" class="home-agent-status-host" data-home-agent-status-host hidden></div>';
+  }
+
+  function promptPrepHostHtml() {
+    return '<div id="homePromptPrepHost" class="home-prompt-prep-host" data-home-prompt-prep></div>';
   }
 
   function renderFocus(vm, opts) {
@@ -223,86 +223,21 @@
     vm = vm || {};
     var mode = vm.mode || 'quiet';
 
-    // Secondary situational CTA only when not quiet — never replaces 开始听写.
-    var secondaryCta = '';
-    if (vm.primary && mode !== 'quiet' && vm.primary.id !== 'dictate' && vm.primary.id !== 'listen') {
-      secondaryCta =
-        '<button type="button" class="hn-text-btn hn-secondary-act" data-hf-act="' +
-        esc(vm.primary.id) +
-        '">' +
-        esc(vm.primary.label) +
-        '</button>';
-    }
-    var secondary = '';
-    if (vm.secondary && mode !== 'attention') {
-      secondary =
-        '<button type="button" class="hn-text-btn hn-secondary-act" data-hf-act="' +
-        esc(vm.secondary.id) +
-        '">' +
-        esc(vm.secondary.label) +
-        '</button>';
-    }
-
-    var progress =
-      vm.progress && vm.progress.allowed && mode !== 'quiet'
-        ? '<div class="hn-whisper" role="status">' +
-          '<span class="hn-whisper-dot" aria-hidden="true"></span>' +
-          '<span>' +
-          esc(vm.progress.text) +
-          '</span></div>'
-        : '';
-
-    var presence =
-      vm.presence && mode === 'degraded'
-        ? '<div class="hn-presence">' +
-          '<p class="hn-presence-line">' +
-          esc(vm.presence.line) +
-          '</p>' +
-          '<p class="hn-presence-note">' +
-          esc(vm.presence.note) +
-          '</p></div>'
-        : '';
-
+    // Non-agent project gate only (Agent roster / living / continue moved to Agent → 总览).
     var desk = deskZonesHtml(vm, mode);
     var voice = opts.voiceHtml || '';
 
     return (
-      '<main class="hn-canvas" data-mode="' +
+      '<main class="hn-canvas hn-canvas--prep" data-mode="' +
       esc(mode) +
       '" data-hf-mode="' +
       esc(mode) +
       '">' +
       '<p class="hn-brand">OneTone</p>' +
       navHtml('focus') +
-      '<section class="hn-hero" aria-label="当前工作摘要">' +
-      '<div class="hn-focus-card"><div class="hn-kicker">' +
-      esc(mode === 'return' ? '上次工作可以继续' : '当前工作上下文') +
-      '</div><h1 class="hn-headline">' +
-      esc(vm.headline || '') +
-      '</h1>' +
-      '<p class="hn-assist">' +
-      esc(vm.assistance || '') +
-      '</p><div class="hn-hero-actions">' +
-      dictateCtaHtml(opts) +
-      secondaryCta +
-      secondary +
-      '</div></div>' +
-      '<aside class="hn-context-card"><div class="hn-context-head"><h2>当前上下文</h2><span class="hn-context-state">' +
-      esc(vm.mode === 'degraded' ? '需检查' : vm.mode === 'return' ? '可继续' : '已读取') +
-      '</span></div><strong>' +
-      esc(vm.projectName || '未确认项目') +
-      '</strong><p>' +
-      esc((vm.evidence && vm.evidence[0] && vm.evidence[0].value) || vm.appName || '本机工作区') +
-      '</p><div class="hn-context-meta"><span>来源</span><b>' +
-      esc((vm.evidence && vm.evidence[2] && vm.evidence[2].value) || '本地窗口与工作记录') +
-      '</b></div><div class="hn-context-meta"><span>新鲜度</span><b>' +
-      esc((vm.evidence && vm.evidence[3] && vm.evidence[3].value) || '时间未知') +
-      '</b></div></aside></section>' +
-      presence +
+      agentStatusHostHtml() +
       desk +
-      progress +
-      agentRosterHostHtml() +
-      evidenceHtml(vm) +
+      promptPrepHostHtml() +
       '<aside class="hn-drawer" id="hnRecallDrawer" hidden>' +
       '<header><h2 id="hnRecallTitle">详情</h2>' +
       '<button type="button" class="hn-icon" data-hf-act="close_drawer" aria-label="关闭">×</button></header>' +

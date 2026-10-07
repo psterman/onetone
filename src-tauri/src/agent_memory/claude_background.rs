@@ -11,7 +11,7 @@ use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
-pub const PROBE_TTL_MS: u64 = 3_000;
+pub const PROBE_TTL_MS: u64 = 30_000;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(3);
 const STOP_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_OUTPUT_BYTES: usize = 1024 * 1024;

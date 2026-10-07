@@ -25,17 +25,32 @@ const ipcRs = read('src-tauri/src/ipc/commands/shell/agent_center_cmd.rs');
 const centerRs = read('src-tauri/src/agent_memory/agent_center.rs');
 
 assert.match(indexHtml, /agent-control-acceptance\.js/);
-assert.match(rosterCss, /repeat\(4,\s*minmax/);
+assert.match(indexHtml, /agent-nav-target\.js/);
+assert.match(indexHtml, /home-agent-status-strip\.js/);
+assert.match(indexHtml, /home-prompt-prep\.js/);
+assert.match(indexHtml, /wbNavAgentData[\s\S]*?hidden/);
+assert.match(rosterCss, /repeat\(2,\s*minmax/);
+assert.doesNotMatch(rosterCss, /@media \(min-width: 900px\)[\s\S]{0,80}repeat\(4,\s*minmax/);
 assert.match(rosterCss, /\.har-overview-summary/);
+assert.match(rosterCss, /\.har-fold-toggle:focus-visible/);
+assert.match(acJs, /legendInterrupt/);
+assert.doesNotMatch(acJs, /har-banner--warn[\s\S]{0,40}rosterIntroWarn|rosterIntroWarn[\s\S]{0,80}har-banner--warn/);
+assert.doesNotMatch(acJs, /har-stat--confirmable/);
+assert.doesNotMatch(acJs, /har-stat--best/);
 assert.match(acJs, /function projectAgentControl/);
 assert.doesNotMatch(acJs, /real-provider\/NOT_EXECUTED/);
-assert.match(hfView, /homeAgentRoster/);
-assert.match(hfView, /开始听写/);
+// Home no longer mounts full Agent Center roster
+assert.doesNotMatch(hfView, /homeAgentRoster/);
+assert.match(hfView, /homeAgentStatusHost/);
+assert.match(hfView, /homePromptPrepHost/);
 assert.doesNotMatch(hfView, /Living Now/);
 assert.doesNotMatch(hfView, /computeHomeOverview|classifyInterrupt|har-badge/);
 assert.doesNotMatch(hfView, /har-overview|har-filter/);
-assert.match(nowHome, /ensureHomeMounted/);
+assert.doesNotMatch(nowHome, /ensureHomeMounted/);
+assert.match(nowHome, /OneToneHomeAgentStatusStrip/);
+assert.match(nowHome, /OneToneHomePromptPrep/);
 assert.match(acJs, /function mountHome\(/);
+assert.match(acJs, /ensureOverviewMounted/);
 assert.match(acJs, /__test/);
 assert.match(acJs, /cmd_agent_center_action/);
 assert.match(acJs, /resolveActionOutcome/);
@@ -54,6 +69,8 @@ assert.match(rosterCss, /flex:\s*0\s+0\s+auto/);
 assert.match(rosterCss, /overflow-y:\s*visible/);
 assert.match(acJs, /detailWhere|当前所在项目/);
 assert.match(acJs, /actionAttemptedUnverified.*请自行确认|请自行确认/);
+assert.match(page, /data-sub="overview"/);
+assert.match(page, /ensureOverviewMounted/);
 
 // --- MiniDOM (jsdom-free) ---
 function matches(el, sel) {

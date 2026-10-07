@@ -1186,15 +1186,29 @@
       html += renderHomeFocusHtml(voice);
       if (html === lastPaintHtml) {
         syncVoiceStrip(voice);
-        // Do not remount/refresh Agent roster on every paint — that IPC path was freezing home.
+        if (global.OneToneHomeAgentStatusStrip && global.OneToneHomeAgentStatusStrip.ensureMounted) {
+          try {
+            global.OneToneHomeAgentStatusStrip.ensureMounted();
+          } catch (_) {}
+        }
+        if (global.OneToneHomePromptPrep && global.OneToneHomePromptPrep.ensureMounted) {
+          try {
+            global.OneToneHomePromptPrep.ensureMounted();
+          } catch (_) {}
+        }
         return;
       }
       lastPaintHtml = html;
       root.innerHTML = html;
       syncVoiceStrip(voice);
-      if (global.OneToneAgentCenter && global.OneToneAgentCenter.ensureHomeMounted) {
+      if (global.OneToneHomeAgentStatusStrip && global.OneToneHomeAgentStatusStrip.ensureMounted) {
         try {
-          global.OneToneAgentCenter.ensureHomeMounted(projectHintForHome());
+          global.OneToneHomeAgentStatusStrip.ensureMounted();
+        } catch (_) {}
+      }
+      if (global.OneToneHomePromptPrep && global.OneToneHomePromptPrep.ensureMounted) {
+        try {
+          global.OneToneHomePromptPrep.ensureMounted();
         } catch (_) {}
       }
       return;

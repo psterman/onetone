@@ -8,7 +8,7 @@ use crate::agent::actions::ProviderSupport;
 use crate::agent_memory::store::now_ms;
 use std::sync::{Mutex, OnceLock};
 
-pub const PROBE_TTL_MS: u64 = 3_000;
+pub const PROBE_TTL_MS: u64 = 30_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProbePolicy {

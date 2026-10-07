@@ -1,0 +1,2 @@
+{"type":"user","message":{"content":"fixture-hello"},"timestamp":"2026-09-25T00:00:00Z","sessionId":"poc-malformed-final"}
+{"type":"assistant","message":{"content":"fixture-reply","id":"msg-trunc","model":"model-a","usage":{"input_tokens":10,"output_tokens":2

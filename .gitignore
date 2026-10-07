@@ -26,6 +26,9 @@ __pycache__/
 # 本地配置与日志（用户数据在 %APPDATA%）
 settings.json
 voice_input_settings.json
+# Soft Pad lane persist must live under config dir — never commit CWD fallback pollution
+soft-pad-sessions.json
+src-tauri/soft-pad-sessions.json
 *.log
 logs/
 src-tauri/logs/

@@ -1,0 +1,2 @@
+{"type":"user","message":{"content":"fixture-nousage"},"timestamp":"2026-09-25T00:00:00Z","sessionId":"poc-miss-usage"}
+{"type":"assistant","message":{"content":"fixture-reply","id":"msg-miss","model":"model-a"},"timestamp":"2026-09-25T00:00:01Z","sessionId":"poc-miss-usage"}

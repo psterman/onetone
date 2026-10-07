@@ -1,0 +1,16 @@
+[package]
+name = "onetone-agent-sessions-poc"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Isolated OneTone PoC for agent-sessions adoption assessment (not linked from src-tauri)"
+
+[[bin]]
+name = "onetone-agent-sessions-poc"
+path = "src/main.rs"
+
+[dependencies]
+agent-sessions = "=0.2.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

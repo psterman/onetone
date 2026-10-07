@@ -39,7 +39,7 @@ if (existsSync(bundle)) {
   check('P12 习惯列表岛挂载入口已移除', !code.includes('__otMountHabitHubListIsland'));
   check('P13 习惯 Hub 壳层岛已打进 bundle（含 __otHabitHubChromeSync）', code.includes('__otHabitHubChromeSync'));
   check('P13 习惯 Hub 壳层岛含 __otHabitHubChromeMounted 标记', code.includes('__otHabitHubChromeMounted'));
-  check('P14a Keys 工作流岛已打进 bundle（含 __otKeysWorkflowSync）', code.includes('__otKeysWorkflowSync'));
+  check('P14a Keys 工作流岛已移除（无 __otKeysWorkflowSync）', !code.includes('__otKeysWorkflowSync'));
   check('P14b SoftPad 工作流岛已打进 bundle（含 __otSoftPadWorkflowSync）', code.includes('__otSoftPadWorkflowSync'));
   check('P14c SoftPad 功能瓷砖岛已打进 bundle（含 __otSoftPadFuncTilesSync）', code.includes('__otSoftPadFuncTilesSync'));
   check('P14c SoftPad 功能瓷砖岛含挂载入口', code.includes('__otMountSoftPadFuncTilesIsland'));
@@ -83,8 +83,8 @@ if (existsSync(bundle)) {
   check('P12c-1 Keys flow chrome 岛含挂载入口', code.includes('__otMountKeysFlowChromeIsland'));
   check('P12c-2 Keys status pills 岛已打进 bundle', code.includes('__otKeysStatusPillsSync'));
   check('P12c-3 Keys recording feedback 岛已打进 bundle', code.includes('__otKeysRecordingFeedbackSync'));
-  check('P12c-4 Keys hub scheme list 岛已打进 bundle', code.includes('__otKeysHubSchemeListSync'));
-  check('P12c-5 Keys app context strip 岛已打进 bundle', code.includes('__otKeysAppContextStripSync'));
+  check('P12c-4 Keys hub scheme list 岛已移除', !code.includes('__otKeysHubSchemeListSync'));
+  check('P12c-5 Keys app context strip 岛已移除', !code.includes('__otKeysAppContextStripSync'));
   check('P12c-6 Keys display chrome 岛已打进 bundle', code.includes('__otKeysDisplayChromeSync'));
   check('P12b-3 录制取消条岛已打进 bundle（含 __otRecordCancelBarSync）', code.includes('__otRecordCancelBarSync'));
   check('P12b-3 录制取消条岛含挂载入口', code.includes('__otMountRecordCancelBarIsland'));
@@ -114,7 +114,7 @@ check('P13 legacy renderFilters chrome 守卫', habitHubJs.includes('__otHabitHu
 const settingsDrawerJs = readFileSync(resolve(root, 'src/js/features/settings/settings-drawer.js'), 'utf8');
 check('P13 settings-drawer chrome 延迟挂载', settingsDrawerJs.includes('__otMountHabitHubChromeIsland'));
 check('P12 settings-drawer 不再挂载 list 岛', !settingsDrawerJs.includes('__otMountHabitHubListIsland'));
-check('P14a keys workflow 岛守卫', keysPanelJs.includes('__otKeysWorkflowMounted'));
+check('P14a keys workflow 岛已移除', !keysPanelJs.includes('__otKeysWorkflowMounted'));
 check('P14b soft-pad workflow 岛守卫', softPadHubJs.includes('__otSoftPadWorkflowMounted'));
 check('P14c buildSoftPadFuncTilesModel 已导出', softPadHubJs.includes('buildSoftPadFuncTilesModel: buildSoftPadFuncTilesModel'));
 check('P14c soft-pad func tiles 岛守卫', softPadHubJs.includes('__otSoftPadFuncTilesMounted') && softPadHubJs.includes('__otSoftPadFuncTilesSync'));
@@ -200,7 +200,8 @@ const html = readFileSync(htmlPath, 'utf8');
 check('legacy state.js 脚本仍在', html.includes('js/core/state.js'));
 check('P6 语音配置岛容器已注入 index.html', html.includes('id="voiceConfigIsland"'));
 {
-  const mainIdx = html.indexOf('class="voice-page-main"');
+  // class may be "voice-page-main keys-page-main" — do not require a lone class= value.
+  const mainIdx = html.search(/class="[^"]*\bvoice-page-main\b/);
   const deskIdx = html.indexOf('id="voiceDeskPanel"');
   const islandIdx = html.indexOf('id="voiceConfigIsland"');
   check(

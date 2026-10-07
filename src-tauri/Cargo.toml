@@ -55,6 +55,8 @@ cbc = { version = "0.1", features = ["alloc"] }
 sha2 = "0.10"
 base64 = "0.22"
 url = "2"
+# Session JSONL transcript adapter (agent_memory::session_parse only; see docs/session-parser-adapter-design.md).
+agent-sessions = "=0.2.2"
 
 [target.'cfg(windows)'.dependencies]
 vosk = { version = "0.3.1", optional = true }

@@ -228,15 +228,17 @@ assert.ok(!html.includes('pane-rank'), 'old rank pane removed');
 
 // Agent shell: data first leaf + nest host + no dual agentData start
 var pageHtml = fs.readFileSync(path.join(__dirname, '../src/agent-proto/agent-page.html'), 'utf8');
-assert.ok(/data-sub="data"[\s\S]*?data-sub="float"/.test(pageHtml), 'data tab before float');
+assert.ok(/data-sub="overview"[\s\S]*?data-sub="data"[\s\S]*?data-sub="float"/.test(pageHtml), 'overview then data then float');
 assert.ok(pageHtml.includes('id="agentDataNestFrame"') && pageHtml.includes('nest=1'), 'nests agent-data');
 assert.ok(!pageHtml.includes('mac-dock-track') && !pageHtml.includes('macDockTogAll'), 'left Mac dock abandoned');
 assert.ok(!pageHtml.includes('applyStripPayload') && !pageHtml.includes('paintDataDock'), 'no left strip mirror');
 assert.ok(pageHtml.includes('agentPadPaint') && pageHtml.includes("setSub('data')"), 'data leaf keeps Soft Pad + setSub data');
 assert.ok(pageHtml.includes('onDataLeaf') && pageHtml.includes('切数据 focus'), 'data leaf Soft Pad icons switch data focus');
 assert.ok(pageHtml.includes("workspace.classList.toggle('is-data'"), 'data leaf toggles is-data');
+assert.ok(pageHtml.includes("workspace.classList.toggle('is-overview'"), 'overview leaf toggles is-overview');
 assert.ok(/getElementById\('gotoStats'\)[\s\S]{0,120}setSub\('data'\)/.test(pageHtml), 'gotoStats stays in-page');
 assert.ok(!/getElementById\('gotoStats'\)[\s\S]{0,200}ot-nav/.test(pageHtml), 'gotoStats does not ot-nav away');
+assert.ok(/setSub\(allowedDeep\[deepSub\]\?deepSub:'overview'\)/.test(pageHtml), 'default overview');
 
 var bridgeSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/agent/agent-data-bridge.js'), 'utf8');
 assert.ok(bridgeSrc.includes('agentDataNestFrame'), 'bridge targets nest frame');
@@ -246,10 +248,12 @@ assert.ok(bridgeSrc.includes("cmd === 'selectAgent'"), 'bridge handles selectAge
 var drawerSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/settings/settings-drawer.js'), 'utf8');
 assert.ok(drawerSrc.includes("panel==='agentData'") && drawerSrc.includes("agentSub:'data'"), 'agentData aliases to agent+data');
 assert.ok(!/panel==='agentData'[\s\S]{0,200}OneToneAgentDataBridge\.start/.test(drawerSrc), 'no independent agentData bridge start');
-assert.ok(/panel==='agent'[\s\S]*?OneToneAgentDataBridge\.start/.test(drawerSrc), 'data bridge starts with agent panel');
+assert.ok(/panel==='agent'[\s\S]*?OneToneAgentDataBridge\.start/.test(drawerSrc), 'data bridge can start from agent panel');
 assert.ok(/lastPanel==='agent'[\s\S]*?OneToneAgentDataBridge\.stop/.test(drawerSrc), 'data bridge stops leaving agent');
+assert.ok(/postAgentPageCmd\('setSub',\{sub:'overview'\}\)/.test(drawerSrc), 'opens overview by default');
 
 var indexHtml = fs.readFileSync(path.join(__dirname, '../src/index.html'), 'utf8');
 assert.ok(indexHtml.includes('id="agentDataProtoFrame"') && /agentDataProtoFrame[\s\S]*?about:blank/.test(indexHtml), 'legacy data frame blanked');
+assert.ok(/wbNavAgentData[\s\S]*?hidden/.test(indexHtml), 'sidebar data nav hidden');
 
 console.log('ok agent-data-bridge');

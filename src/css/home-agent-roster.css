@@ -59,6 +59,7 @@
 .har-action:focus-visible,
 .har-attention:focus-visible,
 .har-show-all:focus-visible,
+.har-fold-toggle:focus-visible,
 .har-filter select:focus-visible,
 .hn-cta--dictate:focus-visible {
   outline: 3px solid rgba(47, 109, 246, 0.28);
@@ -80,7 +81,7 @@
 
 @media (min-width: 900px) {
   .har-overview {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -91,6 +92,93 @@
   color: #6b7c8c;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.har-verdict {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 4px;
+  padding: 8px 10px;
+  border: 1px solid #e4e8ec;
+  border-radius: 8px;
+  background: #f7fafc;
+}
+
+.har-verdict strong {
+  font-size: 14px;
+  font-weight: 650;
+  color: #17324d;
+}
+
+.har-verdict span {
+  font-size: 12px;
+  color: #5f7386;
+}
+
+.har-overview-stale {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
+  padding: 0;
+  color: #7a6a40;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.har-fold-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed #d5dee6;
+  border-radius: 8px;
+  background: #fafbfc;
+  color: #4d6070;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.har-fold-toggle:hover {
+  background: #f3f6f8;
+}
+
+.har-fold-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8094a6;
+}
+
+.har-fold {
+  margin-top: 6px;
+}
+
+.har-fold[hidden] {
+  display: none !important;
+}
+
+.har-row--view-only {
+  opacity: 0.92;
+}
+
+.har-row--view-only .har-name small {
+  color: #6e8192;
+}
+
+.har-action--recovery {
+  border-color: #9eb9d0;
+  color: #1f5f8a;
+  background: #f2f8fc;
+}
+
+.har-action--recovery:hover {
+  background: #e7f2fa;
 }
 
 .har-stat--confirmable strong {

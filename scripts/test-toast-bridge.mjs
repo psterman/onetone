@@ -27,7 +27,7 @@ console.log('[toast-bridge] 静态 + 运行时校验');
 
 // ---- 1. 静态：源文件 toast 实现不引用 pushToast，且引用 OneToneAppToast ----
 const bridgeText = readFileSync(bridgeSrc, 'utf8');
-const toastFnMatch = bridgeText.match(/function toast\([\s\S]*?\n\}\n/);
+const toastFnMatch = bridgeText.match(/function toast\([\s\S]*?\r?\n\}\r?\n/);
 check('ui-bridge 含 function toast', !!toastFnMatch);
 if (toastFnMatch) {
   const body = toastFnMatch[0];

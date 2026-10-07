@@ -146,6 +146,24 @@
       interruptUnsupported: '不支持',
       interruptUnknown: '本机检测尚未接入',
       interruptUnavailablePrefix: '不可控制',
+      needRefreshStatus: '需要刷新状态',
+      needRefreshHint: '控制证据已过期，刷新后可再判断',
+      connectThenControl: '完成接入后可控制',
+      viewOnlyLabel: '仅支持查看',
+      noTaskNeeded: '当前无需停止',
+      noTaskHint: '未检测到正在运行的任务',
+      needMapping: '需要配置映射',
+      noTargetLabel: '暂时无法定位目标',
+      recoveryRefresh: '立即刷新',
+      recoveryConnect: '去接入',
+      recoveryMap: '去配置',
+      overviewVerdictLine: '发现 {discovered} 个 Agent',
+      overviewCapabilityLine: '{controllable} 个支持控制 · {viewOnly} 个仅支持查看',
+      overviewStaleHint: '{name} 状态需要刷新',
+      overviewStaleHintMany: '{name} 等 {n} 个状态需要刷新',
+      foldViewOnly: '其他已检测到的 Agent（{n}）',
+      foldViewOnlyHint: '当前仅支持查看状态',
+      controlFailed: '控制失败',
       interruptNotWiredDetail: '已发现安装，但无法判断工作状态',
       acceptancePendingNote: '当前版本尚未完成真实 Provider 验收',
       acceptanceRealNote: '本版本已完成真实 Provider 验收',
@@ -324,6 +342,24 @@
       interruptUnsupported: 'Unsupported',
       interruptUnknown: 'Local detection not wired yet',
       interruptUnavailablePrefix: 'Not controllable',
+      needRefreshStatus: 'Refresh status needed',
+      needRefreshHint: 'Control evidence expired — refresh to re-check',
+      connectThenControl: 'Connect to enable control',
+      viewOnlyLabel: 'View only',
+      noTaskNeeded: 'No stop needed',
+      noTaskHint: 'No running task detected',
+      needMapping: 'Mapping required',
+      noTargetLabel: 'Target not addressable yet',
+      recoveryRefresh: 'Refresh now',
+      recoveryConnect: 'Connect',
+      recoveryMap: 'Configure',
+      overviewVerdictLine: 'Found {discovered} agents',
+      overviewCapabilityLine: '{controllable} controllable · {viewOnly} view-only',
+      overviewStaleHint: '{name} needs a status refresh',
+      overviewStaleHintMany: '{name} and {n} others need a status refresh',
+      foldViewOnly: 'Other detected agents ({n})',
+      foldViewOnlyHint: 'View status only for now',
+      controlFailed: 'Control failed',
       interruptNotWiredDetail: 'Installed, but work status cannot be judged',
       acceptancePendingNote: 'This release has not completed real Provider acceptance',
       acceptanceRealNote: 'Real Provider acceptance completed for this release',
@@ -396,7 +432,21 @@
   var homeRefreshTimer = 0;
   var homeLastRefreshAt = 0;
   var homeLastHint = '';
+  var homeRefreshInFlight = null;
+  var overviewPollTimer = 0;
+  var overviewVisibilityBound = false;
+  var drawerReturnFocus = null;
+  var drawerKeysBound = false;
   var HOME_REFRESH_MIN_MS = 45000;
+  /** Overview soft poll interval — Cached snapshot; control probe TTL is separate (30s). */
+  var OVERVIEW_SOFT_POLL_MS = 5000;
+  var STALE_AUTO_COOLDOWN_MS = 30000;
+  var staleRecovery = {
+    inFlight: false,
+    lastAttemptAt: 0,
+    attemptedSnapshotAsOf: 0
+  };
+  var viewOnlyFoldOpen = false;
 
   function lang() {
     var L = (global.document && document.documentElement && document.documentElement.lang) || 'zh';
@@ -1298,20 +1348,72 @@
     return fu >= base ? 'fresh' : 'stale';
   }
 
-  function availabilityReasonOf(act, freshness) {
-    if (!act) return 'notWired';
-    var reason = String(act.reason || '');
+  /**
+   * Product capability — independent of momentary enabled/evidence.
+   * Only explicit provider_unsupported is viewOnly.
+   */
+  function capabilityOf(agent, interrupt) {
+    var provider = providerKeyOf(agent);
+    var reason = String((interrupt && interrupt.reason) || '');
+    var support = String((interrupt && interrupt.support) || '').toLowerCase();
+    if (reason === 'provider_unsupported') return 'viewOnly';
+    if (support === 'hotkey' || provider === 'cursor') return 'bestEffort';
+    if (support === 'native' || provider === 'claude' || provider === 'codex') {
+      return 'confirmable';
+    }
+    return 'viewOnly';
+  }
+
+  /**
+   * Map interrupt reason (+ freshness) → blocker code.
+   * Idle/noTask reasons must not be painted as failure.
+   */
+  function blockerOf(interrupt, freshness) {
+    var reason = String((interrupt && interrupt.reason) || '');
+    // Explicit unsupported wins over expired observation — view-only ≠ stale.
     if (reason === 'provider_unsupported') return 'unsupported';
-    if (reason === 'ProbeNotImplemented' || reason === 'probe_not_implemented') return 'notWired';
-    if (reason === 'evidence_stale' || reason === 'stale_control_evidence') return 'stale';
-    if (reason === 'no_window_target') return 'noTarget';
+    if (
+      reason === 'not_running' ||
+      reason === 'no_external_session' ||
+      reason === 'background_session_not_found' ||
+      reason === 'background_session_not_active'
+    ) {
+      return 'noTask';
+    }
+    if (
+      reason === 'evidence_stale' ||
+      reason === 'stale_control_evidence' ||
+      reason === 'stale_observation' ||
+      freshness === 'stale'
+    ) {
+      return 'stale';
+    }
+    if (
+      reason === 'control_plane_unavailable' ||
+      reason === 'ProbeNotImplemented' ||
+      reason === 'probe_not_implemented' ||
+      reason === 'no_instance_evidence'
+    ) {
+      return 'notWired';
+    }
     if (reason === 'no_mapping_target') return 'noMapping';
-    if (freshness === 'stale') return 'stale';
-    var support = String(act.support || '').toLowerCase();
+    if (
+      reason === 'no_window_target' ||
+      reason === 'session_not_found' ||
+      reason === 'ambiguous_session'
+    ) {
+      return 'noTarget';
+    }
+    if (!interrupt) return 'notWired';
+    if (interrupt.enabled) return null;
+    var support = String(interrupt.support || '').toLowerCase();
     if (support === 'unsupported') return 'unsupported';
-    var bucket = classifyInterrupt(act);
-    if (bucket === 'unknown' || bucket === null) return 'notWired';
-    return null;
+    return 'notWired';
+  }
+
+  /** @deprecated use blockerOf — kept for older call sites/tests */
+  function availabilityReasonOf(act, freshness) {
+    return blockerOf(act, freshness);
   }
 
   function acceptanceOf(providerKey, manifest) {
@@ -1324,89 +1426,104 @@
     return 'notApplicable';
   }
 
-  function reasonUserLabel(reason) {
-    if (reason === 'notWired') return t('interruptUnknown');
-    if (reason === 'unsupported') return t('providerUnsupportedInterrupt');
-    if (reason === 'stale') return t('statusInfoExpired');
-    if (reason === 'noTarget') return t('noWindowTarget');
-    if (reason === 'noMapping') return t('noMappingTarget');
+  function reasonUserLabel(blocker) {
+    if (blocker === 'notWired') return t('interruptUnknown');
+    if (blocker === 'unsupported') return t('viewOnlyLabel');
+    if (blocker === 'stale') return t('needRefreshStatus');
+    if (blocker === 'noTarget') return t('noTargetLabel');
+    if (blocker === 'noMapping') return t('needMapping');
+    if (blocker === 'noTask') return t('noTaskNeeded');
     return '';
+  }
+
+  function recoveryFor(blocker) {
+    if (blocker === 'stale') return { id: 'refresh', label: t('recoveryRefresh') };
+    if (blocker === 'notWired') return { id: 'connect', label: t('recoveryConnect') };
+    if (blocker === 'noMapping') return { id: 'map', label: t('recoveryMap') };
+    return null;
   }
 
   /**
    * Single UI projection — overview / filter / row / detail must all use this.
-   * Acceptance never changes controlMode; only primaryLabel / detail copy.
+   * capability = product ability; availability = moment-to-moment executability.
+   * controlMode kept one round as a compat alias for filters/tests.
    */
   function projectAgentControl(agent, snap, acceptanceManifest) {
     var asOf = snap && snap.asOf;
     var act = findInterruptAction(agent);
     var pk = providerKeyOf(agent);
     var fres = freshnessOf(agent, act, asOf);
-    var bucket = classifyInterrupt(act);
-    var controlMode = 'unavailable';
-    if (pk === 'cursor') {
-      // Only a real usable Cursor interrupt is bestEffort — never inflate the card
-      // for no action / unsupported / no mapping / stale / disabled.
-      var cursorUsable =
-        act &&
-        act.supported !== false &&
-        act.enabled &&
-        bucket === 'bestEffort' &&
-        fres !== 'stale' &&
-        String(act.reason || '') !== 'evidence_stale' &&
-        String(act.reason || '') !== 'stale_control_evidence';
-      controlMode = cursorUsable ? 'bestEffort' : 'unavailable';
-    } else if (bucket === 'verifiable') {
-      controlMode = 'confirmable';
-    } else if (bucket === 'bestEffort') {
-      controlMode = 'bestEffort';
+    var capability = capabilityOf(agent, act);
+    var blocker = null;
+    var availability = 'idle';
+
+    // Stale evidence overrides enabled:true — otherwise trust UI lies until TTL expires.
+    if (act && act.enabled && fres !== 'stale' && String(act.reason || '').indexOf('stale') < 0) {
+      availability = 'ready';
+      blocker = null;
     } else {
-      controlMode = 'unavailable';
+      blocker = blockerOf(act, fres);
+      if (blocker === 'noTask') availability = 'idle';
+      else if (blocker) availability = 'blocked';
+      else availability = 'idle';
     }
-    var reason =
-      controlMode === 'unavailable'
-        ? availabilityReasonOf(act, fres)
-        : fres === 'stale' && act && (act.reason === 'evidence_stale' || act.reason === 'stale_control_evidence')
-          ? 'stale'
-          : null;
-    // Stale evidence on an otherwise confirmable/bestEffort action → still show mode but reason for disable paths
-    if (
-      controlMode !== 'unavailable' &&
-      (String((act && act.reason) || '') === 'evidence_stale' ||
-        String((act && act.reason) || '') === 'stale_control_evidence' ||
-        fres === 'stale')
-    ) {
-      // Keep controlMode; expose stale as reason for filter 'stale'
-      if (!reason) reason = 'stale';
+
+    // Compat controlMode: ready uses capability tier; blocked/idle → unavailable.
+    var controlMode = 'unavailable';
+    if (availability === 'ready') {
+      controlMode = capability === 'bestEffort' ? 'bestEffort' : 'confirmable';
     }
-    if (controlMode === 'unavailable' && !reason) reason = 'notWired';
 
     var acceptance = acceptanceOf(pk, acceptanceManifest || getAcceptanceManifest());
     if (pk === 'cursor') acceptance = 'notApplicable';
 
     var primaryLabel = '';
     var supportingText = '';
-    if (controlMode === 'confirmable') {
-      if (acceptance === 'pendingRealVerify') {
-        primaryLabel = t('interruptConfirmablePending');
-        supportingText = t('detailConfirmableChannel');
+    if (availability === 'ready') {
+      if (capability === 'confirmable') {
+        if (acceptance === 'pendingRealVerify') {
+          primaryLabel = t('interruptConfirmablePending');
+          supportingText = t('detailConfirmableChannel');
+        } else {
+          primaryLabel = t('interruptVerifiable');
+          supportingText = t('detailConfirmableChannel');
+        }
       } else {
-        primaryLabel = t('interruptVerifiable');
-        supportingText = t('detailConfirmableChannel');
+        primaryLabel = t('interruptBestEffort');
+        supportingText = t('interruptBestEffortHint');
       }
-    } else if (controlMode === 'bestEffort') {
-      primaryLabel = t('interruptBestEffort');
-      supportingText = t('interruptBestEffortHint');
+    } else if (blocker === 'stale') {
+      primaryLabel = t('needRefreshStatus');
+      supportingText = t('needRefreshHint');
+    } else if (blocker === 'notWired') {
+      primaryLabel = t('connectThenControl');
+      supportingText = t('interruptNotWiredDetail');
+    } else if (blocker === 'noTask') {
+      primaryLabel = t('noTaskNeeded');
+      supportingText = t('noTaskHint');
+    } else if (blocker === 'unsupported' || capability === 'viewOnly') {
+      primaryLabel = t('viewOnlyLabel');
+      supportingText = t('foldViewOnlyHint');
+    } else if (blocker === 'noMapping') {
+      primaryLabel = t('needMapping');
+      supportingText = t('noMappingTarget');
+    } else if (blocker === 'noTarget') {
+      primaryLabel = t('noTargetLabel');
+      supportingText = reasonUserLabel('noTarget');
     } else {
-      primaryLabel = t('interruptUnavailablePrefix') + ' · ' + reasonUserLabel(reason);
-      if (reason === 'notWired') supportingText = t('interruptNotWiredDetail');
-      else if (reason === 'unsupported') supportingText = t('providerUnsupportedInterrupt');
-      else supportingText = reasonUserLabel(reason);
+      primaryLabel = t('noTaskNeeded');
+      supportingText = '';
     }
 
+    var recovery = availability === 'ready' ? null : recoveryFor(blocker);
+
     return {
+      capability: capability,
+      availability: availability,
+      blocker: blocker,
+      recovery: recovery,
       controlMode: controlMode,
-      reason: reason,
+      reason: blocker,
       working: isWorkingObserved(agent, asOf),
       freshness: fres,
       acceptance: acceptance,
@@ -1450,9 +1567,12 @@
       working: 0,
       confirmable: 0,
       bestEffort: 0,
+      controllable: 0,
+      viewOnly: 0,
       notWired: 0,
       unsupported: 0,
       stale: 0,
+      staleNames: [],
       // compat aliases for older tests
       verifiableInterrupt: 0,
       bestEffortInterrupt: 0,
@@ -1462,27 +1582,30 @@
     agents.forEach(function (a) {
       var p = projectAgentControl(a, snap);
       if (p.working) overview.working += 1;
-      if (p.controlMode === 'confirmable') {
+      if (p.capability === 'confirmable') {
         overview.confirmable += 1;
         overview.verifiableInterrupt += 1;
-      } else if (p.controlMode === 'bestEffort') {
+        overview.controllable += 1;
+      } else if (p.capability === 'bestEffort') {
         overview.bestEffort += 1;
         overview.bestEffortInterrupt += 1;
-      } else if (p.reason === 'unsupported') {
-        overview.unsupported += 1;
+        overview.controllable += 1;
+      } else {
+        overview.viewOnly += 1;
         overview.unsupportedInterrupt += 1;
-      } else if (p.reason === 'stale') {
+      }
+      // Blocker buckets are orthogonal to capability cards (blocked confirmable still counts).
+      if (p.blocker === 'unsupported') {
+        overview.unsupported += 1;
+      } else if (p.blocker === 'stale') {
         overview.stale += 1;
         overview.unknownInterrupt += 1;
-      } else {
+        if (a && a.displayName) overview.staleNames.push(a.displayName);
+      } else if (p.blocker === 'notWired') {
         overview.notWired += 1;
         overview.unknownInterrupt += 1;
-      }
-      if (
-        p.reason === 'stale' &&
-        (p.controlMode === 'confirmable' || p.controlMode === 'bestEffort')
-      ) {
-        overview.stale += 1;
+      } else if (p.capability === 'viewOnly' && p.blocker !== 'noTask') {
+        overview.unsupported += 1;
       }
     });
     return overview;
@@ -1493,14 +1616,24 @@
     if (f === 'all') return true;
     var p = projectAgentControl(agent, snap);
     if (f === 'working') return p.working;
-    if (f === 'verifiable' || f === 'confirmable') return p.controlMode === 'confirmable';
-    if (f === 'bestEffort') return p.controlMode === 'bestEffort';
-    if (f === 'unsupported') return p.reason === 'unsupported';
-    if (f === 'unknown' || f === 'notWired') {
-      return p.controlMode === 'unavailable' && p.reason === 'notWired';
+    if (f === 'needs' || f === 'attention') {
+      var needs = (snap && snap.groups && snap.groups.needsAttention) || [];
+      return needs.indexOf(agent && agent.agentId) >= 0;
     }
-    if (f === 'stale') return p.reason === 'stale';
-    return true;
+    if (f === 'resumable') {
+      return !!(p.canContinue || p.resumable || (agent && agent.resumable));
+    }
+    if (f === 'verifiable' || f === 'confirmable') return p.capability === 'confirmable';
+    if (f === 'bestEffort') return p.capability === 'bestEffort';
+    if (f === 'unsupported') {
+      return p.capability === 'viewOnly' || p.blocker === 'unsupported';
+    }
+    if (f === 'unknown' || f === 'notWired') return p.blocker === 'notWired';
+    if (f === 'stale') return p.blocker === 'stale';
+    // Provider name filter (e.g. codex / cursor)
+    var id = String((agent && (agent.agentId || agent.runtimeKind || agent.displayName)) || '').toLowerCase();
+    if (f && f !== 'all' && id.indexOf(f.toLowerCase()) >= 0) return true;
+    return f === 'all';
   }
 
   function formatEvidenceFreshness(opts) {
@@ -1646,58 +1779,26 @@
     opts = opts || {};
     var rowOnly = !!opts.rowOnly;
     var acts = Array.isArray(agent && agent.actions) ? agent.actions : [];
+    var proj = projectAgentControl(agent, state.snap);
     function find(id) {
       for (var i = 0; i < acts.length; i++) {
         if (acts[i] && acts[i].id === id) return acts[i];
       }
       return null;
     }
-    var order = rowOnly
-      ? ['agent.focus', 'session.resume', 'agent.interrupt']
-      : [
-          'session.resume',
-          'checkpoint.preview',
-          'agent.focus',
-          'agent.interrupt',
-          'ui.open_config',
-          'ui.open_data'
-        ];
-    var html = '';
-    order.forEach(function (id) {
-      var act = find(id);
-      if (!act) {
-        if (!rowOnly) return;
-        html +=
-          '<button type="button" class="har-action' +
-          (id === 'agent.interrupt' ? ' har-action--stop' : '') +
-          '" disabled title="' +
-          escapeAttr(t('actionUnavailable')) +
-          '">' +
-          escapeHtml(
-            id === 'agent.focus'
-              ? t('viewWork')
-              : id === 'session.resume'
-                ? t('continueWork')
-                : t('interruptWork')
-          ) +
-          '</button>';
-        return;
-      }
-      if (id === 'agent.interrupt' && !act.supported && !rowOnly) return;
-      var pending = state.pendingAction === id + ':' + agent.agentId;
-      var disabled = !act.enabled || pending || (id === 'agent.interrupt' && !act.supported);
+    function btn(act, extraClass) {
+      if (!act) return '';
+      var pending = state.pendingAction === act.id + ':' + agent.agentId;
+      var disabled = !act.enabled || pending;
       var title = act.enabled
         ? ''
         : humanActionReason(act.reason, act.id) || t('actionUnavailable');
-      var reasonLine = act.enabled
-        ? ''
-        : humanActionReason(act.reason, act.id) || '';
-      html +=
+      return (
         '<button type="button" class="har-action' +
-        (id === 'session.resume' && act.enabled && !rowOnly ? ' is-primary' : '') +
-        (id === 'agent.interrupt' ? ' har-action--stop' : '') +
+        (extraClass ? ' ' + extraClass : '') +
+        (act.id === 'agent.interrupt' ? ' har-action--stop' : '') +
         '" data-action="' +
-        escapeAttr(id) +
+        escapeAttr(act.id) +
         '" data-agent-id="' +
         escapeAttr(agent.agentId) +
         '"' +
@@ -1711,14 +1812,81 @@
           : '') +
         '>' +
         escapeHtml(pending ? t('pending') : actionLabel(act)) +
-        '</button>';
-      if (reasonLine && !rowOnly) {
+        '</button>'
+      );
+    }
+    var html = '';
+    if (rowOnly) {
+      var focusAct = find('agent.focus');
+      if (focusAct && focusAct.enabled) html += btn(focusAct, '');
+      var resumeAct = find('session.resume');
+      if (resumeAct && resumeAct.enabled) html += btn(resumeAct, 'is-primary');
+      var interruptAct = find('agent.interrupt');
+      if (
+        proj.capability !== 'viewOnly' &&
+        proj.availability === 'ready' &&
+        interruptAct &&
+        interruptAct.enabled
+      ) {
+        html += btn(interruptAct, '');
+      }
+      if (proj.recovery && proj.availability === 'blocked') {
         html +=
-          '<span class="har-action-reason" data-action-reason="' +
-          escapeAttr(id) +
+          '<button type="button" class="har-action har-action--recovery" data-har-recovery="' +
+          escapeAttr(proj.recovery.id) +
+          '" data-agent-id="' +
+          escapeAttr(agent.agentId) +
           '">' +
-          escapeHtml(reasonLine) +
-          '</span>';
+          escapeHtml(proj.recovery.label) +
+          '</button>';
+      }
+      return html;
+    }
+    [
+      'session.resume',
+      'checkpoint.preview',
+      'agent.focus',
+      'agent.interrupt',
+      'ui.open_config',
+      'ui.open_data'
+    ].forEach(function (id) {
+      var act = find(id);
+      if (!act) return;
+      if (id === 'agent.interrupt' && proj.capability === 'viewOnly') return;
+      if (id === 'agent.interrupt' && proj.availability === 'idle') return;
+      if (id === 'agent.interrupt' && !act.enabled) {
+        if (proj.recovery) {
+          html +=
+            '<button type="button" class="har-action har-action--recovery" data-har-recovery="' +
+            escapeAttr(proj.recovery.id) +
+            '" data-agent-id="' +
+            escapeAttr(agent.agentId) +
+            '">' +
+            escapeHtml(proj.recovery.label) +
+            '</button>';
+        }
+        var reasonLine = humanActionReason(act.reason, act.id) || '';
+        if (reasonLine) {
+          html +=
+            '<span class="har-action-reason" data-action-reason="' +
+            escapeAttr(id) +
+            '">' +
+            escapeHtml(reasonLine) +
+            '</span>';
+        }
+        return;
+      }
+      html += btn(act, id === 'session.resume' && act.enabled ? 'is-primary' : '');
+      if (!act.enabled) {
+        var rl = humanActionReason(act.reason, act.id) || '';
+        if (rl) {
+          html +=
+            '<span class="har-action-reason" data-action-reason="' +
+            escapeAttr(id) +
+            '">' +
+            escapeHtml(rl) +
+            '</span>';
+        }
       }
     });
     return html;
@@ -1802,7 +1970,7 @@
         ? t('overviewConfirmable')
         : proj.controlMode === 'bestEffort'
           ? t('overviewBestOnly')
-          : t('interruptUnavailablePrefix');
+          : proj.primaryLabel || t('viewOnlyLabel');
     var resultConfirmLabel =
       proj.controlMode === 'confirmable'
         ? t('detailConfirmableChannel')
@@ -1949,7 +2117,10 @@
   function paintHome() {
     var root = homeHostEl;
     if (!root || !root.isConnected) {
-      root = document.getElementById('homeAgentRoster');
+      root =
+        (state.mountMode === 'overview' && document.getElementById('workHost')) ||
+        document.getElementById('homeAgentRoster') ||
+        document.getElementById('workHost');
       homeHostEl = root;
     }
     if (!root) return;
@@ -1999,15 +2170,7 @@
         escapeHtml(first ? first.displayName + ' · ' + statusLabel(first) : '') +
         '</span></button>';
     }
-    if (!state.error && state.snap) {
-      bhtml +=
-        '<div class="har-banner har-banner--info" role="status">' +
-        escapeHtml(t('rosterIntroInfo')) +
-        '</div>' +
-        '<div class="har-banner har-banner--warn" role="status">' +
-        escapeHtml(t('rosterIntroWarn')) +
-        '</div>';
-    }
+    // Intro risk copy lives in toolbar legend — avoid stacking info/warn banners above the verdict.
     banners.innerHTML = bhtml;
 
     if (!state.snap) {
@@ -2021,11 +2184,43 @@
 
     var overview = computeHomeOverview(state.snap, { includeNotFound: state.showNotFound });
     if (overviewEl) {
+      var verdict = String(t('overviewVerdictLine') || '').replace(
+        '{discovered}',
+        String(overview.discovered)
+      );
+      var capLine = String(t('overviewCapabilityLine') || '')
+        .replace('{controllable}', String(overview.controllable || 0))
+        .replace('{viewOnly}', String(overview.viewOnly || 0));
+      var staleHint = '';
+      if (overview.stale > 0) {
+        var staleNames = overview.staleNames || [];
+        var staleName = staleNames[0] || t('statusInfoExpired');
+        var staleTpl =
+          overview.stale > 1 && staleNames[0]
+            ? t('overviewStaleHintMany')
+            : t('overviewStaleHint');
+        staleHint =
+          '<p class="har-overview-stale" data-har-stale-hint>' +
+          escapeHtml(
+            String(staleTpl || '')
+              .replace('{name}', staleName)
+              .replace('{n}', String(overview.stale))
+          ) +
+          '</p>';
+      }
       var summary = String(t('overviewSummaryLine') || '')
         .replace('{notWired}', String(overview.notWired || 0))
         .replace('{unsupported}', String(overview.unsupported || 0))
         .replace('{stale}', String(overview.stale || 0));
       overviewEl.innerHTML =
+        '<div class="har-verdict" data-har-verdict>' +
+        '<strong>' +
+        escapeHtml(verdict) +
+        '</strong>' +
+        '<span>' +
+        escapeHtml(capLine) +
+        '</span></div>' +
+        staleHint +
         '<div class="har-stat"><strong>' +
         escapeHtml(String(overview.discovered)) +
         '</strong><span>' +
@@ -2036,20 +2231,6 @@
         '</strong><span>' +
         escapeHtml(t('overviewWorking')) +
         '</span></div>' +
-        '<div class="har-stat har-stat--confirmable"><strong>' +
-        escapeHtml(String(overview.confirmable)) +
-        '</strong><span>' +
-        escapeHtml(t('overviewConfirmable')) +
-        '<small>' +
-        escapeHtml(t('overviewByInterrupt')) +
-        '</small></span></div>' +
-        '<div class="har-stat har-stat--best"><strong>' +
-        escapeHtml(String(overview.bestEffort)) +
-        '</strong><span>' +
-        escapeHtml(t('overviewBestOnly')) +
-        '<small>' +
-        escapeHtml(t('interruptBestEffortHint')) +
-        '</small></span></div>' +
         '<p class="har-overview-summary" data-har-summary>' +
         escapeHtml(summary) +
         '</p>';
@@ -2109,55 +2290,96 @@
       list.innerHTML = '<p class="har-empty">' + escapeHtml(t('readyEmpty')) + '</p>';
       return;
     }
-    var html = '';
+
+    var needsSet = {};
+    needs.forEach(function (id) {
+      needsSet[id] = 1;
+    });
+    var priority = [];
+    var viewOnly = [];
     agents.forEach(function (a) {
+      var p = projectAgentControl(a, state.snap);
+      if (p.capability === 'viewOnly') viewOnly.push(a);
+      else priority.push(a);
+    });
+
+    // Provider name filter that hits view-only rows → auto-expand fold.
+    var filterKey = String(state.homeFilter || 'all');
+    var providerFilter =
+      filterKey &&
+      filterKey !== 'all' &&
+      filterKey !== 'working' &&
+      filterKey !== 'needs' &&
+      filterKey !== 'attention' &&
+      filterKey !== 'resumable' &&
+      filterKey !== 'verifiable' &&
+      filterKey !== 'confirmable' &&
+      filterKey !== 'bestEffort' &&
+      filterKey !== 'unsupported' &&
+      filterKey !== 'unknown' &&
+      filterKey !== 'notWired' &&
+      filterKey !== 'stale';
+    if (providerFilter && viewOnly.length) viewOnlyFoldOpen = true;
+
+    function renderRow(a) {
+      var open = state.expandedId === a.agentId;
+      var needsMark = !!needsSet[a.agentId];
+      var project = projectNameOf(a) || workLine(a) || '—';
+      var proj = projectAgentControl(a, state.snap);
+      var row =
+        '<article class="har-row' +
+        (open ? ' is-open' : '') +
+        (proj.capability === 'viewOnly' ? ' har-row--view-only' : '') +
+        '" data-agent-row="' +
+        escapeAttr(a.agentId) +
+        '" data-control-mode="' +
+        escapeAttr(proj.controlMode) +
+        '" data-capability="' +
+        escapeAttr(proj.capability) +
+        '" data-availability="' +
+        escapeAttr(proj.availability) +
+        '" role="listitem">' +
+        '<div class="har-row-main">' +
+        '<div class="har-identity">' +
+        '<span class="har-dot har-dot--' +
+        statusTone(a) +
+        '" aria-hidden="true"></span>' +
+        '<span class="har-name">' +
+        escapeHtml(a.displayName || a.agentId) +
+        (needsMark ? '<i class="har-flag">!</i>' : '') +
+        '<small>' +
+        escapeHtml(proj.primaryLabel) +
+        (proj.supportingText
+          ? '<span class="har-support">' + escapeHtml(proj.supportingText) + '</span>'
+          : '') +
+        '</small></span></div>' +
+        '<div class="har-project">' +
+        escapeHtml(project) +
+        '</div>' +
+        '<div class="har-time">' +
+        escapeHtml(workWhen(a)) +
+        '</div>' +
+        '<div class="har-row-actions">' +
+        homeActionButtons(a, { rowOnly: true }) +
+        '</div>' +
+        '<button type="button" class="har-toggle" data-expand-agent="' +
+        escapeAttr(a.agentId) +
+        '" aria-expanded="' +
+        (open ? 'true' : 'false') +
+        '" aria-label="' +
+        escapeAttr(open ? t('collapseAgent') : t('expandAgent')) +
+        '"><span class="har-chevron" aria-hidden="true">' +
+        (open ? '⌃' : '⌄') +
+        '</span></button></div>';
+      if (open) row += renderHomeDetail(a);
+      row += '</article>';
+      return row;
+    }
+
+    var html = '';
+    priority.forEach(function (a) {
       try {
-        var open = state.expandedId === a.agentId;
-        var needsMark = needs.indexOf(a.agentId) >= 0;
-        var project = projectNameOf(a) || workLine(a) || '—';
-        var proj = projectAgentControl(a, state.snap);
-        html +=
-          '<article class="har-row' +
-          (open ? ' is-open' : '') +
-          '" data-agent-row="' +
-          escapeAttr(a.agentId) +
-          '" data-control-mode="' +
-          escapeAttr(proj.controlMode) +
-          '" role="listitem">' +
-          '<div class="har-row-main">' +
-          '<div class="har-identity">' +
-          '<span class="har-dot har-dot--' +
-          statusTone(a) +
-          '" aria-hidden="true"></span>' +
-          '<span class="har-name">' +
-          escapeHtml(a.displayName || a.agentId) +
-          (needsMark ? '<i class="har-flag">!</i>' : '') +
-          '<small>' +
-          escapeHtml(proj.primaryLabel) +
-          (proj.supportingText
-            ? '<span class="har-support">' + escapeHtml(proj.supportingText) + '</span>'
-            : '') +
-          '</small></span></div>' +
-          '<div class="har-project">' +
-          escapeHtml(project) +
-          '</div>' +
-          '<div class="har-time">' +
-          escapeHtml(workWhen(a)) +
-          '</div>' +
-          '<div class="har-row-actions">' +
-          homeActionButtons(a, { rowOnly: true }) +
-          '</div>' +
-          '<button type="button" class="har-toggle" data-expand-agent="' +
-          escapeAttr(a.agentId) +
-          '" aria-expanded="' +
-          (open ? 'true' : 'false') +
-          '" aria-label="' +
-          escapeAttr(open ? t('collapseAgent') : t('expandAgent')) +
-          '"><span class="har-chevron" aria-hidden="true">' +
-          (open ? '⌃' : '⌄') +
-          '</span></button></div>';
-        if (open) html += renderHomeDetail(a);
-        html += '</article>';
+        html += renderRow(a);
       } catch (rowErr) {
         try {
           console.warn('[AgentCenter] row render failed', a && a.agentId, rowErr);
@@ -2170,6 +2392,37 @@
           '</div><div class="har-project">—</div><div class="har-time">—</div></div></article>';
       }
     });
+
+    if (viewOnly.length) {
+      var foldId = 'har-view-only-fold';
+      html +=
+        '<button type="button" class="har-fold-toggle" data-har-fold-toggle="1" aria-expanded="' +
+        (viewOnlyFoldOpen ? 'true' : 'false') +
+        '" aria-controls="' +
+        foldId +
+        '">' +
+        escapeHtml(String(t('foldViewOnly') || '').replace('{n}', String(viewOnly.length))) +
+        '<span class="har-fold-hint">' +
+        escapeHtml(t('foldViewOnlyHint')) +
+        '</span></button>';
+      html +=
+        '<div class="har-fold" id="' +
+        foldId +
+        '"' +
+        (viewOnlyFoldOpen ? '' : ' hidden') +
+        ' data-har-fold>';
+      viewOnly.forEach(function (a) {
+        try {
+          html += renderRow(a);
+        } catch (foldErr) {
+          try {
+            console.warn('[AgentCenter] fold row failed', a && a.agentId, foldErr);
+          } catch (_) {}
+        }
+      });
+      html += '</div>';
+    }
+
     if (!state.showNotFound) {
       var nf = ((state.snap.groups && state.snap.groups.supportedNotFound) || []).length;
       if (nf) {
@@ -2180,6 +2433,7 @@
       }
     }
     list.innerHTML = html;
+    maybeAutoRecoverStale(overview);
   }
 
   function paintPage() {
@@ -2201,7 +2455,7 @@
   }
 
   function paint() {
-    if (state.mountMode === 'home') paintHome();
+    if (state.mountMode === 'home' || state.mountMode === 'overview') paintHome();
     else paintPage();
   }
 
@@ -2391,6 +2645,20 @@
       );
       return;
     }
+    var recoveryBtn = ev.target.closest('[data-har-recovery]');
+    if (recoveryBtn) {
+      handleRecovery(
+        recoveryBtn.getAttribute('data-har-recovery'),
+        recoveryBtn.getAttribute('data-agent-id')
+      );
+      return;
+    }
+    var foldBtn = ev.target.closest('[data-har-fold-toggle]');
+    if (foldBtn) {
+      viewOnlyFoldOpen = !viewOnlyFoldOpen;
+      paint();
+      return;
+    }
     var exp = ev.target.closest('[data-expand-agent]');
     if (exp) {
       var eid = exp.getAttribute('data-expand-agent');
@@ -2413,7 +2681,7 @@
       paint();
       return;
     }
-    var ab = ev.target.closest('[data-agent-id]:not([data-action])');
+    var ab = ev.target.closest('[data-agent-id]:not([data-action]):not([data-har-recovery])');
     if (ab && ab.getAttribute('data-agent-id')) {
       state.selectedId = ab.getAttribute('data-agent-id');
       closeDrawer();
@@ -2431,6 +2699,40 @@
     if (ev.target.closest('[data-ac-drawer-close]')) {
       closeDrawer();
     }
+  }
+
+  function handleRecovery(recoveryId, agentId) {
+    var id = String(recoveryId || '');
+    if (id === 'refresh') {
+      refresh(homeLastHint || null, { force: true });
+      return;
+    }
+    if (id === 'connect' || id === 'map') {
+      navigateAgentSub('softPad', byId(agentId) || { agentId: agentId });
+    }
+  }
+
+  /** Auto force-refresh once per snapshot asOf when stale rows exist (cooldown gated). */
+  function maybeAutoRecoverStale(overview) {
+    if (!overview || !(overview.stale > 0)) return;
+    if (typeof window !== 'undefined' && window.__ONETONE_E2E_HOME_FIXTURE__) return;
+    if (staleRecovery.inFlight) return;
+    var asOf = state.snap && state.snap.asOf;
+    if (!asOf) return;
+    if (staleRecovery.attemptedSnapshotAsOf === asOf) return;
+    var now = Date.now();
+    if (now - staleRecovery.lastAttemptAt < STALE_AUTO_COOLDOWN_MS) return;
+    staleRecovery.inFlight = true;
+    staleRecovery.lastAttemptAt = now;
+    staleRecovery.attemptedSnapshotAsOf = asOf;
+    refresh(homeLastHint || null, { force: true }).then(
+      function () {
+        staleRecovery.inFlight = false;
+      },
+      function () {
+        staleRecovery.inFlight = false;
+      }
+    );
   }
 
   function bind(root) {
@@ -2453,20 +2755,130 @@
     }
   }
 
-  function openDrawer() {
-    state.drawerOpen = true;
-    var d = document.getElementById('acDrawer');
-    if (d) {
-      d.classList.add('is-open');
-      d.setAttribute('aria-hidden', 'false');
+  function isFocusableEl(el) {
+    if (!el || el.nodeType !== 1) return false;
+    if (el.disabled) return false;
+    if (el.getAttribute && el.getAttribute('tabindex') === '-1') return false;
+    if (el.hidden || (el.getAttribute && el.getAttribute('aria-hidden') === 'true')) return false;
+    var style = el.ownerDocument && el.ownerDocument.defaultView
+      ? el.ownerDocument.defaultView.getComputedStyle(el)
+      : null;
+    if (style && (style.visibility === 'hidden' || style.display === 'none')) return false;
+    // offsetParent is null for fixed/body-attached; fall back to getClientRects when available.
+    if (el.offsetParent === null && el !== el.ownerDocument.body) {
+      if (typeof el.getClientRects === 'function' && el.getClientRects().length === 0) return false;
+    }
+    var tag = (el.tagName || '').toLowerCase();
+    if (tag === 'a' && el.href) return true;
+    if (tag === 'button' || tag === 'input' || tag === 'select' || tag === 'textarea') return true;
+    if (el.isContentEditable) return true;
+    var ti = el.getAttribute && el.getAttribute('tabindex');
+    return ti != null && ti !== '' && Number(ti) >= 0;
+  }
+
+  function getDrawerFocusables(drawer) {
+    var panel = drawer && drawer.querySelector
+      ? drawer.querySelector('.ac-drawer-panel') || drawer
+      : null;
+    if (!panel || !panel.querySelectorAll) return [];
+    var nodes = panel.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]'
+    );
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      if (isFocusableEl(nodes[i])) out.push(nodes[i]);
+    }
+    return out;
+  }
+
+  function ensureDrawerKeysBound() {
+    if (drawerKeysBound || typeof document === 'undefined' || !document.addEventListener) return;
+    drawerKeysBound = true;
+    document.addEventListener('keydown', handleDrawerKeydown);
+  }
+
+  function handleDrawerKeydown(ev) {
+    if (!state.drawerOpen) return;
+    if (ev.isComposing || ev.keyCode === 229) return;
+    var drawer = typeof document !== 'undefined' ? document.getElementById('acDrawer') : null;
+    if (!drawer) return;
+    if (ev.key === 'Escape' || ev.key === 'Esc') {
+      ev.preventDefault();
+      closeDrawer();
+      return;
+    }
+    if (ev.key !== 'Tab') return;
+    var focusables = getDrawerFocusables(drawer);
+    if (!focusables.length) {
+      ev.preventDefault();
+      return;
+    }
+    var first = focusables[0];
+    var last = focusables[focusables.length - 1];
+    var active = document.activeElement;
+    if (ev.shiftKey) {
+      if (active === first || !drawer.contains(active)) {
+        ev.preventDefault();
+        last.focus();
+      }
+    } else if (active === last || !drawer.contains(active)) {
+      ev.preventDefault();
+      first.focus();
     }
   }
-  function closeDrawer() {
-    state.drawerOpen = false;
+
+  function openDrawer() {
+    ensureDrawerKeysBound();
+    var active = typeof document !== 'undefined' ? document.activeElement : null;
+    if (active && active.nodeType === 1 && active.isConnected) {
+      drawerReturnFocus = active;
+    } else {
+      drawerReturnFocus = null;
+    }
+    state.drawerOpen = true;
     var d = document.getElementById('acDrawer');
+    if (!d) return;
+    d.classList.add('is-open');
+    d.setAttribute('aria-hidden', 'false');
+    if (d.removeAttribute) d.removeAttribute('inert');
+    else d.inert = false;
+    var search = d.querySelector('[data-ac-search]');
+    var focusTarget = search && isFocusableEl(search) ? search : getDrawerFocusables(d)[0];
+    if (focusTarget && focusTarget.focus) {
+      try {
+        focusTarget.focus();
+      } catch (_) {}
+    }
+  }
+
+  function closeDrawer() {
+    var d = typeof document !== 'undefined' ? document.getElementById('acDrawer') : null;
+    var wasOpen = state.drawerOpen || !!(d && d.classList && d.classList.contains('is-open'));
+    state.drawerOpen = false;
     if (d) {
       d.classList.remove('is-open');
       d.setAttribute('aria-hidden', 'true');
+      if (d.setAttribute) d.setAttribute('inert', '');
+      else d.inert = true;
+    }
+    var restore = drawerReturnFocus;
+    drawerReturnFocus = null;
+    if (!wasOpen) return;
+    var target = null;
+    if (restore && restore.isConnected && isFocusableEl(restore)) {
+      target = restore;
+    } else {
+      var picker =
+        (pageHostEl && pageHostEl.querySelector && pageHostEl.querySelector('[data-ac-picker]')) ||
+        (typeof document !== 'undefined' && document.querySelector
+          ? document.querySelector('[data-ac-picker]')
+          : null);
+      if (picker && picker.isConnected && isFocusableEl(picker)) target = picker;
+    }
+    if (target && target.focus) {
+      try {
+        target.focus();
+      } catch (_) {}
     }
   }
 
@@ -2482,6 +2894,11 @@
       state.lastGoodAsOf = snap.asOf || Date.now();
     }
     paint();
+    if (state._pendingNavTarget) {
+      var pending = state._pendingNavTarget;
+      state._pendingNavTarget = null;
+      applyNavTarget(pending);
+    }
   }
 
   function applyLoadFailure(err) {
@@ -2508,7 +2925,7 @@
    * Production refresh: never calls fixtureSnap on failure.
    * Demo: URL ?demo=1 uses fixture when Tauri missing.
    * @param {string} [projectHint]
-   * @param {{ force?: boolean }} [opts]
+   * @param {{ force?: boolean, softPoll?: boolean }} [opts]
    */
   function refresh(projectHint, opts) {
     opts = opts || {};
@@ -2519,9 +2936,11 @@
     state.feedback = null;
     var hintKey = projectHint ? String(projectHint) : '';
     var now = Date.now();
+    // Overview soft poll uses its own 5s cadence — do not apply the 45s home throttle.
     if (
-      state.mountMode === 'home' &&
+      (state.mountMode === 'home' || state.mountMode === 'overview') &&
       !opts.force &&
+      !opts.softPoll &&
       !isDemoMode() &&
       state.snap &&
       hintKey === homeLastHint &&
@@ -2530,13 +2949,31 @@
       paint();
       return Promise.resolve(state.snap);
     }
+    if (homeRefreshInFlight && !opts.force) {
+      return homeRefreshInFlight;
+    }
+    // Force during soft in-flight: wait, then ForceFresh — do not clobber the slot.
+    if (opts.force && homeRefreshInFlight && !opts._forceAfterSoft) {
+      var prior = homeRefreshInFlight;
+      var chained = prior.then(
+        function () {
+          return refresh(projectHint, Object.assign({}, opts, { _forceAfterSoft: true }));
+        },
+        function () {
+          return refresh(projectHint, Object.assign({}, opts, { _forceAfterSoft: true }));
+        }
+      );
+      // Soft callers must join this chain, not the superseded soft promise.
+      homeRefreshInFlight = chained;
+      return chained;
+    }
     homeLastHint = hintKey;
     homeLastRefreshAt = now;
 
     var payload = {
       args: projectHint ? { projectHint: projectHint } : {}
     };
-    // Soft refresh: snapshot only (still probes registry today). Prefer registry_refresh on force/first.
+    // Soft refresh: snapshot only. Force / first → registry_refresh (ForceFresh probes).
     var primary =
       opts.force || !state.snap
         ? 'cmd_agent_registry_refresh'
@@ -2546,8 +2983,13 @@
         ? 'cmd_agent_center_snapshot'
         : 'cmd_agent_registry_refresh';
 
+    function afterRefresh() {
+      if (state.mountMode === 'overview') scheduleOverviewSoftPoll(projectHint);
+    }
+
+    var run;
     if (isDemoMode()) {
-      return invoke(primary, payload)
+      run = invoke(primary, payload)
         .catch(function () {
           return invoke(fallback, payload);
         })
@@ -2557,27 +2999,97 @@
         .catch(function () {
           applySnap(fixtureSnap());
         });
+    } else {
+      run = invoke(primary, payload)
+        .catch(function () {
+          return invoke(fallback, payload);
+        })
+        .then(function (snap) {
+          applySnap(snap);
+        })
+        .catch(function (err) {
+          applyLoadFailure(err);
+        });
     }
-    return invoke(primary, payload)
-      .catch(function () {
-        return invoke(fallback, payload);
-      })
-      .then(function (snap) {
-        applySnap(snap);
-      })
-      .catch(function (err) {
-        applyLoadFailure(err);
-      });
+    // Clear only this generation — a later ForceFresh must not be nulled by an older soft.
+    var tracked = run.then(
+      function (v) {
+        if (homeRefreshInFlight === tracked) homeRefreshInFlight = null;
+        afterRefresh();
+        return v;
+      },
+      function (e) {
+        if (homeRefreshInFlight === tracked) homeRefreshInFlight = null;
+        afterRefresh();
+        throw e;
+      }
+    );
+    homeRefreshInFlight = tracked;
+    return tracked;
+  }
+
+  function isOverviewHostVisible() {
+    if (state.mountMode !== 'overview') return true;
+    var wh = homeHostEl || document.getElementById('workHost');
+    if (!wh) return false;
+    if (wh.hidden) return false;
+    if (typeof document !== 'undefined' && document.hidden) return false;
+    return true;
+  }
+
+  function clearOverviewPoll() {
+    if (overviewPollTimer) {
+      clearTimeout(overviewPollTimer);
+      overviewPollTimer = 0;
+    }
+  }
+
+  /**
+   * Overview-only soft poll: after each tick, reschedule if still visible.
+   * Cached snapshot refresh — control probe TTL is separate (30s backend).
+   */
+  function scheduleOverviewSoftPoll(projectHint) {
+    clearOverviewPoll();
+    if (typeof window !== 'undefined' && window.__ONETONE_E2E_HOME_FIXTURE__) return;
+    if (state.mountMode !== 'overview') return;
+    if (!isOverviewHostVisible()) return;
+    overviewPollTimer = setTimeout(function () {
+      overviewPollTimer = 0;
+      if (state.mountMode !== 'overview' || !isOverviewHostVisible()) return;
+      refresh(projectHint, { softPoll: true }).then(
+        function () {},
+        function () {}
+      );
+    }, OVERVIEW_SOFT_POLL_MS);
+  }
+
+  function ensureOverviewVisibilityBound() {
+    if (overviewVisibilityBound || typeof document === 'undefined') return;
+    overviewVisibilityBound = true;
+    document.addEventListener('visibilitychange', function () {
+      if (state.mountMode !== 'overview') return;
+      if (document.hidden) {
+        clearOverviewPoll();
+        return;
+      }
+      if (!isOverviewHostVisible()) return;
+      refresh(homeLastHint || null, { softPoll: true }).then(
+        function () {},
+        function () {}
+      );
+    });
   }
 
   function scheduleHomeRefresh(projectHint) {
     if (typeof window !== 'undefined' && window.__ONETONE_E2E_HOME_FIXTURE__) return;
+    if (state.mountMode === 'overview' && !isOverviewHostVisible()) return;
     if (homeRefreshTimer) {
       clearTimeout(homeRefreshTimer);
       homeRefreshTimer = 0;
     }
     homeRefreshTimer = setTimeout(function () {
       homeRefreshTimer = 0;
+      if (state.mountMode === 'overview' && !isOverviewHostVisible()) return;
       refresh(projectHint, { force: false });
     }, 400);
   }
@@ -2593,12 +3105,14 @@
       '</button>' +
       '<aside class="ac-roster" data-ac-roster aria-label="roster"></aside>' +
       '<section class="ac-detail" data-ac-detail aria-live="polite"></section>' +
-      '<div class="ac-drawer" id="acDrawer" aria-hidden="true" role="dialog" aria-label="' +
+      '<div class="ac-drawer" id="acDrawer" role="dialog" aria-modal="true" aria-hidden="true" inert aria-label="' +
       escapeAttr(t('drawerTitle')) +
       '">' +
       '<div class="ac-drawer-backdrop" data-ac-drawer-close="1"></div>' +
       '<div class="ac-drawer-panel">' +
-      '<input class="ac-drawer-search" data-ac-search type="search" placeholder="' +
+      '<input class="ac-drawer-search" data-ac-search type="search" name="ac-drawer-search" autocomplete="off" aria-label="' +
+      escapeAttr(t('drawerSearch')) +
+      '" placeholder="' +
       escapeAttr(t('drawerSearch')) +
       '" />' +
       '<div data-ac-drawer-roster></div>' +
@@ -2607,6 +3121,12 @@
     if (drawer && drawer.parentNode !== document.body) {
       document.body.appendChild(drawer);
     }
+    if (drawer) {
+      drawer.setAttribute('aria-modal', 'true');
+      drawer.setAttribute('aria-hidden', 'true');
+      drawer.setAttribute('inert', '');
+    }
+    ensureDrawerKeysBound();
     host.removeAttribute('data-ac-bound');
     bind(host);
     if (drawer) {
@@ -2617,13 +3137,17 @@
   }
 
   /**
-   * Idempotent home roster mount. Safe across Home Focus innerHTML repaints.
+   * Idempotent overview/home roster mount. Safe across host repaints.
    * Does NOT re-hit registry IPC on every paint — only on first mount / hint change / force.
    */
   function mountHome(host, projectHint, opts) {
     opts = opts || {};
     if (!host) return;
-    state.mountMode = 'home';
+    state.mountMode = opts.mountMode === 'overview' ? 'overview' : (opts.mountMode || 'home');
+    if (state.mountMode !== 'overview') clearOverviewPoll();
+    else ensureOverviewVisibilityBound();
+    if (opts.section) state.homeFilter = mapSectionToFilter(opts.section);
+    if (opts.provider) state.homeFilter = String(opts.provider);
     var sameHost = homeHostEl === host && host.getAttribute('data-ac-home-mounted') === '1';
     var hasShell = !!host.querySelector('[data-har-list]');
 
@@ -2637,6 +3161,7 @@
         paintHome();
         scheduleHomeRefresh(projectHint);
       }
+      applyNavTarget(opts);
       return;
     }
 
@@ -2660,11 +3185,53 @@
     }
     bind(host);
     if (state.snap) paintHome();
-    // Defer IPC so Home Focus HTML can paint before EnumWindows/CLI sniff freezes the thread.
+    // Defer IPC so shell HTML can paint before EnumWindows/CLI sniff freezes the thread.
     if (opts.force) {
       refresh(projectHint, { force: true });
     } else {
       scheduleHomeRefresh(projectHint);
+    }
+    applyNavTarget(opts);
+  }
+
+  function mapSectionToFilter(section) {
+    var s = String(section || '');
+    if (s === 'attention') return 'needs';
+    if (s === 'working') return 'working';
+    if (s === 'resumable') return 'resumable';
+    if (s === 'roster' || s === 'history') return 'all';
+    return s || 'all';
+  }
+
+  function applyNavTarget(opts) {
+    opts = opts || {};
+    if (!opts.provider && !opts.sessionId && !opts.projectId && !opts.section) return;
+    if (!state.snap) {
+      state._pendingNavTarget = opts;
+      return;
+    }
+    state._pendingNavTarget = null;
+    var agents = orderedHomeAgents() || [];
+    var match = null;
+    if (opts.sessionId) {
+      match = agents.find(function (a) {
+        var sid = a && (a.sessionId || a.externalSessionId || (a.session && a.session.id));
+        return sid && String(sid) === String(opts.sessionId);
+      });
+    }
+    if (!match && opts.provider) {
+      var want = String(opts.provider).toLowerCase();
+      match = agents.find(function (a) {
+        var id = String((a && (a.agentId || a.runtimeKind || a.displayName)) || '').toLowerCase();
+        return id.indexOf(want) >= 0;
+      });
+    }
+    if (match && match.agentId) {
+      state.expandedId = match.agentId;
+      state.selectedId = match.agentId;
+      paint();
+    } else if (opts.sessionId) {
+      toast(lang() === 'en' ? 'Session not found' : '未找到对应会话');
     }
   }
 
@@ -2672,6 +3239,15 @@
     var host = document.getElementById('homeAgentRoster');
     if (!host) return;
     mountHome(host, projectHint, opts || {});
+  }
+
+  /** Mount Agent Center into Agent → 总览 (#workHost). */
+  function ensureOverviewMounted(host, projectHint, opts) {
+    opts = opts || {};
+    host = host || document.getElementById('workHost');
+    if (!host) return;
+    opts.mountMode = 'overview';
+    mountHome(host, projectHint, opts);
   }
 
   function mountDemo(host) {
@@ -2691,10 +3267,12 @@
     mount: mount,
     mountHome: mountHome,
     ensureHomeMounted: ensureHomeMounted,
+    ensureOverviewMounted: ensureOverviewMounted,
     mountDemo: mountDemo,
     refresh: refresh,
     dispatchAction: dispatchAction,
     ensureWorkHostVisible: ensureWorkHostVisible,
+    applyNavTarget: applyNavTarget,
     _fixture: fixtureSnap,
     _humanReason: humanReason,
     _humanActionReason: humanActionReason,
@@ -2712,6 +3290,7 @@
     _state: state,
     __test: {
       mountHome: mountHome,
+      ensureOverviewMounted: ensureOverviewMounted,
       applySnap: applySnap,
       paint: paint,
       dispatchAction: dispatchAction,
@@ -2721,7 +3300,32 @@
       projectAgentControl: projectAgentControl,
       setAcceptanceManifest: setAcceptanceManifest,
       computeHomeOverview: computeHomeOverview,
-      matchesHomeFilter: matchesHomeFilter
+      matchesHomeFilter: matchesHomeFilter,
+      capabilityOf: capabilityOf,
+      blockerOf: blockerOf,
+      homeActionButtons: homeActionButtons,
+      maybeAutoRecoverStale: maybeAutoRecoverStale,
+      scheduleOverviewSoftPoll: scheduleOverviewSoftPoll,
+      clearOverviewPoll: clearOverviewPoll,
+      isOverviewHostVisible: isOverviewHostVisible,
+      handleRecovery: handleRecovery,
+      getStaleRecovery: function () {
+        return staleRecovery;
+      },
+      getHomeRefreshInFlight: function () {
+        return homeRefreshInFlight;
+      },
+      getViewOnlyFoldOpen: function () {
+        return viewOnlyFoldOpen;
+      },
+      setViewOnlyFoldOpen: function (v) {
+        viewOnlyFoldOpen = !!v;
+      },
+      openDrawer: openDrawer,
+      closeDrawer: closeDrawer,
+      handleDrawerKeydown: handleDrawerKeydown,
+      OVERVIEW_SOFT_POLL_MS: OVERVIEW_SOFT_POLL_MS,
+      STALE_AUTO_COOLDOWN_MS: STALE_AUTO_COOLDOWN_MS
     },
     t: t
   };

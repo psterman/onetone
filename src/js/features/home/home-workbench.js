@@ -3148,8 +3148,9 @@
         activeNav='runtime';
       }else if(panel==='general'){
         activeNav='runtime';
-      }else if(panel==='agent'&&(opts.agentSub==='data'||(ui&&ui.agentSub==='data'))){
-        activeNav='agentData';
+      }else if(panel==='agent'||panel==='agentData'){
+        // Agent → 总览 / 数据：主导航始终高亮 Agent
+        activeNav='agent';
       }else{
         activeNav=NAV_PANEL_MAP[panel||'']||'general';
       }

@@ -30,6 +30,7 @@
   <link rel="stylesheet" href="css/home-workbench.css" />
   <link rel="stylesheet" href="css/now-home.css" />
   <link rel="stylesheet" href="css/home-agent-roster.css" />
+  <link rel="stylesheet" href="css/home-prompt-prep.css" />
   <link rel="stylesheet" href="css/agent-center.css" />
   <link rel="stylesheet" href="css/codex-smoke-feedback.css" />
   <link rel="stylesheet" href="css/agent-proto-panel.css" />
@@ -146,7 +147,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/><path d="M16.5 7.5l1.5-1.5M19 10h2"/></svg>
                 <span data-i18n="homeWbNavAgent">Agent</span>
               </button>
-              <button type="button" class="wb-nav-item" data-wb-nav="agentData" id="wbNavAgentData">
+              <button type="button" class="wb-nav-item" data-wb-nav="agentData" id="wbNavAgentData" hidden aria-hidden="true" title="已并入 Agent → 数据">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 17V9"/><path d="M12 17v-5"/><path d="M16 17V7"/></svg>
                 <span data-i18n="homeWbNavAgentData">数据</span>
               </button>
@@ -5734,11 +5735,14 @@
   <script src="js/features/agent/agent-home-pulse.js"></script>
   <script src="js/features/agent/agent-control-acceptance.js"></script>
   <script src="js/features/agent/agent-center.js"></script>
+  <script src="js/features/agent/agent-nav-target.js"></script>
   <script src="js/features/now/now-agent-home.js"></script>
   <script src="js/features/now/home-focus-store.js"></script>
   <script src="js/features/now/home-focus-adapter.js"></script>
   <script src="js/features/now/home-action-policy.js"></script>
   <script src="js/features/now/home-focus-view.js"></script>
+  <script src="js/features/now/home-agent-status-strip.js"></script>
+  <script src="js/features/now/home-prompt-prep.js"></script>
   <script src="js/features/now/cursor-work-view.js"></script>
   <script src="js/features/now/history-view.js"></script>
   <script src="js/features/now/memory-view.js"></script>

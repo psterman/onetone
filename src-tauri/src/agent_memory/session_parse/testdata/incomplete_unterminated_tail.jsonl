@@ -1,0 +1,2 @@
+{"type":"user","message":{"content":"fixture-hello"},"timestamp":"2026-09-25T00:00:00Z","sessionId":"poc-incomplete"}
+{"type":"assistant","message":{"content":"fixture-reply","id":"msg-inc","model":"model-a","usage":{"input_tokens":10,"output_tokens":2

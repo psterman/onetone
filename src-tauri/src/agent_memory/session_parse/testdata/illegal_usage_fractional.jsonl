@@ -1,0 +1,1 @@
+{"type":"assistant","message":{"content":"fixture-frac","id":"msg-frac","model":"model-a","usage":{"input_tokens":1.5,"output_tokens":2}},"timestamp":"2026-09-25T00:00:00Z","sessionId":"poc-frac"}

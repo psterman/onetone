@@ -78,8 +78,12 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   }
   const html = HFView.renderFocus(vm, {});
   if (!html.includes('hn-canvas')) throw new Error('focus missing hn-canvas');
-  if (!html.includes('hn-headline')) throw new Error('focus missing headline');
-  if (!html.includes('查看判断依据')) throw new Error('focus missing evidence');
+  if (!html.includes('homePromptPrepHost')) throw new Error('focus missing prompt prep host');
+  if (!html.includes('homeAgentStatusHost')) throw new Error('focus missing agent status host');
+  if (html.includes('homeAgentRoster')) throw new Error('focus must not mount full Agent roster');
+  if (html.includes('hn-hero') || html.includes('hn-context-card')) {
+    throw new Error('focus must not show Agent hero/context cards');
+  }
   if (!html.includes('data-hf-view="focus"')) throw new Error('focus missing 现在 nav');
   if (!html.includes('我的习惯')) throw new Error('focus missing 我的习惯 nav');
   if (!html.includes('设置')) throw new Error('focus missing 设置 nav');
@@ -102,18 +106,12 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   ]) {
     if (html.includes(bad)) throw new Error(`focus must not show jargon: ${bad}`);
   }
+  // Prep desk: primary CTA lives in prompt prep action bar, not hero hn-cta.
   const ctas = (html.match(/class="hn-cta"/g) || []).length;
   if (ctas > 1) throw new Error('focus must have at most one primary CTA');
   if (expectMode === 'quiet') {
     if (ctas !== 0) throw new Error('quiet must have no CTA');
     if (vm.primary) throw new Error('quiet must have null primary');
-    // Thin desk: Living zone, summary zone, or legacy presence.
-    if (
-      !html.includes('hn-presence') &&
-      !html.includes('hn-desk-zone')
-    ) {
-      throw new Error('quiet should show presence or desk zone');
-    }
   }
   if (expectPrimaryId) {
     if (!vm.primary || vm.primary.id !== expectPrimaryId) {
@@ -121,7 +119,16 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
         `primary want ${expectPrimaryId} got ${vm.primary && vm.primary.id}`
       );
     }
-    if (!html.includes('data-hf-act="' + expectPrimaryId + '"')) {
+    // Agent resume / progress CTAs moved off home hero — status strip + Agent overview own them.
+    var agentMoved =
+      expectPrimaryId === 'resume' ||
+      expectPrimaryId === 'view_progress' ||
+      expectPrimaryId === 'continue';
+    if (
+      !html.includes('data-hf-act="' + expectPrimaryId + '"') &&
+      !agentMoved &&
+      !(vm.desk && (vm.desk.projectGate || vm.desk.needsYou || vm.desk.needsYouRows))
+    ) {
       throw new Error('primary button missing for ' + expectPrimaryId);
     }
   } else if (expectMode === 'quiet' && html.includes('class="hn-cta"')) {
@@ -195,8 +202,12 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (!r.vm.desk || !r.vm.desk.continueCard) {
     throw new Error('return mode must project Continue desk card');
   }
-  if (!r.html.includes('hn-desk-zone') || !r.html.includes('Continue')) {
-    throw new Error('return mode must render Continue desk zone');
+  // Continue / Living Agent UI is on Agent → 总览; home keeps prep + status strip only.
+  if (r.html.includes('homeAgentRoster') || r.html.includes('hn-hero')) {
+    throw new Error('return mode must not remount Agent hero/roster on home');
+  }
+  if (!r.html.includes('homePromptPrepHost')) {
+    throw new Error('return mode home still needs prep host');
   }
   if (r.html.includes('Marvis') || r.html.includes('第 7 轮')) {
     throw new Error('thin desk must not invent Marvis / deep narrative');
@@ -219,8 +230,12 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (!r.vm.desk || !r.vm.desk.needsYou) {
     throw new Error('attention must project Needs You desk zone');
   }
-  if (!r.html.includes('Needs You') || !r.html.includes('确认文件修改')) {
-    throw new Error('attention must render Needs You with task title');
+  // Agent Needs You is owned by Agent → 总览 / home status strip — not full desk on home.
+  if (r.html.includes('homeAgentRoster') || r.html.includes('hn-hero')) {
+    throw new Error('attention must not remount Agent hero/roster on home');
+  }
+  if (!r.html.includes('homePromptPrepHost') || !r.html.includes('homeAgentStatusHost')) {
+    throw new Error('attention home must keep prep + status hosts');
   }
   if (r.vm.desk.living) throw new Error('Needs You must not also invent Living');
 }
@@ -242,8 +257,9 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (!r.vm.desk || !r.vm.desk.living) {
     throw new Error('running quiet must project Living desk zone');
   }
-  if (!r.html.includes('Living Now') || !r.html.includes('正在活动')) {
-    throw new Error('running quiet must render generic Living copy');
+  // Living / Agent roster UI moved to Agent → 总览; home only keeps prep + status strip.
+  if (r.html.includes('homeAgentRoster') || r.html.includes('Living Now')) {
+    throw new Error('home must not render full Living/Agent roster');
   }
   if (r.vm.desk.needsYou) throw new Error('Living must not mix waiting');
 }
@@ -283,7 +299,12 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     throw new Error('Needs You should name Codex');
   }
   const html = HFView.renderFocus(vm, {});
-  if (!html.includes('Needs You')) throw new Error('enriched attention must render Needs You');
+  if (html.includes('homeAgentRoster') || html.includes('hn-hero')) {
+    throw new Error('enriched attention must not remount Agent roster on home');
+  }
+  if (!html.includes('homeAgentStatusHost')) {
+    throw new Error('enriched attention home must expose status strip host');
+  }
   // Multi-agent: map all waitingEligible + working — do not collapse N→1
   let multi = HFAdapter.toViewModel({
     foreground: { appName: 'Cursor' },
@@ -330,8 +351,12 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     throw new Error('multi waiting headline should count sessions');
   }
   const multiHtml = HFView.renderFocus(multi, {});
-  if ((multiHtml.match(/hn-desk-badge/g) || []).length < 2) {
-    throw new Error('multi rows must render provider badges');
+  // Agent living/needs badges no longer mount on home canvas (Agent → 总览 owns them).
+  if (multiHtml.includes('homeAgentRoster')) {
+    throw new Error('multi attention must not remount home roster');
+  }
+  if (!multiHtml.includes('homePromptPrepHost')) {
+    throw new Error('multi attention home still needs prep host');
   }
   // Expired waitingEligible → reconfirm zone, not Needs You
   let staleVm = HFAdapter.toViewModel({
@@ -407,7 +432,13 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     throw new Error('recent must carry matchConfidence badge');
   }
   const probeHtml = HFView.renderFocus(probeVm, {});
-  if (!probeHtml.includes('hn-desk-probe')) throw new Error('probe foot must render');
+  // Probe foot / Agent desk moved to Agent → 总览; home keeps prep + status hosts.
+  if (probeHtml.includes('hn-desk-probe') || probeHtml.includes('homeAgentRoster')) {
+    throw new Error('home must not render probe foot / Agent roster');
+  }
+  if (!probeHtml.includes('homePromptPrepHost') || !probeHtml.includes('homeAgentStatusHost')) {
+    throw new Error('probe-enriched home must keep prep + status hosts');
+  }
   // Unconfirmed project stays quiet + projectGate; Soft Pad waiting upgrades to attention
   let deg = HFAdapter.toViewModel({
     foreground: { appName: 'Cursor' },
@@ -428,7 +459,9 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   }
   if (!deg.desk.projectGate) throw new Error('projectGate must remain as row when Soft Pad waits');
   const degHtml = HFView.renderFocus(deg, {});
-  if (!degHtml.includes('Needs You')) throw new Error('desk must render Needs You');
+  if (!degHtml.includes('homeAgentStatusHost') || !degHtml.includes('homePromptPrepHost')) {
+    throw new Error('desk must keep status + prep hosts when Soft Pad waits');
+  }
   if (!degHtml.includes('hn-desk-zone--gate') && !degHtml.includes('项目未确认')) {
     throw new Error('project gate row must still render beside Soft Pad');
   }
@@ -478,19 +511,15 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     throw new Error('return H1 must use provider with spacing, got: ' + vm.headline);
   }
   const homeHtml = HFView.renderFocus(vm, {});
-  if (!homeHtml.includes('Continue')) throw new Error('Continue zone must render');
-  if (!homeHtml.includes('Agent 台账')) throw new Error('ledger zone must render');
-  if ((homeHtml.match(/继续上次工作/g) || []).length !== 1) {
-    throw new Error('继续上次工作 must appear exactly once (page CTA only)');
+  // Continue / ledger UI lives on Agent → 总览; home only mounts prep + status strip.
+  if (homeHtml.includes('Continue') || homeHtml.includes('Agent 台账') || homeHtml.includes('homeAgentRoster')) {
+    throw new Error('home must not render Continue/ledger/Agent roster zones');
   }
-  if (homeHtml.includes('hn-desk-meta">checkpoint')) {
-    throw new Error('Continue header must not repeat checkpoint');
+  if (!homeHtml.includes('homePromptPrepHost') || !homeHtml.includes('homeAgentStatusHost')) {
+    throw new Error('return-mode home must keep prep + status hosts');
   }
   if (/\bcheckpoint\b/i.test(vm.desk.continueCard.detail || '')) {
     throw new Error('Continue detail must not repeat the word checkpoint');
-  }
-  if (homeHtml.includes('项目匹配') === false && vm.desk.recent[0].matchBadge) {
-    // badge may render as 项目匹配
   }
   if (vm.desk.recent[0].matchBadge && !/项目匹配/.test(vm.desk.recent[0].matchBadge.label || '')) {
     throw new Error('match badge must say 项目匹配, got ' + vm.desk.recent[0].matchBadge.label);
@@ -625,12 +654,12 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (!living.some((r) => r.title === 'WorkBuddy')) throw new Error('WorkBuddy living from attention');
   if (!living.some((r) => r.title === 'MiniMax')) throw new Error('MiniMax living from running');
   const invHtml = HFView.renderFocus(invVm, {});
-  if (!invHtml.includes('Agent 台账')) throw new Error('inventory ledger must render');
-  if (!invHtml.includes('在跑') || !invHtml.includes('需要你')) {
-    throw new Error('ledger groups 在跑/需要你 must render');
+  // Inventory ledger HTML is owned by Agent → 总览; VM projection still required.
+  if (invHtml.includes('Agent 台账') || invHtml.includes('hn-ledger-group-badge') || invHtml.includes('homeAgentRoster')) {
+    throw new Error('home must not render inventory ledger / Agent roster');
   }
-  if (!invHtml.includes('WorkBuddy') || !invHtml.includes('MiniMax') || !invHtml.includes('Claude')) {
-    throw new Error('inventory agents must appear in HTML');
+  if (!invHtml.includes('homePromptPrepHost') || !invHtml.includes('homeAgentStatusHost')) {
+    throw new Error('inventory-enriched home must keep prep + status hosts');
   }
   // Fake freshness forbidden: missing timestamp must not become 刚刚
   const idleCodex = invVm.desk.ledgerAgents.find((r) => r.title === 'Codex');
@@ -639,10 +668,6 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   }
   if (idleCodex && (/ · $/.test(idleCodex.detail || '') || / · · /.test(idleCodex.detail || ''))) {
     throw new Error('empty when must not leave double separators: ' + idleCodex.detail);
-  }
-  // Shared 高置信 moves to group header (hn-ledger-group-badge), not every row
-  if (!invHtml.includes('hn-ledger-group-badge')) {
-    throw new Error('同组统一置信度 must render on group header');
   }
   // Agent with no presence/running/when → explicit 时间未知
   invVm = HFAdapter.enrichFromInventory(
@@ -778,11 +803,15 @@ assertFocus(
     'quiet',
     null
   );
-  if (!html.includes('voice-pilot')) throw new Error('quiet should name project');
-  if (!html.includes('需要你时再提醒') && !vm.assistance.includes('需要你时再提醒')) {
+  // Prep desk no longer paints project name / assist copy into static HTML.
+  if (!/voice-pilot/.test(vm.headline || '') && !/voice-pilot/.test(vm.assistance || '')) {
+    throw new Error('quiet vm should name project');
+  }
+  if (!vm.assistance || !String(vm.assistance).includes('需要你时再提醒')) {
     throw new Error('quiet assist should stay quiet');
   }
   if (html.includes('hf-say')) throw new Error('quiet must not include say card');
+  if (!html.includes('homePromptPrepHost')) throw new Error('quiet home must keep prep host');
 }
 
 const live = fx.cloneState('s1');

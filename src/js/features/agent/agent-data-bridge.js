@@ -489,6 +489,8 @@
     stop();
     refresh({ kind: 'cursor' });
     pollTimer = setInterval(function () {
+      // Skip when document is hidden — overview/data share shell; only data tab should poll.
+      if (typeof document !== 'undefined' && document.hidden) return;
       refresh({ kind: 'cursor' });
     }, POLL_MS);
   }

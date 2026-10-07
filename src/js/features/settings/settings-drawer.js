@@ -576,7 +576,8 @@
 
   function navHighlightPanel(panel){
     if(panel==='scenes') return 'habits';
-    if(panel==='agent'&&ui.agentSub==='data') return 'agentData';
+    // Agent → 数据仍高亮主导航 Agent（页内标签高亮「数据」）
+    if(panel==='agent'||panel==='agentData') return 'agent';
     return panel;
   }
 
@@ -969,13 +970,21 @@
               console.error('agent settings bridge start',err);
             }
           }
-          if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.start){
-            try{ global.OneToneAgentDataBridge.start(); }catch(err){
-              console.error('agent data bridge start',err);
-            }
-          }
           if(opts.agentSub==='data'||ui.agentSub==='data'){
+            if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.start){
+              try{ global.OneToneAgentDataBridge.start(); }catch(err){
+                console.error('agent data bridge start',err);
+              }
+            }
             postAgentPageCmd('setSub',{sub:'data'});
+          }else{
+            if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
+              try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
+            }
+            postAgentPageCmd('setSub',{sub:'overview'});
+          }
+          if(opts.agentTarget){
+            postAgentPageCmd('navigate',{target:opts.agentTarget});
           }
         },0);
       });
@@ -1686,15 +1695,23 @@
     window.addEventListener('message',function(ev){
       var data=ev&&ev.data;
       if(data&&data.type==='ot-agent-page'&&data.event==='goto-home-roster'){
+        // Compat: old iframe message → open Agent overview
         try{
-          if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.close){
-            global.OneToneSettingsDrawer.close();
+          if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
+            global.OneToneSettingsDrawer.open({panel:'agent',agentSub:null});
           }
         }catch(_){}
         return;
       }
       if(data&&data.type==='ot-agent-page'&&data.event==='sub'){
         ui.agentSub=data.sub==='data'?'data':null;
+        if(data.sub==='data'){
+          if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.start){
+            try{ global.OneToneAgentDataBridge.start(); }catch(_){}
+          }
+        }else if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
+          try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
+        }
         if(ui.drawerOpen&&normalizePanel(ui.settingsPanel)==='agent'){
           try{ syncWorkbenchNav('agent',{agentSub:ui.agentSub}); }catch(_){}
           try{

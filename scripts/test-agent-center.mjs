@@ -34,10 +34,13 @@ const ipcRs = read('src-tauri/src/ipc/commands/shell/agent_center_cmd.rs');
 assert.match(page, /id="workHost"/);
 assert.match(page, /agent-center\.js/);
 assert.match(page, /agent-center\.css/);
-assert.match(page, /setSub\(allowedDeep\[deepSub\]\?deepSub:'softPad'\)/);
+assert.match(page, /data-sub="overview"/);
+assert.match(page, /setSub\(allowedDeep\[deepSub\]\?deepSub:'overview'\)/);
 assert.doesNotMatch(page, /data-sub="work"/);
 assert.doesNotMatch(page, /data-sub="homeRoster"/);
 assert.match(page, /id==='work'\|\|id==='homeRoster'/);
+assert.match(page, /ensureOverviewMounted/);
+assert.match(js, /ensureOverviewMounted/);
 
 // Soft Pad boundary
 assert.match(softPad, /NOT authoritative for Agent Center/);
@@ -81,12 +84,21 @@ assert.doesNotMatch(ipcRs, /fn resolve_hints\(/);
 // P0-B: production refresh must not call fixtureSnap on failure
 const refreshFn = js.slice(js.indexOf('function refresh('), js.indexOf('function mount('));
 assert.ok(refreshFn.includes('applyLoadFailure'), 'production path uses applyLoadFailure');
-const returnIdxs = [...refreshFn.matchAll(/return invoke/g)].map((m) => m.index);
-assert.ok(returnIdxs.length >= 3, 'demo + production invoke chains present');
-const prodRefresh = refreshFn.slice(returnIdxs[2]);
-assert.ok(prodRefresh.includes('applyLoadFailure'), 'production catch uses applyLoadFailure');
+assert.ok(refreshFn.includes('isDemoMode()'), 'demo gate present');
 assert.ok(
-  !prodRefresh.includes('fixtureSnap'),
+  refreshFn.includes('applySnap(fixtureSnap())'),
+  'demo path may use fixtureSnap'
+);
+const demoBlock = refreshFn.slice(
+  refreshFn.indexOf('if (isDemoMode())'),
+  refreshFn.indexOf('homeRefreshInFlight = tracked')
+);
+assert.ok(demoBlock.includes('fixtureSnap'), 'demo branch uses fixtureSnap');
+assert.ok(refreshFn.includes('applyLoadFailure(err)'), 'production catch uses applyLoadFailure');
+// Production branch after demo: fixtureSnap must not appear in the else run=
+const afterDemo = refreshFn.slice(refreshFn.indexOf('} else {'));
+assert.ok(
+  !afterDemo.includes('fixtureSnap'),
   'production refresh catch must not call fixtureSnap'
 );
 assert.match(js, /isDemoMode/);
@@ -133,6 +145,10 @@ const sandbox = {
   console,
   setTimeout,
   clearTimeout,
+  Promise,
+  Date,
+  Math,
+  JSON,
   sessionStorage: {
     _m: {},
     setItem(k, v) {
@@ -215,7 +231,7 @@ assert.match(centerRs, /codex_control/);
 assert.doesNotMatch(centerRs, /no_control_evidence/);
 assert.doesNotMatch(centerRs, /no_cursor_mapping/);
 assert.match(js, /destination:\s*['"]softPad['"]|clientEffect/);
-const dispatchSrc = js.slice(js.indexOf('function dispatchAction'), js.indexOf('function ensureWorkHostVisible'));
+const dispatchSrc = js.slice(js.indexOf('function dispatchAction'), js.indexOf('function onHostClick'));
 assert.match(dispatchSrc, /cmd_agent_center_action/);
 assert.match(dispatchSrc, /attemptId/);
 assert.match(dispatchSrc, /outcome/);
@@ -315,14 +331,16 @@ assert.equal(ov.discovered, 4);
 assert.equal(ov.working, 1, 'stale working must not count');
 assert.equal(ov.confirmable, 1);
 assert.equal(ov.bestEffort, 1);
+assert.equal(ov.controllable, 2);
+assert.equal(ov.viewOnly, 2);
 assert.equal(ov.unsupported, 1);
-assert.equal(ov.notWired, 1);
+assert.equal(ov.notWired, 2, 'native-without-enabled + probe_not_implemented');
+assert.equal(ov.stale, 1, 'hotkey row with expired observedStatus');
 assert.equal(ov.verifiableInterrupt, 1);
 assert.equal(ov.bestEffortInterrupt, 1);
-assert.equal(ov.unsupportedInterrupt, 1);
-assert.equal(ov.unknownInterrupt, 1);
-assert.equal(ov.bestEffort, 1, 'bestEffort card excludes notWired/unsupported');
-assert.equal(ov.notWired + ov.unsupported + ov.confirmable + ov.bestEffort, 4);
+assert.equal(ov.unsupportedInterrupt, 2);
+assert.equal(ov.unknownInterrupt, 3, 'notWired×2 + stale×1');
+assert.equal(ov.bestEffort, 1, 'bestEffort card excludes notWired/unsupported capability');
 
 assert.equal(AC._matchesHomeFilter(overviewSnap.agents[0], 'confirmable', overviewSnap), true);
 assert.equal(AC._matchesHomeFilter(overviewSnap.agents[0], 'verifiable', overviewSnap), true);
@@ -435,11 +453,20 @@ const cursorBreakSnap = {
   agents: [cursorNoMap, cursorStale, cursorNoAct, cursorAgent]
 };
 const cursorOv = AC._computeHomeOverview(cursorBreakSnap);
-assert.equal(cursorOv.bestEffort, 1, 'only enabled fresh Cursor hotkey counts as bestEffort');
-assert.equal(AC._matchesHomeFilter(cursorNoMap, 'bestEffort', cursorBreakSnap), false);
-assert.equal(AC._matchesHomeFilter(cursorStale, 'bestEffort', cursorBreakSnap), false);
+assert.equal(cursorOv.bestEffort, 4, 'capability counts all Cursor rows including blocked');
+assert.equal(cursorOv.controllable, 4);
+assert.equal(AC._matchesHomeFilter(cursorNoMap, 'bestEffort', cursorBreakSnap), true);
+assert.equal(AC._matchesHomeFilter(cursorStale, 'bestEffort', cursorBreakSnap), true);
 assert.equal(AC._matchesHomeFilter(cursorNoAct, 'notWired', cursorBreakSnap), true);
 assert.equal(AC._matchesHomeFilter(cursorAgent, 'bestEffort', cursorBreakSnap), true);
+assert.equal(cursorNoMapProj.capability, 'bestEffort');
+assert.equal(cursorNoMapProj.availability, 'blocked');
+assert.equal(cursorStaleProj.capability, 'bestEffort');
+assert.equal(cursorStaleProj.availability, 'blocked');
+assert.equal(cursorStaleProj.blocker, 'stale');
+assert.equal(cursorStaleProj.recovery && cursorStaleProj.recovery.id, 'refresh');
+assert.doesNotMatch(cursorStaleProj.primaryLabel, /不可控制/);
+assert.doesNotMatch(cursorNoMapProj.primaryLabel, /不可控制/);
 
 const claudeAgent = {
   agentId: 'kind:claude',
@@ -566,5 +593,249 @@ assert.doesNotMatch(
 
 assert.ok(AC.__test && typeof AC.__test.applySnap === 'function');
 assert.ok(typeof AC.__test.dispatchAction === 'function');
+
+// --- Trust UI: capability ≠ temporary unsupported ---
+const codexBlocked = {
+  agentId: 'kind:codex',
+  runtimeKind: 'codex',
+  displayName: 'Codex',
+  actions: [
+    {
+      id: 'agent.interrupt',
+      supported: false,
+      support: 'unsupported',
+      enabled: false,
+      reason: 'control_plane_unavailable'
+    }
+  ]
+};
+const codexProj = AC._projectAgentControl(codexBlocked, { asOf });
+assert.equal(codexProj.capability, 'confirmable', 'Codex stays confirmable when control plane unavailable');
+assert.notEqual(codexProj.capability, 'viewOnly');
+assert.equal(codexProj.availability, 'blocked');
+assert.equal(codexProj.blocker, 'notWired');
+assert.equal(codexProj.recovery && codexProj.recovery.id, 'connect');
+assert.doesNotMatch(codexProj.primaryLabel, /不可控制/);
+
+const idleClaude = {
+  agentId: 'kind:claude-idle',
+  runtimeKind: 'claude',
+  actions: [
+    {
+      id: 'agent.interrupt',
+      support: 'native',
+      enabled: false,
+      reason: 'not_running'
+    }
+  ]
+};
+const idleProj = AC._projectAgentControl(idleClaude, { asOf });
+assert.equal(idleProj.capability, 'confirmable');
+assert.equal(idleProj.availability, 'idle');
+assert.equal(idleProj.blocker, 'noTask');
+assert.equal(idleProj.recovery, null);
+assert.match(idleProj.primaryLabel, /无需停止|No stop needed/);
+assert.match(idleProj.supportingText, /未检测到正在运行|No running task/);
+assert.doesNotMatch(idleProj.primaryLabel, /无需操作|Nothing to do/);
+assert.doesNotMatch(idleProj.supportingText, /没有可操作的任务|No operable task/);
+
+// viewOnly + expired observation must stay unsupported (not stale)
+const viewOnlyStaleObs = {
+  agentId: 'kind:gemini',
+  runtimeKind: 'gemini',
+  displayName: 'Gemini',
+  observedStatus: { value: 'idle', freshUntil: asOf - 1 },
+  actions: [
+    {
+      id: 'agent.interrupt',
+      reason: 'provider_unsupported',
+      enabled: false,
+      freshUntil: asOf - 1
+    }
+  ]
+};
+const viewStaleProj = AC._projectAgentControl(viewOnlyStaleObs, { asOf });
+assert.equal(viewStaleProj.capability, 'viewOnly');
+assert.equal(viewStaleProj.blocker, 'unsupported');
+assert.notEqual(viewStaleProj.blocker, 'stale');
+const cursorStaleNamed = Object.assign({}, cursorStale, { displayName: 'Cursor Stale' });
+const mixedOv = AC._computeHomeOverview({
+  asOf,
+  groups: {
+    needsAttention: [],
+    connected: ['kind:gemini', 'kind:cursor-stale'],
+    discoveredLimited: [],
+    supportedNotFound: []
+  },
+  agents: [viewOnlyStaleObs, cursorStaleNamed]
+});
+assert.equal(mixedOv.unsupported, 1);
+assert.equal(mixedOv.stale, 1);
+assert.equal(mixedOv.staleNames.length, 1);
+assert.equal(mixedOv.staleNames[0], 'Cursor Stale');
+assert.match(AC.t('overviewStaleHintMany'), /等 \{n\}|and \{n\}/);
+
+const aiderView = {
+  agentId: 'kind:aider',
+  runtimeKind: 'aider',
+  actions: [{ id: 'agent.interrupt', reason: 'provider_unsupported', enabled: false }]
+};
+assert.equal(AC._projectAgentControl(aiderView, { asOf }).capability, 'viewOnly');
+
+// focus enabled + interrupt blocked → focus button, no grey stop placeholder
+AC._state.snap = { asOf, agents: [], groups: {} };
+const focusOnlyAgent = {
+  agentId: 'kind:claude-focus',
+  runtimeKind: 'claude',
+  displayName: 'Claude',
+  actions: [
+    { id: 'agent.focus', enabled: true, supported: true },
+    {
+      id: 'agent.interrupt',
+      support: 'native',
+      enabled: false,
+      reason: 'control_plane_unavailable'
+    }
+  ]
+};
+const rowHtml = AC.__test.homeActionButtons(focusOnlyAgent, { rowOnly: true });
+assert.match(rowHtml, /data-action="agent\.focus"/);
+assert.doesNotMatch(rowHtml, /data-action="agent\.interrupt"/);
+assert.match(rowHtml, /data-har-recovery="connect"/);
+assert.doesNotMatch(rowHtml, /disabled/);
+
+// Constants + TTL source
+assert.equal(AC.__test.OVERVIEW_SOFT_POLL_MS, 5000);
+assert.equal(AC.__test.STALE_AUTO_COOLDOWN_MS, 30000);
+const codexBg = read('src-tauri/src/agent_memory/codex_background.rs');
+const claudeBg = read('src-tauri/src/agent_memory/claude_background.rs');
+assert.match(codexBg, /PROBE_TTL_MS:\s*u64\s*=\s*30_000/);
+assert.match(claudeBg, /PROBE_TTL_MS:\s*u64\s*=\s*30_000/);
+assert.match(js, /OVERVIEW_SOFT_POLL_MS\s*=\s*5000/);
+assert.match(js, /scheduleOverviewSoftPoll/);
+assert.match(js, /staleRecovery/);
+assert.match(js, /data-har-fold-toggle/);
+assert.match(js, /aria-controls/);
+assert.doesNotMatch(js, /primaryLabel[\s\S]{0,80}interruptUnavailablePrefix/);
+
+const rosterCss = read('src/css/home-agent-roster.css');
+assert.match(rosterCss, /\.har-fold-toggle/);
+assert.match(rosterCss, /\.har-action--recovery/);
+assert.match(rosterCss, /\.har-row--view-only/);
+assert.match(rosterCss, /\.har-verdict/);
+
+// stale auto-recover: same asOf only once
+const staleSnap = {
+  asOf: 9001,
+  groups: {
+    needsAttention: [],
+    connected: ['kind:cursor-stale'],
+    discoveredLimited: [],
+    supportedNotFound: []
+  },
+  agents: [cursorStale]
+};
+AC._state.mountMode = 'overview';
+AC._state.snap = staleSnap;
+let forceCalls = 0;
+sandbox.__TAURI_INTERNALS__ = {
+  invoke: function (cmd) {
+    forceCalls += 1;
+    return Promise.resolve(staleSnap);
+  }
+};
+AC.__test.getStaleRecovery().attemptedSnapshotAsOf = 0;
+AC.__test.getStaleRecovery().lastAttemptAt = 0;
+AC.__test.getStaleRecovery().inFlight = false;
+AC.__test.maybeAutoRecoverStale(AC._computeHomeOverview(staleSnap));
+assert.equal(AC.__test.getStaleRecovery().attemptedSnapshotAsOf, 9001);
+assert.ok(forceCalls >= 1, 'first stale auto force fires');
+const callsAfterFirst = forceCalls;
+AC.__test.maybeAutoRecoverStale(AC._computeHomeOverview(staleSnap));
+assert.equal(forceCalls, callsAfterFirst, 'same asOf must not auto-force again');
+
+// in-flight refresh merges
+forceCalls = 0;
+let resolveFirst;
+const slow = new Promise(function (r) {
+  resolveFirst = r;
+});
+sandbox.__TAURI_INTERNALS__ = {
+  invoke: function () {
+    forceCalls += 1;
+    return slow.then(function () {
+      return staleSnap;
+    });
+  }
+};
+AC._state.snap = null;
+AC.__test.getStaleRecovery().inFlight = false;
+AC.__test.clearOverviewPoll();
+{
+  const prevFly = AC.__test.getHomeRefreshInFlight();
+  if (prevFly) await prevFly.then(function () {}, function () {});
+}
+const p1 = AC.refresh(null, { force: true });
+const p2 = AC.refresh(null, { softPoll: true });
+assert.equal(p1, p2, 'in-flight soft refresh reuses promise');
+assert.equal(forceCalls, 1);
+resolveFirst();
+await p1;
+
+// soft in-flight + stale force: force waits; soft completion must not null a later force slot
+let softResolve;
+const softGate = new Promise(function (r) {
+  softResolve = r;
+});
+let invokePhase = 'soft';
+let softInvokes = 0;
+let forceInvokes = 0;
+sandbox.__TAURI_INTERNALS__ = {
+  invoke: function (cmd) {
+    if (invokePhase === 'soft') {
+      softInvokes += 1;
+      return softGate.then(function () {
+        return Object.assign({}, staleSnap, { asOf: 9100 });
+      });
+    }
+    forceInvokes += 1;
+    return Promise.resolve(Object.assign({}, staleSnap, { asOf: 9101 }));
+  }
+};
+AC._state.snap = null;
+AC._state.mountMode = 'overview';
+AC.__test.getStaleRecovery().attemptedSnapshotAsOf = 0;
+AC.__test.getStaleRecovery().lastAttemptAt = 0;
+AC.__test.getStaleRecovery().inFlight = false;
+invokePhase = 'soft';
+const softPending = AC.refresh(null, { softPoll: true });
+assert.equal(softInvokes, 1);
+invokePhase = 'force';
+const forcePending = AC.refresh(null, { force: true });
+assert.equal(forceInvokes, 0, 'force must wait for soft in-flight');
+softResolve();
+await softPending;
+await forcePending;
+assert.ok(forceInvokes >= 1, 'force runs after soft completes');
+
+assert.match(rosterCss, /\.har-fold-toggle:focus-visible/);
+
+// overview hidden → soft poll timer cleared
+AC._state.mountMode = 'overview';
+sandbox.document.hidden = true;
+AC.__test.clearOverviewPoll();
+AC.__test.scheduleOverviewSoftPoll(null);
+assert.equal(AC.__test.isOverviewHostVisible(), false);
+
+// Narrow drawer a11y markup contracts (behavior covered by test-agent-center-drawer-a11y)
+assert.match(js, /aria-modal="true"/);
+assert.match(js, /name="ac-drawer-search"/);
+assert.match(js, /autocomplete="off"/);
+assert.match(js, /escapeAttr\(t\('drawerSearch'\)\)/);
+assert.match(js, /\binert\b/);
+assert.match(js, /handleDrawerKeydown/);
+assert.ok(typeof AC.__test.openDrawer === 'function');
+assert.ok(typeof AC.__test.closeDrawer === 'function');
+assert.ok(typeof AC.__test.handleDrawerKeydown === 'function');
 
 console.log('test-agent-center: ok');

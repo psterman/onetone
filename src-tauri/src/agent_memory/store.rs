@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS provider_cursors (
 
 pub fn with_write<F, T>(f: F) -> Result<T, String>
 where
-    F: FnOnce(&Connection) -> Result<T, String>,
+    F: FnOnce(&mut Connection) -> Result<T, String>,
 {
     let mutex = WRITE_CONN.get_or_init(|| {
         let path = agent_memory_db_path();
@@ -93,15 +93,15 @@ where
         migrate(&conn).expect("migrate agent-memory");
         Mutex::new(conn)
     });
-    let conn = mutex
+    let mut conn = mutex
         .lock()
         .map_err(|_| "agent_memory write lock poisoned".to_string())?;
-    f(&conn)
+    f(&mut conn)
 }
 
 pub fn with_read_path<F, T>(f: F) -> Result<T, String>
 where
-    F: FnOnce(&Connection) -> Result<T, String>,
+    F: FnOnce(&mut Connection) -> Result<T, String>,
 {
     // ponytail: same write mutex for reads in v1 — upgrade to separate RO pool if contention shows
     with_write(f)
@@ -218,6 +218,24 @@ pub(crate) fn migrate(conn: &Connection) -> Result<(), String> {
             [now],
         )
         .map_err(|e| format!("record migration v5: {e}"))?;
+    }
+
+    let applied_v6: i64 = conn
+        .query_row(
+            "SELECT COUNT(1) FROM schema_migrations WHERE version = 6",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    if applied_v6 == 0 {
+        conn.execute_batch(crate::agent_memory::transcript_store::schema::MIGRATION_V6_TRANSCRIPT)
+            .map_err(|e| format!("migrate v6 transcript: {e}"))?;
+        let now = now_ms() as i64;
+        conn.execute(
+            "INSERT INTO schema_migrations(version, applied_at_ms) VALUES (6, ?1)",
+            [now],
+        )
+        .map_err(|e| format!("record migration v6: {e}"))?;
     }
     Ok(())
 }
