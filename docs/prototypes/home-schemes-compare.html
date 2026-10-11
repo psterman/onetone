@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OneTone · 首页方案比较</title>
+  <style>
+    :root {
+      --shell: #eef0f1; --paper: #fbfaf7; --ink: #172523; --ink-2: #43514e; --muted: #55635f;
+      --line: #dedfd9; --teal: #176f68; --teal-dark: #115b56; --teal-soft: #dcebe7;
+      --amber: #8b5c23; --amber-soft: #f2e6d5; --shadow: 0 18px 48px rgba(31, 43, 40, .12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--shell); color: var(--ink);
+      font: 15px/1.55 "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+    .wrap { width: min(1080px, calc(100% - 32px)); margin: 28px auto 40px; }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -.03em; font-weight: 750; }
+    .lede { margin: 0 0 22px; color: var(--ink-2); max-width: 62ch; }
+    .rule {
+      margin: 0 0 28px; padding: 14px 16px; border-radius: 12px; background: var(--paper);
+      box-shadow: var(--shadow); color: var(--ink-2); font-size: 14px;
+    }
+    .rule strong { color: var(--ink); }
+    .grid { display: grid; gap: 16px; }
+    article {
+      background: var(--paper); border-radius: 16px; padding: 20px 22px 18px;
+      box-shadow: var(--shadow);
+    }
+    article header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; margin-bottom: 10px; }
+    article h2 { margin: 0; font-size: 18px; font-weight: 750; }
+    .tag {
+      font-size: 11px; font-weight: 750; padding: 2px 8px; border-radius: 999px;
+      background: var(--teal-soft); color: var(--teal-dark);
+    }
+    .tag.warn { background: var(--amber-soft); color: var(--amber); }
+    .pitch { margin: 0 0 12px; color: var(--ink-2); }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .cols h3 { margin: 0 0 6px; font-size: 12px; font-weight: 750; color: var(--muted); letter-spacing: .04em; }
+    .cols ul { margin: 0; padding-left: 1.1em; color: var(--ink-2); font-size: 13.5px; }
+    .cols li { margin: 0 0 4px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    a.btn {
+      display: inline-flex; align-items: center; text-decoration: none; border-radius: 10px;
+      background: var(--teal); color: #fff; padding: 9px 14px; font-weight: 750; font-size: 13.5px;
+    }
+    a.btn.sec { background: transparent; color: var(--teal-dark); border: 1px solid var(--line); }
+    .anti {
+      margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line);
+      color: var(--muted); font-size: 13.5px;
+    }
+    .anti strong { color: var(--ink-2); }
+    table { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 13.5px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-size: 12px; font-weight: 750; }
+    @media (max-width: 720px) {
+      .cols { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>首页方案比较</h1>
+    <p class="lede">针对装订台过载：首页要更简单、能力直达上手，又不能退化成「一个输入框 + 加号藏能力」。下面三份自包含 HTML 可点开对照。</p>
+
+    <div class="rule">
+      <strong>共同约束：</strong>
+      保留左栏「现在 / Agent / 我的习惯 / 设置」；任意时刻最多一个高强调主 CTA；能力有名字、可见，不进「+」菜单；不做搜索引擎式单框；假数据原型，不接 IPC。
+    </div>
+
+    <div class="grid">
+      <article>
+        <header>
+          <h2>A · 情境驾驶舱 + 可见能力</h2>
+          <span class="tag">最贴 PRODUCT</span>
+        </header>
+        <p class="pitch">首屏回答「我在哪 / 下一步」。能力用三块具名入口（整理简报 / 听写 / Agent）始终露出——装订工作台不进首页。</p>
+        <div class="cols">
+          <div>
+            <h3>适合</h3>
+            <ul>
+              <li>坚持情境是主业</li>
+              <li>希望首屏最安静</li>
+              <li>简报/听写是「去某能力」</li>
+            </ul>
+          </div>
+          <div>
+            <h3>代价</h3>
+            <ul>
+              <li>新工作要多点一次才进装订</li>
+              <li>quiet 时首屏偏「空」需靠能力区补存在感</li>
+            </ul>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="btn" href="home-scheme-a-cockpit.html">打开方案 A</a>
+        </div>
+      </article>
+
+      <article>
+        <header>
+          <h2>B · 一句话开场 + 可见材料条</h2>
+          <span class="tag warn">上手最快</span>
+        </header>
+        <p class="pitch">打开就能写「你的话」。材料用三个具名按钮（文本 / 文件 / 链接）直达，芯片只做开/关。情境压成顶栏一行。</p>
+        <div class="cols">
+          <div>
+            <h3>适合</h3>
+            <ul>
+              <li>高频「马上交代 Agent」</li>
+              <li>讨厌四档引用表</li>
+              <li>要直达、但仍看见能力</li>
+            </ul>
+          </div>
+          <div>
+            <h3>代价</h3>
+            <ul>
+              <li>情境叙事变弱（顶栏）</li>
+              <li>与「Prep 次级」略冲，需靠顶栏 CTA 守单按钮</li>
+            </ul>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="btn" href="home-scheme-b-compose.html">打开方案 B</a>
+        </div>
+      </article>
+
+      <article>
+        <header>
+          <h2>C · 两拍页：情境一行 + 轻装订</h2>
+          <span class="tag">折中</span>
+        </header>
+        <p class="pitch">第一拍情境标题行（需要时才出唯一主按钮）。第二拍轻装订：左投料右写话。无常用上下文架、无四档引用。</p>
+        <div class="cols">
+          <div>
+            <h3>适合</h3>
+            <ul>
+              <li>既要看见情境，又要当场开工</li>
+              <li>从 brief-desk 减负后的方向</li>
+            </ul>
+          </div>
+          <div>
+            <h3>代价</h3>
+            <ul>
+              <li>同屏两拍，仍比 A 噪</li>
+              <li>窄屏会叠成上下两段</li>
+            </ul>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="btn" href="home-scheme-c-twobeat.html">打开方案 C</a>
+          <a class="btn sec" href="home-brief-desk.html">对照：旧装订台</a>
+        </div>
+      </article>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>维度</th>
+          <th>A 驾驶舱</th>
+          <th>B 开场写话</th>
+          <th>C 两拍轻台</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>首屏主业</td>
+          <td>情境 + 下一步</td>
+          <td>写意图</td>
+          <td>情境一行 + 轻装订</td>
+        </tr>
+        <tr>
+          <td>能力如何露出</td>
+          <td>三块具名入口</td>
+          <td>三材料按钮 + 交接</td>
+          <td>投料类型芯片 + 交接</td>
+        </tr>
+        <tr>
+          <td>相对「单框+加号」</td>
+          <td>完全不同</td>
+          <td>有大输入，但能力外露</td>
+          <td>双栏，能力外露</td>
+        </tr>
+        <tr>
+          <td>相对旧 brief-desk</td>
+          <td>装订不进首页</td>
+          <td>去掉引用档位表</td>
+          <td>去掉上下文架与四档</td>
+        </tr>
+        <tr>
+          <td>贴 PRODUCT.md</td>
+          <td>最贴</td>
+          <td>偏弱</td>
+          <td>中等</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="anti">
+      <strong>刻意不做：</strong>
+      全页只留一个搜索/聊天输入框；把粘贴、文件、网址、听写、Agent 全塞进「+」；首屏铺开全文/摘要/引用/不发送矩阵。
+    </p>
+  </div>
+</body>
+</html>

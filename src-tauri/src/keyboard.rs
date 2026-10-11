@@ -214,9 +214,15 @@ pub fn focus_window(target_hwnd: winapi::shared::windef::HWND) -> bool {
         if target_hwnd.is_null() || IsWindow(target_hwnd) == 0 {
             return false;
         }
-        // Tray / hidden main windows (common for WeChat): make visible before focus.
+        // Tray / hidden main windows (WeChat, MiniMax CEF): un-hide before focus.
+        // SW_SHOW alone can leave MiniMax's full-size HWND still invisible — use
+        // SW_SHOWNORMAL when currently hidden; SW_RESTORE only when iconic.
         if IsWindowVisible(target_hwnd) == 0 {
-            ShowWindow(target_hwnd, SW_SHOW);
+            use winapi::um::winuser::SW_SHOWNORMAL;
+            ShowWindow(target_hwnd, SW_SHOWNORMAL);
+            if IsWindowVisible(target_hwnd) == 0 {
+                ShowWindow(target_hwnd, SW_SHOW);
+            }
         }
         // Only restore when minimized. Unconditional SW_RESTORE demotes a maximized
         // window back to normal size (looks like a random resize).
@@ -710,7 +716,7 @@ pub fn click_client_relative(
     y_ratio: f32,
 ) -> bool {
     use winapi::shared::windef::{POINT, RECT};
-    use winapi::um::winuser::{ClientToScreen, GetClientRect, SetCursorPos};
+    use winapi::um::winuser::{ClientToScreen, GetClientRect};
 
     unsafe {
         if hwnd.is_null() {
@@ -743,15 +749,29 @@ pub fn click_client_relative(
             return false;
         }
 
-        send_guard::run_guarded(120, || {
-            SetCursorPos(pt.x, pt.y);
-            std::thread::sleep(std::time::Duration::from_millis(35));
-            let down = make_mouse_input(MouseButton::Left, false);
-            let up = make_mouse_input(MouseButton::Left, true);
-            send_inputs(&mut [down, up]);
-        });
-        true
+        click_screen_abs(pt.x, pt.y)
     }
+}
+
+/// Absolute screen click via SendInput (needed for Electron webviews; PostMessage won't focus).
+#[cfg(windows)]
+pub fn click_screen_abs(x: i32, y: i32) -> bool {
+    use winapi::um::winuser::SetCursorPos;
+    send_guard::run_guarded(120, || {
+        unsafe {
+            SetCursorPos(x, y);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(35));
+        let down = make_mouse_input(MouseButton::Left, false);
+        let up = make_mouse_input(MouseButton::Left, true);
+        send_inputs(&mut [down, up]);
+    });
+    true
+}
+
+#[cfg(not(windows))]
+pub fn click_screen_abs(_x: i32, _y: i32) -> bool {
+    false
 }
 
 /// Client-area click via PostMessage — does not depend on Z-order (Soft Pad on top).

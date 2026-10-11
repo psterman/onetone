@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tray-collect-drain"
+description = "Enables the cmd_tray_collect_drain command without any pre-configured scope."
+commands.allow = ["cmd_tray_collect_drain"]
+
+[[permission]]
+identifier = "deny-cmd-tray-collect-drain"
+description = "Denies the cmd_tray_collect_drain command without any pre-configured scope."
+commands.deny = ["cmd_tray_collect_drain"]

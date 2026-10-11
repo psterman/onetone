@@ -102,8 +102,9 @@ fn write_clipboard_unicode(text: &str) -> bool {
     }
 }
 
+/// Read CF_UNICODETEXT for homepage handoff fallbacks (send_text when Ctrl+V fails).
 #[cfg(windows)]
-fn read_clipboard_unicode() -> Result<String, ()> {
+pub(crate) fn read_clipboard_unicode() -> Result<String, ()> {
     use winapi::um::winbase::{GlobalLock, GlobalUnlock};
     use winapi::um::winuser::{CloseClipboard, GetClipboardData, OpenClipboard, CF_UNICODETEXT};
 

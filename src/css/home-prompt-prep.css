@@ -55,7 +55,7 @@
 }
 
 .home-prompt-prep-host {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -73,19 +73,40 @@
   font: 14px/1.5 'Microsoft YaHei', 'PingFang SC', sans-serif;
   display: flex;
   flex-direction: column;
-  min-height: min(72vh, 720px);
+  min-height: 0;
   height: 100%;
+}
+.hpp-materials-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 4px;
+}
+.hpp-collapse {
+  border: 0;
+  background: transparent;
+  color: var(--hpp-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  padding: 4px 2px;
+  white-space: nowrap;
+}
+.hpp-collapse:hover {
+  color: var(--hpp-ink);
 }
 .hpp-app {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 258px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
 }
 .hpp-materials {
-  background: #f9fbfa;
+  background: #f7faf8;
   border-right: 1px solid var(--hpp-line);
-  padding: 18px 14px;
+  padding: 12px 10px;
   overflow: auto;
 }
 .hpp-materials h2 {
@@ -95,7 +116,7 @@
 .hpp-sub {
   font-size: 12px;
   color: var(--hpp-muted);
-  margin: 4px 0 14px;
+  margin: 4px 0 10px;
 }
 .hpp-add-wrap {
   position: relative;
@@ -149,13 +170,13 @@
   background: var(--hpp-soft);
 }
 .hpp-list-head {
-  margin: 20px 3px 8px;
+  margin: 14px 3px 8px;
   font-weight: 700;
   font-size: 13px;
 }
 .hpp-item {
   display: grid;
-  grid-template-columns: 36px 1fr;
+  grid-template-columns: 36px minmax(0, 1fr) 28px;
   gap: 9px;
   align-items: center;
   padding: 9px 8px;
@@ -166,6 +187,22 @@
 }
 .hpp-item.is-excluded {
   opacity: 0.55;
+}
+.hpp-item-rm {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--hpp-muted);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  padding: 0;
+}
+.hpp-item-rm:hover {
+  background: #dfeae5;
+  color: var(--hpp-ink);
 }
 .hpp-ico {
   width: 36px;
@@ -542,7 +579,7 @@
 
 @media (max-width: 900px) {
   .hpp-app {
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 200px 1fr;
   }
   .hpp-sheet {
     padding: 32px 28px;

@@ -1,0 +1,1496 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OneTone · 现在 · 简报装订台（原型）</title>
+  <style>
+    :root {
+      --shell: #eef0f1;
+      --rail: #f5f5f3;
+      --paper: #fbfaf7;
+      --ink: #172523;
+      --ink-2: #43514e;
+      --muted: #55635f;
+      --line: #dedfd9;
+      --line-strong: #c9ccc5;
+      --teal: #176f68;
+      --teal-dark: #115b56;
+      --teal-soft: #dcebe7;
+      --amber: #8b5c23;
+      --amber-soft: #f2e6d5;
+      --red: #9d453b;
+      --red-soft: #f5e4e1;
+      --green: #2a6b4a;
+      --green-soft: #e2efe7;
+      --shadow: 0 18px 48px rgba(31, 43, 40, .12);
+      --focus: #0f756c;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background: var(--shell);
+      color: var(--ink);
+      font: 14px/1.55 "Segoe UI", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 3px;
+    }
+    ::selection { background: var(--teal-soft); color: var(--ink); }
+    ::placeholder { color: #6a7773; }
+
+    .demo-bar {
+      width: min(1280px, calc(100% - 24px));
+      margin: 14px auto 8px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+    .demo-bar span { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .demo-bar button {
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--ink-2);
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .demo-bar button[aria-pressed="true"] {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+    .proto-note {
+      width: min(1280px, calc(100% - 24px));
+      margin: 0 auto 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      z-index: 50;
+      transform: translateX(-50%) translateY(-8px);
+      max-width: min(420px, calc(100% - 24px));
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 650;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+    }
+    .toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .fake-tag {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--amber-soft);
+      color: var(--amber);
+      font-size: 11px;
+      font-weight: 750;
+      vertical-align: middle;
+    }
+    .brief-id .fake-tag, .shelf-sec h2 .fake-tag { display: none; }
+
+    .app {
+      position: relative;
+      width: min(1280px, calc(100% - 24px));
+      height: min(860px, calc(100vh - 92px));
+      min-height: 700px;
+      margin: 0 auto 16px;
+      display: grid;
+      grid-template-columns: 224px minmax(0, 1fr);
+      overflow: hidden;
+      border-radius: 20px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+    .rail {
+      padding: 22px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      background: var(--rail);
+      border-right: 1px solid var(--line);
+      border-radius: 20px 0 0 20px;
+      overflow: hidden;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 10px 24px;
+      font-weight: 800;
+    }
+    .brand-mark {
+      width: 25px; height: 25px;
+      display: grid; place-items: center;
+      border-radius: 8px;
+      background: var(--ink);
+      color: #b5dcd5;
+    }
+    .brand-mark svg { width: 15px; }
+    .nav-group { display: grid; gap: 4px; }
+    .nav-label {
+      margin: 17px 10px 7px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .08em;
+    }
+    .nav-item {
+      width: 100%;
+      min-height: 40px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--ink-2);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+      font-weight: 650;
+    }
+    .nav-item svg {
+      width: 18px; height: 18px;
+      stroke: currentColor; fill: none; stroke-width: 1.8; flex: none;
+    }
+    .nav-item:hover { background: #ebece8; color: var(--ink); }
+    .nav-item[aria-current="page"] {
+      background: var(--teal-soft);
+      color: var(--teal-dark);
+    }
+    .nav-item[aria-current="page"]::after {
+      content: "";
+      width: 6px; height: 6px;
+      margin-left: auto;
+      border-radius: 50%;
+      background: var(--teal);
+    }
+    .rail-bottom {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .main {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto auto;
+      position: relative;
+      overflow: visible;
+      border-radius: 0 20px 20px 0;
+    }
+
+    .page-head {
+      position: relative;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 56px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+      overflow: visible;
+    }
+    .brief-id { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+    .brief-id h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 750;
+      letter-spacing: -.01em;
+    }
+    .brief-meta { color: var(--muted); font-size: 12px; }
+    .head-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+    .ghost {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: transparent;
+      color: var(--ink-2);
+      padding: 7px 10px;
+      font-weight: 650;
+      font-size: 12.5px;
+    }
+    .ghost:hover { background: #fff; border-color: var(--line-strong); }
+    .recent {
+      position: relative;
+    }
+    .recent-menu {
+      position: absolute;
+      right: 0; top: calc(100% + 6px);
+      z-index: 5;
+      width: 260px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 12px 32px rgba(23, 37, 35, .12);
+      display: none;
+    }
+    .recent[data-open="true"] .recent-menu { display: grid; gap: 4px; }
+    .recent-item {
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      text-align: left;
+      padding: 8px 10px;
+    }
+    .recent-item:hover, .recent-item[aria-current="true"] { background: var(--teal-soft); }
+    .recent-item strong { display: block; font-size: 13px; }
+    .recent-item span { color: var(--muted); font-size: 11px; }
+
+    .desk {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+      overflow: hidden;
+      border-radius: 0;
+    }
+
+    .shelf {
+      min-height: 0;
+      overflow: auto;
+      padding: 14px 12px 16px;
+      border-right: 1px solid var(--line);
+      background: #f7f5f1;
+      scrollbar-color: var(--line-strong) transparent;
+    }
+    .shelf-sec { margin-bottom: 16px; }
+    .shelf-sec + .shelf-sec { padding-top: 12px; border-top: 1px solid var(--line); }
+    .shelf-sec h2 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--ink-2);
+      letter-spacing: .02em;
+    }
+    .shelf-sec-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .shelf-sec-head h2 { margin-bottom: 8px; }
+    .shelf-toggle {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 3px 0;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .shelf-sec.is-collapsed .ctx-list { display: none; }
+
+    .paste {
+      min-height: 82px;
+      border: 1.5px dashed var(--line-strong);
+      border-radius: 12px;
+      background: #fffcf8;
+      padding: 14px 10px;
+      display: grid;
+      gap: 8px;
+      place-content: center;
+      text-align: center;
+      transition: border-color .15s, background .15s;
+    }
+    .paste.is-drag { border-color: var(--teal); background: var(--teal-soft); }
+    .paste strong { font-size: 13.5px; }
+    .paste span { color: var(--muted); font-size: 12px; }
+    .paste-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    .chip {
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--ink-2);
+      padding: 4px 9px;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+    .chip:hover { border-color: var(--teal); background: var(--teal-soft); color: var(--teal-dark); }
+
+    .mat-list, .ctx-list { display: grid; gap: 7px; }
+    .empty {
+      padding: 14px 8px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+    .mat-card, .ctx-card {
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      background: transparent;
+      padding: 7px 2px 9px;
+    }
+    .mat-card:last-child, .ctx-card:last-child { border-bottom: 0; }
+    .mat-card.is-off, .ctx-card.is-off { opacity: .55; }
+    .mat-top, .ctx-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .mat-top input, .ctx-top input { margin-top: 3px; accent-color: var(--teal); }
+    .mat-body { min-width: 0; flex: 1; }
+    .mat-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px 7px;
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+    .kind {
+      font-size: 11px;
+      font-weight: 750;
+      color: var(--teal-dark);
+      background: var(--teal-soft);
+      border-radius: 999px;
+      padding: 1px 6px;
+    }
+    .mat-note {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11.5px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .mat-card .mat-note, .ctx-card .mat-note { display: none; }
+    .mat-card:hover .mat-note, .mat-card:focus-within .mat-note,
+    .ctx-card:hover .mat-note, .ctx-card:focus-within .mat-note { display: -webkit-box; }
+    .cite-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .cite-row button {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--ink-2);
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .cite-row button[aria-pressed="true"] {
+      background: var(--teal-soft);
+      border-color: color-mix(in srgb, var(--teal) 35%, var(--line));
+      color: var(--teal-dark);
+    }
+    .cite-row button[data-mode="skip"][aria-pressed="true"] {
+      background: #ececec;
+      color: var(--muted);
+      border-color: var(--line-strong);
+    }
+    .mat-tools { display: flex; gap: 2px; flex: none; }
+    .mat-tools { opacity: 0; transition: opacity .15s ease-out; }
+    .mat-card:hover .mat-tools, .mat-card:focus-within .mat-tools { opacity: 1; }
+    .icon-btn {
+      width: 28px; height: 28px;
+      display: grid; place-items: center;
+      border: 0; border-radius: 8px;
+      background: transparent; color: var(--ink-2);
+    }
+    .icon-btn:hover { background: #eceeea; }
+    .icon-btn svg { width: 14px; stroke: currentColor; fill: none; stroke-width: 1.9; }
+
+    .paper-wrap {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+    .paper-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .paper-toolbar h2 { margin: 0; font-size: 14px; font-weight: 750; }
+    .view-toggle {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      overflow: hidden;
+    }
+    .view-toggle button {
+      border: 0;
+      background: transparent;
+      color: var(--ink-2);
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .view-toggle button[aria-pressed="true"] {
+      background: var(--ink);
+      color: #fff;
+    }
+    .paper-scroll {
+      min-height: 0;
+      overflow: auto;
+      padding: 18px 22px 24px;
+      scrollbar-color: var(--line-strong) transparent;
+    }
+    .sheet {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 8px 8px 20px;
+    }
+    .sheet h3 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--muted);
+      letter-spacing: .04em;
+    }
+    .you-say {
+      width: 100%;
+      min-height: 170px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fffcf8;
+      padding: 12px 14px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+    .cite-block {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+    .cite-block h3 { display: flex; align-items: center; justify-content: space-between; }
+    .cite-block h3::after {
+      content: "自动同步";
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+    .cite-item {
+      margin: 0 0 14px;
+      padding: 11px 0;
+      border-left: 0;
+      border-top: 1px solid var(--line);
+      background: transparent;
+      border-radius: 0;
+    }
+    .cite-item header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--teal-dark);
+    }
+    .cite-item .mode-badge {
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .cite-item pre {
+      margin: 0;
+      white-space: pre-wrap;
+      font: 13px/1.55 "Segoe UI", "Microsoft YaHei", sans-serif;
+      color: var(--ink-2);
+    }
+    .raw-md {
+      width: 100%;
+      min-height: 420px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #1c2422;
+      color: #e8efec;
+      padding: 14px 16px;
+      resize: vertical;
+      font: 12.5px/1.55 Consolas, "Cascadia Mono", monospace;
+    }
+    .raw-md[readonly] { opacity: .95; }
+
+    .send-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 16px;
+      min-height: 54px;
+      padding: 10px 18px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+    .send-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      color: var(--muted);
+      font-size: 12.5px;
+      flex: 1;
+      min-width: 0;
+    }
+    .send-stats b { color: var(--ink-2); font-weight: 700; }
+    .primary {
+      min-height: 40px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--teal);
+      color: #fff;
+      padding: 9px 15px;
+      font-weight: 760;
+    }
+    .primary:hover:not(:disabled) { background: var(--teal-dark); }
+    .primary[data-tone="attention"] { background: var(--amber); }
+    .primary[data-tone="error"] { background: var(--red); }
+
+    .sit-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px 14px;
+      min-height: 42px;
+      padding: 7px 18px;
+      border-top: 1px solid var(--line);
+      background: color-mix(in srgb, var(--paper) 88%, #fff);
+      font-size: 12.5px;
+      color: var(--ink-2);
+    }
+    .sit-bar[data-tone="attention"] { background: color-mix(in srgb, var(--amber-soft) 50%, var(--paper)); }
+    .sit-bar[data-tone="error"] { background: color-mix(in srgb, var(--red-soft) 40%, var(--paper)); }
+    .sit-bar[data-tone="waiting"] { background: color-mix(in srgb, var(--teal-soft) 40%, var(--paper)); }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      flex: none;
+    }
+    .dot.is-pulse { background: var(--teal); animation: pulse 1.2s ease-out infinite; }
+    .dot.is-wait {
+      background: transparent;
+      border: 2px solid var(--ink-2);
+      width: 8px; height: 8px;
+    }
+    .dot.is-attn {
+      width: 0; height: 0;
+      border-radius: 0;
+      background: transparent;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 9px solid var(--amber);
+    }
+    .dot.is-err {
+      width: 8px; height: 8px;
+      border-radius: 1px;
+      background: var(--red);
+      transform: rotate(45deg);
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .4; transform: scale(.7); }
+    }
+    .sit-title { font-weight: 700; color: var(--ink); }
+    .sit-meta { color: var(--muted); }
+    .sit-cta {
+      margin-left: auto;
+      border: 0;
+      background: transparent;
+      color: var(--teal-dark);
+      font-weight: 750;
+      font-size: 12.5px;
+      padding: 4px 0;
+    }
+    .sit-cta[hidden] { display: none !important; }
+    .app[data-tone="attention"] #openSend,
+    .app[data-tone="error"] #openSend { display: none; }
+
+    .scrim {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      background: rgba(22, 32, 30, .22);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 170ms ease-out;
+    }
+    .drawer {
+      position: absolute;
+      z-index: 9;
+      top: 0; right: 0;
+      width: min(380px, calc(100% - 28px));
+      height: 100%;
+      padding: 22px;
+      background: var(--paper);
+      box-shadow: -16px 0 40px rgba(24, 38, 35, .14);
+      transform: translateX(104%);
+      transition: transform 220ms cubic-bezier(.2, .8, .2, 1);
+      overflow: auto;
+    }
+    .app[data-drawer="open"] .scrim { opacity: 1; pointer-events: auto; }
+    .app[data-drawer="open"] .drawer { transform: translateX(0); }
+    .drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .drawer-head h2 { margin: 0; font-size: 18px; }
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--ink-2);
+    }
+    .field select, .field input {
+      width: 100%;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: #fff;
+      padding: 9px 11px;
+    }
+    .diff-card, .todo-card, .receipt {
+      border: 0;
+      border-top: 1px solid var(--line);
+      border-radius: 0;
+      background: transparent;
+      padding: 12px 0;
+      margin-bottom: 4px;
+      font-size: 13px;
+      color: var(--ink-2);
+    }
+    .diff-card strong, .todo-card strong, .receipt strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+    }
+    .receipt {
+      background: var(--green-soft);
+      border: 0;
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .drawer-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .secondary {
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--ink);
+      padding: 9px 13px;
+      font-weight: 700;
+    }
+    .secondary:hover { background: #fff; }
+
+    .mobile-shelf-btn { display: none; }
+    .shelf-drawer-scrim {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      background: rgba(22, 32, 30, .2);
+    }
+    .app[data-shelf="open"] .shelf-drawer-scrim { display: block; }
+
+    @media (max-width: 900px) {
+      .app {
+        grid-template-columns: 68px minmax(0, 1fr);
+        height: min(900px, calc(100vh - 110px));
+      }
+      .rail { padding-inline: 9px; }
+      .brand { justify-content: center; padding-inline: 8px; }
+      .brand > span:last-child, .nav-item span, .nav-label { display: none; }
+      .nav-item { justify-content: center; padding-inline: 0; }
+      .nav-item[aria-current="page"]::after { display: none; }
+      .desk { grid-template-columns: 1fr; }
+      .shelf {
+        display: none;
+        position: absolute;
+        z-index: 7;
+        top: 0; left: 68px; bottom: 0;
+        width: min(300px, calc(100% - 68px));
+        transform: translateX(-125%);
+        transition: transform 200ms ease-out;
+        border-right: 1px solid var(--line);
+        box-shadow: 12px 0 28px rgba(24, 38, 35, .1);
+      }
+      .app[data-shelf="open"] .shelf { display: block; transform: translateX(0); }
+      .mobile-shelf-btn { display: inline-flex; }
+      .page-head, .send-bar, .sit-bar, .paper-toolbar, .paper-scroll { padding-inline: 14px; }
+      .sheet { padding-inline: 16px; }
+      .you-say { min-height: 150px; }
+    }
+
+    /* Distilled agent-composer mode: advanced controls stay discoverable but quiet. */
+    .shelf-sec:nth-child(2) .mat-card { padding-block: 7px; }
+    .shelf-sec:nth-child(2) .cite-row { max-height: 0; overflow: hidden; margin-top: 0; opacity: 0; transition: max-height .15s ease-out, opacity .15s ease-out, margin-top .15s ease-out; }
+    .shelf-sec:nth-child(2) .mat-card:hover .cite-row,
+    .shelf-sec:nth-child(2) .mat-card:focus-within .cite-row { max-height: 40px; margin-top: 8px; opacity: 1; }
+    .paper-toolbar h2::after { content: " · 自动整理"; color: var(--muted); font-size: 11px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="demo-bar" role="toolbar" aria-label="原型演示状态">
+    <span>演示</span>
+    <button type="button" data-demo="blank" aria-pressed="true">空白</button>
+    <button type="button" data-demo="collecting" aria-pressed="false">收集中</button>
+    <button type="button" data-demo="bound" aria-pressed="false">已装订</button>
+    <button type="button" data-demo="handoff" aria-pressed="false">待交接</button>
+    <button type="button" data-demo="waiting" aria-pressed="false">Agent 等待</button>
+    <button type="button" data-demo="error" aria-pressed="false">异常</button>
+  </div>
+  <p class="proto-note">简报装订台原型 · 假数据 · 不接 IPC / 模型 · 材料变化同步引用区，不重置「你的话」</p>
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <div class="app" id="app" data-drawer="closed" data-shelf="closed">
+    <aside class="rail" aria-label="主导航">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 14v-4M9 18V6M13 16V8M17 19V5M21 14v-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        </span>
+        <span>OneTone</span>
+      </div>
+      <nav class="nav-group" aria-label="主要工作">
+        <button class="nav-item" type="button" data-nav="现在" aria-current="page">
+          <svg viewBox="0 0 24 24"><path d="M4 12 12 5l8 7v7H4z"/></svg><span>现在</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="Agent">
+          <svg viewBox="0 0 24 24"><path d="M7 8h10M7 12h7M7 16h5"/><rect x="3" y="4" width="18" height="16" rx="3"/></svg><span>Agent</span>
+        </button>
+      </nav>
+      <div class="nav-label">个人能力</div>
+      <nav class="nav-group" aria-label="个人能力">
+        <button class="nav-item" type="button" data-nav="我的习惯">
+          <svg viewBox="0 0 24 24"><path d="M5 7h14M8 12h8M10 17h4"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="12" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>我的习惯</span>
+        </button>
+      </nav>
+      <div class="rail-bottom">
+        <button class="nav-item" type="button" data-nav="设置">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 13.5v-3l-2-.7-.7-1.7.9-1.9-2.1-2.1-1.9.9-1.7-.7-.7-2h-3l-.7 2-1.7.7-1.9-.9-2.1 2.1.9 1.9-.7 1.7-2 .7v3l2 .7.7 1.7-.9 1.9 2.1 2.1 1.9-.9 1.7.7.7 2h3l.7-2 1.7-.7 1.9.9 2.1-2.1-.9-1.9.7-1.7z"/></svg><span>设置</span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="page-head">
+        <div class="brief-id">
+          <h1 id="briefName">当前工作上下文</h1>
+          <span class="brief-meta" id="briefMeta">v3 · 已自动保存</span>
+          <span class="fake-tag">假数据</span>
+        </div>
+        <div class="head-actions">
+          <button type="button" class="ghost mobile-shelf-btn" id="openShelf" aria-controls="shelf" aria-expanded="false">材料架</button>
+          <button type="button" class="ghost" id="copyVersion">复制版本</button>
+          <button type="button" class="ghost" id="archiveBrief">归档</button>
+          <div class="recent" id="recent">
+            <button type="button" class="ghost" id="recentToggle" aria-expanded="false" aria-controls="recentMenu">最近简报</button>
+            <div class="recent-menu" id="recentMenu" role="menu"></div>
+          </div>
+        </div>
+      </header>
+
+      <div class="desk">
+        <aside class="shelf" id="shelf" aria-label="材料架">
+          <section class="shelf-sec">
+            <h2>补充材料</h2>
+            <div class="paste" id="paste" tabindex="0" role="region" aria-label="粘贴与拖放区">
+              <strong>把要让 Agent 知道的东西放进来</strong>
+              <span>原型不会读取真实剪贴板 / 本地文件</span>
+              <div class="paste-actions">
+                <button type="button" class="chip" data-add="text">粘贴文本</button>
+                <button type="button" class="chip" data-add="image">图片</button>
+                <button type="button" class="chip" data-add="audio">音频</button>
+                <button type="button" class="chip" data-add="video">视频</button>
+                <button type="button" class="chip" data-add="file">文件</button>
+                <button type="button" class="chip" data-add="url">网址</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="shelf-sec">
+            <h2>已加入 <span id="matCount">0</span> 项材料</h2>
+            <div class="mat-list" id="matList"></div>
+          </section>
+
+          <section class="shelf-sec is-collapsed" id="contextShelf">
+            <div class="shelf-sec-head"><h2>常用上下文 <span class="fake-tag">假</span></h2><button class="shelf-toggle" id="contextToggle" type="button" aria-expanded="false" aria-controls="ctxList">展开</button></div>
+            <div class="ctx-list" id="ctxList"></div>
+          </section>
+        </aside>
+
+        <section class="paper-wrap" aria-label="装订纸">
+          <div class="paper-toolbar">
+            <h2>给 Agent 的上下文</h2>
+            <div class="view-toggle" role="group" aria-label="视图">
+              <button type="button" id="viewPreview" aria-pressed="true">预览</button>
+              <button type="button" id="viewRaw" aria-pressed="false">原始 Markdown</button>
+            </div>
+          </div>
+          <div class="paper-scroll">
+            <div class="sheet" id="previewSheet">
+              <h3>你想让 Agent 先知道什么？</h3>
+              <textarea class="you-say" id="youSay" aria-label="你的话" placeholder="写给 Agent 的说明、目标或问题……"></textarea>
+              <div class="cite-block">
+                <h3>已带入的材料与常用上下文</h3>
+                <div id="citePreview"></div>
+              </div>
+            </div>
+            <textarea class="raw-md" id="rawMd" hidden readonly aria-label="原始 Markdown"></textarea>
+          </div>
+        </section>
+      </div>
+
+      <div class="send-bar">
+        <div class="send-stats">
+          <span>目标 <b id="statAgent">Codex</b></span>
+          <span>引用 <b id="statCites">0</b> 项</span>
+          <span>预算约 <b id="statBudget">0</b> token <span class="fake-tag">估</span></span>
+        </div>
+          <button type="button" class="primary" id="openSend">发给 Agent</button>
+      </div>
+
+      <aside class="sit-bar" id="sitBar" data-tone="" aria-label="当前情境">
+        <span class="dot" id="sitDot" aria-hidden="true"></span>
+        <span class="sit-title" id="sitTitle">Codex 可用</span>
+        <span class="sit-meta" id="sitMeta">voice-pilot · 已确认</span>
+        <button type="button" class="sit-cta" id="sitCta" hidden>查看并决定</button>
+      </aside>
+    </main>
+
+    <div class="shelf-drawer-scrim" id="shelfScrim"></div>
+    <div class="scrim" id="scrim"></div>
+    <aside class="drawer" id="sendDrawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true" inert>
+      <div class="drawer-head">
+        <h2 id="drawerTitle">准备交接</h2>
+        <button type="button" class="icon-btn" id="closeDrawer" aria-label="关闭交接抽屉">
+          <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="field">
+        <label for="agentSelect">目标 Agent</label>
+        <select id="agentSelect">
+          <option value="Codex">Codex</option>
+          <option value="Claude">Claude</option>
+          <option value="Cursor">Cursor Agent</option>
+        </select>
+      </div>
+      <div class="diff-card">
+        <strong>能力差异 <span class="fake-tag">假</span></strong>
+        <div id="agentDiff">Codex 适合仓库内改动与命令执行；大附件需手动上传。</div>
+      </div>
+      <div class="todo-card">
+        <strong>附件待办</strong>
+        <div id="attachTodo">当前无强制手动上传项。</div>
+      </div>
+      <div class="diff-card">
+        <strong>预算</strong>
+        <div id="drawerBudget">约 0 token（原型估算，非真实计量）</div>
+      </div>
+      <div class="receipt" id="receipt" hidden>
+        <strong>诚实回执</strong>
+        正文已准备到剪贴板路径（原型模拟）。无法确认是否在目标 Agent 内发送成功。
+      </div>
+      <div class="drawer-actions">
+        <button type="button" class="primary" id="confirmHandoff">形成交接稿</button>
+        <button type="button" class="secondary" id="cancelHandoff">取消</button>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    (function () {
+      const CITE_MODES = [
+        { id: "full", label: "全文" },
+        { id: "summary", label: "摘要" },
+        { id: "quote", label: "引用" },
+        { id: "skip", label: "不发送" }
+      ];
+
+      const SAMPLES = {
+        text: { kind: "文本", name: "粘贴：首页 IA 笔记", body: "Focus 与 Prep 分层：情境回答「我在哪 / 下一步」，新工作是次级入口。", summary: "Focus/Prep 分层要点", quote: "情境回答「我在哪 / 下一步」" },
+        image: { kind: "图片", name: "wireframe-home.png", body: "[图片] 首页线框截图（假路径）", summary: "首页线框", quote: "wireframe-home.png" },
+        audio: { kind: "音频", name: "standup-note.m4a", body: "[音频] 站会口述 1 分 12 秒（假）", summary: "站会口述", quote: "standup-note.m4a" },
+        video: { kind: "视频", name: "demo-flow.mp4", body: "[视频] 操作路径录屏（假）", summary: "操作录屏", quote: "demo-flow.mp4" },
+        file: { kind: "文件", name: "PRODUCT.md", body: "首页主业是情境驾驶舱；Prep 默认折叠。", summary: "产品真理摘录", quote: "主业：情境驾驶舱" },
+        url: { kind: "网址", name: "https://example.local/home-focus", body: "相关讨论：驾驶舱信息架构。", summary: "IA 讨论链接", quote: "https://example.local/home-focus" }
+      };
+
+      const DEFAULT_CTX = [
+        { id: "c1", name: "项目背景", body: "voice-pilot：Windows-first Tauri 语音助手，当前焦点是首页驾驶舱。", summary: "Tauri 语音助手 · 首页驾驶舱", quote: "当前焦点是首页驾驶舱", enabled: true, mode: "summary" },
+        { id: "c2", name: "Agent 能力", body: "Codex 可读写仓库与跑命令；不代发私聊。", summary: "读写仓库 / 跑命令", quote: "可读写仓库与跑命令", enabled: true, mode: "summary" },
+        { id: "c3", name: "产品原则", body: "不猜测项目；任意时刻最多一个高强调主 CTA。", summary: "不猜测 · 单 CTA", quote: "不猜测项目", enabled: true, mode: "quote" },
+        { id: "c4", name: "用户偏好", body: "中文界面；偏好短反馈与可恢复动作。", summary: "中文 · 短反馈", quote: "偏好短反馈", enabled: false, mode: "skip" },
+        { id: "c5", name: "历史决定", body: "2026-10-08：Prep 不占首屏主舞台。", summary: "Prep 次级", quote: "Prep 不占首屏主舞台", enabled: true, mode: "quote" }
+      ];
+
+      const BRIEFS = [
+        { id: "b1", name: "首次沟通简报", version: "v3", at: "刚刚", you: "请根据材料整理可执行的下一步，保持单 CTA 原则。" },
+        { id: "b2", name: "状态降噪说明", version: "v1", at: "昨天", you: "把 Agent strip 收成图形信号。" },
+        { id: "b3", name: "归档样例", version: "v2", at: "上周一", you: "（已归档）", archived: true }
+      ];
+
+      const DEMOS = {
+        blank: {
+          materials: [],
+          you: "",
+          sit: { tone: "", dot: "", title: "Codex 可用", meta: "voice-pilot · 已确认", cta: "" },
+          meta: "v1 · 尚未保存"
+        },
+        collecting: {
+          materials: [
+            { id: "m1", ...SAMPLES.text, included: true, mode: "full" },
+            { id: "m2", ...SAMPLES.file, included: true, mode: "summary" },
+            { id: "m3", ...SAMPLES.url, included: true, mode: "quote" }
+          ],
+          you: "先把材料收齐，再装订成一页简报。",
+          sit: { tone: "", dot: "", title: "Codex 可用", meta: "voice-pilot · 已确认", cta: "" },
+          meta: "v2 · 已自动保存"
+        },
+        bound: {
+          materials: [
+            { id: "m1", ...SAMPLES.text, included: true, mode: "full" },
+            { id: "m2", ...SAMPLES.image, included: true, mode: "quote" },
+            { id: "m3", ...SAMPLES.file, included: true, mode: "summary" },
+            { id: "m4", ...SAMPLES.url, included: false, mode: "skip" }
+          ],
+          you: "请根据以下引用完成首页装订台验收清单，不要改生产代码。",
+          sit: { tone: "", dot: "", title: "Codex 可用", meta: "voice-pilot · 已确认", cta: "" },
+          meta: "v3 · 已自动保存"
+        },
+        handoff: {
+          materials: [
+            { id: "m1", ...SAMPLES.text, included: true, mode: "summary" },
+            { id: "m2", ...SAMPLES.file, included: true, mode: "full" },
+            { id: "m3", ...SAMPLES.audio, included: true, mode: "quote" }
+          ],
+          you: "交接给 Codex：按简报执行，图片需手动上传。",
+          sit: { tone: "waiting", dot: "wait", title: "待交接 · Codex", meta: "voice-pilot · 已确认", cta: "打开交接" },
+          meta: "v4 · 已自动保存",
+          openDrawer: true
+        },
+        waiting: {
+          materials: [
+            { id: "m1", ...SAMPLES.text, included: true, mode: "summary" },
+            { id: "m2", ...SAMPLES.file, included: true, mode: "summary" }
+          ],
+          you: "Agent 已拿到简报，等你决定是否保留「历史」导航项。",
+          sit: { tone: "attention", dot: "attn", title: "需要你决定", meta: "Codex 等待 · voice-pilot", cta: "查看并决定" },
+          meta: "v4 · 已自动保存"
+        },
+        error: {
+          materials: [
+            { id: "m1", ...SAMPLES.file, included: true, mode: "full" }
+          ],
+          you: "重试读取前台项目状态。",
+          sit: { tone: "error", dot: "err", title: "读取异常", meta: "项目未知 · 未作猜测", cta: "重试" },
+          meta: "v2 · 保存失败（原型）"
+        }
+      };
+
+      const state = {
+        demo: "blank",
+        briefId: "b1",
+        materials: [],
+        ctx: DEFAULT_CTX.map((c) => ({ ...c })),
+        you: "",
+        view: "preview",
+        agent: "Codex",
+        uid: 20,
+        saveTimer: null
+      };
+
+      const $ = (s, r = document) => r.querySelector(s);
+      const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+      const els = {
+        app: $("#app"),
+        matList: $("#matList"),
+        matCount: $("#matCount"),
+        ctxList: $("#ctxList"),
+        youSay: $("#youSay"),
+        citePreview: $("#citePreview"),
+        previewSheet: $("#previewSheet"),
+        rawMd: $("#rawMd"),
+        viewPreview: $("#viewPreview"),
+        viewRaw: $("#viewRaw"),
+        briefName: $("#briefName"),
+        briefMeta: $("#briefMeta"),
+        statAgent: $("#statAgent"),
+        statCites: $("#statCites"),
+        statBudget: $("#statBudget"),
+        sitBar: $("#sitBar"),
+        sitDot: $("#sitDot"),
+        sitTitle: $("#sitTitle"),
+        sitMeta: $("#sitMeta"),
+        sitCta: $("#sitCta"),
+        shelf: $("#shelf"),
+        paste: $("#paste"),
+        recent: $("#recent"),
+        recentMenu: $("#recentMenu"),
+        recentToggle: $("#recentToggle"),
+        openSend: $("#openSend"),
+        sendDrawer: $("#sendDrawer"),
+        scrim: $("#scrim"),
+        closeDrawer: $("#closeDrawer"),
+        agentSelect: $("#agentSelect"),
+        agentDiff: $("#agentDiff"),
+        attachTodo: $("#attachTodo"),
+        drawerBudget: $("#drawerBudget"),
+        receipt: $("#receipt"),
+        confirmHandoff: $("#confirmHandoff"),
+        cancelHandoff: $("#cancelHandoff"),
+        openShelf: $("#openShelf"),
+        shelfScrim: $("#shelfScrim"),
+        toast: $("#toast")
+      };
+
+      let toastTimer = null;
+      let drawerFocus = null;
+
+      function toast(msg) {
+        els.toast.textContent = msg;
+        els.toast.classList.add("is-on");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => els.toast.classList.remove("is-on"), 2200);
+      }
+
+      function nextId(p) { state.uid += 1; return p + state.uid; }
+
+      function modeLabel(id) {
+        return (CITE_MODES.find((m) => m.id === id) || CITE_MODES[0]).label;
+      }
+
+      function extractBody(item) {
+        if (item.mode === "skip" || item.included === false || item.enabled === false) return null;
+        if (item.mode === "summary") return item.summary || item.body;
+        if (item.mode === "quote") return item.quote || item.body;
+        return item.body;
+      }
+
+      function activeCites() {
+        const mats = state.materials
+          .filter((m) => m.included !== false && m.mode !== "skip")
+          .map((m) => ({ source: "材料", name: m.name, kind: m.kind, mode: m.mode, text: extractBody(m) }));
+        const ctxs = state.ctx
+          .filter((c) => c.enabled && c.mode !== "skip")
+          .map((c) => ({ source: "上下文", name: c.name, kind: "上下文", mode: c.mode, text: extractBody(c) }));
+        return [...mats, ...ctxs].filter((x) => x.text);
+      }
+
+      function compileMarkdown() {
+        const lines = [`# ${els.briefName ? els.briefName.textContent : "当前工作上下文"}`, "", "## 你的话", "", state.you || "_（尚未填写）_", ""];
+        const cites = activeCites();
+        if (cites.length) {
+          lines.push("## 引用", "");
+          cites.forEach((c, i) => {
+            lines.push(`### ${i + 1}. ${c.name}（${c.source} · ${modeLabel(c.mode)}）`, "", c.text, "");
+          });
+        } else {
+          lines.push("## 引用", "", "_当前没有纳入发送的引用。_", "");
+        }
+        lines.push("---", "", `_目标 Agent：${state.agent} · 原型假数据_`, "");
+        return lines.join("\n");
+      }
+
+      function estimateTokens() {
+        const md = compileMarkdown();
+        return Math.max(40, Math.round(md.length / 3.2));
+      }
+
+      function scheduleSave() {
+        clearTimeout(state.saveTimer);
+        state.saveTimer = setTimeout(() => {
+          const ver = (els.briefMeta.textContent.match(/v\d+/) || ["v1"])[0];
+          els.briefMeta.textContent = ver + " · 已自动保存";
+          toast("已自动保存（原型）");
+        }, 650);
+      }
+
+      function renderCites() {
+        const cites = activeCites();
+        els.citePreview.innerHTML = "";
+        if (!cites.length) {
+          els.citePreview.innerHTML = '<p class="empty">启用材料或上下文后，引用会排在这里。不会清空上方「你的话」。</p>';
+        } else {
+          cites.forEach((c) => {
+            const el = document.createElement("article");
+            el.className = "cite-item";
+            el.innerHTML =
+              `<header><span>${c.name}</span><span class="mode-badge">${c.source} · ${modeLabel(c.mode)}</span></header>` +
+              `<pre>${c.text.replace(/</g, "&lt;")}</pre>`;
+            els.citePreview.append(el);
+          });
+        }
+        els.rawMd.value = compileMarkdown();
+        els.statCites.textContent = String(cites.length);
+        els.statBudget.textContent = String(estimateTokens());
+        els.statAgent.textContent = state.agent;
+        els.drawerBudget.textContent = `约 ${estimateTokens()} token（原型估算，非真实计量）`;
+        const needsUpload = state.materials.filter((m) => m.included !== false && (m.kind === "图片" || m.kind === "音频" || m.kind === "视频"));
+        els.attachTodo.textContent = needsUpload.length
+          ? needsUpload.map((m) => m.name).join("、") + " 可能需手动上传到目标 Agent。"
+          : "当前无强制手动上传项。";
+      }
+
+      function citeButtons(item, onChange) {
+        const row = document.createElement("div");
+        row.className = "cite-row";
+        row.setAttribute("role", "group");
+        row.setAttribute("aria-label", "引用档位");
+        CITE_MODES.forEach((m) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.dataset.mode = m.id;
+          b.textContent = m.label;
+          b.setAttribute("aria-pressed", String(item.mode === m.id));
+          b.addEventListener("click", () => {
+            item.mode = m.id;
+            if (m.id === "skip" && "included" in item) item.included = false;
+            if (m.id !== "skip" && "included" in item) item.included = true;
+            if ("enabled" in item && m.id === "skip") item.enabled = false;
+            if ("enabled" in item && m.id !== "skip") item.enabled = true;
+            onChange();
+          });
+          row.append(b);
+        });
+        return row;
+      }
+
+      function renderMaterials() {
+        els.matList.innerHTML = "";
+        els.matCount.textContent = String(state.materials.length);
+        if (!state.materials.length) {
+          els.matList.innerHTML = '<div class="empty">还没有材料。从上方粘贴区开始。</div>';
+          return;
+        }
+        state.materials.forEach((m, index) => {
+          const card = document.createElement("div");
+          card.className = "mat-card" + (m.included === false || m.mode === "skip" ? " is-off" : "");
+          const top = document.createElement("div");
+          top.className = "mat-top";
+          const check = document.createElement("input");
+          check.type = "checkbox";
+          check.checked = m.included !== false && m.mode !== "skip";
+          check.setAttribute("aria-label", "纳入 " + m.name);
+          check.addEventListener("change", () => {
+            m.included = check.checked;
+            if (!check.checked) m.mode = "skip";
+            else if (m.mode === "skip") m.mode = "summary";
+            scheduleSave();
+            renderAll();
+          });
+          const body = document.createElement("div");
+          body.className = "mat-body";
+          body.innerHTML =
+            `<div class="mat-title"><span class="kind">${m.kind}</span><span>${m.name}</span></div>` +
+            `<div class="mat-note">${(m.summary || m.body || "").replace(/</g, "&lt;")}</div>`;
+          const tools = document.createElement("div");
+          tools.className = "mat-tools";
+          tools.innerHTML =
+            `<button type="button" class="icon-btn" data-act="up" aria-label="上移" ${index === 0 ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="m6 14 6-6 6 6"/></svg></button>` +
+            `<button type="button" class="icon-btn" data-act="down" aria-label="下移" ${index === state.materials.length - 1 ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="m6 10 6 6 6-6"/></svg></button>` +
+            `<button type="button" class="icon-btn" data-act="del" aria-label="删除"><svg viewBox="0 0 24 24"><path d="M6 7h12M10 7V5h4v2M9 7v12h6V7"/></svg></button>`;
+          tools.querySelector('[data-act="up"]').addEventListener("click", () => {
+            if (index === 0) return;
+            const t = state.materials[index - 1];
+            state.materials[index - 1] = m;
+            state.materials[index] = t;
+            scheduleSave();
+            renderAll();
+          });
+          tools.querySelector('[data-act="down"]').addEventListener("click", () => {
+            if (index >= state.materials.length - 1) return;
+            const t = state.materials[index + 1];
+            state.materials[index + 1] = m;
+            state.materials[index] = t;
+            scheduleSave();
+            renderAll();
+          });
+          tools.querySelector('[data-act="del"]').addEventListener("click", () => {
+            state.materials = state.materials.filter((x) => x.id !== m.id);
+            toast("已删除材料");
+            scheduleSave();
+            renderAll();
+          });
+          top.append(check, body, tools);
+          card.append(top, citeButtons(m, () => { scheduleSave(); renderAll(); }));
+          els.matList.append(card);
+        });
+      }
+
+      function renderCtx() {
+        els.ctxList.innerHTML = "";
+        state.ctx.forEach((c) => {
+          const card = document.createElement("div");
+          card.className = "ctx-card" + (!c.enabled || c.mode === "skip" ? " is-off" : "");
+          const top = document.createElement("div");
+          top.className = "ctx-top";
+          const check = document.createElement("input");
+          check.type = "checkbox";
+          check.checked = !!c.enabled && c.mode !== "skip";
+          check.setAttribute("aria-label", "启用 " + c.name);
+          check.addEventListener("change", () => {
+            c.enabled = check.checked;
+            if (!check.checked) c.mode = "skip";
+            else if (c.mode === "skip") c.mode = "summary";
+            scheduleSave();
+            renderAll();
+          });
+          const body = document.createElement("div");
+          body.className = "mat-body";
+          body.innerHTML =
+            `<div class="mat-title"><span>${c.name}</span></div>` +
+            `<div class="mat-note">${(c.summary || "").replace(/</g, "&lt;")}</div>`;
+          top.append(check, body);
+          card.append(top, citeButtons(c, () => { scheduleSave(); renderAll(); }));
+          els.ctxList.append(card);
+        });
+      }
+
+      function renderRecent() {
+        els.recentMenu.innerHTML = "";
+        BRIEFS.filter((b) => !b.archived).forEach((b) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "recent-item";
+          btn.setAttribute("role", "menuitem");
+          btn.setAttribute("aria-current", String(b.id === state.briefId));
+          btn.innerHTML = `<strong>${b.name}</strong><span>${b.version} · ${b.at}</span>`;
+          btn.addEventListener("click", () => {
+            state.briefId = b.id;
+            els.briefName.textContent = b.name;
+            els.briefMeta.textContent = b.version + " · 已自动保存";
+            // Preserve materials; only swap user voice from brief catalog
+            const keepYou = state.you;
+            state.you = b.you;
+            els.youSay.value = state.you;
+            els.recent.dataset.open = "false";
+            els.recentToggle.setAttribute("aria-expanded", "false");
+            toast("已切换到「" + b.name + "」（正文已换，材料未清空）");
+            renderCites();
+            renderRecent();
+            // If user had typed more recently in same session and switched away accidentally,
+            // we intentionally load brief.you per prototype catalog.
+            void keepYou;
+          });
+          els.recentMenu.append(btn);
+        });
+      }
+
+      function paintSit(sit) {
+        els.sitBar.dataset.tone = sit.tone || "";
+        els.app.dataset.tone = sit.tone || "";
+        els.sitDot.className = "dot" + (sit.dot ? " is-" + sit.dot : "");
+        if (sit.dot === "pulse") els.sitDot.className = "dot is-pulse";
+        els.sitTitle.textContent = sit.title;
+        els.sitMeta.textContent = sit.meta;
+        if (sit.cta) {
+          els.sitCta.hidden = false;
+          els.sitCta.textContent = sit.cta;
+        } else {
+          els.sitCta.hidden = true;
+        }
+      }
+
+      function setView(view) {
+        state.view = view;
+        els.viewPreview.setAttribute("aria-pressed", String(view === "preview"));
+        els.viewRaw.setAttribute("aria-pressed", String(view === "raw"));
+        els.previewSheet.hidden = view !== "preview";
+        els.rawMd.hidden = view !== "raw";
+        if (view === "raw") els.rawMd.value = compileMarkdown();
+      }
+
+      function agentDiffText(name) {
+        if (name === "Claude") return "Claude 适合长文推理；本地仓库命令能力较弱（原型说明）。";
+        if (name === "Cursor") return "Cursor Agent 贴合编辑器；外部附件策略因通道而异（原型说明）。";
+        return "Codex 适合仓库内改动与命令执行；大附件需手动上传。";
+      }
+
+      function setDrawer(open) {
+        els.app.dataset.drawer = open ? "open" : "closed";
+        els.sendDrawer.setAttribute("aria-hidden", String(!open));
+        els.sendDrawer.inert = !open;
+        if (open) els.sendDrawer.removeAttribute("inert");
+        else els.sendDrawer.setAttribute("inert", "");
+        if (open) {
+          drawerFocus = document.activeElement;
+          els.agentSelect.value = state.agent;
+          els.agentDiff.textContent = agentDiffText(state.agent);
+          els.receipt.hidden = true;
+          renderCites();
+          els.closeDrawer.focus();
+        } else if (drawerFocus) {
+          drawerFocus.focus();
+          drawerFocus = null;
+        }
+      }
+
+      function setShelf(open) {
+        els.app.dataset.shelf = open ? "open" : "closed";
+        els.openShelf.setAttribute("aria-expanded", String(open));
+        if (window.matchMedia && window.matchMedia("(max-width: 900px)").matches) {
+          els.shelf.inert = !open;
+          if (open) els.shelf.removeAttribute("inert");
+          else els.shelf.setAttribute("inert", "");
+        }
+      }
+
+      function renderAll() {
+        renderMaterials();
+        renderCtx();
+        renderCites();
+        renderRecent();
+      }
+
+      function addMaterial(kind) {
+        const sample = SAMPLES[kind];
+        state.materials.push({
+          id: nextId("m"),
+          kind: sample.kind,
+          name: sample.name,
+          body: sample.body,
+          summary: sample.summary,
+          quote: sample.quote,
+          included: true,
+          mode: kind === "image" || kind === "audio" || kind === "video" ? "quote" : "full"
+        });
+        scheduleSave();
+        renderAll();
+        toast("已加入" + sample.kind + "（原型）");
+      }
+
+      function applyDemo(name) {
+        const d = DEMOS[name];
+        state.demo = name;
+        $$("[data-demo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.demo === name)));
+        state.materials = d.materials.map((m) => ({ ...m }));
+        // Sync citations from materials — do not wipe user text unless demo supplies you
+        state.you = d.you;
+        els.youSay.value = state.you;
+        els.briefMeta.textContent = d.meta;
+        paintSit(d.sit);
+        setDrawer(!!d.openDrawer);
+        setShelf(false);
+        renderAll();
+      }
+
+      // Events
+      $$("[data-demo]").forEach((b) => b.addEventListener("click", () => applyDemo(b.dataset.demo)));
+      $$("[data-nav]").forEach((b) => b.addEventListener("click", () => {
+        if (b.getAttribute("aria-current") === "page") return;
+        toast("原型提示：不跳转 · 「" + b.dataset.nav + "」");
+      }));
+      $$("[data-add]").forEach((b) => b.addEventListener("click", () => addMaterial(b.dataset.add)));
+
+      els.paste.addEventListener("dragenter", (e) => { e.preventDefault(); els.paste.classList.add("is-drag"); });
+      els.paste.addEventListener("dragover", (e) => { e.preventDefault(); els.paste.classList.add("is-drag"); });
+      els.paste.addEventListener("dragleave", () => els.paste.classList.remove("is-drag"));
+      els.paste.addEventListener("drop", (e) => {
+        e.preventDefault();
+        els.paste.classList.remove("is-drag");
+        addMaterial("file");
+      });
+      els.paste.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+          e.preventDefault();
+          addMaterial("text");
+        }
+      });
+
+      els.youSay.addEventListener("input", () => {
+        state.you = els.youSay.value;
+        // Realtime compile — never clear youSay from material changes
+        renderCites();
+        scheduleSave();
+      });
+
+      els.viewPreview.addEventListener("click", () => setView("preview"));
+      els.viewRaw.addEventListener("click", () => setView("raw"));
+
+      els.recentToggle.addEventListener("click", () => {
+        const open = els.recent.dataset.open === "true";
+        els.recent.dataset.open = String(!open);
+        els.recentToggle.setAttribute("aria-expanded", String(!open));
+      });
+      document.addEventListener("click", (e) => {
+        if (!els.recent.contains(e.target)) {
+          els.recent.dataset.open = "false";
+          els.recentToggle.setAttribute("aria-expanded", "false");
+        }
+      });
+
+      $("#copyVersion").addEventListener("click", () => {
+        toast("已复制当前版本 Markdown（原型）");
+      });
+      $("#archiveBrief").addEventListener("click", () => {
+        toast("已归档当前简报（原型）");
+      });
+
+      els.openSend.addEventListener("click", () => setDrawer(true));
+      els.closeDrawer.addEventListener("click", () => setDrawer(false));
+      els.cancelHandoff.addEventListener("click", () => setDrawer(false));
+      els.scrim.addEventListener("click", () => setDrawer(false));
+      els.confirmHandoff.addEventListener("click", () => {
+        els.receipt.hidden = false;
+        toast("交接稿已形成（未声称真实发送）");
+      });
+      els.agentSelect.addEventListener("change", () => {
+        state.agent = els.agentSelect.value;
+        els.agentDiff.textContent = agentDiffText(state.agent);
+        renderCites();
+      });
+
+      els.sitCta.addEventListener("click", () => {
+        if (els.sitCta.textContent.includes("交接")) setDrawer(true);
+        else toast("原型：" + els.sitCta.textContent);
+      });
+
+      els.openShelf.addEventListener("click", () => setShelf(els.app.dataset.shelf !== "open"));
+      els.shelfScrim.addEventListener("click", () => setShelf(false));
+      $("#contextToggle").addEventListener("click", () => {
+        const section = $("#contextShelf");
+        const collapsed = section.classList.toggle("is-collapsed");
+        $("#contextToggle").setAttribute("aria-expanded", String(!collapsed));
+        $("#contextToggle").textContent = collapsed ? "展开" : "收起";
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          if (els.app.dataset.drawer === "open") setDrawer(false);
+          else if (els.app.dataset.shelf === "open") setShelf(false);
+        }
+        if (els.app.dataset.drawer === "open" && e.key === "Tab") {
+          const focusables = $$("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])", els.sendDrawer)
+            .filter((el) => !el.disabled && el.offsetParent !== null);
+          if (!focusables.length) return;
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      });
+
+      applyDemo("blank");
+    })();
+  </script>
+</body>
+</html>

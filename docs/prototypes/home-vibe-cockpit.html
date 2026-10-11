@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 现在</title>
+  <style>
+    :root {
+      --paper: #fbf8f2;
+      --paper-2: #f4efe7;
+      --canvas: #e7e1d8;
+      --ink: #13243a;
+      --ink-2: #3e4d5e;
+      --muted: #657281;
+      --line: #d9d2c8;
+      --line-strong: #c7bfb4;
+      --teal: #08766e;
+      --teal-deep: #095d58;
+      --teal-soft: #d8ece8;
+      --amber: #9a5a16;
+      --amber-soft: #f8e8d5;
+      --red: #a64034;
+      --red-soft: #f7dfdc;
+      --green: #26714d;
+      --green-soft: #dfece3;
+      --navy: #152a43;
+      --focus: #0b7d73;
+      --shadow: 0 18px 48px rgba(33, 43, 53, .13);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font: 14px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 3px;
+    }
+    ::selection { background: var(--teal-soft); color: var(--ink); }
+
+    .demo-tools {
+      width: min(1220px, calc(100% - 32px));
+      margin: 18px auto 10px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line-strong) transparent;
+    }
+    .demo-tools > span { color: var(--ink-2); font-size: 12px; margin-right: 4px; white-space: nowrap; }
+    .demo-tools button {
+      border: 1px solid rgba(19, 36, 58, .12);
+      color: var(--ink-2);
+      background: rgba(251, 248, 242, .86);
+      border-radius: 999px;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .demo-tools button[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+    .app {
+      width: min(1220px, calc(100% - 32px));
+      height: min(780px, calc(100vh - 88px));
+      min-height: 680px;
+      margin: 0 auto 22px;
+      background: var(--paper);
+      border: 1px solid rgba(19, 36, 58, .09);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    .rail {
+      background: var(--navy);
+      color: #fff;
+      padding: 25px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 8px 30px;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+    .brand-mark {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      align-items: center;
+    }
+    .brand-mark i { display: block; background: #8fd2ca; border-radius: 2px; }
+    .brand-mark i:nth-child(1) { height: 8px; }
+    .brand-mark i:nth-child(2) { height: 18px; }
+    .brand-mark i:nth-child(3) { height: 12px; }
+
+    .nav { display: grid; gap: 5px; }
+    .nav button {
+      border: 0;
+      background: transparent;
+      color: #bdc7d2;
+      text-align: left;
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 650;
+    }
+    .nav button svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+    .nav button[aria-current="page"] { color: #fff; background: rgba(255,255,255,.11); }
+    .nav button:hover { color: #fff; background: rgba(255,255,255,.07); }
+
+    .rail-context {
+      margin-top: auto;
+      padding: 14px 12px 4px;
+      color: #b7c3cf;
+      font-size: 12px;
+    }
+    .rail-context b { display: block; color: #fff; font-size: 13px; margin: 3px 0; overflow: hidden; text-overflow: ellipsis; }
+    .rail-context span { display: flex; align-items: center; gap: 6px; }
+    .pulse { width: 7px; height: 7px; border-radius: 50%; background: #83c8be; box-shadow: 0 0 0 3px rgba(131,200,190,.14); }
+
+    .shell { min-width: 0; display: grid; grid-template-rows: auto 1fr auto; }
+    .topbar {
+      min-height: 64px;
+      padding: 0 28px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .crumb { color: var(--muted); font-size: 13px; }
+    .crumb b { color: var(--ink); }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .quiet-button {
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink-2);
+      border-radius: 9px;
+      padding: 7px 10px;
+      font-weight: 650;
+    }
+    .quiet-button:hover { background: #fff; border-color: var(--line-strong); }
+
+    .content {
+      min-height: 0;
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line-strong) transparent;
+      padding: 34px 38px 38px;
+    }
+    .content-inner { width: min(850px, 100%); margin: 0 auto; }
+
+    .scene-line {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+    .scene-line .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); }
+    .scene-line strong { color: var(--ink-2); }
+
+    .hero { max-width: 760px; padding-bottom: 26px; }
+    h1 {
+      margin: 0 0 13px;
+      max-width: 22ch;
+      font-family: "STSong", "Songti SC", Georgia, serif;
+      font-size: clamp(34px, 4.2vw, 52px);
+      line-height: 1.12;
+      letter-spacing: -.035em;
+      font-weight: 700;
+      text-wrap: balance;
+    }
+    .assist {
+      margin: 0;
+      max-width: 64ch;
+      color: var(--ink-2);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 22px; }
+    .primary {
+      border: 0;
+      background: var(--teal);
+      color: #fff;
+      border-radius: 11px;
+      min-height: 43px;
+      padding: 10px 17px;
+      font-weight: 760;
+      box-shadow: 0 2px 7px rgba(8,118,110,.18);
+    }
+    .primary:hover { background: var(--teal-deep); }
+    .primary[data-tone="attention"] { background: var(--amber); }
+    .primary[data-tone="error"] { background: var(--red); }
+    .text-action {
+      border: 0;
+      background: transparent;
+      color: var(--teal-deep);
+      padding: 8px 2px;
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+      text-decoration-thickness: 1px;
+      text-decoration-color: #95bdb8;
+    }
+    .text-action:hover { color: var(--ink); }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 13px;
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .meta b { color: var(--ink-2); }
+    .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 9px; background: var(--teal-soft); color: var(--teal-deep); font-size: 12px; font-weight: 750; }
+    .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .badge.warn { background: var(--amber-soft); color: #7e470d; }
+    .badge.error { background: var(--red-soft); color: var(--red); }
+    .badge.done { background: var(--green-soft); color: var(--green); }
+
+    .strip {
+      display: none;
+      margin: 0 0 22px;
+      padding: 11px 13px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .strip.show { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .strip strong { color: var(--ink-2); }
+
+    .result {
+      display: none;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 17px 0;
+      margin-bottom: 22px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 20px;
+      align-items: center;
+    }
+    .result.show { display: grid; }
+    .result h2 { margin: 0 0 5px; font-size: 15px; }
+    .result p { margin: 0; color: var(--muted); font-size: 13px; }
+    .checks { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+    .check { color: var(--green); background: var(--green-soft); border-radius: 7px; padding: 4px 8px; font-size: 12px; font-weight: 700; }
+
+    .prep {
+      border-top: 1px solid var(--line);
+      padding-top: 22px;
+    }
+    .prep-launch { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .prep-copy h2 { margin: 0 0 4px; font: 700 18px/1.3 "STSong", "Songti SC", Georgia, serif; }
+    .prep-copy p { margin: 0; color: var(--muted); }
+    .secondary {
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 9px 13px;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+    .secondary:hover { border-color: #8eb8b3; background: var(--teal-soft); }
+
+    .prep-panel { display: none; margin-top: 18px; }
+    .prep-panel.show { display: block; }
+    .intent-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .intent {
+      border: 0;
+      border-right: 1px solid var(--line);
+      background: rgba(255,255,255,.42);
+      color: var(--ink);
+      padding: 17px;
+      text-align: left;
+      min-height: 104px;
+    }
+    .intent:last-child { border-right: 0; }
+    .intent:hover, .intent[aria-pressed="true"] { background: var(--teal-soft); }
+    .intent b { display: block; margin-bottom: 6px; }
+    .intent span { color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .prep-compose { display: none; margin-top: 12px; }
+    .prep-compose.show { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+    textarea { width: 100%; min-height: 86px; resize: vertical; border: 1px solid var(--line-strong); border-radius: 11px; padding: 12px; color: var(--ink); background: #fff; }
+
+    .dock {
+      min-height: 62px;
+      border-top: 1px solid var(--line);
+      padding: 10px 26px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      background: rgba(251,248,242,.96);
+    }
+    .voice {
+      justify-self: start;
+      border: 0;
+      background: var(--navy);
+      color: #fff;
+      border-radius: 999px;
+      padding: 9px 14px;
+      font-weight: 720;
+    }
+    .voice[aria-pressed="true"] { background: var(--red); }
+    .dock-state { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 7px; }
+    kbd { justify-self: end; background: var(--paper-2); color: var(--ink-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 7px; font: 12px/1.2 Consolas, monospace; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translate(-50%, 14px);
+      opacity: 0;
+      pointer-events: none;
+      color: #fff;
+      background: var(--navy);
+      padding: 9px 13px;
+      border-radius: 9px;
+      box-shadow: 0 8px 24px rgba(19,36,58,.22);
+      transition: opacity .18s ease-out, transform .18s ease-out;
+      z-index: 10;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 820px) {
+      .demo-tools, .app { width: min(100% - 20px, 640px); }
+      .app { grid-template-columns: 1fr; height: auto; min-height: calc(100vh - 76px); }
+      .rail { padding: 14px 16px; flex-direction: row; align-items: center; gap: 14px; }
+      .brand { margin: 0; }
+      .nav { display: flex; margin-left: auto; }
+      .nav button { padding: 8px 10px; }
+      .nav button span { display: none; }
+      .rail-context { display: none; }
+      .content { padding: 28px 22px 34px; }
+      .topbar { padding: 0 20px; }
+      h1 { font-size: clamp(31px, 9vw, 44px); }
+      .intent-grid { grid-template-columns: 1fr; }
+      .intent { border-right: 0; border-bottom: 1px solid var(--line); min-height: auto; }
+      .intent:last-child { border-bottom: 0; }
+      .prep-launch { align-items: flex-start; flex-direction: column; }
+      .result.show { grid-template-columns: 1fr; }
+      .dock { grid-template-columns: 1fr auto; }
+      .dock-state { display: none; }
+    }
+
+    @media (max-width: 520px) {
+      .demo-tools { margin-top: 10px; }
+      .app { border-radius: 15px; margin-bottom: 10px; }
+      .topbar { min-height: 54px; }
+      .top-actions .quiet-button:first-child { display: none; }
+      .content { padding: 24px 18px 30px; }
+      .dock { padding-inline: 16px; }
+      .nav button:nth-child(2) { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-tools" aria-label="原型状态">
+    <span>查看状态</span>
+    <button type="button" data-mode="return" aria-pressed="true">可继续</button>
+    <button type="button" data-mode="context" aria-pressed="false">仅恢复上下文</button>
+    <button type="button" data-mode="running" aria-pressed="false">进行中</button>
+    <button type="button" data-mode="attention" aria-pressed="false">等你决定</button>
+    <button type="button" data-mode="completed" aria-pressed="false">已完成</button>
+    <button type="button" data-mode="quiet" aria-pressed="false">安静</button>
+    <button type="button" data-mode="degraded" aria-pressed="false">异常</button>
+    <button type="button" data-mode="unconfirmed" aria-pressed="false">项目未确认</button>
+  </div>
+
+  <div class="app">
+    <aside class="rail">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>OneTone</div>
+      <nav class="nav" aria-label="主导航">
+        <button type="button" aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm10 7h6v-9h-6v9ZM4 20h6v-3H4v3Zm10-13h6V4h-6v3Z"/></svg><span>现在</span></button>
+        <button type="button"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h13"/></svg><span>Agent</span></button>
+        <button type="button"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM8 10h8M8 14h5"/></svg><span>历史</span></button>
+        <button type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21h-4v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3v-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg><span>设置</span></button>
+      </nav>
+      <div class="rail-context">
+        <span><i class="pulse"></i>正在跟随前台</span>
+        <b>voice-pilot</b>
+        <span>Cursor · 本地工作区</span>
+      </div>
+    </aside>
+
+    <section class="shell">
+      <header class="topbar">
+        <div class="crumb"><b>现在</b> · 当前情境</div>
+        <div class="top-actions">
+          <button class="quiet-button" type="button" data-toast="已打开判断依据">判断依据</button>
+          <button class="quiet-button" type="button" data-toast="已打开 Agent 总览">Agent 总览</button>
+        </div>
+      </header>
+
+      <main class="content">
+        <div class="content-inner">
+          <div class="scene-line"><span class="status-dot"></span><strong id="sceneApp">Cursor</strong><span id="sceneProject">正在处理 voice-pilot</span></div>
+
+          <section class="hero" aria-live="polite" aria-atomic="true">
+            <h1 id="headline"></h1>
+            <p class="assist" id="assist"></p>
+            <div class="hero-actions" id="heroActions"></div>
+            <div class="meta" id="meta"></div>
+          </section>
+
+          <div class="strip" id="strip" aria-live="polite"></div>
+
+          <section class="result" id="result" aria-label="工作结果">
+            <div>
+              <h2>首页情境主叙事已恢复</h2>
+              <p>Agent 已完成修改并留下可检查的结果。</p>
+              <div class="checks"><span class="check">7 个文件已修改</span><span class="check">smoke-now-home 通过</span><span class="check">无待处理问题</span></div>
+            </div>
+            <button class="secondary" type="button" data-toast="已打开结果详情">查看结果</button>
+          </section>
+
+          <section class="prep" id="prep">
+            <div class="prep-launch">
+              <div class="prep-copy"><h2 id="prepTitle">要开始一项新工作？</h2><p id="prepSubtitle">告诉 OneTone 目标，再把材料交给合适的 Agent。</p></div>
+              <button class="secondary" type="button" id="prepToggle" aria-expanded="false">开始新工作</button>
+            </div>
+            <div class="prep-panel" id="prepPanel">
+              <div class="intent-grid" aria-label="选择新工作的类型">
+                <button class="intent" type="button" data-intent="做一个新功能" aria-pressed="false"><b>做一个新功能</b><span>从目标和验收结果开始，不要求你先写完整 Prompt。</span></button>
+                <button class="intent" type="button" data-intent="修复当前问题" aria-pressed="false"><b>修复当前问题</b><span>带上现象、截图或错误信息，交给 Agent 定位。</span></button>
+                <button class="intent" type="button" data-intent="理解并规划项目" aria-pressed="false"><b>理解并规划项目</b><span>先读项目，再给出边界清晰的下一步。</span></button>
+              </div>
+              <div class="prep-compose" id="prepCompose">
+                <textarea id="taskInput" aria-label="描述新工作" placeholder="描述你想得到的结果……"></textarea>
+                <button class="primary" type="button" id="handoff">整理后交给 Agent</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="dock">
+        <button class="voice" type="button" id="voice" aria-pressed="false">开始听写</button>
+        <span class="dock-state"><i class="pulse"></i><span id="dockState">OneTone 正在跟随当前工作</span></span>
+        <kbd>Ctrl+Shift+Space</kbd>
+      </footer>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const states = {
+      return: {
+        app: 'Cursor', scene: '正在处理 voice-pilot',
+        headline: '你上次停在 Codex 的「恢复首页情境主叙事」。',
+        assist: '当前项目仍是 voice-pilot，Codex 会话可以继续执行。',
+        primary: ['resume', '继续上次工作', ''], secondary: ['查看判断依据', '已打开判断依据'],
+        badge: ['已确认', ''], when: '12 分钟前', strip: null, result: false,
+        dock: '上次进度已保存'
+      },
+      context: {
+        app: 'Cursor', scene: '正在处理 voice-pilot',
+        headline: '我记得你上次做到哪里。',
+        assist: '这个 Agent 不能从 OneTone 直接恢复；我可以带你回到会话，并准备好继续说明。',
+        primary: ['restore', '回到上次工作', ''], secondary: ['查看继续说明', '已打开继续说明'],
+        badge: ['可恢复上下文', 'warn'], when: '18 分钟前', strip: null, result: false,
+        dock: '需要你在 Agent 中发送继续说明'
+      },
+      running: {
+        app: 'Codex', scene: '正在修改 voice-pilot',
+        headline: 'Codex 正在恢复首页的情境主叙事。',
+        assist: '它正在修改 Hero、Prompt Prep 和状态去重；当前没有事情需要你处理。',
+        primary: null, secondary: ['补充一句', '已准备向当前 Agent 补充要求'],
+        badge: ['进行中', ''], when: '刚刚', strip: '<strong>当前活动</strong><span>正在检查 smoke-now-home · 已运行 46 秒</span>', result: false,
+        dock: 'Codex 正在工作，可随时补充要求'
+      },
+      attention: {
+        app: 'Claude', scene: '正在处理 voice-pilot',
+        headline: 'Claude 正等你确认一次文件写入。',
+        assist: '其他提醒已经收起；处理这一个决定后，它就能继续。',
+        primary: ['decide', '查看并决定', 'attention'], secondary: null,
+        badge: ['等待确认', 'warn'], when: '刚刚', strip: null, result: false,
+        dock: '有 1 件事需要你处理'
+      },
+      completed: {
+        app: 'Codex', scene: '已完成 voice-pilot',
+        headline: '首页已经改好，可以检查结果了。',
+        assist: '情境 Hero、单一主动作、Prep 折叠和 Agent 状态去重均已落地。',
+        primary: ['result', '查看结果', ''], secondary: ['回到 Agent 会话', '已打开 Agent 会话'],
+        badge: ['已验证', 'done'], when: '2 分钟前', strip: null, result: true,
+        dock: '工作已完成，并留下验证结果'
+      },
+      quiet: {
+        app: 'Cursor', scene: '正在处理 voice-pilot',
+        headline: '你正在 Cursor 中处理 voice-pilot。',
+        assist: '现在没有需要你处理的事；OneTone 会继续留意当前工作。',
+        primary: null, secondary: null,
+        badge: ['无需处理', ''], when: '刚刚', strip: '<strong>当前活动</strong><span>Cursor 已连接 · 没有等待中的 Agent</span>', result: false,
+        dock: 'OneTone 正在跟随当前工作'
+      },
+      degraded: {
+        app: 'Cursor', scene: '项目状态暂不可用',
+        headline: '我暂时无法确认当前工作状态。',
+        assist: '本地活动读取失败。可以重试，或查看判断依据；不会用猜测填充首页。',
+        primary: ['retry', '重试', 'error'], secondary: ['查看判断依据', '已打开判断依据'],
+        badge: ['依据不足', 'error'], when: '时间未知', strip: null, result: false,
+        dock: '当前状态不可确认'
+      },
+      unconfirmed: {
+        app: 'Cursor', scene: '可能正在处理 voice-pilot',
+        headline: '有可继续的工作，但项目尚未确认。',
+        assist: '当前项目可能是 voice-pilot。确认后即可继续；OneTone 不会替你猜。',
+        primary: ['confirm', '确认项目以继续', ''], secondary: ['选择其他项目', '已打开项目选择'],
+        badge: ['未确认 · 不猜测', 'warn'], when: '12 分钟前', strip: null, result: false,
+        dock: '确认项目后才能恢复工作'
+      }
+    };
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => Array.from(document.querySelectorAll(s));
+    let activeMode = 'return';
+    let toastTimer = 0;
+
+    function showToast(message) {
+      const t = $('#toast');
+      t.textContent = message;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+    }
+
+    function actionButton(item, primary) {
+      if (!item) return null;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = primary ? 'primary' : 'text-action';
+      b.textContent = primary ? item[1] : item[0];
+      if (primary) {
+        b.dataset.act = item[0];
+        b.dataset.tone = item[2] || '';
+      }
+      b.addEventListener('click', () => {
+        const act = primary ? item[0] : '';
+        if (act === 'confirm') {
+          showToast('项目已确认');
+          setTimeout(() => paint('return'), 280);
+        } else if (act === 'retry') {
+          b.disabled = true;
+          b.textContent = '正在重试…';
+          setTimeout(() => { showToast('已重新读取当前情境'); paint('quiet'); }, 700);
+        } else if (act === 'result') {
+          $('#result').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          showToast(primary ? '已执行：' + item[1] : item[1]);
+        }
+      });
+      return b;
+    }
+
+    function paint(mode) {
+      activeMode = mode;
+      const s = states[mode];
+      $$('.demo-tools button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+      $('#sceneApp').textContent = s.app;
+      $('#sceneProject').textContent = s.scene;
+      $('#headline').textContent = s.headline;
+      $('#assist').textContent = s.assist;
+      const actions = $('#heroActions');
+      actions.innerHTML = '';
+      const p = actionButton(s.primary, true);
+      const secondary = actionButton(s.secondary, false);
+      if (p) actions.appendChild(p);
+      if (secondary) actions.appendChild(secondary);
+      const badgeClass = s.badge[1] ? 'badge ' + s.badge[1] : 'badge';
+      $('#meta').innerHTML = '<span>项目 <b>voice-pilot</b></span><span class="' + badgeClass + '">' + s.badge[0] + '</span><span>' + s.when + '</span>';
+      const strip = $('#strip');
+      strip.classList.toggle('show', !!s.strip);
+      strip.innerHTML = s.strip || '';
+      $('#result').classList.toggle('show', s.result);
+      $('#dockState').textContent = s.dock;
+    }
+
+    $$('.demo-tools button').forEach(b => b.addEventListener('click', () => paint(b.dataset.mode)));
+    $$('[data-toast]').forEach(b => b.addEventListener('click', () => showToast(b.dataset.toast)));
+
+    $('#prepToggle').addEventListener('click', () => {
+      const open = !$('#prepPanel').classList.contains('show');
+      $('#prepPanel').classList.toggle('show', open);
+      $('#prepToggle').setAttribute('aria-expanded', String(open));
+      $('#prepToggle').textContent = open ? '收起' : '开始新工作';
+      if (open) $('#prepPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    $$('.intent').forEach(b => b.addEventListener('click', () => {
+      $$('.intent').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      $('#prepCompose').classList.add('show');
+      $('#taskInput').placeholder = b.dataset.intent + '：描述你想得到的结果……';
+      $('#taskInput').focus();
+    }));
+
+    $('#handoff').addEventListener('click', () => {
+      const value = $('#taskInput').value.trim();
+      showToast(value ? '已整理任务，准备选择 Agent' : '先描述你想得到的结果');
+      if (!value) $('#taskInput').focus();
+    });
+
+    $('#voice').addEventListener('click', () => {
+      const on = $('#voice').getAttribute('aria-pressed') !== 'true';
+      $('#voice').setAttribute('aria-pressed', String(on));
+      $('#voice').textContent = on ? '停止听写' : '开始听写';
+      $('#dockState').textContent = on ? '正在听你说…' : states[activeMode].dock;
+    });
+
+    paint('return');
+  </script>
+</body>
+</html>

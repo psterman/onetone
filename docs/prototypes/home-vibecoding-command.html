@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OneTone · Vibecoding Command Home</title>
+  <style>
+    :root{--bg:#e8ebe9;--paper:#fbfbf8;--paper2:#f2f4f0;--ink:#17231f;--ink2:#3d4b46;--muted:#626f6a;--line:#d7dcda;--line2:#c4cbc7;--teal:#176d63;--teal-dark:#10584f;--teal-soft:#dcece7;--blue:#356988;--blue-soft:#e5eef4;--amber:#895817;--amber-soft:#f6ead8;--red:#93453b;--shadow:0 22px 60px rgba(25,39,34,.13)}
+    *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;-webkit-font-smoothing:antialiased}button,textarea,input{font:inherit}button{cursor:pointer}button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-offset:2px}::selection{background:var(--teal-soft);color:var(--ink)}
+    .app{position:relative;width:min(1190px,calc(100% - 32px));height:min(790px,calc(100vh - 96px));min-height:620px;margin:16px auto;overflow:hidden;border:1px solid rgba(23,35,31,.09);border-radius:22px;background:var(--paper);box-shadow:var(--shadow)}
+    .topbar{height:62px;padding:0 24px;display:flex;align-items:center;gap:17px;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:9px;font-weight:820}.mark{width:28px;height:28px;display:grid;place-items:center;border-radius:9px;background:var(--ink);color:#bee3db;font-size:11px}.where{color:var(--muted);font-size:12px}.where b{color:var(--ink2)}.spacer{flex:1}.top-btn{min-height:34px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--ink2);font-weight:700}.top-btn:hover{background:var(--paper2)}.top-btn small{display:block;margin-top:1px;color:var(--muted);font-size:10px;font-weight:600}.avatar{width:29px;height:29px;display:grid;place-items:center;border-radius:50%;background:var(--teal-soft);color:var(--teal);font-size:11px;font-weight:800}
+    .main{height:calc(100% - 62px);overflow:auto}.view{display:none;min-height:100%;animation:enter .22s cubic-bezier(.16,1,.3,1)}.view.on{display:block}@keyframes enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+    .demo-dock{position:fixed;z-index:30;left:50%;bottom:8px;transform:translateX(-50%);display:grid;gap:4px;justify-items:center;max-width:calc(100% - 24px)}.demo-note{color:var(--muted);font-size:10px}.demo-toggle{display:none;min-height:36px;padding:7px 12px;border:0;border-radius:999px;background:rgba(12,14,13,.9);color:#fff;font-weight:750}.state-switch{display:flex;gap:2px;padding:4px;border-radius:999px;background:rgba(12,14,13,.84);box-shadow:0 8px 24px rgba(0,0,0,.2);overflow:auto;max-width:100%}.state-switch button{height:28px;padding:0 10px;border:0;border-radius:999px;background:transparent;color:rgba(255,255,255,.58);font-size:12px;white-space:nowrap}.state-switch button.on{background:rgba(255,255,255,.14);color:#fff}
+    .primary{min-height:42px;padding:9px 17px;border:1px solid var(--teal);border-radius:10px;background:var(--teal);color:#fff;font-weight:800;box-shadow:0 4px 12px rgba(23,109,99,.16)}.primary:hover{background:var(--teal-dark)}.primary.amber{border-color:var(--amber);background:var(--amber)}.primary.red{border-color:var(--red);background:var(--red)}.secondary{min-height:39px;padding:8px 12px;border:1px solid var(--line2);border-radius:9px;background:#fff;color:var(--ink);font-weight:730}.secondary:hover{background:var(--paper2)}.text-btn{border:0;background:transparent;color:var(--teal);font-weight:750}.status{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-weight:700}.status i{width:8px;height:8px;border-radius:50%;background:var(--teal)}.status.run i{background:var(--blue);animation:pulse 1.4s ease-out infinite}.status.wait i{background:var(--amber)}.status.fail i{border-radius:2px;background:var(--red)}@keyframes pulse{50%{opacity:.35;transform:scale(.75)}}
+    .fact-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:999px;background:var(--paper2);color:var(--muted);font-size:11px;font-weight:700}.fact-chip b{color:var(--ink2)}.demo-tag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:var(--amber-soft);color:var(--amber);font-size:10px;font-weight:800}
+    .strip{margin:0 auto 14px;width:min(930px,calc(100% - 40px));padding:10px 14px;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;background:#fff;text-align:left;color:inherit;cursor:pointer}.strip:hover{background:var(--paper2)}.strip b{color:var(--ink)}.strip span{flex:1;color:var(--ink2);font-size:13px}.strip .text-btn{flex:none;font-size:12px}
+    .start-wrap{width:min(790px,calc(100% - 38px));margin:auto;padding:48px 0 88px}.start-head{text-align:center;margin-bottom:22px}.start-head .quiet-tag{display:inline-block;margin-bottom:10px;padding:3px 9px;border-radius:999px;background:var(--teal-soft);color:var(--teal-dark);font-size:11px;font-weight:750}.start-head h1{margin:0;font-size:43px;line-height:1.14;letter-spacing:-.035em}.start-head p{max-width:570px;margin:12px auto 0;color:var(--ink2);font-size:15px}.composer{overflow:hidden;border:1px solid var(--line2);border-radius:16px;background:#fff;box-shadow:0 12px 34px rgba(24,38,33,.08)}.composer textarea{width:100%;height:142px;padding:18px 20px;border:0;resize:none;color:var(--ink);font-size:16px;line-height:1.65}.composer textarea::placeholder{color:#7d8984}.attach-row{padding:10px 12px;display:flex;align-items:center;gap:7px;border-top:1px solid var(--line);background:#fdfdfb}.attach-row span{margin:0 4px;color:var(--muted);font-size:12px}.attach{min-height:32px;padding:5px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink2);font-size:12px;font-weight:700}.attach:hover{background:var(--teal-soft);color:var(--teal)}.start-foot{margin-top:13px;display:flex;align-items:center;justify-content:flex-end;gap:10px}.prep-note{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px}.prep-note b{color:var(--ink2)}.prep-note .text-btn{margin-left:auto}
+    .state-wrap{width:min(930px,calc(100% - 40px));margin:auto;padding:36px 0 96px}.state-meta{display:flex;align-items:center;gap:11px;margin-bottom:17px;flex-wrap:wrap}.state-meta .project{padding:4px 8px;border-radius:7px;background:var(--paper2);color:var(--ink2);font-size:12px;font-weight:750}.state-head{display:flex;align-items:flex-start;gap:28px}.state-copy{min-width:0;flex:1}.state-copy h1{max-width:22ch;margin:0;font-size:36px;line-height:1.16;letter-spacing:-.035em}.state-copy>p{max-width:62ch;margin:12px 0 0;color:var(--ink2);font-size:15px}.state-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:5px;flex-direction:column;align-items:stretch}.context-line{margin-top:19px;display:flex;gap:15px;flex-wrap:wrap;color:var(--muted);font-size:12px}.context-line b{color:var(--ink2)}.divider{height:1px;margin:28px 0;background:var(--line)}
+    .resume-grid,.fail-box,.attn-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:15px}.work-card,.activity,.failure,.safe,.ask-card{padding:19px 20px;border:1px solid var(--line);border-radius:14px;background:#fff}.work-card h2,.activity h2,.failure h2,.safe h2,.ask-card h2{margin:0 0 7px;font-size:15px}.work-card p,.failure>p,.ask-card p{margin:0;color:var(--ink2)}.change-list{margin-top:14px;display:grid;gap:8px}.change{display:flex;align-items:flex-start;gap:9px;padding:9px 10px;border-radius:9px;background:var(--paper2)}.change i{width:20px;height:20px;display:grid;place-items:center;flex:none;border-radius:50%;background:var(--teal-soft);color:var(--teal);font-style:normal;font-size:11px;font-weight:800}.change span{font-size:12px}.side-facts{display:grid;gap:10px}.fact{padding:13px;border-bottom:1px solid var(--line)}.fact:last-child{border-bottom:0}.fact b{display:block}.fact span{color:var(--muted);font-size:12px}
+    .activity .hint{margin:0;color:var(--muted);font-size:13px}.failure{border-color:#e4c0ba;background:#fff9f7}.evidence{margin-top:16px;padding:13px;border-radius:10px;background:#fff;border:1px solid #ead3cf}.evidence b{display:block;font-size:12px}.evidence code{display:block;margin-top:5px;color:#783c34;font:12px/1.55 Consolas,monospace}.safe-item{padding:9px 0;border-top:1px solid var(--line)}.safe-item:first-of-type{border-top:0}.safe-item b{display:block;font-size:12px}.safe-item span{color:var(--muted);font-size:11px}
+    .ask-card{border-color:#e5d3b5;background:#fffaf2}.review-lock{margin-top:16px;padding:12px 14px;border-radius:10px;background:var(--amber-soft);color:var(--amber);font-size:13px;line-height:1.5}
+    .drawer-mask{position:absolute;inset:0;z-index:20;display:none;background:rgba(16,22,20,.28)}.drawer-mask.on{display:block}.drawer{position:absolute;top:0;right:0;z-index:21;width:min(380px,92%);height:100%;display:none;flex-direction:column;background:var(--paper);border-left:1px solid var(--line);box-shadow:-18px 0 40px rgba(20,30,26,.12)}.drawer.on{display:flex}.drawer header{padding:18px 18px 12px;border-bottom:1px solid var(--line)}.drawer header h2{margin:0;font-size:16px}.drawer header p{margin:6px 0 0;color:var(--muted);font-size:12px}.drawer .body{flex:1;overflow:auto;padding:12px 14px}.drawer .row{padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:8px}.drawer .row b{display:block;font-size:13px}.drawer .row span{color:var(--muted);font-size:12px}.drawer footer{padding:12px 14px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}
+    .toast{position:fixed;z-index:40;top:15px;left:50%;padding:8px 13px;transform:translate(-50%,-7px);border-radius:999px;background:var(--ink);color:#fff;opacity:0;pointer-events:none;transition:opacity .16s ease-out,transform .16s ease-out}.toast.show{opacity:1;transform:translate(-50%,0)}
+    @media(max-width:780px){.app{width:100%;height:100%;min-height:0;margin:0;border:0;border-radius:0}.topbar{padding:0 15px}.where,.top-btn small{display:none}.main{padding-bottom:54px}.start-wrap{padding:36px 0 70px}.start-head h1{font-size:34px}.attach-row{overflow:auto}.attach-row span{display:none}.attach{white-space:nowrap}.state-wrap{width:calc(100% - 28px);padding:28px 0 70px}.state-head{display:block}.state-copy h1{font-size:28px}.state-actions{margin-top:20px;flex-direction:row}.resume-grid,.fail-box,.attn-grid{grid-template-columns:1fr}.demo-dock{bottom:8px}.demo-note,.state-switch{display:none}.demo-toggle{display:block}.demo-dock.open .state-switch{display:flex}.strip{width:calc(100% - 28px)}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand"><span class="mark">OT</span>OneTone</div>
+      <span class="where"><b>现在</b> · voice-pilot</span>
+      <div class="spacer"></div>
+      <button class="top-btn" id="btnHistory" type="button" title="近期会话，不是历史方案">历史<small>近期会话</small></button>
+      <button class="top-btn" id="btnAgent" type="button" title="多 Agent 总览">Agent<small>多 Agent 总览</small></button>
+      <span class="avatar">你</span>
+    </header>
+
+    <main class="main">
+      <section class="view on" data-view="start">
+        <div class="start-wrap">
+          <header class="start-head">
+            <span class="quiet-tag">quiet · 轻量开场</span>
+            <h1>今天想推进什么？</h1>
+            <p>直接说意图并加入材料。简单任务交给 Agent；复杂任务再整理方案。系统不在首页强制归类任务类型。</p>
+          </header>
+          <div class="composer">
+            <textarea id="idea" aria-label="描述你想推进的工作" placeholder="例如：把首页改得更直接，新用户打开就知道怎么开始……"></textarea>
+            <div class="attach-row">
+              <span>加入内容</span>
+              <button class="attach" type="button" data-toast="已加入文字">粘贴文字</button>
+              <button class="attach" type="button" data-toast="已加入截图">添加图片</button>
+              <button class="attach" type="button" data-toast="已加入文件">添加文件</button>
+              <button class="attach" type="button" data-toast="已加入网址">添加网址</button>
+              <button class="attach" type="button" data-toast="已导入目录">导入目录</button>
+            </div>
+          </div>
+          <div class="start-foot">
+            <button class="primary" type="button" data-goto="running" data-toast="已交给 Agent · 保留原始意图，不强制归类">交给 Agent</button>
+          </div>
+          <div class="prep-note">
+            <div><b>任务复杂时再补规范</b><br>类型选择（新功能 / 修改 / 修复 / 验收）在方案台进行；推断不足时再追问。</div>
+            <a class="text-btn" href="home-plan-workspace.html">先整理方案</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" data-view="resume">
+        <div class="state-wrap">
+          <div class="state-meta">
+            <span class="status"><i></i>可以继续</span>
+            <span class="project">voice-pilot</span>
+            <span class="fact-chip">事实 · <b>resumable</b></span>
+          </div>
+          <div class="state-head">
+            <div class="state-copy">
+              <h1>上次停在首页生命周期收口</h1>
+              <p>上下文与改动仍在 checkpoint。可以继续，也可以开始另一项新任务（旧 checkpoint 保留）。</p>
+              <div class="context-line">
+                <span><b>18 分钟前</b>最后更新</span>
+                <span><b>Codex</b>上次 Agent</span>
+              </div>
+            </div>
+            <div class="state-actions">
+              <button class="primary" type="button" data-goto="running" data-toast="正在恢复上次工作">继续上次工作</button>
+              <button class="secondary" type="button" data-open-prep data-toast="已打开新任务输入 · checkpoint 仍保留">开始新任务</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" data-view="running">
+        <button type="button" class="strip" data-open="agent" aria-label="另有 Claude 等待授权，打开 Agent 总览">
+          <b>另有 Claude 等待授权</b>
+          <span>次要并发 · 进 Agent 总览</span>
+          <span class="text-btn">打开 Agent</span>
+        </button>
+        <div class="state-wrap">
+          <div class="state-meta">
+            <span class="status run"><i></i>Agent 正在执行</span>
+            <span class="project">voice-pilot</span>
+            <span class="fact-chip">事实 · <b>running</b></span>
+          </div>
+          <div class="state-head">
+            <div class="state-copy">
+              <h1>Codex 正在处理「首页工作流」</h1>
+              <p>任务正在运行。需要查看详情或介入时，进入 Agent 总览。</p>
+              <div class="context-line">
+                <span><b>最近活动</b>刚刚</span>
+                <span><b>Agent</b>Codex</span>
+              </div>
+            </div>
+            <div class="state-actions">
+              <button class="primary" type="button" data-open="agent">查看 Agent</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" data-view="attention">
+        <div class="state-wrap">
+          <div class="state-meta">
+            <span class="status wait"><i></i>等待你确认</span>
+            <span class="project">voice-pilot</span>
+            <span class="fact-chip">attention · 过程等待</span>
+          </div>
+          <div class="state-head">
+            <div class="state-copy">
+              <h1>Codex 等待你确认</h1>
+              <p>当前没有足够结构化信息在首页展示具体问题。请到 Agent 查看并决定。</p>
+            </div>
+            <div class="state-actions">
+              <button class="primary amber" type="button" data-open="agent" data-toast="已打开 Agent 以查看并决定">查看并决定</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" data-view="review">
+        <div class="state-wrap">
+          <div class="state-meta">
+            <span class="status wait"><i></i>等待你验收</span>
+            <span class="project">voice-pilot</span>
+            <span class="demo-tag">原型示意 · 不接生产自动态</span>
+          </div>
+          <div class="state-head">
+            <div class="state-copy">
+              <h1>验收态仅作设计示意</h1>
+              <p>生产首版没有持久化 awaiting_review，不会自动声称「等待验收」。契约与 hook 成熟后再接。</p>
+              <div class="context-line">
+                <span class="demo-tag">12/12 检查 · 5 文件 — 示意 · 禁止进生产</span>
+              </div>
+            </div>
+            <div class="state-actions">
+              <button class="primary amber" type="button" id="btnAccept" data-toast="示意：通过验收后回开场">通过验收（示意）</button>
+              <button class="secondary" type="button" data-toast="示意：暂不验收，仍停在本态">暂不验收</button>
+            </div>
+          </div>
+          <div class="review-lock">生产路径：不进自动仲裁；可选在 Agent 页「标记为待验收」；正式契约后再由 completed 进入。</div>
+        </div>
+      </section>
+
+      <section class="view" data-view="failed">
+        <div class="state-wrap">
+          <div class="state-meta">
+            <span class="status fail"><i></i>执行失败</span>
+            <span class="project">voice-pilot</span>
+            <span class="fact-chip">分档 · <b>仅有失败信号</b></span>
+          </div>
+          <div class="state-head">
+            <div class="state-copy">
+              <h1>任务执行遇到问题</h1>
+              <p>Agent 已停止继续执行。打开详情查看已完成内容和错误信息。未确认 checkpoint / 工作树前，不承诺「修改仍保留」。</p>
+              <div class="context-line">
+                <span class="demo-tag">有保存证据时才说「已有修改已保留」</span>
+              </div>
+            </div>
+            <div class="state-actions">
+              <button class="primary red" type="button" data-open="agent" data-toast="已打开问题详情">查看问题</button>
+              <button class="secondary" type="button" data-goto="start" data-toast="已关闭问题 · 失败记录保留">暂不修复</button>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="fail-box">
+            <section class="failure">
+              <h2>文案分档</h2>
+              <p>有保存证据 →「已有修改已保留」；仅失败信号 → 本页文案；来源不可靠 →「暂时无法确认任务状态」。</p>
+              <div class="evidence"><b>退出码 / 日志 / 文件影响</b><code>有则展示 · 界面不推测</code></div>
+            </section>
+            <aside class="safe">
+              <h2>本例假设</h2>
+              <div class="safe-item"><b>本 demo</b><span>按「仅有失败信号」档</span></div>
+              <div class="safe-item"><b>若有 checkpoint</b><span>可改口为「已有修改已保留」</span></div>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="drawer-mask" id="drawerMask"></div>
+    <aside class="drawer" id="drawerHistory" aria-label="历史">
+      <header>
+        <h2>近期会话</h2>
+        <p>恢复工作 · 不是「历史方案」</p>
+      </header>
+      <div class="body">
+        <div class="row"><b>首页生命周期收口</b><span>18 分钟前 · resumable · Codex</span></div>
+        <div class="row"><b>静音条状态降噪</b><span>昨天 · 会话记录</span></div>
+      </div>
+      <footer>方案 Markdown 在方案台「历史方案」；勿与此混名。</footer>
+    </aside>
+    <aside class="drawer" id="drawerAgent" aria-label="Agent 总览">
+      <header>
+        <h2>Agent 总览</h2>
+        <p>多 Agent 名册 · 首页不展开</p>
+      </header>
+      <div class="body">
+        <div class="row"><b>Codex · voice-pilot</b><span>Hero · running</span></div>
+        <div class="row"><b>Claude · docs-site</b><span>次要 · 等待授权</span></div>
+      </div>
+      <footer>并行任务发送后在此管理。</footer>
+    </aside>
+    <aside class="drawer" id="drawerPrep" role="dialog" aria-modal="true" aria-labelledby="prepTitle">
+      <header>
+        <h2 id="prepTitle">开始新任务</h2>
+        <p>旧 checkpoint 保留；这里只打开新任务输入，不改变 resumable 状态。</p>
+      </header>
+      <div class="body">
+        <label for="prepIdea"><b>想推进什么？</b></label>
+        <textarea id="prepIdea" name="prep_idea" aria-label="描述新任务" autocomplete="off" placeholder="例如：整理移动端首页的验收标准…" style="width:100%;height:120px;margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:10px;resize:vertical"></textarea>
+      </div>
+      <footer><a class="text-btn" href="home-plan-workspace.html">进入完整方案台</a></footer>
+    </aside>
+  </div>
+
+  <div class="demo-dock">
+    <div class="demo-note">仅用于原型状态预览 · 生产由生命周期自动决定 · 标「示意」的数据禁止进生产</div>
+    <button class="demo-toggle" id="demoToggle" type="button" aria-expanded="false" aria-controls="demoStates">切换演示状态</button>
+    <nav class="state-switch" id="demoStates" aria-label="原型状态预览">
+      <button type="button" class="on" data-state="start">开场</button>
+      <button type="button" data-state="resume">继续</button>
+      <button type="button" data-state="running">执行中</button>
+      <button type="button" data-state="attention">需决定</button>
+      <button type="button" data-state="review">待验收·示意</button>
+      <button type="button" data-state="failed">失败</button>
+    </nav>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    const views = [...document.querySelectorAll('[data-view]')];
+    const stateButtons = [...document.querySelectorAll('[data-state]')];
+    const toastEl = document.getElementById('toast');
+    const mask = document.getElementById('drawerMask');
+    const demoDock = document.querySelector('.demo-dock');
+    const demoToggle = document.getElementById('demoToggle');
+    const drawers = { history: document.getElementById('drawerHistory'), agent: document.getElementById('drawerAgent'), prep: document.getElementById('drawerPrep') };
+
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toast.t);
+      toast.t = setTimeout(() => toastEl.classList.remove('show'), 1800);
+    }
+
+    function closeDrawers() {
+      mask.classList.remove('on');
+      Object.values(drawers).forEach(d => d.classList.remove('on'));
+    }
+
+    function openDrawer(name) {
+      closeDrawers();
+      mask.classList.add('on');
+      drawers[name].classList.add('on');
+      if (name === 'prep') document.getElementById('prepIdea').focus();
+    }
+
+    function setState(name) {
+      closeDrawers();
+      views.forEach(v => v.classList.toggle('on', v.dataset.view === name));
+      stateButtons.forEach(b => b.classList.toggle('on', b.dataset.state === name));
+      const url = new URL(location);
+      url.searchParams.set('state', name);
+      history.replaceState(null, '', url);
+      document.querySelector('.main').scrollTop = 0;
+    }
+
+    stateButtons.forEach(b => b.onclick = () => setState(b.dataset.state));
+    document.querySelectorAll('[data-toast]').forEach(b => {
+      b.addEventListener('click', () => {
+        if (b.dataset.toast) toast(b.dataset.toast);
+        if (b.dataset.goto) setTimeout(() => setState(b.dataset.goto), 350);
+      });
+    });
+    document.getElementById('btnHistory').onclick = () => openDrawer('history');
+    document.getElementById('btnAgent').onclick = () => openDrawer('agent');
+    document.querySelectorAll('[data-open-prep]').forEach(el => el.addEventListener('click', () => openDrawer('prep')));
+    document.querySelectorAll('[data-open="agent"]').forEach(el => {
+      el.addEventListener('click', () => openDrawer('agent'));
+    });
+    mask.onclick = closeDrawers;
+    document.getElementById('btnAccept').addEventListener('click', () => {
+      setTimeout(() => setState('start'), 400);
+    });
+    demoToggle.onclick = () => {
+      const open = demoDock.classList.toggle('open');
+      demoToggle.setAttribute('aria-expanded', String(open));
+    };
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeDrawers();
+    });
+
+    const initial = new URLSearchParams(location.search).get('state');
+    setState(views.some(v => v.dataset.view === initial) ? initial : 'start');
+  </script>
+</body>
+</html>

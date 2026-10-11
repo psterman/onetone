@@ -1,0 +1,1686 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OneTone · 现在 · 新工作规划（原型）</title>
+  <style>
+    :root {
+      --shell: #eef0f1;
+      --rail: #f5f5f3;
+      --paper: #fbfaf7;
+      --ink: #172523;
+      --ink-2: #43514e;
+      --muted: #55635f;
+      --line: #dedfd9;
+      --line-strong: #c9ccc5;
+      --teal: #176f68;
+      --teal-dark: #115b56;
+      --teal-soft: #dcebe7;
+      --amber: #8b5c23;
+      --amber-soft: #f2e6d5;
+      --red: #9d453b;
+      --red-soft: #f5e4e1;
+      --green: #2a6b4a;
+      --green-soft: #e2efe7;
+      --shadow: 0 18px 48px rgba(31, 43, 40, .12);
+      --focus: #0f756c;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background: var(--shell);
+      color: var(--ink);
+      font: 14px/1.55 "Segoe UI", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 3px;
+    }
+    ::selection { background: var(--teal-soft); color: var(--ink); }
+    ::placeholder { color: #6a7773; }
+
+    .demo-bar {
+      width: min(1180px, calc(100% - 32px));
+      margin: 16px auto 9px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+    .demo-bar span { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .demo-bar button {
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--ink-2);
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .demo-bar button[aria-pressed="true"] {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+
+    .toast {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-10px);
+      z-index: 40;
+      max-width: min(420px, calc(100% - 32px));
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 650;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+    }
+    .toast.is-on {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .proto-note {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .app {
+      position: relative;
+      width: min(1180px, calc(100% - 32px));
+      height: min(820px, calc(100vh - 96px));
+      min-height: 680px;
+      margin: 0 auto 18px;
+      display: grid;
+      grid-template-columns: 224px minmax(0, 1fr);
+      overflow: hidden;
+      border: 1px solid rgba(23, 37, 35, .1);
+      border-radius: 20px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+    }
+
+    .rail {
+      min-width: 0;
+      padding: 22px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      background: var(--rail);
+      border-right: 1px solid var(--line);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 10px 24px;
+      font-weight: 800;
+    }
+    .brand-mark {
+      width: 25px;
+      height: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: var(--ink);
+    }
+    .brand-mark svg { width: 15px; color: #b5dcd5; }
+    .nav-group { display: grid; gap: 4px; }
+    .nav-label {
+      margin: 17px 10px 7px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .08em;
+    }
+    .nav-item {
+      width: 100%;
+      min-height: 40px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--ink-2);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+      font-weight: 650;
+    }
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      flex: none;
+    }
+    .nav-item:hover { background: #ebece8; color: var(--ink); }
+    .nav-item[aria-current="page"] {
+      background: var(--teal-soft);
+      color: var(--teal-dark);
+    }
+    .nav-item[aria-current="page"]::after {
+      content: "";
+      width: 6px;
+      height: 6px;
+      margin-left: auto;
+      border-radius: 50%;
+      background: var(--teal);
+    }
+    .rail-bottom {
+      margin-top: auto;
+      display: grid;
+      gap: 4px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .main {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto auto;
+    }
+    .topbar {
+      min-height: 52px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .ctx-row {
+      min-width: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+      font-size: 13px;
+      color: var(--ink-2);
+    }
+    .mode-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--teal-soft);
+      color: var(--teal-dark);
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .mode-chip[data-phase="generating"] { background: #e4eceb; color: var(--teal); }
+    .mode-chip[data-phase="handoff"] { background: var(--amber-soft); color: var(--amber); }
+    .mode-chip[data-phase="done"] { background: var(--green-soft); color: var(--green); }
+    .mode-chip[data-phase="focus"] { background: #e8ece9; color: var(--ink-2); }
+    .ctx-sep { color: #a5ada9; }
+    .ctx-save { color: var(--muted); font-size: 12px; }
+    .top-actions { display: flex; gap: 8px; align-items: center; flex: none; }
+    .ghost-btn {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: transparent;
+      color: var(--ink-2);
+      padding: 7px 10px;
+      font-weight: 650;
+    }
+    .ghost-btn:hover { background: #fff; border-color: var(--line-strong); }
+    .ghost-btn[hidden] { display: none !important; }
+
+    /* Agent glyph: shape + color + text, never color alone */
+    .agent-glyph {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 0;
+      background: transparent;
+      padding: 2px 4px;
+      border-radius: 8px;
+      color: var(--ink-2);
+      font-size: 12px;
+      font-weight: 700;
+      vertical-align: middle;
+    }
+    .agent-glyph:hover { background: #eceeea; }
+    .agent-glyph.is-action {
+      background: var(--amber-soft);
+      color: var(--amber);
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+    .agent-glyph.is-action:hover { filter: brightness(.97); }
+    .glyph-mark {
+      width: 11px;
+      height: 11px;
+      flex: none;
+      position: relative;
+    }
+    .glyph-mark::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+    }
+    .agent-glyph[data-kind="ready"] .glyph-mark::before {
+      border-radius: 50%;
+      background: var(--green);
+    }
+    .agent-glyph[data-kind="working"] .glyph-mark::before {
+      border-radius: 50%;
+      background: var(--teal);
+      animation: pulse-dot 1.2s ease-out infinite;
+    }
+    .agent-glyph[data-kind="paused"] .glyph-mark::before {
+      border-radius: 50%;
+      border: 2px solid var(--ink-2);
+      background: transparent;
+      inset: 1px;
+    }
+    .agent-glyph[data-kind="attention"] .glyph-mark::before {
+      inset: 1px 0 0;
+      height: 10px;
+      background: var(--amber);
+      clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    }
+    .agent-glyph[data-kind="error"] .glyph-mark::before {
+      left: 1px; right: 1px; top: 4px; bottom: 4px;
+      height: auto;
+      background: var(--red);
+      border-radius: 1px;
+      transform: rotate(45deg);
+    }
+    .agent-glyph .glyph-label { white-space: nowrap; }
+    .agent-glyph .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0);
+      border: 0;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .45; transform: scale(.72); }
+    }
+
+    .content {
+      min-height: 0;
+      overflow: auto;
+      padding: 20px 24px 16px;
+      scrollbar-color: var(--line-strong) transparent;
+    }
+
+    .primary {
+      min-height: 42px;
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--teal);
+      color: #fff;
+      font-weight: 760;
+      box-shadow: 0 3px 9px rgba(23, 111, 104, .2);
+    }
+    .primary:hover:not(:disabled) { background: var(--teal-dark); }
+    .primary[data-tone="attention"] { background: var(--amber); box-shadow: 0 3px 9px rgba(139, 92, 35, .2); }
+    .primary[data-tone="error"] { background: var(--red); box-shadow: 0 3px 9px rgba(157, 69, 59, .2); }
+    .primary.sit-cta {
+      min-height: 32px;
+      padding: 6px 12px;
+      font-size: 12.5px;
+      box-shadow: none;
+    }
+    .text-btn {
+      padding: 6px 0;
+      border: 0;
+      background: transparent;
+      color: var(--teal-dark);
+      font-weight: 700;
+    }
+    .text-btn:hover { text-decoration: underline; text-underline-offset: 4px; }
+    .secondary {
+      flex: none;
+      min-height: 39px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--ink);
+      padding: 8px 13px;
+      font-weight: 700;
+    }
+    .secondary:hover:not(:disabled) { background: #fff; }
+
+    /* Bottom situation line — visual title only; page body is the ops console */
+    .sit-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px 14px;
+      min-height: 44px;
+      padding: 8px 24px;
+      border-top: 1px solid var(--line);
+      background: color-mix(in srgb, var(--paper) 88%, #fff);
+    }
+    .sit-bar[data-tone="attention"] { background: color-mix(in srgb, var(--amber-soft) 55%, var(--paper)); }
+    .sit-bar[data-tone="error"] { background: color-mix(in srgb, var(--red-soft) 45%, var(--paper)); }
+    .sit-bar[data-tone="working"] { background: color-mix(in srgb, var(--teal-soft) 40%, var(--paper)); }
+    .sit-lead {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+    .sit-title {
+      margin: 0;
+      min-width: 0;
+      font-size: 13.5px;
+      font-weight: 700;
+      letter-spacing: -.01em;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sit-sub {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 28ch;
+    }
+    .sit-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: none;
+    }
+
+    .workbench {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 20px;
+      align-items: start;
+      min-height: 100%;
+    }
+    .wb-main { min-width: 0; display: grid; gap: 16px; }
+    .wb-side {
+      min-width: 0;
+      position: sticky;
+      top: 0;
+      align-self: start;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      padding: 14px;
+    }
+    .wb-side[data-collapsed="true"] .history-body { display: none; }
+    .wb-side-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .wb-side-head h2 { margin: 0; font-size: 14px; font-weight: 750; }
+    .fake-tag {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--amber-soft);
+      color: var(--amber);
+      font-size: 11px;
+      font-weight: 750;
+      vertical-align: middle;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      padding: 16px;
+    }
+    .panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .panel-head h2 { margin: 0; font-size: 15px; font-weight: 750; }
+    .panel-head p { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .paste-zone {
+      position: relative;
+      min-height: 168px;
+      border: 1.5px dashed var(--line-strong);
+      border-radius: 12px;
+      background: #fffcf8;
+      padding: 28px 16px;
+      display: grid;
+      gap: 12px;
+      place-content: center;
+      text-align: center;
+      transition: border-color .15s, background .15s;
+    }
+    .paste-zone.is-drag {
+      border-color: var(--teal);
+      background: var(--teal-soft);
+    }
+    .paste-zone strong { font-size: 16px; }
+    .paste-zone span { color: var(--muted); font-size: 13px; }
+    .paste-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+    .chip-btn {
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--ink-2);
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .chip-btn:hover { border-color: var(--teal); color: var(--teal-dark); background: var(--teal-soft); }
+
+    .mat-list { display: grid; gap: 8px; }
+    .mat-empty {
+      padding: 18px 8px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .mat-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: var(--paper);
+    }
+    .mat-row.is-off { opacity: .55; }
+    .mat-check { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--teal); }
+    .mat-body { min-width: 0; }
+    .mat-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 8px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .kind {
+      font-size: 11px;
+      font-weight: 750;
+      color: var(--teal-dark);
+      background: var(--teal-soft);
+      border-radius: 999px;
+      padding: 1px 7px;
+    }
+    .mat-note {
+      width: 100%;
+      margin-top: 6px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      padding: 4px 6px;
+      color: var(--ink-2);
+      font-size: 12px;
+    }
+    .mat-note:hover, .mat-note:focus {
+      border-color: var(--line);
+      background: #fff;
+    }
+    .mat-tools { display: flex; gap: 2px; }
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink-2);
+    }
+    .icon-btn:hover { background: #eceeea; }
+    .icon-btn svg { width: 15px; stroke: currentColor; fill: none; stroke-width: 1.9; }
+
+    .fields { display: grid; gap: 12px; }
+    .field label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--ink-2);
+    }
+    .field input, .field textarea {
+      width: 100%;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: #fff;
+      padding: 9px 11px;
+      resize: vertical;
+    }
+    .field textarea { min-height: 96px; line-height: 1.5; }
+    .field textarea.tall { min-height: 120px; }
+
+    .ops {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .ops .hint { color: var(--muted); font-size: 12px; flex: 1 1 140px; }
+    .ops .primary[aria-busy="true"] { cursor: wait; }
+
+    .preview {
+      border: 1px solid color-mix(in srgb, var(--teal) 35%, var(--line));
+      border-radius: 12px;
+      background: var(--teal-soft);
+      padding: 14px;
+    }
+    .preview[hidden] { display: none !important; }
+    .preview h3 { margin: 0 0 10px; font-size: 14px; }
+    .preview-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .preview-col {
+      background: rgba(255,255,255,.72);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      color: var(--ink-2);
+      white-space: pre-wrap;
+      min-height: 120px;
+      line-height: 1.5;
+    }
+    .preview-col strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+      font-size: 12px;
+    }
+    .preview-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .error-banner {
+      border: 1px solid color-mix(in srgb, var(--red) 30%, var(--line));
+      border-radius: 12px;
+      background: var(--red-soft);
+      color: var(--red);
+      padding: 10px 12px;
+      font-size: 13px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .error-banner[hidden] { display: none !important; }
+
+    .history-list { display: grid; gap: 8px; }
+    .hist-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: var(--paper);
+      text-align: left;
+      width: 100%;
+    }
+    .hist-item:hover { border-color: var(--line-strong); }
+    .hist-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .hist-top strong { font-size: 13px; }
+    .status-chip {
+      font-size: 11px;
+      font-weight: 750;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #e8ece9;
+      color: var(--ink-2);
+    }
+    .status-chip.is-ready { background: var(--teal-soft); color: var(--teal-dark); }
+    .status-chip.is-failed { background: var(--red-soft); color: var(--red); }
+    .status-chip.is-handed { background: var(--green-soft); color: var(--green); }
+    .status-chip.is-archived { background: var(--amber-soft); color: var(--amber); }
+    .hist-meta { color: var(--muted); font-size: 11px; }
+    .hist-actions { display: flex; gap: 6px; margin-top: 8px; }
+    .hist-actions button {
+      border: 0;
+      background: transparent;
+      color: var(--teal-dark);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 0;
+    }
+    .hist-actions button:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+    .mobile-hist-btn { display: none; }
+
+    .dock {
+      min-height: 48px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .dock-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+    }
+
+    .scrim {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      background: rgba(22, 32, 30, .22);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 170ms ease-out;
+    }
+    .history-drawer {
+      position: absolute;
+      z-index: 7;
+      top: 0;
+      right: 0;
+      width: min(340px, calc(100% - 24px));
+      height: 100%;
+      padding: 20px;
+      background: var(--paper);
+      box-shadow: -16px 0 40px rgba(24, 38, 35, .14);
+      transform: translateX(104%);
+      transition: transform 220ms cubic-bezier(.2, .8, .2, 1);
+      overflow: auto;
+      display: none;
+    }
+    .app[data-hist-drawer="open"] .scrim { opacity: 1; pointer-events: auto; }
+    .app[data-hist-drawer="open"] .history-drawer { transform: translateX(0); }
+    .drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .drawer-head h2 { margin: 0; font-size: 18px; }
+
+    @media (max-width: 720px) {
+      .app {
+        grid-template-columns: 68px minmax(0, 1fr);
+        min-height: 640px;
+        height: min(880px, calc(100vh - 110px));
+      }
+      .rail { padding-inline: 9px; }
+      .brand { padding-inline: 12px; justify-content: center; }
+      .brand > span:last-child,
+      .nav-item span,
+      .nav-label { display: none; }
+      .nav-item { justify-content: center; padding-inline: 0; }
+      .nav-item[aria-current="page"]::after { display: none; }
+      .content { padding: 20px 14px; }
+      .topbar, .dock, .sit-bar { padding-inline: 14px; }
+      .workbench { grid-template-columns: 1fr; }
+      .wb-side { display: none; }
+      .mobile-hist-btn { display: inline-flex; }
+      .history-drawer { display: block; }
+      .preview-compare { grid-template-columns: 1fr; }
+      .sit-sub { display: none; }
+      .agent-glyph .glyph-label { max-width: 7em; overflow: hidden; text-overflow: ellipsis; }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-bar" role="toolbar" aria-label="原型演示状态">
+    <span>情境</span>
+    <button type="button" data-demo="quiet" aria-pressed="true">quiet</button>
+    <button type="button" data-demo="running" aria-pressed="false">running</button>
+    <button type="button" data-demo="return" aria-pressed="false">return</button>
+    <button type="button" data-demo="attention" aria-pressed="false">attention</button>
+    <button type="button" data-demo="degraded" aria-pressed="false">degraded</button>
+    <span>新工作</span>
+    <button type="button" data-demo="empty" aria-pressed="false">空态</button>
+    <button type="button" data-demo="collected" aria-pressed="false">已收集</button>
+    <button type="button" data-demo="generating" aria-pressed="false">生成中</button>
+    <button type="button" data-demo="preview" aria-pressed="false">计划已生成</button>
+    <button type="button" data-demo="failed" aria-pressed="false">生成失败</button>
+    <button type="button" data-demo="delivered" aria-pressed="false">已投递</button>
+  </div>
+  <p class="proto-note">原型假数据 · 整页操作台 · 情境收成底部一行标题</p>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <div class="app" id="app" data-hist-drawer="closed">
+    <aside class="rail" aria-label="主导航">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M5 14v-4M9 18V6M13 16V8M17 19V5M21 14v-4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+        </span>
+        <span>OneTone</span>
+      </div>
+      <nav class="nav-group" aria-label="主要工作">
+        <button class="nav-item" type="button" data-nav="现在" aria-current="page">
+          <svg viewBox="0 0 24 24"><path d="M4 12 12 5l8 7v7H4z"/></svg><span>现在</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="Agent">
+          <svg viewBox="0 0 24 24"><path d="M7 8h10M7 12h7M7 16h5"/><rect x="3" y="4" width="18" height="16" rx="3"/></svg><span>Agent</span>
+        </button>
+      </nav>
+      <div class="nav-label">个人能力</div>
+      <nav class="nav-group" aria-label="个人能力">
+        <button class="nav-item" type="button" data-nav="我的习惯">
+          <svg viewBox="0 0 24 24"><path d="M5 7h14M8 12h8M10 17h4"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="12" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>我的习惯</span>
+        </button>
+      </nav>
+      <div class="rail-bottom">
+        <button class="nav-item" type="button" data-nav="设置">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 13.5v-3l-2-.7-.7-1.7.9-1.9-2.1-2.1-1.9.9-1.7-.7-.7-2h-3l-.7 2-1.7.7-1.9-.9-2.1 2.1.9 1.9-.7 1.7-2 .7v3l2 .7.7 1.7-.9 1.9 2.1 2.1 1.9-.9 1.7.7.7 2h3l.7-2 1.7-.7 1.9.9 2.1-2.1-.9-1.9.7-1.7z"/></svg><span>设置</span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="ctx-row" id="ctxRow" aria-live="polite">
+          <span class="mode-chip" id="modeChip" data-phase="focus">当前情境</span>
+          <span class="ctx-sep" aria-hidden="true">·</span>
+          <span id="ctxProject">voice-pilot · 已确认</span>
+          <span class="ctx-sep" aria-hidden="true">·</span>
+          <span id="ctxAgentHost"></span>
+          <span class="ctx-save" id="ctxSave" hidden></span>
+        </div>
+        <div class="top-actions">
+          <button type="button" class="ghost-btn mobile-hist-btn" id="openHistDrawer" aria-controls="historyDrawer" aria-expanded="false">草稿历史</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="workbench" id="workbench">
+          <div class="wb-main">
+            <section class="panel" aria-labelledby="pasteTitle">
+              <div class="panel-head">
+                <h2 id="pasteTitle">放入材料 <span class="fake-tag">假数据</span></h2>
+                <p>直接粘贴，或添加文件 / 网址</p>
+              </div>
+              <div class="paste-zone" id="pasteZone" tabindex="0" role="region" aria-label="粘贴与拖放区">
+                <strong>粘贴到这里，或把文件拖进来</strong>
+                <span>原型演示：不会读取真实剪贴板内容或本地文件</span>
+                <div class="paste-actions">
+                  <button type="button" class="chip-btn" id="simPaste">模拟粘贴文本</button>
+                  <button type="button" class="chip-btn" id="addFile">添加文件</button>
+                  <button type="button" class="chip-btn" id="addUrl">添加网址</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel" aria-labelledby="matTitle">
+              <div class="panel-head">
+                <h2 id="matTitle">材料清单</h2>
+                <p id="matCount">0 项</p>
+              </div>
+              <div class="mat-list" id="matList"></div>
+            </section>
+
+            <section class="panel" aria-labelledby="planTitle">
+              <div class="panel-head">
+                <h2 id="planTitle">结构化规划 <span class="fake-tag">假数据</span></h2>
+                <p>可手改 · 生成计划只给预览</p>
+              </div>
+              <div class="fields">
+                <div class="field">
+                  <label for="fGoal">目标</label>
+                  <input id="fGoal" type="text" autocomplete="off" placeholder="这项工作要达成什么？">
+                </div>
+                <div class="field">
+                  <label for="fDeliverable">交付物</label>
+                  <textarea id="fDeliverable" class="tall" placeholder="最终要交出什么？"></textarea>
+                </div>
+                <div class="field">
+                  <label for="fConstraints">约束</label>
+                  <textarea id="fConstraints" placeholder="时间、范围、不可改动的边界"></textarea>
+                </div>
+                <div class="field">
+                  <label for="fSteps">步骤</label>
+                  <textarea id="fSteps" class="tall" placeholder="每行一步"></textarea>
+                </div>
+                <div class="field">
+                  <label for="fOpen">待确认事项</label>
+                  <textarea id="fOpen" placeholder="需要你或 Agent 拍板的问题"></textarea>
+                </div>
+              </div>
+            </section>
+
+            <div class="error-banner" id="errorBanner" hidden>
+              <span id="errorText">读取或生成失败（原型）。当前草稿未改动。</span>
+              <button type="button" class="secondary" id="retryGen">重试</button>
+            </div>
+
+            <div class="preview" id="preview" hidden>
+              <h3>计划预览 <span class="fake-tag">非破坏</span></h3>
+              <div class="preview-compare">
+                <div class="preview-col"><strong>当前草稿</strong><div id="previewCurrent"></div></div>
+                <div class="preview-col"><strong>生成预览</strong><div id="previewBody"></div></div>
+              </div>
+              <div class="preview-actions">
+                <button type="button" class="primary" id="adoptPreview">采用</button>
+                <button type="button" class="secondary" id="mergePreview">合并</button>
+                <button type="button" class="text-btn" id="discardPreview">放弃</button>
+              </div>
+            </div>
+
+            <section class="panel" aria-label="操作">
+              <div class="ops">
+                <button type="button" class="primary" id="btnGenerate">生成计划</button>
+                <button type="button" class="secondary" id="btnHandoff">形成交接稿</button>
+                <button type="button" class="text-btn" id="btnSaveVersion">创建版本</button>
+                <span class="hint" id="opsHint"></span>
+              </div>
+            </section>
+          </div>
+
+          <aside class="wb-side" id="wbSide" data-collapsed="false" aria-label="草稿历史">
+            <div class="wb-side-head">
+              <h2>草稿与版本 <span class="fake-tag">假</span></h2>
+              <button type="button" class="text-btn" id="toggleSide" aria-expanded="true" aria-controls="historyBody">收起</button>
+            </div>
+            <div class="history-body" id="historyBody">
+              <div class="history-list" id="historyList"></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <aside class="sit-bar" id="sitBar" data-tone="" aria-label="当前情境">
+        <div class="sit-lead">
+          <span id="sitGlyphHost"></span>
+          <p class="sit-title" id="sitTitle">现在没有需要你处理的事</p>
+          <span class="sit-sub" id="sitSub">Cursor · voice-pilot</span>
+        </div>
+        <div class="sit-actions" id="sitActions"></div>
+      </aside>
+
+      <footer class="dock">
+        <span class="dock-dot" aria-hidden="true"></span>
+        <span>OneTone 正在跟随前台 · 按住 Ctrl + Space 开始听写</span>
+      </footer>
+    </main>
+
+    <div class="scrim" id="scrim" hidden></div>
+    <aside class="history-drawer" id="historyDrawer" aria-labelledby="drawerHistTitle" aria-hidden="true" role="dialog">
+      <div class="drawer-head">
+        <h2 id="drawerHistTitle">草稿与版本</h2>
+        <button type="button" class="icon-btn" id="closeHistDrawer" aria-label="关闭草稿历史">
+          <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="history-list" id="historyListDrawer"></div>
+    </aside>
+  </div>
+
+  <script>
+    (function () {
+      const SAMPLE_PASTE = { kind: "文本", name: "粘贴：首页 IA 笔记", note: "关于 Focus 与 Prep 分层的要点" };
+      const SAMPLE_FILE = { kind: "文件", name: "PRODUCT.md", note: "产品真理摘录（假路径）" };
+      const SAMPLE_URL = { kind: "网址", name: "https://example.local/home-focus", note: "相关讨论链接（假）" };
+
+      const PREVIEW_PLAN = {
+        goal: "恢复首页情境驾驶舱，并把「新工作」收成可交接的规划稿",
+        deliverable: "一份结构化交接稿：目标、步骤、约束与材料引用",
+        constraints: "不改生产 IPC；首屏保持单一主 CTA；假数据需显式标注",
+        steps: "核对材料清单\n生成计划预览\n采用或合并字段\n形成交接稿并关联 Agent",
+        open: "是否需要在交接前再确认项目习惯？"
+      };
+
+      const GLYPH = {
+        ready: { kind: "ready", short: "Codex", title: "Codex 可用，无需处理", label: "绿实心点表示可用" },
+        working: { kind: "working", short: "Codex · 工作中", title: "Codex 正在工作", label: "teal 脉冲点表示工作中" },
+        paused: { kind: "paused", short: "Codex", title: "Codex 暂停，可恢复", label: "空心圆环表示暂停" },
+        attention: { kind: "attention", short: "需要决定", title: "Codex 等待你的决定", label: "黄色菱形表示需要决定", action: true },
+        error: { kind: "error", short: "连接异常", title: "读取或连接异常", label: "红色断点表示异常" }
+      };
+
+      const FOCUS = {
+        quiet: {
+          title: "现在没有需要你处理的事",
+          sub: "Cursor · voice-pilot · 已确认",
+          action: "", tone: "",
+          glyph: "ready"
+        },
+        running: {
+          title: "Codex 正在处理首页状态降噪",
+          sub: "无需干预 · voice-pilot",
+          action: "", tone: "working",
+          glyph: "working"
+        },
+        return: {
+          title: "上次停在首页情境叙事的收口",
+          sub: "voice-pilot · 12 分钟前",
+          action: "继续上次工作", tone: "",
+          glyph: "paused"
+        },
+        attention: {
+          title: "需要你决定：导航是否保留「历史」",
+          sub: "Codex 等待 · voice-pilot",
+          action: "查看并决定", tone: "attention",
+          glyph: "attention"
+        },
+        degraded: {
+          title: "暂时无法确认当前项目",
+          sub: "未作猜测 · 可重试读取",
+          action: "重试", tone: "error",
+          glyph: "error"
+        }
+      };
+
+      const WB_DEMOS = {
+        empty: {
+          materials: [],
+          fields: { goal: "", deliverable: "", constraints: "", steps: "", open: "" },
+          phase: "idle",
+          glyph: "ready",
+          history: [{ id: "h0", title: "空白草稿", status: "draft", agent: "—", at: "刚刚", archived: false }]
+        },
+        collected: {
+          materials: [
+            { id: "m1", ...SAMPLE_PASTE, included: true },
+            { id: "m2", ...SAMPLE_FILE, included: true },
+            { id: "m3", ...SAMPLE_URL, included: true }
+          ],
+          fields: {
+            goal: "把材料整理成可交给 Agent 的任务",
+            deliverable: "",
+            constraints: "不猜测未确认的项目",
+            steps: "",
+            open: ""
+          },
+          phase: "idle",
+          glyph: "ready",
+          history: [{ id: "h1", title: "v1 · 收集中", status: "draft", agent: "—", at: "2 分钟前", archived: false }]
+        },
+        generating: {
+          materials: [
+            { id: "m1", ...SAMPLE_PASTE, included: true },
+            { id: "m2", ...SAMPLE_FILE, included: true }
+          ],
+          fields: {
+            goal: "把材料整理成可交给 Agent 的任务",
+            deliverable: "交接稿草稿",
+            constraints: "首屏安静",
+            steps: "收集材料",
+            open: ""
+          },
+          phase: "generating",
+          glyph: "working",
+          history: [{ id: "h2", title: "v2 · 生成中", status: "draft", agent: "—", at: "刚刚", archived: false }]
+        },
+        preview: {
+          materials: [
+            { id: "m1", ...SAMPLE_PASTE, included: true },
+            { id: "m2", ...SAMPLE_FILE, included: true },
+            { id: "m3", ...SAMPLE_URL, included: true }
+          ],
+          fields: {
+            goal: "把材料整理成可交给 Agent 的任务",
+            deliverable: "",
+            constraints: "首屏安静",
+            steps: "收集材料",
+            open: ""
+          },
+          phase: "preview",
+          glyph: "ready",
+          history: [{ id: "h3", title: "v3 · 计划预览", status: "ready", agent: "—", at: "刚刚", archived: false }]
+        },
+        failed: {
+          materials: [
+            { id: "m1", ...SAMPLE_PASTE, included: true },
+            { id: "m2", ...SAMPLE_FILE, included: true }
+          ],
+          fields: {
+            goal: "把材料整理成可交给 Agent 的任务",
+            deliverable: "交接稿草稿",
+            constraints: "首屏安静",
+            steps: "收集材料\n重试生成",
+            open: "生成失败原因是否需展示给用户？"
+          },
+          phase: "failed",
+          glyph: "error",
+          history: [{ id: "h4", title: "v4 · 生成失败", status: "failed", agent: "—", at: "刚刚", archived: false }]
+        },
+        delivered: {
+          materials: [
+            { id: "m1", ...SAMPLE_PASTE, included: true },
+            { id: "m2", ...SAMPLE_FILE, included: true },
+            { id: "m3", ...SAMPLE_URL, included: true }
+          ],
+          fields: { ...PREVIEW_PLAN },
+          phase: "delivered",
+          glyph: "ready",
+          history: [
+            { id: "h5", title: "v5 · 交接稿", status: "handed", agent: "Codex", at: "刚刚", archived: false },
+            { id: "h6", title: "v3 · 计划预览", status: "archived", agent: "—", at: "8 分钟前", archived: true }
+          ]
+        }
+      };
+
+      const FOCUS_KEYS = new Set(["quiet", "running", "return", "attention", "degraded"]);
+
+      const state = {
+        demo: "quiet",
+        materials: [],
+        fields: { goal: "", deliverable: "", constraints: "", steps: "", open: "" },
+        phase: "idle",
+        history: [],
+        preview: null,
+        glyphKey: "ready",
+        focusKey: "quiet",
+        autosaveText: "",
+        genTimer: null,
+        saveTimer: null,
+        uid: 10
+      };
+
+      const $ = (sel, root = document) => root.querySelector(sel);
+      const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+      const els = {
+        app: $("#app"),
+        workbench: $("#workbench"),
+        modeChip: $("#modeChip"),
+        ctxProject: $("#ctxProject"),
+        ctxAgentHost: $("#ctxAgentHost"),
+        ctxSave: $("#ctxSave"),
+        sitBar: $("#sitBar"),
+        sitGlyphHost: $("#sitGlyphHost"),
+        sitTitle: $("#sitTitle"),
+        sitSub: $("#sitSub"),
+        sitActions: $("#sitActions"),
+        matList: $("#matList"),
+        matCount: $("#matCount"),
+        pasteZone: $("#pasteZone"),
+        preview: $("#preview"),
+        previewBody: $("#previewBody"),
+        previewCurrent: $("#previewCurrent"),
+        errorBanner: $("#errorBanner"),
+        errorText: $("#errorText"),
+        btnGenerate: $("#btnGenerate"),
+        btnHandoff: $("#btnHandoff"),
+        opsHint: $("#opsHint"),
+        historyList: $("#historyList"),
+        historyListDrawer: $("#historyListDrawer"),
+        wbSide: $("#wbSide"),
+        toggleSide: $("#toggleSide"),
+        toast: $("#toast"),
+        openHistDrawer: $("#openHistDrawer"),
+        closeHistDrawer: $("#closeHistDrawer"),
+        scrim: $("#scrim"),
+        historyDrawer: $("#historyDrawer"),
+        fGoal: $("#fGoal"),
+        fDeliverable: $("#fDeliverable"),
+        fConstraints: $("#fConstraints"),
+        fSteps: $("#fSteps"),
+        fOpen: $("#fOpen")
+      };
+
+      let toastTimer = null;
+      let drawerReturnFocus = null;
+
+      function toast(msg) {
+        els.toast.textContent = msg;
+        els.toast.classList.add("is-on");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => els.toast.classList.remove("is-on"), 2200);
+      }
+
+      function nextId(prefix) {
+        state.uid += 1;
+        return prefix + state.uid;
+      }
+
+      function makeGlyph(key, { showText = true } = {}) {
+        const g = GLYPH[key] || GLYPH.ready;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "agent-glyph" + (g.action ? " is-action" : "");
+        btn.dataset.kind = g.kind;
+        btn.title = g.title + "（" + g.label + "）";
+        btn.setAttribute("aria-label", g.title + "。" + g.label);
+        btn.innerHTML =
+          '<span class="glyph-mark" aria-hidden="true"></span>' +
+          (showText ? '<span class="glyph-label">' + g.short + "</span>" : "") +
+          '<span class="sr-only">' + g.label + "</span>";
+        btn.addEventListener("click", () => {
+          toast(g.action ? "原型：打开待决定事项" : "原型：" + g.title);
+        });
+        return btn;
+      }
+
+      function phaseLabel() {
+        if (state.phase === "generating") return { text: "新工作 · 生成中", phase: "generating" };
+        if (state.phase === "preview") return { text: "新工作 · 待采用", phase: "handoff" };
+        if (state.phase === "failed") return { text: "新工作 · 生成失败", phase: "handoff" };
+        if (state.phase === "delivered") return { text: "新工作 · 待交接", phase: "done" };
+        if (includedCount() > 0 || state.materials.length) return { text: "新工作 · 草稿", phase: "focus" };
+        return { text: "现在 · 操作台", phase: "focus" };
+      }
+
+      function paintCtxRow() {
+        const pl = phaseLabel();
+        els.modeChip.textContent = pl.text;
+        els.modeChip.dataset.phase = pl.phase;
+        els.ctxProject.hidden = false;
+        els.ctxAgentHost.hidden = false;
+        els.ctxProject.textContent =
+          state.focusKey === "degraded" ? "项目未知 · 未确认" : "voice-pilot · 已确认";
+        els.ctxAgentHost.innerHTML = "";
+        els.ctxAgentHost.append(makeGlyph(state.glyphKey, { showText: false }));
+        if (state.autosaveText) {
+          els.ctxSave.hidden = false;
+          els.ctxSave.textContent = "· " + state.autosaveText;
+        } else {
+          els.ctxSave.hidden = true;
+          els.ctxSave.textContent = "";
+        }
+      }
+
+      function paintSitBar(name) {
+        const f = FOCUS[name] || FOCUS.quiet;
+        state.focusKey = name;
+        state.glyphKey = f.glyph;
+        els.sitBar.dataset.tone = f.tone || "";
+        els.sitTitle.textContent = f.title;
+        els.sitSub.textContent = f.sub;
+        els.sitGlyphHost.innerHTML = "";
+        els.sitGlyphHost.append(makeGlyph(f.glyph, { showText: false }));
+        els.sitActions.innerHTML = "";
+        if (f.action) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "primary sit-cta";
+          btn.textContent = f.action;
+          if (f.tone === "attention" || f.tone === "error") btn.dataset.tone = f.tone;
+          btn.addEventListener("click", () => toast("原型：" + f.action));
+          els.sitActions.append(btn);
+        }
+        paintCtxRow();
+      }
+
+      function readFieldsFromDom() {
+        state.fields = {
+          goal: els.fGoal.value.trim(),
+          deliverable: els.fDeliverable.value.trim(),
+          constraints: els.fConstraints.value.trim(),
+          steps: els.fSteps.value.trim(),
+          open: els.fOpen.value.trim()
+        };
+      }
+
+      function writeFieldsToDom() {
+        els.fGoal.value = state.fields.goal || "";
+        els.fDeliverable.value = state.fields.deliverable || "";
+        els.fConstraints.value = state.fields.constraints || "";
+        els.fSteps.value = state.fields.steps || "";
+        els.fOpen.value = state.fields.open || "";
+      }
+
+      function includedCount() {
+        return state.materials.filter((m) => m.included !== false).length;
+      }
+
+      function formatFields(fields) {
+        return (
+          "目标：" + (fields.goal || "（空）") + "\n" +
+          "交付物：" + (fields.deliverable || "（空）") + "\n" +
+          "约束：" + (fields.constraints || "（空）") + "\n" +
+          "步骤：\n" + (fields.steps || "（空）") + "\n" +
+          "待确认：" + (fields.open || "（空）")
+        );
+      }
+
+      function scheduleAutosave() {
+        clearTimeout(state.saveTimer);
+        state.saveTimer = setTimeout(() => {
+          state.autosaveText = "已自动保存";
+          paintCtxRow();
+          toast("已自动保存（原型假反馈）");
+        }, 700);
+      }
+
+      function statusClass(status) {
+        if (status === "ready") return "is-ready";
+        if (status === "failed") return "is-failed";
+        if (status === "handed") return "is-handed";
+        if (status === "archived") return "is-archived";
+        return "";
+      }
+
+      function statusLabel(status) {
+        return ({ draft: "草稿", ready: "计划就绪", failed: "生成失败", handed: "已关联 Agent", archived: "已归档" })[status] || status;
+      }
+
+      function renderHistoryInto(container) {
+        container.innerHTML = "";
+        if (!state.history.length) {
+          const empty = document.createElement("p");
+          empty.className = "mat-empty";
+          empty.textContent = "尚无版本";
+          container.append(empty);
+          return;
+        }
+        state.history.forEach((h) => {
+          const item = document.createElement("div");
+          item.className = "hist-item";
+          item.innerHTML =
+            `<div class="hist-top"><strong>${h.title}</strong>` +
+            `<span class="status-chip ${statusClass(h.status)}">${statusLabel(h.status)}</span></div>` +
+            `<div class="hist-meta">Agent：${h.agent} · ${h.at}</div>` +
+            `<div class="hist-actions"></div>`;
+          const actions = item.querySelector(".hist-actions");
+          if (!h.archived) {
+            const arch = document.createElement("button");
+            arch.type = "button";
+            arch.textContent = "归档";
+            arch.addEventListener("click", () => {
+              h.archived = true;
+              h.status = "archived";
+              toast("已归档（原型）");
+              renderAll();
+            });
+            actions.append(arch);
+          } else {
+            const restore = document.createElement("button");
+            restore.type = "button";
+            restore.textContent = "恢复";
+            restore.addEventListener("click", () => {
+              h.archived = false;
+              h.status = "draft";
+              toast("已恢复版本（原型）");
+              renderAll();
+            });
+            actions.append(restore);
+          }
+          container.append(item);
+        });
+      }
+
+      function renderMaterials() {
+        els.matList.innerHTML = "";
+        const n = state.materials.length;
+        els.matCount.textContent = n + " 项";
+        if (!n) {
+          const empty = document.createElement("div");
+          empty.className = "mat-empty";
+          empty.textContent = "还没有材料。从上方粘贴区开始。";
+          els.matList.append(empty);
+          return;
+        }
+        state.materials.forEach((m, index) => {
+          const row = document.createElement("div");
+          row.className = "mat-row" + (m.included === false ? " is-off" : "");
+          row.innerHTML =
+            `<input class="mat-check" type="checkbox" ${m.included !== false ? "checked" : ""} aria-label="选择 ${m.name}">` +
+            `<div class="mat-body"><div class="mat-title"><span class="kind">${m.kind}</span><span>${m.name}</span></div>` +
+            `<input class="mat-note" type="text" value="${(m.note || "").replace(/"/g, "&quot;")}" placeholder="补充说明" aria-label="备注 ${m.name}"></div>` +
+            `<div class="mat-tools">` +
+            `<button type="button" class="icon-btn" data-act="up" aria-label="上移" ${index === 0 ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="m6 14 6-6 6 6"/></svg></button>` +
+            `<button type="button" class="icon-btn" data-act="down" aria-label="下移" ${index === n - 1 ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="m6 10 6 6 6-6"/></svg></button>` +
+            `<button type="button" class="icon-btn" data-act="del" aria-label="删除"><svg viewBox="0 0 24 24"><path d="M6 7h12M10 7V5h4v2M9 7v12h6V7"/></svg></button>` +
+            `</div>`;
+          const check = row.querySelector(".mat-check");
+          check.addEventListener("change", () => {
+            m.included = check.checked;
+            scheduleAutosave();
+            updateOps();
+            paintCtxRow();
+            row.classList.toggle("is-off", !m.included);
+          });
+          row.querySelector(".mat-note").addEventListener("input", (e) => {
+            m.note = e.target.value;
+            scheduleAutosave();
+          });
+          row.querySelector('[data-act="up"]').addEventListener("click", () => {
+            if (index === 0) return;
+            const tmp = state.materials[index - 1];
+            state.materials[index - 1] = m;
+            state.materials[index] = tmp;
+            scheduleAutosave();
+            renderAll();
+          });
+          row.querySelector('[data-act="down"]').addEventListener("click", () => {
+            if (index >= n - 1) return;
+            const tmp = state.materials[index + 1];
+            state.materials[index + 1] = m;
+            state.materials[index] = tmp;
+            scheduleAutosave();
+            renderAll();
+          });
+          row.querySelector('[data-act="del"]').addEventListener("click", () => {
+            state.materials = state.materials.filter((x) => x.id !== m.id);
+            toast("已删除材料");
+            scheduleAutosave();
+            renderAll();
+          });
+          els.matList.append(row);
+        });
+      }
+
+      function updateOps() {
+        const hasMat = includedCount() > 0;
+        const goalOk = !!(els.fGoal.value || state.fields.goal || "").trim();
+        const generating = state.phase === "generating";
+
+        els.btnGenerate.disabled = !hasMat || generating;
+        els.btnGenerate.setAttribute("aria-busy", String(generating));
+        els.btnGenerate.textContent = generating ? "正在生成…" : "生成计划";
+        els.btnHandoff.disabled = !hasMat || !goalOk || generating;
+
+        els.preview.hidden = state.phase !== "preview";
+        const showErr = state.phase === "failed";
+        els.errorBanner.hidden = !showErr;
+        if (showErr) els.errorText.textContent = "计划生成失败（原型）。当前草稿未改动。";
+
+        if (!hasMat) els.opsHint.textContent = "放入材料后可生成计划";
+        else if (!goalOk) els.opsHint.textContent = "填写目标后可形成交接稿";
+        else if (generating) els.opsHint.textContent = "生成中…";
+        else if (state.phase === "preview") els.opsHint.textContent = "预览未写入 · 采用 / 合并 / 放弃";
+        else if (state.phase === "delivered") els.opsHint.textContent = "交接稿已形成（未真实发送）";
+        else els.opsHint.textContent = "";
+
+        if (state.phase === "preview" && state.preview) {
+          readFieldsFromDom();
+          els.previewCurrent.textContent = formatFields(state.fields);
+          els.previewBody.textContent = formatFields(state.preview);
+        }
+        paintCtxRow();
+      }
+
+      function renderAll() {
+        writeFieldsToDom();
+        renderMaterials();
+        renderHistoryInto(els.historyList);
+        renderHistoryInto(els.historyListDrawer);
+        updateOps();
+      }
+
+      function applyDemo(name) {
+        clearTimeout(state.genTimer);
+        state.demo = name;
+        $$("[data-demo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.demo === name)));
+
+        if (FOCUS_KEYS.has(name)) {
+          // Situation changes only the bottom title line; ops console stays.
+          if (name === "quiet" || name === "running") {
+            state.phase = "idle";
+            state.preview = null;
+            if (!state.materials.length) {
+              state.history = [];
+              state.autosaveText = "";
+            }
+          }
+          paintSitBar(name);
+          renderAll();
+          return;
+        }
+
+        const demo = WB_DEMOS[name];
+        state.materials = demo.materials.map((m) => ({ ...m }));
+        state.fields = { ...demo.fields };
+        state.phase = demo.phase;
+        state.history = demo.history.map((h) => ({ ...h }));
+        state.glyphKey = demo.glyph;
+        state.preview = demo.phase === "preview" ? { ...PREVIEW_PLAN } : null;
+        state.autosaveText = name === "empty" ? "" : "已自动保存";
+        // Keep a quiet situation line while editing unless already attention-like
+        if (!FOCUS_KEYS.has(state.focusKey) || state.focusKey === "quiet" || state.focusKey === "running") {
+          paintSitBar("quiet");
+        }
+        state.glyphKey = demo.glyph;
+        paintCtxRow();
+        renderAll();
+
+        if (name === "generating") {
+          state.genTimer = setTimeout(() => {
+            state.phase = "preview";
+            state.preview = { ...PREVIEW_PLAN };
+            state.glyphKey = "ready";
+            toast("计划已生成（预览，未写入草稿）");
+            $$("[data-demo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.demo === "preview")));
+            state.demo = "preview";
+            renderAll();
+          }, 1600);
+        }
+      }
+
+      function addMaterial(sample) {
+        state.materials.push({
+          id: nextId("m"),
+          kind: sample.kind,
+          name: sample.name,
+          note: sample.note || "",
+          included: true
+        });
+        scheduleAutosave();
+        renderAll();
+        toast("已加入材料（原型）");
+      }
+
+      function startGenerate() {
+        readFieldsFromDom();
+        if (includedCount() === 0 || state.phase === "generating") return;
+        state.phase = "generating";
+        state.glyphKey = "working";
+        state.preview = null;
+        updateOps();
+        clearTimeout(state.genTimer);
+        state.genTimer = setTimeout(() => {
+          state.phase = "preview";
+          state.preview = { ...PREVIEW_PLAN };
+          state.glyphKey = "ready";
+          toast("计划已生成（预览，未写入草稿）");
+          renderAll();
+        }, 1400);
+      }
+
+      function adoptPreview() {
+        if (!state.preview) return;
+        state.fields = { ...state.preview };
+        state.phase = "idle";
+        state.preview = null;
+        writeFieldsToDom();
+        toast("已采用预览（覆盖字段）");
+        scheduleAutosave();
+        updateOps();
+      }
+
+      function mergePreview() {
+        if (!state.preview) return;
+        readFieldsFromDom();
+        ["goal", "deliverable", "constraints", "open"].forEach((k) => {
+          if (!state.fields[k]) state.fields[k] = state.preview[k];
+        });
+        const existing = new Set(
+          (state.fields.steps || "").split(/\n+/).map((s) => s.trim()).filter(Boolean)
+        );
+        (state.preview.steps || "").split(/\n+/).map((s) => s.trim()).filter(Boolean).forEach((s) => {
+          if (!existing.has(s)) existing.add(s);
+        });
+        state.fields.steps = [...existing].join("\n");
+        state.phase = "idle";
+        state.preview = null;
+        writeFieldsToDom();
+        toast("已合并预览（只补空字段）");
+        scheduleAutosave();
+        updateOps();
+      }
+
+      function discardPreview() {
+        state.phase = "idle";
+        state.preview = null;
+        toast("已放弃预览（草稿未改）");
+        updateOps();
+      }
+
+      function formHandoff() {
+        readFieldsFromDom();
+        if (includedCount() === 0 || !state.fields.goal) return;
+        state.phase = "delivered";
+        state.preview = null;
+        state.glyphKey = "ready";
+        state.history.unshift({
+          id: nextId("h"),
+          title: "v · 交接稿",
+          status: "handed",
+          agent: "Codex",
+          at: "刚刚",
+          archived: false
+        });
+        toast("交接稿已形成 · 已关联 Codex（未真实发送）");
+        renderAll();
+      }
+
+      function createVersion() {
+        readFieldsFromDom();
+        state.history.unshift({
+          id: nextId("h"),
+          title: "v · 手动版本",
+          status: state.phase === "delivered" ? "handed" : "draft",
+          agent: state.phase === "delivered" ? "Codex" : "—",
+          at: "刚刚",
+          archived: false
+        });
+        toast("已创建版本（原型）");
+        renderAll();
+      }
+
+      function setHistDrawer(open) {
+        const narrow = window.matchMedia("(max-width: 720px)").matches;
+        if (!narrow && open) open = false;
+        els.app.dataset.histDrawer = open ? "open" : "closed";
+        els.historyDrawer.setAttribute("aria-hidden", String(!open));
+        els.openHistDrawer.setAttribute("aria-expanded", String(open));
+        els.scrim.hidden = !open;
+        if (open) {
+          drawerReturnFocus = document.activeElement;
+          els.closeHistDrawer.focus();
+        } else if (drawerReturnFocus) {
+          drawerReturnFocus.focus();
+          drawerReturnFocus = null;
+        }
+      }
+
+      function trapFocus(e) {
+        if (els.app.dataset.histDrawer !== "open" || e.key !== "Tab") return;
+        const focusables = $$("button, [href], input, textarea, [tabindex]:not([tabindex='-1'])", els.historyDrawer)
+          .filter((el) => !el.disabled && el.offsetParent !== null);
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+
+      $$("[data-demo]").forEach((btn) => {
+        btn.addEventListener("click", () => applyDemo(btn.dataset.demo));
+      });
+
+      $$("[data-nav]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (btn.getAttribute("aria-current") === "page") return;
+          toast("原型提示：此处不跳转 · 「" + btn.dataset.nav + "」");
+        });
+      });
+
+      $("#simPaste").addEventListener("click", () => addMaterial(SAMPLE_PASTE));
+      $("#addFile").addEventListener("click", () => addMaterial(SAMPLE_FILE));
+      $("#addUrl").addEventListener("click", () => addMaterial(SAMPLE_URL));
+
+      els.pasteZone.addEventListener("dragenter", (e) => { e.preventDefault(); els.pasteZone.classList.add("is-drag"); });
+      els.pasteZone.addEventListener("dragover", (e) => { e.preventDefault(); els.pasteZone.classList.add("is-drag"); });
+      els.pasteZone.addEventListener("dragleave", () => els.pasteZone.classList.remove("is-drag"));
+      els.pasteZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        els.pasteZone.classList.remove("is-drag");
+        addMaterial({ kind: "文件", name: "拖放样例.note", note: "拖放模拟（未读真实文件）" });
+      });
+      els.pasteZone.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+          e.preventDefault();
+          addMaterial(SAMPLE_PASTE);
+        }
+      });
+
+      ["fGoal", "fDeliverable", "fConstraints", "fSteps", "fOpen"].forEach((id) => {
+        els[id].addEventListener("input", () => {
+          readFieldsFromDom();
+          scheduleAutosave();
+          updateOps();
+        });
+      });
+
+      els.btnGenerate.addEventListener("click", startGenerate);
+      $("#retryGen").addEventListener("click", startGenerate);
+      $("#adoptPreview").addEventListener("click", adoptPreview);
+      $("#mergePreview").addEventListener("click", mergePreview);
+      $("#discardPreview").addEventListener("click", discardPreview);
+      els.btnHandoff.addEventListener("click", formHandoff);
+      $("#btnSaveVersion").addEventListener("click", createVersion);
+
+      els.toggleSide.addEventListener("click", () => {
+        const collapsed = els.wbSide.dataset.collapsed === "true";
+        els.wbSide.dataset.collapsed = String(!collapsed);
+        els.toggleSide.setAttribute("aria-expanded", String(collapsed));
+        els.toggleSide.textContent = collapsed ? "收起" : "展开";
+      });
+
+      els.openHistDrawer.addEventListener("click", () => setHistDrawer(true));
+      els.closeHistDrawer.addEventListener("click", () => setHistDrawer(false));
+      els.scrim.addEventListener("click", () => setHistDrawer(false));
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && els.app.dataset.histDrawer === "open") setHistDrawer(false);
+        trapFocus(e);
+      });
+
+      paintSitBar("quiet");
+      applyDemo("empty");
+      $$("[data-demo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.demo === "quiet")));
+      state.demo = "quiet";
+    })();
+  </script>
+</body>
+</html>

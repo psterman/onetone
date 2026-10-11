@@ -47,14 +47,91 @@
   var inventoryCache = null;
   var inventoryFetchTimer = 0;
   var lastInventoryKey = '';
+  var agentCenterCache = null;
+  var agentCenterFetchTimer = 0;
+  var lastAgentCenterKey = '';
   /** Home Focus surface: focus | history | memory | connections | settings */
   var hfView = 'focus';
-  var homeFocusCache = null;
   var homeFocusUnsub = null;
+  var homeFocusCache = null;
   var hfOverlay = ''; // pick | progress | ''
   var hfPickHtml = '';
   var hfProgressHtml = '';
   var useLegacyNow = false;
+  var quietComposerBound = false;
+  var materialsUnsub = null;
+  var skipMaterialsPaint = false;
+  var lastMaterialsPaintKey = '';
+
+  function quietDraftStorageKey(vm) {
+    if (!vm || !vm.confirmed) return 'onetone.quickDraft:unconfirmed';
+    var id = String(vm.projectId || vm.projectName || '').trim() || 'unknown';
+    return 'onetone.quickDraft:' + id;
+  }
+
+  function readQuietDraft(vm) {
+    try {
+      var ss = global.sessionStorage;
+      if (!ss || !ss.getItem) return '';
+      var raw = ss.getItem(quietDraftStorageKey(vm));
+      if (!raw) return '';
+      var o = JSON.parse(raw);
+      return o && o.text != null ? String(o.text) : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function writeQuietDraft(vm, text) {
+    try {
+      var ss = global.sessionStorage;
+      if (!ss || !ss.setItem) return;
+      ss.setItem(
+        quietDraftStorageKey(vm),
+        JSON.stringify({
+          text: String(text || ''),
+          updatedAt: Date.now(),
+          projectId: (vm && (vm.projectId || vm.projectName)) || null
+        })
+      );
+    } catch (_) {}
+    // Quiet composer is a write path into the tray model — bump contentRevision.
+    try {
+      var Prep = global.OneToneHomePromptPrep;
+      if (Prep && typeof Prep.setDraftBody === 'function') {
+        Prep.setDraftBody(text, { skipSync: true });
+      }
+    } catch (_) {}
+  }
+
+  function migrateQuietDraft(vm) {
+    if (!vm || !vm.confirmed) return;
+    try {
+      var ss = global.sessionStorage;
+      if (!ss || !ss.getItem) return;
+      var raw = ss.getItem('onetone.quickDraft:unconfirmed');
+      if (!raw) return;
+      var dest = quietDraftStorageKey(vm);
+      if (dest === 'onetone.quickDraft:unconfirmed') return;
+      if (!ss.getItem(dest)) ss.setItem(dest, raw);
+      ss.removeItem('onetone.quickDraft:unconfirmed');
+    } catch (_) {}
+  }
+
+  function toastQuiet(msg, kind) {
+    var tone = kind || 'scheme';
+    try {
+      if (global.OneToneAppToast && global.OneToneAppToast.show) {
+        global.OneToneAppToast.show(msg, tone);
+        return;
+      }
+    } catch (_) {}
+    try {
+      if (global.parent && global.parent.OneToneToast && global.parent.OneToneToast.show) {
+        global.parent.OneToneToast.show(String(msg));
+      }
+    } catch (_) {}
+  }
 
   function $(id) {
     return document.getElementById(id);
@@ -390,6 +467,39 @@
         if (mounted) paint();
       })
       .catch(function () {});
+  }
+
+  function fetchAgentCenter() {
+    var ipc = global.OneToneIpc;
+    if (!ipc || !ipc.invoke) return;
+    ipc
+      .invoke('cmd_agent_center_snapshot', {})
+      .then(function (snap) {
+        var key = '';
+        try {
+          var agents = (snap && snap.agents) || [];
+          key = JSON.stringify(
+            agents.map(function (a) {
+              return [a.agentId, a.runtimeKind, a.status];
+            })
+          );
+        } catch (_) {
+          key = String(Date.now());
+        }
+        if (key === lastAgentCenterKey) return;
+        lastAgentCenterKey = key;
+        agentCenterCache = snap || null;
+        if (mounted) paint();
+      })
+      .catch(function () {});
+  }
+
+  function scheduleAgentCenterRefresh() {
+    if (agentCenterFetchTimer) return;
+    agentCenterFetchTimer = setTimeout(function () {
+      agentCenterFetchTimer = 0;
+      fetchAgentCenter();
+    }, 200);
   }
 
   function scheduleInventoryRefresh() {
@@ -964,11 +1074,55 @@
         lastPaintHtml = '';
         // Project root may become available after confirm — refresh home snapshot filter.
         scheduleAgentHomeRefresh();
+        scheduleAgentCenterRefresh();
         paint();
       }
     });
     S.fetch();
     S.startPolling(5000);
+    scheduleAgentCenterRefresh();
+  }
+
+  /** In-memory dismiss of return Hero so Quiet Composer / agent jump can run. */
+  var dismissedReturnKey = '';
+
+  function returnResumeKey(vm) {
+    var ck = agentHomeCache && agentHomeCache.checkpoint;
+    if (ck && (ck.checkpointId || ck.sessionId)) {
+      return String(ck.checkpointId || '') + '|' + String(ck.sessionId || '');
+    }
+    var w = (vm && vm.dto && vm.dto.work) || {};
+    return (
+      String(w.updatedAt || '') +
+      '|' +
+      String(w.title || '') +
+      '|' +
+      String(w.description || '')
+    );
+  }
+
+  function isReturnDismissed(vm) {
+    return !!(dismissedReturnKey && vm && dismissedReturnKey === returnResumeKey(vm));
+  }
+
+  function dismissReturnFor(vm) {
+    dismissedReturnKey = returnResumeKey(vm);
+  }
+
+  function clearReturnDismiss() {
+    dismissedReturnKey = '';
+  }
+
+  /** Return → Quiet Composer without deleting checkpoint. */
+  function forceQuietStart(vm) {
+    if (!vm) return vm;
+    vm.mode = 'quiet';
+    vm.primary = null;
+    vm.secondary = null;
+    vm.continuation = null;
+    vm._returnDismissed = true;
+    if (vm.desk) vm.desk.continueCard = null;
+    return vm;
   }
 
   function buildHomeFocusVm() {
@@ -985,6 +1139,9 @@
     }
     if (vm && A.enrichFromInventory) {
       vm = A.enrichFromInventory(vm, inventoryCache, attentionCache);
+    }
+    if (vm && vm.mode === 'return' && isReturnDismissed(vm)) {
+      vm = forceQuietStart(vm);
     }
     return vm;
   }
@@ -1050,10 +1207,36 @@
         : '';
     }
 
+    migrateQuietDraft(vm);
+    ensureQuietMaterialsSub();
+    var Policy = global.OneToneHomeActionPolicy;
+    var cap =
+      Policy && Policy.resolveQuickHandoffTarget
+        ? Policy.resolveQuickHandoffTarget(vm, agentCenterCache)
+        : { kind: 'unavailable' };
+    var draftText = readQuietDraft(vm);
+    var Prep = global.OneToneHomePromptPrep;
+    var materialSummary =
+      Prep && Prep.getMaterialSummary ? Prep.getMaterialSummary() : { count: 0, byKind: {}, refs: [] };
+    var probeTargets = listProbeJumpTargets(agentCenterCache);
     var html =
       V && V.renderFocus
         ? V.renderFocus(vm, {
             listening: !!(voice && voice.listening),
+            draftText: draftText,
+            draftPreview: draftText,
+            materialSummary: materialSummary,
+            probeTargets: probeTargets,
+            resumeAvailable: !!vm._returnDismissed,
+            handoffAct:
+              Policy && Policy.handoffActForCap
+                ? Policy.handoffActForCap(cap)
+                : 'quick_handoff',
+            handoffLabel:
+              Policy && Policy.handoffLabelForCap
+                ? Policy.handoffLabelForCap(cap)
+                : '复制并打开 Agent',
+            handoffDisabled: !String(draftText || '').trim(),
             voiceHtml: (function () {
               var U = ui();
               if (!U || !U.renderDock) return '';
@@ -1076,10 +1259,165 @@
     return html;
   }
 
-  function handleHomeFocusAct(kind) {
+  function materialsPaintKey(summary) {
+    summary = summary || {};
+    var by = summary.byKind || {};
+    var refs = summary.refs || [];
+    var refSig = refs
+      .map(function (r) {
+        return r && r.id ? r.id : '';
+      })
+      .join(',');
+    return (
+      String(summary.collectionId || '') +
+      ':' +
+      String(summary.count || 0) +
+      ':' +
+      String(summary.manualUploadCount || 0) +
+      ':' +
+      Object.keys(by)
+        .sort()
+        .map(function (k) {
+          return k + '=' + by[k];
+        })
+        .join(',') +
+      ':' +
+      refSig
+    );
+  }
+
+  function ensureQuietMaterialsSub() {
+    if (materialsUnsub) return;
+    var Prep = global.OneToneHomePromptPrep;
+    if (!Prep || typeof Prep.subscribeMaterials !== 'function') return;
+    skipMaterialsPaint = true;
+    materialsUnsub = Prep.subscribeMaterials(function (summary) {
+      if (skipMaterialsPaint) {
+        lastMaterialsPaintKey = materialsPaintKey(summary);
+        return;
+      }
+      if (!mounted || !useHomeFocusSurface()) return;
+      var key = materialsPaintKey(summary);
+      if (key === lastMaterialsPaintKey) return;
+      lastMaterialsPaintKey = key;
+      lastPaintHtml = '';
+      paint();
+    });
+    skipMaterialsPaint = false;
+  }
+
+  /** Probe jumps — always offered for homepage client handoff tests. */
+  function listProbeJumpTargets(snap) {
+    var Policy = global.OneToneHomeActionPolicy;
+    var agents = (snap && snap.agents) || [];
+    var order =
+      Policy && Policy.PROBE_KINDS && Policy.PROBE_KINDS.length
+        ? Policy.PROBE_KINDS
+        : ['minimax', 'workbuddy', 'cursor', 'trae', 'traeCode', 'qoder', 'chatgpt'];
+    var out = [];
+    for (var i = 0; i < order.length; i++) {
+      var want = order[i];
+      var found = null;
+      for (var j = 0; j < agents.length; j++) {
+        var a = agents[j];
+        if (!a || !a.agentId) continue;
+        var kind =
+          Policy && Policy.canonicalKind
+            ? Policy.canonicalKind(a.runtimeKind || a.agentId)
+            : String(a.runtimeKind || a.agentId || '')
+                .toLowerCase()
+                .replace(/^kind:/, '');
+        if (kind !== want) continue;
+        if (Policy && Policy.agentCanFocus && !Policy.agentCanFocus(a)) continue;
+        found = a;
+        break;
+      }
+      out.push({
+        kind: want,
+        label:
+          Policy && Policy.displayNameForKind
+            ? Policy.displayNameForKind(want)
+            : want,
+        agentId: found
+          ? String(found.agentId)
+          : Policy && Policy.syntheticAgentId
+            ? Policy.syntheticAgentId(want)
+            : want === 'chatgpt'
+              ? 'kind:codex'
+              : 'kind:' + want
+      });
+    }
+    return out;
+  }
+
+  function quietCollectMaterial(collectKind) {
+    var Prep = global.OneToneHomePromptPrep;
+    if (!Prep || typeof Prep.collectMaterial !== 'function') {
+      toastQuiet('材料能力未就绪');
+      return;
+    }
+    var vm = buildHomeFocusVm() || {};
+    if (typeof Prep.beginMaterialCollection === 'function') {
+      var began = Prep.beginMaterialCollection({
+        scopeId: vm.projectId || vm.projectName || '',
+        resetIfHandedOff: true
+      });
+      if (began && began.outcome === 'busy') {
+        toastQuiet('正在交接，暂不能改材料');
+        return;
+      }
+    }
+    Prep.collectMaterial(collectKind)
+      .then(function (res) {
+        if (!res) return;
+        if (res.outcome === 'added') {
+          toastQuiet(res.message || '材料已加入');
+          return;
+        }
+        if (res.outcome === 'cancelled') {
+          if (res.message) toastQuiet(res.message);
+          return;
+        }
+        toastQuiet(res.message || '加入材料失败');
+      })
+      .catch(function () {
+        toastQuiet('加入材料失败');
+      });
+  }
+
+  function handleHomeFocusAct(kind, el) {
     var vm = buildHomeFocusVm() || {};
     var Policy = global.OneToneHomeActionPolicy;
     var S = global.OneToneHomeFocusStore;
+
+    if (kind === 'quiet_collect') {
+      quietCollectMaterial((el && el.getAttribute('data-hf-collect')) || '');
+      return;
+    }
+    if (kind === 'quiet_remove') {
+      var PrepRm = global.OneToneHomePromptPrep;
+      var mid = (el && el.getAttribute('data-hf-mat-id')) || '';
+      if (PrepRm && typeof PrepRm.removeMaterial === 'function' && mid) {
+        var rm = PrepRm.removeMaterial(mid);
+        if (rm && rm.removed) toastQuiet('已移除材料');
+        else toastQuiet((rm && rm.reason === 'busy' ? '正在交接，暂不能改材料' : '移除失败'));
+      }
+      return;
+    }
+
+    // Leave return Hero → Quiet Composer (agent jump). Checkpoint stays.
+    if (kind === 'start_new_task') {
+      dismissReturnFor(vm);
+      lastPaintHtml = '';
+      paint();
+      return;
+    }
+    if (kind === 'restore_return') {
+      clearReturnDismiss();
+      lastPaintHtml = '';
+      paint();
+      return;
+    }
 
     if (kind === 'close_pick' || kind === 'close_progress' || kind === 'close_drawer') {
       if (kind === 'close_drawer' && root) {
@@ -1098,29 +1436,63 @@
       setView('scenes');
       return;
     }
+    if (kind === 'open_prep') {
+      var Prep = global.OneToneHomePromptPrep;
+      if (Prep && Prep.expand) Prep.expand();
+      return;
+    }
+    if (kind === 'close_prep') {
+      var PrepClose = global.OneToneHomePromptPrep;
+      if (PrepClose && PrepClose.collapse) PrepClose.collapse();
+      return;
+    }
     // Prototype act aliases → existing policy kinds
     if (kind === 'decide') kind = 'view_progress';
     if (kind === 'continue') kind = 'resume';
     if (kind === 'restore') kind = (vm.primary && vm.primary.id) || 'confirm_project';
 
     if (!Policy || !Policy.execute) return;
+
+    function openAgentOverview() {
+      var Nav = global.OneToneAgentNavTarget;
+      if (Nav && Nav.open) {
+        Nav.open({
+          view: 'overview',
+          section: 'working',
+          provider: (vm.dto && vm.dto.provider && vm.dto.provider.id) || null,
+          projectId: vm.projectName || vm.projectId || null
+        });
+      }
+    }
+
+    var preferKind =
+      (el && el.getAttribute && el.getAttribute('data-hf-handoff-kind')) || '';
+    if (preferKind) {
+      vm = Object.assign({}, vm, { handoffPreferKind: preferKind });
+    }
+
     Policy.execute(kind, vm, {
+      preferKind: preferKind || undefined,
       openVoice: function () {
         var btn = root && root.querySelector('[data-now-voice]');
         if (btn) btn.click();
       },
+      openPrep: function () {
+        var P = global.OneToneHomePromptPrep;
+        if (P && P.expand) P.expand();
+      },
       openProgress: function () {
-        var CW = global.OneToneCursorWorkView;
-        hfOverlay = 'progress';
-        hfProgressHtml = CW
-          ? CW.render({
-              title: vm.title,
-              copy: vm.copy,
-              events: []
-            })
-          : '';
-        lastPaintHtml = '';
-        paint();
+        var Nav = global.OneToneAgentNavTarget;
+        if (Nav && Nav.open) {
+          Nav.open({
+            view: 'overview',
+            section: vm.mode === 'attention' ? 'attention' : 'working',
+            provider: (vm.dto && vm.dto.provider && vm.dto.provider.id) || null,
+            projectId: vm.projectName || vm.projectId || null,
+            sessionId:
+              (vm.dto && vm.dto.work && (vm.dto.work.sessionId || vm.dto.work.session_id)) || null
+          });
+        }
       },
       openPick: function () {
         if (!S) return;
@@ -1137,34 +1509,162 @@
         hfView = 'connections';
         lastPaintHtml = '';
         paint();
+      },
+      getDraftText: function () {
+        var ta = root && root.querySelector('#hnQuietDraft');
+        if (ta) return String(ta.value || '');
+        return readQuietDraft(vm);
+      },
+      getAgentSnapshot: function () {
+        return agentCenterCache;
+      },
+      openAgentChooser: openAgentOverview,
+      openAgentOverview: openAgentOverview,
+      toast: toastQuiet,
+      pasteTextIntoDraft: function () {
+        var clip = global.navigator && global.navigator.clipboard;
+        if (!clip || typeof clip.readText !== 'function') {
+          toastQuiet('无法读取剪贴板');
+          return Promise.resolve();
+        }
+        return clip.readText().then(function (t) {
+          var text = String(t || '');
+          if (!text) {
+            toastQuiet('剪贴板没有文字');
+            return;
+          }
+          var ta = root && root.querySelector('#hnQuietDraft');
+          var cur = ta ? String(ta.value || '') : readQuietDraft(vm);
+          var next = cur ? cur.replace(/\s*$/, '') + '\n\n' + text : text;
+          writeQuietDraft(vm, next);
+          if (ta) {
+            ta.value = next;
+            setQuietHandoffDisabled(!next.trim());
+          } else {
+            lastPaintHtml = '';
+            paint();
+          }
+          toastQuiet('已粘贴文字');
+        });
       }
     })
       .then(function (res) {
-        if (res && res.ok === false && res.error) {
-          try {
-            if (global.parent && global.parent.OneToneToast && global.parent.OneToneToast.show) {
-              global.parent.OneToneToast.show(String(res.error));
-            }
-          } catch (_) {}
+        if (res && res.outcome === 'clipboard_ready') {
+          // Keep draft; do not invent running.
+          return;
         }
-        if (S) S.fetch();
-        lastPaintHtml = '';
-        paint();
+        if (res && res.ok === false && res.error && res.outcome !== 'failed') {
+          toastQuiet(String(res.error));
+        }
+        if (kind === 'confirm_project' || kind === 'pick_project') {
+          migrateQuietDraft(buildHomeFocusVm() || vm);
+        }
+        if (S && kind !== 'quick_handoff' && kind !== 'quiet_paste_text') S.fetch();
+        if (kind !== 'quiet_paste_text' && kind !== 'quick_handoff') {
+          lastPaintHtml = '';
+          paint();
+        }
       })
       .catch(function (err) {
         var msg =
           (err && err.message) ||
           (typeof err === 'string' ? err : '') ||
           '确认失败';
-        try {
-          if (global.parent && global.parent.OneToneToast && global.parent.OneToneToast.show) {
-            global.parent.OneToneToast.show(msg);
-          }
-        } catch (_) {}
+        toastQuiet(msg);
         if (S) S.fetch();
         lastPaintHtml = '';
         paint();
       });
+  }
+
+  function setQuietHandoffDisabled(disabled) {
+    if (!root) return;
+    var nodes = root.querySelectorAll(
+      '.hn-quiet-composer .hn-cta, .hn-quiet-composer .hn-probe-jump'
+    );
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].disabled = !!disabled;
+    }
+  }
+
+  function bindQuietComposer() {
+    if (!root) return;
+    var ta = root.querySelector('#hnQuietDraft');
+    if (!ta) return;
+    var vm = buildHomeFocusVm() || {};
+    ta.oninput = function () {
+      writeQuietDraft(vm, ta.value);
+      setQuietHandoffDisabled(!String(ta.value || '').trim());
+    };
+    // Phase3: HTML5 file drop → collect into tray (OLE drag-out later).
+    var dropHost =
+      root.querySelector('[data-hn-quiet-composer]') || ta.closest('.hn-quiet-composer') || ta;
+    if (dropHost && dropHost.getAttribute('data-hn-tray-drop') !== '1') {
+      dropHost.setAttribute('data-hn-tray-drop', '1');
+      dropHost.addEventListener('dragover', function (e) {
+        if (!e.dataTransfer) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      });
+      dropHost.addEventListener('drop', function (e) {
+        if (!e.dataTransfer) return;
+        e.preventDefault();
+        var files = e.dataTransfer.files;
+        if (!files || !files.length) return;
+        var Prep = global.OneToneHomePromptPrep;
+        if (!Prep || typeof Prep.collectMaterial !== 'function') {
+          toastQuiet('材料能力未就绪');
+          return;
+        }
+        if (typeof Prep.beginMaterialCollection === 'function') {
+          Prep.beginMaterialCollection({
+            scopeId: vm.projectId || vm.projectName || '',
+            resetIfHandedOff: true
+          });
+        }
+        var chain = Promise.resolve();
+        for (var i = 0; i < Math.min(files.length, 8); i++) {
+          (function (f) {
+            var path = (f && (f.path || f.name)) || '';
+            chain = chain.then(function () {
+              return Prep.collectMaterial('attach', {
+                path: path,
+                name: (f && f.name) || path
+              });
+            });
+          })(files[i]);
+        }
+        chain
+          .then(function () {
+            toastQuiet('已拖入材料');
+          })
+          .catch(function () {
+            toastQuiet('拖入材料失败');
+          });
+      });
+    }
+  }
+
+  function mountHomeFocusChrome() {
+    var vm = buildHomeFocusVm() || {};
+    var stripOpts = {
+      heroMode: vm.mode || '',
+      primaryId: (vm.primary && vm.primary.id) || '',
+      provider: (vm.dto && vm.dto.provider && vm.dto.provider.id) || '',
+      projectId: vm.projectName || vm.projectId || '',
+      sessionId:
+        (vm.dto && vm.dto.work && (vm.dto.work.sessionId || vm.dto.work.session_id)) || ''
+    };
+    if (global.OneToneHomeAgentStatusStrip && global.OneToneHomeAgentStatusStrip.ensureMounted) {
+      try {
+        global.OneToneHomeAgentStatusStrip.ensureMounted(stripOpts);
+      } catch (_) {}
+    }
+    if (global.OneToneHomePromptPrep && global.OneToneHomePromptPrep.ensureMounted) {
+      try {
+        global.OneToneHomePromptPrep.ensureMounted();
+      } catch (_) {}
+    }
   }
 
   function paint() {
@@ -1186,31 +1686,16 @@
       html += renderHomeFocusHtml(voice);
       if (html === lastPaintHtml) {
         syncVoiceStrip(voice);
-        if (global.OneToneHomeAgentStatusStrip && global.OneToneHomeAgentStatusStrip.ensureMounted) {
-          try {
-            global.OneToneHomeAgentStatusStrip.ensureMounted();
-          } catch (_) {}
-        }
-        if (global.OneToneHomePromptPrep && global.OneToneHomePromptPrep.ensureMounted) {
-          try {
-            global.OneToneHomePromptPrep.ensureMounted();
-          } catch (_) {}
-        }
+        mountHomeFocusChrome();
+        bindQuietComposer();
         return;
       }
       lastPaintHtml = html;
       root.innerHTML = html;
       syncVoiceStrip(voice);
-      if (global.OneToneHomeAgentStatusStrip && global.OneToneHomeAgentStatusStrip.ensureMounted) {
-        try {
-          global.OneToneHomeAgentStatusStrip.ensureMounted();
-        } catch (_) {}
-      }
-      if (global.OneToneHomePromptPrep && global.OneToneHomePromptPrep.ensureMounted) {
-        try {
-          global.OneToneHomePromptPrep.ensureMounted();
-        } catch (_) {}
-      }
+      mountHomeFocusChrome();
+      bindQuietComposer();
+      scheduleAgentCenterRefresh();
       return;
     }
     if (!U || !model()) return;
@@ -1625,7 +2110,7 @@
     }
     var hfAct = t.closest('[data-hf-act]');
     if (hfAct) {
-      handleHomeFocusAct(hfAct.getAttribute('data-hf-act') || '');
+      handleHomeFocusAct(hfAct.getAttribute('data-hf-act') || '', hfAct);
       return;
     }
     var hfPick = t.closest('[data-hf-pick-id]');
@@ -1909,6 +2394,7 @@
       if (!useRuntime()) return;
       scheduleAttentionRefresh();
       scheduleInventoryRefresh();
+      scheduleAgentCenterRefresh();
       scheduleTodayRefresh();
       scheduleAgentHomeRefresh();
       // paint() already no-ops when HTML is unchanged; avoid forcing lastPaintHtml clear.

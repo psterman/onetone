@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>方案 A · 情境驾驶舱 + 可见能力</title>
+  <style>
+    :root {
+      --shell: #eef0f1; --rail: #f5f5f3; --paper: #fbfaf7; --ink: #172523; --ink-2: #43514e;
+      --muted: #55635f; --line: #dedfd9; --line-strong: #c9ccc5; --teal: #176f68; --teal-dark: #115b56;
+      --teal-soft: #dcebe7; --amber: #8b5c23; --amber-soft: #f2e6d5; --red: #9d453b;
+      --shadow: 0 18px 48px rgba(31, 43, 40, .12); --focus: #0f756c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--shell); color: var(--ink); font: 14px/1.55 "Segoe UI", "Microsoft YaHei", sans-serif; }
+    button { font: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+    .demo { width: min(1100px, calc(100% - 28px)); margin: 14px auto 8px; display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+    .demo span { color: var(--muted); font-size: 12px; }
+    .demo button { border: 1px solid var(--line-strong); border-radius: 999px; background: var(--paper); padding: 6px 11px; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+    .demo button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .note { width: min(1100px, calc(100% - 28px)); margin: 0 auto 8px; color: var(--muted); font-size: 12px; }
+    .app {
+      width: min(1100px, calc(100% - 28px)); height: min(720px, calc(100vh - 100px)); min-height: 600px;
+      margin: 0 auto 16px; display: grid; grid-template-columns: 224px 1fr; border-radius: 20px;
+      background: var(--paper); box-shadow: var(--shadow); overflow: hidden;
+    }
+    .rail { background: var(--rail); border-right: 1px solid var(--line); padding: 22px 14px 16px; display: flex; flex-direction: column; }
+    .brand { display: flex; gap: 10px; align-items: center; font-weight: 800; padding: 0 10px 22px; }
+    .brand i { width: 25px; height: 25px; border-radius: 8px; background: var(--ink); display: grid; place-items: center; color: #b5dcd5; font-style: normal; font-size: 11px; }
+    .nav button {
+      width: 100%; border: 0; background: transparent; color: var(--ink-2); border-radius: 10px;
+      min-height: 40px; padding: 8px 10px; text-align: left; font-weight: 650; margin-bottom: 4px;
+    }
+    .nav button[aria-current="page"] { background: var(--teal-soft); color: var(--teal-dark); }
+    .nav .muted { margin: 16px 10px 6px; color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
+    .rail-bottom { margin-top: auto; border-top: 1px solid var(--line); padding-top: 12px; }
+    .main { display: grid; grid-template-rows: 1fr auto; min-width: 0; }
+    .stage { padding: 40px 48px 28px; overflow: auto; }
+    .col { max-width: 560px; }
+    .where { color: var(--muted); font-size: 13px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .where b { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); display: inline-block; }
+    h1 { margin: 0 0 12px; font-size: clamp(26px, 3.5vw, 34px); line-height: 1.18; letter-spacing: -.03em; font-weight: 750; }
+    .assist { margin: 0; color: var(--ink-2); font-size: 15.5px; line-height: 1.65; max-width: 46ch; }
+    .actions { margin-top: 22px; min-height: 44px; display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+    .primary {
+      border: 0; border-radius: 10px; background: var(--teal); color: #fff; min-height: 42px;
+      padding: 10px 16px; font-weight: 760;
+    }
+    .primary[data-tone="attention"] { background: var(--amber); }
+    .primary[data-tone="error"] { background: var(--red); }
+    .text { border: 0; background: transparent; color: var(--teal-dark); font-weight: 700; padding: 8px 0; }
+    .meta { margin-top: 18px; color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 8px 12px; }
+    .meta span + span::before { content: "·"; margin-right: 12px; color: #9aa49f; }
+    .caps {
+      margin-top: 36px; padding-top: 22px; border-top: 1px solid var(--line);
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    .cap {
+      border: 1px solid var(--line); border-radius: 12px; background: #fff; padding: 14px 14px 12px;
+      text-align: left; color: var(--ink);
+    }
+    .cap:hover { border-color: color-mix(in srgb, var(--teal) 40%, var(--line)); background: var(--teal-soft); }
+    .cap strong { display: block; font-size: 14px; margin-bottom: 4px; }
+    .cap span { color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .dock {
+      border-top: 1px solid var(--line); min-height: 48px; display: flex; align-items: center;
+      justify-content: center; gap: 8px; color: var(--muted); font-size: 12px;
+    }
+    .dock i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); display: inline-block; }
+    .toast {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff;
+      padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 650; opacity: 0; pointer-events: none; transition: .2s;
+    }
+    .toast.on { opacity: 1; }
+    @media (max-width: 720px) {
+      .app { grid-template-columns: 1fr; }
+      .rail { display: none; }
+      .stage { padding: 28px 20px; }
+      .caps { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo" role="toolbar" aria-label="情境演示">
+    <span>方案 A · 情境</span>
+    <button type="button" data-s="quiet" aria-pressed="true">quiet</button>
+    <button type="button" data-s="return" aria-pressed="false">return</button>
+    <button type="button" data-s="attention" aria-pressed="false">attention</button>
+    <button type="button" data-s="degraded" aria-pressed="false">degraded</button>
+  </div>
+  <p class="note">主业是「我在哪 / 下一步」。能力入口始终可见、有名字——不藏在加号里。简报装订不进首屏。</p>
+  <div class="toast" id="toast" role="status"></div>
+  <div class="app">
+    <aside class="rail">
+      <div class="brand"><i>OT</i><span>OneTone</span></div>
+      <nav class="nav" aria-label="主导航">
+        <button type="button" aria-current="page">现在</button>
+        <button type="button">Agent</button>
+        <div class="muted">个人能力</div>
+        <button type="button">我的习惯</button>
+      </nav>
+      <div class="rail-bottom"><nav class="nav"><button type="button">设置</button></nav></div>
+    </aside>
+    <main class="main">
+      <div class="stage">
+        <div class="col">
+          <div class="where"><b aria-hidden="true"></b><span id="where">Cursor · voice-pilot</span></div>
+          <h1 id="title">现在没有需要你处理的事。</h1>
+          <p class="assist" id="assist">需要时再把下一步带到这里。你也可以直接开始一项能力。</p>
+          <div class="actions" id="actions"></div>
+          <div class="meta" id="meta"></div>
+          <div class="caps" aria-label="可直接使用的能力">
+            <button type="button" class="cap" data-go="brief"><strong>整理简报</strong><span>把材料收成可交接的一页</span></button>
+            <button type="button" class="cap" data-go="dict"><strong>听写</strong><span>按住 Ctrl + Space 开口说</span></button>
+            <button type="button" class="cap" data-go="agent"><strong>打开 Agent</strong><span>看名册、会话与等待项</span></button>
+          </div>
+        </div>
+      </div>
+      <footer class="dock"><i></i><span>跟随前台 · 能力在下方，不在加号菜单里</span></footer>
+    </main>
+  </div>
+  <script>
+    const S = {
+      quiet: { where: "Cursor · voice-pilot", title: "现在没有需要你处理的事。", assist: "需要时再把下一步带到这里。你也可以直接开始一项能力。", action: "", tone: "", meta: ["voice-pilot", "已确认", "刚刚"] },
+      return: { where: "Cursor · voice-pilot", title: "你上次停在首页情境叙事的收口。", assist: "可以从保存位置继续，不必重开上下文。", action: "继续上次工作", tone: "", meta: ["voice-pilot", "已确认", "12 分钟前"] },
+      attention: { where: "Codex 等待 · voice-pilot", title: "需要你决定：导航是否保留「历史」。", assist: "两种方案已整理好，选完即可继续。", action: "查看并决定", tone: "attention", meta: ["voice-pilot", "已确认", "1 分钟前"] },
+      degraded: { where: "前台判断暂不可用", title: "暂时无法确认当前项目。", assist: "不会猜测。重试只重新读取前台。", action: "重试", tone: "error", meta: ["项目未知", "未作猜测"] }
+    };
+    const toast = (m) => { const t = document.getElementById("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast._); toast._ = setTimeout(() => t.classList.remove("on"), 1800); };
+    function paint(name) {
+      const s = S[name];
+      document.getElementById("where").textContent = s.where;
+      document.getElementById("title").textContent = s.title;
+      document.getElementById("assist").textContent = s.assist;
+      document.getElementById("meta").innerHTML = s.meta.map((x) => `<span>${x}</span>`).join("");
+      const a = document.getElementById("actions");
+      a.innerHTML = "";
+      if (s.action) {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "primary"; b.textContent = s.action;
+        if (s.tone) b.dataset.tone = s.tone;
+        b.onclick = () => toast("原型：" + s.action);
+        a.append(b);
+        const t = document.createElement("button");
+        t.type = "button"; t.className = "text"; t.textContent = "查看判断依据";
+        t.onclick = () => toast("原型：判断依据");
+        a.append(t);
+      }
+      document.querySelectorAll("[data-s]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.s === name)));
+    }
+    document.querySelectorAll("[data-s]").forEach((b) => b.addEventListener("click", () => paint(b.dataset.s)));
+    document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => toast("进入「" + b.querySelector("strong").textContent + "」（原型）")));
+    paint("quiet");
+  </script>
+</body>
+</html>

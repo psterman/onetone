@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>方案 C · 两拍页：情境一行 + 轻装订</title>
+  <style>
+    :root {
+      --shell: #eef0f1; --rail: #f5f5f3; --paper: #fbfaf7; --ink: #172523; --ink-2: #43514e;
+      --muted: #55635f; --line: #dedfd9; --line-strong: #c9ccc5; --teal: #176f68; --teal-dark: #115b56;
+      --teal-soft: #dcebe7; --amber: #8b5c23; --amber-soft: #f2e6d5; --red: #9d453b;
+      --shadow: 0 18px 48px rgba(31, 43, 40, .12); --focus: #0f756c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--shell); color: var(--ink); font: 14px/1.55 "Segoe UI", "Microsoft YaHei", sans-serif; }
+    button, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+    ::placeholder { color: #6a7773; }
+    .demo { width: min(1180px, calc(100% - 28px)); margin: 14px auto 8px; display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+    .demo span { color: var(--muted); font-size: 12px; }
+    .demo button { border: 1px solid var(--line-strong); border-radius: 999px; background: var(--paper); padding: 6px 11px; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+    .demo button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .note { width: min(1180px, calc(100% - 28px)); margin: 0 auto 8px; color: var(--muted); font-size: 12px; }
+    .app {
+      width: min(1180px, calc(100% - 28px)); height: min(760px, calc(100vh - 100px)); min-height: 640px;
+      margin: 0 auto 16px; display: grid; grid-template-columns: 224px 1fr; border-radius: 20px;
+      background: var(--paper); box-shadow: var(--shadow); overflow: hidden;
+    }
+    .rail { background: var(--rail); border-right: 1px solid var(--line); padding: 22px 14px 16px; display: flex; flex-direction: column; }
+    .brand { display: flex; gap: 10px; align-items: center; font-weight: 800; padding: 0 10px 22px; }
+    .brand i { width: 25px; height: 25px; border-radius: 8px; background: var(--ink); display: grid; place-items: center; color: #b5dcd5; font-style: normal; font-size: 11px; }
+    .nav button { width: 100%; border: 0; background: transparent; color: var(--ink-2); border-radius: 10px; min-height: 40px; padding: 8px 10px; text-align: left; font-weight: 650; margin-bottom: 4px; }
+    .nav button[aria-current="page"] { background: var(--teal-soft); color: var(--teal-dark); }
+    .nav .muted { margin: 16px 10px 6px; color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
+    .rail-bottom { margin-top: auto; border-top: 1px solid var(--line); padding-top: 12px; }
+    .main { min-width: 0; display: grid; grid-template-rows: auto 1fr auto; }
+    /* Beat 1: situation strip with optional single CTA */
+    .beat1 {
+      display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 10px 24px;
+      border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 80%, #fff);
+    }
+    .beat1[data-tone="attention"] { background: color-mix(in srgb, var(--amber-soft) 50%, var(--paper)); }
+    .beat1[data-tone="error"] { background: #f5e4e1; }
+    .beat1 .line { min-width: 0; flex: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+    .beat1 h1 { margin: 0; font-size: 14.5px; font-weight: 750; letter-spacing: -.01em; }
+    .beat1 .sub { color: var(--muted); font-size: 12.5px; }
+    .primary {
+      border: 0; border-radius: 10px; background: var(--teal); color: #fff; min-height: 36px;
+      padding: 7px 13px; font-weight: 760; font-size: 13px; flex: none;
+    }
+    .primary[data-tone="attention"] { background: var(--amber); }
+    .primary[data-tone="error"] { background: var(--red); }
+    .primary[hidden] { display: none !important; }
+    /* Beat 2: lite desk */
+    .beat2 { min-height: 0; overflow: auto; padding: 18px 22px 16px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; }
+    .panel { border: 1px solid var(--line); border-radius: 14px; background: #fff; padding: 14px; min-height: 0; display: flex; flex-direction: column; }
+    .panel h2 { margin: 0 0 4px; font-size: 14px; font-weight: 750; }
+    .panel p.lead { margin: 0 0 12px; color: var(--muted); font-size: 12.5px; }
+    .paste {
+      flex: none; min-height: 96px; border: 1.5px dashed var(--line-strong); border-radius: 12px;
+      background: #fffcf8; display: grid; place-content: center; gap: 8px; text-align: center; padding: 12px;
+      transition: .15s;
+    }
+    .paste.is-drag { border-color: var(--teal); background: var(--teal-soft); }
+    .paste strong { font-size: 13.5px; }
+    .paste span { color: var(--muted); font-size: 12px; }
+    .paste-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    .chip {
+      border: 1px solid var(--line-strong); border-radius: 999px; background: var(--paper);
+      color: var(--ink-2); padding: 5px 10px; font-size: 12px; font-weight: 700;
+    }
+    .chip:hover { background: var(--teal-soft); border-color: var(--teal); color: var(--teal-dark); }
+    .list { margin-top: 12px; display: grid; gap: 6px; flex: 1; overflow: auto; }
+    .row {
+      display: flex; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--line);
+      font-size: 13px; font-weight: 650;
+    }
+    .row:last-child { border-bottom: 0; }
+    .row input { accent-color: var(--teal); }
+    .row .kind { font-size: 11px; font-weight: 750; color: var(--teal-dark); background: var(--teal-soft); border-radius: 999px; padding: 1px 6px; }
+    .row button { margin-left: auto; border: 0; background: transparent; color: var(--muted); font-weight: 700; }
+    .empty { color: var(--muted); font-size: 12.5px; padding: 10px 4px; }
+    .you { width: 100%; flex: 1; min-height: 180px; border: 1px solid var(--line); border-radius: 10px; background: #fffcf8; padding: 12px; resize: none; line-height: 1.6; }
+    .foot {
+      border-top: 1px solid var(--line); padding: 12px 22px; display: flex; flex-wrap: wrap;
+      align-items: center; gap: 10px 16px; background: #fff;
+    }
+    .stats { flex: 1; color: var(--muted); font-size: 12.5px; display: flex; gap: 14px; flex-wrap: wrap; }
+    .stats b { color: var(--ink-2); }
+    .toast {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff;
+      padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 650; opacity: 0; pointer-events: none; transition: .2s; z-index: 5;
+    }
+    .toast.on { opacity: 1; }
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .rail { display: none; }
+      .beat2 { grid-template-columns: 1fr; }
+      .beat1, .beat2, .foot { padding-inline: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo" role="toolbar">
+    <span>方案 C · 情境</span>
+    <button type="button" data-s="quiet" aria-pressed="true">quiet</button>
+    <button type="button" data-s="return" aria-pressed="false">return</button>
+    <button type="button" data-s="attention" aria-pressed="false">attention</button>
+    <button type="button" data-s="degraded" aria-pressed="false">degraded</button>
+  </div>
+  <p class="note">第一拍：情境一行（需要时才出唯一主按钮）。第二拍：轻装订台——左投料、右写话。无四档引用、无常用上下文架、无加号菜单。</p>
+  <div class="toast" id="toast" role="status"></div>
+  <div class="app">
+    <aside class="rail">
+      <div class="brand"><i>OT</i><span>OneTone</span></div>
+      <nav class="nav">
+        <button type="button" aria-current="page">现在</button>
+        <button type="button">Agent</button>
+        <div class="muted">个人能力</div>
+        <button type="button">我的习惯</button>
+      </nav>
+      <div class="rail-bottom"><nav class="nav"><button type="button">设置</button></nav></div>
+    </aside>
+    <main class="main">
+      <header class="beat1" id="beat1" data-tone="" aria-label="当前情境">
+        <div class="line">
+          <h1 id="sitTitle">现在没有需要你处理的事</h1>
+          <span class="sub" id="sitSub">Cursor · voice-pilot · 已确认</span>
+        </div>
+        <button type="button" class="primary" id="sitCta" hidden>继续</button>
+      </header>
+
+      <div class="beat2">
+        <section class="panel" aria-labelledby="matH">
+          <h2 id="matH">放入材料</h2>
+          <p class="lead">粘贴或点选类型。每项只有「带上 / 去掉」。</p>
+          <div class="paste" id="paste" tabindex="0" role="region" aria-label="粘贴区">
+            <strong>粘贴到这里</strong>
+            <span>或选择类型加入（原型假数据）</span>
+            <div class="paste-actions">
+              <button type="button" class="chip" data-add="文本">文本</button>
+              <button type="button" class="chip" data-add="文件">文件</button>
+              <button type="button" class="chip" data-add="网址">网址</button>
+            </div>
+          </div>
+          <div class="list" id="list"></div>
+        </section>
+        <section class="panel" aria-labelledby="youH">
+          <h2 id="youH">你的话</h2>
+          <p class="lead">写给 Agent 的意图。材料变化不会清空这里。</p>
+          <textarea class="you" id="you" placeholder="想让 Agent 做什么？" aria-label="你的话"></textarea>
+        </section>
+      </div>
+
+      <div class="foot">
+        <div class="stats">
+          <span>目标 <b>Codex</b></span>
+          <span>带上 <b id="nOn">0</b> 项</span>
+        </div>
+        <button type="button" class="primary" id="send">准备交接</button>
+      </div>
+    </main>
+  </div>
+  <script>
+    const mats = [];
+    const $ = (s) => document.querySelector(s);
+    const toast = (m) => { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast._); toast._ = setTimeout(() => t.classList.remove("on"), 1800); };
+
+    const focus = {
+      quiet: { title: "现在没有需要你处理的事", sub: "Cursor · voice-pilot · 已确认", action: "", tone: "" },
+      return: { title: "上次停在首页情境叙事的收口", sub: "voice-pilot · 12 分钟前", action: "继续上次工作", tone: "" },
+      attention: { title: "需要你决定：导航是否保留「历史」", sub: "Codex 等待 · voice-pilot", action: "查看并决定", tone: "attention" },
+      degraded: { title: "暂时无法确认当前项目", sub: "未作猜测 · 可重试", action: "重试", tone: "error" }
+    };
+
+    function paintSit(name) {
+      const s = focus[name];
+      $("#beat1").dataset.tone = s.tone;
+      $("#sitTitle").textContent = s.title;
+      $("#sitSub").textContent = s.sub;
+      const cta = $("#sitCta");
+      if (s.action) {
+        cta.hidden = false;
+        cta.textContent = s.action;
+        cta.dataset.tone = s.tone || "";
+      } else {
+        cta.hidden = true;
+        cta.removeAttribute("data-tone");
+      }
+      document.querySelectorAll("[data-s]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.s === name)));
+    }
+
+    function render() {
+      const list = $("#list");
+      list.innerHTML = "";
+      if (!mats.length) {
+        list.innerHTML = '<div class="empty">材料会出现在这里。</div>';
+      } else {
+        mats.forEach((m, i) => {
+          const row = document.createElement("div");
+          row.className = "row";
+          row.innerHTML = `<input type="checkbox" ${m.on ? "checked" : ""} aria-label="带上 ${m.name}"><span class="kind">${m.kind}</span><span>${m.name}</span><button type="button">去掉</button>`;
+          row.querySelector("input").onchange = (e) => { m.on = e.target.checked; $("#nOn").textContent = String(mats.filter((x) => x.on).length); };
+          row.querySelector("button").onclick = () => { mats.splice(i, 1); render(); };
+          list.append(row);
+        });
+      }
+      $("#nOn").textContent = String(mats.filter((x) => x.on).length);
+    }
+
+    function add(kind) {
+      const names = { 文本: "粘贴摘录", 文件: "PRODUCT.md", 网址: "example.local/spec" };
+      mats.push({ kind, name: names[kind], on: true });
+      render();
+      toast("已加入" + kind);
+    }
+
+    document.querySelectorAll("[data-s]").forEach((b) => b.addEventListener("click", () => paintSit(b.dataset.s)));
+    document.querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => add(b.dataset.add)));
+    $("#sitCta").addEventListener("click", () => toast("原型：" + $("#sitCta").textContent));
+    $("#send").addEventListener("click", () => toast("准备交接（原型）"));
+    const paste = $("#paste");
+    paste.addEventListener("dragover", (e) => { e.preventDefault(); paste.classList.add("is-drag"); });
+    paste.addEventListener("dragleave", () => paste.classList.remove("is-drag"));
+    paste.addEventListener("drop", (e) => { e.preventDefault(); paste.classList.remove("is-drag"); add("文件"); });
+    paste.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") { e.preventDefault(); add("文本"); }
+    });
+
+    paintSit("quiet");
+    render();
+  </script>
+</body>
+</html>

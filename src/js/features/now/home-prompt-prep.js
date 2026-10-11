@@ -7,6 +7,8 @@
 
   var STORAGE_KEY = 'onetone.homePromptPrep';
   var STATES = ['EMPTY', 'COLLECTING', 'ASSEMBLED', 'CHANNEL_SELECTED', 'HANDING_OFF', 'HANDED_OFF'];
+  /** Assembled markdown hard ceiling (chars) — structured truncate, never silent. */
+  var ASSEMBLE_MAX_CHARS = 200 * 1024;
 
   var hostEl = null;
   /** @type {HTMLElement|null} Actual host node we bound; identity check for idempotent mount. */
@@ -15,7 +17,14 @@
   var drawerReturnFocus = null;
   /** @type {'channel'|'handoff'|null} */
   var openDrawerKind = null;
+  /** Full prep desk is collapsed by default (launch card lives in home-focus-view). */
+  var expanded = false;
   var model = loadModel();
+  /** @type {Array<function(object):void>} */
+  var materialListeners = [];
+  /** @type {Array<function(object):void>} */
+  var trayListeners = [];
+  var publishTimer = null;
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -33,16 +42,54 @@
     }
   }
 
-  function loadModel() {
-    var empty = {
+  function newCollectionId() {
+    return 'c_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e4);
+  }
+
+  function emptyModel() {
+    return {
       phase: 'EMPTY',
+      collectionId: newCollectionId(),
+      scopeId: null,
       materials: [],
+      handoffs: [],
       draft: { title: '', body: '' },
       channel: null,
       receipt: null,
       assembledMd: '',
-      assembledAt: null
+      assembledAt: null,
+      assemblyMeta: null,
+      contentRevision: 0,
+      assembledRevision: -1,
+      lastAssembleSize: null,
+      carry: {
+        active: false,
+        targetKind: null,
+        updatedAt: null,
+        generation: 0
+      }
     };
+  }
+
+  function migrateModel(parsed) {
+    if (!Array.isArray(parsed.handoffs)) parsed.handoffs = [];
+    if (typeof parsed.contentRevision !== 'number' || !isFinite(parsed.contentRevision)) {
+      parsed.contentRevision = 0;
+    }
+    if (typeof parsed.assembledRevision !== 'number' || !isFinite(parsed.assembledRevision)) {
+      parsed.assembledRevision = parsed.assembledMd ? 0 : -1;
+    }
+    parsed.carry = parsed.carry || {};
+    // Restart: materials keep; carry UI resets.
+    parsed.carry.active = false;
+    parsed.carry.targetKind = null;
+    parsed.carry.updatedAt = null;
+    if (typeof parsed.carry.generation !== 'number') parsed.carry.generation = 0;
+    return parsed;
+  }
+
+  function loadModel() {
+    var empty = emptyModel();
     try {
       var raw = global.localStorage && global.localStorage.getItem(STORAGE_KEY);
       if (!raw) return empty;
@@ -51,7 +98,9 @@
       if (STATES.indexOf(parsed.phase) < 0) parsed.phase = 'EMPTY';
       if (!Array.isArray(parsed.materials)) parsed.materials = [];
       parsed.draft = parsed.draft || { title: '', body: '' };
-      return parsed;
+      if (!parsed.collectionId) parsed.collectionId = newCollectionId();
+      if (parsed.scopeId === undefined) parsed.scopeId = null;
+      return migrateModel(parsed);
     } catch (_) {
       return empty;
     }
@@ -63,6 +112,10 @@
         global.localStorage.setItem(STORAGE_KEY, JSON.stringify(model));
       }
     } catch (_) {}
+  }
+
+  function bumpContentRevision() {
+    model.contentRevision = (model.contentRevision || 0) + 1;
   }
 
   function derivePhase() {
@@ -82,8 +135,414 @@
     return 'm_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e4);
   }
 
+  function materialRefOf(row) {
+    if (!row) return null;
+    return {
+      id: row.id,
+      kind: row.kind || 'text',
+      name: row.name || '未命名素材',
+      included: row.included !== false,
+      needsManualUpload: !!row.needsManualUpload
+    };
+  }
+
+  function getMaterialSummary() {
+    var byKind = {};
+    var includedCount = 0;
+    var manualUploadCount = 0;
+    var refs = [];
+    (model.materials || []).forEach(function (m) {
+      if (!m) return;
+      var k = m.kind || 'text';
+      byKind[k] = (byKind[k] || 0) + 1;
+      if (m.included !== false) includedCount += 1;
+      if (m.needsManualUpload) manualUploadCount += 1;
+      refs.push(materialRefOf(m));
+    });
+    return {
+      collectionId: model.collectionId || '',
+      scopeId: model.scopeId || undefined,
+      phase: derivePhase(),
+      count: (model.materials || []).length,
+      includedCount: includedCount,
+      manualUploadCount: manualUploadCount,
+      byKind: byKind,
+      refs: refs
+    };
+  }
+
+  function notifyMaterials() {
+    var summary = getMaterialSummary();
+    var list = materialListeners.slice();
+    for (var i = 0; i < list.length; i++) {
+      try {
+        list[i](summary);
+      } catch (_) {}
+    }
+  }
+
+  function subscribeMaterials(listener) {
+    if (typeof listener !== 'function') {
+      return function () {};
+    }
+    materialListeners.push(listener);
+    try {
+      listener(getMaterialSummary());
+    } catch (_) {}
+    var alive = true;
+    return function unsubscribe() {
+      if (!alive) return;
+      alive = false;
+      var idx = materialListeners.indexOf(listener);
+      if (idx >= 0) materialListeners.splice(idx, 1);
+    };
+  }
+
+  /** collapsed: model+storage+subscribers only; expanded: refresh UI. Never auto-expand. */
+  function syncUiAfterMutation() {
+    saveModel();
+    notifyMaterials();
+    notifyTray();
+    schedulePublishTray();
+    if (expanded) {
+      if (hostEl && hostEl.isConnected && hostEl.getAttribute('data-hpp-bound') === '1') {
+        refresh();
+      } else {
+        paint();
+      }
+    }
+  }
+
+  function notifyTray() {
+    var snap = getTraySnapshot();
+    var list = trayListeners.slice();
+    for (var i = 0; i < list.length; i++) {
+      try {
+        list[i](snap);
+      } catch (_) {}
+    }
+  }
+
+  function subscribeTray(listener) {
+    if (typeof listener !== 'function') {
+      return function () {};
+    }
+    trayListeners.push(listener);
+    try {
+      listener(getTraySnapshot());
+    } catch (_) {}
+    return function unsubscribe() {
+      trayListeners = trayListeners.filter(function (fn) {
+        return fn !== listener;
+      });
+    };
+  }
+
+  function schedulePublishTray() {
+    if (typeof setTimeout !== 'function') {
+      publishTraySnapshot();
+      return;
+    }
+    if (publishTimer) {
+      try {
+        clearTimeout(publishTimer);
+      } catch (_) {}
+    }
+    publishTimer = setTimeout(function () {
+      publishTimer = null;
+      publishTraySnapshot();
+    }, 40);
+  }
+
+  function filesFromMaterials() {
+    var out = [];
+    (model.materials || []).forEach(function (m) {
+      if (!m) return;
+      var k = String(m.kind || '');
+      if (k !== 'file' && k !== 'image' && k !== 'folder') return;
+      if (!m.path) return;
+      out.push({
+        path: String(m.path),
+        kind: k,
+        name: String(m.name || ''),
+        needsManualUpload: !!m.needsManualUpload
+      });
+    });
+    return out;
+  }
+
+  /** Soft Pad attachment strip — includes text/url, not just file paths. */
+  function materialsForTray() {
+    var out = [];
+    (model.materials || []).forEach(function (m) {
+      if (!m) return;
+      var ref = materialRefOf(m);
+      if (!ref) return;
+      var preview = truncateSummary(
+        String(m.content || m.description || m.name || '')
+          .replace(/\s+/g, ' ')
+          .trim(),
+        48
+      );
+      ref.description = preview;
+      ref.preview = preview;
+      ref.source = m.source || '';
+      ref.capturedAt = m.capturedAt || '';
+      ref.path = m.path || '';
+      out.push(ref);
+    });
+    return out.slice(0, 24);
+  }
+
+  function clearMaterials() {
+    if (derivePhase() === 'HANDING_OFF') {
+      return { cleared: false, reason: 'busy', summary: getMaterialSummary() };
+    }
+    if (!(model.materials || []).length) {
+      return { cleared: true, summary: getMaterialSummary() };
+    }
+    model.materials = [];
+    bumpContentRevision();
+    clearAssemblyAndHandoff();
+    model.phase = 'EMPTY';
+    syncUiAfterMutation();
+    return { cleared: true, summary: getMaterialSummary() };
+  }
+
+  function previewOfMd(md) {
+    var t = String(md || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!t) {
+      var body = (model.draft && model.draft.body) || '';
+      t = String(body).replace(/\s+/g, ' ').trim();
+    }
+    return t.length > 80 ? t.slice(0, 80) + '…' : t;
+  }
+
+  function getTraySnapshot() {
+    var summary = getMaterialSummary();
+    var size = model.lastAssembleSize || {
+      chars: (model.assembledMd || '').length,
+      truncated: false,
+      downgradedMaterialIds: [],
+      reason: null
+    };
+    var title =
+      (model.draft && model.draft.title) ||
+      (model.materials[0] && model.materials[0].name) ||
+      '';
+    return {
+      schemaVersion: 1,
+      empty: false,
+      collectionId: model.collectionId || '',
+      contentRevision: model.contentRevision || 0,
+      assembledRevision:
+        typeof model.assembledRevision === 'number' ? model.assembledRevision : -1,
+      phase: derivePhase(),
+      title: title,
+      preview: previewOfMd(model.assembledMd),
+      materialCount: summary.count || 0,
+      includedCount: summary.includedCount || 0,
+      manualUploadCount: summary.manualUploadCount || 0,
+      files: filesFromMaterials(),
+      materials: materialsForTray(),
+      assembledMd: model.assembledMd || '',
+      assembledAt: model.assembledAt || null,
+      size: size,
+      carry: {
+        active: !!(model.carry && model.carry.active),
+        targetKind: (model.carry && model.carry.targetKind) || null,
+        updatedAt: (model.carry && model.carry.updatedAt) || null,
+        generation: (model.carry && model.carry.generation) || 0
+      },
+      handoffCount: Array.isArray(model.handoffs) ? model.handoffs.length : 0
+    };
+  }
+
+  function publishTraySnapshot() {
+    var ipc = global.OneToneIpc;
+    if (!ipc || typeof ipc.invoke !== 'function') return Promise.resolve(null);
+    return ipc
+      .invoke('cmd_tray_snapshot_publish', { snapshot: getTraySnapshot() })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  /**
+   * Fresh assemble when revision mismatch. Returns { md, truncated, downgradedMaterialIds, reason }.
+   */
+  function ensureAssembled() {
+    if (
+      model.assembledMd &&
+      typeof model.assembledRevision === 'number' &&
+      model.assembledRevision === model.contentRevision
+    ) {
+      var sizeOk = model.lastAssembleSize || {
+        chars: model.assembledMd.length,
+        truncated: false,
+        downgradedMaterialIds: [],
+        reason: null
+      };
+      return {
+        md: model.assembledMd,
+        truncated: !!sizeOk.truncated,
+        downgradedMaterialIds: sizeOk.downgradedMaterialIds || [],
+        reason: sizeOk.reason || null,
+        chars: sizeOk.chars || model.assembledMd.length
+      };
+    }
+    return assembleMarkdownResult();
+  }
+
+  function setCarryActive(targetKind) {
+    model.carry = model.carry || {
+      active: false,
+      targetKind: null,
+      updatedAt: null,
+      generation: 0
+    };
+    model.carry.active = true;
+    model.carry.targetKind = targetKind || null;
+    model.carry.updatedAt = nowIso();
+    model.carry.generation = (model.carry.generation || 0) + 1;
+    saveModel();
+    notifyTray();
+    return publishTraySnapshot();
+  }
+
+  /** Cancel carry only — does not clear materials/draft/assembledMd. */
+  function dismissCarry() {
+    model.carry = model.carry || {
+      active: false,
+      targetKind: null,
+      updatedAt: null,
+      generation: 0
+    };
+    model.carry.active = false;
+    model.carry.targetKind = null;
+    model.carry.updatedAt = nowIso();
+    model.carry.generation = (model.carry.generation || 0) + 1;
+    saveModel();
+    notifyTray();
+    var ipc = global.OneToneIpc;
+    if (ipc && typeof ipc.invoke === 'function') {
+      return ipc.invoke('cmd_tray_carry_dismiss', {}).catch(function () {
+        return publishTraySnapshot();
+      });
+    }
+    return publishTraySnapshot();
+  }
+
+  function archiveHandoff(opts) {
+    opts = opts || {};
+    if (!Array.isArray(model.handoffs)) model.handoffs = [];
+    var manual = 0;
+    (model.materials || []).forEach(function (m) {
+      if (m && m.needsManualUpload && m.included !== false) manual += 1;
+    });
+    var row = {
+      id: 'h_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e4),
+      collectionId: model.collectionId || '',
+      targetKind: opts.targetKind || null,
+      assembledAt: model.assembledAt || null,
+      handedOffAt: nowIso(),
+      outcome: opts.outcome || 'unknown',
+      chars: (model.assembledMd || '').length,
+      manualUploadCount: manual
+    };
+    model.handoffs.push(row);
+    if (model.handoffs.length > 40) model.handoffs = model.handoffs.slice(-40);
+    saveModel();
+    notifyTray();
+    schedulePublishTray();
+    return row;
+  }
+
+  function listHandoffs() {
+    return (model.handoffs || []).slice().reverse();
+  }
+
+  function setDraftBody(text, opts) {
+    opts = opts || {};
+    model.draft = model.draft || { title: '', body: '' };
+    var next = String(text == null ? '' : text);
+    if (model.draft.body === next && !opts.force) return;
+    model.draft.body = next;
+    bumpContentRevision();
+    if (!opts.skipSync) syncUiAfterMutation();
+    else saveModel();
+  }
+
+  function setDraftTitle(text, opts) {
+    opts = opts || {};
+    model.draft = model.draft || { title: '', body: '' };
+    var next = String(text == null ? '' : text);
+    if (model.draft.title === next && !opts.force) return;
+    model.draft.title = next;
+    bumpContentRevision();
+    if (!opts.skipSync) syncUiAfterMutation();
+    else saveModel();
+  }
+
+  function clearAssemblyAndHandoff() {
+    model.assembledMd = '';
+    model.assembledAt = null;
+    model.assemblyMeta = null;
+    model.assembledRevision = -1;
+    model.lastAssembleSize = null;
+    model.channel = null;
+    model.receipt = null;
+  }
+
+  function resetWorkspaceCollection(scopeId) {
+    model.collectionId = newCollectionId();
+    if (scopeId != null && scopeId !== '') model.scopeId = String(scopeId);
+    model.materials = [];
+    clearAssemblyAndHandoff();
+    model.phase = 'EMPTY';
+    bumpContentRevision();
+  }
+
+  function beginMaterialCollection(options) {
+    options = options || {};
+    var phase = derivePhase();
+    if (phase === 'HANDING_OFF') {
+      return {
+        collectionId: model.collectionId || '',
+        reset: false,
+        outcome: 'busy'
+      };
+    }
+    var scopeId = options.scopeId != null ? String(options.scopeId) : model.scopeId;
+    var reset = false;
+    if (phase === 'ASSEMBLED' || phase === 'CHANNEL_SELECTED') {
+      // Keep materials — only invalidate assembly so more can be added.
+      // (Quiet「附件」calls begin before every pick; wiping here emptied the tray.)
+      clearAssemblyAndHandoff();
+      model.phase = model.materials.length ? 'COLLECTING' : 'EMPTY';
+      if (scopeId != null && scopeId !== '') model.scopeId = String(scopeId);
+    } else if (phase === 'HANDED_OFF' && options.resetIfHandedOff) {
+      resetWorkspaceCollection(scopeId);
+      reset = true;
+    } else {
+      if (!model.collectionId) model.collectionId = newCollectionId();
+      if (scopeId != null && scopeId !== '') model.scopeId = String(scopeId);
+    }
+    syncUiAfterMutation();
+    return {
+      collectionId: model.collectionId,
+      reset: reset,
+      outcome: 'ok'
+    };
+  }
+
   function addMaterial(item) {
     item = item || {};
+    if (derivePhase() === 'HANDING_OFF') return null;
+    // Handoff history must use archiveHandoff — never materials.
+    if (String(item.kind || '') === 'handoff') return null;
     var row = {
       id: uid(),
       kind: item.kind || 'text',
@@ -99,17 +558,243 @@
       protect: Array.isArray(item.protect) ? item.protect : [],
       needsManualUpload: !!item.needsManualUpload
     };
+    if (!model.collectionId) model.collectionId = newCollectionId();
     model.materials.push(row);
-    if (model.phase === 'EMPTY' || model.phase === 'COLLECTING') setPhase('COLLECTING');
-    else if (model.phase === 'ASSEMBLED' || model.phase === 'CHANNEL_SELECTED') {
-      // New material after assemble → back to collecting until re-assemble
-      model.assembledMd = '';
-      model.channel = null;
-      model.receipt = null;
-      setPhase('COLLECTING');
+    bumpContentRevision();
+    if (model.phase === 'EMPTY' || model.phase === 'COLLECTING') {
+      model.phase = 'COLLECTING';
+    } else if (model.phase === 'ASSEMBLED' || model.phase === 'CHANNEL_SELECTED') {
+      clearAssemblyAndHandoff();
+      model.phase = 'COLLECTING';
+    } else if (model.phase === 'HANDED_OFF') {
+      // Same collection continues unless beginMaterialCollection({ resetIfHandedOff: true }).
+      clearAssemblyAndHandoff();
+      model.phase = 'COLLECTING';
     }
-    saveModel();
-    paint();
+    syncUiAfterMutation();
+    return row;
+  }
+
+  function removeMaterial(id) {
+    var summaryBusy = function (reason) {
+      return { removed: false, reason: reason, summary: getMaterialSummary() };
+    };
+    if (derivePhase() === 'HANDING_OFF') return summaryBusy('busy');
+    var mid = String(id || '');
+    var idx = -1;
+    for (var i = 0; i < model.materials.length; i++) {
+      if (model.materials[i] && model.materials[i].id === mid) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx < 0) return summaryBusy('not_found');
+    model.materials.splice(idx, 1);
+    bumpContentRevision();
+    clearAssemblyAndHandoff();
+    model.phase = model.materials.length ? 'COLLECTING' : 'EMPTY';
+    syncUiAfterMutation();
+    return { removed: true, summary: getMaterialSummary() };
+  }
+
+  function updateMaterialFlags(id, patch) {
+    patch = patch || {};
+    var mid = String(id || '');
+    for (var i = 0; i < model.materials.length; i++) {
+      var m = model.materials[i];
+      if (!m || m.id !== mid) continue;
+      var changed = false;
+      if (patch.included !== undefined && m.included !== patch.included) {
+        m.included = !!patch.included;
+        changed = true;
+      }
+      if (patch.citeMode != null && m.citeMode !== patch.citeMode) {
+        m.citeMode = String(patch.citeMode);
+        changed = true;
+      }
+      if (changed) {
+        bumpContentRevision();
+        clearAssemblyAndHandoff();
+        if (model.phase === 'ASSEMBLED' || model.phase === 'CHANNEL_SELECTED') {
+          model.phase = 'COLLECTING';
+        }
+        syncUiAfterMutation();
+      }
+      return m;
+    }
+    return null;
+  }
+
+  /** Detect attach kind from path/name — image by extension, else file. */
+  function guessAttachKind(pathOrName) {
+    var leaf = String(pathOrName || '')
+      .replace(/[\\/]+$/, '')
+      .split(/[\\/]/)
+      .pop() || '';
+    var m = /\.([a-z0-9]+)$/i.exec(leaf);
+    var ext = m ? m[1].toLowerCase() : '';
+    if (
+      ext === 'png' ||
+      ext === 'jpg' ||
+      ext === 'jpeg' ||
+      ext === 'gif' ||
+      ext === 'webp' ||
+      ext === 'bmp' ||
+      ext === 'svg' ||
+      ext === 'ico' ||
+      ext === 'heic' ||
+      ext === 'tif' ||
+      ext === 'tiff'
+    ) {
+      return 'image';
+    }
+    return 'file';
+  }
+
+  function materialFromPath(kind, path, opts) {
+    opts = opts || {};
+    var p = String(path || '').trim();
+    var leaf = p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || p;
+    var name = opts.name || leaf;
+    if (kind === 'folder') {
+      return {
+        kind: 'folder',
+        name: name,
+        path: p,
+        source: '本机文件夹',
+        description: p,
+        citeMode: 'pathOnly'
+      };
+    }
+    var detected = kind === 'image' || kind === 'file' ? kind : guessAttachKind(p);
+    if (detected === 'image') {
+      return {
+        kind: 'image',
+        name: name,
+        path: p,
+        source: '本机图片',
+        citeMode: 'pathOnly',
+        needsManualUpload: true,
+        description: '图片需在目标 Agent 中手动上传'
+      };
+    }
+    return {
+      kind: 'file',
+      name: name,
+      path: p,
+      source: '本机文件',
+      description: p,
+      citeMode: 'full'
+    };
+  }
+
+  /**
+   * Public collect: paste|attach|file|image|folder|url.
+   * attach = unified picker; kind auto-detected from extension.
+   * options.text / options.url / options.path skip UI.
+   */
+  function collectMaterial(kind, options) {
+    options = options || {};
+    kind = String(kind || '');
+    if (derivePhase() === 'HANDING_OFF') {
+      return Promise.resolve({
+        outcome: 'busy',
+        message: '正在交接，暂不能改材料'
+      });
+    }
+
+    function addedOf(row) {
+      return {
+        outcome: 'added',
+        material: materialRefOf(row),
+        message: '材料已加入'
+      };
+    }
+
+    if (kind === 'paste') {
+      var textP =
+        options.text != null
+          ? Promise.resolve(String(options.text))
+          : readClipboard();
+      return textP
+        .then(function (text) {
+          if (!String(text || '').trim()) {
+            return { outcome: 'cancelled', message: '剪贴板为空' };
+          }
+          var previewName =
+            options.name ||
+            truncateSummary(String(text).replace(/\s+/g, ' ').trim(), 28) ||
+            '文字';
+          var row = addMaterial({
+            kind: 'text',
+            name: previewName,
+            content: text,
+            source: options.source || '剪贴板',
+            description: truncateSummary(text, 80),
+            citeMode: 'full'
+          });
+          return addedOf(row);
+        })
+        .catch(function () {
+          return { outcome: 'failed', message: '无法读取剪贴板' };
+        });
+    }
+
+    if (kind === 'url') {
+      var url =
+        options.url != null
+          ? String(options.url)
+          : global.prompt
+            ? global.prompt('输入网址', 'https://')
+            : '';
+      if (!url || !String(url).trim()) {
+        return Promise.resolve({ outcome: 'cancelled', message: '未输入网址' });
+      }
+      var rowU = addMaterial({
+        kind: 'url',
+        name: String(url).trim(),
+        path: String(url).trim(),
+        source: '网址',
+        citeMode: 'pathOnly'
+      });
+      return Promise.resolve(addedOf(rowU));
+    }
+
+    // Unified attach OR legacy image/file/folder.
+    if (
+      kind === 'attach' ||
+      kind === 'path' ||
+      kind === 'file' ||
+      kind === 'folder' ||
+      kind === 'image'
+    ) {
+      var forceKind = kind === 'attach' || kind === 'path' ? '' : kind;
+      if (Object.prototype.hasOwnProperty.call(options, 'path')) {
+        var p0 = String(options.path || '').trim();
+        if (!p0) {
+          return Promise.resolve({ outcome: 'cancelled', message: '未选择路径' });
+        }
+        var row0 = addMaterial(materialFromPath(forceKind || 'attach', p0, options));
+        return Promise.resolve(addedOf(row0));
+      }
+      var pickKind = kind === 'folder' ? 'folder' : 'file';
+      return pickPath(pickKind)
+        .then(function (path) {
+          if (!path) {
+            return { outcome: 'cancelled', message: '未选择路径' };
+          }
+          var row = addMaterial(materialFromPath(forceKind || 'attach', path, options));
+          return addedOf(row);
+        })
+        .catch(function () {
+          return {
+            outcome: 'failed',
+            message: '无法打开路径选择器（需桌面版）'
+          };
+        });
+    }
+
+    return Promise.resolve({ outcome: 'failed', message: '未知材料类型' });
   }
 
   function truncateSummary(text, max) {
@@ -152,8 +837,16 @@
     return lines.join('\n');
   }
 
-  /** Deterministic mechanical assembly — no LLM. */
+  /** Deterministic mechanical assembly — no LLM. Returns md string (legacy callers). */
   function assembleMarkdown() {
+    return assembleMarkdownResult().md;
+  }
+
+  /**
+   * Build assembledMd with optional size downgrade. Sets assembledRevision = contentRevision.
+   * @returns {{ md:string, truncated:boolean, downgradedMaterialIds:string[], reason:string|null, chars:number }}
+   */
+  function assembleMarkdownResult() {
     var included = model.materials.filter(function (m) {
       return m.included !== false && m.citeMode !== 'skip';
     });
@@ -165,47 +858,90 @@
       (model.materials[0] && model.materials[0].name) ||
       '首次沟通简报';
     var body = (model.draft && model.draft.body) || '';
-    var parts = [];
-    parts.push('# ' + title);
-    parts.push('');
-    parts.push('> 按当前设置机械装订，没有使用 LLM 改写或总结。');
-    parts.push('');
-    if (body) {
-      parts.push(body);
+    var downgraded = [];
+    var truncated = false;
+    var reason = null;
+
+    function build(withFull) {
+      var parts = [];
+      parts.push('# ' + title);
       parts.push('');
-    }
-    parts.push('## 已带入的材料');
-    parts.push('');
-    included.forEach(function (m) {
-      var block = citeBlock(m);
-      if (block) {
-        parts.push(block);
+      parts.push('> 按当前设置机械装订，没有使用 LLM 改写或总结。');
+      parts.push('');
+      if (body) {
+        parts.push(body);
         parts.push('');
       }
-    });
-    if (excluded.length) {
-      parts.push('## 未带入');
+      parts.push('## 已带入的材料');
       parts.push('');
-      excluded.forEach(function (m) {
-        parts.push('- ' + (m.name || '素材') + '（' + (m.citeMode === 'skip' ? '不发送' : '未引用') + '）');
+      included.forEach(function (m) {
+        var block;
+        if (!withFull && m.citeMode === 'full' && (m.content || '').length > 400) {
+          var saved = m.citeMode;
+          m.citeMode = 'excerpt';
+          block = citeBlock(m);
+          m.citeMode = saved;
+          if (downgraded.indexOf(m.id) < 0) downgraded.push(m.id);
+        } else {
+          block = citeBlock(m);
+        }
+        if (block) {
+          parts.push(block);
+          parts.push('');
+        }
       });
-      parts.push('');
+      if (excluded.length) {
+        parts.push('## 未带入');
+        parts.push('');
+        excluded.forEach(function (m) {
+          parts.push(
+            '- ' + (m.name || '素材') + '（' + (m.citeMode === 'skip' ? '不发送' : '未引用') + '）'
+          );
+        });
+        parts.push('');
+      }
+      return parts.join('\n').trim() + '\n';
     }
-    var md = parts.join('\n').trim() + '\n';
+
+    var md = build(true);
+    if (md.length > ASSEMBLE_MAX_CHARS) {
+      truncated = true;
+      reason = 'size_limit';
+      md = build(false);
+      if (md.length > ASSEMBLE_MAX_CHARS) {
+        md = md.slice(0, ASSEMBLE_MAX_CHARS) + '\n\n…（已截断至 200KB 上限）\n';
+      }
+    }
+
     var chars = md.length;
     var tokensApprox = Math.max(1, Math.round(chars / 4));
     model.assembledMd = md;
     model.assembledAt = nowIso();
+    model.assembledRevision = model.contentRevision || 0;
+    model.lastAssembleSize = {
+      chars: chars,
+      truncated: truncated,
+      downgradedMaterialIds: downgraded.slice(),
+      reason: reason
+    };
     model.assemblyMeta = {
       collected: model.materials.length,
       included: included.length,
       excluded: excluded.length,
       chars: chars,
-      tokensApprox: tokensApprox
+      tokensApprox: tokensApprox,
+      truncated: truncated
     };
     if (!model.draft.title) model.draft.title = title;
     setPhase('ASSEMBLED');
-    return md;
+    schedulePublishTray();
+    return {
+      md: md,
+      truncated: truncated,
+      downgradedMaterialIds: downgraded,
+      reason: reason,
+      chars: chars
+    };
   }
 
   function invoke(cmd, args) {
@@ -267,60 +1003,6 @@
 
   function onAdd(kind) {
     closeAddMenu();
-    if (kind === 'file' || kind === 'folder') {
-      pickPath(kind)
-        .then(function (path) {
-          if (!path) {
-            toast('未选择路径');
-            return;
-          }
-          var leaf = path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || path;
-          addMaterial({
-            kind: kind,
-            name: leaf,
-            path: path,
-            source: '本机' + (kind === 'folder' ? '文件夹' : '文件'),
-            description: path,
-            citeMode: kind === 'folder' ? 'pathOnly' : 'full'
-          });
-          toast('材料已加入');
-        })
-        .catch(function () {
-          toast('无法打开路径选择器（需桌面版）');
-        });
-      return;
-    }
-    if (kind === 'paste') {
-      readClipboard().then(function (text) {
-        if (!String(text || '').trim()) {
-          toast('剪贴板为空');
-          return;
-        }
-        addMaterial({
-          kind: 'text',
-          name: '粘贴的文本',
-          content: text,
-          source: '剪贴板',
-          description: truncateSummary(text, 80),
-          citeMode: 'full'
-        });
-        toast('材料已加入');
-      });
-      return;
-    }
-    if (kind === 'url') {
-      var url = global.prompt ? global.prompt('输入网址', 'https://') : '';
-      if (!url || !String(url).trim()) return;
-      addMaterial({
-        kind: 'url',
-        name: String(url).trim(),
-        path: String(url).trim(),
-        source: '网址',
-        citeMode: 'pathOnly'
-      });
-      toast('材料已加入');
-      return;
-    }
     if (kind === 'dictate') {
       // Trigger existing home voice listen — material lands when user confirms paste later.
       var dock = document.querySelector('[data-now-voice], .hn-cta--dictate[data-now-voice]');
@@ -344,26 +1026,10 @@
       toast('已开始口述；内容需你确认后再带入');
       return;
     }
-    if (kind === 'image') {
-      pickPath('file')
-        .then(function (path) {
-          if (!path) return;
-          var leaf = path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || path;
-          addMaterial({
-            kind: 'image',
-            name: leaf,
-            path: path,
-            source: '本机图片',
-            citeMode: 'pathOnly',
-            needsManualUpload: true,
-            description: '图片需在目标 Agent 中手动上传'
-          });
-          toast('图片路径已加入（需手动上传）');
-        })
-        .catch(function () {
-          toast('无法选择图片（需桌面版）');
-        });
-    }
+    collectMaterial(kind).then(function (res) {
+      if (!res) return;
+      if (res.message) toast(res.message);
+    });
   }
 
   function fetchProviders() {
@@ -621,8 +1287,20 @@
       sendUnknown: true
     };
 
-    var md = model.assembledMd || assembleMarkdown();
+    var assembled = ensureAssembled();
+    var md = assembled.md || '';
     var chain = Promise.resolve();
+    var targetKind = (ch && (ch.kind || ch.agentId)) || null;
+
+    if (!String(md).trim()) {
+      toast('正文为空，无法交接');
+      setPhase(derivePhase() === 'HANDING_OFF' ? 'CHANNEL_SELECTED' : derivePhase());
+      paint();
+      return;
+    }
+    if (assembled.truncated) {
+      toast('装订超限，已降级截断 · 请检查材料后再交');
+    }
 
     if (ch.clipboardOnly) {
       chain = writeClipboard(md)
@@ -635,10 +1313,19 @@
         });
     } else {
       var agentId = ch.agentId;
-      chain = invoke('cmd_agent_center_action', {
-        actionId: 'agent.focus',
-        agentId: agentId
-      })
+      var pasteClipboard = !!ch.pasteClipboard;
+      chain = writeClipboard(md)
+        .then(function () {
+          receipt.filled = true;
+          return setCarryActive(targetKind);
+        })
+        .then(function () {
+          return invoke('cmd_agent_center_action', {
+            actionId: 'agent.focus',
+            agentId: agentId,
+            pasteClipboard: pasteClipboard
+          });
+        })
         .then(function (res) {
           receipt.opened = !!(res && (res.ok || res.outcome === 'verified' || res.outcome === 'attemptedUnverified'));
           receipt.focused = receipt.opened;
@@ -658,24 +1345,16 @@
         .catch(function () {
           receipt.opened = false;
           receipt.focused = false;
-        })
-        .then(function () {
-          return writeClipboard(md).then(function () {
-            receipt.filled = true;
-            // Best-effort: paste into composer is not verified as send.
-            return invoke('cmd_agent_center_action', {
-              actionId: 'agent.focus',
-              agentId: agentId
-            }).catch(function () {});
-          });
-        })
-        .catch(function () {
-          receipt.filled = false;
+          if (!receipt.filled) toast('无法写入剪贴板');
         });
     }
 
     chain.finally(function () {
       model.receipt = receipt;
+      archiveHandoff({
+        targetKind: targetKind,
+        outcome: receipt.filled ? (receipt.opened ? 'opened' : 'clipboard_only') : 'failed'
+      });
       setPhase('HANDED_OFF');
       closeDrawers();
       paint();
@@ -753,14 +1432,27 @@
           esc(m.id) +
           '">' +
           '<span class="hpp-ico" aria-hidden="true">' +
-          (m.kind === 'folder' ? '⌁' : m.kind === 'image' ? '▨' : m.kind === 'url' ? '↗' : m.kind === 'voice' ? '◉' : 'T') +
+          (m.kind === 'folder'
+            ? '⌁'
+            : m.kind === 'image'
+              ? '▨'
+              : m.kind === 'url'
+                ? '↗'
+                : m.kind === 'voice'
+                  ? '◉'
+                  : 'T') +
           '</span>' +
           '<div><strong>' +
           esc(m.name) +
           '</strong><small>' +
           esc(m.source || '') +
           (m.capturedAt ? ' · ' + esc(String(m.capturedAt).slice(0, 19).replace('T', ' ')) : '') +
-          '</small></div></article>'
+          '</small></div>' +
+          '<button type="button" class="hpp-item-rm" data-hpp-mat-rm="' +
+          esc(m.id) +
+          '" aria-label="移除 ' +
+          esc(m.name || '素材') +
+          '">×</button></article>'
         );
       })
       .join('');
@@ -770,7 +1462,8 @@
     if (phase === 'EMPTY') {
       return (
         '<section class="hpp-empty"><div class="hpp-empty-icon" aria-hidden="true">＋</div>' +
-        '<h1>先把材料放进来</h1><p>图片、文件、文字和项目目录都可以。</p></section>'
+        '<h1>先把材料放进来</h1><p>附件、文字和项目目录都可以；选中后会自动识别类型。</p>' +
+        '<button type="button" class="hpp-add" data-hpp-add-kind="attach" style="max-width:220px;margin:16px auto 0">＋ 添加附件</button></section>'
       );
     }
     if (phase === 'COLLECTING') {
@@ -918,10 +1611,39 @@
       (model.phase === 'HANDED_OFF' ? '' : 'hidden') +
       '>' +
       receiptLines.join('<br>') +
-      '</div></div>' +
+      '</div>' +
+      handoffsTodayHtml() +
+      '</div>' +
       '<footer class="hpp-drawer-foot"><button type="button" class="hpp-main" data-hpp-handoff-go>' +
       (model.phase === 'HANDED_OFF' ? '回到 ' + esc(ch.name || 'Agent') : '聚焦会话并填入') +
       '</button></footer></aside>'
+    );
+  }
+
+  /** Phase2: today's handoff metadata (no full-text index). */
+  function handoffsTodayHtml() {
+    var rows = listHandoffs().slice(0, 8);
+    if (!rows.length) return '';
+    var items = rows
+      .map(function (h) {
+        var when = String(h.handedOffAt || '').slice(11, 16) || '—';
+        return (
+          '<li><b>' +
+          esc(h.targetKind || 'Agent') +
+          '</b> · ' +
+          esc(when) +
+          ' · ' +
+          (h.chars || 0) +
+          ' 字 · ' +
+          esc(h.outcome || '') +
+          '</li>'
+        );
+      })
+      .join('');
+    return (
+      '<div class="hpp-group" data-hpp-handoffs><h4>今日交接</h4><ul class="hpp-handoff-list">' +
+      items +
+      '</ul></div>'
     );
   }
 
@@ -941,11 +1663,11 @@
       esc(phase) +
       '">' +
       '<div class="hpp-app">' +
-      '<aside class="hpp-materials"><h2>材料</h2><p class="hpp-sub">先把手边的东西放进来。</p>' +
+      '<aside class="hpp-materials"><div class="hpp-materials-head"><div><h2>材料</h2><p class="hpp-sub">先把手边的东西放进来。</p></div>' +
+      '<button type="button" class="hpp-collapse" data-hpp-collapse>收起</button></div>' +
       '<div class="hpp-add-wrap"><button type="button" class="hpp-add" data-hpp-add aria-haspopup="true" aria-expanded="false">＋ 添加素材</button>' +
       '<div class="hpp-add-menu" data-hpp-add-menu hidden>' +
-      '<button type="button" data-hpp-add-kind="image">▨ 图片</button>' +
-      '<button type="button" data-hpp-add-kind="file">T 文件</button>' +
+      '<button type="button" data-hpp-add-kind="attach">📎 附件</button>' +
       '<button type="button" data-hpp-add-kind="folder">⌁ 文件夹</button>' +
       '<button type="button" data-hpp-add-kind="paste">⌘ 粘贴</button>' +
       '<button type="button" data-hpp-add-kind="url">↗ 网址</button>' +
@@ -1070,18 +1792,29 @@
     var t = ev.target;
     if (!t) return;
     if (t.getAttribute && t.getAttribute('data-hpp-title') != null) {
-      model.draft.title = t.textContent || '';
-      saveModel();
+      setDraftTitle(t.textContent || '', { skipSync: true });
+      schedulePublishTray();
     }
     if (t.getAttribute && t.getAttribute('data-hpp-body') != null) {
-      model.draft.body = t.innerText || t.textContent || '';
-      saveModel();
+      setDraftBody(t.innerText || t.textContent || '', { skipSync: true });
+      schedulePublishTray();
     }
   }
 
   function onHostClick(ev) {
     var t = ev.target;
     if (!t || !t.closest) return;
+    if (t.closest('[data-hpp-collapse]')) {
+      collapse();
+      return;
+    }
+    var rmBtn = t.closest('[data-hpp-mat-rm]');
+    if (rmBtn) {
+      var rid = rmBtn.getAttribute('data-hpp-mat-rm');
+      var rm = removeMaterial(rid);
+      if (rm && rm.removed) toast('已移除材料');
+      return;
+    }
     if (t.closest('[data-hpp-add]')) {
       openAddMenu(t.closest('[data-hpp-add]'));
       ev.stopPropagation();
@@ -1156,9 +1889,91 @@
     }
   }
 
+  function syncLaunchVisibility() {
+    var launch =
+      typeof document !== 'undefined'
+        ? document.querySelector('[data-hn-prep-launch]')
+        : null;
+    var host = document.getElementById('homePromptPrepHost');
+    if (launch) {
+      if (expanded) launch.setAttribute('hidden', '');
+      else launch.removeAttribute('hidden');
+    }
+    if (host) {
+      host.setAttribute('data-hpp-expanded', expanded ? '1' : '0');
+      if (expanded) {
+        host.removeAttribute('hidden');
+        // Sheet surface: float above quiet composer so materials aren't buried.
+        host.setAttribute('data-hpp-surface', 'sheet');
+      } else {
+        host.setAttribute('hidden', '');
+        host.removeAttribute('data-hpp-surface');
+      }
+    }
+    syncSheetChrome(expanded);
+  }
+
+  function syncSheetChrome(on) {
+    if (typeof document === 'undefined') return;
+    var home =
+      typeof document.querySelector === 'function'
+        ? document.querySelector('.now-home')
+        : null;
+    if (home && home.classList) home.classList.toggle('is-prep-sheet-open', !!on);
+    var scrim =
+      typeof document.getElementById === 'function'
+        ? document.getElementById('hppSheetScrim')
+        : null;
+    if (!on) {
+      if (scrim && scrim.parentNode) scrim.parentNode.removeChild(scrim);
+      return;
+    }
+    if (scrim) return;
+    if (typeof document.createElement !== 'function') return;
+    scrim = document.createElement('button');
+    scrim.type = 'button';
+    scrim.id = 'hppSheetScrim';
+    scrim.className = 'hpp-sheet-scrim';
+    if (scrim.setAttribute) scrim.setAttribute('aria-label', '关闭整理台');
+    if (scrim.addEventListener) {
+      scrim.addEventListener('click', function () {
+        collapse();
+      });
+    }
+    var mount = home || document.body;
+    if (mount && mount.appendChild) mount.appendChild(scrim);
+  }
+
+  function expand() {
+    expanded = true;
+    var host = document.getElementById('homePromptPrepHost');
+    if (!host) return;
+    hostEl = host;
+    mountedHost = host;
+    syncLaunchVisibility();
+    paint();
+    ensureHppDrawerKeysBound();
+  }
+
+  function collapse() {
+    expanded = false;
+    syncLaunchVisibility();
+    if (hostEl) {
+      // Keep data-hpp-bound + delegated listeners on the same host node.
+      hostEl.innerHTML = '';
+    }
+    mountedHost = null;
+  }
+
   function ensureMounted() {
     var host = document.getElementById('homePromptPrepHost');
     if (!host) return;
+    syncLaunchVisibility();
+    // Default: stay collapsed — Hero + launch card own the first screen.
+    if (!expanded) {
+      hostEl = host;
+      return;
+    }
     // Idempotent: same connected host → refresh only (never full innerHTML).
     if (
       mountedHost === host &&
@@ -1185,13 +2000,37 @@
 
   global.OneToneHomePromptPrep = {
     ensureMounted: ensureMounted,
+    expand: expand,
+    collapse: collapse,
+    isExpanded: function () {
+      return !!expanded;
+    },
     refresh: refresh,
     paint: paint,
     assembleMarkdown: assembleMarkdown,
+    ensureAssembled: ensureAssembled,
+    getTraySnapshot: getTraySnapshot,
+    publishTraySnapshot: publishTraySnapshot,
+    subscribeTray: subscribeTray,
+    setCarryActive: setCarryActive,
+    dismissCarry: dismissCarry,
+    archiveHandoff: archiveHandoff,
+    listHandoffs: listHandoffs,
+    setDraftBody: setDraftBody,
+    setDraftTitle: setDraftTitle,
+    updateMaterialFlags: updateMaterialFlags,
     addMaterial: addMaterial,
+    beginMaterialCollection: beginMaterialCollection,
+    collectMaterial: collectMaterial,
+    guessAttachKind: guessAttachKind,
+    getMaterialSummary: getMaterialSummary,
+    removeMaterial: removeMaterial,
+    clearMaterials: clearMaterials,
+    subscribeMaterials: subscribeMaterials,
     openHppDrawer: openHppDrawer,
     closeHppDrawers: closeHppDrawers,
     handleHppDrawerKeydown: handleHppDrawerKeydown,
+    ASSEMBLE_MAX_CHARS: ASSEMBLE_MAX_CHARS,
     __testOnly: {
       getMountedHost: function () {
         return mountedHost;
@@ -1209,20 +2048,174 @@
         return model;
       },
       setDraftBody: function (text) {
-        model.draft = model.draft || { title: '', body: '' };
-        model.draft.body = text;
-        saveModel();
-      }
+        setDraftBody(text, { skipSync: true, force: true });
+      },
+      setExpanded: function (v) {
+        expanded = !!v;
+      },
+      bumpContentRevision: bumpContentRevision,
+      ensureAssembled: ensureAssembled,
+      getTraySnapshot: getTraySnapshot
     },
     derivePhase: derivePhase,
     _model: function () {
       return model;
     },
     _setModel: function (m) {
-      model = m;
+      model = migrateModel(m || emptyModel());
+      if (!model.collectionId) model.collectionId = newCollectionId();
       saveModel();
+      schedulePublishTray();
     },
     _loadModel: loadModel,
     STATES: STATES
   };
+
+  /** Soft Pad may emit + drain the same payload — drop near-duplicate within 2s. */
+  var lastTrayCollectFp = '';
+  var lastTrayCollectAt = 0;
+
+  /**
+   * Soft Pad overlay drop → Rust emits tray_collect → main writes Prep model.
+   */
+  function onTrayCollectPayload(p) {
+    if (!p || typeof p !== 'object') return;
+    var kind = String(p.kind || '');
+    var fp =
+      kind +
+      '|' +
+      String(p.path || '') +
+      '|' +
+      String(p.id || '') +
+      '|' +
+      String(p.text || '').slice(0, 120);
+    var now = Date.now();
+    if (fp === lastTrayCollectFp && now - lastTrayCollectAt < 2000) return;
+    lastTrayCollectFp = fp;
+    lastTrayCollectAt = now;
+    if (kind === 'clear') {
+      clearMaterials();
+      return;
+    }
+    if (kind === 'remove') {
+      var rid = String(p.id || '').trim();
+      if (rid) removeMaterial(rid);
+      return;
+    }
+    if (kind === 'text') {
+      var text = String(p.text || '').trim();
+      if (!text) return;
+      beginMaterialCollection({ resetIfHandedOff: true });
+      collectMaterial('paste', {
+        text: text,
+        source: 'Soft Pad 拖入'
+      });
+      return;
+    }
+    if (kind === 'attach') {
+      var path = String(p.path || '').trim();
+      if (!path) return;
+      beginMaterialCollection({ resetIfHandedOff: true });
+      collectMaterial('attach', {
+        path: path,
+        name: p.name || path
+      });
+      return;
+    }
+    if (kind === 'pick' || kind === 'pick_file') {
+      beginMaterialCollection({ resetIfHandedOff: true });
+      collectMaterial('attach', {}).then(function (res) {
+        if (!res || res.outcome === 'cancelled') return;
+        if (res.outcome === 'failed') toast(res.message || '无法添加文件');
+      });
+      return;
+    }
+    if (kind === 'copy_md' || kind === 'copy_markdown') {
+      var md = '';
+      try {
+        var assembled = ensureAssembled();
+        md = String((assembled && assembled.md) || assembleMarkdown() || '');
+      } catch (_) {
+        md = String(model.assembledMd || '');
+      }
+      if (!String(md || '').trim()) {
+        toast('暂无材料可复制');
+        return;
+      }
+      writeClipboard(md)
+        .then(function () {
+          toast('已复制材料 Markdown');
+          schedulePublishTray();
+        })
+        .catch(function () {
+          toast('复制失败');
+        });
+    }
+  }
+
+  function bindTrayCollectBridge() {
+    if (global.__otHppTrayCollectBound) return true;
+    var api = global.OneToneIpc;
+    if (!api || typeof api.listen !== 'function') return false;
+    global.__otHppTrayCollectBound = true;
+    api
+      .listen('tray_collect', function (ev) {
+        onTrayCollectPayload(ev && ev.payload);
+      })
+      .catch(function () {
+        global.__otHppTrayCollectBound = false;
+      });
+    return true;
+  }
+
+  function bindTrayCollectToJs() {
+    if (global.__otHppTrayCollectToJs) return;
+    global.__otHppTrayCollectToJs = true;
+    try {
+      var wv = global.chrome && global.chrome.webview;
+      if (wv && typeof wv.addEventListener === 'function') {
+        wv.addEventListener('message', function (e) {
+          var d = e && e.data;
+          if (!d || d.type !== 'tray_collect') return;
+          onTrayCollectPayload(d);
+        });
+      }
+    } catch (_) {}
+  }
+
+  /** Soft Pad may drop before listen is ready — drain pending queue. */
+  function drainPendingCollects() {
+    var api = global.OneToneIpc;
+    if (!api || typeof api.invoke !== 'function') return Promise.resolve();
+    return api
+      .invoke('cmd_tray_collect_drain', {})
+      .then(function (items) {
+        if (!Array.isArray(items) || !items.length) return;
+        for (var i = 0; i < items.length; i++) {
+          onTrayCollectPayload(items[i]);
+        }
+      })
+      .catch(function () {});
+  }
+
+  // Late Soft Pad / cold overlay: push current snapshot once after boot.
+  try {
+    schedulePublishTray();
+  } catch (_) {}
+  try {
+    bindTrayCollectToJs();
+    if (!bindTrayCollectBridge()) {
+      var collectPoll = setInterval(function () {
+        if (bindTrayCollectBridge()) clearInterval(collectPoll);
+      }, 80);
+      setTimeout(function () {
+        clearInterval(collectPoll);
+      }, 12000);
+    }
+    drainPendingCollects();
+    // Keep draining — Soft Pad may collect while main listener was briefly unbound.
+    setInterval(function () {
+      drainPendingCollects();
+    }, 2500);
+  } catch (_) {}
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tray-inbox-write"
+description = "Enables the cmd_tray_inbox_write command without any pre-configured scope."
+commands.allow = ["cmd_tray_inbox_write"]
+
+[[permission]]
+identifier = "deny-cmd-tray-inbox-write"
+description = "Denies the cmd_tray_inbox_write command without any pre-configured scope."
+commands.deny = ["cmd_tray_inbox_write"]

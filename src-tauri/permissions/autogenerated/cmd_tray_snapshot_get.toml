@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tray-snapshot-get"
+description = "Enables the cmd_tray_snapshot_get command without any pre-configured scope."
+commands.allow = ["cmd_tray_snapshot_get"]
+
+[[permission]]
+identifier = "deny-cmd-tray-snapshot-get"
+description = "Denies the cmd_tray_snapshot_get command without any pre-configured scope."
+commands.deny = ["cmd_tray_snapshot_get"]

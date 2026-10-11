@@ -69,5 +69,6 @@ pub fn cmd_agent_center_action(
         args.action_id.trim(),
         hint.as_deref(),
         args.attempt_id.as_deref(),
+        args.paste_clipboard.unwrap_or(false),
     )
 }

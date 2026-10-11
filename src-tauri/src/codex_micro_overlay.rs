@@ -17,6 +17,8 @@ use crate::AppState;
 pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 
 const OVERLAY_WIDTH: f64 = 432.0;
+/// Extra logical width when Soft Pad materials rail is open (pad | vertical list).
+const OVERLAY_WIDTH_MATS_EXTRA: f64 = 188.0;
 /// Default full height before content reports a tighter fit.
 /// Must clear 400px chassis + caption (+ optional light-gate); 520 clipped the bottom bar.
 /// Keep in sync with overlay_window.rs initial height.
@@ -68,6 +70,10 @@ static OVERLAY_USER_POSITION: OnceLock<ParkingMutex<Option<(i32, i32)>>> = OnceL
 static OVERLAY_LAST_GEOM: OnceLock<ParkingMutex<Option<(bool, i32, i32)>>> = OnceLock::new();
 /// Frontend-measured full-pad content height (logical). Shrinks transparent HWND dead zone.
 static OVERLAY_FIT_HEIGHT: OnceLock<ParkingMutex<Option<f64>>> = OnceLock::new();
+/// Soft Pad materials vertical rail — widens full overlay (right edge anchored).
+static OVERLAY_MATS_RAIL: AtomicBool = AtomicBool::new(false);
+/// Soft Pad file dialog open — skip always_on_top re-assert so the OS picker stays visible.
+static OVERLAY_SUSPEND_TOPMOST: AtomicBool = AtomicBool::new(false);
 /// Soft dismiss (X / settings open): hide until Soft Pad agent FG/process or settings close.
 /// Does not persist overlay_enabled=false (settings "不显示浮窗" owns that durable flag).
 static OVERLAY_SESSION_DISMISSED: OnceLock<ParkingMutex<bool>> = OnceLock::new();
@@ -344,9 +350,9 @@ fn sync_needs_input_pass_through(win: &WebviewWindow, snap: &CodexMicroOverlaySn
     if !snap.visible {
         return;
     }
-    // During permission wait: do not re-assert always_on_top (keeps ChatGPT approval above pad).
-    // Outside that window: keep the beacon pinned.
-    if !pass {
+    // During permission wait / Soft Pad file dialog: do not re-assert always_on_top
+    // (keeps ChatGPT approval / OS picker above pad).
+    if !pass && !OVERLAY_SUSPEND_TOPMOST.load(Ordering::Relaxed) {
         let _ = win.set_always_on_top(true);
         #[cfg(windows)]
         {
@@ -4501,13 +4507,52 @@ fn overlay_logical_size(
         };
         (OVERLAY_WIDTH_MINI, h)
     } else {
-        // NAV keys live on the 5-col main pad — no side-rail width reserve.
+        // NAV keys live on the 5-col main pad — mats rail adds width when open.
         let fitted = *overlay_fit_height().lock();
         let h = fitted
             .unwrap_or(OVERLAY_HEIGHT_FULL)
             .clamp(OVERLAY_HEIGHT_FULL_MIN, OVERLAY_HEIGHT_FULL_MAX);
-        (OVERLAY_WIDTH, h)
+        let w = if OVERLAY_MATS_RAIL.load(Ordering::Relaxed) {
+            OVERLAY_WIDTH + OVERLAY_WIDTH_MATS_EXTRA
+        } else {
+            OVERLAY_WIDTH
+        };
+        (w, h)
     }
+}
+
+/// Soft Pad HTML file picker: drop always-on-top so the OS dialog is not buried.
+pub fn set_overlay_suspend_topmost(win: &WebviewWindow, suspend: bool) -> bool {
+    OVERLAY_SUSPEND_TOPMOST.store(suspend, Ordering::Relaxed);
+    let _ = win.set_always_on_top(!suspend);
+    true
+}
+
+/// Open/close Soft Pad materials vertical rail (widens HWND; right edge stays put).
+pub fn set_overlay_mats_rail(win: &WebviewWindow, open: bool) -> bool {
+    if *overlay_minimized().lock() {
+        OVERLAY_MATS_RAIL.store(false, Ordering::Relaxed);
+        return false;
+    }
+    let prev = OVERLAY_MATS_RAIL.swap(open, Ordering::Relaxed);
+    if prev == open {
+        return false;
+    }
+    *overlay_last_geom().lock() = None;
+    let (logical_w, logical_h) = overlay_logical_size(false, false, false, false);
+    resize_overlay_anchored(win, logical_w, logical_h);
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let target_w = (logical_w * scale).round() as u32;
+    let target_h = (logical_h * scale).round() as u32;
+    let ok = match win.outer_size().ok().map(|s| (s.width, s.height)) {
+        Some((w, oh)) => w.abs_diff(target_w) <= 48 && oh.abs_diff(target_h) <= 48,
+        None => true,
+    };
+    if ok {
+        *overlay_last_geom().lock() =
+            Some((false, logical_w.round() as i32, logical_h.round() as i32));
+    }
+    true
 }
 
 /// Webview reports visible Soft Pad height so the HWND matches content (no empty hit slab).

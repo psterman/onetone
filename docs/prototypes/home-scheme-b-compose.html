@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>方案 B · 一句话开场 + 可见材料条</title>
+  <style>
+    :root {
+      --shell: #eef0f1; --rail: #f5f5f3; --paper: #fbfaf7; --ink: #172523; --ink-2: #43514e;
+      --muted: #55635f; --line: #dedfd9; --line-strong: #c9ccc5; --teal: #176f68; --teal-dark: #115b56;
+      --teal-soft: #dcebe7; --amber: #8b5c23; --amber-soft: #f2e6d5; --red: #9d453b;
+      --shadow: 0 18px 48px rgba(31, 43, 40, .12); --focus: #0f756c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--shell); color: var(--ink); font: 14px/1.55 "Segoe UI", "Microsoft YaHei", sans-serif; }
+    button, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+    ::placeholder { color: #6a7773; }
+    .demo { width: min(1100px, calc(100% - 28px)); margin: 14px auto 8px; display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+    .demo span { color: var(--muted); font-size: 12px; }
+    .demo button { border: 1px solid var(--line-strong); border-radius: 999px; background: var(--paper); padding: 6px 11px; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+    .demo button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .note { width: min(1100px, calc(100% - 28px)); margin: 0 auto 8px; color: var(--muted); font-size: 12px; }
+    .app {
+      width: min(1100px, calc(100% - 28px)); height: min(740px, calc(100vh - 100px)); min-height: 620px;
+      margin: 0 auto 16px; display: grid; grid-template-columns: 224px 1fr; border-radius: 20px;
+      background: var(--paper); box-shadow: var(--shadow); overflow: hidden;
+    }
+    .rail { background: var(--rail); border-right: 1px solid var(--line); padding: 22px 14px 16px; display: flex; flex-direction: column; }
+    .brand { display: flex; gap: 10px; align-items: center; font-weight: 800; padding: 0 10px 22px; }
+    .brand i { width: 25px; height: 25px; border-radius: 8px; background: var(--ink); display: grid; place-items: center; color: #b5dcd5; font-style: normal; font-size: 11px; }
+    .nav button { width: 100%; border: 0; background: transparent; color: var(--ink-2); border-radius: 10px; min-height: 40px; padding: 8px 10px; text-align: left; font-weight: 650; margin-bottom: 4px; }
+    .nav button[aria-current="page"] { background: var(--teal-soft); color: var(--teal-dark); }
+    .nav .muted { margin: 16px 10px 6px; color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
+    .rail-bottom { margin-top: auto; border-top: 1px solid var(--line); padding-top: 12px; }
+    .main { min-width: 0; display: grid; grid-template-rows: auto 1fr auto; }
+    .sit {
+      display: flex; align-items: center; gap: 10px 14px; min-height: 44px; padding: 8px 28px;
+      border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2);
+    }
+    .sit[data-tone="attention"] { background: color-mix(in srgb, var(--amber-soft) 55%, var(--paper)); }
+    .sit[data-tone="error"] { background: #f5e4e1; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #2a6b4a; flex: none; }
+    .dot.work { background: var(--teal); animation: p 1.2s ease-out infinite; }
+    .dot.wait { background: transparent; border: 2px solid var(--ink-2); }
+    .dot.err { background: var(--red); border-radius: 1px; transform: rotate(45deg); }
+    @keyframes p { 50% { opacity: .4; transform: scale(.7); } }
+    .sit strong { color: var(--ink); }
+    .sit .cta { margin-left: auto; border: 0; background: transparent; color: var(--teal-dark); font-weight: 750; font-size: 12.5px; }
+    .sit .cta[hidden] { display: none !important; }
+    .stage { padding: 28px 36px 20px; overflow: auto; }
+    .sheet { max-width: 680px; margin: 0 auto; }
+    .sheet h1 { margin: 0 0 6px; font-size: 18px; font-weight: 750; letter-spacing: -.01em; }
+    .sheet .hint { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+    .you {
+      width: 100%; min-height: 140px; border: 1px solid var(--line-strong); border-radius: 12px;
+      background: #fffcf8; padding: 14px 16px; resize: vertical; line-height: 1.6;
+    }
+    .mats { margin-top: 16px; }
+    .mats-label { margin: 0 0 8px; font-size: 12px; font-weight: 750; color: var(--ink-2); }
+    .add-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .add-row button {
+      border: 1px solid var(--line-strong); border-radius: 10px; background: #fff; color: var(--ink);
+      padding: 9px 12px; font-weight: 700; font-size: 13px; text-align: left;
+    }
+    .add-row button:hover { border-color: color-mix(in srgb, var(--teal) 40%, var(--line)); background: var(--teal-soft); }
+    .add-row button small { display: block; color: var(--muted); font-weight: 650; font-size: 11.5px; margin-top: 2px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; min-height: 28px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line);
+      border-radius: 999px; background: #fff; padding: 5px 6px 5px 10px; font-size: 12.5px; font-weight: 650;
+    }
+    .chip.is-off { opacity: .5; }
+    .chip button { border: 0; background: #eceeea; border-radius: 999px; width: 24px; height: 24px; font-size: 14px; line-height: 1; color: var(--ink-2); }
+    .empty { color: var(--muted); font-size: 12.5px; padding: 4px 0; }
+    .foot {
+      border-top: 1px solid var(--line); padding: 12px 28px; display: flex; flex-wrap: wrap;
+      align-items: center; gap: 10px 16px; background: #fff;
+    }
+    .stats { flex: 1; color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 10px 14px; }
+    .stats b { color: var(--ink-2); }
+    .primary { border: 0; border-radius: 10px; background: var(--teal); color: #fff; min-height: 40px; padding: 9px 15px; font-weight: 760; }
+    .primary:disabled { opacity: .5; cursor: not-allowed; }
+    .toast {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff;
+      padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 650; opacity: 0; pointer-events: none; transition: .2s; z-index: 5;
+    }
+    .toast.on { opacity: 1; }
+    @media (max-width: 720px) {
+      .app { grid-template-columns: 1fr; }
+      .rail { display: none; }
+      .stage, .sit, .foot { padding-inline: 16px; }
+      .add-row button { flex: 1 1 140px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo" role="toolbar">
+    <span>方案 B · 情境</span>
+    <button type="button" data-s="quiet" aria-pressed="true">quiet</button>
+    <button type="button" data-s="attention" aria-pressed="false">attention</button>
+    <button type="button" data-s="error" aria-pressed="false">degraded</button>
+  </div>
+  <p class="note">开场即写「你的话」。材料能力用三个具名按钮直达（文本 / 文件 / 链接）——不是搜索框，也不是「+」菜单。默认全量附带，不做四档引用表。</p>
+  <div class="toast" id="toast" role="status"></div>
+  <div class="app">
+    <aside class="rail">
+      <div class="brand"><i>OT</i><span>OneTone</span></div>
+      <nav class="nav">
+        <button type="button" aria-current="page">现在</button>
+        <button type="button">Agent</button>
+        <div class="muted">个人能力</div>
+        <button type="button">我的习惯</button>
+      </nav>
+      <div class="rail-bottom"><nav class="nav"><button type="button">设置</button></nav></div>
+    </aside>
+    <main class="main">
+      <div class="sit" id="sit" data-tone="">
+        <span class="dot" id="dot" aria-hidden="true"></span>
+        <strong id="sitTitle">Codex 可用</strong>
+        <span id="sitMeta">voice-pilot · 已确认</span>
+        <button type="button" class="cta" id="sitCta" hidden>查看并决定</button>
+      </div>
+      <div class="stage">
+        <div class="sheet">
+          <h1>跟 Agent 说什么？</h1>
+          <p class="hint">先写意图。材料可选；系统默认带全文摘要，预算紧了再精简。</p>
+          <textarea class="you" id="you" placeholder="例如：根据材料整理首页验收清单，不要改生产代码……" aria-label="你的话"></textarea>
+          <div class="mats">
+            <p class="mats-label">附带材料（可选）</p>
+            <div class="add-row" role="group" aria-label="添加材料">
+              <button type="button" data-add="text"><span>粘贴文本</span><small>笔记、摘录</small></button>
+              <button type="button" data-add="file"><span>添加文件</span><small>文档、截图</small></button>
+              <button type="button" data-add="url"><span>添加网址</span><small>讨论、规格</small></button>
+            </div>
+            <div class="chips" id="chips" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">
+        <div class="stats">
+          <span>目标 <b>Codex</b></span>
+          <span>材料 <b id="nMat">0</b></span>
+          <span>预算约 <b id="budget">48</b> token <small style="color:var(--muted)">(估)</small></span>
+        </div>
+        <button type="button" class="primary" id="send" disabled>准备交接</button>
+      </div>
+    </main>
+  </div>
+  <script>
+    const samples = {
+      text: "粘贴：首页 IA 笔记",
+      file: "PRODUCT.md",
+      url: "example.local/home-focus"
+    };
+    const mats = [];
+    const $ = (s) => document.querySelector(s);
+    const toast = (m) => { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast._); toast._ = setTimeout(() => t.classList.remove("on"), 1800); };
+
+    function render() {
+      const box = $("#chips");
+      box.innerHTML = "";
+      if (!mats.length) {
+        box.innerHTML = '<span class="empty">还没有材料。三个按钮始终可见，不用找加号。</span>';
+      } else {
+        mats.forEach((m, i) => {
+          const el = document.createElement("span");
+          el.className = "chip" + (m.on ? "" : " is-off");
+          el.innerHTML = `<label><input type="checkbox" ${m.on ? "checked" : ""} aria-label="纳入 ${m.name}"> ${m.name}</label><button type="button" aria-label="删除">×</button>`;
+          el.querySelector("input").onchange = (e) => { m.on = e.target.checked; sync(); };
+          el.querySelector("button").onclick = () => { mats.splice(i, 1); render(); };
+          box.append(el);
+        });
+      }
+      sync();
+    }
+    function sync() {
+      const on = mats.filter((m) => m.on).length;
+      $("#nMat").textContent = String(on);
+      $("#budget").textContent = String(48 + on * 28 + Math.round(($("#you").value.length || 0) / 4));
+      $("#send").disabled = !$("#you").value.trim();
+    }
+    function paintSit(name) {
+      const map = {
+        quiet: { tone: "", cls: "dot", title: "Codex 可用", meta: "voice-pilot · 已确认", cta: "" },
+        attention: { tone: "attention", cls: "dot wait", title: "需要你决定", meta: "Codex 等待 · voice-pilot", cta: "查看并决定" },
+        error: { tone: "error", cls: "dot err", title: "读取异常", meta: "项目未知 · 未作猜测", cta: "重试" }
+      };
+      const s = map[name];
+      $("#sit").dataset.tone = s.tone;
+      $("#dot").className = s.cls;
+      $("#sitTitle").textContent = s.title;
+      $("#sitMeta").textContent = s.meta;
+      $("#sitCta").hidden = !s.cta;
+      $("#sitCta").textContent = s.cta || "";
+      document.querySelectorAll("[data-s]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.s === name)));
+    }
+    document.querySelectorAll("[data-s]").forEach((b) => b.addEventListener("click", () => paintSit(b.dataset.s)));
+    document.querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => {
+      mats.push({ name: samples[b.dataset.add], on: true });
+      render();
+      toast("已加入材料（原型）");
+    }));
+    $("#you").addEventListener("input", sync);
+    $("#send").addEventListener("click", () => toast("准备交接（原型）· 未真实发送"));
+    $("#sitCta").addEventListener("click", () => toast("原型：" + $("#sitCta").textContent));
+    paintSit("quiet");
+    render();
+  </script>
+</body>
+</html>

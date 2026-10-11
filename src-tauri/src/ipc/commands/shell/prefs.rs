@@ -99,12 +99,49 @@ pub fn cmd_open_path(path: String) -> Result<(), String> {
     crate::data_root::open_path(&p)
 }
 
+/// Temporarily drop always-on-top so Soft Pad / main don't bury WinForms pickers.
+fn suspend_topmost_for_native_dialog(app: &tauri::AppHandle) -> Vec<(String, bool)> {
+    use tauri::Manager;
+    let labels = [
+        "main",
+        crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL,
+    ];
+    let mut restored = Vec::new();
+    for label in labels {
+        if let Some(win) = app.get_webview_window(label) {
+            // We don't have a reliable is_always_on_top API across versions —
+            // Soft Pad / overlays are always_on_top true; main often false.
+            // Force false for the dialog, then re-assert Soft Pad topmost after.
+            let want_restore = label != "main";
+            let _ = win.set_always_on_top(false);
+            restored.push((label.to_string(), want_restore));
+        }
+    }
+    restored
+}
+
+fn restore_topmost_for_native_dialog(app: &tauri::AppHandle, restored: Vec<(String, bool)>) {
+    use tauri::Manager;
+    for (label, want) in restored {
+        if !want {
+            continue;
+        }
+        if let Some(win) = app.get_webview_window(&label) {
+            let _ = win.set_always_on_top(true);
+        }
+    }
+}
+
 /// Native file/folder picker for action-sequence Open steps. `kind`: `file` | `folder`.
 /// Returns `None` when the user cancels.
 #[tauri::command]
-pub async fn cmd_pick_path(kind: String) -> Result<Option<String>, String> {
+pub async fn cmd_pick_path(
+    app: tauri::AppHandle,
+    kind: String,
+) -> Result<Option<String>, String> {
     let k = kind.trim().to_ascii_lowercase();
-    tauri::async_runtime::spawn_blocking(move || {
+    let restored = suspend_topmost_for_native_dialog(&app);
+    let result = tauri::async_runtime::spawn_blocking(move || {
         let picked = if k == "folder" {
             crate::data_root::pick_folder_dialog()?
         } else if k == "file" {
@@ -115,7 +152,9 @@ pub async fn cmd_pick_path(kind: String) -> Result<Option<String>, String> {
         Ok(picked.map(|p| p.to_string_lossy().to_string()))
     })
     .await
-    .map_err(|e| format!("pick_path task failed: {e}"))?
+    .map_err(|e| format!("pick_path task failed: {e}"));
+    restore_topmost_for_native_dialog(&app, restored);
+    result?
 }
 
 /// Chrome / Edge bookmarks (http/https only). Empty if browsers not installed.
@@ -133,15 +172,20 @@ pub fn cmd_data_root_status() -> crate::data_root::DataRootStatus {
 }
 
 #[tauri::command]
-pub async fn cmd_data_root_pick() -> Result<crate::data_root::DataRootStatus, String> {
-    tauri::async_runtime::spawn_blocking(|| {
+pub async fn cmd_data_root_pick(
+    app: tauri::AppHandle,
+) -> Result<crate::data_root::DataRootStatus, String> {
+    let restored = suspend_topmost_for_native_dialog(&app);
+    let result = tauri::async_runtime::spawn_blocking(|| {
         let Some(folder) = crate::data_root::pick_folder_dialog()? else {
             return Ok(crate::data_root::status());
         };
         crate::data_root::set_custom_root(folder)
     })
     .await
-    .map_err(|e| format!("data_root_pick task failed: {e}"))?
+    .map_err(|e| format!("data_root_pick task failed: {e}"));
+    restore_topmost_for_native_dialog(&app, restored);
+    result?
 }
 
 #[tauri::command]

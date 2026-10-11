@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OneTone · 现在 · Focus Cockpit</title>
+  <style>
+    :root {
+      --hn-ink: #14233a;
+      --hn-ink2: #3a4a5c;
+      --hn-muted: #556576;
+      --hn-line: rgba(20, 35, 58, 0.1);
+      --hn-teal: #0d7a72;
+      --hn-teal-soft: #d9f0ed;
+      --hn-paper: #fffcf8;
+      --hn-bg: #ebe6df;
+      --hn-amber: #8a4b12;
+      --hn-amber-soft: #fff1e6;
+      --hn-red: #a33b2b;
+      --hn-red-soft: #fdeceb;
+      --hn-key-bg: #e4ddd4;
+      --hn-key-ink: #3a4a5c;
+      --shadow: 0 10px 28px rgba(20, 35, 58, 0.06);
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background: var(--hn-bg);
+      color: var(--hn-ink);
+      font: 15px/1.5 "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    button { font: inherit; cursor: pointer; }
+    ::selection { background: var(--hn-teal-soft); color: var(--hn-ink); }
+
+    .frame {
+      min-height: 100%;
+      display: grid;
+      place-items: start center;
+      padding: 28px 16px 40px;
+    }
+    .phone {
+      width: min(440px, 100%);
+      min-height: min(calc(100vh - 80px), 820px);
+      background: var(--hn-paper);
+      border: 1px solid var(--hn-line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .modebar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      width: min(440px, 100%);
+      margin: 0 0 12px;
+    }
+    .modebar button {
+      border: 1px solid var(--hn-line);
+      background: var(--hn-paper);
+      color: var(--hn-muted);
+      border-radius: 999px;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .modebar button[aria-pressed="true"] {
+      background: #153b38;
+      border-color: #153b38;
+      color: #fff;
+    }
+
+    .toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-12px);
+      background: var(--hn-ink);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 650;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+      z-index: 20;
+    }
+    .toast.is-on {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .hn-canvas {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 28px 24px 88px;
+      color: var(--hn-ink);
+    }
+    .hn-brand {
+      margin: 0 0 12px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--hn-teal);
+    }
+    .hn-nav {
+      display: flex;
+      gap: 4px;
+      margin: 0 0 28px;
+      flex-wrap: wrap;
+    }
+    .hn-nav-item {
+      border: 0;
+      background: transparent;
+      color: var(--hn-muted);
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+    .hn-nav-item.is-on {
+      color: var(--hn-ink);
+      background: var(--hn-teal-soft);
+    }
+    .hn-nav-item:focus-visible,
+    .hn-cta:focus-visible,
+    .hn-text-btn:focus-visible,
+    .hn-prep-go:focus-visible,
+    .now-dock-voice:focus-visible,
+    .modebar button:focus-visible,
+    .hn-pick-row:focus-visible {
+      outline: 2px solid var(--hn-teal);
+      outline-offset: 2px;
+    }
+
+    .hn-hero { margin: 0 0 8px; max-width: 28em; }
+    .hn-headline {
+      margin: 0 0 12px;
+      max-width: 18em;
+      font-size: clamp(22px, 5vw, 28px);
+      line-height: 1.22;
+      letter-spacing: -0.035em;
+      font-weight: 700;
+      text-wrap: balance;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
+    }
+    .hn-assist {
+      margin: 0 0 22px;
+      font-size: 15.5px;
+      line-height: 1.55;
+      color: var(--hn-ink2);
+      max-width: 32em;
+    }
+    .hn-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      margin: 0 0 18px;
+      min-height: 1.5em;
+    }
+    .hn-cta {
+      border: 0;
+      background: var(--hn-teal);
+      color: #fff;
+      border-radius: 11px;
+      padding: 11px 16px;
+      font-weight: 750;
+      font-size: 14.5px;
+      box-shadow: 0 1px 0 rgba(0,0,0,.06);
+    }
+    .hn-cta:hover { filter: brightness(1.05); }
+    .hn-cta:disabled { opacity: 0.65; cursor: wait; filter: none; }
+    .hn-cta--attention { background: var(--hn-amber); }
+    .hn-cta--degraded { background: var(--hn-red); }
+    .hn-text-btn {
+      border: 0;
+      background: transparent;
+      color: var(--hn-teal);
+      font-weight: 650;
+      font-size: 13.5px;
+      padding: 8px 4px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      text-decoration-color: color-mix(in srgb, var(--hn-teal) 35%, transparent);
+    }
+    .hn-text-btn:hover { color: #0a5f59; }
+
+    .hn-meta {
+      margin: 0 0 12px;
+      font-size: 13px;
+      color: var(--hn-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      align-items: center;
+    }
+    .hn-meta b { color: var(--hn-ink2); font-weight: 650; }
+    .hn-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--hn-teal-soft);
+      color: var(--hn-teal);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .hn-chip--warn {
+      background: var(--hn-amber-soft);
+      color: var(--hn-amber);
+    }
+    .hn-chip--err {
+      background: var(--hn-red-soft);
+      color: var(--hn-red);
+    }
+    .hn-chip .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor;
+    }
+
+    .hn-strip {
+      display: none;
+      width: 100%;
+      margin: 0 0 16px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--hn-line);
+      background: #fff;
+      font-size: 13px;
+      color: var(--hn-muted);
+    }
+    .hn-strip.is-show { display: block; }
+    .hn-strip strong { color: var(--hn-ink2); font-weight: 650; }
+
+    .hn-panel {
+      display: none;
+      width: 100%;
+      margin: 0 0 16px;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--hn-line);
+      background: #fff;
+    }
+    .hn-panel.is-open { display: block; }
+    .hn-panel h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 750;
+    }
+    .hn-ev-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-top: 1px solid var(--hn-line);
+      font-size: 13px;
+    }
+    .hn-ev-row:first-of-type { border-top: 0; padding-top: 0; }
+    .hn-ev-row span { color: var(--hn-muted); }
+    .hn-ev-row b { font-weight: 650; text-align: right; }
+    .hn-pick-row {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--hn-line);
+      background: var(--hn-paper);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin: 0 0 8px;
+    }
+    .hn-pick-row:hover { border-color: var(--hn-teal); background: var(--hn-teal-soft); }
+    .hn-pick-row b { display: block; font-size: 14px; }
+    .hn-pick-row s {
+      text-decoration: none;
+      color: var(--hn-muted);
+      font-size: 12px;
+    }
+    .hn-prep-panel p { margin: 0 0 8px; color: var(--hn-ink2); font-size: 14px; }
+    .hn-prep-panel .muted { color: var(--hn-muted); font-size: 13px; }
+
+    .hn-divider {
+      height: 1px;
+      width: 100%;
+      background: var(--hn-line);
+      margin: 0 0 18px;
+      border: 0;
+    }
+
+    .hn-prep-launch {
+      width: 100%;
+      border: 1px dashed color-mix(in srgb, var(--hn-teal) 28%, var(--hn-line));
+      border-radius: 14px;
+      background: rgba(255,255,255,.55);
+      padding: 16px 16px 14px;
+      margin: 0 0 8px;
+    }
+    .hn-prep-launch[hidden] { display: none !important; }
+    .hn-prep-launch p {
+      margin: 0 0 12px;
+      font-size: 14px;
+      color: var(--hn-ink2);
+    }
+    .hn-prep-go {
+      border: 1px solid var(--hn-line);
+      background: #fff;
+      color: var(--hn-ink);
+      border-radius: 10px;
+      padding: 9px 13px;
+      font-weight: 700;
+      font-size: 13.5px;
+    }
+    .hn-prep-go:hover {
+      border-color: color-mix(in srgb, var(--hn-teal) 40%, var(--hn-line));
+      background: var(--hn-teal-soft);
+    }
+
+    .now-dock {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px 14px;
+      background: color-mix(in srgb, var(--hn-paper) 92%, #fff);
+      border-top: 1px solid var(--hn-line);
+      backdrop-filter: blur(8px);
+    }
+    .now-dock-voice {
+      justify-self: start;
+      border: 0;
+      background: var(--hn-ink);
+      color: #fff;
+      border-radius: 999px;
+      padding: 9px 14px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .now-dock-voice.is-on { background: var(--hn-teal); }
+    .now-dock-center {
+      justify-self: center;
+      font-size: 12px;
+      color: var(--hn-muted);
+      font-weight: 650;
+    }
+    .now-dock-key {
+      justify-self: end;
+      font-size: 12px;
+      color: var(--hn-key-ink);
+      background: var(--hn-key-bg);
+      border-radius: 6px;
+      padding: 4px 7px;
+      font-family: ui-monospace, Consolas, monospace;
+    }
+
+    .note {
+      width: min(440px, 100%);
+      margin-top: 14px;
+      font-size: 12px;
+      color: #5a6662;
+      line-height: 1.45;
+    }
+    .note code {
+      font-size: 11px;
+      background: rgba(255,255,255,.7);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="frame">
+    <div class="modebar" role="group" aria-label="首页状态">
+      <button type="button" data-mode="return" aria-pressed="true">return</button>
+      <button type="button" data-mode="attention" aria-pressed="false">attention</button>
+      <button type="button" data-mode="quiet" aria-pressed="false">quiet</button>
+      <button type="button" data-mode="degraded" aria-pressed="false">degraded</button>
+      <button type="button" data-mode="unconfirmed" aria-pressed="false">项目未确认</button>
+    </div>
+
+    <div class="phone" aria-label="OneTone 首页原型">
+      <main class="hn-canvas" data-mode="return">
+        <p class="hn-brand">OneTone</p>
+        <nav class="hn-nav" aria-label="主导航">
+          <button type="button" class="hn-nav-item is-on" data-nav="now" aria-current="page">现在</button>
+          <button type="button" class="hn-nav-item" data-nav="habits">我的习惯</button>
+          <button type="button" class="hn-nav-item" data-nav="settings">设置</button>
+        </nav>
+
+        <section class="hn-hero" aria-live="polite">
+          <h1 class="hn-headline" id="headline"></h1>
+          <p class="hn-assist" id="assist"></p>
+          <div class="hn-actions" id="actions"></div>
+          <p class="hn-meta" id="meta"></p>
+        </section>
+
+        <!-- strip after meta — never above Hero -->
+        <div class="hn-strip" id="strip" aria-live="polite"></div>
+
+        <div class="hn-panel" id="evidence" aria-label="判断依据">
+          <h2>判断依据</h2>
+          <div id="evidenceBody"></div>
+        </div>
+
+        <div class="hn-panel" id="pick" aria-label="选择项目">
+          <h2>选择当前项目</h2>
+          <div id="pickBody"></div>
+        </div>
+
+        <div class="hn-panel hn-prep-panel" id="prepPanel" aria-label="整理材料">
+          <h2>整理材料交给 Agent</h2>
+          <p>把文件、摘录或口述收成一份可交接的提示。</p>
+          <p class="muted">（原型占位 · 尚未接入真实 Prep）</p>
+          <button type="button" class="hn-text-btn" data-proto="close_prep">收起</button>
+        </div>
+
+        <hr class="hn-divider" />
+
+        <section class="hn-prep-launch" id="prepLaunch" aria-label="发起新工作">
+          <p>要开始一项新工作？</p>
+          <button type="button" class="hn-prep-go" data-proto="open_prep">整理材料交给 Agent</button>
+        </section>
+      </main>
+
+      <footer class="now-dock">
+        <button type="button" class="now-dock-voice" id="dockVoice" data-proto="dictate">开始听写</button>
+        <span class="now-dock-center" id="dockStatus">可继续</span>
+        <kbd class="now-dock-key">Ctrl+Shift+Space</kbd>
+      </footer>
+    </div>
+
+    <p class="note">
+      骨架固定：情境 Hero → 唯一主动作 → Prep 启动卡 → Dock。<br />
+      任意时刻最多一个高强调 CTA。打开：<code>docs/prototypes/home-focus-cockpit.html</code>
+    </p>
+  </div>
+
+  <script>
+    const DOCK_STATUS = {
+      return: '可继续',
+      attention: '等待确认',
+      quiet: '无需处理',
+      degraded: '依据不足',
+      unconfirmed: '待确认项目'
+    };
+
+    const modes = {
+      return: {
+        mode: 'return',
+        headline: '你上次停在 Codex 的「重构首页状态模型」。',
+        assist: '当前项目仍是 voice-pilot，可以从停下的地方继续。',
+        primary: { id: 'resume', label: '继续上次工作', tone: '' },
+        secondary: { id: 'view_reason', label: '查看判断依据' },
+        meta: {
+          project: 'voice-pilot',
+          chip: { text: '已确认', kind: '' },
+          when: '12 分钟前'
+        },
+        strip: null,
+        evidence: [
+          ['前台', 'Cursor'],
+          ['项目', 'voice-pilot（已确认）'],
+          ['来源', '本地窗口 + 工作区'],
+          ['新鲜度', '12 分钟前']
+        ]
+      },
+      attention: {
+        mode: 'attention',
+        headline: 'Claude 正等你确认：批准写入 src/js/features/now。',
+        assist: '我已压住其他提醒，只把这一件事留给你。',
+        primary: { id: 'view_progress', label: '查看并决定', tone: 'attention' },
+        secondary: null,
+        meta: {
+          project: 'voice-pilot',
+          chip: { text: '等待确认', kind: 'warn' },
+          when: '刚刚'
+        },
+        strip: null,
+        evidence: [
+          ['前台', 'Cursor'],
+          ['等待方', 'Claude'],
+          ['原因', '需要你批准写入'],
+          ['新鲜度', '刚刚']
+        ]
+      },
+      quiet: {
+        mode: 'quiet',
+        headline: '你正在 Cursor 中处理 voice-pilot。',
+        assist: '已识别 Cursor 和 voice-pilot。现在没有需要你处理的事；需要你时再提醒。',
+        primary: null,
+        secondary: null,
+        meta: {
+          project: 'voice-pilot',
+          chip: { text: '无需处理', kind: '' },
+          when: '刚刚'
+        },
+        strip: 'Cursor 正在活动 · 当前无需操作',
+        evidence: [
+          ['前台', 'Cursor'],
+          ['项目', 'voice-pilot（已确认）'],
+          ['状态', '进行中 · 无需操作']
+        ]
+      },
+      degraded: {
+        mode: 'degraded',
+        headline: '我暂时无法确认当前工作状态。',
+        assist: '读取依据不足。可以重试，或到「设置」检查数据源。不会用猜测填充首页。',
+        primary: { id: 'retry', label: '重试', tone: 'degraded' },
+        secondary: { id: 'view_reason', label: '查看判断依据' },
+        meta: {
+          project: '未知项目',
+          chip: { text: '依据不足', kind: 'err' },
+          when: '时间未知'
+        },
+        strip: null,
+        evidence: [
+          ['前台', '未发现应用'],
+          ['项目', '未知'],
+          ['原因', '本地读取暂时失败'],
+          ['建议', '重试，或到设置检查数据源']
+        ]
+      },
+      unconfirmed: {
+        mode: 'return',
+        headline: '有可继续的工作，但项目尚未确认。',
+        assist: '推断当前是 voice-pilot。确认后即可从保存的位置继续，不会用猜测替你决定。',
+        primary: { id: 'confirm_project', label: '确认项目以继续', tone: '' },
+        secondary: { id: 'pick_project', label: '选择其他项目' },
+        meta: {
+          project: 'voice-pilot',
+          chip: { text: '未确认 · 不猜测', kind: 'warn' },
+          when: '12 分钟前'
+        },
+        strip: null,
+        evidence: [
+          ['前台', 'Cursor'],
+          ['推断项目', 'voice-pilot（未确认）'],
+          ['依据', '窗口标题 · 不猜测路径']
+        ]
+      }
+    };
+
+    const PICKS = [
+      { id: 'voice-pilot', name: 'voice-pilot', root: 'E:\\voice-pilot' },
+      { id: 'onetone-docs', name: 'onetone-docs', root: 'E:\\onetone-docs' },
+      { id: 'sandbox', name: 'sandbox', root: 'E:\\sandbox' }
+    ];
+
+    let currentKey = 'return';
+    let listening = false;
+    let toastTimer = 0;
+
+    const headlineEl = document.getElementById('headline');
+    const assistEl = document.getElementById('assist');
+    const actionsEl = document.getElementById('actions');
+    const metaEl = document.getElementById('meta');
+    const stripEl = document.getElementById('strip');
+    const canvas = document.querySelector('.hn-canvas');
+    const evidenceEl = document.getElementById('evidence');
+    const evidenceBody = document.getElementById('evidenceBody');
+    const pickEl = document.getElementById('pick');
+    const pickBody = document.getElementById('pickBody');
+    const prepPanel = document.getElementById('prepPanel');
+    const prepLaunch = document.getElementById('prepLaunch');
+    const dockVoice = document.getElementById('dockVoice');
+    const dockStatus = document.getElementById('dockStatus');
+    const toastEl = document.getElementById('toast');
+
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('is-on');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () {
+        toastEl.classList.remove('is-on');
+      }, 1600);
+    }
+
+    function closePanels() {
+      evidenceEl.classList.remove('is-open');
+      pickEl.classList.remove('is-open');
+      prepPanel.classList.remove('is-open');
+      prepLaunch.hidden = false;
+    }
+
+    function setModebar(key) {
+      document.querySelectorAll('.modebar button').forEach(function (b) {
+        var on = b.dataset.mode === key;
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+
+    function paint(key) {
+      currentKey = key;
+      const s = modes[key];
+      closePanels();
+      setModebar(key);
+      canvas.dataset.mode = s.mode;
+      headlineEl.textContent = s.headline;
+      assistEl.textContent = s.assist;
+      dockStatus.textContent = DOCK_STATUS[key] || '现在';
+
+      actionsEl.innerHTML = '';
+      if (s.primary) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'hn-cta' + (s.primary.tone ? ' hn-cta--' + s.primary.tone : '');
+        btn.dataset.hfAct = s.primary.id;
+        btn.textContent = s.primary.label;
+        actionsEl.appendChild(btn);
+      }
+      if (s.secondary) {
+        const sec = document.createElement('button');
+        sec.type = 'button';
+        sec.className = 'hn-text-btn';
+        sec.dataset.hfAct = s.secondary.id;
+        sec.textContent = s.secondary.label;
+        actionsEl.appendChild(sec);
+      }
+
+      const chipClass =
+        'hn-chip' +
+        (s.meta.chip.kind === 'warn' ? ' hn-chip--warn' :
+         s.meta.chip.kind === 'err' ? ' hn-chip--err' : '');
+      metaEl.innerHTML =
+        '项目：<b>' + s.meta.project + '</b>' +
+        '<span class="' + chipClass + '"><span class="dot" aria-hidden="true"></span>' +
+        s.meta.chip.text + '</span>' +
+        '<span>' + s.meta.when + '</span>';
+
+      if (s.strip) {
+        stripEl.classList.add('is-show');
+        stripEl.innerHTML = '<strong>补充</strong> · ' + s.strip;
+      } else {
+        stripEl.classList.remove('is-show');
+        stripEl.textContent = '';
+      }
+    }
+
+    function openEvidence() {
+      const rows = (modes[currentKey].evidence || []);
+      evidenceBody.innerHTML = rows.map(function (r) {
+        return '<div class="hn-ev-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>';
+      }).join('');
+      pickEl.classList.remove('is-open');
+      prepPanel.classList.remove('is-open');
+      prepLaunch.hidden = false;
+      evidenceEl.classList.add('is-open');
+    }
+
+    function openPick() {
+      pickBody.innerHTML = PICKS.map(function (p) {
+        return (
+          '<button type="button" class="hn-pick-row" data-pick-id="' + p.id + '">' +
+          '<b>' + p.name + '</b><s>' + p.root + '</s></button>'
+        );
+      }).join('');
+      evidenceEl.classList.remove('is-open');
+      prepPanel.classList.remove('is-open');
+      prepLaunch.hidden = false;
+      pickEl.classList.add('is-open');
+    }
+
+    function openPrep() {
+      evidenceEl.classList.remove('is-open');
+      pickEl.classList.remove('is-open');
+      prepLaunch.hidden = true;
+      prepPanel.classList.add('is-open');
+    }
+
+    function handleAct(kind) {
+      if (kind === 'resume') {
+        toast('已继续');
+        paint('quiet');
+        return;
+      }
+      if (kind === 'confirm_project') {
+        toast('项目已确认');
+        paint('return');
+        return;
+      }
+      if (kind === 'pick_project') {
+        openPick();
+        return;
+      }
+      if (kind === 'view_reason') {
+        openEvidence();
+        return;
+      }
+      if (kind === 'view_progress') {
+        toast('打开确认详情（原型）');
+        return;
+      }
+      if (kind === 'retry') {
+        var btn = actionsEl.querySelector('[data-hf-act="retry"]');
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = '读取中…';
+        }
+        setTimeout(function () {
+          toast('已重新读取');
+          paint('quiet');
+        }, 700);
+      }
+    }
+
+    document.querySelectorAll('.modebar button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        paint(btn.dataset.mode);
+      });
+    });
+
+    canvas.addEventListener('click', function (e) {
+      var act = e.target.closest && e.target.closest('[data-hf-act]');
+      if (act) {
+        handleAct(act.getAttribute('data-hf-act'));
+        return;
+      }
+      var pick = e.target.closest && e.target.closest('[data-pick-id]');
+      if (pick) {
+        toast('已选择 ' + pick.getAttribute('data-pick-id'));
+        paint('return');
+        return;
+      }
+      var proto = e.target.closest && e.target.closest('[data-proto]');
+      if (!proto) return;
+      var p = proto.getAttribute('data-proto');
+      if (p === 'open_prep') openPrep();
+      if (p === 'close_prep') {
+        prepPanel.classList.remove('is-open');
+        prepLaunch.hidden = false;
+      }
+    });
+
+    document.querySelector('.hn-nav').addEventListener('click', function (e) {
+      var nav = e.target.closest && e.target.closest('[data-nav]');
+      if (!nav) return;
+      var id = nav.getAttribute('data-nav');
+      if (id === 'now') return;
+      toast('原型未接线 · ' + nav.textContent.trim());
+    });
+
+    dockVoice.addEventListener('click', function () {
+      listening = !listening;
+      dockVoice.classList.toggle('is-on', listening);
+      dockVoice.textContent = listening ? '倾听中…' : '开始听写';
+      if (listening) toast('开始听写（原型）');
+    });
+
+    paint('return');
+  </script>
+</body>
+</html>

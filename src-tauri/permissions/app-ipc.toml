@@ -253,4 +253,10 @@ permissions = [
   "allow-cmd-workspace-apply-current-anchor",
   "allow-cmd-workspace-delete",
   "allow-cmd-workspace-set-auto-apply",
+  "allow-cmd-tray-snapshot-publish",
+  "allow-cmd-tray-snapshot-get",
+  "allow-cmd-tray-carry-dismiss",
+  "allow-cmd-tray-collect-from-soft-pad",
+  "allow-cmd-tray-collect-drain",
+  "allow-cmd-soft-pad-paste-only",
 ]

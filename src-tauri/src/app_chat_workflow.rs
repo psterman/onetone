@@ -102,7 +102,8 @@ const MINIMAX_PROFILE: AppChatProfile = AppChatProfile {
         "MiniMax Code Desktop.exe",
         "MiniMax-Code.exe",
     ],
-    path_marker: Some("MiniMax"),
+    // Exe name is distinctive; path markers reject portable installs (E:\MiniMax Code\…).
+    path_marker: None,
     open_key: None,
     composer_anchor: (0.50, 0.91),
     accept_click_without_uia: true,
@@ -141,11 +142,14 @@ const WORKBUDDY_PROFILE: AppChatProfile = AppChatProfile {
 const TRAE_PROFILE: AppChatProfile = AppChatProfile {
     id: TRAE_APP_TARGET_ID,
     error_prefix: "trae",
+    // CN builds: TRAE SOLO CN.exe; intl: TRAE SOLO.exe / TraeWork*.
     process_names: &[
+        "TRAE SOLO CN.exe",
         "TRAE SOLO.exe",
         "TraeWork.exe",
         "Trae Work.exe",
         "TRAE Work.exe",
+        "TraeWork CN.exe",
     ],
     path_marker: None,
     open_key: None,
@@ -159,10 +163,12 @@ const TRAE_PROFILE: AppChatProfile = AppChatProfile {
 const TRAE_CODE_PROFILE: AppChatProfile = AppChatProfile {
     id: TRAE_CODE_APP_TARGET_ID,
     error_prefix: "trae_code",
-    process_names: &["Trae.exe", "trae.exe"],
+    // CN: Trae CN.exe; intl: Trae.exe. Do not list Work/SOLO names here.
+    process_names: &["Trae CN.exe", "Trae.exe", "trae.exe", "TraeCode.exe"],
     path_marker: None,
     open_key: None,
-    composer_anchor: (0.50, 0.91),
+    // VS Code–style Agent chat sits in the right panel (same as Cursor).
+    composer_anchor: (0.72, 0.90),
     accept_click_without_uia: true,
     post_voice_key_ms: 420,
     restore_main_delay_ms: 360,
@@ -185,14 +191,16 @@ const WINDSURF_PROFILE: AppChatProfile = AppChatProfile {
 const QODER_PROFILE: AppChatProfile = AppChatProfile {
     id: QODER_APP_TARGET_ID,
     error_prefix: "qoder",
-    process_names: &["Qoder.exe", "qoder.exe"],
+    // CN desktop: Qoder CN.exe (E:\Qoder CN); intl: Qoder.exe under LocalAppData.
+    process_names: &["Qoder CN.exe", "Qoder.exe", "qoder.exe"],
     path_marker: None,
     open_key: None,
-    composer_anchor: (0.50, 0.91),
+    // Agent / chat panel is right-biased like Cursor / Trae Code.
+    composer_anchor: (0.72, 0.90),
     accept_click_without_uia: true,
     post_voice_key_ms: 420,
     restore_main_delay_ms: 360,
-    launch_localappdata_rel: &[],
+    launch_localappdata_rel: &["Programs\\Qoder\\Qoder.exe"],
 };
 
 const GEMINI_PROFILE: AppChatProfile = AppChatProfile {
@@ -436,10 +444,21 @@ impl AppChatWorkflowError {
 struct MainWindowHideGuard {
     app: AppHandle,
     hidden: bool,
+    /// When true, Drop re-shows main (use until target window focus succeeds).
+    restore_on_drop: bool,
 }
 
 impl MainWindowHideGuard {
     fn maybe_hide(app: &AppHandle) -> Self {
+        Self::maybe_hide_inner(app, false)
+    }
+
+    /// Hide OneTone but restore it if the caller returns before `disarm_restore`.
+    fn maybe_hide_restorable(app: &AppHandle) -> Self {
+        Self::maybe_hide_inner(app, true)
+    }
+
+    fn maybe_hide_inner(app: &AppHandle, restore_on_drop: bool) -> Self {
         if let Some(state) = app.try_state::<Arc<AppState>>() {
             let setup_open = *state.setup_interaction_active.lock();
             let settings_open = *state.settings_drawer_open.lock();
@@ -457,6 +476,7 @@ impl MainWindowHideGuard {
                 return Self {
                     app: app.clone(),
                     hidden: false,
+                    restore_on_drop: false,
                 };
             }
         }
@@ -482,16 +502,42 @@ impl MainWindowHideGuard {
         Self {
             app: app.clone(),
             hidden,
+            restore_on_drop,
+        }
+    }
+
+    fn disarm_restore(&mut self) {
+        self.restore_on_drop = false;
+    }
+}
+
+fn restore_main_window(app: &AppHandle) {
+    if let Some(main) = crate::ipc::get_main_window(app) {
+        let _ = main.run_on_main_thread({
+            let w = main.clone();
+            move || {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        });
+        if let Some(state) = app.try_state::<Arc<AppState>>() {
+            crate::app_log::log_line(
+                state.inner(),
+                "window",
+                "main window restored source=workflow_focus_fail",
+            );
         }
     }
 }
 
 impl Drop for MainWindowHideGuard {
     fn drop(&mut self) {
-        // Intentionally leave the main window hidden after summon/voice start.
-        // Re-showing (even with SW_SHOWNOACTIVATE) unminimizes OneTone and can still
-        // disturb focus so the IME never commits into Cursor's composer.
-        // User restores OneTone from the tray when needed.
+        if self.restore_on_drop && self.hidden {
+            restore_main_window(&self.app);
+            return;
+        }
+        // Soft Pad / voice success path: leave hidden so target keeps FG.
         let _ = (&self.app, self.hidden);
     }
 }
@@ -637,6 +683,37 @@ pub fn app_target_window_visible(_app_target_id: &str) -> bool {
     false
 }
 
+/// Focus / launch the target app window only — no composer UIA.
+/// Ensures the window exists **before** hiding OneTone; restores main on focus failure.
+#[cfg(windows)]
+pub fn focus_app_window_only(
+    app: &AppHandle,
+    app_target_id: &str,
+) -> Result<(), AppChatWorkflowError> {
+    let profile = profile_for(app_target_id).ok_or(AppChatWorkflowError::NotFound)?;
+    // Resolve hwnd first — never hide OneTone if Cursor/MiniMax is missing.
+    let (hwnd, freshly_launched) =
+        ensure_app_window(profile).ok_or(AppChatWorkflowError::NotFound)?;
+    let mut hide_guard = MainWindowHideGuard::maybe_hide_restorable(app);
+    if freshly_launched {
+        std::thread::sleep(Duration::from_millis(2200));
+    }
+    if !crate::keyboard::focus_window(hwnd) {
+        return Err(AppChatWorkflowError::FocusFailed);
+    }
+    hide_guard.disarm_restore();
+    std::thread::sleep(Duration::from_millis(80));
+    Ok(())
+}
+
+#[cfg(not(windows))]
+pub fn focus_app_window_only(
+    _app: &AppHandle,
+    _app_target_id: &str,
+) -> Result<(), AppChatWorkflowError> {
+    Err(AppChatWorkflowError::NotFound)
+}
+
 /// Focus the app composer without starting voice input (AgentAction openAgent / focusComposer).
 #[cfg(windows)]
 pub fn focus_composer_only(
@@ -645,15 +722,18 @@ pub fn focus_composer_only(
     duration_ms: u32,
 ) -> Result<(), AppChatWorkflowError> {
     let profile = profile_for(app_target_id).ok_or(AppChatWorkflowError::NotFound)?;
-    let _hide_guard = MainWindowHideGuard::maybe_hide(app);
+    // Locate/launch target before hiding — avoids OneTone stranded in background.
     let (hwnd, freshly_launched) =
         ensure_app_window(profile).ok_or(AppChatWorkflowError::NotFound)?;
+    let mut hide_guard = MainWindowHideGuard::maybe_hide_restorable(app);
     if freshly_launched {
         std::thread::sleep(Duration::from_millis(2200));
     }
     if !crate::keyboard::focus_window(hwnd) {
         return Err(AppChatWorkflowError::FocusFailed);
     }
+    // Window owns FG — keep OneTone hidden even if composer UIA misses.
+    hide_guard.disarm_restore();
     std::thread::sleep(Duration::from_millis(120));
     let anchor = composer_anchor_for_app(app, app_target_id, profile);
     if !focus_chat_input(hwnd, profile, duration_ms, anchor) {
@@ -674,9 +754,10 @@ pub fn focus_composer_for_send(
 ) -> Result<(), AppChatWorkflowError> {
     let profile = profile_for(app_target_id).ok_or(AppChatWorkflowError::NotFound)?;
     let anchor = composer_anchor_for_app(app, app_target_id, profile);
-    let _hide_guard = MainWindowHideGuard::maybe_hide(app);
+    // Resolve hwnd before hide — restore OneTone if window/focus fails.
     let (hwnd, freshly_launched) =
         ensure_app_window(profile).ok_or(AppChatWorkflowError::NotFound)?;
+    let mut hide_guard = MainWindowHideGuard::maybe_hide_restorable(app);
     if freshly_launched {
         std::thread::sleep(Duration::from_millis(2200));
     }
@@ -705,6 +786,7 @@ pub fn focus_composer_for_send(
         );
         return Err(AppChatWorkflowError::FocusFailed);
     }
+    hide_guard.disarm_restore();
     std::thread::sleep(Duration::from_millis(120));
 
     let _ = duration_ms; // send path never uses open_key (Ctrl+I)
@@ -717,6 +799,7 @@ pub fn focus_composer_for_send(
     // Cursor treats Ctrl+I as inline edit (selects text) instead of Agent composer.
     let mut click_via = "post";
     let post_ok = crate::keyboard::click_client_relative_via_message(hwnd, anchor.0, anchor.1);
+    let mut any_click = post_ok;
     crate::app_log::cursor_send_oplog(
         "click_post",
         serde_json::json!({
@@ -794,6 +877,7 @@ pub fn focus_composer_for_send(
     if !uia_ok {
         // Soft Pad should already be click-through (caller guard); screen click as last resort.
         let screen_ok = click_composer_anchor(hwnd, anchor);
+        any_click = any_click || screen_ok;
         click_via = "screen";
         crate::app_log::cursor_send_oplog(
             "click_screen",
@@ -839,6 +923,7 @@ pub fn focus_composer_for_send(
     if !uia_ok && profile.id == CURSOR_APP_TARGET_ID {
         let forced = profile.composer_anchor;
         let force_ok = crate::keyboard::click_client_relative_via_message(hwnd, forced.0, forced.1);
+        any_click = any_click || force_ok;
         std::thread::sleep(Duration::from_millis(STABILIZE_AFTER_CLICK_MS));
         let low = uia_focus_chat_input_probe(hwnd, 10);
         crate::app_log::cursor_send_oplog(
@@ -856,6 +941,17 @@ pub fn focus_composer_for_send(
             uia_ok = true;
             click_via = "force_right";
         }
+    }
+
+    // MiniMax / WorkBuddy / Claude: Electron chat rarely exposes UIA Edit.
+    // Mirror click_then_confirm — a landed click is enough to Ctrl+V.
+    if !uia_ok
+        && profile.accept_click_without_uia
+        && profile.id != CURSOR_APP_TARGET_ID
+        && any_click
+    {
+        uia_ok = true;
+        click_via = "click_accept_no_uia";
     }
 
     let fg = if crate::app_identity::foreground_is_self() {
@@ -990,6 +1086,915 @@ pub fn focus_composer_for_send(
     duration_ms: u32,
 ) -> Result<(), AppChatWorkflowError> {
     focus_composer_only(app, app_target_id, duration_ms)
+}
+
+/// Homepage handoff for chat-first apps (MiniMax / WorkBuddy / …).
+/// PostMessage clicks do not focus Electron webviews — use screen clicks + optional UIA
+/// clickable point. Cold start: poll until main UI + composer exist, then paste.
+#[cfg(windows)]
+pub fn focus_chat_app_and_paste(
+    app: &AppHandle,
+    app_target_id: &str,
+    duration_ms: u32,
+) -> Result<String, AppChatWorkflowError> {
+    let profile = profile_for(app_target_id).ok_or(AppChatWorkflowError::NotFound)?;
+    let (hwnd0, freshly_launched) =
+        ensure_app_window(profile).ok_or(AppChatWorkflowError::NotFound)?;
+    let mut hide_guard = MainWindowHideGuard::maybe_hide_restorable(app);
+
+    // Cold start: first HWND is often splash — wait for main chrome + composer.
+    let ready_budget_ms: u64 = if freshly_launched { 12_000 } else { 2_500 };
+    if freshly_launched {
+        std::thread::sleep(Duration::from_millis(2_800));
+    }
+    if !crate::keyboard::focus_window(hwnd0) {
+        crate::app_log::cursor_send_oplog(
+            "chat_handoff_focus_failed",
+            serde_json::json!({ "appTargetId": app_target_id }),
+        );
+        return Err(AppChatWorkflowError::FocusFailed);
+    }
+
+    let (hwnd, ready_via) =
+        wait_chat_ui_ready(profile, hwnd0, freshly_launched, ready_budget_ms);
+    hide_guard.disarm_restore();
+    crate::app_log::cursor_send_oplog(
+        "chat_handoff_ready",
+        serde_json::json!({
+            "appTargetId": app_target_id,
+            "freshlyLaunched": freshly_launched,
+            "readyVia": ready_via,
+            "budgetMs": ready_budget_ms,
+        }),
+    );
+
+    let primary = composer_anchor_for_app(app, app_target_id, profile);
+    let is_minimax = profile.id == MINIMAX_APP_TARGET_ID;
+    let is_workbuddy = profile.id == WORKBUDDY_APP_TARGET_ID;
+    let _ = duration_ms;
+    // Short hold — long Ctrl+V hold autorepeats paste in Electron composers.
+    const PASTE_HOLD_MS: u32 = 40;
+
+    // MiniMax CEF exposes zero Edit controls — only a full-window Document.
+    // UIA click/SetValue lands in the page chrome, not the chat box.
+    if is_minimax {
+        return minimax_click_and_paste(profile, hwnd, freshly_launched, ready_via);
+    }
+
+    // Electron / VS Code forks: UIA SetValue often hits editor/search — click then inject.
+    let replace_paste = matches!(
+        profile.id,
+        WORKBUDDY_APP_TARGET_ID
+            | CODEX_APP_TARGET_ID
+            | TRAE_APP_TARGET_ID
+            | TRAE_CHAT_LEGACY_APP_TARGET_ID
+            | TRAE_CODE_APP_TARGET_ID
+            | QODER_APP_TARGET_ID
+    );
+    let ide_right_chat = matches!(
+        profile.id,
+        TRAE_CODE_APP_TARGET_ID | QODER_APP_TARGET_ID | CURSOR_APP_TARGET_ID
+    );
+    let mut click_via = "none".to_string();
+    let mut hwnd_now = hwnd;
+
+    if is_workbuddy {
+        hwnd_now = find_app_window(profile).unwrap_or(hwnd);
+        if !prepare_chat_hwnd(hwnd_now, if freshly_launched { 3_500 } else { 1_200 }) {
+            return Err(AppChatWorkflowError::FocusFailed);
+        }
+        std::thread::sleep(Duration::from_millis(if freshly_launched { 400 } else { 180 }));
+        let _ = crate::keyboard::focus_window(hwnd_now);
+        std::thread::sleep(Duration::from_millis(140));
+        // Only click when OneTone still owns FG — otherwise keep WorkBuddy caret.
+        if crate::app_identity::foreground_is_self() {
+            click_via = click_chat_composer(hwnd_now, primary, profile.composer_anchor, false);
+            crate::app_log::cursor_send_oplog(
+                "chat_handoff_click_attempt",
+                serde_json::json!({
+                    "appTargetId": app_target_id,
+                    "attempt": 0,
+                    "clickVia": click_via,
+                    "client": client_size(hwnd_now),
+                }),
+            );
+            if click_via == "none" {
+                return Err(AppChatWorkflowError::FocusFailed);
+            }
+            std::thread::sleep(Duration::from_millis(120));
+        } else {
+            click_via = "noclick".into();
+        }
+    } else {
+        let click_attempts: u32 = if freshly_launched { 4 } else { 2 };
+        for attempt in 0..click_attempts {
+            hwnd_now = find_app_window(profile).unwrap_or(hwnd);
+            let _ = prepare_chat_hwnd(hwnd_now, 1_200);
+            std::thread::sleep(Duration::from_millis(if attempt == 0 { 200 } else { 320 }));
+
+            click_via =
+                click_chat_composer(hwnd_now, primary, profile.composer_anchor, ide_right_chat);
+            crate::app_log::cursor_send_oplog(
+                "chat_handoff_click_attempt",
+                serde_json::json!({
+                    "appTargetId": app_target_id,
+                    "attempt": attempt,
+                    "clickVia": click_via,
+                    "ideRight": ide_right_chat,
+                    "client": client_size(hwnd_now),
+                }),
+            );
+            if click_via != "none" {
+                if click_via == "uia_clickable"
+                    || click_via.starts_with("screen_")
+                    || client_size(hwnd_now).is_some_and(|(w, h)| w >= 400 && h >= 280)
+                {
+                    break;
+                }
+                click_via = "none".into();
+            }
+        }
+
+        if click_via == "none" {
+            return Err(AppChatWorkflowError::FocusFailed);
+        }
+
+        if crate::app_identity::foreground_is_self() {
+            let _ = crate::keyboard::focus_window(hwnd_now);
+            std::thread::sleep(Duration::from_millis(100));
+            // Re-click once so Ctrl+V lands in composer, not OneTone / editor chrome.
+            let _ = click_chat_composer(hwnd_now, primary, profile.composer_anchor, ide_right_chat);
+            std::thread::sleep(Duration::from_millis(160));
+        } else {
+            std::thread::sleep(Duration::from_millis(120));
+        }
+    }
+
+    // Re-assert target FG — Soft Pad hide can race and steal focus before inject.
+    if crate::app_identity::foreground_is_self() {
+        let _ = crate::keyboard::focus_window(hwnd_now);
+        std::thread::sleep(Duration::from_millis(120));
+    }
+    // Prefer send_text / Ctrl+V over UIA SetValue for Electron / IDE chat panels.
+    let (pasted, paste_via) = if replace_paste {
+        electron_replace_paste(PASTE_HOLD_MS)
+    } else {
+        paste_into_chat_composer(hwnd_now, false)
+    };
+    crate::app_log::cursor_send_oplog(
+        "chat_handoff_paste",
+        serde_json::json!({
+            "appTargetId": app_target_id,
+            "ok": pasted,
+            "clickVia": click_via,
+            "pasteVia": paste_via,
+            "pasteHoldMs": PASTE_HOLD_MS,
+            "freshlyLaunched": freshly_launched,
+            "readyVia": ready_via,
+        }),
+    );
+    if pasted {
+        std::thread::sleep(Duration::from_millis(80));
+        Ok(format!(
+            "chat_pasted:{app_target_id}:{click_via}:{paste_via}:ready={ready_via}"
+        ))
+    } else {
+        Err(AppChatWorkflowError::FocusFailed)
+    }
+}
+
+#[cfg(not(windows))]
+pub fn focus_chat_app_and_paste(
+    _app: &AppHandle,
+    _app_target_id: &str,
+    _duration_ms: u32,
+) -> Result<String, AppChatWorkflowError> {
+    Err(AppChatWorkflowError::NotFound)
+}
+
+#[cfg(windows)]
+fn client_size(hwnd: winapi::shared::windef::HWND) -> Option<(i32, i32)> {
+    use winapi::shared::windef::RECT;
+    use winapi::um::winuser::GetClientRect;
+    let mut rect = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    if unsafe { GetClientRect(hwnd, &mut rect) } == 0 {
+        return None;
+    }
+    let w = rect.right - rect.left;
+    let h = rect.bottom - rect.top;
+    if w <= 0 || h <= 0 {
+        None
+    } else {
+        Some((w, h))
+    }
+}
+
+#[cfg(windows)]
+fn wait_client_min_size(
+    hwnd: winapi::shared::windef::HWND,
+    min_w: i32,
+    min_h: i32,
+    timeout_ms: u64,
+) -> bool {
+    let steps = (timeout_ms / 50).max(1);
+    for _ in 0..steps {
+        if client_size(hwnd).is_some_and(|(w, h)| w >= min_w && h >= min_h) {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    false
+}
+
+/// MiniMax (and similar CEF apps) keep a full-size HWND with IsWindowVisible=0 after
+/// "close". SW_SHOW alone is not always enough — prefer SHORNORMAL + verify visible.
+#[cfg(windows)]
+fn force_show_hwnd(hwnd: winapi::shared::windef::HWND) -> bool {
+    use winapi::um::winuser::{IsIconic, IsWindowVisible, ShowWindow, SW_RESTORE, SW_SHOWNORMAL};
+    unsafe {
+        if hwnd.is_null() {
+            return false;
+        }
+        if IsWindowVisible(hwnd) == 0 || IsIconic(hwnd) != 0 {
+            // SW_SHOWNORMAL un-hides; SW_RESTORE covers iconic leftovers.
+            ShowWindow(hwnd, SW_SHOWNORMAL);
+            if IsIconic(hwnd) != 0 {
+                ShowWindow(hwnd, SW_RESTORE);
+            }
+        }
+        IsWindowVisible(hwnd) != 0 && IsIconic(hwnd) == 0
+    }
+}
+
+#[cfg(windows)]
+fn window_is_user_visible(hwnd: winapi::shared::windef::HWND) -> bool {
+    use winapi::um::winuser::{IsIconic, IsWindowVisible};
+    unsafe { !hwnd.is_null() && IsWindowVisible(hwnd) != 0 && IsIconic(hwnd) == 0 }
+}
+
+/// Show + restore hwnd, then wait until client area looks like a real chat window.
+#[cfg(windows)]
+fn prepare_chat_hwnd(hwnd: winapi::shared::windef::HWND, wait_ms: u64) -> bool {
+    let shown = force_show_hwnd(hwnd);
+    let focused = crate::keyboard::focus_window(hwnd);
+    let sized = wait_client_min_size(hwnd, 480, 320, wait_ms);
+    // SetForegroundWindow often fails while OneTone still owns FG; visible+sized is enough
+    // for the following screen click to raise the CEF window.
+    (focused || shown || window_is_user_visible(hwnd)) && sized
+}
+
+/// Poll until main window is large enough and (for cold start) a composer Edit appears.
+/// Returns (hwnd, ready_via) where ready_via is composer|size|timeout.
+#[cfg(windows)]
+fn wait_chat_ui_ready(
+    profile: &AppChatProfile,
+    hwnd0: winapi::shared::windef::HWND,
+    freshly_launched: bool,
+    timeout_ms: u64,
+) -> (winapi::shared::windef::HWND, &'static str) {
+    let start = std::time::Instant::now();
+    let mut hwnd = hwnd0;
+    let mut last_via = "timeout";
+    let min_composer = if freshly_launched { 15 } else { 10 };
+
+    while start.elapsed().as_millis() < timeout_ms as u128 {
+        if let Some(h) = find_app_window(profile) {
+            hwnd = h;
+        }
+        let _ = crate::keyboard::focus_window(hwnd);
+        let large = client_size(hwnd).is_some_and(|(w, h)| w >= 480 && h >= 320);
+        if !large {
+            std::thread::sleep(Duration::from_millis(250));
+            continue;
+        }
+        // MiniMax: the only UIA "composer" is a centered Document named "MiniMax Code"
+        // (welcome card). Treating it as ready causes 虚焦 — skip UIA wait entirely.
+        if profile.id == MINIMAX_APP_TARGET_ID {
+            last_via = "size";
+            std::thread::sleep(Duration::from_millis(if freshly_launched { 400 } else { 120 }));
+            return (find_app_window(profile).unwrap_or(hwnd), last_via);
+        }
+        if uia_composer_present(hwnd, min_composer) {
+            last_via = "composer";
+            // Extra settle so Chromium finishes layout after first Edit appears.
+            std::thread::sleep(Duration::from_millis(if freshly_launched {
+                600
+            } else {
+                180
+            }));
+            return (find_app_window(profile).unwrap_or(hwnd), last_via);
+        }
+        last_via = "size";
+        // Already-running apps: large window is enough. Cold start: keep waiting for Edit.
+        if !freshly_launched {
+            std::thread::sleep(Duration::from_millis(150));
+            return (hwnd, last_via);
+        }
+        // Soft accept after ~7s with large titled window — some builds expose no UIA Edit.
+        if start.elapsed().as_millis() >= 7_000 {
+            std::thread::sleep(Duration::from_millis(500));
+            return (find_app_window(profile).unwrap_or(hwnd), "size_soft");
+        }
+        std::thread::sleep(Duration::from_millis(300));
+    }
+    (find_app_window(profile).unwrap_or(hwnd), last_via)
+}
+
+#[cfg(windows)]
+fn click_chat_composer(
+    hwnd: winapi::shared::windef::HWND,
+    primary: (f32, f32),
+    profile_anchor: (f32, f32),
+    ide_right_chat: bool,
+) -> String {
+    // ChatGPT UIA often returns left-edge points (x≈window.left, mid-Y) — skip UIA for
+    // chat-first apps; IDE Agent only accepts UIA clicks in the bottom-right band.
+    if ide_right_chat {
+        if uia_click_best_input_in_band(hwnd, 40, 0.55, 0.98, 0.62) {
+            std::thread::sleep(Duration::from_millis(280));
+            return "uia_clickable".into();
+        }
+    }
+
+    let anchors: Vec<(f32, f32)> = if ide_right_chat {
+        vec![
+            primary,
+            profile_anchor,
+            (0.72, 0.90),
+            (0.78, 0.88),
+            (0.68, 0.92),
+            (0.65, 0.85),
+            (primary.0, (primary.1 - 0.05).clamp(0.72, 0.95)),
+        ]
+    } else {
+        // ChatGPT / Trae Work: bottom-center composer (multi-Y so one miss doesn't kill paste).
+        vec![
+            primary,
+            profile_anchor,
+            (0.50, 0.92),
+            (0.50, 0.88),
+            (0.50, 0.85),
+            (0.48, 0.90),
+            (0.55, 0.90),
+        ]
+    };
+
+    if ide_right_chat {
+        if click_window_ratio(hwnd, 0.75, 0.90) {
+            std::thread::sleep(Duration::from_millis(240));
+            return "screen_window".into();
+        }
+    } else {
+        for y in [0.91_f32, 0.88, 0.85] {
+            if click_window_ratio(hwnd, 0.50, y) {
+                std::thread::sleep(Duration::from_millis(240));
+                return "screen_window".into();
+            }
+        }
+    }
+
+    for (i, anchor) in anchors.iter().enumerate() {
+        if crate::keyboard::click_client_relative(hwnd, anchor.0, anchor.1) {
+            std::thread::sleep(Duration::from_millis(240));
+            return if i == 0 {
+                "screen_primary".into()
+            } else {
+                "screen_multi".into()
+            };
+        }
+    }
+    "none".into()
+}
+
+/// Screen click at a ratio of the outer window rect (not client) — better for frameless CEF.
+#[cfg(windows)]
+fn click_window_ratio(hwnd: winapi::shared::windef::HWND, x_ratio: f32, y_ratio: f32) -> bool {
+    use winapi::shared::windef::RECT;
+    use winapi::um::winuser::GetWindowRect;
+    let mut rect = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    if unsafe { GetWindowRect(hwnd, &mut rect) } == 0 {
+        return false;
+    }
+    let w = rect.right - rect.left;
+    let h = rect.bottom - rect.top;
+    if w <= 0 || h <= 0 {
+        return false;
+    }
+    let x = rect.left + (w as f32 * x_ratio.clamp(0.08, 0.92)).round() as i32;
+    let y = rect.top + (h as f32 * y_ratio.clamp(0.08, 0.95)).round() as i32;
+    crate::keyboard::click_screen_abs(x, y)
+}
+
+/// MiniMax autofocuses the composer on show. Clicks steal that caret (失焦/虚焦),
+/// so handoff is: wait for FG → Ctrl+V only. Click Document bottom only if FG
+/// was lost to OneTone after raise (rare).
+#[cfg(windows)]
+fn minimax_click_and_paste(
+    profile: &AppChatProfile,
+    hwnd0: winapi::shared::windef::HWND,
+    freshly_launched: bool,
+    ready_via: &str,
+) -> Result<String, AppChatWorkflowError> {
+    let clip = crate::agent::insert_text::read_clipboard_unicode()
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    if clip.is_empty() {
+        crate::app_log::cursor_send_oplog(
+            "minimax_handoff_empty_clipboard",
+            serde_json::json!({}),
+        );
+        return Err(AppChatWorkflowError::FocusFailed);
+    }
+
+    let attempts: u32 = if freshly_launched { 4 } else { 3 };
+
+    for attempt in 0..attempts {
+        let hwnd = find_app_window(profile).unwrap_or(hwnd0);
+        if !prepare_chat_hwnd(hwnd, if attempt == 0 { 3_500 } else { 1_500 }) {
+            std::thread::sleep(Duration::from_millis(280));
+            continue;
+        }
+        if !client_size(hwnd).is_some_and(|(w, h)| w >= 480 && h >= 320) {
+            std::thread::sleep(Duration::from_millis(320));
+            continue;
+        }
+
+        std::thread::sleep(Duration::from_millis(if freshly_launched && attempt == 0 {
+            520
+        } else {
+            240
+        }));
+        let _ = crate::keyboard::focus_window(hwnd);
+        std::thread::sleep(Duration::from_millis(160));
+
+        let mut click_via = "noclick";
+        let mut sx = 0i32;
+        let mut sy = 0i32;
+        // Only click when OneTone stole FG after raise — otherwise keep MiniMax caret.
+        if crate::app_identity::foreground_is_self() {
+            let (via, x, y) = minimax_composer_click_point(hwnd);
+            click_via = via;
+            sx = x;
+            sy = y;
+            let _ = crate::keyboard::click_screen_abs(sx, sy);
+            std::thread::sleep(Duration::from_millis(280));
+        }
+
+        let _ = crate::keyboard::send_chord("Ctrl+V", 40);
+        std::thread::sleep(Duration::from_millis(120));
+        crate::app_log::cursor_send_oplog(
+            "minimax_handoff_paste",
+            serde_json::json!({
+                "attempt": attempt,
+                "pasteVia": "ctrl_v",
+                "clickVia": click_via,
+                "readyVia": ready_via,
+                "chars": clip.chars().count(),
+                "click": [sx, sy],
+                "client": client_size(hwnd),
+            }),
+        );
+        return Ok(format!(
+            "chat_pasted:minimax-chat:{click_via}:ctrl_v:ready={ready_via}"
+        ));
+    }
+
+    crate::app_log::cursor_send_oplog(
+        "minimax_handoff_failed",
+        serde_json::json!({ "readyVia": ready_via }),
+    );
+    Err(AppChatWorkflowError::FocusFailed)
+}
+
+/// Bottom-center of MiniMax Document (often full client) or window bottom-center.
+#[cfg(windows)]
+fn minimax_composer_click_point(
+    hwnd: winapi::shared::windef::HWND,
+) -> (&'static str, i32, i32) {
+    if let Some((sx, sy)) = minimax_document_bottom_point(hwnd) {
+        return ("doc_bottom", sx, sy);
+    }
+    use winapi::shared::windef::RECT;
+    use winapi::um::winuser::GetWindowRect;
+    let mut rect = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    if unsafe { GetWindowRect(hwnd, &mut rect) } != 0 {
+        let w = rect.right - rect.left;
+        let h = rect.bottom - rect.top;
+        if w > 0 && h > 0 {
+            // Center-bottom of chat surface (not right-edge chrome).
+            let x = rect.left + (w as f32 * 0.50).round() as i32;
+            let y = rect.top + (h as f32 * 0.88).round() as i32;
+            return ("window_bottom", x, y);
+        }
+    }
+    ("fallback", 0, 0)
+}
+
+/// Bottom-center of largest focusable Document. Bounds only — never SetFocus.
+#[cfg(windows)]
+fn minimax_document_bottom_point(
+    hwnd: winapi::shared::windef::HWND,
+) -> Option<(i32, i32)> {
+    use windows::core::VARIANT;
+    use windows::Win32::Foundation::HWND as WinHwnd;
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED,
+    };
+    use windows::Win32::UI::Accessibility::{
+        CUIAutomation, IUIAutomation, TreeScope_Descendants, UIA_ControlTypePropertyId,
+        UIA_DocumentControlTypeId,
+    };
+
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        let automation: IUIAutomation =
+            CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER).ok()?;
+        let root = automation
+            .ElementFromHandle(WinHwnd(hwnd as *mut _))
+            .ok()?;
+        let value = VARIANT::from(UIA_DocumentControlTypeId.0);
+        let condition = automation
+            .CreatePropertyCondition(UIA_ControlTypePropertyId, &value)
+            .ok()?;
+        let elements = root.FindAll(TreeScope_Descendants, &condition).ok()?;
+        let len = elements.Length().unwrap_or(0);
+        let mut best: Option<(i64, i32, i32)> = None; // area, sx, sy
+        for i in 0..len {
+            let Ok(element) = elements.GetElement(i) else {
+                continue;
+            };
+            if !element_is_enabled_and_focusable(&element) {
+                continue;
+            }
+            let Ok(rect) = element.CurrentBoundingRectangle() else {
+                continue;
+            };
+            let w = (rect.right - rect.left).max(0);
+            let h = (rect.bottom - rect.top).max(0);
+            let area = (w as i64) * (h as i64);
+            // Full-client Document (~1400×900) is normal for MiniMax CEF — allow it.
+            if area < 80_000 || h < 180 || w < 280 {
+                continue;
+            }
+            let sx = rect.left + w / 2;
+            let sy = rect.top + ((h as f32) * 0.88).round() as i32;
+            let better = best.as_ref().map(|(a, _, _)| area > *a).unwrap_or(true);
+            if better {
+                best = Some((area, sx, sy));
+            }
+        }
+        best.map(|(_, x, y)| (x, y))
+    }
+}
+
+/// Electron / IDE chat composers: inject text after a real caret click.
+/// Prefer unicode SendInput — Ctrl+A/V often lands in left chrome / is swallowed by CEF.
+#[cfg(windows)]
+fn electron_replace_paste(paste_hold_ms: u32) -> (bool, &'static str) {
+    let clip = crate::agent::insert_text::read_clipboard_unicode()
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    if clip.is_empty() {
+        return (false, "empty");
+    }
+    let hold = paste_hold_ms.max(35);
+    std::thread::sleep(Duration::from_millis(180));
+    if crate::keyboard::send_text(&clip) {
+        std::thread::sleep(Duration::from_millis(80));
+        return (true, "send_text");
+    }
+    // No Ctrl+A — wrong focus + Ctrl+A selects sidebar/history then pastes there.
+    if crate::keyboard::send_chord("Ctrl+V", hold) {
+        std::thread::sleep(Duration::from_millis(80));
+        return (true, "ctrl_v");
+    }
+    (false, "paste_failed")
+}
+
+/// Prefer UIA SetValue when a real Edit exists; else Ctrl+V / unicode / Shift+Insert.
+#[cfg(windows)]
+fn paste_into_chat_composer(
+    hwnd: winapi::shared::windef::HWND,
+    prefer_text_inject: bool,
+) -> (bool, &'static str) {
+    let clip = crate::agent::insert_text::read_clipboard_unicode()
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+
+    if !clip.is_empty() {
+        if uia_set_best_input_value(hwnd, &clip, 10) {
+            std::thread::sleep(Duration::from_millis(120));
+            return (true, "uia_set_value");
+        }
+    }
+
+    if !prefer_text_inject {
+        if crate::keyboard::send_chord("Ctrl+V", 40) {
+            std::thread::sleep(Duration::from_millis(80));
+            return (true, "ctrl_v");
+        }
+    }
+
+    if !clip.is_empty() && crate::keyboard::send_text(&clip) {
+        std::thread::sleep(Duration::from_millis(80));
+        return (true, "send_text");
+    }
+
+    if prefer_text_inject && crate::keyboard::send_chord("Ctrl+V", 40) {
+        std::thread::sleep(Duration::from_millis(80));
+        return (true, "ctrl_v_fallback");
+    }
+
+    if crate::keyboard::send_chord("Shift+Insert", 40) {
+        std::thread::sleep(Duration::from_millis(80));
+        return (true, "shift_insert");
+    }
+
+    (false, "none")
+}
+
+/// Set ValuePattern on best Edit/Document — works without keyboard caret (CEF-friendly).
+#[cfg(windows)]
+fn uia_set_best_input_value(
+    hwnd: winapi::shared::windef::HWND,
+    text: &str,
+    min_score: i32,
+) -> bool {
+    use windows::core::{BSTR, Interface, VARIANT};
+    use windows::Win32::Foundation::HWND as WinHwnd;
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED,
+    };
+    use windows::Win32::UI::Accessibility::{
+        CUIAutomation, IUIAutomation, IUIAutomationElement, IUIAutomationValuePattern,
+        TreeScope_Descendants, UIA_ControlTypePropertyId, UIA_DocumentControlTypeId,
+        UIA_EditControlTypeId, UIA_ValuePatternId,
+    };
+
+    if text.is_empty() {
+        return false;
+    }
+
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        let automation: IUIAutomation =
+            match CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER) {
+                Ok(v) => v,
+                Err(_) => return false,
+            };
+        let Ok(root) = automation.ElementFromHandle(WinHwnd(hwnd as *mut _)) else {
+            return false;
+        };
+
+        let mut best: Option<(i32, IUIAutomationElement)> = None;
+        for control_type in [UIA_EditControlTypeId, UIA_DocumentControlTypeId] {
+            let value = VARIANT::from(control_type.0);
+            let Ok(condition) =
+                automation.CreatePropertyCondition(UIA_ControlTypePropertyId, &value)
+            else {
+                continue;
+            };
+            let Ok(elements) = root.FindAll(TreeScope_Descendants, &condition) else {
+                continue;
+            };
+            let len = elements.Length().unwrap_or(0);
+            for i in 0..len {
+                let Ok(element) = elements.GetElement(i) else {
+                    continue;
+                };
+                if !element_is_enabled_and_focusable(&element) {
+                    continue;
+                }
+                let name = element_name(&element).unwrap_or_default();
+                let mut score = score_input_name(&name, control_type.0 as i32);
+                if let Some(yr) = element_client_y_ratio(hwnd, &element) {
+                    if yr >= 0.70 {
+                        score += 40;
+                    } else if yr < 0.35 {
+                        score -= 30;
+                    }
+                }
+                if score < min_score {
+                    continue;
+                }
+                let better = best.as_ref().map(|(s, _)| score > *s).unwrap_or(true);
+                if better {
+                    best = Some((score, element));
+                }
+            }
+        }
+
+        let Some((score, element)) = best else {
+            return false;
+        };
+        let Ok(pattern_unk) = element.GetCurrentPattern(UIA_ValuePatternId) else {
+            return false;
+        };
+        let Ok(value_pat) = pattern_unk.cast::<IUIAutomationValuePattern>() else {
+            return false;
+        };
+        let bstr = BSTR::from(text);
+        if value_pat.SetValue(&bstr).is_err() {
+            return false;
+        }
+        crate::app_log::cursor_send_oplog(
+            "uia_set_value",
+            serde_json::json!({ "score": score, "chars": text.chars().count() }),
+        );
+        true
+    }
+}
+
+/// True when an Edit/Document under hwnd looks like a chat composer (score ≥ min).
+#[cfg(windows)]
+fn uia_composer_present(hwnd: winapi::shared::windef::HWND, min_score: i32) -> bool {
+    uia_scan_best_input(hwnd).0 >= min_score
+}
+
+/// Find best Edit/Document under hwnd and click its UIA clickable point (screen coords).
+#[cfg(windows)]
+fn uia_click_best_input(hwnd: winapi::shared::windef::HWND, min_score: i32) -> bool {
+    uia_click_best_input_in_band(hwnd, min_score, 0.08, 0.92, 0.35)
+}
+
+/// Like [`uia_click_best_input`], but rejects clickable points outside hwnd / band.
+/// ChatGPT previously returned left-edge mid-Y points (x≈window.left) that stole paste.
+#[cfg(windows)]
+fn uia_click_best_input_in_band(
+    hwnd: winapi::shared::windef::HWND,
+    min_score: i32,
+    x_min: f32,
+    x_max: f32,
+    y_min: f32,
+) -> bool {
+    use winapi::shared::windef::RECT;
+    use winapi::um::winuser::GetWindowRect;
+
+    let (score, point) = uia_scan_best_input(hwnd);
+    let Some((sx, sy)) = point.filter(|_| score >= min_score) else {
+        return false;
+    };
+    let mut rect = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    if unsafe { GetWindowRect(hwnd, &mut rect) } == 0 {
+        return false;
+    }
+    let w = (rect.right - rect.left).max(1) as f32;
+    let h = (rect.bottom - rect.top).max(1) as f32;
+    let xr = (sx - rect.left) as f32 / w;
+    let yr = (sy - rect.top) as f32 / h;
+    let inside = sx >= rect.left + 4
+        && sx <= rect.right - 4
+        && sy >= rect.top + 4
+        && sy <= rect.bottom - 4
+        && xr >= x_min
+        && xr <= x_max
+        && yr >= y_min;
+    crate::app_log::cursor_send_oplog(
+        "uia_clickable_point",
+        serde_json::json!({
+            "score": score,
+            "x": sx,
+            "y": sy,
+            "xr": xr,
+            "yr": yr,
+            "accepted": inside,
+            "window": [rect.left, rect.top, rect.right, rect.bottom],
+        }),
+    );
+    if !inside {
+        return false;
+    }
+    crate::keyboard::click_screen_abs(sx, sy)
+}
+
+/// Returns (best_score, optional clickable screen point). Score may be high without a point.
+#[cfg(windows)]
+fn uia_scan_best_input(
+    hwnd: winapi::shared::windef::HWND,
+) -> (i32, Option<(i32, i32)>) {
+    use windows::core::VARIANT;
+    use windows::Win32::Foundation::{HWND as WinHwnd, POINT as WinPoint};
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED,
+    };
+    use windows::Win32::UI::Accessibility::{
+        CUIAutomation, IUIAutomation, TreeScope_Descendants, UIA_ControlTypePropertyId,
+        UIA_DocumentControlTypeId, UIA_EditControlTypeId,
+    };
+
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        let automation: IUIAutomation =
+            match CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER) {
+                Ok(v) => v,
+                Err(_) => return (-1, None),
+            };
+        let Ok(root) = automation.ElementFromHandle(WinHwnd(hwnd as *mut _)) else {
+            return (-1, None);
+        };
+
+        let mut best_score = -1;
+        let mut best_point: Option<(i32, i32, i32)> = None; // score, sx, sy
+        for control_type in [UIA_EditControlTypeId, UIA_DocumentControlTypeId] {
+            let value = VARIANT::from(control_type.0);
+            let Ok(condition) =
+                automation.CreatePropertyCondition(UIA_ControlTypePropertyId, &value)
+            else {
+                continue;
+            };
+            let Ok(elements) = root.FindAll(TreeScope_Descendants, &condition) else {
+                continue;
+            };
+            let len = elements.Length().unwrap_or(0);
+            for i in 0..len {
+                let Ok(element) = elements.GetElement(i) else {
+                    continue;
+                };
+                if !element_is_enabled_and_focusable(&element) {
+                    continue;
+                }
+                let name = element_name(&element).unwrap_or_default();
+                let mut score = score_input_name(&name, control_type.0 as i32);
+                if let Some(yr) = element_client_y_ratio(hwnd, &element) {
+                    if yr >= 0.70 {
+                        score += 40;
+                    } else if yr < 0.35 {
+                        score -= 30;
+                    }
+                }
+                if score > best_score {
+                    best_score = score;
+                }
+                let mut pt = WinPoint { x: 0, y: 0 };
+                let got = element.GetClickablePoint(&mut pt as *mut _).ok();
+                if got.map(|g| g.as_bool()).unwrap_or(false) {
+                    let better = best_point
+                        .as_ref()
+                        .map(|(s, _, _)| score > *s)
+                        .unwrap_or(true);
+                    if better {
+                        best_point = Some((score, pt.x, pt.y));
+                    }
+                }
+            }
+        }
+        let point = best_point.map(|(_, x, y)| (x, y));
+        (best_score, point)
+    }
+}
+
+#[cfg(windows)]
+unsafe fn element_client_y_ratio(
+    hwnd: winapi::shared::windef::HWND,
+    element: &windows::Win32::UI::Accessibility::IUIAutomationElement,
+) -> Option<f32> {
+    use winapi::shared::windef::{POINT, RECT};
+    use winapi::um::winuser::{GetClientRect, ScreenToClient};
+    use windows::Win32::Foundation::POINT as WinPoint;
+
+    let mut pt = WinPoint { x: 0, y: 0 };
+    let got = element.GetClickablePoint(&mut pt as *mut _).ok()?;
+    if !got.as_bool() {
+        return None;
+    }
+    let mut cpt = POINT { x: pt.x, y: pt.y };
+    if ScreenToClient(hwnd, &mut cpt) == 0 {
+        return None;
+    }
+    let mut crect = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    if GetClientRect(hwnd, &mut crect) == 0 {
+        return None;
+    }
+    let ch = (crect.bottom - crect.top).max(1) as f32;
+    Some((cpt.y as f32 / ch).clamp(0.0, 1.0))
 }
 
 /// Open / focus the habit's declared app target only — no composer focus, no voice.
@@ -1310,6 +2315,29 @@ fn click_composer_anchor(hwnd: winapi::shared::windef::HWND, anchor: (f32, f32))
 #[cfg(windows)]
 fn ensure_app_window(profile: &AppChatProfile) -> Option<(winapi::shared::windef::HWND, bool)> {
     if let Some(hwnd) = find_app_window(profile) {
+        if window_is_user_visible(hwnd) || force_show_hwnd(hwnd) {
+            return Some((hwnd, false));
+        }
+        // MiniMax etc.: process alive + invisible chrome — ShellExecute single-instance
+        // so the real client surfaces (ShowWindow alone often leaves it invisible).
+        crate::app_log::cursor_send_oplog(
+            "chat_handoff_relaunch_hidden",
+            serde_json::json!({ "appTargetId": profile.id }),
+        );
+        if try_launch_app_profile(profile) {
+            for _ in 0..40 {
+                std::thread::sleep(Duration::from_millis(250));
+                if let Some(h) = find_app_window(profile) {
+                    let _ = force_show_hwnd(h);
+                    if window_is_user_visible(h)
+                        || client_size(h).is_some_and(|(w, hgt)| w >= 480 && hgt >= 320)
+                    {
+                        return Some((h, true));
+                    }
+                }
+            }
+        }
+        // Still return hwnd — prepare_chat_hwnd will retry show/focus.
         return Some((hwnd, false));
     }
     if !try_launch_app_profile(profile) {
@@ -1318,6 +2346,7 @@ fn ensure_app_window(profile: &AppChatProfile) -> Option<(winapi::shared::windef
     for _ in 0..60 {
         std::thread::sleep(Duration::from_millis(250));
         if let Some(hwnd) = find_app_window(profile) {
+            let _ = force_show_hwnd(hwnd);
             return Some((hwnd, true));
         }
     }
@@ -1336,6 +2365,7 @@ fn try_launch_app_profile(profile: &AppChatProfile) -> bool {
     if matches!(
         profile.id,
         QODER_APP_TARGET_ID
+            | MINIMAX_APP_TARGET_ID
             | WORKBUDDY_APP_TARGET_ID
             | TRAE_APP_TARGET_ID
             | TRAE_CHAT_LEGACY_APP_TARGET_ID
@@ -1455,10 +2485,16 @@ fn resolve_launch_hint_uncached(profile: &AppChatProfile) -> Option<std::path::P
             return Some(path);
         }
     }
-    // 2) Start Menu shortcut
+    // 2) Desktop + Start Menu shortcuts (portable installs often only leave a Desktop .lnk)
     let needles = shortcut_name_needles(profile);
     if !needles.is_empty() {
         let mut roots = Vec::new();
+        if let Ok(user_profile) = std::env::var("USERPROFILE") {
+            roots.push(std::path::PathBuf::from(&user_profile).join("Desktop"));
+        }
+        if let Ok(public) = std::env::var("PUBLIC") {
+            roots.push(std::path::PathBuf::from(public).join("Desktop"));
+        }
         if let Ok(appdata) = std::env::var("APPDATA") {
             roots.push(
                 std::path::PathBuf::from(appdata).join("Microsoft\\Windows\\Start Menu\\Programs"),
@@ -1495,10 +2531,16 @@ fn resolve_launch_hint_uncached(profile: &AppChatProfile) -> Option<std::path::P
 #[cfg(windows)]
 fn shortcut_name_needles(profile: &AppChatProfile) -> Vec<&'static str> {
     match profile.id {
-        QODER_APP_TARGET_ID => vec!["Qoder", "qoder"],
+        // Prefer "Qoder CN" before bare "Qoder" so CN .lnk wins when both exist.
+        QODER_APP_TARGET_ID => vec!["Qoder CN", "qoder cn", "Qoder", "qoder"],
+        // Prefer "MiniMax Code" — bare "minimax" also matches MiniMax Design.lnk.
+        MINIMAX_APP_TARGET_ID => vec!["MiniMax Code"],
         WORKBUDDY_APP_TARGET_ID => vec!["WorkBuddy", "Work Buddy"],
-        TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => vec!["TRAE SOLO", "Trae Solo"],
-        TRAE_CODE_APP_TARGET_ID => vec!["Trae", "TRAE"],
+        // Specific first — "Trae" alone would also hit TraeCode CN.lnk.
+        TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => {
+            vec!["TraeWork", "TRAE SOLO", "Trae Solo", "trae work"]
+        }
+        TRAE_CODE_APP_TARGET_ID => vec!["TraeCode", "Trae Code", "Trae CN"],
         WINDSURF_APP_TARGET_ID => vec!["Windsurf"],
         _ => vec![],
     }
@@ -1592,7 +2634,14 @@ fn known_install_exe_candidates(profile: &AppChatProfile) -> Vec<std::path::Path
         QODER_APP_TARGET_ID => &[
             "Programs\\Qoder\\Qoder.exe",
             "Qoder\\Qoder.exe",
-            "Programs\\Qoder\\Qoder.exe",
+            "Qoder CN\\Qoder CN.exe",
+            "Programs\\Qoder CN\\Qoder CN.exe",
+        ],
+        MINIMAX_APP_TARGET_ID => &[
+            "Programs\\MiniMax Code\\MiniMax Code.exe",
+            "MiniMax Code\\MiniMax Code.exe",
+            "Programs\\MiniMax\\MiniMax Code.exe",
+            "Programs\\MiniMax\\MiniMax Code Desktop.exe",
         ],
         WORKBUDDY_APP_TARGET_ID => &[
             "Programs\\WorkBuddy\\WorkBuddy.exe",
@@ -1601,8 +2650,15 @@ fn known_install_exe_candidates(profile: &AppChatProfile) -> Vec<std::path::Path
         TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => &[
             "Programs\\TRAE SOLO\\TRAE SOLO.exe",
             "TRAE SOLO\\TRAE SOLO.exe",
+            "TRAE SOLO CN\\TRAE SOLO CN.exe",
+            "Programs\\TRAE SOLO CN\\TRAE SOLO CN.exe",
         ],
-        TRAE_CODE_APP_TARGET_ID => &["Programs\\Trae\\Trae.exe", "Trae\\Trae.exe"],
+        TRAE_CODE_APP_TARGET_ID => &[
+            "Programs\\Trae\\Trae.exe",
+            "Trae\\Trae.exe",
+            "Trae CN\\Trae CN.exe",
+            "Programs\\Trae CN\\Trae CN.exe",
+        ],
         WINDSURF_APP_TARGET_ID => &["Programs\\Windsurf\\Windsurf.exe", "Windsurf\\Windsurf.exe"],
         _ => &[],
     };
@@ -1616,10 +2672,15 @@ fn known_install_exe_candidates(profile: &AppChatProfile) -> Vec<std::path::Path
 #[cfg(windows)]
 fn probe_uninstall_exe(profile: &AppChatProfile) -> Option<std::path::PathBuf> {
     let display_needles: &[&str] = match profile.id {
-        QODER_APP_TARGET_ID => &["Qoder"],
+        QODER_APP_TARGET_ID => &["Qoder CN", "Qoder"],
+        // Do not use bare "MiniMax" — matches "MiniMax Design".
+        MINIMAX_APP_TARGET_ID => &["MiniMax Code"],
         WORKBUDDY_APP_TARGET_ID => &["WorkBuddy"],
-        TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => &["TRAE SOLO", "Trae Solo"],
-        TRAE_CODE_APP_TARGET_ID => &["Trae"],
+        TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => {
+            &["TRAE SOLO CN", "TRAE SOLO", "Trae Solo", "TraeWork"]
+        }
+        // Prefer CN / Code labels — bare "Trae" also hits Trae Work uninstall rows.
+        TRAE_CODE_APP_TARGET_ID => &["Trae CN", "TraeCode", "Trae Code"],
         WINDSURF_APP_TARGET_ID => &["Windsurf"],
         _ => return None,
     };
@@ -1657,6 +2718,15 @@ fn probe_uninstall_exe(profile: &AppChatProfile) -> Option<std::path::PathBuf> {
                     let path = std::path::PathBuf::from(cleaned);
                     if validate_launch_exe(&path, profile) {
                         return Some(path);
+                    }
+                    // Portable MiniMax: DisplayIcon is uninstallerIcon.ico, InstallLocation empty.
+                    if let Some(dir) = path.parent() {
+                        for exe_name in profile.process_names {
+                            let candidate = dir.join(exe_name);
+                            if validate_launch_exe(&candidate, profile) {
+                                return Some(candidate);
+                            }
+                        }
                     }
                 }
                 if let Ok(loc) = sub.get_value::<String, _>("InstallLocation") {
@@ -1909,8 +2979,21 @@ fn launch_gui_exe(path: &std::path::Path) -> bool {
     }
 }
 
+/// Prefer main-size chrome when ranking same title-hit class.
+#[cfg(windows)]
+const APP_CHAT_MAIN_AREA: i64 = 100_000;
+
 #[cfg(windows)]
 fn find_app_window(profile: &AppChatProfile) -> Option<winapi::shared::windef::HWND> {
+    // Always include hidden — MiniMax's titled chrome can be IsWindowVisible=0 / iconic.
+    find_app_window_impl(profile, true)
+}
+
+#[cfg(windows)]
+fn find_app_window_impl(
+    profile: &AppChatProfile,
+    include_hidden: bool,
+) -> Option<winapi::shared::windef::HWND> {
     use winapi::shared::minwindef::{BOOL, LPARAM, TRUE};
     use winapi::shared::windef::{HWND, RECT};
     use winapi::um::winuser::{
@@ -1920,18 +3003,22 @@ fn find_app_window(profile: &AppChatProfile) -> Option<winapi::shared::windef::H
 
     struct EnumCtx {
         profile: AppChatProfile,
+        include_hidden: bool,
         candidates: Vec<Candidate>,
     }
 
     struct Candidate {
         hwnd: HWND,
         area: i64,
+        visible: bool,
+        title_hit: bool,
         is_foreground: bool,
     }
 
     unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
         let ctx = &mut *(lparam as *mut EnumCtx);
-        if IsWindowVisible(hwnd) == 0 {
+        let visible = IsWindowVisible(hwnd) != 0;
+        if !visible && !ctx.include_hidden {
             return TRUE;
         }
         if !GetWindow(hwnd, GW_OWNER).is_null() {
@@ -1958,10 +3045,31 @@ fn find_app_window(profile: &AppChatProfile) -> Option<winapi::shared::windef::H
         if area <= 0 {
             return TRUE;
         }
+        // Hidden candidates must look like a real UI surface.
+        if !visible && area < 20_000 {
+            return TRUE;
+        }
+        let title = crate::app_identity::identity_for_window(hwnd)
+            .map(|id| id.window_title)
+            .unwrap_or_default();
+        let class_name = window_class_name(hwnd);
+        if is_helper_app_window(&title, &class_name, area) {
+            return TRUE;
+        }
+        // MiniMax: untitled Chrome_WidgetWin_0 is a background host; the real UI is
+        // titled "MiniMax Code" (even when iconic / area ~4k at -32000).
+        if ctx.profile.id == MINIMAX_APP_TARGET_ID
+            && title.trim().is_empty()
+            && class_name.eq_ignore_ascii_case("Chrome_WidgetWin_0")
+        {
+            return TRUE;
+        }
         let fg = GetForegroundWindow();
         ctx.candidates.push(Candidate {
             hwnd,
             area,
+            visible,
+            title_hit: title_matches_profile(&ctx.profile, &title),
             is_foreground: fg == hwnd,
         });
         TRUE
@@ -1969,6 +3077,7 @@ fn find_app_window(profile: &AppChatProfile) -> Option<winapi::shared::windef::H
 
     let mut ctx = EnumCtx {
         profile: *profile,
+        include_hidden,
         candidates: Vec::new(),
     };
     unsafe {
@@ -1976,8 +3085,40 @@ fn find_app_window(profile: &AppChatProfile) -> Option<winapi::shared::windef::H
     }
     ctx.candidates
         .into_iter()
-        .max_by_key(|c: &Candidate| (c.is_foreground, c.area))
+        .max_by_key(|c: &Candidate| {
+            // Title match first: MiniMax iconic titled strip must beat a larger
+            // untitled WidgetWin_0 host (restore expands the titled HWND).
+            (
+                c.title_hit,
+                c.area >= APP_CHAT_MAIN_AREA,
+                c.area,
+                c.visible,
+                c.is_foreground,
+            )
+        })
         .map(|c| c.hwnd)
+}
+
+#[cfg(windows)]
+fn title_matches_profile(profile: &AppChatProfile, title: &str) -> bool {
+    let t = title.trim().to_ascii_lowercase();
+    if t.is_empty() {
+        return false;
+    }
+    let needles: &[&str] = match profile.id {
+        MINIMAX_APP_TARGET_ID => &["minimax"],
+        WORKBUDDY_APP_TARGET_ID => &["workbuddy", "codebuddy"],
+        CURSOR_APP_TARGET_ID => &["cursor"],
+        CODEX_APP_TARGET_ID => &["codex", "chatgpt"],
+        CLAUDE_CODE_APP_TARGET_ID => &["claude"],
+        QODER_APP_TARGET_ID => &["qoder"],
+        TRAE_APP_TARGET_ID | TRAE_CHAT_LEGACY_APP_TARGET_ID => &["trae solo", "traework", "solo"],
+        // Avoid matching Trae Work titles that only say "TRAE SOLO".
+        TRAE_CODE_APP_TARGET_ID => &["traecode", "trae cn", "trae ide"],
+        WINDSURF_APP_TARGET_ID => &["windsurf"],
+        _ => return true,
+    };
+    needles.iter().any(|n| t.contains(n))
 }
 
 #[cfg(windows)]
@@ -1993,7 +3134,10 @@ fn process_matches_profile(pid: u32, profile: &AppChatProfile) -> bool {
         }
         profile
             .path_marker
-            .map(|marker| path.contains(marker))
+            .map(|marker| {
+                path.to_ascii_lowercase()
+                    .contains(&marker.to_ascii_lowercase())
+            })
             .unwrap_or(true)
     })
 }
@@ -2283,6 +3427,11 @@ fn score_input_name(name: &str, control_type: i32) -> i32 {
     if lower.contains("agent") {
         score += 25;
     }
+    // MiniMax / WorkBuddy Chinese placeholders.
+    if name.contains("输入") || name.contains("对话") || name.contains("提问") || name.contains("消息")
+    {
+        score += 35;
+    }
     // Demote search / filter / find — not Composer.
     if lower.contains("search") || lower.contains("filter") || lower.contains("find") {
         score -= 45;
@@ -2534,8 +3683,10 @@ fn window_class_name(hwnd: winapi::shared::windef::HWND) -> String {
     }
 }
 
-/// WeChat and similar apps keep tiny tray / IPC HWNDs that share the exe name.
-/// Activating those shows a blank `WxTrayIconMessageWindow` instead of the chat UI.
+/// WeChat / Chromium helpers keep HWNDs that share the exe name but are not the chat UI.
+/// MiniMax exposes a large visible `Mavis Browser Background Render Host` while the
+/// real `MiniMax Code` window is minimized or hidden — focusing the host looks like
+/// "didn't jump".
 #[cfg(windows)]
 fn is_helper_app_window(title: &str, class_name: &str, area: i64) -> bool {
     let title = title.trim();
@@ -2549,6 +3700,8 @@ fn is_helper_app_window(title: &str, class_name: &str, area: i64) -> bool {
         "notifyicon",
         "ime",
         "candidate",
+        "background render host",
+        "mavis browser",
     ];
     if NOISE.iter().any(|n| hay.contains(n)) {
         return true;
@@ -2562,6 +3715,101 @@ fn is_helper_app_window(title: &str, class_name: &str, area: i64) -> bool {
         return true;
     }
     false
+}
+
+#[cfg(all(test, windows))]
+mod handoff_window_tests {
+    use super::*;
+    use windows::Win32::UI::Accessibility::UIA_EditControlTypeId;
+
+    #[test]
+    fn rejects_minimax_background_render_host() {
+        assert!(is_helper_app_window(
+            "Mavis Browser Background Render Host 1",
+            "Chrome_WidgetWin_1",
+            921_600
+        ));
+        assert!(!is_helper_app_window(
+            "MiniMax Code",
+            "Chrome_WidgetWin_1",
+            4_480
+        ));
+        assert!(title_matches_profile(&MINIMAX_PROFILE, "MiniMax Code"));
+        assert!(!title_matches_profile(
+            &MINIMAX_PROFILE,
+            "Mavis Browser Background Render Host 1"
+        ));
+        // Ranking contract: titled iconic strip must outrank larger untitled host.
+        let src = include_str!("app_chat_workflow.rs");
+        assert!(
+            src.contains("c.title_hit,")
+                && src.contains("Chrome_WidgetWin_0")
+                && src.contains("minimax_click_and_paste"),
+            "MiniMax handoff must prefer titled chrome and use dedicated paste path"
+        );
+        // Cold-start: Desktop .lnk + uninstall-dir exe (portable E:\MiniMax Code\…).
+        assert!(
+            src.contains("join(\"Desktop\")") && src.contains("path.parent()"),
+            "MiniMax launch must discover Desktop shortcut / uninstall install dir"
+        );
+        assert!(
+            src.contains("chat_handoff_relaunch_hidden") && src.contains("force_show_hwnd"),
+            "hidden MiniMax chrome must force-show / relaunch nudge"
+        );
+        assert!(
+            src.contains("minimax_document_bottom_point") && src.contains("doc_bottom"),
+            "MiniMax paste must click Document card bottom, not window-ratio spray"
+        );
+    }
+
+    #[test]
+    fn chinese_chat_input_name_scores() {
+        let score = score_input_name("输入消息", UIA_EditControlTypeId.0 as i32);
+        assert!(score >= 40, "score={score}");
+    }
+
+    #[test]
+    fn cold_start_handoff_waits_for_composer_budget() {
+        // Contract: freshly launched chat apps must poll longer than the old fixed 2.2s.
+        let src = include_str!("app_chat_workflow.rs");
+        assert!(
+            src.contains("wait_chat_ui_ready"),
+            "cold start must poll wait_chat_ui_ready before paste"
+        );
+        assert!(
+            src.contains("12_000") || src.contains("12000"),
+            "cold start budget must be ≥12s for MiniMax/WorkBuddy boot"
+        );
+        assert!(
+            src.contains("chat_handoff_ready"),
+            "must log when UI is considered ready"
+        );
+        assert!(
+            src.contains("pasteHoldMs") && src.contains("electron_replace_paste"),
+            "Ctrl+V must use a short hold; WorkBuddy/ChatGPT must replace-paste"
+        );
+        assert!(
+            src.contains("uia_click_best_input_in_band"),
+            "IDE UIA clicks must reject left-edge / mid-window false positives"
+        );
+        assert!(
+            src.contains("send_text")
+                && src.contains("No Ctrl+A"),
+            "replace-paste must prefer send_text and avoid Ctrl+A on wrong focus"
+        );
+        assert!(
+            src.contains("APP_CHAT_MAIN_AREA"),
+            "must prefer main-size HWND over MiniMax iconic strip"
+        );
+        assert!(
+            src.contains("prepare_chat_hwnd"),
+            "must show/restore MiniMax main chrome before click"
+        );
+        assert!(
+            src.contains("paste_into_chat_composer") && src.contains("uia_set_best_input_value"),
+            "MiniMax must fall back to UIA SetValue / send_text when Ctrl+V fails"
+        );
+    }
 }
 
 #[cfg(windows)]

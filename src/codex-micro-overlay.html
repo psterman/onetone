@@ -7,12 +7,14 @@
   <link rel="stylesheet" href="css/codex-micro-overlay.css" />
   <link rel="stylesheet" href="css/codex-micro-pad-skins.css?v=20260923-proto2" />
   <link rel="stylesheet" href="css/motion.css" />
+  <link rel="stylesheet" href="css/soft-pad-carry.css" />
   <script src="js/core/motion.js"></script>
   <script src="js/core/agent-status-edge.js"></script>
   <script src="js/features/agent/usage-format.js"></script>
   <script src="js/features/agent/soft-pad-agent-bar-rank.js"></script>
   <script src="js/cursor-beginner-onboard.js"></script>
   <script src="js/features/activation/activation-hub.js"></script>
+  <script src="js/features/agent/soft-pad-carry.js"></script>
 </head>
 <body>
   <div class="root">
@@ -3993,7 +3995,10 @@
         '.overlay-mini__beginner-actions,.overlay-mini__action,.overlay-mini__beginner-hint,' +
         '.soft-pad-agent-bar__chip,[data-agent],' +
         '#padAgentBarMore,#padAgentBarOverflow,.soft-pad-agent-bar__more,.soft-pad-agent-bar__overflow,' +
-        '#miniAgentMore,.overlay-mini__more'
+        '#miniAgentMore,.overlay-mini__more,' +
+        '[data-soft-pad-carry],.sp-carry,[data-sp-act],.sp-carry__badge,.sp-carry__preview,' +
+        '[data-sp-mats-bar],[data-sp-mats-rail],.sp-mats-rail,[data-sp-mats-panel],[data-sp-mats-hot],[data-sp-mats-list],' +
+        '[data-sp-mats-toggle],[data-sp-mats-pin],[data-sp-mats-add],[data-sp-mats-paste],[data-sp-mats-clear],[data-sp-mats-rm]'
       ));
     }
 

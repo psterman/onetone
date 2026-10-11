@@ -83,7 +83,8 @@ impl AgentKind {
 
     pub fn from_kind_str(s: &str) -> Option<Self> {
         match s.trim() {
-            "codex" => Some(AgentKind::Codex),
+            // ChatGPT desktop UI shares the Codex app target (ChatGPT.exe).
+            "codex" | "chatgpt" | "chatgpt-app" | "openai-codex" => Some(AgentKind::Codex),
             "claude" => Some(AgentKind::Claude),
             "cursor" => Some(AgentKind::Cursor),
             "minimax" => Some(AgentKind::MiniMax),

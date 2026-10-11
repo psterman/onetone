@@ -9,6 +9,8 @@ pub struct OverlayWindowOpts {
     pub url: &'static str,
     pub width: f64,
     pub height: f64,
+    /// Soft Pad needs HTML5 text DnD; Tauri's native handler blocks it (prohibited cursor).
+    pub html5_drag_drop: bool,
 }
 
 pub const TRAY_MENU: OverlayWindowOpts = OverlayWindowOpts {
@@ -16,6 +18,7 @@ pub const TRAY_MENU: OverlayWindowOpts = OverlayWindowOpts {
     url: "tray-menu.html",
     width: 316.0,
     height: 520.0,
+    html5_drag_drop: false,
 };
 
 pub const COACH_HUD: OverlayWindowOpts = OverlayWindowOpts {
@@ -23,6 +26,7 @@ pub const COACH_HUD: OverlayWindowOpts = OverlayWindowOpts {
     url: "coach-hud.html",
     width: 360.0,
     height: 88.0,
+    html5_drag_drop: false,
 };
 
 pub const CODEX_MICRO_OVERLAY: OverlayWindowOpts = OverlayWindowOpts {
@@ -31,6 +35,7 @@ pub const CODEX_MICRO_OVERLAY: OverlayWindowOpts = OverlayWindowOpts {
     width: 432.0,
     // Keep in sync with OVERLAY_HEIGHT_FULL in codex_micro_overlay.rs
     height: 680.0,
+    html5_drag_drop: true,
 };
 
 /// Return existing overlay window or create one matching former tauri.conf entries.
@@ -42,7 +47,7 @@ pub fn ensure_overlay_window(
     if let Some(win) = app.get_webview_window(opts.label) {
         return Ok((win, false));
     }
-    let win = WebviewWindowBuilder::new(app, opts.label, WebviewUrl::App(opts.url.into()))
+    let mut builder = WebviewWindowBuilder::new(app, opts.label, WebviewUrl::App(opts.url.into()))
         .title("")
         .inner_size(opts.width, opts.height)
         .resizable(false)
@@ -51,8 +56,12 @@ pub fn ensure_overlay_window(
         .shadow(false)
         .always_on_top(true)
         .skip_taskbar(true)
-        .visible(false)
-        .build()?;
+        .visible(false);
+    // Mutually exclusive with Tauri file-drop events — required for text/plain HTML5 drop.
+    if opts.html5_drag_drop {
+        builder = builder.disable_drag_drop_handler();
+    }
+    let win = builder.build()?;
     Ok((win, true))
 }
 

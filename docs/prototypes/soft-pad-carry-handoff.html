@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OneTone · Soft Pad 携带粘贴（形态B）</title>
+  <style>
+    :root{
+      --shell:#eef0f1;--paper:#fbfaf7;--ink:#172523;--ink2:#43514e;--muted:#606c69;
+      --line:#dedfd9;--line2:#c9ccc5;--teal:#176f68;--teal-dark:#115b56;--teal-soft:#dcebe7;
+      --sky:#5b9fd4;--sky-soft:#e8f3fb;--sky-line:#b7d4ea;
+      --shadow:0 18px 48px rgba(31,43,40,.12);
+    }
+    *{box-sizing:border-box}
+    html,body{min-height:100%}
+    body{margin:0;background:var(--shell);color:var(--ink);font:14px/1.55 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    button,textarea{font:inherit}button{cursor:pointer}
+    button:focus-visible,textarea:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+    ::selection{background:var(--teal-soft)}
+
+    .note{width:min(920px,calc(100% - 28px));margin:14px auto 8px;color:var(--muted);font-size:12px}
+    .note b{color:var(--ink2)}
+
+    .frame{
+      position:relative;width:min(920px,calc(100% - 28px));height:min(700px,calc(100vh - 120px));
+      min-height:560px;margin:0 auto 88px;overflow:hidden;border:1px solid rgba(23,37,35,.1);
+      border-radius:20px;background:var(--paper);box-shadow:var(--shadow);
+    }
+
+    /* Home quiet composer */
+    .home{position:absolute;inset:0;padding:28px 36px 40px;overflow:auto;display:none}
+    .home.on{display:block}
+    .hn-brand{margin:0 0 28px;font-size:13px;font-weight:800}
+    .hn-quiet-head{text-align:center;margin:0 auto 22px;max-width:520px}
+    .hn-headline{margin:0;font-size:34px;line-height:1.2;letter-spacing:-.03em;font-weight:800}
+    .hn-assist{margin:10px 0 0;color:var(--ink2);font-size:14px}
+    .hn-composer{
+      max-width:640px;margin:0 auto;border:1px solid var(--line2);border-radius:16px;
+      background:#fff;box-shadow:0 10px 28px rgba(24,38,33,.07);overflow:hidden;
+    }
+    .hn-composer-input{
+      width:100%;min-height:120px;padding:18px 18px 10px;border:0;resize:none;
+      background:transparent;color:var(--ink);font-size:15px;line-height:1.6;
+    }
+    .hn-composer-input::placeholder{color:#8a9691}
+    .hn-composer-tools{
+      padding:8px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line);
+    }
+    .hn-composer-tools-label{color:var(--muted);font-size:12px;margin-right:4px}
+    .hn-attach{
+      min-height:30px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;
+      background:#fff;color:var(--ink2);font-size:12px;font-weight:700;
+    }
+    .hn-mat-bar{
+      padding:8px 14px 12px;display:flex;align-items:center;gap:10px;
+      border-top:1px solid var(--line);font-size:12px;color:var(--teal);font-weight:700;
+    }
+    .hn-mat-bar .link{margin-left:auto;color:var(--teal);text-decoration:underline;background:0;border:0;font-weight:750}
+    .hn-context{max-width:640px;margin:12px auto 0;color:var(--muted);font-size:12px}
+    .hn-actions{max-width:640px;margin:16px auto 0;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+    .hn-cta{
+      min-height:42px;padding:9px 18px;border:0;border-radius:10px;background:var(--teal);color:#fff;font-weight:800;
+    }
+    .hn-cta:disabled{opacity:.4;cursor:not-allowed}
+    .hn-probe-jumps{width:100%;display:flex;flex-wrap:wrap;gap:10px 14px}
+    .hn-probe-jump,.hn-text-btn{
+      border:0;background:0;color:var(--teal);font-weight:750;text-decoration:underline;
+      text-underline-offset:3px;padding:0;font-size:13px;
+    }
+    .hn-probe-jump:disabled{opacity:.35;cursor:not-allowed;text-decoration:none}
+    .hn-actions-foot{width:100%;display:flex;justify-content:flex-end}
+
+    /* Agent scene */
+    .agent-scene{position:absolute;inset:0;display:none;background:#c9d2cd;padding:14px}
+    .agent-scene.on{display:grid;grid-template-rows:auto 1fr;gap:10px}
+    .desk-label{font-size:11px;font-weight:750;color:#4a5853}
+    .app-win{
+      min-height:0;border-radius:12px;background:#f7f8f6;border:1px solid #b8c2bd;
+      box-shadow:0 14px 36px rgba(20,30,26,.2);display:flex;flex-direction:column;overflow:hidden;
+    }
+    .app-win header{
+      height:40px;padding:0 12px;display:flex;align-items:center;gap:8px;
+      background:#eef2ef;border-bottom:1px solid var(--line);font-weight:780;font-size:13px;
+    }
+    .app-win header .pill{margin-left:auto;padding:2px 8px;border-radius:999px;background:#fff;color:var(--muted);font-size:11px;font-weight:700}
+    .app-body{flex:1;display:grid;grid-template-columns:160px 1fr;min-height:0}
+    .side{padding:10px;border-right:1px solid var(--line);background:#f3f6f4;font-size:12px;color:var(--muted)}
+    .side b{display:block;color:var(--ink2);margin-bottom:6px}
+    .side .on{padding:6px 8px;border-radius:8px;background:#fff;border:1px solid var(--line);color:var(--ink);font-weight:700}
+    .chat{display:flex;flex-direction:column;min-height:0}
+    .chat-scroll{flex:1;padding:14px;color:var(--muted);font-size:13px;overflow:auto}
+    .bubble{max-width:80%;padding:10px 12px;border-radius:12px;background:#eef3f1;color:var(--ink2)}
+    .composer-box{
+      margin:0 12px 12px;padding:10px 12px;min-height:68px;border:1px solid var(--line2);
+      border-radius:12px;background:#fff;color:#8a9691;transition:border-color .15s,box-shadow .15s;
+    }
+    .composer-box.focused{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft);color:var(--ink)}
+    .composer-box.has-text{color:var(--ink);white-space:pre-wrap;font-size:13px;line-height:1.55}
+
+    /* —— Form B: compact carry strip (default) —— */
+    .carry-stack{
+      position:absolute;z-index:12;right:18px;bottom:18px;width:min(360px,calc(100% - 32px));
+      display:none;flex-direction:column;gap:8px;
+      opacity:0;transform:translateY(8px);pointer-events:none;
+      transition:opacity .2s,transform .22s cubic-bezier(.16,1,.3,1);
+    }
+    .carry-stack.on{display:flex;opacity:1;transform:none;pointer-events:auto}
+
+    .carry-bar{
+      border-radius:16px;background:linear-gradient(180deg,#f7fbfe,#eef6fc);
+      border:1.5px solid var(--sky-line);box-shadow:0 12px 32px rgba(40,80,110,.18);
+      overflow:hidden;
+    }
+    .carry-top{
+      padding:10px 12px;display:flex;align-items:center;gap:8px;
+      border-bottom:1px dashed rgba(91,159,212,.35);
+    }
+    .carry-badge{
+      display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 8px 0 4px;
+      border-radius:10px;background:#fff;border:1px solid var(--sky-line);font-weight:800;font-size:12px;color:var(--ink);
+    }
+    .carry-badge .ico{
+      width:22px;height:22px;border-radius:7px;background:var(--ink);color:#9fe0d4;
+      display:grid;place-items:center;font-size:10px;font-weight:900;
+    }
+    .carry-badge .n{color:var(--sky);font-size:11px}
+    .carry-top .meta{margin-left:auto;display:flex;align-items:center;gap:6px}
+    .cu-pill{
+      min-height:26px;padding:0 9px;border-radius:999px;border:1px solid var(--sky-line);
+      background:#fff;color:var(--ink2);font-size:11px;font-weight:750;
+    }
+    .icon-sq{
+      width:28px;height:28px;border-radius:8px;border:1px solid var(--sky-line);
+      background:#fff;color:var(--ink2);display:grid;place-items:center;font-size:13px;padding:0;
+    }
+    .carry-actions{padding:10px 12px 12px;display:flex;align-items:center;gap:8px}
+    .act{
+      width:40px;height:40px;border-radius:12px;border:1.5px solid var(--sky);
+      background:#fff;color:var(--sky);display:grid;place-items:center;font-size:16px;padding:0;
+    }
+    .act:hover{background:var(--sky-soft)}
+    .act.primary{background:var(--sky);color:#fff;border-color:var(--sky)}
+    .act.primary:disabled{opacity:.4;cursor:not-allowed}
+    .act.ghost{border-color:var(--line2);color:var(--muted)}
+    .act.spark{margin-left:auto;border-radius:50%;border-color:#7eb3dc;color:#3d7eae}
+    .carry-preview{
+      margin:0 12px 10px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.85);
+      border:1px solid rgba(183,212,234,.6);font-size:12px;line-height:1.45;color:var(--ink2);
+      max-height:2.9em;overflow:hidden;
+    }
+    .carry-preview b{color:var(--ink);font-weight:800}
+
+    .listen-bar{
+      display:none;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:14px;
+      background:linear-gradient(180deg,#f8fcff,#eaf4fb);border:1.5px solid var(--sky-line);
+      box-shadow:0 8px 22px rgba(40,80,110,.12);
+    }
+    .listen-bar.on{display:flex}
+    .listen-mic{
+      width:28px;height:28px;flex:none;border-radius:50%;background:var(--sky);color:#fff;
+      display:grid;place-items:center;font-size:13px;box-shadow:0 0 0 4px rgba(91,159,212,.2);
+      animation:pulse 1.4s ease-out infinite;
+    }
+    @keyframes pulse{50%{box-shadow:0 0 0 7px rgba(91,159,212,.08)}}
+    .listen-copy{min-width:0;flex:1}
+    .listen-copy strong{display:block;font-size:12px;font-weight:800;color:var(--ink);line-height:1.35}
+    .listen-copy span{display:block;margin-top:3px;font-size:11px;color:var(--muted);line-height:1.4}
+
+    /* —— Form A: full pad (expand) —— */
+    .full-pad{
+      position:absolute;z-index:13;right:18px;bottom:18px;width:min(300px,calc(100% - 32px));
+      display:none;padding:10px;border-radius:22px;background:rgba(255,255,255,.92);
+      border:1px solid rgba(200,210,220,.9);box-shadow:0 16px 40px rgba(30,40,50,.2);
+      backdrop-filter:blur(8px);
+    }
+    .full-pad.on{display:block}
+    .full-pad .agents{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+    .full-pad .agents span{
+      width:28px;height:28px;border-radius:8px;background:#eef2f5;border:1px solid #d5dde4;
+      display:grid;place-items:center;font-size:10px;font-weight:800;color:var(--ink2);
+    }
+    .full-pad .agents span.on{outline:2px solid #c9a227;outline-offset:1px}
+    .full-pad .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+    .full-pad .k{
+      height:44px;border:0;border-radius:12px;background:#f3f6f8;color:var(--ink2);
+      font-size:14px;box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(0,0,0,.04);
+    }
+    .full-pad .k.wide{grid-column:span 2}
+    .full-pad .k.paste{background:var(--teal-soft);color:var(--teal);font-weight:800}
+    .full-pad .back{
+      margin-top:8px;width:100%;min-height:34px;border:1px solid var(--line2);border-radius:10px;
+      background:#fff;font-weight:750;font-size:12px;color:var(--ink2);
+    }
+    .full-input{
+      margin-top:8px;height:36px;border-radius:999px;border:1px solid var(--line2);
+      background:#fff;padding:0 14px;display:flex;align-items:center;color:var(--muted);font-size:12px;
+    }
+
+    .mats-float{
+      position:absolute;z-index:8;left:16px;bottom:16px;width:min(260px,48%);
+      padding:11px;border-radius:12px;background:rgba(251,250,247,.97);border:1px solid var(--line);
+      box-shadow:0 8px 24px rgba(20,30,26,.12);display:none;font-size:12px;
+    }
+    .mats-float.on{display:block}
+    .mats-float h3{margin:0 0 6px;font-size:11px;color:var(--muted)}
+
+    .toast{
+      position:absolute;z-index:20;top:14px;left:50%;transform:translate(-50%,-6px);
+      padding:8px 13px;border-radius:999px;background:var(--ink);color:#fff;
+      font-size:12px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;
+      max-width:88%;text-align:center;
+    }
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+
+    .demo-dock{
+      position:fixed;z-index:30;left:50%;bottom:10px;transform:translateX(-50%);
+      display:grid;gap:4px;justify-items:center;max-width:calc(100% - 16px);
+    }
+    .state-switch{
+      display:flex;gap:2px;padding:4px;border-radius:999px;background:rgba(12,14,13,.86);
+      overflow:auto;max-width:100%;box-shadow:0 8px 24px rgba(0,0,0,.2);
+    }
+    .state-switch button{
+      height:28px;padding:0 10px;border:0;border-radius:999px;background:0;
+      color:rgba(255,255,255,.55);font-size:12px;white-space:nowrap;
+    }
+    .state-switch button.on{background:rgba(255,255,255,.14);color:#fff}
+    .demo-note{font-size:10px;color:var(--muted)}
+
+    @media(max-width:700px){
+      .frame{width:100%;height:100vh;min-height:0;margin:0 0 72px;border:0;border-radius:0}
+      .home{padding:20px 16px 32px}
+      .hn-headline{font-size:28px}
+      .app-body{grid-template-columns:1fr}.side{display:none}
+      .note{margin:10px 14px}
+    }
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <p class="note">默认携带面 = <b>形态B 紧凑条</b>（角标 + 粘贴/麦/清除 + 聆听条）。点展开可看形态A 完整键面。</p>
+
+  <div class="frame" id="frame">
+    <div class="toast" id="toast" role="status"></div>
+
+    <section class="home on" id="home" aria-label="今天想推进什么">
+      <p class="hn-brand">OneTone</p>
+      <header class="hn-quiet-head">
+        <h1 class="hn-headline">今天想推进什么？</h1>
+        <p class="hn-assist">直接描述你想完成的工作，也可以加入现有材料。</p>
+      </header>
+      <div class="hn-composer">
+        <textarea id="draft" class="hn-composer-input" rows="5" aria-label="描述你想推进的工作"
+          placeholder="例如：把首页改得更直接，新用户打开就知道怎么开始……">把 Soft Pad 改成携带粘贴：跳转 Trae / ChatGPT 后，悬浮栏带着首页内容，我点输入框再粘贴。</textarea>
+        <div class="hn-composer-tools" aria-label="加入内容">
+          <span class="hn-composer-tools-label">加入内容</span>
+          <button type="button" class="hn-attach" data-toast="已加入粘贴内容">粘贴</button>
+          <button type="button" class="hn-attach" data-toast="已加入图片">图片</button>
+          <button type="button" class="hn-attach" data-toast="已加入文件">文件</button>
+          <button type="button" class="hn-attach" data-toast="已加入网址">网址</button>
+          <button type="button" class="hn-attach" data-toast="已加入目录">目录</button>
+        </div>
+        <div class="hn-mat-bar">
+          <span>已加入 1 项 · 口述 1</span>
+          <button type="button" class="link" data-toast="查看/整理素材">查看/整理</button>
+        </div>
+      </div>
+      <p class="hn-context">当前项目: voice-pilot · Cursor</p>
+      <div class="hn-actions">
+        <button type="button" class="hn-cta" id="btnPrimary" data-jump="Cursor">复制并打开 Cursor</button>
+        <div class="hn-probe-jumps" aria-label="跳转到 Agent">
+          <button type="button" class="hn-probe-jump" data-jump="MiniMax">跳转 MiniMax</button>
+          <button type="button" class="hn-probe-jump" data-jump="WorkBuddy">跳转 WorkBuddy</button>
+          <button type="button" class="hn-probe-jump" data-jump="Cursor">跳转 Cursor</button>
+          <button type="button" class="hn-probe-jump" data-jump="Trae Work">跳转 Trae Work</button>
+          <button type="button" class="hn-probe-jump" data-jump="Trae Code">跳转 Trae Code</button>
+          <button type="button" class="hn-probe-jump" data-jump="Qoder">跳转 Qoder</button>
+          <button type="button" class="hn-probe-jump" data-jump="ChatGPT">跳转 ChatGPT</button>
+          <button type="button" class="hn-text-btn" data-toast="继续上次工作">继续上次工作</button>
+        </div>
+        <div class="hn-actions-foot">
+          <button type="button" class="hn-text-btn" data-toast="打开方案台">任务复杂？先整理方案</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="agent-scene" id="agentScene">
+      <div class="desk-label" id="deskLabel">已打开目标 Agent · Soft Pad 形态B 携带首页正文</div>
+      <div class="app-win">
+        <header>
+          <span id="appTitle">Trae Code</span>
+          <span class="pill" id="appPill">等待你点输入框</span>
+        </header>
+        <div class="app-body">
+          <aside class="side">
+            <b>Agent</b>
+            <div class="on">Chat</div>
+            <div style="padding:6px 8px">History</div>
+          </aside>
+          <div class="chat">
+            <div class="chat-scroll">
+              <div class="bubble">从首页跳转过来。先点底部输入框，再按 Soft Pad「粘贴」；或开麦听指令。</div>
+            </div>
+            <div class="composer-box" id="composer" tabindex="0" role="textbox">点击这里聚焦输入框…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form B -->
+    <div class="carry-stack" id="carryStack" aria-label="Soft Pad 携带条">
+      <div class="carry-bar">
+        <div class="carry-top">
+          <div class="carry-badge" title="携带中的内容条数">
+            <span class="ico">OT</span>
+            <span>+<span class="n" id="carryCount">1</span></span>
+          </div>
+          <div class="meta">
+            <span class="cu-pill" id="cuPill">跟随 Trae Code</span>
+            <button type="button" class="icon-sq" id="btnExpand" title="展开完整 Soft Pad（形态A）">⤢</button>
+            <button type="button" class="icon-sq" id="btnCloseCarry" title="关闭携带">×</button>
+          </div>
+        </div>
+        <div class="carry-preview"><b>携带：</b><span id="carryPreview"></span></div>
+        <div class="carry-actions">
+          <button type="button" class="act" id="btnMic" title="听指令">🎙</button>
+          <button type="button" class="act primary" id="btnPaste" title="粘贴到输入框" disabled>⇢|</button>
+          <button type="button" class="act" id="btnQuick" title="快捷" data-toast="快捷（示意）">⚡</button>
+          <button type="button" class="act" id="btnNew" title="新建" data-toast="新建对话（示意）">💬+</button>
+          <button type="button" class="act ghost" id="btnClear" title="清除携带">⊘</button>
+          <button type="button" class="act spark" title="更多" data-toast="更多（示意）">✦</button>
+        </div>
+      </div>
+      <div class="listen-bar" id="listenBar">
+        <div class="listen-mic" aria-hidden="true">🎙</div>
+        <div class="listen-copy">
+          <strong>聆听中 · 可说：粘贴、发送、继续、新建、取消</strong>
+          <span>粘贴 → 写入输入框 · 发送 → 粘贴并 Enter · 取消 → 退出聆听</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form A (expand) -->
+    <div class="full-pad" id="fullPad" aria-label="完整 Soft Pad">
+      <div class="agents">
+        <span class="on">TC</span><span>TW</span><span>CG</span><span>MM</span><span>QB</span><span>+8</span>
+      </div>
+      <div class="grid">
+        <button class="k" type="button" tabindex="-1">⏻</button>
+        <button class="k" type="button" tabindex="-1">⚡</button>
+        <button class="k" type="button" tabindex="-1">⌘</button>
+        <button class="k" type="button" tabindex="-1">×</button>
+        <button class="k" type="button" tabindex="-1">↑</button>
+        <button class="k" type="button" tabindex="-1">⌕</button>
+        <button class="k" type="button" tabindex="-1">💬</button>
+        <button class="k" type="button" tabindex="-1">⇥</button>
+        <button class="k" type="button" tabindex="-1">←</button>
+        <button class="k" type="button" tabindex="-1">↓</button>
+        <button class="k" type="button" tabindex="-1">→</button>
+        <button class="k" type="button" tabindex="-1">⎇</button>
+        <button class="k paste wide" type="button" id="btnPasteFull">📋 粘贴携带</button>
+        <button class="k wide" type="button" tabindex="-1">📋↓</button>
+      </div>
+      <div class="full-input">底条示意 · 非第二输入源（内容仍来自首页）</div>
+      <button type="button" class="back" id="btnCollapse">← 回到紧凑携带条（形态B）</button>
+    </div>
+
+    <div class="mats-float" id="matsFloat">
+      <h3>长期素材 · materials</h3>
+      <ul style="margin:0;padding-left:16px">
+        <li><b>handoff · 刚跳转</b> — 首页正文已归档</li>
+        <li>已加入 · 口述 1</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="demo-dock">
+    <div class="state-switch" role="tablist">
+      <button type="button" class="on" data-step="0">首页</button>
+      <button type="button" data-step="1">携带B</button>
+      <button type="button" data-step="2">点输入框</button>
+      <button type="button" data-step="3">粘贴</button>
+      <button type="button" data-step="4">听指令</button>
+      <button type="button" data-step="5">展开A</button>
+      <button type="button" data-step="6">资料</button>
+    </div>
+    <div class="demo-note">形态B 默认 · 形态A 展开</div>
+  </div>
+
+  <script>
+(function () {
+  var draftEl = document.getElementById('draft');
+  var home = document.getElementById('home');
+  var agentScene = document.getElementById('agentScene');
+  var carryStack = document.getElementById('carryStack');
+  var listenBar = document.getElementById('listenBar');
+  var fullPad = document.getElementById('fullPad');
+  var composer = document.getElementById('composer');
+  var btnPaste = document.getElementById('btnPaste');
+  var appTitle = document.getElementById('appTitle');
+  var cuPill = document.getElementById('cuPill');
+  var deskLabel = document.getElementById('deskLabel');
+  var appPill = document.getElementById('appPill');
+  var carryPreview = document.getElementById('carryPreview');
+  var matsFloat = document.getElementById('matsFloat');
+  var toastEl = document.getElementById('toast');
+  var stepBtns = [].slice.call(document.querySelectorAll('.state-switch [data-step]'));
+  var targetName = 'Trae Code';
+  var carryText = '';
+  var step = 0;
+  var listening = false;
+  var toastTimer;
+
+  function draftText() { return String(draftEl.value || '').trim(); }
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
+  }
+  function previewOf(text) {
+    var t = String(text || '').replace(/\s+/g, ' ').trim();
+    return t.length > 56 ? t.slice(0, 56) + '…' : t;
+  }
+  function syncCta() {
+    var empty = !draftText();
+    document.getElementById('btnPrimary').disabled = empty;
+    document.querySelectorAll('.hn-probe-jump').forEach(function (b) { b.disabled = empty; });
+  }
+
+  function showB(show) {
+    carryStack.classList.toggle('on', !!show);
+    if (!show) listenBar.classList.remove('on');
+  }
+  function showA(show) {
+    fullPad.classList.toggle('on', !!show);
+  }
+
+  function setStep(n, opts) {
+    opts = opts || {};
+    step = n;
+    stepBtns.forEach(function (b) {
+      b.classList.toggle('on', Number(b.getAttribute('data-step')) === n);
+    });
+
+    home.classList.toggle('on', n === 0);
+    agentScene.classList.toggle('on', n >= 1 && n <= 5);
+    matsFloat.classList.toggle('on', n === 6);
+
+    if (n === 0) {
+      showB(false); showA(false); listening = false;
+      return;
+    }
+
+    carryText = carryText || draftText() || '（示例正文）';
+    appTitle.textContent = targetName;
+    cuPill.textContent = '跟随 ' + targetName;
+    deskLabel.textContent = '已打开 ' + targetName + ' · Soft Pad 形态B 携带首页正文';
+    carryPreview.textContent = previewOf(carryText);
+
+    if (n === 5) {
+      showB(false); showA(true);
+      composer.className = 'composer-box focused';
+      composer.textContent = '│ 光标在此';
+      appPill.textContent = '完整键面（形态A）';
+      if (!opts.silent) toast('已展开完整 Soft Pad');
+      return;
+    }
+
+    showA(false);
+    showB(n >= 1 && n <= 4);
+    listening = n === 4;
+    listenBar.classList.toggle('on', listening);
+
+    if (n === 1) {
+      composer.className = 'composer-box';
+      composer.textContent = '点击这里聚焦输入框…';
+      btnPaste.disabled = true;
+      appPill.textContent = '等待你点输入框';
+      if (!opts.silent) toast('已打开 ' + targetName + ' · 形态B 带着首页内容');
+    }
+    if (n === 2) {
+      composer.className = 'composer-box focused';
+      composer.textContent = '│ 光标在此 — 可以粘贴了';
+      btnPaste.disabled = false;
+      appPill.textContent = '输入框已聚焦';
+      if (!opts.silent) toast('输入框已聚焦 · 可粘贴或开麦');
+    }
+    if (n === 3) {
+      composer.className = 'composer-box focused has-text';
+      composer.textContent = carryText;
+      btnPaste.disabled = false;
+      appPill.textContent = '已粘贴 · 请确认发送';
+      if (!opts.silent) toast('已粘贴首页内容');
+    }
+    if (n === 4) {
+      composer.className = 'composer-box focused' + (composer.classList.contains('has-text') || step === 3 ? ' has-text' : '');
+      if (!composer.classList.contains('has-text')) {
+        composer.className = 'composer-box focused';
+        composer.textContent = '│ 光标在此 — 可说「粘贴」';
+      }
+      btnPaste.disabled = false;
+      appPill.textContent = '聆听中';
+      if (!opts.silent) toast('聆听中 · 可说粘贴 / 发送 / 取消');
+    }
+    if (n === 6) {
+      showB(false); showA(false); agentScene.classList.remove('on');
+      if (!opts.silent) toast('首页正文已写入长期素材');
+    }
+  }
+
+  function jumpTo(name) {
+    if (!draftText()) { toast('请先在首页输入内容'); return; }
+    targetName = name;
+    carryText = draftText();
+    setStep(1);
+  }
+
+  document.getElementById('btnPrimary').addEventListener('click', function () {
+    jumpTo(this.getAttribute('data-jump') || 'Cursor');
+  });
+  document.querySelectorAll('.hn-probe-jump').forEach(function (b) {
+    b.addEventListener('click', function () { jumpTo(b.getAttribute('data-jump')); });
+  });
+  document.querySelectorAll('[data-toast]').forEach(function (el) {
+    el.addEventListener('click', function () { toast(el.getAttribute('data-toast')); });
+  });
+  draftEl.addEventListener('input', syncCta);
+  syncCta();
+
+  composer.addEventListener('click', function () {
+    if (step < 1 || step > 4) return;
+    if (step === 3) return;
+    setStep(2);
+  });
+
+  btnPaste.addEventListener('mousedown', function (e) { e.preventDefault(); });
+  btnPaste.addEventListener('click', function () {
+    if (btnPaste.disabled) { toast('请先点击 ' + targetName + ' 输入框'); return; }
+    setStep(3);
+  });
+  document.getElementById('btnPasteFull').addEventListener('mousedown', function (e) { e.preventDefault(); });
+  document.getElementById('btnPasteFull').addEventListener('click', function () {
+    showA(false); showB(true); setStep(3);
+  });
+
+  document.getElementById('btnMic').addEventListener('click', function () {
+    if (step < 1) return;
+    setStep(4);
+  });
+  document.getElementById('btnClear').addEventListener('click', function () {
+    showB(false); toast('已清除携带');
+  });
+  document.getElementById('btnCloseCarry').addEventListener('click', function () {
+    showB(false); toast('已关闭携带条');
+  });
+  document.getElementById('btnExpand').addEventListener('click', function () { setStep(5); });
+  document.getElementById('btnCollapse').addEventListener('click', function () { setStep(2); });
+
+  stepBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      var n = Number(b.getAttribute('data-step'));
+      if (n >= 1 && !carryText) carryText = draftText() || '（示例正文）';
+      setStep(n);
+    });
+  });
+})();
+  </script>
+</body>
+</html>

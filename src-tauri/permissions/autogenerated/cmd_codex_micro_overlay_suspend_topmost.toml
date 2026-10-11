@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-codex-micro-overlay-suspend-topmost"
+description = "Enables the cmd_codex_micro_overlay_suspend_topmost command without any pre-configured scope."
+commands.allow = ["cmd_codex_micro_overlay_suspend_topmost"]
+
+[[permission]]
+identifier = "deny-cmd-codex-micro-overlay-suspend-topmost"
+description = "Denies the cmd_codex_micro_overlay_suspend_topmost command without any pre-configured scope."
+commands.deny = ["cmd_codex_micro_overlay_suspend_topmost"]

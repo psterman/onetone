@@ -41,6 +41,22 @@ assert.doesNotMatch(src, /发送成功/);
 assert.match(src, /function refresh\s*\(/);
 assert.match(src, /mountedHost/);
 assert.doesNotMatch(src, /removeAttribute\(['"]data-hpp-bound['"]\)/);
+assert.match(src, /function collectMaterial\s*\(/);
+assert.match(src, /tray_collect/);
+assert.match(src, /bindTrayCollectBridge/);
+assert.match(src, /bindTrayCollectToJs/);
+assert.match(src, /drainPendingCollects/);
+assert.match(src, /cmd_tray_collect_drain/);
+assert.match(src, /Soft Pad 拖入/);
+assert.match(src, /materialsForTray/);
+assert.match(src, /clearMaterials/);
+assert.match(src, /kind === 'clear'/);
+assert.match(src, /kind === 'remove'/);
+assert.doesNotMatch(src, /name:\s*'拖入的文本'/);
+assert.match(src, /function beginMaterialCollection\s*\(/);
+assert.match(src, /function getMaterialSummary\s*\(/);
+assert.match(src, /function removeMaterial\s*\(/);
+assert.match(src, /function subscribeMaterials\s*\(/);
 
 function makeEl(tag, attrs) {
   const el = {
@@ -232,6 +248,8 @@ function matchAttrSel(node, sel) {
         delete store[k];
       }
     },
+    setTimeout,
+    clearTimeout,
     console
   };
   ctx.globalThis = ctx;
@@ -273,7 +291,11 @@ function matchAttrSel(node, sel) {
 {
   const store = Object.create(null);
   const keydownListeners = [];
+  const hostListenerLog = [];
   const host = makeEl('div', { id: 'homePromptPrepHost' });
+  host.addEventListener = function (type, fn, opts) {
+    hostListenerLog.push({ type, fn, opts });
+  };
   const doc = {
     activeElement: null,
     getElementById(id) {
@@ -303,6 +325,8 @@ function matchAttrSel(node, sel) {
         delete store[k];
       }
     },
+    setTimeout,
+    clearTimeout,
     console,
     Promise
   };
@@ -322,20 +346,31 @@ function matchAttrSel(node, sel) {
     assemblyMeta: { collected: 1, included: 1, excluded: 0, chars: 1, tokensApprox: 1 }
   });
 
-  API.ensureMounted();
+  // Collapsed by default — must expand before paint/bind.
+  API.expand();
+  assert.ok(API.isExpanded(), 'expand opens prep desk');
+  assert.equal(host.getAttribute('data-hpp-bound'), '1', 'bound after first expand');
+  assert.ok(hostListenerLog.length > 0, 'first expand must attach host listeners');
+  const listenerCountAfterExpand = hostListenerLog.length;
+  assert.ok(
+    hostListenerLog.some((e) => e.type === 'click'),
+    'click delegation must exist after expand'
+  );
+
   const body1 = API.__testOnly.getMountedBodyEl();
-  assert.ok(body1, 'body el after first mount');
+  assert.ok(body1, 'body el after first expand');
   assert.equal(API.__testOnly.getMountedHost(), host);
-  assert.equal(host.getAttribute('data-hpp-bound'), '1');
 
   API.ensureMounted();
   const body2 = API.__testOnly.getMountedBodyEl();
   assert.strictEqual(body1, body2, 'ensureMounted must not replace body node');
   assert.strictEqual(API.__testOnly.getMountedHost(), host);
+  assert.equal(hostListenerLog.length, listenerCountAfterExpand, 'ensureMounted must not rebind');
 
   API.refresh();
   const body3 = API.__testOnly.getMountedBodyEl();
   assert.strictEqual(body1, body3, 'refresh must not replace body node');
+  assert.equal(hostListenerLog.length, listenerCountAfterExpand, 'refresh must not rebind');
 
   // Model round-trip for multiline (VM textContent; not browser innerText proof)
   assert.equal(API.__testOnly.getModel().draft.body, 'a\nb');
@@ -347,6 +382,318 @@ function matchAttrSel(node, sel) {
   API.ensureMounted();
   API.ensureMounted();
   assert.equal(keydownListeners.length, listenersBefore || keydownListeners.length);
+
+  // collapse keeps bound + listeners; re-expand rebuilds content only
+  API.collapse();
+  assert.equal(API.isExpanded(), false);
+  assert.equal(host.getAttribute('data-hpp-bound'), '1', 'collapse must keep data-hpp-bound');
+  assert.equal(hostListenerLog.length, listenerCountAfterExpand, 'collapse must not rebind');
+  assert.equal(API.__testOnly.getMountedHost(), null);
+
+  API.expand();
+  assert.ok(API.isExpanded());
+  assert.equal(host.getAttribute('data-hpp-bound'), '1', 'bound stays 1 after re-expand');
+  assert.equal(
+    hostListenerLog.length,
+    listenerCountAfterExpand,
+    're-expand must not duplicate addEventListener'
+  );
+  const body4 = API.__testOnly.getMountedBodyEl();
+  assert.ok(body4, 'body el after re-expand');
+  assert.equal(API.__testOnly.getMountedHost(), host);
+
+  // Click still reaches onHostClick (delegation survived collapse)
+  const mainBtn = host.querySelector('[data-hpp-main]');
+  assert.ok(mainBtn, 'main action after re-expand');
+  const clickHandler = hostListenerLog.find((e) => e.type === 'click');
+  assert.ok(clickHandler && clickHandler.fn, 'click handler retained');
+  clickHandler.fn({
+    target: mainBtn,
+    preventDefault() {},
+    stopPropagation() {}
+  });
+}
+
+// --- Material public API (Slice B) ---
+{
+  const store = Object.create(null);
+  let pickReject = false;
+  let pickPathValue = 'E:/demo/shot.png';
+  let ipcCalls = 0;
+  const host = makeEl('div', { id: 'homePromptPrepHost' });
+  const hostListenerLog = [];
+  host.addEventListener = function (type, fn) {
+    hostListenerLog.push({ type, fn });
+  };
+  const doc = {
+    activeElement: null,
+    getElementById(id) {
+      return id === 'homePromptPrepHost' ? host : null;
+    },
+    querySelector() {
+      return null;
+    },
+    addEventListener() {},
+    removeEventListener() {}
+  };
+  host.ownerDocument = doc;
+  const ctx = {
+    window: {},
+    globalThis: null,
+    document: doc,
+    localStorage: {
+      getItem(k) {
+        return store[k] != null ? store[k] : null;
+      },
+      setItem(k, v) {
+        store[k] = String(v);
+      },
+      removeItem(k) {
+        delete store[k];
+      }
+    },
+    navigator: {
+      clipboard: {
+        readText() {
+          return Promise.resolve('hello paste');
+        },
+        writeText() {
+          return Promise.resolve();
+        }
+      }
+    },
+    OneToneIpc: {
+      invoke(cmd, args) {
+        ipcCalls += 1;
+        if (cmd === 'cmd_pick_path') {
+          if (pickReject) return Promise.reject(new Error('no_picker'));
+          return Promise.resolve({ path: pickPathValue });
+        }
+        return Promise.resolve({});
+      }
+    },
+    prompt() {
+      return '';
+    },
+    setTimeout,
+    clearTimeout,
+    console,
+    Promise
+  };
+  ctx.globalThis = ctx;
+  ctx.window = ctx;
+  vm.runInNewContext(src, ctx);
+  const API = ctx.OneToneHomePromptPrep;
+
+  // 1 paste → text
+  const pasteRes = await API.collectMaterial('paste', { text: 'from options' });
+  assert.equal(pasteRes.outcome, 'added');
+  assert.equal(pasteRes.material.kind, 'text');
+  assert.ok(pasteRes.material.id);
+  assert.equal(API.getMaterialSummary().byKind.text, 1);
+
+  // 6 subscribe immediate
+  const notes = [];
+  const unsub = API.subscribeMaterials((s) => notes.push(s));
+  assert.equal(notes.length, 1, 'subscribe pushes current summary immediately');
+  assert.equal(notes[0].count, 1);
+
+  // 2 empty path cancelled, no IPC
+  ipcCalls = 0;
+  const cancelPath = await API.collectMaterial('file', { path: '' });
+  assert.equal(cancelPath.outcome, 'cancelled');
+  assert.equal(ipcCalls, 0);
+  assert.equal(API.getMaterialSummary().count, 1);
+
+  // 3 picker reject → failed
+  pickReject = true;
+  const failPick = await API.collectMaterial('image');
+  assert.equal(failPick.outcome, 'failed');
+  assert.equal(API.getMaterialSummary().count, 1);
+  pickReject = false;
+
+  // 4 URL cancel
+  const urlCancel = await API.collectMaterial('url', { url: '' });
+  assert.equal(urlCancel.outcome, 'cancelled');
+
+  // 7 add notifies once more
+  const beforeAdd = notes.length;
+  await API.collectMaterial('file', { path: 'E:/a/b.md' });
+  assert.equal(notes.length, beforeAdd + 1, 'add notifies once');
+
+  // 5 collapsed collect: no expand, no full DOM rebuild
+  API.collapse();
+  assert.equal(API.isExpanded(), false);
+  host.innerHTML = '';
+  const listenersBeforeCollect = hostListenerLog.length;
+  await API.collectMaterial('paste', { text: 'while collapsed' });
+  assert.equal(API.isExpanded(), false, 'collect must never expand');
+  assert.ok(!host.querySelector('.hpp-root'), 'collapsed collect must not paint full desk');
+  assert.equal(hostListenerLog.length, listenersBeforeCollect, 'collapsed collect must not rebind');
+
+  // 9 remove invalidates assembly/channel/receipt
+  API._setModel({
+    phase: 'ASSEMBLED',
+    collectionId: 'c_keep',
+    materials: [
+      { id: 'm1', kind: 'text', name: 'n', content: 'x', included: true },
+      { id: 'm2', kind: 'file', name: 'f', path: 'p', included: true }
+    ],
+    draft: { title: '', body: '' },
+    channel: { agentId: 'x', name: 'X' },
+    receipt: { filled: true },
+    assembledMd: '# old',
+    assembledAt: 't',
+    assemblyMeta: { collected: 2 }
+  });
+  const rm = API.removeMaterial('m1');
+  assert.equal(rm.removed, true);
+  assert.equal(rm.summary.count, 1);
+  assert.equal(rm.summary.phase, 'COLLECTING');
+  const afterRm = API.__testOnly.getModel();
+  assert.equal(afterRm.assembledMd, '');
+  assert.equal(afterRm.channel, null);
+  assert.equal(afterRm.receipt, null);
+  assert.equal(afterRm.assemblyMeta, null);
+
+  // 10 HANDING_OFF busy
+  API._setModel({
+    phase: 'HANDING_OFF',
+    collectionId: 'c_busy',
+    materials: [{ id: 'mx', kind: 'text', name: 'n', included: true }],
+    draft: { title: '', body: '' },
+    channel: { agentId: 'x' },
+    receipt: null,
+    assembledMd: '# x'
+  });
+  const busyRm = API.removeMaterial('mx');
+  assert.equal(busyRm.removed, false);
+  assert.equal(busyRm.reason, 'busy');
+  assert.equal(API.__testOnly.getModel().materials.length, 1);
+  const busyCollect = await API.collectMaterial('paste', { text: 'nope' });
+  assert.equal(busyCollect.outcome, 'busy');
+  const busyBegin = API.beginMaterialCollection({ resetIfHandedOff: true });
+  assert.equal(busyBegin.outcome, 'busy');
+  assert.equal(busyBegin.reset, false);
+
+  // 11 HANDED_OFF begin resets — no mix
+  API._setModel({
+    phase: 'HANDED_OFF',
+    collectionId: 'c_old',
+    materials: [{ id: 'old1', kind: 'text', name: 'old', included: true }],
+    draft: { title: '', body: '' },
+    channel: { agentId: 'codex', name: 'Codex' },
+    receipt: { filled: true },
+    assembledMd: '# handed'
+  });
+  const began = API.beginMaterialCollection({
+    scopeId: 'voice-pilot',
+    resetIfHandedOff: true
+  });
+  assert.equal(began.reset, true);
+  assert.equal(began.outcome, 'ok');
+  assert.notEqual(began.collectionId, 'c_old');
+  assert.equal(API.getMaterialSummary().count, 0);
+  assert.equal(API.getMaterialSummary().phase, 'EMPTY');
+  assert.equal(API.getMaterialSummary().scopeId, 'voice-pilot');
+  await API.collectMaterial('paste', { text: 'fresh' });
+  const sum = API.getMaterialSummary();
+  assert.equal(sum.count, 1);
+  assert.equal(sum.refs[0].name, 'fresh');
+  assert.ok(!sum.refs.some((r) => r.id === 'old1'));
+
+  // 8 unsubscribe
+  const afterUnsubBase = notes.length;
+  unsub();
+  unsub(); // idempotent
+  await API.collectMaterial('url', { url: 'https://example.com' });
+  assert.equal(notes.length, afterUnsubBase, 'unsubscribed listener must not fire');
+
+  // 12 continuous collect does not grow host listeners (collapsed)
+  API.collapse();
+  const n0 = hostListenerLog.length;
+  await API.collectMaterial('paste', { text: 'a' });
+  await API.collectMaterial('paste', { text: 'b' });
+  assert.equal(hostListenerLog.length, n0);
+
+  // 13 revision gate: draft edit invalidates assembledMd reuse
+  API._setModel({
+    phase: 'ASSEMBLED',
+    collectionId: 'c_rev',
+    materials: [],
+    handoffs: [],
+    draft: { title: 't', body: 'v1' },
+    channel: null,
+    receipt: null,
+    assembledMd: '# old\nv1\n',
+    assembledAt: 't0',
+    contentRevision: 1,
+    assembledRevision: 1,
+    carry: { active: false, targetKind: null, updatedAt: null, generation: 0 }
+  });
+  API.setDraftBody('v2', { skipSync: true });
+  const mRev = API.__testOnly.getModel();
+  assert.equal(mRev.contentRevision, 2);
+  assert.notEqual(mRev.assembledRevision, mRev.contentRevision);
+  const ensured = API.ensureAssembled();
+  assert.ok(String(ensured.md).includes('v2'));
+  assert.equal(API.__testOnly.getModel().assembledRevision, 2);
+
+  // 14 handoff kind rejected from materials; archive goes to handoffs[]
+  assert.equal(API.addMaterial({ kind: 'handoff', name: 'bad' }), null);
+  const beforeHo = (API.listHandoffs() || []).length;
+  API.archiveHandoff({ targetKind: 'traeCode', outcome: 'clipboard_ready' });
+  assert.equal(API.listHandoffs().length, beforeHo + 1);
+  assert.equal(API.listHandoffs()[0].targetKind, 'traeCode');
+  assert.ok(!API.getMaterialSummary().refs.some((r) => r.kind === 'handoff'));
+
+  // 15 carry dismiss keeps materials; restart migrate clears carry.active
+  API.setCarryActive('minimax');
+  assert.equal(API.getTraySnapshot().carry.active, true);
+  const matsBefore = API.getMaterialSummary().count;
+  await API.dismissCarry();
+  assert.equal(API.getTraySnapshot().carry.active, false);
+  assert.equal(API.getMaterialSummary().count, matsBefore);
+  const raw = JSON.parse(ctx.localStorage.getItem('onetone.homePromptPrep'));
+  raw.carry = { active: true, targetKind: 'x', updatedAt: 't', generation: 3 };
+  ctx.localStorage.setItem('onetone.homePromptPrep', JSON.stringify(raw));
+  const reloaded = API._loadModel();
+  assert.equal(reloaded.carry.active, false, 'restart must clear carry.active');
+  assert.ok(Array.isArray(reloaded.handoffs));
+
+  // 16 unified attach: detect image vs file from extension
+  assert.equal(API.guessAttachKind('C:/a/shot.PNG'), 'image');
+  assert.equal(API.guessAttachKind('notes.md'), 'file');
+  const imgAdd = await API.collectMaterial('attach', { path: 'E:/demo/photo.jpg' });
+  assert.equal(imgAdd.outcome, 'added');
+  assert.equal(imgAdd.material.kind, 'image');
+  const fileAdd = await API.collectMaterial('attach', { path: 'E:/demo/spec.md' });
+  assert.equal(fileAdd.outcome, 'added');
+  assert.equal(fileAdd.material.kind, 'file');
+
+  // 17 begin after ASSEMBLED must keep materials (quiet attach calls begin every time)
+  API._setModel({
+    phase: 'ASSEMBLED',
+    collectionId: 'c_keep_mats',
+    materials: [
+      { id: 'k1', kind: 'file', name: 'a.md', path: 'a.md', included: true },
+      { id: 'k2', kind: 'image', name: 'b.png', path: 'b.png', included: true }
+    ],
+    handoffs: [],
+    draft: { title: '', body: '' },
+    channel: null,
+    receipt: null,
+    assembledMd: '# old',
+    assembledAt: 't',
+    contentRevision: 3,
+    assembledRevision: 3,
+    carry: { active: false, targetKind: null, updatedAt: null, generation: 0 }
+  });
+  const keep = API.beginMaterialCollection({ scopeId: 'voice-pilot' });
+  assert.equal(keep.reset, false);
+  assert.equal(API.getMaterialSummary().count, 2);
+  assert.equal(API.getMaterialSummary().phase, 'COLLECTING');
+  assert.equal(API.__testOnly.getModel().assembledMd, '');
 }
 
 console.log('ok home-prompt-prep');

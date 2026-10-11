@@ -227,21 +227,46 @@ pub fn pick_folder_dialog() -> Result<Option<PathBuf>, String> {
     pick_folder_dialog_desc("选择文件夹")
 }
 
+/// Invisible TopMost owner so WinForms dialogs surface above Soft Pad / always-on-top.
+#[cfg(windows)]
+fn winforms_topmost_owner_ps() -> &'static str {
+    r#"
+$owner = New-Object System.Windows.Forms.Form
+$owner.TopMost = $true
+$owner.ShowInTaskbar = $false
+$owner.FormBorderStyle = 'None'
+$owner.Opacity = 0
+$owner.Size = New-Object System.Drawing.Size(1, 1)
+$owner.StartPosition = 'Manual'
+$owner.Location = New-Object System.Drawing.Point(-32000, -32000)
+$owner.Show()
+"#
+}
+
 #[cfg(windows)]
 pub fn pick_folder_dialog_desc(description: &str) -> Result<Option<PathBuf>, String> {
     // ponytail: WinForms FolderBrowser via PowerShell — avoids new crate / COM glue.
     // CREATE_NO_WINDOW + Hidden: no black console flash under Tauri.
+    // TopMost owner: Soft Pad overlay is always_on_top and otherwise buries the dialog.
     let desc = description.replace('\'', "''");
     let script = format!(
         r#"
 Add-Type -AssemblyName System.Windows.Forms | Out-Null
+{owner}
 $d = New-Object System.Windows.Forms.FolderBrowserDialog
 $d.Description = '{desc}'
 $d.ShowNewFolderButton = $true
-if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
-  Write-Output $d.SelectedPath
+try {{
+  if ($d.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {{
+    Write-Output $d.SelectedPath
+  }}
+}} finally {{
+  $owner.Close()
+  $owner.Dispose()
 }}
-"#
+"#,
+        owner = winforms_topmost_owner_ps(),
+        desc = desc
     );
     run_winforms_path_dialog(&script)
 }
@@ -253,20 +278,28 @@ pub fn pick_file_dialog() -> Result<Option<PathBuf>, String> {
 
 #[cfg(windows)]
 pub fn pick_file_dialog_desc(title: &str) -> Result<Option<PathBuf>, String> {
-    // ponytail: same WinForms+PowerShell pattern as folder picker.
+    // ponytail: same WinForms+PowerShell pattern as folder picker + TopMost owner.
     let title = title.replace('\'', "''");
     let script = format!(
         r#"
 Add-Type -AssemblyName System.Windows.Forms | Out-Null
+{owner}
 $d = New-Object System.Windows.Forms.OpenFileDialog
 $d.Title = '{title}'
 $d.Filter = 'All files (*.*)|*.*'
 $d.CheckFileExists = $true
 $d.Multiselect = $false
-if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {{
-  Write-Output $d.FileName
+try {{
+  if ($d.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {{
+    Write-Output $d.FileName
+  }}
+}} finally {{
+  $owner.Close()
+  $owner.Dispose()
 }}
-"#
+"#,
+        owner = winforms_topmost_owner_ps(),
+        title = title
     );
     run_winforms_path_dialog(&script)
 }

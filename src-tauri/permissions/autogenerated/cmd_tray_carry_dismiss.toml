@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-tray-carry-dismiss"
+description = "Enables the cmd_tray_carry_dismiss command without any pre-configured scope."
+commands.allow = ["cmd_tray_carry_dismiss"]
+
+[[permission]]
+identifier = "deny-cmd-tray-carry-dismiss"
+description = "Denies the cmd_tray_carry_dismiss command without any pre-configured scope."
+commands.deny = ["cmd_tray_carry_dismiss"]

@@ -54,6 +54,7 @@ mod gaze_monitor;
 mod gemini_hook_setup;
 mod gesture_timing;
 mod habit_profile;
+mod home_tray_snapshot;
 mod input_aim_calibrate;
 mod input_ext;
 mod input_focus_aim;
@@ -1183,6 +1184,8 @@ pub fn run() {
             ipc::cmd_codex_micro_overlay_snap_position,
             ipc::cmd_codex_micro_overlay_set_minimized,
             ipc::cmd_codex_micro_overlay_fit_content,
+            ipc::cmd_codex_micro_overlay_set_mats_rail,
+            ipc::cmd_codex_micro_overlay_suspend_topmost,
             ipc::cmd_codex_micro_overlay_toggle_master,
             ipc::cmd_codex_micro_overlay_toggle_num_mode,
             ipc::cmd_codex_micro_overlay_toggle_pad_mode,
@@ -1196,6 +1199,13 @@ pub fn run() {
             ipc::cmd_cursor_beginner_disarm,
             ipc::cmd_cursor_beginner_run_slot,
             ipc::cmd_soft_pad_runtime_snapshot,
+            ipc::cmd_tray_snapshot_publish,
+            ipc::cmd_tray_snapshot_get,
+            ipc::cmd_tray_carry_dismiss,
+            ipc::cmd_tray_collect_from_soft_pad,
+            ipc::cmd_tray_inbox_write,
+            ipc::cmd_tray_collect_drain,
+            ipc::cmd_soft_pad_paste_only,
             ipc::cmd_soft_pad_set_follow,
             ipc::cmd_soft_pad_lane_page,
             ipc::cmd_soft_pad_set_purpose,

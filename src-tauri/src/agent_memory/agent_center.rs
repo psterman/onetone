@@ -64,6 +64,9 @@ pub struct AgentCenterActionArgs {
     pub project_hint: Option<String>,
     /// Optional client attempt id — normalized/replaced by backend if missing/illegal.
     pub attempt_id: Option<String>,
+    /// Homepage handoff: after focus, send Ctrl+V (clipboard already written by UI).
+    #[serde(default)]
+    pub paste_clipboard: Option<bool>,
 }
 
 /// Honest action result — sole truth for user-facing success semantics.
@@ -1839,6 +1842,7 @@ pub fn execute_agent_center_action(
     action_id: &str,
     project_hint: Option<&Path>,
     attempt_id: Option<&str>,
+    paste_clipboard: bool,
 ) -> AgentCenterActionResult {
     execute_agent_center_action_with(
         state,
@@ -1847,6 +1851,7 @@ pub fn execute_agent_center_action(
         action_id,
         project_hint,
         attempt_id,
+        paste_clipboard,
         &system_runner(),
         process_probe_cache(),
     )
@@ -1860,6 +1865,7 @@ pub(crate) fn execute_agent_center_action_with(
     action_id: &str,
     project_hint: Option<&Path>,
     attempt_id: Option<&str>,
+    paste_clipboard: bool,
     runner: &dyn ClaudeProbeRunner,
     cache: &ClaudeProbeCache,
 ) -> AgentCenterActionResult {
@@ -1879,6 +1885,7 @@ pub(crate) fn execute_agent_center_action_with(
         action_id,
         project_hint,
         &attempt,
+        paste_clipboard,
         runner,
         cache,
     );
@@ -1893,6 +1900,7 @@ fn execute_agent_center_action_inner(
     action_id: &str,
     project_hint: Option<&Path>,
     attempt: &str,
+    paste_clipboard: bool,
     runner: &dyn ClaudeProbeRunner,
     cache: &ClaudeProbeCache,
 ) -> AgentCenterActionResult {
@@ -1950,17 +1958,92 @@ fn execute_agent_center_action_inner(
         }
         AgentCenterExecutor::FocusApp { target } => {
             let app = window.app_handle();
-            match crate::app_chat_workflow::focus_composer_only(&app, target, 800) {
-                Ok(()) => {
-                    if let Some(k) = kind {
-                        crate::soft_pad_runtime::set_follow_pin(Some(k));
+            let duration_ms = state.cfg.lock().key_press_duration_ms.max(35);
+            if paste_clipboard {
+                // Cursor: UIA-verified composer then Ctrl+V (avoid pasting into editor).
+                // MiniMax / WorkBuddy: Electron webviews ignore PostMessage — dedicated
+                // screen-click + paste handoff.
+                let handoff = if target == CURSOR_APP_TARGET_ID {
+                    match crate::app_chat_workflow::focus_composer_for_send(
+                        &app,
+                        target,
+                        duration_ms.max(800),
+                    ) {
+                        Ok(()) => {
+                            let pasted = crate::keyboard::send_chord("Ctrl+V", duration_ms);
+                            if pasted {
+                                std::thread::sleep(std::time::Duration::from_millis(80));
+                                Ok(format!("composer_pasted:{target}"))
+                            } else {
+                                Err(format!("composer_focused_paste_failed:{target}"))
+                            }
+                        }
+                        Err(e) => Err(format!(
+                            "composer_focus_failed:{target}:{}:paste=false",
+                            e.reason("handoff")
+                        )),
                     }
-                    AgentCenterActionResult::verified_ok(Some(format!("focused:{target}")))
+                } else {
+                    match crate::app_chat_workflow::focus_chat_app_and_paste(
+                        &app,
+                        target,
+                        duration_ms.max(800),
+                    ) {
+                        Ok(detail) => Ok(detail),
+                        Err(e) => Err(format!(
+                            "chat_handoff_failed:{target}:{}:paste=false",
+                            e.reason("handoff")
+                        )),
+                    }
+                };
+                match handoff {
+                    Ok(detail) => {
+                        if let Some(k) = kind {
+                            crate::soft_pad_runtime::set_follow_pin(Some(k));
+                        }
+                        AgentCenterActionResult::verified_ok(Some(detail))
+                    }
+                    Err(detail) => {
+                        let _ = crate::app_chat_workflow::focus_app_window_only(&app, target);
+                        if let Some(k) = kind {
+                            crate::soft_pad_runtime::set_follow_pin(Some(k));
+                        }
+                        AgentCenterActionResult::attempted(Some(detail))
+                    }
                 }
-                Err(e) => AgentCenterActionResult::failed(
-                    "focus_failed",
-                    Some(e.reason("agent_center_focus")),
-                ),
+            } else {
+                match crate::app_chat_workflow::focus_composer_only(&app, target, 800) {
+                    Ok(()) => {
+                        if let Some(k) = kind {
+                            crate::soft_pad_runtime::set_follow_pin(Some(k));
+                        }
+                        AgentCenterActionResult::verified_ok(Some(format!("focused:{target}")))
+                    }
+                    Err(crate::app_chat_workflow::AppChatWorkflowError::InputNotFound) => {
+                        if let Some(k) = kind {
+                            crate::soft_pad_runtime::set_follow_pin(Some(k));
+                        }
+                        AgentCenterActionResult::attempted(Some(format!(
+                            "window_focused_composer_miss:{target}"
+                        )))
+                    }
+                    Err(e) => {
+                        if crate::app_chat_workflow::focus_app_window_only(&app, target).is_ok() {
+                            if let Some(k) = kind {
+                                crate::soft_pad_runtime::set_follow_pin(Some(k));
+                            }
+                            AgentCenterActionResult::attempted(Some(format!(
+                                "window_focus_fallback:{target}:{}",
+                                e.reason("agent_center_focus")
+                            )))
+                        } else {
+                            AgentCenterActionResult::failed(
+                                "focus_failed",
+                                Some(e.reason("agent_center_focus")),
+                            )
+                        }
+                    }
+                }
             }
         }
         AgentCenterExecutor::ProviderAction { provider, handler } => {
@@ -3290,6 +3373,32 @@ mod tests {
         assert!(u.ok && !u.verified);
         let v = AgentCenterActionResult::verified_ok(None);
         assert!(v.ok && v.verified);
+    }
+
+    #[test]
+    fn focus_app_composer_miss_is_attempted_not_failed() {
+        // Contract: homepage paste handoff — InputNotFound must not look like "未能打开".
+        let src = include_str!("agent_center.rs");
+        assert!(
+            src.contains("window_focused_composer_miss"),
+            "FocusApp must map InputNotFound → attempted (window focused)"
+        );
+        assert!(
+            src.contains("focus_composer_for_send"),
+            "Cursor paste handoff must use focus_composer_for_send (Agent input, not editor)"
+        );
+        assert!(
+            src.contains("focus_chat_app_and_paste"),
+            "MiniMax/WorkBuddy paste must use screen-click chat handoff"
+        );
+        assert!(
+            src.contains("composer_pasted:") || src.contains("chat_pasted:"),
+            "paste handoff must only claim paste after composer/chat focus"
+        );
+        let partial = AgentCenterActionResult::attempted(Some(
+            "window_focused_composer_miss:cursor-chat:paste=true".into(),
+        ));
+        assert!(partial.ok && !partial.verified);
     }
 
     #[test]

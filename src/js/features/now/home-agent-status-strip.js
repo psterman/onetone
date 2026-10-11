@@ -9,6 +9,12 @@
   var pollTimer = 0;
   var lastSnap = null;
   var hostEl = null;
+  /** Hero mode that already owns the story — suppress duplicate strip CTA. */
+  var heroMode = '';
+  var heroPrimaryId = '';
+  var heroProvider = '';
+  var heroProjectId = '';
+  var heroSessionId = '';
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -195,12 +201,51 @@
     );
   }
 
+  function shouldSuppress(row) {
+    if (!row) return true;
+    var target = row.target || {};
+    var sameProvider =
+      heroProvider && target.provider &&
+      String(heroProvider).toLowerCase() === String(target.provider).toLowerCase();
+    var sameSession = heroSessionId && target.sessionId && String(heroSessionId) === String(target.sessionId);
+    var sameProject =
+      heroProjectId && target.projectId &&
+      String(heroProjectId).toLowerCase() === String(target.projectId).toLowerCase();
+    var sameHero = sameProvider && (sameSession || sameProject || (!heroSessionId && !heroProjectId));
+    if (heroMode === 'running' && row.kind === 'working' && sameHero) return true;
+    // Hero attention/return/degraded already show the primary action.
+    if (heroMode === 'attention' && row.kind === 'attention') return true;
+    if (
+      heroMode === 'return' &&
+      (row.kind === 'resumable' || row.kind === 'attention')
+    ) {
+      return true;
+    }
+    if (heroMode === 'degraded' && (row.kind === 'failed' || row.kind === 'error')) {
+      return true;
+    }
+    if (heroPrimaryId === 'resume' && row.kind === 'resumable') return true;
+    if (heroPrimaryId === 'view_progress' && row.kind === 'attention') return true;
+    if (
+      (heroPrimaryId === 'confirm_project' || heroPrimaryId === 'pick_project') &&
+      row.kind === 'resumable'
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   function paint() {
     if (!hostEl || !hostEl.isConnected) {
       hostEl = document.getElementById('homeAgentStatusHost');
     }
     if (!hostEl) return;
     var row = pickStatus(lastSnap);
+    if (shouldSuppress(row)) {
+      hostEl.innerHTML = '';
+      hostEl.hidden = true;
+      return;
+    }
     hostEl.innerHTML = renderStrip(row);
     hostEl.hidden = !row;
   }
@@ -236,7 +281,13 @@
     }
   }
 
-  function start(host) {
+  function start(host, opts) {
+    opts = opts || {};
+    if (opts.heroMode != null) heroMode = String(opts.heroMode || '');
+    if (opts.primaryId != null) heroPrimaryId = String(opts.primaryId || '');
+    if (opts.provider != null) heroProvider = String(opts.provider || '');
+    if (opts.projectId != null) heroProjectId = String(opts.projectId || '');
+    if (opts.sessionId != null) heroSessionId = String(opts.sessionId || '');
     hostEl = host || document.getElementById('homeAgentStatusHost');
     if (!hostEl) return;
     if (hostEl.getAttribute('data-status-bound') !== '1') {
@@ -251,10 +302,16 @@
     }, POLL_MS);
   }
 
-  function ensureMounted() {
+  function ensureMounted(opts) {
+    opts = opts || {};
+    if (opts.heroMode != null) heroMode = String(opts.heroMode || '');
+    if (opts.primaryId != null) heroPrimaryId = String(opts.primaryId || '');
+    if (opts.provider != null) heroProvider = String(opts.provider || '');
+    if (opts.projectId != null) heroProjectId = String(opts.projectId || '');
+    if (opts.sessionId != null) heroSessionId = String(opts.sessionId || '');
     var host = document.getElementById('homeAgentStatusHost');
     if (!host) return;
-    start(host);
+    start(host, opts);
   }
 
   global.OneToneHomeAgentStatusStrip = {
@@ -267,6 +324,15 @@
     _setSnap: function (s) {
       lastSnap = s;
       paint();
-    }
+    },
+    _setHero: function (opts) {
+      opts = opts || {};
+      heroMode = String(opts.heroMode || '');
+      heroPrimaryId = String(opts.primaryId || '');
+      heroProvider = String(opts.provider || '');
+      heroProjectId = String(opts.projectId || '');
+      heroSessionId = String(opts.sessionId || '');
+    },
+    _shouldSuppress: shouldSuppress
   };
 })(typeof window !== 'undefined' ? window : globalThis);

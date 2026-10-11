@@ -1,5 +1,6 @@
 /**
- * Home Focus view — v1 situational canvas (quiet / attention / return / degraded).
+ * Home Focus view — situational cockpit (quiet / attention / return / degraded).
+ * Prep is a secondary launch card; full prep mounts on expand.
  */
 (function (global) {
   'use strict';
@@ -104,9 +105,7 @@
       '</div>' +
       deskRowChipsHtml(row) +
       '</div>' +
-      (act
-        ? '<span class="hn-desk-act">' + esc(act) + '</span>'
-        : '');
+      (act ? '<span class="hn-desk-act">' + esc(act) + '</span>' : '');
     if (opts.button) {
       return (
         '<button type="button" class="hn-desk-row' +
@@ -127,25 +126,10 @@
     );
   }
 
-  /** Agent living/continue/ledger live on Agent → 总览. Keep project gate + non-agent attention only. */
-  function deskZonesHtml(vm, mode) {
+  /** Non-agent attention rows only (project gate lives on Hero primary). */
+  function deskZonesHtml(vm) {
     var desk = (vm && vm.desk) || {};
     var parts = [];
-    if (desk.projectGate) {
-      var gate = desk.projectGate;
-      parts.push(
-        '<section class="hn-desk-zone hn-desk-zone--gate" aria-label="项目未确认">' +
-          '<header><span class="hn-desk-h">项目</span><span class="hn-desk-meta">未确认</span></header>' +
-          deskRowHtml(gate, {
-            button: true,
-            actId: gate.actId || 'pick_project',
-            act: gate.actLabel || '确认项目',
-            showNote: false
-          }) +
-          '</section>'
-      );
-    }
-    // Non-agent attention only (no Soft Pad / registry agent rows).
     var needsRows =
       desk.needsYouRows && desk.needsYouRows.length
         ? desk.needsYouRows
@@ -199,14 +183,282 @@
     return parts.length ? '<div class="hn-desk">' + parts.join('') + '</div>' : '';
   }
 
-  function dictateCtaHtml(opts) {
-    var listening = !!(opts && opts.listening);
+  function ctaToneClass(mode, primaryId) {
+    if (mode === 'attention') return ' hn-cta--attention';
+    if (mode === 'degraded' || primaryId === 'retry') return ' hn-cta--degraded';
+    return '';
+  }
+
+  function metaChip(vm) {
+    if (vm.mode === 'degraded') {
+      return { text: '依据不足', kind: 'err' };
+    }
+    if (!vm.confirmed && (vm.match === 'probable' || vm.match === 'unknown')) {
+      return { text: '未确认 · 不猜测', kind: 'warn' };
+    }
+    if (vm.mode === 'attention') {
+      return { text: '等待确认', kind: 'warn' };
+    }
+    if (vm.mode === 'running') {
+      return { text: '运行中', kind: '' };
+    }
+    if (vm.mode === 'quiet' && !vm.primary) {
+      return { text: '无需处理', kind: '' };
+    }
+    if (vm.confirmed || vm.match === 'exact') {
+      return { text: '已确认', kind: '' };
+    }
+    return { text: '当前', kind: '' };
+  }
+
+  function metaHtml(vm) {
+    var chip = metaChip(vm);
+    var when =
+      (vm.presence && vm.presence.line && '') ||
+      '';
+    // Prefer freshness from presence line tail or evidence
+    var whenLabel = '';
+    if (vm.presence && vm.presence.line) {
+      var parts = String(vm.presence.line).split('·');
+      if (parts.length) whenLabel = parts[parts.length - 1].trim();
+    }
+    if (!whenLabel && vm.evidence) {
+      for (var i = 0; i < vm.evidence.length; i++) {
+        if (vm.evidence[i].label === '新鲜度') {
+          whenLabel = vm.evidence[i].value;
+          break;
+        }
+      }
+    }
+    var chipClass =
+      'hn-chip' +
+      (chip.kind === 'warn' ? ' hn-chip--warn' : chip.kind === 'err' ? ' hn-chip--err' : '');
     return (
-      '<button type="button" class="hn-cta hn-cta--dictate" data-now-voice' +
-      (listening ? ' aria-pressed="true"' : '') +
+      '<p class="hn-meta">' +
+      '项目：<b>' +
+      esc(vm.projectName || '未知项目') +
+      '</b>' +
+      '<span class="' +
+      chipClass +
+      '"><span class="hn-chip-dot" aria-hidden="true"></span>' +
+      esc(chip.text) +
+      '</span>' +
+      (whenLabel ? '<span>' + esc(whenLabel) + '</span>' : '') +
+      '</p>'
+    );
+  }
+
+  function heroHtml(vm) {
+    vm = vm || {};
+    var mode = vm.mode || 'quiet';
+    var primary = vm.primary;
+    var secondary = vm.secondary;
+    var actions = '';
+    if (primary && primary.id && primary.label) {
+      actions +=
+        '<button type="button" class="hn-cta' +
+        ctaToneClass(mode, primary.id) +
+        '" data-hf-act="' +
+        esc(primary.id) +
+        '">' +
+        esc(primary.label) +
+        '</button>';
+    }
+    if (secondary && secondary.id && secondary.label) {
+      actions +=
+        '<button type="button" class="hn-text-btn" data-hf-act="' +
+        esc(secondary.id) +
+        '">' +
+        esc(secondary.label) +
+        '</button>';
+    }
+    return (
+      '<section class="hn-hero" aria-live="polite">' +
+      '<h1 class="hn-headline">' +
+      esc(vm.headline || '') +
+      '</h1>' +
+      '<p class="hn-assist">' +
+      esc(vm.assistance || '') +
+      '</p>' +
+      '<div class="hn-actions">' +
+      actions +
+      '</div>' +
+      metaHtml(vm) +
+      '</section>'
+    );
+  }
+
+  function quietContextLine(vm) {
+    var project = String(vm.projectName || '').trim();
+    var provider =
+      (vm.dto && vm.dto.provider && (vm.dto.provider.id || vm.dto.provider.name)) ||
+      '';
+    var agent =
+      String(provider).toLowerCase().indexOf('codex') >= 0
+        ? 'Codex'
+        : String(provider).toLowerCase().indexOf('claude') >= 0
+          ? 'Claude'
+          : String(provider).toLowerCase().indexOf('cursor') >= 0
+            ? 'Cursor'
+            : String(provider || '').trim();
+    if (!project && !agent) return '';
+    return (
+      '<p class="hn-quiet-context">' +
+      (project ? '当前项目：<b>' + esc(project) + '</b>' : '') +
+      (project && agent ? ' · ' : '') +
+      (agent ? esc(agent) : '') +
+      '</p>'
+    );
+  }
+
+  function quietMaterialSummaryHtml(summary) {
+    summary = summary || {};
+    var count = Number(summary.count) || 0;
+    if (count <= 0) return '';
+    var labels = {
+      text: '文字',
+      image: '图片',
+      file: '文件',
+      folder: '目录',
+      url: '网址',
+      voice: '口述'
+    };
+    var byKind = summary.byKind || {};
+    var bits = [];
+    Object.keys(byKind).forEach(function (k) {
+      if (!byKind[k]) return;
+      bits.push((labels[k] || k) + ' ' + byKind[k]);
+    });
+    var line =
+      '已加入 ' +
+      count +
+      ' 项' +
+      (bits.length ? ' · ' + bits.join(' · ') : '');
+    var chips = (summary.refs || [])
+      .map(function (r) {
+        if (!r || !r.id) return '';
+        var kindLabel = labels[r.kind] || '附件';
+        return (
+          '<span class="hn-mat-chip" data-hf-mat-id="' +
+          esc(r.id) +
+          '" title="' +
+          esc(kindLabel + ' · ' + (r.name || '')) +
+          '">' +
+          '<span class="hn-mat-chip__kind">' +
+          esc(kindLabel) +
+          '</span>' +
+          '<span class="hn-mat-chip__name">' +
+          esc(r.name || '素材') +
+          '</span>' +
+          '<button type="button" class="hn-mat-chip__x" data-hf-act="quiet_remove" data-hf-mat-id="' +
+          esc(r.id) +
+          '" aria-label="移除 ' +
+          esc(r.name || '素材') +
+          '">×</button></span>'
+        );
+      })
+      .join('');
+    var hint =
+      Number(summary.manualUploadCount) > 0
+        ? '<p class="hn-quiet-mat-hint">部分材料需在 Agent 中手动上传</p>'
+        : '';
+    return (
+      '<div class="hn-quiet-mat-summary" data-hn-mat-summary>' +
+      '<div class="hn-quiet-mat-head">' +
+      '<span class="hn-quiet-mat-count">' +
+      esc(line) +
+      '</span>' +
+      '<button type="button" class="hn-text-btn" data-hf-act="open_prep">整理</button>' +
+      '</div>' +
+      (chips ? '<div class="hn-quiet-mat-chips" aria-label="已加入的附件">' + chips + '</div>' : '') +
+      hint +
+      '</div>'
+    );
+  }
+
+  /** Secondary probe jump buttons (MiniMax / WorkBuddy / Cursor / Trae / …). */
+  function quietProbeJumpHtml(targets, disabled) {
+    targets = Array.isArray(targets) ? targets : [];
+    if (!targets.length) return '';
+    var bits = targets.map(function (t) {
+      if (!t || !t.kind) return '';
+      var label = t.label || t.kind;
+      return (
+        '<button type="button" class="hn-text-btn hn-probe-jump" data-hf-act="quick_handoff" data-hf-handoff-kind="' +
+        esc(t.kind) +
+        '"' +
+        (disabled ? ' disabled' : '') +
+        '>' +
+        esc('跳转 ' + label) +
+        '</button>'
+      );
+    });
+    return (
+      '<div class="hn-quiet-probe-jumps" aria-label="跳转到 Agent">' + bits.join('') + '</div>'
+    );
+  }
+
+  /**
+   * Quiet opening composer. opts:
+   *   draftText, draftPreview, handoffAct, handoffLabel, handoffDisabled, materialSummary, probeTargets
+   */
+  function quietComposerHtml(vm, opts) {
+    opts = opts || {};
+    var draft = String(opts.draftText || '');
+    var disabled = !draft.trim() || opts.handoffDisabled === true;
+    var act = opts.handoffAct || 'quick_handoff';
+    var label = opts.handoffLabel || '复制并打开 Agent';
+    return (
+      '<section class="hn-quiet-composer" data-hn-quiet-composer aria-label="今天想推进什么">' +
+      '<header class="hn-quiet-head">' +
+      '<h1 class="hn-headline">今天想推进什么？</h1>' +
+      '<p class="hn-assist">直接描述你想完成的工作，也可以加入现有材料。</p>' +
+      '</header>' +
+      '<div class="hn-composer">' +
+      '<textarea id="hnQuietDraft" class="hn-composer-input" rows="5" ' +
+      'aria-label="描述你想推进的工作" ' +
+      'placeholder="例如：把首页改得更直接，新用户打开就知道怎么开始……">' +
+      esc(draft) +
+      '</textarea>' +
+      '<div class="hn-composer-tools" aria-label="加入内容">' +
+      '<span class="hn-composer-tools-label">加入内容</span>' +
+      '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="paste">粘贴</button>' +
+      '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="attach">附件</button>' +
+      '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="url">网址</button>' +
+      '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="folder">目录</button>' +
+      '</div>' +
+      quietMaterialSummaryHtml(opts.materialSummary) +
+      '</div>' +
+      quietContextLine(vm) +
+      '<div class="hn-actions hn-quiet-actions">' +
+      '<button type="button" class="hn-cta" data-hf-act="' +
+      esc(act) +
+      '"' +
+      (disabled ? ' disabled' : '') +
       '>' +
-      (listening ? '倾听中…' : '开始听写') +
-      '</button>'
+      esc(label) +
+      '</button>' +
+      quietProbeJumpHtml(opts.probeTargets, disabled) +
+      (opts.resumeAvailable
+        ? '<button type="button" class="hn-text-btn" data-hf-act="restore_return">继续上次工作</button>'
+        : '') +
+      '<button type="button" class="hn-text-btn" data-hf-act="open_prep">任务复杂？先整理方案</button>' +
+      '</div>' +
+      '</section>'
+    );
+  }
+
+  function quietGateKeepHtml(opts) {
+    opts = opts || {};
+    var preview = String(opts.draftPreview || '').trim();
+    if (!preview) return '';
+    var short = preview.length > 80 ? preview.slice(0, 80) + '…' : preview;
+    return (
+      '<p class="hn-quiet-keep" data-hn-quiet-keep>' +
+      '已保留你的输入，确认项目后继续。' +
+      '<span class="hn-quiet-keep-preview">' +
+      esc(short) +
+      '</span></p>'
     );
   }
 
@@ -215,28 +467,39 @@
   }
 
   function promptPrepHostHtml() {
-    return '<div id="homePromptPrepHost" class="home-prompt-prep-host" data-home-prompt-prep></div>';
+    return (
+      '<div id="homePromptPrepHost" class="home-prompt-prep-host" data-home-prompt-prep data-hpp-expanded="0" hidden></div>'
+    );
   }
 
   function renderFocus(vm, opts) {
     opts = opts || {};
     vm = vm || {};
     var mode = vm.mode || 'quiet';
-
-    // Non-agent project gate only (Agent roster / living / continue moved to Agent → 总览).
-    var desk = deskZonesHtml(vm, mode);
+    var desk = deskZonesHtml(vm);
     var voice = opts.voiceHtml || '';
+    var showComposer = mode === 'quiet' && !vm.primary;
+    var showGateKeep = mode === 'quiet' && !!vm.primary;
+    var mainStage = showComposer
+      ? quietComposerHtml(vm, opts)
+      : heroHtml(vm) + (showGateKeep ? quietGateKeepHtml(opts) : '');
 
     return (
-      '<main class="hn-canvas hn-canvas--prep" data-mode="' +
+      '<main class="hn-canvas" data-mode="' +
       esc(mode) +
       '" data-hf-mode="' +
       esc(mode) +
-      '">' +
+      '" data-hf-primary="' +
+      esc((vm.primary && vm.primary.id) || '') +
+      '"' +
+      (showComposer ? ' data-hn-quiet-composer="1"' : '') +
+      '>' +
       '<p class="hn-brand">OneTone</p>' +
       navHtml('focus') +
+      mainStage +
       agentStatusHostHtml() +
       desk +
+      '<hr class="hn-divider" />' +
       promptPrepHostHtml() +
       '<aside class="hn-drawer" id="hnRecallDrawer" hidden>' +
       '<header><h2 id="hnRecallTitle">详情</h2>' +
@@ -308,6 +571,9 @@
     renderFocus: renderFocus,
     renderPickPanel: renderPickPanel,
     drawerHtml: drawerHtml,
-    navHtml: navHtml
+    navHtml: navHtml,
+    evidenceHtml: evidenceHtml,
+    heroHtml: heroHtml,
+    quietComposerHtml: quietComposerHtml
   };
 })(typeof window !== 'undefined' ? window : globalThis);

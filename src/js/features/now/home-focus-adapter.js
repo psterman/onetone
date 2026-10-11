@@ -127,9 +127,9 @@
     var secondary = null;
     var restoreLabel = '确认当前项目';
 
-    // Priority: error → degraded; waiting → attention; resumable → return;
-    // running → quiet+whisper; else quiet.
-    // Project uncertainty is row-level (desk.projectGate), never page-level H1.
+    // Priority: error → degraded; waiting → attention; running → running Hero;
+    // resumable → return; else quiet. Attention enrichment may still lift running.
+    // Unconfirmed project is resolved onto a single Hero primary (see applyProjectConfirmGate).
     if (ws === 'error' || (action && action.kind === 'retry') || provider.status === 'unavailable') {
       mode = 'degraded';
       headline = workTitle || '我暂时无法确认当前工作状态。';
@@ -145,25 +145,21 @@
       secondary = { id: 'view_reason', label: '查看判断依据' };
     } else if (ws === 'waiting') {
       mode = 'attention';
-      var attnTitle = workTitle || '需要你确认一件事';
       var agentLabel =
         provider.id === 'claude' || /claude/i.test(String(provider.id || ''))
           ? 'Claude'
-          : appName;
-      headline = agentLabel + ' 正等你确认' + (workTitle ? '：' + workTitle.replace(/。$/, '') : '') + '。';
-      assistance = '我已压住其他提醒，只把这一件事留给你。';
+          : providerLabelHome(provider.id || appName);
+      headline = agentLabel + ' 等待你确认';
+      assistance = '当前没有足够信息在首页展示具体问题。请到 Agent 查看并决定。';
       attention = {
-        title: attnTitle,
-        detail: workDesc || '打开后查看详情并决定。',
-        primaryLabel: (action && action.title) || '查看并决定',
+        title: '等待你确认',
+        detail: '打开 Agent 查看详情并决定。',
+        primaryLabel: '查看并决定',
         moreCount: 0
       };
       primary = { id: 'view_progress', label: attention.primaryLabel };
-      progress = {
-        text: (workTitle || '进行中') + ' · 等待确认 · ' + when,
-        source: String(source.reason || provider.id || ''),
-        allowed: true
-      };
+      // Coarse fact only — no inferred progress fraction / ETA.
+      progress = null;
     } else if (ws === 'resumable' && action && action.kind === 'resume') {
       mode = 'return';
       var resumeProv =
@@ -182,40 +178,21 @@
         detail: workDesc || '已保存上次进度'
       };
       primary = { id: 'resume', label: RESUME_LABEL };
-      progress = {
-        text: (workTitle || '可恢复') + ' · ' + when,
-        source: 'checkpoint',
-        allowed: true
-      };
+      // Leaves return → Quiet Composer (homepage jump). Does not delete checkpoint.
+      secondary = { id: 'start_new_task', label: '开始新任务' };
+      progress = null;
     } else if (ws === 'running') {
-      // Working without blocking the user → quiet companionship + whisper.
-      mode = 'quiet';
-      headline =
-        '你正在 ' +
-        appName +
-        ' 中处理 ' +
-        (confirmed || match === 'exact' ? projectName : '当前工作') +
-        '。';
-      assistance =
-        '已识别 ' +
-        appName +
-        (confirmed || match === 'exact' ? ' 和 ' + projectName : '') +
-        '。现在没有需要你处理的事；需要你时再提醒。';
+      mode = 'running';
+      var runningAgent = providerLabelHome(provider.id || appName);
+      headline = runningAgent + ' 正在处理' + (workTitle ? '「' + workTitle + '」' : '当前任务');
+      assistance = Number(work.updatedAt) > 0 ? '最近活动：' + when : '';
       presence = {
-        line:
-          appName +
-          ' · ' +
-          (confirmed || match === 'exact' ? projectName : '进行中') +
-          ' · ' +
-          when,
-        note: '没有需要你处理的事'
+        line: runningAgent + ' · ' + projectName + (Number(work.updatedAt) > 0 ? ' · ' + when : ''),
+        note: '运行中'
       };
-      progress = {
-        text: (workTitle || '进行中') + ' · ' + when,
-        source: String(source.reason || provider.id || ''),
-        allowed: !!workTitle
-      };
-      primary = null;
+      // No step fraction / ETA — progress object unused for coarse running.
+      progress = null;
+      primary = { id: 'view_progress', label: '查看 Agent' };
     } else {
       // Quiet: reliable context, nothing to do.
       mode = 'quiet';
@@ -278,16 +255,8 @@
       continueCard: null,
       projectGate: null
     };
+    // projectGate only when Hero does not already own confirm/pick (filled after gate resolve).
     if (needsProject) {
-      var gateKind =
-        action && action.kind === 'confirm_project' && project.root
-          ? 'confirm_project'
-          : 'pick_project';
-      var gateLabel =
-        (action &&
-          (action.kind === 'confirm_project' || action.kind === 'pick_project') &&
-          action.title) ||
-        (gateKind === 'confirm_project' ? '确认当前项目' : '选择当前项目');
       desk.projectGate = {
         title: '项目未确认',
         detail:
@@ -297,15 +266,15 @@
         note: '',
         badge: '未确认',
         sourceBadge: { label: '不猜测', tone: 'inf' },
-        actId: gateKind,
-        actLabel: gateLabel
+        actId: null,
+        actLabel: null
       };
     }
     if (ws === 'waiting') {
       desk.needsYou = {
         title: workTitle || '需要你确认',
         detail: agentLabel + (projectName && (confirmed || match === 'exact') ? ' · ' + projectName : '') + ' · ' + when,
-        note: workDesc || '来自 Soft Pad / attention 明确等待'
+        note: workDesc || '明确等待 · 需你确认'
       };
     } else if (ws === 'working' || ws === 'running') {
       desk.living = {
@@ -326,7 +295,7 @@
       };
     }
 
-    return {
+    return applyProjectConfirmGate({
       mode: mode,
       headline: headline,
       assistance: assistance,
@@ -352,7 +321,78 @@
       readyLabel: mode,
       candidates: project.candidates || [],
       dto: dto
-    };
+    });
+  }
+
+  /**
+   * Single primary CTA: when project is unconfirmed, Hero owns confirm/pick.
+   * Resumable + unconfirmed → "确认项目以继续" (never resume + gate competing).
+   */
+  function applyProjectConfirmGate(vm) {
+    if (!vm) return vm;
+    var needs =
+      !vm.confirmed &&
+      (vm.match === 'probable' || vm.match === 'unknown' || !vm.match);
+    if (!needs) {
+      if (vm.desk) vm.desk.projectGate = null;
+      return vm;
+    }
+
+    var action = vm.dto && vm.dto.nextAction && vm.dto.nextAction.executable
+      ? vm.dto.nextAction
+      : null;
+    var gateKind =
+      action && (action.kind === 'confirm_project' || action.kind === 'pick_project')
+        ? action.kind
+        : vm.projectRoot && vm.match !== 'unknown'
+          ? 'confirm_project'
+          : 'pick_project';
+    if (gateKind === 'confirm_project' && !vm.projectRoot) {
+      gateKind = 'pick_project';
+    }
+
+    var resumableIntent =
+      (vm.primary && vm.primary.id === 'resume') ||
+      vm.mode === 'return' ||
+      (vm.dto && vm.dto.work && String(vm.dto.work.status) === 'resumable');
+
+    var label =
+      resumableIntent
+        ? gateKind === 'confirm_project'
+          ? '确认项目以继续'
+          : '选择项目以继续'
+        : gateKind === 'confirm_project'
+          ? '确认这是当前项目'
+          : '选择当前项目';
+
+    // attention / degraded keep their primary; still drop competing gate button.
+    if (vm.mode === 'attention' || vm.mode === 'degraded') {
+      if (vm.desk) vm.desk.projectGate = null;
+      return vm;
+    }
+
+    if (resumableIntent) {
+      vm.mode = 'return';
+      vm.headline = '有可继续的工作，但项目尚未确认。';
+      vm.assistance =
+        vm.projectName && vm.projectName !== '未知项目'
+          ? '推断当前是 ' +
+            vm.projectName +
+            '。确认后即可从保存的位置继续，不会用猜测替你决定。'
+          : '确认当前项目后即可从保存的位置继续，不会用猜测替你决定。';
+      vm.continuation = null;
+      vm.presence = null;
+    }
+
+    vm.primary = { id: gateKind, label: label };
+    if (gateKind === 'confirm_project') {
+      vm.secondary = { id: 'pick_project', label: '选择其他项目' };
+    } else if (!vm.secondary) {
+      vm.secondary = { id: 'view_reason', label: '查看判断依据' };
+    }
+    // Hero owns the CTA — no parallel desk gate button.
+    if (vm.desk) vm.desk.projectGate = null;
+    return vm;
   }
 
   function rowState(r) {
@@ -515,8 +555,8 @@
       var stale = isExpiredRow(r);
       return {
         title: title,
-        detail: agent + ' · Soft Pad' + (when ? ' · ' + when : ' · ' + WHEN_UNKNOWN),
-        note: stale ? '信号已过期 · 需重新确认' : '明确等待 · 非 mtime',
+        detail: agent + (when ? ' · ' + when : ' · ' + WHEN_UNKNOWN),
+        note: stale ? '信号已过期 · 需重新确认' : '明确等待 · 需你确认',
         provider: agent,
         badge: agent,
         confidence: conf,
@@ -525,7 +565,7 @@
         sourceBadge: sourceBadge(src),
         confBadge: confidenceBadge(conf),
         cause: cause || 'needsInput',
-        actId: stale ? 'view_progress' : 'view_progress',
+        actId: 'view_progress',
         actLabel: stale ? '查看' : '查看'
       };
     }
@@ -562,15 +602,16 @@
       vm.desk.needsYou = mapped[0];
       var pick = mapped[0];
       var more = Math.max(0, mapped.length - 1);
-      if (vm.mode === 'quiet' || vm.mode === 'return') {
+      // attention > running/return/quiet (PRODUCT Hero arbitration)
+      if (vm.mode === 'quiet' || vm.mode === 'return' || vm.mode === 'running') {
         vm.mode = 'attention';
         vm.headline =
           mapped.length === 1
-            ? pick.provider + ' 正等你确认。'
-            : mapped.length + ' 个会话需要你处理。';
+            ? pick.provider + ' 等待你确认'
+            : mapped.length + ' 个会话等待你确认';
         vm.assistance =
           mapped.length === 1
-            ? '我已压住其他提醒，只把这一件事留给你。'
+            ? '当前没有足够信息在首页展示具体问题。请到 Agent 查看并决定。'
             : '按优先级列出可处理项；主按钮处理第一条。';
         vm.primary = { id: 'view_progress', label: '查看并决定' };
         vm.attention = {
@@ -580,6 +621,7 @@
           moreCount: more
         };
         vm.continuation = null;
+        vm.presence = null;
       } else if (vm.mode === 'attention') {
         vm.attention = vm.attention || {};
         vm.attention.moreCount = Math.max(Number(vm.attention.moreCount) || 0, more);
@@ -604,7 +646,7 @@
       vm.desk.living = livingMapped[0];
     }
 
-    return vm;
+    return applyProjectConfirmGate(vm);
   }
 
   /**
@@ -752,6 +794,8 @@
             ? '可以从停下的地方继续。项目仍未确认——不会用猜测绑定。'
             : '可以从停下的地方继续。';
           vm.primary = { id: 'resume', label: RESUME_LABEL };
+          // Same as base return path — leave return → Quiet Composer.
+          vm.secondary = { id: 'start_new_task', label: '开始新任务' };
           vm.continuation = {
             title: RESUME_LABEL,
             detail: vm.desk.continueCard.detail
@@ -818,7 +862,7 @@
     if (recent.length) vm.desk.recent = recent;
     if (recent.length) vm.desk.ledger = recent;
 
-    return vm;
+    return applyProjectConfirmGate(vm);
   }
 
   /**
@@ -938,6 +982,7 @@
     enrichFromAttention: enrichFromAttention,
     enrichFromHomeSnapshot: enrichFromHomeSnapshot,
     enrichFromInventory: enrichFromInventory,
+    applyProjectConfirmGate: applyProjectConfirmGate,
     esc: esc
   };
 })(typeof window !== 'undefined' ? window : globalThis);

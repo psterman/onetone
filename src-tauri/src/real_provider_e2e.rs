@@ -177,6 +177,7 @@ fn run(app: AppHandle, state: Arc<AppState>, window: WebviewWindow, scenario: St
         "agent.interrupt",
         hint,
         Some(&attempt),
+        false,
     );
     write_json(&dir.join("action-result.json"), &result);
     mark(&dir, "action-result");
