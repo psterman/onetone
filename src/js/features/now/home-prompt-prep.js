@@ -53,6 +53,7 @@
       scopeId: null,
       materials: [],
       handoffs: [],
+      workLog: [],
       draft: { title: '', body: '' },
       channel: null,
       receipt: null,
@@ -73,6 +74,7 @@
 
   function migrateModel(parsed) {
     if (!Array.isArray(parsed.handoffs)) parsed.handoffs = [];
+    if (!Array.isArray(parsed.workLog)) parsed.workLog = [];
     if (typeof parsed.contentRevision !== 'number' || !isFinite(parsed.contentRevision)) {
       parsed.contentRevision = 0;
     }
@@ -86,6 +88,152 @@
     parsed.carry.updatedAt = null;
     if (typeof parsed.carry.generation !== 'number') parsed.carry.generation = 0;
     return parsed;
+  }
+
+  function truncateLine(s, n) {
+    var t = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+    if (!t) return '';
+    n = n || 48;
+    return t.length > n ? t.slice(0, n) + '…' : t;
+  }
+
+  function materialNamesOf() {
+    var names = [];
+    (model.materials || []).forEach(function (m) {
+      if (!m) return;
+      var name = String(m.name || '').trim();
+      if (name && name !== '未命名素材') names.push(name);
+      else if (m.kind) names.push(String(m.kind));
+    });
+    return names.slice(0, 6);
+  }
+
+  function workTitleFromDraftOrMats() {
+    var draft = model.draft || {};
+    var title = truncateLine(draft.title, 56);
+    if (title) return title;
+    var body = truncateLine(draft.body, 56);
+    if (body) return body;
+    var names = materialNamesOf();
+    if (names.length) return names.slice(0, 2).join(' · ');
+    return '';
+  }
+
+  var SHARED_JOURNAL_KEY = 'onetone.workJournal';
+
+  function pushSharedJournal(row) {
+    try {
+      if (!global.localStorage || !row || !row.id) return;
+      var raw = global.localStorage.getItem(SHARED_JOURNAL_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) arr = [];
+      var found = false;
+      for (var i = arr.length - 1; i >= 0; i--) {
+        if (arr[i] && arr[i].id === row.id) {
+          arr[i] = row;
+          found = true;
+          break;
+        }
+      }
+      if (!found) arr.push(row);
+      if (arr.length > 60) arr = arr.slice(-60);
+      global.localStorage.setItem(SHARED_JOURNAL_KEY, JSON.stringify(arr));
+    } catch (_) {}
+  }
+
+  function readSharedJournal() {
+    try {
+      if (!global.localStorage) return [];
+      var raw = global.localStorage.getItem(SHARED_JOURNAL_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /** Local work journal — home + Soft Pad materials/handoffs for history drawer. */
+  function noteWorkLog(entry) {
+    entry = entry || {};
+    if (!Array.isArray(model.workLog)) model.workLog = [];
+    var row = {
+      id: entry.id || 'w_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e4),
+      kind: entry.kind || 'note',
+      title: truncateLine(entry.title, 72) || '工作记录',
+      detail: truncateLine(entry.detail, 96),
+      source: entry.source || 'home',
+      collectionId: entry.collectionId || model.collectionId || '',
+      materialNames: Array.isArray(entry.materialNames) ? entry.materialNames.slice(0, 6) : [],
+      materialCount: Number(entry.materialCount) || 0,
+      targetKind: entry.targetKind || null,
+      at: entry.at || nowIso()
+    };
+    // Coalesce consecutive material notes for the same collection within 3 minutes.
+    if (row.kind === 'materials' && model.workLog.length) {
+      var last = model.workLog[model.workLog.length - 1];
+      var lastAt = Date.parse(last && last.at) || 0;
+      var nowAt = Date.parse(row.at) || Date.now();
+      if (
+        last &&
+        last.kind === 'materials' &&
+        last.collectionId === row.collectionId &&
+        nowAt - lastAt < 180000
+      ) {
+        last.title = row.title;
+        last.detail = row.detail;
+        last.materialNames = row.materialNames;
+        last.materialCount = row.materialCount;
+        last.at = row.at;
+        last.source = row.source || last.source;
+        saveModel();
+        pushSharedJournal(last);
+        return last;
+      }
+    }
+    model.workLog.push(row);
+    if (model.workLog.length > 60) model.workLog = model.workLog.slice(-60);
+    saveModel();
+    pushSharedJournal(row);
+    return row;
+  }
+
+  function listWorkLog() {
+    var local = (model.workLog || []).slice();
+    var shared = readSharedJournal();
+    var byId = {};
+    local.concat(shared).forEach(function (row) {
+      if (!row || !row.id) return;
+      byId[row.id] = row;
+    });
+    var merged = Object.keys(byId)
+      .map(function (id) {
+        return byId[id];
+      })
+      .sort(function (a, b) {
+        return (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0);
+      });
+    // Soft Pad overlay + main Prep may both journal the same collect — keep newer.
+    var out = [];
+    merged.forEach(function (row) {
+      var prev = out[out.length - 1];
+      if (
+        prev &&
+        prev.kind === 'materials' &&
+        row.kind === 'materials' &&
+        (prev.source || '') === (row.source || '') &&
+        (Date.parse(prev.at) || 0) - (Date.parse(row.at) || 0) < 180000
+      ) {
+        if ((row.materialCount || 0) > (prev.materialCount || 0)) {
+          prev.materialCount = row.materialCount;
+          prev.detail = row.detail || prev.detail;
+          prev.title = row.title || prev.title;
+          prev.materialNames = row.materialNames || prev.materialNames;
+        }
+        return;
+      }
+      out.push(row);
+    });
+    return out;
   }
 
   function loadModel() {
@@ -443,18 +591,41 @@
     (model.materials || []).forEach(function (m) {
       if (m && m.needsManualUpload && m.included !== false) manual += 1;
     });
+    var names = materialNamesOf();
+    var title =
+      workTitleFromDraftOrMats() ||
+      (opts.targetKind ? '交给 ' + opts.targetKind : '') ||
+      '交接记录';
     var row = {
       id: 'h_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e4),
       collectionId: model.collectionId || '',
       targetKind: opts.targetKind || null,
+      title: title,
+      preview: truncateLine((model.draft && model.draft.body) || model.assembledMd, 80),
+      materialNames: names,
+      materialCount: (model.materials || []).length,
       assembledAt: model.assembledAt || null,
       handedOffAt: nowIso(),
       outcome: opts.outcome || 'unknown',
       chars: (model.assembledMd || '').length,
-      manualUploadCount: manual
+      manualUploadCount: manual,
+      source: opts.source || 'home'
     };
     model.handoffs.push(row);
     if (model.handoffs.length > 40) model.handoffs = model.handoffs.slice(-40);
+    noteWorkLog({
+      kind: 'handoff',
+      title: title,
+      detail:
+        (row.targetKind ? row.targetKind + ' · ' : '') +
+        (names.length ? names.slice(0, 2).join('、') : row.chars + ' 字'),
+      source: row.source,
+      collectionId: row.collectionId,
+      materialNames: names,
+      materialCount: row.materialCount,
+      targetKind: row.targetKind,
+      at: row.handedOffAt
+    });
     saveModel();
     notifyTray();
     schedulePublishTray();
@@ -573,6 +744,22 @@
       clearAssemblyAndHandoff();
       model.phase = 'COLLECTING';
     }
+    var srcHint = String(row.source || '');
+    var fromSoftPad = /soft\s*pad|softpad|悬浮|托盘/i.test(srcHint);
+    var names = materialNamesOf();
+    noteWorkLog({
+      kind: 'materials',
+      title: workTitleFromDraftOrMats() || names[0] || '加入素材',
+      detail:
+        (model.materials.length || 0) +
+        ' 项' +
+        (names.length ? ' · ' + names.slice(0, 3).join('、') : ''),
+      source: fromSoftPad ? 'softpad' : 'home',
+      collectionId: model.collectionId,
+      materialNames: names,
+      materialCount: model.materials.length,
+      at: row.capturedAt
+    });
     syncUiAfterMutation();
     return row;
   }
@@ -597,6 +784,27 @@
     model.phase = model.materials.length ? 'COLLECTING' : 'EMPTY';
     syncUiAfterMutation();
     return { removed: true, summary: getMaterialSummary() };
+  }
+
+  /** Reorder materials list (drag within materials panel). */
+  function moveMaterial(id, toIndex) {
+    if (derivePhase() === 'HANDING_OFF') return false;
+    var mid = String(id || '');
+    var from = -1;
+    for (var i = 0; i < model.materials.length; i++) {
+      if (model.materials[i] && model.materials[i].id === mid) {
+        from = i;
+        break;
+      }
+    }
+    if (from < 0) return false;
+    var to = Math.max(0, Math.min(Number(toIndex) || 0, model.materials.length - 1));
+    if (from === to) return true;
+    var row = model.materials.splice(from, 1)[0];
+    model.materials.splice(to, 0, row);
+    bumpContentRevision();
+    syncUiAfterMutation();
+    return true;
   }
 
   function updateMaterialFlags(id, patch) {
@@ -1446,15 +1654,23 @@
   }
 
   function materialsHtml() {
-    if (!model.materials.length) return '';
+    if (!model.materials.length) {
+      return (
+        '<div class="hpp-drop-hint" data-hpp-drop-hint>拖入文件或文件夹到这里</div>'
+      );
+    }
     return model.materials
-      .map(function (m) {
+      .map(function (m, idx) {
         return (
           '<article class="hpp-item' +
           (m.included === false ? ' is-excluded' : '') +
+          (m.kind === 'folder' ? ' is-folder' : '') +
           '" data-hpp-mat="' +
           esc(m.id) +
-          '">' +
+          '" data-hpp-mat-idx="' +
+          idx +
+          '" draggable="true">' +
+          '<span class="hpp-item-grip" aria-hidden="true" title="拖动排序">⋮⋮</span>' +
           (m.kind === 'image' && m.previewDataUrl
             ? '<span class="hpp-ico hpp-ico--thumb" aria-hidden="true"><img src="' +
               esc(m.previewDataUrl) +
@@ -1473,7 +1689,11 @@
           '<div><strong>' +
           esc(m.name) +
           '</strong><small>' +
-          esc(m.source || '') +
+          esc(
+            m.kind === 'folder'
+              ? '文件夹 · ' + (m.source || '本机')
+              : m.source || ''
+          ) +
           (m.capturedAt ? ' · ' + esc(String(m.capturedAt).slice(0, 19).replace('T', ' ')) : '') +
           '</small></div>' +
           '<button type="button" class="hpp-item-rm" data-hpp-mat-rm="' +
@@ -1689,7 +1909,7 @@
       esc(phase) +
       '">' +
       '<div class="hpp-app">' +
-      '<aside class="hpp-materials"><div class="hpp-materials-head"><div><h2>材料</h2><p class="hpp-sub">先把手边的东西放进来。</p></div>' +
+      '<aside class="hpp-materials" data-hpp-drop-zone><div class="hpp-materials-head"><div><h2>材料</h2><p class="hpp-sub">拖入文件 / 文件夹，或点添加。</p></div>' +
       '<button type="button" class="hpp-collapse" data-hpp-collapse>收起</button></div>' +
       '<div class="hpp-add-wrap"><button type="button" class="hpp-add" data-hpp-add aria-haspopup="true" aria-expanded="false">＋ 添加素材</button>' +
       '<div class="hpp-add-menu" data-hpp-add-menu hidden>' +
@@ -1704,7 +1924,7 @@
       (model.materials.length ? '' : ' hidden') +
       '><span data-hpp-list-count>已收集 · ' +
       model.materials.length +
-      '</span></div>' +
+      '</span><span class="hpp-list-tip">可拖动排序</span></div>' +
       '<div class="hpp-item-list" data-hpp-item-list>' +
       materialsHtml() +
       '</div></aside>' +
@@ -1800,9 +2020,119 @@
     }
   }
 
+  function bindMaterialsDropAndDrag() {
+    if (!hostEl || hostEl.getAttribute('data-hpp-drop-bound') === '1') return;
+    hostEl.setAttribute('data-hpp-drop-bound', '1');
+    var dragId = '';
+    hostEl.addEventListener('dragstart', function (ev) {
+      var item = ev.target && ev.target.closest && ev.target.closest('[data-hpp-mat]');
+      if (!item || !ev.dataTransfer) return;
+      if (ev.target.closest && ev.target.closest('[data-hpp-mat-rm]')) {
+        ev.preventDefault();
+        return;
+      }
+      dragId = item.getAttribute('data-hpp-mat') || '';
+      item.classList.add('is-dragging');
+      ev.dataTransfer.effectAllowed = 'move';
+      try {
+        ev.dataTransfer.setData('text/hpp-mat-id', dragId);
+        ev.dataTransfer.setData('text/plain', dragId);
+      } catch (_) {}
+    });
+    hostEl.addEventListener('dragend', function (ev) {
+      dragId = '';
+      hostEl.querySelectorAll('.hpp-item.is-dragging, .hpp-item.is-drop-over').forEach(function (el) {
+        el.classList.remove('is-dragging', 'is-drop-over');
+      });
+      var zone = hostEl.querySelector('[data-hpp-drop-zone]');
+      if (zone) zone.classList.remove('is-drop-target');
+    });
+    hostEl.addEventListener('dragover', function (ev) {
+      if (!ev.dataTransfer) return;
+      var zone = ev.target.closest && ev.target.closest('[data-hpp-drop-zone]');
+      if (!zone) return;
+      ev.preventDefault();
+      var types = ev.dataTransfer.types;
+      var isInternal = false;
+      try {
+        isInternal = !!(dragId || (types && [].indexOf.call(types, 'text/hpp-mat-id') >= 0));
+      } catch (_) {}
+      ev.dataTransfer.dropEffect = isInternal ? 'move' : 'copy';
+      zone.classList.add('is-drop-target');
+      var over = ev.target.closest && ev.target.closest('[data-hpp-mat]');
+      hostEl.querySelectorAll('.hpp-item.is-drop-over').forEach(function (el) {
+        if (el !== over) el.classList.remove('is-drop-over');
+      });
+      if (over && dragId && over.getAttribute('data-hpp-mat') !== dragId) {
+        over.classList.add('is-drop-over');
+      }
+    });
+    hostEl.addEventListener('dragleave', function (ev) {
+      var zone = hostEl.querySelector('[data-hpp-drop-zone]');
+      if (!zone) return;
+      if (ev.relatedTarget && zone.contains(ev.relatedTarget)) return;
+      zone.classList.remove('is-drop-target');
+    });
+    hostEl.addEventListener('drop', function (ev) {
+      if (!ev.dataTransfer) return;
+      var zone = ev.target.closest && ev.target.closest('[data-hpp-drop-zone]');
+      if (!zone) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      zone.classList.remove('is-drop-target');
+      var over = ev.target.closest && ev.target.closest('[data-hpp-mat]');
+      var movedId = dragId;
+      try {
+        movedId = movedId || ev.dataTransfer.getData('text/hpp-mat-id') || '';
+      } catch (_) {}
+      if (movedId && over) {
+        var toIdx = Number(over.getAttribute('data-hpp-mat-idx'));
+        if (isFinite(toIdx)) {
+          moveMaterial(movedId, toIdx);
+          toast('已调整材料顺序');
+        }
+        return;
+      }
+      var files = ev.dataTransfer.files;
+      if (!files || !files.length) return;
+      if (derivePhase() === 'HANDING_OFF') {
+        toast('正在交接，暂不能改材料');
+        return;
+      }
+      var chain = Promise.resolve();
+      var n = Math.min(files.length, 12);
+      for (var i = 0; i < n; i++) {
+        (function (f) {
+          var path = String((f && (f.path || f.name)) || '').trim();
+          var name = String((f && f.name) || path).trim();
+          var isFolder =
+            !!(f && f.isDirectory) ||
+            (!f.type && path && !/\.[a-z0-9]{1,8}$/i.test(name));
+          chain = chain.then(function () {
+            return collectMaterial(isFolder ? 'folder' : 'attach', {
+              path: path,
+              name: name,
+              source: isFolder ? '拖入文件夹' : '拖入文件'
+            });
+          });
+        })(files[i]);
+      }
+      chain
+        .then(function () {
+          toast('已拖入 ' + n + ' 项材料');
+        })
+        .catch(function () {
+          toast('拖入材料失败');
+        });
+    });
+  }
+
   function bindOnce() {
     if (!hostEl) return;
-    if (hostEl.getAttribute('data-hpp-bound') === '1') return;
+    if (hostEl.getAttribute('data-hpp-bound') === '1') {
+      bindMaterialsDropAndDrag();
+      return;
+    }
     hostEl.setAttribute('data-hpp-bound', '1');
     hostEl.addEventListener('click', onHostClick);
     hostEl.addEventListener('input', onHostInput);
@@ -1813,6 +2143,7 @@
     hostEl.addEventListener('compositionend', function () {
       hostEl._hppComposing = false;
     });
+    bindMaterialsDropAndDrag();
   }
 
   function onHostInput(ev) {
@@ -2043,6 +2374,8 @@
     dismissCarry: dismissCarry,
     archiveHandoff: archiveHandoff,
     listHandoffs: listHandoffs,
+    noteWorkLog: noteWorkLog,
+    listWorkLog: listWorkLog,
     setDraftBody: setDraftBody,
     setDraftTitle: setDraftTitle,
     updateMaterialFlags: updateMaterialFlags,
@@ -2052,6 +2385,7 @@
     guessAttachKind: guessAttachKind,
     getMaterialSummary: getMaterialSummary,
     removeMaterial: removeMaterial,
+    moveMaterial: moveMaterial,
     clearMaterials: clearMaterials,
     subscribeMaterials: subscribeMaterials,
     openHppDrawer: openHppDrawer,

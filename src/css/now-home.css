@@ -1671,60 +1671,70 @@
   padding: 4px 4px 8px;
 }
 
-/* compact listen strip (C: partial voice restore) */
+/* Voice command strip — paper card, sits above dock (not clipped by canvas overflow). */
 .now-home .now-vstrip {
-  background: #fff;
-  border: 1px solid var(--now-pri-sf);
-  border-color: #bae6fd;
-  border-radius: 12px;
-  padding: 12px 14px;
-  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.08);
+  background:
+    linear-gradient(165deg, rgba(255, 253, 249, 0.98), rgba(247, 250, 252, 0.96)),
+    #fffdf9;
+  border: 1px solid rgba(20, 35, 58, 0.12);
+  border-radius: 16px;
+  padding: 14px 14px 12px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 14px 36px rgba(20, 35, 58, 0.14);
+  backdrop-filter: blur(8px);
 }
 .now-home .now-vstrip[hidden] { display: none !important; }
 .now-home .now-vstrip-hd {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .now-home .now-vstrip-pulse {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: #0284c7;
-  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background:
+    linear-gradient(160deg, var(--hn-teal, #2a9cc4), #1d7a9a);
+  color: #f4fbfd;
   display: grid;
   place-items: center;
-  font-size: 15px;
   flex: none;
   position: relative;
+  box-shadow: 0 6px 14px rgba(42, 156, 196, 0.28);
+}
+.now-home .now-vstrip-mic {
+  display: block;
 }
 .now-home .now-vstrip-pulse::after {
   content: "";
   position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 2px solid rgba(2, 132, 199, 0.35);
-  animation: now-vstrip-ping 1.4s ease infinite;
+  inset: -5px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(42, 156, 196, 0.35);
+  animation: now-vstrip-ping 1.6s ease infinite;
+  pointer-events: none;
 }
 @keyframes now-vstrip-ping {
-  0% { transform: scale(0.9); opacity: 0.8; }
-  70% { transform: scale(1.25); opacity: 0; }
+  0% { transform: scale(0.92); opacity: 0.7; }
+  70% { transform: scale(1.18); opacity: 0; }
   100% { opacity: 0; }
 }
 .now-home .now-vstrip-st {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 750;
-  color: var(--now-ink);
+  color: var(--hn-ink, #14233a);
   min-width: 0;
 }
 .now-home .now-vstrip-st s {
   display: block;
   text-decoration: none;
-  font-size: 11px;
-  color: var(--now-ink3);
+  font-size: 11.5px;
+  color: var(--hn-muted, #556576);
   font-weight: 500;
-  margin-top: 1px;
+  margin-top: 2px;
+  line-height: 1.35;
 }
 .now-home .now-vstrip-acts {
   margin-left: auto;
@@ -1733,42 +1743,44 @@
   flex: none;
 }
 .now-home .now-vstrip-acts button {
-  border: 1px solid var(--now-line);
-  background: #fff;
-  border-radius: 7px;
-  padding: 5px 10px;
+  border: 1px solid rgba(20, 35, 58, 0.12);
+  background: rgba(255, 253, 249, 0.9);
+  border-radius: 9px;
+  padding: 6px 11px;
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 650;
-  color: var(--now-ink2);
+  color: var(--hn-ink2, #3a4a5c);
   cursor: pointer;
 }
 .now-home .now-vstrip-acts .now-vstrip-stop {
-  border-color: #fecaca;
-  color: #b91c1c;
-  background: #fef2f2;
+  border-color: rgba(163, 59, 43, 0.28);
+  color: var(--hn-red, #a33b2b);
+  background: var(--hn-red-soft, #fdeceb);
 }
 .now-home .now-vstrip-live {
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.55;
-  color: var(--now-ink);
-  min-height: 2.6em;
-  background: linear-gradient(180deg, #f8fbff, #fff);
-  border: 1px dashed #bae6fd;
-  border-radius: 10px;
-  padding: 10px 12px;
+  color: var(--hn-ink, #14233a);
+  min-height: 2.8em;
+  max-height: none;
+  overflow: visible;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(20, 35, 58, 0.1);
+  border-radius: 12px;
+  padding: 12px 13px;
   white-space: pre-wrap;
   word-break: break-word;
 }
 .now-home .now-vstrip-live.is-hint {
-  color: var(--now-ink3);
+  color: var(--hn-muted, #556576);
   font-size: 13px;
 }
 .now-home .now-dock-voice.is-on {
-  border-color: #0284c7;
-  background: #0284c7;
+  border-color: var(--hn-teal, #2a9cc4);
+  background: var(--hn-teal, #2a9cc4);
   color: #fff;
-  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.28);
+  box-shadow: 0 6px 18px rgba(42, 156, 196, 0.28);
 }
 
 /* —— Now v1 situational canvas (hn-*) ——
@@ -1790,6 +1802,7 @@
 .now-home:has(.hn-canvas),
 .now-home:has(.hn-page) {
   background: var(--hn-paper);
+  overflow: hidden;
 }
 .now-home .hn-canvas,
 .now-home .hn-page {
@@ -1800,21 +1813,77 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  overflow: auto;
+  overflow: hidden;
   position: relative;
   color: var(--hn-ink);
   background: var(--hn-paper);
   box-sizing: border-box;
 }
 .now-home .hn-page {
-  overflow: auto;
+  overflow: hidden;
 }
 .now-home .hn-brand {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--hn-teal);
+}
+.now-home .hn-chrome {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  flex-wrap: wrap;
+}
+.now-home .hn-chrome-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.now-home .hn-where {
+  color: var(--hn-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.now-home .hn-chrome-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.now-home .hn-top-btn {
+  min-height: 34px;
+  padding: 5px 10px;
+  border: 1px solid var(--hn-line, #e6e0d6);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--hn-ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+.now-home .hn-top-btn small {
+  display: block;
+  margin-top: 1px;
+  color: var(--hn-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+.now-home .hn-top-btn:hover {
+  background: #f0ebe4;
+}
+.now-home .hn-top-btn:focus-visible {
+  outline: 2px solid var(--hn-teal);
+  outline-offset: 2px;
 }
 .now-home .hn-nav {
   display: flex;
@@ -2107,17 +2176,21 @@
   font-size: 10px;
   font-weight: 650;
 }
-.now-home .hn-agent-tile__tag {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  padding: 1px 4px;
-  border-radius: 4px;
-  background: #eef2f1;
-  color: var(--hn-muted);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+.now-home .hn-agent-tile.is-voice-hit {
+  border-color: var(--hn-teal, #2a9cc4);
+  background: var(--hn-teal-soft, #e6f7fc);
+  box-shadow: 0 0 0 2px rgba(42, 156, 196, 0.28);
+}
+.now-home .hn-desk-row.is-voice-hit,
+.now-home .hn-cta.is-voice-hit,
+.now-home .hn-top-btn.is-voice-hit,
+.now-home .home-agent-status.is-voice-hit {
+  outline: 2px solid var(--hn-teal, #2a9cc4);
+  outline-offset: 2px;
+}
+.now-home .hn-canvas.is-voice-cmd .hn-agent-tile:not(.is-voice-hit),
+.now-home .hn-canvas.is-voice-cmd .hn-desk-row:not(.is-voice-hit) {
+  opacity: 0.72;
 }
 .now-home .hn-quiet-probe-jumps {
   display: inline-flex;
@@ -2603,11 +2676,14 @@
 .now-home .hn-drawer {
   position: absolute;
   inset: 0;
+  width: auto;
+  max-width: none;
+  margin: 0;
   background: rgba(20, 35, 58, 0.18);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  z-index: 5;
+  z-index: 20;
 }
 .now-home .hn-drawer[hidden] { display: none !important; }
 .now-home .hn-drawer > header {
@@ -2627,6 +2703,49 @@
   padding: 4px 20px 24px;
   max-height: 40%;
   overflow: auto;
+}
+/* History: right-side panel (prototype vibecoding command). */
+.now-home .hn-drawer.is-history {
+  display: grid;
+  grid-template-columns: 1fr min(380px, 92%);
+  grid-template-rows: auto 1fr;
+  justify-content: stretch;
+  background: rgba(16, 22, 20, 0.28);
+}
+.now-home .hn-drawer.is-history > header {
+  grid-column: 2;
+  grid-row: 1;
+  border-radius: 0;
+  border-left: 1px solid var(--hn-line, #d7dcda);
+  padding: 18px 18px 12px;
+}
+.now-home .hn-drawer.is-history > .hn-drawer-body {
+  grid-column: 2;
+  grid-row: 2;
+  max-height: none;
+  border-left: 1px solid var(--hn-line, #d7dcda);
+  padding: 12px 14px 20px;
+}
+.now-home .hn-hist-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(20, 35, 58, 0.08);
+}
+.now-home .hn-hist-row:last-child {
+  border-bottom: 0;
+}
+.now-home .hn-hist-row b {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--hn-ink);
+  line-height: 1.35;
+}
+.now-home .hn-hist-row span {
+  font-size: 12.5px;
+  color: var(--hn-muted);
+  line-height: 1.35;
 }
 .now-home .hn-drawer-lead {
   color: var(--hn-muted);
@@ -2648,36 +2767,44 @@
   color: var(--hn-ink2);
   cursor: pointer;
 }
+/* Float above canvas so overflow:hidden cannot clip the voice card. */
 .now-home .hn-dock-wrap {
-  position: static;
-  margin-top: auto;
-  align-self: stretch;
+  position: absolute;
+  right: clamp(12px, 2.5vw, 28px);
+  bottom: 14px;
+  margin: 0;
+  align-self: auto;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
-  padding-top: 16px;
-  z-index: 2;
-  opacity: 0.9;
+  padding: 0;
+  z-index: 30;
+  opacity: 0.96;
   flex: none;
-  width: 100%;
+  width: min(420px, calc(100% - 24px));
   max-width: 420px;
-  margin-left: auto;
+  pointer-events: none;
+}
+.now-home .hn-dock-wrap > * {
+  pointer-events: auto;
 }
 .now-home .hn-dock-wrap:hover,
 .now-home .hn-dock-wrap:focus-within {
   opacity: 1;
 }
-/* Live transcript strip sits above the mic pill while listening. */
 .now-home .hn-dock-wrap .now-vstrip {
   width: 100%;
   margin: 0;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(20, 35, 58, 0.1);
 }
-.now-home .hn-dock-wrap .now-vstrip-live {
-  max-height: 4.5em;
-  overflow: auto;
+.now-home .hn-canvas.is-drop-target {
+  outline: 2px dashed var(--hn-teal, #2a9cc4);
+  outline-offset: -10px;
+  background-image: linear-gradient(
+    180deg,
+    rgba(42, 156, 196, 0.06),
+    rgba(255, 253, 249, 0.2)
+  );
 }
 /* Home Focus uses dock as a corner mic trigger — hide full footer chrome. */
 .now-home .hn-dock-wrap .now-dock {
@@ -2997,6 +3124,12 @@
   padding: 24px clamp(16px, 3.5vw, 40px) 72px;
   background: #fffdf9;
 }
+.now-home .hn-chrome {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
 .now-home .hn-brand,
 .now-home .hn-nav,
 .now-home .hn-hero,
@@ -3005,8 +3138,7 @@
 .now-home .hn-divider,
 .now-home .hn-prep-launch,
 .now-home .home-agent-status-host,
-.now-home .hn-evidence,
-.now-home .hn-drawer {
+.now-home .hn-evidence {
   width: var(--hn-col);
   max-width: 100%;
   margin-left: 0;

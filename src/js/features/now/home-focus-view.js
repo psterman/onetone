@@ -42,6 +42,26 @@
     );
   }
 
+  /** PRODUCT: 顶栏「历史」+ Agent 总览 — acts, not hn-nav data-hf-view. */
+  function chromeHtml(vm) {
+    vm = vm || {};
+    var project = String(vm.projectName || '').trim();
+    var where = project ? '现在 · ' + project : '现在';
+    return (
+      '<header class="hn-chrome">' +
+      '<div class="hn-chrome-left">' +
+      '<p class="hn-brand">OneTone</p>' +
+      '<span class="hn-where">' +
+      esc(where) +
+      '</span>' +
+      '</div>' +
+      '<div class="hn-chrome-actions">' +
+      '<button type="button" class="hn-top-btn" data-hf-act="open_history" data-voice-phrases="历史|近期对话|打开历史" title="近期对话，用于恢复工作">' +
+      '历史<small>近期对话</small></button>' +
+      '</div></header>'
+    );
+  }
+
   function evidenceHtml(vm) {
     var rows = (vm.evidence || [])
       .map(function (row) {
@@ -108,11 +128,16 @@
       '</div>' +
       (act ? '<span class="hn-desk-act">' + esc(act) + '</span>' : '');
     if (opts.button) {
+      var voiceBits = [row.title, row.badge, opts.act, opts.actId || 'view_progress']
+        .filter(Boolean)
+        .join('|');
       return (
         '<button type="button" class="hn-desk-row' +
         (row.stale ? ' hn-desk-row--stale' : '') +
         '" data-hf-act="' +
         esc(opts.actId || 'view_progress') +
+        '" data-voice-phrases="' +
+        esc(voiceBits) +
         '">' +
         inner +
         '</button>'
@@ -397,16 +422,13 @@
         (disabled ? ' disabled' : '') +
         ' title="' +
         esc(title) +
+        '" data-voice-phrases="' +
+        esc([label, t.kind, isCli ? 'CLI' : ''].filter(Boolean).join('|')) +
         '">' +
         agentTileIconHtml(t) +
         '<span class="hn-agent-tile__name">' +
         esc(label) +
         '</span>' +
-        (isCli
-          ? '<span class="hn-agent-tile__tag">' +
-            esc(channel === 'both' ? 'CLI+' : 'CLI') +
-            '</span>'
-          : '') +
         '</button>'
       );
     });
@@ -553,7 +575,7 @@
       '"' +
       (showComposer ? ' data-hn-quiet-composer="1"' : '') +
       '>' +
-      '<p class="hn-brand">OneTone</p>' +
+      chromeHtml(vm) +
       navHtml('focus') +
       mainStage +
       agentStatusHostHtml() +
@@ -596,16 +618,7 @@
 
   function drawerHtml(id, vm) {
     if (id === 'history') {
-      return (
-        '<p class="hn-drawer-lead">从当前情境打开，不是完整历史墙。</p>' +
-        '<p><b>' +
-        esc((vm && vm.title) || '最近工作') +
-        '</b><br><span class="hn-muted">' +
-        esc((vm && vm.appName) || '') +
-        ' · ' +
-        esc((vm && vm.projectName) || '') +
-        '</span></p>'
-      );
+      return historyDrawerBodyHtml(vm && vm.historyEntries);
     }
     if (id === 'memory') {
       return (
@@ -626,11 +639,37 @@
       .join('');
   }
 
+  /** History drawer body — sessions + home/Soft Pad material journal. */
+  function historyDrawerBodyHtml(entries) {
+    entries = Array.isArray(entries) ? entries : [];
+    var rows = entries
+      .map(function (e) {
+        var sub = [e.when, e.badge, e.detail].filter(Boolean).join(' · ');
+        return (
+          '<div class="hn-hist-row" data-hn-hist-kind="' +
+          esc(e.kind || 'session') +
+          '">' +
+          '<b>' +
+          esc(e.title || '') +
+          '</b>' +
+          (sub ? '<span>' + esc(sub) + '</span>' : '') +
+          '</div>'
+        );
+      })
+      .join('');
+    return (
+      '<p class="hn-drawer-lead">近期对话与素材记录 · 用于恢复工作（不是方案台「历史方案」）</p>' +
+      (rows || '<p class="hn-muted">暂时没有近期记录。</p>')
+    );
+  }
+
   global.OneToneHomeFocusView = {
     renderFocus: renderFocus,
     renderPickPanel: renderPickPanel,
     drawerHtml: drawerHtml,
+    historyDrawerBodyHtml: historyDrawerBodyHtml,
     navHtml: navHtml,
+    chromeHtml: chromeHtml,
     evidenceHtml: evidenceHtml,
     heroHtml: heroHtml,
     quietComposerHtml: quietComposerHtml

@@ -108,6 +108,27 @@
   border-right: 1px solid var(--hpp-line);
   padding: 12px 10px;
   overflow: auto;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.hpp-materials.is-drop-target {
+  background: #e8f4f0;
+  box-shadow: inset 0 0 0 2px var(--hpp-teal, #2a9cc4);
+}
+.hpp-drop-hint {
+  margin: 12px 4px;
+  padding: 18px 12px;
+  border: 1.5px dashed rgba(28, 45, 39, 0.22);
+  border-radius: 12px;
+  color: var(--hpp-muted);
+  font-size: 12.5px;
+  text-align: center;
+  line-height: 1.45;
+}
+.hpp-list-tip {
+  margin-left: 8px;
+  font-weight: 500;
+  font-size: 11.5px;
+  color: var(--hpp-muted);
 }
 .hpp-materials h2 {
   font-size: 15px;
@@ -176,17 +197,35 @@
 }
 .hpp-item {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) 28px;
-  gap: 9px;
+  grid-template-columns: 14px 36px minmax(0, 1fr) 28px;
+  gap: 7px;
   align-items: center;
   padding: 9px 8px;
   border-radius: 9px;
+  cursor: grab;
 }
 .hpp-item:hover {
   background: #e8f2ee;
 }
 .hpp-item.is-excluded {
   opacity: 0.55;
+}
+.hpp-item.is-folder {
+  background: rgba(42, 156, 196, 0.06);
+}
+.hpp-item.is-dragging {
+  opacity: 0.45;
+}
+.hpp-item.is-drop-over {
+  box-shadow: inset 0 0 0 1.5px var(--hpp-teal, #2a9cc4);
+  background: #dff0eb;
+}
+.hpp-item-grip {
+  color: rgba(28, 45, 39, 0.35);
+  font-size: 10px;
+  letter-spacing: -1px;
+  user-select: none;
+  line-height: 1;
 }
 .hpp-item-rm {
   width: 28px;

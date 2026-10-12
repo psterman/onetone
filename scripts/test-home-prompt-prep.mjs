@@ -56,6 +56,9 @@ assert.doesNotMatch(src, /name:\s*'拖入的文本'/);
 assert.match(src, /function beginMaterialCollection\s*\(/);
 assert.match(src, /function getMaterialSummary\s*\(/);
 assert.match(src, /function removeMaterial\s*\(/);
+assert.match(src, /function moveMaterial\s*\(/);
+assert.match(src, /data-hpp-drop-zone/);
+assert.match(src, /拖入文件或文件夹/);
 assert.match(src, /function subscribeMaterials\s*\(/);
 
 function makeEl(tag, attrs) {
@@ -265,6 +268,11 @@ function matchAttrSel(node, sel) {
     source: '测试'
   });
   assert.equal(API.derivePhase(), 'COLLECTING');
+  assert.ok(typeof API.noteWorkLog === 'function' && typeof API.listWorkLog === 'function');
+  const workLog = API.listWorkLog();
+  assert.ok(workLog.length >= 1, 'addMaterial must journal workLog');
+  assert.ok(!/未命名工作/.test(workLog[0].title || ''), 'workLog title must be descriptive');
+  assert.match(workLog[0].title || '', /note\.md|hello/);
   const md = API.assembleMarkdown();
   assert.match(md, /机械装订/);
   assert.match(md, /没有使用 LLM/);
@@ -555,6 +563,26 @@ function matchAttrSel(node, sel) {
   assert.equal(afterRm.channel, null);
   assert.equal(afterRm.receipt, null);
   assert.equal(afterRm.assemblyMeta, null);
+
+  // 9b reorder materials for drag sorting
+  API._setModel({
+    phase: 'COLLECTING',
+    collectionId: 'c_ord',
+    materials: [
+      { id: 'a', kind: 'text', name: 'A', included: true },
+      { id: 'b', kind: 'folder', name: 'B', path: 'E:/b', included: true },
+      { id: 'c', kind: 'file', name: 'C', path: 'E:/c', included: true }
+    ],
+    draft: { title: '', body: '' },
+    channel: null,
+    receipt: null,
+    assembledMd: ''
+  });
+  assert.equal(API.moveMaterial('c', 0), true);
+  assert.deepEqual(
+    API.__testOnly.getModel().materials.map((m) => m.id),
+    ['c', 'a', 'b']
+  );
 
   // 10 HANDING_OFF busy
   API._setModel({

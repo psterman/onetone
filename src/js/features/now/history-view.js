@@ -46,6 +46,7 @@
 
   function renderHistory(opts) {
     opts = opts || {};
+    // Prefer drawer on production home; this page is fallback / deep-link only.
     var sessions = Array.isArray(opts.sessions) ? opts.sessions : [];
     var rows = sessions
       .map(function (s) {
@@ -53,16 +54,16 @@
           '<div class="hn-ev-row"><span>' +
           esc(s.when || '') +
           '</span><b>' +
-          esc(s.title || '未命名工作') +
+          esc(s.title || s.provider || '会话') +
           '</b></div>'
         );
       })
       .join('');
     return shell(
       'focus',
-      '<h1>最近工作</h1>' +
-        '<p class="hn-assist">从当前情境打开，不是完整历史墙。</p>' +
-        (rows || '<p class="hn-muted">暂时没有历史。</p>') +
+      '<h1>近期对话</h1>' +
+        '<p class="hn-assist">最近任务与会话，用于恢复工作（不是方案台「历史方案」）。</p>' +
+        (rows || '<p class="hn-muted">暂时没有近期对话。</p>') +
         '<button type="button" class="hn-text-btn" data-hf-view="focus">← 返回现在</button>'
     );
   }

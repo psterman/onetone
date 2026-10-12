@@ -1001,6 +1001,65 @@
       .join('');
   }
 
+  var WORK_JOURNAL_KEY = 'onetone.workJournal';
+
+  /** Soft Pad overlay may lack Prep — write shared journal for home history drawer. */
+  function noteSoftPadMaterial(name, preview, count) {
+    var title = String(name || preview || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 72);
+    if (!title) title = 'Soft Pad 素材';
+    var detail =
+      (count ? count + ' 项' : '') +
+      (preview && preview !== title ? ' · ' + String(preview).replace(/\s+/g, ' ').trim().slice(0, 40) : '');
+    var entry = {
+      id: 'sp_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e4),
+      kind: 'materials',
+      title: title,
+      detail: detail,
+      source: 'softpad',
+      materialNames: [title],
+      materialCount: count || 1,
+      at: new Date().toISOString()
+    };
+    try {
+      var Prep = global.OneToneHomePromptPrep;
+      if (Prep && typeof Prep.noteWorkLog === 'function') {
+        Prep.noteWorkLog(entry);
+        return;
+      }
+    } catch (_) {}
+    try {
+      if (!global.localStorage) return;
+      var raw = global.localStorage.getItem(WORK_JOURNAL_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) arr = [];
+      var nowAt = Date.parse(entry.at) || Date.now();
+      if (arr.length) {
+        var last = arr[arr.length - 1];
+        var lastAt = Date.parse(last && last.at) || 0;
+        if (
+          last &&
+          last.kind === 'materials' &&
+          last.source === 'softpad' &&
+          nowAt - lastAt < 180000
+        ) {
+          last.title = entry.title;
+          last.detail = entry.detail;
+          last.materialNames = entry.materialNames;
+          last.materialCount = entry.materialCount;
+          last.at = entry.at;
+          global.localStorage.setItem(WORK_JOURNAL_KEY, JSON.stringify(arr.slice(-60)));
+          return;
+        }
+      }
+      arr.push(entry);
+      if (arr.length > 60) arr = arr.slice(-60);
+      global.localStorage.setItem(WORK_JOURNAL_KEY, JSON.stringify(arr));
+    } catch (_) {}
+  }
+
   function optimisticAddMaterial(kind, name, description, opts) {
     opts = opts || {};
     snap = snap && typeof snap === 'object' ? snap : {};
@@ -1019,10 +1078,11 @@
     var src =
       String(opts.source || '').trim() ||
       (k === 'image' ? '本机图片' : k === 'file' || k === 'folder' ? '本机文件' : 'Soft Pad');
+    var displayName = leaf || preview || kindLabel(k);
     mats.push({
       id: 'local_' + Date.now() + '_' + mats.length,
       kind: k,
-      name: leaf || preview || kindLabel(k),
+      name: displayName,
       description: preview,
       preview: preview,
       source: src,
@@ -1037,6 +1097,7 @@
     // Bump so a stale get_snapshot cannot clobber this paint.
     snap.contentRevision = (Number(snap.contentRevision) || 0) + 1;
     matsOpenOnCollect = true;
+    noteSoftPadMaterial(displayName, preview, mats.length);
     paint();
   }
 

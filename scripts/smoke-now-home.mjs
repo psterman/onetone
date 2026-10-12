@@ -196,6 +196,16 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   }
   if (!html.includes('data-hf-view="focus"')) throw new Error('focus missing 现在 nav');
   if (!html.includes('我的习惯')) throw new Error('focus missing 我的习惯 nav');
+  // PRODUCT: top chrome History + Agent overview (acts), not hn-nav data-hf-view.
+  if (!html.includes('data-hf-act="open_history"') || !html.includes('近期对话')) {
+    throw new Error('focus missing 历史 / 近期对话 chrome');
+  }
+  if (!html.includes('id="hnRecallDrawer"')) {
+    throw new Error('focus missing history recall drawer host');
+  }
+  if (html.includes('data-hf-act="open_agent_overview"') || html.includes('多 Agent 总览')) {
+    throw new Error('focus must not show top-right Agent chrome card');
+  }
   // Settings lives in the workbench sidebar — home top nav must not duplicate it.
   if (/data-hf-view="settings"/.test(html)) {
     throw new Error('focus must not expose 设置 top-nav (use workbench drawer)');
@@ -1301,8 +1311,11 @@ assertFocus(
       throw new Error('quiet composer must expose ' + kind + ' agent tile');
     }
   }
-  if (!probeHtml.includes('hn-agent-tile__tag') || !probeHtml.includes('CLI')) {
-    throw new Error('CLI agents must show CLI tag on tiles');
+  if (probeHtml.includes('hn-agent-tile__tag')) {
+    throw new Error('agent tiles must not show top-right CLI tag');
+  }
+  if (!probeHtml.includes('data-voice-phrases=')) {
+    throw new Error('agent tiles must expose data-voice-phrases for voice command mode');
   }
   if (probeHtml.includes('跳转 ') || probeHtml.includes('复制并打开 Cursor')) {
     throw new Error('agent tiles replace text handoff / 跳转 labels');
@@ -2376,5 +2389,79 @@ ctx.OneToneIpc = {
 };
 const cleared = await todayApi.loadToday(14);
 if (cleared.length !== 0) throw new Error('empty history should yield empty today');
+
+// History is a drawer body (not full page): descriptive titles + material journal rows.
+{
+  if (typeof HFView.historyDrawerBodyHtml !== 'function') {
+    throw new Error('HomeFocusView.historyDrawerBodyHtml missing');
+  }
+  const histBody = HFView.historyDrawerBodyHtml([
+    {
+      kind: 'session',
+      title: 'cursor 会话',
+      when: '2 小时前',
+      badge: 'cursor',
+      detail: ''
+    },
+    {
+      kind: 'materials',
+      title: 'brief.md · shot.png',
+      when: '34 分钟前',
+      badge: '首页素材',
+      detail: '2 项'
+    }
+  ]);
+  if (!histBody.includes('hn-hist-row')) {
+    throw new Error('history drawer must render hn-hist-row entries');
+  }
+  if (!histBody.includes('cursor 会话') || !histBody.includes('brief.md')) {
+    throw new Error('history drawer must show session + material titles');
+  }
+  if (histBody.includes('未命名工作')) {
+    throw new Error('history drawer must not use 未命名工作 fallback');
+  }
+  if (!histBody.includes('素材记录')) {
+    throw new Error('history drawer lead must mention 素材记录');
+  }
+}
+
+// History drawer is side panel; home canvas must not scroll; voice phrases on chrome.
+{
+  const css = fs.readFileSync(path.join(root, 'src/css/now-home.css'), 'utf8');
+  if (!/\.hn-drawer\.is-history\s*\{[^}]*grid-template-columns/s.test(css)) {
+    throw new Error('history drawer must be a right-side grid panel');
+  }
+  if (!/\.now-home \.hn-canvas,\s*\.now-home \.hn-page\s*\{[^}]*overflow:\s*hidden/s.test(css)) {
+    throw new Error('home canvas must use overflow:hidden (no page scrollbar)');
+  }
+  if (css.includes('hn-agent-tile__tag {') || css.includes('.hn-agent-tile__tag{')) {
+    throw new Error('agent tile top-right tag styles must be removed');
+  }
+  const quietHtml = HFView.renderFocus(
+    {
+      mode: 'quiet',
+      projectName: 'voice-pilot',
+      primary: null,
+      evidence: []
+    },
+    {}
+  );
+  if (!quietHtml.includes('data-voice-phrases="历史|近期对话|打开历史"')) {
+    throw new Error('history chrome must expose voice phrases');
+  }
+  if (quietHtml.includes('data-hf-act="open_agent_overview"')) {
+    throw new Error('quiet chrome must not include Agent overview button');
+  }
+  if (!/position:\s*absolute/.test(css) || !/\.hn-dock-wrap\s*\{[^}]*position:\s*absolute/s.test(css)) {
+    throw new Error('voice dock must float absolute so the card is not clipped');
+  }
+  if (!css.includes('now-vstrip-mic')) {
+    throw new Error('voice strip must style SVG mic (now-vstrip-mic)');
+  }
+  const strip = ui.renderVoiceStrip();
+  if (!strip.includes('now-vstrip-mic') || !strip.includes('<svg')) {
+    throw new Error('voice strip must use SVG mic, not emoji');
+  }
+}
 
 console.log('smoke-now-home: ok');

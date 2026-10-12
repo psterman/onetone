@@ -1166,17 +1166,14 @@
       return Sec && Sec.renderHabits ? Sec.renderHabits() : '';
     }
     if (hfView === 'history') {
-      var sessions = [];
-      try {
-        var snapHist = agentHomeCache;
-        var list = (snapHist && snapHist.recentSessions) || [];
-        sessions = list.map(function (s) {
-          return {
-            title: s.title || '未命名工作',
-            when: formatSessionWhen(s.updatedAt || s.updated_at)
-          };
+      // Drawer is preferred; keep page as deep-link fallback.
+      var sessions = buildHistoryEntries()
+        .filter(function (e) {
+          return e.kind === 'session';
+        })
+        .map(function (e) {
+          return { title: e.title, when: e.when, provider: e.badge };
         });
-      } catch (_) {}
       return Sec && Sec.renderHistory
         ? Sec.renderHistory({ sessions: sessions })
         : '';
@@ -1515,8 +1512,11 @@
 
     if (kind === 'close_pick' || kind === 'close_progress' || kind === 'close_drawer') {
       if (kind === 'close_drawer' && root) {
-        var drawer = root.querySelector('#hnRecallDrawer');
-        if (drawer) drawer.hidden = true;
+        var drawerClose = root.querySelector('#hnRecallDrawer');
+        if (drawerClose) {
+          drawerClose.hidden = true;
+          drawerClose.classList.remove('is-history');
+        }
         return;
       }
       hfOverlay = '';
@@ -1542,6 +1542,22 @@
     if (kind === 'close_prep') {
       var PrepClose = global.OneToneHomePromptPrep;
       if (PrepClose && PrepClose.collapse) PrepClose.collapse();
+      return;
+    }
+    if (kind === 'open_history') {
+      openHistoryDrawer();
+      return;
+    }
+    if (kind === 'open_agent_overview' || kind === 'choose_agent') {
+      var NavOverview = global.OneToneAgentNavTarget;
+      if (NavOverview && NavOverview.open) {
+        NavOverview.open({
+          view: 'overview',
+          section: 'working',
+          provider: (vm.dto && vm.dto.provider && vm.dto.provider.id) || null,
+          projectId: vm.projectName || vm.projectId || null
+        });
+      }
       return;
     }
     // Prototype act aliases → existing policy kinds
@@ -1692,8 +1708,91 @@
     return !String(draftText || '').trim() && !(Number(mats.count) > 0);
   }
 
+  function ingestDroppedFiles(fileList) {
+    var files = fileList || [];
+    if (!files.length) return Promise.resolve(0);
+    var Prep = global.OneToneHomePromptPrep;
+    if (!Prep || typeof Prep.collectMaterial !== 'function') {
+      toastQuiet('材料能力未就绪');
+      return Promise.resolve(0);
+    }
+    var vm = buildHomeFocusVm() || {};
+    if (typeof Prep.beginMaterialCollection === 'function') {
+      Prep.beginMaterialCollection({
+        scopeId: vm.projectId || vm.projectName || '',
+        resetIfHandedOff: true
+      });
+    }
+    var chain = Promise.resolve();
+    var n = Math.min(files.length, 12);
+    for (var i = 0; i < n; i++) {
+      (function (f) {
+        var path = String((f && (f.path || f.name)) || '').trim();
+        var name = String((f && f.name) || path).trim();
+        var isFolder =
+          !!(f && (f.isDirectory || f.type === '' && !/\.[a-z0-9]{1,8}$/i.test(name))) ||
+          /[\\/]$/.test(path);
+        chain = chain.then(function () {
+          return Prep.collectMaterial(isFolder ? 'folder' : 'attach', {
+            path: path,
+            name: name
+          });
+        });
+      })(files[i]);
+    }
+    return chain.then(function () {
+      return n;
+    });
+  }
+
+  function bindHomeMaterialDrop() {
+    if (!root || root.getAttribute('data-hn-page-drop') === '1') return;
+    root.setAttribute('data-hn-page-drop', '1');
+    var depth = 0;
+    function canvasEl() {
+      return root.querySelector('.hn-canvas');
+    }
+    function setDropHi(on) {
+      var c = canvasEl();
+      if (c) c.classList.toggle('is-drop-target', !!on);
+    }
+    root.addEventListener('dragenter', function (e) {
+      if (!e.dataTransfer) return;
+      depth += 1;
+      setDropHi(true);
+    });
+    root.addEventListener('dragleave', function () {
+      depth = Math.max(0, depth - 1);
+      if (!depth) setDropHi(false);
+    });
+    root.addEventListener('dragover', function (e) {
+      if (!e.dataTransfer) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setDropHi(true);
+    });
+    root.addEventListener('drop', function (e) {
+      if (!e.dataTransfer) return;
+      // Materials sheet owns its own drop zone.
+      if (e.target && e.target.closest && e.target.closest('[data-hpp-drop-zone]')) return;
+      e.preventDefault();
+      depth = 0;
+      setDropHi(false);
+      var files = e.dataTransfer.files;
+      if (!files || !files.length) return;
+      ingestDroppedFiles(files)
+        .then(function (n) {
+          if (n > 0) toastQuiet('已拖入 ' + n + ' 项到素材库');
+        })
+        .catch(function () {
+          toastQuiet('拖入材料失败');
+        });
+    });
+  }
+
   function bindQuietComposer() {
     if (!root) return;
+    bindHomeMaterialDrop();
     var ta = root.querySelector('#hnQuietDraft');
     if (!ta) return;
     var vm = buildHomeFocusVm() || {};
@@ -1701,53 +1800,129 @@
       writeQuietDraft(vm, ta.value);
       setQuietHandoffDisabled(quietHandoffShouldDisable(ta.value));
     };
-    // Phase3: HTML5 file drop → collect into tray (OLE drag-out later).
-    var dropHost =
-      root.querySelector('[data-hn-quiet-composer]') || ta.closest('.hn-quiet-composer') || ta;
-    if (dropHost && dropHost.getAttribute('data-hn-tray-drop') !== '1') {
-      dropHost.setAttribute('data-hn-tray-drop', '1');
-      dropHost.addEventListener('dragover', function (e) {
-        if (!e.dataTransfer) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
-      });
-      dropHost.addEventListener('drop', function (e) {
-        if (!e.dataTransfer) return;
-        e.preventDefault();
-        var files = e.dataTransfer.files;
-        if (!files || !files.length) return;
-        var Prep = global.OneToneHomePromptPrep;
-        if (!Prep || typeof Prep.collectMaterial !== 'function') {
-          toastQuiet('材料能力未就绪');
-          return;
-        }
-        if (typeof Prep.beginMaterialCollection === 'function') {
-          Prep.beginMaterialCollection({
-            scopeId: vm.projectId || vm.projectName || '',
-            resetIfHandedOff: true
-          });
-        }
-        var chain = Promise.resolve();
-        for (var i = 0; i < Math.min(files.length, 8); i++) {
-          (function (f) {
-            var path = (f && (f.path || f.name)) || '';
-            chain = chain.then(function () {
-              return Prep.collectMaterial('attach', {
-                path: path,
-                name: (f && f.name) || path
-              });
-            });
-          })(files[i]);
-        }
-        chain
-          .then(function () {
-            toastQuiet('已拖入材料');
-          })
-          .catch(function () {
-            toastQuiet('拖入材料失败');
-          });
-      });
+  }
+
+  function sessionDisplayTitle(s) {
+    if (!s) return '会话';
+    var title = String(s.title || '').trim();
+    if (title && title !== '未命名工作' && title.toLowerCase() !== 'untitled') return title;
+    var prov = String(s.provider || s.agent || '').trim();
+    if (prov) return prov + ' 会话';
+    return '会话';
+  }
+
+  /** Merge Agent sessions + Prep work log (home/Soft Pad materials & handoffs) + quiet drafts. */
+  function buildHistoryEntries() {
+    var out = [];
+    var seen = {};
+    function push(entry) {
+      if (!entry || !entry.title) return;
+      var key = String(entry.kind || '') + '|' + String(entry.title) + '|' + String(entry.at || entry.when || '');
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push(entry);
     }
+
+    try {
+      var list = (agentHomeCache && (agentHomeCache.recentSessions || agentHomeCache.recent_sessions)) || [];
+      for (var i = 0; i < list.length && i < 16; i++) {
+        var s = list[i] || {};
+        var at = Number(s.updatedAt || s.updated_at) || 0;
+        push({
+          kind: 'session',
+          title: sessionDisplayTitle(s),
+          when: formatSessionWhen(at),
+          badge: String(s.provider || '').trim(),
+          detail: '',
+          at: at
+        });
+      }
+    } catch (_) {}
+
+    try {
+      var Prep = global.OneToneHomePromptPrep;
+      var log = Prep && Prep.listWorkLog ? Prep.listWorkLog() : [];
+      for (var j = 0; j < log.length && j < 24; j++) {
+        var w = log[j] || {};
+        var wat = Date.parse(w.at) || 0;
+        var badge =
+          w.kind === 'handoff'
+            ? '交接'
+            : w.source === 'softpad'
+              ? 'Soft Pad 素材'
+              : '首页素材';
+        push({
+          kind: w.kind === 'handoff' ? 'handoff' : 'materials',
+          title: String(w.title || '').trim() || badge,
+          when: formatSessionWhen(wat),
+          badge: badge,
+          detail: String(w.detail || '').trim(),
+          at: wat
+        });
+      }
+      var handoffs = Prep && Prep.listHandoffs ? Prep.listHandoffs() : [];
+      for (var h = 0; h < handoffs.length && h < 12; h++) {
+        var ho = handoffs[h] || {};
+        if (!ho.title) continue;
+        var hat = Date.parse(ho.handedOffAt) || 0;
+        push({
+          kind: 'handoff',
+          title: String(ho.title).trim(),
+          when: formatSessionWhen(hat),
+          badge: ho.targetKind ? String(ho.targetKind) : '交接',
+          detail:
+            (ho.materialCount ? ho.materialCount + ' 项素材' : '') ||
+            (ho.chars ? ho.chars + ' 字' : ''),
+          at: hat
+        });
+      }
+    } catch (_) {}
+
+    try {
+      var vm = buildHomeFocusVm() || {};
+      var draft = readQuietDraft(vm);
+      if (String(draft || '').trim()) {
+        push({
+          kind: 'draft',
+          title: String(draft).replace(/\s+/g, ' ').trim().slice(0, 56),
+          when: '草稿',
+          badge: '首页输入',
+          detail: '尚未交接',
+          at: Date.now()
+        });
+      }
+    } catch (_) {}
+
+    out.sort(function (a, b) {
+      return (Number(b.at) || 0) - (Number(a.at) || 0);
+    });
+    return out.slice(0, 24);
+  }
+
+  function openHistoryDrawer() {
+    if (!agentHomeCache) scheduleAgentHomeRefresh();
+    var V = global.OneToneHomeFocusView;
+    var drawer = root && root.querySelector('#hnRecallDrawer');
+    var titleEl = root && root.querySelector('#hnRecallTitle');
+    var bodyEl = root && root.querySelector('#hnRecallBody');
+    var entries = buildHistoryEntries();
+    if (drawer && titleEl && bodyEl && V) {
+      titleEl.textContent = '近期对话';
+      bodyEl.innerHTML =
+        V.historyDrawerBodyHtml
+          ? V.historyDrawerBodyHtml(entries)
+          : V.drawerHtml
+            ? V.drawerHtml('history', { historyEntries: entries })
+            : '';
+      drawer.hidden = false;
+      drawer.classList.add('is-history');
+      return;
+    }
+    // Fallback: secondary page if drawer host missing.
+    hfView = 'history';
+    hfOverlay = '';
+    lastPaintHtml = '';
+    paint();
   }
 
   function mountHomeFocusChrome() {
@@ -1914,6 +2089,106 @@
     };
   }
 
+  var lastVoiceCmdHit = null;
+  var lastVoiceCmdArmed = false;
+
+  function normalizeVoiceCmdText(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/[，。！？、·…\-_/\\:：]/g, '');
+  }
+
+  function collectVoiceCmdTargets() {
+    var out = [];
+    if (!root) return out;
+    var nodes = root.querySelectorAll(
+      '[data-voice-phrases], .hn-agent-tile[data-hf-handoff-kind], .hn-desk-row[data-hf-act], .hn-cta[data-hf-act], .hn-top-btn[data-hf-act], [data-home-agent-status-cta], .home-agent-status'
+    );
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (!el || el.disabled || el.hidden) continue;
+      var phrases = [];
+      var raw = el.getAttribute('data-voice-phrases') || '';
+      if (raw) {
+        raw.split('|').forEach(function (p) {
+          if (p && phrases.indexOf(p) < 0) phrases.push(p);
+        });
+      }
+      var nameEl = el.querySelector('.hn-agent-tile__name, .hn-desk-title, .home-agent-status__text b');
+      if (nameEl && nameEl.textContent) phrases.push(String(nameEl.textContent).trim());
+      var kind = el.getAttribute('data-hf-handoff-kind') || '';
+      if (kind) phrases.push(kind);
+      var act = el.getAttribute('data-hf-act') || '';
+      if (act && act !== 'quick_handoff') phrases.push(act);
+      phrases = phrases.filter(Boolean);
+      if (!phrases.length) continue;
+      out.push({ el: el, phrases: phrases });
+    }
+    return out;
+  }
+
+  function scoreVoiceCmd(text, phrase) {
+    var a = normalizeVoiceCmdText(text);
+    var b = normalizeVoiceCmdText(phrase);
+    if (!a || !b || b.length < 2) return 0;
+    if (a === b) return 1;
+    if (a.indexOf(b) >= 0) return 0.92;
+    if (b.indexOf(a) >= 0 && a.length >= 2) return 0.78;
+    return 0;
+  }
+
+  function bestVoiceCmdHit(liveText) {
+    var text = String(liveText || '').trim();
+    if (!text || text.indexOf('请对着') === 0) return null;
+    var targets = collectVoiceCmdTargets();
+    var best = null;
+    for (var i = 0; i < targets.length; i++) {
+      var t = targets[i];
+      var score = 0;
+      for (var j = 0; j < t.phrases.length; j++) {
+        score = Math.max(score, scoreVoiceCmd(text, t.phrases[j]));
+      }
+      if (score >= 0.78 && (!best || score > best.score)) {
+        best = { el: t.el, score: score, phrases: t.phrases };
+      }
+    }
+    return best;
+  }
+
+  function clearVoiceCmdHits() {
+    if (!root) return;
+    root.querySelectorAll('.is-voice-hit').forEach(function (el) {
+      el.classList.remove('is-voice-hit');
+    });
+    var canvas = root.querySelector('.hn-canvas');
+    if (canvas) canvas.classList.remove('is-voice-cmd');
+    lastVoiceCmdHit = null;
+  }
+
+  function syncVoiceCommandHits(voice) {
+    if (!root) return;
+    var canvas = root.querySelector('.hn-canvas');
+    if (!voice || !voice.listening) {
+      if (lastVoiceCmdArmed && lastVoiceCmdHit && lastVoiceCmdHit.el && lastVoiceCmdHit.el.isConnected) {
+        try {
+          lastVoiceCmdHit.el.click();
+        } catch (_) {}
+      }
+      lastVoiceCmdArmed = false;
+      clearVoiceCmdHits();
+      return;
+    }
+    lastVoiceCmdArmed = true;
+    if (canvas) canvas.classList.add('is-voice-cmd');
+    root.querySelectorAll('.is-voice-hit').forEach(function (el) {
+      el.classList.remove('is-voice-hit');
+    });
+    var hit = bestVoiceCmdHit(voice.liveText);
+    lastVoiceCmdHit = hit;
+    if (hit && hit.el) hit.el.classList.add('is-voice-hit');
+  }
+
   function syncVoiceStrip(voice) {
     if (!root || view === 'scenes') return;
     voice = voice || readVoiceUi();
@@ -1931,37 +2206,36 @@
         strip.setAttribute('hidden', '');
       }
     }
-    if (statusEl && voice.statusLine) statusEl.textContent = voice.statusLine;
-    if (hintEl && voice.hintLine) hintEl.textContent = voice.hintLine;
+    // Listening = voice command mode: map speech → cards (before status copy).
+    syncVoiceCommandHits(voice);
+    if (statusEl) {
+      statusEl.textContent = voice.listening
+        ? lastVoiceCmdHit
+          ? '已映射 · 说完即执行'
+          : '语音命令模式'
+        : voice.statusLine || '';
+    }
+    if (hintEl) {
+      hintEl.textContent = voice.listening
+        ? '说出卡片名称，例如 Agent 名、历史、继续'
+        : voice.hintLine || '';
+    }
     if (liveEl) {
       liveEl.textContent = voice.liveText || '';
       liveEl.classList.toggle('is-hint', !!voice.isHint);
     }
     if (dock && !dock.disabled) {
       dock.classList.toggle('is-on', !!voice.listening);
-      dock.textContent = voice.listening ? '🎤 倾听中…' : '🎤 开始听写';
+      dock.textContent = voice.listening ? '🎤 命令中…' : '🎤 开始听写';
     }
     var dictate = root && root.querySelector('.hn-cta--dictate[data-now-voice]');
     if (dictate && !dictate.disabled) {
-      dictate.textContent = voice.listening ? '倾听中…' : '开始听写';
+      dictate.textContent = voice.listening ? '命令中…' : '开始听写';
       dictate.setAttribute('aria-pressed', voice.listening ? 'true' : 'false');
     }
-    // Mirror live transcript into Quiet draft when the box is empty / voice-owned.
     var ta = root.querySelector('#hnQuietDraft');
-    if (ta) {
-      var owned = ta.getAttribute('data-voice-owned') === '1';
-      if (voice.listening && !voice.isHint && String(voice.liveText || '').trim()) {
-        if (owned || !String(ta.value || '').trim()) {
-          ta.setAttribute('data-voice-owned', '1');
-          ta.value = String(voice.liveText || '');
-        }
-      } else if (!voice.listening && owned) {
-        ta.removeAttribute('data-voice-owned');
-        try {
-          var vmDraft = buildHomeFocusVm();
-          if (vmDraft) writeQuietDraft(vmDraft, ta.value);
-        } catch (_) {}
-      }
+    if (ta && ta.getAttribute('data-voice-owned') === '1' && !voice.listening) {
+      ta.removeAttribute('data-voice-owned');
     }
   }
 
@@ -2206,6 +2480,14 @@
     var t = e.target;
     if (!t || !t.closest) return;
 
+    // History side drawer: click dimmed mask (not the panel) to close.
+    var histDrawer = t.closest && t.closest('#hnRecallDrawer.is-history');
+    if (histDrawer && (t === histDrawer || (!t.closest('header') && !t.closest('.hn-drawer-body')))) {
+      histDrawer.hidden = true;
+      histDrawer.classList.remove('is-history');
+      return;
+    }
+
     var hfViewBtn = t.closest('[data-hf-view]');
     if (hfViewBtn) {
       var nextView = hfViewBtn.getAttribute('data-hf-view') || 'focus';
@@ -2227,16 +2509,21 @@
     var recallBtn = t.closest('[data-hn-recall]');
     if (recallBtn && useHomeFocusSurface()) {
       var recallId = recallBtn.getAttribute('data-hn-recall') || '';
+      if (recallId === 'history') {
+        openHistoryDrawer();
+        return;
+      }
       var V = global.OneToneHomeFocusView;
       var drawer = root && root.querySelector('#hnRecallDrawer');
       var titleEl = root && root.querySelector('#hnRecallTitle');
       var bodyEl = root && root.querySelector('#hnRecallBody');
       if (drawer && titleEl && bodyEl && V && V.drawerHtml) {
-        var titles = { history: '最近工作', memory: '项目要点', evidence: '判断依据' };
+        var titles = { memory: '项目要点', evidence: '判断依据' };
         titleEl.textContent = titles[recallId] || '详情';
         bodyEl.innerHTML = V.drawerHtml(recallId, buildHomeFocusVm() || {});
         drawer.hidden = false;
-      } else if (recallId === 'history' || recallId === 'memory') {
+        drawer.classList.remove('is-history');
+      } else if (recallId === 'memory') {
         hfView = recallId;
         lastPaintHtml = '';
         paint();

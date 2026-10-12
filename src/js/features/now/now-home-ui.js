@@ -124,10 +124,16 @@
 
   function renderVoiceStrip() {
     // Always in DOM (hidden when idle) so live sync can patch without full paint.
+    var micSvg =
+      '<svg class="now-vstrip-mic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">' +
+      '<path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/>' +
+      '</svg>';
     return (
       '<section class="now-vstrip" data-now-voice-strip hidden aria-live="polite">' +
       '<div class="now-vstrip-hd">' +
-      '<div class="now-vstrip-pulse" aria-hidden="true">🎤</div>' +
+      '<div class="now-vstrip-pulse" aria-hidden="true">' +
+      micSvg +
+      '</div>' +
       '<div class="now-vstrip-st"><span data-now-voice-status>正在听…</span>' +
       '<s data-now-voice-hint>说完点停止，或按快捷键结束</s></div>' +
       '<div class="now-vstrip-acts">' +

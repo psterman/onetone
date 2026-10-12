@@ -174,6 +174,8 @@ assert.match(
 assert.match(overlay, /data-sp-mats-add/);
 assert.match(overlay, /data-sp-mats-paste/);
 assert.match(src, /optimisticAddMaterial/);
+assert.match(src, /noteSoftPadMaterial/);
+assert.match(src, /onetone\.workJournal/);
 assert.match(src, /extractDropText/);
 assert.match(src, /chipPreview/);
 assert.match(src, /data-sp-mats-clear/);
