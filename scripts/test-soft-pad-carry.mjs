@@ -40,6 +40,60 @@ assert.match(src, /data-sp-mats-paste/);
 assert.match(src, /data-sp-mats-hot/);
 assert.match(src, /onetone\.softPad\.matsPinned/);
 assert.match(src, /matsOpenOnCollect/);
+assert.match(src, /carryMarkdownPreviewRow/);
+assert.match(src, /内容已就绪/);
+assert.match(src, /pulsePasteCue/);
+assert.match(src, /shouldShowCarryUi/);
+assert.match(src, /requestOverlayFit/);
+assert.match(src, /sp-carry__act--paste/);
+assert.match(src, /matsAssistOpen/);
+assert.match(src, /armMatsAssist/);
+assert.match(src, /sp-carry--dock/);
+assert.match(src, /data-sp-hint/);
+assert.match(src, /data-sp-act="mats"/);
+assert.match(src, /dockDismissed/);
+assert.match(src, /ico\('paste'\)/);
+assert.match(src, /ico\('mats'\)/);
+assert.match(src, /ico\('copy'\)/);
+assert.match(src, /kind === 'mats'/);
+assert.match(src, /kind === 'copy'/);
+assert.match(src, /\.micro-hw/);
+assert.match(
+  src,
+  /\.micro-hw[\s\S]*?\.overlay-pad-stack|\.micro-hw'\)\s*\|\|/
+);
+assert.match(css, /sp-carry-paste-pulse/);
+assert.match(css, /\.sp-carry--dock/);
+assert.match(css, /\.sp-carry__hint/);
+assert.match(css, /\.sp-carry__act--wide/);
+assert.match(css, /\.sp-carry__act\s+\.sp-mats-rail__ico/);
+assert.match(css, /z-index:\s*45/);
+assert.match(css, /white-space:\s*nowrap/);
+assert.match(css, /flex-direction:\s*row/);
+assert.match(css, /writing-mode:\s*horizontal-tb/);
+assert.match(css, /min-width:\s*max-content/);
+assert.match(css, /\.sp-carry__act--primary:hover/);
+assert.match(css, /is-sp-caption-empty/);
+assert.match(src, /targetIconSrc/);
+assert.match(src, /resolveTargetKind/);
+assert.match(src, /activeAgentChip/);
+assert.match(src, /data-sp-agent-img/);
+assert.match(src, /data-sp-paste-lbl/);
+assert.match(src, /syncCaptionAboveDock/);
+assert.match(src, /is-sp-carry-dock/);
+assert.match(src, /icoText === 'OT'/);
+assert.doesNotMatch(src, /sp-carry__ico">OT</);
+assert.doesNotMatch(src, /pasteBtn\.textContent\s*=/);
+assert.match(overlay, /soft-pad-carry\.css\?v=/);
+assert.match(overlay, /soft-pad-carry\.js\?v=/);
+assert.match(
+  fs.readFileSync(path.join(root, 'src/codex-micro-overlay.html'), 'utf8'),
+  /softPadCarryRoot/
+);
+assert.match(
+  fs.readFileSync(path.join(root, 'src/codex-micro-overlay.html'), 'utf8'),
+  /__otReportOverlayFitContent/
+);
 assert.match(src, /pullSnapshotWithRetry/);
 assert.match(src, /cmd_tray_inbox_write/);
 assert.match(src, /__TAURI_INTERNALS__/);
@@ -47,7 +101,14 @@ assert.match(src, /pickViaHtmlInput/);
 assert.match(src, /collectBlobFile/);
 assert.match(src, /cmd_codex_micro_overlay_suspend_topmost/);
 assert.match(src, /contentRevision/);
-assert.doesNotMatch(src, /cmd_codex_micro_overlay_set_mats_rail/);
+assert.match(src, /cmd_codex_micro_overlay_set_mats_rail/);
+assert.match(src, /requestMatsRailWidth/);
+assert.match(css, /--sp-mats-rail-w/);
+assert.match(css, /padding-right:\s*var\(--sp-mats-rail-w/);
+assert.match(
+  fs.readFileSync(path.join(root, 'src-tauri/src/codex_micro_overlay.rs'), 'utf8'),
+  /resize_overlay_left_anchored/
+);
 assert.match(src, /copyMaterialsMd/);
 assert.match(src, /materialsMarkdown/);
 assert.match(src, /bindMatsHotkeys/);
@@ -118,7 +179,7 @@ assert.match(src, /chipPreview/);
 assert.match(src, /data-sp-mats-clear/);
 assert.match(src, /data-sp-mats-rm/);
 assert.match(src, /data-sp-mats-list/);
-assert.match(src, /取消携带/);
+assert.match(src, /已收起操作条/);
 assert.match(css, /\.sp-drop-hint/);
 assert.match(css, /\.wrap\.is-drop-target/);
 assert.match(css, /\.sp-mats-rail/);
@@ -216,6 +277,26 @@ const body = {
   }
 };
 const created = [];
+const matsListEl = {
+  _innerHTML: '',
+  get innerHTML() {
+    return this._innerHTML;
+  },
+  set innerHTML(v) {
+    this._innerHTML = String(v || '');
+  },
+  attrs: {},
+  getAttribute(n) {
+    return this.attrs[n] != null ? String(this.attrs[n]) : null;
+  },
+  setAttribute(n, v) {
+    this.attrs[n] = String(v);
+  },
+  addEventListener() {},
+  contains() {
+    return false;
+  }
+};
 function makeEl(tag) {
   const el = {
     tagName: String(tag).toUpperCase(),
@@ -260,22 +341,7 @@ function makeEl(tag) {
       if (sel === '[data-sp-pill]') return { textContent: '' };
       if (sel === '[data-sp-listen]') return { hidden: true };
       if (sel === '[data-sp-act="paste"]') return { disabled: false };
-      if (sel === '[data-sp-mats-list]') {
-        return {
-          innerHTML: '',
-          attrs: {},
-          getAttribute(n) {
-            return this.attrs[n] != null ? String(this.attrs[n]) : null;
-          },
-          setAttribute(n, v) {
-            this.attrs[n] = String(v);
-          },
-          addEventListener() {},
-          contains() {
-            return false;
-          }
-        };
-      }
+      if (sel === '[data-sp-mats-list]') return matsListEl;
       if (sel === '[data-sp-mats-count]') return { textContent: '' };
       if (sel === '[data-sp-mats-count-panel]') return { textContent: '' };
       return null;
@@ -382,6 +448,30 @@ API.mount(body);
 await API.pull();
 assert.equal(API.isActive(), true);
 assert.equal(API.getSnapshot().carry.targetKind, 'traeCode');
+assert.ok(
+  API.__testOnly.getMatsBar().classList.contains('is-open'),
+  'carry activate must open mats list for paste preview'
+);
+// Draft-only carry: no material rows → synthetic markdown preview in list.
+// Bump contentRevision so optimistic merge does not keep prior material rows.
+API.applySnapshot({
+  schemaVersion: 1,
+  contentRevision: 9,
+  carry: { active: true, targetKind: 'chatgpt', generation: 2 },
+  preview: '改首页并修粘贴提示',
+  assembledMd: '# 改首页并修粘贴提示\n\n细节…',
+  includedCount: 0,
+  materialCount: 0,
+  materials: []
+});
+assert.ok(
+  API.__testOnly.getMatsBar().classList.contains('is-open'),
+  'draft-only carry must keep mats list open'
+);
+assert.match(
+  String(API.__testOnly.getMatsBar().querySelector('[data-sp-mats-list]').innerHTML || ''),
+  /改首页并修粘贴提示|待粘贴/
+);
 assert.equal(body.getAttribute('data-sp-drop-bound'), '1');
 assert.ok(bodyListeners.some((l) => l.type === 'dragover'));
 assert.ok(bodyListeners.some((l) => l.type === 'drop'));

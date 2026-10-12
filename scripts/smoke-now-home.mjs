@@ -116,11 +116,22 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (vm.mode !== expectMode) {
     throw new Error(`focus mode want ${expectMode} got ${vm.mode}`);
   }
-  const showComposer = expectMode === 'quiet' && !expectPrimaryId;
+  const showComposer =
+    (expectMode === 'quiet' && !expectPrimaryId) || expectMode === 'return';
+  const smokeProbeTargets = [
+    { kind: 'cursor', label: 'Cursor', installed: true },
+    { kind: 'claude', label: 'Claude', channel: 'cli', installed: true },
+    { kind: 'chatgpt', label: 'ChatGPT' },
+    { kind: 'minimax', label: 'MiniMax' },
+    { kind: 'workbuddy', label: 'WorkBuddy' },
+    { kind: 'trae', label: 'Trae Work' },
+    { kind: 'traeCode', label: 'Trae Code' },
+    { kind: 'qoder', label: 'Qoder' }
+  ];
   const html = HFView.renderFocus(vm, {
     draftText: showComposer ? '' : undefined,
-    handoffAct: 'quick_handoff',
-    handoffLabel: '复制并打开 Agent'
+    handoffDisabled: true,
+    probeTargets: showComposer ? smokeProbeTargets : undefined
   });
   if (!html.includes('hn-canvas')) throw new Error('focus missing hn-canvas');
   if (!html.includes('homePromptPrepHost')) throw new Error('focus missing prompt prep host');
@@ -131,9 +142,9 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   }
   if (showComposer) {
     if (!html.includes('data-hn-quiet-composer')) {
-      throw new Error('quiet must render quiet composer');
+      throw new Error(`${expectMode} must render quiet composer`);
     }
-    if (!html.includes('今天想推进什么')) {
+    if (expectMode === 'quiet' && !html.includes('今天想推进什么')) {
       throw new Error('quiet composer missing opening headline');
     }
     if (html.includes('暂时无需处理') || html.includes('需要你时再提醒')) {
@@ -142,11 +153,11 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     if (/quiet\s*·|轻量开场/.test(html) && html.includes('quiet-tag')) {
       throw new Error('production quiet must not show internal quiet-tag copy');
     }
-    if (!html.includes('data-hf-act="quick_handoff"')) {
-      throw new Error('quiet composer must expose quick_handoff');
+    if (!html.includes('data-hn-agent-grid') || !html.includes('data-hf-act="quick_handoff"')) {
+      throw new Error('quiet composer must expose agent icon grid handoff');
     }
-    if (!html.includes('复制并打开 Agent')) {
-      throw new Error('quiet composer label must be 复制并打开 Agent');
+    if (html.includes('复制并打开 Agent') || html.includes('跳转 ')) {
+      throw new Error('quiet composer must not use text handoff / 跳转 labels');
     }
     if (!html.includes('disabled')) {
       throw new Error('empty quiet composer handoff must be disabled');
@@ -157,7 +168,7 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     if (!html.includes('加入内容')) {
       throw new Error('quiet composer must label material chips');
     }
-    for (const kind of ['paste', 'attach', 'url', 'folder']) {
+    for (const kind of ['paste', 'attach', 'url', 'folder', 'capture']) {
       if (!html.includes(`data-hf-collect="${kind}"`)) {
         throw new Error(`quiet composer missing collect chip ${kind}`);
       }
@@ -170,6 +181,9 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     }
     if (html.includes('hn-prep-launch')) {
       throw new Error('quiet must not also show legacy prepLaunch card');
+    }
+    if (expectMode === 'return' && html.includes('hn-hero')) {
+      throw new Error('return mode mounts composer, not separate Hero gate');
     }
   } else {
     if (!html.includes('hn-hero')) throw new Error('focus missing situational hn-hero');
@@ -204,12 +218,15 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   ]) {
     if (html.includes(bad)) throw new Error(`focus must not show jargon: ${bad}`);
   }
-  // Hero / composer owns at most one primary CTA.
+  // Hero / return resume owns at most one primary CTA; quiet handoff is icon tiles.
   const ctas = (html.match(/class="hn-cta[^"]*"/g) || []).length;
   if (ctas > 1) throw new Error('focus must have at most one primary CTA');
   if (expectMode === 'quiet' && !expectPrimaryId) {
     if (vm.primary) throw new Error('quiet must have null primary');
-    if (ctas !== 1) throw new Error('quiet composer must have one handoff CTA');
+    if (ctas !== 0) throw new Error('quiet composer must use agent icons, not a handoff CTA');
+  }
+  if (expectMode === 'return' && expectPrimaryId === 'resume') {
+    if (ctas !== 1) throw new Error('return composer must keep one resume CTA');
   }
   if (expectPrimaryId) {
     if (!vm.primary || vm.primary.id !== expectPrimaryId) {
@@ -297,16 +314,19 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
     throw new Error('return mode must not remount Agent roster on home');
   }
   if (!r.html.includes('data-hf-act="resume"')) {
-    throw new Error('return mode Hero must expose resume CTA');
+    throw new Error('return mode must expose resume CTA on composer');
   }
   if (!r.vm.secondary || r.vm.secondary.id !== 'start_new_task') {
     throw new Error('return mode must expose start_new_task as the secondary action');
   }
   if (!r.html.includes('data-hf-act="start_new_task"')) {
-    throw new Error('return mode must render 开始新任务 → Quiet Composer');
+    throw new Error('return mode must still offer 开始新任务 dismiss');
   }
   if (!r.html.includes('开始新任务')) {
     throw new Error('return mode must label secondary 开始新任务');
+  }
+  if (!r.html.includes('data-hf-collect="capture"')) {
+    throw new Error('return mode must allow immediate capture collect');
   }
   if (!r.html.includes('homePromptPrepHost')) {
     throw new Error('return mode home still needs prep host');
@@ -679,12 +699,25 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (!/停在\s+Cursor/.test(vm.headline || '')) {
     throw new Error('return H1 must use provider with spacing, got: ' + vm.headline);
   }
-  const homeHtml = HFView.renderFocus(vm, {});
+  const homeHtml = HFView.renderFocus(vm, {
+    draftText: '',
+    handoffDisabled: true,
+    probeTargets: [
+      { kind: 'cursor', label: 'Cursor', installed: true },
+      { kind: 'chatgpt', label: 'ChatGPT' }
+    ]
+  });
   if (!homeHtml.includes('data-hf-act="start_new_task"') || !homeHtml.includes('开始新任务')) {
-    throw new Error('checkpoint→return Hero must render 开始新任务');
+    throw new Error('checkpoint→return must still render 开始新任务');
   }
-  if (homeHtml.includes('hn-quiet-composer') || homeHtml.includes('今天想推进什么')) {
-    throw new Error('return mode must not show Quiet Composer');
+  if (!homeHtml.includes('hn-quiet-composer') || !homeHtml.includes('data-hf-collect="capture"')) {
+    throw new Error('return mode must mount Quiet Composer for immediate work');
+  }
+  if (!homeHtml.includes('data-hn-agent-grid') || !homeHtml.includes('data-hf-handoff-kind="cursor"')) {
+    throw new Error('return mode must show agent icon grid');
+  }
+  if (homeHtml.includes('今天想推进什么')) {
+    throw new Error('return composer should keep return headline, not quiet opening copy');
   }
   // After dismiss, Quiet Composer must mount (homepage agent jump).
   const quietAfter = Object.assign({}, vm, {
@@ -697,8 +730,7 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (quietAfter.desk) quietAfter.desk = Object.assign({}, quietAfter.desk, { continueCard: null });
   const afterDismiss = HFView.renderFocus(quietAfter, {
     draftText: '',
-    handoffAct: 'quick_handoff',
-    handoffLabel: '复制并打开 Agent',
+    handoffDisabled: true,
     resumeAvailable: true,
     probeTargets: [
       { kind: 'minimax', label: 'MiniMax' },
@@ -716,30 +748,33 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   if (!afterDismiss.includes('data-hf-act="restore_return"')) {
     throw new Error('dismissed return must keep restore_return link');
   }
+  if (!afterDismiss.includes('data-hn-agent-grid')) {
+    throw new Error('dismissed quiet must expose agent icon grid');
+  }
   if (!afterDismiss.includes('data-hf-handoff-kind="minimax"')) {
-    throw new Error('dismissed quiet must expose MiniMax probe jump');
+    throw new Error('dismissed quiet must expose MiniMax agent tile');
   }
   if (!afterDismiss.includes('data-hf-handoff-kind="workbuddy"')) {
-    throw new Error('dismissed quiet must expose WorkBuddy probe jump');
+    throw new Error('dismissed quiet must expose WorkBuddy agent tile');
   }
   if (!afterDismiss.includes('data-hf-handoff-kind="trae"')) {
-    throw new Error('dismissed quiet must expose Trae Work probe jump');
+    throw new Error('dismissed quiet must expose Trae Work agent tile');
   }
   if (!afterDismiss.includes('data-hf-handoff-kind="traeCode"')) {
-    throw new Error('dismissed quiet must expose Trae Code probe jump');
+    throw new Error('dismissed quiet must expose Trae Code agent tile');
   }
   if (!afterDismiss.includes('data-hf-handoff-kind="qoder"')) {
-    throw new Error('dismissed quiet must expose Qoder probe jump');
+    throw new Error('dismissed quiet must expose Qoder agent tile');
   }
   if (!afterDismiss.includes('data-hf-handoff-kind="chatgpt"')) {
-    throw new Error('dismissed quiet must expose ChatGPT probe jump');
+    throw new Error('dismissed quiet must expose ChatGPT agent tile');
   }
   // Continue / ledger UI lives on Agent → 总览; home Hero owns resume CTA.
   if (homeHtml.includes('Continue') || homeHtml.includes('Agent 台账') || homeHtml.includes('homeAgentRoster')) {
     throw new Error('home must not render Continue/ledger/Agent roster zones');
   }
   if (!homeHtml.includes('data-hf-act="resume"')) {
-    throw new Error('return-mode Hero must expose resume');
+    throw new Error('return-mode composer must expose resume');
   }
   if (!homeHtml.includes('homePromptPrepHost') || !homeHtml.includes('homeAgentStatusHost')) {
     throw new Error('return-mode home must keep prep + status hosts');
@@ -1043,14 +1078,16 @@ assertFocus(
   if (!html.includes('voice-pilot')) {
     throw new Error('quiet composer should name current project');
   }
-  // filled draft enables handoff
+  // filled draft enables agent tiles
   const filled = HFView.renderFocus(vm, {
     draftText: '改一下首页',
-    handoffAct: 'quick_handoff',
-    handoffLabel: '复制并打开 Agent'
+    probeTargets: [{ kind: 'cursor', label: 'Cursor', installed: true }]
   });
   if (/data-hf-act="quick_handoff"[^>]*disabled/.test(filled)) {
-    throw new Error('non-empty quiet draft must enable handoff');
+    throw new Error('non-empty quiet draft must enable agent tiles');
+  }
+  if (!filled.includes('hn-agent-tile') || filled.includes('复制并打开')) {
+    throw new Error('quiet handoff must be agent tiles, not copy-open CTA');
   }
   const withMats = HFView.renderFocus(vm, {
     draftText: 'x',
@@ -1070,11 +1107,14 @@ assertFocus(
   if (!withMats.includes('已加入 3 项') || !withMats.includes('图片 1') || !withMats.includes('文件 2')) {
     throw new Error('quiet must render shallow material summary');
   }
-  if (!withMats.includes('shot.png') || !withMats.includes('data-hf-act="quiet_remove"')) {
-    throw new Error('quiet must list material chips with remove');
+  if (!withMats.includes('详情在悬浮栏')) {
+    throw new Error('quiet material summary must point to Soft Pad tray');
   }
-  if (!withMats.includes('整理') || !withMats.includes('部分材料需在 Agent 中手动上传')) {
-    throw new Error('quiet material summary must offer Prep + upload hint');
+  if (withMats.includes('hn-mat-chip') || withMats.includes('shot.png')) {
+    throw new Error('quiet must not duplicate tray chips on home');
+  }
+  if (!withMats.includes('整理') || !withMats.includes('本地图片不上传图床')) {
+    throw new Error('quiet material summary must offer Prep + no-image-host hint');
   }
 }
 
@@ -1226,12 +1266,11 @@ assertFocus(
     }),
     {
       draftText: '改首页',
-      handoffAct: 'quick_handoff',
-      handoffLabel: '复制并打开 Cursor',
       probeTargets: [
-        { kind: 'minimax', label: 'MiniMax' },
+        { kind: 'minimax', label: 'MiniMax', icon: 'icons/app-target/minimaxcode.png' },
         { kind: 'workbuddy', label: 'WorkBuddy' },
-        { kind: 'cursor', label: 'Cursor' },
+        { kind: 'cursor', label: 'Cursor', installed: true },
+        { kind: 'claude', label: 'Claude', channel: 'cli', installed: true },
         { kind: 'trae', label: 'Trae Work' },
         { kind: 'traeCode', label: 'Trae Code' },
         { kind: 'qoder', label: 'Qoder' },
@@ -1239,41 +1278,35 @@ assertFocus(
       ]
     }
   );
-  if (!probeHtml.includes('data-hf-handoff-kind="cursor"')) {
-    throw new Error('quiet composer must expose Cursor probe jump');
+  if (!probeHtml.includes('data-hn-agent-grid')) {
+    throw new Error('quiet composer must expose agent icon grid');
   }
-  if (!probeHtml.includes('data-hf-handoff-kind="minimax"')) {
-    throw new Error('quiet composer must expose MiniMax probe jump');
+  if (!probeHtml.includes('悬浮栏') || !probeHtml.includes('粘贴')) {
+    throw new Error('agent grid must explain tray paste into input');
   }
-  if (!probeHtml.includes('data-hf-handoff-kind="workbuddy"')) {
-    throw new Error('quiet composer must expose WorkBuddy probe jump');
+  for (const kind of [
+    'cursor',
+    'claude',
+    'minimax',
+    'workbuddy',
+    'trae',
+    'traeCode',
+    'qoder',
+    'chatgpt'
+  ]) {
+    if (!probeHtml.includes('data-hf-handoff-kind="' + kind + '"')) {
+      throw new Error('quiet composer must expose ' + kind + ' agent tile');
+    }
   }
-  if (!probeHtml.includes('data-hf-handoff-kind="trae"')) {
-    throw new Error('quiet composer must expose Trae Work probe jump');
+  if (!probeHtml.includes('hn-agent-tile__tag') || !probeHtml.includes('CLI')) {
+    throw new Error('CLI agents must show CLI tag on tiles');
   }
-  if (!probeHtml.includes('data-hf-handoff-kind="traeCode"')) {
-    throw new Error('quiet composer must expose Trae Code probe jump');
-  }
-  if (!probeHtml.includes('data-hf-handoff-kind="qoder"')) {
-    throw new Error('quiet composer must expose Qoder probe jump');
-  }
-  if (!probeHtml.includes('data-hf-handoff-kind="chatgpt"')) {
-    throw new Error('quiet composer must expose ChatGPT probe jump');
-  }
-  if (
-    !probeHtml.includes('跳转 Cursor') ||
-    !probeHtml.includes('跳转 MiniMax') ||
-    !probeHtml.includes('跳转 WorkBuddy') ||
-    !probeHtml.includes('跳转 Trae Work') ||
-    !probeHtml.includes('跳转 Trae Code') ||
-    !probeHtml.includes('跳转 Qoder') ||
-    !probeHtml.includes('跳转 ChatGPT')
-  ) {
-    throw new Error('probe jump labels missing');
+  if (probeHtml.includes('跳转 ') || probeHtml.includes('复制并打开 Cursor')) {
+    throw new Error('agent tiles replace text handoff / 跳转 labels');
   }
   const probeCtas = (probeHtml.match(/class="hn-cta[^"]*"/g) || []).length;
-  if (probeCtas !== 1) {
-    throw new Error('probe jumps must stay secondary; still one primary CTA');
+  if (probeCtas !== 0) {
+    throw new Error('quiet agent tiles replace the primary handoff CTA');
   }
 
   let focused = false;
@@ -1309,12 +1342,15 @@ assertFocus(
     mode: 'quiet',
     dto: { provider: { id: 'codex' }, work: { status: 'idle' } }
   };
+  const handoffToasts = [];
   const result = await HFPolicy.execute('quick_handoff', handoffVm, {
     getDraftText: () => '改首页',
     getAgentSnapshot: () => ({
       agents: [{ agentId: 'kind:codex', runtimeKind: 'codex' }]
     }),
-    toast() {}
+    toast(msg) {
+      handoffToasts.push(String(msg || ''));
+    }
   });
   if (result.outcome !== 'clipboard_ready') {
     throw new Error('quick_handoff must return clipboard_ready');
@@ -1323,8 +1359,11 @@ assertFocus(
   if (lastPasteClipboard) {
     throw new Error('non-Cursor probe must be open-only (no pasteClipboard)');
   }
-  if (!String(result.message || '').includes('Soft Pad')) {
-    throw new Error('open-only handoff toast must mention Soft Pad paste');
+  if (!/下方「粘贴」|粘贴/.test(String(result.message || ''))) {
+    throw new Error('open-only handoff toast must mention paste assist');
+  }
+  if (!handoffToasts.some((t) => /已就绪|正在打开|已打开/.test(t) && /粘贴|下方/.test(t))) {
+    throw new Error('open-only handoff must toast paste hint before/after focus');
   }
   if (result.lifecycleCreated) {
     throw new Error('clipboard_ready must not claim lifecycleCreated');
@@ -1432,8 +1471,8 @@ assertFocus(
   if (miss.outcome !== 'clipboard_ready' || !miss.focused) {
     throw new Error('composer miss attempted must still report focused');
   }
-  if (!String(miss.message || '').includes('Agent 输入框')) {
-    throw new Error('composer miss toast must ask user to click Agent input');
+  if (!/输入框|下方「粘贴」|Ctrl\+V/.test(String(miss.message || ''))) {
+    throw new Error('composer miss toast must ask user to click input and paste');
   }
   if (focusedId !== 'kind:cursor') {
     throw new Error('composer miss path must still target kind:cursor');

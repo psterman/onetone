@@ -70,7 +70,7 @@ static OVERLAY_USER_POSITION: OnceLock<ParkingMutex<Option<(i32, i32)>>> = OnceL
 static OVERLAY_LAST_GEOM: OnceLock<ParkingMutex<Option<(bool, i32, i32)>>> = OnceLock::new();
 /// Frontend-measured full-pad content height (logical). Shrinks transparent HWND dead zone.
 static OVERLAY_FIT_HEIGHT: OnceLock<ParkingMutex<Option<f64>>> = OnceLock::new();
-/// Soft Pad materials vertical rail — widens full overlay (right edge anchored).
+/// Soft Pad materials vertical rail — widens full overlay (left edge anchored).
 static OVERLAY_MATS_RAIL: AtomicBool = AtomicBool::new(false);
 /// Soft Pad file dialog open — skip always_on_top re-assert so the OS picker stays visible.
 static OVERLAY_SUSPEND_TOPMOST: AtomicBool = AtomicBool::new(false);
@@ -4533,7 +4533,9 @@ pub fn set_overlay_suspend_topmost(win: &WebviewWindow, suspend: bool) -> bool {
     true
 }
 
-/// Open/close Soft Pad materials vertical rail (widens HWND; right edge stays put).
+/// Open/close Soft Pad materials vertical rail.
+/// Widens HWND with the **left** edge fixed so Soft Pad stays put and the new
+/// strip appears on the right for the rail (right-edge anchor would jump the pad left).
 pub fn set_overlay_mats_rail(win: &WebviewWindow, open: bool) -> bool {
     if *overlay_minimized().lock() {
         OVERLAY_MATS_RAIL.store(false, Ordering::Relaxed);
@@ -4545,7 +4547,7 @@ pub fn set_overlay_mats_rail(win: &WebviewWindow, open: bool) -> bool {
     }
     *overlay_last_geom().lock() = None;
     let (logical_w, logical_h) = overlay_logical_size(false, false, false, false);
-    resize_overlay_anchored(win, logical_w, logical_h);
+    resize_overlay_left_anchored(win, logical_w, logical_h);
     let scale = win.scale_factor().unwrap_or(1.0);
     let target_w = (logical_w * scale).round() as u32;
     let target_h = (logical_h * scale).round() as u32;
@@ -4558,6 +4560,20 @@ pub fn set_overlay_mats_rail(win: &WebviewWindow, open: bool) -> bool {
             Some((false, logical_w.round() as i32, logical_h.round() as i32));
     }
     true
+}
+
+/// Keep the left edge fixed while width changes (materials rail grows to the right).
+fn resize_overlay_left_anchored(win: &WebviewWindow, logical_w: f64, logical_h: f64) {
+    let Ok(pos) = win.outer_position() else {
+        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+        return;
+    };
+    let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+    // Re-assert left edge — some platforms nudge origin during resize.
+    let _ = win.set_position(Position::Physical(PhysicalPosition::new(pos.x, pos.y)));
+    if *overlay_user_positioned().lock() {
+        *overlay_user_position().lock() = Some((pos.x, pos.y));
+    }
 }
 
 /// Webview reports visible Soft Pad height so the HWND matches content (no empty hit slab).
@@ -4650,6 +4666,9 @@ fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnaps
             let _ = win.set_position(Position::Physical(PhysicalPosition::new(x, y)));
         }
         let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+    } else if OVERLAY_MATS_RAIL.load(Ordering::Relaxed) {
+        // Materials rail: grow/shrink from the left so Soft Pad does not jump.
+        resize_overlay_left_anchored(win, logical_w, logical_h);
     } else if prev.map(|(m, _, _)| m) != Some(minimized) {
         // mini↔full: keep the pad's visual anchor instead of jumping left/right.
         resize_overlay_anchored(win, logical_w, logical_h);

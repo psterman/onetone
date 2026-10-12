@@ -827,6 +827,10 @@
     }
     if (m.note) lines.push('- 用户说明: ' + m.note);
     lines.push('- 引用方式: ' + mode);
+    // Refuse image hosts: local binaries stay path-only; Agent must attach manually.
+    if (m.needsManualUpload || (m.kind === 'image' && mode === 'pathOnly')) {
+      lines.push('- 图片策略: 不上传图床、不内联二进制；需在目标 Agent 中手动附上');
+    }
     if (mode === 'pathOnly') {
       lines.push('');
       lines.push('（只引用路径，不附正文）');
@@ -1624,13 +1628,9 @@
       '<div class="hpp-ability"><i class="yes">✓</i><div>填入装订后的正文<small>含材料路径与引用说明</small></div></div></div>' +
       '<div class="hpp-group"><h4>还需要你</h4>' +
       (imgNames.length
-        ? imgNames
-            .map(function (n) {
-              return (
-                '<div class="hpp-ability"><i class="manual">○</i><div>上传 ' + esc(n) + '</div></div>'
-              );
-            })
-            .join('')
+        ? '<div class="hpp-ability"><i class="manual">○</i><div>本地图片不经图床；请在目标里手动附上<small>' +
+          esc(imgNames.join('、')) +
+          '</small></div></div>'
         : '') +
       '<div class="hpp-ability"><i class="manual">○</i><div>检查内容并点击发送</div></div></div>' +
       '<div class="hpp-receipt" data-hpp-receipt ' +

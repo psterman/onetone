@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="css/codex-micro-overlay.css" />
   <link rel="stylesheet" href="css/codex-micro-pad-skins.css?v=20260923-proto2" />
   <link rel="stylesheet" href="css/motion.css" />
-  <link rel="stylesheet" href="css/soft-pad-carry.css" />
+  <link rel="stylesheet" href="css/soft-pad-carry.css?v=20261012-carry-ui" />
   <script src="js/core/motion.js"></script>
   <script src="js/core/agent-status-edge.js"></script>
   <script src="js/features/agent/usage-format.js"></script>
@@ -15,7 +15,7 @@
   <script src="js/cursor-beginner-onboard.js"></script>
   <script src="js/features/activation/activation-hub.js"></script>
   <script src="js/features/capture/smart-capture.js"></script>
-  <script src="js/features/agent/soft-pad-carry.js"></script>
+  <script src="js/features/agent/soft-pad-carry.js?v=20261012-carry-ui"></script>
 </head>
 <body>
   <div class="root">
@@ -3130,11 +3130,25 @@
           var cs=window.getComputedStyle(rootEl);
           var padY=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0);
           var h=Math.ceil(stack.getBoundingClientRect().height+padY);
+          // Legacy absolute carry (outside stack) still needs an extra HWND pass.
+          // Docked carry (sp-carry--dock inside stack) is already in stack height.
+          var carry=document.getElementById('softPadCarryRoot');
+          if(
+            carry&&
+            !carry.hidden&&
+            carry.classList.contains('is-on')&&
+            !stack.contains(carry)
+          ){
+            var ch=Math.ceil(carry.getBoundingClientRect().height||0);
+            if(ch>0) h+=ch+12;
+          }
           if(!(h>0)) return;
           invoke('cmd_codex_micro_overlay_fit_content',{height:h}).catch(function(){});
         });
       });
     }
+    // Soft Pad carry paint calls this after showing the paste dock.
+    window.__otReportOverlayFitContent=reportOverlayFitContent;
 
     function applyLocalStatusDom(){
       var padSt=effectivePadStatus();

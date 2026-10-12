@@ -1,13 +1,14 @@
 /**
  * Home Focus action policy — single primary action with real IPC handlers.
  * Quiet quick_handoff returns honest clipboard_ready | failed (no fake sent).
- * Probe jump: Cursor keeps pasteClipboard; others open-only + Soft Pad paste.
+ * Agent icon handoff: Cursor keeps pasteClipboard; others open-only + tray paste.
  */
 (function (global) {
   'use strict';
 
   var PROBE_LABEL = {
     cursor: 'Cursor',
+    claude: 'Claude',
     minimax: 'MiniMax',
     workbuddy: 'WorkBuddy',
     trae: 'Trae Work',
@@ -15,16 +16,29 @@
     qoder: 'Qoder',
     chatgpt: 'ChatGPT'
   };
-  /** Homepage probe jump order. Cursor = pasteClipboard; others = Soft Pad carry. */
+  /** Homepage agent icon order. Cursor = pasteClipboard; others = Soft Pad carry. */
   var PROBE_KINDS = [
+    'cursor',
+    'claude',
+    'chatgpt',
     'minimax',
     'workbuddy',
-    'cursor',
     'trae',
     'traeCode',
-    'qoder',
-    'chatgpt'
+    'qoder'
   ];
+
+  /** Probe kind → app-target preset id (icons / launch). */
+  var PROBE_APP_ID = {
+    cursor: 'cursor-chat',
+    claude: 'claude-code',
+    chatgpt: 'codex-chat',
+    minimax: 'minimax-chat',
+    workbuddy: 'workbuddy-chat',
+    trae: 'trae-work',
+    traeCode: 'trae-code',
+    qoder: 'qoder-chat'
+  };
 
   /** Cursor keeps auto-paste; all other probes are open-only + Soft Pad「粘贴」. */
   function wantsPasteClipboard(kind) {
@@ -47,6 +61,7 @@
   function canonicalKind(s) {
     s = normalizeKind(s);
     if (s === 'cursor-chat' || s === 'cursor') return 'cursor';
+    if (s === 'claude-code' || s === 'claude' || s === 'claude-cli') return 'claude';
     if (s === 'minimax-chat' || s === 'minimax') return 'minimax';
     if (s === 'workbuddy-chat' || s === 'workbuddy' || s === 'codebuddy') return 'workbuddy';
     if (
@@ -75,6 +90,18 @@
       return 'chatgpt';
     }
     return s;
+  }
+
+  /** Inventory row kind (codex/claude/…) → probe kind used by homepage icons. */
+  function inventoryKindToProbe(kind) {
+    kind = normalizeKind(kind);
+    if (kind === 'codex') return 'chatgpt';
+    return canonicalKind(kind);
+  }
+
+  function appIdForKind(kind) {
+    kind = canonicalKind(kind);
+    return PROBE_APP_ID[kind] || '';
   }
 
   /** Agent Center stub id — chatgpt probe maps to kind:codex. */
@@ -421,6 +448,17 @@
               });
             } catch (_) {}
           }
+          // Toast before focus — agent.window steals FG and hides main-window toasts.
+          if (typeof hooks.toast === 'function') {
+            hooks.toast(
+              usePaste
+                ? '内容已就绪 · 正在打开 ' + targetName + '…'
+                : '内容已就绪 · 正在打开 ' +
+                    targetName +
+                    ' · 下方可预览并粘贴',
+              'scheme'
+            );
+          }
           var focusOpts = usePaste ? { pasteClipboard: true } : { pasteClipboard: false };
           return invokeCenter('agent.focus', cap.agentId, focusOpts)
             .then(function (res) {
@@ -454,19 +492,28 @@
             message =
               '内容已复制，但未能打开 ' +
               targetName +
-              (usePaste ? '，请手动切换后粘贴' : '；Soft Pad 仍可粘贴');
+              (usePaste ? '，请手动切换后粘贴' : '；下方「粘贴」仍可用');
           } else if (usePaste) {
             message = pasted
               ? '已粘贴到 ' + targetName + ' 输入框，请确认发送'
               : composerMiss
-                ? '已打开 ' + targetName + '，请点击右侧 Agent 输入框后 Ctrl+V'
+                ? '已打开 ' +
+                  targetName +
+                  '，请点输入框后按下方「粘贴」或 Ctrl+V'
                 : '已打开 ' + targetName + '，请 Ctrl+V 粘贴并确认发送';
           } else {
             message =
-              '已打开 ' + targetName + ' · 点输入框后按 Soft Pad「粘贴」';
+              '已打开 ' + targetName + ' · 点输入框后按下方「粘贴」';
           }
           if (truncated) {
             message = '装订已截断 · ' + message;
+          }
+          var manualN =
+            Prep && typeof Prep.getMaterialSummary === 'function'
+              ? Number((Prep.getMaterialSummary() || {}).manualUploadCount) || 0
+              : 0;
+          if (manualN > 0) {
+            message += ' · 本地图片不上传图床，请自行附上';
           }
           if (typeof hooks.toast === 'function') {
             hooks.toast(message, focused ? 'scheme' : 'warn');
@@ -527,6 +574,8 @@
     handoffLabelForCap: handoffLabelForCap,
     handoffActForCap: handoffActForCap,
     canonicalKind: canonicalKind,
+    inventoryKindToProbe: inventoryKindToProbe,
+    appIdForKind: appIdForKind,
     syntheticAgentId: syntheticAgentId,
     displayNameForKind: displayNameForKind,
     agentCanFocus: agentCanFocus,

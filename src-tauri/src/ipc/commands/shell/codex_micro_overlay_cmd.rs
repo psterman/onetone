@@ -133,7 +133,7 @@ pub fn cmd_codex_micro_overlay_fit_content(window: WebviewWindow, height: f64) -
     codex_micro_overlay::fit_overlay_content_height(&window, height)
 }
 
-/// Widen Soft Pad for the materials vertical rail (pad | list); right edge anchored.
+/// Widen Soft Pad for the materials vertical rail (pad | list); left edge anchored.
 #[tauri::command]
 pub fn cmd_codex_micro_overlay_set_mats_rail(window: WebviewWindow, open: bool) -> bool {
     codex_micro_overlay::set_overlay_mats_rail(&window, open)

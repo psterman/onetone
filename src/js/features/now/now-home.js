@@ -1218,7 +1218,9 @@
     var Prep = global.OneToneHomePromptPrep;
     var materialSummary =
       Prep && Prep.getMaterialSummary ? Prep.getMaterialSummary() : { count: 0, byKind: {}, refs: [] };
-    var probeTargets = listProbeJumpTargets(agentCenterCache);
+    var probeTargets = listProbeJumpTargets(agentCenterCache, inventoryCache);
+    var hasDraft = !!String(draftText || '').trim();
+    var hasMats = !!(materialSummary && Number(materialSummary.count) > 0);
     var html =
       V && V.renderFocus
         ? V.renderFocus(vm, {
@@ -1236,7 +1238,7 @@
               Policy && Policy.handoffLabelForCap
                 ? Policy.handoffLabelForCap(cap)
                 : '复制并打开 Agent',
-            handoffDisabled: !String(draftText || '').trim(),
+            handoffDisabled: !hasDraft && !hasMats,
             voiceHtml: (function () {
               var U = ui();
               if (!U || !U.renderDock) return '';
@@ -1306,14 +1308,31 @@
     skipMaterialsPaint = false;
   }
 
-  /** Probe jumps — always offered for homepage client handoff tests. */
-  function listProbeJumpTargets(snap) {
+  /** Agent icon tiles — builtins + install inventory (app / CLI) for homepage handoff. */
+  function listProbeJumpTargets(snap, inv) {
     var Policy = global.OneToneHomeActionPolicy;
     var agents = (snap && snap.agents) || [];
     var order =
       Policy && Policy.PROBE_KINDS && Policy.PROBE_KINDS.length
         ? Policy.PROBE_KINDS
-        : ['minimax', 'workbuddy', 'cursor', 'trae', 'traeCode', 'qoder', 'chatgpt'];
+        : ['cursor', 'claude', 'chatgpt', 'minimax', 'workbuddy', 'trae', 'traeCode', 'qoder'];
+    inv = inv || inventoryCache;
+    var invByProbe = {};
+    var invAgents = (inv && (inv.agents || inv.Agents)) || [];
+    for (var ii = 0; ii < invAgents.length; ii++) {
+      var row = invAgents[ii];
+      if (!row) continue;
+      var pk =
+        Policy && Policy.inventoryKindToProbe
+          ? Policy.inventoryKindToProbe(row.kind || row.Kind)
+          : String(row.kind || row.Kind || '')
+              .toLowerCase()
+              .replace(/^kind:/, '');
+      if (!pk || invByProbe[pk]) continue;
+      invByProbe[pk] = row;
+    }
+    var Presets = global.OneToneAppTargetPresets;
+    var Hub = global.OneToneSoftPadHub || global.OneToneSoftPadHubUi;
     var out = [];
     for (var i = 0; i < order.length; i++) {
       var want = order[i];
@@ -1332,6 +1351,41 @@
         found = a;
         break;
       }
+      var invRow = invByProbe[want] || null;
+      var evidence = (invRow && (invRow.evidence || invRow.Evidence)) || [];
+      var hasCli = false;
+      var hasApp = false;
+      for (var e = 0; e < evidence.length; e++) {
+        var ek = String((evidence[e] && (evidence[e].kind || evidence[e].Kind)) || '');
+        if (ek === 'cli' || ek === 'embedded') hasCli = true;
+        if (ek === 'desktop' || ek === 'package') hasApp = true;
+      }
+      var presence = String((invRow && (invRow.presence || invRow.Presence)) || '');
+      if (presence === 'cli') hasCli = true;
+      if (presence === 'desktop' || presence === 'package') hasApp = true;
+      var installed = !!(
+        invRow &&
+        (invRow.running ||
+          invRow.Running ||
+          String(invRow.confidence || invRow.Confidence || '') === 'high' ||
+          hasCli ||
+          hasApp)
+      );
+      var channel = hasCli && !hasApp ? 'cli' : hasCli && hasApp ? 'both' : 'app';
+      var appId =
+        Policy && Policy.appIdForKind
+          ? Policy.appIdForKind(want)
+          : want === 'chatgpt'
+            ? 'codex-chat'
+            : '';
+      var icon = '';
+      if (Hub && typeof Hub.iconForKind === 'function') {
+        icon = String(Hub.iconForKind(want === 'chatgpt' ? 'codex' : want) || '');
+      }
+      if (!icon && Presets && Presets.presetById && appId) {
+        var preset = Presets.presetById(appId);
+        icon = preset && preset.icon ? String(preset.icon) : '';
+      }
       out.push({
         kind: want,
         label:
@@ -1344,9 +1398,20 @@
             ? Policy.syntheticAgentId(want)
             : want === 'chatgpt'
               ? 'kind:codex'
-              : 'kind:' + want
+              : 'kind:' + want,
+        appId: appId,
+        icon: icon,
+        installed: installed,
+        channel: channel,
+        running: !!(invRow && (invRow.running || invRow.Running))
       });
     }
+    out.sort(function (a, b) {
+      var ra = a.installed || a.running ? 0 : 1;
+      var rb = b.installed || b.running ? 0 : 1;
+      if (ra !== rb) return ra - rb;
+      return order.indexOf(a.kind) - order.indexOf(b.kind);
+    });
     return out;
   }
 
@@ -1563,7 +1628,7 @@
           writeQuietDraft(vm, next);
           if (ta) {
             ta.value = next;
-            setQuietHandoffDisabled(!next.trim());
+            setQuietHandoffDisabled(quietHandoffShouldDisable(next));
           } else {
             lastPaintHtml = '';
             paint();
@@ -1604,11 +1669,18 @@
   function setQuietHandoffDisabled(disabled) {
     if (!root) return;
     var nodes = root.querySelectorAll(
-      '.hn-quiet-composer .hn-cta, .hn-quiet-composer .hn-probe-jump'
+      '.hn-quiet-composer .hn-agent-tile, .hn-quiet-composer .hn-probe-jump'
     );
     for (var i = 0; i < nodes.length; i++) {
       nodes[i].disabled = !!disabled;
     }
+  }
+
+  function quietHandoffShouldDisable(draftText) {
+    var Prep = global.OneToneHomePromptPrep;
+    var mats =
+      Prep && Prep.getMaterialSummary ? Prep.getMaterialSummary() : { count: 0 };
+    return !String(draftText || '').trim() && !(Number(mats.count) > 0);
   }
 
   function bindQuietComposer() {
@@ -1618,7 +1690,7 @@
     var vm = buildHomeFocusVm() || {};
     ta.oninput = function () {
       writeQuietDraft(vm, ta.value);
-      setQuietHandoffDisabled(!String(ta.value || '').trim());
+      setQuietHandoffDisabled(quietHandoffShouldDisable(ta.value));
     };
     // Phase3: HTML5 file drop → collect into tray (OLE drag-out later).
     var dropHost =

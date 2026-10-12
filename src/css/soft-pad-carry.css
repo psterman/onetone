@@ -1,4 +1,4 @@
-/* Soft Pad Form B — compact carry strip (overlay) */
+/* Soft Pad Form B — paste dock under pad stack (fit_content includes this height) */
 .sp-carry {
   position: absolute;
   z-index: 40;
@@ -6,6 +6,16 @@
   bottom: 10px;
   width: min(320px, calc(100% - 16px));
   pointer-events: none;
+}
+.sp-carry--dock {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  margin: 8px 0 0;
+  /* Above .sp-mats-rail (40) so paste dock stays clickable if heights briefly overlap. */
+  z-index: 45;
+  flex: none;
 }
 .sp-carry.is-on {
   pointer-events: auto;
@@ -24,6 +34,14 @@
   border: 1.5px solid #b7d4ea;
   box-shadow: 0 12px 32px rgba(40, 80, 110, 0.18);
   overflow: hidden;
+}
+.sp-carry__hint {
+  margin: 0 12px 8px;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 650;
+  color: #3a6f94;
 }
 .sp-carry__top {
   padding: 10px 12px;
@@ -53,8 +71,19 @@
   color: #9fe0d4;
   display: grid;
   place-items: center;
-  font-size: 10px;
+  /* Agent logo fills the tile; hide any letter fallback (OT). */
+  font-size: 0;
+  line-height: 0;
   font-weight: 900;
+  overflow: hidden;
+  flex: none;
+}
+.sp-carry__ico img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
 }
 .sp-carry__meta {
   margin-left: auto;
@@ -96,7 +125,7 @@
   font-size: 12px;
   line-height: 1.45;
   color: #43514e;
-  max-height: 2.9em;
+  max-height: 3.6em;
   overflow: hidden;
 }
 .sp-carry__preview b {
@@ -108,36 +137,122 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;
 }
 .sp-carry__act {
-  width: 40px;
-  height: 40px;
+  height: 36px;
+  min-height: 36px;
   border-radius: 12px;
   border: 1.5px solid #5b9fd4;
   background: #fff;
-  color: #5b9fd4;
-  display: grid;
-  place-items: center;
-  font-size: 16px;
-  padding: 0;
+  color: #2f6f9c;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  padding: 0 12px;
+  width: auto;
+  min-width: max-content;
+  max-width: none;
+  flex: 0 0 auto;
+  box-sizing: border-box;
   cursor: pointer;
+}
+.sp-carry__act .sp-mats-rail__ico {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.sp-carry__act > span {
+  flex: none;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
+}
+.sp-carry__act--primary .sp-mats-rail__ico {
+  color: #fff;
 }
 .sp-carry__act:hover {
   background: #e8f3fb;
+  color: #2f6f9c;
 }
 .sp-carry__act--primary {
   background: #5b9fd4;
   color: #fff;
   border-color: #5b9fd4;
 }
+.sp-carry__act--primary:hover,
+.sp-carry__act--primary:focus-visible {
+  background: #4a8fc4;
+  color: #fff;
+  border-color: #4a8fc4;
+}
+.sp-carry__act--paste {
+  min-width: 84px;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.sp-carry__act--wide {
+  min-width: 78px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 750;
+}
+.sp-carry__act--paste.is-pulse {
+  animation: sp-carry-paste-pulse 1.05s ease-in-out 3;
+}
+@keyframes sp-carry-paste-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(91, 159, 212, 0.55);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(91, 159, 212, 0);
+    transform: scale(1.06);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-carry__act--paste.is-pulse {
+    animation: none;
+    outline: 2px solid #5b9fd4;
+    outline-offset: 2px;
+  }
+}
 .sp-carry__act--primary:disabled {
-  opacity: 0.4;
+  background: #5b9fd4;
+  color: #fff;
+  border-color: #5b9fd4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 .sp-carry__act--ghost {
+  width: auto;
+  min-width: 52px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 750;
   border-color: #c9ccc5;
   color: #606c69;
+  background: #fff;
   margin-left: auto;
+}
+.sp-carry__act--ghost:hover {
+  background: #f3f4f2;
+  color: #43514e;
+}
+/* Dock open + empty caption plate → hide the blank white strip above actions. */
+.wrap.is-sp-carry-dock .overlay-key-caption.is-sp-caption-empty {
+  display: none !important;
 }
 .sp-carry__listen {
   display: flex;
@@ -181,9 +296,15 @@
   color: #606c69;
   line-height: 1.4;
 }
-/* Materials drawer — macOS companion list: same height as Soft Pad chassis. */
+/* Materials drawer — companion list in a reserved right strip (not over Soft Pad). */
+.wrap.is-mats-rail {
+  --sp-mats-rail-w: 176px;
+}
 .wrap.is-mats-rail .overlay-body {
-  justify-content: flex-start;
+  /* Keep pad + paste dock in the left band; rail paints in the right strip. */
+  box-sizing: border-box;
+  padding-right: var(--sp-mats-rail-w);
+  justify-content: center;
 }
 .sp-mats-rail {
   position: absolute;
@@ -197,7 +318,7 @@
   color: #172523;
 }
 .sp-mats-rail.is-open {
-  width: 176px;
+  width: var(--sp-mats-rail-w, 176px);
 }
 .sp-mats-rail[hidden] {
   display: none !important;

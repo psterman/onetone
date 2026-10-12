@@ -2032,6 +2032,89 @@
   justify-content: flex-end;
   gap: 10px;
 }
+.now-home .hn-agent-grid {
+  margin-top: 14px;
+}
+.now-home .hn-agent-grid__hint {
+  margin: 0 0 8px;
+  color: var(--hn-muted);
+  font-size: 12px;
+}
+.now-home .hn-agent-grid__tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.now-home .hn-agent-tile {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 64px;
+  max-width: 76px;
+  padding: 8px 6px 6px;
+  border: 1px solid var(--hn-line, #d7dcda);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--hn-ink2);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.2;
+}
+.now-home .hn-agent-tile:hover:not(:disabled) {
+  border-color: var(--hn-teal, #0f766e);
+  background: var(--hn-teal-soft, #e8f3ef);
+}
+.now-home .hn-agent-tile.is-dim {
+  opacity: 0.55;
+}
+.now-home .hn-agent-tile.is-live {
+  box-shadow: inset 0 0 0 1px var(--hn-teal, #0f766e);
+}
+.now-home .hn-agent-tile:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.now-home .hn-agent-tile__img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+.now-home .hn-agent-tile__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #eef2f1;
+  color: var(--hn-ink2);
+  font-size: 11px;
+  font-weight: 750;
+}
+.now-home .hn-agent-tile__name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 650;
+}
+.now-home .hn-agent-tile__tag {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #eef2f1;
+  color: var(--hn-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
 .now-home .hn-quiet-probe-jumps {
   display: inline-flex;
   flex-wrap: wrap;
@@ -2039,7 +2122,8 @@
   align-items: center;
 }
 .now-home .hn-quiet-actions .hn-cta:disabled,
-.now-home .hn-quiet-actions .hn-probe-jump:disabled {
+.now-home .hn-quiet-actions .hn-probe-jump:disabled,
+.now-home .hn-agent-tile:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }

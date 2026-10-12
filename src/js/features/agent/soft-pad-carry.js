@@ -25,6 +25,10 @@
   var matsHoverBound = false;
   /** Live drop/collect → open once; restart paint must not force-open. */
   var matsOpenOnCollect = false;
+  /** Handoff / paste assist: keep list open without hover (mouse often outside Soft Pad). */
+  var matsAssistOpen = false;
+  /** User dismissed bottom dock; cleared on next carry handoff. */
+  var dockDismissed = false;
 
   function ipc() {
     if (global.OneToneIpc && typeof global.OneToneIpc.invoke === 'function') {
@@ -98,13 +102,72 @@
   function targetLabel(kind) {
     var k = String(kind || '').toLowerCase();
     if (k === 'cursor' || k === 'cursor-chat') return 'Cursor';
-    if (k === 'minimax') return 'MiniMax';
-    if (k === 'workbuddy' || k === 'codebuddy') return 'WorkBuddy';
-    if (k === 'trae' || k === 'trae-work') return 'Trae Work';
+    if (k === 'claude' || k === 'claude-code') return 'Claude';
+    if (k === 'minimax' || k === 'minimax-chat') return 'MiniMax';
+    if (k === 'workbuddy' || k === 'codebuddy' || k === 'workbuddy-chat') return 'WorkBuddy';
+    if (k === 'trae' || k === 'trae-work' || k === 'trae-chat') return 'Trae Work';
     if (k === 'traecode' || k === 'trae-code') return 'Trae Code';
-    if (k === 'qoder') return 'Qoder';
-    if (k === 'chatgpt' || k === 'codex') return 'ChatGPT';
+    if (k === 'qoder' || k === 'qoder-chat') return 'Qoder';
+    if (k === 'windsurf' || k === 'windsurf-chat') return 'Windsurf';
+    if (k === 'chatgpt' || k === 'codex' || k === 'codex-chat') return 'Codex';
+    if (k === 'copilot' || k === 'copilotcli' || k === 'copilot-cli') return 'Copilot';
+    if (k === 'copilotvscode' || k === 'copilot-vscode') return 'Copilot';
+    if (k === 'gemini' || k === 'gemini-cli') return 'Gemini';
+    if (k === 'cline' || k === 'cline-chat') return 'Cline';
+    if (k === 'roo' || k === 'roo-chat') return 'Roo';
+    if (k === 'opencode' || k === 'opencode-chat') return 'OpenCode';
+    if (k === 'aider' || k === 'aider-chat') return 'Aider';
     return kind ? String(kind) : 'Agent';
+  }
+
+  function activeAgentChip() {
+    try {
+      return document.querySelector(
+        '.soft-pad-agent-bar__chip[aria-pressed="true"], .soft-pad-agent-bar__chip.is-active, .soft-pad-agent-bar__chip.is-on'
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /** Soft Pad FG chip → carry targetKind → Cursor. */
+  function resolveTargetKind(s) {
+    var fromCarry = s && s.carry && s.carry.targetKind;
+    if (fromCarry) return String(fromCarry);
+    var on = activeAgentChip();
+    var a = on && on.getAttribute('data-agent');
+    if (a) return a;
+    return 'cursor';
+  }
+
+  /** Prefer the live Soft Pad chip <img> so badge matches the bar exactly. */
+  function targetIconSrc(kind) {
+    var on = activeAgentChip();
+    var img = on && on.querySelector && on.querySelector('img[src]');
+    var chipSrc = img && String(img.getAttribute('src') || '').trim();
+    if (chipSrc) return chipSrc;
+    var k = String(kind || '').toLowerCase();
+    if (k === 'cursor' || k === 'cursor-chat') return 'icons/app-target/cursor.png';
+    if (k === 'claude' || k === 'claude-code') return 'icons/app-target/claude.png';
+    if (k === 'chatgpt' || k === 'codex' || k === 'codex-chat') return 'icons/app-target/codex.png';
+    if (k === 'minimax' || k === 'minimax-chat') return 'icons/app-target/minimaxcode.png';
+    if (k === 'workbuddy' || k === 'codebuddy' || k === 'workbuddy-chat') {
+      return 'icons/app-target/workbuddy.png';
+    }
+    if (k === 'trae' || k === 'trae-work' || k === 'trae-chat') return 'icons/app-target/trae.png';
+    if (k === 'traecode' || k === 'trae-code') return 'icons/app-target/trae-code.png';
+    if (k === 'qoder' || k === 'qoder-chat') return 'icons/app-target/qoder.png';
+    if (k === 'windsurf' || k === 'windsurf-chat') return 'icons/app-target/windsurf.png';
+    if (k === 'copilot' || k === 'copilotcli' || k === 'copilot-cli') {
+      return 'icons/app-target/copilot.png';
+    }
+    if (k === 'copilotvscode' || k === 'copilot-vscode') return 'icons/app-target/copilot.png';
+    if (k === 'gemini' || k === 'gemini-cli') return 'icons/app-target/gemini.png';
+    if (k === 'cline' || k === 'cline-chat') return 'icons/app-target/cline.png';
+    if (k === 'roo' || k === 'roo-chat') return 'icons/app-target/roo.png';
+    if (k === 'opencode' || k === 'opencode-chat') return 'icons/app-target/opencode.png';
+    if (k === 'aider' || k === 'aider-chat') return 'icons/app-target/aider.png';
+    return 'icons/app-target/cursor.png';
   }
 
   function carryActive(s) {
@@ -117,32 +180,75 @@
     return Math.max(0, n);
   }
 
+  /** Show paste dock when handoff carry is on OR materials are ready to paste. */
+  function shouldShowCarryUi(s) {
+    if (dockDismissed) return false;
+    if (carryActive(s)) return true;
+    if (s && String(s.assembledMd || '').trim()) return true;
+    return materialBadge(s) > 0;
+  }
+
+  function requestOverlayFit() {
+    try {
+      if (typeof global.__otReportOverlayFitContent === 'function') {
+        global.__otReportOverlayFitContent();
+      }
+    } catch (_) {}
+  }
+
   function ensureDom(host) {
-    if (rootEl && rootEl.isConnected) return rootEl;
-    var parent = host || document.body;
+    if (rootEl && rootEl.isConnected) {
+      var icoEl = rootEl.querySelector('.sp-carry__ico');
+      var icoText = String((icoEl && icoEl.textContent) || '').replace(/\s+/g, '');
+      // Old mount (OT letters / no paste label / no agent img) → rebuild once.
+      if (
+        !rootEl.querySelector('[data-sp-agent-img]') ||
+        !rootEl.querySelector('[data-sp-paste-lbl]') ||
+        icoText === 'OT'
+      ) {
+        try {
+          if (rootEl.parentNode) rootEl.parentNode.removeChild(rootEl);
+        } catch (_) {}
+        rootEl = null;
+      } else {
+        return rootEl;
+      }
+    }
+    // Dock inside pad stack so fit_content height includes paste bar (not clipped).
+    var stack = document.querySelector('.overlay-pad-stack');
+    var parent = stack || host || document.body;
     var el = document.createElement('div');
     el.id = 'softPadCarryRoot';
-    el.className = 'sp-carry';
+    el.className = 'sp-carry sp-carry--dock';
     el.setAttribute('data-soft-pad-carry', '1');
     el.hidden = true;
     el.innerHTML =
       '<div class="sp-carry__stack" data-sp-carry-stack>' +
       '<div class="sp-carry__bar" data-sp-carry-bar>' +
       '<div class="sp-carry__top">' +
-      '<div class="sp-carry__badge" title="携带材料">' +
-      '<span class="sp-carry__ico">OT</span>' +
+      '<div class="sp-carry__badge" title="携带材料" data-sp-badge>' +
+      '<span class="sp-carry__ico" data-sp-agent-ico aria-hidden="true">' +
+      '<img data-sp-agent-img src="icons/app-target/cursor.png" alt="" />' +
+      '</span>' +
       '<span>+<span data-sp-count>0</span></span>' +
       '</div>' +
       '<div class="sp-carry__meta">' +
-      '<span class="sp-carry__pill" data-sp-pill>携带中</span>' +
-      '<button type="button" class="sp-carry__icon" data-sp-act="expand" title="展开完整 Soft Pad">⤢</button>' +
-      '<button type="button" class="sp-carry__icon" data-sp-act="dismiss" title="取消携带">×</button>' +
+      '<span class="sp-carry__pill" data-sp-pill>材料就绪</span>' +
+      '<button type="button" class="sp-carry__icon" data-sp-act="dismiss" title="收起操作条">×</button>' +
       '</div></div>' +
-      '<div class="sp-carry__preview"><b>携带：</b><span data-sp-preview></span></div>' +
+      '<p class="sp-carry__hint" data-sp-hint>先点目标输入框，再按「粘贴」</p>' +
+      '<div class="sp-carry__preview"><b>将粘贴：</b><span data-sp-preview></span></div>' +
       '<div class="sp-carry__actions">' +
-      '<button type="button" class="sp-carry__act" data-sp-act="mic" title="听指令">🎙</button>' +
-      '<button type="button" class="sp-carry__act sp-carry__act--primary" data-sp-act="paste" title="粘贴到输入框">⇢|</button>' +
-      '<button type="button" class="sp-carry__act sp-carry__act--ghost" data-sp-act="dismiss" title="取消携带">⊘</button>' +
+      '<button type="button" class="sp-carry__act sp-carry__act--primary sp-carry__act--paste" data-sp-act="paste" title="先点目标输入框，再按此粘贴">' +
+      ico('paste') +
+      '<span data-sp-paste-lbl>粘贴</span></button>' +
+      '<button type="button" class="sp-carry__act sp-carry__act--wide" data-sp-act="mats" title="展开材料列表">' +
+      ico('mats') +
+      '<span>材料</span></button>' +
+      '<button type="button" class="sp-carry__act sp-carry__act--wide" data-sp-act="copy" title="复制 Markdown">' +
+      ico('copy') +
+      '<span>复制</span></button>' +
+      '<button type="button" class="sp-carry__act sp-carry__act--ghost" data-sp-act="dismiss" title="收起">收起</button>' +
       '</div></div>' +
       '<div class="sp-carry__listen" data-sp-listen hidden>' +
       '<div class="sp-carry__listen-mic" aria-hidden="true">🎙</div>' +
@@ -156,8 +262,18 @@
     return el;
   }
 
+  function armMatsAssist() {
+    matsAssistOpen = true;
+    matsOpenOnCollect = true;
+    setMatsDrawerOpen(true);
+  }
+
+  function clearMatsAssist() {
+    matsAssistOpen = false;
+  }
+
   function ico(kind) {
-    // Compact inline SVGs — pin / trash / plus / clipboard / fold.
+    // Compact inline SVGs — pin / trash / plus / clipboard / list / copy / fold.
     if (kind === 'pin') {
       // Classic thumbtack (SF Symbols–like), not a diagonal scribble.
       return '<svg class="sp-mats-rail__ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M9.75 1.5a.75.75 0 0 0-1.5 0v.66c-1.55.2-2.75 1.52-2.75 3.12v.5l-1.72 1.72a.75.75 0 0 0 .53 1.28H7.5v4.47a.75.75 0 0 0 1.5 0V8.78h2.69a.75.75 0 0 0 .53-1.28L10.5 5.78v-.5c0-1.6-1.2-2.92-2.75-3.12V1.5Zm-1.5 2.18c.97.17 1.7 1.01 1.7 2.02v.81c0 .2.08.39.22.53L11 7.78H5.55l.83-.83a.75.75 0 0 0 .22-.53v-.81c0-1.01.73-1.85 1.7-2.02h.45Z"/></svg>';
@@ -173,7 +289,14 @@
       return '<svg class="sp-mats-rail__ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 2.5a.75.75 0 0 1 .75.75v4h4a.75.75 0 0 1 0 1.5h-4v4a.75.75 0 0 1-1.5 0v-4h-4a.75.75 0 0 1 0-1.5h4v-4A.75.75 0 0 1 8 2.5Z"/></svg>';
     }
     if (kind === 'paste') {
-      return '<svg class="sp-mats-rail__ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6 1.5h4a1.5 1.5 0 0 1 1.5 1.5v.5H13a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 13 14.5H3A1.5 1.5 0 0 1 1.5 13V5A1.5 1.5 0 0 1 3 3.5h1.5V3A1.5 1.5 0 0 1 6 1.5Zm0 1.5a.5.5 0 0 0-.5.5v.5h5V3.5a.5.5 0 0 0-.5-.5H6Zm-2.5 3A.5.5 0 0 0 3 6.5v6.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V6.5a.5.5 0 0 0-.5-.5H3.5Z"/></svg>';
+      // Clipboard with distinct clip tab — not a briefcase block.
+      return '<svg class="sp-mats-rail__ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M5.75 1.5h4.5a.75.75 0 0 1 .75.75V3h1.25A1.75 1.75 0 0 1 14 4.75v8.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-8.5A1.75 1.75 0 0 1 3.75 3H5V2.25a.75.75 0 0 1 .75-.75Zm.75 1.5v.25h3V3h-3Zm-2.75 1.5a.25.25 0 0 0-.25.25v8.5c0 .14.11.25.25.25h8.5a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25H10.5v.5a.75.75 0 0 1-.75.75h-3.5A.75.75 0 0 1 5.5 5.25V4.5H3.75Z"/></svg>';
+    }
+    if (kind === 'copy') {
+      return '<svg class="sp-mats-rail__ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M5.5 2A1.5 1.5 0 0 0 4 3.5v8A1.5 1.5 0 0 0 5.5 13h6A1.5 1.5 0 0 0 13 11.5v-8A1.5 1.5 0 0 0 11.5 2h-6ZM5.5 3.5h6v8h-6v-8Zm-2 1.75a.75.75 0 0 0-1.5 0v6.75A2.5 2.5 0 0 0 4.5 14.5h6.75a.75.75 0 0 0 0-1.5H4.5a1 1 0 0 1-1-1V5.25Z"/></svg>';
+    }
+    if (kind === 'mats') {
+      return '<svg class="sp-mats-rail__ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3.5 3.25A.75.75 0 0 1 4.25 2.5h7.5a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1-.75-.75Zm0 4.5a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1-.75-.75Zm0 4.5a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1-.75-.75Z"/></svg>';
     }
     if (kind === 'capture') {
       return '<svg class="sp-mats-rail__ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3.5 3.5h3l.75-1h2.5l.75 1H12.5A1.5 1.5 0 0 1 14 5v6.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5V5A1.5 1.5 0 0 1 3.5 3.5ZM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0-1.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg>';
@@ -293,7 +416,12 @@
         if (toggleBtn) {
           e.preventDefault();
           e.stopPropagation();
-          setMatsDrawerOpen(!matsDrawerOpen);
+          var openNext = !matsDrawerOpen;
+          if (!openNext) {
+            clearMatsAssist();
+            matsOpenOnCollect = false;
+          }
+          setMatsDrawerOpen(openNext);
           return;
         }
         var clearBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-clear]');
@@ -312,7 +440,7 @@
     return bar;
   }
 
-  /** Align rail height to Soft Pad chassis (macOS companion-panel style). */
+  /** Align rail height to Soft Pad stack (sits in reserved right strip, not over pad). */
   function syncMatsRailGeometry() {
     var bar = matsBarEl;
     if (!bar || !bar.isConnected) return;
@@ -349,10 +477,10 @@
     });
     wrap.addEventListener('pointerleave', function () {
       clearMatsLeaveTimer();
-      // Leave Soft Pad → retract unless pinned.
+      // Leave Soft Pad → retract unless pinned / paste-assist keeps list open.
       matsLeaveTimer = setTimeout(function () {
         matsLeaveTimer = null;
-        if (!matsPinned) setMatsDrawerOpen(false);
+        if (!matsPinned && !matsAssistOpen) setMatsDrawerOpen(false);
       }, 160);
     });
   }
@@ -378,6 +506,13 @@
     }
   }
 
+  function requestMatsRailWidth(open) {
+    var api = ipc();
+    if (!api || typeof api.invoke !== 'function') return;
+    // Widen HWND left-anchored so Soft Pad stays put and the rail owns the new right strip.
+    api.invoke('cmd_codex_micro_overlay_set_mats_rail', { open: !!open }).catch(function () {});
+  }
+
   function setMatsDrawerOpen(open) {
     matsDrawerOpen = !!open;
     var bar = matsBarEl;
@@ -387,7 +522,7 @@
     var wrap = document.getElementById('wrap');
     if (wrap) wrap.classList.toggle('is-mats-rail', matsDrawerOpen);
     syncMatsRailGeometry();
-    // Panel overlays the pad in-place. Do NOT widen HWND — that shifts Soft Pad on screen.
+    requestMatsRailWidth(matsDrawerOpen);
   }
 
   function chipPreview(m) {
@@ -639,6 +774,10 @@
       e.stopPropagation();
       var act = btn.getAttribute('data-sp-act');
       if (act === 'paste') pasteOnly();
+      else if (act === 'mats') {
+        armMatsAssist();
+        toast('已展开材料列表');
+      } else if (act === 'copy') copyMaterialsMd();
       else if (act === 'dismiss') dismissCarry();
       else if (act === 'expand') toggleExpand();
       else if (act === 'mic') toggleListen();
@@ -723,6 +862,7 @@
     var s = String(raw || '').trim();
     if (!s || s === 'local') return '本机';
     if (s === 'Soft Pad') return 'Soft Pad';
+    if (s === 'handoff') return '待粘贴';
     return s;
   }
 
@@ -759,6 +899,26 @@
     return src || when || kindLabel(m && m.kind);
   }
 
+  /** Draft-only handoff: no material rows but assembledMd — show paste preview. */
+  function carryMarkdownPreviewRow() {
+    var md = snap && String(snap.assembledMd || '').trim();
+    var preview = String((snap && snap.preview) || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!preview && md) {
+      preview = md.replace(/\s+/g, ' ').trim();
+      if (preview.length > 80) preview = preview.slice(0, 80) + '…';
+    }
+    if (!preview) return null;
+    return {
+      id: '__carry_md__',
+      kind: 'text',
+      preview: preview,
+      source: 'handoff',
+      _carryPreview: true
+    };
+  }
+
   function paintMats() {
     var bar = ensureMatsBar();
     syncMatsRailGeometry();
@@ -769,18 +929,25 @@
       ? snap.materials
       : []
     ).slice(0, 16);
+    if (!list.length) {
+      var carryRow = carryMarkdownPreviewRow();
+      if (carryRow) list = [carryRow];
+    }
     bar.hidden = false;
     bar.classList.toggle('is-empty', count < 1);
     if (tabCount) {
       tabCount.textContent = String(count);
       tabCount.hidden = count < 1;
     }
-    if (count < 1) {
+    if (count < 1 && !list.length) {
       matsHadItems = false;
       matsOpenOnCollect = false;
       hideMatsTip(0);
-      bar.classList.toggle('is-open', matsDrawerOpen);
-      bar.setAttribute('data-sp-mats-open', matsDrawerOpen ? '1' : '0');
+      if (matsPinned || matsAssistOpen) setMatsDrawerOpen(true);
+      else {
+        bar.classList.toggle('is-open', matsDrawerOpen);
+        bar.setAttribute('data-sp-mats-open', matsDrawerOpen ? '1' : '0');
+      }
       if (listEl) {
         listEl.innerHTML =
           '<div class="sp-mats-rail__item sp-mats-rail__item--plain">' +
@@ -790,8 +957,8 @@
       return;
     }
     matsHadItems = true;
-    // Pinned or live collect → open; restart/passive sync → tab only (hover expands).
-    if (matsPinned || matsOpenOnCollect) {
+    // Pinned / collect / paste-assist → keep open (no hover; mouse often outside Soft Pad).
+    if (matsPinned || matsOpenOnCollect || matsAssistOpen) {
       matsOpenOnCollect = false;
       setMatsDrawerOpen(true);
     } else {
@@ -805,6 +972,14 @@
         if (!m) return '';
         var preview = chipPreview(m);
         var sub = rowListSubtitle(m);
+        var rm =
+          m._carryPreview || m.id === '__carry_md__'
+            ? ''
+            : '<button type="button" class="sp-mats-rail__x" data-sp-mats-rm="' +
+              esc(m.id || '') +
+              '" title="移除此项" aria-label="移除此项">' +
+              ico('rm') +
+              '</button>';
         return (
           '<div class="sp-mats-rail__item" data-sp-mat-id="' +
           esc(m.id || '') +
@@ -819,11 +994,8 @@
           '<span class="sp-mats-rail__sub">' +
           esc(sub) +
           '</span></div>' +
-          '<button type="button" class="sp-mats-rail__x" data-sp-mats-rm="' +
-          esc(m.id || '') +
-          '" title="移除此项" aria-label="移除此项">' +
-          ico('rm') +
-          '</button></div>'
+          rm +
+          '</div>'
         );
       })
       .join('');
@@ -870,37 +1042,123 @@
 
   function paint() {
     ensureMatsBar();
+    var active = shouldShowCarryUi(snap);
+    if (!active) clearMatsAssist();
     paintMats();
-    var active = carryActive(snap);
     var el = ensureDom();
+    // Re-parent into pad stack if Soft Pad remounted DOM.
+    var stack = document.querySelector('.overlay-pad-stack');
+    if (stack && el.parentNode !== stack) {
+      try {
+        stack.appendChild(el);
+      } catch (_) {}
+    }
+    var wasHidden = !!el.hidden;
     el.hidden = !active;
     el.classList.toggle('is-on', active);
-    el.classList.toggle('is-carry', active);
+    el.classList.toggle('is-carry', carryActive(snap));
     el.classList.toggle('is-expanded', !!formExpanded);
     var listenEl = el.querySelector('[data-sp-listen]');
     if (listenEl) listenEl.hidden = !active || !listenOn;
-    if (!active) return;
+    if (!active) {
+      syncCaptionAboveDock(false);
+      if (!wasHidden) requestOverlayFit();
+      return;
+    }
     var countEl = el.querySelector('[data-sp-count]');
     var previewEl = el.querySelector('[data-sp-preview]');
     var pillEl = el.querySelector('[data-sp-pill]');
+    var hintEl = el.querySelector('[data-sp-hint]');
     var pasteBtn = el.querySelector('[data-sp-act="paste"]');
-    if (countEl) countEl.textContent = String(materialBadge(snap));
+    var pasteLbl = el.querySelector('[data-sp-paste-lbl]');
+    var agentImg = el.querySelector('[data-sp-agent-img]');
+    var badge = el.querySelector('[data-sp-badge]');
+    var n = materialBadge(snap);
+    if (countEl) countEl.textContent = String(n);
     if (previewEl) {
       previewEl.textContent = String((snap && snap.preview) || '（无预览）');
     }
+    var kind = resolveTargetKind(snap);
+    var tgt = targetLabel(kind);
+    if (agentImg) {
+      var src = targetIconSrc(kind);
+      if (agentImg.getAttribute('src') !== src) agentImg.setAttribute('src', src);
+      agentImg.setAttribute('alt', tgt);
+    }
+    if (badge) badge.title = tgt + ' · 携带材料';
     if (pillEl) {
-      var tgt = targetLabel(snap && snap.carry && snap.carry.targetKind);
-      pillEl.textContent = '跟随 ' + tgt;
+      pillEl.textContent = carryActive(snap) ? '跟随 ' + tgt : '材料就绪 · ' + n + ' 项';
+    }
+    if (hintEl) {
+      hintEl.textContent =
+        '① 点 ' + tgt + ' 输入框  ② 看右侧材料列表  ③ 按「粘贴」';
     }
     if (pasteBtn) {
-      var hasMd = !!(snap && String(snap.assembledMd || '').trim());
+      var hasMd = !!String(materialsMarkdown(snap) || '').trim();
       pasteBtn.disabled = !hasMd || pasteBusy;
+      // Never set textContent on the button — that wipes the SVG icon.
+      if (pasteLbl) pasteLbl.textContent = pasteBusy ? '…' : '粘贴';
     }
+    // Hide empty Soft Pad caption plate above the dock (white blank bar).
+    syncCaptionAboveDock(active);
+    requestOverlayFit();
+  }
+
+  function syncCaptionAboveDock(dockOn) {
+    var wrap = document.getElementById('wrap') || document.querySelector('.wrap');
+    if (wrap && wrap.classList) wrap.classList.toggle('is-sp-carry-dock', !!dockOn);
+    var cap = document.getElementById('overlayKeyCaption');
+    if (!cap) return;
+    if (!dockOn) {
+      cap.classList.remove('is-sp-caption-empty');
+      cap.hidden = false;
+      return;
+    }
+    var nameEl = cap.querySelector('[data-cap-name]');
+    var chordEl = cap.querySelector('[data-cap-chord]');
+    var cmdsEl = cap.querySelector('[data-cap-cmds]');
+    var badgeEl = cap.querySelector('[data-cap-badge]');
+    var name = String((nameEl && nameEl.textContent) || '').trim();
+    var chord = String((chordEl && chordEl.textContent) || '').trim();
+    var cmds = cmdsEl && !cmdsEl.hidden && String(cmdsEl.textContent || '').trim();
+    var badge = badgeEl && !badgeEl.hidden && String(badgeEl.textContent || '').trim();
+    var meaningful =
+      (!!name && name !== '悬停按键查看名称') ||
+      !!chord ||
+      !!cmds ||
+      !!badge ||
+      cap.classList.contains('is-usage-sub') ||
+      cap.classList.contains('is-beginner-arm-caption') ||
+      cap.classList.contains('is-oral-arm-caption');
+    var empty = !meaningful;
+    cap.classList.toggle('is-sp-caption-empty', empty);
+    cap.hidden = empty;
+  }
+
+  function pulsePasteCue() {
+    var el = rootEl || ensureDom();
+    var pasteBtn = el && el.querySelector('[data-sp-act="paste"]');
+    if (!pasteBtn || !pasteBtn.classList) return;
+    try {
+      pasteBtn.classList.remove('is-pulse');
+      // Restart CSS animation if carry re-fires while still active.
+      void pasteBtn.offsetWidth;
+      pasteBtn.classList.add('is-pulse');
+    } catch (_) {
+      return;
+    }
+    setTimeout(function () {
+      try {
+        pasteBtn.classList.remove('is-pulse');
+      } catch (_) {}
+    }, 3200);
   }
 
   function applySnapshot(next) {
     if (!next || typeof next !== 'object') return;
     var prev = snap;
+    var prevCarry = carryActive(prev);
+    var prevGen = (prev && prev.carry && Number(prev.carry.generation)) || 0;
     if (prev && Array.isArray(prev.materials) && prev.materials.length) {
       var prevRev = Number(prev.contentRevision) || 0;
       var nextRev = Number(next.contentRevision) || 0;
@@ -927,7 +1185,26 @@
       }
     }
     snap = next;
+    var nextCarry = carryActive(snap);
+    var nextGen = (snap.carry && Number(snap.carry.generation)) || 0;
+    var prevShow = shouldShowCarryUi(prev);
+    var nextShow = shouldShowCarryUi(snap);
+    // Homepage handoff / materials ready: force-open list + dock (no hover needed).
+    var handoffFresh =
+      nextCarry && (!prevCarry || nextGen > prevGen);
+    var assistFresh = nextShow && (!prevShow || handoffFresh);
+    if (handoffFresh) dockDismissed = false;
+    if (assistFresh) {
+      armMatsAssist();
+      var tgt = targetLabel(snap.carry && snap.carry.targetKind);
+      toast(
+        nextCarry
+          ? '内容已就绪 · 点 ' + tgt + ' 输入框后按下方「粘贴」'
+          : '材料已就绪 · 下方可粘贴 / 管理材料'
+      );
+    }
     paint();
+    if (assistFresh) pulsePasteCue();
   }
 
   function pullSnapshot() {
@@ -986,10 +1263,22 @@
     if (!api || typeof api.invoke !== 'function') {
       return Promise.resolve({ ok: false, error: 'no_ipc' });
     }
+    var md = materialsMarkdown(snap);
+    if (!String(md || '').trim()) {
+      toast('暂无材料可粘贴');
+      return Promise.resolve({ ok: false, error: 'empty' });
+    }
     pasteBusy = true;
     paint();
-    return api
-      .invoke('cmd_soft_pad_paste_only', { holdMs: 40 })
+    // Ensure clipboard has tray Markdown before Ctrl+V into Agent.
+    return writeTextClipboard(md)
+      .catch(function () {
+        // Still try paste — handoff may have already written clipboard.
+        return null;
+      })
+      .then(function () {
+        return api.invoke('cmd_soft_pad_paste_only', { holdMs: 40 });
+      })
       .then(function (res) {
         pasteBusy = false;
         paint();
@@ -998,6 +1287,8 @@
           if (err === 'no_external_foreground') toast('请先点目标输入框，再粘贴');
           else if (err === 'paste_busy') toast('粘贴进行中');
           else toast('粘贴未送达（SendInput 未确认进框）');
+        } else {
+          toast('已粘贴到输入框');
         }
         return res;
       })
@@ -1010,6 +1301,8 @@
   }
 
   function dismissCarry() {
+    dockDismissed = true;
+    clearMatsAssist();
     var api = ipc();
     if (api && typeof api.invoke === 'function') {
       return api
@@ -1019,17 +1312,27 @@
             snap.carry.active = false;
             snap.carry.targetKind = null;
           }
-          paint();
-          toast('已取消携带（材料仍在首页）');
+          paintDismissedDock();
+          toast('已收起操作条（材料仍在列表）');
         })
         .catch(function () {
           if (snap && snap.carry) snap.carry.active = false;
-          paint();
+          paintDismissedDock();
         });
     }
     if (snap && snap.carry) snap.carry.active = false;
-    paint();
+    paintDismissedDock();
     return Promise.resolve();
+  }
+
+  /** Hide dock without wiping tray materials; list can stay if user pinned. */
+  function paintDismissedDock() {
+    var el = ensureDom();
+    el.hidden = true;
+    el.classList.remove('is-on', 'is-carry');
+    if (!matsPinned) setMatsDrawerOpen(false);
+    syncCaptionAboveDock(false);
+    requestOverlayFit();
   }
 
   function toggleExpand() {
@@ -1064,13 +1367,18 @@
 
   function toast(msg) {
     try {
-      var t = document.getElementById('toast');
+      var t =
+        document.getElementById('overlayToast') || document.getElementById('toast');
       if (t) {
         t.textContent = String(msg || '');
+        t.hidden = false;
+        // overlayToast uses is-show; legacy #toast uses show.
+        t.classList.add('is-show');
         t.classList.add('show');
         setTimeout(function () {
+          t.classList.remove('is-show');
           t.classList.remove('show');
-        }, 2200);
+        }, 2800);
         return;
       }
     } catch (_) {}

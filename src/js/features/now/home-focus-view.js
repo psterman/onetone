@@ -329,42 +329,16 @@
       if (!byKind[k]) return;
       bits.push((labels[k] || k) + ' ' + byKind[k]);
     });
+    // List lives on Soft Pad tray; home only shows a shallow count line.
     var line =
       '已加入 ' +
       count +
       ' 项' +
-      (bits.length ? ' · ' + bits.join(' · ') : '');
-    var chips = (summary.refs || [])
-      .map(function (r) {
-        if (!r || !r.id) return '';
-        var kindLabel = labels[r.kind] || '附件';
-        var thumb =
-          r.kind === 'image' && r.previewDataUrl
-            ? '<img class="hn-mat-chip__thumb" src="' +
-              esc(r.previewDataUrl) +
-              '" alt="" />'
-            : '<span class="hn-mat-chip__kind">' + esc(kindLabel) + '</span>';
-        return (
-          '<span class="hn-mat-chip" data-hf-mat-id="' +
-          esc(r.id) +
-          '" title="' +
-          esc(kindLabel + ' · ' + (r.name || '')) +
-          '">' +
-          thumb +
-          '<span class="hn-mat-chip__name">' +
-          esc(r.name || '素材') +
-          '</span>' +
-          '<button type="button" class="hn-mat-chip__x" data-hf-act="quiet_remove" data-hf-mat-id="' +
-          esc(r.id) +
-          '" aria-label="移除 ' +
-          esc(r.name || '素材') +
-          '">×</button></span>'
-        );
-      })
-      .join('');
+      (bits.length ? ' · ' + bits.join(' · ') : '') +
+      ' · 详情在悬浮栏';
     var hint =
       Number(summary.manualUploadCount) > 0
-        ? '<p class="hn-quiet-mat-hint">部分材料需在 Agent 中手动上传</p>'
+        ? '<p class="hn-quiet-mat-hint">本地图片不上传图床；交给网页 Agent 时请自行附上</p>'
         : '';
     return (
       '<div class="hn-quiet-mat-summary" data-hn-mat-summary>' +
@@ -374,49 +348,123 @@
       '</span>' +
       '<button type="button" class="hn-text-btn" data-hf-act="open_prep">整理</button>' +
       '</div>' +
-      (chips ? '<div class="hn-quiet-mat-chips" aria-label="已加入的附件">' + chips + '</div>' : '') +
       hint +
       '</div>'
     );
   }
 
-  /** Secondary probe jump buttons (MiniMax / WorkBuddy / Cursor / Trae / …). */
-  function quietProbeJumpHtml(targets, disabled) {
+  function agentTileIconHtml(t) {
+    var label = (t && t.label) || (t && t.kind) || 'Agent';
+    if (t && t.icon) {
+      return (
+        '<img class="hn-agent-tile__img" src="' +
+        esc(t.icon) +
+        '" alt="" decoding="async" width="28" height="28" />'
+      );
+    }
+    var badge = String(label).slice(0, 2);
+    return '<span class="hn-agent-tile__badge" aria-hidden="true">' + esc(badge) + '</span>';
+  }
+
+  /**
+   * Agent icon grid — open app + Soft Pad carries assembled Markdown for paste.
+   * opts.probeTargets: { kind, label, icon, installed, channel, running }
+   */
+  function quietAgentIconGridHtml(targets, disabled) {
     targets = Array.isArray(targets) ? targets : [];
     if (!targets.length) return '';
     var bits = targets.map(function (t) {
       if (!t || !t.kind) return '';
       var label = t.label || t.kind;
+      var channel = String(t.channel || 'app');
+      var isCli = channel === 'cli' || channel === 'both';
+      var cls =
+        'hn-agent-tile' +
+        (t.installed || t.running ? '' : ' is-dim') +
+        (t.running ? ' is-live' : '') +
+        (isCli ? ' is-cli' : '');
+      var title =
+        label +
+        (isCli ? (channel === 'both' ? ' · 应用/CLI' : ' · CLI') : '') +
+        (t.installed || t.running ? '' : ' · 未检测到安装');
       return (
-        '<button type="button" class="hn-text-btn hn-probe-jump" data-hf-act="quick_handoff" data-hf-handoff-kind="' +
+        '<button type="button" class="' +
+        cls +
+        '" data-hf-act="quick_handoff" data-hf-handoff-kind="' +
         esc(t.kind) +
         '"' +
         (disabled ? ' disabled' : '') +
-        '>' +
-        esc('跳转 ' + label) +
+        ' title="' +
+        esc(title) +
+        '">' +
+        agentTileIconHtml(t) +
+        '<span class="hn-agent-tile__name">' +
+        esc(label) +
+        '</span>' +
+        (isCli
+          ? '<span class="hn-agent-tile__tag">' +
+            esc(channel === 'both' ? 'CLI+' : 'CLI') +
+            '</span>'
+          : '') +
         '</button>'
       );
     });
     return (
-      '<div class="hn-quiet-probe-jumps" aria-label="跳转到 Agent">' + bits.join('') + '</div>'
+      '<div class="hn-agent-grid" data-hn-agent-grid aria-label="打开 Agent">' +
+      '<p class="hn-agent-grid__hint">点图标打开应用 · 悬浮栏列表可预览，再点「粘贴」进输入框</p>' +
+      '<div class="hn-agent-grid__tiles">' +
+      bits.join('') +
+      '</div></div>'
     );
   }
 
   /**
    * Quiet opening composer. opts:
-   *   draftText, draftPreview, handoffAct, handoffLabel, handoffDisabled, materialSummary, probeTargets
+   *   draftText, draftPreview, handoffDisabled, materialSummary, probeTargets
+   * Handoff = agent icon grid (not a single「复制并打开」CTA).
+   * Return mode keeps resume CTA; collect/draft work immediately.
    */
   function quietComposerHtml(vm, opts) {
     opts = opts || {};
+    vm = vm || {};
+    var isReturn = (vm.mode || '') === 'return';
     var draft = String(opts.draftText || '');
-    var disabled = !draft.trim() || opts.handoffDisabled === true;
-    var act = opts.handoffAct || 'quick_handoff';
-    var label = opts.handoffLabel || '复制并打开 Agent';
+    var disabled = opts.handoffDisabled === true;
+    if (!disabled && !draft.trim() && !(opts.materialSummary && opts.materialSummary.count > 0)) {
+      disabled = true;
+    }
+    var headline = isReturn && vm.headline ? vm.headline : '今天想推进什么？';
+    var assist = isReturn
+      ? String(vm.assistance || '').trim() ||
+        '可以从停下的地方继续，也可以直接描述新工作或加入材料。'
+      : '直接描述你想完成的工作，也可以加入现有材料。';
+    var resumeCta =
+      isReturn && vm.primary && vm.primary.id && vm.primary.label
+        ? '<button type="button" class="hn-cta" data-hf-act="' +
+          esc(vm.primary.id) +
+          '">' +
+          esc(vm.primary.label) +
+          '</button>'
+        : '';
+    var startNew =
+      isReturn && vm.secondary && vm.secondary.id && vm.secondary.label
+        ? '<button type="button" class="hn-text-btn" data-hf-act="' +
+          esc(vm.secondary.id) +
+          '">' +
+          esc(vm.secondary.label) +
+          '</button>'
+        : '';
     return (
-      '<section class="hn-quiet-composer" data-hn-quiet-composer aria-label="今天想推进什么">' +
+      '<section class="hn-quiet-composer" data-hn-quiet-composer aria-label="' +
+      esc(headline) +
+      '">' +
       '<header class="hn-quiet-head">' +
-      '<h1 class="hn-headline">今天想推进什么？</h1>' +
-      '<p class="hn-assist">直接描述你想完成的工作，也可以加入现有材料。</p>' +
+      '<h1 class="hn-headline">' +
+      esc(headline) +
+      '</h1>' +
+      '<p class="hn-assist">' +
+      esc(assist) +
+      '</p>' +
       '</header>' +
       '<div class="hn-composer">' +
       '<textarea id="hnQuietDraft" class="hn-composer-input" rows="5" ' +
@@ -435,15 +483,10 @@
       quietMaterialSummaryHtml(opts.materialSummary) +
       '</div>' +
       quietContextLine(vm) +
+      quietAgentIconGridHtml(opts.probeTargets, disabled) +
       '<div class="hn-actions hn-quiet-actions">' +
-      '<button type="button" class="hn-cta" data-hf-act="' +
-      esc(act) +
-      '"' +
-      (disabled ? ' disabled' : '') +
-      '>' +
-      esc(label) +
-      '</button>' +
-      quietProbeJumpHtml(opts.probeTargets, disabled) +
+      resumeCta +
+      startNew +
       (opts.resumeAvailable
         ? '<button type="button" class="hn-text-btn" data-hf-act="restore_return">继续上次工作</button>'
         : '') +
@@ -483,7 +526,8 @@
     var mode = vm.mode || 'quiet';
     var desk = deskZonesHtml(vm);
     var voice = opts.voiceHtml || '';
-    var showComposer = mode === 'quiet' && !vm.primary;
+    // Return keeps resume CTA but mounts Quiet Composer so collect/draft can start immediately.
+    var showComposer = (mode === 'quiet' && !vm.primary) || mode === 'return';
     var showGateKeep = mode === 'quiet' && !!vm.primary;
     var mainStage = showComposer
       ? quietComposerHtml(vm, opts)
