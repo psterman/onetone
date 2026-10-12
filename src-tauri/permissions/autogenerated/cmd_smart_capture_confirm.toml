@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-smart-capture-confirm"
+description = "Enables the cmd_smart_capture_confirm command without any pre-configured scope."
+commands.allow = ["cmd_smart_capture_confirm"]
+
+[[permission]]
+identifier = "deny-cmd-smart-capture-confirm"
+description = "Denies the cmd_smart_capture_confirm command without any pre-configured scope."
+commands.deny = ["cmd_smart_capture_confirm"]

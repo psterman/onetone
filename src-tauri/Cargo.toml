@@ -41,6 +41,7 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "json"] }
 raw-window-handle = "0.6"
 image = "0.25"
+xcap = "0.4"
 cpal = "0.15"
 crossbeam-channel = "0.5"
 tar = "0.4"

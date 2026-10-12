@@ -1351,6 +1351,30 @@
   }
 
   function quietCollectMaterial(collectKind) {
+    collectKind = String(collectKind || '');
+    if (collectKind === 'capture') {
+      var sc = global.OneToneSmartCapture;
+      if (!sc || typeof sc.begin !== 'function') {
+        toastQuiet('智能截图未就绪');
+        return;
+      }
+      var PrepCap = global.OneToneHomePromptPrep;
+      var vmCap = buildHomeFocusVm() || {};
+      if (PrepCap && typeof PrepCap.beginMaterialCollection === 'function') {
+        var beganCap = PrepCap.beginMaterialCollection({
+          scopeId: vmCap.projectId || vmCap.projectName || '',
+          resetIfHandedOff: true
+        });
+        if (beganCap && beganCap.outcome === 'busy') {
+          toastQuiet('正在交接，暂不能改材料');
+          return;
+        }
+      }
+      sc.begin('home').catch(function (e) {
+        toastQuiet(String((e && e.message) || e || '截图启动失败'));
+      });
+      return;
+    }
     var Prep = global.OneToneHomePromptPrep;
     if (!Prep || typeof Prep.collectMaterial !== 'function') {
       toastQuiet('材料能力未就绪');

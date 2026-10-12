@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-smart-capture-switch-monitor"
+description = "Enables the cmd_smart_capture_switch_monitor command without any pre-configured scope."
+commands.allow = ["cmd_smart_capture_switch_monitor"]
+
+[[permission]]
+identifier = "deny-cmd-smart-capture-switch-monitor"
+description = "Denies the cmd_smart_capture_switch_monitor command without any pre-configured scope."
+commands.deny = ["cmd_smart_capture_switch_monitor"]

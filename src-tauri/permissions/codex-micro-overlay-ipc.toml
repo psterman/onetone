@@ -37,4 +37,6 @@ permissions = [
   "allow-cmd-tray-inbox-write",
   "allow-cmd-pick-path",
   "allow-cmd-soft-pad-paste-only",
+  "allow-cmd-smart-capture-begin",
+  "allow-cmd-smart-capture-cancel",
 ]

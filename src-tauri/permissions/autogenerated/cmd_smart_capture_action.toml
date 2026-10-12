@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-smart-capture-action"
+description = "Enables the cmd_smart_capture_action command without any pre-configured scope."
+commands.allow = ["cmd_smart_capture_action"]
+
+[[permission]]
+identifier = "deny-cmd-smart-capture-action"
+description = "Denies the cmd_smart_capture_action command without any pre-configured scope."
+commands.deny = ["cmd_smart_capture_action"]

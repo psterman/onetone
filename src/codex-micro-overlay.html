@@ -14,6 +14,7 @@
   <script src="js/features/agent/soft-pad-agent-bar-rank.js"></script>
   <script src="js/cursor-beginner-onboard.js"></script>
   <script src="js/features/activation/activation-hub.js"></script>
+  <script src="js/features/capture/smart-capture.js"></script>
   <script src="js/features/agent/soft-pad-carry.js"></script>
 </head>
 <body>
@@ -105,6 +106,11 @@
       </div>
       <div class="overlay-mini__row overlay-mini__row--tools">
         <div class="overlay-mini__beginner-actions" id="miniBeginnerActions" hidden role="toolbar" aria-label="快捷钮"></div>
+        <button type="button" class="overlay-mini__action" data-act="smart-capture" title="智能截图" aria-label="智能截图">
+          <span class="overlay-mini__action-icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M3.5 3.5h3l.75-1h2.5l.75 1H12.5A1.5 1.5 0 0 1 14 5v6.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5V5A1.5 1.5 0 0 1 3.5 3.5ZM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0-1.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg>
+          </span>
+        </button>
         <button type="button" class="overlay-mini__action overlay-mini__action--settings" data-act="mini-settings"
           title="迷你栏设置" aria-label="迷你栏设置">
           <span class="overlay-mini__action-icon" aria-hidden="true">
@@ -3998,7 +4004,7 @@
         '#miniAgentMore,.overlay-mini__more,' +
         '[data-soft-pad-carry],.sp-carry,[data-sp-act],.sp-carry__badge,.sp-carry__preview,' +
         '[data-sp-mats-bar],[data-sp-mats-rail],.sp-mats-rail,[data-sp-mats-panel],[data-sp-mats-hot],[data-sp-mats-list],' +
-        '[data-sp-mats-toggle],[data-sp-mats-pin],[data-sp-mats-add],[data-sp-mats-paste],[data-sp-mats-clear],[data-sp-mats-rm]'
+        '[data-sp-mats-toggle],[data-sp-mats-pin],[data-sp-mats-add],[data-sp-mats-capture],[data-sp-mats-paste],[data-sp-mats-clear],[data-sp-mats-rm]'
       ));
     }
 
@@ -4051,6 +4057,23 @@
         localMinimized=false;
         applyLocalStatusDom();
         invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).then(forcePadGridRefresh).catch(forcePadGridRefresh);
+      });
+    });
+
+    document.querySelectorAll('[data-act="smart-capture"]').forEach(function(btn){
+      btn.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
+      btn.addEventListener('click',function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        hideAgentTip();
+        var sc=window.OneToneSmartCapture;
+        if(!sc||typeof sc.begin!=='function'){
+          toast('智能截图未就绪');
+          return;
+        }
+        sc.begin('softPad').catch(function(err){
+          toast(String((err&&err.message)||err||'截图启动失败'));
+        });
       });
     });
 

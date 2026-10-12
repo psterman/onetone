@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cmd-smart-capture-begin"
+description = "Enables the cmd_smart_capture_begin command without any pre-configured scope."
+commands.allow = ["cmd_smart_capture_begin"]
+
+[[permission]]
+identifier = "deny-cmd-smart-capture-begin"
+description = "Denies the cmd_smart_capture_begin command without any pre-configured scope."
+commands.deny = ["cmd_smart_capture_begin"]

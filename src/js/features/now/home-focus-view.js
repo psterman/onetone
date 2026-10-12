@@ -338,15 +338,19 @@
       .map(function (r) {
         if (!r || !r.id) return '';
         var kindLabel = labels[r.kind] || '附件';
+        var thumb =
+          r.kind === 'image' && r.previewDataUrl
+            ? '<img class="hn-mat-chip__thumb" src="' +
+              esc(r.previewDataUrl) +
+              '" alt="" />'
+            : '<span class="hn-mat-chip__kind">' + esc(kindLabel) + '</span>';
         return (
           '<span class="hn-mat-chip" data-hf-mat-id="' +
           esc(r.id) +
           '" title="' +
           esc(kindLabel + ' · ' + (r.name || '')) +
           '">' +
-          '<span class="hn-mat-chip__kind">' +
-          esc(kindLabel) +
-          '</span>' +
+          thumb +
           '<span class="hn-mat-chip__name">' +
           esc(r.name || '素材') +
           '</span>' +
@@ -422,6 +426,7 @@
       '</textarea>' +
       '<div class="hn-composer-tools" aria-label="加入内容">' +
       '<span class="hn-composer-tools-label">加入内容</span>' +
+      '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="capture">截图</button>' +
       '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="paste">粘贴</button>' +
       '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="attach">附件</button>' +
       '<button type="button" class="hn-attach" data-hf-act="quiet_collect" data-hf-collect="url">网址</button>' +

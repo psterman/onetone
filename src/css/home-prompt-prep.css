@@ -213,6 +213,17 @@
   display: grid;
   place-items: center;
   color: var(--hpp-green);
+  overflow: hidden;
+}
+.hpp-ico--thumb {
+  padding: 0;
+}
+.hpp-ico--thumb img,
+.hpp-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .hpp-item strong,
 .hpp-item small {

@@ -212,6 +212,11 @@ pub fn set_overlay_click_through(pass: bool) {
     set_overlay_click_through_impl(pass, false);
 }
 
+/// Last applied Soft Pad click-through (ignore-cursor) state — for capture chrome restore.
+pub fn soft_pad_click_through() -> bool {
+    *last_pass_through().lock()
+}
+
 /// Soft Pad must stay clickable without becoming the foreground window.
 /// Without WS_EX_NOACTIVATE, pad clicks steal FG from Codex; SendInput then lands in the
 /// overlay WebView2 (Ctrl+F/N) and freezes the pad.

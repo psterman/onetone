@@ -175,6 +175,9 @@
     if (kind === 'paste') {
       return '<svg class="sp-mats-rail__ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6 1.5h4a1.5 1.5 0 0 1 1.5 1.5v.5H13a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 13 14.5H3A1.5 1.5 0 0 1 1.5 13V5A1.5 1.5 0 0 1 3 3.5h1.5V3A1.5 1.5 0 0 1 6 1.5Zm0 1.5a.5.5 0 0 0-.5.5v.5h5V3.5a.5.5 0 0 0-.5-.5H6Zm-2.5 3A.5.5 0 0 0 3 6.5v6.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V6.5a.5.5 0 0 0-.5-.5H3.5Z"/></svg>';
     }
+    if (kind === 'capture') {
+      return '<svg class="sp-mats-rail__ico" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3.5 3.5h3l.75-1h2.5l.75 1H12.5A1.5 1.5 0 0 1 14 5v6.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5V5A1.5 1.5 0 0 1 3.5 3.5ZM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0-1.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></svg>';
+    }
     return '‹';
   }
 
@@ -203,6 +206,9 @@
       '<div class="sp-mats-rail__actions">' +
       '<button type="button" class="sp-mats-rail__iconbtn" data-sp-mats-add title="添加本机文件" aria-label="添加本机文件">' +
       ico('add') +
+      '</button>' +
+      '<button type="button" class="sp-mats-rail__iconbtn" data-sp-mats-capture title="智能截图" aria-label="智能截图">' +
+      ico('capture') +
       '</button>' +
       '<button type="button" class="sp-mats-rail__iconbtn" data-sp-mats-paste title="粘贴剪贴板（文字/图片）" aria-label="粘贴">' +
       ico('paste') +
@@ -260,6 +266,20 @@
           e.preventDefault();
           e.stopPropagation();
           pickLocalFile();
+          return;
+        }
+        var captureBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-capture]');
+        if (captureBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          var sc = global.OneToneSmartCapture;
+          if (sc && typeof sc.begin === 'function') {
+            sc.begin('softPad').catch(function (err) {
+              toast(String((err && err.message) || err || '截图启动失败'));
+            });
+          } else {
+            toast('智能截图未就绪');
+          }
           return;
         }
         var pasteBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-paste]');

@@ -52,6 +52,9 @@ pub struct TrayCollectArgs {
     pub path: Option<String>,
     pub name: Option<String>,
     pub id: Option<String>,
+    /// Optional PNG thumb (base64, no data: prefix) for list preview.
+    #[serde(default)]
+    pub preview_base64: Option<String>,
 }
 
 fn empty_snapshot() -> Value {
@@ -249,10 +252,17 @@ pub fn request_collect(app: &AppHandle, args: TrayCollectArgs) -> TrayCollectRes
                 .map(str::trim)
                 .filter(|s| !s.is_empty())
                 .map(|s| s.to_string());
+            let preview = args
+                .preview_base64
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string());
             serde_json::json!({
                 "kind": "attach",
                 "path": path,
                 "name": name,
+                "previewBase64": preview,
             })
         }
         "remove" => {
@@ -429,6 +439,7 @@ mod tests {
             path: None,
             name: None,
             id: None,
+            preview_base64: None,
         };
         // No AppHandle in unit test — validate the empty branch via direct checks.
         let text = args.text.unwrap_or_default();

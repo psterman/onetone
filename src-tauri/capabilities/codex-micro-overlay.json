@@ -4,6 +4,7 @@
   "windows": ["codex_micro_overlay"],
   "permissions": [
     "core:default",
+    "core:webview:allow-create-webview-window",
     "codex-micro-overlay-ipc"
   ]
 }

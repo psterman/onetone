@@ -1,0 +1,1211 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OneTone · 智能分区截图 · UI / 流程原型</title>
+<style>
+:root{
+  --bg:#e8ebe8;--paper:#fbfaf7;--ink:#172523;--ink2:#3d4a47;--muted:#65706c;
+  --line:#d8ddd9;--line2:#c5cbc6;--teal:#176f68;--teal-d:#115b56;--teal-s:#dcebe7;
+  --amber:#9a5a14;--amber-s:#fff1dd;--sky:#2f6f8f;--sky-s:#e6f2f7;
+  --ok:#287663;--ok-s:#e4f2ec;--warn:#a44840;--shadow:0 18px 48px rgba(23,37,35,.12);
+  --num:#0e5c56;--num-glow:rgba(23,111,104,.35);
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.5 "Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button,input{font:inherit}button{cursor:pointer}
+button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+::selection{background:var(--teal-s)}
+a{color:var(--teal)}
+
+.wrap{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:18px 0 48px}
+.hero{
+  display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;
+  margin-bottom:14px;
+}
+.hero h1{margin:0;font-size:22px;letter-spacing:-.02em;font-weight:800}
+.hero p{margin:4px 0 0;color:var(--muted);font-size:13px;max-width:640px}
+.badge{
+  margin-left:auto;padding:6px 12px;border-radius:999px;background:#153b38;color:#fff;
+  font-size:11px;font-weight:750;white-space:nowrap;
+}
+
+/* Tabs */
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.tabs button{
+  border:1px solid var(--line);background:var(--paper);color:var(--muted);
+  border-radius:999px;padding:7px 13px;font-size:12px;font-weight:700;
+}
+.tabs button[aria-selected="true"]{background:#153b38;border-color:#153b38;color:#fff}
+.panel{display:none}
+.panel.on{display:block}
+
+/* Capability matrix — Home | Soft Pad | 悬浮栏 */
+.matrix{
+  display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px;
+  box-shadow:0 8px 24px rgba(23,37,35,.06);
+}
+.matrix .cell{background:var(--paper);padding:12px 14px;font-size:12px}
+.matrix .h{background:#f1f4f2;font-weight:800;color:var(--ink2);font-size:12px}
+.matrix .row-label{font-weight:750;color:var(--ink)}
+.tag{
+  display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:750;
+}
+.tag.yes{background:var(--ok-s);color:var(--ok)}
+.tag.soft{background:var(--sky-s);color:var(--sky)}
+.tag.no{background:#f0e8e6;color:var(--warn)}
+.tag.later{background:var(--amber-s);color:var(--amber)}
+.note-box{
+  border:1px solid var(--line);border-radius:12px;background:var(--paper);
+  padding:12px 14px;font-size:12px;color:var(--ink2);margin-bottom:16px;
+  box-shadow:0 6px 18px rgba(23,37,35,.04);
+}
+.note-box b{color:var(--ink)}
+.note-box ul{margin:8px 0 0;padding-left:18px}
+.note-box li{margin:4px 0}
+
+/* Flow steps */
+.flow{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;
+}
+.flow .step{
+  border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:12px;
+  position:relative;min-height:110px;
+}
+.flow .step.on{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-s)}
+.flow .n{
+  width:24px;height:24px;border-radius:50%;background:#153b38;color:#fff;
+  display:grid;place-items:center;font-size:11px;font-weight:800;margin-bottom:8px;
+}
+.flow .step.on .n{background:var(--teal)}
+.flow h3{margin:0 0 4px;font-size:13px}
+.flow p{margin:0;font-size:11px;color:var(--muted);line-height:1.45}
+@media(max-width:960px){
+  .matrix{grid-template-columns:1.2fr 1fr}.matrix .h:nth-child(n+3),.matrix .cell:nth-child(4n+3),.matrix .cell:nth-child(4n+4){/* keep readable */}
+  .flow{grid-template-columns:1fr 1fr}
+  .entry-grid{grid-template-columns:1fr}
+}
+
+/* Demo stage */
+.stage-bar{
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;
+}
+.stage-bar .btn{
+  border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 12px;
+  font-size:12px;font-weight:750;color:var(--ink2);
+}
+.stage-bar .btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+.stage-bar .btn:disabled{opacity:.4;cursor:not-allowed}
+.stage-bar .hint{margin-left:auto;font-size:12px;color:var(--muted)}
+.kbd{
+  display:inline-block;padding:1px 6px;border:1px solid var(--line2);border-bottom-width:2px;
+  border-radius:5px;background:#fff;font-size:11px;font-weight:700;color:var(--ink2);
+}
+
+.demo{
+  position:relative;height:min(620px,calc(100vh - 220px));min-height:480px;
+  border:1px solid rgba(23,37,35,.12);border-radius:16px;overflow:hidden;
+  background:#c5cdc8;box-shadow:var(--shadow);
+}
+
+/* Fake desktop / IDE (frozen frame) */
+.desk{position:absolute;inset:0;display:grid;grid-template-rows:36px 1fr 28px}
+.desk-top{
+  background:#2a3331;color:#c5d0cb;display:flex;align-items:center;gap:10px;
+  padding:0 12px;font-size:11px;font-weight:650;
+}
+.desk-top .app{color:#fff;font-weight:800}
+.desk-body{display:grid;grid-template-columns:180px 1fr 220px;min-height:0;background:#1e2523}
+.desk-side,.desk-chat,.desk-main{padding:10px;font-size:11px;color:#9aa8a3;overflow:hidden}
+.desk-side{background:#252d2b;border-right:1px solid #323b38}
+.desk-chat{background:#222a28;border-left:1px solid #323b38}
+.desk-main{background:#1a211f;display:flex;flex-direction:column;gap:0;padding:0}
+.desk-editor{flex:1;padding:12px 14px;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.55;color:#c8d4cf}
+.desk-term{
+  height:110px;border-top:1px solid #323b38;background:#141a18;padding:8px 12px;
+  font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#7d9888;
+}
+.desk-side b,.desk-chat b{display:block;color:#d5e0db;margin-bottom:8px;font-size:12px}
+.file{padding:4px 6px;border-radius:4px;margin:2px 0}
+.file.on{background:#33403c;color:#e8f0ec}
+.bubble{
+  margin:8px 0;padding:8px;border-radius:8px;background:#2d3835;color:#c5d0cb;line-height:1.4;
+}
+.desk-bar{
+  background:#151b19;color:#6f7f79;display:flex;align-items:center;padding:0 10px;
+  font-size:10px;gap:14px;
+}
+
+/* Soft Pad mini (always visible in desk scene) */
+.softpad{
+  position:absolute;right:18px;bottom:40px;width:168px;
+  background:rgba(251,250,247,.94);border:1px solid rgba(23,37,35,.14);
+  border-radius:14px;box-shadow:0 12px 32px rgba(20,30,26,.28);padding:8px;
+  backdrop-filter:blur(8px);z-index:5;transition:opacity .2s,transform .2s;
+}
+.softpad.dim{opacity:.35;pointer-events:none;transform:scale(.96)}
+.softpad .sp-h{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:10px;font-weight:800;color:var(--ink2);padding:2px 4px 6px;
+}
+.softpad .sp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.softpad .key{
+  aspect-ratio:1;border:1px solid var(--line);border-radius:7px;background:#fff;
+  font-size:9px;font-weight:750;color:var(--ink2);display:grid;place-items:center;
+}
+.softpad .key.shot{background:var(--teal-s);border-color:#9ec4be;color:var(--teal-d)}
+.softpad .sp-foot{margin-top:6px;font-size:10px;color:var(--muted);padding:0 4px}
+
+/* Home panel — screenshot CTA + materials list */
+.home-panel{
+  position:absolute;left:14px;top:44px;width:248px;z-index:4;
+  background:rgba(251,250,247,.97);border:1px solid var(--line);border-radius:14px;
+  padding:12px;box-shadow:0 10px 28px rgba(20,30,26,.2);display:none;max-height:calc(100% - 88px);
+  overflow:auto;
+}
+.home-panel.on{display:block}
+.home-panel.dim{opacity:.35;pointer-events:none}
+.home-panel .hp-brand{font-size:11px;font-weight:800;color:var(--ink2);margin:0 0 6px}
+.home-panel .hp-title{font-size:15px;font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
+.home-panel .hp-assist{margin:0 0 10px;font-size:11px;color:var(--muted);line-height:1.4}
+.home-panel .hp-shot{
+  width:100%;border:0;border-radius:10px;padding:9px 12px;margin-bottom:10px;
+  background:var(--teal);color:#fff;font-size:12px;font-weight:800;
+}
+.home-panel .hp-shot:hover{background:var(--teal-d)}
+.home-panel .hp-list-h{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:11px;font-weight:800;color:var(--ink2);margin:0 0 6px;
+}
+.home-panel .hp-list-h em{font-style:normal;background:#e2e7e4;border-radius:8px;padding:1px 7px;font-size:10px}
+.home-mats{display:flex;flex-direction:column;gap:6px}
+.home-mat{
+  display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:center;
+  border:1px solid var(--line);border-radius:10px;padding:6px;background:#fff;
+}
+.home-mat .thumb{
+  width:44px;height:36px;border-radius:6px;
+  background:linear-gradient(135deg,#2a403c,#1a2825 45%,#3d5c56);border:1px solid var(--line);
+}
+.home-mat b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-mat small{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.home-empty{font-size:11px;color:var(--muted);padding:10px 4px;text-align:center}
+
+/* Floating tray pill (悬浮栏) */
+.tray-pill{
+  position:absolute;right:18px;top:50%;transform:translateY(-50%);
+  width:48px;z-index:5;padding:10px 6px;
+  background:rgba(251,250,247,.94);border:1px solid rgba(23,37,35,.14);
+  border-radius:24px;box-shadow:0 12px 32px rgba(20,30,26,.25);
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  backdrop-filter:blur(8px);transition:opacity .2s,transform .2s;
+}
+.tray-pill.dim{opacity:.3;pointer-events:none;transform:translateY(-50%) scale(.96)}
+.tray-pill .tp-label{
+  writing-mode:vertical-rl;font-size:11px;font-weight:800;letter-spacing:2px;color:var(--ink2);
+}
+.tray-pill .tp-btn{
+  width:34px;height:34px;border:1px solid var(--line);border-radius:50%;
+  background:#fff;font-size:13px;font-weight:800;color:var(--teal-d);
+}
+.tray-pill .tp-btn.shot{background:var(--teal-s);border-color:#9ec4be}
+.tray-pill .tp-btn:hover{background:var(--teal);color:#fff;border-color:var(--teal)}
+
+/* Capture overlay */
+.overlay{
+  position:absolute;inset:0;z-index:20;display:none;
+  background:rgba(10,16,14,.42);backdrop-filter:none;
+}
+.overlay.on{display:block}
+.overlay .freeze-bg{
+  position:absolute;inset:0;opacity:.92;pointer-events:none;
+  /* visual freeze: desaturate desk via overlay tint only — regions sit on top */
+}
+.regions{position:absolute;inset:0}
+.region{
+  position:absolute;border:2px solid rgba(255,255,255,.55);
+  background:rgba(23,111,104,.12);border-radius:4px;
+  transition:background .15s,border-color .15s,box-shadow .15s;cursor:pointer;
+}
+.region:hover,.region.focus{
+  background:rgba(23,111,104,.28);border-color:#7fd4c4;
+  box-shadow:0 0 0 1px rgba(127,212,196,.5),0 8px 24px rgba(0,0,0,.25);
+}
+.region.selected{
+  background:rgba(23,111,104,.38);border-color:#b6f0e4;
+  box-shadow:0 0 0 2px var(--num-glow);
+}
+.region .badge-n{
+  position:absolute;left:6px;top:6px;min-width:26px;height:26px;padding:0 7px;
+  border-radius:999px;background:var(--num);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:800;box-shadow:0 4px 12px rgba(0,0,0,.35);
+}
+.region .label{
+  position:absolute;left:36px;top:8px;padding:2px 8px;border-radius:6px;
+  background:rgba(15,22,20,.72);color:#e8f4f1;font-size:11px;font-weight:700;
+  opacity:0;transition:opacity .15s;pointer-events:none;white-space:nowrap;
+}
+.region:hover .label,.region.focus .label,.region.selected .label{opacity:1}
+
+.chrome{
+  position:absolute;left:50%;top:14px;transform:translateX(-50%);
+  display:flex;align-items:center;gap:10px;padding:8px 14px;
+  background:rgba(15,22,20,.88);color:#e8f4f1;border-radius:999px;
+  font-size:12px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.35);z-index:30;
+  white-space:nowrap;
+}
+.chrome em{font-style:normal;color:#8fd9c8;margin:0 2px}
+.chrome .sep{width:1px;height:14px;background:rgba(255,255,255,.2)}
+.chrome button{
+  border:0;background:rgba(255,255,255,.1);color:#fff;border-radius:999px;
+  padding:4px 10px;font-size:11px;font-weight:750;
+}
+.chrome button:hover{background:rgba(255,255,255,.18)}
+
+.hud{
+  position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+  min-width:280px;max-width:90%;padding:12px 16px;
+  background:rgba(251,250,247,.96);border:1px solid rgba(23,37,35,.14);
+  border-radius:14px;box-shadow:0 14px 36px rgba(0,0,0,.35);z-index:30;
+  display:none;
+}
+.hud.on{display:block}
+.hud .title{font-size:13px;font-weight:800;margin:0 0 4px}
+.hud .meta{font-size:11px;color:var(--muted);margin:0 0 10px}
+.hud .actions{display:flex;gap:8px;flex-wrap:wrap}
+.hud .actions button{
+  border:1px solid var(--line);background:#fff;border-radius:9px;
+  padding:7px 12px;font-size:12px;font-weight:750;
+}
+.hud .actions .go{background:var(--teal);border-color:var(--teal);color:#fff}
+.hud .actions .ghost{color:var(--ink2)}
+
+/* Free crop */
+.crop-layer{position:absolute;inset:0;z-index:25;display:none;cursor:crosshair}
+.crop-layer.on{display:block}
+.crop-rect{
+  position:absolute;border:2px dashed #b6f0e4;background:rgba(23,111,104,.2);
+  box-shadow:0 0 0 9999px rgba(8,12,11,.45);pointer-events:none;display:none;
+}
+.crop-hint{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  color:#e8f4f1;font-size:13px;font-weight:700;text-shadow:0 2px 8px #000;
+  pointer-events:none;
+}
+
+/* Recursive 2×2 grid refine — shrinks crop rect, not pointer */
+.grid-layer{position:absolute;inset:0;z-index:26;display:none;pointer-events:none}
+.grid-layer.on{display:block;pointer-events:auto}
+.grid-cand{
+  position:absolute;border:2px solid #b6f0e4;
+  box-shadow:0 0 0 9999px rgba(8,12,11,.5);display:grid;
+  grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:0;
+}
+.grid-cand button{
+  border:1px solid rgba(182,240,228,.45);background:rgba(23,111,104,.18);
+  color:#e8f4f1;font-size:22px;font-weight:800;cursor:pointer;
+  text-shadow:0 2px 8px #000;display:grid;place-items:center;
+}
+.grid-cand button:hover{background:rgba(23,111,104,.42)}
+.grid-cand button small{display:block;font-size:10px;font-weight:650;opacity:.85;margin-top:4px}
+.grid-bar{
+  position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+  display:flex;gap:8px;align-items:center;padding:10px 14px;
+  background:rgba(251,250,247,.96);border-radius:14px;border:1px solid rgba(23,37,35,.14);
+  box-shadow:0 14px 36px rgba(0,0,0,.35);z-index:31;pointer-events:auto;
+}
+.grid-bar span{font-size:12px;font-weight:750;color:var(--ink2)}
+.grid-bar button{
+  border:1px solid var(--line);background:#fff;border-radius:9px;
+  padding:6px 10px;font-size:11px;font-weight:750;
+}
+.grid-bar .go{background:var(--teal);border-color:var(--teal);color:#fff}
+
+/* Toast / receipt */
+.toast{
+  position:absolute;right:18px;top:52px;z-index:40;
+  background:#153b38;color:#fff;padding:12px 14px;border-radius:12px;
+  font-size:12px;box-shadow:0 12px 28px rgba(0,0,0,.3);
+  opacity:0;transform:translateY(-8px);transition:.2s;pointer-events:none;max-width:260px;
+}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast .ok{color:#8fd9c8;font-weight:800}
+.toast small{display:block;margin-top:4px;color:#a8b8b3;font-weight:500;line-height:1.4}
+
+/* Prep material card after capture */
+.prep-card{
+  position:absolute;left:16px;bottom:40px;width:240px;z-index:35;display:none;
+  background:var(--paper);border:1px solid var(--line);border-radius:12px;
+  padding:10px;box-shadow:0 12px 28px rgba(20,30,26,.22);
+}
+.prep-card.on{display:block}
+.prep-card .ph{
+  height:72px;border-radius:8px;background:linear-gradient(135deg,#2a403c,#1a2825 40%,#3d5c56);
+  border:1px solid var(--line);margin-bottom:8px;position:relative;overflow:hidden;
+}
+.prep-card .ph::after{
+  content:attr(data-label);position:absolute;inset:0;display:grid;place-items:center;
+  color:#d5ebe6;font-size:11px;font-weight:750;
+}
+.prep-card b{font-size:12px}
+.prep-card .st{font-size:11px;color:var(--ok);font-weight:750;margin-top:2px}
+.prep-card .st.warn{color:var(--amber)}
+.prep-card .sub{font-size:10px;color:var(--muted);margin-top:4px}
+
+/* Entry scenes */
+.entry-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:900px){.entry-grid{grid-template-columns:1fr}}
+.entry-card{
+  border:1px solid var(--line);background:var(--paper);border-radius:14px;padding:14px;
+  box-shadow:0 6px 18px rgba(23,37,35,.05);
+}
+.entry-card h3{margin:0 0 6px;font-size:14px}
+.entry-card .role{
+  display:inline-block;margin-bottom:8px;padding:2px 8px;border-radius:6px;
+  font-size:11px;font-weight:750;
+}
+.entry-card .role.primary{background:var(--ok-s);color:var(--ok)}
+.entry-card .role.secondary{background:var(--sky-s);color:var(--sky)}
+.entry-card .role.none{background:#eee;color:var(--muted)}
+.entry-card ul{margin:0;padding-left:18px;font-size:12px;color:var(--ink2)}
+.entry-card li{margin:5px 0}
+.entry-card .verdict{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:12px;font-weight:750}
+@media(max-width:800px){.entry-grid{grid-template-columns:1fr}}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0;font-size:11px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div>
+      <h1>OneTone · 智能分区截图</h1>
+      <p>交互原型：首页 / Soft Pad / 悬浮栏均可点击截图 → 同一套分区选取 → 入库首页素材列表。预设示意，不读真实屏幕。</p>
+    </div>
+    <div class="badge">P0 · 粗区 → Grid缩矩形 → 框选</div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" aria-selected="true" data-tab="demo">① 截图交互演示</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="entries">② 三入口能力</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="flow">③ 完整流程</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="receipt">④ 回执口径</button>
+  </nav>
+
+  <!-- TAB: DEMO -->
+  <section class="panel on" id="tab-demo" role="tabpanel">
+    <div class="stage-bar">
+      <button type="button" class="btn primary" id="btnStart">启动截图 <span class="kbd">Ctrl+Shift+S</span></button>
+      <button type="button" class="btn" id="btnGrid" disabled>网格精修 <span class="kbd">G</span></button>
+      <button type="button" class="btn" id="btnFree" disabled>自由框选</button>
+      <button type="button" class="btn" id="btnCancel" disabled>Esc 取消</button>
+      <span class="hint" id="stageHint">三档：点编号直裁 · G/长按进 2×2 网格缩矩形 · 拖拽框选。入库首页素材列表。</span>
+    </div>
+
+    <div class="demo" id="demo">
+      <!-- Frozen IDE scene -->
+      <div class="desk" id="desk" aria-hidden="false">
+        <div class="desk-top">
+          <span class="app">Cursor</span>
+          <span>voice-pilot — smart-region-capture</span>
+          <span style="margin-left:auto">Windows · 150% · 显示器 1</span>
+        </div>
+        <div class="desk-body">
+          <aside class="desk-side">
+            <b>资源管理器</b>
+            <div class="file">src-tauri/</div>
+            <div class="file on">capture/</div>
+            <div class="file">src/js/</div>
+            <div class="file">docs/prototypes/</div>
+          </aside>
+          <main class="desk-main">
+            <div class="desk-editor">
+              <div style="color:#6a8a82">// Region Engine v0 — geometry first</div>
+              <div>fn rank_regions(cands: &amp;[Rect]) -&gt; Vec&lt;Region&gt; {</div>
+              <div>&nbsp;&nbsp;merge_iou(cands)</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;.filter(|r| r.area &gt; MIN)</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;.take(12)</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;.collect()</div>
+              <div>}</div>
+            </div>
+            <div class="desk-term">
+              <div>$ cargo test -p voice-pilot-lib capture::</div>
+              <div>test region_engine::dedupe_iou ... ok</div>
+              <div>test coord::dpi_150 ... ok</div>
+            </div>
+          </main>
+          <aside class="desk-chat">
+            <b>Agent 聊天</b>
+            <div class="bubble">把终端报错那一块截给我看看。</div>
+            <div class="bubble" style="opacity:.7">（等待图片…）</div>
+          </aside>
+        </div>
+        <div class="desk-bar">
+          <span>main*</span><span>UTF-8</span><span>Rust</span><span style="margin-left:auto">Ln 42</span>
+        </div>
+      </div>
+
+      <aside class="home-panel on" id="homePanel">
+        <div class="hp-brand">OneTone · 首页</div>
+        <h2 class="hp-title">现在</h2>
+        <p class="hp-assist">截图与 Soft Pad / 悬浮栏共用引擎；完成后写入下方素材列表。</p>
+        <button type="button" class="hp-shot" id="homeShot">✂ 智能分区截图</button>
+        <div class="hp-list-h">素材列表 <em id="matCount">0</em></div>
+        <div class="home-mats" id="homeMats">
+          <div class="home-empty" id="homeEmpty">还没有素材。<br>从首页、Soft Pad 或悬浮栏截一张。</div>
+        </div>
+      </aside>
+
+      <div class="softpad" id="softpad">
+        <div class="sp-h"><span>Soft Pad</span><span style="color:var(--teal)">可截图</span></div>
+        <div class="sp-grid">
+          <button type="button" class="key">AG</button>
+          <button type="button" class="key">Mic</button>
+          <button type="button" class="key shot" id="padShot" title="Soft Pad 截图">✂</button>
+          <button type="button" class="key">···</button>
+          <button type="button" class="key">1</button>
+          <button type="button" class="key">2</button>
+          <button type="button" class="key">3</button>
+          <button type="button" class="key">↵</button>
+        </div>
+        <div class="sp-foot">点击 ✂ 启动分区</div>
+      </div>
+
+      <div class="tray-pill" id="trayPill" title="系统悬浮栏">
+        <span class="tp-label">悬浮栏</span>
+        <button type="button" class="tp-btn shot" id="trayShot" title="悬浮栏截图">✂</button>
+        <button type="button" class="tp-btn" title="收集" disabled>+</button>
+      </div>
+
+      <!-- Overlay picker -->
+      <div class="overlay" id="overlay" aria-live="polite">
+        <div class="chrome" id="chrome">
+          OneTone · 智能分区
+          <span class="sep"></span>
+          <span id="chromeHint">点击编号直裁 · G/长按网格 · 拖拽框选</span>
+          <span class="sep"></span>
+          <button type="button" id="chromeGrid">网格 G</button>
+          <button type="button" id="chromeFree">自由框选</button>
+          <button type="button" id="chromeEsc">Esc</button>
+        </div>
+        <div class="regions" id="regions"></div>
+        <div class="grid-layer" id="gridLayer">
+          <div class="grid-cand" id="gridCand">
+            <button type="button" data-q="u">U<small>左上 · 1</small></button>
+            <button type="button" data-q="i">I<small>右上 · 2</small></button>
+            <button type="button" data-q="j">J<small>左下 · 3</small></button>
+            <button type="button" data-q="k">K<small>右下 · 4</small></button>
+          </div>
+          <div class="grid-bar" id="gridBar">
+            <span id="gridDepth">网格精修 · 深度 0</span>
+            <button type="button" class="go" id="gridConfirm">Enter 裁剪</button>
+            <button type="button" id="gridBack">⌫ 回退</button>
+            <button type="button" id="gridExit">退出网格</button>
+          </div>
+        </div>
+        <div class="crop-layer" id="cropLayer">
+          <div class="crop-hint" id="cropHint">按住拖拽框选像素级区域</div>
+          <div class="crop-rect" id="cropRect"></div>
+        </div>
+        <div class="hud" id="hud">
+          <p class="title" id="hudTitle">已选择：—</p>
+          <p class="meta" id="hudMeta">干净帧裁剪 · 不含编号浮层</p>
+          <div class="actions">
+            <button type="button" class="go" id="hudSend">加入首页素材列表</button>
+            <button type="button" class="ghost" id="hudGrid">网格精修 G</button>
+            <button type="button" class="ghost" id="hudAdjust">自由框选</button>
+            <button type="button" class="ghost" id="hudCancel">取消</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast" id="toast">
+        <span class="ok">已加入首页素材列表</span>
+        <small id="toastDetail">未发送给 Agent · Soft Pad 素材轨同步可见</small>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:rgba(23,111,104,.35);border:1px solid #7fd4c4"></i> 粗区编号（直裁）</span>
+      <span><i style="background:#b6f0e4"></i> 网格缩矩形（U I / J K）</span>
+      <span><i style="background:#153b38"></i> 诚实回执（非「已发送」）</span>
+      <span>长按编号或 G → 网格；拖拽 → 框选</span>
+    </div>
+  </section>
+
+  <!-- TAB: ENTRIES -->
+  <section class="panel" id="tab-entries" role="tabpanel">
+    <div class="note-box">
+      <b>产品落位（已更新）</b>
+      智能分区仍是<strong>同一套 Capture Session</strong>：首页、Soft Pad、系统悬浮栏均可<strong>点击截图</strong>唤起。
+      裁剪结果<strong>统一入库首页素材列表</strong>（Prep / inbox）；Soft Pad 素材轨同源同步。不占满首页叙事，但是一等公民入口。
+    </div>
+
+    <div class="entry-grid">
+      <article class="entry-card">
+        <span class="role primary">一等入口 + 素材主库</span>
+        <h3>首页（Home / Prep）</h3>
+        <ul>
+          <li>有「智能分区截图」按钮，点击即唤起</li>
+          <li>所有入口产生的图都写入<strong>首页素材列表</strong></li>
+          <li>缩略图 + 来源应用 +「已加入素材箱 / 图片待上传」</li>
+          <li>可从素材继续交给 Agent（P0 不自动塞图）</li>
+        </ul>
+        <div class="verdict">唤起 ✓ · 主素材库 ✓</div>
+      </article>
+      <article class="entry-card">
+        <span class="role primary">工作时快捷入口</span>
+        <h3>Soft Pad</h3>
+        <ul>
+          <li>键帽「截图」→ 同一分区流程</li>
+          <li>启动前隐藏/排除自身，避免进干净帧</li>
+          <li>结束后素材轨可见（同源 inbox）</li>
+          <li>与全局快捷键共用引擎</li>
+        </ul>
+        <div class="verdict">唤起 ✓ · 素材同步 ✓</div>
+      </article>
+      <article class="entry-card">
+        <span class="role primary">系统级浮标入口</span>
+        <h3>悬浮栏</h3>
+        <ul>
+          <li>浮标上的截图钮 → 同一分区流程</li>
+          <li>不依赖打开主窗口或 Soft Pad 面板</li>
+          <li>结果仍写入首页素材列表</li>
+          <li>截图时浮标一并隐藏/排除</li>
+        </ul>
+        <div class="verdict">唤起 ✓ · 入库首页 ✓</div>
+      </article>
+    </div>
+
+    <div class="matrix" role="table" aria-label="能力对照">
+      <div class="cell h">能力</div>
+      <div class="cell h">首页</div>
+      <div class="cell h">Soft Pad</div>
+      <div class="cell h">悬浮栏</div>
+
+      <div class="cell row-label">点击唤起分区截图</div>
+      <div class="cell"><span class="tag yes">有</span></div>
+      <div class="cell"><span class="tag yes">有</span></div>
+      <div class="cell"><span class="tag yes">有</span></div>
+
+      <div class="cell row-label">全局快捷键</div>
+      <div class="cell"><span class="tag soft">可配置</span></div>
+      <div class="cell"><span class="tag soft">同热键</span></div>
+      <div class="cell"><span class="tag soft">同热键</span></div>
+
+      <div class="cell row-label">编号 / 长按框选 UI</div>
+      <div class="cell"><span class="tag soft">进系统浮层</span></div>
+      <div class="cell"><span class="tag soft">进系统浮层</span></div>
+      <div class="cell"><span class="tag soft">进系统浮层</span></div>
+
+      <div class="cell row-label">写入首页素材列表</div>
+      <div class="cell"><span class="tag yes">主库</span></div>
+      <div class="cell"><span class="tag yes">同源写入</span></div>
+      <div class="cell"><span class="tag yes">同源写入</span></div>
+
+      <div class="cell row-label">本地素材轨可见</div>
+      <div class="cell"><span class="tag yes">列表</span></div>
+      <div class="cell"><span class="tag yes">素材轨</span></div>
+      <div class="cell"><span class="tag soft">回首页看</span></div>
+
+      <div class="cell row-label">「已发送给 Agent」</div>
+      <div class="cell"><span class="tag no">P0 禁止</span></div>
+      <div class="cell"><span class="tag no">P0 禁止</span></div>
+      <div class="cell"><span class="tag no">P0 禁止</span></div>
+
+      <div class="cell row-label">自动粘贴 Cursor</div>
+      <div class="cell"><span class="tag later">P1</span></div>
+      <div class="cell"><span class="tag later">P1</span></div>
+      <div class="cell"><span class="tag later">P1</span></div>
+    </div>
+
+    <div class="stage-bar">
+      <button type="button" class="btn primary" id="btnShowHome">从首页截图</button>
+      <button type="button" class="btn" id="btnShowPad">从 Soft Pad 截图</button>
+      <button type="button" class="btn" id="btnShowTray">从悬浮栏截图</button>
+      <span class="hint">跳到演示区，三条路径结果都进首页素材列表</span>
+    </div>
+  </section>
+
+  <!-- TAB: FLOW -->
+  <section class="panel" id="tab-flow" role="tabpanel">
+    <div class="flow" id="flowSteps">
+      <div class="step on" data-f="1">
+        <div class="n">1</div>
+        <h3>唤起</h3>
+        <p>首页截图钮 · Soft Pad ✂ · 悬浮栏 ✂ · 或全局快捷键。</p>
+      </div>
+      <div class="step" data-f="2">
+        <div class="n">2</div>
+        <h3>干净帧 + 冻结</h3>
+        <p>隐藏首页浮层 / Soft Pad / 悬浮栏 → 截屏 → 再盖编号层。</p>
+      </div>
+      <div class="step" data-f="3">
+        <div class="n">3</div>
+        <h3>选取</h3>
+        <p>点编号直裁；G/长按 → 2×2 缩矩形；拖拽自由框选。</p>
+      </div>
+      <div class="step" data-f="4">
+        <div class="n">4</div>
+        <h3>入库首页素材</h3>
+        <p>干净帧裁剪 → inbox → <strong>首页素材列表</strong>（Soft Pad 同步）。诚实回执。</p>
+      </div>
+    </div>
+
+    <div class="note-box">
+      <b>端到端压缩路径</b>
+      <ul>
+        <li>在首页 / Soft Pad / 悬浮栏点击截图，或按快捷键</li>
+        <li>冻结画面并生成 6–12 粗区（无候选则整屏进网格）</li>
+        <li>点编号直裁；或 G 递归 UIJK 缩矩形；或拖框</li>
+        <li>局部图入库<strong>首页素材列表</strong>；P1 再谈 Cursor 粘贴核验</li>
+      </ul>
+    </div>
+
+    <div class="stage-bar">
+      <button type="button" class="btn primary" id="btnPlayFlow">播放流程动画</button>
+      <span class="hint">约 6 秒走完四步，并打开演示区</span>
+    </div>
+  </section>
+
+  <!-- TAB: RECEIPT -->
+  <section class="panel" id="tab-receipt" role="tabpanel">
+    <div class="matrix">
+      <div class="cell h">HandoffReceipt.state</div>
+      <div class="cell h">用户看到的文案</div>
+      <div class="cell h">P0 / P1</div>
+
+      <div class="cell row-label">saved_to_inbox</div>
+      <div class="cell">已加入素材箱</div>
+      <div class="cell"><span class="tag yes">P0 默认成功态</span></div>
+
+      <div class="cell row-label">clipboard_ready</div>
+      <div class="cell">图片已复制，可手动粘贴</div>
+      <div class="cell"><span class="tag later">P1</span></div>
+
+      <div class="cell row-label">agent_opened</div>
+      <div class="cell">图片已复制，Agent 已打开</div>
+      <div class="cell"><span class="tag later">P1</span></div>
+
+      <div class="cell row-label">composer_pasted_verified</div>
+      <div class="cell">图片已进入输入区</div>
+      <div class="cell"><span class="tag later">P1 · 仅核验后</span></div>
+
+      <div class="cell row-label">composer_pasted_unverified</div>
+      <div class="cell">已尝试粘贴，未能核验</div>
+      <div class="cell"><span class="tag later">P1</span></div>
+
+      <div class="cell row-label">failed</div>
+      <div class="cell">操作失败，图片未丢失（若已写入 inbox）</div>
+      <div class="cell"><span class="tag yes">全程</span></div>
+    </div>
+    <div class="note-box">
+      <b>禁止文案</b>：P0 任何入口（首页、Soft Pad、悬浮栏、Toast）都不得显示「已发送给 Agent」。
+      成功默认文案：<em>已加入首页素材列表</em>。图片在素材列表 ≠ 在对话输入区。
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var REGIONS = [
+    { id: 1, label: '顶部导航', role: 'toolbar', left: 0, top: 0, w: 100, h: 5.8 },
+    { id: 2, label: '左侧文件栏', role: 'sidebar', left: 0, top: 5.8, w: 18.2, h: 89.5 },
+    { id: 3, label: '代码编辑器', role: 'editor', left: 18.2, top: 5.8, w: 59.6, h: 68 },
+    { id: 4, label: '底部终端', role: 'terminal', left: 18.2, top: 73.8, w: 59.6, h: 21.5 },
+    { id: 5, label: '右侧聊天', role: 'chat', left: 77.8, top: 5.8, w: 22.2, h: 89.5 },
+    { id: 6, label: '状态栏', role: 'toolbar', left: 0, top: 95.3, w: 100, h: 4.7 }
+  ];
+
+  var els = {
+    tabs: document.querySelectorAll('.tabs [role="tab"]'),
+    panels: {
+      demo: document.getElementById('tab-demo'),
+      entries: document.getElementById('tab-entries'),
+      flow: document.getElementById('tab-flow'),
+      receipt: document.getElementById('tab-receipt')
+    },
+    demo: document.getElementById('demo'),
+    overlay: document.getElementById('overlay'),
+    regions: document.getElementById('regions'),
+    softpad: document.getElementById('softpad'),
+    trayPill: document.getElementById('trayPill'),
+    homePanel: document.getElementById('homePanel'),
+    homeMats: document.getElementById('homeMats'),
+    homeEmpty: document.getElementById('homeEmpty'),
+    matCount: document.getElementById('matCount'),
+    hud: document.getElementById('hud'),
+    hudTitle: document.getElementById('hudTitle'),
+    hudMeta: document.getElementById('hudMeta'),
+    toast: document.getElementById('toast'),
+    toastDetail: document.getElementById('toastDetail'),
+    cropLayer: document.getElementById('cropLayer'),
+    cropRect: document.getElementById('cropRect'),
+    cropHint: document.getElementById('cropHint'),
+    stageHint: document.getElementById('stageHint'),
+    btnStart: document.getElementById('btnStart'),
+    btnGrid: document.getElementById('btnGrid'),
+    btnFree: document.getElementById('btnFree'),
+    btnCancel: document.getElementById('btnCancel'),
+    gridLayer: document.getElementById('gridLayer'),
+    gridCand: document.getElementById('gridCand'),
+    gridDepth: document.getElementById('gridDepth'),
+    chromeHint: document.getElementById('chromeHint'),
+    flowSteps: document.querySelectorAll('#flowSteps .step')
+  };
+
+  var FROM_LABEL = {
+    home: '首页',
+    pad: 'Soft Pad',
+    tray: '悬浮栏',
+    hotkey: '快捷键',
+    free: '自由框选',
+    grid: '网格精修'
+  };
+
+  var state = {
+    active: false,
+    selected: null,
+    free: false,
+    grid: false,
+    gridStack: [],
+    from: 'hotkey',
+    materials: [],
+    longPressTimer: null,
+    drag: null
+  };
+
+  function selectTab(name) {
+    els.tabs.forEach(function (t) {
+      t.setAttribute('aria-selected', t.getAttribute('data-tab') === name ? 'true' : 'false');
+    });
+    Object.keys(els.panels).forEach(function (k) {
+      els.panels[k].classList.toggle('on', k === name);
+    });
+  }
+
+  els.tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      selectTab(t.getAttribute('data-tab'));
+    });
+  });
+
+  function pct(n) { return n + '%'; }
+
+  function buildRegions() {
+    els.regions.innerHTML = '';
+    REGIONS.forEach(function (r) {
+      var el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'region';
+      el.style.left = pct(r.left);
+      el.style.top = pct(r.top);
+      el.style.width = pct(r.w);
+      el.style.height = pct(r.h);
+      el.dataset.id = String(r.id);
+      el.innerHTML =
+        '<span class="badge-n">' + r.id + '</span>' +
+        '<span class="label">' + r.id + ' · ' + r.label + '</span>';
+      el.addEventListener('mouseenter', function () { el.classList.add('focus'); });
+      el.addEventListener('mouseleave', function () { el.classList.remove('focus'); });
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+        pickRegion(r);
+      });
+      el.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0) return;
+        clearTimeout(state.longPressTimer);
+        state.longPressTimer = setTimeout(function () {
+          pickRegion(r);
+          enterGrid();
+        }, 480);
+      });
+      el.addEventListener('pointerup', function () {
+        clearTimeout(state.longPressTimer);
+      });
+      el.addEventListener('pointerleave', function () {
+        clearTimeout(state.longPressTimer);
+      });
+      els.regions.appendChild(el);
+    });
+  }
+
+  function setFlow(n) {
+    els.flowSteps.forEach(function (s) {
+      s.classList.toggle('on', Number(s.getAttribute('data-f')) === n);
+    });
+  }
+
+  function renderMats() {
+    els.matCount.textContent = String(state.materials.length);
+    if (!state.materials.length) {
+      els.homeMats.innerHTML =
+        '<div class="home-empty" id="homeEmpty">还没有素材。<br>从首页、Soft Pad 或悬浮栏截一张。</div>';
+      return;
+    }
+    els.homeMats.innerHTML = state.materials
+      .map(function (m) {
+        return (
+          '<div class="home-mat">' +
+          '<div class="thumb" title="' + m.label + '"></div>' +
+          '<div><b>截图 · ' + m.label + '</b>' +
+          '<small>via ' + m.via + ' · 已加入素材箱 · 待上传</small></div></div>'
+        );
+      })
+      .join('');
+  }
+
+  function startCapture(from) {
+    selectTab('demo');
+    state.active = true;
+    state.selected = null;
+    state.free = false;
+    state.grid = false;
+    state.gridStack = [];
+    state.from = from || 'hotkey';
+    els.toast.classList.remove('show');
+    els.hud.classList.remove('on');
+    els.softpad.classList.add('dim');
+    els.trayPill.classList.add('dim');
+    els.homePanel.classList.add('dim');
+    els.overlay.classList.add('on');
+    els.cropLayer.classList.remove('on');
+    els.gridLayer.classList.remove('on');
+    els.regions.style.display = '';
+    els.btnFree.disabled = false;
+    els.btnGrid.disabled = false;
+    els.btnCancel.disabled = false;
+    if (els.chromeHint) els.chromeHint.textContent = '点击编号直裁 · G/长按网格 · 拖拽框选';
+    buildRegions();
+    setFlow(2);
+    var via = FROM_LABEL[state.from] || state.from;
+    els.stageHint.textContent =
+      '从' + via + '启动 · 浮层已隐藏 · 点编号直裁，或 G 进网格缩矩形';
+    setTimeout(function () { setFlow(3); }, 400);
+  }
+
+  function endCapture() {
+    state.active = false;
+    state.free = false;
+    state.grid = false;
+    state.gridStack = [];
+    state.selected = null;
+    els.overlay.classList.remove('on');
+    els.softpad.classList.remove('dim');
+    els.trayPill.classList.remove('dim');
+    els.homePanel.classList.remove('dim');
+    els.hud.classList.remove('on');
+    els.cropLayer.classList.remove('on');
+    els.gridLayer.classList.remove('on');
+    els.btnFree.disabled = true;
+    els.btnGrid.disabled = true;
+    els.btnCancel.disabled = true;
+    els.stageHint.textContent = '已退出分区。素材在左侧首页列表；可从任一入口再截。';
+  }
+
+  function pickRegion(r) {
+    if (state.free || state.grid) return;
+    state.selected = r;
+    Array.prototype.forEach.call(els.regions.children, function (el) {
+      el.classList.toggle('selected', el.dataset.id === String(r.id));
+    });
+    els.hudTitle.textContent = '已选择：' + r.label;
+    els.hudMeta.textContent =
+      'role=' + r.role + ' · 直裁 / G 网格缩矩形 / 自由框选';
+    els.hud.classList.add('on');
+  }
+
+  function layoutGridCand(rect) {
+    els.gridCand.style.left = pct(rect.left);
+    els.gridCand.style.top = pct(rect.top);
+    els.gridCand.style.width = pct(rect.w);
+    els.gridCand.style.height = pct(rect.h);
+    els.gridDepth.textContent = '网格精修 · 深度 ' + state.gridStack.length + ' · UIJK / 1–4';
+  }
+
+  function enterGrid() {
+    if (!state.active) startCapture('grid');
+    var base = state.selected || { label: '整屏', left: 0, top: 0, w: 100, h: 100 };
+    state.grid = true;
+    state.free = false;
+    state.gridStack = [
+      { left: base.left, top: base.top, w: base.w, h: base.h, label: base.label || '区域' }
+    ];
+    els.regions.style.display = 'none';
+    els.hud.classList.remove('on');
+    els.cropLayer.classList.remove('on');
+    els.gridLayer.classList.add('on');
+    if (els.chromeHint) els.chromeHint.textContent = '网格缩矩形 · Enter 裁剪 · ⌫ 回退';
+    layoutGridCand(state.gridStack[0]);
+    els.stageHint.textContent = '网格精修：选象限缩小裁剪矩形（不是移动鼠标）';
+  }
+
+  function chooseQuadrant(q) {
+    if (!state.grid || !state.gridStack.length) return;
+    var cur = state.gridStack[state.gridStack.length - 1];
+    var hw = cur.w / 2;
+    var hh = cur.h / 2;
+    var next = { left: cur.left, top: cur.top, w: hw, h: hh, label: cur.label };
+    if (q === 'i' || q === '2') next.left = cur.left + hw;
+    if (q === 'j' || q === '3') next.top = cur.top + hh;
+    if (q === 'k' || q === '4') {
+      next.left = cur.left + hw;
+      next.top = cur.top + hh;
+    }
+    state.gridStack.push(next);
+    layoutGridCand(next);
+  }
+
+  function popGrid() {
+    if (!state.grid || state.gridStack.length <= 1) {
+      exitGrid();
+      return;
+    }
+    state.gridStack.pop();
+    layoutGridCand(state.gridStack[state.gridStack.length - 1]);
+  }
+
+  function exitGrid() {
+    state.grid = false;
+    state.gridStack = [];
+    els.gridLayer.classList.remove('on');
+    els.regions.style.display = '';
+    if (els.chromeHint) els.chromeHint.textContent = '点击编号直裁 · G/长按网格 · 拖拽框选';
+    if (state.selected) {
+      els.hud.classList.add('on');
+    }
+    els.stageHint.textContent = '已退出网格 · 可再选编号或自由框选';
+  }
+
+  function confirmGrid() {
+    if (!state.gridStack.length) return;
+    var cur = state.gridStack[state.gridStack.length - 1];
+    saveArtifact((cur.label || '网格') + ' · 深度' + state.gridStack.length, 'grid');
+  }
+
+  function enterFree(reason) {
+    if (!state.active) startCapture('free');
+    state.free = true;
+    state.grid = false;
+    state.gridStack = [];
+    state.selected = null;
+    els.regions.style.display = 'none';
+    els.hud.classList.remove('on');
+    els.gridLayer.classList.remove('on');
+    els.cropLayer.classList.add('on');
+    els.cropRect.style.display = 'none';
+    els.cropHint.style.display = 'block';
+    els.cropHint.textContent = reason || '拖拽框选像素级区域';
+    if (els.chromeHint) els.chromeHint.textContent = '自由框选 · 拖拽确认';
+    els.stageHint.textContent = '自由框选模式 · 松开鼠标确认选区';
+  }
+
+  function saveArtifact(label, role) {
+    setFlow(4);
+    var via = FROM_LABEL[state.from] || state.from;
+    state.materials.unshift({
+      label: label,
+      role: role || 'unknown',
+      via: via,
+      at: Date.now()
+    });
+    if (state.materials.length > 8) state.materials.length = 8;
+    renderMats();
+    els.toastDetail.textContent =
+      'via ' + via + ' · 未发送给 Agent · Soft Pad 素材轨同步';
+    els.toast.classList.add('show');
+    endCapture();
+    els.stageHint.textContent =
+      'P0 成功：已写入首页素材列表（' + state.materials.length + '）。未声称已发送 Agent。';
+    setTimeout(function () { els.toast.classList.remove('show'); }, 3200);
+  }
+
+  els.btnStart.addEventListener('click', function () { startCapture('hotkey'); });
+  els.btnGrid.addEventListener('click', function () {
+    if (!state.selected) state.selected = { label: '整屏', left: 0, top: 0, w: 100, h: 100 };
+    enterGrid();
+  });
+  els.btnFree.addEventListener('click', function () { enterFree('工具栏进入自由框选'); });
+  els.btnCancel.addEventListener('click', function () {
+    endCapture();
+    setFlow(1);
+    els.stageHint.textContent = '已取消 · 首页 / Soft Pad / 悬浮栏状态应恢复';
+  });
+  document.getElementById('chromeGrid').addEventListener('click', function () {
+    els.btnGrid.click();
+  });
+  document.getElementById('chromeFree').addEventListener('click', function () {
+    enterFree('顶栏进入自由框选');
+  });
+  document.getElementById('chromeEsc').addEventListener('click', function () {
+    if (state.grid) exitGrid();
+    else els.btnCancel.click();
+  });
+  document.getElementById('hudCancel').addEventListener('click', function () {
+    els.btnCancel.click();
+  });
+  document.getElementById('hudGrid').addEventListener('click', function () {
+    enterGrid();
+  });
+  document.getElementById('hudAdjust').addEventListener('click', function () {
+    enterFree('从确认条进入修正');
+  });
+  document.getElementById('hudSend').addEventListener('click', function () {
+    if (!state.selected) return;
+    saveArtifact(state.selected.label, state.selected.role);
+  });
+  document.getElementById('gridConfirm').addEventListener('click', confirmGrid);
+  document.getElementById('gridBack').addEventListener('click', popGrid);
+  document.getElementById('gridExit').addEventListener('click', exitGrid);
+  Array.prototype.forEach.call(els.gridCand.querySelectorAll('[data-q]'), function (btn) {
+    btn.addEventListener('click', function () {
+      chooseQuadrant(btn.getAttribute('data-q'));
+    });
+  });
+  document.getElementById('homeShot').addEventListener('click', function () {
+    startCapture('home');
+  });
+  document.getElementById('padShot').addEventListener('click', function () {
+    startCapture('pad');
+  });
+  document.getElementById('trayShot').addEventListener('click', function () {
+    startCapture('tray');
+  });
+
+  document.getElementById('btnShowHome').addEventListener('click', function () {
+    startCapture('home');
+  });
+  document.getElementById('btnShowPad').addEventListener('click', function () {
+    startCapture('pad');
+  });
+  document.getElementById('btnShowTray').addEventListener('click', function () {
+    startCapture('tray');
+  });
+
+  // Free crop drag
+  els.cropLayer.addEventListener('pointerdown', function (e) {
+    if (!state.free) return;
+    var rect = els.demo.getBoundingClientRect();
+    state.drag = { x0: e.clientX - rect.left, y0: e.clientY - rect.top };
+    els.cropHint.style.display = 'none';
+    els.cropRect.style.display = 'block';
+    els.cropRect.style.left = state.drag.x0 + 'px';
+    els.cropRect.style.top = state.drag.y0 + 'px';
+    els.cropRect.style.width = '0px';
+    els.cropRect.style.height = '0px';
+    els.cropLayer.setPointerCapture(e.pointerId);
+  });
+  els.cropLayer.addEventListener('pointermove', function (e) {
+    if (!state.drag) return;
+    var rect = els.demo.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    var l = Math.min(state.drag.x0, x);
+    var t = Math.min(state.drag.y0, y);
+    var w = Math.abs(x - state.drag.x0);
+    var h = Math.abs(y - state.drag.y0);
+    els.cropRect.style.left = l + 'px';
+    els.cropRect.style.top = t + 'px';
+    els.cropRect.style.width = w + 'px';
+    els.cropRect.style.height = h + 'px';
+  });
+  els.cropLayer.addEventListener('pointerup', function () {
+    if (!state.drag) return;
+    var w = parseFloat(els.cropRect.style.width) || 0;
+    var h = parseFloat(els.cropRect.style.height) || 0;
+    state.drag = null;
+    if (w < 24 || h < 24) {
+      els.cropHint.style.display = 'block';
+      els.cropHint.textContent = '选区太小，请再拖一次';
+      return;
+    }
+    saveArtifact('手动框选区域', 'manual');
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (!state.active) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        startCapture('hotkey');
+      }
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (state.grid) exitGrid();
+      else els.btnCancel.click();
+      return;
+    }
+    if (state.grid) {
+      var k = e.key.toLowerCase();
+      if (k === 'u' || k === 'i' || k === 'j' || k === 'k' || k === '1' || k === '2' || k === '3' || k === '4') {
+        e.preventDefault();
+        chooseQuadrant(k);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmGrid();
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        popGrid();
+      }
+      return;
+    }
+    if ((e.key === 'g' || e.key === 'G') && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      els.btnGrid.click();
+      return;
+    }
+    if (/^[1-6]$/.test(e.key) && state.active && !state.free) {
+      var r = REGIONS[Number(e.key) - 1];
+      if (r) {
+        e.preventDefault();
+        pickRegion(r);
+      }
+    }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+      e.preventDefault();
+      startCapture('hotkey');
+    }
+  });
+
+  document.getElementById('btnPlayFlow').addEventListener('click', function () {
+    selectTab('flow');
+    var i = 1;
+    setFlow(1);
+    var timer = setInterval(function () {
+      i += 1;
+      if (i <= 4) setFlow(i);
+      if (i === 2) {
+        selectTab('demo');
+        startCapture('hotkey');
+      }
+      if (i === 3 && REGIONS[2]) pickRegion(REGIONS[2]);
+      if (i === 4) {
+        saveArtifact('代码编辑器', 'editor');
+        clearInterval(timer);
+        selectTab('flow');
+        setFlow(4);
+      }
+    }, 1400);
+  });
+
+  setFlow(1);
+  renderMats();
+})();
+</script>
+</body>
+</html>

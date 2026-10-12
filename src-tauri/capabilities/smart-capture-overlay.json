@@ -1,0 +1,14 @@
+{
+  "identifier": "smart-capture-overlay",
+  "description": "Smart region capture overlay picker",
+  "windows": ["smart_capture_overlay"],
+  "permissions": [
+    "core:default",
+    "allow-cmd-smart-capture-get-state",
+    "allow-cmd-smart-capture-action",
+    "allow-cmd-smart-capture-confirm",
+    "allow-cmd-smart-capture-cancel",
+    "allow-cmd-smart-capture-switch-monitor",
+    "allow-cmd-smart-capture-begin"
+  ]
+}

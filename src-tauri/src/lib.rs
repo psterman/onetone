@@ -54,6 +54,7 @@ mod gaze_monitor;
 mod gemini_hook_setup;
 mod gesture_timing;
 mod habit_profile;
+mod capture;
 mod home_tray_snapshot;
 mod input_aim_calibrate;
 mod input_ext;
@@ -1135,6 +1136,12 @@ pub fn run() {
             input_aim_calibrate::cmd_input_aim_calibrate_clear,
             input_aim_calibrate::cmd_input_aim_calibrate_set_active,
             input_aim_calibrate::cmd_input_aim_calibrate_status,
+            ipc::cmd_smart_capture_begin,
+            ipc::cmd_smart_capture_switch_monitor,
+            ipc::cmd_smart_capture_get_state,
+            ipc::cmd_smart_capture_action,
+            ipc::cmd_smart_capture_confirm,
+            ipc::cmd_smart_capture_cancel,
             ipc::cmd_update_check,
             ipc::cmd_update_install,
             ipc::cmd_export_logs,

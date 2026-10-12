@@ -42,6 +42,10 @@ tray-channel-block[hidden],#trayChannelsHead[hidden],#traySceneBlock[hidden]{dis
   <tray-channel-block data-id="camera"></tray-channel-block>
   <div class="sep"></div>
   <tray-mic-toggle></tray-mic-toggle>
+  <div class="sep"></div>
+  <button type="button" class="mic-row" id="traySmartCapture" style="width:100%;border:0;background:transparent;cursor:pointer;text-align:left;padding:8px 10px;border-radius:8px;color:inherit;font:inherit">
+    <span class="body"><span class="name">智能截图</span><span class="meta">分区 · 网格精修</span></span>
+  </button>
   <tray-footer-links></tray-footer-links>
 </div>
 <script src="js/core/icons.js"></script>
@@ -59,6 +63,7 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
 <script src="js/features/settings/tray-footer.js"></script>
 <script src="js/features/settings/tray-channel-controls.js"></script>
 <script src="js/features/settings/tray-scene-preset.js"></script>
+<script src="js/features/capture/smart-capture.js"></script>
 <script>
 (function(){
   var invoke=window.__TAURI_INTERNALS__?function(c,a){return window.__TAURI_INTERNALS__.invoke(c,a);}:function(){return Promise.resolve();};
@@ -291,6 +296,18 @@ window.OneToneIpc={invoke:function(c,a){return window.__TAURI_INTERNALS__?window
   customElements.define('tray-channel-block',TrayChannelBlock);
   customElements.define('tray-mic-toggle',TrayMicToggle);
   customElements.define('tray-footer-links',TrayFooterLinks);
+  var capBtn=document.getElementById('traySmartCapture');
+  if(capBtn){
+    capBtn.onclick=function(){
+      var sc=window.OneToneSmartCapture;
+      if(!sc||typeof sc.begin!=='function')return;
+      // Hide tray menu first so freeze frame stays clean.
+      invoke('cmd_tray_action',{action:'hide_menu',payload:null}).catch(function(){});
+      setTimeout(function(){
+        sc.begin('tray').catch(function(){});
+      },60);
+    };
+  }
   window.__tray_ready__=function(){
     menuRevealed=false;
     var subPromise=Promise.all(SEGS.map(function(s){return invoke('cmd_tray_subscribe_segment',{segment:s}).catch(function(){});}));

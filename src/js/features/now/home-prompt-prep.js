@@ -142,7 +142,8 @@
       kind: row.kind || 'text',
       name: row.name || '未命名素材',
       included: row.included !== false,
-      needsManualUpload: !!row.needsManualUpload
+      needsManualUpload: !!row.needsManualUpload,
+      previewDataUrl: row.previewDataUrl || ''
     };
   }
 
@@ -556,7 +557,8 @@
       included: item.included !== false,
       note: item.note || '',
       protect: Array.isArray(item.protect) ? item.protect : [],
-      needsManualUpload: !!item.needsManualUpload
+      needsManualUpload: !!item.needsManualUpload,
+      previewDataUrl: item.previewDataUrl || ''
     };
     if (!model.collectionId) model.collectionId = newCollectionId();
     model.materials.push(row);
@@ -668,21 +670,28 @@
     }
     var detected = kind === 'image' || kind === 'file' ? kind : guessAttachKind(p);
     if (detected === 'image') {
+      var previewDataUrl = '';
+      if (opts.previewBase64) {
+        previewDataUrl = 'data:image/png;base64,' + String(opts.previewBase64).replace(/\s+/g, '');
+      } else if (opts.previewDataUrl) {
+        previewDataUrl = String(opts.previewDataUrl);
+      }
       return {
         kind: 'image',
         name: name,
         path: p,
-        source: '本机图片',
+        source: opts.source || '本机图片',
         citeMode: 'pathOnly',
         needsManualUpload: true,
-        description: '图片需在目标 Agent 中手动上传'
+        description: '图片需在目标 Agent 中手动上传',
+        previewDataUrl: previewDataUrl
       };
     }
     return {
       kind: 'file',
       name: name,
       path: p,
-      source: '本机文件',
+      source: opts.source || '本机文件',
       description: p,
       citeMode: 'full'
     };
@@ -1003,6 +1012,17 @@
 
   function onAdd(kind) {
     closeAddMenu();
+    if (kind === 'capture') {
+      var sc = global.OneToneSmartCapture;
+      if (!sc || typeof sc.begin !== 'function') {
+        toast('智能截图未就绪');
+        return;
+      }
+      sc.begin('home').catch(function (e) {
+        toast(String((e && e.message) || e || '截图启动失败'));
+      });
+      return;
+    }
     if (kind === 'dictate') {
       // Trigger existing home voice listen — material lands when user confirms paste later.
       var dock = document.querySelector('[data-now-voice], .hn-cta--dictate[data-now-voice]');
@@ -1431,17 +1451,21 @@
           '" data-hpp-mat="' +
           esc(m.id) +
           '">' +
-          '<span class="hpp-ico" aria-hidden="true">' +
-          (m.kind === 'folder'
-            ? '⌁'
-            : m.kind === 'image'
-              ? '▨'
-              : m.kind === 'url'
-                ? '↗'
-                : m.kind === 'voice'
-                  ? '◉'
-                  : 'T') +
-          '</span>' +
+          (m.kind === 'image' && m.previewDataUrl
+            ? '<span class="hpp-ico hpp-ico--thumb" aria-hidden="true"><img src="' +
+              esc(m.previewDataUrl) +
+              '" alt="" /></span>'
+            : '<span class="hpp-ico" aria-hidden="true">' +
+              (m.kind === 'folder'
+                ? '⌁'
+                : m.kind === 'image'
+                  ? '▨'
+                  : m.kind === 'url'
+                    ? '↗'
+                    : m.kind === 'voice'
+                      ? '◉'
+                      : 'T') +
+              '</span>') +
           '<div><strong>' +
           esc(m.name) +
           '</strong><small>' +
@@ -1495,7 +1519,9 @@
       .map(function (m) {
         return (
           '<article class="hpp-ref"><div class="hpp-thumb">' +
-          esc((m.kind || 'T').slice(0, 4).toUpperCase()) +
+          (m.kind === 'image' && m.previewDataUrl
+            ? '<img src="' + esc(m.previewDataUrl) + '" alt="" />'
+            : esc((m.kind || 'T').slice(0, 4).toUpperCase())) +
           '</div><div><h3>' +
           esc(m.name) +
           '</h3><p>' +
@@ -1667,6 +1693,7 @@
       '<button type="button" class="hpp-collapse" data-hpp-collapse>收起</button></div>' +
       '<div class="hpp-add-wrap"><button type="button" class="hpp-add" data-hpp-add aria-haspopup="true" aria-expanded="false">＋ 添加素材</button>' +
       '<div class="hpp-add-menu" data-hpp-add-menu hidden>' +
+      '<button type="button" data-hpp-add-kind="capture">▣ 智能截图</button>' +
       '<button type="button" data-hpp-add-kind="attach">📎 附件</button>' +
       '<button type="button" data-hpp-add-kind="folder">⌁ 文件夹</button>' +
       '<button type="button" data-hpp-add-kind="paste">⌘ 粘贴</button>' +
@@ -2116,9 +2143,17 @@
       var path = String(p.path || '').trim();
       if (!path) return;
       beginMaterialCollection({ resetIfHandedOff: true });
+      var attachName = p.name || path;
+      var fromCapture = String(attachName).indexOf('智能截图') >= 0;
       collectMaterial('attach', {
         path: path,
-        name: p.name || path
+        name: attachName,
+        source: fromCapture ? '智能截图' : undefined,
+        previewBase64: p.previewBase64 || p.preview_base64 || undefined
+      }).then(function (res) {
+        if (fromCapture && res && res.outcome === 'added') {
+          toast('已加入首页素材列表');
+        }
       });
       return;
     }

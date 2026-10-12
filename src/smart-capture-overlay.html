@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>智能分区截图</title>
+  <style>
+    html, body {
+      margin: 0; width: 100%; height: 100%; overflow: hidden;
+      /* Transparent until freeze paints — avoids black flash */
+      background: transparent !important;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      user-select: none; color: #e8f4f1;
+      cursor: crosshair;
+    }
+    #freeze {
+      position: fixed; inset: 0; background: transparent; pointer-events: none;
+    }
+    #freezeImg {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: fill; image-rendering: -webkit-optimize-contrast; display: none;
+    }
+    #chrome {
+      position: fixed; left: 16px; top: 14px;
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; z-index: 40;
+      max-width: calc(100% - 32px);
+      padding: 8px 12px; border-radius: 14px; background: rgba(15, 22, 20, 0.92);
+      font-size: 12px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.35);
+      cursor: default;
+    }
+    #chrome button, #hud button, #gridBar button {
+      border: 0; border-radius: 999px; padding: 4px 10px; font: inherit;
+      font-size: 11px; font-weight: 750; cursor: pointer;
+      background: rgba(255,255,255,.12); color: #fff;
+    }
+    /* Badges are visual only — hitLayer owns all pointer hit-testing */
+    #badges { position: fixed; inset: 0; z-index: 7; pointer-events: none; }
+    .badge {
+      position: absolute; pointer-events: none;
+      border: 1.5px solid rgba(255,255,255,.35);
+      background: rgba(23,111,104,.06);
+      box-sizing: border-box; border-radius: 3px;
+      transition: border-color .08s ease, background .08s ease, opacity .08s ease;
+      opacity: 0.85;
+    }
+    .badge.is-hot {
+      border-color: #7fd4c4;
+      background: rgba(23,111,104,.16);
+      opacity: 1;
+    }
+    .badge .k {
+      position: absolute; left: 6px; top: 6px; min-width: 22px; height: 22px;
+      padding: 0 6px; border-radius: 999px; background: #0e5c56; color: #fff;
+      display: grid; place-items: center; font-size: 12px; font-weight: 800;
+      box-shadow: 0 2px 8px rgba(0,0,0,.35);
+    }
+    #snap {
+      display: none; position: fixed; z-index: 9; pointer-events: none;
+      border: 2.5px solid #7fd4c4;
+      box-shadow: 0 0 0 9999px rgba(8,12,11,.32), inset 0 0 0 1px rgba(127,212,196,.4);
+      border-radius: 2px;
+      transition: left .05s linear, top .05s linear, width .05s linear, height .05s linear;
+    }
+    #snap.on { display: block; }
+    #snapLab {
+      position: absolute; left: 8px; top: 8px; padding: 3px 10px; border-radius: 8px;
+      background: rgba(14,92,86,.92); font-size: 12px; font-weight: 800; white-space: nowrap;
+    }
+    /* Above badges so move/click/long-press always work */
+    #hitLayer { position: fixed; inset: 0; z-index: 10; cursor: crosshair; }
+    #hud {
+      display: none; position: fixed; left: 16px; top: 80px;
+      z-index: 30; min-width: 220px; max-width: min(320px, calc(100% - 24px));
+      padding: 10px 12px; border-radius: 12px;
+      background: rgba(251,250,247,.97); color: #172523;
+      box-shadow: 0 14px 36px rgba(0,0,0,.35); cursor: default;
+    }
+    #hud.on { display: block; }
+    #hud b { display: block; font-size: 13px; margin-bottom: 2px; }
+    #hud small { display: block; color: #65706c; font-size: 11px; margin-bottom: 8px; }
+    #hud .row { display: flex; gap: 6px; flex-wrap: wrap; }
+    #hud .go { background: #176f68 !important; color: #fff !important; }
+    #grid {
+      display: none; position: fixed; z-index: 15;
+      border: 2px solid #b6f0e4; box-shadow: 0 0 0 9999px rgba(8,12,11,.5);
+      grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+    }
+    #grid.on { display: grid; }
+    #grid button {
+      border: 1px solid rgba(182,240,228,.45); background: rgba(23,111,104,.2);
+      color: #e8f4f1; font-size: 22px; font-weight: 800; cursor: pointer;
+    }
+    #grid button:hover { background: rgba(23,111,104,.42); }
+    #gridBar {
+      display: none; position: fixed; left: 16px; bottom: 22px;
+      z-index: 31; gap: 8px; align-items: center; padding: 10px 14px;
+      background: rgba(251,250,247,.96); color: #172523; border-radius: 14px; cursor: default;
+    }
+    #gridBar.on { display: flex; }
+    #gridBar .go { background: #176f68 !important; color: #fff !important; }
+    #crop {
+      display: none; position: fixed; inset: 0; z-index: 16; cursor: crosshair;
+    }
+    #crop.on { display: block; }
+    #cropRect {
+      display: none; position: absolute; border: 2px dashed #b6f0e4;
+      background: rgba(23,111,104,.2); box-shadow: 0 0 0 9999px rgba(8,12,11,.45);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="freeze"><img id="freezeImg" alt="" /></div>
+  <div id="badges"></div>
+  <div id="snap"><span id="snapLab"></span></div>
+  <div id="hitLayer"></div>
+  <div id="chrome">
+    OneTone · 智能分区
+    <span id="hint">移动自动切框 · 长按拖拽手选 · 1–9/A–Z 快选 · 双击直裁</span>
+    <button type="button" id="btnFull">全桌面</button>
+    <button type="button" id="btnGrid">网格 G</button>
+    <button type="button" id="btnFree">自由框选</button>
+    <button type="button" id="btnEsc">Esc</button>
+  </div>
+  <div id="grid">
+    <button type="button" data-q="u">U</button>
+    <button type="button" data-q="i">I</button>
+    <button type="button" data-q="j">J</button>
+    <button type="button" data-q="k">K</button>
+  </div>
+  <div id="gridBar">
+    <span id="gridDepth">网格</span>
+    <button type="button" class="go" id="gridEnter">Enter 裁剪</button>
+    <button type="button" id="gridBack">⌫</button>
+    <button type="button" id="gridExit">退出</button>
+  </div>
+  <div id="crop"><div id="cropRect"></div></div>
+  <div id="hud">
+    <b id="hudTitle">已选择</b>
+    <small id="hudMeta">Enter 加入列表</small>
+    <div class="row">
+      <button type="button" class="go" id="hudConfirm">加入素材</button>
+      <button type="button" id="hudGrid">网格</button>
+      <button type="button" id="hudCancel">取消</button>
+    </div>
+  </div>
+  <script>
+    (function () {
+      function invoke(cmd, args) {
+        var i = window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke;
+        if (typeof i !== 'function') return Promise.reject(new Error('no_invoke'));
+        return i(cmd, args || {});
+      }
+      function listen(event, cb) {
+        var L = window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.listen;
+        if (typeof L !== 'function') return Promise.resolve(function () {});
+        return L(event, function (ev) { cb(ev && ev.payload); });
+      }
+
+      var state = null;
+      var mode = 'snap';
+      var selectedId = null;
+      var screen = { x: 0, y: 0, w: 1, h: 1 };
+      var drag = null;
+      var saving = false;
+      var hitStack = [];
+      var hitIdx = 0;
+      var hoverId = null;
+      var lastPtr = { x: 24, y: 96 };
+      var longPressTimer = null;
+      var pressOrigin = null;
+      var pressArmed = false;
+      var LONG_MS = 300;
+      var MOVE_CANCEL_PX = 10;
+
+      var els = {
+        freezeImg: document.getElementById('freezeImg'),
+        badges: document.getElementById('badges'),
+        snap: document.getElementById('snap'),
+        snapLab: document.getElementById('snapLab'),
+        hitLayer: document.getElementById('hitLayer'),
+        hud: document.getElementById('hud'),
+        hudTitle: document.getElementById('hudTitle'),
+        hudMeta: document.getElementById('hudMeta'),
+        grid: document.getElementById('grid'),
+        gridBar: document.getElementById('gridBar'),
+        gridDepth: document.getElementById('gridDepth'),
+        crop: document.getElementById('crop'),
+        cropRect: document.getElementById('cropRect'),
+        hint: document.getElementById('hint')
+      };
+
+      function pct(v, total) { return (v / Math.max(total, 1)) * 100; }
+
+      function setFreeze(url) {
+        if (!url) return;
+        els.freezeImg.onload = function () {
+          els.freezeImg.style.display = 'block';
+          document.documentElement.style.background = 'transparent';
+        };
+        els.freezeImg.src = url;
+        els.freezeImg.style.display = 'block';
+      }
+
+      // Injected by Rust before first paint.
+      if (window.__OT_FREEZE__) setFreeze(window.__OT_FREEZE__);
+
+      function clientToVirtual(cx, cy) {
+        return {
+          x: Math.round(screen.x + (cx / Math.max(window.innerWidth, 1)) * screen.w),
+          y: Math.round(screen.y + (cy / Math.max(window.innerHeight, 1)) * screen.h)
+        };
+      }
+
+      function placeHud(cx, cy) {
+        var pad = 12;
+        var w = els.hud.offsetWidth || 240;
+        var h = els.hud.offsetHeight || 110;
+        var x = Math.min(Math.max(pad, cx + 14), window.innerWidth - w - pad);
+        var y = Math.min(Math.max(pad, cy + 14), window.innerHeight - h - pad);
+        // If would cover snap heavily below cursor, flip above.
+        if (cy + 14 + h > window.innerHeight - pad && cy - h - 14 > pad) {
+          y = cy - h - 14;
+        }
+        els.hud.style.left = x + 'px';
+        els.hud.style.top = y + 'px';
+        els.hud.style.bottom = 'auto';
+      }
+
+      function showSnap(region) {
+        if (!region || !region.rectPx) {
+          els.snap.classList.remove('on');
+          hoverId = null;
+          return;
+        }
+        var rect = region.rectPx;
+        hoverId = region.id;
+        els.snap.classList.add('on');
+        els.snap.style.left = pct(rect.x - screen.x, screen.w) + '%';
+        els.snap.style.top = pct(rect.y - screen.y, screen.h) + '%';
+        els.snap.style.width = pct(rect.w, screen.w) + '%';
+        els.snap.style.height = pct(rect.h, screen.h) + '%';
+        var hk = region.hotkey || String(region.id);
+        els.snapLab.textContent = (region.label || (hk + ' · 区域')) +
+          (hitStack.length > 1 ? ' · 滚轮 ' + (hitIdx + 1) + '/' + hitStack.length : '');
+        Array.prototype.forEach.call(els.badges.querySelectorAll('.badge'), function (b) {
+          b.classList.toggle('is-hot', Number(b.getAttribute('data-id')) === region.id);
+        });
+      }
+
+      function paintBadges(regions) {
+        els.badges.innerHTML = '';
+        if (mode !== 'snap') return;
+        (regions || []).forEach(function (r) {
+          var rect = r.rectPx;
+          if (!rect || rect.w < 40 || rect.h < 40) return;
+          var el = document.createElement('div');
+          el.className = 'badge' + (selectedId === r.id || hoverId === r.id ? ' is-hot' : '');
+          el.setAttribute('data-id', String(r.id));
+          el.style.left = pct(rect.x - screen.x, screen.w) + '%';
+          el.style.top = pct(rect.y - screen.y, screen.h) + '%';
+          el.style.width = pct(rect.w, screen.w) + '%';
+          el.style.height = pct(rect.h, screen.h) + '%';
+          el.innerHTML = '<span class="k">' + (r.hotkey || r.id) + '</span>';
+          els.badges.appendChild(el);
+        });
+      }
+
+      function clearLongPress() {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+        pressOrigin = null;
+        pressArmed = false;
+      }
+
+      function updateHoverFromClient(cx, cy) {
+        lastPtr = { x: cx, y: cy };
+        if (mode !== 'snap') return;
+        var v = clientToVirtual(cx, cy);
+        var hits = hitAt(v.x, v.y);
+        if (!hits.length) {
+          hitStack = [];
+          hitIdx = 0;
+          showSnap(null);
+          return;
+        }
+        var same =
+          hitStack.length === hits.length &&
+          hitStack.every(function (r, i) { return r.id === hits[i].id; });
+        if (!same) {
+          hitStack = hits;
+          hitIdx = 0;
+        }
+        showSnap(hitStack[hitIdx] || hitStack[0]);
+      }
+
+      function paintCropFrom(e) {
+        if (!drag) return;
+        var l = Math.min(drag.x0, e.clientX);
+        var t = Math.min(drag.y0, e.clientY);
+        els.cropRect.style.left = l + 'px';
+        els.cropRect.style.top = t + 'px';
+        els.cropRect.style.width = Math.abs(e.clientX - drag.x0) + 'px';
+        els.cropRect.style.height = Math.abs(e.clientY - drag.y0) + 'px';
+      }
+
+      function finishCropDrag(e) {
+        if (!drag) return;
+        var l = Math.min(drag.x0, e.clientX);
+        var t = Math.min(drag.y0, e.clientY);
+        var w = Math.abs(e.clientX - drag.x0);
+        var h = Math.abs(e.clientY - drag.y0);
+        drag = null;
+        document.removeEventListener('pointermove', onDocCropMove, true);
+        document.removeEventListener('pointerup', onDocCropUp, true);
+        if (w < 8 || h < 8) {
+          els.cropRect.style.display = 'none';
+          return;
+        }
+        var rect = {
+          x: Math.round(screen.x + (l / window.innerWidth) * screen.w),
+          y: Math.round(screen.y + (t / window.innerHeight) * screen.h),
+          w: Math.max(1, Math.round((w / window.innerWidth) * screen.w)),
+          h: Math.max(1, Math.round((h / window.innerHeight) * screen.h))
+        };
+        act({ type: 'setManualRect', rect: rect }).then(confirmSave);
+      }
+
+      function onDocCropMove(e) { paintCropFrom(e); }
+      function onDocCropUp(e) { finishCropDrag(e); }
+
+      function startCropDrag(x0, y0, pointerId) {
+        drag = { x0: x0, y0: y0 };
+        els.cropRect.style.display = 'block';
+        els.cropRect.style.left = x0 + 'px';
+        els.cropRect.style.top = y0 + 'px';
+        els.cropRect.style.width = '0px';
+        els.cropRect.style.height = '0px';
+        document.addEventListener('pointermove', onDocCropMove, true);
+        document.addEventListener('pointerup', onDocCropUp, true);
+        if (pointerId != null) {
+          try { els.crop.setPointerCapture(pointerId); } catch (_) {}
+        }
+      }
+
+      function enterFreeMode(opts) {
+        opts = opts || {};
+        mode = 'free';
+        clearLongPress();
+        els.snap.classList.remove('on');
+        els.badges.innerHTML = '';
+        els.hitLayer.style.display = 'none';
+        els.grid.classList.remove('on');
+        els.gridBar.classList.remove('on');
+        els.hud.classList.remove('on');
+        els.crop.classList.add('on');
+        els.hint.textContent = '拖拽框选 · 松开确认 · Esc 返回吸附';
+        act({ type: 'enterManual' });
+        if (opts.x0 != null && opts.y0 != null) {
+          startCropDrag(opts.x0, opts.y0, opts.pointerId);
+        }
+      }
+
+      function hitAt(vx, vy) {
+        var regions = (state && state.regions) || [];
+        var hits = regions.filter(function (r) {
+          var p = r.rectPx;
+          return vx >= p.x && vy >= p.y && vx < p.x + p.w && vy < p.y + p.h;
+        });
+        hits.sort(function (a, b) {
+          return (a.rectPx.w * a.rectPx.h) - (b.rectPx.w * b.rectPx.h);
+        });
+        return hits;
+      }
+
+      function findByHotkey(key) {
+        var k = String(key || '').toUpperCase();
+        var regions = (state && state.regions) || [];
+        return regions.find(function (r) {
+          return String(r.hotkey || '').toUpperCase() === k;
+        }) || null;
+      }
+
+      function applyState(s) {
+        if (!s) return;
+        state = s;
+        screen = s.screenRect || screen;
+        if (s.freezePngBase64) {
+          var mime = s.freezePngBase64.charAt(0) === '/' ? 'image/jpeg' : 'image/png';
+          // JPEG base64 often starts with /9j/; PNG with iVBOR
+          if (s.freezePngBase64.indexOf('/9j/') === 0 || s.freezePngBase64.charAt(0) === '/') {
+            mime = 'image/jpeg';
+          } else if (s.freezePngBase64.indexOf('iVBOR') === 0) {
+            mime = 'image/png';
+          }
+          setFreeze('data:' + mime + ';base64,' + s.freezePngBase64);
+        }
+        if (s.phase === 'gridRefine') {
+          showGrid(s.candidateRect || s.screenRect);
+        } else if (mode === 'snap') {
+          els.hint.textContent = '移动自动切框 · 长按拖拽手选 · 1–9/A–Z 快选 · 双击直裁';
+          paintBadges(s.regions || []);
+        }
+        if (s.gridDepth != null) {
+          els.gridDepth.textContent = '网格深度 ' + s.gridDepth;
+        }
+      }
+
+      function showGrid(rect) {
+        mode = 'grid';
+        els.hud.classList.remove('on');
+        els.snap.classList.remove('on');
+        els.badges.innerHTML = '';
+        els.hitLayer.style.display = 'none';
+        els.crop.classList.remove('on');
+        els.grid.classList.add('on');
+        els.gridBar.classList.add('on');
+        els.hint.textContent = 'UIJK / 1–4 缩矩形 · Enter 裁剪 · ⌫ 回退';
+        els.grid.style.left = pct(rect.x - screen.x, screen.w) + '%';
+        els.grid.style.top = pct(rect.y - screen.y, screen.h) + '%';
+        els.grid.style.width = pct(rect.w, screen.w) + '%';
+        els.grid.style.height = pct(rect.h, screen.h) + '%';
+      }
+
+      function enterSnapMode() {
+        mode = 'snap';
+        clearLongPress();
+        drag = null;
+        els.cropRect.style.display = 'none';
+        els.grid.classList.remove('on');
+        els.gridBar.classList.remove('on');
+        els.crop.classList.remove('on');
+        els.hitLayer.style.display = 'block';
+        els.hint.textContent = '移动自动切框 · 长按拖拽手选 · 1–9/A–Z 快选 · 双击直裁';
+        paintBadges((state && state.regions) || []);
+        updateHoverFromClient(lastPtr.x, lastPtr.y);
+      }
+
+      function act(action) {
+        return invoke('cmd_smart_capture_action', { action: action }).then(applyState);
+      }
+
+      function enterGrid() {
+        var id = selectedId != null ? selectedId : hoverId;
+        var chain = id != null
+          ? act({ type: 'chooseRegion', id: id })
+          : Promise.resolve();
+        return chain
+          .then(function () { return act({ type: 'enterGrid' }); })
+          .then(function (s) {
+            applyState(s);
+            if (s && s.candidateRect) showGrid(s.candidateRect);
+          });
+      }
+
+      function confirmSave() {
+        if (saving) return Promise.resolve();
+        saving = true;
+        els.hudMeta.textContent = '正在保存…';
+        return invoke('cmd_smart_capture_confirm', {}).catch(function (e) {
+          saving = false;
+          alert(String(e && e.message || e || 'confirm_failed'));
+        });
+      }
+
+      function selectRegion(region, andConfirm) {
+        if (!region) return;
+        selectedId = region.id;
+        els.hudTitle.textContent = (region.hotkey || region.id) + ' · ' + (region.label || '已选择');
+        els.hudMeta.textContent = andConfirm ? '正在保存…' : 'Enter 加入 · 双击直裁';
+        els.hud.classList.add('on');
+        placeHud(lastPtr.x, lastPtr.y);
+        showSnap(region);
+        paintBadges((state && state.regions) || []);
+        var p = act({ type: 'chooseRegion', id: region.id });
+        if (andConfirm) p.then(confirmSave);
+      }
+
+      els.hitLayer.addEventListener('pointerdown', function (e) {
+        if (mode !== 'snap') return;
+        if (e.button !== 0) return;
+        lastPtr = { x: e.clientX, y: e.clientY };
+        pressOrigin = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+        pressArmed = true;
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(function () {
+          if (!pressArmed || !pressOrigin) return;
+          var o = pressOrigin;
+          pressArmed = false;
+          longPressTimer = null;
+          // Long-press → manual crop, keep dragging from press point.
+          enterFreeMode({ x0: o.x, y0: o.y, pointerId: o.pointerId });
+        }, LONG_MS);
+      });
+
+      els.hitLayer.addEventListener('pointermove', function (e) {
+        if (mode === 'snap') {
+          updateHoverFromClient(e.clientX, e.clientY);
+          if (pressArmed && pressOrigin) {
+            var dx = e.clientX - pressOrigin.x;
+            var dy = e.clientY - pressOrigin.y;
+            // Drag before long-press fires → also enter free crop immediately.
+            if (dx * dx + dy * dy >= MOVE_CANCEL_PX * MOVE_CANCEL_PX) {
+              var o = pressOrigin;
+              clearLongPress();
+              enterFreeMode({ x0: o.x, y0: o.y, pointerId: o.pointerId });
+              paintCropFrom(e);
+            }
+          }
+        }
+      });
+
+      els.hitLayer.addEventListener('pointerup', function (e) {
+        if (mode !== 'snap') return;
+        var wasArmed = pressArmed;
+        clearLongPress();
+        if (!wasArmed) return;
+        if (e.detail > 1) return;
+        lastPtr = { x: e.clientX, y: e.clientY };
+        var region = hitStack[hitIdx] || null;
+        if (!region) {
+          var v = clientToVirtual(e.clientX, e.clientY);
+          hitStack = hitAt(v.x, v.y);
+          hitIdx = 0;
+          region = hitStack[0] || null;
+        }
+        selectRegion(region, false);
+      });
+
+      els.hitLayer.addEventListener('pointercancel', function () {
+        clearLongPress();
+      });
+
+      els.hitLayer.addEventListener('wheel', function (e) {
+        if (mode !== 'snap' || hitStack.length < 2) return;
+        e.preventDefault();
+        hitIdx = (hitIdx + (e.deltaY > 0 ? 1 : -1) + hitStack.length) % hitStack.length;
+        showSnap(hitStack[hitIdx]);
+      }, { passive: false });
+
+      els.hitLayer.addEventListener('dblclick', function (e) {
+        if (mode !== 'snap') return;
+        e.preventDefault();
+        clearLongPress();
+        lastPtr = { x: e.clientX, y: e.clientY };
+        var region = hitStack[hitIdx] || null;
+        if (!region) {
+          var v = clientToVirtual(e.clientX, e.clientY);
+          hitStack = hitAt(v.x, v.y);
+          hitIdx = 0;
+          region = hitStack[0] || null;
+        }
+        selectRegion(region, true);
+      });
+
+      document.getElementById('hudConfirm').onclick = function () {
+        if (selectedId == null && hoverId != null) selectedId = hoverId;
+        if (selectedId == null) return;
+        act({ type: 'chooseRegion', id: selectedId }).then(confirmSave);
+      };
+      document.getElementById('btnFull').onclick = function () {
+        if (!screen) return;
+        act({ type: 'setManualRect', rect: screen }).then(confirmSave);
+      };
+      document.getElementById('hudGrid').onclick = function () { enterGrid(); };
+      document.getElementById('btnGrid').onclick = function () { enterGrid(); };
+      document.getElementById('hudCancel').onclick = function () {
+        invoke('cmd_smart_capture_cancel', {});
+      };
+      document.getElementById('btnEsc').onclick = function () {
+        if (mode === 'grid') {
+          act({ type: 'exitGrid' }).then(function (s) {
+            enterSnapMode();
+            applyState(s);
+          });
+        } else if (mode === 'free') {
+          enterSnapMode();
+        } else {
+          invoke('cmd_smart_capture_cancel', {});
+        }
+      };
+      document.getElementById('gridEnter').onclick = function () { confirmSave(); };
+      document.getElementById('gridBack').onclick = function () {
+        act({ type: 'popGrid' }).then(function (s) {
+          if (s && s.candidateRect) showGrid(s.candidateRect);
+        });
+      };
+      document.getElementById('gridExit').onclick = document.getElementById('btnEsc').onclick;
+      Array.prototype.forEach.call(document.querySelectorAll('#grid [data-q]'), function (b) {
+        b.onclick = function () {
+          var map = { u: 'u', i: 'i', j: 'j', k: 'k' };
+          act({ type: 'chooseQuadrant', quadrant: map[b.getAttribute('data-q')] }).then(function (s) {
+            if (s && s.candidateRect) showGrid(s.candidateRect);
+          });
+        };
+      });
+
+      document.getElementById('btnFree').onclick = function () {
+        enterFreeMode({});
+      };
+
+      els.crop.addEventListener('pointerdown', function (e) {
+        if (e.button !== 0) return;
+        startCropDrag(e.clientX, e.clientY, e.pointerId);
+      });
+      els.crop.addEventListener('pointermove', function (e) { paintCropFrom(e); });
+      els.crop.addEventListener('pointerup', function (e) { finishCropDrag(e); });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          document.getElementById('btnEsc').click();
+          return;
+        }
+        if (mode === 'grid') {
+          var k = e.key.toLowerCase();
+          if ('uijk1234'.indexOf(k) >= 0) {
+            e.preventDefault();
+            var q = { '1': 'u', '2': 'i', '3': 'j', '4': 'k' }[k] || k;
+            act({ type: 'chooseQuadrant', quadrant: q }).then(function (s) {
+              if (s && s.candidateRect) showGrid(s.candidateRect);
+            });
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('gridEnter').click();
+          } else if (e.key === 'Backspace') {
+            e.preventDefault();
+            document.getElementById('gridBack').click();
+          }
+          return;
+        }
+        if (e.key === 'g' || e.key === 'G') {
+          e.preventDefault();
+          enterGrid();
+          return;
+        }
+        if (mode === 'snap') {
+          var key = e.key.length === 1 ? e.key.toUpperCase() : '';
+          if (/^[1-9A-Z]$/.test(key)) {
+            var hit = findByHotkey(key);
+            if (hit) {
+              e.preventDefault();
+              selectRegion(hit, e.shiftKey || e.altKey ? true : false);
+              return;
+            }
+          }
+        }
+        if (e.key === 'Enter' && (selectedId != null || hoverId != null) && mode === 'snap') {
+          document.getElementById('hudConfirm').click();
+        }
+      });
+
+      function bootState(tries) {
+        tries = tries == null ? 0 : tries;
+        invoke('cmd_smart_capture_get_state', { includeFrame: true }).then(function (s) {
+          if (!s) {
+            if (tries < 20) setTimeout(function () { bootState(tries + 1); }, 60);
+            return;
+          }
+          enterSnapMode();
+          applyState(s);
+          if (s.phase === 'gridRefine' && s.candidateRect) showGrid(s.candidateRect);
+        }).catch(function () {
+          if (tries < 20) setTimeout(function () { bootState(tries + 1); }, 60);
+        });
+      }
+      bootState(0);
+      listen('smart_capture_state', function (s) {
+        applyState(s);
+        if (s && s.phase === 'gridRefine' && s.candidateRect && mode !== 'grid') {
+          showGrid(s.candidateRect);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

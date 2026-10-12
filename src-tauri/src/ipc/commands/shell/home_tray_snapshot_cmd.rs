@@ -54,6 +54,7 @@ pub fn cmd_tray_collect_from_soft_pad(
             path,
             name,
             id,
+            preview_base64: None,
         },
     )
 }
