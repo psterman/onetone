@@ -196,7 +196,10 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
   }
   if (!html.includes('data-hf-view="focus"')) throw new Error('focus missing 现在 nav');
   if (!html.includes('我的习惯')) throw new Error('focus missing 我的习惯 nav');
-  if (!html.includes('设置')) throw new Error('focus missing 设置 nav');
+  // Settings lives in the workbench sidebar — home top nav must not duplicate it.
+  if (/data-hf-view="settings"/.test(html)) {
+    throw new Error('focus must not expose 设置 top-nav (use workbench drawer)');
+  }
   if (html.includes('你想让我现在帮你做什么')) {
     throw new Error('v1 must not use chatty fixed hero');
   }

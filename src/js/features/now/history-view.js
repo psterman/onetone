@@ -16,8 +16,7 @@
   function shell(active, body) {
     var items = [
       { id: 'focus', label: '现在' },
-      { id: 'habits', label: '我的习惯' },
-      { id: 'settings', label: '设置' }
+      { id: 'habits', label: '我的习惯' }
     ];
     return (
       '<div class="hn-page hn-page--sub" data-hf-mode="sub">' +
@@ -97,7 +96,7 @@
     var freshness = (opts.source && opts.source.freshness) || '';
     var provider = (opts.provider && opts.provider.status) || '';
     return shell(
-      'settings',
+      'focus',
       '<h1>连接与数据</h1>' +
         '<p class="hn-assist">本地读取状态（普通用户无需关心细节）。</p>' +
         '<div class="hn-ev-row"><span>准备状态</span><b>' +
@@ -112,18 +111,19 @@
             '</pre></details>'
           : '') +
         '<p><button type="button" class="hn-cta" data-hf-act="retry">重新读取</button></p>' +
-        '<button type="button" class="hn-text-btn" data-hf-view="settings">← 返回设置</button>'
+        '<button type="button" class="hn-text-btn" data-hf-view="focus">← 返回现在</button>'
     );
   }
 
   function renderSettings(opts) {
     opts = opts || {};
+    // Settings chrome lives in the workbench drawer — keep a thin redirect only.
     return shell(
-      'settings',
+      'focus',
       '<h1>设置</h1>' +
-        '<p class="hn-assist">设备、隐私、数据源与 Agent 接入。链接与数据归入此处。</p>' +
-        '<p><button type="button" class="hn-cta" data-hf-view="connections">连接与数据</button></p>' +
-        '<p><button type="button" class="hn-text-btn" data-hf-act="open_scenes">管理情景（我的习惯）</button></p>' +
+        '<p class="hn-assist">请使用左侧工作台打开完整设置。</p>' +
+        '<p><button type="button" class="hn-cta" data-hf-act="open_settings_drawer">打开设置</button></p>' +
+        '<button type="button" class="hn-text-btn" data-hf-view="focus">← 返回现在</button>' +
         (opts.legacyNote
           ? '<p class="hn-muted">' + esc(opts.legacyNote) + '</p>'
           : '')
@@ -131,11 +131,13 @@
   }
 
   function renderHabits() {
+    // Fallback if drawer open fails — still route to real habit hub via open_scenes.
     return shell(
       'habits',
       '<h1>我的习惯</h1>' +
-        '<p class="hn-assist">情景、语义动作与四通道绑定在这里配置，不占用首页。</p>' +
-        '<p><button type="button" class="hn-cta" data-hf-act="open_scenes">打开情景管理</button></p>'
+        '<p class="hn-assist">打开左侧「我的习惯」配置真实情景与通道绑定。</p>' +
+        '<p><button type="button" class="hn-cta" data-hf-act="open_scenes">打开我的习惯</button></p>' +
+        '<button type="button" class="hn-text-btn" data-hf-view="focus">← 返回现在</button>'
     );
   }
 

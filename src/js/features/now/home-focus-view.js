@@ -14,10 +14,11 @@
   }
 
   function navHtml(active) {
+    // Settings lives in the workbench sidebar — not duplicated here.
+    // 「我的习惯」opens the real habit hub (drawer), not a hard-coded stub page.
     var items = [
       { id: 'focus', label: '现在' },
-      { id: 'habits', label: '我的习惯' },
-      { id: 'settings', label: '设置' }
+      { id: 'habits', label: '我的习惯' }
     ];
     return (
       '<nav class="hn-nav" aria-label="主导航">' +
@@ -359,7 +360,7 @@
       return (
         '<img class="hn-agent-tile__img" src="' +
         esc(t.icon) +
-        '" alt="" decoding="async" width="28" height="28" />'
+        '" alt="" decoding="async" width="22" height="22" />'
       );
     }
     var badge = String(label).slice(0, 2);
@@ -438,6 +439,7 @@
       ? String(vm.assistance || '').trim() ||
         '可以从停下的地方继续，也可以直接描述新工作或加入材料。'
       : '直接描述你想完成的工作，也可以加入现有材料。';
+    // One primary resume when returning; avoid stacking 继续/新任务/整理.
     var resumeCta =
       isReturn && vm.primary && vm.primary.id && vm.primary.label
         ? '<button type="button" class="hn-cta" data-hf-act="' +
@@ -453,6 +455,16 @@
           '">' +
           esc(vm.secondary.label) +
           '</button>'
+        : '';
+    var restoreLink =
+      !resumeCta && opts.resumeAvailable
+        ? '<button type="button" class="hn-text-btn" data-hf-act="restore_return">继续上次工作</button>'
+        : '';
+    var matCount = Number((opts.materialSummary && opts.materialSummary.count) || 0);
+    // 「整理」lives on the material summary when items exist; otherwise one quiet link.
+    var prepLink =
+      matCount < 1
+        ? '<button type="button" class="hn-text-btn" data-hf-act="open_prep">整理方案</button>'
         : '';
     return (
       '<section class="hn-quiet-composer" data-hn-quiet-composer aria-label="' +
@@ -487,10 +499,8 @@
       '<div class="hn-actions hn-quiet-actions">' +
       resumeCta +
       startNew +
-      (opts.resumeAvailable
-        ? '<button type="button" class="hn-text-btn" data-hf-act="restore_return">继续上次工作</button>'
-        : '') +
-      '<button type="button" class="hn-text-btn" data-hf-act="open_prep">任务复杂？先整理方案</button>' +
+      restoreLink +
+      prepLink +
       '</div>' +
       '</section>'
     );

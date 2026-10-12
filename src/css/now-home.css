@@ -1771,16 +1771,17 @@
   box-shadow: 0 6px 18px rgba(2, 132, 199, 0.28);
 }
 
-/* —— Now v1 situational canvas (hn-*) —— */
+/* —— Now v1 situational canvas (hn-*) ——
+   Accent tracks app --primary (cyan), not the old teal island. */
 .now-home {
   --hn-ink: #14233a;
   --hn-ink2: #3a4a5c;
   --hn-muted: #556576;
   --hn-line: rgba(20, 35, 58, 0.1);
-  --hn-teal: #0d7a72;
-  --hn-teal-soft: #d9f0ed;
-  --hn-paper: #fffcf8;
-  --hn-bg: #ebe6df;
+  --hn-teal: var(--primary, #2a9cc4);
+  --hn-teal-soft: var(--primary-soft, #e6f7fc);
+  --hn-paper: #f7fafc;
+  --hn-bg: #eef3f6;
   --hn-amber: #8a4b12;
   --hn-amber-soft: #fff1e6;
   --hn-red: #a33b2b;
@@ -2034,6 +2035,7 @@
 }
 .now-home .hn-agent-grid {
   margin-top: 14px;
+  width: 100%;
 }
 .now-home .hn-agent-grid__hint {
   margin: 0 0 8px;
@@ -2041,9 +2043,11 @@
   font-size: 12px;
 }
 .now-home .hn-agent-grid__tiles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
+  width: 100%;
+  max-width: 520px;
 }
 .now-home .hn-agent-tile {
   position: relative;
@@ -2051,48 +2055,48 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  min-width: 64px;
-  max-width: 76px;
-  padding: 8px 6px 6px;
+  gap: 3px;
+  min-width: 0;
+  width: 100%;
+  padding: 6px 4px 5px;
   border: 1px solid var(--hn-line, #d7dcda);
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff;
   color: var(--hn-ink2);
   cursor: pointer;
   font: inherit;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 .now-home .hn-agent-tile:hover:not(:disabled) {
-  border-color: var(--hn-teal, #0f766e);
-  background: var(--hn-teal-soft, #e8f3ef);
+  border-color: var(--hn-teal, #2a9cc4);
+  background: var(--hn-teal-soft, #e6f7fc);
 }
 .now-home .hn-agent-tile.is-dim {
   opacity: 0.55;
 }
 .now-home .hn-agent-tile.is-live {
-  box-shadow: inset 0 0 0 1px var(--hn-teal, #0f766e);
+  box-shadow: inset 0 0 0 1px var(--hn-teal, #2a9cc4);
 }
 .now-home .hn-agent-tile:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 .now-home .hn-agent-tile__img {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
-  border-radius: 6px;
+  border-radius: 5px;
 }
 .now-home .hn-agent-tile__badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   background: #eef2f1;
   color: var(--hn-ink2);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 750;
 }
 .now-home .hn-agent-tile__name {
@@ -2100,7 +2104,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 650;
 }
 .now-home .hn-agent-tile__tag {
@@ -2518,7 +2522,7 @@
   margin: 4px 0 16px;
   cursor: pointer;
 }
-.now-home .hn-cta:hover { background: #0a6861; }
+.now-home .hn-cta:hover { background: var(--primary-strong, #1f8fb8); }
 .now-home .hn-cta:focus-visible {
   outline: 2px solid var(--hn-teal);
   outline-offset: 2px;
@@ -2647,15 +2651,33 @@
 .now-home .hn-dock-wrap {
   position: static;
   margin-top: auto;
-  align-self: flex-end;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
   padding-top: 16px;
   z-index: 2;
   opacity: 0.9;
   flex: none;
+  width: 100%;
+  max-width: 420px;
+  margin-left: auto;
 }
 .now-home .hn-dock-wrap:hover,
 .now-home .hn-dock-wrap:focus-within {
   opacity: 1;
+}
+/* Live transcript strip sits above the mic pill while listening. */
+.now-home .hn-dock-wrap .now-vstrip {
+  width: 100%;
+  margin: 0;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(20, 35, 58, 0.1);
+}
+.now-home .hn-dock-wrap .now-vstrip-live {
+  max-height: 4.5em;
+  overflow: auto;
 }
 /* Home Focus uses dock as a corner mic trigger — hide full footer chrome. */
 .now-home .hn-dock-wrap .now-dock {
@@ -2664,6 +2686,7 @@
   border: 0;
   background: transparent;
   box-shadow: none;
+  align-self: flex-end;
 }
 .now-home .hn-dock-wrap .now-dock-center,
 .now-home .hn-dock-wrap .now-dock-key {
@@ -2679,9 +2702,9 @@
   --hf-ink: #123331;
   --hf-muted: #536764;
   --hf-line: #dbe7e5;
-  --hf-teal: #08756d;
-  --hf-teal-dark: #075e58;
-  --hf-teal-soft: #e2f5f1;
+  --hf-teal: var(--primary, #2a9cc4);
+  --hf-teal-dark: var(--primary-strong, #1f8fb8);
+  --hf-teal-soft: var(--primary-soft, #e6f7fc);
   --hf-orange: #c2410c;
   --hf-orange-soft: #fff1e9;
   --hf-bg: #f4f7f7;

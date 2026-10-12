@@ -1243,8 +1243,13 @@
               var U = ui();
               if (!U || !U.renderDock) return '';
               var snap = snapshot();
+              var strip =
+                U.renderVoiceStrip && typeof U.renderVoiceStrip === 'function'
+                  ? U.renderVoiceStrip()
+                  : '';
               return (
                 '<div class="hn-dock-wrap">' +
+                strip +
                 U.renderDock({
                   voiceOn: !(snap.input && snap.input.voice === false),
                   listening: !!(voice && voice.listening),
@@ -1522,7 +1527,11 @@
       return;
     }
     if (kind === 'open_scenes') {
-      setView('scenes');
+      openHabitHub();
+      return;
+    }
+    if (kind === 'open_settings_drawer') {
+      openSettings();
       return;
     }
     if (kind === 'open_prep') {
@@ -1937,6 +1946,23 @@
       dictate.textContent = voice.listening ? '倾听中…' : '开始听写';
       dictate.setAttribute('aria-pressed', voice.listening ? 'true' : 'false');
     }
+    // Mirror live transcript into Quiet draft when the box is empty / voice-owned.
+    var ta = root.querySelector('#hnQuietDraft');
+    if (ta) {
+      var owned = ta.getAttribute('data-voice-owned') === '1';
+      if (voice.listening && !voice.isHint && String(voice.liveText || '').trim()) {
+        if (owned || !String(ta.value || '').trim()) {
+          ta.setAttribute('data-voice-owned', '1');
+          ta.value = String(voice.liveText || '');
+        }
+      } else if (!voice.listening && owned) {
+        ta.removeAttribute('data-voice-owned');
+        try {
+          var vmDraft = buildHomeFocusVm();
+          if (vmDraft) writeQuietDraft(vmDraft, ta.value);
+        } catch (_) {}
+      }
+    }
   }
 
   function triggerVoice() {
@@ -2075,6 +2101,16 @@
     if (btn) btn.click();
   }
 
+  /** Real habit hub (sidebar drawer) — not the hard-coded home stub / scenes page. */
+  function openHabitHub() {
+    if (global.OneToneSettingsDrawer && global.OneToneSettingsDrawer.open) {
+      global.OneToneSettingsDrawer.open({ panel: 'habits' });
+      return;
+    }
+    var btn = $('wbNavHabits') || $('wbNavHabit');
+    if (btn) btn.click();
+  }
+
   function clearPending() {
     pending = null;
     lastPaintHtml = '';
@@ -2174,11 +2210,14 @@
     if (hfViewBtn) {
       var nextView = hfViewBtn.getAttribute('data-hf-view') || 'focus';
       if (nextView === 'habits') {
-        // Prefer dedicated habits page; scenes remains behind CTA.
-        hfView = 'habits';
-      } else {
-        hfView = nextView;
+        openHabitHub();
+        return;
       }
+      if (nextView === 'settings') {
+        openSettings();
+        return;
+      }
+      hfView = nextView;
       hfOverlay = '';
       lastPaintHtml = '';
       if (hfView !== 'focus' && !agentHomeCache) scheduleAgentHomeRefresh();
