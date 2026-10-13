@@ -34,6 +34,17 @@
   border: 1.5px solid #b7d4ea;
   box-shadow: 0 12px 32px rgba(40, 80, 110, 0.18);
   overflow: hidden;
+  /* Empty chrome (top / hint / preview) drags Soft Pad; buttons keep pointer cursor. */
+  cursor: grab;
+}
+.sp-carry__bar:active {
+  cursor: grabbing;
+}
+.sp-carry__actions,
+.sp-carry__actions button,
+.sp-carry__icon,
+.sp-carry [data-sp-act] {
+  cursor: pointer;
 }
 .sp-carry__hint {
   margin: 0 12px 8px;
@@ -296,14 +307,17 @@
   color: #606c69;
   line-height: 1.4;
 }
-/* Materials drawer — companion list in a reserved right strip (not over Soft Pad). */
+/* Materials drawer — companion list in a reserved right strip (not over Soft Pad).
+   Keep in sync with OVERLAY_WIDTH_MATS_EXTRA (252) so left band width == pre-open width. */
 .wrap.is-mats-rail {
-  --sp-mats-rail-w: 176px;
+  --sp-mats-rail-w: 252px;
 }
 .wrap.is-mats-rail .overlay-body {
-  /* Keep pad + paste dock in the left band; rail paints in the right strip. */
+  /* Lock pad to the pre-widen band — padding-right + center used to nudge the pad. */
   box-sizing: border-box;
-  padding-right: var(--sp-mats-rail-w);
+  width: calc(100% - var(--sp-mats-rail-w));
+  flex: 0 0 auto;
+  padding-right: 0;
   justify-content: center;
 }
 .sp-mats-rail {
@@ -313,14 +327,21 @@
   z-index: 40;
   width: 28px;
   height: 400px;
+  max-height: calc(100% - 8px);
   pointer-events: none;
   cursor: default;
   color: #172523;
+  overflow: hidden;
 }
 .sp-mats-rail.is-open {
-  width: var(--sp-mats-rail-w, 176px);
+  width: var(--sp-mats-rail-w, 252px);
+  /* Capture hover while the panel slides in (transform moves the hit box). */
+  pointer-events: auto;
 }
 .sp-mats-rail[hidden] {
+  display: none !important;
+}
+.wrap.is-minimized .sp-mats-rail {
   display: none !important;
 }
 /* Approach zone only when collapsed — never cover the open panel (blocked clicks). */
@@ -387,8 +408,9 @@
   inset: 0;
   z-index: 3;
   box-sizing: border-box;
-  width: 176px;
-  padding: 8px 6px;
+  width: 100%;
+  max-width: var(--sp-mats-rail-w, 252px);
+  padding: 8px 6px 10px;
   border-radius: 12px;
   /* Opaque on purpose: dense list over Soft Pad/editor — Finder/Notes/VS Code sidebars
      stay solid; translucency (Liquid Glass) suits chrome, not scanable rows. */
@@ -401,6 +423,7 @@
   flex-direction: column;
   gap: 6px;
   min-height: 0;
+  overflow: hidden;
   transform: translateX(110%);
   opacity: 0;
   transition:
@@ -410,6 +433,10 @@
 .sp-mats-rail.is-open .sp-mats-rail__panel {
   transform: translateX(0);
   opacity: 1;
+  pointer-events: auto;
+}
+.sp-mats-rail:not(.is-open) .sp-mats-rail__panel {
+  pointer-events: none;
 }
 .sp-mats-rail__head {
   display: flex;
@@ -462,23 +489,34 @@
   flex: 0 0 28px;
 }
 .sp-mats-rail__list {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
+  scrollbar-color: rgba(91, 159, 212, 0.55) transparent;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.sp-mats-rail__list::-webkit-scrollbar {
+  width: 6px;
+}
+.sp-mats-rail__list::-webkit-scrollbar-thumb {
+  background: rgba(91, 159, 212, 0.45);
+  border-radius: 999px;
 }
 /* Finder-like row: icon | primary+meta | trailing × */
 .sp-mats-rail__item {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr) 30px;
-  align-items: center;
+  align-items: start;
   gap: 6px;
-  min-height: 36px;
-  padding: 5px 2px 5px 6px;
+  min-height: 40px;
+  padding: 6px 2px 6px 6px;
   border-radius: 8px;
   border: 1px solid transparent;
   background: transparent;
@@ -515,18 +553,20 @@
 }
 .sp-mats-rail__preview {
   min-width: 0;
-  line-height: 1.3;
+  line-height: 1.35;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
   color: #172523;
   font-weight: 600;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: break-all;
 }
 .sp-mats-rail__sub {
   min-width: 0;
   margin-top: 1px;
   font-size: 10px;
-  line-height: 1.25;
+  line-height: 1.3;
   color: #8a9591;
   overflow: hidden;
   white-space: nowrap;
@@ -664,7 +704,7 @@
 .sp-mats-rail__x {
   width: 30px;
   height: 30px;
-  margin: 0;
+  margin: 2px 0 0;
   padding: 0;
   border: 0;
   border-radius: 8px;
@@ -674,6 +714,7 @@
   place-items: center;
   cursor: pointer;
   flex: none;
+  align-self: start;
   opacity: 0.55;
   position: relative;
   z-index: 2;
@@ -701,6 +742,320 @@
   text-align: center;
   line-height: 1.4;
   white-space: normal;
+}
+
+/* Mini bar — materials as an inline stack card (same width as the bar; no overlay fight). */
+.wrap.is-mini-mats .overlay-mini-listen,
+.wrap.is-mini-mats #miniBeginnerListenBanner {
+  display: none !important;
+}
+.wrap.is-mini-mats .overlay-mini__row--tools {
+  display: flex !important;
+}
+.wrap.is-mini-mats .overlay-mini-stack {
+  /* Stack default gap:6px ate the HWND budget and clipped the fold list. */
+  gap: 0;
+}
+.wrap.is-mini-mats .overlay-mini {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.sp-mini-mats {
+  position: relative;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  z-index: 2;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.sp-mini-mats[hidden] {
+  display: none !important;
+}
+.sp-mini-mats.is-open {
+  pointer-events: auto;
+}
+.sp-mini-mats__panel {
+  width: 100%;
+  max-width: none;
+  /* Keep inside HWND: tools(92) + mats(404); fold chips flex-scroll the rest. */
+  max-height: 396px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 10px;
+  border: 1.5px solid rgba(90, 157, 184, 0.55);
+  border-top: 1px dashed rgba(90, 157, 184, 0.45);
+  border-radius: 0 0 14px 14px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 6px 16px rgba(0, 101, 143, 0.1);
+  overflow: hidden;
+  box-sizing: border-box;
+  min-height: 0;
+}
+.sp-mini-mats__head {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  user-select: none;
+}
+.sp-mini-mats__head-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sp-mini-mats__title {
+  flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 800;
+  color: #172523;
+  letter-spacing: 0.02em;
+}
+.sp-mini-mats__hint {
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 650;
+  color: #3a6f94;
+}
+.sp-mini-mats__preview {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 36px;
+  max-height: 52px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px dashed rgba(91, 159, 212, 0.45);
+  background: #f5fafd;
+  overflow: hidden;
+}
+.sp-mini-mats__preview-k {
+  font-size: 10px;
+  font-weight: 800;
+  color: #5b7a90;
+  letter-spacing: 0.04em;
+}
+.sp-mini-mats__preview-v {
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 650;
+  color: #172523;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.sp-mini-mats__paste {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 34px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  background: #1d7bb8;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sp-mini-mats__paste:hover:not(:disabled) {
+  background: #176999;
+}
+.sp-mini-mats__paste:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.sp-mini-mats__paste .sp-mats-rail__ico {
+  width: 14px;
+  height: 14px;
+}
+.sp-mini-mats__ops {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.sp-mini-mats__op {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 6px;
+  border: 1px solid rgba(112, 126, 142, 0.28);
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sp-mini-mats__op:hover {
+  background: #f4f8fb;
+}
+.sp-mini-mats__op.is-on {
+  border-color: rgba(29, 123, 184, 0.45);
+  background: rgba(29, 123, 184, 0.1);
+  color: #176999;
+}
+.sp-mini-mats__op .sp-mats-rail__ico {
+  width: 12px;
+  height: 12px;
+}
+.sp-mini-mats__fold {
+  flex: 0 0 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(112, 126, 142, 0.22);
+  border-radius: 9px;
+  background: #f8fafc;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+/* Open fold eats leftover panel height; chips scroll instead of HWND-clip. */
+.sp-mini-mats__fold[open] {
+  flex: 1 1 auto;
+}
+.sp-mini-mats__fold-sum {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 8px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-size: 11px;
+  font-weight: 750;
+  color: #334155;
+}
+.sp-mini-mats__fold-sum::-webkit-details-marker {
+  display: none;
+}
+.sp-mini-mats__fold-ico {
+  display: inline-flex;
+  color: #5b7a90;
+}
+.sp-mini-mats__fold-ico .sp-mats-rail__ico {
+  width: 12px;
+  height: 12px;
+}
+.sp-mini-mats__fold-lbl {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.sp-mini-mats__fold-chev {
+  flex: none;
+  font-size: 10px;
+  color: #94a3b8;
+  transition: transform 0.15s ease;
+}
+.sp-mini-mats__fold[open] .sp-mini-mats__fold-chev {
+  transform: rotate(180deg);
+}
+.sp-mini-mats__chips {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  /* Ceiling when panel has spare room; flex shrink below this when tight. */
+  max-height: 148px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 6px 8px;
+  border-top: 1px solid rgba(112, 126, 142, 0.14);
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+.sp-mini-mats__chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 6px;
+  border-radius: 7px;
+  background: #fff;
+  border: 1px solid rgba(112, 126, 142, 0.16);
+}
+.sp-mini-mats__chip--empty {
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 650;
+  border-style: dashed;
+}
+.sp-mini-mats__chip-ico {
+  flex: none;
+  display: inline-flex;
+  color: #64748b;
+}
+.sp-mini-mats__chip-ico .sp-mats-rail__type,
+.sp-mini-mats__chip-ico .sp-mats-rail__ico {
+  width: 12px;
+  height: 12px;
+}
+.sp-mini-mats__chip-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #172523;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-mini-mats__chip-x {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+}
+.sp-mini-mats__chip-x:hover {
+  background: #fde8e8;
+  color: #b42318;
+}
+.sp-mini-mats__chip-x .sp-mats-rail__ico {
+  width: 10px;
+  height: 10px;
+}
+.sp-mini-mats__list {
+  flex: 1 1 auto;
+  min-height: 48px;
+  max-height: min(140px, 22vh);
+  margin: 0 -2px;
+  padding: 0 2px;
 }
 
 /* HTML5 drop target — whole Soft Pad wrap (overlay). */

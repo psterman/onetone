@@ -5,6 +5,7 @@
   "permissions": [
     "core:default",
     "core:webview:allow-create-webview-window",
+    "core:window:allow-start-dragging",
     "codex-micro-overlay-ipc"
   ]
 }

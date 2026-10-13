@@ -20,7 +20,7 @@
         "minHeight": 680,
         "decorations": true,
         "transparent": false,
-        "alwaysOnTop": true
+        "alwaysOnTop": false
       }
     ],
     "withGlobalTauri": false,

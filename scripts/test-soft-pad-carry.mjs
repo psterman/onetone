@@ -19,8 +19,19 @@ const pasteRs = fs.readFileSync(
 
 assert.match(overlay, /soft-pad-carry\.js/);
 assert.match(overlay, /soft-pad-carry\.css/);
-assert.match(overlay, /data-soft-pad-carry/);
+assert.match(src, /data-soft-pad-carry/);
+assert.match(overlay, /isDragBlocked/);
+// Carry chrome must remain a Soft Pad drag surface (buttons still blocked via [data-sp-act]/button).
+assert.doesNotMatch(overlay, /\[data-soft-pad-carry\],\.sp-carry/);
+assert.doesNotMatch(overlay, /isDragBlocked[\s\S]{0,400}\.sp-carry__/);
+// Mats HWND requests: sequence + defer while overlay dragging.
+assert.match(src, /matsRailSeq/);
+assert.match(src, /matsRailQueued/);
+assert.match(src, /overlayIsDragging/);
+assert.match(src, /flushQueuedMatsRail/);
+assert.match(src, /__onetoneOverlayDragging/);
 assert.match(css, /\.sp-carry/);
+assert.match(css, /\.sp-carry__bar\s*\{[^}]*cursor:\s*grab/s);
 assert.match(src, /cmd_soft_pad_paste_only/);
 assert.match(src, /cmd_tray_snapshot_get/);
 assert.match(src, /tray_changed/);
@@ -103,8 +114,12 @@ assert.match(src, /cmd_codex_micro_overlay_suspend_topmost/);
 assert.match(src, /contentRevision/);
 assert.match(src, /cmd_codex_micro_overlay_set_mats_rail/);
 assert.match(src, /requestMatsRailWidth/);
-assert.match(css, /--sp-mats-rail-w/);
-assert.match(css, /padding-right:\s*var\(--sp-mats-rail-w/);
+assert.match(css, /-webkit-line-clamp:\s*2/);
+assert.match(src, /wr\.height - top/);
+assert.match(
+  fs.readFileSync(path.join(root, 'src-tauri/src/codex_micro_overlay.rs'), 'utf8'),
+  /OVERLAY_WIDTH_MATS_EXTRA:\s*f64\s*=\s*252/
+);
 assert.match(
   fs.readFileSync(path.join(root, 'src-tauri/src/codex_micro_overlay.rs'), 'utf8'),
   /resize_overlay_left_anchored/
@@ -140,6 +155,13 @@ assert.match(
   /kind === 'copy_md'/
 );
 assert.match(src, /pointerleave/);
+assert.match(src, /matsLeaveGuardUntil/);
+assert.match(src, /matsPointerStillInside/);
+assert.match(src, /scheduleMatsLeaveClose/);
+assert.match(css, /\.sp-mats-rail\.is-open[\s\S]*?pointer-events:\s*auto/);
+assert.match(css, /--sp-mats-rail-w:\s*252px/);
+assert.match(css, /width:\s*calc\(100%\s*-\s*var\(--sp-mats-rail-w\)\)/);
+assert.doesNotMatch(css, /\.wrap\.is-mats-rail\s+\.overlay-body[\s\S]*?padding-right:\s*var\(--sp-mats-rail-w\)/);
 assert.match(css, /\.sp-mats-rail__hot/);
 assert.match(css, /\.sp-mats-rail__iconbtn/);
 assert.match(css, /\.sp-mats-rail__ico/);
@@ -171,6 +193,8 @@ assert.match(
   fs.readFileSync(path.join(root, 'src-tauri/permissions/codex-micro-overlay-ipc.toml'), 'utf8'),
   /allow-cmd-pick-path/
 );
+assert.match(src, /data-sp-mats-add/);
+assert.match(src, /data-sp-mats-paste/);
 assert.match(overlay, /data-sp-mats-add/);
 assert.match(overlay, /data-sp-mats-paste/);
 assert.match(src, /optimisticAddMaterial/);
@@ -193,8 +217,9 @@ assert.match(css, /\.wrap\.is-mats-rail/);
 assert.match(css, /flex-direction:\s*column/);
 assert.match(css, /position:\s*absolute/);
 assert.doesNotMatch(css, /\.sp-mats-bar__chips/);
-assert.match(overlay, /data-sp-mats-bar/);
-assert.match(overlay, /sp-mats-rail/);
+assert.match(src, /data-sp-mats-bar/);
+assert.match(src, /sp-mats-rail/);
+assert.match(src, /data-sp-mats-toggle/);
 assert.match(overlay, /data-sp-mats-toggle/);
 assert.match(
   fs.readFileSync(path.join(root, 'src/js/features/now/home-prompt-prep.js'), 'utf8'),
@@ -413,7 +438,12 @@ const ctx = {
       if (cmd === 'cmd_tray_snapshot_get') {
         return Promise.resolve({
           schemaVersion: 1,
-          carry: { active: true, targetKind: 'traeCode', generation: 1 },
+          carry: {
+            active: true,
+            targetKind: 'traeCode',
+            generation: 1,
+            updatedAt: new Date().toISOString()
+          },
           preview: 'hello carry',
           assembledMd: '# hello',
           includedCount: 2,
@@ -448,27 +478,36 @@ const API = ctx.OneToneSoftPadCarry;
 assert.ok(API && typeof API.mount === 'function');
 API.mount(body);
 await API.pull();
+await Promise.resolve();
+await Promise.resolve();
 assert.equal(API.isActive(), true);
 assert.equal(API.getSnapshot().carry.targetKind, 'traeCode');
 assert.ok(
   API.__testOnly.getMatsBar().classList.contains('is-open'),
-  'carry activate must open mats list for paste preview'
+  'fresh handoff must open mats list for paste preview'
 );
 // Draft-only carry: no material rows → synthetic markdown preview in list.
 // Bump contentRevision so optimistic merge does not keep prior material rows.
 API.applySnapshot({
   schemaVersion: 1,
   contentRevision: 9,
-  carry: { active: true, targetKind: 'chatgpt', generation: 2 },
+  carry: {
+    active: true,
+    targetKind: 'chatgpt',
+    generation: 2,
+    updatedAt: new Date().toISOString()
+  },
   preview: '改首页并修粘贴提示',
   assembledMd: '# 改首页并修粘贴提示\n\n细节…',
   includedCount: 0,
   materialCount: 0,
   materials: []
 });
+await Promise.resolve();
+await Promise.resolve();
 assert.ok(
   API.__testOnly.getMatsBar().classList.contains('is-open'),
-  'draft-only carry must keep mats list open'
+  'draft-only fresh handoff must keep mats list open'
 );
 assert.match(
   String(API.__testOnly.getMatsBar().querySelector('[data-sp-mats-list]').innerHTML || ''),

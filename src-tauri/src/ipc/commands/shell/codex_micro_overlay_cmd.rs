@@ -107,6 +107,12 @@ pub async fn cmd_codex_micro_overlay_dismiss(
         .map_err(|e| format!("overlay dismiss failed: {e}"))
 }
 
+/// Latch drag before async start_drag so scheduler geometry cannot fight the HWND mid-gesture.
+#[tauri::command]
+pub fn cmd_codex_micro_overlay_note_drag_begin() {
+    codex_micro_overlay::note_overlay_drag_begin();
+}
+
 #[tauri::command]
 pub fn cmd_codex_micro_overlay_start_drag(window: WebviewWindow) -> Result<(), String> {
     codex_micro_overlay::start_overlay_drag(&window)
@@ -123,8 +129,8 @@ pub fn cmd_codex_micro_overlay_set_minimized(
     state: State<'_, Arc<AppState>>,
     minimized: bool,
 ) {
+    // persist already request_overlay_push — keep explicit push for callers that expect it.
     codex_micro_overlay::set_overlay_minimized_persist(&app, state.inner(), minimized);
-    codex_micro_overlay::push_state(&app, state.inner());
 }
 
 /// Shrink HWND to visible Soft Pad height (drops empty transparent hit slab).

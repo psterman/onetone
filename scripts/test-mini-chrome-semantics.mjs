@@ -41,7 +41,7 @@ function applySoftPadShowMode(pad, mode) {
   pad.requireForeground = mode !== 'front';
 }
 
-const ALL_IDS = ['pushToTalk', 'stopOrSend', 'continue', 'newThread', 'cancelListen'];
+const ALL_IDS = ['pushToTalk', 'stopOrSend', 'continue', 'newThread', 'cancelListen', 'materials'];
 
 function toggleTool(chrome, id) {
   const cur = chrome.toolsAll !== false
@@ -78,8 +78,8 @@ function visibleTools(chrome) {
 }
 
 {
-  const chrome = { toolsAll: false, toolIds: ALL_IDS.slice(0, 4) };
-  toggleTool(chrome, 'cancelListen');
+  const chrome = { toolsAll: false, toolIds: ALL_IDS.slice(0, ALL_IDS.length - 1) };
+  toggleTool(chrome, ALL_IDS[ALL_IDS.length - 1]);
   assert(chrome.toolsAll === true && chrome.toolIds.length === 0, 'selecting last missing tool collapses to toolsAll');
 }
 
@@ -140,6 +140,27 @@ assert(!/softPadMiniVoiceWhen/.test(i18n), 'voiceWhen i18n keys removed');
 assert(!/softPadMiniShowForceMini/.test(i18n), 'ForceMini i18n keys removed');
 assert(/tools_all:\s*Option<bool>/.test(configRs), 'Rust MiniChromeConfig has tools_all Option');
 assert(!/voice_chip_when/.test(configRs), 'Rust voice_chip_when removed');
+
+// --- Overlay stability: drag latch + minimized intent ---
+assert(/cmd_codex_micro_overlay_start_drag/.test(overlay),
+  'overlay starts drag via start_drag (Win32 HTCAPTION)');
+assert(/setOverlayDragging\(true\)/.test(overlay),
+  'FE marks dragging for geom latch');
+assert(/beginOverlayDrag/.test(overlay), 'drag begin is guarded against double-fire');
+assert(/"alwaysOnTop":\s*false/.test(fs.readFileSync(path.join(root, 'src-tauri/tauri.conf.json'), 'utf8')),
+  'main window is not alwaysOnTop');
+assert(/function setMinimizedIntent/.test(overlay), 'shared setMinimizedIntent helper');
+assert(/pendingMinimized/.test(overlay) && /minimizedIntentGeneration/.test(overlay),
+  'expand intent uses generation + pending');
+assert(/pendingMinimized!=null/.test(overlay), 'render respects pending minimized intent');
+{
+  const expandClicks = overlay.match(/setMinimizedIntent\(false/g) || [];
+  assert(expandClicks.length >= 2, 'expand + miniAgentMore both use setMinimizedIntent(false)');
+}
+assert(/setMinimizedIntent\(true\)/.test(overlay), 'minimize uses setMinimizedIntent');
+assert(/__onetoneOverlayDragging/.test(overlay), 'exposes drag flag for Soft Pad carry');
+assert(/addEventListener\('blur',\s*endOverlayDrag\)/.test(overlay),
+  'blur clears drag latch');
 
 if (fail) {
   console.error(`\n${fail} assertion(s) failed`);

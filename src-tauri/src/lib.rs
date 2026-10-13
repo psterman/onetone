@@ -521,6 +521,8 @@ pub fn run() {
                 return Ok(());
             };
             app_log::log_line(&app_state, "startup", "main window acquired");
+            // Main settings window must NOT stay topmost — only Soft Pad / mini overlay.
+            let _ = window.set_always_on_top(false);
 
             // Dev launcher sets ONETONE_LIVE_FRONTEND=1 so UI tracks src/ via :5173
             // instead of the frontend snapshot embedded at last cargo build.
@@ -741,7 +743,8 @@ pub fn run() {
                     );
                 }
                 tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
-                    window_layout::schedule_save(state_for_close.clone(), window_clone.clone());
+                    // Hot path: schedule_save only bumps atomics when a worker is already armed.
+                    window_layout::schedule_save(&state_for_close, &window_clone);
                 }
                 _ => {}
             });
@@ -1187,6 +1190,7 @@ pub fn run() {
             ipc::cmd_codex_micro_protocol_server_stop,
             ipc::cmd_codex_micro_protocol_server_status,
             ipc::cmd_codex_micro_overlay_dismiss,
+            ipc::cmd_codex_micro_overlay_note_drag_begin,
             ipc::cmd_codex_micro_overlay_start_drag,
             ipc::cmd_codex_micro_overlay_snap_position,
             ipc::cmd_codex_micro_overlay_set_minimized,

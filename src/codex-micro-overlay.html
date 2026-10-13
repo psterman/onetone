@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="css/codex-micro-overlay.css" />
   <link rel="stylesheet" href="css/codex-micro-pad-skins.css?v=20260923-proto2" />
   <link rel="stylesheet" href="css/motion.css" />
-  <link rel="stylesheet" href="css/soft-pad-carry.css?v=20261012-carry-ui" />
+  <link rel="stylesheet" href="css/soft-pad-carry.css?v=20261013-mini-mats-fit3" />
   <script src="js/core/motion.js"></script>
   <script src="js/core/agent-status-edge.js"></script>
   <script src="js/features/agent/usage-format.js"></script>
@@ -15,7 +15,7 @@
   <script src="js/cursor-beginner-onboard.js"></script>
   <script src="js/features/activation/activation-hub.js"></script>
   <script src="js/features/capture/smart-capture.js"></script>
-  <script src="js/features/agent/soft-pad-carry.js?v=20261012-carry-ui"></script>
+  <script src="js/features/agent/soft-pad-carry.js?v=20261013-mini-mats-fit3"></script>
 </head>
 <body>
   <div class="root">
@@ -401,7 +401,8 @@
       navUp:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l-8 8h5v8h6v-8h5z"/></svg>',
       navDown:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20l8-8h-5V4H9v8H4z"/></svg>',
       navLeft:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l8-8v5h8v6h-8v5z"/></svg>',
-      navRight:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12l-8 8v-5H4V8h8V3z"/></svg>'
+      navRight:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12l-8 8v-5H4V8h8V3z"/></svg>',
+      materials:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg>'
     };
 
     var STATUS_LABEL={idle:'',running:'执行中',listening:'听写中',done:'完成',failed:'失败'};
@@ -532,6 +533,9 @@
     var requireNumLockOff=false;
     var numLockBlocking=false;
     var dragging=false;
+    /** Intent lock: ignore stale snapshot.minimized until backend confirms or invoke fails. */
+    var minimizedIntentGeneration=0;
+    var pendingMinimized=null;
     var overlayHoldInstalled=false;
     var toastTimer=null;
     var lastNumpadToastAt=0;
@@ -2011,12 +2015,30 @@
         {slotId:'stopOrSend',iconId:'send',labelZh:'发送',microKeyId:'ACT12',holdMs:0},
         {slotId:'continue',iconId:'sparkles',labelZh:'继续',microKeyId:'AG02',holdMs:0},
         {slotId:'newThread',iconId:'messagePlus',labelZh:'新建',microKeyId:'AG01',holdMs:0},
-        {slotId:'cancelListen',iconId:'reject',labelZh:'取消',microKeyId:'ACT08',holdMs:0}
+        {slotId:'cancelListen',iconId:'reject',labelZh:'取消',microKeyId:'ACT08',holdMs:0},
+        {slotId:'materials',iconId:'materials',labelZh:'材料',microKeyId:'',holdMs:0}
       ];
       if(!chrome||chrome.toolsAll!==false) return all;
       var allow=Array.isArray(chrome.toolIds)?chrome.toolIds:[];
       if(!allow.length) return [];
       return all.filter(function(row){ return allow.indexOf(row.slotId)>=0; });
+    }
+
+    /** Agent beginner slots lack materials — append when chrome allows (paste/preview hub). */
+    function withMaterialsMiniSlot(rows, chrome){
+      rows=Array.isArray(rows)?rows.slice():[];
+      var has=rows.some(function(r){
+        return String((r&&(r.slotId||r.slot_id))||'')==='materials';
+      });
+      if(has) return rows;
+      // toolsAll=false + empty toolIds = show none; append only when materials selected or toolsAll.
+      var allow=!(chrome&&chrome.toolsAll===false);
+      if(chrome&&chrome.toolsAll===false){
+        allow=Array.isArray(chrome.toolIds)&&chrome.toolIds.indexOf('materials')>=0;
+      }
+      if(!allow) return rows;
+      rows.push({slotId:'materials',iconId:'materials',labelZh:'材料',microKeyId:'',holdMs:0});
+      return rows;
     }
 
     function applyMiniToolsRow(s){
@@ -2046,6 +2068,7 @@
             })
             :[];
         }
+        slotRows=withMaterialsMiniSlot(slotRows, chromeT);
       } else {
         slotRows=defaultMiniToolSlots(chromeT);
       }
@@ -2069,19 +2092,29 @@
         var slotId=slot.slotId||slot.slot_id||'';
         var microKey=slot.microKeyId||slot.micro_key_id||'';
         var label=slot.labelZh||slot.label_zh||slotId;
+        if(slotId==='materials') label=label==='materials'?'材料':label;
         if(!iconId){
-          var fallback={pushToTalk:'mic',stopOrSend:'send',continue:'sparkles',newThread:'messagePlus',cancelListen:'reject'};
+          var fallback={pushToTalk:'mic',stopOrSend:'send',continue:'sparkles',newThread:'messagePlus',cancelListen:'reject',materials:'materials'};
           icon=ICON[fallback[slotId]||'']||ICON.empty;
         }
-        return '<button type="button" class="overlay-mini__action" data-beginner-slot="'+escHtml(slotId)+'"'
-          +(useBeginner?'':' data-pad-only="1"')
+        var badgeHtml=slotId==='materials'
+          ?'<span class="overlay-mini__action-badge" data-sp-mini-mats-count hidden aria-hidden="true"></span>'
+          :'';
+        var padOnly=useBeginner?(slotId==='materials'?' data-pad-only="1"':''):' data-pad-only="1"';
+        return '<button type="button" class="overlay-mini__action'+(slotId==='materials'?' overlay-mini__action--materials':'')+'" data-beginner-slot="'+escHtml(slotId)+'"'
+          +padOnly
           +' data-hold-ms="'+hold+'" data-micro-key="'+escHtml(microKey)+'"'
+          +(slotId==='materials'?' aria-haspopup="dialog" aria-expanded="false"':'')
           +' aria-label="'+escHtml(label)+'" title="'+escHtml(label)+'">'
-          +'<span class="overlay-mini__action-icon">'+icon+'</span></button>';
+          +'<span class="overlay-mini__action-icon">'+icon+'</span>'+badgeHtml+'</button>';
       }).join('');
       miniBeginnerActions.querySelectorAll('[data-beginner-slot]').forEach(function(btn){
         bindBeginnerMiniAction(btn);
       });
+      try{
+        var Carry=window.OneToneSoftPadCarry;
+        if(Carry&&typeof Carry.syncChrome==='function') Carry.syncChrome();
+      }catch(_){}
       if(useBeginner&&window.OneToneCursorBeginnerOnboard){
         window.OneToneCursorBeginnerOnboard.maybeShow(s);
       }
@@ -2645,6 +2678,23 @@
       if(btn.__beginnerBound) return;
       btn.__beginnerBound=true;
       var slotId=String(btn.getAttribute('data-beginner-slot')||'');
+      if(slotId==='materials'){
+        btn.addEventListener('pointerdown',function(e){
+          if(e.button!=null&&e.button!==0) return;
+          e.preventDefault(); e.stopPropagation();
+          btn.classList.add('is-pressed');
+        });
+        btn.addEventListener('pointerup',function(e){
+          e.preventDefault(); e.stopPropagation();
+          btn.classList.remove('is-pressed');
+          var Carry=window.OneToneSoftPadCarry;
+          if(Carry&&typeof Carry.toggleMiniMaterials==='function') Carry.toggleMiniMaterials();
+        });
+        btn.addEventListener('pointerleave',function(){ btn.classList.remove('is-pressed'); });
+        btn.addEventListener('pointercancel',function(){ btn.classList.remove('is-pressed'); });
+        btn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); });
+        return;
+      }
       var padOnly=btn.getAttribute('data-pad-only')==='1';
       var holdMs=Number(btn.getAttribute('data-hold-ms'))||0;
       var holdTimer=0;
@@ -3165,6 +3215,12 @@
       if(statusChip){
         statusChip.setAttribute('data-status', padSt);
       }
+      // Materials rail tab must reappear when leaving mini (CSS alone is not enough if
+      // a prior paint left leftover state; sync list/badge for the new chrome).
+      try{
+        var Carry=window.OneToneSoftPadCarry;
+        if(Carry&&typeof Carry.syncChrome==='function') Carry.syncChrome();
+      }catch(_){}
       reportOverlayFitContent();
     }
 
@@ -3798,7 +3854,16 @@
       layoutColumns=Number(s.layoutColumns||s.layout_columns||0)||(navKeysEnabled?5:4);
       if(padMode==='numpad') layoutColumns=4;
       enhanceOn=!!s.softwareEnhanceEnabled;
-      localMinimized=!!s.minimized;
+      // Intent lock: do not let a stale snapshot collapse a just-expanded pad.
+      if(pendingMinimized!=null){
+        if(!!s.minimized===!!pendingMinimized){
+          pendingMinimized=null;
+          localMinimized=!!s.minimized;
+        }
+        // else keep localMinimized / pending until confirm or invoke rollback
+      }else{
+        localMinimized=!!s.minimized;
+      }
       wrap.classList.toggle('is-no-nav', padMode==='codex' && !navKeysEnabled);
       var hwGrid=wrap.querySelector('.micro-hw__grid');
       if(hwGrid){
@@ -4016,28 +4081,65 @@
         '.soft-pad-agent-bar__chip,[data-agent],' +
         '#padAgentBarMore,#padAgentBarOverflow,.soft-pad-agent-bar__more,.soft-pad-agent-bar__overflow,' +
         '#miniAgentMore,.overlay-mini__more,' +
-        '[data-soft-pad-carry],.sp-carry,[data-sp-act],.sp-carry__badge,.sp-carry__preview,' +
-        '[data-sp-mats-bar],[data-sp-mats-rail],.sp-mats-rail,[data-sp-mats-panel],[data-sp-mats-hot],[data-sp-mats-list],' +
-        '[data-sp-mats-toggle],[data-sp-mats-pin],[data-sp-mats-add],[data-sp-mats-capture],[data-sp-mats-paste],[data-sp-mats-clear],[data-sp-mats-rm]'
+        /* Carry chrome is a drag surface; only block real controls (buttons / acts). */
+        '[data-sp-act],' +
+        '[data-sp-mats-toggle],[data-sp-mats-pin],[data-sp-mats-add],[data-sp-mats-capture],[data-sp-mats-paste],[data-sp-mats-clear],[data-sp-mats-rm],' +
+        '[data-sp-mats-list] .sp-mats-rail__item,[data-sp-mats-list] button,' +
+        /* Materials fold/title must not steal into window-drag (broke expand/collapse). */
+        '[data-sp-mini-mats-fold],.sp-mini-mats__fold-sum,.sp-mini-mats__head,.sp-mini-mats__title,.sp-mini-mats__panel'
       ));
     }
 
-    wrap.addEventListener('pointerdown',function(e){
+    function setOverlayDragging(on){
+      dragging=!!on;
+      try{ window.__onetoneOverlayDragging=dragging; }catch(_){}
+    }
+    function endOverlayDrag(){
+      if(!dragging) return;
+      setOverlayDragging(false);
+      invoke('cmd_codex_micro_overlay_snap_position',{}).catch(function(){});
+    }
+    /** Shared expand/minimize intent — generation + pending; invoke fail rolls back. */
+    function setMinimizedIntent(target, opts){
+      opts=opts||{};
+      var next=!!target;
+      var prev=!!localMinimized;
+      minimizedIntentGeneration++;
+      var gen=minimizedIntentGeneration;
+      pendingMinimized=next;
+      localMinimized=next;
+      applyLocalStatusDom();
+      return invoke('cmd_codex_micro_overlay_set_minimized',{minimized:next}).then(function(){
+        if(gen!==minimizedIntentGeneration) return;
+        if(opts.afterOk) opts.afterOk();
+      }).catch(function(err){
+        if(gen!==minimizedIntentGeneration) return;
+        pendingMinimized=null;
+        localMinimized=prev;
+        applyLocalStatusDom();
+        if(opts.afterFail) opts.afterFail(err);
+      });
+    }
+
+    // Drag: one fire-and-forget IPC (MUST NOT await — Rust run_on_main_thread).
+    // start_drag latches OVERLAY_DRAGGING synchronously on command entry; dual IPC
+    // (note_drag_begin + start_drag) only delayed the Win32 SendMessage hop.
+    // pointerdown only — mousedown would double-fire on the same gesture.
+    function beginOverlayDrag(e){
+      if(e.pointerType==='touch') return;
       if(e.button!=null&&e.button!==0) return;
       if(isDragBlocked(e.target)) return;
-      dragging=true;
-      invoke('cmd_codex_micro_overlay_start_drag',{}).catch(function(){});
-    });
-    window.addEventListener('pointerup',function(){
-      if(!dragging) return;
-      dragging=false;
-      invoke('cmd_codex_micro_overlay_snap_position',{}).catch(function(){});
-    });
-    window.addEventListener('pointercancel',function(){
-      if(!dragging) return;
-      dragging=false;
-      invoke('cmd_codex_micro_overlay_snap_position',{}).catch(function(){});
-    });
+      if(dragging) return;
+      setOverlayDragging(true);
+      invoke('cmd_codex_micro_overlay_start_drag',{}).catch(function(){
+        setOverlayDragging(false);
+      });
+    }
+    wrap.addEventListener('pointerdown',beginOverlayDrag,true);
+    window.addEventListener('pointerup',endOverlayDrag);
+    window.addEventListener('mouseup',endOverlayDrag);
+    window.addEventListener('pointercancel',endOverlayDrag);
+    window.addEventListener('blur',endOverlayDrag);
 
     document.querySelectorAll('[data-act="close"]').forEach(function(btn){
       btn.addEventListener('click',function(e){
@@ -4050,9 +4152,7 @@
       btn.addEventListener('click',function(e){
         e.preventDefault(); e.stopPropagation();
         hideAgentTip();
-        localMinimized=true;
-        applyLocalStatusDom();
-        invoke('cmd_codex_micro_overlay_set_minimized',{minimized:true}).catch(function(){});
+        setMinimizedIntent(true);
       });
       btn.addEventListener('contextmenu',function(e){
         e.preventDefault(); e.stopPropagation();
@@ -4068,9 +4168,7 @@
       btn.addEventListener('click',function(e){
         e.preventDefault(); e.stopPropagation();
         hideAgentTip();
-        localMinimized=false;
-        applyLocalStatusDom();
-        invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).then(forcePadGridRefresh).catch(forcePadGridRefresh);
+        setMinimizedIntent(false,{ afterOk:forcePadGridRefresh });
       });
     });
 
@@ -4255,9 +4353,7 @@
         e.stopPropagation();
         if(miniAgentMore.hidden) return;
         // Mini window is ~44px tall — two rows won't fit; expand Soft Pad instead.
-        localMinimized=false;
-        applyLocalStatusDom();
-        invoke('cmd_codex_micro_overlay_set_minimized',{minimized:false}).catch(function(){});
+        setMinimizedIntent(false);
       });
     }
     document.addEventListener('click',function(e){

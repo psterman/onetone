@@ -18,7 +18,7 @@ pub const CODEX_MICRO_OVERLAY_LABEL: &str = "codex_micro_overlay";
 
 const OVERLAY_WIDTH: f64 = 432.0;
 /// Extra logical width when Soft Pad materials rail is open (pad | vertical list).
-const OVERLAY_WIDTH_MATS_EXTRA: f64 = 188.0;
+const OVERLAY_WIDTH_MATS_EXTRA: f64 = 252.0;
 /// Default full height before content reports a tighter fit.
 /// Must clear 400px chassis + caption (+ optional light-gate); 520 clipped the bottom bar.
 /// Keep in sync with overlay_window.rs initial height.
@@ -41,6 +41,10 @@ const OVERLAY_HEIGHT_MINI_TOOLS: f64 = 92.0;
 const OVERLAY_HEIGHT_MINI_LISTEN: f64 = 112.0;
 /// Tools row + listen/tip band — must fit without mid-glyph clip.
 const OVERLAY_HEIGHT_MINI_TOOLS_LISTEN: f64 = 156.0;
+/// Mini materials inline card under tools (listen band is hidden while open).
+/// Budget must cover head+preview+paste+ops+open fold chips with bottom pad visible.
+/// Keep ≥ CSS `.sp-mini-mats__panel` max-height (+ tiny pad for border).
+const OVERLAY_HEIGHT_MINI_MATS_EXTRA: f64 = 404.0;
 const HIGHLIGHT_MS: u64 = 900;
 
 static ACTIVE_MICRO_KEY: OnceLock<Mutex<String>> = OnceLock::new();
@@ -72,6 +76,12 @@ static OVERLAY_LAST_GEOM: OnceLock<ParkingMutex<Option<(bool, i32, i32)>>> = Onc
 static OVERLAY_FIT_HEIGHT: OnceLock<ParkingMutex<Option<f64>>> = OnceLock::new();
 /// Soft Pad materials vertical rail — widens full overlay (left edge anchored).
 static OVERLAY_MATS_RAIL: AtomicBool = AtomicBool::new(false);
+/// Mini bar materials popover — grows HWND height (bottom edge anchored).
+static OVERLAY_MINI_MATS: AtomicBool = AtomicBool::new(false);
+/// User is dragging the overlay — skip all origin-changing geometry until snap.
+static OVERLAY_DRAGGING: AtomicBool = AtomicBool::new(false);
+/// Mats open/close requested while dragging; flushed on snap.
+static OVERLAY_PENDING_MATS: OnceLock<ParkingMutex<Option<bool>>> = OnceLock::new();
 /// Soft Pad file dialog open — skip always_on_top re-assert so the OS picker stays visible.
 static OVERLAY_SUSPEND_TOPMOST: AtomicBool = AtomicBool::new(false);
 /// Soft dismiss (X / settings open): hide until Soft Pad agent FG/process or settings close.
@@ -345,16 +355,20 @@ fn soft_pad_pass_through_for_needs_input(snap: &CodexMicroOverlaySnapshot) -> bo
     )
 }
 
-/// While Hook asks for permission, let clicks reach that agent's dialog.
-fn sync_needs_input_pass_through(win: &WebviewWindow, snap: &CodexMicroOverlaySnapshot) {
+/// Converge Win32 TRANSPARENT + WebView ignore-cursor to the final input mode.
+/// Call after show/hide, mini↔full, needs_input, HWND configure, and geometry apply.
+fn reconcile_overlay_input_mode(win: &WebviewWindow, visible: bool, pass: bool) {
     cache_overlay_hwnd_from_window(win);
-    let pass = soft_pad_pass_through_for_needs_input(snap);
-    // Force re-apply while holding needs_input ? HWND / EXSTYLE can be reset by show/geometry.
-    set_overlay_click_through_impl(pass, pass);
-    let _ = win.set_ignore_cursor_events(pass);
-    if !snap.visible {
+    if !visible {
+        clear_overlay_dragging();
+        // Hidden: punch through so a failed hide cannot steal clicks from settings.
+        set_overlay_click_through_impl(true, true);
+        let _ = win.set_ignore_cursor_events(true);
         return;
     }
+    // Force: hide→show / EXSTYLE reset must not leave a stale pass-through.
+    set_overlay_click_through_impl(pass, true);
+    let _ = win.set_ignore_cursor_events(pass);
     // During permission wait / Soft Pad file dialog: do not re-assert always_on_top
     // (keeps ChatGPT approval / OS picker above pad).
     if !pass && !OVERLAY_SUSPEND_TOPMOST.load(Ordering::Relaxed) {
@@ -374,10 +388,15 @@ fn sync_needs_input_pass_through(win: &WebviewWindow, snap: &CodexMicroOverlaySn
             let _ = win.show();
         }
     }
-    // Side-rail removed ? keep latch closed for any legacy readers.
     if pass {
         crate::codex_numpad_layer::set_joy_nav_panel_open(false);
     }
+}
+
+/// While Hook asks for permission, let clicks reach that agent's dialog.
+fn sync_needs_input_pass_through(win: &WebviewWindow, snap: &CodexMicroOverlaySnapshot) {
+    let pass = soft_pad_pass_through_for_needs_input(snap);
+    reconcile_overlay_input_mode(win, snap.visible, pass);
 }
 
 pub fn soft_pad_overlay_visible() -> bool {
@@ -450,6 +469,33 @@ fn overlay_user_position() -> &'static ParkingMutex<Option<(i32, i32)>> {
 
 fn overlay_last_geom() -> &'static ParkingMutex<Option<(bool, i32, i32)>> {
     OVERLAY_LAST_GEOM.get_or_init(|| ParkingMutex::new(None))
+}
+
+fn overlay_pending_mats() -> &'static ParkingMutex<Option<bool>> {
+    OVERLAY_PENDING_MATS.get_or_init(|| ParkingMutex::new(None))
+}
+
+pub fn overlay_is_dragging() -> bool {
+    OVERLAY_DRAGGING.load(Ordering::SeqCst)
+}
+
+/// FE pointerdown must call this before async start_drag so scheduler cannot fight the drag.
+pub fn note_overlay_drag_begin() {
+    OVERLAY_DRAGGING.store(true, Ordering::SeqCst);
+}
+
+fn clear_overlay_dragging() {
+    OVERLAY_DRAGGING.store(false, Ordering::SeqCst);
+}
+
+/// After an anchored resize, refresh cached user origin from the live HWND (not computed Y).
+fn writeback_user_position_from_window(win: &WebviewWindow) {
+    if !*overlay_user_positioned().lock() {
+        return;
+    }
+    if let Ok(pos) = win.outer_position() {
+        *overlay_user_position().lock() = Some((pos.x, pos.y));
+    }
 }
 
 fn overlay_fit_height() -> &'static ParkingMutex<Option<f64>> {
@@ -962,6 +1008,8 @@ fn configure_codex_overlay_window(win: &WebviewWindow) -> tauri::Result<()> {
     let _ = win.set_shadow(false);
     let _ = win.set_always_on_top(true);
     apply_overlay_no_activate();
+    // HWND recreate can drop EXSTYLE — converge input mode to "interactive" until next snap.
+    reconcile_overlay_input_mode(win, true, false);
     Ok(())
 }
 
@@ -4249,6 +4297,14 @@ pub fn toggle_pad_num_mode(app: &AppHandle, state: &AppState) -> Result<bool, St
 
 pub fn set_overlay_minimized(minimized: bool) {
     *overlay_minimized().lock() = minimized;
+    if minimized {
+        // Mini bar has no materials strip — drop rail width so HWND does not drift wide.
+        OVERLAY_MATS_RAIL.store(false, Ordering::Relaxed);
+        *overlay_last_geom().lock() = None;
+    } else {
+        // Leaving mini: drop popover height budget.
+        OVERLAY_MINI_MATS.store(false, Ordering::Relaxed);
+    }
 }
 
 pub fn overlay_runtime_minimized() -> bool {
@@ -4258,6 +4314,11 @@ pub fn overlay_runtime_minimized() -> bool {
 /// Set overlay mini/full chrome and persist `presentation` on the active overlay mapping.
 pub fn set_overlay_minimized_persist(app: &AppHandle, state: &AppState, minimized: bool) {
     *overlay_minimized().lock() = minimized;
+    if minimized {
+        OVERLAY_MATS_RAIL.store(false, Ordering::Relaxed);
+    } else {
+        OVERLAY_MINI_MATS.store(false, Ordering::Relaxed);
+    }
     crate::cursor_beginner::on_minimized_changed(state, app, minimized);
     // Invalidate geom cache so the next push always resizes mini↔full (do not wait on DPI drift).
     *overlay_last_geom().lock() = None;
@@ -4281,6 +4342,8 @@ pub fn set_overlay_minimized_persist(app: &AppHandle, state: &AppState, minimize
         crate::config::save_config(&cfg);
         crate::codex_numpad_layer::sync_hook_cache(&cfg);
     }
+    // Always push so FE intent lock can confirm against a fresh minimized bit.
+    push_state(app, state);
 }
 
 fn active_codex_mapping_with_overlay_mut(
@@ -4377,10 +4440,108 @@ pub fn snap_overlay_position(win: &WebviewWindow) {
         *overlay_user_position().lock() = Some((pos.x, pos.y));
         *overlay_user_positioned().lock() = true;
     }
+    clear_overlay_dragging();
+    *overlay_last_geom().lock() = None;
+    // Flush mats open/close that was deferred during the drag.
+    let pending = overlay_pending_mats().lock().take();
+    if let Some(open) = pending {
+        let _ = set_overlay_mats_rail(win, open);
+    }
 }
 
 pub fn start_overlay_drag(win: &WebviewWindow) -> Result<(), String> {
-    win.start_dragging().map_err(|e| e.to_string())
+    // Latch first so scheduler cannot fight the HWND mid-gesture.
+    OVERLAY_DRAGGING.store(true, Ordering::SeqCst);
+    cache_overlay_hwnd_from_window(win);
+
+    // FE must NOT await this invoke (SendMessage blocks until LMB up).
+    // Prefer a dedicated thread + AttachThreadInput: ReleaseCapture only works when
+    // attached to the UI thread that owns capture; run_on_main_thread queued a beat
+    // late so the window trailed the cursor (不跟手).
+    #[cfg(windows)]
+    {
+        if *overlay_hwnd_cache().lock() != 0 {
+            let win_fallback = win.clone();
+            let _ = std::thread::Builder::new()
+                .name("overlay-drag".into())
+                .spawn(move || {
+                    if start_overlay_drag_win32() {
+                        return;
+                    }
+                    // Win32 path missed (LMB already up / hwnd gone) — last resort.
+                    if overlay_lmb_down() {
+                        let _ = win_fallback.start_dragging();
+                    } else {
+                        clear_overlay_dragging();
+                    }
+                });
+            return Ok(());
+        }
+    }
+
+    let win2 = win.clone();
+    let scheduled = win.app_handle().run_on_main_thread(move || {
+        let _ = win2.start_dragging();
+    });
+    if scheduled.is_err() {
+        return win.start_dragging().map_err(|e| e.to_string());
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn overlay_lmb_down() -> bool {
+    use winapi::um::winuser::{GetAsyncKeyState, VK_LBUTTON};
+    unsafe { GetAsyncKeyState(VK_LBUTTON) as u16 & 0x8000 != 0 }
+}
+
+/// Frameless drag via SC_MOVE|HTCAPTION.
+/// AttachThreadInput so ReleaseCapture hits the UI thread's capture; SendMessage
+/// marshals the move loop onto that thread and blocks *this* caller until LMB up.
+#[cfg(windows)]
+fn start_overlay_drag_win32() -> bool {
+    use winapi::shared::minwindef::{DWORD, LPARAM, WPARAM};
+    use winapi::um::processthreadsapi::GetCurrentThreadId;
+    use winapi::um::winuser::{
+        mouse_event, AttachThreadInput, GetWindowThreadProcessId, ReleaseCapture, SendMessageW,
+        HTCAPTION, MOUSEEVENTF_MOVE, SC_MOVE, WM_SYSCOMMAND,
+    };
+
+    let hwnd = *overlay_hwnd_cache().lock();
+    if hwnd == 0 || !overlay_lmb_down() {
+        return false;
+    }
+    unsafe {
+        let hwnd = hwnd as winapi::shared::windef::HWND;
+        let mut _pid = 0u32;
+        let ui_tid = GetWindowThreadProcessId(hwnd, &mut _pid);
+        let my_tid = GetCurrentThreadId();
+        let attached =
+            ui_tid != 0 && ui_tid != my_tid && AttachThreadInput(my_tid, ui_tid, 1) != 0;
+        ReleaseCapture();
+        // SC_MOVE waits for a mouse-move before the window sticks to the cursor.
+        // Nudge from a sibling thread while SendMessage blocks in the move loop.
+        let _ = std::thread::Builder::new()
+            .name("overlay-drag-nudge".into())
+            .spawn(|| {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+                unsafe {
+                    mouse_event(MOUSEEVENTF_MOVE, 1, 0, 0, 0);
+                    mouse_event(MOUSEEVENTF_MOVE, DWORD::MAX, 0, 0, 0); // -1px
+                }
+            });
+        SendMessageW(
+            hwnd,
+            WM_SYSCOMMAND,
+            (SC_MOVE as WPARAM) | (HTCAPTION as WPARAM),
+            0 as LPARAM,
+        );
+        if attached {
+            AttachThreadInput(my_tid, ui_tid, 0);
+        }
+    }
+    // Move loop ends on button-up; still holding means SC_MOVE did not take the gesture.
+    !overlay_lmb_down()
 }
 
 pub fn note_micro_key(micro_key_id: &str, key_down: bool) {
@@ -4410,6 +4571,10 @@ fn apply_overlay_payload(
     gen: u64,
 ) {
     if gen != window_generation() {
+        return;
+    }
+    // Main title-bar drag shares the UI thread — defer HWND/emit work until it ends.
+    if crate::window_layout::main_window_drag_active() {
         return;
     }
     let visible = payload.visible;
@@ -4478,13 +4643,8 @@ fn apply_overlay_payload(
     } else if !visible {
         let _ = win.hide();
     }
-    if visible {
-        sync_needs_input_pass_through(&win, payload);
-    } else {
-        // Hidden: punch through so a failed hide cannot steal clicks from settings.
-        set_overlay_click_through(true);
-        let _ = win.set_ignore_cursor_events(true);
-    }
+    // Always converge HWND input mode from final visibility + needs_input decision.
+    sync_needs_input_pass_through(&win, payload);
     let _ = win.emit("codex_micro_overlay_state", payload);
     if let Some(main) = app.get_webview_window("main") {
         let _ = main.emit(
@@ -4504,6 +4664,13 @@ fn overlay_logical_size(
     tools_row: bool,
 ) -> (f64, f64) {
     if minimized {
+        // Materials card replaces the listen band in layout — do not stack both budgets.
+        if OVERLAY_MINI_MATS.load(Ordering::Relaxed) {
+            return (
+                OVERLAY_WIDTH_MINI,
+                OVERLAY_HEIGHT_MINI_TOOLS + OVERLAY_HEIGHT_MINI_MATS_EXTRA,
+            );
+        }
         let h = match (tools_row, listen_band) {
             (true, true) => OVERLAY_HEIGHT_MINI_TOOLS_LISTEN,
             (true, false) => OVERLAY_HEIGHT_MINI_TOOLS,
@@ -4533,21 +4700,60 @@ pub fn set_overlay_suspend_topmost(win: &WebviewWindow, suspend: bool) -> bool {
     true
 }
 
-/// Open/close Soft Pad materials vertical rail.
-/// Widens HWND with the **left** edge fixed so Soft Pad stays put and the new
-/// strip appears on the right for the rail (right-edge anchor would jump the pad left).
+/// Open/close Soft Pad materials chrome.
+/// - Full pad: widen HWND (left edge fixed) for the side rail.
+/// - Mini bar: grow HWND height (bottom edge fixed) for the materials popover under the bar.
 pub fn set_overlay_mats_rail(win: &WebviewWindow, open: bool) -> bool {
-    if *overlay_minimized().lock() {
-        OVERLAY_MATS_RAIL.store(false, Ordering::Relaxed);
+    if overlay_is_dragging() {
+        // Defer — origin-changing resize during drag causes snap-back.
+        *overlay_pending_mats().lock() = Some(open);
         return false;
     }
+    if *overlay_minimized().lock() {
+        OVERLAY_MATS_RAIL.store(false, Ordering::Relaxed);
+        let prev = OVERLAY_MINI_MATS.swap(open, Ordering::Relaxed);
+        if prev == open {
+            return false;
+        }
+        *overlay_last_geom().lock() = None;
+        let scale = win.scale_factor().unwrap_or(1.0);
+        let logical_w = OVERLAY_WIDTH_MINI;
+        // Open: tools + mats card. Close: tools only; next snapshot restores listen if needed.
+        let logical_h = if open {
+            OVERLAY_HEIGHT_MINI_TOOLS + OVERLAY_HEIGHT_MINI_MATS_EXTRA
+        } else {
+            OVERLAY_HEIGHT_MINI_TOOLS
+        };
+        if !resize_overlay_anchored_from_bottom(win, logical_w, logical_h) {
+            *overlay_last_geom().lock() = None;
+            return true;
+        }
+        let target_w = (logical_w * scale).round() as u32;
+        let target_h = (logical_h * scale).round() as u32;
+        let ok = match win.outer_size().ok().map(|s| (s.width, s.height)) {
+            Some((w, oh)) => w.abs_diff(target_w) <= 48 && oh.abs_diff(target_h) <= 48,
+            None => true,
+        };
+        if ok {
+            *overlay_last_geom().lock() =
+                Some((true, logical_w.round() as i32, logical_h.round() as i32));
+        } else {
+            *overlay_last_geom().lock() = None;
+        }
+        reconcile_overlay_input_mode(win, true, soft_pad_click_through());
+        return true;
+    }
+    OVERLAY_MINI_MATS.store(false, Ordering::Relaxed);
     let prev = OVERLAY_MATS_RAIL.swap(open, Ordering::Relaxed);
     if prev == open {
         return false;
     }
     *overlay_last_geom().lock() = None;
     let (logical_w, logical_h) = overlay_logical_size(false, false, false, false);
-    resize_overlay_left_anchored(win, logical_w, logical_h);
+    if !resize_overlay_left_anchored(win, logical_w, logical_h) {
+        *overlay_last_geom().lock() = None;
+        return true;
+    }
     let scale = win.scale_factor().unwrap_or(1.0);
     let target_w = (logical_w * scale).round() as u32;
     let target_h = (logical_h * scale).round() as u32;
@@ -4559,26 +4765,33 @@ pub fn set_overlay_mats_rail(win: &WebviewWindow, open: bool) -> bool {
         *overlay_last_geom().lock() =
             Some((false, logical_w.round() as i32, logical_h.round() as i32));
     }
+    reconcile_overlay_input_mode(win, true, soft_pad_click_through());
     true
 }
 
 /// Keep the left edge fixed while width changes (materials rail grows to the right).
-fn resize_overlay_left_anchored(win: &WebviewWindow, logical_w: f64, logical_h: f64) {
+/// Returns false when skipped (dragging).
+fn resize_overlay_left_anchored(win: &WebviewWindow, logical_w: f64, logical_h: f64) -> bool {
+    if overlay_is_dragging() {
+        return false;
+    }
     let Ok(pos) = win.outer_position() else {
         let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        return;
+        return true;
     };
     let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
     // Re-assert left edge — some platforms nudge origin during resize.
     let _ = win.set_position(Position::Physical(PhysicalPosition::new(pos.x, pos.y)));
-    if *overlay_user_positioned().lock() {
-        *overlay_user_position().lock() = Some((pos.x, pos.y));
-    }
+    writeback_user_position_from_window(win);
+    true
 }
 
 /// Webview reports visible Soft Pad height so the HWND matches content (no empty hit slab).
 pub fn fit_overlay_content_height(win: &WebviewWindow, height_logical: f64) -> bool {
     if *overlay_minimized().lock() {
+        return false;
+    }
+    if overlay_is_dragging() {
         return false;
     }
     let h = height_logical.clamp(OVERLAY_HEIGHT_FULL_MIN, OVERLAY_HEIGHT_FULL_MAX);
@@ -4595,13 +4808,12 @@ pub fn fit_overlay_content_height(win: &WebviewWindow, height_logical: f64) -> b
     *overlay_last_geom().lock() = None;
     let (logical_w, logical_h) = overlay_logical_size(false, false, false, false);
     if *overlay_user_positioned().lock() {
-        if let Some((x, y)) = *overlay_user_position().lock() {
-            let _ = win.set_position(Position::Physical(PhysicalPosition::new(x, y)));
-        }
+        // Size-only: do not reassert a stale cached origin over the live HWND.
         let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+        writeback_user_position_from_window(win);
     } else {
         // Keep bottom edge fixed when height shrinks (dead zone was below the pad).
-        resize_overlay_anchored_from_bottom(win, logical_w, logical_h);
+        let _ = resize_overlay_anchored_from_bottom(win, logical_w, logical_h);
     }
     let scale = win.scale_factor().unwrap_or(1.0);
     let target_w = (logical_w * scale).round() as u32;
@@ -4614,28 +4826,40 @@ pub fn fit_overlay_content_height(win: &WebviewWindow, height_logical: f64) -> b
         *overlay_last_geom().lock() =
             Some((false, logical_w.round() as i32, logical_h.round() as i32));
     }
+    reconcile_overlay_input_mode(win, true, soft_pad_click_through());
     true
 }
 
 /// Shrink/grow height while keeping the bottom edge fixed (empty slab was below the pad).
-fn resize_overlay_anchored_from_bottom(win: &WebviewWindow, logical_w: f64, logical_h: f64) {
+/// Returns false when skipped (dragging).
+fn resize_overlay_anchored_from_bottom(win: &WebviewWindow, logical_w: f64, logical_h: f64) -> bool {
+    if overlay_is_dragging() {
+        return false;
+    }
     let scale = win.scale_factor().unwrap_or(1.0);
     let target_h = (logical_h * scale).round() as i32;
     let Ok(pos) = win.outer_position() else {
         let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        return;
+        return true;
     };
     let Ok(size) = win.outer_size() else {
         let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        return;
+        return true;
     };
     let new_y = pos.y + size.height as i32 - target_h;
     let _ = win.set_position(Position::Physical(PhysicalPosition::new(pos.x, new_y)));
     let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+    // Live outer after resize — not the precomputed new_y alone.
+    writeback_user_position_from_window(win);
+    true
 }
 
 /// Resize overlay when minimized or full height budget changes.
 fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnapshot) -> bool {
+    // Dragging: never fight the OS drag with set_position / anchor resize.
+    if overlay_is_dragging() {
+        return false;
+    }
     let minimized = snapshot.minimized;
     let listen_band = snapshot.minimized
         && (snapshot.activation_hub_active
@@ -4662,16 +4886,18 @@ fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnaps
     }
 
     if *overlay_user_positioned().lock() {
-        if let Some((x, y)) = *overlay_user_position().lock() {
-            let _ = win.set_position(Position::Physical(PhysicalPosition::new(x, y)));
-        }
+        // Size-only when user-placed: never slam a stale OVERLAY_USER_POSITION over live HWND.
         let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+        writeback_user_position_from_window(win);
     } else if OVERLAY_MATS_RAIL.load(Ordering::Relaxed) {
         // Materials rail: grow/shrink from the left so Soft Pad does not jump.
-        resize_overlay_left_anchored(win, logical_w, logical_h);
+        let _ = resize_overlay_left_anchored(win, logical_w, logical_h);
+    } else if minimized && OVERLAY_MINI_MATS.load(Ordering::Relaxed) {
+        // Mini materials popover: grow downward space under the bar (bottom edge fixed).
+        let _ = resize_overlay_anchored_from_bottom(win, logical_w, logical_h);
     } else if prev.map(|(m, _, _)| m) != Some(minimized) {
         // mini↔full: keep the pad's visual anchor instead of jumping left/right.
-        resize_overlay_anchored(win, logical_w, logical_h);
+        let _ = resize_overlay_anchored(win, logical_w, logical_h);
     } else {
         position_overlay(win);
         let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
@@ -4687,21 +4913,30 @@ fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnaps
     } else {
         *overlay_last_geom().lock() = None;
     }
+    reconcile_overlay_input_mode(
+        win,
+        snapshot.visible,
+        soft_pad_pass_through_for_needs_input(snapshot),
+    );
     true
 }
 
 /// Keep the main keyboard's screen position stable while width changes.
-fn resize_overlay_anchored(win: &WebviewWindow, logical_w: f64, logical_h: f64) {
+/// Returns false when skipped (dragging).
+fn resize_overlay_anchored(win: &WebviewWindow, logical_w: f64, logical_h: f64) -> bool {
+    if overlay_is_dragging() {
+        return false;
+    }
     let scale = win.scale_factor().unwrap_or(1.0);
     let target_w = (logical_w * scale).round() as i32;
 
     let Ok(pos) = win.outer_position() else {
         let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        return;
+        return true;
     };
     let Ok(size) = win.outer_size() else {
         let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        return;
+        return true;
     };
 
     let new_x = anchored_origin_x(pos.x, size.width, target_w);
@@ -4709,10 +4944,8 @@ fn resize_overlay_anchored(win: &WebviewWindow, logical_w: f64, logical_h: f64) 
 
     let _ = win.set_position(Position::Physical(PhysicalPosition::new(new_x, new_y)));
     let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-
-    if *overlay_user_positioned().lock() {
-        *overlay_user_position().lock() = Some((new_x, new_y));
-    }
+    writeback_user_position_from_window(win);
+    true
 }
 
 /// Physical X so the right edge of the window stays fixed when width changes.
@@ -4739,6 +4972,9 @@ fn overlay_geom_needs_apply(
 }
 
 fn position_overlay(win: &WebviewWindow) {
+    if overlay_is_dragging() {
+        return;
+    }
     if *overlay_user_positioned().lock() {
         if let Some((x, y)) = *overlay_user_position().lock() {
             let _ = win.set_position(Position::Physical(PhysicalPosition::new(x, y)));
@@ -4835,6 +5071,8 @@ fn codex_window_center() -> Option<(i32, i32)> {
 /// Does not persist overlay_enabled=false — that is settings "不显示浮窗".
 /// Cleared when settings close, Soft Pad agent FG, or agent process is running.
 pub fn dismiss_overlay(app: &AppHandle, state: &AppState) -> bool {
+    clear_overlay_dragging();
+    *overlay_pending_mats().lock() = None;
     *overlay_minimized().lock() = false;
     *overlay_session_dismissed().lock() = true;
     push_state(app, state);
@@ -4848,6 +5086,10 @@ pub fn dismiss_overlay(app: &AppHandle, state: &AppState) -> bool {
 }
 
 pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
+    // Avoid FG recompute / overlay push while main title-bar drag owns the UI thread.
+    if crate::window_layout::main_window_drag_active() {
+        return;
+    }
     let was_fg = *last_foreground_codex().lock();
     let gate_reason = overlay_runtime_gate_reason(state);
     let force_open = state.cfg.lock().soft_pad_force_open;
@@ -5132,16 +5374,26 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
         let reason = gate_reason
             .map(str::to_string)
             .unwrap_or_else(overlay_visible_reason);
-        let detail = format!(
-            "overlay visible={} host_ok={} raw_host={} reason={} setup_open={} settings_open={} verify_active={} recording_active={} fg_exe={} fg_title={:?} fg_preset={:?} path={:?}",
+        // Taxonomy for “消失” triage: soft dismiss vs gate vs host FG vs showing.
+        let hide_class = classify_overlay_hide(
             desired_visible,
+            is_overlay_session_dismissed(),
+            gate_reason,
+            host_ok,
+        );
+        let detail = format!(
+            "overlay visible={} hide_class={} host_ok={} raw_host={} reason={} session_dismissed={} setup_open={} settings_open={} verify_active={} recording_active={} dragging={} fg_exe={} fg_title={:?} fg_preset={:?} path={:?}",
+            desired_visible,
+            hide_class,
             host_ok,
             raw,
             reason,
+            is_overlay_session_dismissed(),
             setup_open,
             settings_open,
             verify_active,
             recording_active,
+            overlay_is_dragging(),
             fg.as_ref().map(|i| i.exe_name.as_str()).unwrap_or(""),
             fg.as_ref().map(|i| i.window_title.as_str()).unwrap_or(""),
             fg.as_ref().and_then(|i| i.matched_preset_app_id.as_deref()),
@@ -5169,6 +5421,34 @@ pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
             push_overlay_status(app, state);
         }
     }
+}
+
+/// Classify why the overlay is hidden (or `showing`) for logs / triage.
+fn classify_overlay_hide(
+    desired_visible: bool,
+    session_dismissed: bool,
+    gate_reason: Option<&str>,
+    host_ok: bool,
+) -> &'static str {
+    if desired_visible {
+        return "showing";
+    }
+    if let Some(g) = gate_reason {
+        return match g {
+            "settings_open" => "gate_settings",
+            "setup_open" => "gate_setup",
+            "verify_active" => "gate_verify",
+            "recording_active" => "gate_recording",
+            _ => "gate_other",
+        };
+    }
+    if session_dismissed {
+        return "session_dismiss";
+    }
+    if !host_ok {
+        return "host_fg";
+    }
+    "hidden_other"
 }
 
 #[cfg(test)]
@@ -5747,6 +6027,53 @@ mod tests {
         assert_eq!(anchored_origin_x(848, 584, 432), 1000);
         // No change.
         assert_eq!(anchored_origin_x(100, 432, 432), 100);
+    }
+
+    #[test]
+    fn drag_latch_blocks_geometry_until_cleared() {
+        clear_overlay_dragging();
+        assert!(!overlay_is_dragging());
+        note_overlay_drag_begin();
+        assert!(overlay_is_dragging());
+        // start_overlay_drag also sets the latch (fallback if note_drag_begin lagged).
+        OVERLAY_DRAGGING.store(true, Ordering::SeqCst);
+        assert!(overlay_is_dragging());
+        clear_overlay_dragging();
+        assert!(!overlay_is_dragging());
+    }
+
+    #[test]
+    fn classify_overlay_hide_taxonomy() {
+        assert_eq!(
+            classify_overlay_hide(true, false, None, true),
+            "showing"
+        );
+        assert_eq!(
+            classify_overlay_hide(false, true, None, true),
+            "session_dismiss"
+        );
+        assert_eq!(
+            classify_overlay_hide(false, false, Some("settings_open"), false),
+            "gate_settings"
+        );
+        assert_eq!(
+            classify_overlay_hide(false, false, None, false),
+            "host_fg"
+        );
+    }
+
+    #[test]
+    fn mats_pending_queues_while_dragging() {
+        clear_overlay_dragging();
+        *overlay_pending_mats().lock() = None;
+        note_overlay_drag_begin();
+        *overlay_pending_mats().lock() = Some(true);
+        assert_eq!(*overlay_pending_mats().lock(), Some(true));
+        // snap clears latch + takes pending (without a real window we mimic take).
+        clear_overlay_dragging();
+        let pending = overlay_pending_mats().lock().take();
+        assert_eq!(pending, Some(true));
+        assert!(overlay_pending_mats().lock().is_none());
     }
 
     #[test]
@@ -8696,5 +9023,15 @@ mod tests {
             overlay_logical_size(true, false, true, true).1
                 > overlay_logical_size(true, false, false, true).1
         );
+        OVERLAY_MINI_MATS.store(true, Ordering::Relaxed);
+        assert_eq!(
+            overlay_logical_size(true, false, true, true).1,
+            OVERLAY_HEIGHT_MINI_TOOLS + OVERLAY_HEIGHT_MINI_MATS_EXTRA
+        );
+        assert!(
+            overlay_logical_size(true, false, true, true).1
+                < OVERLAY_HEIGHT_MINI_TOOLS_LISTEN + OVERLAY_HEIGHT_MINI_MATS_EXTRA
+        );
+        OVERLAY_MINI_MATS.store(false, Ordering::Relaxed);
     }
 }

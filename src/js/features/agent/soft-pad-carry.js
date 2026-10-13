@@ -7,7 +7,7 @@
 
   var FORM_KEY = 'onetone.softPad.carryForm';
   var LISTEN_KEY = 'onetone.softPad.carryListen';
-  /** Persist across restart — pin keeps materials drawer open. */
+  /** Persist across restart — pin only keeps an explicitly opened drawer from auto-closing. */
   var PIN_KEY = 'onetone.softPad.matsPinned';
   var rootEl = null;
   var snap = null;
@@ -23,12 +23,29 @@
   var matsPinned = false;
   var matsLeaveTimer = null;
   var matsHoverBound = false;
+  /** Ignore leave-close briefly after open (HWND widen + panel slide churn). */
+  var matsLeaveGuardUntil = 0;
   /** Live drop/collect → open once; restart paint must not force-open. */
   var matsOpenOnCollect = false;
-  /** Handoff / paste assist: keep list open without hover (mouse often outside Soft Pad). */
+  /** Handoff / paste assist: open once; leave Soft Pad still retracts (pin is the only hold). */
   var matsAssistOpen = false;
   /** User dismissed bottom dock; cleared on next carry handoff. */
   var dockDismissed = false;
+  /** Last carry generation we already reacted to (null = Soft Pad just mounted). */
+  var lastArmedCarryGen = null;
+  /** Bottom paste dock only after a fresh homepage handoff in this Soft Pad session. */
+  var carryUiArmed = false;
+  /** Fresh homepage handoff window when Soft Pad mounts after setCarryActive. */
+  var HANDOFF_FRESH_MS = 120000;
+  /** Mini bar materials popover (not the full-pad side rail). */
+  var miniMatsOpen = false;
+  var miniMatsEl = null;
+  var miniMatsDocBound = false;
+  /** Mini list fold — open by default when there are items. */
+  var miniMatsListOpen = true;
+  /** Serialize mats HWND IPC — ignore stale async responses; queue while overlay dragging. */
+  var matsRailSeq = 0;
+  var matsRailQueued = null;
 
   function ipc() {
     if (global.OneToneIpc && typeof global.OneToneIpc.invoke === 'function') {
@@ -180,12 +197,14 @@
     return Math.max(0, n);
   }
 
-  /** Show paste dock when handoff carry is on OR materials are ready to paste. */
+  /** Show paste dock only after a fresh homepage handoff (not stale carry.active in RAM). */
   function shouldShowCarryUi(s) {
     if (dockDismissed) return false;
-    if (carryActive(s)) return true;
-    if (s && String(s.assembledMd || '').trim()) return true;
-    return materialBadge(s) > 0;
+    if (!carryActive(s)) {
+      carryUiArmed = false;
+      return false;
+    }
+    return carryUiArmed;
   }
 
   function requestOverlayFit() {
@@ -264,12 +283,517 @@
 
   function armMatsAssist() {
     matsAssistOpen = true;
-    matsOpenOnCollect = true;
+    matsOpenOnCollect = false;
+    if (isMiniMode()) {
+      setMiniMatsOpen(true);
+      paintMiniMatsPop();
+      return;
+    }
     setMatsDrawerOpen(true);
   }
 
   function clearMatsAssist() {
     matsAssistOpen = false;
+  }
+
+  /** Homepage jump or live gen bump — never arm from a cold pull of stale carry.active. */
+  function isFreshHandoff(s, prev) {
+    if (!carryActive(s)) return false;
+    var nextGen = (s.carry && Number(s.carry.generation)) || 0;
+    var prevGen = (prev && prev.carry && Number(prev.carry.generation)) || 0;
+    var prevCarry = carryActive(prev);
+    if (prev) {
+      return !prevCarry || nextGen > prevGen;
+    }
+    // Soft Pad just mounted: only reopen chrome if carry was updated very recently.
+    var updated = s.carry && s.carry.updatedAt;
+    var t = updated ? Date.parse(String(updated)) : NaN;
+    if (!isFinite(t)) return false;
+    return Date.now() - t < HANDOFF_FRESH_MS;
+  }
+
+  function isMiniMode() {
+    var wrap = document.getElementById('wrap');
+    return !!(wrap && wrap.classList.contains('is-minimized'));
+  }
+
+  function matsBlocksWindowDrag(target) {
+    return !!(
+      target &&
+      target.closest &&
+      target.closest(
+        'button,summary,details,[data-sp-mats-toggle],[data-sp-mini-mats-close],[data-sp-mats-pin],[data-sp-mats-add],[data-sp-mats-capture],[data-sp-mats-paste],[data-sp-mats-paste-target],[data-sp-mats-clear],[data-sp-mats-rm],.sp-mats-rail__item,[data-sp-mats-list],[data-sp-mini-mats-fold],.sp-mini-mats__fold-sum,.sp-mini-mats__head,.sp-mini-mats__title,.sp-mini-mats__panel,.sp-mini-mats__preview,.sp-mini-mats__ops'
+      )
+    );
+  }
+
+  function toggleMiniMatsFold(forceNext) {
+    var pop = ensureMiniMatsPop();
+    var fold = pop && pop.querySelector('[data-sp-mini-mats-fold]');
+    if (!fold) return;
+    var next = forceNext != null ? !!forceNext : !fold.open;
+    fold.open = next;
+    miniMatsListOpen = next;
+  }
+
+  function miniMatsPreviewText() {
+    var raw = String((snap && snap.preview) || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!raw) {
+      var md = String((snap && snap.assembledMd) || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (md) raw = md.length > 96 ? md.slice(0, 96) + '…' : md;
+    }
+    if (!raw && snap && Array.isArray(snap.materials) && snap.materials[0]) {
+      raw = chipPreview(snap.materials[0]);
+    }
+    return raw || '（暂无内容 · 可先收入剪贴板或添加文件）';
+  }
+
+  function toggleMatsPanelOpen(forceNext) {
+    var next =
+      forceNext != null ? !!forceNext : isMiniMode() ? !miniMatsOpen : !matsDrawerOpen;
+    if (isMiniMode()) {
+      setMiniMatsOpen(next);
+      return;
+    }
+    if (!next) {
+      clearMatsAssist();
+      matsOpenOnCollect = false;
+    }
+    setMatsDrawerOpen(next);
+  }
+
+  function handleMatsPanelClick(e) {
+    var rm = e.target && e.target.closest && e.target.closest('[data-sp-mats-rm]');
+    if (rm) {
+      e.preventDefault();
+      e.stopPropagation();
+      var mid = rm.getAttribute('data-sp-mats-rm') || '';
+      if (!mid) return;
+      removeMatLocal(mid);
+      invokeCollect('remove', { id: mid }).then(function () {
+        setTimeout(pullSnapshot, 80);
+      });
+      return;
+    }
+    var pinBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-pin]');
+    if (pinBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      setMatsPinned(!matsPinned);
+      return;
+    }
+    var addBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-add]');
+    if (addBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      pickLocalFile();
+      return;
+    }
+    var captureBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-capture]');
+    if (captureBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var sc = global.OneToneSmartCapture;
+      if (sc && typeof sc.begin === 'function') {
+        sc.begin('softPad').catch(function (err) {
+          toast(String((err && err.message) || err || '截图启动失败'));
+        });
+      } else {
+        toast('智能截图未就绪');
+      }
+      return;
+    }
+    var pasteTargetBtn =
+      e.target && e.target.closest && e.target.closest('[data-sp-mats-paste-target]');
+    if (pasteTargetBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      pasteOnly();
+      return;
+    }
+    var pasteBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-paste]');
+    if (pasteBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      ingestClipboard();
+      return;
+    }
+    var closeBtn =
+      e.target &&
+      e.target.closest &&
+      e.target.closest('[data-sp-mini-mats-close],.sp-mats-rail__fold');
+    if (closeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleMatsPanelOpen(false);
+      return;
+    }
+    var toggleBtn =
+      e.target && e.target.closest && e.target.closest('[data-sp-mats-toggle]');
+    if (toggleBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Tab toggles open/closed — must not pass false (that forced close and blocked open).
+      toggleMatsPanelOpen();
+      return;
+    }
+    var clearBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-clear]');
+    if (clearBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      confirmClearMats();
+    }
+  }
+
+  function bindMatsPanelListeners(el) {
+    if (!el || el.getAttribute('data-sp-mats-bound') === '1') return;
+    el.setAttribute('data-sp-mats-bound', '1');
+    el.addEventListener('pointerdown', function (e) {
+      if (matsBlocksWindowDrag(e.target)) e.stopPropagation();
+    });
+    el.addEventListener('mousedown', function (e) {
+      if (matsBlocksWindowDrag(e.target)) e.stopPropagation();
+    });
+    el.addEventListener(
+      'click',
+      function (e) {
+        handleMatsPanelClick(e);
+      },
+      true
+    );
+  }
+
+  function ensureMiniMatsPop() {
+    function miniPopIsCurrent(el) {
+      return !!(
+        el &&
+        el.querySelector('[data-sp-mini-mats-preview]') &&
+        el.querySelector('[data-sp-mini-mats-fold]')
+      );
+    }
+    if (miniMatsEl && miniMatsEl.isConnected) {
+      if (miniPopIsCurrent(miniMatsEl)) return miniMatsEl;
+      try {
+        miniMatsEl.remove();
+      } catch (_) {}
+      miniMatsEl = null;
+    }
+    var existing = document.getElementById('spMiniMatsPop');
+    if (miniPopIsCurrent(existing)) {
+      miniMatsEl = existing;
+      bindMatsPanelListeners(existing);
+      return existing;
+    }
+    if (existing) {
+      try {
+        existing.remove();
+      } catch (_) {}
+    }
+    var pop = document.createElement('div');
+    pop.id = 'spMiniMatsPop';
+    pop.className = 'sp-mini-mats';
+    pop.setAttribute('data-sp-mini-mats', '1');
+    pop.hidden = true;
+    pop.innerHTML =
+      '<div class="sp-mini-mats__panel" data-sp-mats-panel>' +
+      '<div class="sp-mini-mats__head">' +
+      '<div class="sp-mini-mats__head-row">' +
+      '<span class="sp-mini-mats__title">材料</span>' +
+      '<button type="button" class="sp-mats-rail__iconbtn sp-mats-rail__fold" data-sp-mini-mats-close title="收起" aria-label="收起">‹</button>' +
+      '</div>' +
+      '<p class="sp-mini-mats__hint" data-sp-mini-mats-hint>先点目标输入框，再按「粘贴到输入框」</p>' +
+      '</div>' +
+      '<div class="sp-mini-mats__preview" aria-live="polite">' +
+      '<span class="sp-mini-mats__preview-k">将粘贴</span>' +
+      '<span class="sp-mini-mats__preview-v" data-sp-mini-mats-preview></span>' +
+      '</div>' +
+      '<button type="button" class="sp-mini-mats__paste" data-sp-mats-paste-target title="先点目标输入框，再按此粘贴">' +
+      ico('paste') +
+      '<span data-sp-mini-mats-paste-lbl>粘贴到输入框</span></button>' +
+      '<div class="sp-mini-mats__ops" role="group" aria-label="材料操作">' +
+      '<button type="button" class="sp-mini-mats__op" data-sp-mats-paste title="收入剪贴板">' +
+      ico('paste') +
+      '<span>收入</span></button>' +
+      '<button type="button" class="sp-mini-mats__op" data-sp-mats-add title="添加文件">' +
+      ico('add') +
+      '<span>添加</span></button>' +
+      '<button type="button" class="sp-mini-mats__op" data-sp-mats-capture title="截图">' +
+      ico('capture') +
+      '<span>截图</span></button>' +
+      '<button type="button" class="sp-mini-mats__op" data-sp-mats-pin title="置顶" aria-pressed="false">' +
+      ico('pin') +
+      '<span>置顶</span></button>' +
+      '<button type="button" class="sp-mini-mats__op" data-sp-mats-clear title="清空">' +
+      ico('clear') +
+      '<span>清空</span></button>' +
+      '</div>' +
+      '<details class="sp-mini-mats__fold" data-sp-mini-mats-fold>' +
+      '<summary class="sp-mini-mats__fold-sum">' +
+      '<span class="sp-mini-mats__fold-ico" aria-hidden="true">' +
+      ico('mats') +
+      '</span>' +
+      '<span class="sp-mini-mats__fold-lbl" data-sp-mini-mats-fold-lbl>材料</span>' +
+      '<span class="sp-mini-mats__fold-chev" aria-hidden="true">▾</span>' +
+      '</summary>' +
+      '<div class="sp-mini-mats__chips" data-sp-mats-list aria-label="已收入材料"></div>' +
+      '</details>' +
+      '</div>';
+    // Dock in mini stack (below the bar, above listen) — not absolute over listen/tools.
+    var stack = document.getElementById('overlayMiniStack');
+    var mini = document.getElementById('overlayMini');
+    var host = stack || mini || document.getElementById('wrap') || document.body;
+    if (stack && mini && mini.parentNode === stack) {
+      // After mini chrome so layout is: agents/tools → materials → (listen hidden while open).
+      if (mini.nextSibling) stack.insertBefore(pop, mini.nextSibling);
+      else stack.appendChild(pop);
+    } else {
+      host.appendChild(pop);
+    }
+    bindMatsPanelListeners(pop);
+    var fold = pop.querySelector('[data-sp-mini-mats-fold]');
+    if (fold) {
+      fold.open = !!miniMatsListOpen;
+      fold.addEventListener('toggle', function () {
+        miniMatsListOpen = !!fold.open;
+      });
+      // Stop drag steal on fold summary (pointerdown used to start window drag).
+      var sum = fold.querySelector('summary');
+      if (sum) {
+        sum.addEventListener('pointerdown', function (e) {
+          e.stopPropagation();
+        });
+      }
+    }
+    // Head title toggles the materials list fold (users click「材料」expecting expand/collapse).
+    var head = pop.querySelector('.sp-mini-mats__head');
+    if (head && head.getAttribute('data-sp-head-fold') !== '1') {
+      head.setAttribute('data-sp-head-fold', '1');
+      head.style.cursor = 'pointer';
+      head.addEventListener('pointerdown', function (e) {
+        e.stopPropagation();
+      });
+      head.addEventListener('click', function (e) {
+        if (e.target && e.target.closest && e.target.closest('button,[data-sp-mini-mats-close]')) {
+          return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        toggleMiniMatsFold();
+      });
+    }
+    // Do NOT auto-close mini mats when clicking the mini bar (that felt like「自动收缩」
+    // and stole clicks meant to drag / use tools). Close only via the fold/close control.
+    miniMatsDocBound = true;
+    pop.addEventListener('pointerenter', function () {
+      clearMatsLeaveTimer();
+    });
+    // No pointerleave→close on mini: resize churn was snapping the panel shut.
+    miniMatsEl = pop;
+    syncMatsPinUi();
+    return pop;
+  }
+
+  function setMiniMatsOpen(open) {
+    var next = !!open;
+    if (next === miniMatsOpen) {
+      if (next) paintMiniMatsPop();
+      return;
+    }
+    miniMatsOpen = next;
+    if (next) {
+      // Survive HWND grow + pointer churn after the materials tool click.
+      matsLeaveGuardUntil = Date.now() + 900;
+      clearMatsLeaveTimer();
+    }
+    var wrap = document.getElementById('wrap');
+    if (wrap) wrap.classList.toggle('is-mini-mats', miniMatsOpen);
+    var pop = ensureMiniMatsPop();
+    // Grow mini HWND first so the panel is not painted outside the clip rect.
+    var afterGeom = function () {
+      if (miniMatsOpen !== next) return;
+      pop.hidden = !miniMatsOpen;
+      pop.classList.toggle('is-open', miniMatsOpen);
+      document.querySelectorAll('[data-beginner-slot="materials"]').forEach(function (btn) {
+        btn.classList.toggle('is-on', miniMatsOpen);
+        btn.setAttribute('aria-expanded', miniMatsOpen ? 'true' : 'false');
+      });
+      if (miniMatsOpen) paintMiniMatsPop();
+      else clearMatsAssist();
+    };
+    requestMatsRailWidth(miniMatsOpen).then(afterGeom).catch(afterGeom);
+  }
+
+  function toggleMiniMaterials() {
+    toggleMatsPanelOpen();
+  }
+
+  function syncMiniMatsToolBadge(count) {
+    if (count == null) count = materialBadge(snap);
+    document.querySelectorAll('[data-beginner-slot="materials"]').forEach(function (btn) {
+      btn.classList.toggle('is-has-mats', count > 0);
+      var badge = btn.querySelector('[data-sp-mini-mats-count]');
+      if (badge) {
+        badge.textContent = count > 0 ? '+' + String(count) : '';
+        badge.hidden = count < 1;
+        badge.setAttribute('aria-hidden', count < 1 ? 'true' : 'false');
+      }
+    });
+    if (miniMatsEl) {
+      var title = miniMatsEl.querySelector('.sp-mini-mats__title');
+      if (title) title.textContent = count > 0 ? '材料 · ' + count : '材料';
+      var previewEl = miniMatsEl.querySelector('[data-sp-mini-mats-preview]');
+      if (previewEl) previewEl.textContent = miniMatsPreviewText();
+      var hintEl = miniMatsEl.querySelector('[data-sp-mini-mats-hint]');
+      if (hintEl) {
+        var tgt = targetLabel(resolveTargetKind(snap));
+        hintEl.textContent = '① 点 ' + tgt + ' 输入框  ② 核对下方预览  ③ 按「粘贴到输入框」';
+      }
+      var pasteBtn = miniMatsEl.querySelector('[data-sp-mats-paste-target]');
+      var pasteLbl = miniMatsEl.querySelector('[data-sp-mini-mats-paste-lbl]');
+      if (pasteBtn) {
+        var hasMd = !!String(materialsMarkdown(snap) || '').trim();
+        pasteBtn.disabled = !hasMd || pasteBusy;
+      }
+      if (pasteLbl) pasteLbl.textContent = pasteBusy ? '粘贴中…' : '粘贴到输入框';
+    }
+  }
+
+  function collectMatsListData() {
+    var count = materialBadge(snap);
+    var list = (snap && Array.isArray(snap.materials) && snap.materials.length
+      ? snap.materials
+      : []
+    ).slice(0, 16);
+    if (!list.length) {
+      var carryRow = carryMarkdownPreviewRow();
+      if (carryRow) list = [carryRow];
+    }
+    return { count: count, list: list };
+  }
+
+  function renderMatsListHtml(list) {
+    return list
+      .map(function (m) {
+        if (!m) return '';
+        var preview = chipPreview(m);
+        var sub = rowListSubtitle(m);
+        var rm =
+          m._carryPreview || m.id === '__carry_md__'
+            ? ''
+            : '<button type="button" class="sp-mats-rail__x" data-sp-mats-rm="' +
+              esc(m.id || '') +
+              '" title="移除此项" aria-label="移除此项">' +
+              ico('rm') +
+              '</button>';
+        return (
+          '<div class="sp-mats-rail__item" data-sp-mat-id="' +
+          esc(m.id || '') +
+          '">' +
+          '<span class="sp-mats-rail__kindico" aria-hidden="true">' +
+          kindGlyph(m.kind) +
+          '</span>' +
+          '<div class="sp-mats-rail__body">' +
+          '<span class="sp-mats-rail__preview">' +
+          esc(preview) +
+          '</span>' +
+          '<span class="sp-mats-rail__sub">' +
+          esc(sub) +
+          '</span></div>' +
+          rm +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
+  function shortMatName(m) {
+    var t = chipPreview(m).replace(/\s+/g, ' ').trim();
+    if (!t) t = kindLabel(m && m.kind);
+    if (t.length > 16) t = t.slice(0, 14) + '…';
+    return t;
+  }
+
+  function renderMiniMatsChipsHtml(list) {
+    return list
+      .map(function (m) {
+        if (!m) return '';
+        var name = shortMatName(m);
+        var rm =
+          m._carryPreview || m.id === '__carry_md__'
+            ? ''
+            : '<button type="button" class="sp-mini-mats__chip-x" data-sp-mats-rm="' +
+              esc(m.id || '') +
+              '" title="移除" aria-label="移除">' +
+              ico('rm') +
+              '</button>';
+        return (
+          '<div class="sp-mini-mats__chip" data-sp-mat-id="' +
+          esc(m.id || '') +
+          '" title="' +
+          esc(chipPreview(m)) +
+          '">' +
+          '<span class="sp-mini-mats__chip-ico" aria-hidden="true">' +
+          kindGlyph(m.kind) +
+          '</span>' +
+          '<span class="sp-mini-mats__chip-name">' +
+          esc(name) +
+          '</span>' +
+          rm +
+          '</div>'
+        );
+      })
+      .join('');
+  }
+
+  function paintMatsListInto(listEl, list) {
+    if (!listEl) return;
+    bindMatsTipEvents(listEl);
+    if (!list.length) {
+      listEl.innerHTML =
+        '<div class="sp-mats-rail__item sp-mats-rail__item--plain">' +
+        esc('暂无材料 · 可添加或粘贴') +
+        '</div>';
+      return;
+    }
+    listEl.innerHTML = renderMatsListHtml(list);
+  }
+
+  function paintMiniMatsPop(count, list) {
+    if (count == null || list == null) {
+      var data = collectMatsListData();
+      count = data.count;
+      list = data.list;
+    }
+    var pop = ensureMiniMatsPop();
+    pop.classList.toggle('is-empty', count < 1 && !list.length);
+    syncMiniMatsToolBadge(count);
+    var fold = pop.querySelector('[data-sp-mini-mats-fold]');
+    var foldLbl = pop.querySelector('[data-sp-mini-mats-fold-lbl]');
+    if (foldLbl) foldLbl.textContent = count > 0 ? '材料 · ' + count : '材料';
+    if (fold) {
+      // Sync from remembered intent only — never force-open over a user-closed fold.
+      if (count < 1) {
+        fold.open = false;
+        miniMatsListOpen = false;
+      } else if (fold.open !== !!miniMatsListOpen) {
+        fold.open = !!miniMatsListOpen;
+      }
+    }
+    var listEl = pop.querySelector('[data-sp-mats-list]');
+    if (!listEl) return;
+    if (!list.length) {
+      listEl.innerHTML =
+        '<div class="sp-mini-mats__chip sp-mini-mats__chip--empty">' +
+        esc('暂无材料') +
+        '</div>';
+    } else {
+      listEl.innerHTML = renderMiniMatsChipsHtml(list.slice(0, 8));
+    }
+    syncMatsPinUi();
   }
 
   function ico(kind) {
@@ -306,10 +830,15 @@
 
   /** Right slide-out materials drawer (tab when collapsed; panel overlays pad when open). */
   function ensureMatsBar() {
-    if (matsBarEl && matsBarEl.isConnected) return matsBarEl;
+    if (matsBarEl && matsBarEl.isConnected) {
+      matsBarEl.hidden = false;
+      return matsBarEl;
+    }
     var existing = document.getElementById('softPadMatsBar');
     if (existing) {
       matsBarEl = existing;
+      matsBarEl.hidden = false;
+      bindMatsPanelListeners(existing);
       return matsBarEl;
     }
     var bar = document.createElement('div');
@@ -348,91 +877,19 @@
       '</div>';
     var host = document.getElementById('wrap') || document.body;
     host.appendChild(bar);
-    // Block Soft Pad window-drag; do NOT preventDefault on row delete (breaks click).
-    bar.addEventListener('pointerdown', function (e) {
-      e.stopPropagation();
-    });
-    bar.addEventListener('mousedown', function (e) {
-      e.stopPropagation();
-    });
-    // Near-tab hover → open (not whole Soft Pad).
+    bindMatsPanelListeners(bar);
+    // Materials opens only from an explicit tab/button click; hover must not expand it over Soft Pad.
     bar.addEventListener('pointerenter', function () {
       clearMatsLeaveTimer();
-      setMatsDrawerOpen(true);
     });
-    // Capture so row × wins even if a child SVG is the event target.
-    bar.addEventListener(
-      'click',
-      function (e) {
-        var rm = e.target && e.target.closest && e.target.closest('[data-sp-mats-rm]');
-        if (rm) {
-          e.preventDefault();
-          e.stopPropagation();
-          var mid = rm.getAttribute('data-sp-mats-rm') || '';
-          if (!mid) return;
-          removeMatLocal(mid);
-          invokeCollect('remove', { id: mid }).then(function () {
-            setTimeout(pullSnapshot, 80);
-          });
-          return;
-        }
-        var pinBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-pin]');
-        if (pinBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          setMatsPinned(!matsPinned);
-          if (matsPinned) setMatsDrawerOpen(true);
-          return;
-        }
-        var addBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-add]');
-        if (addBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          pickLocalFile();
-          return;
-        }
-        var captureBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-capture]');
-        if (captureBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          var sc = global.OneToneSmartCapture;
-          if (sc && typeof sc.begin === 'function') {
-            sc.begin('softPad').catch(function (err) {
-              toast(String((err && err.message) || err || '截图启动失败'));
-            });
-          } else {
-            toast('智能截图未就绪');
-          }
-          return;
-        }
-        var pasteBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-paste]');
-        if (pasteBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          ingestClipboard();
-          return;
-        }
-        var toggleBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-toggle]');
-        if (toggleBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          var openNext = !matsDrawerOpen;
-          if (!openNext) {
-            clearMatsAssist();
-            matsOpenOnCollect = false;
-          }
-          setMatsDrawerOpen(openNext);
-          return;
-        }
-        var clearBtn = e.target && e.target.closest && e.target.closest('[data-sp-mats-clear]');
-        if (clearBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          confirmClearMats();
-        }
-      },
-      true
-    );
+    bar.addEventListener('pointerleave', function (e) {
+      var to = e && e.relatedTarget;
+      if (to && bar.contains(to)) {
+        clearMatsLeaveTimer();
+        return;
+      }
+      scheduleMatsLeaveClose();
+    });
     matsBarEl = bar;
     bindMatsPadLeave();
     syncMatsPinUi();
@@ -440,7 +897,7 @@
     return bar;
   }
 
-  /** Align rail height to Soft Pad stack (sits in reserved right strip, not over pad). */
+  /** Align rail to pad top, fill remaining wrap height so the list can scroll in-window. */
   function syncMatsRailGeometry() {
     var bar = matsBarEl;
     if (!bar || !bar.isConnected) return;
@@ -454,10 +911,16 @@
     var pr = pad.getBoundingClientRect();
     if (!wr.height || !pr.height) return;
     var top = Math.max(0, Math.round(pr.top - wr.top));
-    var h = Math.max(120, Math.round(pr.height));
+    // Prefer full remaining wrap (not pad-only) — short pad used to clip the list mid-row.
+    var avail = Math.max(0, Math.round(wr.height - top - 8));
+    var padH = Math.max(120, Math.round(pr.height));
+    var h = Math.max(padH, avail);
+    if (avail > 0) h = Math.min(h, avail);
+    h = Math.max(160, h);
     bar.style.top = top + 'px';
     bar.style.height = h + 'px';
     bar.style.bottom = 'auto';
+    bar.style.maxHeight = avail > 0 ? avail + 'px' : '';
   }
 
   function clearMatsLeaveTimer() {
@@ -465,6 +928,44 @@
       clearTimeout(matsLeaveTimer);
       matsLeaveTimer = null;
     }
+  }
+
+  function matsPointerStillInside() {
+    if (isMiniMode()) {
+      var pop = miniMatsEl;
+      if (pop && pop.isConnected) {
+        try {
+          if (pop.matches(':hover')) return true;
+        } catch (_) {}
+      }
+      return false;
+    }
+    var bar = matsBarEl;
+    if (bar && bar.isConnected) {
+      try {
+        if (bar.matches(':hover')) return true;
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  function scheduleMatsLeaveClose() {
+    clearMatsLeaveTimer();
+    // Pin is the only sticky hold — assist must not keep the panel up after leave.
+    if (matsPinned) return;
+    if (Date.now() < matsLeaveGuardUntil) return;
+    // Mini popover: HWND grow / tools hover churn fake leave and snapped the panel shut.
+    // Close only via outside click or the fold button.
+    if (isMiniMode()) return;
+    var delay = matsDrawerOpen ? 280 : 160;
+    matsLeaveTimer = setTimeout(function () {
+      matsLeaveTimer = null;
+      if (matsPinned) return;
+      if (Date.now() < matsLeaveGuardUntil) return;
+      if (matsPointerStillInside()) return;
+      clearMatsAssist();
+      setMatsDrawerOpen(false);
+    }, delay);
   }
 
   function bindMatsPadLeave() {
@@ -475,13 +976,22 @@
     wrap.addEventListener('pointerenter', function () {
       clearMatsLeaveTimer();
     });
-    wrap.addEventListener('pointerleave', function () {
-      clearMatsLeaveTimer();
-      // Leave Soft Pad → retract unless pinned / paste-assist keeps list open.
-      matsLeaveTimer = setTimeout(function () {
-        matsLeaveTimer = null;
-        if (!matsPinned && !matsAssistOpen) setMatsDrawerOpen(false);
-      }, 160);
+    wrap.addEventListener('pointerleave', function (e) {
+      var to = e && e.relatedTarget;
+      // Still under Soft Pad / mats rail — do not retract.
+      if (to && wrap.contains(to)) {
+        clearMatsLeaveTimer();
+        return;
+      }
+      if (to && matsBarEl && matsBarEl.contains(to)) {
+        clearMatsLeaveTimer();
+        return;
+      }
+      if (to && miniMatsEl && miniMatsEl.contains(to)) {
+        clearMatsLeaveTimer();
+        return;
+      }
+      scheduleMatsLeaveClose();
     });
   }
 
@@ -492,37 +1002,117 @@
   }
 
   function syncMatsPinUi() {
-    var bar = matsBarEl;
-    if (!bar) return;
-    bar.classList.toggle('is-pinned', matsPinned);
-    var pinBtn = bar.querySelector('[data-sp-mats-pin]');
-    if (pinBtn) {
+    [matsBarEl, miniMatsEl].forEach(function (root) {
+      if (!root || !root.isConnected) return;
+      root.classList.toggle('is-pinned', matsPinned);
+      var pinBtn = root.querySelector('[data-sp-mats-pin]');
+      if (!pinBtn) return;
       pinBtn.setAttribute('aria-pressed', matsPinned ? 'true' : 'false');
       pinBtn.setAttribute('aria-label', matsPinned ? '取消置顶' : '置顶');
       pinBtn.classList.toggle('is-on', matsPinned);
       pinBtn.title = matsPinned
         ? '取消置顶：离开 Soft Pad 将收回列表'
         : '置顶：离开 Soft Pad 也不收回';
+    });
+  }
+
+  function overlayIsDragging() {
+    try {
+      return !!global.__onetoneOverlayDragging;
+    } catch (_) {
+      return false;
     }
   }
 
   function requestMatsRailWidth(open) {
+    var want = !!open;
+    // While Soft Pad is being dragged, queue — Rust also defers; FE keeps latest intent.
+    if (overlayIsDragging()) {
+      matsRailQueued = want;
+      return Promise.resolve(false);
+    }
     var api = ipc();
-    if (!api || typeof api.invoke !== 'function') return;
+    if (!api || typeof api.invoke !== 'function') {
+      return Promise.resolve(false);
+    }
+    var seq = ++matsRailSeq;
     // Widen HWND left-anchored so Soft Pad stays put and the rail owns the new right strip.
-    api.invoke('cmd_codex_micro_overlay_set_mats_rail', { open: !!open }).catch(function () {});
+    return api
+      .invoke('cmd_codex_micro_overlay_set_mats_rail', { open: want })
+      .then(function (ok) {
+        if (seq !== matsRailSeq) return false;
+        return ok;
+      })
+      .catch(function () {
+        if (seq !== matsRailSeq) return false;
+        return false;
+      });
+  }
+
+  /** After overlay snap, flush the latest mats rail request deferred during drag. */
+  function flushQueuedMatsRail() {
+    if (matsRailQueued == null) return;
+    var want = matsRailQueued;
+    matsRailQueued = null;
+    requestMatsRailWidth(want).then(function () {
+      if (isMiniMode()) {
+        if (want && !miniMatsOpen) setMiniMatsOpen(true);
+        else if (!want && miniMatsOpen) setMiniMatsOpen(false);
+      } else if (want !== matsDrawerOpen) {
+        setMatsDrawerOpen(want);
+      }
+    });
+  }
+
+  if (typeof global.addEventListener === 'function') {
+    global.addEventListener('pointerup', function () {
+      if (matsRailQueued != null && !overlayIsDragging()) flushQueuedMatsRail();
+    });
+    global.addEventListener('pointercancel', function () {
+      if (matsRailQueued != null && !overlayIsDragging()) flushQueuedMatsRail();
+    });
+  }
+
+  function applyMatsDrawerDom(open) {
+    var bar = matsBarEl;
+    if (bar) {
+      bar.classList.toggle('is-open', !!open);
+      bar.setAttribute('data-sp-mats-open', open ? '1' : '0');
+    }
+    var wrap = document.getElementById('wrap');
+    if (wrap) wrap.classList.toggle('is-mats-rail', !!open);
+    syncMatsRailGeometry();
   }
 
   function setMatsDrawerOpen(open) {
-    matsDrawerOpen = !!open;
+    var next = !!open;
+    if (isMiniMode()) {
+      setMiniMatsOpen(next);
+      if (next) paintMiniMatsPop();
+      return;
+    }
     var bar = matsBarEl;
+    if (next === matsDrawerOpen) {
+      applyMatsDrawerDom(matsDrawerOpen);
+      return;
+    }
+    if (next) {
+      // Survive widen + panel slide so moving into the list does not auto-close.
+      matsLeaveGuardUntil = Date.now() + 500;
+      clearMatsLeaveTimer();
+      matsDrawerOpen = true;
+      // Widen HWND first — painting is-open before resize stacks the panel over Soft Pad.
+      requestMatsRailWidth(true).then(function () {
+        if (!matsDrawerOpen) return;
+        applyMatsDrawerDom(true);
+      });
+      return;
+    }
+    matsDrawerOpen = false;
+    clearMatsAssist();
+    applyMatsDrawerDom(false);
+    requestMatsRailWidth(false);
     if (!bar) return;
-    bar.classList.toggle('is-open', matsDrawerOpen);
-    bar.setAttribute('data-sp-mats-open', matsDrawerOpen ? '1' : '0');
-    var wrap = document.getElementById('wrap');
-    if (wrap) wrap.classList.toggle('is-mats-rail', matsDrawerOpen);
-    syncMatsRailGeometry();
-    requestMatsRailWidth(matsDrawerOpen);
   }
 
   function chipPreview(m) {
@@ -530,7 +1120,7 @@
     var path = String(m.path || '').trim();
     if (path && (m.kind === 'file' || m.kind === 'image' || m.kind === 'folder')) {
       var leaf = path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || path;
-      if (leaf) return leaf.length > 28 ? leaf.slice(0, 26) + '…' : leaf;
+      if (leaf) return leaf.length > 48 ? leaf.slice(0, 46) + '…' : leaf;
     }
     var raw = String(m.name || m.preview || m.description || '')
       .replace(/\s+/g, ' ')
@@ -539,12 +1129,12 @@
     if (raw === '拖入的文本' || raw === '粘贴的文本' || raw === '未命名素材') {
       return kindLabel(m.kind);
     }
-    // Don't put absolute paths in the one-line title.
+    // Don't put absolute paths in the title — leaf only (CSS clamps to 2 lines).
     if (/^[A-Za-z]:[\\/]/.test(raw) || raw.indexOf('\\\\') === 0) {
       var leaf2 = raw.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || raw;
-      return leaf2.length > 28 ? leaf2.slice(0, 26) + '…' : leaf2;
+      return leaf2.length > 48 ? leaf2.slice(0, 46) + '…' : leaf2;
     }
-    return raw.length > 28 ? raw.slice(0, 26) + '…' : raw;
+    return raw.length > 48 ? raw.slice(0, 46) + '…' : raw;
   }
 
   function removeMatLocal(id) {
@@ -920,19 +1510,38 @@
   }
 
   function paintMats() {
+    var wrap = document.getElementById('wrap');
+    var mini = !!(wrap && wrap.classList.contains('is-minimized'));
+    var data = collectMatsListData();
+    var count = data.count;
+    var list = data.list;
+    if (mini) {
+      if (matsDrawerOpen) {
+        matsDrawerOpen = false;
+        applyMatsDrawerDom(false);
+        requestMatsRailWidth(false);
+      }
+      // Keep the rail in DOM without [hidden] — CSS .wrap.is-minimized hides it.
+      // Setting hidden here stuck the tab after expand (expand did not re-paint).
+      if (matsBarEl) matsBarEl.hidden = false;
+      syncMiniMatsToolBadge(count);
+      paintMiniMatsPop(count, list);
+      if (count < 1 && !list.length) {
+        matsHadItems = false;
+        matsOpenOnCollect = false;
+        hideMatsTip(0);
+      } else {
+        matsHadItems = true;
+        matsOpenOnCollect = false;
+      }
+      if (matsAssistOpen && !miniMatsOpen) setMiniMatsOpen(true);
+      return;
+    }
+    if (miniMatsOpen) setMiniMatsOpen(false);
     var bar = ensureMatsBar();
     syncMatsRailGeometry();
     var listEl = bar.querySelector('[data-sp-mats-list]');
     var tabCount = bar.querySelector('[data-sp-mats-count]');
-    var count = materialBadge(snap);
-    var list = (snap && Array.isArray(snap.materials) && snap.materials.length
-      ? snap.materials
-      : []
-    ).slice(0, 16);
-    if (!list.length) {
-      var carryRow = carryMarkdownPreviewRow();
-      if (carryRow) list = [carryRow];
-    }
     bar.hidden = false;
     bar.classList.toggle('is-empty', count < 1);
     if (tabCount) {
@@ -943,62 +1552,17 @@
       matsHadItems = false;
       matsOpenOnCollect = false;
       hideMatsTip(0);
-      if (matsPinned || matsAssistOpen) setMatsDrawerOpen(true);
-      else {
-        bar.classList.toggle('is-open', matsDrawerOpen);
-        bar.setAttribute('data-sp-mats-open', matsDrawerOpen ? '1' : '0');
-      }
-      if (listEl) {
-        listEl.innerHTML =
-          '<div class="sp-mats-rail__item sp-mats-rail__item--plain">' +
-          esc('暂无材料 · 可添加或粘贴') +
-          '</div>';
-      }
+      if (matsAssistOpen && !matsDrawerOpen) setMatsDrawerOpen(true);
+      else applyMatsDrawerDom(matsDrawerOpen);
+      paintMatsListInto(listEl, []);
       return;
     }
     matsHadItems = true;
-    // Pinned / collect / paste-assist → keep open (no hover; mouse often outside Soft Pad).
-    if (matsPinned || matsOpenOnCollect || matsAssistOpen) {
-      matsOpenOnCollect = false;
-      setMatsDrawerOpen(true);
-    } else {
-      bar.classList.toggle('is-open', matsDrawerOpen);
-      bar.setAttribute('data-sp-mats-open', matsDrawerOpen ? '1' : '0');
-    }
-    if (!listEl) return;
-    bindMatsTipEvents(listEl);
-    listEl.innerHTML = list
-      .map(function (m) {
-        if (!m) return '';
-        var preview = chipPreview(m);
-        var sub = rowListSubtitle(m);
-        var rm =
-          m._carryPreview || m.id === '__carry_md__'
-            ? ''
-            : '<button type="button" class="sp-mats-rail__x" data-sp-mats-rm="' +
-              esc(m.id || '') +
-              '" title="移除此项" aria-label="移除此项">' +
-              ico('rm') +
-              '</button>';
-        return (
-          '<div class="sp-mats-rail__item" data-sp-mat-id="' +
-          esc(m.id || '') +
-          '">' +
-          '<span class="sp-mats-rail__kindico" aria-hidden="true">' +
-          kindGlyph(m.kind) +
-          '</span>' +
-          '<div class="sp-mats-rail__body">' +
-          '<span class="sp-mats-rail__preview">' +
-          esc(preview) +
-          '</span>' +
-          '<span class="sp-mats-rail__sub">' +
-          esc(sub) +
-          '</span></div>' +
-          rm +
-          '</div>'
-        );
-      })
-      .join('');
+    // Never force-open from paint — only click / fresh handoff (armMatsAssist) open the drawer.
+    matsOpenOnCollect = false;
+    if (matsAssistOpen && !matsDrawerOpen) setMatsDrawerOpen(true);
+    else applyMatsDrawerDom(matsDrawerOpen);
+    paintMatsListInto(listEl, list);
   }
 
   var WORK_JOURNAL_KEY = 'onetone.workJournal';
@@ -1096,7 +1660,7 @@
     snap.empty = false;
     // Bump so a stale get_snapshot cannot clobber this paint.
     snap.contentRevision = (Number(snap.contentRevision) || 0) + 1;
-    matsOpenOnCollect = true;
+    matsOpenOnCollect = false;
     noteSoftPadMaterial(displayName, preview, mats.length);
     paint();
   }
@@ -1248,14 +1812,16 @@
     snap = next;
     var nextCarry = carryActive(snap);
     var nextGen = (snap.carry && Number(snap.carry.generation)) || 0;
-    var prevShow = shouldShowCarryUi(prev);
-    var nextShow = shouldShowCarryUi(snap);
-    // Homepage handoff / materials ready: force-open list + dock (no hover needed).
-    var handoffFresh =
-      nextCarry && (!prevCarry || nextGen > prevGen);
-    var assistFresh = nextShow && (!prevShow || handoffFresh);
-    if (handoffFresh) dockDismissed = false;
+    // Homepage handoff: force-open list + dock. Cold pull of stale carry.active must not arm.
+    var handoffFresh = isFreshHandoff(snap, prev);
+    var assistFresh =
+      handoffFresh && (lastArmedCarryGen == null || nextGen > lastArmedCarryGen);
+    if (handoffFresh) {
+      dockDismissed = false;
+      carryUiArmed = true;
+    }
     if (assistFresh) {
+      lastArmedCarryGen = nextGen;
       armMatsAssist();
       var tgt = targetLabel(snap.carry && snap.carry.targetKind);
       toast(
@@ -1363,6 +1929,7 @@
 
   function dismissCarry() {
     dockDismissed = true;
+    carryUiArmed = false;
     clearMatsAssist();
     var api = ipc();
     if (api && typeof api.invoke === 'function') {
@@ -1706,7 +2273,8 @@
   }
 
   function pickLocalFile() {
-    setMatsDrawerOpen(true);
+    // Full pad: keep materials rail open. Mini: stay on the inline card (no full drawer).
+    if (!isMiniMode()) setMatsDrawerOpen(true);
     if (pickBusy) return Promise.resolve(null);
     pickBusy = true;
     toast('打开文件…');
@@ -2132,6 +2700,9 @@
     applySnapshot: applySnapshot,
     pasteOnly: pasteOnly,
     dismissCarry: dismissCarry,
+    toggleMiniMaterials: toggleMiniMaterials,
+    /** Mini↔full chrome changed — refresh materials tab / mini popover. */
+    syncChrome: paint,
     getSnapshot: function () {
       return snap;
     },

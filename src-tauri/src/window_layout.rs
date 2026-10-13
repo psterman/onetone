@@ -1,5 +1,6 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use tauri::{LogicalPosition, LogicalSize, Position, Size, WebviewWindow};
@@ -11,10 +12,62 @@ const MIN_W: f64 = 640.0;
 const MIN_H: f64 = 680.0;
 /// Maximize/restore animations emit many Moved/Resized; 400ms still wrote 3× disk mid-transition.
 const SAVE_DEBOUNCE_MS: u64 = 1500;
+/// Recent Moved/Resized still counts as "moving" even if LMB briefly reads up.
+const MAIN_MOVED_FRESH_MS: u64 = 80;
+/// Poll while waiting for title-bar gesture to end before layout persist.
+const DRAG_WAIT_POLL_MS: u64 = 50;
 /// Windows moves tray-hidden windows to about (-32000, -32000).
 const HIDDEN_POSITION_THRESHOLD: f64 = -10_000.0;
 
 static SAVE_GEN: AtomicU64 = AtomicU64::new(0);
+/// Single debounce worker — Moved/Resized must not spawn per pixel on the UI thread.
+static SAVE_PENDING: AtomicBool = AtomicBool::new(false);
+/// Monotonic ms of last main-window Moved/Resized (for Soft Pad / persist deferral).
+static MAIN_MOVED_AT_MS: AtomicU64 = AtomicU64::new(0);
+
+fn mono_ms() -> u64 {
+    static START: OnceLock<Instant> = OnceLock::new();
+    START.get_or_init(Instant::now).elapsed().as_millis() as u64
+}
+
+/// Call from main `Moved`/`Resized` hot path (via schedule_save) — atomics only.
+pub fn note_main_window_moving() {
+    // 0 is reserved as "never moved"; clamp so a fresh note is never stored as 0.
+    MAIN_MOVED_AT_MS.store(mono_ms().max(1), Ordering::SeqCst);
+}
+
+fn moved_stamp_is_fresh(last: u64, now: u64) -> bool {
+    last != 0 && now.saturating_sub(last) <= MAIN_MOVED_FRESH_MS
+}
+
+/// True while the user is dragging/resizing the main window (or Soft Pad with capture).
+/// Cheap: recent Moved stamp and/or LMB+GetCapture on our process — no NCHITTEST.
+pub fn main_window_drag_active() -> bool {
+    let last = MAIN_MOVED_AT_MS.load(Ordering::SeqCst);
+    if moved_stamp_is_fresh(last, mono_ms()) {
+        return true;
+    }
+    #[cfg(windows)]
+    {
+        return self_capture_drag_active();
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+#[cfg(windows)]
+fn self_capture_drag_active() -> bool {
+    use winapi::um::winuser::{GetAsyncKeyState, GetCapture, VK_LBUTTON};
+    unsafe {
+        if GetAsyncKeyState(VK_LBUTTON) as u16 & 0x8000 == 0 {
+            return false;
+        }
+        let cap = GetCapture();
+        !cap.is_null() && crate::gaze_monitor::hwnd_belongs_to_self_process(cap)
+    }
+}
 
 fn is_storable_position(x: f64, y: f64) -> bool {
     x > HIDDEN_POSITION_THRESHOLD && y > HIDDEN_POSITION_THRESHOLD
@@ -111,22 +164,60 @@ pub fn persist_now(state: &Arc<AppState>, window: &WebviewWindow) {
     persist_and_log(state, window, "close");
 }
 
-pub fn schedule_save(state: Arc<AppState>, window: WebviewWindow) {
-    // Settings open: resize storms + disk save coincided with voiceWake idle stalls.
-    if *state.settings_drawer_open.lock() {
+/// Arm a debounced layout persist. Hot path (UI thread `Moved`/`Resized`): only atomics.
+/// Clone/spawn happens at most once until the worker finishes.
+pub fn schedule_save(state: &Arc<AppState>, window: &WebviewWindow) {
+    note_main_window_moving();
+    SAVE_GEN.fetch_add(1, Ordering::SeqCst);
+    // Already have a worker — only bump gen (no Arc clone / spawn on drag pixels).
+    if SAVE_PENDING.swap(true, Ordering::SeqCst) {
         return;
     }
-    let gen = SAVE_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    let state = Arc::clone(state);
+    let window = window.clone();
     tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(Duration::from_millis(SAVE_DEBOUNCE_MS)).await;
-        if SAVE_GEN.load(Ordering::SeqCst) != gen {
-            return;
+        loop {
+            let gen = SAVE_GEN.load(Ordering::SeqCst);
+            tokio::time::sleep(Duration::from_millis(SAVE_DEBOUNCE_MS)).await;
+            if SAVE_GEN.load(Ordering::SeqCst) != gen {
+                continue;
+            }
+            // Pause mid-drag must not persist (geo query + cfg clone hitch UI).
+            let mut deferred = false;
+            while main_window_drag_active() {
+                deferred = true;
+                tokio::time::sleep(Duration::from_millis(DRAG_WAIT_POLL_MS)).await;
+                if SAVE_GEN.load(Ordering::SeqCst) != gen {
+                    break;
+                }
+            }
+            if SAVE_GEN.load(Ordering::SeqCst) != gen {
+                continue;
+            }
+            // After gesture end, re-arm a quiet window so we don't write mid-settle.
+            if deferred {
+                continue;
+            }
+            break;
         }
-        if *state.settings_drawer_open.lock() {
-            return;
+        let final_gen = SAVE_GEN.load(Ordering::SeqCst);
+        // Settings open: resize storms + disk save coincided with voiceWake idle stalls.
+        if !*state.settings_drawer_open.lock() {
+            persist_and_log(&state, &window, "resize");
         }
-        persist_and_log(&state, &window, "resize");
+        SAVE_PENDING.store(false, Ordering::SeqCst);
+        // Lost update while clearing — re-arm so the last geometry is not dropped.
+        if SAVE_GEN.load(Ordering::SeqCst) != final_gen {
+            schedule_save(&state, &window);
+        }
     });
+}
+
+/// Pure coalesce gate used by unit tests (mirrors schedule_save hot path).
+#[cfg(test)]
+fn schedule_save_should_spawn_worker() -> bool {
+    SAVE_GEN.fetch_add(1, Ordering::SeqCst);
+    !SAVE_PENDING.swap(true, Ordering::SeqCst)
 }
 
 struct WindowGeo {
@@ -293,8 +384,13 @@ fn persist_and_log(state: &Arc<AppState>, window: &WebviewWindow, reason: &str) 
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_window_geo, is_storable_position, WindowGeo};
+    use super::{
+        apply_window_geo, is_storable_position, main_window_drag_active, moved_stamp_is_fresh,
+        note_main_window_moving, schedule_save_should_spawn_worker, WindowGeo, MAIN_MOVED_AT_MS,
+        SAVE_GEN, SAVE_PENDING,
+    };
     use crate::config::VoiceConfig;
+    use std::sync::atomic::Ordering;
 
     #[test]
     fn rejects_windows_hidden_sentinel_position() {
@@ -338,6 +434,43 @@ mod tests {
         assert_eq!(cfg.window_height, 700.0);
         assert_eq!(cfg.window_x, Some(10.0));
         assert_eq!(cfg.window_y, Some(20.0));
+    }
+
+    /// Moved storm must arm one worker, not one spawn per pixel.
+    #[test]
+    fn schedule_save_coalesces_to_one_spawn() {
+        SAVE_GEN.store(0, Ordering::SeqCst);
+        SAVE_PENDING.store(false, Ordering::SeqCst);
+        let mut spawns = 0u32;
+        for _ in 0..80 {
+            if schedule_save_should_spawn_worker() {
+                spawns += 1;
+            }
+        }
+        assert_eq!(spawns, 1, "80 Moved bumps must spawn once");
+        assert!(SAVE_GEN.load(Ordering::SeqCst) >= 80);
+        // Reset so other tests / later calls are not stuck pending.
+        SAVE_PENDING.store(false, Ordering::SeqCst);
+    }
+
+    #[test]
+    fn moved_stamp_freshness_window() {
+        assert!(!moved_stamp_is_fresh(0, 0));
+        assert!(!moved_stamp_is_fresh(0, 100));
+        assert!(moved_stamp_is_fresh(1, 1));
+        assert!(moved_stamp_is_fresh(100, 180));
+        assert!(!moved_stamp_is_fresh(100, 181));
+    }
+
+    #[test]
+    fn note_main_window_moving_marks_drag_active() {
+        MAIN_MOVED_AT_MS.store(0, Ordering::SeqCst);
+        note_main_window_moving();
+        assert!(
+            MAIN_MOVED_AT_MS.load(Ordering::SeqCst) >= 1,
+            "0 is reserved as never-moved"
+        );
+        assert!(main_window_drag_active(), "fresh Moved stamp ⇒ drag active");
     }
 
     /// Cursor FG rising edge: changed+first must enqueue once (not twice).

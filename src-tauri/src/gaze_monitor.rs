@@ -471,6 +471,21 @@ fn point_to_lparam(x: i32, y: i32) -> isize {
     ((hi << 16) | lo) as isize
 }
 
+/// True when hwnd is owned by this process (main / Soft Pad / tray / HUD).
+#[cfg(windows)]
+pub(crate) fn hwnd_belongs_to_self_process(hwnd: winapi::shared::windef::HWND) -> bool {
+    use winapi::um::processthreadsapi::GetCurrentProcessId;
+    use winapi::um::winuser::GetWindowThreadProcessId;
+    if hwnd.is_null() {
+        return false;
+    }
+    let mut pid = 0u32;
+    unsafe {
+        GetWindowThreadProcessId(hwnd, &mut pid);
+        pid != 0 && pid == GetCurrentProcessId()
+    }
+}
+
 #[cfg(windows)]
 pub fn get_drag_state(topology: &MonitorTopology) -> Result<DragState, String> {
     use winapi::shared::windef::{HWND, POINT, RECT};
@@ -532,6 +547,18 @@ pub fn get_drag_state(topology: &MonitorTopology) -> Result<DragState, String> {
     let root = unsafe { GetAncestor(hwnd, GA_ROOT) };
     if !root.is_null() && unsafe { IsWindow(root) } != 0 {
         hwnd = root;
+    }
+
+    // OneTone main / Soft Pad: skip WM_NCHITTEST (SendMessage hits the same UI thread
+    // mid title-bar drag and makes our own window trail the cursor). Not a Snap target.
+    if hwnd_belongs_to_self_process(hwnd) {
+        return Ok(DragState {
+            lmb_down: true,
+            is_title_bar: false,
+            hwnd: None,
+            monitor_id: cursor_monitor_id,
+            rect: None,
+        });
     }
 
     let hit = unsafe { SendMessageW(hwnd, WM_NCHITTEST, 0, point_to_lparam(pt.x, pt.y)) };
@@ -616,6 +643,10 @@ pub fn move_window_to_monitor(
     let hwnd = hwnd_val as winapi::shared::windef::HWND;
     if hwnd.is_null() || unsafe { IsWindow(hwnd) } == 0 {
         return Err("invalid_hwnd".into());
+    }
+    // Never Snap-move OneTone's own windows (would ReleaseCapture mid title-bar drag).
+    if hwnd_belongs_to_self_process(hwnd) {
+        return Err("self_hwnd".into());
     }
 
     unsafe {
@@ -776,6 +807,13 @@ mod tests {
     #[test]
     fn empty_monitors_error() {
         assert_eq!(build_topology(vec![]).unwrap_err(), "no_monitors");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn null_hwnd_is_not_self_process() {
+        use std::ptr;
+        assert!(!hwnd_belongs_to_self_process(ptr::null_mut()));
     }
 
     #[test]
