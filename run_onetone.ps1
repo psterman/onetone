@@ -524,9 +524,11 @@ try {
     Enter-BuildLock
     Clear-StaleBundleResources -BuildRoot $buildRoot
     $kwsFeature = if ($Kws) { @('--features', 'kws-engine') } else { @() }
-    & cargo tauri build --no-bundle @kwsFeature -- --target-dir $buildRoot
+    # cargo-tauri is not installed globally; the project ships @tauri-apps/cli
+    # in node_modules — run it through npx (works on any machine with npm).
+    & npx --no-install tauri build --no-bundle @kwsFeature -- --target-dir $buildRoot
     if ($LASTEXITCODE -ne 0) {
-      throw "cargo tauri build failed with exit code $LASTEXITCODE"
+      throw "tauri build failed with exit code $LASTEXITCODE"
     }
   }
   finally {

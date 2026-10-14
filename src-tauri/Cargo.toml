@@ -25,6 +25,12 @@ bfinal_e2e = []
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
+# Pinned as a direct dep so `std` is guaranteed: schemars 0.8.22 pulls
+# indexmap 1.9.3 with only `serde-1` (indexmap 1.9.3 has no default feature),
+# and its IndexMap<K, V> alias only compiles when `has_std` is defined — which
+# needs CARGO_FEATURE_STD (or a fragile build-script probe that fails in some
+# environments). Without it release builds die with E0107.
+indexmap = { version = "1.9.3", features = ["std"] }
 tauri-plugin-shell = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
@@ -62,7 +68,8 @@ agent-sessions = "=0.2.2"
 [target.'cfg(windows)'.dependencies]
 vosk = { version = "0.3.1", optional = true }
 webview2-com = "0.38"
-winapi = { version = "0.3", features = ["winuser", "libloaderapi", "minwindef", "synchapi", "processthreadsapi", "psapi", "xinput", "shellapi", "winver", "wingdi", "tlhelp32", "winbase", "dpapi", "wincrypt", "timezoneapi", "sysinfoapi"] }
+# timeapi: timeBeginPeriod/timeEndPeriod — drag follow loop needs 1ms granularity.
+winapi = { version = "0.3", features = ["winuser", "libloaderapi", "minwindef", "synchapi", "processthreadsapi", "psapi", "xinput", "shellapi", "winver", "wingdi", "tlhelp32", "winbase", "dpapi", "wincrypt", "timezoneapi", "sysinfoapi", "timeapi"] }
 winreg = "0.52"
 windows = { version = "0.58", features = [
   "Win32_Media_Audio",
@@ -88,6 +95,10 @@ aes-gcm = "0.10"
 tauri-build = { version = "2", features = [] }
 serde_json = "1"
 image = "0.25"
+# Same pin as [dependencies]: tauri-build's build-dep graph pulls schemars
+# 0.8.22 -> indexmap 1.9.3 without `std`, and resolver v2 unifies build-dep
+# features separately — force `std` here too or schemars dies with E0107.
+indexmap = { version = "1.9.3", features = ["std"] }
 # Test-harness Common Controls v6 manifest — see `embed_common_controls_manifest` in build.rs.
 embed-resource = "3"
 

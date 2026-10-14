@@ -47,7 +47,35 @@ assert(
 
 // --- IPC ---
 assert(/cmd_codex_micro_overlay_note_drag_begin/.test(cmd), 'IPC note_drag_begin kept for latch API');
+assert(/cmd_codex_micro_overlay_prepare_drag/.test(cmd), 'IPC prepare_drag kept as optional early pause');
 assert(/allow-cmd-codex-micro-overlay-note-drag-begin/.test(ipcToml), 'permission allowlist');
+assert(/allow-cmd-codex-micro-overlay-prepare-drag/.test(ipcToml), 'prepare_drag permission allowlist');
+assert(/pub async fn prepare_overlay_drag/.test(rs), 'prepare_overlay_drag still available');
+assert(/OVERLAY_CAMERA_PAUSE_SENT/.test(rs), 'overlay camera pause latch avoids depth+2');
+assert(/OVERLAY_DRAG_GEN/.test(rs), 'overlay drag generation guards stale finish');
+assert(/overlay_drag_end_stale/.test(rs), 'stale finish does not resume camera mid next drag');
+assert(
+  /cmd_codex_micro_overlay_start_drag/.test(overlay) &&
+    !/prepare_drag[\s\S]{0,120}?start_drag|prepare_drag['\"][\s\S]{0,80}?then\(/.test(overlay),
+  'FE fire-and-forget start_drag immediately (no await prepare head-lag)'
+);
+assert(
+  /Duration::from_millis\(1\)/.test(rs) && /fn start_overlay_drag_win32/.test(rs),
+  'follow loop samples at ~1ms for short flicks'
+);
+{
+  const startFn = rs.match(
+    /pub fn start_overlay_drag[\s\S]*?fn overlay_lmb_down/
+  )?.[0] || '';
+  const spawnAt = startFn.indexOf('overlay-drag');
+  const pauseAt = startFn.indexOf('emit_camera_frame_pump(win.app_handle(), true)');
+  assert(
+    /CRITICAL ORDER: spawn follow/.test(rs) &&
+      spawnAt >= 0 &&
+      pauseAt > spawnAt,
+    'Soft Pad spawns follow thread before win.eval camera pause'
+  );
+}
 assert(/cmd_codex_micro_overlay_start_drag/.test(cmd), 'IPC start_drag command');
 
 // --- FE drag + intent ---
@@ -63,17 +91,53 @@ assert(
   'FE drag binds pointerdown only (no mousedown double-fire)'
 );
 assert(
-  /AttachThreadInput/.test(rs) && /HTCAPTION/.test(rs) && /SC_MOVE/.test(rs),
-  'Rust drag attaches to UI thread then SC_MOVE|HTCAPTION'
+  /SetWindowPos/.test(rs) && /GetCursorPos/.test(rs) && /GetWindowRect/.test(rs),
+  'Rust Soft Pad drag follows cursor via SetWindowPos (not SC_MOVE modal loop)'
 );
 assert(
-  /overlay-drag/.test(rs) && /SendMessageW/.test(rs),
-  'Win32 drag runs on dedicated thread via SendMessage (no main-thread queue hop)'
+  /overlay-drag/.test(rs) && /overlay_drag_follow_return/.test(rs),
+  'Win32 drag runs on dedicated thread with follow-return trace'
 );
 assert(/overlay_lmb_down/.test(rs), 'aborts drag if LMB already up');
 assert(
-  !/PostMessageW[\s\S]{0,120}SC_MOVE/.test(rs),
-  'does not PostMessage SC_MOVE (laggy / misses button-down)'
+  !/overlay-drag-wake/.test(rs) &&
+    !/SendMessageW\([\s\S]{0,120}?SC_MOVE/.test(rs) &&
+    /fn start_overlay_drag_win32[\s\S]{0,800}?SetWindowPos/.test(rs),
+  'start_overlay_drag_win32 uses SetWindowPos follow (not SC_MOVE SendMessage)'
+);
+assert(
+  !/\bmouse_event\b/.test(rs) && !/MOUSEEVENTF_MOVE/.test(rs) && !/overlay-drag-nudge/.test(rs),
+  'no synthetic mouse_event nudge on Soft Pad drag'
+);
+assert(
+  /run_on_main_thread[\s\S]{0,200}?is_err\(\)/.test(rs) &&
+    /clear_overlay_dragging/.test(rs),
+  'drag end clears latch even if main-thread queue fails'
+);
+assert(/fn finish_overlay_drag/.test(rs), 'Rust owns drag end after follow loop');
+assert(
+  /fn apply_overlay_payload[\s\S]{0,500}?overlay_is_dragging/.test(rs),
+  'apply_overlay_payload defers while Soft Pad dragging'
+);
+assert(
+  /pub fn maybe_tick[\s\S]{0,300}?overlay_is_dragging/.test(rs),
+  'maybe_tick early-returns while Soft Pad dragging'
+);
+assert(
+  /codex_micro_overlay_drag/.test(rs) && /phase.: .end/.test(rs),
+  'Rust emits overlay drag ended for FE UI flag'
+);
+assert(
+  /struct DesiredOverlayGeometry/.test(rs) && /fn commit_overlay_geometry/.test(rs),
+  'DesiredOverlayGeometry + single commit entry'
+);
+assert(
+  /SetWindowPos/.test(rs) && /fn set_overlay_hwnd_pos_size/.test(rs),
+  'geometry commit uses one SetWindowPos'
+);
+assert(
+  /OVERLAY_PENDING_GEO/.test(rs),
+  'geometry queued while dragging'
 );
 assert(
   !/app-region:\s*drag/.test(
@@ -90,7 +154,20 @@ assert(
   /if\(pendingMinimized!=null\)/.test(overlay),
   'render skips stale minimized while pending'
 );
-assert(/endOverlayDrag/.test(overlay), 'endOverlayDrag on up/cancel/blur');
+assert(
+  !/function endOverlayDrag/.test(overlay) &&
+    !/addEventListener\('pointercancel',\s*endOverlayDrag\)/.test(overlay) &&
+    !/addEventListener\('blur',\s*endOverlayDrag\)/.test(overlay),
+  'FE does not snap/clear latch on pointercancel/blur'
+);
+assert(
+  /codex_micro_overlay_drag/.test(overlay) && /phase==='end'/.test(overlay),
+  'FE clears local dragging from Rust drag-ended event'
+);
+assert(
+  !/cmd_codex_micro_overlay_snap_position/.test(overlay),
+  'FE no longer invokes snap_position (Rust owns end)'
+);
 assert(/toggleMiniMatsFold/.test(carry), 'head title toggles materials fold');
 assert(
   !/document\.addEventListener\(\s*'pointerdown'[\s\S]{0,200}setMiniMatsOpen\(false\)/.test(carry),

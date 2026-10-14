@@ -571,6 +571,19 @@
     syncDisplayLayers();
   }
 
+  /** Drag: stop beauty/mask rAF without tearing down prefs/canvas. */
+  var dragPaused=false;
+  function pauseForDrag(){
+    if(dragPaused) return;
+    dragPaused=true;
+    cancelLoops();
+  }
+  function resumeAfterDrag(){
+    if(!dragPaused) return;
+    dragPaused=false;
+    if(wantsPipeline()&&running&&videoEl) startLoop();
+  }
+
   function attach(video,shell){
     videoEl=video||$('cameraPreviewVideo');
     shellEl=shell||$('cameraPreviewShell');
@@ -713,6 +726,8 @@
     renderOnce:renderOnce,
     getRuntimeStatus:getRuntimeStatus,
     setCompareBypass:setCompareBypass,
+    pauseForDrag:pauseForDrag,
+    resumeAfterDrag:resumeAfterDrag,
     defaultPrefs:function(){ return clonePrefs(DEFAULT_PREFS); },
     normalizePrefs:clonePrefs,
     lookDefaults:function(look){ return LOOK_DEFAULTS[normalizeLook(look)]||LOOK_DEFAULTS.off; },

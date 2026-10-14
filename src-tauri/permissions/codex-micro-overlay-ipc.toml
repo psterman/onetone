@@ -5,6 +5,7 @@ permissions = [
   "allow-cmd-codex-micro-overlay-get-state",
   "allow-cmd-codex-micro-overlay-dismiss",
   "allow-cmd-codex-micro-overlay-note-drag-begin",
+  "allow-cmd-codex-micro-overlay-prepare-drag",
   "allow-cmd-codex-micro-overlay-start-drag",
   "allow-cmd-codex-micro-overlay-snap-position",
   "allow-cmd-codex-micro-overlay-set-minimized",

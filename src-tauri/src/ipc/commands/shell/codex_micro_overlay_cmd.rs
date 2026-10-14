@@ -113,9 +113,37 @@ pub fn cmd_codex_micro_overlay_note_drag_begin() {
     codex_micro_overlay::note_overlay_drag_begin();
 }
 
+/// Await this before fire-and-forget start_drag — pauses main camera and yields
+/// so eval lands before Soft Pad SC_MOVE blocks the UI thread.
 #[tauri::command]
-pub fn cmd_codex_micro_overlay_start_drag(window: WebviewWindow) -> Result<(), String> {
-    codex_micro_overlay::start_overlay_drag(&window)
+pub async fn cmd_codex_micro_overlay_prepare_drag(app: AppHandle) {
+    codex_micro_overlay::prepare_overlay_drag(&app).await;
+}
+
+/// `cx`/`cy`: pointer position inside the pad (CSS px) captured at pointerdown.
+/// Used as the grab offset so a late-arriving invoke does not bake its own delay
+/// into the offset (pad rides a constant distance away from the cursor).
+///
+/// Async + spawn_blocking: as a sync command the whole body (HWND cache, two
+/// emit broadcasts, camera eval, scale_factor dispatch) ran ON the UI thread —
+/// the Drag Lag panel measured fe_invoke_ok at 14..222ms, i.e. the main thread
+/// was pinned for up to 222ms on every single pointerdown (pad starts following
+/// late = "拖动很慢"; the same stalls starve the main window's modal move loop).
+#[tauri::command]
+pub async fn cmd_codex_micro_overlay_start_drag(
+    window: WebviewWindow,
+    cx: Option<f64>,
+    cy: Option<f64>,
+) -> Result<(), String> {
+    let anchor = match (cx, cy) {
+        (Some(x), Some(y)) => Some((x, y)),
+        _ => None,
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        codex_micro_overlay::start_overlay_drag(&window, anchor)
+    })
+    .await
+    .map_err(|e| format!("start_drag join failed: {e}"))?
 }
 
 #[tauri::command]

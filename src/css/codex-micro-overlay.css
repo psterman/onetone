@@ -3358,3 +3358,15 @@ html[data-theme="dark"] .soft-pad-confirm-bar__label {
     transform: none !important;
   }
 }
+
+/* ---- Soft Pad drag de-load --------------------------------------------
+   Stripping WS_EX_LAYERED for the gesture already brought per-move cost from
+   20-44ms down to 0-2ms (see follow_return setposAvgMs), so the pad keeps its
+   real chrome while dragging. Only the properties that keep painting frame
+   after frame are dropped; nothing that changes how the pad looks is touched —
+   an earlier version collapsed it to a flat block and that read as "变灰". */
+html.ot-pad-drag *,
+html.ot-pad-drag *::before,
+html.ot-pad-drag *::after{
+  animation:none!important;
+}

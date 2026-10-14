@@ -523,6 +523,8 @@ pub fn run() {
             app_log::log_line(&app_state, "startup", "main window acquired");
             // Main settings window must NOT stay topmost — only Soft Pad / mini overlay.
             let _ = window.set_always_on_top(false);
+            // WM_ENTER/EXITSIZEMOVE → MAIN_SIZEMOVE_ACTIVE + camera_frame_pump pause.
+            window_layout::install_main_sizemove_subclass(&window, app.handle());
 
             // Dev launcher sets ONETONE_LIVE_FRONTEND=1 so UI tracks src/ via :5173
             // instead of the frontend snapshot embedded at last cargo build.
@@ -1191,6 +1193,7 @@ pub fn run() {
             ipc::cmd_codex_micro_protocol_server_status,
             ipc::cmd_codex_micro_overlay_dismiss,
             ipc::cmd_codex_micro_overlay_note_drag_begin,
+            ipc::cmd_codex_micro_overlay_prepare_drag,
             ipc::cmd_codex_micro_overlay_start_drag,
             ipc::cmd_codex_micro_overlay_snap_position,
             ipc::cmd_codex_micro_overlay_set_minimized,

@@ -67,12 +67,36 @@
     if(!payload||typeof payload!=='object') return;
     (listeners.message||[]).forEach(function(cb){ try{cb({data:payload});}catch(e){console.error('to_js handler',e);} });
   }
+  // True while a native title-bar / Soft Pad drag owns the UI thread
+  // (class set by core/window-drag-perf.js from the WM_ENTER/EXITSIZEMOVE latch).
+  function dragActive(){
+    try{
+      const el=global.document&&global.document.documentElement;
+      return !!(el&&el.classList&&el.classList.contains('ot-drag-active'));
+    }catch(_){ return false; }
+  }
   function dispatchToJs(payload){
     if(!payload||typeof payload!=='object') return;
     if(!listeners.message||!listeners.message.length){
       applyMvpInitEarly(payload);
       pendingToJsQueue.push(payload);
       if(pendingToJsQueue.length>64) pendingToJsQueue.shift();
+      return;
+    }
+    // Measured: a to_js burst during drag showed up as raf_jank gapMs=67 with
+    // tag=voiceStatusPoll — Rust pushes are synchronous JS work (and often a
+    // follow-up invoke) landing inside the modal move loop. Defer to gesture end.
+    if(dragActive()){
+      applyMvpInitEarly(payload);
+      // Keep only the NEWEST push per type. Flushing up to 64 stale pushes at
+      // gesture end measured as a 521ms tail between follow_return and
+      // overlay_drag_end — coalescing by type keeps the catch-up tiny.
+      const t=payload.type;
+      for(let i=pendingToJsQueue.length-1;i>=0;i--){
+        if(pendingToJsQueue[i]&&pendingToJsQueue[i].type===t) pendingToJsQueue.splice(i,1);
+      }
+      pendingToJsQueue.push(payload);
+      if(pendingToJsQueue.length>32) pendingToJsQueue.shift();
       return;
     }
     dispatchToJsNow(payload);
@@ -96,6 +120,8 @@
   global.__vp_ensure_to_js__=ensureToJsListener;
   global.__vp_dispatch_to_js__=dispatchToJs;
   global.OneToneEvents={dispatchToJs:dispatchToJs,bridge:global.__vp_bridge__};
+  // window-drag-perf.js calls this when the gesture ends so deferred pushes land.
+  global.__vp_flush_to_js__=flushToJsQueue;
   ensureToJsListener();
   let listenPoll=0;
   listenPoll=setInterval(function(){

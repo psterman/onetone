@@ -1,9 +1,10 @@
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
-use tauri::{LogicalPosition, LogicalSize, Position, Size, WebviewWindow};
+use parking_lot::Mutex as ParkingMutex;
+use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, Position, Size, WebviewWindow};
 
 use crate::config::{self, VoiceConfig};
 use crate::AppState;
@@ -24,10 +25,27 @@ static SAVE_GEN: AtomicU64 = AtomicU64::new(0);
 static SAVE_PENDING: AtomicBool = AtomicBool::new(false);
 /// Monotonic ms of last main-window Moved/Resized (for Soft Pad / persist deferral).
 static MAIN_MOVED_AT_MS: AtomicU64 = AtomicU64::new(0);
+/// Native WM_ENTERSIZEMOVE…EXITSIZEMOVE — sole truth for main title-bar / resize drag.
+static MAIN_SIZEMOVE_ACTIVE: AtomicBool = AtomicBool::new(false);
+/// NCLBUTTONDOWN paused camera but ENTERSIZEMOVE not yet (click-only must resume on button-up).
+#[cfg(windows)]
+static MAIN_EARLY_PAUSE_PENDING: AtomicBool = AtomicBool::new(false);
+/// Main path already sent pause to JS (avoid depth+2 from early+ENTER).
+#[cfg(windows)]
+static MAIN_CAMERA_PAUSE_SENT: AtomicBool = AtomicBool::new(false);
+#[cfg(windows)]
+static MAIN_SIZEMOVE_PREV_WNDPROC: AtomicIsize = AtomicIsize::new(0);
+#[cfg(windows)]
+static MAIN_SIZEMOVE_HWND: AtomicIsize = AtomicIsize::new(0);
+static MAIN_APP_FOR_EMIT: OnceLock<ParkingMutex<Option<AppHandle>>> = OnceLock::new();
 
 fn mono_ms() -> u64 {
     static START: OnceLock<Instant> = OnceLock::new();
     START.get_or_init(Instant::now).elapsed().as_millis() as u64
+}
+
+fn main_app_for_emit() -> &'static ParkingMutex<Option<AppHandle>> {
+    MAIN_APP_FOR_EMIT.get_or_init(|| ParkingMutex::new(None))
 }
 
 /// Call from main `Moved`/`Resized` hot path (via schedule_save) — atomics only.
@@ -40,33 +58,282 @@ fn moved_stamp_is_fresh(last: u64, now: u64) -> bool {
     last != 0 && now.saturating_sub(last) <= MAIN_MOVED_FRESH_MS
 }
 
-/// True while the user is dragging/resizing the main window (or Soft Pad with capture).
-/// Cheap: recent Moved stamp and/or LMB+GetCapture on our process — no NCHITTEST.
+/// True while the user is dragging/resizing the main window.
+/// Primary: WM_ENTER/EXITSIZEMOVE latch. Aux: recent Moved stamp (non-Windows / settle).
+/// Do **not** use GetCapture — scheduler threads cannot see UI-thread capture.
 pub fn main_window_drag_active() -> bool {
-    let last = MAIN_MOVED_AT_MS.load(Ordering::SeqCst);
-    if moved_stamp_is_fresh(last, mono_ms()) {
+    if MAIN_SIZEMOVE_ACTIVE.load(Ordering::SeqCst) {
         return true;
     }
+    let last = MAIN_MOVED_AT_MS.load(Ordering::SeqCst);
+    moved_stamp_is_fresh(last, mono_ms())
+}
+
+/// Timeline breadcrumb for the Drag Lag panel (FE `OneToneDragLagPanel`).
+pub fn emit_drag_trace(
+    app: &AppHandle,
+    phase: &str,
+    source: &str,
+    detail: serde_json::Value,
+) {
+    #[cfg(windows)]
+    let camera_pause_sent = MAIN_CAMERA_PAUSE_SENT.load(Ordering::SeqCst);
+    #[cfg(not(windows))]
+    let camera_pause_sent = false;
+    let payload = serde_json::json!({
+        "type": "drag_trace",
+        "t": crate::runtime_event::now_ms(),
+        "phase": phase,
+        "source": source,
+        "detail": detail,
+        "flags": {
+            "mainSizeMove": MAIN_SIZEMOVE_ACTIVE.load(Ordering::SeqCst),
+            "cameraPauseSent": camera_pause_sent,
+        },
+    });
+    let _ = crate::ipc::emit_app_event(app, "drag_trace", &payload);
+    crate::ipc::emit_to_main_if_available(app, None, payload.clone());
+    // Fire the whole fan-out (2 emits + 2 evals) off the calling thread: the
+    // callers include WM_NCLBUTTONDOWN handling on the UI thread, and doing
+    // this inline measured as ncl_down→enter_sizemove growing 1ms → 78-202ms.
+    let app2 = app.clone();
+    tauri::async_runtime::spawn(async move {
+        eval_drag_trace(&app2, &payload);
+    });
+}
+
+/// Direct eval bridge to the Drag Lag panels. The tauri event system is dead
+/// weight here: `withGlobalTauri=false` and `__TAURI_INTERNALS__` exposes no
+/// `listen`, so `OneToneIpc.listen` always rejects and no FE listener is ever
+/// registered — every `emit()` above is a silent no-op. The panels therefore
+/// only ever saw local `fe_*` rows. Eval (same path as the to_js snapshots)
+/// is the channel that actually lands.
+fn eval_drag_trace(app: &AppHandle, payload: &serde_json::Value) {
+    let body = payload.to_string();
+    let script = format!(
+        "try{{window.OneToneDragLagPanel&&OneToneDragLagPanel.noteRaw({body})}}catch(e){{}}"
+    );
+    if let Some(win) = crate::ipc::get_main_window(app) {
+        let _ = win.eval(&script);
+    }
+    if let Some(win) = app.get_webview_window(crate::codex_micro_overlay::CODEX_MICRO_OVERLAY_LABEL)
+    {
+        let _ = win.eval(&script);
+    }
+}
+
+/// Soft Pad drag worker threads — use cached AppHandle from main subclass install.
+pub fn try_emit_drag_trace(phase: &str, source: &str, detail: serde_json::Value) {
+    if let Some(app) = main_app_for_emit().lock().clone() {
+        emit_drag_trace(&app, phase, source, detail);
+    }
+}
+
+/// Pause/resume main-window camera pumps during drag.
+/// Prefer `eval` (direct script) over `to_js` — ENTERSIZEMOVE / Soft Pad SC_MOVE
+/// can starve event delivery until EXIT, so pause must land *before* the loop.
+/// Never both eval and to_js: dual delivery doubled pauseDepth and a late to_js
+/// resume could wake the camera mid Soft Pad drag (1st ok, 2nd laggy).
+pub fn emit_camera_frame_pump(app: &AppHandle, paused: bool) {
+    let payload = serde_json::json!({
+        "type": "camera_frame_pump",
+        "paused": paused,
+    });
+    if let Some(win) = crate::ipc::get_main_window(app) {
+        let script = if paused {
+            "try{window.OneToneCameraFramePump&&OneToneCameraFramePump.pause()}catch(e){}"
+        } else {
+            "try{window.OneToneCameraFramePump&&OneToneCameraFramePump.resume()}catch(e){}"
+        };
+        let _ = win.eval(script);
+    } else {
+        crate::ipc::emit_to_main_if_available(app, None, payload);
+    }
+    emit_drag_trace(
+        app,
+        if paused { "camera_pause" } else { "camera_resume" },
+        "rust",
+        serde_json::json!({ "via": "emit_camera_frame_pump" }),
+    );
+}
+
+/// Main title-bar path only: pause then yield so eval can finish before
+/// ENTERSIZEMOVE's modal loop starves the UI thread. Soft Pad SetWindowPos
+/// follow does **not** need this — spawn follow first, then eval in parallel.
+pub async fn emit_camera_frame_pump_before_modal(app: &AppHandle, paused: bool) {
+    emit_camera_frame_pump(app, paused);
+    if paused {
+        tokio::time::sleep(Duration::from_millis(32)).await;
+    }
+}
+
+fn set_main_sizemove_active(active: bool) {
+    MAIN_SIZEMOVE_ACTIVE.store(active, Ordering::SeqCst);
+    note_main_window_moving();
     #[cfg(windows)]
     {
-        return self_capture_drag_active();
+        if active {
+            MAIN_EARLY_PAUSE_PENDING.store(false, Ordering::SeqCst);
+            let already = MAIN_CAMERA_PAUSE_SENT.swap(true, Ordering::SeqCst);
+            if let Some(app) = main_app_for_emit().lock().clone() {
+                emit_drag_trace(
+                    &app,
+                    "enter_sizemove",
+                    "main",
+                    serde_json::json!({ "alreadyPaused": already }),
+                );
+            }
+            if already {
+                return; // early NCL already paused — do not depth+2
+            }
+        } else {
+            let had = MAIN_CAMERA_PAUSE_SENT.swap(false, Ordering::SeqCst);
+            if let Some(app) = main_app_for_emit().lock().clone() {
+                emit_drag_trace(
+                    &app,
+                    "exit_sizemove",
+                    "main",
+                    serde_json::json!({ "hadPause": had }),
+                );
+            }
+            if !had {
+                return;
+            }
+        }
     }
-    #[cfg(not(windows))]
-    {
-        false
+    if let Some(app) = main_app_for_emit().lock().clone() {
+        emit_camera_frame_pump(&app, active);
+    }
+}
+
+/// Title-bar / border hit → pause camera *before* DefWindowProc enters the modal move loop.
+#[cfg(windows)]
+fn early_pause_camera_before_sizemove() {
+    MAIN_EARLY_PAUSE_PENDING.store(true, Ordering::SeqCst);
+    MAIN_SIZEMOVE_ACTIVE.store(true, Ordering::SeqCst);
+    note_main_window_moving();
+    let already = MAIN_CAMERA_PAUSE_SENT.swap(true, Ordering::SeqCst);
+    if let Some(app) = main_app_for_emit().lock().clone() {
+        emit_drag_trace(
+            &app,
+            "ncl_down",
+            "main",
+            serde_json::json!({ "alreadyPaused": already }),
+        );
+        if already {
+            return;
+        }
+        emit_camera_frame_pump(&app, true);
     }
 }
 
 #[cfg(windows)]
-fn self_capture_drag_active() -> bool {
-    use winapi::um::winuser::{GetAsyncKeyState, GetCapture, VK_LBUTTON};
-    unsafe {
-        if GetAsyncKeyState(VK_LBUTTON) as u16 & 0x8000 == 0 {
-            return false;
-        }
-        let cap = GetCapture();
-        !cap.is_null() && crate::gaze_monitor::hwnd_belongs_to_self_process(cap)
+fn cancel_early_pause_if_click_only() {
+    if !MAIN_EARLY_PAUSE_PENDING.swap(false, Ordering::SeqCst) {
+        return;
     }
+    // No ENTERSIZEMOVE — user clicked caption without dragging.
+    MAIN_SIZEMOVE_ACTIVE.store(false, Ordering::SeqCst);
+    if !MAIN_CAMERA_PAUSE_SENT.swap(false, Ordering::SeqCst) {
+        return;
+    }
+    if let Some(app) = main_app_for_emit().lock().clone() {
+        emit_drag_trace(&app, "ncl_up_click", "main", serde_json::json!({}));
+        emit_camera_frame_pump(&app, false);
+    }
+}
+
+#[cfg(windows)]
+fn hit_test_starts_sizemove(ht: isize) -> bool {
+    use winapi::um::winuser::{
+        HTBOTTOM, HTBOTTOMLEFT, HTBOTTOMRIGHT, HTCAPTION, HTLEFT, HTRIGHT, HTTOP, HTTOPLEFT,
+        HTTOPRIGHT,
+    };
+    matches!(
+        ht,
+        x if x == HTCAPTION as isize
+            || x == HTLEFT as isize
+            || x == HTRIGHT as isize
+            || x == HTTOP as isize
+            || x == HTBOTTOM as isize
+            || x == HTTOPLEFT as isize
+            || x == HTTOPRIGHT as isize
+            || x == HTBOTTOMLEFT as isize
+            || x == HTBOTTOMRIGHT as isize
+    )
+}
+
+/// Install main HWND subclass for ENTER/EXITSIZEMOVE (Windows). No-op elsewhere.
+pub fn install_main_sizemove_subclass(window: &WebviewWindow, app: &AppHandle) {
+    *main_app_for_emit().lock() = Some(app.clone());
+    #[cfg(windows)]
+    {
+        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+        let Ok(handle) = window.window_handle() else {
+            return;
+        };
+        let RawWindowHandle::Win32(platform) = handle.as_raw() else {
+            return;
+        };
+        let hwnd = platform.hwnd.get() as isize;
+        unsafe {
+            install_main_sizemove_wndproc(hwnd as winapi::shared::windef::HWND);
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = window;
+    }
+}
+
+#[cfg(windows)]
+unsafe fn install_main_sizemove_wndproc(hwnd: winapi::shared::windef::HWND) {
+    use winapi::shared::basetsd::LONG_PTR;
+    use winapi::um::winuser::{SetWindowLongPtrW, GWLP_WNDPROC};
+
+    let stored = MAIN_SIZEMOVE_HWND.load(Ordering::SeqCst);
+    if stored == hwnd as isize {
+        return;
+    }
+    let prev = SetWindowLongPtrW(
+        hwnd,
+        GWLP_WNDPROC,
+        main_sizemove_wndproc as *const () as LONG_PTR,
+    );
+    MAIN_SIZEMOVE_PREV_WNDPROC.store(prev, Ordering::SeqCst);
+    MAIN_SIZEMOVE_HWND.store(hwnd as isize, Ordering::SeqCst);
+}
+
+#[cfg(windows)]
+unsafe extern "system" fn main_sizemove_wndproc(
+    hwnd: winapi::shared::windef::HWND,
+    msg: winapi::shared::minwindef::UINT,
+    wparam: winapi::shared::minwindef::WPARAM,
+    lparam: winapi::shared::minwindef::LPARAM,
+) -> winapi::shared::minwindef::LRESULT {
+    use winapi::um::winuser::{
+        CallWindowProcW, WM_ENTERSIZEMOVE, WM_EXITSIZEMOVE, WM_NCLBUTTONDOWN, WM_NCLBUTTONUP,
+    };
+
+    // NCLBUTTONDOWN arrives *before* the modal size/move loop — pause camera here so
+    // win.eval can run before DefWindowProc blocks the UI thread.
+    if msg == WM_NCLBUTTONDOWN && hit_test_starts_sizemove(wparam as isize) {
+        early_pause_camera_before_sizemove();
+    } else if msg == WM_ENTERSIZEMOVE {
+        set_main_sizemove_active(true);
+    } else if msg == WM_EXITSIZEMOVE {
+        set_main_sizemove_active(false);
+    } else if msg == WM_NCLBUTTONUP {
+        cancel_early_pause_if_click_only();
+    }
+    let prev = MAIN_SIZEMOVE_PREV_WNDPROC.load(Ordering::SeqCst);
+    CallWindowProcW(
+        std::mem::transmute(prev),
+        hwnd,
+        msg,
+        wparam,
+        lparam,
+    )
 }
 
 fn is_storable_position(x: f64, y: f64) -> bool {
@@ -387,7 +654,7 @@ mod tests {
     use super::{
         apply_window_geo, is_storable_position, main_window_drag_active, moved_stamp_is_fresh,
         note_main_window_moving, schedule_save_should_spawn_worker, WindowGeo, MAIN_MOVED_AT_MS,
-        SAVE_GEN, SAVE_PENDING,
+        MAIN_SIZEMOVE_ACTIVE, SAVE_GEN, SAVE_PENDING,
     };
     use crate::config::VoiceConfig;
     use std::sync::atomic::Ordering;
@@ -464,6 +731,7 @@ mod tests {
 
     #[test]
     fn note_main_window_moving_marks_drag_active() {
+        MAIN_SIZEMOVE_ACTIVE.store(false, Ordering::SeqCst);
         MAIN_MOVED_AT_MS.store(0, Ordering::SeqCst);
         note_main_window_moving();
         assert!(
@@ -471,6 +739,18 @@ mod tests {
             "0 is reserved as never-moved"
         );
         assert!(main_window_drag_active(), "fresh Moved stamp ⇒ drag active");
+    }
+
+    #[test]
+    fn sizemove_latch_is_drag_truth() {
+        MAIN_MOVED_AT_MS.store(0, Ordering::SeqCst);
+        MAIN_SIZEMOVE_ACTIVE.store(true, Ordering::SeqCst);
+        assert!(main_window_drag_active(), "ENTERSIZEMOVE latch ⇒ drag active");
+        MAIN_SIZEMOVE_ACTIVE.store(false, Ordering::SeqCst);
+        assert!(
+            !main_window_drag_active(),
+            "EXITSIZEMOVE + stale stamp ⇒ not active"
+        );
     }
 
     /// Cursor FG rising edge: changed+first must enqueue once (not twice).

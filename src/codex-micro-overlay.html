@@ -16,6 +16,7 @@
   <script src="js/features/activation/activation-hub.js"></script>
   <script src="js/features/capture/smart-capture.js"></script>
   <script src="js/features/agent/soft-pad-carry.js?v=20261013-mini-mats-fit3"></script>
+  <script src="js/features/debug/drag-lag-panel.js"></script>
 </head>
 <body>
   <div class="root">
@@ -4093,11 +4094,10 @@
     function setOverlayDragging(on){
       dragging=!!on;
       try{ window.__onetoneOverlayDragging=dragging; }catch(_){}
-    }
-    function endOverlayDrag(){
-      if(!dragging) return;
-      setOverlayDragging(false);
-      invoke('cmd_codex_micro_overlay_snap_position',{}).catch(function(){});
+      // The flat-drag visual (html.ot-pad-drag) is owned by Rust: start_overlay_drag
+      // adds it and finish_overlay_drag removes it unconditionally, via eval.
+      // Driving it from this latch broke once the end event was lost — the pad
+      // stayed grey until the 8s watch fired.
     }
     /** Shared expand/minimize intent — generation + pending; invoke fail rolls back. */
     function setMinimizedIntent(target, opts){
@@ -4121,25 +4121,65 @@
       });
     }
 
-    // Drag: one fire-and-forget IPC (MUST NOT await — Rust run_on_main_thread).
-    // start_drag latches OVERLAY_DRAGGING synchronously on command entry; dual IPC
-    // (note_drag_begin + start_drag) only delayed the Win32 SendMessage hop.
+    // Drag: one fire-and-forget IPC (MUST NOT await — Rust SendMessage blocks until LMB up).
+    // Rust owns end: SC_MOVE return → snap + clear latch; FE must NOT snap on
+    // pointercancel (ReleaseCapture fires cancel mid-gesture and used to open geom writes early).
     // pointerdown only — mousedown would double-fire on the same gesture.
+    var dragEndWatch=0;
+    function armDragEndWatch(){
+      if(dragEndWatch) clearTimeout(dragEndWatch);
+      // If Rust end event is lost, do not leave FE dragging latch forever (blocks re-drag).
+      dragEndWatch=setTimeout(function(){
+        dragEndWatch=0;
+        setOverlayDragging(false);
+      },8000);
+    }
+    function clearDragEndWatch(){
+      if(dragEndWatch){ clearTimeout(dragEndWatch); dragEndWatch=0; }
+    }
     function beginOverlayDrag(e){
       if(e.pointerType==='touch') return;
       if(e.button!=null&&e.button!==0) return;
       if(isDragBlocked(e.target)) return;
       if(dragging) return;
       setOverlayDragging(true);
-      invoke('cmd_codex_micro_overlay_start_drag',{}).catch(function(){
+      armDragEndWatch();
+      try{
+        if(window.OneToneDragLagPanel&&OneToneDragLagPanel.note){
+          OneToneDragLagPanel.note('fe_pointerdown',{x:e.clientX|0,y:e.clientY|0});
+        }
+      }catch(_){}
+      // Fire-and-forget immediately — awaiting prepare (32ms+) left the pad frozen for the
+      // first flicks; SetWindowPos follow no longer needs pause-before-modal. Camera pause
+      // runs inside start_drag without blocking the follow thread.
+      // Probe: the promise settle itself proves whether Rust executed the command
+      // (resolve = command returned; reject = IPC error). Drag Lag panel rows
+      // fe_invoke_ok / fe_invoke_err are the ground truth for "pad won't move".
+      var invokeT0=Date.now();
+      invoke('cmd_codex_micro_overlay_start_drag',{
+        cx:e.clientX, cy:e.clientY
+      }).then(function(){
+        if(window.OneToneDragLagPanel&&OneToneDragLagPanel.note){
+          OneToneDragLagPanel.note('fe_invoke_ok',{ms:Date.now()-invokeT0});
+        }
+      }).catch(function(err){
+        if(window.OneToneDragLagPanel&&OneToneDragLagPanel.note){
+          OneToneDragLagPanel.note('fe_invoke_err',{ms:Date.now()-invokeT0,err:String(err||'').slice(0,90)});
+        }
+        clearDragEndWatch();
         setOverlayDragging(false);
       });
     }
     wrap.addEventListener('pointerdown',beginOverlayDrag,true);
-    window.addEventListener('pointerup',endOverlayDrag);
-    window.addEventListener('mouseup',endOverlayDrag);
-    window.addEventListener('pointercancel',endOverlayDrag);
-    window.addEventListener('blur',endOverlayDrag);
+    if(listen){
+      listen('codex_micro_overlay_drag',function(ev){
+        var p=ev&&ev.payload;
+        if(p&&p.phase==='end'){
+          clearDragEndWatch();
+          setOverlayDragging(false);
+        }
+      }).catch(function(){});
+    }
 
     document.querySelectorAll('[data-act="close"]').forEach(function(btn){
       btn.addEventListener('click',function(e){

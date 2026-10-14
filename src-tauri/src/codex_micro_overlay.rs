@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use parking_lot::Mutex as ParkingMutex;
 use serde::Serialize;
 use tauri::{
-    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, WebviewWindow,
+    AppHandle, Emitter, Manager, PhysicalPosition, Position, Size, WebviewWindow,
 };
 
 use crate::app_chat_workflow::CODEX_APP_TARGET_ID;
@@ -80,8 +80,14 @@ static OVERLAY_MATS_RAIL: AtomicBool = AtomicBool::new(false);
 static OVERLAY_MINI_MATS: AtomicBool = AtomicBool::new(false);
 /// User is dragging the overlay — skip all origin-changing geometry until snap.
 static OVERLAY_DRAGGING: AtomicBool = AtomicBool::new(false);
+/// Main camera pause already sent for this Soft Pad gesture (prepare vs start).
+static OVERLAY_CAMERA_PAUSE_SENT: AtomicBool = AtomicBool::new(false);
+/// Soft Pad drag generation — stale finish must not clear latch / resume camera.
+static OVERLAY_DRAG_GEN: AtomicU64 = AtomicU64::new(0);
 /// Mats open/close requested while dragging; flushed on snap.
 static OVERLAY_PENDING_MATS: OnceLock<ParkingMutex<Option<bool>>> = OnceLock::new();
+/// Geometry requested while dragging — one SetWindowPos after move loop returns.
+static OVERLAY_PENDING_GEO: OnceLock<ParkingMutex<Option<DesiredOverlayGeometry>>> = OnceLock::new();
 /// Soft Pad file dialog open — skip always_on_top re-assert so the OS picker stays visible.
 static OVERLAY_SUSPEND_TOPMOST: AtomicBool = AtomicBool::new(false);
 /// Soft dismiss (X / settings open): hide until Soft Pad agent FG/process or settings close.
@@ -288,6 +294,7 @@ fn set_overlay_click_through_impl(pass: bool, force: bool) {
     if !force && *last == pass {
         return;
     }
+    let changed = *last != pass;
     #[cfg(windows)]
     {
         let hwnd = *overlay_hwnd_cache().lock();
@@ -315,6 +322,16 @@ fn set_overlay_click_through_impl(pass: bool, force: bool) {
             let _ = crate::keyboard::show_window_no_activate(hwnd);
         }
         *last = pass;
+        // Drag Lag panel breadcrumb: when the pad cannot be dragged at all
+        // (pointerdown never reaches the webview), this row is the tell —
+        // pass=true means the pad was click-through during the attempt.
+        if changed {
+            crate::window_layout::try_emit_drag_trace(
+                "pass_through",
+                "softpad",
+                serde_json::json!({ "pass": pass, "hwnd": hwnd as isize }),
+            );
+        }
     }
     #[cfg(not(windows))]
     {
@@ -475,6 +492,19 @@ fn overlay_pending_mats() -> &'static ParkingMutex<Option<bool>> {
     OVERLAY_PENDING_MATS.get_or_init(|| ParkingMutex::new(None))
 }
 
+fn overlay_pending_geo() -> &'static ParkingMutex<Option<DesiredOverlayGeometry>> {
+    OVERLAY_PENDING_GEO.get_or_init(|| ParkingMutex::new(None))
+}
+
+/// Physical screen geometry for Soft Pad — committed via one SetWindowPos.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DesiredOverlayGeometry {
+    x: i32,
+    y: i32,
+    w: u32,
+    h: u32,
+}
+
 pub fn overlay_is_dragging() -> bool {
     OVERLAY_DRAGGING.load(Ordering::SeqCst)
 }
@@ -486,6 +516,58 @@ pub fn note_overlay_drag_begin() {
 
 fn clear_overlay_dragging() {
     OVERLAY_DRAGGING.store(false, Ordering::SeqCst);
+}
+
+/// Single geometry entry: one Win32 SetWindowPos (queued while dragging).
+fn commit_overlay_geometry(win: &WebviewWindow, geo: DesiredOverlayGeometry) -> bool {
+    if overlay_is_dragging() {
+        *overlay_pending_geo().lock() = Some(geo);
+        return false;
+    }
+    *overlay_pending_geo().lock() = None;
+    apply_overlay_geometry_now(win, geo)
+}
+
+fn apply_overlay_geometry_now(win: &WebviewWindow, geo: DesiredOverlayGeometry) -> bool {
+    #[cfg(windows)]
+    {
+        cache_overlay_hwnd_from_window(win);
+        if set_overlay_hwnd_pos_size(geo) {
+            writeback_user_position_from_window(win);
+            return true;
+        }
+    }
+    let _ = win.set_position(Position::Physical(PhysicalPosition::new(geo.x, geo.y)));
+    let _ = win.set_size(Size::Physical(tauri::PhysicalSize::new(geo.w, geo.h)));
+    writeback_user_position_from_window(win);
+    true
+}
+
+#[cfg(windows)]
+fn set_overlay_hwnd_pos_size(geo: DesiredOverlayGeometry) -> bool {
+    use winapi::um::winuser::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
+    let hwnd = *overlay_hwnd_cache().lock();
+    if hwnd == 0 {
+        return false;
+    }
+    unsafe {
+        SetWindowPos(
+            hwnd as winapi::shared::windef::HWND,
+            std::ptr::null_mut(),
+            geo.x,
+            geo.y,
+            geo.w as i32,
+            geo.h as i32,
+            SWP_NOZORDER | SWP_NOACTIVATE,
+        ) != 0
+    }
+}
+
+fn emit_overlay_drag_ended(win: &WebviewWindow) {
+    let _ = win.emit(
+        "codex_micro_overlay_drag",
+        serde_json::json!({ "phase": "end" }),
+    );
 }
 
 /// After an anchored resize, refresh cached user origin from the live HWND (not computed Y).
@@ -4435,6 +4517,18 @@ pub fn normalize_skin(raw: &str) -> &'static str {
     }
 }
 
+/// The flat-drag visual is owned by Rust, not by the FE dragging latch: the FE
+/// latch clears on the `codex_micro_overlay_drag` end event, and that emit has
+/// no reliable delivery — one lost event left the pad grey for the 8s watch.
+/// Eval is the channel that actually lands (same as the to_js snapshots).
+fn eval_pad_drag_class(win: &WebviewWindow, on: bool) {
+    let script = format!(
+        "try{{document.documentElement.classList.toggle('ot-pad-drag',{})}}catch(e){{}}",
+        on
+    );
+    let _ = win.eval(&script);
+}
+
 pub fn snap_overlay_position(win: &WebviewWindow) {
     if let Ok(pos) = win.outer_position() {
         *overlay_user_position().lock() = Some((pos.x, pos.y));
@@ -4444,47 +4538,165 @@ pub fn snap_overlay_position(win: &WebviewWindow) {
     *overlay_last_geom().lock() = None;
     // Flush mats open/close that was deferred during the drag.
     let pending = overlay_pending_mats().lock().take();
+    let pending_geo = overlay_pending_geo().lock().take();
     if let Some(open) = pending {
         let _ = set_overlay_mats_rail(win, open);
+    } else if let Some(geo) = pending_geo {
+        let _ = commit_overlay_geometry(win, geo);
     }
 }
 
-pub fn start_overlay_drag(win: &WebviewWindow) -> Result<(), String> {
-    // Latch first so scheduler cannot fight the HWND mid-gesture.
+fn finish_overlay_drag(win: &WebviewWindow, gen: u64) {
+    let t0 = Instant::now();
+    // Unconditional: even a stale end must restore the pad's real chrome.
+    eval_pad_drag_class(win, false);
+    // Always remember live HWND origin (even if this end is stale).
+    if let Ok(pos) = win.outer_position() {
+        *overlay_user_position().lock() = Some((pos.x, pos.y));
+        *overlay_user_positioned().lock() = true;
+    }
+    // Newer prepare/start owns the gesture — do not clear latch or resume camera.
+    if OVERLAY_DRAG_GEN.load(Ordering::SeqCst) != gen {
+        crate::window_layout::emit_drag_trace(
+            win.app_handle(),
+            "overlay_drag_end_stale",
+            "softpad",
+            serde_json::json!({
+                "gen": gen,
+                "currentGen": OVERLAY_DRAG_GEN.load(Ordering::SeqCst),
+                "finishMs": t0.elapsed().as_millis() as u64,
+            }),
+        );
+        return;
+    }
+    snap_overlay_position(win);
+    // Re-converge hit-test after SetWindowPos / failed SC_MOVE — stuck interactive
+    // + oversized HWND was eating clicks under the pad.
+    reconcile_overlay_input_mode(win, true, soft_pad_click_through());
+    emit_overlay_drag_ended(win);
+    crate::window_layout::emit_drag_trace(
+        win.app_handle(),
+        "overlay_drag_end",
+        "softpad",
+        serde_json::json!({
+            "overlayDragging": overlay_is_dragging(),
+            "gen": gen,
+            "finishMs": t0.elapsed().as_millis() as u64,
+        }),
+    );
+    if OVERLAY_CAMERA_PAUSE_SENT.swap(false, Ordering::SeqCst) {
+        crate::window_layout::emit_camera_frame_pump(win.app_handle(), false);
+    }
+}
+
+/// Optional early pause (latch + camera). FE should prefer fire-and-forget
+/// `start_overlay_drag` alone — awaiting this added a frozen head to every gesture.
+pub async fn prepare_overlay_drag(app: &AppHandle) {
+    let gen = OVERLAY_DRAG_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    OVERLAY_DRAGGING.store(true, Ordering::SeqCst);
+    OVERLAY_CAMERA_PAUSE_SENT.store(true, Ordering::SeqCst);
+    crate::window_layout::emit_drag_trace(
+        app,
+        "overlay_drag_prepare",
+        "softpad",
+        serde_json::json!({ "gen": gen }),
+    );
+    // No yield — SetWindowPos follow does not starve the UI thread; eval can land in parallel.
+    crate::window_layout::emit_camera_frame_pump(app, true);
+}
+
+pub fn start_overlay_drag(win: &WebviewWindow, anchor: Option<(f64, f64)>) -> Result<(), String> {
+    // Latch + gen first so scheduler cannot fight the HWND; spawn follow ASAP.
+    let gen = OVERLAY_DRAG_GEN.fetch_add(1, Ordering::SeqCst) + 1;
     OVERLAY_DRAGGING.store(true, Ordering::SeqCst);
     cache_overlay_hwnd_from_window(win);
+    // Grab-offset captured at pointerdown (CSS px) — the invoke can land tens of ms
+    // later; sampling GetCursorPos *here* would bake that delay into the offset and
+    // the pad would ride offset from the cursor for the whole gesture.
+    let anchor_phys = anchor.map(|(cx, cy)| {
+        let scale = win.scale_factor().unwrap_or(1.0);
+        ((cx * scale).round() as i32, (cy * scale).round() as i32)
+    });
+    crate::window_layout::emit_drag_trace(
+        win.app_handle(),
+        "overlay_drag_begin",
+        "softpad",
+        serde_json::json!({
+            "hwnd": *overlay_hwnd_cache().lock(),
+            "overlayDragging": true,
+            "gen": gen,
+        }),
+    );
 
-    // FE must NOT await this invoke (SendMessage blocks until LMB up).
-    // Prefer a dedicated thread + AttachThreadInput: ReleaseCapture only works when
-    // attached to the UI thread that owns capture; run_on_main_thread queued a beat
-    // late so the window trailed the cursor (不跟手).
+    // FE must NOT await this invoke — worker blocks until LMB up.
+    // Drag end is owned here: follow-loop return → snap + clear latch
+    // (not FE pointercancel — ReleaseCapture fires cancel mid-gesture).
+    //
+    // CRITICAL ORDER: spawn follow *before* emit_camera_frame_pump.
+    // win.eval() is the only sync webview round-trip on this path; doing it
+    // first freezes the pad for the whole eval (前几下不跟手). Follow runs on
+    // another thread so eval can land in parallel on main without delaying stick.
     #[cfg(windows)]
     {
         if *overlay_hwnd_cache().lock() != 0 {
-            let win_fallback = win.clone();
+            eval_pad_drag_class(win, true);
+            let win_done = win.clone();
             let _ = std::thread::Builder::new()
                 .name("overlay-drag".into())
                 .spawn(move || {
-                    if start_overlay_drag_win32() {
-                        return;
+                    let mut ok = start_overlay_drag_win32(anchor_phys);
+                    // Stale HWND (window recreated after cache) makes every
+                    // SetWindowPos fail — pad sits still while the cursor moves.
+                    // Re-prime the cache and retry once before the SC_MOVE fallback.
+                    if !ok && overlay_lmb_down() {
+                        cache_overlay_hwnd_from_window(&win_done);
+                        ok = start_overlay_drag_win32(anchor_phys);
                     }
-                    // Win32 path missed (LMB already up / hwnd gone) — last resort.
-                    if overlay_lmb_down() {
-                        let _ = win_fallback.start_dragging();
-                    } else {
-                        clear_overlay_dragging();
+                    if !ok && overlay_lmb_down() {
+                        let _ = win_done.start_dragging();
+                        while overlay_lmb_down() {
+                            std::thread::sleep(Duration::from_millis(16));
+                        }
+                    }
+                    // Always clear latch even if main-thread queue fails — stuck
+                    // OVERLAY_DRAGGING freezes fit/geometry and leaves a tall hit slab.
+                    let w = win_done.clone();
+                    if win_done
+                        .run_on_main_thread(move || {
+                            finish_overlay_drag(&w, gen);
+                        })
+                        .is_err()
+                    {
+                        if OVERLAY_DRAG_GEN.load(Ordering::SeqCst) == gen {
+                            clear_overlay_dragging();
+                            OVERLAY_CAMERA_PAUSE_SENT.store(false, Ordering::SeqCst);
+                            emit_overlay_drag_ended(&win_done);
+                            eval_pad_drag_class(&win_done, false);
+                            crate::window_layout::emit_camera_frame_pump(win_done.app_handle(), false);
+                        }
                     }
                 });
+            if !OVERLAY_CAMERA_PAUSE_SENT.swap(true, Ordering::SeqCst) {
+                crate::window_layout::emit_camera_frame_pump(win.app_handle(), true);
+            }
             return Ok(());
         }
     }
 
+    #[cfg(not(windows))]
+    let _ = anchor_phys;
+    if !OVERLAY_CAMERA_PAUSE_SENT.swap(true, Ordering::SeqCst) {
+        crate::window_layout::emit_camera_frame_pump(win.app_handle(), true);
+    }
     let win2 = win.clone();
     let scheduled = win.app_handle().run_on_main_thread(move || {
         let _ = win2.start_dragging();
+        finish_overlay_drag(&win2, gen);
     });
     if scheduled.is_err() {
-        return win.start_dragging().map_err(|e| e.to_string());
+        let r = win.start_dragging().map_err(|e| e.to_string());
+        finish_overlay_drag(win, gen);
+        return r;
     }
     Ok(())
 }
@@ -4495,53 +4707,231 @@ fn overlay_lmb_down() -> bool {
     unsafe { GetAsyncKeyState(VK_LBUTTON) as u16 & 0x8000 != 0 }
 }
 
-/// Frameless drag via SC_MOVE|HTCAPTION.
-/// AttachThreadInput so ReleaseCapture hits the UI thread's capture; SendMessage
-/// marshals the move loop onto that thread and blocks *this* caller until LMB up.
+/// Frameless drag via worker-thread SetWindowPos follow (not SC_MOVE).
+/// SC_MOVE runs a modal loop on the Soft Pad UI thread and trails badly across
+/// monitors while WebView2/main still pump. SetWindowPos from this thread keeps
+/// the pad glued to the cursor without starving the shared UI thread.
+/// Raise the system timer resolution for the duration of a drag.
+///
+/// Measured: the follow loop asked for 1ms sleeps but only produced ~1 move per
+/// 14ms (62 moves / 862ms) — Windows' default timer granularity is 15.6ms, so
+/// `sleep(1ms)` actually sleeps a full tick and the pad crawls. (It felt "snappy
+/// sometimes" because some other process had already called timeBeginPeriod.)
 #[cfg(windows)]
-fn start_overlay_drag_win32() -> bool {
-    use winapi::shared::minwindef::{DWORD, LPARAM, WPARAM};
-    use winapi::um::processthreadsapi::GetCurrentThreadId;
+struct TimerResGuard {
+    set: bool,
+}
+
+#[cfg(windows)]
+impl TimerResGuard {
+    fn acquire() -> Self {
+        use winapi::um::timeapi::timeBeginPeriod;
+        let set = unsafe { timeBeginPeriod(1) } == 0;
+        Self { set }
+    }
+}
+
+#[cfg(windows)]
+impl Drop for TimerResGuard {
+    fn drop(&mut self) {
+        if self.set {
+            use winapi::um::timeapi::timeEndPeriod;
+            unsafe {
+                timeEndPeriod(1);
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+fn start_overlay_drag_win32(anchor_phys: Option<(i32, i32)>) -> bool {
     use winapi::um::winuser::{
-        mouse_event, AttachThreadInput, GetWindowThreadProcessId, ReleaseCapture, SendMessageW,
-        HTCAPTION, MOUSEEVENTF_MOVE, SC_MOVE, WM_SYSCOMMAND,
+        GetCursorPos, GetWindowRect, IsWindow, SetWindowPos, SWP_ASYNCWINDOWPOS, SWP_NOACTIVATE,
+        SWP_NOSENDCHANGING, SWP_NOSIZE, SWP_NOZORDER,
     };
 
     let hwnd = *overlay_hwnd_cache().lock();
     if hwnd == 0 || !overlay_lmb_down() {
         return false;
     }
+    let t_enter = Instant::now();
+    let mut moves = 0u32;
+    let _timer_res = TimerResGuard::acquire();
+    // Strip WS_EX_LAYERED for the gesture: a layered window re-composites its
+    // per-pixel-alpha surface on every move pulse (measured 20-44ms per call on
+    // this machine — the remaining hz ceiling), while a plain window move is a
+    // cheap DWM blit. The pad is a solid block while dragging (ot-pad-drag), so
+    // per-pixel alpha is unused anyway. finish_overlay_drag restores it via
+    // reconcile_overlay_input_mode → apply_overlay_no_activate.
+    #[cfg(windows)]
+    let _layered_guard = {
+        use winapi::um::winuser::{GetWindowLongW, GWL_EXSTYLE, SetWindowLongW, WS_EX_LAYERED};
+        unsafe {
+            let ex = GetWindowLongW(hwnd as winapi::shared::windef::HWND, GWL_EXSTYLE);
+            if ex & WS_EX_LAYERED as i32 != 0 {
+                SetWindowLongW(
+                    hwnd as winapi::shared::windef::HWND,
+                    GWL_EXSTYLE,
+                    ex & !(WS_EX_LAYERED as i32),
+                );
+            }
+            ex
+        }
+    };
     unsafe {
         let hwnd = hwnd as winapi::shared::windef::HWND;
-        let mut _pid = 0u32;
-        let ui_tid = GetWindowThreadProcessId(hwnd, &mut _pid);
-        let my_tid = GetCurrentThreadId();
-        let attached =
-            ui_tid != 0 && ui_tid != my_tid && AttachThreadInput(my_tid, ui_tid, 1) != 0;
-        ReleaseCapture();
-        // SC_MOVE waits for a mouse-move before the window sticks to the cursor.
-        // Nudge from a sibling thread while SendMessage blocks in the move loop.
-        let _ = std::thread::Builder::new()
-            .name("overlay-drag-nudge".into())
-            .spawn(|| {
-                std::thread::sleep(std::time::Duration::from_millis(1));
-                unsafe {
-                    mouse_event(MOUSEEVENTF_MOVE, 1, 0, 0, 0);
-                    mouse_event(MOUSEEVENTF_MOVE, DWORD::MAX, 0, 0, 0); // -1px
-                }
-            });
-        SendMessageW(
-            hwnd,
-            WM_SYSCOMMAND,
-            (SC_MOVE as WPARAM) | (HTCAPTION as WPARAM),
-            0 as LPARAM,
-        );
-        if attached {
-            AttachThreadInput(my_tid, ui_tid, 0);
+        // Stale cache after a window recreate: SetWindowPos fails every iteration and
+        // the pad sits still while the cursor moves. Bail so the caller can re-prime.
+        if IsWindow(hwnd) == 0 {
+            crate::window_layout::try_emit_drag_trace(
+                "overlay_drag_follow_stale_hwnd",
+                "softpad",
+                serde_json::json!({ "hwnd": hwnd as isize }),
+            );
+            return false;
         }
+
+        let mut wr = winapi::shared::windef::RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
+        if GetWindowRect(hwnd, &mut wr) == 0 {
+            return false;
+        }
+        let (off_x, off_y) = match anchor_phys {
+            Some(v) => v,
+            None => {
+                let mut pt0 = winapi::shared::windef::POINT { x: 0, y: 0 };
+                if GetCursorPos(&mut pt0) == 0 {
+                    return false;
+                }
+                (pt0.x - wr.left, pt0.y - wr.top)
+            }
+        };
+        let mut last_x = wr.left;
+        let mut last_y = wr.top;
+        let mut failed = 0u32;
+        let mut setpos_max_ms = 0u64;
+        let mut setpos_sum_ms = 0u64;
+        let mut first_post_ms: Option<u64> = None;
+        // Queue backlog measured as lagAvgPx 32-163 / lagMaxPx 427 with pure
+        // async posts: each request costs the owner thread 15-20ms (layered
+        // recomposite), fast drags pile up 5-20 of them, and the pad renders a
+        // position from tens of ms ago. Synchronous posts serialize on the
+        // owner thread instead — each call applies the CURRENT cursor sample,
+        // so there is nothing to fall behind. Escape hatch: if one call ever
+        // blocks >40ms (owner thread sick), fall back to async so the loop
+        // cannot freeze again.
+        let mut force_async = false;
+        let mut async_ok_streak = 0u32;
+        // Follow "stickiness": `moves` only counts posts, it says nothing about
+        // whether the pad is actually where the cursor is. Read the committed
+        // rect back every few posts and record how far behind the window really
+        // is — that distance is the lag the user feels.
+        let mut lag_samples = 0u32;
+        let mut lag_sum_px = 0u64;
+        let mut lag_max_px = 0u64;
+
+        while overlay_lmb_down() {
+            let mut pt = winapi::shared::windef::POINT { x: 0, y: 0 };
+            if GetCursorPos(&mut pt) != 0 {
+                let x = pt.x - off_x;
+                let y = pt.y - off_y;
+                // Skip no-op posts — keeps the first flicks snappy when cursor barely moves.
+                if x != last_x || y != last_y {
+                    let t0 = Instant::now();
+                    // Synchronous by default (no SWP_ASYNCWINDOWPOS): the call
+                    // returns after the move is applied, so the next sample is
+                    // taken fresh — backlog cannot build. NOSENDCHANGING skips
+                    // one owner-thread roundtrip per move.
+                    let flags = if force_async {
+                        SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING | SWP_ASYNCWINDOWPOS
+                    } else {
+                        SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSENDCHANGING
+                    };
+                    let rc = SetWindowPos(hwnd, std::ptr::null_mut(), x, y, 0, 0, flags);
+                    let cost = t0.elapsed().as_millis() as u64;
+                    setpos_sum_ms = setpos_sum_ms.saturating_add(cost);
+                    if cost > setpos_max_ms {
+                        setpos_max_ms = cost;
+                    }
+                    if cost > 40 {
+                        force_async = true;
+                        async_ok_streak = 0;
+                        crate::window_layout::try_emit_drag_trace(
+                            "overlay_drag_follow_slow_setpos",
+                            "softpad",
+                            serde_json::json!({ "costMs": cost }),
+                        );
+                    } else if force_async {
+                        // Owner thread recovered — go back to synchronous after a
+                        // short confirmation streak so lag stays at its best.
+                        if cost < 16 {
+                            async_ok_streak = async_ok_streak.saturating_add(1);
+                            if async_ok_streak >= 5 {
+                                force_async = false;
+                                async_ok_streak = 0;
+                            }
+                        } else {
+                            async_ok_streak = 0;
+                        }
+                    }
+                    if rc != 0 {
+                        last_x = x;
+                        last_y = y;
+                        moves = moves.saturating_add(1);
+                        if first_post_ms.is_none() {
+                            first_post_ms = Some(t_enter.elapsed().as_millis() as u64);
+                        }
+                        if moves % 8 == 0 {
+                            let mut now = winapi::shared::windef::RECT {
+                                left: 0,
+                                top: 0,
+                                right: 0,
+                                bottom: 0,
+                            };
+                            if GetWindowRect(hwnd, &mut now) != 0 {
+                                let lag = ((now.left - x).abs() as u64)
+                                    .saturating_add((now.top - y).abs() as u64);
+                                lag_samples = lag_samples.saturating_add(1);
+                                lag_sum_px = lag_sum_px.saturating_add(lag);
+                                if lag > lag_max_px {
+                                    lag_max_px = lag;
+                                }
+                            }
+                        }
+                    } else {
+                        failed = failed.saturating_add(1);
+                    }
+                }
+            }
+            // ~1ms — short flicks expose 4ms sampling as "前几下不跟手".
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        crate::window_layout::try_emit_drag_trace(
+            "overlay_drag_follow_return",
+            "softpad",
+            serde_json::json!({
+                "ok": moves > 0 || !overlay_lmb_down(),
+                "blockedMs": t_enter.elapsed().as_millis() as u64,
+                "moves": moves,
+                "hz": if t_enter.elapsed().as_millis() > 0 {
+                    (moves as u64 * 1000) / t_enter.elapsed().as_millis() as u64
+                } else { 0 },
+                "setposAvgMs": if moves > 0 { setpos_sum_ms / moves as u64 } else { 0 },
+                "lagAvgPx": if lag_samples > 0 { lag_sum_px / lag_samples as u64 } else { 0 },
+                "lagMaxPx": lag_max_px,
+                "failed": failed,
+                "setposMaxMs": setpos_max_ms,
+                "firstPostMs": first_post_ms,
+                "anchor": anchor_phys.map(|(x, y)| serde_json::json!({"x": x, "y": y})),
+                "lmbDown": overlay_lmb_down(),
+            }),
+        );
+        return moves > 0 || !overlay_lmb_down();
     }
-    // Move loop ends on button-up; still holding means SC_MOVE did not take the gesture.
-    !overlay_lmb_down()
 }
 
 pub fn note_micro_key(micro_key_id: &str, key_down: bool) {
@@ -4573,8 +4963,10 @@ fn apply_overlay_payload(
     if gen != window_generation() {
         return;
     }
-    // Main title-bar drag shares the UI thread — defer HWND/emit work until it ends.
-    if crate::window_layout::main_window_drag_active() {
+    // Main title-bar / Soft Pad drag share the UI thread — defer HWND/emit until it ends.
+    // Emitting overlay state mid Soft Pad drag makes WebView2 steal move pulses
+    // (cursor reaches the other monitor, pad catches up late).
+    if crate::window_layout::main_window_drag_active() || overlay_is_dragging() {
         return;
     }
     let visible = payload.visible;
@@ -4770,20 +5162,23 @@ pub fn set_overlay_mats_rail(win: &WebviewWindow, open: bool) -> bool {
 }
 
 /// Keep the left edge fixed while width changes (materials rail grows to the right).
-/// Returns false when skipped (dragging).
+/// Returns false when queued (dragging) or applied.
 fn resize_overlay_left_anchored(win: &WebviewWindow, logical_w: f64, logical_h: f64) -> bool {
-    if overlay_is_dragging() {
-        return false;
-    }
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let target_w = (logical_w * scale).round() as u32;
+    let target_h = (logical_h * scale).round() as u32;
     let Ok(pos) = win.outer_position() else {
-        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        return true;
+        return false;
     };
-    let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-    // Re-assert left edge — some platforms nudge origin during resize.
-    let _ = win.set_position(Position::Physical(PhysicalPosition::new(pos.x, pos.y)));
-    writeback_user_position_from_window(win);
-    true
+    commit_overlay_geometry(
+        win,
+        DesiredOverlayGeometry {
+            x: pos.x,
+            y: pos.y,
+            w: target_w,
+            h: target_h,
+        },
+    )
 }
 
 /// Webview reports visible Soft Pad height so the HWND matches content (no empty hit slab).
@@ -4809,8 +5204,21 @@ pub fn fit_overlay_content_height(win: &WebviewWindow, height_logical: f64) -> b
     let (logical_w, logical_h) = overlay_logical_size(false, false, false, false);
     if *overlay_user_positioned().lock() {
         // Size-only: do not reassert a stale cached origin over the live HWND.
-        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        writeback_user_position_from_window(win);
+        let scale = win.scale_factor().unwrap_or(1.0);
+        let target_w = (logical_w * scale).round() as u32;
+        let target_h = (logical_h * scale).round() as u32;
+        let Ok(pos) = win.outer_position() else {
+            return false;
+        };
+        let _ = commit_overlay_geometry(
+            win,
+            DesiredOverlayGeometry {
+                x: pos.x,
+                y: pos.y,
+                w: target_w,
+                h: target_h,
+            },
+        );
     } else {
         // Keep bottom edge fixed when height shrinks (dead zone was below the pad).
         let _ = resize_overlay_anchored_from_bottom(win, logical_w, logical_h);
@@ -4831,35 +5239,31 @@ pub fn fit_overlay_content_height(win: &WebviewWindow, height_logical: f64) -> b
 }
 
 /// Shrink/grow height while keeping the bottom edge fixed (empty slab was below the pad).
-/// Returns false when skipped (dragging).
+/// Returns false when queued (dragging).
 fn resize_overlay_anchored_from_bottom(win: &WebviewWindow, logical_w: f64, logical_h: f64) -> bool {
-    if overlay_is_dragging() {
-        return false;
-    }
     let scale = win.scale_factor().unwrap_or(1.0);
+    let target_w = (logical_w * scale).round() as u32;
     let target_h = (logical_h * scale).round() as i32;
     let Ok(pos) = win.outer_position() else {
-        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        return true;
+        return false;
     };
     let Ok(size) = win.outer_size() else {
-        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        return true;
+        return false;
     };
     let new_y = pos.y + size.height as i32 - target_h;
-    let _ = win.set_position(Position::Physical(PhysicalPosition::new(pos.x, new_y)));
-    let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-    // Live outer after resize — not the precomputed new_y alone.
-    writeback_user_position_from_window(win);
-    true
+    commit_overlay_geometry(
+        win,
+        DesiredOverlayGeometry {
+            x: pos.x,
+            y: new_y,
+            w: target_w,
+            h: target_h.max(0) as u32,
+        },
+    )
 }
 
 /// Resize overlay when minimized or full height budget changes.
 fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnapshot) -> bool {
-    // Dragging: never fight the OS drag with set_position / anchor resize.
-    if overlay_is_dragging() {
-        return false;
-    }
     let minimized = snapshot.minimized;
     let listen_band = snapshot.minimized
         && (snapshot.activation_hub_active
@@ -4881,26 +5285,41 @@ fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnaps
     let target_w = (logical_w * scale).round() as u32;
     let target_h = (logical_h * scale).round() as u32;
     let outer = win.outer_size().ok().map(|s| (s.width, s.height));
-    if !overlay_geom_needs_apply(prev, want, outer, (target_w, target_h)) {
+    // While dragging: still queue desired size so EXIT flush can apply once.
+    if !overlay_is_dragging()
+        && !overlay_geom_needs_apply(prev, want, outer, (target_w, target_h))
+    {
         return false;
     }
 
-    if *overlay_user_positioned().lock() {
-        // Size-only when user-placed: never slam a stale OVERLAY_USER_POSITION over live HWND.
-        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        writeback_user_position_from_window(win);
+    let applied = if *overlay_user_positioned().lock() {
+        // Size-only when user-placed: keep live HWND origin (never stale cached pos).
+        let Ok(pos) = win.outer_position() else {
+            return false;
+        };
+        commit_overlay_geometry(
+            win,
+            DesiredOverlayGeometry {
+                x: pos.x,
+                y: pos.y,
+                w: target_w,
+                h: target_h,
+            },
+        )
     } else if OVERLAY_MATS_RAIL.load(Ordering::Relaxed) {
         // Materials rail: grow/shrink from the left so Soft Pad does not jump.
-        let _ = resize_overlay_left_anchored(win, logical_w, logical_h);
+        resize_overlay_left_anchored(win, logical_w, logical_h)
     } else if minimized && OVERLAY_MINI_MATS.load(Ordering::Relaxed) {
         // Mini materials popover: grow downward space under the bar (bottom edge fixed).
-        let _ = resize_overlay_anchored_from_bottom(win, logical_w, logical_h);
+        resize_overlay_anchored_from_bottom(win, logical_w, logical_h)
     } else if prev.map(|(m, _, _)| m) != Some(minimized) {
         // mini↔full: keep the pad's visual anchor instead of jumping left/right.
-        let _ = resize_overlay_anchored(win, logical_w, logical_h);
+        resize_overlay_anchored(win, logical_w, logical_h)
     } else {
-        position_overlay(win);
-        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
+        position_overlay_commit(win, target_w, target_h)
+    };
+    if overlay_is_dragging() {
+        return applied;
     }
     // Only cache when outer roughly matches — failed/async set_size must retry next tick.
     let outer_after = win.outer_size().ok().map(|s| (s.width, s.height));
@@ -4922,30 +5341,29 @@ fn apply_overlay_geometry(win: &WebviewWindow, snapshot: &CodexMicroOverlaySnaps
 }
 
 /// Keep the main keyboard's screen position stable while width changes.
-/// Returns false when skipped (dragging).
+/// Returns false when queued (dragging).
 fn resize_overlay_anchored(win: &WebviewWindow, logical_w: f64, logical_h: f64) -> bool {
-    if overlay_is_dragging() {
-        return false;
-    }
     let scale = win.scale_factor().unwrap_or(1.0);
     let target_w = (logical_w * scale).round() as i32;
+    let target_h = (logical_h * scale).round() as u32;
 
     let Ok(pos) = win.outer_position() else {
-        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        return true;
+        return false;
     };
     let Ok(size) = win.outer_size() else {
-        let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-        return true;
+        return false;
     };
 
     let new_x = anchored_origin_x(pos.x, size.width, target_w);
-    let new_y = pos.y;
-
-    let _ = win.set_position(Position::Physical(PhysicalPosition::new(new_x, new_y)));
-    let _ = win.set_size(Size::Logical(LogicalSize::new(logical_w, logical_h)));
-    writeback_user_position_from_window(win);
-    true
+    commit_overlay_geometry(
+        win,
+        DesiredOverlayGeometry {
+            x: new_x,
+            y: pos.y,
+            w: target_w.max(0) as u32,
+            h: target_h,
+        },
+    )
 }
 
 /// Physical X so the right edge of the window stays fixed when width changes.
@@ -4972,24 +5390,36 @@ fn overlay_geom_needs_apply(
 }
 
 fn position_overlay(win: &WebviewWindow) {
-    if overlay_is_dragging() {
-        return;
-    }
-    if *overlay_user_positioned().lock() {
-        if let Some((x, y)) = *overlay_user_position().lock() {
-            let _ = win.set_position(Position::Physical(PhysicalPosition::new(x, y)));
-            return;
-        }
-    }
-
     let minimized = *overlay_minimized().lock();
     let joy_open = crate::codex_numpad_layer::joy_nav_panel_open()
         && crate::codex_numpad_layer::pad_mapping_active();
     let (logical_w, logical_h) = overlay_logical_size(minimized, joy_open, false, minimized);
     let scale = win.scale_factor().unwrap_or(1.0);
-    let w = (logical_w * scale).round() as i32;
-    let h = (logical_h * scale).round() as i32;
+    let w = (logical_w * scale).round() as u32;
+    let h = (logical_h * scale).round() as u32;
+    let _ = position_overlay_commit(win, w, h);
+}
+
+/// Compute default/user origin and commit pos+size in one SetWindowPos.
+fn position_overlay_commit(win: &WebviewWindow, target_w: u32, target_h: u32) -> bool {
+    if *overlay_user_positioned().lock() {
+        if let Some((x, y)) = *overlay_user_position().lock() {
+            return commit_overlay_geometry(
+                win,
+                DesiredOverlayGeometry {
+                    x,
+                    y,
+                    w: target_w,
+                    h: target_h,
+                },
+            );
+        }
+    }
+
+    let scale = win.scale_factor().unwrap_or(1.0);
     let margin = (12.0 * scale).round() as i32;
+    let w = target_w as i32;
+    let h = target_h as i32;
 
     let monitor = monitor_for_codex(win)
         .or_else(|| win.current_monitor().ok().flatten())
@@ -5011,7 +5441,15 @@ fn position_overlay(win: &WebviewWindow) {
     let x = (work_right - w - margin).max(work_x + margin);
     let y = (work_bottom - h - margin).max(work_y + margin);
 
-    let _ = win.set_position(Position::Physical(PhysicalPosition::new(x, y)));
+    commit_overlay_geometry(
+        win,
+        DesiredOverlayGeometry {
+            x,
+            y,
+            w: target_w,
+            h: target_h,
+        },
+    )
 }
 
 /// Prefer the monitor that hosts the Codex desktop window.
@@ -5086,8 +5524,8 @@ pub fn dismiss_overlay(app: &AppHandle, state: &AppState) -> bool {
 }
 
 pub fn maybe_tick(app: &AppHandle, state: &Arc<AppState>) {
-    // Avoid FG recompute / overlay push while main title-bar drag owns the UI thread.
-    if crate::window_layout::main_window_drag_active() {
+    // Avoid FG recompute / overlay push while main or Soft Pad drag owns the UI thread.
+    if crate::window_layout::main_window_drag_active() || overlay_is_dragging() {
         return;
     }
     let was_fg = *last_foreground_codex().lock();

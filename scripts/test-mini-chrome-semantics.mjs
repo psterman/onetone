@@ -143,7 +143,7 @@ assert(!/voice_chip_when/.test(configRs), 'Rust voice_chip_when removed');
 
 // --- Overlay stability: drag latch + minimized intent ---
 assert(/cmd_codex_micro_overlay_start_drag/.test(overlay),
-  'overlay starts drag via start_drag (Win32 HTCAPTION)');
+  'overlay starts drag via start_drag (Win32 SetWindowPos follow)');
 assert(/setOverlayDragging\(true\)/.test(overlay),
   'FE marks dragging for geom latch');
 assert(/beginOverlayDrag/.test(overlay), 'drag begin is guarded against double-fire');
@@ -159,8 +159,14 @@ assert(/pendingMinimized!=null/.test(overlay), 'render respects pending minimize
 }
 assert(/setMinimizedIntent\(true\)/.test(overlay), 'minimize uses setMinimizedIntent');
 assert(/__onetoneOverlayDragging/.test(overlay), 'exposes drag flag for Soft Pad carry');
-assert(/addEventListener\('blur',\s*endOverlayDrag\)/.test(overlay),
-  'blur clears drag latch');
+assert(
+  /codex_micro_overlay_drag/.test(overlay) && /phase==='end'/.test(overlay),
+  'FE drag UI flag clears on Rust drag-ended (not blur/pointercancel)'
+);
+assert(
+  !/addEventListener\('blur',\s*endOverlayDrag\)/.test(overlay),
+  'blur no longer ends overlay drag'
+);
 
 if (fail) {
   console.error(`\n${fail} assertion(s) failed`);
