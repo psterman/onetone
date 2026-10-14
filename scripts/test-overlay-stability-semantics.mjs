@@ -68,21 +68,41 @@ assert(
     /pub fn start_overlay_drag[\s\S]*?fn overlay_lmb_down/
   )?.[0] || '';
   const spawnAt = startFn.indexOf('overlay-drag');
-  const pauseAt = startFn.indexOf('emit_camera_frame_pump(win.app_handle(), true)');
+  const asyncAt = startFn.indexOf('async_runtime::spawn');
+  // Begin-drag eval lives inside async_runtime::spawn (not the finish/error path).
+  const asyncBlock = startFn.slice(asyncAt);
   assert(
     /CRITICAL ORDER: spawn follow/.test(rs) &&
       spawnAt >= 0 &&
-      pauseAt > spawnAt,
-    'Soft Pad spawns follow thread before win.eval camera pause'
+      asyncAt > spawnAt &&
+      /eval_pad_drag_class\(&win_eval,\s*true\)/.test(asyncBlock) &&
+      /emit_camera_frame_pump\(win_eval\.app_handle\(\),\s*true\)/.test(asyncBlock),
+    'Soft Pad spawns follow then async-posts ot-pad-drag/camera eval (no sync win.eval)'
+  );
+  assert(
+    !/overlay-drag[\s\S]{0,400}?eval_pad_drag_class\(win,\s*true\)/.test(startFn),
+    'Soft Pad does not sync-eval ot-pad-drag on the start_drag call stack'
   );
 }
+assert(
+  /fn apply_overlay_no_activate[\s\S]{0,500}?overlay_is_dragging\(\)[\s\S]{0,200}?WS_EX_LAYERED/.test(
+    rs
+  ),
+  'apply_overlay_no_activate skips re-applying LAYERED while Soft Pad dragging'
+);
+assert(
+  /fn set_overlay_click_through_impl[\s\S]{0,400}?if overlay_is_dragging\(\)/.test(rs),
+  'click-through impl no-ops while Soft Pad dragging (avoids re-LAYERED)'
+);
 assert(/cmd_codex_micro_overlay_start_drag/.test(cmd), 'IPC start_drag command');
 
 // --- FE drag + intent ---
 assert(/cmd_codex_micro_overlay_start_drag/.test(overlay), 'FE start_drag for Win32 caption');
 assert(
-  !/cmd_codex_micro_overlay_note_drag_begin/.test(overlay),
-  'FE uses single start_drag IPC (no note_drag_begin hop)'
+  /cmd_codex_micro_overlay_note_drag_begin/.test(overlay) &&
+    /note_drag_begin[\s\S]{0,200}?start_drag/.test(overlay) &&
+    !/note_drag_begin['\"][\s\S]{0,80}?\.then\(/.test(overlay),
+  'FE fire-and-forget note_drag_begin then start_drag (no await latch hop)'
 );
 assert(/beginOverlayDrag/.test(overlay), 'FE beginOverlayDrag guard');
 assert(/MUST NOT await/.test(overlay), 'FE documents fire-and-forget drag IPC');
@@ -139,12 +159,15 @@ assert(
   /OVERLAY_PENDING_GEO/.test(rs),
   'geometry queued while dragging'
 );
-assert(
-  !/app-region:\s*drag/.test(
-    fs.readFileSync(path.join(root, 'src/css/codex-micro-overlay.css'), 'utf8')
-  ),
-  'transparent overlay does not rely on CSS app-region:drag'
-);
+{
+  const padCss = fs.readFileSync(path.join(root, 'src/css/codex-micro-overlay.css'), 'utf8');
+  assert(!/app-region:\s*drag/.test(padCss), 'transparent overlay does not rely on CSS app-region:drag');
+  assert(
+    /html\.ot-pad-drag[\s\S]{0,280}?backdrop-filter:\s*none/.test(padCss) &&
+      /html\.ot-pad-drag[\s\S]{0,280}?filter:\s*none/.test(padCss),
+    'ot-pad-drag kills backdrop-filter/filter during Soft Pad drag (keep colors/shadows)'
+  );
+}
 const conf = fs.readFileSync(path.join(root, 'src-tauri/tauri.conf.json'), 'utf8');
 assert(/"alwaysOnTop":\s*false/.test(conf), 'main window alwaysOnTop false');
 assert(/setMinimizedIntent/.test(overlay), 'FE setMinimizedIntent');
@@ -155,14 +178,29 @@ assert(
   'render skips stale minimized while pending'
 );
 assert(
-  !/function endOverlayDrag/.test(overlay) &&
-    !/addEventListener\('pointercancel',\s*endOverlayDrag\)/.test(overlay) &&
-    !/addEventListener\('blur',\s*endOverlayDrag\)/.test(overlay),
+  !/addEventListener\('pointercancel',\s*endOverlayDrag/.test(overlay) &&
+    !/addEventListener\('blur',\s*endOverlayDrag/.test(overlay),
   'FE does not snap/clear latch on pointercancel/blur'
 );
 assert(
   /codex_micro_overlay_drag/.test(overlay) && /phase==='end'/.test(overlay),
   'FE clears local dragging from Rust drag-ended event'
+);
+assert(
+  /__onetoneOverlayDragEnd/.test(overlay) && /endOverlayDragFromRust/.test(overlay),
+  'FE exposes __onetoneOverlayDragEnd for Rust eval (emit end is unreliable)'
+);
+assert(
+  /__onetoneOverlayDragEnd/.test(rs) &&
+    /eval_pad_drag_class[\s\S]{0,400}?__onetoneOverlayDragEnd/.test(rs),
+  'Rust finish eval clears FE dragging latch via __onetoneOverlayDragEnd'
+);
+assert(
+  /OVERLAY_DRAG_GEN\.load[\s\S]{0,80}?!= gen[\s\S]{0,200}?eval_pad_drag_class/.test(rs) ||
+    /if OVERLAY_DRAG_GEN\.load\(Ordering::SeqCst\) != gen[\s\S]{0,500}?eval_pad_drag_class\(win, false\)/.test(
+      rs
+    ),
+  'stale finish does not eval-clear FE latch / ot-pad-drag of a newer gesture'
 );
 assert(
   !/cmd_codex_micro_overlay_snap_position/.test(overlay),

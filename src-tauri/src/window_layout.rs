@@ -134,6 +134,10 @@ pub fn try_emit_drag_trace(phase: &str, source: &str, detail: serde_json::Value)
 /// can starve event delivery until EXIT, so pause must land *before* the loop.
 /// Never both eval and to_js: dual delivery doubled pauseDepth and a late to_js
 /// resume could wake the camera mid Soft Pad drag (1st ok, 2nd laggy).
+///
+/// On pause, also latch `ot-drag-active` in the same eval so paint de-load does
+/// not wait for the async drag_trace fan-out (ncl→enter used to show raf_jank
+/// with camDepth=1 because the class arrived after the first move pulses).
 pub fn emit_camera_frame_pump(app: &AppHandle, paused: bool) {
     let payload = serde_json::json!({
         "type": "camera_frame_pump",
@@ -141,7 +145,10 @@ pub fn emit_camera_frame_pump(app: &AppHandle, paused: bool) {
     });
     if let Some(win) = crate::ipc::get_main_window(app) {
         let script = if paused {
-            "try{window.OneToneCameraFramePump&&OneToneCameraFramePump.pause()}catch(e){}"
+            // Latch class + pause in one round-trip. CameraFramePump.pause must
+            // return fast (latch then microtask heavy mute) so NCLBUTTONDOWN is
+            // not pinned for 47-141ms before ENTERSIZEMOVE.
+            "try{document.documentElement.classList.add('ot-drag-active');window.OneToneCameraFramePump&&OneToneCameraFramePump.pause()}catch(e){}"
         } else {
             "try{window.OneToneCameraFramePump&&OneToneCameraFramePump.resume()}catch(e){}"
         };
@@ -206,7 +213,9 @@ fn set_main_sizemove_active(active: bool) {
     }
 }
 
-/// Title-bar / border hit → pause camera *before* DefWindowProc enters the modal move loop.
+/// Title-bar / border hit → latch drag + schedule camera pause off the NCL path.
+/// Sync win.eval here pinned ncl→enter at 86-126ms even after pause-body deferral;
+/// async spawn accepts a few ms of camera before pause lands.
 #[cfg(windows)]
 fn early_pause_camera_before_sizemove() {
     MAIN_EARLY_PAUSE_PENDING.store(true, Ordering::SeqCst);
@@ -223,7 +232,9 @@ fn early_pause_camera_before_sizemove() {
         if already {
             return;
         }
-        emit_camera_frame_pump(&app, true);
+        tauri::async_runtime::spawn(async move {
+            emit_camera_frame_pump(&app, true);
+        });
     }
 }
 

@@ -4099,6 +4099,14 @@
       // Driving it from this latch broke once the end event was lost — the pad
       // stayed grey until the 8s watch fired.
     }
+    // Rust finish_overlay_drag evals this — emit('codex_micro_overlay_drag') is
+    // unreliable (same as drag_trace). Lost end left `dragging=true` and the next
+    // pointerdown hit `if(dragging) return` with no fe_pointerdown ("第二次失灵").
+    function endOverlayDragFromRust(){
+      clearDragEndWatch();
+      setOverlayDragging(false);
+    }
+    try{ window.__onetoneOverlayDragEnd=endOverlayDragFromRust; }catch(_){}
     /** Shared expand/minimize intent — generation + pending; invoke fail rolls back. */
     function setMinimizedIntent(target, opts){
       opts=opts||{};
@@ -4149,12 +4157,13 @@
           OneToneDragLagPanel.note('fe_pointerdown',{x:e.clientX|0,y:e.clientY|0});
         }
       }catch(_){}
-      // Fire-and-forget immediately — awaiting prepare (32ms+) left the pad frozen for the
-      // first flicks; SetWindowPos follow no longer needs pause-before-modal. Camera pause
-      // runs inside start_drag without blocking the follow thread.
+      // Latch geometry before async start_drag can land — fire-and-forget only
+      // (never await; that was the prepare head-lag). Then start_drag; camera
+      // pause / ot-pad-drag eval run after the follow thread is spawned.
       // Probe: the promise settle itself proves whether Rust executed the command
       // (resolve = command returned; reject = IPC error). Drag Lag panel rows
       // fe_invoke_ok / fe_invoke_err are the ground truth for "pad won't move".
+      invoke('cmd_codex_micro_overlay_note_drag_begin',{}).catch(function(){});
       var invokeT0=Date.now();
       invoke('cmd_codex_micro_overlay_start_drag',{
         cx:e.clientX, cy:e.clientY
@@ -4166,8 +4175,7 @@
         if(window.OneToneDragLagPanel&&OneToneDragLagPanel.note){
           OneToneDragLagPanel.note('fe_invoke_err',{ms:Date.now()-invokeT0,err:String(err||'').slice(0,90)});
         }
-        clearDragEndWatch();
-        setOverlayDragging(false);
+        endOverlayDragFromRust();
       });
     }
     wrap.addEventListener('pointerdown',beginOverlayDrag,true);
@@ -4175,8 +4183,7 @@
       listen('codex_micro_overlay_drag',function(ev){
         var p=ev&&ev.payload;
         if(p&&p.phase==='end'){
-          clearDragEndWatch();
-          setOverlayDragging(false);
+          endOverlayDragFromRust();
         }
       }).catch(function(){});
     }

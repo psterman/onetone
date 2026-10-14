@@ -68,15 +68,34 @@
     if(hand&&typeof hand.resumeInfer==='function') hand.resumeInfer();
   }
 
+  function scheduleHeavy(fn){
+    // NCLBUTTONDOWN eval must return before DefWindowProc enters ENTERSIZEMOVE.
+    // Mute/landmarker pause is correct but measured as ncl→enter 47-141ms when run
+    // inline; latch first so raf loops see paused=true, defer the rest.
+    try{
+      if(typeof global.queueMicrotask==='function'){
+        global.queueMicrotask(fn);
+        return;
+      }
+    }catch(_){}
+    global.setTimeout(fn,0);
+  }
+
   function pause(){
     if(paused){
       // Re-assert mute/loops — tracks may have been re-enabled while latch stuck.
-      muteVideoTracks();
-      pauseEnhancer();
+      scheduleHeavy(function(){
+        if(!paused) return;
+        muteVideoTracks();
+        pauseEnhancer();
+      });
       return;
     }
     paused=true;
-    applyPause();
+    scheduleHeavy(function(){
+      if(!paused) return;
+      applyPause();
+    });
   }
 
   function resume(){

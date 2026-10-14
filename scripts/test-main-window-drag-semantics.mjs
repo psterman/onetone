@@ -77,6 +77,19 @@ assert(
   /WM_NCLBUTTONDOWN/.test(layout) && /early_pause_camera_before_sizemove/.test(layout),
   'NCLBUTTONDOWN pauses camera before modal move loop'
 );
+{
+  const early = layout.match(
+    /fn early_pause_camera_before_sizemove\([\s\S]*?\nfn /
+  )?.[0] || '';
+  assert(
+    /async_runtime::spawn/.test(early) &&
+      /emit_camera_frame_pump/.test(early) &&
+      !/emit_camera_frame_pump\(&app,\s*true\);\s*\n\s*\}/.test(
+        early.replace(/tauri::async_runtime::spawn\(async move \{[\s\S]*?\}\);/g, '')
+      ),
+    'NCL early pause async-spawns camera eval (does not sync-block ncl→enter)'
+  );
+}
 assert(
   /\.eval\(script\)/.test(layout) || /win\.eval\(script\)/.test(layout),
   'camera pause uses win.eval (not to_js-only during modal loop)'
@@ -123,6 +136,16 @@ assert(/OneToneCameraFramePump/.test(framePump), 'camera frame pump bridge');
 assert(/camera_frame_pump/.test(framePump), 'listens for camera_frame_pump to_js');
 assert(/muteVideoTracks|getVideoTracks/.test(framePump), 'drag pause mutes webcam tracks');
 assert(/pauseForDrag/.test(framePump), 'drag pause stops beauty enhancer loops');
+assert(
+  /queueMicrotask|scheduleHeavy/.test(framePump) &&
+    /paused=true[\s\S]{0,120}?scheduleHeavy|scheduleHeavy[\s\S]{0,200}?applyPause/.test(framePump),
+  'camera pause latches then defers heavy mute (NCL must not block ncl→enter)'
+);
+assert(
+  /ot-drag-active/.test(layout) &&
+    /classList\.add\('ot-drag-active'\)/.test(layout),
+  'camera pause eval also latches ot-drag-active (paint de-load before async drag_trace)'
+);
 assert(
   /camera-frame-pump\.js/.test(indexHtml),
   'index loads camera-frame-pump after gaze/hand'

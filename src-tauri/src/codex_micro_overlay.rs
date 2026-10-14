@@ -236,6 +236,10 @@ pub fn soft_pad_click_through() -> bool {
 /// Soft Pad must stay clickable without becoming the foreground window.
 /// Without WS_EX_NOACTIVATE, pad clicks steal FG from Codex; SendInput then lands in the
 /// overlay WebView2 (Ctrl+F/N) and freezes the pad.
+///
+/// While dragging, do **not** re-apply WS_EX_LAYERED — the follow loop strips it so
+/// SetWindowPos stays a cheap DWM blit; re-layering mid-gesture brought setposMaxMs
+/// back to 700ms+ (Drag Lag "拖动无效").
 #[cfg(windows)]
 pub fn apply_overlay_no_activate() {
     let hwnd = *overlay_hwnd_cache().lock();
@@ -248,7 +252,10 @@ pub fn apply_overlay_no_activate() {
         };
         let hwnd = hwnd as winapi::shared::windef::HWND;
         let style = GetWindowLongW(hwnd, GWL_EXSTYLE);
-        let new_style = style | WS_EX_NOACTIVATE as i32 | WS_EX_LAYERED as i32;
+        let mut new_style = style | WS_EX_NOACTIVATE as i32;
+        if !overlay_is_dragging() {
+            new_style |= WS_EX_LAYERED as i32;
+        }
         if new_style != style {
             SetWindowLongW(hwnd, GWL_EXSTYLE, new_style);
         }
@@ -290,6 +297,11 @@ impl Drop for SoftPadSendPassGuard {
 }
 
 fn set_overlay_click_through_impl(pass: bool, force: bool) {
+    // Soft Pad drag owns EXSTYLE (LAYERED stripped). Do not punch/restore mid-gesture —
+    // that re-ORs WS_EX_LAYERED and starves SetWindowPos (setposMaxMs 748).
+    if overlay_is_dragging() {
+        return;
+    }
     let mut last = last_pass_through().lock();
     if !force && *last == pass {
         return;
@@ -4517,15 +4529,18 @@ pub fn normalize_skin(raw: &str) -> &'static str {
     }
 }
 
-/// The flat-drag visual is owned by Rust, not by the FE dragging latch: the FE
-/// latch clears on the `codex_micro_overlay_drag` end event, and that emit has
-/// no reliable delivery — one lost event left the pad grey for the 8s watch.
-/// Eval is the channel that actually lands (same as the to_js snapshots).
+/// Flat-drag class + FE dragging latch — both via eval.
+/// Emit(`codex_micro_overlay_drag`) has no reliable delivery (same as drag_trace);
+/// a lost end left `dragging=true` so the next pointerdown hit `if(dragging) return`
+/// with no fe_pointerdown ("第二次失灵"). Eval is the channel that actually lands.
 fn eval_pad_drag_class(win: &WebviewWindow, on: bool) {
-    let script = format!(
-        "try{{document.documentElement.classList.toggle('ot-pad-drag',{})}}catch(e){{}}",
-        on
-    );
+    let script = if on {
+        "try{document.documentElement.classList.add('ot-pad-drag')}catch(e){}"
+            .to_string()
+    } else {
+        "try{document.documentElement.classList.remove('ot-pad-drag');window.__onetoneOverlayDragEnd&&window.__onetoneOverlayDragEnd()}catch(e){}"
+            .to_string()
+    };
     let _ = win.eval(&script);
 }
 
@@ -4548,14 +4563,12 @@ pub fn snap_overlay_position(win: &WebviewWindow) {
 
 fn finish_overlay_drag(win: &WebviewWindow, gen: u64) {
     let t0 = Instant::now();
-    // Unconditional: even a stale end must restore the pad's real chrome.
-    eval_pad_drag_class(win, false);
     // Always remember live HWND origin (even if this end is stale).
     if let Ok(pos) = win.outer_position() {
         *overlay_user_position().lock() = Some((pos.x, pos.y));
         *overlay_user_positioned().lock() = true;
     }
-    // Newer prepare/start owns the gesture — do not clear latch or resume camera.
+    // Newer prepare/start owns the gesture — do not clear class / FE latch / camera.
     if OVERLAY_DRAG_GEN.load(Ordering::SeqCst) != gen {
         crate::window_layout::emit_drag_trace(
             win.app_handle(),
@@ -4569,6 +4582,8 @@ fn finish_overlay_drag(win: &WebviewWindow, gen: u64) {
         );
         return;
     }
+    // Class + FE dragging latch via eval (emit end is unreliable).
+    eval_pad_drag_class(win, false);
     snap_overlay_position(win);
     // Re-converge hit-test after SetWindowPos / failed SC_MOVE — stuck interactive
     // + oversized HWND was eating clicks under the pad.
@@ -4632,14 +4647,13 @@ pub fn start_overlay_drag(win: &WebviewWindow, anchor: Option<(f64, f64)>) -> Re
     // Drag end is owned here: follow-loop return → snap + clear latch
     // (not FE pointercancel — ReleaseCapture fires cancel mid-gesture).
     //
-    // CRITICAL ORDER: spawn follow *before* emit_camera_frame_pump.
-    // win.eval() is the only sync webview round-trip on this path; doing it
-    // first freezes the pad for the whole eval (前几下不跟手). Follow runs on
-    // another thread so eval can land in parallel on main without delaying stick.
+    // CRITICAL ORDER: spawn follow, then async-post ot-pad-drag / camera pause.
+    // Even post-spawn sync win.eval on SoftPad/Main still queued ahead of the
+    // first SetWindowPos on the shared UI thread (firstPostMs 69-94, setposMax
+    // 748). Async spawn lets follow stick before eval lands.
     #[cfg(windows)]
     {
         if *overlay_hwnd_cache().lock() != 0 {
-            eval_pad_drag_class(win, true);
             let win_done = win.clone();
             let _ = std::thread::Builder::new()
                 .name("overlay-drag".into())
@@ -4676,9 +4690,22 @@ pub fn start_overlay_drag(win: &WebviewWindow, anchor: Option<(f64, f64)>) -> Re
                         }
                     }
                 });
-            if !OVERLAY_CAMERA_PAUSE_SENT.swap(true, Ordering::SeqCst) {
-                crate::window_layout::emit_camera_frame_pump(win.app_handle(), true);
-            }
+            let win_eval = win.clone();
+            let need_cam = !OVERLAY_CAMERA_PAUSE_SENT.swap(true, Ordering::SeqCst);
+            // Gen-guard: a short flick can finish before this task runs — must not
+            // re-add ot-pad-drag / re-pause camera after finish_overlay_drag.
+            tauri::async_runtime::spawn(async move {
+                if OVERLAY_DRAG_GEN.load(Ordering::SeqCst) != gen || !overlay_is_dragging() {
+                    return;
+                }
+                eval_pad_drag_class(&win_eval, true);
+                if need_cam
+                    && OVERLAY_DRAG_GEN.load(Ordering::SeqCst) == gen
+                    && overlay_is_dragging()
+                {
+                    crate::window_layout::emit_camera_frame_pump(win_eval.app_handle(), true);
+                }
+            });
             return Ok(());
         }
     }

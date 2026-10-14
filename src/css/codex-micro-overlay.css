@@ -3360,13 +3360,18 @@ html[data-theme="dark"] .soft-pad-confirm-bar__label {
 }
 
 /* ---- Soft Pad drag de-load --------------------------------------------
-   Stripping WS_EX_LAYERED for the gesture already brought per-move cost from
-   20-44ms down to 0-2ms (see follow_return setposAvgMs), so the pad keeps its
-   real chrome while dragging. Only the properties that keep painting frame
-   after frame are dropped; nothing that changes how the pad looks is touched —
-   an earlier version collapsed it to a flat block and that read as "变灰". */
+   Layered strip helps HWND move cost, but Soft Pad WebView paint still shares
+   the owner thread with SetWindowPos. Drag Lag showed intermittent
+   setposMaxMs 700-982 / lagMaxPx 486-635 while ot-pad-drag only killed
+   animation — backdrop-filter kept recompositing. Align with main
+   ot-drag-active: drop per-pulse paint costs, keep colors/shadows (no flat grey). */
 html.ot-pad-drag *,
 html.ot-pad-drag *::before,
 html.ot-pad-drag *::after{
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  transition:none!important;
   animation:none!important;
+  filter:none!important;
+  text-shadow:none!important;
 }
