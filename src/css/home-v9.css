@@ -235,9 +235,10 @@ html[data-theme="dark"]{
   align-items:center;
   padding:0 24px;
   height:32px;
-  background:rgba(15,20,25,.85);
-  backdrop-filter:saturate(180%) blur(20px);
-  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  /* Solid/opaque — no backdrop-filter (drag lag: blur re-samples every move pulse). */
+  background:rgba(15,20,25,.96);
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
   border-bottom:.5px solid var(--vp-border);
   font-family:'JetBrains Mono', ui-monospace, monospace;
   font-size:11px;

@@ -4140,7 +4140,7 @@
       dragEndWatch=setTimeout(function(){
         dragEndWatch=0;
         setOverlayDragging(false);
-      },8000);
+      },2500);
     }
     function clearDragEndWatch(){
       if(dragEndWatch){ clearTimeout(dragEndWatch); dragEndWatch=0; }
@@ -4149,7 +4149,9 @@
       if(e.pointerType==='touch') return;
       if(e.button!=null&&e.button!==0) return;
       if(isDragBlocked(e.target)) return;
-      if(dragging) return;
+      // Stale FE latch (lost Rust end) used to `return` here → intermittent 失灵
+      // until the 8s watch. Clear and continue so this gesture still starts.
+      if(dragging) endOverlayDragFromRust();
       setOverlayDragging(true);
       armDragEndWatch();
       try{

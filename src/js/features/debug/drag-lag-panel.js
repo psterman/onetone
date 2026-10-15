@@ -16,6 +16,14 @@
   var lastRaf=0;
   var maxJank=0;
   var dragHot=false;
+  // Per-frame stats while a gesture is live. The old code only logged gaps
+  // >=50ms, which made "15ms eaten every single frame" completely invisible —
+  // and that kind of steady medium load is exactly enough to make a system
+  // modal move loop feel sluggish.
+  var frameSum=0;
+  var frameCount=0;
+  var frameMax=0;
+  var FRAME_JANK_MS=24;
 
   function now(){
     return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
@@ -45,7 +53,7 @@
     lastT=t;
     if(!gestureStart&&isDragBegin(ev.phase)) gestureStart=t;
     if(isDragEnd(ev.phase)) dragHot=false;
-    if(isDragBegin(ev.phase)){ dragHot=true; maxJank=0; gestureStart=t; }
+    if(isDragBegin(ev.phase)){ dragHot=true; maxJank=0; gestureStart=t; resetFrameStats(); }
     var row={
       t:t,
       delta:delta,
@@ -65,7 +73,8 @@
   }
   function isDragEnd(phase){
     // fe_invoke_err: Rust never ran the command — the gesture is over as far as FE knows.
-    return /^(exit_sizemove|overlay_drag_end|camera_resume|ncl_up_click|fe_invoke_err)$/.test(phase);
+    // paint_restore: delayed clear of ot-drag-active after EXIT (not the gesture end itself).
+    return /^(exit_sizemove|overlay_drag_end|camera_resume|ncl_up_click|fe_invoke_err|paint_restore)$/.test(phase);
   }
 
   function activityTag(){
@@ -150,6 +159,7 @@
     var total=gestureStart?Math.round(lastT-gestureStart):0;
     metaEl.textContent=
       'gesture '+total+'ms · maxRafJank '+Math.round(maxJank)+'ms · '+
+      'frame avg '+(frameCount?Math.round(frameSum/frameCount):0)+'ms / max '+Math.round(frameMax)+'ms ('+frameCount+'f) · '+
       'camDepth '+camDepth()+' · tag '+(activityTag()||'—')+' · hot '+(dragHot?'Y':'N')+
       ' · n='+events.length;
     var html='';
@@ -185,20 +195,31 @@
     }catch(_){}
   }
 
+  function resetFrameStats(){
+    frameSum=0;
+    frameCount=0;
+    frameMax=0;
+  }
+
   function onRaf(ts){
     rafId=0;
     if(!open) return;
     if(lastRaf){
       var gap=ts-lastRaf;
       if(gap>maxJank) maxJank=gap;
-      if(dragHot&&gap>=50){
-        push({
-          t:wallMs(),
-          phase:'raf_jank',
-          source:'fe',
-          local:true,
-          detail:{gapMs:Math.round(gap),tag:activityTag(),camDepth:camDepth()}
-        });
+      if(dragHot){
+        frameSum+=gap;
+        frameCount++;
+        if(gap>frameMax) frameMax=gap;
+        if(gap>=FRAME_JANK_MS){
+          push({
+            t:wallMs(),
+            phase:'raf_jank',
+            source:'fe',
+            local:true,
+            detail:{gapMs:Math.round(gap),tag:activityTag(),camDepth:camDepth()}
+          });
+        }
       }
     }
     lastRaf=ts;
@@ -308,6 +329,37 @@
     if(e.stopPropagation) e.stopPropagation();
     setOpen(!open);
   },true);
+
+  // Chromium longtask API: rAF sampling tells us a frame took 50ms, but not
+  // WHY. longtask reports the attribution bucket (script / layout / style),
+  // which is the difference between "kill a timer" and "kill a CSS rule".
+  function initLongTask(){
+    try{
+      if(!global.PerformanceObserver) return;
+      var po=new global.PerformanceObserver(function(list){
+        var entries=list.getEntries&&list.getEntries();
+        if(!entries) return;
+        for(var i=0;i<entries.length;i++){
+          var en=entries[i];
+          if(!dragHot) continue;
+          var a=en.attribution&&en.attribution[0];
+          push({
+            t:wallMs(),
+            phase:'longtask',
+            source:'fe',
+            local:true,
+            detail:{
+              ms:Math.round(en.duration),
+              name:String(en.name||''),
+              attr:a?String(a.containerType||a.name||''):''
+            }
+          });
+        }
+      });
+      po.observe({entryTypes:['longtask']});
+    }catch(_){}
+  }
+  initLongTask();
 
   bindToJs();
   if(storageOn()){

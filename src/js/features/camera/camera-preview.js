@@ -25,6 +25,14 @@
   var lastError=null;
   var previewStatus='idle';
   var statusListeners=[];
+  /** 'idle' | 'detect' (background presence) | 'preview' (settings / camera2 UI). */
+  var captureMode='idle';
+  /** Background presence capture — never persist these dims into user prefs. */
+  var DETECT_CONSTRAINTS={width:640,height:360,frameRate:8};
+  /** Last prefer vs track.getSettings() snapshot (runtime evidence). */
+  var lastCaptureSettings=null;
+  var lastCapturePrefer=null;
+  var detectConstraintClampAttempted=false;
 
   var RES_GROUPS=[
     {
@@ -1048,9 +1056,26 @@
     return {width:3840,height:2160,frameRate:30};
   }
 
-  function preferSizeCascade(prefer){
+  function detectPreferConstraints(){
+    return {width:DETECT_CONSTRAINTS.width,height:DETECT_CONSTRAINTS.height,frameRate:DETECT_CONSTRAINTS.frameRate};
+  }
+
+  /** Settings / camera2 / explicit user restart want full user-selected capture. */
+  function isPreviewCaptureReason(reason){
+    reason=String(reason||'');
+    if(reason==='camera2'||reason==='user_restart'||reason==='panel_visible') return true;
+    if(reason==='drawer_ui_resume'||reason==='drawer_ui_resume_boot') return true;
+    try{
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(ui&&ui.drawerOpen&&ui.settingsPanel==='camera') return true;
+    }catch(_){}
+    return false;
+  }
+
+  function preferSizeCascade(prefer,opts){
     prefer=prefer||{};
-    var fps=prefer.frameRate>0?prefer.frameRate:30;
+    opts=opts||{};
+    var fps=prefer.frameRate>0?prefer.frameRate:(opts.detectOnly?8:30);
     var seen={};
     var out=[];
     function push(w,h){
@@ -1062,7 +1087,10 @@
       seen[k]=1;
       out.push({width:w,height:h,frameRate:fps});
     }
-    var highs=[[3840,2160],[2560,1440],[1920,1080],[1280,720],[640,360]];
+    // Detect must never climb the 4K→1080 cascade — cap at 640×360 then lower.
+    var highs=opts.detectOnly
+      ?[[640,360],[480,270],[320,180]]
+      :[[3840,2160],[2560,1440],[1920,1080],[1280,720],[640,360]];
     var prefW=Math.round(Number(prefer.width)||0)|0;
     var prefH=Math.round(Number(prefer.height)||0)|0;
     var prefPx=prefW*prefH;
@@ -1856,6 +1884,7 @@
     setGazeOverlayActive(false);
     stopKaraokeTest();
     releaseStreamOnly();
+    captureMode='idle';
     setPlaceholderVisible(true);
     setButtons();
     updateInfoCards(null);
@@ -1869,6 +1898,7 @@
 
   function stop(opts){
     stopTracks();
+    captureMode='idle';
     previewStatus='stopped';
     clearPreviewError();
     setStatus(t('cameraStatusStopped','已停止 · 摄像头已释放'));
@@ -1882,9 +1912,65 @@
     }
   }
 
+  /**
+   * Detect→preview when settings opens. Keep the live stream (instant paint);
+   * stop+getUserMedia caused NotReadable races and multi-second 4K cascades.
+   * Soft-upgrade via applyConstraints; never persist detect dims.
+   */
+  function ensurePreviewCapture(reason){
+    if(!previewLive||captureMode!=='detect') return Promise.resolve({ok:true,reason:'noop'});
+    if(starting||applyingCaps) return Promise.resolve({ok:true,reason:'busy'});
+    captureMode='preview';
+    if(pipelinePaused) resumePipeline();
+    setPlaceholderVisible(false);
+    setButtons();
+    clearPreviewError();
+    previewStatus='live';
+    // Promote chrome: settings page wants enhancer / gaze HUD.
+    ensureGazeLoop();
+    attachEnhancer();
+    notifyEnhancerResize();
+    syncPresenceDetectInterval();
+    refreshGazeUi();
+    emitPreviewStatus();
+    var prefer=readSelectedConstraints();
+    var track=activeVideoTrack();
+    if(!track||typeof track.applyConstraints!=='function'||!prefer||!(prefer.width>0)){
+      setStatus(t('cameraStatusLive','预览中 · 仅本地显示'));
+      return Promise.resolve({ok:true,reason:reason||'promoted'});
+    }
+    applyingCaps=true;
+    setStatus(t('cameraCapApplying','正在切换摄像头能力…'));
+    var cons={
+      width:{ideal:prefer.width},
+      height:{ideal:prefer.height}
+    };
+    if(prefer.frameRate>0) cons.frameRate={ideal:prefer.frameRate};
+    return track.applyConstraints(cons).then(function(){
+      applyingCaps=false;
+      noteCaptureSettings(prefer,track);
+      refreshCapabilitiesFromTrack(track);
+      notifyEnhancerResize();
+      setStatus(t('cameraStatusLive','预览中 · 仅本地显示'));
+      return {ok:true,reason:reason||'upgraded_soft'};
+    }).catch(function(){
+      // Keep detect-sized stream visible — better than blank after failed reopen.
+      applyingCaps=false;
+      noteCaptureSettings(prefer,track);
+      setStatus(t('cameraStatusLive','预览中 · 仅本地显示'));
+      return {ok:true,reason:reason||'kept_detect_stream'};
+    });
+  }
+
   function startPreview(opts){
     opts=opts&&typeof opts==='object'?opts:{};
-    if(starting||previewLive){
+    var reason=String(opts.reason||'started');
+    var wantPreview=isPreviewCaptureReason(reason);
+    if(starting){
+      return Promise.resolve({ok:true,reason:'already_running'});
+    }
+    if(previewLive){
+      if(wantPreview&&captureMode==='detect') return ensurePreviewCapture(reason);
       return Promise.resolve({ok:true,reason:'already_running'});
     }
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
@@ -1903,15 +1989,22 @@
     setButtons();
     setStatus(t('cameraStatusStarting','正在开启预览…'));
     emitPreviewStatus();
-    var prefer=readSelectedConstraints();
-    uiResKey=resKey(prefer.width,prefer.height);
-    uiResGroup=inferResGroup(uiResKey);
-    uiFps=prefer.frameRate|0;
-    return requestUserMedia(deviceId,prefer).then(function(mediaStream){
-      return attachStream(mediaStream,deviceId);
+    var prefer=wantPreview?readSelectedConstraints():detectPreferConstraints();
+    captureMode=wantPreview?'preview':'detect';
+    detectConstraintClampAttempted=false;
+    lastCapturePrefer=prefer;
+    // Detect must not clobber UI res picks with 640×360.
+    if(wantPreview){
+      uiResKey=resKey(prefer.width,prefer.height);
+      uiResGroup=inferResGroup(uiResKey);
+      uiFps=prefer.frameRate|0;
+    }
+    return requestUserMedia(deviceId,prefer,{detectOnly:!wantPreview}).then(function(mediaStream){
+      return attachStream(mediaStream,deviceId,prefer);
     }).then(function(){
       var sz=getActualVideoSize();
-      if(sz.width>0&&sz.height>0){
+      // Never persist background detect dims into user selectedWidth/Height/FrameRate.
+      if(wantPreview&&sz.width>0&&sz.height>0){
         persistCameraPrefs({
           selectedWidth:sz.width,
           selectedHeight:sz.height,
@@ -1922,10 +2015,11 @@
       previewStatus='live';
       clearPreviewError();
       emitPreviewStatus();
-      return {ok:true,reason:opts.reason||'started'};
+      return {ok:true,reason:reason};
     }).catch(function(err){
       starting=false;
       previewLive=false;
+      captureMode='idle';
       setButtons();
       setPlaceholderVisible(true);
       var structured=setPreviewError(err);
@@ -2036,10 +2130,12 @@
     return got>=Math.max(640*360,Math.floor(want*0.55));
   }
 
-  function requestUserMedia(deviceId,prefer){
+  function requestUserMedia(deviceId,prefer,opts){
     prefer=prefer||readSelectedConstraints();
+    opts=opts||{};
+    var detectOnly=!!opts.detectOnly;
     var attempts=[];
-    var cascade=preferSizeCascade(prefer);
+    var cascade=preferSizeCascade(prefer,{detectOnly:detectOnly});
     for(var c=0;c<cascade.length;c++){
       var size=cascade[c];
       if(deviceId){
@@ -2055,11 +2151,14 @@
         mode:'ideal'
       });
     }
-    if(deviceId){
-      attempts.push({constraints:{audio:false,video:{deviceId:{exact:deviceId}}},mode:'loose'});
-      attempts.push({constraints:{audio:false,video:{deviceId:{ideal:deviceId}}},mode:'loose'});
+    // Detect: never fall through to unconstrained video:true (driver may pick 1080p).
+    if(!detectOnly){
+      if(deviceId){
+        attempts.push({constraints:{audio:false,video:{deviceId:{exact:deviceId}}},mode:'loose'});
+        attempts.push({constraints:{audio:false,video:{deviceId:{ideal:deviceId}}},mode:'loose'});
+      }
+      attempts.push({constraints:{audio:false,video:true},mode:'loose'});
     }
-    attempts.push({constraints:{audio:false,video:true},mode:'loose'});
 
     function tryNext(i){
       if(i>=attempts.length){
@@ -2081,6 +2180,60 @@
       });
     }
     return tryNext(0);
+  }
+
+  function noteCaptureSettings(prefer,track){
+    var settings=track&&typeof track.getSettings==='function'?track.getSettings():null;
+    lastCapturePrefer=prefer?{
+      width:prefer.width|0,
+      height:prefer.height|0,
+      frameRate:prefer.frameRate|0
+    }:null;
+    lastCaptureSettings=settings?{
+      width:Math.round(Number(settings.width)||0)|0,
+      height:Math.round(Number(settings.height)||0)|0,
+      frameRate:Math.round(Number(settings.frameRate)||0)|0,
+      captureMode:captureMode
+    }:null;
+    try{
+      console.info('[onetone] camera_capture',{
+        captureMode:captureMode,
+        prefer:lastCapturePrefer,
+        settings:lastCaptureSettings
+      });
+    }catch(_){}
+    return lastCaptureSettings;
+  }
+
+  /** One-shot exact clamp when detect stream is far above 640×360. */
+  function maybeClampDetectTrack(track,prefer){
+    if(captureMode!=='detect'||!track||detectConstraintClampAttempted) return Promise.resolve(false);
+    var settings=track.getSettings?track.getSettings():null;
+    if(!settings||!(settings.width>0)) return Promise.resolve(false);
+    var wantW=(prefer&&prefer.width)|DETECT_CONSTRAINTS.width;
+    var wantH=(prefer&&prefer.height)|DETECT_CONSTRAINTS.height;
+    var wantFps=(prefer&&prefer.frameRate)|DETECT_CONSTRAINTS.frameRate;
+    if((settings.width|0)<=wantW+16&&(settings.height|0)<=wantH+16) return Promise.resolve(false);
+    if(typeof track.applyConstraints!=='function') return Promise.resolve(false);
+    detectConstraintClampAttempted=true;
+    try{
+      console.warn('[onetone] camera_detect_mismatch',{
+        got:{w:settings.width,h:settings.height,fps:settings.frameRate},
+        want:{w:wantW,h:wantH,fps:wantFps}
+      });
+    }catch(_){}
+    return track.applyConstraints({
+      width:{exact:wantW},
+      height:{exact:wantH},
+      frameRate:{ideal:wantFps,max:wantFps}
+    }).then(function(){
+      noteCaptureSettings(prefer,track);
+      return true;
+    }).catch(function(err){
+      try{ console.warn('[onetone] camera_detect_clamp_failed',err&&err.message?err.message:err); }catch(_){}
+      noteCaptureSettings(prefer,track);
+      return false;
+    });
   }
 
   function activeVideoTrack(){
@@ -2137,7 +2290,7 @@
     starting=true;
     setButtons();
     return requestUserMedia(deviceId,prefer).then(function(mediaStream){
-      return attachStream(mediaStream,deviceId);
+      return attachStream(mediaStream,deviceId,prefer);
     }).then(function(){
       applyingCaps=false;
       var tr=activeVideoTrack();
@@ -2183,7 +2336,7 @@
     });
   }
 
-  function attachStream(mediaStream,deviceId){
+  function attachStream(mediaStream,deviceId,prefer){
     clearMetaTimer();
     if(stream){
       try{
@@ -2212,15 +2365,29 @@
     if(deviceId) persistSelectedDeviceId(deviceId);
     setStatus(t('cameraStatusLive','预览中 · 仅本地显示'));
     var track=stream.getVideoTracks&&stream.getVideoTracks()[0];
+    prefer=prefer||lastCapturePrefer||(captureMode==='detect'?detectPreferConstraints():readSelectedConstraints());
+    noteCaptureSettings(prefer,track||null);
     refreshCapabilitiesFromTrack(track||null);
     startMetaPoll();
     syncLiveLandmarker();
     syncHandGesture();
-    ensureGazeLoop();
-    attachEnhancer();
-    notifyEnhancerResize();
+    var detectHome=captureMode==='detect'&&!cameraPanelHot();
+    // Detect/home: skip beauty enhancer + gaze HUD raf (presence still uses landmarker).
+    if(detectHome){
+      stopGazeLoop();
+      setGazeOverlayActive(false);
+      detachEnhancer();
+    }else{
+      ensureGazeLoop();
+      attachEnhancer();
+      notifyEnhancerResize();
+    }
     syncPresenceDetectInterval();
-    return refreshDevices();
+    var done=refreshDevices();
+    if(detectHome&&track){
+      return maybeClampDetectTrack(track,prefer).then(function(){ return done; });
+    }
+    return done;
   }
 
   function onDeviceChange(){
@@ -2266,7 +2433,10 @@
     if(pa&&pa.syncUiFromPrefs){
       try{ pa.syncUiFromPrefs(); }catch(_){}
     }
-    if(pa&&pa.reconcileRuntime){
+    // Detect stream already up: renegotiate to user prefs before paint.
+    if(previewLive&&captureMode==='detect'){
+      ensurePreviewCapture('panel_visible');
+    }else if(pa&&pa.reconcileRuntime){
       pa.reconcileRuntime({reason:'panel_visible'});
     }else if(pa&&pa.isEnabled&&pa.isEnabled()&&!previewLive){
       startPreview({reason:'panel_visible'});
@@ -2355,9 +2525,19 @@
     init:init,
     onPanelVisible:onPanelVisible,
     startPreview:startPreview,
+    ensurePreviewCapture:ensurePreviewCapture,
     stop:stop,
     isRunning:function(){ return !!previewLive; },
     hasMediaStream:function(){ return !!stream; },
+    getCaptureMode:function(){ return captureMode; },
+    getDetectConstraints:function(){ return Object.assign({},DETECT_CONSTRAINTS); },
+    getLastCaptureSettings:function(){
+      return lastCaptureSettings?Object.assign({},lastCaptureSettings):null;
+    },
+    getLastCapturePrefer:function(){
+      return lastCapturePrefer?Object.assign({},lastCapturePrefer):null;
+    },
+    isPreviewCaptureReason:isPreviewCaptureReason;
     getLastError:function(){ return lastError?{code:lastError.code,message:lastError.message}:null; },
     getPreviewStatus:function(){ return previewStatus; },
     mapError:mapError,

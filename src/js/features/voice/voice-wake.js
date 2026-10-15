@@ -96,6 +96,10 @@
   var voiceWakePresetSaveSeq=0;
   var voskDownloadInFlight=false;
   var voskStartInFlight=false;
+  /** Auto-retry backoff (single-flight alone cannot stop periodic poll retries). */
+  var voskRetryFailCount=0;
+  var voskRetryNextAt=0;
+  var VOSK_RETRY_BACKOFF_MS=[12000,30000,60000,120000];
   var kwsDownloadInFlight=false;
   var kwsDownloadPercent=0;
   var voskDownloadPercent=0;
@@ -1995,42 +1999,107 @@
     }).catch(function(){});
   }
 
+  function noteVoskRetrySuccess(){
+    voskRetryFailCount=0;
+    voskRetryNextAt=0;
+  }
+
+  function noteVoskRetryFailure(){
+    var idx=Math.min(voskRetryFailCount,VOSK_RETRY_BACKOFF_MS.length-1);
+    var wait=VOSK_RETRY_BACKOFF_MS[idx];
+    voskRetryFailCount=Math.min(voskRetryFailCount+1,VOSK_RETRY_BACKOFF_MS.length);
+    voskRetryNextAt=Date.now()+wait;
+  }
+
+  function voskAutoRetryAllowed(){
+    return Date.now()>=voskRetryNextAt;
+  }
+
+  /** Single-flight + backoff. Setup paths that already hold voskStartInFlight pass {owned:true}. */
+  function retryVoskStartOnce(opts){
+    opts=opts||{};
+    if(!global.OneToneIpc||!global.OneToneIpc.invoke) return Promise.resolve(null);
+    if(!opts.owned&&!opts.forceBackoff&&!voskAutoRetryAllowed()) return Promise.resolve(null);
+    function after(res){
+      if(voskListeningOk(res)) noteVoskRetrySuccess();
+      else if(res&&(res.skipped||res.skipReason==='already_listening')) noteVoskRetrySuccess();
+      else noteVoskRetryFailure();
+      return res;
+    }
+    if(opts.owned){
+      return global.OneToneIpc.invoke('cmd_voice_vosk_retry_start',{})
+        .then(after)
+        .catch(function(){ noteVoskRetryFailure(); return null; });
+    }
+    if(voskStartInFlight) return Promise.resolve(null);
+    voskStartInFlight=true;
+    return global.OneToneIpc.invoke('cmd_voice_vosk_retry_start',{})
+      .then(after)
+      .catch(function(){ noteVoskRetryFailure(); return null; })
+      .finally(function(){ voskStartInFlight=false; });
+  }
+
+  function mainWindowDragActive(){
+    try{
+      var root=typeof document!=='undefined'?document.documentElement:null;
+      return !!(root&&root.classList&&root.classList.contains('ot-drag-active'));
+    }catch(_){
+      return false;
+    }
+  }
+
   function maybeNudgeVoskOnHome(voskRes){
     if(settingsVoiceParked()||runtime().paused) return;
+    if(mainWindowDragActive()) return;
     // Soft Pad 口头收听中: home "正在监听" must not force-restart Vosk (kills mic).
     if(voskRes&&(voskRes.oralArmed||voskRes.oral_armed)) return;
-    if(!voskRes||voskListeningOk(voskRes)) return;
+    if(!voskRes||voskListeningOk(voskRes)){
+      if(voskRes&&voskListeningOk(voskRes)) noteVoskRetrySuccess();
+      return;
+    }
     var sup=voskRes.supervisor||{};
     var desired=String(voskRes.desiredEngine||sup.desiredEngine||'').trim().toLowerCase();
     var active=String(voskRes.activeEngine||sup.activeEngine||'').trim().toLowerCase();
     if(desired!=='vosk'&&!voskRes.enabled) return;
     if(desired==='vosk'&&active==='vosk'&&voskListeningOk(voskRes)) return;
     var st=String(voskRes.state||'').trim();
+    // Cold stopped: home is push-to-listen (开始听写). Park-restore / button use force ensure.
+    if(!st||st==='stopped') return;
     if(st==='starting'||st==='stopping') return;
     var issue=String(voskRes.resourceIssue||'').trim();
     if(issue==='model_missing'||issue==='dll_missing') return;
+    if(!voskAutoRetryAllowed()) return;
     var now=Date.now();
     if(now-voskHomeNudgeAt<12000) return;
     voskHomeNudgeAt=now;
-    global.OneToneIpc.invoke('cmd_voice_vosk_retry_start',{}).catch(function(){});
+    retryVoskStartOnce();
   }
 
   function ensureHomeVoiceEngine(opts){
     opts=opts||{};
     if(settingsVoiceParked()||runtime().paused) return;
+    if(!opts.force&&mainWindowDragActive()) return;
     var strategy=currentListeningStrategy();
     if(strategy==='off') return;
     var wakeOral=(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
     var voskOral=wakeOral.vosk||{};
     if(voskOral.oralArmed||voskOral.oral_armed) return;
+    if(voskListeningOk(voskOral)){
+      noteVoskRetrySuccess();
+      return;
+    }
+    var st=String(voskOral.state||'').trim();
+    if(st==='starting'||st==='stopping') return;
+    var issue=String(voskOral.resourceIssue||'').trim();
+    if(issue==='model_missing'||issue==='dll_missing') return;
     var now=Date.now();
     if(!opts.force&&now-homeVoiceEnsureAt<8000) return;
+    if(!opts.force&&!voskAutoRetryAllowed()) return;
     homeVoiceEnsureAt=now;
-    voskHomeNudgeAt=0;
     if(!global.OneToneIpc||!global.OneToneIpc.invoke) return;
     if(opts.force) unparkHomeAsrQuiet();
     if(strategy==='enhanced'||strategy==='auto'||strategy==='resourceSaver'){
-      global.OneToneIpc.invoke('cmd_voice_vosk_retry_start',{}).catch(function(){});
+      retryVoskStartOnce();
     }else{
       global.OneToneIpc.invoke('cmd_voice_set_listening_strategy',{strategy:strategy}).catch(function(){});
     }
@@ -2048,17 +2117,14 @@
     opts=opts||{};
     if(settingsVoiceParked()||runtime().paused) return;
     if(currentListeningStrategy()==='off') return;
-    if(opts.force){
-      ensureHomeVoiceEngine(opts);
-      return;
-    }
+    // force may skip debounce, never skips a healthy listening engine.
     var wake=(hooks().voiceUiSnapshot&&hooks().voiceUiSnapshot.wake)||{};
     var voskRes=opts.voskRes!=null?opts.voskRes:wake.vosk;
-    if(!voskRes||!voskListeningOk(voskRes)){
-      ensureHomeVoiceEngine(opts);
+    if(voskRes&&voskListeningOk(voskRes)){
+      ensureHomeVoiceEngineIfMismatch(opts);
       return;
     }
-    ensureHomeVoiceEngineIfMismatch(opts);
+    ensureHomeVoiceEngine(opts);
   }
 
   function nudgeVoiceStatusPoll(){
@@ -2093,6 +2159,8 @@
 
   function voiceStatusPollTick(){
     if(global.OneToneAppSession&&global.OneToneAppSession.isBootSettling&&global.OneToneAppSession.isBootSettling()) return;
+    // Title-bar drag shares the UI thread — skip poll/paint so home grab stays followable.
+    if(mainWindowDragActive()) return;
     // voiceWake: never status IPC — openDrawer +200ms used to stack vosk_status onto
     // settings_park stop and leave ipc held≈165s / UI_HB_STALL_5S.
     if(ui().drawerOpen&&ui().settingsPanel==='voiceWake') return;
@@ -2172,13 +2240,11 @@
           }
         }
         if(!settingsVoiceParked()&&voskRes) maybeNudgeVoskOnHome(voskRes);
+        // Home: heal supervisor mismatch only — do not cold-start listening (开始听写).
         if(!settingsVoiceParked()){
-          if(!ui().drawerOpen){
-            ensureHomeVoiceListening({ force:false, voskRes:voskRes });
-          }else{
-            ensureHomeVoiceEngineIfMismatch();
-          }
+          ensureHomeVoiceEngineIfMismatch({ force:false });
         }
+        if(mainWindowDragActive()) return;
         if(!ui().drawerOpen&&global.OneToneHomeV9&&global.OneToneHomeV9.paintHomeLiveTextImmediate){
           try{ global.OneToneHomeV9.paintHomeLiveTextImmediate(); }catch(_){}
         }
@@ -3282,8 +3348,9 @@
     return loadVoiceVoskStatus().then(function(res){
       if(voskListeningOk(res)) return {ok:true,res:res};
       setVoiceSetupOverlayStatus(t('voiceVoskStartingAfterDownload'),true,100);
-      return global.OneToneIpc.invoke('cmd_voice_vosk_retry_start',{})
-        .catch(function(){
+      return retryVoskStartOnce({owned:true})
+        .then(function(res){
+          if(res!=null) return res;
           return strategyNeedsVoskFallback(strategy)
             ?setListeningStrategyRemote(strategy)
             :null;
@@ -3429,7 +3496,7 @@
     const strategy=currentListeningStrategy()||'auto';
     loadVoiceVoskStatus().then(function(res){
       if(voskListeningOk(res)) return {ok:true,res:res};
-      return global.OneToneIpc.invoke('cmd_voice_vosk_retry_start',{}).then(function(bundle){
+      return retryVoskStartOnce({owned:true}).then(function(bundle){
         const status=(bundle&&bundle.voiceVosk)||bundle;
         if(status&&typeof status==='object'){
           renderVoiceVoskStatus(status);

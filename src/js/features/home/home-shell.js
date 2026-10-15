@@ -108,7 +108,8 @@
     }
     const leftNav=$('wbLeftNav');
     if(leftNav){
-      leftNav.classList.toggle('is-focus-mode',!!(focusMode&&useWorkbench));
+      // Drawer open = full left directory must stay clickable (focus-mode hides data-wb-nav items).
+      leftNav.classList.toggle('is-focus-mode',!!(focusMode&&useWorkbench&&!ui.drawerOpen));
     }
     const navMore=$('wbNavMoreSettings');
     if(navMore){

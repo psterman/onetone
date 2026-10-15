@@ -30,9 +30,14 @@
     var state=global.OneToneState.state;
     var t=hooks.t;
     var session=global.OneToneAppSession;
+    // Prefer bootstrap hooks; fall back to Dom so a partial register cannot kill boot.
+    function markBoot(label){
+      if(typeof hooks.markBoot==='function') hooks.markBoot(label);
+      else if(global.OneToneDom&&typeof global.OneToneDom.markBoot==='function') global.OneToneDom.markBoot(label);
+    }
     if(session&&session.markBootStarted) session.markBootStarted(8000);
     var hasBootConfig=!!(state.config&&Array.isArray(state.config.mappings)&&state.config.mappings.length);
-    hooks.markBoot('script init');
+    markBoot('script init');
     // #region agent log
     agentDbg('E','app-boot.js:scriptInit','boot script init',{hasBootConfig:!!hasBootConfig,feBuild:'stall19'});
     // #endregion
@@ -61,7 +66,7 @@
       if(window.OneToneOnboarding&&window.OneToneOnboarding.shouldAutoOpen()) hooks.setWelcomeOpen(true);
       if(dismissedUpdate) global.OneToneUpdate.loadDismissedVersion(dismissedUpdate);
     }catch(_){}
-    hooks.markBoot('local preferences loaded');
+    markBoot('local preferences loaded');
     if(!hasBootConfig) state.config=hooks.defaultConfig();
     if(!state.update) state.update=hooks.defaultUpdateState();
     hooks.ensureConfig();
@@ -70,22 +75,22 @@
       hooks.ensureConfig();
     }
     hooks.syncEditorFromSelection();
-    hooks.markBoot('default config prepared');
-    hooks.markBoot('applyLang bootstrap begin');
+    markBoot('default config prepared');
+    markBoot('applyLang bootstrap begin');
     hooks.applyLang(true,{bootstrap:true});
-    hooks.markBoot('applyLang bootstrap complete');
+    markBoot('applyLang bootstrap complete');
     requestAnimationFrame(function(){
-      hooks.markBoot('first raf begin');
+      markBoot('first raf begin');
       hooks.renderHome();
-      hooks.markBoot('renderHome complete');
+      markBoot('renderHome complete');
       if(hooks.welcomeOpen()) hooks.openWelcome();
-      if(hooks.welcomeOpen()) hooks.markBoot('welcome opened');
+      if(hooks.welcomeOpen()) markBoot('welcome opened');
       hooks.scheduleLangBootstrap();
-      hooks.markBoot('first raf complete');
+      markBoot('first raf complete');
     });
-    hooks.markBoot('setRecording begin');
+    markBoot('setRecording begin');
     hooks.setRecording('none',{silent:true});
-    hooks.markBoot('setRecording complete');
+    markBoot('setRecording complete');
     hooks.pushLog(t('waitLog'));
     hooks.deferProcessUsagePoll();
     // Permanent UI heartbeat: Atomic ping only (cmd_ui_heartbeat). Rust watchdog logs stalls
@@ -194,7 +199,7 @@
 
     if(session&&session.whenBootSettled){
       session.whenBootSettled(function(){
-        hooks.markBoot('boot settled');
+        markBoot('boot settled');
         // #region agent log
         agentDbg('A','app-boot.js:bootSettled','boot settled callback',{welcome:!!hooks.welcomeOpen(),onboard:!!hooks.onboardIsOpen()});
         // #endregion
@@ -226,27 +231,28 @@
             try{ console.error('boot settled voice check',err); }catch(_){}
           }
         },400);
+        // Do NOT force ensureHomeVoiceListening on settle — stacks IPC/model load onto
+        // cold start. Poll / maybeNudgeVoskOnHome recover listening with backoff.
+        // Idle-preload camera-ui only (no loadAll) — warm common heavy tab off the settle tick.
         setTimeout(function(){
-          try{
-            if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
-              global.OneToneVoiceWake.ensureHomeVoiceListening({force:true});
-            }
-          }catch(_){}
-        },900);
-        // Hang viz: expand live panel + pin main with the app body (debug假死 session).
-        setTimeout(function(){
-          try{
-            if(global.OneToneVoiceDiag&&typeof global.OneToneVoiceDiag.startLiveHangDiag==='function'){
-              global.OneToneVoiceDiag.startLiveHangDiag();
-            }
-          }catch(err){
-            try{ console.error('boot hang diag',err); }catch(_){}
+          function preloadCameraUi(){
+            try{
+              var D=global.OneToneDefer;
+              if(D&&typeof D.loadGroup==='function'&&!D.isLoaded('camera-ui')){
+                D.loadGroup('camera-ui');
+              }
+            }catch(_){}
           }
-        },80);
+          if(typeof requestIdleCallback==='function'){
+            requestIdleCallback(preloadCameraUi,{timeout:5000});
+          }else{
+            setTimeout(preloadCameraUi,2500);
+          }
+        },800);
       });
     }
-    setTimeout(function(){ hooks.markBoot('requestBackendConfig begin'); hooks.requestBackendConfig(8); }, 200);
-    setTimeout(function(){ hooks.markBoot('fallbackConfigLoaded begin'); hooks.fallbackConfigLoaded(); }, 3500);
+    setTimeout(function(){ markBoot('requestBackendConfig begin'); hooks.requestBackendConfig(8); }, 200);
+    setTimeout(function(){ markBoot('fallbackConfigLoaded begin'); hooks.fallbackConfigLoaded(); }, 3500);
     installRuntimeRefreshOnFocus();
   }
 
@@ -261,6 +267,9 @@
       // Do NOT pullBackendConfig/cmd_ready here — identical mvp_init remounts MediaPipe
       // + home on every click-to-focus and 假死's the UI. Runtime snapshot is enough;
       // disk/config changes arrive via mvp_init / mvp_saved / watcher.
+      // Do NOT ensureHomeVoiceListening here — title-bar click-to-focus races drag
+      // start, and force/retry stacked on a stale snapshot before cmd_request_runtime
+      // lands. Poll / maybeNudgeVoskOnHome recover listening after boot.
       global.OneToneIpc.invoke('cmd_request_runtime',{}).then(function(snapshot){
         if(snapshot&&snapshot.type==='mvp_runtime_snapshot'&&global.__vp_dispatch_to_js__){
           global.__vp_dispatch_to_js__(snapshot);
@@ -268,10 +277,6 @@
       }).catch(function(err){
         console.error('request runtime on focus',err);
       });
-      var ui=global.OneToneState&&global.OneToneState.ui;
-      if(!(ui&&ui.drawerOpen)&&global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
-        try{ global.OneToneVoiceWake.ensureHomeVoiceListening({ force:true }); }catch(_){}
-      }
     });
   }
   global.OneToneAppBoot={run:run};

@@ -10330,24 +10330,38 @@
 
 /* ---- main-window drag de-load -------------------------------------------
    Native title-bar drag shares the UI thread with WebView2 paint.
-   backdrop-filter re-samples the backdrop on every move pulse, so a heavy
-   home screen repaints per moved pixel and the modal move loop starves
-   ("window waits, then teleports"). Set by core/window-drag-perf.js from the
-   native NCLBUTTONDOWN/ENTERSIZEMOVE breadcrumb; removed on EXIT. */
-   Dropped while moving: backdrop-filter (re-samples the backdrop on every
-   pulse), animation/transition (keeps painting while the move loop is starved),
-   and filter/text-shadow (blurs are the other per-pixel repaint cost — the
-   Drag Lag panel showed zero raf_jank, so the cost is paint/composite, not JS).
-   box-shadow and colors are left alone to keep the layout readable. */
-html.ot-drag-active *,
-html.ot-drag-active *::before,
-html.ot-drag-active *::after{
+   Do NOT use html.ot-drag-active * — a universal selector restyles ~4k nodes
+   on class toggle and teleports the first move pulse. Soft Pad uses html.ot-pad-drag.
+   Settings/camera: deep *; home/Now: root-only (below). */
+html.ot-drag-active .settings-page,
+html.ot-drag-active .settings-page *,
+html.ot-drag-active .settings-page *::before,
+html.ot-drag-active .settings-page *::after,
+html.ot-drag-active .settings-shell,
+html.ot-drag-active .settings-shell *,
+html.ot-drag-active .camera-privacy-overlay,
+html.ot-drag-active .camera-privacy-overlay *,
+html.ot-drag-active .camera-gaze-calibration-dim,
+html.ot-drag-active .camera-gaze-calibration-dim *,
+html.ot-drag-active .voice-setup-overlay,
+html.ot-drag-active .voice-setup-overlay *{
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
   transition:none!important;
   animation:none!important;
   filter:none!important;
   text-shadow:none!important;
+}
+/* Home / Now: root-only (no *). Do NOT use content-visibility:hidden — that blanked
+   the desk for the whole drag. Kill motion/blur only; FE poll already skips on class. */
+html.ot-drag-active .home-center,
+html.ot-drag-active .now-home,
+html.ot-drag-active .wb-dashboard-stack,
+html.ot-drag-active .codex-smoke-feedback{
+  transition:none!important;
+  animation:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
 }
 html.ot-drag-active{
   cursor:default;

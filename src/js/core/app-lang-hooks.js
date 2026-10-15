@@ -2,8 +2,7 @@
   'use strict';
 
   function register(deps){
-    var D=global.OneToneDebugAbout;
-    var K=global.OneToneKeyFinishFlowRender;
+    var K=global.OneToneKeyFinishFlowRender||{};
     global.__vp_app_lang_bootstrap_hooks__={
       applyTheme:deps.applyTheme,
       applyFontScale:deps.applyFontScale,
@@ -15,7 +14,11 @@
       applyHomeLiveLang:deps.applyHomeLiveLang
     };
     global.__vp_app_lang_settings_hooks__={
-      renderAboutPanel:D.renderAboutPanel,
+      // DebugAbout is deferred — resolve at call time so lang hooks still register.
+      renderAboutPanel:function(){
+        var api=global.OneToneDebugAbout;
+        if(api&&typeof api.renderAboutPanel==='function') api.renderAboutPanel();
+      },
       renderVoiceDiagTabs:deps.renderVoiceDiagTabs,
       renderVoiceDiagLog:deps.renderVoiceDiagLog
     };
@@ -25,7 +28,7 @@
       getAppLang:deps.getAppLang,
       selectedDisplayTriggerKey:deps.selectedDisplayTriggerKey,
       selectedDisplayTargetKey:deps.selectedDisplayTargetKey,
-      syncKeyExecFinishCard:K.syncKeyExecFinishCard,
+      syncKeyExecFinishCard:typeof K.syncKeyExecFinishCard==='function'?K.syncKeyExecFinishCard:function(){},
       syncVoiceEndModeUi:deps.syncVoiceEndModeUi,
       renderVoiceModeSwitch:deps.renderVoiceModeSwitch
     };

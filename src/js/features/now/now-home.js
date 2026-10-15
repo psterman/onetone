@@ -961,11 +961,21 @@
       });
   }
 
+  function mainWindowDragActive() {
+    try {
+      var el = typeof document !== 'undefined' ? document.documentElement : null;
+      return !!(el && el.classList && el.classList.contains('ot-drag-active'));
+    } catch (_) {
+      return false;
+    }
+  }
+
   function startFgPoll() {
     if (fgPollTimer) return;
     refreshForeground();
     fgPollTimer = setInterval(function () {
       if (!visible) return;
+      if (mainWindowDragActive()) return;
       refreshForeground();
     }, 2000);
   }
@@ -1949,6 +1959,8 @@
 
   function paint() {
     if (!root) return;
+    // Title-bar drag: skip innerHTML remount (was janking consecutive moves).
+    if (mainWindowDragActive()) return;
     var U = ui();
     var voice = readVoiceUi();
     var html = '';
@@ -2192,13 +2204,15 @@
   function syncVoiceStrip(voice) {
     if (!root || view === 'scenes') return;
     voice = voice || readVoiceUi();
+    // Command mode only after 开始听写 — engine may be live from Soft Pad / park-restore.
+    var cmd = !!(voice.listening && voiceArmed);
     var strip = root.querySelector('[data-now-voice-strip]');
     var dock = root.querySelector('[data-now-voice]');
     var liveEl = root.querySelector('[data-now-voice-live]');
     var statusEl = root.querySelector('[data-now-voice-status]');
     var hintEl = root.querySelector('[data-now-voice-hint]');
     if (strip) {
-      if (voice.listening) {
+      if (cmd) {
         strip.hidden = false;
         strip.removeAttribute('hidden');
       } else {
@@ -2206,43 +2220,42 @@
         strip.setAttribute('hidden', '');
       }
     }
-    // Listening = voice command mode: map speech → cards (before status copy).
-    syncVoiceCommandHits(voice);
+    syncVoiceCommandHits({ listening: cmd, liveText: voice.liveText });
     if (statusEl) {
-      statusEl.textContent = voice.listening
+      statusEl.textContent = cmd
         ? lastVoiceCmdHit
           ? '已映射 · 说完即执行'
           : '语音命令模式'
         : voice.statusLine || '';
     }
     if (hintEl) {
-      hintEl.textContent = voice.listening
+      hintEl.textContent = cmd
         ? '说出卡片名称，例如 Agent 名、历史、继续'
         : voice.hintLine || '';
     }
     if (liveEl) {
-      liveEl.textContent = voice.liveText || '';
-      liveEl.classList.toggle('is-hint', !!voice.isHint);
+      liveEl.textContent = cmd ? voice.liveText || '' : '';
+      liveEl.classList.toggle('is-hint', !!(cmd && voice.isHint));
     }
     if (dock && !dock.disabled) {
-      dock.classList.toggle('is-on', !!voice.listening);
-      dock.textContent = voice.listening ? '🎤 命令中…' : '🎤 开始听写';
+      dock.classList.toggle('is-on', cmd);
+      dock.textContent = cmd ? '🎤 命令中…' : '🎤 开始听写';
     }
     var dictate = root && root.querySelector('.hn-cta--dictate[data-now-voice]');
     if (dictate && !dictate.disabled) {
-      dictate.textContent = voice.listening ? '命令中…' : '开始听写';
-      dictate.setAttribute('aria-pressed', voice.listening ? 'true' : 'false');
+      dictate.textContent = cmd ? '命令中…' : '开始听写';
+      dictate.setAttribute('aria-pressed', cmd ? 'true' : 'false');
     }
     var ta = root.querySelector('#hnQuietDraft');
-    if (ta && ta.getAttribute('data-voice-owned') === '1' && !voice.listening) {
+    if (ta && ta.getAttribute('data-voice-owned') === '1' && !cmd) {
       ta.removeAttribute('data-voice-owned');
     }
   }
 
   function triggerVoice() {
     var voice = readVoiceUi();
-    // Already live → dock is「倾听中」: pause / stop.
-    if (voice.listening) {
+    // Armed + live → dock is「命令中」: pause / stop.
+    if (voice.listening && voiceArmed) {
       voiceArmed = false;
       if (voice.dictating && global.OneToneIpc && global.OneToneIpc.invoke) {
         global.OneToneIpc.invoke('cmd_voice_end_ui_end', {}).catch(function () {});
@@ -2257,6 +2270,13 @@
       setTimeout(function () {
         syncVoiceStrip();
       }, 120);
+      return;
+    }
+
+    // Engine already live (Soft Pad / park-restore) but desk not in command mode → arm only.
+    if (voice.listening && !voiceArmed) {
+      voiceArmed = true;
+      syncVoiceStrip();
       return;
     }
 
@@ -2864,22 +2884,33 @@
     }
     setSmokeFeedbackHidden(true);
     visible = true;
-    if (useRuntime()) {
-      fetchAttention();
-      fetchInventory();
-      refreshToday();
-      startFgPoll();
-      scheduleAgentHomeRefresh();
-    }
+    // Warm Home Focus cache BEFORE paint — painting on empty dto flashed
+    //「你正在使用 未发现应用」+ blank hero until fetch landed.
     if (useHomeFocusSurface()) {
       ensureHomeFocusStore();
-      var S = global.OneToneHomeFocusStore;
-      if (S && S.fetch) S.fetch();
-      // Continue/Recent come from agent_home_snapshot — refresh even if already mounted.
+      try {
+        var S0 = global.OneToneHomeFocusStore;
+        if (S0 && S0.get) {
+          var warm = S0.get();
+          if (warm) homeFocusCache = warm;
+        }
+        if (S0 && S0.fetch) S0.fetch();
+      } catch (_) {}
       scheduleAgentHomeRefresh();
     }
     paint();
     syncVoiceStrip();
+    // Heavier IPC after first paint (title-bar drag / nav feel).
+    setTimeout(function () {
+      if (!visible) return;
+      if (useRuntime()) {
+        fetchAttention();
+        fetchInventory();
+        refreshToday();
+        startFgPoll();
+        scheduleAgentHomeRefresh();
+      }
+    }, 0);
   }
 
   function hide() {
@@ -2889,11 +2920,22 @@
       root.setAttribute('aria-hidden', 'true');
     }
     var stack = dashboardStack();
-    if (stack) {
-      stack.hidden = false;
-      stack.removeAttribute('aria-hidden');
+    // Default product home is Now. Revealing smoke/workbench on every left-nav
+    // open painted Codex/Claude ask UI under the drawer and felt like a slow flash.
+    // Legacy workbench (?now=0) still gets stack + smoke when Now is off.
+    if (isEnabled()) {
+      if (stack) {
+        stack.hidden = true;
+        stack.setAttribute('aria-hidden', 'true');
+      }
+      setSmokeFeedbackHidden(true);
+    } else {
+      if (stack) {
+        stack.hidden = false;
+        stack.removeAttribute('aria-hidden');
+      }
+      setSmokeFeedbackHidden(false);
     }
-    setSmokeFeedbackHidden(false);
     visible = false;
   }
 
@@ -2909,6 +2951,9 @@
     loadTier: loadTier,
     isVisible: isVisible,
     isEnabled: isEnabled,
+    isVoiceArmed: function () {
+      return !!voiceArmed;
+    },
     paint: paint,
     syncVoice: syncVoiceStrip,
     lastAgentSessionId: function () {

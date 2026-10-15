@@ -1016,6 +1016,18 @@ function assertFocus(dto, expectMode, expectPrimaryId) {
 }
 
 {
+  // Boot / pre-snapshot: quiet shell — never flash「未发现应用」Hero into home.
+  const boot = HFAdapter.toViewModel({});
+  if (boot.mode !== 'quiet' || boot.primary) {
+    throw new Error('empty dto must be quiet without primary CTA');
+  }
+  if (boot.appName === '未发现应用' || /未发现应用/.test(boot.headline || '')) {
+    throw new Error('empty dto must not invent 未发现应用');
+  }
+  if (!boot._bootShell) throw new Error('empty dto should mark _bootShell');
+}
+
+{
   // Empty home → no invented Continue/Recent
   let empty = HFAdapter.toViewModel({
     foreground: { appName: 'Cursor' },

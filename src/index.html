@@ -147,10 +147,6 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/><path d="M16.5 7.5l1.5-1.5M19 10h2"/></svg>
                 <span data-i18n="homeWbNavAgent">Agent</span>
               </button>
-              <button type="button" class="wb-nav-item" data-wb-nav="agentData" id="wbNavAgentData" hidden aria-hidden="true" title="已并入 Agent → 数据">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 17V9"/><path d="M12 17v-5"/><path d="M16 17V7"/></svg>
-                <span data-i18n="homeWbNavAgentData">数据</span>
-              </button>
               <button type="button" class="wb-nav-item" data-wb-nav="voice" id="wbNavVoice">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                 <span data-i18n="homeWbNavVoice">语音设置</span>
@@ -192,13 +188,14 @@
                 <div class="home-center" id="wbCenter">
                   <div class="wb-home-alert" id="wbHomeAlerts" hidden role="status"></div>
                   <div class="now-home" id="nowHomeRoot" hidden aria-hidden="true"></div>
-                  <div class="codex-smoke-feedback" id="codexSmokeFeedback" aria-live="polite">
+                  <!-- hidden until Now.hide() — otherwise flashes over cold-start before Now.show() -->
+                  <div class="codex-smoke-feedback" id="codexSmokeFeedback" hidden aria-hidden="true" aria-live="polite">
                     <label class="codex-smoke-feedback__label" for="codexSmokePrompt">向 Codex 提问</label>
                     <textarea class="codex-smoke-feedback__input" id="codexSmokePrompt" rows="3" placeholder="例如：这个项目的首页现在负责什么？只读回答一句。"></textarea>
                     <button type="button" class="codex-smoke-feedback__btn" id="codexSmokeTestBtn">发送并回流到卡片</button>
                     <div class="codex-smoke-feedback__card" id="codexSmokeTaskCard" hidden></div>
                   </div>
-                  <div class="codex-smoke-feedback" id="claudeSmokeFeedback" aria-live="polite">
+                  <div class="codex-smoke-feedback" id="claudeSmokeFeedback" hidden aria-hidden="true" aria-live="polite">
                     <label class="codex-smoke-feedback__label" for="claudeSmokePrompt">向 Claude 提问</label>
                     <textarea class="codex-smoke-feedback__input" id="claudeSmokePrompt" rows="3" placeholder="例如：用一句话说明 OneTone 首页职责（只读）。"></textarea>
                     <button type="button" class="codex-smoke-feedback__btn codex-smoke-feedback__btn--claude" id="claudeSmokeTestBtn">发送并回流到卡片</button>
@@ -5540,7 +5537,7 @@
   <script src="js/core/app-lang-mapping-prefs.js"></script>
   <script src="js/core/app-lang-runtime.js"></script>
   <script src="js/core/app-lang-apply.js"></script>
-  <script src="js/core/app-lang-hooks.js"></script>
+  <script src="js/core/app-lang-hooks.js?v=20261015-boot1"></script>
   <script src="js/core/app-runtime-hooks.js"></script>
   <script src="js/core/error-handlers.js"></script>
   <script src="js/core/app-toast.js"></script>
@@ -5548,14 +5545,15 @@
   <script src="js/core/confirm.js"></script>
   <script src="js/core/app-global-error.js"></script>
   <script src="js/core/app-debug-state.js"></script>
+  <script src="js/core/ot-defer-scripts.js"></script>
   <script src="js/features/update/update.js"></script>
-  <script src="js/features/debug/voice-hang-classify.js"></script>
-  <script src="js/features/debug/voice-diag.js"></script>
-  <script src="js/features/debug/debug-panel.js"></script>
+  <script type="text/plain" data-ot-defer="debug" src="js/features/debug/voice-hang-classify.js"></script>
+  <script type="text/plain" data-ot-defer="debug" src="js/features/debug/voice-diag.js"></script>
+  <script type="text/plain" data-ot-defer="debug" src="js/features/debug/debug-panel.js"></script>
   <script src="js/core/window-drag-perf.js"></script>
-  <script src="js/features/debug/drag-lag-panel.js"></script>
-  <script src="js/features/debug/debug-about.js"></script>
-  <script src="js/features/debug/debug-about-bindings.js"></script>
+  <script type="text/plain" data-ot-defer="debug" src="js/features/debug/drag-lag-panel.js"></script>
+  <script type="text/plain" data-ot-defer="debug" src="js/features/debug/debug-about.js"></script>
+  <script type="text/plain" data-ot-defer="debug" src="js/features/debug/debug-about-bindings.js"></script>
   <script src="js/features/voice/voice-hooks.js"></script>
   <script src="js/features/voice/voice-end.js"></script>
   <script src="js/features/voice/voice-phrase-custom.js"></script>
@@ -5606,11 +5604,11 @@
   <script src="js/features/camera/camera-gaze-landmarker.js"></script>
   <script src="js/features/camera/camera-hand-gesture.js"></script>
   <script src="js/features/camera/camera-frame-pump.js"></script>
-  <script src="js/features/camera/gaze-karaoke-lines.js"></script>
-  <script src="js/features/camera/camera-gaze-calibration.js"></script>
+  <script type="text/plain" data-ot-defer="camera-ui" src="js/features/camera/gaze-karaoke-lines.js"></script>
+  <script type="text/plain" data-ot-defer="camera-ui" src="js/features/camera/camera-gaze-calibration.js"></script>
   <script src="js/features/camera/gaze-context-resolver.js"></script>
   <script src="js/features/agent/action-catalog-filter.js"></script>
-  <script src="js/features/camera/camera-action-picker.js?v=20260815-cap4"></script>
+  <script type="text/plain" data-ot-defer="camera-ui" src="js/features/camera/camera-action-picker.js?v=20260815-cap4"></script>
   <script src="js/features/activation/activation-hub.js"></script>
   <script src="js/features/camera/camera-presence-actions.js?v=20260815-cap3"></script>
   <script src="js/features/camera/camera-gaze-monitor-topology.js"></script>
@@ -5619,14 +5617,14 @@
   <script src="js/features/camera/camera-smart-pointer.js"></script>
   <script src="js/features/camera/camera-snap-window.js"></script>
   <script src="js/features/camera/camera-auto-mute.js"></script>
-  <script src="js/features/camera/camera-pro-glance.js"></script>
+  <script type="text/plain" data-ot-defer="camera-ui" src="js/features/camera/camera-pro-glance.js"></script>
   <script src="js/features/camera/camera-preview.js?v=20260809-stall9"></script>
-  <script src="vendor/face-mask/face-mask.js"></script>
-  <script src="vendor/gpuimage-beautify/gpuimage-beautify.js"></script>
-  <script src="js/features/camera/camera-video-enhancer.js"></script>
-  <script src="js/features/camera/camera-workflow.js"></script>
-  <script src="js/features/camera/camera-teach.js"></script>
-  <script src="js/features/camera/camera2-workbench.js"></script>
+  <script type="text/plain" data-ot-defer="camera-ui" src="vendor/face-mask/face-mask.js"></script>
+  <script type="text/plain" data-ot-defer="camera-ui" src="vendor/gpuimage-beautify/gpuimage-beautify.js"></script>
+  <script type="text/plain" data-ot-defer="camera-ui" src="js/features/camera/camera-video-enhancer.js"></script>
+  <script type="text/plain" data-ot-defer="camera-ui" src="js/features/camera/camera-workflow.js"></script>
+  <script type="text/plain" data-ot-defer="camera-ui" src="js/features/camera/camera-teach.js"></script>
+  <script type="text/plain" data-ot-defer="camera-ui" src="js/features/camera/camera2-workbench.js"></script>
   <script src="js/features/scene/runtime-habit-control.js"></script>
   <script src="js/features/scene/scene-activate.js"></script>
   <script src="js/features/scene/habit-runtime.js"></script>
@@ -5770,10 +5768,10 @@
   <script src="js/core/app-core-hooks.js"></script>
   <script src="js/core/app-keyboard.js"></script>
   <script src="js/core/webview-bus.js"></script>
-  <script src="js/core/app-bootstrap-hooks.js"></script>
+  <script src="js/core/app-bootstrap-hooks.js?v=20261015-boot1"></script>
   <script src="js/core/app-legacy-shims.js"></script>
   <script src="js/core/app-legacy-register.js"></script>
-  <script src="js/core/app-boot.js?v=20260809-stall9"></script>
+  <script src="js/core/app-boot.js?v=20261015-boot1"></script>
   <script src="js/core/app-bootstrap.js"></script>
   <script src="js/main-legacy.js"></script>
 

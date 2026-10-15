@@ -298,6 +298,10 @@
     refresh();
     pollTimer = setInterval(function () {
       if (typeof document !== 'undefined' && document.hidden) return;
+      try {
+        var root = document.documentElement;
+        if (root && root.classList && root.classList.contains('ot-drag-active')) return;
+      } catch (_) {}
       refresh();
     }, POLL_MS);
   }

@@ -190,6 +190,18 @@ assert(
   /__onetoneOverlayDragEnd/.test(overlay) && /endOverlayDragFromRust/.test(overlay),
   'FE exposes __onetoneOverlayDragEnd for Rust eval (emit end is unreliable)'
 );
+{
+  const begin = overlay.match(/function beginOverlayDrag\([\s\S]*?\n    \}/)?.[0] || '';
+  assert(
+    /if\(dragging\)\s*endOverlayDragFromRust\(\)/.test(begin) &&
+      !/if\(dragging\)\s*return/.test(begin),
+    'stale FE dragging latch clears and continues (no intermittent 失灵 return)'
+  );
+}
+assert(
+  /setTimeout\([\s\S]{0,80}?2500\)/.test(overlay),
+  'FE drag-end safety watch is 2.5s (not 8s)'
+);
 assert(
   /__onetoneOverlayDragEnd/.test(rs) &&
     /eval_pad_drag_class[\s\S]{0,400}?__onetoneOverlayDragEnd/.test(rs),

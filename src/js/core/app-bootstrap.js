@@ -49,6 +49,19 @@
     if(global.OneToneWebViewBus) global.OneToneWebViewBus.bindListeners();
   }
   function bootApp(){
+    var h=hooks();
+    // Register must succeed first — deferred debug-about used to throw mid-register and
+    // leave __vp_bootstrap_hooks__ empty, so left-nav / openDrawer never wired.
+    if(typeof h.markBoot!=='function'||typeof h.renderHome!=='function'||typeof h.openSettings!=='function'){
+      try{
+        var keys=Object.keys(h||{}).join(',');
+        console.error('[onetone] boot aborted: bootstrap hooks incomplete',keys||'(empty)');
+        if(global.OneToneDom&&typeof global.OneToneDom.log==='function'){
+          global.OneToneDom.log('boot aborted: hooks incomplete keys='+(keys||'(empty)'));
+        }
+      }catch(_){}
+      return;
+    }
     if(global.OneToneAppBoot) global.OneToneAppBoot.run();
   }
   function bindGlobalErrorHandlers(){

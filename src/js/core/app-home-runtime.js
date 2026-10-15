@@ -49,7 +49,13 @@
   }
 
   function isHomeFirstRunFocusMode(){
+    // 「更多设置」展开完整左侧目录后，本会话不再收敛侧栏。
+    try{ if(sessionStorage.getItem('vp_focus_nav_expanded')==='1') return false; }catch(_){}
     return !isHomeAdvancedUnlocked();
+  }
+
+  function expandHomeFocusNav(){
+    try{ sessionStorage.setItem('vp_focus_nav_expanded','1'); }catch(_){}
   }
 
   function getHomeEntryMode(){
@@ -132,6 +138,7 @@
     markFirstSuccessDone:markFirstSuccessDone,
     isHomeAdvancedUnlocked:isHomeAdvancedUnlocked,
     isHomeFirstRunFocusMode:isHomeFirstRunFocusMode,
+    expandHomeFocusNav:expandHomeFocusNav,
     getHomeEntryMode:getHomeEntryMode,
     toggleGlobalListen:toggleGlobalListen,
     syncGlobalMasterUi:syncGlobalMasterUi,

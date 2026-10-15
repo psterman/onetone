@@ -25,7 +25,7 @@ assert.match(drawer, /agentSub:'data'/);
 assert.match(cmdk, /agentSub:'data'/);
 assert.match(workbench, /activeNav='agent'/);
 assert.doesNotMatch(workbench, /activeNav='agentData'/);
-assert.match(indexHtml, /wbNavAgentData[\s\S]*?hidden/);
+assert.doesNotMatch(indexHtml, /id="wbNavAgentData"|data-wb-nav="agentData"/);
 assert.match(indexHtml, /agent-nav-target\.js/);
 assert.match(stripSrc, /pickStatus/);
 assert.match(stripSrc, /去处理|查看问题|继续/);

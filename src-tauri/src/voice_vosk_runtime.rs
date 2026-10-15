@@ -1042,12 +1042,23 @@ pub fn voice_vosk_retry_start(
         && !reclaimed
         && matches!(st.as_str(), "listening" | "cooldown" | "triggered")
         && state.voice_vosk.lock().is_some();
-    // Already listening: soft activate (noop). Parked / stuck / error → force reload.
-    let reason = if healthy {
-        "vosk_retry_start"
-    } else {
-        "force:vosk_retry_start"
-    };
+    // Already healthy: do not enqueue — FE poll used to soft-activate every few
+    // seconds and still burned IPC / supervisor. Return status with skip flag.
+    if healthy {
+        crate::app_log::log_line(
+            state,
+            "voice",
+            "vosk_retry_start skipped (already listening)",
+        );
+        let mut status = voice_vosk_status(state, resource_dir);
+        if let Some(obj) = status.as_object_mut() {
+            obj.insert("skipped".into(), serde_json::json!(true));
+            obj.insert("skipReason".into(), serde_json::json!("already_listening"));
+        }
+        return status;
+    }
+    // Parked / stuck / error → force reload.
+    let reason = "force:vosk_retry_start";
     // Enqueue — sync activate on the IPC thread stacked with overlay kws reload
     // and held ACTIVATE_LOCK → voiceStatusPoll UI_HB_STALL_5S / 假死.
     crate::voice_supervisor::enqueue_activate(app.clone(), Arc::clone(state), reason);

@@ -4600,7 +4600,19 @@ fn finish_overlay_drag(win: &WebviewWindow, gen: u64) {
         }),
     );
     if OVERLAY_CAMERA_PAUSE_SENT.swap(false, Ordering::SeqCst) {
-        crate::window_layout::emit_camera_frame_pump(win.app_handle(), false);
+        // Dump: Soft Pad end resumed camera while mainSizeMove/settle still owned
+        // the pause and poisoned the next main grab. Skip if main owns the latch.
+        #[cfg(windows)]
+        let main_owns = crate::window_layout::main_window_drag_active()
+            || crate::window_layout::main_camera_pause_owned();
+        #[cfg(not(windows))]
+        let main_owns = crate::window_layout::main_window_drag_active();
+        if !main_owns {
+            crate::window_layout::emit_camera_frame_pump(win.app_handle(), false);
+            // Soft Pad end clears paint class immediately (main EXIT uses delayed restore).
+            #[cfg(windows)]
+            crate::window_layout::eval_ot_drag_active(win.app_handle(), false);
+        }
     }
 }
 

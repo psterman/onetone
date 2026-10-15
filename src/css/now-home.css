@@ -1458,8 +1458,9 @@
   align-items: center;
   justify-content: center;
   padding: 18px 16px;
-  background: rgba(15, 23, 42, 0.28);
-  backdrop-filter: blur(2px);
+  /* Opaque scrim — no backdrop-filter (main-window drag paint cost). */
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: none;
 }
 .now-home .now-gate {
   margin: 0 0 12px;
@@ -1661,7 +1662,8 @@
 /* belt-and-suspenders: never let workbench / smoke bleed under a visible Now */
 .home-center:has(#nowHomeRoot:not([hidden])) #wbDashboardStack,
 .home-center:has(#nowHomeRoot:not([hidden])) .wb-dashboard-stack,
-.home-center:has(#nowHomeRoot:not([hidden])) .codex-smoke-feedback {
+.home-center:has(#nowHomeRoot:not([hidden])) .codex-smoke-feedback,
+.home-center:has(#nowHomeRoot:not([hidden])) > .wb-home-alert {
   display: none !important;
 }
 
@@ -1682,7 +1684,7 @@
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.7) inset,
     0 14px 36px rgba(20, 35, 58, 0.14);
-  backdrop-filter: blur(8px);
+  backdrop-filter: none;
 }
 .now-home .now-vstrip[hidden] { display: none !important; }
 .now-home .now-vstrip-hd {

@@ -226,19 +226,9 @@
         setTimeout(runPoll,welcomeOpen&&welcomeOpen()?4000:1500);
       }
     }
-    if(vw&&typeof vw.ensureHomeVoiceListening==='function'){
-      var ensureHomeVoice=function(){
-        if(welcomeOpen&&welcomeOpen()) return;
-        try{ vw.ensureHomeVoiceListening({force:true}); }catch(_){}
-      };
-      if(bootSettling()&&global.OneToneAppSession&&global.OneToneAppSession.whenBootSettled){
-        global.OneToneAppSession.whenBootSettled(function(){
-          setTimeout(ensureHomeVoice,300);
-        });
-      }else{
-        setTimeout(ensureHomeVoice,800);
-      }
-    }
+    // Do NOT force ensureHomeVoiceListening after mvp_init — cold-start + home enter
+    // used to auto-arm 命令模式 and race title-bar drag. Poll heals mismatch only;
+    // user starts via 开始听写; voiceWake park-restore uses force ensure.
   }
 
   function flushDeferredMvpInitSideEffects(){

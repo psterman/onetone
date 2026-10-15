@@ -34,11 +34,9 @@
         opts:Object.assign({},opts,{agentSub:'data'})
       };
     }
+    // Align with ShellIa: general → basic. (Was debug/repair — broke「更多设置」/ left directory entry.)
     if(panel==='general'){
-      return {
-        panel:'debug',
-        opts:Object.assign({},opts,{debugMode:opts.debugMode||'repair'})
-      };
+      return {panel:'basic',opts:opts};
     }
     if(panel==='models'){
       return {
@@ -276,7 +274,8 @@
           },80);
         }
         try{
-          if(global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.syncNavActiveState){
+          // Only re-sync if still on softPad — keys/habits open can win the same tick.
+          if(ui.settingsPanel==='softPad'&&global.OneToneHomeWorkbench&&global.OneToneHomeWorkbench.syncNavActiveState){
             global.OneToneHomeWorkbench.syncNavActiveState('softPad',{focus:focus});
           }
         }catch(_){}
@@ -497,18 +496,15 @@
     if(view==='hub'&&global.OneToneHabitHub&&global.OneToneHabitHub.applyShellVisibility){
       try{ global.OneToneHabitHub.applyShellVisibility(); }catch(_){}
     }
-    if(typeof requestAnimationFrame==='function'){
-      requestAnimationFrame(function(){ setTimeout(finishHeavy,0); });
-    }else{
-      setTimeout(finishHeavy,0);
-    }
+    // Caller already deferred one macrotask — skip RAF+setTimeout stack.
+    setTimeout(finishHeavy,0);
 
     // Keys chrome is for keys panel ??skip on habits hub (was remounting scheme/voice UI).
     if(view!=='hub'){
-      requestAnimationFrame(function(){
+      setTimeout(function(){
         if(!ui.drawerOpen||!isHabitsPanel()) return;
         hooks().renderMappingChrome();
-      });
+      },0);
     }
   }
 
@@ -701,6 +697,33 @@
     return panel==='camera'||panel==='camera2';
   }
 
+  /**
+   * Chrome-first lazy scripts: never gate openDrawer/setSettingsPanel before
+   * PANEL_IDS flip. After flip, camera/debug bodies wait ensureForPanel; other
+   * panels skip the hop (habit-heavy stays sync).
+   */
+  function runAfterPanelScripts(panel,fn){
+    panel=normalizePanel(panel);
+    var D=global.OneToneDefer;
+    if(!D||typeof D.panelNeedsDefer!=='function'||!D.panelNeedsDefer(panel)){
+      try{ fn(); }catch(err){ console.error('panel body',panel,err); }
+      return;
+    }
+    var p=typeof D.ensureForPanel==='function'?D.ensureForPanel(panel):null;
+    if(!p||typeof p.then!=='function'){
+      try{ fn(); }catch(err){ console.error('panel body',panel,err); }
+      return;
+    }
+    p.then(function(){
+      if(normalizePanel(ui.settingsPanel)!==panel) return;
+      try{ fn(); }catch(err){ console.error('panel body after defer',panel,err); }
+    }).catch(function(err){
+      console.error('ensureForPanel',panel,err);
+      if(normalizePanel(ui.settingsPanel)!==panel) return;
+      try{ fn(); }catch(_){}
+    });
+  }
+
   function setSettingsPanel(panel,opts){
     opts=opts||{};
     var resolved=resolveSettingsPanelRequest(panel,opts);
@@ -714,9 +737,31 @@
     const enteringVoice=panel==='voiceWake'&&lastPanel!=='voiceWake';
 
     const panelChanged=panel!==lastPanel;
+    var leavingPanel=lastPanel;
+
+    ui.settingsPanel=panel;
+    if(panel==='agent'){
+      ui.agentSub=opts.agentSub==='data'?'data':(opts.agentSub||null);
+    }else{
+      ui.agentSub=null;
+    }
+
+    if(ui.drawerOpen){
+      setSettingsDrawerGate(true,{panel:panel});
+    }
+
+    // Flip panel visibility FIRST — leave cleanup / mvp flush used to run before any
+    // paint and made every left-nav switch feel like a blank load wait.
+    const highlight=navHighlightPanel(panel);
+    Object.keys(ids).forEach(function(key){
+      const sec=$(ids[key]);
+      if(sec) sec.hidden=(key!==panel);
+      const nav=document.querySelector('.settings-nav-item[data-panel="'+key+'"]');
+      if(nav) nav.classList.toggle('is-active',highlight===key);
+    });
 
     // Leave camera family / open non-camera: pause infer before heavy paint.
-    if(ui.drawerOpen&&!isCameraFamilyPanel(panel)&&(panelChanged||isCameraFamilyPanel(lastPanel))){
+    if(ui.drawerOpen&&!isCameraFamilyPanel(panel)&&(panelChanged||isCameraFamilyPanel(leavingPanel))){
       try{
         var paLeave=global.OneToneCameraPresenceActions;
         if(paLeave&&typeof paLeave.setDrawerUiPaused==='function'){
@@ -738,11 +783,11 @@
       }
     }
 
-    // Leaving keys: stop pad readiness remount/poll so??????open is not stacked under it.
-    if(panelChanged&&lastPanel==='keys'&&panel!=='keys'){
+    // Leaving keys: stop pad readiness remount/poll so open is not stacked under it.
+    if(panelChanged&&leavingPanel==='keys'&&panel!=='keys'){
       stopKeysPanelBackgroundWork();
     }
-    if(panelChanged&&lastPanel==='softPad'&&panel!=='softPad'){
+    if(panelChanged&&leavingPanel==='softPad'&&panel!=='softPad'){
       if(global.OneToneCodexMicroPadUi&&global.OneToneCodexMicroPadUi.stopBackgroundWork){
         global.OneToneCodexMicroPadUi.stopBackgroundWork();
       }
@@ -757,12 +802,12 @@
         if(softTiles) softTiles.innerHTML='';
       }
     }
-    if(panelChanged&&lastPanel==='agentData'&&panel!=='agentData'){
+    if(panelChanged&&leavingPanel==='agentData'&&panel!=='agentData'){
       if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
         try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
       }
     }
-    if(panelChanged&&lastPanel==='agent'&&panel!=='agent'){
+    if(panelChanged&&leavingPanel==='agent'&&panel!=='agent'){
       if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
         try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
       }
@@ -773,14 +818,14 @@
         try{ global.OneToneAgentPageSettingsBridge.stop(); }catch(_){}
       }
     }
-    if(panelChanged&&lastPanel==='tray'&&panel!=='tray'){
+    if(panelChanged&&leavingPanel==='tray'&&panel!=='tray'){
       var trayUiLeave=global.OneToneSoftPadTrayUi;
       if(trayUiLeave&&trayUiLeave.onPanelLeave){
         try{ trayUiLeave.onPanelLeave(); }catch(_){}
       }
     }
     // Leaving voiceWake: bump openGen so in-flight chrome/heavy RAF cannot paint stale.
-    if(panelChanged&&lastPanel==='voiceWake'&&panel!=='voiceWake'){
+    if(panelChanged&&leavingPanel==='voiceWake'&&panel!=='voiceWake'){
       try{ document.documentElement.classList.remove('ot-voice-wake-park'); }catch(_){}
       if(global.OneToneVoiceWake&&typeof global.OneToneVoiceWake.bumpOpenGen==='function'){
         try{ global.OneToneVoiceWake.bumpOpenGen(); }catch(_){}
@@ -792,72 +837,50 @@
       }
     }
 
-    ui.settingsPanel=panel;
-    if(panel==='agent'){
-      ui.agentSub=opts.agentSub==='data'?'data':(opts.agentSub||null);
-    }else{
-      ui.agentSub=null;
-    }
-
-    if(ui.drawerOpen){
-      setSettingsDrawerGate(true,{panel:panel});
-    }
-
-    // Flush deferred mvp_init only after leaving Soft Pad / keys / camera ??never while still on one
-    // (softPad?camera used to flush remount + MediaPipe open in the same turn ????).
+    // Flush deferred mvp_init after chrome flip — sync flush on every tab switch wedged paint.
     if(panelChanged&&global.OneToneConfigPersist){
       var blocked=global.OneToneConfigPersist.mvpInitHeavyRemountBlocked;
       if(typeof blocked==='function'&&!blocked()&&
          typeof global.OneToneConfigPersist.flushDeferredMvpInitSideEffects==='function'){
-        try{ global.OneToneConfigPersist.flushDeferredMvpInitSideEffects(); }catch(_){}
+        setTimeout(function(){
+          if(normalizePanel(ui.settingsPanel)!==panel) return;
+          try{ global.OneToneConfigPersist.flushDeferredMvpInitSideEffects(); }catch(_){}
+        },0);
       }
     }
-
-    const highlight=navHighlightPanel(panel);
-
-    Object.keys(ids).forEach(function(key){
-
-      const sec=$(ids[key]);
-
-      if(sec) sec.hidden=(key!==panel);
-
-      const nav=document.querySelector('.settings-nav-item[data-panel="'+key+'"]');
-
-      if(nav) nav.classList.toggle('is-active',highlight===key);
-
-    });
 
     syncSettingsMicPoll(panel);
 
     if(panel==='debug'){
+      var debugOpts=opts;
+      var debugPanelChanged=panelChanged;
+      runAfterPanelScripts('debug',function(){
+        try{
+          var mountDebugOverview=global.__otMountDebugOverviewIsland;
+          if(typeof mountDebugOverview==='function') mountDebugOverview();
+        }catch(err){ console.error('debug island mount',err); }
 
-      try{
-        var mountDebugOverview=global.__otMountDebugOverviewIsland;
-        if(typeof mountDebugOverview==='function') mountDebugOverview();
-      }catch(err){ console.error('debug island mount',err); }
+        hooks().startProcessUsagePoll();
+        hooks().refreshProcessUsage();
 
-      hooks().startProcessUsagePoll();
+        if(debugPanelChanged) hooks().renderDebugPanel();
+        else hooks().scheduleDebugChromeRefresh();
 
-      hooks().refreshProcessUsage();
+        if(debugOpts.debugMode&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.setFocusMode){
+          global.OneToneVoiceDiag.setFocusMode(debugOpts.debugMode);
+        }else{
+          hooks().syncDebugFocusSections();
+        }
 
-      if(panelChanged) hooks().renderDebugPanel();
-
-      else hooks().scheduleDebugChromeRefresh();
-
-      if(opts.debugMode&&global.OneToneVoiceDiag&&global.OneToneVoiceDiag.setFocusMode){
-        global.OneToneVoiceDiag.setFocusMode(opts.debugMode);
-      }else{
-        hooks().syncDebugFocusSections();
-      }
-
-      if(panelChanged){
-        setTimeout(function(){
-          if(!ui.drawerOpen||normalizePanel(ui.settingsPanel)!=='debug') return;
-          if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
-            try{ global.OneToneVoiceWake.ensureHomeVoiceListening({force:true}); }catch(_){}
-          }
-        },500);
-      }
+        if(debugPanelChanged){
+          setTimeout(function(){
+            if(!ui.drawerOpen||normalizePanel(ui.settingsPanel)!=='debug') return;
+            if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
+              try{ global.OneToneVoiceWake.ensureHomeVoiceListening({force:true}); }catch(_){}
+            }
+          },500);
+        }
+      });
 
     }
 
@@ -931,63 +954,60 @@
           global.OneToneSoftPadHub.ensureFloatingOverlayHidden('panel');
         }
       }catch(_){}
-      requestAnimationFrame(function(){
-        setTimeout(function(){
-          if(normalizePanel(ui.settingsPanel)!=='softPad'){
-            try{ feLog('fe softPad.render aborted stale'); }catch(_){}
+      // One macrotask only — RAF+setTimeout stacked an extra frame on every left-nav open.
+      setTimeout(function(){
+        if(normalizePanel(ui.settingsPanel)!=='softPad'){
+          try{ feLog('fe softPad.render aborted stale'); }catch(_){}
+          return;
+        }
+        try{
+          if(global.OneToneSoftPadHub&&typeof global.OneToneSoftPadHub.getOpenGen==='function'&&
+             softOpenGen!==global.OneToneSoftPadHub.getOpenGen()){
+            feLog('fe softPad.render aborted stale');
             return;
           }
+        }catch(_){}
+        if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.render){
           try{
-            if(global.OneToneSoftPadHub&&typeof global.OneToneSoftPadHub.getOpenGen==='function'&&
-               softOpenGen!==global.OneToneSoftPadHub.getOpenGen()){
-              feLog('fe softPad.render aborted stale');
-              return;
-            }
-          }catch(_){}
-          if(global.OneToneSoftPadHub&&global.OneToneSoftPadHub.render){
-            try{
-              global.OneToneSoftPadHub.render(softOpts);
-            }catch(err){
-              console.error('softPad panel defer render',err);
-            }
+            global.OneToneSoftPadHub.render(softOpts);
+          }catch(err){
+            console.error('softPad panel defer render',err);
           }
-        },0);
-      });
+        }
+      },0);
 
     }else if(panel==='agentData'){
       /* 别名：resolveSettingsPanelRequest 已把 agentData → agent+data；此处不再独立 start */
     }else if(panel==='agent'){
-      requestAnimationFrame(function(){
-        setTimeout(function(){
-          if(normalizePanel(ui.settingsPanel)!=='agent') return;
-          if(global.OneToneAgentPagePreviewBridge&&global.OneToneAgentPagePreviewBridge.start){
-            try{ global.OneToneAgentPagePreviewBridge.start(); }catch(err){
-              console.error('agent preview bridge start',err);
+      setTimeout(function(){
+        if(normalizePanel(ui.settingsPanel)!=='agent') return;
+        if(global.OneToneAgentPagePreviewBridge&&global.OneToneAgentPagePreviewBridge.start){
+          try{ global.OneToneAgentPagePreviewBridge.start(); }catch(err){
+            console.error('agent preview bridge start',err);
+          }
+        }
+        if(global.OneToneAgentPageSettingsBridge&&global.OneToneAgentPageSettingsBridge.start){
+          try{ global.OneToneAgentPageSettingsBridge.start(); }catch(err){
+            console.error('agent settings bridge start',err);
+          }
+        }
+        if(opts.agentSub==='data'||ui.agentSub==='data'){
+          if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.start){
+            try{ global.OneToneAgentDataBridge.start(); }catch(err){
+              console.error('agent data bridge start',err);
             }
           }
-          if(global.OneToneAgentPageSettingsBridge&&global.OneToneAgentPageSettingsBridge.start){
-            try{ global.OneToneAgentPageSettingsBridge.start(); }catch(err){
-              console.error('agent settings bridge start',err);
-            }
+          postAgentPageCmd('setSub',{sub:'data'});
+        }else{
+          if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
+            try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
           }
-          if(opts.agentSub==='data'||ui.agentSub==='data'){
-            if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.start){
-              try{ global.OneToneAgentDataBridge.start(); }catch(err){
-                console.error('agent data bridge start',err);
-              }
-            }
-            postAgentPageCmd('setSub',{sub:'data'});
-          }else{
-            if(global.OneToneAgentDataBridge&&global.OneToneAgentDataBridge.stop){
-              try{ global.OneToneAgentDataBridge.stop(); }catch(_){}
-            }
-            postAgentPageCmd('setSub',{sub:'overview'});
-          }
-          if(opts.agentTarget){
-            postAgentPageCmd('navigate',{target:opts.agentTarget});
-          }
-        },0);
-      });
+          postAgentPageCmd('setSub',{sub:'overview'});
+        }
+        if(opts.agentTarget){
+          postAgentPageCmd('navigate',{target:opts.agentTarget});
+        }
+      },0);
 
     }else if(panel==='tray'){
       ui.trayEditorFocus=opts.trayEditorFocus||null;
@@ -1011,28 +1031,23 @@
       var habitView=ui.habitView||'hub';
       if(habitView!=='wizard') ui.habitView='hub';
 
-      // Defer habit island mount so drawer chrome paints before hub HTML (??keys).
-      requestAnimationFrame(function(){
-        setTimeout(function(){
-          if(!isHabitsPanel()) return;
-          try{
-            var mountHubChrome=global.__otMountHabitHubChromeIsland;
-            if(typeof mountHubChrome==='function') mountHubChrome();
-          }catch(err){ console.error('habit hub island mount',err); }
-          refreshHabitsPanel();
-        },0);
-      });
+      // One macrotask — chrome already flipped; RAF+setTimeout added a blank frame.
+      setTimeout(function(){
+        if(!isHabitsPanel()) return;
+        try{
+          var mountHubChrome=global.__otMountHabitHubChromeIsland;
+          if(typeof mountHubChrome==='function') mountHubChrome();
+        }catch(err){ console.error('habit hub island mount',err); }
+        refreshHabitsPanel();
+      },0);
 
     }else if(panel==='sounds'){
 
-      // Defer like Soft Pad ??sync renderSoundSettingsPanel builds every picker and
-      // used to ?? when switching softPad/sounds/voiceWake in the same second.
-      requestAnimationFrame(function(){
-        setTimeout(function(){
-          if(normalizePanel(ui.settingsPanel)!=='sounds') return;
-          if(hooks().renderSoundSettingsPanel) hooks().renderSoundSettingsPanel();
-        },0);
-      });
+      // One macrotask — sync pickers used to wedge rapid softPad/sounds/voiceWake flips.
+      setTimeout(function(){
+        if(normalizePanel(ui.settingsPanel)!=='sounds') return;
+        if(hooks().renderSoundSettingsPanel) hooks().renderSoundSettingsPanel();
+      },0);
 
     }else if(panel==='voiceWake'){
 
@@ -1240,7 +1255,7 @@
       });
 
     }else if(panel==='camera'){
-
+      // Sync before scripts: edit banner + unpause tracks (presence stays sync).
       try{
         var mountCameraFlow=global.__otMountCameraFlowChromeIsland;
         if(typeof mountCameraFlow==='function') mountCameraFlow();
@@ -1254,53 +1269,64 @@
         ui.cameraEditMode='appScenario';
         if(ui.habitScenarioReturnId) state().selectedMappingId=String(ui.habitScenarioReturnId);
       }
-      // Defer preview/reconcile/MediaPipe ??sync onPanelVisible used to ?? the drawer on open.
-      requestAnimationFrame(function(){
-        setTimeout(function(){
-          if(normalizePanel(ui.settingsPanel)!=='camera') return;
-          if(global.OneToneCameraPreview&&global.OneToneCameraPreview.onPanelVisible){
-            try{ global.OneToneCameraPreview.onPanelVisible(); }catch(err){
-              console.error('camera preview onPanelVisible',err);
+      try{
+        var paCamEnter=global.OneToneCameraPresenceActions;
+        if(paCamEnter&&typeof paCamEnter.setDrawerUiPaused==='function'){
+          paCamEnter.setDrawerUiPaused(false);
+        }
+      }catch(_){}
+      // Preview/workflow need camera-ui deferred scripts — after chrome flip.
+      runAfterPanelScripts('camera',function(){
+        requestAnimationFrame(function(){
+          setTimeout(function(){
+            if(normalizePanel(ui.settingsPanel)!=='camera') return;
+            if(global.OneToneCameraPreview&&global.OneToneCameraPreview.onPanelVisible){
+              try{ global.OneToneCameraPreview.onPanelVisible(); }catch(err){
+                console.error('camera preview onPanelVisible',err);
+              }
             }
-          }
-          if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.onPanelVisible){
-            try{ global.OneToneCameraWorkflow.onPanelVisible(); }catch(err){
-              console.error('camera workflow onPanelVisible',err);
+            if(global.OneToneCameraWorkflow&&global.OneToneCameraWorkflow.onPanelVisible){
+              try{ global.OneToneCameraWorkflow.onPanelVisible(); }catch(err){
+                console.error('camera workflow onPanelVisible',err);
+              }
             }
-          }
-          if(global.OneToneHabitScenarioContextBanner&&global.OneToneHabitScenarioContextBanner.render){
-            try{ global.OneToneHabitScenarioContextBanner.render(); }catch(_){}
-          }
-        },0);
+            if(global.OneToneHabitScenarioContextBanner&&global.OneToneHabitScenarioContextBanner.render){
+              try{ global.OneToneHabitScenarioContextBanner.render(); }catch(_){}
+            }
+          },0);
+        });
       });
 
     }else if(panel==='camera2'){
-      // Same presence runtime as camera 1; edit scope stays global unless habit banner set appScenario.
       if(String(ui.habitScenarioReturnPanel||'')!=='camera'||!String(ui.habitScenarioReturnId||'').trim()){
         if(String(ui.cameraEditMode||'')!=='appScenario') ui.cameraEditMode='global';
       }
-      requestAnimationFrame(function(){
-        setTimeout(function(){
-          if(normalizePanel(ui.settingsPanel)!=='camera2') return;
-          try{
-            var paEnter=global.OneToneCameraPresenceActions;
-            if(paEnter&&typeof paEnter.setDrawerUiPaused==='function') paEnter.setDrawerUiPaused(false);
-          }catch(_){}
-          if(global.OneToneCameraPreview&&global.OneToneCameraPreview.onPanelVisible){
-            try{ global.OneToneCameraPreview.onPanelVisible(); }catch(err){
-              console.error('camera2 preview onPanelVisible',err);
+      try{
+        var paEnterEarly=global.OneToneCameraPresenceActions;
+        if(paEnterEarly&&typeof paEnterEarly.setDrawerUiPaused==='function'){
+          paEnterEarly.setDrawerUiPaused(false);
+        }
+      }catch(_){}
+      runAfterPanelScripts('camera2',function(){
+        requestAnimationFrame(function(){
+          setTimeout(function(){
+            if(normalizePanel(ui.settingsPanel)!=='camera2') return;
+            if(global.OneToneCameraPreview&&global.OneToneCameraPreview.onPanelVisible){
+              try{ global.OneToneCameraPreview.onPanelVisible(); }catch(err){
+                console.error('camera2 preview onPanelVisible',err);
+              }
             }
-          }
-          if(global.OneToneCamera2Workbench&&global.OneToneCamera2Workbench.mount){
-            try{ global.OneToneCamera2Workbench.mount(); }catch(err){
-              console.error('camera2 workbench mount',err);
+            if(global.OneToneCamera2Workbench&&global.OneToneCamera2Workbench.mount){
+              try{ global.OneToneCamera2Workbench.mount(); }catch(err){
+                console.error('camera2 workbench mount',err);
+              }
+            }else if(global.OneToneCamera2Compare&&global.OneToneCamera2Compare.mount){
+              try{ global.OneToneCamera2Compare.mount(); }catch(err){
+                console.error('camera2 compare mount',err);
+              }
             }
-          }else if(global.OneToneCamera2Compare&&global.OneToneCamera2Compare.mount){
-            try{ global.OneToneCamera2Compare.mount(); }catch(err){
-              console.error('camera2 compare mount',err);
-            }
-          }
-        },0);
+          },0);
+        });
       });
     }
 
@@ -1338,7 +1364,7 @@
     lastPanel=panel;
 
     // Presence/MediaPipe createImageBitmap + habit/softPad remount on the same turn wedges WebView2.
-    // Pause infer while drawer shows non-camera panels; keep stream; resume on camera or close.
+    // Pause infer while drawer shows non-camera panels; keep stream; resume on camera/camera2 or close.
     syncCameraInferForPanel(panel);
 
     hooks().renderSettingsSchemeSubnav();
@@ -1423,6 +1449,18 @@
 
     syncHeaderSettingsBtn();
 
+    // Keep left directory usable while settings are open (focus-mode CSS hides nav items).
+    try{
+      var leftNav=$('wbLeftNav');
+      if(leftNav){
+        var focusHome=false;
+        if(!ui.drawerOpen&&global.OneToneAppHomeRuntime&&typeof global.OneToneAppHomeRuntime.isHomeFirstRunFocusMode==='function'){
+          focusHome=!!global.OneToneAppHomeRuntime.isHomeFirstRunFocusMode();
+        }
+        leftNav.classList.toggle('is-focus-mode',!!(focusHome&&isWorkbenchShell()));
+      }
+    }catch(_){}
+
     if(ui.drawerOpen) resetSettingsLayoutScroll({resetPanel:true});
 
   }
@@ -1446,10 +1484,13 @@
   }
 
   function openDrawer(opts){
-
-    hooks().ensureFullLangApplied();
-
     opts=opts||{};
+
+    try{
+      var ens=hooks().ensureFullLangApplied;
+      if(typeof ens==='function') ens();
+    }catch(_){}
+
     try{
       feLog('fe openDrawer panel='+String(opts.panel||'basic')+(opts.habitWizard?' wizard=1':''));
     }catch(_){}
@@ -1496,22 +1537,26 @@
 
     ui.drawerOpen=true;
     setSettingsDrawerGate(true,{panel:opts.panel||'basic'});
+    // Unhide drawer chrome before panel body work — otherwise left-nav waits on
+    // Soft Pad leave cleanup / mvp flush with a blank content column.
+    syncSettingsChrome();
 
     // Pause MediaPipe before any panel remount ??presence createImageBitmap + habit/softPad
     // remount on the same turn wedges WebView2 (Responding=false).
+    // Camera family must unpause — tracks stay disabled if we only "skip pause".
     try{
       var openPanel=normalizePanel(opts.panel||'basic');
-      if(openPanel!=='camera'&&openPanel!=='camera2'){
-        var paEarly=global.OneToneCameraPresenceActions;
-        if(paEarly&&typeof paEarly.setDrawerUiPaused==='function'){
+      var paEarly=global.OneToneCameraPresenceActions;
+      if(paEarly&&typeof paEarly.setDrawerUiPaused==='function'){
+        if(openPanel==='camera'||openPanel==='camera2'){
+          paEarly.setDrawerUiPaused(false);
+        }else{
           paEarly.setDrawerUiPaused(true);
         }
       }
     }catch(_){}
 
     setSettingsPanel(opts.panel||'basic',opts);
-
-    syncSettingsChrome();
 
     if((opts.panel||'basic')==='debug'){
       var debugMode=opts.debugMode||'overview';
@@ -1569,7 +1614,8 @@
   function syncCameraInferForPanel(panel){
     var pa=global.OneToneCameraPresenceActions;
     if(!pa||typeof pa.setDrawerUiPaused!=='function') return;
-    var pause=!!ui.drawerOpen&&normalizePanel(panel)!=='camera';
+    // camera + camera2 share preview/enhancer; pausing camera2 killed 右侧画面观感.
+    var pause=!!ui.drawerOpen&&!isCameraFamilyPanel(panel);
     try{ pa.setDrawerUiPaused(pause); }catch(_){}
   }
 
@@ -1591,13 +1637,15 @@
     }
 
     var closingPanel=normalizePanel(ui.settingsPanel);
+    // Only voiceWake parks capture — restore engine after that page, not on every Soft Pad→home.
+    var restoreVoiceAfterPark=closingPanel==='voiceWake';
     if(closingPanel==='keys'&&global.OneToneKeysPanelUi&&global.OneToneKeysPanelUi.persistEditorIfDirty){
       try{ global.OneToneKeysPanelUi.persistEditorIfDirty(); }catch(_){}
     }
 
     ui.drawerOpen=false;
     setSettingsDrawerGate(false);
-    if(global.OneToneVoiceWake&&global.OneToneVoiceWake.unparkHomeAsrQuiet){
+    if(restoreVoiceAfterPark&&global.OneToneVoiceWake&&global.OneToneVoiceWake.unparkHomeAsrQuiet){
       try{ global.OneToneVoiceWake.unparkHomeAsrQuiet(); }catch(_){}
     }
     try{ document.documentElement.classList.remove('ot-voice-wake-park'); }catch(_){}
@@ -1660,31 +1708,16 @@
 
     },200);
 
-    setTimeout(function(){
-      if(ui.drawerOpen) return;
-      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
-        try{ global.OneToneVoiceWake.ensureHomeVoiceListening({force:true}); }catch(_){}
-      }
-      if(global.OneToneHomeWorkbench){
-        try{
-          global.OneToneHomeWorkbench.forceHomeRender();
-          global.OneToneHomeWorkbench.render();
-        }catch(_){}
-      }
-      if(global.OneToneHomeV9&&global.OneToneHomeV9.paintHomeLiveTextImmediate){
-        try{ global.OneToneHomeV9.paintHomeLiveTextImmediate(); }catch(_){}
-      }
-    },600);
-
-    setTimeout(function(){
-      if(ui.drawerOpen) return;
-      if(global.OneToneVoiceWake&&global.OneToneVoiceWake.pollTick){
-        try{ global.OneToneVoiceWake.pollTick(); }catch(_){}
-      }
-      if(global.OneToneHomeV9&&global.OneToneHomeV9.paintHomeLiveTextImmediate){
-        try{ global.OneToneHomeV9.paintHomeLiveTextImmediate(); }catch(_){}
-      }
-    },80);
+    // Park-restore only. force ensure + forceHomeRender on every home return started
+    // mic "命令模式" and stacked paint onto title-bar drag (首页拖不动).
+    if(restoreVoiceAfterPark){
+      setTimeout(function(){
+        if(ui.drawerOpen) return;
+        if(global.OneToneVoiceWake&&global.OneToneVoiceWake.ensureHomeVoiceListening){
+          try{ global.OneToneVoiceWake.ensureHomeVoiceListening({force:true}); }catch(_){}
+        }
+      },600);
+    }
 
   }
 

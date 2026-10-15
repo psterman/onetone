@@ -60,8 +60,16 @@ assert.ok(
   'settings drawer must park voice only on voiceWake, not debug'
 );
 assert.ok(
-  drawer.includes('ensureHomeVoiceEngine'),
-  'closeDrawer must unpark voice engine on home return'
+  drawer.includes('restoreVoiceAfterPark') &&
+    drawer.includes("closingPanel==='voiceWake'") &&
+    /restoreVoiceAfterPark[\s\S]{0,200}ensureHomeVoiceListening/.test(drawer),
+  'closeDrawer restores voice only after voiceWake park (not every Soft Pad→home)'
+);
+assert.ok(
+  !/setTimeout\(function\(\)\{[\s\S]{0,80}ensureHomeVoiceListening\(\{force:true\}\)[\s\S]{0,120}forceHomeRender/.test(
+    drawer
+  ),
+  'closeDrawer must not force ensure + forceHomeRender on every home return'
 );
 
 assert.ok(

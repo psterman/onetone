@@ -585,6 +585,7 @@
   }
 
   function attach(video,shell){
+    init(); // lazy — do not boot WebGL prefs on homepage load
     videoEl=video||$('cameraPreviewVideo');
     shellEl=shell||$('cameraPreviewShell');
     if(!videoEl||!shellEl) return false;
@@ -735,9 +736,5 @@
     normalizeFaceMask:normalizeFaceMask
   };
 
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',init);
-  }else{
-    init();
-  }
+  // No DOMContentLoaded init — homepage cold start must not touch beauty prefs/WebGL.
 })((typeof window!=='undefined')?window:globalThis);

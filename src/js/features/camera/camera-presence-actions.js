@@ -982,6 +982,17 @@
       st.manualStopped=false;
     }
     if(isCameraPreviewLive()){
+      var pvLive=global.OneToneCameraPreview;
+      // Detect→preview upgrade when settings/camera2 opens (startPreview no-ops otherwise).
+      if(pvLive&&pvLive.startPreview&&pvLive.getCaptureMode&&pvLive.getCaptureMode()==='detect'){
+        return pvLive.startPreview({reason:reason}).then(function(res){
+          st.lastError=null;
+          st.runtimeStatus=(res&&res.ok===false)?'error':'running';
+          if(res&&res.ok===false) st.lastError=res.error||null;
+          emitRuntime();
+          return res&&res.ok===false?res:{ok:true,reason:reason};
+        });
+      }
       st.lastError=null;
       st.runtimeStatus='running';
       emitRuntime();

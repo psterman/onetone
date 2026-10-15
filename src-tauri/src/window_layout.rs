@@ -17,6 +17,18 @@ const SAVE_DEBOUNCE_MS: u64 = 1500;
 const MAIN_MOVED_FRESH_MS: u64 = 80;
 /// Poll while waiting for title-bar gesture to end before layout persist.
 const DRAG_WAIT_POLL_MS: u64 = 50;
+/// Settle after EXIT — consecutive "second drag delay" root cause.
+/// If camera wakes + class clears too soon, the next NCL is cold again (backdrop
+/// on → sync class add 90-150ms) and camera may already be dirtying the UI thread.
+/// 400ms was too short (human re-grab gap >400 → 二次拖动仍延迟). Keep de-load
+/// ~1s; re-grab cancels via MAIN_RESUME_GEN. Flush is separate so class clear
+/// does not stack IPC backlog on the same eval.
+#[cfg(windows)]
+const MAIN_CAMERA_RESUME_MS: u64 = 600;
+#[cfg(windows)]
+const MAIN_PAINT_RESTORE_MS: u64 = 1000;
+#[cfg(windows)]
+const MAIN_TO_JS_FLUSH_MS: u64 = 1100;
 /// Windows moves tray-hidden windows to about (-32000, -32000).
 const HIDDEN_POSITION_THRESHOLD: f64 = -10_000.0;
 
@@ -33,6 +45,13 @@ static MAIN_EARLY_PAUSE_PENDING: AtomicBool = AtomicBool::new(false);
 /// Main path already sent pause to JS (avoid depth+2 from early+ENTER).
 #[cfg(windows)]
 static MAIN_CAMERA_PAUSE_SENT: AtomicBool = AtomicBool::new(false);
+/// `ot-drag-active` already applied — skip redundant win.eval on rapid re-grab
+/// (dump: cold class+camera 90-140ms ncl→enter; class-already-on → 0-1ms).
+#[cfg(windows)]
+static MAIN_OT_DRAG_CLASS_ON: AtomicBool = AtomicBool::new(false);
+/// Cancels a pending debounced camera resume when a new drag starts.
+#[cfg(windows)]
+static MAIN_RESUME_GEN: AtomicU64 = AtomicU64::new(0);
 #[cfg(windows)]
 static MAIN_SIZEMOVE_PREV_WNDPROC: AtomicIsize = AtomicIsize::new(0);
 #[cfg(windows)]
@@ -129,30 +148,84 @@ pub fn try_emit_drag_trace(phase: &str, source: &str, detail: serde_json::Value)
     }
 }
 
+/// Sync paint de-load for main title-bar drag. Must run on NCLBUTTONDOWN before
+/// DefWindowProc enters ENTERSIZEMOVE — async camera pause left backdrop-filter
+/// on for the first pulses and the window "waits, then teleports".
+/// Soft Pad finish also clears via this — `emit_camera_frame_pump(false)` no longer
+/// strips the class (main EXIT keeps it across the post-drag gap).
+#[cfg(windows)]
+pub(crate) fn eval_ot_drag_active(app: &AppHandle, on: bool) {
+    if on {
+        if MAIN_OT_DRAG_CLASS_ON.swap(true, Ordering::SeqCst) {
+            return; // already on — win.eval here was ncl→enter poison on re-grab
+        }
+    } else if !MAIN_OT_DRAG_CLASS_ON.swap(false, Ordering::SeqCst) {
+        return;
+    }
+    if let Some(win) = crate::ipc::get_main_window(app) {
+        let script = if on {
+            "try{document.documentElement.classList.add('ot-drag-active')}catch(e){}"
+        } else {
+            // Class only — flush is scheduled separately (same-eval flush poisoned
+            // the next NCL when stacked with backdrop re-arm).
+            "try{document.documentElement.classList.remove('ot-drag-active')}catch(e){}"
+        };
+        let _ = win.eval(script);
+    }
+}
+
+#[cfg(windows)]
+fn eval_flush_to_js(app: &AppHandle) {
+    if let Some(win) = crate::ipc::get_main_window(app) {
+        let _ = win.eval("try{window.__vp_flush_to_js__&&__vp_flush_to_js__()}catch(e){}");
+    }
+}
+
+/// True while main title-bar path owns the camera pause latch (incl. settle gap).
+#[cfg(windows)]
+pub(crate) fn main_camera_pause_owned() -> bool {
+    MAIN_CAMERA_PAUSE_SENT.load(Ordering::SeqCst)
+}
+
 /// Pause/resume main-window camera pumps during drag.
 /// Prefer `eval` (direct script) over `to_js` — ENTERSIZEMOVE / Soft Pad SC_MOVE
 /// can starve event delivery until EXIT, so pause must land *before* the loop.
 /// Never both eval and to_js: dual delivery doubled pauseDepth and a late to_js
 /// resume could wake the camera mid Soft Pad drag (1st ok, 2nd laggy).
 ///
-/// On pause, also latch `ot-drag-active` in the same eval so paint de-load does
-/// not wait for the async drag_trace fan-out (ncl→enter used to show raf_jank
-/// with camDepth=1 because the class arrived after the first move pulses).
+/// Camera pause/resume. Does **not** clear `ot-drag-active` on resume — paint
+/// restore is owned by `schedule_main_drag_settle` so a smooth drag's exit does
+/// not re-arm backdrop-filter before the user's next grab.
 pub fn emit_camera_frame_pump(app: &AppHandle, paused: bool) {
     let payload = serde_json::json!({
         "type": "camera_frame_pump",
         "paused": paused,
     });
     if let Some(win) = crate::ipc::get_main_window(app) {
-        let script = if paused {
-            // Latch class + pause in one round-trip. CameraFramePump.pause must
-            // return fast (latch then microtask heavy mute) so NCLBUTTONDOWN is
-            // not pinned for 47-141ms before ENTERSIZEMOVE.
-            "try{document.documentElement.classList.add('ot-drag-active');window.OneToneCameraFramePump&&OneToneCameraFramePump.pause()}catch(e){}"
-        } else {
-            "try{window.OneToneCameraFramePump&&OneToneCameraFramePump.resume()}catch(e){}"
-        };
-        let _ = win.eval(script);
+        #[cfg(windows)]
+        {
+            if paused {
+                // Class via atomic-gated helper — Soft Pad used to add class here
+                // without MAIN_OT_DRAG_CLASS_ON, so clear skipped and class stuck.
+                eval_ot_drag_active(app, true);
+                let _ = win.eval(
+                    "try{window.OneToneCameraFramePump&&OneToneCameraFramePump.pause()}catch(e){}",
+                );
+            } else {
+                let _ = win.eval(
+                    "try{window.OneToneCameraFramePump&&OneToneCameraFramePump.resume()}catch(e){}",
+                );
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            let script = if paused {
+                "try{document.documentElement.classList.add('ot-drag-active');window.OneToneCameraFramePump&&OneToneCameraFramePump.pause()}catch(e){}"
+            } else {
+                "try{window.OneToneCameraFramePump&&OneToneCameraFramePump.resume()}catch(e){}"
+            };
+            let _ = win.eval(script);
+        }
     } else {
         crate::ipc::emit_to_main_if_available(app, None, payload);
     }
@@ -180,62 +253,144 @@ fn set_main_sizemove_active(active: bool) {
     #[cfg(windows)]
     {
         if active {
+            // Cancel any pending EXIT resume — rapid re-grab must keep pause + de-load.
+            MAIN_RESUME_GEN.fetch_add(1, Ordering::SeqCst);
             MAIN_EARLY_PAUSE_PENDING.store(false, Ordering::SeqCst);
-            let already = MAIN_CAMERA_PAUSE_SENT.swap(true, Ordering::SeqCst);
+            // Soft Pad pattern: begin first, camera pause AFTER movement starts.
+            // Sync camera/trace here blocked the first move pulses; async lets
+            // DefWindowProc enter the modal loop before win.eval lands.
+            // ncl_down traces here too — spawning it from NCL raced eval onto UI
+            // before ENTER (dump: 40-140ms ncl→enter from drag_trace alone).
             if let Some(app) = main_app_for_emit().lock().clone() {
-                emit_drag_trace(
-                    &app,
-                    "enter_sizemove",
-                    "main",
-                    serde_json::json!({ "alreadyPaused": already }),
-                );
+                tauri::async_runtime::spawn(async move {
+                    let already = MAIN_CAMERA_PAUSE_SENT.load(Ordering::SeqCst);
+                    emit_drag_trace(
+                        &app,
+                        "ncl_down",
+                        "main",
+                        serde_json::json!({ "alreadyPaused": already, "via": "enter" }),
+                    );
+                    emit_drag_trace(
+                        &app,
+                        "enter_sizemove",
+                        "main",
+                        serde_json::json!({ "alreadyPaused": already }),
+                    );
+                    // Short flick: EXIT can land before this task. Pausing after EXIT
+                    // with no settle left camera/class stuck → intermittent "失灵".
+                    if !MAIN_SIZEMOVE_ACTIVE.load(Ordering::SeqCst) {
+                        return;
+                    }
+                    if !MAIN_CAMERA_PAUSE_SENT.swap(true, Ordering::SeqCst) {
+                        if !MAIN_SIZEMOVE_ACTIVE.load(Ordering::SeqCst) {
+                            MAIN_CAMERA_PAUSE_SENT.store(false, Ordering::SeqCst);
+                            return;
+                        }
+                        emit_camera_frame_pump(&app, true);
+                    }
+                });
             }
-            if already {
-                return; // early NCL already paused — do not depth+2
-            }
-        } else {
-            let had = MAIN_CAMERA_PAUSE_SENT.swap(false, Ordering::SeqCst);
-            if let Some(app) = main_app_for_emit().lock().clone() {
-                emit_drag_trace(
-                    &app,
-                    "exit_sizemove",
-                    "main",
-                    serde_json::json!({ "hadPause": had }),
-                );
-            }
-            if !had {
-                return;
+            return;
+        }
+        // EXIT: do not sync-resume here. Immediate resume+class remove on the UI
+        // thread made the next NCL pay 90-150ms and teleports (1st ok, 2nd/3rd bad).
+        let had = MAIN_CAMERA_PAUSE_SENT.load(Ordering::SeqCst);
+        let class_on = MAIN_OT_DRAG_CLASS_ON.load(Ordering::SeqCst);
+        if let Some(app) = main_app_for_emit().lock().clone() {
+            emit_drag_trace(
+                &app,
+                "exit_sizemove",
+                "main",
+                serde_json::json!({ "hadPause": had, "classOn": class_on }),
+            );
+            // Always settle when we de-loaded paint — even if camera async never ran
+            // (short flick): otherwise ot-drag-active sticks and Soft Pad thinks main
+            // owns the camera latch forever.
+            if had || class_on {
+                schedule_main_drag_settle(app);
             }
         }
+        return;
     }
+    #[cfg(not(windows))]
     if let Some(app) = main_app_for_emit().lock().clone() {
         emit_camera_frame_pump(&app, active);
     }
 }
 
-/// Title-bar / border hit → latch drag + schedule camera pause off the NCL path.
-/// Sync win.eval here pinned ncl→enter at 86-126ms even after pause-body deferral;
-/// async spawn accepts a few ms of camera before pause lands.
+/// After EXITSIZEMOVE: resume camera, then paint, then flush — staggered.
+/// Cancelled by MAIN_RESUME_GEN when the user grabs the title bar again.
+#[cfg(windows)]
+fn schedule_main_drag_settle(app: AppHandle) {
+    let gen = MAIN_RESUME_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    let app_cam = app.clone();
+    let app_paint = app.clone();
+    let app_flush = app;
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(MAIN_CAMERA_RESUME_MS)).await;
+        if MAIN_RESUME_GEN.load(Ordering::SeqCst) != gen {
+            return;
+        }
+        if MAIN_SIZEMOVE_ACTIVE.load(Ordering::SeqCst) {
+            return;
+        }
+        if !MAIN_CAMERA_PAUSE_SENT.swap(false, Ordering::SeqCst) {
+            return;
+        }
+        // Resume camera only — keep ot-drag-active so the next grab stays cheap.
+        emit_camera_frame_pump(&app_cam, false);
+    });
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(MAIN_PAINT_RESTORE_MS)).await;
+        if MAIN_RESUME_GEN.load(Ordering::SeqCst) != gen {
+            return;
+        }
+        if MAIN_SIZEMOVE_ACTIVE.load(Ordering::SeqCst) {
+            return;
+        }
+        eval_ot_drag_active(&app_paint, false);
+        emit_drag_trace(
+            &app_paint,
+            "paint_restore",
+            "main",
+            serde_json::json!({ "gen": gen }),
+        );
+    });
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(MAIN_TO_JS_FLUSH_MS)).await;
+        if MAIN_RESUME_GEN.load(Ordering::SeqCst) != gen {
+            return;
+        }
+        if MAIN_SIZEMOVE_ACTIVE.load(Ordering::SeqCst) {
+            return;
+        }
+        // Skip flush if a new drag already re-armed de-load.
+        if MAIN_OT_DRAG_CLASS_ON.load(Ordering::SeqCst) {
+            return;
+        }
+        eval_flush_to_js(&app_flush);
+        emit_drag_trace(
+            &app_flush,
+            "to_js_flush",
+            "main",
+            serde_json::json!({ "gen": gen }),
+        );
+    });
+}
+
+/// Title-bar / border hit → latch + sync paint de-load only (no spawn).
+/// Soft Pad: spawn follow, then async camera. Main cannot move before ENTERSIZEMOVE,
+/// so NCL must not queue camera_pause/drag_trace evals onto the UI thread (dump:
+/// those raced ahead of enter and cost 90-140ms). Trace+camera move to ENTER async.
 #[cfg(windows)]
 fn early_pause_camera_before_sizemove() {
     MAIN_EARLY_PAUSE_PENDING.store(true, Ordering::SeqCst);
     MAIN_SIZEMOVE_ACTIVE.store(true, Ordering::SeqCst);
     note_main_window_moving();
-    let already = MAIN_CAMERA_PAUSE_SENT.swap(true, Ordering::SeqCst);
-    if let Some(app) = main_app_for_emit().lock().clone() {
-        emit_drag_trace(
-            &app,
-            "ncl_down",
-            "main",
-            serde_json::json!({ "alreadyPaused": already }),
-        );
-        if already {
-            return;
-        }
-        tauri::async_runtime::spawn(async move {
-            emit_camera_frame_pump(&app, true);
-        });
-    }
+    // Cancel debounced EXIT resume so consecutive drags keep pause + ot-drag-active.
+    MAIN_RESUME_GEN.fetch_add(1, Ordering::SeqCst);
+    // Atomics only — no sync win.eval here. Class + camera pause land async on
+    // ENTERSIZEMOVE (sync eval on a busy 4k-DOM WebView teleported the first move).
 }
 
 #[cfg(windows)]
@@ -245,12 +400,14 @@ fn cancel_early_pause_if_click_only() {
     }
     // No ENTERSIZEMOVE — user clicked caption without dragging.
     MAIN_SIZEMOVE_ACTIVE.store(false, Ordering::SeqCst);
-    if !MAIN_CAMERA_PAUSE_SENT.swap(false, Ordering::SeqCst) {
-        return;
-    }
+    MAIN_RESUME_GEN.fetch_add(1, Ordering::SeqCst);
+    let had_cam = MAIN_CAMERA_PAUSE_SENT.swap(false, Ordering::SeqCst);
     if let Some(app) = main_app_for_emit().lock().clone() {
         emit_drag_trace(&app, "ncl_up_click", "main", serde_json::json!({}));
-        emit_camera_frame_pump(&app, false);
+        if had_cam {
+            emit_camera_frame_pump(&app, false);
+        }
+        eval_ot_drag_active(&app, false);
     }
 }
 
@@ -326,8 +483,8 @@ unsafe extern "system" fn main_sizemove_wndproc(
         CallWindowProcW, WM_ENTERSIZEMOVE, WM_EXITSIZEMOVE, WM_NCLBUTTONDOWN, WM_NCLBUTTONUP,
     };
 
-    // NCLBUTTONDOWN arrives *before* the modal size/move loop — pause camera here so
-    // win.eval can run before DefWindowProc blocks the UI thread.
+    // NCL: atomics latch only (no win.eval). Camera + ot-drag-active are
+    // Soft Pad-style after ENTER async — sync eval measured ncl→enter 90-140ms.
     if msg == WM_NCLBUTTONDOWN && hit_test_starts_sizemove(wparam as isize) {
         early_pause_camera_before_sizemove();
     } else if msg == WM_ENTERSIZEMOVE {

@@ -456,13 +456,13 @@
 }
 .hpp-actionbar {
   height: 64px;
-  background: rgba(255, 255, 255, 0.96);
+  background: #fff;
   border-top: 1px solid var(--hpp-line);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  backdrop-filter: blur(10px);
+  backdrop-filter: none;
 }
 .hpp-status b {
   display: block;

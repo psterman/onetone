@@ -10,6 +10,10 @@
  *
  * Source of truth: Rust `window_layout.rs` emits `drag_trace` with native
  * WM_NCLBUTTONDOWN / ENTERSIZEMOVE / EXITSIZEMOVE — no FE guesswork.
+ *
+ * Critical: do NOT flush deferred to_js or strip ot-drag-active right after a
+ * smooth drag ends — that re-arms backdrop-filter and floods the UI thread so
+ * the *next* grab stutters. Match Rust MAIN_PAINT_RESTORE_MS (~1000ms).
  */
 (function (global) {
   'use strict';
@@ -17,6 +21,8 @@
   var CLS = 'ot-drag-active';
   // Native end event can be lost (crash / stale latch) — never leave the de-load on.
   var MAX_MS = 4000;
+  // Keep paint de-load across the post-drag gap (400ms was too short → 二次延迟).
+  var OFF_DEBOUNCE_MS = 1000;
   var timer = 0;
   var offTimer = 0;
   var root = null;
@@ -25,18 +31,11 @@
     return /^(ncl_down|enter_sizemove|overlay_drag_prepare|overlay_drag_begin)$/;
   }
   function endSet() {
-    return /^(exit_sizemove|ncl_up_click|overlay_drag_end|overlay_drag_end_stale)$/;
+    // paint_restore is Rust's delayed clear — treat as end. exit_sizemove alone
+    // must NOT strip the class (Rust keeps it for MAIN_PAINT_RESTORE_MS).
+    return /^(ncl_up_click|overlay_drag_end|overlay_drag_end_stale|paint_restore)$/;
   }
 
-  function idle(fn) {
-    if (global.requestIdleCallback) {
-      global.requestIdleCallback(fn, { timeout: 200 });
-      return;
-    }
-    global.setTimeout(fn, 60);
-  }
-
-  /// to_js pushes deferred by core/events.js during the gesture land here.
   function flushDeferred() {
     try {
       if (typeof global.__vp_flush_to_js__ === 'function') global.__vp_flush_to_js__();
@@ -54,35 +53,64 @@
     }
   }
 
+  function stripClassOnly() {
+    clearTimers();
+    if (!root) root = global.document && global.document.documentElement;
+    if (root && root.classList) root.classList.remove(CLS);
+  }
+
   function apply(on) {
     if (!root) root = global.document && global.document.documentElement;
     if (!root) return;
-    clearTimers();
     if (on) {
+      // Cancel pending off/flush — consecutive grabs must keep de-load.
+      clearTimers();
       if (root.classList) root.classList.add(CLS);
       timer = global.setTimeout(function () {
         timer = 0;
-        apply(false);
+        stripClassOnly();
+        flushDeferred();
       }, MAX_MS);
       return;
     }
-    // Removing the class invalidates styles document-wide — do it off the
-    // button-up pulse so the restore never lands inside the exit handoff.
+    if (offTimer) return;
+    if (timer) {
+      global.clearTimeout(timer);
+      timer = 0;
+    }
     offTimer = global.setTimeout(function () {
       offTimer = 0;
-      if (root.classList) root.classList.remove(CLS);
+      stripClassOnly();
+      // Rust owns staggered flush (~1100ms); FE safety path flushes after class.
       flushDeferred();
-    }, 0);
-    idle(function () {
-      if (root.classList) root.classList.remove(CLS);
-      flushDeferred();
-    });
+    }, OFF_DEBOUNCE_MS);
   }
 
   function bind() {
     var handler = function (ev) {
       var p = ev && ev.payload;
       if (!p || typeof p.phase !== 'string') return;
+      // exit_sizemove: keep class (Rust owns delayed paint_restore).
+      if (p.phase === 'exit_sizemove') {
+        if (root && root.classList && root.classList.contains(CLS)) {
+          if (timer) global.clearTimeout(timer);
+          timer = global.setTimeout(function () {
+            timer = 0;
+            stripClassOnly();
+            flushDeferred();
+          }, MAX_MS);
+        }
+        return;
+      }
+      // Rust cleared class; do not flush here (to_js_flush is staggered).
+      if (p.phase === 'paint_restore') {
+        stripClassOnly();
+        return;
+      }
+      if (p.phase === 'to_js_flush') {
+        flushDeferred();
+        return;
+      }
       if (beginSet().test(p.phase)) apply(true);
       else if (endSet().test(p.phase)) apply(false);
     };

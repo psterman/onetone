@@ -249,11 +249,11 @@ var drawerSrc = fs.readFileSync(path.join(__dirname, '../src/js/features/setting
 assert.ok(drawerSrc.includes("panel==='agentData'") && drawerSrc.includes("agentSub:'data'"), 'agentData aliases to agent+data');
 assert.ok(!/panel==='agentData'[\s\S]{0,200}OneToneAgentDataBridge\.start/.test(drawerSrc), 'no independent agentData bridge start');
 assert.ok(/panel==='agent'[\s\S]*?OneToneAgentDataBridge\.start/.test(drawerSrc), 'data bridge can start from agent panel');
-assert.ok(/lastPanel==='agent'[\s\S]*?OneToneAgentDataBridge\.stop/.test(drawerSrc), 'data bridge stops leaving agent');
+assert.ok(/leavingPanel==='agent'[\s\S]*?OneToneAgentDataBridge\.stop/.test(drawerSrc), 'data bridge stops leaving agent');
 assert.ok(/postAgentPageCmd\('setSub',\{sub:'overview'\}\)/.test(drawerSrc), 'opens overview by default');
 
 var indexHtml = fs.readFileSync(path.join(__dirname, '../src/index.html'), 'utf8');
 assert.ok(indexHtml.includes('id="agentDataProtoFrame"') && /agentDataProtoFrame[\s\S]*?about:blank/.test(indexHtml), 'legacy data frame blanked');
-assert.ok(/wbNavAgentData[\s\S]*?hidden/.test(indexHtml), 'sidebar data nav hidden');
+assert.ok(!/id="wbNavAgentData"|data-wb-nav="agentData"/.test(indexHtml), 'sidebar data nav removed');
 
 console.log('ok agent-data-bridge');

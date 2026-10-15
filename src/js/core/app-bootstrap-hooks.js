@@ -2,13 +2,24 @@
   'use strict';
 
   function register(deps){
-    var ed=global.OneToneMappingEditorState;
-    var tx=global.OneToneAppTextUtils;
-    var dbg=global.OneToneAppDebugState;
-    var H=global.OneToneHomeLiveActions;
-    var D=global.OneToneDebugAbout;
-    var M=global.OneToneMappingEditActions;
-    var C=global.OneToneMappingConfirmModal;
+    var ed=global.OneToneMappingEditorState||{};
+    var tx=global.OneToneAppTextUtils||{};
+    var dbg=global.OneToneAppDebugState||{};
+    var H=global.OneToneHomeLiveActions||{};
+    var M=global.OneToneMappingEditActions||{};
+    var C=global.OneToneMappingConfirmModal||{};
+    var Autostart=global.OneToneAppAutostart||{};
+    var StartMin=global.OneToneAppStartMinimized||{};
+    var CoachHud=global.OneToneAppCoachHud||{};
+    var VoiceWake=global.OneToneVoiceWake||{};
+    // DebugAbout is data-ot-defer="debug" — must not touch at register time or boot dies.
+    function debugAboutFn(name){
+      return function(){
+        var api=global.OneToneDebugAbout;
+        var fn=api&&api[name];
+        if(typeof fn==='function') return fn.apply(api,arguments);
+      };
+    }
     global.__vp_bootstrap_hooks__={
       t:deps.t,
       vpInvoke:deps.vpInvoke,
@@ -19,9 +30,9 @@
       applyLang:deps.applyLang,
       setFontScale:deps.setFontScale,
       fontScaleValues:deps.fontScaleValues,
-      toggleAutostart:global.OneToneAppAutostart.toggle,
-      toggleStartMinimized:global.OneToneAppStartMinimized.toggle,
-      toggleCoachHud:global.OneToneAppCoachHud.toggle,
+      toggleAutostart:Autostart.toggle,
+      toggleStartMinimized:StartMin.toggle,
+      toggleCoachHud:CoachHud.toggle,
       toggleSoundsMaster:deps.toggleSoundsMaster,
       setSoundSlotEnabled:deps.setSoundSlotEnabled,
       setSoundSlotId:deps.setSoundSlotId,
@@ -29,7 +40,7 @@
       setRecordingAudioMuteEnabled:deps.setRecordingAudioMuteEnabled,
       setRecordingAudioStrength:deps.setRecordingAudioStrength,
       toggleVoiceSapi:deps.toggleVoiceSapi,
-      bindVoiceModeCard:global.OneToneVoiceWake.bindVoiceModeCard,
+      bindVoiceModeCard:VoiceWake.bindVoiceModeCard,
       testVoiceSapiSend:deps.testVoiceSapiSend,
       openVoiceSapiSetup:deps.openVoiceSapiSetup,
       addVoiceSapiPreset:deps.addVoiceSapiPreset,
@@ -40,7 +51,7 @@
       downloadVoskModel:deps.downloadVoskModel,
       retryVoskStart:deps.retryVoskStart,
       addVoiceVoskPreset:deps.addVoiceVoskPreset,
-      syncVoiceVoskPresetButtons:global.OneToneVoiceWake.syncVoiceVoskPresetButtons,
+      syncVoiceVoskPresetButtons:VoiceWake.syncVoiceVoskPresetButtons,
       changeVoiceVoskModelPreset:deps.changeVoiceVoskModelPreset,
       toggleVoiceEnd:deps.toggleVoiceEnd,
       toggleVoiceEndAutoSend:deps.toggleVoiceEndAutoSend,
@@ -84,8 +95,8 @@
       toast:deps.toast,
       setDebugFocusMode:deps.setDebugFocusMode,
       setVoiceDiagTab:deps.setVoiceDiagTab,
-      exportDiagnosticLogs:D.exportDiagnosticLogs,
-      openExternalUrl:D.openExternalUrl,
+      exportDiagnosticLogs:debugAboutFn('exportDiagnosticLogs'),
+      openExternalUrl:debugAboutFn('openExternalUrl'),
       syncEditorFromSelection:deps.syncEditorFromSelection,
       closeFloatMenu:deps.closeFloatMenu,
       flushAllEditorToMappings:deps.flushAllEditorToMappings,
@@ -125,8 +136,8 @@
       newMappingId:deps.newMappingId,
       defaultConfig:deps.defaultConfig,
       renderRecordCancelBar:deps.renderRecordCancelBar,
-      openConfirmModal:C.open,
-      closeConfirmModal:C.close,
+      openConfirmModal:typeof C.open==='function'?C.open:function(){},
+      closeConfirmModal:typeof C.close==='function'?C.close:function(){},
       duplicateMapping:deps.duplicateMapping,
       reorderMapping:deps.reorderMapping,
       restoreFromTrash:deps.restoreFromTrash,
@@ -170,7 +181,7 @@
       lastKeyDebug:dbg.lastKeyDebug,
       setLastKeyDebug:dbg.setLastKeyDebug,
       clearLogLines:deps.clearLogLines,
-      githubRepoUrl:D.githubRepoUrl,
+      githubRepoUrl:debugAboutFn('githubRepoUrl'),
       setUiBootstrapping:deps.setUiBootstrapping
     };
   }

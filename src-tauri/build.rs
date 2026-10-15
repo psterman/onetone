@@ -285,21 +285,12 @@ fn main() {
         "cmd_acoustic_voice_command_build_from_samples",
     ];
 
-    // Frontend lives in ../src; force re-embed when voice strategy UI changes.
-    println!("cargo:rerun-if-changed=../src/js/features/voice/voice-wake.js");
-    println!("cargo:rerun-if-changed=../src/js/features/voice/voice-ui-bindings.js");
-    println!("cargo:rerun-if-changed=../src/js/features/voice/voice-intent-rail.js");
-    println!("cargo:rerun-if-changed=../src/js/features/mapping/keys-scene-actions-panel.js");
-    println!("cargo:rerun-if-changed=../src/js/features/mapping/keys-channel-command-picker.js");
-    println!("cargo:rerun-if-changed=../src/js/core/config-persist.js");
-    println!("cargo:rerun-if-changed=../src/index.html");
-    println!("cargo:rerun-if-changed=../src/css/voice-page-shell.css");
-    println!("cargo:rerun-if-changed=../src/codex-micro-overlay.html");
-    println!("cargo:rerun-if-changed=../src/css/codex-micro-overlay.css");
-    println!("cargo:rerun-if-changed=../src/css/motion.css");
-    println!("cargo:rerun-if-changed=../src/js/core/motion.js");
-    println!("cargo:rerun-if-changed=../src/js/core/agent-status-edge.js");
-    println!("cargo:rerun-if-changed=../src/js/core/panel-reveal.js");
+    // frontendDist = ../src. Cargo only re-runs build.rs when listed inputs change;
+    // a cherry-picked file list silently skipped most JS/CSS edits (exe timestamp
+    // frozen, 9s "success" with stale embed). Directory watch covers the tree.
+    // `tauri dev` (Vite) bypasses embed — this matters for cargo build / debug exe.
+    println!("cargo:rerun-if-changed=../src");
+    println!("cargo:rerun-if-changed=../src-islands");
 
     // When vosk-engine is off (cargo test --no-default-features), strip Vosk DLL
     // bundle resources so tauri-build does not overwrite DLLs locked by a running

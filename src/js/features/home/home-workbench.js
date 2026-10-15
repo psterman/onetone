@@ -326,6 +326,16 @@
   function renderAlerts(vm,model){
     var host=$('wbHomeAlerts');
     if(!host) return;
+    // Thin desk (Now) owns home-center — workbench「开始设置」banner is unrelated chrome.
+    try{
+      var NH=global.OneToneNowHome;
+      if(NH&&typeof NH.isEnabled==='function'&&NH.isEnabled()){
+        host.hidden=true;
+        host.innerHTML='';
+        host._lastAlertAction=null;
+        return;
+      }
+    }catch(_){}
     // One-shot: last session stall / unclean exit (persisted by Rust watchdog).
     if(pendingLastStall&&pendingLastStall.code){
       host.hidden=false;
@@ -3081,7 +3091,7 @@
     keys:'triggers',
     softPad:'softPad',
     agent:'agent',
-    agentData:'agentData',
+    agentData:'agent',
     voiceWake:'voice',
     models:'voice',
     camera:'camera',
@@ -3142,11 +3152,14 @@
     opts=opts||{};
     var ui=global.OneToneState&&global.OneToneState.ui;
     var open=!!(ui&&ui.drawerOpen);
+    // Drawer open: highlight from live settingsPanel so late focus/rAF callers
+    // (e.g. softPad focus after keys open) cannot paint a stale nav item.
+    if(open&&ui&&ui.settingsPanel){
+      panel=String(ui.settingsPanel);
+    }
     var activeNav='home';
     if(open){
       if(panel==='debug'){
-        activeNav='runtime';
-      }else if(panel==='general'){
         activeNav='runtime';
       }else if(panel==='agent'||panel==='agentData'){
         // Agent → 总览 / 数据：主导航始终高亮 Agent
@@ -3336,16 +3349,12 @@
       if(wake.startPoll&&wake.isPollStarted&&!wake.isPollStarted()){
         try{ wake.startPoll(); }catch(_){}
       }
-      if(wake.ensureHomeVoiceListening){
-        var force=!homeVoiceBootstrapped;
-        try{ wake.ensureHomeVoiceListening({force:force}); }catch(_){}
-        if(force){
-          homeVoiceBootstrapped=true;
-          if(wake.unparkHomeAsrQuiet){
-            try{ wake.unparkHomeAsrQuiet(); }catch(_){}
-          }
-        }
+      // Status poll only — do not force-start mic on every home render (auto 命令 + drag lag).
+      // User starts via 开始听写; voiceWake park-restore uses ensureHomeVoiceListening({force}).
+      if(wake.ensureHomeVoiceEngineIfMismatch){
+        try{ wake.ensureHomeVoiceEngineIfMismatch({force:false}); }catch(_){}
       }
+      homeVoiceBootstrapped=true;
     }
     var mic=global.OneToneAppMic;
     if(mic&&mic.syncHomeMicMonitor){
@@ -3420,11 +3429,11 @@
   function bindNav(){
     var nav=$('wbLeftNav');
     if(!nav) return;
-    var ia=global.OneToneShellIaConvergence;
-    if(ia&&ia.NAV){
-      Object.keys(ia.NAV).forEach(function(key){
+    var iaBoot=global.OneToneShellIaConvergence;
+    if(iaBoot&&iaBoot.NAV){
+      Object.keys(iaBoot.NAV).forEach(function(key){
         var btn=nav.querySelector('[data-wb-nav="'+key+'"]');
-        var row=ia.NAV[key];
+        var row=iaBoot.NAV[key];
         if(!btn||!row) return;
         btn.setAttribute('data-wb-deep',row.deep?'1':'0');
         btn.setAttribute('data-wb-pro',row.pro?'1':'0');
@@ -3435,6 +3444,8 @@
       var btn=e.target.closest&&e.target.closest('[data-wb-nav]');
       if(!btn) return;
       var action=btn.getAttribute('data-wb-nav');
+      // Resolve at click time — do not close over a null ShellIa from an early bindOnce.
+      var ia=global.OneToneShellIaConvergence;
       var row=ia&&ia.resolve?ia.resolve(action):null;
       // 只认 shell-ia — missing script must be fixed by load order, not a parallel nav map.
       if(!row) return;
@@ -3574,8 +3585,15 @@
     if(navMore&&!navMore._wbBound){
       navMore._wbBound=true;
       navMore.onclick=function(){
+        // Expand full left directory for this session, then open 通用设置 (basic).
+        if(global.OneToneAppHomeRuntime&&typeof global.OneToneAppHomeRuntime.expandHomeFocusNav==='function'){
+          global.OneToneAppHomeRuntime.expandHomeFocusNav();
+        }
+        if(global.OneToneHomeShell&&typeof global.OneToneHomeShell.render==='function'){
+          try{ global.OneToneHomeShell.render(); }catch(_){}
+        }
         if(global.OneToneSettingsDrawer&&global.OneToneSettingsDrawer.open){
-          global.OneToneSettingsDrawer.open({panel:'general'});
+          global.OneToneSettingsDrawer.open({panel:'basic'});
         }
       };
     }

@@ -28,7 +28,7 @@ assert.match(indexHtml, /agent-control-acceptance\.js/);
 assert.match(indexHtml, /agent-nav-target\.js/);
 assert.match(indexHtml, /home-agent-status-strip\.js/);
 assert.match(indexHtml, /home-prompt-prep\.js/);
-assert.match(indexHtml, /wbNavAgentData[\s\S]*?hidden/);
+assert.doesNotMatch(indexHtml, /id="wbNavAgentData"|data-wb-nav="agentData"/);
 assert.match(rosterCss, /repeat\(2,\s*minmax/);
 assert.doesNotMatch(rosterCss, /@media \(min-width: 900px\)[\s\S]{0,80}repeat\(4,\s*minmax/);
 assert.match(rosterCss, /\.har-overview-summary/);

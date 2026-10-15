@@ -105,6 +105,48 @@
     var source = dto.source || {};
     var action = dto.nextAction && dto.nextAction.executable ? dto.nextAction : null;
 
+    // No snapshot yet (boot / first paint): Quiet Composer shell — never invent
+    //「未发现应用」Hero + pick CTA (that was the blank/irrelevant flash into home).
+    var hasSnap =
+      !!(fg && (fg.appName || fg.appId || fg.windowTitle)) ||
+      !!(project && (project.id || project.name || project.root)) ||
+      !!(work && (work.status || work.title)) ||
+      !!(provider && provider.status);
+    if (!hasSnap) {
+      return {
+        mode: 'quiet',
+        headline: '',
+        assistance: '',
+        presence: null,
+        attention: null,
+        continuation: null,
+        progress: null,
+        desk: {
+          needsYou: null,
+          living: null,
+          continueCard: null,
+          projectGate: null
+        },
+        evidence: [],
+        restoreLabel: '',
+        primary: null,
+        secondary: null,
+        appName: '',
+        projectName: '',
+        projectRoot: '',
+        projectId: '',
+        confirmed: false,
+        match: 'unknown',
+        title: '',
+        copy: '',
+        label: 'quiet',
+        readyLabel: 'quiet',
+        candidates: [],
+        dto: dto,
+        _bootShell: true
+      };
+    }
+
     var appName = String(fg.appName || '').trim() || '未发现应用';
     var projectName = String(project.name || '').trim() || '未知项目';
     var match = String(project.match || 'unknown');
