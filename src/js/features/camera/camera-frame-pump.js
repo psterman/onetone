@@ -1,7 +1,7 @@
 /**
  * Unified pause/resume for camera main-thread cost during window drag.
- * Stops gaze/hand createImageBitmap, beauty rAF, and mutes video tracks
- * (webcam decode/compositor keeps eating the UI thread if tracks stay enabled).
+ * Stops gaze/hand createImageBitmap + beauty rAF. Mutes video tracks only when
+ * the camera settings page is not facing the user (mute → black preview).
  * Rust: win.eval(pause/resume); to_js camera_frame_pump is fallback only.
  *
  * Idempotent pause/resume (boolean latch) — Soft Pad may prepare-pause while a
@@ -13,8 +13,21 @@
   var paused=false;
   var mutedTracks=[];
 
+  /** Camera / camera2 open — keep tracks live so the visible preview stays lit. */
+  function previewFacingUser(){
+    try{
+      var ui=global.OneToneState&&global.OneToneState.ui;
+      if(!ui||!ui.drawerOpen) return false;
+      var p=String(ui.settingsPanel||'');
+      return p==='camera'||p==='camera2';
+    }catch(_){
+      return false;
+    }
+  }
+
   function muteVideoTracks(){
     unmuteVideoTracks();
+    if(previewFacingUser()) return;
     var video=null;
     try{
       video=(global.OneToneDom&&global.OneToneDom.$)

@@ -67,6 +67,10 @@ assert(
   /paCamEnter\.setDrawerUiPaused\(false\)/.test(drawer),
   'camera panel unpauses drawer camera tracks before preview'
 );
+assert(
+  /isPreviewCaptureReason:isPreviewCaptureReason\s*,/.test(preview),
+  'isPreviewCaptureReason export uses comma (syntax-safe object literal)'
+);
 
 const enhancer = fs.readFileSync(
   path.join(root, 'src/js/features/camera/camera-video-enhancer.js'),

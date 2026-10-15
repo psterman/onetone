@@ -2537,7 +2537,7 @@
     getLastCapturePrefer:function(){
       return lastCapturePrefer?Object.assign({},lastCapturePrefer):null;
     },
-    isPreviewCaptureReason:isPreviewCaptureReason;
+    isPreviewCaptureReason:isPreviewCaptureReason,
     getLastError:function(){ return lastError?{code:lastError.code,message:lastError.message}:null; },
     getPreviewStatus:function(){ return previewStatus; },
     mapError:mapError,

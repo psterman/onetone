@@ -269,6 +269,12 @@ const indexHtml = fs.readFileSync(path.join(root, 'src/index.html'), 'utf8');
 assert(/OneToneCameraFramePump/.test(framePump), 'camera frame pump bridge');
 assert(/camera_frame_pump/.test(framePump), 'listens for camera_frame_pump to_js');
 assert(/muteVideoTracks|getVideoTracks/.test(framePump), 'drag pause mutes webcam tracks');
+assert(
+  /function previewFacingUser/.test(framePump) &&
+    /if\(previewFacingUser\(\)\)\s*return/.test(framePump) &&
+    /p==='camera'\|\|p==='camera2'/.test(framePump),
+  'drag mute skips when camera panel is open (avoids black preview)'
+);
 assert(/pauseForDrag/.test(framePump), 'drag pause stops beauty enhancer loops');
 assert(
   /queueMicrotask|scheduleHeavy/.test(framePump) &&

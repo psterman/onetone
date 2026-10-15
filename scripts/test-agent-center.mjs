@@ -105,6 +105,22 @@ assert.match(js, /isDemoMode/);
 assert.match(js, /mountDemo/);
 assert.match(js, /LAST_GOOD_KEY|lastGood/);
 
+// Enter soft path: paint first, never ForceFresh on mount; soft prefers snapshot
+const mountFn = js.slice(js.indexOf('function mount(host)'), js.indexOf('function mountHome('));
+assert.ok(mountFn.includes('scheduleHomeRefresh'), 'mount defers soft refresh');
+assert.ok(mountFn.includes('loadLastGood'), 'mount paints lastGood first');
+assert.ok(mountFn.includes('noteEnter'), 'mount marks enter for stale grace');
+assert.doesNotMatch(mountFn, /refresh\(\s*null\s*,\s*\{\s*force:\s*true/);
+assert.match(refreshFn, /var primary = opts\.force/);
+assert.ok(
+  !refreshFn.includes('opts.force || !state.snap'),
+  'first soft must not ForceFresh solely because snap is empty'
+);
+assert.ok(refreshFn.includes("'cmd_agent_center_snapshot'"), 'soft uses snapshot');
+assert.ok(refreshFn.includes("'cmd_agent_registry_refresh'"), 'force still available');
+assert.match(js, /STALE_ENTER_GRACE_MS\s*=\s*2000/);
+assert.match(ipcRs, /registry_refresh_is_fresh/);
+
 // P0-C: inventory wired
 assert.match(ipcRs, /collect_inventory/);
 assert.match(ipcRs, /cmd_agent_center_action/);
@@ -707,6 +723,7 @@ assert.doesNotMatch(rowHtml, /disabled/);
 // Constants + TTL source
 assert.equal(AC.__test.OVERVIEW_SOFT_POLL_MS, 5000);
 assert.equal(AC.__test.STALE_AUTO_COOLDOWN_MS, 30000);
+assert.equal(AC.__test.STALE_ENTER_GRACE_MS, 2000);
 const codexBg = read('src-tauri/src/agent_memory/codex_background.rs');
 const claudeBg = read('src-tauri/src/agent_memory/claude_background.rs');
 assert.match(codexBg, /PROBE_TTL_MS:\s*u64\s*=\s*30_000/);
@@ -744,6 +761,7 @@ sandbox.__TAURI_INTERNALS__ = {
     return Promise.resolve(staleSnap);
   }
 };
+AC.__test.setEnterAtMs(0);
 AC.__test.getStaleRecovery().attemptedSnapshotAsOf = 0;
 AC.__test.getStaleRecovery().lastAttemptAt = 0;
 AC.__test.getStaleRecovery().inFlight = false;
@@ -753,6 +771,28 @@ assert.ok(forceCalls >= 1, 'first stale auto force fires');
 const callsAfterFirst = forceCalls;
 AC.__test.maybeAutoRecoverStale(AC._computeHomeOverview(staleSnap));
 assert.equal(forceCalls, callsAfterFirst, 'same asOf must not auto-force again');
+
+// enter grace: no auto ForceFresh within STALE_ENTER_GRACE_MS
+{
+  const prevFly = AC.__test.getHomeRefreshInFlight();
+  if (prevFly) await prevFly.then(function () {}, function () {});
+}
+forceCalls = 0;
+AC.__test.noteEnter();
+AC.__test.getStaleRecovery().attemptedSnapshotAsOf = 0;
+AC.__test.getStaleRecovery().lastAttemptAt = 0;
+AC.__test.getStaleRecovery().inFlight = false;
+AC.__test.maybeAutoRecoverStale(AC._computeHomeOverview(staleSnap));
+assert.equal(forceCalls, 0, 'enter grace blocks stale auto ForceFresh');
+assert.equal(AC.__test.getStaleRecovery().attemptedSnapshotAsOf, 0);
+AC.__test.setEnterAtMs(Date.now() - AC.__test.STALE_ENTER_GRACE_MS - 1);
+AC.__test.maybeAutoRecoverStale(AC._computeHomeOverview(staleSnap));
+assert.ok(forceCalls >= 1, 'past enter grace allows stale auto ForceFresh');
+AC.__test.setEnterAtMs(0);
+{
+  const prevFly = AC.__test.getHomeRefreshInFlight();
+  if (prevFly) await prevFly.then(function () {}, function () {});
+}
 
 // in-flight refresh merges
 forceCalls = 0;

@@ -441,11 +441,18 @@
   /** Overview soft poll interval — Cached snapshot; control probe TTL is separate (30s). */
   var OVERVIEW_SOFT_POLL_MS = 5000;
   var STALE_AUTO_COOLDOWN_MS = 30000;
+  /** Skip auto ForceFresh right after enter so soft paint is not followed by EnumWindows/CLI. */
+  var STALE_ENTER_GRACE_MS = 2000;
+  var enterAtMs = 0;
   var staleRecovery = {
     inFlight: false,
     lastAttemptAt: 0,
     attemptedSnapshotAsOf: 0
   };
+
+  function noteEnter() {
+    enterAtMs = Date.now();
+  }
   var viewOnlyFoldOpen = false;
 
   function lang() {
@@ -2721,6 +2728,7 @@
     if (!asOf) return;
     if (staleRecovery.attemptedSnapshotAsOf === asOf) return;
     var now = Date.now();
+    if (enterAtMs && now - enterAtMs < STALE_ENTER_GRACE_MS) return;
     if (now - staleRecovery.lastAttemptAt < STALE_AUTO_COOLDOWN_MS) return;
     staleRecovery.inFlight = true;
     staleRecovery.lastAttemptAt = now;
@@ -2973,11 +2981,11 @@
     var payload = {
       args: projectHint ? { projectHint: projectHint } : {}
     };
-    // Soft refresh: snapshot only. Force / first → registry_refresh (ForceFresh probes).
-    var primary =
-      opts.force || !state.snap
-        ? 'cmd_agent_registry_refresh'
-        : 'cmd_agent_center_snapshot';
+    // Soft / first enter: Cached snapshot only. ForceFresh only on explicit force
+    // (user refresh, stale auto-recover). Soft failure still falls back to ForceFresh.
+    var primary = opts.force
+      ? 'cmd_agent_registry_refresh'
+      : 'cmd_agent_center_snapshot';
     var fallback =
       primary === 'cmd_agent_registry_refresh'
         ? 'cmd_agent_center_snapshot'
@@ -3096,6 +3104,7 @@
 
   function mount(host) {
     if (!host) return;
+    noteEnter();
     state.mountMode = 'page';
     pageHostEl = host;
     host.innerHTML =
@@ -3133,7 +3142,14 @@
       drawer.removeAttribute('data-ac-bound');
       bind(drawer);
     }
-    refresh(null, { force: true });
+    // Paint shell + lastGood first; defer soft IPC (never ForceFresh on enter).
+    var last = loadLastGood();
+    if (last && last.snap) {
+      applySnap(last.snap, { stale: true });
+    } else {
+      paintPage();
+    }
+    scheduleHomeRefresh(null);
   }
 
   /**
@@ -3143,6 +3159,7 @@
   function mountHome(host, projectHint, opts) {
     opts = opts || {};
     if (!host) return;
+    noteEnter();
     state.mountMode = opts.mountMode === 'overview' ? 'overview' : (opts.mountMode || 'home');
     if (state.mountMode !== 'overview') clearOverviewPoll();
     else ensureOverviewVisibilityBound();
@@ -3325,7 +3342,15 @@
       closeDrawer: closeDrawer,
       handleDrawerKeydown: handleDrawerKeydown,
       OVERVIEW_SOFT_POLL_MS: OVERVIEW_SOFT_POLL_MS,
-      STALE_AUTO_COOLDOWN_MS: STALE_AUTO_COOLDOWN_MS
+      STALE_AUTO_COOLDOWN_MS: STALE_AUTO_COOLDOWN_MS,
+      STALE_ENTER_GRACE_MS: STALE_ENTER_GRACE_MS,
+      noteEnter: noteEnter,
+      getEnterAtMs: function () {
+        return enterAtMs;
+      },
+      setEnterAtMs: function (ms) {
+        enterAtMs = Number(ms) || 0;
+      }
     },
     t: t
   };

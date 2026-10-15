@@ -45,7 +45,12 @@ pub fn cmd_agent_registry_refresh(
         .and_then(|a| a.project_hint)
         .filter(|s| !s.trim().is_empty())
         .map(std::path::PathBuf::from);
-    let install = install_rows_from_state(state.inner());
+    // Skip EnumWindows when registry TTL still fresh — ForceFresh probes still run.
+    let install = if agent_memory::registry_refresh_is_fresh() {
+        Vec::new()
+    } else {
+        install_rows_from_state(state.inner())
+    };
     let hints = collect_resolve_hints(state.inner(), ProbePolicy::ForceFresh);
     agent_memory::refresh_and_snapshot_with_hints(hint.as_deref(), &install, &hints)
 }
